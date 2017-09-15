@@ -325,6 +325,7 @@ sub donets
                     # - compare net and mask values
                     my $foundmatch = 0;
                     foreach my $netn (@netlist) {
+
                         # split definition mask
                         my ($dm1, $dm2, $dm3, $dm4) = split('\.', $nethash{$netn}{'mask'});
 
@@ -358,7 +359,7 @@ sub donets
                         if ($foundmatch) {
                             next;
                         }
-                        
+
                         # add new network def
                         $nettab->setAttribs({ 'net' => $net, 'mask' => $netmask }, { 'netname' => $netname, 'gateway' => $gateway, 'mgtifname' => $i });
                     }
@@ -449,7 +450,6 @@ sub donets
         { #should be the lines to think about, do something with U, and something else with UG
 
             my $foundmatch = 0;
-            my $netnamematch = 0;
             my $rsp;
             my $net;
             my $mask;
@@ -504,11 +504,7 @@ sub donets
                 my ($n1, $n2, $n3, $n4) = split('\.', $net);
 
                 foreach my $netn (@netlist) {
-                    # check if this netname is already defined
-                    if ( $netname eq $netn ) {
-                        $netnamematch = 1;
-                        last;
-                    }
+
                     # split definition mask
                     my ($dm1, $dm2, $dm3, $dm4) = split('\.', $nethash{$netn}{'mask'});
 
@@ -548,11 +544,6 @@ sub donets
                         push @{ $rsp->{data} }, "    mtu=$mtu";                      
                     }
                 } else {
-                    # if this net entry exists, go to next line in networks table
-                    if ($netnamematch) {
-                        $callback->({ warning => "The network entry \'$netname\' already exists in xCAT networks table. Cannot create a definition for \'$netname\'" });
-                        next;
-                    }
                     if (!$foundmatch) {
                         $nettab->setAttribs({ 'net' => $net, 'mask' => $mask }, { 'netname' => $netname, 'mgtifname' => $mgtifname, 'gateway' => $gw, 'mtu' => $mtu });
                     }

@@ -47,7 +47,7 @@ OpenBMC specific:
 =================
 
 
-\ **rspconfig**\  \ *noderange*\  {\ **ip | netmask | gateway | hostname | vlan | sshcfg**\ }
+\ **rspconfig**\  \ *noderange*\  {\ **ip | netmask | gateway | vlan | sshcfg**\ }
 
 
 MPA specific:
@@ -391,12 +391,6 @@ OPTIONS
 \ **iocap**\ ={\ **enable**\  | \ **disable**\ }
  
  Select the policy for I/O Adapter Enlarged Capacity. This option controls the size of PCI memory space allocated to each PCI slot.
- 
-
-
-\ **hostname**\ 
- 
- Get or set hostname on the service processor.
  
 
 

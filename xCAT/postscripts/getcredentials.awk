@@ -16,9 +16,7 @@ BEGIN {
         print "</xcatrequest>" |& server
 
         while (server |& getline) {
-                if (match($0,"<xcatdsource>") == 0) {
-                  print $0
-                }
+                print $0 
                 if (match($0,"<serverdone>")) {
                   quit = "yes"
                 }
