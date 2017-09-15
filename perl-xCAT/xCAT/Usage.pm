@@ -85,9 +85,7 @@ my %usage = (
   OpenPOWER (OpenBMC) specific:
       rvitals noderange [temp|voltage|wattage|fanspeed|power|altitude|all]
   MIC specific:
-      rvitals noderange {thermal|all}
-  pdu specific:
-      rvitals noderange ",
+      rvitals noderange {thermal|all}",
     "reventlog" =>
 "Usage: reventlog <noderange> [all [-s]|clear|<number of entries to retrieve> [-s]] [-V|--verbose]
        reventlog [-h|--help|-v|--version]",
@@ -145,7 +143,7 @@ my %usage = (
        rspconfig <noderange> [garp=<number of 1/2 second>]
        rspconfig <noderange> [userid=<userid> username=<username> password=<password>]
    OpenBMC specific:
-       rspconfig <noderange> [ip|netmask|gateway|hostname|vlan]
+       rspconfig <noderange> [ip|netmask|gateway|vlan]
    iDataplex specific:
        rspconfig <noderange> [thermprofile]
        rspconfig <noderange> [thermprofile=<two digit number from chassis>]
@@ -344,13 +342,10 @@ my %usage = (
 	rflash <noderange> -p <rpm_directory> [--activate {disruptive|deferred}] [-d <data_directory>]
 	rflash <noderange> [--commit | --recover] [-V|--verbose]
         rflash <noderange> [--bpa_acdl]
-    OpenPOWER BMC specific (using IPMI):
-        rflash <noderange> [<hpm_file_path>|-d <data_directory>] [-c|--check] [--retry=<count>] [-V]
-        rflash <noderange> --recover <bmc_file_path>
-    OpenPOWER OpenBMC specific:
-        rflash <noderange> {[-c|--check] | [-l|--list]}
-        rflash <noderange> <tar_file_path> {[-c|--check] | [-a|--activate] | [-u|--upload]}
-        rflash <noderange> <image_id> {[-a|--activate] | [-d|--delete]}",
+    PPC64LE (using IPMI Management) specific:
+        rflash <noderange> [-c|--check] [--retry=<count>] [-V] [<hpm_file>|-d=<data_directory>]
+    PPC64LE (using OpenBMC Management) specific:
+        rflash <noderange> [-c|--check] [-l|--list] [-a|--activate] [-u|--upload] [-d|--delete] [<tar_file>|<image_id>]",
     "mkhwconn" =>
       "Usage:
     mkhwconn [-h|--help]

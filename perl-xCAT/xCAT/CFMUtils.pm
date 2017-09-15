@@ -184,7 +184,7 @@ sub updateUserInfo {
 
         # update the merge file
         my $mergefile = $cfmdir . "/" . $file . ".merge";
-        my @diff = xCAT::CFMUtils->arrayops("D", \@newrecords, \@oldrecords, 1);
+        my @diff = xCAT::CFMUtils->arrayops("D", \@newrecords, \@oldrecords);
 
         # output the diff to merge files
         my $fp;
@@ -865,7 +865,6 @@ sub trim {
       $flag - "U"/"I"/"D"
       \@array1 - reference to an arrary
       \@array2 - reference to an arrary
-      $odered -  flag to keep pervious order
     Returns:
       @union/@intersection/@difference
     Globals:
@@ -879,7 +878,7 @@ sub trim {
 
 #-----------------------------------------------------------------------------
 sub arrayops {
-    my ($class, $ops, $array1, $array2, $ordered) = @_;
+    my ($class, $ops, $array1, $array2) = @_;
 
     my @union        = ();
     my @intersection = ();
@@ -887,23 +886,21 @@ sub arrayops {
     my %count        = ();
     foreach my $element (@$array1, @$array2)
     {
-        $count{$element}++;
-        push @union, $element unless ( $count{$element} > 1 );
+        $count{$element}++
     }
 
-    unless( defined($ordered) and $ordered ) {
-        @union = keys %count;
-    }
-
-    foreach my $element (@union) {
+    foreach my $element (keys %count) {
+        push @union, $element;
         push @{ $count{$element} > 1 ? \@intersection : \@difference }, $element;
     }
+
     if ($ops eq "U") { return @union; }
 
     if ($ops eq "I") { return @intersection; }
 
     if ($ops eq "D") { return @difference; }
 
+    #return (\@union, \@intersection, \@difference);
 }
 
 

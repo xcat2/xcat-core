@@ -22,9 +22,7 @@ BEGIN {
                   start = 1
                 }
                 if (start == 1) {
-                  if (match($0,"<xcatdsource>") == 0) {
-                    print $0
-                  }
+                  print $0
                 }
 
                 if (match($0,"<serverdone>")) {
@@ -33,6 +31,6 @@ BEGIN {
                 if (match($0,"</xcatresponse>") && match(quit,"yes")) {
                   close(server)
                   exit
-                }
+               }
         }
 }
