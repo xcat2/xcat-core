@@ -18,7 +18,8 @@ our %global_mac_identity = (
     "fc:cf:62" => "BNT G8124 switch",
     "7c:fe:90" => "Mellanox IB switch",
     "cc:37:ab" => "Edgecore Networks Switch",
-    "8c:ea:1b" => "Edgecore Networks Switch"
+    "8c:ea:1b" => "Edgecore Networks Switch",
+    "6c:64:1a" => "Penguin Computing switch"
 );
 
 #the hash to lookup switch type with vendor
