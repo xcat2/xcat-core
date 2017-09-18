@@ -115,6 +115,7 @@ sub setstate {
                     error     => [ $ipfnd[1] ],
                     errorcode => [1]
                 });
+            $failurenodes{$node} = 2;
             return;
         }
         elsif ($ipfnd[0] == 2) {
@@ -145,6 +146,7 @@ sub setstate {
                         errorcode => [1]
                     }
                 );
+                $failurenodes{$node} = 2;
                 return;
             }
         } else {
@@ -223,6 +225,7 @@ sub setstate {
     my $ip = xCAT::NetworkUtils->getipaddr($node);
     unless ($ip) {
         syslog("local1|err", "xCAT unable to resolve IP for $node in petitboot plugin");
+        $failurenodes{$node} = 2;
         return;
     }
 
@@ -239,22 +242,32 @@ sub setstate {
 }
 
 
-
 my $errored = 0;
 
 sub pass_along {
     my $resp = shift;
-
+    return unless ($resp); 
     #    print Dumper($resp);
 
     $callback->($resp);
-    if ($resp and ($resp->{errorcode} and $resp->{errorcode}->[0]) or ($resp->{error} and $resp->{error}->[0])) {
-        $errored = 1;
+    # Global error, it normally means to stop the parent execution. For example, DB operation error.
+    if (($resp->{errorcode} and $resp->{errorcode}->[0]) or ($resp->{error} and $resp->{error}->[0])) {
+        $errored = 2;
+        return;
     }
+
+    my $failure = 0;
+    # Partial error on nodes, it allows to continue the rest of business on the sucessful nodes.
     foreach (@{ $resp->{node} }) {
         if ($_->{error} or $_->{errorcode}) {
-            $errored = 1;
+            $failure = 1;
+            if ($_->{name}) {
+                $failurenodes{$_->{name}->[0]} = 2;
+            }
         }
+    }
+    if ( $failure ) {
+        $errored = $failure;
     }
 }
 
@@ -410,6 +423,7 @@ sub process_request {
     my $command = $request->{command}->[0];
     %breaknetbootnodes = ();
     %normalnodes       = (); # It will be fill-up by method: setstate.
+    %failurenodes      = ();
 
     #>>>>>>>used for trace log start>>>>>>>
     my @args = ();
@@ -465,7 +479,6 @@ sub process_request {
 
     my @nodes = ();
     # Filter those nodes which have bad DNS: not resolvable or inconsistent IP
-    my %failurenodes = ();
     my %preparednodes = ();
     foreach (@rnodes) {
         my $ipret = xCAT::NetworkUtils->checkNodeIPaddress($_);
@@ -551,7 +564,7 @@ sub process_request {
                     node => \@nodes,
                     arg => [ $args[0] ] }, \&pass_along);
         }
-        if ($errored) {
+        if ($errored > 1) {
             my $rsp;
             $rsp->{errorcode}->[0] = 1;
             $rsp->{error}->[0]     = "Failed in running begin prescripts.\n";
@@ -575,7 +588,7 @@ sub process_request {
                 arg      => \@args,
                 bootparams => \%bphash},
                 \&pass_along);
-        if ($errored) { 
+        if ($errored > 1) { 
             xCAT::MsgUtils->trace($verbose_on_off, "d", "petitboot: Failed in processing setdestiny.  Processing will not continue.");
             return; 
         }
@@ -610,6 +623,8 @@ sub process_request {
 
     my $tftpdir;
     foreach (@nodes) {
+        next if ($failurenodes->{$_});
+
         my %response;
         if ($nodereshash->{$_} and $nodereshash->{$_}->[0] and $nodereshash->{$_}->[0]->{tftpdir}) {
             $tftpdir = $nodereshash->{$_}->[0]->{tftpdir};
@@ -680,12 +695,12 @@ sub process_request {
         if ($request->{'_disparatetftp'}->[0]) { #the call is distrubuted to the service node already, so only need to handles my own children
             xCAT::MsgUtils->trace($verbose_on_off, "d", "petitboot: issue runendpre request");
             $sub_req->({ command => ['runendpre'],
-                    node => \@nodes,
+                    node => \@normalnodeset,
                     arg => [ $args[0], '-l' ] }, \&pass_along);
         } else { #nodeset did not distribute to the service node, here we need to let runednpre to distribute the nodes to their masters
             xCAT::MsgUtils->trace($verbose_on_off, "d", "petitboot: issue runendpre request");
             $sub_req->({ command => ['runendpre'],
-                    node => \@nodes,
+                    node => \@normalnodeset,
                     arg => [ $args[0] ] }, \&pass_along);
         }
         if ($errored) {
