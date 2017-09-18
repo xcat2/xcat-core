@@ -96,6 +96,7 @@ my %sensor_units = (
 my $http_protocol="https";
 my $openbmc_url = "/org/openbmc";
 my $openbmc_project_url = "/xyz/openbmc_project";
+$::SOFTWARE_URL = "$openbmc_project_url/software";
 #-------------------------------------------------------
 
 # The hash table to store method and url for request, 
@@ -2070,24 +2071,27 @@ sub rflash_response {
             $update_id = (split(/\//, $key_url))[ -1 ];
             if (defined($content{Version}) and $content{Version}) {
                 $update_version = $content{Version};
-            }
-            if ($update_version eq $::UPLOAD_FILE_VERSION) {
-                # Found a match of uploaded file version with the image in software/enumerate
+                if ($update_version eq $::UPLOAD_FILE_VERSION) {
+                    # Found a match of uploaded file version with the image in software/enumerate
 
-                # Set the image id for the activation request
-                $status_info{RFLASH_UPDATE_ACTIVATE_REQUEST}{init_url}    .= "/$update_id/attr/RequestedActivation";
-                $status_info{RFLASH_UPDATE_CHECK_STATE_REQUEST}{init_url} .= "/$update_id";
-                $status_info{RFLASH_SET_PRIORITY_REQUEST}{init_url}       .= "/$update_id/attr/Priority";
+                    # Set the image id for the activation request
+                    $status_info{RFLASH_UPDATE_ACTIVATE_REQUEST}{init_url} =
+                       $::SOFTWARE_URL . "/$update_id/attr/RequestedActivation";
+                    $status_info{RFLASH_UPDATE_CHECK_STATE_REQUEST}{init_url} =
+                       $::SOFTWARE_URL . "/$update_id";
+                    $status_info{RFLASH_SET_PRIORITY_REQUEST}{init_url} =
+                       $::SOFTWARE_URL . "/$update_id/attr/Priority";
 
-                # Set next steps to activate the image
-                $next_status{ $node_info{$node}{cur_status} } = "RFLASH_UPDATE_ACTIVATE_REQUEST";
-                $next_status{"RFLASH_UPDATE_ACTIVATE_REQUEST"} = "RFLASH_UPDATE_ACTIVATE_RESPONSE";
-                $next_status{"RFLASH_UPDATE_ACTIVATE_RESPONSE"} = "RFLASH_UPDATE_CHECK_STATE_REQUEST";
-                $next_status{"RFLASH_UPDATE_CHECK_STATE_REQUEST"} = "RFLASH_UPDATE_CHECK_STATE_RESPONSE";
+                    # Set next steps to activate the image
+                    $next_status{ $node_info{$node}{cur_status} } = "RFLASH_UPDATE_ACTIVATE_REQUEST";
+                    $next_status{"RFLASH_UPDATE_ACTIVATE_REQUEST"} = "RFLASH_UPDATE_ACTIVATE_RESPONSE";
+                    $next_status{"RFLASH_UPDATE_ACTIVATE_RESPONSE"} = "RFLASH_UPDATE_CHECK_STATE_REQUEST";
+                    $next_status{"RFLASH_UPDATE_CHECK_STATE_REQUEST"} = "RFLASH_UPDATE_CHECK_STATE_RESPONSE";
 
-                $next_status{"RFLASH_SET_PRIORITY_REQUEST"} = "RFLASH_SET_PRIORITY_RESPONSE";
-                $next_status{"RFLASH_SET_PRIORITY_RESPONSE"} = "RFLASH_UPDATE_CHECK_STATE_REQUEST";
-                last;
+                    $next_status{"RFLASH_SET_PRIORITY_REQUEST"} = "RFLASH_SET_PRIORITY_RESPONSE";
+                    $next_status{"RFLASH_SET_PRIORITY_RESPONSE"} = "RFLASH_UPDATE_CHECK_STATE_REQUEST";
+                    last;
+                }
             }
         }
     }
