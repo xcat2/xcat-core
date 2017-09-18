@@ -1991,10 +1991,10 @@ sub do_firmware_update {
     }
 
     # For IBM Power S822LC for Big Data (Supermicro) machines such as 
-    # P9 Boston (9006-22C, 9006-12) or P8 Briggs (8001-22C) 
+    # P9 Boston (9006-22C, 9006-12C, 5104-22C) or P8 Briggs (8001-22C) 
     # firmware update is done using pUpdate utility expected to be in the 
     # specified data directory along with the update files .bin for BMC or .pnor for Host
-    if ($output =~ /8001-22C|9006-22C|9006-12C/) {
+    if ($output =~ /8001-22C|9006-22C|5104-22C|9006-12C/) {
         # Verify valid data directory was specified
         unless ($pUpdate_directory) {
             $exit_with_error_func->($sessdata->{node}, $callback,
