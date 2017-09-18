@@ -166,7 +166,7 @@ sub build_line
     }
 
     # if shortname contains a dot then we have a bad syntax for name except tagged vlan
-    if ($shortname =~ /\./ && $shortname !~ /\.(\d)+/) {
+    if ($shortname =~ /\./ && $shortname !~ /\.\d{1,4}$/) {
         my $rsp;
         push @{ $rsp->{data} }, "Invalid short node name \'$shortname\'. The short node name may not contain a dot. The short node name is considered to be anything preceeding the network domain name in the fully qualified node name \'$longname\'.\n";
         xCAT::MsgUtils->message("E", $rsp, $callback);
