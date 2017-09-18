@@ -35,6 +35,7 @@ my $tftpdir = "/tftpboot";
 
 
 my $nonodestatus = 0;
+my %failurenodes = ();
 
 #my $sitetab = xCAT::Table->new('site');
 #if ($sitetab) {
@@ -64,36 +65,62 @@ sub process_request {
         my $result = xCAT::TableUtils->checkCredFiles($callback);
     }
     if ($request->{command}->[0] eq 'getdestiny') {
-        getdestiny(0);
-    }
-    if ($request->{command}->[0] eq 'nextdestiny') {
+        xCAT::MsgUtils->trace(0, "d", "destiny->process_request: starting getdestiny...");
+        my @nodes;
+        if ($request->{node}) {
+            if (ref($request->{node})) {
+                @nodes = @{ $request->{node} };
+            } else {
+                @nodes = ($request->{node});
+            }
+        } else {    # a client asking for it's own destiny.
+            unless ($request->{'_xcat_clienthost'}->[0]) {
+                $callback->({ destiny => ['discover'] });
+                return;
+            }
+            my ($node) = noderange($request->{'_xcat_clienthost'}->[0]);
+            unless ($node) {    # it had a valid hostname, but isn't a node
+                $callback->({ destiny => ['discover'] });
+                return;
+            }
+            @nodes = ($node);
+        }
+        getdestiny(0, \@nodes);
+
+    } elsif ($request->{command}->[0] eq 'nextdestiny') {
+        xCAT::MsgUtils->trace(0, "d", "destiny->process_request: starting nextdestiny...");
         nextdestiny(0, 1);    #it is called within dodestiny
-    }
-    if ($request->{command}->[0] eq 'setdestiny') {
+
+    } elsif ($request->{command}->[0] eq 'setdestiny') {
+        xCAT::MsgUtils->trace(0, "d", "destiny->process_request: starting setdestiny...");
         setdestiny($request, 0);
+
     }
+    xCAT::MsgUtils->trace(0, "d", "destiny->process_request: processing is finished for " . $request->{command}->[0]);
 }
 
 sub relay_response {
     my $resp = shift;
-    my $failure = 0;
+    return unless ($resp); 
+
     $callback->($resp);
     if ($resp and ($resp->{errorcode} and $resp->{errorcode}->[0]) or ($resp->{error} and $resp->{error}->[0])) {
-        $failure = 1;
+        $errored = 1;
     }
-    # quick return when detect failure.
-    unless ( $failure ) {
-        foreach (@{ $resp->{node} }) {
-            if ($_->{error} or $_->{errorcode}) {
-                $failure = 1;
-                last;
+
+    my $failure = 0;
+    # Partial error on nodes, it allows to continue the rest of business on the sucessful nodes.
+    foreach (@{ $resp->{node} }) {
+        if ($_->{error} or $_->{errorcode}) {
+            $failure = 1;
+            if ($_->{name}) {
+                $failurenodes{$_->{name}->[0]} = 2;
             }
         }
     }
     if ( $failure ) {
         $errored = $failure;
     }
-
 }
 
 sub setdestiny {
@@ -101,7 +128,6 @@ sub setdestiny {
     my $flag     = shift;
     my $noupdate = shift;
     $chaintab = xCAT::Table->new('chain', -create => 1);
-    my @nodes = @{ $req->{node} };
     my $bphash = $req->{bootparams};
 
     @ARGV = @{ $req->{arg} };
@@ -120,9 +146,11 @@ sub setdestiny {
 
     #>>>>>>>used for trace log end>>>>>>>
 
-    my $state = $ARGV[0];
-    my $reststates;
-
+    if (@{ $req->{node} } == 0) {
+        xCAT::MsgUtils->trace($verbose, "d", "destiny->setdestiny: no nodes left to process, we are done");
+        return; 
+    }
+    my @nodes = @{ $req->{node} };
     my $bptab = xCAT::Table->new('bootparams', -create => 1);
     my %tempbh = %{ $bptab->getNodesAttribs(\@nodes, [qw(addkcmdline)]) };
     while(my ($key, $value) = each(%tempbh)) {
@@ -134,9 +162,13 @@ sub setdestiny {
     }
     $bptab->close();
 
+    my $state = $ARGV[0];
+    my $reststates;
+    my %nstates;
     # to support the case that the state could be runimage=xxx,runimage=yyy,osimage=xxx
     ($state, $reststates) = split(/,/, $state, 2);
-    my %nstates;
+    chomp($state);
+
     if ($state eq "enact") {
         my $nodetypetab = xCAT::Table->new('nodetype', -create => 1);
         my %nodestates;
@@ -175,7 +207,7 @@ sub setdestiny {
     } elsif ($state eq "iscsiboot") {
         my $iscsitab = xCAT::Table->new('iscsi');
         unless ($iscsitab) {
-            $callback->({ error => "Unable to open iscsi table to get iscsiboot parameters", errorcode => [1] });
+            $callback->({ error => "Unable to open iscsi table to get iscsiboot parameters", errorcode => [1], errorabort => [1] });
         }
         my $nodetype = xCAT::Table->new('nodetype');
         my $ntents = $nodetype->getNodesAttribs($req->{node}, [qw(os arch profile)]);
@@ -184,7 +216,10 @@ sub setdestiny {
             my $ient = $ients->{$_}->[0]; #$iscsitab->getNodeAttribs($_,[qw(kernel kcmdline initrd)]);
             my $ntent = $ntents->{$_}->[0];
             unless ($ient and $ient->{kernel}) {
-                unless ($ntent and $ntent->{arch} =~ /x86/ and -f ("$tftpdir/undionly.kpxe" or -f "$tftpdir/xcat/xnba.kpxe")) { $callback->({ error => "$_: No iscsi boot data available", errorcode => [1] }); } #If x86 node and undionly.kpxe exists, presume they know what they are doing
+                unless ($ntent and $ntent->{arch} =~ /x86/ and -f ("$tftpdir/undionly.kpxe" or -f "$tftpdir/xcat/xnba.kpxe")) {
+                    $failurenodes{$_} = 1;
+                    xCAT::MsgUtils->report_node_error($callback, $_, "No iscsi boot data available");
+                } #If x86 node and undionly.kpxe exists, presume they know what they are doing
                 next;
             }
             $bphash->{kernel} = $ient->{kernel};
@@ -192,8 +227,6 @@ sub setdestiny {
             if ($ient->{kcmdline}) { $bphash->{kcmdline} = $ient->{kcmdline} }
         }
     } elsif ($state =~ /^install[=\$]/ or $state eq 'install' or $state =~ /^netboot[=\$]/ or $state eq 'netboot' or $state eq "image" or $state eq "winshell" or $state =~ /^osimage/ or $state =~ /^statelite/) {
-        my %state_hash;
-        chomp($state);
         my $target;
         my $action;
         my $rawstate=$state;
@@ -213,16 +246,24 @@ sub setdestiny {
                 ($state, $action) = split ':', $state, 2;
             }
         }
-
+        xCAT::MsgUtils->trace($verbose, "d", "destiny->setdestiny: state=$state, target=$target, action=$action");
+        my %state_hash;
+        # 1, Set an initial state for all requested nodes
         foreach my $tmpnode (@{ $req->{node} }) {
+            next if ($failurenodes{$tmpnode});
             $state_hash{$tmpnode} = $state;
         }
 
+        # 2, Filter those unsuitable nodes in 'state_hash'
         my $nodetypetable = xCAT::Table->new('nodetype', -create => 1);
         my $noderestable  = xCAT::Table->new('noderes',  -create => 1);
-        my $nbents = $noderestable->getNodeAttribs($req->{node}->[0], ["netboot"]);
+        my $nbents = $noderestable->getNodeAttribs($req->{node}->[0], ["netboot"]); # It is assumed that all nodes has the same `netboot` attribute
         my $curnetboot = $nbents->{netboot};
+
         if ($state ne 'osimage') {
+            $callback->({ error => "The options \"install\", \"netboot\", and \"statelite\" have been deprecated, use \"osimage=<osimage_name>\" instead.", errorcode => [1], errorabort => [1] });
+            return;        
+
             my $updateattribs;
             if ($target) {
                 my $archentries = $nodetypetable->getNodesAttribs($req->{node}, ['supportedarchs']);
@@ -233,33 +274,44 @@ sub setdestiny {
                     my $nodearch = $2;
                     foreach (@{ $req->{node} }) {
                         if ($archentries->{$_}->[0]->{supportedarchs} and $archentries->{$_}->[0]->{supportedarchs} !~ /(^|,)$nodearch(\z|,)/) {
-                            $callback->({ errorcode => [1], error => "Requested architecture " . $nodearch . " is not one of the architectures supported by $_  (per nodetype.supportedarchs, it supports " . $archentries->{$_}->[0]->{supportedarchs} . ")" });
-                            return;
+                            xCAT::MsgUtils->report_node_error($callback, $_, 
+                                "Requested architecture " . $nodearch . " is not one of the architectures supported by $_  (per nodetype.supportedarchs, it supports " . $archentries->{$_}->[0]->{supportedarchs} . ")"
+                                );
+                            $failurenodes{$_} = 1;
+                            next;
                         }
                     }    #end foreach
                 } else {
                     $updateattribs->{profile} = $target;
                 }
             }    #end if($target)
+
             $updateattribs->{provmethod} = $state;
-            my @tmpnodelist = @{ $req->{node} };
+            my @tmpnodelist = ();
+            foreach (@{ $req->{node} }) {
+                if ($failurenodes{$_}) {
+                    delete $state_hash{$_};
+                    next;
+                }
+                push @tmpnodelist, $_;
+            }
             $nodetypetable->setNodesAttribs(\@tmpnodelist, $updateattribs);
+
         } else {    #state is osimage
-            if (@{ $req->{node} } == 0) { return; }
             if ($target) {
+                if (@{ $req->{node} } == 0) { return; }
                 my $osimagetable = xCAT::Table->new('osimage');
                 (my $ref) = $osimagetable->getAttribs({ imagename => $target }, 'provmethod', 'osvers', 'profile', 'osarch', 'imagetype');
-
                 if ($ref) {
                     if ($ref->{provmethod}) {
                         $state = $ref->{provmethod};
 
                     } else {
-                        $errored = 1; $callback->({ errorcode => [1], error => "osimage.provmethod for $target must be set." });
+                        $callback->({ errorcode => [1], error => "osimage.provmethod for $target must be set.", errorabort => [1] });
                         return;
                     }
                 } else {
-                    $errored = 1; $callback->({ errorcode => [1], error => "Cannot find the OS image $target on the osimage table." });
+                    $callback->({ errorcode => [1], error => "Cannot find the OS image $target on the osimage table.", errorabort => [1] });
                     return;
                 }
 
@@ -278,25 +330,37 @@ sub setdestiny {
                 $updateattribs->{profile}    = $ref->{profile};
                 $updateattribs->{os}         = $ref->{osvers};
                 $updateattribs->{arch}       = $ref->{osarch};
-                my @tmpnodelist = @{ $req->{node} };
+                my @tmpnodelist = ();
+                foreach ( @nodes ) {
+                    if (exists($failurenodes{$_})) {
+                        delete $state_hash{$_};
+                        next;
+                    }
+                    $state_hash{$_} = $state;
+                    push @tmpnodelist, $_;
+                }
                 $nodetypetable->setNodesAttribs(\@tmpnodelist, $updateattribs);
 
-
-                foreach my $tmpnode (@{ $req->{node} }) {
-                    $state_hash{$tmpnode} = $state;
-                }
-
             } else {
-                my @errornodes = ();
                 my $invalidosimghash;
-                my @validnodes;
                 my $updatestuff;
                 my $nodetypetable = xCAT::Table->new('nodetype', -create => 1);
                 my %ntents = %{ $nodetypetable->getNodesAttribs($req->{node}, "provmethod") };
-                foreach my $tmpnode (@{ $req->{node} }) {
+
+                foreach my $tmpnode (@nodes) {
+                    next if (exists($failurenodes{$tmpnode}));
+
                     my $osimage = $ntents{$tmpnode}->[0]->{provmethod};
                     if (($osimage) && ($osimage ne 'install') && ($osimage ne 'netboot') && ($osimage ne 'statelite')) {
-                        if (!exists($updatestuff->{$osimage})) {
+                        if (exists($updatestuff->{$osimage})) { #valid osimage
+                            my $vnodes = $updatestuff->{$osimage}->{nodes};
+                            push(@$vnodes, $tmpnode);
+                            $state_hash{$tmpnode} = $updatestuff->{$osimage}->{state};
+                        } elsif (exists($invalidosimghash->{$osimage})) { #valid osimage
+                            push(@{ $invalidosimghash->{$osimage}->{nodes} }, $tmpnode);
+                            next;
+                        }
+                        else { #Get a new osimage, to valid it and put invalid osimage into `invalidosimghash`
                             my $osimagetable = xCAT::Table->new('osimage');
                             (my $ref) = $osimagetable->getAttribs({ imagename => $osimage }, 'provmethod', 'osvers', 'profile', 'osarch', 'imagetype');
                             if ($ref) {
@@ -305,14 +369,14 @@ sub setdestiny {
                                 #if not,push the nodes into $invalidosimghash->{$osimage}->{netboot}
                                 my $netbootval = xCAT::Utils->lookupNetboot($ref->{osvers}, $ref->{osarch}, $ref->{imagetype});
                                 if ($netbootval =~ /$curnetboot/i) {
-                                    push(@validnodes, $tmpnode);
+                                    1;
                                 } else {
                                     push(@{ $invalidosimghash->{$osimage}->{nodes} }, $tmpnode);
                                     $invalidosimghash->{$osimage}->{netboot} = $netbootval;
                                     next;
                                 }
 
-                                if ($ref->{provmethod}) {
+                                if ($ref->{provmethod} && $ref->{profile} && $ref->{osvers} && $ref->{osarch}) {
                                     $state = $ref->{provmethod};
                                     $state_hash{$tmpnode} = $state;
 
@@ -322,93 +386,97 @@ sub setdestiny {
                                     $updatestuff->{$osimage}->{os} = $ref->{osvers};
                                     $updatestuff->{$osimage}->{arch} = $ref->{osarch};
                                 } else {
-                                    $errored = 1; $callback->({ errorcode => [1], error => "osimage.provmethod for $osimage must be set." });
-                                    return;
+                                    push(@{ $invalidosimghash->{$osimage}->{nodes} }, $tmpnode);
+                                    $invalidosimghash->{$osimage}->{error}->[0] = "osimage.provmethod, osimage.osvers, osimage.osarch and osimage.profile for $osimage must be set";
+                                    next;
                                 }
                             } else {
-                                $errored = 1; $callback->({ errorcode => [1], error => "Cannot find the OS image $osimage on the osimage table." });
-                                return;
+                                push(@{ $invalidosimghash->{$osimage}->{nodes} }, $tmpnode);
+                                $invalidosimghash->{$osimage}->{error}->[0] = "Cannot find the OS image $osimage on the osimage table";
+                                next;
                             }
-                        } else {
-                            my $nodes = $updatestuff->{$osimage}->{nodes};
-                            push(@$nodes,     $tmpnode);
-                            push(@validnodes, $tmpnode);
-                            $state_hash{$tmpnode} = $updatestuff->{$osimage}->{state};
                         }
-
                     } else {
-                        push(@errornodes, $tmpnode);
+                        # not supported legacy mode
+                        push(@{ $invalidosimghash->{__xcat_legacy_provmethod_mode}->{nodes} }, $tmpnode);
+                        $invalidosimghash->{__xcat_legacy_provmethod_mode}->{error}->[0] = "OS image name must be specified in nodetype.provmethod";
+                        next;
                     }
                 }
 
-                if (@errornodes) {
-                    $errored = 1; $callback->({ errorcode => [1], error => "OS image name must be specified in nodetype.provmethod for nodes: @errornodes." });
-                    return;
-                } else {
-                    foreach my $tmpimage (keys %$updatestuff) {
-                        my $updateattribs = $updatestuff->{$tmpimage};
-                        my @tmpnodelist   = @{ $updateattribs->{nodes} };
-
-                        delete $updateattribs->{nodes}; #not needed for nodetype table
-                        delete $updateattribs->{state}; #node needed for nodetype table
-                        $nodetypetable->setNodesAttribs(\@tmpnodelist, $updateattribs);
+                #if any node with inappropriate noderes.netboot,report the warning
+                foreach my $tmpimage (keys %$invalidosimghash) {
+                    my @fnodes = @{ $invalidosimghash->{$tmpimage}->{nodes} };
+                    for (@fnodes) {
+                        $failurenodes{$_} = 1;
+                        delete $state_hash{$_};
+                        if ($invalidosimghash->{$tmpimage}->{error}) {
+                            xCAT::MsgUtils->report_node_error($callback, $_, $invalidosimghash->{$tmpimage}->{error}->[0]);
+                        }
                     }
-
-                    #if any node with inappropriate noderes.netboot,report the error and return
-                    foreach my $tmpimage (keys %$invalidosimghash) {
-
-                        #$errored =1;
-                        $callback->({ warning => [ join(",", @{ $invalidosimghash->{$tmpimage}->{nodes} }) . ": $curnetboot might be invalid when provisioning $tmpimage,valid options: \"$invalidosimghash->{$tmpimage}->{netboot}\". \nFor more details see the 'netboot' description in the output of \"tabdump -d noderes\"." ] });
+                    my $netbootwarn = $invalidosimghash->{$tmpimage}->{netboot};
+                    if ($netbootwarn) {
+                        my $rsp;
+                        $rsp->{warning}->[0] = join(",", @fnodes) . ": $curnetboot might be invalid when provisioning $tmpimage,valid options: \"$netbootwarn\". \nFor more details see the 'netboot' description in the output of \"tabdump -d noderes\".";
+                        $callback->($rsp);
                     }
+                }
 
-                    if ("$errored" ne "0") {
-                        return;
-                    }
+                # upddate DB for the nodes which pass the checking
+                foreach my $tmpimage (keys %$updatestuff) {
+                    my $updateattribs = $updatestuff->{$tmpimage};
+                    my @tmpnodelist   = @{ $updateattribs->{nodes} };
 
-                    #$req->{node}=();
-                    #push(@{$req->{node}},@validnodes);
-                    #print Dumper($req->{node});
+                    delete $updateattribs->{nodes}; #not needed for nodetype table
+                    delete $updateattribs->{state}; #node needed for nodetype table
+                    $nodetypetable->setNodesAttribs(\@tmpnodelist, $updateattribs);
                 }
             }
+        }
+
+        #print Dumper(\%state_hash);
+        my @validnodes = keys(%state_hash);
+        unless (@validnodes) {
+            # just return if no valid nodes left
+            $callback->({ errorcode => [1]});
+            return;
         }
 
         #if the postscripts directory exists then make sure it is
         # world readable and executable by root; otherwise wget fails
         my $installdir  = xCAT::TableUtils->getInstallDir();
         my $postscripts = "$installdir/postscripts";
-        if (-e $postscripts)
-        {
+        if (-e $postscripts) {
             my $cmd = "chmod -R a+r $postscripts";
             xCAT::Utils->runcmd($cmd, 0);
             my $rsp = {};
             if ($::RUNCMD_RC != 0)
             {
                 $callback->({ info => "$cmd failed" });
-
             }
-
         }
 
-        #print Dumper($req);
-        # if precreatemypostscripts=1, create each mypostscript for each node
+        # 3, if precreatemypostscripts=1, create each mypostscript for each valid node
         # otherwise, create it during installation /updatenode
         my $notmpfiles = 0;    # create tmp files if precreate=0
         my $nofiles    = 0;    # create files, do not return array
+        my $reqcopy = {%$req};
+        $reqcopy->{node} = \@validnodes;
         require xCAT::Postage;
-        xCAT::Postage::create_mypostscript_or_not($request, $callback, $subreq, $notmpfiles, $nofiles);
+        xCAT::Postage::create_mypostscript_or_not($reqcopy, $callback, $subreq, $notmpfiles, $nofiles);
 
+        # 4, Issue the sub-request for each state in 'state_hash'
         my %state_hash1;
         foreach my $tmpnode (keys(%state_hash)) {
             push @{ $state_hash1{ $state_hash{$tmpnode} } }, $tmpnode;
         }
 
-        #print Dumper(%state_hash);
-        #print Dumper(%state_hash1);
+        #print Dumper(\%state_hash1);
         foreach my $tempstate (keys %state_hash1) {
             my $samestatenodes = $state_hash1{$tempstate};
 
             #print "state=$tempstate nodes=@$samestatenodes\n";
-            xCAT::MsgUtils->trace($verbose_on_off, "d", "destiny->process_request: issue mk$tempstate request");
+            xCAT::MsgUtils->trace($verbose_on_off, "d", "destiny->setdestiny: issue mk$tempstate request");
             $errored = 0;
             $subreq->({ command => ["mk$tempstate"],
                     node            => $samestatenodes,
@@ -417,32 +485,46 @@ sub setdestiny {
                     bootparams => \$bphash}, \&relay_response);
             if ($errored) {
                 # The error messeage for mkinstall/mknetboot/mkstatelite had been output within relay_response function above, don't need to output more
-                xCAT::MsgUtils->trace($verbose_on_off, "d", "destiny->process_request: Failed in processing mk$tempstate.  Processing will not continue.");
-                return;
+                xCAT::MsgUtils->trace($verbose_on_off, "d", "destiny->setdestiny: Failed in processing mk$tempstate.");
+                next if ($errored > 1);
             }
 
 
             my $ntents = $nodetypetable->getNodesAttribs($samestatenodes, [qw(os arch profile)]);
             my $updates;
             foreach (@{$samestatenodes}) {
+                next if (exists($failurenodes{$_})); #Filter the failure nodes
+
                 $nstates{$_} = $tempstate; #local copy of state variable for mod
                 my $ntent = $ntents->{$_}->[0]; #$nodetype->getNodeAttribs($_,[qw(os arch profile)]);
                 if ($tempstate ne "winshell") {
                     if ($ntent and $ntent->{os}) {
                         $nstates{$_} .= " " . $ntent->{os};
-                    } else { $errored = 1; $callback->({ errorcode => [1], error => "nodetype.os not defined for $_" }); }
+                    } else {
+                        xCAT::MsgUtils->report_node_error($callback, $_, "nodetype.os not defined for $_.");
+                        $failurenodes{$_} = 1;
+                        next;
+                    }
                 } else {
                     $nstates{$_} .= " winpe";
                 }
                 if ($ntent and $ntent->{arch}) {
                     $nstates{$_} .= "-" . $ntent->{arch};
-                } else { $errored = 1; $callback->({ errorcode => [1], error => "nodetype.arch not defined for $_" }); }
+                } else { 
+                    xCAT::MsgUtils->report_node_error($callback, $_, "nodetype.arch not defined for $_.");
+                    $failurenodes{$_} = 1;
+                    next;
+                }
+
                 if (($tempstate ne "winshell") && ($tempstate ne "sysclone")) {
                     if ($ntent and $ntent->{profile}) {
                         $nstates{$_} .= "-" . $ntent->{profile};
-                    } else { $errored = 1; $callback->({ errorcode => [1], error => "nodetype.profile not defined for $_" }); }
+                    } else {
+                        xCAT::MsgUtils->report_node_error($callback, $_, "nodetype.profile not defined for $_.");
+                        $failurenodes{$_} = 1;
+                        next;
+                    }
                 }
-                if ($errored) { return; }
                 $updates->{$_}->{'currchain'} = "boot";
             }
             unless ($tempstate =~ /^netboot|^statelite/) {
@@ -461,6 +543,37 @@ sub setdestiny {
             }
         }
     } elsif ($state eq "shell" or $state eq "standby" or $state =~ /^runcmd/ or $state =~ /^runimage/) {
+
+        if ($state =~ /^runimage/) {         # try to check the existence of the image for runimage
+
+            my @runimgcmds;
+            push @runimgcmds, $state;
+            if ($reststates) {
+                my @rstates = split(/,/, $reststates);
+                foreach (@rstates) {
+                    if (/^runimage/) {
+                        push @runimgcmds, $_;
+                    }
+                }
+            }
+
+            foreach (@runimgcmds) {
+                my (undef, $path) = split(/=/, $_);
+                if ($path) {
+                    if ($path =~ /\$/) { next; } # Ignore the path with including variable like $xcatmaster
+                    my $cmd = "wget --spider --timeout 3 --tries=1 $path";
+                    my @output = xCAT::Utils->runcmd("$cmd", -1);
+                    unless (grep /^Remote file exists/, @output) {
+                        $callback->({ error => ["Cannot get $path with wget. Could you confirm it's downloadable by wget?"], errorcode => [1], errorabort => [1]});
+                        return;
+                    }
+                } else {
+                    $callback->({ error => "An image path should be specified to runimage.", errorcode => [1], errorabort => [1] });
+                    return;
+                }
+            }
+        }
+
         $restab = xCAT::Table->new('noderes', -create => 1);
         my $nodetype = xCAT::Table->new('nodetype');
 
@@ -480,8 +593,9 @@ sub setdestiny {
         foreach (@nodes) {
             my $ent = $enthash->{$_}->[0]; #$nodetype->getNodeAttribs($_,[qw(arch)]);
             unless ($ent and $ent->{arch}) {
-                $callback->({ error => ["No archictecture defined in nodetype table for $_"], errorcode => [1] });
-                return;
+                $failurenodes{$_} = 1;
+                xCAT::MsgUtils->report_node_error($callback, $_, "No archictecture defined in nodetype table for the node.");
+                next;
             }
             my $arch = $ent->{arch};
             if ($arch eq "ppc64le" or $arch eq "ppc64el") {
@@ -510,6 +624,11 @@ sub setdestiny {
                     $master = $master_entry;
                 }
             }
+            unless ($master) {
+                xCAT::MsgUtils->report_node_error($callback, $_, "No master in site table nor noderes table for the node.");
+                $failurenodes{$_} = 1;
+                next;
+            }
 
             $ent = $hments->{$_}->[0]; #$nodehm->getNodeAttribs($_,['serialport','serialspeed','serialflow']);
             if ($ent and defined($ent->{serialport})) {
@@ -521,8 +640,9 @@ sub setdestiny {
 
                 #$ent = $nodehm->getNodeAttribs($_,['serialspeed']);
                 unless ($ent and defined($ent->{serialspeed})) {
-                    $callback->({ error => ["Serial port defined in noderes, but no nodehm.serialspeed set for $_"], errorcode => [1] });
-                    return;
+                    xCAT::MsgUtils->report_node_error($callback, $_, "serialport defined, but no serialspeed for this node in nodehm table");
+                    $failurenodes{$_} = 1;
+                    next;
                 }
                 $kcmdline .= "," . $ent->{serialspeed};
 
@@ -530,10 +650,6 @@ sub setdestiny {
                 $kcmdline .= " ";
             }
 
-            unless ($master) {
-                $callback->({ error => ["No master in site table nor noderes table for $_"], errorcode => [1] });
-                return;
-            }
             my $xcatdport = "3001";
             if (defined($port_entry)) {
                 $xcatdport = $port_entry;
@@ -563,39 +679,21 @@ sub setdestiny {
             }
         }
 
-        # try to check the existence of the image for runimage
-        my @runimgcmds;
-        if ($state =~ /^runimage/) {
-            push @runimgcmds, $state;
-        }
-        if ($reststates) {
-            my @rstates = split(/,/, $reststates);
-            foreach (@rstates) {
-                if (/^runimage/) {
-                    push @runimgcmds, $_;
-                }
-            }
-        }
-
-        foreach (@runimgcmds) {
-            my (undef, $path) = split(/=/, $_);
-            if ($path) {
-                if ($path =~ /\$/) { next; } # Ignore the path with including variable like $xcatmaster
-                my $cmd = "wget --spider --timeout 3 --tries=1 $path";
-                my @output = xCAT::Utils->runcmd("$cmd", -1);
-                unless (grep /^Remote file exists/, @output) {
-                    $callback->({ error => ["Cannot get $path with wget. Could you confirm it's downloadable by wget?"], errorcode => [1] });
-                    return;
-                }
-            } else {
-                $callback->({ error => "An image path should be specified to runnimage.", errorcode => [1] });
-                return;
-            }
-        }
     } elsif ($state eq "offline" || $state eq "shutdown") {
         1;
     } elsif (!($state eq "boot")) {
         $callback->({ error => ["Unknown state $state requested"], errorcode => [1] });
+        exit(1);
+    }
+
+    #Exclude the failure nodes
+    my @normalnodes = ();
+    foreach (@nodes) {
+        next if (exists($failurenodes{$_})); #Filter the failure nodes
+        push @normalnodes, $_;
+    }
+
+    unless (@normalnodes) {
         return;
     }
 
@@ -603,10 +701,10 @@ sub setdestiny {
     if ($state eq "iscsiboot" or $state eq "boot") {
         my $nodetype   = xCAT::Table->new('nodetype', -create => 1);
         my $osimagetab = xCAT::Table->new('osimage',  -create => 1);
-        my $ntents = $nodetype->getNodesAttribs($req->{node}, [qw(os arch profile provmethod)]);
+        my $ntents = $nodetype->getNodesAttribs(\@normalnodes, [qw(os arch profile provmethod)]);
         my @nodestoblank = ();
         my %osimage_hash = ();
-        foreach (@{ $req->{node} }) {
+        foreach (@normalnodes) {
             my $ntent = $ntents->{$_}->[0];
 
             #if the previous nodeset staute is not install, then blank nodetype.provmethod
@@ -643,7 +741,8 @@ sub setdestiny {
 
     if ($noupdate) { return; }    #skip table manipulation if just doing 'enact'
     my $updates;
-    foreach (@nodes) {
+    foreach (@normalnodes) {
+
         my $lstate = $state;
         if ($nstates{$_}) {
             $lstate = $nstates{$_};
@@ -657,7 +756,7 @@ sub setdestiny {
         }
     }
     $chaintab->setNodesAttribs($updates);
-    return getdestiny($flag + 1);
+    return getdestiny($flag + 1, \@normalnodes);
 }
 
 
@@ -684,16 +783,16 @@ sub nextdestiny {
             $node = $request->{username}->[0];
         } else {
             unless ($request->{'_xcat_clienthost'}->[0]) {
-
                 #ERROR? malformed request
+                xCAT::MsgUtils->trace(0, "d", "destiny->nextdestiny: Cannot determine the client from the received request");
                 return;                                   #nothing to do here...
             }
             $node = $request->{'_xcat_clienthost'}->[0];
         }
         ($node) = noderange($node);
         unless ($node) {
-
             #not a node, don't trust it
+            xCAT::MsgUtils->trace(0, "d", "destiny->nextdestiny: $node is not managed yet.");
             return;
         }
         @nodes = ($node);
@@ -757,40 +856,22 @@ sub nextdestiny {
 
 sub getdestiny {
     my $flag = shift;
+    my $nodes = shift;
 
     # flag value:
     # 0--getdestiny is called by dodestiny
     # 1--called by nextdestiny in dodestiny. The node calls nextdestiny before boot and runcmd.
     # 2--called by nodeset command
     # 3--called by updateflag after the node finished installation and before booting
-    my @args;
-    my @nodes;
-    if ($request->{node}) {
-        if (ref($request->{node})) {
-            @nodes = @{ $request->{node} };
-        } else {
-            @nodes = ($request->{node});
-        }
-    } else {    # a client asking for it's own destiny.
-        unless ($request->{'_xcat_clienthost'}->[0]) {
-            $callback->({ destiny => ['discover'] });
-            return;
-        }
-        my ($node) = noderange($request->{'_xcat_clienthost'}->[0]);
-        unless ($node) {    # it had a valid hostname, but isn't a node
-            $callback->({ destiny => ['discover'] });
-            return;
-        }
-        @nodes = ($node);
-    }
+
     my $node;
     xCAT::MsgUtils->trace(0, "d", "destiny->process_request: getdestiny...");
     $restab = xCAT::Table->new('noderes');
     my $chaintab = xCAT::Table->new('chain');
-    my $chainents = $chaintab->getNodesAttribs(\@nodes, [qw(currstate chain)]);
-    my $nrents = $restab->getNodesAttribs(\@nodes, [qw(tftpserver xcatmaster)]);
+    my $chainents = $chaintab->getNodesAttribs($nodes, [qw(currstate chain)]);
+    my $nrents = $restab->getNodesAttribs($nodes, [qw(tftpserver xcatmaster)]);
     my $bptab = xCAT::Table->new('bootparams', -create => 1);
-    my $bpents = $bptab->getNodesAttribs(\@nodes, [qw(kernel initrd kcmdline xcatmaster)]);
+    my $bpents = $bptab->getNodesAttribs($nodes, [qw(kernel initrd kcmdline xcatmaster)]);
 
     #my $sitetab= xCAT::Table->new('site');
     #(my $sent) = $sitetab->getAttribs({key=>'master'},'value');
@@ -798,7 +879,7 @@ sub getdestiny {
     my $master_value = $entries[0];
 
     my %node_status = ();
-    foreach $node (@nodes) {
+    foreach $node (@$nodes) {
         unless ($chaintab) { #Without destiny, have the node wait with ssh hopefully open at least
             $callback->({ node => [ { name => [$node], data => ['standby'], destiny => ['standby'] } ] });
             return;
