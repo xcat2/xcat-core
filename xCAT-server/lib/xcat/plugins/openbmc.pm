@@ -1631,13 +1631,13 @@ sub reventlog_response {
         my $count = 0;
         if ($option_s) {
             foreach my $key ( sort { $b <=> $a } keys %output) {
-                xCAT::MsgUtils->message("I", { data => [$output{$key}] }, $callback, $node) if ($output{$key});
+                xCAT::MsgUtils->message("I", { data => ["$node: $output{$key}"] }, $callback) if ($output{$key});
                 $count++;
                 last if ($entry_string ne "all" and $count >= $entry_num); 
             }
         } else {
             foreach my $key (sort keys %output) {
-                xCAT::MsgUtils->message("I", { data => [$output{$key}] }, $callback, $node) if ($output{$key});
+                xCAT::MsgUtils->message("I", { data => ["$node: $output{$key}"] }, $callback) if ($output{$key});
                 $count++;
                 last if ($entry_string ne "all" and $count >= $entry_num);
             }
