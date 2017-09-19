@@ -350,7 +350,6 @@ sub process_request {
     }
 
     #consolidate the results by merging the swithes with the same ip or same mac 
-    #or same hostname
     my $result;
     my $merged;
     my $counter=0;
@@ -366,12 +365,11 @@ sub process_request {
                 my $new_ip = $result->{$new_mac}->{ip};
                 my $new_name = $result->{$new_mac}->{name};
                 my $new_vendor = $result->{$new_mac}->{vendor};
+                my $key =$new_mac;
                 
                 if (($old_mac eq $new_mac) || 
-                    ($old_ip && ($old_ip eq $new_ip)) || 
-                    ($old_name && ($old_name eq $new_name))) {
+                    ($old_ip && ($old_ip eq $new_ip))) { 
                     $same = 1;
-                    my $key =$new_mac;
                     if ($new_mac =~ /nomac/) {
                         if ($old_mac =~ /nomac/) {
                             $key = "nomac_$counter";
@@ -379,9 +377,6 @@ sub process_request {
                         } else {
                             $key = $old_mac;
                         }
-                    }
-                    if ($old_name) {
-                        $result->{$key}->{name} = $old_name;
                     }
                     if ($old_ip) {
                         $result->{$key}->{ip} = $old_ip;
@@ -398,6 +393,12 @@ sub process_request {
                     if ($key ne $new_mac) {
                         delete $result->{$new_mac};
                     }
+                }
+                if ( $old_name && ($old_name eq $new_name)) {
+                    #appending mac address to end of hostname
+                    my $mac_str = lc($old_mac);
+                    $mac_str =~ s/\://g;
+                    $result->{$key}->{name} = "$old_name-$mac_str";
                 }
             }
             if (!$same) {
@@ -1107,7 +1108,7 @@ sub get_snmphostname {
     my ($desc,$hostname) = split /: /, $result;
 
     if (exists($globalopt{verbose}))    {
-        send_msg($request, 0, "switch hostname = $hostname\n" );
+        send_msg($request, 0, "$device hostname = $hostname\n" );
     }
 
     return $hostname;
@@ -1140,7 +1141,7 @@ sub get_hostname {
         if ( !$host ) {
             my $ip_str = $ip;
             $ip_str =~ s/\./\-/g;
-            $host = "switch-$ip_str";
+            $host = "$device-$ip_str";
         }
     }
     return $host;

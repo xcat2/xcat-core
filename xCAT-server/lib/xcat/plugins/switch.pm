@@ -336,25 +336,25 @@ sub process_request {
             }
         }
         my $bmc_node = undef;
+        my @bmc_nodes = ();
         if ($req->{'mtm'}->[0] and $req->{'serial'}->[0]) {
             my $mtms      = $req->{'mtm'}->[0] . "*" . $req->{'serial'}->[0];
             my $tmp_nodes = $::XCATVPDHASH{$mtms};
             foreach (@$tmp_nodes) {
                 if ($::XCATMPHASH{$_}) {
-                    $bmc_node = $_;
+                    push @bmc_nodes, $_;
                 }
             }
         }
 
-        unless ($bmc_node) {
-            if ($req->{'bmcmac'}->[0]) {
-                my $bmcmac = lc($req->{'bmcmac'}->[0]);
-                $bmcmac =~ s/\://g;
-                my $tmp_node = "node-$bmcmac";
-                $bmc_node = $tmp_node if ($::XCATMPHASH{$tmp_node});
-            }
+        if ($req->{'bmcmac'}->[0]) {
+            my $bmcmac = lc($req->{'bmcmac'}->[0]);
+            $bmcmac =~ s/\://g;
+            my $tmp_node = "node-$bmcmac";
+            push @bmc_nodes, $tmp_node if ($::XCATMPHASH{$tmp_node});
         }
 
+        $bmc_node = join(",", @bmc_nodes);
         if ($node) {
             xCAT::MsgUtils->message("S", "xcat.discovery.switch: ($req->{_xcat_clientmac}->[0]) Found node: $node");
 
