@@ -731,7 +731,7 @@ sub donics
 
                     if ($nic =~ /\./) {
                          my $rsp;
-                         push @{ $rsp->{data} }, "$node: since \'$nic\' contains dot, nics.nichostnamesuffixes should be configured without dot for \'$nic\' interface.";
+                         push @{ $rsp->{data} }, "$node: since \'$nic\' contains dot, nics.nichostnamesuffixes.$nic should be configured without dot for \'$nic\' interface.";
                          xCAT::MsgUtils->message("E", $rsp, $callback);
                          next;
                     }
@@ -741,13 +741,13 @@ sub donics
 
                 } elsif ($nich->{$nic}->{nicsufx}->[$i] && $nich->{$nic}->{nicsufx}->[$i] =~ /\./) {
                     my $rsp;
-                    push @{ $rsp->{data} }, "$node: the value \'$nich->{$nic}->{nicsufx}->[$i]\' of nics.nichostnamesuffixes should not contain dot.";
+                    push @{ $rsp->{data} }, "$node: the value \'$nich->{$nic}->{nicsufx}->[$i]\' of nics.nichostnamesuffixes.$nic should not contain dot.";
                     xCAT::MsgUtils->message("E", $rsp, $callback);
                     delete $nich->{$nic}->{nicsufx}->[$i];
                     next;
                 } elsif ($nich->{$nic}->{nicprfx}->[$i] && $nich->{$nic}->{nicprfx}->[$i] =~ /\./) {
                     my $rsp;
-                    push @{ $rsp->{data} }, "$node: the value \'$nich->{$nic}->{nicprfx}->[$i]\' of nics.nichostnameprefixes should not contain dot.";
+                    push @{ $rsp->{data} }, "$node: the value \'$nich->{$nic}->{nicprfx}->[$i]\' of nics.nichostnameprefixes.$nic should not contain dot.";
                     xCAT::MsgUtils->message("E", $rsp, $callback);
                     delete $nich->{$nic}->{nicprfx}->[$i];
                     next;
