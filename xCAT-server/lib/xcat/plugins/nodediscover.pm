@@ -454,10 +454,16 @@ sub process_request {
             }
         }
     } else {
-
-        # Only BMC that doesn't support in-band configuration need to run rspconfig out-of-band, such as S822L running in OPAL model
-        xCAT::MsgUtils->message("S", "No bmcinband specified, need to configure BMC out-of-band");
-        xCAT::Utils->cleanup_for_powerLE_hardware_discovery($request, $doreq);
+        if (defined($request->{bmc_node}) and defined($request->{bmc_node}->[0])) {
+            my $bmc_node = $request->{bmc_node}->[0];
+            if ($bmc_node =~ /\,/) {
+                xCAT::MsgUtils->message("W", "Multiple BMC nodes matched with no bmcinband specified, please remove manually");
+            } else {
+                # Only BMC that doesn't support in-band configuration need to run rspconfig out-of-band, such as S822L running in OPAL model
+                xCAT::MsgUtils->message("S", "No bmcinband specified, need to configure BMC out-of-band");
+                xCAT::Utils->cleanup_for_powerLE_hardware_discovery($request, $doreq);
+            }
+        }
     }
 
 
