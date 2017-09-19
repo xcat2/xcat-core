@@ -165,7 +165,7 @@ sub build_line
         $longname  = "$node.$domain";
     }
 
-    # if shortname contains a dot then we have a bad syntax for name
+    # if shortname contains a dot then we have a bad syntax for name 
     if ($shortname =~ /\./) {
         my $rsp;
         push @{ $rsp->{data} }, "Invalid short node name \'$shortname\'. The short node name may not contain a dot. The short node name is considered to be anything preceeding the network domain name in the fully qualified node name \'$longname\'.\n";
@@ -729,9 +729,28 @@ sub donics
             for (my $i = 0 ; $i < $nicindex{$nic} ; $i++) {
                 if (!$nich->{$nic}->{nicsufx}->[$i] && !$nich->{$nic}->{nicprfx}->[$i]) {
 
+                    if ($nic =~ /\./) {
+                         my $rsp;
+                         push @{ $rsp->{data} }, "$node: since \'$nic\' contains dot, nics.nichostnamesuffixes.$nic should be configured without dot for \'$nic\' interface.";
+                         xCAT::MsgUtils->message("E", $rsp, $callback);
+                         next;
+                    }
                     # then we have no suffix at all for this
                     # so set a default
                     $nich->{$nic}->{nicsufx}->[$i] = "-$nic";
+
+                } elsif ($nich->{$nic}->{nicsufx}->[$i] && $nich->{$nic}->{nicsufx}->[$i] =~ /\./) {
+                    my $rsp;
+                    push @{ $rsp->{data} }, "$node: the value \'$nich->{$nic}->{nicsufx}->[$i]\' of nics.nichostnamesuffixes.$nic should not contain dot.";
+                    xCAT::MsgUtils->message("E", $rsp, $callback);
+                    delete $nich->{$nic}->{nicsufx}->[$i];
+                    next;
+                } elsif ($nich->{$nic}->{nicprfx}->[$i] && $nich->{$nic}->{nicprfx}->[$i] =~ /\./) {
+                    my $rsp;
+                    push @{ $rsp->{data} }, "$node: the value \'$nich->{$nic}->{nicprfx}->[$i]\' of nics.nichostnameprefixes.$nic should not contain dot.";
+                    xCAT::MsgUtils->message("E", $rsp, $callback);
+                    delete $nich->{$nic}->{nicprfx}->[$i];
+                    next;
                 }
             }
         }
