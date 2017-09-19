@@ -390,8 +390,7 @@ sub preprocess_request {
             if ($ntab) {
                 foreach (@{ $ntab->getAllEntries() }) {
                     next unless ($_->{dynamicrange});
-                    # if dynamicrange specified but dhcpserver was not - issue error message
-                    push @dhcpsvrs, $_->{dhcpserver} if ($_->{dhcpserver})
+                    push @dhcpsvrs, $_->{dhcpserver} if ($_->{dhcpserver} && xCAT::NetworkUtils->nodeonmynet($_->{dhcpserver}));
                 }
             }
             return xCAT::Scope->get_broadcast_disjoint_scope_with_parallel($req, $sn_hash, \@dhcpsvrs);
@@ -645,7 +644,7 @@ sub process_request {
     }
 
     #Don't bother to try dhcp binding changes if sub_req not passed, i.e. service node build time
-    unless (($inittime) || ($args[0] eq 'offline')) {
+    unless ($inittime) {
 
         #dhcp stuff
         my $do_dhcpsetup = 1;
@@ -654,9 +653,11 @@ sub process_request {
         if (defined($t_entry)) {
             if ($t_entry =~ /0|n|N/) { $do_dhcpsetup = 0; }
         }
-        if ($do_dhcpsetup) {
+        # For offline operation, remove the dhcp entries whatever dhcpset is disabled in site ( existing code logic, just keep it as is)
+        if ($do_dhcpsetup || $args[0] eq 'offline') {
             my @parameter;
             push @parameter, '-l' if ($request->{'_disparatetftp'}->[0]);
+            push @parameter, '-d' if ($args[0] eq 'offline');
             xCAT::MsgUtils->trace($verbose_on_off, "d", "petitboot: issue makedhcp request");
 
             $sub_req->({ command => ['makedhcp'],
@@ -666,12 +667,6 @@ sub process_request {
             xCAT::MsgUtils->trace($verbose_on_off, "d", "petitboot: dhcpsetup=$do_dhcpsetup");
         }
 
-    }
-
-    if ($args[0] eq 'offline') {
-
-        # If nodeset directive was offline we need to remove dhcp entries
-        $sub_req->({ command => ['makedhcp'], arg => ['-d'], node => \@normalnodeset }, $callback);
     }
 
     #now run the end part of the prescripts

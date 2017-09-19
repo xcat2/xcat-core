@@ -1128,7 +1128,7 @@ sub preprocess_request
                     $callback->({ error => [ "Hierarchy requested, therefore networks.dhcpserver must be set for net=" . $_->{net} . "" ], errorcode => [1] });
                     return [];
                 }
-                push @dhcpsvrs, $_->{dhcpserver};
+                push @dhcpsvrs, $_->{dhcpserver} if (xCAT::NetworkUtils->nodeonmynet($_->{dhcpserver}));
                 xCAT::MsgUtils->trace($verbose_on_off, "d", "dhcp: dhcp server on $_->{net}: $_->{dhcpserver}");
             }
         }
