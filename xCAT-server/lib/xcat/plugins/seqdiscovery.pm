@@ -131,25 +131,25 @@ sub findme {
         }
     }
     my $bmc_node = undef;
+    my @bmc_nodes = ();
     if ($request->{'mtm'}->[0] and $request->{'serial'}->[0]) {
         my $mtms = $request->{'mtm'}->[0] . "*" . $request->{'serial'}->[0];
         my $tmp_nodes = $::XCATVPDHASH{$mtms};
         foreach (@$tmp_nodes) {
             if ($::XCATMPHASH{$_}) {
-                $bmc_node = $_;
+                push @bmc_nodes, $_;
             }
         }
     }
 
-    unless ($bmc_node) {
-        if ($request->{'bmcmac'}->[0]) {
-            my $bmcmac = lc($request->{'bmcmac'}->[0]);
-            $bmcmac =~ s/\://g;
-            my $tmp_node = "node-$bmcmac";
-            $bmc_node = $tmp_node if ($::XCATMPHASH{$tmp_node});
-        }
+    if ($request->{'bmcmac'}->[0]) {
+        my $bmcmac = lc($request->{'bmcmac'}->[0]);
+        $bmcmac =~ s/\://g;
+        my $tmp_node = "node-$bmcmac";
+        push @bmc_nodes, $tmp_node if ($::XCATMPHASH{$tmp_node});
     }
 
+    $bmc_node = join(",", @bmc_nodes);
     if ($node) {
         my $skiphostip;
         my $skipbmcip;
