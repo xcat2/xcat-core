@@ -504,8 +504,7 @@ sub preprocess_request {
             if ($ntab) {
                 foreach (@{ $ntab->getAllEntries() }) {
                     next unless ($_->{dynamicrange});
-                    # if dynamicrange specified but dhcpserver was not - issue error message
-                    push @dhcpsvrs, $_->{dhcpserver} if ($_->{dhcpserver})
+                    push @dhcpsvrs, $_->{dhcpserver} if ($_->{dhcpserver} && xCAT::NetworkUtils->nodeonmynet($_->{dhcpserver}));
                 }
             }
             return xCAT::Scope->get_broadcast_disjoint_scope_with_parallel($req, $sn_hash, \@dhcpsvrs);
@@ -854,7 +853,11 @@ sub process_request {
                 push(@rmdhcp_nodes, $tmp_node);
             }
         }
-        $sub_req->({ command => ['makedhcp'], arg => ['-d'], node => \@rmdhcp_nodes }, $callback);
+        if ($request->{'_disparatetftp'}->[0]) {
+            $sub_req->({ command => ['makedhcp'], arg => ['-d', '-l'], node => \@rmdhcp_nodes }, $callback);
+        } else {
+            $sub_req->({ command => ['makedhcp'], arg => ['-d'], node => \@rmdhcp_nodes }, $callback);
+        }
     }
 
     #now run the end part of the prescripts
