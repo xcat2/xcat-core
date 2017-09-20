@@ -1970,24 +1970,6 @@ sub do_firmware_update {
                 }
             }
         }
-
-        if (defined $directory_name) {
-            unless (File::Spec->file_name_is_absolute($directory_name)) {
-               # Directory name was passed in as relative path, prepend current working dir
-               $directory_name = xCAT::Utils->full_path($directory_name, $::cwd);
-            }
-            # directory was passed in, verify it is valid
-            if (-d $directory_name) {
-               # Passed in directory name exists
-               $pUpdate_directory = $directory_name;
-            }
-            else {
-                $exit_with_error_func->($sessdata->{node}, $callback, "Can not access data directory $directory_name");
-            }
-        }
-        else {
-            $exit_with_error_func->($sessdata->{node}, $callback, "Data directory must be specified.");
-        }
     }
 
     # For IBM Power S822LC for Big Data (Supermicro) machines such as 
@@ -1996,11 +1978,23 @@ sub do_firmware_update {
     # specified data directory along with the update files .bin for BMC or .pnor for Host
     if ($output =~ /8001-22C|9006-22C|5104-22C|9006-12C/) {
         # Verify valid data directory was specified
-        unless ($pUpdate_directory) {
-            $exit_with_error_func->($sessdata->{node}, $callback,
-                "Directory name is required to update Boston or Briggs machines.");
+        if (defined $directory_name) {
+            unless (File::Spec->file_name_is_absolute($directory_name)) {
+                # Directory name was passed in as relative path, prepend current working dir
+                $directory_name = xCAT::Utils->full_path($directory_name, $::cwd);
+            }
+            # directory was passed in, verify it is valid
+            if (-d $directory_name) {
+                # Passed in directory name exists
+                $pUpdate_directory = $directory_name;
+            }
+            else {
+                $exit_with_error_func->($sessdata->{node}, $callback, "Can not access data directory $directory_name");
+            }
         }
-        
+        else {
+            $exit_with_error_func->($sessdata->{node}, $callback, "Directory name is required to update IBM Power S822LC for Big Data machines.");
+        }
         # Verify specified directory contains pUpdate utility
         unless (-e "$pUpdate_directory/pUpdate") {
             $exit_with_error_func->($sessdata->{node}, $callback,
@@ -2126,7 +2120,7 @@ sub do_firmware_update {
             $exit_with_error_func->($sessdata->{node}, $callback,
                 "Running ipmitool command $cmd failed: $output");
         }
-        my $grs_version = $output =~ /OP8_v(\d*\.\d*_\d*\.\d*)/;
+        my $grs_version = $output =~ /OP8_.*v(\d*\.\d*_\d*\.\d*)/;
         if ($grs_version =~ /\d\.(\d+)_(\d+\.\d+)/) {
             my $prim_grs_version = $1;
             my $sec_grs_version = $2;
@@ -2148,7 +2142,7 @@ sub do_firmware_update {
                 "Running ipmitool command $cmd failed: $output");
         }
         # Check what firmware version is currently running on the machine
-        if ($output =~ /OP8_v\d\.\d+_(\d+)\.\d+/) {
+        if ($output =~ /OP8_.*v\d\.\d+_(\d+)\.\d+/) {
             my $frs_version = $1;
             if ($frs_version == 1) {
                 $firestone_update_version = "810";
@@ -2189,7 +2183,7 @@ sub do_firmware_update {
         }
     }
 
-    if ($is_firestone and 
+    if ($is_firestone and $firestone_update_version and
         (($firestone_update_version eq "820" and $htm_update_version eq "810") or 
          ($firestone_update_version eq "810" and $htm_update_version eq "820")) 
        ) {
