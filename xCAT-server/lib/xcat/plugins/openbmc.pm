@@ -138,8 +138,8 @@ my %status_info = (
     },
     REVENTLOG_CLEAR_REQUEST => {
         method         => "POST",
-        init_url       => "$openbmc_project_url/logging//action/delete",
-        data           => '{ "data": [] }',
+        init_url       => "$openbmc_project_url/logging/action/deleteAll",
+        data           => "[]",
     },
     REVENTLOG_CLEAR_RESPONSE => {
         process        => \&reventlog_response,
@@ -788,8 +788,6 @@ sub parse_command_status {
         if ($subcommand eq "clear") {
             $next_status{LOGIN_RESPONSE} = "REVENTLOG_CLEAR_REQUEST";
             $next_status{REVENTLOG_CLEAR_REQUEST} = "REVENTLOG_CLEAR_RESPONSE";
-            xCAT::SvrUtils::sendmsg("Command $command is not available now!", $callback);
-            return 1;
         } else {
             $next_status{LOGIN_RESPONSE} = "REVENTLOG_REQUEST";
             $next_status{REVENTLOG_REQUEST} = "REVENTLOG_RESPONSE";
@@ -1631,12 +1629,14 @@ sub reventlog_response {
 
         my $count = 0;
         if ($option_s) {
+            xCAT::SvrUtils::sendmsg("$::NO_ATTRIBUTES_RETURNED", $callback, $node) if (!%output);
             foreach my $key ( sort { $b <=> $a } keys %output) {
                 xCAT::MsgUtils->message("I", { data => ["$node: $output{$key}"] }, $callback) if ($output{$key});
                 $count++;
                 last if ($entry_string ne "all" and $count >= $entry_num); 
             }
         } else {
+            xCAT::SvrUtils::sendmsg("$::NO_ATTRIBUTES_RETURNED", $callback, $node) if (!%output);
             foreach my $key (sort keys %output) {
                 xCAT::MsgUtils->message("I", { data => ["$node: $output{$key}"] }, $callback) if ($output{$key});
                 $count++;
