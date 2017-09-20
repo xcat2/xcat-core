@@ -1182,18 +1182,18 @@ sub run_case {
 
                 #to run single line command
 
+                log_this($running_log_fd, "RUN:$cmd->[0] [$runstartstr]");
                 $cmd->[0]    = getfunc($cmd->[0]);
                 @output = &runcmd($cmd->[0]);
                 $rc     = $::RUNCMD_RC;
-                log_this($running_log_fd, "RUN:$cmd->[0] [$runstartstr]");
                 push(@caselog, "RUN:$cmd->[0] [$runstartstr]");
             } else {
 
                 #to run multiple lines command
 
+                log_this($running_log_fd, "RUN: [$runstartstr]", @{$cmd});
                 @output = runscript($cmd);
                 $rc     = $::RUNCMD_RC;
-                log_this($running_log_fd, "RUN: [$runstartstr]", @{$cmd});
                 push(@caselog, ("RUN: [$runstartstr]", @{$cmd}));
             }
 
