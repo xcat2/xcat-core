@@ -339,74 +339,28 @@ sub process_request {
         @scan_types = @{$globalopt{scan_types}};
     }
     
-    my $all_result;
+    my %username_hash = ();
+    $result = undef;
     foreach my $st (@scan_types) {
         no strict;
         my $fn = $global_scan_type{$st};
         my $tmp_result = &$fn(\%request, $callback);
         if (ref($tmp_result) eq 'HASH') {
-            $all_result->{$st} = $tmp_result;
-        }
-    }
-
-    #consolidate the results by merging the swithes with the same ip or same mac 
-    my $result;
-    my $merged;
-    my $counter=0;
-    foreach my $st (keys %$all_result) {
-        my $tmp_result = $all_result->{$st};
-        #send_msg( \%request, 1, Dumper($tmp_result));
-        foreach my $old_mac (keys %$tmp_result) {
-            $same = 0;
-            foreach my $new_mac (keys %$result) {
-                my $old_ip = $tmp_result->{$old_mac}->{ip}; 
-                my $old_name = $tmp_result->{$old_mac}->{name};
-                my $old_vendor = $tmp_result->{$old_mac}->{vendor};
-                my $new_ip = $result->{$new_mac}->{ip};
-                my $new_name = $result->{$new_mac}->{name};
-                my $new_vendor = $result->{$new_mac}->{vendor};
-                my $key =$new_mac;
-                
-                if (($old_mac eq $new_mac) || 
-                    ($old_ip && ($old_ip eq $new_ip))) { 
-                    $same = 1;
-                    if ($new_mac =~ /nomac/) {
-                        if ($old_mac =~ /nomac/) {
-                            $key = "nomac_$counter";
-                            $counter++;
-                        } else {
-                            $key = $old_mac;
-                        }
-                    }
-                    if ($old_ip) {
-                        $result->{$key}->{ip} = $old_ip;
-                    }
-                    $result->{$key}->{vendor} = $new_vendor;
-                    if ($old_vendor) {
-                        if ($old_vendor ne $new_vendor) {
-                            $result->{$key}->{vendor} .= " " . $old_vendor;
-                        } else {
-                            $result->{$key}->{vendor} = $old_vendor;
-                        }
-                    }
-
-                    if ($key ne $new_mac) {
-                        delete $result->{$new_mac};
-                    }
-                }
-                if ( $old_name && ($old_name eq $new_name)) {
-                    #appending mac address to end of hostname
-                    my $mac_str = lc($old_mac);
+            foreach (keys %$tmp_result) {
+                $result->{$_} = $tmp_result->{$_};
+                #appending mac address to end of hostname
+                my $name = $result->{$_}->{name};
+                if (exists $username_hash{$name}) {
+                    my $mac_str = lc($_);
                     $mac_str =~ s/\://g;
-                    $result->{$key}->{name} = "$old_name-$mac_str";
+                    $result->{$_}->{name} = "$name-$mac_str";
+                } else {
+                    $username_hash{$name} = 1;
                 }
-            }
-            if (!$same) {
-                $result->{$old_mac} = $tmp_result->{$old_mac};
-            }
+            } 
         }
     }
-
+    
     if (!($result)) {
         send_msg( \%request, 0, " No $device found ");
         return;
