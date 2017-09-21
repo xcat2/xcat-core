@@ -545,6 +545,13 @@ sub parse_args {
         unless ($subcommand =~ /^on$|^off$|^softoff$|^reset$|^boot$|^bmcreboot$|^bmcstate$|^status$|^stat$|^state$/) {
             return ([ 1, "Unsupported command: $command $subcommand" ]);
         }
+        if ($subcommand =~ /^reset$|^boot$/) {
+            $check = unsupported($callback); 
+            if (ref($check) eq "ARRAY") { 
+                @$check[1] = "Command $command $subcommand is not supported now.\nPlease run 'rpower <node> off' and then 'rpower <node> on' instead.";
+                return $check;
+            }
+        }
     } elsif ($command eq "rinv") {
         $subcommand = "all" if (!defined($ARGV[0]));
         unless ($subcommand =~ /^model$|^serial$|^firm$|^cpu$|^dimm$|^all$/) {

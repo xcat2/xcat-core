@@ -548,11 +548,6 @@ sub rinstall {
                     arg     => \@rpowerarg
             );
               
-            #TODO: When OPENBMC support is finished, this line should be removed     
-            if($hmkey =~ /^openbmc$/){
-                $req{environment}{XCAT_OPENBMC_DEVEL} = "YES";    
-            }
-
             my $res =
               xCAT::Utils->runxcmd(
                 \%req,
