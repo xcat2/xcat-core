@@ -1766,7 +1766,7 @@ sub rspconfig_response {
 
     if ($node_info{$node}{cur_status} eq "RSPCONFIG_SET_RESPONSE") {
         if ($response_info->{'message'} eq $::RESPONSE_OK) {
-            xCAT::SvrUtils::sendmsg("BMC Setting Hostname (requires bmcreboot to take effect)...", $callback, $node);
+            xCAT::SvrUtils::sendmsg("BMC Setting Hostname...", $callback, $node);
         }
     }
     if ($node_info{$node}{cur_status} eq "RSPCONFIG_DHCP_RESPONSE") {
