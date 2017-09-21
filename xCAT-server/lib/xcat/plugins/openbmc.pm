@@ -138,8 +138,8 @@ my %status_info = (
     },
     REVENTLOG_CLEAR_REQUEST => {
         method         => "POST",
-        init_url       => "$openbmc_project_url/logging//action/delete",
-        data           => '{ "data": [] }',
+        init_url       => "$openbmc_project_url/logging/action/deleteAll",
+        data           => "[]",
     },
     REVENTLOG_CLEAR_RESPONSE => {
         process        => \&reventlog_response,
@@ -240,11 +240,6 @@ my %status_info = (
         init_url       => "$openbmc_project_url/state/host0/attr/RequestedHostTransition",
         data           => "xyz.openbmc_project.State.Host.Transition.Off",
     },
-    RPOWER_RESET_REQUEST  => {
-        method         => "PUT",
-        init_url       => "$openbmc_project_url/state/host0/attr/RequestedHostTransition",
-        data           => "xyz.openbmc_project.State.Host.Transition.Reboot",
-    },
     RPOWER_RESET_RESPONSE => {
         process        => \&rpower_response,
     },
@@ -258,7 +253,7 @@ my %status_info = (
 
     RSETBOOT_SET_REQUEST => {
         method         => "PUT",
-        init_url       => "$openbmc_project_url/control/host0/boot_source/attr/BootSource",
+        init_url       => "$openbmc_project_url/control/host0/boot/attr/BootSource",
         data           => "xyz.openbmc_project.Control.Boot.Source.Sources.",
     },
     RSETBOOT_SET_RESPONSE => {
@@ -266,7 +261,7 @@ my %status_info = (
     },
     RSETBOOT_STATUS_REQUEST  => {
         method         => "GET",
-        init_url       => "$openbmc_project_url/control/host0/boot_source",
+        init_url       => "$openbmc_project_url/control/host0/boot",
     },
     RSETBOOT_STATUS_RESPONSE => {
         process        => \&rsetboot_response,
@@ -534,7 +529,7 @@ sub parse_args {
         return ([ 1, "Error parsing arguments." ]) if ($option !~ /V|verbose/);
     }
 
-    if (scalar(@ARGV) >= 2 and ($command =~ /rpower|rinv|rsetboot|rvitals/)) {
+    if (scalar(@ARGV) >= 2 and ($command =~ /rpower|rinv|rvitals/)) {
         return ([ 1, "Only one option is supported at the same time for $command" ]);
     } elsif (scalar(@ARGV) == 0 and $command =~ /rpower|rspconfig|rflash/) {
         return ([ 1, "No option specified for $command" ]);
@@ -549,6 +544,13 @@ sub parse_args {
     } elsif ($command eq "rpower") {
         unless ($subcommand =~ /^on$|^off$|^softoff$|^reset$|^boot$|^bmcreboot$|^bmcstate$|^status$|^stat$|^state$/) {
             return ([ 1, "Unsupported command: $command $subcommand" ]);
+        }
+        if ($subcommand =~ /^reset$|^boot$/) {
+            $check = unsupported($callback); 
+            if (ref($check) eq "ARRAY") { 
+                @$check[1] = "Command $command $subcommand is not supported now.\nPlease run 'rpower <node> off' and then 'rpower <node> on' instead.";
+                return $check;
+            }
         }
     } elsif ($command eq "rinv") {
         $subcommand = "all" if (!defined($ARGV[0]));
@@ -671,6 +673,8 @@ sub parse_command_status {
     my $subcommands = shift;
     my $subcommand;
 
+    return if ($command eq "getopenbmccons");
+
     if ($$subcommands[-1] and $$subcommands[-1] =~ /V|verbose/) {
         $::VERBOSE = 1;
         pop(@$subcommands);
@@ -703,19 +707,24 @@ sub parse_command_status {
             $next_status{LOGIN_RESPONSE} = "RPOWER_SOFTOFF_REQUEST";
             $next_status{RPOWER_SOFTOFF_REQUEST} = "RPOWER_OFF_RESPONSE";
         } elsif ($subcommand eq "reset") {
-            $next_status{LOGIN_RESPONSE} = "RPOWER_RESET_REQUEST";
-            $next_status{RPOWER_RESET_REQUEST} = "RPOWER_RESET_RESPONSE";
+            $next_status{LOGIN_RESPONSE} = "RPOWER_STATUS_REQUEST";
+            $next_status{RPOWER_STATUS_REQUEST} = "RPOWER_STATUS_RESPONSE";
+            $next_status{RPOWER_STATUS_RESPONSE}{OFF} = "DO_NOTHING";
+            $next_status{RPOWER_STATUS_RESPONSE}{ON} = "RPOWER_OFF_REQUEST";
+            $next_status{RPOWER_OFF_REQUEST} = "RPOWER_OFF_RESPONSE";
+            $next_status{RPOWER_OFF_RESPONSE} = "RPOWER_ON_REQUEST";
+            $next_status{RPOWER_ON_REQUEST} = "RPOWER_ON_RESPONSE";
+            $status_info{RPOWER_ON_RESPONSE}{argv} = "$subcommand";
         } elsif ($subcommand =~ /^bmcstate$|^status$|^state$|^stat$/) {
             $next_status{LOGIN_RESPONSE} = "RPOWER_STATUS_REQUEST";
             $next_status{RPOWER_STATUS_REQUEST} = "RPOWER_STATUS_RESPONSE";
             $status_info{RPOWER_STATUS_RESPONSE}{argv} = "$subcommand";
         } elsif ($subcommand eq "boot") {
-            $next_status{LOGIN_RESPONSE} = "RPOWER_STATUS_REQUEST";
-            $next_status{RPOWER_STATUS_REQUEST} = "RPOWER_STATUS_RESPONSE";
-            $next_status{RPOWER_STATUS_RESPONSE}{OFF} = "RPOWER_ON_REQUEST";
+            $next_status{LOGIN_RESPONSE} = "RPOWER_OFF_REQUEST";
+            $next_status{RPOWER_OFF_REQUEST} = "RPOWER_OFF_RESPONSE";
+            $next_status{RPOWER_OFF_RESPONSE} = "RPOWER_ON_REQUEST";
             $next_status{RPOWER_ON_REQUEST} = "RPOWER_ON_RESPONSE";
-            $next_status{RPOWER_STATUS_RESPONSE}{ON} = "RPOWER_RESET_REQUEST";
-            $next_status{RPOWER_RESET_REQUEST} = "RPOWER_RESET_RESPONSE";
+            $status_info{RPOWER_ON_RESPONSE}{argv} = "$subcommand";
         } elsif ($subcommand eq "bmcreboot") {
             $next_status{LOGIN_RESPONSE} = "RPOWER_BMCREBOOT_REQUEST";
             $next_status{RPOWER_BMCREBOOT_REQUEST} = "RPOWER_RESET_RESPONSE";
@@ -747,6 +756,12 @@ sub parse_command_status {
     }
 
     if ($command eq "rsetboot") {
+        if ($$subcommands[-1] and $$subcommands[-1] eq "-o") {
+            pop(@$subcommands);
+            $status_info{RSETBOOT_SET_REQUEST}{init_url} = "$openbmc_project_url/control/host0/boot_source/attr/BootSource";
+            $status_info{RSETBOOT_STATUS_REQUEST}{init_url} = "$openbmc_project_url/control/host0/boot_source";
+        }
+
         if (defined($$subcommands[0])) {
             $subcommand = $$subcommands[0];
         } else {
@@ -788,8 +803,6 @@ sub parse_command_status {
         if ($subcommand eq "clear") {
             $next_status{LOGIN_RESPONSE} = "REVENTLOG_CLEAR_REQUEST";
             $next_status{REVENTLOG_CLEAR_REQUEST} = "REVENTLOG_CLEAR_RESPONSE";
-            xCAT::SvrUtils::sendmsg("Command $command is not available now!", $callback);
-            return 1;
         } else {
             $next_status{LOGIN_RESPONSE} = "REVENTLOG_REQUEST";
             $next_status{REVENTLOG_REQUEST} = "REVENTLOG_RESPONSE";
@@ -1247,14 +1260,18 @@ sub rpower_response {
 
     if ($node_info{$node}{cur_status} eq "RPOWER_ON_RESPONSE") {
         if ($response_info->{'message'} eq $::RESPONSE_OK) {
-            xCAT::SvrUtils::sendmsg("$::POWER_STATE_ON", $callback, $node);
+            if ($status_info{RPOWER_ON_RESPONSE}{argv}) {
+                xCAT::SvrUtils::sendmsg("$::POWER_STATE_RESET", $callback, $node);
+            } else {
+                xCAT::SvrUtils::sendmsg("$::POWER_STATE_ON", $callback, $node);
+            }
             $new_status{$::STATUS_POWERING_ON} = [$node];
         }
     } 
 
     if ($node_info{$node}{cur_status} eq "RPOWER_OFF_RESPONSE") {
         if ($response_info->{'message'} eq $::RESPONSE_OK) {
-            xCAT::SvrUtils::sendmsg("$::POWER_STATE_OFF", $callback, $node);
+            xCAT::SvrUtils::sendmsg("$::POWER_STATE_OFF", $callback, $node) if (!$next_status{ $node_info{$node}{cur_status} });
             $new_status{$::STATUS_POWERING_OFF} = [$node];
         }
     }
@@ -1263,8 +1280,6 @@ sub rpower_response {
         if ($response_info->{'message'} eq $::RESPONSE_OK) {
             if (defined $status_info{RPOWER_RESET_RESPONSE}{argv} and $status_info{RPOWER_RESET_RESPONSE}{argv} =~ /bmcreboot$/) {
                 xCAT::SvrUtils::sendmsg("BMC $::POWER_STATE_REBOOT", $callback, $node);
-            } else {
-                xCAT::SvrUtils::sendmsg("$::POWER_STATE_RESET", $callback, $node);
             }
             $new_status{$::STATUS_POWERING_ON} = [$node];
         }
@@ -1272,7 +1287,8 @@ sub rpower_response {
 
     xCAT_monitoring::monitorctrl::setNodeStatusAttributes(\%new_status, 1) if (%new_status);
 
-    if ($node_info{$node}{cur_status} eq "RPOWER_STATUS_RESPONSE" and !$next_status{ $node_info{$node}{cur_status} }) { 
+    my $all_status;
+    if ($node_info{$node}{cur_status} eq "RPOWER_STATUS_RESPONSE") { 
         my $bmc_state = "";
         my $bmc_transition_state = "";
         my $chassis_state = "";
@@ -1299,41 +1315,56 @@ sub rpower_response {
             xCAT::SvrUtils::sendmsg("BMC $bmc_short_state", $callback, $node);
         } else {
             if ($chassis_state =~ /Off$/) {
-                xCAT::SvrUtils::sendmsg("$::POWER_STATE_OFF", $callback, $node);
+                xCAT::SvrUtils::sendmsg("$::POWER_STATE_OFF", $callback, $node) if (!$next_status{ $node_info{$node}{cur_status} });
+                $all_status = $::POWER_STATE_OFF;
             } elsif ($chassis_state =~ /On$/) { 
                 if ($host_state =~ /Off$/) {
                     # State is off, but check if it is transitioning
                     if ($host_transition_state =~ /On$/) {
                         #xCAT::SvrUtils::sendmsg("$::POWER_STATE_POWERING_ON", $callback, $node);
                         # ignore transition state until get stable firmware
-                        xCAT::SvrUtils::sendmsg("$::POWER_STATE_OFF", $callback, $node);
+                        xCAT::SvrUtils::sendmsg("$::POWER_STATE_OFF", $callback, $node) if (!$next_status{ $node_info{$node}{cur_status} });
+                        $all_status = $::POWER_STATE_OFF;
                     } else {
-                        xCAT::SvrUtils::sendmsg("$::POWER_STATE_OFF", $callback, $node);
+                        xCAT::SvrUtils::sendmsg("$::POWER_STATE_OFF", $callback, $node) if (!$next_status{ $node_info{$node}{cur_status} });
+                        $all_status = $::POWER_STATE_OFF;
                     }
                 } elsif ($host_state =~ /Quiesced$/) {
-                    xCAT::SvrUtils::sendmsg("$::POWER_STATE_QUIESCED", $callback, $node);
+                    xCAT::SvrUtils::sendmsg("$::POWER_STATE_QUIESCED", $callback, $node) if (!$next_status{ $node_info{$node}{cur_status} });
+                    $all_status = $::POWER_STATE_ON;
                 } elsif ($host_state =~ /Running$/) {
                     # State is on, but check if it is transitioning
                     if ($host_transition_state =~ /Off$/) {
                         #xCAT::SvrUtils::sendmsg("$::POWER_STATE_POWERING_OFF", $callback, $node);
                         # ignore transition state until get stable firmware
-                        xCAT::SvrUtils::sendmsg("$::POWER_STATE_ON", $callback, $node);
+                        xCAT::SvrUtils::sendmsg("$::POWER_STATE_ON", $callback, $node) if (!$next_status{ $node_info{$node}{cur_status} });
+                        $all_status = $::POWER_STATE_ON;
                     } else {
-                        xCAT::SvrUtils::sendmsg("$::POWER_STATE_ON", $callback, $node);
+                        xCAT::SvrUtils::sendmsg("$::POWER_STATE_ON", $callback, $node) if (!$next_status{ $node_info{$node}{cur_status} });
+                        $all_status = $::POWER_STATE_ON;
                     }
                 } else {
-                    xCAT::SvrUtils::sendmsg("Unexpected host state=$host_state", $callback, $node);
+                    xCAT::SvrUtils::sendmsg("Unexpected host state=$host_state", $callback, $node) if (!$next_status{ $node_info{$node}{cur_status} });
+                    $all_status = $::POWER_STATE_ON;
                 }
             } else {
-                xCAT::SvrUtils::sendmsg("Unexpected chassis state=$chassis_state", $callback, $node);
+                xCAT::SvrUtils::sendmsg("Unexpected chassis state=$chassis_state", $callback, $node) if (!$next_status{ $node_info{$node}{cur_status} });
+                $all_status = $::POWER_STATE_ON;
             }
         }
     }
 
     if ($next_status{ $node_info{$node}{cur_status} }) {
         if ($node_info{$node}{cur_status} eq "RPOWER_STATUS_RESPONSE") {
-            if ($response_info->{'data'}->{CurrentHostState} =~ /Off$/) {
-                $node_info{$node}{cur_status} = $next_status{ $node_info{$node}{cur_status} }{OFF};
+            if ($all_status eq "$::POWER_STATE_OFF") {
+                if ($next_status{ $node_info{$node}{cur_status} }{OFF} eq "DO_NOTHING") {
+                    xCAT::SvrUtils::sendmsg("$::POWER_STATE_RESET", $callback, $node);
+                    $node_info{$node}{cur_status} = "";
+                    $wait_node_num--;
+                    return;
+                } else {
+                    $node_info{$node}{cur_status} = $next_status{ $node_info{$node}{cur_status} }{OFF};
+                }            
             } else {
                 $node_info{$node}{cur_status} = $next_status{ $node_info{$node}{cur_status} }{ON};
             }
@@ -1631,12 +1662,14 @@ sub reventlog_response {
 
         my $count = 0;
         if ($option_s) {
+            xCAT::SvrUtils::sendmsg("$::NO_ATTRIBUTES_RETURNED", $callback, $node) if (!%output);
             foreach my $key ( sort { $b <=> $a } keys %output) {
                 xCAT::MsgUtils->message("I", { data => ["$node: $output{$key}"] }, $callback) if ($output{$key});
                 $count++;
                 last if ($entry_string ne "all" and $count >= $entry_num); 
             }
         } else {
+            xCAT::SvrUtils::sendmsg("$::NO_ATTRIBUTES_RETURNED", $callback, $node) if (!%output);
             foreach my $key (sort keys %output) {
                 xCAT::MsgUtils->message("I", { data => ["$node: $output{$key}"] }, $callback) if ($output{$key});
                 $count++;

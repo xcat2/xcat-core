@@ -31,6 +31,10 @@ Define attributes in the ``nics`` table
 
     chdef cn1 nicnetworks.eth0.6=net60 nicnetworks.eth0.7=net70
 
+#. Define ``nichostnamesuffixes`` for ``eth0.6`` and ``eth0.7`` in case ``makehosts`` to update ``/etc/hosts``, since the value for ``nichostnamesuffixes`` cannot contain ".", other characters are recommended instead of ".", like following: ::
+
+    chdef cn1 nichostnamesuffixes.eth0.6=-eth0-6 nichostnamesuffixes.eth0.7=-eth0-7
+
 Enable ``confignetwork`` to configure VLAN
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
