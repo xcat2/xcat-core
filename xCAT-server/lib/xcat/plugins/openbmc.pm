@@ -666,6 +666,8 @@ sub parse_command_status {
     my $subcommands = shift;
     my $subcommand;
 
+    return if ($command eq "getopenbmccons");
+
     if ($$subcommands[-1] and $$subcommands[-1] =~ /V|verbose/) {
         $::VERBOSE = 1;
         pop(@$subcommands);
