@@ -149,11 +149,11 @@ end
 start:rpower_wrongpasswd
 description:rpower ipmi and openbmc using wrong passwd  
 Attribute: $$CN-The operation object of rpower command
-cmd:/opt/xcat/share/xcat/tools/autotest/testcase/rpower/rpower_wrongpasswd_test.sh  -pt $$CN  $$rightbmcpasswd $$rightbmcusername
+cmd:/opt/xcat/share/xcat/tools/autotest/testcase/rpower/rpower_wrongpasswd_test.sh  -pt $$CN  $$bmcpasswd $$bmcusername
 check:rc==0
 cmd:/opt/xcat/share/xcat/tools/autotest/testcase/rpower/rpower_wrongpasswd_test.sh  -c $$CN 
 check:rc==0
-cmd:/opt/xcat/share/xcat/tools/autotest/testcase/rpower/rpower_wrongpasswd_test.sh  -apt $$CN  $$rightbmcpasswd $$rightbmcusername
+cmd:/opt/xcat/share/xcat/tools/autotest/testcase/rpower/rpower_wrongpasswd_test.sh  -apt $$CN  $$bmcpasswd $$bmcusername
 check:rc==0
 cmd:/opt/xcat/share/xcat/tools/autotest/testcase/rpower/rpower_wrongpasswd_test.sh  -c $$CN
 check:rc==0
