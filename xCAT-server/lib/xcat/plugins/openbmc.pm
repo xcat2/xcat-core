@@ -253,7 +253,7 @@ my %status_info = (
 
     RSETBOOT_SET_REQUEST => {
         method         => "PUT",
-        init_url       => "$openbmc_project_url/control/host0/boot_source/attr/BootSource",
+        init_url       => "$openbmc_project_url/control/host0/boot/attr/BootSource",
         data           => "xyz.openbmc_project.Control.Boot.Source.Sources.",
     },
     RSETBOOT_SET_RESPONSE => {
@@ -261,7 +261,7 @@ my %status_info = (
     },
     RSETBOOT_STATUS_REQUEST  => {
         method         => "GET",
-        init_url       => "$openbmc_project_url/control/host0/boot_source",
+        init_url       => "$openbmc_project_url/control/host0/boot",
     },
     RSETBOOT_STATUS_RESPONSE => {
         process        => \&rsetboot_response,
@@ -529,7 +529,7 @@ sub parse_args {
         return ([ 1, "Error parsing arguments." ]) if ($option !~ /V|verbose/);
     }
 
-    if (scalar(@ARGV) >= 2 and ($command =~ /rpower|rinv|rsetboot|rvitals/)) {
+    if (scalar(@ARGV) >= 2 and ($command =~ /rpower|rinv|rvitals/)) {
         return ([ 1, "Only one option is supported at the same time for $command" ]);
     } elsif (scalar(@ARGV) == 0 and $command =~ /rpower|rspconfig|rflash/) {
         return ([ 1, "No option specified for $command" ]);
@@ -747,6 +747,12 @@ sub parse_command_status {
     }
 
     if ($command eq "rsetboot") {
+        if ($$subcommands[-1] and $$subcommands[-1] eq "-o") {
+            pop(@$subcommands);
+            $status_info{RSETBOOT_SET_REQUEST}{init_url} = "$openbmc_project_url/control/host0/boot_source/attr/BootSource";
+            $status_info{RSETBOOT_STATUS_REQUEST}{init_url} = "$openbmc_project_url/control/host0/boot_source";
+        }
+
         if (defined($$subcommands[0])) {
             $subcommand = $$subcommands[0];
         } else {
