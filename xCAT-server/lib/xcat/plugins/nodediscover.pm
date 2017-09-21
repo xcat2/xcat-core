@@ -248,8 +248,16 @@ sub process_request {
         #for onie switch, lookup and set the switchtype via mac of mgt interface
         my $switchestab = xCAT::Table->new('switches');
         if ($switchestab) {
-            my $switchtype=$xCAT::data::switchinfo::global_mac_identity{substr(lc($request->{_xcat_clientmac}->[0]),0,8)};
-            if(defined $switchtype){
+            my $switchtype;
+            my $switchvendor=$xCAT::data::switchinfo::global_mac_identity{substr(lc($request->{_xcat_clientmac}->[0]),0,8)};
+            if(defined $switchvendor){
+                my $search_string = join '|', keys(%xCAT::data::switchinfo::global_switch_type);
+                if ($switchvendor =~ /($search_string)/) {
+                    $switchtype=$xCAT::data::switchinfo::global_switch_type{$1};
+                }
+            }
+             
+            if($switchtype){
                 $switchestab->setNodeAttribs($node,{ switchtype => $switchtype });
             }
             $switchestab->close();
