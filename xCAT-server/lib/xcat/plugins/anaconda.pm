@@ -355,11 +355,9 @@ sub mknetboot
                         $img_hash{$imagename}->{'partfile'} = $ref1->{'partitionfile'};
                     }
                 } else {
-                    my $rsp;
-                    $rsp->{node}->[0]->{name}->[0]      = $node;
-                    $rsp->{node}->[0]->{errorcode}->[0] = 1;
-                    $rsp->{node}->[0]->{error}->[0]     = "The OS image '$imagename' for node does not exist";
-                    $callback->($rsp);
+                    $callback->(
+                        { error => ["The os image $imagename does not exists on the osimage table for $node"],
+                            errorcode => [1] });
                     next;
                 }
             }
@@ -381,7 +379,6 @@ sub mknetboot
             $cfgpart         = $ph->{'cfgpart'};
         }
         else {
-            # This is deprecated mode to define node's provmethod, not supported now.
             $osver      = $ent->{os};
             $arch       = $ent->{arch};
             $profile    = $ent->{profile};
@@ -405,12 +402,10 @@ sub mknetboot
                     $rootfstype = $ref1->{'rootfstype'};
                 }
             } else {
-                my $rsp;
-                $rsp->{node}->[0]->{name}->[0]      = $node;
-                $rsp->{node}->[0]->{errorcode}->[0] = 1;
-                $rsp->{node}->[0]->{error}->[0]     = "The OS image $osver-$arch-$imgname-$profile for node does not exist";
-                $callback->($rsp);
-                next;
+                $callback->(
+                    { error => [qq{Cannot find the linux image called "$osver-$arch-$imgname-$profile", maybe you need to use the "nodeset <nr> osimage=<osimage name>" command to set the boot state}],
+                        errorcode => [1] }
+                );
             }
 
             if (!$linuximagetab) {
@@ -446,23 +441,22 @@ sub mknetboot
                     }
                 }
             } else {
-                my $rsp;
-                $rsp->{node}->[0]->{name}->[0]      = $node;
-                $rsp->{node}->[0]->{errorcode}->[0] = 1;
-                $rsp->{node}->[0]->{error}->[0]     = "The OS image $osver-$arch-$imgname-$profile for node does not exist";
-                $callback->($rsp);
-                next;
+                $callback->(
+                    { error => [qq{ Cannot find the linux image called "$osver-$arch-$imgname-$profile", maybe you need to use the "nodeset <nr> osimage=<your_image_name>" command to set the boot state}],
+                        errorcode => [1] }
+                );
             }
         }
 
         #print"osvr=$osver, arch=$arch, profile=$profile, imgdir=$rootimgdir\n";
         unless ($osver and $arch and $profile)
         {
-            my $rsp;
-            $rsp->{node}->[0]->{name}->[0]      = $node;
-            $rsp->{node}->[0]->{errorcode}->[0] = 1;
-            $rsp->{node}->[0]->{error}->[0]     = "Insufficient nodetype entry or osimage entry for $node";
-            $callback->($rsp);
+            $callback->(
+                {
+                    error => ["Insufficient nodetype entry or osimage entry for $node"],
+                    errorcode => [1]
+                }
+            );
             next;
         }
 
@@ -473,20 +467,18 @@ sub mknetboot
         # statelite images are not packed.
         if ($statelite) {
             unless (-r "$rootimgdir/kernel") {
-                my $rsp;
-                $rsp->{node}->[0]->{name}->[0]      = $node;
-                $rsp->{node}->[0]->{errorcode}->[0] = 1;
-                $rsp->{node}->[0]->{error}->[0]     = qq{Did you run "genimage" before running "liteimg"? kernel cannot be found at $rootimgdir/kernel on $myname};
-                $callback->($rsp);
+                $callback->({
+                        error => [qq{Did you run "genimage" before running "liteimg"? kernel cannot be found at $rootimgdir/kernel on $myname}],
+                        errorcode => [1]
+                });
                 next;
             }
             if (!-r "$rootimgdir/initrd-statelite.gz") {
                 if (!-r "$rootimgdir/initrd.gz") {
-                    my $rsp;
-                    $rsp->{node}->[0]->{name}->[0]      = $node;
-                    $rsp->{node}->[0]->{errorcode}->[0] = 1;
-                    $rsp->{node}->[0]->{error}->[0]     = qq{Did you run "genimage" before running "liteimg"? initrd.gz or initrd-statelite.gz cannot be found at $rootimgdir/initrd.gz on $myname};
-                    $callback->($rsp);
+                    $callback->({
+                            error => [qq{Did you run "genimage" before running "liteimg"? initrd.gz or initrd-statelite.gz cannot be found at $rootimgdir/initrd.gz on $myname}],
+                            errorcode => [1]
+                    });
                     next;
                 }
                 else {
@@ -494,40 +486,35 @@ sub mknetboot
                 }
             }
             if ($rootfstype eq "ramdisk" and !-r "$rootimgdir/rootimg-statelite.gz") {
-                my $rsp;
-                $rsp->{node}->[0]->{name}->[0]      = $node;
-                $rsp->{node}->[0]->{errorcode}->[0] = 1;
-                $rsp->{node}->[0]->{error}->[0]     = qq{No packed image for platform $osver, architecture $arch and profile $profile, please run "liteimg" to create it.};
-                $callback->($rsp);
+                $callback->({
+                        error => [qq{No packed image for platform $osver, architecture $arch and profile $profile, please run "liteimg" to create it.}],
+                        errorcode => [1]
+                });
                 next;
             }
         } else {
             unless (-r "$rootimgdir/kernel") {
-                my $rsp;
-                $rsp->{node}->[0]->{name}->[0]      = $node;
-                $rsp->{node}->[0]->{errorcode}->[0] = 1;
-                $rsp->{node}->[0]->{error}->[0]     = qq{Did you run "genimage" before running "packimage"? kernel cannot be found at $rootimgdir/kernel on $myname};
-                $callback->($rsp);
+                $callback->({
+                        error => [qq{Did you run "genimage" before running "packimage"? kernel cannot be found at $rootimgdir/kernel on $myname}],
+                        errorcode => [1]
+                });
                 next;
             }
             if (!-r "$rootimgdir/initrd-stateless.gz") {
                 if (!-r "$rootimgdir/initrd.gz") {
-                    my $rsp;
-                    $rsp->{node}->[0]->{name}->[0]      = $node;
-                    $rsp->{node}->[0]->{errorcode}->[0] = 1;
-                    $rsp->{node}->[0]->{error}->[0]     = qq{Did you run "genimage" before running "packimage"? initrd.gz or initrd-stateless.gz cannot be found at $rootimgdir/initrd.gz on $myname};
-                    $callback->($rsp);
+                    $callback->({
+                            error => [qq{Did you run "genimage" before running "packimage"? initrd.gz or initrd-stateless.gz cannot be found at $rootimgdir/initrd.gz on $myname}],
+                            errorcode => [1]
+                    });
                     next;
                 } else {
                     copy("$rootimgdir/initrd.gz", "$rootimgdir/initrd-stateless.gz");
                 }
             }
             unless ( -f -r "$rootimgdir/$compressedrootimg") {
-                my $rsp;
-                $rsp->{node}->[0]->{name}->[0]      = $node;
-                $rsp->{node}->[0]->{errorcode}->[0] = 1;
-                $rsp->{node}->[0]->{error}->[0]     = "No packed image for platform $osver, architecture $arch, and profile $profile found at $rootimgdir/rootimg.gz or $rootimgdir/rootimg.sfs on $myname, please run packimage (e.g.  packimage -o $osver -p $profile -a $arch";
-                $callback->($rsp);
+                $callback->({
+                        error => ["No packed image for platform $osver, architecture $arch, and profile $profile found at $rootimgdir/rootimg.gz or $rootimgdir/rootimg.sfs on $myname, please run packimage (e.g.  packimage -o $osver -p $profile -a $arch"],
+                        errorcode => [1] });
                 next;
             }
         }
@@ -580,21 +567,21 @@ sub mknetboot
             } else {
                 $initrdloc .= "/initrd-statelite.gz";
             }
-            unless (-r "$tftppath/kernel" and -r $initrdloc) {
-                my $rsp;
-                $rsp->{node}->[0]->{name}->[0]      = $node;
-                $rsp->{node}->[0]->{errorcode}->[0] = 1;
-                $rsp->{node}->[0]->{error}->[0]     = qq{Copying to $tftppath failed.};
-                $callback->($rsp);
+            unless (-r "$tftppath/kernel"
+                and -r $initrdloc) {
+                $callback->({
+                        error     => [qq{copying to $tftppath failed}],
+                        errorcode => [1]
+                });
                 next;
             }
         } else {
-            unless (-r "$tftppath/kernel" and -r "$tftppath/initrd-stateless.gz") {
-                my $rsp;
-                $rsp->{node}->[0]->{name}->[0]      = $node;
-                $rsp->{node}->[0]->{errorcode}->[0] = 1;
-                $rsp->{node}->[0]->{error}->[0]     = qq{Copying to $tftppath failed.};
-                $callback->($rsp);
+            unless (-r "$tftppath/kernel"
+                and -r "$tftppath/initrd-stateless.gz") {
+                $callback->({
+                        error     => [qq{copying to $tftppath failed}],
+                        errorcode => [1]
+                });
                 next;
             }
         }
@@ -648,11 +635,14 @@ sub mknetboot
         }
         unless ($imgsrv)
         {
-            my $rsp;
-            $rsp->{node}->[0]->{name}->[0]      = $node;
-            $rsp->{node}->[0]->{errorcode}->[0] = 1;
-            $rsp->{node}->[0]->{error}->[0]     = "Unable to determine or reasonably guess the image server for $node";
-            $callback->($rsp);
+            $callback->(
+                {
+                    error => [
+"Unable to determine or reasonably guess the image server for $node"
+                    ],
+                    errorcode => [1]
+                }
+            );
             next;
         }
         my $kcmdline;
@@ -763,9 +753,11 @@ sub mknetboot
         }
         else {
             if (-r "$rootimgdir/$compressedrootimg.metainfo") {
-                $kcmdline = "imgurl=$httpmethod://$imgsrv:$httpport/$rootimgdir/$compressedrootimg.metainfo ";
+                $kcmdline =
+"imgurl=$httpmethod://$imgsrv:$httpport/$rootimgdir/$compressedrootimg.metainfo ";
             } else {
-                $kcmdline = "imgurl=$httpmethod://$imgsrv:$httpport/$rootimgdir/$compressedrootimg ";
+                $kcmdline =
+"imgurl=$httpmethod://$imgsrv:$httpport/$rootimgdir/$compressedrootimg ";
             }
             $kcmdline .= "XCAT=$xcatmaster:$xcatdport ";
             $kcmdline .= "NODE=$node ";
@@ -840,11 +832,14 @@ sub mknetboot
             #my $sent = $hmtab->getNodeAttribs($node,['serialspeed','serialflow']);
             unless ($sent->{serialspeed})
             {
-                my $rsp;
-                $rsp->{node}->[0]->{name}->[0]      = $node;
-                $rsp->{node}->[0]->{errorcode}->[0] = 1;
-                $rsp->{node}->[0]->{error}->[0]     = "serialport defined, but no serialspeed for $node in nodehm table";
-                $callback->($rsp);
+                $callback->(
+                    {
+                        error => [
+"serialport defined, but no serialspeed for $node in nodehm table"
+                        ],
+                        errorcode => [1]
+                    }
+                );
                 next;
             }
             if ($arch =~ /ppc64/i) {
