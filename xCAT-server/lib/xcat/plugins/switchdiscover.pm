@@ -351,6 +351,9 @@ sub process_request {
                 #appending mac address to end of hostname
                 my $name = $result->{$_}->{name};
                 if (exists $username_hash{$name}) {
+                    if ($name eq '') {
+                        $name = "$device";
+                    }
                     my $mac_str = lc($_);
                     $mac_str =~ s/\://g;
                     $result->{$_}->{name} = "$name-$mac_str";
