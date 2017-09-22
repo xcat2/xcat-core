@@ -25,7 +25,7 @@ use xCAT::data::switchinfo;
 
 #global variables for this module
 my $device;
-my $community;
+my $community="public";
 my %globalopt;
 my @filternodes;
 my @iprange;
@@ -144,7 +144,7 @@ sub parse_args {
     # Process command-line flags
     #############################################
     if (!GetOptions( \%opt,
-            qw(h|help V|verbose v|version x z w r n range=s s=s setup pdu))) {
+            qw(h|help V|verbose v|version x z w r n range=s s=s c=s setup pdu))) {
         return( usage() );
     }
 
@@ -251,6 +251,14 @@ sub parse_args {
     if ( exists( $opt{n} )) {
         $globalopt{n} = 1;
     }
+
+    #########################################################
+    # Accept the community string from user
+    #########################################################
+    if ( exists( $opt{c} )) {
+        $community=$opt{c};
+    }
+
 
     #########################################################
     # setup discover switch
@@ -892,13 +900,6 @@ sub snmp_scan {
     }
     my @lines = split /\n/, $result;
   
-    #set community string for switch
-    $community = "public";
-    my @snmpcs = xCAT::TableUtils->get_site_attribute("snmpc");
-    my $tmp    = $snmpcs[0];
-    if (defined($tmp)) { $community = $tmp }
-
-
     foreach my $line (@lines) {
         my @array = split / /, $line;
         if ($line =~ /\b(\d{1,3}(?:\.\d{1,3}){3})\b/)
