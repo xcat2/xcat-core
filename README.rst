@@ -22,6 +22,11 @@ Developers
 Developers and prospective contributors are encouraged to read the `Developers Guide <http://xcat-docs.readthedocs.io/en/latest/developers/>`_
 In particular the `GitHub <http://xcat-docs.readthedocs.io/en/latest/developers/github/>`_ related subsection.
 
+.. |docs_2137| image:: https://readthedocs.org/projects/xcat-docs/badge/?version=2.13.7
+    :alt: 2.13.7 documentation status
+    :scale: 100%
+    :target: http://xcat-docs.readthedocs.io/en/2.13.7/
+    
 .. |docs_2136| image:: https://readthedocs.org/projects/xcat-docs/badge/?version=2.13.6
     :alt: 2.13.6 documentation status
     :scale: 100%
