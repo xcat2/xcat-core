@@ -274,6 +274,7 @@ sub process_request {
         my @hostnames_to_update = ();
         my %bydriverindex;
         my $forcenic = 0; #-1 is force skip, 0 is use default behavior, 1 is force to be declared even if hosttag is skipped to do so
+        my $macs_withip = 0;
         foreach (@{ $request->{mac} }) {
             @ifinfo = split /\|/;
 
@@ -308,6 +309,7 @@ sub process_request {
             if ($ifinfo[3]) {
                 (my $ip, my $netbits) = split /\//, $ifinfo[3];
                 if ($ip =~ /\d+\.\d+\.\d+\.\d+/) {
+                    $macs_withip++;
                     my $ipn = unpack("N", inet_aton($ip));
                     my $mask = 2**$netbits - 1 << (32 - $netbits);
                     my $netn = inet_ntoa(pack("N", $ipn & $mask));
@@ -348,6 +350,9 @@ sub process_request {
             } else {
                 if ($forcenic == 1) { $macstring .= $currmac . "|"; }
             }
+        }
+        if ($macs_withip == 1 and $macstring =~ /\*NOIP\*/) {
+            return;
         }
         $macstring =~ s/\|\z//;
         $mactab->setNodeAttribs($node, { mac => $macstring });
