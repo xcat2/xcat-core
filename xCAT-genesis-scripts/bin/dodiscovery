@@ -159,10 +159,12 @@ fi
 
 flag_mtm=`echo '$MTM' | sed 's/0//g'`
 if [ $flag_mtm ] && [ "$MTM" != "unknown" ]; then
+	MTM=`echo $MTM | sed 's/\.//g'`
 	echo "<mtm>$MTM</mtm>" >> /tmp/discopacket
 fi
 flag_serial=`echo '$SERIAL' | sed 's/0//g'`
 if [ $flag_serial ] && [ "$SERIAL" != "unknown" ]; then
+	SERIAL=`echo $SERIAL | sed 's/\.//g'`
 	echo "<serial>$SERIAL</serial>" >> /tmp/discopacket
 fi
 if [ "$PLATFORM" != "unknown" ]; then
