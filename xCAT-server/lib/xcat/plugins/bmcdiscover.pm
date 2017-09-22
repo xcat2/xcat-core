@@ -1155,8 +1155,8 @@ sub bmcdiscovery_openbmc{
         }
 
         # delete space before and after
-        $mtm =~ s/^\s+|\s+$//g; 
-        $serial =~ s/^\s+|\s+$//g;
+        $mtm =~ s/^\s+|\s+$|\.+//g; 
+        $serial =~ s/^\s+|\s+$|\.+//g;
 
         $mtm = '' if ($mtm =~ /^0+$/);
         $serial = '' if ($serial =~ /^0+$/);
