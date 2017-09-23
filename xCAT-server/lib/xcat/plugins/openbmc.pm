@@ -44,6 +44,7 @@ $::POWER_STATE_RESET        = "reset";
 $::POWER_STATE_REBOOT       = "reboot";
 $::UPLOAD_FILE              = "";
 $::UPLOAD_FILE_VERSION      = "";
+$::RSETBOOT_URL_PATH        = "boot";
 
 $::NO_ATTRIBUTES_RETURNED   = "No attributes returned from the BMC.";
 
@@ -253,7 +254,7 @@ my %status_info = (
 
     RSETBOOT_SET_REQUEST => {
         method         => "PUT",
-        init_url       => "$openbmc_project_url/control/host0/boot/attr/BootSource",
+        init_url       => "$openbmc_project_url/control/host0/$::RSETBOOT_URL_PATH/attr/BootSource",
         data           => "xyz.openbmc_project.Control.Boot.Source.Sources.",
     },
     RSETBOOT_SET_RESPONSE => {
@@ -261,7 +262,7 @@ my %status_info = (
     },
     RSETBOOT_STATUS_REQUEST  => {
         method         => "GET",
-        init_url       => "$openbmc_project_url/control/host0/boot",
+        init_url       => "$openbmc_project_url/control/host0/$::RSETBOOT_URL_PATH",
     },
     RSETBOOT_STATUS_RESPONSE => {
         process        => \&rsetboot_response,
@@ -378,6 +379,15 @@ sub preprocess_request {
     } else {
         $::OPENBMC_DEVEL = $request->{environment}->{XCAT_OPENBMC_DEVEL};
     }
+
+    if (ref($request->{environment}) eq 'ARRAY' and ref($request->{environment}->[0]->{XCAT_OPENBMC_FIRMWARE}) eq 'ARRAY') {
+        $::OPENBMC_FW = $request->{environment}->[0]->{XCAT_OPENBMC_FIRMWARE}->[0];
+    } elsif (ref($request->{environment}) eq 'ARRAY') {
+        $::OPENBMC_FW = $request->{environment}->[0]->{XCAT_OPENBMC_FIRMWARE};
+    } else {
+        $::OPENBMC_FW = $request->{environment}->{XCAT_OPENBMC_FIRMWARE};
+    }
+
     ##############################################
 
     $callback  = shift;
@@ -758,8 +768,8 @@ sub parse_command_status {
     if ($command eq "rsetboot") {
         if ($$subcommands[-1] and $$subcommands[-1] eq "-o") {
             pop(@$subcommands);
-            $status_info{RSETBOOT_SET_REQUEST}{init_url} = "$openbmc_project_url/control/host0/boot_source/attr/BootSource";
-            $status_info{RSETBOOT_STATUS_REQUEST}{init_url} = "$openbmc_project_url/control/host0/boot_source";
+            $status_info{RSETBOOT_SET_REQUEST}{init_url} = "$openbmc_project_url/control/host0/$::RSETBOOT_URL_PATH/attr/BootSource";
+            $status_info{RSETBOOT_STATUS_REQUEST}{init_url} = "$openbmc_project_url/control/host0/$::RSETBOOT_URL_PATH";
         }
 
         if (defined($$subcommands[0])) {
@@ -768,6 +778,15 @@ sub parse_command_status {
             $subcommand = "stat";
         }
         if ($subcommand =~ /^hd$|^net$|^cd$|^default$|^def$/) {
+            if (defined($::OPENBMC_FW) && ($::OPENBMC_FW < 1738)) {
+                #
+                # In 1738, the endpount URL changed.  In order to support the older URL as a work around, allow for a environment
+                # variable to change this value. 
+                #
+                $::RSETBOOT_URL_PATH = "boot_source";
+                $status_info{RSETBOOT_SET_REQUEST}{init_url} = "$openbmc_project_url/control/host0/$::RSETBOOT_URL_PATH/attr/BootSource";
+                $status_info{RSETBOOT_STATUS_REQUEST}{init_url} = "$openbmc_project_url/control/host0/$::RSETBOOT_URL_PATH";
+            }
             $next_status{LOGIN_RESPONSE} = "RSETBOOT_SET_REQUEST";
             $next_status{RSETBOOT_SET_REQUEST} = "RSETBOOT_SET_RESPONSE";
             if ($subcommand eq "net") {
