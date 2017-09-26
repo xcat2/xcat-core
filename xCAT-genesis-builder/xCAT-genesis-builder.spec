@@ -1,7 +1,7 @@
 BuildArch: noarch
 %define name	xCAT-genesis-builder
 Version: %{?version:%{version}}%{!?version:%(cat Version)}
-Release: %{?release:%{release}}%{!?release:%(cat Release)}
+Release: %{?release:%{release}}%{!?release:snap%(date +"%Y%m%d")%(cat xCAT-genesis-builder/build_index)}
 Epoch: 1
 AutoReq: false
 Requires: ipmitool screen btrfs-progs lldpad rpm-build mstflint xfsprogs nc rpmdevtools libstdc++-devel pciutils bridge-utils ntp ntp-perl iprutils psmisc mdadm bind-utils dosfstools usbutils libusbx
