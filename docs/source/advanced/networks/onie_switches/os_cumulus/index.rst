@@ -10,3 +10,4 @@ This documentation will focus on installing the Cumulus Network Operating System
    prepare.rst
    install.rst
    manage.rst
+   upgrade.rst
