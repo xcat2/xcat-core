@@ -1466,6 +1466,12 @@ sub rinv_response {
                     }
                     next;
                 }
+
+                if ($purpose_value =~ "BMC" and $activation_value =~ "Active" and $priority_value == 255) {
+                    $content_info = "$purpose_value Firmware Product:   $content{Version} ($activation_value)";
+                    $content_info .= "*";
+                    push (@sorted_output, $content_info);
+                }
             }
         } else {
             if (! defined $content{Present}) {
