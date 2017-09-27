@@ -113,8 +113,13 @@ sub process_request {
         "version|v"   => \$version
     );
     if ($arch or $osver or $profile) {
-        $callback->({ error => ["-o, -p and -a options are obsoleted, please use 'packimage <osimage name>' instead."], errorcode => [1] });
-        return 1;
+        my @ents = xCAT::TableUtils->get_site_attribute("disablenodesetwarning");
+        my $site_ent = $ents[0];
+         if (!defined($site_ent) || ($site_ent =~ /no/i) || ($site_ent =~ /0/)) {
+
+            $callback->({ error => ["-o, -p and -a options are obsoleted, please use 'packimage <osimage name>' instead."], errorcode => [1] });
+            return 1;
+        }
     }
     if ($version) {
         my $version = xCAT::Utils->Version();
