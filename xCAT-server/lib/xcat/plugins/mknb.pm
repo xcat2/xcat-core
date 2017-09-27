@@ -98,9 +98,11 @@ sub process_request {
         $callback->({ error => "Need to specify architecture (x86, x86_64 or ppc64)" }, { errorcode => [1] });
         return;
     } elsif ($arch eq "ppc64le" or $arch eq "ppc64el") {
-        $callback->({ data => "The arch:$arch is not supported at present, pls use \"ppc64\" instead" });
-        return;
+        $callback->({ data => "The arch:$arch is not supported at present, use \"ppc64\" instead" });
+        $arch = 'ppc64';
+        $request->{arg}->[0] = $arch;
     }
+
     unless (-d "$::XCATROOT/share/xcat/netboot/$arch" or -d "$::XCATROOT/share/xcat/netboot/genesis/$arch") {
         $callback->({ error => "Unable to find directory $::XCATROOT/share/xcat/netboot/$arch or $::XCATROOT/share/xcat/netboot/genesis/$arch", errorcode => [1] });
         return;

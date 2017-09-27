@@ -19,7 +19,7 @@ SYNOPSIS
 ********
 
 
-\ **nodediscoverls**\  [\ **-t seq | profile | switch | blade | manual | undef | all**\ ] [\ **-l**\ ]
+\ **nodediscoverls**\  [\ **-t seq | profile | switch | blade | manual | mtms | undef | all**\ ] [\ **-l**\ ]
 
 \ **nodediscoverls**\  [\ **-u**\  \ *uuid*\ ] [\ **-l**\ ]
 
@@ -47,7 +47,7 @@ OPTIONS
 
 
 
-\ **-t seq|profile|switch|blade|manual|undef|all**\ 
+\ **-t seq|profile|switch|blade|manual|mtms|undef|all**\ 
  
  Display the nodes that have been discovered by the specified discovery method:
  
@@ -69,6 +69,10 @@ OPTIONS
  
  
  \* \ **manual**\  - Manually discovery (used when defining node by nodediscoverdef command).
+ 
+ 
+ 
+ \* \ **mtms**\  - MTMS discovery (used when node mtm and serial fields are filled in).
  
  
  

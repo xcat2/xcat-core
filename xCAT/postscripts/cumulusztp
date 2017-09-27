@@ -114,6 +114,20 @@ else
     logger -s -t "xcat.cumulusztp" -p local4.info "SNMP enabled!"
 fi
 
+#install license, if needed
+cl-license > /dev/null 2>&1
+rc=$?
+if [ "$rc" != "0" ];then
+    if cl-license -i http://$server_ip/install/custom/sw_os/cumulus/licensefile.txt; then
+        logger -s -t "xcat.cumulusztp" -p local4.info "installed Cumulus license"
+        systemctl enable switchd
+        systemctl start switchd
+    else
+        logger -s -t "xcat.cumulusztp" -p local4.err "failed to install Cumulus license"
+        echo "failed to install Cumulus license"
+    fi
+fi
+
 #config base interface
 ./configinterface
 rc=$?
@@ -135,7 +149,7 @@ fi
 
 #config static ip address for mgt interface
 echo './confignics -s' >> ./mypostscript
-chmod +x ./mypostscript
+chmod 700 ./mypostscript
 ./mypostscript
 rc=$?
 if [ "$rc" != "0" ]; then

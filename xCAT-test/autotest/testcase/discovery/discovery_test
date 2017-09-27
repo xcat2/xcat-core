@@ -1,0 +1,849 @@
+#!/usr/bin/env perl
+# IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
+use strict;
+use warnings;
+use Getopt::Long;
+use Data::Dumper;
+use Time::Local;
+use File::Basename;
+use File::Path;
+
+
+#--------------command line attrbutes--------------
+my $needhelp              = 0;
+my $discovery_mode        = undef;
+my $discovery_target_node = undef;
+my $bmc_dynamic_ip_range  = undef;
+
+my $bmc_target_mac     = undef;
+my $osimage            = undef;
+my $bmc_discovery_only = 0;
+
+#--------------global attributes----------------
+my $prpgram_path = dirname(File::Spec->rel2abs(__FILE__));
+my $program_name = basename($0);
+my $rst          = 0;
+my @error        = ();
+
+#The structure of %discovery_target_node_info
+# $discovery_target_node_info{nodename}
+# $discovery_target_node_info{bmc}
+# $discovery_target_node_info{ip}
+# $discovery_target_node_info{mtm}
+# $discovery_target_node_info{serial}
+# $discovery_target_node_info{switch}
+# $discovery_target_node_info{switchport}
+my %discovery_target_node_info;
+
+my @expected_bmc_node_name;
+my @origin_bmc_definition;
+my $be_discovered_bmc_node;
+
+
+my $discovery_prodefine_node_name_in_automation = "discovery_prodefine_node_name_in_automation";
+
+my @expected_attrs_for_bmc_discovery = ("mtm", "serial", "bmcusername", "bmcpassword", "bmc");
+my $expected_attrs_for_bmc_discovery_str = join(",", @expected_attrs_for_bmc_discovery);
+
+my @expected_attrs_for_mtms_based_node_discovery = ("ip", "bmc", "mtm", "serial", "mgt", "cons", "netboot", "mac", "bmcusername", "bmcpassword");
+my $expected_attrs_for_mtms_based_node_discovery_str = join(",",@expected_attrs_for_mtms_based_node_discovery);
+
+my @expected_attrs_for_switch_based_node_discovery = ("ip", "bmc", "mtm", "serial", "mgt", "cons", "netboot", "mac", "bmcusername", "bmcpassword", "switch", "switchport");
+my $expected_attrs_for_switch_based_node_discovery_str = join(",", @expected_attrs_for_switch_based_node_discovery);
+
+#----------------------usage--------------------
+$::USAGE = "Usage:
+
+     To test bmc discovery process, switch_based node discovery process or mtms_based node discovery process.
+
+To get help:
+    $program_name -h
+    
+To just test the process of bmc discovery
+    $program_name  --discovery_target_node <node_name> --bmc_dynamic_ip_range <ip_range> --bmc_discovery_only
+
+To test the whole process of mtms_based node discovery
+    $program_name  --discovery_mode mtms --discovery_target_node <node_name> --bmc_dynamic_ip_range <ip_range> --osimage <image>
+
+To test the whole process of switch_based node discovery
+    $program_name  --discovery_mode switch --discovery_target_node <node_name> --bmc_dynamic_ip_range <ip_range> --osimage <image>
+
+Options:
+    discovery_target_node: Required. The reference node planned to be discovered which must be definied in xcat DB ahead.
+    bmc_dynamic_ip_range: Required. A valid dymanic ip range which has been configured in DHCP server and can offer service before invoking $program_name. The format of ip range is x.y1-y2.n1-n2.m1-m2
+    discovery_mode: The mode of discovery. Valid mode are mtms or switch. Used with option 'osimage'. Can not be used with 'bmc_discovery_only' at the same time.
+    osimage: The image used to deploy on target node. Used with option 'discovery_mode'. Can not be used with option 'bmc_discovery_only' at the same time.
+    bmc_discovery_only: Just test bmc discovery process, not test node discovery process. Can not be used with option 'osimage' or 'discovery_mode' at the same time.
+    
+Notes:
+    Up to now, only support one discovery_target_node.
+    When preparing discovery_target_node, below atrributes are required for each test scenario.
+    For only bmc discovery: $expected_attrs_for_bmc_discovery_str
+    For mtm_based node discovery: $expected_attrs_for_mtms_based_node_discovery_str
+    For switch_based node discovery: $expected_attrs_for_switch_based_node_discovery_str
+";
+
+
+#==============================================================================================
+# main process
+#==============================================================================================
+if (
+    !GetOptions("h" => \$needhelp,
+        "discovery_mode=s"        => \$discovery_mode,
+        "discovery_target_node=s" => \$discovery_target_node,
+        "bmc_dynamic_ip_range=s"  => \$bmc_dynamic_ip_range,
+        "osimage=s"               => \$osimage,
+        "bmc_discovery_only"      => \$bmc_discovery_only)
+  )
+{
+    print "[ERROR] Invalid usage.\n\n$::USAGE";
+    to_exit(1);
+}
+
+if ($needhelp)
+{
+    print "$::USAGE\n";
+    to_exit(0);
+}
+
+unless(defined $discovery_target_node and defined $bmc_dynamic_ip_range){
+    print "[ERROR] options 'discovery_target_node' and 'bmc_dynamic_ip_range' are required.\n\n$::USAGE";
+    to_exit(1);
+} 
+
+if($bmc_discovery_only){
+    if($discovery_mode or $osimage){
+        print "[ERROR] option 'bmc_discovery_only' can not be used with 'discovery_mode' or 'osimage' at the sametime\n\n$::USAGE";
+        to_exit(1);
+    }
+}else{
+    unless($discovery_mode and $osimage){
+        print "[ERROR] options 'discovery_mode' and 'osimage' are necessary for testing node discovery process. Or use option 'bmc_discovery_only' to test bmc discovery\n\n$::USAGE";
+        to_exit(1);
+    }
+}
+
+if (defined $discovery_mode){
+    unless ($discovery_mode eq "mtms" || $discovery_mode eq "switch") {
+        print "[ERROR] Invalid value of option 'discovery_mode'\n$::USAGE";
+        to_exit(1);
+    }
+}
+
+$SIG{TERM} = $SIG{INT} = sub {
+    to_exit(1);
+};
+
+print "----------------Check the configuration of test case itself----------------\n";
+$rst = check_test_case_self_conf(\@error);
+if ($rst) {
+    print "To Check the configration of test case itself......[Failed]\n";
+    dump_info(\@error);
+    to_exit(1);
+} else {
+    print "To Check the configration of test case itself......[pass]\n";
+    print "The discovery mode is $discovery_mode\n" if ($discovery_mode);
+    print "The reference node is $discovery_target_node\n";
+    my @output = runcmd("lsdef $discovery_target_node");
+    dump_info(\@output);
+    print "The reference bmc mac is $bmc_target_mac\n" if ($bmc_target_mac);
+    print "The bmc dynamic ip range is $bmc_dynamic_ip_range\n" if ($bmc_dynamic_ip_range);
+}
+
+print "----------------To set up test environment for bmc discovery----------------\n";
+$rst = reset_bmc_to_factory(\@error);
+if ($rst) {
+    print "To set up test environment......[Failed]\n";
+    dump_info(\@error);
+    to_exit(1);
+} else {
+    print "To set up test environment......[pass]\n";
+    my $expected_bmc = join(" or ", @expected_bmc_node_name);
+    print "Expected bmc node generated after bmcdiscovery is $expected_bmc\n";
+}
+
+print "----------------To discover BMC of $discovery_target_node ----------------\n";
+$rst = bmc_discovery(\@error);
+if ($rst) {
+    print "To discover BMC of $discovery_target_node......[Failed]\n";
+    dump_info(\@error);
+    to_exit(1);
+} else {
+    print "To discover BMC of $discovery_target_node......[pass]\n";
+    print "The discovered BMC is $be_discovered_bmc_node\n";
+    my @output = runcmd("lsdef $be_discovered_bmc_node");
+    dump_info(\@output);
+}
+
+if ($bmc_discovery_only) {
+    to_exit(0);
+}
+
+print "----------------To set up test environment for node discovery----------------\n";
+$rst = set_up_test_env_for_node_discovery(\@error);
+if ($rst) {
+    print "To set up test environment......[Failed]\n";
+    dump_info(\@error);
+    to_exit(1);
+} else {
+    print "To set up test environment......[pass]\n";
+    print "The predefine node used to be discovered is $discovery_prodefine_node_name_in_automation\n";
+    my @output = runcmd("lsdef  $discovery_prodefine_node_name_in_automation");
+    dump_info(\@output);
+}
+
+print "----------------To discover node $discovery_target_node ----------------\n";
+$rst = node_discovery(\@error);
+if ($rst) {
+    print "To discover node $discovery_prodefine_node_name_in_automation......[Failed]\n";
+    dump_info(\@error);
+    to_exit(1);
+} else {
+    print "To discover node $discovery_prodefine_node_name_in_automation......[pass]\n";
+    print "The discovered node is $discovery_prodefine_node_name_in_automation\n";
+    my @output = runcmd("lsdef   $discovery_prodefine_node_name_in_automation");
+    dump_info(\@output);
+}
+
+to_exit(0);
+
+#=============================================================================================
+# sub functions
+#==============================================================================================
+#--------------------------------------------------------
+# Fuction name:  check_test_case_self_conf
+# Description:
+# Atrributes:
+# Retrun code:
+#--------------------------------------------------------
+sub check_test_case_self_conf {
+    my $error_ref      = shift;
+
+    @$error_ref = ();
+    $discovery_target_node_info{nodename} = $discovery_target_node;
+    my @output = runcmd("lsdef -l $discovery_target_node");
+    if ($::RUNCMD_RC) {
+        push @$error_ref, "The reference node $discovery_target_node is not defined in xcat database";
+    } else {
+
+        #backup original node definition
+        foreach (@output) {
+            $discovery_target_node_info{$1} = $2 if ($_ =~ /\s*(\w+)=(.+)/);
+        }
+
+        $discovery_target_node_info{mac} = lc($discovery_target_node_info{mac}) if ($discovery_target_node_info{mac});
+
+        my @missing_attrs;
+        if ($bmc_discovery_only) {
+            foreach (@expected_attrs_for_bmc_discovery) {
+                push @missing_attrs, $_ unless (defined($discovery_target_node_info{$_}));
+            }
+        } else {
+            if ($discovery_mode eq "mtms") {
+                foreach (@expected_attrs_for_mtms_based_node_discovery) {
+                    push @missing_attrs, $_ unless (defined($discovery_target_node_info{$_}));
+                }
+            } elsif ($discovery_mode eq "switch") {
+                foreach (@expected_attrs_for_switch_based_node_discovery) {
+                    push @missing_attrs, $_ unless (defined($discovery_target_node_info{$_}));
+                }
+            }
+        }
+
+        if (@missing_attrs) {
+            my $missing_attrs_str = join(",", @missing_attrs);
+            push @$error_ref, "The reference node '$discovery_target_node' is missing '$missing_attrs_str' attribute";
+        }
+    }
+
+    if ((defined $discovery_mode) and ($discovery_mode eq "switch") and (defined $discovery_target_node_info{switch})) {
+        runcmd("lsdef $discovery_target_node_info{switch}");
+        if ($::RUNCMD_RC) {
+            push @$error_ref, "There is not switch $discovery_target_node_info{switch} definition in current MN";
+        } else {
+            my @output = runcmd("xcatprobe switch_macmap $discovery_target_node_info{switch}");
+            if ($::RUNCMD_RC) {
+                push @$error_ref, "Switch $discovery_target_node_info{switch} can not be accessed";
+            }
+        }
+    }
+
+    if (defined $osimage) {
+        runcmd(" lsdef -t osimage $osimage");
+        if ($::RUNCMD_RC) {
+            push @$error_ref, "There is not $osimage definition in current MN";
+        }
+    }
+
+    #To calculate BMC's mac
+    @output = runcmd("nmap -sn -n $discovery_target_node_info{bmc}");
+    if (grep { /Note: Host seems down/i } @output) {
+        push @$error_ref, "bmc $discovery_target_node_info{bmc} host down";
+    }else{
+        my %bmcinfo = calculate_bmc_info("$discovery_target_node_info{bmc}");
+        if(((defined $bmcinfo{serial}) and ($bmcinfo{serial} eq lc("$discovery_target_node_info{serial}"))) and ((defined $bmcinfo{mtm}) and ($bmcinfo{mtm} eq lc("$discovery_target_node_info{mtm}")))){
+            foreach (@output){
+              $bmc_target_mac=lc($1)  if($_ =~ /MAC Address:\s*(\w+:\w+:\w+:\w+:\w+:\w+).+/);
+            }
+        }else{
+             push @$error_ref, "The ip $discovery_target_node_info{bmc} corresponds to $bmcinfo{mtm}|$bmcinfo{serial}, not to expected $discovery_target_node_info{mtm}|$discovery_target_node_info{serial}";
+        }
+    
+        unless(defined $bmc_target_mac){
+            push @$error_ref, "Failed to calculate bmc's mac";
+        }
+    }
+
+    if (@$error_ref) {
+        return 1;
+    } else {
+        return 0;
+    }
+}
+
+#--------------------------------------------------------
+# Fuction name:  to_exit
+# Description:
+# Atrributes:
+# Retrun code:
+#--------------------------------------------------------
+sub to_exit {
+    my $exit_code = shift;
+
+    my $cmd;
+    my @output;
+
+    #delete predefine node used by test
+    @output = runcmd("lsdef $discovery_prodefine_node_name_in_automation");
+    #print Dumper \@output;
+    unless ($::RUNCMD_RC) {
+        my @cmds = ("makedns -d $discovery_prodefine_node_name_in_automation",
+            "nodeset $discovery_prodefine_node_name_in_automation offline",
+            "makehosts -d $discovery_prodefine_node_name_in_automation",
+            "rmdef $discovery_prodefine_node_name_in_automation");
+        runcmd("$_") foreach (@cmds);
+    }
+
+    #to restore original environment
+    if (%discovery_target_node_info) {
+        my @output = runcmd("lsdef $discovery_target_node");
+        if ($::RUNCMD_RC) {
+            $cmd = "chdef -t node -o $discovery_target_node ";
+            foreach (keys %discovery_target_node_info) {
+                next if ($_ eq "nodename");
+                $cmd .= "$_='$discovery_target_node_info{$_}' ";
+            }
+
+            #print "$cmd\n";
+            runcmd("$cmd");
+            runcmd("makehosts -a $discovery_target_node");
+        }
+    }
+
+    if (defined $be_discovered_bmc_node) {
+        runcmd("lsdef $be_discovered_bmc_node");
+        unless ($::RUNCMD_RC) {
+            runcmd("rmdef $be_discovered_bmc_node");
+        }
+    }
+
+    if (@origin_bmc_definition) {
+        for (my $i = 0 ; $i <= $#origin_bmc_definition ; $i++) {
+            $cmd = "chdef -t node -o $origin_bmc_definition[$i]{bmcname} ";
+            foreach (keys %{ $origin_bmc_definition[$i] }) {
+                next if ($_ eq "bmcname");
+                $cmd .= "$_='$origin_bmc_definition[$i]{$_}' ";
+            }
+            runcmd("$cmd");
+        }
+    }
+    exit $exit_code;
+}
+
+#--------------------------------------------------------
+# Fuction name:  runcmd
+# Description:
+# Atrributes:
+# Retrun code:
+#--------------------------------------------------------
+sub runcmd {
+    my ($cmd) = @_;
+    my $rc = 0;
+    $::RUNCMD_RC = 0;
+    my $outref = [];
+
+    @$outref = `$cmd 2>&1`;
+    if ($?)
+    {
+        $rc          = $?;
+        $::RUNCMD_RC = $rc;
+    }
+    chomp(@$outref);
+    return @$outref;
+}
+
+
+#--------------------------------------------------------
+# Fuction name:  dump_info
+# Description:
+# Atrributes:
+# Retrun code:
+#--------------------------------------------------------
+sub dump_info {
+    my $error_ref = shift;
+    foreach (@$error_ref) {
+        print "$_\n";
+    }
+}
+
+#--------------------------------------------------------
+# Fuction name:  reset_bmc_to_factory
+# Description:
+# Atrributes:
+# Retrun code:
+#--------------------------------------------------------
+sub reset_bmc_to_factory {
+    my @output;
+
+    my $tmp_bmc_name;
+    if (defined $discovery_target_node_info{mtm} and defined $discovery_target_node_info{serial}) {
+        $tmp_bmc_name = lc("node-$discovery_target_node_info{mtm}-$discovery_target_node_info{serial}");
+        push @expected_bmc_node_name, $tmp_bmc_name;
+    }
+    $tmp_bmc_name = lc("node-$bmc_target_mac");
+    $tmp_bmc_name =~ s/://g;
+    push @expected_bmc_node_name, $tmp_bmc_name;
+
+    for (my $i = 0 ; $i <= $#expected_bmc_node_name ; $i++) {
+        @output = runcmd("lsdef -l $expected_bmc_node_name[$i]");
+        unless ($::RUNCMD_RC) {
+            $origin_bmc_definition[$i]{bmcname} = $expected_bmc_node_name[$i];
+            foreach (@output) {
+                $origin_bmc_definition[$i]{$1} = $2 if ($_ =~ /\s*(\w+)=(.+)/);
+            }
+            print "To run rmdef $expected_bmc_node_name[$i]\n";
+            runcmd("rmdef $expected_bmc_node_name[$i]");
+        }
+    }
+
+    #To clear up history
+    my @cmds = ("ipmitool-xcat -H $discovery_target_node_info{bmc} -U $discovery_target_node_info{bmcusername} -P $discovery_target_node_info{bmcpassword} chassis power off",
+"ipmitool-xcat -H $discovery_target_node_info{bmc} -U $discovery_target_node_info{bmcusername} -P $discovery_target_node_info{bmcpassword} raw 0x32 0xBA 00 00",
+"ipmitool-xcat -H $discovery_target_node_info{bmc} -U $discovery_target_node_info{bmcusername} -P $discovery_target_node_info{bmcpassword} raw 0x32 0x66");
+
+    foreach my $cmd (@cmds) {
+        print "To run '$cmd' ...";
+        @output = runcmd("$cmd");
+        if ($::RUNCMD_RC) {
+            print "[Failed]\n";
+            dump_info(\@output);
+            return 1;
+        } else {
+            print "[Successful]\n";
+        }
+    }
+
+    return 0;
+}
+
+#--------------------------------------------------------
+# Fuction name:  set_up_test_env_node_discovery
+# Description:
+# Atrributes:
+# Retrun code:
+#--------------------------------------------------------
+sub set_up_test_env_for_node_discovery {
+    my @output;
+
+    #To clear up history and predefine node
+    my $predef_node_cmd = "chdef -t node -o $discovery_prodefine_node_name_in_automation ";
+    if ($discovery_mode eq "mtms") {
+        foreach (@expected_attrs_for_mtms_based_node_discovery) {
+            next if ($_ eq "mac");
+            $predef_node_cmd .= "$_='$discovery_target_node_info{$_}' ";
+        }
+        $predef_node_cmd .= "bmcvlantag='$discovery_target_node_info{bmcvlantag}' " if ($discovery_target_node_info{bmcvlantag});
+    } elsif ($discovery_mode eq "switch") {
+        foreach (@expected_attrs_for_switch_based_node_discovery) {
+            next if (($_ eq "mtm") or ($_ eq "serial") or ($_ eq "mac"));
+            $predef_node_cmd .= "$_='$discovery_target_node_info{$_}' ";
+        }
+        $predef_node_cmd .= "bmcvlantag='$discovery_target_node_info{bmcvlantag}' " if ($discovery_target_node_info{bmcvlantag});
+    }
+    $predef_node_cmd .= "installnic=mac primarynic=mac groups=autotest";
+
+    my @cmds = ("makedns -d $discovery_target_node",
+        "nodeset $discovery_target_node offline",
+        "makehosts -d $discovery_target_node",
+        "rm -f /var/log/consoles/node-*",
+        "rmdef $discovery_target_node",
+        "rm -f /var/lib/dhcp/*",
+        "touch /var/lib/dhcpd/dhcpd.leases",
+        "systemctl restart dhcpd",
+        "$predef_node_cmd",
+        "makehosts -a $discovery_prodefine_node_name_in_automation",
+        "makedns $discovery_prodefine_node_name_in_automation");
+
+    foreach my $cmd (@cmds) {
+        print "To run '$cmd'..";
+        @output = runcmd("$cmd");
+        if ($::RUNCMD_RC) {
+            print "failed\n";
+            dump_info(\@output);
+            return 1;
+        } else {
+            print "successful\n";
+        }
+    }
+
+    return 0;
+}
+
+#--------------------------------------------------------
+# Fuction name:  bmc_discovery
+# Description:
+# Atrributes:
+# Retrun code:
+#--------------------------------------------------------
+sub bmc_discovery {
+    my $error_ref = shift;
+
+    print "Waiting for the BMC to get dynamic ip....\n";
+
+    my @candidate_ips  = parse_dynamic_ip_range($bmc_dynamic_ip_range);
+    my $bmc_dynamic_ip = undef;
+    for (my $i = 0 ; $i < 30 ; $i++) {
+        foreach (@candidate_ips) {
+            print "ping -c 1 $_\n";
+            runcmd("ping -c 1 $_");
+            unless ($::RUNCMD_RC) {
+                my @output = runcmd("arp $_ |awk -F' ' '/$_/{print \$3}'");
+                print "The mac of ip $_ is $output[0]. The target bmc mac is $bmc_target_mac\n";
+                unless ($::RUNCMD_RC) {
+                    $output[0] = lc($output[0]);
+                    if ($output[0] eq $bmc_target_mac) {
+
+                        #print "bmc got dynamic ip is $_\n";
+                        $bmc_dynamic_ip = $_;
+                        last;
+                    }
+                }
+            }
+        }
+        last if (defined $bmc_dynamic_ip);
+        sleep 2;
+    }
+
+    if (defined $bmc_dynamic_ip) {
+        print "BMC to get dynamic ip $bmc_dynamic_ip\n";
+    } else {
+        print "BMC failed to get dynamic ip from $bmc_dynamic_ip_range in expected 1 minute\n";
+        return 1;
+    }
+
+    print "Starting to discover BMC.........\n";
+    my $cmd    = "bmcdiscover --range $bmc_dynamic_ip_range -z -w";
+    my @output = runcmd("$cmd");
+
+    my %foundbmcs;
+    my $current_bmc;
+    foreach (@output) {
+        if ($_ =~ /^(node-.+):/) {
+            $current_bmc = $1;
+            $foundbmcs{$current_bmc}{objectname} = $1;
+        } elsif ($_ =~ /\s*(\w+)=(.+)/) {
+            $foundbmcs{$current_bmc}{$1} = $2;
+        }
+    }
+
+    #print "Found bmcs:\n";
+    #print Dumper \%foundbmcs;
+    if (%foundbmcs) {
+        foreach my $foundbmc (keys %foundbmcs) {
+
+            if (defined $foundbmcs{$foundbmc}{mtm} and defined $foundbmcs{$foundbmc}{serial}) {
+                next unless (($foundbmcs{$foundbmc}{mtm} eq $discovery_target_node_info{mtm}) && ($foundbmcs{$foundbmc}{serial} eq $discovery_target_node_info{serial}));
+
+                #discovered bmc node name should be node-mtm-serial if can obtain mtm and serial
+                my $tmp_bmc_name = lc("node-$foundbmcs{$foundbmc}{mtm}-$foundbmcs{$foundbmc}{serial}");
+                if ($foundbmcs{$foundbmc}{objectname} ne $tmp_bmc_name) {
+                    push @$error_ref, "Found mtm and serial attributes of bmc, but bmc node name is not composed by mtm and serial";
+                    return 1;
+                }
+
+                if ($foundbmcs{$foundbmc}{objectname} ne $expected_bmc_node_name[0]) {
+                    push @$error_ref, "The discovered bmc node's name $foundbmcs{$foundbmc}{objectname} dose not match the expected bmc node's name $expected_bmc_node_name[0]";
+                    return 1;
+                }
+
+                $be_discovered_bmc_node = $expected_bmc_node_name[0];
+            } else {
+
+                #discovered bmc node name should be node-mac if can not obtain mtm and serial
+                if ($foundbmcs{$foundbmc}{objectname} !~ /^node-\w{12}$/) {
+                    push @$error_ref, "No found mtm and serial attributes of bmc, should use mac address to generate bmc node name, but discovered bmc name is $foundbmcs{$foundbmc}{objectname}, not work as expect";
+                    return 1;
+                }
+
+                if ($foundbmcs{$foundbmc}{objectname} ne $expected_bmc_node_name[1]) {
+                    push @$error_ref, "The discovered bmc node name $foundbmcs{$foundbmc}{objectname} dose not match the expected bmc node name $expected_bmc_node_name[1]";
+                    return 1;
+                }
+
+                $be_discovered_bmc_node = $expected_bmc_node_name[1];
+            }
+
+            if ($foundbmcs{$foundbmc}{bmc} ne $bmc_dynamic_ip) {
+                push @$error_ref, "The discovered bmc ip $foundbmcs{$foundbmc}{bmc} dose not match the expected bmc ip $bmc_dynamic_ip";
+                return 1;
+            }
+        }
+    } else {
+        push @$error_ref, "bmcdiscover command did not find target bmc of $discovery_mode";
+        return 1;
+    }
+
+    return 0;
+}
+
+
+#--------------------------------------------------------
+# Fuction name:  node_discovery
+# Description:
+# Atrributes:
+# Retrun code:
+#--------------------------------------------------------
+sub node_discovery {
+    my $error_ref = shift;
+    my @output;
+
+    print "Boot target node $discovery_prodefine_node_name_in_automation, start discovery process\n";
+    my @cmds = ("rsetboot $be_discovered_bmc_node net",
+        "rpower $be_discovered_bmc_node boot");
+    foreach my $cmd (@cmds) {
+        print "$cmd\n";
+        @output = runcmd("$cmd");
+        print "$_\n" foreach (@output);
+        if ($::RUNCMD_RC) {
+            push @$error_ref, "Boot target node $discovery_target_node failed";
+            return 1;
+        }
+    }
+
+    print "Waiting for node $discovery_prodefine_node_name_in_automation be discoveried\n"; 
+
+    #suppose discovery process should get MAC address for predined node in 10 minuts
+    my $find_me_succ = 0;
+    my $mac_in_find_me;
+    for (my $i = 0 ; $i < 30 ; $i++) {
+        sleep 20;
+        @output = runcmd("lsdef $discovery_prodefine_node_name_in_automation |grep ' mac='");
+        #print Dumper \@output;
+        if ($::RUNCMD_RC) {
+            print "$discovery_prodefine_node_name_in_automation has not get mac address, detect again after 20s\n";
+            next;
+        }
+        $find_me_succ = 1;
+        my @tmp_array = split("=", $output[0]);
+        $mac_in_find_me = $tmp_array[1];
+        last;
+    }
+
+    unless ($find_me_succ) {
+        push @$error_ref, "$discovery_prodefine_node_name_in_automation failed to get mac address in expected 10 minutes\n";
+        return 1;
+    }
+
+    $mac_in_find_me = lc($mac_in_find_me);
+    if ($mac_in_find_me ne $discovery_target_node_info{mac}) {
+        push @$error_ref, "The mac $mac_in_find_me obtained by discovery does not match the expected mac $discovery_target_node_info{mac}";
+        return 1;
+    }
+
+    runcmd("lsdef $be_discovered_bmc_node");
+    unless ($::RUNCMD_RC) {
+        push @$error_ref, "The temporary bmc node $be_discovered_bmc_node was not deleted after $discovery_target_node was discovered";
+        return 1;
+    }
+    print "Predefined node $discovery_prodefine_node_name_in_automation has obtained correct mac address\n\n";
+
+    #--------------------------------------
+    print "Start to test getadapter,bmcsetup,node provision. Add them into chain list\n";
+    @cmds = ("chdef $discovery_prodefine_node_name_in_automation chain='runcmd=getadapter,runcmd=bmcsetup,osimage=$osimage'",
+        "lsdef $discovery_prodefine_node_name_in_automation -i chain");
+    foreach my $cmd (@cmds) {
+        print "$cmd\n";
+        @output = runcmd("$cmd");
+        print "$_\n" foreach (@output);
+        if ($::RUNCMD_RC) {
+            push @$error_ref, "Add getadapter,bmcsetup,osimage into chain failed";
+            return 1;
+        }
+    }
+
+    #suppose getadapter should return adapters information in 10 minutes
+    print "Waiting for doing getadapter on node $discovery_prodefine_node_name_in_automation\n";
+    $find_me_succ = 0;
+    for (my $i = 0 ; $i < 60 ; $i++) {
+        sleep 10;
+        @output = runcmd("lsdef $discovery_prodefine_node_name_in_automation |grep nicsadapter");
+        #print Dumper \@output;
+        if ($::RUNCMD_RC) {
+            print "$discovery_prodefine_node_name_in_automation has not get adapters info, detect again after 10s\n";
+            next;
+        }
+        $find_me_succ = 1;
+        last;
+    }
+    unless ($find_me_succ) {
+        push @$error_ref, "getadapter failed to obtain adapter info in expected 10 minutes";
+        return 1;
+    }
+    print "getadapter obtain below adapter infomation\n";
+    dump_info(\@output);
+
+    if (!(grep { /$discovery_target_node_info{mac}/i } @output)) {
+        push @$error_ref, "The adapters information obtained by getadapter does not contain expected mac $discovery_target_node_info{mac}";
+        return 1;
+    }
+
+    print "getadapter works well\n\n";
+
+    #------------------------------------------
+    #suppose bmcsetup should set bmc ip to a static ip in 10 minutes
+    print "Waiting for doing bmcsetup on node $discovery_prodefine_node_name_in_automation\n";
+    $find_me_succ = 0;
+    for (my $i = 0 ; $i < 60 ; $i++) {
+        sleep 10;
+        print "ping -c 1 $discovery_target_node_info{bmc}\n";
+        @output = runcmd("ping -c 1 $discovery_target_node_info{bmc}");
+        if ($::RUNCMD_RC) {
+            print "$discovery_prodefine_node_name_in_automation 's bmc has not get static ip $discovery_target_node_info{bmc}, detect again after 10s\n";
+            next;
+        }
+        $find_me_succ = 1;
+        last;
+    }
+    unless ($find_me_succ) {
+        push @$error_ref, "bmcsetup faield to set bmc 's ip to static ip $discovery_target_node_info{bmc} in expected 10 minutes";
+        return 1;
+    }
+
+    @output = runcmd("nmap -sn -n $discovery_target_node_info{bmc} |awk -F' ' '/MAC Address/ {print \$3}'");
+    #print Dumper \@output;
+    if ($::RUNCMD_RC) {
+        push @$error_ref, "IP $discovery_target_node_info{bmc} is working but does not reply namp request";
+        return 1;
+    } else {
+        $output[0] = lc($output[0]);
+        if ($output[0] ne $bmc_target_mac) {
+            push @$error_ref, "The mac which ip $discovery_target_node_info{bmc} is working on does not match $discovery_target_node bmc's mac";
+            return 1;
+        }
+    }
+
+    print "bmcsetup is successful\n\n";
+
+    #------------------------------------------
+    #suppose provision should be finished in 60 minutes
+    print "Waiting for doing provision on node $discovery_prodefine_node_name_in_automation\n";
+    $find_me_succ = 0;
+    sleep 300;
+    for (my $i = 0 ; $i < 360 ; $i++) {
+        sleep 10;
+        @output = runcmd("lsdef $discovery_prodefine_node_name_in_automation |grep booted");
+        if ($::RUNCMD_RC) {
+            print "The status of $discovery_prodefine_node_name_in_automation has not become booted, detect again after 10s\n";
+            next;
+        }
+        $find_me_succ = 1;
+        last;
+    }
+    unless ($find_me_succ) {
+        push @$error_ref, "$discovery_prodefine_node_name_in_automation did not finishe provision in expected 65 minutes";
+        return 1;
+    }
+
+    my $get_mn_info = 0;
+    @output = runcmd("xdsh $discovery_prodefine_node_name_in_automation 'cat /opt/xcat/xcatinfo'");
+    if ($::RUNCMD_RC) {
+        push @$error_ref, "Failed to run xdsh against $discovery_prodefine_node_name_in_automation";
+        return 1;
+    } else {
+
+        #to check if cn was deployed by current MN
+        foreach (@output) {
+            if ($_ =~ /XCATSERVER=(.+)/) {
+                runcmd("ip addr |grep $1");
+                if ($::RUNCMD_RC) {
+                    push @$error_ref, "$discovery_prodefine_node_name_in_automation was deployed by $1, not current MN";
+                    return 1;
+                }
+                $get_mn_info = 1;
+            }
+        }
+    }
+    unless ($get_mn_info) {
+        push @$error_ref, "Failed to get currnet MN's information from $discovery_prodefine_node_name_in_automation";
+        return 1;
+    }
+    print "Provision against $discovery_prodefine_node_name_in_automation is successful\n";
+    return 0;
+}
+
+#--------------------------------------------------------
+# Fuction name:  parse_dynamic_ip_range
+# Description:
+# Atrributes:
+# Retrun code:
+#--------------------------------------------------------
+sub parse_dynamic_ip_range {
+    my $original_dynamic_ip_str = shift;
+    my @sec                     = split(/\./, $original_dynamic_ip_str);
+    for (my $i = 0 ; $i <= $#sec ; $i++) {
+        $sec[$i] = "{$1..$2}" if ($sec[$i] =~ /(\d+)-(\d+)/);
+    }
+    my $str = join(".", @sec);
+    my @output = runcmd("echo $str");
+    return split(/ /, $output[0]);
+
+}
+#--------------------------------------------------------
+# Fuction name: calculate_bmc_info 
+# Description:
+# Atrributes:
+# Retrun code:
+#--------------------------------------------------------
+sub calculate_bmc_info{
+     my $bmcip = shift;
+     my %bmcinfo;
+     my @fru_num = (0, 2, 3);
+     foreach my $fru_cmd_num (@fru_num) {
+         my $fru_cmd = "ipmitool-xcat -I lanplus -U $discovery_target_node_info{bmcusername} -P $discovery_target_node_info{bmcpassword} " .
+           "\-H $bmcip fru print $fru_cmd_num";
+         #print "$fru_cmd\n";
+         my @fru_output_array =runcmd("$fru_cmd");
+         if (($::RUNCMD_RC eq 0) && @fru_output_array) {
+             my $fru_output = join(" ", @fru_output_array);
+
+             if (($fru_output =~ /Chassis Part Number\s*:\s*(\S*).*Chassis Serial\s*:\s*(\S*)/)) {
+                 $bmcinfo{mtm}    = lc($1);
+                 $bmcinfo{serial} = lc($2);
+                 last;
+             }
+
+             if (($fru_output =~ /Product Part Number   :\s*(\S*).*Product Serial        :\s*(\S*)/)) {
+                 $bmcinfo{mtm}    = lc($1);
+                 $bmcinfo{serial} = lc($2);
+                 last;
+             }
+
+             if (($fru_output =~ /Product Manufacturer\s+:\s+(.*?)\s+P.*?roduct Name\s+:\s+(.*?)\s+P.*?roduct Serial\s+:\s+(\S+)/)) {
+                 $bmcinfo{mtm}    = lc("$1:$2");
+                 $bmcinfo{serial} = lc($3);
+                 last;
+             }
+         }
+     }
+     return %bmcinfo;
+}

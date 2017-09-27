@@ -34,3 +34,7 @@ perl-DBD-Pg
 wget
 util-linux-ng
 net-tools
+pciutils
+bind-utils
+strace
+tcpdump

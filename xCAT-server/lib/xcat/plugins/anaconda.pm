@@ -2155,12 +2155,8 @@ sub copycd
     my $installroot = "/install";
     my $sitetab     = xCAT::Table->new('site');
 
-
     require xCAT::data::discinfo;
 
-    #if ($sitetab)
-    #{
-    #    (my $ref) = $sitetab->getAttribs({key => 'installdir'}, 'value');
     my @ents     = xCAT::TableUtils->get_site_attribute("installdir");
     my $site_ent = $ents[0];
     if (defined($site_ent))
@@ -2266,18 +2262,14 @@ sub copycd
         elsif ($desc =~ /Red Hat Enterprise Linux/)
         {
             #
-            # Attempt to auto-detect for RHEL OS.
-            # RHEL 7.3 description is: Red Hat Enterprise Linux 7.3
+            # Attempt to auto-detect for RHEL OS, the last element has typically been the version
             #
             my @rhel_version = split / /, $desc;
-            #
-            # auto-detect pegas beta ISOs
-            #
-            if ( $rhel_version[4] =~ "Pegas") { 
-                $distname = "rhels" . $rhel_version[5] . "-pegas";
+            if (scalar @rhel_version > 5) {
+                $distname = "rhels" . $rhel_version[-1] . "-" . lc($rhel_version[4]);
             } 
             else { 
-                $distname = "rhels" . $rhel_version[4];
+                $distname = "rhels" . $rhel_version[-1];
             }
             open($dinfo, $mntpath . "/.treeinfo");
             while (<$dinfo>) {

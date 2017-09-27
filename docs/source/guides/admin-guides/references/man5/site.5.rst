@@ -110,8 +110,9 @@ site Attributes:
    dhcplease:  The lease time for the dhcp client. The default value is 43200.
   
    disjointdhcps:  If set to '1', the .leases file on a service node only contains
-                   the nodes it manages. The default value is '0'.
-                   '0' value means include all the nodes in the subnet.
+                   the nodes it manages. And when 'sharedtftp' is disabled, nodeset handles
+                   boot loader configuration on a service node only for the nodes it manages.
+                   The default value is '0'. It means include all the nodes in the subnet.
   
    pruneservices:  Whether to enable service pruning when noderm is run (i.e.
                    removing DHCP entries when noderm is executed)
@@ -389,6 +390,18 @@ site Attributes:
    hierarchicalattrs:  Table attributes(e.g. postscripts, postbootscripts) that will be
                        included hierarchically. Attribute values for all the node's groups
                        will be applied to the node in the groups' order except the repeat one.
+   dbtracelevel:  The trace level for the database access log. To activate this setting, please. 
+                  restart xcatd or send HUP signal to the 'xcatd: DB Access' process, Like: .
+                  ps -ef | grep 'xcatd: DB Access' | grep -v grep | awk '{print $2}' | xargs kill -HUP  
+                  Currrent support values: 
+                  0: disable the trace log for db 
+                  1: trace the calls of database subroutines 
+                  2: Besides the log from level 1, trace the event to build the cache for the table 
+                  3: Besides the log from level 2, trace the event with cache hit 
+                  4: Besides the log from level 3, trace the SQL statement for the db access 
+                  With this configuration, xcat will send the log to syslog very frequently, some of the 
+                  log may be lost if imjournal is enabled by rsyslog. 
+                  Please see https://github.com/xcat2/xcat-core/issues/3910 for the detail.
   
    -----------------------
   VIRTUALIZATION ATTRIBUTES

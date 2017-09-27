@@ -1,14 +1,15 @@
 description:the cases in this bundle is to used to verify xCAT hardware control funtions on openpower servers which are mananged using openbmc. 
 #INCLUDE:hdctrl_general.bundle#
-rinv_deviceid
 rinv_uuid
 rinv_vpd
 rinv_cpu
 rinv_dimm
+rinv_wrongbmcpasswd
 rvitals_wattage
 rvitals_fanspeed
 rvitals_power
 rvitals_leds
+rvitals_altitude
 rsetboot_net_statcheck
 rsetboot_cd_statcheck
 rsetboot_default_statcheck
@@ -27,3 +28,4 @@ rspconfig_netmask_invalid
 rspconfig_gateway
 rspconfig_gateway_invalid
 rspconfig_node_invalid
+rpower_wrongpasswd

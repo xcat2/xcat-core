@@ -12,7 +12,7 @@ The following example outlines the MTMS based hardware discovery for a single IP
 +------------------------------+------------+
 | Hostname                     | cn01       |
 +------------------------------+------------+
-| IP address                   | 10.1.2.1   |
+| IP address                   | 10.0.101.1 |
 +------------------------------+------------+
 
 The BMC IP address is obtained by the open range dhcp server and the plan in this scenario is to change the IP address for the BMC to a static IP address in a different subnet than the open range addresses.  The static IP address in this example is in the same subnet as the open range to simplify the networking configuration on the xCAT management node.
@@ -20,9 +20,9 @@ The BMC IP address is obtained by the open range dhcp server and the plan in thi
 +------------------------------+------------+
 | BMC Information              | Value      |
 +==============================+============+
-| IP address - dhcp            | 172.30.0.1 |
+| IP address - dhcp            | 50.0.100.1 |
 +------------------------------+------------+
-| IP address - static          | 172.20.2.1 |
+| IP address - static          | 50.0.101.1 |
 +------------------------------+------------+
 
 #. Detect the BMCs and add the node definitions into xCAT.
@@ -44,9 +44,9 @@ The BMC IP address is obtained by the open range dhcp server and the plan in thi
 
    Use the ``bmcdiscover`` command to help discover the nodes over an IP range and easily create a starting file to define the compute nodes into xCAT.
 
-   To discover the compute nodes for the BMCs with an IP address of 172.30.0.1, use the command: ::
+   To discover the compute nodes for the BMCs with an IP address of 50.0.100.1, use the command: ::
 
-      bmcdiscover --range 172.30.0.1 -z > predefined.stanzas
+      bmcdiscover --range 50.0.100.1 -z > predefined.stanzas
 
    The discovered nodes have the naming convention:  node-<*model-type*>-<*serial-number*> ::
 
@@ -54,7 +54,7 @@ The BMC IP address is obtained by the open range dhcp server and the plan in thi
       node-8247-22l-10112ca:
         objtype=node
         groups=all
-        bmc=172.30.0.1
+        bmc=50.0.100.1
         cons=ipmi
         mgt=ipmi
         mtm=8247-22L
@@ -73,7 +73,7 @@ The BMC IP address is obtained by the open range dhcp server and the plan in thi
 
     #. Add a ``ip`` attribute and give it the compute node IP address: ::
 
-          ip=10.1.2.1
+          ip=10.0.101.1
 
     #. Remove ``nodetype`` and ``hwtype`` if defined in the ``predefined.stanza``.
 
@@ -86,13 +86,16 @@ The BMC IP address is obtained by the open range dhcp server and the plan in thi
         cn01:
           objtype=node
           groups=all
-          bmc=172.30.0.1
+          bmc=50.0.100.1
           cons=ipmi
           mgt=ipmi
           mtm=8247-22L
           serial=10112CA
-          ip=10.1.2.1 
+          ip=10.0.101.1 
 
+#. Define the compute nodes into xCAT: ::
+
+       cat predefined.stanzas | mkdef -z 
 
 #. Set the chain table to run the ``bmcsetup`` script, this will set the BMC IP to static. ::
 
@@ -106,13 +109,10 @@ The BMC IP address is obtained by the open range dhcp server and the plan in thi
 
    Set the BMC IP address to a different value for the **predefined** compute node definitions.  
 
-   To change the dhcp obtained IP address of 172.30.0.1 to a static IP address of 172.20.2.1, run the following command: ::
+   To change the dhcp obtained IP address of 50.0.100.1 to a static IP address of 50.0.101.1, run the following command: ::
 
-       chdef cn01 bmc=172.20.2.1 
+       chdef cn01 bmc=50.0.101.1
 
-#. Define the compute nodes into xCAT: ::
-
-       cat predefined.stanzas | mkdef -z 
 
 #. Add the compute node IP information to ``/etc/hosts``: ::
 

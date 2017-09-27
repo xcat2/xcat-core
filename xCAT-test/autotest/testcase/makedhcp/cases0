@@ -189,13 +189,13 @@ check:rc==0
 cmd: cp -f /etc/hosts /etc/hosts.bak
 cmd:echo "100.100.100.2 testnode" >> /etc/hosts
 check:rc==0
-cmd:makdhcp -d testnode
+cmd:makedhcp -d testnode
 cmd:makedhcp testnode
 check:rc==0
-cmd:makdhcp -q testnode
+cmd:makedhcp -q testnode
 check:rc==0
 check:output=~testnode: ip-address = 100.100.100.2 
-cmd:makdhcp -d testnode
+cmd:makedhcp -d testnode
 check:rc==0
 cmd:makedhcp -n
 check:rc==0

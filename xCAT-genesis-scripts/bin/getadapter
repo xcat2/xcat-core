@@ -4,7 +4,6 @@
 XCATPORT=3001
 export XCATPORT
 
-#XCATMASTER="10.3.5.21"
 ADAPTERFILE="/tmp/adapterinfo"
 SCANNICLOG="/tmp/adapterscan.log"
 
@@ -17,8 +16,6 @@ fi
 
 echo "<xcatrequest>
 <command>getadapter</command>
-<clienttype>cli</clienttype>
-<noderange>$HOSTNAME</noderange>
 <action>update</action>"  >> "$ADAPTERFILE"
 
 #scan adapters have recognized by operating system
@@ -112,4 +109,3 @@ else
         fi
     fi
 fi
-

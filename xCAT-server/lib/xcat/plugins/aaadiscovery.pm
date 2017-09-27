@@ -27,6 +27,7 @@ sub process_request {
             return;
         }
         my $client_ip = $req->{'_xcat_clientip'};
+
         my $arptable;
         if (-x "/usr/sbin/arp") {
             $arptable = `/usr/sbin/arp -n`;

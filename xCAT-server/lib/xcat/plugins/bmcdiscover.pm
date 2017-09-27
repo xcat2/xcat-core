@@ -35,6 +35,7 @@ use HTTP::Response;
 use JSON;
 
 my $nmap_path;
+my %ipmac = ();
 
 my $debianflag = 0;
 my $tempstring = xCAT::Utils->osver();
@@ -66,6 +67,48 @@ sub handled_commands
 }
 
 #-------------------------------------------------------
+#
+sub preprocess_request {
+    my $request = shift;
+    if (defined $request->{_xcatpreprocessed}->[0] and $request->{_xcatpreprocessed}->[0] == 1) { return [$request]; }
+
+    my $callback = shift;
+    my $extargs = $request->{arg};
+    my @exargs = ($request->{arg});
+    if (ref($extargs)) {
+        @exargs = @$extargs;
+    }
+    @ARGV = @exargs;
+    $Getopt::Long::ignorecase=0;
+    Getopt::Long::Configure("bundling");
+    my $sns = undef;
+    if ((grep /--sn/, @ARGV) and (Getopt::Long::GetOptions('sn=s' => \$sns))) {
+        unless ($sns) {
+            $callback->({ error => ["The value for --sn is invalid"], errorcode => [1] });
+            $request = ();
+            return;
+        }
+        my $nettab = xCAT::Table->new("networks");
+        my @entries   = $nettab->getAllAttribs('dhcpserver', 'dynamicrange');
+        my @dhcpservers = ();
+        foreach (@entries) {
+            if (!defined($_->{dynamicrange})) {next;}
+            push @dhcpservers, $_->{dhcpserver};
+        }
+        my @requests = ();
+        foreach (split (/,/, $sns)) {
+            my $reqcopy = {%$request};
+            $reqcopy->{'_xcatdest'} = $_;   
+            $reqcopy->{'sn'} = $_;
+            $reqcopy->{'dhcpservers'} = \@dhcpservers;
+            $reqcopy->{_xcatpreprocessed}->[0] = 1;
+            push @requests, $reqcopy;
+        }
+        return \@requests;
+    } else {
+        return [$request];
+    }
+}
 
 =head3  process_request
 
@@ -82,15 +125,26 @@ sub process_request
     my $request_command = shift;
     $::CALLBACK = $callback;
 
-    #$::args     = $request->{arg};
-    if (ref($request->{environment}) eq 'ARRAY' and ref($request->{environment}->[0]->{XCAT_DEV_WITHERSPOON}) eq 'ARRAY') {
-        $::XCAT_DEV_WITHERSPOON = $request->{environment}->[0]->{XCAT_DEV_WITHERSPOON}->[0];
-    } elsif (ref($request->{environment}) eq 'ARRAY') {
-        $::XCAT_DEV_WITHERSPOON = $request->{environment}->[0]->{XCAT_DEV_WITHERSPOON};
-    } else {
-        $::XCAT_DEV_WITHERSPOON = $request->{environment}->{XCAT_DEV_WITHERSPOON};
+    if ($request->{sn}) {
+        my $dhcpservers = $request->{dhcpservers};
+        if (!defined($dhcpservers) or ref($dhcpservers) ne 'ARRAY') {
+            $callback->({ error => ["the ". $request->{command}->[0]. " doesn't work when no dynamic range set."], errorcode => [1] });
+            return 1;
+        }
+        else {
+            my $have_dynamicrange_set = 0;
+            foreach (@$dhcpservers) {
+                unless (xCAT::NetworkUtils->thishostisnot($_)) {
+                    $have_dynamicrange_set = 1;
+                    last;
+                }
+            }
+            unless ($have_dynamicrange_set) {
+                $callback->({ error => ["the ". $request->{command}->[0]. " won't work since no dynamic range set on $request->{sn}->[0]"], errorcode => [1] });
+                return 1;
+            }
+        }
     }
-
     unless (defined($request->{arg})) {
         bmcdiscovery_usage();
         return 2;
@@ -129,7 +183,7 @@ sub bmcdiscovery_usage {
     push @{ $rsp->{data} }, "Usage:";
     push @{ $rsp->{data} }, "\tbmcdiscover [-?|-h|--help]";
     push @{ $rsp->{data} }, "\tbmcdiscover [-v|--version]";
-    push @{ $rsp->{data} }, "\tbmcdiscover [-s scan_method] [-u bmc_user] [-p bmc_passwd] [-z] [-w] --range ip_range\n";
+    push @{ $rsp->{data} }, "\tbmcdiscover [--sn <SN_nodename>] [-s scan_method] [-u bmc_user] [-p bmc_passwd] [-z] [-w] --range ip_range\n";
 
     push @{ $rsp->{data} }, "\tCheck BMC administrator User/Password:\n";
     push @{ $rsp->{data} }, "\t\tbmcdiscover -u bmc_user -p bmc_password -i bmc_ip --check\n";
@@ -183,6 +237,7 @@ sub bmcdiscovery_processargs {
         'ipsource'      => \$::opt_S,
         'version|v'     => \$::opt_v,
         't'             => \$::opt_T,
+        'sn=s'          => \$::opt_SN,
     );
 
     if (!$getopt_success) {
@@ -237,6 +292,11 @@ sub bmcdiscovery_processargs {
     if ($::opt_P) {
         $bmc_pass = $::opt_P;
         $openbmc_pass = $::opt_P;
+    }
+    if ($request->{sn}) {
+        $::opt_SN = $request->{sn}->[0];
+    } else {
+        $::opt_SN = '';
     }
 
     #########################################
@@ -498,7 +558,7 @@ sub scan_process {
     my $children;       # The number of child process
     my %sp_children;    # Record the pid of child process
     my $bcmd;
-    my $sub_fds = new IO::Select;  # Record the parent fd for each child process
+
 
     if (!defined($method))
     {
@@ -508,43 +568,56 @@ sub scan_process {
     # Handle commas in $range for nmap
     $range =~ tr/,/ /;
 
-    my $ip_list;
     ############################################################
     # get live ip list
     ###########################################################
-    if ($method eq "nmap") {
-
-        #check nmap version first
-        my $nmap_version = xCAT::Utils->get_nmapversion();
-
-        # the output of nmap is different for version under 5.10
-        if (xCAT::Utils->version_cmp($nmap_version, "5.10") < 0) {
-            $bcmd = join(" ", $nmap_path, " -sP -n $range | grep \"appears to be up\" |cut -d ' ' -f2 |tr -s '\n' ' ' ");
-        } else {
-            $bcmd = join(" ", $nmap_path, " -sn -n $range | grep -B1 up | grep \"Nmap scan report\" |cut -d ' ' -f5 |tr -s '\n' ' ' ");
-        }
-
-        $ip_list = xCAT::Utils->runcmd("$bcmd", -1);
-        if ($::RUNCMD_RC != 0) {
-            my $rsp = {};
-            push @{ $rsp->{data} }, "Nmap scan is failed.\n";
-            xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
-            return 2;
-        }
-
-    }
-    else
-    {
+    if ($method ne "nmap") {
         my $rsp = {};
         push @{ $rsp->{data} }, "The bmcdiscover method should be nmap.\n";
         xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
         return 2;
     }
 
-    my $live_ip = split_comma_delim_str($ip_list);
+    #check nmap version first
+    my $nmap_version = xCAT::Utils->get_nmapversion();
+    my $ip_info_list;
 
-    if (scalar(@{$live_ip}) > 0)
-    {
+    #  the output of nmap is different for version under 5.10
+    if (xCAT::Utils->version_cmp($nmap_version, "5.10") < 0) {
+        $bcmd = join(" ", $nmap_path, " -sP -n $range");
+    } else {
+        $bcmd = join(" ", $nmap_path, " -sn -n $range");
+    }
+
+    $ip_info_list = xCAT::Utils->runcmd("$bcmd", -1);
+    if ($::RUNCMD_RC != 0) {
+        my $rsp = {};
+        push @{ $rsp->{data} }, "Nmap scan is failed.\n";
+        xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
+        return 2;
+    }
+
+    my $ip_list;
+    my $mac_list;
+    if (xCAT::Utils->version_cmp($nmap_version, "5.10") < 0) {
+        $ip_list  = `echo -e "$ip_info_list" | grep \"appears to be up\" |cut -d ' ' -f2 |tr -s '\n' ' '`;
+        $mac_list = `echo -e "$ip_info_list" | grep -A1 up | grep "MAC Address" | cut -d ' ' -f3 | tr -s '\n' ' '`;  
+    } else {
+        $ip_list  = `echo -e "$ip_info_list" | grep -B1 up | grep "Nmap scan report" |cut -d ' ' -f5 | tr -s '\n' ' '`;
+        $mac_list = `echo -e "$ip_info_list" | grep -A1 up | grep "MAC Address" | cut -d ' ' -f3 | tr -s '\n' ' '`; 
+    }
+
+    my $live_ip  = split_comma_delim_str($ip_list);
+    my $live_mac = split_comma_delim_str($mac_list);
+    my %pipe_map;
+    if (scalar(@{$live_ip}) > 0) {
+
+        foreach (@{$live_ip}) {
+            my $new_mac = lc(shift @{$live_mac});
+            $new_mac =~ s/\://g;
+            $ipmac{$_} = $new_mac;
+        }
+
         ###############################
         # Set the signal handler for ^c
         ###############################
@@ -570,6 +643,9 @@ sub scan_process {
                 if ($sp_children{$cpid}) {
                     delete $sp_children{$cpid};
                     $children--;
+                    forward_data($callback, $pipe_map{$cpid});
+                    close($pipe_map{$cpid});
+                    delete $pipe_map{$cpid};
                 }
             }
         };
@@ -599,7 +675,7 @@ sub scan_process {
                 } else {
                     bmcdiscovery_ipmi(${$live_ip}[$i], $opz, $opw, $request_command);
                 }
-
+                close($parent_fd);
                 exit 0;
             } else {
 
@@ -607,23 +683,15 @@ sub scan_process {
                 # the main process will check all the parent fd and receive response
                 $sp_children{$child} = 1;
                 close($parent_fd);
-                $sub_fds->add($cfd);
+                $pipe_map{$child} = $cfd;
             }
 
-
-            do {
+            while ($children >= 32) {
                 sleep(1);
-            } until ($children < 32);
-
+            }
         }
-
-        #################################################
-        # receive data from child processes
-        ################################################
-        while ($sub_fds->count > 0 or $children > 0) {
-            forward_data($callback, $sub_fds);
-        }
-        while (forward_data($callback, $sub_fds)) {
+        while($children > 0) {
+            sleep(1);
         }
     }
     else
@@ -650,7 +718,7 @@ sub format_stanza {
     my $node = shift;
     my $data = shift;
     my $mgt_type = shift;
-    my ($bmcip, $bmcmtm, $bmcserial, $bmcuser, $bmcpass, $nodetype, $hwtype) = split(/,/, $data);
+    my ($bmcip, $bmcmtm, $bmcserial, $bmcuser, $bmcpass, $nodetype, $hwtype, $sn, $conserver) = split(/,/, $data);
     my $result;
     if (defined($bmcip)) {
         $result .= "$node:\n\tobjtype=node\n";
@@ -669,6 +737,12 @@ sub format_stanza {
         }
         if ($bmcpass) {
             $result .= "\tbmcpassword=$bmcpass\n";
+        }
+        if ($sn) {
+            $result .="\tservicenode=$sn\n";
+        }
+        if ($conserver) {
+            $result .= "\tconserver=$conserver\n";
         }
         my $rsp = {};
         push @{ $rsp->{data} }, "$result";
@@ -691,7 +765,7 @@ sub write_to_xcatdb {
     my $node = shift;
     my $data = shift;
     my $mgt_type = shift;
-    my ($bmcip, $bmcmtm, $bmcserial, $bmcuser, $bmcpass, $nodetype, $hwtype) = split(/,/, $data);
+    my ($bmcip, $bmcmtm, $bmcserial, $bmcuser, $bmcpass, $nodetype, $hwtype, $sn, $conserver) = split(/,/, $data);
     my $request_command = shift;
     my $ret;
 
@@ -699,6 +773,7 @@ sub write_to_xcatdb {
                                   arg => [ '-t', 'node', '-o', $node, "bmc=$bmcip", "cons=$mgt_type", 
                                            "mgt=$mgt_type", "mtm=$bmcmtm", "serial=$bmcserial", 
                                            "bmcusername=$bmcuser", "bmcpassword=$bmcpass", "nodetype=$nodetype", 
+                                           "servicenode=$sn", "conserver=$conserver",
                                            "hwtype=$hwtype", "groups=all" ] },
                                   $request_command, 0, 1);
     if ($::RUNCMD_RC != 0) {
@@ -744,26 +819,14 @@ sub send_rep {
 
 sub forward_data {
     my $callback  = shift;
-    my $fds       = shift;
-    my @ready_fds = $fds->can_read(1);
-    my $rfh;
-    my $rc = @ready_fds;
-    foreach $rfh (@ready_fds) {
-        my $data;
-        my $responses;
-        eval {
-            $responses = fd_retrieve($rfh);
-        };
-        if ($@ and $@ =~ /^Magic number checking on storable file/) { #this most likely means we ran over the end of available input
-            $fds->remove($rfh);
-            close($rfh);
-        } else {
-            eval { print $rfh "ACK\n"; }; #Ignore ack loss due to child giving up and exiting, we don't actually explicitly care about the acks
-            $callback->($responses);
-        }
+    my $cfd       = shift;
+    my $responses;
+    eval {
+            $responses = fd_retrieve($cfd);
+    };
+    if (!($@ and $@ =~ /^Magic number checking on storable file/)) { #this most likely means we ran over the end of available input
+        $callback->($responses);
     }
-    yield;    #Try to avoid useless iterations as much as possible
-    return $rc;
 }
 
 
@@ -984,8 +1047,12 @@ sub bmcdiscovery_ipmi {
 
                 }
             }
-            if ($mtm eq '' or $serial eq '') {
-                xCAT::MsgUtils->message("W", { data => ["BMC Type/Model and/or Serial is unavailable for $ip"] }, $::CALLBACK);
+
+            $mtm = '' if ($mtm =~ /^0+$/);
+            $serial = '' if ($serial =~ /^0+$/); 
+
+            unless (($mtm or $serial) or $ipmac{$ip}) {
+                xCAT::MsgUtils->message("W", { data => ["BMC Type/Model and/or Serial and MAC Address is unavailable for $ip"] }, $::CALLBACK);
                 return;
             }
 
@@ -1000,11 +1067,13 @@ sub bmcdiscovery_ipmi {
             } else {
                 $node_data .= ",,";
             }
-            $node_data .= ",mp,bmc";
+            $node_data .= ",mp,bmc,$::opt_SN,$::opt_SN";
             if ($mtm and $serial) {
                 $node = "node-$mtm-$serial";
                 $node =~ s/(.*)/\L$1/g;
                 $node =~ s/[\s:\._]/-/g;
+            } else {
+                $node = "node-$ipmac{$ip}";
             }
         } elsif ($output =~ /error : unauthorized name/) {
             xCAT::MsgUtils->message("W", { data => ["BMC username is incorrect for $ip"] }, $::CALLBACK);
@@ -1013,19 +1082,8 @@ sub bmcdiscovery_ipmi {
             xCAT::MsgUtils->message("W", { data => ["BMC password is incorrect for $ip"] }, $::CALLBACK);
             return;
         }
-        if (defined($opz) || defined($opw))
-        {
-            format_stanza($node, $node_data, "ipmi");
-            if (defined($opw))
-            {
-                write_to_xcatdb($node, $node_data, "ipmi", $request_command);
-            }
-        }
-        else {
-            my $rsp = {};
-            push @{ $rsp->{data} }, "$node_data";
-            xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
-        }
+
+        display_output($opz,$opw,$node,$node_data,"ipmi",$request_command);
     }
 }
 
@@ -1088,14 +1146,7 @@ sub bmcdiscovery_openbmc{
         if (defined($response->{data})) {
             if (defined($response->{data}->{Model}) and defined($response->{data}->{SerialNumber})) {
                 $mtm = $response->{data}->{Model};
-                if (defined($::XCAT_DEV_WITHERSPOON) && ($::XCAT_DEV_WITHERSPOON eq "TRUE")) {
-                    xCAT::MsgUtils->message("I", { data => ["XCAT_DEV_WITHERSPOON=TRUE, forcing MTM to empty string for $ip (Original MTM=$mtm)"] }, $::CALLBACK);
-                    $mtm = "";
-                }
                 $serial = $response->{data}->{SerialNumber}; 
-            } else {
-                xCAT::MsgUtils->message("W", { data => ["Could not obtain Model Type and/or Serial Number for BMC at $ip"] }, $::CALLBACK);
-                return;
             }
  
         } else { 
@@ -1104,8 +1155,16 @@ sub bmcdiscovery_openbmc{
         }
 
         # delete space before and after
-        $mtm =~ s/^\s+|\s+$//g; 
-        $serial =~ s/^\s+|\s+$//g;
+        $mtm =~ s/^\s+|\s+$|\.+//g; 
+        $serial =~ s/^\s+|\s+$|\.+//g;
+
+        $mtm = '' if ($mtm =~ /^0+$/);
+        $serial = '' if ($serial =~ /^0+$/);
+
+        unless (($mtm or $serial) or $ipmac{$ip}) {
+            xCAT::MsgUtils->message("W", { data => ["Could not obtain Valid Model Type and/or Serial Number and MAC Address for BMC at $ip"] }, $::CALLBACK);
+            return;
+        }
 
         # format info string for format_stanza function
         $node_data .= ",$mtm";
@@ -1119,11 +1178,13 @@ sub bmcdiscovery_openbmc{
         } else {
             $node_data .= ",,";
         }
-        $node_data .= ",mp,bmc";
+        $node_data .= ",mp,bmc,$::opt_SN,$::opt_SN";
         if ($mtm and $serial) {
             $node = "node-$mtm-$serial";
             $node =~ s/(.*)/\L$1/g;
             $node =~ s/[\s:\._]/-/g;
+        } else {
+            $node = "node-$ipmac{$ip}";
         }
     } else {
         if ($login_response->status_line =~ /401 Unauthorized/) {
@@ -1133,12 +1194,38 @@ sub bmcdiscovery_openbmc{
         }
         return;
     }
+    display_output($opz,$opw,$node,$node_data,"openbmc",$request_command);
+}
 
-    if (defined($opz) || defined($opw)) {
-        format_stanza($node, $node_data, "openbmc");
-        if (defined($opw)) {
-            write_to_xcatdb($node, $node_data, "openbmc", $request_command);
+
+#-----------------------------------------------------------------------------
+
+=head3  display_output
+
+        Common code to print output of bmcdiscover
+
+=cut
+
+#-----------------------------------------------------------------------------
+sub display_output {
+    my $opz             = shift;
+    my $opw             = shift;
+    my $node            = shift;
+    my $node_data       = shift;
+    my $mgttype         = shift;
+    my $request_command = shift;
+
+    if (defined($opw)) {
+        my $rsp = {};
+        push @{ $rsp->{data} }, "Writing $node ($node_data) to database...";
+        xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
+        if (defined($opz)) {
+            format_stanza($node, $node_data, $mgttype);
         }
+        write_to_xcatdb($node, $node_data, $mgttype, $request_command);
+    }
+    elsif (defined($opz)) {
+        format_stanza($node, $node_data, $mgttype);
     } else {
         my $rsp = {};
         push @{ $rsp->{data} }, "$node_data";

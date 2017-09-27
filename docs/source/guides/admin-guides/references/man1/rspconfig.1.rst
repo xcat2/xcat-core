@@ -47,7 +47,7 @@ OpenBMC specific:
 =================
 
 
-\ **rspconfig**\  \ *noderange*\  {\ **ip | netmask | gateway | vlan**\ }
+\ **rspconfig**\  \ *noderange*\  {\ **ip | netmask | gateway | hostname | vlan | sshcfg**\ }
 
 
 MPA specific:
@@ -251,8 +251,7 @@ DESCRIPTION
 ***********
 
 
-\ **rspconfig**\  configures various settings in the nodes' service processors.  If only a keyword is
-specified, without the \ **=**\ , it displays the current value.
+\ **rspconfig**\  configures various settings in the nodes' service processors.
 
 For options \ **autopower | iocap | decfg | memdecfg | procdecfg | time | date | spdump | sysdump | network**\ , user need to use \ *chdef -t site enableASMI=yes*\  to enable ASMI first.
 
@@ -395,6 +394,12 @@ OPTIONS
  
 
 
+\ **hostname**\ 
+ 
+ Get or set hostname on the service processor.
+ 
+
+
 \ **vlan**\ 
  
  Get or set vlan ID. For get vlan ID, if vlan is not enabled, 'BMC VLAN disabled' will be outputed. For set vlan ID, the valid value are [1-4096].
@@ -523,6 +528,12 @@ OPTIONS
 \ **sshcfg**\ ={\ **enable | disable**\ }
  
  Enable or disable SSH on MPA.
+ 
+
+
+\ **sshcfg**\ 
+ 
+ Copy SSH keys.
  
 
 

@@ -4,4 +4,5 @@ rpower_softoff
 rpower_onstandby
 rinv_bus
 rinv_config
+rinv_wrongbmcpasswd
 rvitals_lcds

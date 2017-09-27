@@ -24,7 +24,7 @@ B<rspconfig> I<noderange> B<garp>=I<time>
 
 =head2 OpenBMC specific:
 
-B<rspconfig> I<noderange> {B<ip>|B<netmask>|B<gateway>|B<vlan>}
+B<rspconfig> I<noderange> {B<ip>|B<netmask>|B<gateway>|B<hostname>|B<vlan>|B<sshcfg>}
 
 =head2 MPA specific:
 
@@ -204,8 +204,7 @@ B<rspconfig> I<noderange> B<--resetnet>
 
 =head1 DESCRIPTION
 
-B<rspconfig> configures various settings in the nodes' service processors.  If only a keyword is
-specified, without the B<=>, it displays the current value.
+B<rspconfig> configures various settings in the nodes' service processors.
 
 For options B<autopower>|B<iocap>|B<decfg>|B<memdecfg>|B<procdecfg>|B<time>|B<date>|B<spdump>|B<sysdump>|B<network>, user need to use I<chdef -t site enableASMI=yes> to enable ASMI first.
 
@@ -301,6 +300,10 @@ Set CEC/BPA system names to the names in xCAT DB or the input name.
 
 Select the policy for I/O Adapter Enlarged Capacity. This option controls the size of PCI memory space allocated to each PCI slot.
 
+=item B<hostname>
+
+Get or set hostname on the service processor.   
+
 =item B<vlan>
 
 Get or set vlan ID. For get vlan ID, if vlan is not enabled, 'BMC VLAN disabled' will be outputed. For set vlan ID, the valid value are [1-4096].
@@ -389,6 +392,10 @@ Performs a service processor dump.
 =item B<sshcfg>={B<enable>|B<disable>}
 
 Enable or disable SSH on MPA.
+
+=item B<sshcfg>
+
+Copy SSH keys.
 
 =item B<swnet>={[I<ip>],[I<gateway>],[I<netmask>]}
 

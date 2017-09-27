@@ -78,7 +78,7 @@ sub setstate {
 
 =pod
 
-  This function will manipulate the yaboot structure to match what the noderes/chain tables indicate the node should be booting.
+  This function will manipulate the petitboot structure to match what the noderes/chain tables indicate the node should be booting.
 
 =cut
 
@@ -125,12 +125,10 @@ sub setstate {
 
                     # We are in the service node pools, print error if no facing ip.
                     if (xCAT::InstUtils->is_me($sn)) {
-                        my @myself = xCAT::NetworkUtils->determinehostname();
-                        my $myname = $myself[ (scalar @myself) - 1 ];
                         $::callback->(
                             {
                                 error => [
-                                    "$myname: $ipfnd[1] on service node $sn"
+                                    "$::myxcatname: $ipfnd[1] on service node $sn"
                                 ],
                                 errorcode => [1]
                             }
@@ -142,7 +140,7 @@ sub setstate {
                 $::callback->(
                     {
                         error => [
-                            "$myname: $ipfnd[1]"
+                            "$::myxcatname: $ipfnd[1]"
                         ],
                         errorcode => [1]
                     }
@@ -170,18 +168,19 @@ sub setstate {
         }
     }
 
-    my $pcfg;
-    unless (-d "$tftpdir/petitboot") {
-        mkpath("$tftpdir/petitboot");
+    my $bootloader_root = "$tftpdir/petitboot";
+    unless (-d "$bootloader_root") {
+        mkpath("$bootloader_root");
     }
     my $nodemac;
 
     my $cref = $chainhash{$node}->[0]; #$chaintab->getNodeAttribs($node,['currstate']);
 
+    my $pcfg;
     # remove the old boot configuration file and create a new one, but only if not offline directive
-    unlink($tftpdir . "/petitboot/" . $node);
+    unlink("$bootloader_root/" . $node);
     if ($cref and $cref->{currstate} ne "offline") {
-        open($pcfg, '>', $tftpdir . "/petitboot/" . $node);
+        open($pcfg, '>', "$bootloader_root/" . $node);
         print $pcfg "#" . $cref->{currstate} . "\n";
     }
     $normalnodes{$node} = 1;   #Assume a normal netboot (well, normal dhcp,
@@ -217,18 +216,13 @@ sub setstate {
             print $pcfg "\tappend \"" . $kern->{kcmdline} . "\"\n";
         }
         close($pcfg);
-        my $inetn = xCAT::NetworkUtils->getipaddr($node);
-        unless ($inetn) {
-            syslog("local1|err", "xCAT unable to resolve IP for $node in petitboot plugin");
-            return;
-        }
     } else {    #TODO: actually, should possibly default to xCAT image?
                 #print $pcfg "bye\n";
         close($pcfg);
     }
     my $ip = xCAT::NetworkUtils->getipaddr($node);
     unless ($ip) {
-        syslog("local1|err", "xCAT unable to resolve IP in petitboot plugin");
+        syslog("local1|err", "xCAT unable to resolve IP for $node in petitboot plugin");
         return;
     }
 
@@ -237,9 +231,9 @@ sub setstate {
     $pname = uc($pname);
 
     # remove the old boot configuration file and copy (link) a new one, but only if not offline directive
-    unlink($tftpdir . "/" . $pname);
+    unlink("$tftpdir/" . $pname);
     if ($cref and $cref->{currstate} ne "offline") {
-        link($tftpdir . "/petitboot/" . $node, $tftpdir . "/" . $pname);
+        link("$bootloader_root/" . $node, "$tftpdir/" . $pname);
     }
     return;
 }
@@ -283,12 +277,14 @@ sub preprocess_request {
 
     #use Getopt::Long;
     my $HELP;
+    my $ALLFLAG;
     my $VERSION;
     my $VERBOSE;
     Getopt::Long::Configure("bundling");
     Getopt::Long::Configure("pass_through");
     if (!GetOptions('h|?|help' => \$HELP,
             'v|version' => \$VERSION,
+            'a'           =>\$ALLFLAG,
             'V'         => \$VERBOSE    #>>>>>>>used for trace log>>>>>>>
         )) {
         if ($usage{$command}) {
@@ -334,6 +330,13 @@ sub preprocess_request {
         return;
     }
 
+    if ($ARGV[0] ne "stat" && $ALLFLAG) {
+        my %rsp;
+        $rsp{error}->[0] = "'-a' could only be used with 'stat' subcommand.";
+        $rsp{errorcode}->[0] = 1;
+        $callback1->(\%rsp);
+        return;
+    }
 
     #Assume shared tftp directory for boring people, but for cool people, help sync up tftpdirectory contents when
     #if they specify no sharedtftp in site table
@@ -346,23 +349,54 @@ sub preprocess_request {
         my @SN;
         my @CN;
         xCAT::ServiceNodeUtils->getSNandCPnodes(\@$nodes, \@SN, \@CN);
-        if ((@SN > 0) && (@CN > 0)) {    # there are both SN and CN
-            my $rsp;
-            $rsp->{data}->[0] =
-"Nodeset was run with a noderange containing both service nodes and compute nodes. This is not valid. You must submit with either compute nodes in the noderange or service nodes. \n";
-            xCAT::MsgUtils->message("E", $rsp, $callback1);
-            return;
-
+        unless (($args[0] eq 'stat') or ($args[0] eq 'enact')) {
+            if ((@SN > 0) && (@CN > 0)) {    # there are both SN and CN
+                my %rsp;
+                $rsp{errorcode}->[0] = 1;
+                $rsp{error}->[0] =
+    "Nodeset was run with a noderange containing both service nodes and compute nodes. This is not valid. You must submit with either compute nodes in the noderange or service nodes. \n";
+                $callback1->(\%rsp);
+                return;
+            }
         }
 
         $req->{'_disparatetftp'} = [1];
         if ($req->{inittime}->[0]) {
             return [$req];
         }
-        if (@CN > 0) {    # if compute nodes broadcast to all servicenodes
-            return xCAT::Scope->get_broadcast_scope_with_parallel($req);
+        if (@CN > 0) {    # if compute nodes only, then broadcast to servic enodes
+
+            my @sn = xCAT::ServiceNodeUtils->getSNList();
+            unless ( @sn > 0 ) {
+                return xCAT::Scope->get_parallel_scope($req)
+            }
+
+            my $mynodeonly  = 0;
+            my @entries = xCAT::TableUtils->get_site_attribute("disjointdhcps");
+            my $t_entry = $entries[0];
+            if (defined($t_entry)) {
+                $mynodeonly = $t_entry;
+            }
+            $req->{'_disjointmode'} = [$mynodeonly];
+            xCAT::MsgUtils->trace(0, "d", "petitboot: disjointdhcps=$mynodeonly");
+
+            if ($mynodeonly == 0 || $ALLFLAG) { # broadcast to all service nodes
+                return xCAT::Scope->get_broadcast_scope_with_parallel($req, \@sn);
+            }
+
+            my $sn_hash = xCAT::ServiceNodeUtils->getSNformattedhash(\@CN, "xcat", "MN");
+            my @dhcpsvrs = ();
+            my $ntab = xCAT::Table->new('networks');
+            if ($ntab) {
+                foreach (@{ $ntab->getAllEntries() }) {
+                    next unless ($_->{dynamicrange});
+                    push @dhcpsvrs, $_->{dhcpserver} if ($_->{dhcpserver} && xCAT::NetworkUtils->nodeonmynet($_->{dhcpserver}));
+                }
+            }
+            return xCAT::Scope->get_broadcast_disjoint_scope_with_parallel($req, $sn_hash, \@dhcpsvrs);
         }
     }
+    # Do not dispatch to service nodes if non-sharedtftp or the node range contains only SNs.
     return xCAT::Scope->get_parallel_scope($req);
 }
 
@@ -374,16 +408,16 @@ sub process_request {
     $sub_req    = shift;
     my $command = $request->{command}->[0];
     %breaknetbootnodes = ();
-    %normalnodes       = ();
+    %normalnodes       = (); # It will be fill-up by method: setstate.
 
     #>>>>>>>used for trace log start>>>>>>>
     my @args = ();
     my %opt;
     my $verbose_on_off = 0;
-    if (ref($::request->{arg})) {
-        @args = @{ $::request->{arg} };
+    if (ref($request->{arg})) {
+        @args = @{ $request->{arg} };
     } else {
-        @args = ($::request->{arg});
+        @args = ($request->{arg});
     }
     @ARGV = @args;
     GetOptions('V' => \$opt{V});
@@ -394,7 +428,9 @@ sub process_request {
     if ($::XCATSITEVALS{"httpmethod"}) { $httpmethod = $::XCATSITEVALS{"httpmethod"}; }
     if ($::XCATSITEVALS{"httpport"}) { $httpport = $::XCATSITEVALS{"httpport"}; }
 
-    my @nodes;
+    my @hostinfo = xCAT::NetworkUtils->determinehostname();
+    $::myxcatname = $hostinfo[-1];
+    xCAT::MsgUtils->trace($verbose_on_off, "d", "petitboot: running on $::myxcatname");
     my @rnodes;
     if (ref($request->{node})) {
         @rnodes = @{ $request->{node} };
@@ -408,61 +444,101 @@ sub process_request {
         return;
     }
 
-    #if not shared tftpdir, then filter, otherwise, set up everything
-    if ($request->{'_disparatetftp'}->[0]) { #reading hint from preprocess_command
-        @nodes = ();
-        my @hostinfo = xCAT::NetworkUtils->determinehostname();
-        my $cur_xmaster = pop @hostinfo;
-        xCAT::MsgUtils->trace(0, "d", "petitboot: running on $cur_xmaster");
-
-        # Get current server managed node list
-        my $sn_hash = xCAT::ServiceNodeUtils->getSNformattedhash(\@rnodes, "xcat", "MN");
-        my %managed = {};
-        foreach (@{ $sn_hash->{$cur_xmaster} }) { $managed{$_} = 1; }
-
-        foreach (@rnodes) {
-            if (xCAT::NetworkUtils->nodeonmynet($_)) {
-                push @nodes, $_;
+    if ($args[0] eq 'stat') {
+        my $noderestab = xCAT::Table->new('noderes'); #in order to detect per-node tftp directories
+        my %nrhash = %{ $noderestab->getNodesAttribs(\@rnodes, [qw(tftpdir)]) };
+        foreach my $node (@rnodes) {
+            my %response;
+            my $tftpdir;
+            if ($nrhash{$node}->[0] and $nrhash{$node}->[0]->{tftpdir}) {
+                $tftpdir = $nrhash{$node}->[0]->{tftpdir};
             } else {
-                my $msg = "petitboot configuration file was not created for node [$_] because sharedtftp attribute is not set and the node is not on same network as this xcatmaster";
-                if ( $cur_xmaster ) {
-                    $msg .= ": $cur_xmaster";
-                }
-                if ( exists( $managed{$_} ) ) {
-                    # report error when it is under my control but I cannot handle it.
-                    my $rsp;
-                    $rsp->{data}->[0] = $msg;
-                    xCAT::MsgUtils->message("E", $rsp, $callback);
-                } else {
-                    xCAT::MsgUtils->message("S", $msg);
-                }
+                $tftpdir = $globaltftpdir;
             }
+            $response{node}->[0]->{name}->[0] = $node;
+            $response{node}->[0]->{data}->[0] = getstate($node, $tftpdir);
+            $callback->(\%response);
         }
-    } else {
-        @nodes = @rnodes;
-    }
-
-    #>>>>>>>used for trace log>>>>>>>
-    my $str_node = join(" ", @nodes);
-    xCAT::MsgUtils->trace($verbose_on_off, "d", "petitboot: nodes are $str_node");
-
-    # return directly if no nodes in the same network
-    unless (@nodes) {
-        xCAT::MsgUtils->message("S", "xCAT: petitboot netboot: no valid nodes. Stop the operation on this server.");
         return;
     }
 
-    if (ref($request->{arg})) {
-        @args = @{ $request->{arg} };
+    my @nodes = ();
+    # Filter those nodes which have bad DNS: not resolvable or inconsistent IP
+    my %failurenodes = ();
+    my %preparednodes = ();
+    foreach (@rnodes) {
+        my $ipret = xCAT::NetworkUtils->checkNodeIPaddress($_);
+        my $errormsg = $ipret->{'error'};
+        my $nodeip = $ipret->{'ip'};
+        if ($errormsg) {# Add the node to failure set
+            xCAT::MsgUtils->trace(0, "E", "petitboot: Defined IP address of $_ is $nodeip. $errormsg");
+            unless ($nodeip) {
+                $failurenodes{$_} = 1;
+            }
+        }
+        if ($nodeip) {
+            $preparednodes{$_} = $nodeip;
+        }
+    }
+
+    #if not shared tftpdir, then filter, otherwise, set up everything
+    if ($request->{'_disparatetftp'}->[0]) { #reading hint from preprocess_command
+        # Filter those nodes not in the same subnet, and print error message in log file.
+        foreach (keys %preparednodes) {
+            # Only handle its boot configuration files if the node in same subnet
+            if (xCAT::NetworkUtils->nodeonmynet($preparednodes{$_})) {
+                push @nodes, $_;
+            } else {
+                xCAT::MsgUtils->trace(0, "W", "petitboot: configuration file was not created for [$_] because the node is not on the same network as this server");
+                delete $preparednodes{$_};
+            }
+        }
     } else {
-        @args = ($request->{arg});
+        @nodes = keys %preparednodes;
+    }
+
+    my $str_node = join(" ", @nodes);
+    xCAT::MsgUtils->trace($verbose_on_off, "d", "petitboot: nodes are $str_node") if ($str_node);
+
+    # Return directly if no nodes in the same network, need to report error on console if its managed nodes are not handled.
+    unless (@nodes) {
+        xCAT::MsgUtils->message("S", "xCAT: petitboot netboot: no valid nodes. Stop the operation on this server.");
+
+        # If non-shared tftproot and non disjoint mode, need to figure out if no nodes here is a normal case.
+        if ($request->{'_disparatetftp'}->[0] && $request->{'_disjointmode'}->[0] != 1) {
+            # Find out which nodes are really mine only when not sharedtftp and not disjoint mode.
+            my %iphash   = ();
+            # flag the IPs or names in iphash
+            foreach (@hostinfo) { $iphash{$_} = 1; }
+
+            # Get managed node list under current server
+            # The node will be under under 'site.master' if no 'noderes.servicenode' is defined
+            my $sn_hash = xCAT::ServiceNodeUtils->getSNformattedhash(\@rnodes, "xcat", "MN");
+            my $req2manage = 0;
+            foreach (keys %$sn_hash) {
+                if (exists($iphash{$_})) {
+                    $req2manage = 1;
+                    last;
+                }
+            }
+            if ($req2manage == 0) {
+                #No nodes are required to be handled, quit without error.
+                return;
+            }
+        }
+        # Okay, now report error as no nodes are handled.
+        my $rsp;
+        $rsp->{errorcode}->[0] = 1;
+        $rsp->{error}->[0]     = "Failed to generate petitboot configurations for some node(s) on $::myxcatname. Check xCAT log file for more details.";
+        $callback->($rsp);
+        return;
     }
 
     #now run the begin part of the prescripts
-    unless ($args[0] eq 'stat') {    # or $args[0] eq 'enact') {
+    unless ($args[0] eq '') {    # or $args[0] eq 'enact') {
         $errored = 0;
-        if ($request->{'_disparatetftp'}->[0]) { #the call is distrubuted to the service node already, so only need to handles my own children
-            xCAT::MsgUtils->trace($verbose_on_off, "d", "petitboot: the call is distrubuted to the service node already, so only need to handles my own children");
+        if ($request->{'_disparatetftp'}->[0]) { #the call is distrubuted to the service node already, so only need to handle my own children
+            xCAT::MsgUtils->trace($verbose_on_off, "d", "petitboot: the call is distrubuted to the service node already, so only need to handle my own children");
             xCAT::MsgUtils->trace($verbose_on_off, "d", "petitboot: issue runbeginpre request");
             $sub_req->({ command => ['runbeginpre'],
                     node => \@nodes,
@@ -471,7 +547,7 @@ sub process_request {
             xCAT::MsgUtils->trace($verbose_on_off, "d", "petitboot: nodeset did not distribute to the service node");
             xCAT::MsgUtils->trace($verbose_on_off, "d", "petitboot: issue runbeginpre request");
             $sub_req->({ command => ['runbeginpre'],
-                    node => \@rnodes,
+                    node => \@nodes,
                     arg => [ $args[0] ] }, \&pass_along);
         }
         if ($errored) {
@@ -489,7 +565,7 @@ sub process_request {
     if (!$inittime) { $inittime = 0; }
 
     my %bphash;
-    unless ($args[0] eq 'stat') {    # or $args[0] eq 'enact') {
+    unless ($args[0] eq '') {    # or $args[0] eq 'enact') {
         $errored = 0;
         xCAT::MsgUtils->trace($verbose_on_off, "d", "petitboot: issue setdestiny request");
         $sub_req->({ command => ['setdestiny'],
@@ -515,6 +591,8 @@ sub process_request {
                 });
         xCAT::MsgUtils->message("S", "xCAT: petitboot netboot: clear node(s): @nodes boot device setting.");
     }
+
+    xCAT::MsgUtils->trace($verbose_on_off, "d", "petitboot: starting to handle configuration...");
     my $chaintab = xCAT::Table->new('chain', -create => 1);
     my $chainhash = $chaintab->getNodesAttribs(\@nodes, ['currstate']);
     my $noderestab = xCAT::Table->new('noderes', -create => 1);
@@ -538,13 +616,10 @@ sub process_request {
             $tftpdir = $globaltftpdir;
         }
         $response{node}->[0]->{name}->[0] = $_;
-        if ($args[0] eq 'stat') {
-            $response{node}->[0]->{data}->[0] = getstate($_, $tftpdir);
-            $callback->(\%response);
-        } elsif ($args[0]) { #If anything else, send it on to the destiny plugin, then setstate
+        if ($args[0]) { # send it on to the destiny plugin, then setstate
             my $ent       = $typehash->{$_}->[0];
             my $osimgname = $ent->{'provmethod'};
-            my $linuximghash = $linuximghash = $linuximgtab->getAttribs({ imagename => $osimgname }, 'boottarget', 'addkcmdline');
+            my $linuximghash = $linuximgtab->getAttribs({ imagename => $osimgname }, 'boottarget', 'addkcmdline');
 
 
             ($rc, $errstr) = setstate($_, \%bphash, $chainhash, $machash, $tftpdir, $nodereshash, $linuximghash);
@@ -555,11 +630,10 @@ sub process_request {
             }
         }
     }    # end of foreach node
+    xCAT::MsgUtils->trace($verbose_on_off, "d", "petitboot: Finish to handle configurations");
 
     my @normalnodeset = keys %normalnodes;
     my @breaknetboot  = keys %breaknetbootnodes;
-
-    #print "yaboot:inittime=$inittime; normalnodeset=@normalnodeset; breaknetboot=@breaknetboot\n";
     my %osimagenodehash;
     for my $nn (@normalnodeset) {
 
@@ -570,7 +644,7 @@ sub process_request {
     }
 
     #Don't bother to try dhcp binding changes if sub_req not passed, i.e. service node build time
-    unless (($args[0] eq 'stat') || ($inittime) || ($args[0] eq 'offline')) {
+    unless ($inittime) {
 
         #dhcp stuff
         my $do_dhcpsetup = 1;
@@ -579,27 +653,24 @@ sub process_request {
         if (defined($t_entry)) {
             if ($t_entry =~ /0|n|N/) { $do_dhcpsetup = 0; }
         }
-        if ($do_dhcpsetup) {
-            if ($::request->{'_disparatetftp'}->[0]) { #reading hint from preprocess_command
-                xCAT::MsgUtils->trace($verbose_on_off, "d", "petitboot: issue makedhcp request");
-                $sub_req->({ command => ['makedhcp'], arg => ['-l'],
-                        node => \@normalnodeset }, $callback);
-            } else {
-                xCAT::MsgUtils->trace($verbose_on_off, "d", "petitboot: issue makedhcp request");
-                $sub_req->({ command => ['makedhcp'],
-                        node => \@normalnodeset }, $callback);
-            }
+        # For offline operation, remove the dhcp entries whatever dhcpset is disabled in site ( existing code logic, just keep it as is)
+        if ($do_dhcpsetup || $args[0] eq 'offline') {
+            my @parameter;
+            push @parameter, '-l' if ($request->{'_disparatetftp'}->[0]);
+            push @parameter, '-d' if ($args[0] eq 'offline');
+            xCAT::MsgUtils->trace($verbose_on_off, "d", "petitboot: issue makedhcp request");
+
+            $sub_req->({ command => ['makedhcp'],
+                         arg => \@parameter,
+                         node => \@normalnodeset }, $callback);
+        } else {
+            xCAT::MsgUtils->trace($verbose_on_off, "d", "petitboot: dhcpsetup=$do_dhcpsetup");
         }
-    }
 
-    if ($args[0] eq 'offline') {
-
-        # If nodeset directive was offline we need to remove dhcp entries
-        $sub_req->({ command => ['makedhcp'], arg => ['-d'], node => \@normalnodeset }, $callback);
     }
 
     #now run the end part of the prescripts
-    unless ($args[0] eq 'stat') {    # or $args[0] eq 'enact')
+    unless ($args[0] eq '') {    # or $args[0] eq 'enact')
         $errored = 0;
         if ($request->{'_disparatetftp'}->[0]) { #the call is distrubuted to the service node already, so only need to handles my own children
             xCAT::MsgUtils->trace($verbose_on_off, "d", "petitboot: issue runendpre request");
@@ -609,7 +680,7 @@ sub process_request {
         } else { #nodeset did not distribute to the service node, here we need to let runednpre to distribute the nodes to their masters
             xCAT::MsgUtils->trace($verbose_on_off, "d", "petitboot: issue runendpre request");
             $sub_req->({ command => ['runendpre'],
-                    node => \@rnodes,
+                    node => \@nodes,
                     arg => [ $args[0] ] }, \&pass_along);
         }
         if ($errored) {
@@ -619,6 +690,15 @@ sub process_request {
             $callback->($rsp);
             return;
         }
+    }
+
+    # Return error codes if there are failed nodes
+    if (%failurenodes) {
+        my $rsp;
+        $rsp->{errorcode}->[0] = 1;
+        $rsp->{error}->[0]     = "Failed to generate petitboot configurations for some node(s) on $::myxcatname. Check xCAT log file for more details.";
+        $callback->($rsp);
+        return;
     }
 }
 

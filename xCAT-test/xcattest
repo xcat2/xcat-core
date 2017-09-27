@@ -220,6 +220,13 @@ if (defined($configfile)) {
     }
 } else {
     $setup_env_by_config_file = 0;
+    # Leverage environment variable to used in test case
+    foreach (keys %ENV) {
+        if (/^XCATTEST_/) {
+            my @envname=split("_",$_,2);
+            $config{var}{$envname[-1]} = $ENV{$_};
+        }
+    }
 }
 
 if ($restore) {
@@ -682,7 +689,7 @@ sub load_config_file {
             }
         } elsif ($type eq "Object") {
             ##OBJECT BLOCK##
-            if ($line =~ /(\w+)\s*=\s*([:\w\.\-\/]+)/) {
+            if ($line =~ /(\w+)\s*=\s*([:,\w\.\-\/]+)/) {
                 $attr  = $1;
                 $value = $2;
                 if ($attr eq "Name") {
@@ -1175,18 +1182,18 @@ sub run_case {
 
                 #to run single line command
 
+                log_this($running_log_fd, "RUN:$cmd->[0] [$runstartstr]");
                 $cmd->[0]    = getfunc($cmd->[0]);
                 @output = &runcmd($cmd->[0]);
                 $rc     = $::RUNCMD_RC;
-                log_this($running_log_fd, "RUN:$cmd->[0] [$runstartstr]");
                 push(@caselog, "RUN:$cmd->[0] [$runstartstr]");
             } else {
 
                 #to run multiple lines command
 
+                log_this($running_log_fd, "RUN: [$runstartstr]", @{$cmd});
                 @output = runscript($cmd);
                 $rc     = $::RUNCMD_RC;
-                log_this($running_log_fd, "RUN: [$runstartstr]", @{$cmd});
                 push(@caselog, ("RUN: [$runstartstr]", @{$cmd}));
             }
 

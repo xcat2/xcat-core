@@ -26,14 +26,24 @@ sub findme {
     my $mtms       = $request->{'mtm'}->[0] . "*" . $request->{'serial'}->[0];
     my $tmp_nodes  = $::XCATVPDHASH{$mtms};
     my @nodes      = ();
-    my $bmc_node;
+    my @bmc_nodes = ();
+    my $bmc_node = undef;
     foreach (@$tmp_nodes) {
         if ($::XCATMPHASH{$_}) {
-            $bmc_node = $_;
+            push @bmc_nodes, $_;
         } else {
             push @nodes, $_;
         }
     }
+
+    if ($request->{'bmcmac'}->[0]) {
+        my $bmcmac = lc($request->{'bmcmac'}->[0]);
+        $bmcmac =~ s/\://g;
+        my $tmp_node = "node-$bmcmac";
+        push @bmc_nodes, $tmp_node if ($::XCATMPHASH{$tmp_node});
+    }
+
+    $bmc_node = join(",", @bmc_nodes);
     my $nodenum = $#nodes;
     if ($nodenum < 0) {
         xCAT::MsgUtils->message("S", "xcat.discovery.mtms: ($request->{_xcat_clientmac}->[0]) Warning: Could not find any node for $mtms using mtms-based discovery");

@@ -1,6 +1,6 @@
 # IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
 package xCAT_plugin::grub2;
-use Data::Dumper;
+
 use Sys::Syslog;
 use xCAT::Scope;
 use xCAT::Utils;
@@ -123,12 +123,10 @@ sub setstate {
 
                     # We are in the service node pools, print error if no facing ip.
                     if (xCAT::InstUtils->is_me($sn)) {
-                        my @myself = xCAT::NetworkUtils->determinehostname();
-                        my $myname = $myself[ (scalar @myself) - 1 ];
                         $::callback->(
                             {
                                 error => [
-                                    "$myname: $ipfnd[1] on service node $sn"
+                                    "$::myxcatname: $ipfnd[1] on service node $sn"
                                 ],
                                 errorcode => [1]
                             }
@@ -140,7 +138,7 @@ sub setstate {
                 $::callback->(
                     {
                         error => [
-                            "$myname: $ipfnd[1]"
+                            "$::myxcatname: $ipfnd[1]"
                         ],
                         errorcode => [1]
                     }
@@ -176,9 +174,9 @@ sub setstate {
         $kern->{kcmdline} .= " " . $cmdhashref->{volatile};
     }
 
-    my $pcfg;
-    unless (-d "$tftpdir/boot/grub2") {
-        mkpath("$tftpdir/boot/grub2");
+    my $bootloader_root = "$tftpdir/boot/grub2";
+    unless (-d "$bootloader_root") {
+        mkpath("$bootloader_root");
     }
     my $nodemac;
     my %client_nethash = xCAT::DBobjUtils->getNetwkInfo([$node]);
@@ -186,9 +184,10 @@ sub setstate {
     my $cref = $chainhash{$node}->[0]; #$chaintab->getNodeAttribs($node,['currstate']);
 
     # remove the old boot configuration files and create a new one, but only if not offline directive
-    system("find $tftpdir/boot/grub2/ -inum \$(stat --printf \%i $tftpdir/boot/grub2/$node 2>/dev/null) -exec rm -f {} \\; 2>/dev/null");
+    system("find $bootloader_root/ -inum \$(stat --printf \%i $bootloader_root/$node 2>/dev/null) -exec rm -f {} \\; 2>/dev/null");
+    my $pcfg;
     if ($cref and $cref->{currstate} ne "offline") {
-        open($pcfg, '>', $tftpdir . "/boot/grub2/" . $node);
+        open($pcfg, '>', "$bootloader_root/" . $node);
         print $pcfg "#" . $cref->{currstate} . "\n";
 
         if (($::XCATSITEVALS{xcatdebugmode} eq "1") or ($::XCATSITEVALS{xcatdebugmode} eq "2")) {
@@ -294,11 +293,6 @@ sub setstate {
             print $pcfg "}";
             close($pcfg);
         }
-        my $inetn = xCAT::NetworkUtils->getipaddr($node);
-        unless ($inetn) {
-            syslog("local1|err", "xCAT unable to resolve IP for $node in grub2 plugin");
-            return;
-        }
     } else {
         close($pcfg);
     }
@@ -334,9 +328,9 @@ sub setstate {
         my $pname = "grub.cfg-" . sprintf("%02X%02X%02X%02X", @ipa);
 
         # remove the old boot configuration file and copy (link) a new one, but only if not offline directive
-        unlink($tftpdir . "/boot/grub2/" . $pname);
+        unlink("$bootloader_root/" . $pname);
         if ($cref and $cref->{currstate} ne "offline") {
-            link($tftpdir . "/boot/grub2/" . $node, $tftpdir . "/boot/grub2/" . $pname);
+            link("$bootloader_root/" . $node, "$bootloader_root/" . $pname);
         }
     }
     
@@ -359,9 +353,9 @@ sub setstate {
         my $pname = "grub.cfg-01-" . $tmp;
 
         # remove the old boot configuration file and copy (link) a new one, but only if not offline directive
-        unlink($tftpdir . "/boot/grub2/" . $pname);
+        unlink("$bootloader_root/" . $pname);
         if ($cref and $cref->{currstate} ne "offline") {
-            link($tftpdir . "/boot/grub2/" . $node, $tftpdir . "/boot/grub2/" . $pname);
+            link("$bootloader_root/" . $node, "$bootloader_root/" . $pname);
         }
     }
     return;
@@ -402,12 +396,14 @@ sub preprocess_request {
 
     #use Getopt::Long;
     my $HELP;
+    my $ALLFLAG;
     my $VERSION;
     my $VERBOSE;
     Getopt::Long::Configure("bundling");
     Getopt::Long::Configure("pass_through");
     if (!GetOptions('h|?|help' => \$HELP,
             'v|version' => \$VERSION,
+            'a'           =>\$ALLFLAG,
             'V'         => \$VERBOSE    #>>>>>>>used for trace log>>>>>>>
         )) {
         if ($usage{$command}) {
@@ -469,12 +465,12 @@ sub preprocess_request {
         xCAT::ServiceNodeUtils->getSNandCPnodes(\@$nodes, \@SN, \@CN);
         unless (($args[0] eq 'stat') or ($args[0] eq 'enact')) {
             if ((@SN > 0) && (@CN > 0)) {    # there are both SN and CN
-                my $rsp;
-                $rsp->{data}->[0] =
+                my %rsp;
+                $rsp{errorcode}->[0] = 1;
+                $rsp{error}->[0] =
 "Nodeset was run with a noderange containing both service nodes and compute nodes. This is not valid. You must submit with either compute nodes in the noderange or service nodes. \n";
-                xCAT::MsgUtils->message("E", $rsp, $callback1);
+                $callback1->(\%rsp);
                 return;
-
             }
         }
 
@@ -482,10 +478,39 @@ sub preprocess_request {
         if ($req->{inittime}->[0]) {
             return [$req];
         }
-        if (@CN > 0) {    # if compute nodes broadcast to all servicenodes
-            return xCAT::Scope->get_broadcast_scope_with_parallel($req);
+        if (@CN > 0) {    # if compute nodes only, then broadcast to servic enodes
+
+            my @sn = xCAT::ServiceNodeUtils->getSNList();
+            unless ( @sn > 0 ) {
+                return xCAT::Scope->get_parallel_scope($req)
+            }
+
+            my $mynodeonly  = 0;
+            my @entries = xCAT::TableUtils->get_site_attribute("disjointdhcps");
+            my $t_entry = $entries[0];
+            if (defined($t_entry)) {
+                $mynodeonly = $t_entry;
+            }
+            $req->{'_disjointmode'} = [$mynodeonly];
+            xCAT::MsgUtils->trace(0, "d", "grub2: disjointdhcps=$mynodeonly");
+
+            if ($mynodeonly == 0 || $ALLFLAG) { # broadcast to all service nodes
+                return xCAT::Scope->get_broadcast_scope_with_parallel($req, \@sn);
+            }
+
+            my $sn_hash = xCAT::ServiceNodeUtils->getSNformattedhash(\@CN, "xcat", "MN");
+            my @dhcpsvrs = ();
+            my $ntab = xCAT::Table->new('networks');
+            if ($ntab) {
+                foreach (@{ $ntab->getAllEntries() }) {
+                    next unless ($_->{dynamicrange});
+                    push @dhcpsvrs, $_->{dhcpserver} if ($_->{dhcpserver} && xCAT::NetworkUtils->nodeonmynet($_->{dhcpserver}));
+                }
+            }
+            return xCAT::Scope->get_broadcast_disjoint_scope_with_parallel($req, $sn_hash, \@dhcpsvrs);
         }
     }
+    # Do not dispatch to service nodes if non-sharedtftp or the node range contains only SNs.
     return xCAT::Scope->get_parallel_scope($req);
 }
 
@@ -496,19 +521,16 @@ sub process_request {
     $sub_req    = shift;
     my $command = $request->{command}->[0];
     %breaknetbootnodes = ();
-    %normalnodes       = ();
+    %normalnodes       = (); # It will be fill-up by method: setstate.
 
     my @args;
-    my @nodes;
-    my @rnodes;
-
     #>>>>>>>used for trace log start>>>>>>>
     my %opt;
     my $verbose_on_off = 0;
-    if (ref($::XNBA_request->{arg})) {
-        @args = @{ $::XNBA_request->{arg} };
+    if (ref($request->{arg})) {
+        @args = @{ $request->{arg} };
     } else {
-        @args = ($::XNBA_request->{arg});
+        @args = ($request->{arg});
     }
     @ARGV = @args;
     GetOptions('V' => \$opt{V});
@@ -516,6 +538,10 @@ sub process_request {
 
     #>>>>>>>used for trace log end>>>>>>>
 
+    my @hostinfo = xCAT::NetworkUtils->determinehostname();
+    $::myxcatname = $hostinfo[-1];
+    xCAT::MsgUtils->trace($verbose_on_off, "d", "grub2: running on $::myxcatname");
+    my @rnodes;
     if (ref($request->{node})) {
         @rnodes = @{ $request->{node} };
     } else {
@@ -528,61 +554,101 @@ sub process_request {
         return;
     }
 
-    #if not shared tftpdir, then filter, otherwise, set up everything
-    if ($request->{'_disparatetftp'}->[0]) { #reading hint from preprocess_command
-        @nodes = ();
-        my @hostinfo = xCAT::NetworkUtils->determinehostname();
-        my $cur_xmaster = pop @hostinfo;
-        xCAT::MsgUtils->trace(0, "d", "grub2: running on $cur_xmaster");
-
-        # Get current server managed node list
-        my $sn_hash = xCAT::ServiceNodeUtils->getSNformattedhash(\@rnodes, "xcat", "MN");
-        my %managed = {};
-        foreach (@{ $sn_hash->{$cur_xmaster} }) { $managed{$_} = 1; }
-
-        foreach (@rnodes) {
-            if (xCAT::NetworkUtils->nodeonmynet($_)) {
-                push @nodes, $_;
+    if ($args[0] eq 'stat') {
+        my $noderestab = xCAT::Table->new('noderes'); #in order to detect per-node tftp directories
+        my %nrhash = %{ $noderestab->getNodesAttribs(\@rnodes, [qw(tftpdir)]) };
+        foreach my $node (@rnodes) {
+            my %response;
+            my $tftpdir;
+            if ($nrhash{$node}->[0] and $nrhash{$node}->[0]->{tftpdir}) {
+                $tftpdir = $nrhash{$node}->[0]->{tftpdir};
             } else {
-                my $msg = "grub2 configuration file was not created for node [$_] because sharedtftp attribute is not set and the node is not on same network as this xcatmaster";
-                if ( $cur_xmaster ) {
-                    $msg .= ": $cur_xmaster";
-                }
-                if ( exists( $managed{$_} ) ) {
-                    # report error when it is under my control but I cannot handle it.
-                    my $rsp;
-                    $rsp->{data}->[0] = $msg;
-                    xCAT::MsgUtils->message("E", $rsp, $callback);
-                } else {
-                    xCAT::MsgUtils->message("S", $msg);
-                }
+                $tftpdir = $globaltftpdir;
             }
+            $response{node}->[0]->{name}->[0] = $node;
+            $response{node}->[0]->{data}->[0] = getstate($node, $tftpdir);
+            $callback->(\%response);
         }
-    } else {
-        @nodes = @rnodes;
-    }
-
-    #>>>>>>>used for trace log>>>>>>>
-    my $str_node = join(" ", @nodes);
-    xCAT::MsgUtils->trace($verbose_on_off, "d", "grub2: nodes are $str_node");
-
-    # return directly if no nodes in the same network
-    unless (@nodes) {
-        xCAT::MsgUtils->message("S", "xCAT: grub2 netboot: no valid nodes. Stop the operation on this server.");
         return;
     }
 
-    if (ref($request->{arg})) {
-        @args = @{ $request->{arg} };
+    my @nodes = ();
+    # Filter those nodes which have bad DNS: not resolvable or inconsistent IP
+    my %failurenodes = ();
+    my %preparednodes = ();
+    foreach (@rnodes) {
+        my $ipret = xCAT::NetworkUtils->checkNodeIPaddress($_);
+        my $errormsg = $ipret->{'error'};
+        my $nodeip = $ipret->{'ip'};
+        if ($errormsg) {# Add the node to failure set
+            xCAT::MsgUtils->trace(0, "E", "grub2: Defined IP address of $_ is $nodeip. $errormsg");
+            unless ($nodeip) {
+                $failurenodes{$_} = 1;
+            }
+        }
+        if ($nodeip) {
+            $preparednodes{$_} = $nodeip;
+        }
+    }
+
+    #if not shared tftpdir, then filter, otherwise, set up everything
+    if ($request->{'_disparatetftp'}->[0]) { #reading hint from preprocess_command
+        # Filter those nodes not in the same subnet, and print error message in log file.
+        foreach (keys %preparednodes) {
+            # Only handle its boot configuration files if the node in same subnet
+            if (xCAT::NetworkUtils->nodeonmynet($preparednodes{$_})) {
+                push @nodes, $_;
+            } else {
+                xCAT::MsgUtils->trace(0, "W", "grub2: configuration file was not created for [$_] because the node is not on the same network as this server");
+                delete $preparednodes{$_};
+            }
+        }
     } else {
-        @args = ($request->{arg});
+        @nodes = keys %preparednodes;
+    }
+
+    my $str_node = join(" ", @nodes);
+    xCAT::MsgUtils->trace($verbose_on_off, "d", "grub2: nodes are $str_node") if ($str_node);
+
+    # Return directly if no nodes in the same network, need to report error on console if its managed nodes are not handled.
+    unless (@nodes) {
+        xCAT::MsgUtils->message("S", "xCAT: grub2 netboot: no valid nodes. Stop the operation on this server.");
+
+        # If non-shared tftproot and non disjoint mode, need to figure out if no nodes here is a normal case.
+        if ($request->{'_disparatetftp'}->[0] && $request->{'_disjointmode'}->[0] != 1) {
+            # Find out which nodes are really mine only when not sharedtftp and not disjoint mode.
+            my %iphash   = ();
+            # flag the IPs or names in iphash
+            foreach (@hostinfo) { $iphash{$_} = 1; }
+
+            # Get managed node list under current server
+            # The node will be under under 'site.master' if no 'noderes.servicenode' is defined
+            my $sn_hash = xCAT::ServiceNodeUtils->getSNformattedhash(\@rnodes, "xcat", "MN");
+            my $req2manage = 0;
+            foreach (keys %$sn_hash) {
+                if (exists($iphash{$_})) {
+                    $req2manage = 1;
+                    last;
+                }
+            }
+            # Okay, now report error as no nodes are handled.
+            if ($req2manage == 0) {
+                xCAT::MsgUtils->trace(0, "d", "grub2: No nodes are required to be managed on this server");
+                return;
+            }
+        }
+        my $rsp;
+        $rsp->{errorcode}->[0] = 1;
+        $rsp->{error}->[0]     = "Failed to generate grub2 configurations for some node(s) on $::myxcatname. Check xCAT log file for more details.";
+        $callback->($rsp);
+        return;
     }
 
     #now run the begin part of the prescripts
-    unless ($args[0] eq 'stat') {    # or $args[0] eq 'enact') {
+    unless ($args[0] eq '') {    # or $args[0] eq 'enact') {
         $errored = 0;
-        if ($request->{'_disparatetftp'}->[0]) { #the call is distrubuted to the service node already, so only need to handles my own children
-            xCAT::MsgUtils->trace($verbose_on_off, "d", "grub2: the call is distrubuted to the service node already, so only need to handles my own children");
+        if ($request->{'_disparatetftp'}->[0]) { #the call is distrubuted to the service node already, so only need to handle my own children
+            xCAT::MsgUtils->trace($verbose_on_off, "d", "grub2: the call is distrubuted to the service node already, so only need to handle my own children");
             xCAT::MsgUtils->trace($verbose_on_off, "d", "grub2: issue runbeginpre request");
             $sub_req->({ command => ['runbeginpre'],
                     node => \@nodes,
@@ -609,7 +675,7 @@ sub process_request {
     if (!$inittime) { $inittime = 0; }
 
     my %bphash;
-    unless ($args[0] eq 'stat') {    # or $args[0] eq 'enact') {
+    unless ($args[0] eq '') {    # or $args[0] eq 'enact') {
         $errored = 0;
         xCAT::MsgUtils->trace($verbose_on_off, "d", "grub2: issue setdestiny request");
         $sub_req->({ command => ['setdestiny'],
@@ -619,11 +685,12 @@ sub process_request {
                 bootparams => \%bphash
                 }, \&pass_along);
         if ($errored) { 
-            xCAT::MsgUtils->trace($verbose_on_off, "d", "petitboot: Failed in processing setdestiny.  Processing will not continue.");
+            xCAT::MsgUtils->trace($verbose_on_off, "d", "grub2: Failed in processing setdestiny.  Processing will not continue.");
             return; 
         }
     }
 
+    xCAT::MsgUtils->trace($verbose_on_off, "d", "grub2: starting to handle configuration...");
     my $chaintab = xCAT::Table->new('chain', -create => 1);
     my $chainhash = $chaintab->getNodesAttribs(\@nodes, ['currstate']);
     my $noderestab = xCAT::Table->new('noderes', -create => 1);
@@ -649,10 +716,7 @@ sub process_request {
             $tftpdir = $globaltftpdir;
         }
         $response{node}->[0]->{name}->[0] = $_;
-        if ($args[0] eq 'stat') {
-            $response{node}->[0]->{data}->[0] = getstate($_, $tftpdir);
-            $callback->(\%response);
-        } elsif ($args[0]) { #If anything else, send it on to the destiny plugin, then setstate
+        if ($args[0]) { # Send it on to the destiny plugin, then setstate
             my $ent          = $typehash->{$_}->[0];
             my $osimgname    = $ent->{'provmethod'};
             my $linuximghash = undef;
@@ -668,11 +732,11 @@ sub process_request {
             }
         }
     }    # end of foreach node
+    xCAT::MsgUtils->trace($verbose_on_off, "d", "grub2: Finish to handle configurations");
 
     my @normalnodeset = keys %normalnodes;
     my @breaknetboot  = keys %breaknetbootnodes;
 
-    #print "grub2 :inittime=$inittime; normalnodeset=@normalnodeset; breaknetboot=@breaknetboot\n";
     my %osimagenodehash;
     for my $nn (@normalnodeset) {
 
@@ -693,7 +757,7 @@ sub process_request {
     }
 
     #Don't bother to try dhcp binding changes if sub_req not passed, i.e. service node build time
-    unless (($args[0] eq 'stat') || ($inittime) || ($args[0] eq 'offline')) {
+    unless (($inittime) || ($args[0] eq 'offline')) {
         foreach my $osimage (keys %osimagenodehash) {
 
             #TOTO check the existence of grub2 executable files for corresponding arch
@@ -751,7 +815,7 @@ sub process_request {
                 if ($request->{'_disparatetftp'}->[0]) { #reading hint from preprocess_command
                     xCAT::MsgUtils->trace($verbose_on_off, "d", "grub2: issue makedhcp request");
                     $sub_req->({ command => ['makedhcp'],
-                            node => \@{ $osimagenodehash{$osimage} } }, $callback);
+                            node => \@{ $osimagenodehash{$osimage} }, arg => ['-l'] }, $callback);
                 } else {
                     xCAT::MsgUtils->trace($verbose_on_off, "d", "grub2: issue makedhcp request");
                     $sub_req->({ command => ['makedhcp'],
@@ -789,11 +853,15 @@ sub process_request {
                 push(@rmdhcp_nodes, $tmp_node);
             }
         }
-        $sub_req->({ command => ['makedhcp'], arg => ['-d'], node => \@rmdhcp_nodes }, $callback);
+        if ($request->{'_disparatetftp'}->[0]) {
+            $sub_req->({ command => ['makedhcp'], arg => ['-d', '-l'], node => \@rmdhcp_nodes }, $callback);
+        } else {
+            $sub_req->({ command => ['makedhcp'], arg => ['-d'], node => \@rmdhcp_nodes }, $callback);
+        }
     }
 
     #now run the end part of the prescripts
-    unless ($args[0] eq 'stat') {    # or $args[0] eq 'enact')
+    unless ($args[0] eq '') {    # or $args[0] eq 'enact')
         $errored = 0;
         if ($request->{'_disparatetftp'}->[0]) { #the call is distrubuted to the service node already, so only need to handles my own children
             xCAT::MsgUtils->trace($verbose_on_off, "d", "grub2: issue runendpre request");
@@ -814,6 +882,16 @@ sub process_request {
             return;
         }
     }
+
+    # Return error codes if there are failed nodes
+    if (%failurenodes) {
+        my $rsp;
+        $rsp->{errorcode}->[0] = 1;
+        $rsp->{error}->[0]     = "Failed to generate grub2 configurations for some node(s) on $::myxcatname. Check xCAT log file for more details.";
+        $callback->($rsp);
+        return;
+    }
+
 }
 
 #----------------------------------------------------------------------------

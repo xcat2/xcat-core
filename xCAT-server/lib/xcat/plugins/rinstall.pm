@@ -69,6 +69,7 @@ sub rinstall {
     my $CONSOLE;
     my $OSIMAGE;
     my $STATES;
+    my $RESTSTATES;
     my $ignorekernelchk;
     my $VERBOSE;
     my $HELP;
@@ -108,8 +109,7 @@ sub rinstall {
         }
 
         my $state = $ARGV[0];
-        my $reststates;
-        ($state, $reststates) = split(/,/, $state, 2);
+        ($state, $RESTSTATES) = split(/,/, $state, 2);
         chomp($state);
         if ($state eq "image" or $state eq "winshell" or $state =~ /^osimage/) {
             my $target;
@@ -164,6 +164,14 @@ sub rinstall {
     if (scalar(@nodes) == 0) {
         &usage($command, $callback);
         return 1;
+    }
+
+    if($command eq "rinstall" and scalar(@nodes) > 1 and $CONSOLE){
+       my $rsp;
+       $rsp->{errorcode}->[0]=1;
+       $rsp->{error}->[0]="rinstall -c/--console can only be run against one node! Please use winstall -c/--console for multiple nodes.";
+       xCAT::MsgUtils->message("E",$rsp,$callback);
+       return 1;
     }
 
     my $rc = 0;
@@ -251,13 +259,20 @@ sub rinstall {
         #only provision the normal nodes
         @nodes = @validnodes;
 
-        push @parameter, "osimage=$OSIMAGE";
+        if ($RESTSTATES) {
+            push @parameter, "osimage=$OSIMAGE,$RESTSTATES";
+        } else {
+            push @parameter, "osimage=$OSIMAGE";
+        }
         if ($ignorekernelchk) {
             push @parameter, " --ignorekernelchk";
         }
     }
     elsif ($STATES) {
         push @parameter, "$STATES";
+        if ($RESTSTATES) {
+            $parameter[-1] .= ",$RESTSTATES";
+        }
     }
     else {
 
@@ -310,8 +325,10 @@ sub rinstall {
 
         #only provision the normal nodes
         @nodes = @validnodes;
-
         push @parameter, "osimage";
+        if ($RESTSTATES) {
+            $parameter[-1] .= ",$RESTSTATES";
+        }
     }
 
     if (scalar(@nodes) == 0) {
@@ -326,6 +343,7 @@ sub rinstall {
         $rsp->{data}->[0] = "Provision node(s): @nodes";
         xCAT::MsgUtils->message("I", $rsp, $callback);
     }
+
     %nodes = map { $_, 1 } @nodes;
 
     # Run nodeset $noderange $parameter
@@ -346,8 +364,8 @@ sub rinstall {
         push @{ $rsp->{data} }, @$res;
         xCAT::MsgUtils->message("D", $rsp, $callback);
     }
-    unless ($rc == 0) {
 
+    unless ($rc == 0) {
         # We got an error with the nodeset
         my @successnodes;
         my @failurenodes;
@@ -355,12 +373,8 @@ sub rinstall {
         my @lines = @$res;
         foreach my $line (@lines) {
             $rsp->{data}->[0] = $line;
-            if (($line =~ /: install/) or ($line =~ /: netboot/)) {
-                my $successnode;
-                my $restline;
-                ($successnode, $restline) = split(/:/, $line, 2);
-                $nodes{$successnode} = 0;
-                push @successnodes, $successnode;
+            if($line =~ /The (\S+) can not be resolved/){
+                push @failurenodes,$1;
             }
             if ($line =~ /dhcp server is not running/) {
                 my $rsp = {};
@@ -371,18 +385,18 @@ sub rinstall {
             }
             xCAT::MsgUtils->message("I", $rsp, $callback);
         }
-        foreach my $node (@nodes) {
-            if ($nodes{$node} == 1) {
-                push @failurenodes, $node;
-            }
+
+        foreach my $node (@failurenodes) {
+            delete $nodes{$node};
         }
+
         my $rsp = {};
         if (0+@failurenodes > 0) { 
             $rsp->{error}->[0] = "Failed to run 'nodeset' against the following nodes: @failurenodes";
             $rsp->{errorcode}->[0] = 1;
             xCAT::MsgUtils->message("E", $rsp, $callback);
         }
-        @nodes = @successnodes;
+        @nodes = keys %nodes;
     }
 
     # Group the nodes according to the nodehm.mgt
@@ -534,11 +548,6 @@ sub rinstall {
                     arg     => \@rpowerarg
             );
               
-            #TODO: When OPENBMC support is finished, this line should be removed     
-            if($hmkey =~ /^openbmc$/){
-                $req{environment}{XCAT_OPENBMC_DEVEL} = "YES";    
-            }
-
             my $res =
               xCAT::Utils->runxcmd(
                 \%req,
@@ -582,30 +591,6 @@ sub rinstall {
         }
     }
 
-    # Check if they asked to bring up a console (-c) from rinstall always for winstall
-    $req->{startconsole}->[0] = 0;
-    if ($command =~ /rinstall/) {
-
-        # For rinstall, the -c|--console option can provide the remote console for only 1 node
-        if ($CONSOLE) {
-            if (scalar @nodes != 1) {
-                my $rsp = {};
-                $rsp->{error}->[0] = "rinstall -c only accepts one node in the noderange. See winstall for support of consoles on multiple nodes.";
-                $rsp->{errorcode}->[0] = 1;
-                xCAT::MsgUtils->message("E", $rsp, $callback);
-                return 1;
-            }
-            else {
-                # Tell rinstall client ok to start rcons
-                $req->{startconsole}->[0] = 1;
-            }
-        }
-    }
-    elsif ($command =~ /winstall/) {
-
-        # Command winstall can start a wcons command to multiple nodes for monitoring the provision cycle
-        $req->{startconsole}->[0] = 1;
-    }
     return 0;
 }
 

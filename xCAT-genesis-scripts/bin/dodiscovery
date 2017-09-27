@@ -1,6 +1,13 @@
 #!/bin/bash
 log_label="xcat.genesis.dodiscovery"
 
+#the time when the latest findme request is sent to master
+reqtime=0
+#the timeout value on the waiting for the "processed" response from master
+#when the xcatd on master finished the processing of my findme request, 
+#a "processed" response will be replied
+maxresptime=180
+
 minixcatd.awk &
 PUBKEY=`openssl rsa -in /etc/xcat/privkey.pem -pubout 2> /dev/null|grep -v "PUBLIC KEY"`
 PUBKEY=`echo $PUBKEY|sed -e 's/ //g'`
@@ -56,6 +63,23 @@ done
 	
 #time to make our packet...
 while [ ! -r /restart ]; do
+
+    #record the current time
+    curtime=$(date +%s)       
+
+    #the existence of "/processing" indicates that my  findme request is under processing
+    if [ -f "/processing"  ]; then
+        if [ $curtime -gt $[ $reqtime + $maxresptime ] ]; then
+           #I think my findme request processing is timeout, I will resend the findme request
+           logger -s -t $log_label -p local4.info  "seems the processing of my findme request cost more than $maxresptime, send new findme request"
+           rm -rf /processing
+        else
+           logger -s -t $log_label -p local4.info  "My findme request is still under processing, do not send new request"
+           sleep 5
+        fi
+        continue
+    fi
+
 MTM=unknown
 SERIAL=unknown
 ARCH=unknown
@@ -75,13 +99,17 @@ if [ -r /sys/devices/virtual/dmi/id/product_name ]; then  #x86
 		if [ -z "$MTM" ]; then
 			FRU=`ipmitool fru print 0`
 			if [ $? -eq 0 ]; then
-				MTM=`echo "$FRU" | awk -F': ' '/Product Manufacturer/ {m=$2} /Product Name/ {n=$2} END {print m":"n}'`
+				m=`echo "$FRU" | awk -F': ' '/Product Manufacturer/ {print $2}'`
+				n=`echo "$FRU" | awk -F': ' '/Product Name/ {print $2}'`
+				if [ -z "$n" -o "$n" == "NONE" ]; then
+					n=`echo "$FRU" | awk -F': ' '/Product Part Number/ {print $2}'`
+				fi
 			else
 				logger -s -t $log_label -p local4.warning "Couldn't find MTM information in FRU, falling back to DMI (MTMS-based discovery may fail)"
 				m=`cat /sys/devices/virtual/dmi/id/sys_vendor`
 				n=`cat /sys/devices/virtual/dmi/id/product_name`
-				MTM="$m:$n"
 			fi
+			MTM="$m:$n"
 		fi 
 		SERIAL=`cat /sys/devices/virtual/dmi/id/product_serial`
 	fi
@@ -93,7 +121,6 @@ if [ -r /sys/devices/virtual/dmi/id/product_name ]; then  #x86
         UUID=`sed -e 's/\(..\)\(..\)\(..\)\(..\)-\(..\)\(..\)-\(..\)\(..\)/\4\3\2\1-\6\5-\8\7/' /sys/devices/virtual/dmi/id/product_uuid`
 
 elif [ -r /proc/device-tree/model ]; then #POWER
-	#MTM=`cat /proc/device-tree/model |awk -F, '{print $2}'`
         MTM=`cat /proc/device-tree/model -vT | sed -e 's/^.*,//' | sed -e 's/^[\t ]*//'| sed -e 's/[\t ]*\^@//'`
         CPUCOUNT=`cat /proc/cpuinfo |grep -e "^cpu\s*:"|wc -l`
         PLATFORM=`cat /proc/cpuinfo | grep -e "^platform\s*:" | awk '{print \$3}'`
@@ -107,25 +134,14 @@ elif [ -r /proc/device-tree/model ]; then #POWER
         UUID=unknown
 
 fi
-#CPUCOUNT=`cat /proc/cpuinfo |grep "model name"|wc -l`
 
 # The MEMORY will look like this: 32868920
 MEMORY=`cat /proc/meminfo |grep MemTotal|awk '{printf "%.0fMB\n", $2/1024}'`
-# The MEMORY will look like this: 32GiB
-#MEMORY=`lshw -C memory -short |grep "System Memory"|awk -F' ' '{print $3}'`
 
-# The DISKSIZE will look like this: /dev/sda:250GB,/dev/sdb:250GB
-#DISKSIZE=`lshw -C disk -short |grep disk |awk -F' ' '{print $2":"$4}'|sed 'N;s/\n/,/'`
 # The DISKSIZE will look like this: sdb:250GB,sda:250GB
 DISKSIZE=`cat /proc/partitions |grep -e "sd.\>" |awk -F' ' '{printf "%s:%.0fGB\n", $4, $3*0.000001024}' |sed 'N;s/\n/,/'`
 
-#UUID=`sed -e 's/\(..\)\(..\)\(..\)\(..\)-\(..\)\(..\)-\(..\)\(..\)/\4\3\2\1-\6\5-\8\7/' /sys/devices/virtual/dmi/id/product_uuid`
-#grep "model name" /proc/cpuinfo | while read line; do #to avoid pulling in tail, we do a goofy thing
-#	echo $line > /tmp/cpumod
-#done
-#CPUTYPE=`cat /tmp/cpumod|awk -F':' '{print $2}'|sed -e 's/^ //'`
-
-logger -s -t $log_label -p local4.info "Beginning echo infomation to discovery packet file..."
+logger -s -t $log_label -p local4.info "Beginning echo information to discovery packet file..."
 echo '<xcatrequest>' > /tmp/discopacket
 echo "<command>findme</command>" >> /tmp/discopacket
 echo "<sequential>1</sequential>" >> /tmp/discopacket
@@ -141,10 +157,14 @@ if [ "$UUID" != "unknown" ]; then
         echo "<uuid>$UUID</uuid>" >> /tmp/discopacket
 fi
 
-if [ "$MTM" != "unknown" ]; then
+flag_mtm=`echo '$MTM' | sed 's/0//g'`
+if [ $flag_mtm ] && [ "$MTM" != "unknown" ]; then
+	MTM=`echo $MTM | sed 's/\.//g'`
 	echo "<mtm>$MTM</mtm>" >> /tmp/discopacket
 fi
-if [ "$SERIAL" != "unknown" ]; then
+flag_serial=`echo '$SERIAL' | sed 's/0//g'`
+if [ $flag_serial ] && [ "$SERIAL" != "unknown" ]; then
+	SERIAL=`echo $SERIAL | sed 's/\.//g'`
 	echo "<serial>$SERIAL</serial>" >> /tmp/discopacket
 fi
 if [ "$PLATFORM" != "unknown" ]; then
@@ -157,6 +177,11 @@ if [ "$IsStatic" ]; then
     if [ "$BMCIPADDR" ]; then
         echo "<bmc>$BMCIPADDR</bmc>" >> /tmp/discopacket
     fi
+fi
+
+BMCMAC=`ipmitool lan print 1 | grep 'MAC Address' | cut -d ":" -f2-7 | sed 's/ //'`
+if [ "$BMCMAC" ]; then
+    echo "<bmcmac>$BMCMAC</bmcmac>" >> /tmp/discopacket
 fi
 
 # Check whether the hardware support in-band BMC configuration with the IPMI device
@@ -280,6 +305,9 @@ gzip -9 /tmp/discopacket
 		logger -s -t $log_label -p local4.info "Sending the discovery packet to xCAT ($dhcps:$XCATPORT)..."
 		(cat /tmp/discopacket.gz | udpcat.awk $dhcps $XCATPORT ) &
 	done
+      
+        #record the time when the "findme request is sent to master"
+        reqtime=$(date +%s) 
 	#cat /tmp/discopacket
 	logger -s -t $log_label -p local4.info "Sleeping 5 seconds..."
 	sleep 5

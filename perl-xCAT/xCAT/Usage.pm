@@ -32,7 +32,7 @@ my %usage = (
        rpower noderange [on|off|reset|boot|stat|state|status]
        rpower noderange [pduon|pduoff|pdustat]
      OpenPOWER OpenBMC:
-       rpower noderange [on|off|reset|boot|stat|state|status]
+       rpower noderange [on|off|softoff|reset|boot|bmcreboot|bmcstate|stat|state|status]
      KVM Virtualization specific:
        rpower <noderange> [boot] [ -c <path to iso> ]
      PPC (with IVM or HMC) specific:
@@ -85,7 +85,9 @@ my %usage = (
   OpenPOWER (OpenBMC) specific:
       rvitals noderange [temp|voltage|wattage|fanspeed|power|altitude|all]
   MIC specific:
-      rvitals noderange {thermal|all}",
+      rvitals noderange {thermal|all}
+  pdu specific:
+      rvitals noderange ",
     "reventlog" =>
 "Usage: reventlog <noderange> [all [-s]|clear|<number of entries to retrieve> [-s]] [-V|--verbose]
        reventlog [-h|--help|-v|--version]",
@@ -118,7 +120,7 @@ my %usage = (
     pdu specific:
        rinv noderange ",
     "rsetboot" =>
-"Usage: rsetboot <noderange> [net|hd|cd|floppy|def|stat] [-V|--verbose] [-u] [-p]
+"Usage: rsetboot <noderange> [net|hd|cd|floppy|def|stat] [-u] [-p]
        rsetboot [-h|--help|-v|--version]",
     "rbootseq" =>
       "Usage: 
@@ -143,7 +145,7 @@ my %usage = (
        rspconfig <noderange> [garp=<number of 1/2 second>]
        rspconfig <noderange> [userid=<userid> username=<username> password=<password>]
    OpenBMC specific:
-       rspconfig <noderange> [ip|netmask|gateway|vlan]
+       rspconfig <noderange> [ip|netmask|gateway|hostname|vlan]
    iDataplex specific:
        rspconfig <noderange> [thermprofile]
        rspconfig <noderange> [thermprofile=<two digit number from chassis>]
@@ -321,6 +323,9 @@ my %usage = (
       "Usage: lsslp [-h|--help|-v|--version]
        lsslp [<noderange>][-V|--verbose][-i ip[,ip..]][-w][-r|-x|-z][-n][-I][-s FRAME|CEC|MM|IVM|RSA|HMC|CMM|IMM2|FSP]
              [-u] [--range IPranges][-t tries][--vpdtable][-C counts][-T timeout]",
+    "pdudiscover" =>
+      "Usage: pdudiscover [-h|--help|-v|--version]
+       pdudiscover [<noderange>|--range ipranges] [-r|-x|-z] [-w] [-V|--verbose] [--setup]",
     "switchdiscover" =>
       "Usage: switchdiscover [-h|--help|-v|--version]
        switchdiscover [<noderange>|--range ipranges] [-s scan_methods] [-r|-x|-z] [-w] [-V|--verbose] [--setup]",
@@ -341,8 +346,13 @@ my %usage = (
 	rflash <noderange> -p <rpm_directory> [--activate {disruptive|deferred}] [-d <data_directory>]
 	rflash <noderange> [--commit | --recover] [-V|--verbose]
         rflash <noderange> [--bpa_acdl]
-    PPC64LE (using BMC Management) specific:
-        rflash <noderange> [-c | --check] [--retry=<count>] [-V] <hpm_file>",
+    OpenPOWER BMC specific (using IPMI):
+        rflash <noderange> [<hpm_file_path>|-d <data_directory>] [-c|--check] [--retry=<count>] [-V]
+        rflash <noderange> --recover <bmc_file_path>
+    OpenPOWER OpenBMC specific:
+        rflash <noderange> {[-c|--check] | [-l|--list]}
+        rflash <noderange> <tar_file_path> {[-c|--check] | [-a|--activate] | [-u|--upload]}
+        rflash <noderange> <image_id> {[-a|--activate] | [-d|--delete]}",
     "mkhwconn" =>
       "Usage:
     mkhwconn [-h|--help]
@@ -483,7 +493,7 @@ Options:
       "Usage:
    Common:
       nodeset [-h|--help|-v|--version]
-      nodeset <noderange> [shell|boot|runcmd=bmcsetup|osimage[=<imagename>]|offline|shutdown|stat]",
+      nodeset <noderange> [shell|boot|runcmd=bmcsetup|osimage[=<imagename>]|offline|shutdown|stat [-a]]",
     "rmflexnode" =>
       "Usage:
     rmflexnode [-h|--help|-v|--version]

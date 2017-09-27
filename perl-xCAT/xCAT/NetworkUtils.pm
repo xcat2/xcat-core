@@ -1645,10 +1645,14 @@ sub getNodeIPaddress
 {
     require xCAT::Table;
     my $nodetocheck = shift;
-    my $port        = shift;
-    my $nodeip;
+    if ($nodetocheck eq 'xCAT::NetworkUtils') {    #was called with -> syntax
+        $nodetocheck = shift;
+    }
 
-    $nodeip = xCAT::NetworkUtils->getipaddr($nodetocheck);
+    # Quick return if pass in an IP
+    return $nodetocheck if (xCAT::NetworkUtils->isIpaddr($nodetocheck));
+
+    my $nodeip = xCAT::NetworkUtils->getipaddr($nodetocheck);
     if (!$nodeip)
     {
         my $hoststab = xCAT::Table->new('hosts');
@@ -1665,6 +1669,51 @@ sub getNodeIPaddress
     }
 }
 
+
+#-------------------------------------------------------------------------------
+
+=head3   checkNodeIPaddress
+    Arguments:
+       Node name  only one at a time 
+    Returns: a hash object contains IP or Error
+    Globals:
+        none
+    Example:   my $ipresult = xCAT::NetworkUtils::checkNodeIPaddress($nodetocheck);
+
+=cut
+
+#-------------------------------------------------------------------------------
+
+sub checkNodeIPaddress
+{
+    require xCAT::Table;
+    my $nodetocheck = shift;
+    if ($nodetocheck eq 'xCAT::NetworkUtils') {    #was called with -> syntax
+        $nodetocheck = shift;
+    }
+    my $ret;
+
+    my $nodeip;
+    my $hoststab = xCAT::Table->new('hosts');
+    my $ent = $hoststab->getNodeAttribs($nodetocheck, ['ip']);
+    if ($ent->{'ip'}) {
+        $nodeip = $ent->{'ip'};
+    }
+
+    # Get the IP from DNS
+    my $dnsip = xCAT::NetworkUtils->getipaddr($nodetocheck);
+    if (!$dnsip)
+    {
+        $ret->{'error'} = "The $nodetocheck can not be resolved.";
+        $ret->{'ip'} = $nodeip if ($nodeip);
+    } elsif (!$nodeip) {
+        $ret->{'ip'} = $dnsip;
+    } else {
+        $ret->{'ip'} = $nodeip;
+        $ret->{'error'} = "Defined IP address of $nodetocheck is inconsistent with DNS." if ($nodeip ne $dnsip);
+    }
+    return $ret;
+}
 
 
 #-------------------------------------------------------------------------------
@@ -2729,4 +2778,35 @@ sub gen_net_boot_params
     return $net_params;
 }
 
+#--------------------------------------------------------------------------------
+=head3  send_tcp_msg
+      establish a tcp socket to the specified IP address and port, then send the specifid message via the socket
+      Arguments:
+         $destip  : the destination IP address
+         $destport: the destination TCP port
+         $msg     : the message to send
+      Returns:
+         0  on success, 1 on fail
+=cut
+#--------------------------------------------------------------------------------
+sub send_tcp_msg {
+    my $self=shift;
+    my $destip=shift;
+    my $destport=shift;
+    my $msg=shift;
+
+    my $sock = new IO::Socket::INET(
+                PeerAddr => $destip,
+                PeerPort => $destport,
+                Timeout  => '1',
+                Proto    => 'tcp'
+            );
+    if ($sock) {
+        print $sock $msg;
+        close($sock);
+        return 0;
+    }else{
+        return 1;
+    }
+}
 1;

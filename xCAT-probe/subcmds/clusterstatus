@@ -1,0 +1,332 @@
+#! /usr/bin/perl
+# IBM(c) 2016 EPL license http://www.eclipse.org/legal/epl-v10.html
+
+BEGIN { $::XCATROOT = $ENV{'XCATROOT'} ? $ENV{'XCATROOT'} : -d '/opt/xcat' ? '/opt/xcat' : '/usr'; }
+
+use lib "$::XCATROOT/probe/lib/perl";
+use probe_utils;
+use File::Basename;
+use Net::Ping;
+use Getopt::Long qw(:config no_ignore_case);
+
+use Data::Dumper;
+use warnings;
+
+my $program_name = basename("$0");
+my $help;
+my $noderange = undef;
+my $test;
+my $output  = "stdout";
+my $verbose = 0;
+my $rst     = 0;
+my $interval = 5;
+my $terminal = 0;
+my $timeout = 0;
+my $start_time;
+
+#-----------------------------
+# To store the node number of a specified type
+# May like this:
+# $type_nodesnum{pdu} = 2; 
+#                {switch} = 3;
+#                {node} = 10;
+#-----------------------------
+my %type_nodesnum = ();
+
+#-----------------------------
+# To store the type, state hash
+# May like this:
+#  $state_node_hash{pdu}{state1}{pdu1} = 1;
+#  $state_node_hash{pdu}{state1}{pdu2} = 1;
+#  $state_node_hash{pdu}{state2}{pdu3} = 1;
+#  $state_node_hash{pdu}{state3}{pdu4} = 1;
+# The state include but not limited to below:
+#    matching --> matched --> configured (For PDU/Switch)
+#    matching --> matched --> installing --> booting --> booted
+#    matching --> matched --> booting --> installing --> xxx --> booted
+#   The terminal state is configured(For PDU/Switch) or booted(for Node)
+#-----------------------------
+my %state_node_hash = ();
+
+# $state_node_hash{pdu}{state1}{number} = xx;
+my %state_node_number = ();
+
+#----------------------------
+# To store the node based current state
+# May like this:
+#  $node_info{node1}{state} = "install"; 
+#  $node_info{node1}{type} = "node";
+#----------------------------
+my %node_info = ();
+
+#---------------------------
+# To store nodes who haven't finished the status
+#---------------------------
+my %unfinished_nodes = ();
+my %unmatched_nodes = ();
+
+$::USAGE = "Usage:
+    $program_name -h
+    $program_name [-n noderange] [-V|--verbose] [-i|--interval <seconds>] [--timeout <seconds>]
+
+Description:
+    Use this command to get a summary of the cluster. 
+
+Options:
+    -h : Get usage information of $program_name
+    -n : Range of nodes to check. All node objects will be used if not specified.
+    -i : The interval for screen refreshing, unit is second(s), 5 seconds by default. 
+    -V : To print additional debug information.
+    --timeout: The timout if not all nodes finish, unit is second(s), no timeout by default.
+";
+
+#-------------------------------------
+# main process
+#-------------------------------------
+if (
+    !GetOptions("--help|h" => \$help,
+        "T"                  => \$test,
+        "V|verbose"          => \$VERBOSE,
+        "d|discovery"        => \$DISCOVERY,
+        "g|groupcount"       => \$GROUPCOUNT,
+        "i|interval=s"         => \$interval,
+        "timeout=s"            => \$timeout,
+        "n=s"                => \$noderange))
+{
+    probe_utils->send_msg("$output", "f", "Invalid parameter for $program_name");
+    probe_utils->send_msg("$output", "d", "$::USAGE");
+    exit 1;
+}
+
+if ($help) {
+    if ($output ne "stdout") {
+        probe_utils->send_msg("$output", "d", "$::USAGE");
+    } else {
+        print "$::USAGE";
+    }
+    exit 0;
+}
+
+if ($test) {
+    probe_utils->send_msg("$output", "o", "Use this command to get node summary in the cluster.");
+    exit 0;
+}
+
+if (scalar(@ARGV) >= 1) {
+
+    # After processing all the expected flags and arguments,
+    # there is still left over stuff on the command line
+    probe_utils->send_msg("$output", "f", "Invalid flag or parameter: @ARGV");
+    probe_utils->send_msg("$output", "d", "$::USAGE");
+    exit 1;
+}
+if (!$DISCOVERY and !$GROUPCOUNT) {
+    if(!defined($noderange)) {
+        $noderange = "all";
+    }
+} else {
+    if (!defined($noderange)) {
+        $noderange = "compute";
+    }
+    check_for_discovered_nodes() if ($DISCOVERY);
+    groupcount_nodes() if ($GROUPCOUNT);
+    exit 0;
+}
+
+$SIG{TERM} = $SIG{INT} = sub {
+    $terminal = 1;
+};
+unless ($interval) {
+    $interval = 5;
+}
+
+&check_nodes_attributes();
+$start_time = time;
+while (1) {
+    update_nodes_info();
+    alarm_output(1);
+    if ($terminal) {
+        alarm_output(0);
+        last;
+    }
+    if ($timeout and (time() - $start_time > $timeout)) {
+        alarm_output(0);
+        last;
+    }
+    sleep $interval;
+}
+exit 0;
+# Check for node definitions with MAC address defined
+sub check_for_discovered_nodes {
+    my $na = "N/A";
+    my $rc = 0;
+
+    my $all_nodes_mac = `lsdef -i mac -c $noderange 2> /dev/null`;
+    chomp($all_nodes_mac);
+    my @all_nodes_mac_lines = split("[\n\r]", $all_nodes_mac);
+
+    if ($all_nodes_mac =~ /Usage:/) {
+
+        # lsdef command displayed a Usage message. Must be some noderange formatting problem.
+        # Issue a warning and exit.
+        probe_utils->send_msg("$output", "w", "Can not get a list of nodes from specified noderange.");
+        return 1;
+    }
+
+    if (scalar(@all_nodes_mac_lines) <= 0) {
+
+        # There were no nodes matching the noderange. Issue a warning and exit.
+        probe_utils->send_msg("$output", "w", "No nodes matching the noderange were found.");
+        return 1;
+    }
+
+    # Go through the list of nodes and count how many have mac value
+    my $mac_counter=0;
+    foreach (@all_nodes_mac_lines) {
+        # probe_utils->send_msg("$output", "d", "Processing $_.") if ($VERBOSE);
+        my ($node_name, $value) = split ":", $_;
+        my ($mac_name, $mac_value) = split "=", $value;
+        if ($mac_value) {
+            # mac if set for the node
+            $mac_counter++;
+            probe_utils->send_msg("$output", "d", "($mac_counter) $_") if ($VERBOSE);
+        }
+    }
+    my $percent = sprintf("%.2f", (($mac_counter / scalar(@all_nodes_mac_lines)) * 100));
+
+    probe_utils->send_msg("$output", "o", "$mac_counter out of " . scalar(@all_nodes_mac_lines) . " in the noderange \"$noderange\" have been discovered ($percent/%)");
+    return $rc;
+}
+
+sub groupcount_nodes {
+    my $na = "N/A";
+    my $rc = 0;
+  
+    probe_utils->send_msg("$output", "w", "Group count function is not yet implemented.");
+    return $rc;
+}
+
+sub alarm_output {
+    my $flag = shift;
+    if ($flag) {
+        probe_utils->send_msg("$output", "xx", `clear`);
+        my $time_elapsed = time - $start_time;
+        probe_utils->send_msg("$output", "xx", "====".localtime()."($time_elapsed seconds Elapsed)");
+    } else {
+        probe_utils->send_msg("$output", "xx", "\nThe cluster state===============================");
+    }
+    foreach my $type (keys(%state_node_hash)) {
+        unless ($type_nodesnum{$type}) {
+            probe_utils->send_msg("$output", "w", "$type Total number: $type_nodesnum{$type}");
+            next;
+        }
+        probe_utils->send_msg("$output", "xx", "$type(Total: $type_nodesnum{$type})--------------------------");
+        foreach my $state (keys(%{$state_node_hash{$type}})) {
+            my $node_number = scalar(keys %{$state_node_hash{$type}{$state}});
+            if ($flag) {
+                my $number = sprintf("%.2f", $node_number * 100.0/ $type_nodesnum{$type});
+                probe_utils->send_msg("$output", "xx", "\t$state : $node_number($number%)");
+            } else {
+                probe_utils->send_msg("$output", "xx", "\t$state($node_number): ". join(",",keys %{$state_node_hash{$type}{$state}}) );
+            }
+        }
+    }
+}
+
+sub update_nodes_info {
+    if (keys(%unmatched_nodes)) {
+        my $unmatched_noderange = join(",", keys(%unmatched_nodes));
+        my @unmatched_nodes_attributes = `lsdef -i mac -c $unmatched_noderange 2> /dev/null`;
+        foreach (@unmatched_nodes_attributes) {
+            if (/^(.*):\s*mac=(.*)$/) {
+                if ($2) {
+                    update_node_info($1, "Matched");
+                }
+            }
+        }
+    }
+    if (keys(%unfinished_nodes)) {
+        my $unfinished_noderange = join(",", keys(%unfinished_nodes));
+        my @unfinished_nodes_attributes = `lsdef -i status -c $unfinished_noderange 2> /dev/null`;
+        foreach (@unfinished_nodes_attributes) {
+            if (/^(.*):\s*status=(.*)$/) {
+                if ($2) {
+                    update_node_info($1, "$2");
+                }
+            }
+        }
+    }
+    unless(scalar keys(%unfinished_nodes)) {
+        $terminal = 1;
+    }
+}
+
+sub update_node_info {
+    my $node = shift;
+    my $state = shift;
+    my $node_type = $node_info{$node}{type};
+    my $node_state = $node_info{$node}{state};
+    if ($state and $state ne '') {
+        if (exists($unmatched_nodes{$node})) {
+            delete($unmatched_nodes{$node});
+            $unfinished_nodes{$node} = 1;
+        }
+    }
+    if ($state eq $node_state) {
+        return;
+    }
+
+    if (exists($state_node_hash{$node_type}{$node_state}{$node})) {
+        delete($state_node_hash{$node_type}{$node_state}{$node});
+    }
+    unless (scalar keys ($state_node_hash{$node_type}{$node_state})) {
+        delete($state_node_hash{$node_type}{$node_state});
+    }
+
+    $state_node_hash{$node_type}{$state}{$node} = 1;
+
+    $node_info{$node}{state} = $state;
+    if ($state eq 'booted' or $state eq 'configured') {
+        delete $unfinished_nodes{$node};
+    }
+}
+sub check_nodes_attributes {
+    my @nodes_attributes = `lsdef -i status,mac,mgt -c $noderange 2> /dev/null`;
+    my %nodehash = ();
+    foreach (@nodes_attributes) {
+        if (/^(.*):\s*([^=]*)=(.*)$/) {
+            $nodehash{$1}{$2}=$3;
+        }
+    }
+    foreach (keys %nodehash) {
+        if (!defined($nodehash{$_}{mgt})) {
+            probe_utils->send_msg("$output", "w", "No 'mgt' set for node:$_");
+            next;
+        }
+        if ($nodehash{$_}{status}) {
+            $node_info{$_}{state} = $nodehash{$_}{status};
+            $unfinished_nodes{$_} = 1;
+        } elsif ($nodehash{$_}{mac}) {
+            $node_info{$_}{state} = "Matched";
+            $unfinished_nodes{$_} = 1;
+        } else {
+            $node_info{$_}{state} = "matching";
+            $unmatched_nodes{$_} = 1;
+        }
+        if ($nodehash{$_}{mgt} eq 'pdu') {
+            $node_info{$_}{type} = 'pdu';
+        } elsif($nodehash{$_}{mgt} eq 'switch') {
+            $node_info{$_}{type} = 'switch';
+        } else {
+            $node_info{$_}{type} = 'node';
+        }
+        my $node_type = $node_info{$_}{type};
+        if (!exists($type_nodesnum{$node_type})) {
+            $type_nodesnum{$node_type} = 1;
+        } else {
+            $type_nodesnum{$node_type} += 1;
+        }
+        $state_node_hash{$node_type}{$node_info{$_}{state}}{$_} = 1;  
+    }
+}
+exit 0;

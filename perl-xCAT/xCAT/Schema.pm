@@ -226,7 +226,7 @@ qq{ link,ro - The file is readonly, and will be placed in tmpfs on the booted no
 'vncport' => 'Tracks the current VNC display port (currently not meant to be set',
 'textconsole' => 'Tracks the Psuedo-TTY that maps to the serial port or console of a VM',
 'powerstate' => "This flag is used by xCAT to track the last known power state of the VM.",
-'othersettings' => "This allows specifying a semicolon delimited list of key->value pairs to include in a vmx file of VMware or KVM. For partitioning on normal power machines, this option is used to specify the hugepage and/or bsr information, the value is like:'hugepage:1,bsr=2'. For KVM cpu pinning, this option is used to specify the physical cpu set on the host, the value is like:\"vcpupin:'0-15,^8'\",Its syntax is a comma separated list and a special markup using '-' and '^' (ex. '0-4', '0-3,^2') can also be allowed, the '-' denotes the range and the '^' denotes exclusive. For KVM memory binding, the value is like:'membind:0', restrict a guest to allocate memory from the specified set of NUMA nodes. For PCI passthrough, the value is like:'devpassthrough:pci_0001_01_00_0,pci_0000_03_00_0',the PCI devices are assigned to a virtual machine, and the virtual machine can use this I/O exclusively, the devices list are a list of PCI device names delimited with comma, the PCI device names can be obtained by running B<virsh nodedev-list> on the host.",
+'othersettings' => "This allows specifying a semicolon delimited list of key->value pairs to include in a vmx file of VMware or KVM. For partitioning on normal power machines, this option is used to specify the hugepage and/or bsr information, the value is like:'hugepage:1,bsr=2'. For KVM cpu pinning, this option is used to specify the physical cpu set on the host, the value is like:\"vcpupin:'0-15,^8'\",Its syntax is a comma separated list and a special markup using '-' and '^' (ex. '0-4', '0-3,^2') can also be allowed, the '-' denotes the range and the '^' denotes exclusive. For KVM memory binding, the value is like:'membind:0', restrict a guest to allocate memory from the specified set of NUMA nodes. For PCI passthrough, the value is like:'devpassthrough:pci_0001_01_00_0,pci_0000_03_00_0', the value for PCI device format also can be like:'devpassthrough:0001:01:00.1', the PCI devices are assigned to a virtual machine, and the virtual machine can use this I/O exclusively, the devices list are a list of PCI device names delimited with comma, the PCI device names can be obtained by running B<virsh nodedev-list> on the host.",
 'guestostype' => "This allows administrator to specify an identifier for OS to pass through to virtualization stack.  Normally this should be ignored as xCAT will translate from nodetype.os rather than requiring this field be used\n",
 'beacon' => "This flag is used by xCAT to track the state of the identify LED with respect to the VM.",
 'datacenter' => "Optionally specify a datacenter for the VM to exist in (only applicable to VMWare)",
@@ -331,8 +331,8 @@ passed as argument rather than by table value',
 'kernel' => 'The kernel that network boot actions should currently acquire and use.  Note this could be a chained boot loader such as memdisk or a non-linux boot loader',
 'initrd' => 'The initial ramdisk image that network boot actions should use (could be a DOS floppy or hard drive image if using memdisk as kernel)',
             'kcmdline' => 'Arguments to be passed to the kernel',
-'addkcmdline' => 'User specified one or more parameters to be passed to the kernel. For the kernel options need to be persistent after installation, specify them with prefix "R::"',
-'dhcpstatements' => 'xCAT manipulated custom dhcp statements (not intended for user manipulation)',
+            'addkcmdline' => 'User specified kernel options for os provision process(no prefix) or the provisioned os(with prefix "R::"). The options should be delimited with spaces(" ")',
+            'dhcpstatements' => 'xCAT manipulated custom dhcp statements (not intended for user manipulation)',
 'adddhcpstatements' => 'Custom dhcp statements for administrator use (not implemneted yet)',
             comments => 'Any user-written notes.',
             disable  => "Set to 'yes' or '1' to comment out this row.",
@@ -799,7 +799,7 @@ passed as argument rather than by table value',
             imagename => 'The name of this xCAT OS image definition.',
             template => 'The fully qualified name of the template file that will be used to create the OS installer configuration file for stateful installations (e.g.  kickstart for RedHat, autoyast for SLES).',
             boottarget => 'The name of the boottarget definition.  When this attribute is set, xCAT will use the kernel, initrd and kernel params defined in the boottarget definition instead of the default.',
-            addkcmdline => 'User specified arguments to be passed to the kernel.  The user arguments are appended to xCAT.s default kernel arguments. For the kernel options need to be persistent after installation, specify them with prefix "R::".  This attribute is ignored if linuximage.boottarget is set.',
+            addkcmdline => 'User specified kernel options for os provision process(no prefix) or the provisioned os(with prefix "R::"). The options should be delimited with spaces(" "). This attribute is ignored if linuximage.boottarget is set.',
             pkglist => 'The fully qualified name of the file that stores the distro  packages list that will be included in the image. Make sure that if the pkgs in the pkglist have dependency pkgs, the dependency pkgs should be found in one of the pkgdir',
             pkgdir => 'The name of the directory where the distro packages are stored. It could be set to multiple paths. The multiple paths must be separated by ",". The first path in the value of osimage.pkgdir must be the OS base pkg dir path, such as pkgdir=/install/rhels6.2/x86_64,/install/updates . In the os base pkg path, there are default repository data. And in the other pkg path(s), the users should make sure there are repository data. If not, use "createrepo" command to create them. For ubuntu, multiple mirrors can be specified in the pkgdir attribute, the mirrors must be prefixed by the protocol(http/ssh) and delimited with "," between each other.',
             otherpkglist => 'The fully qualified name of the file that stores non-distro package lists that will be included in the image. It could be set to multiple paths. The multiple paths must be separated by ",".',
@@ -1029,8 +1029,9 @@ passed as argument rather than by table value',
 " dhcpsetup:  If set to 'n', it will skip the dhcp setup process in the nodeset cmd.\n\n" .
 " dhcplease:  The lease time for the dhcp client. The default value is 43200.\n\n" .
 " disjointdhcps:  If set to '1', the .leases file on a service node only contains\n" .
-"                 the nodes it manages. The default value is '0'.\n" .
-"                 '0' value means include all the nodes in the subnet.\n\n" .
+"                 the nodes it manages. And when 'sharedtftp' is disabled, nodeset handles\n" .
+"                 boot loader configuration on a service node only for the nodes it manages.\n" .
+"                 The default value is '0'. It means include all the nodes in the subnet.\n\n" .
 " pruneservices:  Whether to enable service pruning when noderm is run (i.e.\n" .
 "                 removing DHCP entries when noderm is executed)\n\n" .
 " managedaddressmode: The mode of networking configuration during node provision.\n" .
@@ -1242,7 +1243,19 @@ passed as argument rather than by table value',
 "             Qualified Domain Name). Otherwise, the original behavior will be performed.\n\n" .
 " hierarchicalattrs:  Table attributes(e.g. postscripts, postbootscripts) that will be\n" .
 "                     included hierarchically. Attribute values for all the node's groups\n" .
-"                     will be applied to the node in the groups' order except the repeat one.\n\n" .
+"                     will be applied to the node in the groups' order except the repeat one.\n" .
+" dbtracelevel:  The trace level for the database access log. To activate this setting, please. \n".
+"                restart xcatd or send HUP signal to the 'xcatd: DB Access' process, Like: .\n".
+"                ps -ef | grep 'xcatd: DB Access' | grep -v grep | awk '{print \$2}' | xargs kill -HUP  \n".
+"                Currrent support values: \n" .
+"                0: disable the trace log for db \n" .
+"                1: trace the calls of database subroutines \n" .
+"                2: Besides the log from level 1, trace the event to build the cache for the table \n" .
+"                3: Besides the log from level 2, trace the event with cache hit \n" .
+"                4: Besides the log from level 3, trace the SQL statement for the db access \n" .
+"                With this configuration, xcat will send the log to syslog very frequently, some of the \n".
+"                log may be lost if imjournal is enabled by rsyslog. \n".
+"                Please see https://github.com/xcat2/xcat-core/issues/3910 for the detail.\n\n" .
 " -----------------------\n" .
 "VIRTUALIZATION ATTRIBUTES\n" .
 " -----------------------\n" .
@@ -1538,14 +1551,14 @@ passed as argument rather than by table value',
                         If multiple ip addresses are associated with each NIC:
                             <nic1>!<ext1>|<ext2>,<nic2>!<ext1>|<ext2>,..., for example,  eth0!-eth0|-eth0-ipv6,ib0!-ib0|-ib0-ipv6. 
                         The xCAT object definition commands support to use nichostnamesuffixes.<nicname> as the sub attributes. 
-                        Note:  According to DNS rules a hostname must be a text string up to 24 characters drawn from the alphabet (A-Z), digits (0-9), minus sign (-),and period (.). When you are specifying "nichostnamesuffixes" or "nicaliases" make sure the resulting hostnames will conform to this naming convention',
+                        Note:  According to DNS rules a hostname must be a text string up to 24 characters drawn from the alphabet (A-Z), digits (0-9) and minus sign (-). When you are specifying "nichostnamesuffixes" or "nicaliases" make sure the resulting hostnames will conform to this naming convention',
             nichostnameprefixes => 'Comma-separated list of hostname prefixes per NIC. 
                         If only one ip address is associated with each NIC:
                             <nic1>!<ext1>,<nic2>!<ext2>,..., for example, eth0!eth0-,ib0!ib-
                         If multiple ip addresses are associated with each NIC:
                             <nic1>!<ext1>|<ext2>,<nic2>!<ext1>|<ext2>,..., for example,  eth0!eth0-|eth0-ipv6i-,ib0!ib-|ib-ipv6-. 
                         The xCAT object definition commands support to use nichostnameprefixes.<nicname> as the sub attributes. 
-                        Note:  According to DNS rules a hostname must be a text string up to 24 characters drawn from the alphabet (A-Z), digits (0-9), minus sign (-),and period (.). When you are specifying "nichostnameprefixes" or "nicaliases" make sure the resulting hostnames will conform to this naming convention',
+                        Note:  According to DNS rules a hostname must be a text string up to 24 characters drawn from the alphabet (A-Z), digits (0-9) and minus sign (-). When you are specifying "nichostnameprefixes" or "nicaliases" make sure the resulting hostnames will conform to this naming convention',
             nictypes => 'Comma-separated list of NIC types per NIC. <nic1>!<type1>,<nic2>!<type2>, e.g. eth0!Ethernet,ib0!Infiniband. The xCAT object definition commands support to use nictypes.<nicname> as the sub attributes.',
             niccustomscripts => 'Comma-separated list of custom scripts per NIC.  <nic1>!<script1>,<nic2>!<script2>, e.g. eth0!configeth eth0, ib0!configib ib0. The xCAT object definition commands support to use niccustomscripts.<nicname> as the sub attribute
 .',
@@ -1566,7 +1579,7 @@ passed as argument rather than by table value',
             The xCAT object definition commands support to use nicextraparams.<nicname> as the sub attributes.',
             nicdevices => 'Comma-separated list of NIC device per NIC, multiple ethernet devices can be bonded as bond device, these ethernet devices are separated by | . <nic1>!<dev1>|<dev3>,<nic2>!<dev2>, e.g. bond0!eth0|eth2,br0!bond0. The xCAT object definition commands support to use nicdevices.<nicname> as the sub attributes.',
             nicsadapter => 'Comma-separated list of extra parameters that will be used for each NIC configuration.
-                    <nic1>!<param1=value1 param2=value2>|<param3=value3>,<nic2>!<param4=value4 param5=value5>|<param6=value6>, for example, eth0!MTU=1500|MTU=1460,ib0!MTU=65520 CONNECTED_MODE=yes.',
+                    <nic1>!<param1=value1 param2=value2>,<nic2>!<param4=value4 param5=value5>, for example, enP3p3s0f1!mac=98:be:94:59:fa:cd linkstate=DOWN,enP3p3s0f2!mac=98:be:94:59:fa:ce candidatename=enP3p3s0f2/enx98be9459face',
             comments => 'Any user-written notes.',
             disable  => "Set to 'yes' or '1' to comment out this row.",
         },

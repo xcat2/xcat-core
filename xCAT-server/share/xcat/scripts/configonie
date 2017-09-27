@@ -99,16 +99,17 @@ if (($::SSH) || ($::ALL))
     config_ssh();
 }
 
-if (($::LICENSE) || ($::ALL))
+if ($::LICENSE)
 {
     install_license();
 }
 
-if (($::SNMP) || ($::ALL))
+if ($::SNMP)
 {
     config_snmp();
 }
-if (($::NTP) || ($::ALL))
+
+if ($::NTP)
 {
     config_ntp();
 }
@@ -119,12 +120,19 @@ if ($::VLAN)
 sub config_ssh {
     my $password = "CumulusLinux!";
     my $userid = "cumulus";
-    my $timeout = 10;
+    my $timeout = 30;
     my $keyfile = "/root/.ssh/id_rsa.pub";
     my $rootkey = `cat /root/.ssh/id_rsa.pub`;
     my $cmd;
     my @config_switches;
 
+    # get netmask from network table
+    my $nettab = xCAT::Table->new("networks");
+    my @nets;
+    if ($nettab) {
+        @nets = $nettab->getAllAttribs('net','mask');
+    }
+    
     my $nodetab = xCAT::Table->new('hosts');
     my $nodehash = $nodetab->getNodesAttribs(\@nodes,['ip','otherinterfaces']);
 
@@ -159,9 +167,18 @@ sub config_ssh {
         ($ret, $err) = cumulus_exec($exp, "chmod 700 /root/.ssh");
         ($ret, $err) = cumulus_exec($exp, "echo \"$rootkey\" >/root/.ssh/authorized_keys");
         ($ret, $err) = cumulus_exec($exp, "chmod 644 /root/.ssh/authorized_keys");
+
         #config dhcp ip address to static
         if ($ssh_ip eq $discover_ip) {
-            ($ret, $err) = cumulus_exec($exp, "ifconfig eth0 $static_ip");
+            #get netmask
+            my $mask;
+            foreach my $net (@nets) {
+                if (xCAT::NetworkUtils::isInSameSubnet( $net->{'net'}, $static_ip, $net->{'mask'}, 0)) {
+                    $mask=$net->{'mask'};
+                    last;
+                }
+            }
+            ($ret, $err) = cumulus_exec($exp, "ifconfig eth0 $static_ip netmask $mask");
         }
 
         $exp->hard_close();
@@ -171,9 +188,19 @@ sub config_ssh {
     if (@config_switches) {
         #update switch status
         my $csw = join(",",@config_switches);
-        $cmd = "chdef $csw status=ssh_configed ";
+        $cmd = "chdef $csw status=ssh_configured otherinterfaces=";
         $rc= xCAT::Utils->runcmd($cmd, 0);
         print "ssh configured for $csw\n";
+        if ($::ALL) {
+            $cmd = "updatenode $csw -P hardeths,syslog,enablesnmp,configinterface";
+            $rc= xCAT::Utils->runcmd($cmd, 0); 
+            if ($::RUNCMD_RC != 0) {
+                xCAT::MsgUtils->message("E","Failed to run updatenode, please check the switch");
+            }
+            $cmd = "chdef $csw status=configured";
+            $rc= xCAT::Utils->runcmd($cmd, 0);
+            print "switch: $csw configured\n";
+        }
     }
 }
 
@@ -369,7 +396,7 @@ sub config_ntp {
     if (@config_switches) {
         #update switch status
         my $csw = join(",",@config_switches);
-        $cmd = "chdef $csw status=ntp_configed";
+        $cmd = "chdef $csw status=ntp_configured";
         $rc= xCAT::Utils->runcmd($cmd, 0);
     }
 
@@ -394,7 +421,7 @@ sub usage
     configonie --switches switchnames --snmp
     configonie --switches switchnames --ntp 
 
-    To set ssh, install license(license file: /root/license.txt), config snmp and ntp:
+    To setup ssh passwordless, change ip to static, enable snmp configuration and configure basic interface :
         configonie --switches switchnames --all 
     \n";
 }

@@ -783,6 +783,15 @@ sub build_xmldesc {
     #prepare the xml hash for pci passthrough
     my @prdevarray;
     foreach my $devname (@passthrudevices) {
+        #This is for SR-IOV vfio
+        #Change vfio format 0000:01:00.2 to pci_0000_01_00_2
+        if ( $devname =~ m/(\w:)+(\w)+.(\w)/ ){
+            $devname =~ s/[:|.]/_/g;
+            if ( $devname !~ /^pci_/ ) {
+                $devname ="pci_".$devname
+            }
+        }
+
         my $devobj = $hypconn->get_node_device_by_name($devname);
         unless ($devobj) {
             return -1;
@@ -1397,12 +1406,14 @@ sub makedom {
     }
     my $parseddom = $parser->parse_string($xml);
     my ($graphics) = $parseddom->findnodes("//graphics");
-    if ($confdata->{vm}->{$node}->[0]->{vidpassword}) {
-        $graphics->setAttribute("passwd", $confdata->{vm}->{$node}->[0]->{vidpassword});
-    } else {
-        $graphics->setAttribute("passwd", genpassword(20));
+    if (defined($graphics)) {
+        if ($confdata->{vm}->{$node}->[0]->{vidpassword}) {
+            $graphics->setAttribute("passwd", $confdata->{vm}->{$node}->[0]->{vidpassword});
+        } else {
+            $graphics->setAttribute("passwd", genpassword(20));
+        }
+        $graphics->setAttribute("listen", '0.0.0.0');
     }
-    $graphics->setAttribute("listen", '0.0.0.0');
     $xml = $parseddom->toString();
     eval {
         if ($::XCATSITEVALS{persistkvmguests}) {
@@ -3153,7 +3164,12 @@ sub power {
                 $allnodestatus{$node} = $::STATUS_POWERING_ON;
             }
         } elsif (not $dom->is_active()) {
-            $dom->create();
+            eval{
+                $dom->create();
+            };
+            if($@){
+                return (1, "Error: $@");
+            }
             $allnodestatus{$node} = $::STATUS_POWERING_ON;
         } else {
             $retstring .= "$status_noop";
@@ -3163,7 +3179,12 @@ sub power {
             my $newxml = $dom->get_xml_description();
             $updatetable->{kvm_nodedata}->{$node}->{xml} = $newxml;
             if ($dom->is_active()) {
-                $dom->destroy();
+                eval{
+                    $dom->destroy();
+                };
+                if($@){
+                    return (1, "Error: $@");
+                }               
                 $allnodestatus{$node} = $::STATUS_POWERING_OFF;
             }
             undef $dom;
@@ -3185,7 +3206,10 @@ sub power {
             if ($newxml) {    #need to destroy and repower..
                 $updatetable->{kvm_nodedata}->{$node}->{xml} = $newxml;
                 my $persist = $dom->is_persistent();
-                $dom->destroy();
+                eval {$dom->destroy();};
+                if($@){
+                    return (1, "Error: $@");
+                }
                 $allnodestatus{$node} = $::STATUS_POWERING_OFF;
                 if ($persist) { $dom->undefine(); }
                 undef $dom;
@@ -4176,7 +4200,9 @@ sub dohyp {
                 $desc =~ s/^\s+//;
                 $desc =~ s/\s+$//;
                 if ($desc) {
-                    $output{node}->[0]->{data}->[0]->{desc}->[0] = $desc;
+                    if($rc == 0){
+                        $output{node}->[0]->{data}->[0]->{desc}->[0] = $desc;
+                    }
                 }
             }
             $text =~ s/^\s+//;
@@ -4186,7 +4212,7 @@ sub dohyp {
             if ($rc == 0) {
                 $output{node}->[0]->{data}->[0]->{contents}->[0] = $text;
             } else {
-                $output{node}->[0]->{error} = $text;
+                $output{node}->[0]->{error}->[0] = $text;
             }
 
             if ($command eq 'rpower') {

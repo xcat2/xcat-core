@@ -25,7 +25,12 @@ Source7: xcat.conf.apach24
 
 Provides: xCAT = %{version}
 Conflicts: xCATsn
-Requires: xCAT-server xCAT-client perl-DBD-SQLite xCAT-probe >= 2.12.1 xCAT-genesis-scripts-x86_64 rsync
+Requires: perl-DBD-SQLite
+Requires: xCAT-client = 4:%{version}-%{release}
+Requires: xCAT-server = 4:%{version}-%{release}
+Requires: xCAT-probe  = 4:%{version}-%{release}
+Requires: xCAT-genesis-scripts-x86_64 = 1:%{version}-%{release}
+Requires: rsync
 
 %define pcm %(if [ "$pcm" = "1" ];then echo 1; else echo 0; fi)
 %define notpcm %(if [ "$pcm" = "1" ];then echo 0; else echo 1; fi)

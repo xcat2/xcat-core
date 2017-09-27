@@ -76,7 +76,7 @@ function log_lines {
 ######################################################
 function log_error {
     local __msg="$*"
-    $log_print_cmd $log_print_arg "[E]: $__msg" 
+    $log_print_cmd $log_print_arg "[E]:Error: $__msg" 
     return 0
 }
 
@@ -255,6 +255,46 @@ function load_kmod {
     fi
 }
 
+
+#################################################################
+# 
+# query nicextraparams from nics table
+# example: nicextraparams.eth0="MTU=9000 something=yes"
+# input: nic, here is eth0
+# output: set value for globe ${array_extra_param_names}
+#         and ${array_extra_param_values}
+#         example: 
+#         array_extra_param_names[0]="MTU"
+#         array_extra_param_values[0]="9000"
+#         array_extra_param_names[1]="something"
+#         array_extra_param_values[0]="yes"
+#
+#################################################################
+function query_extra_params {
+
+    nic=$1
+    if [ -z "$nic" ]; then
+        return 
+    fi
+    get_nic_extra_params $nic "$NICEXTRAPARAMS"
+    j=0
+    while [ $j -lt ${#array_nic_params[@]} ]
+    do
+        #get key=value pair from nicextraparams
+        #for example: MTU=9000
+        exparampair="${array_nic_params[$j]}"
+        j=$((j+1))
+    done
+    if [ ${#array_nic_params[@]} -gt 0 ]; then
+        #Current confignetwork only support one ip for vlan/bond/bridge
+        #So only need the first ${array_nic_params[0]} for first nicips
+        #TODO: support multiple nicips for vlan/bond/bridge
+        str_extra_params=${array_nic_params[0]}
+        parse_nic_extra_params "$str_extra_params"
+    fi
+
+}
+
 #################################################################
 #
 # query attribute from networks table
@@ -342,8 +382,7 @@ function get_network_attr {
    if [ $index -le $NETWORKS_LINES ]; then
        echo "$netline" | $sed -e 's/||/\n/g' | $awk -F'=' '$1 == "'$attrname'" {print $2}'
    else
-       log_error "Fail to get \"$attrname\" for network \"$netname\""
-       exit 1
+       return 1
    fi
 }
 
@@ -422,6 +461,9 @@ function create_persistent_ifcfg {
     local _netmask=""
     local _mtu=""
     local inattrs=""
+    unset array_nic_params
+    unset array_extra_param_names
+    unset array_extra_param_values
 
     # parser input arguments
     while [ -n "$1" ];
@@ -454,14 +496,23 @@ function create_persistent_ifcfg {
         fi
         if [ -z "$_netmask" ]; then
             _netmask=`get_network_attr $xcatnet mask`
+            if [ $? -ne 0 ]; then
+                log_error "There is no netmask configured for network $xcatnet in networks table"
+                _netmask=""
+            fi
         fi
 
         # Query mtu value from "networks" table
         if [ -z "$_mtu" ]; then
             _mtu=`get_network_attr $xcatnet mtu`
+            if [ $? -ne 0 ]; then
+                _mtu=""
+            fi
         fi
 
     fi
+    query_extra_params $ifname
+
     local attrs=""
     attrs=${attrs}${attrs:+,}"DEVICE=$ifname"
     attrs=${attrs}${attrs:+,}"BOOTPROTO=static"
@@ -495,6 +546,16 @@ function create_persistent_ifcfg {
             attrs=${attrs}${attrs:+,}"HWADDR=$mac"
         fi
     fi
+    
+    #add extra params
+    i=0
+    while [ $i -lt ${#array_extra_param_names[@]} ]
+    do
+        name="${array_extra_param_names[$i]}"
+        value="${array_extra_param_values[$i]}"
+        attrs=${attrs}${attrs:+,}"${name}=${value}"
+        i=$((i+1))
+    done
 
     # record manual and auto attributes first
     # since input attributes might overwrite them.
@@ -635,17 +696,38 @@ function add_br() {
      BRIDGE=$2
 
      if [[ $BRIDGE == "bridge_ovs" ]]; then
-         type brctl >/dev/null 2>/dev/null || (echo "There is no ovs-vsctl" >&2 && exit 1)
          log_info "ovs-vsctl add-br $BNAME"
          ovs-vsctl add-br $BNAME
      elif [[ $BRIDGE == "bridge" ]]; then
-         type brctl >/dev/null 2>/dev/null || (echo "There is no brctl" >&2 && exit 1)
          log_info "brctl addbr $BNAME" 
          brctl addbr $BNAME
          log_info "brctl stp $BNAME on"
          brctl stp $BNAME on
      fi
 }
+
+###############################################################################
+#
+# check brctl
+#
+##############################################################################
+function check_brctl() {
+    BRIDGE=$1
+    if [[ $BRIDGE == "bridge_ovs" ]]; then
+         type brctl >/dev/null 2>/dev/null
+         if [ $? -ne 0 ]; then
+             log_error "There is no brctl"
+             return 1
+         fi
+    elif [[ $BRIDGE == "bridge" ]]; then
+         type brctl >/dev/null 2>/dev/null
+         if [ $? -ne 0 ]; then
+             log_error "There is no brctl"
+             return 1
+         fi
+    fi
+}
+
 
 ###############################################################################
 #
@@ -831,6 +913,9 @@ function create_bridge_interface {
     # Query mtu value from "networks" table
     if [ -z "$_mtu" ]; then
         _mtu=`get_network_attr $xcatnet mtu`
+        if [ $? -ne 0 ]; then
+            _mtu=""
+        fi
     fi
 
     if [ x$_pretype == "xethernet" ]; then 
@@ -952,6 +1037,10 @@ function create_ethernet_interface {
     # Query mtu value from "networks" table
     if [ -z "$_mtu" ]; then
         _mtu=`get_network_attr $xcatnet mtu`
+        if [ $? -ne 0 ]; then
+            _mtu=""
+        fi
+
     fi
 
     # define and bring up interface
@@ -1039,6 +1128,10 @@ function create_vlan_interface {
     # Query mtu value from "networks" table
     if [ -z "$_mtu" ]; then
         _mtu=`get_network_attr $xcatnet mtu`
+        if [ $? -ne 0 ]; then
+            _mtu=""
+        fi
+
     fi
 
 
@@ -1095,17 +1188,17 @@ function create_vlan_interface {
         ifname=$ifname.$vlanid \
         xcatnet=$xcatnet \
         inattrs="$cfg"
-
-    # bring up interface formally
-    lines=`$ifdown $ifname.$vlanid; $ifup $ifname.$vlanid`
-    rc=$?
-    if [ $rc -ne 0 ]; then
-        log_warn "ifup $ifname.$vlanid failed with return code equals to $rc"
-        echo "$lines" \
-        | $sed -e 's/^/>> /g' \
-        | log_lines info
+    if [ x$xcatnet != x ]; then
+        # bring up interface formally
+        lines=`$ifdown $ifname.$vlanid; $ifup $ifname.$vlanid`
+        rc=$?
+        if [ $rc -ne 0 ]; then
+            log_warn "ifup $ifname.$vlanid failed with return code equals to $rc"
+            echo "$lines" \
+            | $sed -e 's/^/>> /g' \
+            | log_lines info
+        fi
     fi
-
     return $rc
 }
 
@@ -1199,7 +1292,6 @@ function create_bond_interface {
         log_error "No valid slave_ports defined. Abort!"
         return 1
     fi
-
     # let's query "nicnetworks" table about its target "xcatnet" 
     if [ -n "$ifname" -a -z "$xcatnet" -a -z "$_ipaddr" ]; then
         xcatnet=`query_nicnetworks_net $ifname`
@@ -1216,8 +1308,10 @@ function create_bond_interface {
     # Query mtu value from "networks" table   
     if [ -z "$_mtu" ]; then
         _mtu=`get_network_attr $xcatnet mtu`
+        if [ $? -ne 0 ]; then
+            _mtu=""
+        fi
     fi
- 
     ##############################
     # Create target bond interface
     # if target bond device was already exists, assume succ.
@@ -1346,7 +1440,6 @@ function create_bond_interface {
             # 3.1) Check bond interface status
             wait_for_ifstate $ifname UP 200 1
             rc=$?
-
             # log for debug
             $ip link show $ifname | $sed -e 's/^/[ip.link] >> /g' | log_lines info 
 
@@ -1386,19 +1479,20 @@ function create_bond_interface {
         ifname=$ifname \
         xcatnet=$xcatnet \
         inattrs="$cfg"
-    lines=`$ifdown $ifname; $ifup $ifname 2>&1`
-    rc=$?
-    if [ $rc -ne 0 ]; then
-        log_warn "ifup $ifname failed with return code equals to $rc"
-        echo "$lines" \
-        | $sed -e 's/^/'$ifname' ifup out >> /g' \
-        | log_lines info
+    if [ x$xcatnet != x ]; then
+        lines=`$ifdown $ifname; $ifup $ifname 2>&1`
+        rc=$?
+        if [ $rc -ne 0 ]; then
+            log_warn "ifup $ifname failed with return code equals to $rc"
+            echo "$lines" \
+            | $sed -e 's/^/'$ifname' ifup out >> /g' \
+            | log_lines info
+        fi
     fi
-
     wait_for_ifstate $ifname UP 200 1
     rc=$?
     if [ $rc -ne 0 ]; then
-        log_error "Error! Interface \"$ifname\" was NOT in \"UP\" state eventually."
+        log_error "Interface \"$ifname\" could not be brought \"UP\"."
         $ip link show $ifname \
         | $sed -e 's/^/['$ifname' ip out >> /g' \
         | log_lines info

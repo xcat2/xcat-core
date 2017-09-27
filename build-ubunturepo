@@ -22,6 +22,8 @@
 #                           When you are ready to release this build, use PROMOTE=1 without PREGA
 #               BUILDALL=1 - build all rpms, whether they changed or not.  Should be used for snap builds that are in
 #                            prep for a release.
+#               GPGSIGN=0 -  Do not sign the repo in the end of the build. The repo will be signed by default 
+#                            
 #               LOG=<filename> - provide an LOG file option to redirect some output into log file
 #
 # For the dependency packages 1. All the xcat dependency deb packages should be uploaded to
@@ -125,16 +127,20 @@ if [ ! -z ${LOG} ]; then
     WGET_CMD="wget -o ${LOG}"
 fi
 
-#sync the gpg key to the build machine local
-gsa_url=http://pokgsa.ibm.com/projects/x/xcat/build/linux
-mkdir -p $HOME/.gnupg
-for key_name in pubring.gpg secring.gpg trustdb.gpg; do
-    if [ ! -f $HOME/.gnupg/$key_name ] || [ `wc -c $HOME/.gnupg/$key_name|cut -f 1 -d' '` == 0 ]; then
-        rm -f $HOME/.gnupg/$key_name
-        ${WGET_CMD} -P $HOME/.gnupg $gsa_url/keys/$key_name
-        chmod 600 $HOME/.gnupg/$key_name
-    fi
-done
+if [ "$GPGSIGN" = "0" ];then
+    echo "GPGSIGN=$GPGSIGN specified, skip gnupg key downloading"
+else
+    #sync the gpg key to the build machine local
+    gsa_url=http://pokgsa.ibm.com/projects/x/xcat/build/linux
+    mkdir -p $HOME/.gnupg
+    for key_name in pubring.gpg secring.gpg trustdb.gpg; do
+        if [ ! -f $HOME/.gnupg/$key_name ] || [ `wc -c $HOME/.gnupg/$key_name|cut -f 1 -d' '` == 0 ]; then
+            rm -f $HOME/.gnupg/$key_name
+            ${WGET_CMD} -P $HOME/.gnupg $gsa_url/keys/$key_name
+            chmod 600 $HOME/.gnupg/$key_name
+        fi
+    done
+fi
 
 if [ "$c_flag" ]
 then
@@ -323,10 +329,16 @@ Codename: $dist
 Architectures: $tmp_out_arch
 Components: main
 Description: Repository automatically genereted conf
-SignWith: yes
-
 __EOF__
-     done
+
+       if [ "$GPGSIGN" = "0" ];then
+           echo "GPGSIGN=$GPGSIGN specified, the repo will not be signed"
+           echo "" >> conf/distributions
+       else 
+           echo "SignWith: yes" >> conf/distributions
+           echo "" >> conf/distributions
+       fi
+    done
 
     cat << __EOF__ > conf/options
 verbose
@@ -444,10 +456,19 @@ Codename: $dist
 Architectures: $tmp_out_arch
 Components: main
 Description: Repository automatically genereted conf
-SignWith: yes
-
 __EOF__
+
+        if [ "$GPGSIGN" = "0" ];then
+            echo "GPGSIGN=$GPGSIGN specified, the repo will not be signed"
+            echo "" >> conf/distributions
+        else
+            echo "SignWith: yes" >> conf/distributions
+            echo "" >> conf/distributions
+        fi
+
     done
+
+
 
     cat << __EOF__ > conf/options
 verbose
@@ -503,7 +524,7 @@ __EOF__
     FILES_PATH="files"
     FRS="/var/www/${SERVER}/${FILES_PATH}"
     APT_DIR="${FRS}/xcat"
-    APT_REPO_DIR="${APT_DIR}/repos/apt"
+    APT_REPO_DIR="${APT_DIR}/repos/apt/devel"
 
     # Decide whether to upload the xcat-dep package or NOT (default is to NOT upload xcat-dep 
     if [ "$UP" != "1" ]; then

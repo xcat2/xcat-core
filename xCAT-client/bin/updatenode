@@ -200,5 +200,13 @@ foreach (keys %ENV) {
     }
 }
 
+# Allow to print server information when -V/--verbose
+foreach (reverse(@ARGV)) {
+    if ($_ eq '-V' || $_ eq '--verbose') {
+        $ENV{'XCATSHOWSVR'} = 1;
+        last;
+    }
+}
+
 xCAT::Client::submit_request($cmdref, \&xCAT::Client::handle_response);
 exit $xCAT::Client::EXITCODE;

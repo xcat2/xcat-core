@@ -15,9 +15,9 @@ end
 start:makehosts_null
 description:makehosts 
 cmd:cp -f /etc/hosts /etc/hosts.xcatbakautotest
-cmd:chtab node=compute hosts.ip="|node(\d+)|1.2.3.(\$1+0)|" hosts.hostnames="|(.*)|(\$1).cluster.net|"
+cmd:chtab node=nouse_compute hosts.ip="|node(\d+)|1.2.3.(\$1+0)|" hosts.hostnames="|(.*)|(\$1).cluster.net|"
 check:rc==0
-cmd:mkdef -t node -o node01,node02 groups="compute"
+cmd:mkdef -t node -o node01,node02 groups="nouse_compute"
 check:rc==0
 cmd:sleep 30
 cmd:XCATBYPASS=1 makehosts 
@@ -28,7 +28,7 @@ check:output=~1.2.3.2
 check:output=~1.2.3.1 
 check:output=~node01
 check:output=~node02
-cmd:chtab -d node=compute hosts
+cmd:chtab -d node=nouse_compute hosts
 cmd:rmdef node01
 cmd:rmdef node02
 cmd:mv -f /etc/hosts.xcatbakautotest /etc/hosts
@@ -36,9 +36,9 @@ end
 
 start:makehosts_l
 cmd:cp -f /etc/hosts /etc/hosts.xcatbakautotest
-cmd:chtab node=compute hosts.ip="|node(\d+)|1.2.3.(\$1+0)|" hosts.hostnames="|(.*)|(\$1).cluster.net|"
+cmd:chtab node=nouse_compute hosts.ip="|node(\d+)|1.2.3.(\$1+0)|" hosts.hostnames="|(.*)|(\$1).cluster.net|"
 check:rc==0
-cmd:chdef -t node -o node01,node02 groups="compute"
+cmd:chdef -t node -o node01,node02 groups="nouse_compute"
 check:rc==0
 cmd:sleep 30
 cmd:XCATBYPASS=1 makehosts -l
@@ -48,7 +48,7 @@ cmd:cp -f /etc/hosts /tmp/hosts
 cmd:cat /tmp/hosts|awk '{print $2}'
 check:output=~node01.cluster.net
 check:output=~node02.cluster.net
-cmd:chtab -d node=compute hosts
+cmd:chtab -d node=nouse_compute hosts
 cmd:rmdef node01
 cmd:rmdef node02
 cmd:mv -f /etc/hosts.xcatbakautotest /etc/hosts
@@ -79,9 +79,9 @@ end
 
 start:makehosts_n
 cmd:cp -f /etc/hosts /etc/hosts.xcatbakautotest
-cmd:chtab node=compute hosts.ip="|node(\d+)|1.2.3.(\$1+0)|" hosts.hostnames="|(.*)|(\$1).cluster.net|"
+cmd:chtab node=nouse_compute hosts.ip="|node(\d+)|1.2.3.(\$1+0)|" hosts.hostnames="|(.*)|(\$1).cluster.net|"
 check:rc==0
-cmd:chdef -t node -o node01 groups="compute"
+cmd:chdef -t node -o node01 groups="nouse_compute"
 check:rc==0
 cmd:sleep 30
 cmd:XCATBYPASS=1 makehosts -n
@@ -94,7 +94,7 @@ cmd:cat /tmp/hosts |wc -l
 check:rc==0
 cmd:cat /tmp/hosts
 check:output=~node01.cluster.net
-cmd:chtab -d node=compute hosts
+cmd:chtab -d node=nouse_compute hosts
 cmd:rmdef node01
 cmd:cp /etc/hosts /hosts
 cmd:mv -f /etc/hosts.xcatbakautotest /etc/hosts
@@ -171,5 +171,3 @@ cmd:if [ -e /tmp/s01r1b01.standa ]; then rmdef s01r1b01; cat /tmp/s01r1b01.stand
 check:rc==0
 cmd:mv -f /etc/hosts.xcatbakautotest /etc/hosts
 end
-
-
