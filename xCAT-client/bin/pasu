@@ -23,13 +23,24 @@ use Getopt::Long;
 use POSIX qw(:signal_h :errno_h :sys_wait_h);
 use Thread qw(yield);
 
+
+$::onecli = 0;
 if ($iam =~ /pasu/) {
-    $::utilcmd = '/opt/lenovo/toolscenter/asu/asu64';
+    $::utilcmd = '/opt/lenovo/onecli/asu';
+    $::onecli = 1;
+    if (!-x $::utilcmd) {
+        $::onecli = 0;
+        $::utilcmd = '/opt/lenovo/toolscenter/asu/asu64';
+    }
     if (!-x $::utilcmd) {
         $::utilcmd = '/opt/ibm/toolscenter/asu/asu64';
     }
 } elsif ($iam =~ /piflash/) {
-    $::utilcmd = '/opt/xcat/sbin/iflash64 --unattended';
+    $::utilcmd = '/opt/lenovo/onecli/iflash64';
+    if (!-x $::utilcmd) {
+        $::utilcmd = '/opt/xcat/sbin/iflash64';
+    }
+    $::utilcmd .= ' --unattended'
 }
 my $interface;
 my $username;
@@ -198,7 +209,17 @@ sub processoutput {      #This way, one arbiter handles output, no interrupting
                     $line !~ /Licensed Materials - Property of Lenovo/i  &&
                     $line !~ /\(C\) Copyright IBM Corp. \d+-\d+ All Rights Reserved/i &&
                     $line !~ /\(C\) Copyright Lenovo Corp. \d+-\d+ All Rights Reserved/i &&
-                    $line !~ /Connected to IMM at IP address/i)) {
+                    $line !~ /Connected to IMM at IP address/i &&
+                    $line !~ /Lenovo ASU/i &&
+                    $line !~ /^\s*$/i &&
+                    $line !~ /Lenovo ToolsCenterSuite CLI/i &&
+                    $line !~ /Lenovo XClarity Essentials OneCLI/i &&
+                    $line !~ /Invoking SHOW command .../i &&
+                    $line !~ /Invoking SET command .../i &&
+                    $line !~ /Connected to BMC by IP address/i &&
+                    $line !~ /Succeeded running the command /i &&
+                    $line !~ /Based on module version /i &&
+                    $line !~ /Succeed running command /i)) {
                 print $nodehdl{$readyh} . ": " . $line . "\n";
             }
         }
@@ -224,6 +245,9 @@ sub utilnode {
         $args = "batch $batchfile";
     } else {
         foreach my $a (@_) { $args .= ' ' . xCAT::Utils->quote($a); }
+    }
+    if ($::onecli and $bmc =~ /:/) {
+        $bmc = "[$bmc]";
     }
     my $cmd = "$::utilcmd $args --host '$bmc' --user '$username' --password '$passwd' 2>&1 |";
     if ($::VERBOSE) { print "forking $cmd\n"; }
