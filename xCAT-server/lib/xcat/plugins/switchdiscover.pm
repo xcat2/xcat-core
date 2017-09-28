@@ -21,11 +21,12 @@ no strict;
 use Data::Dumper;
 use Socket;
 use Expect;
+use SNMP;
 use xCAT::data::switchinfo;
 
 #global variables for this module
 my $device;
-my $community="public";
+my $community;
 my %globalopt;
 my @filternodes;
 my @iprange;
@@ -258,7 +259,6 @@ sub parse_args {
     if ( exists( $opt{c} )) {
         $community=$opt{c};
     }
-
 
     #########################################################
     # setup discover switch
@@ -955,20 +955,47 @@ sub get_snmpvendorinfo {
     my $request = shift;
     my $ip  = shift;
     my $snmpwalk_vendor;
+    my $result;
+    my $rc=1;
 
+    #checking snmp connection
+    #during discovery phase, xCAT will not know the community string for snmp
+    #so, will try community string from following way:
+    #  1) -c options from user input
+    #  2) snmpc attribute defined in the site table
+    #  3) default community string for the switches.
 
-    #Ubuntu only takes OID
-    #get sysDescr.0";
-    my $ccmd = "snmpwalk -Os -v1 -c $community $ip 1.3.6.1.2.1.1.1";
-    if (exists($globalopt{verbose}))    {
-       send_msg($request, 0, "Process command: $ccmd\n");
+    my @comm_list;
+    my $snmpver = '1';
+
+    my @snmpcs = xCAT::TableUtils->get_site_attribute("snmpc");
+    my $snmp_site    = $snmpcs[0];
+
+    if ($community) {
+        push @comm_list, $community;
     }
+    if ($snmp_site) {
+        push @comm_list, $snmp_site;
+    }
+    push @comm_list, 'public';
 
-    my $result = xCAT::Utils->runcmd($ccmd, 0);
-    if ($::RUNCMD_RC != 0)
-    {
+    foreach $comms(@comm_list) {
+        #get sysDescr.0";
+        my $ccmd = "snmpwalk -Os -v1 -c $comms $ip 1.3.6.1.2.1.1.1";
         if (exists($globalopt{verbose}))    {
-            send_msg($request, 1, "Could not process this command: $ccmd" );
+           send_msg($request, 0, "Process command: $ccmd\n");
+        }
+        $result = xCAT::Utils->runcmd($ccmd, 0);
+        if ($::RUNCMD_RC == 0)
+        {
+            $community = $comms;
+            $rc=0;
+            last;
+        }
+    }
+    if ($rc == 1) {
+        if (exists($globalopt{verbose}))    {
+            send_msg($request, 1, "Could not process snmpwalk command to get sysDescr, please verify community string" );
         }
         return $snmpwalk_vendor;
     }
