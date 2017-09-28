@@ -543,11 +543,19 @@ sub refresh_table {
         pipe my $child, my $parent;
         $child->autoflush(1);
         $parent->autoflush(1);
+
         $children++;
         my $cpid = xCAT::Utils->xfork;
-        unless (defined $cpid) { die "Cannot fork" }
+        unless (defined $cpid) { 
+            $children--;
+            close($child);
+            close($parent);
+            xCAT::MsgUtils->message("S", "refresh_table: failed to fork refresh_switch process for $entry->{switch},skip..."); 
+            next;
+        }
 
         if ($cpid == 0) {
+            $SIG{CHLD} = 'DEFAULT';
             close($child);
             my $runstart = time;
             $self->refresh_switch($parent, $community, $entry->{switch});
@@ -556,6 +564,7 @@ sub refresh_table {
             xCAT::MsgUtils->message("S", "refresh_switch $entry->{switch} ElapsedTime:$diffduration sec");
             exit(0);
         }
+
         close($parent);
         $inputs->add($child);
     }
@@ -719,7 +728,7 @@ sub refresh_switch {
             my $myport;
 
             my @res=xCAT::Utils->runcmd("ssh -o StrictHostKeyChecking=no -o PasswordAuthentication=no $switch 'bridge fdb show|grep -i -v permanent|tr A-Z a-z  2>/dev/null' 2>/dev/null",-1);
-            unless (@res) {
+            if ($::RUNCMD_RC) {
                 xCAT::MsgUtils->message("S", "Failed to get mac table with ssh to $switch, fall back to snmp! To obtain mac table with ssh, please make sure the passwordless root ssh to $switch is available");
             }else{
                 foreach (@res){
