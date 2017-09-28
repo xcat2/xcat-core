@@ -1,0 +1,498 @@
+#!/usr/bin/env perl
+# IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
+use strict;
+use warnings;
+use Getopt::Long;
+use Data::Dumper;
+use Time::Local;
+use File::Basename;
+use File::Path;
+use integer;
+
+#--------------command line attrbutes--------------
+my $needhelp                = 0;
+my $discovery_mode          = undef;
+my $discovery_target_switch = undef;
+my $dynamic_ip_range        = undef;
+
+#--------------global attributes----------------
+my $prpgram_path = dirname(File::Spec->rel2abs(__FILE__));
+my $program_name = basename($0);
+my $rst          = 0;
+my @error        = ();
+
+my %node_error_info;
+my $original_target_switch_num = 0;
+my $failed_switch_num          = 0;
+my @success_be_discovered_switches;
+
+#The structure of %discovery_target_node_info
+# $discovery_target_switch_info{<switchname>}{<attribute>}
+my %discovery_target_switch_info;
+
+my @expected_attrs_for_switch_based_switch_discovery = ("ip", "mac", "switch", "switchport");
+my $expected_attrs_for_switch_based_switch_discovery_str = join(",", @expected_attrs_for_switch_based_switch_discovery);
+
+#$monitor_switch{<swtichname>}{workingip}
+#$monitor_switch{<swtichname>}{workinghostname}
+#$monitor_switch{<swtichname>}{mac}
+#$monitor_switch{<swtichname>}{discover_status}
+my %monitor_switch;
+
+my %mac_nodename_map;
+my $pre_def_node_prefix = "xcattest_predef_";
+
+#----------------------usage--------------------
+$::USAGE = "Usage:
+    To test switch-based switch discovery key process: swtich discovery, predefined node match and predefined node definition update.
+
+To get help:
+    $program_name -h
+To test switch-based switch discovery key process
+    $program_name --discovery_target_switch <noderange> --dynamic_ip_range <iprange> --discovery_mode <mode>
+
+Options:
+    discovery_target_switch: Required. The target switches which are used to test switch-based switch discovery key process
+    dynamic_ip_range: Required. A valid ip range which are working for target switches. They can be dynamic ip range offered by DHCP or static ip configurd by hand.
+    discovery_mode:  The protocol used by discovery process. If not set, using SNMP by default.
+";
+
+
+#==============================================================================================
+# main process
+#==============================================================================================
+if (
+    !GetOptions("h" => \$needhelp,
+        "discovery_mode=s"          => \$discovery_mode,
+        "discovery_target_switch=s" => \$discovery_target_switch,
+        "dynamic_ip_range=s"        => \$dynamic_ip_range)
+  )
+{
+    print "[ERROR] Invalid usage.\n\n$::USAGE";
+    exit 1;
+}
+
+if ($needhelp) {
+    print "$::USAGE\n";
+    exit 0;
+}
+
+unless (defined $discovery_target_switch and defined $dynamic_ip_range) {
+    print "[ERROR] options 'discovery_target_switch' and 'dynamic_ip_range' are required.\n\n$::USAGE";
+    exit 1;
+}
+
+
+if (!defined $discovery_mode) {
+    $discovery_mode = "snmp";
+}
+
+$SIG{TERM} = $SIG{INT} = sub {
+    to_exit(1);
+};
+
+print "----------------Check the configuration of test case itself----------------\n";
+$rst = check_test_case_self_conf(\@error);
+if ($failed_switch_num == $original_target_switch_num) {
+    print "All node in noderange $discovery_target_switch have error, there is not a valid swtich to do discovery\n";
+    foreach my $node (sort keys %node_error_info) {
+        print "$node : $node_error_info{$node}\n";
+    }
+    to_exit(1);
+} elsif ($failed_switch_num > 0) {
+    print "There are $failed_switch_num nodes in noderange $discovery_target_switch have error\n";
+    print "$_ : $node_error_info{$_}\n" foreach (sort keys %node_error_info);
+}
+
+my $vaildnum = keys %monitor_switch;
+print "There are $vaildnum valid switch (" . join(",", (keys %monitor_switch)) . ") will do discvoery test\n";
+
+#print Dumper \%monitor_switch;
+
+print "----------------To clear up old environment and  generate predefine node  ----------------\n";
+$rst = backup_env(\@error);
+if ($rst) {
+    print "To backup environment......Failed\n";
+    to_exit(1);
+} else {
+    print "To backup environment......pass\n";
+}
+
+print "----------------To discover switches----------------\n";
+$rst = switch_discovery(\@error);
+if ($failed_switch_num) {
+    my @tmp = keys %monitor_switch;
+    my @discovery_err = deletearray(\@tmp, \@success_be_discovered_switches);
+    if (@discovery_err) {
+        print "There are some issue in discovery process\n";
+        foreach my $switch (@discovery_err) {
+            if ($node_error_info{$switch}) {
+                print "$switch : $node_error_info{$switch}";
+            }
+        }
+    }
+    $rst = 1;
+} else {
+    $rst = 0;
+}
+
+foreach (@success_be_discovered_switches) {
+    print "Below switch finished all switch_based switch discovery process\n";
+    my $cmd = "lsdef $pre_def_node_prefix" . join(",$pre_def_node_prefix", @success_be_discovered_switches);
+    my @output = runcmd("$cmd");
+    dump_info(\@output);
+}
+to_exit($rst);
+
+#=============================================================================================
+# sub functions
+#==============================================================================================
+#--------------------------------------------------------
+# Fuction name:  check_test_case_self_conf
+# Description:
+# Atrributes:
+# Retrun code:
+#--------------------------------------------------------
+sub check_test_case_self_conf {
+    my $error_ref = shift;
+    @$error_ref = ();
+
+    my $current_node;
+    my @output = runcmd("lsdef $discovery_target_switch");
+    foreach (@output) {
+        if ($_ =~ /^Error: Could not find an object named '(.+)' of type .+/i) {
+            $node_error_info{$1} = "without node definition in current mn";
+            ++$original_target_switch_num;
+            ++$failed_switch_num;
+        } elsif ($_ =~ /^\s*Object name: (\w+)/i) {
+            $current_node = $1;
+            ++$original_target_switch_num;
+        } elsif ($_ =~ /^\s+(\w+)\s*=\s*(.*)/) {
+            $discovery_target_switch_info{$current_node}{$1} = $2;
+            if ($1 eq "mac") {
+                my $tmp_mac = lc($2);
+                $mac_nodename_map{$2} = $current_node;
+            }
+        }
+    }
+
+    return 1 if ($original_target_switch_num == $failed_switch_num);
+
+    #    print "<mac_nodename_map>\n";
+    #    print Dumper  \%mac_nodename_map;
+    #    print Dumper \%discovery_target_switch_info;
+    #    print "original_target_switch_num=$original_target_switch_num\n";
+    #    print "failed_switch_num = $failed_switch_num\n";
+
+    foreach my $switch (keys %discovery_target_switch_info) {
+        my @miss_attr;
+        foreach (@expected_attrs_for_switch_based_switch_discovery) {
+            unless (defined($discovery_target_switch_info{$switch}{$_})) {
+                push @miss_attr, $_;
+            }
+        }
+        if (@miss_attr) {
+            $node_error_info{$switch} = "miss attribute " . join(",", @miss_attr);
+            ++$failed_switch_num;
+        }
+    }
+
+
+    foreach my $switch (keys %node_error_info) {
+        delete $discovery_target_switch_info{$switch} if ($discovery_target_switch_info{$switch});
+    }
+    return 1 if ($original_target_switch_num == $failed_switch_num);
+
+    #    print "===========================\n";
+    #    print Dumper \%discovery_target_switch_info;
+    #    print "original_target_switch_num=$original_target_switch_num\n";
+    #    print "failed_switch_num = $failed_switch_num\n";
+    #    print Dumper \%node_error_info;
+    #    print "===========================\n";
+
+    my @ips = parse_dynamic_ip_range($dynamic_ip_range);
+
+    #print Dumper \@ips;
+    my $without_working_ip = $original_target_switch_num - $failed_switch_num;
+    my $trytime            = 10;
+    while ($trytime && $without_working_ip) {
+
+        #print "> try $trytime\n";
+        #print Dumper \@ips;
+        my @matchedip;
+        foreach my $ip (@ips) {
+            my $cmd = "ping -c 2 $ip >/dev/null 2>&1";
+
+            #print "[RUN: $cmd]\n";
+            runcmd("$cmd");
+            $cmd = "arp $ip";
+
+            #print "[RUN: $cmd]\n";
+            my @output = runcmd("$cmd");
+
+            #print Dumper \@output;
+            foreach (@output) {
+                if ($_ =~ / (\w){2}:(\w){2}:(\w){2}:(\w){2}:(\w){2}:(\w){2} /) {
+
+                    #print "-->$_\n";
+                    my @value = split(" ", $_);
+                    my $arp_mc = lc($value[2]);
+                    if (grep(/$arp_mc/, (keys %mac_nodename_map))) {
+                        $monitor_switch{ $mac_nodename_map{$arp_mc} }{workingip} = $ip;
+                        $monitor_switch{ $mac_nodename_map{$arp_mc} }{mac} = $arp_mc;
+                        $monitor_switch{ $mac_nodename_map{$arp_mc} }{discover_status} = 0b00;
+                        --$without_working_ip;
+                        push @matchedip, $ip;
+                    }
+                }
+            }
+        }
+
+        #print "matchedip dumper\n";
+        #print Dumper \@matchedip;
+        @ips = deletearray(\@ips, \@matchedip);
+
+        #print Dumper \@ips;
+        --$trytime;
+    }
+
+    if ($without_working_ip) {
+        $failed_switch_num += $without_working_ip;
+    }
+
+    my @left_nodes         = keys %discovery_target_switch_info;
+    my @tmp_monitor_switch = keys %monitor_switch;
+    my @without_workingip_nodes = deletearray(\@left_nodes, \@tmp_monitor_switch);
+
+    foreach (@without_workingip_nodes) {
+        $node_error_info{$_} = "has not gotten a working ip from DHCP or configuration manually";
+        delete $discovery_target_switch_info{$_};
+    }
+
+    if ($failed_switch_num) {
+        return 1;
+    } else {
+        return 0;
+    }
+}
+
+#--------------------------------------------------------
+# Fuction name:  to_exit
+# Description:
+# Atrributes:
+# Retrun code:
+#--------------------------------------------------------
+sub to_exit {
+    my $exit_code = shift;
+
+    print "-----------To restore original environment--------------\n";
+    my $cmd;
+
+    #delete predefine node used by test
+    my @output = runcmd("lsdef");
+    my @predefnodes;
+    foreach (@output) {
+        if ($_ =~ /^($pre_def_node_prefix.+) \(node\)/) {
+            push @predefnodes, $1;
+        }
+    }
+    if (@predefnodes) {
+        $cmd = "rmdef " . join(",", @predefnodes);
+        print "To run <$cmd>\n";
+        runcmd("$cmd");
+    }
+
+    #to restore original node definition
+    foreach my $switch (keys %discovery_target_switch_info) {
+        $cmd = "chdef $switch ";
+        foreach my $attr (keys %{ $discovery_target_switch_info{$switch} }) {
+            if ($attr ne "postscripts" and $attr ne "postbootscripts") {
+                $cmd .= "$attr='$discovery_target_switch_info{$switch}{$attr}' ";
+            }
+        }
+        print "To run <$cmd>\n";
+        runcmd("$cmd");
+    }
+
+    exit $exit_code;
+}
+
+#--------------------------------------------------------
+# Fuction name:  runcmd
+# Description:
+# Atrributes:
+# Retrun code:
+#--------------------------------------------------------
+sub runcmd {
+    my ($cmd) = @_;
+    my $rc = 0;
+    $::RUNCMD_RC = 0;
+    my $outref = [];
+
+    @$outref = `$cmd 2>&1`;
+    if ($?)
+    {
+        $rc          = $?;
+        $::RUNCMD_RC = $rc;
+    }
+    chomp(@$outref);
+    return @$outref;
+}
+
+
+#--------------------------------------------------------
+# Fuction name:  dump_info
+# Description:
+# Atrributes:
+# Retrun code:
+#--------------------------------------------------------
+sub dump_info {
+    my $error_ref = shift;
+    foreach (@$error_ref) {
+        print "$_\n";
+    }
+}
+
+#--------------------------------------------------------
+# Fuction name:  switch_discovery
+# Description:
+# Atrributes:
+# Retrun code:
+#--------------------------------------------------------
+sub switch_discovery {
+    my $error_ref = shift;
+
+    my $cmd;
+    my @output;
+
+    print "To do switch_based switch discovery for below predefined switches:\n";
+    foreach my $switch (keys %monitor_switch) {
+        $cmd    = "lsdef $pre_def_node_prefix$switch";
+        @output = runcmd("$cmd");
+        dump_info(\@output);
+    }
+
+    $cmd = "switchdiscover --range $dynamic_ip_range -s $discovery_mode -w";
+    print "To run <$cmd> ...";
+    @output = runcmd("$cmd");
+    if ($::RUNCMD_RC) {
+        print "failed\n";
+        dump_info(\@output);
+        return 1;
+    }
+    print "ok\n";
+
+    dump_info(\@output);
+    foreach my $line (@output) {
+        if ($line =~ /^(\d)+\.(\d)+\.(\d)+\.(\d)+/) {
+            my @values = split(" ", $line);
+            if (grep(/$values[4]/, (keys %mac_nodename_map))) {
+                if ($values[0] eq $monitor_switch{ $mac_nodename_map{ $values[4] } }{workingip}) {
+                    $monitor_switch{ $mac_nodename_map{ $values[4] } }{discover_status} |= 0b01;
+                    $monitor_switch{ $mac_nodename_map{ $values[4] } }{workinghostname} = $values[1];
+                }
+            }
+        } elsif ($line =~ /switch discovered and matched:\s+(.+)\s+to\s+(.+)/) {
+            my $opt_sw  = $1;
+            my $opt_pre = $2;
+            if ($opt_pre =~ /$pre_def_node_prefix(.+)/) {
+                my $sname = $1;
+                if ($monitor_switch{$sname}{workinghostname} eq $opt_sw) {
+                    $monitor_switch{$sname}{discover_status} |= 0b10;
+                }
+            }
+        }
+    }
+
+    $cmd = "lsdef $pre_def_node_prefix" . join(",$pre_def_node_prefix", (keys %monitor_switch)) . "  -i mac -c";
+    @output = runcmd("$cmd");
+    foreach my $line (@output) {
+        my @values = split("=", $line);
+        my $mac = $values[1];
+        my $sname;
+        if ($values[0] =~ /$pre_def_node_prefix(.+):/) {
+            $sname = $1;
+        }
+        if ($mac) {
+            if ($monitor_switch{$sname}{mac} eq $mac) {
+                $monitor_switch{$sname}{discover_status} |= 0b100;
+            }
+        }
+    }
+
+    foreach my $switch (keys %monitor_switch) {
+        if ($monitor_switch{$switch}{discover_status} == 0b001) {
+            $node_error_info{$switch} = "be discvoered, but failed to match pre-defined node $pre_def_node_prefix$switch";
+            ++$failed_switch_num;
+        } elsif ($monitor_switch{$switch}{discover_status} == 0b011) {
+            $node_error_info{$switch} = "be discvoered and matched, but failed to update pre-defined node info in DB";
+            ++$failed_switch_num;
+        } elsif ($monitor_switch{$switch}{discover_status} == 0b111) {
+            push @success_be_discovered_switches, $switch;
+        }
+    }
+
+    return 0;
+}
+
+#--------------------------------------------------------
+# Fuction name:  parse_dynamic_ip_range
+# Description:
+# Atrributes:
+# Retrun code:
+#--------------------------------------------------------
+sub parse_dynamic_ip_range {
+    my $original_dynamic_ip_str = shift;
+    my @sec = split(/\./, $original_dynamic_ip_str);
+    for (my $i = 0 ; $i <= $#sec ; $i++) {
+        $sec[$i] = "{$1..$2}" if ($sec[$i] =~ /(\d+)-(\d+)/);
+    }
+    my $str = join(".", @sec);
+    my @output = runcmd("echo $str");
+    return split(/ /, $output[0]);
+
+}
+
+#--------------------------------------------------------
+# Fuction name:  backup_env
+# Description:
+# Atrributes:
+# Retrun code:
+#--------------------------------------------------------
+sub backup_env {
+    my $rst = 0;
+
+    foreach my $switch (keys %discovery_target_switch_info) {
+        my @cmds = ("rmdef $switch",
+"mkdef -t node $pre_def_node_prefix$switch groups=switch mgt=switch nodetype=switch switch=$discovery_target_switch_info{$switch}{switch} switchport=$discovery_target_switch_info{$switch}{switchport}");
+        foreach my $cmd (@cmds) {
+            print "To run <$cmd>...";
+            my @output = runcmd("$cmd");
+            if ($::RUNCMD_RC) {
+                print "failed\n";
+                dump_info(\@output);
+                return 1;
+            } else {
+                print "ok\n";
+            }
+        }
+    }
+    return 0;
+}
+
+#--------------------------------------------------------
+# Fuction name: deletearray 
+# Description:
+# Atrributes:
+# Retrun code:
+#--------------------------------------------------------
+sub deletearray {
+    my $org_arr_ref = shift;
+    my $del_arr_ref = shift;
+    my @left_arr    = ();
+
+    foreach my $i (@{$org_arr_ref}) {
+        push @left_arr, $i unless (grep(/$i/, @{$del_arr_ref}));
+    }
+    return @left_arr;
+}
