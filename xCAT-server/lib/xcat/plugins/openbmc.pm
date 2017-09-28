@@ -252,9 +252,17 @@ my %status_info = (
         process        => \&rpower_response,
     },
 
+    RSETBOOT_ENABLE_REQUEST => {
+        method         => "PUT",
+        init_url       => "$openbmc_project_url/control/host0/boot/one_time/attr/Enabled",
+        data           => '1',
+    },
+    RSETBOOT_ENABLE_RESPONSE => {
+        process        => \&rsetboot_response,
+    },
     RSETBOOT_SET_REQUEST => {
         method         => "PUT",
-        init_url       => "$openbmc_project_url/control/host0/$::RSETBOOT_URL_PATH/attr/BootSource",
+        init_url       => "$openbmc_project_url/control/host0/boot/one_time/attr/BootSource",
         data           => "xyz.openbmc_project.Control.Boot.Source.Sources.",
     },
     RSETBOOT_SET_RESPONSE => {
@@ -262,7 +270,7 @@ my %status_info = (
     },
     RSETBOOT_STATUS_REQUEST  => {
         method         => "GET",
-        init_url       => "$openbmc_project_url/control/host0/$::RSETBOOT_URL_PATH",
+        init_url       => "$openbmc_project_url/control/host0/enumerate",
     },
     RSETBOOT_STATUS_RESPONSE => {
         process        => \&rsetboot_response,
@@ -766,10 +774,10 @@ sub parse_command_status {
     }
 
     if ($command eq "rsetboot") {
-        if ($$subcommands[-1] and $$subcommands[-1] eq "-o") {
+        if ($$subcommands[-1] and $$subcommands[-1] eq "-p") {
             pop(@$subcommands);
-            $status_info{RSETBOOT_SET_REQUEST}{init_url} = "$openbmc_project_url/control/host0/$::RSETBOOT_URL_PATH/attr/BootSource";
-            $status_info{RSETBOOT_STATUS_REQUEST}{init_url} = "$openbmc_project_url/control/host0/$::RSETBOOT_URL_PATH";
+            $status_info{RSETBOOT_ENABLE_REQUEST}{data} = '0';
+            $status_info{RSETBOOT_SET_REQUEST}{init_url} = "$openbmc_project_url/control/host0/boot/attr/BootSource";
         }
 
         if (defined($$subcommands[0])) {
@@ -786,8 +794,12 @@ sub parse_command_status {
                 $::RSETBOOT_URL_PATH = "boot_source";
                 $status_info{RSETBOOT_SET_REQUEST}{init_url} = "$openbmc_project_url/control/host0/$::RSETBOOT_URL_PATH/attr/BootSource";
                 $status_info{RSETBOOT_STATUS_REQUEST}{init_url} = "$openbmc_project_url/control/host0/$::RSETBOOT_URL_PATH";
+                $next_status{LOGIN_RESPONSE} = "RSETBOOT_SET_REQUEST";
+            } else {
+                $next_status{LOGIN_RESPONSE} = "RSETBOOT_ENABLE_REQUEST";
+                $next_status{RSETBOOT_ENABLE_REQUEST} = "RSETBOOT_ENABLE_RESPONSE";
+                $next_status{RSETBOOT_ENABLE_RESPONSE} = "RSETBOOT_SET_REQUEST";
             }
-            $next_status{LOGIN_RESPONSE} = "RSETBOOT_SET_REQUEST";
             $next_status{RSETBOOT_SET_REQUEST} = "RSETBOOT_SET_RESPONSE";
             if ($subcommand eq "net") {
                 $status_info{RSETBOOT_SET_REQUEST}{data} .= "Network";
@@ -1112,7 +1124,7 @@ sub gen_send_request {
         $method = $status_info{ $node_info{$node}{cur_status} }{method};
     }
 
-    if ($status_info{ $node_info{$node}{cur_status} }{data}) {
+    if (defined($status_info{ $node_info{$node}{cur_status} }{data})) {
         # Handle boolean values by create the json objects without wrapping with quotes
         if ($status_info{ $node_info{$node}{cur_status} }{data} =~ /^1$|^true$|^True$|^0$|^false$|^False$/) {
             $content = '{"data":' . $status_info{ $node_info{$node}{cur_status} }{data} . '}';
@@ -1572,13 +1584,29 @@ sub rsetboot_response {
     my $response_info = decode_json $response->content;    
 
     if ($node_info{$node}{cur_status} eq "RSETBOOT_STATUS_RESPONSE") {
-        if ($response_info->{'data'}->{BootSource} =~ /Disk$/) {
+        my $one_time_enabled;
+        my $bootsource;
+        if (defined($::OPENBMC_FW) && ($::OPENBMC_FW < 1738)) {
+            $bootsource = $response_info->{'data'}->{BootSource};
+        } else {
+            foreach my $key_url (keys %{$response_info->{data}}) {
+                my %content = %{ ${ $response_info->{data} }{$key_url} };
+                if ($key_url =~ /boot\/one_time/) {
+                    $one_time_enabled = $content{Enabled};
+                    $bootsource = $content{BootSource} if ($one_time_enabled);
+                } elsif ($key_url =~ /\/boot$/) {
+                    $bootsource = $content{BootSource} unless ($one_time_enabled);
+                }
+            }
+        }
+
+        if ($bootsource =~ /Disk$/) {
             xCAT::SvrUtils::sendmsg("Hard Drive", $callback, $node);
-        } elsif ($response_info->{'data'}->{BootSource} =~ /Network$/) {
+        } elsif ($bootsource =~ /Network$/) {
             xCAT::SvrUtils::sendmsg("Network", $callback, $node);
-        } elsif ($response_info->{'data'}->{BootSource} =~ /ExternalMedia$/) {
+        } elsif ($bootsource =~ /ExternalMedia$/) {
             xCAT::SvrUtils::sendmsg("CD/DVD", $callback, $node);
-        } elsif ($response_info->{'data'}->{BootSource} =~ /Default$/) {
+        } elsif ($bootsource =~ /Default$/) {
             xCAT::SvrUtils::sendmsg("Default", $callback, $node);
         } else {
             my $error_msg = "Can not get valid rsetboot status, the data is " . $response_info->{'data'}->{BootSource};
