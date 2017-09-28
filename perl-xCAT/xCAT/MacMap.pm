@@ -878,6 +878,21 @@ sub refresh_switch {
             }
             return;
         }
+        my $bridgeifvalid = 0;
+        foreach (keys %$mactoindexmap) {
+            my $index     = $mactoindexmap->{$_};
+            if (defined($bridgetoifmap->{$index})) {
+                $bridgeifvalid = 1;
+                last;
+            }
+        }
+        unless ($bridgeifvalid) {
+            # create a dummy bridgetoifmap to cover switches that thing it should go straight to ifindex
+            $bridgetoifmap = {};
+            foreach (keys %$namemap) {
+                $bridgetoifmap->{$_} = $_;
+            }
+        }
         if (defined($self->{collect_mac_info})) {
             my %index_to_mac = ();
             my %index_to_vlan = ();
