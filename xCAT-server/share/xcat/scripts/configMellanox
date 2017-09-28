@@ -269,21 +269,39 @@ sub config_snmp {
     my $snmp_user;
     my $snmp_passwd;
     my $snmp_auth;
+    my $snmp_version;
+    my $cmd;
 
     my $switchtab = xCAT::Table->new('switches');
-    my $switchhash = $switchtab->getNodesAttribs(\@nodes,['sshusername','username','password','auth','privacy']);
-    foreach my $switch (@nodes) {
+    my $switchhash = $switchtab->getNodesAttribs(\@nodes,['snmpversion','sshusername','sshpassword','username','password','auth','privacy']);
+    foreach my $switch (@nodes) 
+    {
+        #enable snmp function on the switch
+        $cmd=`rspconfig $switch snmpcfg=enable`;
+
         my $user = $switchhash->{$switch}->[0]->{sshusername};
         if (!$user) {
             print "switch ssh username is not defined, use default one\n";
             $user="admin";
         }
+        $snmp_version = $switchhash->{$switch}->[0]->{snmpversion};
+        $snmp_passwd = $switchhash->{$switch}->[0]->{password};
+
+        #config snmpv1 with community string defined in the switches table 
+        if ($snmp_version ne "3") {
+            if ($snmp_passwd) {
+                $cmd=`rspconfig $switch community=$snmp_passwd`;
+                print "config snmp community string $snmp_passwd\n";
+                next;
+            }    
+        }        
+
+        #config snmpv3 defined in the switches table
         $snmp_user = $switchhash->{$switch}->[0]->{username};
         if (!$snmp_user) {
            print "No snmp user defined for switch $switch. Will not configure snmpv3\n";
            next;
         }
-        $snmp_passwd = $switchhash->{$switch}->[0]->{password};
         $snmp_auth = $switchhash->{$switch}->[0]->{auth};
         my $snmp_privacy = $switchhash->{$switch}->[0]->{privacy};
 
@@ -315,12 +333,6 @@ sub run_rspconfig {
     $master = `hostname -i`;
     foreach my $switch (@nodes) {
         my $user= $switchhash->{$switch}->[0]->{sshusername};
-        # call rspconfig command to setup switch
-        # enable ssh
-        $cmd=`rspconfig $switch sshcfg=enable`;
-
-        # enable snmp function on the switch
-        $cmd=`rspconfig $switch snmpcfg=enable`;
 
         # enable the snmp trap
         $cmd=`rspconfig $switch alert=enable`;
