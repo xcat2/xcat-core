@@ -328,7 +328,7 @@ my %usage = (
        pdudiscover [<noderange>|--range ipranges] [-r|-x|-z] [-w] [-V|--verbose] [--setup]",
     "switchdiscover" =>
       "Usage: switchdiscover [-h|--help|-v|--version]
-       switchdiscover [<noderange>|--range ipranges] [-s scan_methods] [-r|-x|-z] [-w] [-V|--verbose] [--setup]",
+       switchdiscover [<noderange>|--range ipranges] [-s scan_methods] [-c community] [-r|-x|-z] [-w] [-V|--verbose] [--setup]",
     "switchprobe" =>
       "Usage: switchprobe [<noderange>] [-V|--verbose | -c|--check]",
     "makentp" =>

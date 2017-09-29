@@ -15,7 +15,7 @@ SYNOPSIS
 
 \ **switchdiscover [-v| -**\ **-version]**\ 
 
-\ **switchdiscover**\  [\ *noderange*\  | \ **-**\ **-range**\  \ *ip_ranges*\ ] \ **[-V] [-w][-r|-x|-z][-s**\  \ *scan_methods*\  \ **-**\ **-setup**\ ]
+\ **switchdiscover**\  [\ *noderange*\  | \ **-**\ **-range**\  \ *ip_ranges*\ ] \ **[-V] [-w][-r|-x|-z][-s**\  \ *scan_methods*\ ] [\ **-**\ **-setup**\ ] [\ **-c**\  \ *community*\ ]
 
 
 ***********
@@ -31,7 +31,7 @@ To view all the switches defined in the xCAT database use \ **lsdef -w "nodetype
 
 For lldp method, make sure that lldpd package is installed and lldpd is running on the xCAT management node. lldpd comes from xcat-dep package or you can get it from http://vincentbernat.github.io/lldpd/installation.html.
 
-For snmp method, make sure that snmpwalk command is installed and snmp is enabled for switches. To install snmpwalk, "yum install net-snmp-utils" for redhat and sles,  "apt-get install snmp" for Ubuntu.
+For snmp method, make sure that snmpwalk command is installed and snmp is enabled for switches. To install snmpwalk, "yum install net-snmp-utils" for redhat and sles,  "apt-get install snmp" for Ubuntu. The switchdiscover command only check the switches with default community string, if user already configured switch with other commmunity string, need to pass in with \ **-c**\  option for switchdiscover command to be able to discover.
 
 
 *******
@@ -115,6 +115,12 @@ OPTIONS
 \ **-**\ **-setup**\ 
  
  Process switch-based switch discovery. Update discovered switch's ip address, hostname and enable snmpv3 configuration based on the predefined switch.
+ 
+
+
+\ **-c**\ 
+ 
+ User defined community string for snmp scan.
  
 
 
