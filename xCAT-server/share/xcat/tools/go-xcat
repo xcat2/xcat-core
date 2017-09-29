@@ -1679,8 +1679,8 @@ esac # case "${GO_XCAT_ACTION}" in
 
 exit 0
 
-# vim: set filetype=bash
-# vim: set noautoindent
-# vim: set tabstop=4 shiftwidth=4 softtabstop=4
+# vim: filetype=sh
+# vim: noautoindent
+# vim: tabstop=4 shiftwidth=4 softtabstop=4
 
 # End of file
