@@ -422,10 +422,10 @@ sub switch_discovery {
 
     foreach my $switch (keys %monitor_switch) {
         if ($monitor_switch{$switch}{discover_status} == 0b001) {
-            $node_error_info{$switch} = "be discvoered, but failed to match pre-defined node $pre_def_node_prefix$switch";
+            $node_error_info{$switch} = "be discovered, but failed to match pre-defined node $pre_def_node_prefix$switch";
             ++$failed_switch_num;
         } elsif ($monitor_switch{$switch}{discover_status} == 0b011) {
-            $node_error_info{$switch} = "be discvoered and matched, but failed to update pre-defined node info in DB";
+            $node_error_info{$switch} = "be discovered and matched, but failed to update pre-defined node info in DB";
             ++$failed_switch_num;
         } elsif ($monitor_switch{$switch}{discover_status} == 0b111) {
             push @success_be_discovered_switches, $switch;
