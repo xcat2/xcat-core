@@ -33,10 +33,10 @@ my %discovery_target_switch_info;
 my @expected_attrs_for_switch_based_switch_discovery = ("ip", "mac", "switch", "switchport");
 my $expected_attrs_for_switch_based_switch_discovery_str = join(",", @expected_attrs_for_switch_based_switch_discovery);
 
-#$monitor_switch{<swtichname>}{workingip}
-#$monitor_switch{<swtichname>}{workinghostname}
-#$monitor_switch{<swtichname>}{mac}
-#$monitor_switch{<swtichname>}{discover_status}
+#$monitor_switch{<switchname>}{workingip}
+#$monitor_switch{<switchname>}{workinghostname}
+#$monitor_switch{<switchname>}{mac}
+#$monitor_switch{<switchname>}{discover_status}
 my %monitor_switch;
 
 my %mac_nodename_map;
@@ -44,7 +44,7 @@ my $pre_def_node_prefix = "xcattest_predef_";
 
 #----------------------usage--------------------
 $::USAGE = "Usage:
-    To test switch-based switch discovery key process: swtich discovery, predefined node match and predefined node definition update.
+    To test switch-based switch discovery key process: switch discovery, predefined node match and predefined node definition update.
 
 To get help:
     $program_name -h
@@ -94,7 +94,7 @@ $SIG{TERM} = $SIG{INT} = sub {
 print "----------------Check the configuration of test case itself----------------\n";
 $rst = check_test_case_self_conf(\@error);
 if ($failed_switch_num == $original_target_switch_num) {
-    print "All node in noderange $discovery_target_switch have error, there is not a valid swtich to do discovery\n";
+    print "All node in noderange $discovery_target_switch have error, there is not a valid switch to do discovery\n";
     foreach my $node (sort keys %node_error_info) {
         print "$node : $node_error_info{$node}\n";
     }
@@ -388,7 +388,7 @@ sub switch_discovery {
             my @values = split(" ", $line);
             if (grep(/$values[4]/, (keys %mac_nodename_map))) {
                 if ($values[0] eq $monitor_switch{ $mac_nodename_map{ $values[4] } }{workingip}) {
-                    $monitor_switch{ $mac_nodename_map{ $values[4] } }{discover_status} |= 0b01;
+                    $monitor_switch{ $mac_nodename_map{ $values[4] } }{discover_status} |= 0b001;
                     $monitor_switch{ $mac_nodename_map{ $values[4] } }{workinghostname} = $values[1];
                 }
             }
@@ -398,7 +398,7 @@ sub switch_discovery {
             if ($opt_pre =~ /$pre_def_node_prefix(.+)/) {
                 my $sname = $1;
                 if ($monitor_switch{$sname}{workinghostname} eq $opt_sw) {
-                    $monitor_switch{$sname}{discover_status} |= 0b10;
+                    $monitor_switch{$sname}{discover_status} |= 0b010;
                 }
             }
         }
