@@ -52,7 +52,7 @@ fi
 echo "# $xCATSettingsSTART" >> $snmp_conf
 echo "# $xCATSettingsInfo" >> $snmp_conf
 
-if [ "$snmpversion" = "3" ]; then
+if [[ "$snmpversion" =~ "3" ]]; then
     #set up snmp version 3
     if [ -n "$snmpuser" ] && [ -n "$snmpauth" ] && [ -n "$snmppwd" ]; then
         len=${#snmppwd}
