@@ -240,7 +240,7 @@ sub check_test_case_self_conf {
                     if (grep(/$arp_mc/, (keys %mac_nodename_map))) {
                         $monitor_switch{ $mac_nodename_map{$arp_mc} }{workingip} = $ip;
                         $monitor_switch{ $mac_nodename_map{$arp_mc} }{mac} = $arp_mc;
-                        $monitor_switch{ $mac_nodename_map{$arp_mc} }{discover_status} = 0b00;
+                        $monitor_switch{ $mac_nodename_map{$arp_mc} }{discover_status} = 0b000;
                         --$without_working_ip;
                         push @matchedip, $ip;
                     }
