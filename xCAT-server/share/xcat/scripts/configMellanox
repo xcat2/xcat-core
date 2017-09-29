@@ -288,7 +288,7 @@ sub config_snmp {
         $snmp_passwd = $switchhash->{$switch}->[0]->{password};
 
         #config snmpv1 with community string defined in the switches table 
-        if ($snmp_version ne "3") {
+        unless ($snmp_version =~ /3/) {
             if ($snmp_passwd) {
                 $cmd=`rspconfig $switch community=$snmp_passwd`;
                 print "config snmp community string $snmp_passwd\n";
