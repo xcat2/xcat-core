@@ -765,7 +765,6 @@ sub process_pdudiscover {
 sub showMFR {
     my $noderange = shift;
     my $callback = shift;
-    my $output;
 
     my $nodetab = xCAT::Table->new('hosts');
     my $nodehash = $nodetab->getNodesAttribs($noderange,['ip','otherinterfaces']);
@@ -784,7 +783,12 @@ sub showMFR {
             xCAT::SvrUtils::sendmsg("Failed to list MFR information: $err", $callback);
         }
         if (defined $ret) {
-            xCAT::SvrUtils::sendmsg("$ret", $callback);
+            foreach my $line (split /[\r\n]+/, $ret) {
+                if ($line) {
+                    $line = join(' ',split(' ',$line));
+                    xCAT::SvrUtils::sendmsg("$line", $callback,$pdu);
+                }
+            }
         }
 
         $exp->hard_close();
@@ -810,7 +814,6 @@ sub showMFR {
 sub showMonitorData {
     my $noderange = shift;
     my $callback = shift;
-    my $output;
 
     my $nodetab = xCAT::Table->new('hosts');
     my $nodehash = $nodetab->getNodesAttribs($noderange,['ip','otherinterfaces']);
@@ -829,7 +832,12 @@ sub showMonitorData {
             xCAT::SvrUtils::sendmsg("Failed to show monitor data: $err", $callback);
         }
         if (defined $ret) {
-            xCAT::SvrUtils::sendmsg("$ret", $callback,$pdu);
+            foreach my $line (split /[\r\n]+/, $ret) {
+                if ($line) {
+                    $line = join(' ',split(' ',$line));
+                    xCAT::SvrUtils::sendmsg("$line", $callback,$pdu);
+                }
+            }
         }
 
         $exp->hard_close();
