@@ -151,7 +151,10 @@ sub setstate {
         mkpath("$bootloader_root");
     }
 
-    my $cref = $chainhash{$node}->[0]; #$chaintab->getNodeAttribs($node,['currstate']);
+    my $cref = $chainhash{$node}->[0];
+    unless ($cref->{currstate}) { # the currstate should be set during 'setdestiny'
+        return (1, "Cannot determine current state for this node");
+    }
 
     my $pcfg;
     # remove the old boot configuration file and create a new one, but only if not offline directive
@@ -160,21 +163,8 @@ sub setstate {
         open($pcfg, '>', "$bootloader_root/" . $node);
         print $pcfg "#" . $cref->{currstate} . "\n";
     }
-    #$normalnodes{$node} = 1;   #Assume a normal netboot (well, normal dhcp,
-                               #which is normally with a valid 'filename' field,
-      #but the typical ppc case will be 'special' makedhcp
-      #to clear the filename field, so the logic is a little
-      #opposite
-      #  $sub_req->({command=>['makedhcp'], #This is currently batched elswhere
-      #         node=>[$node]},$callback);  #It hopefully will perform correctly
 
     if ($cref and $cref->{currstate} eq "boot") {
-        $breaknetbootnodes{$node} = 1;
-        #delete $normalnodes{$node}; #Signify to omit this from one makedhcp command
-         #$sub_req->({command=>['makedhcp'], #batched elsewhere, this code is stale, hopefully
-         #       node=>[$node],
-         #        arg=>['-s','filename = \"xcat/nonexistant_file_to_intentionally_break_netboot_for_localboot_to_work\";']},$callback);
-         #print $pcfg "bye\n";
         close($pcfg);
     } elsif ($kern and $kern->{kernel} and $cref and $cref->{currstate} ne "offline") {
 
@@ -397,9 +387,8 @@ sub process_request {
     $::callback = $callback;
     $sub_req    = shift;
     my $command = $request->{command}->[0];
-    %breaknetbootnodes = ();
-    #%normalnodes       = (); # It will be fill-up by method: setstate.
-    %failurenodes      = ();
+
+    undef %failurenodes;
 
     #>>>>>>>used for trace log start>>>>>>>
     my @args = ();
@@ -613,11 +602,11 @@ sub process_request {
             ($rc, $errstr) = setstate($_, \%bphash, $chainhash, $machash, $tftpdir, $nodereshash, $linuximghash);
             if ($rc) {
                 $response{node}->[0]->{errorcode}->[0] = $rc;
-                $response{node}->[0]->{errorc}->[0]    = $errstr;
+                $response{node}->[0]->{error}->[0]    = $errstr;
                 $failurenodes{$_} = 1;
                 $callback->(\%response);
             } else {
-                push @normalnodeset, $_ unless ( $breaknetbootnodes->{$_} );
+                push @normalnodeset, $_;
             }
         }
     }    # end of foreach node

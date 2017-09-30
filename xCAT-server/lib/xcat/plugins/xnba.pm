@@ -192,6 +192,10 @@ sub setstate {
     }
 
     my $cref = $chainhash{$node}->[0]; #$chaintab->getNodeAttribs($node,['currstate']);
+    unless ($cref->{currstate}) { # the currstate should be set during 'setdestiny'
+        return (1, "Cannot determine current state for this node");
+    }
+
     if ($cref and $cref->{currstate} eq "offline") {
         unlink("$bootloader_root/$node");
         unlink("$bootloader_root/$node.pxelinux");
@@ -709,7 +713,7 @@ sub process_request {
             ($rc, $errstr) = setstate($_, \%bphash, \%chainhash, \%machash, \%iscsihash, $tftpdir, $linuximghash);
             if ($rc) {
                 $response{node}->[0]->{errorcode}->[0] = $rc;
-                $response{node}->[0]->{errorc}->[0]    = $errstr;
+                $response{node}->[0]->{error}->[0]    = $errstr;
                 $failurenodes{$_} = 1;
                 $::XNBA_callback->(\%response);
             } else {
