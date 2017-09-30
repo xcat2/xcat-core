@@ -185,10 +185,24 @@ sub setstate {
             $pxelinuxkcmdline =~ s/!myipfn!/$ipfn/g;
         }
     }
-    my $pcfg;
-    unlink($tftpdir . "/xcat/xnba/nodes/" . $node . ".pxelinux");
-    open($pcfg, '>', $tftpdir . "/xcat/xnba/nodes/" . $node);
+
+    my $bootloader_root = "$tftpdir/xcat/xnba/nodes";
+    unless (-d "$bootloader_root") {
+        mkpath("$bootloader_root");
+    }
+
     my $cref = $chainhash{$node}->[0]; #$chaintab->getNodeAttribs($node,['currstate']);
+    if ($cref and $cref->{currstate} eq "offline") {
+        unlink("$bootloader_root/$node");
+        unlink("$bootloader_root/$node.pxelinux");
+        unlink("$bootloader_root/$node.uefi");
+        unlink("$bootloader_root/$node.elilo");
+        return (0, "");
+    }
+
+    my $pcfg;
+    unlink("$bootloader_root/$node.pxelinux");
+    open($pcfg, '>', "$bootloader_root/$node");
     print $pcfg "#!gpxe\n";
     if ($cref->{currstate}) {
         print $pcfg "#" . $cref->{currstate} . "\n";
@@ -284,30 +298,48 @@ sub setstate {
         print $pcfg "LOCALBOOT 0\n";
         close($pcfg);
     }
+    return (0, "");
 }
 
 
 
 my $errored = 0;
-
+my %failurenodes;
 sub pass_along {
     my $resp = shift;
+    return unless ($resp);
+
     if ($resp->{error} and not ref $resp->{error}) {
         $resp->{error} = [ $resp->{error} ];
     }
-    if ($resp and ($resp->{errorcode} and $resp->{errorcode}->[0]) or ($resp->{error} and $resp->{error}->[0])) {
-        $errored = 1;
+
+    my $failure = 0;
+    if ($resp->{errorabort}) { # Global error, it normally means to stop the parent execution. For example, DB operation error.
+        $failure = 2;
+        delete $resp->{errorabort};
+    } elsif (($resp->{errorcode} and $resp->{errorcode}->[0]) or ($resp->{error} and $resp->{error}->[0])) {
+        $failure = 1;
     }
+
     foreach (@{ $resp->{node} }) {
-        if ($_->{error} or $_->{errorcode}) {
-            $errored = 1;
-        }
         if ($_->{_addkcmdlinehandled}) {
             $::XNBA_addkcmdlinehandled->{ $_->{name}->[0] } = 1;
             return;    #Don't send back to client this internal hint
         }
+
+        if ($_->{error} or $_->{errorcode}) {
+            $failure = 1 unless ($failure); # keep its value if $failure is 2
+            if ($_->{name}) {
+                $failurenodes{$_->{name}->[0]} = 2;
+            }
+        }
     }
     $::XNBA_callback->($resp);
+
+    # Set the module scope error flag.
+    if ( $failure ) {
+        $errored = $failure;
+    }
 }
 
 
@@ -406,7 +438,7 @@ sub preprocess_request {
                 my %rsp;
                 $rsp{errorcode}->[0] = 1;
                 $rsp{error}->[0] =
-"Nodeset was run with a noderange containing both service nodes and compute nodes. This is not valid. You must submit with either compute nodes in the noderange or service nodes. \n";
+        "Nodeset was run with a noderange containing both service nodes and compute nodes. This is not valid. You must submit with either compute nodes in the noderange or service nodes. \n";
                 $callback1->(\%rsp);
                 return;
             }
@@ -458,8 +490,8 @@ sub process_request {
     my $sub_req = shift;
     undef $::XNBA_addkcmdlinehandled;    # clear out any previous value
     my @args;
-    my @nodes;
     my @rnodes;
+    undef %failurenodes;
 
     #>>>>>>>used for trace log start>>>>>>>
     my %opt;
@@ -510,7 +542,6 @@ sub process_request {
 
     my @nodes = ();
     # Filter those nodes which have bad DNS: not resolvable or inconsistent IP
-    my %failurenodes = ();
     my %preparednodes = ();
     foreach (@rnodes) {
         my $ipret = xCAT::NetworkUtils->checkNodeIPaddress($_);
@@ -597,10 +628,8 @@ sub process_request {
                     arg => [ $args[0] ] }, \&pass_along);
         }
         if ($errored) {
-            my $rsp;
-            $rsp->{errorcode}->[0] = 1;
-            $rsp->{error}->[0] = "Failed in running begin prescripts.  Processing will still continue.\n";
-            $::XNBA_callback->($rsp);
+            xCAT::MsgUtils->trace($verbose_on_off, "d", "xnba: Failed in running begin prescripts.");
+            return if ($errored > 1);
         }
     }
 
@@ -635,8 +664,8 @@ sub process_request {
                 bootparams => \%bphash},
                 \&pass_along);
         if ($errored) { 
-            xCAT::MsgUtils->trace($verbose_on_off, "d", "xnba: Failed in processing setdestiny.  Processing will not continue.");
-            return; 
+            xCAT::MsgUtils->trace($verbose_on_off, "d", "xnba: Failed in processing setdestiny.");
+            return if ($errored > 1);
         }
     }
 
@@ -644,11 +673,11 @@ sub process_request {
     #Time to actually configure the nodes, first extract database data with the scalable calls
     my $chaintab = xCAT::Table->new('chain');
     my $noderestab = xCAT::Table->new('noderes'); #in order to detect per-node tftp directories
-    my $mactab     = xCAT::Table->new('mac');     #to get all the hostnames
     my %nrhash = %{ $noderestab->getNodesAttribs(\@nodes, [qw(tftpdir)]) };
     my %chainhash = %{ $chaintab->getNodesAttribs(\@nodes, [qw(currstate)]) };
     my %iscsihash;
     my $iscsitab = xCAT::Table->new('iscsi');
+    my %machash = ();
 
     if ($iscsitab) {
         %iscsihash = %{ $iscsitab->getNodesAttribs(\@nodes, [qw(server target)]) };
@@ -657,15 +686,15 @@ sub process_request {
     my $typehash = $typetab->getNodesAttribs(\@nodes, ['provmethod']);
     my $linuximgtab = xCAT::Table->new('linuximage', -create => 1);
 
-    my %machash = %{ $mactab->getNodesAttribs(\@nodes, [qw(mac)]) };
+    my @normalnodeset = ();
     foreach (@nodes) {
-        my $tftpdir;
+        next if (exists($failurenodes{$_}));
+
+        my $tftpdir = $globaltftpdir;
         if ($nrhash{$_}->[0] and $nrhash{$_}->[0]->{tftpdir}) {
             $tftpdir = $nrhash{$_}->[0]->{tftpdir};
-        } else {
-            $tftpdir = $globaltftpdir;
         }
-        mkpath($tftpdir . "/xcat/xnba/nodes/");
+
         my %response;
         $response{node}->[0]->{name}->[0] = $_;
         if ($args[0]) { # Send it on to the destiny plugin, then setstate
@@ -678,18 +707,13 @@ sub process_request {
                 $linuximghash = $linuximgtab->getAttribs({ imagename => $osimgname }, 'boottarget', 'addkcmdline');
             }
             ($rc, $errstr) = setstate($_, \%bphash, \%chainhash, \%machash, \%iscsihash, $tftpdir, $linuximghash);
-
-            #currently, it seems setstate doesn't return error codes...
-            #if ($rc) {
-            #  $response{node}->[0]->{errorcode}->[0]= $rc;
-            #  $response{node}->[0]->{errorc}->[0]= $errstr;
-            #  $::XNBA_callback->(\%response);
-            #}
-            if ($args[0] eq 'offline') {
-                unlink($tftpdir . "/xcat/xnba/nodes/" . $_);
-                unlink($tftpdir . "/xcat/xnba/nodes/" . $_ . ".pxelinux");
-                unlink($tftpdir . "/xcat/xnba/nodes/" . $_ . ".uefi");
-                unlink($tftpdir . "/xcat/xnba/nodes/" . $_ . ".elilo");
+            if ($rc) {
+                $response{node}->[0]->{errorcode}->[0] = $rc;
+                $response{node}->[0]->{errorc}->[0]    = $errstr;
+                $failurenodes{$_} = 1;
+                $::XNBA_callback->(\%response);
+            } else {
+                push @normalnodeset, $_;
             }
         }
     }
@@ -712,7 +736,7 @@ sub process_request {
 
             $sub_req->({ command => ['makedhcp'],
                          arg => \@parameter,
-                         node => \@nodes }, $::XNBA_callback);
+                         node => \@normalnodeset }, $::XNBA_callback);
         } else {
             xCAT::MsgUtils->trace($verbose_on_off, "d", "xnba: dhcpsetup=$do_dhcpsetup");
         }
@@ -724,19 +748,16 @@ sub process_request {
         if ($::XNBA_request->{'_disparatetftp'}->[0]) { #the call is distrubuted to the service node already, so only need to handle my own children
             xCAT::MsgUtils->trace($verbose_on_off, "d", "xnba: issue runendpre request");
             $sub_req->({ command => ['runendpre'],
-                    node => \@nodes,
+                    node => \@normalnodeset,
                     arg => [ $args[0], '-l' ] }, \&pass_along);
         } else { #nodeset did not distribute to the service node, here we need to let runednpre to distribute the nodes to their masters
             xCAT::MsgUtils->trace($verbose_on_off, "d", "xnba: issue runendpre request");
             $sub_req->({ command => ['runendpre'],
-                    node => \@nodes,
+                    node => \@normalnodeset,
                     arg => [ $args[0] ] }, \&pass_along);
         }
         if ($errored) {
-            my $rsp;
-            $rsp->{errorcode}->[0] = 1;
-            $rsp->{error}->[0] = "Failed in running end prescripts.  Processing will still continue.\n";
-            $::XNBA_callback->($rsp);
+            xCAT::MsgUtils->trace($verbose_on_off, "d", "xnba: Failed in running end prescripts.");
         }
     }
 
