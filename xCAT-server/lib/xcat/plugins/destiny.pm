@@ -432,6 +432,21 @@ sub setdestiny {
                     $nodetypetable->setNodesAttribs(\@tmpnodelist, $updateattribs);
                 }
             }
+
+            if (%state_hash) { # To valide mac here
+                my @tempnodes = keys(%state_hash);
+                my $mactab = xCAT::Table->new('mac', -create => 1);
+                my $machash = $mactab->getNodesAttribs(\@tempnodes, ['mac']);
+
+                foreach (@tempnodes) {
+                    my $macs = $machash->{$_}->[0];
+                    unless ($macs and $macs->{mac}) {
+                        $failurenodes{$_} = 1;
+                        xCAT::MsgUtils->report_node_error($callback, $_, "No MAC address available for this node");
+                        delete $state_hash{$_};
+                    }
+                }
+            }
         }
 
         #print Dumper(\%state_hash);

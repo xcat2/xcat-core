@@ -150,7 +150,6 @@ sub setstate {
     unless (-d "$bootloader_root") {
         mkpath("$bootloader_root");
     }
-    #my $nodemac;
 
     my $cref = $chainhash{$node}->[0]; #$chaintab->getNodeAttribs($node,['currstate']);
 
@@ -525,31 +524,6 @@ sub process_request {
         return;
     }
 
-    my $state = $args[0];
-    my $reststates;
-    # to support the case that the state could be 'osimage=xxx'; 'runimage=yyy,runcmd=xxx'
-    ($state, $reststates) = split(/,/, $state, 2);
-    chomp($state);
-
-    my $mactab = xCAT::Table->new('mac', -create => 1);
-    my $machash = $mactab->getNodesAttribs(\@nodes, ['mac']);
-
-    if ($state eq 'osimage' || $state =~ 'osimage=') { # To valide mac here
-        my @validnodes = ();
-        my $cflag = 0;
-        foreach (@nodes) {
-            my $macs = $machash->{$_}->[0];
-            unless ($macs and $macs->{mac}) {
-                $failurenodes{$_} = 1;
-                xCAT::MsgUtils->report_node_error($callback, $_, "No MAC address available");
-                $cflag = 1;
-                next;
-            }
-            push @validnodes, $_;
-        }
-        @nodes = @validnodes if $cflag;
-    }
-
     #now run the begin part of the prescripts
     unless ($args[0] eq '') {    # or $args[0] eq 'enact') {
         $errored = 0;
@@ -614,6 +588,7 @@ sub process_request {
     my $typehash = $typetab->getNodesAttribs(\@nodes, [ 'os', 'provmethod', 'arch', 'profile' ]);
     my $linuximgtab = xCAT::Table->new('linuximage', -create => 1);
     my $osimagetab  = xCAT::Table->new('osimage',    -create => 1);
+    my %machash = ();
 
     my $rc;
     my $errstr;
