@@ -104,21 +104,11 @@ done
 mkdir -p /root/.ssh
 mv _ssh/authorized_keys /root/.ssh/authorized_keys 
 
-#enable and config snmpd
-./enablesnmp
-rc=$?
-if [ "$rc" != "0" ];then
-    logger -s -t "xcat.cumulusztp" -p local4.err "enablesnmp: failed to enable SNMP"
-    echo "enablesnmp: failed to enable SNMP"
-else
-    logger -s -t "xcat.cumulusztp" -p local4.info "SNMP enabled!"
-fi
-
 #install license, if needed
-cl-license > /dev/null 2>&1
+/usr/cumulus/bin/cl-license > /dev/null 2>&1
 rc=$?
 if [ "$rc" != "0" ];then
-    if cl-license -i http://$server_ip/install/custom/sw_os/cumulus/licensefile.txt; then
+    if /usr/cumulus/bin/cl-license -i http://$server_ip/install/custom/sw_os/cumulus/licensefile.txt; then
         logger -s -t "xcat.cumulusztp" -p local4.info "installed Cumulus license"
         systemctl enable switchd
         systemctl start switchd
@@ -126,15 +116,6 @@ if [ "$rc" != "0" ];then
         logger -s -t "xcat.cumulusztp" -p local4.err "failed to install Cumulus license"
         echo "failed to install Cumulus license"
     fi
-fi
-
-#config base interface
-./configinterface
-rc=$?
-if [ "$rc" != "0" ];then
-    echo "configinterface: failed to config switch data ports"
-else
-    logger -s -t "xcat.cumulusztp" -p local4.info "data ports enabled!"
 fi
 
 #obtain myposctscript from MN
@@ -147,14 +128,18 @@ if [ "$rc" != "0" ]; then
    exit 1
 fi
 
+#enable snmp
+echo './enablesnmp' >> ./mypostscript
+#config base interface
+echo './configinterface' >> ./mypostscript
 #config static ip address for mgt interface
 echo './confignics -s' >> ./mypostscript
 chmod 700 ./mypostscript
 ./mypostscript
 rc=$?
 if [ "$rc" != "0" ]; then
-   logger -s -t "xcat.cumulusztp" -p local4.info "failed to set static ip address for mgt interface"
-   echo "failed to set static ip address for mgt interface"
+   logger -s -t "xcat.cumulusztp" -p local4.info "failed to complete setup"
+   echo "failed to complete setup"
    ztp -R
    exit 1
 fi
