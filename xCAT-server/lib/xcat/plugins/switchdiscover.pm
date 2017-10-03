@@ -21,6 +21,7 @@ no strict;
 use Data::Dumper;
 use Socket;
 use Expect;
+use SNMP;
 use xCAT::data::switchinfo;
 
 #global variables for this module
@@ -144,7 +145,7 @@ sub parse_args {
     # Process command-line flags
     #############################################
     if (!GetOptions( \%opt,
-            qw(h|help V|verbose v|version x z w r n range=s s=s setup pdu))) {
+            qw(h|help V|verbose v|version x z w r n range=s s=s c=s setup pdu))) {
         return( usage() );
     }
 
@@ -253,6 +254,13 @@ sub parse_args {
     }
 
     #########################################################
+    # Accept the community string from user
+    #########################################################
+    if ( exists( $opt{c} )) {
+        $community=$opt{c};
+    }
+
+    #########################################################
     # setup discover switch
     #########################################################
     if ( exists( $opt{setup} )) {
@@ -339,75 +347,33 @@ sub process_request {
         @scan_types = @{$globalopt{scan_types}};
     }
     
-    my $all_result;
+    my %username_hash = ();
+    $result = undef;
     foreach my $st (@scan_types) {
         no strict;
         my $fn = $global_scan_type{$st};
         my $tmp_result = &$fn(\%request, $callback);
         if (ref($tmp_result) eq 'HASH') {
-            $all_result->{$st} = $tmp_result;
-        }
-    }
-
-    #consolidate the results by merging the swithes with the same ip or same mac 
-    #or same hostname
-    my $result;
-    my $merged;
-    my $counter=0;
-    foreach my $st (keys %$all_result) {
-        my $tmp_result = $all_result->{$st};
-        #send_msg( \%request, 1, Dumper($tmp_result));
-        foreach my $old_mac (keys %$tmp_result) {
-            $same = 0;
-            foreach my $new_mac (keys %$result) {
-                my $old_ip = $tmp_result->{$old_mac}->{ip}; 
-                my $old_name = $tmp_result->{$old_mac}->{name};
-                my $old_vendor = $tmp_result->{$old_mac}->{vendor};
-                my $new_ip = $result->{$new_mac}->{ip};
-                my $new_name = $result->{$new_mac}->{name};
-                my $new_vendor = $result->{$new_mac}->{vendor};
-                
-                if (($old_mac eq $new_mac) || 
-                    ($old_ip && ($old_ip eq $new_ip)) || 
-                    ($old_name && ($old_name eq $new_name))) {
-                    $same = 1;
-                    my $key =$new_mac;
-                    if ($new_mac =~ /nomac/) {
-                        if ($old_mac =~ /nomac/) {
-                            $key = "nomac_$counter";
-                            $counter++;
-                        } else {
-                            $key = $old_mac;
-                        }
+            foreach (keys %$tmp_result) {
+                $result->{$_} = $tmp_result->{$_};
+                #appending mac address to end of hostname
+                my $name = $result->{$_}->{name};
+                if (exists $username_hash{$name}) {
+                    if ($name eq '') {
+                        $name = "$device";
                     }
-                    if ($old_name) {
-                        $result->{$key}->{name} = $old_name;
-                    }
-                    if ($old_ip) {
-                        $result->{$key}->{ip} = $old_ip;
-                    }
-                    $result->{$key}->{vendor} = $new_vendor;
-                    if ($old_vendor) {
-                        if ($old_vendor ne $new_vendor) {
-                            $result->{$key}->{vendor} .= " " . $old_vendor;
-                        } else {
-                            $result->{$key}->{vendor} = $old_vendor;
-                        }
-                    }
-
-                    if ($key ne $new_mac) {
-                        delete $result->{$new_mac};
-                    }
+                    my $mac_str = lc($_);
+                    $mac_str =~ s/\://g;
+                    $result->{$_}->{name} = "$name-$mac_str";
+                } else {
+                    $username_hash{$name} = 1;
                 }
-            }
-            if (!$same) {
-                $result->{$old_mac} = $tmp_result->{$old_mac};
-            }
+            } 
         }
     }
-
+    
     if (!($result)) {
-        send_msg( \%request, 0, " No switch found ");
+        send_msg( \%request, 0, " No $device found ");
         return;
     }
 
@@ -934,13 +900,6 @@ sub snmp_scan {
     }
     my @lines = split /\n/, $result;
   
-    #set community string for switch
-    $community = "public";
-    my @snmpcs = xCAT::TableUtils->get_site_attribute("snmpc");
-    my $tmp    = $snmpcs[0];
-    if (defined($tmp)) { $community = $tmp }
-
-
     foreach my $line (@lines) {
         my @array = split / /, $line;
         if ($line =~ /\b(\d{1,3}(?:\.\d{1,3}){3})\b/)
@@ -996,20 +955,47 @@ sub get_snmpvendorinfo {
     my $request = shift;
     my $ip  = shift;
     my $snmpwalk_vendor;
+    my $result;
+    my $rc=1;
 
+    #checking snmp connection
+    #during discovery phase, xCAT will not know the community string for snmp
+    #so, will try community string from following way:
+    #  1) -c options from user input
+    #  2) snmpc attribute defined in the site table
+    #  3) default community string for the switches.
 
-    #Ubuntu only takes OID
-    #get sysDescr.0";
-    my $ccmd = "snmpwalk -Os -v1 -c $community $ip 1.3.6.1.2.1.1.1";
-    if (exists($globalopt{verbose}))    {
-       send_msg($request, 0, "Process command: $ccmd\n");
+    my @comm_list;
+    my $snmpver = '1';
+
+    my @snmpcs = xCAT::TableUtils->get_site_attribute("snmpc");
+    my $snmp_site    = $snmpcs[0];
+
+    if ($community) {
+        push @comm_list, $community;
     }
+    if ($snmp_site) {
+        push @comm_list, $snmp_site;
+    }
+    push @comm_list, 'public';
 
-    my $result = xCAT::Utils->runcmd($ccmd, 0);
-    if ($::RUNCMD_RC != 0)
-    {
+    foreach $comms(@comm_list) {
+        #get sysDescr.0";
+        my $ccmd = "snmpwalk -Os -v1 -c $comms $ip 1.3.6.1.2.1.1.1";
         if (exists($globalopt{verbose}))    {
-            send_msg($request, 1, "Could not process this command: $ccmd" );
+           send_msg($request, 0, "Process command: $ccmd\n");
+        }
+        $result = xCAT::Utils->runcmd($ccmd, 0);
+        if ($::RUNCMD_RC == 0)
+        {
+            $community = $comms;
+            $rc=0;
+            last;
+        }
+    }
+    if ($rc == 1) {
+        if (exists($globalopt{verbose}))    {
+            send_msg($request, 1, "Could not process snmpwalk command to get sysDescr, please verify community string" );
         }
         return $snmpwalk_vendor;
     }
@@ -1107,7 +1093,7 @@ sub get_snmphostname {
     my ($desc,$hostname) = split /: /, $result;
 
     if (exists($globalopt{verbose}))    {
-        send_msg($request, 0, "switch hostname = $hostname\n" );
+        send_msg($request, 0, "$device hostname = $hostname\n" );
     }
 
     return $hostname;
@@ -1140,7 +1126,7 @@ sub get_hostname {
         if ( !$host ) {
             my $ip_str = $ip;
             $ip_str =~ s/\./\-/g;
-            $host = "switch-$ip_str";
+            $host = "$device-$ip_str";
         }
     }
     return $host;
@@ -1404,15 +1390,18 @@ sub matchPredefineSwitch {
         }
 
         my $stype = get_switchtype($vendor);
+        if (exists($globalopt{pdu})) {
+            $stype="pdu";
+        }
 
         send_msg($request, 0, "$device discovered and matched: $dswitch to $node" );
 
         # only write to xcatdb if -w or --setup option specified
         if ( (exists($globalopt{w})) || (exists($globalopt{setup})) ) {
             if (exists($globalopt{pdu})) {
-                xCAT::Utils->runxcmd({ command => ['chdef'], arg => ['-t','node','-o',$node,"otherinterfaces=$ip",'status=Matched',"mac=$mac","switchtype=$stype","usercomment=$vendor"] }, $sub_req, 0, 1);
+                xCAT::Utils->runxcmd({ command => ['chdef'], arg => ['-t','node','-o',$node,"otherinterfaces=$ip",'status=Matched',"mac=$mac","usercomment=$vendor"] }, $sub_req, 0, 1);
             } else {
-                xCAT::Utils->runxcmd({ command => ['chdef'], arg => ['-t','node','-o',$node,"otherinterfaces=$ip",'status=Matched',"mac=$mac","switchtype=$stype","usercomment=$vendor","switchtype=$stype"] }, $sub_req, 0, 1);
+                xCAT::Utils->runxcmd({ command => ['chdef'], arg => ['-t','node','-o',$node,"otherinterfaces=$ip",'status=Matched',"mac=$mac","switchtype=$stype","usercomment=$vendor"] }, $sub_req, 0, 1);
             }
         }
 
@@ -1436,6 +1425,35 @@ sub switchsetup {
     my $request = shift;
     my $sub_req = shift;
     if (exists($globalopt{pdu})) {
+        my $mytype = "pdu";
+        my $nodetab = xCAT::Table->new('hosts');
+        my $nodehash = $nodetab->getNodesAttribs(\@{${nodes_to_config}->{$mytype}},['ip','otherinterfaces']);
+        # get netmask from network table
+        my $nettab = xCAT::Table->new("networks");
+        my @nets;
+        if ($nettab) {
+            @nets = $nettab->getAllAttribs('net','mask');
+        }
+
+        foreach my $pdu(@{${nodes_to_config}->{$mytype}}) {
+            my $cmd = "rspconfig $pdu sshcfg"; 
+            xCAT::Utils->runcmd($cmd, 0);
+            my $ip = $nodehash->{$pdu}->[0]->{ip};
+            my $mask;
+            foreach my $net (@nets) {
+                if (xCAT::NetworkUtils::isInSameSubnet( $net->{'net'}, $ip, $net->{'mask'}, 0)) {
+                    $mask=$net->{'mask'};
+                }
+            }
+            $cmd = "rspconfig $pdu hostname=$pdu ip=$ip netmask=$mask";
+            xCAT::Utils->runcmd($cmd, 0);
+            if ($::RUNCMD_RC == 0) {
+                xCAT::Utils->runxcmd({ command => ['chdef'], arg => ['-t','node','-o',$pdu,"ip=$ip","otherinterfaces="] }, $sub_req, 0, 1);
+            } else {
+                send_msg($request, 0, "Failed to run rspconfig command to set ip/netmask\n");
+            }
+
+        }
         return;
     }
 

@@ -166,6 +166,46 @@ As of xCAT 2.8.1, you can use a modified version of the regular expression suppo
 http://xcat-docs.readthedocs.org/en/latest/guides/admin-guides/basic_concepts/xcat_db/regexp_db.html#easy-regular-expressions
 
 
+Regular Expression Helper Functions
+===================================
+
+
+xCAT provides several functions that can simplify regular expressions.
+
+
+\ **a2idx**\ 
+ 
+ ASCII Character to Index
+ 
+
+
+\ **a2zidx**\ 
+ 
+ ASCII Character to 0-Index
+ 
+
+
+\ **dim2idx**\ 
+ 
+ Dimensions to Index
+ 
+
+
+\ **skip**\ 
+ 
+ Skip indices
+ 
+
+
+\ **ipadd**\ 
+ 
+ Add to an IP address
+ 
+
+
+http://xcat-docs.readthedocs.org/en/latest/guides/admin-guides/basic_concepts/xcat_db/regexp_db.html#regular-expression-helper-functions
+
+
 
 ******************
 OBJECT DEFINITIONS

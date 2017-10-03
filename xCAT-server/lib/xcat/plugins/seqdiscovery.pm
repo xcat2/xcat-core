@@ -132,25 +132,25 @@ sub findme {
         }
     }
     my $bmc_node = undef;
+    my @bmc_nodes = ();
     if ($request->{'mtm'}->[0] and $request->{'serial'}->[0]) {
         my $mtms = $request->{'mtm'}->[0] . "*" . $request->{'serial'}->[0];
         my $tmp_nodes = $::XCATVPDHASH{$mtms};
         foreach (@$tmp_nodes) {
             if ($::XCATMPHASH{$_}) {
-                $bmc_node = $_;
+                push @bmc_nodes, $_;
             }
         }
     }
 
-    unless ($bmc_node) {
-        if ($request->{'bmcmac'}->[0]) {
-            my $bmcmac = lc($request->{'bmcmac'}->[0]);
-            $bmcmac =~ s/\://g;
-            my $tmp_node = "node-$bmcmac";
-            $bmc_node = $tmp_node if ($::XCATMPHASH{$tmp_node});
-        }
+    if ($request->{'bmcmac'}->[0]) {
+        my $bmcmac = lc($request->{'bmcmac'}->[0]);
+        $bmcmac =~ s/\://g;
+        my $tmp_node = "node-$bmcmac";
+        push @bmc_nodes, $tmp_node if ($::XCATMPHASH{$tmp_node});
     }
 
+    $bmc_node = join(",", @bmc_nodes);
     if ($node) {
         my $skiphostip;
         my $skipbmcip;
@@ -827,7 +827,7 @@ Usage:
     Common: 
     nodediscoverls
     nodediscoverls [-h|--help|-v|--version] 
-    nodediscoverls [-t seq|profile|switch|blade|manual|undef|zvm|all] [-l] 
+    nodediscoverls [-t seq|profile|switch|blade|manual|mtms|undef|zvm|all] [-l] 
     nodediscoverls [-u uuid] [-l]
     z/VM:
         nodediscoverls [-t zvm][-z|--zvmhost <noderange>] [-l]";
@@ -864,7 +864,7 @@ Usage:
     # If the type is specified, display the corresponding type of nodes
     my ( @SEQDiscover, @ZVMDiscover );
     if ($type) {
-        if ($type !~ /^(seq|profile|switch|blade|manual|undef|zvm|all)$/) {
+        if ($type !~ /^(seq|profile|switch|blade|manual|mtms|undef|zvm|all)$/) {
             $usage->($callback, "The discovery type \'$type\' is not supported.");
             return;
         }
@@ -945,7 +945,7 @@ Usage:
         } else {
             $ent->{'node'}   = 'undef' unless ($ent->{'node'});
             $ent->{'method'} = 'undef' unless ($ent->{'method'});
-            push @discoverednodes, sprintf("  %-40s%-20s%-15s%-10s%-20s", $ent->{'uuid'}, $ent->{'node'}, $ent->{'method'}, $ent->{'mtm'}, substr($ent->{'serial'}, 0, 19));
+            push @discoverednodes, sprintf("  %-40s%-20s%-15s%-10s %-20s", $ent->{'uuid'}, $ent->{'node'}, $ent->{'method'}, $ent->{'mtm'}, substr($ent->{'serial'}, 0, 19));
         }
     }
 
@@ -956,7 +956,7 @@ Usage:
     }
     if (@discoverednodes) {
         unless ($long) {
-            push @{ $rsp->{data} }, sprintf("  %-40s%-20s%-15s%-10s%-13s", 'UUID', 'NODE', 'METHOD', 'MTM', 'SERIAL');
+            push @{ $rsp->{data} }, sprintf("  %-40s%-20s%-15s%-10s %-20s", 'UUID', 'NODE', 'METHOD', 'MTM', 'SERIAL');
         }
         foreach (@discoverednodes) {
             push @{ $rsp->{data} }, "$_";

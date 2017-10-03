@@ -104,9 +104,9 @@ if ($ENV{UPDATESECURITY} && $ENV{UPDATESECURITY} eq "1") {
         &getcreds;
     } else {    # Linux
          # call xcatserver,xcatclient to transfer the SSL credentials and cfgloc
-`logger -t xcat -p local4.info $::sdate servicenode:  running xcatserver -d`;
+        `logger -t xcat -p local4.info $::sdate servicenode: running 'xcatserver -d'`;
         &runcmd("xcatserver -d");
-`logger -t xcat -p local4.info $::sdate servicenode: running xcatclient -d`;
+        `logger -t xcat -p local4.info $::sdate servicenode: running 'xcatclient -d'`;
         &runcmd("xcatclient -d");
     }
 
@@ -137,13 +137,20 @@ else
 
     &copycerts;
 
-`logger -t xcat -p local4.info $::sdate servicenode:  running xcatserver -d`;
+    `logger -t xcat -p local4.info $::sdate servicenode: running 'xcatserver -d'`;
     &runcmd("xcatserver -d");
-    `logger -t xcat -p local4.info $::sdate servicenode: running xcatclient -d`;
+    `logger -t xcat -p local4.info $::sdate servicenode: running 'xcatclient -d'`;
     &runcmd("xcatclient -d");
+    # start xcatd if it is not up when stateless or statelite
+    if ($ENV{NODESETSTATE} && ($ENV{NODESETSTATE} eq "netboot" || $ENV{NODESETSTATE} eq "statelite")) {
+        $rc = &runcmd("$::XCATROOT/bin/lsxcatd -v 2>/dev/null || service xcatd restart");
+        if ($rc != 0) {
+            $msg = "$::sdate servicenode: Could not start xcatd.\n\n $::outref \n";
+            `logger -t xcat -p local4.warning $msg`;
+        }
+    }
 }
 
-`logger -t xcat -p local4.info $::sdate servicenode:  rc=$rc`;
 exit $rc;
 
 #

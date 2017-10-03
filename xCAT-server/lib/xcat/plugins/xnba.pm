@@ -442,8 +442,7 @@ sub preprocess_request {
             if ($ntab) {
                 foreach (@{ $ntab->getAllEntries() }) {
                     next unless ($_->{dynamicrange});
-                    # if dynamicrange specified but dhcpserver was not - issue error message
-                    push @dhcpsvrs, $_->{dhcpserver} if ($_->{dhcpserver})
+                    push @dhcpsvrs, $_->{dhcpserver} if ($_->{dhcpserver} && xCAT::NetworkUtils->nodeonmynet($_->{dhcpserver}));
                 }
             }
             return xCAT::Scope->get_broadcast_disjoint_scope_with_parallel($req, $sn_hash, \@dhcpsvrs);
@@ -696,22 +695,19 @@ sub process_request {
     }
     xCAT::MsgUtils->trace($verbose_on_off, "d", "xnba: Finish to handle configurations");
 
-    # for offline operation, remove the dhcp entries
-    if ($args[0] eq 'offline') {
-        $sub_req->({ command => ['makedhcp'], arg => ['-d'], node => \@nodes }, $::XNBA_callback);
-    }
-
     #dhcp stuff -- inittime is set when xcatd on sn is started
-    unless (($inittime) || ($args[0] eq 'offline')) {
+    unless ($inittime) {
         my $do_dhcpsetup = 1;
         my @entries = xCAT::TableUtils->get_site_attribute("dhcpsetup");
         my $t_entry = $entries[0];
         if (defined($t_entry)) {
             if ($t_entry =~ /0|n|N/) { $do_dhcpsetup = 0; }
         }
-        if ($do_dhcpsetup) {
+        # For offline operation, remove the dhcp entries whatever dhcpset is disabled in site ( existing code logic, just keep it as is)
+        if ($do_dhcpsetup || $args[0] eq 'offline') {
             my @parameter;
-            push @parameter, '-l' if ($::request->{'_disparatetftp'}->[0]);
+            push @parameter, '-l' if ($::XNBA_request->{'_disparatetftp'}->[0]);
+            push @parameter, '-d' if ($args[0] eq 'offline');
             xCAT::MsgUtils->trace($verbose_on_off, "d", "xnba: issue makedhcp request");
 
             $sub_req->({ command => ['makedhcp'],

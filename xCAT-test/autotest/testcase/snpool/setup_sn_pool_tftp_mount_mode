@@ -1,0 +1,119 @@
+start:setup_sn_pool_tftp_mount_mode
+description: this case is to test when sharedtftp=1 and  installloc=/install are set on mn, after all service nodes are installed, /tftpboot and /install directory on all service nodes are mounted.Since test framework only support 1 sn and 1 cn parameter. This case will install CN as another service node.
+cmd:fdisk -l
+cmd:df -T
+#cmd:XCAT_DATABASE=$$XCAT_DATABASE /opt/xcat/share/xcat/tools/autotest/testcase/installation/pre_deploy_sn __GETNODEATTR($$SN,os)__  __GETNODEATTR($$SN,arch)__
+cmd:if [ ! -f  /etc/xcat/cfgloc ];then XCAT_DATABASE=$$XCAT_DATABASE /opt/xcat/share/xcat/tools/autotest/testcase/installation/pre_deploy_sn __GETNODEATTR($$SN,os)__  __GETNODEATTR($$SN,arch)__;fi
+check:rc==0
+
+cmd:chtab key=nameservers site.value="<xcatmaster>"
+check:rc==0
+
+cmd:makedns -n
+check:rc==0
+cmd:makeconservercf $$SN,$$CN 
+check:rc==0
+cmd:cat /etc/conserver.cf | grep $$SN
+check:output=~$$SN
+cmd:cat /etc/conserver.cf | grep $$CN
+check:output=~$$CN
+cmd:sleep 20
+cmd:if [[ "__GETNODEATTR($$SN,arch)__" = "ppc64" ]]; then getmacs -D $$SN -V; fi
+check:rc==0
+cmd:if [[ "__GETNODEATTR($$SN,arch)__" = "ppc64" ]]; then getmacs -D $$CN -V; fi
+check:rc==0
+cmd:makedhcp -n
+check:rc==0
+cmd:makedhcp -a
+check:rc==0
+cmd:if cat /etc/*release |grep SUSE >/dev/null;then cat /var/lib/dhcp/db/dhcpd.leases|grep $$SN;elif cat /etc/*release |grep "Red Hat" >/dev/null;then cat /var/lib/dhcpd/dhcpd.leases|grep $$SN;fi 
+check:output=~$$SN
+cmd:if cat /etc/*release |grep SUSE >/dev/null;then cat /var/lib/dhcp/db/dhcpd.leases|grep $$CN;elif cat /etc/*release |grep "Red Hat" >/dev/null;then cat /var/lib/dhcpd/dhcpd.leases|grep $$CN;fi
+check:output=~$$CN
+cmd:chdef -t node $$SN,$$CN groups=service,all
+check:rc==0
+cmd:chdef -t group -o service profile=service installnic=mac
+check:rc==0
+cmd:chdef -t group -o service setupnfs=1 setupdhcp=1 setuptftp=1 setupnameserver=1 setupconserver=1 setupntp=1
+check:rc==0
+cmd:chdef -t group -o service nfsserver= tftpserver= xcatmaster= monserver=
+check:rc==0
+
+cmd:copycds $$ISO
+check:rc==0
+
+
+cmd:chdef -t site clustersite sharedtftp=0
+check:rc==0
+cmd:chdef -t site clustersite installloc=""
+check:rc==0
+
+cmd:cd /install/post/otherpkgs/__GETNODEATTR($$SN,os)__/__GETNODEATTR($$SN,arch)__/xcat/xcat-core && createrepo .  
+check:rc==0
+
+cmd:if [[ "__GETNODEATTR($$SN,os)__" =~ "rh" ]]; then path="rh";elif [[ "__GETNODEATTR($$SN,os)__" =~ "sles" ]];then path="sles";fi; ver="__GETNODEATTR($$SN,os)__"; tmp=${ver%.*};ver=`echo "$tmp"|sed 's:[a-zA-Z]::g'`;cd /install/post/otherpkgs/__GETNODEATTR($$SN,os)__/__GETNODEATTR($$SN,arch)__/xcat/xcat-dep/$path$ver/__GETNODEATTR($$SN,arch)__ && createrepo .;
+check:rc==0
+
+cmd:chdef -t osimage __GETNODEATTR($$SN,os)__-__GETNODEATTR($$SN,arch)__-install-service otherpkgdir=/install/post/otherpkgs/__GETNODEATTR($$SN,os)__/__GETNODEATTR($$SN,arch)__
+check:rc==0
+
+cmd:if [[ "__GETNODEATTR($$SN,os)__" =~ "rh" ]]; then path="rh";elif [[ "__GETNODEATTR($$SN,os)__" =~ "sles" ]];then path="sles";fi; ver="__GETNODEATTR($$SN,os)__"; chdef -t osimage __GETNODEATTR($$SN,os)__-__GETNODEATTR($$SN,arch)__-install-service otherpkglist=/opt/xcat/share/xcat/install/$path/service.${ver%.*}.__GETNODEATTR($$SN,arch)__.otherpkgs.pkglist;
+check:rc==0
+
+cmd:rinstall $$SN,$$CN osimage=__GETNODEATTR($$SN,os)__-__GETNODEATTR($$SN,arch)__-install-service
+check:rc==0
+check:output=~Provision node\(s\)\: $$SN $$CN
+
+cmd:if [[ -f /var/lib/dhcp/db/dhcpd.leases ]]; then cat /var/lib/dhcp/db/dhcpd.leases; elif [[ -f /var/lib/dhcpd/dhcpd.leases ]];then cat /var/lib/dhcpd/dhcpd.leases;elif [[ -f /var/lib/dhcp/dhcpd.leases ]];then cat /var/lib/dhcp/dhcpd.leases; fi
+cmd:/opt/xcat/share/xcat/tools/autotest/testcase/installation/customize_sleep_for_sn __GETNODEATTR($$SN,os)__ __GETNODEATTR($$SN,arch)__
+
+#Check status on SN after SN is installed
+cmd:ping $$SN -c 3
+check:rc==0
+check:output=~64 bytes from $$SN
+cmd:lsdef -l $$SN | grep status
+check:rc==0
+check:output=~booted
+cmd:xdsh $$SN date
+check:rc==0
+check:output=~\d\d:\d\d:\d\d
+#after bug 2586 is fixed, following 2 lines should be removed.
+cmd:if [[ "__GETNODEATTR($$SN,os)__" =~ "sles" ]];then xdsh $$SN service xcatd restart; fi
+check:rc==0
+cmd:xdsh $$SN "ps -ef |grep xcatd"
+check:rc==0
+check:output=~xcatd:
+cmd:xdsh $$SN "lsdef"
+check:rc==0
+check:output=~$$SN: $$SN
+cmd:xdsh $$SN "tabdump site"
+check:rc==0
+check:output=~tftpdir 
+cmd:rsync -auv --exclude 'autoinst' /install $$SN:/
+check:rc==0
+
+#Check status on CN after CN is installed since CN is taken as another SN.
+cmd:ping $$CN -c 3
+check:rc==0
+check:output=~64 bytes from $$CN
+cmd:lsdef -l $$CN | grep status
+check:rc==0
+check:output=~booted
+cmd:xdsh $$CN date
+check:rc==0
+check:output=~\d\d:\d\d:\d\d
+#after bug 2586 is fixed, following 2 lines should be removed.
+cmd:if [[ "__GETNODEATTR($$CN,os)__" =~ "sles" ]];then xdsh $$CN service xcatd restart; fi
+check:rc==0
+cmd:xdsh $$CN "ps -ef |grep xcatd"
+check:rc==0
+check:output=~xcatd:
+cmd:xdsh $$CN "lsdef"
+check:rc==0
+check:output=~$$CN: $$CN 
+cmd:xdsh $$CN "tabdump site"
+check:rc==0
+check:output=~tftpdir
+cmd:rsync -auv --exclude 'autoinst' /install $$CN:/
+check:rc==0
+end

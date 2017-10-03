@@ -18,5 +18,11 @@ end
 start:pping_node
 cmd:pping $$CN
 check:rc==0
-check:output=~ping
+check:output=~ping|noping
+end
+
+start:pping_invalidnode
+cmd:pping test
+check:rc!=0
+check:output=~Warning: Invalid nodes in noderange:test
 end

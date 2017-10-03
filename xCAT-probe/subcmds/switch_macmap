@@ -120,6 +120,7 @@ foreach (<$fd>) {
     }
 }
 close($fd);
+my $rc = 0;
 if (-f $normal_file) {
     unlink($normal_file);
 }
@@ -129,8 +130,10 @@ if (-f $error_file) {
 if (@error_nodes) {
     my $error_node = join(",", @error_nodes);
     probe_utils->send_msg("$output", "d", "[$error_node] : Error, switch-macmap can only be run against xCAT objects that have 'nodetype=switch'");
+    $rc = 1;
 }
 foreach (@fails) {
     probe_utils->send_msg("$output", "f", "$_");
+    $rc = 1;
 }
-exit 0;
+exit $rc;

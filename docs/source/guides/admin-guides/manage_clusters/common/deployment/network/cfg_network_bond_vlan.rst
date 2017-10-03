@@ -31,7 +31,12 @@ Define attributes in the ``nics`` table
     chdef cn1 nicips.bond0.1=40.0.0.1 nictypes.bond0.1=vlan
 
 #. Define ``nicnetworks`` for ``bond0.1`` ::
+
     chdef cn1 nicnetworks.bond0.1=net40
+
+#. Define ``nichostnamesuffixes`` for ``bond0.1`` in case ``makehosts`` to update ``/etc/hosts``, since the value for ``nichostnamesuffixes`` cannot contain ".", other characters are recommended instead of ".", like following: ::
+
+    chdef cn1 nichostnamesuffixes.bond0.1=-bond0-1 
 
 Enable ``confignetwork`` to configure bridge
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

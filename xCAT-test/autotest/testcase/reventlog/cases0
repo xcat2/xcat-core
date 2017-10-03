@@ -16,7 +16,5 @@ end
 start:reventlog_numofentries
 cmd:reventlog $$CN 5
 check:rc==0
-check:output=~$$CN\s*:\s*.*\d\d/\d\d/\d\d\s*\S+|$$CN: no SEL entries
-cmd:reventlog $$CN 3 | wc -l
-check:output=~\s*1\s*
+check:output=~$$CN\s*:\s*.*\d\d/\d\d/\d\d\s*\S+|$$CN: no SEL entries|Entry 
 end

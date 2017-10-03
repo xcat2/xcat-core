@@ -1693,7 +1693,6 @@ sub defmk
     {
 
         my $type = $::FINALATTRS{$obj}{objtype};
-
         # check to make sure we have type
         if (!$type)
         {
@@ -1714,10 +1713,30 @@ sub defmk
             my @nets = xCAT::DBobjUtils->getObjectsOfType('network');
             my %objhash;
             foreach my $n (@nets) {
+                # netname is duplicate
+                if ( $obj eq $n ) {
+                    my $rsp;
+                    $rsp->{data}->[0] = "A network definition called \'$n\' already exists. Cannot create a definition for \'$obj\'.";
+                    xCAT::MsgUtils->message("E", $rsp, $::callback);
+                    $error = 1;
+                    delete $::FINALATTRS{$obj};
+                    next OBJ;
+                }
                 $objhash{$n} = $type;
+            }
+            # When adding a new network entry, net and mask cannot be empty
+            if (!($::FINALATTRS{$obj}{net} && $::FINALATTRS{$obj}{mask}))
+            {
+                my $rsp;
+                $rsp->{data}->[0] = "Net or mask value should not be empty for xCAT network object \'$obj\'.";
+                xCAT::MsgUtils->message("E", $rsp, $::callback);
+                $error = 1;
+                delete $::FINALATTRS{$obj};
+                next OBJ;
             }
             my %nethash = xCAT::DBobjUtils->getobjdefs(\%objhash);
             foreach my $o (keys %nethash) {
+                # there is a network entry contains the same net and mask
                 if (($nethash{$o}{net} eq $::FINALATTRS{$obj}{net}) && ($nethash{$o}{mask} eq $::FINALATTRS{$obj}{mask})) {
                     my $rsp;
                     $rsp->{data}->[0] = "A network definition called \'$o\' already exists that contains the same net and mask values. Cannot create a definition for \'$obj\'.";
@@ -1727,6 +1746,7 @@ sub defmk
                     next OBJ;
                 }
             }
+
         }
 
         # if object already exists
@@ -2370,6 +2390,74 @@ sub defch
             $isDefined = 1;
         }
 
+        if ($type eq 'network')
+        {
+            my $isInvalid = 0;
+            # When adding a new network entry, net and mask cannot be empty
+            if (!$isDefined && !($::FINALATTRS{$obj}{'net'} && $::FINALATTRS{$obj}{'mask'}))
+            {
+                my $rsp;
+                $rsp->{data}->[0] = "Net or mask value should not be empty for xCAT network object \'$obj\'.";
+                xCAT::MsgUtils->message("E", $rsp, $::callback);
+                $error = 1;
+                $isInvalid = 1;
+                delete($::FINALATTRS{$obj});
+                next;
+            }
+            my @nets = xCAT::DBobjUtils->getObjectsOfType('network');
+            my %objhash;
+            foreach my $n (@nets) {
+                $objhash{$n} = $type;
+            }
+            # get original networks data
+            my %nethash = xCAT::DBobjUtils->getobjdefs(\%objhash);
+            foreach my $o (keys %nethash) {
+                # the netname already exists
+                if ($isDefined)
+                {
+                    # when net is empty, chdef command should add net value, $::FINALATTRS{$obj}{net} should have value 
+                    if ((!$nethash{$o}{net}) && (!$::FINALATTRS{$obj}{net}))                
+                    {
+                        $isInvalid=1; 
+                        my $rsp;
+                        $rsp->{data}->[0] = "Attribute \'net\' is not specified for network entry \'$obj\', skipping.";
+                        xCAT::MsgUtils->message("E", $rsp, $::callback);
+                        $error = 1;
+                        last;
+                     }
+                     # when mask is empty, chdef command should add mask value, $::FINALATTRS{$obj}{mask} should have value
+                     if ((!$nethash{$o}{mask}) && (!$::FINALATTRS{$obj}{mask}))
+                     {
+                         $isInvalid=1;
+                         my $rsp;
+                         $rsp->{data}->[0] = "Attribute \'mask\' is not specified for network entry \'$obj\', skipping.";
+                         xCAT::MsgUtils->message("E", $rsp, $::callback);
+                         $error = 1;
+                         last;
+                     }
+                }
+                # the netname does not exist 
+                else {
+                     # there is a network definition already contains the same net and mask, it is duplicate
+                     if (($nethash{$o}{net} eq $::FINALATTRS{$obj}{net}) && ($nethash{$o}{mask} eq $::FINALATTRS{$obj}{mask})) 
+                     {
+                         $isInvalid=1;
+                         my $rsp;
+                         $rsp->{data}->[0] = "A network definition called \'$o\' already exists that contains the same net and mask values. Cannot create a definition for \'$obj\'.";
+                         xCAT::MsgUtils->message("E", $rsp, $::callback);
+                         $error = 1;
+                         last;
+                     }
+ 
+                }
+
+            }
+            if($isInvalid)
+            {
+               delete($::FINALATTRS{$obj});
+               next;
+            }
+        }
         if (!$isDefined && ($type eq 'node') && (!defined($::FINALATTRS{$obj}{'groups'}) || !$::FINALATTRS{$obj}{'groups'}))
         {
             my $rsp;

@@ -7,6 +7,7 @@
    Supported command:
         rpower 
         rinv
+        rvitals
 
 =cut
 
@@ -63,6 +64,7 @@ sub handled_commands
     return {
        rpower => ["nodehm:mgt","pduoutlet:pdu=\.\*"],
        rinv   => ["nodehm:mgt"],
+       rvitals => ["nodehm:mgt"],
        nodeset => ["nodehm:mgt"],
        rspconfig => ["nodehm:mgt"],
        pdudiscover => "pdu",
@@ -138,11 +140,13 @@ sub process_request
     #fill in the total outlet count for each pdu
     $pdutab = xCAT::Table->new('pdu');
     @pduents = $pdutab->getAllNodeAttribs(['node', 'outlet']);
-    fill_outletCount(\@pduents, $callback);
+    #fill_outletCount(\@pduents, $callback);
 
     if( $command eq "rinv") {
         #for higher performance, handle node in batch
-        return powerstat($noderange, $callback);
+        return showMFR($noderange, $callback);
+    }elsif ($command eq "rvitals") {
+        return showMonitorData($noderange, $callback);
     }elsif ($command eq "rpower") {
         my $subcmd = $exargs[0];
         if (($subcmd eq 'pduoff') || ($subcmd eq 'pduon') || ($subcmd eq 'pdustat')|| ($subcmd eq 'pdureset') ){
@@ -177,6 +181,8 @@ sub process_request
         my $subcmd = $exargs[0];
         if ($subcmd eq 'sshcfg') {
             process_sshcfg($noderange, $subcmd, $callback);
+        }elsif ($subcmd =~ /ip|netmask|hostname/) {
+            process_netcfg($request, $subreq, $subcmd, $callback);
         } else {
             $callback->({ errorcode => [1],error => "The input $command $subcmd is not support for pdu"});
         }
@@ -467,14 +473,130 @@ sub connectTopdu {
 
 }
 
+#-------------------------------------------------------
+
+=head3  process_netcfg 
+   
+    Config hostname of PDU
+    Config ip/netmask of PDU via PduManager command 
+      PduManager is a tool for CoralPdu to manager the PDU.
+      * /dev/shm/bin/PduManager -h
+          '-i' set PDU system IP
+          '-n' set system ip netmask. e.g.:PduManager -i xxx.xxx.xxx.xxx -n xxx.xxx.xxx.xxx
+
+    example:  rspconfig coralpdu hostname=coralpdu
+              rspconfig coralpdu ip=1.1.1.1 netmask=255.0.0.0
+
+=cut
+
+#-------------------------------------------------------
+sub process_netcfg {
+    my $request = shift;
+    my $subreq    = shift;
+    my $subcmd    = shift;
+    my $callback = shift;
+    my $hostname;
+    my $ip;
+    my $netmask;
+    my $args;
+    my $exp;
+    my $errstr;
+
+    my $extrargs  = $request->{arg};
+    my @exargs    = ($request->{arg});
+    if (ref($extrargs)) {
+        @exargs = @$extrargs;
+    }
+
+    my $nodes = $request->{node};
+    my $node_number = @$nodes;
+    if ($node_number gt "1") {
+        xCAT::SvrUtils::sendmsg("Can not configure more than 1 nodes", $callback);
+        return;
+    }
+
+    my $pdu = @$nodes[0];
+    my $rsp = {};
+
+    my $nodetab = xCAT::Table->new('hosts');
+    my $nodehash = $nodetab->getNodesAttribs($nodes,['ip','otherinterfaces']);
+
+    # connect to PDU
+    my $static_ip = $nodehash->{$pdu}->[0]->{ip};
+    my $discover_ip = $nodehash->{$pdu}->[0]->{otherinterfaces};
+    ($exp, $errstr) = session_connect($static_ip, $discover_ip);
+    if (defined $errstr) {
+        xCAT::SvrUtils::sendmsg("Failed to connect", $callback);
+        return;
+    }
+
+    foreach my $cmd (@exargs) {
+        my ($key, $value) = split(/=/, $cmd);
+        if ($key =~ /hostname/) {
+            $hostname = $value;
+            my ($ret, $err) = session_exec($exp, "echo $hostname > /etc/hostname;/etc/init.d/hostname.sh");
+            if (defined $err) {
+               xCAT::SvrUtils::sendmsg("Failed to set hostname", $callback);
+            }
+        }elsif ($key =~ /ip/) {
+            $ip = $value;
+        } elsif ($key =~ /netmask/) {
+            $netmask = $value;
+        } else {
+            xCAT::SvrUtils::sendmsg("rspconfig $cmd is not support yet, ignored", $callback);
+        }
+    }
+
+    $args = "/dev/shm/bin/PduManager ";
+    my $opt;
+    if ($ip) {
+        $opt = "-i $ip ";
+    }
+    if ($netmask) {
+        $opt = $opt . "-n $netmask";
+    }
+    if ($opt) {
+        my $dshcmd = $args . $opt ;
+        my ($ret, $err) = session_exec($exp, $dshcmd);
+        if (defined $err) {
+            #session will be hung if ip address changed
+            my $p = Net::Ping->new();
+            if  ( ($p->ping($ip)) && ($err =~ /TIMEOUT/) ) {
+               xCAT::SvrUtils::sendmsg("$ip is reachable", $callback);
+            } else {
+                xCAT::SvrUtils::sendmsg("Failed to run $dshcmd, error=$err", $callback);
+                return;
+            }
+        } 
+        xCAT::SvrUtils::sendmsg("$dshcmd ran successfully", $callback);
+        xCAT::Utils->runxcmd({ command => ['chdef'], arg => ['-t','node','-o',$pdu,"ip=$ip","otherinterfaces="] }, $subreq, 0, 1);
+        xCAT::Utils->runxcmd({ command => ['makehosts'], node => [$pdu] },  $subreq, 0, 1);
+    }
+    if (defined $exp) {
+        $exp->hard_close();
+    }
+}
+
+#-------------------------------------------------------
+
+=head3  process_sshcfg 
+   
+    Config passwordless for coralpdu 
+
+    example:  rspconfig coralpdu sshcfg 
+
+=cut
+
+#-------------------------------------------------------
 sub process_sshcfg { 
     my $noderange = shift;
     my $subcmd = shift;
     my $callback = shift;
 
+    #this is default password for CoralPDU
     my $password = "password8";
     my $userid = "root";
-    my $timeout = 10;
+    my $timeout = 30;
     my $keyfile = "/root/.ssh/id_rsa.pub";
     my $rootkey = `cat /root/.ssh/id_rsa.pub`;
     my $cmd;
@@ -492,20 +614,7 @@ sub process_sshcfg {
 
         my $static_ip = $nodehash->{$pdu}->[0]->{ip};
         my $discover_ip = $nodehash->{$pdu}->[0]->{otherinterfaces};
-        my $ssh_ip;
-
-        my $p = Net::Ping->new();
-        if ($p->ping($static_ip)) {
-            $ssh_ip = $static_ip;
-        } elsif ($p->ping($discover_ip)) {
-            $ssh_ip = $discover_ip;
-        } else {
-            $msg = " is not reachable";
-            xCAT::SvrUtils::sendmsg($msg, $callback, $pdu, %allerrornodes);
-            next;
-        }
-
-        my ($exp, $errstr) = session_connect($ssh_ip, $userid, $password, $timeout);
+        my ($exp, $errstr) = session_connect($static_ip, $discover_ip);
         if (!defined $exp) {
             $msg = " Failed to connect $errstr";
             xCAT::SvrUtils::sendmsg($msg, $callback, $pdu, %allerrornodes);
@@ -519,10 +628,6 @@ sub process_sshcfg {
         ($ret, $err) = session_exec($exp, "chmod 700 /home/root/.ssh");
         ($ret, $err) = session_exec($exp, "echo \"$rootkey\" >/home/root/.ssh/authorized_keys");
         ($ret, $err) = session_exec($exp, "chmod 644 /home/root/.ssh/authorized_keys");
-        #config dhcp ip address to static
-        if ($ssh_ip eq $discover_ip) {
-            # ($ret, $err) = session_exec($exp, "ifconfig eth0 $static_ip");
-        }
 
         $exp->hard_close();
     }
@@ -531,14 +636,27 @@ sub process_sshcfg {
 }
 
 sub session_connect {
-     my $server   = shift;
-     my $userid   = shift;
-     my $password = shift;
-     my $timeout  = shift;
+    my $static_ip   = shift;
+    my $discover_ip   = shift;
 
-     my $ssh      = Expect->new;
-     my $command     = 'ssh';
-     my @parameters  = ($userid . "@" . $server);
+    #default password for coral pdu
+    my $password = "password8";
+    my $userid = "root";
+    my $timeout = 30;
+
+    my $ssh_ip;
+    my $p = Net::Ping->new();
+    if ($p->ping($static_ip)) {
+        $ssh_ip = $static_ip;
+    } elsif ($p->ping($discover_ip)) {
+        $ssh_ip = $discover_ip;
+    } else {
+        return(undef, " is not reachable\n");
+    }
+
+    my $ssh      = Expect->new;
+    my $command     = 'ssh';
+    my @parameters  = ($userid . "@" . $ssh_ip);
 
      $ssh->debug(0);
      $ssh->log_stdout(0);    # suppress stdout output..
@@ -571,7 +689,7 @@ sub session_exec {
      my $timeout    = shift;
      my $prompt =  shift;
 
-     $timeout = 10 unless defined $timeout;
+     $timeout = 30 unless defined $timeout;
      $prompt = qr/.*#/ unless defined $prompt;
 
 
@@ -585,6 +703,18 @@ sub session_exec {
      return($mbmatch);
 }
 
+#-----------------------------------------------------------------
+
+=head3  process_pdudiscover
+   
+    Discover the pdu for a given range of DHCP ip address
+    it will call switchdiscover command with -s snmp --pdu options 
+
+    example: pdudiscover --range iprange -w
+
+=cut
+
+#------------------------------------------------------------------
 sub process_pdudiscover {
     my $request  = shift;
     my $sub_req  = shift;
@@ -615,10 +745,96 @@ sub process_pdudiscover {
     my $rsp = {};
     push @{ $rsp->{data} }, "$result";
     xCAT::MsgUtils->message("I", $rsp, $callback);
-
-
 }
 
+#-------------------------------------------------------
+
+=head3  showMFR 
+
+    show MFR information of PDU via PduManager command 
+      PduManager is a tool for CoralPdu to manager the PDU.
+      * /dev/shm/bin/PduManager -h
+          '-m' show MFR info 
+
+    example:  rinv coralpdu
+
+=cut
+
+#-------------------------------------------------------
+
+sub showMFR {
+    my $noderange = shift;
+    my $callback = shift;
+    my $output;
+
+    my $nodetab = xCAT::Table->new('hosts');
+    my $nodehash = $nodetab->getNodesAttribs($noderange,['ip','otherinterfaces']);
+
+    foreach my $pdu (@$noderange) {
+        # connect to PDU
+        my $static_ip = $nodehash->{$pdu}->[0]->{ip};
+        my $discover_ip = $nodehash->{$pdu}->[0]->{otherinterfaces};
+        my ($exp, $errstr) = session_connect($static_ip, $discover_ip);
+        if (defined $errstr) {
+            xCAT::SvrUtils::sendmsg("Failed to connect: $errstr", $callback);
+        }
+
+        my ($ret, $err) = session_exec($exp, "/dev/shm/bin/PduManager -m");
+        if (defined $err) {
+            xCAT::SvrUtils::sendmsg("Failed to list MFR information: $err", $callback);
+        }
+        if (defined $ret) {
+            xCAT::SvrUtils::sendmsg("$ret", $callback);
+        }
+
+        $exp->hard_close();
+    }
+}
+
+
+#-------------------------------------------------------
+
+=head3  showMonitorData 
+
+    Show realtime monitor data(input voltage, current, power) 
+        of PDU via PduManager command 
+    PduManager is a tool for CoralPdu to manager the PDU.
+      * /dev/shm/bin/PduManager -h
+          '-d' show realtime monitor data(input voltage, current, power) 
+
+    example:  rvitals coralpdu 
+
+=cut
+
+#-------------------------------------------------------
+sub showMonitorData {
+    my $noderange = shift;
+    my $callback = shift;
+    my $output;
+
+    my $nodetab = xCAT::Table->new('hosts');
+    my $nodehash = $nodetab->getNodesAttribs($noderange,['ip','otherinterfaces']);
+
+    foreach my $pdu (@$noderange) {
+        # connect to PDU
+        my $static_ip = $nodehash->{$pdu}->[0]->{ip};
+        my $discover_ip = $nodehash->{$pdu}->[0]->{otherinterfaces};
+        my ($exp, $errstr) = session_connect($static_ip, $discover_ip);
+
+        my $ret;
+        my $err;
+
+        ($ret, $err) = session_exec($exp, "/dev/shm/bin/PduManager -d");
+        if (defined $err) {
+            xCAT::SvrUtils::sendmsg("Failed to show monitor data: $err", $callback);
+        }
+        if (defined $ret) {
+            xCAT::SvrUtils::sendmsg("$ret", $callback,$pdu);
+        }
+
+        $exp->hard_close();
+    }
+}
 
 
 1;

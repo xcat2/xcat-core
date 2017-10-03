@@ -1,0 +1,166 @@
+start:set_xcatmaster_in_sn_pool_tftp_mount_mode
+description: this case is to test when compute nodes' xcatmaster is set in service node pool environment,compute node's provision files are correctly set after nodeset.
+cmd:fdisk -l
+cmd:df -T
+#cmd:XCAT_DATABASE=$$XCAT_DATABASE /opt/xcat/share/xcat/tools/autotest/testcase/installation/pre_deploy_sn __GETNODEATTR($$SN,os)__  __GETNODEATTR($$SN,arch)__
+cmd:if [ ! -f  /etc/xcat/cfgloc ];then XCAT_DATABASE=$$XCAT_DATABASE /opt/xcat/share/xcat/tools/autotest/testcase/installation/pre_deploy_sn __GETNODEATTR($$SN,os)__  __GETNODEATTR($$SN,arch)__;fi
+check:rc==0
+
+cmd:chtab key=nameservers site.value="<xcatmaster>"
+check:rc==0
+
+cmd:makedns -n
+check:rc==0
+cmd:makeconservercf $$SN,$$CN 
+check:rc==0
+cmd:cat /etc/conserver.cf | grep $$SN
+check:output=~$$SN
+cmd:cat /etc/conserver.cf | grep $$CN
+check:output=~$$CN
+cmd:sleep 20
+cmd:if [[ "__GETNODEATTR($$SN,arch)__" = "ppc64" ]]; then getmacs -D $$SN -V; fi
+check:rc==0
+cmd:if [[ "__GETNODEATTR($$SN,arch)__" = "ppc64" ]]; then getmacs -D $$CN -V; fi
+check:rc==0
+cmd:makedhcp -n
+check:rc==0
+cmd:makedhcp -a
+check:rc==0
+cmd:if cat /etc/*release |grep SUSE >/dev/null;then cat /var/lib/dhcp/db/dhcpd.leases|grep $$SN;elif cat /etc/*release |grep "Red Hat" >/dev/null;then cat /var/lib/dhcpd/dhcpd.leases|grep $$SN;fi 
+check:output=~$$SN
+cmd:if cat /etc/*release |grep SUSE >/dev/null;then cat /var/lib/dhcp/db/dhcpd.leases|grep $$CN;elif cat /etc/*release |grep "Red Hat" >/dev/null;then cat /var/lib/dhcpd/dhcpd.leases|grep $$CN;fi
+check:output=~$$CN
+cmd:chdef -t node $$SN,$$CN groups=service,all
+check:rc==0
+cmd:chdef -t group -o service profile=service  installnic=mac
+check:rc==0
+cmd:chdef -t group -o service setupnfs=1 setupdhcp=1 setuptftp=1 setupnameserver=1 setupconserver=1 setupntp=1
+check:rc==0
+cmd:chdef -t group -o service nfsserver= tftpserver= xcatmaster= monserver=
+check:rc==0
+
+cmd:copycds $$ISO
+check:rc==0
+
+
+cmd:chdef -t site clustersite sharedtftp=0
+check:rc==0
+cmd:chdef -t site clustersite installloc=""
+check:rc==0
+
+cmd:cd /install/post/otherpkgs/__GETNODEATTR($$SN,os)__/__GETNODEATTR($$SN,arch)__/xcat/xcat-core && createrepo .  
+check:rc==0
+
+cmd:if [[ "__GETNODEATTR($$SN,os)__" =~ "rh" ]]; then path="rh";elif [[ "__GETNODEATTR($$SN,os)__" =~ "sles" ]];then path="sles";fi; ver="__GETNODEATTR($$SN,os)__"; tmp=${ver%.*};ver=`echo "$tmp"|sed 's:[a-zA-Z]::g'`;cd /install/post/otherpkgs/__GETNODEATTR($$SN,os)__/__GETNODEATTR($$SN,arch)__/xcat/xcat-dep/$path$ver/__GETNODEATTR($$SN,arch)__ && createrepo .;
+check:rc==0
+
+cmd:chdef -t osimage __GETNODEATTR($$SN,os)__-__GETNODEATTR($$SN,arch)__-install-service otherpkgdir=/install/post/otherpkgs/__GETNODEATTR($$SN,os)__/__GETNODEATTR($$SN,arch)__
+check:rc==0
+
+cmd:if [[ "__GETNODEATTR($$SN,os)__" =~ "rh" ]]; then path="rh";elif [[ "__GETNODEATTR($$SN,os)__" =~ "sles" ]];then path="sles";fi; ver="__GETNODEATTR($$SN,os)__"; chdef -t osimage __GETNODEATTR($$SN,os)__-__GETNODEATTR($$SN,arch)__-install-service otherpkglist=/opt/xcat/share/xcat/install/$path/service.${ver%.*}.__GETNODEATTR($$SN,arch)__.otherpkgs.pkglist;
+check:rc==0
+
+cmd:rinstall $$SN,$$CN osimage=__GETNODEATTR($$SN,os)__-__GETNODEATTR($$SN,arch)__-install-service
+check:rc==0
+check:output=~Provision node\(s\)\: $$SN $$CN
+
+cmd:if [[ -f /var/lib/dhcp/db/dhcpd.leases ]]; then cat /var/lib/dhcp/db/dhcpd.leases; elif [[ -f /var/lib/dhcpd/dhcpd.leases ]];then cat /var/lib/dhcpd/dhcpd.leases;elif [[ -f /var/lib/dhcp/dhcpd.leases ]];then cat /var/lib/dhcp/dhcpd.leases; fi
+cmd:/opt/xcat/share/xcat/tools/autotest/testcase/installation/customize_sleep_for_sn __GETNODEATTR($$SN,os)__ __GETNODEATTR($$SN,arch)__
+
+#Check status on SN after SN is installed
+cmd:ping $$SN -c 3
+check:rc==0
+check:output=~64 bytes from $$SN
+cmd:lsdef -l $$SN | grep status
+check:rc==0
+check:output=~booted
+cmd:xdsh $$SN date
+check:rc==0
+check:output=~\d\d:\d\d:\d\d
+#after bug 2586 is fixed, following 2 lines should be removed.
+cmd:if [[ "__GETNODEATTR($$SN,os)__" =~ "sles" ]];then xdsh $$SN service xcatd restart; fi
+check:rc==0
+cmd:xdsh $$SN "ps -ef |grep xcatd"
+check:rc==0
+check:output=~xcatd:
+cmd:xdsh $$SN "lsdef"
+check:rc==0
+check:output=~$$SN: $$SN
+cmd:xdsh $$SN "tabdump site"
+check:rc==0
+check:output=~tftpdir 
+cmd:rsync -auv --exclude 'autoinst' /install $$SN:/
+check:rc==0
+
+#Check status on CN after CN is installed since CN is taken as another SN.
+cmd:ping $$CN -c 3
+check:rc==0
+check:output=~64 bytes from $$CN
+cmd:lsdef -l $$CN | grep status
+check:rc==0
+check:output=~booted
+cmd:xdsh $$CN date
+check:rc==0
+check:output=~\d\d:\d\d:\d\d
+#after bug 2586 is fixed, following 2 lines should be removed.
+cmd:if [[ "__GETNODEATTR($$CN,os)__" =~ "sles" ]];then xdsh $$CN service xcatd restart; fi
+check:rc==0
+cmd:xdsh $$CN "ps -ef |grep xcatd"
+check:rc==0
+check:output=~xcatd:
+cmd:xdsh $$CN "lsdef"
+check:rc==0
+check:output=~$$CN: $$CN 
+cmd:xdsh $$CN "tabdump site"
+check:rc==0
+check:output=~tftpdir
+cmd:rsync -auv --exclude 'autoinst' /install $$CN:/
+check:rc==0
+
+
+#create a test compute node, set it's xcatmaster as SN, set it's service node as SN and CN
+cmd:mkdef -t node -o compute1 groups=compute ip=10.0.0.199 mac=4a:c8:f7:de:d0:09 profile=compute os=__GETNODEATTR($$CN,os)__ arch=__GETNODEATTR($$CN,arch)__  netboot=__GETNODEATTR($$CN,netboot)__
+check:rc==0
+cmd:chdef -t node -o compute1 servicenode=$$SN,$$CN xcatmaster=$$SN
+check:rc==0
+cmd:makehosts compute1
+check:rc==0
+cmd:cat /etc/hosts
+check:output=~compute1
+cmd:cp /etc/resolv.conf /etc/resolv.conf.bak
+cmd:echo "nameserver $$MN" >> /etc/resolv.conf
+check:rc==0
+cmd:makedns -n
+check:rc==0
+cmd:makedhcp -n
+check:rc==0
+cmd:makedhcp -a
+check:rc==0
+cmd:if cat /etc/*release |grep SUSE >/dev/null;then cat /var/lib/dhcp/db/dhcpd.leases|grep compute1;elif cat /etc/*release |grep "Red Hat" >/dev/null;then cat /var/lib/dhcpd/dhcpd.leases|grep compute1;fi
+check:output=~compute1
+cmd:if cat /etc/*release |grep SUSE >/dev/null;then xdsh $$SN cat /var/lib/dhcp/db/dhcpd.leases|grep compute1;elif cat /etc/*release |grep "Red Hat" >/dev/null;then xdsh $$SN cat /var/lib/dhcpd/dhcpd.leases|grep compute1;fi
+check:output=~compute1
+cmd:if cat /etc/*release |grep SUSE >/dev/null;then xdsh $$CN cat /var/lib/dhcp/db/dhcpd.leases|grep compute1;elif cat /etc/*release |grep "Red Hat" >/dev/null;then xdsh $$CN cat /var/lib/dhcpd/dhcpd.leases|grep compute1;fi
+check:output=~compute1
+cmd:nodeset compute1 osimage=__GETNODEATTR($$SN,os)__-__GETNODEATTR($$SN,arch)__-install-compute
+check:rc==0
+check:output=~compute1: install __GETNODEATTR($$SN,os)__-__GETNODEATTR($$SN,arch)__-compute
+cmd:if [[ "__GETNODEATTR($$CN,netboot)__" =~ "grub2" ]]; then cat /tftpboot/boot/__GETNODEATTR($$CN,netboot)__/compute1;elif [[ "__GETNODEATTR($$CN,netboot)__" =~ "yaboot" ]];then cat /tftpboot/yaboot.conf*;elif [[ "__GETNODEATTR($$CN,netboot)__" =~ "xnba" ]];then cat /tftpboot/xcat/xnba/nodes/compute1;elif [[ "__GETNODEATTR($$CN,netboot)__" =~ "petitboot" ]];then cat /tftpboot/petitboot/compute1;fi
+check:output=~http://$$SN|http://__GETNODEATTR($$SN,ip)__|http://${next-server}
+cmd:if [[ "__GETNODEATTR($$CN,netboot)__" =~ "grub2" ]]; then xdsh $$SN cat /tftpboot/boot/__GETNODEATTR($$CN,netboot)__/compute1;elif [[ "__GETNODEATTR($$CN,netboot)__" =~ "yaboot" ]];then xdsh $$SN cat /tftpboot/yaboot.conf*;elif [[ "__GETNODEATTR($$CN,netboot)__" =~ "xnba" ]];then xdsh $$SN cat /tftpboot/xcat/xnba/nodes/compute1;elif [[ "__GETNODEATTR($$CN,netboot)__" =~ "petitboot" ]];then xdsh $$SN cat /tftpboot/petitboot/compute1;fi
+check:output=~http://$$SN|http://__GETNODEATTR($$SN,ip)__|http://${next-server}
+cmd:if [[ "__GETNODEATTR($$CN,netboot)__" =~ "grub2" ]]; then xdsh $$CN cat /tftpboot/boot/__GETNODEATTR($$CN,netboot)__/compute1;elif [[ "__GETNODEATTR($$CN,netboot)__" =~ "yaboot" ]];then xdsh $$CN cat /tftpboot/yaboot.conf*;elif [[ "__GETNODEATTR($$CN,netboot)__" =~ "xnba" ]];then xdsh $$CN cat /tftpboot/xcat/xnba/nodes/compute1;elif [[ "__GETNODEATTR($$CN,netboot)__" =~ "petitboot" ]];then xdsh $$CN cat /tftpboot/petitboot/compute1;fi
+check:output=~http://$$SN|http://__GETNODEATTR($$SN,ip)__|http://${next-server}
+
+#process the speicial case when netboot=petitboot, since we have no physical machine test environment at the moment
+cmd:if [[ "__GETNODEATTR($$CN,arch)__" =~ "ppc64le" ]] && [[ "__GETNODEATTR($$CN,netboot)__" != "petitboot" ]]; then chdef compute1 netboot=petitboot;nodeset compute1 osimage=__GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-install-compute;cat /tftpboot/petitboot/compute1;else echo "http://$$SN";fi
+check:output=~http://$$SN|http://__GETNODEATTR($$SN,ip)__|http://${next-server}
+cmd:if [[ "__GETNODEATTR($$CN,arch)__" =~ "ppc64le" ]]; then xdsh $$SN  cat /tftpboot/petitboot/compute1;else echo "http://$$SN";fi
+check:output=~http://$$SN|http://__GETNODEATTR($$SN,ip)__|http://${next-server}
+cmd:if [[ "__GETNODEATTR($$CN,arch)__" =~ "ppc64le" ]]; then xdsh $$CN cat /tftpboot/petitboot/compute1;else echo "http://$$SN";fi
+check:output=~http://$$SN|http://__GETNODEATTR($$SN,ip)__|http://${next-server}
+
+cmd:noderm compute1
+check:rc==0
+cmd:cp -f /etc/resolv.conf.bak /etc/resolv.conf
+end

@@ -636,25 +636,9 @@ sub do_discovery_process {
             $vintage = time();
         }    # site table reread every 15 second
         my $data;
-        my $client;
-        my $clientn;
-        my $clientip;
         if (ref $msg eq 'HASH') { $data = $msg->{data}; } else { die "incorrect code to disco"; }
-        my $saddr = $msg->{sockaddr};
-        if ($inet6support) {
-            ($client, $sport) = Socket6::getnameinfo($saddr);
-            ($clientip, $sport) = Socket6::getnameinfo($saddr, Socket6::NI_NUMERICHOST());
-            if ($clientip =~ /::ffff:.*\..*\./) {
-                $clientip =~ s/^::ffff://;
-            }
-            if ($client =~ /::ffff:.*\..*\./) {
-                $client =~ s/^::ffff://;
-            }
-        } else {
-            ($sport, $clientn) = sockaddr_in($saddr);
-            $clientip = inet_ntoa($clientn);
-            $client = gethostbyaddr($clientn, AF_INET);
-        }
+        my $clientip = $msg->{sockaddr};
+        $sport=$msg->{sport};
         if ($data =~ /^\037\213/) { # per rfc 1952, these two bytes are gzip, and they are invalid for
                 # xcatrequest xml, so go ahead and decompress it
             my $bigdata;
@@ -663,12 +647,10 @@ sub do_discovery_process {
         }
         my $req = eval { XMLin($data, SuppressEmpty => undef, ForceArray => 1) };
         if ($req and $req->{command} and ($req->{command}->[0] eq "findme" and $sport < 1000)) { # only consider priveleged port requests to start with
-            $req->{'_xcat_clienthost'} = $client;
             $req->{'_xcat_clientip'}   = $clientip;
             $req->{'_xcat_clientport'} = $sport;
             if (defined($cmd_handlers{"findme"}) and xCAT::NetworkUtils->nodeonmynet($clientip)) { # only discover from ips that appear to be on a managed network
                 xCAT::MsgUtils->message("S", "xcatd: Processing discovery request from " . $req->{'_xcat_clientip'});
-
                 # Using cacheonly will cause the discovery processing running 2 times, cacheonly seems useless for switch.pm, so remove it
                 #$req->{cacheonly}->[0] = 1;
                 #plugin_command($req,undef,\&build_response);
@@ -678,7 +660,7 @@ sub do_discovery_process {
 
                 #}
             } else {
-                xCAT::MsgUtils->message("S", "xcatd: Skipping discovery from " . $client . " because we either have no discovery plugins or the client address does not match an IP network that xCAT is managing");
+                xCAT::MsgUtils->message("S", "xcatd: Skipping discovery from " . $clientip . " because we either have no discovery plugins or the client address does not match an IP network that xCAT is managing");
             }
         }
     }
@@ -801,10 +783,33 @@ sub do_udp_service {    # This function opens up a UDP port
                 foreach my $pkey (keys %packets) {
                     my $saddr = $packets{$pkey}->[0];
                     $data = $packets{$pkey}->[1];
+                    my $sport;
+                    my $clientip;
+                    my $clientn;
+                    if ($inet6support) {
+                        ($clientip, $sport) = Socket6::getnameinfo($saddr, Socket6::NI_NUMERICHOST());
+                        if ($clientip =~ /::ffff:.*\..*\./) {
+                            $clientip =~ s/^::ffff://;
+                        }
+                    } else {
+                        ($sport, $clientn) = sockaddr_in($saddr);
+                        $clientip = inet_ntoa($clientn);
+                    }                     
                     if ($data =~ /^\037\213/) { # per rfc 1952, these two bytes are gzip, and they are invalid for
-                        store_fd({ data => $data, sockaddr => $saddr }, $discoctl); # for now, punt the gunzip to the worker process
+                        store_fd({ data => $data, sockaddr => $clientip, sport => $sport }, $discoctl); # for now, punt the gunzip to the worker process
+                        #notify the client that its request is been processing
+                        my $ret=xCAT::NetworkUtils->send_tcp_msg($clientip,3001,"processing");
+                        if($ret){
+                            xCAT::MsgUtils->message("S", "INFO xcatd: fail to notify $clientip that its 'findme' request is been processing");
+                        }
                     } elsif ($data =~ /^<xcat/) {    # xml format
-                        store_fd({ data => $data, sockaddr => $saddr }, $discoctl);
+                        store_fd({ data => $data, sockaddr => $clientip, sport => $sport }, $discoctl);
+                        #notify the client that its request is been processing
+                        my $ret=xCAT::NetworkUtils->send_tcp_msg($clientip,3001,"processing");
+                        if($ret){
+                            xCAT::MsgUtils->message("S", "INFO xcatd: fail to notify $clientip that its 'findme' request is been processing");
+                        }
+
                     } else {    # for *now*, we'll do a tiny YAML subset
                         if ($data =~ /^resourcerequest: xcatd$/) {
                             $socket->send("ackresourcerequest\n", 0, $packets{$pkey}->[0]);
@@ -2436,35 +2441,12 @@ sub convey_response {
     # sanitize the response, to avoid being killed by non-printable bytes
     #$resp =~ tr/\011-\177/?/c;
     # seeing if using utf-8 offloads potential issues to client terminal, it didn't
-    store_fd($resp, $parent_fd);
-    yield; # parent must get timeslice anyway before an ack could possibly return
-    my $parsel = new IO::Select;
-    $parsel->add($parent_fd);
-    my $selbits = $parsel->bits;
-    my $rsp;
-    while ($selbits && ($rsp = select($selbits, undef, undef, 5))) { # block up to five seconds
-
-        if ($quit) {    # Obey quit flag
-            xexit 0;
-        }
-        if ($rsp == 0) {    # This means the filedescriptor was removed
-            last;
-        }
-        if ($rsp < 0) {     # A signal caused select to skip out, do-over
-            next;
-        }
-
-        # At this point, the only possibility is a positive return, meaning parent_fd requires attention of some sort
-        $rsp = <$parent_fd>;
-        if ($rsp) { # If data actually came in, last, otherwise, remove it from the IO::Select, but both should amount to the same thing
-            last;
-        } else {
-            $parsel->remove($parent_fd);
-            last;
-        }
+    eval {
+        store_fd($resp, $parent_fd);
+    };
+    if ($@) {
+        xCAT::MsgUtils->message("S", "Failed to store into socketpair: $@");
     }
-    yield; # If still around, it means a peer process still hasn't gotten to us, so might as well yield
-    $selbits = $parsel->bits;
 }
 
 sub build_response {
@@ -2831,8 +2813,7 @@ sub service_connection {
                     my $myxcatver=xCAT::Version->Version();
                     if($req->{'_xcatver'}->[0] ne $myxcatver){
                         my $myhostname=Sys::Hostname::hostname;
-                        my $resp = { warning => ["xCAT Version mismatch! \"$myxcatver\" on $myhostname does not match \"$req->{'_xcatver'}->[0]\" on $peerhost!"]};
-                        $resp->{serverdone} = [undef];
+                        my $resp = { warning => ["xCAT Version mismatch! \n         $myhostname: $myxcatver\n         $peerhost: $req->{'_xcatver'}->[0]\n"]};
                         send_response($resp, $sock);
                     }
                 }
@@ -2987,9 +2968,10 @@ sub relay_fds { # Relays file descriptors from pipes to children to the SSL sock
         if ($@ and $@ =~ /^Magic number checking on storable file/) { # this most likely means we ran over the end of available input
             $fds->remove($rfh);
             close($rfh);
+        } elsif ($@) {
+            xCAT::MsgUtils->message("S", "Failed to retrieve from socketpair: $@");
         } else {
             push @$replyqueue, $resp;
-            print $rfh "nfin\n";
         }
     }
     foreach my $rin ($clientselect->can_read(0)) {
