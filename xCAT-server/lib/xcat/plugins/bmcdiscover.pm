@@ -670,8 +670,8 @@ sub scan_process {
 
                 my $nmap_cmd = "nmap ${$live_ip}[$i] -p $openbmc_port -Pn";
                 my $nmap_output = xCAT::Utils->runcmd($nmap_cmd, -1);
-                if ($nmap_output =~ /$openbmc_port(.+)/) {
-                    # if the openbmc_port exists at any nmap status, assume it's an OpenBMC server
+                if ($nmap_output !~ /$openbmc_port(.+)closed/) {
+                    # If the openbmc_port is anything execpt 'closed' assume it's OpenBMC server
                     bmcdiscovery_openbmc(${$live_ip}[$i], $opz, $opw, $request_command);
                 } else {
                     bmcdiscovery_ipmi(${$live_ip}[$i], $opz, $opw, $request_command);
