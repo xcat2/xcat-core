@@ -1,6 +1,6 @@
 #!/bin/bash  
 if [ "$(uname -s|tr 'A-Z' 'a-z')" = "linux" ];then
-   str_dir_name=`dirname $0`
+   str_dir_name=$(dirname $0)
    . $str_dir_name/xcatlib.sh
 fi
 #written in bash for fewest prerequisites
@@ -9,17 +9,17 @@ function get_def_interface {
     #are in bash, the best alternative is to use ping to get at it
     #don't want to grep in /etc/hosts or presume DNS
     #we are, however, presuming ipv4 for the moment
-    retval=$(ping -c 1 `hostname`|head -n 1|cut -d\( -f 2|cut -d\) -f 1)
+    retval=$(ping -c 1 $(hostname)|head -n 1|cut -d\( -f 2|cut -d\) -f 1)
     if [ -z "$retval" -o "127.0.0.1" = "$retval" ]; then #ok, that didn't pan out, now we grab the first address that looks sane
         #retval=`ifconfig|grep inet" " |grep -v addr:127.0.0.1|grep -v 'addr:169.254'|head -n 1|cut -d: -f 2|cut -d' ' -f 1`
-        retval=`ip -4 -oneline addr show|grep -v "127.0.0.1"|grep -v '169.254'|head -n 1|awk -F 'inet ' '{print $2}'|awk -F '/' '{print $1}'`
+        retval=$(ip -4 -oneline addr show|grep -v "127.0.0.1"|grep -v '169.254'|head -n 1|awk -F 'inet ' '{print $2}'|awk -F '/' '{print $1}')
     fi
     if [ -z "$retval" ]; then 
         echo "ERROR: Unable to reasonably guess the 'default' interface" >&2
         exit 1
     fi
     #iface=`ifconfig|grep -v inet6|egrep '(Link|inet)'|grep -B1 'addr:'$retval |head -n 1|awk '{print $1}'`
-    iface=`ip -4 -oneline addr show|grep -i $retval|awk -F ':' '{print $2}'|awk -F ' ' '{print $1}'|grep -o "[^ ]\+\( \+[^ ]\+\)*"`
+    iface=$(ip -4 -oneline addr show|grep -i $retval|awk -F ':' '{print $2}'|awk -F ' ' '{print $1}'|grep -o "[^ ]\+\( \+[^ ]\+\)*")
     if [ -z "$iface" ]; then
         echo "ERROR: Unable to reasonably guess the default interface" >&2
         exit 1
@@ -36,8 +36,8 @@ function get_def_interface {
                 INMATCH=0
             fi
             if [ "$INMATCH" == 1 ];  then
-                if ! ethtool -i `echo $brline|awk '{print $NF}'`|grep "driver: tun" >& /dev/null; then
-                    iface=`echo $brline|awk '{print $NF}'`
+                if ! ethtool -i $(echo $brline|awk '{print $NF}')|grep "driver: tun" >& /dev/null; then
+                    iface=$(echo $brline|awk '{print $NF}')
                     echo "$iface"
                     IFS=$OFIS
                     return
@@ -60,7 +60,7 @@ function debianpreconf(){
         mkdir -p "/etc/network/interfaces.d"
     fi
     #search xcat flag
-    XCATFLAG=`grep "#XCAT_CONFIG" /etc/network/interfaces`
+    XCATFLAG=$(grep "#XCAT_CONFIG" /etc/network/interfaces)
     if [ -n "$XCATFLAG" ];then
         return
     fi
@@ -87,7 +87,7 @@ function debianpreconf(){
             continue
         fi
 
-        CONFTYPE=`echo $LINE | cut -d" " -f1`
+        CONFTYPE=$(echo $LINE | cut -d" " -f1)
         if [ $CONFTYPE = 'auto' -o $CONFTYPE = 'allow-hotplug' ];then
             LINE=${LINE#$CONFTYPE}
             for NICNAME in $LINE; do
@@ -95,7 +95,7 @@ function debianpreconf(){
             done
         elif [ $CONFTYPE = 'iface' -o $CONFTYPE = 'mapping' ];then
             #find out the nic name, should think about the eth0:1
-            NICNAME=`echo $LINE | cut -d" " -f 2 | cut -d":" -f 1`
+            NICNAME=$(echo $LINE | cut -d" " -f 2 | cut -d":" -f 1)
             CONFFILE="/etc/network/interfaces.d/$NICNAME"
             if [ ! -e $CONFFILE ];then
                 echo "auto $NICNAME" > $CONFFILE
@@ -112,8 +112,8 @@ function debianpreconf(){
 
 if [ "storageprereq" = "$1"  ]; then
     MOUNTURI="$2"
-    DIRNAME=`echo $MOUNTURI|sed -e 's!nfs://!nfs_!'`
-    MOUNTPATH=`echo $DIRNAME|sed -e 's!nfs_!!'|sed -e 's!/!:/!'`
+    DIRNAME=$(echo $MOUNTURI|sed -e 's!nfs://!nfs_!')
+    MOUNTPATH=$(echo $DIRNAME|sed -e 's!nfs_!!'|sed -e 's!/!:/!')
     if mount|grep $MOUNTPATH > /dev/null; then
         exit 0;
     fi
@@ -141,7 +141,7 @@ elif [ "bridgeprereq" = "$1" ]; then
     fi
 
     if [[ "$INSPORT"  =~ ^([0-9a-fA-F]{2}:){5}[0-9a-fA-F]{2}$ ]] ; then
-        INSPORT=`ip -oneline link show|grep -i ether|grep -i $INSPORT |awk -F ':' '{print $2}'|grep -o "[^ ]\+\( \+[^ ]\+\)*"`
+        INSPORT=$(ip -oneline link show|grep -i ether|grep -i $INSPORT |awk -F ':' '{print $2}'|grep -o "[^ ]\+\( \+[^ ]\+\)*")
     fi
 
     if [ -z "$NETDESC" ]; then
@@ -153,8 +153,8 @@ elif [ "bridgeprereq" = "$1" ]; then
         fi
     fi
     if echo "$NETDESC"|grep ':'> /dev/null; then
-        PORTS=`echo "$NETDESC"|cut -d: -f 1`
-        BNAME=`echo "$NETDESC"|cut -d: -f 2`
+        PORTS=$(echo "$NETDESC"|cut -d: -f 1)
+        BNAME=$(echo "$NETDESC"|cut -d: -f 2)
     else 
         if [ -n "$INSTALLNIC" ]; then
             PORTS=$INSPORT
@@ -181,7 +181,7 @@ elif [ "bridgeprereq" = "$1" ]; then
     fi
      
     #TO check whether the NIC had been attached to another bridge
-    bridgename=`brctl show |grep $PORTS`
+    bridgename=$(brctl show |grep $PORTS)
     if [ ! -z "$bridgename" ]; then
         echo "Device $PORTS is already a member of another bridge"
         exit 1
@@ -195,15 +195,15 @@ elif [ "bridgeprereq" = "$1" ]; then
     if echo "$PORTS"|grep '&'; then #we have bonding... fun to be had
     #To be slack, going to just support one bond for now..
         modprobe bonding miimon=100 mode=4
-        PORTS=`echo $PORTS |sed -e 's/&/ /'`
+        PORTS=$(echo $PORTS |sed -e 's/&/ /')
         ip link set bond0 up
         for p in $PORTS; do
             #TODO: we are only going to manage the default
             #route for now
-            saveroutes=`ip route | grep default| grep "dev $p"|grep via|sed -e 's/dev .*//'`
+            saveroutes=$(ip route | grep default| grep "dev $p"|grep via|sed -e 's/dev .*//')
             OIFS=$IFS
             IFS=$'\n'
-            saveip=`ip addr show dev $p scope global|grep inet|grep -v dynamic|sed -e 's/inet.//'|sed -e 's/[^ ]*$//'`
+            saveip=$(ip addr show dev $p scope global|grep inet|grep -v dynamic|sed -e 's/inet.//'|sed -e 's/[^ ]*$//')
             if [ ! -z "$saveip" ]; then
                 for line in $saveip; do 
                     ip addr add dev bond0 $line
@@ -235,14 +235,14 @@ elif [ "bridgeprereq" = "$1" ]; then
     brctl addbr $BNAME
     brctl setfd $BNAME 0 #fast forwarding
     ip link set $BNAME up
-    saveroutes=`ip route | grep default| grep "dev $PORTS"|grep via|sed -e 's/dev .*//'`
+    saveroutes=$(ip route | grep default| grep "dev $PORTS"|grep via|sed -e 's/dev .*//')
     OIFS=$IFS
     IFS=$'\n'
-    saveip=`ip addr show dev $PORTS scope global|grep inet|sed -e 's/inet.//'|sed -e 's/[^ ]*$//'`
+    saveip=$(ip addr show dev $PORTS scope global|grep inet|sed -e 's/inet.//'|sed -e 's/[^ ]*$//')
     if [ ! -z "$saveip" ]; then
         for line in $saveip; do 
             IFS=$OIFS
-            newline=`echo $line|sed 's/dynamic//g'`
+            newline=$(echo $line|sed 's/dynamic//g')
             ip addr add dev $BNAME $newline
         done
     else
@@ -256,7 +256,7 @@ elif [ "bridgeprereq" = "$1" ]; then
         IFS=$'\n'
         for line in $saveip; do 
             IFS=$OIFS
-           newline=`echo $line|sed 's/dynamic//g'`
+           newline=$(echo $line|sed 's/dynamic//g')
             ip addr del dev $PORTS $newline
         done
        IFS=$OIFS
@@ -289,7 +289,7 @@ DEVICE='$PORTS'
 ONBOOT='yes'
 BRIDGE='$BNAME'
 EOF
-        mac=`ip addr show dev $PORTS scope global|grep link|sed -e 's/link\/ether//'|sed -e 's/brd.*$//'|sed -e 's/[ ]*//'`
+        mac=$(ip addr show dev $PORTS scope global|grep link|sed -e 's/link\/ether//'|sed -e 's/brd.*$//'|sed -e 's/[ ]*//')
         if [ ! -z "$mac" ]; then
             echo "HWADDR='$mac'" >> $nwdir/ifcfg-$PORTS
         fi
@@ -330,11 +330,11 @@ EOF
                 echo "  netmask 255.255.255.0" >> $nwdir/$BNAME
             fi
         else
-            my_subnet=`ip addr show dev $BNAME scope global|grep inet|grep -v dynamic|sed -e 's/inet.//'| awk '{print $1}'`
+            my_subnet=$(ip addr show dev $BNAME scope global|grep inet|grep -v dynamic|sed -e 's/inet.//'| awk '{print $1}')
             if [ ! -z "$my_subnet" ]; then
-                bridge_ip=`echo "$my_subnet"|cut -d\/ -f 1`
-                bridge_mask=`echo "$my_subnet"|cut -d\/ -f 2`
-                bridge_mask=`v4prefix2mask $bridge_mask`
+                bridge_ip=$(echo "$my_subnet"|cut -d\/ -f 1)
+                bridge_mask=$(echo "$my_subnet"|cut -d\/ -f 2)
+                bridge_mask=$(v4prefix2mask $bridge_mask)
                 echo "iface $BNAME inet static" >> $nwdir/$BNAME
                 echo "  address $bridge_ip" >> $nwdir/$BNAME 
                 echo "  netmask $bridge_mask" >> $nwdir/$BNAME
@@ -352,7 +352,7 @@ DEVICE=$PORTS
 ONBOOT=yes
 BRIDGE=$BNAME
 EOF
-        mac=`ip addr show dev $PORTS scope global|grep link|sed -e 's/link\/ether//'|sed -e 's/brd.*$//'|sed -e 's/[ ]*//'`
+        mac=$(ip addr show dev $PORTS scope global|grep link|sed -e 's/link\/ether//'|sed -e 's/brd.*$//'|sed -e 's/[ ]*//')
         if [ ! -z "$mac" ]; then
             echo "HWADDR=$mac" >> $nwdir/ifcfg-$PORTS
         fi
