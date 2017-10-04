@@ -1294,7 +1294,11 @@ sub rpower_response {
             if ($status_info{RPOWER_ON_RESPONSE}{argv}) {
                 xCAT::SvrUtils::sendmsg("$::POWER_STATE_RESET", $callback, $node);
             } else {
-                xCAT::SvrUtils::sendmsg("$::POWER_STATE_ON", $callback, $node);
+                if (defined($::OPENBMC_PWR) and ($::OPENBMC_PWR eq "YES")) {
+                    xCAT::SvrUtils::sendmsg("$::STATUS_POWERING_ON", $callback, $node);
+                } else {
+                    xCAT::SvrUtils::sendmsg("$::POWER_STATE_ON", $callback, $node);
+                }
             }
             $new_status{$::STATUS_POWERING_ON} = [$node];
         }
