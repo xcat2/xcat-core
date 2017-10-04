@@ -25,17 +25,17 @@ zerombr
 #
 clearpart --all --initlabel
 #clearpart --linux
-#key --skip
 
 #
 # Customize to fit your needs
 #
 
 #XCAT_PARTITION_START#
+# xCAT based partitioning
+%include /tmp/partitionfile
 #No RAID
 #/boot really significant for this sort of setup nowadays?
 #part /boot --size 50 --fstype ext3
-%include /tmp/partitionfile
 #part swap --size 1024
 #part / --size 1 --grow --fstype ext4
 
