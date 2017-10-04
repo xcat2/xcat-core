@@ -155,7 +155,7 @@ reboot
 {
 echo "Running Kickstart Pre-Installation script..."
 #INCLUDE:#ENV:XCATROOT#/share/xcat/install/scripts/pre.rh.rhels7#
-} >>/tmp/pre-install.log 2>&1
+} &>>/tmp/pre-install.log
 %end
 %post
 mkdir -p /var/log/xcat/
@@ -166,5 +166,5 @@ EOF
 echo "Running Kickstart Post-Installation script..."
 #INCLUDE:#ENV:XCATROOT#/share/xcat/install/scripts/post.xcat#
 #INCLUDE:#ENV:XCATROOT#/share/xcat/install/scripts/post.rhels7#
-} >>/var/log/xcat/xcat.log 2>&1
+} &>>/var/log/xcat/xcat.log
 %end
