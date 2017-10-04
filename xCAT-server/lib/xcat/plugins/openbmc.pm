@@ -1365,7 +1365,8 @@ sub rpower_response {
         } else {
             if ($chassis_state =~ /Off$/) {
                 # Chassis state is Off, but check if we can detect transition states
-                if ($host_state =~ /Off$/ and $host_transition_state =~ /On$/) {
+                if ((defined($::OPENBMC_PWR) and ($::OPENBMC_PWR eq "YES")) and
+                        $host_state =~ /Off$/ and $host_transition_state =~ /On$/) {
                     xCAT::SvrUtils::sendmsg("$::POWER_STATE_POWERING_ON", $callback, $node);
                 } else {
                     xCAT::SvrUtils::sendmsg("$::POWER_STATE_OFF", $callback, $node) if (!$next_status{ $node_info{$node}{cur_status} });
