@@ -2112,6 +2112,8 @@ sub rflash_response {
         if ($activation_state =~ /Software.Activation.Activations.Failed/) {
             # Activation failed. Report error and exit
             xCAT::SvrUtils::sendmsg([1,"Activation of firmware failed"], $callback, $node);
+            $wait_node_num--;
+            return;
         } 
         elsif ($activation_state =~ /Software.Activation.Activations.Active/) { 
             if (scalar($priority_state) == 0) {
