@@ -546,11 +546,11 @@ sub refresh_table {
 
         $children++;
         my $cpid = xCAT::Utils->xfork;
-        unless (defined $cpid) { 
+        unless (defined $cpid) {
             $children--;
             close($child);
             close($parent);
-            xCAT::MsgUtils->message("S", "refresh_table: failed to fork refresh_switch process for $entry->{switch},skip..."); 
+            xCAT::MsgUtils->message("S", "refresh_table: failed to fork refresh_switch process for $entry->{switch},skip...");
             next;
         }
 
@@ -564,7 +564,6 @@ sub refresh_table {
             xCAT::MsgUtils->message("S", "refresh_switch $entry->{switch} ElapsedTime:$diffduration sec");
             exit(0);
         }
-
         close($parent);
         $inputs->add($child);
     }
@@ -718,50 +717,53 @@ sub refresh_switch {
     my $output    = shift;
     my $community = shift;
     my $switch    = shift;
+    my %index_to_vlan = ();
 
-    unless($self->{collect_mac_info})
-    {
-        if($self->{switchparmhash}->{$switch}->{switchtype} eq 'onie'){
-            #for cumulus switch, the MAC table can be retrieved with ssh
-            #which is much faster than snmp 
-            my $mymac;
-            my $myport;
+    if($self->{switchparmhash}->{$switch}->{switchtype} eq 'onie'){
+        #for cumulus switch, the MAC table can be retrieved with ssh
+        #which is much faster than snmp 
+        my $mymac;
+        my $myport;
 
-            my @res=xCAT::Utils->runcmd("ssh -o StrictHostKeyChecking=no -o PasswordAuthentication=no $switch 'bridge fdb show|grep -i -v permanent|tr A-Z a-z  2>/dev/null' 2>/dev/null",-1);
-            if ($::RUNCMD_RC) {
-                xCAT::MsgUtils->message("S", "Failed to get mac table with ssh to $switch, fall back to snmp! To obtain mac table with ssh, please make sure the passwordless root ssh to $switch is available");
-            }else{
-                foreach (@res){
-                    if($_ =~ m/^([0-9a-z]{2}:[0-9a-z]{2}:[0-9a-z]{2}:[0-9a-z]{2}:[0-9a-z]{2}:[0-9a-z]{2}) dev swp([0-9]+) .*/){
-                        $mymac=$1;
-                        $myport=$2;         
-                        $myport=sprintf("%d",$myport);
-                        
-                        #try all the possible port number formats
-                        #e.g, "5","swp5","05","swp05"
-                        unless(exists $self->{switches}->{$switch}->{$myport}){
-                            if(exists $self->{switches}->{$switch}->{"swp".$myport}){
-                                $myport="swp".$myport;
-                            }else{
-                                $myport=sprintf("%02d",$myport);
-                                unless(exists $self->{switches}->{$switch}->{$myport}){
-                                    if(exists $self->{switches}->{$switch}->{"swp".$myport}){
-                                        $myport="swp".$myport;
-                                    }else{
-                                        $myport="";
-                                    }
+        my @res=xCAT::Utils->runcmd("ssh -o StrictHostKeyChecking=no -o PasswordAuthentication=no $switch 'bridge fdb show|grep -i -v permanent|tr A-Z a-z  2>/dev/null' 2>/dev/null",-1);
+        unless (@res) {
+            xCAT::MsgUtils->message("S", "Failed to get mac table with ssh to $switch, fall back to snmp! To obtain mac table with ssh, please make sure the passwordless root ssh to $switch is available");
+        }else{
+            foreach (@res){
+                if($_ =~ m/^([0-9a-z]{2}:[0-9a-z]{2}:[0-9a-z]{2}:[0-9a-z]{2}:[0-9a-z]{2}:[0-9a-z]{2}) dev swp([0-9]+) vlan ([0-9]+) .*/){
+                    $mymac=$1;
+                    $myport=$2;         
+                    $myport=sprintf("%d",$myport);
+                    my $macport=$2;
+                    my $macvlan=$3;
+ 
+                    #try all the possible port number formats
+                    #e.g, "5","swp5","05","swp05"
+                    unless(exists $self->{switches}->{$switch}->{$myport}){
+                        if(exists $self->{switches}->{$switch}->{"swp".$myport}){
+                            $myport="swp".$myport;
+                        }else{
+                            $myport=sprintf("%02d",$myport);
+                            unless(exists $self->{switches}->{$switch}->{$myport}){
+                                if(exists $self->{switches}->{$switch}->{"swp".$myport}){
+                                    $myport="swp".$myport;
+                                }else{
+                                    $myport="";
                                 }
-                            }
-                        }
-
-                        if($myport){
-                            if($output){
-                                printf $output "$mymac|%s\n", $self->{switches}->{$switch}->{$myport};
                             }
                         }
                     }
 
+                    if($myport){
+                        if($output){
+                            printf $output "$mymac|%s\n", $self->{switches}->{$switch}->{$myport};
+                        }
+                    }
+                    push @{ $index_to_vlan{$macport} }, $macvlan;
                 }
+
+            }
+            unless($self->{collect_mac_info}) {
                 return;
             }
         }
@@ -904,7 +906,6 @@ sub refresh_switch {
         }
         if (defined($self->{collect_mac_info})) {
             my %index_to_mac = ();
-            my %index_to_vlan = ();
             foreach (keys %$mactoindexmap) {
                 my $index     = $mactoindexmap->{$_};
                 my @tmp       = split /\./, $_;
@@ -914,7 +915,9 @@ sub refresh_switch {
                 # Skip "permanent" ports
                 if (!defined($mactostate->{$_}) || $mactostate->{$_} != 4) {
                     push @{ $index_to_mac{$index} }, $macstring;
-                    push @{ $index_to_vlan{$index} }, $vlan;    
+                    unless ($self->{switchparmhash}->{$switch}->{switchtype} eq 'onie'){
+                        push @{ $index_to_vlan{$index} }, $vlan;    
+                    }
                }
             }
             foreach my $boid (keys %$bridgetoifmap) {
