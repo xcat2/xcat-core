@@ -912,6 +912,7 @@ sub parse_command_status {
         my $upload = 0;
         my $activate = 0;
         my $update_file;
+        my @flash_arguments;
 
         foreach $subcommand (@$subcommands) {
             if ($subcommand =~ /-c|--check/) {
@@ -926,9 +927,17 @@ sub parse_command_status {
                 $activate = 1;
             } else {
                 $update_file = $subcommand;
+                push (@flash_arguments, $subcommand); 
             }
         }
 
+        if (scalar @flash_arguments > 1) {
+            my $flag = "";
+            if ($delete) { $flag = "to delete"; }
+            if ($activate) { $flag = "to activate"; }
+            xCAT::SvrUtils::sendmsg([1, "More than one firmware specified $flag is currently not supported."], $callback);
+            return 1;
+        }
         my $file_id = undef;
         my $grep_cmd = "/usr/bin/grep -a";
         my $version_tag = '"^version="';
