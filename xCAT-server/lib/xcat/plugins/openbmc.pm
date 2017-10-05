@@ -45,6 +45,8 @@ $::POWER_STATE_REBOOT       = "reboot";
 $::UPLOAD_FILE              = "";
 $::UPLOAD_FILE_VERSION      = "";
 $::RSETBOOT_URL_PATH        = "boot";
+# To improve the output to users, store this value as a global
+$::UPLOAD_AND_ACTIVATE      = 0;
 
 $::NO_ATTRIBUTES_RETURNED   = "No attributes returned from the BMC.";
 
@@ -910,7 +912,6 @@ sub parse_command_status {
         my $upload = 0;
         my $activate = 0;
         my $update_file;
-        my $upload_and_activate = 0;
 
         foreach $subcommand (@$subcommands) {
             if ($subcommand =~ /-c|--check/) {
@@ -953,11 +954,11 @@ sub parse_command_status {
                 if ($activate) {
                     # Activate flag was specified together with a update file. We want to
                     # upload the file and activate it.
-                    $upload_and_activate = 1;
+                    $::UPLOAD_AND_ACTIVATE = 1;
                     $activate = 0;
                 }
 
-                if ($check_version | $upload_and_activate) {
+                if ($check_version | $::UPLOAD_AND_ACTIVATE) {
                     # Extract Host version for the update file
                     my $firmware_version_in_file = `$grep_cmd $version_tag $::UPLOAD_FILE`;
                     my $purpose_version_in_file = `$grep_cmd $purpose_tag $::UPLOAD_FILE`;
@@ -1020,12 +1021,16 @@ sub parse_command_status {
             $next_status{"RFLASH_SET_PRIORITY_REQUEST"} = "RFLASH_SET_PRIORITY_RESPONSE";
             $next_status{"RFLASH_SET_PRIORITY_RESPONSE"} = "RFLASH_UPDATE_CHECK_STATE_REQUEST";
         }
-        if ($upload_and_activate) {
+        if ($::UPLOAD_AND_ACTIVATE) {
             # Upload specified update file to BMC
             $next_status{LOGIN_RESPONSE} = "RFLASH_FILE_UPLOAD_REQUEST";
             $next_status{"RFLASH_FILE_UPLOAD_REQUEST"} = "RFLASH_FILE_UPLOAD_RESPONSE";
             $next_status{"RFLASH_FILE_UPLOAD_RESPONSE"} = "RFLASH_UPDATE_CHECK_ID_REQUEST";
             $next_status{"RFLASH_UPDATE_CHECK_ID_REQUEST"} = "RFLASH_UPDATE_CHECK_ID_RESPONSE";
+            # 
+            # This code is different from the "activate" flow above because the CHECK_ID_RESPONSE contains
+            # the activation flow after we successfully obtain the ID for the firmware piece that was uploaded.  
+            #
         }
     }
 
@@ -2048,10 +2053,14 @@ sub rflash_response {
         xCAT::SvrUtils::sendmsg("", $callback, $node); #Separate output in case more than 1 endpoint
     }
     if ($node_info{$node}{cur_status} eq "RFLASH_FILE_UPLOAD_RESPONSE") {
-        # Special processing for file upload. At this point we do not know how to
-        # form a proper file upload request. It always fails with "Method not allowed" error.
-        # If that happens, just call the curl commands for now. 
-        # TODO remove this block when proper request can be generated
+        #
+        # Special processing for file upload
+        #
+        # Unable to form a proper file upload request to the BMC, it fails with: 405 Method Not Allowed
+        # For now, always upload using curl commands.  
+        #
+        # TODO: Remove this block when proper request can be generated
+        #
         if ($::UPLOAD_FILE) {
             my $request_url = "$http_protocol://" . $node_info{$node}{bmc};
             my $content_login = '{ "data": [ "' . $node_info{$node}{username} .'", "' . $node_info{$node}{password} . '" ] }';
@@ -2068,11 +2077,19 @@ sub rflash_response {
             if ($h->{message} eq $::RESPONSE_OK) {
                 # Login successfull, upload the file
                 xCAT::SvrUtils::sendmsg("Uploading $::UPLOAD_FILE ...", $callback, $node);
+                if ($xcatdebugmode) { 
+                    my $debugmsg = "RFLASH_FILE_UPLOAD_RESPONSE: CMD: $curl_upload_cmd";
+                    process_debug_info($node, $debugmsg);
+                }
                 my $curl_upload_result = `$curl_upload_cmd`;
                 $h = from_json($curl_upload_result); # convert command output to hash
                 if ($h->{message} eq $::RESPONSE_OK) {
-                    # Upload successfull
-                    xCAT::SvrUtils::sendmsg("Successful, use -l option to list.", $callback, $node);
+                    # Upload successful, display message
+                    if ($::UPLOAD_AND_ACTIVATE) { 
+                        xCAT::SvrUtils::sendmsg("Upload successful. Attempting to activate firmware: $::UPLOAD_FILE_VERSION", $callback, $node);
+                    } else {
+                        xCAT::SvrUtils::sendmsg("Successful, use -l option to list.", $callback, $node);
+                    }
                     # Try to logoff, no need to check result, as there is nothing else to do if failure
                     my $curl_logout_result = `$curl_logout_cmd`;
                 }
@@ -2141,7 +2158,13 @@ sub rflash_response {
         my $activation_state;
         my $progress_state;
         my $priority_state;
+        my $found_match = 0;
+        my $debugmsg;
 
+        if ($xcatdebugmode) {
+            $debugmsg = "CHECK_ID_RESPONSE: Looking for software ID: $::UPLOAD_FILE_VERSION...";
+            process_debug_info($node, $debugmsg);
+        }
         # Look through all the software entries and find the id of the one that matches
         # the version of the uploaded file. Once found, set up request/response hash entries
         # to activate that image.
@@ -2151,7 +2174,12 @@ sub rflash_response {
             $update_id = (split(/\//, $key_url))[ -1 ];
             if (defined($content{Version}) and $content{Version}) {
                 $update_version = $content{Version};
+                if ($xcatdebugmode) {
+                    $debugmsg = "CHECK_ID_RESPONSE: key_url=$key_url version=$update_version";
+                    process_debug_info($node, $debugmsg);
+                }
                 if ($update_version eq $::UPLOAD_FILE_VERSION) {
+                    $found_match = 1;
                     # Found a match of uploaded file version with the image in software/enumerate
 
                     # Set the image id for the activation request
@@ -2173,6 +2201,9 @@ sub rflash_response {
                     last;
                 }
             }
+        }
+        if (!$found_match) { 
+            xCAT::SvrUtils::sendmsg([1,"Could not find firmware $::UPLOAD_FILE_VERSION to activate."], $callback, $node);
         }
     }
 
