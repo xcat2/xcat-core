@@ -559,7 +559,7 @@ sub parse_args {
 
     if ($command eq "rbeacon") { 
         unless ($subcommand =~ /^on$|^off$/) {
-	    return ([ 1, "Unsupported command: $command $subcommand" ]);
+	    return ([ 1, "Only 'on' or 'off' is supported for OpenBMC managed nodes."]);
         }
     } elsif ($command eq "rpower") {
         unless ($subcommand =~ /^on$|^off$|^softoff$|^reset$|^boot$|^bmcreboot$|^bmcstate$|^status$|^stat$|^state$/) {
