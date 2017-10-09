@@ -420,7 +420,12 @@ sub preprocess_request {
 
     my $parse_result = parse_args($command, $extrargs, $noderange);
     if (ref($parse_result) eq 'ARRAY') {
-        $callback->({ errorcode => [$parse_result->[0]], data => [$parse_result->[1]] });
+        my $error_data;
+        foreach my $node (@$noderange) {
+            $error_data .= "\n" if ($error_data);
+            $error_data .= "$node: Error: " . "$parse_result->[1]";
+        }
+        $callback->({ errorcode => [$parse_result->[0]], data => [$error_data] });
         $request = {};
         return;
     }
