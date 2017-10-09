@@ -44,9 +44,13 @@ $::POWER_STATE_RESET        = "reset";
 $::POWER_STATE_REBOOT       = "reboot";
 $::UPLOAD_FILE              = "";
 $::UPLOAD_FILE_VERSION      = "";
+$::FW_ACTIVATION_ID         = "";
 $::RSETBOOT_URL_PATH        = "boot";
 # To improve the output to users, store this value as a global
 $::UPLOAD_AND_ACTIVATE      = 0;
+$::UPLOAD_WAIT_ATTEMPT      = 6; 
+$::UPLOAD_WAIT_INTERVAL     = 10;
+$::UPLOAD_WAIT_TOTALTIME    = int($::UPLOAD_WAIT_ATTEMPT*$::UPLOAD_WAIT_INTERVAL);
 
 $::NO_ATTRIBUTES_RETURNED   = "No attributes returned from the BMC.";
 
@@ -2021,7 +2025,6 @@ sub rflash_response {
 
     my $response_info = decode_json $response->content;
 
-    my $update_id;
     my $update_activation = "Unknown";
     my $update_purpose;
     my $update_version;
@@ -2035,7 +2038,7 @@ sub rflash_response {
         foreach my $key_url (keys %{$response_info->{data}}) {
             my %content = %{ ${ $response_info->{data} }{$key_url} };
 
-            $update_id = (split(/\//, $key_url))[ -1 ];
+            $::FW_ACTIVATION_ID = (split(/\//, $key_url))[ -1 ];
             if (defined($content{Version}) and $content{Version}) {
                 $update_version = $content{Version};
             }
@@ -2057,7 +2060,7 @@ sub rflash_response {
                 $update_activation = $update_activation . "(*)";
                 $update_priority = -1; # Reset update priority for next loop iteration
             }
-            xCAT::SvrUtils::sendmsg(sprintf("%-8s %-7s %-10s %s", $update_id, $update_purpose, $update_activation, $update_version), $callback, $node);
+            xCAT::SvrUtils::sendmsg(sprintf("%-8s %-7s %-10s %s", $::FW_ACTIVATION_ID, $update_purpose, $update_activation, $update_version), $callback, $node);
         }
         xCAT::SvrUtils::sendmsg("", $callback, $node); #Separate output in case more than 1 endpoint
     }
@@ -2070,15 +2073,17 @@ sub rflash_response {
         #
         # TODO: Remove this block when proper request can be generated
         #
+        my $cjar_id = "/tmp/_xcat_cjar.$node";
+
         if ($::UPLOAD_FILE) {
             my $request_url = "$http_protocol://" . $node_info{$node}{bmc};
             my $content_login = '{ "data": [ "' . $node_info{$node}{username} .'", "' . $node_info{$node}{password} . '" ] }';
             my $content_logout = '{ "data": [ ] }';
 
             # curl commands
-            my $curl_login_cmd  = "curl -c cjar -k -H 'Content-Type: application/json' -X POST $request_url/login -d '" . $content_login . "'";
-            my $curl_logout_cmd = "curl -b cjar -k -H 'Content-Type: application/json' -X POST $request_url/logout -d '" . $content_logout . "'";
-            my $curl_upload_cmd = "curl -b cjar -k -H 'Content-Type: application/octet-stream' -X PUT -T " . $::UPLOAD_FILE . " $request_url/upload/image/";
+            my $curl_login_cmd  = "curl -c $cjar_id -k -H 'Content-Type: application/json' -X POST $request_url/login -d '" . $content_login . "'";
+            my $curl_logout_cmd = "curl -b $cjar_id -k -H 'Content-Type: application/json' -X POST $request_url/logout -d '" . $content_logout . "'";
+            my $curl_upload_cmd = "curl -b $cjar_id -k -H 'Content-Type: application/octet-stream' -X PUT -T " . $::UPLOAD_FILE . " $request_url/upload/image/";
 
             # Try to login
             my $curl_login_result = `$curl_login_cmd`;
@@ -2109,6 +2114,8 @@ sub rflash_response {
             else {
                 xCAT::SvrUtils::sendmsg("Unable to login :" . $h->{message} . " - " . $h->{data}->{description}, $callback, $node);
             }
+            # remove the cjar file 
+            unlink($cjar_id)
         }
     }
     if ($node_info{$node}{cur_status} eq "RFLASH_UPDATE_ACTIVATE_RESPONSE") {
@@ -2144,7 +2151,7 @@ sub rflash_response {
         elsif ($activation_state =~ /Software.Activation.Activations.Active/) { 
             if (scalar($priority_state) == 0) {
                 # Activation state of active and priority of 0 indicates the activation has been completed
-                xCAT::SvrUtils::sendmsg("Firmware update successfully activated", $callback, $node);
+                xCAT::SvrUtils::sendmsg("Firmware $::UPLOAD_FILE_VERSION successfully activated, reboot to apply.", $callback, $node);
                 $wait_node_num--;
                 return;
             }
@@ -2157,7 +2164,7 @@ sub rflash_response {
         elsif ($activation_state =~ /Software.Activation.Activations.Activating/) {
             # Activation still going, sleep for a bit, then print the progress value
             sleep(15);
-            xCAT::SvrUtils::sendmsg("Activating firmware update. $progress_state\%", $callback, $node);
+            xCAT::SvrUtils::sendmsg("Activating firmware $::UPLOAD_FILE_VERSION [ID=$::FW_ACTIVATION_ID]... $progress_state\%", $callback, $node);
 
             # Set next state to come back here to chect the activation status again.
             $next_status{ $node_info{$node}{cur_status} } = "RFLASH_UPDATE_CHECK_STATE_REQUEST";
@@ -2179,10 +2186,11 @@ sub rflash_response {
         # Look through all the software entries and find the id of the one that matches
         # the version of the uploaded file. Once found, set up request/response hash entries
         # to activate that image.
+
         foreach my $key_url (keys %{$response_info->{data}}) {
             my %content = %{ ${ $response_info->{data} }{$key_url} };
 
-            $update_id = (split(/\//, $key_url))[ -1 ];
+            $::FW_ACTIVATION_ID = (split(/\//, $key_url))[ -1 ];
             if (defined($content{Version}) and $content{Version}) {
                 $update_version = $content{Version};
                 if ($xcatdebugmode) {
@@ -2195,11 +2203,11 @@ sub rflash_response {
 
                     # Set the image id for the activation request
                     $status_info{RFLASH_UPDATE_ACTIVATE_REQUEST}{init_url} =
-                       $::SOFTWARE_URL . "/$update_id/attr/RequestedActivation";
+                       $::SOFTWARE_URL . "/$::FW_ACTIVATION_ID/attr/RequestedActivation";
                     $status_info{RFLASH_UPDATE_CHECK_STATE_REQUEST}{init_url} =
-                       $::SOFTWARE_URL . "/$update_id";
+                       $::SOFTWARE_URL . "/$::FW_ACTIVATION_ID";
                     $status_info{RFLASH_SET_PRIORITY_REQUEST}{init_url} =
-                       $::SOFTWARE_URL . "/$update_id/attr/Priority";
+                       $::SOFTWARE_URL . "/$::FW_ACTIVATION_ID/attr/Priority";
 
                     # Set next steps to activate the image
                     $next_status{ $node_info{$node}{cur_status} } = "RFLASH_UPDATE_ACTIVATE_REQUEST";
@@ -2211,10 +2219,27 @@ sub rflash_response {
                     $next_status{"RFLASH_SET_PRIORITY_RESPONSE"} = "RFLASH_UPDATE_CHECK_STATE_REQUEST";
                     last;
                 }
+
             }
         }
-        if (!$found_match) { 
-            xCAT::SvrUtils::sendmsg([1,"Could not find firmware $::UPLOAD_FILE_VERSION to activate."], $callback, $node);
+        #
+        # Wait give the BMC some time to extract the firmware before declaring that the firmware is not available in the BMC 
+        #
+        if ($::UPLOAD_WAIT_ATTEMPT > 0 and !$found_match) {
+            $::UPLOAD_WAIT_ATTEMPT = $::UPLOAD_WAIT_ATTEMPT - 1;
+            #
+            # TODO: When Verbose Option is supported, add this to Verbose output
+            #
+            xCAT::SvrUtils::sendmsg("Could not find ID for firmware $::UPLOAD_FILE_VERSION to activate, waiting $::UPLOAD_WAIT_INTERVAL seconds and retry...", $callback, $node);
+            sleep($::UPLOAD_WAIT_INTERVAL);
+            $next_status{ $node_info{$node}{cur_status} } = "RFLASH_UPDATE_CHECK_ID_REQUEST";
+            $next_status{"RFLASH_UPDATE_CHECK_ID_REQUEST"} = "RFLASH_UPDATE_CHECK_ID_RESPONSE";
+        } else {
+            if (!$found_match) { 
+                xCAT::SvrUtils::sendmsg([1,"Could not find firmware $::UPLOAD_FILE_VERSION after waiting $::UPLOAD_WAIT_TOTALTIME seconds."], $callback, $node);
+                $wait_node_num--;
+                return;
+            }
         }
     }
 
