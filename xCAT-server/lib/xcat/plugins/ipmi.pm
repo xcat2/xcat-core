@@ -3048,7 +3048,7 @@ sub beacon {
         $ipmiv2 = 1;
     }
     if ($subcommand ne "on" and $subcommand ne "off") {
-        xCAT::SvrUtils::sendmsg([ 1, "please specify on or off for ipmi nodes (stat impossible)" ], $callback, $sessdata->{node}, %allerrornodes);
+        xCAT::SvrUtils::sendmsg([ 1, "Only 'on' or 'off' is supported for IPMI managed nodes."], $callback, $sessdata->{node}, %allerrornodes);
     }
 
     #if stuck with 1.5, say light for 255 seconds.  In 2.0, specify to turn it on forever
