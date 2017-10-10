@@ -126,20 +126,17 @@ elif [ "bridgeprereq" = "$1" ]; then
     NETDESC="$2"
     # get the port for installation
     if [ -n "$INSTALLNIC" ]; then
-        if [[ "$INSTALLNIC" = mac ]] || [[ "$INSTALLNIC" = MAC ]]; then
-            #INSPORT=`ifconfig -a|grep -v inet6| grep -i 'HWaddr '$MACADDRESS|head -n 1|awk '{print $1}'`            
-            INSPORT=`ip -oneline link show|grep -i ether|grep -i $MACADDRESS|awk -F ':' '{print $2}'|grep -o "[^ ]\+\( \+[^ ]\+\)*"`
-        else
-            INSPORT=$INSTALLNIC
-        fi
+        INSPORT=$INSTALLNIC
     elif [ -n "$PRIMARYNIC" ]; then
-        if [[ "$PRIMARYNIC" = mac ]] || [[ "$PRIMARYNIC" = MAC ]]; then
-            INSPORT=`ip -oneline link show|grep -i ether|grep -i $MACADDRESS|awk -F ':' '{print $2}'|grep -o "[^ ]\+\( \+[^ ]\+\)*"`
-        else
-            INSPORT=$PRIMARYNIC
-        fi
-    elif [ -n "$MACADDRESS" ]; then      
-            INSPORT=`ip -oneline link show|grep -i ether|grep -i $MACADDRESS|awk -F ':' '{print $2}'|grep -o "[^ ]\+\( \+[^ ]\+\)*"`
+        INSPORT=$PRIMARYNIC
+    fi
+
+    if ([ -z "$INSPORT" ] || [[  "$INSPORT" =~ ^(mac|MAC)$ ]]) && [ -n "$MACADDRESS" ] ; then
+        INSPORT=$MACADDRESS;
+    fi
+
+    if [[ "$INSPORT"  =~ ^([0-9a-fA-F]{2}:){5}[0-9a-fA-F]{2}$ ]] ; then
+        INSPORT=`ip -oneline link show|grep -i ether|grep -i $INSPORT |awk -F ':' '{print $2}'|grep -o "[^ ]\+\( \+[^ ]\+\)*"`
     fi
 
     if [ -z "$NETDESC" ]; then
