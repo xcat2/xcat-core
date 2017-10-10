@@ -1353,14 +1353,8 @@ sub mkinstall
             if ($::XCATSITEVALS{managedaddressmode} =~ /static/) {
                 my ($ipaddr, $hostname, $gateway, $netmask) = xCAT::NetworkUtils->getNodeNetworkCfg($node);
                 unless ($ipaddr) {
-                    $callback->(
-                        {
-                            error => [
-                                "cannot resolve the ip address of $node"
-                            ],
-                            errorcode => [1]
-                        }
-                    );
+                    xCAT::MsgUtils->report_node_error($callback, $node, "cannot resolve the ip address of $node");
+                    next;
                 }
 
                 if ($gateway eq '<xcatmaster>') {
