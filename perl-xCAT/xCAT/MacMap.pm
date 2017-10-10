@@ -726,7 +726,7 @@ sub refresh_switch {
         my $myport;
 
         my @res=xCAT::Utils->runcmd("ssh -o StrictHostKeyChecking=no -o PasswordAuthentication=no $switch 'bridge fdb show|grep -i -v permanent|tr A-Z a-z  2>/dev/null' 2>/dev/null",-1);
-        unless (@res) {
+        if ($::RUNCMD_RC) {
             xCAT::MsgUtils->message("S", "Failed to get mac table with ssh to $switch, fall back to snmp! To obtain mac table with ssh, please make sure the passwordless root ssh to $switch is available");
         }else{
             foreach (@res){
