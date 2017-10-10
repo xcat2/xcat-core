@@ -131,8 +131,13 @@ elif [ "bridgeprereq" = "$1" ]; then
         INSPORT=$PRIMARYNIC
     fi
 
-    if ([ -z "$INSPORT" ] || [[  "$INSPORT" =~ ^(mac|MAC)$ ]]) && [ -n "$MACADDRESS" ] ; then
-        INSPORT=$MACADDRESS;
+    if [ -z "$INSPORT" ] || [[ "$INSPORT" =~ ^(mac|MAC)$ ]]; then
+        if [ -n "$MACADDRESS" ] ; then   
+            INSPORT=$MACADDRESS;
+        else
+            echo "should configure mac in $NODE definition."
+            exit 1
+        fi
     fi
 
     if [[ "$INSPORT"  =~ ^([0-9a-fA-F]{2}:){5}[0-9a-fA-F]{2}$ ]] ; then
