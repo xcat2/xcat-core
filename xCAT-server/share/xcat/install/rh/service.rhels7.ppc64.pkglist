@@ -27,12 +27,10 @@ openssh-server
 openssl098e.ppc
 openssl098e.ppc64
 util-linux
-perl-DBD-MySQL
 perl-Socket6
 unixODBC
 perl-DBD-MySQL
 mysql-connector-odbc
 perl-DBD-Pg
 wget
-util-linux-ng
 net-tools
