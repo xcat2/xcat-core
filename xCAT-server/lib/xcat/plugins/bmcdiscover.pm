@@ -47,7 +47,6 @@ my $bmc_user;
 my $bmc_pass;
 my $openbmc_user;
 my $openbmc_pass;
-my $openbmc_port = 2200;
 
 #-------------------------------------------------------
 
@@ -668,14 +667,26 @@ sub scan_process {
                 # Set child process default, if not the function runcmd may return error
                 $SIG{CHLD} = 'DEFAULT';
 
-                my $nmap_cmd = "nmap ${$live_ip}[$i] -p $openbmc_port -Pn";
-                my $nmap_output = xCAT::Utils->runcmd($nmap_cmd, -1);
-                if ($nmap_output !~ /$openbmc_port(.+)closed/) {
-                    # If the openbmc_port is anything execpt 'closed' assume it's OpenBMC server
-                    bmcdiscovery_openbmc(${$live_ip}[$i], $opz, $opw, $request_command);
-                } else {
-                    bmcdiscovery_ipmi(${$live_ip}[$i], $opz, $opw, $request_command);
+                my @mc_cmds = ("/opt/xcat/bin/ipmitool-xcat -I lanplus -H ${$live_ip}[$i] -P $openbmc_pass mc info",
+                              "/opt/xcat/bin/ipmitool-xcat -I lanplus -H ${$live_ip}[$i] -U $bmc_user -P $bmc_pass mc info");
+                my $mc_info;
+                my $flag;
+                foreach my $mc_cmd (@mc_cmds) {
+                    $mc_info = xCAT::Utils->runcmd($mc_cmd, -1);
+                    if ($mc_info =~ /Manufacturer ID\s*:\s*(\d+)\s*Manufacturer Name.+\s*Product ID\s*:\s*(\d+)/) {
+                        if ($1 eq "42817" and $2 eq "16975") {
+                            bmcdiscovery_openbmc(${$live_ip}[$i], $opz, $opw, $request_command);
+                            $flag = 1;
+                            last; 
+                        } else {
+                            bmcdiscovery_ipmi(${$live_ip}[$i], $opz, $opw, $request_command);
+                            $flag = 1;
+                            last;
+                        }
+                    }
                 }
+                bmcdiscovery_openbmc(${$live_ip}[$i], $opz, $opw, $request_command) unless ($flag);
+
                 close($parent_fd);
                 exit 0;
             } else {
