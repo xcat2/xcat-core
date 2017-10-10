@@ -1021,7 +1021,7 @@ sub mkinstall
     my $mactab = xCAT::Table->new('mac');
     my %osents = %{ $ostab->getNodesAttribs(\@nodes, [ 'profile', 'os', 'arch', 'provmethod' ]) };
     my %rents = %{ $restab->getNodesAttribs(\@nodes,
-            [ 'xcatmaster', 'nfsserver', 'tftpdir', 'primarynic', 'installnic' ]) };
+            [ 'xcatmaster', 'nfsserver', 'tftpdir', 'primarynic', 'installnic', 'tftpserver' ]) };
     my %hents = %{ $hmtab->getNodesAttribs(\@nodes,
             [ 'serialport', 'serialspeed', 'serialflow' ]) };
     my %macents = %{ $mactab->getNodesAttribs(\@nodes, ['mac']) };
@@ -1068,13 +1068,18 @@ sub mkinstall
         my $netdrivers;
         my $driverupdatesrc;
         my $osupdir;
+        my %tmpl_hash;
 
         my $ient = $rents{$node}->[0];
         if ($ient and $ient->{xcatmaster})
         {
             $xcatmaster = $ient->{xcatmaster};
+            $tmpl_hash{"xcatmaster"} = $xcatmaster;
         } else {
             $xcatmaster = '!myipfn!';
+        }
+        if ($ient and $ient->{tftpserver}) {
+            $tmpl_hash{"tftpserver"} = $ient->{tftpserver};
         }
 
         my $osinst;
@@ -1330,6 +1335,7 @@ sub mkinstall
                 $pkgdir,
                 $platform,
                 $partfile,
+                \%tmpl_hash,
                 $os
               );
         }

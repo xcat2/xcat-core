@@ -496,7 +496,7 @@ sub mkinstall {
     my %osents = %{ $ostab->getNodesAttribs(\@nodes, [ 'profile', 'os', 'arch', 'provmethod' ]) };
     my %rents =
       %{ $restab->getNodesAttribs(\@nodes,
-            [ 'xcatmaster', 'nfsserver', 'primarynic', 'installnic' ]) };
+            [ 'xcatmaster', 'nfsserver', 'primarynic', 'installnic', 'tftpserver' ]) };
     my %hents =
       %{ $hmtab->getNodesAttribs(\@nodes,
             [ 'serialport', 'serialspeed', 'serialflow' ]) };
@@ -537,6 +537,15 @@ sub mkinstall {
         my $pkglistfile;
         my $imagename;    # set it if running of 'nodeset osimage=xxx'
         my $platform;
+        my %tmpl_hash;
+
+        my $ient = $rents{$node}->[0];
+        if ($ient and $ient->{xcatmaster}) {
+            $tmpl_hash{"xcatmaster"} = $ient->{xcatmaster};
+        }
+        if ($ient and $ient->{tftpserver}) {
+            $tmpl_hash{"tftpserver"} = $ient->{tftpserver};
+        }
 
         my $osinst;
         my $ent = $osents{$node}->[0]; #$ostab->getNodeAttribs($node, ['profile', 'os', 'arch']);
@@ -732,7 +741,8 @@ sub mkinstall {
                 $pkglistfile,
                 $pkgdir,
                 $platform,
-                $partitionfile
+                $partitionfile,
+                \%tmpl_hash
               );
         }
 
@@ -752,14 +762,20 @@ sub mkinstall {
                 "",
                 "",
                 "",
-                $partitionfile
+                $partitionfile,
+                \%tmpl_hash
             );
         }
 
         if (-r "$postscript") {
             $posterr = xCAT::Template->subvars($postscript,
                 "$installroot/autoinst/" . $node . ".post",
-                $node
+                $node,
+                "",
+                "",
+                "",
+                "",
+                \%tmpl_hash
             );
         }
 

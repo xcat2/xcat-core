@@ -804,7 +804,7 @@ sub mkinstall
         \@nodes,
         [
             'nfsserver', 'tftpdir', 'xcatmaster',
-            'primarynic', 'installnic'
+            'primarynic', 'installnic', 'tftpserver'
         ]
       );
     my $hments =
@@ -868,11 +868,19 @@ sub mkinstall
         my $driverupdatesrc;
         my $osupdir;
         my $imagename;    # set it if running of 'nodeset osimage=xxx'
+        my %tmpl_hash;
 
         if ($resents->{$node} and $resents->{$node}->[0]->{tftpdir}) {
             $tftpdir = $resents->{$node}->[0]->{tftpdir};
         } else {
             $tftpdir = $globaltftpdir;
+        }
+
+        if ($resents and $resents->{$node}->[0]->{xcatmaster} ) {
+            $tmpl_hash{"xcatmaster"} = $resents->{$node}->[0]->{xcatmaster};
+        }
+        if ($resents and $resents->{$node}->[0]->{tftpserver}) {
+            $tmpl_hash{"tftpserver"} = $resents->{$node}->[0]->{tftpserver};
         }
 
         xCAT::MsgUtils->trace($verbose_on_off, "d", "sles->mkinstall: tftpdir=$tftpdir");
@@ -1060,7 +1068,8 @@ sub mkinstall
                 $pkglistfile,
                 $tmppkgdir,
                 $os,
-                $partfile
+                $partfile,
+                \%tmpl_hash
               );
         }
 
