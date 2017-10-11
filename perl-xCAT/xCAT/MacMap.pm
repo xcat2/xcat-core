@@ -718,6 +718,7 @@ sub refresh_switch {
     my $community = shift;
     my $switch    = shift;
     my %index_to_vlan = ();
+    my %index_to_mac = ();
 
     if($self->{switchparmhash}->{$switch}->{switchtype} eq 'onie'){
         #for cumulus switch, the MAC table can be retrieved with ssh
@@ -760,6 +761,7 @@ sub refresh_switch {
                         }
                     }
                     push @{ $index_to_vlan{$macport} }, $macvlan;
+                    push @{ $index_to_mac{$macport} }, $mymac;
                 }
 
             }
@@ -814,6 +816,38 @@ sub refresh_switch {
         xCAT::MsgUtils->message("I", "MTU information is not availabe for this switch $switch");
     }
 
+    my $iscisco = 0;
+    if ($self->{switchparmhash}->{$switch}->{switchtype} eq 'onie'){
+        my $bridgetoifmap = walkoid($session, '.1.3.6.1.2.1.17.1.4.1.2', ciscowarn => $iscisco, verbose => $self->{show_verbose_info}, switch => $switch, callback => $self->{callback}); # Good for all switches
+        if (not ref $bridgetoifmap or !keys %{$bridgetoifmap}) {
+            xCAT::MsgUtils->message("S", "Error communicating with " . $session->{DestHost} . ": failed to get a valid response to BRIDGE-MIB request");
+            $self->{macinfo}->{$switch}->{ErrorStr} = "Failed to get a valid response to BRIDGE-MIB request";
+            return;
+        }
+        foreach my $boid (keys %$bridgetoifmap) {
+            my $port_index = $boid;
+            my $port_name  = $namemap->{ $bridgetoifmap->{$port_index} };
+            my $mtu  = $iftomtumap->{ $bridgetoifmap->{$port_index} };
+            if (defined($index_to_mac{$port_index})) {
+                push @{ $self->{macinfo}->{$switch}->{$port_name} }, @{ $index_to_mac{$port_index} };
+            }
+            else {
+                $self->{macinfo}->{$switch}->{$port_name}->[0] = '';
+            }
+
+            if (defined($index_to_vlan{$port_index})) {
+                push @{ $self->{vlaninfo}->{$switch}->{$port_name} }, @{ $index_to_vlan{$port_index} };
+            }
+            else {
+                $self->{vlaninfo}->{$switch}->{$port_name}->[0] = '';
+            }
+            push @{ $self->{mtuinfo}->{$switch}->{$port_name} } , $mtu;
+
+        }
+        return;
+
+    }
+
     # get port state
     my $mactostate = walkoid($session, '.1.3.6.1.2.1.17.7.1.2.2.1.3', silentfail => 1, verbose => $self->{show_verbose_info}, switch => $switch, callback => $self->{callback});
 
@@ -855,7 +889,6 @@ sub refresh_switch {
     }
 
     my $vlan;
-    my $iscisco = 0;
     foreach $vlan (sort keys %vlans_to_check) { #Sort, because if numbers, we want 1 first, because that vlan should not get communiy string indexed query
         unless (not $vlan or $vlan eq 'NA' or $vlan eq '1') { #don't subject users to the context pain unless needed
             $iscisco = 1;
@@ -905,7 +938,6 @@ sub refresh_switch {
             }
         }
         if (defined($self->{collect_mac_info})) {
-            my %index_to_mac = ();
             foreach (keys %$mactoindexmap) {
                 my $index     = $mactoindexmap->{$_};
                 my @tmp       = split /\./, $_;
@@ -915,9 +947,7 @@ sub refresh_switch {
                 # Skip "permanent" ports
                 if (!defined($mactostate->{$_}) || $mactostate->{$_} != 4) {
                     push @{ $index_to_mac{$index} }, $macstring;
-                    unless ($self->{switchparmhash}->{$switch}->{switchtype} eq 'onie'){
-                        push @{ $index_to_vlan{$index} }, $vlan;    
-                    }
+                    push @{ $index_to_vlan{$index} }, $vlan;    
                }
             }
             foreach my $boid (keys %$bridgetoifmap) {
