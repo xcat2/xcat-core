@@ -415,39 +415,32 @@ sub process_request
     my $domain;
     my $lockh;
 
+    # lockfile to prevent concurrent executions
+    open($lockh, ">", "/tmp/xcat/hostsfile.lock");
+    flock($lockh, LOCK_EX);
+
+    # save a backup copy
+    my $bakname = "/etc/hosts.xcatbak";
+    copy("/etc/hosts", $bakname);
+
     @hosts = ();
     if ($REMOVE)
     {
-        if (-e "/etc/hosts")
+        # add the localhost entry if trying to create the /etc/hosts from scratch
+        if ($^O =~ /^aix/i)
         {
-            my $bakname = "/etc/hosts.xcatbak";
-            rename("/etc/hosts", $bakname);
-
-            # add the localhost entry if trying to create the /etc/hosts from scratch
-            if ($^O =~ /^aix/i)
-            {
-                push @hosts, "127.0.0.1 loopback localhost\n";
-            }
-            else
-            {
-                push @hosts, "127.0.0.1 localhost\n";
-            }
+            push @hosts, "127.0.0.1 loopback localhost\n";
+        }
+        else
+        {
+            push @hosts, "127.0.0.1 localhost\n";
         }
     }
     else
     {
-        if (-e "/etc/hosts")
-        {
-            my $bakname = "/etc/hosts.xcatbak";
-            copy("/etc/hosts", $bakname);
-        }
-
-
         #  the contents of the /etc/hosts file is saved in the @hosts array
         #    the @hosts elements are updated and used to re-create the
         #    /etc/hosts file at the end by the writeout subroutine.
-        open($lockh, ">", "/tmp/xcat/hostsfile.lock");
-        flock($lockh, LOCK_EX);
         my $rconf;
         open($rconf, "/etc/hosts");    # Read file into memory
         if ($rconf)
