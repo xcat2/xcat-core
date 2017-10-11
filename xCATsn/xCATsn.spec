@@ -46,7 +46,7 @@ Requires: /etc/xinetd.d/tftp
 %ifos linux
 %ifnarch s390x
 # PCM does not use or ship conserver
-Requires: conserver-xcat
+#Requires: conserver-xcat
 %endif
 %endif
 %endif
