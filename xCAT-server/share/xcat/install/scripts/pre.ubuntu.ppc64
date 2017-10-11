@@ -46,7 +46,7 @@ if [ \$# -eq 0 ]; then
     fi
 
     while true; do
-        /usr/bin/nc -l -p 3001 -e /tmp/foo.sh serve_client
+        /usr/bin/nc -l -p 3004 -e /tmp/foo.sh serve_client
     done
 
     exit 1                        # never reached; reboot ends this
