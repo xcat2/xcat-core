@@ -2356,6 +2356,7 @@ sub startnamedonboot
 #-----------------------------------------------------------------------------
 sub upgrade_conserver
 {
+    unless (-x "/usr/sbin/conserver") { return; }	 
     my $version = xCAT::Utils::get_conserver_version();
     if (!$version) {
         return;
