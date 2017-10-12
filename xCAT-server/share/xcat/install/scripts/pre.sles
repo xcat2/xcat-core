@@ -39,7 +39,7 @@ cat >/tmp/foo.awk <<EOF
 #!$AWK -f
 
 BEGIN {
-	ns = "/inet/tcp/3004/0/0"
+	ns = "/inet/tcp/3054/0/0"
 
 	while(1) {
 		ns |& getline
