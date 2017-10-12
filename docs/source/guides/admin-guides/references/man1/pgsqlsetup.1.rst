@@ -85,7 +85,7 @@ OPTIONS
 
 \ **-a|-**\ **-access**\  \ *address*\ 
  
- This option is used to specify additional IP addresses from which the service nodes will connect to the PostgreSQL database.  Without it, only the management node will be configured for database access.  This option can be specified multiple times.
+ This option is used to specify additional IP addresses from which the additional nodes will connect to the PostgreSQL database, for example, service nodes IP addresses or MN HA primary/standby nodes physical IP addresses.  Without it, only the management node will be configured for database access.  This option can be specified multiple times.
  
 
 
