@@ -642,7 +642,8 @@ while [ $idev -gt 0 ]; do
     if [ "$XPROD" = "43707" -a "$IPMIMFG" = '0' ]; then
         ISOPENPOEWR=1
     elif [ "$IPMIMFG" = "10876" ];then
-        # MFG=10876 and PROD=2437 is for BOSTON server and MFG=10876 and PROD=2355 is for B&S server
+        # Handle Supermicro Servers (MFG=10876)
+        # Boston (PROD=2437), Briggs/Stratton (PROD=2355)
         if [ "$XPROD" = "2437" -o "$XPROD" = "2355" ]; then
             ISOPENPOEWR=1
         fi
