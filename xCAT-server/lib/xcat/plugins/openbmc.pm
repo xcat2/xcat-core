@@ -402,14 +402,6 @@ sub preprocess_request {
         $::OPENBMC_FW = $request->{environment}->{XCAT_OPENBMC_FIRMWARE};
     }
 
-    # Provide a way to turn on and off transition state processing, default to off
-    if (ref($request->{environment}) eq 'ARRAY' and ref($request->{environment}->[0]->{XCAT_OPENBMC_POWER_TRANSITION}) eq 'ARRAY') {
-        $::OPENBMC_PWR = $request->{environment}->[0]->{XCAT_OPENBMC_POWER_TRANSITION}->[0];
-    } elsif (ref($request->{environment}) eq 'ARRAY') {
-        $::OPENBMC_PWR = $request->{environment}->[0]->{XCAT_OPENBMC_POWER_TRANSITION};
-    } else {
-        $::OPENBMC_PWR = $request->{environment}->{XCAT_OPENBMC_POWER_TRANSITION};
-    }
     ##############################################
 
     $callback  = shift;
@@ -1338,11 +1330,7 @@ sub rpower_response {
             if ($status_info{RPOWER_ON_RESPONSE}{argv}) {
                 xCAT::SvrUtils::sendmsg("$::POWER_STATE_RESET", $callback, $node);
             } else {
-                if (defined($::OPENBMC_PWR) and ($::OPENBMC_PWR eq "YES")) {
-                    xCAT::SvrUtils::sendmsg("$::STATUS_POWERING_ON", $callback, $node);
-                } else {
-                    xCAT::SvrUtils::sendmsg("$::POWER_STATE_ON", $callback, $node);
-                }
+                xCAT::SvrUtils::sendmsg("$::POWER_STATE_ON", $callback, $node);
             }
             $new_status{$::STATUS_POWERING_ON} = [$node];
         }
@@ -1393,15 +1381,13 @@ sub rpower_response {
             }
         }
 
-        if (defined($::OPENBMC_PWR) and ($::OPENBMC_PWR eq "YES")) {
-            # Print this debug only if testing transition states 
-            print "$node: DEBUG State CurrentBMCState=$bmc_state\n";
-            print "$node: DEBUG State RequestedBMCTransition=$bmc_transition_state\n";
-            print "$node: DEBUG State CurrentPowerState=$chassis_state\n";
-            print "$node: DEBUG State RequestedPowerTransition=$chassis_transition_state\n";
-            print "$node: DEBUG State CurrentHostState=$host_state\n";
-            print "$node: DEBUG State RequestedHostTransition=$host_transition_state\n";
-        }
+        # Print this debug only if testing transition states 
+        print "$node: DEBUG State CurrentBMCState=$bmc_state\n";
+        print "$node: DEBUG State RequestedBMCTransition=$bmc_transition_state\n";
+        print "$node: DEBUG State CurrentPowerState=$chassis_state\n";
+        print "$node: DEBUG State RequestedPowerTransition=$chassis_transition_state\n";
+        print "$node: DEBUG State CurrentHostState=$host_state\n";
+        print "$node: DEBUG State RequestedHostTransition=$host_transition_state\n";
 
         if (defined $status_info{RPOWER_STATUS_RESPONSE}{argv} and $status_info{RPOWER_STATUS_RESPONSE}{argv} =~ /bmcstate$/) { 
             my $bmc_short_state = (split(/\./, $bmc_state))[-1];
@@ -1409,8 +1395,7 @@ sub rpower_response {
         } else {
             if ($chassis_state =~ /Off$/) {
                 # Chassis state is Off, but check if we can detect transition states
-                if ((defined($::OPENBMC_PWR) and ($::OPENBMC_PWR eq "YES")) and
-                        $host_state =~ /Off$/ and $host_transition_state =~ /On$/) {
+                if ($host_state =~ /Off$/ and $host_transition_state =~ /On$/) {
                     if ($node_info{$node}{status_table} and $node_info{$node}{status_table} eq $::STATUS_POWERING_OFF) {
                         xCAT::SvrUtils::sendmsg("$::POWER_STATE_OFF", $callback, $node);
                         $all_status = $::POWER_STATE_OFF;
@@ -1430,8 +1415,7 @@ sub rpower_response {
                     xCAT::SvrUtils::sendmsg("$::POWER_STATE_QUIESCED", $callback, $node) if (!$next_status{ $node_info{$node}{cur_status} });
                 } elsif ($host_state =~ /Running$/) {
                     # Host State is Running (On), but if requested, check transition states 
-                    if ((defined($::OPENBMC_PWR) and ($::OPENBMC_PWR eq "YES")) and
-                           $host_transition_state =~ /Off$/ and $chassis_state =~ /On$/) {
+                    if ($host_transition_state =~ /Off$/ and $chassis_state =~ /On$/) {
                         xCAT::SvrUtils::sendmsg("$::POWER_STATE_POWERING_OFF", $callback, $node);
                     } else {
                         if ($node_info{$node}{status_table} and $node_info{$node}{status_table} eq $::STATUS_POWERING_OFF) {
