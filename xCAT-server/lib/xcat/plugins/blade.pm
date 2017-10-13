@@ -4476,10 +4476,12 @@ sub process_request {
 
         my $mptab = xCAT::Table->new("mp");
         unless ($mptab) { return 2; }
-        my @bladents = $mptab->getAllNodeAttribs([qw(node)]);
+        my @bladents = $mptab->getAllNodeAttribs([qw(node nodetype)]);
         my @blades;
         foreach (@bladents) {
-            push @blades, $_->{node};
+            if ($_->{nodetype} eq "blade") {
+                push @blades, $_->{node};
+            }
         }
         my %invreq;
         $invreq{node}    = \@blades;
