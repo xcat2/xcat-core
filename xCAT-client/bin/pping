@@ -162,7 +162,7 @@ sub fping_pping {
     }
     else
     {
-        if (!-x '/usr/bin/fping')
+        if (!-x '/usr/bin/fping' and !-x '/usr/sbin/fping')
         {
             print "fping is not available, please install missing package fping.\n";
             exit 1;
