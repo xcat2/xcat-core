@@ -33,11 +33,14 @@ xCAT-csm provides Packages for installation of CSM nodes
 rm -rf %{buildroot}
 
 mkdir -p $RPM_BUILD_ROOT/install/postscripts/
+mkdir -p $RPM_BUILD_ROOT/install/custom/netboot/rh/
+mkdir -p $RPM_BUILD_ROOT/install/custom/netboot/rh/cuda/
 mkdir -p $RPM_BUILD_ROOT/%{prefix}/share/xcat/install/rh/
 mkdir -p $RPM_BUILD_ROOT/%{prefix}/share/xcat/netboot/rh/
 
 cp install.rh/* $RPM_BUILD_ROOT/%{prefix}/share/xcat/install/rh/
 cp netboot.rh/* $RPM_BUILD_ROOT/%{prefix}/share/xcat/netboot/rh/
+cp netboot.rh.cuda/* $RPM_BUILD_ROOT/install/custom/netboot/rh/cuda/
 cp install/postscripts/* $RPM_BUILD_ROOT/install/postscripts/
 
 %clean
@@ -48,6 +51,7 @@ rm -rf $RPM_BUILD_ROOT
 %defattr(-,root,root,-)
 %{prefix}
 /install/postscripts
+/install/custom
 %doc
 
 
