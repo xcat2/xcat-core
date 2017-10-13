@@ -20,9 +20,11 @@ use HTTP::Async;
 use HTTP::Cookies;
 use File::Basename;
 use File::Spec;
+use File::Copy qw/copy cp mv move/;
 use Data::Dumper;
 use Getopt::Long;
 use xCAT::OPENBMC;
+use xCAT::RemoteShellExp;
 use xCAT::Utils;
 use xCAT::Table;
 use xCAT::Usage;
@@ -1912,38 +1914,70 @@ sub rspconfig_sshcfg_response {
 
     my $response_info = decode_json $response->content; 
 
-    use xCAT::RShellAPI;
     if ($node_info{$node}{cur_status} eq "RSPCONFIG_SSHCFG_RESPONSE") {
         my $bmcip = $node_info{$node}{bmc};
         my $userid = $node_info{$node}{username}; 
         my $userpw = $node_info{$node}{password};
-        my $filename = "/root/.ssh/id_rsa.pub";
 
-        # Read in contents of the id_rsa.pub file
-        open my $fh, '<', $filename or die "Error opening $filename: $!";
-        my $id_rsa_pub_contents = do { local $/; <$fh> };
+        my $home = xCAT::Utils->getHomeDir("root");
+        #generate the copy.sh to do real work on target bmc
+        open(FILE, ">$home/.ssh/copy.sh")
+          or die "cannot open file $home/.ssh/copy.sh\n";
+        print FILE "#!/bin/sh
+umask 0077
+home=`egrep \"^$userid:\" /etc/passwd | cut -f6 -d :`
+if [ -n \"\$home\" ]; then
+  dest_dir=\"\$home/.ssh\"
+else
+  home=`su - root -c pwd`
+  dest_dir=\"\$home/.ssh\"
+fi
+mkdir -p \$dest_dir
+cat /tmp/$userid/.ssh/id_rsa.pub >> \$home/.ssh/authorized_keys 2>&1
+rm -f /tmp/$userid/.ssh/* 2>&1
+rmdir \"/tmp/$userid/.ssh\"
+rmdir \"/tmp/$userid\" \n";
+        close FILE;
+        chmod 0700, "$home/.ssh/copy.sh";
 
-        # Login and append content of the read in id_rsa.pub file to the authorized_keys file on BMC
-        my $output = xCAT::RShellAPI::run_remote_shell_api($bmcip, $userid, $userpw, 0, 0, "mkdir -p ~/.ssh; echo \"$id_rsa_pub_contents\" >> ~/.ssh/authorized_keys");
-
-        # If error was returned from executing command above. Display it to the user.
-        # output[0] contains 1 is error, output[1] contains error messages
-        if (@$output[0] == 1) {
-            xCAT::SvrUtils::sendmsg("Error copying ssh keys to $bmcip:\n" . @$output[1], $callback, $node);
+        mkdir "$home/.ssh/tmp";
+        # create authorized_keys file to be appended to target
+        if (-f "/etc/xCATMN") {    # if on Management Node
+            copy("$home/.ssh/id_rsa.pub","$home/.ssh/tmp/authorized_keys");
+        } else {
+            copy("$home/.ssh/authorized_keys","$home/.ssh/tmp/authorized_keys");
         }
-        # For unknown reason, "echo" command above can fail (1 in 5), but return code 0 still returned.
-        # There is nothing we can do but to just test if authorized_keys file was not created 
-        # and ask the user to rerun the command
-        my $file_test_output = xCAT::RShellAPI::run_remote_shell_api($bmcip, $userid, $userpw, 0, 0, "[ ! -f ~/.ssh/authorized_keys ] && uptime");
-        if (@$file_test_output[1] =~ "load average") {
-            # If file was not there, we run "uptime" command and then look for "load average" in the output.
-            # If file was there, "uptime" command is not executed
+
+
+        #backup the previous $ENV{DSH_REMOTE_PASSWORD},$ENV{'DSH_FROM_USERID'}
+        my $bak_DSH_REMOTE_PASSWORD=$ENV{'DSH_REMOTE_PASSWORD'};
+        my $bak_DSH_FROM_USERID=$ENV{'DSH_FROM_USERID'};
+
+        #xCAT::RemoteShellExp->remoteshellexp dependes on environment
+        #variables $ENV{DSH_REMOTE_PASSWORD},$ENV{'DSH_FROM_USERID'}
+        $ENV{'DSH_REMOTE_PASSWORD'}=$userpw;
+        $ENV{'DSH_FROM_USERID'}=$userid;
+
+        #send ssh public key from MN to bmc
+        my $rc=xCAT::RemoteShellExp->remoteshellexp("s",$callback,"/usr/bin/ssh",$bmcip,10);
+        if ($rc) {
+            xCAT::SvrUtils::sendmsg("Error copying ssh keys to $bmcip\n", $callback, $node);
+        }
+
+        #check whether the ssh keys has been sent successfully
+        $rc=xCAT::RemoteShellExp->remoteshellexp("t",$callback,"/usr/bin/ssh",$bmcip,10);
+        if ($rc) {
             xCAT::SvrUtils::sendmsg("Error copying ssh keys to $bmcip Rerun rspconfig command.", $callback, $node);
         }
         else {
             xCAT::SvrUtils::sendmsg("ssh keys copied to $bmcip", $callback, $node);
         }
+
+        #restore env variables
+        $ENV{'DSH_REMOTE_PASSWORD'}=$bak_DSH_REMOTE_PASSWORD;
+        $ENV{'DSH_FROM_USERID'}=$bak_DSH_FROM_USERID;
     }
+
     if ($next_status{ $node_info{$node}{cur_status} }) {
         $node_info{$node}{cur_status} = $next_status{ $node_info{$node}{cur_status} };
         gen_send_request($node);
