@@ -80,9 +80,9 @@ Setup xCAT on the Primary Management Node
 
    The option ``firstalias`` will configure the Virtual IP ahead of the interface ip address, since ifconfig will not make the ip address configuration be persistent through reboots, so the Virtual IP address needs to be re-configured right after the management node is rebooted. This non-persistent Virtual IP address is designed to avoid ip address conflict when the crashed previous primary management is recovered with the Virtual IP address configured.
 
-#. Add the alias ip address into the ``/etc/resolv.conf`` as the nameserver. Change the hostname resolution order to be using ``/etc/hosts`` before using name server, change to "hosts: files dns" in ``/etc/nsswitch.conf``.
+#. Add the alias ip address ``9.114.47.97`` into the ``/etc/resolv.conf`` as the nameserver. Change the hostname resolution order to be using ``/etc/hosts`` before using name server, change to "hosts: files dns" in ``/etc/nsswitch.conf``.
 
-#. Change hostname to the hostname that resolves to the Virtual IP address, add the slias ip address and its hostname into the ``/etc/hosts``. This is required for xCAT and database to be setup properly.
+#. Change hostname to the hostname that resolves to the Virtual IP address ``9.114.47.97``, add the alias ip address and its hostname ``9.114.47.97 rhmn`` into the ``/etc/hosts``. This is required for xCAT and database to be setup properly.
 
 #. Install xCAT. The procedure described in :doc:`xCAT Install Guide <../../guides/install-guides/index>` could be used for the xCAT setup on the primary management node.
 
@@ -158,11 +158,11 @@ Setup xCAT on the Primary Management Node
 Setup xCAT on the Standby Management Node
 =========================================
 
-#. Make sure the standby management node is NOT using the shared data.  
+#. Make sure the standby management node is NOT using the shared data. 
 
-#. Add the alias ip address into the ``/etc/resolv.conf`` as the nameserver. Change the hostname resolution order to be using ``/etc/hosts`` before using name server. Change "hosts: files dns" in /etc/nsswitch.conf.
+#. Add the alias ip address ``9.114.47.97`` into the ``/etc/resolv.conf`` as the nameserver. Change the hostname resolution order to be using ``/etc/hosts`` before using name server. Change "hosts: files dns" in /etc/nsswitch.conf.
 
-#. Temporarily change the hostname to the hostname that resolves to the Virtual IP address, add the slias ip address and its hostname into the ``/etc/hosts``. This is required for xCAT and database to be setup properly. This only needs to be done one time.
+#. Temporarily change the hostname to the hostname that resolves to the Virtual IP address ``9.114.47.97``, add the alias ip address and its hostname ``9.114.47.97 rhmn`` into the ``/etc/hosts``. This is required for xCAT and database to be setup properly. This only needs to be done one time.
 
    Also configure the Virtual IP address during this setup. ::
 
@@ -375,6 +375,7 @@ On the new primary management node:
     service dhcpd start
     service xcatd start
     service conserver start
+    service hdwr_svr start # DFM only
 
 #. (DFM only) Setup connection for CEC and Frame: ::
 
