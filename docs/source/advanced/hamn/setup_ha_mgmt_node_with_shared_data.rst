@@ -436,11 +436,12 @@ The operating system is installed on the internal disks.
 
    Output will be similar to: ::
 
-    /dev/sdd /dev/sdc /dev/sdb /dev/sda
+    /dev/sde /dev/sdd /dev/sdc /dev/sdb /dev/sda
     /dev/sg0 [=/dev/sda  scsi0 ch=0 id=1 lun=0]
     /dev/sg1 [=/dev/sdb  scsi0 ch=0 id=2 lun=0]
     /dev/sg2 [=/dev/sdc  scsi0 ch=0 id=3 lun=0]
     /dev/sg3 [=/dev/sdd  scsi0 ch=0 id=4 lun=0]
+    /dev/sg4 [=/dev/sde  scsi0 ch=0 id=5 lun=0]
 
    Use the ``sginfo -s <device_name>`` to identify disks with the same serial number on both management nodes, for example: 
 
@@ -474,6 +475,7 @@ The operating system is installed on the internal disks.
     mkfs.ext3 -v /dev/sdc2
     mkfs.ext3 -v /dev/sdc3
     mkfs.ext3 -v /dev/sdc4
+    mkfs.ext3 -v /dev/sdc5
 
    If you place entries for the disk in ``/etc/fstab``, which is not required, ensure that the entries do not have the system automatically mount the disk. 
 
@@ -486,14 +488,16 @@ The operating system is installed on the internal disks.
      mount /dev/sdc1 /etc/xcat
      mount /dev/sdc2 /install
      mount /dev/sdc3 ~/.xcat
-     mount /dev/sdc4 /db2database
+     mount /dev/sdc4 /<dbdirectory>
+     mount /dev/sdc5 /tftpboot
 
    After that, umount the file system on the primary management node: ::
 
      umount /etc/xcat
      umount /install
      umount ~/.xcat 
-     umount /db2database
+     umount /<dbdirectory>
+     umount /tftpboot
 
 #. Verify the file systems on the standby management node.
 
@@ -502,7 +506,8 @@ The operating system is installed on the internal disks.
      mount /dev/sdc1 /etc/xcat
      mount /dev/sdc2 /install
      mount /dev/sdc3 ~/.xcat
-     mount /dev/sdc4 /db2database
+     mount /dev/sdc4 /<dbdirectory>
+     mount /dev/sdc5/tftpboot
 
    You may get errors "mount: you must specify the filesystem type" or "mount: special device /dev/sdb1 does not exist" when trying to mount the file systems on the standby management node, this is caused by the missing devices files on the standby management node, run ``fidsk /dev/sdx`` and simply select "w write table to disk and exit" in the fdisk menu, then retry the mount. 
 
@@ -511,5 +516,6 @@ The operating system is installed on the internal disks.
     umount /etc/xcat
     umount /install
     umount ~/.xcat
-    umount /db2database
+    umount /<dbdirectory>
+    umount /tftpboot
 
