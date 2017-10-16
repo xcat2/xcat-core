@@ -810,6 +810,18 @@ sub refresh_switch {
         return;
     }
 
+    #check if it is Mellanox IB switch
+    foreach (keys %{$namemap}) {
+        my $ifname = $namemap->{$_};
+        if ($self->{collect_mac_info}) {
+            if ( ($ifname =~ /IB/) || ($ifname =~ /ib/) ) {
+                $self->{macinfo}->{$switch}->{ErrorStr} = "This command does not support Mellanox IB Switch";
+                return;
+            }
+        } 
+        last;
+    }
+
     # get mtu
     my $iftomtumap = walkoid($session, '.1.3.6.1.2.1.2.2.1.4', silentfail => 1, verbose => $self->{show_verbose_info}, switch => $switch, callback => $self->{callback});
     unless (defined($iftomtumap)) {
