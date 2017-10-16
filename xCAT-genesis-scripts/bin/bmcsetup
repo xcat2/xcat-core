@@ -640,17 +640,17 @@ while [ $idev -gt 0 ]; do
 
     logger -s -t $log_label -p local4.info "Lighting Identify Light"
     if [ "$XPROD" = "43707" -a "$IPMIMFG" = '0' ]; then
-        ISOPENPOEWR=1
+        ISOPENPOWER=1
     elif [ "$IPMIMFG" = "10876" ];then
         # Handle Supermicro Servers (MFG=10876)
         # Boston (PROD=2437), Briggs/Stratton (PROD=2355)
         if [ "$XPROD" = "2437" -o "$XPROD" = "2355" ]; then
-            ISOPENPOEWR=1
+            ISOPENPOWER=1
         fi
     fi
  
     
-    if [ "$ISOPENPOEWR" = '1' ]; then
+    if [ "$ISOPENPOWER" = '1' ]; then
         # OpenPOWER BMC specific, turn on the LED beacon light.  
         #   - default interval, # ipmitool chassis identify
         #                         Chassis identify interval: default (15 seconds)
