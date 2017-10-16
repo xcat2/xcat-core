@@ -104,6 +104,9 @@ my @snmpcs = xCAT::TableUtils->get_site_attribute("snmpc");
 my $tmp    = $snmpcs[0];
 if (defined($tmp)) { $community = $tmp }
 
+# get master
+my @masters = xCAT::TableUtils->get_site_attribute("master");
+my $master  = $masters[0];
 
 if (($::IP) || ($::ALL)) {
     config_ip();
@@ -209,6 +212,11 @@ sub config_ip {
         $cmd="xdsh $dswitch -t 10 -l admin --devicetype IBSwitch::Mellanox 'enable;configure terminal;no interface mgmt0 dhcp;interface mgmt0 ip address $static_ip $mask;configuration write;exit;exit' ";
         $rc= xCAT::Utils->runcmd($cmd, 0);
 
+        if (!$p->ping($static_ip)) {
+            print "$switch:  Failed to change ip address to $static_ip\n";
+            next;
+        }
+
         push (@discover_switches, $dswitch);
         push (@config_switches, $switch);
         print "$switch: Changing IP address to static IP $static_ip\n";
@@ -239,6 +247,11 @@ sub config_hostname {
     my @config_switches;
     my $switchtab = xCAT::Table->new('switches');
     my $switchhash = $switchtab->getNodesAttribs(\@nodes,['sshusername']);
+
+    # get the site domain value
+    my @domains    = xCAT::TableUtils->get_site_attribute("domain");
+    my $sitedomain = $domains[0];
+
     foreach my $switch (@nodes) {
         my $user= $switchhash->{$switch}->[0]->{sshusername};
         if (!$user) {
@@ -247,7 +260,10 @@ sub config_hostname {
             $rc= xCAT::Utils->runcmd($cmd, 0);
             $user="admin";
         }
-        $cmd="xdsh $switch -l $user --devicetype IBSwitch::Mellanox 'enable;configure terminal;hostname $switch;configuration write' ";
+        $cmd = "makehosts $switch";
+        $rc= xCAT::Utils->runcmd($cmd, 0);
+
+        $cmd="xdsh $switch -l $user --devicetype IBSwitch::Mellanox 'enable;configure terminal;hostname $switch;ip name-server $master;ip domain-list $sitedomain;ip default-gateway $master;configuration write' ";
         $rc= xCAT::Utils->runcmd($cmd, 0);
         if ($::RUNCMD_RC != 0) {
             xCAT::MsgUtils->message("E","Failed to setup hostname for $switch");
@@ -330,7 +346,7 @@ sub run_rspconfig {
     my @config_switches;
     my $switchtab = xCAT::Table->new('switches');
     my $switchhash = $switchtab->getNodesAttribs(\@nodes,['sshusername']);
-    $master = `hostname -i`;
+
     foreach my $switch (@nodes) {
         my $user= $switchhash->{$switch}->[0]->{sshusername};
 
@@ -341,7 +357,9 @@ sub run_rspconfig {
         $cmd=`rspconfig $switch logdest=$master`;
 
         # config ntp
-        $cmd = `xdsh $switch -l $user --devicetype IBSwitch::Mellanox "enable;configure terminal;ntp enable;ntpdate $master; ntp server $master;configuration write;show ntp" `;
+        $cmd = "xdsh $switch -l $user --devicetype IBSwitch::Mellanox 'enable;configure terminal;ntp enable;ntpdate $master; ntp server $master;configuration write;show ntp' ";
+        $rc= xCAT::Utils->runcmd($cmd, 0);
+
         push (@config_switches, $switch);
     }
     if (@config_switches) {

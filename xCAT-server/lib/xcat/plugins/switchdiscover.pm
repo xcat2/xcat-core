@@ -1467,6 +1467,10 @@ sub switchsetup {
                 send_msg($request, 0, "output = $out\n");
             } else {
                 send_msg($request, 0, "call to config $mytype switches $switches\n");
+                if ($mytype =~ /Mellanox/) {
+                    send_msg($request, 0, "NOTE: If command takes too long for Mellanox IB switch, please CTRL C out of the command\n");
+                    send_msg($request, 0, "then run $config_script --switches $switches --all\n");
+                }
                 my $out = `$config_script --switches $switches --all`;
                 send_msg($request, 0, "output = $out\n");
             }
