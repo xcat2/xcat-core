@@ -1976,6 +1976,9 @@ rmdir \"/tmp/$userid\" \n";
         #restore env variables
         $ENV{'DSH_REMOTE_PASSWORD'}=$bak_DSH_REMOTE_PASSWORD;
         $ENV{'DSH_FROM_USERID'}=$bak_DSH_FROM_USERID;
+
+        #remove intermediate files
+        unlink "$home/.ssh/copy.sh","$home/.ssh/tmp/authorized_keys";
     }
 
     if ($next_status{ $node_info{$node}{cur_status} }) {
