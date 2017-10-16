@@ -364,11 +364,11 @@ On the new primary management node:
 
    * **[MySQL]** ::
 
-    service mysql start
+        service mysql start
 
    * **[PostgreSQL]** ::
 
-    service postgresql start
+        service postgresql start
 
 #. Start the daemons: ::
 
