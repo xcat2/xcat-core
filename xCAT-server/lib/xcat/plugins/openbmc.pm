@@ -29,6 +29,7 @@ use xCAT::Usage;
 use xCAT::SvrUtils;
 use xCAT::GlobalDef;
 use xCAT_monitoring::monitorctrl;
+use POSIX qw(WNOHANG);
 
 $::VERBOSE                  = 0;
 # String constants for rbeacon states
@@ -95,7 +96,8 @@ my %sensor_units = (
     "$prefix.Sensor.Value.Unit.Amperes" => "Amps",
     "$prefix.Sensor.Value.Unit.Watts" => "Watts",
     "$prefix.Sensor.Value.Unit.Joules" => "Joules"
-); 
+);
+my %child_node_map;   # pid => node
 
 my $http_protocol="https";
 my $openbmc_url = "/org/openbmc";
@@ -157,8 +159,7 @@ my %status_info = (
         process        => \&rflash_response,
     },
     RFLASH_FILE_UPLOAD_REQUEST  => {
-        method         => "PUT",
-        init_url       => "$openbmc_project_url/upload/image/",
+        process        => \&rflash_response,
     },
     RFLASH_FILE_UPLOAD_RESPONSE => {
         process        => \&rflash_response,
@@ -531,6 +532,18 @@ sub process_request {
         last unless ($wait_node_num);
         while (my ($response, $handle_id) = $async->wait_for_next_response) {
             deal_with_response($handle_id, $response);
+        }
+        while ((my $cpid = waitpid(-1, WNOHANG)) > 0) {
+            if ($child_node_map{$cpid}) {
+                my $node = $child_node_map{$cpid};
+                my $rc = $? >> 8;
+                if ($rc != 0) {
+                    $wait_node_num--;
+                } else {
+                    $status_info{ $node_info{$node}{cur_status} }->{process}->($node, undef);
+                }
+                delete $child_node_map{$cpid};
+            }
         }
     } 
 
@@ -1291,12 +1304,14 @@ sub process_debug_info {
 sub login_response {
     my $node = shift;
     my $response = shift;
-
     if ($next_status{ $node_info{$node}{cur_status} }) {
         $node_info{$node}{cur_status} = $next_status{ $node_info{$node}{cur_status} };
-        gen_send_request($node);
+        if ($node_info{$node}{method} || $status_info{ $node_info{$node}{cur_status} }{method}) {
+            gen_send_request($node);
+        } elsif ($status_info{ $node_info{$node}{cur_status} }->{process}) {
+            $status_info{ $node_info{$node}{cur_status} }->{process}->($node, undef);
+        }
     }
-
     return;
 }
 
@@ -2051,9 +2066,10 @@ sub rvitals_response {
 sub rflash_response {
     my $node = shift;
     my $response = shift;
-
-    my $response_info = decode_json $response->content;
-
+    my $response_info;
+    if (defined($response)) {
+        $response_info = decode_json $response->content;
+    }
     my $update_id;
     my $update_activation = "Unknown";
     my $update_purpose;
@@ -2094,7 +2110,7 @@ sub rflash_response {
         }
         xCAT::SvrUtils::sendmsg("", $callback, $node); #Separate output in case more than 1 endpoint
     }
-    if ($node_info{$node}{cur_status} eq "RFLASH_FILE_UPLOAD_RESPONSE") {
+    if ($node_info{$node}{cur_status} eq "RFLASH_FILE_UPLOAD_REQUEST") {
         #
         # Special processing for file upload
         #
@@ -2104,43 +2120,14 @@ sub rflash_response {
         # TODO: Remove this block when proper request can be generated
         #
         if ($::UPLOAD_FILE) {
-            my $request_url = "$http_protocol://" . $node_info{$node}{bmc};
-            my $content_login = '{ "data": [ "' . $node_info{$node}{username} .'", "' . $node_info{$node}{password} . '" ] }';
-            my $content_logout = '{ "data": [ ] }';
-
-            # curl commands
-            my $curl_login_cmd  = "curl -c cjar -k -H 'Content-Type: application/json' -X POST $request_url/login -d '" . $content_login . "'";
-            my $curl_logout_cmd = "curl -b cjar -k -H 'Content-Type: application/json' -X POST $request_url/logout -d '" . $content_logout . "'";
-            my $curl_upload_cmd = "curl -b cjar -k -H 'Content-Type: application/octet-stream' -X PUT -T " . $::UPLOAD_FILE . " $request_url/upload/image/";
-
-            # Try to login
-            my $curl_login_result = `$curl_login_cmd`;
-            my $h = from_json($curl_login_result); # convert command output to hash
-            if ($h->{message} eq $::RESPONSE_OK) {
-                # Login successfull, upload the file
-                xCAT::SvrUtils::sendmsg("Uploading $::UPLOAD_FILE ...", $callback, $node);
-                if ($xcatdebugmode) { 
-                    my $debugmsg = "RFLASH_FILE_UPLOAD_RESPONSE: CMD: $curl_upload_cmd";
-                    process_debug_info($node, $debugmsg);
-                }
-                my $curl_upload_result = `$curl_upload_cmd`;
-                $h = from_json($curl_upload_result); # convert command output to hash
-                if ($h->{message} eq $::RESPONSE_OK) {
-                    # Upload successful, display message
-                    if ($::UPLOAD_AND_ACTIVATE) { 
-                        xCAT::SvrUtils::sendmsg("Upload successful. Attempting to activate firmware: $::UPLOAD_FILE_VERSION", $callback, $node);
-                    } else {
-                        xCAT::SvrUtils::sendmsg("Successful, use -l option to list.", $callback, $node);
-                    }
-                    # Try to logoff, no need to check result, as there is nothing else to do if failure
-                    my $curl_logout_result = `$curl_logout_cmd`;
-                }
-                else {
-                    xCAT::SvrUtils::sendmsg("Failed to upload update file $::UPLOAD_FILE :" . $h->{message} . " - " . $h->{data}->{description}, $callback, $node);
-                }
-            }
-            else {
-                xCAT::SvrUtils::sendmsg("Unable to login :" . $h->{message} . " - " . $h->{data}->{description}, $callback, $node);
+            my $child = xCAT::Utils->xfork;
+            if (!defined($child)) {
+                xCAT::SvrUtils::sendmsg("Failed to fork child process to upload firmware image.", $callback, $node);
+                sleep(1)
+            } elsif ($child == 0) {
+                exit(rflash_upload($node, $callback))
+            } else {
+                $child_node_map{$child} = $node;
             }
         }
     }
@@ -2257,10 +2244,57 @@ sub rflash_response {
 
     if ($next_status{ $node_info{$node}{cur_status} }) {
         $node_info{$node}{cur_status} = $next_status{ $node_info{$node}{cur_status} };
-        gen_send_request($node);
+        if ($node_info{$node}{method} || $status_info{ $node_info{$node}{cur_status} }{method}) {
+            gen_send_request($node);
+        }
     } else {
         $wait_node_num--;
     }
     return;
+}
+
+sub rflash_upload {
+    my ($node, $callback) = @_;
+    my $request_url = "$http_protocol://" . $node_info{$node}{bmc};
+    my $content_login = '{ "data": [ "' . $node_info{$node}{username} .'", "' . $node_info{$node}{password} . '" ] }';
+    my $content_logout = '{ "data": [ ] }';
+    my $cjar_id = "/tmp/_xcat_cjar.$node";
+    # curl commands
+    my $curl_login_cmd  = "curl -c $cjar_id -k -H 'Content-Type: application/json' -X POST $request_url/login -d '" . $content_login . "'";
+    my $curl_logout_cmd = "curl -b $cjar_id -k -H 'Content-Type: application/json' -X POST $request_url/logout -d '" . $content_logout . "'";
+    my $curl_upload_cmd = "curl -b $cjar_id -k -H 'Content-Type: application/octet-stream' -X PUT -T " . $::UPLOAD_FILE . " $request_url/upload/image/";
+
+    # Try to login
+    my $curl_login_result = `$curl_login_cmd`;
+    my $h = from_json($curl_login_result); # convert command output to hash
+    if ($h->{message} eq $::RESPONSE_OK) {
+        # Login successfull, upload the file
+        xCAT::SvrUtils::sendmsg("Uploading $::UPLOAD_FILE ...", $callback, $node);
+        if ($xcatdebugmode) {
+            my $debugmsg = "RFLASH_FILE_UPLOAD_RESPONSE: CMD: $curl_upload_cmd";
+            process_debug_info($node, $debugmsg);
+        }
+        my $curl_upload_result = `$curl_upload_cmd`;
+        $h = from_json($curl_upload_result); # convert command output to hash
+        if ($h->{message} eq $::RESPONSE_OK) {
+            # Upload successful, display message
+            if ($::UPLOAD_AND_ACTIVATE) {
+                xCAT::SvrUtils::sendmsg("Upload successful. Attempting to activate firmware: $::UPLOAD_FILE_VERSION", $callback, $node);
+            } else {
+                xCAT::SvrUtils::sendmsg("Successful, use -l option to list.", $callback, $node);
+            }
+            # Try to logoff, no need to check result, as there is nothing else to do if failure
+            my $curl_logout_result = `$curl_logout_cmd`;
+        }
+        else {
+            xCAT::SvrUtils::sendmsg("Failed to upload update file $::UPLOAD_FILE :" . $h->{message} . " - " . $h->{data}->{description}, $callback, $node);
+            return 1;
+        }
+    }
+    else {
+        xCAT::SvrUtils::sendmsg("Unable to login :" . $h->{message} . " - " . $h->{data}->{description}, $callback, $node);
+        return 1;
+    }
+    return 0;
 }
 1;
