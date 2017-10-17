@@ -1077,6 +1077,37 @@ sub parse_command_status {
 }
 
 #-------------------------------------------------------
+#
+#=head3  get_functional_software_ids
+#
+#  Checks if the FW response data contains "functional" which 
+#  indicates the actual software version currently running on 
+#  the Server.  
+#
+#  Returns: reference to hash
+#
+#  =cut
+#
+#-------------------------------------------------------
+sub get_functional_software_ids {
+    my $response = shift;
+    my %functional;
+
+    #
+    # Get the functional IDs to accurately mark the active running FW
+    #
+    if (${ $response->{data} }{'/xyz/openbmc_project/software/functional'} ) { 
+        my %func_data = %{ ${ $response->{data} }{'/xyz/openbmc_project/software/functional'} };
+        foreach my $fw_idx (keys $func_data{endpoints}) {
+            my $fw_id = (split(/\//, $func_data{endpoints}[$fw_idx]))[-1];
+            $functional{$fw_id} = 1;
+        }
+    }
+
+    return \%functional;
+}
+
+#-------------------------------------------------------
 
 =head3  parse_node_info
 
@@ -2077,21 +2108,11 @@ sub rflash_response {
     my $update_priority = -1;
 
     if ($node_info{$node}{cur_status} eq "RFLASH_LIST_RESPONSE") {
-        #
         # Get the functional IDs to accurately mark the active running FW
-        #
-        my %functional;
-        if (${ $response_info->{data} }{'/xyz/openbmc_project/software/functional'} ) { 
-            my %func_data = %{ ${ $response_info->{data} }{'/xyz/openbmc_project/software/functional'} };
-            foreach my $fw_idx (keys $func_data{endpoints}) {
-                my $fw_id = (split(/\//, $func_data{endpoints}[$fw_idx]))[-1];
-                $functional{$fw_id} = 1;
-            }
-        }
-
-        if (!%functional) {
+        my $functional = get_functional_software_ids($response_info);
+        if (!%{$functional}) {
             # Inform users that the older firmware levels does not correctly reflect Active version
-            xCAT::SvrUtils::sendmsg("WARNING, The active firmware does not allow correct detecting of running firmware.", $callback, $node);
+            xCAT::SvrUtils::sendmsg("WARNING, The current firmware version is unable to detect running firmware version.", $callback, $node);
         }
 
         # Display "list" option header and data
@@ -2118,7 +2139,7 @@ sub rflash_response {
             if (defined($content{Priority}))  {
                 $update_priority = (split(/\./, $content{Priority}))[ -1 ];
             }
-            if (exists($functional{$update_id}) ) {
+            if (exists($functional->{$update_id}) ) {
                 #
                 # If the firmware ID exists in the hash, this indicates the really active running FW
                 #
@@ -2126,7 +2147,7 @@ sub rflash_response {
             } elsif ($update_priority == 0) {
                 # Priority attribute of 0 indicates the firmware to be activated on next boot 
                 my $indicator = "(+)";
-                if (!%functional) {
+                if (!%{$functional}) {
                     # cannot detect, so mark firmware as Active
                     $indicator = "(*)";
                 }
