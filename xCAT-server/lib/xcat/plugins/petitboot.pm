@@ -89,8 +89,7 @@ sub setstate {
     my $tftpdir      = shift;
     my %nrhash       = %{ shift() };
     my $linuximghash = shift();
-    my $kern = $bphash{$node}->[0]; #$bptab->getNodeAttribs($node,['kernel','initrd','kcmdline']);
-      #my $nodereshash=$noderestab->getNodesAttribs(\@nodes,['tftpdir','xcatmaster','nfsserver', 'servicenode']);
+    my $kern = $bphash{$node}->[0]; 
 
     if ($kern->{kernel} !~ /^$tftpdir/) {
         my $nodereshash = $nrhash{$node}->[0];
@@ -110,12 +109,7 @@ sub setstate {
         my @ipfnd = xCAT::NetworkUtils->my_ip_facing($node);
 
         if ($ipfnd[0] == 1) {
-            $::callback->(
-                {
-                    error     => [ $ipfnd[1] ],
-                    errorcode => [1]
-                });
-            return;
+            return (1, $ipfnd[1]);
         }
         elsif ($ipfnd[0] == 2) {
             my $servicenodes = $nrhash{$node}->[0];
@@ -125,27 +119,11 @@ sub setstate {
 
                     # We are in the service node pools, print error if no facing ip.
                     if (xCAT::InstUtils->is_me($sn)) {
-                        $::callback->(
-                            {
-                                error => [
-                                    "$::myxcatname: $ipfnd[1] on service node $sn"
-                                ],
-                                errorcode => [1]
-                            }
-                        );
-                        return;
+                        return (1, "$::myxcatname: $ipfnd[1] on service node $sn");
                     }
                 }
             } else {
-                $::callback->(
-                    {
-                        error => [
-                            "$::myxcatname: $ipfnd[1]"
-                        ],
-                        errorcode => [1]
-                    }
-                );
-                return;
+                return (1, "$::myxcatname: $ipfnd[1]");
             }
         } else {
             $ipfn = $ipfnd[1];
@@ -172,9 +150,11 @@ sub setstate {
     unless (-d "$bootloader_root") {
         mkpath("$bootloader_root");
     }
-    my $nodemac;
 
-    my $cref = $chainhash{$node}->[0]; #$chaintab->getNodeAttribs($node,['currstate']);
+    my $cref = $chainhash{$node}->[0];
+    unless ($cref->{currstate}) { # the currstate should be set during 'setdestiny'
+        return (1, "Cannot determine current state for this node");
+    }
 
     my $pcfg;
     # remove the old boot configuration file and create a new one, but only if not offline directive
@@ -183,21 +163,8 @@ sub setstate {
         open($pcfg, '>', "$bootloader_root/" . $node);
         print $pcfg "#" . $cref->{currstate} . "\n";
     }
-    $normalnodes{$node} = 1;   #Assume a normal netboot (well, normal dhcp,
-                               #which is normally with a valid 'filename' field,
-      #but the typical ppc case will be 'special' makedhcp
-      #to clear the filename field, so the logic is a little
-      #opposite
-      #  $sub_req->({command=>['makedhcp'], #This is currently batched elswhere
-      #         node=>[$node]},$callback);  #It hopefully will perform correctly
 
     if ($cref and $cref->{currstate} eq "boot") {
-        $breaknetbootnodes{$node} = 1;
-        delete $normalnodes{$node}; #Signify to omit this from one makedhcp command
-         #$sub_req->({command=>['makedhcp'], #batched elsewhere, this code is stale, hopefully
-         #       node=>[$node],
-         #        arg=>['-s','filename = \"xcat/nonexistant_file_to_intentionally_break_netboot_for_localboot_to_work\";']},$callback);
-         #print $pcfg "bye\n";
         close($pcfg);
     } elsif ($kern and $kern->{kernel} and $cref and $cref->{currstate} ne "offline") {
 
@@ -222,8 +189,7 @@ sub setstate {
     }
     my $ip = xCAT::NetworkUtils->getipaddr($node);
     unless ($ip) {
-        syslog("local1|err", "xCAT unable to resolve IP for $node in petitboot plugin");
-        return;
+        return (1, "xCAT unable to resolve IP for $node in petitboot plugin.");
     }
 
     my @ipa = split(/\./, $ip);
@@ -235,29 +201,43 @@ sub setstate {
     if ($cref and $cref->{currstate} ne "offline") {
         link("$bootloader_root/" . $node, "$tftpdir/" . $pname);
     }
-    return;
+    return (0, "");
 }
-
 
 
 my $errored = 0;
 
 sub pass_along {
     my $resp = shift;
+    return unless ($resp); 
 
-    #    print Dumper($resp);
-
-    $callback->($resp);
-    if ($resp and ($resp->{errorcode} and $resp->{errorcode}->[0]) or ($resp->{error} and $resp->{error}->[0])) {
-        $errored = 1;
+    my $failure = 0;
+    if ($resp->{errorabort}) { # Global error, it normally means to stop the parent execution. For example, DB operation error.
+        $failure = 2;
+        delete $resp->{errorabort};
+    } elsif (($resp->{errorcode} and $resp->{errorcode}->[0]) or ($resp->{error} and $resp->{error}->[0])) {
+        $failure = 1;
     }
+    $callback->($resp);
+
+    if ($failure > 1) { # quick abort
+        $errored = $failure;
+        return;
+    }
+
+    # Partial error on nodes, it allows to continue the rest of business on the sucessful nodes.
     foreach (@{ $resp->{node} }) {
         if ($_->{error} or $_->{errorcode}) {
-            $errored = 1;
+            $failure = 1;
+            if ($_->{name}) {
+                $failurenodes{$_->{name}->[0]} = 2;
+            }
         }
     }
+    if ( $failure ) {
+        $errored = $failure;
+    }
 }
-
 
 sub preprocess_request {
     my $req = shift;
@@ -407,8 +387,8 @@ sub process_request {
     $::callback = $callback;
     $sub_req    = shift;
     my $command = $request->{command}->[0];
-    %breaknetbootnodes = ();
-    %normalnodes       = (); # It will be fill-up by method: setstate.
+
+    undef %failurenodes;
 
     #>>>>>>>used for trace log start>>>>>>>
     my @args = ();
@@ -464,7 +444,6 @@ sub process_request {
 
     my @nodes = ();
     # Filter those nodes which have bad DNS: not resolvable or inconsistent IP
-    my %failurenodes = ();
     my %preparednodes = ();
     foreach (@rnodes) {
         my $ipret = xCAT::NetworkUtils->checkNodeIPaddress($_);
@@ -551,11 +530,8 @@ sub process_request {
                     arg => [ $args[0] ] }, \&pass_along);
         }
         if ($errored) {
-            my $rsp;
-            $rsp->{errorcode}->[0] = 1;
-            $rsp->{error}->[0]     = "Failed in running begin prescripts.\n";
-            $callback->($rsp);
-            return;
+            xCAT::MsgUtils->trace($verbose_on_off, "d", "petitboot: Failed in running begin prescripts.");
+            return if ($errored > 1);
         }
     }
 
@@ -575,8 +551,8 @@ sub process_request {
                 bootparams => \%bphash},
                 \&pass_along);
         if ($errored) { 
-            xCAT::MsgUtils->trace($verbose_on_off, "d", "petitboot: Failed in processing setdestiny.  Processing will not continue.");
-            return; 
+            xCAT::MsgUtils->trace($verbose_on_off, "d", "petitboot: Failed in processing setdestiny.");
+            return if ($errored > 1);
         }
     }
 
@@ -589,7 +565,7 @@ sub process_request {
                 #this does not hurt anything for other plugins
                 environment => {XCAT_OPENBMC_DEVEL=>"YES"}
                 });
-        xCAT::MsgUtils->message("S", "xCAT: petitboot netboot: clear node(s): @nodes boot device setting.");
+        xCAT::MsgUtils->message("S", "xCAT: petitboot netboot: clear node(s): $str_node boot device setting.");
     }
 
     xCAT::MsgUtils->trace($verbose_on_off, "d", "petitboot: starting to handle configuration...");
@@ -597,24 +573,25 @@ sub process_request {
     my $chainhash = $chaintab->getNodesAttribs(\@nodes, ['currstate']);
     my $noderestab = xCAT::Table->new('noderes', -create => 1);
     my $nodereshash = $noderestab->getNodesAttribs(\@nodes, [ 'tftpdir', 'xcatmaster', 'nfsserver', 'servicenode' ]);
-    my $mactab = xCAT::Table->new('mac', -create => 1);
-    my $machash = $mactab->getNodesAttribs(\@nodes, ['mac']);
     my $typetab = xCAT::Table->new('nodetype', -create => 1);
     my $typehash = $typetab->getNodesAttribs(\@nodes, [ 'os', 'provmethod', 'arch', 'profile' ]);
     my $linuximgtab = xCAT::Table->new('linuximage', -create => 1);
     my $osimagetab  = xCAT::Table->new('osimage',    -create => 1);
+    my %machash = ();
 
     my $rc;
     my $errstr;
 
-    my $tftpdir;
+    my @normalnodeset = ();
     foreach (@nodes) {
-        my %response;
+        next if (exists($failurenodes{$_}));
+
+        my $tftpdir = $globaltftpdir;
         if ($nodereshash->{$_} and $nodereshash->{$_}->[0] and $nodereshash->{$_}->[0]->{tftpdir}) {
             $tftpdir = $nodereshash->{$_}->[0]->{tftpdir};
-        } else {
-            $tftpdir = $globaltftpdir;
         }
+
+        my %response;
         $response{node}->[0]->{name}->[0] = $_;
         if ($args[0]) { # send it on to the destiny plugin, then setstate
             my $ent       = $typehash->{$_}->[0];
@@ -625,23 +602,15 @@ sub process_request {
             ($rc, $errstr) = setstate($_, \%bphash, $chainhash, $machash, $tftpdir, $nodereshash, $linuximghash);
             if ($rc) {
                 $response{node}->[0]->{errorcode}->[0] = $rc;
-                $response{node}->[0]->{errorc}->[0]    = $errstr;
+                $response{node}->[0]->{error}->[0]    = $errstr;
+                $failurenodes{$_} = 1;
                 $callback->(\%response);
+            } else {
+                push @normalnodeset, $_;
             }
         }
     }    # end of foreach node
     xCAT::MsgUtils->trace($verbose_on_off, "d", "petitboot: Finish to handle configurations");
-
-    my @normalnodeset = keys %normalnodes;
-    my @breaknetboot  = keys %breaknetbootnodes;
-    my %osimagenodehash;
-    for my $nn (@normalnodeset) {
-
-        #record the os version for node
-        my $ent     = $typehash->{$nn}->[0];
-        my $osimage = $ent->{'provmethod'};
-        push @{ $osimagenodehash{$osimage} }, $nn;
-    }
 
     #Don't bother to try dhcp binding changes if sub_req not passed, i.e. service node build time
     unless ($inittime) {
@@ -675,20 +644,16 @@ sub process_request {
         if ($request->{'_disparatetftp'}->[0]) { #the call is distrubuted to the service node already, so only need to handles my own children
             xCAT::MsgUtils->trace($verbose_on_off, "d", "petitboot: issue runendpre request");
             $sub_req->({ command => ['runendpre'],
-                    node => \@nodes,
+                    node => \@normalnodeset,
                     arg => [ $args[0], '-l' ] }, \&pass_along);
         } else { #nodeset did not distribute to the service node, here we need to let runednpre to distribute the nodes to their masters
             xCAT::MsgUtils->trace($verbose_on_off, "d", "petitboot: issue runendpre request");
             $sub_req->({ command => ['runendpre'],
-                    node => \@nodes,
+                    node => \@normalnodeset,
                     arg => [ $args[0] ] }, \&pass_along);
         }
         if ($errored) {
-            my $rsp;
-            $rsp->{errorcode}->[0] = 1;
-            $rsp->{error}->[0]     = "Failed in running end prescripts\n";
-            $callback->($rsp);
-            return;
+            xCAT::MsgUtils->trace($verbose_on_off, "d", "petitboot: Failed in running end prescripts.");
         }
     }
 

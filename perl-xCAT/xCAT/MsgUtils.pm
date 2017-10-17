@@ -884,5 +884,28 @@ sub perf_log_process
     }
 }
 
+#------------------------------------------------------------------
+
+=head3  report_node_error
+  Using the passing callback to report node level error
+  Arguments:
+            $cb   (callback reference)
+            $node (node name)
+            $msg  (error message)
+=cut
+
+#-----------------------------------------------------------------
+sub report_node_error 
+{
+    shift;
+    my ($cb, $node, $msg) = @_;
+
+    my $rsp;
+    $rsp->{node}->[0]->{name}->[0]      = $node;
+    $rsp->{node}->[0]->{error}->[0]     = $msg;
+    $rsp->{node}->[0]->{errorcode}->[0] = 1;
+    $cb->($rsp);
+}
+
 1;
 
