@@ -2077,6 +2077,23 @@ sub rflash_response {
     my $update_priority = -1;
 
     if ($node_info{$node}{cur_status} eq "RFLASH_LIST_RESPONSE") {
+        #
+        # Get the functional IDs to accurately mark the active running FW
+        #
+        my %functional;
+        if (${ $response_info->{data} }{'/xyz/openbmc_project/software/functional'} ) { 
+            my %func_data = %{ ${ $response_info->{data} }{'/xyz/openbmc_project/software/functional'} };
+            foreach my $fw_idx (keys $func_data{endpoints}) {
+                my $fw_id = (split(/\//, $func_data{endpoints}[$fw_idx]))[-1];
+                $functional{$fw_id} = 1;
+            }
+        }
+
+        if (!%functional) {
+            # Inform users that the older firmware levels does not correctly reflect Active version
+            xCAT::SvrUtils::sendmsg("WARNING, The active firmware does not allow correct detecting of running firmware.", $callback, $node);
+        }
+
         # Display "list" option header and data
         xCAT::SvrUtils::sendmsg("ID       Purpose State      Version", $callback, $node);
         xCAT::SvrUtils::sendmsg("-" x 55, $callback, $node);
@@ -2101,9 +2118,19 @@ sub rflash_response {
             if (defined($content{Priority}))  {
                 $update_priority = (split(/\./, $content{Priority}))[ -1 ];
             }
-            # Priority attribute of 0 indicates the "really" active update image
-            if ($update_priority == 0) {
+            if (exists($functional{$update_id}) ) {
+                #
+                # If the firmware ID exists in the hash, this indicates the really active running FW
+                #
                 $update_activation = $update_activation . "(*)";
+            } elsif ($update_priority == 0) {
+                # Priority attribute of 0 indicates the firmware to be activated on next boot 
+                my $indicator = "(+)";
+                if (!%functional) {
+                    # cannot detect, so mark firmware as Active
+                    $indicator = "(*)";
+                }
+                $update_activation = $update_activation . $indicator;
                 $update_priority = -1; # Reset update priority for next loop iteration
             }
             xCAT::SvrUtils::sendmsg(sprintf("%-8s %-7s %-10s %s", $update_id, $update_purpose, $update_activation, $update_version), $callback, $node);
