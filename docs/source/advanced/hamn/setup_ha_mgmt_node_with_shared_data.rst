@@ -33,13 +33,13 @@ Configuration Requirements
 
 #. Setting up HAMN can be done at any time during the life of the cluster, in this documentation we assume the HAMN setup is done from the very beginning of the xCAT cluster setup, there will be some minor differences if the HAMN setup is done from the middle of the xCAT cluster setup.
 
-The example given in this document is for RHEL 6. The same approach can be applied to SLES, but the specific commands might be slightly different. The examples in this documentation are based on the following cluster environment:
+The example given in this document is for RHEL 6/7. The same approach can be applied to SLES, but the specific commands might be slightly different. The examples in this documentation are based on the following cluster environment:
 
-Virtual IP Alias Address: 9.114.47.97
+Virtual IP Alias Address: 9.114.47.97, hostname is rhmn
 
-Primary Management Node: rhmn1(9.114.47.103), netmask is 255.255.255.192, hostname is rhmn1, running RHEL 6.
+Primary Management Node: rhmn1(9.114.47.103), netmask is 255.255.255.192, hostname is rhmn1, running RHEL 7.
 
-Standby Management Node: rhmn2(9.114.47.104), netmask is 255.255.255.192, hostname is rhmn2. Running RHEL 6.
+Standby Management Node: rhmn2(9.114.47.104), netmask is 255.255.255.192, hostname is rhmn2. Running RHEL 7.
 
 You need to substitute the hostnames and ip address with your own values when setting up your HAMN environment.
 
@@ -53,7 +53,8 @@ The configuration procedure will be quite different based on the shared data mec
     /etc/xcat
     /install
     ~/.xcat
-    /<dbdirectory> 
+    /<dbdirectory>
+    /tftpboot 
 
 
 ``Note``:For MySQL, the database directory is ``/var/lib/mysql``; for PostGreSQL, the database directory is ``/var/lib/pgsql``; for DB2, the database directory is specified with the site attribute databaseloc; for sqlite, the database directory is /etc/xcat, already listed above. 
@@ -64,6 +65,7 @@ Here is an example of how to make directories be shared data through NFS: ::
     mount -o rw <nfssvr>:/dir2 /install
     mount -o rw <nfssvr>:/dir3 ~/.xcat
     mount -o rw <nfssvr>:/dir4 /<dbdirectory>
+    mount -o rw <nfssvr>:/dir5 /tftpboot
 
 ``Note``: if you need to setup high availability for some other applications, like the HPC software stack, between the two xCAT management nodes, the applications data should be on the shared data.
 
@@ -78,9 +80,9 @@ Setup xCAT on the Primary Management Node
 
    The option ``firstalias`` will configure the Virtual IP ahead of the interface ip address, since ifconfig will not make the ip address configuration be persistent through reboots, so the Virtual IP address needs to be re-configured right after the management node is rebooted. This non-persistent Virtual IP address is designed to avoid ip address conflict when the crashed previous primary management is recovered with the Virtual IP address configured.
 
-#. Add the alias ip address into the ``/etc/resolv.conf`` as the nameserver. Change the hostname resolution order to be using ``/etc/hosts`` before using name server, change to "hosts: files dns" in ``/etc/nsswitch.conf``.
+#. Add the alias ip address ``9.114.47.97`` into the ``/etc/resolv.conf`` as the nameserver. Change the hostname resolution order to be using ``/etc/hosts`` before using name server, change to "hosts: files dns" in ``/etc/nsswitch.conf``.
 
-#. Change hostname to the hostname that resolves to the Virtual IP address. This is required for xCAT and database to be setup properly.
+#. Change hostname to the hostname that resolves to the Virtual IP address ``9.114.47.97``, add the alias ip address and its hostname ``9.114.47.97 rhmn`` into the ``/etc/hosts``. This is required for xCAT and database to be setup properly.
 
 #. Install xCAT. The procedure described in :doc:`xCAT Install Guide <../../guides/install-guides/index>` could be used for the xCAT setup on the primary management node.
 
@@ -99,16 +101,28 @@ Setup xCAT on the Primary Management Node
     tabdump policy  
     "1.2","rhmn1",,,,,,"trusted",,
     "1.3","rhmn2",,,,,,"trusted",,
+    "1.4","rhmn",,,,,,"trusted",,
 
 #. (Optional) DB2 only, change the databaseloc in site table: ::
 
     chdef -t site databaseloc=/dbdirectory
 
-#. Install and configure database. Refer to the doc [**doto:** choosing_the_Database] to configure the database on the xCAT management node.
+#. Install and configure database. Refer to the doc [**doto:** choosing_the_Database] to configure the database on the xCAT management node. For PostgreSql, add primary and standby IP addresses access to database, use ``pgsqlsetup -i -a 9.114.47.103 -a 9.114.47.104`` to migrate an existing xCAT database from SQLite to PostgreSQL.  
 
    Verify xcat is running on correct database by running: ::
 
     lsxcatd -a
+
+#. (Optional) PostgreSQL only, if want to change PostgreSql database location, new database directory should be shared data through NFS: ::
+
+    mkdir /<new_dbdirectory>
+    mount -o rw <nfssvr>:/dir6 /<new_dbdirectory>
+
+   Then refer to :ref:`Modify PostgreSql database directory<modify_postgresql_database_diretory>`.
+
+   Remove the old <dbdirectory> share data through NFS: ::
+
+    umount /<dbdirectory>
 
 #. Backup the xCAT database tables for the current configuration on standby management node, using command : ::
 
@@ -125,15 +139,15 @@ Setup xCAT on the Primary Management Node
     service dhcpd stop
     chkconfig --level 2345 dhcpd off
 
-#. Stop Database and prevent the database from auto starting at boot time, use MySQL as an example: ::
+#. Stop Database and prevent the database from auto starting at boot time, use PostgreSQL as an example::
 
-    service mysqld stop
-    chkconfig mysqld off
+    service postgresql stop
+    chkconfig postgresql off
 
 #. (Optional) If DFM is being used for hardware control capabilities, install DFM package, setup xCAT to communicate directly to the System P server's service processor.::
 
-     xCAT-dfm RPM 
-     ISNM-hdwr_svr RPM  
+    xCAT-dfm RPM 
+    ISNM-hdwr_svr RPM  
 
 #. If there is any node that is already managed by the Management Node,change the noderes table tftpserver & xcatmaster & nfsserver attributes to the Virtual ip
 
@@ -144,11 +158,11 @@ Setup xCAT on the Primary Management Node
 Setup xCAT on the Standby Management Node
 =========================================
 
-#. Make sure the standby management node is NOT using the shared data.
+#. Make sure the standby management node is NOT using the shared data. 
 
-#. Add the alias ip address into the ``/etc/resolv.conf`` as the nameserver. Change the hostname resolution order to be using ``/etc/hosts`` before using name server. Change "hosts: files dns" in /etc/nsswitch.conf.
+#. Add the alias ip address ``9.114.47.97`` into the ``/etc/resolv.conf`` as the nameserver. Change the hostname resolution order to be using ``/etc/hosts`` before using name server. Change "hosts: files dns" in /etc/nsswitch.conf.
 
-#. Temporarily change the hostname to the hostname that resolves to the Virtual IP address. This is required for xCAT and database to be setup properly. This only needs to be done one time.
+#. Temporarily change the hostname to the hostname that resolves to the Virtual IP address ``9.114.47.97``, add the alias ip address and its hostname ``9.114.47.97 rhmn`` into the ``/etc/hosts``. This is required for xCAT and database to be setup properly. This only needs to be done one time.
 
    Also configure the Virtual IP address during this setup. ::
 
@@ -180,10 +194,10 @@ Setup xCAT on the Standby Management Node
     service dhcpd stop
     chkconfig --level 2345 dhcpd off
 
-#. Stop Database and prevent the database from auto starting at boot time. Use MySQL as an example: ::
+#. Stop Database and prevent the database from auto starting at boot time, use PostgreSQL as an example::
 
-    service mysqld stop
-    chkconfig mysqld off
+    service postgresql stop
+    chkconfig postgresql off
 
 #. Backup the xCAT database tables for the current configuration on standby management node, using command: ::
 
@@ -301,11 +315,9 @@ If the management node is still available and running the cluster, perform the f
 
     exportfs -ua
 
-#. Stop database
+#. Stop database, use PostgreSQL as an example: ::
 
-   Use MySQL as an example: ::
-
-    service mysqld stop
+    service postgresql stop
 
 #. Unmount shared data
 
@@ -314,7 +326,8 @@ If the management node is still available and running the cluster, perform the f
     umount /etc/xcat
     umount /install
     umount ~/.xcat
-    umount /db2database
+    umount /<dbdirectory>
+    umount /tftpboot
 
    When trying to umount the file systems, if there are some processes that are accessing the files and directories on the file systems, you will get "Device busy" error. Then stop or kill all the processes that are accessing the shared data file systems and retry the unmount.
 
@@ -344,18 +357,25 @@ On the new primary management node:
     mount /etc/xcat
     mount /install
     mount /.xcat
-    mount /db2database
+    mount /<dbdirectory>
+    mount /tftpboot
 
-#. Start database, use MySQL as an example: ::
+#. Start database:
 
-    service mysql start
+   * **[MySQL]** ::
+
+        service mysql start
+
+   * **[PostgreSQL]** ::
+
+        service postgresql start
 
 #. Start the daemons: ::
 
     service dhcpd start
     service xcatd start
-    service hdwr_svr start
     service conserver start
+    service hdwr_svr start # DFM only
 
 #. (DFM only) Setup connection for CEC and Frame: ::
 
@@ -416,11 +436,12 @@ The operating system is installed on the internal disks.
 
    Output will be similar to: ::
 
-    /dev/sdd /dev/sdc /dev/sdb /dev/sda
+    /dev/sde /dev/sdd /dev/sdc /dev/sdb /dev/sda
     /dev/sg0 [=/dev/sda  scsi0 ch=0 id=1 lun=0]
     /dev/sg1 [=/dev/sdb  scsi0 ch=0 id=2 lun=0]
     /dev/sg2 [=/dev/sdc  scsi0 ch=0 id=3 lun=0]
     /dev/sg3 [=/dev/sdd  scsi0 ch=0 id=4 lun=0]
+    /dev/sg4 [=/dev/sde  scsi0 ch=0 id=5 lun=0]
 
    Use the ``sginfo -s <device_name>`` to identify disks with the same serial number on both management nodes, for example: 
 
@@ -454,6 +475,7 @@ The operating system is installed on the internal disks.
     mkfs.ext3 -v /dev/sdc2
     mkfs.ext3 -v /dev/sdc3
     mkfs.ext3 -v /dev/sdc4
+    mkfs.ext3 -v /dev/sdc5
 
    If you place entries for the disk in ``/etc/fstab``, which is not required, ensure that the entries do not have the system automatically mount the disk. 
 
@@ -466,14 +488,16 @@ The operating system is installed on the internal disks.
      mount /dev/sdc1 /etc/xcat
      mount /dev/sdc2 /install
      mount /dev/sdc3 ~/.xcat
-     mount /dev/sdc4 /db2database
+     mount /dev/sdc4 /<dbdirectory>
+     mount /dev/sdc5 /tftpboot
 
    After that, umount the file system on the primary management node: ::
 
      umount /etc/xcat
      umount /install
      umount ~/.xcat 
-     umount /db2database
+     umount /<dbdirectory>
+     umount /tftpboot
 
 #. Verify the file systems on the standby management node.
 
@@ -482,7 +506,8 @@ The operating system is installed on the internal disks.
      mount /dev/sdc1 /etc/xcat
      mount /dev/sdc2 /install
      mount /dev/sdc3 ~/.xcat
-     mount /dev/sdc4 /db2database
+     mount /dev/sdc4 /<dbdirectory>
+     mount /dev/sdc5/tftpboot
 
    You may get errors "mount: you must specify the filesystem type" or "mount: special device /dev/sdb1 does not exist" when trying to mount the file systems on the standby management node, this is caused by the missing devices files on the standby management node, run ``fidsk /dev/sdx`` and simply select "w write table to disk and exit" in the fdisk menu, then retry the mount. 
 
@@ -491,5 +516,6 @@ The operating system is installed on the internal disks.
     umount /etc/xcat
     umount /install
     umount ~/.xcat
-    umount /db2database
+    umount /<dbdirectory>
+    umount /tftpboot
 
