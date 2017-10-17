@@ -1532,6 +1532,9 @@ sub rinv_response {
     my $content_info;
     my @sorted_output;
 
+    # Get the functional IDs to accurately mark the active running FW
+    my $functional = get_functional_software_ids($response_info);
+
     foreach my $key_url (keys %{$response_info->{data}}) {
         my %content = %{ ${ $response_info->{data} }{$key_url} };
 
@@ -1549,16 +1552,20 @@ sub rinv_response {
                 #
                 # For 'rinv firm', only print Active software, unless verbose is specified
                 #
-                if (($activation_value =~ "Active" and $priority_value == 0) or $::VERBOSE) {
+                if ( (%{$functional} and exists($functional->{$sw_id}) ) or 
+                     (!%{$functional} and $activation_value =~ "Active" and $priority_value == 0) or 
+                      $::VERBOSE ) {
                     #
                     # The space below between "Firmware Product Version:" and $content{Version} is intentional
                     # to cause the sorting of this line before any additional info lines 
                     #
                     $content_info = "$purpose_value Firmware Product:   $content{Version} ($activation_value)";
-                    if ($priority_value == 0) {
-                        # For now, indicate priority 0 software levels with an '*'
-                        $content_info .= "*";
+                    my $indicator = "*";
+                    if ($priority_value == 0 and %{$functional} and !exists($functional->{$sw_id})) {
+                        # indicate that a reboot is needed if priority = 0 and it's not in the functional list
+                        $indicator = "+";
                     }
+                    $content_info .= $indicator;
                     push (@sorted_output, $content_info); 
     
                     if (defined($content{ExtendedVersion}) and $content{ExtendedVersion} ne "") { 
@@ -2112,7 +2119,7 @@ sub rflash_response {
         my $functional = get_functional_software_ids($response_info);
         if (!%{$functional}) {
             # Inform users that the older firmware levels does not correctly reflect Active version
-            xCAT::SvrUtils::sendmsg("WARNING, The current firmware version is unable to detect running firmware version.", $callback, $node);
+            xCAT::SvrUtils::sendmsg("WARNING, The current firmware is unable to detect running firmware version.", $callback, $node);
         }
 
         # Display "list" option header and data
