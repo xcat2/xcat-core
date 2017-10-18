@@ -1,0 +1,286 @@
+#!/usr/bin/perl
+###############################################################################
+# IBM(c) 2015 EPL license http://www.eclipse.org/legal/epl-v10.html
+###############################################################################
+# COMPONENT: mkdummyimage
+#
+# This script creates a dummy image.
+###############################################################################
+
+use strict;
+use warnings;
+
+use File::Basename;
+use File::Path;
+use File::Spec;
+use File::Temp;
+use Getopt::Long;
+use MIME::Base64;
+use Sys::Hostname;
+use Socket;
+
+my $version = "1.0";
+
+my $defaultName = 'dummy.img';  # Default image file name
+my $dest = '';                  # Target destination (filespec)
+my $displayHelp = 0;            # Display help information
+my $eckdImage = 0;              # ECKD image is wanted
+my $fbaImage = 0;               # FBA image is wanted
+my $remoteHost = '';            # Remote host transfer information
+my $remoteUser = '';            # Remote user transfer information
+my $verbose = 0;                # Verbose flag - 0: quiet, 1: verbose
+my $versionOpt = 0;             # Show version information flag
+
+# set the usage message
+my $usage_string = "Usage:\n
+    $0 [ --eckd | --fba ] [ -V | --verbose ]
+       [ -d | --destination <dest> ] [-R | --remotehost <host> ]\n
+    or\n
+    $0 -v | --version\n
+    or\n
+    $0 -h | --help\n
+    The following options are supported:\n
+      -d | --destination <dest>
+                          File specification of the image file to be created.
+                          Either the filename only or a fully qualified name.
+                          If the destination is within the xCAT MN then
+                          it must be within the directory specified by
+                          the installdir property in the xCAT site table.
+                          The default file name is $defaultName.\n
+      --eckd              Create an empty ECKD disk image.  This is the
+                          default image type if neither --eckd or --fba
+                          is specifed.\n
+      --fba               Create an empty FBA disk image\n
+      -h | --help         Display help information\n
+      -R | --remotehost <host>
+                          Indicates that the destination specified on the
+                          command invocation is the file specification on a
+                          host other than the management node.
+                          The 'host' operand is the IP address or DNS host
+                          name of the target server.  A user may be specified
+                          in a similar way as it is specified with the SCP
+                          command using the format 'user\@host' where 'user'
+                          is the name of the user on the remote system and
+                          'host' operand is as previously stated.  The image
+                          is created in the directory specified by the
+                          tmpdir property in the site table and then moved
+                          to the remote host using SCP.  After moving the
+                          image off the xCAT MN, the image is removed
+                          from the xCAT MN. Prior to specifying the command,
+                          the keystore on the remote host must be set up with
+                          the public key of the xCAT MN.\n
+      -v | --version      Display the version of this script.\n
+      -V | --verbose      Display verbose processing messages.\n";
+
+
+#-------------------------------------------------------
+
+=head3   createImage
+
+    Description : Create the dummy image file.
+    Arguments   : None
+    Returns     : 0 - No error
+                  non-zero - Error detected.
+    Example     : $rc = createImage();
+
+=cut
+
+#-------------------------------------------------------
+sub createImage{
+    my $rc = 0;
+    my $buildDir = '';
+    my $header;
+
+    # Create a temporary directory in which to create the image.
+    my $tmpDir = `/opt/xcat/sbin/tabdump site| grep '^"tmpdir",' | sed s/'^"tmpdir","'//g| sed s/'".*'//g`;
+    chomp $tmpDir;
+    if ( $tmpDir eq '' ) {
+        print "Error: The 'tmpdir' value is missing from the site table.\n";
+        $rc = 11;
+        goto FINISH_createImage;
+    }
+    $buildDir = mkdtemp( "$tmpDir/image.$$.XXXXXX" );
+
+    # Create the image
+    my $imageFile = $defaultName;
+    open( my $fh, '>', "$buildDir/$imageFile" ) or die "Could not open file '$buildDir/$imageFile'";
+    if ( $verbose ) {
+        print "Creating the image in $buildDir as $imageFile.\n";
+    }
+
+    if ( $eckdImage ) {
+        $header = "xCAT CKD Disk Image:";
+        $header = "$header           0 CYL";
+    }
+    elsif ( $fbaImage ) {
+        $header = "xCAT FBA Disk Image:";
+        $header = "$header           0 BLK";
+    }
+    $header = "$header HLen: 0055";    # Header size increased by x from 0055
+    $header = "$header GZIP: 0";
+    printf $fh "%-512s", "$header";
+    close( $fh );
+
+    # Move the image to the target location.
+    if ( $remoteHost ne '' ) {
+        # Do a remote transfer
+        my $remoteTarget = $remoteHost . ':' . $dest;
+        if ( $remoteUser ne '' ) {
+            $remoteTarget = "$remoteUser\@$remoteTarget";
+        }
+        my $scpVerbose = '';
+        if ( $verbose ) {
+            print "Moving the image $imageFile to the remote system $remoteHost as $dest.\n";
+            $scpVerbose = '-v'
+        }
+        $rc = system( "/usr/bin/scp $scpVerbose -B $buildDir/$imageFile $remoteTarget" );
+        if ( $rc ) {
+            $rc = $rc >> 8;
+            print "Error: Unable to copy the image $buildDir/$imageFile to the remote host: $remoteHost, rc: $rc\n";
+            $rc = 30;
+            goto FINISH_createImage;
+        }
+    } else {
+        # Move the file to a local directory
+        $rc = system( "cp $buildDir/$imageFile $dest" );
+        if ( $rc ) {
+            $rc = $rc >> 8;
+            print "Error: Unable to copy the image $buildDir/$imageFile to the destination: $dest, rc: $rc\n";
+            $rc = 40;
+            goto FINISH_createImage;
+        }
+    }
+
+    if ( $remoteHost ne '' ) {
+        print "Image created on $remoteHost: $dest\n";
+    } else {
+        print "Image created: $dest\n";
+    }
+
+FINISH_createImage:
+    if ( -d $buildDir ) {
+        rmtree $buildDir;
+    }
+    return $rc;
+}
+
+
+#-------------------------------------------------------
+
+=head3   showHelp
+
+    Description : Show the help inforamtion.
+    Arguments   : None.
+    Returns     : None.
+    Example     : showHelp();
+
+=cut
+
+#-------------------------------------------------------
+sub showHelp{
+    print "$0 prepares a special image file that contains no disk\ncontents.\n\n";
+    print $usage_string;
+    return;
+}
+
+
+#*****************************************************************************
+# Main routine
+#*****************************************************************************
+my $rc = 0;
+my $out;
+
+# Parse the arguments
+$Getopt::Long::ignorecase = 0;
+Getopt::Long::Configure( "bundling" );
+if (!GetOptions(
+                 'eckd'            => \$eckdImage,
+                 'd|destination=s' => \$dest,
+                 'fba'             => \$fbaImage,
+                 'h|help'          => \$displayHelp,
+                 'R|remotehost=s'  => \$remoteHost,
+                 'v|version'       => \$versionOpt,
+                 'V|verbose'       => \$verbose )) {
+    print $usage_string;
+    goto FINISH_main;
+}
+
+if ( $versionOpt ) {
+    print "Version: $version\n";
+}
+
+if ( $displayHelp ) {
+    showHelp();
+}
+
+if ( $displayHelp or $versionOpt ) {
+    goto FINISH_main;
+}
+
+if ( !$eckdImage and !$fbaImage ) {
+    $eckdImage = 1;
+}
+
+if ( $remoteHost ne '' ) {
+    $remoteHost =~ s/^\s+|\s+$//g;         # trim blanks from both ends of the value
+    my $spaceCnt = scalar( () = $remoteHost =~ /\s+/g );
+    if ( $spaceCnt != 0 ) {
+        print "Error: Remote host value is not a single word.\n";
+        $rc = 1;
+        goto FINISH_main;
+    }
+    if ( $remoteHost =~ /@/ ) {
+        my @parts = split( /@/, $remoteHost );
+        if ( substr( $remoteHost, -1) eq '@' or
+             @parts > 2 or
+             !defined $parts[0] or $parts[0] eq '' or
+             !defined $parts[1] or $parts[1] eq '' ) {
+            print "Error: Remote host value is not valid.\n" .
+                  "       It should be in the form of 'hostname' or 'user\@hostname'.\n";
+            $rc = 2;
+            goto FINISH_main;
+        }
+        $remoteUser = $parts[0];
+        $remoteHost = $parts[1];
+    } else {
+        $remoteUser = 'root';
+    }
+}
+
+# Determine the destination and make certain it is valid.
+my $installDir = `/opt/xcat/sbin/tabdump site| grep '^"installdir",' | sed s/'^"installdir","'//g| sed s/'".*'//g`;
+chomp $installDir;
+if ( $installDir eq '' ) {
+    print "Error: The 'installDir' value is missing from the site table.\n";
+    $rc = 10;
+    goto FINISH_main;
+}
+
+if ( $dest eq '' ){
+    # Set default destination for either a local or remote location.
+    if ( $remoteHost eq '' ) {
+        $dest = "$installDir/$defaultName";
+    } else {
+        $dest = "$defaultName";
+    }
+} else {
+    # Can only verify local destination here.  SCP will verify the remote destination.
+    if ( $remoteHost eq '' ) {
+        if ( $dest !~ /\// ) {
+            $dest = "$installDir/$dest";
+        } else {
+            if ( $dest !~ /^$installDir/ ) {
+                print "Error: The destination is not within the install directory specified in the site table.\n";
+                $rc = 20;
+                goto FINISH_main;
+            }
+        }
+    }
+}
+
+# Create the image file.
+createImage();
+
+FINISH_main:
+exit $rc;
+

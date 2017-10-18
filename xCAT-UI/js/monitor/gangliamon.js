@@ -46,7 +46,10 @@ function loadGangliaMon() {
                 msg : ''
             },
 
-            success : setGroupsCookies
+            success : function(data) {
+                data = decodeRsp(data);
+                setGroupsCookies(data);
+            }
         });
     }
 
@@ -58,7 +61,10 @@ function loadGangliaMon() {
             cmd : 'rpm -q rrdtool ganglia-gmetad ganglia-gmond'
         },
 
-        success : checkGangliaRPMs
+        success : function(data) {
+            data = decodeRsp(data);
+            checkGangliaRPMs(data);
+        }
     });
     return;
 }
@@ -103,7 +109,10 @@ function checkGangliaRPMs(data) {
                 msg : ''
             },
 
-            success : checkGangliaRunning
+            success : function(data) {
+                data = decodeRsp(data);
+                checkGangliaRunning(data);
+            }
         });
     }
 
@@ -213,6 +222,7 @@ function sendLocationAjax() {
         },
 
         success: function(data){
+            data = decodeRsp(data);
             if (!data.rsp[0]) {
                 return;
             }
@@ -329,6 +339,7 @@ function sendGridSummaryAjax() {
         },
 
         success: function(data) {
+            data = decodeRsp(data);
             createGridSummaryData(data.rsp[0]);
             drawGridSummary();
         }
@@ -374,6 +385,7 @@ function sendGridCurrentAjax(){
         },
 
         success: function(data){
+            data = decodeRsp(data);
             updateGridSummaryData(data.rsp[0]);
             drawGridSummary();
         }

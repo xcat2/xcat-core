@@ -15,6 +15,3 @@ rpm
 rsync
 udev
 s390utils
-tar
-gzip
-xz

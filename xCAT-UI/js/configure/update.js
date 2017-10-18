@@ -22,7 +22,10 @@ function loadUpdatePage() {
             cmd : 'ostype'
         },
 
-        success : showRepository
+        success : function(data) {
+            data = decodeRsp(data);
+            showRepository(data);
+        }
     });
 
     rpmDiv.append("<fieldset></fieldset>");
@@ -33,7 +36,10 @@ function loadUpdatePage() {
             cmd : 'rpm -q xCAT-client perl-xCAT xCAT-server xCAT xCAT-rmc xCAT-UI'
         },
 
-        success : showRpmInfo
+        success : function(data) {
+            data = decodeRsp(data);
+            showRpmInfo(data);
+        }
     });
 }
 
@@ -250,7 +256,10 @@ function updateRpm() {
             msg : ''
         },
 
-        success : showUpdateResult
+        success : function(data) {
+            data = decodeRsp(data);
+            showUpdateResult(data);
+        }
     });
 }
 
@@ -303,7 +312,10 @@ function showUpdateResult(data) {
             cmd : 'rpm -q xCAT-client perl-xCAT xCAT-server xCAT xCAT-rmc xCAT-UI'
         },
 
-        success : showRpmInfo
+        success : function(data) {
+            data = decodeRsp(data);
+            showRpmInfo(data);
+        }
     });
 
     $('#rpm button').attr('disabled', '');

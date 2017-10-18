@@ -25,6 +25,7 @@ function initGraphicalData() {
             msg : ''
         },
         success : function(data) {
+            data = decodeRsp(data);
             if (!data.rsp[0]) {
                 return;
             }
@@ -126,6 +127,7 @@ function getNodesAndDraw() {
             msg : ''
         },
         success : function(data) {
+            data = decodeRsp(data);
             for (var temp in data.rsp) {
                 var nodeName = data.rsp[temp][0];
                 if ('' == nodeName) {

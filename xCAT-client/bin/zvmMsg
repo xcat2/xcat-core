@@ -1,0 +1,113 @@
+#!/usr/bin/perl
+# IBM(c) 2016 EPL license http://www.eclipse.org/legal/epl-v10.html
+#-------------------------------------------------------
+
+=head1
+
+    Provides more information related to an xCAT message
+    for z/VM.  These are messages which are similar to the
+    following:
+        Warning (ZXCATIVP:VN01) Network VSW3 was not found as a network.
+    These message were originally added for the z/VM IVP and
+    are in the form:
+        <message type> (group:msgId) <msgText>
+
+    The information provided consists of:
+        Explanation of the message,
+        System Action, and
+        User Action.
+
+=cut
+
+#-------------------------------------------------------
+package xCAT::zvmMsgs;
+BEGIN
+{
+    $::XCATROOT = $ENV{'XCATROOT'} ? $ENV{'XCATROOT'} : '/opt/xcat';
+}
+
+$XML::Simple::PREFERRED_PARSER='XML::Parser';
+
+use Getopt::Long;
+use lib "$::XCATROOT/lib/perl";
+use Text::Wrap;
+use xCAT::zvmMsgs;
+use strict;
+use warnings;
+1;
+
+# set the usage message
+my $usage_string = "Usage:\n
+    $0 -h
+    $0 --help
+    $0 --group <group id> --id <msg id>\n
+    Use this script to display extra information for messages related
+      to z/VM that have the format:
+         <msgType> (<group>:<msgId>) <msgText>
+      for example:
+         Warning (ZXCATIVP:VN01) Network VSW3 was not found.\n
+    The following options are supported:
+      --group <group id>
+          specified the identifier of the group to which the message belongs.
+          The group id is the first part of the identifer, e.g.
+          'Warning (ZXCATIVP:VDS01)' belongs to the 'ZXCATIVP' group.
+          The group id is case sensitive.  This operand should be specified
+          along with the --id operand.
+      -h | --help
+          Displays usage information.
+      --id <msg id>
+          specifies the message identifier.  The message id is the second part
+          of the identifier, e.g. 'Warning (ZXCATIVP:VDS01)' where 'VDS01'
+          is the message id.  The message identifier is case sensitive. This
+          operand should be specified along with the --group operand to fully
+          identify the message.\n";
+
+#*****************************************************************************
+# Main routine
+#*****************************************************************************
+# Parse the arguments
+my $displayHelp = 0;
+my $group = '';
+my $msgId = '';
+$Getopt::Long::ignorecase = 0;
+Getopt::Long::Configure( 'bundling' );
+
+if ( !GetOptions(
+                 'h|help'             => \$displayHelp,
+                 'group=s'            => \$group,
+                 'id=s'               => \$msgId,
+   )) {
+    print $usage_string;
+    goto FINISH;
+}
+
+if ( $displayHelp ) {
+    print $usage_string;
+    goto FINISH;
+}
+
+if ( $group eq '' ) {
+    print "--group operand was not specified.\n";
+    print $usage_string;
+} elsif ( $msgId eq '' ) {
+    print "--id operand was not specified.\n";
+    print $usage_string;
+} else {
+    my $extraInfo;
+    my $msg;
+    my $recAction;
+    my $sev;
+    ( $recAction, $sev, $msg, $extraInfo ) = xCAT::zvmMsgs->buildMsg( $group, $msgId );
+    if ( $msg =~ ': Message was not found!' ) {
+        # Oops, we could not find the message.
+        print "$msg\n";
+    } else {
+        if ( $extraInfo ne '' ) {
+            print "Additional information for message $msgId in group $group:\n";
+            print "$extraInfo\n";
+        }
+    }
+}
+
+FINISH:
+exit;
