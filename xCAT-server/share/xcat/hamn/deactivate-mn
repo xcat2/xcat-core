@@ -24,15 +24,18 @@
 # -----------------------------------------------------------------------------
 # 2011-12-08   JDW     1.0     Original
 # 2013-06-06   xCAT    1.1     Updated version to ship with xCAT
+# 2017-10-12   xCAT    2.13.8  Enhance 
 SHAREDVG=sharedvg # For AIX, shared volumn group name
-SHAREDFS="/install /etc/xcat ~/.xcat" # Shared file systems
-DB2DIR=/db2database # DB2 only, the db2 database directory
+DBDIR=/var/lib/pgsql # database directory
+SHAREDFS="/install /etc/xcat /root/.xcat /tftpboot" # Shared file systems
+USEDB2=no # if DB2 is being used
 USETEAL=no # if TEAL is being used
 USEDFM=no # if DFM is being used
+USEUNMOUNT=yes # umount share data directory
 POWER775=no # Power 775 cluster
 CHANGEHOSTNAME=no # change the hostname from virtual ip hostname to the original hostname
-
-xcatdb=`XCATBYPASS=1 /opt/xcat/bin/lsxcatd -d | cut -f 2 -d "=" 2>/dev/null`
+exit_code=0
+xcatdb=postgresql # support postgrel,DB2,mysql
 
 usage()
 {
@@ -45,7 +48,25 @@ EOF
 runcmd()
 {
     echo "Running command: $@"
-    $@
+    a=0
+    while true 
+    do 
+        if [ $a -eq 5 ]; then
+            echo "$@ [Failed]"
+            exit_code=1
+            return 1
+        elif [ $a -gt 0 ]; then
+            sleep 3
+            echo "Retry $a ...... $@"
+        fi
+        $@
+        if [ $? -eq 0 ]; then
+            echo "$@ [Passed]" 
+            return 0
+        else 
+           a=$[$a+1]
+        fi
+    done
 }
 
 ################################################################################
@@ -154,7 +175,7 @@ if [ `uname` = "AIX" ]
 then
     stopsrc -s xcatd
 else # Linux
-    service xcatd stop
+    runcmd "service xcatd stop"
 fi
 
 echo "Stopping database $xcatdb...."
@@ -170,15 +191,16 @@ then
 else # Linux
     if [ $xcatdb != "SQLite" ]
     then
-        runcmd "service $xcatdb stop 2>&1 1>/dev/null"
+        runcmd "service $xcatdb stop"
     fi
 fi
 
 ##############################################################################
-
-# Kill nicely, wait a little time for processes to clean-up....
-for fs in $SHAREDFS $DB2DIR
-do
+if [ $USEDB2 = "yes" ]
+then
+    # Kill nicely, wait a little time for processes to clean-up....
+    for fs in $SHAREDFS $DBDIR
+    do
 	echo "Killing processes (nicely) accessing filesystem ${fs}...."
         if [ `uname` = "AIX" ]
         then
@@ -186,7 +208,8 @@ do
         else # Linux
             runcmd "fuser -u -k ${fs}"
         fi
-done
+    done
+fi
 
 # AIX only, Linux has the -l flag could hanldle everything
 if [ `uname` = "AIX" ]
@@ -231,13 +254,14 @@ then
         runcmd "umount $fs"
     done
 else
-    for fs in $SHAREDFS
-    do
-        runcmd "umount -l $fs"
-    done
+    if [ $USEUNMOUNT = "yes" ]
+    then
+        for fs in $SHAREDFS $DBDIR
+        do
+            runcmd "umount -l $fs"
+        done
+    fi
 fi
-
-
 
 if [ `uname` = "AIX" ]
 then
@@ -257,22 +281,32 @@ then
             BOOT_HOSTNAME=`grep HOSTNAME /etc/sysconfig/network | cut -f 2 -d "="`
         fi
     fi
-    hostname ${BOOT_HOSTNAME}
+    runcmd "hostname ${BOOT_HOSTNAME}"
 fi
 
 # Remove virtual ip addresses
 
 # Firstly determine the correct IP addresses for each interface
-echo "Removing IP Aliases...."
+echo "Removing IP Aliase...."
 if [ `uname` = "AIX" ]
 then
     runcmd "ifconfig $NIC delete $VIP"
 else # Linux
-    runcmd "ifconfig $NIC 0.0.0.0 0.0.0.0"
+    ifconfig $NIC 0.0.0.0 0.0.0.0
+    ip addr show |grep 10.5.106.100 2>&1 1>/dev/null
+    if [ $? -ne 0 ]; then
+         echo "IP Aliase $NIC $VIP is removed.[Passed]"
+    else
+         echo "Fail to remove IP Aliase $NIC $VIP. [Failed]"
+    fi 
 fi
 
 echo ""
 echo ""
-echo "This machine is set to standby management node successfully..."
-
-exit 0
+if [ $exit_code -eq 0 ]
+then
+    echo "This machine is set to standby management node successfully..."
+else
+    echo "This machine is set to standby management node, but some service are failed."
+fi
+exit $exit_code
