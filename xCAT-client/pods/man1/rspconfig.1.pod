@@ -24,7 +24,7 @@ B<rspconfig> I<noderange> B<garp>=I<time>
 
 =head2 OpenBMC specific:
 
-B<rspconfig> I<noderange> {B<ip>|B<netmask>|B<gateway>|B<hostname>|B<vlan>|B<sshcfg>}
+B<rspconfig> I<noderange> {B<ipsrc>|B<ip>|B<netmask>|B<gateway>|B<hostname>|B<vlan>|B<sshcfg>}
 
 =head2 MPA specific:
 
@@ -307,6 +307,10 @@ Get or set hostname on the service processor.
 =item B<vlan>
 
 Get or set vlan ID. For get vlan ID, if vlan is not enabled, 'BMC VLAN disabled' will be outputed. For set vlan ID, the valid value are [1-4096].
+
+=item B<ipsrc>
+
+Get the ip source for OpenBMC.
 
 =item B<ip>
 

@@ -630,6 +630,7 @@ sub parse_args {
                 return ([ 1, "Can not configure and display nodes' value at the same time" ]) if ($setorget and $setorget eq "get");
                 my $key = $1;
                 my $value = $2;
+                return ([ 1, "Unsupport to configure ipsrc" ]) if ($key eq "ipsrc");
                 return ([ 1, "Unsupported command: $command $key" ]) unless ($key =~ /^ip$|^netmask$|^gateway$|^hostname$|^vlan$/);
 
                 my $nodes_num = @$noderange;
@@ -648,7 +649,7 @@ sub parse_args {
                 unless (($key eq "ip" and $value eq "dhcp") or $key eq "hostname") {
                     $check = unsupported($callback); if (ref($check) eq "ARRAY") { return $check; }
                 }
-            } elsif ($subcommand =~ /^ip$|^netmask$|^gateway$|^hostname$|^vlan$/) {
+            } elsif ($subcommand =~ /^ip$|^netmask$|^gateway$|^hostname$|^vlan$|^ipsrc$/) {
                 return ([ 1, "Can not configure and display nodes' value at the same time" ]) if ($setorget and $setorget eq "set");
                 $setorget = "get";
             } elsif ($subcommand =~ /^sshcfg$/) {
@@ -877,7 +878,7 @@ sub parse_command_status {
     if ($command eq "rspconfig") {
         my @options = ();
         foreach $subcommand (@$subcommands) {
-            if ($subcommand =~ /^ip$|^netmask$|^gateway$|^hostname$|^vlan$/) {
+            if ($subcommand =~ /^ip$|^netmask$|^gateway$|^hostname$|^vlan$|^ipsrc$/) {
                 $next_status{LOGIN_RESPONSE} = "RSPCONFIG_GET_REQUEST";
                 $next_status{RSPCONFIG_GET_REQUEST} = "RSPCONFIG_GET_RESPONSE";
                 push @options, $subcommand;
@@ -1817,10 +1818,11 @@ sub rspconfig_response {
         my $address         = "n/a";
         my $gateway         = "n/a";
         my $prefix          = "n/a";
-        my $vlan            = "n/a";
+        my $vlan            = 0;
         my $hostname        = "";
         my $default_gateway = "n/a";
         my $adapter_id      = "n/a";
+        my $ipsrc           = "n/a";
         my $error;
         my $path;
         my @output;
@@ -1838,11 +1840,14 @@ sub rspconfig_response {
             }
 
 
-            ($path, $adapter_id) = (split(/ipv4\//, $key_url));
-
+            ($path, $adapter_id) = (split(/\/ipv4\//, $key_url));
+            
             if ($adapter_id) {
                 if (defined($content{Address}) and $content{Address}) {
                     unless ($address =~ /n\/a/) {
+                        if ($ipsrc eq "DHCP" and $xcatdebugmode) {
+                            process_debug_info($node, "There is an IP address:$address got through DHCP");
+                        }
                         # We have already processed an entry with adapter information.
                         # This must be a second entry. Display an error. Currently only supporting
                         # an adapter with a single IP address set.
@@ -1857,6 +1862,14 @@ sub rspconfig_response {
                 if (defined($content{PrefixLength}) and $content{PrefixLength}) {
                     $prefix = $content{PrefixLength};
                 }
+                if (defined($content{Origin})) {
+                    $ipsrc = $content{Origin};
+                    $ipsrc =~ s/^.*\.(\w+)/$1/;
+                }
+                 
+                if (defined($response_info->{data}->{$path}->{Id})) {
+                    $vlan = $response_info->{data}->{$path}->{Id};
+                }
             }
         }
         if ($error) {
@@ -1864,24 +1877,28 @@ sub rspconfig_response {
             push @output, $error;
         }
         else {
-            if ($grep_string =~ "ip") {
-                push @output, "BMC IP: $address"; 
-            } 
-            if ($grep_string =~ "netmask") {
-                if ($address) {
-                    my $decimal_mask = (2 ** $prefix - 1) << (32 - $prefix);
-                    my $netmask = join('.', unpack("C4", pack("N", $decimal_mask)));
-                    push @output, "BMC Netmask: " . $netmask; 
+            foreach my $opt (split /,/,$grep_string) {
+                if ($opt eq "ip") {
+                    push @output, "BMC IP: $address"; 
+                } elsif ($opt eq "ipsrc") {
+                    push @output, "BMC IP Source: $ipsrc";
+                } elsif ($opt eq "netmask") {
+                    if ($address) {
+                        my $decimal_mask = (2 ** $prefix - 1) << (32 - $prefix);
+                        my $netmask = join('.', unpack("C4", pack("N", $decimal_mask)));
+                        push @output, "BMC Netmask: " . $netmask; 
+                    }
+                } elsif ($opt eq "gateway") {
+                    push @output, "BMC Gateway: $gateway (default: $default_gateway)";
+                } elsif ($opt eq "vlan") {
+                    if ($vlan) { 
+                        push @output, "BMC VLAN ID: $vlan";
+                    } else {
+                        push @output, "BMC VLAN ID: Disabled";
+                    }
+                } elsif ($opt eq "hostname") {
+                    push @output, "BMC Hostname: $hostname";
                 }
-            } 
-            if ($grep_string =~ "gateway") {
-                push @output, "BMC Gateway: $gateway (default: $default_gateway)";
-            }  
-            if ($grep_string =~ "vlan") {
-                push @output, "BMC VLAN ID enabled: $vlan";
-            }
-            if ($grep_string =~ "hostname") {
-                push @output, "BMC Hostname: $hostname";
             }
         }
 
