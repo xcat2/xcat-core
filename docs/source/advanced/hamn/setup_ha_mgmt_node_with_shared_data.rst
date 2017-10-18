@@ -293,6 +293,8 @@ xCAT ships a sample script ``/opt/xcat/share/xcat/hamn/deactivate-mn`` to make t
 
     /opt/xcat/share/xcat/hamn/deactivate-mn -i eth1:2 -v 9.114.47.97
 
+**Notes**: This script will be over-written after xCAT is upgraded. If this script is customized, make sure backup it before upgrading xCAT.
+
 On the current primary management node:
 
 If the management node is still available and running the cluster, perform the following steps to shutdown.
@@ -339,10 +341,11 @@ If the management node is still available and running the cluster, perform the f
 
 Bring up the New Primary Management Node
 ----------------------------------------
-
-Execute script ``/opt/xcat/share/xcat/hamn/activate-mn`` to make the machine be a primary management node: ::
+xCAT ships a sample script ``/opt/xcat/share/xcat/hamn/activate-mn`` to make the machine be a new primary management node. Before using this script, you need to review the script carefully and make updates accordingly, here is an example of how to use this script to make the machine be a primary management node: ::
 
      /opt/xcat/share/xcat/hamn/activate-mn -i eth1:2 -v 9.114.47.97 -m 255.255.255.0
+
+**Notes**: This script will be over-written after xCAT is upgraded. If this script is customized, make sure backup it before upgrading xCAT.
 
 On the new primary management node:
 
