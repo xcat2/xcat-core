@@ -21,6 +21,7 @@ use HTTP::Cookies;
 use File::Basename;
 use File::Spec;
 use File::Copy qw/copy cp mv move/;
+use File::Path;
 use Data::Dumper;
 use Getopt::Long;
 use xCAT::OPENBMC;
@@ -1978,7 +1979,8 @@ rmdir \"/tmp/$userid\" \n";
         $ENV{'DSH_FROM_USERID'}=$bak_DSH_FROM_USERID;
 
         #remove intermediate files
-        unlink "$home/.ssh/copy.sh","$home/.ssh/tmp/authorized_keys";
+        unlink "$home/.ssh/copy.sh";
+        File::Path->remove_tree("$home/.ssh/tmp/");
     }
 
     if ($next_status{ $node_info{$node}{cur_status} }) {
