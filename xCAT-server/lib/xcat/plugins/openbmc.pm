@@ -1235,6 +1235,14 @@ sub deal_with_response {
 
     if ($response->status_line ne $::RESPONSE_OK) {
         my $error;
+        if (defined $status_info{RPOWER_STATUS_RESPONSE}{argv} and $status_info{RPOWER_STATUS_RESPONSE}{argv} =~ /bmcstate$/) {
+            # Handle the special case to return "NotReady" if the BMC does not return a success response.
+            # If the REST service is not up, it can't return "NotReady" itself, during reboot.:w
+            $error = "BMC NotReady";
+            xCAT::SvrUtils::sendmsg($error, $callback, $node);
+            $wait_node_num--;
+            return;    
+        }
         if ($response->status_line eq $::RESPONSE_SERVICE_UNAVAILABLE) {
             $error = $::RESPONSE_SERVICE_UNAVAILABLE;
         } elsif ($response->status_line eq $::RESPONSE_METHOD_NOT_ALLOWED) {
