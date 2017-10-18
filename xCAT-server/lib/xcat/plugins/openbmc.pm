@@ -1963,15 +1963,15 @@ rmdir \"/tmp/$userid\" \n";
         my $rc=xCAT::RemoteShellExp->remoteshellexp("s",$callback,"/usr/bin/ssh",$bmcip,10);
         if ($rc) {
             xCAT::SvrUtils::sendmsg("Error copying ssh keys to $bmcip\n", $callback, $node);
-        }
-
-        #check whether the ssh keys has been sent successfully
-        $rc=xCAT::RemoteShellExp->remoteshellexp("t",$callback,"/usr/bin/ssh",$bmcip,10);
-        if ($rc) {
-            xCAT::SvrUtils::sendmsg("Error copying ssh keys to $bmcip Rerun rspconfig command.", $callback, $node);
-        }
-        else {
-            xCAT::SvrUtils::sendmsg("ssh keys copied to $bmcip", $callback, $node);
+        }else{
+            #check whether the ssh keys has been sent successfully
+            $rc=xCAT::RemoteShellExp->remoteshellexp("t",$callback,"/usr/bin/ssh",$bmcip,10);
+            if ($rc) {
+                xCAT::SvrUtils::sendmsg("Testing the ssh connection to $bmcip failed. Please rerun rspconfig command.", $callback, $node);
+            }
+            else {
+                xCAT::SvrUtils::sendmsg("ssh keys copied to $bmcip", $callback, $node);
+            }
         }
 
         #restore env variables
