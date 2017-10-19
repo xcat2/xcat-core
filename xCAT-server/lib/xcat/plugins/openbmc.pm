@@ -55,6 +55,10 @@ $::UPLOAD_AND_ACTIVATE      = 0;
 
 $::NO_ATTRIBUTES_RETURNED   = "No attributes returned from the BMC.";
 
+$::UPLOAD_WAIT_ATTEMPT      = 6;
+$::UPLOAD_WAIT_INTERVAL     = 10;
+$::UPLOAD_WAIT_TOTALTIME    = int($::UPLOAD_WAIT_ATTEMPT*$::UPLOAD_WAIT_INTERVAL);
+
 sub unsupported {
     my $callback = shift;
     if (defined($::OPENBMC_DEVEL) && ($::OPENBMC_DEVEL eq "YES")) {
@@ -358,6 +362,10 @@ my %next_status = ();
 
 my %handle_id_node = ();
 
+# Store the value format like '<node> => <time>' to manage the green sleep time, used
+# by retry_after and the main loop in process_request only.
+my %node_wait = ();
+
 my $wait_node_num;
 
 my $async;
@@ -460,6 +468,23 @@ sub preprocess_request {
 
 #-------------------------------------------------------
 
+=head3  retry_after
+
+    The request will be delayed for the given time and then
+    send the reqeust based on the status in the main loop.
+
+=cut
+
+#-------------------------------------------------------
+sub retry_after {
+    my ($node, $request_status, $timeout) = @_;
+    $node_info{$node}{cur_status} = $request_status;
+    $node_wait{$node} = time() + $timeout;
+}
+
+
+#-------------------------------------------------------
+
 =head3  process_request
 
   Process the command
@@ -543,10 +568,33 @@ sub process_request {
                 if ($rc != 0) {
                     $wait_node_num--;
                 } else {
-                    $status_info{ $node_info{$node}{cur_status} }->{process}->($node, undef);
+                    if ($status_info{ $node_info{$node}{cur_status} }->{process}) {
+                        $status_info{ $node_info{$node}{cur_status} }->{process}->($node, undef);
+                    } else {
+                        xCAT::SvrUtils::sendmsg([1,"Internal error, plase the check the process handler for current status "
+                                    .$node_info{$node}{cur_status}."."], $callback, $node);
+                        $wait_node_num--;
+                    }
+
                 }
                 delete $child_node_map{$cpid};
             }
+        }
+        my @del;
+        while (my ($k, $v) = each %node_wait) {
+            if (time() >= $v) {
+                if ($node_info{$k}{method} || $status_info{ $node_info{$k}{cur_status} }{method}) {
+                    gen_send_request($k);
+                } else {
+                    xCAT::SvrUtils::sendmsg([1,"Internal error, plase the check the rest handler for current status "
+                                .$node_info{$k}{cur_status}."."], $callback, $k);
+                    $wait_node_num--;
+                }
+                push(@del, $k);
+            }
+        }
+        foreach my $d (@del) {
+            delete $node_wait{$d};
         }
     } 
 
@@ -1201,7 +1249,6 @@ sub gen_send_request {
     } else {
         $method = $status_info{ $node_info{$node}{cur_status} }{method};
     }
-
     if (defined($status_info{ $node_info{$node}{cur_status} }{data})) {
         # Handle boolean values by create the json objects without wrapping with quotes
         if ($status_info{ $node_info{$node}{cur_status} }{data} =~ /^1$|^true$|^True$|^0$|^false$|^False$/) {
@@ -2269,14 +2316,12 @@ sub rflash_response {
             }
         }
         elsif ($activation_state =~ /Software.Activation.Activations.Activating/) {
-            # Activation still going, sleep for a bit, then print the progress value
-            sleep(15);
             xCAT::SvrUtils::sendmsg("Activating firmware update. $progress_state\%", $callback, $node);
-
+            # Activation still going, sleep for a bit, then print the progress value
             # Set next state to come back here to chect the activation status again.
-            $next_status{ $node_info{$node}{cur_status} } = "RFLASH_UPDATE_CHECK_STATE_REQUEST";
+            retry_after($node, "RFLASH_UPDATE_CHECK_STATE_REQUEST", 15);
+            return;
         }
-       
     }
 
     if ($node_info{$node}{cur_status} eq "RFLASH_UPDATE_CHECK_ID_RESPONSE") {
@@ -2327,8 +2372,20 @@ sub rflash_response {
                 }
             }
         }
-        if (!$found_match) { 
-            xCAT::SvrUtils::sendmsg([1,"Could not find firmware $::UPLOAD_FILE_VERSION to activate."], $callback, $node);
+        if (!$found_match) {
+            if (!exists($node_info{node}{upload_wait_attemp})) {
+                $node_info{node}{upload_wait_attemp} = $::UPLOAD_WAIT_ATTEMPT;
+            }
+            if($node_info{node}{upload_wait_attemp} > 0) {
+                $node_info{node}{upload_wait_attemp} --;
+                xCAT::SvrUtils::sendmsg("Could not find ID for firmware $::UPLOAD_FILE_VERSION to activate, waiting $::UPLOAD_WAIT_INTERVAL seconds and retry...", $callback, $node);
+                retry_after($node, "RFLASH_UPDATE_CHECK_ID_REQUEST", $::UPLOAD_WAIT_INTERVAL);
+                return;
+            } else {
+                xCAT::SvrUtils::sendmsg([1,"Could not find firmware $::UPLOAD_FILE_VERSION after waiting $::UPLOAD_WAIT_TOTALTIME seconds."], $callback, $node);
+                $wait_node_num--;
+                return;
+            }
         }
     }
 
