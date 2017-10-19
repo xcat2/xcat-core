@@ -87,6 +87,9 @@ if [ $USE_CONFLUENT == "1" ] && ([ -x "/opt/confluent/bin/confetty" ] || [ -x "/
     fi
     if [ -z "$CONSERVER" ]; then
         CONSERVER=`nodels $1 nodehm.conserver 2>/dev/null | awk -F: '{print $2}' | tr -d ' '`
+	if [ ! -z "$CONSERVER" ]; then
+		CONSERVER=$(getent hosts $CONSERVER|awk '{print $1}')
+	fi
         declare -a ipaddrs=`ip -o a | awk {'print $4'} | cut -d/ -f1 | grep -v : | tr '\n' ' '`
         for IP in ${ipaddrs[*]}; do 
             if [[ "${CONSERVER}" == "${IP}" ]]; then 
