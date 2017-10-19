@@ -104,6 +104,9 @@ my @snmpcs = xCAT::TableUtils->get_site_attribute("snmpc");
 my $tmp    = $snmpcs[0];
 if (defined($tmp)) { $community = $tmp }
 
+# get master
+my @masters = xCAT::TableUtils->get_site_attribute("master");
+my $master  = $masters[0];
 
 if (($::IP) || ($::ALL)) {
     config_ip();
@@ -147,7 +150,17 @@ sub config_ip {
         # Validate if this IP is reachable 
         my $p = Net::Ping->new();
         if (!$p->ping($dip)) {
-            print "$dip is not reachable\n";
+            print "$dip is not reachable, will not change ip address\n";
+            #clean up discovery switch deifnition if any
+            my $ip_str = $dip;
+            $ip_str =~ s/\./\-/g;
+            my $dswitch = "switch-$ip_str";
+            $cmd = "makedns -d $dswitch";
+            $rc= xCAT::Utils->runcmd($cmd, 0);
+            $cmd = "makehosts -d $dswitch";
+            $rc= xCAT::Utils->runcmd($cmd, 0);
+            $cmd = "rmdef $dswitch";
+            $rc= xCAT::Utils->runcmd($cmd, 0);
             next;
         }
  
@@ -209,6 +222,11 @@ sub config_ip {
         $cmd="xdsh $dswitch -t 10 -l admin --devicetype IBSwitch::Mellanox 'enable;configure terminal;no interface mgmt0 dhcp;interface mgmt0 ip address $static_ip $mask;configuration write;exit;exit' ";
         $rc= xCAT::Utils->runcmd($cmd, 0);
 
+        if (!$p->ping($static_ip)) {
+            print "$switch:  Failed to change ip address to $static_ip\n";
+            next;
+        }
+
         push (@discover_switches, $dswitch);
         push (@config_switches, $switch);
         print "$switch: Changing IP address to static IP $static_ip\n";
@@ -239,6 +257,7 @@ sub config_hostname {
     my @config_switches;
     my $switchtab = xCAT::Table->new('switches');
     my $switchhash = $switchtab->getNodesAttribs(\@nodes,['sshusername']);
+
     foreach my $switch (@nodes) {
         my $user= $switchhash->{$switch}->[0]->{sshusername};
         if (!$user) {
@@ -247,7 +266,16 @@ sub config_hostname {
             $rc= xCAT::Utils->runcmd($cmd, 0);
             $user="admin";
         }
-        $cmd="xdsh $switch -l $user --devicetype IBSwitch::Mellanox 'enable;configure terminal;hostname $switch;configuration write' ";
+        $cmd = "makehosts $switch";
+        $rc= xCAT::Utils->runcmd($cmd, 0);
+
+        my $server = $master;
+        my @servers = xCAT::NetworkUtils->my_ip_facing($switch);
+        unless ($servers[0]) {
+            $server = $servers[1];
+        }
+
+        $cmd="xdsh $switch -l $user --devicetype IBSwitch::Mellanox 'enable;configure terminal;hostname $switch;ip name-server $server;ip domain-list $server;ip default-gateway $server;configuration write' ";
         $rc= xCAT::Utils->runcmd($cmd, 0);
         if ($::RUNCMD_RC != 0) {
             xCAT::MsgUtils->message("E","Failed to setup hostname for $switch");
@@ -330,9 +358,14 @@ sub run_rspconfig {
     my @config_switches;
     my $switchtab = xCAT::Table->new('switches');
     my $switchhash = $switchtab->getNodesAttribs(\@nodes,['sshusername']);
-    $master = `hostname -i`;
+
     foreach my $switch (@nodes) {
         my $user= $switchhash->{$switch}->[0]->{sshusername};
+        my $server = $master;
+        my @servers = xCAT::NetworkUtils->my_ip_facing($switch);
+        unless ($servers[0]) {
+            $server = $servers[1];
+        }
 
         # enable the snmp trap
         $cmd=`rspconfig $switch alert=enable`;
@@ -341,7 +374,9 @@ sub run_rspconfig {
         $cmd=`rspconfig $switch logdest=$master`;
 
         # config ntp
-        $cmd = `xdsh $switch -l $user --devicetype IBSwitch::Mellanox "enable;configure terminal;ntp enable;ntpdate $master; ntp server $master;configuration write;show ntp" `;
+        $cmd = "xdsh $switch -l $user --devicetype IBSwitch::Mellanox 'enable;configure terminal;ntp enable;ntpdate $server; ntp server $server;configuration write;show ntp' ";
+        $rc= xCAT::Utils->runcmd($cmd, 0);
+
         push (@config_switches, $switch);
     }
     if (@config_switches) {
