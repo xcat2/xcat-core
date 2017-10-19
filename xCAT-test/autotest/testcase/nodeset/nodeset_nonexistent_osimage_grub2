@@ -14,6 +14,9 @@ function custom_cleanup()
 	destory_bogus_osimages
 }
 
+NODESET_STDOUT="${TMP_DIR}/nodeset.out"
+NODESET_STDERR="${TMP_DIR}/nodeset.err"
+
 nodeset tz001+4 osimage=rhels7.99-ppc64-install-compute
 exit_if_bad "$?" "nodeset command exit with non-zero"
 
@@ -24,15 +27,26 @@ do
 	exit_if_bad "$?" "file not found /tftpboot/boot/grub2/${node}" 
 done
 
-nodeset tz003 osimage=nonexistent-osimage
+nodeset tz003 osimage=nonexistent-osimage \
+	> >(tee "${NODESET_STDOUT}") 2> >(tee "${NODESET_STDERR}")
 [ "$?" -ne "0" ]
 exit_if_bad "$?" "nodeset command should exit with non-zero"
+
+grep 'annot find the OS image' "${NODESET_STDERR}"
+exit_if_bad "$?" "nodeset command error message checking failed"
 
 nodeset tz001+4 offline
 
-nodeset tz001+4 osimage
+chdef tz003 provmethod=nonexistent-osimage
+exit_if_bad "$?" "chdef command exit with non-zero"
+
+nodeset tz001+4 osimage \
+	> >(tee "${NODESET_STDOUT}") 2> >(tee "${NODESET_STDERR}")
 [ "$?" -ne "0" ]
 exit_if_bad "$?" "nodeset command should exit with non-zero"
+
+grep 'tz003: .*annot find the OS image' "${NODESET_STDERR}"
+exit_if_bad "$?" "nodeset command error message checking failed"
 
 # Make sure all other nodes are good
 for node in tz001 tz002 tz004 tz005
