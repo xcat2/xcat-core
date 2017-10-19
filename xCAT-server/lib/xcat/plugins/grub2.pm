@@ -513,6 +513,8 @@ sub process_request {
     $sub_req    = shift;
     my $command = $request->{command}->[0];
 
+    undef %failurenodes;
+
     my @args;
     #>>>>>>>used for trace log start>>>>>>>
     my %opt;
@@ -564,7 +566,6 @@ sub process_request {
 
     my @nodes = ();
     # Filter those nodes which have bad DNS: not resolvable or inconsistent IP
-    my %failurenodes = ();
     my %preparednodes = ();
     foreach (@rnodes) {
         my $ipret = xCAT::NetworkUtils->checkNodeIPaddress($_);
