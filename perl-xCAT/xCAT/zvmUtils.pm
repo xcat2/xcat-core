@@ -728,7 +728,8 @@ sub getRootDeviceAddr {
                     Node
                     Device address
                     Option (-d|-e)
-    Returns     : Nothing
+    Returns     : successful: String indicating the enable was performed and ending with "Done".
+                  unsuccessful: Error message from the last attempt
     Example     : my $out = xCAT::zvmUtils->disableEnableDisk($callback, $user, $node, $option, $devAddr);
 
 =cut
@@ -745,24 +746,24 @@ sub disableEnableDisk {
     }
 
     # Disable/enable disk
-    my $out;
+    my $out = '';
     if ( $option eq "-d" || $option eq "-e" ) {
         # Can't guarantee the success of online/offline disk, need to wait
         # Until it's done because we may detach the disk after -d option
         # or use the disk after the -e option
         my @sleepTime = (1,2,3,5,8,15,22,34,60,60,60,60,60,90,120);
         foreach (@sleepTime) {
-            #$out = system("ssh $user\@$node '$sudo /sbin/chccwdev $option $devAddr'");
-            my $cmd = "$sudo /sbin/chccwdev $option $devAddr";
+            my $cmd = "$sudo /sbin/chccwdev $option $devAddr 2>&1";
             $out = xCAT::zvmUtils->execcmdonVM($user, $node, $cmd); # caller sets $user to $::SUDOER
             if (xCAT::zvmUtils->checkOutput( $out ) == -1) { # try again if an error
+                xCAT::zvmUtils->printSyslog( "$node: Error received on cmd: $cmd, output: $out" );
                 sleep($_);
             } else {
                 return "ssh $user\@$node $sudo /sbin/chccwdev $option $devAddr... Done";
             }
         }
     }
-    return "Error: failed to ssh $user\@$node $sudo /sbin/chccwdev $option $devAddr";
+    return "Error: failed to ssh $user\@$node $sudo /sbin/chccwdev $option $devAddr, Output: $out";
 }
 
 #-------------------------------------------------------
@@ -1131,7 +1132,7 @@ sub checkSSH_Rc {
 
     if (!defined $cmdOutput) {
         $cmdOutput = '';
-    } else {
+    } elsif ( $cmdOutput ne '' ) {
         $cmdOutput = " Output: " . $cmdOutput . " ";
     }
 
@@ -1152,14 +1153,14 @@ sub checkSSH_Rc {
     $rc = $rc >> 8;
     if ( $rc == 255 ) {
         # SSH failure to communicate with $tgtNode.
-        $msgTxt = "$finalTargetNode" . "(Error) In $functionName(), SSH communication to $tgtNode failed for command: $cmd";
+        $msgTxt = "$finalTargetNode" . "(Error) In $functionName(), SSH communication to $tgtNode failed for command: $cmd$cmdOutput";
         if ($logit > 0 ) {
             xCAT::zvmUtils->printSyslog("$msgTxt");
         }
         return ($rc, $msgTxt);
     } elsif ( $rc != 0 ) {
         # Generic failure of the command.
-        $msgTxt = "$finalTargetNode" . "(Error) In $functionName(), command to $tgtNode failed with return code $rc for: $cmd" . "$cmdOutput";
+        $msgTxt = "$finalTargetNode" . "(Error) In $functionName(), command to $tgtNode failed with return code $rc for: $cmd$cmdOutput";
         if ($logit > 1 ) {
             xCAT::zvmUtils->printSyslog("$msgTxt");
         }
@@ -3376,14 +3377,16 @@ sub smapi4xcat {
                     Privilege
                     Profile
                     Cpu
+                    ipl
+                    logonby
     Returns     : If successful, return file path. Otherwise, return -1
-    Example     : my $out = xCAT::zvmUtils->generateUserEntryFile($userId, $password, $memorySize, $privilege, $profileName, $cpuCount);
+    Example     : my $out = xCAT::zvmUtils->generateUserEntryFile($userId, $password, $memorySize, $privilege, $profileName, $cpuCount, $ipl, $logonby);
 
 =cut
 
 #-------------------------------------------------------
 sub generateUserEntryFile {
-    my ( $class, $userId, $password, $memorySize, $privilege, $profileName, $cpuCount, $ipl) = @_;
+    my ( $class, $userId, $password, $memorySize, $privilege, $profileName, $cpuCount, $ipl, $logonby) = @_;
 
     # If a file of this name already exists, just override it
     my $file = "/tmp/$userId.txt";
@@ -3395,9 +3398,15 @@ sub generateUserEntryFile {
         $content = $content.sprintf("CPU %02X\n", $i);
     }
 
-    if ( $ipl != "") {
+    if ( $ipl ne "") {
         # the caller need validate this $ipl param
         $content = $content.sprintf("IPL %04s\n", $ipl);
+    }
+
+    if ( $logonby ne "") {
+        # the caller need validate the $logonby param
+        my $log = "LOGONBY ".$logonby."\n";
+        $content = $content.$log;
     }
 
     unless (open(FILE, ">$file")) {
