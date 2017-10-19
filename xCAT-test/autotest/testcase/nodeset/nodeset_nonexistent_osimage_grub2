@@ -20,8 +20,8 @@ exit_if_bad "$?" "nodeset command exit with non-zero"
 # Make sure all other nodes are good
 for node in tz{001..005}
 do
-	[ -f "/tftpboot/petitboot/${node}" ]
-	exit_if_bad "$?" "file not found /tftpboot/petitboot/${node}" 
+	[ -f "/tftpboot/boot/grub2/${node}" ]
+	exit_if_bad "$?" "file not found /tftpboot/boot/grub2/${node}" 
 done
 
 nodeset tz003 osimage=nonexistent-osimage
@@ -37,8 +37,8 @@ exit_if_bad "$?" "nodeset command should exit with non-zero"
 # Make sure all other nodes are good
 for node in tz001 tz002 tz004 tz005
 do
-	[ -f "/tftpboot/petitboot/${node}" ]
-	exit_if_bad "$?" "file not found /tftpboot/petitboot/${node}" 
+	[ -f "/tftpboot/boot/grub2/${node}" ]
+	exit_if_bad "$?" "file not found /tftpboot/boot/grub2/${node}" 
 done
 
 nodeset tz001+4 offline

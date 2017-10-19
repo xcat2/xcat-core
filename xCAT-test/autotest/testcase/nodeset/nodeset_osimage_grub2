@@ -24,8 +24,8 @@ exit_if_bad "$?" "nodeset command should exit with non-zero"
 # Make sure all other nodes are good
 for node in tz001 tz004 tz005
 do
-	[ -f "/tftpboot/grub2/${node}" ]
-	exit_if_bad "$?" "file not found /tftpboot/grub2/${node}" 
+	[ -f "/tftpboot/boot/grub2/${node}" ]
+	exit_if_bad "$?" "file not found /tftpboot/boot/grub2/${node}" 
 done
 
 nodeset tz001+4 offline
