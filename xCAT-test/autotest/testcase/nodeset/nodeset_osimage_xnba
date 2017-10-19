@@ -20,10 +20,24 @@ exit_if_bad "$?" "chdef command failed"
 chdef tz002 mac=
 chdef tz003 arch=
 chdef tz004 serialspeed=
-nodeset tz001+4 osimage=rhels6.99-x86_64-install-compute
+
+NODESET_STDOUT="${TMP_DIR}/nodeset.out"
+NODESET_STDERR="${TMP_DIR}/nodeset.err"
+
+nodeset tz001+4 osimage=rhels6.99-x86_64-install-compute \
+	> >(tee "${NODESET_STDOUT}") 2> >(tee "${NODESET_STDERR}")
 # Check $? != 0
 [ "$?" -ne "0" ]
 exit_if_bad "$?" "nodeset command should exit with non-zero"
+
+grep 'tz002: .*o MAC address' "${NODESET_STDERR}"
+exit_if_bad "$?" "nodeset command error message checking failed"
+
+#grep 'tz003: .*o archictecture defined' "${NODESET_STDERR}"
+#exit_if_bad "$?" "nodeset command error message checking failed"
+
+grep 'tz004: .*o serialspeed' "${NODESET_STDERR}"
+exit_if_bad "$?" "nodeset command error message checking failed"
 
 # Make sure all other nodes are good
 for node in tz001 tz005
