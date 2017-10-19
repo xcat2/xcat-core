@@ -20,7 +20,7 @@ my $usage_string =
   "  makeconfluentcfg [-d|--delete] noderange
   makeconfluentcf [-l|--local]
   makeconfluentcf [-c|--confluent]
-  makeconfluentcf 
+  makeconfluentcf
   makeconfluentcf -h|--help
   makeconfluentcf -v|--version
     -c|--confluent   Configure confluent only on the host.
@@ -242,7 +242,7 @@ sub makeconfluentcfg {
         @cfgents1 = $hmtab->getNodesAttribs($nodes, [ 'node', 'cons', 'mgt', 'conserver', 'termserver', 'termport', 'consoleondemand' ]);
         @cfgents2 = $nodepostab->getNodesAttribs($nodes, [ 'node', 'rack', 'u', 'chassis', 'slot', 'room' ]);
         @cfgents3 = $mptab->getNodesAttribs($nodes, [ 'node', 'mpa', 'id' ]);
-        @cfgents4 = $switchtab->getNodesAttribs($nodes, [ 'node', 'switch', 'port' ]);
+        @cfgents4 = $switchtab->getNodesAttribs($nodes, [ 'node', 'switch', 'port', 'interface' ]);
 
         # Adjust the data structure to make the result consistent with the getAllNodeAttribs() call we make if a noderange was not specified
         my @tmpcfgents1;
@@ -276,13 +276,14 @@ sub makeconfluentcfg {
         @cfgents1 = $hmtab->getAllNodeAttribs([ 'cons', 'serialport', 'mgt', 'conserver', 'termserver', 'termport', 'consoleondemand' ]);
         @cfgents2 = $nodepostab->getAllNodeAttribs([ 'rack', 'u', 'chassis', 'slot', 'room' ]);
         @cfgents3 = $nodepostab->getAllNodeAttribs([ 'mpa', 'id' ]);
-        @cfgents4 = $nodepostab->getAllNodeAttribs([ 'node', 'switch', 'port' ]);
+        @cfgents4 = $nodepostab->getAllNodeAttribs([ 'node', 'switch', 'port', 'interface' ]);
     }
 
 
     #cfgents1 should now have all the nodes, so we can fill in the cfgents array and cfgenthash one at a time.
     # skip the nodes that do not have 'cons' defined, unless a serialport setting suggests otherwise
     my %cfgenthash;
+    my %cfgnichash;
     foreach (@cfgents1) {
         if ($_->{cons} or defined($_->{'serialport'})) {
             unless ($_->{cons}) { $_->{cons} = $_->{mgt}; } #populate with fallback
@@ -304,8 +305,15 @@ sub makeconfluentcfg {
     foreach my $nent (@cfgents4) {
         foreach my $node (keys %$nent) {
             foreach (@{$nent->{$node}}) {
-                foreach my $key (keys %$_) {
-                    $cfgenthash{ $node }->{$key} = $_->{$key};
+                if ($_->{interface}) {
+                    my $nicname = $_->{interface};
+                    foreach my $key (keys %$_) {
+                         $cfgnichash{ $node }->{$nicname}->{$key} = $_->{$key};
+                    }
+                } else {
+                   foreach my $key (keys %$_) {
+                        $cfgenthash{ $node }->{$key} = $_->{$key};
+                   }
                 }
             }
         }
@@ -329,7 +337,7 @@ sub makeconfluentcfg {
         #if (($req->{_allnodes}) && ($req->{_allnodes}->[0]==1)) {} #TODO: identify nodes that will be removed
         # call donodeent to add all node entries into the file.  It will return the 1st node in error.
         my $node;
-        if ($node = donodeent(\%cfgenthash, $confluent, $delmode, $cb)) {
+        if ($node = donodeent(\%cfgenthash, $confluent, $delmode, $cb, \%cfgnichash)) {
 
             #$cb->({node=>[{name=>$node,error=>"Bad configuration, check attributes under the nodehm category",errorcode=>1}]});
             xCAT::SvrUtils::sendmsg([ 1, "Bad configuration, check attributes under the nodehm category" ], $cb, $node);
@@ -370,7 +378,7 @@ sub makeconfluentcfg {
 
         # Now add into the file all the node entries that we kept
         my $node;
-        if ($node = donodeent(\%cfgenthash, $confluent, undef, $cb)) {
+        if ($node = donodeent(\%cfgenthash, $confluent, undef, $cb, \%cfgnichash)) {
 
             # donodeent will return the 1st node in error
             #$cb->({node=>[{name=>$node,error=>"Bad configuration, check attributes under the nodehm category",errorcode=>1}]});
@@ -388,6 +396,7 @@ sub donodeent {
     my $confluent  = shift;
     my $delmode    = shift;
     my $cb         = shift;
+    my $cfgnichash = shift;
     my $idx        = 0;
     my $toidx      = -1;
     my $skip       = 0;
@@ -465,6 +474,7 @@ sub donodeent {
         unless ($node) { next; }  # we may have spurious empty nodes
         my $cfgent = $cfgenthash->{$node};
         my $cmeth  = $cfgent->{cons};
+        my $nicsent = $cfgnichash->{$node};
         if ($cmeth and $cmeth ne 'ipmi') {
             $cmeth = 'xcat' . $cmeth;
         }
@@ -507,6 +517,16 @@ sub donodeent {
         }
         if (defined $cfgent->{port}) {
             $parameters{'net.switchport'} = $cfgent->{port};
+        }
+        foreach my $nic (keys %{$nicsent}) {
+          my $nicprefix = "net.$nic";
+          my $nicent = $nicsent->{$nic};
+          if (defined $nicent->{switch}) {
+            $parameters{$nicprefix . '.switch'} = $nicent->{switch};
+          }
+          if (defined $nicent->{port}) {
+            $parameters{$nicprefix . '.switchport'} = $nicent->{port};
+          }
         }
         if (defined $cfgent->{room}) {
             $parameters{'location.room'} = $cfgent->{room};
