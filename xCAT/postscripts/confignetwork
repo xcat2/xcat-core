@@ -89,8 +89,8 @@ do
     elif [ "${arg:0:10}" = "--ibaports" ];then
         num_iba_ports=${arg#--ibaports=}
     fi
-    # --noips means ignore if nicips are not configured or not
-    if [ "$arg" = "--noips" ]; then
+    # --allownoip means ignore if nicips are not configured or not
+    if [ "$arg" = "--allownoip" ]; then
         ignore_nicips=1
     fi
 done
@@ -341,11 +341,11 @@ function sort_nics_device_order {
                     echo $alonenic
                 fi
             else
-                if [ $ignore_nicips -eq 0 ]; then
+                if [ $ignore_nicips -eq 1 ] && [ -z "$alonenicips" ]; then
+                    echo "nic $alonenic found, but incomplete configuration in node definition."
+                else
                     errorcode=1
                     echo "Error: nicips,nictypes and nicnetworks should be configured in nics table for $alonenic."
-                else
-                    echo "nic $alonenic found, but incomplete configuration in node definition."
                 fi
                 ((num1+=1))
                 continue
@@ -644,6 +644,9 @@ parser_nic_attribute "$NICTYPES" "nictypes"
 #make hash for nicips
 parser_nic_attribute "$NICIPS" "nicips"
 
+#make hash for nicnetworks
+parser_nic_attribute "$NICNETWORKS" "nicnetworks"
+
 #make hash for niccustomscripts
 parser_nic_attribute "$NICCUSTOMSCRIPTS" "niccustomscripts"
 
@@ -668,7 +671,7 @@ if [ $? -eq 0 ]; then
     errorcode=1
 fi
 
-#when --noips is used, print incomplete nics 
+#when --allownoip is used, print incomplete nics
 nonicips_list=`echo "$sorted_nicdevice_list" | grep "incomplete"`
 if [ $? -eq 0 ]; then
     echo "$nonicips_list"| log_lines info
