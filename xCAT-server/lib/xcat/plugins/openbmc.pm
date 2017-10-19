@@ -1077,6 +1077,37 @@ sub parse_command_status {
 }
 
 #-------------------------------------------------------
+#
+#=head3  get_functional_software_ids
+#
+#  Checks if the FW response data contains "functional" which 
+#  indicates the actual software version currently running on 
+#  the Server.  
+#
+#  Returns: reference to hash
+#
+#  =cut
+#
+#-------------------------------------------------------
+sub get_functional_software_ids {
+    my $response = shift;
+    my %functional;
+
+    #
+    # Get the functional IDs to accurately mark the active running FW
+    #
+    if (${ $response->{data} }{'/xyz/openbmc_project/software/functional'} ) { 
+        my %func_data = %{ ${ $response->{data} }{'/xyz/openbmc_project/software/functional'} };
+        foreach my $fw_idx (keys $func_data{endpoints}) {
+            my $fw_id = (split(/\//, $func_data{endpoints}[$fw_idx]))[-1];
+            $functional{$fw_id} = 1;
+        }
+    }
+
+    return \%functional;
+}
+
+#-------------------------------------------------------
 
 =head3  parse_node_info
 
@@ -1501,6 +1532,9 @@ sub rinv_response {
     my $content_info;
     my @sorted_output;
 
+    # Get the functional IDs to accurately mark the active running FW
+    my $functional = get_functional_software_ids($response_info);
+
     foreach my $key_url (keys %{$response_info->{data}}) {
         my %content = %{ ${ $response_info->{data} }{$key_url} };
 
@@ -1518,16 +1552,20 @@ sub rinv_response {
                 #
                 # For 'rinv firm', only print Active software, unless verbose is specified
                 #
-                if (($activation_value =~ "Active" and $priority_value == 0) or $::VERBOSE) {
+                if ( (%{$functional} and exists($functional->{$sw_id}) ) or 
+                     (!%{$functional} and $activation_value =~ "Active" and $priority_value == 0) or 
+                      $::VERBOSE ) {
                     #
                     # The space below between "Firmware Product Version:" and $content{Version} is intentional
                     # to cause the sorting of this line before any additional info lines 
                     #
                     $content_info = "$purpose_value Firmware Product:   $content{Version} ($activation_value)";
-                    if ($priority_value == 0) {
-                        # For now, indicate priority 0 software levels with an '*'
-                        $content_info .= "*";
+                    my $indicator = "*";
+                    if ($priority_value == 0 and %{$functional} and !exists($functional->{$sw_id})) {
+                        # indicate that a reboot is needed if priority = 0 and it's not in the functional list
+                        $indicator = "+";
                     }
+                    $content_info .= $indicator;
                     push (@sorted_output, $content_info); 
     
                     if (defined($content{ExtendedVersion}) and $content{ExtendedVersion} ne "") { 
@@ -2077,6 +2115,13 @@ sub rflash_response {
     my $update_priority = -1;
 
     if ($node_info{$node}{cur_status} eq "RFLASH_LIST_RESPONSE") {
+        # Get the functional IDs to accurately mark the active running FW
+        my $functional = get_functional_software_ids($response_info);
+        if (!%{$functional}) {
+            # Inform users that the older firmware levels does not correctly reflect Active version
+            xCAT::SvrUtils::sendmsg("WARNING, The current firmware is unable to detect running firmware version.", $callback, $node);
+        }
+
         # Display "list" option header and data
         xCAT::SvrUtils::sendmsg("ID       Purpose State      Version", $callback, $node);
         xCAT::SvrUtils::sendmsg("-" x 55, $callback, $node);
@@ -2101,9 +2146,19 @@ sub rflash_response {
             if (defined($content{Priority}))  {
                 $update_priority = (split(/\./, $content{Priority}))[ -1 ];
             }
-            # Priority attribute of 0 indicates the "really" active update image
-            if ($update_priority == 0) {
+            if (exists($functional->{$update_id}) ) {
+                #
+                # If the firmware ID exists in the hash, this indicates the really active running FW
+                #
                 $update_activation = $update_activation . "(*)";
+            } elsif ($update_priority == 0) {
+                # Priority attribute of 0 indicates the firmware to be activated on next boot 
+                my $indicator = "(+)";
+                if (!%{$functional}) {
+                    # cannot detect, so mark firmware as Active
+                    $indicator = "(*)";
+                }
+                $update_activation = $update_activation . $indicator;
                 $update_priority = -1; # Reset update priority for next loop iteration
             }
             xCAT::SvrUtils::sendmsg(sprintf("%-8s %-7s %-10s %s", $update_id, $update_purpose, $update_activation, $update_version), $callback, $node);
