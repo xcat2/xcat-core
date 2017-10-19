@@ -408,13 +408,13 @@ OPTIONS
 
 \ **ipsrc**\ 
  
- Get the ip source for OpenBMC.
+ Get the IP source for OpenBMC.
  
 
 
 \ **ip**\ 
  
- The ip address.
+ The IP address.
  
 
 

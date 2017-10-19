@@ -310,11 +310,11 @@ Get or set vlan ID. For get vlan ID, if vlan is not enabled, 'BMC VLAN disabled'
 
 =item B<ipsrc>
 
-Get the ip source for OpenBMC.
+Get the IP source for OpenBMC.
 
 =item B<ip>
 
-The ip address.
+The IP address.
 
 =item B<memdecfg>={B<configure | deconfigure>:I<processingunit>:I<unit|bank>:I<id,...>}
 

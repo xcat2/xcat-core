@@ -630,7 +630,7 @@ sub parse_args {
                 return ([ 1, "Can not configure and display nodes' value at the same time" ]) if ($setorget and $setorget eq "get");
                 my $key = $1;
                 my $value = $2;
-                return ([ 1, "Unsupport to configure ipsrc" ]) if ($key eq "ipsrc");
+                return ([ 1, "Changing ipsrc value is currently not supported." ]) if ($key eq "ipsrc");
                 return ([ 1, "Unsupported command: $command $key" ]) unless ($key =~ /^ip$|^netmask$|^gateway$|^hostname$|^vlan$/);
 
                 my $nodes_num = @$noderange;
@@ -1845,9 +1845,6 @@ sub rspconfig_response {
             if ($adapter_id) {
                 if (defined($content{Address}) and $content{Address}) {
                     unless ($address =~ /n\/a/) {
-                        if ($ipsrc eq "DHCP" and $xcatdebugmode) {
-                            process_debug_info($node, "There is an IP address:$address got through DHCP");
-                        }
                         # We have already processed an entry with adapter information.
                         # This must be a second entry. Display an error. Currently only supporting
                         # an adapter with a single IP address set.
