@@ -49,6 +49,12 @@ function internal_setup()
 	# Trap exit for internal_cleanup function.
 	trap "internal_cleanup" EXIT
 
+	umask 0077
+
+	TMP_DIR="$(mktemp -d "/tmp/${0##*/}.XXXXXXXX" 2>/dev/null)"
+	[ -d "${TMP_DIR}" ]
+	exit_if_bad "$?" "Make temporary directory failed."
+
 	custom_setup
 }
 
@@ -60,6 +66,8 @@ function internal_setup()
 function internal_cleanup()
 {
 	custom_cleanup
+
+	[ -d "${TMP_DIR}" ] && rm -rf "${TMP_DIR}"
 }
 
 #
@@ -127,11 +135,7 @@ function make_bogus_xnba_nodes()
 
 function destory_bogus_nodes()
 {
-	local i
-	for i in {001..005}
-	do
-		rmdef -t node tz${i}
-	done
+	rmdef -t node tz001+4
 }
 
 umask 0022
@@ -186,6 +190,6 @@ function destory_bogus_osimages()
 		rhels6.99-ppc64-install-compute \
 		rhels6.99-x86_64-install-compute
 	do
-		rmdef -t osimage ${o} 2>/dev/null
+		rmdef -t osimage ${o}
 	done
 }
