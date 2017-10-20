@@ -346,7 +346,7 @@ while [ ! -s $LITEFILE ]; do
     # the file is empty, we should retry several times
     RETRY=$(( $RETRY+1 ))
     if [ $RETRY -eq $MAX_RETRIES ]; then
-        echo "Error: Cannot get the litefile configuration file from xCAT server." >>$LOG
+        echo "Error: Cannot get the litefile configuration from xCAT server." >>$LOG
         echo "Error to configure localdisk"
         exit 1
     fi
@@ -363,12 +363,27 @@ while [ ! -s $LITEFILE ]; do
 	> $LITEFILE
 done
 
-# If the first time, we need to sync from image to localdisk
-test -f "$MNTDIR$LOCAL/.NOTSYNCTOLOCAL"
-SYNCTOLOCAL=$?
+# If the first time, we need to sync from image to localdisk for stateless
+SYNCTOLOCAL=1
+# Node is statelite if /proc/cmdline have flag `STATEMNT='
+if [ -f "/proc/cmdline" ]; then
+    if grep --quiet --no-messages "STATEMNT=" "/proc/cmdline"; then
+        echo "DEBUG: Ignored syncing to local as this is a statelite installation." >>$LOG
+        SYNCTOLOCAL=0
+    fi
+fi
+# If stateless then check the flag file
+if [ $SYNCTOLOCAL -eq 1 ]; then
+    if [ -f "$MNTDIR$LOCAL/.NOTSYNC2LOCAL" ]; then
+        echo "DEBUG: Ignored syncing to local as flag file exists." >>$LOG
+        SYNCTOLOCAL=0
+    fi
+fi
+echo "DEBUG: SYNCTOLOCAL=$SYNCTOLOCAL" >>$LOG
 
 while read TYPE FPATH
 do
+    needsync=$SYNCTOLOCAL
     if [ x$TYPE = x"localdisk" ]; then
         dir=`echo $FPATH | egrep '\/$'`
         if [ x$dir = x ]; then
@@ -376,28 +391,32 @@ do
             if [ ! -f ${MNTDIR}${FPATH} ]; then
                 touch ${MNTDIR}${FPATH}
                 echo "touch ${MNTDIR}${FPATH}" >>$LOG
+                needsync=0
             fi 
             if [ ! -f ${MNTDIR}${LOCAL}${FPATH} ]; then
                 touch ${MNTDIR}${LOCAL}${FPATH}
                 echo "touch ${MNTDIR}${LOCAL}${FPATH}" >>$LOG
-                if [ $SYNCTOLOCAL -eq 1 ]; then
-                    echo "Sync contents of ${FPATH} to localdisk" >>$LOG
-                    echo "cp -af ${MNTDIR}${FPATH} ${MNTDIR}${LOCAL}${FPATH}" >>$LOG
-                fi
+            fi
+            if [ $needsync -eq 1 ]; then
+                echo "Sync contents of ${FPATH} to localdisk" >>$LOG
+                cp -af "${MNTDIR}${FPATH}" "${MNTDIR}${LOCAL}${FPATH}" >>$LOG 2>&1
             fi
         else
             # it's a dir
             if [ ! -d ${MNTDIR}${FPATH} ]; then
                 mkdir -p ${MNTDIR}${FPATH}
                 echo "mkdir -p ${MNTDIR}${FPATH}" >>$LOG
+                needsync=0
+            elif [ "x`ls -A $DIRECTORY`" = "x" ]; then
+                needsync=0
             fi
             if [ ! -d ${MNTDIR}${LOCAL}${FPATH} ]; then
                 mkdir -p ${MNTDIR}${LOCAL}${FPATH}
                 echo "mkdir -p ${MNTDIR}${LOCAL}${FPATH}" >>$LOG
-                if [ $SYNCTOLOCAL -eq 1 ]; then
-                    echo "Sync contents of ${FPATH} to localdisk" >>$LOG
-                    echo "cp -af ${MNTDIR}${FPATH}/* ${MNTDIR}${LOCAL}${FPATH}" >>$LOG
-                fi
+            fi
+            if [ $needsync -eq 1 ]; then
+                echo "Sync contents of ${FPATH} to localdisk" >>$LOG
+                cp -af "${MNTDIR}${FPATH}*" "${MNTDIR}${LOCAL}${FPATH}" >>$LOG 2>&1
             fi
         fi
 
@@ -408,4 +427,4 @@ do
 done < $LITEFILE
 
 touch "$DONEFLAG"
-touch "$MNTDIR$LOCAL/.NOTSYNCTOLOCAL"
+touch "$MNTDIR$LOCAL/.NOTSYNC2LOCAL"
