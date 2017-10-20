@@ -25,23 +25,23 @@ Specify VM attributes
 
 After the VM object is created, several key attributes need to be specified with ``chdef`` : 
 
-1. the number of virtual cpus in the VM: ::
+1. the hardware management module, "kvm" for PowerKVM: ::
+
+    chdef vm1 mgt=kvm
+
+2. the number of virtual cpus in the VM: ::
 
      chdef vm1 vmcpus=2
 
-2. the kvm hypervisor of the VM: ::
+3. the kvm hypervisor of the VM: ::
  
      chdef vm1 vmhost=kvmhost1
 
-3. the virtual memory size, with the unit "Megabit". Specify 1GB memory to "vm1" here: ::
+4. the virtual memory size, with the unit "Megabit". Specify 1GB memory to "vm1" here: ::
 
      chdef vm1 vmmemory=1024
 
 **Note**: For diskless node, the **vmmemory** should be at least 2048 MB, otherwise the node cannot boot up. 
-
-4. the hardware management module, "kvm" for PowerKVM: ::
-
-    chdef vm1 mgt=kvm
 
 5. Define the virtual network card, it should be set to the bridge "br0" which has been created in the hypervisor. If no bridge is specified, no network device will be created for the VM node "vm1": ::
 
