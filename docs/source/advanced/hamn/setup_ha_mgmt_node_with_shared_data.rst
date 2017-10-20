@@ -289,7 +289,20 @@ In a planned failover, you can do necessary cleanup work on the previous primary
 Take down the Current Primary Management Node
 ---------------------------------------------
 
-xCAT ships a sample script ``/opt/xcat/share/xcat/hamn/deactivate-mn`` to make the machine be a standby management node. Before using this script, you need to review the script carefully and make updates accordingly, here is an example of how to use this script: ::
+xCAT ships a sample script ``/opt/xcat/share/xcat/hamn/deactivate-mn`` to make the machine be a standby management node. Before using this script, you need to review the script carefully and make updates accordingly, correct the following variable values in this script: ::
+
+    SHAREDVG=sharedvg # For AIX, shared volumn group name
+    DBDIR=/var/lib/pgsql # database directory
+    SHAREDFS="/install /etc/xcat /root/.xcat /tftpboot" # Shared file systems
+    USEDB2=no # if DB2 is being used
+    USETEAL=no # if TEAL is being used
+    USEDFM=no # if DFM is being used
+    USEUNMOUNT=yes # umount share data directory
+    POWER775=no # Power 775 cluster
+    CHANGEHOSTNAME=no # change the hostname from virtual ip hostname to the original hostname
+    xcatdb=postgresql # support postgrel,DB2,mysql
+
+Here is an example of how to use this script: ::
 
     /opt/xcat/share/xcat/hamn/deactivate-mn -i eth1:2 -v 9.114.47.97
 
@@ -341,7 +354,21 @@ If the management node is still available and running the cluster, perform the f
 
 Bring up the New Primary Management Node
 ----------------------------------------
-xCAT ships a sample script ``/opt/xcat/share/xcat/hamn/activate-mn`` to make the machine be a new primary management node. Before using this script, you need to review the script carefully and make updates accordingly, here is an example of how to use this script to make the machine be a primary management node: ::
+xCAT ships a sample script ``/opt/xcat/share/xcat/hamn/activate-mn`` to make the machine be a new primary management node. Before using this script, you need to review the script carefully and make updates accordingly, correct the following variable values in this script: ::
+
+    SHAREDVG=sharedvg # For AIX, shared volumn group name
+    DBDIR=/var/lib/pgsql # database directory
+    SHAREDFS="/install /etc/xcat /root/.xcat" # Shared file systems
+    USEDFM=no # if DFM is being used
+    USENTP=no # if NTP is being used
+    POWER775=no # Power 775 cluster
+    USETEAL=no # if TEAL is being used
+    USEMOUNT=yes # mounted filesystems in the file /etc/fstab
+    CHANGEHOSTNAME=yes # set the hostname to the virtual ip address hostname
+    RESTARTDNS=yes # if yes, will execute "makedns -n"
+    xcatdb=postgresql # support postgrel,DB2,mysql
+
+Here is an example of how to use this script to make the machine be a primary management node: ::
 
      /opt/xcat/share/xcat/hamn/activate-mn -i eth1:2 -v 9.114.47.97 -m 255.255.255.0
 

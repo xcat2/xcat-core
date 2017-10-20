@@ -33,7 +33,7 @@ USEDFM=no # if DFM is being used
 USENTP=no # if NTP is being used
 POWER775=no # Power 775 cluster
 USETEAL=no # if TEAL is being used
-USEMOUNT=yes # mounted  filesystems in the file /etc/fstab
+USEMOUNT=yes # mounted filesystems in the file /etc/fstab
 CHANGEHOSTNAME=yes # set the hostname to the virtual ip address hostname
 RESTARTDNS=yes # if yes, will execute "makedns -n"
 exit_code=0
@@ -160,6 +160,35 @@ then
     done
 else
     echo "Warning: share data $SHAREDFS $DBDIR should be mounted before."
+fi
+
+# check if DB is matched in linux
+if [ `uname` = "Linux" ]; then
+    echo "Check DB...."
+    if [ -n "/etc/xcat/cfgloc" ]
+    then
+        xcatcfg=`cat /etc/xcat/cfgloc|cut -f 1 -d : 2>/dev/null`
+    else
+        xcatcfg=`XCATBYPASS=1 /opt/xcat/bin/lsxcatd -d | cut -f 2 -d "=" 2>/dev/null`
+    fi
+    if [ -n $xcatcfg ]; then
+        current_db=$xcatcfg
+        if [ $xcatcfg = "Pg" ]
+        then
+            current_db="postgresql"
+        fi
+        echo "Current database is $current_db."
+        if [ $current_db != "$xcatdb" ]
+        then
+            echo "Error: current DB $current_db is not matched with $xcatdb. [Failed]"
+            exit_code=1
+        else
+            echo "DB is matched with $xcatdb [Passed]."
+        fi
+    else
+        echo "Error: can not get current DB. [Failed]"
+        exit_code=1
+    fi
 fi
 
 # Start NFS
