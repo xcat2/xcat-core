@@ -89,7 +89,10 @@ else
   sed -i "/SERVICEGROUP=.*/d" $XCATINFOFILE
 fi
 
-CNS=`grep NODESTATUS= /xcatpost/mypostscript.post |awk -F = '{print $2}' | tr -d \'\" | tr A-Z a-z`
+[ -f /xcatpost/mypostscript ] && NODESTATUS=`grep 'NODESTATUS=' /xcatpost/mypostscript |awk -F = '{print $2}'|tr -d \'\" | tr A-Z a-z `
+[ -z "$NODESTATUS" ] && NODESTATUS="1"
+
+CNS=$NODESTATUS
 if [ -z "$CNS" ] || [[ "$CNS" =~ ^(1|yes|y)$ ]]; then
 #update the node status during the postbootscript running
 #TMP=`sed "/postbootscripts-start-here/ i\updateflag.awk \\$MASTER 3002 \\"installstatus configuring\\"" /xcatpost/mypostscript.post`
