@@ -333,7 +333,7 @@ check:rc==0
 cmd:chdef $$CN nicips.$$SECONDNIC= nictypes.$$SECONDNIC= nicnetworks.$$SECONDNIC=11_1_0_0-255_255_0_0
 check:rc==0
 cmd:updatenode $$CN -P confignetwork
-check:rc==0
+check:rc==1
 #TODO check the error message
 cmd:rmdef -t network -o 11_1_0_0-255_255_0_0
 check:rc==0
