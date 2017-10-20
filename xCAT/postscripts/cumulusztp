@@ -128,6 +128,8 @@ if [ "$rc" != "0" ]; then
    exit 1
 fi
 
+#setup ntp
+echo './setupntp' >> ./mypostscript
 #enable snmp
 echo './enablesnmp' >> ./mypostscript
 #config base interface
