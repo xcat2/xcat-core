@@ -1334,9 +1334,24 @@ sub deal_with_response {
             if ($response->status_line eq $::RESPONSE_SERVER_ERROR) {
                 $error = $response_info->{'data'}->{'exception'};
             } elsif ($response->status_line eq $::RESPONSE_FORBIDDEN) {
-                $error = "$::RESPONSE_FORBIDDEN - This function is not yet available in OpenBMC firmware.";
+                #
+                # For any invalid data that we can detect, provide a better response message
+                #
+                if ($node_info{$node}{cur_status} eq "RFLASH_UPDATE_ACTIVATE_RESPONSE") {
+                    # If 403 is received for an activation, that means the activation ID is incorrect
+                    $error = "Invalid ID provided to activate. Use the -l option to view valid firmware IDs.";
+                } else {
+                    $error = "$::RESPONSE_FORBIDDEN - This function is not yet available in OpenBMC firmware.";
+                }
             } elsif ($response_info->{'data'}->{'description'} =~ /path or object not found: (.+)/) {
-                $error = "path or object not found $1";
+                #
+                # For any invalid data that we can detect, provide a better response message
+                #
+                if ($node_info{$node}{cur_status} eq "RFLASH_DELETE_IMAGE_RESPONSE") { 
+                    $error = "Invalid ID provided to delete.  Use the -l option to view valid firmware IDs.";
+                } else {
+                    $error = "Path or object not found: $1";
+                }
             } else {
                 $error = $response_info->{'data'}->{'description'};
             }
