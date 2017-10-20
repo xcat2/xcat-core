@@ -1149,8 +1149,8 @@ sub get_functional_software_ids {
     #
     if (${ $response->{data} }{'/xyz/openbmc_project/software/functional'} ) { 
         my %func_data = %{ ${ $response->{data} }{'/xyz/openbmc_project/software/functional'} };
-        foreach my $fw_idx (keys %{ $func_data{endpoints} }) {
-            my $fw_id = (split(/\//, $func_data{endpoints}[$fw_idx]))[-1];
+        foreach ( @{$func_data{endpoints}} ) {
+            my $fw_id = (split '/', $_)[-1];
             $functional{$fw_id} = 1;
         }
     }
