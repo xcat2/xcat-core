@@ -145,7 +145,7 @@ my %usage = (
        rspconfig <noderange> [garp=<number of 1/2 second>]
        rspconfig <noderange> [userid=<userid> username=<username> password=<password>]
    OpenBMC specific:
-       rspconfig <noderange> [ip|netmask|gateway|hostname|vlan]
+       rspconfig <noderange> [ipsrc|ip|netmask|gateway|hostname|vlan]
    iDataplex specific:
        rspconfig <noderange> [thermprofile]
        rspconfig <noderange> [thermprofile=<two digit number from chassis>]
