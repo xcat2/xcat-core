@@ -346,7 +346,7 @@ while [ ! -s $LITEFILE ]; do
     # the file is empty, we should retry several times
     RETRY=$(( $RETRY+1 ))
     if [ $RETRY -eq $MAX_RETRIES ]; then
-        echo "Error: Cannot get the partition configuration file from xCAT server." >>$LOG
+        echo "Error: Cannot get the litefile configuration file from xCAT server." >>$LOG
         echo "Error to configure localdisk"
         exit 1
     fi
@@ -363,6 +363,10 @@ while [ ! -s $LITEFILE ]; do
 	> $LITEFILE
 done
 
+# If the first time, we need to sync from image to localdisk
+test -f "$MNTDIR$LOCAL/.NOTSYNCTOLOCAL"
+SYNCTOLOCAL=$?
+
 while read TYPE FPATH
 do
     if [ x$TYPE = x"localdisk" ]; then
@@ -376,7 +380,11 @@ do
             if [ ! -f ${MNTDIR}${LOCAL}${FPATH} ]; then
                 touch ${MNTDIR}${LOCAL}${FPATH}
                 echo "touch ${MNTDIR}${LOCAL}${FPATH}" >>$LOG
-            fi 
+                if [ $SYNCTOLOCAL -eq 1 ]; then
+                    echo "Sync contents of ${FPATH} to localdisk" >>$LOG
+                    echo "cp -af ${MNTDIR}${FPATH} ${MNTDIR}${LOCAL}${FPATH}" >>$LOG
+                fi
+            fi
         else
             # it's a dir
             if [ ! -d ${MNTDIR}${FPATH} ]; then
@@ -386,6 +394,10 @@ do
             if [ ! -d ${MNTDIR}${LOCAL}${FPATH} ]; then
                 mkdir -p ${MNTDIR}${LOCAL}${FPATH}
                 echo "mkdir -p ${MNTDIR}${LOCAL}${FPATH}" >>$LOG
+                if [ $SYNCTOLOCAL -eq 1 ]; then
+                    echo "Sync contents of ${FPATH} to localdisk" >>$LOG
+                    echo "cp -af ${MNTDIR}${FPATH}/* ${MNTDIR}${LOCAL}${FPATH}" >>$LOG
+                fi
             fi
         fi
 
@@ -396,3 +408,4 @@ do
 done < $LITEFILE
 
 touch "$DONEFLAG"
+touch "$MNTDIR$LOCAL/.NOTSYNCTOLOCAL"
