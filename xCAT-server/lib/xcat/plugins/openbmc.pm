@@ -1300,7 +1300,7 @@ sub deal_with_response {
     if ($status_info{ $node_info{$node}{cur_status} }->{process}) {
         $status_info{ $node_info{$node}{cur_status} }->{process}->($node, $response);
     } else {
-        xCAT::SvrUtils::sendmsg([1,"Internal error, plase the check the rest handler for current status $node_info{$node}{cur_status}"]);
+        xCAT::SvrUtils::sendmsg([1,"Internal error, check the process handler for current status $node_info{$node}{cur_status}"]);
         $wait_node_num--;
     }
 
@@ -1971,7 +1971,7 @@ sub rspconfig_sshcfg_response {
     if ($node_info{$node}{cur_status} eq "RSPCONFIG_SSHCFG_REQUEST") {
         my $child = xCAT::Utils->xfork;
         if (!defined($child)) {
-            xCAT::SvrUtils::sendmsg("Failed to fork child process to upload firmware image.", $callback, $node);
+            xCAT::SvrUtils::sendmsg("Failed to fork child process for rspconfig sshcfg.", $callback, $node);
             sleep(1)
         } elsif ($child == 0) {
             exit(sshcfg_process($node))
