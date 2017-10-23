@@ -33,7 +33,7 @@ USEDFM=no # if DFM is being used
 USENTP=no # if NTP is being used
 POWER775=no # Power 775 cluster
 USETEAL=no # if TEAL is being used
-USEMOUNT=yes # mounted filesystems in the file /etc/fstab
+USEMOUNT=yes # mounted  filesystems in the file /etc/fstab
 CHANGEHOSTNAME=yes # set the hostname to the virtual ip address hostname
 RESTARTDNS=yes # if yes, will execute "makedns -n"
 exit_code=0
@@ -69,6 +69,12 @@ runcmd()
            a=$[$a+1]
         fi
     done
+}
+
+clear_env()
+{
+    NIC=$1
+    ifconfig $NIC 0.0.0.0 0.0.0.0 2>/dev/null
 }
 
 ################################################################################
@@ -165,13 +171,16 @@ fi
 # check if DB is matched in linux
 if [ `uname` = "Linux" ]; then
     echo "Check DB...."
-    if [ -n "/etc/xcat/cfgloc" ]
+    if [ -s /etc/xcat/cfgloc ]
     then
         xcatcfg=`cat /etc/xcat/cfgloc|cut -f 1 -d : 2>/dev/null`
-    else
+    else  
+        # SQLsite 
         xcatcfg=`XCATBYPASS=1 /opt/xcat/bin/lsxcatd -d | cut -f 2 -d "=" 2>/dev/null`
+        # filter Error message from lsxcatd 
+        echo "$xcatcfg" | grep "Error" && xcatcfg="" 
     fi
-    if [ -n $xcatcfg ]; then
+    if [ -n "$xcatcfg" ]; then
         current_db=$xcatcfg
         if [ $xcatcfg = "Pg" ]
         then
@@ -181,13 +190,15 @@ if [ `uname` = "Linux" ]; then
         if [ $current_db != "$xcatdb" ]
         then
             echo "Error: current DB $current_db is not matched with $xcatdb. [Failed]"
-            exit_code=1
+            clear_env $NIC
+            exit 1
         else
-            echo "DB is matched with $xcatdb [Passed]."
+            echo "DB is matched with $xcatdb [Passed]"
         fi
     else
         echo "Error: can not get current DB. [Failed]"
-        exit_code=1
+        clear_env $NIC 
+        exit 1
     fi
 fi
 
@@ -214,7 +225,6 @@ then
 fi
 
 ##############################################################################
-
 echo "Starting $xcatdb...."
 if [ `uname` = "AIX" ]
 then
@@ -229,16 +239,43 @@ else # Linux
     if [ $xcatdb != "SQLite" ]
     then
         runcmd "service $xcatdb start"
+        if [ $? -eq 0 ]
+        then
+            XCATBYPASS=1 tabdump site >/dev/null
+            if [ $? -ne 0 ]
+            then
+                echo "Error: cannot connect $xcatdb [Failed], exit...."
+                clear_env $NIC
+                exit 1
+            fi
+        else
+            echo "Error: service $xcatdb start [Failed], exit...."
+            clear_env $NIC 
+            exit 1
+        fi
     fi
 fi
     
-
 echo "Starting xCAT...."
 if [ `uname` = "AIX" ]
 then
     runcmd "/opt/xcat/sbin/restartxcatd"
 else # Linux
     runcmd "service xcatd restart"
+    if [ $? -ne 0 ]
+    then
+        echo "Error: failed to restart xcatd. exiting...."
+        clear_env $NIC
+        exit 1
+    else
+        tabdump site >/dev/null
+        if [ $? -ne 0 ]
+        then
+            echo "Error: failed to restart xcatd. exiting...."
+            clear_env $NIC
+            exit 1
+        fi
+    fi
 fi
 
 #echo "Start xCAT on the Service Nodes...."

@@ -293,7 +293,7 @@ then
     runcmd "ifconfig $NIC delete $VIP"
 else # Linux
     ifconfig $NIC 0.0.0.0 0.0.0.0
-    ip addr show |grep 10.5.106.100 2>&1 1>/dev/null
+    ip addr show |grep $VIP 2>&1 1>/dev/null
     if [ $? -ne 0 ]; then
          echo "IP Aliase $NIC $VIP is removed.[Passed]"
     else
