@@ -51,8 +51,10 @@ my $xcatdebugmode = 0;
 my $IPMIXCAT  = "/opt/xcat/bin/ipmitool-xcat";
 my $NON_BLOCK = 1;
 use constant RFLASH_LOG_DIR => "/var/log/xcat/rflash";
-unless (-d RFLASH_LOG_DIR) {
-    mkpath(RFLASH_LOG_DIR);
+if (-d RFLASH_LOG_DIR) {
+    chmod 0700, RFLASH_LOG_DIR;
+} else {
+    mkpath(RFLASH_LOG_DIR, 0, 0700);
 }
 
 require xCAT::data::ibmhwtypes;
