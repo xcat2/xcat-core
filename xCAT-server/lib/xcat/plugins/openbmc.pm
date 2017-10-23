@@ -571,7 +571,7 @@ sub process_request {
                     if ($status_info{ $node_info{$node}{cur_status} }->{process}) {
                         $status_info{ $node_info{$node}{cur_status} }->{process}->($node, undef);
                     } else {
-                        xCAT::SvrUtils::sendmsg([1,"Internal error, plase the check the process handler for current status "
+                        xCAT::SvrUtils::sendmsg([1,"Internal error, check the process handler for current status "
                                     .$node_info{$node}{cur_status}."."], $callback, $node);
                         $wait_node_num--;
                     }
@@ -586,7 +586,7 @@ sub process_request {
                 if ($node_info{$k}{method} || $status_info{ $node_info{$k}{cur_status} }{method}) {
                     gen_send_request($k);
                 } else {
-                    xCAT::SvrUtils::sendmsg([1,"Internal error, plase the check the rest handler for current status "
+                    xCAT::SvrUtils::sendmsg([1,"Internal error, check the REST handler for current status "
                                 .$node_info{$k}{cur_status}."."], $callback, $k);
                     $wait_node_num--;
                 }
