@@ -47,6 +47,7 @@ $::POWER_STATE_POWERING_ON  = "powering-on";
 $::POWER_STATE_QUIESCED     = "quiesced";
 $::POWER_STATE_RESET        = "reset";
 $::POWER_STATE_REBOOT       = "reboot";
+$::POWER_STATE_REBOOT_ERR   = "reboot*";
 $::UPLOAD_FILE              = "";
 $::UPLOAD_FILE_VERSION      = "";
 $::RSETBOOT_URL_PATH        = "boot";
@@ -1354,7 +1355,7 @@ sub deal_with_response {
         my $error;
         if (defined $status_info{RPOWER_STATUS_RESPONSE}{argv} and $status_info{RPOWER_STATUS_RESPONSE}{argv} =~ /bmcstate$/) {
             # Handle the special case to return "NotReady" if the BMC does not return a success response.
-            # If the REST service is not up, it can't return "NotReady" itself, during reboot.:w
+            # If the REST service is not up, it can't return "NotReady" itself, during reboot.
             $error = "BMC NotReady";
             xCAT::SvrUtils::sendmsg($error, $callback, $node);
             $wait_node_num--;
@@ -1371,6 +1372,12 @@ sub deal_with_response {
 
             return;
         } elsif ($response->status_line eq $::RESPONSE_SERVICE_TIMEOUT) {
+            if ($node_info{$node}{cur_status} eq "RPOWER_RESET_RESPONSE") { 
+                my $infomsg = "BMC $::POWER_STATE_REBOOT_ERR";
+                xCAT::SvrUtils::sendmsg($infomsg, $callback, $node);
+                $wait_node_num--;
+                return;    
+            }
             $error = $::RESPONSE_SERVICE_TIMEOUT;
         } else {
             my $response_info = decode_json $response->content;
