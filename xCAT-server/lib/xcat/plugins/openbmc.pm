@@ -314,8 +314,7 @@ my %status_info = (
         process        => \&rspconfig_response,
     },
     RSPCONFIG_SSHCFG_REQUEST => {
-        method         => "GET",
-        init_url       => "",
+        process        => \&rspconfig_sshcfg_response,
     },
     RSPCONFIG_SSHCFG_RESPONSE => {
         process        => \&rspconfig_sshcfg_response,
@@ -556,8 +555,46 @@ sub process_request {
         return;
     }
 
+    if ($next_status{LOGIN_RESPONSE} eq "RSPCONFIG_SSHCFG_REQUEST") {
+        my $home = xCAT::Utils->getHomeDir("root");
+        open(FILE, ">$home/.ssh/copy.sh")
+          or die "cannot open file $home/.ssh/copy.sh\n";
+        print FILE "#!/bin/sh
+umask 0077
+userid=\$1
+home=`egrep \"^\$userid:\" /etc/passwd | cut -f6 -d :`
+if [ -n \"\$home\" ]; then
+  dest_dir=\"\$home/.ssh\"
+else
+  home=`su - root -c pwd`
+  dest_dir=\"\$home/.ssh\"
+fi
+mkdir -p \$dest_dir
+cat /tmp/\$userid/.ssh/id_rsa.pub >> \$home/.ssh/authorized_keys 2>&1
+rm -f /tmp/\$userid/.ssh/* 2>&1
+rmdir \"/tmp/\$userid/.ssh\"
+rmdir \"/tmp/\$userid\" \n";
+        close FILE;
+        chmod 0700, "$home/.ssh/copy.sh";
+
+        mkdir "$home/.ssh/tmp";
+        # create authorized_keys file to be appended to target
+        if (-f "/etc/xCATMN") {    # if on Management Node
+            copy("$home/.ssh/id_rsa.pub","$home/.ssh/tmp/authorized_keys");
+        } else {
+            copy("$home/.ssh/authorized_keys","$home/.ssh/tmp/authorized_keys");
+        }
+    }
+
     while (1) { 
-        last unless ($wait_node_num);
+        unless ($wait_node_num) {
+            if ($next_status{LOGIN_RESPONSE} eq "RSPCONFIG_SSHCFG_REQUEST") {
+                my $home = xCAT::Utils->getHomeDir("root");
+                unlink "$home/.ssh/copy.sh";
+                File::Path->remove_tree("$home/.ssh/tmp/");
+            }
+            last;
+        }
         while (my ($response, $handle_id) = $async->wait_for_next_response) {
             deal_with_response($handle_id, $response);
         }
@@ -935,10 +972,8 @@ sub parse_command_status {
                 push @options, $subcommand;
             } elsif ($subcommand =~ /^sshcfg$/) {
                 # Special processing to copy ssh keys, currently there is no REST API to do this.
-                # Instead, copy ssh key file to the BMC in function specified by RSPCONFIG_SSHCFG_RESPONSE
                 $next_status{LOGIN_RESPONSE} = "RSPCONFIG_SSHCFG_REQUEST";
                 $next_status{RSPCONFIG_SSHCFG_REQUEST} = "RSPCONFIG_SSHCFG_RESPONSE";
-                push @options, $subcommand;
                 return 0;
             } elsif ($subcommand =~ /^(\w+)=(.+)/) {
                 my $key   = $1;
@@ -1354,7 +1389,12 @@ sub deal_with_response {
         return;    
     }
 
-    $status_info{ $node_info{$node}{cur_status} }->{process}->($node, $response); 
+    if ($status_info{ $node_info{$node}{cur_status} }->{process}) {
+        $status_info{ $node_info{$node}{cur_status} }->{process}->($node, $response);
+    } else {
+        xCAT::SvrUtils::sendmsg([1,"Internal error, check the process handler for current status $node_info{$node}{cur_status}"]);
+        $wait_node_num--;
+    }
 
     return;
 }
@@ -2021,9 +2061,7 @@ sub rspconfig_response {
 
 =head3  rspconfig_sshcfg_response
 
-  Deal with response of rspconfig command for sscfg subcommand.
-  Append contents of id_rsa.pub file from management node to
-  the authorized_keys file on BMC
+  Deal with request and response of rspconfig command for sscfg subcommand.
   Input:
         $node: nodename of current response
         $response: Async return response
@@ -2035,82 +2073,76 @@ sub rspconfig_sshcfg_response {
     my $node = shift;
     my $response = shift;
 
-    my $response_info = decode_json $response->content; 
-
-    if ($node_info{$node}{cur_status} eq "RSPCONFIG_SSHCFG_RESPONSE") {
-        my $bmcip = $node_info{$node}{bmc};
-        my $userid = $node_info{$node}{username}; 
-        my $userpw = $node_info{$node}{password};
-
-        my $home = xCAT::Utils->getHomeDir("root");
-        #generate the copy.sh to do real work on target bmc
-        open(FILE, ">$home/.ssh/copy.sh")
-          or die "cannot open file $home/.ssh/copy.sh\n";
-        print FILE "#!/bin/sh
-umask 0077
-home=`egrep \"^$userid:\" /etc/passwd | cut -f6 -d :`
-if [ -n \"\$home\" ]; then
-  dest_dir=\"\$home/.ssh\"
-else
-  home=`su - root -c pwd`
-  dest_dir=\"\$home/.ssh\"
-fi
-mkdir -p \$dest_dir
-cat /tmp/$userid/.ssh/id_rsa.pub >> \$home/.ssh/authorized_keys 2>&1
-rm -f /tmp/$userid/.ssh/* 2>&1
-rmdir \"/tmp/$userid/.ssh\"
-rmdir \"/tmp/$userid\" \n";
-        close FILE;
-        chmod 0700, "$home/.ssh/copy.sh";
-
-        mkdir "$home/.ssh/tmp";
-        # create authorized_keys file to be appended to target
-        if (-f "/etc/xCATMN") {    # if on Management Node
-            copy("$home/.ssh/id_rsa.pub","$home/.ssh/tmp/authorized_keys");
+    if ($node_info{$node}{cur_status} eq "RSPCONFIG_SSHCFG_REQUEST") {
+        my $child = xCAT::Utils->xfork;
+        if (!defined($child)) {
+            xCAT::SvrUtils::sendmsg("Failed to fork child process for rspconfig sshcfg.", $callback, $node);
+            sleep(1)
+        } elsif ($child == 0) {
+            exit(sshcfg_process($node))
         } else {
-            copy("$home/.ssh/authorized_keys","$home/.ssh/tmp/authorized_keys");
+            $child_node_map{$child} = $node;
         }
-
-
-        #backup the previous $ENV{DSH_REMOTE_PASSWORD},$ENV{'DSH_FROM_USERID'}
-        my $bak_DSH_REMOTE_PASSWORD=$ENV{'DSH_REMOTE_PASSWORD'};
-        my $bak_DSH_FROM_USERID=$ENV{'DSH_FROM_USERID'};
-
-        #xCAT::RemoteShellExp->remoteshellexp dependes on environment
-        #variables $ENV{DSH_REMOTE_PASSWORD},$ENV{'DSH_FROM_USERID'}
-        $ENV{'DSH_REMOTE_PASSWORD'}=$userpw;
-        $ENV{'DSH_FROM_USERID'}=$userid;
-
-        #send ssh public key from MN to bmc
-        my $rc=xCAT::RemoteShellExp->remoteshellexp("s",$callback,"/usr/bin/ssh",$bmcip,10);
-        if ($rc) {
-            xCAT::SvrUtils::sendmsg("Error copying ssh keys to $bmcip\n", $callback, $node);
-        }else{
-            #check whether the ssh keys has been sent successfully
-            $rc=xCAT::RemoteShellExp->remoteshellexp("t",$callback,"/usr/bin/ssh",$bmcip,10);
-            if ($rc) {
-                xCAT::SvrUtils::sendmsg("Testing the ssh connection to $bmcip failed. Please rerun rspconfig command.", $callback, $node);
-            }
-            else {
-                xCAT::SvrUtils::sendmsg("ssh keys copied to $bmcip", $callback, $node);
-            }
-        }
-
-        #restore env variables
-        $ENV{'DSH_REMOTE_PASSWORD'}=$bak_DSH_REMOTE_PASSWORD;
-        $ENV{'DSH_FROM_USERID'}=$bak_DSH_FROM_USERID;
-
-        #remove intermediate files
-        unlink "$home/.ssh/copy.sh";
-        File::Path->remove_tree("$home/.ssh/tmp/");
     }
 
     if ($next_status{ $node_info{$node}{cur_status} }) {
         $node_info{$node}{cur_status} = $next_status{ $node_info{$node}{cur_status} };
-        gen_send_request($node);
+        if ($node_info{$node}{method} || $status_info{ $node_info{$node}{cur_status} }{method}) {
+            gen_send_request($node);
+        }
     } else {
         $wait_node_num--;
-    } 
+    }
+}
+
+#-------------------------------------------------------
+
+=head3  rspconfig_process
+
+  Append contents of id_rsa.pub file from management node to
+  the authorized_keys file on BMC
+  Input:
+        $node: nodename of current response
+
+=cut
+
+#-------------------------------------------------------
+sub sshcfg_process {
+    my $node = shift;
+
+    my $bmcip = $node_info{$node}{bmc};
+    my $userid = $node_info{$node}{username};
+    my $userpw = $node_info{$node}{password};
+
+    #backup the previous $ENV{DSH_REMOTE_PASSWORD},$ENV{'DSH_FROM_USERID'}
+    my $bak_DSH_REMOTE_PASSWORD=$ENV{'DSH_REMOTE_PASSWORD'};
+    my $bak_DSH_FROM_USERID=$ENV{'DSH_FROM_USERID'};
+
+    #xCAT::RemoteShellExp->remoteshellexp dependes on environment
+    #variables $ENV{DSH_REMOTE_PASSWORD},$ENV{'DSH_FROM_USERID'}
+    $ENV{'DSH_REMOTE_PASSWORD'}=$userpw;
+    $ENV{'DSH_FROM_USERID'}=$userid;
+
+    #send ssh public key from MN to bmc
+    my $rc=xCAT::RemoteShellExp->remoteshellexp("s",$callback,"/usr/bin/ssh",$bmcip,10);
+    if ($rc) {
+        xCAT::SvrUtils::sendmsg("Error copying ssh keys to $bmcip\n", $callback, $node);
+    }else{
+        #check whether the ssh keys has been sent successfully
+        $rc=xCAT::RemoteShellExp->remoteshellexp("t",$callback,"/usr/bin/ssh",$bmcip,10);
+        if ($rc) {
+            xCAT::SvrUtils::sendmsg("Testing the ssh connection to $bmcip failed. Please rerun rspconfig command.", $callback, $node);
+        }
+        else {
+            xCAT::SvrUtils::sendmsg("ssh keys copied to $bmcip", $callback, $node);
+        }
+    }
+
+    #restore env variables
+    $ENV{'DSH_REMOTE_PASSWORD'}=$bak_DSH_REMOTE_PASSWORD;
+    $ENV{'DSH_FROM_USERID'}=$bak_DSH_FROM_USERID;
+
+    return $rc;
 }
 #-------------------------------------------------------
 
