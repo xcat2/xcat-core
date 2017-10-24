@@ -715,7 +715,7 @@ sub sendnodeskeys
 
         # command to run copy.sh
         my $spawnruncopy =
-          "$remoteshell $node -l $to_userid /tmp/$to_userid/.ssh/copy.sh";
+          "$remoteshell $node -l $to_userid /tmp/$to_userid/.ssh/copy.sh $to_userid";
 
         # send mkdir command
         unless ($sendkeys->spawn($spawnruncopy))

@@ -530,8 +530,46 @@ sub process_request {
         return;
     }
 
+    if ($next_status{LOGIN_RESPONSE} eq "RSPCONFIG_SSHCFG_REQUEST") {
+        my $home = xCAT::Utils->getHomeDir("root");
+        open(FILE, ">$home/.ssh/copy.sh")
+          or die "cannot open file $home/.ssh/copy.sh\n";
+        print FILE "#!/bin/sh
+umask 0077
+userid=\$1
+home=`egrep \"^\$userid:\" /etc/passwd | cut -f6 -d :`
+if [ -n \"\$home\" ]; then
+  dest_dir=\"\$home/.ssh\"
+else
+  home=`su - root -c pwd`
+  dest_dir=\"\$home/.ssh\"
+fi
+mkdir -p \$dest_dir
+cat /tmp/\$userid/.ssh/id_rsa.pub >> \$home/.ssh/authorized_keys 2>&1
+rm -f /tmp/\$userid/.ssh/* 2>&1
+rmdir \"/tmp/\$userid/.ssh\"
+rmdir \"/tmp/\$userid\" \n";
+        close FILE;
+        chmod 0700, "$home/.ssh/copy.sh";
+
+        mkdir "$home/.ssh/tmp";
+        # create authorized_keys file to be appended to target
+        if (-f "/etc/xCATMN") {    # if on Management Node
+            copy("$home/.ssh/id_rsa.pub","$home/.ssh/tmp/authorized_keys");
+        } else {
+            copy("$home/.ssh/authorized_keys","$home/.ssh/tmp/authorized_keys");
+        }
+    }
+
     while (1) { 
-        last unless ($wait_node_num);
+        unless ($wait_node_num) {
+            if ($next_status{LOGIN_RESPONSE} eq "RSPCONFIG_SSHCFG_REQUEST") {
+                my $home = xCAT::Utils->getHomeDir("root");
+                unlink "$home/.ssh/copy.sh";
+                File::Path->remove_tree("$home/.ssh/tmp/");
+            }
+            last;
+        }
         while (my ($response, $handle_id) = $async->wait_for_next_response) {
             deal_with_response($handle_id, $response);
         }
@@ -885,10 +923,8 @@ sub parse_command_status {
                 push @options, $subcommand;
             } elsif ($subcommand =~ /^sshcfg$/) {
                 # Special processing to copy ssh keys, currently there is no REST API to do this.
-                # Instead, copy ssh key file to the BMC in function specified by RSPCONFIG_SSHCFG_RESPONSE
                 $next_status{LOGIN_RESPONSE} = "RSPCONFIG_SSHCFG_REQUEST";
                 $next_status{RSPCONFIG_SSHCFG_REQUEST} = "RSPCONFIG_SSHCFG_RESPONSE";
-                push @options, $subcommand;
                 return 0;
             } elsif ($subcommand =~ /^(\w+)=(.+)/) {
                 my $key   = $1;
@@ -2009,35 +2045,6 @@ sub sshcfg_process {
     my $userid = $node_info{$node}{username};
     my $userpw = $node_info{$node}{password};
 
-    my $home = xCAT::Utils->getHomeDir("root");
-    #generate the copy.sh to do real work on target bmc
-    open(FILE, ">$home/.ssh/copy.sh")
-      or die "cannot open file $home/.ssh/copy.sh\n";
-    print FILE "#!/bin/sh
-umask 0077
-home=`egrep \"^$userid:\" /etc/passwd | cut -f6 -d :`
-if [ -n \"\$home\" ]; then
-  dest_dir=\"\$home/.ssh\"
-else
-  home=`su - root -c pwd`
-  dest_dir=\"\$home/.ssh\"
-fi
-mkdir -p \$dest_dir
-cat /tmp/$userid/.ssh/id_rsa.pub >> \$home/.ssh/authorized_keys 2>&1
-rm -f /tmp/$userid/.ssh/* 2>&1
-rmdir \"/tmp/$userid/.ssh\"
-rmdir \"/tmp/$userid\" \n";
-    close FILE;
-    chmod 0700, "$home/.ssh/copy.sh";
-
-    mkdir "$home/.ssh/tmp";
-    # create authorized_keys file to be appended to target
-    if (-f "/etc/xCATMN") {    # if on Management Node
-        copy("$home/.ssh/id_rsa.pub","$home/.ssh/tmp/authorized_keys");
-    } else {
-        copy("$home/.ssh/authorized_keys","$home/.ssh/tmp/authorized_keys");
-    }
-
     #backup the previous $ENV{DSH_REMOTE_PASSWORD},$ENV{'DSH_FROM_USERID'}
     my $bak_DSH_REMOTE_PASSWORD=$ENV{'DSH_REMOTE_PASSWORD'};
     my $bak_DSH_FROM_USERID=$ENV{'DSH_FROM_USERID'};
@@ -2065,10 +2072,6 @@ rmdir \"/tmp/$userid\" \n";
     #restore env variables
     $ENV{'DSH_REMOTE_PASSWORD'}=$bak_DSH_REMOTE_PASSWORD;
     $ENV{'DSH_FROM_USERID'}=$bak_DSH_FROM_USERID;
-
-    #remove intermediate files
-    unlink "$home/.ssh/copy.sh";
-    File::Path->remove_tree("$home/.ssh/tmp/");
 
     return $rc;
 }
