@@ -77,11 +77,6 @@ else
 	echo "server $master" >$conf_file
 fi
 
-if ! ping $master -c 1 > /dev/null 2>&1 ; then
-    echo "Error: ntpserver $master is not reachable, will not setup NTP"
-    exit 1
-fi
-
 
 OS_TYPE=`uname`
 if [ $OS_TYPE = Linux ]; then
@@ -106,6 +101,12 @@ if [ $OS_TYPE = Linux ]; then
     if ( pmatch $OSVER "Cumulus*" ) || is_lsb_cumulus; then
         # Do not listen on Cumulus switch ports
         echo "interface listen eth0" >>$conf_file
+    fi
+
+    # ntpd will be hung if ntp service is not reachable
+    if ! ping $master -c 1 > /dev/null 2>&1 ; then
+        echo "Error: ntpserver $master is not reachable, will not setup NTP"
+        exit 1
     fi
 
     #ntpd/ntpdate/sntp conflict with ntpd, stop the service first
