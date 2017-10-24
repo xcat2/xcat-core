@@ -1,3 +1,5 @@
+.. _setup_localdisk_label:
+
 Enabling the localdisk Option
 -----------------------------
 
