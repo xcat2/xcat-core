@@ -1377,9 +1377,24 @@ sub deal_with_response {
             if ($response->status_line eq $::RESPONSE_SERVER_ERROR) {
                 $error = $response_info->{'data'}->{'exception'};
             } elsif ($response->status_line eq $::RESPONSE_FORBIDDEN) {
-                $error = "$::RESPONSE_FORBIDDEN - This function is not yet available in OpenBMC firmware.";
+                #
+                # For any invalid data that we can detect, provide a better response message
+                #
+                if ($node_info{$node}{cur_status} eq "RFLASH_UPDATE_ACTIVATE_RESPONSE") {
+                    # If 403 is received for an activation, that means the activation ID is incorrect
+                    $error = "Invalid ID provided to activate. Use the -l option to view valid firmware IDs.";
+                } else {
+                    $error = "$::RESPONSE_FORBIDDEN - This function is not yet available in OpenBMC firmware.";
+                }
             } elsif ($response_info->{'data'}->{'description'} =~ /path or object not found: (.+)/) {
-                $error = "path or object not found $1";
+                #
+                # For any invalid data that we can detect, provide a better response message
+                #
+                if ($node_info{$node}{cur_status} eq "RFLASH_DELETE_IMAGE_RESPONSE") { 
+                    $error = "Invalid ID provided to delete.  Use the -l option to view valid firmware IDs.";
+                } else {
+                    $error = "Path or object not found: $1";
+                }
             } else {
                 $error = $response_info->{'data'}->{'description'};
             }
@@ -2352,14 +2367,14 @@ sub rflash_response {
 
         if ($activation_state =~ /Software.Activation.Activations.Failed/) {
             # Activation failed. Report error and exit
-            xCAT::SvrUtils::sendmsg([1,"Activation of firmware failed"], $callback, $node);
+            xCAT::SvrUtils::sendmsg([1,"Firmware activation Failed."], $callback, $node);
             $wait_node_num--;
             return;
         } 
         elsif ($activation_state =~ /Software.Activation.Activations.Active/) { 
             if (scalar($priority_state) == 0) {
                 # Activation state of active and priority of 0 indicates the activation has been completed
-                xCAT::SvrUtils::sendmsg("Firmware update successfully activated", $callback, $node);
+                xCAT::SvrUtils::sendmsg("Firmware activation Successful.", $callback, $node);
                 $wait_node_num--;
                 return;
             }
@@ -2370,7 +2385,7 @@ sub rflash_response {
             }
         }
         elsif ($activation_state =~ /Software.Activation.Activations.Activating/) {
-            xCAT::SvrUtils::sendmsg("Activating firmware update. $progress_state\%", $callback, $node);
+            xCAT::SvrUtils::sendmsg("Activating firmware . . . $progress_state\%", $callback, $node);
             # Activation still going, sleep for a bit, then print the progress value
             # Set next state to come back here to chect the activation status again.
             retry_after($node, "RFLASH_UPDATE_CHECK_STATE_REQUEST", 15);
@@ -2444,7 +2459,7 @@ sub rflash_response {
     }
 
     if ($node_info{$node}{cur_status} eq "RFLASH_DELETE_IMAGE_RESPONSE") {
-            xCAT::SvrUtils::sendmsg("Firmware update successfully removed", $callback, $node);
+            xCAT::SvrUtils::sendmsg("Firmware removed", $callback, $node);
     }
 
     if ($next_status{ $node_info{$node}{cur_status} }) {
@@ -2484,9 +2499,9 @@ sub rflash_upload {
         if ($h->{message} eq $::RESPONSE_OK) {
             # Upload successful, display message
             if ($::UPLOAD_AND_ACTIVATE) {
-                xCAT::SvrUtils::sendmsg("Upload successful. Attempting to activate firmware: $::UPLOAD_FILE_VERSION", $callback, $node);
+                xCAT::SvrUtils::sendmsg("Firmware upload successful. Attempting to activate firmware: $::UPLOAD_FILE_VERSION", $callback, $node);
             } else {
-                xCAT::SvrUtils::sendmsg("Successful, use -l option to list.", $callback, $node);
+                xCAT::SvrUtils::sendmsg("Firmware upload successful. Use -l option to list.", $callback, $node);
             }
             # Try to logoff, no need to check result, as there is nothing else to do if failure
             my $curl_logout_result = `$curl_logout_cmd`;
