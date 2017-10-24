@@ -2277,13 +2277,22 @@ sub rflash_response {
                 # Entry has no Version attribute, skip listing it
                 next;
             }
+            if ($xcatdebugmode) {
+                # Only print if xcatdebugmode is set and XCATBYPASS
+                print "\n\n================================= XCATBYPASS DEBUG START =================================\n";
+                print "==> KEY_URL=$key_url\n";
+                print "==> VERSION=$content{Version}\n";
+                print "==> Dump out JSON data:\n";
+                print Dumper(%content);
+                print "================================= XCATBYPASS DEBUG END   =================================\n";
+            }
             if (defined($content{Activation}) and $content{Activation}) {
                 $update_activation = (split(/\./, $content{Activation}))[ -1 ];
             }
             if (defined($content{Purpose}) and $content{Purpose}) {
                 $update_purpose = (split(/\./, $content{Purpose}))[ -1 ];
             }
-            if (defined($content{Priority}))  {
+            if (defined($content{Priority}) and $content{Priority})  {
                 $update_priority = (split(/\./, $content{Priority}))[ -1 ];
             }
             if (exists($functional->{$update_id}) ) {
@@ -2299,9 +2308,9 @@ sub rflash_response {
                     $indicator = "(*)";
                 }
                 $update_activation = $update_activation . $indicator;
-                $update_priority = -1; # Reset update priority for next loop iteration
             }
             xCAT::SvrUtils::sendmsg(sprintf("%-8s %-7s %-10s %s", $update_id, $update_purpose, $update_activation, $update_version), $callback, $node);
+            $update_priority = -1; # Reset update priority for next loop iteration
         }
         xCAT::SvrUtils::sendmsg("", $callback, $node); #Separate output in case more than 1 endpoint
     }
