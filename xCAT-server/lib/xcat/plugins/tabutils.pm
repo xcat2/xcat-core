@@ -2066,7 +2066,7 @@ sub nodels
                     my %satisfiedreqs = ();
                     foreach my $rec (@$recs) {
 
-                        foreach (keys %$rec)
+                        foreach (sort keys %$rec)
                         {
                             if ($_ eq '!!xcatgroupattribution!!') { next; }
                             if ($_ eq $nodekey and $removenodecol) { next; }
