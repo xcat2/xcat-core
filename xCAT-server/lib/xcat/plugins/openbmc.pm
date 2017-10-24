@@ -2292,7 +2292,8 @@ sub rflash_response {
             if (defined($content{Purpose}) and $content{Purpose}) {
                 $update_purpose = (split(/\./, $content{Purpose}))[ -1 ];
             }
-            if (defined($content{Priority}) and $content{Priority})  {
+            # Just check defined because priority=0 is a valid value
+            if (defined($content{Priority}))  {
                 $update_priority = (split(/\./, $content{Priority}))[ -1 ];
             }
             if (exists($functional->{$update_id}) ) {
