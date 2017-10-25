@@ -341,7 +341,7 @@ function sort_nics_device_order {
                     echo $alonenic
                 fi
             else
-                if [ $ignore_nicips -eq 1 ] && [ -z "$alonenicips" ]; then
+                if [ $ignore_nicips -eq 1 ] && [ -z "$alonenicips" ] || [ -n "$alonenictype" ] && [ $alonenictype = "unused" ]; then
                     echo "nic $alonenic found, but incomplete configuration in node definition."
                 else
                     errorcode=1
@@ -671,7 +671,7 @@ if [ $? -eq 0 ]; then
     errorcode=1
 fi
 
-#when --allownoip is used, print incomplete nics
+#when --allownoip is used or nictypes=unused, print incomplete nics
 nonicips_list=`echo "$sorted_nicdevice_list" | grep "incomplete"`
 if [ $? -eq 0 ]; then
     echo "$nonicips_list"| log_lines info
