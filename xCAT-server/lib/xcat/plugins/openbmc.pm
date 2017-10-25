@@ -379,6 +379,8 @@ my $xcatdebugmode = 0;
 
 my $flag_debug = "[openbmc_debug]";
 
+my @node_bmc_ips = ();
+
 #-------------------------------------------------------
 
 =head3  preprocess_request
@@ -529,12 +531,24 @@ sub process_request {
     $wait_node_num = keys %node_info;
     my @donargs = ();
 
+    my $all_bmc = join(" ", @node_bmc_ips);
+    my $valid_bmc = `nmap -sn -n $all_bmc | grep -B1 up | grep "Nmap scan report" |cut -d ' ' -f5 | tr -s '\n' ' '`;
+
     foreach my $node (keys %node_info) {
         $bmcip = $node_info{$node}{bmc};
 
         if ($request->{command}->[0] eq "getopenbmccons") {
             push @donargs, [ $node,$bmcip,$node_info{$node}{username}, $node_info{$node}{password}];
         } else {
+            if ($valid_bmc !~ /$bmcip/) {
+                if ($xcatdebugmode) {
+                    my $debug_info = "UNAVAILABLE Node by 'nmap -sP -n $bmcip'";
+                    process_debug_info($node, $debug_info);
+                } 
+                xCAT::SvrUtils::sendmsg($::RESPONSE_SERVICE_UNAVAILABLE, $callback, $node); 
+                $wait_node_num--;
+                next;
+            }
             $login_url = "$http_protocol://$bmcip/login";
             $content = '{ "data": [ "' . $node_info{$node}{username} .'", "' . $node_info{$node}{password} . '" ] }';
             $handle_id = xCAT::OPENBMC->new($async, $login_url, $content); 
@@ -1246,6 +1260,7 @@ sub parse_node_info {
             }
 
             $node_info{$node}{cur_status} = "LOGIN_REQUEST";
+            push @node_bmc_ips, $node_info{$node}{bmc};
         } else {
             xCAT::SvrUtils::sendmsg("Error: Unable to get information from openbmc table", $callback, $node);
             $rst = 1;
