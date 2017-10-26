@@ -6,8 +6,6 @@
 #
 #---------------------------------------------------------------------------
 
-
-
 if [ "$(uname -s|tr 'A-Z' 'a-z')" = "linux" ];then
    str_dir_name=`dirname $0`
    . $str_dir_name/xcatlib.sh
@@ -25,7 +23,6 @@ fi
 
 master=$MASTER
 setup=0
-sitemaster=$SITEMASTER
 conf_file="/etc/ntp.conf"
 conf_file_org="/etc/ntp.conf.org"
 conf_file_backup="/etc/ntp.conf.postbackup"
@@ -66,20 +63,27 @@ if [ $NTPSERVERS ]; then
     else
         for i in $(echo $NTPSERVERS | tr ',' ' ')
         do
+            if ping $i -c 1 > /dev/null 2>&1 ; then
          	echo "server $i" >>$conf_file
         	master=$i
+                setup=1
+            fi
         done 
+        if [ $setup -eq 0 ]; then
+	    echo "server $master" >$conf_file
+        fi
     fi
 else
 	echo "server $master" >$conf_file
 fi
+
 
 OS_TYPE=`uname`
 if [ $OS_TYPE = Linux ]; then
     # Set the timezone
     if [ -n $TIMEZONE ]; then
         echo $TIMEZONE > /etc/timezone
-        if which timedatectl > /dev/null; then
+        if type timedatectl > /dev/null; then
             timedatectl set-timezone $(cat /etc/timezone)
         fi
     fi
@@ -99,6 +103,12 @@ if [ $OS_TYPE = Linux ]; then
         echo "interface listen eth0" >>$conf_file
     fi
 
+    # ntpd will be hung if ntp service is not reachable
+    if ! ping $master -c 1 > /dev/null 2>&1 ; then
+        echo "Error: ntpserver $master is not reachable, will not setup NTP"
+        exit 1
+    fi
+
     #ntpd/ntpdate/sntp conflict with ntpd, stop the service first
     checkservicestatus ntpserver
     if [ $? -eq 0 ];then
@@ -106,7 +116,11 @@ if [ $OS_TYPE = Linux ]; then
     fi
 
     logger -t xcat "setting current time"
-    ntpd -gq > /dev/null 2>&1 || ntpdate -t5 $master > /dev/null 2>&1 || echo "WARNING: NTP Sync Failed!!"
+    if ! ntpd -gq  > /dev/null 2>&1 ; then
+        if ! ntpdate -t5 $master > /dev/null 2>&1; then
+            logger -t xcat "WARNING: NTP Sync Failed!!"
+        fi
+    fi
 
     #setup the hardware clock
     hwclock --systohc --utc
