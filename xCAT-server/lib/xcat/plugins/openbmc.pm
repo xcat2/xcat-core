@@ -47,7 +47,6 @@ $::POWER_STATE_POWERING_ON  = "powering-on";
 $::POWER_STATE_QUIESCED     = "quiesced";
 $::POWER_STATE_RESET        = "reset";
 $::POWER_STATE_REBOOT       = "reboot";
-$::POWER_STATE_REBOOT_ERR   = "reboot*";
 $::UPLOAD_FILE              = "";
 $::UPLOAD_FILE_VERSION      = "";
 $::RSETBOOT_URL_PATH        = "boot";
@@ -1372,8 +1371,8 @@ sub deal_with_response {
 
             return;
         } elsif ($response->status_line eq $::RESPONSE_SERVICE_TIMEOUT) {
-            if ($node_info{$node}{cur_status} eq "RPOWER_RESET_RESPONSE") { 
-                my $infomsg = "BMC $::POWER_STATE_REBOOT_ERR";
+            if ($node_info{$node}{cur_status} eq "RPOWER_RESET_RESPONSE" and defined $status_info{RPOWER_RESET_RESPONSE}{argv} and $status_info{RPOWER_RESET_RESPONSE}{argv} =~ /bmcreboot$/) { 
+                my $infomsg = "BMC $::POWER_STATE_REBOOT";
                 xCAT::SvrUtils::sendmsg($infomsg, $callback, $node);
                 $wait_node_num--;
                 return;    
