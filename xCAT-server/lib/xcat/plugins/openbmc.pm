@@ -537,13 +537,13 @@ sub process_request {
         } else {
             $login_url = "$http_protocol://$bmcip/login";
             $content = '{ "data": [ "' . $node_info{$node}{username} .'", "' . $node_info{$node}{password} . '" ] }';
-            $handle_id = xCAT::OPENBMC->new($async, $login_url, $content); 
-            $handle_id_node{$handle_id} = $node;
-            $node_info{$node}{cur_status} = $next_status{ $node_info{$node}{cur_status} };
             if ($xcatdebugmode) {
                 my $debug_info = "curl -k -c cjar -H \"Content-Type: application/json\" -d '{ \"data\": [\"$node_info{$node}{username}\", \"xxxxxx\"] }' $login_url";
                 process_debug_info($node, $debug_info);
             }
+            $handle_id = xCAT::OPENBMC->new($async, $login_url, $content); 
+            $handle_id_node{$handle_id} = $node;
+            $node_info{$node}{cur_status} = $next_status{ $node_info{$node}{cur_status} };
         }
     }  
 
@@ -1304,10 +1304,6 @@ sub gen_send_request {
     }
     $request_url = "$http_protocol://" . $node_info{$node}{bmc} . $request_url;
 
-    my $handle_id = xCAT::OPENBMC->send_request($async, $method, $request_url, $content);
-    $handle_id_node{$handle_id} = $node;
-    $node_info{$node}{cur_status} = $next_status{ $node_info{$node}{cur_status} };
-
     if ($xcatdebugmode) {
         my $debug_info;
         if ($method eq "GET") {
@@ -1322,6 +1318,9 @@ sub gen_send_request {
         }
         process_debug_info($node, $debug_info);
     }
+    my $handle_id = xCAT::OPENBMC->send_request($async, $method, $request_url, $content);
+    $handle_id_node{$handle_id} = $node;
+    $node_info{$node}{cur_status} = $next_status{ $node_info{$node}{cur_status} };
 
     return;
 }
@@ -1433,8 +1432,9 @@ sub deal_with_response {
 sub process_debug_info {
     my $node = shift;
     my $debug_msg = shift;
+    my $ts_node = localtime() . " " . $node;
 
-    xCAT::SvrUtils::sendmsg("$flag_debug $debug_msg", $callback, $node);
+    xCAT::SvrUtils::sendmsg("$flag_debug $debug_msg", $callback, $ts_node);
     xCAT::MsgUtils->trace(0, "D", "$flag_debug $node $debug_msg"); 
 }
 
