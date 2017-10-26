@@ -755,22 +755,47 @@ sub parse_args {
         my $filename_passed = 0;
         my $updateid_passed = 0;
         my $option_flag;
+
+        my $invalid_options = "";
+        my @flash_arguments;
+
         foreach my $opt (@$extrargs) {
             # Only files ending on .tar are allowed
             if ($opt =~ /.*\.tar$/i) {
                 $filename_passed = 1;
+                push (@flash_arguments, $opt); 
                 next;
             }
             # Check if hex number for the updateid is passed
-            if ($opt =~ /^[[:xdigit:]]+$/i) {
+            elsif ($opt =~ /^[[:xdigit:]]+$/i) {
                 $updateid_passed = 1;
+                push (@flash_arguments, $opt); 
                 next;
             }
             # check if option starting with - was passed
-            if ($opt =~ /^-/) {
-                $option_flag = $opt;
+            elsif ($opt =~ /^-/) {
+                if ($option_flag) {
+                    $option_flag .= " " . $opt;
+                } else {
+                    $option_flag .= $opt;
+                }
+            }
+            else {
+                push (@flash_arguments, $opt);
+                $invalid_options .= $opt . " ";
             }
         }
+        # show options parsed in bypass mode
+        print "DEBUG filename=$filename_passed, updateid=$updateid_passed, options=$option_flag, invalid=$invalid_options\n";
+
+        if ($option_flag =~ tr{ }{ } > 0) { 
+            return ([ 1, "Multiple options specified is not supported.  Options specified: $option_flag"]);
+        }
+        
+        if (scalar @flash_arguments > 1) {
+            return ([1, "More than one firmware specified is not supported."]);
+        }
+
         if ($filename_passed) {
             # Filename was passed, check flags allowed with file
             if ($option_flag !~ /^-c$|^--check$|^-u$|^--upload$|^-a$|^--activate$/) {
@@ -787,7 +812,7 @@ sub parse_args {
             else {
                 # Neither Filename nor updateid was not passed, check flags allowed without file or updateid
                 if ($option_flag !~ /^-c$|^--check$|^-l$|^--list/) {
-                    return ([ 1, "Invalid option specified: $option_flag" ]);
+                    return ([ 1, "Invalid option specified with $option_flag: $invalid_options" ]);
                }
             }  
         }
@@ -1029,7 +1054,6 @@ sub parse_command_status {
         my $upload = 0;
         my $activate = 0;
         my $update_file;
-        my @flash_arguments;
 
         foreach $subcommand (@$subcommands) {
             if ($subcommand =~ /-c|--check/) {
@@ -1044,17 +1068,9 @@ sub parse_command_status {
                 $activate = 1;
             } else {
                 $update_file = $subcommand;
-                push (@flash_arguments, $subcommand); 
             }
         }
 
-        if (scalar @flash_arguments > 1) {
-            my $flag = "";
-            if ($delete) { $flag = "to delete"; }
-            if ($activate) { $flag = "to activate"; }
-            xCAT::SvrUtils::sendmsg([1, "More than one firmware specified $flag is currently not supported."], $callback);
-            return 1;
-        }
         my $file_id = undef;
         my $grep_cmd = "/usr/bin/grep -a";
         my $version_tag = '"^version="';
