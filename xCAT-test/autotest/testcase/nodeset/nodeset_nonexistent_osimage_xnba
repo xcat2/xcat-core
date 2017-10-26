@@ -1,0 +1,60 @@
+#!/bin/bash
+
+BASE_DIR="${0%/*}"
+
+! source "${BASE_DIR}/functions.sh" >/dev/null 2>&1 &&
+        echo "File \"${BASE_DIR}/functions.sh\" not found" >&2 && exit 1
+
+make_bogus_x64_osimage
+make_bogus_xnba_nodes
+
+function custom_cleanup()
+{
+	destory_bogus_nodes
+	destory_bogus_osimages
+}
+
+NODESET_STDOUT="${TMP_DIR}/nodeset.out"
+NODESET_STDERR="${TMP_DIR}/nodeset.err"
+
+nodeset tz001+4 osimage=rhels6.99-x86_64-install-compute
+exit_if_bad "$?" "nodeset command exit with non-zero"
+
+# Make sure all nodes are good
+for node in tz{001..005}
+do
+	[ -f "/tftpboot/xcat/xnba/nodes/${node}" ]
+	exit_if_bad "$?" "file not found /tftpboot/xcat/xnba/nodes/${node}"
+done
+
+nodeset tz003 osimage=nonexistent-osimage \
+	> >(tee "${NODESET_STDOUT}") 2> >(tee "${NODESET_STDERR}")
+[ "$?" -ne "0" ]
+exit_if_bad "$?" "nodeset command should exit with non-zero"
+
+grep 'annot find the OS image' "${NODESET_STDERR}"
+exit_if_bad "$?" "nodeset command error message checking failed"
+
+nodeset tz001+4 offline
+
+chdef tz003 provmethod=nonexistent-osimage
+exit_if_bad "$?" "chdef command exit with non-zero"
+
+nodeset tz001+4 osimage \
+	> >(tee "${NODESET_STDOUT}") 2> >(tee "${NODESET_STDERR}")
+[ "$?" -ne "0" ]
+exit_if_bad "$?" "nodeset command should exit with non-zero"
+
+grep 'tz003: .*annot find the OS image' "${NODESET_STDERR}"
+exit_if_bad "$?" "nodeset command error message checking failed"
+
+# Make sure all other nodes are good
+for node in tz001 tz002 tz004 tz005
+do
+	[ -f "/tftpboot/xcat/xnba/nodes/${node}" ]
+	exit_if_bad "$?" "file not found /tftpboot/xcat/xnba/nodes/${node}"
+done
+
+nodeset tz001+4 offline
+
+exit 0
