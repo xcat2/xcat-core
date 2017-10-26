@@ -559,6 +559,19 @@ my %verifyMsgs = (
            'userResp'  => 'This function should be obtained from the Linux distribution and '.
                           'installed.'
          },
+    'WAIT01' =>
+         { 'severity'  => 2,
+           'recAction' => 0,
+           'text'      => 'Sleeping %s seconds to allow xcatd to start. Wait %s of %s.',
+           'explain'   => 'The xCAT daemon (xcatd) is not running.',
+           'sysAct'    => 'The process will wait the indicated time and then recheck the status. '.
+                          'If the xCAT daemon does not start after a number of attempts then the '.
+                          'process will stop waiting.  A subsequent attempt to use xCAT daemon '.
+                          'functions is expected to fail and will log the problem.',
+           'userResp'  => 'It may take a short while for the xCAT daemon to start up or resume '.
+                          'after a restart.  A delay should not be considered a problem unless '.
+                          'the xCAT daemon does not start up.'
+         },
     );
 
 #******************************************************************************
