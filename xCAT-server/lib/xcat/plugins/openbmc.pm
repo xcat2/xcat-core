@@ -1383,8 +1383,12 @@ sub deal_with_response {
                 if ($node_info{$node}{cur_status} eq "RFLASH_UPDATE_ACTIVATE_RESPONSE") {
                     # If 403 is received for an activation, that means the activation ID is incorrect
                     $error = "Invalid ID provided to activate. Use the -l option to view valid firmware IDs.";
+                } elsif ($node_info{$node}{cur_status} eq "RSETBOOT_ENABLE_RESPONSE" ) {
+                    # If 403 is received setting boot method, API endpoint changed in 1738 FW, inform the user of work around.
+                    $error = "Invalid endpoint used to set boot method. If running firmware < ibm-v1.99.10-0-r7, 'export XCAT_OPENBMC_FIRMWARE=1736' and retry.";
+                    
                 } else {
-                    $error = "$::RESPONSE_FORBIDDEN - This function is not yet available in OpenBMC firmware.";
+                    $error = "$::RESPONSE_FORBIDDEN - Requested endpoint does not exists and may indicate function is not yet supported by OpenBMC firmware.";
                 }
             } elsif ($response_info->{'data'}->{'description'} =~ /path or object not found: (.+)/) {
                 #
