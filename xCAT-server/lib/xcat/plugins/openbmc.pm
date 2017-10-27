@@ -390,6 +390,9 @@ my $flag_debug = "[openbmc_debug]";
 #-------------------------------------------------------
 sub preprocess_request {
     my $request = shift;
+    if (defined $request->{_xcat_ignore_flag}->[0] and $request->{_xcat_ignore_flag}->[0] eq 'openbmc') {
+        return [];#workaround the bug 3026, to ignore it for openbmc
+    }
     if (defined $request->{_xcatpreprocessed}->[0] and $request->{_xcatpreprocessed}->[0] == 1) {
         return [$request];
     }
