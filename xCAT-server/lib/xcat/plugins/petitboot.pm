@@ -561,6 +561,8 @@ sub process_request {
         $sub_req->({ command => ['rsetboot'],
                 node => \@nodes,
                 arg  => ['default'],
+                #workaround the bug 3026, to ignore it for openbmc
+                _xcat_ignore_flag => ['openbmc'],
                 #todo: do not need to pass the XCAT_OPENBMC_DEVEL after the openbmc dev work finish
                 #this does not hurt anything for other plugins
                 environment => {XCAT_OPENBMC_DEVEL=>"YES"}
