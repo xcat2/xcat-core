@@ -269,19 +269,19 @@ elif [ "bridgeprereq" = "$1" ]; then
     
      #write into the network configuration file
     if [[ $isSLES -eq 1 ]]; then
-        cat >$nwdir/ifcfg-$PORTS <<EOF
+        { cat <<EOF
 DEVICE='$PORTS'
 ONBOOT='yes'
 BRIDGE='$BNAME'
 EOF
         mac=$(ip addr show dev $PORTS scope global|grep link|sed -e 's/link\/ether//'|sed -e 's/brd.*$//'|sed -e 's/[ ]*//')
         if [ ! -z "$mac" ]; then
-            echo "HWADDR='$mac'" >> $nwdir/ifcfg-$PORTS
+            echo "HWADDR='$mac'"
         fi
         if [ ! -z "$vlan" ]; then
-            echo "VLAN='yes'" >> $nwdir/ifcfg-$PORTS
-        fi
-        cat >$nwdir/ifcfg-$BNAME <<EOF      
+            echo "VLAN='yes'"
+        fi; } >"$nwdir/ifcfg-$PORTS"
+        { cat <<EOF      
 DEVICE='$BNAME'
 TYPE='Bridge'
 ONBOOT='yes'
@@ -289,13 +289,13 @@ PEERDNS='yes'
 DELAY='0'
 EOF
         if [ ! -z "$3" ]; then 
-            echo "IPADDR='$3'" >> $nwdir/ifcfg-$BNAME 
+            echo "IPADDR='$3'"
             if [ ! -z "$4" ]; then
-                echo "NETMASK='$4'" >> $nwdir/ifcfg-$BNAME
+                echo "NETMASK='$4'"
             fi
         else
-            echo "BOOTPROTO=dhcp" >> $nwdir/ifcfg-$BNAME
-        fi
+            echo "BOOTPROTO=dhcp"
+        fi; } >$nwdir/ifcfg-$BNAME
     elif [ $isDebian ];then
         #ubuntu/debian
         echo "auto $PORTS" >$nwdir/$PORTS
@@ -305,46 +305,46 @@ EOF
             echo "  vlan-raw-device $PORTORG"
         fi
 
-        echo "auto $BNAME" > $nwdir/$BNAME
+        { echo "auto $BNAME"
         if [ ! -z "$3" ];then
-            echo "iface $BNAME inet static" >> $nwdir/$BNAME
-            echo "  address $3" >> $nwdir/$BNAME
+            echo "iface $BNAME inet static"
+            echo "  address $3"
             if [ ! -z "$4" ];then
-                echo "  netmask $4" >> $nwdir/$BNAME
+                echo "  netmask $4"
             else
-                echo "  netmask 255.255.255.0" >> $nwdir/$BNAME
+                echo "  netmask 255.255.255.0"
             fi
         else
-            my_subnet=$(ip addr show dev $BNAME scope global|grep inet|grep -v dynamic|sed -e 's/inet.//'| awk '{print $1}')
+            my_subnet=$(ip -4 -o addr show dev "$BNAME" scope global | awk '!/dynamic/{print $4}' )
             if [ ! -z "$my_subnet" ]; then
                 bridge_ip="${my_subnet//\/*}"
                 bridge_mask="${my_subnet##*\/}"
-                bridge_mask=$(v4prefix2mask $bridge_mask)
-                { echo "iface $BNAME inet static"
+                bridge_mask=$(v4prefix2mask "$bridge_mask")
+                echo "iface $BNAME inet static"
                 echo "  address $bridge_ip"
-                echo "  netmask $bridge_mask"; } >> $nwdir/$BNAME
+                echo "  netmask $bridge_mask";
             else 
-                echo "iface $BNAME inet dhcp" >> $nwdir/$BNAME
+                echo "iface $BNAME inet dhcp"
             fi
         fi
-        { echo "  bridge_ports $PORTS"
+        echo "  bridge_ports $PORTS"
         echo "  bridge_stp off"
         echo "  bridge_fd 0"
-        echo "  bridge_maxwait 0"; } >> $nwdir/$BNAME
+        echo "  bridge_maxwait 0"; } > "$nwdir/$BNAME"
     else
-        cat >$nwdir/ifcfg-$PORTS <<EOF
+        { cat <<EOF
 DEVICE=$PORTS
 ONBOOT=yes
 BRIDGE=$BNAME
 EOF
-        mac=$(ip addr show dev $PORTS scope global|grep link|sed -e 's/link\/ether//'|sed -e 's/brd.*$//'|sed -e 's/[ ]*//')
+        mac=$(ip -0 -o addr show dev "$PORTS" scope global|awk '{print $(NF-2)}')
         if [ ! -z "$mac" ]; then
-            echo "HWADDR=$mac" >> $nwdir/ifcfg-$PORTS
+            echo "HWADDR=$mac"
         fi
         if [ ! -z "$vlan" ]; then
-            echo "VLAN=yes" >> $nwdir/ifcfg-$PORTS
-        fi
-        cat >$nwdir/ifcfg-$BNAME <<EOF      
+            echo "VLAN=yes"
+        fi; } >"$nwdir/ifcfg-$PORTS"
+        { cat <<EOF      
 DEVICE=$BNAME
 TYPE=Bridge
 ONBOOT=yes
@@ -352,16 +352,16 @@ PEERDNS=yes
 DELAY=0
 EOF
         if [ ! -z "$3" ]; then 
-            echo "IPADDR=$3" >> $nwdir/ifcfg-$BNAME 
+            echo "IPADDR=$3"
             if [ ! -z "$4" ]; then
-                echo "NETMASK=$4" >> $nwdir/ifcfg-$BNAME
+                echo "NETMASK=$4"
             fi
         else
-            echo "BOOTPROTO=dhcp" >> $nwdir/ifcfg-$BNAME
-        fi
+            echo "BOOTPROTO=dhcp"
+        fi ; }  > "$nwdir/ifcfg-$BNAME"
     fi 
  
-    ifdown $BNAME;ifup $BNAME
+    ifdown "$BNAME"; ifup "$BNAME"
 fi #END bridge config.
 
     
