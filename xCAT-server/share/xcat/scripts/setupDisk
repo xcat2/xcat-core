@@ -496,6 +496,57 @@ function setupDisk {
     echo "$funcName successfully remove the SCSI volume"
 
   ###########################################################################
+  # Handle adding a mdisk based swap disk.
+  # Disk file input parameters:
+  #   action  - "addSwap"
+  #   vaddr   - virtual address of the minidisk
+  ##########################################################################
+  elif [[ $xcat_action == "addSwap" ]]; then
+
+    if [[ ! -n $xcat_vaddr ]]; then
+      echo "$funcName (Error) Virtual address was not specified"
+      return
+    fi
+
+    xcat_vaddr=`echo $xcat_vaddr | tr '[A-Z]' '[a-z]'`
+
+    # Online the device
+    rc= onlineDevice $xcat_vaddr
+    if (( rc != 0 )); then
+      echo "$funcName (Error) fail to online the disk $xcat_vaddr"
+      return
+    fi
+
+    # Configure the added dasd to be persistent
+    echo "Permanently online the ephemeral disk"
+    if [[ $os == rhel* ]]; then
+      out=`cat "/etc/dasd.conf" | egrep -i $xcat_vaddr`
+      if [[ ! $out ]]; then
+        echo "0.0.$xcat_vaddr" >> /etc/dasd.conf
+      fi
+    elif [[ $os == sles* ]]; then
+      /sbin/dasd_configure 0.0.$xcat_vaddr 1
+    elif [[ $os == ubuntu16* ]]; then
+      touch /etc/sysconfig/hardware/config-ccw-0.0.$xcat_vaddr
+    else
+      echo "$funcName (Error) failed to permanently online the disk:$xcat_vaddr on os: $os, please check if $os is in the supported distribution list"
+      return
+    fi
+
+    cp /etc/fstab /etc/fstab.bak
+    out=`cat "/etc/fstab" | egrep -i "ccw-0.0.$xcat_vaddr"`
+    if [[  $out ]]; then
+      sed -i '/ccw-0.0.'"$xcat_vaddr"'/d' /etc/fstab
+    fi
+
+    # any error should be recorded in the init log, this kind of error should not break
+    # the whole startup process
+    mkswap /dev/disk/by-path/ccw-0.0.${xcat_vaddr}-part1
+    echo "/dev/disk/by-path/ccw-0.0.${xcat_vaddr}-part1 none swap sw 0 0" >> /etc/fstab
+
+    swapon -a
+
+  ###########################################################################
   # Handle adding a mdisk based ephemeral disk.
   # Disk file input parameters:
   #   action  - "addMdisk"

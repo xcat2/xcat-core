@@ -974,11 +974,11 @@ sub changeVM {
 
     xCAT::zvmUtils->printSyslog("changeVM() node:$node userid:$userId subCmd:$args->[0] zHCP:$hcp sudoer:$::SUDOER sudo:$::SUDO");
 
-    # Output string
+    # Common subfunction variables
     my $out = "";
     my $outmsg;
     my $device = 0;
-    my $newlinkcall = 0;
+    my $newlinkcall = -1;   # -1: not linked, 0: linked using the old way, 1: linked using linkdiskandbringonline script.
     my $rc = 0;
     my $vdev;
 
@@ -1041,17 +1041,18 @@ sub changeVM {
 
         # Add to directory entry
         my $error = 0;
+        xCAT::zvmUtils->printSyslog( "ssh $::SUDOER\@$hcp \"$::SUDO $::DIR/smcli Image_Disk_Create_DM -T $userId -v $addr -t 3390 -a AUTOG -r $pool -u 1 -z $cyl -m $mode -f 1 -R $readPw -W $writePw -M $multiPw\"" );
         $out = `ssh $::SUDOER\@$hcp "$::SUDO $::DIR/smcli Image_Disk_Create_DM -T $userId -v $addr -t 3390 -a AUTOG -r $pool -u 1 -z $cyl -m $mode -f 1 -R $readPw -W $writePw -M $multiPw"`;
-        xCAT::zvmUtils->printSyslog("smcli Image_Disk_Create_DM -T $userId -v $addr -t 3390 -a AUTOG -r $pool -u 1 -z $cyl -m $mode -f 1 -R $readPw -W $writePw -M $multiPw");
-        $error = (xCAT::zvmUtils->checkOutput( $out ) == -1) ? 1 : 0;
-        if ($error) {
-            xCAT::zvmUtils->printLn( $callback, "$node: Error on Image_Disk_Create_DM $out" );
-            xCAT::zvmUtils->printSyslog( $callback, "$node: Error on Image_Disk_Create_DM $out" );
+        ($rc, $outmsg) = xCAT::zvmUtils->checkSSH_Rc( $?,
+            "ssh $::SUDOER\@$hcp \"$::SUDO $::DIR/smcli Image_Disk_Create_DM -T $userId -v $addr -t 3390 -a AUTOG -r $pool -u 1 -z $cyl -m $mode -f 1 -R $readPw -W $writePw -M $multiPw\"",
+            $hcp, "changeVM", $out, $node );
+        if ( $rc != 0 ) {
+            xCAT::zvmUtils->printLn( $callback, $outmsg );
             return;
         }
 
-        if ( $fstype && ( $fstype !~ /(ext2|ext3|ext4|xfs)/i ) ) {
-            $out = "(Warning) File system type can only be ext2, ext3, ext4 or xfs" . "\n";
+        if ( $fstype && ( $fstype !~ /(ext2|ext3|ext4|xfs|swap)/i ) ) {
+            $out = "(Warning) File system type can only be ext2, ext3, ext4 ,swap or xfs" . "\n";
             xCAT::zvmUtils->printLn( $callback, "$node: $out" );
             $error = 1;
         }
@@ -1062,6 +1063,7 @@ sub changeVM {
             $out = `ssh -o ConnectTimeout=30 $::SUDOER\@$hcp "$::SUDO $::DIR/linkdiskandbringonline $userId $addr $mode"`;
 
             $rc = $? >> 8;
+            # Note: We don't use zvmUtils->checkSSH_Rc() in this section because some non-zero RCs are tolerated.
             if ($rc == 255) {
                 xCAT::zvmUtils->printSyslog( "$node: changeVM() Unable to communicate with zHCP agent" );
                 xCAT::zvmUtils->printLn( $callback, "$node: changeVM() Unable to communicate with zHCP agent: $hcp" );
@@ -1093,19 +1095,39 @@ sub changeVM {
                     sleep(2);
                     $out = `ssh $::SUDOER\@$hcp "$::SUDO /sbin/vmcp LINK TO $userId $addr AS $vdev M 2>&1"`;
                     $error = (xCAT::zvmUtils->checkOutput( $out ) == -1) ? 1 : 0;
-
+                    # Note: We don't use zvmUtils->checkSSH_Rc() in this section because
+                    #       we are only interested in logging the final error.
                     if ($error) {
                         $retry -= 1;
                         $vdev = xCAT::zvmUtils->getFreeAddress( $::SUDOER, $hcp, 'vmcp' );
                     } else {
+                        $newlinkcall = 0;
                         last;
                     }
                 }
 
+                if ( $error ) {
+                    xCAT::zvmUtils->printSyslog( "Error occurred in 'vmcp LINK TO $userId $addr AS $vdev M' $device. Output: $out" );
+                    xCAT::zvmUtils->printLn( $callback, "$node: changeVM() Error occurred in 'vmcp LINK TO $userId $addr AS $vdev M' " .
+                                                        "Output: $out" );
+                } else {
                 # make the disk online and get it's device name
-                if ( !$error ) {
                     $out = `ssh $::SUDOER\@$hcp "$::SUDO /sbin/cio_ignore -r $vdev &> /dev/null"`;
+                    ($rc, $outmsg) = xCAT::zvmUtils->checkSSH_Rc( $?,
+                        "ssh $::SUDOER\@$hcp \"$::SUDO /sbin/cio_ignore -r $vdev &> /dev/null\"",
+                        $hcp, "changeVM", $out, $node );
+                    if ( $rc != 0 ) {
+                        xCAT::zvmUtils->printLn( $callback, $outmsg );
+                        $error = 1;
+                    }
+                    if ( !$error ) {
                     $out = xCAT::zvmUtils->disableEnableDisk( $::SUDOER, $hcp, "-e", $vdev );
+                        if ( $out !~ 'Done' ) {
+                            xCAT::zvmUtils->printLn($callback, "$node: $out");
+                            $error = 1;
+                        }
+                    }
+                    if ( !$error ) {
                     my $select = `ssh $::SUDOER\@$hcp "$::SUDO cat /proc/dasd/devices"`;
                     ($rc, $outmsg) = xCAT::zvmUtils->checkSSH_Rc( $?, "ssh $::SUDOER\@$hcp \"$::SUDO cat /proc/dasd/devices\"", $hcp, "changeVM", $select, $node );
                     if ($rc != 0) {
@@ -1119,8 +1141,14 @@ sub changeVM {
                         if ( $select ) {
                             my @info = split( ' ', $select );
                             $device = "/dev/" . $info[6];
+                        } else {
+                                xCAT::zvmUtils->printSyslog( "$node: changeVM() Error, unable to find the device " .
+                                                             "on $hcp related to 0.0.$vdev" );
+                                xCAT::zvmUtils->printLn( $callback, "$node: changeVM() Error, unable to find the device " .
+                                                                    "on $hcp related to 0.0.$vdev" );
+                                $error = 1;
+                            }
                         }
-                        $error = !$device;
                     }
                 }
             }
@@ -1128,81 +1156,108 @@ sub changeVM {
             # format the disk
             if ( !$error ) {
                 $out = `ssh $::SUDOER\@$hcp "$::SUDO /sbin/dasdfmt -y -b 4096 -d cdl -f $device 2>&1"`;
-                $error = (xCAT::zvmUtils->checkOutput( $out ) == -1) ? 1 : 0;
-                if ($error) {
-                    xCAT::zvmUtils->printSyslog( "Error occurred during dasdfmt $device. Output: $out" );
+                ($rc, $outmsg) = xCAT::zvmUtils->checkSSH_Rc( $?,
+                    "ssh $::SUDOER\@$hcp \"$::SUDO /sbin/dasdfmt -y -b 4096 -d cdl -f $device 2>&1\"",
+                    $hcp, "changeVM", $out, $node );
+                if ( $rc != 0 ) {
+                    xCAT::zvmUtils->printLn( $callback, $outmsg );
+                    $error = 1;
                 }
             }
             if ( !$error ) {
                 $out = `ssh $::SUDOER\@$hcp "$::SUDO /sbin/fdasd -a $device 2>&1"`;
-                $error = (xCAT::zvmUtils->checkOutput( $out ) == -1) ? 1 : 0;
-                if ($error) {
-                    xCAT::zvmUtils->printSyslog( "Error occurred during fdasd $device. Output: $out" );
-            }
+                ($rc, $outmsg) = xCAT::zvmUtils->checkSSH_Rc( $?,
+                    "ssh $::SUDOER\@$hcp \"$::SUDO /sbin/fdasd -a $device 2>&1\"",
+                    $hcp, "changeVM", $out, $node );
+                if ( $rc != 0 ) {
+                    xCAT::zvmUtils->printLn( $callback, $outmsg );
+                    $error = 1;
+                }
             }
             if ( !$error ) {
                 $device .= '1';
                 if ( $fstype =~ m/xfs/i ) {
-                    $out = `ssh $::SUDOER\@$hcp "$::SUDO mkfs.xfs $device 2>&1"`;
-                    $error = (xCAT::zvmUtils->checkOutput( $out ) == -1) ? 1 : 0;
-                    if ($error) {
-                        xCAT::zvmUtils->printSyslog( "Error occurred during mkfs.xfs $device. Output: $out" );
+                    $out = `ssh $::SUDOER\@$hcp "$::SUDO mkfs.xfs -f $device 2>&1"`;
+                    ($rc, $outmsg) = xCAT::zvmUtils->checkSSH_Rc( $?,
+                        "ssh $::SUDOER\@$hcp \"$::SUDO mkfs.xfs -f $device 2>&1\"",
+                        $hcp, "changeVM", $out, $node );
+                    if ( $rc != 0 ) {
+                        xCAT::zvmUtils->printLn( $callback, $outmsg );
+                        $error = 1;
                     }
+                } elsif ( $fstype =~ m/swap/i ) {
+                        xCAT::zvmUtils->printSyslog( "the file system is swap, so no format needed");
                 } else {
-                    $out = `ssh $::SUDOER\@$hcp "$::SUDO mkfs -t $fstype $device 2>&1"`;
-                    $error = !($out =~ m/done/);
-                    if ($error) {
-                        xCAT::zvmUtils->printSyslog( "Error occurred during mkfs $fstype $device. Output: $out" );
+                    $out = `ssh $::SUDOER\@$hcp "$::SUDO mkfs -F -t $fstype $device 2>&1"`;
+                    ($rc, $outmsg) = xCAT::zvmUtils->checkSSH_Rc( $?,
+                        "ssh $::SUDOER\@$hcp \"$::SUDO mkfs -F -t $fstype $device 2>&1\"",
+                        $hcp, "changeVM", $out, $node );
+                    if ( $rc != 0 ) {
+                        xCAT::zvmUtils->printLn( $callback, $outmsg );
+                        $error = 1;
                     }
-            }
-            }
-            if ( $error ) {
-                xCAT::zvmUtils->printSyslog("$out");
-                $out = "(Warning) Can not format disk with fstype $fstype" . "\n";
-            } else {
-                $out = "";
+                }
+                if ( $error ) {
+                    xCAT::zvmUtils->printLn( $callback, "(Warning) Cannot format disk with fstype $fstype" );
+                }
             }
 
-            # offline and detach disk using new call so that zhcp records are updated
+            # offline and detach disk using the new call so that zhcp records are updated
             if ( $newlinkcall == 1 ){
                 $out = `ssh -o ConnectTimeout=30 $::SUDOER\@$hcp "$::SUDO $::DIR/offlinediskanddetach $userId $addr"`;
-                $rc = $?;
-
-                $rc = $? >> 8;
-                if ( $rc == 255 ) {
-                    xCAT::zvmUtils->printSyslog( "$node: changeVM() Unable to communicate with zHCP agent" );
-                    xCAT::zvmUtils->printLn( $callback, "$node: changeVM() Unable to communicate with zHCP agent: $hcp" );
-                    $error = 1;
-                }
-                if ($out =~ m/Success:/i){
-                    # sample output=>offlinediskanddetach maint start time: 2017-03-03-16:20:48.011
-                    #                Success: Userid maint vdev 193 unlinked
-                    #                offlinediskanddetach exit time: 2017-03-03-16:20:52.150
-                    xCAT::zvmUtils->printSyslog("$out");
-                } else {
-                    xCAT::zvmUtils->printSyslog( "$node: changeVM() Error occurred in call to offlinediskanddetach: $out" );
-                    xCAT::zvmUtils->printLn( $callback, "$node: changeVM() Error occurred in call to offlinediskanddetach: $out" );
+                ( $rc, $outmsg) = xCAT::zvmUtils->checkSSH_Rc( $?,
+                    "ssh -o ConnectTimeout=30 $::SUDOER\@$hcp \"$::SUDO $::DIR/offlinediskanddetach $userId $addr\"",
+                    $hcp, "changeVM", $out, $node );
+                if ( $rc != 0 ) {
+                    xCAT::zvmUtils->printLn( $callback, $outmsg );
                     $error = 1;
                 }
             # Use old code to disable and detach
-            } else {
-                xCAT::zvmUtils->disableEnableDisk( $::SUDOER, $hcp, "-d", $vdev );
-                `ssh $::SUDOER\@$hcp "$::SUDO /sbin/vmcp DETACH $vdev &> /dev/null"`;
-                xCAT::zvmUtils->printSyslog("vmcp DETACH $vdev");
+            } elsif ( $newlinkcall == 0 ) {
+                $out = xCAT::zvmUtils->disableEnableDisk( $::SUDOER, $hcp, "-d", $vdev );
+                if ( $out !~ 'Done' ){
+                    # Note: We are only going to log the disable failure because a failure to
+                    #       disable the device doesn't mean much because we are going to immmediately
+                    #       detach it.  The worst that we expect to happen in this case is that
+                    #       we have a dasd enabled that is no longer attached.
+                    xCAT::zvmUtils->printSyslog( "$node: $out");
+                }
+
+                xCAT::zvmUtils->printSyslog( "ssh $::SUDOER\@$hcp \"$::SUDO /sbin/vmcp DETACH $vdev &> /dev/null\"" );
+                $out = `ssh $::SUDOER\@$hcp "$::SUDO /sbin/vmcp DETACH $vdev &> /dev/null"`;
+                ($rc, $outmsg) = xCAT::zvmUtils->checkSSH_Rc( $?,
+                    "ssh $::SUDOER\@$hcp \"$::SUDO /sbin/vmcp DETACH $vdev &> /dev/null\"",
+                    $hcp, "changeVM", $out, $node );
+                if ( $rc != 0 ) {
+                xCAT::zvmUtils->printLn( $callback, $outmsg );
+                xCAT::zvmUtils->printSyslog( $outmsg );
+                    $error = 1;
+                }
             }
+            # else disk was not linked so we don't have to remove it.
         }
 
         if ( !$error ) {
             # Add to active configuration
-            $out .= "Adding 3390 disk for $node as $addr ... Done";
+            xCAT::zvmUtils->printLn( $callback, "$node: Adding 3390 disk to $userId\'s directory entry as $addr ... Done" );
             my $power = `/opt/xcat/bin/rpower $node stat`;
             if ($power =~ m/: on/i) {
-                $out .= "\n" . `ssh $::SUDOER\@$hcp "$::SUDO $::DIR/smcli Image_Disk_Create -T $userId -v $addr -m $mode"`;
-                xCAT::zvmUtils->printSyslog("smcli Image_Disk_Create -T $userId -v $addr -m $mode");
+                xCAT::zvmUtils->printSyslog( "ssh $::SUDOER\@$hcp \"$::SUDO $::DIR/smcli Image_Disk_Create -T $userId -v $addr -m $mode\"" );
+                $out = `ssh $::SUDOER\@$hcp "$::SUDO $::DIR/smcli Image_Disk_Create -T $userId -v $addr -m $mode"`;
+                ($rc, $outmsg) = xCAT::zvmUtils->checkSSH_Rc( $?,
+                    "ssh $::SUDOER\@$hcp \"$::SUDO $::DIR/smcli Image_Disk_Create -T $userId -v $addr -m $mode\"",
+                    $hcp, "changeVM", $out, $node );
+                if ( $rc != 0 ) {
+                    xCAT::zvmUtils->printLn( $callback, $outmsg );
+                    $error = 1;
+                }
             }
 
-            $out = xCAT::zvmUtils->appendHostname( $node, $out );
+            if ( $error != 1 ) {
+                xCAT::zvmUtils->printLn( $callback, "$node: Adding disk to $userId\'s active configuration... Done" );
+            }
         }
+        $out = '';
     }
 
     # add3390active [device address] [mode]
@@ -1274,11 +1329,11 @@ sub changeVM {
         # Add to directory entry
         my $error = 0;
         $out = `ssh $::SUDOER\@$hcp "$::SUDO $::DIR/smcli Image_Disk_Create_DM -T $userId -v $addr -t 9336 -a AUTOG -r $pool -u 2 -z $blks -m $mode -f 1 -R $readPw -W $writePw -M $multiPw 2>&1"`;
-        xCAT::zvmUtils->printSyslog("smcli Image_Disk_Create_DM -T $userId -v $addr -t 9336 -a AUTOG -r $pool -u 2 -z $blks -m $mode -f 1 -R $readPw -W $writePw -M $multiPw");
-        $error = (xCAT::zvmUtils->checkOutput( $out ) == -1) ? 1 : 0;
-        if ($error) {
-            xCAT::zvmUtils->printLn( $callback, "$node: Error on Image_Disk_Create_DM $out" );
-            xCAT::zvmUtils->printSyslog( $callback, "$node: Error on Image_Disk_Create_DM $out" );
+        ($rc, $outmsg) = xCAT::zvmUtils->checkSSH_Rc( $?,
+            "ssh $::SUDOER\@$hcp \"$::SUDO $::DIR/smcli Image_Disk_Create_DM -T $userId -v $addr -t 9336 -a AUTOG -r $pool -u 2 -z $blks -m $mode -f 1 -R $readPw -W $writePw -M $multiPw 2>&1\"",
+            $hcp, "changeVM", $out, $node );
+        if ( $rc != 0 ) {
+            xCAT::zvmUtils->printLn( $callback, "$node: $out" );
             return;
         }
 
@@ -1289,7 +1344,7 @@ sub changeVM {
         }
 
         my $device = 0;
-        my $newlinkcall = 0;
+        my $newlinkcall = -1;   # -1: not linked, 0: linked using the old way, 1: linked using linkdiskandbringonline script.
         my $rc = 0;
         my $vdev;
 
@@ -1297,7 +1352,6 @@ sub changeVM {
             # link the disk
             # Check if zhcp has the new routine to link and online the disk
             $out = `ssh -o ConnectTimeout=30 $::SUDOER\@$hcp "$::SUDO $::DIR/linkdiskandbringonline $userId $addr $mode"`;
-            $rc = $?;
 
             $rc = $? >> 8;
             if ($rc == 255) {
@@ -1316,7 +1370,7 @@ sub changeVM {
                     #                linkdiskandbringonline exit time: 2017-03-03-16:20:52.150
                     $out = `echo "$out" | egrep -a -i "Success:"`;
                     my @info = split( ' ', $out );
-                    $device = $info[10];
+                    $device = "/dev/" . $info[10];
                 } else {
                     xCAT::zvmUtils->printSyslog( "$node: changeVM() Error occurred in call to linkdiskandbringonline: $out" );
                     xCAT::zvmUtils->printLn( $callback, "$node: changeVM()(Error occurred in call to linkdiskandbringonline: $out" );
@@ -1331,35 +1385,61 @@ sub changeVM {
                     sleep(2);
                     $out = `ssh $::SUDOER\@$hcp "$::SUDO /sbin/vmcp LINK TO $userId $addr AS $vdev M 2>&1"`;
                     $error = (xCAT::zvmUtils->checkOutput( $out ) == -1) ? 1 : 0;
-
+                    # Note: We don't use zvmUtils->checkSSH_Rc() in this section because
+                    #       we are only interested in logging the final error.
                     if ($error) {
                         $retry -= 1;
                         $vdev = xCAT::zvmUtils->getFreeAddress( $::SUDOER, $hcp, 'vmcp' );
                     } else {
+                        $newlinkcall = 0;
                         last;
                     }
                 }
 
+                if ( $error ) {
+                    xCAT::zvmUtils->printSyslog( "Error occurred in 'vmcp LINK TO $userId $addr AS $vdev M' $device. Output: $out" );
+                    xCAT::zvmUtils->printLn( $callback, "$node: changeVM() Error occurred in 'vmcp LINK TO $userId $addr AS $vdev M' " .
+                                                        "Output: $out" );
+                } else {
                 # make the disk online and get it's device name
-                if ( !$error ) {
                     $out = `ssh $::SUDOER\@$hcp "$::SUDO /sbin/cio_ignore -r $vdev &> /dev/null"`;
+                    ($rc, $outmsg) = xCAT::zvmUtils->checkSSH_Rc( $?,
+                        "ssh $::SUDOER\@$hcp \"$::SUDO /sbin/cio_ignore -r $vdev &> /dev/null\"",
+                        $hcp, "changeVM", $out, $node );
+                    if ( $rc != 0 ) {
+                        xCAT::zvmUtils->printLn( $callback, $outmsg );
+                        $error = 1;
+                    }
+                    if ( !$error ) {
                     $out = xCAT::zvmUtils->disableEnableDisk( $::SUDOER, $hcp, "-e", $vdev );
+                        if ( $out !~ 'Done' ) {
+                            xCAT::zvmUtils->printLn($callback, "$node: $out");
+                            $error = 1;
+                        }
+                    }
+                    if ( !$error ) {
                     my $select = `ssh $::SUDOER\@$hcp "$::SUDO cat /proc/dasd/devices"`;
                     ($rc, $outmsg) = xCAT::zvmUtils->checkSSH_Rc( $?, "ssh $::SUDOER\@$hcp \"$::SUDO cat /proc/dasd/devices\"", $hcp, "changeVM", $select, $node );
                     if ($rc != 0) {
                         xCAT::zvmUtils->printLn( $callback, "$outmsg" );
                         $error = 1;
                     } else {
-                        $out = `echo "$out" | egrep -a -i "0.0.$vdev"`;
+                            $select = `echo "$select" | egrep -a -i "0.0.$vdev"`;
                         chomp( $select );
                         # A sample entry:
-                        # 0.0.0101(ECKD) at ( 94:     0) is dasda       : active at blocksize: 4096, 600840 blocks, 2347 MB
+                        # select: 0.0.0001(FBA ) at ( 94:    28) is dasdh       : active at blocksize: 512, 61440 blocks, 30 MB
                         if ( $select ) {
                             my @info = split( ' ', $select );
-                            $device = "/dev/" . $info[6];
+                            $device = "/dev/" . $info[7];
+                        } else {
+                                xCAT::zvmUtils->printSyslog( "$node: changeVM() Error, unable to find the device " .
+                                                             "on $hcp related to 0.0.$vdev" );
+                                xCAT::zvmUtils->printLn( $callback, "$node: changeVM() Error, unable to find the device " .
+                                                                    "on $hcp related to 0.0.$vdev" );
+                                $error = 1;
+                            }
                         }
-                        $error = !$device;
-                    }
+                        }
                 }
             }
 
@@ -1370,9 +1450,12 @@ sub changeVM {
 d
 w
 EOF"`;
-                $error = (xCAT::zvmUtils->checkOutput( $out ) == -1) ? 1 : 0;
-                if ($error) {
-                    xCAT::zvmUtils->printSyslog( "Error occurred during fdisk $device. Output: $out" );
+                ($rc, $outmsg) = xCAT::zvmUtils->checkSSH_Rc( $?,
+                    "ssh $::SUDOER\@$hcp \"$::SUDO /sbin/fdisk $device d w\"",
+                    $hcp, "changeVM", $out, $node );
+                if ( $rc != 0 ) {
+                    xCAT::zvmUtils->printLn( $callback, $outmsg );
+                    $error = 1;
             }
             }
 
@@ -1387,76 +1470,94 @@ p
 
 w
 EOF"`;
-                $error = (xCAT::zvmUtils->checkOutput( $out ) == -1) ? 1 : 0;
-                if ($error) {
-                    xCAT::zvmUtils->printSyslog( "Error occurred during fdisk to make a partition on $device. Output: $out" );
+                ($rc, $outmsg) = xCAT::zvmUtils->checkSSH_Rc( $?,
+                    "ssh $::SUDOER\@$hcp \"$::SUDO /sbin/fdisk $device n p 1 w\"",
+                    $hcp, "changeVM", $out, $node );
+                if ( $rc != 0 ) {
+                    xCAT::zvmUtils->printLn( $callback, $outmsg );
+                    $error = 1;
                 }
             }
             if ( !$error ) {
                 $device .= '1';
                 if ( $fstype =~ m/xfs/i ) {
-                    $out = `ssh $::SUDOER\@$hcp "$::SUDO mkfs.xfs $device 2>&1"`;
-                    $error = (xCAT::zvmUtils->checkOutput( $out ) == -1) ? 1 : 0;
-                    if ($error) {
-                        xCAT::zvmUtils->printSyslog( "Error occurred during mkfs.xfs $device. Output: $out" );
+                    $out = `ssh $::SUDOER\@$hcp "$::SUDO mkfs.xfs -f $device 2>&1"`;
+                    ($rc, $outmsg) = xCAT::zvmUtils->checkSSH_Rc( $?,
+                        "ssh $::SUDOER\@$hcp \"$::SUDO mkfs.xfs -f $device 2>&1\"",
+                        $hcp, "changeVM", $out, $node );
+                    if ( $rc != 0 ) {
+                        xCAT::zvmUtils->printLn( $callback, $outmsg );
+                        $error = 1;
                     }
                 } else {
-                    $out = `ssh $::SUDOER\@$hcp "$::SUDO mkfs -t $fstype $device 2>&1"`;
-                    $error = !($out =~ m/done/);
-                    if ($error) {
-                        xCAT::zvmUtils->printSyslog( "Error occurred during mkfs $fstype $device. Output: $out" );
+                    $out = `ssh $::SUDOER\@$hcp "$::SUDO mkfs -F -t $fstype $device 2>&1"`;
+                    ($rc, $outmsg) = xCAT::zvmUtils->checkSSH_Rc( $?,
+                        "ssh $::SUDOER\@$hcp \"$::SUDO mkfs -F -t $fstype $device\"",
+                        $hcp, "changeVM", $out, $node );
+                    if ( $rc != 0 ) {
+                        xCAT::zvmUtils->printLn( $callback, $outmsg );
+                        $error = 1;
                     }
-                }
             }
             if ( $error ) {
-                xCAT::zvmUtils->printSyslog("$out");
-                $out = "(Warning) Can not format disk with fstype $fstype" . "\n";
-            } else {
-                $out = "";
+                xCAT::zvmUtils->printLn( $callback, "(Warning) Cannot format disk with fstype $fstype" );
+            }
             }
 
             # offline and detach disk using new call so that zhcp records are updated
             if ( $newlinkcall == 1 ){
                 $out = `ssh -o ConnectTimeout=30 $::SUDOER\@$hcp "$::SUDO $::DIR/offlinediskanddetach $userId $addr"`;
-                $rc = $?;
-
-                $rc = $? >> 8;
-                if ( $rc == 255 ) {
-                    xCAT::zvmUtils->printSyslog( "$node: changeVM() Unable to communicate with zHCP agent" );
-                    xCAT::zvmUtils->printLn( $callback, "$node: changeVM()( is unable to communicate with zHCP agent: $hcp" );
-                    $error = 1;
-                }
-                if ( $rc > 0 ) {
-                    xCAT::zvmUtils->printSyslog( "$node: changeVM() Unexpected error from SSH call to offlinediskanddetach rc: $rc $out" );
-                    xCAT::zvmUtils->printLn( $callback, "$node: changeVM()Unexpected error from SSH call to offlinediskanddetach rc: $rc $out" );
-                    $error = 1;
-                }
-                if ($out =~ m/Success:/i){
-                    # sample output=>Success: Userid maint vdev 193 unlinked
-                    xCAT::zvmUtils->printSyslog("$out");
-                } else {
-                    xCAT::zvmUtils->printSyslog( "$node: changeVM() Error occurred in call to offlinediskanddetach: $out" );
-                    xCAT::zvmUtils->printLn( $callback, "$node: changeVM() Error occurred in call to offlinediskanddetach: $out" );
+                ( $rc, $outmsg) = xCAT::zvmUtils->checkSSH_Rc( $?,
+                    "ssh -o ConnectTimeout=30 $::SUDOER\@$hcp \"$::SUDO $::DIR/offlinediskanddetach $userId $addr\"",
+                    $hcp, "changeVM", $out, $node );
+                if ( $rc != 0 ) {
+                    xCAT::zvmUtils->printLn( $callback, $outmsg );
                     $error = 1;
                 }
             # Use old code to disable and detach
-            } else {
-                xCAT::zvmUtils->disableEnableDisk( $::SUDOER, $hcp, "-d", $vdev );
-                `ssh $::SUDOER\@$hcp "$::SUDO /sbin/vmcp DETACH $vdev &> /dev/null"`;
-                xCAT::zvmUtils->printSyslog("vmcp DETACH $vdev");
+            } elsif ( $newlinkcall == 0 ) {
+                $out = xCAT::zvmUtils->disableEnableDisk( $::SUDOER, $hcp, "-d", $vdev );
+                if ($out !~ 'Done' ){
+                    # Note: We are only going to log the disable failure because a failure to
+                    #       disable the device doesn't mean much because we are going to immmediately
+                    #       detach it.  The worst that we expect to happen in this case is that
+                    #       we have a dasd enabled that is no longer attached.
+                    xCAT::zvmUtils->printSyslog( "$node: $out");
+                }
+
+                xCAT::zvmUtils->printSyslog( "ssh $::SUDOER\@$hcp \"$::SUDO /sbin/vmcp DETACH $vdev &> /dev/null\"" );
+                $out = `ssh $::SUDOER\@$hcp "$::SUDO /sbin/vmcp DETACH $vdev &> /dev/null"`;
+                ($rc, $outmsg) = xCAT::zvmUtils->checkSSH_Rc( $?,
+                    "ssh $::SUDOER\@$hcp \"$::SUDO /sbin/vmcp DETACH $vdev &> /dev/null\"",
+                    $hcp, "changeVM", $out, $node );
+                if ( $rc != 0 ) {
+                xCAT::zvmUtils->printLn( $callback, $outmsg );
+                xCAT::zvmUtils->printSyslog( $outmsg );
+                    $error = 1;
+                }
             }
+            # else disk was not linked so we don't have to remove it.
         }
         if (!$error) {
             # Add to active configuration
-            $out .= "Adding 9336 disk for $node as $addr ... Done";
+            xCAT::zvmUtils->printLn( $callback, "$node: Adding 9336 disk to $userId\'s directory entry as $addr ... Done" );
             my $power = `/opt/xcat/bin/rpower $node stat`;
             if ($power =~ m/: on/i) {
-                $out .= "\n" . `ssh $::SUDOER\@$hcp "$::SUDO $::DIR/smcli Image_Disk_Create -T $userId -v $addr -m $mode"`;
-                xCAT::zvmUtils->printSyslog("smcli Image_Disk_Create -T $userId -v $addr -m $mode");
+                $out = `ssh $::SUDOER\@$hcp "$::SUDO $::DIR/smcli Image_Disk_Create -T $userId -v $addr -m $mode"`;
+                ($rc, $outmsg) = xCAT::zvmUtils->checkSSH_Rc( $?,
+                    "ssh $::SUDOER\@$hcp $::SUDO \"$::DIR/smcli Image_Disk_Create -T $userId -v $addr -m $mode\"",
+                    $hcp, "changeVM", $out, $node );
+                if ( $rc != 0 ) {
+                    xCAT::zvmUtils->printLn( $callback, $outmsg );
+                    $error = 1;
+                }
             }
 
-            $out = xCAT::zvmUtils->appendHostname( $node, $out );
+            if ( $error != 1 ) {
+                xCAT::zvmUtils->printLn( $callback, "$node: Adding disk to $userId\'s active configuration... Done" );
+            }
         }
+        $out = '';
     }
 
     # adddisk2pool [function] [region] [volume] [group]
@@ -1557,8 +1658,10 @@ EOF"`;
         $out = `ssh $::SUDOER\@$hcp "$::SUDO $::DIR/smcli Image_Disk_Create_DM -T $userId -v $addr -t FB-512 -a V-DISK -r NONE -u 2 -z $size -m $mode -f 0"`;
         $error = (xCAT::zvmUtils->checkOutput( $out ) == -1) ? 1 : 0;
         if ($error) {
-            xCAT::zvmUtils->printLn( $callback, "$node: Error on Image_Disk_Create_DM $out" );
-            xCAT::zvmUtils->printSyslog( $callback, "$node: Error on Image_Disk_Create_DM $out" );
+            xCAT::zvmUtils->printSyslog( "$node: Error on Image_Disk_Create_DM. Output: $out" );
+            xCAT::zvmUtils->printLn( $callback, "$node: changeVM() Error occurred during " .
+                                                "'smcli Image_Disk_Create_DM -T $userId -v $addr -t FB-512 -a V-DISK -r NONE " .
+                                                "-u 2 -z $size -m $mode -f 0'. Output: $out" );
             return;
         }
 
@@ -3302,11 +3405,6 @@ sub powerVM {
     # Output string
     my $out;
     
-    ##pdu commands will be handled in the pdu plugin
-    if ($args->[0] eq 'pduon' || $args->[0] eq 'pdureset' || $args->[0] eq 'pduoff' || $args->[0] eq 'pdustat') {
-        return;
-    }
-
     # Power on virtual server
     if ( $args->[0] eq 'on' ) {
         # Check the node flag, if it contain XCATCONF4Z=0, it indicate that this node will be deployed by using non-xcatconf4z type
@@ -4437,6 +4535,7 @@ sub makeVM {
     my $diskSize = "";
     my $diskVdev = "";
     my $ipl = "";
+    my $logonby = "";
     my $requestId = "NoUpstreamRequestID"; # Default is still visible in the log
     my $objectId = "NoUpstreamObjectID"; # Default is still visible in the log
     if ($args) {
@@ -4455,7 +4554,8 @@ sub makeVM {
             'r|privilege=s' => \$privilege, # Optional
             'q|requestid=s' => \$requestId,  # Optional
             'j|objectid=s' => \$objectId,  # Optional
-            'i|ipl=s' => \$ipl);  # Optional
+            'i|ipl=s' => \$ipl, # Optional
+            'l|logonby=s' => \$logonby);  # Optional
     }
     # If one of the options above are given, create the user without a directory entry file
     if ($profileName || $password || $memorySize) {
@@ -4469,8 +4569,23 @@ sub makeVM {
             $privilege = 'G';
 
         }
+
+        # validate the logonby userid
+        my @userids = split(' ', $logonby);
+        if (scalar(@userids) > 8) {
+            xCAT::zvmUtils->printSyslog("logonby statement contains more than 8 users which is not allowed, the value is: $logonby");
+            xCAT::zvmUtils->printLn( $callback, "$node: (Error) logonby statement contains more than 8 users which is not allowed, the value is: $logonby");
+            return;
+        }
+        for ( my $i = 0 ; $i < scalar(@userids) ; $i++ ) {
+            if (length($userids[$i]) > 8) {
+                xCAT::zvmUtils->printSyslog("logonby userid $userids[$i] contains more than 8 chars");
+                xCAT::zvmUtils->printLn( $callback, "$node: logonby userid $userids[$i] contains more than 8 chars");
+                return;
+            }
+        }
         # Generate temporary user directory entry file
-        my $userEntryFile = xCAT::zvmUtils->generateUserEntryFile($userId, $password, $memorySize, $privilege, $profileName, $cpuCount, $ipl);
+        my $userEntryFile = xCAT::zvmUtils->generateUserEntryFile($userId, $password, $memorySize, $privilege, $profileName, $cpuCount, $ipl, $logonby);
         if ( $userEntryFile == -1 ) {
             xCAT::zvmUtils->printLn( $callback, "$node: (Error) Failed to generate user directory entry file" );
             return;
@@ -5721,10 +5836,10 @@ sub clone {
     # Exit if all disks are not present
     if ( @disks != @tgtDisks ) {
         xCAT::zvmUtils->printLn( $callback, "$tgtNode: (Error) After 50 seconds, all disks not present in target directory." );
-        xCAT::zvmUtils->printSyslog( $callback, "$tgtNode: (Error) After 50 seconds, all disks not present in target directory." );
+        xCAT::zvmUtils->printSyslog( "$tgtNode: (Error) After 50 seconds, all disks not present in target directory." );
 
         xCAT::zvmUtils->printLn( $callback, "$tgtNode: Disks found in $sourceId source directory (@tgtDisks). Disks found in $tgtUserId target directory (@disks)" );
-        xCAT::zvmUtils->printSyslog( $callback, "$tgtNode: Disks found in $sourceId + source directory (@tgtDisks). Disks found in $tgtUserId target directory (@disks)" );
+        xCAT::zvmUtils->printSyslog( "$tgtNode: Disks found in $sourceId + source directory (@tgtDisks). Disks found in $tgtUserId target directory (@disks)" );
 
         xCAT::zvmUtils->printLn( $callback, "$tgtNode: (Solution) Verify disk pool($pool) has free disks and that directory updates are working" );
         return;
@@ -11571,7 +11686,7 @@ sub specialcloneVM {
 
             if ( $out =~ m/not linked/i ) {
                 xCAT::zvmUtils->printSyslog("Retry linking source disk ($addr) as ($linkAddr)\n");
-                xCAT::zvmUtils->printSyslog($callback, "Retry linking source disk ($addr) as ($linkAddr)");
+                xCAT::zvmUtils->printLn($callback, "Retry linking source disk ($addr) as ($linkAddr)");
                 # Do nothing
             } else {
                 last;
@@ -12025,10 +12140,10 @@ sub specialClone {
     # Exit if all disks are not present
     if ( @disks != @tgtDisks ) {
         xCAT::zvmUtils->printLn( $callback, "$tgtNode: (Error) After 50 seconds, all disks not present in target directory." );
-        xCAT::zvmUtils->printSyslog( $callback, "$tgtNode: (Error) After 50 seconds, all disks not present in target directory." );
+        xCAT::zvmUtils->printSyslog( "$tgtNode: (Error) After 50 seconds, all disks not present in target directory." );
 
         xCAT::zvmUtils->printLn( $callback, "$tgtNode: Disks found in $sourceId source directory (@tgtDisks). Disks found in $tgtUserId target directory (@disks)" );
-        xCAT::zvmUtils->printSyslog( $callback, "$tgtNode: Disks found in $sourceId + source directory (@tgtDisks). Disks found in $tgtUserId target directory (@disks)" );
+        xCAT::zvmUtils->printSyslog( "$tgtNode: Disks found in $sourceId + source directory (@tgtDisks). Disks found in $tgtUserId target directory (@disks)" );
 
         xCAT::zvmUtils->printLn( $callback, "$tgtNode: (Solution) Verify disk pool has free disks and that directory updates are working" );
         return;

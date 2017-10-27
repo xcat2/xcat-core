@@ -781,7 +781,7 @@ sub revokeVSwitch {
 
     # Use SMAPI EXEC, use new extended SMAPI
     my $out = `ssh $user\@$hcp "$sudo $dir/smcli Virtual_Network_Vswitch_Set_Extended -T SYSTEM -k 'switch_name='$vswitchId -k 'revoke_userid='$userId -k 'persist=YES'"`;
-    xCAT::zvmUtils->printSyslog("revokeVSwitch- ssh $user\@$hcp $sudo $dir/smcli Virtual_Network_Vswitch_Set -T SYSTEM -k 'switch_name='$vswitchId -k 'revoke_userid='$userId -k 'persist=YES'");
+    xCAT::zvmUtils->printSyslog("revokeVSwitch- ssh $user\@$hcp $sudo $dir/smcli Virtual_Network_Vswitch_Set_Extended -T SYSTEM -k 'switch_name='$vswitchId -k 'revoke_userid='$userId -k 'persist=YES'");
     $out = xCAT::zvmUtils->trimStr($out);
 
     xCAT::zvmUtils->printSyslog($out);
