@@ -1,4 +1,4 @@
-#!/bin/bash -u
+#!/bin/bash
 if [ "$(uname -s|tr '[:upper:]' '[:lower:]')" = "linux" ];then
    str_dir_name=$(dirname $0)
    . $str_dir_name/xcatlib.sh
@@ -235,7 +235,7 @@ elif [ "bridgeprereq" = "$1" ]; then
     brctl setfd $BNAME 0 #fast forwarding
     ip link set $BNAME up
     saveroutes="$(ip route | grep default| grep "dev $PORTS"|grep via|sed -e 's/dev .*//')"
-    saveip="$(ip -4 -o addr show dev enp0s3 scope global | sed 's/.*inet //'| sed 's/\( global \).*/\1/')"
+    saveip="$(ip -4 -o addr show dev $PORTS scope global | sed 's/.*inet //'| sed 's/\( global \).*/\1/')"
     if [ ! -z "$saveip" ]; then
         ip addr add dev $BNAME $newline
     else
@@ -332,6 +332,8 @@ EOF
         echo "  bridge_fd 0"
         echo "  bridge_maxwait 0"; } > "$nwdir/$BNAME"
     else
+        # Migrate some PORTS configuration to Bridge:
+        ATTRS="$(egrep '^BOOTPROTO|^IPADDR|^NETMASK|^NETWORK|^GATEWAY' $nwdir/ifcfg-$PORTS)"
         { cat <<EOF
 DEVICE=$PORTS
 ONBOOT=yes
@@ -357,11 +359,9 @@ EOF
                 echo "NETMASK=$4"
             fi
         else
-            echo "BOOTPROTO=dhcp"
+            echo "$ATTRS"
         fi ; }  > "$nwdir/ifcfg-$BNAME"
     fi 
  
     ifdown "$BNAME"; ifup "$BNAME"
 fi #END bridge config.
-
-    
