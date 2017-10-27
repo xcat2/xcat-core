@@ -2252,7 +2252,6 @@ sub rflash_response {
     my $update_activation = "Unknown";
     my $update_purpose;
     my $update_version;
-    my $update_priority = -1;
 
     if ($node_info{$node}{cur_status} eq "RFLASH_LIST_RESPONSE") {
         # Get the functional IDs to accurately mark the active running FW
@@ -2292,10 +2291,14 @@ sub rflash_response {
             if (defined($content{Purpose}) and $content{Purpose}) {
                 $update_purpose = (split(/\./, $content{Purpose}))[ -1 ];
             }
-            # Just check defined because priority=0 is a valid value
+
+            my $update_priority = -1;
+            # Just check defined, because priority=0 is a valid value
             if (defined($content{Priority}))  {
                 $update_priority = (split(/\./, $content{Priority}))[ -1 ];
             }
+
+            # Add indicators to the active firmware
             if (exists($functional->{$update_id}) ) {
                 #
                 # If the firmware ID exists in the hash, this indicates the really active running FW
@@ -2311,7 +2314,6 @@ sub rflash_response {
                 $update_activation = $update_activation . $indicator;
             }
             xCAT::SvrUtils::sendmsg(sprintf("%-8s %-7s %-10s %s", $update_id, $update_purpose, $update_activation, $update_version), $callback, $node);
-            $update_priority = -1; # Reset update priority for next loop iteration
         }
         xCAT::SvrUtils::sendmsg("", $callback, $node); #Separate output in case more than 1 endpoint
     }
