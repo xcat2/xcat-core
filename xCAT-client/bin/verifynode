@@ -129,10 +129,8 @@ my %verifySets = (
          ],
     '$runBasicIVP' =>
          [ 'Verifying the basic general setup of xCAT',
-           'setupLogFile()',
            'addLogHeader( \'basicivp\' )',
            'verifyBasicXCAT()',
-           'finishLogFile()',
          ],
     '$runCron' =>
          [ 'Cron job for automated verification',
@@ -140,14 +138,12 @@ my %verifySets = (
          ],
     '$runFullIVP' =>
          [ 'Verifying the full end-to-end setup of the xCAT and the compute node',
-           'setupLogFile()',
            'addLogHeader( \'fullivp\' )',
            'checkForDefault( \'openstackIP\', \'--openstackIP was not specified\', \'xCAT_master\' )',
            'verifyAccess( $openstackIP ); $rc = 0',
            'getDistro( $openstackIP )',
            'runPrepScript()',
            'runDriverScript()',
-           'finishLogFile()',
          ],
     '$schedule ne \'\'' =>
          [ 'Scheduling an automated periodic IVP',
@@ -1164,11 +1160,25 @@ sub getMNInfo {
     # Get the list of Local IP addresses
     getLocalIPs();
 
+    # Wait up to 10 minutes for xcatd to come up.
+    my $sleepTime = 60;
+    my $maxWaits = 10;
+    for ( my $i=1; $i<=$maxWaits; $i++ ) {
+        # lsdef uses the xCAT daemon.  We use that to see if it is started.
+        `/opt/xcat/bin/lsdef`;
+        if ( $? == 0 ) {
+            last;
+        } else {
+            logResponse( 'DFS', 'WAIT01', $sleepTime, $i, $maxWaits );
+            sleep( $sleepTime );
+        }
+    }
+
     # Get information related to all of the host nodes
     $cmd = '/opt/xcat/bin/lsdef -w mgt=zvm -w hosttype=zvm -i hcp';
     $out = `$cmd`;
     $rc = $?;
-    if ( $rc eq 0 ) {
+    if ( $rc == 0 ) {
         @lines = split( '\n', $out );
         my $host = '';
         foreach my $line ( @lines ) {
@@ -1188,11 +1198,12 @@ sub getMNInfo {
 
     # Get key info related to the xCAT MN and the notify targets from the site table.
     $mnInfo{'PruneIVP'} = 7;
-    $cmd = "/opt/xcat/sbin/tabdump site | grep -e '^\"master\"' -e '^\"zvmnotify\"' -e '^\"zvmpruneivp\"'";
+    $cmd = "/opt/xcat/sbin/tabdump site";
     $out = `$cmd`;
     $rc = $?;
     if ( $rc == 0 ) {
         @lines = split( '\n', $out );
+        @lines = grep( /^\"master\"|^\"zvmnotify\"|^\"zvmpruneivp\"/, @lines );
         foreach my $line ( @lines ) {
             $line =~ s/^\s+|\s+$//g;         # trim blanks from both ends of the string
             @parts = split( ',', $line );
@@ -2942,6 +2953,11 @@ if ( $disable == 1 and $enable == 1 ) {
     goto FINISH_main;
 }
 
+if ( $runFullIVP or $runBasicIVP ) {
+    # Set up a log file for an IVP run.
+    setupLogFile();
+}
+
 # Determine the information about the xCAT managed node and the z/VM
 # host environment where it is running (if running on z/VM).
 getMNInfo();
@@ -2990,10 +3006,6 @@ foreach my $verify (keys %verifySets) {
             }
         }
 
-        if ( $needToFinishLogFile ) {
-            finishLogFile();
-        }
-
         if ( $warnErrCnt == 0 ) {
             logResponse( 'DF', 'GENERIC_RESPONSE_NOINDENT', "\nProcessing completed." );
         } else {
@@ -3004,4 +3016,10 @@ foreach my $verify (keys %verifySets) {
 }
 
 FINISH_main:
+if ( $needToFinishLogFile ) {
+    # A log file was started.  We need to complete it by adding the summary
+    # section.  If necessary, we will send the log file to the notify user.
+    finishLogFile();
+}
+
 exit $rc;
