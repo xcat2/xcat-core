@@ -167,15 +167,16 @@ if [ "$PLATFORM" != "unknown" ]; then
         echo "<platform>$PLATFORM</platform>" >> /tmp/discopacket
 fi
 
-IsStatic=`ipmitool lan print 1 | grep 'IP Address Source' | grep 'Static'`
+LANCHAN=$(ipmitool sol info |awk '/Payload Channel/{print $4}')
+IsStatic=`ipmitool lan print $LANCHAN | grep 'IP Address Source' | grep 'Static'`
 if [ "$IsStatic" ]; then
-    BMCIPADDR=`ipmitool lan print 1 | grep 'IP Address' | grep -v 'IP Address Source' | cut -d ":" -f2 | sed 's/ //'`
+    BMCIPADDR=`ipmitool lan print $LANCHAN | grep 'IP Address' | grep -v 'IP Address Source' | cut -d ":" -f2 | sed 's/ //'`
     if [ "$BMCIPADDR" ]; then
         echo "<bmc>$BMCIPADDR</bmc>" >> /tmp/discopacket
     fi
 fi
 
-BMCMAC=`ipmitool lan print 1 | grep 'MAC Address' | cut -d ":" -f2-7 | sed 's/ //'`
+BMCMAC=`ipmitool lan print $LANCHAN | grep 'MAC Address' | cut -d ":" -f2-7 | sed 's/ //'`
 if [ "$BMCMAC" ]; then
     echo "<bmcmac>$BMCMAC</bmcmac>" >> /tmp/discopacket
 fi
