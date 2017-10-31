@@ -490,7 +490,7 @@ cmd:mkdef -t network -o 60_0_0_0-255_0_0_0 net=60.0.0.0 mask=255.0.0.0 mgtifname
 check:rc==0
 cmd:mkdef -t network -o 70_0_0_0-255_0_0_0 net=70.0.0.0 mask=255.0.0.0 mgtifname=$$SECONDNIC
 check:rc==0
-cmd:chdef $$CN nicnetworks.$$SECONDNIC.6="60_0 _0_0-255_0_0_0" nicnetworks.$$SECONDNIC.7="70_0 _0_0-255_0_0_0" nictypes.$$SECONDNIC.6=vlan nictypes.$$SECONDNIC.7=vlan nicips.$$SECONDNIC.6=60.5.106.9 nicips.$$SECONDNIC.7=70.5.106.9 nicdevices.$$SECONDNIC.6=$$SECONDNIC nicdevices.$$SECONDNIC.7=$$SECONDNIC nictypes.$$SECONDNIC=ethernet
+cmd:chdef $$CN nicnetworks.$$SECONDNIC.6="60_0_0_0-255_0_0_0" nicnetworks.$$SECONDNIC.7="70_0_0_0-255_0_0_0" nictypes.$$SECONDNIC.6=vlan nictypes.$$SECONDNIC.7=vlan nicips.$$SECONDNIC.6=60.5.106.9 nicips.$$SECONDNIC.7=70.5.106.9 nicdevices.$$SECONDNIC.6=$$SECONDNIC nicdevices.$$SECONDNIC.7=$$SECONDNIC nictypes.$$SECONDNIC=ethernet
 check:rc==0
 cmd:updatenode $$CN -P confignetwork
 check:rc==0
@@ -541,11 +541,11 @@ cmd:mkdef -t network -o 60_0_0_0-255_0_0_0 net=60.0.0.0 mask=255.0.0.0 mgtifname
 check:rc==0
 cmd:mkdef -t network -o 70_0_0_0-255_0_0_0 net=70.0.0.0 mask=255.0.0.0 mgtifname=$$SECONDNIC mtu=1500
 check:rc==0
-cmd:chdef $$CN nicnetworks.$$SECONDNIC.6="60_0 _0_0-255_0_0_0" nicnetworks.$$SECONDNIC.7="70_0 _0_0-255_0_0_0" nictypes.$$SECONDNIC.6=vlan nictypes.$$SECONDNIC.7=vlan nicips.$$SECONDNIC.6=60.5.106.9 nicips.$$SECONDNIC.7=70.5.106.9 
+cmd:chdef $$CN nicnetworks.$$SECONDNIC.6="60_0_0_0-255_0_0_0" nicnetworks.$$SECONDNIC.7="70_0_0_0-255_0_0_0" nictypes.$$SECONDNIC.6=vlan nictypes.$$SECONDNIC.7=vlan nicips.$$SECONDNIC.6=60.5.106.9 nicips.$$SECONDNIC.7=70.5.106.9 
 check:rc==0
 cmd:updatenode $$CN -P confignetwork
 check:rc!=0
-cmd:chdef $$CN  nicnetworks.$$SECONDNIC.6="60_0 _0_0-255_0_0_0" nicnetworks.$$SECONDNIC.7="70_0 _0_0-255_0_0_0" nictypes.$$SECONDNIC.6=vlan nictypes.$$SECONDNIC.7=vlan nicips.$$SECONDNIC.6=60.5.106.9 nicips.$$SECONDNIC.7=70.5.106.9 nicdevices.$$SECONDNIC.6=$$SECONDNIC.6 nicdevices.$$SECONDNIC.7=$$SECONDNIC.7
+cmd:chdef $$CN  nicnetworks.$$SECONDNIC.6="60_0_0_0-255_0_0_0" nicnetworks.$$SECONDNIC.7="70_0_0_0-255_0_0_0" nictypes.$$SECONDNIC.6=vlan nictypes.$$SECONDNIC.7=vlan nicips.$$SECONDNIC.6=60.5.106.9 nicips.$$SECONDNIC.7=70.5.106.9 nicdevices.$$SECONDNIC.6=$$SECONDNIC.6 nicdevices.$$SECONDNIC.7=$$SECONDNIC.7
 cmd:updatenode $$CN -P confignetwork
 check:rc!=0
 cmd:rmdef -t network -o 11_1_0_0-255_255_0_0
