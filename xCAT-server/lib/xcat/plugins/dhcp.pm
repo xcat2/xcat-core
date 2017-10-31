@@ -627,7 +627,7 @@ sub addnode
             $callback->(
                 {
                     warning => [
-"The hostname $hname of node $node could not be resolved."
+                        "The hostname $hname of node $node could not be resolved."
                       ]
                 }
             );
@@ -765,7 +765,7 @@ sub addnode
                         $callback->(
                             {
                                 warning => [
-"The ip address $ip of node $node overlaps with the DHCP dynamic range specified in networks table, will not add this ip address into dhcpd.leases file."
+            "The ip address $ip of node $node overlaps with the DHCP dynamic range specified in networks table, will not add this ip address into dhcpd.leases file."
                                   ]
                             }
                         );
@@ -787,7 +787,7 @@ sub addnode
                 unless (grep /#definition for host $node aka host $hostname/, @dhcpconf)
                 {
                     push @dhcpconf,
-"#definition for host $node aka host $hostname can be found in the dhcpd.leases file (typically /var/lib/dhcpd/dhcpd.leases)\n";
+                    "#definition for host $node aka host $hostname can be found in the dhcpd.leases file (typically /var/lib/dhcpd/dhcpd.leases)\n";
                 }
             }
         }
@@ -889,7 +889,7 @@ sub addnode_aix
     my $netmask;
     for ($i = 0 ; $i < scalar(@dhcpconf) ; $i++)
     {
-        if ($dhcpconf[$i] =~ / ([\d\.]+)\/(\d+) ip configuration end/)
+        if ($dhcpconf[$i] =~ /([\d\.]+)\/(\d+) ip configuration end/)
         {
             if (xCAT::NetworkUtils::isInSameSubnet($ip, $1, $2, 1))
             {
@@ -2013,6 +2013,16 @@ sub process_request
         }
         my $mactab = xCAT::Table->new('mac');
         $machash = $mactab->getNodesAttribs($req->{node}, ['mac']);
+        unless ($opt{n} or $machash)
+        {
+            $callback->(
+                {
+                    error => ["Unable to get mac address in mac table for specified nodes"],
+                    errorcode => [1]
+                }
+            );
+            return;
+        }
         my $vpdtab = xCAT::Table->new('vpd');
         $vpdhash = $vpdtab->getNodesAttribs($req->{node}, ['uuid']);
         foreach (@{ $req->{node} })
@@ -2042,29 +2052,6 @@ sub process_request
         }
         close($omshell) if ($^O ne 'aix');
         close($omshell6) if ($omshell6 and $^O ne 'aix');
-        foreach my $node (@{ $req->{node} })
-        {
-            unless ($machash)
-            {
-                $callback->(
-                    {
-                        error => ["Unable to open mac table, it may not exist yet"],
-                        errorcode => [1]
-                    }
-                );
-                return;
-            }
-            my $ent = $machash->{$node}->[0]; #tab->getNodeAttribs($node, [qw(mac)]);
-            unless ($ent and $ent->{mac})
-            {
-                $callback->(
-                    {
-                        warning => ["Unable to find mac address for $node"]
-                    }
-                );
-                next;
-            }
-        }
     }
     writeout();
     if (not $::XCATSITEVALS{externaldhcpservers} and $restartdhcp) {
@@ -2453,7 +2440,7 @@ sub addnet
                 $callback->(
                     {
                         warning => [
-"No $net specific entry for domain, and no domain defined in site table."
+                            "No $net specific entry for domain, and no domain defined in site table."
                           ]
                     });
             }
@@ -2470,7 +2457,7 @@ sub addnet
                     $callback->(
                         {
                             warning => [
-"No $net specific entry for nameservers, and no nameservers defined in site table."
+                            "No $net specific entry for nameservers, and no nameservers defined in site table."
                               ]
                         }
                     );
@@ -2529,7 +2516,7 @@ sub addnet
                 $callback->(
                     {
                         warning => [
-"No dynamic range specified for $net. If hardware discovery is being used, a dynamic range is required."
+                        "No dynamic range specified for $net. If hardware discovery is being used, a dynamic range is required."
                           ]
                     }
                 );
@@ -2584,7 +2571,7 @@ sub addnet
                 $callback->(
                     {
                         error => [
-"Specified gateway $gateway is not valid for $net/$mask, must be on same network"
+                        "Specified gateway $gateway is not valid for $net/$mask, must be on same network"
                         ],
                         errorcode => [1]
                     }
@@ -2683,7 +2670,7 @@ sub addnet
           "    } else if option client-architecture = 00:07 { #x86_64 uefi\n ";
         push @netent, "        filename \"xcat/xnba.efi\";\n";
         push @netent,
-"    } else if option client-architecture = 00:09 { #x86_64 uefi alternative id\n ";
+          "    } else if option client-architecture = 00:09 { #x86_64 uefi alternative id\n ";
         push @netent, "        filename \"xcat/xnba.efi\";\n";
         push @netent,
           "    } else if option client-architecture = 00:02 { #ia64\n ";
@@ -2692,10 +2679,10 @@ sub addnet
           "    } else if option client-architecture = 00:0e { #OPAL-v3\n ";
         push @netent, "        option conf-file = \"http://$tftp/tftpboot/pxelinux.cfg/p/" . $net . "_" . $maskbits . "\";\n";
         push @netent,
-"    } else if substring (option vendor-class-identifier,0,11) = \"onie_vendor\" { #for onie on cumulus switch\n";
+          "    } else if substring (option vendor-class-identifier,0,11) = \"onie_vendor\" { #for onie on cumulus switch\n";
         push @netent, "        option www-server = \"http://$tftp/install/onie/onie-installer\";\n";
         push @netent,
-"    } else if substring(filename,0,1) = null { #otherwise, provide yaboot if the client isn't specific\n ";
+          "    } else if substring(filename,0,1) = null { #otherwise, provide yaboot if the client isn't specific\n ";
         push @netent, "        filename \"/yaboot\";\n";
         push @netent, "    }\n";
 
@@ -2765,7 +2752,7 @@ sub gen_aix_net
             $callback->(
                 {
                     error => [
-"Specified gateway $gateway is not valid for $net/$mask, must be on same network"
+                    "Specified gateway $gateway is not valid for $net/$mask, must be on same network"
                     ],
                     errorcode => [1]
                 }

@@ -59,6 +59,7 @@ sub findme {
         $req->{command}   = ['discovered'];
         $req->{noderange} = [ $nodes[0] ];
         $req->{bmc_node}  = [$bmc_node];
+        $req->{updateswitch} = ['yes'];
         $subreq->($req);
         %{$req} = ();
     }

@@ -46,7 +46,10 @@ function loadRmcMon() {
             cmd : 'ostype'
         },
 
-        success : rsctRpmCheck
+        success : function(data) {
+            data = decodeRsp(data);
+            rsctRpmCheck(data);
+        }
     });
 }
 
@@ -71,6 +74,7 @@ function loadRmcMonConfigure() {
             },
 
             success : function(data) {
+                data = decodeRsp(data);
                 $('#rmcMonStatus div').empty().append(data.rsp[0]);
             }
         });
@@ -92,6 +96,7 @@ function loadRmcMonConfigure() {
             },
 
             success : function(data) {
+                data = decodeRsp(data);
                 $('#rmcMonStatus div').empty().append(data.rsp[0]);
             }
         });
@@ -116,6 +121,7 @@ function rsctRpmCheck(data) {
             },
 
             success : function(data) {
+                data = decodeRsp(data);
                 if (-1 != data.rsp.indexOf("not")) {
                     $('#rmcMonStatus div')
                             .empty()
@@ -141,6 +147,7 @@ function xcatrmcRpmCheck() {
         },
 
         success : function(data) {
+            data = decodeRsp(data);
             var softInstallStatus = data.rsp.split(/\n/);
             var needHelp = false;
             $('#rmcMonStatus div').empty();
@@ -187,6 +194,7 @@ function rmcWorkingCheck() {
         },
 
         success : function(data) {
+            data = decodeRsp(data);
             if (-1 != data.rsp[0].indexOf("not-monitored")) {
                 $('#rmcMonStatus div').empty().append(
                         "Please start the RMC Monitoring first");
@@ -223,6 +231,7 @@ function loadRmcMonShow() {
         },
 
         success : function(data) {
+            data = decodeRsp(data);
             showRmcSummary(data.rsp[0]);
         }
     });
@@ -253,6 +262,7 @@ function showRmcSummary(returnData) {
         },
 
         success : function(data) {
+            data = decodeRsp(data);
             parseRmcData(data.rsp);
         }
     });
@@ -354,6 +364,7 @@ function parseRmcData(returnData) {
             },
 
             success : function(data) {
+                data = decodeRsp(data);
                 showRmcNodes(data.rsp, data.msg);
             }
         });
@@ -523,7 +534,10 @@ function loadRmcEvent() {
             msg : ''
         },
 
-        success : showEventLog
+        success : function(data) {
+            data = decodeRsp(data);
+            showEventLog(data);
+        }
     });
 }
 
@@ -545,6 +559,7 @@ function getConditions() {
             },
 
             success : function(data) {
+                data = decodeRsp(data);
                 $('#rmcEventStatus div').empty();
                 $('#rmcEventButtons').show();
                 globalCondition = data.rsp[0];
@@ -578,6 +593,7 @@ function getResponse() {
             },
 
             success : function(data) {
+                data = decodeRsp(data);
                 var resps = data.rsp[0].split(';');
                 for (var i in resps) {
                     var name = resps[i];
@@ -591,7 +607,7 @@ function getResponse() {
 
 /**
  * Show all the event in the rmc event tab
- * 
+ *
  * @param data Response from the xcat server
  */
 function showEventLog(data) {
@@ -617,7 +633,7 @@ function showEventLog(data) {
     }
 
     eventDiv.append(eventTable.object());
-    $('#lsEventTable').dataTable({        
+    $('#lsEventTable').dataTable({
         'iDisplayLength': 50,
         'bLengthChange': false,
         "bScrollCollapse": true,
@@ -710,6 +726,7 @@ function mkCondRespDia() {
                 },
 
                 success : function(data) {
+                    data = decodeRsp(data);
                     var tempHash = new Object();
                     var oldSelectedResp = '';
                     var showStr = '';
@@ -822,6 +839,7 @@ function mkCondRespDia() {
                         },
 
                         success : function(data) {
+                            data = decodeRsp(data);
                             $('#rmcEventStatus div').empty()
                                     .append(data.rsp[0]);
                             ;
@@ -908,6 +926,7 @@ function chCondScopeDia() {
                     },
 
                     success : function(data) {
+                        data = decodeRsp(data);
                         $('#changeStatus img').remove();
                         if (-1 != data.rsp[0].indexOf('Error')) {
                             $('#changeStatus').append(data.rsp[0]);
@@ -969,6 +988,7 @@ function startStopCondRespDia() {
             },
 
             success : function(data) {
+                data = decodeRsp(data);
                 if (data.rsp[0]) {
                     globalcondition = data.rsp[0];
                     $('#divStartStopAss').empty().append(
@@ -1023,6 +1043,7 @@ function startStopCondRespDia() {
                     },
 
                     success : function(data) {
+                        data = decodeRsp(data);
                         var conditionName = '';
                         var newOperationType = '';
                         var associationStatus = '';
@@ -1081,6 +1102,7 @@ function stopCondRespDia() {
         },
 
         success : function(data) {
+            data = decodeRsp(data);
             if (data.rsp[0]) {
                 $('#stopAss').empty().append(
                         createConditionTable(data.rsp[0]));
@@ -1119,6 +1141,7 @@ function stopCondRespDia() {
                     },
 
                     success : function(data) {
+                        data = decodeRsp(data);
                         $('#rmcEventStatus div').empty().append(data.rsp[0]);
                     }
                 });
@@ -1133,7 +1156,7 @@ function stopCondRespDia() {
 
 /**
  * Create the condition table for dialogue
- * 
+ *
  * @param cond Condition
  */
 function createConditionTd(cond) {
@@ -1142,7 +1165,7 @@ function createConditionTd(cond) {
     var showStr = '';
     for (var i in conditions) {
         name = conditions[i];
-        // Because there is status and quotation marks in name, 
+        // Because there is status and quotation marks in name,
         // we must delete the status and quotation marks
         name = name.substr(1, name.length - 6);
         showStr += '<input type="radio" name="preCond" value="' + name + '">' + name + '<br/>';
@@ -1153,7 +1176,7 @@ function createConditionTd(cond) {
 
 /**
  * Create the association table for dialogue, which show the status and start/stop associations
- * 
+ *
  * @param cond Condition
  */
 function createAssociationTable(cond) {

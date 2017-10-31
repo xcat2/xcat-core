@@ -226,6 +226,8 @@ while (<FILE>) {
     }
     if ($line =~ /\s*DHCP-Message.*: Offer/) {
         $offer = 1;
+    } elsif ($line =~ /\s*file ".+"\[\|bootp\]/){
+        $offer = 1;
     } elsif ($line =~ /\s*DHCP-Message.*: NACK/) {
         $nack = 1;
     }

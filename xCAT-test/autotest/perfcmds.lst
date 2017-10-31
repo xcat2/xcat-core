@@ -9,5 +9,5 @@ nodels #NODES# noderes
 nodeset #NODES# osimage=#OSIMAGE#
 chdef -t node -o #NODES# postscripts="fake" profile="install" netboot="grub2"
 rmdef -t node #PERFGRP#
-mkdef -z < #STANZ#
+cat #STANZ#|mkdef -z -f
 noderm #PERFGRP#

@@ -1,0 +1,3025 @@
+#!/usr/bin/perl
+###############################################################################
+# IBM (C) Copyright 2016 Eclipse Public License
+# http://www.eclipse.org/org/documents/epl-v10.html
+###############################################################################
+# COMPONENT: verifynode
+#
+# Verify the capabilities of a node.
+###############################################################################
+
+package xCAT_plugin::verifynode;
+BEGIN
+{
+    $::XCATROOT = $ENV{'XCATROOT'} ? $ENV{'XCATROOT'} : '/opt/xcat';
+}
+
+$XML::Simple::PREFERRED_PARSER='XML::Parser';
+
+use strict;
+use warnings;
+
+use Data::Dumper qw(Dumper);
+use File::Basename;
+use File::Path;
+use File::Spec;
+use File::Temp;
+use Getopt::Long;
+use Getopt::Long qw(GetOptionsFromString);
+use lib "$::XCATROOT/lib/perl";
+use MIME::Base64;
+use POSIX qw/strftime/;
+use Scalar::Util qw( looks_like_number );
+use Sys::Hostname;
+use Sys::Syslog qw( :DEFAULT setlogsock );
+use Socket;
+use Text::Wrap;
+use Time::HiRes qw( gettimeofday sleep );
+use Unicode::UCD qw(charinfo);
+
+use xCAT::zvmCPUtils;
+use xCAT::zvmMsgs;
+use xCAT::zvmUtils;
+
+my $version = "1";
+
+my $comments = '';                     # Comments for the IVP run
+my $dataFile = '';                     # Input data file
+my $decode = '';                       # String specified by the --decode operand.
+my $disable = '';                      # Disable scheduled IVP from running.
+my $displayHelp = 0;                   # Display help information
+my $driver = '';                       # Name of driver script
+my $driverLoc = '/var/opt/xcat/ivp';   # Local directory containing the driver script, if it exists
+my $encode = '';                       # String specified by the --encode operand.
+my $enable = '';                       # Enable scheduled IVP to run.
+my $endTime = '';                      # Human readable end time
+my %hosts;                             # Information on host nodes known by xCAT MN
+my $id = '';                           # Id of the IVP run
+my %ignored;                           # List of ignored messages
+my $ignoreCnt = 0;                     # Number of times we ignored a message
+my $issueCmdOverIUCV = '';             # Issue a command to a node over IUCV
+my $issueCmdToNode = '';               # Issue a command to a node using IUCV or SSH
+my %localIPs;                          # Hash of the Local IP addresses for the xCAT MN system
+my $logDir = '/var/log/xcat/ivp';      # Log location
+my $logFile = '';                      # Log file name and location
+my $logFileHandle;                     # File handle for the log file.
+my @ivpSummary;                        # Summary output lines for an IVP run.
+my $locApplSystemRole = '/var/lib/sspmod/appliance_system_role';
+my %mnInfo;                            # Managed node environment information
+my %msgsToIgnore;                      # Hash of messages to ignore
+my $needToFinishLogFile = 0;           # If 1 then finishLogFile() needs to be called
+my $nodeName = '';                     # Name of node to be verified
+my $notify = 0;                        # Notify a user
+my $notifyOnErrorOrWarning = 0;        # Indicates a log file should be sent if the need to notify
+                                       #   a user was determined.
+my $openstackIP = '';                  # IP address of the OpenStack node
+my $openstackUser = 'root';            # User on the OpenStack system that can access the
+                                       # OpenStack configuration files
+my $orchParms = '';                    # Orchestrator parms to be stored in the zvmivp table
+my $prepParms = '';                    # Parameters to pass to the preparation script
+my $remove = 0;                        # Remove a scheduled IVP
+my $runBasicIVP = 0;                   # Run the basic xCAT IVP
+my $runCron = 0;                       # Cron job invocation to run a possible set of IVPs
+                                       # on a periodic basis.
+my $runFullIVP = 0;                    # Run the full end to end IVP (compute node and xCAT)
+my $schedule = '';                     # Hours to schedule an automated IVP
+my $scheduledType = '';                # Type of IVP to schedule ('fullivp' or 'basicivp')
+my $startTime = '';                    # Human readable start time
+my $tgtOS = '';                        # Target Node's distro & version
+my $todayDate = '';                    # Today's date in the form 'yyyy-mm-dd'
+my $verifyAccess = 0;                  # Verify system can be accessed
+my $verifyCaptureReqs = 0;             # Verify systems meets capture requirements
+my $verifyCloudInit = 0;               # Verify cloud-init installed
+my $verifyXcatconf4z = 0;              # Verify xcatconf4z
+my $versionOpt = 0;                    # Show version information flag
+my $warnErrCnt = 0;                    # Count of warnings and error messages for a verify set
+my $zhcpTarget = '';                   # ZHCP server that is related to this verification
+my $zvmHost = '';                      # z/VM host related to this verification
+my $zxcatParms = '';                   # Parmeters to pass to zxcatIVP
+
+# Routines to drive based on the selected test.
+my %verifySets = (
+    '$decode ne \'\'' =>
+         [ '',                        # Do not show a function banner.
+           'encodeDecodeString()',
+         ],
+    '$disable and ! $remove and $schedule eq \'\'' =>
+         [ 'Disabling an IVP run',
+           'enableDisableRun( $id )',
+         ],
+    '$enable and ! $remove and $schedule eq \'\'' =>
+         [ 'Enabling an IVP run',
+           'enableDisableRun( $id )',
+         ],
+    '$encode ne \'\'' =>
+         [ 'Encoding a string',
+           'encodeDecodeString()',
+         ],
+    '$issueCmdOverIUCV ne \'\'' =>
+         [ 'Issue a command to a node using IUCV',
+           'cmdOnVM( \'onlyIUCV\' )',
+         ],
+    '$issueCmdToNode ne \'\'' =>
+         [ 'Issue a command to a node using IUCV or SSH',
+           'cmdOnVM( \'either\' )',
+         ],
+    '$remove' =>
+         [ 'Remove an automated periodic IVP',
+           'removeIVP( $id )',
+         ],
+    '$runBasicIVP' =>
+         [ 'Verifying the basic general setup of xCAT',
+           'addLogHeader( \'basicivp\' )',
+           'verifyBasicXCAT()',
+         ],
+    '$runCron' =>
+         [ 'Cron job for automated verification',
+           'driveCronList()',
+         ],
+    '$runFullIVP' =>
+         [ 'Verifying the full end-to-end setup of the xCAT and the compute node',
+           'addLogHeader( \'fullivp\' )',
+           'checkForDefault( \'openstackIP\', \'--openstackIP was not specified\', \'xCAT_master\' )',
+           'verifyAccess( $openstackIP ); $rc = 0',
+           'getDistro( $openstackIP )',
+           'runPrepScript()',
+           'runDriverScript()',
+         ],
+    '$schedule ne \'\'' =>
+         [ 'Scheduling an automated periodic IVP',
+           'scheduleIVP()',
+         ],
+    '$verifyAccess' =>
+         [ 'Verifying access to the system',
+           'verifyPower( $nodeName )',
+           'verifyAccess( $nodeName )'
+         ],
+    '$verifyCaptureReqs' =>
+         [ 'Verifying system meets the image requirements',
+           'verifyPower( $nodeName )',
+           'verifyAccess( $nodeName )',
+           'getDistro( $nodeName )',
+           'verifyDistro()',
+         ],
+    '$verifyCloudInit' =>
+         [ 'Verifying cloud-init is installed and configured',
+           'verifyPower( $nodeName )',
+           'verifyAccess( $nodeName )',
+           'getDistro( $nodeName )',
+           'verifyService($nodeName, "cloud-config,2,3,4,5 cloud-final,2,3,4,5 cloud-init,2,3,4,5 cloud-init-local,2,3,4,5")',
+           'showCILevel()',
+         ],
+    '$verifyXcatconf4z' =>
+         [ 'Verifying xcatconf4z is installed and configured',
+           'verifyPower( $nodeName )',
+           'verifyAccess( $nodeName )',
+           'getDistro( $nodeName )',
+           'verifyXcatconf4z( $nodeName )',
+         ],
+    '$test' =>
+         [ 'Script test functon.',
+           'verifyLogResponse()',
+         ],
+    );
+
+
+# set the usage message
+my $usage_string = "Usage:\n
+    $0 -n <node> <options>\n
+    or\n
+    $0 <options>\n
+    or\n
+    $0 -v\n
+    or\n
+    $0 [ -h | --help ]\n
+    The following options are supported:\n
+      -a | --access
+                          Verify access from xCAT MN to node.
+      --basicivp
+                          Run the basic xCAT IVP.
+      --capturereqs
+                          Verify that node meets system capture
+                          requirements for OpenStack.
+      --cmdoveriucv <cmd>
+                          Issue a command to a node using IUCV.
+                          Specify a period for <cmd> when combining this
+                          option with the --file option.
+      --cmdtonode <cmd>   Issue a command to a node using IUCV or SSH
+                          if IUCV is not available.
+                          Specify a period for <cmd> when combining this
+                          option with the --file option.
+      -c | --cloudinit
+                          Verify that node has cloud-init installed.
+      --comments
+                          Comments to specify on the IVP run.
+      --cron
+                          Driven as a cron job to run a set of periodic
+                          IVPs.
+      --decode <parm>
+                          Decode an encoded string.  This is used to
+                          view encoded values in the zvmivp table.
+      --disable           Indicates that the IVP being scheduled should
+                          be disabled from running.
+      --enable            Indicates that the IVP being scheduled should
+                          be enabled to run.  This is the default when
+                          neither --disable or --enable is specified.
+      --encode <parm>
+                          Encode a string.  This used for debug in order
+                          to create a string to compare to an encoded
+                          string from the zvmivp table. The <parm> must be
+                          an ASCII string.  This function does not support
+                          encoding a UTF-8 character string.
+      --file              File location containing additional input.
+                          When used with the --cmdoveriucv or --cmdtonode
+                          operands, this file contains the command to issue.
+      --fullivp
+                          Run the full end-to-end IVP.  This
+                          verification checks the compute node and builds
+                          a driver script which is then used to check
+                          the xCAT environment based on the values
+                          gathered in the driver script.
+      -h | --help
+                          Display help information.
+      -i | --id <idToRun>
+                          ID to associate with the IVP run.
+      --ignore <val>
+                          Blank or comma separated list of message ids or
+                          message severities to ignore.  Ignored messages are
+                          not counted as failures and do not produce messages.
+                          Instead the number of ignored messages and their
+                          message numbers are displayed at the end of
+                          processing.  Recognized message severities:
+                          'bypass', 'info', 'warning', 'error'.
+      --notify
+                          Notification of IVP failures should be sent
+                          to a z/VM userid.
+      -n | --node <node>
+                          Node name of system to verify.
+      --openstackip <ipAddr>
+                          IP address of the OpenStack compute node.
+      --openstackuser <user>
+                          User to use to access the compute node.
+                          The user defaults to 'root'.
+      --orchparms <parms>
+                          Parameters to be stored in the zvmivp table. These
+                          parameters are passed to this routine when a
+                          scheduled IVP is driven.
+      --prepparms <parms>
+                          Parameters to pass to the preparation script as
+                          part of a full IVP.
+      --remove
+                          Indicates that an IVP in the zvmivp table should be
+                          removed.  The id is specified with the --id
+                          operand.
+      --schedule <hours>
+                          List of hours (in 24 hour format) to periodically
+                          run the IVP.  Multiple hours are separated by blanks.
+                          For example, \'0 6 12 18 20\'.
+      --type < basicivp | fullivp >
+                          Type of IVP to be scheduled.
+      -v
+                          Display the version of this script.
+      -x | --xcatconf4z
+                          Verify that node has xcatconf4z installed.
+      --zxcatparms <parms>
+                          Parameters to pass to the zxcatIVP script.\n";
+
+
+#-------------------------------------------------------
+
+=head3   addLogHeader
+
+    Description : Add a header to the log file.
+    Arguments   : None
+    Returns     : 0 - No error
+                  non-zero - Terminating error detected.
+    Example     : $rc = addLogHeader();
+
+=cut
+
+#-------------------------------------------------------
+sub addLogHeader {
+    my ( $hType ) = @_;
+
+    logResponse( 'DF', '*NONFORMATTED*', '*******************************************************************************' );
+
+    # Generate the header based on the header type.
+    if ( $hType eq 'basicivp' ) {
+        logResponse( 'DF', 'GENERIC_RESPONSE_NOINDENT', "This log file was created for a basic xCAT IVP. It consists of output from ".
+                           "zxcatIVP that validates the xCAT management node (MN) and the ZHCP Agents that are used by ".
+                           "the xCAT MN node to manage the z/VM hosts." );
+    } elsif ( $hType eq 'fullivp' ) {
+        logResponse( 'DF', 'GENERIC_RESPONSE_NOINDENT', "This log file was created for a full xCAT IVP which validates the z/VM OpenStack ".
+                           "configuration files, the xCAT management node (MN) and the ZHCP Agents that are used by ".
+                           "the xCAT MN node to manage the z/VM host. The log file contains the following output: output ".
+                           "from the preparation script that validated the OpenStack properties, the contents of the ".
+                           "driver script created by the preparation script to drive the second part of the IVP, output ".
+                           "of the zxcatIVP run that is driven by the driver script to complete the full IVP." );
+    } else {
+        logResponse( 'DF', 'GENERIC_RESPONSE', "VerifyNode log file." );
+    }
+
+    logResponse( 'DF', '*NONFORMATTED*', '*******************************************************************************' );
+
+    return 0;
+}
+
+
+#-------------------------------------------------------
+
+=head3   checkForDefault
+
+    Description : Determine if a default is needed for
+                  the specified property and set it if
+                  it is needed.  Currently, this routine
+                  is only used for the master IP address.
+    Arguments   : Name of property
+                  String to use in a DFLT01 message.
+                  Default or function to perform.
+    Returns     : 0 - No error
+                  non-zero - Terminating error detected.
+    Example     : $rc = checkForDefault( 'openStackIP', '--ip was not specified', 'xCAT_master' );
+
+=cut
+
+#-------------------------------------------------------
+sub checkForDefault {
+    my ( $prop, $reasonString, $default ) = @_;
+    my $additionalInfo = '';
+    my $rc = 0;
+    my $val;
+
+    eval( "\$val = \$$prop" );
+    if ( $val eq '' ) {
+        if ( $default eq 'xCAT_master' ) {
+            $default = '';
+            if ( exists $mnInfo{'ip'} ) {
+                $default = $mnInfo{'ip'};
+                $additionalInfo = 'The value came from the IP address used as the xCAT MN\'s ' .
+                    'master IP address that was specified in the site table.';
+            } else {
+                # Use one of the local IPv4 IPs.  We don't support IPv6.
+                if ( keys %localIPs > 0 ) {
+                    # Can't find the MN IP so use the first local IPv4 IP.
+                    foreach my $ip ( keys %localIPs ) {
+                        if ( $ip =~ /:/ ) {
+                            next;
+                        } else {
+                            $default = $ip;
+                            $additionalInfo = 'The function could not determine the master IP address for ' .
+                                'the xCAT MN so the first local IPv4 address was used.';
+                            last;
+                        }
+                    }
+                    if ( $default eq '' ) {
+                        $default = '127.0.0.1';
+                        $additionalInfo = 'The function could not determine the IP address for the xCAT MN ' .
+                            'and could not find any IPv4 addresses on the system so \'127.0.0.1\' will be used ' .
+                            'in the hope that it will work.';
+                    }
+                } else {
+                    # Don't know the local IPs.
+                    # Default to the IPv4 loopback and let it fail.
+                    $default = '127.0.0.1';
+                    $additionalInfo = 'The function cound not determine the IP addresses on the ' .
+                        'xCAT MN system so \'127.0.0.1\' was used.';
+                }
+            }
+        }
+
+        if ( $rc == 0 ) {
+            # Found a default, set it in the property.
+            eval( "\$$prop = \'$default\'" );
+            logResponse( 'DF', 'DFLT01', $reasonString, $default, $additionalInfo );
+        }
+    }
+
+    return $rc;
+}
+
+
+#-------------------------------------------------------
+
+=head3   cmdOnVM
+
+    Description : Send a command to a node and show the result.
+    Arguments   : Target function, either 'onlyIUCV' or 'either'.
+    Returns     : Return code:
+                      0 - Normal Linux success
+                      255 - Unable to SSH to system
+                      non-zero - command error
+                  Output from the command or a error string on an SSH failure.
+    Example     : $rc = cmdOnVM( 'onlyIUCV' );
+                  $rc = cmdOnVM( 'either' );
+
+=cut
+
+#-------------------------------------------------------
+sub cmdOnVM {
+    my ( $targetFunc ) = @_;
+    my $cmd = '';
+    my $hcp = '';
+    my @lines;
+    my $rc = 0;
+    my $out = '';
+    my $sudo;
+    my $user;
+    my $userid = '';
+
+    # Get the command to issue.
+    if ( $targetFunc eq 'onlyIUCV' ) {
+        if ( $issueCmdOverIUCV ne '.' ) {
+            $cmd = $issueCmdOverIUCV;
+        }
+    } else {
+        if ( $issueCmdToNode ne '.' ) {
+            $cmd = $issueCmdToNode;
+        }
+    }
+
+    # Use the data file if it was specified.
+    if ( $dataFile ne '' ) {
+        if ( -e $dataFile ) {
+            open my $handle, '<', $dataFile;
+            chomp( @lines = <$handle> );
+            close $handle;
+            if ( $lines[0] ne '' ) {
+                $cmd = $lines[0];
+            } else {
+                logResponse( 'DF', 'GENERIC_RESPONSE', "$dataFile does not have anything in the first line.");
+                goto FINISH_cmdUsingIUCV;
+            }
+        } else {
+            logResponse( 'DF', 'GENERIC_RESPONSE', "$dataFile does not exist.");
+            goto FINISH_cmdUsingIUCV;
+        }
+    }
+
+    # Verify that we have a command to issue.
+    if ( $cmd eq '' ) {
+        logResponse( 'DF', 'GENERIC_RESPONSE', "A command to issue was not specified.");
+        goto FINISH_cmdUsingIUCV;
+    }
+
+    ($user, $sudo) = xCAT::zvmUtils->getSudoer();
+
+    # Get the required properties (hcp, userid, user) from the node
+    $out = `/opt/xcat/bin/lsdef $nodeName -i hcp,userid`;
+    $rc = $?;
+    if ( $rc eq 0 ) {
+        my $fndNode = 0;
+        @lines = split( '\n', $out );
+        my $host = '';
+        foreach my $line ( @lines ) {
+            $line =~ s/^\s+|\s+$//g;         # trim blanks from both ends of the string
+            if ( $line =~ /Object name:/ ) {
+                $fndNode = 1;
+                next;
+            } elsif ( $line =~ /hcp\=/ ) {
+                ($hcp) = $line =~ m/hcp\=(.*)/;
+                next;
+            } elsif ( $line =~ /userid\=/ ) {
+                ($userid) = $line =~ m/userid\=(.*)/;
+                next;
+            }
+        }
+        if ( $fndNode != 1 ) {
+            logResponse( 'DF', 'GENERIC_RESPONSE', "'$nodeName' is not an xCAT node." );
+            goto FINISH_cmdUsingIUCV;
+        }
+    } else {
+        $rc = logResponse( 'DFS', 'GNRL01', "$cmd", $rc, $out );
+        goto FINISH_cmdUsingIUCV;
+    }
+
+    # Send the command through IUCV
+    logResponse( 'DF', '*NONFORMATTED*', "\n**************************\nData for the function call\n**************************" );
+    logResponse( 'DF', '*NONFORMATTED*',  "       Node: $nodeName" );
+    if ( $targetFunc eq 'onlyIUCV' ) {
+        logResponse( 'DF', '*NONFORMATTED*',  "z/VM userid: $userid" );
+        logResponse( 'DF', '*NONFORMATTED*',  "        HCP: $hcp" );
+        logResponse( 'DF', '*NONFORMATTED*',  "       User: $user" );
+        logResponse( 'DF', '*NONFORMATTED*',  "   Function: xCAT::zvmUtils->execcmdthroughIUCV" );
+    } else {
+        logResponse( 'DF', '*NONFORMATTED*',  "       User: $user" );
+        logResponse( 'DF', '*NONFORMATTED*',  "   Function: xCAT::zvmUtils->execcmdonVM" );
+    }
+    logResponse( 'DF', '*NONFORMATTED*', "        Cmd: $cmd" );
+
+    logResponse( 'DF', '*NONFORMATTED*', "\n*********************\nInvoking the function\n*********************" );
+    if ( $targetFunc eq 'onlyIUCV' ) {
+        $out = xCAT::zvmUtils->execcmdthroughIUCV( $user, $hcp, $userid, $cmd );
+    } else {
+        $out = xCAT::zvmUtils->execcmdonVM( $user, $nodeName, $cmd );
+    }
+    logResponse( 'DF', '*NONFORMATTED*', "\n******\nResult\n******\n$out" );
+
+FINISH_cmdUsingIUCV:
+    return $rc;
+}
+
+
+#-------------------------------------------------------
+
+=head3   driveCronList
+
+    Description : Run thru the list of IVPs and run any that
+                  are due to be run.
+    Arguments   : None.
+    Returns     : 0 - No error
+                  non-zero - Terminating error detected.
+    Example     : $rc = driveCronList();
+
+=cut
+
+#-------------------------------------------------------
+sub driveCronList {
+    my $attemptedRuns = 0;
+    my $disabledRuns = 0;
+    my @ivps;
+    my $out = '';
+    my $rc = 0;
+    my $totalRunsInTable = 0;
+
+    # Determine the timestamp and other time related information.
+    my ($sec,  $min,  $hour, $mday, $mon, $year, $wday, $yday, $isdst) = localtime(time);
+    $year = $year + 1900;
+    $todayDate = sprintf( "%04d-%02d-%02d", $year, $mon + 1, $mday );
+    $startTime = sprintf( "%02d:%02d:%02d on %04d-%02d-%02d",
+                           $hour, $min, $sec, $year, $mon + 1, $mday );
+    my $currTime = sprintf( "%04d-%02d-%02d_%02d:%02d:%02d",
+                           $year, $mon + 1, $mday, $hour, $min, $sec);
+    my $newLastRun = "$year $yday $hour";
+
+    logResponse( 'DFS', '*NONFORMATTED*', "CRON job run started at $startTime." );
+
+    # Read the z/VM IVP table to get the list of known IVP runs.
+    $out = `/opt/xcat/sbin/tabdump zvmivp | grep -v "^#"`;
+    $rc = $?;
+    my @lines = split( '\n', $out );
+    $totalRunsInTable = scalar( @lines );
+    if ( $totalRunsInTable != 0 ) {
+        my $row = 0;
+        my $nowTotalHours = ( ( $year ) * 8784 ) + ( $yday   * 24 ) + $hour;
+        foreach my $line ( @lines ) {
+            $row++;
+            chomp( $line );
+            my @field = split( ',', $line );
+            for ( my $i=0; $i < scalar( @field ); $i++ ) {
+                $field[$i] =~ s/^\"|\"$//g;         # trim quotes from both ends of the string
+            }
+
+            # Process the fields from the zvmIVP table.  Each row is related to a
+            # scheduled run.
+            # Field 0 - Unique IVP ID
+            #       1 - IP property for the OpenStack system
+            #       2 - Schedule, hours to run the IVP
+            #       3 - Last time IVP was run, ( year day hour )
+            #       4 - Type of run, e.g. basicivp, fullivp
+            #       5 - OpenStack user to access the config files
+            #       6 - Parameters to pass to the orchestrator, verifynode
+            #       7 - Parameters to pass to the preparator script, prep_zxcatIVP
+            #       8 - Parameters to pass to the main IVP script, zxcatIVP.pl
+            #       9 - Comments related to the IVP run
+            #      10 - Disabled, 1 or YES equals disabled
+            my %ivpRun;
+            if ( defined $field[0] and $field[0] ne '' ) {
+                $ivpRun{'id'} = $field[0];
+            } else {
+                logResponse( 'DS', 'GENERIC_RESPONSE', "Row $row in the ivp table missing a ".
+                                   "required property, \'id\'.  The row will be treated as disabled." );
+                $disabledRuns++;
+                next;
+            }
+
+            if ( defined $field[10] and ($field[10] eq '1'  or uc( $field[10] ) eq 'YES') ) {
+                # IVP run is disabled
+                logResponse( 'DS', 'GENERIC_RESPONSE', "Row $row, ID($ivpRun{'id'}), in the ivp table is ".
+                                                       "disabled and will not be processed." );
+                $disabledRuns++;
+                next;
+            }
+
+            if ( defined $field[1] and $field[1] ne '' ) {
+                $ivpRun{'ip'} = $field[1];
+            } else {
+                # Assume this is a local xCAT IVP run
+                $ivpRun{'ip'} = 'xcat';
+                logResponse( 'DS', 'GENERIC_RESPONSE', "Row $row, ID($ivpRun{'id'}), in the ivp table " .
+                                                       "has no value specified for the \'ip\' property. " .
+                                                       "The IVP run will be against the system which is " .
+                                                       "running the xCAT management node." );
+            }
+
+            if ( defined $field[2] and $field[2] ne '' ) {
+                $ivpRun{'schedule'} = hexDecode( $field[2] );
+            } else {
+                # Default run time is 1 AM
+                $ivpRun{'schedule'} = '1';
+            }
+
+            my $lRYear;
+            my $lRYDay;
+            my $lRHour;
+
+            if ( defined $field[3] and $field[3] ne '' ) {
+                $ivpRun{'last_run'} = $field[3];
+                my @parts = split ( '\s', $ivpRun{'last_run'} );
+                if ( defined $parts[0] and $parts[0] ne '' ) {
+                    $lRYear = $parts[0];
+                } else {
+                    # Missing year, set default to immediately, 0.
+                    $lRYear = 0;
+                }
+                if ( defined $parts[1] and $parts[1] ne '' ) {
+                    $lRYDay = $parts[1];
+                } else {
+                    # Missing day number, set default to immediately, 0.
+                    $lRYDay = 0;
+                }
+                if ( defined $parts[2] and $parts[2] ne '' ) {
+                    $lRHour = $parts[2];
+                } else {
+                    # Missing hour, set default to immediately, -1.
+                    $lRHour = 0;
+                }
+            } else {
+                # Force a schedule run
+                $lRYear = 0;
+                $lRYDay = 0;
+                $lRHour = -1;
+            }
+            $ivpRun{'last_run'} = "$lRYear $lRYDay $lRHour";
+
+            # Weed out any runs that are not due to be run.
+            # Calculate the difference (since 2000) between the last run hour and the current hour,
+            # ignoring leap years by saying every year is a leap year.
+            my $totalHourDiff = $nowTotalHours - (( ( $lRYear ) * 8784 ) + ( $lRYDay * 24 ) + $lRHour);
+
+            if ( $totalHourDiff == 0 ) {
+                # Same hour of the same day of the same year for some reason so ignore this IVP row.
+                logResponse( 'DS', 'GENERIC_RESPONSE', "Row $row, ID($ivpRun{'id'}), in the ivp table ".
+                                                       "is being ignored because it was already run this hour." );
+                next;
+            } else {
+                # Determine the range of hours that are of interest within a 24 hour time period.  Anything
+                # that is more than 24 hours old is automatically overdue and should be run.
+                if ( $totalHourDiff < 24) {
+                    my $todayStartHour;
+                    my $yesterdayStartHour;
+                    if ( $yday > $lRYDay ) {
+                        # Last run yesterday
+                        $todayStartHour = 0;
+                        $yesterdayStartHour = $lRHour + 1;
+                    } else {
+                        # Last run today
+                        $todayStartHour = $hour - $totalHourDiff;
+                        $yesterdayStartHour = 24;
+                    }
+
+                    # Less than a day so we need to worry about which scheduled hours were missed.
+                    my $overdue = 0;
+                    my @schedHours = split ( '\s', $ivpRun{'schedule'} );
+                    foreach my $sHour ( @schedHours ) {
+                        if ( $sHour == 0 and $sHour ne '0' ) {
+                            # not numeric, ignore
+                            logResponse( 'DS', 'GENERIC_RESPONSE', "Row $row, ID($ivpRun{'id'}), in the ivp table ".
+                                                                   "contains as schedule hour that is non-numeric: $sHour. ".
+                                                                   "The value will be ignored." );
+                            next;
+                        }
+                        if (( $sHour >= $yesterdayStartHour ) or
+                             ( $sHour > $todayStartHour and $sHour <= $hour ) ) {
+                            logResponse( 'DS', 'GENERIC_RESPONSE', "Row $row, ID($ivpRun{'id'}), in the ivp table ".
+                                                                   "is due to be run. Scheduled hour: $sHour, last run: $lRHour." );
+                            $overdue = 1;
+                            last;
+                        }
+                    }
+                    if ( $overdue == 0 ) {
+                        # did not find a scheduled hour that is due
+                        logResponse( 'DS', 'GENERIC_RESPONSE', "Row $row, ID($ivpRun{'id'}), in the ivp table is not ".
+                                                               "due to be run this hour." );
+                        next;
+                    }
+                } else {
+                   logResponse( 'DS', 'GENERIC_RESPONSE', "Row $row, ID($ivpRun{'id'}), in the ivp table ".
+                                                          "is due to be run. Last run over 24 hours ago." );
+                }
+            }
+
+            if ( defined $field[4] and $field[4] ne '' ) {
+                $ivpRun{'type_of_run'} = lc( $field[4] );
+            } else {
+                $ivpRun{'type_of_run'} = 'not specified';
+            }
+            if ( $ivpRun{'type_of_run'} ne 'basicivp' and $ivpRun{'type_of_run'} ne 'fullivp' ) {
+                my $badValue = $ivpRun{'type_of_run'};
+                if ( exists $mnInfo{'ip'} and ( $ivpRun{'ip'} eq $mnInfo{'ip'} )) {
+                    if (( $mnInfo{'role'} eq 'controller' ) or
+                          ( $mnInfo{'role'} eq 'compute' ) or
+                          ( $mnInfo{'role'} eq 'compute_mn' )) {
+                        $ivpRun{'type_of_run'} = 'fullivp';
+                    } else {
+                        $ivpRun{'type_of_run'} = 'basicivp';
+                    }
+                } else {
+                    $ivpRun{'type_of_run'} = 'basicivp';
+                }
+                logResponse( 'DS', 'GENERIC_RESPONSE', "Row $row, ID($ivpRun{'id'}), in the ivp table contains ".
+                                                       "an unknown run type value of \'$badValue\'. Instead ".
+                                                       "a run type of \'$ivpRun{'type_of_run'}\' will be performed." );
+            }
+
+            if ( defined $field[5] and $field[5] ne '' ) {
+                $ivpRun{'access_user'} = hexDecode( $field[5] );
+            } else {
+                $ivpRun{'access_user'} = '';
+            }
+
+            if ( defined $field[6] and $field[6] ne '' ) {
+                $ivpRun{'orch_parms'} = hexDecode( $field[6] );
+            } else {
+                $ivpRun{'orch_parms'} = '';
+            }
+
+            if ( defined $field[7] and $field[7] ne '' ) {
+                $ivpRun{'prep_parms'} = hexDecode( $field[7] );
+            } else {
+                $ivpRun{'prep_parms'} = '';
+            }
+
+            if ( defined $field[8] and $field[8] ne '' ) {
+                # Ensure that it is reencoded to pass along to do the actual work.
+                $ivpRun{'main_ivp_parms'} = hexEncode( $field[8] );
+            } else {
+                $ivpRun{'main_ivp_parms'} = '';
+            }
+
+            if ( defined $field[9] and $field[9] ne '' ) {
+                $ivpRun{'comments'} = hexDecode( $field[9] );
+            } else {
+                $ivpRun{'comments'} = '';
+            }
+
+            push @ivps, \%ivpRun;
+        }
+    } else {
+        # Table is empty.  Create a single run for the z/VM related to the
+        # xCAT MN.
+        logResponse( 'DS', 'GENERIC_RESPONSE', "The ivp table is empty. Default IVPs will be enabled." );
+        if ( exists $mnInfo{'node'} ) {
+            # First IVP is a full IVP for an OpenStack related xCAT at 1 am.
+            # Otherwise it is a basic IVP.
+            my %ivpRun;
+            $ivpRun{'id'} = 1;
+            if ( exists $mnInfo{'ip'} ) {
+                $ivpRun{'ip'} = $mnInfo{'ip'};
+            } else {
+                $ivpRun{'ip'} = 'xcat';
+            }
+            $ivpRun{'schedule'} = '1';
+            if ( $mnInfo{'role'} eq 'controller' or $mnInfo{'role'} eq 'compute' or $mnInfo{'role'} eq 'compute_mn' ) {
+                $ivpRun{'type_of_run'} = 'fullivp';
+                $ivpRun{'access_user'} = 'root';
+            } else {
+                $ivpRun{'type_of_run'} = 'basicivp';
+                $ivpRun{'access_user'} = '';
+            }
+            $ivpRun{'orch_parms'} = '';
+            $ivpRun{'prep_parms'} = '';
+            $ivpRun{'main_ivp_parms'} = '';
+            $ivpRun{'comments'} = 'Default Full IVP run';
+            $ivpRun{'defaultRun'} = 'run';
+            push @ivps, \%ivpRun;
+            $totalRunsInTable++;
+
+            # Second IVP is a basic IVP run each hour except for 1 am when a full IVP is run.
+            my %ivpRun2;
+            $ivpRun2{'id'} = 2;
+            if ( exists $mnInfo{'ip'} ) {
+                $ivpRun2{'ip'} = $mnInfo{'ip'};
+            } else {
+                $ivpRun2{'ip'} = 'xcat';
+            }
+            $ivpRun2{'schedule'} = '0 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23';
+            $ivpRun2{'type_of_run'} = 'basicivp';
+            $ivpRun2{'access_user'} = '';
+            $ivpRun2{'orch_parms'} = '';
+            $ivpRun2{'prep_parms'} = '';
+            $ivpRun2{'main_ivp_parms'} = '';
+            $ivpRun2{'comments'} = 'Default Basic IVP run';
+            $ivpRun2{'defaultRun'} = 'runLater';
+            push @ivps, \%ivpRun2;
+            $totalRunsInTable++;
+        } else {
+            # xCAT MN does not exist as a node so we will only do a basic IVP the system.
+            # This is a very abnormal case.  We deal in the abnormal so let's run some type
+            # of IVP but not define it in the table.
+            logResponse( 'DFS', 'MN03' );
+            my %ivpRun;
+            $ivpRun{'id'} = 1;
+            if ( exists $mnInfo{'ip'} ) {
+                $ivpRun{'ip'} = $mnInfo{'ip'};
+            } else {
+                $ivpRun{'ip'} = 'xcat';
+            }
+            $ivpRun{'schedule'} = '0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23';
+            $ivpRun{'type_of_run'} = 'basicivp';
+            $ivpRun{'access_user'} = '';
+            $ivpRun{'orch_parms'} = '';
+            $ivpRun{'prep_parms'} = '';
+            $ivpRun{'main_ivp_parms'} = '';
+            $ivpRun{'comments'} = 'Default Basic IVP run';
+            $ivpRun{'defaultRun'} = 'noTableUpdate';
+            push @ivps, \%ivpRun;
+            $totalRunsInTable++;
+        }
+    }
+
+    # Handle pruning, if necessary.
+    if ( $hour == 0 ) {
+        pruneLogs( $year, $mon + 1, $mday );
+    }
+
+    # Go thru the list of IVPs and drive a run for each IVP
+    # that is due to be run.
+    foreach my $ivp ( @ivps ) {
+        my %ivpRun = %$ivp;
+
+        # Build the verify node command.
+        my $cmd = '/opt/xcat/bin/verifynode -n xcat --notify';
+
+        if ( $ivpRun{'type_of_run'} eq 'fullivp' ) {
+            $cmd = "$cmd --fullivp --openstackip \'$ivpRun{'ip'}\' --openstackuser \'" . hexEncode( $ivpRun{'access_user'} ) . "\'";
+        } else {
+            $cmd = "$cmd --basicivp";
+        }
+
+        if ( $ivpRun{'orch_parms'} ne '' ) {
+            $cmd = "$cmd $ivpRun{'orch_parms'}";    # Don't hex encode orchestrator parms
+        }
+
+        if ( $ivpRun{'prep_parms'} ne '' ) {
+            $cmd = "$cmd --prepparms \'" . hexEncode( $ivpRun{'prep_parms'} ) . "\'";
+        }
+
+        if ( $ivpRun{'main_ivp_parms'} ne '' ) {
+            $cmd = "$cmd --zxcatparms \'" . hexEncode( $ivpRun{'main_ivp_parms'} ) . "\'";
+        }
+
+        # Update the table to indicate the time we start the IVP run.
+        if ( ! exists $ivpRun{'defaultRun'} ) {
+            my $chtabCmd = "/opt/xcat/sbin/chtab id=\'$ivpRun{'id'}\' zvmivp.last_run=\'$newLastRun\'";
+            $out = `$chtabCmd`;
+            $rc = $?;
+            if ( $rc != 0 ) {
+                logResponse( 'DS', '*NONFORMATTED*', "\'$chtabCmd\' failed for IVP ID($ivpRun{'id'}), ip: $ivpRun{'ip'}, rc: $rc, out: $out\n" );
+            }
+        } elsif ( $ivpRun{'defaultRun'} ne 'noTableUpdate' ) {
+            logResponse( 'DS', '*NONFORMATTED*', "Adding IVP ID($ivpRun{'id'}) to the z/VM IVP table: $ivpRun{'comments'}\n" );
+            my $chtabCmd = "/opt/xcat/sbin/chtab id=\'$ivpRun{'id'}\' ".
+                                                "zvmivp.ip=\'$ivpRun{'ip'}\' ".
+                                                "zvmivp.schedule=\'$ivpRun{'schedule'}\' ".
+                                                "zvmivp.last_run=\'$newLastRun\' ".
+                                                "zvmivp.type_of_run=\'$ivpRun{'type_of_run'}\' ".
+                                                "zvmivp.access_user=\'" . hexEncode( $ivpRun{'access_user'} ) . "\' ".
+                                                "zvmivp.comments=\'" . hexEncode( $ivpRun{'comments'} ) . "\' ";
+            $out = `$chtabCmd`;
+            $rc = $?;
+            if ( $rc != 0 ) {
+                logResponse( 'DS', '*NONFORMATTED*', "\'$chtabCmd\' failed for ID($ivpRun{'id'}), ip: $ivpRun{'ip'}, rc: $rc, out: $out\n" );
+            }
+
+            # Skip running this one if it is marked 'runLater'.
+            # A basic IVP is not needed if a full IVP is going to be run.
+            if ( $ivpRun{'defaultRun'}  eq 'runLater' ) {
+                logResponse( 'DS', '*NONFORMATTED*', "Ignoring IVP ID($ivpRun{'id'}) for this hour. It will be run next hour. IVP comment: $ivpRun{'comments'}\n" );
+                next;
+            }
+        }
+
+        # Drive the run.
+        $attemptedRuns++;
+        my $logComments = '';
+        if ( $ivpRun{'comments'} eq '' ) {
+            $logComments = "Running IVP ID($ivpRun{'id'})";
+        } else {
+            $logComments = "Running IVP ID($ivpRun{'id'}) - $ivpRun{'comments'}";
+        }
+        logResponse( 'DS', '*NONFORMATTED*',  "$logComments" );
+        $out = `$cmd`;
+        $rc = $?;
+        if ( $rc != 0 ) {
+            logResponse( 'DS', '*NONFORMATTED*', "The IVP run for ID($ivpRun{'id'}) returned a ".
+                                                 "non-zero return code, rc: $rc\n" );
+        }
+    }
+
+    logResponse( 'DFS', '*NONFORMATTED*', "IVP CRON results: $totalRunsInTable runs considered, $disabledRuns runs disabled, $attemptedRuns runs attempted" );
+    $rc = 0;
+    return $rc;
+}
+
+
+#-------------------------------------------------------
+
+=head3   enableDisableRun
+
+    Description : Enable or Disable command line function.
+    Arguments   : ID of the IVP to be disabled
+                  Global input set by command operands are used
+                    by this routine:
+                    $disable  - Disable a run.
+                    $enable   - Enable a run.
+    Returns     : 0 - No error
+                  non-zero - Terminating error detected.
+    Example     : $rc = enableDisableRun();
+
+=cut
+
+#-------------------------------------------------------
+sub enableDisableRun {
+    my ( $id ) = @_;
+    my %ids;
+    my $rc = 0;
+
+    if ( $id eq '' ) {
+        logResponse( 'DF', 'OPER01', '--id' );
+        goto FINISH_enableDisableRun;
+    }
+
+    # Get the list of IVP ids in the zvmivp table.
+    my $cmd = '/opt/xcat/sbin/tabdump zvmivp | grep -v "^#"';
+    my $out = `$cmd`;
+    $rc = $?;
+    if ( $rc ne 0 ) {
+        logResponse( 'DF', 'GNRL04', $cmd, $rc, $out );
+        goto FINISH_enableDisableRun;
+    }
+
+    my @lines = split( '\n', $out );
+    foreach my $line ( @lines ) {
+        chomp( $line );
+        my ($ivpId, $junk) = split( ',', $line, 2 );
+        $ivpId =~ s/^\"|\"$//g;         # trim quotes from both ends of the string
+        $ivpId =~ s/^\s+|\s+$//g;       # trim spaces from both ends of the string
+        if ( $ivpId ne '' ) {
+            $ids{$ivpId} = 1;
+        }
+    }
+
+    # Validate the specified id.
+    if ( ! exists $ids{$id} ) {
+        logResponse( 'DF', 'ID03', $id );
+    }
+
+    my $action;
+    my $disableFlag = '';
+    if ( $disable ) {
+        $disableFlag = 'YES';
+        $action = 'disable';
+    } else {
+        $action = 'enable';
+    }
+
+    # Update the table.
+    logResponse( 'DS', '*NONFORMATTED*', "Updating the z/VM IVP table (zvmivp) to $action $id" );
+    my $chtabCmd = "/opt/xcat/sbin/chtab id='$id' zvmivp.disable=\'$disableFlag\'";
+    $out = `$chtabCmd`;
+    $rc = $?;
+    if ( $rc != 0 ) {
+        logResponse( 'DS', '*NONFORMATTED*', "\'$chtabCmd\' failed for ID($id), rc: $rc, out: $out\n" );
+        $rc = 1;
+    }
+
+FINISH_enableDisableRun:
+    return $rc;
+}
+
+
+#-------------------------------------------------------
+
+=head3   encodeDecodeString
+
+    Description : Encode and decode command line function.
+    Arguments   : Global input set by command operands are used
+                    by this routine:
+                    $decode - String to be decoded if not ''.
+                    $encode - String to be encoded if not ''.
+    Returns     : 0 - No error
+                  non-zero - Terminating error detected.
+    Example     : $rc = encodeDecodeString();
+
+=cut
+
+#-------------------------------------------------------
+sub encodeDecodeString {
+    my $newVal = '';
+    if ( $decode ne '' ) {
+        binmode(STDOUT, ":utf8");
+        print( "Value is: '" . hexDecode( $decode ) . "'\n" );
+    }
+
+    if ( $encode ne '' ) {
+        print( "Value is: '" . hexEncode( $encode ) . "'\n" );
+    }
+
+    return 0;
+}
+
+
+#-------------------------------------------------------
+
+=head3   finishLogFile
+
+    Description : Complete the log file for the run and
+                  send it to the notify user if necessary.
+    Arguments   : None
+    Returns     : 0 - No error
+                  non-zero - Terminating error detected.
+    Example     : $rc = finishLogFile();
+
+=cut
+
+#-------------------------------------------------------
+sub finishLogFile {
+    my $rc = 0;
+    $needToFinishLogFile = 0;
+
+    # Add the summary information to the log file.
+    my ($sec,  $min,  $hour, $mday, $mon, $year, $wday, $yday, $isdst) = localtime(time);
+    $endTime = sprintf("%02d:%02d:%02d on %04d-%02d-%02d",
+                           $hour, $min, $sec, $year + 1900, $mon + 1, $mday );
+
+    logResponse( 'DF', '*NONFORMATTED*', '*******************************************************************************' );
+    logResponse( 'DF', 'GENERIC_RESPONSE', 'Results of the IVP run:\n' );
+    logResponse( 'DF', 'GENERIC_RESPONSE', "Run started at $startTime and ended at $endTime." );
+    foreach my $line ( @ivpSummary ) {
+        logResponse( 'DF', 'GENERIC_RESPONSE', $line );
+    }
+    if ( $ignoreCnt != 0 ){
+        logResponse( 'DFS', 'GENERIC_RESPONSE', "The orchestrator script (verifynode) ignored messages $ignoreCnt times." );
+        my @ignoreArray = sort keys %ignored;
+        my $ignoreList = join ( ', ', @ignoreArray );
+        logResponse( 'DFS', 'GENERIC_RESPONSE', "Message Ids of ignored messages by verifynode: $ignoreList" );
+    }
+    logResponse( 'DF', '*NONFORMATTED*', '*******************************************************************************' );
+
+    # Notify the z/VM userid, if necessary.
+    if ( $notify and $notifyOnErrorOrWarning ) {
+        notifyUser();
+    }
+
+FINISH_finishLogFile:
+    return $rc;
+}
+
+
+#-------------------------------------------------------
+
+=head3   getDistro
+
+    Description : Create the dummy image file.
+    Arguments   : Node name or IP address
+    Returns     : 0 - No error
+                  non-zero - Terminating error detected.
+    Example     : $rc = getDistro();
+
+=cut
+
+#-------------------------------------------------------
+sub getDistro {
+    my ( $nodeOrIP ) = @_;
+    my $rc = 0;
+
+    $tgtOS = xCAT::zvmUtils->getOsVersion( $::SUDOER, $nodeOrIP );
+
+FINISH_getDistro:
+    return $rc;
+}
+
+
+#-------------------------------------------------------
+
+=head3   getLocalIPs
+
+    Description : Get the IP addresses from ifconfig.
+    Arguments   : Node name or IP address
+    Returns     : return code (Currently always 0)
+                    0 - No error
+                    non-zero - Terminating error detected.
+                  Hash of local IP addresses
+    Example     : $rc = getLocalIPs();
+
+=cut
+
+#-------------------------------------------------------
+sub getLocalIPs {
+    my $ip;
+    my $junk;
+    my $rc = 0;
+
+    my $out = `/sbin/ip addr | grep -e '^\\s*inet' -e '^\\s*inet6'`;
+    my @lines = split( '\n', $out );
+    foreach my $line ( @lines ) {
+        my @parts = split( ' ', $line );
+        ($ip) = split( '/', $parts[1], 2 );
+        $localIPs{$ip} = 1;
+    }
+
+FINISH_getLocalIPs:
+    return $rc;
+}
+
+
+#-------------------------------------------------------
+
+=head3   getMNInfo
+
+    Description : Get information related to the xCAT MN
+                  and the z/VM system where it is running.
+    Arguments   : None
+    Returns     : 0 - No error
+                  non-zero - Terminating error detected.
+    Example     : $rc = getMNInfo();
+
+=cut
+
+#-------------------------------------------------------
+sub getMNInfo {
+    my $cmd;
+    my $hostNode;
+    my @lines;
+    my $masterIP = '';
+    my $out = '';
+    my @parts;
+    my $rc = 0;
+    my $xcatMN;
+
+    # Get the list of Local IP addresses
+    getLocalIPs();
+
+    # Wait up to 10 minutes for xcatd to come up.
+    my $sleepTime = 60;
+    my $maxWaits = 10;
+    for ( my $i=1; $i<=$maxWaits; $i++ ) {
+        # lsdef uses the xCAT daemon.  We use that to see if it is started.
+        `/opt/xcat/bin/lsdef`;
+        if ( $? == 0 ) {
+            last;
+        } else {
+            logResponse( 'DFS', 'WAIT01', $sleepTime, $i, $maxWaits );
+            sleep( $sleepTime );
+        }
+    }
+
+    # Get information related to all of the host nodes
+    $cmd = '/opt/xcat/bin/lsdef -w mgt=zvm -w hosttype=zvm -i hcp';
+    $out = `$cmd`;
+    $rc = $?;
+    if ( $rc == 0 ) {
+        @lines = split( '\n', $out );
+        my $host = '';
+        foreach my $line ( @lines ) {
+            $line =~ s/^\s+|\s+$//g;         # trim blanks from both ends of the string
+            if ( $line =~ /Object name: / ) {
+                ($host) = $line =~ m/Object name: (.*)/;
+                next;
+            } elsif ( $line =~ /hcp\=/ ) {
+                ($hosts{$host}{'hcp'}) = $line  =~ m/hcp\=(.*)/;
+                next;
+            }
+        }
+    } else {
+        $rc = logResponse( 'DFS', 'GNRL01', "$cmd", $rc, $out );
+        $notify = 1;
+    }
+
+    # Get key info related to the xCAT MN and the notify targets from the site table.
+    $mnInfo{'PruneIVP'} = 7;
+    $cmd = "/opt/xcat/sbin/tabdump site";
+    $out = `$cmd`;
+    $rc = $?;
+    if ( $rc == 0 ) {
+        @lines = split( '\n', $out );
+        @lines = grep( /^\"master\"|^\"zvmnotify\"|^\"zvmpruneivp\"/, @lines );
+        foreach my $line ( @lines ) {
+            $line =~ s/^\s+|\s+$//g;         # trim blanks from both ends of the string
+            @parts = split( ',', $line );
+            $parts[1] =~ s/\"//g;
+            if ( $parts[0] =~ /^\"master\"/ ) {
+                $masterIP = $parts[1];
+            } elsif ( $parts[0] =~ /^\"zvmnotify\"/ ) {
+                my @notifyInfo = split( ';', $parts[1] );
+                my $notifyHost = '';
+                my $notifyUser = '';
+                foreach my $hostUser ( @notifyInfo ) {
+                    ($notifyHost) = $hostUser =~ m/(.*)\(/;
+                    ($notifyUser) = $hostUser =~ m/\((.*)\)/;
+                    if ( defined $notifyHost and $notifyHost ne '' and defined $notifyUser and $notifyUser ne '' ) {
+                        $hosts{$notifyHost}{'notifyUser'} = uc( $notifyUser );
+                    } else {
+                        $rc = logResponse( 'DFS', 'SITE01', 'zvmnotify', $parts[1], $hostUser );
+                        $notify = 1;
+                    }
+                }
+            } elsif ( $parts[0] =~ /^\"zvmpruneivp\"/ ) {
+                $mnInfo{'PruneIVP'} = $parts[1];
+            }
+        }
+    } else {
+        # Unable to read the site table
+        $rc = logResponse( 'DFS', 'GNRL01', "$cmd", $rc, $out );
+        $notify = 1;
+    }
+
+    # Find a node that has the same address as the master IP and then find
+    # the host node that relates to that node.
+    if ( $masterIP eq '' ) {
+        # Unable to get the master value
+        $rc = logResponse( 'DFS', 'SITE02', 'master' );
+    } else {
+        $cmd = "/opt/xcat/bin/lsdef -w ip=$masterIP -i hcp";
+        $out = `$cmd`;
+        $rc = $?;
+        if ( $rc == 0 ) {
+            @lines = split( '\n', $out );
+            foreach my $line ( @lines ) {
+                $line =~ s/^\s+|\s+$//g;         # trim blanks from both ends of the string
+                if ( $line =~ /Object name: / ) {
+                    ($xcatMN) = $line =~ m/Object name: (.*)/;
+                    $mnInfo{'node'} = $xcatMN;
+                    $mnInfo{'ip'} = $masterIP;
+                    next;
+                } elsif ( $line =~ /hcp\=/ ) {
+                    ($mnInfo{'hcp'}) = $line  =~ m/hcp\=(.*)/;
+                    next;
+                }
+            }
+        } else {
+            $rc = logResponse( 'DFS', 'MN01', $masterIP, $cmd, $rc, $out );
+        }
+
+        # Find the host node which uses the hcp.
+        foreach $hostNode ( keys %hosts ) {
+            if ( exists $hosts{$hostNode}{'hcp'} and $hosts{$hostNode}{'hcp'} eq $mnInfo{'hcp'} ) {
+                if ( exists $hosts{$hostNode}{'notify'} ) {
+                    $hosts{$hostNode}{'notify'} = $hosts{$hostNode}{'notify'} . 'm';
+                } else {
+                    $hosts{$hostNode}{'notify'} = 'm';
+                }
+                $mnInfo{'host'} = $hostNode;
+            }
+        }
+    }
+
+    # The following is useful in a z/VM CMA system only.
+    # As a safety measure, in case the site table is lost or does not have zvmnotify property,
+    # read the OPNCLOUD application system role file to find the value of the 'notify' property
+    # and remember it with the xCAT MN information.
+    # Also, determine the system role.
+    if ( -e $locApplSystemRole ) {
+        $out = `cat /var/lib/sspmod/appliance_system_role | grep -e '^notify\=' -e '^role\='`;
+        @lines = split( '\n', $out );
+        foreach my $line ( @lines ) {
+            $line =~ s/^\s+|\s+$//g;         # trim blanks from both ends of the string
+            my ($key, $value) = split( '=', $line, 2 );
+            #($mnInfo{'notifyUser'}) = $line  =~ m/^notify\=(.*)/;
+            if ( $key eq 'role' ) {
+                $mnInfo{'role'} = lc( $value );
+            }
+            if ( $key eq 'notify' ) {
+                $mnInfo{'notifyUser'} = uc( $value );
+            }
+        }
+    } else {
+        # Not CMA.  Indicate role is not set.
+        $mnInfo{'role'} = '';
+    }
+}
+
+
+#-------------------------------------------------------
+
+=head3   getOpenStackLevel
+
+    Description : Get the OpenStack version level as a
+                  name.
+    Arguments   : IP address of OpenStack compute node.
+    Returns     : string - OpenStack version name
+                    (e.g. NEWTON), or
+                  null string - error
+    Example     : $level = getOpenStackLevel();
+
+=cut
+
+#-------------------------------------------------------
+sub getOpenStackLevel {
+    my ( $nodeOrIP, $openstackUser ) = @_;
+    my $cmd;
+    my $level = '';
+    my $numWords = 0;
+    my $out = '';
+    my @parts;
+    my $rc;
+    my %openStackVersion;
+
+    # Get the list of known versions
+    $cmd = 'cat /opt/xcat/openstack.versions';
+    $out = `$cmd`;
+    $rc = $?;
+    if ( $rc != 0 ) {
+        logResponse( 'DFS', 'GNRL01', $cmd, $rc, $out );
+        $level = '';
+        goto FINISH_getOpenStackLevel;
+    }
+
+    my @versionLines = split ( /\n/, $out );
+    foreach my $versionLine ( @versionLines ) {
+        if ( $versionLine =~ /^#/ ) { next; }
+        @parts = split( ' ', $versionLine );
+        $openStackVersion{$parts[0]} = $parts[1];
+    }
+
+    # Get the version information from the OpenStack node
+    $cmd = "nova-manage --version 2>&1";
+    ($rc, $out) = sshToNode( $openstackIP, $openstackUser, $cmd );
+    if ( $rc != 0 ) {
+        # SSH failed, message already sent.
+        goto FINISH_getOpenStackLevel;
+    }
+    $out =~ s/^\s+|\s+$//g;         # trim blanks from both ends of the string
+    ++$numWords while $out =~ /\S+/g;
+    if ( $numWords != 1 ) {
+        logResponse( 'DFS', 'GOSL01', $cmd, $openstackIP, $rc, $out );
+        goto FINISH_getOpenStackLevel;
+    }
+
+    @parts = split( '\.', $out );
+    if ( !exists $parts[0] or !exists $parts[1] ) {
+        logResponse( 'DFS', 'GOSL01', $cmd, $openstackIP, $rc, $out );
+        goto FINISH_getOpenStackLevel;
+    } elsif ( exists $openStackVersion{"$parts[0]."} ) {
+        $level = $openStackVersion{"$parts[0]."}
+    } elsif ( exists $openStackVersion{"$parts[0].$parts[1]."} ) {
+        $level = $openStackVersion{"$parts[0].$parts[1]."}
+    } else {
+        logResponse( 'DFS', 'GOSL02', $cmd, $openstackIP, $rc, $out );
+        goto FINISH_getOpenStackLevel;
+    }
+
+FINISH_getOpenStackLevel:
+    return $level;
+}
+
+
+#-------------------------------------------------------
+
+=head3   hexDecode
+
+    Description : Convert a string of printable hex
+                  characters (4 hex characters per actual
+                  character) into the actual string that
+                  it represents.  The string should
+                  begin with 'HexEncoded:' which indicates
+                  that it is encoded.  The routine tolerates
+                  getting called with a string that is not
+                  not encoded and will return the string that
+                  was passed to it instead of trying to decode
+                  it.
+    Arguments   : printable hex value
+    Returns     : Perl string
+    Example     : $rc = hexDecode();
+
+=cut
+
+#-------------------------------------------------------
+sub hexDecode {
+    my ( $hexVal ) = @_;
+    my $result = '';
+
+    if ( $hexVal =~ /^HexEncoded:/ ) {
+        ($hexVal) = $hexVal =~ m/HexEncoded:(.*)/;
+        my @hexes = unpack( "(a4)*", $hexVal);
+        for ( my $i = 0; $i < scalar(@hexes); $i++ ) {
+            $result .= chr( hex( $hexes[$i] ) );
+        }
+    } else {
+        $result = $hexVal;
+    }
+
+    return $result;
+}
+
+
+#-------------------------------------------------------
+
+=head3   hexEncode
+
+    Description : Convert a string into a string of
+                  printable hex characters in which each
+                  character in the original string is
+                  represented by the 2 byte (4 char) hex
+                  code value.  The string is preceded by
+                  'HexEncoded:' to indicate that it has
+                  been encoded.  The routine will tolerate
+                  getting called with a string that has
+                  already been encoded and not reencode it.
+    Arguments   : ASCII or Unicode string
+    Returns     : Hex string
+    Example     : $rc = hexEncode();
+
+=cut
+
+#-------------------------------------------------------
+sub hexEncode {
+    my ( $str ) = @_;
+    my $hex;
+    my $result = $str;   # All work done within the result variable.
+
+    if ( $result ne '' ) {
+        # Encode the string if is not already encoded.  Otherwise, leave it alone.
+        if ( $result !~ /^HexEncoded:/ ) {
+            $result =~ s/(.)/sprintf("%04x",ord($1))/eg;
+            $result = "HexEncoded:$result";
+        }
+    }
+
+    return $result;
+}
+
+
+#-------------------------------------------------------
+
+=head3   logResponse
+
+    Description : Build and log the response.
+    Arguments   : Target destination for the response.  This is
+                    string which can contain a charater for each
+                    possible destination, e.g 'DSF'. The values are:
+                      D - send to STDOUT
+                      S - send to syslog
+                      F - send to the log file
+                    The default is 'DF' so that we send the output
+                    to STDOUT and put it in the log file.
+                  message ID or special flag:
+                    *NONFORMATTED* indicates that the message build should not
+                      be invoked but instead the message substitutions are
+                      lines for the message to be produced.
+                    *RESET* indicates that the message counter should be reset.
+                  Array of message substitutions
+    Returns     : 0 - No error, general response or info message detected.
+                  1 - Non-terminating message detected.
+                  2 - Terminating message detected.
+    Example     : $rc = logResponse( 'D', 'VX01' );
+                  $rc = logResponse( '', 'VX03', $nodeName, $sub2);
+                  $rc = logResponse( 'DFS', 'VX03', $nodeName, 'sub2a');
+
+=cut
+
+#-------------------------------------------------------
+sub logResponse {
+    my ( $dest, $msgId, @msgSubs ) = @_;
+    my $rc = 0;
+    my $extraInfo = '';
+    my $msg = '';
+    my @msgLines;
+    my $sev;
+    my $line;
+
+    if ( $msgId eq '*RESET*' ) {
+        $warnErrCnt = 0;
+        goto FINISH_logResponse;
+    } elsif ( $msgId eq '*NONFORMATTED*' ) {
+        $rc = 0;
+        if ( @msgSubs ) {
+            foreach my $line ( @msgSubs ) {
+                $msg = "$msg$line\n";
+            }
+        } else {
+            $msg = '\n';
+        }
+        $sev = 0;
+    } else {
+        ( $rc, $sev, $msg, $extraInfo ) = xCAT::zvmMsgs->buildMsg('VERIFYNODE', $msgId, \@msgSubs);
+        if ( defined $msgsToIgnore{$msgId} ) {
+            # Ignore this message id
+            $ignored{$msgId} = 1;
+            $ignoreCnt += 1;
+            print( "Message $msgId is being ignored but would have occurred here.\n" );
+            goto FINISH_logResponse;
+        } elsif ( defined $msgsToIgnore{$sev} ) {
+            # Ignoring all messages of this severity.
+            $ignored{$msgId} = 1;
+            $ignoreCnt += 1;
+            print( "Message $msgId is being ignored but would have occurred here.\n" );
+            goto FINISH_logResponse;
+        }
+    }
+
+    if ( $sev >= 4 ) {
+        $warnErrCnt += 1;
+    }
+
+    # Send the message to the requested destination.
+    if ( $dest =~ 'D' ) {
+        print "$msg";                        # Send message to STDOUT
+    }
+    if ( $dest =~ 'F' and defined $logFileHandle ) {
+        print $logFileHandle $msg;
+    }
+    if ( $dest =~ 'S' ) {
+        my $logMsg = $msg;
+        $logMsg =~ s/\t//g;
+        $logMsg =~ s/\n/ /g;
+        syslog( 'err', $logMsg );
+    }
+
+    # Send the extra info to the requested destination (never send it to syslog).
+    if ( $extraInfo ne '' ) {
+        if ( $dest =~ 'D' ) {
+            print "$extraInfo";
+        }
+        if ( $dest =~ 'F' and defined $logFileHandle ) {
+            print $logFileHandle $msg;
+        }
+    }
+
+FINISH_logResponse:
+    return $rc;
+}
+
+
+#-------------------------------------------------------
+
+=head3   notifyUser
+
+    Description : Notify a z/VM user.  Send a message
+                  and the log as a SPOOL file.
+    Arguments   : Node name or IP address
+    Returns     : 0 - Always ok.
+    Example     : $rc = notifyUser();
+
+=cut
+
+#-------------------------------------------------------
+sub notifyUser {
+    my $cmd;
+    my $host;
+    my @hostOrder;
+    my $msg = '';
+    my $out = '';
+    my $rc = 0;
+    my $tempFile;
+    my $th;
+
+    # Determine who we should notify based on the host related to the verification.
+    # The driver script would have set the host related to an full IVP (if we can trust it).
+    # If we cannot get to the host related to the run then we fall back to sending
+    # the notification to the user on the host in which the xCAT MN is running.
+    # If that fails then "tough luck, Chuck".
+    my $mnAdded = 0;
+    foreach $host ( keys %hosts ) {
+        if ( exists $hosts{$host}{'notify'} and exists $hosts{$host}{'hcp'} and exists $hosts{$host}{'notifyUser'} ) {
+            if ( $hosts{$host}{'notify'} =~ /d/ ) {
+                # Driver script specified hosts go on the top of the stack.
+                push @hostOrder, $host;
+                if ( $hosts{$host}{'notify'} =~ /m/ ) {
+                    # The host related to the MN is already in the list
+                    $mnAdded = 1;
+                }
+            } elsif ( $hosts{$host}{'notify'} =~ /m/ ) {
+                # Management node systems go on the bottom as a fall back plan.
+                unshift @hostOrder, $host;
+                $mnAdded = 1;
+            }
+        }
+    }
+    if ( $mnAdded == 0 and exists $mnInfo{'hcp'} and exists $mnInfo{'notifyUser'} ) {
+        # Did not find a host related to this management node but we have the
+        # necessary information to send the notification so add a dummy host
+        # to the hosts hash and add the dummy host to the end of the hostOrder
+        # stack to be used when all other notification attemps fail.
+        $host = '*DEFAULT_MN_HOST*';
+        $hosts{$host}{'notify'} = 'm';
+        $hosts{$host}{'notifyUser'} = $mnInfo{'notifyUser'};
+        $hosts{$host}{'hcp'} = $mnInfo{'hcp'};
+        unshift @hostOrder, $host;
+    }
+
+    # Prepare the message.
+    $msg = "The xCAT IVP detected some possible issues. A log file is being sent to your reader.";
+
+    # Prepare the log file by removing tabs and splitting the log file at 80 character lines.
+    $tempFile = mktemp( "$logDir/$logFile.XXXXXX" );
+    `expand $logDir/$logFile | fold -w 80 1>$tempFile`;
+
+    # Send the message and log file to the first entity in the host order list that lets us
+    # successfully do so.
+    my $done = 0;
+    my $failed = 0;
+    foreach $host ( @hostOrder ) {
+        # Check if zHCP's punch is online and online it if it is not.
+        ($rc, $out) = sshToNode( $hosts{$host}{'hcp'}, '', 'cat /sys/bus/ccw/drivers/vmur/0.0.000d/online' );
+        chomp( $out );
+        if ($rc != 0 or $out != 1) {
+            $cmd = '/sbin/cio_ignore -r 000d;/sbin/chccwdev -e 000d';
+            ($rc, $out) = sshToNode( $hosts{$host}{'hcp'}, '', $cmd );
+            chomp( $out );
+            if ( $rc != 0 or !( $out =~ m/Done$/i ) ) {
+                $rc = logResponse( 'DFS', 'GNRL03', $hosts{$host}{'hcp'},  $cmd, $rc, $out );
+                next;
+            }
+            ($rc, $out) = sshToNode( $hosts{$host}{'hcp'}, '', 'which udevadm &> /dev/null && udevadm settle || udevsettle' );
+            # Don't worry about the udevadm settle.  If it remains a problem then we will see it on the next command to ZHCP.
+        }
+
+        # Send log file.  It will exist temporarily on the ZHCP agent in the /tmp directory
+        # under its original log file name.
+        $rc = xCAT::zvmUtils->sendFile( 'root', $hosts{$host}{'hcp'}, "$tempFile", "/tmp/$logFile" );
+        if ( $rc != 0 ) {
+            # An error is not a problem because the zhcp node could be logged off.
+            next;
+        }
+
+        # Punch the file from the ZHCP agent to the target user.
+        $out = xCAT::zvmCPUtils->punch2Reader( 'root', $hosts{$host}{'hcp'}, $hosts{$host}{'notifyUser'}, "/tmp/$logFile", 'XCAT_IVP.RESULTS', '-t', 'A' );
+        if ( $out ne 'Done' ) {
+            $rc = logResponse( 'DFS', 'GNRL02', "/tmp/$logFile", $hosts{$host}{'hcp'}, $hosts{$host}{'notifyUser'}, $host, "$logDir/$logFile", $out );
+            $failed = 1;
+        }
+
+        # Clean up the ZHCP node.
+        ($rc, $out) = sshToNode( $hosts{$host}{'hcp'}, '', "rm -f /tmp/$logFile" );
+        if ( $rc != 0 ) {
+            $rc = logResponse( 'DFS', 'GNRL03', $hosts{$host}{'hcp'},  "rm -f /tmp/$logFile", $rc, $out );
+            next;
+        }
+
+        # Try another host if we failed to send the file.
+        if ( $failed ) {
+            $failed = 0;
+            next;
+        }
+
+        # Send a message if the user is logged on the system.
+        ($rc, $out) = sshToNode( $hosts{$host}{'hcp'}, '', "vmcp query user $hosts{$host}{'notifyUser'}" );
+        if ( $rc != 0 ) {
+            # User is either not logged on or we had a problem issuing the command.  Not important, leave.
+            last;
+        }
+        $out = uc( $out );
+        if ( $out =~ /^$hosts{$host}{'notifyUser'}/ ) {
+            my ($userStatus, $junk) = split '\s', $out, 2;
+            chomp( $userStatus );
+            $userStatus =~ s/^\s+|\s+$//g;       # trim both ends of the string
+            if ( $userStatus eq 'SSI' or $userStatus eq 'DSC' ) {
+                logResponse( 'DFS', 'MSG01', $hosts{$host}{'notifyUser'}, $host, $userStatus );
+                last;
+            }
+        }
+
+        # Don't worry if message still does not work. It is only a message.
+        ($rc, $out) = sshToNode( $hosts{$host}{'hcp'}, '', "vmcp message $hosts{$host}{'notifyUser'} $msg" );
+        last;
+    }
+
+    # Remove the temporary log file from the xCAT MN system.
+    $out = `rm -f $tempFile`;
+    $rc = $?;
+    if ( $rc != 0 ) {
+        logResponse( 'DFS', 'GNRL01', "rm -f $tempFile", $rc, $out );
+    }
+
+    $rc = 0;
+    return $rc;
+}
+
+
+#-------------------------------------------------------
+
+
+=head3   pruneLogs
+
+    Description : Compress and prune log files. The number of days to wait
+                  before pruning is specified in the site table with the
+                  zvmpruneivp property.  If the property does not exist
+                  or Management node information does not exist because of
+                  some reason then the default is to prune logs that are
+                  7 days or older.
+    Arguments   : Current year
+                  Current month (numeric)
+                  Current day (Julian day, numeric)
+    Returns     : None.
+    Example     : pruneLogs( $year, $mon + 1, $mday );
+
+=cut
+
+#-------------------------------------------------------
+sub pruneLogs{
+    my ( $year, $month, $day ) = @_;
+
+    my @lines;
+    my $pruneOffset = 0;
+    my $out;
+    my $pruneDate = '';
+    my $rc;
+    my $removed = 0;
+    my $zipOut;
+    my $zipped = 0;
+    logResponse( 'DFS', '*NONFORMATTED*', "CRON job is pruning log files." );
+
+    # Determine the prune date value.
+    if ( ! exists $mnInfo{'PruneIVP'} or $mnInfo{'PruneIVP'} eq '' ) {
+        $pruneOffset = 7;
+    } else {
+        if ( looks_like_number( $mnInfo{'PruneIVP'} ) ) {
+            $pruneOffset = $mnInfo{'PruneIVP'};
+        } else {
+            $pruneOffset = 7;
+            logResponse( 'DFS', 'TP01', 'zvmpruneivp', 'site', 'not numeric', $mnInfo{'PruneIVP'}, $pruneOffset );
+        }
+    }
+    $pruneDate = strftime "%Y-%m-%d", 0, 0, 0, $day - $pruneOffset, $month-1, $year-1900;
+    logResponse( 'DFS', '*NONFORMATTED*', "Prune date: $pruneDate." );
+
+    # Zip any log files that are not for today.  Current log files are similar to
+    # /var/log/xcat/ivp/IVP_XCAT_2016-09-19_01:01:03.log and will have .gz appended to the name
+    # after they have been zipped.
+    $out = `ls -1 /var/log/xcat/ivp/*.log`;
+    $rc = $?;
+    if ( $rc == 0 ) {
+        @lines = split( '\n', $out );
+        foreach my $fqFile ( @lines ) {
+            chomp( $fqFile );
+            my ($file) = $fqFile =~ /\/var\/log\/xcat\/ivp\/(.*)/;
+            my @parts = split( '_', $file );
+            if ( ! defined $parts[0] or $parts[0] ne 'IVP' or
+                 ! defined $parts[1] or ! defined $parts[2] or
+                 $parts[2] eq $todayDate ) {
+                next;
+            }
+            #logResponse( 'DFS', 'GENERIC_RESPONSE',  "ZIPPING: $file\n" );
+            $zipOut = `gzip $fqFile 2>&1`;
+            $rc = $?;
+            if ( $rc != 0 ) {
+                logResponse( 'DF', 'GENERIC_RESPONSE', "Unable to gzip $fqFile, rc: $rc, out: $out" );
+            } else {
+                $zipped++;
+            }
+        }
+    }
+
+    # Prune any gzipped files that are too old.
+    $out = `ls -1 /var/log/xcat/ivp/*.log.gz`;
+    $rc = $?;
+    if ( $rc == 0 ) {
+        @lines = split( '\n', $out );
+        foreach my $fqFile ( @lines ) {
+            chomp( $fqFile );
+            my ($file) = $fqFile =~ /\/var\/log\/xcat\/ivp\/(.*)/;
+            my @parts = split( '_', $file );
+            if ( ! defined $parts[0] or $parts[0] ne 'IVP' or
+                 ! defined $parts[1] or ! defined $parts[2] or
+                 $parts[2] ge $todayDate ) {
+                next;
+            }
+            if ( $parts[2] ge $pruneDate ) {
+                next;
+            }
+
+            #logResponse( 'DFS', 'GENERIC_RESPONSE',  "REMOVING: $file\n" );
+            $zipOut = `rm $fqFile 2>&1`;
+            $rc = $?;
+            if ( $rc != 0 ) {
+                logResponse( 'DF', 'GENERIC_RESPONSE', "Unable to remove \'rm $fqFile\', rc: $rc, out: $out" );
+            } else {
+                $removed++;
+            }
+        }
+    }
+
+    logResponse( 'DFS', '*NONFORMATTED*', "IVP log pruning completed, zipped: $zipped, pruned: $removed." );
+    return;
+}
+
+
+#-------------------------------------------------------
+
+=head3   removeIVP
+
+    Description : Remove an automated IVP.
+    Arguments   : ID of the IVP to be removed
+    Returns     : 0 - No error
+                  non-zero - Terminating error detected.
+    Example     : $rc = removeIVP();
+
+=cut
+
+#-------------------------------------------------------
+sub removeIVP {
+    my ( $id ) = @_;
+    my $cmd;
+    my $out;
+    my $rc;
+    my $ivpId;
+    my %ids;
+    my $junk;
+
+    # Get the list of IVP ids in the zvmivp table.
+    $cmd = '/opt/xcat/sbin/tabdump zvmivp | grep -v "^#"';
+    $out = `$cmd`;
+    $rc = $?;
+    if ( $rc ne 0 ) {
+        logResponse( 'DF', 'GNRL04', $cmd, $rc, $out );
+        goto FINISH_removeIVP;
+    }
+    my @lines = split( '\n', $out );
+    foreach my $line ( @lines ) {
+        chomp( $line );
+        my ($ivpId, $junk) = split( ',', $line, 2 );
+        $ivpId =~ s/^\"|\"$//g;         # trim quotes from both ends of the string
+        $ivpId =~ s/^\s+|\s+$//g;       # trim spaces from both ends of the string
+        if ( $ivpId ne '' ) {
+            $ids{$ivpId} = 1;
+        }
+    }
+
+    # Validate the specified id.
+    if ( $id eq '' or ! exists $ids{$id} ) {
+        logResponse( 'DF', 'ID03', $id );
+    }
+
+    # Update the table.
+    logResponse( 'DS', '*NONFORMATTED*', "Updating the z/VM IVP table (zvmivp) to remove $id" );
+    my $chtabCmd = "/opt/xcat/sbin/chtab -d id=\'$id\' zvmivp";
+    $out = `$chtabCmd`;
+    $rc = $?;
+    if ( $rc != 0 ) {
+        logResponse( 'DS', '*NONFORMATTED*', "\'$chtabCmd\' failed for ID($id), rc: $rc, out: $out\n" );
+        $rc = 1;
+    }
+
+FINISH_removeIVP:
+    return $rc;
+}
+
+
+#-------------------------------------------------------
+
+=head3   runDriverScript
+
+    Description : Run a downloaded driver script.
+    Arguments   : This routine is driven from the action
+                    table, verifySets.  It takes global
+                    input that can be set as command
+                    input or by precursor routines.
+                    The input variables include:
+                    $driver - Driver script name
+                    $driverLoc - Location of the driver script
+                    $hosts - Infor for defined host nodes
+                    $infoCnt - Count of warnings that were generated
+                    $warningCnt - Count of warnings that were generated
+                    $zxcatParms - Command line parms to
+                      pass to zxcatIVP
+    Returns     : 0 - No error
+                  non-zero - Terminating error detected.
+    Example     : $rc = runDriverScript();
+
+=cut
+
+#-------------------------------------------------------
+sub runDriverScript{
+    my $infoCnt = 0;
+    my @lines;
+    my $out;
+    my $rc = 0;
+    my $warningCnt = 0;
+
+    # Analyze the driver script to determine the z/VM host that it intends to support.
+    my $hostNodeZhcp = '';
+    my $hostNode = `cat $driverLoc/$driver | grep "^export zxcatIVP_hostNode\=" | sed '/^export zxcatIVP_hostNode\=*/!d; s///; s/\"//g;q'`;
+    chomp( $hostNode );
+
+    if ( $hostNode ne '' ) {
+        if ( exists $hosts{$hostNode}{'hcp'} ) {
+            if ( exists $hosts{$hostNode}{'notify'} ) {
+                $hosts{$hostNode}{'notify'} = $hosts{$hostNode}{'notify'} . 'd';
+            } else {
+                $hosts{$hostNode}{'notify'} = 'd';
+            }
+            $zhcpTarget = $hosts{$hostNode}{'hcp'};
+            $zvmHost = $hostNode;
+            push @ivpSummary, "The ZHCP related to the host, \'$hostNode\', identified in the driver script has been identified ".
+                "as \'$zhcpTarget\'.";
+        } else {
+            $rc = logResponse( 'DFS', 'DRIV03', $zvmHost );
+            $notify = 1;
+        }
+    } else {
+        # Driver script did not specify the host node.
+        $rc = logResponse( 'DFS', 'DRIV02', "$driverLoc/$driver", 'zxcatIVP_hostNode' );
+        $notify = 1;
+    }
+
+    # Analyze the driver script to determine the ZHCP node that it intends to support.
+    my $zhcpNode = `cat $driverLoc/$driver | grep "^export zxcatIVP_zhcpNode\=" | sed '/^export zxcatIVP_zhcpNode\=*/!d; s///; s/\"//g;q'`;
+    chomp( $zhcpNode );
+    my $zhcpHcp = `/opt/xcat/bin/lsdef $zhcpNode | grep "hcp\=" | sed '/hcp\=*/!d; s///; s/\"//g;q'`;
+    if ( $zhcpHcp ne '' ) {
+        $zhcpHcp =~ s/^\s+|\s+$//g;       # trim both ends of the string
+        $zhcpTarget = $zhcpHcp;
+        foreach $hostNode ( keys %hosts ) {
+            if ( exists $hosts{$hostNode}{'hcp'} and $hosts{$hostNode}{'hcp'} eq $zhcpHcp ) {
+                if ( exists $hosts{$hostNode}{'notify'} ) {
+                    $hosts{$hostNode}{'notify'} = $hosts{$hostNode}{'notify'} . 'd';
+                } else {
+                    $hosts{$hostNode}{'notify'} = 'd';
+                }
+            }
+        }
+    }
+
+    my $exportCmd = '';
+    if ( $zxcatParms ne '' ) {
+        $ENV{zxcatIVP_moreCmdOps}=$zxcatParms;
+    } else {
+        delete $ENV{zxcatIVP_moreCmdOps};
+    }
+
+    logResponse( 'DF', '*NONFORMATTED*', '*******************************************************************************' );
+    logResponse( 'DF', 'GENERIC_RESPONSE_NOINDENT', "Using the driver script to drive the IVP. The output from the run follows." );
+    logResponse( 'DF', '*NONFORMATTED*', '*******************************************************************************' );
+    $out = `chmod +x $driverLoc/$driver`;
+    $out = `$driverLoc/$driver`;
+    $rc = $?;
+    if ( $rc != 0 ) {
+        $rc = logResponse( 'DFS', 'DRIV01', "$driverLoc/$driver", $rc, $out );
+        $notify = 1;
+        goto FINISH_runDriverScript;
+    }
+
+    # Determine how many warnings and information messages were generated so that we can
+    # produce a summary message upon completion of the IVP.
+    @lines = split( '\n', $out );
+    foreach my $line ( @lines ) {
+        if ( $line =~ /^Warning \(/ ) { $warningCnt++; }
+        if ( $line =~ /^Info \(/ ) { $infoCnt++; }
+    }
+    push @ivpSummary, "The driver script generated $warningCnt warnings and $infoCnt information messages.";
+    logResponse( 'DF', '*NONFORMATTED*', $out );
+
+FINISH_runDriverScript:
+    if ( $warningCnt != 0 ) {
+        $notify = 1;
+    }
+    return $rc;
+}
+
+
+#-------------------------------------------------------
+
+=head3   runPrepScript
+
+    Description : Push the appropriate level of preparation
+                  script to a compute node and run it to
+                  validate the system and build the driver
+                  script.
+    Arguments   : Global defaults set as command line parameters provide input
+                    to this routine:
+                    $driver - Name of driver script
+                    $driverLoc - Location of the driver script
+                    $infoCnt - Count of warnings that were generated
+                    $openstackIP - IP for OpenStack compute node
+                    $openstackUser - User for OpenStack compute node
+                    $prepParms - Parms for preparation script
+                    $warnErrCnt - Count of warnings and errors that were generated
+    Returns     : 0 - No error
+                  non-zero - Terminating error detected.
+    Example     : $rc = runPrepScript();
+
+=cut
+
+#-------------------------------------------------------
+sub runPrepScript {
+    my $cmd = '';
+    my $infoCnt = 0;
+    my $line;
+    my @lines;
+    my $out = '';
+    my $rc = 0;
+    my $retRC = 0;
+    my $tmpDir = '';
+    my $warningCnt = 0;
+
+    # Determine the name of the driver script based on the IP address for the compute node.
+    $driver = "zxcatIVPDriver_$openstackIP.sh";
+
+    # Create the local IVP directory.
+    if ( !-d $driverLoc ) {
+        $out = `mkdir -m a=rwx,g=rx,o= -p $driverLoc`;
+        $rc = $?;
+        if ( $rc != 0 ) {
+            $rc = logResponse( 'DFS', 'PREP01', $driverLoc, $rc, $out );
+            $notify = 1;
+            goto FINISH_runPrepScript;
+        }
+    }
+
+    # Determine the OpenStack level.
+    my $level = getOpenStackLevel( $openstackIP, $openstackUser );
+    if ( $level eq '' ) {
+        $notify = 1;
+        $rc = logResponse( 'DFS', 'PREP06', $openstackIP );
+        goto FINISH_runPrepScript;
+    }
+    my $levelLetter = substr( $level, 0, 1);
+    push @ivpSummary, "OpenStack system at $openstackIP is running the Nova $level release.";
+
+    # Determine the appropriate preparation script to send to the compute node.
+    my $prepDir = '/opt/xcat/share/xcat/tools/zvm';
+    my $prepScript = "prep_zxcatIVP_$level.pl";
+    logResponse( 'DF', 'GENERIC_RESPONSE', "Attempting to push $prepScript to the OpenStack system ".
+                       "at $openstackIP. It will be used to validate the OpenStack environment and create ".
+                       "a driver script to be used for the validation on the xCAT management node." );
+    my $runPrepScript = 1;
+
+    # Create a directory on the compute node to hold the preparation script and driver script.
+    $cmd = 'mktemp -d /tmp/xCAT.XXXXXXXXXX';
+    ($rc, $tmpDir) = sshToNode( $openstackIP, $openstackUser, $cmd );
+    if ( $rc != 0 ) {
+        # Unable to create the directory.  Let's see if we have an old driver script that we can use.
+        $rc = logResponse( 'DFS', 'PREP02', $openstackIP, "$driverLoc/$driver", $cmd, $rc, $out );
+        $notify = 1;
+        goto FINISH_runPrepScript;
+    } else {
+        # Push the preparation script to the compute node and run it.
+        chomp($tmpDir);
+        $cmd = "/usr/bin/scp $prepDir/$prepScript $openstackUser\@$openstackIP:$tmpDir";
+        $out = `/usr/bin/scp "$prepDir/$prepScript" "$openstackUser\@$openstackIP:$tmpDir"`;
+        $rc = $?;
+        if ( $rc != 0 ) {
+            # Unable to push the preparation script.  Let's see if we have an old driver script that we can use.
+            $rc = logResponse( 'DFS', 'PREP02', $openstackIP, "$driverLoc/$driver", $cmd, $rc, $out );
+            $notify = 1;
+            goto FINISH_runPrepScript;
+        }
+    }
+
+    if ( $runPrepScript ) {
+        # Run the preparation script.
+        ($rc, $out) = sshToNode( $openstackIP, $openstackUser, "chmod +x $tmpDir/$prepScript");
+        ($rc, $out) = sshToNode( $openstackIP, $openstackUser, "$tmpDir/$prepScript '--driver' $tmpDir/$driver $prepParms" );
+        logResponse( 'DF', '*NONFORMATTED*', '*******************************************************************************' );
+        logResponse( 'DF', 'GENERIC_RESPONSE_NOINDENT', "The output from the preparation script that is run on the compute node follows. ".
+                     "The preparation script validates the z/VM related OpenStack configuration file properties." );
+        logResponse( 'DF', '*NONFORMATTED*', '*******************************************************************************' );
+        logResponse( 'DF', '*NONFORMATTED*', $out );
+
+        # Determine how many warnings were generated so that we can produce a summary message upon completion of the IVP.
+        if ( $levelLetter gt 'L' ) {
+            @lines = split( '\n', $out );
+            foreach $line ( @lines ) {
+                if ( $line =~ /^Warning \(/ ) { $warningCnt++; }
+                if ( $line =~ /^Info \(/ ) { $infoCnt++; }
+            }
+        } else {
+            @lines = split( '\n', $out );
+            foreach $line ( @lines ) {
+                if ( $line =~ /^Warning:/ ) { $warningCnt++; }
+                if ( $line =~ /^Info:/ ) { $infoCnt++; }
+            }
+        }
+        push @ivpSummary, "The preparation script generated $warningCnt warnings and $infoCnt information messages.";
+
+        # Pull back the driver script.
+        if ( -e "$driverLoc/$driver" ) {
+            $out = `mv -f $driverLoc/$driver $driverLoc/$driver.old`;
+            $rc = $?;
+            if ( $rc != 0 ) {
+                logResponse( 'S', 'GENERIC_RESPONSE', "Unable to move $driverLoc/$driver to $driverLoc/$driver.old, rc: $rc" );
+                $notify = 1;
+            }
+        }
+
+        $cmd = "/usr/bin/scp $openstackUser\@$openstackIP:$tmpDir/$driver $driverLoc/$driver";
+        $out = `/usr/bin/scp "$openstackUser\@$openstackIP:$tmpDir/$driver" "$driverLoc/$driver"`;
+        $rc = $?;
+        if ( $rc != 0 ) {
+            $rc = logResponse( 'DFS', 'PREP04', "$driverLoc/$driver", $openstackIP, $cmd, $rc, $out );
+            $notify = 1;
+            goto FINISH_runPrepScript;
+        }
+
+        $cmd = "chmod 660 $driverLoc/$driver 2>&1";
+        $out = `$cmd`;
+        $rc = $?;
+        if ( $rc != 0 ) {
+            logResponse( 'FS', 'PREP07', "$driverLoc/$driver", $cmd, $rc, $out );
+            $notify = 1;
+        }
+    }
+
+FINISH_runPrepScript:
+    if ( !-s "$driverLoc/$driver"  && -s "$driverLoc/$driver.old" ) {
+        # New driver does not exist but old driver exists, use the old one.
+        $out = `mv -f $driverLoc/$driver.old $driverLoc/$driver`;
+        $rc = $?;
+        if ( $rc != 0 ) {
+            logResponse( 'S', 'GENERIC_RESPONSE', "Unable to move $driverLoc/$driver.old to $driverLoc/$driver, rc: $rc" );
+        }
+    }
+
+    if ( -s "$driverLoc/$driver" ) {
+        $retRC = 0;
+        # Add the driver script to the log file.
+        $out = `cat $driverLoc/$driver`;
+        logResponse( 'F', '*NONFORMATTED*', '*******************************************************************************' );
+        logResponse( 'F', 'GENERIC_RESPONSE_NOINDENT', "The contents of the driver script used for the rest of this IVP follows. ".
+                     "The driver script is used to run the rest of the IVP on the xCAT Management Node." );
+        logResponse( 'F', 'GENERIC_RESPONSE_NOINDENT', 'Note: Any line which set a password related property has been removed.' );
+        logResponse( 'F', '*NONFORMATTED*', '*******************************************************************************' );
+        $out = `echo "$out" | grep -v "^export zxcatIVP_xcatUserPw"`;
+        logResponse( 'F', '*NONFORMATTED*', $out );
+    }
+
+    if ( $warningCnt != 0 ) {
+        $notify = 1;
+    }
+
+    if ( $tmpDir ne '' ) {
+        $cmd = "rm -Rf $tmpDir 2>&1";
+        ($rc, $out) = sshToNode( $openstackIP, $openstackUser, "$cmd");
+        $rc = $?;
+        if ( $rc != 0 ) {
+            $rc = logResponse( 'DFS', 'CLNUP01', $openstackIP, $tmpDir, $cmd, $rc, $out );
+            $notify = 1;
+        }
+    }
+    return $retRC;
+}
+
+
+#-------------------------------------------------------
+
+=head3   scheduleIVP
+
+    Description : Schedule an automated IVP.
+    Arguments   : Global defaults set as command line parameters provide input
+                    to this routine:
+                    $comments - Comments for IVP
+                    $disable - Disable option
+                    $id - ID to update or 'NEW'
+                    $openstackIP - IP for OpenStack compute node
+                    $openstackUser - User for OpenStack compute node
+                    $orchParms - Parms for this script when IVP run
+                    $prepParms - Parms for preparation script
+                    $schedule - Hours to schedule
+                    $scheduledType - Type of IVP
+                    $zxcatParms - Parms for zxcatIVP script
+    Returns     : 0 - No error
+                  non-zero - Terminating error detected.
+    Example     : $rc = scheduleIVP();
+
+=cut
+
+#-------------------------------------------------------
+sub scheduleIVP {
+    my $cmd;
+    my $out;
+    my $rc;
+    my $ivpId;
+    my %ids;
+    my $junk;
+
+    # Get the list of IVP ids in the zvmivp table.
+    $cmd = '/opt/xcat/sbin/tabdump zvmivp | grep -v "^#"';
+    $out = `$cmd`;
+    $rc = $?;
+    if ( $rc ne 0 ) {
+        logResponse( 'DF', 'GNRL04', $cmd, $rc, $out );
+        goto FINISH_scheduleIVP;
+    }
+    my @lines = split( '\n', $out );
+    foreach my $line ( @lines ) {
+        chomp( $line );
+        my ($ivpId, $junk) = split( ',', $line, 2 );
+        $ivpId =~ s/^\"|\"$//g;         # trim quotes from both ends of the string
+        $ivpId =~ s/^\s+|\s+$//g;       # trim spaces from both ends of the string
+        if ( $ivpId ne '' ) {
+            $ids{$ivpId} = 1;
+        }
+    }
+
+    # Validate the specified id.  Either generate a new ID if this is a new
+    # request (specified as 'new' or omitted or use the id that was passed.
+    if ( $id eq '' or $id eq 'NEW' ) {
+        # Generate the new Id
+        my $i;
+        for ( $i = 10; $i < 10010; $i++ ) {
+            if ( ! exists $ids{$i} ) {
+                last;
+            }
+        }
+        if ( $i <= 10010 ) {
+            $id = $i;
+        } else {
+            # Could not find an available number in the first 10000 IDs.
+            logResponse( 'DF', 'ID01' );
+            goto FINISH_scheduleIVP;
+        }
+    } else {
+        # Validate the Id
+        if ( ! exists $ids{$id} ) {
+            logResponse( 'DF', 'ID02', $id );
+        }
+    }
+
+    if ( $scheduledType eq '' ) {
+        logResponse( 'DF', 'OPER01', '--type' );
+        goto FINISH_scheduleIVP;
+    }
+    $scheduledType = lc( $scheduledType );
+    if ( $scheduledType ne 'basicivp' and $scheduledType ne 'fullivp' ) {
+        logResponse( 'DF', 'OPER02', '--type', $scheduledType, '\'basicivp\' or \'fullivp\'' );
+        goto FINISH_scheduleIVP;
+    }
+    if ( $scheduledType eq 'basicivp' ) {
+        # Ignore any FULLIVP parms
+        $openstackIP = '';
+        $openstackUser = '';
+        $prepParms = '';
+    }
+
+    # Normalize the schedule.
+    my %hours;
+    my @parts = split( ' ', $schedule );
+    foreach my $hour ( @parts ) {
+        $hour =~ s/^\s+|\s+$//g;         # trim spaces from both ends of the string
+        $hours{$hour} = 1;
+    }
+    $schedule = '';
+    for ( my $hour = 0; $hour <= 23; $hour++ ) {
+        if ( exists $hours{$hour} ) {
+            $schedule = "$schedule $hour";
+            delete $hours{$hour};
+        }
+    }
+    $schedule =~ s/^\s+|\s+$//g;         # trim spaces from both ends of the string
+    my (@leftOver) = keys %hours;
+    if ( scalar @leftOver != 0 ) {
+        my $badValues = join( '\' and \'', @leftOver );
+        logResponse( 'DF', 'OPER02', '--schedule', $badValues, '0-23' );
+        goto FINISH_scheduleIVP;
+    }
+
+    if ( $comments =~ /,/ ) {
+        $comments =~ s/,//g;         # trim commas from the string
+    }
+
+    my $disableFlag = '';
+    if ( $disable == 1 ) {
+        $disableFlag = 'YES';
+    }
+
+    # Update the table.
+    logResponse( 'DS', '*NONFORMATTED*', "Updating the z/VM IVP table (zvmivp) for $id" );
+    my $chtabCmd = "/opt/xcat/sbin/chtab id=\'$id\' ".
+                   "zvmivp.ip=\'$openstackIP\' ".
+                   "zvmivp.schedule=\'$schedule\' ".
+                   "zvmivp.last_run=\'\' ".
+                   "zvmivp.type_of_run=\'$scheduledType\' ".
+                   "zvmivp.access_user=\'" . hexEncode( $openstackUser ) . "\' ".
+                   "zvmivp.orch_parms=\'" . hexEncode( $orchParms ) . "\' ".
+                   "zvmivp.prep_parms=\'" . hexEncode( $prepParms ) . "\' ".
+                   "zvmivp.main_ivp_parms=\'" . hexEncode( $zxcatParms ) . "\' ".
+                   "zvmivp.comments=\'" . hexEncode( $comments ) . "\' ".
+                   "zvmivp.disable=\'$disableFlag\'";
+    $out = `$chtabCmd`;
+    $rc = $?;
+    if ( $rc != 0 ) {
+        logResponse( 'DS', '*NONFORMATTED*', "\'$chtabCmd\' failed for ID($id), rc: $rc, out: $out\n" );
+        $rc = 1;
+    }
+
+FINISH_scheduleIVP:
+    return $rc;
+}
+
+#-------------------------------------------------------
+
+=head3   setupLogFile
+
+    Description : Set up the log file for this run.
+    Arguments   : None
+    Returns     : 0 - No error
+                  non-zero - Terminating error detected.
+    Example     : $rc = setupLogFile();
+
+=cut
+
+#-------------------------------------------------------
+sub setupLogFile {
+    my $out;
+    my $rc = 0;
+    my $ipString = '';
+
+    # Indicate that the log file will need to be finished.
+    # This is a safety in case something goes wrong during
+    # the IVP run and causes the program to break.
+    $needToFinishLogFile = 1;
+
+    # Determine the IP address to associate with the log file.
+    if ( $openstackIP eq '' ) {
+        # Must be doing either a generic zxcatIVP or a full
+        # IVP for the compute node sharing the system with this
+        # xCAT MN.  Use the string "XCAT".
+        $ipString = 'XCAT';
+    } else {
+        if ( exists $localIPs{$openstackIP} ) {
+            $ipString = 'XCAT';
+        } else {
+            $ipString = $openstackIP;
+        }
+    }
+
+    # Determine the timestamp to use for the log.
+    my ($sec,  $min,  $hour, $mday, $mon, $year, $wday, $yday, $isdst) = localtime(time);
+    $startTime = sprintf("%02d:%02d:%02d on %04d-%02d-%02d",
+                           $hour, $min, $sec, $year + 1900, $mon + 1, $mday );
+    my $currTime = sprintf("%04d-%02d-%02d_%02d:%02d:%02d",
+                           $year + 1900, $mon + 1, $mday, $hour, $min, $sec);
+
+    # If the log directory does not exist then create it.
+    if ( !-d $logDir ) {
+        # Directory did not exist.  Create it.
+        $out = `mkdir -p $logDir`;
+        $rc = $?;
+        if ( $rc != 0 ) {
+            logResponse( 'DFS', 'GENERIC_RESPONSE', 'Failed to set up the log directory.  IVP will run without a log file.' );
+            $rc = 0;     # Continue processing.
+            goto FINISH_setupLogFile;
+        }
+    }
+
+    # Create the log file.
+    $logFile = "IVP\_$ipString\_$currTime\.log";
+    open $logFileHandle, ">", "$logDir/$logFile";
+    $rc = $?;
+    if ( $rc != 0 ) {
+        logResponse( 'DFS', 'GENERIC_RESPONSE', "Failed to open the log file: $logFile.  IVP will run without a log file. $!" );
+        $rc = 0;     # Continue processing.
+        goto FINISH_setupLogFile;
+    }
+    $out = `chmod 644 "$logDir/$logFile"`;
+
+    push @ivpSummary, "The following logfile was created for this run: $logFile";
+
+FINISH_setupLogFile:
+    return $rc;
+}
+
+
+#-------------------------------------------------------
+
+=head3   showCILevel
+
+    Description : Show the cloud-init version installed
+                  in the node.
+    Arguments   : None
+    Returns     : 0 - No error
+                  non-zero - Terminating error detected.
+    Example     : $rc = showCILevel();
+
+=cut
+
+#-------------------------------------------------------
+sub showCILevel {
+    my $ciLevel = '';
+    my $out = '';
+    my $rc = 0;
+
+    # Attempted to obtain the version using the routine
+    # accessible through the $PATH variable.
+    ($rc, $out) = sshToNode( $nodeName, '', 'cloud-init --version 2>&1');
+    if ( $rc == 255 ) {
+        logResponse( 'DF', 'GENERIC_RESPONSE', $out );
+        goto FINISH_showCILevel;
+    } elsif ( $rc == 0 ) {
+        if ( $out =~ /^cloud-init / ) {
+            ($ciLevel) = $out =~ /^cloud-init (.*)/;
+            my $msgText = "Version of cloud-init: $ciLevel";
+            logResponse( 'DF', 'GENERIC_RESPONSE', $msgText );
+            # <todo> Add code to compare the version to what is available in xcat.
+            goto FINISH_showCILevel;
+        }
+    }
+
+    # Attempt to locate the version in the various cloud-init scripts
+    # in the target node.
+    # <todo> Add support to look for versions on the node if the invocation
+    # using the path did not show the version.
+
+FINISH_showCILevel:
+    return $rc;
+}
+
+
+#-------------------------------------------------------
+
+=head3   showHelp
+
+    Description : Show the help inforamtion.
+    Arguments   : None.
+    Returns     : None.
+    Example     : showHelp();
+
+=cut
+
+#-------------------------------------------------------
+sub showHelp{
+    print "$0 verify the capabilities of a node.\n\n";
+    print $usage_string;
+    return;
+}
+
+
+#-------------------------------------------------------
+
+=head3   sshToNode
+
+    Description : SSH to a node and issue a command.
+                  Check for SSH errors.
+    Arguments   : Node name or IP address/DNS name
+                  user if we need to specify SUDO
+                  Command to issue
+                  Options (char string):
+                    q - Quiet, Don't generate an error message on failure
+    Returns     : Return code:
+                      0 - Normal Linux success
+                      255 - Unable to SSH to system
+                      non-zero - command error
+                  Output from the command or a error string on an SSH failure.
+    Example     : ($rc, $out) = sshToNode( $nodeName, $user, $command );
+
+=cut
+
+#-------------------------------------------------------
+sub sshToNode{
+    my ( $nodeName, $user, $cmd, $options ) = @_;
+    my $rc = 0;
+    my $out = '';
+
+    if ( ! defined $options ) {
+        $options = '';
+    }
+
+    if ( $user eq '' ) {
+        $out = `ssh $nodeName -qoBatchMode=yes '$cmd'`;
+        $rc = $? >> 8;
+    } else {
+        $out = `ssh $user\@$nodeName -qoBatchMode=yes '$cmd'`;
+        $rc = $? >> 8;
+    }
+
+    if ( $rc == 255 and $options !~ /q/ ) {
+        logResponse( 'DFS', 'VSTN01', $nodeName );  # Keep $rc = 255.
+        $out = "Unable to SSH to $nodeName";
+    }
+
+    return ($rc, $out);
+}
+
+
+#-------------------------------------------------------
+
+=head3   verifyAccess
+
+    Description : Verify the xCAT MN can access a system.
+    Arguments   : Node name or IP address
+    Returns     : 0 - No error
+                  non-zero - Terminating error detected.
+    Example     : $rc = verifyAccess();
+
+=cut
+
+#-------------------------------------------------------
+sub verifyAccess{
+    my ( $nodeOrIP ) = @_;
+
+    my $rc = 0;
+    my $out = '';
+
+    ($rc, $out) = sshToNode( $nodeOrIP, '', 'pwd 2>/dev/null' );
+    goto FINISH_verifyAccess if ( $rc == 255 );    # Already generated a message
+    if ( $rc != 0 ) {
+        $rc = logResponse( 'DFS', 'VA01' );
+    }
+
+FINISH_verifyAccess:
+    return $rc;
+}
+
+
+#-------------------------------------------------------
+
+=head3   verifyBasicXCAT
+
+    Description : Verify the basic setup of xCAT.
+    Arguments   : None
+    Returns     : 0 - No error
+                  non-zero - Terminating error detected.
+    Example     : $rc = verifyBasicXCAT();
+
+=cut
+
+#-------------------------------------------------------
+sub verifyBasicXCAT{
+    my $infoCnt = 0;
+    my @lines;
+    my $rc = 0;
+    my $warningCnt = 0;
+
+    $rc = logResponse( 'DF', 'GENERIC_RESPONSE', 'The IVP will be invoked with BYPASS messages suppressed. '.
+        'This is because a basic IVP run will produce a number of BYPASS messages due to the fact that '.
+        'it is not driven with a full set of configuration operands causing it to avoid some tests. '.
+        'Instead you will see an information line indicating that the message was ignored.' );
+    $ENV{'zxcatIVP_bypassMsg'} = 0;   # No bypass messages
+    $ENV{'zxcatIVP_moreCmdOps'} = $zxcatParms;
+    my $out = `/opt/xcat/bin/zxcatIVP.pl`;
+
+    $rc = logResponse( 'DF', '*NONFORMATTED*', $out );
+    # Determine how many warnings were generated so that we can produce a summary message upon completion of the IVP.
+    @lines = split( '\n', $out );
+    foreach my $line ( @lines ) {
+        if ( $line =~ /^Warning/ ) { $warningCnt++; }
+        if ( $line =~ /^Info/ ) { $infoCnt++; }
+    }
+    push @ivpSummary, "The zxcatIVP.pl script generated $warningCnt warnings and $infoCnt information messages.";
+
+FINISH_verifyBasicXCAT:
+    if ( $warningCnt != 0 ) {
+        $notify = 1;
+    }
+    return $rc;
+}
+
+
+#-------------------------------------------------------
+
+=head3   verifyDistro
+
+    Description : Verify that the distro is supported.
+    Arguments   : None
+    Returns     : 0 - No error
+                  non-zero - Terminating error detected.
+    Example     : $rc = verifyDistro();
+
+=cut
+
+#-------------------------------------------------------
+sub verifyDistro{
+    my $rc = 0;
+
+    my $supported = xCAT::zvmUtils->isOSVerSupported( $tgtOS );
+    if ( !$supported ) {
+        $rc = logResponse( 'DF', 'VD01', ($tgtOS) );
+    }
+
+    return $rc;
+}
+
+
+#-------------------------------------------------------
+
+=head3   verifyLogResponse
+
+    Description : Script test function to test functioning
+                  of the logResponse() routine.
+    Arguments   : None
+    Returns     : 0 - No error
+                  non-zero - Terminating error detected.
+    Example     : $rc = verifyLogResponse();
+
+=cut
+
+#-------------------------------------------------------
+sub verifyLogResponse{
+    my $rc = 0;
+    my $sub2 = 'sub2';
+
+    $rc = logResponse( 'DF', 'VX01' );
+    print "rc: $rc\n";
+    logResponse( 'DF', 'VPF01', ($nodeName, 0, 'result message') );
+    $rc = logResponse( 'DF', 'VX03', $nodeName, $sub2);
+    print "rc: $rc\n";
+    $rc = logResponse( 'DF', 'VX03', $nodeName, 'sub2a');
+    print "rc: $rc\n";
+
+    return 0;
+}
+
+
+#-------------------------------------------------------
+
+=head3   verifyPower
+
+    Description : Verify the node is powered on.
+    Arguments   : None
+    Returns     : 0 - No error
+                  non-zero - Terminating error detected.
+    Example     : $rc = verifyPower();
+
+=cut
+
+#-------------------------------------------------------
+sub verifyPower {
+    my ( $nodeName ) = @_;
+    my $rc = 0;
+    my $powerState;
+
+    my $out = `/opt/xcat/bin/rpower $nodeName stat 2>&1`;
+    $rc = $?;
+    if ( $rc != 0 ) {
+        $rc = logResponse( 'DF', 'VPF01', ($nodeName, $rc, $out) );
+        goto FINISH_verifyPower if ( $rc > 0 );
+    }
+
+    $out = lc( $out );
+    if ( $out =~ /$nodeName: / ) {
+        chomp $out;
+        ($powerState) = $out =~ /$nodeName: (.*)/;
+    }
+
+    if ( $powerState ne 'on' ) {
+        $rc = logResponse( 'DFS', 'VP02', ($nodeName) );
+    }
+
+FINISH_verifyPower:
+    return $rc;
+}
+
+
+#-------------------------------------------------------
+
+=head3   verifyService
+
+    Description : Verify that specified services are running.
+    Arguments   : Node name or IP address
+                  Blank delimitted list of service names
+                    service name begins with the name and
+                    has a comma separated list of run levels
+                    which are to be verified as 'on'
+    Returns     : 0 - No error
+                  non-zero - Terminating error detected.
+    Example     : $rc = verifyService();
+
+=cut
+
+#-------------------------------------------------------
+sub verifyService {
+    my ( $nodeOrIP, $namesAndLevels ) = @_;
+    my @serviceList = split ( / /, $namesAndLevels );
+
+    my $rc = 0;
+    my $serviceOut = '';
+
+    # Get the list of service names and run levels into an array.
+
+    # Get the list of configured services.  The output looks similar to:
+    # service_name    0:off   1:off   2:off   3:off   4:off   5:off   6:off
+    ($rc, $serviceOut) = sshToNode( $nodeOrIP, '', "chkconfig --list 2>&1" );
+    goto FINISH_verifyService if ( $rc == 255 );
+
+    # Look for missing services
+    my @missingService;
+    my @foundService;
+    my @nonrunningService;
+    foreach my $serviceInfo ( @serviceList ) {
+        my @offLevels;
+        my $levels;
+        my @serviceRunLevels = split( /,/, $serviceInfo );
+        my $service = shift @serviceRunLevels;
+        ($levels) = $serviceOut =~ /^$service(.*)\s(.*)\n/m;
+        $levels =~ s/^\s+|\s+$//g if ( defined $levels );
+        if (( defined $levels ) and ( $levels ne '' )) {
+            # Verify the run levels are enabled.
+            foreach my $level ( @serviceRunLevels ) {
+                if ( $levels !~ /$level:on/ ) {
+                    push @offLevels, $level;
+                }
+            }
+            if ( @offLevels ) {
+                $levels = join(", ", @offLevels);
+                $rc = logResponse( 'DF', 'VS06', $service, $levels );
+                goto FINISH_verifyService if ( $rc > 0 );
+            } else {
+                push @foundService, $service;
+            }
+        } else {
+            push @nonrunningService, $service;
+        }
+    }
+
+    if ( @foundService ) {
+        my $list = join(", ", @foundService);
+        $rc = logResponse( 'DF', 'GENERIC_RESPONSE', "The following services are configured to start: $list" );
+        goto FINISH_verifyService if ( $rc > 0 );
+    }
+    if ( @nonrunningService ) {
+        my $list = join(", ", @nonrunningService);
+        $rc = logResponse( 'DF', 'VS05', $list );
+        goto FINISH_verifyService if ( $rc > 0 );
+    }
+
+FINISH_verifyService:
+    return $rc;
+}
+
+
+#-------------------------------------------------------
+
+=head3   verifyXcatconf4z
+
+    Description : Verify xcatconf4z is properly installed
+                  and is the correct version.
+    Arguments   : Node name or IP address
+    Returns     : 0 - No error
+                  non-zero - Terminating error detected.
+    Example     : $rc = verifyXcatconf4z();
+
+=cut
+
+#-------------------------------------------------------
+sub verifyXcatconf4z{
+    my ( $nodeOrIP ) = @_;
+    my $rc = 0;
+    my $out;
+    my ($mnVersion, $tgtVersion);
+
+    # Verify service is installed
+    $rc = verifyService( $nodeOrIP, 'xcatconf4z,2,3,5' );
+    goto FINISH_verifyXcatconf4z if ( $rc == 255 );
+
+    # Get the xCAT MN's xcatconf4z version level.
+    $out = `/opt/xcat/share/xcat/scripts/xcatconf4z version`;
+    if ( $out =~ /xcatconf4z version: / ) {
+        chomp $out;
+        ($mnVersion) = $out =~ /xcatconf4z version: (.*)/;
+    } else {
+        $rc = logResponse( 'DFS', 'VX01' );
+        goto FINISH_verifyXcatconf4z if ( $rc > 0 );
+    }
+
+    # <todo> Verify that the node contains xcatconf4z in the correct location and is executable.
+    #$out = `ssh $nodeOrIP 'ls -al /opt/xcatconf4z 2>&1'`;
+    ($rc, $out) = sshToNode( $nodeOrIP, '', 'ls -al /opt/xcatconf4z 2>&1');
+    goto FINISH_verifyXcatconf4z if ( $rc == 255 );
+    if ( $out =~ /No such file or directory/ ) {
+        $rc = logResponse( 'DF', 'VX06' );
+        goto FINISH_verifyXcatconf4z if ( $rc > 0 );
+    } else {
+        # <todo> Verify that it is executable
+    }
+
+    # Get the node's xcatconf4z version level.
+    #$out = `ssh $nodeOrIP '/opt/xcatconf4z version'`;
+    ($rc, $out) = sshToNode( $nodeOrIP, '', '/opt/xcatconf4z version');
+    goto FINISH_verifyXcatconf4z if ( $rc == 255 );
+    if ( $out =~ /xcatconf4z version: / ) {
+        chomp $out;
+        ($tgtVersion) = $out =~ /xcatconf4z version: (.*)/;
+    } else {
+        $rc = logResponse( 'DF', 'VX02' );
+        goto FINISH_verifyXcatconf4z if ( $rc > 0 );
+    }
+
+    # Verify the version is up to date.
+    if ( defined $tgtVersion ) {
+        if ( $mnVersion > $tgtVersion ) {
+            $rc = logResponse( 'DF', 'VX03', ($tgtVersion, $mnVersion) );
+            goto FINISH_verifyXcatconf4z if ( $rc > 0 );
+        }
+    }
+
+    # Verify that authorized senders is setup.
+    #$out = `ssh $nodeOrIP '/opt/xcatconf4z status'`;
+    ($rc, $out) = sshToNode( $nodeOrIP, '', '/opt/xcatconf4z status');
+    goto verifyXcatconf4z if ( $rc == 255 );
+    if ( $out =~ /xcatconf4z is disabled / ) {
+        $rc = logResponse( 'DF', 'VX04' );
+        goto FINISH_verifyXcatconf4z if ( $rc > 0 );
+    } else {
+        # Get list of authorized users and put out an info message.
+    }
+
+    # Verify that mkisofs is available
+    ($rc, $out) = sshToNode( $nodeOrIP, '', 'stat /opt/bin/mkisofs');
+    goto verifyXcatconf4z if ( $rc == 255 );
+    if ( $rc != 0 ) {
+        $rc = logResponse( 'DF', 'VX07' );
+        goto FINISH_verifyXcatconf4z if ( $rc > 0 );
+    }
+
+FINISH_verifyXcatconf4z:
+    return $rc;
+}
+
+
+#*****************************************************************************
+# Main routine
+#*****************************************************************************
+my $ignoreOpt;
+my $rc = 0;
+my $thisScript = $0;
+my $out;
+
+# Parse the arguments
+$Getopt::Long::ignorecase = 0;
+Getopt::Long::Configure( "bundling" );
+if (!GetOptions(
+         'a|access'        => \$verifyAccess,
+         'basicivp'        => \$runBasicIVP,
+         'capturereqs'     => \$verifyCaptureReqs,
+         'c|cloudinit'     => \$verifyCloudInit,
+         'comments=s'      => \$comments,
+         'cron'            => \$runCron,
+         'decode=s'        => \$decode,
+         'disable'         => \$disable,
+         'enable'          => \$enable,
+         'encode=s'        => \$encode,
+         'file=s'          => \$dataFile,
+         'fullivp'         => \$runFullIVP,
+         'h|help'          => \$displayHelp,
+         'i|id=s'          => \$id,
+         'ignore=s'        => \$ignoreOpt,
+         'cmdoveriucv=s'   => \$issueCmdOverIUCV,
+         'cmdtonode=s'     => \$issueCmdToNode,
+         'n|node=s'        => \$nodeName,
+         'notify'          => \$notifyOnErrorOrWarning,
+         'openstackuser=s' => \$openstackUser,
+         'openstackip=s'   => \$openstackIP,
+         'orchparms=s'     => \$orchParms,
+         'prepparms=s'     => \$prepParms,
+         'remove'          => \$remove,
+         'schedule=s'      => \$schedule,
+         'type=s'          => \$scheduledType,
+         'v|version'       => \$versionOpt,
+         'x|xcatconf4z'    => \$verifyXcatconf4z,
+         'zxcatparms=s'    => \$zxcatParms,
+      )) {
+    print $usage_string;
+}
+
+if ( $versionOpt ) {
+    logResponse( 'DF', 'GENERIC_RESPONSE_NOINDENT', "Version: $version\n" );
+}
+
+if ( $displayHelp ) {
+    showHelp();
+}
+
+if ( $displayHelp or $versionOpt ) {
+    goto FINISH_main;
+}
+
+# Convert any encoded operand values back to their unencoded value.
+my @convertibleParms = ( 'comments', 'nodeName', 'openstackUser', 'orchParms', 'prepParms', 'zxcatParms' );
+foreach my $parmName ( @convertibleParms ) {
+    eval( "\$$parmName = hexDecode( \$$parmName )" );
+}
+
+if ( $schedule eq '' and $orchParms ne '' ) {
+    # If not scheduling an IVP run and orchestrator parms are present then use them.
+    my $unrecognizedOps = '';
+    $rc = GetOptionsFromString(
+        $orchParms,
+        'ignore=s'        => \$ignoreOpt,
+        );
+    if ( $rc == 0 ) {
+        print "Unrecognized option in --orchParms. ".
+              "Only --ignore is allowed as an orchestrator option for an immediate run.\n";
+        $rc = 2;
+        goto FINISH_main;
+    }
+}
+
+# Handle messages to ignore.
+if ( defined( $ignoreOpt ) ) {
+    # Make hash from the specified ignore operands
+    $ignoreOpt = uc( $ignoreOpt );
+    my @ingoreList;
+    if ( $ignoreOpt =~ ',' ) {
+        @ingoreList = split( ',', $ignoreOpt );
+    } else {
+        @ingoreList = split( ' ', $ignoreOpt );
+    }
+
+    %msgsToIgnore = map { $_ => 1 } @ingoreList;
+
+    # Convert general severity type operands to their numeric value.
+    if ( $msgsToIgnore{'BYPASS'} ) {
+        delete $msgsToIgnore{'BYPASS'};
+        $msgsToIgnore{'2'} = 1;
+    }
+    if ( $msgsToIgnore{'INFO'} ) {
+        delete $msgsToIgnore{'INFO'};
+        $msgsToIgnore{'3'} = 1;
+    }
+    if ( $msgsToIgnore{'WARNING'} ) {
+        delete $msgsToIgnore{'WARNING'};
+        $msgsToIgnore{'4'} = 1;
+    }
+    if ( $msgsToIgnore{'ERROR'} ) {
+        delete $msgsToIgnore{'ERROR'};
+        $msgsToIgnore{'5'} = 1;
+    }
+}
+
+if ( $openstackIP ne '' ) {
+    $openstackIP = uc( $openstackIP );
+}
+
+# Handle the combinations of disable and enable options.
+if ( $disable eq '' ) {
+    $disable = 0;
+}
+if ( $enable eq '' ) {
+    $enable = 0;
+}
+if ( $disable == 1 and $enable == 1 ) {
+    $rc = logResponse( 'DFS', 'OPER03', '--disable and --enable' );
+    goto FINISH_main;
+}
+
+if ( $runFullIVP or $runBasicIVP ) {
+    # Set up a log file for an IVP run.
+    setupLogFile();
+}
+
+# Determine the information about the xCAT managed node and the z/VM
+# host environment where it is running (if running on z/VM).
+getMNInfo();
+
+if ( $decode ne '' or
+     $disable or
+     $enable or
+     $encode ne '' or
+     $runFullIVP or
+     $runCron or
+     $runBasicIVP or
+     $remove or
+     $schedule ne '' ) {
+    # IVP runs do not need the node.
+} elsif ( $nodeName eq '' ) {
+    $rc = logResponse( 'DFS', 'OPER01', '-n or --node' );
+    goto FINISH_main;
+}
+
+($::SUDOER, $::SUDO) = xCAT::zvmUtils->getSudoer();
+
+# Setup for a test run of logResponse.  Normally, commented out.
+#($verifyAccess, $verifyCaptureReqs, $verifyCloudInit, $verifyXcatconf4z) = 0;
+#my $test = 1;
+
+# Run the selected tests
+foreach my $verify (keys %verifySets) {
+    if ( eval $verify ) {
+        if ( $verifySets{$verify}[0] ne '' ) {
+            logResponse( 'D', 'GENERIC_RESPONSE_NOINDENT', "\n********************************************************************\n" );
+            logResponse( 'D', 'GENERIC_RESPONSE_NOINDENT', "$verifySets{$verify}[0]\n" );
+            logResponse( 'D', 'GENERIC_RESPONSE_NOINDENT', "********************************************************************\n" );
+        }
+        my $size = @{$verifySets{$verify}};
+        logResponse( 'D', '*RESET*' );
+        for (my $i = 1; $i < $size; $i++) {
+            ($rc) = eval $verifySets{$verify}[$i];
+            if ( ! defined $rc ) {
+                logResponse( 'DFS', 'PERL01', $thisScript, $verifySets{$verify}[$i], $@ );
+                $rc = 666;
+                last;
+            }
+
+            if ( $rc > 0 ) {
+                last;
+            }
+        }
+
+        if ( $warnErrCnt == 0 ) {
+            logResponse( 'DF', 'GENERIC_RESPONSE_NOINDENT', "\nProcessing completed." );
+        } else {
+            logResponse( 'DF', 'GENERIC_RESPONSE_NOINDENT', "\nProcessing completed with warning or error messages. " .
+                "See previous messages for information.\n" );
+        }
+    }
+}
+
+FINISH_main:
+if ( $needToFinishLogFile ) {
+    # A log file was started.  We need to complete it by adding the summary
+    # section.  If necessary, we will send the log file to the notify user.
+    finishLogFile();
+}
+
+exit $rc;

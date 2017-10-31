@@ -14,8 +14,6 @@ use Getopt::Long;
 use xCAT::Table;
 use xCAT::Usage;
 my $request;
-my %breaknetbootnodes;
-our %normalnodes;
 my %tftpserverip;
 my $callback;
 my $sub_req;
@@ -102,18 +100,14 @@ sub setstate {
     my $tftpdir      = shift;
     my %nrhash       = %{ shift() };
     my $linuximghash = shift();
+    my $nodearch = shift;
     my $kern = $bphash{$node}->[0]; #$bptab->getNodeAttribs($node,['kernel','initrd','kcmdline']);
     if ($kern->{kcmdline} =~ /!myipfn!/) {
         my $ipfn;
         my @ipfnd = xCAT::NetworkUtils->my_ip_facing($node);
 
         if ($ipfnd[0] ==  1) {
-            $::callback->(
-                {
-                    error     => [ $ipfnd[1] ],
-                    errorcode => [1]
-                });
-            return;
+            return (1, $ipfnd[1]);
         }
         elsif ($ipfnd[0] == 2) {
             my $servicenodes = $nrhash{$node}->[0];
@@ -123,27 +117,11 @@ sub setstate {
 
                     # We are in the service node pools, print error if no facing ip.
                     if (xCAT::InstUtils->is_me($sn)) {
-                        $::callback->(
-                            {
-                                error => [
-                                    "$::myxcatname: $ipfnd[1] on service node $sn"
-                                ],
-                                errorcode => [1]
-                            }
-                        );
-                        return;
+                        return (1, "$::myxcatname: $ipfnd[1] on service node $sn");
                     }
                 }
             } else {
-                $::callback->(
-                    {
-                        error => [
-                            "$::myxcatname: $ipfnd[1]"
-                        ],
-                        errorcode => [1]
-                    }
-                );
-                return;
+                return (1, "$::myxcatname: $ipfnd[1]");
             }
         } else {
             $ipfn = $ipfnd[1];
@@ -178,15 +156,17 @@ sub setstate {
     unless (-d "$bootloader_root") {
         mkpath("$bootloader_root");
     }
-    my $nodemac;
-    my %client_nethash = xCAT::DBobjUtils->getNetwkInfo([$node]);
 
-    my $cref = $chainhash{$node}->[0]; #$chaintab->getNodeAttribs($node,['currstate']);
+    my $cref = $chainhash{$node}->[0];
+    unless ($cref->{currstate}) { # the currstate should be set during 'setdestiny'
+        return (1, "Cannot determine current state for this node");
+    }
 
     # remove the old boot configuration files and create a new one, but only if not offline directive
     system("find $bootloader_root/ -inum \$(stat --printf \%i $bootloader_root/$node 2>/dev/null) -exec rm -f {} \\; 2>/dev/null");
+
     my $pcfg;
-    if ($cref and $cref->{currstate} ne "offline") {
+    if ($cref->{currstate} ne "offline") {
         open($pcfg, '>', "$bootloader_root/" . $node);
         print $pcfg "#" . $cref->{currstate} . "\n";
 
@@ -197,15 +177,7 @@ sub setstate {
         print $pcfg "set timeout=5\n";
     }
 
-    $normalnodes{$node} = 1;   #Assume a normal netboot (well, normal dhcp,
-                               #which is normally with a valid 'filename' field,
-         #but the typical ppc case will be 'special' makedhcp
-         #to clear the filename field, so the logic is a little
-         #opposite
-
-    if ($cref and $cref->{currstate} eq "boot") {
-        $breaknetbootnodes{$node} = 1;
-        delete $normalnodes{$node}; #Signify to omit this from one makedhcp command
+    if ($cref->{currstate} eq "boot") {
         close($pcfg);
     } elsif ($kern and $kern->{kernel}) {
 
@@ -226,26 +198,24 @@ sub setstate {
             my @nxtsrvd = xCAT::NetworkUtils->my_ip_facing($node);
             unless ($nxtsrvd[0]) { 
                 $serverip = $nxtsrvd[1]; 
-            } else { 
-                $callback->({ error => [ $nxtsrvd[1] ], errorcode => [1] }); 
-                return;
+            } else {
+                return (1, $nxtsrvd[1]);
             }
-        }else{
+        } else {
             if (defined($tftpserverip{$tftpserver})) {
                 $serverip = $tftpserverip{$tftpserver};
             } else {
                 $serverip = xCAT::NetworkUtils->getipaddr($tftpserver);
                 unless ($serverip) {
-                    syslog("local1|err", "xCAT unable to resolve $tftpserver");
-                    return;
+                    return (1, "xCAT unable to resolve $tftpserver");
                 }
                 $tftpserverip{$tftpserver} = $serverip;
             }
         }
 
         unless($serverip){
-            $callback->({ error => ["Unable to determine the tftpserver for $node"], errorcode => [1] });
-            return;
+            close($pcfg);
+            return (1, "Unable to determine the tftpserver for $node");
         }
         my $grub2protocol = "tftp";
         if (defined($nrhash{$node}->[0]) && $nrhash{$node}->[0]->{'netboot'}
@@ -254,15 +224,8 @@ sub setstate {
         }
 
         unless ($grub2protocol =~ /^http|tftp$/) {
-            $::callback->(
-                {
-                    error => [
-"Invalid netboot method, please check noderes.netboot for $node"
-                    ],
-                    errorcode => [1]
-                }
-            );
-            return;
+            close($pcfg);
+            return (1, "Invalid netboot method, please check noderes.netboot for $node");
         }
 
         # write entries to boot config file, but only if not offline directive
@@ -296,26 +259,43 @@ sub setstate {
     } else {
         close($pcfg);
     }
+
+    unless ($nodearch) {
+        return (1, "No archictecture defined in nodetype table for the node.");
+    }
+    if ($nodearch =~ /ppc64/i) {
+        $nodearch = "ppc"
+    }
+    my $grub2bin    = "$bootloader_root/grub2." . $nodearch;
+    unless (-e "$grub2bin") {
+        return (1, "Stop grub2 configuration for this node, \"$grub2bin\" does not exits.");
+    }
+
+    chdir("$bootloader_root");
+    if ($cref->{currstate} eq "offline" or $cref->{currstate} eq "boot") {
+        unlink("grub2-$node");
+    } elsif (! -e "grub2-$node") {
+        symlink("grub2." . $nodearch, "grub2-$node");
+    }
+
     my $ip = xCAT::NetworkUtils->getipaddr($node);
     unless ($ip) {
-        syslog("local1|err", "xCAT unable to resolve IP in grub2 plugin");
-        return;
+        return (1, "xCAT unable to resolve IP in grub2 plugin");
     }
-    my $mactab = xCAT::Table->new('mac');
+    #my $mactab = xCAT::Table->new('mac');
     my %ipaddrs;
     my $macstring;
     $ipaddrs{$ip} = 1;
-    if ($mactab) {
-        my $ment = $machash{$node}->[0]; #$mactab->getNodeAttribs($node,['mac']);
-        if ($ment and $ment->{mac}) {
-            $macstring = $ment->{mac};
-            my @macs = split(/\|/, $ment->{mac});
-            foreach (@macs) {
-                if (/!(.*)/) {
-                    my $ipaddr = xCAT::NetworkUtils->getipaddr($1);
-                    if ($ipaddr) {
-                        $ipaddrs{$ipaddr} = 1;
-                    }
+
+    my $ment = $machash{$node}->[0];
+    if ($ment and $ment->{mac}) {
+        $macstring = $ment->{mac};
+        my @macs = split(/\|/, $ment->{mac});
+        foreach (@macs) {
+            if (/!(.*)/) {
+                my $ipaddr = xCAT::NetworkUtils->getipaddr($1);
+                if ($ipaddr) {
+                    $ipaddrs{$ipaddr} = 1;
                 }
             }
         }
@@ -329,11 +309,10 @@ sub setstate {
 
         # remove the old boot configuration file and copy (link) a new one, but only if not offline directive
         unlink("$bootloader_root/" . $pname);
-        if ($cref and $cref->{currstate} ne "offline") {
-            link("$bootloader_root/" . $node, "$bootloader_root/" . $pname);
-        }
+        link("$bootloader_root/" . $node, "$bootloader_root/" . $pname) if ($cref->{currstate} ne "offline");
     }
-    
+ 
+    my $nodemac;   
     my $nrent=$nrhash{$node}->[0];
     if($nrent and $nrent->{installnic}){
         my $myinstallnic=$nrent->{installnic};
@@ -341,8 +320,6 @@ sub setstate {
             $nodemac=$myinstallnic;
         }
     }
-        
-
     if (! $nodemac and $macstring) {
         $nodemac = xCAT::Utils->parseMacTabEntry($macstring, $node);
     }
@@ -354,26 +331,42 @@ sub setstate {
 
         # remove the old boot configuration file and copy (link) a new one, but only if not offline directive
         unlink("$bootloader_root/" . $pname);
-        if ($cref and $cref->{currstate} ne "offline") {
-            link("$bootloader_root/" . $node, "$bootloader_root/" . $pname);
-        }
+        link("$bootloader_root/" . $node, "$bootloader_root/" . $pname) if ($cref->{currstate} ne "offline");
     }
-    return;
+    return (0, "");
 }
 
 my $errored = 0;
 
 sub pass_along {
     my $resp = shift;
+    return unless ($resp); 
 
-    $callback->($resp);
-    if ($resp and ($resp->{errorcode} and $resp->{errorcode}->[0]) or ($resp->{error} and $resp->{error}->[0])) {
-        $errored = 1;
+    my $failure = 0;
+    if ($resp->{errorabort}) { # Global error, it normally means to stop the parent execution. For example, DB operation error.
+        $failure = 2;
+        delete $resp->{errorabort};
+    } elsif (($resp->{errorcode} and $resp->{errorcode}->[0]) or ($resp->{error} and $resp->{error}->[0])) {
+        $failure = 1;
     }
+    $callback->($resp);
+
+    if ($failure > 1) { # quick abort
+        $errored = $failure;
+        return;
+    }
+
+    # Partial error on nodes, it allows to continue the rest of business on the sucessful nodes.
     foreach (@{ $resp->{node} }) {
         if ($_->{error} or $_->{errorcode}) {
-            $errored = 1;
+            $failure = 1;
+            if ($_->{name}) {
+                $failurenodes{$_->{name}->[0]} = 2;
+            }
         }
+    }
+    if ( $failure ) {
+        $errored = $failure;
     }
 }
 
@@ -468,7 +461,7 @@ sub preprocess_request {
                 my %rsp;
                 $rsp{errorcode}->[0] = 1;
                 $rsp{error}->[0] =
-"Nodeset was run with a noderange containing both service nodes and compute nodes. This is not valid. You must submit with either compute nodes in the noderange or service nodes. \n";
+        "Nodeset was run with a noderange containing both service nodes and compute nodes. This is not valid. You must submit with either compute nodes in the noderange or service nodes. \n";
                 $callback1->(\%rsp);
                 return;
             }
@@ -517,11 +510,10 @@ sub preprocess_request {
 sub process_request {
     $request    = shift;
     $callback   = shift;
-    $::callback = $callback;
     $sub_req    = shift;
     my $command = $request->{command}->[0];
-    %breaknetbootnodes = ();
-    %normalnodes       = (); # It will be fill-up by method: setstate.
+
+    undef %failurenodes;
 
     my @args;
     #>>>>>>>used for trace log start>>>>>>>
@@ -574,7 +566,6 @@ sub process_request {
 
     my @nodes = ();
     # Filter those nodes which have bad DNS: not resolvable or inconsistent IP
-    my %failurenodes = ();
     my %preparednodes = ();
     foreach (@rnodes) {
         my $ipret = xCAT::NetworkUtils->checkNodeIPaddress($_);
@@ -661,11 +652,8 @@ sub process_request {
                     arg => [ $args[0] ] }, \&pass_along);
         }
         if ($errored) {
-            my $rsp;
-            $rsp->{errorcode}->[0] = 1;
-            $rsp->{error}->[0]     = "Failed in running begin prescripts.\n";
-            $callback->($rsp);
-            return;
+            xCAT::MsgUtils->trace($verbose_on_off, "d", "grub2: Failed in running begin prescripts.");
+            return if ($errored > 1);
         }
     }
 
@@ -685,8 +673,8 @@ sub process_request {
                 bootparams => \%bphash
                 }, \&pass_along);
         if ($errored) { 
-            xCAT::MsgUtils->trace($verbose_on_off, "d", "grub2: Failed in processing setdestiny.  Processing will not continue.");
-            return; 
+            xCAT::MsgUtils->trace($verbose_on_off, "d", "grub2: Failed in processing setdestiny.");
+            return if ($errored > 1);
         }
     }
 
@@ -707,156 +695,62 @@ sub process_request {
     my $rc;
     my $errstr;
 
-    my $tftpdir;
+    my @normalnodeset = ();
     foreach (@nodes) {
-        my %response;
+        next if (exists($failurenodes{$_}));
+
+        my $tftpdir = $globaltftpdir;
         if ($nodereshash->{$_} and $nodereshash->{$_}->[0] and $nodereshash->{$_}->[0]->{tftpdir}) {
             $tftpdir = $nodereshash->{$_}->[0]->{tftpdir};
-        } else {
-            $tftpdir = $globaltftpdir;
         }
+
+        my %response;
         $response{node}->[0]->{name}->[0] = $_;
         if ($args[0]) { # Send it on to the destiny plugin, then setstate
             my $ent          = $typehash->{$_}->[0];
+            my $nodearch     = $ent->{'arch'};
             my $osimgname    = $ent->{'provmethod'};
             my $linuximghash = undef;
             unless ($osimgname =~ /^(install|netboot|statelite)$/) {
                 $linuximghash = $linuximgtab->getAttribs({ imagename => $osimgname }, 'boottarget', 'addkcmdline');
             }
 
-            ($rc, $errstr) = setstate($_, \%bphash, $chainhash, $machash, $tftpdir, $nrhash, $linuximghash);
+            ($rc, $errstr) = setstate($_, \%bphash, $chainhash, $machash, $tftpdir, $nrhash, $linuximghash, $nodearch);
             if ($rc) {
                 $response{node}->[0]->{errorcode}->[0] = $rc;
-                $response{node}->[0]->{errorc}->[0]    = $errstr;
+                $response{node}->[0]->{error}->[0]    = $errstr;
+                $failurenodes{$_} = 1;
                 $callback->(\%response);
+            } else {
+                push @normalnodeset, $_;
             }
+
         }
     }    # end of foreach node
     xCAT::MsgUtils->trace($verbose_on_off, "d", "grub2: Finish to handle configurations");
 
-    my @normalnodeset = keys %normalnodes;
-    my @breaknetboot  = keys %breaknetbootnodes;
-
-    my %osimagenodehash;
-    for my $nn (@normalnodeset) {
-
-        #record the os version for node
-        my $ent     = $typehash->{$nn}->[0];
-        my $osimage = $ent->{'provmethod'};
-        if ($osimage =~ /^(install|netboot|statelite)$/) {
-            $osimage = ($ent->{'os'}) . '-' . ($ent->{'arch'}) . '-' . ($ent->{'provmethod'}) . '-' . ($ent->{'profile'});
-        }
-        push @{ $osimagenodehash{$osimage} }, $nn;
-    }
-
-    my $do_dhcpsetup = 1;
-    my @entries      = xCAT::TableUtils->get_site_attribute("dhcpsetup");
-    my $t_entry      = $entries[0];
-    if (defined($t_entry)) {
-        if ($t_entry =~ /0|n|N/) { $do_dhcpsetup = 0; }
-    }
-
     #Don't bother to try dhcp binding changes if sub_req not passed, i.e. service node build time
-    unless (($inittime) || ($args[0] eq 'offline')) {
-        foreach my $osimage (keys %osimagenodehash) {
+    unless ($inittime) {
 
-            #TOTO check the existence of grub2 executable files for corresponding arch
-            my $osimgent = $osimagetab->getAttribs({ imagename => $osimage }, 'osarch');
-            my $validarch = undef;
-            if ($osimgent and $osimgent->{'osarch'})
-            {
-                $validarch = $osimgent->{'osarch'};
-            }
-            else
-            {
-                # Can not determine arch from osimage definition. This is most likely
-                # the case when nodeset is "shell" or "shutdown". Look at node definition, to
-                # figure out arch to use.
-
-                # get nodename from osimagenodehash hash
-                my $node_name = $osimagenodehash{$osimage}[0];
-
-                # lookup node arch setting
-                my $node_entry = $typetab->getNodeAttribs($node_name, ['arch']);
-                if ($node_entry and $node_entry->{'arch'})
-                {
-                    # Extracted arch from node definition
-                    $validarch = $node_entry->{'arch'};
-                }
-                else
-                {
-                    # At this point we can not determine architecture either
-                    # from osimage or node definition.
-                    my $rsp;
-                    push @{ $rsp->{data} }, "Not able to determine architecture of node $node_name. Verify arch attribute setting.\n";
-                    xCAT::MsgUtils->message("E", $rsp, $callback);
-                }
-            }
-            if ($validarch =~ /ppc64/i)
-            {
-                $validarch = "ppc"
-            }
-            my $grub2    = "/boot/grub2/grub2." . $validarch;
-            my $tftppath = $tftpdir . $grub2;
-            unless (-e "$tftppath") {
-                my $rsp;
-                push @{ $rsp->{data} },
-                  "stop configuration, missing $tftppath.\n";
-                xCAT::MsgUtils->message("E", $rsp, $callback);
-                return;
-            }
-            chdir("$tftpdir/boot/grub2/");
-            foreach my $tmp_node (@{ $osimagenodehash{$osimage} }) {
-                unless (-e "grub2-$tmp_node") {
-                    symlink("grub2." . $validarch, "grub2-$tmp_node");
-                }
-            }
-            if ($do_dhcpsetup) {
-                if ($request->{'_disparatetftp'}->[0]) { #reading hint from preprocess_command
-                    xCAT::MsgUtils->trace($verbose_on_off, "d", "grub2: issue makedhcp request");
-                    $sub_req->({ command => ['makedhcp'],
-                            node => \@{ $osimagenodehash{$osimage} }, arg => ['-l'] }, $callback);
-                } else {
-                    xCAT::MsgUtils->trace($verbose_on_off, "d", "grub2: issue makedhcp request");
-                    $sub_req->({ command => ['makedhcp'],
-                            node => \@{ $osimagenodehash{$osimage} } }, $callback);
-                }
-            }
-        }    #end of foreach osimagenodehash
-
-        foreach my $tmp_node (@breaknetboot) {
-            if (-e "$tftpdir/boot/grub2/grub2-$tmp_node") {
-                unlink("$tftpdir/boot/grub2/grub2-$tmp_node");
-            }
+        #dhcp stuff
+        my $do_dhcpsetup = 1;
+        my @entries      = xCAT::TableUtils->get_site_attribute("dhcpsetup");
+        my $t_entry      = $entries[0];
+        if (defined($t_entry)) {
+            if ($t_entry =~ /0|n|N/) { $do_dhcpsetup = 0; }
         }
-        if ($do_dhcpsetup) {
-            if ($request->{'_disparatetftp'}->[0]) { #reading hint from preprocess_command
-                xCAT::MsgUtils->trace($verbose_on_off, "d", "grub2: issue makedhcp request");
-                $sub_req->({ command => ['makedhcp'],
-                        node => \@breaknetboot,
-                        arg => ['-l'] }, $callback);
-            } else {
-                xCAT::MsgUtils->trace($verbose_on_off, "d", "grub2: issue makedhcp request");
-                $sub_req->({ command => ['makedhcp'],
-                        node => \@breaknetboot }, $callback);
-            }
-        }
-    }
+        # For offline operation, remove the dhcp entries whatever dhcpset is disabled in site ( existing code logic, just keep it as is)
+        if ($do_dhcpsetup || $args[0] eq 'offline') {
+            my @parameter;
+            push @parameter, '-l' if ($request->{'_disparatetftp'}->[0]);
+            push @parameter, '-d' if ($args[0] eq 'offline');
+            xCAT::MsgUtils->trace($verbose_on_off, "d", "petitboot: issue makedhcp request");
 
-    if ($args[0] eq 'offline') {
-        my @rmdhcp_nodes;
-
-        # If nodeset directive was offline we need to remove the architecture file link and remove dhcp entries
-        foreach my $osimage (keys %osimagenodehash) {
-            foreach my $tmp_node (@{ $osimagenodehash{$osimage} }) {
-                unlink("$tftpdir/boot/grub2/grub2-$tmp_node");
-                push(@rmdhcp_nodes, $tmp_node);
-            }
-        }
-        if ($request->{'_disparatetftp'}->[0]) {
-            $sub_req->({ command => ['makedhcp'], arg => ['-d', '-l'], node => \@rmdhcp_nodes }, $callback);
+            $sub_req->({ command => ['makedhcp'],
+                         arg => \@parameter,
+                         node => \@normalnodeset }, $callback);
         } else {
-            $sub_req->({ command => ['makedhcp'], arg => ['-d'], node => \@rmdhcp_nodes }, $callback);
+            xCAT::MsgUtils->trace($verbose_on_off, "d", "petitboot: dhcpsetup=$do_dhcpsetup");
         }
     }
 
@@ -866,20 +760,16 @@ sub process_request {
         if ($request->{'_disparatetftp'}->[0]) { #the call is distrubuted to the service node already, so only need to handles my own children
             xCAT::MsgUtils->trace($verbose_on_off, "d", "grub2: issue runendpre request");
             $sub_req->({ command => ['runendpre'],
-                    node => \@nodes,
+                    node => \@normalnodeset,
                     arg => [ $args[0], '-l' ] }, \&pass_along);
         } else { #nodeset did not distribute to the service node, here we need to let runednpre to distribute the nodes to their masters
             xCAT::MsgUtils->trace($verbose_on_off, "d", "grub2: issue runendpre request");
             $sub_req->({ command => ['runendpre'],
-                    node => \@rnodes,
+                    node => \@normalnodeset,
                     arg => [ $args[0] ] }, \&pass_along);
         }
         if ($errored) {
-            my $rsp;
-            $rsp->{errorcode}->[0] = 1;
-            $rsp->{error}->[0]     = "Failed in running end prescripts\n";
-            $callback->($rsp);
-            return;
+            xCAT::MsgUtils->trace($verbose_on_off, "d", "grub2: Failed in running end prescripts.");
         }
     }
 

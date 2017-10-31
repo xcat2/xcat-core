@@ -496,7 +496,7 @@ sub mkinstall {
     my %osents = %{ $ostab->getNodesAttribs(\@nodes, [ 'profile', 'os', 'arch', 'provmethod' ]) };
     my %rents =
       %{ $restab->getNodesAttribs(\@nodes,
-            [ 'xcatmaster', 'nfsserver', 'primarynic', 'installnic' ]) };
+            [ 'xcatmaster', 'nfsserver', 'primarynic', 'installnic', 'tftpserver' ]) };
     my %hents =
       %{ $hmtab->getNodesAttribs(\@nodes,
             [ 'serialport', 'serialspeed', 'serialflow' ]) };
@@ -504,24 +504,6 @@ sub mkinstall {
 
     require xCAT::Template;
 
-    # Warning message for nodeset <noderange> install/netboot/statelite
-    foreach my $knode (keys %osents)
-    {
-        my $ent = $osents{$knode}->[0];
-        if ($ent && $ent->{provmethod}
-            && (($ent->{provmethod} eq 'install') || ($ent->{provmethod} eq 'netboot') || ($ent->{provmethod} eq 'statelite')))
-        {
-            my @ents = xCAT::TableUtils->get_site_attribute("disablenodesetwarning");
-            my $site_ent = $ents[0];
-            if (!defined($site_ent) || ($site_ent =~ /no/i) || ($site_ent =~ /0/))
-            {
-                $callback->({ error => ["The options \"install\", \"netboot\", and \"statelite\" have been deprecated, use \"nodeset <noderange> osimage=<osimage_name>\" instead."], errorcode => [1] });
-
-                # Do not print this warning message multiple times
-                exit(1);
-            }
-        }
-    }
 
     foreach $node (@nodes)
     {
@@ -537,6 +519,15 @@ sub mkinstall {
         my $pkglistfile;
         my $imagename;    # set it if running of 'nodeset osimage=xxx'
         my $platform;
+        my %tmpl_hash;
+
+        my $ient = $rents{$node}->[0];
+        if ($ient and $ient->{xcatmaster}) {
+            $tmpl_hash{"xcatmaster"} = $ient->{xcatmaster};
+        }
+        if ($ient and $ient->{tftpserver}) {
+            $tmpl_hash{"tftpserver"} = $ient->{tftpserver};
+        }
 
         my $osinst;
         my $ent = $osents{$node}->[0]; #$ostab->getNodeAttribs($node, ['profile', 'os', 'arch']);
@@ -604,9 +595,7 @@ sub mkinstall {
                     }
                 }
                 else {
-                    $callback->(
-                        { error => ["The os image $imagename does not exists on the osimage table for $node"],
-                            errorcode => [1] });
+                    xCAT::MsgUtils->report_node_error($callback, $node, "The OS image '$imagename' for node does not exist");
                     next;
                 }
             }
@@ -642,6 +631,10 @@ sub mkinstall {
             xCAT::MsgUtils->trace($verbose_on_off, "d", "debian->mkinstall: imagename=$imagename pkgdir=$pkgdir pkglistfile=$pkglistfile tmplfile=$tmplfile");
         }
         else {
+            # This is deprecated mode to define node's provmethod, not supported now.
+            xCAT::MsgUtils->report_node_error($callback, $node, "OS image name must be specified in nodetype.provmethod");
+            next;
+
             $os       = $ent->{os};
             $arch     = $ent->{arch};
             $profile  = $ent->{profile};
@@ -704,14 +697,12 @@ sub mkinstall {
         }
 
         unless ($os and $arch and $profile) {
-            $callback->({ error => [ "Missing " . join(',', @missingparms) . " for $node" ],
-                    errorcode => [1] });
+            xCAT::MsgUtils->report_node_error($callback, $node, "Missing " . join(',', @missingparms) . " for $node");
             next;    # No profile
         }
 
         unless (-r "$tmplfile") {
-            $callback->({ error => [ "No $platform preseed template exists for " . $profile ],
-                    errorcode => [1] });
+            xCAT::MsgUtils->report_node_error($callback, $node, "No $platform preseed template exists for " . $profile);
             next;
         }
 
@@ -732,7 +723,8 @@ sub mkinstall {
                 $pkglistfile,
                 $pkgdir,
                 $platform,
-                $partitionfile
+                $partitionfile,
+                \%tmpl_hash
               );
         }
 
@@ -752,27 +744,34 @@ sub mkinstall {
                 "",
                 "",
                 "",
-                $partitionfile
+                $partitionfile,
+                \%tmpl_hash
             );
         }
 
         if (-r "$postscript") {
             $posterr = xCAT::Template->subvars($postscript,
                 "$installroot/autoinst/" . $node . ".post",
-                $node
+                $node,
+                "",
+                "",
+                "",
+                "",
+                \%tmpl_hash
             );
         }
 
         my $errtmp;
 
         if ($errtmp = $tmperr or $errtmp = $preerr or $errtmp = $posterr) {
-            $callback->({ node => [ { name => [$node], error => [$errtmp], errorcode => [1] } ] });
+            xCAT::MsgUtils->report_node_error($callback, $node, $errtmp);
             next;
         }
 
         if ($arch =~ /ppc64/i and !(-e "$pkgdir/install/netboot/initrd.gz")) {
-            $callback->({ error => ["The network boot initrd.gz is not found in $pkgdir/install/netboot.  This is provided by Ubuntu, please download and retry."],
-                    errorcode => [1] });
+            xCAT::MsgUtils->report_node_error($callback, $node, 
+                "The network boot initrd.gz is not found in $pkgdir/install/netboot.  This is provided by Ubuntu, please download and retry."
+                );
             next;
         }
         my $tftpdir = "/tftpboot";
@@ -876,8 +875,7 @@ sub mkinstall {
             #TODO: dd=<url> for driver disks
             if (defined($sent->{serialport})) {
                 unless ($sent->{serialspeed}) {
-                    $callback->({ error => ["serialport defined, but no serialspeed for $node in nodehm table"],
-                            errorcode => [1] });
+                    xCAT::MsgUtils->report_node_error($callback, $node, "serialport defined, but no serialspeed for this node in nodehm table");
                     next;
                 }
                 if ($arch =~ /ppc64/i) {
@@ -926,10 +924,10 @@ sub mkinstall {
             $bootparams->{$node}->[0]->{kcmdline} = $kcmdline;
         }
         else {
-            $callback->({ error => ["Install image not found in $installroot/$os/$arch"],
-                    errorcode => [1] });
+            xCAT::MsgUtils->report_node_error($callback, $node, "Install image not found in $installroot/$os/$arch");
+            next;
         }
-    }
+    }# end foreach node
 }
 
 sub mknetboot
@@ -1007,27 +1005,6 @@ sub mknetboot
         $stateHash = $statetab->getNodesAttribs(\@nodes, ['statemnt']);
     }
 
-    foreach my $knode (keys %oents)
-    {
-        my $ent = $oents{$knode}->[0];
-        if ($ent && $ent->{provmethod}
-            && (($ent->{provmethod} eq 'install') || ($ent->{provmethod} eq 'netboot') || ($ent->{provmethod} eq 'statelite')))
-        {
-            my @ents = xCAT::TableUtils->get_site_attribute("disablenodesetwarning");
-            my $site_ent = $ents[0];
-            if (!defined($site_ent) || ($site_ent =~ /no/i) || ($site_ent =~ /0/))
-            {
-                $callback->(
-                    {
-                        error => ["The options \"install\", \"netboot\", and \"statelite\" have been deprecated, use \"nodeset <noderange> osimage=<osimage_name>\" instead."], errorcode => [1]
-                    }
-                );
-
-                # Do not print this warning message multiple times
-                exit(1);
-            }
-        }
-    }
     foreach my $node (@nodes)
     {
         my $osver;
@@ -1081,9 +1058,7 @@ sub mknetboot
                         $img_hash{$imagename}->{crashkernelsize} = $ref1->{'crashkernelsize'};
                     }
                 } else {
-                    $callback->(
-                        { error => ["The os image $imagename does not exists on the osimage table for $node"],
-                            errorcode => [1] });
+                    xCAT::MsgUtils->report_node_error($callback, $node, "The OS image '$imagename' for node does not exist");
                     next;
                 }
             }
@@ -1104,6 +1079,10 @@ sub mknetboot
             $dump            = $ph->{dump};
         }
         else {
+            # This is deprecated mode to define node's provmethod, not supported now.
+            xCAT::MsgUtils->report_node_error($callback, $node, "OS image name must be specified in nodetype.provmethod");
+            next;
+
             $osver      = $ent->{os};
             $arch       = $ent->{arch};
             $profile    = $ent->{profile};
@@ -1128,10 +1107,10 @@ sub mknetboot
                     $rootfstype = $ref1->{'rootfstype'};
                 }
             } else {
-                $callback->(
-                    { error => [qq{Cannot find the linux image called "$osver-$arch-$imgname-$profile", maybe you need to use the "nodeset <nr> osimage=<osimage name>" command to set the boot state}],
-                        errorcode => [1] }
-                );
+                xCAT::MsgUtils->report_node_error($callback, $node,
+                    qq{Cannot find the linux image called "$osver-$arch-$imgname-$profile", maybe you need to use the "nodeset <nr> osimage=<osimage name>" command to set the boot state}
+                    );
+                next;
             }
 
             if (!$linuximagetab) {
@@ -1146,22 +1125,17 @@ sub mknetboot
                     $crashkernelsize = $ref1->{'crashkernelsize'};
                 }
             } else {
-                $callback->(
-                    { error => [qq{ Cannot find the linux image called "$osver-$arch-$imgname-$profile", maybe you need to use the "nodeset <nr> osimage=<your_image_name>" command to set the boot state}],
-                        errorcode => [1] }
-                );
+                xCAT::MsgUtils->report_node_error($callback, $node,
+                    qq{Cannot find the linux image called "$osver-$arch-$imgname-$profile", maybe you need to use the "nodeset <nr> osimage=<osimage name>" command to set the boot state}
+                    );
+                next;
             }
         }
 
         #print"osvr=$osver, arch=$arch, profile=$profile, imgdir=$rootimgdir\n";
         unless ($osver and $arch and $profile)
         {
-            $callback->(
-                {
-                    error => ["Insufficient nodetype entry or osimage entry for $node"],
-                    errorcode => [1]
-                }
-            );
+            xCAT::MsgUtils->report_node_error($callback, $node, "Insufficient nodetype entry or osimage entry for $node");
             next;
         }
 
@@ -1171,18 +1145,16 @@ sub mknetboot
         # statelite images are not packed.
         if ($statelite) {
             unless (-r "$rootimgdir/kernel") {
-                $callback->({
-                        error => [qq{Did you run "genimage" before running "liteimg"? kernel cannot be found at $rootimgdir/kernel on $myname}],
-                        errorcode => [1]
-                });
+                xCAT::MsgUtils->report_node_error($callback, $node,
+                    qq{Did you run "genimage" before running "liteimg"? kernel cannot be found at $rootimgdir/kernel on $myname}
+                    );
                 next;
             }
             if (!-r "$rootimgdir/initrd-statelite.gz") {
                 if (!-r "$rootimgdir/initrd.gz") {
-                    $callback->({
-                            error => [qq{Did you run "genimage" before running "liteimg"? initrd.gz or initrd-statelite.gz cannot be found}],
-                            errorcode => [1]
-                    });
+                    xCAT::MsgUtils->report_node_error($callback, $node,
+                        qq{Did you run "genimage" before running "liteimg"? initrd.gz or initrd-statelite.gz cannot be found}
+                        );
                     next;
                 }
                 else {
@@ -1190,26 +1162,24 @@ sub mknetboot
                 }
             }
             if ($rootfstype eq "ramdisk" and !-r "$rootimgdir/rootimg-statelite.gz") {
-                $callback->({
-                        error => [qq{No packed image for platform $osver, architecture $arch and profile $profile, please run "liteimg" to create it.}],
-                        errorcode => [1]
-                });
+                xCAT::MsgUtils->report_node_error($callback, $node,
+                    qq{No packed image for platform $osver, architecture $arch and profile $profile, please run "liteimg" to create it.}
+                    );
                 next;
             }
         } else {
             unless (-r "$rootimgdir/kernel") {
-                $callback->({
-                        error => [qq{Did you run "genimage" before running "packimage"? kernel cannot be found at $rootimgdir/kernel on $myname}],
-                        errorcode => [1]
-                });
+                xCAT::MsgUtils->report_node_error($callback, $node,
+                    qq{Did you run "genimage" before running "packimage"? kernel cannot be found at $rootimgdir/kernel on $myname}
+                    );
                 next;
             }
             if (!-r "$rootimgdir/initrd-stateless.gz") {
                 if (!-r "$rootimgdir/initrd.gz") {
-                    $callback->({
-                            error => [qq{Did you run "genimage" before running "packimage"? initrd.gz or initrd-stateless.gz cannot be found}],
-                            errorcode => [1]
-                    });
+                    xCAT::MsgUtils->report_node_error($callback, $node,
+                        qq{Did you run "genimage" before running "packimg"? initrd.gz or initrd-statelite.gz cannot be found}
+                        );
+                    next;
                     next;
                 }
                 else {
@@ -1217,9 +1187,9 @@ sub mknetboot
                 }
             }
             unless (-f -r "$rootimgdir/$compressedrootimg") {
-                $callback->({
-                        error => ["No packed image for platform $osver, architecture $arch, and profile $profile, please run packimage (e.g.  packimage -o $osver -p $profile -a $arch"],
-                        errorcode => [1] });
+                xCAT::MsgUtils->report_node_error($callback, $node,
+                    "No packed image for platform $osver, architecture $arch, and profile $profile, please run packimage (e.g.  packimage -o $osver -p $profile -a $arch)"
+                    );
                 next;
             }
         }
@@ -1274,24 +1244,13 @@ sub mknetboot
                 $initrdloc .= "/initrd-statelite.gz";
             }
             unless (-r "$tftppath/kernel" and -r $initrdloc) {
-                $callback->({
-                        error     => [qq{copying to $tftppath failed}],
-                        errorcode => [1]
-                });
+                xCAT::MsgUtils->report_node_error($callback, $node, qq{Copying to $tftppath failed.});
                 next;
             }
         } else {
 
-            unless (-r "$tftppath/kernel" and -r "$tftppath/initrd-stateless.gz")
-            {
-                $callback->(
-                    {
-                        error => [
-                            "Copying to $tftppath failed"
-                        ],
-                        errorcode => [1]
-                    }
-                );
+            unless (-r "$tftppath/kernel" and -r "$tftppath/initrd-stateless.gz") {
+                xCAT::MsgUtils->report_node_error($callback, $node, qq{Copying to $tftppath failed.});
                 next;
             }
         }
@@ -1342,16 +1301,8 @@ sub mknetboot
                  #}
             $imgsrv = $xcatmaster;
         }
-        unless ($imgsrv)
-        {
-            $callback->(
-                {
-                    error => [
-"Unable to determine or reasonably guess the image server for $node"
-                    ],
-                    errorcode => [1]
-                }
-            );
+        unless ($imgsrv) {
+            xCAT::MsgUtils->report_node_error($callback, $node, "Unable to determine or reasonably guess the image server for $node");
             next;
         }
         my $kcmdline;
@@ -1511,28 +1462,19 @@ sub mknetboot
         }
 
 
-        if (defined $sent->{serialport})
-        {
+        if (defined $sent->{serialport}) {
 
             #my $sent = $hmtab->getNodeAttribs($node,['serialspeed','serialflow']);
-            unless ($sent->{serialspeed})
-            {
-                $callback->(
-                    {
-                        error => [
-"serialport defined, but no serialspeed for $node in nodehm table"
-                        ],
-                        errorcode => [1]
-                    }
-                );
+            unless ($sent->{serialspeed}) {
+                xCAT::MsgUtils->report_node_error($callback, $node,"serialport defined, but no serialspeed for $node in nodehm table");
                 next;
             }
             if ($arch =~ /ppc64/i) {
                 $kcmdline .=
-"console=tty0 console=hvc" . $sent->{serialport} . "," . $sent->{serialspeed};
+                    "console=tty0 console=hvc" . $sent->{serialport} . "," . $sent->{serialspeed};
             } else {
                 $kcmdline .=
-"console=tty0 console=ttyS" . $sent->{serialport} . "," . $sent->{serialspeed};
+                    "console=tty0 console=ttyS" . $sent->{serialport} . "," . $sent->{serialspeed};
             }
             if ($sent->{serialflow} =~ /(hard|tcs|ctsrts)/)
             {

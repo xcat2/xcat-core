@@ -1,4 +1,4 @@
-#!/bin/bash 
+#!/bin/bash  
 if [ "$(uname -s|tr 'A-Z' 'a-z')" = "linux" ];then
    str_dir_name=`dirname $0`
    . $str_dir_name/xcatlib.sh
@@ -126,16 +126,26 @@ elif [ "bridgeprereq" = "$1" ]; then
     NETDESC="$2"
     # get the port for installation
     if [ -n "$INSTALLNIC" ]; then
-        if [[ "$INSTALLNIC" = mac ]] || [[ "$INSTALLNIC" = MAC ]]; then
-            #INSPORT=`ifconfig -a|grep -v inet6| grep -i 'HWaddr '$MACADDRESS|head -n 1|awk '{print $1}'`
-            INSPORT=`ip -oneline link show|grep -i ether|grep -i $MACADDRESS|awk -F ':' '{print $2}'|grep -o "[^ ]\+\( \+[^ ]\+\)*"`
+        INSPORT=$INSTALLNIC
+    elif [ -n "$PRIMARYNIC" ]; then
+        INSPORT=$PRIMARYNIC
+    fi
+
+    if [ -z "$INSPORT" ] || [[ "$INSPORT" =~ ^(mac|MAC)$ ]]; then
+        if [ -n "$MACADDRESS" ] ; then   
+            INSPORT=$MACADDRESS;
         else
-            INSPORT=$INSTALLNIC
+            echo "should configure mac in $NODE definition."
+            exit 1
         fi
     fi
 
+    if [[ "$INSPORT"  =~ ^([0-9a-fA-F]{2}:){5}[0-9a-fA-F]{2}$ ]] ; then
+        INSPORT=`ip -oneline link show|grep -i ether|grep -i $INSPORT |awk -F ':' '{print $2}'|grep -o "[^ ]\+\( \+[^ ]\+\)*"`
+    fi
+
     if [ -z "$NETDESC" ]; then
-        if [ -n "$INSTALLNIC" ]; then
+        if [ -n "$INSPORT" ]; then
           NETDESC=$INSPORT:default
         else
             echo "Incorrect usage"

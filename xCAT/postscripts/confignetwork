@@ -336,8 +336,12 @@ function sort_nics_device_order {
                     echo $alonenic
                 fi
             else
-                errorcode=1
-                echo "Error: nicips,nictypes and nicnetworks should be configured in nics table for $alonenic."
+                if [ -n "$alonenictype" ] && [ $alonenictype = "unused" ]; then
+                    echo "nic $alonenic found, but nictypes.$alonenic=unused, ignore configuring $alonenic."
+                else
+                    errorcode=1
+                    echo "Error: nicips,nictypes and nicnetworks should be configured in nics table for $alonenic."
+                fi
                 ((num1+=1))
                 continue
             fi
@@ -635,6 +639,9 @@ parser_nic_attribute "$NICTYPES" "nictypes"
 #make hash for nicips
 parser_nic_attribute "$NICIPS" "nicips"
 
+#make hash for nicnetworks
+parser_nic_attribute "$NICNETWORKS" "nicnetworks"
+
 #make hash for niccustomscripts
 parser_nic_attribute "$NICCUSTOMSCRIPTS" "niccustomscripts"
 
@@ -659,8 +666,14 @@ if [ $? -eq 0 ]; then
     errorcode=1
 fi
 
+#when nictypes=unused, print unused nics
+nonicips_list=`echo "$sorted_nicdevice_list" | grep "unused"`
+if [ $? -eq 0 ]; then
+    echo "$nonicips_list"| log_lines info
+fi
+
 #delete invalid nics device pair based on Error
-valid_sorted_nicdevice_list=`echo "$sorted_nicdevice_list" | sed '/Error/d'`
+valid_sorted_nicdevice_list=`echo "$sorted_nicdevice_list" | sed '/Error/d' | sed '/unused/d'`
 if [ -n "$valid_sorted_nicdevice_list" ]; then 
     log_info "All valid nics and device list:"
     echo "$valid_sorted_nicdevice_list" |log_lines info

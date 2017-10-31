@@ -47,6 +47,7 @@ packimage_m_invalid_compress_method
 pping_h
 pping_v
 pping_node
+pping_invalidnode
 gettab_key_table
 gettab_H
 gettab_err

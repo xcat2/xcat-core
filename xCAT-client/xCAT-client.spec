@@ -16,6 +16,9 @@ BuildRoot: /var/tmp/%{name}-%{version}-%{release}-root
 %define pcm %(if [ "$pcm" = "1" ];then echo 1; else echo 0; fi)
 %define notpcm %(if [ "$pcm" = "1" ];then echo 0; else echo 1; fi)
 
+%define s390x %(if [ "$s390x" = "1" ];then echo 1; else echo 0; fi)
+%define nots390x %(if [ "$s390x" = "1" ];then echo 0; else echo 1; fi)
+
 # AIX will build with an arch of "ppc"
 %ifos linux
 BuildArch: noarch
@@ -69,6 +72,10 @@ cp share/xcat/rvid/* $RPM_BUILD_ROOT/%{prefix}/share/xcat/rvid/
 chmod 755 $RPM_BUILD_ROOT/%{prefix}/share/xcat/rvid/*
 %endif
 
+%if %s390x
+cp openstack.versions $RPM_BUILD_ROOT/%{prefix}
+chmod 644 $RPM_BUILD_ROOT/%{prefix}/openstack.versions
+%endif
 cp bin/* $RPM_BUILD_ROOT/%{prefix}/bin
 chmod 755 $RPM_BUILD_ROOT/%{prefix}/bin/*
 cp sbin/* $RPM_BUILD_ROOT/%{prefix}/sbin
@@ -121,6 +128,17 @@ cp share/xcat/tools/* $RPM_BUILD_ROOT/%{prefix}/share/xcat/tools
 rm -f $RPM_BUILD_ROOT/%{prefix}/bin/getxcatdocs
 rm -f $RPM_BUILD_ROOT/%{prefix}/share/doc/man1/getxcatdocs.1.html
 rm -f $RPM_BUILD_ROOT/%{prefix}/share/man/man1/getxcatdocs.1
+%endif
+
+# Only zVM needs scripts below. These scripts also need Capture::Tiny
+%if %nots390x
+rm -f $RPM_BUILD_ROOT/%{prefix}/bin/zxcatCopyCloneList.pl
+rm -f $RPM_BUILD_ROOT/%{prefix}/bin/zxcatexport.pl
+rm -f $RPM_BUILD_ROOT/%{prefix}/bin/zxcatimport.pl
+rm -f $RPM_BUILD_ROOT/%{prefix}/bin/mkdummyimage
+rm -f $RPM_BUILD_ROOT/%{prefix}/bin/verifynode
+rm -f $RPM_BUILD_ROOT/%{prefix}/bin/zvmMsg
+rm -f $RPM_BUILD_ROOT/%{prefix}/bin/zxcatIVP.pl
 %endif
 
 # These links get made in the RPM_BUILD_ROOT/prefix area

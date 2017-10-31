@@ -4856,7 +4856,7 @@ sub esxi_kickstart_from_template {
     }
     my $tmperr;
     if (-r "$template") {
-        $tmperr = xCAT::Template->subvars($template, "$installdir/autoinst/" . $args{node}, $args{node}, undef);
+        $tmperr = xCAT::Template->subvars($template, "$installdir/autoinst/" . $args{node}, $args{node}, undef, undef, undef, $args{tmpl_hash});
     } else {
         $tmperr = "Unable to find template in /install/custom/install/$plat or $::XCATROOT/share/xcat/install/$plat (for $args{profile}/$args{os}/$args{arch} combination)";
     }
@@ -4937,7 +4937,7 @@ sub mkcommonboot {
     my $restab = xCAT::Table->new('noderes', -create => 0);
     my $resents;
     if ($restab) {
-        $resents = $restab->getNodesAttribs(\@nodes, [ 'tftpdir', 'nfsserver' ]);
+        $resents = $restab->getNodesAttribs(\@nodes, [ 'tftpdir', 'nfsserver', 'xcatmaster', 'tftpserver']);
     }
 
     my %tablecolumnsneededforaddkcmdline;
@@ -4967,6 +4967,8 @@ sub mkcommonboot {
         my $osver   = $ent->{'os'};
         my $tftpdir;
         my $ksserver;
+        my %tmpl_hash;
+
         if ($resents and $resents->{$node}->[0]->{nfsserver}) {
             $ksserver = $resents->{$node}->[0]->{nfsserver};
         } else {
@@ -4977,6 +4979,12 @@ sub mkcommonboot {
             $tftpdir = $resents->{$node}->[0]->{tftpdir};
         } else {
             $tftpdir = $globaltftpdir;
+        }
+        if ($resents and $resents->{$node}->[0]->{xcatmaster} ) {
+            $tmpl_hash{"xcatmaster"} = $resents->{$node}->[0]->{xcatmaster};
+        }
+        if ($resents and $resents->{$node}->[0]->{tftpserver}) {
+            $tmpl_hash{"tftpserver"} = $resents->{$node}->[0]->{tftpserver};
         }
 
         #if($arch ne 'x86'){
@@ -5106,7 +5114,7 @@ sub mkcommonboot {
             $append .= " xcatd=$ksserver:3001";
             if ($bootmode eq "install") {
                 $append .= " ks=http://$ksserver/install/autoinst/$node";
-                esxi_kickstart_from_template(node => $node, os => $osver, arch => $arch, profile => $profile);
+                esxi_kickstart_from_template(node => $node, os => $osver, arch => $arch, profile => $profile, tmpl_hash => \%tmpl_hash);
             }
             if ($bootmode ne "install" and $serialconfig->{$node}) { #don't do it for install, installer croaks currently
                 my $comport = 1;

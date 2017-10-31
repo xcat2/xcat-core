@@ -58,5 +58,5 @@ if [ "$retcode" != "0" ];then
     exit $retcode
 fi
 
-echo "sh $cmd 2>&1" | nc -w 20 $node 3001 
+echo "sh $cmd 2>&1" | nc -w 20 $node 3054 
 

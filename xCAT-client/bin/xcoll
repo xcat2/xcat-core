@@ -8,6 +8,7 @@ use xCAT::Client;
 use Getopt::Long;
 use strict;
 my %output;
+my %outputhdrs;
 
 my $option;
 my $printcount;
@@ -45,7 +46,7 @@ sub fillerup {
     }
 }
 if ($individual) {
-    foreach my $node (keys %output) {
+    foreach my $node (sort { $a <=> $b or $a cmp $b } keys %output) {
         print "====================================\n";
         print "$node\n";
         print "====================================\n";
@@ -63,6 +64,11 @@ foreach my $output (keys %collated) {
     unless ($option) {
         xCAT::Client::submit_request($cmdref, \&fillerup);
     }
+    $outputhdrs{$nodes} = $output;
+}
+foreach my $hdr (sort { $a <=> $b or $a cmp $b } keys %outputhdrs) {
+    $nodes = $hdr;
+    my $output = $outputhdrs{$hdr};
     print "====================================\n";
     print "$nodes\n";
     print "====================================\n";

@@ -243,6 +243,8 @@ sub mkinstall
     my $bootparams = ${$request->{bootparams}};
     my $hmtab    = xCAT::Table->new('nodehm');
     my $vpdtab   = xCAT::Table->new('vpd');
+    my $restab = xCAT::Table->new('noderes');
+    my $resents = $restab->getNodesAttribs(\@nodes, ['xcatmaster', 'tftpserver']);
     my $vpdhash  = $vpdtab->getNodesAttribs(\@nodes, ['uuid']);
     my %img_hash = ();
     my $winimagetab;
@@ -282,6 +284,14 @@ sub mkinstall
         my $partfile;
         my $installto;
         my $winpepath;
+        my %tmpl_hash;
+
+        if ($resents and $resents->{$node}->[0]->{xcatmaster} ) {
+        $tmpl_hash{"xcatmaster"} = $resents->{$node}->[0]->{xcatmaster};
+    }
+        if ($resents and $resents->{$node}->[0]->{tftpserver}) {
+            $tmpl_hash{"tftpserver"} = $resents->{$node}->[0]->{tftpserver};
+        }
 
         my $ent = $osents->{$node}->[0];
         if ($ent and $ent->{provmethod} and ($ent->{provmethod} ne 'install') and ($ent->{provmethod} ne 'netboot') and ($ent->{provmethod} ne 'statelite')) {
@@ -465,7 +475,7 @@ sub mkinstall
                 $tmplfile,
                 "$installroot/autoinst/$node.xml",
                 $node,
-                0);
+                0,undef ,undef, undef, \%tmpl_hash);
         }
 
         if ($tmperr) {

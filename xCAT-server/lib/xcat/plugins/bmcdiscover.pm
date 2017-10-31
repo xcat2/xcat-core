@@ -47,7 +47,8 @@ my $bmc_user;
 my $bmc_pass;
 my $openbmc_user;
 my $openbmc_pass;
-my $openbmc_port = 2200;
+$::P9_WITHERSPOON_MFG_ID     = "42817";
+$::P9_WITHERSPOON_PRODUCT_ID = "16975";
 
 #-------------------------------------------------------
 
@@ -668,13 +669,31 @@ sub scan_process {
                 # Set child process default, if not the function runcmd may return error
                 $SIG{CHLD} = 'DEFAULT';
 
-                my $nmap_cmd = "nmap ${$live_ip}[$i] -p $openbmc_port -Pn";
-                my $nmap_output = xCAT::Utils->runcmd($nmap_cmd, -1);
-                if ($nmap_output =~ /$openbmc_port(.+)open/) {
-                    bmcdiscovery_openbmc(${$live_ip}[$i], $opz, $opw, $request_command);
-                } else {
-                    bmcdiscovery_ipmi(${$live_ip}[$i], $opz, $opw, $request_command);
+                my $bmcusername;
+                my $bmcpassword;
+                $bmcusername = "-U $bmc_user" if ($bmc_user);
+                $bmcpassword = "-P $bmc_pass" if ($bmc_pass);
+                
+                my @mc_cmds = ("/opt/xcat/bin/ipmitool-xcat -I lanplus -H ${$live_ip}[$i] -P $openbmc_pass mc info -N 1 -R 1",
+                              "/opt/xcat/bin/ipmitool-xcat -I lanplus -H ${$live_ip}[$i] $bmcusername $bmcpassword mc info -N 1 -R 1");
+                my $mc_info;
+                my $flag;
+                foreach my $mc_cmd (@mc_cmds) {
+                    $mc_info = xCAT::Utils->runcmd($mc_cmd, -1);
+                    if ($mc_info =~ /Manufacturer ID\s*:\s*(\d+)\s*Manufacturer Name.+\s*Product ID\s*:\s*(\d+)/) {
+                        if ($1 eq $::P9_WITHERSPOON_MFG_ID and $2 eq $::P9_WITHERSPOON_PRODUCT_ID) {
+                            bmcdiscovery_openbmc(${$live_ip}[$i], $opz, $opw, $request_command);
+                            $flag = 1;
+                            last; 
+                        } else {
+                            bmcdiscovery_ipmi(${$live_ip}[$i], $opz, $opw, $request_command);
+                            $flag = 1;
+                            last;
+                        }
+                    }
                 }
+                bmcdiscovery_openbmc(${$live_ip}[$i], $opz, $opw, $request_command) unless ($flag);
+
                 close($parent_fd);
                 exit 0;
             } else {

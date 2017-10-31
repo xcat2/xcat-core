@@ -10,7 +10,7 @@ B<switchdiscover [-h| --help]>
 
 B<switchdiscover [-v| --version]>
 
-B<switchdiscover> [I<noderange> | B<--range> I<ip_ranges>] B<[-V] [-w][-r|-x|-z][-s> I<scan_methods> B<--setup>]
+B<switchdiscover> [I<noderange> | B<--range> I<ip_ranges>] B<[-V] [-w][-r|-x|-z][-s> I<scan_methods>] [B<--setup>] [B<-c> I<community>]
 
 
 
@@ -24,7 +24,7 @@ To view all the switches defined in the xCAT database use B<lsdef -w "nodetype=s
 
 For lldp method, make sure that lldpd package is installed and lldpd is running on the xCAT management node. lldpd comes from xcat-dep package or you can get it from http://vincentbernat.github.io/lldpd/installation.html. 
 
-For snmp method, make sure that snmpwalk command is installed and snmp is enabled for switches. To install snmpwalk, "yum install net-snmp-utils" for redhat and sles,  "apt-get install snmp" for Ubuntu. 
+For snmp method, make sure that snmpwalk command is installed and snmp is enabled for switches. To install snmpwalk, "yum install net-snmp-utils" for redhat and sles,  "apt-get install snmp" for Ubuntu. The switchdiscover command only check the switches with default community string, if user already configured switch with other commmunity string, need to pass in with B<-c> option for switchdiscover command to be able to discover. 
 
 
 =head1 OPTIONS
@@ -86,6 +86,10 @@ Stanza formatted output.
 =item B<--setup>
 
 Process switch-based switch discovery. Update discovered switch's ip address, hostname and enable snmpv3 configuration based on the predefined switch. 
+
+=item B<-c>          
+
+User defined community string for snmp scan.
 
 =back
 

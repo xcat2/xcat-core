@@ -51,8 +51,10 @@ my $xcatdebugmode = 0;
 my $IPMIXCAT  = "/opt/xcat/bin/ipmitool-xcat";
 my $NON_BLOCK = 1;
 use constant RFLASH_LOG_DIR => "/var/log/xcat/rflash";
-unless (-d RFLASH_LOG_DIR) {
-    mkpath(RFLASH_LOG_DIR);
+if (-d RFLASH_LOG_DIR) {
+    chmod 0700, RFLASH_LOG_DIR;
+} else {
+    mkpath(RFLASH_LOG_DIR, 0, 0700);
 }
 
 require xCAT::data::ibmhwtypes;
@@ -3048,7 +3050,7 @@ sub beacon {
         $ipmiv2 = 1;
     }
     if ($subcommand ne "on" and $subcommand ne "off") {
-        xCAT::SvrUtils::sendmsg([ 1, "please specify on or off for ipmi nodes (stat impossible)" ], $callback, $sessdata->{node}, %allerrornodes);
+        xCAT::SvrUtils::sendmsg([ 1, "Only 'on' or 'off' is supported for IPMI managed nodes."], $callback, $sessdata->{node}, %allerrornodes);
     }
 
     #if stuck with 1.5, say light for 255 seconds.  In 2.0, specify to turn it on forever

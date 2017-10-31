@@ -3507,6 +3507,7 @@ sub cmdlog_submitlog() {
     $tmpreq =~ s/\[Request\]\s+(.+)/$1/g;
     if ($tmpreq =~ /getipmicons/) { return 1; }
     if ($tmpreq =~ /getcons/)     { return 1; }
+    if ($tmpreq =~ /getopenbmccons/) { return 1; }
 
     if ($cmdlog_alllog !~ /\n$/) {
         $cmdlog_alllog .= "\n";

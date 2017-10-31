@@ -178,6 +178,7 @@ zvmPlugin.prototype.loadServiceProvisionPage = function(tabId) {
             },
 
             success : function(data) {
+                data = decodeRsp(data);
                 setzVMCookies(data);
                 loadzVMs(zvmCol);
             }
@@ -922,7 +923,10 @@ zvmPlugin.prototype.loadClonePage = function(node, nodeOS, nodeArch) {
                                     + ';node=' + node
                             },
 
-                            success : updateZCloneStatus
+                            success : function(data) {
+                                data = decodeRsp(data);
+                                updateZCloneStatus(data);
+                            }
                         });
                     }
                 } else {
@@ -954,7 +958,10 @@ zvmPlugin.prototype.loadClonePage = function(node, nodeOS, nodeArch) {
                                 + ';node=' + nodeRange
                         },
 
-                        success : updateZCloneStatus
+                        success : function(data) {
+                            data = decodeRsp(data);
+                            updateZCloneStatus(data);
+                        }
                     });
                 }
 
@@ -1055,7 +1062,10 @@ zvmPlugin.prototype.loadInventory = function(data) {
                 msg : msg
             },
 
-            success : loadUserEntry
+            success : function(data) {
+                data = decodeRsp(data);
+                loadUserEntry(data);
+            }
         });
 
         // Change text
@@ -1138,7 +1148,10 @@ zvmPlugin.prototype.loadInventory = function(data) {
                 msg : node+';'+hcpHostname
             },
 
-            success : setNodeZhcpNodename
+            success : function(data) {
+                data = decodeRsp(data);
+                setNodeZhcpNodename(data);
+            }
         });
     }
 
@@ -1834,7 +1847,10 @@ zvmPlugin.prototype.loadProvisionPage = function(tabId) {
             msg : ''
         },
 
-        success : setOSImageCookies
+        success : function(data) {
+            data = decodeRsp(data);
+            setOSImageCookies(data);
+        }
     });
 
     // Get groups
@@ -1848,7 +1864,10 @@ zvmPlugin.prototype.loadProvisionPage = function(tabId) {
             msg : ''
         },
 
-        success : setGroupsCookies
+        success : function(data) {
+            data = decodeRsp(data);
+            setGroupsCookies(data);
+        }
     });
 
     // Get provision tab instance
@@ -1932,7 +1951,10 @@ zvmPlugin.prototype.loadResources = function() {
             args : 'zvm.hcp;hosts.hostnames',
             msg : ''
         },
-        success : getZResources
+        success : function(data) {
+            data = decodeRsp(data);
+            getZResources(data);
+        }
     });
 };
 
@@ -2189,6 +2211,7 @@ zvmPlugin.prototype.addNode = function() {
                                  * @return Nothing
                                  */
                                 success : function (data) {
+                                    data = decodeRsp(data);
                                     // Get ajax response
                                     var rsp = data.rsp;
                                     var args = data.msg.split(';');
@@ -2262,6 +2285,7 @@ zvmPlugin.prototype.addNode = function() {
                              * @return Nothing
                              */
                             success : function (data) {
+                                data = decodeRsp(data);
                                 // Get ajax response
                                 var rsp = data.rsp;
                                 var args = data.msg.split(';');
@@ -2553,7 +2577,10 @@ zvmPlugin.prototype.loadMigratePage = function(tgtNode, fromhcp) {
                 msg : 'out=migrateStatusBar' + inst + ';cmd=rmigrate;tgt=' + tgts.val()
             },
 
-            success : updateStatusBar
+            success : function(data) {
+                data = decodeRsp(data);
+                updateStatusBar(data);
+            }
         });
     });
     migrateForm.append(runBtn);
@@ -2760,7 +2787,10 @@ zvmPlugin.prototype.loadLogPage = function(node) {
                         msg : 'out=' + statBarId + ';cmd=reventlog;tgt=' + tgts
                     },
 
-                    success : updateStatusBar
+                    success : function(data) {
+                        data = decodeRsp(data);
+                        updateStatusBar(data);
+                    }
                 });
 
                 // Create loader

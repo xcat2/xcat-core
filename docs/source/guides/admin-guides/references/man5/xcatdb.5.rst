@@ -157,27 +157,6 @@ Before you panic, let me explain each column:
 See http://www.perl.com/doc/manual/html/pod/perlre.html for information on perl regular expressions.
 
 
-Regular Expression Helper Functions
-============================
-
-xCAT provides several functions that can simplify regular expressions.
-
-\ **a2idx(character) **\
- Turns a single character into a 1-indexed index. ‘a’ maps to 1 and ‘z’ maps to 26.
-
-\ **a2zidx(character) **\
- Turns a single character into a 0-indexed index. ‘a’ maps to 0 and ‘z’ maps to 25.
-
-\ **dim2idx(value, [count, value...]) **\
- Converts dimensions (such as row, column, chassis, etc) into an index.  If each rack has 18 nodes, use dim2idx(racknum, 18, nodenum). Additional dimensions should be added at the beginning. All values are 1-indexed.
-
-\ **skip(index, skiplist) **\
- Return an index with certain values skipped.  The skip list uses the format start[:count][,start[:count]...]
-
-\ **ipadd(octet1, octet2, octet3, octet4, toadd, skipstart, skipend) **\
- Add to an IP address. Generally only necessary when you cross octets. Optionally skip addresses at the start and end of octets (like .0 or .255). Technically those are valid IP addresses, but sometimes software makes poor assumptions about which broadcast and gateway addresses. 
-
-
 Easy Regular Expressions
 ========================
 
@@ -185,6 +164,46 @@ Easy Regular Expressions
 As of xCAT 2.8.1, you can use a modified version of the regular expression support described in the previous section. You do not need to enter the node information (1st part of the expression), it will be derived from the input nodename. You only need to supply the 2nd part of the expression to determine the value to give the attribute. For examples, see
 
 http://xcat-docs.readthedocs.org/en/latest/guides/admin-guides/basic_concepts/xcat_db/regexp_db.html#easy-regular-expressions
+
+
+Regular Expression Helper Functions
+===================================
+
+
+xCAT provides several functions that can simplify regular expressions.
+
+
+\ **a2idx**\ 
+ 
+ ASCII Character to Index
+ 
+
+
+\ **a2zidx**\ 
+ 
+ ASCII Character to 0-Index
+ 
+
+
+\ **dim2idx**\ 
+ 
+ Dimensions to Index
+ 
+
+
+\ **skip**\ 
+ 
+ Skip indices
+ 
+
+
+\ **ipadd**\ 
+ 
+ Add to an IP address
+ 
+
+
+http://xcat-docs.readthedocs.org/en/latest/guides/admin-guides/basic_concepts/xcat_db/regexp_db.html#regular-expression-helper-functions
 
 
 

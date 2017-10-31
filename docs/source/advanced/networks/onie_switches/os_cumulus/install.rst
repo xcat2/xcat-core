@@ -78,6 +78,8 @@ Validate the ssh keys are correctly configured by running a ``xdsh`` command: ::
     xdsh frame01sw1 uptime
 
 
+.. _activate-the-license:
+
 Activate the License
 --------------------
 
