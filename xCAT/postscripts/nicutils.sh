@@ -803,7 +803,6 @@ function create_raw_vlan_for_br {
     fi
 
     cfg="${cfg}${cfg:+,}USERCTL=no"
-    cfg="${cfg}${cfg:+,}TYPE=Ethernet"
     cfg="${cfg}${cfg:+,}VLAN=yes"
     cfg="${cfg}${cfg:+,}BRIDGE=$_bridge"
     [ -n "$_mtu" ] && \
@@ -1180,7 +1179,6 @@ function create_vlan_interface {
     fi
     
     cfg="${cfg}${cfg:+,}USERCTL=no"
-    cfg="${cfg}${cfg:+,}TYPE=Ethernet"
     cfg="${cfg}${cfg:+,}VLAN=yes"
     [ -n "$_mtu" ] && \
     cfg="${cfg}${cfg:+,}MTU=$_mtu"
