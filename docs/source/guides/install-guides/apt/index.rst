@@ -1,3 +1,5 @@
+.. _ubuntu_install_guide:
+
 Installation Guide for Ubuntu Server LTS
 ========================================
 

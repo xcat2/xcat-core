@@ -1,3 +1,5 @@
+.. _rhel_install_guide:
+
 Installation Guide for Red Hat Enterprise Linux
 ===============================================
 
