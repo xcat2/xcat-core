@@ -386,6 +386,8 @@ my $xcatdebugmode = 0;
 
 my $flag_debug = "[openbmc_debug]";
 
+my %login_pid_node; # used in process_request, record login fork pid map
+
 #-------------------------------------------------------
 
 =head3  preprocess_request
@@ -532,37 +534,68 @@ sub process_request {
         );    
     }
 
-    my $bmcip;
     my $login_url;
     my $handle_id;
     my $content;
-    $wait_node_num = keys %node_info;
-    my @donargs = ();
+    my @nodes_login = keys %node_info;
+    $wait_node_num = @nodes_login;
+    my $child_num;
+    my %valid_nodes = ();
+
+    if ($request->{command}->[0] eq "getopenbmccons") {
+        foreach my $node (keys %node_info) {
+            my $donargs = [ $node,$node_info{$node}{bmc},$node_info{$node}{username}, $node_info{$node}{password}];
+            getopenbmccons($donargs, $callback);
+        }
+        return;
+    }
+
+    my $max_child_num = 64;
+    my $for_num = ($wait_node_num < $max_child_num) ? $wait_node_num : $max_child_num;
+    for (my $i = 0; $i < $for_num; $i++) {
+        my $node = shift @nodes_login;
+        my $rst_fork = fork_process_login($node);
+        $child_num++ unless($rst_fork);
+    }
+
+    while (1) {
+        last if ($child_num == 0 and !@nodes_login);
+        my $cpid;
+        while (($cpid = waitpid(-1, WNOHANG)) > 0) {
+            if ($login_pid_node{$cpid}) {
+                $child_num--;
+                my $node = $login_pid_node{$cpid};
+                my $rc = $? >> 8;
+                if ($rc == 0) {
+                    $valid_nodes{$node} = 1;
+                }
+                delete $login_pid_node{$cpid};
+            }
+        }
+        if (@nodes_login) {
+            if ($child_num < $max_child_num) {
+                my $node = shift @nodes_login;
+                my $rst_fork = fork_process_login($node);
+                $child_num++ unless($rst_fork);
+            }
+        }
+    }
 
     foreach my $node (keys %node_info) {
-        $bmcip = $node_info{$node}{bmc};
-
-        if ($request->{command}->[0] eq "getopenbmccons") {
-            push @donargs, [ $node,$bmcip,$node_info{$node}{username}, $node_info{$node}{password}];
+        if (!$valid_nodes{$node}) {
+            xCAT::SvrUtils::sendmsg([1, $::RESPONSE_SERVICE_UNAVAILABLE], $callback, $node);
+            $wait_node_num--;
         } else {
-            $login_url = "$http_protocol://$bmcip/login";
+            $login_url = "$http_protocol://$node_info{$node}{bmc}/login";
             $content = '{ "data": [ "' . $node_info{$node}{username} .'", "' . $node_info{$node}{password} . '" ] }';
             if ($xcatdebugmode) {
                 my $debug_info = "curl -k -c cjar -H \"Content-Type: application/json\" -d '{ \"data\": [\"$node_info{$node}{username}\", \"xxxxxx\"] }' $login_url";
                 process_debug_info($node, $debug_info);
             }
-            $handle_id = xCAT::OPENBMC->new($async, $login_url, $content); 
+            $handle_id = xCAT::OPENBMC->new($async, $login_url, $content);
             $handle_id_node{$handle_id} = $node;
             $node_info{$node}{cur_status} = $next_status{ $node_info{$node}{cur_status} };
         }
-    }  
-
-    #process rcons
-    if ($request->{command}->[0] eq "getopenbmccons") {
-        foreach (@donargs) {
-            getopenbmccons($_, $callback);
-        }
-        return;
     }
 
     if ($next_status{LOGIN_RESPONSE} eq "RSPCONFIG_SSHCFG_REQUEST") {
@@ -1188,6 +1221,35 @@ sub parse_command_status {
 }
 
 #-------------------------------------------------------
+
+=head3  fork_process_login
+
+  Fork process to login
+  Input:
+        $node: nodename
+
+=cut
+
+#-------------------------------------------------------
+sub fork_process_login {
+    my $node = shift;
+    my $rst = 0;
+
+    my $child = xCAT::Utils->xfork;
+    if (!defined($child)) {
+        xCAT::SvrUtils::sendmsg("Failed to fork child process for login request.", $callback, $node);
+        sleep(1);
+        $rst = 1;
+    } elsif ($child == 0) {
+        exit(login_logout_request($node));
+    } else {
+        $login_pid_node{$child} = $node;
+    }
+
+    return $rst;
+}
+
+#-------------------------------------------------------
 #
 #=head3  get_functional_software_ids
 #
@@ -1467,6 +1529,43 @@ sub process_debug_info {
 
     xCAT::SvrUtils::sendmsg("$flag_debug $debug_msg", $callback, $ts_node);
     xCAT::MsgUtils->trace(0, "D", "$flag_debug $node $debug_msg"); 
+}
+
+#-------------------------------------------------------
+
+=head3  login_logout_request
+
+  Send login request using curl command
+  Input:
+        $node: nodename
+
+=cut
+
+#-------------------------------------------------------
+sub login_logout_request {
+    my $node = shift;
+
+    my $request_url = "$http_protocol://" . $node_info{$node}{bmc};
+    my $content_login = '{ "data": [ "' . $node_info{$node}{username} .'", "' . $node_info{$node}{password} . '" ] }';
+    my $content_logout = '{ "data": [ ] }';
+    my $cjar_id = "/tmp/_xcat_cjar.$node";
+
+    my $curl_login_cmd  = "curl -c $cjar_id -k -H 'Content-Type: application/json' -X POST $request_url/login -d '" . $content_login . "'";
+    my $curl_logout_cmd = "curl -b $cjar_id -k -H 'Content-Type: application/json' -X POST $request_url/logout -d '" . $content_logout . "'";
+
+    my $curl_login_result = `$curl_login_cmd -s -m 10`;
+
+    unless ($curl_login_result) {
+        if ($xcatdebugmode) {
+            my $debug_info = "LOGIN Failed using curl command";
+            process_debug_info($node, $debug_info);
+        }
+        return 1;
+    } else {
+        my $curl_logout_result = `$curl_logout_cmd`;
+    }
+
+    return 0;
 }
 
 #-------------------------------------------------------
