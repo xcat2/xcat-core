@@ -18,39 +18,47 @@ Build the Service Node Diskless Image
 
 This section assumes you can build the stateless image on the management node because the Service Nodes are the same OS and architecture as the management node. If this is not the case, you need to build the image on a machine that matches the Service Node's OS architecture.
 
-* Create an osimage definition. When you run ``copycds``, xCAT will only create a Service Node stateful osimage definitions for that distribution. For a stateless Service Node, you may create it from a stateless Compute Node osimage definition.  ::
+* Create an osimage definition.
+
+When you run ``copycds``, xCAT will only create a Service Node stateful osimage definitions for that distribution. For a stateless Service Node osimage, you may create it from a stateless Compute Node osimage definition.  ::
 
     lsdef -t osimage | grep -i netboot
     rhels7.3-ppc64le-netboot-compute  (osimage)
 
     mkdef -t osimage -o rhels7.3-ppc64le-netboot-service \
                --template rhels7.3-ppc64le-netboot-compute \
-               profile=service provmethod=netboot postscripts=servicenode \
-               exlist=/opt/xcat/share/xcat/netboot/rh/service.rhels7.ppc64le.exlist \
-               otherpkglist=/opt/xcat/share/xcat/netboot/rh/service.rhels7.ppc64le.otherpkgs.pkglist \
-               pkglist=/opt/xcat/share/xcat/netboot/rh/service.rhels7.ppc64le.pkglist \
-               postinstall=/opt/xcat/share/xcat/netboot/rh/service.rhels7.ppc64le.postinstall \
-               rootimgdir=/install/netboot/rhels7.3/ppc64le/service
+               profile=service provmethod=netboot postscripts=servicenode
 
-    lsdef -t osimage -l rhels7.3-ppc64le-netboot-service
+    lsdef -t osimage rhels7.3-ppc64le-netboot-service
     Object name: rhels7.3-ppc64le-netboot-service
-        exlist=/opt/xcat/share/xcat/netboot/rh/service.rhels7.ppc64le.exlist
+        exlist=/opt/xcat/share/xcat/netboot/rh/compute.rhels7.ppc64le.exlist
         imagetype=linux
         osarch=ppc64le
         osdistroname=rhels7.3-ppc64le
         osname=Linux
         osvers=rhels7.3
         otherpkgdir=/install/post/otherpkgs/rhels7.3/ppc64le
-        otherpkglist=/opt/xcat/share/xcat/netboot/rh/service.rhels7.ppc64le.otherpkgs.pkglist
         pkgdir=/install/rhels7.3/ppc64le
-        pkglist=/opt/xcat/share/xcat/netboot/rh/service.rhels7.ppc64le.pkglist
-        postinstall=/opt/xcat/share/xcat/netboot/rh/service.rhels7.ppc64le.postinstall
+        pkglist=/opt/xcat/share/xcat/netboot/rh/compute.rhels7.ppc64le.pkglist
+        postinstall=/opt/xcat/share/xcat/netboot/rh/compute.rhels7.ppc64le.postinstall
         postscripts=servicenode
         profile=service
         provmethod=netboot
-        rootimgdir=/install/netboot/rhels7.3/ppc64le/service
+        rootimgdir=/install/netboot/rhels7.3/ppc64le/compute
 
-* You can check the Service Node packaging to see if it has all the rpms you require. We ship a basic requirements lists that will create a fully functional Service Node. However, you may want to customize your service node by adding additional operating system packages or modifying the files excluded by the exclude list. View the files referenced by the osimage pkglist, otherpkglist and exlist attributes: ::
+* Configure mandatory attributes for Service Node osimage definition.
+
+  The following attributes must be modified to suitable value: ::
+
+    exlist
+    otherpkglist
+    pkglist
+    postinstall
+    rootimgdir
+
+  1, Create the exlist, pkglist and otherpkglist file.
+
+  xCAT ships a basic requirements lists that will create a fully functional Service Node. However, you may want to customize your service node by adding additional operating system packages or modifying the files excluded by the exclude list. Check the below files to see if it meets your needs. ::
 
     cd /opt/xcat/share/xcat/netboot/rh/
     view service.rhels7.ppc64le.pkglist
@@ -59,29 +67,40 @@ This section assumes you can build the stateless image on the management node be
 
   If you would like to change any of these files, copy them to a custom
   directory. This can be any directory you choose, but we recommend that you
-  keep it /install somewhere. A good location is something like
-  ``/install/custom/netboot/<osimage>``. Make sure that your
-  ``otherpkgs.pkglist`` file as an entry for
+  keep it /install somewhere. A good location is something like ``/install/custom/netboot/<osimage>``. 
 
   ::
 
-    xcat/xcat-core/xCATsn
-    xcat/xcat-dep/rh7/ppc64le/conserver-xcat
-    xcat/xcat-dep/rh7/ppc64le/perl-Net-Telnet
-    xcat/xcat-dep/rh7/ppc64le/perl-Expect
+    export OSIMAGE_DIR=/install/custom/netboot/rhels7.3-ppc64le-netboot-service
 
-  This is required to install the xCAT Service Node function into your image.
+    mkdir -p $OSIMAGE_DIR
 
-  You may also choose to create an appropriate /etc/fstab file in your
-  Service Node image. Copy the script referenced by the postinstall
-  attribute to your directory and modify it as you would like:
+    cp /opt/xcat/share/xcat/netboot/rh/service.rhels7.ppc64le.pkglist $OSIMAGE_DIR
+    cp /opt/xcat/share/xcat/netboot/rh/service.rhels7.ppc64le.otherpkgs.pkglist $OSIMAGE_DIR
+    cp /opt/xcat/share/xcat/netboot/rh/service.rhels7.ppc64le.exlist $OSIMAGE_DIR
+
+  And make sure that your ``otherpkgs.pkglist`` file has the following entries:
 
   ::
 
-    cp /opt/xcat/share/xcat/netboot/rh/service.rhels7.ppc64le.postinstall \
-    /install/custom/netboot/rhels7.3-ppc64le-netboot-service/my.postinstall
+    xcat/xcat-dep/<os>/<arch>/xCATsn
+    xcat/xcat-dep/<os>/<arch>/conserver-xcat
+    xcat/xcat-dep/<os>/<arch>/perl-Net-Telnet
+    xcat/xcat-dep/<os>/<arch>/perl-Expect
 
-    vi /install/custom/netboot/rhels7.3-ppc64le-netboot-service/my.postinstall
+  These are required to install the xCAT Service Node function into your image.
+
+  2, Create the postinstall script.
+
+  xCAT ships a default postinstall script for stateless Service Node. You may also choose to create an appropriate /etc/fstab file in your
+  Service Node image. :
+
+  ::
+
+    export OSIMAGE_DIR=/install/custom/netboot/rhels7.3-ppc64le-netboot-service
+    cp /opt/xcat/share/xcat/netboot/rh/service.rhels7.ppc64le.postinstall $OSIMAGE_DIR
+
+    vi $OSIMAGE_DIR/service.rhels7.ppc64le.postinstall
       # uncomment the sample fstab lines and change as needed:
       proc /proc proc rw 0 0
       sysfs /sys sysfs rw 0 0
@@ -90,17 +109,36 @@ This section assumes you can build the stateless image on the management node be
       none /tmp tmpfs defaults,size=10m 0 2
       none /var/tmp tmpfs defaults,size=10m 0 2
 
-  After modifying the files, you will need to update the osimage definition to
-  reference these files. We recommend creating a new osimage definition for
-  your custom image: ::
+  3, Modify the Service Node osimage definition with given attributes.
 
-    lsdef -t osimage -l rhels7.3-ppc64le-netboot-service -z > /tmp/myservice.def
-    vi /tmp/myservice.def
-      # change the name of the osimage definition
-      # change any attributes that now need to reference your custom files
-      # change the rootimgdir attribute replacing 'service' with a name to match your new osimage definition
+  ::
 
-    cat /tmp/msyservice.def | mkdef -z
+    export OSIMAGE_DIR=/install/custom/netboot/rhels7.3-ppc64le-netboot-service
+    chdef -t osimage -o rhels7.3-ppc64le-netboot-service \
+               exlist=$OSIMAGE_DIR/service.rhels7.ppc64le.exlist \
+               otherpkglist=$OSIMAGE_DIR/service.rhels7.ppc64le.otherpkgs.pkglist \
+               pkglist=$OSIMAGE_DIR/service.rhels7.ppc64le.pkglist \
+               postinstall=$OSIMAGE_DIR/service.rhels7.ppc64le.postinstall \
+               rootimgdir=$OSIMAGE_DIR/service
+
+    lsdef -t osimage -l rhels7.3-ppc64le-netboot-service
+    Object name: rhels7.3-ppc64le-netboot-service
+        exlist=/install/custom/netboot/rhels7.3-ppc64le-netboot-service/service.rhels7.ppc64le.exlist
+        imagetype=linux
+        osarch=ppc64le
+        osdistroname=rhels7.3-ppc64le
+        osname=Linux
+        osvers=rhels7.3
+        otherpkgdir=/install/post/otherpkgs/rhels7.3/ppc64le
+        otherpkglist=/install/custom/netboot/rhels7.3-ppc64le-netboot-service/service.rhels7.ppc64le.otherpkgs.pkglist
+        pkgdir=/install/rhels7.3/ppc64le
+        pkglist=/install/custom/netboot/rhels7.3-ppc64le-netboot-service/service.rhels7.ppc64le.pkglist
+        postinstall=/install/custom/netboot/rhels7.3-ppc64le-netboot-service/service.rhels7.ppc64le.postinstall
+        postscripts=servicenode
+        profile=service
+        provmethod=netboot
+        rootimgdir=/install/custom/netboot/rhels7.3-ppc64le-netboot-service/service
+
 
   While you are here, if you'd like, you can do the same for your Service Node
   images, creating custom files and new custom osimage definitions as you need
@@ -108,8 +146,10 @@ This section assumes you can build the stateless image on the management node be
 
 * Make your xCAT software available for otherpkgs processing
 
-* If you downloaded xCAT to your management node for installation, place a
-  copy of your xcat-core and xcat-dep in your otherpkgdir directory ::
+  Option 1:
+
+  If you downloaded xCAT to your management node for installation, place a
+  copy of your ``xcat-core`` and ``xcat-dep`` in your ``otherpkgdir`` directory ::
 
     lsdef -t osimage -o rhels7.3-ppc64le-netboot-service -i otherpkgdir
     Object name: rhels7.3-ppc64le-netboot-service
@@ -120,7 +160,9 @@ This section assumes you can build the stateless image on the management node be
     cp -Rp <current location of xcat-core>/xcat-core
     cp -Rp <current location of xcat-dep>/xcat-dep
 
-* If you installed your management node directly from the online
+  Option 2:
+
+  If you installed your management node directly from the online
   repository, you will need to download the ``xcat-core`` and ``xcat-dep`` tarballs
 
   - From http://xcat.org/download.html, download the ``xcat-core`` and ``xcat-dep`` tarball files.  
@@ -152,14 +194,16 @@ This section assumes you can build the stateless image on the management node be
 
   ::
 
-    chroot /install/netboot/rhels7.3/ppc64le/service/rootimg chkconfig dhcpd off
-    chroot /install/netboot/rhels7.3/ppc64le/service/rootimg chkconfig dhcrelay off
+    export OSIMAGE_ROOT=/install/custom/netboot/rhels7.3-ppc64le-netboot-service/service
+    chroot $OSIMAGE_ROOT/rootimg chkconfig dhcpd off
+    chroot $OSIMAGE_ROOT/rootimg chkconfig dhcrelay off
 
 * IF using NFS hybrid mode, export /install read-only in Service Node image:
 
   ::
 
-    cd /install/netboot/rhels7.3/ppc64le/service/rootimg/etc
+    export OSIMAGE_ROOT=/install/custom/netboot/rhels7.3-ppc64le-netboot-service/service
+    cd $OSIMAGE_ROOT/rootimg/etc
     echo '/install *(ro,no_root_squash,sync,fsid=13)' >exports
 
 * Pack the image for your osimage definition:
@@ -168,26 +212,19 @@ This section assumes you can build the stateless image on the management node be
 
     packimage rhels7.3-ppc64le-netboot-service
 
-* Set the node status to ready for netboot using your osimage definition and
-  your 'service' nodegroup:
-
-  ::
-
-    nodeset service osimage=rhels7.3-ppc64le-netboot-service
-
-*  To diskless boot the Service Nodes
-
-  ::
-
-    rsetboot service
-
-Monitor install and boot
+Install Service Nodes
 ------------------------
 
-::
+  ::
 
-    wcons service # make sure DISPLAY is set to your X server/VNC or
-    rcons <one-node-at-a-time> # or do rcons for each node
+    rinstall service osimage=rhels7.3-ppc64le-netboot-service
+
+  Watch the installation progress using either wcons or rcons:
+
+  ::
+
+    wcons service     # make sure DISPLAY is set to your X server/VNC or
+    rcons <node_name>
     tail -f /var/log/messages
 
 
@@ -195,7 +232,8 @@ Enable localdisk for stateless Service Node (Optional)
 ------------------------------------------------------
 
 If you want, your can leverage local disk to contain some directories during the
-stateless nodes running. For Service Node, it is recommended to put below directories
+stateless nodes running. And you can customize the osimage definition to achieve it.
+For Service Node, it is recommended to put below directories
 on local disk. ::
 
     #/install         (Not required when using shared /install directory)
@@ -263,10 +301,9 @@ To update the xCAT software in the image at a later time:
 
   ::
 
-    genimage rhels7.3-ppc64le-netboot-service
-    packimage rhels7.3-ppc64le-netboot-service
-    nodeset service osimage=rhels7.3-ppc64le-netboot-service
-    rsetboot service
+    genimage "<osimagename>"
+    packimage "<osimagename>"
+    rinstall service osimage="<osimagename>"
 
 Note: The Service Nodes are set up as NFS-root servers for the compute nodes.
 Any time changes are made to any compute image on the mgmt node it will be
