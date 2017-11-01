@@ -692,8 +692,6 @@ sub scan_process {
                         }
                     }
                 }
-                bmcdiscovery_openbmc(${$live_ip}[$i], $opz, $opw, $request_command) unless ($flag);
-
                 close($parent_fd);
                 exit 0;
             } else {
