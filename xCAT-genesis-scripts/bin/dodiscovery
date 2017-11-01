@@ -134,8 +134,8 @@ fi
 # The MEMORY will look like this: 32868920
 MEMORY=`cat /proc/meminfo |grep MemTotal|awk '{printf "%.0fMB\n", $2/1024}'`
 
-# The DISKSIZE will look like this: sdb:250GB,sda:250GB
-DISKSIZE=`cat /proc/partitions |grep -e "sd.\>" |awk -F' ' '{printf "%s:%.0fGB\n", $4, $3*0.000001024}' |sed 'N;s/\n/,/'`
+# The DISKSIZE will look like this: sda:960GB,sdb:960GB,sdc:480GB,sdd:480GB (sorted by major,minor)
+DISKSIZE="$(cat /proc/partitions |sort -n |awk 'BEGIN{sep=""} /sd.\>/{printf("%s%s:%.0fGB", sep, $4, $3*0.000001024) ; sep=","}')"
 
 logger -s -t $log_label -p local4.info "Beginning echo information to discovery packet file..."
 echo '<xcatrequest>' > /tmp/discopacket
