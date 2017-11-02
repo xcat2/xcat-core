@@ -760,6 +760,7 @@ sub refresh_switch {
                             printf $output "$mymac|%s\n", $self->{switches}->{$switch}->{$myport};
                         }
                     }
+                    $macport="swp".$macport;
                     push @{ $index_to_vlan{$macport} }, $macvlan;
                     push @{ $index_to_mac{$macport} }, $mymac;
                 }
@@ -840,15 +841,15 @@ sub refresh_switch {
             my $port_index = $boid;
             my $port_name  = $namemap->{ $bridgetoifmap->{$port_index} };
             my $mtu  = $iftomtumap->{ $bridgetoifmap->{$port_index} };
-            if (defined($index_to_mac{$port_index})) {
-                push @{ $self->{macinfo}->{$switch}->{$port_name} }, @{ $index_to_mac{$port_index} };
+            if (defined($index_to_mac{$port_name})) {
+                push @{ $self->{macinfo}->{$switch}->{$port_name} }, @{ $index_to_mac{$port_name} };
             }
             else {
                 $self->{macinfo}->{$switch}->{$port_name}->[0] = '';
             }
 
-            if (defined($index_to_vlan{$port_index})) {
-                push @{ $self->{vlaninfo}->{$switch}->{$port_name} }, @{ $index_to_vlan{$port_index} };
+            if (defined($index_to_vlan{$port_name})) {
+                push @{ $self->{vlaninfo}->{$switch}->{$port_name} }, @{ $index_to_vlan{$port_name} };
             }
             else {
                 $self->{vlaninfo}->{$switch}->{$port_name}->[0] = '';
