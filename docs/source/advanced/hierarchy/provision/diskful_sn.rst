@@ -33,22 +33,22 @@ Configure ``otherpkgdir`` and ``otherpkglist`` for service node osimage
 
  * Verify the following entries are included in the package file specified by the ``otherpkglist`` attribute of the service node osimage. ::
 
-    xcat/xcat-dep/<os>/<arch>/xCATsn
+    xcat/xcat-core/xCATsn
     xcat/xcat-dep/<os>/<arch>/conserver-xcat
     xcat/xcat-dep/<os>/<arch>/perl-Net-Telnet
     xcat/xcat-dep/<os>/<arch>/perl-Expect
 
    For example, for the osimage *rhels7-x86_64-install-service* ::
 
-    [root@fs4 ~]# lsdef -t osimage rhels7-x86_64-install-service -i otherpkglist
-       Object name: rhels7-x86_64-install-service
+    lsdef -t osimage rhels7-x86_64-install-service -i otherpkglist
+    Object name: rhels7-x86_64-install-service
          otherpkglist=/opt/xcat/share/xcat/install/rh/service.rhels7.x86_64.otherpkgs.pkglist
-    [root@fs4 ~]# cat /opt/xcat/share/xcat/install/rh/service.rhels7.x86_64.otherpkgs.pkglist
+
+    cat /opt/xcat/share/xcat/install/rh/service.rhels7.x86_64.otherpkgs.pkglist
        xcat/xcat-core/xCATsn
        xcat/xcat-dep/rh7/x86_64/conserver-xcat
        xcat/xcat-dep/rh7/x86_64/perl-Net-Telnet
        xcat/xcat-dep/rh7/x86_64/perl-Expect
-    [root@fs4 ~]#
 
 **Note:** you will be installing the xCAT Service Node rpm xCATsn meta-package on the Service Node, not the xCAT Management Node meta-package. Do not install both.
 

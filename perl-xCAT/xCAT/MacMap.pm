@@ -512,7 +512,7 @@ sub refresh_table {
         my $ntype = $typehash->{$entry->{node}}->[0]->{nodetype};
         if ( (($discover_switch) and ( $ntype ne "switch"))
             or ( !($discover_switch) and ( $ntype eq "switch")) ){
-            xCAT::MsgUtils->message("S", "refresh_table: skip $entry->{node} and $entry->{switch}, $discover_switch , $ntype\n");
+            xCAT::MsgUtils->trace(0, "d", "refresh_table: skip node=$entry->{node} switch=$entry->{switch} discover_switch=$discover_switch nodetype=$ntype\n");
             next;
         }
         if (defined($entry->{switch}) and $entry->{switch} ne "" and defined($entry->{port}) and $entry->{port} ne "") {
@@ -561,7 +561,7 @@ sub refresh_table {
             $self->refresh_switch($parent, $community, $entry->{switch});
             my $runstop = time;
             my $diffduration = $runstop - $runstart;
-            xCAT::MsgUtils->message("S", "refresh_switch $entry->{switch} ElapsedTime:$diffduration sec");
+            xCAT::MsgUtils->trace(0, ($diffduration > 10) ? "w" : "d", "refresh_switch $entry->{switch} ElapsedTime:$diffduration sec");
             exit(0);
         }
         close($parent);
@@ -612,9 +612,9 @@ sub walkoid {
     if ($session->{ErrorStr}) {
         unless ($namedargs{silentfail}) {
             if ($namedargs{ciscowarn}) {
-                xCAT::MsgUtils->message("S", "Error communicating with " . $session->{DestHost} . " (First attempt at indexing by VLAN failed, ensure that the switch has the vlan configured such that it appears in 'show vlan'): " . $session->{ErrorStr});
+                xCAT::MsgUtils->message("S", "Error communicating with switch " . $session->{DestHost} . " (First attempt at indexing by VLAN failed, ensure that the switch has the vlan configured such that it appears in 'show vlan'): " . $session->{ErrorStr});
             } else {
-                xCAT::MsgUtils->message("S", "Error communicating with " . $session->{DestHost} . ": " . $session->{ErrorStr});
+                xCAT::MsgUtils->message("S", "Error communicating with switch " . $session->{DestHost} . ": " . $session->{ErrorStr});
             }
         }
         if ($switch) {
@@ -760,6 +760,7 @@ sub refresh_switch {
                             printf $output "$mymac|%s\n", $self->{switches}->{$switch}->{$myport};
                         }
                     }
+                    $macport="swp".$macport;
                     push @{ $index_to_vlan{$macport} }, $macvlan;
                     push @{ $index_to_mac{$macport} }, $mymac;
                 }
@@ -832,7 +833,7 @@ sub refresh_switch {
     if ($self->{switchparmhash}->{$switch}->{switchtype} eq 'onie'){
         my $bridgetoifmap = walkoid($session, '.1.3.6.1.2.1.17.1.4.1.2', ciscowarn => $iscisco, verbose => $self->{show_verbose_info}, switch => $switch, callback => $self->{callback}); # Good for all switches
         if (not ref $bridgetoifmap or !keys %{$bridgetoifmap}) {
-            xCAT::MsgUtils->message("S", "Error communicating with " . $session->{DestHost} . ": failed to get a valid response to BRIDGE-MIB request");
+            xCAT::MsgUtils->message("S", "Error communicating with switch " . $session->{DestHost} . ": failed to get a valid response to BRIDGE-MIB request");
             $self->{macinfo}->{$switch}->{ErrorStr} = "Failed to get a valid response to BRIDGE-MIB request";
             return;
         }
@@ -840,15 +841,15 @@ sub refresh_switch {
             my $port_index = $boid;
             my $port_name  = $namemap->{ $bridgetoifmap->{$port_index} };
             my $mtu  = $iftomtumap->{ $bridgetoifmap->{$port_index} };
-            if (defined($index_to_mac{$port_index})) {
-                push @{ $self->{macinfo}->{$switch}->{$port_name} }, @{ $index_to_mac{$port_index} };
+            if (defined($index_to_mac{$port_name})) {
+                push @{ $self->{macinfo}->{$switch}->{$port_name} }, @{ $index_to_mac{$port_name} };
             }
             else {
                 $self->{macinfo}->{$switch}->{$port_name}->[0] = '';
             }
 
-            if (defined($index_to_vlan{$port_index})) {
-                push @{ $self->{vlaninfo}->{$switch}->{$port_name} }, @{ $index_to_vlan{$port_index} };
+            if (defined($index_to_vlan{$port_name})) {
+                push @{ $self->{vlaninfo}->{$switch}->{$port_name} }, @{ $index_to_vlan{$port_name} };
             }
             else {
                 $self->{vlaninfo}->{$switch}->{$port_name}->[0] = '';
@@ -915,7 +916,7 @@ sub refresh_switch {
         }
         my $bridgetoifmap = walkoid($session, '.1.3.6.1.2.1.17.1.4.1.2', ciscowarn => $iscisco, verbose => $self->{show_verbose_info}, switch => $switch, callback => $self->{callback}); # Good for all switches
         if (not ref $bridgetoifmap or !keys %{$bridgetoifmap}) {
-            xCAT::MsgUtils->message("S", "Error communicating with " . $session->{DestHost} . ": failed to get a valid response to BRIDGE-MIB request");
+            xCAT::MsgUtils->message("S", "Error communicating with switch " . $session->{DestHost} . ": failed to get a valid response to BRIDGE-MIB request");
             if ($self->{collect_mac_info}) {
                 $self->{macinfo}->{$switch}->{ErrorStr} = "Failed to get a valid response to BRIDGE-MIB request";
             }
@@ -928,7 +929,7 @@ sub refresh_switch {
             $mactoindexmap = walkoid($session, '.1.3.6.1.2.1.17.4.3.1.2', ciscowarn => $iscisco, verbose => $self->{show_verbose_info}, switch => $switch, callback => $self->{callback});
         }    #Ok, time to process the data
         if (not ref $mactoindexmap or !keys %{$mactoindexmap}) {
-            xCAT::MsgUtils->message("S", "Error communicating with " . $session->{DestHost} . ": Unable to get MAC entries via either BRIDGE or Q-BRIDE MIB");
+            xCAT::MsgUtils->message("S", "Error communicating with switch " . $session->{DestHost} . ": Unable to get MAC entries via either BRIDGE or Q-BRIDE MIB");
             if ($self->{collect_mac_info}) {
                 $self->{macinfo}->{$switch}->{ErrorStr} = "Unable to get MAC entries via either BRIDGE or Q-BRIDE MIB";
             }
