@@ -83,12 +83,19 @@ When you run ``copycds``, xCAT will only create a Service Node stateful osimage 
 
   ::
 
-    xcat/xcat-dep/<os>/<arch>/xCATsn
+    xcat/xcat-core/xCATsn
     xcat/xcat-dep/<os>/<arch>/conserver-xcat
     xcat/xcat-dep/<os>/<arch>/perl-Net-Telnet
     xcat/xcat-dep/<os>/<arch>/perl-Expect
 
-  These are required to install the xCAT Service Node function into your image.
+  For example, for the osimage *rhels7.3-ppc64le-netboot-service*: ::
+
+    xcat/xcat-core/xCATsn
+    xcat/xcat-dep/rh7/ppc64le/conserver-xcat
+    xcat/xcat-dep/rh7/ppc64le/perl-Net-Telnet
+    xcat/xcat-dep/rh7/ppc64le/perl-Expect
+
+  **Note:** you will be installing the xCAT Service Node rpm xCATsn meta-package on the Service Node, not the xCAT Management Node meta-package. Do not install both.
 
   2, Create the postinstall script.
 
