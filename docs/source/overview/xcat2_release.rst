@@ -14,6 +14,16 @@ xCAT 2.13.x
 |xCAT                             |New OS         |New          |New Feature                       |
 |Version                          |               |Hardware     |                                  |
 +=================================+===============+=============+==================================+
+|| xCAT 2.13.8                    |               |             |- OpenBMC support:                |
+|| 2017/11/3                      |               |             |                                  |
+||                                |               |             |  rflash/rpower run parallelly    |
+| `2.13.8 Release Notes <https:// |               |             |                                  |
+| github.com/xcat2/xcat-core/wiki |               |             |  rspconfig sshcfg run parallelly |
+| /XCAT_2.13.8_Release_Notes>`_   |               |             |                                  |
+|                                 |               |             |- The document of MN HA           |
+|                                 |               |             |                                  |
+|                                 |               |             |- nodeset enhance for multi-nodes |
++---------------------------------+---------------+-------------+----------------------------------+
 || xCAT 2.13.7                    |               |             |- OpenBMC support:                |
 || 2017/9/22                      |               |             |                                  |
 ||                                |               |             |  rflash for OpenBMC and PNOR     |
