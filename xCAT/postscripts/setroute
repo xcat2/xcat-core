@@ -1,4 +1,4 @@
-#!/bin/sh 
+#!/bin/bash
 # IBM(c) 2011 EPL license http://www.eclipse.org/legal/epl-v10.html
 
 #-------------------------------------------------------------------------------
@@ -14,7 +14,7 @@
 #-------------------------------------------------------------------------------
 
 if [ -z "$NODEROUTENAMES" ]; then
-    echo "no routenames is configured in node definition."
+    echo "No static routes need be configured on this node."
     exit 0
 fi
 
@@ -33,19 +33,11 @@ do
         mask=`echo $route_string |cut -d',' -f2`
         gw=`echo $route_string |cut -d',' -f3`
         ifname=`echo $route_string |cut -d',' -f4`
-  
         if [ -z "$gw" ]; then
-            echo "Error: gateway is not configured for $rn in xCAT routes table."
+            echo "Error: Failed to configure route $rn as gateway is not configured."
             exit_code=1
             continue  
-        fi
-
-        if [ -z "$ifname" ]; then
-            echo "Error: ifname is not configured for $rn in xCAT routes table."
-            exit_code=1
-            continue
-        fi
-
+        fi 
         # remove the suffix /64 from ipv6 net
         if echo $net | grep "/" 2>&1 1>/dev/null
         then
