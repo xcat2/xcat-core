@@ -19,7 +19,7 @@ SYNOPSIS
 ********
 
 
-\ **zvm Attributes:**\   \ *node*\ , \ *hcp*\ , \ *userid*\ , \ *nodetype*\ , \ *parent*\ , \ *comments*\ , \ *disable*\ 
+\ **zvm Attributes:**\   \ *node*\ , \ *hcp*\ , \ *userid*\ , \ *nodetype*\ , \ *parent*\ , \ *comments*\ , \ *disable*\ , \ *discovered*\ , \ *status*\ 
 
 
 ***********
@@ -75,6 +75,18 @@ zvm Attributes:
 \ **disable**\ 
  
  Set to 'yes' or '1' to comment out this row.
+ 
+
+
+\ **discovered**\ 
+ 
+ Set to '1' to indicate this node was discovered.
+ 
+
+
+\ **status**\ 
+ 
+ The processing status.  Key value pairs (key=value) indicating status of the node.  Multiple pairs are separated by semi-colons.  Keys include: CLONING, CLONE_ONLY.
  
 
 
