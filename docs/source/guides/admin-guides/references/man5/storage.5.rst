@@ -98,7 +98,7 @@ storage Attributes:
 
 \ **controller**\ 
  
- The management address to attach/detach new volumes. 
+ The management address to attach/detach new volumes.
  In the scenario involving multiple controllers, this data must be
  passed as argument rather than by table value
  
