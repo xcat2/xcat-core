@@ -59,6 +59,9 @@ $::UPLOAD_WAIT_ATTEMPT      = 6;
 $::UPLOAD_WAIT_INTERVAL     = 10;
 $::UPLOAD_WAIT_TOTALTIME    = int($::UPLOAD_WAIT_ATTEMPT*$::UPLOAD_WAIT_INTERVAL);
 
+$::RPOWER_CHECK_INTERVAL = 2;
+$::RPOWER_MAX_RETRY = 30;
+
 sub unsupported {
     my $callback = shift;
     if (defined($::OPENBMC_DEVEL) && ($::OPENBMC_DEVEL eq "YES")) {
@@ -1332,7 +1335,7 @@ sub parse_node_info {
             }
 
             $node_info{$node}{cur_status} = "LOGIN_REQUEST";
-            $node_info{$node}{retry_times} = 0;
+            $node_info{$node}{rpower_check_times} = $::RPOWER_MAX_RETRY;
         } else {
             xCAT::SvrUtils::sendmsg("Error: Unable to get information from openbmc table", $callback, $node);
             $rst = 1;
@@ -1562,7 +1565,7 @@ sub login_logout_request {
         }
         return 1;
     } else {
-        my $curl_logout_result = `$curl_logout_cmd`;
+        my $curl_logout_result = `$curl_logout_cmd -s`;
     }
 
     return 0;
@@ -1610,7 +1613,6 @@ sub rpower_response {
     my $node = shift;
     my $response = shift;
     my %new_status = ();
-    my $max_retry_times = 5;
 
     my $response_info = decode_json $response->content;
 
@@ -1730,10 +1732,12 @@ sub rpower_response {
             if ($all_status eq "$::POWER_STATE_OFF") {
                 $node_info{$node}{cur_status} = $next_status{ $node_info{$node}{cur_status} }{OFF};
             } else {
-                $node_info{$node}{cur_status} = $next_status{ $node_info{$node}{cur_status} }{ON};
-                $node_info{$node}{retry_times}++;
-                if ($node_info{$node}{retry_times} >= $max_retry_times) {
-                    xCAT::SvrUtils::sendmsg("Internal Error, failed to rpower off, please try again", $callback, $node);
+                if ($node_info{$node}{rpower_check_times} > 0) {
+                    $node_info{$node}{rpower_check_times}--;
+                    retry_after($node, $next_status{ $node_info{$node}{cur_status} }{ON}, $::RPOWER_CHECK_INTERVAL);
+                    return;
+                } else {
+                    xCAT::SvrUtils::sendmsg([1, "Have run rpower off successfully, please run 'rpower $node on' after it's off"], $callback, $node);
                     $node_info{$node}{cur_status} = "";
                     $wait_node_num--;
                     return;
