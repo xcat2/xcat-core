@@ -64,7 +64,7 @@ check:rc==0
 
 cmd:chdef -t site disjointdhcps=1
 check:rc==0
-cmd:chdef -t node testnode1 servicenode=$$SN,$$CN
+cmd:chdef -t node testnode1 servicenode=$$SN
 
 check:rc==0
 cmd:nodeset testnode1 osimage=rhels7.99-ppc64le-install-compute
@@ -74,17 +74,22 @@ check:rc!=0
 cmd:xdsh $$SN 'test -f /tftpboot/petitboot/testnode1'
 check:rc==0
 cmd:xdsh $$CN 'test -f /tftpboot/petitboot/testnode1'
-check:rc==0
+check:rc!=0
 cmd:nodeset testnode1 offline
 check:rc==0
 # DHCP dynamic range
-cmd:chdef -t network 20_0_0_0-255_0_0_0 net=20.0.0.0 mask=255.0.0.0 dynamicrange=20.0.0.1-20.0.0.2 tftpserver=$$SN dhcpserver=$$SN
+cmd:chdef -t network 20_0_0_0-255_0_0_0 net=20.0.0.0 mask=255.0.0.0 dynamicrange=20.0.0.1-20.0.0.2 tftpserver=$$SN dhcpserver=$$CN
 check:rc==0
 cmd:nodeset testnode1 osimage=rhels7.99-ppc64le-install-compute
 #check:rc==0
 cmd:xdsh $$SN 'test -f /tftpboot/petitboot/testnode1'
 check:rc==0
 cmd:xdsh $$CN 'test -f /tftpboot/petitboot/testnode1'
+check:rc!=0
+##
+# Check the DHCP lease file
+##
+cmd:xdsh $$CN 'cat /var/lib/dhcp/db/dhcpd.leases /var/lib/dhcpd/dhcpd.leases 2>/dev/null' | grep e6:d4:d2:3a:ad:06
 check:rc==0
 
 ##
@@ -92,8 +97,8 @@ check:rc==0
 ##
 ##
 
-cmd:chdef -t site sharedtftp=1
-check:rc==0
+#cmd:chdef -t site sharedtftp=1
+#check:rc==0
 cmd:chdef -t site disjointdhcps=0
 check:rc==0
 cmd:xdsh $$SN 'rm -rf /tftpboot'
