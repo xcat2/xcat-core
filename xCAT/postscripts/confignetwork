@@ -297,6 +297,7 @@ function sort_nics_device_order {
 
     all_nics_list=$*
     eth_slot=""
+    ib_slot=""
     bond_slot=""
     vlan_slot=""
     ib_slots=""
@@ -394,6 +395,16 @@ function sort_nics_device_order {
                     eth_slot=$eth_slot" "$num
                 fi
 
+            #valid nic_dev and base_nic_dev pair as bond-infiniband
+            elif [ x"$base_nic_type" = "xinfiniband" ]&& \
+                [ x"$nic_dev_type" = "xbond" ]; then
+
+                if [ x"$ib_slot" = x ]; then
+                    ib_slot=$num
+                else
+                    ib_slot=$ib_slot" "$num
+                fi
+
             #valid nic_dev and base_nic_dev pair as vlan-bond or bridge-bond
             elif [ x"$base_nic_type" = "xbond" ]&& \
                 [ x"$nic_dev_type" = "xvlan" -o x"$nic_dev_type" = "xbridge" -o x"$nic_dev_type" = "xbridge_ovs" ]; then
@@ -422,7 +433,7 @@ function sort_nics_device_order {
         log_error "Only support configuration of Bond/VLAN/Bridge on Red Hat."
       fi
     fi
-    new_order=$eth_slot" "$bond_slot" "$vlan_slot
+    new_order=$eth_slot" "$ib_slot" "$bond_slot" "$vlan_slot
     new_order_list=""
     if [ -n "$new_order" ]; then
 
@@ -557,7 +568,7 @@ function configure_nicdevice {
 
         #configure bond 
         elif [ x"$nic_dev_type" = "xbond" ]; then
-            create_bond_interface ifname=$nic_dev slave_ports=$base_nic_for_bond       
+            create_bond_interface ifname=$nic_dev slave_ports=$base_nic_for_bond slave_type=$base_nic_type 
         elif [ x"$nic_dev_type" = "xinfiniband" ]; then
             log_info "Call configib for IB nics: $nic_dev, ports: $num_iba_ports"
             log_info "NIC_IBNICS=$nic_dev NIC_IBAPORTS=$num_iba_ports configib"

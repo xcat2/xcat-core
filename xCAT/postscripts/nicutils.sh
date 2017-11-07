@@ -1263,11 +1263,7 @@ function create_bond_interface {
     local xcatnet=""
     local _ipaddr=""
     local _netmask=""
-    # note:
-    # - "miimon" requires drivers for each slave nic support MII tool.
-    #   $ ethtool <interface_name> | grep "Link detected:"
-    # - "802.3ad" mode requires a switch that is 802.3ad compliant.
-    local _bonding_opts="mode=802.3ad miimon=100"
+    local _bonding_opts=""
     local _mtu=""
     local slave_ports=""
     # parser input arguments
@@ -1280,7 +1276,8 @@ function create_bond_interface {
            [ "$key" = "_netmask" ] || \
            [ "$key" = "_bonding_opts" ] || \
            [ "$key" = "_mtu" ] || \
-           [ "$key" = "slave_ports" ]; then
+           [ "$key" = "slave_ports" ] || \
+           [ "$key" = "slave_type" ]; then
             eval "$1"
         fi
         shift
@@ -1289,6 +1286,17 @@ function create_bond_interface {
     if [ -z "$slave_ports" ]; then
         log_error "No valid slave_ports defined. Abort!"
         return 1
+    fi
+    if [ -z "$slave_type" ] || [ x"$slave_type" = "xethernet" ]; then
+        slave_type="Ethernet"
+        # note:
+        # - "miimon" requires drivers for each slave nic support MII tool.
+        #   $ ethtool <interface_name> | grep "Link detected:"
+        # - "802.3ad" mode requires a switch that is 802.3ad compliant.
+        _bonding_opts="mode=802.3ad miimon=100"
+    elif [ "$slave_type" = "infiniband" ]; then
+        slave_type="Infiniband"
+        _bonding_opts="mode=1 miimon=100 fail_over_mac=1"
     fi
     # let's query "nicnetworks" table about its target "xcatnet" 
     if [ -n "$ifname" -a -z "$xcatnet" -a -z "$_ipaddr" ]; then
@@ -1414,7 +1422,7 @@ function create_bond_interface {
                 fi
 
                 cfg="${cfg}${cfg:+,}USERCTL=no"
-                cfg="${cfg}${cfg:+,}TYPE=Ethernet"
+                cfg="${cfg}${cfg:+,}TYPE=$slave_type"
                 cfg="${cfg}${cfg:+,}SLAVE=yes"
                 cfg="${cfg}${cfg:+,}MASTER=$ifname"
                 cfg="${cfg}${cfg:+,}BOOTPROTO=none"
