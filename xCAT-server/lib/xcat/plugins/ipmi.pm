@@ -527,7 +527,7 @@ sub on_bmc_connect {
         return;
     }
     if ($command eq "rpower") {
-        unless (defined $sessdata->{device_id}) { #need get device id data initted for S3 support
+        unless ($sessdata->{subcommand} eq "reseat" or defined $sessdata->{device_id}) { #need get device id data initted for S3 support
             $sessdata->{ipmisession}->subcmd(netfn => 6, command => 1, data => [], callback => \&gotdevid, callback_args => $sessdata);
             return;
         }
@@ -8993,13 +8993,18 @@ sub donode {
     $sessiondata{$node} = {
         node => $node, #this seems redundant, but some code will not be privy to what the key was
         bmcnum => $bmcnum,
-        ipmisession => xCAT::IPMI->new(bmc => $bmcip, userid => $user, password => $pass),
+        #ipmisession => xCAT::IPMI->new(bmc => $bmcip, userid => $user, password => $pass),
         command    => $command,
         extraargs  => \@exargs,
         subcommand => $exargs[0],
         xcatdebugmode => $xcatdebugmode,
         outfunc => $callback,
     };
+    if ($command eq "rpower" and $exargs[0] eq "reseat") {
+        on_bmc_connect(0, $sessiondata{$node});
+        return 0;
+    }
+    $sessiondata{$node}->{ipmisession} = xCAT::IPMI->new(bmc => $bmcip, userid => $user, password => $pass);
     if ($sessiondata{$node}->{ipmisession}->{error}) {
         xCAT::SvrUtils::sendmsg([ 1, $sessiondata{$node}->{ipmisession}->{error} ], $callback, $node, %allerrornodes);
     } else {
