@@ -2596,11 +2596,11 @@ sub rflash_response {
             }
         }
         if (!$found_match) {
-            if (!exists($node_info{node}{upload_wait_attemp})) {
-                $node_info{node}{upload_wait_attemp} = $::UPLOAD_WAIT_ATTEMPT;
+            if (!exists($node_info{$node}{upload_wait_attemp})) {
+                $node_info{$node}{upload_wait_attemp} = $::UPLOAD_WAIT_ATTEMPT;
             }
-            if($node_info{node}{upload_wait_attemp} > 0) {
-                $node_info{node}{upload_wait_attemp} --;
+            if($node_info{$node}{upload_wait_attemp} > 0) {
+                $node_info{$node}{upload_wait_attemp} --;
                 xCAT::SvrUtils::sendmsg("Could not find ID for firmware $::UPLOAD_FILE_VERSION to activate, waiting $::UPLOAD_WAIT_INTERVAL seconds and retry...", $callback, $node);
                 retry_after($node, "RFLASH_UPDATE_CHECK_ID_REQUEST", $::UPLOAD_WAIT_INTERVAL);
                 return;
