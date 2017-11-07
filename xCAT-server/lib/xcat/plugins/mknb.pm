@@ -140,7 +140,7 @@ sub process_request {
     my $rc;
     my $invisibletouch = 0;
     if (-e "$::XCATROOT/share/xcat/netboot/genesis/$arch") {
-        $rc = system("cp -a $::XCATROOT/share/xcat/netboot/genesis/$arch/fs/* $tempdir");
+        $rc = system("shopt -s dotglob; GLOBIGNORE=\".:..\" cp -a $::XCATROOT/share/xcat/netboot/genesis/$arch/fs/* $tempdir");
         $rc = system("cp -a $::XCATROOT/share/xcat/netboot/genesis/$arch/kernel $tftpdir/xcat/genesis.kernel.$arch");
         $invisibletouch = 1;
     } else {
