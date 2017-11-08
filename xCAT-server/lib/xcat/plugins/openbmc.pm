@@ -1734,10 +1734,16 @@ sub rpower_response {
             } else {
                 if ($node_info{$node}{rpower_check_times} > 0) {
                     $node_info{$node}{rpower_check_times}--;
+                    if ($node_info{$node}{wait_start}) {
+                        $node_info{$node}{wait_end} = time();
+                    } else {
+                        $node_info{$node}{wait_start} = time();
+                    }
                     retry_after($node, $next_status{ $node_info{$node}{cur_status} }{ON}, $::RPOWER_CHECK_INTERVAL);
                     return;
                 } else {
-                    xCAT::SvrUtils::sendmsg([1, "Have run rpower off successfully, please run 'rpower $node on' after it's off"], $callback, $node);
+                    my $wait_time_X = $node_info{$node}{wait_end} - $node_info{$node}{wait_start};
+                    xCAT::SvrUtils::sendmsg([1, "Error: Sent power-off command but state did not change to $::POWER_STATE_OFF after waiting $wait_time_X seconds. (State=$all_status)."], $callback, $node);
                     $node_info{$node}{cur_status} = "";
                     $wait_node_num--;
                     return;
