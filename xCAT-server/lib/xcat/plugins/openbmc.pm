@@ -1799,7 +1799,11 @@ sub rinv_response {
             my $sw_id = (split(/\//, $key_url))[-1];
             if (defined($content{Version}) and $content{Version}) {
                 my $purpose_value = uc ((split(/\./, $content{Purpose}))[-1]);
-                $purpose_value = "[$sw_id]$purpose_value";
+                if ($purpose_value =~ /BMC/) {
+                    $purpose_value = "[B$sw_id]$purpose_value";
+                } else {
+                    $purpose_value = "[H$sw_id]$purpose_value";
+                }
                 my $activation_value = (split(/\./, $content{Activation}))[-1];
                 my $priority_value = -1;
                 if (defined($content{Priority})) {
