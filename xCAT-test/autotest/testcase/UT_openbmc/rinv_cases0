@@ -1,0 +1,39 @@
+start:rinv_check_active_fw
+description: Ensure that there is only 1 active BMC and 1 Active PNOR
+os:Linux
+mgt:openbmc
+cmd:rinv $$CN firm | grep -i ibm
+check:rc==0
+check:output=~$$CN: BMC Firmware Product
+check:rc==0
+check:output=~$$CN: HOST Firmware Product
+check:rc==0
+end
+
+start:rinv_check_active_fw_count 
+description: Ensure that there are only 2 active firmware (if previous test is OK)
+os:Linux
+mgt:openbmc
+# show the output
+cmd:rinv $$CN firm | grep -i ibm 
+check:rc==0
+# check based on wc 
+cmd:rinv $$CN firm | grep -i ibm | wc -l
+check:output=~2
+check:rc==0
+end
+
+start:rinv_check_active_fw_verbose_count
+description: Ensure that there is only 2 active firmware (in verbose mode) (Issue #4236)
+os:Linux
+mgt:openbmc
+# show the output
+cmd:rinv $$CN firm -V | grep -i Active 
+check:rc==0
+# validate test cased on word count
+cmd:rinv $$CN firm -V | grep -i Active | wc -l
+check:rc==0
+check:rc==0
+check:output=~2
+check:rc==0
+end
