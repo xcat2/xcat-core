@@ -1,0 +1,47 @@
+start:rflash_check
+os:Linux
+mgt:openbmc
+cmd:rflash $$CN --check
+check:rc==0
+check:output=~$$CN: BMC Firmware Product
+check:output=~$$CN: HOST Firmware Product
+check:rc==0
+end
+
+start:rflash_invalid_activate
+cmd: rflash $$CN -a /tmp/abc123.tz
+check:rc==1
+check:output=~Error: Invalid option
+end 
+
+start:rflash_invalid_activate_and_delete
+cmd: rflash $$CN -a 123 -d 123
+check:rc==1
+check:output=~Error: Multiple options specified is not supported
+end 
+
+start:rflash_invalid_id 
+cmd: rflash $$CN -a 123
+check:rc==1
+check:output=~Error: Invalid ID provided to activate
+end 
+
+start:rflash_invalid_multiple_id_3
+cmd: rflash $$CN -a 123 abc asdbas 
+check:rc==1
+check:output=~Error: More than one firmware specified is not supported
+end 
+
+start:rflash_invalid_multiple_id_2
+cmd: rflash $$CN -a asdbas 123
+check:rc==1
+check:output=~Error: More than one firmware specified is not supported
+end 
+
+start:rflash_invalid_node
+cmd: rflash -a 221d9020
+check:rc==1 
+check:output=~Error: Invalid nodes and/or groups in noderange: 221d9020
+end
+
+
