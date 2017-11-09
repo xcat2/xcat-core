@@ -29,7 +29,7 @@ The following versions indicate the level of firmware the issue was reported.
    SW407037.rst
 
 1740A - ibm-v1.99.10-0-r11
---------------------------
+``````````````````````````
 
 .. toctree::
    :maxdepth: 1
