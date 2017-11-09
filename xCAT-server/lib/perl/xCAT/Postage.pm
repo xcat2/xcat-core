@@ -417,22 +417,18 @@ sub makescript {
             #the ip address of the mn facing the compute node
             my @ipfnd = xCAT::NetworkUtils->my_ip_facing($node);
             my $ipfndscalar = @ipfnd;
-            if ($ipfnd[0]) {
-                if ($ipfndscalar ==2) {
-                    $::GLOBAL_TAB_HASH{noderes}{$node}{xcatmaster} = $ipfnd[1]; 
-                    $master = $ipfnd[1];
-                } elsif ($ipfndscalar > 2) {
+            unless ($ipfnd[0]) {
+                $master = $ipfnd[1];
+                if ($ipfndscalar > 2) {
                     foreach my $ipinfnd (@ipfnd) {
                         if ($::XCATSITEVALS{master} and $ipinfnd eq $::XCATSITEVALS{master}) {
-                            $::GLOBAL_TAB_HASH{noderes}{$node}{xcatmaster} = $ipinfnd;
                             $master = $ipinfnd;
                             last;
                         }
-                    }    
-                    unless ($master) {
-                        $::GLOBAL_TAB_HASH{noderes}{$node}{xcatmaster} = $ipfnd[1];
-                        $master = $ipfnd[1];
                     }
+                }
+                if ($master) {
+                    $::GLOBAL_TAB_HASH{noderes}{$node}{xcatmaster} = $master;
                 }
             }
         }
@@ -1562,22 +1558,20 @@ sub collect_all_attribs_for_tables_in_template
                                 my $value = undef;
                                 my @ipfnd = xCAT::NetworkUtils->my_ip_facing($node);
                                 my $ipfndscalar = @ipfnd;
-                                if ($ipfnd[0]) {
-                                    if ($ipfndscalar ==2) {
-                                        $value = $ipfnd[1];
-                                    } elsif ($ipfndscalar > 2) {
-                                    foreach my $ipinfnd (@ipfnd) {
-                                        if ($::XCATSITEVALS{master} and $ipinfnd eq $::XCATSITEVALS{master}) {
-                                            $value = $ipinfnd;
-                                            last;
+                                unless ($ipfnd[0]) {
+                                    $value = $ipfnd[1];
+                                    if ($ipfndscalar > 2) {
+                                        foreach my $ipinfnd (@ipfnd) {
+                                            if ($::XCATSITEVALS{master} and $ipinfnd eq $::XCATSITEVALS{master}) {
+                                                $value = $ipinfnd;
+                                                last;
+                                            }
                                         }
                                     }
-                                    unless ($value) {
-                                        $value = $ipfnd[1];
-                                    }         
-                                    }   
                                 }
-                                $::GLOBAL_TAB_HASH{$tabname}{$node}{$attrib} = $value;
+                                if ($value) {
+                                    $::GLOBAL_TAB_HASH{$tabname}{$node}{$attrib} = $value;
+                                }
                             }
 
                             # for nodetype.os and nodetype.arch
