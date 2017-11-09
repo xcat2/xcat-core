@@ -80,7 +80,7 @@ linuximage Attributes:
 
 \ **otherpkgdir**\ 
  
- The base directory where the non-distro packages are stored. Only 1 local directory supported at present.
+ The base directory and urls of internet repos from which the non-distro packages are retrived. Only 1 local directory is supported at present. The entries should be delimited with comma ",". Currently, the internet repos are only supported on Ubuntu and Redhat.
  
 
 
