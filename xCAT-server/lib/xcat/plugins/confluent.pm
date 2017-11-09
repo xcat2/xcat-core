@@ -276,7 +276,12 @@ sub makeconfluentcfg {
         @cfgents1 = $hmtab->getAllNodeAttribs([ 'cons', 'serialport', 'mgt', 'conserver', 'termserver', 'termport', 'consoleondemand' ]);
         @cfgents2 = $nodepostab->getAllNodeAttribs([ 'rack', 'u', 'chassis', 'slot', 'room' ]);
         @cfgents3 = $nodepostab->getAllNodeAttribs([ 'mpa', 'id' ]);
-        @cfgents4 = $nodepostab->getAllNodeAttribs([ 'node', 'switch', 'port', 'interface' ]);
+        @cfgents4 = $switchtab->getAllNodeAttribs([ 'node', 'switch', 'port', 'interface' ]);
+        my @switchnodes;
+        foreach my $ent (@cfgents4) {
+            if ($ent->{node}) { push @switchnodes, $ent->{node} }
+        }
+        @cfgents4 = $switchtab->getNodesAttribs(\@switchnodes, [ 'node', 'switch', 'port', 'interface' ]);
     }
 
 
