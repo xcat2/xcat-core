@@ -586,7 +586,7 @@ sub process_request {
 
     foreach my $node (keys %node_info) {
         if (!$valid_nodes{$node}) {
-            xCAT::SvrUtils::sendmsg([1, "Unavailable now, please try again later"], $callback, $node);
+            xCAT::SvrUtils::sendmsg([1, "BMC did not respond within 10 seconds, retry the command."], $callback, $node);
             $wait_node_num--;
         } else {
             $login_url = "$http_protocol://$node_info{$node}{bmc}/login";
