@@ -1099,7 +1099,7 @@ sub load_case {
         if (@{$cases_to_be_run_ref}){
             log_this($running_log_fd, "To run:", @{$cases_to_be_run_ref});
         }else{
-            log_this($running_log_fd, "To run:", "There is not valid case to run");
+            log_this($running_log_fd, "To run:", "There is no valid case to run");
         }
     }
     return $caseerror;
