@@ -6,7 +6,6 @@ cmd:rflash $$CN --check
 check:rc==0
 check:output=~$$CN: BMC Firmware Product
 check:output=~$$CN: HOST Firmware Product
-check:rc==0
 end
 
 start:rflash_invalid_activate

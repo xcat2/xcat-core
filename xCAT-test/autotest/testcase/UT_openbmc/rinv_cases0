@@ -5,9 +5,7 @@ hcp:openbmc
 cmd:rinv $$CN firm | grep -i ibm
 check:rc==0
 check:output=~$$CN: BMC Firmware Product
-check:rc==0
 check:output=~$$CN: HOST Firmware Product
-check:rc==0
 end
 
 start:rinv_check_active_fw_count 
@@ -19,8 +17,8 @@ cmd:rinv $$CN firm | grep -i ibm
 check:rc==0
 # check based on wc 
 cmd:rinv $$CN firm | grep -i ibm | wc -l
-check:output=~2
 check:rc==0
+check:output=~2
 end
 
 start:rinv_check_active_fw_verbose_count
@@ -33,7 +31,5 @@ check:rc==0
 # validate test cased on word count
 cmd:rinv $$CN firm -V | grep -i Active | wc -l
 check:rc==0
-check:rc==0
 check:output=~2
-check:rc==0
 end
