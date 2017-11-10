@@ -95,7 +95,7 @@ Options:
     -f : specify the configuration file. If 'System' tag is used, only [System] section in the configuration file will be used. If 'System' is not used all other sections of the configuration file will be used, like [Table], [Object], etc.
     -c : Comma separated list of command names to test. 
     -t : Comma separated list of test case names to test.
-    -b : Comma separated list of bundle names to test. If a bundle name is specified without an absolute path, bundles under $bundledir will be searched
+    -b : Comma separated list of bundle names to test. If a bundle name is specified without an absolute path, such like /<path/xxx.bundle, or ./xxx.bundle, bundles under $bundledir will be searched by default.
     -r : Back up the original environment settings before running test, and restore them after running test.
     -q : Just record all the output of $program_name into log file under $resultdir, not print to STDOUT. Print to STDOUT by default. 
 ";
@@ -255,15 +255,21 @@ log_this($running_log_fd, "******************************");
 log_this($running_log_fd, "loading test cases");
 log_this($running_log_fd, "******************************");
 $rst = load_case(\@cases_to_be_run, \@cases, \%case_name_index_map, \$error, $RUN);
-if ($rst) {
+if ($rst && $rst < 2 ) {
     log_this($running_log_fd, "$error");
     to_exit(1);
 }
 
-#print "======Dumper loaded cases=======\n";
+#print "=====Dumper loaded cases=======\n";
 #print Dumper \@cases;
 #print "=====Dumper case_name_index_map=======================\n";
 #print Dumper \%case_name_index_map;
+#print "=====Dumper cases to be run=====\n";
+#print Dumper \@cases_to_be_run;
+
+unless(@cases_to_be_run){
+    to_exit(1);
+}
 
 log_this($running_log_fd, "******************************");
 log_this($running_log_fd, "Start to run test cases");
@@ -380,8 +386,7 @@ sub calculate_cases_to_be_run {
         foreach my $bundle (@bundles) {
 
             #if $bundle doesn't include path information, find $bundle under $bundledir by default
-            my $bundlepath = dirname($bundle);
-            if ($bundlepath eq ".") {
+            if ($bundle !~ /\//) {
                 $bundle = "$bundledir/$bundle";
             }
             if (!-e "$bundle") {
@@ -929,7 +934,8 @@ sub load_case {
                         $case_arch="x86";
                     }
 
-                    my $env_arch = $config{var}{ARCH};
+                    my $env_arch = "";
+                    $env_arch = $config{var}{ARCH} if(exists($config{var}{ARCH}));
                     if($env_arch =~ /ppc/i && $env_arch !~ /le|el/i){
                         $env_arch="ppc";
                     }elsif($env_arch =~ /ppc/i && $env_arch =~ /le|el/i){
@@ -958,7 +964,7 @@ sub load_case {
                 if ($run_case_flag) {
                     #To judge whether need to skip the current case
                     my $valid     = 0;
-                    if ($case_ref->[$i]->{hcp} =~ /$config{var}{HCP}/i) {
+                    if (exists ($config{var}{HCP}) && ($case_ref->[$i]->{hcp} =~ /$config{var}{HCP}/i)) {
                         $valid = 1;
                     }
                     unless ($valid) {
@@ -995,11 +1001,8 @@ sub load_case {
                 $m           = 0;
                 if ($run_case_flag) {
                     $case_ref->[$i]->{cmd}->[$j][$m] = getvar($1, \%config);
-                    if ($case_ref->[$i]->{cmd}->[$j][$m] =~ /miss attribute/) {
-                        my $errlog = "$case_ref->[$i]->{name} $case_ref->[$i]->{cmd}->[$j][$m]";
-                        if (!(grep /$errlog/, @{ $invalidcases{"missattr"} })) {
-                            push @{ $invalidcases{"missattr"} }, $errlog;
-                        }
+                    if ($case_ref->[$i]->{cmd}->[$j][$m] =~ /miss attribute (.+)/) {
+                        update_miss_attr($case_ref->[$i]->{cmd}->[$j][$m], $case_ref->[$i]->{name}, \@{$invalidcases{"missattr"}});
                     }
                 } else {
                     $case_ref->[$i]->{cmd}->[$j][$m] = $1;
@@ -1010,10 +1013,7 @@ sub load_case {
                 if ($run_case_flag) {
                     $case_ref->[$i]->{check}->[$j][$z] = getvar($1, \%config);
                     if ($case_ref->[$i]->{check}->[$j][$z] =~ /miss attribute/) {
-                        my $errlog = "$case_ref->[$i]->{name} $case_ref->[$i]->{check}->[$j][$z]";
-                        if (!(grep /$errlog/, @{ $invalidcases{"missattr"} })) {
-                            push @{ $invalidcases{"missattr"} }, $errlog;
-                        }
+                        update_miss_attr($case_ref->[$i]->{check}->[$j][$z], $case_ref->[$i]->{name}, \@{$invalidcases{"missattr"}});
                     }
                 } else {
                     $case_ref->[$i]->{check}->[$j][$z] = $1;
@@ -1025,10 +1025,7 @@ sub load_case {
                 if ($run_case_flag) {
                     $case_ref->[$i]->{cmdcheck}->[$j][$z] = getvar($1, \%config);
                     if ($case_ref->[$i]->{cmdcheck}->[$j][$z] =~ /miss attribute/) {
-                        my $errlog = "$case_ref->[$i]->{name} $case_ref->[$i]->{cmdcheck}->[$j][$z]";
-                        if (!(grep /$errlog/, @{ $invalidcases{"missattr"} })) {
-                            push @{ $invalidcases{"missattr"} }, $errlog;
-                        }
+                         update_miss_attr($case_ref->[$i]->{cmdcheck}->[$j][$z],$case_ref->[$i]->{name}, \@{$invalidcases{"missattr"}});
                     }
                 } else {
                     $case_ref->[$i]->{cmdcheck}->[$j][$z] = $1;
@@ -1054,37 +1051,55 @@ sub load_case {
         #log_this($running_log_fd, "Case name invalid:", @{ $invalidcases{"invalidcasename"} });
         $$error_ref = "Case name invalid: " . join(",", @{ $invalidcases{"invalidcasename"} });
         push @wrong_cases, @{ $invalidcases{"invalidcasename"} };
-        $caseerror = 1;
+        $caseerror = 2;
     }
 
     if ($run_case_flag) {
         if ($invalidcases{"missattr"}) {
-
-            #log_this($running_log_fd, "Miss attribute:", @{$invalidcases{"missattr"}});
-            $$error_ref = "Miss attribute: " . join(",", @{ $invalidcases{"missattr"} });
+            log_this($running_log_fd, "Miss attribute:", @{$invalidcases{"missattr"}});
+            #$$error_ref = "Miss attribute: " . join(",", @{ $invalidcases{"missattr"} });
             foreach my $line (@{ $invalidcases{"missattr"} }) {
                 my @name = split(" ", $line);
                 if (!(grep /$name[0]/, @wrong_cases)) {
                     push @wrong_cases, $name[0];
                 }
             }
-            $caseerror = 1;
+            $caseerror = 2;
         }
 
         if ($invalidcases{"noruncases"}) {
-            log_this($running_log_fd, "Not to run:", @{ $invalidcases{"noruncases"} });
+            log_this($running_log_fd, "Unsuitable current environment:", @{ $invalidcases{"noruncases"} });
             push @wrong_cases, @{ $invalidcases{"noruncases"} };
+            $caseerror = 2;
         }
 
-        unless ($caseerror) {
+        # To filter unexisted cases
+        my @unexisted_cases;
+        foreach my $case (@{$cases_to_be_run_ref}){
+            if(!(grep { /^$case$/ } @wrong_cases) && !defined ($$case_name_index_map_ref{$case})){
+                push @unexisted_cases, $case;
+            }
+        }
+        if(@unexisted_cases){
+            log_this($running_log_fd, "Not existed:", @unexisted_cases);
+            push @wrong_cases, @unexisted_cases;                 
+            $caseerror = 2;
+        }
+
+        if($caseerror) {
             my @new_cases_to_be_run = ();
             foreach my $c (@{$cases_to_be_run_ref}) {
                 if (!(grep { /^$c$/ } @wrong_cases)) {
                     push @new_cases_to_be_run, $c;
                 }
             }
-            log_this($running_log_fd, "To run:", @new_cases_to_be_run);
-            #@{$cases_to_be_run_ref} = @new_cases_to_be_run;
+            @{$cases_to_be_run_ref} = @new_cases_to_be_run;
+        }
+        
+        if (@{$cases_to_be_run_ref}){
+            log_this($running_log_fd, "To run:", @{$cases_to_be_run_ref});
+        }else{
+            log_this($running_log_fd, "To run:", "There is no valid case to run");
         }
     }
     return $caseerror;
@@ -1734,4 +1749,27 @@ sub print_table {
     return 0;
 }
 
+sub update_miss_attr {
+    my $org_str = shift;
+    my $case_name = shift;
+    my $miss_attr_arr_ref = shift;  
 
+    my $insert_flag = 0;
+    my $index = 0;
+    foreach my $str (@{$miss_attr_arr_ref}){
+        my @words = split(" ", $str);
+        my @org_words = split(" ", $org_str);
+        if($case_name eq "$words[0]"){
+           if(!(grep { /^$org_words[2]$/} @words)){
+               $miss_attr_arr_ref->[$index] .= " $org_words[2]"; 
+           }
+           $insert_flag = 1;
+           last;
+        }
+        ++$index;
+    }
+
+    unless($insert_flag){
+        push @{$miss_attr_arr_ref}, "$case_name $org_str";
+    }
+}
