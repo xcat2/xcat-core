@@ -6,6 +6,7 @@ opt/xcat/bin/xcatclient opt/xcat/sbin/makeknownhosts
 opt/xcat/bin/xcatclient opt/xcat/sbin/nodeset
 opt/xcat/bin/xcatclient opt/xcat/sbin/setupiscsidev
 opt/xcat/bin/xcatclient opt/xcat/sbin/makeconservercf
+opt/xcat/bin/xcatclient opt/xcat/sbin/makegocons
 opt/xcat/bin/xcatclient opt/xcat/bin/rbeacon
 opt/xcat/bin/xcatclient opt/xcat/bin/rvitals
 opt/xcat/bin/xcatclient opt/xcat/bin/nodestat
