@@ -62,4 +62,11 @@ check:rc==1
 check:output=~Error: Invalid nodes and/or groups in noderange: 221d9020
 end
 
-
+start:rflash_invalid_delete_2
+description: Attempt to delete more than 1 ID from the FW
+os:Linux
+hcp:openbmc
+cmd: rflash $$CN -d 221d9020 221d9020
+check:rc==1 
+check:output=~Error: More than one firmware specified is not supported
+end
