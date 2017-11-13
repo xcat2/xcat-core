@@ -44,7 +44,10 @@ function loadProvisionPage() {
                 msg : ''
             },
 
-            success : setOSImageCookies
+            success : function(data) {
+                data = decodeRsp(data);
+                setOSImageCookies(data);
+            }
         });
     }
 
@@ -60,7 +63,10 @@ function loadProvisionPage() {
                 msg : ''
             },
 
-            success : setGroupsCookies
+            success : function(data) {
+                data = decodeRsp(data);
+                setGroupsCookies(data);
+            }
         });
     }
 

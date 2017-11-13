@@ -21,7 +21,6 @@ use Getopt::Long;
 use xCAT::MsgUtils;
 use xCAT::Utils;
 use xCAT::Client;
-use xCAT::NodeRange;
 use Cwd;
 use strict;
 
@@ -72,12 +71,6 @@ if(grep m/^-c|--console$/,@ARGV){
 }
 
 my $noderange = $cmdref->{noderange}->[0];    # save the noderange
-my @noderange=xCAT::NodeRange::noderange($noderange);
-
-if($bname eq "rinstall" and $startconsole==1 and scalar @noderange!=1 ){
-    xCAT::MsgUtils->message("E", "Error: rinstall -c/--console can only be run against one node! Please use winstall -c/--console for multiple nodes.");
-    exit 1;    
-}
 
 # Allow to print server information when -V/--verbose
 foreach (reverse(@ARGV)) {

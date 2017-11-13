@@ -6,11 +6,14 @@ cmd:echo "/tmp/non-existent -> /etc/motd" > /install/custom/install/__GETNODEATT
 check:rc==0
 cmd:chdef -t osimage -o __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-install-compute synclists=/install/custom/install/__GETNODEATTR($$CN,os)__/booboo.synclist
 check:rc==0
+cmd:nodeset $$CN osimage=__GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-install-compute
+check:rc==0
 cmd:updatenode $$CN -F >/tmp/updatenode.F.out
 check:rc!=0
-cmd:grep 'updatenode exited with code 1' /tmp/updatenode.F.out
+cmd:grep '"/tmp/non-existent" failed: No such file or directory' /tmp/updatenode.F.out
 check:rc==0
 cmd:chdef -t osimage -o  __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-install-compute synclists=
 check:rc==0
 cmd:rm -f /install/custom/install/__GETNODEATTR($$CN,os)__/booboo.synclist 
+cmd:rm -rf /tmp/updatenode.F.out
 end 

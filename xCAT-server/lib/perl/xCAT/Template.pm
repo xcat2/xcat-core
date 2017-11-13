@@ -56,6 +56,7 @@ sub subvars {
     my $media_dir        = shift;
     my $platform         = shift;
     my $partitionfileval = shift;
+    my $tmpl_hash = shift;
     my %namedargs = @_; #further expansion of this function will be named arguments, should have happened sooner.
 
     unless ($namedargs{reusemachinepass}) {
@@ -82,26 +83,14 @@ sub subvars {
     close($inh);
 
     #the logic to determine the $ENV{XCATMASTER} confirm to the following priority(from high to low):
-    #the "xcatmaster" attribute of the node
-    #the site.master
-    #the ip address of the mn facing the compute node
+    ## 1, the "xcatmaster" attribute of the node
+    ## 2, the ip address of the mn/sn facing the compute node
+    ## 3, the site.master
     my $master;
 
     #the "xcatmaster" attribute of the node
-    my $noderestab = xCAT::Table->new('noderes');
-    my $et = $noderestab->getNodeAttribs($node, ['xcatmaster']);
-    if ($et and $et->{'xcatmaster'}) {
-        $master = $et->{'xcatmaster'};
-    }
-
-    unless ($master) {
-
-        #the site.master
-        my @masters = xCAT::TableUtils->get_site_attribute("master");
-        my $tmp     = $masters[0];
-        if (defined($tmp)) {
-            $master = $tmp;
-        }
+    if ($tmpl_hash->{'xcatmaster'}) {
+        $master = $tmpl_hash->{'xcatmaster'};
     }
 
     unless ($master) {
@@ -116,13 +105,22 @@ sub subvars {
     }
 
     unless ($master) {
+
+        #the site.master
+        my @masters = xCAT::TableUtils->get_site_attribute("master");
+        my $tmp     = $masters[0];
+        if (defined($tmp)) {
+            $master = $tmp;
+        }
+    }
+
+    unless ($master) {
         $tmplerr = "Unable to identify master for $node";
         return;
     }
 
     $ENV{XCATMASTER} = $master;
-
-    my ($host, $ipaddr) = xCAT::NetworkUtils->gethostnameandip($master);
+    my $ipaddr = xCAT::NetworkUtils->getipaddr($master);
     if ($ipaddr) {
         $ENV{MASTER_IP} = "$ipaddr";
     }
@@ -376,9 +374,7 @@ sub subvars {
             $inc =~ s/#UNCOMMENTOENABLESSH#/ /g;
         }
 
-        my $nrtab = xCAT::Table->new("noderes");
-        my $tftpserver = $nrtab->getNodeAttribs($node, ['tftpserver']);
-        my $sles_sdk_media = "http://" . $tftpserver->{tftpserver} . $media_dir . "/sdk1";
+        my $sles_sdk_media = "http://" . $tmpl_hash->{tftpserver} . $media_dir . "/sdk1";
 
         $inc =~ s/#SLES_SDK_MEDIA#/$sles_sdk_media/eg;
 

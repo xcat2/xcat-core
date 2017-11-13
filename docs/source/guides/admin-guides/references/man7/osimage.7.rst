@@ -41,7 +41,7 @@ osimage Attributes:
 
 \ **addkcmdline**\  (linuximage.addkcmdline)
  
- User specified arguments to be passed to the kernel.  The user arguments are appended to xCAT.s default kernel arguments. For the kernel options need to be persistent after installation, specify them with prefix "R::".  This attribute is ignored if linuximage.boottarget is set.
+ User specified kernel options for os provision process(no prefix) or the provisioned os(with prefix "R::"). The options should be delimited with spaces(" "). This attribute is ignored if linuximage.boottarget is set.
  
 
 
@@ -324,15 +324,15 @@ osimage Attributes:
  
  .. code-block:: perl
  
-        IMG_ARCH(The architecture of the osimage, such as "ppc64le","x86_64"), 
-        IMG_NAME(The name of the osimage, such as "rhels7.3-ppc64le-netboot-compute"), 
-        IMG_OSVER(The os release of the osimage, such as "rhels7.3","sles11.4"), 
+        IMG_ARCH(The architecture of the osimage, such as "ppc64le","x86_64"),
+        IMG_NAME(The name of the osimage, such as "rhels7.3-ppc64le-netboot-compute"),
+        IMG_OSVER(The os release of the osimage, such as "rhels7.3","sles11.4"),
         IMG_KERNELVERSION(the "kernelver" attribute of the osimage),
-        IMG_PROFILE(the profile of the osimage, such as "service","compute"), 
-        IMG_PKGLIST(the "pkglist" attribute of the osimage), 
-        IMG_PKGDIR(the "pkgdir" attribute of the osimage), 
-        IMG_OTHERPKGLIST(the "otherpkglist" attribute of the osimage), 
-        IMG_OTHERPKGDIR(the "otherpkgdir" attribute of the osimage), 
+        IMG_PROFILE(the profile of the osimage, such as "service","compute"),
+        IMG_PKGLIST(the "pkglist" attribute of the osimage),
+        IMG_PKGDIR(the "pkgdir" attribute of the osimage),
+        IMG_OTHERPKGLIST(the "otherpkglist" attribute of the osimage),
+        IMG_OTHERPKGDIR(the "otherpkgdir" attribute of the osimage),
         IMG_ROOTIMGDIR(the "rootimgdir" attribute of the osimage)
  
  

@@ -12,7 +12,7 @@ The following example outlines the MTMS based hardware discovery for a single IP
 +------------------------------+------------+
 | Hostname                     | cn01       |
 +------------------------------+------------+
-| IP address                   | 10.1.2.1   |
+| IP address                   | 10.0.101.1 |
 +------------------------------+------------+
 
 The BMC IP address is obtained by the open range dhcp server and the plan is to leave the IP address the same, except we want to change the IP address to be static in the BMC. 
@@ -20,9 +20,9 @@ The BMC IP address is obtained by the open range dhcp server and the plan is to 
 +------------------------------+------------+
 | BMC Information              | Value      |
 +==============================+============+
-| IP address - dhcp            | 172.30.0.1 |
+| IP address - dhcp            | 50.0.100.1 |
 +------------------------------+------------+
-| IP address - static          | 172.30.0.1 |
+| IP address - static          | 50.0.100.1 |
 +------------------------------+------------+
 
 
@@ -30,9 +30,9 @@ The BMC IP address is obtained by the open range dhcp server and the plan is to 
 
    Use the ``bmcdiscover`` command to help discover the nodes over an IP range and easily create a starting file to define the compute nodes into xCAT.
 
-   To discover the compute nodes for the BMCs with an IP address of 172.30.0.1, use the command: ::
+   To discover the compute nodes for the BMCs with an IP address of 50.0.100.1, use the command: ::
 
-      bmcdiscover --range 172.30.0.1 -z > predefined.stanzas
+      bmcdiscover --range 50.0.100.1 -z > predefined.stanzas
 
    The discovered nodes have the naming convention:  node-<*model-type*>-<*serial-number*> ::
 
@@ -40,7 +40,7 @@ The BMC IP address is obtained by the open range dhcp server and the plan is to 
       node-8247-22l-10112ca:
         objtype=node
         groups=all
-        bmc=172.30.0.1
+        bmc=50.0.100.1
         cons=ipmi
         mgt=ipmi
         mtm=8247-22L
@@ -59,7 +59,7 @@ The BMC IP address is obtained by the open range dhcp server and the plan is to 
 
     #. Add a ``ip`` attribute and give it the compute node IP address: ::
 
-          ip=10.1.2.1
+          ip=10.0.101.1
 
     #. Repeat for additional nodes in the ``predefined.stanza`` file based on the MTMS mapping.
 
@@ -70,13 +70,16 @@ The BMC IP address is obtained by the open range dhcp server and the plan is to 
         cn01:
           objtype=node
           groups=all
-          bmc=172.30.0.1
+          bmc=50.0.100.1
           cons=ipmi
           mgt=ipmi
           mtm=8247-22L
           serial=10112CA
-          ip=10.1.2.1 
+          ip=10.0.101.1
 
+#. Define the compute nodes into xCAT: ::
+
+       cat predefined.stanzas | mkdef -z 
 
 #. Set the chain table to run the ``bmcsetup`` script, this will set the BMC IP to static. ::
 
@@ -85,10 +88,6 @@ The BMC IP address is obtained by the open range dhcp server and the plan is to 
 #. Set the target `osimage` into the chain table to automatically provision the operating system after the node discovery is complete. ::
 
        chdef cn01 -p chain="osimage=<osimage_name>"
-
-#. Define the compute nodes into xCAT: ::
-
-       cat predefined.stanzas | mkdef -z 
 
 #. Add the compute node IP information to ``/etc/hosts``: ::
 

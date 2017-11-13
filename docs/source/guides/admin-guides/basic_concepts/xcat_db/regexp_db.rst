@@ -95,6 +95,63 @@ Using easy regular expression support you would put this in the hosts table. ::
 In the easy regx example, the expression only has the 2nd part of the expression from the previous example. xCAT will evaluate the node name, matching the number part of the node name, and create the 1st part of the expression . The 2nd part supplied is what value to give the ip attribute. The resulting output is the same.
 
 
+Regular Expression Helper Functions
+-----------------------------------
+
+xCAT provides several functions that can simplify regular expressions.
+
+\ **a2idx** ASCII Character to Index\
+  Usage: ``a2idx(character)``
+
+  Turns a single character into a 1-indexed index. ‘a’ maps to 1 and ‘z’ maps to 26.
+
+\ **a2zidx** ASCII Character to 0-Index\
+  Usage: ``a2zidx(character)``
+
+  Turns a single character into a 0-indexed index. ‘a’ maps to 0 and ‘z’ maps to 25.
+
+\ **dim2idx** Dimensions to Index\
+  Usage: ``dim2idx(value, [count, value...])``
+
+  Converts dimensions (such as row, column, chassis, etc) into an index.  An example system consists of 8 racks, two rows with four columns each.
+
+  +-----------+-----------+-----------+-----------+
+  | row1-col1 | row1-col2 | row1-col3 | row1-col4 |
+  +-----------+-----------+-----------+-----------+
+  | row2-col1 | row2-col2 | row2-col3 | row2-col4 |
+  +-----------+-----------+-----------+-----------+
+  To obtain the rack index, use ``|row(\d+)-col(\d+)|(dim2idx($1, 4, $2))|``.  This maps the racks to:
+
+  +---+---+---+---+
+  | 1 | 2 | 3 | 4 |
+  +---+---+---+---+
+  | 5 | 6 | 7 | 8 |
+  +---+---+---+---+
+  Note that the size of the highest dimension (2 rows) is not needed, and all values are one-indexed.
+
+  If each rack contains 20 nodes, use ``|row(\d+)-col(\d+)-node(\d+)|(dim2idx($1, 4, $2, 20, $3)`` to determine a node index (useful for determining IP addresses).
+
+\ **skip** Skip indices\
+  Usage: ``skip(index, skiplist)``
+
+  Return an index with certain values skipped.  The skip list uses the format ``start[:count][,start[:count]...]``.  Using the example above, to skip racks 3 and 4, use:
+
+  ``|row(\d+)-col(\d+)|(skip(dim2idx($1, 4, $2),'3:2')|``
+
+  The result would be:
+
+  +---+---+---+---+
+  | 1 | 2 |   |   |
+  +---+---+---+---+
+  | 3 | 4 | 5 | 6 |
+  +---+---+---+---+
+
+\ **ipadd** Add to an IP address\
+  Usage: ``ipadd(octet1, octet2, octet3, octet4, toadd, skipstart, skipend)``
+
+  This function is useful when you need to cross octets. Optionally skip addresses at the start and end of octets (like .0 or .255 - technically those are valid IP addresses, but sometimes software makes poor assumptions about which broadcast and gateway addresses). 
+
+
 Verify your regular expression
 ------------------------------
 

@@ -76,7 +76,7 @@ function log_lines {
 ######################################################
 function log_error {
     local __msg="$*"
-    $log_print_cmd $log_print_arg "[E]: $__msg" 
+    $log_print_cmd $log_print_arg "[E]:Error: $__msg" 
     return 0
 }
 
@@ -511,7 +511,6 @@ function create_persistent_ifcfg {
         fi
 
     fi
-
     query_extra_params $ifname
 
     local attrs=""
@@ -697,17 +696,38 @@ function add_br() {
      BRIDGE=$2
 
      if [[ $BRIDGE == "bridge_ovs" ]]; then
-         type brctl >/dev/null 2>/dev/null || (echo "There is no ovs-vsctl" >&2 && exit 1)
          log_info "ovs-vsctl add-br $BNAME"
          ovs-vsctl add-br $BNAME
      elif [[ $BRIDGE == "bridge" ]]; then
-         type brctl >/dev/null 2>/dev/null || (echo "There is no brctl" >&2 && exit 1)
          log_info "brctl addbr $BNAME" 
          brctl addbr $BNAME
          log_info "brctl stp $BNAME on"
          brctl stp $BNAME on
      fi
 }
+
+###############################################################################
+#
+# check brctl
+#
+##############################################################################
+function check_brctl() {
+    BRIDGE=$1
+    if [[ $BRIDGE == "bridge_ovs" ]]; then
+         type brctl >/dev/null 2>/dev/null
+         if [ $? -ne 0 ]; then
+             log_error "There is no brctl"
+             return 1
+         fi
+    elif [[ $BRIDGE == "bridge" ]]; then
+         type brctl >/dev/null 2>/dev/null
+         if [ $? -ne 0 ]; then
+             log_error "There is no brctl"
+             return 1
+         fi
+    fi
+}
+
 
 ###############################################################################
 #
@@ -783,7 +803,6 @@ function create_raw_vlan_for_br {
     fi
 
     cfg="${cfg}${cfg:+,}USERCTL=no"
-    cfg="${cfg}${cfg:+,}TYPE=Ethernet"
     cfg="${cfg}${cfg:+,}VLAN=yes"
     cfg="${cfg}${cfg:+,}BRIDGE=$_bridge"
     [ -n "$_mtu" ] && \
@@ -1160,7 +1179,6 @@ function create_vlan_interface {
     fi
     
     cfg="${cfg}${cfg:+,}USERCTL=no"
-    cfg="${cfg}${cfg:+,}TYPE=Ethernet"
     cfg="${cfg}${cfg:+,}VLAN=yes"
     [ -n "$_mtu" ] && \
     cfg="${cfg}${cfg:+,}MTU=$_mtu"
@@ -1168,17 +1186,17 @@ function create_vlan_interface {
         ifname=$ifname.$vlanid \
         xcatnet=$xcatnet \
         inattrs="$cfg"
-
-    # bring up interface formally
-    lines=`$ifdown $ifname.$vlanid; $ifup $ifname.$vlanid`
-    rc=$?
-    if [ $rc -ne 0 ]; then
-        log_warn "ifup $ifname.$vlanid failed with return code equals to $rc"
-        echo "$lines" \
-        | $sed -e 's/^/>> /g' \
-        | log_lines info
+    if [ x$xcatnet != x ]; then
+        # bring up interface formally
+        lines=`$ifdown $ifname.$vlanid; $ifup $ifname.$vlanid`
+        rc=$?
+        if [ $rc -ne 0 ]; then
+            log_warn "ifup $ifname.$vlanid failed with return code equals to $rc"
+            echo "$lines" \
+            | $sed -e 's/^/>> /g' \
+            | log_lines info
+        fi
     fi
-
     return $rc
 }
 
@@ -1245,11 +1263,7 @@ function create_bond_interface {
     local xcatnet=""
     local _ipaddr=""
     local _netmask=""
-    # note:
-    # - "miimon" requires drivers for each slave nic support MII tool.
-    #   $ ethtool <interface_name> | grep "Link detected:"
-    # - "802.3ad" mode requires a switch that is 802.3ad compliant.
-    local _bonding_opts="mode=802.3ad miimon=100"
+    local _bonding_opts=""
     local _mtu=""
     local slave_ports=""
     # parser input arguments
@@ -1262,7 +1276,8 @@ function create_bond_interface {
            [ "$key" = "_netmask" ] || \
            [ "$key" = "_bonding_opts" ] || \
            [ "$key" = "_mtu" ] || \
-           [ "$key" = "slave_ports" ]; then
+           [ "$key" = "slave_ports" ] || \
+           [ "$key" = "slave_type" ]; then
             eval "$1"
         fi
         shift
@@ -1272,7 +1287,17 @@ function create_bond_interface {
         log_error "No valid slave_ports defined. Abort!"
         return 1
     fi
-
+    if [ -z "$slave_type" ] || [ x"$slave_type" = "xethernet" ]; then
+        slave_type="Ethernet"
+        # note:
+        # - "miimon" requires drivers for each slave nic support MII tool.
+        #   $ ethtool <interface_name> | grep "Link detected:"
+        # - "802.3ad" mode requires a switch that is 802.3ad compliant.
+        _bonding_opts="mode=802.3ad miimon=100"
+    elif [ "$slave_type" = "infiniband" ]; then
+        slave_type="Infiniband"
+        _bonding_opts="mode=1 miimon=100 fail_over_mac=1"
+    fi
     # let's query "nicnetworks" table about its target "xcatnet" 
     if [ -n "$ifname" -a -z "$xcatnet" -a -z "$_ipaddr" ]; then
         xcatnet=`query_nicnetworks_net $ifname`
@@ -1397,7 +1422,7 @@ function create_bond_interface {
                 fi
 
                 cfg="${cfg}${cfg:+,}USERCTL=no"
-                cfg="${cfg}${cfg:+,}TYPE=Ethernet"
+                cfg="${cfg}${cfg:+,}TYPE=$slave_type"
                 cfg="${cfg}${cfg:+,}SLAVE=yes"
                 cfg="${cfg}${cfg:+,}MASTER=$ifname"
                 cfg="${cfg}${cfg:+,}BOOTPROTO=none"
@@ -1421,7 +1446,6 @@ function create_bond_interface {
             # 3.1) Check bond interface status
             wait_for_ifstate $ifname UP 200 1
             rc=$?
-
             # log for debug
             $ip link show $ifname | $sed -e 's/^/[ip.link] >> /g' | log_lines info 
 
@@ -1461,19 +1485,20 @@ function create_bond_interface {
         ifname=$ifname \
         xcatnet=$xcatnet \
         inattrs="$cfg"
-    lines=`$ifdown $ifname; $ifup $ifname 2>&1`
-    rc=$?
-    if [ $rc -ne 0 ]; then
-        log_warn "ifup $ifname failed with return code equals to $rc"
-        echo "$lines" \
-        | $sed -e 's/^/'$ifname' ifup out >> /g' \
-        | log_lines info
+    if [ x$xcatnet != x ]; then
+        lines=`$ifdown $ifname; $ifup $ifname 2>&1`
+        rc=$?
+        if [ $rc -ne 0 ]; then
+            log_warn "ifup $ifname failed with return code equals to $rc"
+            echo "$lines" \
+            | $sed -e 's/^/'$ifname' ifup out >> /g' \
+            | log_lines info
+        fi
     fi
-
     wait_for_ifstate $ifname UP 200 1
     rc=$?
     if [ $rc -ne 0 ]; then
-        log_error "Error! Interface \"$ifname\" was NOT in \"UP\" state eventually."
+        log_error "Interface \"$ifname\" could not be brought \"UP\"."
         $ip link show $ifname \
         | $sed -e 's/^/['$ifname' ip out >> /g' \
         | log_lines info

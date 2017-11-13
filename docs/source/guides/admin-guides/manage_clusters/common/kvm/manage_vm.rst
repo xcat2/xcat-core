@@ -2,7 +2,7 @@ Manage Virtual Machine (VM)
 ============================
 
 
-Now the MowerKVM hypervisor "kvmhost1" is ready, this section introduces the VM management in xCAT, including examples on how to create, remove and clone VMs.
+Now the PowerKVM hypervisor "kvmhost1" is ready, this section introduces the VM management in xCAT, including examples on how to create, remove and clone VMs.
 
 Create Virtual Machine
 ----------------------
@@ -25,23 +25,23 @@ Specify VM attributes
 
 After the VM object is created, several key attributes need to be specified with ``chdef`` : 
 
-1. the number of virtual cpus in the VM: ::
+1. the hardware management module, "kvm" for PowerKVM: ::
+
+    chdef vm1 mgt=kvm
+
+2. the number of virtual cpus in the VM: ::
 
      chdef vm1 vmcpus=2
 
-2. the kvm hypervisor of the VM: ::
+3. the kvm hypervisor of the VM: ::
  
      chdef vm1 vmhost=kvmhost1
 
-3. the virtual memory size, with the unit "Megabit". Specify 1GB memory to "vm1" here: ::
+4. the virtual memory size, with the unit "Megabit". Specify 1GB memory to "vm1" here: ::
 
      chdef vm1 vmmemory=1024
 
 **Note**: For diskless node, the **vmmemory** should be at least 2048 MB, otherwise the node cannot boot up. 
-
-4. the hardware management module, "kvm" for PowerKVM: ::
-
-    chdef vm1 mgt=kvm
 
 5. Define the virtual network card, it should be set to the bridge "br0" which has been created in the hypervisor. If no bridge is specified, no network device will be created for the VM node "vm1": ::
 
@@ -82,7 +82,27 @@ After the VM object is created, several key attributes need to be specified with
 
      chtab node=vm1 vm.vidpassword=abc123
 
-10. Set **netboot** attribute
+10. (optional)For assigning PCI devices to the VM, set **othersettings** value: ::
+
+     chtab node=vm1 vm.othersettings="devpassthrough:0000:01:00.2" 
+
+    Or: ::
+
+     chtab node=vm1 vm.othersettings="devpassthrough:pci_0000_01_00_2"
+
+    Take assigning SR-IOV VFs to the VM as an example: 
+
+    * Use ``lspci`` to get VFs PCI from hypervisor: ::
+
+        lspci|grep -i "Virtual Function"
+          0000:01:00.1 Infiniband controller: Mellanox Technologies MT27700 Family [ConnectX-4 Virtual Function]
+          0000:01:00.2 Infiniband controller: Mellanox Technologies MT27700 Family [ConnectX-4 Virtual Function]
+
+    * Set the VFs PCI into ``vm`` table on MN: ::
+     
+        chtab node=vm1 vm.othersettings="devpassthrough:0000:01:00.1,0000:01:00.2"
+
+11. Set **netboot** attribute
 
     * **[x86_64]** ::
  

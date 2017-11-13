@@ -502,7 +502,7 @@ sub process_request {
     unlink glob("$destdir/rootimg.*");   
  
     if ($method =~ /cpio/) {
-        if (!$exlistloc) {
+        if (!$excludestr) {
             $excludestr = "find . -xdev -print0 | cpio -H newc -o -0 | $compress -c - > ../rootimg.$suffix";
         } else {
             chdir("$rootimg_dir");
@@ -523,7 +523,7 @@ sub process_request {
         if ($checkoption2 !~ /unrecognized/) {
             $option .= "--selinux ";
         }
-        if (!$exlistloc) {
+        if (!$excludestr) {
             $excludestr = "find . -xdev -print0 | tar $option --no-recursion --use-compress-program=$compress --null -T - -cf ../rootimg.$suffix";
         } else {
             chdir("$rootimg_dir");
@@ -544,7 +544,6 @@ sub process_request {
         }
         $excludestr = "cat $xcat_packimg_tmpfile|cpio -dump $temppath";
     }
-
     chdir("$rootimg_dir");
     my $outputmsg = `$excludestr 2>&1`;
     unless($?){

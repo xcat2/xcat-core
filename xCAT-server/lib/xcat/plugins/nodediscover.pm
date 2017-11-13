@@ -248,8 +248,16 @@ sub process_request {
         #for onie switch, lookup and set the switchtype via mac of mgt interface
         my $switchestab = xCAT::Table->new('switches');
         if ($switchestab) {
-            my $switchtype=$xCAT::data::switchinfo::global_mac_identity{substr(lc($request->{_xcat_clientmac}->[0]),0,8)};
-            if(defined $switchtype){
+            my $switchtype;
+            my $switchvendor=$xCAT::data::switchinfo::global_mac_identity{substr(lc($request->{_xcat_clientmac}->[0]),0,8)};
+            if(defined $switchvendor){
+                my $search_string = join '|', keys(%xCAT::data::switchinfo::global_switch_type);
+                if ($switchvendor =~ /($search_string)/) {
+                    $switchtype=$xCAT::data::switchinfo::global_switch_type{$1};
+                }
+            }
+             
+            if($switchtype){
                 $switchestab->setNodeAttribs($node,{ switchtype => $switchtype });
             }
             $switchestab->close();
@@ -311,6 +319,9 @@ sub process_request {
                         if ($nettagname and (inet_aton($nettagname) eq inet_aton($node))) {
                             $hosttag = "$node-$ifinfo[1]";
                             push @hostnames_to_update, $hosttag;
+                        }
+                        elsif (!inet_aton($node)) {
+                            xCAT::MsgUtils->message("S", "xcat.discovery.nodediscover: Can not resolve IP for the matching node:$node. Make sure \"makehosts\" and \"makedns\" have been run for $node.");
                         }
                     }
                     #print Dumper($hosttag) . "\n";
@@ -451,10 +462,16 @@ sub process_request {
             }
         }
     } else {
-
-        # Only BMC that doesn't support in-band configuration need to run rspconfig out-of-band, such as S822L running in OPAL model
-        xCAT::MsgUtils->message("S", "No bmcinband specified, need to configure BMC out-of-band");
-        xCAT::Utils->cleanup_for_powerLE_hardware_discovery($request, $doreq);
+        if (defined($request->{bmc_node}) and defined($request->{bmc_node}->[0])) {
+            my $bmc_node = $request->{bmc_node}->[0];
+            if ($bmc_node =~ /\,/) {
+                xCAT::MsgUtils->message("W", "Multiple BMC nodes matched with no bmcinband specified, please remove manually");
+            } else {
+                # Only BMC that doesn't support in-band configuration need to run rspconfig out-of-band, such as S822L running in OPAL model
+                xCAT::MsgUtils->message("S", "No bmcinband specified, need to configure BMC out-of-band");
+                xCAT::Utils->cleanup_for_powerLE_hardware_discovery($request, $doreq);
+            }
+        }
     }
 
 
@@ -474,8 +491,6 @@ sub process_request {
     print $sock $restartstring;
     close($sock);
 
-    # sleep 2 seconds for genesis to complete the disocvery process
-    sleep(2);
 
     #Update the discoverydata table to indicate the successful discovery
     xCAT::DiscoveryUtils->update_discovery_data($request);

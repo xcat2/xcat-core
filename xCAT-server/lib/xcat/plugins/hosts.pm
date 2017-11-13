@@ -165,7 +165,7 @@ sub build_line
         $longname  = "$node.$domain";
     }
 
-    # if shortname contains a dot then we have a bad syntax for name
+    # if shortname contains a dot then we have a bad syntax for name 
     if ($shortname =~ /\./) {
         my $rsp;
         push @{ $rsp->{data} }, "Invalid short node name \'$shortname\'. The short node name may not contain a dot. The short node name is considered to be anything preceeding the network domain name in the fully qualified node name \'$longname\'.\n";
@@ -415,39 +415,32 @@ sub process_request
     my $domain;
     my $lockh;
 
+    # lockfile to prevent concurrent executions
+    open($lockh, ">", "/tmp/xcat/hostsfile.lock");
+    flock($lockh, LOCK_EX);
+
+    # save a backup copy
+    my $bakname = "/etc/hosts.xcatbak";
+    copy("/etc/hosts", $bakname);
+
     @hosts = ();
     if ($REMOVE)
     {
-        if (-e "/etc/hosts")
+        # add the localhost entry if trying to create the /etc/hosts from scratch
+        if ($^O =~ /^aix/i)
         {
-            my $bakname = "/etc/hosts.xcatbak";
-            rename("/etc/hosts", $bakname);
-
-            # add the localhost entry if trying to create the /etc/hosts from scratch
-            if ($^O =~ /^aix/i)
-            {
-                push @hosts, "127.0.0.1 loopback localhost\n";
-            }
-            else
-            {
-                push @hosts, "127.0.0.1 localhost\n";
-            }
+            push @hosts, "127.0.0.1 loopback localhost\n";
+        }
+        else
+        {
+            push @hosts, "127.0.0.1 localhost\n";
         }
     }
     else
     {
-        if (-e "/etc/hosts")
-        {
-            my $bakname = "/etc/hosts.xcatbak";
-            copy("/etc/hosts", $bakname);
-        }
-
-
         #  the contents of the /etc/hosts file is saved in the @hosts array
         #    the @hosts elements are updated and used to re-create the
         #    /etc/hosts file at the end by the writeout subroutine.
-        open($lockh, ">", "/tmp/xcat/hostsfile.lock");
-        flock($lockh, LOCK_EX);
         my $rconf;
         open($rconf, "/etc/hosts");    # Read file into memory
         if ($rconf)
@@ -729,9 +722,28 @@ sub donics
             for (my $i = 0 ; $i < $nicindex{$nic} ; $i++) {
                 if (!$nich->{$nic}->{nicsufx}->[$i] && !$nich->{$nic}->{nicprfx}->[$i]) {
 
+                    if ($nic =~ /\./) {
+                         my $rsp;
+                         push @{ $rsp->{data} }, "$node: since \'$nic\' contains dot, nics.nichostnamesuffixes.$nic should be configured without dot for \'$nic\' interface.";
+                         xCAT::MsgUtils->message("E", $rsp, $callback);
+                         next;
+                    }
                     # then we have no suffix at all for this
                     # so set a default
                     $nich->{$nic}->{nicsufx}->[$i] = "-$nic";
+
+                } elsif ($nich->{$nic}->{nicsufx}->[$i] && $nich->{$nic}->{nicsufx}->[$i] =~ /\./) {
+                    my $rsp;
+                    push @{ $rsp->{data} }, "$node: the value \'$nich->{$nic}->{nicsufx}->[$i]\' of nics.nichostnamesuffixes.$nic should not contain dot.";
+                    xCAT::MsgUtils->message("E", $rsp, $callback);
+                    delete $nich->{$nic}->{nicsufx}->[$i];
+                    next;
+                } elsif ($nich->{$nic}->{nicprfx}->[$i] && $nich->{$nic}->{nicprfx}->[$i] =~ /\./) {
+                    my $rsp;
+                    push @{ $rsp->{data} }, "$node: the value \'$nich->{$nic}->{nicprfx}->[$i]\' of nics.nichostnameprefixes.$nic should not contain dot.";
+                    xCAT::MsgUtils->message("E", $rsp, $callback);
+                    delete $nich->{$nic}->{nicprfx}->[$i];
+                    next;
                 }
             }
         }

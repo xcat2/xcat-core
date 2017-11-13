@@ -18,23 +18,37 @@ AutoReqProv: no
 
 %define fsm %(if [ "$fsm" = "1" ];then echo 1; else echo 0; fi)
 
+# Define local variable from environment variable
 %define pcm %(if [ "$pcm" = "1" ];then echo 1; else echo 0; fi)
 %define notpcm %(if [ "$pcm" = "1" ];then echo 0; else echo 1; fi)
+%define s390x %(if [ "$s390x" = "1" ];then echo 1; else echo 0; fi)
+%define nots390x %(if [ "$s390x" = "1" ];then echo 0; else echo 1; fi)
+
+# Define a different location for various httpd configs in s390x mode
+%define httpconfigdir %(if [ "$s390x" = "1" ];then echo "xcathttpdsave"; else echo "xcat"; fi)
 
 # AIX will build with an arch of "ppc"
 # also need to fix Requires for AIX
 %ifos linux
 BuildArch: noarch
+# Note: ifarch/ifnarch does not work for noarch package, use environment variable instead
+
+%if %s390x
+Requires: perl-IO-Socket-SSL perl-XML-Simple perl-XML-Parser
+%else
 Requires: perl-IO-Socket-SSL perl-XML-Simple perl-XML-Parser perl-Digest-SHA1 perl(LWP::Protocol::https)
+%endif
 Obsoletes: atftp-xcat
 %endif
 
 # The aix rpm cmd forces us to do this outside of ifos type stmts
 %if %notpcm
 %ifos linux
+#
 # PCM does not use or ship grub2-xcat
+%if %nots390x
 Requires: grub2-xcat perl-Net-HTTPS-NB perl-HTTP-Async
-#%endif
+%endif
 %endif
 %endif
 
@@ -313,7 +327,7 @@ mkdir -p $RPM_BUILD_ROOT/etc/init.d
 cp etc/init.d/xcatd $RPM_BUILD_ROOT/etc/init.d
 %endif
 #TODO: the next has to me moved to postscript, to detect /etc/xcat vs /etc/opt/xcat
-mkdir -p $RPM_BUILD_ROOT/etc/xcat
+mkdir -p $RPM_BUILD_ROOT/etc/%httpconfigdir
 
 mkdir -p $RPM_BUILD_ROOT/%{prefix}/share/doc/packages/xCAT-server
 cp LICENSE.html $RPM_BUILD_ROOT/%{prefix}/share/doc/packages/xCAT-server
@@ -324,7 +338,7 @@ chmod 644 $RPM_BUILD_ROOT/%{prefix}/share/doc/packages/xCAT-server/*
 mkdir -p $RPM_BUILD_ROOT/%{prefix}/ws
 mkdir -p $RPM_BUILD_ROOT/etc/apache2/conf.d
 mkdir -p $RPM_BUILD_ROOT/etc/httpd/conf.d
-mkdir -p $RPM_BUILD_ROOT/etc/xcat/conf.orig
+mkdir -p $RPM_BUILD_ROOT/etc/%httpconfigdir/conf.orig
 
 cp xCAT-wsapi/* $RPM_BUILD_ROOT/%{prefix}/ws
 
@@ -334,20 +348,32 @@ cp xCAT-wsapi/* $RPM_BUILD_ROOT/%{prefix}/ws
 rm -f $RPM_BUILD_ROOT/%{prefix}/ws/xcatws.cgi
 %endif
 
-%if %fsm
-%else
-echo "ScriptAlias /xcatrhevh %{prefix}/ws/xcatrhevh.cgi" > $RPM_BUILD_ROOT/etc/xcat/conf.orig/xcat-ws.conf.apache22
-echo "ScriptAlias /xcatrhevh %{prefix}/ws/xcatrhevh.cgi" > $RPM_BUILD_ROOT/etc/xcat/conf.orig/xcat-ws.conf.apache24
-%if %notpcm
-echo "ScriptAlias /xcatws %{prefix}/ws/xcatws.cgi" >> $RPM_BUILD_ROOT/etc/xcat/conf.orig/xcat-ws.conf.apache22
-echo "ScriptAlias /xcatws %{prefix}/ws/xcatws.cgi" >> $RPM_BUILD_ROOT/etc/xcat/conf.orig/xcat-ws.conf.apache24
+%if %nots390x
+rm -f $RPM_BUILD_ROOT/%{prefix}/ws/zvmxcatws.cgi
 %endif
 
-cat $RPM_BUILD_ROOT/%{prefix}/ws/xcat-ws.conf.apache22 >>  $RPM_BUILD_ROOT/etc/xcat/conf.orig/xcat-ws.conf.apache22
-cat $RPM_BUILD_ROOT/%{prefix}/ws/xcat-ws.conf.apache24 >> $RPM_BUILD_ROOT/etc/xcat/conf.orig/xcat-ws.conf.apache24
+%if %fsm
+%else
+echo "ScriptAlias /xcatrhevh %{prefix}/ws/xcatrhevh.cgi" > $RPM_BUILD_ROOT/etc/%httpconfigdir/conf.orig/xcat-ws.conf.apache22
+echo "ScriptAlias /xcatrhevh %{prefix}/ws/xcatrhevh.cgi" > $RPM_BUILD_ROOT/etc/%httpconfigdir/conf.orig/xcat-ws.conf.apache24
+%if %notpcm
+%if %nots390x
+echo "ScriptAlias /xcatws %{prefix}/ws/xcatws.cgi" >> $RPM_BUILD_ROOT/etc/%httpconfigdir/conf.orig/xcat-ws.conf.apache22
+echo "ScriptAlias /xcatws %{prefix}/ws/xcatws.cgi" >> $RPM_BUILD_ROOT/etc/%httpconfigdir/conf.orig/xcat-ws.conf.apache24
+%else
+# Add in old version 1 REST-API and version 2 REST-API to z/VM, default to version 1
+echo "ScriptAlias /xcatwsv2 %{prefix}/ws/xcatws.cgi" >> $RPM_BUILD_ROOT/etc/%httpconfigdir/conf.orig/xcat-ws.conf.apache22
+echo "ScriptAlias /xcatwsv2 %{prefix}/ws/xcatws.cgi" >> $RPM_BUILD_ROOT/etc/%httpconfigdir/conf.orig/xcat-ws.conf.apache24
+echo "ScriptAlias /xcatws %{prefix}/ws/zvmxcatws.cgi" >> $RPM_BUILD_ROOT/etc/%httpconfigdir/conf.orig/xcat-ws.conf.apache22
+echo "ScriptAlias /xcatws %{prefix}/ws/zvmxcatws.cgi" >> $RPM_BUILD_ROOT/etc/%httpconfigdir/conf.orig/xcat-ws.conf.apache24
+%endif
+%endif
+
+cat $RPM_BUILD_ROOT/%{prefix}/ws/xcat-ws.conf.apache22 >>  $RPM_BUILD_ROOT/etc/%httpconfigdir/conf.orig/xcat-ws.conf.apache22
+cat $RPM_BUILD_ROOT/%{prefix}/ws/xcat-ws.conf.apache24 >> $RPM_BUILD_ROOT/etc/%httpconfigdir/conf.orig/xcat-ws.conf.apache24
 #install lower version(<2.4) apache/httpd conf files by default
-cp $RPM_BUILD_ROOT/etc/xcat/conf.orig/xcat-ws.conf.apache22 $RPM_BUILD_ROOT/etc/apache2/conf.d/xcat-ws.conf
-cp $RPM_BUILD_ROOT/etc/xcat/conf.orig/xcat-ws.conf.apache22 $RPM_BUILD_ROOT/etc/httpd/conf.d/xcat-ws.conf
+cp $RPM_BUILD_ROOT/etc/%httpconfigdir/conf.orig/xcat-ws.conf.apache22 $RPM_BUILD_ROOT/etc/apache2/conf.d/xcat-ws.conf
+cp $RPM_BUILD_ROOT/etc/%httpconfigdir/conf.orig/xcat-ws.conf.apache22 $RPM_BUILD_ROOT/etc/httpd/conf.d/xcat-ws.conf
 %endif
 
 
@@ -362,12 +388,12 @@ rm -rf $RPM_BUILD_ROOT
 %defattr(-,root,root)
 #%doc LICENSE.html
 %{prefix}
-/etc/xcat
+/etc/%httpconfigdir
 %if %fsm
 %else
 /etc/init.d/xcatd
-#/etc/xcat/conf.orig/xcat-ws.conf.apache24
-#/etc/xcat/conf.orig/xcat-ws.conf.apache22
+#/etc/%httpconfigdir/conf.orig/xcat-ws.conf.apache24
+#/etc/%httpconfigdir/conf.orig/xcat-ws.conf.apache22
 /etc/apache2/conf.d/xcat-ws.conf
 /etc/httpd/conf.d/xcat-ws.conf
 %endif
@@ -434,19 +460,19 @@ fi
 if [ -n "$(httpd -v 2>&1 |grep -e '^Server version\s*:.*\/2.4')" ]
 then
    rm -rf /etc/httpd/conf.d/xcat-ws.conf
-   cp /etc/xcat/conf.orig/xcat-ws.conf.apache24 /etc/httpd/conf.d/xcat-ws.conf
+   cp /etc/%httpconfigdir/conf.orig/xcat-ws.conf.apache24 /etc/httpd/conf.d/xcat-ws.conf
 fi
 
 if [ -n "$(apachectl -v 2>&1 |grep -e '^Server version\s*:.*\/2.4')" ]
 then
    rm -rf /etc/apache2/conf.d/xcat-ws.conf
-   cp /etc/xcat/conf.orig/xcat-ws.conf.apache24 /etc/apache2/conf.d/xcat-ws.conf
+   cp /etc/%httpconfigdir/conf.orig/xcat-ws.conf.apache24 /etc/apache2/conf.d/xcat-ws.conf
 fi
 
 if [ -n "$(apache2ctl -v 2>&1 |grep -e '^Server version\s*:.*\/2.4')" ]
 then
    rm -rf /etc/apache2/conf.d/xcat-ws.conf
-   cp /etc/xcat/conf.orig/xcat-ws.conf.apache24 /etc/apache2/conf.d/xcat-ws.conf
+   cp /etc/%httpconfigdir/conf.orig/xcat-ws.conf.apache24 /etc/apache2/conf.d/xcat-ws.conf
 fi
 
 exit 0

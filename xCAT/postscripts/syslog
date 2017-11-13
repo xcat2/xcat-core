@@ -243,6 +243,14 @@ config_rsyslog_V8()
                 s/#module(load="imtcp")/module(load="imtcp")/;
                 s/#input(type="imtcp" port="514")/input(type="imtcp" port="514")/' $conf_file
     fi
+    
+    if [ $isSN -eq 1 ] ; then
+        [ -d "/etc/xcat/rsyslog.conf" ] && cp -a /etc/xcat/rsyslog.conf/* /etc/rsyslog.d/
+        if [ -d "/etc/xcat/logrotate.conf" ];then 
+            mkdir -p "/etc/logrotate.d/"
+            cp -a /etc/xcat/logrotate.conf/* /etc/logrotate.d/
+        fi
+    fi
 
     # Mark the end of xCAT section
     echo "# $xCATSettingsEND" >> $conf_file
@@ -261,6 +269,13 @@ config_rsyslog_V8()
 
         [ -f "$conf_file" ] && sed -i '/#\$ModLoad \+imudp\|imtcp\|imudp.so\|imtcp.so/s/^#//;
                        /#\$InputTCPServerRun\|UDPServerRun.*/s/^#//' $conf_file
+
+        [ -f "/etc/rsyslog.d/xcat-cluster.conf" ] && rm -f "/etc/rsyslog.d/xcat-cluster.conf" ;
+        [ -f "/etc/rsyslog.d/xcat-compute.conf" ] && rm -f "/etc/rsyslog.d/xcat-compute.conf" ;
+        [ -f "/etc/rsyslog.d/xcat-debug.conf" ] && rm -f "/etc/rsyslog.d/xcat-debug.conf" ;
+
+        [ -f "/etc/logrotate.d/xcat" ] && rm -f "/etc/logrotate.d/xcat"
+        
     fi
 
 

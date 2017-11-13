@@ -107,6 +107,22 @@ if (isset($_GET["cmd"])) {
             }
         }
     }
+    // Remove any HTML that could be used for XSS attacks
+    foreach ($rsp as $key => &$value) {
+        $whatami = gettype($value);
+        if ("string" != $whatami) {
+            //echo "found a non string in rsp array \n";
+            foreach ($value as $key2 => $value2){
+                //echo "Key2:$key2  Value2 type:",gettype($value2)," value2 data: $value2 \n";
+                $value[$key2] = htmlentities($value2, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+            }
+        } else {
+            //echo "Key:$key  Value type:",gettype($value)," value data: $value \n";
+            $rsp[$key] = htmlentities($value, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+            //echo "New value: $rsp[$key] \n";
+        }
+    }
+    $msg = htmlentities($msg, ENT_QUOTES | ENT_HTML5, 'UTF-8');
 
     // Reply in the form of JSON
     $rtn = array("rsp" => $rsp, "msg" => $msg);

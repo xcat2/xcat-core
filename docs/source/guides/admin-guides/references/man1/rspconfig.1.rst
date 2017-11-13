@@ -47,7 +47,7 @@ OpenBMC specific:
 =================
 
 
-\ **rspconfig**\  \ *noderange*\  {\ **ip | netmask | gateway | vlan | sshcfg**\ }
+\ **rspconfig**\  \ *noderange*\  {\ **ipsrc | ip | netmask | gateway | hostname | vlan | sshcfg**\ }
 
 
 MPA specific:
@@ -394,15 +394,27 @@ OPTIONS
  
 
 
+\ **hostname**\ 
+ 
+ Get or set hostname on the service processor.
+ 
+
+
 \ **vlan**\ 
  
  Get or set vlan ID. For get vlan ID, if vlan is not enabled, 'BMC VLAN disabled' will be outputed. For set vlan ID, the valid value are [1-4096].
  
 
 
+\ **ipsrc**\ 
+ 
+ Get the IP source for OpenBMC.
+ 
+
+
 \ **ip**\ 
  
- The ip address.
+ The IP address.
  
 
 

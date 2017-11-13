@@ -25,12 +25,14 @@ gdb
 binutils
 openssh-server
 util-linux
-perl-DBD-MySQL
 perl-Socket6
 unixODBC
 perl-DBD-MySQL
 mysql-connector-odbc
 perl-DBD-Pg
 wget
-util-linux-ng
 net-tools
+pciutils
+bind-utils
+strace
+tcpdump

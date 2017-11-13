@@ -28,13 +28,23 @@ Conflicts: xCATsn
 Requires: perl-DBD-SQLite
 Requires: xCAT-client = 4:%{version}-%{release}
 Requires: xCAT-server = 4:%{version}-%{release}
-Requires: xCAT-probe  = 4:%{version}-%{release}
-Requires: xCAT-genesis-scripts-x86_64 = 1:%{version}-%{release}
-Requires: xCAT-genesis-scripts-ppc64  = 1:%{version}-%{release}
-Requires: rsync
 
 %define pcm %(if [ "$pcm" = "1" ];then echo 1; else echo 0; fi)
 %define notpcm %(if [ "$pcm" = "1" ];then echo 0; else echo 1; fi)
+
+%define s390x %(if [ "$s390x" = "1" ];then echo 1; else echo 0; fi)
+%define nots390x %(if [ "$s390x" = "1" ];then echo 0; else echo 1; fi)
+
+# Define a different location for various httpd configs in s390x mode
+%define httpconfigdir %(if [ "$s390x" = "1" ];then echo "xcathttpdsave"; else echo "xcat"; fi)
+
+%if %nots390x
+Requires: xCAT-probe  = 4:%{version}-%{release}
+Requires: xCAT-genesis-scripts-x86_64 = 1:%{version}-%{release}
+Requires: xCAT-genesis-scripts-ppc64  = 1:%{version}-%{release}
+%endif
+
+Requires: rsync
 
 %ifos linux
 Requires: httpd nfs-utils nmap bind perl(CGI)
@@ -45,7 +55,7 @@ Requires: /usr/bin/killall
 Requires: /usr/sbin/dhcpd
 # On RHEL this pulls in openssh-server, on SLES it pulls in openssh
 Requires: /usr/bin/ssh
-%ifnarch s390x
+%if %nots390x
 Requires: /etc/xinetd.d/tftp
 Requires: xCAT-buildkit
 # Stty is only needed for rcons on ppc64 nodes, but for mixed clusters require it on both x and p
@@ -56,7 +66,7 @@ Requires: perl-IO-Stty
 # The aix rpm cmd forces us to do this outside of ifos type stmts
 %if %notpcm
 %ifos linux
-%ifnarch s390x
+%if %nots390x
 # PCM does not use or ship conserver
 Requires: conserver-xcat
 %endif
@@ -64,7 +74,9 @@ Requires: conserver-xcat
 %endif
 
 #support mixed cluster
+%if %nots390x
 Requires: elilo-xcat xnba-undi
+%endif
 
 %ifarch i386 i586 i686 x86 x86_64
 Requires: syslinux
@@ -79,7 +91,9 @@ Requires: ipmitool-xcat >= 1.8.17-1
 
 %if %notpcm
 # PCM does not need or ship syslinux-xcat
+%if %nots390x
 Requires: syslinux-xcat
+%endif
 %endif
 
 %description
@@ -128,7 +142,7 @@ fi
 
 
 %install
-mkdir -p $RPM_BUILD_ROOT/etc/xcat/conf.orig
+mkdir -p $RPM_BUILD_ROOT/etc/%httpconfigdir/conf.orig
 mkdir -p $RPM_BUILD_ROOT/etc/apache2/conf.d
 mkdir -p $RPM_BUILD_ROOT/etc/httpd/conf.d
 mkdir -p $RPM_BUILD_ROOT/etc/logrotate.d
@@ -176,8 +190,8 @@ mkdir -p postscripts/hostkeys
 cd -
 cp %{SOURCE1} $RPM_BUILD_ROOT/etc/httpd/conf.d/xcat.conf
 cp %{SOURCE1} $RPM_BUILD_ROOT/etc/apache2/conf.d/xcat.conf
-cp %{SOURCE7} $RPM_BUILD_ROOT/etc/xcat/conf.orig/xcat.conf.apach24
-cp %{SOURCE1} $RPM_BUILD_ROOT/etc/xcat/conf.orig/xcat.conf.apach22
+cp %{SOURCE7} $RPM_BUILD_ROOT/etc/%httpconfigdir/conf.orig/xcat.conf.apach24
+cp %{SOURCE1} $RPM_BUILD_ROOT/etc/%httpconfigdir/conf.orig/xcat.conf.apach22
 cp %{SOURCE5} $RPM_BUILD_ROOT/etc/xCATMN
 
 mkdir -p $RPM_BUILD_ROOT/%{prefix}/share/doc/packages/xCAT
@@ -190,19 +204,19 @@ cp LICENSE.html $RPM_BUILD_ROOT/%{prefix}/share/doc/packages/xCAT
 if [ -n "$(httpd -v 2>&1 |grep -e '^Server version\s*:.*\/2.4')" ]
 then
    rm -rf /etc/httpd/conf.d/xcat.conf
-   cp /etc/xcat/conf.orig/xcat.conf.apach24 /etc/httpd/conf.d/xcat.conf
+   cp /etc/%httpconfigdir/conf.orig/xcat.conf.apach24 /etc/httpd/conf.d/xcat.conf
 fi
 
 if [ -n "$(apachectl -v 2>&1 |grep -e '^Server version\s*:.*\/2.4')" ]
 then
    rm -rf /etc/apache2/conf.d/xcat.conf
-   cp /etc/xcat/conf.orig/xcat.conf.apach24 /etc/apache2/conf.d/xcat.conf
+   cp /etc/%httpconfigdir/conf.orig/xcat.conf.apach24 /etc/apache2/conf.d/xcat.conf
 fi
 
 if [ -n "$(apache2ctl -v 2>&1 |grep -e '^Server version\s*:.*\/2.4')" ]
 then
    rm -rf /etc/apache2/conf.d/xcat.conf
-   cp /etc/xcat/conf.orig/xcat.conf.apach24 /etc/apache2/conf.d/xcat.conf
+   cp /etc/%httpconfigdir/conf.orig/xcat.conf.apach24 /etc/apache2/conf.d/xcat.conf
 fi
 
 # Let rsyslogd perform close of any open files
@@ -244,8 +258,8 @@ exit 0
 %files
 %{prefix}
 # one for sles, one for rhel. yes, it's ugly...
-/etc/xcat/conf.orig/xcat.conf.apach24
-/etc/xcat/conf.orig/xcat.conf.apach22
+/etc/%httpconfigdir/conf.orig/xcat.conf.apach24
+/etc/%httpconfigdir/conf.orig/xcat.conf.apach22
 /etc/httpd/conf.d/xcat.conf
 /etc/apache2/conf.d/xcat.conf
 /etc/xCATMN

@@ -1,10 +1,10 @@
 Switch Management
 =================
 
-VLAN Configuration
-------------------
+Switch Port and VLAN Configuration
+----------------------------------
 
-xCAT ships a simple configuration script that will set all the ports on the switch to be part of VLAN 1.  See the Cumulus Networks documentation for more information regarding advanced networking configuration. ::
+xCAT expects the configuration for the front-panel ports to be located at ``/etc/network/interfaces.d/xCAT.intf`` on the switch.  The ``configinterface`` postscript can download an interface configuration file from the management node.  Place the configuration file in the directory ``/install/custom/sw_os/cumulus/interface/`` on the management node.  It will first look for a file named the same as the switch's hostname, followed by the name of each group, followed by the word 'default'.  If the postscript cannot find a configuration file on the management node, it will set all the ports on the switch to be part of VLAN 1.  See the Cumulus Networks documentation for more information regarding advanced networking configuration. ::
 
     updatenode <switch> -P configinterface
 

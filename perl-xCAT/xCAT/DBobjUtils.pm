@@ -902,6 +902,19 @@ sub setobjdefs
         }
 
         my @attrprovided = ();
+        #get group objects data
+        my %DBgroupsattr;
+        my %tmpghash;
+        my @tmplgrplist;
+        my %grpvalidattr;
+        if (defined($objhash{$objname}{'groups'})){
+
+            @tmplgrplist = split(",", $objhash{$objname}{'groups'});
+            foreach my $tmpgrp (@tmplgrplist) {
+                $tmpghash{$tmpgrp} = "group";
+            }
+            %DBgroupsattr=xCAT::DBobjUtils->getobjdefs(\%tmpghash);
+        }
 
         # check FINALATTRS to see if all the attrs are valid
         foreach my $attr (keys %{ $objhash{$objname} }) {
@@ -936,6 +949,7 @@ sub setobjdefs
         my @setattrlist = ();
         my %checkedattrs;
         my $invalidattr;
+        my $conditionlist;
 
         foreach my $this_attr (@{ $datatype->{'attrs'} }) {
             my %keyhash;
@@ -992,11 +1006,15 @@ sub setobjdefs
                                 }
                             }
                         }
-                        xCAT::MsgUtils->message("I", $rsp, $::callback);
                         $checkedattrs{$attr_name} = 1;
                         if ($invalidattr->{$attr_name}->{valid} != 1) {
                             $invalidattr->{$attr_name}->{valid} = 0;
-                            $invalidattr->{$attr_name}->{condition} = "\'$check_attr=$check_value\'";
+                            $invalidattr->{$attr_name}->{condition}=$check_attr;
+                            if (defined($conditionlist->{$check_attr})) {
+                                $conditionlist->{$check_attr}=$conditionlist->{$check_attr}.",".$check_value;
+                            } else {
+                                $conditionlist->{$check_attr}=$check_value;
+                            }
                         }
 
                         next;
@@ -1005,8 +1023,12 @@ sub setobjdefs
                     if (!($objhash{$objname}{$check_attr} =~ /\b$check_value\b/) && !($DBattrvals{$objname}{$check_attr} =~ /\b$check_value\b/)) {
                         if ($invalidattr->{$attr_name}->{valid} != 1) {
                             $invalidattr->{$attr_name}->{valid} = 0;
-                            $invalidattr->{$attr_name}->{condition} = "\'$check_attr=$check_value\'";
-
+                            $invalidattr->{$attr_name}->{condition}=$check_attr;
+                            if (defined($conditionlist->{$check_attr})) {
+                                $conditionlist->{$check_attr}=$conditionlist->{$check_attr}.",".$check_value;
+                            } else {
+                                $conditionlist->{$check_attr}=$check_value;
+                            }
                         }
 
                         next;
@@ -1147,10 +1169,25 @@ sub setobjdefs
 
         my $rsp;
         foreach my $att (keys %$invalidattr) {
+            my $pickvalidattr=0;
             if ($invalidattr->{$att}->{valid} != 1) {
                 my $tt = $invalidattr->{$att}->{valid};
-                push @{ $rsp->{data} }, "Cannot set the attr=\'$att\' attribute unless $invalidattr->{$att}->{condition}.";
-                xCAT::MsgUtils->message("E", $rsp, $::callback);
+                #if attribute is set invalid, check if its pre-check attribute exists in group objects, pick the attribute into valid. 
+                # ex. like if I want to set hdwctrlpoint I will have
+                # to match the right value for mgtmethod 
+                # if mgtmethod exists in group objects and its value match the one of only_if value, set hdwctrlpoint valid 
+                my $conditionkey=$invalidattr->{$att}->{condition};
+                foreach my $tmpgrp (@tmplgrplist) {
+                    if (($DBgroupsattr{$tmpgrp}{$conditionkey}) && ($conditionlist->{$conditionkey} =~ $DBgroupsattr{$tmpgrp}{$conditionkey})) {
+                        $pickvalidattr=1;
+                        last;
+                    }
+                }
+                if ($pickvalidattr != 1) {
+                    $conditionlist->{$conditionkey}=~s/,/ or /g;
+                    push @{ $rsp->{data} }, "Cannot set the attr=\'$att\' attribute unless $invalidattr->{$att}->{condition} value is $conditionlist->{$conditionkey}.";
+                    xCAT::MsgUtils->message("E", $rsp, $::callback);
+                }
             }
         }
 

@@ -30,3 +30,14 @@ cmd:perl /opt/xcat/share/xcat/tools/autotest/testcase/genesis/genesistest.pl -n 
 check:rc==0
 cmd:cat /tmp/genesistestlog/*
 end
+start:nodeset_shell_incorrectmasterip
+description:very if computenode need to do nodeset shell in different net with master will success
+cmd:/opt/xcat/share/xcat/tools/autotest/testcase/genesis/test.sh --check xnba
+check:rc==0
+cmd:/opt/xcat/share/xcat/tools/autotest/testcase/genesis/test.sh --check grub2
+check:rc==0
+cmd:/opt/xcat/share/xcat/tools/autotest/testcase/genesis/test.sh --check petitboot
+check:rc==0
+cmd:/opt/xcat/share/xcat/tools/autotest/testcase/genesis/test.sh -c
+check:rc==0
+end

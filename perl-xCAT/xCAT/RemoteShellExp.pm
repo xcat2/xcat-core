@@ -466,7 +466,7 @@ sub testkeys
             return 0;
         } else {
             my $rsp = {};
-            $rsp->{error}->[0] = $msg;
+            $rsp->{error}->[0] = "Testing the ssh connection to $nodes failed:".$msg;
             xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
             return 1;
         }
@@ -598,7 +598,7 @@ sub sendnodeskeys
                     $rc = 0;
                 } else {
                     my $rsp = {};
-                    $rsp->{error}->[0] = "mkdir:$node has error,$msg";
+                    $rsp->{error}->[0] = "Failed to run \"/bin/mkdir -p /tmp/$to_userid/.ssh\" on $node: $msg";
                     xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
                     $rc = 1;
                 }
@@ -686,7 +686,7 @@ sub sendnodeskeys
                     $rc = 0;
                 } else {
                     my $rsp = {};
-                    $rsp->{error}->[0] = "copykeys:$node has error,$msg";
+                    $rsp->{error}->[0] = "Failed to copy ssh credentials and helper script to $node: $msg";
                     xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
                     $rc = 1;
                 }
@@ -715,7 +715,7 @@ sub sendnodeskeys
 
         # command to run copy.sh
         my $spawnruncopy =
-          "$remoteshell $node -l $to_userid /tmp/$to_userid/.ssh/copy.sh";
+          "$remoteshell $node -l $to_userid /tmp/$to_userid/.ssh/copy.sh $to_userid";
 
         # send mkdir command
         unless ($sendkeys->spawn($spawnruncopy))
@@ -771,7 +771,7 @@ sub sendnodeskeys
                     $rc = 0;
                 } else {
                     my $rsp = {};
-                    $rsp->{error}->[0] = "copy.sh:$node has error,$msg";
+                    $rsp->{error}->[0] = "Failed to apply the ssh keys on $node:$msg";
                     xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
                     $rc = 1;
                 }

@@ -225,7 +225,7 @@ if [ "$OSNAME" == "AIX" ]; then
 else
 	# Linux 
 	SYSGRP=root
-	YUM=yum
+	YUM=yum/devel
 	FRSDIR='2.x_Linux'
 fi
 chgrp -R -h $SYSGRP *

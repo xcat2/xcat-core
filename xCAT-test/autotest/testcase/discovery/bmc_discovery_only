@@ -1,0 +1,6 @@
+start:bmc_discovery_only
+description: test the whole process of bmc discovery 
+Attribute: $$NODE_DISCOVERY_TARGET:The machine plan to be discovered. $$NODE_DISCOVERY_BMC_DYNAMIC_IP_RANGE :The valid dymanic ip range which has been configured in DHCP server and can offer service.   
+cmd:/opt/xcat/share/xcat/tools/autotest/testcase/discovery/discovery_test --discovery_target_node $$NODE_DISCOVERY_TARGET --bmc_dynamic_ip_range $$NODE_DISCOVERY_BMC_DYNAMIC_IP_RANGE --bmc_discovery_only
+check:rc==0
+end

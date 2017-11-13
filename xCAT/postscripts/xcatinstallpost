@@ -10,6 +10,7 @@ if [ -f /xcatpost/mypostscript.post ]; then
     XCATDEBUGMODE=`grep 'XCATDEBUGMODE=' /xcatpost/mypostscript.post |cut -d= -f2 | tr -d \'\" | tr A-Z a-z `
     MASTER_IP=`grep '^MASTER_IP=' /xcatpost/mypostscript.post |cut -d= -f2|sed s/\'//g`
     OSVER=`grep '^OSVER=' /xcatpost/mypostscript.post |cut -d= -f2|sed s/\'//g`
+    NODE=`grep '^NODE=' /xcatpost/mypostscript.post |cut -d= -f2|sed s/\'//g`
 fi
 
 
@@ -74,6 +75,15 @@ if [ $? -eq 0 ]; then
 else
     echo "REBOOT=TRUE" >> /opt/xcat/xcatinfo
 fi
+
+#add node name to xcatinfo
+grep 'NODE' /opt/xcat/xcatinfo > /dev/null 2>&1 
+if [ $? -eq 0 ]; then
+    sed -i "s/NODE=.*/NODE=$NODE/" /opt/xcat/xcatinfo
+else
+    echo "NODE=$NODE" >> /opt/xcat/xcatinfo
+fi
+
 # Store the SERVICEGROUP into the xcatinfo file for statful installation
 sn_group=`grep '^SERVICEGROUP' /xcatpost/mypostscript |cut -d= -f2 | tr -d \'\"`
 if [ "x" != "x$sn_group" ]; then
@@ -89,7 +99,10 @@ else
   sed -i "/SERVICEGROUP=.*/d" $XCATINFOFILE
 fi
 
-CNS=`grep NODESTATUS= /xcatpost/mypostscript.post |awk -F = '{print $2}' | tr -d \'\" | tr A-Z a-z`
+[ -f /xcatpost/mypostscript ] && NODESTATUS=`grep 'NODESTATUS=' /xcatpost/mypostscript |awk -F = '{print $2}'|tr -d \'\" | tr A-Z a-z `
+[ -z "$NODESTATUS" ] && NODESTATUS="1"
+
+CNS=$NODESTATUS
 if [ -z "$CNS" ] || [[ "$CNS" =~ ^(1|yes|y)$ ]]; then
 #update the node status during the postbootscript running
 #TMP=`sed "/postbootscripts-start-here/ i\updateflag.awk \\$MASTER 3002 \\"installstatus configuring\\"" /xcatpost/mypostscript.post`

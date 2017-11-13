@@ -52,6 +52,7 @@ cat /tmp/resp.xml | egrep  '<data>' | sed  -e 's/<[^>]*>//g'|egrep -v '^ *$'|sed
 #will be supported if there is requrement on this
 sed -i -e "/# postscripts-start-here/,$ d" /xcatpost/mypostscript
 
+chmod 700 /xcatpost/mypostscript
 rm -f /tmp/req.xml
 rm -f /tmp/resp.xml
 exit 0

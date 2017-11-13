@@ -524,7 +524,7 @@ __EOF__
     FILES_PATH="files"
     FRS="/var/www/${SERVER}/${FILES_PATH}"
     APT_DIR="${FRS}/xcat"
-    APT_REPO_DIR="${APT_DIR}/repos/apt"
+    APT_REPO_DIR="${APT_DIR}/repos/apt/devel"
 
     # Decide whether to upload the xcat-dep package or NOT (default is to NOT upload xcat-dep 
     if [ "$UP" != "1" ]; then

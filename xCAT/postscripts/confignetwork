@@ -297,6 +297,7 @@ function sort_nics_device_order {
 
     all_nics_list=$*
     eth_slot=""
+    ib_slot=""
     bond_slot=""
     vlan_slot=""
     ib_slots=""
@@ -328,13 +329,21 @@ function sort_nics_device_order {
                     else
                         ib_slots=$ib_slots,$alonenic
                     fi
+                elif [ x"$alonenictype" = "xvlan" ] || [ x"$alonenictype" = "xbond" ]; then
+                    echo "Error: should configure nicdevices for $alonenic."
+                    errorcode=1
+                     
                 else
                     echo $alonenic
                 fi
             else
-                errorcode=1
-                echo "Error: nicips,nictypes and nicnetworks should be configured in nics table for $alonenic."
-                ((num1+=1)) 
+                if [ -n "$alonenictype" ] && [ $alonenictype = "unused" ]; then
+                    echo "nic $alonenic found, but nictypes.$alonenic=unused, ignore configuring $alonenic."
+                else
+                    errorcode=1
+                    echo "Error: nicips,nictypes and nicnetworks should be configured in nics table for $alonenic."
+                fi
+                ((num1+=1))
                 continue
             fi
         fi
@@ -386,6 +395,16 @@ function sort_nics_device_order {
                     eth_slot=$eth_slot" "$num
                 fi
 
+            #valid nic_dev and base_nic_dev pair as bond-infiniband
+            elif [ x"$base_nic_type" = "xinfiniband" ]&& \
+                [ x"$nic_dev_type" = "xbond" ]; then
+
+                if [ x"$ib_slot" = x ]; then
+                    ib_slot=$num
+                else
+                    ib_slot=$ib_slot" "$num
+                fi
+
             #valid nic_dev and base_nic_dev pair as vlan-bond or bridge-bond
             elif [ x"$base_nic_type" = "xbond" ]&& \
                 [ x"$nic_dev_type" = "xvlan" -o x"$nic_dev_type" = "xbridge" -o x"$nic_dev_type" = "xbridge_ovs" ]; then
@@ -406,15 +425,15 @@ function sort_nics_device_order {
                     vlan_slot=$vlan_slot" "$num
                 fi
             else
-                echo "Error: $nic_dev $base_nic_dev pair is invalid nic and nicdevice pair."
+                echo "Error: nicdevices.$nic_dev base nic device cannot be $base_nic_type $base_nic_dev.(nicdevices is only required on Bond/VLAN/Bridge)"
             fi
             ((num+=1))
         done
       else
-        log_error "Error: only support configure bond/vlan/bridge on redhat."
+        log_error "Only support configuration of Bond/VLAN/Bridge on Red Hat."
       fi
     fi
-    new_order=$eth_slot" "$bond_slot" "$vlan_slot
+    new_order=$eth_slot" "$ib_slot" "$bond_slot" "$vlan_slot
     new_order_list=""
     if [ -n "$new_order" ]; then
 
@@ -530,8 +549,12 @@ function configure_nicdevice {
         #linux bridge type is bridge
         #openvswitch bridge type is bridge_ovs
         elif [ x"$nic_dev_type" = "xbridge_ovs" -o x"$nic_dev_type" = "xbridge" ]; then
-            create_bridge_interface ifname=$nic_dev _brtype=$nic_dev_type _port=$base_nic_dev _pretype=$base_nic_type
-     
+            check_brctl $nic_dev_type
+            if [ $? -ne 0 ]; then
+                errorcode=1
+            else
+               create_bridge_interface ifname=$nic_dev _brtype=$nic_dev_type _port=$base_nic_dev _pretype=$base_nic_type
+            fi
         #configure vlan 
         elif [ x"$nic_dev_type" = "xvlan" ]; then
             if echo "$nic_dev" | grep -sq ".*\.[0-9]\+"; then
@@ -545,7 +568,7 @@ function configure_nicdevice {
 
         #configure bond 
         elif [ x"$nic_dev_type" = "xbond" ]; then
-            create_bond_interface ifname=$nic_dev slave_ports=$base_nic_for_bond       
+            create_bond_interface ifname=$nic_dev slave_ports=$base_nic_for_bond slave_type=$base_nic_type 
         elif [ x"$nic_dev_type" = "xinfiniband" ]; then
             log_info "Call configib for IB nics: $nic_dev, ports: $num_iba_ports"
             log_info "NIC_IBNICS=$nic_dev NIC_IBAPORTS=$num_iba_ports configib"
@@ -555,7 +578,7 @@ function configure_nicdevice {
                 errorcode=1
             fi
         else
-            log_error "Error : please check nic data in nics table."
+            log_error "Check the NIC data in the 'nics' table."
             errorcode=1
         fi 
 
@@ -627,6 +650,9 @@ parser_nic_attribute "$NICTYPES" "nictypes"
 #make hash for nicips
 parser_nic_attribute "$NICIPS" "nicips"
 
+#make hash for nicnetworks
+parser_nic_attribute "$NICNETWORKS" "nicnetworks"
+
 #make hash for niccustomscripts
 parser_nic_attribute "$NICCUSTOMSCRIPTS" "niccustomscripts"
 
@@ -647,12 +673,18 @@ sorted_nicdevice_list=`sort_nics_device_order "$new_nicdevice"`
 #If there is invalid nics pair, errorcode is 1
 invalid_nicdevice_pair=`echo "$sorted_nicdevice_list" | grep "Error"`
 if [ $? -eq 0 ]; then
-    echo "$invalid_nicdevice_pair"|log_lines error
+    echo "$invalid_nicdevice_pair"|sed 's/Error://g'|log_lines error
     errorcode=1
 fi
 
+#when nictypes=unused, print unused nics
+nonicips_list=`echo "$sorted_nicdevice_list" | grep "unused"`
+if [ $? -eq 0 ]; then
+    echo "$nonicips_list"| log_lines info
+fi
+
 #delete invalid nics device pair based on Error
-valid_sorted_nicdevice_list=`echo "$sorted_nicdevice_list" | sed '/Error/d'`
+valid_sorted_nicdevice_list=`echo "$sorted_nicdevice_list" | sed '/Error/d' | sed '/unused/d'`
 if [ -n "$valid_sorted_nicdevice_list" ]; then 
     log_info "All valid nics and device list:"
     echo "$valid_sorted_nicdevice_list" |log_lines info

@@ -141,16 +141,16 @@ sub process_request {
         $clipassword = $password;
     }
     unless (defined $bmc) {
-        xCAT::MsgUtils->message('S', "Received request from host=$node but unable to determine $bmc_mgmt_type.bmc value for the node.  Verify mgt attribute is configured correctly for the node and the BMC is defined.");
-        $callback->({ error => ["Unable to detect BMC configuration value for bmcconfig"], errorcode => [1] });
+        xCAT::MsgUtils->message('S', "Received request from host=$node but unable to determine the $bmc_mgmt_type.bmc value for the node. Verify the node.mgt attribute is configured and the node.bmc is defined.");
+        $callback->({ error => ["No value specified for '$node.bmc'. Unable to configure the BMC, check the node definition."], errorcode => [1] });
         return 1;
     }
     my $bmcport_counter = 0;
     foreach my $sbmc (split /,/, $bmc) {
         (my $ip, my $mask, my $gw) = net_parms($sbmc);
         unless ($ip and $mask and $username and $password) {
-            xCAT::MsgUtils->message('S', "Unable to determine IP, netmask, username, and/or pasword for $sbmc, ensure that host resolution is working.  Best guess parameters would have been: IP: '$ip', netmask: '$mask', username: '$username', password: '$password'",);
-            $callback->({ error => ["Invalid table configuration for bmcconfig"], errorcode => [1] });
+            xCAT::MsgUtils->message('S', "Unable to determine IP, Netmask, Username, or Password for $sbmc. Ensure that hostname resolution is working. [IP=$ip Netmask=$mask User=$username Pass=$password]",);
+            $callback->({ error => ["Invalid/Missing BMC related attributes in the node defintion (IP=$ip Netmask=$mask User=$username Pass=$password). Unable to configure the BMC, check the node definition."], errorcode => [1] });
             return 1;
         }
         if ($request->{command}->[0] eq 'remoteimmsetup') {

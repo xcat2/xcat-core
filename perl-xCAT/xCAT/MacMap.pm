@@ -225,7 +225,7 @@ sub rvlan {
     my $switchestab = xCAT::Table->new('switches', -create => 0);
     my @switchesents;
     if ($switchestab) {
-        foreach (values %{ $switchestab->getNodesAttribs($switches, [qw(switch snmpversion username password privacy auth)]) }) {
+        foreach (values %{ $switchestab->getNodesAttribs($switches, [qw(switch snmpversion username password privacy auth switchtype)]) }) {
             push @switchesents, @$_;
         }
     }
@@ -309,7 +309,7 @@ sub dump_mac_info {
         }
     }
     my $switchestab = xCAT::Table->new('switches', -create => 0);
-    my @switchesents = $switchestab->getAllNodeAttribs([qw(switch snmpversion username password privacy auth)]);
+    my @switchesents = $switchestab->getAllNodeAttribs([qw(switch snmpversion username password privacy auth switchtype)]);
     $self->fill_switchparms(community => $community, switchesents => \@switchesents);
     my $switchtab = xCAT::Table->new('switch', -create => 0);
     my @entries = ();
@@ -337,7 +337,12 @@ sub dump_mac_info {
             if ($self->{show_verbose_info}) {
                 xCAT::MsgUtils->message("I", { data => ["<INFO>$switch: Attempting to refresh switch information..."] }, $self->{callback});
             }
+            my $probestart = time;
             $self->refresh_switch(undef, $community, $switch);
+            my $probestop = time;
+            my $probeduration = $probestop - $probestart;
+            xCAT::MsgUtils->message("S", "xcatprobe refresh_switch $switch ElapsedTime:$probeduration sec");
+
             if ($self->{show_verbose_info}) {
                 xCAT::MsgUtils->message("I", { data => ["<INFO>$switch: Finished refreshing switch information."] }, $self->{callback});
             }
@@ -403,7 +408,13 @@ sub find_mac {
     #If requesting a cache only check or the cache is a mere 20 seconds old
     #don't bother querying switches
     if ($cachedonly or ($self->{timestamp} > (time() - 20))) { return undef; }
+    
+    my $runstart = time;
     $self->refresh_table($discover_switch);    #not cached or stale cache, refresh
+    my $runstop = time;
+    my $diffduration = $runstop - $runstart;
+    xCAT::MsgUtils->message("S", "refresh_table ElapsedTime:$diffduration sec");
+
     if ($self->{mactable}->{ lc($mac) }) {
         return $self->{mactable}->{ lc($mac) };
     }
@@ -419,6 +430,7 @@ sub fill_switchparms {
     foreach (@switchentries) {
         my $curswitch = $_->{switch};
         $self->{switchparmhash}->{$curswitch} = $_;
+        $self->{switchparmhash}->{$curswitch}->{switchtype}=$_->{switchtype};
         if ($_->{snmpversion}) {
             if ($_->{snmpversion} =~ /3/) { #clean up to accept things like v3 or ver3 or 3, whatever.
                 $self->{switchparmhash}->{$curswitch}->{snmpversion} = 3;
@@ -444,7 +456,7 @@ sub refresh_table {
     $self->{mactable}    = {};
     $self->{switchtab}   = xCAT::Table->new('switch', -create => 1);
     $self->{switchestab} = xCAT::Table->new('switches', -create => 1);
-    my @switchentries = $self->{switchestab}->getAllNodeAttribs([qw(switch snmpversion username password privacy auth)]);
+    my @switchentries = $self->{switchestab}->getAllNodeAttribs([qw(switch snmpversion username password privacy auth switchtype)]);
     my $community = "public";
 
     #$self->{sitetab} = xCAT::Table->new('site');
@@ -477,6 +489,9 @@ sub refresh_table {
         unless (defined $_->{password}) { #if no password set, inherit the community
             $self->{switchparmhash}->{$curswitch}->{password} = $community;
         }
+        if (defined $_->{switchtype}){
+            $self->{switchparmhash}->{$curswitch}->{switchtype} =$_->{switchtype};
+        }
     }
     my %checked_pairs;
     my @entries = $self->{switchtab}->getAllNodeAttribs([ 'node', 'port', 'switch' ]);
@@ -497,7 +512,7 @@ sub refresh_table {
         my $ntype = $typehash->{$entry->{node}}->[0]->{nodetype};
         if ( (($discover_switch) and ( $ntype ne "switch"))
             or ( !($discover_switch) and ( $ntype eq "switch")) ){
-            xCAT::MsgUtils->message("S", "refresh_table: skip $entry->{node} and $entry->{switch}");
+            xCAT::MsgUtils->trace(0, "d", "refresh_table: skip node=$entry->{node} switch=$entry->{switch} discover_switch=$discover_switch nodetype=$ntype\n");
             next;
         }
         if (defined($entry->{switch}) and $entry->{switch} ne "" and defined($entry->{port}) and $entry->{port} ne "") {
@@ -528,13 +543,25 @@ sub refresh_table {
         pipe my $child, my $parent;
         $child->autoflush(1);
         $parent->autoflush(1);
+
         $children++;
         my $cpid = xCAT::Utils->xfork;
-        unless (defined $cpid) { die "Cannot fork" }
+        unless (defined $cpid) {
+            $children--;
+            close($child);
+            close($parent);
+            xCAT::MsgUtils->message("S", "refresh_table: failed to fork refresh_switch process for $entry->{switch},skip...");
+            next;
+        }
 
         if ($cpid == 0) {
+            $SIG{CHLD} = 'DEFAULT';
             close($child);
+            my $runstart = time;
             $self->refresh_switch($parent, $community, $entry->{switch});
+            my $runstop = time;
+            my $diffduration = $runstop - $runstart;
+            xCAT::MsgUtils->trace(0, ($diffduration > 10) ? "w" : "d", "refresh_switch $entry->{switch} ElapsedTime:$diffduration sec");
             exit(0);
         }
         close($parent);
@@ -585,9 +612,9 @@ sub walkoid {
     if ($session->{ErrorStr}) {
         unless ($namedargs{silentfail}) {
             if ($namedargs{ciscowarn}) {
-                xCAT::MsgUtils->message("S", "Error communicating with " . $session->{DestHost} . " (First attempt at indexing by VLAN failed, ensure that the switch has the vlan configured such that it appears in 'show vlan'): " . $session->{ErrorStr});
+                xCAT::MsgUtils->message("S", "Error communicating with switch " . $session->{DestHost} . " (First attempt at indexing by VLAN failed, ensure that the switch has the vlan configured such that it appears in 'show vlan'): " . $session->{ErrorStr});
             } else {
-                xCAT::MsgUtils->message("S", "Error communicating with " . $session->{DestHost} . ": " . $session->{ErrorStr});
+                xCAT::MsgUtils->message("S", "Error communicating with switch " . $session->{DestHost} . ": " . $session->{ErrorStr});
             }
         }
         if ($switch) {
@@ -614,6 +641,9 @@ sub walkoid {
     }
     return $retmap;
 }
+
+
+
 
 sub getsnmpsession {
 
@@ -687,8 +717,61 @@ sub refresh_switch {
     my $output    = shift;
     my $community = shift;
     my $switch    = shift;
+    my %index_to_vlan = ();
+    my %index_to_mac = ();
 
-    #if ($error) { die $error; }
+    if($self->{switchparmhash}->{$switch}->{switchtype} eq 'onie'){
+        #for cumulus switch, the MAC table can be retrieved with ssh
+        #which is much faster than snmp 
+        my $mymac;
+        my $myport;
+
+        my @res=xCAT::Utils->runcmd("ssh -o StrictHostKeyChecking=no -o PasswordAuthentication=no $switch 'bridge fdb show|grep -i -v permanent|tr A-Z a-z  2>/dev/null' 2>/dev/null",-1);
+        if ($::RUNCMD_RC) {
+            xCAT::MsgUtils->message("S", "Failed to get mac table with ssh to $switch, fall back to snmp! To obtain mac table with ssh, please make sure the passwordless root ssh to $switch is available");
+        }else{
+            foreach (@res){
+                if($_ =~ m/^([0-9a-z]{2}:[0-9a-z]{2}:[0-9a-z]{2}:[0-9a-z]{2}:[0-9a-z]{2}:[0-9a-z]{2}) dev swp([0-9]+) vlan ([0-9]+) .*/){
+                    $mymac=$1;
+                    $myport=$2;         
+                    $myport=sprintf("%d",$myport);
+                    my $macport=$2;
+                    my $macvlan=$3;
+ 
+                    #try all the possible port number formats
+                    #e.g, "5","swp5","05","swp05"
+                    unless(exists $self->{switches}->{$switch}->{$myport}){
+                        if(exists $self->{switches}->{$switch}->{"swp".$myport}){
+                            $myport="swp".$myport;
+                        }else{
+                            $myport=sprintf("%02d",$myport);
+                            unless(exists $self->{switches}->{$switch}->{$myport}){
+                                if(exists $self->{switches}->{$switch}->{"swp".$myport}){
+                                    $myport="swp".$myport;
+                                }else{
+                                    $myport="";
+                                }
+                            }
+                        }
+                    }
+
+                    if($myport){
+                        if($output){
+                            printf $output "$mymac|%s\n", $self->{switches}->{$switch}->{$myport};
+                        }
+                    }
+                    $macport="swp".$macport;
+                    push @{ $index_to_vlan{$macport} }, $macvlan;
+                    push @{ $index_to_mac{$macport} }, $mymac;
+                }
+
+            }
+            unless($self->{collect_mac_info}) {
+                return;
+            }
+        }
+    }
+
     my $session = $self->getsnmpsession('community' => $community, 'switch' => $switch);
     unless ($session) {
         xCAT::MsgUtils->message("S", "Failed to communicate with $switch");
@@ -728,11 +811,58 @@ sub refresh_switch {
         return;
     }
 
+    #check if it is Mellanox IB switch
+    foreach (keys %{$namemap}) {
+        my $ifname = $namemap->{$_};
+        if ($self->{collect_mac_info}) {
+            if ( ($ifname =~ /IB/) || ($ifname =~ /ib/) ) {
+                $self->{macinfo}->{$switch}->{ErrorStr} = "This command does not support Mellanox IB Switch";
+                return;
+            }
+        } 
+        last;
+    }
+
     # get mtu
     my $iftomtumap = walkoid($session, '.1.3.6.1.2.1.2.2.1.4', silentfail => 1, verbose => $self->{show_verbose_info}, switch => $switch, callback => $self->{callback});
     unless (defined($iftomtumap)) {
         xCAT::MsgUtils->message("I", "MTU information is not availabe for this switch $switch");
     }
+
+    my $iscisco = 0;
+    if ($self->{switchparmhash}->{$switch}->{switchtype} eq 'onie'){
+        my $bridgetoifmap = walkoid($session, '.1.3.6.1.2.1.17.1.4.1.2', ciscowarn => $iscisco, verbose => $self->{show_verbose_info}, switch => $switch, callback => $self->{callback}); # Good for all switches
+        if (not ref $bridgetoifmap or !keys %{$bridgetoifmap}) {
+            xCAT::MsgUtils->message("S", "Error communicating with switch " . $session->{DestHost} . ": failed to get a valid response to BRIDGE-MIB request");
+            $self->{macinfo}->{$switch}->{ErrorStr} = "Failed to get a valid response to BRIDGE-MIB request";
+            return;
+        }
+        foreach my $boid (keys %$bridgetoifmap) {
+            my $port_index = $boid;
+            my $port_name  = $namemap->{ $bridgetoifmap->{$port_index} };
+            my $mtu  = $iftomtumap->{ $bridgetoifmap->{$port_index} };
+            if (defined($index_to_mac{$port_name})) {
+                push @{ $self->{macinfo}->{$switch}->{$port_name} }, @{ $index_to_mac{$port_name} };
+            }
+            else {
+                $self->{macinfo}->{$switch}->{$port_name}->[0] = '';
+            }
+
+            if (defined($index_to_vlan{$port_name})) {
+                push @{ $self->{vlaninfo}->{$switch}->{$port_name} }, @{ $index_to_vlan{$port_name} };
+            }
+            else {
+                $self->{vlaninfo}->{$switch}->{$port_name}->[0] = '';
+            }
+            push @{ $self->{mtuinfo}->{$switch}->{$port_name} } , $mtu;
+
+        }
+        return;
+
+    }
+
+    # get port state
+    my $mactostate = walkoid($session, '.1.3.6.1.2.1.17.7.1.2.2.1.3', silentfail => 1, verbose => $self->{show_verbose_info}, switch => $switch, callback => $self->{callback});
 
     #Above is valid without community string indexing, on cisco, we need it on the next one and onward
     my $iftovlanmap = walkoid($session, '.1.3.6.1.4.1.9.9.68.1.2.2.1.2', silentfail => 1, verbose => $self->{show_verbose_info}, switch => $switch, callback => $self->{callback}); #use cisco vlan membership mib to ascertain vlan
@@ -762,13 +892,16 @@ sub refresh_switch {
                     $self->{nodeinfo}->{ $self->{switches}->{$switch}->{$portname} }->{vlans}->{$portname} = $trunktovlanmap->{$portid};
                 }
             }
+            #still needs output if there are no switchport defined on the nodes
+            if (not defined $portname) {
+                $vlans_to_check{'NA'} = 1;
+            }
         }
     } else {
         $vlans_to_check{'NA'} = 1;
     }
 
     my $vlan;
-    my $iscisco = 0;
     foreach $vlan (sort keys %vlans_to_check) { #Sort, because if numbers, we want 1 first, because that vlan should not get communiy string indexed query
         unless (not $vlan or $vlan eq 'NA' or $vlan eq '1') { #don't subject users to the context pain unless needed
             $iscisco = 1;
@@ -783,10 +916,12 @@ sub refresh_switch {
         }
         my $bridgetoifmap = walkoid($session, '.1.3.6.1.2.1.17.1.4.1.2', ciscowarn => $iscisco, verbose => $self->{show_verbose_info}, switch => $switch, callback => $self->{callback}); # Good for all switches
         if (not ref $bridgetoifmap or !keys %{$bridgetoifmap}) {
-            xCAT::MsgUtils->message("S", "Error communicating with " . $session->{DestHost} . ": failed to get a valid response to BRIDGE-MIB request");
+            xCAT::MsgUtils->message("S", "Error communicating with switch " . $session->{DestHost} . ": failed to get a valid response to BRIDGE-MIB request");
+            if ($self->{collect_mac_info}) {
+                $self->{macinfo}->{$switch}->{ErrorStr} = "Failed to get a valid response to BRIDGE-MIB request";
+            }
             return;
         }
-
         # my $mactoindexmap = walkoid($session,'.1.3.6.1.2.1.17.4.3.1.2');
         my $mactoindexmap = walkoid($session, '.1.3.6.1.2.1.17.7.1.2.2.1.2', silentfail => 1, verbose => $self->{show_verbose_info}, switch => $switch, callback => $self->{callback});
         unless (defined($mactoindexmap)) { #if no qbridge defined, try bridge mib, probably cisco
@@ -794,21 +929,39 @@ sub refresh_switch {
             $mactoindexmap = walkoid($session, '.1.3.6.1.2.1.17.4.3.1.2', ciscowarn => $iscisco, verbose => $self->{show_verbose_info}, switch => $switch, callback => $self->{callback});
         }    #Ok, time to process the data
         if (not ref $mactoindexmap or !keys %{$mactoindexmap}) {
-            xCAT::MsgUtils->message("S", "Error communicating with " . $session->{DestHost} . ": Unable to get MAC entries via either BRIDGE or Q-BRIDE MIB");
+            xCAT::MsgUtils->message("S", "Error communicating with switch " . $session->{DestHost} . ": Unable to get MAC entries via either BRIDGE or Q-BRIDE MIB");
+            if ($self->{collect_mac_info}) {
+                $self->{macinfo}->{$switch}->{ErrorStr} = "Unable to get MAC entries via either BRIDGE or Q-BRIDE MIB";
+            }
             return;
         }
-
+        my $bridgeifvalid = 0;
+        foreach (keys %$mactoindexmap) {
+            my $index     = $mactoindexmap->{$_};
+            if (defined($bridgetoifmap->{$index})) {
+                $bridgeifvalid = 1;
+                last;
+            }
+        }
+        unless ($bridgeifvalid) {
+            # create a dummy bridgetoifmap to cover switches that thing it should go straight to ifindex
+            $bridgetoifmap = {};
+            foreach (keys %$namemap) {
+                $bridgetoifmap->{$_} = $_;
+            }
+        }
         if (defined($self->{collect_mac_info})) {
-            my %index_to_mac = ();
-            my %index_to_vlan = ();
             foreach (keys %$mactoindexmap) {
                 my $index     = $mactoindexmap->{$_};
                 my @tmp       = split /\./, $_;
                 my $vlan      = @tmp[0];
                 my @mac       = @tmp[ -6 .. -1 ];
                 my $macstring = sprintf("%02x:%02x:%02x:%02x:%02x:%02x", @mac);
-                push @{ $index_to_mac{$index} }, $macstring;
-                push @{ $index_to_vlan{$index} }, $vlan;    
+                # Skip "permanent" ports
+                if (!defined($mactostate->{$_}) || $mactostate->{$_} != 4) {
+                    push @{ $index_to_mac{$index} }, $macstring;
+                    push @{ $index_to_vlan{$index} }, $vlan;    
+               }
             }
             foreach my $boid (keys %$bridgetoifmap) {
                 my $port_index = $boid;
