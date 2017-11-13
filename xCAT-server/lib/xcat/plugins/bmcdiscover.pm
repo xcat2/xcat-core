@@ -107,11 +107,11 @@ sub preprocess_request {
         }
         return \@requests;
     } elsif (grep /--check/, @ARGV) {
-        $callback->({ error => ["The option '--check' is not supported at present"], errorcode=>[1]});
+        $callback->({ error => ["The option '--check' is not supported"], errorcode=>[1]});
         $request = ();
         return;
     } elsif (grep /--ipsource/, @ARGV) {
-        $callback->({ error => ["The option '--ipsource' is not supported at present"], errorcode=>[1]});
+        $callback->({ error => ["The option '--ipsource' is not supported"], errorcode=>[1]});
         $request = ();
         return;
     } else {
