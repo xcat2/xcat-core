@@ -15,7 +15,7 @@
 #       $prog <total> [command-list-file]
 #
 ###################################################################
-
+#set -x
 if [ -z $LC_ALL ]; then
   export LC_ALL=C
 fi
@@ -38,12 +38,16 @@ if [ -z "$1" ] || [ "$1" = "-h" ] || [ "$1" = "--help" ]; then
   echo " "
   echo "Generate a bunch of fake nodes and Run the performance testing for the commands listed in file:"
   echo "        [PERF_DRYRUN=y] [PERF_NOCREATE=y] $0 <total number of fake nodes> [command-list-file]"
+  echo " "
+  echo "Generate the script for creating the fake simulators for the given node range:"
+  echo "        $0 create <noderange> [ docker | openbmc ]"
   exit
 fi
 
-PERF_RUN_WITH_ENV=0
 if [ "$1" = "run" ]; then
   PERF_RUN_WITH_ENV=1
+elif [ "$1" = "create" ]; then
+  PERF_RUN_WITH_SIM=1
 else
   isNumber $1
   if [ ! $? -eq 0 ]; then
@@ -70,7 +74,7 @@ preChecking()
   echo $val | sed s/,$//
 }
 
-if [ "$PERF_RUN_WITH_ENV" = "0" ] && [ -z $PERF_DRYRUN ]; then
+if [ -z $PERF_RUN_WITH_ENV ] && [ -z $PERF_RUN_WITH_SIM ] && [ -z $PERF_DRYRUN ]; then
   pass=$(preChecking)
   if [ ! -z "$pass" ]; then
     echo "Error: Missing required tools: $pass"
@@ -80,7 +84,9 @@ fi
 
 # If the command list file is not specified, the tool will only create the stanz file for fake nodes.
 # If it is specified but not exists, the tool will exit with error.
-if [ ! -z $2 ]; then
+if [ "$PERF_RUN_WITH_SIM" = "1" ]; then
+  [ -z $2 ] && echo "ERROR: Not specify the node range." && exit -1
+elif [ ! -z $2 ]; then
   if [ -f $2 ]; then
     RUN_CMD_LIST=$2
   else
@@ -147,6 +153,11 @@ if [ -z $PERF_NODETEMPL ]; then
   PERF_NODETEMPL="`arch`-template"
 fi
 
+# Optional, The NIC used by simulator.
+if [ -z $PERF_SIM_NIC ]; then
+  PERF_SIM_NIC='eth1'
+fi
+
 # Optional, The delimiter which is used for CSV.
 # By default, it is comma, but it could be changed when you set environment variable `PERF_CSV_CHAR`
 if [ -z $PERF_CSV_CHAR ]; then
@@ -178,13 +189,17 @@ genStanz()
   else
     echo -n .
   fi
-
+  mgt='ipmi'
+  if [[ `arch` =~ 'ppc64' ]]; then
+    mgt='openbmc'
+  fi
   sed -e '/Object name:/c \'"$1"':\n    objtype=node' \
       -e '/ip=/c \    ip='"$3"'' \
       -e '/mac=/c \    mac='"$2"'' \
       -e '/bmc=/c \    bmc='"$4"'' \
-      -e '/bmcusername=/c \    bmcusername=fake' \
-      -e '/bmcpassword=/c \    bmcpassword=fake' \
+      -e '/mgt=/c \    mgt='"$mgt"'' \
+      -e '/bmcusername=/c \    bmcusername=root' \
+      -e '/bmcpassword=/c \    bmcpassword=0penBmc' \
       -e '/groups=/c \    groups=all,'"$FAKE_NODE_GROUP"'' \
       -e '/postscripts=/c \    postscripts=mypostboot' \
       -e '/postbootscripts=/c \    postbootscripts=mypostboot' \
@@ -203,11 +218,11 @@ fakeNode()
 # Create a fake xCAT network definition
 fakeNetwork()
 {
-    lsdef -t network -o net-$FAKE_NODE_PREFIX > /dev/null 2>&1
+    lsdef -t network -o perf-net-$FAKE_NODE_PREFIX > /dev/null 2>&1
     if [ 0 != $? ]; then
-      mkdef -t network net-$FAKE_NODE_PREFIX net=$FAKE_NETWORK_PRO.0.0 mask=$FAKE_NETWORK_MASK > /dev/null
+      mkdef -t network perf-net-$FAKE_NODE_PREFIX net=$FAKE_NETWORK_PRO.0.0 mask=$FAKE_NETWORK_MASK > /dev/null
     else
-      chdef -t network -o net-$FAKE_NODE_PREFIX net=$FAKE_NETWORK_PRO.0.0 mask=$FAKE_NETWORK_MASK > /dev/null
+      chdef -t network -o perf-net-$FAKE_NODE_PREFIX net=$FAKE_NETWORK_PRO.0.0 mask=$FAKE_NETWORK_MASK > /dev/null
     fi
 }
 
@@ -218,7 +233,9 @@ fakeInterface()
   if [ -z "$2" ]; then
     [  -z "$result" ] && brctl addbr $1
     ifconfig $1 $FAKE_NETWORK_PRO.251.254 netmask $FAKE_NETWORK_MASK || echo "$1 is not configured successfully"
+    ifconfig $1:0 $FAKE_NETWORK_BMC.251.254 netmask $FAKE_NETWORK_MASK || echo "$1:0 is not configured successfully"
   elif [ ! -z "$result" ]; then
+    ifconfig $1:0 0.0.0.0
     ifconfig $1 down
     brctl delbr $1 || echo "$1 is not removed successfully, you may need to clean up manually."
   fi
@@ -371,6 +388,37 @@ if [ "$PERF_RUN_WITH_ENV" = "1" ]; then
   exit 0
 fi
 
+if [ "$PERF_RUN_WITH_SIM" = "1" ]; then
+  simmode="docker"
+  [ ! -z $3 ] && simmode=$3
+  echo "Generate the $simmode simulators for $2 ..."
+
+  PERFORMANCE_SCRIPT=$PERFORMANCE_DIR/perf-$simmode-create.sh
+  echo "#!/bin/bash" > $PERFORMANCE_SCRIPT
+
+  if [ "$simmode" = "docker" ]; then
+    lsdef $2 -i ip -c | \
+    awk -F '=' '{ print substr($1, 0 ,index($1,":")-1),$2}' | \
+    while read name ip; \
+    do \
+      echo "docker run -itd --rm --name $name --net perf-net --ip $ip --hostname $name -v /root/.ssh:/root/.ssh perf-alpine-ssh" >> $PERFORMANCE_SCRIPT; \
+    done
+  elif [ "$simmode" = "openbmc" ]; then
+    options="-d random -t 10"
+    bmcips=`lsdef $2 -i bmc -c | awk -F '=' '{printf "%s ", $2}'`
+    echo "if [ \"\$1\" = \"setup\" ]; then /tmp/perf/openbmc_simulator/simulator -n $PERF_SIM_NIC $options -r $bmcips; fi" >> $PERFORMANCE_SCRIPT
+    echo "if [ \"\$1\" = \"clean\" ]; then /tmp/perf/openbmc_simulator/simulator -c -n $PERF_SIM_NIC -r $bmcips; fi" >> $PERFORMANCE_SCRIPT
+  else
+    echo "Not supported simulator type: $simmode"
+    rm -f $PERFORMANCE_SCRIPT
+    exit -1
+  fi
+
+  echo
+  echo "Done. Check the performance script in $PERFORMANCE_SCRIPT"
+  exit 0
+fi
+
 #Get available OS image, it will be used for nodeset if possible
 osimage=$(getOSimage)
 if [ -z "$osimage" ]; then
@@ -411,6 +459,8 @@ if [ -z $PERF_NOCREATE ]; then
   #create fake network for makedns, makedhcp etc...
   fakeNetwork
   execCmd "cat $PERFORMANCE_STANZ | mkdef -z -f" "$FAKE_NODE_TOTAL"
+
+  [ -z $PERF_CREATE_ONLY ] || exit 0
   # fake interface is required for topology with service nodes as it will determine if then Mn/Sn are
   # in the same subnet with CNs
   fakeInterface $FAKE_NETWORK_INTF
