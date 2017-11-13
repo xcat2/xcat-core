@@ -135,7 +135,7 @@ fi
 MEMORY=`cat /proc/meminfo |grep MemTotal|awk '{printf "%.0fMB\n", $2/1024}'`
 
 # The DISKSIZE will look like this: sda:960GB,sdb:960GB,sdc:480GB,sdd:480GB (sorted by major,minor)
-DISKSIZE="$(cat /proc/partitions |sort -n |awk 'BEGIN{sep=""} /sd.\>/{printf("%s%s:%.0fGB", sep, $4, $3*0.000001024) ; sep=","}')"
+DISKSIZE="$(cat /proc/partitions |sort -g -k 1,2 |awk 'BEGIN{sep=""} /[^0-9]$/{printf("%s%s:%.0fGB", sep, $4, $3*0.000001024) ; sep=","}')"
 
 logger -s -t $log_label -p local4.info "Beginning echo information to discovery packet file..."
 echo '<xcatrequest>' > /tmp/discopacket
