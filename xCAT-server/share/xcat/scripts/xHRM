@@ -24,7 +24,7 @@ function get_def_interface {
         echo "ERROR: Unable to reasonably guess the default interface" >&2
         exit 1
     fi
-    if brctl show | grep ^$iface >& /dev/null; then #
+    if brctl show | grep ^$iface &> /dev/null; then #
         OIFS=$IFS
         IFS=$'\n'
         INMATCH=0
@@ -155,13 +155,13 @@ elif [ "bridgeprereq" = "$1" ]; then
     fi
 
     # To check whether the brctl have been installed
-    if ! which brctl > /dev/null; then 
+    if ! which brctl &> /dev/null; then 
         echo "No bridge-utils installed, pls install it first"
         exit 1
     fi 
 
-    if brctl showstp "$BNAME" > /dev/null; then
-        echo "$BNAME"
+    if brctl showstp "$BNAME" &> /dev/null; then
+        echo "$BNAME already exists"
         exit 0
     fi
 
