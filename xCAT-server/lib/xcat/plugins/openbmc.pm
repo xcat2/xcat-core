@@ -813,10 +813,13 @@ sub parse_args {
             }
             # check if option starting with - was passed
             elsif ($opt =~ /^-/) {
-                if ($option_flag) {
-                    $option_flag .= " " . $opt;
-                } else {
-                    $option_flag .= $opt;
+                # do not add verbose option to the $option_flag in order to preserve arg checks below
+                if ($opt !~ /^-V$|^--verbose$/) {
+                    if ($option_flag) {
+                        $option_flag .= " " . $opt;
+                    } else {
+                        $option_flag .= $opt;
+                    }
                 }
             }
             else {
@@ -825,10 +828,12 @@ sub parse_args {
             }
         }
         # show options parsed in bypass mode
-        print "DEBUG filename=$filename_passed, updateid=$updateid_passed, options=$option_flag, invalid=$invalid_options\n";
+        print "DEBUG filename=$filename_passed, updateid=$updateid_passed, options=$option_flag, verbose=$verbose, invalid=$invalid_options\n";
 
         if ($option_flag =~ tr{ }{ } > 0) { 
-            return ([ 1, "Multiple options specified is not supported.  Options specified: $option_flag"]);
+            unless ($verbose) {
+                return ([ 1, "Multiple options are not supported. Options specified: $option_flag"]);
+            }
         }
         
         if (scalar @flash_arguments > 1) {
@@ -844,13 +849,13 @@ sub parse_args {
         else {
             if ($updateid_passed) {
                 # Updateid was passed, check flags allowed with update id
-                if ($option_flag !~ /^^-d$|^--delete$|^-a$|^--activate$/) {
+                if ($option_flag !~ /^-d$|^--delete$|^-a$|^--activate$/) {
                     return ([ 1, "Invalid option specified when an update id is provided: $option_flag" ]);
                 }
             }
             else {
                 # Neither Filename nor updateid was not passed, check flags allowed without file or updateid
-                if ($option_flag !~ /^-c$|^--check$|^-l$|^--list/) {
+                if ($option_flag !~ /^-c$|^--check$|^-l$|^--list$/) {
                     return ([ 1, "Invalid option specified with $option_flag: $invalid_options" ]);
                }
             }  
@@ -2512,7 +2517,9 @@ sub rflash_response {
         }
     }
     if ($node_info{$node}{cur_status} eq "RFLASH_UPDATE_ACTIVATE_RESPONSE") {
-        xCAT::SvrUtils::sendmsg("rflash started, please wait...", $callback, $node);
+        if ($::VERBOSE) {
+            xCAT::SvrUtils::sendmsg("rflash started, please wait...", $callback, $node);
+        }
     }
     if ($node_info{$node}{cur_status} eq "RFLASH_SET_PRIORITY_RESPONSE") {
         print "Update priority has been set";
@@ -2544,7 +2551,7 @@ sub rflash_response {
         elsif ($activation_state =~ /Software.Activation.Activations.Active/) { 
             if (scalar($priority_state) == 0) {
                 # Activation state of active and priority of 0 indicates the activation has been completed
-                xCAT::SvrUtils::sendmsg("Firmware activation Successful.", $callback, $node);
+                xCAT::SvrUtils::sendmsg("Firmware activation successful.", $callback, $node);
                 $wait_node_num--;
                 return;
             }
@@ -2555,7 +2562,9 @@ sub rflash_response {
             }
         }
         elsif ($activation_state =~ /Software.Activation.Activations.Activating/) {
-            xCAT::SvrUtils::sendmsg("Activating firmware . . . $progress_state\%", $callback, $node);
+            if ($::VERBOSE) {
+                xCAT::SvrUtils::sendmsg("Activating firmware . . . $progress_state\%", $callback, $node);
+            }
             # Activation still going, sleep for a bit, then print the progress value
             # Set next state to come back here to chect the activation status again.
             retry_after($node, "RFLASH_UPDATE_CHECK_STATE_REQUEST", 15);
@@ -2607,6 +2616,7 @@ sub rflash_response {
 
                     $next_status{"RFLASH_SET_PRIORITY_REQUEST"} = "RFLASH_SET_PRIORITY_RESPONSE";
                     $next_status{"RFLASH_SET_PRIORITY_RESPONSE"} = "RFLASH_UPDATE_CHECK_STATE_REQUEST";
+                    xCAT::SvrUtils::sendmsg("Firmware upload successful. Attempting to activate firmware: $::UPLOAD_FILE_VERSION (ID: $update_id)", $callback, $node);
                     last;
                 }
             }
@@ -2617,7 +2627,9 @@ sub rflash_response {
             }
             if($node_info{$node}{upload_wait_attemp} > 0) {
                 $node_info{$node}{upload_wait_attemp} --;
-                xCAT::SvrUtils::sendmsg("Could not find ID for firmware $::UPLOAD_FILE_VERSION to activate, waiting $::UPLOAD_WAIT_INTERVAL seconds and retry...", $callback, $node);
+                if ($::VERBOSE) {
+                    xCAT::SvrUtils::sendmsg("Could not find ID for firmware $::UPLOAD_FILE_VERSION to activate, waiting $::UPLOAD_WAIT_INTERVAL seconds and retry...", $callback, $node);
+                }
                 retry_after($node, "RFLASH_UPDATE_CHECK_ID_REQUEST", $::UPLOAD_WAIT_INTERVAL);
                 return;
             } else {
@@ -2659,7 +2671,9 @@ sub rflash_upload {
     my $h = from_json($curl_login_result); # convert command output to hash
     if ($h->{message} eq $::RESPONSE_OK) {
         # Login successfull, upload the file
-        xCAT::SvrUtils::sendmsg("Uploading $::UPLOAD_FILE ...", $callback, $node);
+        if ($::VERBOSE) {
+            xCAT::SvrUtils::sendmsg("Uploading $::UPLOAD_FILE ...", $callback, $node);
+        }
         if ($xcatdebugmode) {
             my $debugmsg = "RFLASH_FILE_UPLOAD_RESPONSE: CMD: $curl_upload_cmd";
             process_debug_info($node, $debugmsg);
@@ -2668,9 +2682,7 @@ sub rflash_upload {
         $h = from_json($curl_upload_result); # convert command output to hash
         if ($h->{message} eq $::RESPONSE_OK) {
             # Upload successful, display message
-            if ($::UPLOAD_AND_ACTIVATE) {
-                xCAT::SvrUtils::sendmsg("Firmware upload successful. Attempting to activate firmware: $::UPLOAD_FILE_VERSION", $callback, $node);
-            } else {
+            unless ($::UPLOAD_AND_ACTIVATE) {
                 xCAT::SvrUtils::sendmsg("Firmware upload successful. Use -l option to list.", $callback, $node);
             }
             # Try to logoff, no need to check result, as there is nothing else to do if failure

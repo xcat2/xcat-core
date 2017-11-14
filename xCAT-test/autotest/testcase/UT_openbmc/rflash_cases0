@@ -23,7 +23,7 @@ os:Linux
 hcp:openbmc
 cmd: rflash $$CN -a 123 -d 123
 check:rc==1
-check:output=~Error: Multiple options specified is not supported
+check:output=~Error: Multiple options are not supported
 end 
 
 start:rflash_invalid_id 
