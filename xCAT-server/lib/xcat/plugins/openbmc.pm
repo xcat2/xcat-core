@@ -329,6 +329,41 @@ my %status_info = (
     RSPCONFIG_SSHCFG_RESPONSE => {
         process        => \&rspconfig_sshcfg_response,
     },
+    RSPCONFIG_DUMPLIST_REQUEST => {
+        method         => "GET",
+        init_url       => "$openbmc_project_url/dump/enumerate",
+    },
+    RSPCONFIG_DUMPLIST_RESPONSE => {
+        process        => \&rspconfig_dump_response,
+    },
+    RSPCONFIG_DUMPCRT_REQUEST => {
+        method         => "POST",
+        init_url       => "$openbmc_project_url/dump/action/CreateDump",
+        data           => "[]",
+    },
+    RSPCONFIG_DUMPCRT_RESPONSE => {
+        process        => \&rspconfig_dump_response,
+    },
+    RSPCONFIG_DUMPCLR_REQUEST => {
+        method         => "POST",
+        init_url       => "$openbmc_project_url/dump/entry/#ID#/action/Delete",
+        data           => "[]",
+    },
+    RSPCONFIG_DUMPCLRA_REQUEST => {
+        method         => "POST",
+        init_url       => "$openbmc_project_url/dump/action/DeleteAll",
+        data           => "[]",
+    },
+    RSPCONFIG_DUMPCLR_RESPONSE => {
+        process        => \&rspconfig_dump_response,
+    },
+    RSPCONFIG_DUMPDWLD_REQUEST => {
+        init_url       => "download/dump/#ID#",
+        process        => \&rspconfig_dump_response,
+    },
+    RSPCONFIG_DUMPDWLD_RESPONSE => {
+        process        => \&rspconfig_dump_response,
+    },
     RVITALS_REQUEST => {
         method         => "GET",
         init_url       => "$openbmc_project_url/sensors/enumerate",
@@ -781,10 +816,22 @@ sub parse_args {
                 $setorget = "get";
             } elsif ($subcommand =~ /^sshcfg$/) {
                 $setorget = ""; # SSH Keys are copied using a RShellAPI, not REST API
+            } elsif ($subcommand eq "dump") {
+                my $option = $ARGV[1];
+                if ($option =~ /^-d$|^--download$/) {
+                    return ([ 1, "Invalid parameter for $command $option" ]) unless ($ARGV[2]);
+                    return ([ 1, "Invalid parameter for $command $option $ARGV[2]" ]) if ($ARGV[2] !~ /^\d*$/);
+                } elsif ($option =~ /^-c$|^--clear$/) {
+                    return ([ 1, "Invalid parameter for $command $option" ]) unless ($ARGV[2]);
+                    return ([ 1, "Invalid parameter for $command $option $ARGV[2]" ]) if ($ARGV[2] !~ /^\d*$/ and $ARGV[2] ne "all");
+                } elsif ($option !~ /^-l$|^--list$|^-g$|^--generate$/) {
+                    return ([ 1, "Invalid parameter for $command $option" ]);
+                }
+                return;
             } else {
                 return ([ 1, "Unsupported command: $command $subcommand" ]);
             }
-        }  
+        }
     } elsif ($command eq "rvitals") {
         $subcommand = "all" if (!defined($ARGV[0]));
         unless ($subcommand =~ /^temp$|^voltage$|^wattage$|^fanspeed$|^power$|^altitude$|^all$/) {
@@ -1044,6 +1091,30 @@ sub parse_command_status {
                 $next_status{LOGIN_RESPONSE} = "RSPCONFIG_SSHCFG_REQUEST";
                 $next_status{RSPCONFIG_SSHCFG_REQUEST} = "RSPCONFIG_SSHCFG_RESPONSE";
                 return 0;
+            } elsif ($subcommand eq "dump") {
+                my $dump_opt = $$subcommands[1];
+                if ($dump_opt =~ /-l|--list/) {
+                    $next_status{LOGIN_RESPONSE} = "RSPCONFIG_DUMPLIST_REQUEST";
+                    $next_status{RSPCONFIG_DUMPLIST_REQUEST} = "RSPCONFIG_DUMPLIST_RESPONSE";
+                } elsif ($dump_opt =~ /-g|--generate/) {
+                    $next_status{LOGIN_RESPONSE} = "RSPCONFIG_DUMPCRT_REQUEST";
+                    $next_status{RSPCONFIG_DUMPCRT_REQUEST} = "RSPCONFIG_DUMPCRT_RESPONSE";
+                } elsif ($dump_opt =~ /-c|--clear/) {
+                    if ($$subcommands[2] eq "all") {
+                        $next_status{LOGIN_RESPONSE} = "RSPCONFIG_DUMPCLRA_REQUEST";
+                        $next_status{RSPCONFIG_DUMPCLRA_REQUEST} = "RSPCONFIG_DUMPCLR_RESPONSE";
+                    } else {
+                        $next_status{LOGIN_RESPONSE} = "RSPCONFIG_DUMPCLR_REQUEST";
+                        $next_status{RSPCONFIG_DUMPCLR_REQUEST} = "RSPCONFIG_DUMPCLR_RESPONSE";
+                        $status_info{RSPCONFIG_DUMPCLR_REQUEST}{init_url} =~ s/#ID#/$$subcommands[2]/g;
+                    }
+                    $status_info{RSPCONFIG_DUMPCLR_RESPONSE}{argv} = $$subcommands[2];
+                } elsif ($dump_opt =~ /-d|--download/) {
+                    $next_status{LOGIN_RESPONSE} = "RSPCONFIG_DUMPDWLD_REQUEST";
+                    $next_status{RSPCONFIG_DUMPDWLD_REQUEST} = "RSPCONFIG_DUMPDWLD_RESPONSE";
+                    $status_info{RSPCONFIG_DUMPDWLD_REQUEST}{init_url} =~ s/#ID#/$$subcommands[2]/g; 
+                    $status_info{RSPCONFIG_DUMPDWLD_REQUEST}{argv} = $$subcommands[2];
+                }
             } elsif ($subcommand =~ /^(\w+)=(.+)/) {
                 my $key   = $1;
                 my $value = $2;
@@ -1059,10 +1130,10 @@ sub parse_command_status {
                     $next_status{RSPCONFIG_SET_RESPONSE} = "RSPCONFIG_GET_REQUEST";
                     $next_status{RSPCONFIG_GET_REQUEST} = "RSPCONFIG_GET_RESPONSE";
 
-                    $status_info{RSPCONFIG_SET_REQUEST}{data} = "$value"; 
+                    $status_info{RSPCONFIG_SET_REQUEST}{data} = "$value";
                     $status_info{RSPCONFIG_SET_REQUEST}{init_url} .= "/config/attr/HostName";
                     push @options, $key;
-                    
+
                 } else {
                     $next_status{LOGIN_RESPONSE} = "RSPCONFIG_SET_REQUEST";
                     $next_status{RSPCONFIG_SET_REQUEST} = "RSPCONFIG_SET_RESPONSE";
@@ -1076,7 +1147,7 @@ sub parse_command_status {
                 }
             }
         }
-        $status_info{RSPCONFIG_GET_RESPONSE}{argv} = join(",", @options);
+        $status_info{RSPCONFIG_GET_RESPONSE}{argv} = join(",", @options) if (@options);
     }
 
     if ($command eq "rvitals") {
@@ -2315,6 +2386,131 @@ sub sshcfg_process {
 
     return $rc;
 }
+
+#-------------------------------------------------------
+
+=head3  rspconfig_dump_response
+
+  Deal with request and response of rspconfig command for dump subcommand.
+  Input:
+        $node: nodename of current response
+        $response: Async return response
+
+=cut
+
+#-------------------------------------------------------
+sub rspconfig_dump_response {
+    my $node = shift;
+    my $response = shift;
+
+    my $response_info = decode_json $response->content if (defined($response));
+
+    if ($node_info{$node}{cur_status} eq "RSPCONFIG_DUMPLIST_RESPONSE") {
+        my %dump_info = ();
+        foreach my $key_url (keys %{$response_info->{data}}) {
+            my %content = %{ ${ $response_info->{data} }{$key_url} };
+            my $id;
+            my $elased;
+            if (defined $content{Elapsed}) {
+                $id = $key_url;
+                $id =~ s/.*\///g; 
+                my ($sec, $min, $hour, $mday, $mon, $year, $wday, $yday, $isdst) = localtime($content{Elapsed});
+                $mon += 1;
+                $year += 1900;
+                my $UTC_time = sprintf ("%02d/%02d/%04d %02d:%02d:%02d", $mon, $mday, $year, $hour, $min, $sec);
+                $dump_info{$id} = "[$id] Elapsed: $UTC_time, Size: $content{Size}"; 
+            }
+        }
+
+        xCAT::SvrUtils::sendmsg("$::NO_ATTRIBUTES_RETURNED", $callback, $node) if (!%dump_info);
+        foreach my $key ( sort { $a <=> $b } keys %dump_info) {
+            xCAT::MsgUtils->message("I", { data => ["$node: $dump_info{$key}"] }, $callback) if ($dump_info{$key});
+        }
+    } 
+
+    if ($node_info{$node}{cur_status} eq "RSPCONFIG_DUMPDWLD_REQUEST") {
+        my $child = xCAT::Utils->xfork;
+        if (!defined($child)) {
+            xCAT::SvrUtils::sendmsg("Failed to fork child process for rspconfig dump download.", $callback, $node);
+            sleep(1)
+        } elsif ($child == 0) {
+            exit(dump_download_process($node))
+        } else {
+            $child_node_map{$child} = $node;
+        }
+    }
+
+    if ($node_info{$node}{cur_status} eq "RSPCONFIG_DUMPCRT_RESPONSE") {
+        if ($response_info->{'message'} eq $::RESPONSE_OK) {
+            my $dump_id = $response_info->{'data'};
+            xCAT::SvrUtils::sendmsg("[$dump_id] success", $callback, $node);
+        } 
+    }
+
+    if ($node_info{$node}{cur_status} eq "RSPCONFIG_DUMPCLR_RESPONSE") {
+        if ($response_info->{'message'} eq $::RESPONSE_OK) {
+            my $dump_id = $status_info{RSPCONFIG_DUMPCLR_RESPONSE}{argv};
+            xCAT::SvrUtils::sendmsg("[$dump_id] clear", $callback, $node);
+        }
+    } 
+
+    if ($next_status{ $node_info{$node}{cur_status} }) {
+        $node_info{$node}{cur_status} = $next_status{ $node_info{$node}{cur_status} };
+        if ($node_info{$node}{method} || $status_info{ $node_info{$node}{cur_status} }{method}) {
+            gen_send_request($node);
+        }
+    } else {
+        $wait_node_num--;
+    }
+}
+
+#-------------------------------------------------------
+
+=head3  dump_download_process
+
+  Process of download dump tar.xz.
+  Input:
+        $node: nodename of current response
+
+=cut
+
+#-------------------------------------------------------
+sub dump_download_process {
+    my $node = shift;
+
+    my $request_url = "$http_protocol://" . $node_info{$node}{bmc};
+    my $content_login = '{ "data": [ "' . $node_info{$node}{username} .'", "' . $node_info{$node}{password} . '" ] }';
+    my $content_logout = '{ "data": [ ] }';
+    my $cjar_id = "/tmp/_xcat_cjar.$node";
+    my $file_name = "/var/log/xcat/dump/$node" . "_dump_$status_info{RSPCONFIG_DUMPDWLD_REQUEST}{argv}.tar.xz";
+
+    my $curl_login_cmd  = "curl -c $cjar_id -k -H 'Content-Type: application/json' -X POST $request_url/login -d '" . $content_login . "'";
+    my $curl_logout_cmd = "curl -b $cjar_id -k -H 'Content-Type: application/json' -X POST $request_url/logout -d '" . $content_logout . "'";
+    my $curl_dwld_cmd = "curl -J -b $cjar_id -k -H 'Content-Type: application/octet-stream' -X GET $request_url/$status_info{RSPCONFIG_DUMPDWLD_REQUEST}{init_url} -o $file_name";
+
+    my $curl_login_result = `$curl_login_cmd -s`;
+    my $h = from_json($curl_login_result);
+    if ($h->{message} eq $::RESPONSE_OK) {
+        `mkdir -p "/var/log/xcat/dump"`;
+        my $curl_dwld_result = `$curl_dwld_cmd -s`;
+        if (!$curl_dwld_result) {
+            if ($xcatdebugmode) {
+                my $debugmsg = "RSPCONFIG_DUMPDWLD_REQUEST: CMD: $curl_dwld_cmd";
+                process_debug_info($node, $debugmsg);
+            }
+            xCAT::SvrUtils::sendmsg("Saved dump $status_info{RSPCONFIG_DUMPDWLD_REQUEST}{argv} as $file_name", $callback, $node);
+            `$curl_logout_cmd -s`;
+        } else {
+            xCAT::SvrUtils::sendmsg("Failed to download dump $status_info{RSPCONFIG_DUMPDWLD_REQUEST}{argv} :" . $h->{message} . " - " . $h->{data}->{description}, $callback, $node);
+            return 1;
+        }
+    } else {
+        xCAT::SvrUtils::sendmsg("Unable to login :" . $h->{message} . " - " . $h->{data}->{description}, $callback, $node);
+        return 1;
+    }
+    return 0;
+}
+
 #-------------------------------------------------------
 
 =head3  rvitals_response
