@@ -905,6 +905,9 @@ sub load_case {
                     foreach my $os (@newvalidoslist) {
                         if ($currentos =~ /$os/i) {
                             $valid = 1;
+                            if(grep (/$case_ref->[$i]->{name}/,@{ $invalidcases{"noruncases"} })){
+                                delete_item_from_array($case_ref->[$i]->{name}, $invalidcases{"noruncases"});
+                            }
                             last;
                         }
                     }
@@ -914,8 +917,10 @@ sub load_case {
                             $$case_name_index_map_ref{$case_ref->[$i]->{name}}=$case_name_index_map_bak{$case_ref->[$i]->{name}};
                         }else{
                             delete $$case_name_index_map_ref{$case_ref->[$i]->{name}};
+                            if(! grep (/$case_ref->[$i]->{name}/,@{ $invalidcases{"noruncases"} })){
+                                push @{ $invalidcases{"noruncases"} }, $case_ref->[$i]->{name};
+                            }
                         }
-                        push @{ $invalidcases{"noruncases"} }, $case_ref->[$i]->{name};
                     }
                 }
                 $newcmdstart = 0;
@@ -935,7 +940,12 @@ sub load_case {
                     }
 
                     my $env_arch = "";
-                    $env_arch = $config{var}{ARCH} if(exists($config{var}{ARCH}));
+                    if(exists($config{var}{ARCH})){
+                        $env_arch = $config{var}{ARCH};
+                    }else{
+                        $env_arch =`uname -m`;
+                        chomp($env_arch);
+                    }
                     if($env_arch =~ /ppc/i && $env_arch !~ /le|el/i){
                         $env_arch="ppc";
                     }elsif($env_arch =~ /ppc/i && $env_arch =~ /le|el/i){
@@ -947,14 +957,19 @@ sub load_case {
                     my $valid     = 0;
                     if ($case_arch eq $env_arch) {
                         $valid = 1;
+                        if(grep (/$case_ref->[$i]->{name}/,@{ $invalidcases{"noruncases"} })){
+                            delete_item_from_array($case_ref->[$i]->{name}, $invalidcases{"noruncases"});
+                        }
                     }
                     unless ($valid) {
                         if(exists($case_name_index_map_bak{$case_ref->[$i]->{name}})){
                             $$case_name_index_map_ref{$case_ref->[$i]->{name}}=$case_name_index_map_bak{$case_ref->[$i]->{name}};
                         }else{
                             delete $$case_name_index_map_ref{$case_ref->[$i]->{name}};
+                            if(! grep (/$case_ref->[$i]->{name}/,@{ $invalidcases{"noruncases"} })){
+                                push @{ $invalidcases{"noruncases"} }, $case_ref->[$i]->{name};
+                            }
                         }
-                        push @{ $invalidcases{"noruncases"} }, $case_ref->[$i]->{name};
                     }
                 }
                 $newcmdstart = 0;
@@ -966,14 +981,19 @@ sub load_case {
                     my $valid     = 0;
                     if (exists ($config{var}{HCP}) && ($case_ref->[$i]->{hcp} =~ /$config{var}{HCP}/i)) {
                         $valid = 1;
+                        if(grep (/$case_ref->[$i]->{name}/,@{ $invalidcases{"noruncases"} })){
+                            delete_item_from_array($case_ref->[$i]->{name}, $invalidcases{"noruncases"});
+                        }
                     }
                     unless ($valid) {
                         if(exists($case_name_index_map_bak{$case_ref->[$i]->{name}})){
                             $$case_name_index_map_ref{$case_ref->[$i]->{name}}=$case_name_index_map_bak{$case_ref->[$i]->{name}};
                         }else{
                             delete $$case_name_index_map_ref{$case_ref->[$i]->{name}};
+                            if(! grep (/$case_ref->[$i]->{name}/,@{ $invalidcases{"noruncases"} })){
+                                push @{ $invalidcases{"noruncases"} }, $case_ref->[$i]->{name};
+                            }
                         }
-                        push @{ $invalidcases{"noruncases"} }, $case_ref->[$i]->{name};
                     }
                 }
                 $newcmdstart = 0;
@@ -1067,7 +1087,7 @@ sub load_case {
             $caseerror = 2;
         }
 
-        if ($invalidcases{"noruncases"}) {
+        if ($invalidcases{"noruncases"} && @{$invalidcases{"noruncases"}}) {
             log_this($running_log_fd, "Unsuitable current environment:", @{ $invalidcases{"noruncases"} });
             push @wrong_cases, @{ $invalidcases{"noruncases"} };
             $caseerror = 2;
@@ -1772,4 +1792,14 @@ sub update_miss_attr {
     unless($insert_flag){
         push @{$miss_attr_arr_ref}, "$case_name $org_str";
     }
+}
+sub delete_item_from_array{
+    my $item = shift;
+    my $array_ref = shift; 
+      
+    my @tmp_arr=();
+    foreach (@$array_ref){
+        push @tmp_arr, $_ unless($_ eq $item);
+    }
+    @$array_ref = @tmp_arr;
 }
