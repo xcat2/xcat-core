@@ -123,42 +123,35 @@ elif [ "bridgeprereq" = "$1" ]; then
     modprobe bridge
 
     NETDESC="$2"
-    # get the port for installation
-    if [ -n "$INSTALLNIC" ]; then
-        INSPORT=$INSTALLNIC
-    elif [ -n "$PRIMARYNIC" ]; then
-        INSPORT=$PRIMARYNIC
-    fi
 
-    if [ -z "$INSPORT" ] || [[ "$INSPORT" =~ ^(mac|MAC)$ ]]; then
-        if [ -n "$MACADDRESS" ] ; then   
-            INSPORT=$MACADDRESS;
-        else
-            echo "should configure mac in $NODE definition."
-            exit 1
-        fi
-    fi
-
-    if [[ "$INSPORT"  =~ ^([0-9a-fA-F]{2}:){5}[0-9a-fA-F]{2}$ ]] ; then
-        INSPORT=$(ip -oneline link show|grep -i ether|grep -i $INSPORT |awk -F ':' '{print $2}'|grep -o "[^ ]\+\( \+[^ ]\+\)*")
-    fi
-
-    if [ -z "$NETDESC" ]; then
-        if [ -n "$INSPORT" ]; then
-          NETDESC=$INSPORT:default
-        else
-            echo "Incorrect usage"
-            exit 1
-        fi
-    fi
     if echo "$NETDESC"|grep ':'> /dev/null; then
         PORTS=$(echo "$NETDESC"|cut -d: -f 1)
         BNAME=$(echo "$NETDESC"|cut -d: -f 2)
     else 
-        if [ -n "$INSTALLNIC" ]; then
-            PORTS=$INSPORT
+        if [ -n "$NETDESC" ]; then
+            BNAME=$NETDESC
+        else
+            BNAME=default
         fi
-        BNAME=$NETDESC
+
+        # get the port for installation
+        if [ -n "$INSTALLNIC" ]; then
+            PORTS=$INSTALLNIC
+        elif [ -n "$PRIMARYNIC" ]; then
+            PORTS=$PRIMARYNIC
+	else
+            PORTS=$(get_def_interface)
+        fi
+
+        if [ -z "$PORTS" ] || [[ "$PORTS" =~ ^(mac|MAC)$ ]]; then
+            if [ -n "$MACADDRESS" ] ; then   
+                PORTS=$(ip -oneline link show|grep -i ether|grep -i $MACADDRESS |awk -F ':' '{print $2}'|grep -o "[^ ]\+\( \+[^ ]\+\)*")
+            else
+                echo "should configure mac in $NODE definition."
+                exit 1
+            fi
+        fi
+
     fi
 
     # To check whether the brctl have been installed
@@ -171,10 +164,7 @@ elif [ "bridgeprereq" = "$1" ]; then
         echo "$BNAME"
         exit 0
     fi
-    #Still here, that means we must build a bridge
-    if [ -z "$PORTS" ]; then #No ports specified, default to whatever looks up
-        PORTS=$(get_def_interface)
-    fi
+
     if [ -z "$PORTS" ]; then #This has been checked many times before in theory, check again just in case
         exit 1
     fi
