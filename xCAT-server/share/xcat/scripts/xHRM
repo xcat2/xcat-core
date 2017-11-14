@@ -227,7 +227,9 @@ elif [ "bridgeprereq" = "$1" ]; then
     saveroutes="$(ip route | grep default| grep "dev $PORTS"|grep via|sed -e 's/dev .*//')"
     saveip="$(ip -4 -o addr show dev $PORTS scope global | sed 's/.*inet //'| sed 's/\( global \).*/\1/')"
     if [ ! -z "$saveip" ]; then
-        ip addr add dev $BNAME $newline
+        while read line; do 
+            ip addr add dev $BNAME ${line//dynamic}
+        done <<<"$saveip"
     else
         if [ ! -z "$3" ]; then
             ip addr add dev $BNAME $3 
@@ -235,7 +237,9 @@ elif [ "bridgeprereq" = "$1" ]; then
     fi
     brctl addif $BNAME $PORTS
     if [ ! -z "$saveip" ]; then
-        ip addr del dev $PORTS $newline
+        while read line; do 
+            ip addr del dev $PORTS ${line//dynamic}
+        done <<<"$saveip"
     fi
     if [ ! -z "$saveroutes" ]; then
         ip route add $saveroutes
