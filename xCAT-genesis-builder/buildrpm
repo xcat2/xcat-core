@@ -35,6 +35,16 @@ else
     DRACUTMODDIR=/usr/lib/dracut/modules.d/97xcat
 fi
 
+# get all modules in the kernel
+mv ./installkernel ./default_module_list
+echo "#!/bin/bash" > ./installkernel
+#instmods
+for line in `cat /lib/modules/4.11.8-300.fc26.ppc64/modules.dep | awk -F: '{print \$1}'`; do 
+    basename $line >> ./installkernel; 
+done
+sed -i 's/\(.*\)\.ko/instmods \1/g' ./installkernel
+chmod +x ./installkernel
+
 mkdir -p $DRACUTMODDIR
 cp $DIR/* $DRACUTMODDIR
 
@@ -158,6 +168,7 @@ for d in `echo $PERL_LIB_DIR`; do
         cp -a -t $TEMP_DIR $d/.
     fi
 done
+
 
 # create the predictable naming for nics
 LIB_UDEV_RULES="/lib/udev/rules.d/"
