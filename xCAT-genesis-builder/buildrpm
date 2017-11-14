@@ -36,14 +36,18 @@ else
 fi
 
 # get all modules in the kernel
-mv ./installkernel ./default_module_list
+cd $DIR
+KERVER=`uname -r`
+if [ ! -e "./default_module_list" ]; then
+    mv ./installkernel ./default_module_list
+fi
 echo "#!/bin/bash" > ./installkernel
-#instmods
-for line in `cat /lib/modules/4.11.8-300.fc26.ppc64/modules.dep | awk -F: '{print \$1}'`; do 
+for line in `cat /lib/modules/$KERVER/modules.dep | awk -F: '{print \$1}'`; do 
     basename $line >> ./installkernel; 
 done
 sed -i 's/\(.*\)\.ko/instmods \1/g' ./installkernel
 chmod +x ./installkernel
+cd -
 
 mkdir -p $DRACUTMODDIR
 cp $DIR/* $DRACUTMODDIR
