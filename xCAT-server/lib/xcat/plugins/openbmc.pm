@@ -1830,10 +1830,12 @@ sub rinv_response {
                     # to cause the sorting of this line before any additional info lines 
                     #
                     $content_info = "$purpose_value Firmware Product:   $content{Version} ($activation_value)";
-                    my $indicator = "*";
+                    my $indicator = "";
                     if ($priority_value == 0 and %{$functional} and !exists($functional->{$sw_id})) {
                         # indicate that a reboot is needed if priority = 0 and it's not in the functional list
                         $indicator = "+";
+                    } elsif ($priority_value == 0 and %{$functional} and exists($functional->{$sw_id})) {
+                        $indicator = "*";
                     }
                     $content_info .= $indicator;
                     push (@sorted_output, $content_info); 
