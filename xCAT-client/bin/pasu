@@ -215,13 +215,13 @@ sub processoutput {      #This way, one arbiter handles output, no interrupting
                     $line !~ /Lenovo ToolsCenterSuite CLI/i &&
                     $line !~ /Lenovo XClarity Essentials OneCLI/i &&
                     $line !~ /Invoking SHOW command .../i &&
-                    $line !~ /Succeed in running the command: SHOW/i &&
                     $line !~ /start to convert cmd./i &&
-                    $line !~ /Connected to BMC at IP address/i &&
                     $line !~ /Invoking SET command .../i &&
-                    $line !~ /Connected to BMC by IP address/i &&
-                    $line !~ /Succeeded running the command /i &&
                     $line !~ /Based on module version /i &&
+                    $line !~ /Connected to BMC by IP address/i &&
+                    $line !~ /Connected to BMC at IP address/i &&
+                    $line !~ /Succeeded running the command /i &&
+                    $line !~ /Succeed in running the command:/i &&
                     $line !~ /Succeed running command /i)) {
                 print $nodehdl{$readyh} . ": " . $line . "\n";
             }
