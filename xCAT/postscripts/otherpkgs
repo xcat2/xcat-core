@@ -775,6 +775,39 @@ EOF`
         fi
     done  
 
+    #add repo for url repos in otherpkgdir 
+    if [ -n "OTHERPKGDIR_INTERNET" ];then
+         OIFS=$IFS
+         IFS=','
+         OTHERPKGDIRLIST_INTERNET=($OTHERPKGDIR_INTERNET)
+
+         index=$(array_get_size repo_path) 
+         for url in ${OTHERPKGDIRLIST_INTERNET[@]}
+         do
+            if [ $hasyum -eq 1 ] || [ $haszypper -eq 1 ] ; then
+                  REPOFILE="$repo_base/xCAT-otherpkgs$index.repo"
+                  echo "[xcat-otherpkgs$index]" > $REPOFILE
+                  echo "name=xcat-otherpkgs$index" >> $REPOFILE
+                  echo "baseurl=$url" >> $REPOFILE
+                  echo "enabled=1" >> $REPOFILE
+                  echo "gpgcheck=0" >> $REPOFILE
+                  index=$[index+1]
+             fi
+         done
+
+         IFS=$OIFS
+         if [ $hasyum -eq 1 ]; then
+             yum clean all
+         fi
+         if [ $haszypper -eq 1 ]; then
+             result=`zypper --non-interactive refresh 2>&1`
+             if [ $VERBOSE  ]; then
+                 echo "otherpkgs: zypper --non-interactive refresh"
+                 echo "    $result"
+             fi
+         fi
+    fi
+
     #now update all the existing rpms
     if [ $hasyum -eq 1 ]; then 
         if [ $VERBOSE  ]; then
