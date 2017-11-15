@@ -48,6 +48,8 @@ setup_docker()
         echo "[docker] name=Docker baseurl=$OPEN_POWER_TOOLS_URL enabled=1 gpgcheck=0" | \
         awk 'BEGIN{RS=" ";ORS="\n";}{print $0}' > /etc/yum.repos.d/docker.repo
         yum repolist
+        #workaround as the public repo has issue to install container-selinux
+        yum install http://ftp.unicamp.br/pub/ppc64el/rhel/7/docker-ppc64el/container-selinux-2.9-4.el7.noarch.rpm
         yum install -y docker-ce bridge-utils initscripts
         service docker start
         sleep 5

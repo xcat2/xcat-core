@@ -67,10 +67,10 @@ cmd:makehosts -n perftest
 check:rc==0
 
 #Make sure SN and CN is deployed sucessfully
-cmd:a=0;while ! `lsdef $$CN -i status|grep -E "booted|failed" >/dev/null`; do sleep 20;((a++));if [ $a -gt 300 ];then break;fi done
+cmd:a=0;while ! `lsdef $$CN -i status|grep -E "booted|failed" >/dev/null`; do sleep 20;((a++));if [ $a -gt 50 ];then break;fi done
 cmd:ping $$CN -c 3
 check:rc==0
-cmd:a=0;while ! `lsdef $$SN -i status|grep -E "booted|failed" >/dev/null`; do sleep 20;((a++));if [ $a -gt 300 ];then break;fi done
+cmd:a=0;while ! `lsdef $$SN -i status|grep -E "booted|failed" >/dev/null`; do sleep 20;((a++));if [ $a -gt 50 ];then break;fi done
 cmd:ping $$SN -c 3
 check:rc==0
 
@@ -85,7 +85,7 @@ check:rc==0
 # For openbmc simulation setup on SN
 cmd:PERF_SIM_NIC=$$SECONDNIC xcatperftest create fake[1-1000] openbmc
 check:rc==0
-cmd:scp /opt/xcat/share/xcat/tools/autotest/result/perf-openbmc-create.sh root@$$CN:/tmp/perf
+cmd:scp /opt/xcat/share/xcat/tools/autotest/result/perf-openbmc-create.sh root@$$SN:/tmp/perf
 check:rc==0
 cmd:xdsh $$SN PERF_SIM_NIC=$$SECONDNIC PERF_SIM_ADDR=192.169.251.252 bash /tmp/perf/simulatorctl.sh setup openbmc
 check:rc==0
@@ -148,7 +148,6 @@ cmd:makehosts -n perftest
 check:rc==0
 
 #Make sure CN is deployed sucessfully
-cmd:a=0;while ! `lsdef $$CN -i status|grep -E "booted|failed" >/dev/null`; do sleep 20;((a++));if [ $a -gt 300 ];then break;fi done
 cmd:ping $$CN -c 3
 check:rc==0
 
