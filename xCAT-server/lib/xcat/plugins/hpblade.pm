@@ -771,6 +771,10 @@ sub process_request {
         my $req = {%$request};
         $req->{command}   = ['discovered'];
         $req->{noderange} = [ $macmap{$mac} ];
+        if (defined($req->{error})) {
+            $request->{error}->[0] = '1';
+            $request->{error_msg}->[0] = $req->{error_msg}->[0];
+        }
         $doreq->($req);
         %{$req} = ();    #Clear request. it is done
                          #undef $mactab;

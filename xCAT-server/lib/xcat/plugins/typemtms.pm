@@ -60,6 +60,10 @@ sub findme {
         $req->{noderange} = [ $nodes[0] ];
         $req->{bmc_node}  = [$bmc_node];
         $subreq->($req);
+        if (defined($req->{error})) {
+            $request->{error}->[0] = '1';
+            $request->{error_msg}->[0] = $req->{error_msg}->[0];
+        }
         %{$req} = ();
     }
 }
