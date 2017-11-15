@@ -33,6 +33,7 @@ use xCAT::SvrUtils;
 use xCAT::GlobalDef;
 use xCAT_monitoring::monitorctrl;
 use POSIX qw(WNOHANG);
+use xCAT::Utils qw/natural_sort_cmp/;
 
 $::VERBOSE                  = 0;
 # String constants for rbeacon states
@@ -69,6 +70,10 @@ sub unsupported {
     } else {
         return ([ 1, "This openbmc related function is not yet supported. Please contact xCAT development team." ]);
     }
+}
+
+sub natural_sorter {
+    natural_sort_cmp( $a, $b );
 }
 
 #-------------------------------------------------------
@@ -1887,12 +1892,13 @@ sub rinv_response {
             }
         }
     }
-    # If sorted array has any contents, sort it and print it
+    # If sorted array has any contents, sort it naturally and print it
     if (scalar @sorted_output > 0) {
         # sort alpha, then numeric 
-        my @sorted_output = grep {s/(^|\D)0+(\d)/$1$2/g,1} sort 
-            grep {s/(\d+)/sprintf"%06.6d",$1/ge,1} @sorted_output;
-        foreach (@sorted_output) { 
+        #my @sorted_output = grep {s/(^|\D)0+(\d)/$1$2/g,1} sort 
+        #    grep {s/(\d+)/sprintf"%06.6d",$1/ge,1} @sorted_output;
+        my @natural_list = sort natural_sorter @sorted_output;
+        foreach (@natural_list) {
             #
             # The firmware output requires the ID to be part of the string to sort correctly.
             # Remove this ID from the output to the user
@@ -2195,7 +2201,8 @@ sub rspconfig_response {
                     push @output, "BMC IP Source: $ipsrc";
                 } elsif ($opt eq "netmask") {
                     if ($address) {
-                        my $decimal_mask = (2 ** $prefix - 1) << (32 - $prefix);
+                        my $mask_shift = 32 - $prefix;
+                        my $decimal_mask = (2 ** $prefix - 1) << $mask_shift;
                         my $netmask = join('.', unpack("C4", pack("N", $decimal_mask)));
                         push @output, "BMC Netmask: " . $netmask; 
                     }
@@ -2390,9 +2397,10 @@ sub rvitals_response {
     # If sorted array has any contents, sort it and print it
     if (scalar @sorted_output > 0) {
         # Sort the output, alpha, then numeric
-        my @sorted_output = grep {s/(^|\D)0+(\d)/$1$2/g,1} sort 
-            grep {s/(\d+)/sprintf"%06.6d",$1/ge,1} @sorted_output;
-        xCAT::SvrUtils::sendmsg("$_", $callback, $node) foreach (@sorted_output);
+        #my @sorted_output = grep {s/(^|\D)0+(\d)/$1$2/g,1} sort 
+        #    grep {s/(\d+)/sprintf"%06.6d",$1/ge,1} @sorted_output;
+        my @natrual_list = sort natural_sorter @sorted_output;
+        xCAT::SvrUtils::sendmsg("$_", $callback, $node) foreach (@natrual_list);
     } else {
         xCAT::SvrUtils::sendmsg("$::NO_ATTRIBUTES_RETURNED", $callback, $node);
     }
