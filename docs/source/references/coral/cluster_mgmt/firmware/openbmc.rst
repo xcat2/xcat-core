@@ -14,6 +14,7 @@ The sequence of events that must happen is the following:
 **Note:** xCAT is working on streamlining this process to reduce the flexibility of the above steps at the convenience of the Administrator to handle the necessary reboots.  See `Issue #4245 <https://github.com/xcat2/xcat-core/issues/4245>`_
 
 
+
 Power off Host 
 --------------
 
@@ -28,6 +29,8 @@ Use the rflash command to upload and activate the PNOR firmware: ::
 
    rflash <noderange> -a /path/to/witherspoon.pnor.squashfs.tar
 
+If running ``rflash`` in Hierarchy, the firmware files must be accessible on the Service Nodes.
+
 **Note:** The ``-a`` option does an upload and activate in one step, after firmware is activated, use the ``rflash <noderange> -l`` to view.  The ``rflash`` command shows ``(*)`` as the active firmware and ``(+)`` on the firmware that requires reboot to become effective. 
 
 Update and Activate BMC Firmware
@@ -37,6 +40,8 @@ Use the rflash command to upload and activate the PNOR firmware: ::
 
    rflash <noderange> -a /path/to/obmc-phosphor-image-witherspoon.ubi.mtd.tar
 
+If running ``rflash`` in Hierarchy, the firmware files must be accessible on the Service Nodes.
+
 **Note:** The ``-a`` option does an upload and activate in one step, after firmware is activated, use the ``rflash <noderange> -l`` to view.  The ``rflash`` command shows ``(*)`` as the active firmware and ``(+)`` on the firmware that requires reboot to become effective. 
 
 Reboot the BMC
@@ -44,7 +49,7 @@ Reboot the BMC
 
 Use the ``rpower`` command to reboot the BMC: ::
  
-   rpower <noderange> bmcreboot`
+   rpower <noderange> bmcreboot
 
 The BMC will take 2-5 minutes to reboot, check the status using: ``rpower <noderange> bmcstate`` and wait for ``BMCReady`` to be returned. 
 

@@ -13,6 +13,8 @@ Collect the following files and put them into a directory on the Management Node
    * pnor
    * bmc 
 
+If running ``rflash`` in Hierarchy, the firmware files/directory must be accessible on the Service Nodes.
+
 Flash Firmware
 --------------
 
