@@ -26,9 +26,9 @@ cmd:df -T
 
 cmd:MINIISO=NUll;if [[ "__GETNODEATTR($$CN,os)__" =~ "ubuntu" ]] && [[ "__GETNODEATTR($$CN,arch)__" =~ "ppc64" ]];then mkdir /tmp/iso; mount -o loop $$MINIISO /tmp/iso ;  mkdir -p  /install/__GETNODEATTR($$CN,os)__/__GETNODEATTR($$CN,arch)__/install/netboot; cp  /tmp/iso/install/initrd.gz  /install/__GETNODEATTR($$CN,os)__/__GETNODEATTR($$CN,arch)__/install/netboot;umount /tmp/iso; rmdir /tmp/iso; fi
 check:rc==0
-cmd:chdef -t node -o $$CN servicenode= monserver=$$MN nfsserver=$$MN tftpserver=$$MN  xcatmaster=$$MN status=
+cmd:chdef -t node -o $$CN servicenode= monserver= nfsserver= tftpserver=  xcatmaster= status=
 check:rc==0
-cmd:chdef -t node -o $$SN servicenode= monserver=$$MN nfsserver=$$MN tftpserver=$$MN  xcatmaster=$$MN status=
+cmd:chdef -t node -o $$SN servicenode= monserver= nfsserver= tftpserver=  xcatmaster= status=
 check:rc==0
 cmd:makeconservercf
 check:rc==0
