@@ -794,12 +794,12 @@ sub parse_args {
         my $all_subcommand = "";
         foreach $subcommand (@ARGV) {
             if ($subcommand =~ /^(\w+)=(.*)/) {
-                return ([ 1, "Can not configure and display nodes' value at the same time" ]) if ($setorget and $setorget eq "get");
+                return ([ 1, "Can not configure and display nodes at the same time" ]) if ($setorget and $setorget eq "get");
                 my $key = $1;
                 my $value = $2;
                 return ([ 1, "Changing ipsrc value is currently not supported." ]) if ($key eq "ipsrc");
                 return ([ 1, "Unsupported command: $command $key" ]) unless ($key =~ /^ip$|^netmask$|^gateway$|^hostname$|^vlan$/);
-                return ([ 1, "Can not configure hostname and other options at the same time" ]) if ($key eq "hostname" and $num_subcommand > 1);
+                return ([ 1, "Hostname must be set as a single command." ]) if ($key eq "hostname" and $num_subcommand > 1);
 
                 my $nodes_num = @$noderange;
                 return ([ 1, "Invalid parameter for option $key" ]) unless ($value);
@@ -814,17 +814,17 @@ sub parse_args {
                             $all_subcommand .= $key . ",";
                         }
                     } else {
-                        return ([ 1, "Can not configure IP to DHCP and other options at the same time" ]) if ($num_subcommand > 1);
+                        return ([ 1, "Setting ip=dhcp must be issued without other options." ]) if ($num_subcommand > 1);
                     }
                 } elsif ($key =~ /^netmask$|^gateway$|^vlan$/) {
                     $all_subcommand .= $key . ",";
                 }
                 $setorget = "set";
             } elsif ($subcommand =~ /^ip$|^netmask$|^gateway$|^hostname$|^vlan$|^ipsrc$/) {
-                return ([ 1, "Can not configure and display nodes' value at the same time" ]) if ($setorget and $setorget eq "set");
+                return ([ 1, "Can not configure and display nodes at the same time" ]) if ($setorget and $setorget eq "set");
                 $setorget = "get";
             } elsif ($subcommand =~ /^sshcfg$/) {
-                return ([ 1, "Can not configure sshcfg and other options at the same time" ]) if ($num_subcommand > 1);
+                return ([ 1, "Configure sshcfg must be issued without other options." ]) if ($num_subcommand > 1);
             } else {
                 return ([ 1, "Unsupported command: $command $subcommand" ]);
             }
@@ -832,9 +832,9 @@ sub parse_args {
         if ($all_subcommand) {
             if ($all_subcommand !~ /ip/ or $all_subcommand !~ /netmask/ or $all_subcommand !~ /gateway/) {
                 if ($all_subcommand =~ /vlan/) {
-                    return ([ 1, "Please config IP netmask gateway with VLAN" ]);
+                    return ([ 1, "VLAN must be configured with IP, netmask and gateway" ]);
                 } else {
-                    return ([ 1, "Please config IP netmask gateway at the same time" ]);
+                    return ([ 1, "IP, netmask and gateway must be configured together." ]);
                 }
             }
         }
@@ -2252,8 +2252,6 @@ sub rspconfig_response {
                 }
                 if (defined($content{PrefixLength}) and $content{PrefixLength}) {
                     $prefix = $content{PrefixLength};
-                    my $decimal_mask = (2 ** $prefix - 1) << (32 - $prefix);
-                    $netmask = join('.', unpack("C4", pack("N", $decimal_mask)));
                 }
                 if (defined($content{Origin})) {
                     $ipsrc = $content{Origin};
@@ -2276,6 +2274,9 @@ sub rspconfig_response {
                     push @output, "BMC IP Source: $ipsrc";
                 } elsif ($opt eq "netmask") {
                     if ($address) {
+                        my $mask_shift = 32 - $prefix;
+                        my $decimal_mask = (2 ** $prefix - 1) << $mask_shift;
+                        my $netmask = join('.', unpack("C4", pack("N", $decimal_mask)));
                         push @output, "BMC Netmask: " . $netmask; 
                     }
                 } elsif ($opt eq "gateway") {
