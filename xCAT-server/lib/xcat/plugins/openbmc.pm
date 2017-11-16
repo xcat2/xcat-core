@@ -2446,6 +2446,11 @@ sub rflash_response {
         xCAT::SvrUtils::sendmsg("-" x 55, $callback, $node);
 
         foreach my $key_url (keys %{$response_info->{data}}) {
+            # Initialize values to Unknown for each loop, incase they are not defined in the BMC
+            $update_activation = "Unknown";
+            $update_purpose = "Unknown";
+            $update_version = "Unknown";
+
             my %content = %{ ${ $response_info->{data} }{$key_url} };
 
             $update_id = (split(/\//, $key_url))[ -1 ];
