@@ -182,9 +182,7 @@ sub process_request {
             $basicdata->{memory} = $request->{memory}->[0];
         }
         if ($request->{disksize}->[0]) {
-            my @disks = split /\n/, $request->{disksize}->[0];
-            my $disk_info = join(",", @disks);
-            $basicdata->{disksize} = $disk_info;
+            $basicdata->{disksize} = $request->{disksize}->[0];
         }
         if ($request->{cpucount}->[0]) {
             $basicdata->{cpucount} = $request->{cpucount}->[0];
