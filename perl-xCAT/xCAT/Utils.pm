@@ -4925,7 +4925,7 @@ sub acquire_lock_imageop {
 =cut
 
 #--------------------------------------------------------------------------------
-sub natural_sort_cmp {
+sub natural_sort_cmp($$) {
     my $left = shift;
     my $right = shift;
     while() {
