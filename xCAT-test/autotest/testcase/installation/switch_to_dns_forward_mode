@@ -1,0 +1,48 @@
+start:switch_to_dns_forward_mode
+description:The test case is used to switch the whole testing cluster to run in dns forward mode.
+os:Linux
+
+##
+# Check if everything is fine
+##
+cmd:getent hosts $$MN
+check:rc==0
+cmd:getent hosts $$SN
+check:rc==0
+cmd:getent hosts $$CN
+check:rc==0
+
+##
+# Change to use the DNS server in c910
+##
+cmd:chdef -t site forwarders=10.0.0.103,10.0.0.101
+check:rc==0
+cmd:chdef -t site nameservers='<xcatmaster>'
+check:rc==0
+cmd:makedns -n
+check:rc==0
+
+# Restart the named service on $$MN and $$SN
+cmd:service named restart
+cmd:sleep 1
+cmd:xdsh service 'service named restart'
+cmd:sleep 1
+
+##
+# Check if everything is still fine
+##
+cmd:getent hosts $$MN
+check:rc==0
+cmd:getent hosts $$SN
+check:rc==0
+cmd:getent hosts $$CN
+check:rc==0
+cmd:xdsh $$CN "getent hosts $$MN"
+check:rc==0
+cmd:xdsh $$CN "getent hosts $$SN"
+check:rc==0
+cmd:xdsh $$CN "getent hosts $$CN"
+check:rc==0
+# Check if an outside hostname works
+cmd:xdsh $$CN "getent hosts www.ibm.com"
+check:rc==0
