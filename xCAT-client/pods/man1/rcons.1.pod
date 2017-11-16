@@ -18,6 +18,10 @@ If I<conserver-host> is specified, the conserver daemon on that host will be con
 
 To exit the console session, enter:  <ctrl>e c .
 
+For confluent backed consoles, an extended outage of connectivity to the endpoint will result in an automated retry
+of a randomized interval between 2 to 4 minutes.  You can either close and reopen the console to force a quicker
+reconnect, or `<ctrl>e o`a to request an immediate reconnect attempt.
+
 =head1 B<Options>
 
 =over 5
