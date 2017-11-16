@@ -95,7 +95,7 @@ if ($ENV{SSHCONSOLEPORT}) {
 my $nmap_output = `/usr/bin/nmap $bmcip -p $sshport -Pn`;
 while ($nmap_output =~ /0 hosts up/) {
     $sleepint = 10 + int(rand(20));
-    print "Failure to reach openbmc, retrying in $sleepint seconds (Hit Ctrl-E,c,o to skip)\n";
+    print "No BMC active at IP $bmcip, retrying in $sleepint seconds (Hit Ctrl-E,c,o to skip)\n";
     sleep ($sleepint);
     acquire_lock();
     sleep(0.1);
