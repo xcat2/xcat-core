@@ -27,6 +27,11 @@ fi
 
 #IBM_POWER_TOOLS_URL='http://public.dhe.ibm.com/software/server/POWER/Linux/yum/OSS/RHEL/7/ppc64le'
 OPEN_POWER_TOOLS_URL='http://ftp.unicamp.br/pub/ppc64el/rhel/7/docker-ppc64el'
+OPENBMC_SIMULATOR_URL='https://github.com/xuweibj/openbmc_simulator'
+PERF_SIM_TESTING_CWD='/tmp/perf'
+PERF_SIM_RESULT_DIR='/opt/xcat/share/xcat/tools/autotest/result'
+PERF_SIM_CASE_DIR='/opt/xcat/share/xcat/tools/autotest/testcase/performance'
+
 arch=`arch`
 driver="$2"
 if [ "$driver" != "docker" ] && [ "$driver" != "openbmc" ]; then
@@ -49,7 +54,7 @@ setup_docker()
         awk 'BEGIN{RS=" ";ORS="\n";}{print $0}' > /etc/yum.repos.d/docker.repo
         yum repolist
         #workaround as the public repo has issue to install container-selinux
-        yum install http://ftp.unicamp.br/pub/ppc64el/rhel/7/docker-ppc64el/container-selinux-2.9-4.el7.noarch.rpm
+        yum install -y http://ftp.unicamp.br/pub/ppc64el/rhel/7/docker-ppc64el/container-selinux-2.9-4.el7.noarch.rpm
         yum install -y docker-ce bridge-utils initscripts
         service docker start
         sleep 5
@@ -68,7 +73,7 @@ setup_docker()
     brctl show br-$bruuid
 
     # Prepare the docker image
-    [ -f /tmp/perf/Dockerfile ] && rootpath=/tmp/perf || rootpath=/opt/xcat/share/xcat/tools/autotest/testcase/performance
+    [ -f $PERF_SIM_TESTING_CWD/Dockerfile ] && rootpath=$PERF_SIM_TESTING_CWD || rootpath=$PERF_SIM_CASE_DIR
     docker build -t perf-alpine-ssh $rootpath
     docker images
 
@@ -79,14 +84,8 @@ setup_docker()
 run_docker()
 {
     echo "Run docker simulator for node range..."
-    script=/tmp/perf/perf-docker-create.sh
-    if [ -f $script ]; then
-       sh -x $script
-       return
-    fi
-
-    script=/opt/xcat/share/xcat/tools/autotest/result/perf-docker-create.sh
-    if [ -f $script ]; then
+    script=$(ls -1t {$PERF_SIM_TESTING_CWD, $PERF_SIM_RESULT_DIR}/perf-docker-create.sh 2>/dev/null | head -n1)
+    if [ ! "x" = "x$script" ]; then
        sh -x $script
        return
     fi
@@ -121,22 +120,16 @@ setup_openbmc()
     fi
 
     which yum &>/dev/null && yum install -y git || apt install -y git
-    mkdir -p /tmp/perf && cd /tmp/perf && git clone https://github.com/xuweibj/openbmc_simulator
-    chmod +x /tmp/perf/openbmc_simulator/simulator
+    mkdir -p $PERF_SIM_TESTING_CWD && cd $PERF_SIM_TESTING_CWD && git clone $OPENBMC_SIMULATOR_URL
+    chmod +x $PERF_SIM_TESTING_CWD/openbmc_simulator/simulator
     run_openbmc
 }
 
 run_openbmc()
 {
     echo "Run openbmc simulator for node range..."
-    script=/tmp/perf/perf-openbmc-create.sh
-    if [ -f $script ]; then
-       sh $script setup
-       return
-    fi
-
-    script=/opt/xcat/share/xcat/tools/autotest/result/perf-openbmc-create.sh
-    if [ -f $script ]; then
+    script=$(ls -1t {$PERF_SIM_TESTING_CWD, $PERF_SIM_RESULT_DIR}/perf-openbmc-create.sh 2>/dev/null | head -n1)
+    if [ ! "x" = "x$script" ]; then
        sh $script setup
        return
     fi
@@ -154,15 +147,8 @@ clean_openbmc()
 
     echo "Cleanup openbmc simulator for node range..."
 
-    script=/tmp/perf/perf-openbmc-create.sh
-    if [ -f $script ]; then
-       sh $script clean
-       ip addr del $PERF_SIM_ADDR/$prefix dev $PERF_SIM_NIC #label $PERF_SIM_NIC:100
-       return
-    fi
-
-    script=/opt/xcat/share/xcat/tools/autotest/result/perf-openbmc-create.sh
-    if [ -f $script ]; then
+    script=$(ls -1t {$PERF_SIM_TESTING_CWD, $PERF_SIM_RESULT_DIR}/perf-openbmc-create.sh 2>/dev/null | head -n1)
+    if [ ! "x" = "x$script" ]; then
        sh $script clean
        ip addr del $PERF_SIM_ADDR/$prefix dev $PERF_SIM_NIC #label $PERF_SIM_NIC:100
        return
