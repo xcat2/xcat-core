@@ -1143,7 +1143,7 @@ passed as argument rather than by table value',
 " defserialflow:  The default serial flow - currently only used by the mknb command.\n\n" .
 " defserialport:  The default serial port - currently only used by mknb.\n\n" .
 " defserialspeed:  The default serial speed - currently only used by mknb.\n\n" .
-" disablenodesetwarning:  Allow the legacy xCAT non-osimage style nodeset to execute.\n\n" .
+" disablenodesetwarning:  Allow the legacy xCAT non-osimage style commands to execute.\n\n" .
 " genmacprefix:  When generating mac addresses automatically, use this manufacturing\n" .
 "                prefix (e.g. 00:11:aa)\n\n" .
 " genpasswords:  Automatically generate random passwords for BMCs when configuring\n" .
