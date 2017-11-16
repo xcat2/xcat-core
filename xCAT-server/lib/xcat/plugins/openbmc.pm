@@ -1895,10 +1895,7 @@ sub rinv_response {
     # If sorted array has any contents, sort it naturally and print it
     if (scalar @sorted_output > 0) {
         # sort alpha, then numeric 
-        #my @sorted_output = grep {s/(^|\D)0+(\d)/$1$2/g,1} sort 
-        #    grep {s/(\d+)/sprintf"%06.6d",$1/ge,1} @sorted_output;
-        my @natural_list = sort natural_sorter @sorted_output;
-        foreach (@natural_list) {
+        foreach (sort natural_sorter @sorted_output) {
             #
             # The firmware output requires the ID to be part of the string to sort correctly.
             # Remove this ID from the output to the user
@@ -2397,10 +2394,7 @@ sub rvitals_response {
     # If sorted array has any contents, sort it and print it
     if (scalar @sorted_output > 0) {
         # Sort the output, alpha, then numeric
-        #my @sorted_output = grep {s/(^|\D)0+(\d)/$1$2/g,1} sort 
-        #    grep {s/(\d+)/sprintf"%06.6d",$1/ge,1} @sorted_output;
-        my @natrual_list = sort natural_sorter @sorted_output;
-        xCAT::SvrUtils::sendmsg("$_", $callback, $node) foreach (@natrual_list);
+        xCAT::SvrUtils::sendmsg("$_", $callback, $node) foreach (sort natural_sorter @sorted_output);
     } else {
         xCAT::SvrUtils::sendmsg("$::NO_ATTRIBUTES_RETURNED", $callback, $node);
     }
