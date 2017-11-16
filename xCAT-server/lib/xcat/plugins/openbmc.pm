@@ -591,7 +591,7 @@ sub process_request {
 
     foreach my $node (keys %node_info) {
         if (!$valid_nodes{$node}) {
-            xCAT::SvrUtils::sendmsg([1, "BMC did not respond within 10 seconds, retry the command."], $callback, $node);
+            xCAT::SvrUtils::sendmsg([1, "BMC could not be connected or did not respond within 20 seconds, retry the command."], $callback, $node);
             $wait_node_num--;
         } else {
             $login_url = "$http_protocol://$node_info{$node}{bmc}/login";
@@ -1566,7 +1566,7 @@ sub login_logout_request {
     my $curl_login_cmd  = "curl -c $cjar_id -k -H 'Content-Type: application/json' -X POST $request_url/login -d '" . $content_login . "'";
     my $curl_logout_cmd = "curl -b $cjar_id -k -H 'Content-Type: application/json' -X POST $request_url/logout -d '" . $content_logout . "'";
 
-    my $curl_login_result = `$curl_login_cmd -s -m 10`;
+    my $curl_login_result = `$curl_login_cmd -s -m 20`;
 
     unless ($curl_login_result) {
         if ($xcatdebugmode) {
