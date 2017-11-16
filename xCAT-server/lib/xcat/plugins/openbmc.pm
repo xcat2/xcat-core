@@ -72,10 +72,6 @@ sub unsupported {
     }
 }
 
-sub natural_sorter {
-    natural_sort_cmp( $a, $b );
-}
-
 #-------------------------------------------------------
 
 =head3  handled_commands
@@ -1895,7 +1891,7 @@ sub rinv_response {
     # If sorted array has any contents, sort it naturally and print it
     if (scalar @sorted_output > 0) {
         # sort alpha, then numeric 
-        foreach (sort natural_sorter @sorted_output) {
+        foreach (sort natural_sort_cmp @sorted_output) {
             #
             # The firmware output requires the ID to be part of the string to sort correctly.
             # Remove this ID from the output to the user
@@ -2394,7 +2390,7 @@ sub rvitals_response {
     # If sorted array has any contents, sort it and print it
     if (scalar @sorted_output > 0) {
         # Sort the output, alpha, then numeric
-        xCAT::SvrUtils::sendmsg("$_", $callback, $node) foreach (sort natural_sorter @sorted_output);
+        xCAT::SvrUtils::sendmsg("$_", $callback, $node) foreach (sort natural_sort_cmp @sorted_output);
     } else {
         xCAT::SvrUtils::sendmsg("$::NO_ATTRIBUTES_RETURNED", $callback, $node);
     }
