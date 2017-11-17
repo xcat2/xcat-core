@@ -316,12 +316,53 @@ my %status_info = (
     RSPCONFIG_SET_RESPONSE => {
         process        => \&rspconfig_response,
     },
+    RSPCONFIG_IPOBJECT_REQUEST => {
+        method         => "POST",
+        init_url       => "$openbmc_project_url/network/#NIC#/action/IP",
+        data           => "",
+    },
+    RSPCONFIG_IPOBJECT_RESPONSE => {
+        process        => \&rspconfig_response,
+    },
+    RSPCONFIG_VLAN_REQUEST  => {
+        method         => "POST",
+        init_url       => "$openbmc_project_url/network/action/VLAN",
+        data           => "",
+    },
+    RSPCONFIG_VLAN_RESPONSE => {
+        process        => \&rspconfig_response,
+    },
+    RSPCONFIG_CHECK_REQUEST  => {
+        method         => "GET",
+        init_url       => "$openbmc_project_url/network/enumerate",
+    },
+    RSPCONFIG_CHECK_RESPONSE => {
+        process        => \&rspconfig_response,
+    },
     RSPCONFIG_DHCP_REQUEST => {
         method         => "POST",
         init_url       => "$openbmc_project_url/network/action/Reset",
         data           => "[]",
     },
     RSPCONFIG_DHCP_RESPONSE => {
+        process        => \&rspconfig_response,
+    },
+    RSPCONFIG_DHCPDIS_REQUEST => {
+        method         => "PUT",
+        init_url       => "$openbmc_project_url/network/#NIC#/attr/DHCPEnabled",
+        data           => 0,
+    },
+    RSPCONFIG_DHCPDIS_RESPONSE => {
+        process        => \&rspconfig_response,
+    },
+    RSPCONFIG_DELETE_REQUEST => {
+        method         => "DELETE",
+        init_url       => "",
+    },
+    RSPCONFIG_DELETE_RESPONSE => {
+        process        => \&rspconfig_response,
+    },
+    RSPCONFIG_PRINT_BMCINFO => {
         process        => \&rspconfig_response,
     },
     RSPCONFIG_SSHCFG_REQUEST => {
@@ -787,35 +828,42 @@ sub parse_args {
             return ([ 1, "Unsupported command: $command $subcommand" ]);
         }
     } elsif ($command eq "rspconfig") {
+        my $num_subcommand = @ARGV;
         my $setorget;
+        my $all_subcommand = "";
         foreach $subcommand (@ARGV) {
             if ($subcommand =~ /^(\w+)=(.*)/) {
-                return ([ 1, "Can not configure and display nodes' value at the same time" ]) if ($setorget and $setorget eq "get");
+                return ([ 1, "Can not configure and display nodes at the same time" ]) if ($setorget and $setorget eq "get");
                 my $key = $1;
                 my $value = $2;
                 return ([ 1, "Changing ipsrc value is currently not supported." ]) if ($key eq "ipsrc");
                 return ([ 1, "Unsupported command: $command $key" ]) unless ($key =~ /^ip$|^netmask$|^gateway$|^hostname$|^vlan$/);
+                return ([ 1, "Hostname must be set as a single command." ]) if ($key eq "hostname" and $num_subcommand > 1);
 
                 my $nodes_num = @$noderange;
                 return ([ 1, "Invalid parameter for option $key" ]) unless ($value);
-                return ([ 1, "Invalid parameter for option $key: $value" ]) if ($key =~ /^netmask$|^gateway$/ and !xCAT::NetworkUtils->isIpaddr($value));
+                return ([ 1, "Invalid parameter for option $key: $value" ]) if (($key eq "netmask") and !xCAT::NetworkUtils->isIpaddr($value));
+                return ([ 1, "Invalid parameter for option $key: $value" ]) if (($key eq "gateway") and ($value !~ "0.0.0.0" and !xCAT::NetworkUtils->isIpaddr($value)));
                 if ($key eq "ip") {
                     return ([ 1, "Can not configure more than 1 nodes' ip at the same time" ]) if ($nodes_num >= 2 and $value ne "dhcp");
-                    if ($value ne "dhcp" and !xCAT::NetworkUtils->isIpaddr($value)) {
-                        return ([ 1, "Invalid parameter for option $key: $value" ]);
+                    if ($value ne "dhcp" ) {
+                        if (!xCAT::NetworkUtils->isIpaddr($value)) {
+                            return ([ 1, "Invalid parameter for option $key: $value" ]);
+                        } else {
+                            $all_subcommand .= $key . ",";
+                        }
+                    } else {
+                        return ([ 1, "Setting ip=dhcp must be issued without other options." ]) if ($num_subcommand > 1);
                     }
+                } elsif ($key =~ /^netmask$|^gateway$|^vlan$/) {
+                    $all_subcommand .= $key . ",";
                 }
                 $setorget = "set";
-                #
-                # disable function until fully tested
-                #
-                unless (($key eq "ip" and $value eq "dhcp") or $key eq "hostname") {
-                    $check = unsupported($callback); if (ref($check) eq "ARRAY") { return $check; }
-                }
             } elsif ($subcommand =~ /^ip$|^netmask$|^gateway$|^hostname$|^vlan$|^ipsrc$/) {
-                return ([ 1, "Can not configure and display nodes' value at the same time" ]) if ($setorget and $setorget eq "set");
+                return ([ 1, "Can not configure and display nodes at the same time" ]) if ($setorget and $setorget eq "set");
                 $setorget = "get";
             } elsif ($subcommand =~ /^sshcfg$/) {
+                return ([ 1, "Configure sshcfg must be issued without other options." ]) if ($num_subcommand > 1);
                 $setorget = ""; # SSH Keys are copied using a RShellAPI, not REST API
             } elsif ($subcommand eq "dump") {
                 my $option = $ARGV[1];
@@ -831,6 +879,15 @@ sub parse_args {
                 return;
             } else {
                 return ([ 1, "Unsupported command: $command $subcommand" ]);
+            }
+        }
+        if ($all_subcommand) {
+            if ($all_subcommand !~ /ip/ or $all_subcommand !~ /netmask/ or $all_subcommand !~ /gateway/) {
+                if ($all_subcommand =~ /vlan/) {
+                    return ([ 1, "VLAN must be configured with IP, netmask and gateway" ]);
+                } else {
+                    return ([ 1, "IP, netmask and gateway must be configured together." ]);
+                }
             }
         }
     } elsif ($command eq "rvitals") {
@@ -1087,73 +1144,115 @@ sub parse_command_status {
 
     if ($command eq "rspconfig") {
         my @options = ();
-        foreach $subcommand (@$subcommands) {
-            if ($subcommand =~ /^ip$|^netmask$|^gateway$|^hostname$|^vlan$|^ipsrc$/) {
-                $next_status{LOGIN_RESPONSE} = "RSPCONFIG_GET_REQUEST";
-                $next_status{RSPCONFIG_GET_REQUEST} = "RSPCONFIG_GET_RESPONSE";
-                push @options, $subcommand;
-            } elsif ($subcommand =~ /^sshcfg$/) {
+        my $num_subcommand = @$subcommands;
+        if ($num_subcommand == 1) {
+            $subcommand = $$subcommands[0];
+            if ($subcommand =~ /^sshcfg$/) {
                 # Special processing to copy ssh keys, currently there is no REST API to do this.
                 $next_status{LOGIN_RESPONSE} = "RSPCONFIG_SSHCFG_REQUEST";
                 $next_status{RSPCONFIG_SSHCFG_REQUEST} = "RSPCONFIG_SSHCFG_RESPONSE";
                 return 0;
-            } elsif ($subcommand eq "dump") {
-                my $dump_opt = $$subcommands[1];
-                if ($dump_opt =~ /-l|--list/) {
-                    $next_status{LOGIN_RESPONSE} = "RSPCONFIG_DUMPLIST_REQUEST";
-                    $next_status{RSPCONFIG_DUMPLIST_REQUEST} = "RSPCONFIG_DUMPLIST_RESPONSE";
-                } elsif ($dump_opt =~ /-g|--generate/) {
-                    $next_status{LOGIN_RESPONSE} = "RSPCONFIG_DUMPCRT_REQUEST";
-                    $next_status{RSPCONFIG_DUMPCRT_REQUEST} = "RSPCONFIG_DUMPCRT_RESPONSE";
-                } elsif ($dump_opt =~ /-c|--clear/) {
-                    if ($$subcommands[2] eq "all") {
-                        $next_status{LOGIN_RESPONSE} = "RSPCONFIG_DUMPCLRA_REQUEST";
-                        $next_status{RSPCONFIG_DUMPCLRA_REQUEST} = "RSPCONFIG_DUMPCLR_RESPONSE";
-                    } else {
-                        $next_status{LOGIN_RESPONSE} = "RSPCONFIG_DUMPCLR_REQUEST";
-                        $next_status{RSPCONFIG_DUMPCLR_REQUEST} = "RSPCONFIG_DUMPCLR_RESPONSE";
-                        $status_info{RSPCONFIG_DUMPCLR_REQUEST}{init_url} =~ s/#ID#/$$subcommands[2]/g;
-                    }
-                    $status_info{RSPCONFIG_DUMPCLR_RESPONSE}{argv} = $$subcommands[2];
-                } elsif ($dump_opt =~ /-d|--download/) {
-                    $next_status{LOGIN_RESPONSE} = "RSPCONFIG_DUMPDWLD_REQUEST";
-                    $next_status{RSPCONFIG_DUMPDWLD_REQUEST} = "RSPCONFIG_DUMPDWLD_RESPONSE";
-                    $status_info{RSPCONFIG_DUMPDWLD_REQUEST}{init_url} =~ s/#ID#/$$subcommands[2]/g; 
-                    $status_info{RSPCONFIG_DUMPDWLD_REQUEST}{argv} = $$subcommands[2];
+            }
+            if ($subcommand eq "ip=dhcp") {
+                $next_status{LOGIN_RESPONSE} = "RSPCONFIG_DHCP_REQUEST";
+                $next_status{RSPCONFIG_DHCP_REQUEST} = "RSPCONFIG_DHCP_RESPONSE";
+                $next_status{RSPCONFIG_DHCP_RESPONSE} = "RPOWER_BMCREBOOT_REQUEST";
+                $next_status{RPOWER_BMCREBOOT_REQUEST} = "RPOWER_RESET_RESPONSE";
+                $status_info{RPOWER_RESET_RESPONSE}{argv} = "bmcreboot";
+                return 0;
+            }
+            if ($subcommand =~ /^hostname=(.+)/) {
+                $next_status{LOGIN_RESPONSE} = "RSPCONFIG_SET_REQUEST";
+                $next_status{RSPCONFIG_SET_REQUEST} = "RSPCONFIG_SET_RESPONSE";
+                $next_status{RSPCONFIG_SET_RESPONSE} = "RSPCONFIG_GET_REQUEST";
+                $next_status{RSPCONFIG_GET_REQUEST} = "RSPCONFIG_GET_RESPONSE";
+
+                $status_info{RSPCONFIG_SET_REQUEST}{data} = $1;
+                $status_info{RSPCONFIG_GET_RESPONSE}{argv} = "hostname";
+                return 0;
+            }
+        }
+
+        $subcommand = $$subcommands[0];
+        if ($subcommand eq "dump") {
+            my $dump_opt = $$subcommands[1];
+            if ($dump_opt =~ /-l|--list/) {
+                $next_status{LOGIN_RESPONSE} = "RSPCONFIG_DUMPLIST_REQUEST";
+                $next_status{RSPCONFIG_DUMPLIST_REQUEST} = "RSPCONFIG_DUMPLIST_RESPONSE";
+            } elsif ($dump_opt =~ /-g|--generate/) {
+                $next_status{LOGIN_RESPONSE} = "RSPCONFIG_DUMPCRT_REQUEST";
+                $next_status{RSPCONFIG_DUMPCRT_REQUEST} = "RSPCONFIG_DUMPCRT_RESPONSE";
+            } elsif ($dump_opt =~ /-c|--clear/) {
+                if ($$subcommands[2] eq "all") {
+                    $next_status{LOGIN_RESPONSE} = "RSPCONFIG_DUMPCLRA_REQUEST";
+                    $next_status{RSPCONFIG_DUMPCLRA_REQUEST} = "RSPCONFIG_DUMPCLR_RESPONSE";
+                } else {
+                    $next_status{LOGIN_RESPONSE} = "RSPCONFIG_DUMPCLR_REQUEST";
+                    $next_status{RSPCONFIG_DUMPCLR_REQUEST} = "RSPCONFIG_DUMPCLR_RESPONSE";
+                    $status_info{RSPCONFIG_DUMPCLR_REQUEST}{init_url} =~ s/#ID#/$$subcommands[2]/g;
                 }
+                $status_info{RSPCONFIG_DUMPCLR_RESPONSE}{argv} = $$subcommands[2];
+            } elsif ($dump_opt =~ /-d|--download/) {
+                $next_status{LOGIN_RESPONSE} = "RSPCONFIG_DUMPDWLD_REQUEST";
+                $next_status{RSPCONFIG_DUMPDWLD_REQUEST} = "RSPCONFIG_DUMPDWLD_RESPONSE";
+                $status_info{RSPCONFIG_DUMPDWLD_REQUEST}{init_url} =~ s/#ID#/$$subcommands[2]/g; 
+                $status_info{RSPCONFIG_DUMPDWLD_REQUEST}{argv} = $$subcommands[2];
+            }
+            return 0;
+        }
+
+        my $type = "obj";
+        my %tmp_hash = ();
+        foreach $subcommand (@$subcommands) {
+            if ($subcommand =~ /^ip$|^netmask$|^gateway$|^hostname$|^vlan$|^ipsrc$/) {
+                $type = "get";
+                push @options, $subcommand;
             } elsif ($subcommand =~ /^(\w+)=(.+)/) {
                 my $key   = $1;
                 my $value = $2;
-                if ($key eq "ip" and $value eq "dhcp") {
-                    $next_status{LOGIN_RESPONSE} = "RSPCONFIG_DHCP_REQUEST";
-                    $next_status{RSPCONFIG_DHCP_REQUEST} = "RSPCONFIG_DHCP_RESPONSE";
-                    $next_status{RSPCONFIG_DHCP_RESPONSE} = "RPOWER_BMCREBOOT_REQUEST";
-                    $next_status{RPOWER_BMCREBOOT_REQUEST} = "RPOWER_RESET_RESPONSE";
-                    $status_info{RPOWER_RESET_RESPONSE}{argv} = "bmcreboot";
-                } elsif ($key =~ /^hostname$/) {
-                    $next_status{LOGIN_RESPONSE} = "RSPCONFIG_SET_REQUEST";
-                    $next_status{RSPCONFIG_SET_REQUEST} = "RSPCONFIG_SET_RESPONSE";
-                    $next_status{RSPCONFIG_SET_RESPONSE} = "RSPCONFIG_GET_REQUEST";
-                    $next_status{RSPCONFIG_GET_REQUEST} = "RSPCONFIG_GET_RESPONSE";
-
-                    $status_info{RSPCONFIG_SET_REQUEST}{data} = "$value";
-                    $status_info{RSPCONFIG_SET_REQUEST}{init_url} .= "/config/attr/HostName";
-                    push @options, $key;
-
-                } else {
-                    $next_status{LOGIN_RESPONSE} = "RSPCONFIG_SET_REQUEST";
-                    $next_status{RSPCONFIG_SET_REQUEST} = "RSPCONFIG_SET_RESPONSE";
-                    $next_status{RSPCONFIG_SET_RESPONSE} = "RSPCONFIG_GET_REQUEST";
-                    $next_status{RSPCONFIG_GET_REQUEST} = "RSPCONFIG_GET_RESPONSE";
-                    if ($key eq "ip") {
-                        $status_info{RSPCONFIG_SET_RESPONSE}{ip}  = $value;
-                    }
-                    $status_info{RSPCONFIG_SET_REQUEST}{data} = ""; # wait for interface, ip/netmask/gateway is $value
-                    push @options, $key;
-                }
+                $type = "vlan" if ($key eq "vlan");
+                $tmp_hash{$key} = $value;
             }
         }
-        $status_info{RSPCONFIG_GET_RESPONSE}{argv} = join(",", @options) if (@options);
+        if ($type eq "get") {
+            $next_status{LOGIN_RESPONSE} = "RSPCONFIG_GET_REQUEST";
+            $next_status{RSPCONFIG_GET_REQUEST} = "RSPCONFIG_GET_RESPONSE";
+            $status_info{RSPCONFIG_GET_RESPONSE}{argv} = join(",", @options);
+        } else {
+            $next_status{LOGIN_RESPONSE} = "RSPCONFIG_GET_REQUEST";
+            $next_status{RSPCONFIG_GET_REQUEST} = "RSPCONFIG_GET_RESPONSE";
+            my $prefix = xCAT::NetworkUtils::formatNetmask($tmp_hash{netmask}, 0, 1);
+
+            if ($type eq "obj") {
+                $next_status{RSPCONFIG_GET_RESPONSE} = "RSPCONFIG_IPOBJECT_REQUEST";
+                $next_status{RSPCONFIG_IPOBJECT_REQUEST} = "RSPCONFIG_IPOBJECT_RESPONSE";
+
+                $status_info{RSPCONFIG_CHECK_RESPONSE}{argv} = "$tmp_hash{ip}-$prefix-$tmp_hash{gateway}";
+                $status_info{RSPCONFIG_PRINT_BMCINFO}{data} = "BMC IP: $tmp_hash{ip},BMC Netmask: $tmp_hash{netmask},BMC Gateway: $tmp_hash{gateway}";
+            } elsif ($type eq "vlan") {
+                $next_status{RSPCONFIG_GET_RESPONSE} = "RSPCONFIG_VLAN_REQUEST";
+                $next_status{RSPCONFIG_VLAN_REQUEST} = "RSPCONFIG_VLAN_RESPONSE";
+                $next_status{RSPCONFIG_VLAN_RESPONSE} = "RSPCONFIG_IPOBJECT_REQUEST";
+                $next_status{RSPCONFIG_IPOBJECT_REQUEST} = "RSPCONFIG_IPOBJECT_RESPONSE";
+
+                $status_info{RSPCONFIG_VLAN_REQUEST}{data} = "[\"#NIC#\",\"$tmp_hash{vlan}\"]";
+                $status_info{RSPCONFIG_IPOBJECT_REQUEST}{init_url} =~ s/#NIC#/#NIC#_$tmp_hash{vlan}/g;
+                $status_info{RSPCONFIG_CHECK_RESPONSE}{argv} = "$tmp_hash{vlan}-$tmp_hash{ip}-$prefix-$tmp_hash{gateway}";
+                $status_info{RSPCONFIG_PRINT_BMCINFO}{data} = "BMC IP: $tmp_hash{ip},BMC Netmask: $tmp_hash{netmask},BMC Gateway: $tmp_hash{gateway},BMC VLAN ID: $tmp_hash{vlan}";
+            }
+
+            $next_status{RSPCONFIG_IPOBJECT_RESPONSE} = "RSPCONFIG_CHECK_REQUEST";
+            $next_status{RSPCONFIG_CHECK_REQUEST} = "RSPCONFIG_CHECK_RESPONSE";
+            $next_status{RSPCONFIG_CHECK_RESPONSE}{STATIC} = "RSPCONFIG_DELETE_REQUEST";
+            $next_status{RSPCONFIG_DELETE_REQUEST} = "RSPCONFIG_DELETE_RESPONSE";
+            $next_status{RSPCONFIG_CHECK_RESPONSE}{DHCP} = "RSPCONFIG_DHCPDIS_REQUEST";
+            $next_status{RSPCONFIG_DHCPDIS_REQUEST} = "RSPCONFIG_DHCPDIS_RESPONSE";
+            $next_status{RSPCONFIG_DELETE_RESPONSE} = "RSPCONFIG_PRINT_BMCINFO";
+            $next_status{RSPCONFIG_DHCPDIS_RESPONSE} = "RSPCONFIG_PRINT_BMCINFO";
+
+            $status_info{RSPCONFIG_GET_RESPONSE}{argv} = "all";
+            $status_info{RSPCONFIG_IPOBJECT_REQUEST}{data} = "[\"xyz.openbmc_project.Network.IP.Protocol.IPv4\",\"$tmp_hash{ip}\",$prefix,\"$tmp_hash{gateway}\"]";
+        }
     }
 
     if ($command eq "rvitals") {
@@ -1445,7 +1544,7 @@ sub gen_send_request {
     my $node = shift;
     my $method;
     my $request_url;
-    my $content;
+    my $content = "";
 
     if ($node_info{$node}{method}) {
         $method = $node_info{$node}{method};
@@ -1459,6 +1558,8 @@ sub gen_send_request {
         } elsif ($status_info{ $node_info{$node}{cur_status} }{data} =~ /^\[\]$/) {
             # Special handling of empty data list
             $content = '{"data":[]}';
+        } elsif ($status_info{ $node_info{$node}{cur_status} }{data} =~ /^\[.+\]$/) {
+            $content = '{"data":' . $status_info{ $node_info{$node}{cur_status} }{data} . '}';
         } else {
             $content = '{"data":"' . $status_info{ $node_info{$node}{cur_status} }{data} . '"}';
         }
@@ -2196,17 +2297,20 @@ sub rspconfig_response {
     my $node = shift;
     my $response = shift;
 
-    my $response_info = decode_json $response->content; 
+    my $response_info;
+    $response_info = decode_json $response->content if ($response);
 
     if ($node_info{$node}{cur_status} eq "RSPCONFIG_GET_RESPONSE") {
         my $address         = "n/a";
         my $gateway         = "n/a";
         my $prefix          = "n/a";
+        my $netmask         = "n/a";
         my $vlan            = 0;
         my $hostname        = "";
         my $default_gateway = "n/a";
         my $adapter_id      = "n/a";
         my $ipsrc           = "n/a";
+        my $nic;
         my $error;
         my $path;
         my @output;
@@ -2233,6 +2337,7 @@ sub rspconfig_response {
                         # This must be a second entry. Display an error. Currently only supporting
                         # an adapter with a single IP address set.
                         $error = "Interfaces with multiple IP addresses are not supported";
+                        $node_info{$node}{cur_status} = "";
                         last;
                     }
                     $address = $content{Address};
@@ -2251,13 +2356,13 @@ sub rspconfig_response {
                 if (defined($response_info->{data}->{$path}->{Id})) {
                     $vlan = $response_info->{data}->{$path}->{Id};
                 }
+                $nic = $path;
+                $nic =~ s/(.*\/)//g;
             }
         }
         if ($error) {
-            # Display error message once, regardless of how many subcommands were specified
-            push @output, $error;
-        }
-        else {
+            xCAT::SvrUtils::sendmsg("$error", $callback, $node);
+        } else {
             foreach my $opt (split /,/,$grep_string) {
                 if ($opt eq "ip") {
                     push @output, "BMC IP: $address"; 
@@ -2267,7 +2372,7 @@ sub rspconfig_response {
                     if ($address) {
                         my $mask_shift = 32 - $prefix;
                         my $decimal_mask = (2 ** $prefix - 1) << $mask_shift;
-                        my $netmask = join('.', unpack("C4", pack("N", $decimal_mask)));
+                        $netmask = join('.', unpack("C4", pack("N", $decimal_mask)));
                         push @output, "BMC Netmask: " . $netmask; 
                     }
                 } elsif ($opt eq "gateway") {
@@ -2282,9 +2387,79 @@ sub rspconfig_response {
                     push @output, "BMC Hostname: $hostname";
                 }
             }
+            xCAT::SvrUtils::sendmsg("$_", $callback, $node) foreach (@output);
+
+            if ($grep_string eq "all") {
+                my @checks = split("-", $status_info{RSPCONFIG_CHECK_RESPONSE}{argv});
+                my $check_num = @checks;
+                my $check_vlan;
+                if ($check_num == 4) {
+                    $check_vlan = shift @checks;
+                }
+                my ($check_ip,$check_netmask,$check_gateway) = @checks;
+                if ($check_ip eq $address and $check_netmask eq $prefix and $check_gateway eq $gateway) {
+                    $next_status{ $node_info{$node}{cur_status} } = "RSPCONFIG_PRINT_BMCINFO" if (($check_vlan and $check_vlan eq $vlan) or !$check_vlan);
+                }
+
+                if ($next_status{ $node_info{$node}{cur_status} }) {
+                    if ($next_status{ $node_info{$node}{cur_status} } eq "RSPCONFIG_VLAN_REQUEST") {
+                        $nic =~ s/(\_\d*)//g;
+                        $status_info{RSPCONFIG_VLAN_REQUEST}{data} =~ s/#NIC#/$nic/g;
+                    }
+                    $status_info{RSPCONFIG_IPOBJECT_REQUEST}{init_url} =~ s/#NIC#/$nic/g;
+                    $node_info{$node}{nic} = $nic;
+                }
+            }
+        }
+    }
+ 
+    my $origin_type;
+    if ($node_info{$node}{cur_status} eq "RSPCONFIG_CHECK_RESPONSE") {
+        my @checks = split("-", $status_info{RSPCONFIG_CHECK_RESPONSE}{argv});
+        my $check_num = @checks;
+        my $check_vlan;
+        if ($check_num == 4) {
+            $check_vlan = shift @checks;
+        }
+        my ($check_ip,$check_netmask,$check_gateway) = @checks;
+        my $check_result = 0;
+
+        foreach my $key_url (keys %{$response_info->{data}}) {
+            my %content = %{ ${ $response_info->{data} }{$key_url} };
+            my ($path, $adapter_id) = (split(/\/ipv4\//, $key_url));
+            if ($adapter_id) {
+                if (defined($content{Address}) and $content{Address}) {
+                    if ($content{Address} eq $node_info{$node}{bmc}) {
+                        if ($content{Origin} =~ /Static/) {
+                            $origin_type = "STATIC";
+                            $status_info{RSPCONFIG_DELETE_REQUEST}{init_url} = "$key_url";
+                        } else {
+                            $origin_type = "DHCP";
+                            my $nic = $path;
+                            $nic =~ s/(.*\/)//g;
+                            $status_info{RSPCONFIG_DHCPDIS_REQUEST}{init_url} =~ s/#NIC#/$nic/g
+                        }
+                    } else {
+                        if (($content{Address} eq $check_ip) and
+                            ($content{PrefixLength} eq $check_netmask) and
+                            ($content{Gateway} eq $check_gateway)) {
+                            if ($check_vlan) {
+                                if (defined($response_info->{data}->{$path}->{Id}) and $response_info->{data}->{$path}->{Id} eq $check_vlan) {
+                                    $check_result = 1;
+                                }
+                            } else {
+                               $check_result = 1;
+                            }
+                        }
+                    }
+                }
+            }
         }
 
-        xCAT::SvrUtils::sendmsg("$_", $callback, $node) foreach (@output);
+        if (!$check_result or !$origin_type) {
+            xCAT::SvrUtils::sendmsg("Config IP failed", $callback, $node);
+            $next_status{ $node_info{$node}{cur_status} } = "";
+        }
     }
 
     if ($node_info{$node}{cur_status} eq "RSPCONFIG_SET_RESPONSE") {
@@ -2298,9 +2473,28 @@ sub rspconfig_response {
         }
     }
 
+    if ($node_info{$node}{cur_status} eq "RSPCONFIG_PRINT_BMCINFO") {
+        if ($status_info{RSPCONFIG_PRINT_BMCINFO}{data}) {
+            my @output = split(",", $status_info{RSPCONFIG_PRINT_BMCINFO}{data});
+            xCAT::SvrUtils::sendmsg($_, $callback, $node) foreach (@output);
+        }
+    }
+
+    if ($node_info{$node}{cur_status} eq "RSPCONFIG_IPOBJECT_RESPONSE" or $node_info{$node}{cur_status} eq "RSPCONFIG_VLAN_RESPONSE") {
+        sleep (3);
+    }
+
     if ($next_status{ $node_info{$node}{cur_status} }) {
-        $node_info{$node}{cur_status} = $next_status{ $node_info{$node}{cur_status} };
-        gen_send_request($node);
+        if ($node_info{$node}{cur_status} eq "RSPCONFIG_CHECK_RESPONSE") {
+            $node_info{$node}{cur_status} = $next_status{ $node_info{$node}{cur_status} }{$origin_type};
+        } else {
+            $node_info{$node}{cur_status} = $next_status{ $node_info{$node}{cur_status} };
+        }
+        if ($node_info{$node}{cur_status} eq "RSPCONFIG_PRINT_BMCINFO") {
+            $status_info{ $node_info{$node}{cur_status} }->{process}->($node, "");
+        } else {
+            gen_send_request($node);
+        }
     } else {
         $wait_node_num--;
     } 
