@@ -265,6 +265,12 @@ sub process_request {
 
     my $macstring = "";
     if (defined($request->{mac})) {
+        if (!inet_aton($node)) {
+            xCAT::MsgUtils->message("S", "xcat.discovery.nodediscover: Can not resolve IP for the matching node:$node. Make sure \"makehosts\" and \"makedns\" have been run for $node.");
+            $request->{error} = [0];
+            $request->{error_msg} = ["Can not resolve IP for the matching node:$node."];
+            return;
+        }
         my $mactab = xCAT::Table->new("mac", -create => 1);
         my @ifinfo;
         my %usednames;
@@ -272,6 +278,7 @@ sub process_request {
         my @hostnames_to_update = ();
         my %bydriverindex;
         my $forcenic = 0; #-1 is force skip, 0 is use default behavior, 1 is force to be declared even if hosttag is skipped to do so
+        my $localnic = 0;
         foreach (@{ $request->{mac} }) {
             @ifinfo = split /\|/;
 
@@ -318,9 +325,6 @@ sub process_request {
                             $hosttag = "$node-$ifinfo[1]";
                             push @hostnames_to_update, $hosttag;
                         }
-                        elsif (!inet_aton($node)) {
-                            xCAT::MsgUtils->message("S", "xcat.discovery.nodediscover: Can not resolve IP for the matching node:$node. Make sure \"makehosts\" and \"makedns\" have been run for $node.");
-                        }
                     }
                     #print Dumper($hosttag) . "\n";
                     if ($hosttag) {
@@ -330,6 +334,7 @@ sub process_request {
                         }
                         if ($hosttag eq $node) {
                             $macstring .= $currmac . "|";
+                            $localnic = 1;
                         } else {
                             $macstring .= $currmac . "!" . $hosttag . "|";
                         }
@@ -346,6 +351,11 @@ sub process_request {
             } else {
                 if ($forcenic == 1) { $macstring .= $currmac . "|"; }
             }
+        }
+        unless ($localnic) {
+            $request->{error} = [1];
+            $request->{error_msg} = ["No nic found in deploy network for $node"];
+            return;
         }
         $macstring =~ s/\|\z//;
         $mactab->setNodeAttribs($node, { mac => $macstring });

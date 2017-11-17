@@ -22,11 +22,15 @@ sub process_request {
     my $doreq = shift;
     if ($req->{command}->[0] eq 'findme') {
 
-        if (!defined($req->{discoverymethod}) or !defined($req->{discoverymethod}->[0]) or ($req->{discoverymethod}->[0] eq 'undef')) {
+        if (!defined($req->{discoverymethod}) or !defined($req->{discoverymethod}->[0]) or ($req->{discoverymethod}->[0] eq 'undef') or defined($req->{error})) {
+            my $error_msg = ".";
+            if (defined($req->{error_msg}) and defined($req->{error_msg}->[0])) {
+                $error_msg = ": ". $req->{error_msg}->[0];
+            }
             my $rsp = {};
-            $rsp->{error}->[0] = "The discovery request can not be processed";
+            $rsp->{error}->[0] = "The discovery request can not be processed".$error_msg;
             $cb->($rsp);
-            xCAT::MsgUtils->message("S", "xcat.discovery.zzzdiscovery: ($req->{_xcat_clientmac}->[0]) Failed to discover the node.");
+            xCAT::MsgUtils->message("S", "xcat.discovery.zzzdiscovery: ($req->{_xcat_clientmac}->[0]) Failed for node discovery".$error_msg);
 
             #now, notify the node that its findme request has been processed
             my $client_ip = $req->{'_xcat_clientip'};

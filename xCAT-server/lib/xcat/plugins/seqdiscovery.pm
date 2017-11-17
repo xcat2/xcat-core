@@ -398,10 +398,15 @@ sub findme {
         my $req = {%$request};
         $req->{command}      = ['discovered'];
         $req->{noderange}    = [$node];
-        $request->{bmc_node} = [$bmc_node];
+        $req->{bmc_node} = [$bmc_node];
 
         $req->{updateswitch} = ['yes'];
         $subreq->($req);
+        if (defined($req->{error})) {
+            $request->{error}->[0] = '1';
+            $request->{error_msg}->[0] = $req->{error_msg}->[0];
+        }
+
         %{$req} = ();    #Clear req structure, it's done..
         undef $mactab;
     } else {

@@ -61,6 +61,10 @@ sub findme {
         $req->{bmc_node}  = [$bmc_node];
         $req->{updateswitch} = ['yes'];
         $subreq->($req);
+        if (defined($req->{error})) {
+            $request->{error}->[0] = '1';
+            $request->{error_msg}->[0] = $req->{error_msg}->[0];
+        }
         %{$req} = ();
     }
 }
