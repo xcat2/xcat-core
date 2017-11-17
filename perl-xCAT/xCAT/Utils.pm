@@ -4921,30 +4921,31 @@ sub acquire_lock_imageop {
 #--------------------------------------------------------------------------------
 
 =head3  natural_sort_cmp
-      compare $left and $right by natrual.
+      compare $left and $right by natural ordering.
 =cut
 
 #--------------------------------------------------------------------------------
-sub natural_sort_cmp {
+sub natural_sort_cmp($$) {
     my $left = shift;
     my $right = shift;
-    if( !($left =~ /\d+(\.\d+)?/) ) {
-        return $left cmp $right;
-    }
-    my $before = $`;
-    my $match = $&;
-    my $after = $';
-    if( !($right =~ /\d+(\.\d+)?/) ) {
-        return $left cmp $right;
-    }
-    if( $before eq $` ) {
-        if( $match == $& ) {
-            return natural_sort_cmp( $after, $' );
-        } else {
-            return $match <=> $&;
+    while() {
+        if( !($left =~ /\d+(\.\d+)?/) ) {
+            return $left cmp $right;
         }
-    } else {
-        return $left cmp $right;
+        my $before = $`;
+        my $match = $&;
+        my $after = $';
+        if( !($right =~ /\d+(\.\d+)?/) ) {
+            return $left cmp $right;
+        }
+        if( $before ne $` ) {
+            return $left cmp $right;
+        } elsif( $match != $& ) {
+            return $match <=> $&;
+        } else {
+            $left = $after;
+            $right = $';
+        }
     }
 }
 
