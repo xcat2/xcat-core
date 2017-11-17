@@ -1169,10 +1169,16 @@ sub parse_command_status {
                         $purpose_value = "Host";
                     } 
                     $::UPLOAD_FILE_VERSION = $version_value;
-                    if (-x $sha512sum_cmd) {
+                    if (-x $sha512sum_cmd && -x $tr_cmd) {
                         # Save hash id this firmware version should resolve to:
                         # take version string, get rid of newline, run through sha512sum, take first 8 characters
                         $::UPLOAD_FILE_HASH_ID = substr(`echo $::UPLOAD_FILE_VERSION | $tr_cmd -d '\n' | $sha512sum_cmd`, 0,8);
+                    }
+                    else {
+                        if ($::VERBOSE) {
+                            xCAT::SvrUtils::sendmsg("WARN: No hashing check being done. ($sha512sum_cmd or $tr_cmd commands not found)
+", $callback);
+                        }
                     }
                 }
 
@@ -2617,7 +2623,7 @@ sub rflash_response {
 
                     # If we have a saved expected hash ID, compare it to the one just found 
                     if ($::UPLOAD_FILE_HASH_ID && ($::UPLOAD_FILE_HASH_ID ne $update_id)) {
-                        xCAT::SvrUtils::sendmsg([1,"Firmware uploaded, but not activated. ID $update_id did not match expected ID $::UPLOAD_FILE_HASH_ID "], $callback, $node);
+                        xCAT::SvrUtils::sendmsg([1,"Firmware uploaded but activation cancelled due to hash ID mismatch. $update_id does not match expected $::UPLOAD_FILE_HASH_ID. Verify BMC firmware is at the latest level."], $callback, $node);
                         $wait_node_num--;
                         return; # Stop processing for this node, do not activate. Firmware shold be left in "Ready" state.
                     }
