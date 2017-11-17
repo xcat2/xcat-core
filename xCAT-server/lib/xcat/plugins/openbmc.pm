@@ -819,10 +819,10 @@ sub parse_args {
             } elsif ($subcommand eq "dump") {
                 my $option = $ARGV[1];
                 if ($option =~ /^-d$|^--download$/) {
-                    return ([ 1, "Invalid parameter for $command $option" ]) unless ($ARGV[2]);
+                    return ([ 1, "No dump file ID specified" ]) unless ($ARGV[2]);
                     return ([ 1, "Invalid parameter for $command $option $ARGV[2]" ]) if ($ARGV[2] !~ /^\d*$/);
                 } elsif ($option =~ /^-c$|^--clear$/) {
-                    return ([ 1, "Invalid parameter for $command $option" ]) unless ($ARGV[2]);
+                    return ([ 1, "No dump file ID specified" ]) unless ($ARGV[2]);
                     return ([ 1, "Invalid parameter for $command $option $ARGV[2]" ]) if ($ARGV[2] !~ /^\d*$/ and $ARGV[2] ne "all");
                 } elsif ($option !~ /^-l$|^--list$|^-g$|^--generate$/) {
                     return ([ 1, "Invalid parameter for $command $option" ]);
