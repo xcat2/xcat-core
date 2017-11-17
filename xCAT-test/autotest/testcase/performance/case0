@@ -58,7 +58,7 @@ cmd:if [[ -f /var/lib/dhcp/db/dhcpd.leases ]]; then cat /var/lib/dhcp/db/dhcpd.l
 
 #After starting installation, began run fake nodes testing on MN
 cmd:which yum &>/dev/null && yum install -y bridge-utils || apt install -y bridge-utils
-cmd:FAKE_NETWORK_PRO=173.18 FAKE_NETWORK_BMC=192.169 xcatperftest 5000 /opt/xcat/share/xcat/tools/autotest/perfcmds.lst
+cmd:FAKE_NETWORK_PRO=173.18 FAKE_NETWORK_BMC=192.169 PERF_RPT_FILE=perfreport-5000.log.daily xcatperftest 5000 /opt/xcat/share/xcat/tools/autotest/perfcmds.lst
 check:rc==0
 
 cmd:PERF_CREATE_ONLY=y FAKE_NETWORK_PRO=173.18 FAKE_NETWORK_BMC=192.169 xcatperftest 5000 /opt/xcat/share/xcat/tools/autotest/perfcmds.lst
@@ -95,7 +95,7 @@ cmd:ping 192.169.251.252 -c 3
 check:rc==0
 
 # Testing for HW remote control CLIs
-cmd:PERF_NOCREATE=1 xcatperftest 5000 /opt/xcat/share/xcat/tools/autotest/testcase/performance/hwcmd.lst
+cmd:PERF_NOCREATE=1 PERF_RPT_FILE=perfreport-5000.log.daily xcatperftest 5000 /opt/xcat/share/xcat/tools/autotest/testcase/performance/hwcmd.lst
 check:rc==0
 cmd:xdsh $$SN PERF_SIM_NIC=$$SECONDNIC PERF_SIM_ADDR=192.169.251.252 bash /tmp/perf/simulatorctl.sh clean openbmc
 check:rc==0
@@ -125,7 +125,7 @@ cmd:ping 173.18.251.252 -c 3
 check:rc==0
 
 # Testing for updatenode, xdsh, nodestat, pping, etc
-cmd:PERF_NOCREATE=1 xcatperftest 5000 /opt/xcat/share/xcat/tools/autotest/testcase/performance/nodecmd.lst
+cmd:PERF_NOCREATE=1 PERF_RPT_FILE=perfreport-5000.log.daily xcatperftest 5000 /opt/xcat/share/xcat/tools/autotest/testcase/performance/nodecmd.lst
 check:rc==0
 
 cmd:xdsh $$CN,$$SN PERF_SIM_NIC=$$SECONDNIC bash /tmp/perf/simulatorctl.sh clean docker
