@@ -51,6 +51,7 @@ $::POWER_STATE_RESET        = "reset";
 $::POWER_STATE_REBOOT       = "reboot";
 $::UPLOAD_FILE              = "";
 $::UPLOAD_FILE_VERSION      = "";
+$::UPLOAD_FILE_HASH_ID      = "";
 $::RSETBOOT_URL_PATH        = "boot";
 # To improve the output to users, store this value as a global
 $::UPLOAD_AND_ACTIVATE      = 0;
@@ -1195,6 +1196,8 @@ sub parse_command_status {
 
         my $file_id = undef;
         my $grep_cmd = "/usr/bin/grep -a";
+        my $tr_cmd = "/usr/bin/tr";
+        my $sha512sum_cmd = "/usr/bin/sha512sum";
         my $version_tag = '"^version="';
         my $purpose_tag = '"purpose="';
         my $purpose_value;
@@ -1234,6 +1237,17 @@ sub parse_command_status {
                         $purpose_value = "Host";
                     } 
                     $::UPLOAD_FILE_VERSION = $version_value;
+                    if (-x $sha512sum_cmd && -x $tr_cmd) {
+                        # Save hash id this firmware version should resolve to:
+                        # take version string, get rid of newline, run through sha512sum, take first 8 characters
+                        $::UPLOAD_FILE_HASH_ID = substr(`echo $::UPLOAD_FILE_VERSION | $tr_cmd -d '\n' | $sha512sum_cmd`, 0,8);
+                    }
+                    else {
+                        if ($::VERBOSE) {
+                            xCAT::SvrUtils::sendmsg("WARN: No hashing check being done. ($sha512sum_cmd or $tr_cmd commands not found)
+", $callback);
+                        }
+                    }
                 }
 
                 if ($check_version) {
@@ -2799,6 +2813,12 @@ sub rflash_response {
                     $found_match = 1;
                     # Found a match of uploaded file version with the image in software/enumerate
 
+                    # If we have a saved expected hash ID, compare it to the one just found 
+                    if ($::UPLOAD_FILE_HASH_ID && ($::UPLOAD_FILE_HASH_ID ne $update_id)) {
+                        xCAT::SvrUtils::sendmsg([1,"Firmware uploaded but activation cancelled due to hash ID mismatch. $update_id does not match expected $::UPLOAD_FILE_HASH_ID. Verify BMC firmware is at the latest level."], $callback, $node);
+                        $wait_node_num--;
+                        return; # Stop processing for this node, do not activate. Firmware shold be left in "Ready" state.
+                    }
                     # Set the image id for the activation request
                     $status_info{RFLASH_UPDATE_ACTIVATE_REQUEST}{init_url} =
                        $::SOFTWARE_URL . "/$update_id/attr/RequestedActivation";
