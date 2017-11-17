@@ -2276,7 +2276,7 @@ sub rspconfig_response {
                     if ($address) {
                         my $mask_shift = 32 - $prefix;
                         my $decimal_mask = (2 ** $prefix - 1) << $mask_shift;
-                        my $netmask = join('.', unpack("C4", pack("N", $decimal_mask)));
+                        $netmask = join('.', unpack("C4", pack("N", $decimal_mask)));
                         push @output, "BMC Netmask: " . $netmask; 
                     }
                 } elsif ($opt eq "gateway") {
@@ -2319,7 +2319,6 @@ sub rspconfig_response {
 
     my $origin_type;
     if ($node_info{$node}{cur_status} eq "RSPCONFIG_CHECK_RESPONSE") {
-print Dumper($response_info);
         my @checks = split("-", $status_info{RSPCONFIG_CHECK_RESPONSE}{argv}); 
         my $check_num = @checks;
         my $check_vlan;
