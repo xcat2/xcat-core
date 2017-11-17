@@ -18,6 +18,7 @@ use warnings "all";
 use JSON;
 use HTTP::Async;
 use HTTP::Cookies;
+use LWP::UserAgent;
 use File::Basename;
 use File::Spec;
 use File::Copy qw/copy cp mv move/;
@@ -622,7 +623,7 @@ sub process_request {
 
     foreach my $node (keys %node_info) {
         if (!$valid_nodes{$node}) {
-            xCAT::SvrUtils::sendmsg([1, "BMC did not respond within 10 seconds, retry the command."], $callback, $node);
+            xCAT::SvrUtils::sendmsg([1, "BMC did not respond. Verify BMC is in BMCReady state and retry the command."], $callback, $node);
             $wait_node_num--;
         } else {
             $login_url = "$http_protocol://$node_info{$node}{bmc}/login";
@@ -1625,24 +1626,23 @@ sub process_debug_info {
 sub login_logout_request {
     my $node = shift;
 
-    my $request_url = "$http_protocol://" . $node_info{$node}{bmc};
-    my $content_login = '{ "data": [ "' . $node_info{$node}{username} .'", "' . $node_info{$node}{password} . '" ] }';
-    my $content_logout = '{ "data": [ ] }';
-    my $cjar_id = "/tmp/_xcat_cjar.$node";
+    my $login_url = "$http_protocol://" . $node_info{$node}{bmc} . "/login";
+    my $data = '{ "data": [ "' . $node_info{$node}{username} .'", "' . $node_info{$node}{password} . '" ] }';
 
-    my $curl_login_cmd  = "curl -c $cjar_id -k -H 'Content-Type: application/json' -X POST $request_url/login -d '" . $content_login . "'";
-    my $curl_logout_cmd = "curl -b $cjar_id -k -H 'Content-Type: application/json' -X POST $request_url/logout -d '" . $content_logout . "'";
+    my $brower = LWP::UserAgent->new( ssl_opts => { SSL_verify_mode => 0x00, verify_hostname => 0  }, timeout => 20);
+    my $cookie_jar = HTTP::Cookies->new();
+    my $header = HTTP::Headers->new('Content-Type' => 'application/json');
+    $brower->cookie_jar($cookie_jar);
 
-    my $curl_login_result = `$curl_login_cmd -s -m 10`;
+    my $login_request = HTTP::Request->new( 'POST', $login_url, $header, $data );
+    my $login_response = $brower->request($login_request);
 
-    unless ($curl_login_result) {
+    if  ($login_response->status_line =~ /500 Can't connect to/ or $login_response->status_line =~ /500 read timeout/) {
         if ($xcatdebugmode) {
             my $debug_info = "LOGIN Failed using curl command";
             process_debug_info($node, $debug_info);
         }
         return 1;
-    } else {
-        my $curl_logout_result = `$curl_logout_cmd -s`;
     }
 
     return 0;
