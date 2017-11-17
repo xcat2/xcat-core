@@ -84,7 +84,7 @@ setup_docker()
 run_docker()
 {
     echo "Run docker simulator for node range..."
-    script=$(ls -1t {$PERF_SIM_TESTING_CWD, $PERF_SIM_RESULT_DIR}/perf-docker-create.sh 2>/dev/null | head -n1)
+    script=$(ls -1 $PERF_SIM_TESTING_CWD/perf-docker-create.sh || ls -1 $PERF_SIM_RESULT_DIR}/perf-docker-create.sh)
     if [ ! "x" = "x$script" ]; then
        sh -x $script
        return
@@ -128,7 +128,7 @@ setup_openbmc()
 run_openbmc()
 {
     echo "Run openbmc simulator for node range..."
-    script=$(ls -1t {$PERF_SIM_TESTING_CWD, $PERF_SIM_RESULT_DIR}/perf-openbmc-create.sh 2>/dev/null | head -n1)
+    script=$(ls -1 $PERF_SIM_TESTING_CWD/perf-openbmc-create.sh || ls -1 $PERF_SIM_RESULT_DIR}/perf-openbmc-create.sh)
     if [ ! "x" = "x$script" ]; then
        sh $script setup
        return
@@ -147,7 +147,7 @@ clean_openbmc()
 
     echo "Cleanup openbmc simulator for node range..."
 
-    script=$(ls -1t {$PERF_SIM_TESTING_CWD, $PERF_SIM_RESULT_DIR}/perf-openbmc-create.sh 2>/dev/null | head -n1)
+    script=$(ls -1 $PERF_SIM_TESTING_CWD/perf-openbmc-create.sh || ls -1 $PERF_SIM_RESULT_DIR}/perf-openbmc-create.sh)
     if [ ! "x" = "x$script" ]; then
        sh $script clean
        ip addr del $PERF_SIM_ADDR/$prefix dev $PERF_SIM_NIC #label $PERF_SIM_NIC:100
