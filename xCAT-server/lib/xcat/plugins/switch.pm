@@ -373,6 +373,10 @@ sub process_request {
             $request->{noderange} = [$node];
             $request->{bmc_node}  = [$bmc_node];
             $doreq->($request);
+            if (defined($request->{error})) {
+                $req->{error}->[0] = '1';
+                $req->{error_msg}->[0] = $request->{error_msg}->[0];
+            }
             %{$request} = ();    #Clear req structure, it's done..
             undef $mactab;
         } else {

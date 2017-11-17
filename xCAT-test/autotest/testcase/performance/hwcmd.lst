@@ -1,0 +1,5 @@
+#SERIES# 1,50,100,250,500,1000
+rsetboot #NODES# default
+rpower #NODES# stat
+rinv #NODES# all
+rflash #NODES# -l

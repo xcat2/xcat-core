@@ -135,15 +135,47 @@ OpenPOWER specific (using IPMI):
 ================================
 
 
-The command will update firmware for OpenPOWER BMC when given an OpenPOWER node and either the hpm formatted file path or path to a data directory.
+The command will update firmware for OpenPOWER BMC when given an OpenPOWER node with \ *mgt=ipmi*\  and either the hpm formatted file path or path to a data directory.
+
 \ **Note:**\  When using \ **rflash**\  in hierarchical environment, the hpm file or data directory must be accessible from Service Nodes.
 
 
-OpenPOWER OpenBMC specific:
-===========================
+OpenPOWER specific (using OpenBMC):
+===================================
 
 
-The command will update firmware for OpenPOWER OpenBMC when given an OpenPOWER node and either an update .tar file or an uploaded image id.
+The command will update firmware for OpenPOWER BMC when given an OpenPOWER node with \ *mgt=openbmc*\  and either an update .tar file or an uploaded image id.
+
+\ **-l|-**\ **-list**\ :
+
+
+.. code-block:: perl
+
+    The list option will list out available firmware on the BMC.  It provides an interface to display the ID of the various firmware levels.  
+ 
+    The (*) symbol indicates the active running firmware on the server.  
+ 
+    The (+) symbol indicates the firmware that is pending and a reboot is required to set it to be the active running firmware level.
+
+
+\ **-u|-**\ **-upload**\ :
+
+
+.. code-block:: perl
+
+    The upload option expects a .tar file as the input and will upload the file to the BMC.  Use the list option to view the result.
+
+
+\ **-a|-**\ **-activate**\ :
+
+
+.. code-block:: perl
+
+    The activate option expects either a .tar file or an ID as the input.  If a .tar file is provided, it will upload and activate the firmware in a single step
+
+
+To apply the firmware level, a reboot is required to BMC and HOST.
+
 \ **Note:**\  When using \ **rflash**\  in hierarchical environment, the .tar file must be accessible from Service Nodes.
 
 

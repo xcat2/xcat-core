@@ -8,11 +8,197 @@ cmd:xcatperftest 5000 /opt/xcat/share/xcat/tools/autotest/perfcmds.lst
 check:rc==0
 end
 
-start:perftest_5000_without_conf
-description:Default performance testing on 5000 fake nodes without extra configuraiton on MN
+start:UT_perftest_5000_MN_only
+description:Default performance testing on 5000 fake nodes without extra configuration on MN
 os:Linux
 cmd:which yum &>/dev/null && yum install -y bridge-utils || apt install -y bridge-utils
 check:rc==0
 cmd:xcatperftest 5000 /opt/xcat/share/xcat/tools/autotest/perfcmds.lst
 check:rc==0
+end
+
+start:perftest_5000_with_simulators
+description:Default performance testing on 5000 fake nodes
+os:Linux
+### From reg_linux_diskfull_installation_flat
+cmd:fdisk -l
+cmd:df -T
+
+cmd:MINIISO=NUll;if [[ "__GETNODEATTR($$CN,os)__" =~ "ubuntu" ]] && [[ "__GETNODEATTR($$CN,arch)__" =~ "ppc64" ]];then mkdir /tmp/iso; mount -o loop $$MINIISO /tmp/iso ;  mkdir -p  /install/__GETNODEATTR($$CN,os)__/__GETNODEATTR($$CN,arch)__/install/netboot; cp  /tmp/iso/install/initrd.gz  /install/__GETNODEATTR($$CN,os)__/__GETNODEATTR($$CN,arch)__/install/netboot;umount /tmp/iso; rmdir /tmp/iso; fi
+check:rc==0
+cmd:chdef -t node -o $$CN servicenode= monserver= nfsserver= tftpserver=  xcatmaster= status=
+check:rc==0
+cmd:chdef -t node -o $$SN servicenode= monserver= nfsserver= tftpserver=  xcatmaster= status=
+check:rc==0
+cmd:makeconservercf
+check:rc==0
+cmd:cat /etc/conserver.cf | grep $$CN
+check:output=~$$CN
+cmd:cat /etc/conserver.cf | grep $$SN
+check:output=~$$SN
+cmd:sleep 20
+cmd:makedhcp -n
+check:rc==0
+cmd:makedhcp -a
+check:rc==0
+cmd:sleep 10
+cmd:a=0;while true; do [ $a -eq 100 ] && exit 1;output=$(makedhcp -q $$CN);[ $? -ne 0 ] && exit 1;echo $output|grep $$CN 2>/dev/null && exit 0;a=$[$a+1];sleep 1;done
+check:rc==0
+cmd:a=0;while true; do [ $a -eq 100 ] && exit 1;output=$(makedhcp -q $$SN);[ $? -ne 0 ] && exit 1;echo $output|grep $$SN 2>/dev/null && exit 0;a=$[$a+1];sleep 1;done
+check:rc==0
+cmd:copycds $$ISO
+check:rc==0
+cmd:lsdef -l $$SN,$$CN
+check:rc==0
+cmd:rinstall $$SN,$$CN osimage=__GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-install-compute
+check:rc==0
+#check:output=~Provision node\(s\)\: $$CN
+#check:output=~Provision node\(s\)\: $$SN
+cmd:if [[ -f /var/lib/dhcp/db/dhcpd.leases ]]; then cat /var/lib/dhcp/db/dhcpd.leases; elif [[ -f /var/lib/dhcpd/dhcpd.leases ]];then cat /var/lib/dhcpd/dhcpd.leases;elif [[ -f /var/lib/dhcp/dhcpd.leases ]];then cat /var/lib/dhcp/dhcpd.leases; fi
+
+#After starting installation, began run fake nodes testing on MN
+cmd:which yum &>/dev/null && yum install -y bridge-utils || apt install -y bridge-utils
+cmd:FAKE_NETWORK_PRO=173.18 FAKE_NETWORK_BMC=192.169 PERF_RPT_FILE=perfreport-5000.log.daily xcatperftest 5000 /opt/xcat/share/xcat/tools/autotest/perfcmds.lst
+check:rc==0
+
+cmd:PERF_CREATE_ONLY=y FAKE_NETWORK_PRO=173.18 FAKE_NETWORK_BMC=192.169 xcatperftest 5000 /opt/xcat/share/xcat/tools/autotest/perfcmds.lst
+check:rc==0
+cmd:makehosts -n perftest
+check:rc==0
+
+#Make sure SN and CN is deployed sucessfully
+cmd:a=0;while ! `lsdef $$CN -i status|grep -E "booted|failed" >/dev/null`; do sleep 20;((a++));if [ $a -gt 50 ];then break;fi done
+cmd:ping $$CN -c 3
+check:rc==0
+cmd:a=0;while ! `lsdef $$SN -i status|grep -E "booted|failed" >/dev/null`; do sleep 20;((a++));if [ $a -gt 50 ];then break;fi done
+cmd:ping $$SN -c 3
+check:rc==0
+
+#Setup Simulater environment on SN/CN
+cmd:xdsh $$SN,$$CN "rm -rf /tmp/perf && mkdir -p /tmp/perf"
+check:rc==0
+cmd:scp /opt/xcat/share/xcat/tools/autotest/testcase/performance/* root@$$CN:/tmp/perf
+check:rc==0
+cmd:scp /opt/xcat/share/xcat/tools/autotest/testcase/performance/* root@$$SN:/tmp/perf
+check:rc==0
+
+# For openbmc simulation setup on SN
+cmd:PERF_SIM_NIC=$$SECONDNIC xcatperftest create fake[1-1000] openbmc
+check:rc==0
+cmd:scp /opt/xcat/share/xcat/tools/autotest/result/perf-openbmc-create.sh root@$$SN:/tmp/perf
+check:rc==0
+cmd:xdsh $$SN PERF_SIM_NIC=$$SECONDNIC PERF_SIM_ADDR=192.169.251.252 bash /tmp/perf/simulatorctl.sh setup openbmc
+check:rc==0
+cmd:PERF_SIM_NIC=$$SECONDNIC PERF_SIM_ADDR=192.169.251.251 bash /opt/xcat/share/xcat/tools/autotest/testcase/performance/simulatorctl.sh setup openbmc --mn
+check:rc==0
+cmd:ping 192.169.251.252 -c 3
+check:rc==0
+
+# Testing for HW remote control CLIs
+cmd:PERF_NOCREATE=1 PERF_RPT_FILE=perfreport-5000.log.daily xcatperftest 5000 /opt/xcat/share/xcat/tools/autotest/testcase/performance/hwcmd.lst
+check:rc==0
+cmd:xdsh $$SN PERF_SIM_NIC=$$SECONDNIC PERF_SIM_ADDR=192.169.251.252 bash /tmp/perf/simulatorctl.sh clean openbmc
+check:rc==0
+cmd:PERF_SIM_NIC=$$SECONDNIC PERF_SIM_ADDR=192.169.251.251 bash /opt/xcat/share/xcat/tools/autotest/testcase/performance/simulatorctl.sh clean openbmc --mn
+check:rc==0
+
+# For container simulation setup on SN/CN
+cmd:xcatperftest create fake[1-100] docker
+check:rc==0
+cmd:scp /opt/xcat/share/xcat/tools/autotest/result/perf-docker-create.sh root@$$CN:/tmp/perf
+check:rc==0
+
+cmd:xcatperftest create fake[501-600] docker
+check:rc==0
+cmd:scp /opt/xcat/share/xcat/tools/autotest/result/perf-docker-create.sh root@$$SN:/tmp/perf
+check:rc==0
+
+cmd:xdsh $$CN PERF_SIM_NIC=$$SECONDNIC PERF_SIM_ADDR=173.18.251.252 bash /tmp/perf/simulatorctl.sh setup docker
+check:rc==0
+
+cmd:xdsh $$SN PERF_SIM_NIC=$$SECONDNIC PERF_SIM_ADDR=173.18.251.253 bash /tmp/perf/simulatorctl.sh setup docker
+check:rc==0
+
+cmd:PERF_SIM_NIC=$$SECONDNIC PERF_SIM_ADDR=173.18.251.251 bash /opt/xcat/share/xcat/tools/autotest/testcase/performance/simulatorctl.sh setup docker --mn
+check:rc==0
+cmd:ping 173.18.251.252 -c 3
+check:rc==0
+
+# Testing for updatenode, xdsh, nodestat, pping, etc
+cmd:PERF_NOCREATE=1 PERF_RPT_FILE=perfreport-5000.log.daily xcatperftest 5000 /opt/xcat/share/xcat/tools/autotest/testcase/performance/nodecmd.lst
+check:rc==0
+
+cmd:xdsh $$CN,$$SN PERF_SIM_NIC=$$SECONDNIC bash /tmp/perf/simulatorctl.sh clean docker
+check:rc==0
+
+cmd:PERF_SIM_NIC=$$SECONDNIC PERF_SIM_ADDR=173.18.251.251 bash /opt/xcat/share/xcat/tools/autotest/testcase/performance/simulatorctl.sh clean docker --mn
+check:rc==0
+
+end
+
+
+start:UT_perftest_1000_with_simulators
+description: UT for performance testing with simulators on an existing environment with one compute node.
+os:Linux
+
+# Create fake nodes
+cmd:PERF_CREATE_ONLY=y FAKE_NETWORK_PRO=173.18 FAKE_NETWORK_BMC=192.169 xcatperftest 1000 /opt/xcat/share/xcat/tools/autotest/perfcmds.lst
+check:rc==0
+cmd:makehosts -n perftest
+check:rc==0
+
+#Make sure CN is deployed sucessfully
+cmd:ping $$CN -c 3
+check:rc==0
+
+#Setup Simulater environment
+cmd:xdsh $$CN "rm -rf /tmp/perf && mkdir -p /tmp/perf"
+check:rc==0
+cmd:scp /opt/xcat/share/xcat/tools/autotest/testcase/performance/* root@$$CN:/tmp/perf
+check:rc==0
+
+# For openbmc simulation setup
+cmd:xcatperftest create fake[1-1000] openbmc
+check:rc==0
+cmd:scp /opt/xcat/share/xcat/tools/autotest/result/perf-openbmc-create.sh root@$$CN:/tmp/perf
+check:rc==0
+cmd:xdsh $$CN PERF_SIM_ADDR=192.169.251.252 bash /tmp/perf/simulatorctl.sh setup openbmc
+check:rc==0
+cmd:PERF_SIM_ADDR=192.169.251.251 bash /opt/xcat/share/xcat/tools/autotest/testcase/performance/simulatorctl.sh setup openbmc --mn
+check:rc==0
+cmd:ping 192.169.251.252 -c 3
+check:rc==0
+
+# Testing for HW remote control CLIs
+cmd:PERF_NOCREATE=1 xcatperftest 1000 /opt/xcat/share/xcat/tools/autotest/testcase/performance/hwcmd.lst
+check:rc==0
+cmd:xdsh $$CN PERF_SIM_ADDR=192.169.251.252 bash /tmp/perf/simulatorctl.sh clean openbmc
+check:rc==0
+cmd:PERF_SIM_ADDR=192.169.251.251 bash /opt/xcat/share/xcat/tools/autotest/testcase/performance/simulatorctl.sh clean openbmc --mn
+check:rc==0
+
+# For container simulation setup
+cmd:xcatperftest create fake[1-50] docker
+check:rc==0
+cmd:scp /opt/xcat/share/xcat/tools/autotest/result/perf-docker-create.sh root@$$CN:/tmp/perf
+check:rc==0
+
+cmd:xdsh $$CN PERF_SIM_ADDR=173.18.251.252 bash /tmp/perf/simulatorctl.sh setup docker
+check:rc==0
+
+cmd:PERF_SIM_ADDR=173.18.251.251 bash /opt/xcat/share/xcat/tools/autotest/testcase/performance/simulatorctl.sh setup docker --mn
+check:rc==0
+cmd:ping 173.18.251.252 -c 3
+check:rc==0
+
+# Testing for updatenode, xdsh, nodestat, pping, etc
+cmd:PERF_NOCREATE=1 xcatperftest 1000 /opt/xcat/share/xcat/tools/autotest/testcase/performance/nodecmd.lst
+check:rc==0
+
+cmd:xdsh $$CN bash /tmp/perf/simulatorctl.sh clean docker
+check:rc==0
+
+cmd:PERF_SIM_ADDR=173.18.251.251 bash /opt/xcat/share/xcat/tools/autotest/testcase/performance/simulatorctl.sh clean docker --mn
+check:rc==0
+
 end

@@ -23,6 +23,5 @@ Advanced Topics
    restapi/index.rst
    security/index.rst
    softlayer/index.rst
-   switches/index.rst
    sysclone/index.rst
    zones/index.rst

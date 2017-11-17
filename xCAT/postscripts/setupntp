@@ -20,7 +20,7 @@ fi
 #for service node, the makentp -a command will call this postscript
 #so do not diable service node.
 
-
+exit_code=0;
 master=$MASTER
 setup=0
 conf_file="/etc/ntp.conf"
@@ -103,10 +103,11 @@ if [ $OS_TYPE = Linux ]; then
         echo "interface listen eth0" >>$conf_file
     fi
 
-    # ntpd will be hung if ntp service is not reachable
+    # will not exit here, let all the ntp configuration finish
+    # ntpd will timeout if ntp service is not reachable
     if ! ping $master -c 1 > /dev/null 2>&1 ; then
         echo "Error: ntpserver $master is not reachable, will not setup NTP"
-        exit 1
+        exit_code=1
     fi
 
     #ntpd/ntpdate/sntp conflict with ntpd, stop the service first
@@ -116,9 +117,10 @@ if [ $OS_TYPE = Linux ]; then
     fi
 
     logger -t xcat "setting current time"
-    if ! ntpd -gq  > /dev/null 2>&1 ; then
+    if ! timeout 120 ntpd -gq  > /dev/null 2>&1 ; then
         if ! ntpdate -t5 $master > /dev/null 2>&1; then
             logger -t xcat "WARNING: NTP Sync Failed!!"
+            exit_code=1
         fi
     fi
 
@@ -197,4 +199,4 @@ restrict 127.0.0.1" >>$conf_file
     fi
     /usr/sbin/chrctcp -S -a xntpd 
 fi
-exit $? 
+exit $exit_code 

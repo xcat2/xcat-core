@@ -154,7 +154,10 @@ if ($debug) {
 }
 
 #if failed to pass pre-check, exit directly
-exit $rst if ($rst);
+if ($rst){
+    probe_utils->send_msg("stdout", "f", "Provison pre-check");
+    exit $rst;
+}
 
 # record every status's start time and end time for each node
 # $node_status_time{$node}{$status}{start_time} = $start_time;
@@ -203,7 +206,7 @@ sub do_pre_check {
     my @error = ();
     my $sub_func_rst = obtain_install_nic(\$installnic, \@error);
     if ($sub_func_rst) {
-        probe_utils->send_msg("stdout", "f", "Failed to obtain install NIC in current server");
+        probe_utils->send_msg("stdout", "f", "Obtain install NIC in current server");
         probe_utils->send_msg("stdout", "d", "$_") foreach (@error);
     } else {
         probe_utils->send_msg("stdout", "i", "The install NIC in current server is $installnic");
@@ -248,7 +251,7 @@ sub obtain_install_nic {
         return 1;
     }
 
-    $$installnic_ref = `ip addr |grep -B2 $master_ip_in_site|awk -F" " '/mtu/{gsub(/:/,"",\$2); print \$2}'`;
+    $$installnic_ref = `ip -4 -o a|awk -F"\\\\" '/$master_ip_in_site/ {print \$1}' |awk -F" " '{print \$NF}'`;
     chomp($$installnic_ref);
     if (!$$installnic_ref) {
         push @$return_error_ref, "The value of 'master' in 'site' table is $master_ip_in_site, can't get corresponding network interface in current server";
