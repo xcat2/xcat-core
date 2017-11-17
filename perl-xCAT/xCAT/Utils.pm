@@ -48,7 +48,7 @@ require xCAT::Version;
 require DBI;
 
 our @ISA       = qw(Exporter);
-our @EXPORT_OK = qw(genpassword runcmd3);
+our @EXPORT_OK = qw(genpassword runcmd3 natural_sort_cmp);
 
 # The functions that has been moved to TableUtils.pm
 
@@ -4918,5 +4918,34 @@ sub acquire_lock_imageop {
     return (0,$lock);
 }
 
+#--------------------------------------------------------------------------------
+
+=head3  natural_sort_cmp
+      compare $left and $right by natrual.
+=cut
+
+#--------------------------------------------------------------------------------
+sub natural_sort_cmp {
+    my $left = shift;
+    my $right = shift;
+    if( !($left =~ /\d+(\.\d+)?/) ) {
+        return $left cmp $right;
+    }
+    my $before = $`;
+    my $match = $&;
+    my $after = $';
+    if( !($right =~ /\d+(\.\d+)?/) ) {
+        return $left cmp $right;
+    }
+    if( $before eq $` ) {
+        if( $match == $& ) {
+            return natural_sort_cmp( $after, $' );
+        } else {
+            return $match <=> $&;
+        }
+    } else {
+        return $left cmp $right;
+    }
+}
 
 1;

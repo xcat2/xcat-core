@@ -455,7 +455,30 @@ unless ($onlyinitrd) {
     }
     my %extrapkgnames;
     my %repohash;
+
+
+
     if (keys(%extra_hash) > 0) {
+        my @otherpkgdir_url;
+        my @otherpkgdir_local;
+        foreach my $tmpdir (split ',', $srcdir_otherpkgs){
+            if($tmpdir =~ /^http:.*/){
+                push @otherpkgdir_url, $tmpdir;
+            }else{
+                push @otherpkgdir_local,$tmpdir;
+            }
+        }
+
+        if(scalar @otherpkgdir_local >1){
+            print "genimage: at most only 1 local dir in otherpkgdir is supported.\n";
+            exit 1;
+        }
+
+        my $srcdir_otherpkgs_local;
+        if(scalar @otherpkgdir_local == 1){
+            $srcdir_otherpkgs_local=$otherpkgdir_local[0];
+        }
+
         open($yumconfig, ">>", "/tmp/genimage.$$.yum.conf");
         my $index = 1;
         foreach $pass (sort { $a <=> $b } (keys(%extra_hash))) {
@@ -468,7 +491,13 @@ unless ($onlyinitrd) {
                 }
 
                 if (($_ eq "PRE_REMOVE") || ($_ eq "POST_REMOVE") || ($_ eq "ENVLIST")) { next; }
-                print $yumconfig "[otherpkgs$index]\nname=otherpkgs$index\nbaseurl=file://$srcdir_otherpkgs/$_\ngpgpcheck=0\n\n";
+                foreach(@otherpkgdir_url){
+                    print $yumconfig "[otherpkgs$index]\nname=otherpkgs$index\nbaseurl=$_\ngpgpcheck=0\n\n";
+                    $repohash{$pass}{$index} = 1;
+                    $index++;
+                }
+                
+                print $yumconfig "[otherpkgs$index]\nname=otherpkgs$index\nbaseurl=file://$srcdir_otherpkgs_local/$_\ngpgpcheck=0\n\n";
                 $repohash{$pass}{$index} = 1;
                 $index++;
                 my $pa = $extra_hash{$pass}{$_};
@@ -487,10 +516,6 @@ unless ($onlyinitrd) {
         foreach (0 .. $repnum) {
             $yumcmd_base .= "--enablerepo=$osver-$arch-$_ ";
         }
-
-        #        for (1..$index) {
-        #            $yumcmd .= "--enablerepo=otherpkgs$_ ";
-        #        }
 
         # Hack uname when deal otherpkgs
         use_hackuname($arch, $kernelver);

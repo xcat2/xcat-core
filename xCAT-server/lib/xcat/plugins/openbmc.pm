@@ -33,6 +33,7 @@ use xCAT::SvrUtils;
 use xCAT::GlobalDef;
 use xCAT_monitoring::monitorctrl;
 use POSIX qw(WNOHANG);
+use xCAT::Utils qw/natural_sort_cmp/;
 
 $::VERBOSE                  = 0;
 # String constants for rbeacon states
@@ -59,6 +60,9 @@ $::UPLOAD_WAIT_ATTEMPT      = 6;
 $::UPLOAD_WAIT_INTERVAL     = 10;
 $::UPLOAD_WAIT_TOTALTIME    = int($::UPLOAD_WAIT_ATTEMPT*$::UPLOAD_WAIT_INTERVAL);
 
+$::RPOWER_CHECK_INTERVAL = 2;
+$::RPOWER_MAX_RETRY = 30;
+
 sub unsupported {
     my $callback = shift;
     if (defined($::OPENBMC_DEVEL) && ($::OPENBMC_DEVEL eq "YES")) {
@@ -66,6 +70,10 @@ sub unsupported {
     } else {
         return ([ 1, "This openbmc related function is not yet supported. Please contact xCAT development team." ]);
     }
+}
+
+sub natural_sorter {
+    natural_sort_cmp( $a, $b );
 }
 
 #-------------------------------------------------------
@@ -624,7 +632,7 @@ sub process_request {
 
     foreach my $node (keys %node_info) {
         if (!$valid_nodes{$node}) {
-            xCAT::SvrUtils::sendmsg([1, $::RESPONSE_SERVICE_UNAVAILABLE], $callback, $node);
+            xCAT::SvrUtils::sendmsg([1, "BMC did not respond within 10 seconds, retry the command."], $callback, $node);
             $wait_node_num--;
         } else {
             $login_url = "$http_protocol://$node_info{$node}{bmc}/login";
@@ -866,10 +874,13 @@ sub parse_args {
             }
             # check if option starting with - was passed
             elsif ($opt =~ /^-/) {
-                if ($option_flag) {
-                    $option_flag .= " " . $opt;
-                } else {
-                    $option_flag .= $opt;
+                # do not add verbose option to the $option_flag in order to preserve arg checks below
+                if ($opt !~ /^-V$|^--verbose$/) {
+                    if ($option_flag) {
+                        $option_flag .= " " . $opt;
+                    } else {
+                        $option_flag .= $opt;
+                    }
                 }
             }
             else {
@@ -878,10 +889,12 @@ sub parse_args {
             }
         }
         # show options parsed in bypass mode
-        print "DEBUG filename=$filename_passed, updateid=$updateid_passed, options=$option_flag, invalid=$invalid_options\n";
+        print "DEBUG filename=$filename_passed, updateid=$updateid_passed, options=$option_flag, verbose=$verbose, invalid=$invalid_options\n";
 
         if ($option_flag =~ tr{ }{ } > 0) { 
-            return ([ 1, "Multiple options specified is not supported.  Options specified: $option_flag"]);
+            unless ($verbose) {
+                return ([ 1, "Multiple options are not supported. Options specified: $option_flag"]);
+            }
         }
         
         if (scalar @flash_arguments > 1) {
@@ -897,13 +910,13 @@ sub parse_args {
         else {
             if ($updateid_passed) {
                 # Updateid was passed, check flags allowed with update id
-                if ($option_flag !~ /^^-d$|^--delete$|^-a$|^--activate$/) {
+                if ($option_flag !~ /^-d$|^--delete$|^-a$|^--activate$/) {
                     return ([ 1, "Invalid option specified when an update id is provided: $option_flag" ]);
                 }
             }
             else {
                 # Neither Filename nor updateid was not passed, check flags allowed without file or updateid
-                if ($option_flag !~ /^-c$|^--check$|^-l$|^--list/) {
+                if ($option_flag !~ /^-c$|^--check$|^-l$|^--list$/) {
                     return ([ 1, "Invalid option specified with $option_flag: $invalid_options" ]);
                }
             }  
@@ -1427,7 +1440,7 @@ sub parse_node_info {
             }
 
             $node_info{$node}{cur_status} = "LOGIN_REQUEST";
-            $node_info{$node}{retry_times} = 0;
+            $node_info{$node}{rpower_check_times} = $::RPOWER_MAX_RETRY;
         } else {
             xCAT::SvrUtils::sendmsg("Error: Unable to get information from openbmc table", $callback, $node);
             $rst = 1;
@@ -1707,7 +1720,6 @@ sub rpower_response {
     my $node = shift;
     my $response = shift;
     my %new_status = ();
-    my $max_retry_times = 5;
 
     my $response_info = decode_json $response->content;
 
@@ -1827,10 +1839,18 @@ sub rpower_response {
             if ($all_status eq "$::POWER_STATE_OFF") {
                 $node_info{$node}{cur_status} = $next_status{ $node_info{$node}{cur_status} }{OFF};
             } else {
-                $node_info{$node}{cur_status} = $next_status{ $node_info{$node}{cur_status} }{ON};
-                $node_info{$node}{retry_times}++;
-                if ($node_info{$node}{retry_times} >= $max_retry_times) {
-                    xCAT::SvrUtils::sendmsg("Internal Error, failed to rpower off, please try again", $callback, $node);
+                if ($node_info{$node}{rpower_check_times} > 0) {
+                    $node_info{$node}{rpower_check_times}--;
+                    if ($node_info{$node}{wait_start}) {
+                        $node_info{$node}{wait_end} = time();
+                    } else {
+                        $node_info{$node}{wait_start} = time();
+                    }
+                    retry_after($node, $next_status{ $node_info{$node}{cur_status} }{ON}, $::RPOWER_CHECK_INTERVAL);
+                    return;
+                } else {
+                    my $wait_time_X = $node_info{$node}{wait_end} - $node_info{$node}{wait_start};
+                    xCAT::SvrUtils::sendmsg([1, "Error: Sent power-off command but state did not change to $::POWER_STATE_OFF after waiting $wait_time_X seconds. (State=$all_status)."], $callback, $node);
                     $node_info{$node}{cur_status} = "";
                     $wait_node_num--;
                     return;
@@ -1896,7 +1916,11 @@ sub rinv_response {
             my $sw_id = (split(/\//, $key_url))[-1];
             if (defined($content{Version}) and $content{Version}) {
                 my $purpose_value = uc ((split(/\./, $content{Purpose}))[-1]);
-                $purpose_value = "[$sw_id]$purpose_value";
+                if ($purpose_value =~ /BMC/) {
+                    $purpose_value = "[B$sw_id]$purpose_value";
+                } else {
+                    $purpose_value = "[H$sw_id]$purpose_value";
+                }
                 my $activation_value = (split(/\./, $content{Activation}))[-1];
                 my $priority_value = -1;
                 if (defined($content{Priority})) {
@@ -1913,10 +1937,12 @@ sub rinv_response {
                     # to cause the sorting of this line before any additional info lines 
                     #
                     $content_info = "$purpose_value Firmware Product:   $content{Version} ($activation_value)";
-                    my $indicator = "*";
+                    my $indicator = "";
                     if ($priority_value == 0 and %{$functional} and !exists($functional->{$sw_id})) {
                         # indicate that a reboot is needed if priority = 0 and it's not in the functional list
                         $indicator = "+";
+                    } elsif ($priority_value == 0 and %{$functional} and exists($functional->{$sw_id})) {
+                        $indicator = "*";
                     }
                     $content_info .= $indicator;
                     push (@sorted_output, $content_info); 
@@ -1963,12 +1989,10 @@ sub rinv_response {
             }
         }
     }
-    # If sorted array has any contents, sort it and print it
+    # If sorted array has any contents, sort it naturally and print it
     if (scalar @sorted_output > 0) {
         # sort alpha, then numeric 
-        my @sorted_output = grep {s/(^|\D)0+(\d)/$1$2/g,1} sort 
-            grep {s/(\d+)/sprintf"%06.6d",$1/ge,1} @sorted_output;
-        foreach (@sorted_output) { 
+        foreach (sort natural_sorter @sorted_output) {
             #
             # The firmware output requires the ID to be part of the string to sort correctly.
             # Remove this ID from the output to the user
@@ -2560,9 +2584,7 @@ sub rvitals_response {
     # If sorted array has any contents, sort it and print it
     if (scalar @sorted_output > 0) {
         # Sort the output, alpha, then numeric
-        my @sorted_output = grep {s/(^|\D)0+(\d)/$1$2/g,1} sort 
-            grep {s/(\d+)/sprintf"%06.6d",$1/ge,1} @sorted_output;
-        xCAT::SvrUtils::sendmsg("$_", $callback, $node) foreach (@sorted_output);
+        xCAT::SvrUtils::sendmsg("$_", $callback, $node) foreach (sort natural_sorter @sorted_output);
     } else {
         xCAT::SvrUtils::sendmsg("$::NO_ATTRIBUTES_RETURNED", $callback, $node);
     }
@@ -2614,6 +2636,11 @@ sub rflash_response {
         xCAT::SvrUtils::sendmsg("-" x 55, $callback, $node);
 
         foreach my $key_url (keys %{$response_info->{data}}) {
+            # Initialize values to Unknown for each loop, incase they are not defined in the BMC
+            $update_activation = "Unknown";
+            $update_purpose = "Unknown";
+            $update_version = "Unknown";
+
             my %content = %{ ${ $response_info->{data} }{$key_url} };
 
             $update_id = (split(/\//, $key_url))[ -1 ];
@@ -2687,7 +2714,9 @@ sub rflash_response {
         }
     }
     if ($node_info{$node}{cur_status} eq "RFLASH_UPDATE_ACTIVATE_RESPONSE") {
-        xCAT::SvrUtils::sendmsg("rflash started, please wait...", $callback, $node);
+        if ($::VERBOSE) {
+            xCAT::SvrUtils::sendmsg("rflash started, please wait...", $callback, $node);
+        }
     }
     if ($node_info{$node}{cur_status} eq "RFLASH_SET_PRIORITY_RESPONSE") {
         print "Update priority has been set";
@@ -2719,7 +2748,7 @@ sub rflash_response {
         elsif ($activation_state =~ /Software.Activation.Activations.Active/) { 
             if (scalar($priority_state) == 0) {
                 # Activation state of active and priority of 0 indicates the activation has been completed
-                xCAT::SvrUtils::sendmsg("Firmware activation Successful.", $callback, $node);
+                xCAT::SvrUtils::sendmsg("Firmware activation successful.", $callback, $node);
                 $wait_node_num--;
                 return;
             }
@@ -2730,7 +2759,9 @@ sub rflash_response {
             }
         }
         elsif ($activation_state =~ /Software.Activation.Activations.Activating/) {
-            xCAT::SvrUtils::sendmsg("Activating firmware . . . $progress_state\%", $callback, $node);
+            if ($::VERBOSE) {
+                xCAT::SvrUtils::sendmsg("Activating firmware . . . $progress_state\%", $callback, $node);
+            }
             # Activation still going, sleep for a bit, then print the progress value
             # Set next state to come back here to chect the activation status again.
             retry_after($node, "RFLASH_UPDATE_CHECK_STATE_REQUEST", 15);
@@ -2782,17 +2813,20 @@ sub rflash_response {
 
                     $next_status{"RFLASH_SET_PRIORITY_REQUEST"} = "RFLASH_SET_PRIORITY_RESPONSE";
                     $next_status{"RFLASH_SET_PRIORITY_RESPONSE"} = "RFLASH_UPDATE_CHECK_STATE_REQUEST";
+                    xCAT::SvrUtils::sendmsg("Firmware upload successful. Attempting to activate firmware: $::UPLOAD_FILE_VERSION (ID: $update_id)", $callback, $node);
                     last;
                 }
             }
         }
         if (!$found_match) {
-            if (!exists($node_info{node}{upload_wait_attemp})) {
-                $node_info{node}{upload_wait_attemp} = $::UPLOAD_WAIT_ATTEMPT;
+            if (!exists($node_info{$node}{upload_wait_attemp})) {
+                $node_info{$node}{upload_wait_attemp} = $::UPLOAD_WAIT_ATTEMPT;
             }
-            if($node_info{node}{upload_wait_attemp} > 0) {
-                $node_info{node}{upload_wait_attemp} --;
-                xCAT::SvrUtils::sendmsg("Could not find ID for firmware $::UPLOAD_FILE_VERSION to activate, waiting $::UPLOAD_WAIT_INTERVAL seconds and retry...", $callback, $node);
+            if($node_info{$node}{upload_wait_attemp} > 0) {
+                $node_info{$node}{upload_wait_attemp} --;
+                if ($::VERBOSE) {
+                    xCAT::SvrUtils::sendmsg("Could not find ID for firmware $::UPLOAD_FILE_VERSION to activate, waiting $::UPLOAD_WAIT_INTERVAL seconds and retry...", $callback, $node);
+                }
                 retry_after($node, "RFLASH_UPDATE_CHECK_ID_REQUEST", $::UPLOAD_WAIT_INTERVAL);
                 return;
             } else {
@@ -2834,7 +2868,9 @@ sub rflash_upload {
     my $h = from_json($curl_login_result); # convert command output to hash
     if ($h->{message} eq $::RESPONSE_OK) {
         # Login successfull, upload the file
-        xCAT::SvrUtils::sendmsg("Uploading $::UPLOAD_FILE ...", $callback, $node);
+        if ($::VERBOSE) {
+            xCAT::SvrUtils::sendmsg("Uploading $::UPLOAD_FILE ...", $callback, $node);
+        }
         if ($xcatdebugmode) {
             my $debugmsg = "RFLASH_FILE_UPLOAD_RESPONSE: CMD: $curl_upload_cmd";
             process_debug_info($node, $debugmsg);
@@ -2843,9 +2879,7 @@ sub rflash_upload {
         $h = from_json($curl_upload_result); # convert command output to hash
         if ($h->{message} eq $::RESPONSE_OK) {
             # Upload successful, display message
-            if ($::UPLOAD_AND_ACTIVATE) {
-                xCAT::SvrUtils::sendmsg("Firmware upload successful. Attempting to activate firmware: $::UPLOAD_FILE_VERSION", $callback, $node);
-            } else {
+            unless ($::UPLOAD_AND_ACTIVATE) {
                 xCAT::SvrUtils::sendmsg("Firmware upload successful. Use -l option to list.", $callback, $node);
             }
             # Try to logoff, no need to check result, as there is nothing else to do if failure

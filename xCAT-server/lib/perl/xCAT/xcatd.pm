@@ -192,7 +192,7 @@ sub validate {
                 $status = "Denied";
                 $rc     = 0;
             }
-            if (($request->{command}->[0] ne "getdestiny") && ($request->{command}->[0] ne "getbladecons") && ($request->{command}->[0] ne "getipmicons")) {
+            if (($request->{command}->[0] ne "getdestiny") && ($request->{command}->[0] ne "getbladecons") && ($request->{command}->[0] ne "getipmicons") && ($request->{command}->[0] ne "getopenbmccons")) {
 
                 # set username authenticated to run command
                 # if from Trusted host, use input username,  else set from creds

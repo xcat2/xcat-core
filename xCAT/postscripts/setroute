@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 # IBM(c) 2011 EPL license http://www.eclipse.org/legal/epl-v10.html
 
 #-------------------------------------------------------------------------------
@@ -14,10 +14,12 @@
 #-------------------------------------------------------------------------------
 
 if [ -z "$NODEROUTENAMES" ]; then
+    echo "No static routes need be configured on this node."
     exit 0
 fi
 
 OP="replace"
+exit_code=0
 
 if [ -n "$1" ] && [ "$1" = "add" ]; then
     OP="add"
@@ -26,26 +28,38 @@ fi
 for rn in `echo "$NODEROUTENAMES" | tr "," "\n"`
 do
     eval route_string=\$ROUTE_$rn
-    net=`echo $route_string |cut -d',' -f1`
-    mask=`echo $route_string |cut -d',' -f2`
-    gw=`echo $route_string |cut -d',' -f3`
-    ifname=`echo $route_string |cut -d',' -f4`
+    if [ -n "$route_string" ]; then
+        net=`echo $route_string |cut -d',' -f1`
+        mask=`echo $route_string |cut -d',' -f2`
+        gw=`echo $route_string |cut -d',' -f3`
+        ifname=`echo $route_string |cut -d',' -f4`
+        if [ -z "$gw" ]; then
+            echo "Error: Failed to configure route $rn as gateway is not configured."
+            exit_code=1
+            continue  
+        fi 
+        # remove the suffix /64 from ipv6 net
+        if echo $net | grep "/" 2>&1 1>/dev/null
+        then
+            net=`echo $net | awk -F'/' '{print $1}'`
+        fi
 
-    # remove the suffix /64 from ipv6 net
-    if echo $net | grep "/" 2>&1 1>/dev/null
-    then
-        net=`echo $net | awk -F'/' '{print $1}'`
+        # remove the prefix "/" from ipv6 mask
+        if echo $mask | grep "/" 2>&1 1>/dev/null
+        then
+            mask=`echo $mask | awk -F'/' '{print $2}'`
+        fi
+
+        cmd="routeop $OP $net $mask $gw $ifname"
+        result=`$cmd 2>&1`
+        if [ $? -ne 0 ]; then
+            exit_code=1
+        fi
+        echo $result
+    else
+        echo "Error: $rn is configured incomplete from xCAT routes table."
+        exit_code=1
     fi
-
-    # remove the prefix "/" from ipv6 mask
-    if echo $mask | grep "/" 2>&1 1>/dev/null
-    then
-        mask=`echo $mask | awk -F'/' '{print $2}'`
-    fi
-
-    cmd="routeop $OP $net $mask $gw $ifname"
-    result=`$cmd 2>&1`
-    echo $result
 done
 
-exit 0
+exit $exit_code
