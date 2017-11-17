@@ -3,10 +3,6 @@
 package xCAT_plugin::goconserver;
 BEGIN {
         $::XCATROOT = $ENV{'XCATROOT'} ? $ENV{'XCATROOT'} : '/opt/xcat';
-        my $async_path = "/usr/local/share/perl5/";
-        unless (grep { $_ eq $async_path } @INC) {
-            push @INC, $async_path;
-        }
 }
 use lib "$::XCATROOT/lib/perl";
 use strict;
@@ -160,9 +156,6 @@ sub preprocess_request {
             $reqcopy->{_xcatpreprocessed}->[0] = 1;
             $reqcopy->{'_allnodes'} = [$allnodes]; # the original command comes with nodes or not
             $reqcopy->{node} = $cons_hash{$cons}{nodes};
-            my $no = $reqcopy->{node};
-
-            #print "node=@$no\n";
             push @requests, $reqcopy;
         }    #end if
     }    #end foreach
@@ -180,10 +173,10 @@ sub process_request {
     $::callback  = shift;
     my @hostinfo = xCAT::NetworkUtils->determinehostname();
     $host = $hostinfo[-1];
-    if ($req->{command}->[0] eq "makegocons") {
-        makegocons($req);
-    }
     $isSN = xCAT::Utils->isServiceNode();
+    if ($req->{command}->[0] eq "makegocons") {
+        makegocons($req, \@hostinfo);
+    }
 }
 
 sub get_cons_map {
@@ -234,7 +227,7 @@ sub gen_request_data {
     my ($cons_map, $siteondemand) = @_;
     my (@openbmc_nodes, $data);
     while (my ($k, $v) = each %{$cons_map}) {
-        my $ondemaind = \0;
+        my $ondemaind = \1;
         my $cmd;
         my $cmeth  = $v->{cons};
         if ($cmeth eq "openbmc") {
@@ -363,6 +356,7 @@ sub start_goconserver {
 
 sub makegocons {
     my $req = shift;
+    my $hostinfo = shift;
     my $extrargs = $req->{arg};
     my @exargs   = ($req->{arg});
     if (ref($extrargs)) {
@@ -378,11 +372,13 @@ sub makegocons {
     if (exists($req->{svboot})) {
         $svboot = 1;
     }
-    my @hostinfo = xCAT::NetworkUtils->determinehostname();
     my %iphash   = ();
-    foreach (@hostinfo) { $iphash{$_} = 1; }
+    foreach (@$hostinfo) { $iphash{$_} = 1; }
     my %cons_map = get_cons_map($req, \%iphash);
-
+    if (! %cons_map) {
+        xCAT::SvrUtils::sendmsg([ 1, "Could not get any console request entry" ], $::callback);
+        return 1;
+    }
     my $ret = start_goconserver();
     if ($ret != 0) {
         return 1;
@@ -401,6 +397,10 @@ sub makegocons {
     }
     my (@nodes);
     my $data = gen_request_data(\%cons_map, $siteondemand);
+    if (! $data) {
+        xCAT::SvrUtils::sendmsg([ 1, "Could not generate the request data" ], $::callback);
+        return 1;
+    }
     my $api_url = "https://$host:$go_api_port";
     $ret = xCAT::Goconserver::delete_nodes($api_url, $data, $delmode, $::callback);
     if ($delmode) {

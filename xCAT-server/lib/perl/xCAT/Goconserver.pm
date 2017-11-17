@@ -47,13 +47,14 @@ sub delete_nodes {
     my ($api_url, $node_map, $delmode, $callback) = @_;
     my $url = "$api_url/bulk/nodes";
     my @a = ();
-    my ($data, $rsp);
+    my ($data, $rsp, $ret);
     $data->{nodes} = \@a;
     foreach my $node (keys %{$node_map}) {
         my $temp;
         $temp->{name} = $node;
         push @a, $temp;
     }
+    $ret = 0;
     my $response = http_request("DELETE", $url, $data);
     if (!defined($response)) {
         $rsp->{data}->[0] = "Failed to send delete request.";
@@ -62,25 +63,27 @@ sub delete_nodes {
     } elsif ($delmode) {
         while (my ($k, $v) = each %{$response}) {
             if ($v ne "Deleted") {
-                $rsp->{data}->[0] = "$k: Failed to delete delete entry in goconserver: $v";
+                $rsp->{data}->[0] = "$k: Failed to delete entry in goconserver: $v";
                 xCAT::MsgUtils->message("E", $rsp, $callback);
+                $ret = 1;
             } else {
                 $rsp->{data}->[0] = "$k: $v";
                 xCAT::MsgUtils->message("I", $rsp, $callback);
             }
         }
     }
-    return 0;
+    return $ret;
 }
 
 sub create_nodes {
     my ($api_url, $node_map, $callback) = @_;
     my $url = "$api_url/bulk/nodes";
-    my ($data, $rsp, @a);
+    my ($data, $rsp, @a, $ret);
     $data->{nodes} = \@a;
     while (my ($k, $v) = each %{$node_map}) {
         push @a, $v;
     }
+    $ret = 0;
     my $response = http_request("POST", $url, $data);
     if (!defined($response)) {
         $rsp->{data}->[0] = "Failed to send create request.";
@@ -91,13 +94,14 @@ sub create_nodes {
             if ($v ne "Created") {
                 $rsp->{data}->[0] = "$k: Failed to create console entry in goconserver: $v";
                 xCAT::MsgUtils->message("E", $rsp, $::callback);
+                $ret = 1;
             } else {
                 $rsp->{data}->[0] = "$k: $v";
                 xCAT::MsgUtils->message("I", $rsp, $::callback);
             }
         }
     }
-    return 0;
+    return $ret;
 }
 
 1;
