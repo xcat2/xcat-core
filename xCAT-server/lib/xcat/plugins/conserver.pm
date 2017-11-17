@@ -182,6 +182,15 @@ sub process_request {
     my $req = shift;
     my $cb  = shift;
     if ($req->{command}->[0] eq "makeconservercf") {
+        if (-x "/usr/bin/goconserver") {
+            my $cmd = "ps axf | grep -v grep | grep \/usr\/bin\/goconserver";
+            xCAT::Utils->runcmd($cmd, 0);
+            if ($::RUNCMD_RC == 0) {
+                my $rsp->{data}->[0] = "goconserver is started, please stop it at first.";
+                xCAT::MsgUtils->message("E", $rsp, $cb);
+                return;
+            }
+        }
         makeconservercf($req, $cb);
     }
 }
