@@ -3,6 +3,7 @@
 use Fcntl qw(:DEFAULT :flock);
 use Time::HiRes qw(sleep);
 use File::Path;
+use IO::Socket;
 BEGIN {
     $::XCATROOT = $ENV{'XCATROOT'} ? $ENV{'XCATROOT'} : -d '/opt/xcat' ? '/opt/xcat' : '/usr';
 }
@@ -92,15 +93,25 @@ if ($ENV{SSHCONSOLEPORT}) {
 }
 
 #check if sshport is up 
-my $nmap_output = `/usr/bin/nmap $bmcip -p $sshport -Pn`;
-while ($nmap_output =~ /0 hosts up/) {
+my $sock = IO::Socket::INET->new(
+    PeerAddr => $bmcip,
+    PeerPort => $sshport,
+    Proto => "tcp",
+    Timeout => 10
+    );
+while (!defined($sock)) {
     $sleepint = 10 + int(rand(20));
     print "No BMC active at IP $bmcip, retrying in $sleepint seconds (Hit Ctrl-E,c,o to skip)\n";
     sleep ($sleepint);
     acquire_lock();
     sleep(0.1);
     release_lock();
-    $nmap_output = `/usr/bin/nmap $bmcip -p $sshport -Pn`;
+    $sock = IO::Socket::INET->new(
+        PeerAddr => $bmcip,
+        PeerPort => $sshport,
+        Proto => "tcp",
+        Timeout => 10
+        );
 }
 
 
