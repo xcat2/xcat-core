@@ -2342,6 +2342,7 @@ sub rspconfig_sshcfg_response {
             xCAT::SvrUtils::sendmsg("Failed to fork child process for rspconfig sshcfg.", $callback, $node);
             sleep(1)
         } elsif ($child == 0) {
+            $async->remove_all;
             exit(sshcfg_process($node))
         } else {
             $child_node_map{$child} = $node;
@@ -2455,6 +2456,7 @@ sub rspconfig_dump_response {
             xCAT::SvrUtils::sendmsg("Failed to fork child process for rspconfig dump download.", $callback, $node);
             sleep(1)
         } elsif ($child == 0) {
+            $async->remove_all;
             exit(dump_download_process($node))
         } else {
             $child_node_map{$child} = $node;
@@ -2723,6 +2725,7 @@ sub rflash_response {
                 xCAT::SvrUtils::sendmsg("Failed to fork child process to upload firmware image.", $callback, $node);
                 sleep(1)
             } elsif ($child == 0) {
+                $async->remove_all;
                 exit(rflash_upload($node, $callback))
             } else {
                 $child_node_map{$child} = $node;
@@ -2886,7 +2889,7 @@ sub rflash_upload {
     my $curl_upload_cmd = "curl -b $cjar_id -k -H 'Content-Type: application/octet-stream' -X PUT -T " . $::UPLOAD_FILE . " $request_url/upload/image/";
 
     # Try to login
-    my $curl_login_result = `$curl_login_cmd`;
+    my $curl_login_result = `$curl_login_cmd -s`;
     my $h = from_json($curl_login_result); # convert command output to hash
     if ($h->{message} eq $::RESPONSE_OK) {
         # Login successfull, upload the file
@@ -2905,7 +2908,7 @@ sub rflash_upload {
                 xCAT::SvrUtils::sendmsg("Firmware upload successful. Use -l option to list.", $callback, $node);
             }
             # Try to logoff, no need to check result, as there is nothing else to do if failure
-            my $curl_logout_result = `$curl_logout_cmd`;
+            my $curl_logout_result = `$curl_logout_cmd -s`;
         }
         else {
             xCAT::SvrUtils::sendmsg("Failed to upload update file $::UPLOAD_FILE :" . $h->{message} . " - " . $h->{data}->{description}, $callback, $node);
