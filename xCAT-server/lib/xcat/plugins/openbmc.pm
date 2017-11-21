@@ -1925,7 +1925,7 @@ sub rinv_response {
                     if ($priority_value == 0 and %{$functional} and !exists($functional->{$sw_id})) {
                         # indicate that a reboot is needed if priority = 0 and it's not in the functional list
                         $indicator = "+";
-                    } elsif ($priority_value == 0 and %{$functional} and exists($functional->{$sw_id})) {
+                    } elsif (%{$functional} and exists($functional->{$sw_id})) {
                         $indicator = "*";
                     }
                     $content_info .= $indicator;
