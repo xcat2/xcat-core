@@ -113,6 +113,7 @@ while (!defined($sock)) {
         Timeout => 10
         );
 }
+$sock->close();
 
 
 # To automatically connect to the console without the need to send over the ssh keys, 
