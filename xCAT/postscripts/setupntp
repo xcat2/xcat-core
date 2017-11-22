@@ -116,11 +116,14 @@ if [ $OS_TYPE = Linux ]; then
          stopservice ntpserver
     fi
 
-    logger -t xcat "setting current time"
+    msg='syncing the clock ...'
+    logger -t xcat $msg 
+    echo $msg
     if ! timeout 120 ntpd -gq  > /dev/null 2>&1 ; then
         if ! ntpdate -t5 $master > /dev/null 2>&1; then
-            logger -t xcat "WARNING: NTP Sync Failed!!"
-            exit_code=1
+            msg='WARNING: NTP Sync Failed before timeout. ntp server will try to sync...'
+            logger -t xcat $msg
+            echo $msg
         fi
     fi
 
