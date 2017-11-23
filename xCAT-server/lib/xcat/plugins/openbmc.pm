@@ -833,12 +833,12 @@ sub parse_args {
         my $all_subcommand = "";
         foreach $subcommand (@ARGV) {
             if ($subcommand =~ /^(\w+)=(.*)/) {
-                return ([ 1, "Can not configure and display nodes at the same time" ]) if ($setorget and $setorget eq "get");
+                return ([ 1, "Can not set and query OpenBMC information at the same time" ]) if ($setorget and $setorget eq "get");
                 my $key = $1;
                 my $value = $2;
                 return ([ 1, "Changing ipsrc value is currently not supported." ]) if ($key eq "ipsrc");
                 return ([ 1, "Unsupported command: $command $key" ]) unless ($key =~ /^ip$|^netmask$|^gateway$|^hostname$|^vlan$/);
-                return ([ 1, "Hostname must be set as a single command." ]) if ($key eq "hostname" and $num_subcommand > 1);
+                return ([ 1, "The option 'hostname' can not work with other options." ]) if ($key eq "hostname" and $num_subcommand > 1);
 
                 my $nodes_num = @$noderange;
                 return ([ 1, "Invalid parameter for option $key" ]) unless ($value);
@@ -860,7 +860,7 @@ sub parse_args {
                 }
                 $setorget = "set";
             } elsif ($subcommand =~ /^ip$|^netmask$|^gateway$|^hostname$|^vlan$|^ipsrc$/) {
-                return ([ 1, "Can not configure and display nodes at the same time" ]) if ($setorget and $setorget eq "set");
+                return ([ 1, "Can not set and query OpenBMC information at the same time" ]) if ($setorget and $setorget eq "set");
                 $setorget = "get";
             } elsif ($subcommand =~ /^sshcfg$/) {
                 return ([ 1, "Configure sshcfg must be issued without other options." ]) if ($num_subcommand > 1);
@@ -2390,6 +2390,7 @@ sub rspconfig_response {
             xCAT::SvrUtils::sendmsg("$_", $callback, $node) foreach (@output);
 
             if ($grep_string eq "all") {
+                # If all current values equal the input, just print out message
                 my @checks = split("-", $status_info{RSPCONFIG_CHECK_RESPONSE}{argv});
                 my $check_num = @checks;
                 my $check_vlan;
