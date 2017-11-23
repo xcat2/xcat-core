@@ -149,7 +149,7 @@ if [ "$UUID" != "unknown" ]; then
 fi
 
 flag_mtm=`echo "$MTM" | sed 's/0//g'`
-if [ $flag_mtm ] && [ "$MTM" != "unknown" ]; then
+if [ "$flag_mtm" ] && [ "$MTM" != "unknown" ]; then
 	MTM=`echo $MTM | sed 's/\.//g'`
 	echo "<mtm>$MTM</mtm>" >> /tmp/discopacket
 fi
