@@ -90,15 +90,14 @@ for i in $*; do
     #echo "grepcmd=$grepcmd"
     # now run it
     eval $grepcmd
-    # if no dups file created
-    if [ -a "$mergefile.nodups" ]; then
-      cp -p $mergefile.nodups $mergefile
-      #echo "cp -p $mergefile.nodups $mergefile" 
-      rm $mergefile.nodups
-    fi 
   fi 
   # Now update the currentfile  
-  cat $filebackup $mergefile > $curfile
+  cat $filebackup > $curfile
+  # add new entries from mergefile, if any 
+  if [ -a "$mergefile.nodups" ]; then
+    cat $mergefile.nodups >> $curfile
+    rm $mergefile.nodups
+  fi
   #echo "cat $filebackup $mergefile > $curfile"
   # now cleanup
   rm $filebackup.userlist 
