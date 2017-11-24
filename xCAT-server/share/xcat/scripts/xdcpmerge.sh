@@ -91,14 +91,13 @@ for i in $*; do
     # now run it
     eval $grepcmd
   fi 
-  # Now update the currentfile  
-  cat $filebackup > $curfile
+  
   # add new entries from mergefile, if any 
   if [ -a "$mergefile.nodups" ]; then
     cat $mergefile.nodups >> $curfile
     rm $mergefile.nodups
   fi
-  #echo "cat $filebackup $mergefile > $curfile"
+  
   # now cleanup
   rm $filebackup.userlist 
   #  echo "rm $filebackup.userlist"
