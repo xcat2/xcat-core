@@ -310,6 +310,14 @@ my %status_info = (
     RSPCONFIG_GET_RESPONSE => {
         process        => \&rspconfig_response,
     },
+    RSPCONFIG_PASSWD_REQUEST => {
+        method         => "POST",
+        init_url       => "/xyz/openbmc_project/user/root/action/SetPassword",
+        data           => "",
+    },
+    "RSPCONFIG_PASSWD_VERIFY" => {
+        process        => \&rspconfig_response,
+    },
     RSPCONFIG_SET_REQUEST => {
         method         => "PUT",
         init_url       => "$openbmc_project_url/network",
@@ -839,8 +847,9 @@ sub parse_args {
                 my $key = $1;
                 my $value = $2;
                 return ([ 1, "Changing ipsrc value is currently not supported." ]) if ($key eq "ipsrc");
-                return ([ 1, "Unsupported command: $command $key" ]) unless ($key =~ /^ip$|^netmask$|^gateway$|^hostname$|^vlan$/);
+                return ([ 1, "Unsupported command: $command $key" ]) unless ($key =~ /^ip$|^netmask$|^gateway$|^hostname$|^vlan$|^admin_passwd$/);
                 return ([ 1, "The option 'hostname' can not work with other options." ]) if ($key eq "hostname" and $num_subcommand > 1);
+                return ([ 1, "Invalid parameter for option $key" ]) if ($key eq "admin_passwd" and $num_subcommand != 2);
 
                 my $nodes_num = @$noderange;
                 return ([ 1, "Invalid parameter for option $key" ]) unless ($value);
@@ -1200,6 +1209,23 @@ sub parse_command_status {
                 $status_info{RSPCONFIG_DUMPDWLD_REQUEST}{init_url} =~ s/#ID#/$$subcommands[2]/g; 
                 $status_info{RSPCONFIG_DUMPDWLD_REQUEST}{argv} = $$subcommands[2];
             }
+            return 0;
+        }
+
+        if ($subcommand =~ /^admin_passwd=(.+)/) {
+            my $currentpasswd = $1;
+            my $newpasswd;
+            my $passwd_cmd2 = $$subcommands[1];
+            if ($passwd_cmd2 =~ /^admin_passwd=(.+)/) {
+                $newpasswd = $1;
+            }
+            $next_status{LOGIN_RESPONSE} = "RSPCONFIG_PASSWD_VERIFY";
+            $next_status{RSPCONFIG_PASSWD_VERIFY} = "RSPCONFIG_PASSWD_REQUEST";
+            $next_status{RSPCONFIG_PASSWD_REQUEST} = "RSPCONFIG_SET_RESPONSE";
+
+            $status_info{RSPCONFIG_PASSWD_VERIFY}{argv} = "$currentpasswd";
+            $status_info{RSPCONFIG_PASSWD_REQUEST}{data} = "[\"$newpasswd\"]";
+            $status_info{RSPCONFIG_SET_RESPONSE}{argv} = "password";
             return 0;
         }
 
@@ -2477,9 +2503,20 @@ sub rspconfig_response {
         }
     }
 
+    if ($node_info{$node}{cur_status} eq "RSPCONFIG_PASSWD_VERIFY") {
+        if ($status_info{RSPCONFIG_PASSWD_VERIFY}{argv} ne $node_info{$node}{password}) {
+            xCAT::SvrUtils::sendmsg("Please input correct BMC password.", $callback, $node);
+            $next_status{ $node_info{$node}{cur_status} } = "";
+        }
+    }
+
     if ($node_info{$node}{cur_status} eq "RSPCONFIG_SET_RESPONSE") {
         if ($response_info->{'message'} eq $::RESPONSE_OK) {
-            xCAT::SvrUtils::sendmsg("BMC Setting Hostname...", $callback, $node);
+            if (defined $status_info{RSPCONFIG_SET_RESPONSE}{argv} and $status_info{RSPCONFIG_SET_RESPONSE}{argv} eq "password") {
+                xCAT::SvrUtils::sendmsg("BMC Setting Password...", $callback, $node);
+            } else {
+                xCAT::SvrUtils::sendmsg("BMC Setting Hostname...", $callback, $node);
+            }
         }
     }
     if ($node_info{$node}{cur_status} eq "RSPCONFIG_DHCP_RESPONSE") {
