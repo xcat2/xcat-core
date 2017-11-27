@@ -34,29 +34,38 @@ check:rc==1
 check:output=~Error: Can not set and query OpenBMC information at the same time
 end
 
-start:rspconfig_set_hostname 
-description: Check that we can set the hostname on the BMC 
+start:rspconfig_get_and_set_hostname
+description: Test setting and getting hostname on the BMC 
 os:Linux
 hcp:openbmc
-cmd:rspconfig $$CN hostname=$$CN-UTset 
+# Save the hostname to a file.... 
+cmd:rspconfig $$CN hostname | tee /tmp/xcattest.rspconfig.hostname
+check:rc==0
+check:output=~$$CN: BMC Hostname: 
+# Set to witherspoon first
+cmd:rspconfig $$CN hostname=witherspoon 
+check:rc==0
+check:output=~$$CN: BMC Setting Hostname...
+# Check that it's set to witherspoon
+cmd:rspconfig $$CN hostname 
+check:rc==0
+check:output=~$$CN: BMC Hostname: witherspoon
+# Set to <host>-UTset 
+cmd:rspconfig $$CN hostname=$$CN-UTset
+check:rc==0
+check:output=~$$CN: BMC Setting Hostname...
+# Check that it's set 
+cmd:rspconfig $$CN hostname 
 check:rc==0
 check:output=~$$CN: BMC Hostname: $$CN-UTset
-end 
-
-start:rspconfig_set_hostname_check
-description: Check that the value is correct on the BMC
-os:Linux
-hcp:openbmc
-cmd:rspconfig $$CN hostname
+# Restore to saved version 
+cmd:grep BMC /tmp/xcattest.rspconfig.hostname  | cut -d' ' -f4 | xargs -i{} rspconfig $$CN hostname={}
 check:rc==0
-check:output=~$$CN: BMC Hostname: $$CN-UTset
+check:output=~$$CN: BMC Setting Hostname...
+cmd:rspconfig $$CN hostname 
+check:rc==0
+check:output=~$$CN: BMC Hostname:
+cmd:rm /tmp/xcattest.rspconfig.hostname
+check:rc==0
 end
 
-start:rspconfig_set_hostname
-description: Check that we can set the hostname on the BMC
-os:Linux
-hcp:openbmc
-cmd:rspconfig $$CN hostname=witherspoon
-check:rc==0
-check:output=~$$CN: BMC Hostname: witherspoon 
-end
