@@ -1176,7 +1176,7 @@ sub parse_command_status {
                 $next_status{RSPCONFIG_GET_REQUEST} = "RSPCONFIG_GET_RESPONSE";
 
                 $status_info{RSPCONFIG_SET_REQUEST}{data} = $1;
-                $status_info{RSPCONFIG_GET_RESPONSE}{argv} = "hostname";
+                $status_info{RSPCONFIG_SET_REQUEST}{init_url} .= "/config/attr/HostName";
                 return 0;
             }
         }
