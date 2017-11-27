@@ -300,7 +300,7 @@ if ($restore) {
     }
 }
 
-log_this($running_log_fd, "xCAT automated test finished at" . scalar(localtime()));
+log_this($running_log_fd, "xCAT automated test finished at " . scalar(localtime()));
 log_this($running_log_fd, "Please check results in the $resultdir, \nand see $failed_log_name file for failed cases.");
 
 #To generate performance report
