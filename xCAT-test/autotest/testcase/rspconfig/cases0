@@ -142,35 +142,45 @@ end
 
 start:rspconfig_list_ip
 despcription:rspconfig list bmc ip
-cmd:/opt/xcat/share/xcat/tools/autotest/testcase/rspconfig/rspconfig.sh -lip $$CN 
+cmd:rspconfig $$CN ip 
 check:rc==0
+check:output=~__GETNODEATTR($$CN,bmc)__
 end
 
 start:rspconfig_list_gateway
+hcp:openbmc
 description:rspconfig list openbmc gateway
 Attribute: $$CN-The operation object of rspconfig command
-cmd:/opt/xcat/share/xcat/tools/autotest/testcase/rspconfig/rspconfig.sh -lg $$CN
+cmd:rspconfig $$CN gateway
+check:output=~$$CN: BMC Gateway:
 check:rc==0
 end
 
 start:rspconfig_list_netmask
+hcp:openbmc
 description:rspconfig list openbmc netmask
 Attribute: $$CN-The operation object of rspconfig command
-cmd:/opt/xcat/share/xcat/tools/autotest/testcase/rspconfig/rspconfig.sh -ln $$CN
+cmd:rspconfig $$CN netmask 
 check:rc==0
+check:output=~$$CN: BMC Netmask:
 end
 
 start:rspconfig_list_vlan
-description:rspconfig list openbmc netmask
+description:rspconfig list openbmc vlan
 Attribute: $$CN-The operation object of rspconfig command
-cmd:/opt/xcat/share/xcat/tools/autotest/testcase/rspconfig/rspconfig.sh -lv $$CN
+cmd: rspconfig $$CN vlan
 check:rc==0
+check:output=~$$CN: BMC VLAN ID:
 end
 
 start:rspconfig_list_all
-description:rspconfig list openbmc netmask
+description:rspconfig list openbmc ip gateway netmask vlan 
 Attribute: $$CN-The operation object of rspconfig command
-cmd:/opt/xcat/share/xcat/tools/autotest/testcase/rspconfig/rspconfig.sh -la $$CN
+cmd: rspconfig $$CN ip gateway netmask vlan
 check:rc==0
+check:output=~$$CN: BMC VLAN ID:
+check:output=~$$CN: BMC Gateway:
+check:output=~$$CN: BMC Netmask:
+check:output=~__GETNODEATTR($$CN,bmc)__
 end
 
