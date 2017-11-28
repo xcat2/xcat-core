@@ -2717,7 +2717,7 @@ sub rspconfig_dump_response {
                     xCAT::SvrUtils::sendmsg("[$dump_id] success", $callback, $node);
                 }
             } else {
-                xCAT::SvrUtils::sendmsg("Did not get new dump ID from OpenBMC", $callback, $node);
+                xCAT::SvrUtils::sendmsg([1, "BMC returned $::RESPONSE_OK but no ID was returned.  Verify manually on the BMC."], $callback, $node);
                 $next_status{ $node_info{$node}{cur_status} } = "";
             }
         } 
