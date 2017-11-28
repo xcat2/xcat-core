@@ -848,8 +848,11 @@ sub parse_args {
                 my $value = $2;
                 return ([ 1, "Changing ipsrc value is currently not supported." ]) if ($key eq "ipsrc");
                 return ([ 1, "Unsupported command: $command $key" ]) unless ($key =~ /^ip$|^netmask$|^gateway$|^hostname$|^vlan$|^admin_passwd$/);
-                return ([ 1, "The option 'hostname' can not work with other options." ]) if ($key eq "hostname" and $num_subcommand > 1);
-                return ([ 1, "Invalid parameter for option $key" ]) if ($key eq "admin_passwd" and $num_subcommand != 2);
+                return ([ 1, "The option '$key' can not work with other options." ]) if ($key =~ /^hostname$|^admin_passwd$/ and $num_subcommand > 1);
+                if ($key eq "admin_passwd") {
+                    my $comma_num = $value =~ tr/,/,/;
+                    return ([ 1, "Invalid parameter for option $key: $value" ]) if ($comma_num != 1);
+                }
 
                 my $nodes_num = @$noderange;
                 return ([ 1, "Invalid parameter for option $key" ]) unless ($value);
@@ -1219,13 +1222,9 @@ sub parse_command_status {
             return 0;
         }
 
-        if ($subcommand =~ /^admin_passwd=(.+)/) {
+        if ($subcommand =~ /^admin_passwd=(.+),(.+)/) {
             my $currentpasswd = $1;
-            my $newpasswd;
-            my $passwd_cmd2 = $$subcommands[1];
-            if ($passwd_cmd2 =~ /^admin_passwd=(.+)/) {
-                $newpasswd = $1;
-            }
+            my $newpasswd = $2;
             $next_status{LOGIN_RESPONSE} = "RSPCONFIG_PASSWD_VERIFY";
             $next_status{RSPCONFIG_PASSWD_VERIFY} = "RSPCONFIG_SET_PASSWD_REQUEST";
             $next_status{RSPCONFIG_SET_PASSWD_REQUEST} = "RSPCONFIG_SET_RESPONSE";
