@@ -660,7 +660,7 @@ rmdir \"/tmp/\$userid\" \n";
                     }
                 }
                 xCAT::SvrUtils::sendmsg("-------------------------------------------------------", $callback);
-                my $summary = "Firmware Update Complete: ";
+                my $summary = "Firmware update complete: ";
                 my $total = keys %node_info;
                 my $success = 0;
                 my $fail = 0;
@@ -670,11 +670,11 @@ rmdir \"/tmp/\$userid\" \n";
                 xCAT::SvrUtils::sendmsg("$summary", $callback);
 
                 if ($rflash_result{fail}) {
-                    xCAT::SvrUtils::sendmsg("-------------------------------------------------------", $callback);
                     foreach (@{ $rflash_result{fail} }) {
                         xCAT::SvrUtils::sendmsg($_, $callback);
                     }
                 }
+                xCAT::SvrUtils::sendmsg("-------------------------------------------------------", $callback);
             }
             last;
         }
@@ -2612,7 +2612,7 @@ sub rflash_response {
             }
         }
         elsif ($activation_state =~ /Software.Activation.Activations.Activating/) {
-            my $activating_progress_msg = "Activating firmware . . . $progress_state\%";
+            my $activating_progress_msg = "Activating firmware...  $progress_state\%";
             if ($::VERBOSE) {
                 xCAT::SvrUtils::sendmsg("$activating_progress_msg", $callback, $node);
             }
