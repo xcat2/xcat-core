@@ -20,8 +20,11 @@ if [ -z $1 ]; then
     if [ $BUILDARCH = "ppc64le" ]; then
         HOSTOS="Pegas1.0"
         BUILDARCH="ppc64"
-    else
+    elif [ $BUILDARCH = "ppc64" ]; then
         HOSTOS="fedora26"
+    elif [ $BUILDARCH = "x86_64" ]; then
+        yum install efibootmgr bc -y
+        HOSTOS="centos7"
     fi
 fi
 
@@ -45,13 +48,12 @@ echo "#!/bin/bash" > ./installkernel
 for line in `cat /lib/modules/$KERVER/modules.dep | awk -F: '{print \$1}'`; do 
     basename $line >> ./installkernel; 
 done
-sed -i 's/\(.*\)\.ko/instmods \1/g' ./installkernel
+sed -i 's/\(.*\)\.ko.*/instmods \1/g' ./installkernel
 chmod +x ./installkernel
 cd -
 
 mkdir -p $DRACUTMODDIR
 cp $DIR/* $DRACUTMODDIR
-
 # Remove the ipr(IBM Power RAID) stuff when building on x86_64
 if [ $BUILDARCH = "x86_64" ]; then
     sed -i 's/dracut_install \/lib64\/libform.so.5//' $DRACUTMODDIR/install
@@ -62,6 +64,11 @@ if [ $BUILDARCH = "x86_64" ]; then
     sed -i '/\/usr\/sbin\/iprconfig/ d' $DRACUTMODDIR/install
     sed -i '/hwdb.bin/ d' $DRACUTMODDIR/install
     sed -i 's/instmods ipr//' $DRACUTMODDIR/installkernel
+    sed -i 's/ mkreiserfs//' $DRACUTMODDIR/install
+    sed -i 's/ reiserfstune//' $DRACUTMODDIR/install
+    sed -i 's/ vconfig//' $DRACUTMODDIR/install
+    sed -i 's/\/lib\/terminfo\/l\/linux/\/usr\/share\/terminfo\/l\/linux/g' $DRACUTMODDIR/install
+    sed -i 's/\/lib\/terminfo\/v\/vt100/\/usr\/share\/terminfo\/v\/vt100/g' $DRACUTMODDIR/install
 fi
 if [ "$HOSTOS" = "mcp" ]; then
         #Special handlings for MCP PPC64 platform building.
@@ -144,12 +151,11 @@ if [ "$HOSTOS" = "mcp" ]; then
 else
 	echo Creating the initramfs in /tmp/xcatgenesis.$$.rfs using dracut ...
 fi
-
 # On Fedora 20 ppc64, dracut uses host-only mode by default
 if [ $BUILDARCH = "ppc64" ]; then
     dracut -m "xcat base" -N -f /tmp/xcatgenesis.$$.rfs $KERNELVERSION
 else
-    dracut -m "xcat base" -f /tmp/xcatgenesis.$$.rfs $KERNELVERSION
+    dracut -m "xcat base" --no-early-microcode -N -f /tmp/xcatgenesis.$$.rfs $KERNELVERSION
 fi
 
 if [ $? -ne 0 ]; then
@@ -159,6 +165,7 @@ fi
 
 echo Expanding the initramfs into /tmp/xcatgenesis.$$/opt/xcat/share/xcat/netboot/genesis/$BUILDARCH/fs ...
 cd /tmp/xcatgenesis.$$/opt/xcat/share/xcat/netboot/genesis/$BUILDARCH/fs 
+
 zcat /tmp/xcatgenesis.$$.rfs|cpio -dumi
 
 # add the perl library
@@ -176,11 +183,12 @@ done
 
 # create the predictable naming for nics
 LIB_UDEV_RULES="/lib/udev/rules.d/"
-cp $DRACUTMODDIR/80-net-name-slot.rules /tmp/xcatgenesis.$$/opt/xcat/share/xcat/netboot/genesis/$BUILDARCH/fs/lib/udev/rules.d/ 
-
-if [ $? -ne 0 ]; then
-    echo "ERROR - expanding the initramfs, please correct the issues and try again"
-    exit 1
+if [ ! -e "$LIB_UDEV_RULES/80-net-name-slot.rules" ]; then
+    cp $DRACUTMODDIR/80-net-name-slot.rules /tmp/xcatgenesis.$$/opt/xcat/share/xcat/netboot/genesis/$BUILDARCH/fs/lib/udev/rules.d/ 
+    if [ $? -ne 0 ]; then
+        echo "ERROR - expanding the initramfs, please correct the issues and try again"
+        exit 1
+    fi
 fi
 
 # add the kernel

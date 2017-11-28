@@ -944,7 +944,7 @@ sub parse_args {
             }
         }
         # show options parsed in bypass mode
-        print "DEBUG filename=$filename_passed, updateid=$updateid_passed, options=$option_flag, verbose=$verbose, invalid=$invalid_options\n";
+        print "DEBUG filename=$filename_passed, updateid=$updateid_passed, options=$option_flag, invalid=$invalid_options rflash_arguments=@flash_arguments\n";
 
         if ($option_flag =~ tr{ }{ } > 0) { 
             unless ($verbose) {
@@ -961,6 +961,7 @@ sub parse_args {
             if ($option_flag !~ /^-c$|^--check$|^-u$|^--upload$|^-a$|^--activate$/) {
                 return ([ 1, "Invalid option specified when a file is provided: $option_flag" ]);
             }
+            xCAT::SvrUtils::sendmsg("Attempting to upload $flash_arguments[0], please wait...", $callback);
         }
         else {
             if ($updateid_passed) {
@@ -968,6 +969,11 @@ sub parse_args {
                 if ($option_flag !~ /^-d$|^--delete$|^-a$|^--activate$/) {
                     return ([ 1, "Invalid option specified when an update id is provided: $option_flag" ]);
                 }
+                my $action = "activate";
+                if ($option_flag =~ /^-d$|^--delete$/) {
+                    $action = "delete";
+                } 
+                xCAT::SvrUtils::sendmsg("Attempting to $action ID=$flash_arguments[0], please wait...", $callback);
             }
             else {
                 # Neither Filename nor updateid was not passed, check flags allowed without file or updateid
