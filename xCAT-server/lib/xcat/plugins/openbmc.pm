@@ -1215,6 +1215,8 @@ sub parse_command_status {
                 $status_info{RSPCONFIG_DUMP_DOWNLOAD_REQUEST}{init_url} =~ s/#ID#/$$subcommands[2]/g; 
                 $status_info{RSPCONFIG_DUMP_DOWNLOAD_REQUEST}{argv} = $$subcommands[2];
             } else {
+                # this section handles the dump support where no options are given and xCAT will 
+                # # handle the creation, waiting, and download of the dump across a given noderange
                 $next_status{LOGIN_RESPONSE} = "RSPCONFIG_DUMP_CREATE_REQUEST";
                 $next_status{RSPCONFIG_DUMP_CREATE_REQUEST} = "RSPCONFIG_DUMP_CREATE_RESPONSE";
                 $next_status{RSPCONFIG_DUMP_CREATE_RESPONSE} = "RSPCONFIG_DUMP_LIST_REQUEST";
