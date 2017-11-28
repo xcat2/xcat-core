@@ -1217,6 +1217,7 @@ sub parse_command_status {
             } else {
                 # this section handles the dump support where no options are given and xCAT will 
                 # # handle the creation, waiting, and download of the dump across a given noderange
+                xCAT::SvrUtils::sendmsg("Capturing BMC Diagnostic information, this will take some time...", $callback);
                 $next_status{LOGIN_RESPONSE} = "RSPCONFIG_DUMP_CREATE_REQUEST";
                 $next_status{RSPCONFIG_DUMP_CREATE_REQUEST} = "RSPCONFIG_DUMP_CREATE_RESPONSE";
                 $next_status{RSPCONFIG_DUMP_CREATE_RESPONSE} = "RSPCONFIG_DUMP_LIST_REQUEST";
@@ -2652,14 +2653,14 @@ sub rspconfig_dump_response {
         foreach my $key_url (keys %{$response_info->{data}}) {
             my %content = %{ ${ $response_info->{data} }{$key_url} };
             my $id;
-            my $elased;
             if (defined $content{Elapsed}) {
                 $id = $key_url;
                 $id =~ s/.*\///g; 
 
                 if ($node_info{$node}{cur_status} eq "RSPCONFIG_DUMP_CHECK_RESPONSE") {
                     if ($id eq $node_info{$node}{dump_id}) {
-                        xCAT::SvrUtils::sendmsg("Generated BMC Dump $id", $callback, $node);
+                        # Save date when this dump was generated to use in downloaded filename
+                        $node_info{$node}{generated} = $content{Elapsed};
                         $gen_check = 1;
                         last;
                     }
@@ -2670,7 +2671,7 @@ sub rspconfig_dump_response {
                 $mon += 1;
                 $year += 1900;
                 my $UTC_time = sprintf ("%02d/%02d/%04d %02d:%02d:%02d", $mon, $mday, $year, $hour, $min, $sec);
-                $dump_info{$id} = "[$id] Elapsed: $UTC_time, Size: $content{Size}"; 
+                $dump_info{$id} = "[$id] Generated: $UTC_time, Size: $content{Size}"; 
             }
         }
 
@@ -2685,7 +2686,6 @@ sub rspconfig_dump_response {
             }
             if ( $node_info{$node}{dump_wait_attemp} > 0) {
                 $node_info{$node}{dump_wait_attemp} --; 
-                xCAT::SvrUtils::sendmsg("Generating BMC Dump...", $callback, $node) if ($::VERBOSE);
                 retry_after($node, "RSPCONFIG_DUMP_LIST_REQUEST", $::RSPCONFIG_DUMP_INTERVAL);
                 return;
             } else {
@@ -2714,7 +2714,7 @@ sub rspconfig_dump_response {
                 my $dump_id = $response_info->{'data'};
                 if ($next_status{ $node_info{$node}{cur_status} }) {
                     $node_info{$node}{dump_id} = $dump_id;
-                    xCAT::SvrUtils::sendmsg("Capturing BMC Dump information, this will take some time...", $callback, $node);
+                    xCAT::SvrUtils::sendmsg("Dump requested. Target ID is $dump_id, waiting for BMC to generate...", $callback, $node);
                 } else {
                     xCAT::SvrUtils::sendmsg("[$dump_id] success", $callback, $node);
                 }
@@ -2758,7 +2758,6 @@ sub rspconfig_dump_response {
 sub dump_download_process {
     my $node = shift;
 
-    xCAT::SvrUtils::sendmsg("Downloading Dump...", $callback, $node) if ($::VERBOSE);
     my $request_url = "$http_protocol://" . $node_info{$node}{bmc};
     my $content_login = '{ "data": [ "' . $node_info{$node}{username} .'", "' . $node_info{$node}{password} . '" ] }';
     my $content_logout = '{ "data": [ ] }';
@@ -2766,11 +2765,15 @@ sub dump_download_process {
     my $dump_id;
     $dump_id  = $status_info{RSPCONFIG_DUMP_DOWNLOAD_REQUEST}{argv} if ($status_info{RSPCONFIG_DUMP_DOWNLOAD_REQUEST}{argv});
     $dump_id = $node_info{$node}{dump_id} if ($node_info{$node}{dump_id});
-    my $file_name = "/var/log/xcat/dump/$node" . "_dump_$dump_id.tar.xz";
+    my ($sec, $min, $hour, $mday, $mon, $year, $wday, $yday, $isdst) = localtime($node_info{$node}{generated});
+    $mon += 1;
+    $year += 1900;
+    my $file_name = "/var/log/xcat/dump/" . $year . $mon . $mday . $hour . $min . "_$node" . "_dump_$dump_id.tar.xz";
     my $down_url;
     $down_url = $status_info{RSPCONFIG_DUMP_DOWNLOAD_REQUEST}{init_url};
     $down_url =~ s/#ID#/$dump_id/g;
 
+    xCAT::SvrUtils::sendmsg("Dump $dump_id generated. Downloading to $file_name", $callback, $node);
     my $curl_login_cmd  = "curl -c $cjar_id -k -H 'Content-Type: application/json' -X POST $request_url/login -d '" . $content_login . "'";
     my $curl_logout_cmd = "curl -b $cjar_id -k -H 'Content-Type: application/json' -X POST $request_url/logout -d '" . $content_logout . "'";
     my $curl_dwld_cmd = "curl -J -b $cjar_id -k -H 'Content-Type: application/octet-stream' -X GET $request_url/$down_url -o $file_name";
@@ -2785,7 +2788,7 @@ sub dump_download_process {
                 my $debugmsg = "RSPCONFIG_DUMP_DOWNLOAD_REQUEST: CMD: $curl_dwld_cmd";
                 process_debug_info($node, $debugmsg);
             }
-            xCAT::SvrUtils::sendmsg("Downloaded Dump $dump_id to $file_name", $callback, $node);
+            xCAT::SvrUtils::sendmsg("Downloaded Dump $dump_id to $file_name", $callback, $node) if ($::VERBOSE);
             `$curl_logout_cmd -s`;
         } else {
             xCAT::SvrUtils::sendmsg("Failed to download dump $dump_id :" . $h->{message} . " - " . $h->{data}->{description}, $callback, $node);
