@@ -9,45 +9,66 @@ fi
 
 xcat_intf="/etc/network/interfaces.d/xCAT.intf"
 
-if [ -f $xcat_intf ] && grep -w '#This is sample interface file provided by xCAT' $xcat_intf ; then
-    echo "The switch data ports and default brige have been configured. Do nothing..."
-    exit 0
+if [ -z "$MASTER" ]; then
+    echo "xCAT Master unset! Cannot download interface description"
+    exit 2
 fi
 
-echo "#This is sample interface file provided by xCAT" > $xcat_intf
-echo "# bridge-vlan-aware: set to yes to indicate that the bridge is VLAN-aware. " >> $xcat_intf
-echo "# bridge-access: declares the access port. " >> $xcat_intf
-echo "# bridge-pvid: specifies native VLANs if the ID is other than 1. " >> $xcat_intf
-echo "# bridge-vids: declares the VLANs associated with this bridge. " >> $xcat_intf
-echo " " >> $xcat_intf
+TMPINT=/tmp/xCAT.intf
+rm $TMPINT 2>/dev/null
+UPDATED=0
 
-#create default bridge
-echo "auto br0" >> $xcat_intf
-echo "iface br0" >> $xcat_intf
-echo "  bridge-vlan-aware yes" >> $xcat_intf
-echo "  bridge-ports glob swp1-52" >> $xcat_intf
-echo "  bridge-stp on" >> $xcat_intf
-echo "  bridge-vids 1 " >> $xcat_intf
-echo "  bridge-pvid 1" >> $xcat_intf
-echo " " >> $xcat_intf
-
-#create each interface
-
-for i in `seq 1 52`;
-do
-    echo "auto swp$i">> $xcat_intf
-    echo "iface swp$i" >> $xcat_intf
-    echo "  mstpctl-portadminedge yes" >> $xcat_intf
-    echo " " >> $xcat_intf
+for name in $NODE ${GROUP//,/ } default; do
+    curl -s -o $TMPINT -f http://${MASTER}/install/custom/sw_os/cumulus/interface/$name
+    if [ -f $TMPINT ]; then
+        if ! diff $TMPINT $xcat_intf > /dev/null; then
+            mv $TMPINT $xcat_intf
+            UPDATED=1
+        fi
+        break
+    fi
 done
+
+if [ ! -f $xcat_intf ]; then
+    UPDATED=1
+
+    echo "#This is sample interface file provided by xCAT" > $xcat_intf
+    echo "# bridge-vlan-aware: set to yes to indicate that the bridge is VLAN-aware. " >> $xcat_intf
+    echo "# bridge-access: declares the access port. " >> $xcat_intf
+    echo "# bridge-pvid: specifies native VLANs if the ID is other than 1. " >> $xcat_intf
+    echo "# bridge-vids: declares the VLANs associated with this bridge. " >> $xcat_intf
+    echo " " >> $xcat_intf
+
+    #create default bridge
+    echo "auto br0" >> $xcat_intf
+    echo "iface br0" >> $xcat_intf
+    echo "  bridge-vlan-aware yes" >> $xcat_intf
+    echo "  bridge-ports glob swp1-52" >> $xcat_intf
+    echo "  bridge-stp on" >> $xcat_intf
+    echo "  bridge-vids 1 " >> $xcat_intf
+    echo "  bridge-pvid 1" >> $xcat_intf
+    echo " " >> $xcat_intf
+
+    #create each interface
+
+    for i in `seq 1 52`;
+    do
+        echo "auto swp$i">> $xcat_intf
+        echo "iface swp$i" >> $xcat_intf
+        echo "  mstpctl-portadminedge yes" >> $xcat_intf
+        echo " " >> $xcat_intf
+    done
+fi
 
 # license needs to set before start switchd
 if [ ! -e /etc/cumulus/.license* ]; then
-   echo "ERROR: cumulus license file is not exist";
+   echo "ERROR: cumulus license file does not exist";
    exit 1;
 fi
 
-systemctl enable switchd
-systemctl restart switchd
-ifreload -a 
+if [ $UPDATED -eq 1 ]; then
+    systemctl enable switchd
+    systemctl start switchd
+    ifreload -a 
+fi
 

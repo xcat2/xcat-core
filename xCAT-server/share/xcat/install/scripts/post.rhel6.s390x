@@ -1,4 +1,3 @@
-echo ARP=no >> /etc/sysconfig/network-scripts/ifcfg-eth0
 
 # Get hostname
 export HOSTNAME=$(host $IP 2>/dev/null | awk '{print $5}' | awk -F. '{print $1}')
@@ -92,34 +91,26 @@ cd /xcatpost
 export PATH=$PATH:/xcatpost
 
 # Use the run_ps subroutine to run the postscripts
-TMP=`sed "/postscripts-start-here/,/postscripts-end-here/ s/\(.*\)/run_ps postscript \1/;s/run_ps postscript\s*#/#/;s/run_ps postscript\s*$//" /xcatpost/mypostscript`
+TMP=`sed "/postscripts-start-here/,/postscripts-end-here/ s/\(.*\)/run_ps \1/;s/run_ps\s*#/#/;s/run_ps\s*$//" /xcatpost/mypostscript`
 echo "
 # Subroutine used to run postscripts
-# \$1 argument is the script type
-# rest argument is the script name and arguments
 run_ps () {
     logdir=\"/var/log/xcat\"
     mkdir -p \$logdir
     logfile=\"/var/log/xcat/xcat.log\"
-    scriptype=\$1
-    shift;
-
-    if [ -z \"\$scriptype\" ]; then
-        scriptype=\"postscript\"
-    fi
  
     if [ -f \$1 ]; then 
-        echo \"Running \$scriptype: \$1\" | tee -a \$logfile
-        ./\$@ 2>&1 | tee -a \$logfile
+        echo \"Running postscript: \$@\" | tee -a \$logfile
+        ./\$@ 2>&1 | tee -a $logfile
     else
-        echo \"\$scriptype \$1 does NOT exist.\" | tee -a \$logfile
+        echo \"Postscript \$1 does NOT exist.\" | tee -a \$logfile
     fi
 }
 # Subroutine end
 
 " > /xcatpost/mypostscript
 echo "$TMP" >> /xcatpost/mypostscript
-TMP=`sed "/postbootscripts-start-here/,/postbootscripts-end-here/ s/\(.*\)/run_ps postbootscript \1/;s/run_ps postbootscript\s*#/#/;s/run_ps postbootscript\s*$//" /xcatpost/mypostscript`
+TMP=`sed "/postbootscripts-start-here/,/postbootscripts-end-here/ s/\(.*\)/run_ps \1/;s/run_ps\s*#/#/;s/run_ps\s*$//" /xcatpost/mypostscript`
 echo "$TMP" > /xcatpost/mypostscript 
 
 

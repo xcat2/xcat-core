@@ -1,6 +1,6 @@
 /**
  * Global variables
- */
+ *Test Git update in MCP_DEV branch   */
 var nodesTab; // Nodes tabs
 var origAttrs = new Object(); // Original node attributes
 var nodeAttrs; // Node attributes
@@ -95,6 +95,7 @@ function loadNodesPage() {
 
             // Load groups
             success : function(data){
+                data = decodeRsp(data);
                 loadGroups(data);
 
                 var cookieGroup = $.cookie('xcat_selectgrouponnodes');
@@ -144,6 +145,7 @@ function loadPieSummary(groupName){
         },
 
         success:function(data) {
+             data = decodeRsp(data);
              for (var i in data.rsp) {
                  drawPieSummary(i, data.rsp[i]);
              }
@@ -293,6 +295,7 @@ function drawNodesArea(targetgroup, cmdargs, message){
                  * @param data Data returned from HTTP request
                  */
                 success : function(data) {
+                    data = decodeRsp(data);
                     var rsp = data.rsp;
                     var group = data.msg;
 
@@ -331,7 +334,10 @@ function drawNodesArea(targetgroup, cmdargs, message){
                             msg : targetgroup
                         },
 
-                        success : loadNodes
+                        success : function(data) {
+                            data = decodeRsp(data);
+                            loadNodes(data);
+                        }
                     });
 
                 }
@@ -343,6 +349,7 @@ function drawNodesArea(targetgroup, cmdargs, message){
             // For the graphical tab, check the graphical data first
             createPhysicalLayout(nodesList);
         }
+
     });
 
     // Get last view (if any)
@@ -383,13 +390,13 @@ function mkAddNodeLink() {
         addNodeForm.append(info);
         if (builtInXCAT == 0) {
             addNodeForm.append('<div><label>Hardware management:</label>'
-            + '<select name="mgt">'
-                + '<option value="esx">ESX</option>'
-                + '<option value="kvm">KVM</option>'
-                + '<option value="zvm">z\/VM</option>'
-                + '<option value="ipmi">iDataPlex</option>'
-                + '<option value="blade">BladeCenter</option>'
-                + '<option value="hmc">System p</option>'    // Documentation refers to 'IBM System p' (where p is NOT capitalized)
+                + '<select name="mgt">'
+                    + '<option value="esx">ESX</option>'
+                    + '<option value="kvm">KVM</option>'
+                    + '<option value="zvm">z\/VM</option>'
+                    + '<option value="ipmi">iDataPlex</option>'
+                    + '<option value="blade">BladeCenter</option>'
+                    + '<option value="hmc">System p</option>'    // Documentation refers to 'IBM System p' (where p is NOT capitalized)
                 + '</select>'
             + '</div>');
         } else {
@@ -397,7 +404,7 @@ function mkAddNodeLink() {
                 + '<select name="mgt">'
                     + '<option value="zvm">z\/VM</option>'
                 + '</select>'
-        + '</div>');
+            + '</div>');
         }
 
         // Create advanced link to set advanced node properties
@@ -424,6 +431,7 @@ function mkAddNodeLink() {
                  * @param data Data returned from HTTP request
                  */
                 success : function(data) {
+                    data = decodeRsp(data);
                     // Save node attributes
                     setNodeAttrs(data);
                     // Open a dialog to set node attributes
@@ -700,14 +708,14 @@ function loadNodes(data) {
                  },
                  width: 400,
                  buttons: {
-                     "Ok": function() {
-            powerNode(tgtNodes, 'off');
+                     "Ok": function(){
+                         powerNode(tgtNodes, 'off');
                          $(this).dialog("close");
                      },
                      "Cancel": function() {
                          $(this).dialog("close");
-        }
-    }
+                     }
+                 }
             });
         }
     });
@@ -728,8 +736,8 @@ function loadNodes(data) {
                  },
                  width: 400,
                  buttons: {
-                     "Ok": function() {
-            powerNode(tgtNodes, 'softoff');
+                     "Ok": function(){
+                         powerNode(tgtNodes, 'softoff');
                          $(this).dialog("close");
                      },
                      "Cancel": function() {
@@ -741,22 +749,22 @@ function loadNodes(data) {
     });
     if (builtInXCAT == 0) {
         // Turn monitoring on
-    var monitorOnLnk = $('<a>Monitor on</a>');
-    monitorOnLnk.click(function() {
-        var tgtNodes = getNodesChecked(nodesTableId);
-        if (tgtNodes) {
-            monitorNode(tgtNodes, 'on');
-        }
-    });
+        var monitorOnLnk = $('<a>Monitor on</a>');
+        monitorOnLnk.click(function() {
+            var tgtNodes = getNodesChecked(nodesTableId);
+            if (tgtNodes) {
+                monitorNode(tgtNodes, 'on');
+            }
+        });
 
-    // Turn monitoring off
-    var monitorOffLnk = $('<a>Monitor off</a>');
-    monitorOffLnk.click(function() {
-        var tgtNodes = getNodesChecked(nodesTableId);
-        if (tgtNodes) {
-            monitorNode(tgtNodes, 'off');
-        }
-    });
+        // Turn monitoring off
+        var monitorOffLnk = $('<a>Monitor off</a>');
+        monitorOffLnk.click(function() {
+            var tgtNodes = getNodesChecked(nodesTableId);
+            if (tgtNodes) {
+                monitorNode(tgtNodes, 'off');
+            }
+        });
     }
 
     // Clone
@@ -816,6 +824,7 @@ function loadNodes(data) {
             },
 
             success : function(data) {
+                data = decodeRsp(data);
                 var outId = $(data.msg);
                 var props = data.rsp;
                 if ( jQuery.isArray(data.rsp) ) {
@@ -853,11 +862,11 @@ function loadNodes(data) {
                 }
 
                 if ( normalNodes != '' ) {
-            loadUnlockPage( normalNodes );
+                    loadUnlockPage( normalNodes );
                 }
                 if ( mnNode != '' ) {
                     loadUnlockNonNodesPage( mnNode );
-        }
+                }
             }
         });
     });
@@ -1118,7 +1127,10 @@ function loadNodes(data) {
 
                   // Load hardware control point specific info
                   // Get disk pools and network names
-                  success : loadHcpInfo
+                  success : function(data) {
+                      data = decodeRsp(data);
+                      loadHcpInfo(data);
+                  }
               });
           }
       }
@@ -1208,9 +1220,7 @@ function loadNodes(data) {
 
     // Create enough space for loader to be displayed
     // Center align power, ping, and comments
-    $('#' + nodesTableId + ' td:nth-child(3),td:nth-child(4),td:nth-child(5)').css({
-        'text-align': 'center'
-    });
+    $('#' + nodesTableId + ' td:nth-child(3),td:nth-child(4),td:nth-child(5)').css({'text-align': 'center'});
 
     // No minimum width for comments column
     $('#' + nodesTableId + ' tbody tr td:nth-child(6)').css('text-align', 'center');
@@ -1308,7 +1318,10 @@ function loadNodes(data) {
                     msg : 'out=nodesTab;tgt=' + node
                 },
 
-                success: showChdefOutput
+                success: function(data) {
+                    data = decodeRsp(data);
+                    showChdefOutput(data);
+                }
             });
 
             // Save the data into global origAttrs
@@ -1342,7 +1355,10 @@ function loadNodes(data) {
                 msg : ''
             },
 
-            success : loadNodeStatus
+            success : function(data) {
+                data = decodeRsp(data);
+                loadNodeStatus(data);
+            }
         });
     } else {
         // Hide status loader
@@ -1363,7 +1379,10 @@ function loadNodes(data) {
                 msg : ''
             },
 
-            success : setNodeAttrs
+            success : function(data) {
+                data = decodeRsp(data);
+                setNodeAttrs(data);
+            }
         });
     }
 
@@ -1447,7 +1466,10 @@ function getNodeAttrs(group) {
                 msg : group
             },
 
-            success : addNodes2Table
+            success : function(data) {
+                data = decodeRsp(data);
+                addNodes2Table(data);
+            }
         });
 
         // Create dialog to indicate table is updating
@@ -1653,7 +1675,10 @@ function addNodes2Table(data) {
                     msg : 'out=nodesTab;tgt=' + node
                 },
 
-                success: showChdefOutput
+                success: function(data) {
+                    data = decodeRsp(data);
+                    showChdefOutput(data);
+                }
             });
 
             return value;
@@ -1678,7 +1703,10 @@ function addNodes2Table(data) {
                 msg : ''
             },
 
-            success : loadNodeStatus
+            success : function(data) {
+                data = decodeRsp(data);
+                loadNodeStatus(data);
+            }
         });
     } else {
         // Hide status loader
@@ -1748,7 +1776,10 @@ function refreshGangliaStatus(group) {
             msg : ''
         },
 
-        success : loadGangliaStatus
+        success : function(data) {
+            data = decodeRsp(data);
+            loadGangliaStatus(data);
+        }
     });
 }
 
@@ -1806,7 +1837,10 @@ function refreshPowerStatus(group, tableId) {
             msg : ''
         },
 
-        success : loadPowerStatus
+        success : function(data) {
+            data = decodeRsp(data);
+            loadPowerStatus(data);
+        }
     });
 }
 
@@ -1866,7 +1900,10 @@ function refreshNodeStatus(group, tableId) {
             msg : ''
         },
 
-        success : loadNodeStatus
+        success : function(data) {
+            data = decodeRsp(data);
+            loadNodeStatus(data);
+        }
     });
 }
 
@@ -1936,7 +1973,10 @@ function loadNode(e) {
             msg : msg
         },
 
-        success : plugin.loadInventory
+        success : function(data) {
+            data = decodeRsp(data);
+            plugin.loadInventory(data);
+        }
     });
 
     // Select new tab
@@ -2030,7 +2070,10 @@ function loadUnlockPage(tgtNodes) {
                     msg : 'out=' + statBarId + ';cmd=unlock;tgt=' + tgtNodes
                 },
 
-                success : updateStatusBar
+                success : function(data) {
+                    data = decodeRsp(data);
+                    updateStatusBar(data);
+                }
             });
 
             // Show status bar
@@ -2115,7 +2158,10 @@ function loadUnlockNonNodesPage( tgtNodes ) {
                 msg  : 'out=' + statBarId + ';scriptBar=' + scriptBarId +';cmd=unlock;tgt=' + tgtNodes
             },
 
-                success : updateScriptBar
+                success : function(data) {
+                    data = decodeRsp(data);
+                    updateScriptBar(data);
+                }
             });
 
             // Show status bar
@@ -2166,7 +2212,10 @@ function loadUnlockNonNodesPage( tgtNodes ) {
                     msg : 'out=' + statBarId + ';cmd=unlock;tgt=' + tgtNodes
                 },
 
-                success : updateStatusBar
+                success : function(data) {
+                    data = decodeRsp(data);
+                    updateStatusBar(data);
+                }
             });
 
             // Show status bar
@@ -2232,7 +2281,10 @@ function loadUnlockNonNodesPage( tgtNodes ) {
                 msg  : 'out=' + statBarId + ';keyBar=' + keyBarId +';cmd=unlock;tgt=' + tgtNodes
             },
 
-                success : updateKeyBar
+                success : function(data) {
+                    data = decodeRsp(data);
+                    updateKeyBar(data);
+                }
             });
 
             // Show status bar
@@ -2339,6 +2391,7 @@ function updateScriptBar(data) {
     }
 
 }
+
 
 /**
  * Load script page
@@ -2499,7 +2552,10 @@ function powerNode(node, power2) {
             msg : node
         },
 
-        success : updatePowerStatus
+        success : function(data) {
+            data = decodeRsp(data);
+            updatePowerStatus(data);
+        }
     });
 }
 
@@ -2597,7 +2653,10 @@ function loadDeletePage(tgtNodes) {
                 msg : 'out=' + statBarId + ';cmd=' + cmd + ';tgt=' + tgtNodes
             },
 
-            success : updateStatusBar
+            success : function(data) {
+                data = decodeRsp(data);
+                updateStatusBar(data);
+            }
         });
 
         // Show status bar loader
@@ -2813,7 +2872,10 @@ function runScript(inst) {
             msg : 'out=scriptStatusBar' + inst + ';cmd=xdsh;tgt=' + tgts
         },
 
-        success : updateStatusBar
+        success : function(data) {
+            data = decodeRsp(data);
+            updateStatusBar(data);
+        }
     });
 }
 
@@ -3058,7 +3120,10 @@ function createCommentsToolTip(comment) {
                 msg : 'out=nodesTab;tgt=' + node
             },
 
-            success: showChdefOutput
+            success: function(data) {
+                data = decodeRsp(data);
+                showChdefOutput(data);
+            }
         });
 
         // Hide cancel and save links
@@ -3130,7 +3195,10 @@ function createStatusToolTip() {
                 msg : ''
             },
 
-            success : openConfXcatMon
+            success : function(data) {
+                data = decodeRsp(data);
+                openConfXcatMon(data);
+            }
         });
     });
 
@@ -3209,6 +3277,7 @@ function openConfXcatMon(data) {
                     },
 
                     success : function(data){
+                        data = decodeRsp(data);
                         openDialog('info', data.rsp[0]);
                     }
                 });
@@ -3237,6 +3306,7 @@ function openConfXcatMon(data) {
                     },
 
                     success : function(data){
+                        data = decodeRsp(data);
                         openDialog('info', data.rsp[0]);
                     }
                 });
@@ -3568,6 +3638,7 @@ function discoverVMNodes(tgtNodes) {
                 msg  : statBarId
             },
             success: function(data) {
+                data = decodeRsp(data);
                 updateDiscoverStatusBar( data, 1 );
             }
         });
@@ -3595,6 +3666,7 @@ function discoverVMNodes(tgtNodes) {
                 msg  : statBarId
             },
             success: function(data) {
+                data = decodeRsp(data);
                 updateDiscoverStatusBar( data, 1 );
             }
         });
@@ -3622,6 +3694,7 @@ function discoverVMNodes(tgtNodes) {
                 msg  : statBarId
             },
             success: function(data) {
+                data = decodeRsp(data);
                 updateDiscoverStatusBar( data, 1 );
             }
         });
@@ -3648,6 +3721,7 @@ function discoverVMNodes(tgtNodes) {
                 msg  : statBarId
             },
             success: function(data) {
+                data = decodeRsp(data);
                 updateDiscoverStatusBar( data, 1 );
             }
         });
@@ -3686,6 +3760,7 @@ function updateDiscoverStatusBar( data, preformatted ) {
     $( '#' + statBarId ).find( 'div' ).append( out );
     statBar.show();
 }
+
 
 /**
  * Load set node properties page
@@ -3804,7 +3879,10 @@ function editNodeProps(tgtNode) {
                 msg : 'out=' + newTabId + ';tgt=' + tgtNode
             },
 
-            success: showChdefOutput
+            success: function(data) {
+                data = decodeRsp(data);
+                showChdefOutput(data);
+            }
         });
     });
     editPropsForm.append(saveBtn);
@@ -3952,6 +4030,7 @@ function openSetAttrsDialog() {
                      */
                     success: function(data) {
                         // Get output
+                        data = decodeRsp(data);
                         var out = data.rsp;
                         var node = data.msg.replace('node=', '');
 
@@ -4016,6 +4095,7 @@ function monitorNode(node, monitor) {
                  */
                 success : function(data) {
                     // Get response
+                    data = decodeRsp(data);
                     var out = data.rsp[0].split(/\n/);
 
                     // Go through each line
@@ -4052,6 +4132,7 @@ function monitorNode(node, monitor) {
                             },
 
                             success : function(data) {
+                                data = decodeRsp(data);
                                 // Remove any warnings
                                 $('#nodesTab').find('.ui-state-error').remove();
 
@@ -4066,7 +4147,10 @@ function monitorNode(node, monitor) {
                                         msg : ''
                                     },
 
-                                    success : loadGangliaStatus
+                                    success : function(data) {
+                                        data = decodeRsp(data);
+                                        loadGangliaStatus(data);
+                                    }
                                 });
                             }
                         });
@@ -4085,6 +4169,7 @@ function monitorNode(node, monitor) {
                 },
 
                 success : function(data) {
+                    data = decodeRsp(data);
                     // Remove any warnings
                     $('#nodesTab').find('.ui-state-error').remove();
                 }
@@ -4109,6 +4194,7 @@ function monitorNode(node, monitor) {
             },
 
             success : function(data) {
+                data = decodeRsp(data);
                 // Hide ganglia loader
                 var gangliaCol = $('#' + nodesTableId + '_wrapper .dataTables_scrollHead .datatable thead tr th:eq(4)');
                 gangliaCol.find('img').hide();
@@ -4201,23 +4287,26 @@ function advancedLoad(group){
             shortzHcps.push(args[0]);
             zhcpHash[args[0]] = 1;
 
-        // If there are no disk pools or network names cookie for this hcp
-        if (!$.cookie('xcat_' + args[0] + 'diskpools') || !$.cookie('xcat_' + args[0] + 'networks')) {
-            // Check if SMAPI is online
-            $.ajax({
-                url : 'lib/cmd.php',
-                dataType : 'json',
-                data : {
-                    cmd : 'lsvm',
-                    tgt : args[0],
-                    args : '',
-                    msg : 'group=' + group + ';hcp=' + args[0]
-                },
+            // If there are no disk pools or network names cookie for this hcp
+            if (!$.cookie('xcat_' + args[0] + 'diskpools') || !$.cookie('xcat_' + args[0] + 'networks')) {
+                // Check if SMAPI is online
+                $.ajax({
+                    url : 'lib/cmd.php',
+                    dataType : 'json',
+                    data : {
+                        cmd : 'lsvm',
+                        tgt : args[0],
+                        args : '',
+                        msg : 'group=' + group + ';hcp=' + args[0]
+                    },
 
-                // Load hardware control point specific info
-                // Get disk pools and network names
-                success : loadHcpInfo
-            });
+                    // Load hardware control point specific info
+                    // Get disk pools and network names
+                    success : function(data) {
+                        data = decodeRsp(data);
+                        loadHcpInfo(data);
+                    }
+                });
             }
         }
     } // End of for
@@ -4238,6 +4327,7 @@ function advancedLoad(group){
             },
 
             success : function(data) {
+                data = decodeRsp(data);
                 setzVMCookies(data);
             }
         });

@@ -56,6 +56,7 @@ sub subvars {
     my $media_dir        = shift;
     my $platform         = shift;
     my $partitionfileval = shift;
+    my $tmpl_hash = shift;
     my %namedargs = @_; #further expansion of this function will be named arguments, should have happened sooner.
 
     unless ($namedargs{reusemachinepass}) {
@@ -88,10 +89,8 @@ sub subvars {
     my $master;
 
     #the "xcatmaster" attribute of the node
-    my $noderestab = xCAT::Table->new('noderes');
-    my $et = $noderestab->getNodeAttribs($node, ['xcatmaster']);
-    if ($et and $et->{'xcatmaster'}) {
-        $master = $et->{'xcatmaster'};
+    if ($tmpl_hash->{'xcatmaster'}) {
+        $master = $tmpl_hash->{'xcatmaster'};
     }
 
     unless ($master) {
@@ -375,9 +374,7 @@ sub subvars {
             $inc =~ s/#UNCOMMENTOENABLESSH#/ /g;
         }
 
-        my $nrtab = xCAT::Table->new("noderes");
-        my $tftpserver = $nrtab->getNodeAttribs($node, ['tftpserver']);
-        my $sles_sdk_media = "http://" . $tftpserver->{tftpserver} . $media_dir . "/sdk1";
+        my $sles_sdk_media = "http://" . $tmpl_hash->{tftpserver} . $media_dir . "/sdk1";
 
         $inc =~ s/#SLES_SDK_MEDIA#/$sles_sdk_media/eg;
 

@@ -83,7 +83,8 @@ sub process_request {
         'cecsetup'            => \&web_cecsetup,
         'deletefile'          => \&web_deletefile,
         'createfolder'        => \&web_createfolder,
-        'getrepospace'        => \&web_getrepospace
+        'getrepospace'        => \&web_getrepospace,
+        'verifynode'          => \&web_verifynode,
     );
 
     # Check whether the request is authorized or not
@@ -1982,8 +1983,8 @@ sub web_summary {
     while (my ($key, $value) = each(%{$attrs})) {
         web_attrcount($value->[0]->{'os'},          \%oshash);
         web_attrcount($value->[0]->{'arch'},        \%archhash);
-        web_attrcount($value->[0]->{'provmethod'}, \%provhash);
-        web_attrcount($value->[0]->{'nodetype'},   \%typehash);
+        web_attrcount($value->[0]->{'provmethod'},, \%provhash);
+        web_attrcount($value->[0]->{'nodetype'},,   \%typehash);
     }
 
     $attrs = $nodelistTab->getNodesAttribs(\@nodes, ['status']);
@@ -2714,6 +2715,29 @@ sub web_getrepospace() {
     $space =~ s/^\s*//;
 
     $callback->({ info => $space });
+}
+
+sub web_verifynode() {
+    my ( $request, $callback, $sub_req ) = @_;
+    my $cmdOpts = '';
+    my $out;
+
+    # Loop to handle all options passed.  We don't know how many they will pass
+    # so we look for 'end' to signify the end.  We set a loop variable to 500 which
+    # we know is much larger than the expected number of arguments.  This prevents
+    # the loop from going on forever should there be an error on the javascript side
+    # an the 'end' was not passed.
+    for ( my $i = 0 ; $i < 500 ; $i++ ) {
+        if ( $request->{arg}->[$i] ne 'end' ) {
+            $cmdOpts = "$cmdOpts $request->{arg}->[$i]";
+        } else {
+            last;
+        }
+    }
+
+    $out = `/opt/xcat/bin/verifynode $cmdOpts`;
+
+    $callback->( { info => $out });
 }
 
 1;

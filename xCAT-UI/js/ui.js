@@ -163,7 +163,7 @@ Table.prototype.init = function(headers) {
     var headRow = $('<tr></tr>');
 
     // Append headers
-    for (var i in headers) {
+    for ( var i in headers) {
         headRow.append('<th>' + headers[i] + '</th>');
     }
 
@@ -195,7 +195,7 @@ Table.prototype.add = function(rowCont) {
 
     // Create a column for each content
     var tableCol;
-    for (var i in rowCont) {
+    for ( var i in rowCont) {
         tableCol = $('<td></td>');
         tableCol.append(rowCont[i]);
         tableRow.append(tableCol);
@@ -249,7 +249,7 @@ DataTable.prototype.init = function(headers) {
     var headRow = $('<tr></tr>');
 
     // Append headers
-    for (var i in headers) {
+    for ( var i in headers) {
         headRow.append('<th>' + headers[i] + '</th>');
     }
 
@@ -281,7 +281,7 @@ DataTable.prototype.add = function(rowCont) {
 
     // Create a column for each content
     var tableCol;
-    for (var i in rowCont) {
+    for ( var i in rowCont) {
         tableCol = $('<td></td>');
         tableCol.append(rowCont[i]);
         tableRow.append(tableCol);
@@ -470,7 +470,7 @@ function initPage() {
     // Load jQuery stylesheets
     includeCss("css/jquery.dataTables.css");
     includeCss("css/superfish.css");
-    // includeCss("css/jstree.css");
+    includeCss("css/jstree.css");
     includeCss("css/jquery.jqplot.css");
 
     // Load custom stylesheet
@@ -483,14 +483,11 @@ function initPage() {
     includeJs("js/jquery/jquery.contextmenu.min.js");
     includeJs("js/jquery/superfish.min.js");
     includeJs("js/jquery/hoverIntent.min.js");
-    // includeJs("js/jquery/jquery.jstree.min.js");
+    includeJs("js/jquery/jquery.jstree.min.js");
     includeJs("js/jquery/tooltip.min.js");
     includeJs("js/jquery/jquery.serverBrowser.min.js");
     includeJs("js/jquery/jquery.jqplot.min.js");
     includeJs("js/jquery/jqplot.pieRenderer.min.js");
-    includeJs("js/jquery/jqplot.barRenderer.min.js");
-    includeJs("js/jquery/jqplot.pointLabels.min.js");
-    includeJs("js/jquery/jqplot.categoryAxisRenderer.min.js");
     includeJs("js/jquery/jqplot.dateAxisRenderer.min.js");
     includeJs("js/jquery/jquery.topzindex.min.js");
 
@@ -501,12 +498,7 @@ function initPage() {
     includeJs("js/provision/provision.js");
 
     // Custom plugins
-    includeJs("js/custom/esx.js");
-    includeJs("js/custom/kvm.js");
-    includeJs("js/custom/blade.js");
-    includeJs("js/custom/ipmi.js");
     includeJs("js/custom/zvm.js");
-    includeJs("js/custom/hmc.js");
     includeJs("js/custom/customUtils.js");
 
     // Enable settings link
@@ -1065,4 +1057,45 @@ function isInteger(value){
     } else {
         return false;
     }
+}
+
+/**
+ * Remove html encoding from php htmlentities() conversion
+ *
+ * @param encodedString
+ */
+function decodeHTML(encodedString) {
+    var txt = document.createElement("textarea");
+    txt.innerHTML = encodedString;
+    return txt.value;
+}
+
+/**
+ * Remove html encoding from rsp.data array and rsp.msg
+ *
+ * @param encodedData from server response
+ */
+function decodeRsp(encodedData) {
+    /* response data has rsp and msg. msg is a string.
+       rsp is a string, or array of strings or array of arrays with strings*/
+    if ( (typeof encodedData.rsp != "undefined") && (encodedData.rsp.length > 0) ) {
+        if (encodedData.rsp.constructor === Array) {
+            for (var i in encodedData.rsp) {
+                if (encodedData.rsp[i].constructor === Array) {
+                    for (var j in encodedData.rsp[i]) {
+                        encodedData.rsp[i][j] = decodeHTML(encodedData.rsp[i][j]);
+                    }
+                } else {
+                    encodedData.rsp[i] = decodeHTML(encodedData.rsp[i]);
+                }
+            }
+        } else {
+            encodedData.rsp = decodeHTML(encodedData.rsp);
+        }
+    }
+    /* msg is a string */
+    if ( (typeof encodedData.msg != "undefined") && (encodedData.msg.length > 0) ){
+        encodedData.msg = decodeHTML(encodedData.msg);
+    }
+    return encodedData;
 }

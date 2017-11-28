@@ -1,0 +1,31 @@
+2017-08-28 - OpenSSL Vulnerabilities
+====================================
+
+*Aug 28, 2017*, OpenSSL announced the following security advisories: https://www.openssl.org/news/secadv/20170828.txt 
+
+
+Advisory CVEs
+-------------
+
+* CVE-2017-3735 - **Malformed X.509 IPAddressFamily could cause OOB read** (Severity: Low)
+
+If an X.509 certificate has a malformed IPAddressFamily extension,
+OpenSSL could do a one-byte buffer overread. The most likely result
+would be an erroneous display of the certificate in text format.
+
+As this is a low severity fix, no release is being made. The fix can be
+found in the source repository (1.0.2, 1.1.0, and master branches); see
+https://github.com/openssl/openssl/pull/4276. This bug has been present
+since 2006.
+
+
+Please see the security bulletin above for patch, upgrade, or suggested work around information.
+
+Action
+------
+
+xCAT uses OpenSSL for client-server communication but **does not** ship it.  
+
+It is highly recommended to keep your OpenSSL levels up-to-date with the indicated versions in the security bulletins to prevent any potential security threats. Obtain the updated software packages from your Operating system distribution channels. 
+
+

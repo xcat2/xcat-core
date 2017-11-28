@@ -72,6 +72,7 @@ function loadServicePage(tabId) {
                         },
 
                         success : function(data) {
+                            data = decodeRsp(data);
                             setzVMCookies(data);
                         }
                     });
@@ -118,7 +119,10 @@ function queryImages(panelId) {
             msg : panelId
         },
 
-        success : configImagePanel
+        success : function(data) {
+            data = decodeRsp(data);
+            configImagePanel(data);
+        }
     });
 }
 
@@ -465,7 +469,10 @@ function imageDialog() {
                             msg : dialogId
                         },
 
-                        success : updatePanel
+                        success : function(data) {
+                            data = decodeRsp(data);
+                            updatePanel(data);
+                        }
                     });
                 }
             },
@@ -630,7 +637,10 @@ function editImageDialog(iName, iSelectable, iOsVersion, iOsArch, iOsName, iType
                             msg : dialogId
                         },
 
-                        success : updatePanel
+                        success : function(data) {
+                            data = decodeRsp(data);
+                            updatePanel(data);
+                        }
                     });
                 }
             },
@@ -683,7 +693,10 @@ function deleteImageDialog(images) {
                         args : 'rmosimage;' + images,
                         msg : dialogId
                     },
-                    success : updatePanel
+                    success : function(data) {
+                        data = decodeRsp(data);
+                        updatePanel(data);
+                    }
                 });
             },
             "Cancel": function() {
@@ -709,7 +722,10 @@ function queryGroups(panelId) {
             msg : panelId
         },
 
-        success : configGroupPanel
+        success : function(data) {
+            data = decodeRsp(data);
+            configGroupPanel(data);
+        }
     });
 }
 
@@ -1001,7 +1017,10 @@ function groupDialog() {
                             msg : dialogId
                         },
 
-                        success : updatePanel
+                        success : function(data) {
+                            data = decodeRsp(data);
+                            updatePanel(data);
+                        }
                     });
 
                     // Write IP pool file to /var/tmp
@@ -1017,6 +1036,7 @@ function groupDialog() {
                         },
 
                         success : function(data) {
+                            data = decodeRsp(data);
                             var args = data.msg.split(';');
 
                             // Create profile in xCAT
@@ -1030,7 +1050,10 @@ function groupDialog() {
                                     msg : args[0]
                                 },
 
-                                success: updatePanel
+                                success: function(data) {
+                                    data = decodeRsp(data);
+                                    updatePanel(data);
+                                }
                             });
                         }
                     });
@@ -1082,6 +1105,7 @@ function editGroupDialog(iGroup, iSelectable, iIp, iHostnames, iComments) {
         },
 
         success : function(data) {
+            data = decodeRsp(data);
         	// Populate textarea with IP pool entries
         	$('#' + data.msg).find('textarea[name="ip_pool"]').val(data.rsp[0]);
         }
@@ -1185,7 +1209,10 @@ function editGroupDialog(iGroup, iSelectable, iIp, iHostnames, iComments) {
                             msg : dialogId
                         },
 
-                        success : updatePanel
+                        success : function(data) {
+                            data = decodeRsp(data);
+                            updatePanel(data);
+                        }
                     });
 
                     // Write IP pool file to /var/tmp
@@ -1201,6 +1228,7 @@ function editGroupDialog(iGroup, iSelectable, iIp, iHostnames, iComments) {
                         },
 
                         success : function(data) {
+                            data = decodeRsp(data);
                             var args = data.msg.split(';');
 
                             // Create profile in xCAT
@@ -1214,7 +1242,10 @@ function editGroupDialog(iGroup, iSelectable, iIp, iHostnames, iComments) {
                                     msg : args[0]
                                 },
 
-                                success: updatePanel
+                                success: function(data) {
+                                    data = decodeRsp(data);
+                                    updatePanel(data);
+                                }
                             });
                         }
                     });
@@ -1269,7 +1300,10 @@ function deleteGroupDialog(groups) {
                         args : 'rmgroup;' + groups,
                         msg : dialogId
                     },
-                    success : updatePanel
+                    success : function(data) {
+                        data = decodeRsp(data);
+                        updatePanel(data);
+                    }
                 });
             },
             "Cancel": function() {

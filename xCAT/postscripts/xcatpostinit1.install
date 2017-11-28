@@ -23,6 +23,7 @@ fi
 
 [ -f /opt/xcat/xcatinfo ] && XCATSERVER=`grep 'XCATSERVER' /opt/xcat/xcatinfo |cut -d= -f2 | tr -d \'\" `
 [ -f /xcatpost/mypostscript ] && NODESTATUS=`grep 'NODESTATUS=' /xcatpost/mypostscript |awk -F = '{print $2}'|tr -d \'\" | tr A-Z a-z `
+[ -z "$NODESTATUS" ] && NODESTATUS="1"
 [ -f /xcatpost/mypostscript ] && RUNBOOTSCRIPTS=`grep 'RUNBOOTSCRIPTS=' /xcatpost/mypostscript |awk -F = '{print $2}' | tr -d \'\" | tr A-Z a-z `
 
 case $1 in

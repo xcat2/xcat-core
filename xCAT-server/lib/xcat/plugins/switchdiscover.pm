@@ -21,6 +21,7 @@ no strict;
 use Data::Dumper;
 use Socket;
 use Expect;
+use SNMP;
 use xCAT::data::switchinfo;
 
 #global variables for this module
@@ -144,7 +145,7 @@ sub parse_args {
     # Process command-line flags
     #############################################
     if (!GetOptions( \%opt,
-            qw(h|help V|verbose v|version x z w r n range=s s=s setup pdu))) {
+            qw(h|help V|verbose v|version x z w r n range=s s=s c=s setup pdu))) {
         return( usage() );
     }
 
@@ -250,6 +251,13 @@ sub parse_args {
     #########################################################
     if ( exists( $opt{n} )) {
         $globalopt{n} = 1;
+    }
+
+    #########################################################
+    # Accept the community string from user
+    #########################################################
+    if ( exists( $opt{c} )) {
+        $community=$opt{c};
     }
 
     #########################################################
@@ -892,13 +900,6 @@ sub snmp_scan {
     }
     my @lines = split /\n/, $result;
   
-    #set community string for switch
-    $community = "public";
-    my @snmpcs = xCAT::TableUtils->get_site_attribute("snmpc");
-    my $tmp    = $snmpcs[0];
-    if (defined($tmp)) { $community = $tmp }
-
-
     foreach my $line (@lines) {
         my @array = split / /, $line;
         if ($line =~ /\b(\d{1,3}(?:\.\d{1,3}){3})\b/)
@@ -954,20 +955,47 @@ sub get_snmpvendorinfo {
     my $request = shift;
     my $ip  = shift;
     my $snmpwalk_vendor;
+    my $result;
+    my $rc=1;
 
+    #checking snmp connection
+    #during discovery phase, xCAT will not know the community string for snmp
+    #so, will try community string from following way:
+    #  1) -c options from user input
+    #  2) snmpc attribute defined in the site table
+    #  3) default community string for the switches.
 
-    #Ubuntu only takes OID
-    #get sysDescr.0";
-    my $ccmd = "snmpwalk -Os -v1 -c $community $ip 1.3.6.1.2.1.1.1";
-    if (exists($globalopt{verbose}))    {
-       send_msg($request, 0, "Process command: $ccmd\n");
+    my @comm_list;
+    my $snmpver = '1';
+
+    my @snmpcs = xCAT::TableUtils->get_site_attribute("snmpc");
+    my $snmp_site    = $snmpcs[0];
+
+    if ($community) {
+        push @comm_list, $community;
     }
+    if ($snmp_site) {
+        push @comm_list, $snmp_site;
+    }
+    push @comm_list, 'public';
 
-    my $result = xCAT::Utils->runcmd($ccmd, 0);
-    if ($::RUNCMD_RC != 0)
-    {
+    foreach $comms(@comm_list) {
+        #get sysDescr.0";
+        my $ccmd = "snmpwalk -Os -v1 -c $comms $ip 1.3.6.1.2.1.1.1";
         if (exists($globalopt{verbose}))    {
-            send_msg($request, 1, "Could not process this command: $ccmd" );
+           send_msg($request, 0, "Process command: $ccmd\n");
+        }
+        $result = xCAT::Utils->runcmd($ccmd, 0);
+        if ($::RUNCMD_RC == 0)
+        {
+            $community = $comms;
+            $rc=0;
+            last;
+        }
+    }
+    if ($rc == 1) {
+        if (exists($globalopt{verbose}))    {
+            send_msg($request, 1, "Could not process snmpwalk command to get sysDescr, please verify community string" );
         }
         return $snmpwalk_vendor;
     }
@@ -1439,6 +1467,10 @@ sub switchsetup {
                 send_msg($request, 0, "output = $out\n");
             } else {
                 send_msg($request, 0, "call to config $mytype switches $switches\n");
+                if ($mytype =~ /Mellanox/) {
+                    send_msg($request, 0, "NOTE: If command takes too long for Mellanox IB switch, please CTRL C out of the command\n");
+                    send_msg($request, 0, "then run $config_script --switches $switches --all\n");
+                }
                 my $out = `$config_script --switches $switches --all`;
                 send_msg($request, 0, "output = $out\n");
             }

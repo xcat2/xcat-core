@@ -1,6 +1,6 @@
 /**
  * Load rscan page
- * 
+ *
  * @param tgtNodes Targets to run rscan against
  */
 function loadRscanPage(tgtNodes) {
@@ -14,10 +14,10 @@ function loadRscanPage(tgtNodes) {
             nodes[osBase] = 1;
         }
     }
-    
+
     // Get nodes tab
     var tab = getNodesTab();
-    
+
     // Generate new tab ID
     var inst = 0;
     var newTabId = 'rscanTab' + inst;
@@ -29,7 +29,7 @@ function loadRscanPage(tgtNodes) {
 
     // Create rscan form
     var rscanForm = $('<div class="form"></div>');
-    
+
 	// Create status bar
     var statBarId = 'rscanStatusBar' + inst;
     var statBar = createStatusBar(statBarId).hide();
@@ -37,31 +37,31 @@ function loadRscanPage(tgtNodes) {
     // Create loader
     var loader = createLoader('rscanLoader');
     statBar.find('div').append(loader);
-    
+
 	// Create info bar
     var infoBar = createInfoBar('Collects node information from one or more hardware control points');
     rscanForm.append(statBar, infoBar);
-    
+
 	// Create VM fieldset
     var vmFS = $('<fieldset></fieldset>');
     var vmLegend = $('<legend>Virtual Machine</legend>');
     vmFS.append(vmLegend);
     rscanForm.append(vmFS);
-    
+
     var vmAttr = $('<div style="display: inline-table; vertical-align: middle;"></div>');
     vmFS.append($('<div style="display: inline-table; vertical-align: middle;"><img src="images/provision/computer.png"></img></div>'));
     vmFS.append(vmAttr);
-    
+
 	// Create options fieldset
     var optionsFS = $('<fieldset></fieldset>');
     var optionsLegend = $('<legend>Options</legend>');
     optionsFS.append(optionsLegend);
     rscanForm.append(optionsFS);
-    
+
     var optionsAttr = $('<div style="display: inline-table; vertical-align: middle;"></div>');
     optionsFS.append($('<div style="display: inline-table; vertical-align: middle;"><img src="images/provision/setting.png" style="width: 70px;"></img></div>'));
     optionsFS.append(optionsAttr);
-    
+
     // Create target node or group input
     var target = $('<div><label>Target node range:</label><input type="text" name="target" value="' + tgtNodes + '" title="The node or node range to scan"/></div>');
     vmAttr.append(target);
@@ -69,12 +69,12 @@ function loadRscanPage(tgtNodes) {
     // Create options
     var optsList = $('<ul></ul>');
     optionsAttr.append(optsList);
-    
+
     optsList.append('<li><input type="checkbox" name="u"/>Updates and then prints out node definitions in the xCAT database for CEC/BPA</li>');
     optsList.append('<li><input type="checkbox" name="w"/>Writes output to xCAT database</li>');
     optsList.append('<li><input type="checkbox" name="x"/>XML format</li>');
     optsList.append('<li><input type="checkbox" name="z"/>Stanza formated output</li>');
-    
+
     // Generate tooltips
     rscanForm.find('div input[title]').tooltip({
         position: "center right",
@@ -89,7 +89,7 @@ function loadRscanPage(tgtNodes) {
             tooltip : "mouseover,mouseout"
         }
     });
-    
+
     /**
      * Ok
      */
@@ -101,7 +101,7 @@ function loadRscanPage(tgtNodes) {
     okBtn.bind('click', function(event) {
     	// Remove any warning messages
     	$(this).parents('.ui-tabs-panel').find('.ui-state-error').remove();
-    	
+
         // Check inputs
         var ready = true;
         var inputs = $("#" + newTabId + " input[type='text']");
@@ -121,7 +121,7 @@ function loadRscanPage(tgtNodes) {
         for ( var i = 0; i < chkBoxes.length; i++) {
             opt = chkBoxes.eq(i).attr('name');
             optStr += '-' + opt;
-            
+
             // Append ; to end of string
             if (i < (chkBoxes.length - 1)) {
                 optStr += ';';
@@ -150,7 +150,10 @@ function loadRscanPage(tgtNodes) {
                     msg : 'out=' + statBarId + ';cmd=rscan;tgt=' + tgts
                 },
 
-                success : updateStatusBar
+                success : function(data) {
+                    data = decodeRsp(data);
+                    updateStatusBar(data);
+                }
             });
 
             // Show status bar

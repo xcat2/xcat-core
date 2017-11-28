@@ -1,0 +1,79 @@
+#!/usr/bin/perl -w
+#use Data::Dumper;
+use Getopt::Long;
+
+sub usage{
+    print "Usage: dhcphelper -h \n";
+    print "\n";
+    print "       dhcphelper -r|--rm -m|--mac <mac address> [ -a|--ip <ip address>] [ -n|--name <node name>]\n";
+    print "       delete the dhcp lease of specified <mac>,<ip address> and <node name>\n";
+    print "\n";
+}
+
+my $help;
+my $rmop;
+my $mac;
+my $ip;
+my $hostname;
+GetOptions ("m|mac=s" => \$mac,    # numeric
+            "a|ip=s"   => \$ip,      # string
+            "n|name=s"   => \$hostname,      # string
+            "r|rm"   => \$rmop,      # flag
+            "h|help"  => \$help)   # flag
+or &usage;
+
+if($help){
+    &usage;
+    exit 0;
+}elsif($rmop){
+    my $out=qx(tabdump -w key==omapi -w username==xcat_key  passwd |tail -n1|awk -F, '{print \$2","\$3}');
+    $out =~ s/("|\n)//g;
+    my ($id,$passwd)=split(',',$out);
+    if(-z "$id" || -z "$passwd" ){
+        print "Error: no 'omapi' entry defined in passwd table!";
+        exit 1;
+    }
+    
+    my $omshell;
+    open($omshell, "|/usr/bin/omshell >/dev/null");
+    print $omshell "key "
+      . $id . " \""
+      . $passwd . "\"\n";
+    print $omshell "connect\n";
+    
+    if($hostname){
+        print $omshell "new host\n";
+        print $omshell
+          "set name = \"$hostname\"\n";    #Find and destroy conflict name
+        print $omshell "open\n";
+        print $omshell "remove\n";
+        print $omshell "close\n";
+    }
+    
+    if ($mac)
+    {
+        print $omshell "new host\n";
+        print $omshell "set hardware-address = " . $mac
+          . "\n";                      #find and destroy mac conflict
+        print $omshell "open\n";
+        print $omshell "remove\n";
+        print $omshell "close\n";
+    }
+    
+    if($ip){
+       print $omshell "new host\n";
+       print $omshell
+        "set ip-address = $ip\n";    #find and destroy ip conflict
+       print $omshell "open\n";
+       print $omshell "remove\n";
+       print $omshell "close\n";
+    }
+    close($omshell);
+}else{
+    &usage;
+    exit 1;
+}
+
+
+#print "$mac-$ip-$hostname\n"
+exit 0;

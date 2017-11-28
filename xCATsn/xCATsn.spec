@@ -52,7 +52,9 @@ Requires: /etc/xinetd.d/tftp
 %endif
 
 #support mixed cluster
+%ifnarch s390x
 Requires: elilo-xcat xnba-undi
+%endif
 
 %ifarch i386 i586 i686 x86 x86_64
 Requires: syslinux

@@ -145,7 +145,7 @@ my %usage = (
        rspconfig <noderange> [garp=<number of 1/2 second>]
        rspconfig <noderange> [userid=<userid> username=<username> password=<password>]
    OpenBMC specific:
-       rspconfig <noderange> [ip|netmask|gateway|hostname|vlan]
+       rspconfig <noderange> [ipsrc|ip|netmask|gateway|hostname|vlan]
    iDataplex specific:
        rspconfig <noderange> [thermprofile]
        rspconfig <noderange> [thermprofile=<two digit number from chassis>]
@@ -250,13 +250,16 @@ my %usage = (
        lsvm <noderange> [-a|--all]
    PPC (using Direct FSP Management) specific:
        lsvm <noderange> [-l|--long] --p775
-       lsvm <noderange> 
+       lsvm <noderange>
    zVM specific:
        lsvm noderange
        lsvm noderange --getnetworknames
        lsvm noderange --getnetwork network_name
        lsvm noderange --diskpoolnames
-       lsvm noderange --diskpool pool_name",
+       lsvm noderange --diskpool pool_name
+       lsvm noderange --queryalldisks
+       lsvm noderange --querypagevolumes
+       lsvm noderange --queryspoolvolumes",
     "chvm" =>
       "Usage:
    Common:
@@ -270,7 +273,7 @@ my %usage = (
        chvm <noderange> [lparname=<*|name>]
        chvm <noderange> [vmcpus=min/req/max] [vmmemory=min/req/max]
                         [vmothersetting=hugepage:N,bsr:N]
-                        [add_physlots=drc_index1,drc_index2...] 
+                        [add_physlots=drc_index1,drc_index2...]
                         [add_vmnics=vlan1,vlan2] [add_vmstorage=<N|viosnode:slotid>] [--vios]
        chvm <noderange> [del_physlots=drc_index1,drc_index2...]
        chvm <noderange> [del_vadapter=slotid]
@@ -328,7 +331,7 @@ my %usage = (
        pdudiscover [<noderange>|--range ipranges] [-r|-x|-z] [-w] [-V|--verbose] [--setup]",
     "switchdiscover" =>
       "Usage: switchdiscover [-h|--help|-v|--version]
-       switchdiscover [<noderange>|--range ipranges] [-s scan_methods] [-r|-x|-z] [-w] [-V|--verbose] [--setup]",
+       switchdiscover [<noderange>|--range ipranges] [-s scan_methods] [-c community] [-r|-x|-z] [-w] [-V|--verbose] [--setup]",
     "switchprobe" =>
       "Usage: switchprobe [<noderange>] [-V|--verbose | -c|--check]",
     "makentp" =>
@@ -450,7 +453,7 @@ Options:
     [-f|--snsync] Performs File Syncing to the service nodes that service 
         the nodes in the noderange.
 
-    [-g|--genmypost] Will generate a new mypostscript file for the  
+    [-g|--genmypost] Will generate a new mypostscript file for the
         the nodes in the noderange, if site precreatemypostscripts is 1 or YES.
 
     [-l|--user] User name to run the updatenode command.  It overrides the

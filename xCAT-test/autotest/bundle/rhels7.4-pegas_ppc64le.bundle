@@ -33,11 +33,11 @@ reventlog_null
 reventlog_all
 reventlog_clear
 reventlog_numofentries
-rspconfig_ip
+rspconfig_set_ip
 rspconfig_ip_invalid
-rspconfig_netmask
+rspconfig_set_netmask
 rspconfig_netmask_invalid
-rspconfig_gateway
+rspconfig_set_gateway
 rspconfig_gateway_invalid
 rspconfig_node_invalid
 rspconfig_ip_null

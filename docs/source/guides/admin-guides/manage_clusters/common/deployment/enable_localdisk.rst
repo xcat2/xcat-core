@@ -1,3 +1,5 @@
+.. _setup_localdisk_label:
+
 Enabling the localdisk Option
 -----------------------------
 
@@ -80,6 +82,6 @@ For the files/directories that you would like xCAT to store on the local disk, a
 
 ``Note``: you do not need to specify the swap space in the litefile table. Just putting it in the partitionfile config file is enough.
 
-Add an entry in policy table to permit the running of the ``getpartitioin`` command from the node ::
+Add an entry in policy table to permit the running of the ``getpartition`` command from the node ::
 
     chtab priority=7.1 policy.commands=getpartition policy.rule=allow

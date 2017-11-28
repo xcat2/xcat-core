@@ -47,7 +47,7 @@ OpenBMC specific:
 =================
 
 
-\ **rspconfig**\  \ *noderange*\  {\ **ip | netmask | gateway | hostname | vlan | sshcfg**\ }
+\ **rspconfig**\  \ *noderange*\  {\ **ipsrc | ip | netmask | gateway | hostname | vlan | sshcfg**\ }
 
 
 MPA specific:
@@ -406,9 +406,15 @@ OPTIONS
  
 
 
+\ **ipsrc**\ 
+ 
+ Get the IP source for OpenBMC.
+ 
+
+
 \ **ip**\ 
  
- The ip address.
+ The IP address.
  
 
 

@@ -1,0 +1,9 @@
+# This file maps the OpenStack version numbers to their OpenStack release name.
+15.      OCATA
+14.      NEWTON
+13.      MIKATA
+12.      LIBERTY
+2015.    KILO
+2014.2.  JUNO
+2014.1.  ICEHOUSE
+2013.2.  HAVANA

@@ -3,7 +3,7 @@
 
 =head1
   xCAT plugin package to handle getpartition command
-  Generally, the getpartitioin command is called from the stateless 
+  Generally, the getpartition command is called from the stateless
     node during the booting period to get the partition configureation
     infomation to part the hard disk on the stateless node and to 
     manage the local disk space for statelite and swap space.

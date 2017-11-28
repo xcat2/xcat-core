@@ -63,7 +63,7 @@ The steps to configure the certificate for https server: ::
     export sslcfgfile=/etc/apache2/sites-enabled/ssl.conf     # ubuntu
 
     sed -i 's/^\(\s*\)SSLCertificateFile.*$/\1SSLCertificateFile \/etc\/xcat\/cert\/server-cred.pem/' $sslcfgfile    
-    sed -i 's/^\(\s*\)SSLCertificateKeyFile.*$/\1SSLCertificateKeyFile \/etc\/xcat\/cert\/server-cred.pem/' $sslcfgfile
+    sed -i 's/^\(\s*SSLCertificateKeyFile.*\)$/#\1/' $sslcfgfile
         
     service httpd restart        # rhel
     service apache2 restart      # sles/ubuntu

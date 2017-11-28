@@ -24,4 +24,3 @@ Alias /xcat-doc "/opt/xcat/share/doc"
  AllowOverride None
  Require all granted
 </Directory>
-

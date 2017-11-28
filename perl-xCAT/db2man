@@ -271,6 +271,36 @@ As of xCAT 2.8.1, you can use a modified version of the regular expression suppo
 
 http://xcat-docs.readthedocs.org/en/latest/guides/admin-guides/basic_concepts/xcat_db/regexp_db.html#easy-regular-expressions
 
+=head2 Regular Expression Helper Functions
+
+xCAT provides several functions that can simplify regular expressions.
+
+=over 4
+
+=item B<a2idx>
+
+ASCII Character to Index
+
+=item B<a2zidx>
+
+ASCII Character to 0-Index
+
+=item B<dim2idx>
+
+Dimensions to Index
+
+=item B<skip>
+
+Skip indices
+
+=item B<ipadd>
+
+Add to an IP address
+
+=back
+
+http://xcat-docs.readthedocs.org/en/latest/guides/admin-guides/basic_concepts/xcat_db/regexp_db.html#regular-expression-helper-functions
+
 =head1 OBJECT DEFINITIONS
 
 Because it can get confusing what attributes need to go in what tables, the xCAT database can also

@@ -15,7 +15,10 @@ function loadNodesetPage(tgtNodes) {
             msg : ''
         },
 
-        success : setOSImageCookies
+        success : function(data) {
+            data = decodeRsp(data);
+            setOSImageCookies(data);
+        }
     });
 
     // Get nodes tab
@@ -163,7 +166,10 @@ function loadNodesetPage(tgtNodes) {
                     msg : 'cmd=nodeadd;inst=' + inst
                 },
 
-                success : updateNodesetStatus
+                success : function(data) {
+                    data = decodeRsp(data);
+                    updateNodesetStatus(data);
+                }
             });
 
             // Show status bar
@@ -251,7 +257,10 @@ function updateNodesetStatus(data) {
                     msg : 'cmd=makehosts;inst=' + inst
                 },
 
-                success : updateNodesetStatus
+                success : function(data) {
+                    data = decodeRsp(data);
+                    updateNodesetStatus(data);
+                }
             });
         }
     }
@@ -278,7 +287,10 @@ function updateNodesetStatus(data) {
                 msg : 'cmd=nodeset;inst=' + inst
             },
 
-            success : updateNodesetStatus
+            success : function(data) {
+                data = decodeRsp(data);
+                updateNodesetStatus(data);
+            }
         });
     }
 

@@ -53,6 +53,7 @@ packimage_v
 pping_h
 pping_v
 pping_node
+pping_invalidnode
 getmacs_noderange
 getmacs_d
 getmacs_f_D
