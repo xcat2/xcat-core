@@ -1581,8 +1581,9 @@ sub parse_node_info {
     foreach my $node (@$noderange) {
         if (defined($openbmc_hash->{$node}->[0])) {
             if ($openbmc_hash->{$node}->[0]->{'bmc'}) {
-                $node_info{$node}{bmc} = $openbmc_hash->{$node}->[0]->{'bmc'};
-            } else {
+                $node_info{$node}{bmc} = xCAT::NetworkUtils::getNodeIPaddress($openbmc_hash->{$node}->[0]->{'bmc'});
+            }
+            unless($node_info{$node}{bmc}) {
                 xCAT::SvrUtils::sendmsg("Error: Unable to get attribute bmc", $callback, $node);
                 $rst = 1;
                 next;
@@ -2411,18 +2412,10 @@ sub rspconfig_response {
     $response_info = decode_json $response->content if ($response);
 
     if ($node_info{$node}{cur_status} eq "RSPCONFIG_GET_RESPONSE") {
-        my $address         = "n/a";
-        my $gateway         = "n/a";
-        my $prefix          = "n/a";
-        my $netmask         = "n/a";
-        my $vlan            = 0;
         my $hostname        = "";
         my $default_gateway = "n/a";
-        my $adapter_id      = "n/a";
-        my $ipsrc           = "n/a";
-        my $nic;
+        my %nicinfo         = ();
         my $error;
-        my $path;
         my @output;
         my $grep_string = $status_info{RSPCONFIG_GET_RESPONSE}{argv};
         foreach my $key_url (keys %{$response_info->{data}}) {
@@ -2437,12 +2430,26 @@ sub rspconfig_response {
                 }
             }
 
-
-            ($path, $adapter_id) = (split(/\/ipv4\//, $key_url));
+            my ($path, $adapter_id) = (split(/\/ipv4\//, $key_url));
             
             if ($adapter_id) {
+                my $nic = $path;
+                $nic =~ s/(.*\/)//g;
+                if (defined($content{Origin}) and ($content{Origin} =~ /LinkLocal/)) {
+                    next;
+                }
+                unless (defined($nicinfo{$nic}{address})) {
+                    $nicinfo{$nic}{address} = "n/a";
+                    $nicinfo{$nic}{gateway} = "n/a";
+                    $nicinfo{$nic}{ipsrc}   = "n/a";
+                    $nicinfo{$nic}{netmask} = "n/a";
+                    $nicinfo{$nic}{prefix}  = "n/a";
+                    $nicinfo{$nic}{vlan}    = "Disable";
+                }
+
+
                 if (defined($content{Address}) and $content{Address}) {
-                    unless ($address =~ /n\/a/) {
+                    unless ($nicinfo{$nic}{address} =~ /n\/a/) {
                         # We have already processed an entry with adapter information.
                         # This must be a second entry. Display an error. Currently only supporting
                         # an adapter with a single IP address set.
@@ -2450,49 +2457,63 @@ sub rspconfig_response {
                         $node_info{$node}{cur_status} = "";
                         last;
                     }
-                    $address = $content{Address};
+                    $nicinfo{$nic}{address} = $content{Address};
                 }
                 if (defined($content{Gateway}) and $content{Gateway}) {
-                    $gateway = $content{Gateway};
+                    $nicinfo{$nic}{gateway} = $content{Gateway};
                 }
                 if (defined($content{PrefixLength}) and $content{PrefixLength}) {
-                    $prefix = $content{PrefixLength};
+                    $nicinfo{$nic}{prefix} = $content{PrefixLength};
                 }
                 if (defined($content{Origin})) {
-                    $ipsrc = $content{Origin};
-                    $ipsrc =~ s/^.*\.(\w+)/$1/;
+                    $nicinfo{$nic}{ipsrc} = $content{Origin};
+                    $nicinfo{$nic}{ipsrc} =~ s/^.*\.(\w+)/$1/;
                 }
                  
                 if (defined($response_info->{data}->{$path}->{Id})) {
-                    $vlan = $response_info->{data}->{$path}->{Id};
+                    $nicinfo{$nic}{vlan} = $response_info->{data}->{$path}->{Id};
                 }
-                $nic = $path;
-                $nic =~ s/(.*\/)//g;
             }
+        }
+        if (scalar (keys %nicinfo) == 0) {
+            $error = "No valid BMC network information obtain";
+            $node_info{$node}{cur_status} = "";  
         }
         if ($error) {
             xCAT::SvrUtils::sendmsg("$error", $callback, $node);
         } else {
+            my @address = ();
+            my @ipsrc = ();
+            my @netmask = ();
+            my @gateway = ();
+            my @vlan = (); 
+            my @nics = keys %nicinfo;
+            foreach my $nic (@nics) {
+                my $addon_info = '';
+                if ($#nics > 1) {
+                    $addon_info = " for $nic";
+                }
+                push @address, "BMC IP$addon_info: $nicinfo{$nic}{address}";
+                push @ipsrc, "BMC IP Source$addon_info: $nicinfo{$nic}{ipsrc}";
+                if ($nicinfo{$nic}{address}) {
+                    my $mask_shift = 32 - $nicinfo{$nic}{prefix};
+                    my $decimal_mask = (2 ** $nicinfo{$nic}{prefix} - 1) << $mask_shift;
+                    push @netmask, "BMC Netmask$addon_info: " . join('.', unpack("C4", pack("N", $decimal_mask)));
+                }
+                push @gateway, "BMC Gateway$addon_info: $nicinfo{$nic}{gateway} (default: $default_gateway)";
+                push @vlan, "BMC VLAN ID$addon_info: $nicinfo{$nic}{vlan}";
+            }
             foreach my $opt (split /,/,$grep_string) {
                 if ($opt eq "ip") {
-                    push @output, "BMC IP: $address"; 
+                    push @output, @address; 
                 } elsif ($opt eq "ipsrc") {
-                    push @output, "BMC IP Source: $ipsrc";
+                    push @output, @ipsrc;
                 } elsif ($opt eq "netmask") {
-                    if ($address) {
-                        my $mask_shift = 32 - $prefix;
-                        my $decimal_mask = (2 ** $prefix - 1) << $mask_shift;
-                        $netmask = join('.', unpack("C4", pack("N", $decimal_mask)));
-                        push @output, "BMC Netmask: " . $netmask; 
-                    }
+                    push @output, @netmask;
                 } elsif ($opt eq "gateway") {
-                    push @output, "BMC Gateway: $gateway (default: $default_gateway)";
+                    push @output, @gateway; 
                 } elsif ($opt eq "vlan") {
-                    if ($vlan) { 
-                        push @output, "BMC VLAN ID: $vlan";
-                    } else {
-                        push @output, "BMC VLAN ID: Disabled";
-                    }
+                    push @output, @vlan;
                 } elsif ($opt eq "hostname") {
                     push @output, "BMC Hostname: $hostname";
                 }
@@ -2508,18 +2529,38 @@ sub rspconfig_response {
                     $check_vlan = shift @checks;
                 }
                 my ($check_ip,$check_netmask,$check_gateway) = @checks;
-                if ($check_ip eq $address and $check_netmask eq $prefix and $check_gateway eq $gateway) {
-                    $next_status{ $node_info{$node}{cur_status} } = "RSPCONFIG_PRINT_BMCINFO" if (($check_vlan and $check_vlan eq $vlan) or !$check_vlan);
-                }
-
-                if ($next_status{ $node_info{$node}{cur_status} }) {
-                    if ($next_status{ $node_info{$node}{cur_status} } eq "RSPCONFIG_VLAN_REQUEST") {
-                        $nic =~ s/(\_\d*)//g;
-                        $status_info{RSPCONFIG_VLAN_REQUEST}{data} =~ s/#NIC#/$nic/g;
+                my $the_nic_to_config = undef;
+                foreach my $nic (@nics) {
+                    my $address = $nicinfo{$nic}{address};
+                    my $prefix = $nicinfo{$nic}{prefix};
+                    my $gateway = $nicinfo{$nic}{gateway};
+                    my $next_state = $next_status{ $node_info{$node}{cur_status} };
+                    if ($check_ip eq $address and $check_netmask eq $prefix and $check_gateway eq $gateway) {
+                        if (($check_vlan and $check_vlan eq $nicinfo{$nic}{vlan}) or !$check_vlan) {
+                            $next_status{ $node_info{$node}{cur_status} } = "RSPCONFIG_PRINT_BMCINFO";
+                            last;
+                        }
                     }
-                    $status_info{RSPCONFIG_IPOBJECT_REQUEST}{init_url} =~ s/#NIC#/$nic/g;
-                    $node_info{$node}{nic} = $nic;
+                    # To create an Object with vlan tag, shall be operated to the eth0
+                    if ($next_state eq "RSPCONFIG_VLAN_REQUEST") {
+                        $the_nic_to_config = $nic;
+                        $the_nic_to_config =~ s/(\_\d*)//g;
+                        $status_info{$next_state}{data} =~ s/#NIC#/$the_nic_to_config/g;
+                        last;
+                    # If not specify vlan, configure IP to the NIC object in the same subnet specified
+                    } elsif (xCAT::NetworkUtils::isInSameSubnet( $address, $check_ip, $check_netmask, 1)) {
+                        $the_nic_to_config = $nic;
+                        $node_info{$node}{origin_ip} = $address;
+                        last;
+                    }
                 }
+                # If no vlan specified, and NO nic in the same subnet specified, configure to eth0 
+                unless ($the_nic_to_config) {
+                    $the_nic_to_config = $nics[0];
+                    $the_nic_to_config =~ s/(\_\d*)//g;
+                }
+                $status_info{RSPCONFIG_IPOBJECT_REQUEST}{init_url} =~ s/#NIC#/$the_nic_to_config/g;
+                $node_info{$node}{nic} = $the_nic_to_config;
             }
         }
     }
@@ -2534,12 +2575,17 @@ sub rspconfig_response {
         }
         my ($check_ip,$check_netmask,$check_gateway) = @checks;
         my $check_result = 0;
-
+        my $url_for_origin_ip = undef;
         foreach my $key_url (keys %{$response_info->{data}}) {
             my %content = %{ ${ $response_info->{data} }{$key_url} };
             my ($path, $adapter_id) = (split(/\/ipv4\//, $key_url));
             if ($adapter_id) {
                 if (defined($content{Address}) and $content{Address}) {
+                    if ($content{Address} eq $node_info{$node}{origin_ip}) {
+                        if ($content{Origin} =~ /Static/) {
+                            $url_for_origin_ip = "$key_url";
+                        }
+                    }
                     if ($content{Address} eq $node_info{$node}{bmc}) {
                         if ($content{Origin} =~ /Static/) {
                             $origin_type = "STATIC";
@@ -2566,7 +2612,9 @@ sub rspconfig_response {
                 }
             }
         }
-
+        if (defined($url_for_origin_ip)) {
+            $status_info{RSPCONFIG_DELETE_REQUEST}{init_url} = "$url_for_origin_ip";
+        }
         if (!$check_result or !$origin_type) {
             xCAT::SvrUtils::sendmsg("Config IP failed", $callback, $node);
             $next_status{ $node_info{$node}{cur_status} } = "";
@@ -2602,7 +2650,9 @@ sub rspconfig_response {
     }
 
     if ($node_info{$node}{cur_status} eq "RSPCONFIG_IPOBJECT_RESPONSE" or $node_info{$node}{cur_status} eq "RSPCONFIG_VLAN_RESPONSE") {
-        sleep (3);
+        # Doesn't work even send out next command 5 seconds later, may need to skip create vlan interface if it already exists.
+        retry_after($node, $next_status{ $node_info{$node}{cur_status} }, 5);
+        return;
     }
 
     if ($next_status{ $node_info{$node}{cur_status} }) {
