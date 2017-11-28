@@ -310,7 +310,7 @@ my %status_info = (
     RSPCONFIG_GET_RESPONSE => {
         process        => \&rspconfig_response,
     },
-    RSPCONFIG_PASSWD_REQUEST => {
+    RSPCONFIG_SET_PASSWD_REQUEST => {
         method         => "POST",
         init_url       => "/xyz/openbmc_project/user/root/action/SetPassword",
         data           => "",
@@ -318,9 +318,9 @@ my %status_info = (
     "RSPCONFIG_PASSWD_VERIFY" => {
         process        => \&rspconfig_response,
     },
-    RSPCONFIG_SET_REQUEST => {
+    RSPCONFIG_SET_HOSTNAME_REQUEST => {
         method         => "PUT",
-        init_url       => "$openbmc_project_url/network",
+        init_url       => "$openbmc_project_url/network/config/attr/HostName",
         data           => "[]",
     },
     RSPCONFIG_SET_RESPONSE => {
@@ -1173,12 +1173,13 @@ sub parse_command_status {
                 return 0;
             }
             if ($subcommand =~ /^hostname=(.+)/) {
-                $next_status{LOGIN_RESPONSE} = "RSPCONFIG_SET_REQUEST";
-                $next_status{RSPCONFIG_SET_REQUEST} = "RSPCONFIG_SET_RESPONSE";
+                $next_status{LOGIN_RESPONSE} = "RSPCONFIG_SET_HOSTNAME_REQUEST";
+                $next_status{RSPCONFIG_SET_HOSTNAME_REQUEST} = "RSPCONFIG_SET_RESPONSE";
                 $next_status{RSPCONFIG_SET_RESPONSE} = "RSPCONFIG_GET_REQUEST";
                 $next_status{RSPCONFIG_GET_REQUEST} = "RSPCONFIG_GET_RESPONSE";
 
-                $status_info{RSPCONFIG_SET_REQUEST}{data} = $1;
+                $status_info{RSPCONFIG_SET_HOSTNAME_REQUEST}{data} = $1;
+                $status_info{RSPCONFIG_SET_RESPONSE}{argv} = "Hostname";
                 $status_info{RSPCONFIG_GET_RESPONSE}{argv} = "hostname";
                 return 0;
             }
@@ -1220,12 +1221,12 @@ sub parse_command_status {
                 $newpasswd = $1;
             }
             $next_status{LOGIN_RESPONSE} = "RSPCONFIG_PASSWD_VERIFY";
-            $next_status{RSPCONFIG_PASSWD_VERIFY} = "RSPCONFIG_PASSWD_REQUEST";
-            $next_status{RSPCONFIG_PASSWD_REQUEST} = "RSPCONFIG_SET_RESPONSE";
+            $next_status{RSPCONFIG_PASSWD_VERIFY} = "RSPCONFIG_SET_PASSWD_REQUEST";
+            $next_status{RSPCONFIG_SET_PASSWD_REQUEST} = "RSPCONFIG_SET_RESPONSE";
 
             $status_info{RSPCONFIG_PASSWD_VERIFY}{argv} = "$currentpasswd";
-            $status_info{RSPCONFIG_PASSWD_REQUEST}{data} = "[\"$newpasswd\"]";
-            $status_info{RSPCONFIG_SET_RESPONSE}{argv} = "password";
+            $status_info{RSPCONFIG_SET_PASSWD_REQUEST}{data} = "[\"$newpasswd\"]";
+            $status_info{RSPCONFIG_SET_RESPONSE}{argv} = "Password";
             return 0;
         }
 
@@ -2505,17 +2506,15 @@ sub rspconfig_response {
 
     if ($node_info{$node}{cur_status} eq "RSPCONFIG_PASSWD_VERIFY") {
         if ($status_info{RSPCONFIG_PASSWD_VERIFY}{argv} ne $node_info{$node}{password}) {
-            xCAT::SvrUtils::sendmsg("Please input correct BMC password.", $callback, $node);
+            xCAT::SvrUtils::sendmsg("Current BMC password is incorrect, cannot set the new password.", $callback, $node);
             $next_status{ $node_info{$node}{cur_status} } = "";
         }
     }
 
     if ($node_info{$node}{cur_status} eq "RSPCONFIG_SET_RESPONSE") {
         if ($response_info->{'message'} eq $::RESPONSE_OK) {
-            if (defined $status_info{RSPCONFIG_SET_RESPONSE}{argv} and $status_info{RSPCONFIG_SET_RESPONSE}{argv} eq "password") {
-                xCAT::SvrUtils::sendmsg("BMC Setting Password...", $callback, $node);
-            } else {
-                xCAT::SvrUtils::sendmsg("BMC Setting Hostname...", $callback, $node);
+            if (defined $status_info{RSPCONFIG_SET_RESPONSE}{argv}) {
+                xCAT::SvrUtils::sendmsg("BMC Setting $status_info{RSPCONFIG_SET_RESPONSE}{argv}...", $callback, $node);
             }
         }
     }
