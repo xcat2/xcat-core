@@ -69,6 +69,11 @@ $::RSPCONFIG_DUMP_INTERVAL  = 30;
 $::RSPCONFIG_DUMP_MAX_RETRY = 20;
 $::RSPCONFIG_DUMP_WAIT_TOTALTIME = int($::RSPCONFIG_DUMP_INTERVAL*$::RSPCONFIG_DUMP_MAX_RETRY);
 
+use constant RFLASH_LOG_DIR => "/var/log/xcat/rflash";
+unless (-d RFLASH_LOG_DIR) {
+    mkpath(RFLASH_LOG_DIR);
+}
+
 sub unsupported {
     my $callback = shift;
     if (defined($::OPENBMC_DEVEL) && ($::OPENBMC_DEVEL eq "YES")) {
@@ -733,6 +738,33 @@ rmdir \"/tmp/\$userid\" \n";
                 unlink "$home/.ssh/copy.sh";
                 File::Path->remove_tree("$home/.ssh/tmp/");
             }
+            if (($::UPLOAD_AND_ACTIVATE or $next_status{LOGIN_RESPONSE} eq "RFLASH_UPDATE_ACTIVATE_REQUEST") and $::VERBOSE) {
+                my %rflash_result = ();
+                foreach my $node (keys %node_info) {
+                    if ($node_info{$node}{rst} =~ /successful/) {
+                        push @{ $rflash_result{success} }, $node;
+                    } else {
+                        $node_info{$node}{rst} = "BMC is not ready" unless ($node_info{$node}{rst});
+                        push @{ $rflash_result{fail} }, "$node: $node_info{$node}{rst}";
+                    }
+                }
+                xCAT::SvrUtils::sendmsg("-------------------------------------------------------", $callback);
+                my $summary = "Firmware update complete: ";
+                my $total = keys %node_info;
+                my $success = 0;
+                my $fail = 0;
+                $success = @{ $rflash_result{success} } if (defined $rflash_result{success} and @{ $rflash_result{success} });
+                $fail = @{ $rflash_result{fail} } if (defined $rflash_result{fail} and @{ $rflash_result{fail} });
+                $summary .= "Total=$total Success=$success Failed=$fail";
+                xCAT::SvrUtils::sendmsg("$summary", $callback);
+
+                if ($rflash_result{fail}) {
+                    foreach (@{ $rflash_result{fail} }) {
+                        xCAT::SvrUtils::sendmsg($_, $callback);
+                    }
+                }
+                xCAT::SvrUtils::sendmsg("-------------------------------------------------------", $callback);
+            }
             last;
         }
         while (my ($response, $handle_id) = $async->wait_for_next_response) {
@@ -1352,6 +1384,7 @@ sub parse_command_status {
         my $purpose_tag = '"purpose="';
         my $purpose_value;
         my $version_value;
+
         if (defined $update_file) {
             # Filename or file id was specified 
             if ($update_file =~ /.*\.tar$/) {
@@ -1743,6 +1776,13 @@ sub deal_with_response {
             }
         }
         xCAT::SvrUtils::sendmsg([1, $error], $callback, $node);
+        if ($node_info{$node}{cur_status} eq "RFLASH_UPDATE_CHECK_STATE_RESPONSE") {
+            $node_info{$node}{rst} = $error if ($::VERBOSE);
+            my $rflash_log_file = xCAT::Utils->full_path($node.".log", RFLASH_LOG_DIR);
+            open (RFLASH_LOG_FILE_HANDLE, ">> $rflash_log_file");
+            print RFLASH_LOG_FILE_HANDLE "$error\n";
+            close (RFLASH_LOG_FILE_HANDLE);
+        }
         $wait_node_num--;
         return;    
     }
@@ -2942,6 +2982,8 @@ sub rflash_response {
     my $update_activation = "Unknown";
     my $update_purpose;
     my $update_version;
+    my $rflash_log_file = xCAT::Utils->full_path($node.".log", RFLASH_LOG_DIR);
+    open (RFLASH_LOG_FILE_HANDLE, ">> $rflash_log_file");
 
     if ($node_info{$node}{cur_status} eq "RFLASH_LIST_RESPONSE") {
         # Get the functional IDs to accurately mark the active running FW
@@ -3035,9 +3077,11 @@ sub rflash_response {
         }
     }
     if ($node_info{$node}{cur_status} eq "RFLASH_UPDATE_ACTIVATE_RESPONSE") {
+        my $flash_started_msg = "rflash started, please wait...";
         if ($::VERBOSE) {
-            xCAT::SvrUtils::sendmsg("rflash started, please wait...", $callback, $node);
+            xCAT::SvrUtils::sendmsg("$flash_started_msg", $callback, $node);
         }
+        print RFLASH_LOG_FILE_HANDLE "$flash_started_msg\n";
     }
     if ($node_info{$node}{cur_status} eq "RFLASH_SET_PRIORITY_RESPONSE") {
         print "Update priority has been set";
@@ -3062,16 +3106,20 @@ sub rflash_response {
 
         if ($activation_state =~ /Software.Activation.Activations.Failed/) {
             # Activation failed. Report error and exit
-            xCAT::SvrUtils::sendmsg([1,"Firmware activation Failed."], $callback, $node);
-            $wait_node_num--;
-            return;
+            my $flash_failed_msg = "Firmware activation failed.";
+            xCAT::SvrUtils::sendmsg([1,"$flash_failed_msg"], $callback, $node);
+            print RFLASH_LOG_FILE_HANDLE "$flash_failed_msg\n";
+            $node_info{$node}{rst} = "$flash_failed_msg";
+            $next_status{RFLASH_UPDATE_CHECK_STATE_RESPONSE} = "";
         } 
         elsif ($activation_state =~ /Software.Activation.Activations.Active/) { 
             if (scalar($priority_state) == 0) {
                 # Activation state of active and priority of 0 indicates the activation has been completed
-                xCAT::SvrUtils::sendmsg("Firmware activation successful.", $callback, $node);
-                $wait_node_num--;
-                return;
+                my $flash_success_msg = "Firmware activation successful.";
+                xCAT::SvrUtils::sendmsg("$flash_success_msg", $callback, $node);
+                print RFLASH_LOG_FILE_HANDLE "$flash_success_msg\n";
+                $node_info{$node}{rst} = "$flash_success_msg";
+                $next_status{RFLASH_UPDATE_CHECK_STATE_RESPONSE} = "";
             }
             else {
                 # Activation state of active and priority of non 0 - need to just set priority to 0 to activate
@@ -3080,9 +3128,12 @@ sub rflash_response {
             }
         }
         elsif ($activation_state =~ /Software.Activation.Activations.Activating/) {
+            my $activating_progress_msg = "Activating firmware...  $progress_state\%";
             if ($::VERBOSE) {
-                xCAT::SvrUtils::sendmsg("Activating firmware . . . $progress_state\%", $callback, $node);
+                xCAT::SvrUtils::sendmsg("$activating_progress_msg", $callback, $node);
             }
+            print RFLASH_LOG_FILE_HANDLE "$activating_progress_msg\n";
+            close (RFLASH_LOG_FILE_HANDLE);
             # Activation still going, sleep for a bit, then print the progress value
             # Set next state to come back here to chect the activation status again.
             retry_after($node, "RFLASH_UPDATE_CHECK_STATE_REQUEST", 15);
@@ -3140,7 +3191,9 @@ sub rflash_response {
 
                     $next_status{"RFLASH_SET_PRIORITY_REQUEST"} = "RFLASH_SET_PRIORITY_RESPONSE";
                     $next_status{"RFLASH_SET_PRIORITY_RESPONSE"} = "RFLASH_UPDATE_CHECK_STATE_REQUEST";
-                    xCAT::SvrUtils::sendmsg("Firmware upload successful. Attempting to activate firmware: $::UPLOAD_FILE_VERSION (ID: $update_id)", $callback, $node);
+                    my $upload_success_msg = "Firmware upload successful. Attempting to activate firmware: $::UPLOAD_FILE_VERSION (ID: $update_id)";
+                    xCAT::SvrUtils::sendmsg("$upload_success_msg", $callback, $node);
+                    print RFLASH_LOG_FILE_HANDLE "$upload_success_msg\n";
                     last;
                 }
             }
@@ -3151,13 +3204,20 @@ sub rflash_response {
             }
             if($node_info{$node}{upload_wait_attemp} > 0) {
                 $node_info{$node}{upload_wait_attemp} --;
+                my $retry_msg = "Could not find ID for firmware $::UPLOAD_FILE_VERSION to activate, waiting $::UPLOAD_WAIT_INTERVAL seconds and retry...";
                 if ($::VERBOSE) {
-                    xCAT::SvrUtils::sendmsg("Could not find ID for firmware $::UPLOAD_FILE_VERSION to activate, waiting $::UPLOAD_WAIT_INTERVAL seconds and retry...", $callback, $node);
+                    xCAT::SvrUtils::sendmsg("$retry_msg", $callback, $node);
                 }
+                print RFLASH_LOG_FILE_HANDLE "$retry_msg\n";
+                close (RFLASH_LOG_FILE_HANDLE);
                 retry_after($node, "RFLASH_UPDATE_CHECK_ID_REQUEST", $::UPLOAD_WAIT_INTERVAL);
                 return;
             } else {
-                xCAT::SvrUtils::sendmsg([1,"Could not find firmware $::UPLOAD_FILE_VERSION after waiting $::UPLOAD_WAIT_TOTALTIME seconds."], $callback, $node);
+                my $no_firmware_msg = "Could not find firmware $::UPLOAD_FILE_VERSION after waiting $::UPLOAD_WAIT_TOTALTIME seconds.";
+                xCAT::SvrUtils::sendmsg([1,"$no_firmware_msg"], $callback, $node);
+                print RFLASH_LOG_FILE_HANDLE "$no_firmware_msg\n";
+                close (RFLASH_LOG_FILE_HANDLE);
+                $node_info{$node}{rst} = "$no_firmware_msg";
                 $wait_node_num--;
                 return;
             }
@@ -3165,8 +3225,10 @@ sub rflash_response {
     }
 
     if ($node_info{$node}{cur_status} eq "RFLASH_DELETE_IMAGE_RESPONSE") {
-            xCAT::SvrUtils::sendmsg("Firmware removed", $callback, $node);
+        xCAT::SvrUtils::sendmsg("Firmware removed", $callback, $node);
     }
+
+    close (RFLASH_LOG_FILE_HANDLE);
 
     if ($next_status{ $node_info{$node}{cur_status} }) {
         $node_info{$node}{cur_status} = $next_status{ $node_info{$node}{cur_status} };
@@ -3190,14 +3252,20 @@ sub rflash_upload {
     my $curl_logout_cmd = "curl -b $cjar_id -k -H 'Content-Type: application/json' -X POST $request_url/logout -d '" . $content_logout . "'";
     my $curl_upload_cmd = "curl -b $cjar_id -k -H 'Content-Type: application/octet-stream' -X PUT -T " . $::UPLOAD_FILE . " $request_url/upload/image/";
 
+    my $rflash_log_file = xCAT::Utils->full_path($node.".log", RFLASH_LOG_DIR);
+    open (RFLASH_LOG_FILE_HANDLE, ">> $rflash_log_file");
+
     # Try to login
     my $curl_login_result = `$curl_login_cmd -s`;
     my $h = from_json($curl_login_result); # convert command output to hash
     if ($h->{message} eq $::RESPONSE_OK) {
+        my $uploading_msg = "Uploading $::UPLOAD_FILE ...";
         # Login successfull, upload the file
         if ($::VERBOSE) {
-            xCAT::SvrUtils::sendmsg("Uploading $::UPLOAD_FILE ...", $callback, $node);
+            xCAT::SvrUtils::sendmsg("$uploading_msg", $callback, $node);
         }
+        print RFLASH_LOG_FILE_HANDLE "$uploading_msg\n";
+
         if ($xcatdebugmode) {
             my $debugmsg = "RFLASH_FILE_UPLOAD_RESPONSE: CMD: $curl_upload_cmd";
             process_debug_info($node, $debugmsg);
@@ -3206,21 +3274,33 @@ sub rflash_upload {
         $h = from_json($curl_upload_result); # convert command output to hash
         if ($h->{message} eq $::RESPONSE_OK) {
             # Upload successful, display message
+            my $upload_success_msg = "Firmware upload successful. Use -l option to list.";
             unless ($::UPLOAD_AND_ACTIVATE) {
-                xCAT::SvrUtils::sendmsg("Firmware upload successful. Use -l option to list.", $callback, $node);
+                xCAT::SvrUtils::sendmsg("$upload_success_msg", $callback, $node);
             }
+            print RFLASH_LOG_FILE_HANDLE "$upload_success_msg\n";
             # Try to logoff, no need to check result, as there is nothing else to do if failure
             my $curl_logout_result = `$curl_logout_cmd -s`;
         }
         else {
-            xCAT::SvrUtils::sendmsg("Failed to upload update file $::UPLOAD_FILE :" . $h->{message} . " - " . $h->{data}->{description}, $callback, $node);
+            my $upload_fail_msg = "Failed to upload update file $::UPLOAD_FILE :" . $h->{message} . " - " . $h->{data}->{description};
+            xCAT::SvrUtils::sendmsg("$upload_fail_msg", $callback, $node);
+            print RFLASH_LOG_FILE_HANDLE "$upload_fail_msg\n";
+            close (RFLASH_LOG_FILE_HANDLE);
+            $node_info{$node}{rst} = "$upload_fail_msg";
             return 1;
         }
     }
     else {
-        xCAT::SvrUtils::sendmsg("Unable to login :" . $h->{message} . " - " . $h->{data}->{description}, $callback, $node);
+        my $unable_login_msg = "Unable to login :" . $h->{message} . " - " . $h->{data}->{description};
+        xCAT::SvrUtils::sendmsg("$unable_login_msg", $callback, $node);
+        print RFLASH_LOG_FILE_HANDLE "$unable_login_msg\n";
+        close (RFLASH_LOG_FILE_HANDLE);
+        $node_info{$node}{rst} = "$unable_login_msg";
         return 1;
     }
+
+    close (RFLASH_LOG_FILE_HANDLE);
     return 0;
 }
 1;
