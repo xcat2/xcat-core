@@ -1365,7 +1365,7 @@ sub parse_command_status {
                 }
                 # Verify file exists and is readable
                 unless (-r $::UPLOAD_FILE) {
-                    xCAT::SvrUtils::sendmsg([1,"Cannot access $::UPLOAD_FILE"], $callback);
+                    xCAT::SvrUtils::sendmsg([1,"Cannot access $::UPLOAD_FILE. Check the management node and/or service nodes."], $callback);
                     return 1;
                 }
                 if ($activate) {
