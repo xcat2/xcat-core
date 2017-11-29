@@ -2476,7 +2476,7 @@ sub rspconfig_response {
             }
         }
         if (scalar (keys %nicinfo) == 0) {
-            $error = "No valid BMC network information obtain";
+            $error = "No valid BMC network information";
             $node_info{$node}{cur_status} = "";  
         }
         if ($error) {
@@ -2649,9 +2649,19 @@ sub rspconfig_response {
         }
     }
 
-    if ($node_info{$node}{cur_status} eq "RSPCONFIG_IPOBJECT_RESPONSE" or $node_info{$node}{cur_status} eq "RSPCONFIG_VLAN_RESPONSE") {
-        # Doesn't work even send out next command 5 seconds later, may need to skip create vlan interface if it already exists.
-        retry_after($node, $next_status{ $node_info{$node}{cur_status} }, 5);
+    if ($node_info{$node}{cur_status} eq "RSPCONFIG_VLAN_RESPONSE") {
+        if ($xcatdebugmode) {
+             process_debug_info($node, "Wait 15 seconds for interface with VLAN tag be ready");
+        }
+        retry_after($node, $next_status{ $node_info{$node}{cur_status} }, 15);
+        return;
+    }
+
+    if ($node_info{$node}{cur_status} eq "RSPCONFIG_IPOBJECT_RESPONSE") {
+        if ($xcatdebugmode) {
+             process_debug_info($node, "Wait 3 seconds for the configuration done");
+        }
+        retry_after($node, $next_status{ $node_info{$node}{cur_status} }, 3);
         return;
     }
 
