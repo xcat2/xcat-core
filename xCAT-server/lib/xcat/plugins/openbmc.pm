@@ -1519,7 +1519,7 @@ sub fork_process_login {
         sleep(1);
         $rst = 1;
     } elsif ($child == 0) {
-        exit(login_logout_request($node));
+        exit(login_request($node));
     } else {
         $login_pid_node{$child} = $node;
     }
@@ -1820,7 +1820,7 @@ sub process_debug_info {
 
 #-------------------------------------------------------
 
-=head3  login_logout_request
+=head3  login_request
 
   Send login request using curl command
   Input:
@@ -1829,7 +1829,7 @@ sub process_debug_info {
 =cut
 
 #-------------------------------------------------------
-sub login_logout_request {
+sub login_request {
     my $node = shift;
 
     my $login_url = "$http_protocol://" . $node_info{$node}{bmc} . "/login";
