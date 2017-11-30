@@ -441,6 +441,7 @@ $::RESPONSE_OK                  = "200 OK";
 $::RESPONSE_SERVER_ERROR        = "500 Internal Server Error";
 $::RESPONSE_SERVICE_UNAVAILABLE = "503 Service Unavailable";
 $::RESPONSE_FORBIDDEN           = "403 Forbidden";
+$::RESPONSE_NOT_FOUND           = "404 Not Found";
 $::RESPONSE_METHOD_NOT_ALLOWED  = "405 Method Not Allowed";
 $::RESPONSE_SERVICE_TIMEOUT     = "504 Gateway Timeout";
 
@@ -1843,7 +1844,9 @@ sub login_request {
     my $login_request = HTTP::Request->new( 'POST', $login_url, $header, $data );
     my $login_response = $brower->request($login_request);
 
-    if  ($login_response->status_line =~ /500 Can't connect to/ or $login_response->status_line =~ /500 read timeout/) {
+    # Check the return code
+    if ($login_response->code != 200) { 
+        # handle the errors generically
         xCAT::SvrUtils::sendmsg([1 ,"Login to BMC failed. Status: " . $login_response->status_line . "."], $callback, $node);
         return 1;
     }
