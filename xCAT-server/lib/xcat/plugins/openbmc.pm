@@ -748,7 +748,7 @@ rmdir \"/tmp/\$userid\" \n";
                         push @{ $rflash_result{fail} }, "$node: $node_info{$node}{rst}";
                     }
                 }
-                xCAT::SvrUtils::sendmsg("-------------------------------------------------------", $callback);
+                xCAT::MsgUtils->message("I", { data => ["-------------------------------------------------------"] }, $callback);
                 my $summary = "Firmware update complete: ";
                 my $total = keys %node_info;
                 my $success = 0;
@@ -756,14 +756,14 @@ rmdir \"/tmp/\$userid\" \n";
                 $success = @{ $rflash_result{success} } if (defined $rflash_result{success} and @{ $rflash_result{success} });
                 $fail = @{ $rflash_result{fail} } if (defined $rflash_result{fail} and @{ $rflash_result{fail} });
                 $summary .= "Total=$total Success=$success Failed=$fail";
-                xCAT::SvrUtils::sendmsg("$summary", $callback);
+                xCAT::MsgUtils->message("I", { data => ["$summary"] }, $callback);
 
                 if ($rflash_result{fail}) {
                     foreach (@{ $rflash_result{fail} }) {
-                        xCAT::SvrUtils::sendmsg($_, $callback);
+                        xCAT::MsgUtils->message("I", { data => ["$_"] }, $callback);
                     }
                 }
-                xCAT::SvrUtils::sendmsg("-------------------------------------------------------", $callback);
+                xCAT::MsgUtils->message("I", { data => ["-------------------------------------------------------"] }, $callback);
             }
             last;
         }
@@ -2174,7 +2174,7 @@ sub rinv_response {
             # Remove this ID from the output to the user
             #
             $_ =~ s/\[.*?\]//;
-            xCAT::SvrUtils::sendmsg("$_", $callback, $node);
+            xCAT::MsgUtils->message("I", { data => ["$node: $_"] }, $callback);
         }
     } else {
         xCAT::SvrUtils::sendmsg("$::NO_ATTRIBUTES_RETURNED", $callback, $node);
@@ -2944,7 +2944,7 @@ sub rvitals_response {
     # If sorted array has any contents, sort it and print it
     if (scalar @sorted_output > 0) {
         # Sort the output, alpha, then numeric
-        xCAT::SvrUtils::sendmsg("$_", $callback, $node) foreach (sort natural_sort_cmp @sorted_output);
+        xCAT::MsgUtils->message("I", { data => ["$node: $_"] }, $callback) foreach (sort natural_sort_cmp @sorted_output);
     } else {
         xCAT::SvrUtils::sendmsg("$::NO_ATTRIBUTES_RETURNED", $callback, $node);
     }
