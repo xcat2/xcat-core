@@ -1,3 +1,10 @@
+start:rinv_record_firmware_level
+description: Record the firmware level for the start of each testcase
+hcp:openbmc
+cmd: rinv $$CN firm
+check:rc==0
+end
+
 start:rinv_check_active_fw_count
 description: Ensure that there is only 2 active firmware, one for bmc and one for pnor
 hcp:openbmc
