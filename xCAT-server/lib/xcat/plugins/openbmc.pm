@@ -685,7 +685,7 @@ sub process_request {
 
     foreach my $node (keys %node_info) {
         if (!$valid_nodes{$node}) {
-            xCAT::SvrUtils::sendmsg([1, "BMC did not respond. Verify BMC is in BMCReady state and retry the command."], $callback, $node);
+            xCAT::SvrUtils::sendmsg([1, "BMC did not respond. Validate BMC configuration and retry the command."], $callback, $node);
             $wait_node_num--;
         } else {
             $login_url = "$http_protocol://$node_info{$node}{bmc}/login";
@@ -1844,10 +1844,7 @@ sub login_logout_request {
     my $login_response = $brower->request($login_request);
 
     if  ($login_response->status_line =~ /500 Can't connect to/ or $login_response->status_line =~ /500 read timeout/) {
-        if ($xcatdebugmode) {
-            my $debug_info = "LOGIN Failed using curl command";
-            process_debug_info($node, $debug_info);
-        }
+        xCAT::SvrUtils::sendmsg([1 ,"Login to BMC failed. Status: " . $login_response->status_line . "."], $callback, $node);
         return 1;
     }
 
