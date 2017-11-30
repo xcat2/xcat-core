@@ -441,6 +441,7 @@ $::RESPONSE_OK                  = "200 OK";
 $::RESPONSE_SERVER_ERROR        = "500 Internal Server Error";
 $::RESPONSE_SERVICE_UNAVAILABLE = "503 Service Unavailable";
 $::RESPONSE_FORBIDDEN           = "403 Forbidden";
+$::RESPONSE_NOT_FOUND           = "404 Not Found";
 $::RESPONSE_METHOD_NOT_ALLOWED  = "405 Method Not Allowed";
 $::RESPONSE_SERVICE_TIMEOUT     = "504 Gateway Timeout";
 
@@ -685,7 +686,7 @@ sub process_request {
 
     foreach my $node (keys %node_info) {
         if (!$valid_nodes{$node}) {
-            xCAT::SvrUtils::sendmsg([1, "BMC did not respond. Verify BMC is in BMCReady state and retry the command."], $callback, $node);
+            xCAT::SvrUtils::sendmsg([1, "BMC did not respond. Validate BMC configuration and retry the command."], $callback, $node);
             $wait_node_num--;
         } else {
             $login_url = "$http_protocol://$node_info{$node}{bmc}/login";
@@ -1519,7 +1520,7 @@ sub fork_process_login {
         sleep(1);
         $rst = 1;
     } elsif ($child == 0) {
-        exit(login_logout_request($node));
+        exit(login_request($node));
     } else {
         $login_pid_node{$child} = $node;
     }
@@ -1820,7 +1821,7 @@ sub process_debug_info {
 
 #-------------------------------------------------------
 
-=head3  login_logout_request
+=head3  login_request
 
   Send login request using curl command
   Input:
@@ -1829,7 +1830,7 @@ sub process_debug_info {
 =cut
 
 #-------------------------------------------------------
-sub login_logout_request {
+sub login_request {
     my $node = shift;
 
     my $login_url = "$http_protocol://" . $node_info{$node}{bmc} . "/login";
@@ -1843,11 +1844,10 @@ sub login_logout_request {
     my $login_request = HTTP::Request->new( 'POST', $login_url, $header, $data );
     my $login_response = $brower->request($login_request);
 
-    if  ($login_response->status_line =~ /500 Can't connect to/ or $login_response->status_line =~ /500 read timeout/) {
-        if ($xcatdebugmode) {
-            my $debug_info = "LOGIN Failed using curl command";
-            process_debug_info($node, $debug_info);
-        }
+    # Check the return code
+    if ($login_response->code != 200) { 
+        # handle the errors generically
+        xCAT::SvrUtils::sendmsg([1 ,"Login to BMC failed. Status: " . $login_response->status_line . "."], $callback, $node);
         return 1;
     }
 
