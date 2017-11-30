@@ -6,6 +6,8 @@ B<makeconservercf> - creates the conserver configuration file from info in the x
 
 B<makeconservercf> [B<-V|--verbose>] [B<-d|--delete>] [I<noderange>]
 
+B<makeconservercf> [B<-V|--verbose>] [B<-C|--cleanup>]
+
 B<makeconservercf> [B<-V|--verbose>] [B<-l|--local>] [I<noderange>]
 
 B<makeconservercf> [B<-V|--verbose>] [B<-c|--conserver>] [I<noderange>]
@@ -24,6 +26,8 @@ does not have nodehm.cons set, it will not be written to the file.
 
 If B<-d> is specified, B<makeconservercf> will remove specified nodes from /etc/conserver.cf file. If I<noderange> is not specified, all xCAT nodes will be removed from /etc/conserver.cf file. 
 
+If B<-C|--cleanup> is specified, B<makeconservercf> will remove console configuration entries from /etc/conserver.cf for the nodes whose definition have been removed from xCATdb. B<Don't> specify any noderange.
+
 In the case of a hierarchical cluster (i.e. one with service nodes) B<makeconservercf> will determine
 which nodes will have their consoles accessed from the management node and which from a service node
 (based on the nodehm.conserver attribute).  The /etc/conserver.cf file will be created accordingly on
@@ -37,6 +41,10 @@ all relevant management/service nodes.  If B<-l> is specified, it will only crea
 =item B<-d|--delete>
 
 Delete rather than add or refresh the nodes specified as a noderange.
+
+=item B<-C|--cleanup>
+
+Remove the entries for the nodes whose definition have been removed from xCAT db.
 
 =item B<-c|--conserver>
 
