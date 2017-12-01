@@ -29,7 +29,7 @@ my $usage_string =
                      The default goes down to all the conservers on
                      the server nodes and set them up
     -d|--delete      Conserver has the relevant entries for the given noderange removed immediately from configuration
-    -C|--cleanup     To remove the entries for the nodes not exists in xCAT db
+    -C|--cleanup     To remove the entries for the nodes that do not exist in xCAT db
     -t|--trust       Add additional trusted hosts.
     -h|--help        Display this usage statement.
     -V|--verbose     Verbose mode.

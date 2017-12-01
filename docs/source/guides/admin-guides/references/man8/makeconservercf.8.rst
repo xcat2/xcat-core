@@ -44,7 +44,7 @@ does not have nodehm.cons set, it will not be written to the file.
 
 If \ **-d**\  is specified, \ **makeconservercf**\  will remove specified nodes from /etc/conserver.cf file. If \ *noderange*\  is not specified, all xCAT nodes will be removed from /etc/conserver.cf file.
 
-If \ **-C|-**\ **-cleanup**\  is specified, \ **makeconservercf**\  will remove console configuration entries from /etc/conserver.cf for the nodes whose definition have been removed from xCATdb. \ **Don't**\  specify any noderange.
+If \ **-C|-**\ **-cleanup**\  is specified, \ **makeconservercf**\  will remove console configuration entries from /etc/conserver.cf for the nodes whose definitions have been removed from xCATdb. \ **Don't**\  specify any noderange.
 
 In the case of a hierarchical cluster (i.e. one with service nodes) \ **makeconservercf**\  will determine
 which nodes will have their consoles accessed from the management node and which from a service node
@@ -66,7 +66,7 @@ OPTIONS
 
 \ **-C|-**\ **-cleanup**\ 
  
- Remove the entries for the nodes whose definition have been removed from xCAT db.
+ Remove the entries for the nodes whose definitions have been removed from xCAT db.
  
 
 
