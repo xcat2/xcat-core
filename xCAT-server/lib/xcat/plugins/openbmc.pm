@@ -1660,6 +1660,11 @@ sub gen_send_request {
             $content = '{"data":[]}';
         } elsif ($status_info{ $node_info{$node}{cur_status} }{data} =~ /^\[.+\]$/) {
             $content = '{"data":' . $status_info{ $node_info{$node}{cur_status} }{data} . '}';
+        } elsif (($status_info{ $node_info{$node}{cur_status} }{init_url} =~ /config\/attr\/HostName$/) &&
+                 ($status_info{ $node_info{$node}{cur_status} }{data} =~ /^\*$/) &&
+                 ($node_info{$node}{bmc} !~ /^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/)) {
+            # Special handling for hostname=*
+            $content = '{"data":"' . $node_info{$node}{bmc} . '"}';
         } else {
             $content = '{"data":"' . $status_info{ $node_info{$node}{cur_status} }{data} . '"}';
         }
