@@ -148,13 +148,26 @@ elif [ $USE_GOCONSERVER == "1" ]; then
     CONGO_ENV="CONGO_SSL_KEY=$HOME/.xcat/client-cred.pem \
                CONGO_SSL_CERT=$HOME/.xcat/client-cred.pem \
                CONGO_SSL_CA_CERT=$HOME/.xcat/ca.pem \
-               CONGO_PORT=12430 \
-               CONGO_SERVER_HOST=$CONSERVER \
-               CONGO_URL=https://$CONSERVER:12429"
-
+               CONGO_PORT=12430"
     if [ "$CONSERVER" == `hostname` ]; then
+        host=`hostname -s`
+        if [ $? -ne 0 ]; then
+            echo "Error: could not get the short hostname for $CONSERVER."
+            exit 1
+        fi
+        CONGO_ENV="$CONGO_ENV \
+                   CONGO_SERVER_HOST=$host \
+                   CONGO_URL=https://$host:12429"
         exec env $CONGO_ENV /usr/bin/congo console $1
     else
+        host=`ssh $CONSERVER hostname -s`
+        if [ $? -ne 0 ]; then
+            echo "Error: could not get the short hostname for $CONSERVER."
+            exit 1
+        fi
+        CONGO_ENV="$CONGO_ENV \
+                   CONGO_SERVER_HOST=$host \
+                   CONGO_URL=https://$host:12429"
         exec ssh -t $CONSERVER "$CONGO_ENV /usr/bin/congo console $1"
     fi
 

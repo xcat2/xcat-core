@@ -15,6 +15,7 @@ use HTTP::Request;
 use HTTP::Headers;
 use LWP;
 use JSON;
+use IO::Socket::SSL qw( SSL_VERIFY_PEER );
 
 sub http_request {
     my ($method, $url, $data) = @_;
@@ -26,7 +27,7 @@ sub http_request {
             SSL_cert_file   => xCAT::Utils->getHomeDir() . "/.xcat/client-cred.pem",
             SSL_ca_file     => xCAT::Utils->getHomeDir() . "/.xcat/ca.pem",
             SSL_use_cert    => 1,
-            SSL_verify_mode => 'SSL_VERIFY_PEER',  }, );
+            SSL_verify_mode => SSL_VERIFY_PEER,  }, );
     my $header = HTTP::Headers->new('Content-Type' => 'application/json');
     #    $data = encode_json $data if defined($data);
     $data = JSON->new->encode($data) if defined($data);
