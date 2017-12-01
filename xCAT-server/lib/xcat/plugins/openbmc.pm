@@ -2475,6 +2475,13 @@ sub rspconfig_response {
                 }
             }
         }
+        if ($grep_string =~ /(.*)hostname(.*)/) {
+            xCAT::SvrUtils::sendmsg("BMC hostname: $hostname", $callback, $node);
+            unless ($1 or $2) {
+                $wait_node_num--;
+                return;
+            }
+        }
         if (scalar (keys %nicinfo) == 0) {
             $error = "No valid BMC network information";
             $node_info{$node}{cur_status} = "";  
@@ -2514,8 +2521,6 @@ sub rspconfig_response {
                     push @output, @gateway; 
                 } elsif ($opt eq "vlan") {
                     push @output, @vlan;
-                } elsif ($opt eq "hostname") {
-                    push @output, "BMC Hostname: $hostname";
                 }
             }
             xCAT::SvrUtils::sendmsg("$_", $callback, $node) foreach (@output);
