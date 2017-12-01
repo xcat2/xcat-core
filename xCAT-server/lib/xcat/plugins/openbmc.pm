@@ -78,10 +78,17 @@ $::RSPCONFIG_DUMP_MAX_RETRY = 20;
 $::RSPCONFIG_DUMP_WAIT_TOTALTIME = int($::RSPCONFIG_DUMP_INTERVAL*$::RSPCONFIG_DUMP_MAX_RETRY);
 $::RSPCONFIG_WAIT_VLAN_DONE = 15;
 $::RSPCONFIG_WAIT_IP_DONE   = 3;
+$::RSPCONFIG_DUMP_CMD_TIME  = 0;
 
-use constant RFLASH_LOG_DIR => "/var/log/xcat/rflash";
-unless (-d RFLASH_LOG_DIR) {
-    mkpath(RFLASH_LOG_DIR);
+$::XCAT_LOG_DIR             = "/var/log/xcat";
+$::XCAT_LOG_RFLASH_DIR      = $::XCAT_LOG_DIR . "/rflash/";
+$::XCAT_LOG_DUMP_DIR        = $::XCAT_LOG_DIR . "/dump/";
+
+unless (-d $::XCAT_LOG_RFLASH_DIR) {
+    mkpath($::XCAT_LOG_RFLASH_DIR);
+}
+unless (-d $::XCAT_LOG_DUMP_DIR) {
+    mkpath($::XCAT_LOG_DUMP_DIR);
 }
 
 sub unsupported {
@@ -1355,6 +1362,7 @@ sub parse_command_status {
                 }
                 $status_info{RSPCONFIG_DUMP_CLEAR_RESPONSE}{argv} = $$subcommands[2];
             } elsif ($dump_opt =~ /-d|--download/) {
+                $::RSPCONFIG_DUMP_CMD_TIME = time(); #Save time of rspcommand start to use in the dump filename
                 $next_status{LOGIN_RESPONSE} = "RSPCONFIG_DUMP_DOWNLOAD_REQUEST";
                 $next_status{RSPCONFIG_DUMP_DOWNLOAD_REQUEST} = "RSPCONFIG_DUMP_DOWNLOAD_RESPONSE";
                 $status_info{RSPCONFIG_DUMP_DOWNLOAD_REQUEST}{init_url} =~ s/#ID#/$$subcommands[2]/g; 
@@ -1362,6 +1370,7 @@ sub parse_command_status {
             } else {
                 # this section handles the dump support where no options are given and xCAT will 
                 # # handle the creation, waiting, and download of the dump across a given noderange
+                $::RSPCONFIG_DUMP_CMD_TIME = time(); #Save time of rspcommand start to use in the dump filename
                 xCAT::SvrUtils::sendmsg("Capturing BMC Diagnostic information, this will take some time...", $callback);
                 $next_status{LOGIN_RESPONSE} = "RSPCONFIG_DUMP_CREATE_REQUEST";
                 $next_status{RSPCONFIG_DUMP_CREATE_REQUEST} = "RSPCONFIG_DUMP_CREATE_RESPONSE";
@@ -2003,7 +2012,7 @@ sub deal_with_response {
             xCAT::SvrUtils::sendmsg([1, $error], $callback, $node);
             if ($node_info{$node}{cur_status} eq "RFLASH_UPDATE_CHECK_STATE_RESPONSE") {
                 $node_info{$node}{rst} = $error if ($::VERBOSE);
-                my $rflash_log_file = xCAT::Utils->full_path($node.".log", RFLASH_LOG_DIR);
+                my $rflash_log_file = xCAT::Utils->full_path($node.".log", $::XCAT_LOG_RFLASH_DIR);
                 open (RFLASH_LOG_FILE_HANDLE, ">> $rflash_log_file");
                 print RFLASH_LOG_FILE_HANDLE "$error\n";
                 close (RFLASH_LOG_FILE_HANDLE);
@@ -3067,8 +3076,6 @@ sub rspconfig_dump_response {
 
                 if ($node_info{$node}{cur_status} eq "RSPCONFIG_DUMP_CHECK_RESPONSE") {
                     if ($id eq $node_info{$node}{dump_id}) {
-                        # Save date when this dump was generated to use in downloaded filename
-                        $node_info{$node}{generated} = $content{Elapsed};
                         $gen_check = 1;
                         last;
                     }
@@ -3183,16 +3190,15 @@ sub dump_download_process {
     my $dump_id;
     $dump_id  = $status_info{RSPCONFIG_DUMP_DOWNLOAD_REQUEST}{argv} if ($status_info{RSPCONFIG_DUMP_DOWNLOAD_REQUEST}{argv});
     $dump_id = $node_info{$node}{dump_id} if ($node_info{$node}{dump_id});
-    my ($sec, $min, $hour, $mday, $mon, $year, $wday, $yday, $isdst) = localtime($node_info{$node}{generated});
+    my ($sec, $min, $hour, $mday, $mon, $year, $wday, $yday, $isdst) = localtime($::RSPCONFIG_DUMP_CMD_TIME);
     $mon += 1;
     $year += 1900;
-    my $formatted_time = sprintf ("%04d%02d%02d%02d%02d", $year, $mon, $mday, $hour, $min);
-    my $file_name = "/var/log/xcat/dump/" . $formatted_time . "_$node" . "_dump_$dump_id.tar.xz";
+    my $formatted_time = sprintf ("%04d%02d%02d-%02d%02d", $year, $mon, $mday, $hour, $min);
+    my $file_name = $::XCAT_LOG_DUMP_DIR . $formatted_time . "_$node" . "_dump_$dump_id.tar.xz";
     my $down_url;
     $down_url = $status_info{RSPCONFIG_DUMP_DOWNLOAD_REQUEST}{init_url};
     $down_url =~ s/#ID#/$dump_id/g;
 
-    xCAT::SvrUtils::sendmsg("Dump $dump_id generated. Downloading to $file_name", $callback, $node);
     my $curl_login_cmd  = "curl -c $cjar_id -k -H 'Content-Type: application/json' -X POST $request_url/login -d '" . $content_login . "'";
     my $curl_logout_cmd = "curl -b $cjar_id -k -H 'Content-Type: application/json' -X POST $request_url/logout -d '" . $content_logout . "'";
     my $curl_dwld_cmd = "curl -J -b $cjar_id -k -H 'Content-Type: application/octet-stream' -X GET $request_url/$down_url -o $file_name";
@@ -3200,21 +3206,28 @@ sub dump_download_process {
     my $curl_login_result = `$curl_login_cmd -s`;
     my $h = from_json($curl_login_result);
     if ($h->{message} eq $::RESPONSE_OK) {
-        `mkdir -p "/var/log/xcat/dump"`;
+        # Verify dump directory is still there
+        if (-d  $::XCAT_LOG_DUMP_DIR) {
+            xCAT::SvrUtils::sendmsg("Dump $dump_id generated. Downloading to $file_name", $callback, $node);
+        }
+        else {
+            xCAT::SvrUtils::sendmsg([1, "Unable to find directory " . $::XCAT_LOG_DUMP_DIR . " to download dump file"], $callback, $node);
+            return 1;
+        }
         my $curl_dwld_result = `$curl_dwld_cmd -s`;
         if (!$curl_dwld_result) {
             if ($xcatdebugmode) {
                 my $debugmsg = "RSPCONFIG_DUMP_DOWNLOAD_REQUEST: CMD: $curl_dwld_cmd";
                 process_debug_info($node, $debugmsg);
             }
-            xCAT::SvrUtils::sendmsg("Downloaded Dump $dump_id to $file_name", $callback, $node) if ($::VERBOSE);
+            xCAT::SvrUtils::sendmsg("Downloaded dump $dump_id to $file_name", $callback, $node) if ($::VERBOSE);
             `$curl_logout_cmd -s`;
         } else {
-            xCAT::SvrUtils::sendmsg("Failed to download dump $dump_id :" . $h->{message} . " - " . $h->{data}->{description}, $callback, $node);
+            xCAT::SvrUtils::sendmsg([1, "Failed to download dump $dump_id :" . $h->{message} . " - " . $h->{data}->{description}], $callback, $node);
             return 1;
         }
     } else {
-        xCAT::SvrUtils::sendmsg("Unable to login :" . $h->{message} . " - " . $h->{data}->{description}, $callback, $node);
+        xCAT::SvrUtils::sendmsg([1, "Unable to login :" . $h->{message} . " - " . $h->{data}->{description}], $callback, $node);
         return 1;
     }
     return 0;
@@ -3326,7 +3339,7 @@ sub rflash_response {
     my $update_activation = "Unknown";
     my $update_purpose;
     my $update_version;
-    my $rflash_log_file = xCAT::Utils->full_path($node.".log", RFLASH_LOG_DIR);
+    my $rflash_log_file = xCAT::Utils->full_path($node.".log", $::XCAT_LOG_RFLASH_DIR);
     open (RFLASH_LOG_FILE_HANDLE, ">> $rflash_log_file");
     if ($node_info{$node}{cur_status} eq "RFLASH_LIST_RESPONSE") {
         # Get the functional IDs to accurately mark the active running FW
@@ -3668,7 +3681,7 @@ sub rflash_upload {
         }
     }
 
-    my $rflash_log_file = xCAT::Utils->full_path($node.".log", RFLASH_LOG_DIR);
+    my $rflash_log_file = xCAT::Utils->full_path($node.".log", $::XCAT_LOG_RFLASH_DIR);
     open (RFLASH_LOG_FILE_HANDLE, ">> $rflash_log_file");
 
     # Try to login
