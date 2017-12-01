@@ -886,6 +886,9 @@ sub load_case {
                             }
                             $$case_name_index_map_ref{"$name"} = $i;
                             $newcmdstart                       = 0;
+                            if(grep (/$case_ref->[$i]->{name}/,@{ $invalidcases{"noruncases"} })){
+                                delete_item_from_array($case_ref->[$i]->{name}, $invalidcases{"noruncases"});
+                            }
                         } else {
                             $skip = 1;
                             push @{ $invalidcases{"invalidcasename"} }, $name;
