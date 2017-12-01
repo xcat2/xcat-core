@@ -2194,7 +2194,11 @@ sub rinv_response {
             xCAT::MsgUtils->message("I", { data => ["$node: $_"] }, $callback);
         }
     } else {
-        xCAT::SvrUtils::sendmsg("$::NO_ATTRIBUTES_RETURNED", $callback, $node) if (!$status_info{RINV_FIRM_RESPONSE}{check});
+        if ($status_info{RINV_FIRM_RESPONSE}{check}) {
+            xCAT::MsgUtils->message("I", { data => ["$node: Firmware will be flashed on reboot, deleting all BMC diagnostics..."] }, $callback);
+        } else {
+            xCAT::MsgUtils->message("I", { data => ["$node: $::NO_ATTRIBUTES_RETURNED"] }, $callback);
+        }
     }
 
     if ($next_status{ $node_info{$node}{cur_status} }) {
@@ -2828,7 +2832,9 @@ sub rspconfig_dump_response {
     if ($node_info{$node}{cur_status} eq "RSPCONFIG_DUMP_CLEAR_RESPONSE") {
         if ($response_info->{'message'} eq $::RESPONSE_OK) {
             my $dump_id = $status_info{RSPCONFIG_DUMP_CLEAR_RESPONSE}{argv};
-            xCAT::SvrUtils::sendmsg("[$dump_id] clear", $callback, $node) unless ($next_status{ $node_info{$node}{cur_status} });
+            xCAT::MsgUtils->message("I", { data => ["[$dump_id] clear"] }, $callback) unless ($next_status{ $node_info{$node}{cur_status} });
+        } else {
+            xCAT::MsgUtils->message("W", { data => ["$node: Could not clear BMC diagnostics successfully (MSG?), ignoring..."] }, $callback) if ($next_status{ $node_info{$node}{cur_status} });
         }
     } 
 
