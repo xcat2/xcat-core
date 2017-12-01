@@ -1782,16 +1782,18 @@ sub deal_with_response {
                 $error = $response_info->{'data'}->{'description'};
             }
         }
-        xCAT::SvrUtils::sendmsg([1, $error], $callback, $node);
-        if ($node_info{$node}{cur_status} eq "RFLASH_UPDATE_CHECK_STATE_RESPONSE") {
-            $node_info{$node}{rst} = $error if ($::VERBOSE);
-            my $rflash_log_file = xCAT::Utils->full_path($node.".log", RFLASH_LOG_DIR);
-            open (RFLASH_LOG_FILE_HANDLE, ">> $rflash_log_file");
-            print RFLASH_LOG_FILE_HANDLE "$error\n";
-            close (RFLASH_LOG_FILE_HANDLE);
+        if (!($node_info{$node}{cur_status} eq "RSPCONFIG_DUMP_CLEAR_RESPONSE" and $next_status{ $node_info{$node}{cur_status} })) {
+            xCAT::SvrUtils::sendmsg([1, $error], $callback, $node);
+            if ($node_info{$node}{cur_status} eq "RFLASH_UPDATE_CHECK_STATE_RESPONSE") {
+                $node_info{$node}{rst} = $error if ($::VERBOSE);
+                my $rflash_log_file = xCAT::Utils->full_path($node.".log", RFLASH_LOG_DIR);
+                open (RFLASH_LOG_FILE_HANDLE, ">> $rflash_log_file");
+                print RFLASH_LOG_FILE_HANDLE "$error\n";
+                close (RFLASH_LOG_FILE_HANDLE);
+            }
+            $wait_node_num--;
+            return;
         }
-        $wait_node_num--;
-        return;    
     }
 
     if ($status_info{ $node_info{$node}{cur_status} }->{process}) {
