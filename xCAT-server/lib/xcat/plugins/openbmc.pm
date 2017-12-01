@@ -2789,6 +2789,8 @@ sub rspconfig_dump_response {
         } else {
             $child_node_map{$child} = $node;
         }
+        $node_info{$node}{cur_status} = $next_status{ $node_info{$node}{cur_status} };
+        return;
     }
 
     if ($node_info{$node}{cur_status} eq "RSPCONFIG_DUMP_CREATE_RESPONSE") {
@@ -2820,7 +2822,7 @@ sub rspconfig_dump_response {
         if ($node_info{$node}{method} || $status_info{ $node_info{$node}{cur_status} }{method}) {
             gen_send_request($node);
         } elsif ($status_info{ $node_info{$node}{cur_status} }->{process}) {
-            $status_info{ $node_info{$node}{cur_status} }->{process}->($node, undef) if ($node_info{$node}{cur_status} eq "RSPCONFIG_DUMP_DOWNLOAD_REQUEST");
+            $status_info{ $node_info{$node}{cur_status} }->{process}->($node, undef);
         }
     } else {
         $wait_node_num--;
