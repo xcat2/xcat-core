@@ -2576,7 +2576,8 @@ sub rspconfig_response {
     if ($node_info{$node}{cur_status} eq "RSPCONFIG_PASSWD_VERIFY") {
         if ($status_info{RSPCONFIG_PASSWD_VERIFY}{argv} ne $node_info{$node}{password}) {
             xCAT::SvrUtils::sendmsg("Current BMC password is incorrect, cannot set the new password.", $callback, $node);
-            $next_status{ $node_info{$node}{cur_status} } = "";
+            $wait_node_num--;
+            return;
         }
     }
 
@@ -2773,7 +2774,8 @@ sub rspconfig_dump_response {
                 return;
             } else {
                 xCAT::SvrUtils::sendmsg([1,"Could not find dump $node_info{$node}{dump_id} after waiting $::RSPCONFIG_DUMP_WAIT_TOTALTIME seconds."], $callback, $node);
-                $next_status{ $node_info{$node}{cur_status} } = "";
+                $wait_node_num--;
+                return;
             }
         }
     } 
@@ -2805,7 +2807,8 @@ sub rspconfig_dump_response {
                 }
             } else {
                 xCAT::SvrUtils::sendmsg([1, "BMC returned $::RESPONSE_OK but no ID was returned.  Verify manually on the BMC."], $callback, $node);
-                $next_status{ $node_info{$node}{cur_status} } = "";
+                $wait_node_num--;
+                return;
             }
         } 
     }
@@ -3119,8 +3122,10 @@ sub rflash_response {
             my $flash_failed_msg = "Firmware activation failed.";
             xCAT::SvrUtils::sendmsg([1,"$flash_failed_msg"], $callback, $node);
             print RFLASH_LOG_FILE_HANDLE "$flash_failed_msg\n";
+            close (RFLASH_LOG_FILE_HANDLE);
             $node_info{$node}{rst} = "$flash_failed_msg";
-            $next_status{RFLASH_UPDATE_CHECK_STATE_RESPONSE} = "";
+            $wait_node_num--;
+            return;
         } 
         elsif ($activation_state =~ /Software.Activation.Activations.Active/) { 
             if (scalar($priority_state) == 0) {
@@ -3128,8 +3133,10 @@ sub rflash_response {
                 my $flash_success_msg = "Firmware activation successful.";
                 xCAT::SvrUtils::sendmsg("$flash_success_msg", $callback, $node);
                 print RFLASH_LOG_FILE_HANDLE "$flash_success_msg\n";
+                close (RFLASH_LOG_FILE_HANDLE);
                 $node_info{$node}{rst} = "$flash_success_msg";
-                $next_status{RFLASH_UPDATE_CHECK_STATE_RESPONSE} = "";
+                $wait_node_num--;
+                return;
             }
             else {
                 # Activation state of active and priority of non 0 - need to just set priority to 0 to activate
