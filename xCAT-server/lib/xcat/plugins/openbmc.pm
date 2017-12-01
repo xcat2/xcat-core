@@ -2856,7 +2856,8 @@ sub dump_download_process {
     my ($sec, $min, $hour, $mday, $mon, $year, $wday, $yday, $isdst) = localtime($node_info{$node}{generated});
     $mon += 1;
     $year += 1900;
-    my $file_name = "/var/log/xcat/dump/" . $year . $mon . $mday . $hour . $min . "_$node" . "_dump_$dump_id.tar.xz";
+    my $formatted_time = sprintf ("%04d%02d%02d%02d%02d", $year, $mon, $mday, $hour, $min);
+    my $file_name = "/var/log/xcat/dump/" . $formatted_time . "_$node" . "_dump_$dump_id.tar.xz";
     my $down_url;
     $down_url = $status_info{RSPCONFIG_DUMP_DOWNLOAD_REQUEST}{init_url};
     $down_url =~ s/#ID#/$dump_id/g;
