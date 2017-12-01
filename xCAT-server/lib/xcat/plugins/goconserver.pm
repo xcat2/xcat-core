@@ -324,7 +324,7 @@ sub start_goconserver {
     xCAT::Utils->runcmd($cmd, 0);
     if ($::RUNCMD_RC != 0) {
         my $config= "global:\n".
-                    "  host: $host\n".
+                    "  host: 0.0.0.0\n".
                     "  ssl_key_file: /etc/xcat/cert/server-key.pem\n".
                     "  ssl_cert_file: /etc/xcat/cert/server-cert.pem\n".
                     "  ssl_ca_cert_file: /etc/xcat/cert/ca.pem\n".
