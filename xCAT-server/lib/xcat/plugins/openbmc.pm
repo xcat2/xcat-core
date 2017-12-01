@@ -2815,7 +2815,7 @@ sub rspconfig_dump_response {
         if ($node_info{$node}{method} || $status_info{ $node_info{$node}{cur_status} }{method}) {
             gen_send_request($node);
         } elsif ($status_info{ $node_info{$node}{cur_status} }->{process}) {
-            $status_info{ $node_info{$node}{cur_status} }->{process}->($node, undef);
+            $status_info{ $node_info{$node}{cur_status} }->{process}->($node, undef) if ($node_info{$node}{cur_status} eq "RSPCONFIG_DUMP_DOWNLOAD_REQUEST");
         }
     } else {
         $wait_node_num--;
