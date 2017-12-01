@@ -149,8 +149,8 @@ elif [ $USE_GOCONSERVER == "1" ]; then
                CONGO_SSL_CERT=$HOME/.xcat/client-cred.pem \
                CONGO_SSL_CA_CERT=$HOME/.xcat/ca.pem \
                CONGO_PORT=12430 \
-               CONGO_SERVER_HOST=$CONSERVER \
-               CONGO_URL=https://$CONSERVER:12429"
+               CONGO_SERVER_HOST=`hostname -s` \
+               CONGO_URL=https://`hostname -s`:12429"
 
     if [ "$CONSERVER" == `hostname` ]; then
         exec env $CONGO_ENV /usr/bin/congo console $1
