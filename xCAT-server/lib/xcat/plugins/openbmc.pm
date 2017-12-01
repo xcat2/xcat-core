@@ -65,7 +65,7 @@ $::UPLOAD_WAIT_TOTALTIME    = int($::UPLOAD_WAIT_ATTEMPT*$::UPLOAD_WAIT_INTERVAL
 $::RPOWER_CHECK_INTERVAL    = 2;
 $::RPOWER_MAX_RETRY         = 30;
 
-$::RSPCONFIG_DUMP_INTERVAL  = 30;
+$::RSPCONFIG_DUMP_INTERVAL  = 15;
 $::RSPCONFIG_DUMP_MAX_RETRY = 20;
 $::RSPCONFIG_DUMP_WAIT_TOTALTIME = int($::RSPCONFIG_DUMP_INTERVAL*$::RSPCONFIG_DUMP_MAX_RETRY);
 
@@ -2762,6 +2762,9 @@ sub rspconfig_dump_response {
             if ( $node_info{$node}{dump_wait_attemp} > 0) {
                 $node_info{$node}{dump_wait_attemp} --; 
                 retry_after($node, "RSPCONFIG_DUMP_LIST_REQUEST", $::RSPCONFIG_DUMP_INTERVAL);
+                unless ($node_info{$node}{dump_wait_attemp} % int(8)) { # display message every 8 iterations of the interval
+                    xCAT::SvrUtils::sendmsg("Still waiting for dump $node_info{$node}{dump_id} to be generated...", $callback, $node);
+                }
                 return;
             } else {
                 xCAT::SvrUtils::sendmsg([1,"Could not find dump $node_info{$node}{dump_id} after waiting $::RSPCONFIG_DUMP_WAIT_TOTALTIME seconds."], $callback, $node);
