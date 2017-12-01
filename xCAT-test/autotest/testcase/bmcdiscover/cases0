@@ -51,19 +51,13 @@ end
 start:bmcdiscover_check_paswd
 cmd:bmcdiscover -i $$bmcrange -u $$bmcusername -p $$bmcpasswd --check
 check:rc==0
-check:output=~Correct ADMINISTRATOR
-end
-
-start:bmcdiscover_check_passwd_wrong
-cmd:bmcdiscover -i $$bmcrange -u $$bmcusername -p test$$bmcpasswd --check
-check:rc==0
-check:output=~Invalid username or password | Wrong BMC password
+check:output=~is not supported
 end
 
 start:bmcdiscover_get_ipsource
 cmd:bmcdiscover -i $$bmcrange -u $$bmcusername -p $$bmcpasswd --ipsource
 check:rc==0
-check:output=~Static Address
+check:output=~is not supported
 end
 
 start:bmcdiscover_range_w
@@ -73,12 +67,6 @@ check:output=~Writing node
 check:output=~$$bmcrange,\w*,\w*,$$bmcusername,$$bmcpasswd 
 end
 
-start:bmcdiscover_range_u_p_i_ipsource
-description:check the bmcrange is which type address
-cmd:bmcdiscover -i  $$bmcrange -u $$bmcusername -p $$bmcpasswd --ipsource
-check:rc==0
-check:output=~IP Address Source       : Static Address
-end
 start:bmcdiscover_range_z
 cmd:bmcdiscover --range  $$bmcrange -u $$bmcusername -p $$bmcpasswd -z
 check:rc==0
