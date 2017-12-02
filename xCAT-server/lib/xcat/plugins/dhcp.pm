@@ -747,6 +747,7 @@ sub addnode
             print $omshell "new host\n";
             print $omshell "set name = \"$hostname\"\n";
             print $omshell "set hardware-address = " . $mac . "\n";
+            print $omshell "set dhcp-client-identifier = " . $mac . "\n";
             print $omshell "set hardware-type = $hardwaretype\n";
 
             if ($ip eq "DENIED")
