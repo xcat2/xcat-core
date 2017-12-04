@@ -1362,6 +1362,11 @@ sub parse_command_status {
                 }
                 $status_info{RSPCONFIG_DUMP_CLEAR_RESPONSE}{argv} = $$subcommands[2];
             } elsif ($dump_opt =~ /-d|--download/) {
+                # Verify directory for download is there
+                unless (-d  $::XCAT_LOG_DUMP_DIR) {
+                    xCAT::SvrUtils::sendmsg([1, "Unable to create directory " . $::XCAT_LOG_DUMP_DIR . " to download dump file, cannot continue."], $callback);
+                    return 1;
+                }
                 $::RSPCONFIG_DUMP_CMD_TIME = time(); #Save time of rspcommand start to use in the dump filename
                 $next_status{LOGIN_RESPONSE} = "RSPCONFIG_DUMP_DOWNLOAD_REQUEST";
                 $next_status{RSPCONFIG_DUMP_DOWNLOAD_REQUEST} = "RSPCONFIG_DUMP_DOWNLOAD_RESPONSE";
@@ -1370,6 +1375,11 @@ sub parse_command_status {
             } else {
                 # this section handles the dump support where no options are given and xCAT will 
                 # # handle the creation, waiting, and download of the dump across a given noderange
+                # Verify directory for download is there
+                unless (-d  $::XCAT_LOG_DUMP_DIR) {
+                    xCAT::SvrUtils::sendmsg([1, "Unable to find directory " . $::XCAT_LOG_DUMP_DIR . " to download dump file"], $callback);
+                    return 1;
+                }
                 $::RSPCONFIG_DUMP_CMD_TIME = time(); #Save time of rspcommand start to use in the dump filename
                 xCAT::SvrUtils::sendmsg("Capturing BMC Diagnostic information, this will take some time...", $callback);
                 $next_status{LOGIN_RESPONSE} = "RSPCONFIG_DUMP_CREATE_REQUEST";
@@ -3206,22 +3216,22 @@ sub dump_download_process {
     my $curl_login_result = `$curl_login_cmd -s`;
     my $h = from_json($curl_login_result);
     if ($h->{message} eq $::RESPONSE_OK) {
-        # Verify dump directory is still there
-        if (-d  $::XCAT_LOG_DUMP_DIR) {
-            xCAT::SvrUtils::sendmsg("Dump $dump_id generated. Downloading to $file_name", $callback, $node);
-        }
-        else {
-            xCAT::SvrUtils::sendmsg([1, "Unable to find directory " . $::XCAT_LOG_DUMP_DIR . " to download dump file"], $callback, $node);
-            return 1;
-        }
+        xCAT::SvrUtils::sendmsg("Dump $dump_id generated. Downloading to $file_name", $callback, $node);
         my $curl_dwld_result = `$curl_dwld_cmd -s`;
         if (!$curl_dwld_result) {
             if ($xcatdebugmode) {
                 my $debugmsg = "RSPCONFIG_DUMP_DOWNLOAD_REQUEST: CMD: $curl_dwld_cmd";
                 process_debug_info($node, $debugmsg);
             }
-            xCAT::SvrUtils::sendmsg("Downloaded dump $dump_id to $file_name", $callback, $node) if ($::VERBOSE);
             `$curl_logout_cmd -s`;
+            # Verify the file actually got downloaded
+            if (-e $file_name) {
+                xCAT::SvrUtils::sendmsg("Downloaded dump $dump_id to $file_name", $callback, $node) if ($::VERBOSE);
+            }
+            else {
+                xCAT::SvrUtils::sendmsg([1, "Failed to download dump $dump_id to $file_name. Verify destination directory exists and has correct access permissions."], $callback, $node);
+                return 1;
+            }
         } else {
             xCAT::SvrUtils::sendmsg([1, "Failed to download dump $dump_id :" . $h->{message} . " - " . $h->{data}->{description}], $callback, $node);
             return 1;
