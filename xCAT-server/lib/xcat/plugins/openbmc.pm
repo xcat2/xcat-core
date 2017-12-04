@@ -1105,9 +1105,15 @@ sub parse_command_status {
             $next_status{RPOWER_ON_REQUEST} = "RPOWER_ON_RESPONSE";
             $status_info{RPOWER_ON_RESPONSE}{argv} = "$subcommand";
         } elsif ($subcommand eq "bmcreboot") {
-            $next_status{LOGIN_RESPONSE} = "RPOWER_BMCREBOOT_REQUEST";
+            $next_status{LOGIN_RESPONSE} = "RINV_FIRM_REQUEST";
+            $next_status{RINV_FIRM_REQUEST} = "RINV_FIRM_RESPONSE";
+            $next_status{RINV_FIRM_RESPONSE}{PENDING} = "RSPCONFIG_DUMP_CLEAR_ALL_REQUEST";
+            $next_status{RSPCONFIG_DUMP_CLEAR_ALL_REQUEST} = "RSPCONFIG_DUMP_CLEAR_RESPONSE";
+            $next_status{RSPCONFIG_DUMP_CLEAR_RESPONSE} = "RPOWER_BMCREBOOT_REQUEST";
+            $next_status{RINV_FIRM_RESPONSE}{NO_PENDING} = "RPOWER_BMCREBOOT_REQUEST";
             $next_status{RPOWER_BMCREBOOT_REQUEST} = "RPOWER_RESET_RESPONSE";
             $status_info{RPOWER_RESET_RESPONSE}{argv} = "$subcommand";
+            $status_info{RINV_FIRM_RESPONSE}{check} = 1;    
         }
     } 
 
@@ -1781,16 +1787,18 @@ sub deal_with_response {
                 $error = $response_info->{'data'}->{'description'};
             }
         }
-        xCAT::SvrUtils::sendmsg([1, $error], $callback, $node);
-        if ($node_info{$node}{cur_status} eq "RFLASH_UPDATE_CHECK_STATE_RESPONSE") {
-            $node_info{$node}{rst} = $error if ($::VERBOSE);
-            my $rflash_log_file = xCAT::Utils->full_path($node.".log", RFLASH_LOG_DIR);
-            open (RFLASH_LOG_FILE_HANDLE, ">> $rflash_log_file");
-            print RFLASH_LOG_FILE_HANDLE "$error\n";
-            close (RFLASH_LOG_FILE_HANDLE);
+        if (!($node_info{$node}{cur_status} eq "RSPCONFIG_DUMP_CLEAR_RESPONSE" and $next_status{ $node_info{$node}{cur_status} })) {
+            xCAT::SvrUtils::sendmsg([1, $error], $callback, $node);
+            if ($node_info{$node}{cur_status} eq "RFLASH_UPDATE_CHECK_STATE_RESPONSE") {
+                $node_info{$node}{rst} = $error if ($::VERBOSE);
+                my $rflash_log_file = xCAT::Utils->full_path($node.".log", RFLASH_LOG_DIR);
+                open (RFLASH_LOG_FILE_HANDLE, ">> $rflash_log_file");
+                print RFLASH_LOG_FILE_HANDLE "$error\n";
+                close (RFLASH_LOG_FILE_HANDLE);
+            }
+            $wait_node_num--;
+            return;
         }
-        $wait_node_num--;
-        return;    
     }
 
     if ($status_info{ $node_info{$node}{cur_status} }->{process}) {
@@ -2085,6 +2093,7 @@ sub rinv_response {
     my $src;
     my $content_info;
     my @sorted_output;
+    my $to_clear_dump = 0;
 
     # Get the functional IDs to accurately mark the active running FW
     my $functional = get_functional_software_ids($response_info);
@@ -2107,6 +2116,16 @@ sub rinv_response {
                 if (defined($content{Priority})) {
                     $priority_value = $content{Priority};
                 }
+
+                if ($status_info{RINV_FIRM_RESPONSE}{check}) {
+                    if (($purpose_value =~ /BMC/) and
+                        ($priority_value == 0 and %{$functional} and !exists($functional->{$sw_id}))) {
+                        $to_clear_dump = 1;
+                    }
+                    @sorted_output = ();
+                    last;
+                }
+
                 #
                 # For 'rinv firm', only print Active software, unless verbose is specified
                 #
@@ -2182,11 +2201,23 @@ sub rinv_response {
             xCAT::MsgUtils->message("I", { data => ["$node: $_"] }, $callback);
         }
     } else {
-        xCAT::SvrUtils::sendmsg("$::NO_ATTRIBUTES_RETURNED", $callback, $node);
+        if ($status_info{RINV_FIRM_RESPONSE}{check}) {
+            xCAT::MsgUtils->message("I", { data => ["$node: Firmware will be flashed on reboot, deleting all BMC diagnostics..."] }, $callback);
+        } else {
+            xCAT::MsgUtils->message("I", { data => ["$node: $::NO_ATTRIBUTES_RETURNED"] }, $callback);
+        }
     }
 
     if ($next_status{ $node_info{$node}{cur_status} }) {
-        $node_info{$node}{cur_status} = $next_status{ $node_info{$node}{cur_status} };
+        if ($status_info{RINV_FIRM_RESPONSE}{check}) {
+            if ($to_clear_dump) {
+                $node_info{$node}{cur_status} = $next_status{ $node_info{$node}{cur_status} }{PENDING};
+            } else {
+                $node_info{$node}{cur_status} = $next_status{ $node_info{$node}{cur_status} }{NO_PENDING}
+            }
+        } else {
+            $node_info{$node}{cur_status} = $next_status{ $node_info{$node}{cur_status} };
+        }
         gen_send_request($node);
     } else {
         $wait_node_num--;
@@ -2816,7 +2847,10 @@ sub rspconfig_dump_response {
     if ($node_info{$node}{cur_status} eq "RSPCONFIG_DUMP_CLEAR_RESPONSE") {
         if ($response_info->{'message'} eq $::RESPONSE_OK) {
             my $dump_id = $status_info{RSPCONFIG_DUMP_CLEAR_RESPONSE}{argv};
-            xCAT::SvrUtils::sendmsg("[$dump_id] clear", $callback, $node);
+            xCAT::MsgUtils->message("I", { data => ["[$dump_id] clear"] }, $callback) unless ($next_status{ $node_info{$node}{cur_status} });
+        } else {
+            my $error_msg = "Could not clear BMC diagnostics successfully (". $response_info->{'message'} . "), ignoring...";
+            xCAT::MsgUtils->message("W", { data => ["$node: $error_msg"] }, $callback) if ($next_status{ $node_info{$node}{cur_status} });
         }
     } 
 
