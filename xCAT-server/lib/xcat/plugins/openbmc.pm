@@ -68,6 +68,8 @@ $::RPOWER_MAX_RETRY         = 30;
 $::RSPCONFIG_DUMP_INTERVAL  = 15;
 $::RSPCONFIG_DUMP_MAX_RETRY = 20;
 $::RSPCONFIG_DUMP_WAIT_TOTALTIME = int($::RSPCONFIG_DUMP_INTERVAL*$::RSPCONFIG_DUMP_MAX_RETRY);
+$::RSPCONFIG_WAIT_VLAN_DONE = 15;
+$::RSPCONFIG_WAIT_IP_DONE   = 3;
 
 use constant RFLASH_LOG_DIR => "/var/log/xcat/rflash";
 unless (-d RFLASH_LOG_DIR) {
@@ -2433,11 +2435,15 @@ sub rspconfig_response {
             my ($path, $adapter_id) = (split(/\/ipv4\//, $key_url));
             
             if ($adapter_id) {
-                my $nic = $path;
-                $nic =~ s/(.*\/)//g;
                 if (defined($content{Origin}) and ($content{Origin} =~ /LinkLocal/)) {
+                    if ($xcatdebugmode) {
+                        my $debugmsg = "Found LocalLink " . $content{Address} . " for interface " . $key_url . " Ignoring...";
+                        process_debug_info($node, $debugmsg);
+                    }
                     next;
                 }
+                my $nic = $path;
+                $nic =~ s/(.*\/)//g;
                 unless (defined($nicinfo{$nic}{address})) {
                     $nicinfo{$nic}{address} = "n/a";
                     $nicinfo{$nic}{gateway} = "n/a";
@@ -2539,33 +2545,34 @@ sub rspconfig_response {
                     my $address = $nicinfo{$nic}{address};
                     my $prefix = $nicinfo{$nic}{prefix};
                     my $gateway = $nicinfo{$nic}{gateway};
-                    my $next_state = $next_status{ $node_info{$node}{cur_status} };
                     if ($check_ip eq $address and $check_netmask eq $prefix and $check_gateway eq $gateway) {
                         if (($check_vlan and $check_vlan eq $nicinfo{$nic}{vlan}) or !$check_vlan) {
                             $next_status{ $node_info{$node}{cur_status} } = "RSPCONFIG_PRINT_BMCINFO";
+                            $the_nic_to_config = $nic;
                             last;
                         }
                     }
-                    # To create an Object with vlan tag, shall be operated to the eth0
-                    if ($next_state eq "RSPCONFIG_VLAN_REQUEST") {
+                    # Only deal with the nic whose IP matching the BMC IP configured for the node
+                    if ($address eq $node_info{$node}{bmc}) {
                         $the_nic_to_config = $nic;
-                        $the_nic_to_config =~ s/(\_\d*)//g;
-                        $status_info{$next_state}{data} =~ s/#NIC#/$the_nic_to_config/g;
-                        last;
-                    # If not specify vlan, configure IP to the NIC object in the same subnet specified
-                    } elsif (xCAT::NetworkUtils::isInSameSubnet( $address, $check_ip, $check_netmask, 1)) {
-                        $the_nic_to_config = $nic;
-                        $node_info{$node}{origin_ip} = $address;
                         last;
                     }
                 }
-                # If no vlan specified, and NO nic in the same subnet specified, configure to eth0 
-                unless ($the_nic_to_config) {
-                    $the_nic_to_config = $nics[0];
-                    $the_nic_to_config =~ s/(\_\d*)//g;
+                if (!defined($the_nic_to_config)) {
+                    xCAT::SvrUtils::sendmsg("Can not find the correct device to configure", $callback, $node);
+                    $wait_node_num--;
+                    return;
+                } else {
+                    my $next_state = $next_status{ $node_info{$node}{cur_status} };
+                    # To create an Object with vlan tag, shall be operated to the eth0
+                    if ($next_state eq "RSPCONFIG_VLAN_REQUEST") {
+                        $the_nic_to_config =~ s/(\_\d*)//g;
+                        $status_info{$next_state}{data} =~ s/#NIC#/$the_nic_to_config/g;
+                        last;
+                    }
+                    $status_info{RSPCONFIG_IPOBJECT_REQUEST}{init_url} =~ s/#NIC#/$the_nic_to_config/g;
+                    $node_info{$node}{nic} = $the_nic_to_config;
                 }
-                $status_info{RSPCONFIG_IPOBJECT_REQUEST}{init_url} =~ s/#NIC#/$the_nic_to_config/g;
-                $node_info{$node}{nic} = $the_nic_to_config;
             }
         }
     }
@@ -2580,17 +2587,11 @@ sub rspconfig_response {
         }
         my ($check_ip,$check_netmask,$check_gateway) = @checks;
         my $check_result = 0;
-        my $url_for_origin_ip = undef;
         foreach my $key_url (keys %{$response_info->{data}}) {
             my %content = %{ ${ $response_info->{data} }{$key_url} };
             my ($path, $adapter_id) = (split(/\/ipv4\//, $key_url));
             if ($adapter_id) {
                 if (defined($content{Address}) and $content{Address}) {
-                    if ($content{Address} eq $node_info{$node}{origin_ip}) {
-                        if ($content{Origin} =~ /Static/) {
-                            $url_for_origin_ip = "$key_url";
-                        }
-                    }
                     if ($content{Address} eq $node_info{$node}{bmc}) {
                         if ($content{Origin} =~ /Static/) {
                             $origin_type = "STATIC";
@@ -2616,9 +2617,6 @@ sub rspconfig_response {
                     }
                 }
             }
-        }
-        if (defined($url_for_origin_ip)) {
-            $status_info{RSPCONFIG_DELETE_REQUEST}{init_url} = "$url_for_origin_ip";
         }
         if (!$check_result or !$origin_type) {
             xCAT::SvrUtils::sendmsg("Config IP failed", $callback, $node);
@@ -2656,17 +2654,17 @@ sub rspconfig_response {
 
     if ($node_info{$node}{cur_status} eq "RSPCONFIG_VLAN_RESPONSE") {
         if ($xcatdebugmode) {
-             process_debug_info($node, "Wait 15 seconds for interface with VLAN tag be ready");
+             process_debug_info($node, "Wait $::RSPCONFIG_WAIT_VLAN_DONE seconds for interface with VLAN tag be ready");
         }
-        retry_after($node, $next_status{ $node_info{$node}{cur_status} }, 15);
+        retry_after($node, $next_status{ $node_info{$node}{cur_status} }, $::RSPCONFIG_WAIT_VLAN_DONE);
         return;
     }
 
     if ($node_info{$node}{cur_status} eq "RSPCONFIG_IPOBJECT_RESPONSE") {
         if ($xcatdebugmode) {
-             process_debug_info($node, "Wait 3 seconds for the configuration done");
+             process_debug_info($node, "Wait $::RSPCONFIG_WAIT_IP_DONE seconds for the configuration done");
         }
-        retry_after($node, $next_status{ $node_info{$node}{cur_status} }, 3);
+        retry_after($node, $next_status{ $node_info{$node}{cur_status} }, $::RSPCONFIG_WAIT_IP_DONE);
         return;
     }
 
