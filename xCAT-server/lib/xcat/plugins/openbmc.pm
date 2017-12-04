@@ -1852,8 +1852,8 @@ sub login_request {
     my $login_response = $brower->request($login_request);
 
     # Check the return code
-    if ($login_response->code != 200) { 
-        # handle the errors generically
+    if ($login_response->code eq 500 or $login_response->code eq 404) { 
+        # handle only 404 and 504 in this code, defer to deal_with_response for the rest
         xCAT::SvrUtils::sendmsg([1 ,"[" . $login_response->code . "] Login to BMC failed: " . $login_response->status_line . "."], $callback, $node);
         return 1;
     }
