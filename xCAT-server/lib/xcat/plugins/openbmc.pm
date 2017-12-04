@@ -2425,6 +2425,8 @@ sub rspconfig_response {
         my $path;
         my @output;
         my $grep_string = $status_info{RSPCONFIG_GET_RESPONSE}{argv};
+        my $zeroConfigPrefix = "169.254";
+
         foreach my $key_url (keys %{$response_info->{data}}) {
             my %content = %{ ${ $response_info->{data} }{$key_url} };
 
@@ -2442,6 +2444,14 @@ sub rspconfig_response {
             
             if ($adapter_id) {
                 if (defined($content{Address}) and $content{Address}) {
+                    # Do not count the ZeroConfigIP inet as part of valid IP addresses to display
+                    if ($content{Address} =~ m/$zeroConfigPrefix/) { 
+                        if ($xcatdebugmode) {
+                            my $debugmsg = "Found ZeroConfigIP " . $content{Address} . " for interface " . $key_url . " Ignoring...";
+                            process_debug_info($node, $debugmsg);
+                        }
+                        next;
+                    }
                     unless ($address =~ /n\/a/) {
                         # We have already processed an entry with adapter information.
                         # This must be a second entry. Display an error. Currently only supporting
