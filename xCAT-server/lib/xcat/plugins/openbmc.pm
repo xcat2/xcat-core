@@ -68,6 +68,8 @@ $::RPOWER_MAX_RETRY         = 30;
 $::RSPCONFIG_DUMP_INTERVAL  = 15;
 $::RSPCONFIG_DUMP_MAX_RETRY = 20;
 $::RSPCONFIG_DUMP_WAIT_TOTALTIME = int($::RSPCONFIG_DUMP_INTERVAL*$::RSPCONFIG_DUMP_MAX_RETRY);
+$::RSPCONFIG_WAIT_VLAN_DONE = 15;
+$::RSPCONFIG_WAIT_IP_DONE   = 3;
 
 use constant RFLASH_LOG_DIR => "/var/log/xcat/rflash";
 unless (-d RFLASH_LOG_DIR) {
@@ -1587,8 +1589,9 @@ sub parse_node_info {
     foreach my $node (@$noderange) {
         if (defined($openbmc_hash->{$node}->[0])) {
             if ($openbmc_hash->{$node}->[0]->{'bmc'}) {
-                $node_info{$node}{bmc} = $openbmc_hash->{$node}->[0]->{'bmc'};
-            } else {
+                $node_info{$node}{bmc} = xCAT::NetworkUtils::getNodeIPaddress($openbmc_hash->{$node}->[0]->{'bmc'});
+            }
+            unless($node_info{$node}{bmc}) {
                 xCAT::SvrUtils::sendmsg("Error: Unable to get attribute bmc", $callback, $node);
                 $rst = 1;
                 next;
@@ -2442,18 +2445,10 @@ sub rspconfig_response {
     $response_info = decode_json $response->content if ($response);
 
     if ($node_info{$node}{cur_status} eq "RSPCONFIG_GET_RESPONSE") {
-        my $address         = "n/a";
-        my $gateway         = "n/a";
-        my $prefix          = "n/a";
-        my $netmask         = "n/a";
-        my $vlan            = 0;
         my $hostname        = "";
         my $default_gateway = "n/a";
-        my $adapter_id      = "n/a";
-        my $ipsrc           = "n/a";
-        my $nic;
+        my %nicinfo         = ();
         my $error;
-        my $path;
         my @output;
         my $grep_string = $status_info{RSPCONFIG_GET_RESPONSE}{argv};
         foreach my $key_url (keys %{$response_info->{data}}) {
@@ -2468,12 +2463,30 @@ sub rspconfig_response {
                 }
             }
 
-
-            ($path, $adapter_id) = (split(/\/ipv4\//, $key_url));
+            my ($path, $adapter_id) = (split(/\/ipv4\//, $key_url));
             
             if ($adapter_id) {
+                if (defined($content{Origin}) and ($content{Origin} =~ /LinkLocal/)) {
+                    if ($xcatdebugmode) {
+                        my $debugmsg = "Found LocalLink " . $content{Address} . " for interface " . $key_url . " Ignoring...";
+                        process_debug_info($node, $debugmsg);
+                    }
+                    next;
+                }
+                my $nic = $path;
+                $nic =~ s/(.*\/)//g;
+                unless (defined($nicinfo{$nic}{address})) {
+                    $nicinfo{$nic}{address} = "n/a";
+                    $nicinfo{$nic}{gateway} = "n/a";
+                    $nicinfo{$nic}{ipsrc}   = "n/a";
+                    $nicinfo{$nic}{netmask} = "n/a";
+                    $nicinfo{$nic}{prefix}  = "n/a";
+                    $nicinfo{$nic}{vlan}    = "Disable";
+                }
+
+
                 if (defined($content{Address}) and $content{Address}) {
-                    unless ($address =~ /n\/a/) {
+                    unless ($nicinfo{$nic}{address} =~ /n\/a/) {
                         # We have already processed an entry with adapter information.
                         # This must be a second entry. Display an error. Currently only supporting
                         # an adapter with a single IP address set.
@@ -2481,51 +2494,70 @@ sub rspconfig_response {
                         $node_info{$node}{cur_status} = "";
                         last;
                     }
-                    $address = $content{Address};
+                    $nicinfo{$nic}{address} = $content{Address};
                 }
                 if (defined($content{Gateway}) and $content{Gateway}) {
-                    $gateway = $content{Gateway};
+                    $nicinfo{$nic}{gateway} = $content{Gateway};
                 }
                 if (defined($content{PrefixLength}) and $content{PrefixLength}) {
-                    $prefix = $content{PrefixLength};
+                    $nicinfo{$nic}{prefix} = $content{PrefixLength};
                 }
                 if (defined($content{Origin})) {
-                    $ipsrc = $content{Origin};
-                    $ipsrc =~ s/^.*\.(\w+)/$1/;
+                    $nicinfo{$nic}{ipsrc} = $content{Origin};
+                    $nicinfo{$nic}{ipsrc} =~ s/^.*\.(\w+)/$1/;
                 }
                  
                 if (defined($response_info->{data}->{$path}->{Id})) {
-                    $vlan = $response_info->{data}->{$path}->{Id};
+                    $nicinfo{$nic}{vlan} = $response_info->{data}->{$path}->{Id};
                 }
-                $nic = $path;
-                $nic =~ s/(.*\/)//g;
             }
+        }
+        if ($grep_string =~ /(.*)hostname(.*)/) {
+            xCAT::SvrUtils::sendmsg("BMC hostname: $hostname", $callback, $node);
+            unless ($1 or $2) {
+                $wait_node_num--;
+                return;
+            }
+        }
+        if (scalar (keys %nicinfo) == 0) {
+            $error = "No valid BMC network information";
+            $node_info{$node}{cur_status} = "";  
         }
         if ($error) {
             xCAT::SvrUtils::sendmsg("$error", $callback, $node);
         } else {
+            my @address = ();
+            my @ipsrc = ();
+            my @netmask = ();
+            my @gateway = ();
+            my @vlan = (); 
+            my @nics = keys %nicinfo;
+            foreach my $nic (@nics) {
+                my $addon_info = '';
+                if ($#nics > 1) {
+                    $addon_info = " for $nic";
+                }
+                push @address, "BMC IP$addon_info: $nicinfo{$nic}{address}";
+                push @ipsrc, "BMC IP Source$addon_info: $nicinfo{$nic}{ipsrc}";
+                if ($nicinfo{$nic}{address}) {
+                    my $mask_shift = 32 - $nicinfo{$nic}{prefix};
+                    my $decimal_mask = (2 ** $nicinfo{$nic}{prefix} - 1) << $mask_shift;
+                    push @netmask, "BMC Netmask$addon_info: " . join('.', unpack("C4", pack("N", $decimal_mask)));
+                }
+                push @gateway, "BMC Gateway$addon_info: $nicinfo{$nic}{gateway} (default: $default_gateway)";
+                push @vlan, "BMC VLAN ID$addon_info: $nicinfo{$nic}{vlan}";
+            }
             foreach my $opt (split /,/,$grep_string) {
                 if ($opt eq "ip") {
-                    push @output, "BMC IP: $address"; 
+                    push @output, @address; 
                 } elsif ($opt eq "ipsrc") {
-                    push @output, "BMC IP Source: $ipsrc";
+                    push @output, @ipsrc;
                 } elsif ($opt eq "netmask") {
-                    if ($address) {
-                        my $mask_shift = 32 - $prefix;
-                        my $decimal_mask = (2 ** $prefix - 1) << $mask_shift;
-                        $netmask = join('.', unpack("C4", pack("N", $decimal_mask)));
-                        push @output, "BMC Netmask: " . $netmask; 
-                    }
+                    push @output, @netmask;
                 } elsif ($opt eq "gateway") {
-                    push @output, "BMC Gateway: $gateway (default: $default_gateway)";
+                    push @output, @gateway; 
                 } elsif ($opt eq "vlan") {
-                    if ($vlan) { 
-                        push @output, "BMC VLAN ID: $vlan";
-                    } else {
-                        push @output, "BMC VLAN ID: Disabled";
-                    }
-                } elsif ($opt eq "hostname") {
-                    push @output, "BMC Hostname: $hostname";
+                    push @output, @vlan;
                 }
             }
             xCAT::SvrUtils::sendmsg("$_", $callback, $node) foreach (@output);
@@ -2539,17 +2571,38 @@ sub rspconfig_response {
                     $check_vlan = shift @checks;
                 }
                 my ($check_ip,$check_netmask,$check_gateway) = @checks;
-                if ($check_ip eq $address and $check_netmask eq $prefix and $check_gateway eq $gateway) {
-                    $next_status{ $node_info{$node}{cur_status} } = "RSPCONFIG_PRINT_BMCINFO" if (($check_vlan and $check_vlan eq $vlan) or !$check_vlan);
-                }
-
-                if ($next_status{ $node_info{$node}{cur_status} }) {
-                    if ($next_status{ $node_info{$node}{cur_status} } eq "RSPCONFIG_VLAN_REQUEST") {
-                        $nic =~ s/(\_\d*)//g;
-                        $status_info{RSPCONFIG_VLAN_REQUEST}{data} =~ s/#NIC#/$nic/g;
+                my $the_nic_to_config = undef;
+                foreach my $nic (@nics) {
+                    my $address = $nicinfo{$nic}{address};
+                    my $prefix = $nicinfo{$nic}{prefix};
+                    my $gateway = $nicinfo{$nic}{gateway};
+                    if ($check_ip eq $address and $check_netmask eq $prefix and $check_gateway eq $gateway) {
+                        if (($check_vlan and $check_vlan eq $nicinfo{$nic}{vlan}) or !$check_vlan) {
+                            $next_status{ $node_info{$node}{cur_status} } = "RSPCONFIG_PRINT_BMCINFO";
+                            $the_nic_to_config = $nic;
+                            last;
+                        }
                     }
-                    $status_info{RSPCONFIG_IPOBJECT_REQUEST}{init_url} =~ s/#NIC#/$nic/g;
-                    $node_info{$node}{nic} = $nic;
+                    # Only deal with the nic whose IP matching the BMC IP configured for the node
+                    if ($address eq $node_info{$node}{bmc}) {
+                        $the_nic_to_config = $nic;
+                        last;
+                    }
+                }
+                if (!defined($the_nic_to_config)) {
+                    xCAT::SvrUtils::sendmsg("Can not find the correct device to configure", $callback, $node);
+                    $wait_node_num--;
+                    return;
+                } else {
+                    my $next_state = $next_status{ $node_info{$node}{cur_status} };
+                    # To create an Object with vlan tag, shall be operated to the eth0
+                    if ($next_state eq "RSPCONFIG_VLAN_REQUEST") {
+                        $the_nic_to_config =~ s/(\_\d*)//g;
+                        $status_info{$next_state}{data} =~ s/#NIC#/$the_nic_to_config/g;
+                        last;
+                    }
+                    $status_info{RSPCONFIG_IPOBJECT_REQUEST}{init_url} =~ s/#NIC#/$the_nic_to_config/g;
+                    $node_info{$node}{nic} = $the_nic_to_config;
                 }
             }
         }
@@ -2565,7 +2618,6 @@ sub rspconfig_response {
         }
         my ($check_ip,$check_netmask,$check_gateway) = @checks;
         my $check_result = 0;
-
         foreach my $key_url (keys %{$response_info->{data}}) {
             my %content = %{ ${ $response_info->{data} }{$key_url} };
             my ($path, $adapter_id) = (split(/\/ipv4\//, $key_url));
@@ -2597,7 +2649,6 @@ sub rspconfig_response {
                 }
             }
         }
-
         if (!$check_result or !$origin_type) {
             xCAT::SvrUtils::sendmsg("Config IP failed", $callback, $node);
             $next_status{ $node_info{$node}{cur_status} } = "";
@@ -2632,8 +2683,20 @@ sub rspconfig_response {
         }
     }
 
-    if ($node_info{$node}{cur_status} eq "RSPCONFIG_IPOBJECT_RESPONSE" or $node_info{$node}{cur_status} eq "RSPCONFIG_VLAN_RESPONSE") {
-        sleep (3);
+    if ($node_info{$node}{cur_status} eq "RSPCONFIG_VLAN_RESPONSE") {
+        if ($xcatdebugmode) {
+             process_debug_info($node, "Wait $::RSPCONFIG_WAIT_VLAN_DONE seconds for interface with VLAN tag be ready");
+        }
+        retry_after($node, $next_status{ $node_info{$node}{cur_status} }, $::RSPCONFIG_WAIT_VLAN_DONE);
+        return;
+    }
+
+    if ($node_info{$node}{cur_status} eq "RSPCONFIG_IPOBJECT_RESPONSE") {
+        if ($xcatdebugmode) {
+             process_debug_info($node, "Wait $::RSPCONFIG_WAIT_IP_DONE seconds for the configuration done");
+        }
+        retry_after($node, $next_status{ $node_info{$node}{cur_status} }, $::RSPCONFIG_WAIT_IP_DONE);
+        return;
     }
 
     if ($next_status{ $node_info{$node}{cur_status} }) {
