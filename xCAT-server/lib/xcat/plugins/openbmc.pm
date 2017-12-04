@@ -2836,7 +2836,8 @@ sub rspconfig_dump_response {
             my $dump_id = $status_info{RSPCONFIG_DUMP_CLEAR_RESPONSE}{argv};
             xCAT::MsgUtils->message("I", { data => ["[$dump_id] clear"] }, $callback) unless ($next_status{ $node_info{$node}{cur_status} });
         } else {
-            xCAT::MsgUtils->message("W", { data => ["$node: Could not clear BMC diagnostics successfully (MSG?), ignoring..."] }, $callback) if ($next_status{ $node_info{$node}{cur_status} });
+            my $error_msg = "Could not clear BMC diagnostics successfully (". $response_info->{'message'} . "), ignoring...";
+            xCAT::MsgUtils->message("W", { data => ["$node: $error_msg"] }, $callback) if ($next_status{ $node_info{$node}{cur_status} });
         }
     } 
 
