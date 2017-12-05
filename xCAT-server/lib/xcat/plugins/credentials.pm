@@ -321,6 +321,7 @@ sub process_request
             open($tmpfile, $tfilename);
             @filecontent = <$tmpfile>;
             close($tmpfile);
+            $filecontent[$#filecontent] =~ s/\n?$/\n/;
             $retdata = "\n" . join('', @filecontent);
             push @{ $rsp->{'data'} }, { content => [$retdata], desc => [$parm] };
             $retdata     = "";
