@@ -1589,14 +1589,20 @@ sub parse_node_info {
     foreach my $node (@$noderange) {
         if (defined($openbmc_hash->{$node}->[0])) {
             if ($openbmc_hash->{$node}->[0]->{'bmc'}) {
-                $node_info{$node}{bmc} = xCAT::NetworkUtils::getNodeIPaddress($openbmc_hash->{$node}->[0]->{'bmc'});
+                $node_info{$node}{bmc} = $openbmc_hash->{$node}->[0]->{'bmc'};
+                $node_info{$node}{bmcip} = xCAT::NetworkUtils::getNodeIPaddress($openbmc_hash->{$node}->[0]->{'bmc'});
             }
             unless($node_info{$node}{bmc}) {
                 xCAT::SvrUtils::sendmsg("Error: Unable to get attribute bmc", $callback, $node);
                 $rst = 1;
                 next;
             }
-
+            unless($node_info{$node}{bmcip}) {
+                xCAT::SvrUtils::sendmsg("Error: Unable to resolve ip address for bmc: $node_info{$node}{bmc}", $callback, $node);
+                delete $node_info{$node};
+                $rst = 1;
+                next;
+            }
             if ($openbmc_hash->{$node}->[0]->{'username'}) {
                 $node_info{$node}{username} = $openbmc_hash->{$node}->[0]->{'username'};
             } elsif ($passwd_hash and $passwd_hash->{username}) {
@@ -2623,7 +2629,7 @@ sub rspconfig_response {
             my ($path, $adapter_id) = (split(/\/ipv4\//, $key_url));
             if ($adapter_id) {
                 if (defined($content{Address}) and $content{Address}) {
-                    if ($content{Address} eq $node_info{$node}{bmc}) {
+                    if ($content{Address} eq $node_info{$node}{bmcip}) {
                         if ($content{Origin} =~ /Static/) {
                             $origin_type = "STATIC";
                             $status_info{RSPCONFIG_DELETE_REQUEST}{init_url} = "$key_url";
