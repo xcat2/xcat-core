@@ -585,6 +585,12 @@ sub preprocess_request {
 
     $callback  = shift;
 
+    if ($::XCATSITEVALS{xcatdebugmode}) { $xcatdebugmode = $::XCATSITEVALS{xcatdebugmode} }
+
+    if ($xcatdebugmode) {
+        process_debug_info("OpenBMC");
+    }
+
     my $command   = $request->{command}->[0];
     my $noderange = $request->{node};
     my $extrargs  = $request->{arg};
@@ -704,8 +710,6 @@ sub process_request {
     if (ref($extrargs)) {
         @exargs = @$extrargs;
     }
-
-    if ($::XCATSITEVALS{xcatdebugmode}) { $xcatdebugmode = $::XCATSITEVALS{xcatdebugmode} }
 
     my $check = parse_node_info($noderange);
     my $rst = parse_command_status($command, \@exargs);
@@ -1739,9 +1743,6 @@ sub fork_process_login {
         sleep(1);
         $rst = 1;
     } elsif ($child == 0) {
-        if ($xcatdebugmode) {
-            process_debug_info($node, "Attempting to login");
-        }
         exit(login_request($node));
     } else {
         $login_pid_node{$child} = $node;
