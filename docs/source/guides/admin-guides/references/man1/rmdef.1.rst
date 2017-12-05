@@ -90,7 +90,7 @@ OPTIONS
 
 \ **-C|-**\ **-cleanup**\ 
  
- Perform additional cleanup by running \ **nodeset offline**\  on the objects specified in the \ *noderange*\ .
+ Perform additional cleanup by running \ **nodeset offline**\  and \ **makeconservercf -d**\  on the objects specified in the \ *noderange*\ .
  
 
 
