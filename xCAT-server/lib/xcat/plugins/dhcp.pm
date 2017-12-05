@@ -978,48 +978,6 @@ sub check_options
         return 0;
     }
 
-    # if not help and not -n,  dhcpd needs to be running
-    if (!($opt->{h}) && (!($opt->{n}))) {
-        if (xCAT::Utils->isLinux()) {
-
-            #my $DHCPSERVER="dhcpd";
-            #if( -e "/etc/init.d/isc-dhcp-server" ){
-            #       $DHCPSERVER="isc-dhcp-server";
-            #}
-
-            #my @output = xCAT::Utils->runcmd("service $DHCPSERVER status", -1);
-            #if ($::RUNCMD_RC != 0)  { # not running
-            my $ret = 0;
-            $ret = xCAT::Utils->checkservicestatus("dhcp");
-            if ($ret != 0)
-            {
-                my $rsp = {};
-                $rsp->{data}->[0] = "dhcp server is not running.  please start the dhcp server.";
-                xCAT::MsgUtils->message("E", $rsp, $callback, 1);
-                return 1;
-            }
-        } else {    # AIX
-            my @output = xCAT::Utils->runcmd("lssrc -s dhcpsd ", -1);
-            if ($::RUNCMD_RC != 0) {    # not running
-                my $rsp = {};
-                $rsp->{data}->[0] = "dhcpsd is not running. Run startsrc -s dhcpsd  and rerun your command.";
-                xCAT::MsgUtils->message("E", $rsp, $callback, 1);
-                return 1;
-            } else {                    # check the status
-                 # the return output varies, sometime status is the third sometimes the 4th col
-                if (grep /inoperative/, @output)
-                {
-                    my $rsp = {};
-                    $rsp->{data}->[0] = "dhcpsd is not running. Run startsrc -s dhcpsd and rerun your command.";
-                    xCAT::MsgUtils->message("E", $rsp, $callback, 1);
-                    return 1;
-
-                }
-            }
-        }
-    }
-
-
     # check to see if -q is listed with any other options which is not allowed
     if ($opt->{q} and ($opt->{a} || $opt->{d} || $opt->{n} || $opt->{r} || $opt->{l} || $statements)) {
         my $rsp = {};
@@ -1132,8 +1090,10 @@ sub preprocess_request
                 xCAT::MsgUtils->trace($verbose_on_off, "d", "dhcp: dhcp server on $_->{net}: $_->{dhcpserver}");
             }
         }
+    } elsif ($snonly == 1) {
+        $snonly = 0;
+        xCAT::MsgUtils->trace($verbose_on_off, "d", "dhcp: disjointdhcps mode is disabled as no service nodes are running dhcp service.");
     }
-
 
     my @nodes = ();
 
@@ -1381,17 +1341,6 @@ sub process_request
         return [];
     }
 
-
-    # if option is query then call listnode for each node and return
-    if ($opt{q})
-    {
-        # call listnode for each node requested
-        foreach my $node (@{ $req->{node} }) {
-            listnode($node, $callback);
-        }
-        return;
-    }
-
     # if current node is a servicenode, make sure that it is also a dhcpserver
     my $isok = 1;
     if (xCAT::Utils->isServiceNode()) {
@@ -1410,6 +1359,57 @@ sub process_request
     if ($isok == 0) {    #do nothing if it is a service node, but not dhcpserver
         xCAT::MsgUtils->trace($verbose_on_off, "d", "dhcp: it is a service node, but not dhcpserver. Do nothing");
         print "Do nothing\n";
+        return;
+    }
+
+    # if not -n,  dhcpd needs to be running
+    if (!($opt{n})) {
+        if (xCAT::Utils->isLinux()) {
+
+            #my $DHCPSERVER="dhcpd";
+            #if( -e "/etc/init.d/isc-dhcp-server" ){
+            #       $DHCPSERVER="isc-dhcp-server";
+            #}
+
+            #my @output = xCAT::Utils->runcmd("service $DHCPSERVER status", -1);
+            #if ($::RUNCMD_RC != 0)  { # not running
+            my $ret = 0;
+            $ret = xCAT::Utils->checkservicestatus("dhcp");
+            if ($ret != 0)
+            {
+                my $rsp = {};
+                $rsp->{data}->[0] = "dhcp server is not running.  please start the dhcp server.";
+                xCAT::MsgUtils->message("E", $rsp, $callback, 1);
+                return;
+            }
+        } else {    # AIX
+            my @output = xCAT::Utils->runcmd("lssrc -s dhcpsd ", -1);
+            if ($::RUNCMD_RC != 0) {    # not running
+                my $rsp = {};
+                $rsp->{data}->[0] = "dhcpsd is not running. Run startsrc -s dhcpsd  and rerun your command.";
+                xCAT::MsgUtils->message("E", $rsp, $callback, 1);
+                return;
+            } else {                    # check the status
+                 # the return output varies, sometime status is the third sometimes the 4th col
+                if (grep /inoperative/, @output)
+                {
+                    my $rsp = {};
+                    $rsp->{data}->[0] = "dhcpsd is not running. Run startsrc -s dhcpsd and rerun your command.";
+                    xCAT::MsgUtils->message("E", $rsp, $callback, 1);
+                    return;
+
+                }
+            }
+        }
+    }
+
+    # if option is query then call listnode for each node and return
+    if ($opt{q})
+    {
+        # call listnode for each node requested
+        foreach my $node (@{ $req->{node} }) {
+            listnode($node, $callback);
+        }
         return;
     }
 
