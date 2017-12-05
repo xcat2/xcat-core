@@ -1739,6 +1739,9 @@ sub fork_process_login {
         sleep(1);
         $rst = 1;
     } elsif ($child == 0) {
+        if ($xcatdebugmode) {
+            process_debug_info($node, "Attempting to login");
+        }
         exit(login_request($node));
     } else {
         $login_pid_node{$child} = $node;
