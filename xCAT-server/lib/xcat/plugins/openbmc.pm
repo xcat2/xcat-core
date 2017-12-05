@@ -2574,7 +2574,6 @@ sub rspconfig_response {
                     if ($next_state eq "RSPCONFIG_VLAN_REQUEST") {
                         $the_nic_to_config =~ s/(\_\d*)//g;
                         $status_info{$next_state}{data} =~ s/#NIC#/$the_nic_to_config/g;
-                        last;
                     }
                     $status_info{RSPCONFIG_IPOBJECT_REQUEST}{init_url} =~ s/#NIC#/$the_nic_to_config/g;
                     $node_info{$node}{nic} = $the_nic_to_config;
