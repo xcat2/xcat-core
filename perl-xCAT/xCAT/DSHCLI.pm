@@ -5182,9 +5182,9 @@ sub parse_rsync_input_file_on_MN
                 foreach my $target_node (@dest_host)
                 {
                     # skip the node if it's NOT in the permitted list and if
-                    # it's not a SN
-                    if ($dest_node && !(grep /^$target_node$/, @dest_nodes) &&
-                        !(xCAT::Utils->isSN($target_node)) ) {
+                    # it's not a SN doing a hierarchical mode transfer
+                    if ($dest_node && !(grep /^$target_node$/, @dest_nodes)
+                        && ($rsyncSN != 1) ) {
                         next;
                     }
                     $$options{'destDir_srcFile'}{$target_node} ||= {};
