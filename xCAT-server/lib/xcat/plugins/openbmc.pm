@@ -2843,7 +2843,7 @@ sub rspconfig_response {
                         }
                     }
                     # Only deal with the nic whose IP matching the BMC IP configured for the node
-                    if ($address eq $node_info{$node}{bmc}) {
+                    if ($address eq $node_info{$node}{bmcip}) {
                         $the_nic_to_config = $nic;
                         last;
                     }
