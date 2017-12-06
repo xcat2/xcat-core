@@ -1993,8 +1993,10 @@ sub deal_with_response {
             $error = $::RESPONSE_SERVICE_TIMEOUT;
         } else {
             my $response_info = decode_json $response->content;
+            # Handle 500  
             if ($response->status_line eq $::RESPONSE_SERVER_ERROR) {
-                $error = $response_info->{'data'}->{'exception'};
+                $error = "[" . $response->code . "] " . $response_info->{'data'}->{'exception'};
+            # Handle 403 
             } elsif ($response->status_line eq $::RESPONSE_FORBIDDEN) {
                 #
                 # For any invalid data that we can detect, provide a better response message
@@ -2005,21 +2007,21 @@ sub deal_with_response {
                 } elsif ($node_info{$node}{cur_status} eq "RSETBOOT_ENABLE_RESPONSE" ) {
                     # If 403 is received setting boot method, API endpoint changed in 1738 FW, inform the user of work around.
                     $error = "Invalid endpoint used to set boot method. If running firmware < ibm-v1.99.10-0-r7, 'export XCAT_OPENBMC_FIRMWARE=1736' and retry.";
-                    
                 } else {
                     $error = "$::RESPONSE_FORBIDDEN - Requested endpoint does not exists and may indicate function is not yet supported by OpenBMC firmware.";
                 }
-            } elsif ($response_info->{'data'}->{'description'} =~ /path or object not found: (.+)/) {
+            # Handle 404 
+            } elsif ($response->status_line eq $::RESPONSE_NOT_FOUND) {
                 #
                 # For any invalid data that we can detect, provide a better response message
                 #
                 if ($node_info{$node}{cur_status} eq "RFLASH_DELETE_IMAGE_RESPONSE") { 
                     $error = "Invalid ID provided to delete.  Use the -l option to view valid firmware IDs.";
                 } else {
-                    $error = "Path or object not found: $1";
+                    $error = "[" . $response->code . "] " . $response_info->{'data'}->{'description'};
                 }
             } else {
-                $error = $response_info->{'data'}->{'description'};
+                $error = "[" . $response->code . "] " . $response_info->{'data'}->{'description'};
             }
         }
         if (!($node_info{$node}{cur_status} eq "RSPCONFIG_DUMP_CLEAR_RESPONSE" and $next_status{ $node_info{$node}{cur_status} })) {
@@ -2093,9 +2095,9 @@ sub login_request {
     my $login_response = $brower->request($login_request);
 
     # Check the return code
-    if ($login_response->code != 200) { 
-        # handle the errors generically
-        xCAT::SvrUtils::sendmsg([1 ,"Login to BMC failed. Status: " . $login_response->status_line . "."], $callback, $node);
+    if ($login_response->code eq 500 or $login_response->code eq 404) { 
+        # handle only 404 and 504 in this code, defer to deal_with_response for the rest
+        xCAT::SvrUtils::sendmsg([1 ,"[" . $login_response->code . "] Login to BMC failed: " . $login_response->status_line . "."], $callback, $node);
         return 1;
     }
 
