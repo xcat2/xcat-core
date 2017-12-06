@@ -1777,7 +1777,7 @@ sub deal_with_response {
                 if ($node_info{$node}{cur_status} eq "RFLASH_DELETE_IMAGE_RESPONSE") { 
                     $error = "Invalid ID provided to delete.  Use the -l option to view valid firmware IDs.";
                 } else {
-                    $error = "[" . $response->code . "] Path or object not found: $1";
+                    $error = "[" . $response->code . "] " . $response_info->{'data'}->{'description'};
                 }
             } else {
                 $error = "[" . $response->code . "] " . $response_info->{'data'}->{'description'};
