@@ -830,7 +830,7 @@ rmdir \"/tmp/\$userid\" \n";
                 unlink "$home/.ssh/copy.sh";
                 File::Path->remove_tree("$home/.ssh/tmp/");
             }
-            if (($::UPLOAD_AND_ACTIVATE or $next_status{LOGIN_RESPONSE} eq "RFLASH_UPDATE_ACTIVATE_REQUEST") and $::VERBOSE) {
+            if ($::UPLOAD_AND_ACTIVATE or $next_status{LOGIN_RESPONSE} eq "RFLASH_UPDATE_ACTIVATE_REQUEST") {
                 my %rflash_result = ();
                 foreach my $node (keys %node_info) {
                     if ($node_info{$node}{rst} =~ /successful/) {
