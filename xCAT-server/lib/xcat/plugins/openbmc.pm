@@ -3221,7 +3221,7 @@ sub dump_download_process {
     my $h;
     eval { $h = from_json($curl_login_result) };
     if ($@) {
-        xCAT::SvrUtils::sendmsg([1, "Out own error message for command '$curl_login_cmd'"], $callback, $node);
+        xCAT::SvrUtils::sendmsg([1, "Received wrong format response for command '$curl_login_cmd'"], $callback, $node);
         return 1;
     }
     if ($h->{message} eq $::RESPONSE_OK) {
@@ -3708,7 +3708,7 @@ sub rflash_upload {
     my $h;
     eval { $h = from_json($curl_login_result) }; # convert command output to hash
     if ($@) {
-        xCAT::SvrUtils::sendmsg([1, "Out own error message for command '$curl_login_cmd'"], $callback, $node);
+        xCAT::SvrUtils::sendmsg([1, "Received wrong format response for command '$curl_login_cmd'"], $callback, $node);
         return 1;
     }
     if ($h->{message} eq $::RESPONSE_OK) {
@@ -3728,8 +3728,8 @@ sub rflash_upload {
                 my $curl_upload_result = `$upload_cmd`;
                 eval { $h = from_json($curl_upload_result) }; # convert command output to hash
                 if ($@) {
-                     xCAT::SvrUtils::sendmsg([1, "Out own error message for command '$upload_cmd'"], $callback, $node);
-                     xCAT::SvrUtils::sendmsg([1, "Out own error message '$curl_upload_result'"], $callback, $node);
+                     xCAT::SvrUtils::sendmsg([1, "Received wrong format response from command '$upload_cmd'"], $callback, $node);
+                     xCAT::SvrUtils::sendmsg([1, "Received wrong format response '$curl_upload_result'"], $callback, $node);
                      return 1;
                 }
                 if ($h->{message} eq $::RESPONSE_OK) {
