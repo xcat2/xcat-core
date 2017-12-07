@@ -194,12 +194,6 @@ sub bmcdiscovery_usage {
     push @{ $rsp->{data} }, "\tbmcdiscover [-v|--version]";
     push @{ $rsp->{data} }, "\tbmcdiscover [--sn <SN_nodename>] [-s scan_method] [-u bmc_user] [-p bmc_passwd] [-z] [-w] --range ip_range\n";
 
-    push @{ $rsp->{data} }, "\tCheck BMC administrator User/Password:\n";
-    push @{ $rsp->{data} }, "\t\tbmcdiscover -u bmc_user -p bmc_password -i bmc_ip --check\n";
-
-    push @{ $rsp->{data} }, "\tDisplay the BMC IP configuration:\n";
-    push @{ $rsp->{data} }, "\t\tbmcdiscover [-u bmc_user] [-p bmc_passwd] -i bmc_ip --ipsource";
-
     xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
     return 0;
 }
