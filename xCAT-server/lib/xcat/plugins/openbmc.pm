@@ -2751,7 +2751,8 @@ sub rspconfig_response {
                         # an adapter with a single IP address set.
                         $error = "Interfaces with multiple IP addresses are not supported";
                         $node_info{$node}{cur_status} = "";
-                        last;
+                        # Terminate loop on this error unless we are looking for hostname to display
+                        last unless ($grep_string =~ /(.*)hostname(.*)/);
                     }
                     $nicinfo{$nic}{address} = $content{Address};
                 }
@@ -2783,7 +2784,7 @@ sub rspconfig_response {
             $node_info{$node}{cur_status} = "";  
         }
         if ($error) {
-            xCAT::SvrUtils::sendmsg("$error", $callback, $node);
+            xCAT::SvrUtils::sendmsg([1,"$error"], $callback, $node);
         } else {
             my @address = ();
             my @ipsrc = ();
