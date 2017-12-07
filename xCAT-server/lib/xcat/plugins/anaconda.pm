@@ -563,7 +563,7 @@ sub mknetboot
  
         my $imgsrvip;
         unless($imgsrv eq '!myipfn!' or xCAT::NetworkUtils->validate_ip($imgsrv)==0){
-            # if xcatmaster is hostname, convert it to ip address
+            # if imgsrv is hostname, convert it to ip address
             # the host name might not be resolved inside initrd
             $imgsrvip = xCAT::NetworkUtils->getipaddr($imgsrv);
         }
@@ -572,10 +572,9 @@ sub mknetboot
         }
 
         my $xcatmasterip;
-        # if xcatmaster is hostname, convert it to ip address
         if (xCAT::NetworkUtils->validate_ip($xcatmaster)) {
-            # Using XCAT=<hostname> will cause problems rc.statelite.ppc.redhat
-            # when trying to run chroot command
+            # if xcatmaster is hostname, convert it to ip address
+            # the host name might not be resolved inside initrd
             $xcatmasterip = xCAT::NetworkUtils->getipaddr($xcatmaster);
         }
         unless($xcatmasterip){
@@ -693,23 +692,10 @@ sub mknetboot
         }
 
         if (($::XCATSITEVALS{xcatdebugmode} eq "1") or ($::XCATSITEVALS{xcatdebugmode} eq "2")) {
-
-            my ($host, $ipaddr) = xCAT::NetworkUtils->gethostnameandip($xcatmaster);
-            if ($ipaddr) {
-
-                #for use in postscript and postbootscript in xcatdsklspost in the rootimg
-                $kcmdline .= " LOGSERVER=$ipaddr ";
-
-                #for use in syslog dracut module in the initrd
-                $kcmdline .= " syslog.server=$ipaddr syslog.type=rsyslogd syslog.filter=*.* ";
-            }
-            else {
-                #for use in postscript and postbootscript in xcatdsklspost in the rootimg
-                $kcmdline .= " LOGSERVER=$xcatmaster ";
-
-                #for use in syslog dracut module in the initrd
-                $kcmdline .= " syslog.server=$xcatmaster syslog.type=rsyslogd syslog.filter=*.* ";
-            }
+            #for use in postscript and postbootscript in xcatdsklspost in the rootimg
+            $kcmdline .= " LOGSERVER=$xcatmasterip ";
+            #for use in syslog dracut module in the initrd
+            $kcmdline .= " syslog.server=$xcatmasterip syslog.type=rsyslogd syslog.filter=*.* ";
             $kcmdline .= " xcatdebugmode=$::XCATSITEVALS{xcatdebugmode} ";
         }
 
