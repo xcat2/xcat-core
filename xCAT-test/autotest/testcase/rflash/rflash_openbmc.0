@@ -399,3 +399,58 @@ check:output=~Error: Invalid ID provided to delete
 check:output!~Attempting to delete
 check:rc != 0
 end
+
+start:rflash_option_d_with_multiple_values
+description: basic usage check for option d. if there are multiple value assigned to d option, should throw out error message
+os:Linux
+hcp:openbmc
+cmd:rflash $$CN -d /123/   /234/
+check:output=~Error: More than one
+check:output!~Attempting to 
+check:rc != 0
+cmd:rflash $$CN /123/   /234/  -d
+check:output=~Error: More than one 
+check:output!~Attempting to
+check:rc != 0
+cmd:rflash $$CN /123/ -d /234/
+check:output=~Error: More than one 
+check:output!~Attempting to 
+check:rc != 0
+end
+
+
+start:rflash_option_d_with_non_existent_dir
+description: basic usage check for option -d. if try to oprate non-existent dir by d option, should throw out error message
+os:Linux
+hcp:openbmc
+cmd:rm -rf /tmp/bogus123
+check:rc == 0
+cmd:rflash $$CN -d /tmp/bogus123 
+check:output=~Error: Can't open directory
+check:output!~Attempting to 
+check:rc != 0
+cmd:mkdir -p /tmp/bogus123
+check:rc == 0
+cmd:rflash $$CN /tmp/bogus123 -d
+check:output =~Error: No BMC tar file found
+check:output =~Error: No PNOR tar file found
+check:output!~Attempting to
+check:rc != 0
+cmd:touch obmc-phosphor-image-witherspoon.ubi.mtd.tar /tmp/bogus123
+check:rc == 0
+cmd:rflash $$CN -d /tmp/bogus123
+check::output =~Error: No BMC tar file found
+check:output =~Error: No PNOR tar file found
+check:output!~Attempting to
+check:rc != 0
+cmd:touch witherspoon.pnor.squashfs.tar /tmp/bogus123
+check:rc == 0
+cmd:rflash $$CN -d /tmp/bogus123
+check:output =~Error: No BMC tar file found
+check:output =~Error: No PNOR tar file found
+check:output!~Attempting to
+check:rc != 0
+cmd:rm -rf /tmp/bogus123
+check:rc == 0
+end
+
