@@ -1102,7 +1102,6 @@ sub parse_args {
             if ($option_flag !~ /^-c$|^--check$|^-u$|^--upload$|^-a$|^--activate$/) {
                 return ([ 1, "Invalid option specified when a file is provided: $option_flag" ]);
             }
-            xCAT::SvrUtils::sendmsg("Attempting to upload $flash_arguments[0], please wait...", $callback);
         }
         else {
             if ($updateid_passed) {
@@ -3706,7 +3705,7 @@ sub rflash_upload {
     if ($h->{message} eq $::RESPONSE_OK) {
          foreach my $upload_cmd(@curl_upload_cmds){
              while((my $file,my $version)=each(%fw_tar_files)){
-                 my $uploading_msg = "Uploading $file ...";
+                 my $uploading_msg = "Attempting to upload $file, please wait ...";
                  # Login successfull, upload the file
                  if ($::VERBOSE) {
                      xCAT::SvrUtils::sendmsg("$uploading_msg", $callback, $node);
