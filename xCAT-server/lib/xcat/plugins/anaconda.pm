@@ -555,11 +555,33 @@ sub mknetboot
             $ient = $reshash->{$node}->[0];
             $imgsrv = $xcatmaster;
         }
+
         unless ($imgsrv) {
             xCAT::MsgUtils->report_node_error($callback, $node, "Unable to determine or reasonably guess the image server for $node");
             next;
         }
  
+        my $imgsrvip;
+        unless($imgsrv eq '!myipfn!' or xCAT::NetworkUtils->validate_ip($imgsrv)==0){
+            # if xcatmaster is hostname, convert it to ip address
+            # the host name might not be resolved inside initrd
+            $imgsrvip = xCAT::NetworkUtils->getipaddr($imgsrv);
+        }
+        unless($imgsrvip){
+            $imgsrvip=$imgsrv;
+        }
+
+        my $xcatmasterip;
+        # if xcatmaster is hostname, convert it to ip address
+        if (xCAT::NetworkUtils->validate_ip($xcatmaster)) {
+            # Using XCAT=<hostname> will cause problems rc.statelite.ppc.redhat
+            # when trying to run chroot command
+            $xcatmasterip = xCAT::NetworkUtils->getipaddr($xcatmaster);
+        }
+        unless($xcatmasterip){
+            $xcatmasterip=$xcatmaster
+        }
+
         # Start to build kcmdline
         my $kcmdline;
 
@@ -597,9 +619,9 @@ sub mknetboot
                 }
             } else {
                 if (-r "$rootimgdir/rootimg-statelite.gz.metainfo") {
-                    $kcmdline = "imgurl=$httpmethod://$imgsrv:$httpport/$rootimgdir/rootimg-statelite.gz.metainfo STATEMNT=";
+                    $kcmdline = "imgurl=$httpmethod://$imgsrvip:$httpport/$rootimgdir/rootimg-statelite.gz.metainfo STATEMNT=";
                 } else {
-                    $kcmdline = "imgurl=$httpmethod://$imgsrv:$httpport/$rootimgdir/rootimg-statelite.gz STATEMNT=";
+                    $kcmdline = "imgurl=$httpmethod://$imgsrvip:$httpport/$rootimgdir/rootimg-statelite.gz STATEMNT=";
                 }
             }
 
@@ -626,21 +648,6 @@ sub mknetboot
                 }
             }
             $kcmdline .= $statemnt . " ";
-            my $xcatmasterip;
-
-            # if xcatmaster is hostname, convert it to ip address
-            if (xCAT::NetworkUtils->validate_ip($xcatmaster)) {
-
-                # Using XCAT=<hostname> will cause problems rc.statelite.ppc.redhat
-                # when trying to run chroot command
-                $xcatmasterip = xCAT::NetworkUtils->getipaddr($xcatmaster);
-                if (!$xcatmasterip)
-                {
-                    $xcatmasterip = $xcatmaster;
-                }
-            } else {
-                $xcatmasterip = $xcatmaster;
-            }
 
             $kcmdline .= "XCAT=$xcatmasterip:$xcatdport ";
 
@@ -669,11 +676,11 @@ sub mknetboot
         }
         else {
             if (-r "$rootimgdir/$compressedrootimg.metainfo") {
-                $kcmdline = "imgurl=$httpmethod://$imgsrv:$httpport/$rootimgdir/$compressedrootimg.metainfo ";
+                $kcmdline = "imgurl=$httpmethod://$imgsrvip:$httpport/$rootimgdir/$compressedrootimg.metainfo ";
             } else {
-                $kcmdline = "imgurl=$httpmethod://$imgsrv:$httpport/$rootimgdir/$compressedrootimg ";
+                $kcmdline = "imgurl=$httpmethod://$imgsrvip:$httpport/$rootimgdir/$compressedrootimg ";
             }
-            $kcmdline .= "XCAT=$xcatmaster:$xcatdport ";
+            $kcmdline .= "XCAT=$xcatmasterip:$xcatdport ";
             $kcmdline .= "NODE=$node ";
 
             # add flow control setting
