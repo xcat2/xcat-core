@@ -153,6 +153,7 @@ sub config_ssh {
             print "$switch is not reachable\n";
             next;
         }
+        
 
         my ($exp, $errstr) = cumulus_connect($ssh_ip, $userid, $password, $timeout);
         if (!defined $exp) {
@@ -290,6 +291,9 @@ sub install_license {
             xCAT::MsgUtils->message("E","Failed to $cmd to $switch");
             next;
         }
+        #restart switchd and reload interface
+        $cmd = "xdsh $switch 'systemctl enable switchd;systemctl restart switchd;ifreload -a' ";
+        xCAT::Utils->runcmd($cmd, 0);
         push (@config_switches, $switch);
     }
     if (@config_switches) {
@@ -397,8 +401,8 @@ sub config_ntp {
             xCAT::MsgUtils->message("E","xdsh command to $switch failed");
             next;
         }
-        my $cmd_line = "echo $timezone >/etc/timezone;dpkg-reconfigure --frontend noninteractive tzdata";
-        $cmd = "xdsh $switch $cmd_line";
+        $cmd = "xdsh $switch 'echo $timezone >/etc/timezone;dpkg-reconfigure --frontend noninteractive tzdata' ";
+        $rc= xCAT::Utils->runcmd($cmd, 0);
         if ($::RUNCMD_RC != 0) {
             print "Failed to update ntp timezone\n";
             xCAT::MsgUtils->message("E","Failed to update ntp timezone for $switch");
