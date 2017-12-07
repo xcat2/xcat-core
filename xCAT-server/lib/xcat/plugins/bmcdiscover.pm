@@ -1215,7 +1215,7 @@ sub bmcdiscovery_openbmc{
         if ($login_response->status_line =~ /401 Unauthorized/) {
             xCAT::MsgUtils->message("W", { data => ["Invalid username or password for $ip"] }, $::CALLBACK); 
         } else {
-            xCAT::MsgUtils->message("W", { data => ["$login_response->status_line for $ip"] }, $::CALLBACK);
+            xCAT::MsgUtils->message("W", { data => ["Received response " . $login_response->status_line . " for $ip"] }, $::CALLBACK);
         }
         return;
     }
