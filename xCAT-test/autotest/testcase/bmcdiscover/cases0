@@ -50,13 +50,13 @@ end
 
 start:bmcdiscover_check_paswd
 cmd:bmcdiscover -i $$bmcrange -u $$bmcusername -p $$bmcpasswd --check
-check:rc==0
+check:rc==1
 check:output=~is not supported
 end
 
 start:bmcdiscover_get_ipsource
 cmd:bmcdiscover -i $$bmcrange -u $$bmcusername -p $$bmcpasswd --ipsource
-check:rc==0
+check:rc==1
 check:output=~is not supported
 end
 
