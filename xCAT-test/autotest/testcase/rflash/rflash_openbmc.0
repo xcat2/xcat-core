@@ -178,7 +178,7 @@ description: basic usage check for option c. if there are multiple value assigne
 os:Linux
 hcp:openbmc
 cmd:rflash $$CN -c /tmp/abc123.tz /tmp/abc124.tz
-check:output=~Invalid option specified when an directory is provided
+check:output=~Error: More than one firmware specified is not supported
 check:rc != 0
 cmd:rflash $$CN -c  1.tz 2.tz 3.tz 
 check:output=~Error: More than one firmware specified is not supported
@@ -259,21 +259,27 @@ os:Linux
 hcp:openbmc
 cmd:rflash $$CN -u /tmp/abc123.tz
 check:output=~Error: Invalid option
+check:output!~Attempting to
 check:rc != 0
 cmd:rflash $$CN -u /tmp/
 check:output=~Error: Invalid option
+check:output!~Attempting to
 check:rc != 0
 cmd:rflash $$CN /tmp/abc123.tz -u
 check:output=~Error: Invalid option
+check:output!~Attempting to
 check:rc != 0
 cmd:rflash $$CN /tmp/ -u
 check:output=~Error: Invalid option
+check:output!~Attempting to
 check:rc != 0
 cmd:rflash $$CN 1.tar -u
 check:output=~Error: Cannot access
+check:output!~Attempting to
 check:rc != 0
 cmd:rflash $$CN -u /tmp/1.tar
 check:output=~Error: Cannot access
+check:output!~Attempting to
 check:rc != 0
 end
 
@@ -282,16 +288,20 @@ description: basic usage check for option u. if there are multiple value assigne
 os:Linux
 hcp:openbmc
 cmd:rflash $$CN -u /tmp/abc123.tz /tmp/abc124.tz
-check:output=~Error: Invalid option specified when an directory is provided
+check:output=~Error: More than one firmware specified is not supported
+check:output!~Attempting to
 check:rc != 0
 cmd:rflash $$CN -u 1.tz 2.tz 3.tz 
 check:output=~Error: More than one firmware specified is not supported
+check:output!~Attempting to
 check:rc != 0
 cmd:rflash $$CN 1.tz 2.tz 3.tz -u
 check:output=~Error: More than one firmware specified is not supported
+check:output!~Attempting to
 check:rc != 0
 cmd:rflash $$CN 1.tz -u 2.tz
 check:output=~Error: More than one firmware specified is not supported
+check:output!~Attempting to
 check:rc != 0
 end
 
@@ -301,21 +311,27 @@ os:Linux
 hcp:openbmc
 cmd:rflash $$CN -a /tmp/abc123.tz
 check:output=~Error: Invalid option
+check:output!~Attempting to 
 check:rc != 0
 cmd:rflash $$CN -a /tmp/
 check:output=~Error: Invalid option
+check:output!~Attempting to
 check:rc != 0
 cmd:rflash $$CN /tmp/abc123.tz -a
 check:output=~Error: Invalid option
+check:output!~Attempting to
 check:rc != 0
 cmd:rflash $$CN /tmp/ -a
 check:output=~Error: Invalid option
+check:output!~Attempting to
 check:rc != 0
 cmd:rflash $$CN 1.tar -a
 check:output=~Error: Cannot access
+check:output!~Attempting to 
 check:rc != 0
 cmd:rflash $$CN -a /tmp/1.tar
 check:output=~Error: Cannot access
+check:output!~Attempting to
 check:rc != 0
 end
 
@@ -324,19 +340,24 @@ description: basic usage check for option a. if there are multiple value assigne
 os:Linux
 hcp:openbmc
 cmd:rflash $$CN -a /tmp/abc123.tz /tmp/abc124.tz
-check:output=~Error: Invalid option specified when an directory is provided
+check:output=~Error: More than one foirmware specified is not supported
+check:output!~Attempting to
 check:rc != 0
 cmd:rflash $$CN -a 1.tz 2.tz 3.tz
 check:output=~Error: More than one firmware specified is not supported
+check:output!~Attempting to 
 check:rc != 0
 cmd:rflash $$CN 1.tz 2.tz 3.tz -a
 check:output=~Error: More than one firmware specified is not supported
+check:output!~Attempting to
 check:rc != 0
 cmd:rflash $$CN 1.tz -a 2.tz
 check:output=~Error: More than one firmware specified is not supported
+check:output!~Attempting to
 check:rc != 0
 cmd:rflash $$CN 1234567 -a 2345678
 check:output=~Error: More than one firmware specified is not supported
+check:output!~Attempting to 
 check:rc != 0
 end
 
@@ -347,6 +368,7 @@ os:Linux
 hcp:openbmc
 cmd:rflash $$CN -a 1234567
 check:output=~Error: Invalid ID provided to activate
+check:output!~Attempting to activate 
 check:rc != 0
 end
 
@@ -356,12 +378,15 @@ os:Linux
 hcp:openbmc
 cmd:rflash $$CN --delete 1234567 2345678 
 check:output=~Error: More than one firmware specified is not supported
+check:output!~Attempting to delete
 check:rc != 0
 cmd:rflash $$CN 1234567 2345678 --delete
 check:output=~Error: More than one firmware specified is not supported
+check:output!~Attempting to delete
 check:rc != 0
 cmd:rflash $$CN 1234567 --delete 2345678
 check:output=~Error: More than one firmware specified is not supported
+check:output!~Attempting to delete
 check:rc != 0
 end
 
@@ -371,5 +396,6 @@ os:Linux
 hcp:openbmc
 cmd:rflash $$CN --delete 1234567
 check:output=~Error: Invalid ID provided to delete
+check:output!~Attempting to delete
 check:rc != 0
 end
