@@ -1047,7 +1047,7 @@ sub parse_args {
         my $filepath_passed = 0;
         my $option_flag;
 
-        my $tarball_path;
+        my @tarball_path;
         my $invalid_options = "";
         my @flash_arguments;
 
@@ -1077,7 +1077,7 @@ sub parse_args {
             }
             elsif ($opt =~ /.*\//) {
                 $filepath_passed = 1;
-                $tarball_path=$opt;
+                push (@tarball_path, $opt);
             }
             else {
                 push (@flash_arguments, $opt);
@@ -1094,7 +1094,11 @@ sub parse_args {
         }
         
         if (scalar @flash_arguments > 1) {
-            return ([1, "More than one firmware specified is not supported."]);
+            if ($filename_passed) {
+                return ([1, "More than one firmware specified is not supported."]);
+            } else {
+                return ([ 1, "Invalid firmware tar file format specified with $option_flag" ]);
+            }
         }
 
         if ($filename_passed) {
@@ -1116,13 +1120,20 @@ sub parse_args {
                 }
                 xCAT::SvrUtils::sendmsg("Attempting to $action ID=$flash_arguments[0], please wait...", $callback);
             } elsif ($filepath_passed) {
-                if ($option_flag !~ /^-d|^-d --no-host-reboot$/) {
-                    return ([ 1, "Invalid option specified when an directory is provided: $option_flag" ]);
+                if ($option_flag =~ /^-d|^-d --no-host-reboot$/) {
+                    if (scalar @tarball_path > 1) {
+                        return ([1, "More than one directory specified is not supported"]);
+                    }
+                    if ($invalid_options) {
+                        return ([ 1, "Invalid option specified $invalid_options"]);
+                    }
+                    if (!opendir(DIR, $tarball_path[0])) {
+                        return ([1, "Can't open directory : $tarball_path[0]"]);
+                    }
+                    closedir(DIR);
+                } elsif ($option_flag =~ /^-c$|^--check$|^-u$|^--upload$|^-a$|^--activate$/) {
+                    return ([ 1, "Invalid firmware tar file format specified with $option_flag" ]);
                 }
-                if (!opendir(DIR, $tarball_path)) {
-                    return ([1, "Can't open directory : $tarball_path"]);
-                }
-                closedir(DIR);
             } else {
                 # Neither Filename nor updateid was not passed, check flags allowed without file or updateid
                 if ($option_flag !~ /^-c$|^--check$|^-l$|^--list$/) {
