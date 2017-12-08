@@ -686,7 +686,6 @@ sub preprocess_updatenode
     }
 
     # Get the MN names
-    my @MNip         = xCAT::NetworkUtils->determinehostname;
     my @MNnodeinfo   = xCAT::NetworkUtils->determinehostname;
     my $MNnodename   = pop @MNnodeinfo;                         # hostname
     my @MNnodeipaddr = @MNnodeinfo;                             # ipaddresses
@@ -1745,6 +1744,15 @@ sub updatenodesyncfiles
             } else {               # else this is updatenode -F
                 $env = ["DSH_RSYNC_FILE=$synclist"];
             }
+
+            # get the Environment Variables and set DSH_FROM_USERID if possible (From updatenode client)
+            foreach my $envar (@{ $request->{environment} })
+            {
+                if ($envar =~ /^DSH_FROM_USERID=/) {
+                    push $env, $envar;
+                    last;
+                }
+            }
             push @$args, "--nodestatus";
             if (defined($::fanout)) {    # fanout
                 push @$args, "-f";
@@ -1765,6 +1773,7 @@ sub updatenodesyncfiles
 
             if ($::VERBOSE)
             {
+                push @$args, "-T";
                 my $rsp = {};
                 $rsp->{data}->[0] =
 "  $localhostname: Internal call command: xdcp $nodestring " . join(' ', @$args);
