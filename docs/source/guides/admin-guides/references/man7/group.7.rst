@@ -947,7 +947,7 @@ group Attributes:
 
 \ **setupconserver**\  (servicenode.conserver)
  
- Do we set up Conserver on this service node?  Valid values:1 or 0. If 1, configures and starts conserver daemon. If 0, it does not change the current state of the service.
+ Do we set up Conserver on this service node?  Valid values:1 or 0. If yes, configures and status conserver daemon. If 0, it does not change the current state of the service.
  
 
 
