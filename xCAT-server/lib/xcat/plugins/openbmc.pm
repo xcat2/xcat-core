@@ -1637,6 +1637,11 @@ sub parse_command_status {
                 }
             }
         }
+        if ($upload or $::UPLOAD_AND_ACTIVATE) {
+            xCAT::SvrUtils::sendmsg("Attempting to upload $::UPLOAD_FILE, please wait...", $callback);
+        } elsif ($::UPLOAD_ACTIVATE_STREAM) {
+            xCAT::SvrUtils::sendmsg("Attempting to upload $::UPLOAD_FILE and $::UPLOAD_PNOR, please wait...", $callback);
+        }
         if ($check_version) {
             # Display firmware version on BMC
             $next_status{LOGIN_RESPONSE} = "RINV_FIRM_REQUEST";
@@ -3705,7 +3710,7 @@ sub rflash_upload {
     if ($h->{message} eq $::RESPONSE_OK) {
          foreach my $upload_cmd(@curl_upload_cmds){
              while((my $file,my $version)=each(%fw_tar_files)){
-                 my $uploading_msg = "Attempting to upload $file, please wait ...";
+                 my $uploading_msg = "Uploading $file ...";
                  # Login successfull, upload the file
                  if ($::VERBOSE) {
                      xCAT::SvrUtils::sendmsg("$uploading_msg", $callback, $node);
