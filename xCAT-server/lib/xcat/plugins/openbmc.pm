@@ -1017,7 +1017,7 @@ sub parse_args {
                     return ([ 1, "No dump file ID specified" ]) unless ($ARGV[2]);
                     return ([ 1, "Invalid parameter for $command $option $ARGV[2]" ]) if ($ARGV[2] !~ /^\d*$/);
                 } elsif ($option =~ /^-c$|^--clear$/) {
-                    return ([ 1, "No dump file ID specified" ]) unless ($ARGV[2]);
+                    return ([ 1, "No dump file ID specified. To clear all, specify 'all'." ]) unless ($ARGV[2]);
                     return ([ 1, "Invalid parameter for $command $option $ARGV[2]" ]) if ($ARGV[2] !~ /^\d*$/ and $ARGV[2] ne "all");
                 } elsif ($option and $option !~ /^-l$|^--list$|^-g$|^--generate$/) {
                     return ([ 1, "Invalid parameter for $command $option" ]);
@@ -2383,9 +2383,8 @@ sub rinv_response {
                     if (($purpose_value =~ /BMC/) and
                         ($priority_value == 0 and %{$functional} and !exists($functional->{$sw_id}))) {
                         $to_clear_dump = 1;
+                        last;
                     }
-                    @sorted_output = ();
-                    last;
                 }
 
                 #
@@ -2451,6 +2450,7 @@ sub rinv_response {
             }
         }
     }
+    @sorted_output = () if ($status_info{RINV_FIRM_RESPONSE}{check});
     # If sorted array has any contents, sort it naturally and print it
     if (scalar @sorted_output > 0) {
         # sort alpha, then numeric 
@@ -2464,7 +2464,9 @@ sub rinv_response {
         }
     } else {
         if ($status_info{RINV_FIRM_RESPONSE}{check}) {
-            xCAT::MsgUtils->message("I", { data => ["$node: Firmware will be flashed on reboot, deleting all BMC diagnostics..."] }, $callback);
+            if ($to_clear_dump) {
+                xCAT::MsgUtils->message("I", { data => ["$node: Firmware will be flashed on reboot, deleting all BMC diagnostics..."] }, $callback);
+            }
         } else {
             xCAT::MsgUtils->message("I", { data => ["$node: $::NO_ATTRIBUTES_RETURNED"] }, $callback);
         }
