@@ -1081,7 +1081,7 @@ sub parse_command_status {
             $next_status{REVENTLOG_REQUEST} = "REVENTLOG_RESPONSE";
             $status_info{REVENTLOG_RESPONSE}{argv} = "$subcommand";
             my $policy_table = "/opt/ibm/ras/lib/policyTable.json";
-            my $policy_mapping = "/opt/xcat/lib/perl/xCAT/data/openbmcevents.pm";
+            my $policy_mapping = "$::XCATROOT/lib/perl/xCAT/data/openbmcevents.pm";
             if (-e "$policy_table") {
                 my $policy_json = `cat $policy_table`;
                 if ($policy_json) {
@@ -2176,6 +2176,7 @@ sub reventlog_response {
         }
 
         xCAT::SvrUtils::sendmsg("$::NO_ATTRIBUTES_RETURNED", $callback, $node) if (!%output);
+        # If option is "all", print out all sorted msg. If is a num, print out the last <num> msg (sorted)
         foreach my $key ( sort { $a <=> $b } keys %output) {
             xCAT::MsgUtils->message("I", { data => ["$node: $output{$key}"] }, $callback) if ($entry_string eq "all" or $key > ($max_entry - $entry_num));
         }
