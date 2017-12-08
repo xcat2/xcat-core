@@ -26,6 +26,9 @@ check:output=~Usage:
 cmd:rflash -a 1.tar
 check:rc != 0
 check:output=~Error: Invalid nodes and/or groups in noderange
+cmd:rflash -a 123abc
+check:rc != 0
+check:output=~Error: Invalid nodes and/or groups in noderange
 end
 
 start:rflash_option_u_without_specify_noderange
@@ -45,7 +48,10 @@ os:Linux
 hcp:openbmc
 cmd:rflash -d
 check:output=~Usage:
-cmd:rflash -d 1234
+cmd:rflash -d /1234
+check:rc != 0
+check:output=~Error: Invalid nodes and/or groups in noderange
+cmd:rflash --delete 1234abc
 check:rc != 0
 check:output=~Error: Invalid nodes and/or groups in noderange
 end
@@ -359,6 +365,10 @@ cmd:rflash $$CN 1234567 -a 2345678
 check:output=~Error: More than one firmware specified is not supported
 check:output!~Attempting to 
 check:rc != 0
+cmd:rflash $$CN -a 123 abc asdbas 
+check:output=~Error: More than one firmware specified is not supported
+check:output!~Attempting to
+check:rc != 0
 end
 
 
@@ -369,6 +379,10 @@ hcp:openbmc
 cmd:rflash $$CN -a 1234567
 check:output=~Error: Invalid ID provided to activate
 check:output!~Attempting to activate 
+check:rc != 0
+cmd:rflash $$CN -a 123abcm
+check:output=~Error: Invalid ID provided to activate
+check:output!~Attempting to activate
 check:rc != 0
 end
 
@@ -395,6 +409,10 @@ description: basic usage check for option --delete. if delete a non-existent fir
 os:Linux
 hcp:openbmc
 cmd:rflash $$CN --delete 1234567
+check:output=~Error: Invalid ID provided to delete
+check:output!~Attempting to delete
+check:rc != 0
+cmd:rflash $$CN --delete 123abcm
 check:output=~Error: Invalid ID provided to delete
 check:output!~Attempting to delete
 check:rc != 0
@@ -439,7 +457,7 @@ check:rc != 0
 cmd:touch obmc-phosphor-image-witherspoon.ubi.mtd.tar /tmp/bogus123
 check:rc == 0
 cmd:rflash $$CN -d /tmp/bogus123
-check::output =~Error: No BMC tar file found
+check:output =~Error: No BMC tar file found
 check:output =~Error: No PNOR tar file found
 check:output!~Attempting to
 check:rc != 0
@@ -451,6 +469,18 @@ check:output =~Error: No PNOR tar file found
 check:output!~Attempting to
 check:rc != 0
 cmd:rm -rf /tmp/bogus123
+check:rc == 0
+end
+
+start:rflash_usage
+description:checke the usage of rflash for openbmc
+os:Linux
+hcp:openbmc
+cmd:rflash -h
+check:output =~Usage:
+check:output =~OpenPOWER OpenBMC specific:
+check:output =~ -d
+check:output =~ image_id.+--delete 
 check:rc == 0
 end
 
