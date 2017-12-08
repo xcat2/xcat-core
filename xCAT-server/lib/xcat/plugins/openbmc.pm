@@ -3726,10 +3726,13 @@ sub rflash_upload {
                     process_debug_info($node, $debugmsg);
                 }    
                 my $curl_upload_result = `$upload_cmd`;
+                if (!$curl_upload_result) {
+                    xCAT::SvrUtils::sendmsg([1, "Did not receive response from OpenBMC after running command '$upload_cmd'"], $callback, $node);
+                    return 1;
+                }
                 eval { $h = from_json($curl_upload_result) }; # convert command output to hash
                 if ($@) {
-                     xCAT::SvrUtils::sendmsg([1, "Received wrong format response from command '$upload_cmd'"], $callback, $node);
-                     xCAT::SvrUtils::sendmsg([1, "Received wrong format response '$curl_upload_result'"], $callback, $node);
+                     xCAT::SvrUtils::sendmsg([1, "Received wrong format response from command '$upload_cmd': $curl_upload_result"], $callback, $node);
                      return 1;
                 }
                 if ($h->{message} eq $::RESPONSE_OK) {
