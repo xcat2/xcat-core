@@ -912,7 +912,6 @@ sub mkinstall
 
     require xCAT::Template;
 
-    }
     my $ddad;
     foreach $node (@nodes)
     {
