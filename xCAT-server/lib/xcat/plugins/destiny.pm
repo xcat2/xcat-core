@@ -261,8 +261,19 @@ sub setdestiny {
         my $curnetboot = $nbents->{netboot};
 
         if ($state ne 'osimage') {
-            $callback->({ error => "The options \"install\", \"netboot\", and \"statelite\" have been deprecated, use \"osimage=<osimage_name>\" instead.", errorcode => [1], errorabort => [1] });
-            return;        
+            my @ents = xCAT::TableUtils->get_site_attribute("disablenodesetwarning");
+            my $site_ent = $ents[0];
+            if (!defined($site_ent) || ($site_ent =~ /no/i) || ($site_ent =~ /0/))
+            {
+                if (!defined($::DISABLENODESETWARNING)) {    # set by AAsn.pm
+                    $callback->(
+                        {
+                            error => ["The options \"install\", \"netboot\", and \"statelite\" have been deprecated, use \"nodeset <noderange> osimage=<osimage_name>\" instead."], errorcode => [1]
+                        }
+                    );
+                    return;
+                }
+            }
 
             my $updateattribs;
             if ($target) {
