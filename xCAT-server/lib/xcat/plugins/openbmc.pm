@@ -3219,9 +3219,13 @@ sub dump_download_process {
 
     my $curl_login_result = `$curl_login_cmd -s`;
     my $h;
+    if (!$curl_login_result) {
+        xCAT::SvrUtils::sendmsg([1, "Did not receive response from OpenBMC after running command '$curl_login_cmd'"], $callback, $node);
+        return 1;
+    }
     eval { $h = from_json($curl_login_result) };
     if ($@) {
-        xCAT::SvrUtils::sendmsg([1, "Received wrong format response for command '$curl_login_cmd'"], $callback, $node);
+        xCAT::SvrUtils::sendmsg([1, "Received wrong format response for command '$curl_login_cmd': $curl_login_result)"], $callback, $node);
         return 1;
     }
     if ($h->{message} eq $::RESPONSE_OK) {
@@ -3706,9 +3710,13 @@ sub rflash_upload {
     # Try to login
     my $curl_login_result = `$curl_login_cmd -s`;
     my $h;
+    if (!$curl_login_result) {
+        xCAT::SvrUtils::sendmsg([1, "Did not receive response from OpenBMC after running command '$curl_login_cmd'"], $callback, $node);
+        return 1;
+    } 
     eval { $h = from_json($curl_login_result) }; # convert command output to hash
     if ($@) {
-        xCAT::SvrUtils::sendmsg([1, "Received wrong format response for command '$curl_login_cmd'"], $callback, $node);
+        xCAT::SvrUtils::sendmsg([1, "Received wrong format response for command '$curl_login_cmd': $curl_login_result"], $callback, $node);
         return 1;
     }
     if ($h->{message} eq $::RESPONSE_OK) {
