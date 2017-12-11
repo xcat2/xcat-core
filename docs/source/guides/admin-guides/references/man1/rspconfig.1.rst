@@ -49,6 +49,8 @@ OpenBMC specific:
 
 \ **rspconfig**\  \ *noderange*\  {\ **ipsrc | ip | netmask | gateway | hostname | vlan | sshcfg**\ }
 
+\ **rspconfig**\  \ *noderange*\  \ **dump**\  [\ **-l | -**\ **-list**\ ] [\ **-g | -**\ **-generate**\ ] [\ **-c | -**\ **-clear**\  {\ *id*\ |\ **all**\ }] [\ **-d | -**\ **-download**\  \ *id*\ ]
+
 
 MPA specific:
 =============
@@ -427,6 +429,13 @@ OPTIONS
 \ **netmask**\ 
  
  The subnet mask.
+ 
+
+
+\ **dump**\ 
+ 
+ Manage OpenBMC system dumps. If no suboption is provided, will generate, wait and download the dump files to /var/log/xcat/dump.
+ \ **-c**\  will clear a single or all dumps on the BMC. \ **-l**\  will list all the generated dumps on the BMC. \ **-g**\  will generate a new dump on the BMC. Dump generation can take a few minutes. \ **-d**\  will download a single dump from the BMC to /var/log/xcat/dump on management or service node.
  
 
 
@@ -1226,6 +1235,48 @@ EXAMPLES
  .. code-block:: perl
  
    fsp: Success
+ 
+ 
+
+
+31. To list BMC dumps available for download:
+ 
+ 
+ .. code-block:: perl
+ 
+   rspconfig p9euh02 dump -l
+ 
+ 
+ Output is similar to:
+ 
+ 
+ .. code-block:: perl
+ 
+   p9euh02: [1] Generated: 09/06/2017 14:31:49, Size: 4528
+   p9euh02: [2] Generated: 09/06/2017 14:31:55, Size: 4516
+   p9euh02: [3] Generated: 09/06/2017 14:32:01, Size: 4236
+   p9euh02: [4] Generated: 09/06/2017 14:32:07, Size: 4248
+   p9euh02: [5] Generated: 09/06/2017 14:32:11, Size: 4268
+ 
+ 
+
+
+32. To generate and download BMC dump:
+ 
+ 
+ .. code-block:: perl
+ 
+   rspconfig p9euh02 dump -l
+ 
+ 
+ Output is similar to:
+ 
+ 
+ .. code-block:: perl
+ 
+   Capturing BMC Diagnostic information, this will take some time...
+   p9euh02: Dump requested. Target ID is 6, waiting for BMC to generate...
+   p9euh02: Dump 6 generated. Downloading to /var/log/xcat/dump/20171211-0951_p9euh02_dump_6.tar.xz
  
  
 

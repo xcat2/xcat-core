@@ -26,6 +26,8 @@ B<rspconfig> I<noderange> B<garp>=I<time>
 
 B<rspconfig> I<noderange> {B<ipsrc>|B<ip>|B<netmask>|B<gateway>|B<hostname>|B<vlan>|B<sshcfg>}
 
+B<rspconfig> I<noderange> B<dump> [B<-l>|B<--list>] [B<-g>|B<--generate>] [B<-c>|B<--clear> {I<id>|B<all>}] [B<-d>|B<--download> I<id>]
+
 =head2 MPA specific:
 
 B<rspconfig> I<noderange> {B<sshcfg>|B<snmpcfg>|B<pd1>|B<pd2>|B<network>|B<swnet>|B<ntp>|B<textid>|B<frame>}
@@ -323,6 +325,11 @@ Select whether each memory bank should be enabled or disabled. State changes tak
 =item B<netmask>
 
 The subnet mask.
+
+=item B<dump>
+
+Manage OpenBMC system dumps. If no suboption is provided, will generate, wait and download the dump files to /var/log/xcat/dump.
+B<-c> will clear a single or all dumps on the BMC. B<-l> will list all the generated dumps on the BMC. B<-g> will generate a new dump on the BMC. Dump generation can take a few minutes. B<-d> will download a single dump from the BMC to /var/log/xcat/dump on management or service node.
 
 =item B<network>={[I<ip>],[I<host>],[I<gateway>],[I<netmask>]|*}
 
@@ -812,6 +819,30 @@ To set the initial password for user HMC on fsp:
 Output is similar to:
 
  fsp: Success
+
+=item 31.
+To list BMC dumps available for download:
+
+ rspconfig p9euh02 dump -l
+
+Output is similar to:
+
+ p9euh02: [1] Generated: 09/06/2017 14:31:49, Size: 4528
+ p9euh02: [2] Generated: 09/06/2017 14:31:55, Size: 4516
+ p9euh02: [3] Generated: 09/06/2017 14:32:01, Size: 4236
+ p9euh02: [4] Generated: 09/06/2017 14:32:07, Size: 4248
+ p9euh02: [5] Generated: 09/06/2017 14:32:11, Size: 4268
+
+=item 32.
+To generate and download BMC dump:
+
+ rspconfig p9euh02 dump -l
+
+Output is similar to:
+
+ Capturing BMC Diagnostic information, this will take some time...
+ p9euh02: Dump requested. Target ID is 6, waiting for BMC to generate...
+ p9euh02: Dump 6 generated. Downloading to /var/log/xcat/dump/20171211-0951_p9euh02_dump_6.tar.xz
 
 =back
 
