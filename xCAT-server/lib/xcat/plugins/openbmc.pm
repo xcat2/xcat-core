@@ -1106,7 +1106,6 @@ sub parse_args {
             if ($option_flag !~ /^-c$|^--check$|^-u$|^--upload$|^-a$|^--activate$/) {
                 return ([ 1, "Invalid option specified when a file is provided: $option_flag" ]);
             }
-            xCAT::SvrUtils::sendmsg("Attempting to upload $flash_arguments[0], please wait...", $callback);
         }
         else {
             if ($updateid_passed) {
@@ -1648,6 +1647,11 @@ sub parse_command_status {
                     $status_info{RFLASH_DELETE_IMAGE_REQUEST}{init_url}       .= "/$update_file/action/Delete";
                 }
             }
+        }
+        if ($upload or $::UPLOAD_AND_ACTIVATE) {
+            xCAT::SvrUtils::sendmsg("Attempting to upload $::UPLOAD_FILE, please wait...", $callback);
+        } elsif ($::UPLOAD_ACTIVATE_STREAM) {
+            xCAT::SvrUtils::sendmsg("Attempting to upload $::UPLOAD_FILE and $::UPLOAD_PNOR, please wait...", $callback);
         }
         if ($check_version) {
             # Display firmware version on BMC
