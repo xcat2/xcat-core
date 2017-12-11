@@ -36,8 +36,6 @@ use xCAT_monitoring::monitorctrl;
 use POSIX qw(WNOHANG);
 use xCAT::Utils qw/natural_sort_cmp/;
 
-use xCAT::data::openbmcevents;
-
 $::VERBOSE                  = 0;
 # String constants for rbeacon states
 $::BEACON_STATE_OFF         = "off";
@@ -1081,7 +1079,6 @@ sub parse_command_status {
             $next_status{REVENTLOG_REQUEST} = "REVENTLOG_RESPONSE";
             $status_info{REVENTLOG_RESPONSE}{argv} = "$subcommand";
             my $policy_table = "/opt/ibm/ras/lib/policyTable.json";
-            my $policy_mapping = "$::XCATROOT/lib/perl/xCAT/data/openbmcevents.pm";
             if (-e "$policy_table") {
                 my $policy_json = `cat $policy_table`;
                 if ($policy_json) {
@@ -1090,10 +1087,8 @@ sub parse_command_status {
                 } else {
                     $event_mapping = "No data in $policy_table";
                 }
-            } elsif (-e "$policy_mapping") {
-                $event_mapping = $xCAT::data::openbmcevents::openbmc_event_mapping{events};
             } else {
-                $event_mapping = "Could not found '$policy_mapping'";
+                $event_mapping = "Could not found '$policy_table'";
             }
         }
     }
