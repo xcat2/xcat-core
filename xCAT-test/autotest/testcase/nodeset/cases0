@@ -411,8 +411,9 @@ check:rc==0
 cmd:nodeset testnode1 osimage=rhels7.99-ppc64le-install-compute
 #Ignore the exit code check as nonexistenode is fake and dispatching always fail
 #check:rc==0
+#nodeset will be always run on MN (#4426)
 cmd:test -f /tftpboot.1/petitboot/testnode1
-check:rc!=0
+check:rc==0
 cmd:xdsh $$SN 'test -f /tftpboot.1/petitboot/testnode1'
 check:rc!=0
 cmd:nodeset testnode1 offline
@@ -435,6 +436,8 @@ cmd:chdef -t site tftpdir=/tftpboot
 check:rc==0
 cmd:rm -rf /tftpboot.1
 cmd:xdsh $$SN 'rm -rf /tftpboot.1'
+cmd:makedns -d testnode1
+check:rc==0
 cmd:chdef -t node -o testnode1 ip=
 check:rc==0
 cmd:cp -f /etc/hosts.xcattestbak /etc/hosts
