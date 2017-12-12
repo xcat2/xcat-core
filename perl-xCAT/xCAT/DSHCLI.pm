@@ -5216,7 +5216,13 @@ sub parse_rsync_input_file_on_MN
                         if ($rsyncSN == 1)
                         {    #  syncing the SN
                             $dest_dir = $syncdir;    # the SN sync dir
-                            $dest_dir .= dirname($srcfile);
+                            if($srcfile =~ /\/$/){
+                                #the srcfile is a directory
+                                $dest_dir .= $srcfile;
+                            }else{
+                                #the srcfile is a file
+                                $dest_dir .= dirname($srcfile);
+                            }
                             $dest_dir =~ s/\s*//g;    #remove blanks
                         }
                         $$options{'destDir_srcFile'}{$target_node}{$dest_dir} ||=
