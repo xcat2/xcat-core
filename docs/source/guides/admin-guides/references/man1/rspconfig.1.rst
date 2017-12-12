@@ -434,8 +434,24 @@ OPTIONS
 
 \ **dump**\ 
  
- Manage OpenBMC system dumps. If no suboption is provided, will generate, wait and download the dump files to /var/log/xcat/dump.
- \ **-c**\  will clear a single or all dumps on the BMC. \ **-l**\  will list all the generated dumps on the BMC. \ **-g**\  will generate a new dump on the BMC. Dump generation can take a few minutes. \ **-d**\  will download a single dump from the BMC to /var/log/xcat/dump on management or service node.
+ Manage OpenBMC system dumps. If no sub-option is provided, will generate, wait, and download the dump.
+ 
+ 
+ \ **-c**\  will clear a single specified dump, or use 'all' to clear all dumps on the BMC.
+ 
+ 
+ 
+ \ **-l**\  will list all the generated dumps on the BMC.
+ 
+ 
+ 
+ \ **-g**\  will generate a new dump on the BMC. Dump generation can take a few minutes.
+ 
+ 
+ 
+ \ **-d**\  will download a single dump from the BMC to /var/log/xcat/dump on management or service node.
+ 
+ 
  
 
 
@@ -1266,7 +1282,7 @@ EXAMPLES
  
  .. code-block:: perl
  
-   rspconfig p9euh02 dump -l
+   rspconfig p9euh02 dump
  
  
  Output is similar to:
