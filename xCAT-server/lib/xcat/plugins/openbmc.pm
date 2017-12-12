@@ -536,6 +536,8 @@ my $flag_debug = "[openbmc_debug]";
 
 my %login_pid_node; # used in process_request, record login fork pid map
 
+my $event_mapping = "";
+
 #-------------------------------------------------------
 
 =head3  preprocess_request
@@ -825,6 +827,9 @@ rmdir \"/tmp/\$userid\" \n";
 
     while (1) { 
         unless ($wait_node_num) {
+            if ($event_mapping and (ref($event_mapping) ne "HASH")) {
+                xCAT::SvrUtils::sendmsg("$event_mapping, all event messages above are original", $callback);
+            }
             if ($next_status{LOGIN_RESPONSE} eq "RSPCONFIG_SSHCFG_REQUEST") {
                 my $home = xCAT::Utils->getHomeDir("root");
                 unlink "$home/.ssh/copy.sh";
@@ -931,7 +936,7 @@ sub parse_args {
         return ([ 1, "Error parsing arguments." ]) if ($option !~ /V|verbose/);
     }
 
-    if (scalar(@ARGV) >= 2 and ($command =~ /rpower|rinv|rvitals/)) {
+    if (scalar(@ARGV) >= 2 and ($command =~ /rpower|rinv|rvitals|reventlog/)) {
         return ([ 1, "Only one option is supported at the same time for $command" ]);
     } elsif (scalar(@ARGV) == 0 and $command =~ /rpower|rspconfig|rflash/) {
         return ([ 1, "No option specified for $command" ]);
@@ -960,10 +965,6 @@ sub parse_args {
             return ([ 1, "Unsupported command: $command $subcommand" ]);
         }
     } elsif ($command eq "reventlog") {
-        my $option_s = 0;
-        unless (GetOptions("s" => \$option_s,)) {
-            return ([1, "Error parsing arguments." ]);
-        }
         $subcommand = "all" if (!defined($ARGV[0]));
         unless ($subcommand =~ /^\d$|^\d+$|^all$|^clear$/) {
             return ([ 1, "Unsupported command: $command $subcommand" ]);
@@ -1302,12 +1303,6 @@ sub parse_command_status {
     }
 
     if ($command eq "reventlog") {
-        my $option_s = 0;
-        if ($$subcommands[-1] and $$subcommands[-1] eq "-s") {
-            $option_s = 1; 
-            pop(@$subcommands);
-        }
-
         if (defined($$subcommands[0])) {
             $subcommand = $$subcommands[0];
         } else {
@@ -1321,7 +1316,18 @@ sub parse_command_status {
             $next_status{LOGIN_RESPONSE} = "REVENTLOG_REQUEST";
             $next_status{REVENTLOG_REQUEST} = "REVENTLOG_RESPONSE";
             $status_info{REVENTLOG_RESPONSE}{argv} = "$subcommand";
-            $status_info{REVENTLOG_RESPONSE}{argv} .= ",s" if ($option_s);
+            my $policy_table = "/opt/ibm/ras/lib/policyTable.json";
+            if (-e "$policy_table") {
+                my $policy_json = `cat $policy_table`;
+                if ($policy_json) {
+                    my $policy_hash = decode_json $policy_json;
+                    $event_mapping = $policy_hash->{events};
+                } else {
+                    $event_mapping = "No data in $policy_table";
+                }
+            } else {
+                $event_mapping = "Could not found '$policy_table'";
+            }
         }
     }
 
@@ -2656,42 +2662,27 @@ sub reventlog_response {
             xCAT::SvrUtils::sendmsg("clear", $callback, $node);
         }
     } else {
-        my ($entry_string, $option_s) = split(",", $status_info{REVENTLOG_RESPONSE}{argv});
+        my $entry_string = $status_info{REVENTLOG_RESPONSE}{argv};
         my $content_info; 
         my %output = ();
         my $entry_num = 0;
         $entry_string = "all" if ($entry_string eq "0");
         $entry_num = 0 + $entry_string if ($entry_string ne "all");
+        my $max_entry = 0;
 
         foreach my $key_url (keys %{$response_info->{data}}) {
             my %content = %{ ${ $response_info->{data} }{$key_url} };
-            my $timestamp = $content{Timestamp};
-            my $id_num = 0 + $content{Id} if ($content{Id});
-            if ($content{Message}) {
-                my ($sec, $min, $hour, $mday, $mon, $year, $wday, $yday, $isdst) = localtime($content{Timestamp}/1000);
-                $mon += 1;
-                $year += 1900;
-                my $UTC_time = sprintf ("%02d/%02d/%04d %02d:%02d:%02d", $mon, $mday, $year, $hour, $min, $sec); 
-                my $content_info = $UTC_time . " [$content{Id}] " . $content{Message};
-                $output{$timestamp} = $content_info;
-            }
+            next unless ($content{Id});
+            my $id_num = 0 + $content{Id};
+            my $event_msg = parse_event_data(\%content);
+            $output{$id_num} = $event_msg if ($event_msg);
+            $max_entry = $id_num if ($id_num > $max_entry);
         }
 
-        my $count = 0;
-        if ($option_s) {
-            xCAT::SvrUtils::sendmsg("$::NO_ATTRIBUTES_RETURNED", $callback, $node) if (!%output);
-            foreach my $key ( sort { $b <=> $a } keys %output) {
-                xCAT::MsgUtils->message("I", { data => ["$node: $output{$key}"] }, $callback) if ($output{$key});
-                $count++;
-                last if ($entry_string ne "all" and $count >= $entry_num); 
-            }
-        } else {
-            xCAT::SvrUtils::sendmsg("$::NO_ATTRIBUTES_RETURNED", $callback, $node) if (!%output);
-            foreach my $key (sort keys %output) {
-                xCAT::MsgUtils->message("I", { data => ["$node: $output{$key}"] }, $callback) if ($output{$key});
-                $count++;
-                last if ($entry_string ne "all" and $count >= $entry_num);
-            }
+        xCAT::SvrUtils::sendmsg("$::NO_ATTRIBUTES_RETURNED", $callback, $node) if (!%output);
+        # If option is "all", print out all sorted msg. If is a num, print out the last <num> msg (sorted)
+        foreach my $key ( sort { $a <=> $b } keys %output) {
+            xCAT::MsgUtils->message("I", { data => ["$node: $output{$key}"] }, $callback) if ($entry_string eq "all" or $key > ($max_entry - $entry_num));
         }
     }
 
@@ -2701,6 +2692,82 @@ sub reventlog_response {
     } else {
         $wait_node_num--;
     }
+}
+
+#-------------------------------------------------------
+
+=head3  parse_event_data
+
+  Parse reventlog data
+  Input:
+        $content: data for single entry
+
+=cut
+
+#-------------------------------------------------------
+sub parse_event_data {
+    my $content = shift;
+    my $content_info = "";
+
+    my $timestamp = $$content{Timestamp};
+    my $id_num = $$content{Id};
+    if ($$content{Message}) {
+        my ($sec, $min, $hour, $mday, $mon, $year, $wday, $yday, $isdst) = localtime($$content{Timestamp}/1000);
+        $mon += 1;
+        $year += 1900;
+        my $UTC_time = sprintf ("%02d/%02d/%04d %02d:%02d:%02d", $mon, $mday, $year, $hour, $min, $sec);
+        my $messgae = $$content{Message};
+        my $callout;
+        my $msg_pid;
+        my $i2c_device;
+        my $esel;
+
+        if (defined $$content{AdditionalData} and $$content{AdditionalData}) {
+            foreach my $addition (@{ $$content{AdditionalData} }) {
+                if ($addition =~ /CALLOUT_INVENTORY_PATH=(.+)/) {
+                    $callout = $1;
+                }
+                if ($addition =~ /CALLOUT_DEVICE_PATH/) {
+                    $callout = "I2C";
+                    my @info = split("=", $addition);
+                    my $tmp = $info[1];
+                    my @tmp_data = split("/", $tmp);
+                    my $data_num = @tmp_data;
+                    $i2c_device = join("/", @tmp_data[($data_num-4)..($data_num-1)])
+                }
+                if ($addition =~ /ESEL/) {
+                    my @info = split("=", $addition);
+                    $esel = $info[1];
+                    # maybe useful, so leave it here
+                }
+                if ($addition =~ /GPU/) {
+                    my @info = split(" ", $addition);
+                    $callout = "/xyz/openbmc_project/inventory/system/chassis/motherboard/gpu" . $info[-1];
+                }
+                if ($addition =~ /PID=(\d*)/) {
+                    $msg_pid = $1;
+                }
+            }
+        }
+
+        $messgae .= "||$callout" if ($callout);
+
+        if (ref($event_mapping) eq "HASH") {
+            if ($event_mapping->{$messgae}) {
+                my $event_type = $event_mapping->{$messgae}{EventType};
+                my $event_message = $event_mapping->{$messgae}{Message};
+                my $severity = $event_mapping->{$messgae}{Severity};
+                my $affect = $event_mapping->{$messgae}{AffectedSubsystem};
+                $content_info = "$UTC_time [$id_num]: $event_type, ($severity) $event_message (AffectedSubsystem: $affect, PID: $msg_pid), Resolved: $$content{Resolved}";
+            } else {
+                $content_info = "$UTC_time [$id_num]: Not found in policy table: $messgae (PID: $msg_pid), Resolved: $$content{Resolved}";
+            }
+        } else {
+            $content_info = "$UTC_time [$id_num]: $messgae (PID: $msg_pid), Resolved: $$content{Resolved}";
+        }
+    }
+
+    return $content_info;
 }
 
 #-------------------------------------------------------
