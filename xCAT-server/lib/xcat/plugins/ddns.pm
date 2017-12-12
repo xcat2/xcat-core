@@ -1280,6 +1280,19 @@ sub update_namedconf {
         push @newnamed, "};\n\n";
     }
 
+    # include external configuration file(s) if present in site.namedincludes
+    my @entries = xCAT::TableUtils->get_site_attribute("namedincludes");
+    my $site_entry = $entries[0];
+    if (defined($site_entry)) {
+        my @includes = split /[ ,]/, $site_entry;
+        foreach (@includes) {
+            if (defined($_)) {
+                push @newnamed, "include \"$_\";\n";
+            }
+        }
+        push @newnamed, "\n";
+    }
+
     unless ($slave) {
         unless ($gotkey) {
             unless ($ctx->{privkey}) {    #need to generate one
