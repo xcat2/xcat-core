@@ -5198,8 +5198,10 @@ sub parse_rsync_input_file_on_MN
 
                 foreach my $target_node (@dest_host)
                 {
-                    # skip the node if it's NOT in the permitted list
-                    if ($dest_node && !grep /^$target_node$/, @dest_nodes) {
+                    # skip the node if it's NOT in the permitted list and if
+                    # it's not a SN doing a hierarchical mode transfer
+                    if ($dest_node && !(grep /^$target_node$/, @dest_nodes)
+                        && ($rsyncSN != 1) ) {
                         next;
                     }
                     $$options{'destDir_srcFile'}{$target_node} ||= {};
@@ -5655,11 +5657,30 @@ sub parse_rsync_input_file_on_SN
         } else {    # not processing EXECUTE, EXECUTEALWAYS or APPEND
                     # otherwise it is just the synclist
 
-            if ($line =~ /(.+) -> (.+)/)
+            # xCAT supports the syncfile format:
+            #   file -> file
+            #   file -> (noderange for permitted nodes) file
+            if ($line =~ /(.+) -> (.+)/ || $line =~ /(.+) -> +\((.+)\) +(.+)/) 
             {
                 $process_line = 1;
-                my $src_file  = $1;
-                my $dest_file = $2;
+                my $src_file;
+                my $dest_file;
+                my $dest_node;
+                my @dest_nodes;
+                if ($line =~ /(.+) -> +\((.+)\) +(.+)/) {
+                    $src_file  = $1;
+                    $dest_node = $2;
+                    $dest_file = $3;
+                } elsif ($line =~ /(.+) -> (.+)/) {
+                    $src_file  = $1;
+                    $dest_file = $2;
+                }
+
+                # get all the permitted nodes for the line
+                $dest_node =~ s/\s//g;
+                if ($dest_node) {
+                    @dest_nodes = noderange($dest_node);
+                }
                 $dest_file =~ s/[\s;]//g;    # remove blanks
 
                 # see if destination is a directory
@@ -5688,6 +5709,10 @@ sub parse_rsync_input_file_on_SN
 
                 foreach my $target_node (@dest_host)
                 {
+                    # skip the node if it's NOT in the permitted list
+                    if ($dest_node && ! grep /^$target_node$/, @dest_nodes) {
+                        next;
+                    }
                     $$options{'destDir_srcFile'}{$target_node} ||= {};
 
                     # for each file on the line
