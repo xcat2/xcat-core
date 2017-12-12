@@ -1694,6 +1694,24 @@ sub updatenodesyncfiles
         }
     }
 
+    my $dhs_from_user_env;
+    # get the Environment Variables and set DSH_FROM_USERID if possible (From updatenode client)
+    if (defined($request->{environment})) {
+        foreach my $envar (@{ $request->{environment} })
+        {
+            if ($envar =~ /^DSH_FROM_USERID=/) {
+                $dhs_from_user_env = $envar;
+                last;
+            }
+        }
+    }
+    unless ($dhs_from_user_env) {
+        # $request->{username} is gotten from CN in client certificate
+        if (($request->{username}) && defined($request->{username}->[0])) {
+            $dhs_from_user_env = 'DSH_FROM_USERID=' . $request->{username}->[0];
+        }
+    }
+
     my $node_syncfile = xCAT::SvrUtils->getsynclistfile($nodes);
     foreach my $node (@$nodes)
     {
@@ -1744,15 +1762,10 @@ sub updatenodesyncfiles
             } else {               # else this is updatenode -F
                 $env = ["DSH_RSYNC_FILE=$synclist"];
             }
-
-            # get the Environment Variables and set DSH_FROM_USERID if possible (From updatenode client)
-            foreach my $envar (@{ $request->{environment} })
-            {
-                if ($envar =~ /^DSH_FROM_USERID=/) {
-                    push $env, $envar;
-                    last;
-                }
+            if ($dhs_from_user_env) {
+                push $env, $dhs_from_user_env;
             }
+
             push @$args, "--nodestatus";
             if (defined($::fanout)) {    # fanout
                 push @$args, "-f";
