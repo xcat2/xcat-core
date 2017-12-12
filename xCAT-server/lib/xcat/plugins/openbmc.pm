@@ -1094,10 +1094,12 @@ sub parse_args {
         }
         
         if (scalar @flash_arguments > 1) {
-            if ($filename_passed) {
+            if ($filename_passed and $option_flag !~ /^-d$/) {
                 return ([1, "More than one firmware specified is not supported."]);
+            } elsif ($option_flag =~ /^-d$/) {
+                return ([1, "More than one directory specified is not supported."]);
             } else {
-                return ([ 1, "Invalid firmware tar file format specified with $option_flag" ]);
+                return ([ 1, "Invalid firmware specified with $option_flag" ]);
             }
         }
 
@@ -1114,7 +1116,7 @@ sub parse_args {
                     return ([ 1, "Invalid option specified when an update id is provided: $option_flag" ]);
                 }
                 my $action = "activate";
-                if ($option_flag =~ /^-d$|^--delete$/) {
+                if ($option_flag =~ /^--delete$/) {
                     $action = "delete";
                 }
                 xCAT::SvrUtils::sendmsg("Attempting to $action ID=$flash_arguments[0], please wait...", $callback);
@@ -1131,7 +1133,7 @@ sub parse_args {
                     }
                     closedir(DIR);
                 } elsif ($option_flag =~ /^-c$|^--check$|^-u$|^--upload$|^-a$|^--activate$/) {
-                    return ([ 1, "Invalid firmware tar file format specified with $option_flag" ]);
+                    return ([ 1, "Invalid firmware specified with $option_flag" ]);
                 }
             } else {
                 # Neither Filename nor updateid was not passed, check flags allowed without file or updateid
