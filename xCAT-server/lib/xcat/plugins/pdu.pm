@@ -281,7 +281,7 @@ sub powerpdu {
 
     foreach my $node (@$noderange) {
         if ($pduhash->{$node}->[0]->{pdutype} eq 'crpdu') {
-            process_relay($node,$subcmd,$callback);
+            process_relay($node,$subcmd,$callback,1,3);
             next;
         }
 
@@ -1084,7 +1084,7 @@ sub process_powerrelay {
 
 #-------------------------------------------------------
 
-=head3  process_powerrelay 
+=head3  process_relay 
 
   process relay action for CR PDU.
 
@@ -1131,7 +1131,7 @@ sub process_relay {
         }
         $relay_num++;
     }
-    #$session->hard_close();
+    $session->hard_close();
 
 }
 
