@@ -835,7 +835,7 @@ sub fork_fanout_dcp
 
                 my @target_file = split '/', $$options{'source'};
                 $rcp_config{'dest-file'} =
-"$$options{'target'}/$target_file[$#target_file]._$$target_properties{'hostname'}";
+                "$$options{'target'}/$target_file[$#target_file]._$$target_properties{'hostname'}";
 
             }
 
@@ -850,6 +850,8 @@ sub fork_fanout_dcp
                   $$options{'destDir_srcFile'}{$user_target};
             }
 
+            $dsh_trace
+                && ($rcp_config{'trace'} = 1);
             #eval "require RemoteShell::$rsh_extension";
             eval "require xCAT::$rsh_extension";
             my $remoteshell = "xCAT::$rsh_extension";
