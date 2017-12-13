@@ -2095,6 +2095,9 @@ sub process_debug_info {
     my $node = shift;
     my $debug_msg = shift;
     my $ts_node = localtime() . " " . $node;
+    if (!$debug_msg) {
+        $debug_msg = "";
+    }
 
     xCAT::SvrUtils::sendmsg("$flag_debug $debug_msg", $callback, $ts_node);
     xCAT::MsgUtils->trace(0, "D", "$flag_debug $node $debug_msg"); 
