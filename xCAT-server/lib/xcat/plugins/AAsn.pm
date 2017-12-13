@@ -488,8 +488,14 @@ sub setup_CONS
 {
     my ($nodename) = @_;
     my $rc = 0;
-
-    my $cmd;
+    if (-x "/usr/bin/goconserver") {
+        my $cmd = "ps axf | grep -v grep | grep \/usr\/bin\/goconserver";
+        xCAT::Utils->runcmd($cmd, 0);
+        if ($::RUNCMD_RC == 0) {
+            xCAT::MsgUtils->message("S", "INFO: goconserver was started, do nothing for conserver.");
+            return 0;
+        }
+    }
     my $cmdref;
     $cmdref->{command}->[0] = "makeconservercf";
     $cmdref->{arg}->[0]     = "-l";
