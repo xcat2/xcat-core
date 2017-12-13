@@ -34,7 +34,9 @@ B<rflash> I<noderange> {[B<-c>|B<--check>] | [B<-l>|B<--list>]}
 
 B<rflash> I<noderange> I<tar_file_path> {[B<-c>|B<--check>] | [B<-a>|B<--activate>] | [B<-u>|B<--upload>]}
 
-B<rflash> I<noderange> I<image_id> {[B<-a>|B<--activate>] | [B<-d>|B<--delete>]}
+B<rflash> I<noderange> I<tar_file_directory> [B<-d>] [B<--no-host-reboot>]
+
+B<rflash> I<noderange> I<image_id> {[B<-a>|B<--activate>] | [B<--delete>]}
 
 =head1 B<Description>
 
@@ -119,6 +121,12 @@ To apply the firmware level, a reboot is required to BMC and HOST.
 
 B<Note:> When using B<rflash> in hierarchical environment, the .tar file must be accessible from Service Nodes.
 
+B<-d>:
+
+   This option steamline the update, activate, reboot BMC and reboot HOST procedure. It expects a directory contains both BMC and PNOR .tar files. When BMC and PNOR tar files are provided, it will upload, activate firmware. When BMC is activate, it will reboot BMC. If BMC state is Ready, it will reboot the HOST. If BMC state is NotReady, the command exit. 
+
+B<Note:> When using B<--no-host-reboot>, it will not reboot the host after BMC is reboot. 
+
 =head1 B<Options>
 
 =over 7
@@ -179,7 +187,7 @@ List currently uploaded update images. "(*)" indicates currently active image.
 
 Upload update image. Specified file must be in .tar format.
 
-=item B<-d|--delete>
+=item B<--delete>
 
 Delete update image from BMC
 
