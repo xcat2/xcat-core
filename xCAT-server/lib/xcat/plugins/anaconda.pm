@@ -549,10 +549,11 @@ sub mknetboot
             $xcatmaster = '!myipfn!'; #allow service nodes to dynamically nominate themselves as a good contact point, this is of limited use in the event that xcat is not the dhcp/tftp server
         }
 
-        if ($ient and $ient->{tftpserver} and $ient->{tftpserver} ne '<xcatmaster>') {
+        if ($ient and $ient->{nfsserver} and $ient->{nfsserver} ne '<xcatmaster>') {
+            $imgsrv = $ient->{nfsserver};
+        }elsif ($ient and $ient->{tftpserver} and $ient->{tftpserver} ne '<xcatmaster>') {
             $imgsrv = $ient->{tftpserver};
         } else {
-            $ient = $reshash->{$node}->[0];
             $imgsrv = $xcatmaster;
         }
 
@@ -591,11 +592,8 @@ sub mknetboot
 
                 # get entry for nfs root if it exists:
                 # have to get nfssvr and nfsdir from noderes table
-                my $nfssrv = $imgsrv;
+                my $nfssrv = $imgsrvip;
                 my $nfsdir = $rootimgdir;
-                if ($ient->{nfsserver}) {
-                    $nfssrv = $ient->{nfsserver};
-                }
                 if ($ient->{nfsdir} ne '') {
                     $nfsdir = $ient->{nfsdir} . "/netboot/$osver/$arch/$profile";
 
