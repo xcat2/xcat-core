@@ -2049,8 +2049,8 @@ sub deal_with_response {
         }
         if (!($node_info{$node}{cur_status} eq "RSPCONFIG_DUMP_CLEAR_RESPONSE" and $next_status{ $node_info{$node}{cur_status} })) {
             xCAT::SvrUtils::sendmsg([1, $error], $callback, $node);
-            if ($node_info{$node}{cur_status} eq "RFLASH_UPDATE_CHECK_STATE_RESPONSE") {
-                $node_info{$node}{rst} = $error if ($::VERBOSE);
+            if ($::UPLOAD_AND_ACTIVATE or $next_status{LOGIN_RESPONSE} eq "RFLASH_UPDATE_ACTIVATE_REQUEST") {
+                $node_info{$node}{rst} = $error;
                 my $rflash_log_file = xCAT::Utils->full_path($node.".log", $::XCAT_LOG_RFLASH_DIR);
                 open (RFLASH_LOG_FILE_HANDLE, ">> $rflash_log_file");
                 print RFLASH_LOG_FILE_HANDLE "$error\n";
