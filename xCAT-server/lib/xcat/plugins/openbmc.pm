@@ -79,7 +79,7 @@ $::RSPCONFIG_DUMP_WAIT_TOTALTIME = int($::RSPCONFIG_DUMP_INTERVAL*$::RSPCONFIG_D
 $::RSPCONFIG_WAIT_VLAN_DONE = 15;
 $::RSPCONFIG_WAIT_IP_DONE   = 3;
 $::RSPCONFIG_DUMP_CMD_TIME  = 0;
-$::RSPCONFIG_CONGIGURED_API_KEY  = -1;
+$::RSPCONFIG_CONFIGURED_API_KEY  = -1;
 
 $::XCAT_LOG_DIR             = "/var/log/xcat";
 $::XCAT_LOG_RFLASH_DIR      = $::XCAT_LOG_DIR . "/rflash/";
@@ -1022,9 +1022,9 @@ sub parse_args {
         my $setorget;
         my $all_subcommand = "";
         foreach $subcommand (@ARGV) {
-            $::RSPCONFIG_CONGIGURED_API_KEY = &is_valid_config_api($subcommand, $callback);
-            if ($::RSPCONFIG_CONGIGURED_API_KEY != -1) {
-                # subcommand defined in the configured API hash, return from here, the RSPCONFIG_CONGIGURED_API_KEY is the key into the hash
+            $::RSPCONFIG_CONFIGURED_API_KEY = &is_valid_config_api($subcommand, $callback);
+            if ($::RSPCONFIG_CONFIGURED_API_KEY != -1) {
+                # subcommand defined in the configured API hash, return from here, the RSPCONFIG_CONFIGURED_API_KEY is the key into the hash
                 return;
             }
             elsif ($subcommand =~ /^(\w+)=(.*)/) {
@@ -1381,7 +1381,7 @@ sub parse_command_status {
         my @options = ();
         my $num_subcommand = @$subcommands;
         #Setup chain to process the configured command
-        if ($::RSPCONFIG_CONGIGURED_API_KEY != -1) {
+        if ($::RSPCONFIG_CONFIGURED_API_KEY != -1) {
             $subcommand = $$subcommands[0];
             # Check if setting or quering
             if ($subcommand =~ /^(\w+)=(.*)/) {
@@ -1392,13 +1392,13 @@ sub parse_command_status {
                 if ($subcommand_value eq "1") {
                     # Setup chain for subcommand=1
                     $next_status{LOGIN_RESPONSE} = "RSPCONFIG_API_CONFIG_ON_REQUEST";
-                    $status_info{RSPCONFIG_API_CONFIG_ON_REQUEST}{init_url} =  $status_info{RSPCONFIG_API_CONFIG_ON_REQUEST}{init_url} . $api_config_info{$::RSPCONFIG_CONGIGURED_API_KEY}{url} . "/attr/" . $api_config_info{$::RSPCONFIG_CONGIGURED_API_KEY}{attr_url};
+                    $status_info{RSPCONFIG_API_CONFIG_ON_REQUEST}{init_url} =  $status_info{RSPCONFIG_API_CONFIG_ON_REQUEST}{init_url} . $api_config_info{$::RSPCONFIG_CONFIGURED_API_KEY}{url} . "/attr/" . $api_config_info{$::RSPCONFIG_CONFIGURED_API_KEY}{attr_url};
                     $next_status{RSPCONFIG_API_CONFIG_ON_REQUEST} = "RSPCONFIG_API_CONFIG_ON_RESPONSE";
                 }
                 elsif ($subcommand_value eq "0") {
                     # Setup chain for subcommand=0
                     $next_status{LOGIN_RESPONSE} = "RSPCONFIG_API_CONFIG_OFF_REQUEST";
-                    $status_info{RSPCONFIG_API_CONFIG_OFF_REQUEST}{init_url} =  $status_info{RSPCONFIG_API_CONFIG_OFF_REQUEST}{init_url} . $api_config_info{$::RSPCONFIG_CONGIGURED_API_KEY}{url} . "/attr/" . $api_config_info{$::RSPCONFIG_CONGIGURED_API_KEY}{attr_url};
+                    $status_info{RSPCONFIG_API_CONFIG_OFF_REQUEST}{init_url} =  $status_info{RSPCONFIG_API_CONFIG_OFF_REQUEST}{init_url} . $api_config_info{$::RSPCONFIG_CONFIGURED_API_KEY}{url} . "/attr/" . $api_config_info{$::RSPCONFIG_CONFIGURED_API_KEY}{attr_url};
                     $next_status{RSPCONFIG_API_CONFIG_OFF_REQUEST} = "RSPCONFIG_API_CONFIG_OFF_RESPONSE";
                 }
                 else {
@@ -1410,7 +1410,7 @@ sub parse_command_status {
             else {
                 # Setup chain for query subcommand
                 $next_status{LOGIN_RESPONSE} = "RSPCONFIG_API_CONFIG_QUERY_REQUEST";
-                $status_info{RSPCONFIG_API_CONFIG_QUERY_REQUEST}{init_url} =  $status_info{RSPCONFIG_API_CONFIG_QUERY_REQUEST}{init_url} . $api_config_info{$::RSPCONFIG_CONGIGURED_API_KEY}{url};
+                $status_info{RSPCONFIG_API_CONFIG_QUERY_REQUEST}{init_url} =  $status_info{RSPCONFIG_API_CONFIG_QUERY_REQUEST}{init_url} . $api_config_info{$::RSPCONFIG_CONFIGURED_API_KEY}{url};
                 $next_status{RSPCONFIG_API_CONFIG_QUERY_REQUEST} = "RSPCONFIG_API_CONFIG_QUERY_RESPONSE";
             }
             return 0;
@@ -3106,7 +3106,7 @@ sub rspconfig_api_config_response {
     if ($node_info{$node}{cur_status}) {
         if ($node_info{$node}{cur_status} eq "RSPCONFIG_API_CONFIG_ON_RESPONSE") {
             if ($response_info->{'message'} eq $::RESPONSE_OK) {
-                xCAT::SvrUtils::sendmsg("BMC Setting ". $api_config_info{$::RSPCONFIG_CONGIGURED_API_KEY}{display_name} . "...", $callback, $node);
+                xCAT::SvrUtils::sendmsg("BMC Setting ". $api_config_info{$::RSPCONFIG_CONFIGURED_API_KEY}{display_name} . "...", $callback, $node);
             }
             else {
                 xCAT::SvrUtils::sendmsg("Error setting RSPCONFIG_API_CONFIG_ON_RESPONSE", $callback, $node);
@@ -3114,7 +3114,7 @@ sub rspconfig_api_config_response {
         }
         elsif ($node_info{$node}{cur_status} eq "RSPCONFIG_API_CONFIG_OFF_RESPONSE") {
             if ($response_info->{'message'} eq $::RESPONSE_OK) {
-                xCAT::SvrUtils::sendmsg("BMC Setting ". $api_config_info{$::RSPCONFIG_CONGIGURED_API_KEY}{display_name} . "...", $callback, $node);
+                xCAT::SvrUtils::sendmsg("BMC Setting ". $api_config_info{$::RSPCONFIG_CONFIGURED_API_KEY}{display_name} . "...", $callback, $node);
             }
             else {
                 xCAT::SvrUtils::sendmsg("Error unsetting RSPCONFIG_API_CONFIG_OFF_RESPONSE", $callback, $node);
@@ -3123,17 +3123,17 @@ sub rspconfig_api_config_response {
         elsif ($node_info{$node}{cur_status} eq "RSPCONFIG_API_CONFIG_QUERY_RESPONSE") {
             if ($response_info->{'message'} eq $::RESPONSE_OK) {
                 foreach my $key_url (keys %{$response_info->{data}}) {
-                    if ($key_url eq  $api_config_info{$::RSPCONFIG_CONGIGURED_API_KEY}{attr_url}) {
+                    if ($key_url eq  $api_config_info{$::RSPCONFIG_CONFIGURED_API_KEY}{attr_url}) {
                         #Is this the attribute we are looking for ?
                         $value = $response_info->{data}{$key_url};
                         last;
                     }
                 }
                 if (scalar($value) >= 0) {
-                    xCAT::SvrUtils::sendmsg($api_config_info{$::RSPCONFIG_CONGIGURED_API_KEY}{display_name} . ": $value", $callback, $node);
+                    xCAT::SvrUtils::sendmsg($api_config_info{$::RSPCONFIG_CONFIGURED_API_KEY}{display_name} . ": $value", $callback, $node);
                 }
                 else {
-                    xCAT::SvrUtils::sendmsg("Unable to query value for " . $api_config_info{$::RSPCONFIG_CONGIGURED_API_KEY}{attr_url}, $callback, $node);
+                    xCAT::SvrUtils::sendmsg("Unable to query value for " . $api_config_info{$::RSPCONFIG_CONFIGURED_API_KEY}{attr_url}, $callback, $node);
                 }
             }
             else {
@@ -3951,19 +3951,19 @@ sub rflash_upload {
 sub is_valid_config_api {
     my ($subcommand, $callback) = @_;
 
-                my $subcommand_key = $subcommand;
-                my $subcommand_value;
-                if ($subcommand =~ /^(\w+)=(.*)/) {
-                    $subcommand_key = $1;
-                    $subcommand_value = $2;
-                }
-                foreach my $config_subcommand (keys %api_config_info) {
-                    foreach my $config_attribute (keys %{ $api_config_info{$config_subcommand} }) {
-                        if ($subcommand_key eq $api_config_info{$config_subcommand}{subcommand}) {
-                            return $config_subcommand;
-                        }
-                    }
-                }
+    my $subcommand_key = $subcommand;
+    my $subcommand_value;
+    if ($subcommand =~ /^(\w+)=(.*)/) {
+        $subcommand_key = $1;
+        $subcommand_value = $2;
+    }
+    foreach my $config_subcommand (keys %api_config_info) {
+        foreach my $config_attribute (keys %{ $api_config_info{$config_subcommand} }) {
+            if ($subcommand_key eq $api_config_info{$config_subcommand}{subcommand}) {
+                return $config_subcommand;
+            }
+        }
+    }
     return -1;
 }
 1;
