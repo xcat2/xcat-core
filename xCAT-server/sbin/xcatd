@@ -65,6 +65,7 @@ use xCAT::Client qw(submit_request);
 my $clientselect  = new IO::Select;
 my $sslclients    = 0;                # THROTTLE
 my $maxsslclients = 64;               # default
+my $maxsslclientswarntime = 0;
 my $batchclients  = 50;
 my @deferredmsgargs;    # hold argumentlist for MsgUtils call until after fork
                         # parallelizing logging overhead with real work
@@ -1432,6 +1433,11 @@ until ($quit) {
     }
     unless (scalar @pendingconnections) { next; } # if for some reason we landed here without any accepted connections, carry on..
     if ($sslclients > $maxsslclients) { # we have enough children, wait for some to exit before spawning more
+        my $curtime = time();
+        if ($curtime > ($maxsslclientswarntime + 30)) {
+            xCAT::MsgUtils->message("S", "xcatd: Connections are being throttled. Current client count (" . ($sslclients + scalar @pendingconnections) . ") is greater than allowed ($maxsslclients)");
+            $maxsslclientswarntime=$curtime;
+        }
         $bothwatcher->can_read(0.1); # when next connection tries to come in or a tenth of a second, whichever comes first
         next;                        # just keep pulling things off listen queue onto our own
     }

@@ -252,6 +252,15 @@ if ($setup_env_by_config_file) {
 }
 
 log_this($running_log_fd, "******************************");
+log_this($running_log_fd, "To detect current test environment");
+log_this($running_log_fd, "******************************");
+$rst = detect_current_env(\%config, \$error);
+if ($rst) {
+    log_this($running_log_fd, "$error");
+    to_exit(1);
+}
+
+log_this($running_log_fd, "******************************");
 log_this($running_log_fd, "loading test cases");
 log_this($running_log_fd, "******************************");
 $rst = load_case(\@cases_to_be_run, \@cases, \%case_name_index_map, \$error, $RUN);
@@ -291,7 +300,7 @@ if ($restore) {
     }
 }
 
-log_this($running_log_fd, "xCAT automated test finished at" . scalar(localtime()));
+log_this($running_log_fd, "xCAT automated test finished at " . scalar(localtime()));
 log_this($running_log_fd, "Please check results in the $resultdir, \nand see $failed_log_name file for failed cases.");
 
 #To generate performance report
@@ -877,6 +886,9 @@ sub load_case {
                             }
                             $$case_name_index_map_ref{"$name"} = $i;
                             $newcmdstart                       = 0;
+                            if(grep (/$case_ref->[$i]->{name}/,@{ $invalidcases{"noruncases"} })){
+                                delete_item_from_array($case_ref->[$i]->{name}, $invalidcases{"noruncases"});
+                            }
                         } else {
                             $skip = 1;
                             push @{ $invalidcases{"invalidcasename"} }, $name;
@@ -1419,9 +1431,27 @@ sub setup_env_by_configure_file {
         }
     }
 
+    return 0;
+}
+
+#--------------------------------------------------------
+# Fuction name: detect_current_env 
+# Description: detect some important attribute in current environment, such as os, arch, hcp... 
+# Atrributes:
+#          $config_ref (input attribute)
+#            The reference of global hash %config.
+#            The structure of %config please refer to the comment of function load_config_file
+#          $error_ref  (output attribe)
+#               The reference of scalar to save the error message generated during running current function
+# Retrun code:  0 Success  1 Failed
+#--------------------------------------------------------
+sub detect_current_env{
+    my $config_ref = shift;
+    my $error_ref  = shift;
+
     if (!exists $$config_ref{var}{OS}) {
         my @output = runcmd("uname");
-        $$config_ref{var}{OS} = $output[0];
+        $$config_ref{var}{OS} = lc($output[0]);
         log_this($running_log_fd, "Detecting: OS = $$config_ref{var}{OS}");
     } else {
         $$config_ref{var}{OS} = lc($$config_ref{var}{OS});
@@ -1433,11 +1463,11 @@ sub setup_env_by_configure_file {
             log_this($running_log_fd, "Warning: No compute node defined, can't get ARCH of compute node");
         } else {
             $$config_ref{var}{ARCH} = getnodeattr($$config_ref{var}{CN}, "arch");
-            if ($$config_ref{var}{ARCH} =~ /le|el/) {
+            if ($$config_ref{var}{ARCH} =~ /le|el/i) {
                 $$config_ref{var}{ARCH} = 'ppc64le';
-            } elsif ($$config_ref{var}{ARCH} =~ /ppc/) {
+            } elsif ($$config_ref{var}{ARCH} =~ /ppc/i) {
                 $$config_ref{var}{ARCH} = 'ppc';
-            } elsif ($$config_ref{var}{ARCH} =~ /86/) {
+            } elsif ($$config_ref{var}{ARCH} =~ /86/i) {
                 $$config_ref{var}{ARCH} = 'x86';
             }
             log_this($running_log_fd, "Detecting: ARCH = $$config_ref{var}{ARCH}");
@@ -1457,6 +1487,9 @@ sub setup_env_by_configure_file {
 
     return 0;
 }
+
+
+
 
 #--------------------------------------------------------
 # Fuction name: runcmd

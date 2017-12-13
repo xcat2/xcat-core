@@ -249,7 +249,9 @@ if [ -r "/tmp/xcat/mainservice.pid" ]; then
   mv /tmp/xcat/mainservice.pid /var/run/xcat/mainservice.pid
 fi
 
-$RPM_INSTALL_PREFIX0/sbin/xcatconfig -u
+mkdir -p /var/log/xcat
+date >> /var/log/xcat/upgrade.log
+$RPM_INSTALL_PREFIX0/sbin/xcatconfig -u -V >> /var/log/xcat/upgrade.log
 fi
 exit 0
 

@@ -153,6 +153,7 @@ sub config_ssh {
             print "$switch is not reachable\n";
             next;
         }
+        
 
         my ($exp, $errstr) = cumulus_connect($ssh_ip, $userid, $password, $timeout);
         if (!defined $exp) {
@@ -290,6 +291,9 @@ sub install_license {
             xCAT::MsgUtils->message("E","Failed to $cmd to $switch");
             next;
         }
+        #restart switchd and reload interface
+        $cmd = "xdsh $switch 'systemctl enable switchd;systemctl restart switchd;ifreload -a' ";
+        xCAT::Utils->runcmd($cmd, 0);
         push (@config_switches, $switch);
     }
     if (@config_switches) {
@@ -350,8 +354,35 @@ sub config_snmp {
 sub config_ntp {
     my @config_switches;
     my $cmd;
+    my $master;
+    my $ntpservers;
+    my $timezone;
 
-    my $master = `hostname -i`;
+
+    #get ntpserver, master and timezone from site table
+    my @entries = xCAT::TableUtils->get_site_attribute("master");
+    my $master  = $entries[0];
+
+    @entries = xCAT::TableUtils->get_site_attribute("timezone");
+    $timezone  = $entries[0];
+
+    @entries = xCAT::TableUtils->get_site_attribute("ntpservers");
+    my $t_entry = $entries[0];
+    if (defined($t_entry)) {
+        $ntpservers = $t_entry;
+    } else {
+        $ntpservers = $master;
+    }
+
+    my @servers = split(',', $ntpservers);
+
+    #use ntpserver from network table if available
+    my $nettab = xCAT::Table->new("networks");
+    my @nets;
+    if ($nettab) {
+        @nets = $nettab->getAllAttribs('net','mask','ntpservers');
+    }
+
 
     my $file = "temp.txt";
     open(FILE , ">$file")
@@ -360,7 +391,6 @@ sub config_ntp {
     print FILE "driftfile /var/lib/ntp/drift\n";
     print FILE "disable auth\n";
     print FILE "restrict 127.0.0.1\n";
-    print FILE "server $master iburst\n";
     print FILE "interface listen eth0\n";
 
     foreach my $switch (@nodes) {
@@ -371,15 +401,31 @@ sub config_ntp {
             xCAT::MsgUtils->message("E","xdsh command to $switch failed");
             next;
         }
-        my $cmd_line = "echo 'US/Eastern'>/etc/timezone;dpkg-reconfigure --frontend noninteractive tzdata";
-        print "$cmd_line\n";
-        $cmd = "xdsh $switch $cmd_line";
+        $cmd = "xdsh $switch 'echo $timezone >/etc/timezone;dpkg-reconfigure --frontend noninteractive tzdata' ";
+        $rc= xCAT::Utils->runcmd($cmd, 0);
         if ($::RUNCMD_RC != 0) {
             print "Failed to update ntp timezone\n";
             xCAT::MsgUtils->message("E","Failed to update ntp timezone for $switch");
-            next;
         }
-        print "$cmd\n";
+        #use ntpserver from network table if available
+        my $ntpserver;
+        foreach my $net (@nets) {
+            if (xCAT::NetworkUtils::isInSameSubnet( $net->{'net'}, $switch, $net->{'mask'}, 0)) {
+                $ntpserver=$net->{'ntpservers'};
+                if (defined $ntpserver) {
+                    if ($ntpserver =~ /xcatmaster/) {
+                        @servers = $master;
+                    } else {
+                        @servers = split(',', $ntpserver);
+                    }
+                }
+                last;
+            }
+        }
+        foreach my $server (@servers) {
+            `echo "server $server iburst" >> $file`;
+        }
+   
         $cmd = "xdcp $switch $file";
         $rc= xCAT::Utils->runcmd($cmd, 0);
         $cmd = "xdsh $switch 'cp /etc/ntp.conf /etc/ntp.conf.orig;cp $file /etc/ntp.conf;rm -fr $file;systemctl restart ntp;systemctl enable ntp' ";
@@ -398,6 +444,7 @@ sub config_ntp {
         my $csw = join(",",@config_switches);
         $cmd = "chdef $csw status=ntp_configured";
         $rc= xCAT::Utils->runcmd($cmd, 0);
+        print "$csw: ntp configured\n";
     }
 
     

@@ -704,9 +704,7 @@ sub setNodeStatusAttributes {
                 $updates{'status'}     = $_;
                 $updates{'statustime'} = $currtime;
                 my $nodestate = "@$nodes status: $updates{'status'} statustime: $updates{'statustime'}";
-                openlog('xcat', 'ndelay', 'local4');
-                syslog('local4|info', '%s', $nodestate);
-                closelog();
+                xCAT::MsgUtils->message('S', "$nodestate");
                 my $where_clause;
                 my $dbname = xCAT::Utils->get_DBName();
 

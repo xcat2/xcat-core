@@ -227,7 +227,12 @@ sub gen_request_data {
     my ($cons_map, $siteondemand) = @_;
     my (@openbmc_nodes, $data);
     while (my ($k, $v) = each %{$cons_map}) {
-        my $ondemaind = \1;
+        my $ondemand;
+        if ($siteondemand) {
+            $ondemand = \1;
+        } else {
+            $ondemand = \0;
+        }
         my $cmd;
         my $cmeth  = $v->{cons};
         if ($cmeth eq "openbmc") {
@@ -248,14 +253,14 @@ sub gen_request_data {
         }
         if (defined($v->{consoleondemand})) {
             # consoleondemand attribute for node can be "1", "yes", "0" and "no"
-            if ((($v->{consoleondemand} eq "1") || lc($v->{consoleondemand}) eq "yes") && !$siteondemand) {
-                $ondemaind = \1;
+            if (($v->{consoleondemand} eq "1") || lc($v->{consoleondemand}) eq "yes") {
+                $ondemand = \1;
             }
-            elsif ((($v->{consoleondemand} eq "0") || lc($v->{consoleondemand}) eq "no") && $siteondemand) {
-                $ondemaind = \0;
+            elsif (($v->{consoleondemand} eq "0") || lc($v->{consoleondemand}) eq "no") {
+                $ondemand = \0;
             }
         }
-        $data->{$k}->{ondemand} = $ondemaind;
+        $data->{$k}->{ondemand} = $ondemand;
     }
     if (@openbmc_nodes) {
         my $passwd_table = xCAT::Table->new('passwd');
@@ -324,7 +329,7 @@ sub start_goconserver {
     xCAT::Utils->runcmd($cmd, 0);
     if ($::RUNCMD_RC != 0) {
         my $config= "global:\n".
-                    "  host: $host\n".
+                    "  host: 0.0.0.0\n".
                     "  ssl_key_file: /etc/xcat/cert/server-key.pem\n".
                     "  ssl_cert_file: /etc/xcat/cert/server-cert.pem\n".
                     "  ssl_ca_cert_file: /etc/xcat/cert/ca.pem\n".

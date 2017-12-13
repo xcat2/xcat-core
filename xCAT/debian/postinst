@@ -35,7 +35,9 @@ case "$1" in
             if [ -r "/tmp/xcat/mainservice.pid" ]; then
                 mv /tmp/xcat/mainservice.pid /var/run/xcat/mainservice.pid
             fi
-            xcatconfig -u
+            mkdir -p /var/log/xcat
+            date >> /var/log/xcat/upgrade.log
+            xcatconfig -u -V >> /var/log/xcat/upgrade.log
             rm /tmp/xCAT_upgrade.tmp
         else
             xcatconfig -i -d -s

@@ -25,7 +25,7 @@ cmd:service named restart
 cmd:sleep 1
 
 # Check if an outside host name resolving does not work
-cmd:xdsh $$CN "getent hosts www.ibm.com"
+cmd:xdsh $$CN "getent hosts w3.ibm.com"
 check:rc!=0
 
 ##
@@ -60,5 +60,5 @@ check:rc==0
 cmd:xdsh $$CN "getent hosts $$CN"
 check:rc==0
 # Check if an outside host name resolving works
-cmd:xdsh $$CN "getent hosts www.ibm.com"
+cmd:xdsh $$CN "getent hosts w3.ibm.com"
 check:rc==0

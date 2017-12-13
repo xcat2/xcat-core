@@ -947,67 +947,67 @@ group Attributes:
 
 \ **setupconserver**\  (servicenode.conserver)
  
- Do we set up Conserver on this service node?  Valid values:yes or 1, no or 0. If yes, configures and starts conserver daemon. If no or 0, it does not change the current state of the service.
+ Do we set up Conserver on this service node?  Valid values:1 or 0. If 1, configures and starts conserver daemon. If 0, it does not change the current state of the service.
  
 
 
 \ **setupdhcp**\  (servicenode.dhcpserver)
  
- Do we set up DHCP on this service node? Not supported on AIX. Valid values:yes or 1, no or 0. If yes, runs makedhcp -n. If no or 0, it does not change the current state of the service.
+ Do we set up DHCP on this service node? Not supported on AIX. Valid values:1 or 0. If 1, runs makedhcp -n. If 0, it does not change the current state of the service.
  
 
 
 \ **setupftp**\  (servicenode.ftpserver)
  
- Do we set up a ftp server on this service node? Not supported on AIX Valid values:yes or 1, no or 0. If yes, configure and start vsftpd.  (You must manually install vsftpd on the service nodes before this.) If no or 0, it does not change the current state of the service. xCAT is not using ftp for compute nodes provisioning or any other xCAT features, so this attribute can be set to 0 if the ftp service will not be used for other purposes
+ Do we set up a ftp server on this service node? Not supported on AIX Valid values:1 or 0. If 1, configure and start vsftpd.  (You must manually install vsftpd on the service nodes before this.) If 0, it does not change the current state of the service. xCAT is not using ftp for compute nodes provisioning or any other xCAT features, so this attribute can be set to 0 if the ftp service will not be used for other purposes
  
 
 
 \ **setupipforward**\  (servicenode.ipforward)
  
- Do we set up ip forwarding on this service node? Valid values:yes or 1, no or 0. If no or 0, it does not change the current state of the service.
+ Do we set up ip forwarding on this service node? Valid values:1 or 0. If 0, it does not change the current state of the service.
  
 
 
 \ **setupldap**\  (servicenode.ldapserver)
  
- Do we set up ldap caching proxy on this service node? Not supported on AIX.  Valid values:yes or 1, no or 0. If no or 0, it does not change the current state of the service.
+ Do we set up ldap caching proxy on this service node? Not supported on AIX.  Valid values:1 or 0. If 0, it does not change the current state of the service.
  
 
 
 \ **setupnameserver**\  (servicenode.nameserver)
  
- Do we set up DNS on this service node? Valid values: 2, 1, no or 0. If 2, creates named.conf as dns slave, using the management node as dns master, and starts named. If 1, creates named.conf file with forwarding to the management node and starts named. If no or 0, it does not change the current state of the service.
+ Do we set up DNS on this service node? Valid values: 2, 1, or 0. If 2, creates named.conf as dns slave, using the management node as dns master, and starts named. If 1, creates named.conf file with forwarding to the management node and starts named. If 0, it does not change the current state of the service.
  
 
 
 \ **setupnfs**\  (servicenode.nfsserver)
  
- Do we set up file services (HTTP,FTP,or NFS) on this service node? For AIX will only setup NFS, not HTTP or FTP. Valid values:yes or 1, no or 0.If no or 0, it does not change the current state of the service.
+ Do we set up file services (HTTP,FTP,or NFS) on this service node? For AIX will only setup NFS, not HTTP or FTP. Valid values:1 or 0.If 0, it does not change the current state of the service.
  
 
 
 \ **setupnim**\  (servicenode.nimserver)
  
- Not used. Do we set up a NIM server on this service node? Valid values:yes or 1, no or 0. If no or 0, it does not change the current state of the service.
+ Not used. Do we set up a NIM server on this service node? Valid values:1 or 0. If 0, it does not change the current state of the service.
  
 
 
 \ **setupntp**\  (servicenode.ntpserver)
  
- Not used. Use setupntp postscript to setup a ntp server on this service node? Valid values:yes or 1, no or 0. If no or 0, it does not change the current state of the service.
+ Not used. Use setupntp postscript to setup a ntp server on this service node? Valid values:1 or 0. If 0, it does not change the current state of the service.
  
 
 
 \ **setupproxydhcp**\  (servicenode.proxydhcp)
  
- Do we set up proxydhcp service on this node? valid values: yes or 1, no or 0. If yes, the proxydhcp daemon will be enabled on this node.
+ Do we set up proxydhcp service on this node? valid values: 1 or 0. If 1, the proxydhcp daemon will be enabled on this node.
  
 
 
 \ **setuptftp**\  (servicenode.tftpserver)
  
- Do we set up TFTP on this service node? Not supported on AIX. Valid values:yes or 1, no or 0. If yes, configures and starts atftp. If no or 0, it does not change the current state of the service.
+ Do we set up TFTP on this service node? Not supported on AIX. Valid values:1 or 0. If 1, configures and starts atftp. If 0, it does not change the current state of the service.
  
 
 
