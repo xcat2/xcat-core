@@ -781,17 +781,26 @@ sub process_request {
         if (!$valid_nodes{$node}) {
             xCAT::SvrUtils::sendmsg([1, "BMC did not respond. Validate BMC configuration and retry the command."], $callback, $node);
             $wait_node_num--;
-        } else {
-            $login_url = "$http_protocol://$node_info{$node}{bmc}/login";
-            $content = '{ "data": [ "' . $node_info{$node}{username} .'", "' . $node_info{$node}{password} . '" ] }';
-            if ($xcatdebugmode) {
-                my $debug_info = "curl -k -c cjar -H \"Content-Type: application/json\" -d '{ \"data\": [\"$node_info{$node}{username}\", \"xxxxxx\"] }' $login_url";
-                process_debug_info($node, $debug_info);
-            }
-            $handle_id = xCAT::OPENBMC->new($async, $login_url, $content);
-            $handle_id_node{$handle_id} = $node;
-            $node_info{$node}{cur_status} = $next_status{ $node_info{$node}{cur_status} };
+            next;
         }
+        if ($next_status{LOGIN_RESPONSE} eq "RSPCONFIG_SET_HOSTNAME_REQUEST" and $status_info{RSPCONFIG_SET_HOSTNAME_REQUEST}{data} =~ /^\*$/) {
+            if ($node_info{$node}{bmc} =~ /^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/) {
+                my $info_msg = "Invalid OpenBMC Hostname $node_info{$node}{bmc}, can't set to OpenBMC";
+                xCAT::SvrUtils::sendmsg($info_msg, $callback, $node);
+                $wait_node_num--;
+                next; 
+            }
+        }
+      
+        $login_url = "$http_protocol://$node_info{$node}{bmc}/login";
+        $content = '{ "data": [ "' . $node_info{$node}{username} .'", "' . $node_info{$node}{password} . '" ] }';
+        if ($xcatdebugmode) {
+            my $debug_info = "curl -k -c cjar -H \"Content-Type: application/json\" -d '{ \"data\": [\"$node_info{$node}{username}\", \"xxxxxx\"] }' $login_url";
+            process_debug_info($node, $debug_info);
+        }
+        $handle_id = xCAT::OPENBMC->new($async, $login_url, $content);
+        $handle_id_node{$handle_id} = $node;
+        $node_info{$node}{cur_status} = $next_status{ $node_info{$node}{cur_status} };
     }
 
     if ($next_status{LOGIN_RESPONSE} eq "RSPCONFIG_SSHCFG_REQUEST") {
@@ -1916,8 +1925,7 @@ sub gen_send_request {
         } elsif ($status_info{ $node_info{$node}{cur_status} }{data} =~ /^\[.+\]$/) {
             $content = '{"data":' . $status_info{ $node_info{$node}{cur_status} }{data} . '}';
         } elsif (($status_info{ $node_info{$node}{cur_status} }{init_url} =~ /config\/attr\/HostName$/) &&
-                 ($status_info{ $node_info{$node}{cur_status} }{data} =~ /^\*$/) &&
-                 ($node_info{$node}{bmc} !~ /^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/)) {
+                 ($status_info{ $node_info{$node}{cur_status} }{data} =~ /^\*$/)) {
             # Special handling for hostname=*
             $content = '{"data":"' . $node_info{$node}{bmc} . '"}';
         } else {
