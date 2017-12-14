@@ -1223,8 +1223,8 @@ sub update_namedconf {
     }
     unless ($gotoptions) {
         push @newnamed, "options {\n";
+        push @newnamed, "\tdirectory \"" . $ctx->{zonesdir} . "\";\n";
         unless ($slave && xCAT::Utils->isLinux()) {
-            push @newnamed, "\tdirectory \"" . $ctx->{zonesdir} . "\";\n";
             push @newnamed, "\tallow-recursion { any; };\n";
         }
 
