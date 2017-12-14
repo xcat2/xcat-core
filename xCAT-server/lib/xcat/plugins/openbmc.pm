@@ -1144,7 +1144,9 @@ sub parse_args {
                     closedir(DIR);
                 } elsif ($option_flag =~ /^-c$|^--check$|^-u$|^--upload$|^-a$|^--activate$/) {
                     return ([ 1, "Invalid firmware specified with $option_flag" ]);
-                }
+                } else {
+                    return ([ 1, "Invalid option specified" ]);
+                }        
             } else {
                 # Neither Filename nor updateid was not passed, check flags allowed without file or updateid
                 if ($option_flag !~ /^-c$|^--check$|^-l$|^--list$/) {
@@ -2267,7 +2269,7 @@ sub rpower_response {
                     } else {
                         $node_info{$node}{wait_start} = time();
                     }
-                    retry_after($node, $next_status{ $node_info{$node}{cur_status} }, $::BMC_CHECK_INTERVAL);
+                    retry_after($node, "RPOWER_BMC_STATUS_REQUEST", $::BMC_CHECK_INTERVAL);
                     return;
                 } else {
                     my $wait_time_X = $node_info{$node}{wait_end} - $node_info{$node}{wait_start};
