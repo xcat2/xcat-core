@@ -3813,12 +3813,18 @@ sub rflash_upload {
     my $curl_login_result = `$curl_login_cmd -s`;
     my $h;
     if (!$curl_login_result) {
-        xCAT::SvrUtils::sendmsg([1, "Did not receive response from OpenBMC after running command '$curl_login_cmd'"], $callback, $node);
+        my $curl_error = "Did not receive response from OpenBMC after running command '$curl_login_cmd'";
+        xCAT::SvrUtils::sendmsg([1, "$curl_error"], $callback, $node);
+        print RFLASH_LOG_FILE_HANDLE "$curl_error\n";
+        $node_info{$node}{rst} = "$curl_error"; 
         return 1;
     } 
     eval { $h = from_json($curl_login_result) }; # convert command output to hash
     if ($@) {
-        xCAT::SvrUtils::sendmsg([1, "Received wrong format response for command '$curl_login_cmd': $curl_login_result"], $callback, $node);
+        my $curl_error = "Received wrong format response for command '$curl_login_cmd': $curl_login_result";
+        xCAT::SvrUtils::sendmsg([1, "$curl_error"], $callback, $node);
+        print RFLASH_LOG_FILE_HANDLE "$curl_error\n";
+        $node_info{$node}{rst} = "$curl_error";
         return 1;
     }
     if ($h->{message} eq $::RESPONSE_OK) {
@@ -3837,13 +3843,19 @@ sub rflash_upload {
                 }    
                 my $curl_upload_result = `$upload_cmd`;
                 if (!$curl_upload_result) {
-                    xCAT::SvrUtils::sendmsg([1, "Did not receive response from OpenBMC after running command '$upload_cmd'"], $callback, $node);
+                    my $curl_error = "Did not receive response from OpenBMC after running command '$upload_cmd'";
+                    xCAT::SvrUtils::sendmsg([1, "$curl_error"], $callback, $node);
+                    print RFLASH_LOG_FILE_HANDLE "$curl_error\n";
+                    $node_info{$node}{rst} = "$curl_error";
                     return 1;
                 }
                 eval { $h = from_json($curl_upload_result) }; # convert command output to hash
                 if ($@) {
-                     xCAT::SvrUtils::sendmsg([1, "Received wrong format response from command '$upload_cmd': $curl_upload_result"], $callback, $node);
-                     return 1;
+                    my $curl_error = "Received wrong format response from command '$upload_cmd': $curl_upload_result";
+                    xCAT::SvrUtils::sendmsg([1, "$curl_error"], $callback, $node);
+                    print RFLASH_LOG_FILE_HANDLE "$curl_error\n";
+                    $node_info{$node}{rst} = "$curl_error";
+                    return 1;
                 }
                 if ($h->{message} eq $::RESPONSE_OK) {
                     # Upload successful, display message
