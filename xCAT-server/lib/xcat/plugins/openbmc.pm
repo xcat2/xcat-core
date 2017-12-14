@@ -993,6 +993,9 @@ sub parse_args {
                 if ($key eq "admin_passwd") {
                     my $comma_num = $value =~ tr/,/,/;
                     return ([ 1, "Invalid parameter for option $key: $value" ]) if ($comma_num != 1);
+                    if ($subcommand =~ /^admin_passwd=(.*),(.*)/) {
+                        return ([ 1, "Invalid parameter for option $key: $value" ]) if ($1 eq "" or $2 eq "");
+                    }
                 }
 
                 my $nodes_num = @$noderange;
