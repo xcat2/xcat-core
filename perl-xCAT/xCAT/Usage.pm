@@ -354,7 +354,8 @@ my %usage = (
     OpenPOWER OpenBMC specific:
         rflash <noderange> {[-c|--check] | [-l|--list]}
         rflash <noderange> <tar_file_path> {[-c|--check] | [-a|--activate] | [-u|--upload]}
-        rflash <noderange> <image_id> {[-a|--activate] | [-d|--delete]}",
+        rflash <noderange> <tar_file_diretory> [-d] [--no-host-reboot]
+        rflash <noderange> <image_id> {[-a|--activate] | [--delete]}",
     "mkhwconn" =>
       "Usage:
     mkhwconn [-h|--help]
