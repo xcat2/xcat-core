@@ -1,0 +1,29 @@
+2017-12-12 - TLS Vulnerabilities
+================================
+
+*Dec 12, 2017*, TLS implementations may disclose side channel information via discrepencies between valid and invalid PKCS#1 padding
+
+Advisory CVEs
+-------------
+
+* CWE-203 - http://cwe.mitre.org/data/definitions/203.html
+
+Summary
+-------
+
+Transport Layer Security (TLS) is a mechanism for a security transport over network connections, and is defined in RFC 5246. TLS may utilize RSA cryptography to secure the connection, and section 7.4.7 describes how client and server may exchange keys. Implementations that don't closely follow the descriptions in RFC 5246 may leak information to an attacker when they handle PKCS #1 v1.5 padding errors in ways that lets the attacker distinguish between valid and invalid messages. An attacker may utilize discrepancies in TLS error messages to obtain the pre-master secret key private RSA key used by TLS to decrypt sensitive data. This type of attack has become known as a Bleichenbacher attack. CERT/CC previously published CERT Advisory CA-1998-07 for this type of attack. 
+
+Action
+------
+
+Consider the following recommended actions: 
+
+1. Disable TLS RSA
+2. Apply an update (if available) 
+
+
+xCAT uses OpenSSL for client-server communication but **does not** ship it.  
+
+It is highly recommended to keep your OpenSSL levels up-to-date. Obtain the updated software packages from your Operating system distribution channels. 
+
+
