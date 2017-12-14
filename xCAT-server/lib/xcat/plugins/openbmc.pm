@@ -81,6 +81,7 @@ $::RSPCONFIG_WAIT_IP_DONE   = 3;
 $::RSPCONFIG_DUMP_CMD_TIME  = 0;
 
 $::XCAT_LOG_DIR             = "/var/log/xcat";
+$::RAS_POLICY_TABLE         = "/opt/ibm/ras/lib/policyTable.json";
 $::XCAT_LOG_RFLASH_DIR      = $::XCAT_LOG_DIR . "/rflash/";
 $::XCAT_LOG_DUMP_DIR        = $::XCAT_LOG_DIR . "/dump/";
 
@@ -837,7 +838,7 @@ rmdir \"/tmp/\$userid\" \n";
     while (1) { 
         unless ($wait_node_num) {
             if ($event_mapping and (ref($event_mapping) ne "HASH")) {
-                xCAT::SvrUtils::sendmsg("$event_mapping, all event messages above are original", $callback);
+                xCAT::SvrUtils::sendmsg("$event_mapping, install the OpenBMC RAS package to obtain more details logging messages.", $callback);
             }
             if ($next_status{LOGIN_RESPONSE} eq "RSPCONFIG_SSHCFG_REQUEST") {
                 my $home = xCAT::Utils->getHomeDir("root");
@@ -1330,17 +1331,16 @@ sub parse_command_status {
             $next_status{LOGIN_RESPONSE} = "REVENTLOG_REQUEST";
             $next_status{REVENTLOG_REQUEST} = "REVENTLOG_RESPONSE";
             $status_info{REVENTLOG_RESPONSE}{argv} = "$subcommand";
-            my $policy_table = "/opt/ibm/ras/lib/policyTable.json";
-            if (-e "$policy_table") {
-                my $policy_json = `cat $policy_table`;
+            if (-e "$::RAS_POLICY_TABLE") {
+                my $policy_json = `cat $::RAS_POLICY_TABLE`;
                 if ($policy_json) {
                     my $policy_hash = decode_json $policy_json;
                     $event_mapping = $policy_hash->{events};
                 } else {
-                    $event_mapping = "No data in $policy_table";
+                    $event_mapping = "No data in $::RAS_POLICY_TABLE";
                 }
             } else {
-                $event_mapping = "Could not found '$policy_table'";
+                $event_mapping = "Could not find '$::RAS_POLICY_TABLE'";
             }
         }
     }
@@ -2100,6 +2100,9 @@ sub process_debug_info {
     my $node = shift;
     my $debug_msg = shift;
     my $ts_node = localtime() . " " . $node;
+    if (!$debug_msg) {
+        $debug_msg = "";
+    }
 
     xCAT::SvrUtils::sendmsg("$flag_debug $debug_msg", $callback, $ts_node);
     xCAT::MsgUtils->trace(0, "D", "$flag_debug $node $debug_msg"); 
