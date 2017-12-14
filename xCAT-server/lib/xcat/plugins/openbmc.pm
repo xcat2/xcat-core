@@ -2841,7 +2841,7 @@ sub rspconfig_response {
                 if ($nicinfo{$nic}{ntpservers}) {
                     push @ntpservers, "BMC NTP Servers$addon_info: $nicinfo{$nic}{ntpservers}";
                 } else {
-                    push @ntpservers, "BMC NTP Servers$addon_info Not Set";
+                    push @ntpservers, "BMC NTP Servers$addon_info: None";
                 }
 
                 next if ($multiple_error);
@@ -2859,7 +2859,7 @@ sub rspconfig_response {
                     push @netmask, "BMC Netmask$addon_info: " . join('.', unpack("C4", pack("N", $decimal_mask)));
                 }
                 push @gateway, "BMC Gateway$addon_info: ${ $nicinfo{$nic}{gateway} }[0 ] (default: $default_gateway)";
-                ${ $nicinfo{$nic}{vlan} }[0] = "Disabled" unless (@{ $nicinfo{$nic}{vlan} });
+                push @{ $nicinfo{$nic}{vlan} }, "Disabled" unless ($nicinfo{$nic}{vlan});
                 push @vlan, "BMC VLAN ID$addon_info: ${ $nicinfo{$nic}{vlan} }[0]";
             }
             my $mul_out = 0;

@@ -46,7 +46,7 @@ description: rspconfig list ntpservers info
 Attribute: $$CN-The operation object of rspconfig command
 cmd:rspconfig $$CN ntpservers
 check:rc==0
-check:output=~$$CN: BMC NTP Servers:|BMC NTP Servers Not Set
+check:output=~$$CN: BMC NTP Servers
 end
 
 start:rspconfig_set_ntpservers

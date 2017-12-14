@@ -11,7 +11,7 @@ fi
 
 echo "The original BMC NTP Servers is $ntpservers"
 
-if [ $ntpservers ]; then
+if [ $ntpservers != "None" ]; then
    new_ntpservers=$ntpservers"_test"  
 else 
    new_ntpservers=$mn
@@ -23,7 +23,7 @@ if [ $? -ne 0 ]; then
     exit 1
 fi
 
-if [[ $output =~ "$cn: BMC NTP Servers: $new_ntpservers" ]]; then
+if [[ $output =~ "$cn: BMC NTP Servers" ]]  && [[ $output =~ "$new_ntpservers" ]]; then
     echo "Setting NTPServers as $new_ntpservers success"
 else 
     echo "Setting NTPServers as $new_ntpservers failed, the output is $output"
@@ -32,13 +32,19 @@ fi
 
 echo "To clear environment"
 
-output=`rspconfig $cn ntpservers=$ntpservers`
+if [ $ntpservers != "None" ]; then
+    original_ntpservers="$ntpservers"
+else
+    original_ntpservers=""
+fi
+
+output=`rspconfig $cn ntpservers=$original_ntpservers`
 if [ $? -ne 0 ]; then
     echo "rspconfig $cn ntpservers=$ntpservers failed when clearing environment"  
     exit 1
 fi
 
-if [[ $output =~ "$cn: BMC NTP Servers: $ntpservers" ]] || [[ $output =~ "$cn: BMC NTP Servers Not Set" ]]; then
+if [[ "$output" =~ "$cn: BMC NTP Servers" ]] && [[ $output =~ "$ntpservers" ]]; then
     echo "Setting NTPServers as $ntpservers success when clearing environment"
     exit 0
 fi
