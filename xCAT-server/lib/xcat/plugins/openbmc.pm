@@ -946,8 +946,14 @@ sub parse_args {
         return ([ 1, "Error parsing arguments." ]) if ($option !~ /V|verbose/);
     }
 
-    if (scalar(@ARGV) >= 2 and ($command =~ /rpower|rinv|rvitals|reventlog/)) {
+    if (scalar(@ARGV) >= 2 and ($command =~ /rpower|rinv|rvitals/)) {
         return ([ 1, "Only one option is supported at the same time for $command" ]);
+    } elsif (scalar(@ARGV) >= 2 and $command eq "reventlog") {
+        my $option_s;
+        GetOptions( 's' => \$option_s ); 
+        return ([ 1, "The -s option is not supported for OpenBMC." ]) if ($option_s);
+        return ([ 1, "Only one option is supported at the same time for $command" ]);
+        
     } elsif (scalar(@ARGV) == 0 and $command =~ /rpower|rspconfig|rflash/) {
         return ([ 1, "No option specified for $command" ]);
     } else { 
