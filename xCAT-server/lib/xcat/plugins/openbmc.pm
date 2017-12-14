@@ -2820,7 +2820,7 @@ sub rspconfig_response {
             
             if ($adapter_id) {
                 if ( (defined($content{Origin}) and $content{Origin} =~ /LinkLocal/) or 
-                     (defined($content{Address}) and $content{Address} =~ "169.254") ) {
+                     (defined($content{Address}) and $content{Address} =~ /^169.254/) ) {
                     # OpenBMC driver has a interim bug where ZeroConfigIP comes up as DHCP instead of LinkLocal.
                     # To protect xCAT while the drivers change, check the 169.254 IP also 
                     if ($xcatdebugmode) {
