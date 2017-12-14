@@ -79,6 +79,7 @@ $::RSPCONFIG_DUMP_WAIT_TOTALTIME = int($::RSPCONFIG_DUMP_INTERVAL*$::RSPCONFIG_D
 $::RSPCONFIG_WAIT_VLAN_DONE = 15;
 $::RSPCONFIG_WAIT_IP_DONE   = 3;
 $::RSPCONFIG_DUMP_CMD_TIME  = 0;
+$::RSPCONFIG_CONFIGURED_API_KEY  = -1;
 
 $::XCAT_LOG_DIR             = "/var/log/xcat";
 $::RAS_POLICY_TABLE         = "/opt/ibm/ras/lib/policyTable.json";
@@ -480,6 +481,54 @@ my %status_info = (
     },
     RVITALS_RESPONSE => {
         process        => \&rvitals_response,
+    },
+    RSPCONFIG_API_CONFIG_ON_REQUEST  => {
+        method         => "PUT",
+        init_url       => "$openbmc_project_url", 
+        data           => "true",
+    },
+    RSPCONFIG_API_CONFIG_ON_RESPONSE => {
+        process        => \&rspconfig_api_config_response,
+    },
+    RSPCONFIG_API_CONFIG_OFF_REQUEST  => {
+        method         => "PUT",
+        init_url       => "$openbmc_project_url",
+        data           => "false",
+    },
+    RSPCONFIG_API_CONFIG_OFF_RESPONSE => {
+        process        => \&rspconfig_api_config_response,
+    },
+    RSPCONFIG_API_CONFIG_QUERY_REQUEST  => {
+        method         => "GET",
+        init_url       => "$openbmc_project_url",
+    },
+    RSPCONFIG_API_CONFIG_QUERY_RESPONSE => {
+        process        => \&rspconfig_api_config_response,
+    },
+);
+
+# Setup configured subcommand. Currently only rspconfig is supported and only for boolean commands.
+# For example: rspconfig <subcommand>
+#              rspconfig <subcommand>=0
+#              rspconfig <subcommand>=1
+#
+#
+my %api_config_info = (
+    RSPCONFIG_AUTO_REBOOT => {
+        command      => "rspconfig",
+        url          => "/control/host0/auto_reboot",
+        attr_url     => "AutoReboot",
+        display_name => "AutoReboot",
+        type         => "boolean",
+        subcommand   => "autoreboot",
+    },
+    RSPCONFIG_POWERSUPPLY_REDUNDENCY => {
+        command      => "rspconfig",
+        url          => "/sensors/chassis/PowerSupplyRedundancy",
+        attr_url     => "PowerSupplyRedundency",
+        display_name => "PowerSupplyRedundency",
+        type         => "boolean",
+        subcommand   => "powersupplyredundency",
     },
 );
 
@@ -990,7 +1039,12 @@ sub parse_args {
         my $setorget;
         my $all_subcommand = "";
         foreach $subcommand (@ARGV) {
-            if ($subcommand =~ /^(\w+)=(.*)/) {
+            $::RSPCONFIG_CONFIGURED_API_KEY = &is_valid_config_api($subcommand, $callback);
+            if ($::RSPCONFIG_CONFIGURED_API_KEY != -1) {
+                # subcommand defined in the configured API hash, return from here, the RSPCONFIG_CONFIGURED_API_KEY is the key into the hash
+                return;
+            }
+            elsif ($subcommand =~ /^(\w+)=(.*)/) {
                 return ([ 1, "Can not set and query OpenBMC information at the same time" ]) if ($setorget and $setorget eq "get");
                 my $key = $1;
                 my $value = $2;
@@ -1354,6 +1408,41 @@ sub parse_command_status {
     if ($command eq "rspconfig") {
         my @options = ();
         my $num_subcommand = @$subcommands;
+        #Setup chain to process the configured command
+        if ($::RSPCONFIG_CONFIGURED_API_KEY != -1) {
+            $subcommand = $$subcommands[0];
+            # Check if setting or quering
+            if ($subcommand =~ /^(\w+)=(.*)/) {
+                # setting
+                my $subcommand_key = $1;
+                my $subcommand_value = $2;
+
+                if ($subcommand_value eq "1") {
+                    # Setup chain for subcommand=1
+                    $next_status{LOGIN_RESPONSE} = "RSPCONFIG_API_CONFIG_ON_REQUEST";
+                    $status_info{RSPCONFIG_API_CONFIG_ON_REQUEST}{init_url} =  $status_info{RSPCONFIG_API_CONFIG_ON_REQUEST}{init_url} . $api_config_info{$::RSPCONFIG_CONFIGURED_API_KEY}{url} . "/attr/" . $api_config_info{$::RSPCONFIG_CONFIGURED_API_KEY}{attr_url};
+                    $next_status{RSPCONFIG_API_CONFIG_ON_REQUEST} = "RSPCONFIG_API_CONFIG_ON_RESPONSE";
+                }
+                elsif ($subcommand_value eq "0") {
+                    # Setup chain for subcommand=0
+                    $next_status{LOGIN_RESPONSE} = "RSPCONFIG_API_CONFIG_OFF_REQUEST";
+                    $status_info{RSPCONFIG_API_CONFIG_OFF_REQUEST}{init_url} =  $status_info{RSPCONFIG_API_CONFIG_OFF_REQUEST}{init_url} . $api_config_info{$::RSPCONFIG_CONFIGURED_API_KEY}{url} . "/attr/" . $api_config_info{$::RSPCONFIG_CONFIGURED_API_KEY}{attr_url};
+                    $next_status{RSPCONFIG_API_CONFIG_OFF_REQUEST} = "RSPCONFIG_API_CONFIG_OFF_RESPONSE";
+                }
+                else {
+                    # Everything else is invalid
+                        xCAT::SvrUtils::sendmsg([1, "Invalid value $subcommand_value for 'rspconfig $subcommand_key=$subcommand_value' command"], $callback);
+                        return 1;
+                }
+            }
+            else {
+                # Setup chain for query subcommand
+                $next_status{LOGIN_RESPONSE} = "RSPCONFIG_API_CONFIG_QUERY_REQUEST";
+                $status_info{RSPCONFIG_API_CONFIG_QUERY_REQUEST}{init_url} =  $status_info{RSPCONFIG_API_CONFIG_QUERY_REQUEST}{init_url} . $api_config_info{$::RSPCONFIG_CONFIGURED_API_KEY}{url};
+                $next_status{RSPCONFIG_API_CONFIG_QUERY_REQUEST} = "RSPCONFIG_API_CONFIG_QUERY_RESPONSE";
+            }
+            return 0;
+        }
         if ($num_subcommand == 1) {
             $subcommand = $$subcommands[0];
             if ($subcommand =~ /^sshcfg$/) {
@@ -3087,6 +3176,78 @@ sub rspconfig_response {
 
 #-------------------------------------------------------
 
+=head3  rspconfig_api_config_response
+
+  Deal with response of rspconfig command for configured subcommand
+
+  Currently understands only generic boolean setting and query responses
+  Input:
+        $node: nodename of current response
+        $response: Async return response
+
+=cut
+
+#-------------------------------------------------------
+sub rspconfig_api_config_response {
+    my $node = shift;
+    my $response = shift;
+
+    my $response_info;
+    my $value = -1;
+    $response_info = decode_json $response->content if ($response);
+
+
+    if ($node_info{$node}{cur_status}) {
+        if ($node_info{$node}{cur_status} eq "RSPCONFIG_API_CONFIG_ON_RESPONSE") {
+            if ($response_info->{'message'} eq $::RESPONSE_OK) {
+                xCAT::SvrUtils::sendmsg("BMC Setting ". $api_config_info{$::RSPCONFIG_CONFIGURED_API_KEY}{display_name} . "...", $callback, $node);
+            }
+            else {
+                xCAT::SvrUtils::sendmsg("Error setting RSPCONFIG_API_CONFIG_ON_RESPONSE", $callback, $node);
+            }
+        }
+        elsif ($node_info{$node}{cur_status} eq "RSPCONFIG_API_CONFIG_OFF_RESPONSE") {
+            if ($response_info->{'message'} eq $::RESPONSE_OK) {
+                xCAT::SvrUtils::sendmsg("BMC Setting ". $api_config_info{$::RSPCONFIG_CONFIGURED_API_KEY}{display_name} . "...", $callback, $node);
+            }
+            else {
+                xCAT::SvrUtils::sendmsg("Error unsetting RSPCONFIG_API_CONFIG_OFF_RESPONSE", $callback, $node);
+            }
+        }
+        elsif ($node_info{$node}{cur_status} eq "RSPCONFIG_API_CONFIG_QUERY_RESPONSE") {
+            if ($response_info->{'message'} eq $::RESPONSE_OK) {
+                foreach my $key_url (keys %{$response_info->{data}}) {
+                    if ($key_url eq  $api_config_info{$::RSPCONFIG_CONFIGURED_API_KEY}{attr_url}) {
+                        #Is this the attribute we are looking for ?
+                        $value = $response_info->{data}{$key_url};
+                        last;
+                    }
+                }
+                if (scalar($value) >= 0) {
+                    xCAT::SvrUtils::sendmsg($api_config_info{$::RSPCONFIG_CONFIGURED_API_KEY}{display_name} . ": $value", $callback, $node);
+                }
+                else {
+                    xCAT::SvrUtils::sendmsg("Unable to query value for " . $api_config_info{$::RSPCONFIG_CONFIGURED_API_KEY}{attr_url}, $callback, $node);
+                }
+            }
+            else {
+                xCAT::SvrUtils::sendmsg("Error query RSPCONFIG_API_CONFIG_QUERY_RESPONSE", $callback, $node);
+            }
+        }
+    }
+
+    if ($next_status{ $node_info{$node}{cur_status} }) {
+        $node_info{$node}{cur_status} = $next_status{ $node_info{$node}{cur_status} };
+        if ($node_info{$node}{method} || $status_info{ $node_info{$node}{cur_status} }{method}) {
+            gen_send_request($node);
+        }
+    } else {
+        $wait_node_num--;
+    }
+}
+
+#-------------------------------------------------------
+
 =head3  rspconfig_sshcfg_response
 
   Deal with request and response of rspconfig command for sscfg subcommand.
@@ -3901,5 +4062,40 @@ sub rflash_upload {
 
     close (RFLASH_LOG_FILE_HANDLE);
     return 0;
+}
+
+#-------------------------------------------------------
+
+=head3  is_valid_config_api
+
+  Verify passed in subcomaand is defined in the api_config_info
+  Input:
+        $subcommand: subcommand to verify
+        $callback: callback for message display
+
+  Output:
+        returns index into the hash of the $subcommand
+        returns -1 if no match
+
+=cut
+
+#-------------------------------------------------------
+sub is_valid_config_api {
+    my ($subcommand, $callback) = @_;
+
+    my $subcommand_key = $subcommand;
+    my $subcommand_value;
+    if ($subcommand =~ /^(\w+)=(.*)/) {
+        $subcommand_key = $1;
+        $subcommand_value = $2;
+    }
+    foreach my $config_subcommand (keys %api_config_info) {
+        foreach my $config_attribute (keys %{ $api_config_info{$config_subcommand} }) {
+            if ($subcommand_key eq $api_config_info{$config_subcommand}{subcommand}) {
+                return $config_subcommand;
+            }
+        }
+    }
+    return -1;
 }
 1;
