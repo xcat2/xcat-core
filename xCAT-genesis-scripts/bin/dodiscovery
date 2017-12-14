@@ -50,17 +50,12 @@ if [ $timewaiting != 700 -a $timewaiting -gt 450 ]; then
 	logger -s -t $log_label -p local4.warning "Obtained an IP address $NICSGETTINGADDR but it took $timewaiting cycles, you may want to check the spanning tree configuration in the switch."
 fi
 logger -s -t $log_label -p local4.info "Network configuration complete, commencing transmit of discovery packets"
-XCATPORT=3001
+read XCATMASTER XCATPORT < <(grep xcatd= /proc/cmdline| sed 's/.*xcatd=\([^ ]*\).*/\1/' |tr ':' ' ')
+if [[ -z $XCATPORT ]]; then 
+    XCATPORT=3001
+fi
 export XCATPORT
-for parm in `cat /proc/cmdline`; do
-	key=`echo $parm|awk -F= '{print $1}'`
-	if [ "$key" = "xcatd" ]; then
-		XCATMASTER=`echo $parm|awk -F= '{print $2}'|awk -F: '{print $1}'`
-		XCATPORT=`echo $parm|awk -F= '{print $2}'|awk -F: '{print $2}'`
-	fi
-done
-	
-	
+
 #time to make our packet...
 while [ ! -r /restart ]; do
 
@@ -69,7 +64,7 @@ while [ ! -r /restart ]; do
 
     #the existence of "/processing" indicates that my  findme request is under processing
     if [ -f "/processing"  ]; then
-        if [ $curtime -gt $[ $reqtime + $maxresptime ] ]; then
+        if [ $curtime -gt $((reqtime+maxresptime)) ]; then
            #I think my findme request processing is timeout, I will resend the findme request
            logger -s -t $log_label -p local4.info  "seems the processing of my findme request cost more than $maxresptime, send new findme request"
            rm -rf /processing
@@ -134,8 +129,8 @@ fi
 # The MEMORY will look like this: 32868920
 MEMORY=`cat /proc/meminfo |grep MemTotal|awk '{printf "%.0fMB\n", $2/1024}'`
 
-# The DISKSIZE will look like this: sdb:250GB,sda:250GB
-DISKSIZE=`cat /proc/partitions |grep -e "sd.\>" |awk -F' ' '{printf "%s:%.0fGB\n", $4, $3*0.000001024}' |sed 'N;s/\n/,/'`
+# The DISKSIZE will look like this: sda:960GB,sdb:960GB,sdc:480GB,sdd:480GB (sorted by major,minor)
+DISKSIZE="$(grep -v name /proc/partitions |sort -g -k 1,2 |awk 'BEGIN{sep=""} /[^0-9]$/{printf("%s%s:%.0fGB", sep, $4, $3/1024^2) ; sep=","}')"
 
 logger -s -t $log_label -p local4.info "Beginning echo information to discovery packet file..."
 echo '<xcatrequest>' > /tmp/discopacket
@@ -153,12 +148,12 @@ if [ "$UUID" != "unknown" ]; then
         echo "<uuid>$UUID</uuid>" >> /tmp/discopacket
 fi
 
-flag_mtm=`echo '$MTM' | sed 's/0//g'`
-if [ $flag_mtm ] && [ "$MTM" != "unknown" ]; then
+flag_mtm=`echo "$MTM" | sed 's/0//g'`
+if [ "$flag_mtm" ] && [ "$MTM" != "unknown" ]; then
 	MTM=`echo $MTM | sed 's/\.//g'`
 	echo "<mtm>$MTM</mtm>" >> /tmp/discopacket
 fi
-flag_serial=`echo '$SERIAL' | sed 's/0//g'`
+flag_serial=`echo "$SERIAL" | sed 's/0//g'`
 if [ $flag_serial ] && [ "$SERIAL" != "unknown" ]; then
 	SERIAL=`echo $SERIAL | sed 's/\.//g'`
 	echo "<serial>$SERIAL</serial>" >> /tmp/discopacket
@@ -192,7 +187,7 @@ fi
 if [ -f "/usr/sbin/dmidecode" ]; then
     for onboard in `dmidecode -t 41|egrep '(Type:|Bus Address)'|grep -A1 Ethernet|grep -v Ethernet|sed -e 's/.*Address: //'`; do
 	obdevs=("${obdevs[@]}" $onboard)
-	if [ ${onboard#*.}=0 ]; then
+	if [ ${onboard#*.} = 0 ]; then
 		truncslot=${onboard%.*}
 		for obslot in `grep $truncslot /sys/class/net/*/device/uevent|sed -e s/.*=//`; do
 			if ! dmidecode -t 41|grep $obslot > /dev/null; then
@@ -218,7 +213,7 @@ for dev in `ip link|grep -B1 ether|grep UP|awk '{print $2}'|sed -e s/://|grep -v
 	SLOTNAME=`dmidecode -t 9|egrep '(Designation|Address)'|grep -B1 $PCI_SLOT|grep Designation|sed -e 's/.*Designation:[ 	]*//'`
 	if [ -z "$SLOTNAME" ]; then #check for on board device
 		index=1
-		for s in ${obdevs[@]}; do
+		for s in "${obdevs[@]}"; do
 			if [ "$s" = "$PCI_SLOT" ]; then
 				ONBOARDINDEX=$index
 				break

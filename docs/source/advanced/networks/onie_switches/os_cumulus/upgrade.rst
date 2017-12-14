@@ -1,62 +1,79 @@
-Cumulus OS upgrade
+Cumulus OS Upgrade
 ==================
 
-The Cumulus OS on the ONIE switches can be upgraded in 2 ways: 
+The Cumulus OS on the ONIE switches can be upgraded using one of the following methods:
 
-* Upgrade only the changed packages, using ``apt-get update`` and ``apt-get upgrade``. If the ONIE switches has internet access, this is the preferred method, otherwise, you need to build up a local cumulus mirror in the cluster. 
+Full Install
+------------
 
- Since in a typical cluster setup, the switches usually do not have internet access, you can create a local mirror on the server which has internet access and can be reached from the switches, the steps are ::
+Perform a full install from the ``.bin`` file of the new Cumulus Linux OS version, using ONIE.  
+
+**Note:** Make sure you back up all your data and configuration files as the binary install will erase all previous configuration. 
  
-   mkdir -p /install/mirror/cumulus
-   cd /install/mirror/cumulus
-   #the wget might take a long time, it will be better if you can set up 
-   #a cron job to sync the local mirror with upstream
-   wget -m --no-parent http://repo3.cumulusnetworks.com/repo/ 
-   
- then compose a ``sources.list`` file  on MN like this(take 172.21.253.37 as ip address of the local mirror server) ::
+#. Place the binary image under ``/install`` on the xCAT MN node. 
 
-   #cat /tmp/sources.list
-   deb     http://172.21.253.37/install/mirror/cumulus/repo3.cumulusnetworks.com/repo CumulusLinux-3 cumulus upstream
-   deb-src http://172.21.253.37/install/mirror/cumulus/repo3.cumulusnetworks.com/repo CumulusLinux-3 cumulus upstream
-   
-   deb     http://172.21.253.37/install/mirror/cumulus/repo3.cumulusnetworks.com/repo CumulusLinux-3-security-updates cumulus upstream
-   deb-src http://172.21.253.37/install/mirror/cumulus/repo3.cumulusnetworks.com/repo CumulusLinux-3-security-updates cumulus upstream
-   
-   deb     http://172.21.253.37/install/mirror/cumulus/repo3.cumulusnetworks.com/repo CumulusLinux-3-updates cumulus upstream
-   deb-src http://172.21.253.37/install/mirror/cumulus/repo3.cumulusnetworks.com/repo CumulusLinux-3-updates cumulus upstream   
-
- distribute the ``sources.list`` file to the switches to upgrade  with ``xdcp``, take "switch1" as an example here ::
-
-   xdcp switch1 /tmp/sources.list  /etc/apt/sources.list 
-
- then invoke ``apt-get update`` and ``apt-get install`` on the switches to start package upgrade, a reboot might be needed after upgrading ::
-
-   xdsh switch1 'apt-get update && apt-get upgrade && reboot' 
-
- check the `/etc/os-release` file to make sure the Cumulus OS has been upgraded ::
-
-   cat /etc/os-release
-
-
-
-* Performe a binary (full image) install of the new version, using ONIE. If you expect to upgrade between major versions or if you have the binary image to upgrade to, this way is the recommended one. Make sure to backup your data and configuration files because binary install will erase all the configuration and data on the switch.
- 
- The steps to perform a binary (full image) install of the new version are:
-    
- 1) place the binary image "cumulus-linux-3.4.1.bin" under ``/install`` directory on MN("172.21.253.37") ::
+   In this example, IP=172.21.253.37 is the IP on the Management Node. ::
 
       mkdir -p /install/onie/
       cp cumulus-linux-3.4.1.bin /install/onie/
       
- 2) invoke the upgrade on switches with ``xdsh`` ::
+#. Invoke the upgrade on the switches using :doc:`xdsh </guides/admin-guides/references/man1/xdsh.1>`: ::
     
-      xdsh switch1 "/usr/cumulus/bin/onie-install -a -f -i http://172.21.253.37/install/onie/cumulus-linux-3.4.1.bin && reboot"
+      xdsh switch1 "/usr/cumulus/bin/onie-install -a -f -i \
+      http://172.21.253.37/install/onie/cumulus-linux-3.4.1.bin && reboot"
 
-    The full upgrade process might cost 30 min, you can ping the switch with ``ping switch1`` to check whether it finishes upgrade. 
-   
- 3) After upgrading, the license should be installed, see :ref:`Activate the License <activate-the-license>` for detailed steps.
+   **Note:** The full upgrade process may run 30 minutes or longer. 
+
+#. After upgrading, the license should be installed, see :ref:`Activate the License <activate-the-license>` for details.
+
+#. Restore your data and configuration files on the switch.
+
+
+
+Update Changed Packages
+-----------------------
+
+This is the preferred method for upgrading the switch OS for incremental OS updates. 
+
+Create Local Mirror
+```````````````````
+
+If the switches do not have access to the public Internet, you can create a local mirror of the Cumulus Linux repo. 
+
+#. Create a local mirror on the Management Node: ::
  
- 4) Restore your data and configuration files on the switch.
+    mkdir -p /install/mirror/cumulus
+    cd /install/mirror/cumulus
+    wget -m --no-parent http://repo3.cumulusnetworks.com/repo/ 
+   
+#. Create a ``sources.list`` file to point to the local repo on the Management node.  In this example, IP=172.21.253.37 is the IP on the Management Node. ::
+
+    # cat /tmp/sources.list
+    deb     http://172.21.253.37/install/mirror/cumulus/repo3.cumulusnetworks.com/repo CumulusLinux-3 cumulus upstream
+    deb-src http://172.21.253.37/install/mirror/cumulus/repo3.cumulusnetworks.com/repo CumulusLinux-3 cumulus upstream
+    
+    deb     http://172.21.253.37/install/mirror/cumulus/repo3.cumulusnetworks.com/repo CumulusLinux-3-security-updates cumulus upstream
+    deb-src http://172.21.253.37/install/mirror/cumulus/repo3.cumulusnetworks.com/repo CumulusLinux-3-security-updates cumulus upstream
+    
+    deb     http://172.21.253.37/install/mirror/cumulus/repo3.cumulusnetworks.com/repo CumulusLinux-3-updates cumulus upstream
+    deb-src http://172.21.253.37/install/mirror/cumulus/repo3.cumulusnetworks.com/repo CumulusLinux-3-updates cumulus upstream   
+
+
+#. Distribute the ``sources.list`` file to your switches using :doc:`xdcp </guides/admin-guides/references/man1/xdcp.1>`. ::
+
+    xdcp switch1 /tmp/sources.list  /etc/apt/sources.list 
+
+Invoke the Update
+`````````````````
+
+#. Use xCAT :doc:`xdsh </guides/admin-guides/references/man1/xdsh.1>` to invoke the update: ::
+
+    #
+    # A reboot may be needed after the upgrade 
+    # 
+    xdsh switch1 'apt-get update && apt-get upgrade && reboot'
+
+#. Check in ``/etc/os-release`` file to verify that the OS has been upgraded.  
 
 
 

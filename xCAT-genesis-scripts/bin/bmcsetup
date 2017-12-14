@@ -396,7 +396,11 @@ fi
 # update the node status to 'bmcready' for openbmc, no more configuration is needed.
 if [ ! -z "$ISOPENBMC" ]; then
     # To enable network configuration for openbmc
-    ipmitool -d 0 lan set $LANCHAN access on
+    # 
+    # For OpenBMC, FW team still suggest running the raw command instead of access on, use raw for now
+    #
+    # ipmitool -d 0 lan set $LANCHAN access on
+    ipmitool -d 0 raw 0x06 0x40 $LANCHAN 0x42 0x44
     # update the node status to 'bmcready'
     if [ ! -z "$XCATMASTER" ]; then
         # Wait for some time for the new network setting is ready 

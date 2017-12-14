@@ -62,6 +62,9 @@ done
 # confluent if this keyword is defined in the site table.  This allows for confluent to 
 # be installed on the xCAT management node and switch between conserver & confluent
 USE_CONFLUENT=0
+# If conluent is not enable, check the service status of goconserver.
+# If goconserver is strated, use rcons through goconserver, otherwise through conserver.
+USE_GOCONSERVER=0
 CONSOLE_SERVICE_KEYWORD=`tabdump site | grep consoleservice | cut -d, -f1 | tr -d '"'`
 CONSOLE_SERVICE_VALUE=`tabdump site | grep consoleservice | cut -d, -f2 | tr -d '"'`
 
@@ -71,11 +74,30 @@ if [ "$CONSOLE_SERVICE_KEYWORD" == "consoleservice" ]; then
     fi
 fi
 
+if [ $USE_CONFLUENT != "1" ] && [ -f "/usr/bin/congo" ] && [ -f "/usr/bin/goconserver" ]; then
+    GOCONSERVER_RC=`service goconserver status >& /dev/null; echo $?`
+    if [[ ${GOCONSERVER_RC} == 0 ]]; then
+        USE_GOCONSERVER=1
+    fi
+    if [[ ${USE_GOCONSERVER} == 1 ]]; then
+        CONSERVER_RC=`pidof conserver >> /dev/null; echo $?`
+        if [[ ${CONSERVER_RC} == 0 ]]; then
+            echo "Error: Both goconserver and conserver are running, please stop one of them, and retry..."
+            exit 1
+        fi
+    fi
+fi
+
 if [ $USE_CONFLUENT == "1" ] && ([ -x "/opt/confluent/bin/confetty" ] || [ -x "/usr/bin/confetty" ] || [ -x "/usr/local/bin/confetty" ]); then
     # use confluent, make sure conserver is not also running
     CONSERVER_RC=`pidof conserver >> /dev/null; echo $?`
     if [[ ${CONSERVER_RC} == 0 ]]; then 
         echo "Error: consoleservice is set to 'confluent' but conserver is running.  Stop conserver, run makeconfluentcfg, and retry..."
+        exit 1
+    fi
+    GOCONSERVER_RC=`service goconserver status >& /dev/null; echo $?`
+    if [[ ${GOCONSERVER_RC} == 0 ]]; then
+        echo "Error: consoleservice is set to 'confluent' but goconserver is running.  Stop goconserver, run makeconfluentcfg, and retry..."
         exit 1
     fi
     CONFETTY="confetty"
@@ -103,6 +125,53 @@ if [ $USE_CONFLUENT == "1" ] && ([ -x "/opt/confluent/bin/confetty" ] || [ -x "/
 	CONSERVER="-s $CONSERVER"
     fi
     $CONFETTY $CONSCONTROLPATH $CONSERVER  $1
+elif [ $USE_GOCONSERVER == "1" ]; then
+    # use goconserver
+    # make sure confluent is not also running, only if confluent is installed
+    if [[ -f "/etc/init.d/confluent" ]]; then
+        CONFLUENT_RC=`service confluent status >& /dev/null; echo $?`
+        if [[ ${CONFLUENT_RC} == 0 ]]; then
+            echo "Error: confluent is running.  Stop confluent, run makegocons, and retry..."
+            exit 1
+        fi
+    fi
+    if [ -z "$CONSERVER" ]; then
+        CONSERVER=`nodels $1 nodehm.conserver 2>/dev/null | awk -F: '{print $2}' | tr -d ' '`
+    fi
+
+    if [ -z "$CONSERVER" ]; then
+        CONSERVER=$XCATHOST
+    fi
+    if [ -z "$CONSERVER" ]; then
+        CONSERVER=`hostname`
+    fi
+    CONGO_ENV="CONGO_SSL_KEY=$HOME/.xcat/client-cred.pem \
+               CONGO_SSL_CERT=$HOME/.xcat/client-cred.pem \
+               CONGO_SSL_CA_CERT=$HOME/.xcat/ca.pem \
+               CONGO_PORT=12430 \
+               CONGO_CLIENT_TYPE=xcat"
+    if [ "$CONSERVER" == `hostname` ]; then
+        host=`hostname -s`
+        if [ $? -ne 0 ]; then
+            echo "Error: could not get the short hostname for $CONSERVER."
+            exit 1
+        fi
+        CONGO_ENV="$CONGO_ENV \
+                   CONGO_SERVER_HOST=$host \
+                   CONGO_URL=https://$host:12429"
+        exec env $CONGO_ENV /usr/bin/congo console $1
+    else
+        host=`ssh $CONSERVER hostname -s`
+        if [ $? -ne 0 ]; then
+            echo "Error: could not get the short hostname for $CONSERVER."
+            exit 1
+        fi
+        CONGO_ENV="$CONGO_ENV \
+                   CONGO_SERVER_HOST=$host \
+                   CONGO_URL=https://$host:12429"
+        exec ssh -t $CONSERVER "$CONGO_ENV /usr/bin/congo console $1"
+    fi
+
 elif [ -f "/usr/bin/console" ] || [ -f "/bin/console" ]; then
     # use conserver
     # make sure confluent is not also running, only if confluent is installed

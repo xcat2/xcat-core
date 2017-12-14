@@ -11,6 +11,7 @@ if [ -f /xcatpost/mypostscript.post ]; then
     MASTER_IP=`grep '^MASTER_IP=' /xcatpost/mypostscript.post |cut -d= -f2|sed s/\'//g`
     OSVER=`grep '^OSVER=' /xcatpost/mypostscript.post |cut -d= -f2|sed s/\'//g`
     NODE=`grep '^NODE=' /xcatpost/mypostscript.post |cut -d= -f2|sed s/\'//g`
+    IMAGE=`grep '^PROVMETHOD=' /xcatpost/mypostscript.post |cut -d= -f2|sed s/\'//g`
 fi
 
 
@@ -82,6 +83,14 @@ if [ $? -eq 0 ]; then
     sed -i "s/NODE=.*/NODE=$NODE/" /opt/xcat/xcatinfo
 else
     echo "NODE=$NODE" >> /opt/xcat/xcatinfo
+fi
+
+#add image name to xcatinfo
+grep 'IMAGENAME' /opt/xcat/xcatinfo > /dev/null 2>&1 
+if [ $? -eq 0 ]; then
+    sed -i "s/IMAGENAME=.*/IMAGENAME=$IMAGE/" /opt/xcat/xcatinfo
+else
+    echo "IMAGENAME=$IMAGE" >> /opt/xcat/xcatinfo
 fi
 
 # Store the SERVICEGROUP into the xcatinfo file for statful installation

@@ -32,6 +32,7 @@ Table of Contents
    guides/install-guides/index.rst
    guides/admin-guides/index.rst
    advanced/index.rst
+   QA/index.rst
    references/index.rst
    troubleshooting/index.rst
    developers/index.rst

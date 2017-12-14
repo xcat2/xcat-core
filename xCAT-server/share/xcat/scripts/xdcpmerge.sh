@@ -82,24 +82,22 @@ for i in $*; do
     done
     # remove the last delimiter
     userlisttmp="${userlist%?}"
-    listend=")'"
+    listend="):'"
     userlist=$userlisttmp$listend
     grepcmd=$grepcmd$userlist
     #set -x
-    grepcmd="$grepcmd $filebackup > $filebackup.nodups"
+    grepcmd="$grepcmd $mergefile > $mergefile.nodups"
     #echo "grepcmd=$grepcmd"
     # now run it
     eval $grepcmd
-    # if no dups file created
-    if [ -s "$filebackup.nodups" ]; then
-      cp -p $filebackup.nodups $filebackup
-      #echo "cp -p $filebackup.nodups $filebackup" 
-      rm $filebackup.nodups
-    fi 
   fi 
-  # Now update the currentfile  
-  cat $filebackup $mergefile > $curfile
-  #echo "cat $filebackup $mergefile > $curfile"
+  
+  # add new entries from mergefile, if any 
+  if [ -a "$mergefile.nodups" ]; then
+    cat $mergefile.nodups >> $curfile
+    rm $mergefile.nodups
+  fi
+  
   # now cleanup
   rm $filebackup.userlist 
   #  echo "rm $filebackup.userlist"

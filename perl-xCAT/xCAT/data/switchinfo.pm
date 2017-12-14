@@ -21,7 +21,8 @@ our %global_mac_identity = (
     "8c:ea:1b" => "Edgecore Networks Switch",
     "a8:2b:b5" => "Edgecore Networks Switch",
     "3c:2c:99" => "Edgecore Networks Switch",
-    "70:72:cf" => "Edgecore Networks Switch"
+    "70:72:cf" => "Edgecore Networks Switch",
+    "6c:64:1a" => "Penguin Computing switch"
 );
 
 #the hash to lookup switch type with vendor
@@ -40,7 +41,8 @@ our %global_switch_type = (
     MELLAN => "Mellanox",
     Cumulus => "onie",
     cumulus => "onie",
-    Edgecore => "onie"
+    Edgecore => "onie",
+    coral => "crpdu"
 );
 
 

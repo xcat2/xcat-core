@@ -58,13 +58,14 @@ unless (($^O =~ /^aix/i) || ($os =~ /^sle[sc]10/) || (($os =~ /^rh.*5$/) && ($ar
 }
 use File::Basename;
 use File::Path;
-use Time::HiRes qw(sleep);
+use Time::HiRes qw(sleep time);
 use Thread qw(yield);
 use Fcntl qw/:DEFAULT :flock/;
 use xCAT::Client qw(submit_request);
 my $clientselect  = new IO::Select;
 my $sslclients    = 0;                # THROTTLE
 my $maxsslclients = 64;               # default
+my $maxsslclientswarntime = 0;
 my $batchclients  = 50;
 my @deferredmsgargs;    # hold argumentlist for MsgUtils call until after fork
                         # parallelizing logging overhead with real work
@@ -594,7 +595,7 @@ sub grant_tcrequests {
     my $availableslots = $batchclients;
     if (not keys %{$requestors}) { return; }  # skip the interaction with SSL if
                                               # no requests are actually pending
-    my $oldtime = time() - 180; # drop requests older than three minutes if still around
+    my $oldtime = int(time()) - 180; # drop requests older than three minutes if still around
     my $msg;
     eval { store_fd({ 'req' => 'get_client_count' }, $sslctl); $msg = fd_retrieve($sslctl); };
 
@@ -813,7 +814,7 @@ sub do_udp_service {    # This function opens up a UDP port
                     } else {    # for *now*, we'll do a tiny YAML subset
                         if ($data =~ /^resourcerequest: xcatd$/) {
                             $socket->send("ackresourcerequest\n", 0, $packets{$pkey}->[0]);
-                            $tcclients->{$pkey} = { sockaddr => $packets{$pkey}->[0], timestamp => time() }
+                            $tcclients->{$pkey} = { sockaddr => $packets{$pkey}->[0], timestamp => int(time()) }
                         }
                     }    # JSON maybe one day if important
                     if ($quit) { last; }
@@ -1432,6 +1433,11 @@ until ($quit) {
     }
     unless (scalar @pendingconnections) { next; } # if for some reason we landed here without any accepted connections, carry on..
     if ($sslclients > $maxsslclients) { # we have enough children, wait for some to exit before spawning more
+        my $curtime = time();
+        if ($curtime > ($maxsslclientswarntime + 30)) {
+            xCAT::MsgUtils->message("S", "xcatd: Connections are being throttled. Current client count (" . ($sslclients + scalar @pendingconnections) . ") is greater than allowed ($maxsslclients)");
+            $maxsslclientswarntime=$curtime;
+        }
         $bothwatcher->can_read(0.1); # when next connection tries to come in or a tenth of a second, whichever comes first
         next;                        # just keep pulling things off listen queue onto our own
     }
@@ -2046,8 +2052,9 @@ sub plugin_command {
     my $nextxmittime = time() + 1;
     while (($plugin_numchildren > 0) and ($check_fds->count > 0)) { # this tracks end of useful data from children much more closely
         relay_fds($check_fds, $xcatresponses{xcatresponse});
-        if (time() > $nextxmittime) {
-            $nextxmittime = time() + 1;
+        my $currenttime = time();
+        if ($currenttime > $nextxmittime) {
+            $nextxmittime = $currenttime + 1;
             send_response(\%xcatresponses, $sock);
             $xcatresponses{xcatresponse} = [];
         }
@@ -2930,7 +2937,7 @@ sub service_connection {
     }
 
     # ----used for command log start-------
-    my $reqhandletime = time()-$cmdlog_starttime;
+    my $reqhandletime = sprintf("%.3f", time()-$cmdlog_starttime);
     $cmdlog_alllog .= "[ElapsedTime] $reqhandletime s\n";
     cmdlog_submitlog();
 
@@ -3002,7 +3009,7 @@ sub relay_fds { # Relays file descriptors from pipes to children to the SSL sock
 
             # ----used for command log start-------
             $cmdlog_alllog .= "Client abort requested\n";
-            my $reqhandletime = time()-$cmdlog_starttime;
+            my $reqhandletime = sprintf("%.3f", time()-$cmdlog_starttime);
             $cmdlog_alllog .= "[ElapsedTime] $reqhandletime s\n";
             cmdlog_submitlog();
 

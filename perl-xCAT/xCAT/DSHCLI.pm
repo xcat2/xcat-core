@@ -835,7 +835,7 @@ sub fork_fanout_dcp
 
                 my @target_file = split '/', $$options{'source'};
                 $rcp_config{'dest-file'} =
-"$$options{'target'}/$target_file[$#target_file]._$$target_properties{'hostname'}";
+                "$$options{'target'}/$target_file[$#target_file]._$$target_properties{'hostname'}";
 
             }
 
@@ -850,6 +850,8 @@ sub fork_fanout_dcp
                   $$options{'destDir_srcFile'}{$user_target};
             }
 
+            $dsh_trace
+                && ($rcp_config{'trace'} = 1);
             #eval "require RemoteShell::$rsh_extension";
             eval "require xCAT::$rsh_extension";
             my $remoteshell = "xCAT::$rsh_extension";
@@ -5198,8 +5200,10 @@ sub parse_rsync_input_file_on_MN
 
                 foreach my $target_node (@dest_host)
                 {
-                    # skip the node if it's NOT in the permitted list
-                    if ($dest_node && !grep /^$target_node$/, @dest_nodes) {
+                    # skip the node if it's NOT in the permitted list and if
+                    # it's not a SN doing a hierarchical mode transfer
+                    if ($dest_node && !(grep /^$target_node$/, @dest_nodes)
+                        && ($rsyncSN != 1) ) {
                         next;
                     }
                     $$options{'destDir_srcFile'}{$target_node} ||= {};
@@ -5214,7 +5218,13 @@ sub parse_rsync_input_file_on_MN
                         if ($rsyncSN == 1)
                         {    #  syncing the SN
                             $dest_dir = $syncdir;    # the SN sync dir
-                            $dest_dir .= dirname($srcfile);
+                            if($srcfile =~ /\/$/){
+                                #the srcfile is a directory
+                                $dest_dir .= $srcfile;
+                            }else{
+                                #the srcfile is a file
+                                $dest_dir .= dirname($srcfile);
+                            }
                             $dest_dir =~ s/\s*//g;    #remove blanks
                         }
                         $$options{'destDir_srcFile'}{$target_node}{$dest_dir} ||=
@@ -5655,11 +5665,30 @@ sub parse_rsync_input_file_on_SN
         } else {    # not processing EXECUTE, EXECUTEALWAYS or APPEND
                     # otherwise it is just the synclist
 
-            if ($line =~ /(.+) -> (.+)/)
+            # xCAT supports the syncfile format:
+            #   file -> file
+            #   file -> (noderange for permitted nodes) file
+            if ($line =~ /(.+) -> (.+)/ || $line =~ /(.+) -> +\((.+)\) +(.+)/) 
             {
                 $process_line = 1;
-                my $src_file  = $1;
-                my $dest_file = $2;
+                my $src_file;
+                my $dest_file;
+                my $dest_node;
+                my @dest_nodes;
+                if ($line =~ /(.+) -> +\((.+)\) +(.+)/) {
+                    $src_file  = $1;
+                    $dest_node = $2;
+                    $dest_file = $3;
+                } elsif ($line =~ /(.+) -> (.+)/) {
+                    $src_file  = $1;
+                    $dest_file = $2;
+                }
+
+                # get all the permitted nodes for the line
+                $dest_node =~ s/\s//g;
+                if ($dest_node) {
+                    @dest_nodes = noderange($dest_node);
+                }
                 $dest_file =~ s/[\s;]//g;    # remove blanks
 
                 # see if destination is a directory
@@ -5688,6 +5717,10 @@ sub parse_rsync_input_file_on_SN
 
                 foreach my $target_node (@dest_host)
                 {
+                    # skip the node if it's NOT in the permitted list
+                    if ($dest_node && ! grep /^$target_node$/, @dest_nodes) {
+                        next;
+                    }
                     $$options{'destDir_srcFile'}{$target_node} ||= {};
 
                     # for each file on the line

@@ -146,6 +146,7 @@ my %usage = (
        rspconfig <noderange> [userid=<userid> username=<username> password=<password>]
    OpenBMC specific:
        rspconfig <noderange> [ipsrc|ip|netmask|gateway|hostname|vlan]
+       rspconfig <noderange> dump [-l|--list] [-g|--generate] [-c|--clear {<id>|all}] [-d|--download <id>]
    iDataplex specific:
        rspconfig <noderange> [thermprofile]
        rspconfig <noderange> [thermprofile=<two digit number from chassis>]
@@ -353,7 +354,8 @@ my %usage = (
     OpenPOWER OpenBMC specific:
         rflash <noderange> {[-c|--check] | [-l|--list]}
         rflash <noderange> <tar_file_path> {[-c|--check] | [-a|--activate] | [-u|--upload]}
-        rflash <noderange> <image_id> {[-a|--activate] | [-d|--delete]}",
+        rflash <noderange> <tar_file_diretory> [-d] [--no-host-reboot]
+        rflash <noderange> <image_id> {[-a|--activate] | [--delete]}",
     "mkhwconn" =>
       "Usage:
     mkhwconn [-h|--help]

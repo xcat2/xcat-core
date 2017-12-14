@@ -509,8 +509,11 @@ sub get_ServiceNode
 
     # get site.master this will be the default
     my $master = xCAT::TableUtils->get_site_Master();
-    $noderestab = xCAT::Table->new('noderes');
+    unless($master){
+        xCAT::MsgUtils->message('SW',"site.master is not set!\n");
+    }
 
+    $noderestab = xCAT::Table->new('noderes');
     unless ($noderestab)    # no noderes table, use default site.master
     {
         xCAT::MsgUtils->message('I',
@@ -548,7 +551,7 @@ sub get_ServiceNode
                     my $key = $rec->{$snattribute};
                     push @{ $snhash{$key} }, $node;
                 }
-                else                                  # use site.master
+                elsif($master)                                  # use site.master
                 {
                     push @{ $snhash{$master} }, $node;
                 }
@@ -595,7 +598,7 @@ sub get_ServiceNode
                             my $key = $rec->{$snattribute};
                             push @{ $snhash{$key} }, $node;
                         }
-                        else
+                        elsif($master)
                         {                                     # use site.master
                             push @{ $snhash{$master} }, $node;
                         }
@@ -631,7 +634,7 @@ sub get_ServiceNode
                                 my $key = $rec->{$snattribute};
                                 push @{ $snhash{$key} }, $node;
                             }
-                            else
+                            elsif($master)
                             {    # use site.master
                                 push @{ $snhash{$master} }, $node;
                             }
@@ -675,7 +678,7 @@ sub get_ServiceNode
                                 my $key = $sn->{$snattribute};
                                 push @{ $snhash{$key} }, $node;
                             }
-                            else
+                            elsif($master)
                             {          # no service node use master
                                 push @{ $snhash{$master} }, $node;
                             }
