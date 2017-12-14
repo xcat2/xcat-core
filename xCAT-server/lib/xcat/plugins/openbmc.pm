@@ -2833,7 +2833,10 @@ sub rspconfig_response {
             my ($path, $adapter_id) = (split(/\/ipv4\//, $key_url));
             
             if ($adapter_id) {
-                if (defined($content{Origin}) and ($content{Origin} =~ /LinkLocal/)) {
+                if ( (defined($content{Origin}) and $content{Origin} =~ /LinkLocal/) or 
+                     (defined($content{Address}) and $content{Address} =~ /^169.254/) ) {
+                    # OpenBMC driver has a interim bug where ZeroConfigIP comes up as DHCP instead of LinkLocal.
+                    # To protect xCAT while the drivers change, check the 169.254 IP also 
                     if ($xcatdebugmode) {
                         my $debugmsg = "Found LocalLink " . $content{Address} . " for interface " . $key_url . " Ignoring...";
                         process_debug_info($node, $debugmsg);
