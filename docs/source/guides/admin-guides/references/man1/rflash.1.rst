@@ -63,7 +63,9 @@ OpenPOWER OpenBMC specific :
 
 \ **rflash**\  \ *noderange*\  \ *tar_file_path*\  {[\ **-c | -**\ **-check**\ ] | [\ **-a | -**\ **-activate**\ ] | [\ **-u | -**\ **-upload**\ ]}
 
-\ **rflash**\  \ *noderange*\  \ *image_id*\  {[\ **-a | -**\ **-activate**\ ] | [\ **-d | -**\ **-delete**\ ]}
+\ **rflash**\  \ *noderange*\  \ *tar_file_directory*\  [\ **-d**\] [\ **--no-host-reboot**\]
+
+\ **rflash**\  \ *noderange*\  \ *image_id*\  {[\ **-a | -**\ **-activate**\ ] | [\ **-**\ **-delete**\ ]}
 
 
 
@@ -179,6 +181,21 @@ To apply the firmware level, a reboot is required to BMC and HOST.
 \ **Note:**\  When using \ **rflash**\  in hierarchical environment, the .tar file must be accessible from Service Nodes.
 
 
+\ **-d**\ :
+
+.. code-block:: perl
+
+    This option steamlines the update, activate, reboot BMC and reboot HOST procedure. It expects a directory containing both BMC and PNOR .tar files. When BMC and PNOR tar files are provided, the command will upload and activate firmware. After BMC becomes activate, it will reboot BMC. If BMC state is Ready, the command will reboot the HOST. If BMC state is NotReady, the command will exit.
+
+\ **Note:**\ When using \ **--no-host-reboot**\, it will not reboot the host after BMC is reboot. 
+
+
+\ **-**\ **-delete**\ :
+
+.. code-block:: perl
+
+    The delete option will delete update image from BMC. It expects an ID as the input.
+
 
 ***************
 \ **Options**\ 
@@ -264,7 +281,7 @@ To apply the firmware level, a reboot is required to BMC and HOST.
  
 
 
-\ **-d|-**\ **-delete**\ 
+\ **-**\ **-delete**\ 
  
  Delete update image from BMC
  
@@ -357,7 +374,7 @@ To apply the firmware level, a reboot is required to BMC and HOST.
  
 
 
-6. To update the firmware on IBM Power S822LC for Big Data machine specify the node name and the file path of the data directory containing pUpdate utility and BMC and/or PNOR update files:
+6. To update the firmware on IBM Power S822LC for Big Data machine specify the node name and the file path of the data directory containing pUpdate utility, both BMC and PNOR update files:
  
  
  .. code-block:: perl
