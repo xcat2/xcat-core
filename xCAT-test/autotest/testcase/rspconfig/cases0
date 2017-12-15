@@ -383,7 +383,7 @@ start:rspconfig_set_admin_passwd_with_error_origin_password
 description: To test "rspconfig <node> admin_passwd=xxx,yyy". If the original password is wrong, should throw out error message
 os:Linux
 hcp:openbmc
-cmd:rspconfig $$CN admin_passwd=bogus__GETNODEATTR(f6u17,bmcpassword)__,cluster
+cmd:rspconfig $$CN admin_passwd=bogus__GETNODEATTR($$CN,bmcpassword)__,cluster
 check:output =~Current BMC password is incorrect
 check:rc != 0
 end
