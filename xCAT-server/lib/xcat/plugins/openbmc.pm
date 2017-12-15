@@ -1180,7 +1180,10 @@ sub parse_args {
         }
         
         if (scalar @flash_arguments > 1) {
-            if ($filename_passed and $option_flag !~ /^-d$/) {
+            if (($option_flag =~ /^-a$|^--delete$/) or ($filename_passed and $option_flag !~ /^-d$/)) { 
+                # Handles: 
+                #   - Multiple options not supported to activate/delete at the same time 
+                #   - Filename passed in and option is not -d for directory
                 return ([1, "More than one firmware specified is not supported."]);
             } elsif ($option_flag =~ /^-d$/) {
                 return ([1, "More than one directory specified is not supported."]);
