@@ -446,6 +446,9 @@ cmd:rflash $$CN -d /tmp/bogus123
 check:output=~Error: Can't open directory
 check:output!~Attempting to 
 check:rc != 0
+cmd:rflash $$CN /tmp/bogus123
+check:output=~Error: Invalid option specified
+check:rc != 0
 cmd:mkdir -p /tmp/bogus123
 check:rc == 0
 cmd:rflash $$CN /tmp/bogus123 -d
@@ -478,7 +481,7 @@ hcp:openbmc
 cmd:rflash -h
 check:output =~Usage:
 check:output =~OpenPOWER OpenBMC specific:
-check:output =~ -d.+–no-host-reboot
+check:output =~ -d.+no-host-reboot
 check:output =~ image_id.+--delete 
 check:rc == 0
 end
