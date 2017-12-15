@@ -63,7 +63,7 @@ OpenPOWER OpenBMC specific :
 
 \ **rflash**\  \ *noderange*\  \ *tar_file_path*\  {[\ **-c | -**\ **-check**\ ] | [\ **-a | -**\ **-activate**\ ] | [\ **-u | -**\ **-upload**\ ]}
 
-\ **rflash**\  \ *noderange*\  \ *tar_file_directory*\  [\ **-d**\] [\ **--no-host-reboot**\]
+\ **rflash**\  \ *noderange*\  \ *tar_file_directory*\  [\ **-d**\ ] [\ **-**\ **-no-host-reboot**\ ]
 
 \ **rflash**\  \ *noderange*\  \ *image_id*\  {[\ **-a | -**\ **-activate**\ ] | [\ **-**\ **-delete**\ ]}
 
@@ -180,21 +180,24 @@ To apply the firmware level, a reboot is required to BMC and HOST.
 
 \ **Note:**\  When using \ **rflash**\  in hierarchical environment, the .tar file must be accessible from Service Nodes.
 
-
 \ **-d**\ :
+
 
 .. code-block:: perl
 
     This option steamlines the update, activate, reboot BMC and reboot HOST procedure. It expects a directory containing both BMC and PNOR .tar files. When BMC and PNOR tar files are provided, the command will upload and activate firmware. After BMC becomes activate, it will reboot BMC. If BMC state is Ready, the command will reboot the HOST. If BMC state is NotReady, the command will exit.
 
-\ **Note:**\ When using \ **--no-host-reboot**\, it will not reboot the host after BMC is reboot. 
 
+\ **Note:**\  When using \ **-**\ **-no-host-reboot**\ , it will not reboot the host after BMC is reboot.
 
 \ **-**\ **-delete**\ :
 
+
 .. code-block:: perl
 
-    The delete option will delete update image from BMC. It expects an ID as the input.
+    This delete option will delete update image from BMC. It expects an ID as the input.
+
+
 
 
 ***************
@@ -389,7 +392,7 @@ To apply the firmware level, a reboot is required to BMC and HOST.
  
  .. code-block:: perl
  
-    rflash p9euh02 -a /tmp/witherspoon.pnor.squashfs.tar
+   rflash p9euh02 -a /tmp/witherspoon.pnor.squashfs.tar
  
  
 
