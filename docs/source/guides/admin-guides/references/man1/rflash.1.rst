@@ -199,6 +199,21 @@ To apply the firmware level, a reboot is required to BMC and HOST.
 
 
 
+\ **-d**\ :
+
+.. code-block:: perl
+
+    This option steamlines the update, activate, reboot BMC and reboot HOST procedure. It expects a directory containing both BMC and PNOR .tar files. When BMC and PNOR tar files are provided, the command will upload and activate firmware. After BMC becomes activate, it will reboot BMC. If BMC state is Ready, the command will reboot the HOST. If BMC state is NotReady, the command will exit.
+
+\ **Note:**\ When using \ **--no-host-reboot**\, it will not reboot the host after BMC is reboot. 
+
+
+\ **-**\ **-delete**\ :
+
+.. code-block:: perl
+
+    The delete option will delete update image from BMC. It expects an ID as the input.
+
 
 ***************
 \ **Options**\ 

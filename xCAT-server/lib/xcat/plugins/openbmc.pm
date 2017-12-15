@@ -3065,14 +3065,14 @@ sub rspconfig_response {
                     push @output, @vlan;
                 }
             }
-
+            
             xCAT::SvrUtils::sendmsg("$_", $callback, $node) foreach (@output);
             if ($multiple_error and $mul_out) {
                 xCAT::SvrUtils::sendmsg([1, "$multiple_error"], $callback, $node);
                 $wait_node_num--;
                 return;
             }
-
+            
             if ($grep_string eq "all") {
                 # If all current values equal the input, just print out message
                 my @checks = split("-", $status_info{RSPCONFIG_CHECK_RESPONSE}{argv});
