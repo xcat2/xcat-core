@@ -40,15 +40,11 @@ pdu Attributes:
 
 
 \ **machinetype**\  (pdu.machinetype)
- 
- The pdu machine type
- 
+
 
 
 \ **modelnum**\  (pdu.modelnum)
- 
- The pdu model number
- 
+
 
 
 \ **node**\  (pdu.node)
@@ -70,9 +66,7 @@ pdu Attributes:
 
 
 \ **serialnum**\  (pdu.serialnum)
- 
- The pdu serial number
- 
+
 
 
 

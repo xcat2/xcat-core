@@ -79,6 +79,7 @@ $::RSPCONFIG_DUMP_WAIT_TOTALTIME = int($::RSPCONFIG_DUMP_INTERVAL*$::RSPCONFIG_D
 $::RSPCONFIG_WAIT_VLAN_DONE = 15;
 $::RSPCONFIG_WAIT_IP_DONE   = 3;
 $::RSPCONFIG_DUMP_CMD_TIME  = 0;
+$::RSPCONFIG_CONFIGURED_API_KEY  = -1;
 
 $::XCAT_LOG_DIR             = "/var/log/xcat";
 $::RAS_POLICY_TABLE         = "/opt/ibm/ras/lib/policyTable.json";
@@ -365,6 +366,13 @@ my %status_info = (
     RSPCONFIG_GET_RESPONSE => {
         process        => \&rspconfig_response,
     },
+    RSPCONFIG_GET_NIC_REQUEST => {
+        method         => "GET",
+        init_url       => "$openbmc_project_url/network/enumerate",
+    },
+    RSPCONFIG_GET_NIC_RESPONSE => {
+        process        => \&rspconfig_response,
+    },
     RSPCONFIG_SET_PASSWD_REQUEST => {
         method         => "POST",
         init_url       => "/xyz/openbmc_project/user/root/action/SetPassword",
@@ -376,6 +384,11 @@ my %status_info = (
     RSPCONFIG_SET_HOSTNAME_REQUEST => {
         method         => "PUT",
         init_url       => "$openbmc_project_url/network/config/attr/HostName",
+        data           => "[]",
+    },
+    RSPCONFIG_SET_NTPSERVERS_REQUEST => {
+        method         => "PUT",
+        init_url       => "$openbmc_project_url/network/#NIC#/attr/NTPServers",
         data           => "[]",
     },
     RSPCONFIG_SET_RESPONSE => {
@@ -480,6 +493,54 @@ my %status_info = (
     },
     RVITALS_RESPONSE => {
         process        => \&rvitals_response,
+    },
+    RSPCONFIG_API_CONFIG_ON_REQUEST  => {
+        method         => "PUT",
+        init_url       => "$openbmc_project_url", 
+        data           => "true",
+    },
+    RSPCONFIG_API_CONFIG_ON_RESPONSE => {
+        process        => \&rspconfig_api_config_response,
+    },
+    RSPCONFIG_API_CONFIG_OFF_REQUEST  => {
+        method         => "PUT",
+        init_url       => "$openbmc_project_url",
+        data           => "false",
+    },
+    RSPCONFIG_API_CONFIG_OFF_RESPONSE => {
+        process        => \&rspconfig_api_config_response,
+    },
+    RSPCONFIG_API_CONFIG_QUERY_REQUEST  => {
+        method         => "GET",
+        init_url       => "$openbmc_project_url",
+    },
+    RSPCONFIG_API_CONFIG_QUERY_RESPONSE => {
+        process        => \&rspconfig_api_config_response,
+    },
+);
+
+# Setup configured subcommand. Currently only rspconfig is supported and only for boolean commands.
+# For example: rspconfig <subcommand>
+#              rspconfig <subcommand>=0
+#              rspconfig <subcommand>=1
+#
+#
+my %api_config_info = (
+    RSPCONFIG_AUTO_REBOOT => {
+        command      => "rspconfig",
+        url          => "/control/host0/auto_reboot",
+        attr_url     => "AutoReboot",
+        display_name => "AutoReboot",
+        type         => "boolean",
+        subcommand   => "autoreboot",
+    },
+    RSPCONFIG_POWERSUPPLY_REDUNDENCY => {
+        command      => "rspconfig",
+        url          => "/sensors/chassis/PowerSupplyRedundancy",
+        attr_url     => "PowerSupplyRedundency",
+        display_name => "PowerSupplyRedundency",
+        type         => "boolean",
+        subcommand   => "powersupplyredundency",
     },
 );
 
@@ -990,13 +1051,18 @@ sub parse_args {
         my $setorget;
         my $all_subcommand = "";
         foreach $subcommand (@ARGV) {
-            if ($subcommand =~ /^(\w+)=(.*)/) {
+            $::RSPCONFIG_CONFIGURED_API_KEY = &is_valid_config_api($subcommand, $callback);
+            if ($::RSPCONFIG_CONFIGURED_API_KEY != -1) {
+                # subcommand defined in the configured API hash, return from here, the RSPCONFIG_CONFIGURED_API_KEY is the key into the hash
+                return;
+            }
+            elsif ($subcommand =~ /^(\w+)=(.*)/) {
                 return ([ 1, "Can not set and query OpenBMC information at the same time" ]) if ($setorget and $setorget eq "get");
                 my $key = $1;
                 my $value = $2;
                 return ([ 1, "Changing ipsrc value is currently not supported." ]) if ($key eq "ipsrc");
-                return ([ 1, "Unsupported command: $command $key" ]) unless ($key =~ /^ip$|^netmask$|^gateway$|^hostname$|^vlan$|^admin_passwd$/);
-                return ([ 1, "The option '$key' can not work with other options." ]) if ($key =~ /^hostname$|^admin_passwd$/ and $num_subcommand > 1);
+                return ([ 1, "Unsupported command: $command $key" ]) unless ($key =~ /^ip$|^netmask$|^gateway$|^hostname$|^vlan$|^admin_passwd$|^ntpservers$/);
+                return ([ 1, "The option '$key' can not work with other options." ]) if ($key =~ /^hostname$|^admin_passwd$|^ntpservers$/ and $num_subcommand > 1);
                 if ($key eq "admin_passwd") {
                     my $comma_num = $value =~ tr/,/,/;
                     return ([ 1, "Invalid parameter for option $key: $value" ]) if ($comma_num != 1);
@@ -1006,7 +1072,7 @@ sub parse_args {
                 }
 
                 my $nodes_num = @$noderange;
-                return ([ 1, "Invalid parameter for option $key" ]) unless ($value);
+                return ([ 1, "Invalid parameter for option $key" ]) if (!$value and $key ne ("ntpservers"));
                 return ([ 1, "Invalid parameter for option $key: $value" ]) if (($key eq "netmask") and !xCAT::NetworkUtils->isIpaddr($value));
                 return ([ 1, "Invalid parameter for option $key: $value" ]) if (($key eq "gateway") and ($value !~ "0.0.0.0" and !xCAT::NetworkUtils->isIpaddr($value)));
                 if ($key eq "ip") {
@@ -1024,7 +1090,7 @@ sub parse_args {
                     $all_subcommand .= $key . ",";
                 }
                 $setorget = "set";
-            } elsif ($subcommand =~ /^ip$|^netmask$|^gateway$|^hostname$|^vlan$|^ipsrc$/) {
+            } elsif ($subcommand =~ /^ip$|^netmask$|^gateway$|^hostname$|^vlan$|^ipsrc$|^ntpservers$/) {
                 return ([ 1, "Can not set and query OpenBMC information at the same time" ]) if ($setorget and $setorget eq "set");
                 $setorget = "get";
             } elsif ($subcommand =~ /^sshcfg$/) {
@@ -1354,6 +1420,41 @@ sub parse_command_status {
     if ($command eq "rspconfig") {
         my @options = ();
         my $num_subcommand = @$subcommands;
+        #Setup chain to process the configured command
+        if ($::RSPCONFIG_CONFIGURED_API_KEY != -1) {
+            $subcommand = $$subcommands[0];
+            # Check if setting or quering
+            if ($subcommand =~ /^(\w+)=(.*)/) {
+                # setting
+                my $subcommand_key = $1;
+                my $subcommand_value = $2;
+
+                if ($subcommand_value eq "1") {
+                    # Setup chain for subcommand=1
+                    $next_status{LOGIN_RESPONSE} = "RSPCONFIG_API_CONFIG_ON_REQUEST";
+                    $status_info{RSPCONFIG_API_CONFIG_ON_REQUEST}{init_url} =  $status_info{RSPCONFIG_API_CONFIG_ON_REQUEST}{init_url} . $api_config_info{$::RSPCONFIG_CONFIGURED_API_KEY}{url} . "/attr/" . $api_config_info{$::RSPCONFIG_CONFIGURED_API_KEY}{attr_url};
+                    $next_status{RSPCONFIG_API_CONFIG_ON_REQUEST} = "RSPCONFIG_API_CONFIG_ON_RESPONSE";
+                }
+                elsif ($subcommand_value eq "0") {
+                    # Setup chain for subcommand=0
+                    $next_status{LOGIN_RESPONSE} = "RSPCONFIG_API_CONFIG_OFF_REQUEST";
+                    $status_info{RSPCONFIG_API_CONFIG_OFF_REQUEST}{init_url} =  $status_info{RSPCONFIG_API_CONFIG_OFF_REQUEST}{init_url} . $api_config_info{$::RSPCONFIG_CONFIGURED_API_KEY}{url} . "/attr/" . $api_config_info{$::RSPCONFIG_CONFIGURED_API_KEY}{attr_url};
+                    $next_status{RSPCONFIG_API_CONFIG_OFF_REQUEST} = "RSPCONFIG_API_CONFIG_OFF_RESPONSE";
+                }
+                else {
+                    # Everything else is invalid
+                        xCAT::SvrUtils::sendmsg([1, "Invalid value $subcommand_value for 'rspconfig $subcommand_key=$subcommand_value' command"], $callback);
+                        return 1;
+                }
+            }
+            else {
+                # Setup chain for query subcommand
+                $next_status{LOGIN_RESPONSE} = "RSPCONFIG_API_CONFIG_QUERY_REQUEST";
+                $status_info{RSPCONFIG_API_CONFIG_QUERY_REQUEST}{init_url} =  $status_info{RSPCONFIG_API_CONFIG_QUERY_REQUEST}{init_url} . $api_config_info{$::RSPCONFIG_CONFIGURED_API_KEY}{url};
+                $next_status{RSPCONFIG_API_CONFIG_QUERY_REQUEST} = "RSPCONFIG_API_CONFIG_QUERY_RESPONSE";
+            }
+            return 0;
+        }
         if ($num_subcommand == 1) {
             $subcommand = $$subcommands[0];
             if ($subcommand =~ /^sshcfg$/) {
@@ -1379,6 +1480,19 @@ sub parse_command_status {
                 $status_info{RSPCONFIG_SET_HOSTNAME_REQUEST}{data} = $1;
                 $status_info{RSPCONFIG_SET_RESPONSE}{argv} = "Hostname";
                 $status_info{RSPCONFIG_GET_RESPONSE}{argv} = "hostname";
+                return 0;
+            }
+            if ($subcommand =~ /^ntpservers=(.*)/) {
+                $next_status{LOGIN_RESPONSE} = "RSPCONFIG_GET_NIC_REQUEST";
+                $next_status{RSPCONFIG_GET_NIC_REQUEST} = "RSPCONFIG_GET_NIC_RESPONSE";
+                $next_status{RSPCONFIG_GET_NIC_RESPONSE} = "RSPCONFIG_SET_NTPSERVERS_REQUEST";
+                $next_status{RSPCONFIG_SET_NTPSERVERS_REQUEST} = "RSPCONFIG_SET_RESPONSE";
+                $next_status{RSPCONFIG_SET_RESPONSE} = "RSPCONFIG_GET_REQUEST";
+                $next_status{RSPCONFIG_GET_REQUEST} = "RSPCONFIG_GET_RESPONSE";
+
+                $status_info{RSPCONFIG_GET_RESPONSE}{argv} = "ntpservers";
+                $status_info{RSPCONFIG_SET_RESPONSE}{argv} = "NTPServers";
+                $status_info{RSPCONFIG_SET_NTPSERVERS_REQUEST}{data} = "[\"$1\"]";
                 return 0;
             }
         }
@@ -1450,7 +1564,7 @@ sub parse_command_status {
         my $type = "obj";
         my %tmp_hash = ();
         foreach $subcommand (@$subcommands) {
-            if ($subcommand =~ /^ip$|^netmask$|^gateway$|^hostname$|^vlan$|^ipsrc$/) {
+            if ($subcommand =~ /^ip$|^netmask$|^gateway$|^hostname$|^vlan$|^ipsrc$|^ntpservers$/) {
                 $type = "get";
                 push @options, $subcommand;
             } elsif ($subcommand =~ /^(\w+)=(.+)/) {
@@ -2811,11 +2925,11 @@ sub rspconfig_response {
     my $response_info;
     $response_info = decode_json $response->content if ($response);
 
-    if ($node_info{$node}{cur_status} eq "RSPCONFIG_GET_RESPONSE") {
+    if ($node_info{$node}{cur_status} eq "RSPCONFIG_GET_RESPONSE" or $node_info{$node}{cur_status} eq "RSPCONFIG_GET_NIC_RESPONSE") {
         my $hostname        = "";
         my $default_gateway = "n/a";
         my %nicinfo         = ();
-        my $error;
+        my $multiple_error = "";
         my @output;
         my $grep_string = $status_info{RSPCONFIG_GET_RESPONSE}{argv};
         foreach my $key_url (keys %{$response_info->{data}}) {
@@ -2846,79 +2960,99 @@ sub rspconfig_response {
                 my $nic = $path;
                 $nic =~ s/(.*\/)//g;
                 unless (defined($nicinfo{$nic}{address})) {
-                    $nicinfo{$nic}{address} = "n/a";
-                    $nicinfo{$nic}{gateway} = "n/a";
-                    $nicinfo{$nic}{ipsrc}   = "n/a";
-                    $nicinfo{$nic}{netmask} = "n/a";
-                    $nicinfo{$nic}{prefix}  = "n/a";
+                    $nicinfo{$nic}{address} = ();
+                    $nicinfo{$nic}{gateway} = ();
+                    $nicinfo{$nic}{ipsrc}   = ();
+                    $nicinfo{$nic}{netmask} = ();
+                    $nicinfo{$nic}{prefix}  = ();
                     $nicinfo{$nic}{vlan}    = "Disable";
                 }
 
 
                 if (defined($content{Address}) and $content{Address}) {
-                    unless ($nicinfo{$nic}{address} =~ /n\/a/) {
-                        # We have already processed an entry with adapter information.
-                        # This must be a second entry. Display an error. Currently only supporting
-                        # an adapter with a single IP address set.
-                        $error = "Interfaces with multiple IP addresses are not supported";
-                        $node_info{$node}{cur_status} = "";
-                        # Terminate loop on this error unless we are looking for hostname to display
-                        last unless ($grep_string =~ /(.*)hostname(.*)/);
+                    if ($content{Address} eq $node_info{$node}{bmcip} and $node_info{$node}{cur_status} eq "RSPCONFIG_GET_NIC_RESPONSE") {
+                        $status_info{RSPCONFIG_SET_NTPSERVERS_REQUEST}{init_url} =~ s/#NIC#/$nic/g;
+                        if ($next_status{"RSPCONFIG_GET_NIC_RESPONSE"}) {
+                            $node_info{$node}{cur_status} = $next_status{"RSPCONFIG_GET_NIC_RESPONSE"};
+                            gen_send_request($node);
+                            return;
+                        }
                     }
-                    $nicinfo{$nic}{address} = $content{Address};
+                    if ($nicinfo{$nic}{address}) {
+                        $multiple_error = "Interfaces with multiple IP addresses are not supported";
+                    }
+                    push @{ $nicinfo{$nic}{address} }, $content{Address};
                 }
                 if (defined($content{Gateway}) and $content{Gateway}) {
-                    $nicinfo{$nic}{gateway} = $content{Gateway};
+                    push @{ $nicinfo{$nic}{gateway} }, $content{Gateway};
                 }
                 if (defined($content{PrefixLength}) and $content{PrefixLength}) {
-                    $nicinfo{$nic}{prefix} = $content{PrefixLength};
+                    push @{ $nicinfo{$nic}{prefix} }, $content{PrefixLength};
                 }
                 if (defined($content{Origin})) {
-                    $nicinfo{$nic}{ipsrc} = $content{Origin};
-                    $nicinfo{$nic}{ipsrc} =~ s/^.*\.(\w+)/$1/;
+                    my $ipsrc_tmp = $content{Origin};
+                    $ipsrc_tmp =~ s/^.*\.(\w+)/$1/;
+                    push @{ $nicinfo{$nic}{ipsrc} }, $ipsrc_tmp;
                 }
-                 
+
                 if (defined($response_info->{data}->{$path}->{Id})) {
                     $nicinfo{$nic}{vlan} = $response_info->{data}->{$path}->{Id};
                 }
+
+                if (defined($response_info->{data}->{$path}->{NTPServers})) {
+                    $nicinfo{$nic}{ntpservers} = join(",", @{ $response_info->{data}->{$path}->{NTPServers} });
+                }
             }
         }
-        if ($grep_string =~ /(.*)hostname(.*)/) {
-            xCAT::SvrUtils::sendmsg("BMC hostname: $hostname", $callback, $node);
-            unless ($1 or $2) {
-                $wait_node_num--;
-                return;
-            }
-        }
+
         if (scalar (keys %nicinfo) == 0) {
-            $error = "No valid BMC network information";
+            my $error = "No valid BMC network information";
+            xCAT::SvrUtils::sendmsg([1, "$error"], $callback, $node);
             $node_info{$node}{cur_status} = "";  
-        }
-        if ($error) {
-            xCAT::SvrUtils::sendmsg([1,"$error"], $callback, $node);
         } else {
             my @address = ();
             my @ipsrc = ();
             my @netmask = ();
             my @gateway = ();
             my @vlan = (); 
+            my @ntpservers = ();
             my @nics = keys %nicinfo;
             foreach my $nic (@nics) {
                 my $addon_info = '';
                 if ($#nics > 1) {
                     $addon_info = " for $nic";
                 }
-                push @address, "BMC IP$addon_info: $nicinfo{$nic}{address}";
-                push @ipsrc, "BMC IP Source$addon_info: $nicinfo{$nic}{ipsrc}";
+
+                if ($nicinfo{$nic}{ntpservers}) {
+                    push @ntpservers, "BMC NTP Servers$addon_info: $nicinfo{$nic}{ntpservers}";
+                } else {
+                    push @ntpservers, "BMC NTP Servers$addon_info: None";
+                }
+
+                next if ($multiple_error);
+
+                push @address, "BMC IP$addon_info: ${ $nicinfo{$nic}{address} }[0]";
+                push @ipsrc, "BMC IP Source$addon_info: ${ $nicinfo{$nic}{ipsrc} }[0]";
                 if ($nicinfo{$nic}{address}) {
-                    my $mask_shift = 32 - $nicinfo{$nic}{prefix};
-                    my $decimal_mask = (2 ** $nicinfo{$nic}{prefix} - 1) << $mask_shift;
+                    my $mask_shift = 32 - ${ $nicinfo{$nic}{prefix} }[0];
+                    my $decimal_mask = (2 ** ${ $nicinfo{$nic}{prefix} }[0] - 1) << $mask_shift;
                     push @netmask, "BMC Netmask$addon_info: " . join('.', unpack("C4", pack("N", $decimal_mask)));
                 }
-                push @gateway, "BMC Gateway$addon_info: $nicinfo{$nic}{gateway} (default: $default_gateway)";
+                push @gateway, "BMC Gateway$addon_info: ${ $nicinfo{$nic}{gateway} }[0] (default: $default_gateway)";
                 push @vlan, "BMC VLAN ID$addon_info: $nicinfo{$nic}{vlan}";
             }
+            my $mul_out = 0;
             foreach my $opt (split /,/,$grep_string) {
+                if ($opt eq "hostname") {
+                    push @output, "BMC Hostname: $hostname";
+                } elsif ($opt eq "ntpservers") {
+                    push @output, @ntpservers;
+                }
+
+                if ($multiple_error and ($opt =~  /^ip$|^ipsrc$|^netmask$|^gateway$|^vlan$/)) {
+                    $mul_out = 1;
+                    next;
+                }
                 if ($opt eq "ip") {
                     push @output, @address; 
                 } elsif ($opt eq "ipsrc") {
@@ -2931,8 +3065,14 @@ sub rspconfig_response {
                     push @output, @vlan;
                 }
             }
+            
             xCAT::SvrUtils::sendmsg("$_", $callback, $node) foreach (@output);
-
+            if ($multiple_error and $mul_out) {
+                xCAT::SvrUtils::sendmsg([1, "$multiple_error"], $callback, $node);
+                $wait_node_num--;
+                return;
+            }
+            
             if ($grep_string eq "all") {
                 # If all current values equal the input, just print out message
                 my @checks = split("-", $status_info{RSPCONFIG_CHECK_RESPONSE}{argv});
@@ -2944,9 +3084,9 @@ sub rspconfig_response {
                 my ($check_ip,$check_netmask,$check_gateway) = @checks;
                 my $the_nic_to_config = undef;
                 foreach my $nic (@nics) {
-                    my $address = $nicinfo{$nic}{address};
-                    my $prefix = $nicinfo{$nic}{prefix};
-                    my $gateway = $nicinfo{$nic}{gateway};
+                    my $address = ${ $nicinfo{$nic}{address} }[0];
+                    my $prefix = ${ $nicinfo{$nic}{prefix} }[0];
+                    my $gateway = ${ $nicinfo{$nic}{gateway} }[0];
                     if ($check_ip eq $address and $check_netmask eq $prefix and $check_gateway eq $gateway) {
                         if (($check_vlan and $check_vlan eq $nicinfo{$nic}{vlan}) or !$check_vlan) {
                             $next_status{ $node_info{$node}{cur_status} } = "RSPCONFIG_PRINT_BMCINFO";
@@ -3083,6 +3223,78 @@ sub rspconfig_response {
     } else {
         $wait_node_num--;
     } 
+}
+
+#-------------------------------------------------------
+
+=head3  rspconfig_api_config_response
+
+  Deal with response of rspconfig command for configured subcommand
+
+  Currently understands only generic boolean setting and query responses
+  Input:
+        $node: nodename of current response
+        $response: Async return response
+
+=cut
+
+#-------------------------------------------------------
+sub rspconfig_api_config_response {
+    my $node = shift;
+    my $response = shift;
+
+    my $response_info;
+    my $value = -1;
+    $response_info = decode_json $response->content if ($response);
+
+
+    if ($node_info{$node}{cur_status}) {
+        if ($node_info{$node}{cur_status} eq "RSPCONFIG_API_CONFIG_ON_RESPONSE") {
+            if ($response_info->{'message'} eq $::RESPONSE_OK) {
+                xCAT::SvrUtils::sendmsg("BMC Setting ". $api_config_info{$::RSPCONFIG_CONFIGURED_API_KEY}{display_name} . "...", $callback, $node);
+            }
+            else {
+                xCAT::SvrUtils::sendmsg("Error setting RSPCONFIG_API_CONFIG_ON_RESPONSE", $callback, $node);
+            }
+        }
+        elsif ($node_info{$node}{cur_status} eq "RSPCONFIG_API_CONFIG_OFF_RESPONSE") {
+            if ($response_info->{'message'} eq $::RESPONSE_OK) {
+                xCAT::SvrUtils::sendmsg("BMC Setting ". $api_config_info{$::RSPCONFIG_CONFIGURED_API_KEY}{display_name} . "...", $callback, $node);
+            }
+            else {
+                xCAT::SvrUtils::sendmsg("Error unsetting RSPCONFIG_API_CONFIG_OFF_RESPONSE", $callback, $node);
+            }
+        }
+        elsif ($node_info{$node}{cur_status} eq "RSPCONFIG_API_CONFIG_QUERY_RESPONSE") {
+            if ($response_info->{'message'} eq $::RESPONSE_OK) {
+                foreach my $key_url (keys %{$response_info->{data}}) {
+                    if ($key_url eq  $api_config_info{$::RSPCONFIG_CONFIGURED_API_KEY}{attr_url}) {
+                        #Is this the attribute we are looking for ?
+                        $value = $response_info->{data}{$key_url};
+                        last;
+                    }
+                }
+                if (scalar($value) >= 0) {
+                    xCAT::SvrUtils::sendmsg($api_config_info{$::RSPCONFIG_CONFIGURED_API_KEY}{display_name} . ": $value", $callback, $node);
+                }
+                else {
+                    xCAT::SvrUtils::sendmsg("Unable to query value for " . $api_config_info{$::RSPCONFIG_CONFIGURED_API_KEY}{attr_url}, $callback, $node);
+                }
+            }
+            else {
+                xCAT::SvrUtils::sendmsg("Error query RSPCONFIG_API_CONFIG_QUERY_RESPONSE", $callback, $node);
+            }
+        }
+    }
+
+    if ($next_status{ $node_info{$node}{cur_status} }) {
+        $node_info{$node}{cur_status} = $next_status{ $node_info{$node}{cur_status} };
+        if ($node_info{$node}{method} || $status_info{ $node_info{$node}{cur_status} }{method}) {
+            gen_send_request($node);
+        }
+    } else {
+        $wait_node_num--;
+    }
 }
 
 #-------------------------------------------------------
@@ -3901,5 +4113,40 @@ sub rflash_upload {
 
     close (RFLASH_LOG_FILE_HANDLE);
     return 0;
+}
+
+#-------------------------------------------------------
+
+=head3  is_valid_config_api
+
+  Verify passed in subcomaand is defined in the api_config_info
+  Input:
+        $subcommand: subcommand to verify
+        $callback: callback for message display
+
+  Output:
+        returns index into the hash of the $subcommand
+        returns -1 if no match
+
+=cut
+
+#-------------------------------------------------------
+sub is_valid_config_api {
+    my ($subcommand, $callback) = @_;
+
+    my $subcommand_key = $subcommand;
+    my $subcommand_value;
+    if ($subcommand =~ /^(\w+)=(.*)/) {
+        $subcommand_key = $1;
+        $subcommand_value = $2;
+    }
+    foreach my $config_subcommand (keys %api_config_info) {
+        foreach my $config_attribute (keys %{ $api_config_info{$config_subcommand} }) {
+            if ($subcommand_key eq $api_config_info{$config_subcommand}{subcommand}) {
+                return $config_subcommand;
+            }
+        }
+    }
+    return -1;
 }
 1;
