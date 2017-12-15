@@ -1187,7 +1187,12 @@ sub parse_args {
             if ($updateid_passed) {
                 # Updateid was passed, check flags allowed with update id
                 if ($option_flag !~ /^--delete$|^-a$|^--activate$/) {
-                    return ([ 1, "Invalid option specified when an update id is provided: $option_flag" ]);
+                    my $optional_help_msg = "";
+                    if ($option_flag == "-d") {
+                        # For this special case, -d was changed to pass in a directory.
+                        $optional_help_msg = "Did you mean --delete?"
+                    }
+                    return ([ 1, "Invalid option specified when an update id is provided: $option_flag. $optional_help_msg" ]);
                 }
                 my $action = "activate";
                 if ($option_flag =~ /^--delete$/) {
