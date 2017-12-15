@@ -41,6 +41,21 @@ check:rc==0
 check:output=~__GETNODEATTR($$CN,hcp)__: \w+
 end
 
+start:rspconfig_list_ntpservers
+description: rspconfig list ntpservers info
+Attribute: $$CN-The operation object of rspconfig command
+cmd:rspconfig $$CN ntpservers
+check:rc==0
+check:output=~$$CN: BMC NTP Servers
+end
+
+start:rspconfig_set_ntpservers
+description: rspconfig set ntpservers
+Attribute: $$CN-The operation object of rspconfig command
+cmd:/opt/xcat/share/xcat/tools/autotest/testcase/rspconfig/rspconfig_ntp.sh $$CN $$MN
+check:rc==0
+end
+
 start:rspconfig_set_ip
 description:rspconfig  change openbmc ip 
 Attribute: $$CN-The operation object of rspconfig command
