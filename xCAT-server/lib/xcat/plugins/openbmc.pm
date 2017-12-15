@@ -2789,8 +2789,8 @@ sub rspconfig_response {
                 if (defined($content{Address}) and $content{Address}) {
                     if ($content{Address} eq $node_info{$node}{bmcip} and $node_info{$node}{cur_status} eq "RSPCONFIG_GET_NIC_RESPONSE") {
                         $status_info{RSPCONFIG_SET_NTPSERVERS_REQUEST}{init_url} =~ s/#NIC#/$nic/g;
-                        if ($next_status{ $node_info{$node}{cur_status} }) {
-                            $node_info{$node}{cur_status} = $next_status{ $node_info{$node}{cur_status} };
+                        if ($next_status{"RSPCONFIG_GET_NIC_RESPONSE"}) {
+                            $node_info{$node}{cur_status} = $next_status{"RSPCONFIG_GET_NIC_RESPONSE"};
                             gen_send_request($node);
                             return;
                         }
@@ -2901,9 +2901,9 @@ sub rspconfig_response {
                 my ($check_ip,$check_netmask,$check_gateway) = @checks;
                 my $the_nic_to_config = undef;
                 foreach my $nic (@nics) {
-                    my $address = $nicinfo{$nic}{address};
-                    my $prefix = $nicinfo{$nic}{prefix};
-                    my $gateway = $nicinfo{$nic}{gateway};
+                    my $address = ${ $nicinfo{$nic}{address} }[0];
+                    my $prefix = ${ $nicinfo{$nic}{prefix} }[0];
+                    my $gateway = ${ $nicinfo{$nic}{gateway} }[0];
                     if ($check_ip eq $address and $check_netmask eq $prefix and $check_gateway eq $gateway) {
                         if (($check_vlan and $check_vlan eq $nicinfo{$nic}{vlan}) or !$check_vlan) {
                             $next_status{ $node_info{$node}{cur_status} } = "RSPCONFIG_PRINT_BMCINFO";
