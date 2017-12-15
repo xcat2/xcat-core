@@ -2749,7 +2749,7 @@ sub rspconfig_response {
         my $hostname        = "";
         my $default_gateway = "n/a";
         my %nicinfo         = ();
-        my $error;
+        my $multiple_error = "";
         my @output;
         my $grep_string = $status_info{RSPCONFIG_GET_RESPONSE}{argv};
         foreach my $key_url (keys %{$response_info->{data}}) {
@@ -2782,12 +2782,11 @@ sub rspconfig_response {
                     $nicinfo{$nic}{ipsrc}   = ();
                     $nicinfo{$nic}{netmask} = ();
                     $nicinfo{$nic}{prefix}  = ();
-                    $nicinfo{$nic}{vlan}    = ();
+                    $nicinfo{$nic}{vlan}    = "Disable";
                 }
 
 
                 if (defined($content{Address}) and $content{Address}) {
-                    push @{ $nicinfo{$nic}{address} }, $content{Address};
                     if ($content{Address} eq $node_info{$node}{bmcip} and $node_info{$node}{cur_status} eq "RSPCONFIG_GET_NIC_RESPONSE") {
                         $status_info{RSPCONFIG_SET_NTPSERVERS_REQUEST}{init_url} =~ s/#NIC#/$nic/g;
                         if ($next_status{ $node_info{$node}{cur_status} }) {
@@ -2796,6 +2795,10 @@ sub rspconfig_response {
                             return;
                         }
                     }
+                    if ($nicinfo{$nic}{address}) {
+                        $multiple_error = "Interfaces with multiple IP addresses are not supported";
+                    }
+                    push @{ $nicinfo{$nic}{address} }, $content{Address};
                 }
                 if (defined($content{Gateway}) and $content{Gateway}) {
                     push @{ $nicinfo{$nic}{gateway} }, $content{Gateway};
@@ -2810,7 +2813,7 @@ sub rspconfig_response {
                 }
 
                 if (defined($response_info->{data}->{$path}->{Id})) {
-                    push @{ $nicinfo{$nic}{vlan} }, $response_info->{data}->{$path}->{Id};
+                    $nicinfo{$nic}{vlan} = $response_info->{data}->{$path}->{Id};
                 }
 
                 if (defined($response_info->{data}->{$path}->{NTPServers})) {
@@ -2820,11 +2823,10 @@ sub rspconfig_response {
         }
 
         if (scalar (keys %nicinfo) == 0) {
-            $error = "No valid BMC network information";
+            my $error = "No valid BMC network information";
             xCAT::SvrUtils::sendmsg([1, "$error"], $callback, $node);
             $node_info{$node}{cur_status} = "";  
         } else {
-            my $multiple_error = "";
             my @address = ();
             my @ipsrc = ();
             my @netmask = ();
@@ -2845,22 +2847,16 @@ sub rspconfig_response {
                 }
 
                 next if ($multiple_error);
-                my $nic_ip_num = @{ $nicinfo{$nic}{address} };
-                if ($nic_ip_num >= 2) {
-                    $multiple_error = "Interfaces with multiple IP addresses are not supported";
-                    next;
-                }
 
                 push @address, "BMC IP$addon_info: ${ $nicinfo{$nic}{address} }[0]";
                 push @ipsrc, "BMC IP Source$addon_info: ${ $nicinfo{$nic}{ipsrc} }[0]";
                 if ($nicinfo{$nic}{address}) {
                     my $mask_shift = 32 - ${ $nicinfo{$nic}{prefix} }[0];
-                    my $decimal_mask = (2 ** $nicinfo{$nic}{prefix} - 1) << $mask_shift;
+                    my $decimal_mask = (2 ** ${ $nicinfo{$nic}{prefix} }[0] - 1) << $mask_shift;
                     push @netmask, "BMC Netmask$addon_info: " . join('.', unpack("C4", pack("N", $decimal_mask)));
                 }
-                push @gateway, "BMC Gateway$addon_info: ${ $nicinfo{$nic}{gateway} }[0 ] (default: $default_gateway)";
-                push @{ $nicinfo{$nic}{vlan} }, "Disabled" unless ($nicinfo{$nic}{vlan});
-                push @vlan, "BMC VLAN ID$addon_info: ${ $nicinfo{$nic}{vlan} }[0]";
+                push @gateway, "BMC Gateway$addon_info: ${ $nicinfo{$nic}{gateway} }[0] (default: $default_gateway)";
+                push @vlan, "BMC VLAN ID$addon_info: $nicinfo{$nic}{vlan}";
             }
             my $mul_out = 0;
             foreach my $opt (split /,/,$grep_string) {
