@@ -1287,10 +1287,13 @@ sub update_namedconf {
         my @includes = split /[ ,]/, $site_entry;
         foreach (@includes) {
             if (defined($_)) {
-                push @newnamed, "include \"$_\";\n";
+                my $line = "include \"$_\";\n";
+                unless (grep{/$line/} @newnamed) {
+                    push @newnamed, "include \"$_\";\n";
+                }
             }
-        }
         push @newnamed, "\n";
+        }
     }
 
     unless ($slave) {
