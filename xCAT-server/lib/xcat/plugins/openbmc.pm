@@ -1180,7 +1180,7 @@ sub parse_args {
         }
         
         if (scalar @flash_arguments > 1) {
-            if (($option_flag =~ /^-a$|^--delete$/) or ($filename_passed and $option_flag !~ /^-d$/)) { 
+            if (($option_flag =~ /^-a$|^--activate$|^--delete$/) or ($filename_passed and $option_flag !~ /^-d$/)) { 
                 # Handles: 
                 #   - Multiple options not supported to activate/delete at the same time 
                 #   - Filename passed in and option is not -d for directory
