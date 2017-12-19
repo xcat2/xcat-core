@@ -1862,7 +1862,6 @@ sub parse_command_status {
             $next_status{RFLASH_UPDATE_CHECK_STATE_REQUEST} = "RFLASH_UPDATE_CHECK_STATE_RESPONSE";
             $next_status{RFLASH_SET_PRIORITY_REQUEST} = "RFLASH_SET_PRIORITY_RESPONSE";
             $next_status{RFLASH_SET_PRIORITY_RESPONSE} = "RFLASH_UPDATE_CHECK_STATE_REQUEST";
-            $next_status{RFLASH_UPDATE_CHECK_STATE_REQUEST} = "RFLASH_UPDATE_CHECK_STATE_RESPONSE";
             $next_status{RFLASH_UPDATE_CHECK_STATE_RESPONSE} = "RPOWER_BMCREBOOT_REQUEST";
             $next_status{RPOWER_BMCREBOOT_REQUEST} = "RPOWER_RESET_RESPONSE";
             $status_info{RPOWER_RESET_RESPONSE}{argv} = "bmcreboot";
@@ -2132,7 +2131,7 @@ sub deal_with_response {
             $wait_node_num--;
             return;    
         }
-        if (defined $status_info{RPOWER_BMC_STATUS_RESPONSE}{argv} and $status_info{RPOWER_BMC_STATUS_RESPONSE}{argv} =~ /bmcstate$/) {
+        if ($node_info{$node}{cur_status} eq "RPOWER_BMC_STATUS_RESPONSE" and defined $status_info{RPOWER_BMC_STATUS_RESPONSE}{argv} and $status_info{RPOWER_BMC_STATUS_RESPONSE}{argv} =~ /bmcstate$/) {
             retry_check_times($node, "RPOWER_BMC_STATUS_REQUEST", "bmc_conn_check_times", $::BMC_CHECK_INTERVAL, $response->status_line);
             return;
         }   
@@ -3795,8 +3794,15 @@ sub rflash_response {
             }
         }
     }
-    if ($node_info{$node}{cur_status} eq "RFLASH_UPDATE_ACTIVATE_RESPONSE" or $node_info{$node}{cur_status} eq "RFLASH_UPDATE_HOST_ACTIVATE_RESPONSE") {
-        my $flash_started_msg = "rflash started, please wait...";
+    if ($node_info{$node}{cur_status} eq "RFLASH_UPDATE_ACTIVATE_RESPONSE") {
+        my $flash_started_msg = "rflash $::UPLOAD_FILE_VERSION started, please wait...";
+        if ($::VERBOSE) {
+            xCAT::SvrUtils::sendmsg("$flash_started_msg", $callback, $node);
+        }
+        print RFLASH_LOG_FILE_HANDLE "$flash_started_msg\n";
+    }
+    if ($node_info{$node}{cur_status} eq "RFLASH_UPDATE_HOST_ACTIVATE_RESPONSE") {
+        my $flash_started_msg = "rflash $::UPLOAD_PNOR_VERSION started, please wait...";
         if ($::VERBOSE) {
             xCAT::SvrUtils::sendmsg("$flash_started_msg", $callback, $node);
         }
