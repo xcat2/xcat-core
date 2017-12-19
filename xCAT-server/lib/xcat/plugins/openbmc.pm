@@ -534,13 +534,13 @@ my %api_config_info = (
         type         => "boolean",
         subcommand   => "autoreboot",
     },
-    RSPCONFIG_POWERSUPPLY_REDUNDENCY => {
+    RSPCONFIG_POWER_SUPPLY_REDUNDANCY => {
         command      => "rspconfig",
         url          => "/sensors/chassis/PowerSupplyRedundancy",
-        attr_url     => "PowerSupplyRedundency",
-        display_name => "PowerSupplyRedundency",
+        attr_url     => "value",
+        display_name => "PowerSupplyRedundancy",
         type         => "boolean",
-        subcommand   => "powersupplyredundency",
+        subcommand   => "powersupplyredundancy",
     },
 );
 
@@ -1052,7 +1052,7 @@ sub parse_args {
         my $all_subcommand = "";
         foreach $subcommand (@ARGV) {
             $::RSPCONFIG_CONFIGURED_API_KEY = &is_valid_config_api($subcommand, $callback);
-            if ($::RSPCONFIG_CONFIGURED_API_KEY != -1) {
+            if ($::RSPCONFIG_CONFIGURED_API_KEY ne "-1") {
                 # subcommand defined in the configured API hash, return from here, the RSPCONFIG_CONFIGURED_API_KEY is the key into the hash
                 return;
             }
@@ -1426,7 +1426,7 @@ sub parse_command_status {
         my @options = ();
         my $num_subcommand = @$subcommands;
         #Setup chain to process the configured command
-        if ($::RSPCONFIG_CONFIGURED_API_KEY != -1) {
+        if ($::RSPCONFIG_CONFIGURED_API_KEY ne "-1") {
             $subcommand = $$subcommands[0];
             # Check if setting or quering
             if ($subcommand =~ /^(\w+)=(.*)/) {
@@ -3279,7 +3279,7 @@ sub rspconfig_api_config_response {
                         last;
                     }
                 }
-                if (scalar($value) >= 0) {
+                if (length $value >= 0) {
                     xCAT::SvrUtils::sendmsg($api_config_info{$::RSPCONFIG_CONFIGURED_API_KEY}{display_name} . ": $value", $callback, $node);
                 }
                 else {
@@ -4152,6 +4152,6 @@ sub is_valid_config_api {
             }
         }
     }
-    return -1;
+    return "-1";
 }
 1;
