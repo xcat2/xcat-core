@@ -3628,21 +3628,43 @@ sub rvitals_response {
     my $content_info;
     my @sorted_output;
 
+    my $f0 = "";
+    my $f1 = "";
+    my $f2 = "";
+    my $f3 = "";
+    my $front_id = "";
+    my $front_fault = "";
+    my $front_power = "";
+    my $rear_id = "";
+    my $rear_fault = "";
+    my $rear_power = "";
+
     foreach my $key_url (keys %{$response_info->{data}}) {
         my %content = %{ ${ $response_info->{data} }{$key_url} };
 
         my $label = (split(/\//, $key_url))[ -1 ];
-
         # replace underscore with space, uppercase the first letter 
         $label =~ s/_/ /g;
         $label =~ s/\b(\w)/\U$1/g;
+
         my $calc_value = undef;
 
         if ($node_info{$node}{cur_status} =~ "RVITALS_LEDS_RESPONSE") {
-            
             # Print out Led info
             $calc_value = (split(/\./, $content{State}))[-1];
             $content_info = $label . ": " . $calc_value ;
+
+            if ($key_url =~ "fan0") { $f0 = $calc_value; } 
+            if ($key_url =~ "fan1") { $f1 = $calc_value; } 
+            if ($key_url =~ "fan2") { $f2 = $calc_value; } 
+            if ($key_url =~ "fan3") { $f3 = $calc_value; } 
+            if ($key_url =~ "front_id") { $front_id = $calc_value; } 
+            if ($key_url =~ "front_fault") { $front_fault = $calc_value; } 
+            if ($key_url =~ "front_power") { $front_power = $calc_value; } 
+            if ($key_url =~ "rear_id") { $rear_id = $calc_value; } 
+            if ($key_url =~ "rear_fault") { $rear_fault = $calc_value; } 
+            if ($key_url =~ "rear_power") { $rear_power = $calc_value; } 
+
         } else {
             # print out Sensor info
             #
@@ -3676,9 +3698,24 @@ sub rvitals_response {
             } 
 
             $content_info = $label . ": " . $calc_value . " " . $sensor_units{ $content{Unit} };
+            push (@sorted_output, $content_info); #Save output in array
         } 
-        push (@sorted_output, $content_info); #Save output in array
     }
+
+    if ($node_info{$node}{cur_status} =~ "RVITALS_LEDS_RESPONSE") {
+        $content_info = "Front . . : Power:$front_power Fault:$front_fault Identify:$front_id";
+        push (@sorted_output, $content_info);
+        $content_info = "Rear. . . : Power:$rear_power Fault:$rear_fault Identify:$rear_id";
+        push (@sorted_output, $content_info);
+        # Fans 
+        if ($f0 =~ "Off" and $f1 =~ "Off" and $f2 eq "Off" and $f3 eq "Off") {
+            $content_info = "Front Fan : No lights active";
+        } else { 
+            $content_info = "Front Fan : Fan0:$f0 Fan1:$f1 Fan2:$f2 Fan3:$f3";
+        } 
+        push (@sorted_output, $content_info);
+    }
+
     # If sorted array has any contents, sort it and print it
     if (scalar @sorted_output > 0) {
         # Sort the output, alpha, then numeric
