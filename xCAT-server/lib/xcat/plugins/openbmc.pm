@@ -60,7 +60,7 @@ $::RSETBOOT_URL_PATH        = "boot";
 $::UPLOAD_AND_ACTIVATE      = 0;
 $::UPLOAD_ACTIVATE_STREAM   = 0;
 $::RFLASH_STREAM_NO_HOST_REBOOT = 0;
-
+$::TAR_FILE_PATH = "";
 $::NO_ATTRIBUTES_RETURNED   = "No attributes returned from the BMC.";
 
 $::UPLOAD_WAIT_ATTEMPT      = 6;
@@ -660,7 +660,7 @@ sub preprocess_request {
     my $extrargs  = $request->{arg};
     my @exargs    = ($request->{arg});
     my @requests;
-
+    $::cwd = $request->{cwd}->[0];
     if (ref($extrargs)) {
         @exargs = @$extrargs;
     }
@@ -1161,17 +1161,24 @@ sub parse_args {
                     }
                 }
             }
-            elsif ($opt =~ /.*\//) {
+            elsif ($opt =~ /^\//) {
                 $filepath_passed = 1;
                 push (@tarball_path, $opt);
             }
             else {
-                push (@flash_arguments, $opt);
-                $invalid_options .= $opt . " ";
+                my $tmppath = xCAT::Utils->full_path($opt, $::cwd);
+                if (opendir(TDIR, $tmppath)) {
+                    $filepath_passed = 1;
+                    push (@tarball_path, $tmppath);
+                    close(TDIR);
+                } else {
+                    push (@flash_arguments, $opt);
+                    $invalid_options .= $opt . " ";
+                }
             }
         }
         # show options parsed in bypass mode
-        print "DEBUG filename=$filename_passed, updateid=$updateid_passed, options=$option_flag, invalid=$invalid_options rflash_arguments=@flash_arguments\n";
+        print "DEBUG filename=$filename_passed, updateid=$updateid_passed, options=$option_flag, tar_file_path=@tarball_path, invalid=$invalid_options rflash_arguments=@flash_arguments\n";
 
         if ($option_flag =~ tr{ }{ } > 0) { 
             unless ($verbose or $option_flag =~/^-d --no-host-reboot$/) {
@@ -1224,8 +1231,10 @@ sub parse_args {
                     }
                     if (!opendir(DIR, $tarball_path[0])) {
                         return ([1, "Can't open directory : $tarball_path[0]"]);
+                    } else {
+                        $::TAR_FILE_PATH = $tarball_path[0];
+                        closedir(DIR);
                     }
-                    closedir(DIR);
                 } elsif ($option_flag =~ /^-c$|^--check$|^-u$|^--upload$|^-a$|^--activate$/) {
                     return ([ 1, "Invalid firmware specified with $option_flag" ]);
                 } else {
@@ -1730,13 +1739,13 @@ sub parse_command_status {
                     # Display firmware version of the specified .tar file
                     xCAT::SvrUtils::sendmsg("TAR $purpose_value Firmware Product Version\: $version_value", $callback);
                 }
-            } elsif (opendir(DIR, $update_file)) {
+            } elsif (opendir(DIR, $::TAR_FILE_PATH)) {
                 my @tar_files = readdir(DIR);
                 foreach my $file (@tar_files) {
                     if ($file !~ /.*\.tar$/) {
                         next;
                     } else {
-                        my $full_path_file = $update_file."/".$file;
+                        my $full_path_file = $::TAR_FILE_PATH."/".$file;
                         $full_path_file=~s/\/\//\//g;
                         my $firmware_version_in_file = `$grep_cmd $version_tag $full_path_file`;
                         my $purpose_version_in_file = `$grep_cmd $purpose_tag $full_path_file`;
