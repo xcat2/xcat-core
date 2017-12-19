@@ -27,7 +27,8 @@ if [ -n "$master" ] && [ -n "$domain" ]; then
 	echo "search $domain" >$conf_file
     if [[ "$nameservers" != "" ]]; then
         for ns in ${nameservers//,/ }; do
-    	    echo "nameserver ${ns/<xcatmaster>/$master}" >>$conf_file
+    	    grep -q $ns $conf_file || \
+                echo "nameserver ${ns/<xcatmaster>/$master}" >>$conf_file
         done
     else
         echo "nameserver $master" >>$conf_file
