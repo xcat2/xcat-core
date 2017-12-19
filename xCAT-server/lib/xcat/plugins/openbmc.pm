@@ -3709,9 +3709,9 @@ sub rvitals_response {
         push (@sorted_output, $content_info);
         # Fans 
         if ($f0 =~ "Off" and $f1 =~ "Off" and $f2 eq "Off" and $f3 eq "Off") {
-            $content_info = "Front Fan : No lights active";
+            $content_info = "Front Fans: No LEDs On";
         } else { 
-            $content_info = "Front Fan : Fan0:$f0 Fan1:$f1 Fan2:$f2 Fan3:$f3";
+            $content_info = "Front Fans: fan0:$f0 fan1:$f1 fan2:$f2 fan3:$f3";
         } 
         push (@sorted_output, $content_info);
     }
