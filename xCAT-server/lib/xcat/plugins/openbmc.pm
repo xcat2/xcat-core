@@ -2890,7 +2890,7 @@ sub reventlog_response {
             xCAT::SvrUtils::sendmsg("Resolved $log_id.", $callback, $node);
         }
         my @entries = split (',', $status_info{REVENTLOG_RESOLVED_REQUEST}{argv} );
-        if (@entries) {
+        if ((scalar @entries) > 0) {
             my $log_id = shift @entries;
             $next_status{"REVENTLOG_RESOLVED_RESPONSE"} = "REVENTLOG_RESOLVED_REQUEST";
             $next_status{"REVENTLOG_RESOLVED_REQUEST"} = "REVENTLOG_RESOLVED_RESPONSE";
@@ -2900,6 +2900,10 @@ sub reventlog_response {
             # If a list is provided, set the remaining log entries back to status_info 
             my $remaining = join (',', @entries);
             $status_info{REVENTLOG_RESOLVED_REQUEST}{argv} = $remaining;
+        } else {
+            # Break out of this loop if there are no more IDs to resolve 
+            $wait_node_num--;
+            return;
         }
     } else {
         my $entry_string = $status_info{REVENTLOG_RESPONSE}{argv};
