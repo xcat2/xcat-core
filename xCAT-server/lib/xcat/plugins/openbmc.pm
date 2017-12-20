@@ -449,6 +449,14 @@ my %status_info = (
     RSPCONFIG_SSHCFG_RESPONSE => {
         process        => \&rspconfig_sshcfg_response,
     },
+    RSPCONFIG_RESET_GARD_REQUEST => {
+        method         => "POST",
+        init_url       => "/org/open_power/control/gard/action/Reset",
+        data           => "[]", 
+    }, 
+    RSPCONFIG_RESET_GARD_RESPONSE => {
+        process        => \&rspconfig_response,
+    },
     RSPCONFIG_DUMP_LIST_REQUEST => {
         method         => "GET",
         init_url       => "$openbmc_project_url/dump/enumerate",
@@ -1096,6 +1104,9 @@ sub parse_args {
             } elsif ($subcommand =~ /^sshcfg$/) {
                 return ([ 1, "Configure sshcfg must be issued without other options." ]) if ($num_subcommand > 1);
                 $setorget = ""; # SSH Keys are copied using a RShellAPI, not REST API
+            } elsif ($subcommand =~ /^reset_gard$/) {
+                return  ([ 1, "Reset GARD must be issued without other options."]) if ($num_subcommand > 1);
+                $setorget = "";
             } elsif ($subcommand eq "dump") {
                 my $option = "";
                 $option = $ARGV[1] if (defined $ARGV[1]);
@@ -1510,6 +1521,11 @@ sub parse_command_status {
                 $status_info{RSPCONFIG_GET_RESPONSE}{argv} = "ntpservers";
                 $status_info{RSPCONFIG_SET_RESPONSE}{argv} = "NTPServers";
                 $status_info{RSPCONFIG_SET_NTPSERVERS_REQUEST}{data} = "[\"$1\"]";
+                return 0;
+            }
+            if ($subcommand eq "reset_gard") {
+                $next_status{LOGIN_RESPONSE} = "RSPCONFIG_RESET_GARD_REQUEST";
+                $next_status{RSPCONFIG_RESET_GARD_REQUEST} = "RSPCONFIG_RESET_GARD_RESPONSE";
                 return 0;
             }
         }
@@ -3224,6 +3240,12 @@ sub rspconfig_response {
         }
         retry_after($node, $next_status{ $node_info{$node}{cur_status} }, $::RSPCONFIG_WAIT_IP_DONE);
         return;
+    }
+
+    if ($node_info{$node}{cur_status} eq "RSPCONFIG_RESET_GARD_RESPONSE") {
+        if ($response_info->{'message'} eq $::RESPONSE_OK) {
+            xCAT::SvrUtils::sendmsg("GARD reset", $callback, $node);
+        }
     }
 
     if ($next_status{ $node_info{$node}{cur_status} }) {
