@@ -1871,7 +1871,6 @@ sub parse_command_status {
             $next_status{RFLASH_UPDATE_CHECK_STATE_REQUEST} = "RFLASH_UPDATE_CHECK_STATE_RESPONSE";
             $next_status{RFLASH_SET_PRIORITY_REQUEST} = "RFLASH_SET_PRIORITY_RESPONSE";
             $next_status{RFLASH_SET_PRIORITY_RESPONSE} = "RFLASH_UPDATE_CHECK_STATE_REQUEST";
-            $next_status{RFLASH_UPDATE_CHECK_STATE_REQUEST} = "RFLASH_UPDATE_CHECK_STATE_RESPONSE";
             $next_status{RFLASH_UPDATE_CHECK_STATE_RESPONSE} = "RPOWER_BMCREBOOT_REQUEST";
             $next_status{RPOWER_BMCREBOOT_REQUEST} = "RPOWER_RESET_RESPONSE";
             $status_info{RPOWER_RESET_RESPONSE}{argv} = "bmcreboot";
@@ -2141,7 +2140,7 @@ sub deal_with_response {
             $wait_node_num--;
             return;    
         }
-        if (defined $status_info{RPOWER_BMC_STATUS_RESPONSE}{argv} and $status_info{RPOWER_BMC_STATUS_RESPONSE}{argv} =~ /bmcstate$/) {
+        if ($node_info{$node}{cur_status} eq "RPOWER_BMC_STATUS_RESPONSE" and defined $status_info{RPOWER_BMC_STATUS_RESPONSE}{argv} and $status_info{RPOWER_BMC_STATUS_RESPONSE}{argv} =~ /bmcstate$/) {
             retry_check_times($node, "RPOWER_BMC_STATUS_REQUEST", "bmc_conn_check_times", $::BMC_CHECK_INTERVAL, $response->status_line);
             return;
         }   
@@ -3804,8 +3803,15 @@ sub rflash_response {
             }
         }
     }
-    if ($node_info{$node}{cur_status} eq "RFLASH_UPDATE_ACTIVATE_RESPONSE" or $node_info{$node}{cur_status} eq "RFLASH_UPDATE_HOST_ACTIVATE_RESPONSE") {
-        my $flash_started_msg = "rflash started, please wait...";
+    if ($node_info{$node}{cur_status} eq "RFLASH_UPDATE_ACTIVATE_RESPONSE") {
+        my $flash_started_msg = "rflash $::UPLOAD_FILE_VERSION started, please wait...";
+        if ($::VERBOSE) {
+            xCAT::SvrUtils::sendmsg("$flash_started_msg", $callback, $node);
+        }
+        print RFLASH_LOG_FILE_HANDLE "$flash_started_msg\n";
+    }
+    if ($node_info{$node}{cur_status} eq "RFLASH_UPDATE_HOST_ACTIVATE_RESPONSE") {
+        my $flash_started_msg = "rflash $::UPLOAD_PNOR_VERSION started, please wait...";
         if ($::VERBOSE) {
             xCAT::SvrUtils::sendmsg("$flash_started_msg", $callback, $node);
         }
@@ -4035,7 +4041,7 @@ sub rflash_upload {
     my $content_login = '{ "data": [ "' . $node_info{$node}{username} .'", "' . $node_info{$node}{password} . '" ] }';
     my $content_logout = '{ "data": [ ] }';
     my $cjar_id = "/tmp/_xcat_cjar.$node";
-    my @curl_upload_cmds;
+    my %curl_upload_cmds;
     # curl commands
     my $curl_login_cmd  = "curl -c $cjar_id -k -H 'Content-Type: application/json' -X POST $request_url/login -d '" . $content_login . "'";
     my $curl_logout_cmd = "curl -b $cjar_id -k -H 'Content-Type: application/json' -X POST $request_url/logout -d '" . $content_logout . "'";
@@ -4043,7 +4049,7 @@ sub rflash_upload {
     if (%fw_tar_files) {
         foreach my $key (keys %fw_tar_files) {
             my $curl_upload_cmd = "curl -b $cjar_id -k -H 'Content-Type: application/octet-stream' -X PUT -T " . $key . " $request_url/upload/image/";
-            push(@curl_upload_cmds, $curl_upload_cmd);
+            $curl_upload_cmds{$key}=$curl_upload_cmd;
         }
     }
 
@@ -4069,9 +4075,10 @@ sub rflash_upload {
         return 1;
     }
     if ($h->{message} eq $::RESPONSE_OK) {
-        foreach my $upload_cmd(@curl_upload_cmds){
+        if(%curl_upload_cmds){
             while((my $file,my $version)=each(%fw_tar_files)){
                 my $uploading_msg = "Uploading $file ...";
+                my $upload_cmd = $curl_upload_cmds{$file};
                 # Login successfull, upload the file
                 if ($::VERBOSE) {
                     xCAT::SvrUtils::sendmsg("$uploading_msg", $callback, $node);
