@@ -60,7 +60,7 @@ $::RSETBOOT_URL_PATH        = "boot";
 $::UPLOAD_AND_ACTIVATE      = 0;
 $::UPLOAD_ACTIVATE_STREAM   = 0;
 $::RFLASH_STREAM_NO_HOST_REBOOT = 0;
-
+$::TAR_FILE_PATH = "";
 $::NO_ATTRIBUTES_RETURNED   = "No attributes returned from the BMC.";
 
 $::UPLOAD_WAIT_ATTEMPT      = 6;
@@ -660,7 +660,7 @@ sub preprocess_request {
     my $extrargs  = $request->{arg};
     my @exargs    = ($request->{arg});
     my @requests;
-
+    $::cwd = $request->{cwd}->[0];
     if (ref($extrargs)) {
         @exargs = @$extrargs;
     }
@@ -1161,17 +1161,24 @@ sub parse_args {
                     }
                 }
             }
-            elsif ($opt =~ /.*\//) {
+            elsif ($opt =~ /^\//) {
                 $filepath_passed = 1;
                 push (@tarball_path, $opt);
             }
             else {
-                push (@flash_arguments, $opt);
-                $invalid_options .= $opt . " ";
+                my $tmppath = xCAT::Utils->full_path($opt, $::cwd);
+                if (opendir(TDIR, $tmppath)) {
+                    $filepath_passed = 1;
+                    push (@tarball_path, $tmppath);
+                    close(TDIR);
+                } else {
+                    push (@flash_arguments, $opt);
+                    $invalid_options .= $opt . " ";
+                }
             }
         }
         # show options parsed in bypass mode
-        print "DEBUG filename=$filename_passed, updateid=$updateid_passed, options=$option_flag, invalid=$invalid_options rflash_arguments=@flash_arguments\n";
+        print "DEBUG filename=$filename_passed, updateid=$updateid_passed, options=$option_flag, tar_file_path=@tarball_path, invalid=$invalid_options rflash_arguments=@flash_arguments\n";
 
         if ($option_flag =~ tr{ }{ } > 0) { 
             unless ($verbose or $option_flag =~/^-d --no-host-reboot$/) {
@@ -1180,7 +1187,10 @@ sub parse_args {
         }
         
         if (scalar @flash_arguments > 1) {
-            if ($filename_passed and $option_flag !~ /^-d$/) {
+            if (($option_flag =~ /^-a$|^--activate$|^--delete$/) or ($filename_passed and $option_flag !~ /^-d$/)) { 
+                # Handles: 
+                #   - Multiple options not supported to activate/delete at the same time 
+                #   - Filename passed in and option is not -d for directory
                 return ([1, "More than one firmware specified is not supported."]);
             } elsif ($option_flag =~ /^-d$/) {
                 return ([1, "More than one directory specified is not supported."]);
@@ -1199,7 +1209,12 @@ sub parse_args {
             if ($updateid_passed) {
                 # Updateid was passed, check flags allowed with update id
                 if ($option_flag !~ /^--delete$|^-a$|^--activate$/) {
-                    return ([ 1, "Invalid option specified when an update id is provided: $option_flag" ]);
+                    my $optional_help_msg = "";
+                    if ($option_flag == "-d") {
+                        # For this special case, -d was changed to pass in a directory.
+                        $optional_help_msg = "Did you mean --delete?"
+                    }
+                    return ([ 1, "Invalid option specified when an update id is provided: $option_flag. $optional_help_msg" ]);
                 }
                 my $action = "activate";
                 if ($option_flag =~ /^--delete$/) {
@@ -1216,8 +1231,10 @@ sub parse_args {
                     }
                     if (!opendir(DIR, $tarball_path[0])) {
                         return ([1, "Can't open directory : $tarball_path[0]"]);
+                    } else {
+                        $::TAR_FILE_PATH = $tarball_path[0];
+                        closedir(DIR);
                     }
-                    closedir(DIR);
                 } elsif ($option_flag =~ /^-c$|^--check$|^-u$|^--upload$|^-a$|^--activate$/) {
                     return ([ 1, "Invalid firmware specified with $option_flag" ]);
                 } else {
@@ -1722,13 +1739,13 @@ sub parse_command_status {
                     # Display firmware version of the specified .tar file
                     xCAT::SvrUtils::sendmsg("TAR $purpose_value Firmware Product Version\: $version_value", $callback);
                 }
-            } elsif (opendir(DIR, $update_file)) {
+            } elsif (opendir(DIR, $::TAR_FILE_PATH)) {
                 my @tar_files = readdir(DIR);
                 foreach my $file (@tar_files) {
                     if ($file !~ /.*\.tar$/) {
                         next;
                     } else {
-                        my $full_path_file = $update_file."/".$file;
+                        my $full_path_file = $::TAR_FILE_PATH."/".$file;
                         $full_path_file=~s/\/\//\//g;
                         my $firmware_version_in_file = `$grep_cmd $version_tag $full_path_file`;
                         my $purpose_version_in_file = `$grep_cmd $purpose_tag $full_path_file`;
@@ -1854,7 +1871,6 @@ sub parse_command_status {
             $next_status{RFLASH_UPDATE_CHECK_STATE_REQUEST} = "RFLASH_UPDATE_CHECK_STATE_RESPONSE";
             $next_status{RFLASH_SET_PRIORITY_REQUEST} = "RFLASH_SET_PRIORITY_RESPONSE";
             $next_status{RFLASH_SET_PRIORITY_RESPONSE} = "RFLASH_UPDATE_CHECK_STATE_REQUEST";
-            $next_status{RFLASH_UPDATE_CHECK_STATE_REQUEST} = "RFLASH_UPDATE_CHECK_STATE_RESPONSE";
             $next_status{RFLASH_UPDATE_CHECK_STATE_RESPONSE} = "RPOWER_BMCREBOOT_REQUEST";
             $next_status{RPOWER_BMCREBOOT_REQUEST} = "RPOWER_RESET_RESPONSE";
             $status_info{RPOWER_RESET_RESPONSE}{argv} = "bmcreboot";
@@ -2124,7 +2140,7 @@ sub deal_with_response {
             $wait_node_num--;
             return;    
         }
-        if (defined $status_info{RPOWER_BMC_STATUS_RESPONSE}{argv} and $status_info{RPOWER_BMC_STATUS_RESPONSE}{argv} =~ /bmcstate$/) {
+        if ($node_info{$node}{cur_status} eq "RPOWER_BMC_STATUS_RESPONSE" and defined $status_info{RPOWER_BMC_STATUS_RESPONSE}{argv} and $status_info{RPOWER_BMC_STATUS_RESPONSE}{argv} =~ /bmcstate$/) {
             retry_check_times($node, "RPOWER_BMC_STATUS_REQUEST", "bmc_conn_check_times", $::BMC_CHECK_INTERVAL, $response->status_line);
             return;
         }   
@@ -3787,8 +3803,15 @@ sub rflash_response {
             }
         }
     }
-    if ($node_info{$node}{cur_status} eq "RFLASH_UPDATE_ACTIVATE_RESPONSE" or $node_info{$node}{cur_status} eq "RFLASH_UPDATE_HOST_ACTIVATE_RESPONSE") {
-        my $flash_started_msg = "rflash started, please wait...";
+    if ($node_info{$node}{cur_status} eq "RFLASH_UPDATE_ACTIVATE_RESPONSE") {
+        my $flash_started_msg = "rflash $::UPLOAD_FILE_VERSION started, please wait...";
+        if ($::VERBOSE) {
+            xCAT::SvrUtils::sendmsg("$flash_started_msg", $callback, $node);
+        }
+        print RFLASH_LOG_FILE_HANDLE "$flash_started_msg\n";
+    }
+    if ($node_info{$node}{cur_status} eq "RFLASH_UPDATE_HOST_ACTIVATE_RESPONSE") {
+        my $flash_started_msg = "rflash $::UPLOAD_PNOR_VERSION started, please wait...";
         if ($::VERBOSE) {
             xCAT::SvrUtils::sendmsg("$flash_started_msg", $callback, $node);
         }
@@ -4018,7 +4041,7 @@ sub rflash_upload {
     my $content_login = '{ "data": [ "' . $node_info{$node}{username} .'", "' . $node_info{$node}{password} . '" ] }';
     my $content_logout = '{ "data": [ ] }';
     my $cjar_id = "/tmp/_xcat_cjar.$node";
-    my @curl_upload_cmds;
+    my %curl_upload_cmds;
     # curl commands
     my $curl_login_cmd  = "curl -c $cjar_id -k -H 'Content-Type: application/json' -X POST $request_url/login -d '" . $content_login . "'";
     my $curl_logout_cmd = "curl -b $cjar_id -k -H 'Content-Type: application/json' -X POST $request_url/logout -d '" . $content_logout . "'";
@@ -4026,7 +4049,7 @@ sub rflash_upload {
     if (%fw_tar_files) {
         foreach my $key (keys %fw_tar_files) {
             my $curl_upload_cmd = "curl -b $cjar_id -k -H 'Content-Type: application/octet-stream' -X PUT -T " . $key . " $request_url/upload/image/";
-            push(@curl_upload_cmds, $curl_upload_cmd);
+            $curl_upload_cmds{$key}=$curl_upload_cmd;
         }
     }
 
@@ -4052,9 +4075,10 @@ sub rflash_upload {
         return 1;
     }
     if ($h->{message} eq $::RESPONSE_OK) {
-        foreach my $upload_cmd(@curl_upload_cmds){
+        if(%curl_upload_cmds){
             while((my $file,my $version)=each(%fw_tar_files)){
                 my $uploading_msg = "Uploading $file ...";
+                my $upload_cmd = $curl_upload_cmds{$file};
                 # Login successfull, upload the file
                 if ($::VERBOSE) {
                     xCAT::SvrUtils::sendmsg("$uploading_msg", $callback, $node);
