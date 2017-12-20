@@ -449,12 +449,12 @@ my %status_info = (
     RSPCONFIG_SSHCFG_RESPONSE => {
         process        => \&rspconfig_sshcfg_response,
     },
-    RSPCONFIG_RESET_GARD_REQUEST => {
+    RSPCONFIG_CLEAR_GARD_REQUEST => {
         method         => "POST",
         init_url       => "/org/open_power/control/gard/action/Reset",
         data           => "[]", 
     }, 
-    RSPCONFIG_RESET_GARD_RESPONSE => {
+    RSPCONFIG_CLEAR_GARD_RESPONSE => {
         process        => \&rspconfig_response,
     },
     RSPCONFIG_DUMP_LIST_REQUEST => {
@@ -1104,9 +1104,13 @@ sub parse_args {
             } elsif ($subcommand =~ /^sshcfg$/) {
                 return ([ 1, "Configure sshcfg must be issued without other options." ]) if ($num_subcommand > 1);
                 $setorget = ""; # SSH Keys are copied using a RShellAPI, not REST API
-            } elsif ($subcommand =~ /^reset_gard$/) {
-                return  ([ 1, "Reset GARD must be issued without other options."]) if ($num_subcommand > 1);
+            } elsif ($subcommand eq "gard") {
+                my $option = "";
+                $option = $ARGV[1] if (defined $ARGV[1]);
+                return  ([ 1, "Clear GARD cannot be issued with other options." ]) if ($num_subcommand > 2);
+                return ([ 1, "Invalid parameter for $command $subcommand $option" ]) if ($option !~ /^-c$|^--clear$/);
                 $setorget = "";
+                return;
             } elsif ($subcommand eq "dump") {
                 my $option = "";
                 $option = $ARGV[1] if (defined $ARGV[1]);
@@ -1523,11 +1527,6 @@ sub parse_command_status {
                 $status_info{RSPCONFIG_SET_NTPSERVERS_REQUEST}{data} = "[\"$1\"]";
                 return 0;
             }
-            if ($subcommand eq "reset_gard") {
-                $next_status{LOGIN_RESPONSE} = "RSPCONFIG_RESET_GARD_REQUEST";
-                $next_status{RSPCONFIG_RESET_GARD_REQUEST} = "RSPCONFIG_RESET_GARD_RESPONSE";
-                return 0;
-            }
         }
 
         $subcommand = $$subcommands[0];
@@ -1578,6 +1577,10 @@ sub parse_command_status {
                 $next_status{RSPCONFIG_DUMP_CHECK_RESPONSE} = "RSPCONFIG_DUMP_DOWNLOAD_REQUEST";
                 $next_status{RSPCONFIG_DUMP_DOWNLOAD_REQUEST} = "RSPCONFIG_DUMP_DOWNLOAD_RESPONSE";
             }
+            return 0;
+        } elsif ($subcommand eq "gard") {
+            $next_status{LOGIN_RESPONSE} = "RSPCONFIG_CLEAR_GARD_REQUEST";
+            $next_status{RSPCONFIG_CLEAR_GARD_REQUEST} = "RSPCONFIG_CLEAR_GARD_RESPONSE";
             return 0;
         }
 
@@ -3242,9 +3245,9 @@ sub rspconfig_response {
         return;
     }
 
-    if ($node_info{$node}{cur_status} eq "RSPCONFIG_RESET_GARD_RESPONSE") {
+    if ($node_info{$node}{cur_status} eq "RSPCONFIG_CLEAR_GARD_RESPONSE") {
         if ($response_info->{'message'} eq $::RESPONSE_OK) {
-            xCAT::SvrUtils::sendmsg("GARD reset", $callback, $node);
+            xCAT::SvrUtils::sendmsg("GARD cleared", $callback, $node);
         }
     }
 
