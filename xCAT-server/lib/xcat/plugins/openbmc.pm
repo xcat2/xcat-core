@@ -4032,7 +4032,7 @@ sub rflash_upload {
     my $content_login = '{ "data": [ "' . $node_info{$node}{username} .'", "' . $node_info{$node}{password} . '" ] }';
     my $content_logout = '{ "data": [ ] }';
     my $cjar_id = "/tmp/_xcat_cjar.$node";
-    my @curl_upload_cmds;
+    my %curl_upload_cmds;
     # curl commands
     my $curl_login_cmd  = "curl -c $cjar_id -k -H 'Content-Type: application/json' -X POST $request_url/login -d '" . $content_login . "'";
     my $curl_logout_cmd = "curl -b $cjar_id -k -H 'Content-Type: application/json' -X POST $request_url/logout -d '" . $content_logout . "'";
@@ -4040,7 +4040,7 @@ sub rflash_upload {
     if (%fw_tar_files) {
         foreach my $key (keys %fw_tar_files) {
             my $curl_upload_cmd = "curl -b $cjar_id -k -H 'Content-Type: application/octet-stream' -X PUT -T " . $key . " $request_url/upload/image/";
-            push(@curl_upload_cmds, $curl_upload_cmd);
+            $curl_upload_cmds{$key}=$curl_upload_cmd;
         }
     }
 
@@ -4066,9 +4066,10 @@ sub rflash_upload {
         return 1;
     }
     if ($h->{message} eq $::RESPONSE_OK) {
-        foreach my $upload_cmd(@curl_upload_cmds){
+        if(%curl_upload_cmds){
             while((my $file,my $version)=each(%fw_tar_files)){
                 my $uploading_msg = "Uploading $file ...";
+                my $upload_cmd = $curl_upload_cmds{$file};
                 # Login successfull, upload the file
                 if ($::VERBOSE) {
                     xCAT::SvrUtils::sendmsg("$uploading_msg", $callback, $node);
