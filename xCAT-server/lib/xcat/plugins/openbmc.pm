@@ -3703,15 +3703,15 @@ sub rvitals_response {
     }
 
     if ($node_info{$node}{cur_status} =~ "RVITALS_LEDS_RESPONSE") {
-        $content_info = "Front . . : Power:$front_power Fault:$front_fault Identify:$front_id";
+        $content_info = "Front . . . . . : Power:$front_power Fault:$front_fault Identify:$front_id";
         push (@sorted_output, $content_info);
-        $content_info = "Rear. . . : Power:$rear_power Fault:$rear_fault Identify:$rear_id";
+        $content_info = "Rear  . . . . . : Power:$rear_power Fault:$rear_fault Identify:$rear_id";
         push (@sorted_output, $content_info);
         # Fans 
         if ($f0 =~ "Off" and $f1 =~ "Off" and $f2 eq "Off" and $f3 eq "Off") {
-            $content_info = "Front Fans: No LEDs On";
+            $content_info = "Front Fans  . . : No LEDs On";
         } else { 
-            $content_info = "Front Fans: fan0:$f0 fan1:$f1 fan2:$f2 fan3:$f3";
+            $content_info = "Front Fans  . . : fan0:$f0 fan1:$f1 fan2:$f2 fan3:$f3";
         } 
         push (@sorted_output, $content_info);
     }
