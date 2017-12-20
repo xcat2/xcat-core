@@ -1067,15 +1067,17 @@ sub parse_args {
             return ([ 1, "Unsupported command: $command $subcommand" ]);
         }
     } elsif ($command eq "reventlog") {
-        # 
-        # TODO, resolved should NOT be supported if range is provided 
-        #
         $subcommand = "all" if (!defined($ARGV[0]));
         if ($subcommand =~ /^(\w+)=(.*)/) {
             my $key = $1;
             my $value = $2;
             if (not $value) { 
                 return ([ 1, "$usage_errormsg $reventlog_no_id_resolved_errormsg" ]);
+            }
+
+            my $nodes_num = @$noderange;
+            if (@$noderange > 1) { 
+                xCAT::SvrUtils::sendmsg("WARN: Resolving faults over a xCAT noderange is not recommended.", $callback);
             }
 
             xCAT::SvrUtils::sendmsg("Attempting to resolve the following log entries: $value...", $callback);
