@@ -3628,16 +3628,7 @@ sub rvitals_response {
     my $content_info;
     my @sorted_output;
 
-    my $f0 = "";
-    my $f1 = "";
-    my $f2 = "";
-    my $f3 = "";
-    my $front_id = "";
-    my $front_fault = "";
-    my $front_power = "";
-    my $rear_id = "";
-    my $rear_fault = "";
-    my $rear_power = "";
+    my %leds = ();
 
     foreach my $key_url (keys %{$response_info->{data}}) {
         my %content = %{ ${ $response_info->{data} }{$key_url} };
@@ -3654,16 +3645,16 @@ sub rvitals_response {
             $calc_value = (split(/\./, $content{State}))[-1];
             $content_info = $label . ": " . $calc_value ;
 
-            if ($key_url =~ "fan0") { $f0 = $calc_value; } 
-            if ($key_url =~ "fan1") { $f1 = $calc_value; } 
-            if ($key_url =~ "fan2") { $f2 = $calc_value; } 
-            if ($key_url =~ "fan3") { $f3 = $calc_value; } 
-            if ($key_url =~ "front_id") { $front_id = $calc_value; } 
-            if ($key_url =~ "front_fault") { $front_fault = $calc_value; } 
-            if ($key_url =~ "front_power") { $front_power = $calc_value; } 
-            if ($key_url =~ "rear_id") { $rear_id = $calc_value; } 
-            if ($key_url =~ "rear_fault") { $rear_fault = $calc_value; } 
-            if ($key_url =~ "rear_power") { $rear_power = $calc_value; } 
+            if ($key_url =~ "fan0") { $leds{fan0} = $calc_value; } 
+            if ($key_url =~ "fan1") { $leds{fan1} = $calc_value; } 
+            if ($key_url =~ "fan2") { $leds{fan2} = $calc_value; } 
+            if ($key_url =~ "fan3") { $leds{fan3} = $calc_value; } 
+            if ($key_url =~ "front_id") { $leds{front_id} = $calc_value; } 
+            if ($key_url =~ "front_fault") { $leds{front_fault} = $calc_value; } 
+            if ($key_url =~ "front_power") { $leds{front_power} = $calc_value; } 
+            if ($key_url =~ "rear_id") { $leds{rear_id} = $calc_value; } 
+            if ($key_url =~ "rear_fault") { $leds{rear_fault} = $calc_value; } 
+            if ($key_url =~ "rear_power") { $leds{rear_power} = $calc_value; } 
 
         } else {
             # print out Sensor info
@@ -3703,15 +3694,15 @@ sub rvitals_response {
     }
 
     if ($node_info{$node}{cur_status} =~ "RVITALS_LEDS_RESPONSE") {
-        $content_info = "Front . . . . . : Power:$front_power Fault:$front_fault Identify:$front_id";
+        $content_info = "Front . . . . . : Power:$leds{front_power} Fault:$leds{front_fault} Identify:$leds{front_id}";
         push (@sorted_output, $content_info);
-        $content_info = "Rear  . . . . . : Power:$rear_power Fault:$rear_fault Identify:$rear_id";
+        $content_info = "Rear  . . . . . : Power:$leds{rear_power} Fault:$leds{rear_fault} Identify:$leds{rear_id}";
         push (@sorted_output, $content_info);
         # Fans 
-        if ($f0 =~ "Off" and $f1 =~ "Off" and $f2 eq "Off" and $f3 eq "Off") {
+        if ($leds{fan0} =~ "Off" and $leds{fan1} =~ "Off" and $leds{fan2} eq "Off" and $leds{fan3} eq "Off") {
             $content_info = "Front Fans  . . : No LEDs On";
         } else { 
-            $content_info = "Front Fans  . . : fan0:$f0 fan1:$f1 fan2:$f2 fan3:$f3";
+            $content_info = "Front Fans  . . : fan0:$leds{fan0} fan1:$leds{fan1} fan2:$leds{fan2} fan3:$leds{fan3}";
         } 
         push (@sorted_output, $content_info);
     }
