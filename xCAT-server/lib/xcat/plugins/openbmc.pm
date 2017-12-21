@@ -502,6 +502,13 @@ my %status_info = (
     RVITALS_RESPONSE => {
         process        => \&rvitals_response,
     },
+    RVITALS_LEDS_REQUEST => {
+        method         => "GET",
+        init_url       => "$openbmc_project_url/led/physical/enumerate",
+    },
+    RVITALS_LEDS_RESPONSE => {
+        process        => \&rvitals_response,
+    },
     RSPCONFIG_API_CONFIG_ON_REQUEST  => {
         method         => "PUT",
         init_url       => "$openbmc_project_url", 
@@ -1139,7 +1146,7 @@ sub parse_args {
         }
     } elsif ($command eq "rvitals") {
         $subcommand = "all" if (!defined($ARGV[0]));
-        unless ($subcommand =~ /^temp$|^voltage$|^wattage$|^fanspeed$|^power$|^altitude$|^all$/) {
+        unless ($subcommand =~ /^leds$|^temp$|^voltage$|^wattage$|^fanspeed$|^power$|^altitude$|^all$/) {
             return ([ 1, "Unsupported command: $command $subcommand" ]);
         }
     } elsif ($command eq "rflash") {
@@ -1658,9 +1665,15 @@ sub parse_command_status {
             $subcommand = "all";
         }
 
-        $next_status{LOGIN_RESPONSE} = "RVITALS_REQUEST";
-        $next_status{RVITALS_REQUEST} = "RVITALS_RESPONSE";
-        $status_info{RVITALS_RESPONSE}{argv} = "$subcommand";
+        if ($subcommand eq "leds") {
+            $next_status{LOGIN_RESPONSE} = "RVITALS_LEDS_REQUEST";
+            $next_status{RVITALS_LEDS_REQUEST} = "RVITALS_LEDS_RESPONSE";
+            $status_info{RVITALS_LEDS_RESPONSE}{argv} = "$subcommand";
+        } else {
+            $next_status{LOGIN_RESPONSE} = "RVITALS_REQUEST";
+            $next_status{RVITALS_REQUEST} = "RVITALS_RESPONSE";
+            $status_info{RVITALS_RESPONSE}{argv} = "$subcommand";
+        }
     }
 
     if ($command eq "rflash") {
@@ -3641,53 +3654,95 @@ sub rvitals_response {
 
     my $response_info = decode_json $response->content;
 
-    my $grep_string = $status_info{RVITALS_RESPONSE}{argv};
+    my $grep_string;
+    if ($node_info{$node}{cur_status} =~ "RVITALS_LEDS_RESPONSE") {
+        $grep_string = $status_info{RVITALS_LEDS_RESPONSE}{argv};
+    } else { 
+        $grep_string = $status_info{RVITALS_RESPONSE}{argv};
+    }
     my $src;
     my $content_info;
     my @sorted_output;
 
+    my %leds = ();
+
     foreach my $key_url (keys %{$response_info->{data}}) {
         my %content = %{ ${ $response_info->{data} }{$key_url} };
 
-        #
-        # Skip over attributes that are not asked to be printed
-        #
-        if ($grep_string =~ "temp") {
-            unless ( $content{Unit} =~ "DegreesC") { next; } 
-        } 
-        if ($grep_string =~ "voltage") {
-            unless ( $content{Unit} =~ "Volts") { next; } 
-        } 
-        if ($grep_string =~ "wattage") {
-            unless ( $content{Unit} =~ "Watts") { next; } 
-        } 
-        if ($grep_string =~ "fanspeed") {
-            unless ( $content{Unit} =~ "RPMS") { next; } 
-        } 
-        if ($grep_string =~ "power") {
-            unless ( $content{Unit} =~ "Amperes" || $content{Unit} =~ "Joules" || $content{Unit} =~ "Watts" ) { next; } 
-        } 
-        if ($grep_string =~ "altitude") {
-            unless ( $content{Unit} =~ "Meters" ) { next; }
-        } 
-
         my $label = (split(/\//, $key_url))[ -1 ];
-
         # replace underscore with space, uppercase the first letter 
         $label =~ s/_/ /g;
         $label =~ s/\b(\w)/\U$1/g;
 
-        #
-        # Calculate the adjusted value based on the scale attribute
-        #  
-        my $calc_value = $content{Value};
-        if ( $content{Scale} != 0 ) { 
-            $calc_value = ($content{Value} * (10 ** $content{Scale}));
-        } 
+        my $calc_value = undef;
 
-        $content_info = $label . ": " . $calc_value . " " . $sensor_units{ $content{Unit} };
-        push (@sorted_output, $content_info); #Save output in array
+        if ($node_info{$node}{cur_status} =~ "RVITALS_LEDS_RESPONSE") {
+            # Print out Led info
+            $calc_value = (split(/\./, $content{State}))[-1];
+            $content_info = $label . ": " . $calc_value ;
+
+            if ($key_url =~ "fan0") { $leds{fan0} = $calc_value; } 
+            if ($key_url =~ "fan1") { $leds{fan1} = $calc_value; } 
+            if ($key_url =~ "fan2") { $leds{fan2} = $calc_value; } 
+            if ($key_url =~ "fan3") { $leds{fan3} = $calc_value; } 
+            if ($key_url =~ "front_id") { $leds{front_id} = $calc_value; } 
+            if ($key_url =~ "front_fault") { $leds{front_fault} = $calc_value; } 
+            if ($key_url =~ "front_power") { $leds{front_power} = $calc_value; } 
+            if ($key_url =~ "rear_id") { $leds{rear_id} = $calc_value; } 
+            if ($key_url =~ "rear_fault") { $leds{rear_fault} = $calc_value; } 
+            if ($key_url =~ "rear_power") { $leds{rear_power} = $calc_value; } 
+
+        } else {
+            # print out Sensor info
+            #
+            # Skip over attributes that are not asked to be printed
+            #
+            if ($grep_string =~ "temp") {
+                unless ( $content{Unit} =~ "DegreesC") { next; } 
+            } 
+            if ($grep_string =~ "voltage") {
+                unless ( $content{Unit} =~ "Volts") { next; } 
+            } 
+            if ($grep_string =~ "wattage") {
+                unless ( $content{Unit} =~ "Watts") { next; } 
+            } 
+            if ($grep_string =~ "fanspeed") {
+                unless ( $content{Unit} =~ "RPMS") { next; } 
+            } 
+            if ($grep_string =~ "power") {
+                unless ( $content{Unit} =~ "Amperes" || $content{Unit} =~ "Joules" || $content{Unit} =~ "Watts" ) { next; } 
+            } 
+            if ($grep_string =~ "altitude") {
+                unless ( $content{Unit} =~ "Meters" ) { next; }
+            } 
+
+            #
+            # Calculate the adjusted value based on the scale attribute
+            #  
+            $calc_value = $content{Value};
+            if ( $content{Scale} != 0 ) { 
+                $calc_value = ($content{Value} * (10 ** $content{Scale}));
+            } 
+
+            $content_info = $label . ": " . $calc_value . " " . $sensor_units{ $content{Unit} };
+            push (@sorted_output, $content_info); #Save output in array
+        } 
     }
+
+    if ($node_info{$node}{cur_status} =~ "RVITALS_LEDS_RESPONSE") {
+        $content_info = "Front . . . . . : Power:$leds{front_power} Fault:$leds{front_fault} Identify:$leds{front_id}";
+        push (@sorted_output, $content_info);
+        $content_info = "Rear  . . . . . : Power:$leds{rear_power} Fault:$leds{rear_fault} Identify:$leds{rear_id}";
+        push (@sorted_output, $content_info);
+        # Fans 
+        if ($leds{fan0} =~ "Off" and $leds{fan1} =~ "Off" and $leds{fan2} eq "Off" and $leds{fan3} eq "Off") {
+            $content_info = "Front Fans  . . : No LEDs On";
+        } else { 
+            $content_info = "Front Fans  . . : fan0:$leds{fan0} fan1:$leds{fan1} fan2:$leds{fan2} fan3:$leds{fan3}";
+        } 
+        push (@sorted_output, $content_info);
+    }
+
     # If sorted array has any contents, sort it and print it
     if (scalar @sorted_output > 0) {
         # Sort the output, alpha, then numeric
