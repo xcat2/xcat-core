@@ -20,6 +20,8 @@ share/xcat/ib/netboot/sles/* opt/xcat/share/xcat/ib/netboot/sles
 share/xcat/ib/netboot/rh/* opt/xcat/share/xcat/ib/netboot/rh
 
 lib/perl/xCAT/* opt/xcat/lib/perl/xCAT/
+lib/python/agent/* opt/xcat/lib/python/agent/
+lib/python/agent/xcatagent/* opt/xcat/lib/python/agent/xcatagent/
 lib/xcat/plugins/* opt/xcat/lib/perl/xCAT_plugin/
 lib/xcat/schema/* opt/xcat/lib/perl/xCAT_schema/
 lib/xcat/monitoring/* opt/xcat/lib/perl/xCAT_monitoring/
