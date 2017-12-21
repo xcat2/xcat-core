@@ -42,6 +42,8 @@ our %global_switch_type = (
     Cumulus => "onie",
     cumulus => "onie",
     Edgecore => "onie",
+    sLEN => "irpdu",
+    sIBM => "irpdu",
     coral => "crpdu"
 );
 
