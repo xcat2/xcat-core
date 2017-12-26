@@ -149,7 +149,7 @@ my $http_protocol="https";
 my $openbmc_url = "/org/openbmc";
 my $openbmc_project_url = "/xyz/openbmc_project";
 $::SOFTWARE_URL = "$openbmc_project_url/software";
-$::LOGGING_URL  = "$openbmc_project_url/logging";
+$::LOGGING_URL  = "$openbmc_project_url/logging/entry/#ENTRY_ID#/attr/Resolved";
 #-------------------------------------------------------
 
 # The hash table to store method and url for request, 
@@ -1081,16 +1081,6 @@ sub parse_args {
             }
 
             xCAT::SvrUtils::sendmsg("Attempting to resolve the following log entries: $value...", $callback);
-            my @entries = split(',', $value);
-            # take the first element from the list 
-            my $log_id = shift @entries; 
-            # and set the URL for the loggin entry to resolved    
-            $status_info{REVENTLOG_RESOLVED_REQUEST}{init_url} = $::LOGGING_URL . "/entry/$log_id/attr/Resolved";
-
-            # If a list is provided, set the remaining log entries back to status_info 
-            my $remaining = join (',', @entries);
-            $status_info{REVENTLOG_RESOLVED_REQUEST}{argv} = $remaining;
-
         } elsif ($subcommand !~ /^\d$|^\d+$|^all$|^clear$/) {
             if ($subcommand =~ "resolved") {
                 return ([ 1, "$usage_errormsg $reventlog_no_id_resolved_errormsg" ]);
@@ -1474,9 +1464,13 @@ sub parse_command_status {
         if ($subcommand eq "clear") {
             $next_status{LOGIN_RESPONSE} = "REVENTLOG_CLEAR_REQUEST";
             $next_status{REVENTLOG_CLEAR_REQUEST} = "REVENTLOG_CLEAR_RESPONSE";
-        } elsif ($subcommand =~"resolved") {
+        } elsif ($subcommand =~ /resolved=(.+)/) {
             $next_status{LOGIN_RESPONSE} = "REVENTLOG_RESOLVED_REQUEST";
             $next_status{REVENTLOG_RESOLVED_REQUEST} = "REVENTLOG_RESOLVED_RESPONSE";
+            my @entries = split(",", $1);
+            my $init_entry = shift @entries;
+            $status_info{REVENTLOG_RESOLVED_REQUEST}{init_url} =~ s/#ENTRY_ID#/$init_entry/g;
+            push @{ $status_info{REVENTLOG_RESOLVED_RESPONSE}{remain_entries} }, @entries;
         } else {
             $next_status{LOGIN_RESPONSE} = "REVENTLOG_REQUEST";
             $next_status{REVENTLOG_REQUEST} = "REVENTLOG_RESPONSE";
@@ -2248,7 +2242,13 @@ sub deal_with_response {
                     # If 403 is received setting boot method, API endpoint changed in 1738 FW, inform the user of work around.
                     $error = "Invalid endpoint used to set boot method. If running firmware < ibm-v1.99.10-0-r7, 'export XCAT_OPENBMC_FIRMWARE=1736' and retry.";
                 } elsif ($node_info{$node}{cur_status} eq "REVENTLOG_RESOLVED_RESPONSE") {
-                    my $log_id = (split ('/', $status_info{REVENTLOG_RESOLVED_REQUEST}{init_url}))[5];
+                    my $cur_url;
+                    if ($node_info{$node}{cur_url}) {
+                        $cur_url = $node_info{$node}{cur_url};
+                    } else {
+                        $cur_url = $status_info{REVENTLOG_RESOLVED_REQUEST}{init_url};
+                    }
+                    my $log_id = (split ('/', $cur_url))[5];
                     $error = "Invalid ID=$log_id provided to resolved. [$::RESPONSE_FORBIDDEN]";
                 } else{
                     $error = "$::RESPONSE_FORBIDDEN - Requested endpoint does not exists and may indicate function is not yet supported by OpenBMC firmware.";
@@ -2885,21 +2885,35 @@ sub reventlog_response {
             xCAT::SvrUtils::sendmsg("Logs cleared", $callback, $node);
         }
     } elsif ($node_info{$node}{cur_status} eq "REVENTLOG_RESOLVED_RESPONSE") {
+        my $cur_url;
+        if ($node_info{$node}{cur_url}) {
+            $cur_url = $node_info{$node}{cur_url};
+            if ($node_info{$node}{bak_url}) {
+                $node_info{$node}{cur_url} = shift @{ $node_info{$node}{bak_url} };
+            } else {
+                $node_info{$node}{cur_url} = "";
+            }
+        } else {
+            $cur_url = $status_info{REVENTLOG_RESOLVED_REQUEST}{init_url};
+        }
+
         if ($response_info->{'message'} eq $::RESPONSE_OK) {
-            my $log_id = (split ('/', $status_info{REVENTLOG_RESOLVED_REQUEST}{init_url}))[5];
+            my $log_id = (split ('/', $cur_url))[5];
             xCAT::SvrUtils::sendmsg("Resolved $log_id.", $callback, $node);
         }
-        my @entries = split (',', $status_info{REVENTLOG_RESOLVED_REQUEST}{argv} );
-        if ((scalar @entries) > 0) {
-            my $log_id = shift @entries;
-            $next_status{"REVENTLOG_RESOLVED_RESPONSE"} = "REVENTLOG_RESOLVED_REQUEST";
-            $next_status{"REVENTLOG_RESOLVED_REQUEST"} = "REVENTLOG_RESOLVED_RESPONSE";
-            $status_info{REVENTLOG_RESOLVED_REQUEST}{init_url} =
-                $::LOGGING_URL . "/entry/$log_id/attr/Resolved";
 
-            # If a list is provided, set the remaining log entries back to status_info 
-            my $remaining = join (',', @entries);
-            $status_info{REVENTLOG_RESOLVED_REQUEST}{argv} = $remaining;
+        if ($status_info{REVENTLOG_RESOLVED_RESPONSE}{remain_entries} and !$node_info{$node}{remain_entries}) {
+            foreach my $entry (@{ $status_info{REVENTLOG_RESOLVED_RESPONSE}{remain_entries} }) {
+                my $tmp_url = $::LOGGING_URL;
+                $tmp_url =~ s/#ENTRY_ID#/$entry/g;
+                push @{ $node_info{$node}{bak_url} }, $tmp_url;
+            }
+            $node_info{$node}{cur_url} = shift @{ $node_info{$node}{bak_url} };
+            $node_info{$node}{remain_entries} = $status_info{REVENTLOG_RESOLVED_RESPONSE}{remain_entries};
+        }
+
+        if ($node_info{$node}{cur_url}) {
+            $next_status{"REVENTLOG_RESOLVED_RESPONSE"} = "REVENTLOG_RESOLVED_REQUEST";
         } else {
             # Break out of this loop if there are no more IDs to resolve 
             $wait_node_num--;
