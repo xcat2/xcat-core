@@ -53,6 +53,8 @@ binary-arch:
 	chmod 755 $(rootdir)/share/xcat/ib/netboot/rh/*
 	chmod 644 $(rootdir)/lib/perl/xCAT_plugin/*
 	chmod 644 $(rootdir)/lib/perl/xCAT/*
+	chmod 755 $(rootdir)/lib/python/agent/client.py
+	chmod 755 $(rootdir)/lib/python/agent/agent.py
 	chmod 644 $(rootdir)/xdsh/Context/*
 	chmod 644 $(rootdir)/lib/perl/xCAT_monitoring/*
 	chmod 755 $(rootdir)/lib/perl/xCAT_monitoring/samples

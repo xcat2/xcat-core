@@ -116,6 +116,7 @@ mkdir -p $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_monitoring/pcp
 mkdir -p $RPM_BUILD_ROOT/%{prefix}/lib/perl/Confluent
 mkdir -p $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_schema/samples
 mkdir -p $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT
+mkdir -p $RPM_BUILD_ROOT/%{prefix}/lib/python
 
 %ifos linux
 cp -a share/xcat/install/* $RPM_BUILD_ROOT/%{prefix}/share/xcat/install/
@@ -168,6 +169,9 @@ cp lib/xcat/plugins/* $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_plugin
 chmod 644 $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_plugin/*
 
 cp lib/perl/xCAT/* $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT
+cp -r lib/python/agent $RPM_BUILD_ROOT/%{prefix}/lib/python/
+chmod 755 $RPM_BUILD_ROOT/%{prefix}/lib/python/agent/client.py
+chmod 755 $RPM_BUILD_ROOT/%{prefix}/lib/python/agent/agent.py
 chmod 644 $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT/*
 
 chmod 755 $RPM_BUILD_ROOT/%{prefix}/share/xcat/netboot/sles/*.postinstall
@@ -188,6 +192,7 @@ rm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_plugin/vbox.pm
 rm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_plugin/activedirectory.pm
 rm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_plugin/kit.pm
 rm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_plugin/confluent.pm
+rm -rf $RPM_BUILD_ROOT/%{prefix}/lib/python
 %endif
 
 cp lib/xcat/dsh/Context/* $RPM_BUILD_ROOT/%{prefix}/xdsh/Context
