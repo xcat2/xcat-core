@@ -481,8 +481,8 @@ for user in $BMCUS; do
     fi
 
     TRIES=0
-    # Enable the channel link for the specified user
-    while ! ipmitool -d $idev channel setaccess $LANCHAN $USERSLOT link=on; do
+    # Enable the channel and ipmi link for the specified user
+    while ! ipmitool -d $idev channel setaccess $LANCHAN $USERSLOT link=on ipmi=on; do
         sleep 1
         let TRIES=TRIES+1
         if [ $TRIES -gt $TIMEOUT ]; then break; fi
