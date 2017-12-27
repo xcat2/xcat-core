@@ -123,6 +123,8 @@ sub submit_agent_request {
         kill('TERM', $pid);
         return;
     }
+    my $xcatdebugmode;
+    if ($::XCATSITEVALS{xcatdebugmode}) { $xcatdebugmode = $::XCATSITEVALS{xcatdebugmode} }
     my ($data, $sz, $ret, $buf);
     $data->{module} = 'openbmc';
     $data->{command} = $req->{command}->[0];
@@ -130,6 +132,7 @@ sub submit_agent_request {
     $data->{cwd} = $req->{cwd};
     $data->{nodes} = $req->{node};
     $data->{nodeinfo} = $nodeinfo;
+    $data->{debugmode} = $xcatdebugmode;
     $buf = encode_json($data);
     $sz = pack('i', length($buf));
     $ret = $sock->send($sz);

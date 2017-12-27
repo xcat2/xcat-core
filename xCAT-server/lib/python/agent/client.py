@@ -40,18 +40,18 @@ class ClientShell(object):
             return 0
 
         s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-        nodes = ['node%s' % i for i in range(100)]
-        nodeinfo = {node: {'username': 'admin', 'password': 'cluster'} for node
-                    in
-                    nodes}
+        nodes = ['node1', 'node2']
+        nodeinfo = {'node1':{'bmc':'9.3.185.161', 'bmcip':'9.3.185.161', 'username':'root', 'password': '0penBmc1'},
+                    'node2':{'bmc':'10.6.17.100', 'bmcip': '10.6.17.100', 'username':'root', 'password': '0penBmc'}}
 
         s.connect(options.sock)
         req = {'module': 'openbmc',
                'command': 'rpower',
-               'args': ['-d', 'firmware'],
+               'args': ['state'],
                'cwd': os.getcwd(),
                'nodes': nodes,
-               'nodeinfo': nodeinfo}
+               'nodeinfo': nodeinfo,
+               'debugmode': 1}
 
         buf = json.dumps(req)
         s.send(utils.int2bytes(len(buf)))
