@@ -97,6 +97,8 @@ sub handle_message {
         my $msg = $data->{msg};
         if ($msg->{type} eq 'info') {
             xCAT::MsgUtils->message("I", { data => [$msg->{data}] }, $callback);
+        } elsif ($msg->{type} eq 'warning') {
+            xCAT::MsgUtils->message("W", { data => [$msg->{data}] }, $callback);
         } elsif ($msg->{type} eq 'error'){
             xCAT::MsgUtils->message("E", { data => [$msg->{data}] }, $callback);
         } elsif ($msg->{type} eq 'syslog'){
