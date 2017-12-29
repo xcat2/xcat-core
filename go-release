@@ -553,7 +553,7 @@ function go_release_test_0000_version_number()
 TEST_0010="0.1 Get a Clone Copy of xcat-core Git Repository"
 
 XCAT_CORE_GIT_REPO="https://github.com/xcat2/xcat-core.git"
-XCAT_CORE_GIT_DIR="/tmp/src/xcat-core"
+XCAT_CORE_GIT_DIR="/tmp/go-release/src/xcat-core"
 
 function go_release_test_0010_git_clone()
 {
@@ -575,7 +575,7 @@ function go_release_test_0010_git_clone()
 		)
 	else
 		mkdir -p "${XCAT_CORE_GIT_DIR%/*}"
-		git clone "${XCAT_CORE_GIT_REPO}" "${xcat_core_git_dir}"
+		git clone "${XCAT_CORE_GIT_REPO}" "${XCAT_CORE_GIT_DIR}" 2>&1
 		exit_if_bad "$?" "Command \`git clone' failed"
 	fi
 }
@@ -588,6 +588,7 @@ function go_release_test_0110_conf_py()
 	local file="docs/source/conf.py"
 
 	cd "${XCAT_CORE_GIT_DIR}"
+	exit_if_bad "$?" "Change directory failed - \`${XCAT_CORE_GIT_DIR}'"
 
 	git checkout master 2>&1
 	warn_if_bad "$?" "Command \`git checkout' failed"
@@ -615,6 +616,7 @@ function go_release_test_0120_xcat2_release_rst()
 	local file="docs/source/overview/xcat2_release.rst"
 
 	cd "${XCAT_CORE_GIT_DIR}"
+	exit_if_bad "$?" "Change directory failed - \`${XCAT_CORE_GIT_DIR}'"
 
 	git checkout master 2>&1
 	warn_if_bad "$?" "Command \`git checkout' failed"
@@ -659,6 +661,7 @@ function go_release_test_0210_git_branch()
 	local branch="$(xcat_branch "${version}")"
 
 	cd "${XCAT_CORE_GIT_DIR}"
+	exit_if_bad "$?" "Change directory failed - \`${XCAT_CORE_GIT_DIR}'"
 
 	git checkout "${branch}" 2>&1
 	warn_if_bad "$?" "Command \`git checkout' failed"
@@ -680,6 +683,8 @@ function go_release_test_0210_git_branch()
 
 TEST_0221="2.2 RPM Build on Build Server"
 
+XCAT_CORE_RPM_DIR="/tmp/go-release/build/rpm"
+
 function go_release_test_0221_rpm_build()
 {
 	local version="$1"
@@ -698,24 +703,25 @@ function go_release_test_0221_rpm_build()
 	download_file "${tarball_url}" "${tarball_file}"
 	exit_if_bad "$?" "Download xcat-core rpm tarball failed"
 
-	mkdir -p "${TMP_DIR}/extract"
-	extract_archive "${tarball_file}" "xcat-core" "${TMP_DIR}/extract"
+	rm -rf "${XCAT_CORE_RPM_DIR}"
+	mkdir -p "${XCAT_CORE_RPM_DIR}"
+	extract_archive "${tarball_file}" "xcat-core" "${XCAT_CORE_RPM_DIR}"
 	exit_if_bad "$?" "Failed to extract archive ${tarball_file}"
 
-	[ -f "${TMP_DIR}/extract/xcat-core/buildinfo" ]
+	[ -f "${XCAT_CORE_RPM_DIR}/xcat-core/buildinfo" ]
 	exit_if_bad "$?" "File buildinfo not found in tarball"
 
 	echo
 	echo "--- buildinfo --- 8< ----"
-	cat "${TMP_DIR}/extract/xcat-core/buildinfo"
+	cat "${XCAT_CORE_RPM_DIR}/xcat-core/buildinfo"
 	echo "---- 8< --------- 8< ----"
 
 	# Check VERSION
-	grep -q "^VERSION=${version}$" "${TMP_DIR}/extract/xcat-core/buildinfo"
+	grep -q "^VERSION=${version}$" "${XCAT_CORE_RPM_DIR}/xcat-core/buildinfo"
 	if [ "$?" -ne "0" ]
 	then
 		echo "VERSION=${version} is expected" >&3
-		exit_if_bad 1 "Wrong version in file buildinfo"
+		exit_if_bad 1 "The latest build is not the expected version"
 	fi
 
 	# Check COMMIT_ID_LONG
@@ -727,15 +733,17 @@ function go_release_test_0221_rpm_build()
 
 	cd -
 
-	grep -q "^COMMIT_ID_LONG=${commit}$" "${TMP_DIR}/extract/xcat-core/buildinfo"
+	grep -q "^COMMIT_ID_LONG=${commit}$" "${XCAT_CORE_RPM_DIR}/xcat-core/buildinfo"
 	if [ "$?" -ne "0" ]
 	then
 		echo "COMMIT_ID_LONG=${commit} is expected" >&3
-		exit_if_bad "$?" "Wrong git commit id in file buildinfo"
+		exit_if_bad 1 "The latest build is not against the expected git commit ID"
 	fi
 }
 
 TEST_0222="2.2 DEB Build on Build Server"
+
+XCAT_CORE_DEB_DIR="/tmp/go-release/build/deb"
 
 function go_release_test_0222_deb_build()
 {
@@ -755,28 +763,30 @@ function go_release_test_0222_deb_build()
 	download_file "${tarball_url}" "${tarball_file}"
 	exit_if_bad "$?" "Download xcat-core deb tarball failed"
 
-	mkdir -p "${TMP_DIR}/extract"
-	extract_archive "${tarball_file}" "xcat-core" "${TMP_DIR}/extract"
+	rm -rf "${XCAT_CORE_DEB_DIR}"
+	mkdir -p "${XCAT_CORE_DEB_DIR}"
+	extract_archive "${tarball_file}" "xcat-core" "${XCAT_CORE_DEB_DIR}"
 	exit_if_bad "$?" "Failed to extract archive ${tarball_file}"
 
-	[ -f "${TMP_DIR}/extract/xcat-core/buildinfo" ]
+	[ -f "${XCAT_CORE_DEB_DIR}/xcat-core/buildinfo" ]
 	exit_if_bad "$?" "File buildinfo not found in tarball"
 
 	echo
 	echo "--- buildinfo --- 8< ----"
-	cat "${TMP_DIR}/extract/xcat-core/buildinfo"
+	cat "${XCAT_CORE_DEB_DIR}/xcat-core/buildinfo"
 	echo "---- 8< --------- 8< ----"
 
 	# Check VERSION
-	grep -q "^VERSION=${version}$" "${TMP_DIR}/extract/xcat-core/buildinfo"
+	grep -q "^VERSION=${version}$" "${XCAT_CORE_DEB_DIR}/xcat-core/buildinfo"
 	if [ "$?" -ne "0" ]
 	then
 		echo "VERSION=${version} is expected" >&3
-		exit_if_bad 1 "Wrong version in file buildinfo"
+		exit_if_bad 1 "The latest build is not the expected version"
 	fi
 
 	# Check COMMIT_ID_LONG
 	cd "${XCAT_CORE_GIT_DIR}"
+	exit_if_bad "$?" "Change directory failed - \`${XCAT_CORE_GIT_DIR}'"
 
 	git checkout "${branch}" 2>&1
 	local commit="$(git log --pretty="%H" -n 1)"
@@ -784,19 +794,174 @@ function go_release_test_0222_deb_build()
 
 	cd -
 
-	grep -q "^COMMIT_ID_LONG=${commit}$" "${TMP_DIR}/extract/xcat-core/buildinfo"
+	grep -q "^COMMIT_ID_LONG=${commit}$" "${XCAT_CORE_DEB_DIR}/xcat-core/buildinfo"
 	if [ "$?" -ne "0" ]
 	then
 		echo "COMMIT_ID_LONG=${commit} is expected" >&3
-		exit_if_bad "$?" "Wrong git commit id in file buildinfo"
+		exit_if_bad 1 "The latest build is not against the expected git commit ID"
 	fi
 }
 
-TEST_0300="3 Test Result against the Release Build"
+TEST_0300="3.0 Test Report against the Release Build"
 
 function go_release_test_0300_test_results()
 {
-	:
+	local version="$1"
+	local branch="$(xcat_branch "${version}")"
+
+	local rpm_version="$(awk -F = '/^VERSION=/ { print $2 }' \
+		<"${XCAT_CORE_RPM_DIR}/xcat-core/buildinfo")"
+	local rpm_release="$(awk -F = '/^RELEASE=/ { print $2 }' \
+		<"${XCAT_CORE_RPM_DIR}/xcat-core/buildinfo")"
+	local rpm_build_time="$(awk -F = '/^BUILD_TIME=/ { print $2 }' \
+		<"${XCAT_CORE_RPM_DIR}/xcat-core/buildinfo")"
+	local rpm_build_machine="$(awk -F = '/^BUILD_MACHINE=/ { print $2 }' \
+		<"${XCAT_CORE_RPM_DIR}/xcat-core/buildinfo")"
+	local rpm_commit_id="$(awk -F = '/^COMMIT_ID=/ { print $2 }' \
+		<"${XCAT_CORE_RPM_DIR}/xcat-core/buildinfo")"
+
+	local deb_version="$(awk -F = '/^VERSION=/ { print $2 }' \
+		<"${XCAT_CORE_DEB_DIR}/xcat-core/buildinfo")"
+	local deb_release="$(awk -F = '/^RELEASE=/ { print $2 }' \
+		<"${XCAT_CORE_DEB_DIR}/xcat-core/buildinfo")"
+	local deb_build_time="$(awk -F = '/^BUILD_TIME=/ { print $2 }' \
+		<"${XCAT_CORE_DEB_DIR}/xcat-core/buildinfo")"
+	local deb_build_machine="$(awk -F = '/^BUILD_MACHINE=/ { print $2 }' \
+		<"${XCAT_CORE_DEB_DIR}/xcat-core/buildinfo")"
+	local deb_commit_id="$(awk -F = '/^COMMIT_ID=/ { print $2 }' \
+		<"${XCAT_CORE_DEB_DIR}/xcat-core/buildinfo")"
+
+	local ret="254"
+
+	[ "${rpm_version}" = "${deb_version}" ]
+	warn_if_bad "$?" "RPM build and DEB build are against different xCAT version" || ret="1"
+	[ "${rpm_commit_id}" = "${deb_commit_id}" ]
+	warn_if_bad "$?" "RPM build and DEB build are against different git commit ID" || ret="1"
+
+	local test_result="${TMP_DIR}/test_result.out"
+
+	ssh -o 'PasswordAuthentication=no' c910f04x31.pok.stglabs.ibm.com \
+		'mysql -t -u root -pcluster xCATjkLogAnalyzer' \
+		>"${test_result}" \
+		2> >(grep -v '^Killed by signal ') \
+		<<-EOF
+	SELECT
+		ArchDict.ArchName AS Arch,
+		OSDict.OSName AS OS,
+		(
+			SELECT COUNT(0)
+			FROM TestResult
+			WHERE (
+				TestResult.TestRunId = TestRun.TestRunId AND
+				TestResult.ResultId IN (
+					SELECT ResultDict.ResultId
+					FROM ResultDict
+					WHERE ResultDict.ResultName = 'Passed'
+				)
+			)
+		) AS Passed,
+		(
+			SELECT COUNT(0)
+			FROM TestResult
+			WHERE (
+				TestResult.TestRunId = TestRun.TestRunId AND
+				TestResult.ResultId IN (
+					SELECT ResultDict.ResultId
+					FROM ResultDict
+					WHERE ResultDict.ResultName = 'Failed'
+				)
+			)
+		) AS Failed,
+		(
+			SELECT count(0)
+			FROM TestResult
+			WHERE (
+				TestResult.TestRunId = TestRun.TestRunId AND
+				TestResult.ResultId IN (
+					SELECT ResultDict.ResultId
+					FROM ResultDict
+					WHERE ResultDict.ResultName = 'No run'
+				)
+			)
+		) AS 'No run',
+		IFNULL(CONCAT(ROUND((((
+			SELECT COUNT(0)
+			FROM TestResult
+			WHERE (
+				TestResult.TestRunId = TestRun.TestRunId AND
+				TestResult.ResultId IN (
+					SELECT ResultDict.ResultId
+					FROM ResultDict
+					WHERE ResultDict.ResultName = 'Passed'
+				)
+			)
+		) / (
+			SELECT COUNT(0)
+			FROM TestResult
+			WHERE TestResult.TestRunId = TestRun.TestRunId
+		)) * 100),2),'%'),'N/A') AS 'Pass rate'
+	FROM TestRun
+	LEFT JOIN ArchDict ON (TestRun.ArchId = ArchDict.ArchId)
+	LEFT JOIN OSDict ON (TestRun.OSId = OSDict.OSId)
+	LEFT JOIN BuildDict ON (TestRun.BuildId = BuildDict.BuildId)
+	WHERE
+		TestRun.TestRunId IN (
+			SELECT MAX(TestRun.TestRunId) AS TestRunId
+			FROM TestRun
+			WHERE TestRun.BuildId IN (
+				SELECT MAX(BuildDict.BuildId) AS BuildId
+				FROM BuildDict
+				WHERE
+					BuildDict.BuildBranch = '${branch}' AND ((
+					BuildDict.BuildVersion = '${rpm_version}' AND
+					BuildDict.BuildRelease = '${rpm_release}' AND
+					BuildDict.BuildDateTime = '${rpm_build_time}' AND
+					BuildDict.BuildCommitId = '${rpm_commit_id}' AND
+					BuildDict.BuildMachine = '${rpm_build_machine}' AND
+					BuildDict.BuildType = 'rpm'
+					) OR (
+					BuildDict.BuildVersion = '${deb_version}' AND
+					BuildDict.BuildRelease = '${deb_release}' AND
+					BuildDict.BuildDateTime = '${deb_build_time}' AND
+					BuildDict.BuildCommitId = '${deb_commit_id}' AND
+					BuildDict.BuildMachine = '${deb_build_machine}' AND
+					BuildDict.BuildType = 'deb'
+					))
+				GROUP BY
+					BuildDict.BuildCommitId,
+					BuildDict.BuildType
+			)
+			GROUP BY
+				TestRun.ArchId,
+				TestRun.OSId,
+				TestRun.BuildId
+		)
+	ORDER BY
+		OSDict.OSName,
+		ArchDict.ArchName
+	EOF
+	warn_if_bad "$?" "Failed to ssh c910f04x31.pok.stglabs.ibm.com"
+	exit_if_bad "$?" "Configure ssh public key authentication if needed"
+
+	echo
+	cat "${test_result}"
+	echo "* RPM build version ${rpm_version} branch ${branch} commit ${rpm_commit_id}"
+	echo "+ DEB build version ${deb_version} branch ${branch} commit ${deb_commit_id}"
+
+	grep -q "rhels" "${test_result}"
+	warn_if_bad "$?" "No test result against RHEL" || ret="1"
+	grep -q "sles" "${test_result}"
+	warn_if_bad "$?" "No test result against SLES" || ret="1"
+	grep -q "ubuntu" "${test_result}"
+	warn_if_bad "$?" "No test result against Ubuntu" || ret="1"
+
+	local n="$(sed -e '1,3 d' -e '$ d' <"${test_result}" | grep -q -v ' 100% ' | wc -l)"
+	if [ "$n" -gt "0" ]
+	then
+		echo "Failed test cases in the test report" >&3
+	fi
+
+	return "${ret}"
 }
 
 TEST_0710="7.1 Tag the Release in GitHub Web Page"
