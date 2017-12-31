@@ -8,8 +8,8 @@ Troubleshooting
 
     Error: Unable to find pxelinux.0 at /opt/xcat/share/xcat/netboot/syslinux/pxelinux.0
 
-**Resolution:** 
+**Resolution:**
 
-The syslinux network booting files are missing.  
+The syslinux network booting files are missing.
 Install the sylinux-xcat package provided in the xcat-deps repository: ``yum -y install syslinux-xcat``
 
