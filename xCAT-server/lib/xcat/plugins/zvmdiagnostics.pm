@@ -293,7 +293,7 @@ sub collectDiags {
     xCAT::zvmUtils->printSyslog("$ROUTINE $SUBROUTINE $msg");
     system($msg);
     #TODO check system()'s rc
-    
+
     #TODO Capture diagnostic files
 
     xCAT::zvmUtils->printSyslog("$ROUTINE $SUBROUTINE ... rest of implementation stubbed out ");
