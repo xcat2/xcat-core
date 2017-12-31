@@ -34,7 +34,7 @@ d-i netcfg/dhcp_timeout string 120
 #d-i mirror/suite string testing
 # Suite to use for loading installer components (optional).
 #d-i mirror/udeb/suite string testing
- 
+
 
 # Use the following option to add additional boot parameters for the
 # installed system (if supported by the bootloader installer).
@@ -49,7 +49,7 @@ d-i partman-auto/method string regular
 d-i partman-lvm/device_remove_lvm boolean true
 d-i partman-md/device_remove_md boolean true
 
-#create the /tmp/partitionfile based on the uefi or legacy bios 
+#create the /tmp/partitionfile based on the uefi or legacy bios
 d-i partman/early_command string \
 { \
 #INCLUDE_GET_INSTALL_DISK_SCRIPT#  \
@@ -67,7 +67,7 @@ d-i partman/confirm_nooverwrite boolean true
 
 #XCA_PARTMAN_ADDITIONAL_CFG#
 
-### Account setup 
+### Account setup
 
 d-i passwd/root-login boolean true
 d-i passwd/make-user boolean false
