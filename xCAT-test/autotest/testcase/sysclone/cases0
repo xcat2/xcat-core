@@ -1,4 +1,4 @@
-start:sysclone 
+start:sysclone
 cmd:makedns -n
 check:rc==0
 cmd:makedhcp -n
@@ -35,12 +35,12 @@ cmd:cp $$XCAT_DEP_TARBALL_PATH/$$XCAT_DEP_TARBALL $$OTHERPKGDIR/xcat
 check:rc==0
 cmd:cd $$OTHERPKGDIR/xcat && tar xvf $$XCAT_DEP_TARBALL
 check:rc==0
-cmd:chdef -t osimage -o $$GOS-x86_64-install-compute -p otherpkgdir=$$OTHERPKGDIR 
+cmd:chdef -t osimage -o $$GOS-x86_64-install-compute -p otherpkgdir=$$OTHERPKGDIR
 check:rc==0
 cmd:chdef -t osimage -o $$GOS-x86_64-install-compute otherpkglist=$$OTHERPKGLIST
 check:rc==0
 
-cmd:rinstall $$GOLDEN_CLIENT osimage=$$GOS-x86_64-install-compute   
+cmd:rinstall $$GOLDEN_CLIENT osimage=$$GOS-x86_64-install-compute
 check:rc==0
 check:output=~Provision node\(s\)\: $$GOLDEN_CLIENT
 
@@ -108,4 +108,4 @@ check:rc==0
 end
 
 
- 
+
