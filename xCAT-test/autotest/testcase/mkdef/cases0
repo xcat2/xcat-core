@@ -268,7 +268,7 @@ check:output=~Error\: (\[.*?\]: )?The attribute \".+\" must be specified!
 cmd:mkdef -t node -o auto_test_cec_node_1 --template cec-template serial=test
 check:rc==1
 check:output=~Error\: (\[.*?\]: )?The attribute \".+\" must be specified!
-cmd:mkdef -t node -o auto_test_cec_node_1 --template cec-template serial=test hcp=test  
+cmd:mkdef -t node -o auto_test_cec_node_1 --template cec-template serial=test hcp=test
 check:rc==1
 check:output=~Error\: (\[.*?\]: )?The attribute \".+\" must be specified!
 cmd:mkdef -t node -o auto_test_cec_node_1 --template cec-template serial=test mtm=test hcp=test
