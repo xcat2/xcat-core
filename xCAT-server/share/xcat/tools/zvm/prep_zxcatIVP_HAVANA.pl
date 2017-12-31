@@ -68,7 +68,7 @@ my $usage_string = "Usage:\n
 sub buildDriverProgram{
     my $rc;
     my @driverText;
-    
+
     if ( $verbose ) {
         print "Building the IVP driver program.\n";
     }
@@ -76,7 +76,7 @@ sub buildDriverProgram{
     # Erase any existing driver program.
     if ( -e $driver and ! -z $driver ) {
         # Make certain the file is one of our driver files.
-        my $found = `grep 'Function: z/VM xCAT IVP driver program' $driver`; 
+        my $found = `grep 'Function: z/VM xCAT IVP driver program' $driver`;
         if ( ! $found ) {
             print "$driver is not a z/VM xCAT IVP driver program\n";
             print "File will not be changed.\n";
@@ -108,7 +108,7 @@ sub buildDriverProgram{
         push( @driverText, "" );
         push( @driverText, "# IP address or hostname of the compute node that is accessing this xCAT MN." );
         push( @driverText, "# From \'my_ip\' in /etc/nova/nova.conf." );
-        push( @driverText, "export zxcatIVP_cNAddress=\"$novaConf{'DEFAULT'}{'my_ip'}\"" ); 
+        push( @driverText, "export zxcatIVP_cNAddress=\"$novaConf{'DEFAULT'}{'my_ip'}\"" );
     } else {
         push( @driverText, "" );
         push( @driverText, "# IP address or hostname of the compute node that is accessing this xCAT MN." );
@@ -190,7 +190,7 @@ sub buildDriverProgram{
     push( @driverText, "" );
     push( @driverText, "# Expected space available in the xCAT MN image repository" );
     push( @driverText, "# From \'xcat_free_space_threshold\' in /etc/nova/nova.conf." );
-    push( @driverText, "export zxcatIVP_expectedReposSpace=\"$novaConf{'DEFAULT'}{'xcat_free_space_threshold'}G\"" );                
+    push( @driverText, "export zxcatIVP_expectedReposSpace=\"$novaConf{'DEFAULT'}{'xcat_free_space_threshold'}G\"" );
 
     push( @driverText, "" );
     push( @driverText, "############## End of Nova Config Properties" );
@@ -261,7 +261,7 @@ sub buildDriverProgram{
     push( @driverText, "# logged in the xCAT MN syslog, 0: do not log, 1: log to syslog." );
     push( @driverText, "export zxcatIVP_syslogErrors=1" );
     push( @driverText, "" );
-    push( @driverText, "perl $driverLocation$ivp" ); 
+    push( @driverText, "perl $driverLocation$ivp" );
 
     # Write the array to the driver file.
     foreach (@driverText) {
@@ -477,7 +477,7 @@ sub showHelp{
 
 =head3   validateConfigs
 
-    Description : Compare and validate the configuration 
+    Description : Compare and validate the configuration
                   values obtained by the scans.
     Arguments   : None.
     Returns     : 0 - No error
@@ -532,7 +532,7 @@ sub validateConfigs{
 
     my @requiredNeutronConfOpts = (
         'base_mac',
-        'core_plugin', 
+        'core_plugin',
         );
     foreach $option ( @requiredNeutronConfOpts ) {
         if ( !exists $neutronConf{'DEFAULT'}{$option} ) {
@@ -552,7 +552,7 @@ sub validateConfigs{
         }
     }
 
-    my @requiredNeutronZvmPluginIniOpts = ( 
+    my @requiredNeutronZvmPluginIniOpts = (
         "zvm_xcat_server",
         );
     foreach $option ( @requiredNeutronZvmPluginIniOpts ) {
@@ -566,11 +566,11 @@ sub validateConfigs{
     # Verify optional operands were specified.
     #******************************************
     if ( keys %cinderConf ) {
-        if ( !exists $cinderConf{'DEFAULT'}{'san_ip'} and 
-             !exists $cinderConf{'DEFAULT'}{'san_private_key'} and 
-             !exists $cinderConf{'DEFAULT'}{'storwize_svc_connection_protocol'} and 
-             !exists $cinderConf{'DEFAULT'}{'storwize_svc_volpool_name'} and 
-             !exists $cinderConf{'DEFAULT'}{'storwize_svc_vol_iogrp'} and 
+        if ( !exists $cinderConf{'DEFAULT'}{'san_ip'} and
+             !exists $cinderConf{'DEFAULT'}{'san_private_key'} and
+             !exists $cinderConf{'DEFAULT'}{'storwize_svc_connection_protocol'} and
+             !exists $cinderConf{'DEFAULT'}{'storwize_svc_volpool_name'} and
+             !exists $cinderConf{'DEFAULT'}{'storwize_svc_vol_iogrp'} and
              !exists $cinderConf{'DEFAULT'}{'volume_driver'} ) {
              print "Info: z/VM specific Cinder keys are not defined in section \'DEFAULT\'\n" .
                     "      in /etc/cinder/cinder.conf.  Cinder support for creation of persistent\n" .
@@ -635,7 +635,7 @@ sub validateConfigs{
         if ( !exists $novaConf{'DEFAULT'}{$key} ) {
             print "Info: \'$key\' is missing from section \'DEFAULT\'\n" .
                 "      in /etc/nova/nova.conf.\n";
-            if ( $optionalNovaConfOpts{$key} ne '' ) { 
+            if ( $optionalNovaConfOpts{$key} ne '' ) {
                 print "      " . $optionalNovaConfOpts{$key} . "\n";
             }
             if ( exists $defaultNovaConfOpts{$key} ) {
@@ -698,7 +698,7 @@ sub validateConfigs{
                   "      in /etc/neutron/plugins/zvm/neutron_zvm_plugin.ini.\n";
             if ( $optionalNeutronZvmPluginIniOpts{$key} ne '' ) {
                 print "      " . $optionalNeutronZvmPluginIniOpts{$key} . "\n";
-            } 
+            }
             if ( exists $defaultNeutronZvmPluginIniOpts{'agent'}{$key} ) {
                 $neutronZvmPluginIni{'agent'}{$key} = $defaultNeutronZvmPluginIniOpts{$key};
             }
@@ -732,7 +732,7 @@ sub validateConfigs{
         if ( $novaConf{'DEFAULT'}{'zvm_xcat_password'} ne $neutronZvmPluginIni{'agent'}{'zvm_xcat_password'} ) {
             print "Warning: xCAT user passwords are not the same:\n" .
                   "         Please review 'zvm_xcat_password' in /etc/nova/nova.conf and\n" .
-                  "         /etc/neutron/plugins/zvm/neutron_zvm_plugin.ini.\n"; 
+                  "         /etc/neutron/plugins/zvm/neutron_zvm_plugin.ini.\n";
         }
     }
 
@@ -746,7 +746,7 @@ sub validateConfigs{
     } else {
         if ( $novaConf{'DEFAULT'}{'zvm_xcat_server'} ne $neutronZvmPluginIni{'agent'}{'zvm_xcat_server'} ) {
             print "Warning: xCAT server addresses mismatch; review 'zvm_xcat_server':\n" .
-                  "        \'$novaConf{'DEFAULT'}{'zvm_xcat_server'}\' in /etc/nova/nova.conf.\n" . 
+                  "        \'$novaConf{'DEFAULT'}{'zvm_xcat_server'}\' in /etc/nova/nova.conf.\n" .
                   "        \'$neutronZvmPluginIni{'agent'}{'zvm_xcat_server'}\' in /etc/neutron/plugins/zvm/neutron_zvm_plugin.ini.\n";
         }
     }
@@ -767,7 +767,7 @@ sub validateConfigs{
 
     # Verify the compute_driver is for z/VM
     if ( exists $novaConf{'DEFAULT'}{'compute_driver'} ) {
-        if ( $novaConf{'DEFAULT'}{'compute_driver'} ne "nova.virt.zvm.ZVMDriver" and 
+        if ( $novaConf{'DEFAULT'}{'compute_driver'} ne "nova.virt.zvm.ZVMDriver" and
              $novaConf{'DEFAULT'}{'compute_driver'} ne "zvm.ZVMDriver") {
             print "Warning: In /etc/nova/nova.conf, compute_driver does not contain the\n" .
                   "         expected value of \'zvm.ZVMDriver\' and instead contains:\n" .
@@ -890,7 +890,7 @@ $localIpAddress = inet_ntoa((gethostbyname(hostname))[4]);
 
 if ( defined( $scan ) ) {
     if ( $verbose ) {
-      print "Operand --scan: $scan\n"; 
+      print "Operand --scan: $scan\n";
     }
     if ( 'all nova neutron' !~ $scan ) {
         print "--scan operand($scan) is not all, nova or neutron\n";
@@ -903,7 +903,7 @@ if ( defined( $scan ) ) {
 
 if ( defined( $driver ) ) {
     if ( $verbose ) {
-      print "Operand --driver: $driver\n"; 
+      print "Operand --driver: $driver\n";
     }
     $driver = "$driver.sh";
 } else {
