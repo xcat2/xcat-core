@@ -1,17 +1,17 @@
-#!/bin/sh 
+#!/bin/sh
 # IBM(c) 2013 EPL license http://www.eclipse.org/legal/epl-v10.html
 
 
 #-------------------------------------------------------------------------------
 #=head1  client.rpm_post
-#=head2  This command configures the puppet client on a xCAT node. It is used 
-#        as a post installation script for puppet_client_kit.rpm. 
+#=head2  This command configures the puppet client on a xCAT node. It is used
+#        as a post installation script for puppet_client_kit.rpm.
 #=cut
 #-------------------------------------------------------------------------------
 
 if [ -f "/proc/cmdline" ]; then   # prevent running it during install into chroot image
     #configure the puppet agent configuration files
-    /xcatpost/config_puppet_client "$@" 
+    /xcatpost/config_puppet_client "$@"
 fi
 
 exit 0
