@@ -33,14 +33,14 @@ if($help){
         print "Error: no 'omapi' entry defined in passwd table!";
         exit 1;
     }
-    
+
     my $omshell;
     open($omshell, "|/usr/bin/omshell >/dev/null");
     print $omshell "key "
       . $id . " \""
       . $passwd . "\"\n";
     print $omshell "connect\n";
-    
+
     if($hostname){
         print $omshell "new host\n";
         print $omshell
@@ -49,7 +49,7 @@ if($help){
         print $omshell "remove\n";
         print $omshell "close\n";
     }
-    
+
     if ($mac)
     {
         print $omshell "new host\n";
@@ -59,7 +59,7 @@ if($help){
         print $omshell "remove\n";
         print $omshell "close\n";
     }
-    
+
     if($ip){
        print $omshell "new host\n";
        print $omshell
