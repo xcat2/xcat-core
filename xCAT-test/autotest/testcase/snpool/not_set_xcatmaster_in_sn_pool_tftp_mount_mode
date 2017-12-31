@@ -11,7 +11,7 @@ check:rc==0
 
 cmd:makedns -n
 check:rc==0
-cmd:makeconservercf $$SN,$$CN 
+cmd:makeconservercf $$SN,$$CN
 check:rc==0
 cmd:cat /etc/conserver.cf | grep $$SN
 check:output=~$$SN
@@ -26,7 +26,7 @@ cmd:makedhcp -n
 check:rc==0
 cmd:makedhcp -a
 check:rc==0
-cmd:if cat /etc/*release |grep SUSE >/dev/null;then cat /var/lib/dhcp/db/dhcpd.leases|grep $$SN;elif cat /etc/*release |grep "Red Hat" >/dev/null;then cat /var/lib/dhcpd/dhcpd.leases|grep $$SN;fi 
+cmd:if cat /etc/*release |grep SUSE >/dev/null;then cat /var/lib/dhcp/db/dhcpd.leases|grep $$SN;elif cat /etc/*release |grep "Red Hat" >/dev/null;then cat /var/lib/dhcpd/dhcpd.leases|grep $$SN;fi
 check:output=~$$SN
 cmd:if cat /etc/*release |grep SUSE >/dev/null;then cat /var/lib/dhcp/db/dhcpd.leases|grep $$CN;elif cat /etc/*release |grep "Red Hat" >/dev/null;then cat /var/lib/dhcpd/dhcpd.leases|grep $$CN;fi
 check:output=~$$CN
@@ -48,7 +48,7 @@ check:rc==0
 cmd:chdef -t site clustersite installloc=""
 check:rc==0
 
-cmd:cd /install/post/otherpkgs/__GETNODEATTR($$SN,os)__/__GETNODEATTR($$SN,arch)__/xcat/xcat-core && createrepo .  
+cmd:cd /install/post/otherpkgs/__GETNODEATTR($$SN,os)__/__GETNODEATTR($$SN,arch)__/xcat/xcat-core && createrepo .
 check:rc==0
 
 cmd:if [[ "__GETNODEATTR($$SN,os)__" =~ "rh" ]]; then path="rh";elif [[ "__GETNODEATTR($$SN,os)__" =~ "sles" ]];then path="sles";fi; ver="__GETNODEATTR($$SN,os)__"; tmp=${ver%.*};ver=`echo "$tmp"|sed 's:[a-zA-Z]::g'`;cd /install/post/otherpkgs/__GETNODEATTR($$SN,os)__/__GETNODEATTR($$SN,arch)__/xcat/xcat-dep/$path$ver/__GETNODEATTR($$SN,arch)__ && createrepo .;
@@ -88,7 +88,7 @@ check:rc==0
 check:output=~$$SN: $$SN
 cmd:xdsh $$SN "tabdump site"
 check:rc==0
-check:output=~tftpdir 
+check:output=~tftpdir
 cmd:rsync -auv --exclude 'autoinst' /install $$SN:/
 check:rc==0
 
@@ -110,7 +110,7 @@ check:rc==0
 check:output=~xcatd:
 cmd:xdsh $$CN "lsdef"
 check:rc==0
-check:output=~$$CN: $$CN 
+check:output=~$$CN: $$CN
 cmd:xdsh $$CN "tabdump site"
 check:rc==0
 check:output=~tftpdir
@@ -122,7 +122,7 @@ cmd:mkdef -t node -o compute1 groups=compute ip=10.0.0.199 mac=4a:c8:f7:de:d0:09
 check:rc==0
 cmd:chdef -t node -o compute1 servicenode=$$SN,$$CN xcatmaster=
 check:rc==0
-cmd:makehosts compute1 
+cmd:makehosts compute1
 check:rc==0
 cmd:cat /etc/hosts
 check:output=~compute1
