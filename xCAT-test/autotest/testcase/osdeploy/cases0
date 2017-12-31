@@ -1,6 +1,6 @@
 start:osdeploy_usage
-description: osdeploy check usage 
-cmd:xcatprobe osdeploy -h 
+description: osdeploy check usage
+cmd:xcatprobe osdeploy -h
 check:rc==0
 check:output~=Usage
 check:output~=osdeploy -h
@@ -41,7 +41,7 @@ cmd:cat /tmp/osdeploy.test |grep "All nodes provisioned successfully"|grep OK
 check:rc==0
 cmd:rm -rf /tmp/osdeploy.test
 check:rc==0
-cmd:xcatprobe osdeploy -n $$CN -r 1h>> /tmp/osdeploy.test 
+cmd:xcatprobe osdeploy -n $$CN -r 1h>> /tmp/osdeploy.test
 check:rc==0
 cmd:cat /tmp/osdeploy.test |grep "All nodes provisioned successfully"|grep "OK"
 check:rc==0
@@ -149,7 +149,7 @@ cmd:sleep 300
 cmd:a=0;while ! `lsdef -l $$CN|grep status|grep booted >/dev/null`; do sleep 20;((a++));if [ $a -gt 300 ];then break;fi done
 cmd:cat /tmp/osdeploy.test |grep "All nodes provisioned successfully"|grep OK
 check:rc==0
-cmd:xcatprobe osdeploy -n $$CN -p origin -r 1h >> /tmp/osdeploy.test 
+cmd:xcatprobe osdeploy -n $$CN -p origin -r 1h >> /tmp/osdeploy.test
 check:rc==0
 cmd:cat /tmp/osdeploy.test |grep "Start Time for Stage"
 check:rc==0
@@ -173,7 +173,7 @@ cmd:sleep 300
 cmd:a=0;while ! `lsdef -l $$CN|grep status|grep booted >/dev/null`; do sleep 20;((a++));if [ $a -gt 300 ];then break;fi done
 cmd:cat /tmp/osdeploy.test |grep "Without provision process during rollback time window"
 check:rc==0
-cmd:xcatprobe osdeploy -n $$CN -p origin -r 1m >> /tmp/osdeploy.test 
+cmd:xcatprobe osdeploy -n $$CN -p origin -r 1m >> /tmp/osdeploy.test
 check:rc==0
 cmd:cat /tmp/osdeploy.test |grep "Without provision process during rollback time window"
 check:rc==0
@@ -276,7 +276,7 @@ cmd:cat /tmp/osdeploy.test |grep "Time for Phases"
 check:rc==0
 cmd:cat /tmp/osdeploy.test |grep NODE |awk '{print $4}'|grep SVRBOOT && cat /tmp/osdeploy.test |grep NODE |awk '{print $6}'|grep INSTALL && cat /tmp/osdeploy.test |grep NODE |awk '{print $8}'|grep POST && cat /tmp/osdeploy.test |grep NODE |awk '{print $10}'|grep POSTBOOT && cat /tmp/osdeploy.test |grep NODE |awk '{print $12}'|grep ELAPSED
 check:rc==0
-cmd:cat /tmp/osdeploy.test |grep  $$CN |awk '{print $4}' |grep -v NULL && cat /tmp/osdeploy.test |grep  $$CN |awk '{print $6}' |grep -v NULL && cat /tmp/osdeploy.test |grep  $$CN |awk '{print $8}' |grep -v NULL && cat /tmp/osdeploy.test |grep  $$CN |awk '{print $10}' |grep -v NULL  && cat /tmp/osdeploy.test |grep  $$CN |awk '{print $12}' |grep -v NULL  
+cmd:cat /tmp/osdeploy.test |grep  $$CN |awk '{print $4}' |grep -v NULL && cat /tmp/osdeploy.test |grep  $$CN |awk '{print $6}' |grep -v NULL && cat /tmp/osdeploy.test |grep  $$CN |awk '{print $8}' |grep -v NULL && cat /tmp/osdeploy.test |grep  $$CN |awk '{print $10}' |grep -v NULL  && cat /tmp/osdeploy.test |grep  $$CN |awk '{print $12}' |grep -v NULL
 check:rc==0
 cmd:rm -rf /tmp/osdeploy.test
 check:rc==0
@@ -324,7 +324,7 @@ cmd:cat /tmp/osdeploy.test |grep "Time for Phases"
 check:rc==0
 cmd:cat /tmp/osdeploy.test |grep NODE |awk '{print $4}'|grep SVRBOOT && cat /tmp/osdeploy.test |grep NODE |awk '{print $6}'|grep INSTALL && cat /tmp/osdeploy.test |grep NODE |awk '{print $8}'|grep POST && cat /tmp/osdeploy.test |grep NODE |awk '{print $10}'|grep POSTBOOT && cat /tmp/osdeploy.test |grep NODE |awk '{print $12}'|grep ELAPSED
 check:rc==0
-cmd:cat /tmp/osdeploy.test |grep  $$CN |grep -v FAIL |awk '{print $4}' |grep -v NULL  &&  cat /tmp/osdeploy.test |grep  $$CN |grep -v FAIl|awk '{print $6}' |grep -v NULL  &&  cat /tmp/osdeploy.test |grep  $$CN |grep -v FAIl |awk '{print $8}' |grep -v NULL  &&  cat /tmp/osdeploy.test |grep  $$CN |grep -v FAIL |awk '{print $10}' |grep -v NULL   &&  cat /tmp/osdeploy.test |grep  $$CN |grep -v FAIL |awk '{print $12}' |grep -v NULL 
+cmd:cat /tmp/osdeploy.test |grep  $$CN |grep -v FAIL |awk '{print $4}' |grep -v NULL  &&  cat /tmp/osdeploy.test |grep  $$CN |grep -v FAIl|awk '{print $6}' |grep -v NULL  &&  cat /tmp/osdeploy.test |grep  $$CN |grep -v FAIl |awk '{print $8}' |grep -v NULL  &&  cat /tmp/osdeploy.test |grep  $$CN |grep -v FAIL |awk '{print $10}' |grep -v NULL   &&  cat /tmp/osdeploy.test |grep  $$CN |grep -v FAIL |awk '{print $12}' |grep -v NULL
 check:rc==1
 cmd:rm -rf /tmp/osdeploy.test
 check:rc==0
