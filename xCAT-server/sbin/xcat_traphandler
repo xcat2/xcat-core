@@ -20,9 +20,9 @@ use Data::Dumper;
 
 #-------------------------------------------------------------------------------
 
-=head1  xcat_traphandler  
+=head1  xcat_traphandler
 =head2   Description
-  Script for SNMP trap handling. 
+  Script for SNMP trap handling.
 
 =cut
 
@@ -365,7 +365,7 @@ foreach my $k (keys %hashRUN) {
 #--------------------------------------------------------------------------------
 
 =head3    getMoreInfo
-      This function returns the node module/type, serial number, position etc. 
+      This function returns the node module/type, serial number, position etc.
     Arguments:
        node-- name of the node.
     Returns:
@@ -438,13 +438,13 @@ sub getMoreInfo {
 
 #--------------------------------------------------------------------------------
 
-=head3   parseSettings 
+=head3   parseSettings
       This function takes a setting string which looks like "key1=value1,key2=value2..."
-      and returns a hash (key1=>value1, key2=>value2...). 
+      and returns a hash (key1=>value1, key2=>value2...).
     Arguments:
-       setting  the setting string. 
+       setting  the setting string.
     Returns:
-       A hash. 
+       A hash.
 =cut
 
 #--------------------------------------------------------------------------------
@@ -473,9 +473,9 @@ sub parseSettings {
 
 #--------------------------------------------------------------------------------
 
-=head3   checkWithOid 
+=head3   checkWithOid
       This function checks the input strings with the setting to see what
-      actions need to be done for this event.  
+      actions need to be done for this event.
     Arguments:
        oid       the oid string
        value     the value string
