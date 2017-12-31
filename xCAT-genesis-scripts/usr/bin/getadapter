@@ -7,7 +7,7 @@ export XCATPORT
 ADAPTERFILE="/tmp/adapterinfo"
 SCANNICLOG="/tmp/adapterscan.log"
 
-rm -f "$SCANNICLOG" >/dev/null 2>&1 
+rm -f "$SCANNICLOG" >/dev/null 2>&1
 
 if [ -f "$ADAPTERFILE" ]; then
     echo "rm -f $ADAPTERFILE" > "$SCANNICLOG"
@@ -56,7 +56,7 @@ for n in /sys/class/net/*; do
 done
 
 for pci in `lspci |awk '/Ethernet/ {print $1}' `; do
-    if ! grep -q "$pci" "$ADAPTERFILE" 2>/dev/null; then 
+    if ! grep -q "$pci" "$ADAPTERFILE" 2>/dev/null; then
         tmp=`lspci |grep "$pci"`
         echo '<nic>' >> "$ADAPTERFILE"
         echo "<pcilocation>$pci</pcilocation>" >> "$ADAPTERFILE"
@@ -66,7 +66,7 @@ for pci in `lspci |awk '/Ethernet/ {print $1}' `; do
 done
 
 for pci in `lspci |awk '/Network/ {print $1}' `; do
-    if ! grep -q "$pci" "$ADAPTERFILE" 2>/dev/null; then 
+    if ! grep -q "$pci" "$ADAPTERFILE" 2>/dev/null; then
         tmp=`lspci |grep "$pci"`
         echo '<nic>' >> "$ADAPTERFILE"
         echo "<pcilocation>$pci</pcilocation>" >> "$ADAPTERFILE"
@@ -76,7 +76,7 @@ for pci in `lspci |awk '/Network/ {print $1}' `; do
 done
 
 for pci in `lspci |awk '/Mellanox/ {print $1}' `; do
-    if ! grep -q "$pci" "$ADAPTERFILE" 2>/dev/null; then 
+    if ! grep -q "$pci" "$ADAPTERFILE" 2>/dev/null; then
         tmp=`lspci |grep "$pci"`
         echo '<nic>' >> "$ADAPTERFILE"
         echo "<pcilocation>$pci</pcilocation>" >> "$ADAPTERFILE"
