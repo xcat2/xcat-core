@@ -36,7 +36,7 @@ Output:
   For OS status: 1 means on; 0 means off; 127 means unknown
   For nic interface status: the format is <nicname-<status>>. 1 means on; 0 means off; 127 means unknown
 
-Example: 
+Example:
   Get the status of three nodes: rh6mn,rh7mn,rh7cn
    # ./xcatstat rh6mn,rh7mn,rh7cn
      # Hostname:Status:Network-Interfaces:
