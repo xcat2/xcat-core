@@ -14,7 +14,7 @@ function get_def_interface {
         #retval=`ifconfig|grep inet" " |grep -v addr:127.0.0.1|grep -v 'addr:169.254'|head -n 1|cut -d: -f 2|cut -d' ' -f 1`
         retval=$(ip -4 -oneline addr show|grep -v "127.0.0.1"|grep -v '169.254'|head -n 1|awk -F 'inet ' '{print $2}'|awk -F '/' '{print $1}')
     fi
-    if [ -z "$retval" ]; then 
+    if [ -z "$retval" ]; then
         echo "ERROR: Unable to reasonably guess the 'default' interface" >&2
         exit 1
     fi
@@ -45,7 +45,7 @@ function get_def_interface {
             fi
     done
     IFS=$OFIS
-    else 
+    else
         echo "$iface"
     fi
 }
@@ -127,7 +127,7 @@ elif [ "bridgeprereq" = "$1" ]; then
     if echo "$NETDESC"|grep ':'> /dev/null; then
         PORTS=$(echo "$NETDESC"|cut -d: -f 1)
         BNAME=$(echo "$NETDESC"|cut -d: -f 2)
-    else 
+    else
         if [ -n "$NETDESC" ]; then
             BNAME=$NETDESC
         else
@@ -144,7 +144,7 @@ elif [ "bridgeprereq" = "$1" ]; then
         fi
 
         if [ -z "$PORTS" ] || [[ "$PORTS" =~ ^(mac|MAC)$ ]]; then
-            if [ -n "$MACADDRESS" ] ; then   
+            if [ -n "$MACADDRESS" ] ; then
                 PORTS=$(ip -oneline link show|grep -i ether|grep -i $MACADDRESS |awk -F ':' '{print $2}'|grep -o "[^ ]\+\( \+[^ ]\+\)*")
             else
                 echo "should configure mac in $NODE definition."
@@ -155,10 +155,10 @@ elif [ "bridgeprereq" = "$1" ]; then
     fi
 
     # To check whether the brctl have been installed
-    if ! which brctl &> /dev/null; then 
+    if ! which brctl &> /dev/null; then
         echo "No bridge-utils installed, pls install it first"
         exit 1
-    fi 
+    fi
 
     if brctl showstp "$BNAME" &> /dev/null; then
         echo "$BNAME already exists"
@@ -168,7 +168,7 @@ elif [ "bridgeprereq" = "$1" ]; then
     if [ -z "$PORTS" ]; then #This has been checked many times before in theory, check again just in case
         exit 1
     fi
-     
+
     #TO check whether the NIC had been attached to another bridge
     bridgename=$(brctl show |grep $PORTS)
     if [ ! -z "$bridgename" ]; then
@@ -179,7 +179,7 @@ elif [ "bridgeprereq" = "$1" ]; then
 
     #For now, we only support bridge name==network name.  This precludes
     #the config of the same vlan number on multiple fabrics, but
-    #will cover that flexibility later if demanded (with 4k vlan ids, 
+    #will cover that flexibility later if demanded (with 4k vlan ids,
     #I think it would be unwise to reuse them as it could confuse anyway)
     if echo "$PORTS"|grep '&'; then #we have bonding... fun to be had
     #To be slack, going to just support one bond for now..
@@ -194,7 +194,7 @@ elif [ "bridgeprereq" = "$1" ]; then
             IFS=$'\n'
             saveip=$(ip addr show dev $p scope global|grep inet|grep -v dynamic|sed -e 's/inet.//'|sed -e 's/[^ ]*$//')
             if [ ! -z "$saveip" ]; then
-                for line in $saveip; do 
+                for line in $saveip; do
                     ip addr add dev bond0 $line
                 done
             fi
@@ -202,11 +202,11 @@ elif [ "bridgeprereq" = "$1" ]; then
             ifenslave bond0 $p
             if [ ! -z "$saveroutes" ]; then
                 ip route add $saveroutes
-            fi 
+            fi
         done
         PORTS=bond0
     fi
-    if echo "$BNAME"|egrep '^vl(an)?[0123456789]' > /dev/null; then 
+    if echo "$BNAME"|egrep '^vl(an)?[0123456789]' > /dev/null; then
         vlan="yes"
         TNAME=${BNAME##vl}
         TNAME=${TNAME##an}
@@ -227,24 +227,24 @@ elif [ "bridgeprereq" = "$1" ]; then
     saveroutes="$(ip route | grep default| grep "dev $PORTS"|grep via|sed -e 's/dev .*//')"
     saveip="$(ip -4 -o addr show dev $PORTS scope global | sed 's/.*inet //'| sed 's/\( global \).*/\1/')"
     if [ ! -z "$saveip" ]; then
-        while read line; do 
+        while read line; do
             ip addr add dev $BNAME ${line//dynamic}
         done <<<"$saveip"
     else
         if [ ! -z "$3" ]; then
-            ip addr add dev $BNAME $3 
+            ip addr add dev $BNAME $3
         fi
     fi
     brctl addif $BNAME $PORTS
     if [ ! -z "$saveip" ]; then
-        while read line; do 
+        while read line; do
             ip addr del dev $PORTS ${line//dynamic}
         done <<<"$saveip"
     fi
     if [ ! -z "$saveroutes" ]; then
         ip route add $saveroutes
     fi
-    
+
     #now save the settings into the config files so that they will be persistent among reboots
     if [[ $OSVER = sles* ]] || [[ $OSVER = suse* ]] || [[ -f /etc/SuSE-release ]]; then
         nwdir="/etc/sysconfig/network"
@@ -257,10 +257,10 @@ elif [ "bridgeprereq" = "$1" ]; then
         if [ $? -ne 0 ];then
             setcap cap_net_admin=ei /usr/bin/qemu-system-x86_64
         fi
-    else 
+    else
         nwdir="/etc/sysconfig/network-scripts"
-    fi 
-    
+    fi
+
      #write into the network configuration file
     if [[ $isSLES -eq 1 ]]; then
         { cat <<EOF
@@ -275,14 +275,14 @@ EOF
         if [ ! -z "$vlan" ]; then
             echo "VLAN='yes'"
         fi; } >"$nwdir/ifcfg-$PORTS"
-        { cat <<EOF      
+        { cat <<EOF
 DEVICE='$BNAME'
 TYPE='Bridge'
 ONBOOT='yes'
 PEERDNS='yes'
 DELAY='0'
 EOF
-        if [ ! -z "$3" ]; then 
+        if [ ! -z "$3" ]; then
             echo "IPADDR='$3'"
             if [ ! -z "$4" ]; then
                 echo "NETMASK='$4'"
@@ -294,7 +294,7 @@ EOF
         #ubuntu/debian
         echo "auto $PORTS" >$nwdir/$PORTS
         echo "iface $PORTS inet manual" >> $nwdir/$PORTS
-        
+
         if [ ! -z "$vlan" ];then
             echo "  vlan-raw-device $PORTORG"
         fi
@@ -317,7 +317,7 @@ EOF
                 echo "iface $BNAME inet static"
                 echo "  address $bridge_ip"
                 echo "  netmask $bridge_mask";
-            else 
+            else
                 echo "iface $BNAME inet dhcp"
             fi
         fi
@@ -340,14 +340,14 @@ EOF
         if [ ! -z "$vlan" ]; then
             echo "VLAN=yes"
         fi; } >"$nwdir/ifcfg-$PORTS"
-        { cat <<EOF      
+        { cat <<EOF
 DEVICE=$BNAME
 TYPE=Bridge
 ONBOOT=yes
 PEERDNS=yes
 DELAY=0
 EOF
-        if [ ! -z "$3" ]; then 
+        if [ ! -z "$3" ]; then
             echo "IPADDR=$3"
             if [ ! -z "$4" ]; then
                 echo "NETMASK=$4"
@@ -355,7 +355,7 @@ EOF
         else
             echo "$ATTRS"
         fi ; }  > "$nwdir/ifcfg-$BNAME"
-    fi 
- 
+    fi
+
     ifdown "$BNAME"; ifup "$BNAME"
 fi #END bridge config.
