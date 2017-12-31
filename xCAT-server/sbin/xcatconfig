@@ -622,7 +622,7 @@ exit;
 
 #-----------------------------------------------------------------------------
 
-=head3    usage 
+=head3    usage
 	
 	Displays message for -h option
 
@@ -651,7 +651,7 @@ sub verbose
 
 #-----------------------------------------------------------------------------
 
-=head3    genSSHRootKeys 
+=head3    genSSHRootKeys
 	
      Will generate a new ssh rsa key for the root user, if it does not exist or if requested by the input -k flag.
 
@@ -832,9 +832,9 @@ sub genSSHRootKeys
 
 #-----------------------------------------------------------------------------
 
-=head3   settunables 
+=head3   settunables
 	
-    Will set the default suggested tunables on the Management Node or service node for Linux 
+    Will set the default suggested tunables on the Management Node or service node for Linux
 
 =cut
 
@@ -889,16 +889,16 @@ sub settunables
 
 #-----------------------------------------------------------------------------
 
-=head3    genSSHNodeHostKey 
+=head3    genSSHNodeHostKey
 	
   If node private node hostkeys do not exist in either directory or force option
    or generate host key option, we need to generate them
    These keys are installed on the nodes in /etc/ssh directory and allow the
    node to ssh to the other nodes and the MN or SN to be able to ssh to the node
-   Without known_hosts warning messages.   
+   Without known_hosts warning messages.
    They are store in /etc/xcat/hostkeys on the MN.
    The public key is also installed in  /install/postscripts/hostkeys
-   for the install process 
+   for the install process
    The private key  is downloaded by remoteshell postscript using the credentials.pm interface
 
 =cut
@@ -1052,7 +1052,7 @@ sub is_redhat6sp4
 
 #-----------------------------------------------------------------------------
 
-=head3    initDB 
+=head3    initDB
 	
     Will initialize the DB if it does not already exist,  also updates with
 	new data needed or database changes during xCAT  install.
@@ -1495,7 +1495,7 @@ sub initDB
 
 #-----------------------------------------------------------------------------
 
-=head3    check for otherpkgs 
+=head3    check for otherpkgs
 	
     Check to see if other pkgs exists in postscripts table.
 	If it does not we will be putting it in postbootscripts
@@ -1546,9 +1546,9 @@ sub checkotherpkgs
 
 #-----------------------------------------------------------------------------
 
-=head3    genCredentials 
+=head3    genCredentials
 	
-    Will generate the xCAT credential,  if new install or requested to 
+    Will generate the xCAT credential,  if new install or requested to
 	regenerate.
 
 =cut
@@ -1736,10 +1736,10 @@ sub genCredentials
 
 #-----------------------------------------------------------------------------
 
-=head3    setupAIXIPMITool 
-       
-     Set AIX IPMI Tool 
- 
+=head3    setupAIXIPMITool
+
+     Set AIX IPMI Tool
+
 =cut
 
 #-----------------------------------------------------------------------------
@@ -1769,9 +1769,9 @@ sub setupAIXIPMITool
 
 #-----------------------------------------------------------------------------
 
-=head3    setupAIXexports 
+=head3    setupAIXexports
 	
-    Set AIX exports 
+    Set AIX exports
 
 =cut
 
@@ -1805,9 +1805,9 @@ sub setupAIXexports
 
 #-----------------------------------------------------------------------------
 
-=head3    setupLinuxexports 
+=head3    setupLinuxexports
 	
-    Set Linux exports 
+    Set Linux exports
 
 =cut
 
@@ -1928,9 +1928,9 @@ sub setupLinuxexports
 
 #-----------------------------------------------------------------------------
 
-=head3    mknb 
+=head3    mknb
 	
-   Creates a network boot root image on Linux 
+   Creates a network boot root image on Linux
    Run mknb to put xCAT-genesis-scripts-x86_64 and xCAT-genesis-base-x86_64 together and in /tftpboot
    From 2.12.2, both xCAT-genesis-scripts-x86_64 and xCAT-genesis-scripts-ppc64 will be installed.
    So, will run mknb twice, one for ppc64 and another for x86_64
@@ -1972,9 +1972,9 @@ sub mknb
 
 #-----------------------------------------------------------------------------
 
-=head3    makenetworks 
+=head3    makenetworks
 	
-     Runs makenetworks on AIX and Linux 
+     Runs makenetworks on AIX and Linux
 
 =cut
 
@@ -1999,7 +1999,7 @@ sub makenetworks
 
 #-----------------------------------------------------------------------------
 
-=head3    setuphttp 
+=head3    setuphttp
 	
      initializes http  on Linux
 
@@ -2071,25 +2071,25 @@ sub setuphttp
 
 #-----------------------------------------------------------------------------
 
-=head3   cleanupPSTable 
+=head3   cleanupPSTable
 	
    Any line in the postscripts table that has the following
    entry will have xcatserver,xcatclient remove because they
    are not called by servicenode
 
-   ..."servicenode,xcatserver,xcatclient.."... 
+   ..."servicenode,xcatserver,xcatclient.."...
     becomes
-   ..."servicenode,.."... 
- 
+   ..."servicenode,.."...
 
-   Any line in the postscripts table that has aixremoteshell, 
+
+   Any line in the postscripts table that has aixremoteshell,
    aixremoteshell will be replaced by remoteshell unless it is
    already on the line.  remoteshell now calls aixremoteshell, if on an
-   AIX node.  
+   AIX node.
 
-   ...,"syslog,aixremoteshell,syncfiles",,, 
+   ...,"syslog,aixremoteshell,syncfiles",,,
    becomes
-   ...,"syslog,remoteshell,syncfiles",,, 
+   ...,"syslog,remoteshell,syncfiles",,,
 
 =cut
 
@@ -2183,10 +2183,10 @@ sub cleanupPSTable
 
 #-----------------------------------------------------------------------------
 
-=head3   setupMNinDB 
+=head3   setupMNinDB
 	
- Will add the management node to the noderes table with group=__mgmtnode  
- Will add the management node to the servicenode tble with group=__mgmtnode  
+ Will add the management node to the noderes table with group=__mgmtnode
+ Will add the management node to the servicenode tble with group=__mgmtnode
 
 
 =cut
@@ -2284,7 +2284,7 @@ sub setupMNinDB
 
 #-----------------------------------------------------------------------------
 
-=head3    startnamedonboot 
+=head3    startnamedonboot
 	
      Configure named to start on boot
 
