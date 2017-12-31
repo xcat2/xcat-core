@@ -2,8 +2,8 @@ sub setNodeAttribs
 sub addNodeAttribs
 sub setAttribs
 sub setAttribsWhere
-sub setNodesAttribs 
-sub getNodesAttribs 
+sub setNodesAttribs
+sub getNodesAttribs
 sub getNodeAttribs
 sub getAllEntries
 sub getAllAttribsWhere
