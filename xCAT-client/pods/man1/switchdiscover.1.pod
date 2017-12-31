@@ -16,78 +16,78 @@ B<switchdiscover> [I<noderange> | B<--range> I<ip_ranges>] B<[-V] [-w][-r|-x|-z]
 
 =head1 DESCRIPTION
 
-The switchdiscover command scans the subnets and discovers all the switches on the subnets. The command takes a list of subnets as input. The default subnets are the ones that the xCAT management node is on. It uses nmap command as default to discover the switches. However, you can specify other discovery methods such as lldp or snmp with B<-s> flag. You can write the discovered switches into xCAT database with B<-w> flag. This command supports may output formats such as xml(B<-x>), raw(B<-r>) and stanza(B<-z>) in addition to the default format.    
+The switchdiscover command scans the subnets and discovers all the switches on the subnets. The command takes a list of subnets as input. The default subnets are the ones that the xCAT management node is on. It uses nmap command as default to discover the switches. However, you can specify other discovery methods such as lldp or snmp with B<-s> flag. You can write the discovered switches into xCAT database with B<-w> flag. This command supports may output formats such as xml(B<-x>), raw(B<-r>) and stanza(B<-z>) in addition to the default format.
 
 B<--setup> flag is for switch-based switch discovery.  It will find all the discovered switches on the subnets, then match them with predefined switches in the xCATDB. Next, it will set discovered switches with static ip address and hostname based on the predefined switch.  It will also enable snmpv3 configuration. The details of the process are defined in the http://xcat-docs.readthedocs.io/en/latest/advanced/networks/switchdiscover/switches_discovery.html.
 
 To view all the switches defined in the xCAT database use B<lsdef -w "nodetype=switch"> command.
 
-For lldp method, make sure that lldpd package is installed and lldpd is running on the xCAT management node. lldpd comes from xcat-dep package or you can get it from http://vincentbernat.github.io/lldpd/installation.html. 
+For lldp method, make sure that lldpd package is installed and lldpd is running on the xCAT management node. lldpd comes from xcat-dep package or you can get it from http://vincentbernat.github.io/lldpd/installation.html.
 
-For snmp method, make sure that snmpwalk command is installed and snmp is enabled for switches. To install snmpwalk, "yum install net-snmp-utils" for redhat and sles,  "apt-get install snmp" for Ubuntu. The switchdiscover command only check the switches with default community string, if user already configured switch with other commmunity string, need to pass in with B<-c> option for switchdiscover command to be able to discover. 
+For snmp method, make sure that snmpwalk command is installed and snmp is enabled for switches. To install snmpwalk, "yum install net-snmp-utils" for redhat and sles,  "apt-get install snmp" for Ubuntu. The switchdiscover command only check the switches with default community string, if user already configured switch with other commmunity string, need to pass in with B<-c> option for switchdiscover command to be able to discover.
 
 
 =head1 OPTIONS
 
 =over 10
 
-=item I<noderange>  
+=item I<noderange>
 
 The switches which the user want to discover.
 If the user specify the noderange, switchdiscover will just
-return the switches in the node range. Which means it will 
+return the switches in the node range. Which means it will
 help to add the new switches to the xCAT database without
-modifying the existed definitions. But the switches' name 
-specified in noderange should be defined in database in advance. 
-The ips of the switches will be defined in /etc/hosts file. 
-This command will fill the switch attributes for the switches defined. 
+modifying the existed definitions. But the switches' name
+specified in noderange should be defined in database in advance.
+The ips of the switches will be defined in /etc/hosts file.
+This command will fill the switch attributes for the switches defined.
 
-=item B<-h|--help>          
+=item B<-h|--help>
 
 Display usage message.
 
-=item B<--range>  
+=item B<--range>
 
 Specify one or more IP ranges. Each can be an ip address (10.1.2.3) or an ip range (10.1.2.0/24). If the range is huge, for example, 192.168.1.1/8, the switch discover may take a very long time to scan. So the range should be exactly specified.
 
 For nmap and snmp scan method, it accepts multiple formats. For example: 192.168.1.1/24, 40-41.1-2.3-4.1-100.
 
-If the range is not specified, the command scans all the subnets that the active network interfaces (eth0, eth1) are on where this command is issued. 
+If the range is not specified, the command scans all the subnets that the active network interfaces (eth0, eth1) are on where this command is issued.
 
-=item B<-r>          
+=item B<-r>
 
 Display Raw responses.
 
-=item B<-s>  
+=item B<-s>
 
-It is a comma separated list of methods for switch discovery. 
+It is a comma separated list of methods for switch discovery.
 The possible switch scan methods are: lldp, nmap or snmp. The default is nmap.
 
-=item B<-v|--version>  
+=item B<-v|--version>
 
 Command Version.
 
-=item B<-V>    
+=item B<-V>
 
 Verbose output.
 
-=item B<-w>     
+=item B<-w>
 
 Writes output to xCAT database.
 
-=item B<-x>      
+=item B<-x>
 
 XML formatted output.
 
-=item B<-z>          
+=item B<-z>
 
 Stanza formatted output.
 
 =item B<--setup>
 
-Process switch-based switch discovery. Update discovered switch's ip address, hostname and enable snmpv3 configuration based on the predefined switch. 
+Process switch-based switch discovery. Update discovered switch's ip address, hostname and enable snmpv3 configuration based on the predefined switch.
 
-=item B<-c>          
+=item B<-c>
 
 User defined community string for snmp scan.
 
