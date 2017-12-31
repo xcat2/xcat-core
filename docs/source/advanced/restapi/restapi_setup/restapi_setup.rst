@@ -1,7 +1,7 @@
-Enable the HTTPS service for REST API 
+Enable the HTTPS service for REST API
 =====================================
 
-To improve the security between the REST API client and server, enabling the HTTPS service on the xCAT MN is recommended. And the REST API client should use the 'https' to access web server instead of the 'http'. 
+To improve the security between the REST API client and server, enabling the HTTPS service on the xCAT MN is recommended. And the REST API client should use the 'https' to access web server instead of the 'http'.
 
 * **[RHEL6/7 (x86_64/ppc64) and RHEL5 (x86_64)]** ::
 
@@ -13,7 +13,7 @@ To improve the security between the REST API client and server, enabling the HTT
 
   Uninstall httpd.ppc64 and install httpd.ppc: ::
 
-    rpm -e --nodeps httpd.ppc64 
+    rpm -e --nodeps httpd.ppc64
     rpm -i httpd.ppc mod_ssl.ppc
 
 * **[SLES10/11/12 (x86_64/ppc64)]** ::
@@ -31,7 +31,7 @@ To improve the security between the REST API client and server, enabling the HTT
     sudo a2enmod ssl
     ln -s ../sites-available/default-ssl.conf  /etc/apache2/sites-enabled/ssl.conf
     sudo service apache2 restart
-    
+
     # verify it is loaded:
 
     sudo apache2ctl -t -D DUMP_MODULES | grep ssl
@@ -40,11 +40,11 @@ To improve the security between the REST API client and server, enabling the HTT
 Enable the Certificate of HTTPs Server (Optional)
 =================================================
 
-Enabling the certificate functionality of https server is useful for the Rest API client to authenticate the server. 
+Enabling the certificate functionality of https server is useful for the Rest API client to authenticate the server.
 
-The certificate for xcatd has already been generated when installing xCAT, it can be reused by the https server. To enable the server certificate authentication, the hostname of xCAT MN must be a fully qualified domain name (FQDN). The REST API client also must use this FQDN when accessing the https server. If the hostname of the xCAT MN is not a FQDN, you need to change the hostname first. 
+The certificate for xcatd has already been generated when installing xCAT, it can be reused by the https server. To enable the server certificate authentication, the hostname of xCAT MN must be a fully qualified domain name (FQDN). The REST API client also must use this FQDN when accessing the https server. If the hostname of the xCAT MN is not a FQDN, you need to change the hostname first.
 
-Typically the hostname of the xCAT MN is initially set to the NIC which faces to the cluster (usually an internal/private NIC). If you want to enable the REST API for public client, set the hostname of xCAT MN to one of the public NIC. 
+Typically the hostname of the xCAT MN is initially set to the NIC which faces to the cluster (usually an internal/private NIC). If you want to enable the REST API for public client, set the hostname of xCAT MN to one of the public NIC.
 
 To change the hostname, edit /etc/sysconfig/network (RHEL) or /etc/HOSTNAME (SLES) and run:  ::
 
@@ -62,9 +62,9 @@ The steps to configure the certificate for https server: ::
     export sslcfgfile=/etc/apache2/vhosts.d/vhost-ssl.conf    # sles
     export sslcfgfile=/etc/apache2/sites-enabled/ssl.conf     # ubuntu
 
-    sed -i 's/^\(\s*\)SSLCertificateFile.*$/\1SSLCertificateFile \/etc\/xcat\/cert\/server-cred.pem/' $sslcfgfile    
+    sed -i 's/^\(\s*\)SSLCertificateFile.*$/\1SSLCertificateFile \/etc\/xcat\/cert\/server-cred.pem/' $sslcfgfile
     sed -i 's/^\(\s*SSLCertificateKeyFile.*\)$/#\1/' $sslcfgfile
-        
+
     service httpd restart        # rhel
     service apache2 restart      # sles/ubuntu
 
@@ -92,11 +92,11 @@ Some operations like 'create osimage' (copycds) need a long time (longer than 3 
 Set Up an Account for Web Service Access
 ========================================
 
-User needs a username and password to access the REST API. When the REST API request is passed to xcatd, the username and password will be verified based on the :doc:`xCAT passwd Table </guides/admin-guides/references/man5/passwd.5>`, and then xcatd will look in the :doc:`xCAT policy Table </guides/admin-guides/references/man5/policy.5>` to see if the user is allowed to perform the requested operation. 
+User needs a username and password to access the REST API. When the REST API request is passed to xcatd, the username and password will be verified based on the :doc:`xCAT passwd Table </guides/admin-guides/references/man5/passwd.5>`, and then xcatd will look in the :doc:`xCAT policy Table </guides/admin-guides/references/man5/policy.5>` to see if the user is allowed to perform the requested operation.
 
-The account with key of **xcat** will be used for the REST API authentication. The username and password should be passed in as the attirbutes of URL: 
+The account with key of **xcat** will be used for the REST API authentication. The username and password should be passed in as the attirbutes of URL:
 
-* userName: Pass the username of the account 
+* userName: Pass the username of the account
 * userPW:   Pass the password of the account (xCAT 2.10)
 * password: Pass the password of the account (xCAT earlier than 2.10)
 
@@ -123,7 +123,7 @@ Create new user and setup the password and policy rules. ::
     # add user to policy table
     mkdef -t policy 6 name=<wsuser> rule=allow
 
-``Note:`` in the tabch command above you can put the salted password (from /etc/shadow) in the xCAT passwd table instead of the clear text password, if you prefer. 
+``Note:`` in the tabch command above you can put the salted password (from /etc/shadow) in the xCAT passwd table instead of the clear text password, if you prefer.
 
 Identical user with the same name and uid need to be created on each compute node. ::
 
@@ -136,7 +136,7 @@ Create the SSL certificate under that user's home directory so that user can be 
 
     /opt/xcat/share/xcat/scripts/setup-local-client.sh <wsuser>
 
-When running this command you'll see SSL certificates created. Enter "y" where prompted and take the defaults. 
+When running this command you'll see SSL certificates created. Enter "y" where prompted and take the defaults.
 
 To enable the POST method of resources like nodeshell, nodecopy, updating and filesyncing for the non-root user, you need to enable the ssh communication between xCAT MN and CN without password. Log in as <username> and run following command: ::
 
@@ -150,9 +150,9 @@ or if you did not set up the certificate: ::
 
     curl -X GET -k 'https://<xcat-mn-host>/xcatws/nodes?userName=<wsuser>&userPW=<wspw>'
 
-You should see some output that includes your list of nodes. 
+You should see some output that includes your list of nodes.
 
 If errors returned, check `/var/log/httpd/ssl_error_log` on xCAT MN.
 
-``Note:`` if passwords need to be changed in the future, make sure to update the xCAT passwd table. xCAT REST API uses passwords stored in that table to authenticate users. 
+``Note:`` if passwords need to be changed in the future, make sure to update the xCAT passwd table. xCAT REST API uses passwords stored in that table to authenticate users.
 
