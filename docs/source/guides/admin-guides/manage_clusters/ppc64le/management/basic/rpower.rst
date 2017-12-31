@@ -8,8 +8,8 @@ Use the ``rpower`` command to remotely power on and off a single server or a ran
     rpower <noderange> on
     rpower <noderange> off
 
-Other actions include: 
+Other actions include:
 
    * To get the current power state of a server: ``rpower <noderange> state``
-   * To boot/reboot a server: ``rpower <noderange> boot`` 
-   * To hardware reset a server: ``rpower <noderange> reset`` 
+   * To boot/reboot a server: ``rpower <noderange> boot``
+   * To hardware reset a server: ``rpower <noderange> reset``
