@@ -25,7 +25,7 @@ net2ip="";
         cat "$SHELLFOLDER"testnode |grep "xcatd=60.3.3.3:3001 destiny=shell";
             if [[ $? -eq 0 ]] ;then
                 return 0;
-            else 
+            else
                 echo wrong;
                 return 1;
             fi
@@ -34,24 +34,24 @@ net2ip="";
 function clear_env(){
 makehosts -d testnode
 rmdef testnode
-    if [[ $? -eq 0 ]];then 
+    if [[ $? -eq 0 ]];then
        return 0;
-    else 
+    else
        return 1;
     fi
 }
 NETBOOT=""
 SHELLFOLDER=""
 while [ "$#" -gt "0" ]
-do 
-        case $1 in 
+do
+        case $1 in
                 "--check" )
                 NETBOOT=$2;
                     if [[ $NETBOOT =~ petitboot ]];then
                         SHELLFOLDER="/tftpboot/petitboot/";
                     elif [[ $NETBOOT =~  xnba ]];then
                         SHELLFOLDER="/tftpboot/xcat/xnba/nodes/"
-                    else 
+                    else
                         SHELLFOLDER="/tftpboot/boot/grub2/";
                     fi
                     check_destiny ;
@@ -62,7 +62,7 @@ do
                         fi
                 ;;
                 "-c"|"--clear" )
-                clear_env; 
+                clear_env;
                     if [[ $? -eq 1 ]];then
                         exit 1
                     else
