@@ -15,17 +15,17 @@ Name
 
 
 ****************
-\ **Synopsis**\ 
+\ **Synopsis**\
 ****************
 
 
-\ **rspreset**\  \ *noderange*\ 
+\ **rspreset**\  \ *noderange*\
 
 \ **rspreset**\  [\ **-h | -**\ **-help | -v | -**\ **-version**\ ]
 
 
 *******************
-\ **Description**\ 
+\ **Description**\
 *******************
 
 
@@ -36,45 +36,45 @@ the blade's on board service processor will be reset.
 
 
 ***************
-\ **Options**\ 
+\ **Options**\
 ***************
 
 
 
-\ **-h | -**\ **-help**\ 
- 
+\ **-h | -**\ **-help**\
+
  Print help.
- 
 
 
-\ **-v | -**\ **-version**\ 
- 
+
+\ **-v | -**\ **-version**\
+
  Print version.
- 
+
 
 
 
 ****************
-\ **Examples**\ 
+\ **Examples**\
 ****************
 
 
 
 1.
- 
+
  Reset the service processor that controls node5:
- 
- 
+
+
  .. code-block:: perl
- 
+
    rspreset node5
- 
- 
+
+
 
 
 
 ****************
-\ **SEE ALSO**\ 
+\ **SEE ALSO**\
 ****************
 
 
