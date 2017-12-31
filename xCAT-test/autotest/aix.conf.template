@@ -1,4 +1,4 @@
-#add rows to xCAT database table tablename 
+#add rows to xCAT database table tablename
 #[Table_tablename]
 #key=value
 [Table_passwd]
@@ -7,7 +7,7 @@ username=root
 password=cluster
 
 #add object definition to xCAT database
-#[Object_objecttype] 
+#[Object_objecttype]
 #Name=object name
 #Attribute=value
 [Object_network]
