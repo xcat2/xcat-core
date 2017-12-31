@@ -15,17 +15,17 @@ Name
 
 
 ****************
-\ **Synopsis**\ 
+\ **Synopsis**\
 ****************
 
 
-\ **pscp**\  [\ **-i**\  \ *suffix*\ ] [\ *scp options*\  \ *...*\ ] [\ **-f**\  \ *fanout*\ ] \ *filename*\  [\ *filename*\  \ *...*\ ] \ *noderange:destinationdirectory*\ 
+\ **pscp**\  [\ **-i**\  \ *suffix*\ ] [\ *scp options*\  \ *...*\ ] [\ **-f**\  \ *fanout*\ ] \ *filename*\  [\ *filename*\  \ *...*\ ] \ *noderange:destinationdirectory*\
 
 \ **pscp**\  {\ **-h | -**\ **-help | -v | -**\ **-version**\ }
 
 
 *******************
-\ **Description**\ 
+\ **Description**\
 *******************
 
 
@@ -41,92 +41,92 @@ management node to the compute node via a service node.
 
 
 ***************
-\ **Options**\ 
+\ **Options**\
 ***************
 
 
 
-\ **-f**\  \ *fanout*\ 
- 
+\ **-f**\  \ *fanout*\
+
  Specifies a fanout value for the maximum number of  concur-
  rently  executing  remote shell processes.
- 
 
 
-\ **-i**\  \ *suffix*\ 
- 
+
+\ **-i**\  \ *suffix*\
+
  Interfaces to be used.
- 
 
 
-\ *scp options*\ 
- 
- See \ **scp(1)**\ 
- 
+
+\ *scp options*\
+
+ See \ **scp(1)**\
 
 
-\ *filename*\ 
- 
+
+\ *filename*\
+
  A space delimited list of files to copy. If \ **-r**\  is passed as an scp option, directories may be specified as well.
- 
 
 
-\ *noderange:destination*\ 
- 
+
+\ *noderange:destination*\
+
  A noderange(3)|noderange.3 and destination directory.  The : is required.
- 
 
 
-\ **-h | -**\ **-help**\ 
- 
+
+\ **-h | -**\ **-help**\
+
  Print help.
- 
 
 
-\ **-v | -**\ **-version**\ 
- 
+
+\ **-v | -**\ **-version**\
+
  Print version.
- 
 
 
 
-\ **XCATPSHFANOUT**\ 
- 
+
+\ **XCATPSHFANOUT**\
+
  Specifies  the fanout value. This variable is overridden by
  the \ **-f**\  flag.  Default is 64.
- 
+
 
 
 
 ****************
-\ **Examples**\ 
+\ **Examples**\
 ****************
 
 
 
 1.
- 
- 
+
+
  .. code-block:: perl
- 
+
    pscp -r /usr/local node1,node3:/usr/local
- 
- 
+
+
 
 
 2.
- 
- 
+
+
  .. code-block:: perl
- 
+
    pscp passwd group rack01:/etc
- 
- 
+
+
 
 
 
 ************************
-\ **See**\  \ **Also**\ 
+\ **See**\  \ **Also**\
 ************************
 
 
