@@ -3,8 +3,8 @@ Configure BOND, VLAN and BRIDGES
 
 The following example set the xCAT properties for compute node ``cn1`` to achieve the following network configuration using the ``confignetwork`` postscript:
 
-  * Compute node ``cn1`` has two physical NICs: ``eth2`` and ``eth3``  
-  * Bond ``eth2`` and ``eth3`` as ``bond0`` 
+  * Compute node ``cn1`` has two physical NICs: ``eth2`` and ``eth3``
+  * Bond ``eth2`` and ``eth3`` as ``bond0``
   * From ``bond0``, create 2 VLANs: ``bond0.1`` and ``bond0.2``
   * Make bridge ``br1`` using ``bond0.1`` with IP (10.0.0.1)
   * Make bridge ``br2`` using ``bond0.2`` with IP (20.0.0.1)
@@ -27,16 +27,16 @@ Define attributes in the ``nics`` table
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 #. Compute node ``cn1`` has two physical NICs: ``eth2`` and ``eth3`` ::
- 
+
     chdef cn1 nictypes.eth2=ethernet nictypes.eth3=ethernet
-   
+
 #. Define ``bond0`` and bond ``eth2`` and ``eth3`` as ``bond0`` ::
 
     chdef cn1 nictypes.bond0=bond \
               nicdevices.bond0="eth2|eth3"
 
 #. From ``bond0``, create 2 VLANs: ``bond0.1`` and ``bond0.2`` ::
-    
+
     chdef cn1 nictypes.bond0.1=vlan \
               nictypes.bond0.2=vlan \
               nicdevices.bond0.1=bond0 \
@@ -71,7 +71,7 @@ Check result
 ~~~~~~~~~~~~
 
 Use ``ip`` command on ``cn1`` to check all NICs ::
-   
+
     xdsh cn1 "ip addr"
 
 Check all network configuration files under ``/etc/sysconfig/network-scripts/``.
