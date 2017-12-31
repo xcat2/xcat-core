@@ -1,10 +1,10 @@
-bash 
+bash
 postfix
 nfs-utils
 openssl
-dhclient 
-kernel 
-openssh-server 
+dhclient
+kernel
+openssh-server
 openssh-clients
 busybox-anaconda
 wget
