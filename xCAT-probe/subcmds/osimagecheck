@@ -27,7 +27,7 @@ $::USAGE = "Usage:
     $program_name [-V|--verbose]
 
 Description:
-    Use this command to check osimage defintions in xCAT DB. 
+    Use this command to check osimage defintions in xCAT DB.
 
 Options:
     -h : Get usage information of $program_name
@@ -179,13 +179,13 @@ sub check_for_valid_osimage_attributes {
     return $rc;
 }
 
-sub check_valid_files_defined { 
+sub check_valid_files_defined {
     probe_utils->send_msg("$output", "i", "==> Checking that valid files are specified in osimage attributes ...");
     my $rc = 0;
     my $osimage_list = `lsdef -t osimage $osimagecmd -s 2> /dev/null`;
     chomp($osimage_list);
     my @all_osimage_lists = split("[\n]", $osimage_list);
-    
+
     foreach (@all_osimage_lists) {
         # loop over the osimage name
         my ($osimage_name, $junk) = split " ", $_;
@@ -195,12 +195,12 @@ sub check_valid_files_defined {
         foreach (@attributes) {
             # loop over the attributes to check
             probe_utils->send_msg("$output", "d", "Checking attribute=$_ ...") if ($VERBOSE);
-   
+
             my $osimage_attribute = `lsdef -t osimage -o $osimage_name -i $_ -c 2> /dev/null`;
             chomp($osimage_attribute);
             my ($junk, $file) = split "=", $osimage_attribute;
             if ($file eq "") {
-                # if no file is defined, skip 
+                # if no file is defined, skip
                 next;
             }
 
@@ -212,11 +212,11 @@ sub check_valid_files_defined {
                        probe_utils->send_msg("$output", "f", "In $_, NON-EXISTANT FILE: $f");
                        $rc = 1;
                    }
-                } 
+                }
             }
         }
     }
-    if ($rc == 0) { 
+    if ($rc == 0) {
         probe_utils->send_msg("$output", "o", "Files specified in the osimage attributes seem to be valid.");
     }
 }
@@ -231,9 +231,9 @@ if ($osimage) {
     # verify a valid osimage name was passed in
     my $osimage_output = `lsdef -t osimage $osimagecmd 2>&1`;
     if ($osimage_output =~ /Error: Could not find/) {
-        probe_utils->send_msg("$output", "f", "Invalid osimage name passed in: $osimage"); 
+        probe_utils->send_msg("$output", "f", "Invalid osimage name passed in: $osimage");
         exit 1;
-    } 
+    }
 } else {
     probe_utils->send_msg("$output", "d", "[osimagecheck] No osimage passed in, checking all osimages ...") if ($VERBOSE);
 }
