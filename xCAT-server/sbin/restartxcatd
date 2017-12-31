@@ -4,28 +4,28 @@
 
 #-----------------------------------------------------------------------------
 
-=head1 restartxcatd 
+=head1 restartxcatd
 
  restartxcatd  - this routine is used to restart the xcatd process group.
 
      Linux: It will perform the xcatd fast restart. The 'xcatd fast restart'
-         has two advantages compares to the 'service stop and then start'. 
+         has two advantages compares to the 'service stop and then start'.
              1. The interval of xcatd out of service is very short.
              2. The in processing request which initiated by old xcatd will
                 not be stopped by force. The old xcatd will hand over the sockets
-                to new xcatd, but old xcat will still be waiting for the in processing 
+                to new xcatd, but old xcat will still be waiting for the in processing
                 request to finish before the exit.
 
          It does the same thing as 'service xcatd restart' on NON-systemd OS like
-             rh6.x and sles11.x. But for the systemd enabled OS like rh7 and sles12, 
-             the 'service xcatd restart' just do the 'stop and start' instead of 
+             rh6.x and sles11.x. But for the systemd enabled OS like rh7 and sles12,
+             the 'service xcatd restart' just do the 'stop and start' instead of
              'xcatd fast restart'.
-         
-         SO, it's recommended to use 'restartxcatd' command to restart xcatd on 
-             systemd enable system like rh7 and sles12 instead of 'service xcatd restart' or 
+
+         SO, it's recommended to use 'restartxcatd' command to restart xcatd on
+             systemd enable system like rh7 and sles12 instead of 'service xcatd restart' or
              'systemctl restart xcatd'.
 
-     AIX: It runs 'stopsrc -s xcatd' to stop xcatd first if xcatd is active, 
+     AIX: It runs 'stopsrc -s xcatd' to stop xcatd first if xcatd is active,
          then runs 'startsrc -s xcatd' to start xcatd.
 
 =cut
