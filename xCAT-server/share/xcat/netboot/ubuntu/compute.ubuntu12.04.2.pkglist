@@ -1,9 +1,9 @@
-bash 
+bash
 nfs-common
 openssl
 isc-dhcp-client
 linux-image-generic-lts-quantal
-openssh-server 
+openssh-server
 openssh-client
 wget
 vim
