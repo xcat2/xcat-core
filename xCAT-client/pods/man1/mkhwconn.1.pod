@@ -29,7 +29,7 @@ This command is useful when you have multiple HMCs, each of which will manage a 
 each HMC which CECs/Frames it should manage.  When using this, you should turn off the self-discovery on each HMC.  You also need
 to put all the HMCs and all the Frames on a single flat service network.
 
-When B<-t> is specified, this command reads the connection information from the xCAT ppc table (e.g. the parent attribute), and read the user/password from the ppcdirect table. Then this command will assign CEC nodes and Frame nodes to HMC nodes. 
+When B<-t> is specified, this command reads the connection information from the xCAT ppc table (e.g. the parent attribute), and read the user/password from the ppcdirect table. Then this command will assign CEC nodes and Frame nodes to HMC nodes.
 
 When B<-p> is specified, this command gets the connection information from command line arguments. If B<-P> is not specified, the default password for CEC and Frame nodes is used.
 
@@ -116,7 +116,7 @@ To setup the connections for all CEC nodes in node group cec to hardware server,
 
 To setup the connections for all cecs nodes in node group cec to hardware server, and the tooltype value is lpar, and the port value is 1:
 
- mkhwconn cec -t -T lpar --port 1 
+ mkhwconn cec -t -T lpar --port 1
 
 =item 5.
 
