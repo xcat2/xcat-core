@@ -3,10 +3,10 @@
 # Must be run by root
 #   Interface
 #     setup-local-client.sh  - setup root credentials
-#     setup-local-client.sh user1  - set up user1 credentials and store in 
+#     setup-local-client.sh user1  - set up user1 credentials and store in
 #                      $HOME/.xcat
 #     setup-local-client.sh user2  /tmp/user2  - setup user2 credentials and
-#                      store in /tmp/user2/.xcat.  Must later be copied to 
+#                      store in /tmp/user2/.xcat.  Must later be copied to
 #                      $HOME/xcat for user2.  Used when root cannot write to
 #                      the home directory of user2 (e.g when mounted).
 umask 0077 #nothing make by this script should be readable by group or others
@@ -40,11 +40,11 @@ if [ -z "$2" ]; then
   if [ -x /usr/bin/getent ];then
     USERHOME=`getent passwd $1|awk -F: '{print $6}'`
   else
-    USERHOME=`grep ^$1: /etc/passwd | cut -d: -f6` 
+    USERHOME=`grep ^$1: /etc/passwd | cut -d: -f6`
   fi
 else
   CNA="$1"
-  USERHOME=$2 
+  USERHOME=$2
 fi
 XCATCADIR=$XCATDIR/ca
 
