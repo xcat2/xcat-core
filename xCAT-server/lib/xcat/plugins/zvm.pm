@@ -3404,7 +3404,7 @@ sub powerVM {
 
     # Output string
     my $out;
-    
+
     # Power on virtual server
     if ( $args->[0] eq 'on' ) {
         # Check the node flag, if it contain XCATCONF4Z=0, it indicate that this node will be deployed by using non-xcatconf4z type
