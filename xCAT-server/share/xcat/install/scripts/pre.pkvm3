@@ -13,7 +13,7 @@ fi
 shopt -s nullglob
 
 #
-# The getinstdisk script is common for RHEL/SLES/PowerKVM/Ubuntu. 
+# The getinstdisk script is common for RHEL/SLES/PowerKVM/Ubuntu.
 # It will attempt to select the install disk and write the selection to /tmp/xcat.install_disk
 #
 #INCLUDE:#ENV:XCATROOT#/share/xcat/install/scripts/getinstdisk#
