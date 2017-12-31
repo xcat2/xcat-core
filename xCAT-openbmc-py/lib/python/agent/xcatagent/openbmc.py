@@ -23,7 +23,7 @@ from hwctl.executor.openbmc_sensor import OpenBMCSensorTask
 from hwctl.executor.openbmc_eventlog import OpenBMCEventlogTask
 from hwctl.beacon import DefaultBeaconManager
 from hwctl.setboot import DefaultBootManager
-from hwctl.flash import DefaultFlashManager 
+from hwctl.flash import DefaultFlashManager
 from hwctl.inventory import DefaultInventoryManager
 from hwctl.power import DefaultPowerManager
 from hwctl.sensor import DefaultSensorManager
@@ -205,9 +205,9 @@ class OpenBMCManager(base.BaseManager):
             DefaultInventoryManager().get_firm_info(runner, check_arg)
             return
 
-        runner = OpenBMCFlashTask(nodesinfo, callback=self.messager, debugmode=self.debugmode, verbose=self.verbose, cwd=self.cwd[0]) 
+        runner = OpenBMCFlashTask(nodesinfo, callback=self.messager, debugmode=self.debugmode, verbose=self.verbose, cwd=self.cwd[0])
         if opts['--activate']:
-            DefaultFlashManager().activate_firm(runner, opts['--activate'][0]) 
+            DefaultFlashManager().activate_firm(runner, opts['--activate'][0])
         elif opts['--list']:
             DefaultFlashManager().list_firm_info(runner)
         elif opts['-d']:
