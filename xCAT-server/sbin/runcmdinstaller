@@ -10,10 +10,10 @@ cmd=$*
 function print_usage {
     echo "Usage:"
     echo "       runcmdinstaller <node> <commands>"
-    echo "       runcmdinstaller [-h] [--help]"        
+    echo "       runcmdinstaller [-h] [--help]"
     echo "Description:"
     echo "       A debug tool to run commands inside the os installer of a node"
-    echo "Notice:" 
+    echo "Notice:"
     echo "       1. runcmdinstaller is only available against the node provisioned with xcatdebugmode turned on(1 or 2)"
     echo "       2. <node> can not be multiple nodes or node group"
     echo "       3. <node> must be the node in 'installing' status"
@@ -28,27 +28,27 @@ if [ "$node" = "-h" ] || [ "$node" = "--help" ]; then
 fi
 
 if [ -z "$node" ] || [ -z "$cmd" ];then
-   print_usage 
+   print_usage
    exit 1
 fi
 
 
-XCATDEBUGMODE=$(lsdef -t site -o clustersite -i xcatdebugmode 2>/dev/null | grep "xcatdebugmode="|cut -d= -f2) 
+XCATDEBUGMODE=$(lsdef -t site -o clustersite -i xcatdebugmode 2>/dev/null | grep "xcatdebugmode="|cut -d= -f2)
 if [[ -z "$XCATDEBUGMODE" || "$XCATDEBUGMODE" == "0" ]];then
     echo "Warning:"
     echo "      The xcatdebugmode is disabled"
     echo "      runcmdinstaller is only available against the node provisioned with xcatdebugmode enabled(
-1 or 2)" 
+1 or 2)"
 else
-    NSupdate=$(lsdef -t site -o clustersite -i nodestatus 2>/dev/null | grep "nodestatus="|cut -d= -f2) 
+    NSupdate=$(lsdef -t site -o clustersite -i nodestatus 2>/dev/null | grep "nodestatus="|cut -d= -f2)
     nodestatus=$(lsdef $node -i status 2>/dev/null | grep "status="|cut -d= -f2)
-    
+
     if [[ "$NSupdate" != "n" && "$NSupdate" != "N" &&  "$NSupdate" != "0" && "$nodestatus" != "installing" ]];then
         echo "Warning:"
         echo "      The node status update is enabled and the 'nodestatus' of $node is $nodestatus"
         echo "      runcmdinstaller can only be run against the node in 'installing' status!"
     fi
-fi 
+fi
 
 type -p nc >/dev/null 2>&1
 retcode=$?
@@ -58,5 +58,5 @@ if [ "$retcode" != "0" ];then
     exit $retcode
 fi
 
-echo "sh $cmd 2>&1" | nc -w 20 $node 3054 
+echo "sh $cmd 2>&1" | nc -w 20 $node 3054
 
