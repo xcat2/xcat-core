@@ -96,7 +96,7 @@ $PLUGIN_KITNAME = "<<<buildkit_WILL_INSERT_kitname_HERE>>>";
 =head1
 
     Image Profile Kit Plugin
-    This plugin contains commands to run custom actions 
+    This plugin contains commands to run custom actions
     during image profile operations.
 
 =cut
@@ -232,7 +232,7 @@ sub process_request {
 
 =head3  kitimagepregenerate
 
-     This command is called before an image profile 
+     This command is called before an image profile
      is created with a specified set of parameters.
 
      Command-line interface:
@@ -303,7 +303,7 @@ sub kitimagepregenerate {
 
 =head3  kitimagepostgenerate
 
-     This command is called after an image profile 
+     This command is called after an image profile
      is created.
 
      Command-line interface:
@@ -353,7 +353,7 @@ sub kitimagepostgenerate {
 
 =head3  kitimageprecopy
 
-     This command is called before an image profile 
+     This command is called before an image profile
      is copied with a specified set of parameters.
 
      Command-line interface:
@@ -424,7 +424,7 @@ sub kitimageprecopy {
 
 =head3  kitimagepostcopy
 
-     This command is called after an image profile 
+     This command is called after an image profile
      is copied.
 
      Command-line interface:
@@ -474,7 +474,7 @@ sub kitimagepostcopy {
 
 =head3  kitimagepreupdate
 
-     This command is called before an image profile 
+     This command is called before an image profile
      is updated with a specified set of parameters.
 
      Command-line interface:
@@ -545,7 +545,7 @@ sub kitimagepreupdate {
 
 =head3  kitimagepostupdate
 
-     This command is called after an image profile 
+     This command is called after an image profile
      is updated.
 
      Command-line interface:
@@ -594,7 +594,7 @@ sub kitimagepostupdate {
 
 =head3  kitimagepredelete
 
-     This command is called before an image profile 
+     This command is called before an image profile
      is deleted.
 
      Command-line interface:
@@ -644,7 +644,7 @@ sub kitimagepredelete {
 
 =head3  kitimagepostdelete
 
-     This command is called after an image profile 
+     This command is called after an image profile
      is deleted.
 
      Command-line interface:
@@ -695,7 +695,7 @@ sub kitimagepostdelete {
 
 =head3  parse_str_arg
 
-    Utility function to extract the string value of an 
+    Utility function to extract the string value of an
     argument in this format:
          PARAM=string1
 
@@ -725,7 +725,7 @@ sub parse_str_arg {
 
 =head3  parse_list_arg
 
-    Utility function to extract the list of values of 
+    Utility function to extract the list of values of
     an argument in this format:
          PARAM=value1,value2,value3
 
