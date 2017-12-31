@@ -11,8 +11,8 @@ B<rinv> [B<-h>|B<--help>|B<-v>|B<--version>]
 B<rinv> I<noderange> [B<model>|B<serial>|B<asset>|B<vpd>|B<deviceid>|B<guid>|B<firm>|B<dimm>|B<mprom>|B<all>]
 
 =head2 OpenPOWER (IPMI) server specific:
-  
-B<rinv> I<noderange> [B<model>|B<serial>|B<deviceid>|B<uuid>|B<guid>|B<vpd>|B<mprom>|B<firm>|B<all>] 
+
+B<rinv> I<noderange> [B<model>|B<serial>|B<deviceid>|B<uuid>|B<guid>|B<vpd>|B<mprom>|B<firm>|B<all>]
 
 =head2 OpenPOWER (OpenBMC) server specific:
 
@@ -38,7 +38,7 @@ B<rinv> I<noderange> [B<-t>]
 
 =head2 pdu specific:
 
-B<rinv> I<noderange> 
+B<rinv> I<noderange>
 
 =head2 zVM specific:
 
@@ -127,7 +127,7 @@ Retrieves dual in-line memory module information.
 
 =item B<deviceid>
 
-Retrieves device identification. Usually device, manufacturing and product IDs. 
+Retrieves device identification. Usually device, manufacturing and product IDs.
 
 =item B<uuid>
 
@@ -165,7 +165,7 @@ B<zVM specific :>
 
 =item B<--diskpoolspace>
 
-Calculates the total size of every known storage pool. 
+Calculates the total size of every known storage pool.
 
 =item B<--diskpool> I<pool> I<space>
 
@@ -177,7 +177,7 @@ Lists the FCP device channels that are active, free, or offline. State can be: a
 
 =item B<--diskpoolnames>
 
-Lists the known disk pool names. 
+Lists the known disk pool names.
 
 =item B<--networknames>
 
@@ -286,7 +286,7 @@ Output is similar to:
 
 B<zVM specific :>
 
-=item 5. 
+=item 5.
 
 To list the defined network names available for a given node:
 
@@ -303,14 +303,14 @@ Output is similar to:
  pokdev61: VSWITCH SYSTEM VSW2
  pokdev61: VSWITCH SYSTEM VSW3
 
-=item 6. 
+=item 6.
 
 To list the configuration for a given network:
 
  rinv pokdev61 --getnetwork GLAN1
 
 Output is similar to:
- 
+
  pokdev61: LAN SYSTEM GLAN1        Type: QDIO    Connected: 1    Maxconn: INFINITE
  pokdev61:   PERSISTENT  UNRESTRICTED  IP                        Accounting: OFF
  pokdev61:   IPTimeout: 5                 MAC Protection: Unspecified
@@ -321,7 +321,7 @@ Output is similar to:
 To list the disk pool names available:
 
  rinv pokdev61 --diskpoolnames
- 
+
 Output is similar to:
 
  pokdev61: POOL1
@@ -335,7 +335,7 @@ List the configuration for a given disk pool:
  rinv pokdev61 --diskpool POOL1 free
 
 Output is similar to:
- 
+
  pokdev61: #VolID DevType StartAddr Size
  pokdev61: EMC2C4 3390-09 0001 10016
  pokdev61: EMC2C5 3390-09 0001 10016
@@ -346,7 +346,7 @@ Output is similar to:
 List the known zFCP pool names.
 
  rinv pokdev61 --zfcppoolnames
- 
+
 Output is similar to:
 
  pokdev61: zfcp1
@@ -358,7 +358,7 @@ Output is similar to:
 List the SCSI/FCP devices contained in a given zFCP pool:
 
  rinv pokdev61 --zfcppool zfcp1
-  
+
 Output is similar to:
 
  pokdev61: #status,wwpn,lun,size,range,owner,channel,tag
