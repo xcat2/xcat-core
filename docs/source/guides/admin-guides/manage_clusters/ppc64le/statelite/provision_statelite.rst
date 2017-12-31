@@ -1,14 +1,14 @@
 Provision statelite
 ===================
 
-Show current provisioning method 
+Show current provisioning method
 --------------------------------
 
 To determine the current provisioning method of your node, execute: ::
 
     lsdef <noderange> -i provmethod
 
-``Note``: syncfiles is not currently supported for statelite nodes. 
+``Note``: syncfiles is not currently supported for statelite nodes.
 
 Generate default statelite image from distoro media
 ---------------------------------------------------
@@ -21,7 +21,7 @@ Use the copycds command to copy the appropriate iso image into the ``/install`` 
 
 The contents are copied into ``/install/rhels7.3/ppc64le/``
 
-The configuration files pointed to by the attributes are the defaults shipped with xCAT. We will want to copy them to the ``/install`` directory, in our example the ``/install/test`` directory and modify them as needed. 
+The configuration files pointed to by the attributes are the defaults shipped with xCAT. We will want to copy them to the ``/install`` directory, in our example the ``/install/test`` directory and modify them as needed.
 
 Statelite Directory Structure
 -----------------------------
@@ -49,7 +49,7 @@ Setup your osimage/linuximage tables with new test image name, osvers,osarch, an
     mkdef rhels7.3-custom-statelite -u profile=compute provmethod=statelite
 
 Check your setup: ::
-     
+
     lsdef -t osimage rhels7.3-custom-statelite
 
 Customize the paths to your ``pkglist``, ``syncfile``, etc to the osimage definition, that you require. ``Note``, if you modify the files on the ``/opt/xcat/share/...`` path then copy to the appropriate ``/install/custom/...`` path. Remember all files must be under ``/install`` if using hierarchy (service nodes).
@@ -209,7 +209,7 @@ Make sure you have set up all the attributes in your node definitions correctly 
 
 You can now deploy the node by running the following commmands: ::
 
-    rinstall <noderange> 
+    rinstall <noderange>
 
 You can then use ``rcons`` or ``wcons`` to watch the node boot up.
 
