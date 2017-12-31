@@ -31,7 +31,7 @@ In this example, the regular expression in the ``ip`` attribute uses ``|`` to se
 A more involved example is with the ``vm`` table. If your kvm nodes have node names c01f01x01v01, c01f02x03v04, etc., and the kvm host names are c01f01x01, c01f02x03, etc., then you might have an ``vm`` table like ::
 
     #node,mgr,host,migrationdest,storage,storagemodel,storagecache,storageformat,cfgstore,memory,cpus,nics,nicmodel,bootorder,clockoffset,virtflags,master,vncport,textconsole,powerstate,beacon,datacenter,cluster,guestostype,othersettings,physlots,vidmodel,vidproto,vidpassword,comments,disable
-   "kvms",,"|\D+(\d+)\D+(\d+)\D+(\d+)\D+(\d+)|c($1)f($2)x($3)|",,"|\D+(\d+)\D+(\d+)\D+(\d+)\D+(\d+)|dir:///install/vms/vm($4+0)|",,,,,"3072","2","virbr2","virtio",,,,,,,,,,,,,,,,,,   
+   "kvms",,"|\D+(\d+)\D+(\d+)\D+(\d+)\D+(\d+)|c($1)f($2)x($3)|",,"|\D+(\d+)\D+(\d+)\D+(\d+)\D+(\d+)|dir:///install/vms/vm($4+0)|",,,,,"3072","2","virbr2","virtio",,,,,,,,,,,,,,,,,,
 
 Before you panic, let me explain each column:
 
@@ -72,7 +72,7 @@ See `perlre <http://www.perl.com/doc/manual/html/pod/perlre.html>`_ for more inf
 Easy Regular expressions
 ------------------------
 
-As of xCAT 2.8.1, you can use a modified version of the regular expression support described in the previous section. You do not need to enter the node information (1st part of the expression), it will be derived from the input nodename. You only need to supply the 2nd part of the expression to determine the value to give the attribute. 
+As of xCAT 2.8.1, you can use a modified version of the regular expression support described in the previous section. You do not need to enter the node information (1st part of the expression), it will be derived from the input nodename. You only need to supply the 2nd part of the expression to determine the value to give the attribute.
 
 For example:
 
@@ -149,7 +149,7 @@ xCAT provides several functions that can simplify regular expressions.
 \ **ipadd** Add to an IP address\
   Usage: ``ipadd(octet1, octet2, octet3, octet4, toadd, skipstart, skipend)``
 
-  This function is useful when you need to cross octets. Optionally skip addresses at the start and end of octets (like .0 or .255 - technically those are valid IP addresses, but sometimes software makes poor assumptions about which broadcast and gateway addresses). 
+  This function is useful when you need to cross octets. Optionally skip addresses at the start and end of octets (like .0 or .255 - technically those are valid IP addresses, but sometimes software makes poor assumptions about which broadcast and gateway addresses).
 
 
 Verify your regular expression
