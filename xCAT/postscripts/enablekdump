@@ -1,7 +1,7 @@
 #!/bin/bash
 # IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
 #(C)IBM Corp
-# 
+#
 
 
 if [ "$(uname -s|tr 'A-Z' 'a-z')" = "linux" ];then
@@ -86,7 +86,7 @@ if [ ! -z "$DUMP" ]; then
     # parse "dump=<proto>://<nfsserver_IP>/<directory>"
     KDPATH=${DUMP#*:}
     KDPROTO=${DUMP%:$KDPATH*}
-    
+
     KDPATH=${KDPATH/\/\//}
     KDIP=`echo $KDPATH | cut -d'/' -f1`
     KDPATH=${KDPATH/$KDIP/}
@@ -105,7 +105,7 @@ if [ ! -z "$DUMP" ]; then
         MOUNTPATH="/mnt"
     else
 	MOUNTPATH="/var/tmp"
-    fi 
+    fi
 
     if [ "$KDPROTO" = "nfs" ]; then
 	if (pmatch $OSVER "sles*") || (pmatch $OSVER "suse*") || [ -f /etc/SuSE-release ]; then
@@ -144,7 +144,7 @@ if [ ! -z "$DUMP" ]; then
                             fi
                         fi
                     done
-                    /bin/cp $file "./bin/" 
+                    /bin/cp $file "./bin/"
                  done
 
                 #modify the original init to support dump to an nfs server
@@ -204,7 +204,7 @@ EOF
                 echo "/bin/mkdir -p /tmp/${NODE}" >> /tmp/createdir
                 echo "/bin/sleep ${TEMPDELAY}" >> /tmp/createdir
                 echo "/bin/umount /tmp" >> /tmp/createdir
-                /bin/chmod 777 /tmp/createdir    
+                /bin/chmod 777 /tmp/createdir
                 #change the mount and remount shell scripts' name, workaround for kdump on stateless node
                 oldmount=`ls /lib/mkinitrd/boot/*-mount.sh`
                 oldremount=`ls /lib/mkinitrd/boot/*-remount.sh`
@@ -222,10 +222,10 @@ EOF
 
                #The initramfs used in kdump does not need "root", however, the initramfs refused to continue
                #if no valid "root" provided in redhat7.1 kdump; As a workaround,we provide a fake "root=nfs:$KDIP:$KDPATH"
-               #with a dummy "proc" inside, which will fake "root=nfs:$KDIP:$KDPATH" as a valid root directory 
+               #with a dummy "proc" inside, which will fake "root=nfs:$KDIP:$KDPATH" as a valid root directory
                [ -e $MOUNTPATH/proc ] || echo "Dummy file: fake the /proc to pass the checking of 'root=' inside dracut-cmdline " > $MOUNTPATH/proc
 
-               echo "nfs $KDIP:$KDPATH" > /etc/kdump.conf 
+               echo "nfs $KDIP:$KDPATH" > /etc/kdump.conf
                echo "default shell" >> /etc/kdump.conf
                #strip "xcat" out of the initramfs for kdump
                echo "dracut_args --omit \"xcat\"" >> /etc/kdump.conf
@@ -235,8 +235,8 @@ EOF
                #with "command line overflow" since the kernel options are longer than 255 chars`
                kdumpcmdline=
                for i in $(cat /proc/cmdline)
-                   do 
-                       if [[ $i == console=* ]] || [[ $i == crashkernel=* ]]; then 
+                   do
+                       if [[ $i == console=* ]] || [[ $i == crashkernel=* ]]; then
                              kdumpcmdline="$kdumpcmdline $i "
                        fi
                done
@@ -244,7 +244,7 @@ EOF
                sed -i "s#^[\t ]*KDUMP_COMMANDLINE_APPEND=\"#KDUMP_COMMANDLINE_APPEND=\"root=nfs:$KDIP:$KDPATH #" /etc/sysconfig/kdump
                [ -f /etc/dracut.conf ] && mv /etc/dracut.conf  /tmp/dracut.conf
                restartservice kdump
-               [ -f /tmp/dracut.conf ] && mv /tmp/dracut.conf /etc/dracut.conf 
+               [ -f /tmp/dracut.conf ] && mv /tmp/dracut.conf /etc/dracut.conf
 	    elif (pmatch $OSVER "fedora*") || (pmatch $OSVER "rhel6*") || (pmatch $OSVER "rhels6*") || [ -f /etc/fedora-release ] || [ -f /etc/redhat-release ];then
                 /bin/mount -o nolock $KDIP:$KDPATH $MOUNTPATH
 		echo "net $KDIP:$KDPATH" > /etc/kdump.conf
