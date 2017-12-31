@@ -3,11 +3,11 @@ Virtual Machines
 
 
 xCAT supports the following virtualization infrastructures:
- 
-**Kernel-based Virtual Machine (KVM)**: 
+
+**Kernel-based Virtual Machine (KVM)**:
   A full virtualization solution for Enterprise Linux distributions, known as the *de facto* open source virtualization mechanism and currently used by many software companies.
 
-**IBM PowerKVM**: 
+**IBM PowerKVM**:
   A product that leverages the Power resilience and performance with the openness of KVM, which provides several advantages:
 
   *  Higher workload consolidation with processors overcommitment and memory sharing
