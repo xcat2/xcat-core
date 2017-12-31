@@ -2,7 +2,7 @@ start:nodeset_shell
 description: verify could log in genesis shell
 cmd:perl /opt/xcat/share/xcat/tools/autotest/testcase/genesis/genesistest.pl  -n $$CN  -g
 check:rc==0
-cmd:perl /opt/xcat/share/xcat/tools/autotest/testcase/genesis/genesistest.pl  -n $$CN -s 
+cmd:perl /opt/xcat/share/xcat/tools/autotest/testcase/genesis/genesistest.pl  -n $$CN -s
 check:rc==0
 cmd:perl /opt/xcat/share/xcat/tools/autotest/testcase/genesis/genesistest.pl  -n $$CN -c
 check:rc==0
@@ -15,7 +15,7 @@ cmd:perl /opt/xcat/share/xcat/tools/autotest/testcase/genesis/genesistest.pl  -n
 check:rc==0
 cmd:perl /opt/xcat/share/xcat/tools/autotest/testcase/genesis/genesistest.pl -n $$CN -d
 check:rc==0
-cmd:perl /opt/xcat/share/xcat/tools/autotest/testcase/genesis/genesistest.pl  -n $$CN -c 
+cmd:perl /opt/xcat/share/xcat/tools/autotest/testcase/genesis/genesistest.pl  -n $$CN -c
 check:rc==0
 cmd:cat /tmp/genesistestlog/*
 end
@@ -24,7 +24,7 @@ start:nodeset_runimg
 description:verify runimg could work
 cmd:perl /opt/xcat/share/xcat/tools/autotest/testcase/genesis/genesistest.pl  -n $$CN  -g
 check:rc==0
-cmd:perl /opt/xcat/share/xcat/tools/autotest/testcase/genesis/genesistest.pl -n $$CN -i 
+cmd:perl /opt/xcat/share/xcat/tools/autotest/testcase/genesis/genesistest.pl -n $$CN -i
 check:rc==0
 cmd:perl /opt/xcat/share/xcat/tools/autotest/testcase/genesis/genesistest.pl -n $$CN -c
 check:rc==0
