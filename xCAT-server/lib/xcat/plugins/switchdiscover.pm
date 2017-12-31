@@ -192,13 +192,13 @@ sub parse_args {
         my $error;
         foreach my $st (@stypes) {
             if (! exists($global_scan_type{$st})) {
-                $error = $error . "Invalide scan type: $st\n";    
+                $error = $error . "Invalide scan type: $st\n";
             }
         }
         if ($error) {
             return usage($error);
         }
-        $globalopt{scan_types} = \@stypes; 
+        $globalopt{scan_types} = \@stypes;
     }
 
     #############################################
@@ -208,7 +208,7 @@ sub parse_args {
         $globalopt{range} = $opt{range};
         my @ips = split /,/, $opt{range};
         foreach my $ip (@ips)  {
-            if (($ip =~ /^(\d{1,3})(-\d{1,3})?\.(\d{1,3})(-\d{1,3})?\.(\d{1,3})(-\d{1,3})?\.(\d{1,3})(-\d{1,3})?$/) || 
+            if (($ip =~ /^(\d{1,3})(-\d{1,3})?\.(\d{1,3})(-\d{1,3})?\.(\d{1,3})(-\d{1,3})?\.(\d{1,3})(-\d{1,3})?$/) ||
                 ($ip =~ /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})\/(\d+)$/)) {
                 push @iprange, $ip;
             } else {
@@ -280,7 +280,7 @@ sub parse_args {
 
 #--------------------------------------------------------------------------------
 =head3   preprocess_request
-      Parse the arguments and display the usage or the version string. 
+      Parse the arguments and display the usage or the version string.
 
 =cut
 #--------------------------------------------------------------------------------
@@ -310,7 +310,7 @@ sub preprocess_request {
 #--------------------------------------------------------------------------------
 =head3   process_request
     Pasrse the arguments and call the correspondent functions
-    to do switch discovery. 
+    to do switch discovery.
 
 =cut
 #--------------------------------------------------------------------------------
@@ -331,7 +331,7 @@ sub process_request {
     # Process command-specific options
     ####################################
     my $result = parse_args( \%request );
-    
+
 
     ####################################
     # Return error
@@ -341,12 +341,12 @@ sub process_request {
         return(1);
     }
 
-    # call the relavant functions to start the scan 
+    # call the relavant functions to start the scan
     my @scan_types = ("nmap");
     if (exists($globalopt{scan_types})) {
         @scan_types = @{$globalopt{scan_types}};
     }
-    
+
     my %username_hash = ();
     $result = undef;
     foreach my $st (@scan_types) {
@@ -368,29 +368,29 @@ sub process_request {
                 } else {
                     $username_hash{$name} = 1;
                 }
-            } 
+            }
         }
     }
-    
+
     if (!($result)) {
         send_msg( \%request, 0, " No $device found ");
         return;
     }
 
-        
+
     my $display_done = 0;
-    if (exists($globalopt{r}))  { 
-        #do nothing since is done by the scan functions. 
+    if (exists($globalopt{r}))  {
+        #do nothing since is done by the scan functions.
         $display_done = 1;
     }
-    
+
     if (exists($globalopt{x}))  {
             send_msg( \%request, 0, format_xml( $result ));
             $display_done = 1;
     }
 
-    if (exists($globalopt{z}))  { 
-            
+    if (exists($globalopt{z}))  {
+
             my $stanza_output = format_stanza( $result );
             send_msg( \%request, 0, $stanza_output );
         $display_done = 1;
@@ -403,7 +403,7 @@ sub process_request {
         send_msg(\%request, 0, $header);
         my $sep = "------------";
         send_msg(\%request, 0, sprintf($format, $sep, $sep, $sep, $sep ));
-        
+
         #display switches one by one
         foreach my $key (keys(%$result)) {
             my $ip = "   ";
@@ -422,7 +422,7 @@ sub process_request {
             my $msg = sprintf $format, $ip, $name, $vendor, $mac;
             send_msg(\%request, 0, $msg);
         }
-        send_msg(\%request, 0,"\n");        
+        send_msg(\%request, 0,"\n");
     }
 
     my ($discoverswitch, $predefineswitch) = matchPredefineSwitch($result, \%request, $sub_req);
@@ -447,12 +447,12 @@ sub process_request {
     Arguments:
        request: request structure with callback pointer.
     Returns:
-        A hash containing the swithes discovered. 
+        A hash containing the swithes discovered.
         Each element is a hash of switch attributes. For examples:
         {
            "AABBCCDDEEFA" =>{name=>"switch1", vendor=>"ibm", ip=>"10.1.2.3"},
            "112233445566" =>{name=>"switch2", vendor=>"cisco", ip=>"11.4.5.6"}
-       } 
+       }
        returns 1 if there are errors occurred.
 =cut
 #--------------------------------------------------------------------------------
@@ -464,7 +464,7 @@ sub lldp_scan {
     # get the PID of the currently running lldpd if it is running.
     if (exists($globalopt{verbose}))    {
         send_msg($request, 0, "...Checking if lldpd is up and running:\n  ps -ef | grep lldpd | grep -v grep | awk '{print \$2}'\n");
-    }    
+    }
     my $pid;
     chomp($pid= `ps -ef | grep lldpd | grep -v grep | awk '{print \$2}'`);
     unless($pid){
@@ -511,7 +511,7 @@ sub lldp_scan {
         send_msg($request, 0, "...Converting XML output to hash.\n");
     }
     my $result_ref = XMLin($result, KeyAttr => 'interface', ForceArray => 1);
-    my $switches; 
+    my $switches;
     my $counter=0;
     if ($result_ref) {
         if (exists($result_ref->{interface})) {
@@ -589,12 +589,12 @@ sub lldp_scan {
     Arguments:
        request: request structure with callback pointer.
     Returns:
-        A hash containing the swithes discovered. 
+        A hash containing the swithes discovered.
         Each element is a hash of switch attributes. For examples:
         {
            "AABBCCDDEEFA" =>{name=>"switch1", vendor=>"ibm", ip=>"10.1.2.3"},
            "112233445566" =>{name=>"switch2", vendor=>"cisco", ip=>"11.4.5.6"}
-       } 
+       }
        returns 1 if there are errors occurred.
 =cut
 #--------------------------------------------------------------------------------
@@ -657,7 +657,7 @@ sub nmap_scan {
     }
 
     #################################################
-    #compose the switch hash 
+    #compose the switch hash
     #################################################
     my $result_ref = XMLin($result, ForceArray => 1);
     my $switches;
@@ -691,7 +691,7 @@ sub nmap_scan {
                             if ($vendor =~ /($search_string)/) {
                                 $found = 1;
                             }
-                        } 
+                        }
                         if ( ($found == 0) && ($type eq "mac") ) {
                             my $search_string = join '|', keys(%xCAT::data::switchinfo::global_mac_identity);
                             if ($mac =~ /($search_string)/i) {
@@ -704,7 +704,7 @@ sub nmap_scan {
                             if ( $found == 0) {
                                 push(@$osguess_ips, $ip);
                             }
-                        } 
+                        }
                         if ($found == 1) {
                             $switches->{$mac}->{ip} = $ip;
                             $switches->{$mac}->{vendor} = $vendor;
@@ -788,7 +788,7 @@ sub nmap_osguess {
                         $isswitch=1;
                     } else {
                         last;
-                    }  
+                    }
                 }
                 my $search_string = join '|', keys(%xCAT::data::switchinfo::global_switch_type);
                 if ($line =~ /Running/) {
@@ -803,7 +803,7 @@ sub nmap_osguess {
                         $isswitch=1;
                     }
                 }
-                
+
             }
             if ($isswitch == 1) {
                 $switches->{$mac}->{ip} = $ip;
@@ -816,8 +816,8 @@ sub nmap_osguess {
 
     }
 
-    return $switches; 
-   
+    return $switches;
+
 }
 
 
@@ -829,12 +829,12 @@ sub nmap_osguess {
     Arguments:
        request: request structure with callback pointer.
     Returns:
-        A hash containing the swithes discovered. 
+        A hash containing the swithes discovered.
         Each element is a hash of switch attributes. For examples:
         {
            "AABBCCDDEEFA" =>{name=>"switch1", vendor=>"ibm", ip=>"10.1.2.3"},
            "112233445566" =>{name=>"switch2", vendor=>"cisco", ip=>"11.4.5.6"}
-       } 
+       }
        returns 1 if there are errors occurred.
 =cut
 #--------------------------------------------------------------------------------
@@ -874,7 +874,7 @@ sub snmp_scan {
     #use nmap to parse the ip range and possible output from the command:
     # Nmap scan report for switch-10-5-22-1 (10.5.22.1) 161/udp open  snmp
     # Nmap scan report for 10.5.23.1 161/udp open  snmp
-    # Nmap scan report for 10.5.24.1 161/udp closed snmp  
+    # Nmap scan report for 10.5.24.1 161/udp closed snmp
     ##########################################################
     my $nmap_version = xCAT::Utils->get_nmapversion();
     if (xCAT::Utils->version_cmp($nmap_version,"5.10") < 0) {
@@ -900,7 +900,7 @@ sub snmp_scan {
         send_msg($request, 0, "$result\n" );
     }
     my @lines = split /\n/, $result;
-  
+
     foreach my $line (@lines) {
         my @array = split / /, $line;
         if ($line =~ /\b(\d{1,3}(?:\.\d{1,3}){3})\b/)
@@ -944,8 +944,8 @@ sub snmp_scan {
 }
 
 #--------------------------------------------------------------------------------
-=head3  get_snmpvendorinfo   
-      return vendor info from snmpwalk command 
+=head3  get_snmpvendorinfo
+      return vendor info from snmpwalk command
     Arguments:
       ip  :  IP address passed by the switch after scan
     Returns:
@@ -982,7 +982,7 @@ sub get_snmpvendorinfo {
 
     foreach $comms(@comm_list) {
         #for pdu: get vendor info from sysDescr
-        #for switches: get vendor info from entPhysicalDescr 
+        #for switches: get vendor info from entPhysicalDescr
         my $ccmd;
         if (exists($globalopt{pdu})) {
             $ccmd = "snmpwalk -Os -v1 -c $comms $ip 1.3.6.1.2.1.1.1";
@@ -1006,7 +1006,7 @@ sub get_snmpvendorinfo {
         }
         return $snmpwalk_vendor;
     }
-   
+
     my ($desc,$model) = split /: /, $result;
 
     if (exists($globalopt{pdu})) {
@@ -1038,9 +1038,9 @@ sub get_snmpmac {
     my $mac;
 
     #Ubuntu only takes OID
-    #get ipNetToMediaPhysAddress; 
-    my $ccmd = "snmpwalk -Os -v1 -c $community $ip 1.3.6.1.2.1.4.22.1.2 | grep $ip"; 
-    
+    #get ipNetToMediaPhysAddress;
+    my $ccmd = "snmpwalk -Os -v1 -c $community $ip 1.3.6.1.2.1.4.22.1.2 | grep $ip";
+
     if (exists($globalopt{verbose}))    {
        send_msg($request, 0, "Process command: $ccmd\n");
     }
@@ -1109,14 +1109,14 @@ sub get_snmphostname {
 
 
 #--------------------------------------------------------------------------------
-=head3   get_hostname 
+=head3   get_hostname
       return hostname for the switch discovered
     Arguments:
       host:  hostname passed by the switch after scan
       ip  :  IP address passed by the switch after scan
     Returns:
       host:  hostname of the switch
-      if host is empty, try to lookup use ip address, otherwise format hostname 
+      if host is empty, try to lookup use ip address, otherwise format hostname
       as switch and ip combination. ex:  switch-9-114-5-6
 =cut
 #--------------------------------------------------------------------------------
@@ -1143,15 +1143,15 @@ sub get_hostname {
 =head3   get_switchtype
       determine the switch type based on the switch vendor
     Arguments:
-      vendor: switch vendor 
+      vendor: switch vendor
     Returns:
-      stype: type of switch, supports Juniper, Cisco, BNT and Mellanox 
+      stype: type of switch, supports Juniper, Cisco, BNT and Mellanox
 =cut
 #--------------------------------------------------------------------------------
 sub get_switchtype {
     my $vendor = shift;
     my $key = "Not support";
-    
+
     my $search_string = join '|', keys(%xCAT::data::switchinfo::global_switch_type);
     if ($vendor =~ /($search_string)/) {
         $key = $1;
@@ -1196,8 +1196,8 @@ sub xCATdB {
         }
 
         #################################################
-        # use chdef command to make new device or update 
-        # it's attribute 
+        # use chdef command to make new device or update
+        # it's attribute
         ##################################################
         if (exists($globalopt{pdu})) {
             $ret = xCAT::Utils->runxcmd({ command => ['chdef'], arg => ['-t','node','-o',$host,"groups=$device","ip=$ip","mac=$mac","nodetype=$device","mgt=$device","usercomment=$vendor","pdutype=$stype","community=$community"] }, $sub_req, 0, 1);
@@ -1210,8 +1210,8 @@ sub xCATdB {
 #--------------------------------------------------------------------------------
 =head3  get_ip_ranges
       Return the an array of ip ranges. If --range is specified, use it. If
-      noderange is specified, use the ip address of the nodes. Otherwise, use 
-      the subnets for all the live nics on the xCAT mn. 
+      noderange is specified, use the ip address of the nodes. Otherwise, use
+      the subnets for all the live nics on the xCAT mn.
     Arguments:
        request: request structure with callback pointer.
     Returns:
@@ -1251,23 +1251,23 @@ sub get_ip_ranges {
 
         }
     }
- 
+
     if (!@$ranges) {
         send_msg($request, 1, "ip range is empty, nothing to discover" );
         exit 0;
     }
 
     return $ranges;
-    
+
 }
 
 #-------------------------------------------------------------------------------
-=head3  format_stanza 
+=head3  format_stanza
       list the stanza format for swithes
     Arguments:
-      outhash: a hash containing the switches discovered 
+      outhash: a hash containing the switches discovered
     Returns:
-      result: return lists as stanza format for swithes 
+      result: return lists as stanza format for swithes
 =cut
 #--------------------------------------------------------------------------------
 sub format_stanza {
@@ -1287,7 +1287,7 @@ sub format_stanza {
         if ($mac =~ /nomac/) {
             $mac = " ";
         }
-      
+
         $result .= "$host:\n\tobjtype=node\n";
         $result .= "\tgroups=$device\n";
         $result .= "\tip=$ip\n";
@@ -1300,16 +1300,16 @@ sub format_stanza {
             $result .= "\tpdutype=$stype\n";
         }
     }
-    return ($result); 
+    return ($result);
 }
 
 #--------------------------------------------------------------------------------
-=head3  format_xml 
+=head3  format_xml
       list the xml format for swithes
     Arguments:
-      outhash: a hash containing the switches discovered 
+      outhash: a hash containing the switches discovered
     Returns:
-      result: return lists as xml format for swithes 
+      result: return lists as xml format for swithes
 =cut
 #--------------------------------------------------------------------------------
 sub format_xml {
@@ -1323,7 +1323,7 @@ sub format_xml {
         my $result;
         my $ip = $outhash->{$mac}->{ip};
         my $vendor = $outhash->{$mac}->{vendor};
-        
+
         #Get hostname and switch type
         my $host = get_hostname($outhash->{$mac}->{name}, $ip);
         my $stype = get_switchtype($vendor);
@@ -1358,11 +1358,11 @@ sub format_xml {
                      KeyAttr  => [],
                      RootName => undef );
     }
-    return ($xml);    
+    return ($xml);
 }
 
 #-------------------------------------------------------------------------------
-=head3 matchPredefineSwitch 
+=head3 matchPredefineSwitch
       find discovered switches with predefine switches
       for each discovered switches:
     Arguments:
@@ -1386,7 +1386,7 @@ sub matchPredefineSwitch {
     # call find_mac to match pre-defined switch and
     # discovery switch
     ##################################################
-   
+
      foreach my $mac ( keys %$outhash ) {
         my $ip = $outhash->{$mac}->{ip};
         my $vendor = $outhash->{$mac}->{vendor};
@@ -1426,8 +1426,8 @@ sub matchPredefineSwitch {
 }
 
 #--------------------------------------------------------------------------------
-=head3 switchsetup 
-      configure the switch 
+=head3 switchsetup
+      configure the switch
     Arguments:
       outhash: a hash containing the switches need to configure
     Returns:
@@ -1468,7 +1468,7 @@ sub switchsetup {
                 my $cmd;
                 my $rc = 0;
                 if ( $mytype eq "crpdu" ) {
-                    $cmd = "rspconfig $pdu sshcfg"; 
+                    $cmd = "rspconfig $pdu sshcfg";
                     send_msg($request, 0, "process command: $cmd\n");
                     $rc = xCAT::Utils->runcmd($cmd, 0);
                     $cmd = "rspconfig $pdu hostname=$pdu ip=$ip netmask=$mask";
