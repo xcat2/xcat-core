@@ -1,6 +1,6 @@
-# This file contains the list of files/directories to be stored in the 
-# snapshot directory for each statelite client.  
-# note that this file will be updated with updated versions of xCAT so  you 
+# This file contains the list of files/directories to be stored in the
+# snapshot directory for each statelite client.
+# note that this file will be updated with updated versions of xCAT so  you
 # should copy this nfsroot to a different node name.
 # e.g: cp nfsroot.pkglist mycustom.pkglist; cp nfsroot.exlist mycustom.exlist; ...
 /boot/kernel.h
