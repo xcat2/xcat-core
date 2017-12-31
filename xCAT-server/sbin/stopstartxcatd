@@ -19,13 +19,13 @@ use xCAT::Utils;
 
 #-----------------------------------------------------------------------------
 
-=head1  startstopxcatd 
+=head1  startstopxcatd
 
 
- 
+
  stopstartxcatd  - this routine is linked to by startxCAT and stopxCAT.
- It runs on AIX.  If the admin runs startxCAT, it will start 
- or restart the xcatd, if it is already running.   
+ It runs on AIX.  If the admin runs startxCAT, it will start
+ or restart the xcatd, if it is already running.
  If the admin runs stopxCAT, it will stop the xcatd.
 
 
@@ -49,7 +49,7 @@ exit $rc;
 #-----------------------------------------------------------------------------
 
 =head3 parse_args
-  
+
   Parses for  input
 
 =cut
