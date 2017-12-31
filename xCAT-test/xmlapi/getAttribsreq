@@ -3,8 +3,8 @@
 <command>getAttribs</command>
 <table>site</table>
 <keys>
-  <key>domain</key>  
+  <key>domain</key>
 </keys>
-<attrs>value</attrs>  
-<attrs>comments</attrs>  
+<attrs>value</attrs>
+<attrs>comments</attrs>
 </xcatrequest>
