@@ -1,13 +1,13 @@
-#!/bin/sh 
+#!/bin/sh
 # IBM(c) 2013 EPL license http://www.eclipse.org/legal/epl-v10.html
 #-------------------------------------------------------------------------------
 #=head1  setup_openstack_repo
-#=head2  This command adds the OpenStack repository to the node. It is run 
+#=head2  This command adds the OpenStack repository to the node. It is run
 #        as a postscript.
 #        Usage:
 #        For OpenStack Grizzly: setup_openstack_repo
-#        For other OpenStack versions: setup_openstack_repo folsom 
-#        
+#        For other OpenStack versions: setup_openstack_repo folsom
+#
 #=cut
 #-------------------------------------------------------------------------------
 
