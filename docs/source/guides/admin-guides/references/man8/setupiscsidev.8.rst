@@ -19,7 +19,7 @@ SYNOPSIS
 ********
 
 
-\ **setupiscsidev**\  [\ **-s|-**\ **-size**\ ] \ *noderange*\ 
+\ **setupiscsidev**\  [\ **-s|-**\ **-size**\ ] \ *noderange*\
 
 \ **setupiscsidev**\  [\ **-h|-**\ **-help|-v|-**\ **-version**\ ]
 
@@ -40,22 +40,22 @@ OPTIONS
 
 
 
-\ **-s|-**\ **-size**\ 
- 
+\ **-s|-**\ **-size**\
+
  The size of the LUN that should be created.  Default is 4096.
- 
 
 
-\ **-v|-**\ **-version**\ 
- 
+
+\ **-v|-**\ **-version**\
+
  Display version.
- 
 
 
-\ **-h|-**\ **-help**\ 
- 
+
+\ **-h|-**\ **-help**\
+
  Display usage message.
- 
+
 
 
 
