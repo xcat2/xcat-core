@@ -19,9 +19,9 @@ SYNOPSIS
 ********
 
 
-\ **chvlanports**\  \ *vlanid*\  \ **-n | -**\ **-nodes**\  \ *noderange*\  \ **-i | -**\ **-interface**\  \ *nic*\ 
+\ **chvlanports**\  \ *vlanid*\  \ **-n | -**\ **-nodes**\  \ *noderange*\  \ **-i | -**\ **-interface**\  \ *nic*\
 
-\ **chvlanports**\  \ *vlanid*\  \ **-n | -**\ **-nodes**\  \ *noderange*\  \ **-i | -**\ **-interface**\  \ *nic*\  \ **-d | -**\ **-delete**\ 
+\ **chvlanports**\  \ *vlanid*\  \ **-n | -**\ **-nodes**\  \ *noderange*\  \ **-i | -**\ **-interface**\  \ *nic*\  \ **-d | -**\ **-delete**\
 
 \ **chvlanports**\  [\ **-h | -**\ **-help**\ ]
 
@@ -81,27 +81,27 @@ EXAMPLES
 
 
 1.
- 
+
  To add node1, node2 and node3 to vlan 3 using eth1 interface.
- 
- 
+
+
  .. code-block:: perl
- 
+
     chvlanports 3 -n node1,node2,node3 -i eth1
- 
- 
+
+
 
 
 2.
- 
+
  TO remove eth1 interface of node1, node2 and node3 from vlan 3.
- 
- 
+
+
  .. code-block:: perl
- 
+
     chvlanports 3 -n node1,node2,node3 -i eth1 -d
- 
- 
+
+
 
 
 
