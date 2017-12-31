@@ -43,10 +43,10 @@ Display usage message.
 
 =over 3
 
-=item 0. 
+=item 0.
 The command completed successfully.
 
-=item 1. 
+=item 1.
 An error has occurred.
 
 =back
