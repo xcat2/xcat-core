@@ -4,7 +4,7 @@
 use strict;
 use warnings;
 use Getopt::Long;
-use Data::Dumper; 
+use Data::Dumper;
 use Term::ANSIColor;
 use Time::Local;
 BEGIN
@@ -56,7 +56,7 @@ sub getimgattr
 {
     my @output = `lsdef -t osimage -o  $osimg -i $attr`;
     my $pkglistvalue;
-    print " output is @output \n";   
+    print " output is @output \n";
     if($?){
         print "unkonw";
         return "Unknown";
@@ -70,9 +70,9 @@ sub getimgattr
     }    }
     return $pkglistvalue;
 }
- 
+
 sub setupenv
-{  
+{
       my $int = shift;
       if ($ospkg){
       `mkdir -p $int`;
@@ -83,12 +83,12 @@ sub setupenv
        if (($osver =~ /ubuntu/)&&($ospkg ==0)){
            `echo "rpm" >>/tmp/pkgtest.bak `;
            }else{
-           `echo "xCAT-test" >>/tmp/pkgtest.bak `; 
+           `echo "xCAT-test" >>/tmp/pkgtest.bak `;
            }
 }
 sub clearenv
 {
-    my $int = shift; 
+    my $int = shift;
     if ($ospkg ==0){
     `rm -rf /tmp/pkgtest.* `;
     `rm -rf /install/pkgtest`;
@@ -97,7 +97,7 @@ sub clearenv
      `rm -rf $int`;
      }
 }
- 
+
 sub setupenvinclude
 {
     my $int = shift;
@@ -131,7 +131,7 @@ sub removerpm
     `echo "-xCAT-test" >>/tmp/pkgtest.bak`;
     }
 }
- 
+
 if  ($needhelp)
 {
     &usage;
@@ -172,7 +172,7 @@ if ($removerpm)
     &removerpm($int);
 }
 if ($clearenv)
-{   
+{
     if (-f "/tmp/int"){
     my $int=`cat /tmp/int`;
     &clearenv($int);
