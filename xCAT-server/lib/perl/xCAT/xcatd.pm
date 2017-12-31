@@ -22,22 +22,22 @@ use Scalar::Util qw/looks_like_number/;
 
 =head2    Package Description
 
-This program module file, is a set of utilities used by xCAT daemon. 
+This program module file, is a set of utilities used by xCAT daemon.
 
 =cut
 
 
 #------------------------------------------------------------------------------
 
-=head3   validate 
+=head3   validate
 
   Here is where we check if  $peername is allowed to do $request in policy tbl.
    $peername, if set signifies client has a cert that the xCAT CA accepted.
    Logs to syslog and auditlog table all user commands, see site.auditskipcmds
    attribute and auditnosyslog attribute.
-    
+
     Arguments:
-        
+
     Returns:
         returns 1 if policy engine allows the action, 0 if denied.
     Globals:
@@ -144,9 +144,9 @@ sub validate {
                 }
             }
             if ($found == 0) {    # no command match
-                next; 
+                next;
             }
-         } 
+         }
 
          if ($rule->{parameters} and $rule->{parameters} ne '*') {
             my $parms;
@@ -371,7 +371,7 @@ sub validate {
 }
 
 my $one_day = 86400;      # one day in seconds
-my $days = 1;             # default days for token expiration 
+my $days = 1;             # default days for token expiration
 my $never_label = "never";
 
 # this subroutine creates a new token in token table
@@ -405,7 +405,7 @@ sub gettoken {
             } else {
                 # Change non-expired old style token to new human readable format
                 $tokentb->setAttribs({ tokenid => $token->{tokenid}, username => $token->{'username'} }, {expire => xCAT::Utils->time2string($token->{'expire'}, "-")});
-            } 
+            }
         }
     }
 
@@ -428,7 +428,7 @@ sub gettoken {
     }
     my $access_time_string = xCAT::Utils->time2string($current_time, "-");
     # create a new token and set its expiration and creation time
-    $tokentb->setAttribs({ tokenid => $uuid, username => $user }, 
+    $tokentb->setAttribs({ tokenid => $uuid, username => $user },
         { expire => $expire_time_string, created => $access_time_string });
     $tokentb->close();
 
@@ -457,7 +457,7 @@ sub verifytoken {
                 return undef;
             } else {
                 # Change non-expired old style token to new human readable format
-                $tokentb->setAttribs({ tokenid => $tokenid, username => $token->{'username'} }, 
+                $tokentb->setAttribs({ tokenid => $tokenid, username => $token->{'username'} },
                                      {access => xCAT::Utils->time2string($current_time, "-"),
                                       expire => xCAT::Utils->time2string($token->{'expire'}, "-")});
                 return $token->{'username'};
