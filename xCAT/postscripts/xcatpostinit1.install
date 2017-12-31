@@ -1,7 +1,7 @@
 #!/bin/bash
 # IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
 # chkconfig: 345 84 59
-# description: the hook for systemd service unit to run PB and report node status on diskful node 
+# description: the hook for systemd service unit to run PB and report node status on diskful node
 # processname: xcatpostinit1
 
 ### BEGIN INIT INFO
@@ -31,7 +31,7 @@ stop)
   [ "$NODESTATUS" != "n" ] &&  /xcatpost/updateflag.awk $XCATSERVER 3002 "installstatus powering-off"
   ;;
 start)
-  # check for the REBOOT specified in xcatinfo to run post boot scripts on reboot 
+  # check for the REBOOT specified in xcatinfo to run post boot scripts on reboot
   if [ -f /opt/xcat/xcatinfo ]; then
     REBOOT=`grep 'REBOOT' /opt/xcat/xcatinfo |cut -d= -f2 | tr -d \'\"`
   fi
