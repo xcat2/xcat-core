@@ -18,34 +18,34 @@ Add a ``pdu`` attribute to the compute node definition in the form "PDU_Name:out
     chdef cn01 pdu=f5pdu3:6,f5pdu3:7
 
 
-The following commands are supported against a compute node: 
+The following commands are supported against a compute node:
 
    * Check the pdu status for a compute node: ::
-   
+
        # rpower cn01 pdustat
          cn01: f5pdu3 outlet 6 is on
          cn01: f5pdu3 outlet 7 is on
 
 
-   * Power off the PDU outlets for a compute node: :: 
-   
+   * Power off the PDU outlets for a compute node: ::
+
        # rpower cn01 pduoff
          cn01: f5pdu3 outlet 6 is off
          cn01: f5pdu3 outlet 7 is off
 
-   * Power on the PDU outlets for a compute node: :: 
-   
+   * Power on the PDU outlets for a compute node: ::
+
        # rpower cn01 pduon
          cn01: f5pdu3 outlet 6 is on
          cn01: f5pdu3 outlet 7 is on
 
-   * Power cycling the PDU outlets for a compute node: :: 
-   
+   * Power cycling the PDU outlets for a compute node: ::
+
        # rpower cn01 pdureset
-         cn01: f5pdu3 outlet 6 is reset 
+         cn01: f5pdu3 outlet 6 is reset
          cn01: f5pdu3 outlet 7 is reset
 
-The following commands are supported against a PDU: 
+The following commands are supported against a PDU:
 
    * To change hostname of IR PDU: ::
 
@@ -72,7 +72,7 @@ The following commands are supported against a PDU:
          f5pdu3: outlet 12 is on
 
    * Power off the full PDU: ::
-   
+
        # rpower f5pdu3 off
          f5pdu3: outlet 1 is off
          f5pdu3: outlet 2 is off
@@ -104,7 +104,7 @@ The following commands are supported against a PDU:
          f5pdu3: outlet 12 is on
 
    * Power reset the full PDU: ::
-   
+
        # rpower f5pdu3 reset
          f5pdu3: outlet 1 is reset
          f5pdu3: outlet 2 is reset
@@ -148,9 +148,9 @@ The following commands are supported against a PDU:
          f6pdu15: outlet 3 Max Capacity of the current: 16000 mA
          f6pdu15: outlet 3 Current Threshold Warning: 9600 mA
          f6pdu15: outlet 3 Current Threshold Critical: 12800 mA
-         f6pdu15: outlet 3 Last Power Reading: 217 Wattsv  
-   
-**Note:** For BMC based compute nodes, turning the PDU outlet power on does not automatically power on the compute side.  Users will need to issue ``rpower <node> on`` to power on the compute side after the BMC boots. 
+         f6pdu15: outlet 3 Last Power Reading: 217 Wattsv
+
+**Note:** For BMC based compute nodes, turning the PDU outlet power on does not automatically power on the compute side.  Users will need to issue ``rpower <node> on`` to power on the compute side after the BMC boots.
 
 
 
