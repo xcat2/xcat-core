@@ -7,7 +7,7 @@ Install the kvm related packages
 
 Additional packages need to be installed on the management node for kvm support.
 
-Please make sure the following packages have been installed on the management node, if not, install them manually. 
+Please make sure the following packages have been installed on the management node, if not, install them manually.
 
 ``perl-Sys-Virt``
 
@@ -28,4 +28,4 @@ The easiest shared file system is ``/install`` directory on the management node,
       echo "/install/vms *(rw,no_root_squash,sync,fsid=0)" >> /etc/exports
       exportfs -r
 
-**Note**: make sure the root permission is turned on for nfs clients (i.e. use the ``no_root_squash`` option). Otherwise, the virtual disk file can not work.  
+**Note**: make sure the root permission is turned on for nfs clients (i.e. use the ``no_root_squash`` option). Otherwise, the virtual disk file can not work.
