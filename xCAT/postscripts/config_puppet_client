@@ -4,7 +4,7 @@
 
 #-------------------------------------------------------------------------------
 #=head1  config_puppet_client
-#=head2  This command configure the puppet client on a xCAT node. 
+#=head2  This command configure the puppet client on a xCAT node.
 #        It is used by install_puppet_client on Ubuntu and puppet kit on RH.
 #=cut
 #-------------------------------------------------------------------------------
@@ -13,10 +13,10 @@ echo "Configuring pupper client....."
 #check if the current node is also a puppet master
 ismaster=0
 if [ -f /etc/puppet/fileserver.conf ]; then
-   ismaster=1 
+   ismaster=1
 fi
 
-#configure the puppet.conf file. 
+#configure the puppet.conf file.
 #the pupper server can be passed as an argument or as an environmental variable
 #the default is $SITEMASTER
 ARGNUM=$#;
@@ -79,7 +79,7 @@ else
     echo "  pluginsync = true" >> $confname
     echo "  server = $puppet_server" >> $confname
     echo "# xcat-added-agent-section-end-here #" >> $confname
-fi    
+fi
 
 exit 0
 
