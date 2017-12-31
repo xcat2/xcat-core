@@ -3,7 +3,7 @@ Parallel Commands
 
 xCAT provides a set of commands that can run common remote commands (``ssh, scp, rsh, rcp, rsync, ping, cons``) in parallel on xCAT managed nodes.  The xCAT commands will format the output making the results easier to parse and help administrators manage large clusters.
 
-The following commands are provided: 
+The following commands are provided:
 
     * ``pcons`` - runs a command on the noderange using the out-of-band console
     * ``pping`` - parallel ping
