@@ -65,16 +65,16 @@ OPTIONS
 
 
 
-\ **-?|-h|-**\ **-help**\ 
- 
+\ **-?|-h|-**\ **-help**\
+
  Display usage message.
- 
 
 
-\ **-v|-**\ **-version**\ 
- 
+
+\ **-v|-**\ **-version**\
+
  Command Version.
- 
+
 
 
 
@@ -95,39 +95,39 @@ EXAMPLES
 
 
 1.
- 
+
  Display information about all of the nodes in your SoftLayer account:
- 
- 
+
+
  .. code-block:: perl
- 
+
    getslnodes
- 
- 
+
+
 
 
 2.
- 
+
  Display information about all of the nodes whose hostname starts with foo:
- 
- 
+
+
  .. code-block:: perl
- 
+
    getslnodes foo
- 
- 
+
+
 
 
 3.
- 
+
  Create xCAT node defintions in the xCAT DB for all of the nodes in your SoftLayer account:
- 
- 
+
+
  .. code-block:: perl
- 
+
    getslnodes | mkdef -z
- 
- 
+
+
 
 
 
