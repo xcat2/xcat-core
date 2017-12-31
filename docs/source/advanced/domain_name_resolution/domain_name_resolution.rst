@@ -78,7 +78,7 @@ Preparing for Using a DNS
 
 If you are choosing any of the options for using DNS, follow these steps:
 
-NOTE: This documentation only applies to the xCAT makedns command using the ddns.pm plugin. The ddns.pm plugin is based on named9/bind9, and can not support named8/bind8 due to syntax difference. 
+NOTE: This documentation only applies to the xCAT makedns command using the ddns.pm plugin. The ddns.pm plugin is based on named9/bind9, and can not support named8/bind8 due to syntax difference.
 
     * Set the **nameservers** and **forwarders** attributes in the xCAT site table. The **nameservers** attribute identifies the DNS server hostname/ip that the nodes point to in their **/etc/resolv.conf** files. The forwarders attribute are the DNS server's ip that can resolve external hostnames. If you are running a DNS on the xCAT MN, it will use the forwarders DNS server to resolve any hostnames it can't.
 
@@ -88,7 +88,7 @@ For example: ::
 
     * Create an /etc/resolv.conf file on the management node
 
-Edit **/etc/resolv.conf** to contain the cluster domain value you set in the site table's **domain**  attribute above, and to point to the same DNS server you will be using for your nodes (if you are using DNS). 
+Edit **/etc/resolv.conf** to contain the cluster domain value you set in the site table's **domain**  attribute above, and to point to the same DNS server you will be using for your nodes (if you are using DNS).
 
 Option #1: Running DNS on Your Management Node
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -132,7 +132,7 @@ If you already have a DNS on your site network and you want to use it to solve t
    * Set the site **nameservers** value to the IP address of the external name server. ::
 
         chdef -t site nameservers=<external dns IP>
- 
+
    * Set the correct information of external dns into the /etc/resolv.conf on your xCAT MN.
 
 The **domain** and **nameservers** values must be set correctly in **/etc/resolv.conf**. Which should have the same values with the ones your set in the site table.
@@ -159,7 +159,7 @@ The **domain** and **nameservers** values must be set correctly in **/etc/resolv
               file "db.192.168.1";
          };
 
-    * To update the name resolution entries from ``/etc/hosts`` or hosts table of xCAT MN to external DNS, run ``makedns -e`` 
+    * To update the name resolution entries from ``/etc/hosts`` or hosts table of xCAT MN to external DNS, run ``makedns -e``
 
       Alternatively, you can set site.externaldns=1 and run ``makedns``
 
@@ -191,7 +191,7 @@ The configurations are described below for the two options, note the differences
 
 Once **/etc/hosts** is populated with all of the nodes' hostnames and IP addresses, configure DNS on the management node and start it: ::
 
-    makedns -n       
+    makedns -n
 
 When the **/etc/resolv.conf** files for the compute nodes are created the value of the **nameserver**  in /etc/resolv.conf is gotten from **site.nameservers** or **networks.nameservers** if it's specified.
 
