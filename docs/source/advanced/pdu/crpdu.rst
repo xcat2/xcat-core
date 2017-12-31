@@ -1,7 +1,7 @@
 Collaborative PDU
 =================
 
-Collaborative PDU is also referred as Coral PDU, it controls power for compute Rack. User can access PDU via SSH and can use the **PduManager** command to configure and manage the PDU product.  
+Collaborative PDU is also referred as Coral PDU, it controls power for compute Rack. User can access PDU via SSH and can use the **PduManager** command to configure and manage the PDU product.
 
 
 Pre-Defined PDU Objects
@@ -61,7 +61,7 @@ After pre-defining PDUs, user can use **pdudisocver --range ip_range --setup** t
 Remote Power Control of PDU
 ---------------------------
 
-Use the rpower command to remotely power on and off PDU. 
+Use the rpower command to remotely power on and off PDU.
 
     * To check power stat of PDU: ::
 
@@ -85,7 +85,7 @@ Coral PDUs have three relays, the following commands are for individual relay su
 
         # rpower coralpdu relay=2 off
 
-    * To power on the relay: :: 
+    * To power on the relay: ::
 
         # rpower coralpdu relay=3 on
 
