@@ -6,7 +6,7 @@ osver=$2
 arch=$3
 profile=$4
 
-#user-specified arguments in "postinstall" attribute 
+#user-specified arguments in "postinstall" attribute
 #the name of the service to inject
 servicename=$5
 #the full path of the service unit file to inject on management node(non-chroot)
