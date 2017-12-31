@@ -19,7 +19,7 @@ SYNOPSIS
 ********
 
 
-\ **routes Attributes:**\   \ *routename*\ , \ *net*\ , \ *mask*\ , \ *gateway*\ , \ *ifname*\ , \ *comments*\ , \ *disable*\ 
+\ **routes Attributes:**\   \ *routename*\ , \ *net*\ , \ *mask*\ , \ *gateway*\ , \ *ifname*\ , \ *comments*\ , \ *disable*\
 
 
 ***********
@@ -36,46 +36,46 @@ routes Attributes:
 
 
 
-\ **routename**\ 
- 
+\ **routename**\
+
  Name used to identify this route.
- 
 
 
-\ **net**\ 
- 
+
+\ **net**\
+
  The network address.
- 
 
 
-\ **mask**\ 
- 
+
+\ **mask**\
+
  The network mask.
- 
 
 
-\ **gateway**\ 
- 
+
+\ **gateway**\
+
  The gateway that routes the ip traffic from the mn to the nodes. It is usually a service node.
- 
 
 
-\ **ifname**\ 
- 
+
+\ **ifname**\
+
  The interface name that facing the gateway. It is optional for IPv4 routes, but it is required for IPv6 routes.
- 
 
 
-\ **comments**\ 
- 
+
+\ **comments**\
+
  Any user-written notes.
- 
 
 
-\ **disable**\ 
- 
+
+\ **disable**\
+
  Set to 'yes' or '1' to comment out this row.
- 
+
 
 
 
@@ -84,5 +84,5 @@ SEE ALSO
 ********
 
 
-\ **nodels(1)**\ , \ **chtab(8)**\ , \ **tabdump(8)**\ , \ **tabedit(8)**\ 
+\ **nodels(1)**\ , \ **chtab(8)**\ , \ **tabdump(8)**\ , \ **tabedit(8)**\
 
