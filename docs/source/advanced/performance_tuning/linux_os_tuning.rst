@@ -4,8 +4,8 @@ System Tuning Settings for Linux
 Adjusting Operating System tunables can improve large scale cluster performance, avoid bottlenecks, and prevent failures. The following sections are a collection of suggestions that have been gathered from various large scale HPC clusters. You should investigate and evaluate the validity of each suggestion before applying them to your cluster.
 
 
-#. Tuning Linux ulimits:  
-   
+#. Tuning Linux ulimits:
+
     The open file limits are important to high concurrence network services, such as ``xcatd``. For a large cluster, it is required to increase the number of open file limit to avoid **Too many open files** error. The default value is *1024* in most OS distributions, to add below configuration in ``/etc/security/limits.conf`` to increase to *14096*.
     ::
 
@@ -24,7 +24,7 @@ Adjusting Operating System tunables can improve large scale cluster performance,
         net.core.rmem_default = 65536
         net.core.wmem_default = 65536
         net.core.somaxconn = 8192
-        
+
         net.ipv4.tcp_rmem = 4096 33554432 33554432
         net.ipv4.tcp_wmem = 4096 33554432 33554432
         net.ipv4.tcp_mem= 33554432 33554432 33554432
