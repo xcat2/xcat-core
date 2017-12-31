@@ -19,7 +19,7 @@ SYNOPSIS
 ********
 
 
-\ **hwinv Attributes:**\   \ *node*\ , \ *cputype*\ , \ *cpucount*\ , \ *memory*\ , \ *disksize*\ , \ *comments*\ , \ *disable*\ 
+\ **hwinv Attributes:**\   \ *node*\ , \ *cputype*\ , \ *cpucount*\ , \ *memory*\ , \ *disksize*\ , \ *comments*\ , \ *disable*\
 
 
 ***********
@@ -36,46 +36,46 @@ hwinv Attributes:
 
 
 
-\ **node**\ 
- 
+\ **node**\
+
  The node name or group name.
- 
 
 
-\ **cputype**\ 
- 
+
+\ **cputype**\
+
  The cpu model name for the node.
- 
 
 
-\ **cpucount**\ 
- 
+
+\ **cpucount**\
+
  The number of cpus for the node.
- 
 
 
-\ **memory**\ 
- 
+
+\ **memory**\
+
  The size of the memory for the node in MB.
- 
 
 
-\ **disksize**\ 
- 
+
+\ **disksize**\
+
  The size of the disks for the node in GB.
- 
 
 
-\ **comments**\ 
- 
+
+\ **comments**\
+
  Any user-provided notes.
- 
 
 
-\ **disable**\ 
- 
+
+\ **disable**\
+
  Set to 'yes' or '1' to comment out this row.
- 
+
 
 
 
@@ -84,5 +84,5 @@ SEE ALSO
 ********
 
 
-\ **nodels(1)**\ , \ **chtab(8)**\ , \ **tabdump(8)**\ , \ **tabedit(8)**\ 
+\ **nodels(1)**\ , \ **chtab(8)**\ , \ **tabdump(8)**\ , \ **tabedit(8)**\
 
