@@ -1,7 +1,7 @@
 Verification
 ============
 
-Before starting hardware discovery, ensure the following is configured to make the discovery process as smooth as possible. 
+Before starting hardware discovery, ensure the following is configured to make the discovery process as smooth as possible.
 
 Password Table
 --------------
@@ -15,10 +15,10 @@ If not configured, use the following command to set ``usernam=ADMIN`` and ``pass
     chtab key=ipmi passwd.username=ADMIN passwd.password=admin
 
 
-Genesis Package 
+Genesis Package
 ---------------
 
-The **xCAT-genesis** packages provides the utility to create the genesis network boot rootimage used by xCAT when doing hardware discovery.  It should be installed during the xCAT install and would cause problems if missing.  
+The **xCAT-genesis** packages provides the utility to create the genesis network boot rootimage used by xCAT when doing hardware discovery.  It should be installed during the xCAT install and would cause problems if missing.
 
 Verify that the ``genesis-scripts`` and ``genesis-base`` packages are installed:
 
@@ -47,7 +47,7 @@ If missing:
 
            apt-get install xCAT-genesis
 
-    #. Create the network boot rootimage with the following command: ``mknb ppc64``.  
+    #. Create the network boot rootimage with the following command: ``mknb ppc64``.
 
        The genesis kernel should be copied to ``/tftpboot/xcat``.
 
