@@ -29,7 +29,7 @@ fi
 
 echo 'options nvidia NVreg_EnableStreamMemOPs=1 NVreg_RegistryDwords="PeerMappingOverride=1"' >${IMG_ROOTIMGDIR}/usr/lib/modprobe.d/nvidia.conf
 
-if [ -z "${IMG_ROOTIMGDIR}" ] 
+if [ -z "${IMG_ROOTIMGDIR}" ]
 then
 	kernel_version="$(for d in $(ls /lib/modules | sort -V) ; do : ; done && echo $d)"
 	mkinitrd -v -f "/boot/initramfs-${kernel_version}.img" "${kernel_version}"
