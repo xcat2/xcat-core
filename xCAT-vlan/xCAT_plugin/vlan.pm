@@ -964,7 +964,7 @@ sub add_postscript {
 =head3  add_vlan_ip_host
 
   It goes to the hosts.otherinterfaces to see if the vlan ip and hostname
-  is defined. If not, it will add the default in the table. 
+  is defined. If not, it will add the default in the table.
   The default is v<vlanid>n<node#>
 
 =cut
@@ -1042,7 +1042,7 @@ sub add_vlan_ip_host {
 =head3 get_prefix_and_nodenumber
 
   It gets the prefix and max node number from the current nodes
-  in the given vlan. 
+  in the given vlan.
 
 =cut
 
@@ -1128,7 +1128,7 @@ sub get_prefix_and_nodenumber {
 =head3  remove_vlan_ip_host
 
   It goes to the hosts.otherinterfaces to see if the vlan ip and hostname
-  is defined. If it is, it will remove it. It also remove the entried in 
+  is defined. If it is, it will remove it. It also remove the entried in
   the /etc/hosts file
 
 =cut
@@ -1181,7 +1181,7 @@ sub remove_vlan_ip_host {
 
 =head3  verify_vlanid
 
-  It goes to all the switches to make sure that the vlan 
+  It goes to all the switches to make sure that the vlan
   id is not used by other vlans.
 =cut
 
@@ -1225,7 +1225,7 @@ sub verify_vlanid {
 
   It automatically generates the vlan ID. It goes to all the
   switches, get the smallest common integer that is not used
-  by any existing vlans. 
+  by any existing vlans.
 =cut
 
 #-------------------------------------------------------
@@ -1321,9 +1321,9 @@ sub verify_switch_ports {
 
 =head3  create_vlan
 
-  It goes to the switches and create a new vlan. 
+  It goes to the switches and create a new vlan.
   Returns:  1 -- suggessful
-            0 -- fail 
+            0 -- fail
 =cut
 
 #-------------------------------------------------------
@@ -1374,7 +1374,7 @@ sub create_vlan {
 
   It adds the ports to the vlan.
   Returns:  1 -- suggessful
-            0 -- fail 
+            0 -- fail
 =cut
 
 #-------------------------------------------------------
@@ -1410,7 +1410,7 @@ sub add_ports {
 
   It enables the vlan on the cross-over links.
   Returns:  1 -- suggessful
-            0 -- fail 
+            0 -- fail
 =cut
 
 #-------------------------------------------------------
@@ -1456,7 +1456,7 @@ sub add_crossover_ports {
 
   It goes to the switches and create a new vlan.
   Returns:  1 -- suggessful
-            0 -- fail 
+            0 -- fail
 =cut
 
 #-------------------------------------------------------
@@ -1501,9 +1501,9 @@ sub remove_ports {
 
 =head3   get_subnet
 
-  It gets the subnet address and netmask for the given 
+  It gets the subnet address and netmask for the given
   vlan ID. The pattern is defined by "vlannets" and "vlanmask"
-  on the site table.  The default is "10.<$vlanid>.0.0"/"255.255.0.0". 
+  on the site table.  The default is "10.<$vlanid>.0.0"/"255.255.0.0".
 =cut
 
 #-------------------------------------------------------
@@ -2401,7 +2401,7 @@ sub process_rmvlan {
 =head3  remove_postscript
 
     It removes configvlan postscripts from the postscripts table for the node
-    Note: if configvlan is in xcatdefaults, it will not get removed becase 
+    Note: if configvlan is in xcatdefaults, it will not get removed becase
        it may affect other vlans
 
 =cut
@@ -2654,9 +2654,9 @@ sub lsvlan_usage {
 #-------------------------------------------------------
 
 =head3  getNodeVlanConfData
-   This function is called by Postage.pm to collect all the 
-   environmental variables for setting up a vlan for a given 
-   node.  
+   This function is called by Postage.pm to collect all the
+   environmental variables for setting up a vlan for a given
+   node.
 =cut
 
 #-------------------------------------------------------
