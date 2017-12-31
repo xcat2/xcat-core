@@ -1,4 +1,4 @@
-#!/bin/sh  
+#!/bin/sh
 # IBM(c) 2008 EPL license http://www.eclipse.org/legal/epl-v10.html
 
 # Sample xCAT post script for configuring secondary adatper based on eth0
@@ -21,7 +21,7 @@ then
             echo "Not found the driver dameon: rdma or openibd"
             exit
         fi
-    fi   
+    fi
 else
     ib_driver="openibd"
 fi
@@ -51,8 +51,8 @@ fi
 if [ $PLTFRM == "Linux" ]
 then
 
-    ib_number=`lspci | grep -iE "(InfiniBand|Mellanox)" | wc -l` 
-    loop_number=`expr $ib_number \* 2` 
+    ib_number=`lspci | grep -iE "(InfiniBand|Mellanox)" | wc -l`
+    loop_number=`expr $ib_number \* 2`
 
     if [ -f /etc/redhat-release ]
     then
@@ -64,7 +64,7 @@ then
         echo "Unsupported to config IB on this OS!"
         exit
      fi
- 
+
     if [ $OS_name == 'suse' ]
     then
          dir="/etc/sysconfig/network"
@@ -75,7 +75,7 @@ then
 
 
 else
- 
+
     loop_number=`lsdev | grep "IP over Infiniband Network Interface" | wc -l`
 
     num=0
@@ -91,11 +91,11 @@ else
           `rmdev -d -l ml$num >/dev/null 2>&1`
           num=`expr $num + 1`
     done
-    `rmdev -dl icm >/dev/null 2>&1`  
+    `rmdev -dl icm >/dev/null 2>&1`
     mkdev -c management -s infiniband -t icm
     cfgmgr
     ib_number=`lsdev -Cc adapter |grep iba |wc -l`
-    loop_number=`expr $ib_number \* 2` 
+    loop_number=`expr $ib_number \* 2`
 
 fi
 
@@ -108,7 +108,7 @@ num=0
 while [ $num -lt $loop_number ]
 do
     # Take primary node name, add -ib$num and then reverse resolve to get what ip should be
-    nic="ib$num"   
+    nic="ib$num"
     # Get hostname from system in case postscript environment is not ready
     if [ $NODE ]
     then
@@ -149,7 +149,7 @@ do
                 echo "Unsupported to config IB on this OS!"
                 exit
             fi
-            
+
             if [ -f /etc/sysctl.conf ]
             then
                 sed -i "/net.ipv4.conf.$nic.arp_filter=1/d" /etc/sysctl.conf
@@ -171,7 +171,7 @@ IPADDR=$ip
 NETMASK=$netmask
 GATEWAY=$gateway" > $dir/ifcfg-$nic
             if [[ "$OSVER" == rhels6* ]]
-            then 
+            then
                 echo "DEVICE=$nic
 BOOTPROTO=static
 IPADDR=$ip
@@ -181,7 +181,7 @@ GATEWAY=$gateway" > $dir/ifcfg-$nic
             if [ $OS_name == 'redhat' ]
             then
                 echo "ONBOOT=yes" >> $dir/ifcfg-$nic
-            else 
+            else
                 echo "STARTMODE=auto" >> $dir/ifcfg-$nic
             fi
         elif [ $PLTFRM == "AIX" ]
@@ -228,12 +228,12 @@ then
     while [ $num -lt $loop_number ]
     do
         sleep 5
-             
+
         if [[ "$OSVER" == rhels6* ]]
         then
             ip link set dev ib$num up
-        else 
-            ifup ib$num      
+        else
+            ifup ib$num
         fi
         num=`expr $num + 1`
     done
