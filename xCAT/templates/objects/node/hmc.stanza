@@ -9,4 +9,4 @@ hmc-template:
     ip="MANDATORY:the ip address of the hmc"
     password="MANDATORY:the password of the hmc"
     username="MANDATORY:the username on the hmc"
-    usercomment="the template for hmc definition" 
+    usercomment="the template for hmc definition"
