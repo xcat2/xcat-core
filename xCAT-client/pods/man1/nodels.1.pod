@@ -4,7 +4,7 @@ B<nodels> - lists the nodes, and their attributes, from the xCAT database.
 
 =head1 SYNOPSIS
 
-B<nodels> [I<noderange>] [B<-b> | B<--blame>] [B<-H> | B<--with-fieldname>] [B<-S>] [I<table.column> | I<shortname>] [I<...>]  
+B<nodels> [I<noderange>] [B<-b> | B<--blame>] [B<-H> | B<--with-fieldname>] [B<-S>] [I<table.column> | I<shortname>] [I<...>]
 
 B<nodels> [I<noderange>] [B<-H> | B<--with-fieldname>] [I<table>]
 
@@ -34,7 +34,7 @@ nodehm.mgt
 
 =back
 
-nodels can also select based on table value criteria. The following operators are available: 
+nodels can also select based on table value criteria. The following operators are available:
 
 =over 15
 
@@ -77,7 +77,7 @@ Force display of table name and column name context for each result
 
 For values inherited from groups, display which groups provided the inheritance
 
-=item B<-S> 
+=item B<-S>
 
 List all the hidden nodes (FSP/BPA nodes) with other ones.
 
