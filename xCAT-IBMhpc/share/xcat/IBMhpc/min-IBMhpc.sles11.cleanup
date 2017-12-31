@@ -20,7 +20,7 @@ profile=$4
 workdir=$5
 
 #uninstall the ibm-java2 and rpms pulled in by it
-rpm -e  --root $installroot ibm-java2-ppc64-jre xorg-x11-libX11-32bit xorg-x11-libXau-32bit xorg-x11-libXext-32bit xorg-x11-libXp-32bit xorg-x11-libxcb-32bit 
+rpm -e  --root $installroot ibm-java2-ppc64-jre xorg-x11-libX11-32bit xorg-x11-libXau-32bit xorg-x11-libXext-32bit xorg-x11-libXp-32bit xorg-x11-libxcb-32bit
 
 #uninstall the rpms pulled in by LoadL_resmgr
 rpm -e --nodeps --root $installroot xorg-x11-libICE xorg-x11-libSM xorg-x11-libX11 xorg-x11-libXau  xorg-x11-libXext xorg-x11-libXfixes  xorg-x11-libXmu xorg-x11-libXp  xorg-x11-libXpm xorg-x11-libXprintUtil  xorg-x11-libXrender xorg-x11-libXt  xorg-x11-libXv xorg-x11-libfontenc  xorg-x11-libs xorg-x11-libxcb xorg-x11-libxkbfile
