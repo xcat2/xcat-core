@@ -19,7 +19,7 @@ SYNOPSIS
 ********
 
 
-\ **domain Attributes:**\   \ *node*\ , \ *ou*\ , \ *authdomain*\ , \ *adminuser*\ , \ *adminpassword*\ , \ *type*\ , \ *comments*\ , \ *disable*\ 
+\ **domain Attributes:**\   \ *node*\ , \ *ou*\ , \ *authdomain*\ , \ *adminuser*\ , \ *adminpassword*\ , \ *type*\ , \ *comments*\ , \ *disable*\
 
 
 ***********
@@ -36,52 +36,52 @@ domain Attributes:
 
 
 
-\ **node**\ 
- 
+\ **node**\
+
  The node or group the entry applies to
- 
 
 
-\ **ou**\ 
- 
+
+\ **ou**\
+
  For an LDAP described machine account (i.e. Active Directory), the organizational unit to place the system.  If not set, defaults to cn=Computers,dc=your,dc=domain
- 
 
 
-\ **authdomain**\ 
- 
+
+\ **authdomain**\
+
  If a node should participate in an AD domain or Kerberos realm distinct from domain indicated in site, this field can be used to specify that
- 
 
 
-\ **adminuser**\ 
- 
+
+\ **adminuser**\
+
  Allow a node specific indication of Administrative user.  Most will want to just use passwd table to indicate this once rather than by node.
- 
 
 
-\ **adminpassword**\ 
- 
+
+\ **adminpassword**\
+
  Allow a node specific indication of Administrative user password for the domain.  Most will want to ignore this in favor of passwd table.
- 
 
 
-\ **type**\ 
- 
+
+\ **type**\
+
  Type, if any, of authentication domain to manipulate.  The only recognized value at the moment is activedirectory.
- 
 
 
-\ **comments**\ 
- 
+
+\ **comments**\
+
  Any user-written notes.
- 
 
 
-\ **disable**\ 
- 
+
+\ **disable**\
+
  Set to 'yes' or '1' to comment out this row.
- 
+
 
 
 
@@ -90,5 +90,5 @@ SEE ALSO
 ********
 
 
-\ **nodels(1)**\ , \ **chtab(8)**\ , \ **tabdump(8)**\ , \ **tabedit(8)**\ 
+\ **nodels(1)**\ , \ **chtab(8)**\ , \ **tabdump(8)**\ , \ **tabedit(8)**\
 
