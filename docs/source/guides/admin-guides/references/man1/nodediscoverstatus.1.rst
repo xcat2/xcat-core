@@ -27,7 +27,7 @@ DESCRIPTION
 ***********
 
 
-The \ **nodediscoverstatus**\  command detects if the sequential or profile node discovery process is currently running, i.e. \ **nodediscoverstart**\ 
+The \ **nodediscoverstatus**\  command detects if the sequential or profile node discovery process is currently running, i.e. \ **nodediscoverstart**\
 has been run, but \ **nodediscoverstop**\  has not.
 
 
@@ -36,11 +36,11 @@ OPTIONS
 *******
 
 
-\ **-h|-**\ **-help**\ 
+\ **-h|-**\ **-help**\
 
 Display usage message.
 
-\ **-v|-**\ **-version**\ 
+\ **-v|-**\ **-version**\
 
 Command Version.
 
