@@ -90,14 +90,14 @@ sub namesmatch {
 MacMap attempts to do it's best to determine whether or not a particular SNMP description of
 a port matches the user specified value in the configuration.  Generally, if the configuration
 consists of non-stacked switches without line cards, the user should only need to specify the
-port number without any characters or / characters.  If the configuration contains line cards 
-or stacked switches, use of that particular switch's appropriate / syntax in generally called 
-for.  The exception being stacked SMC 8848 switches, in which all ports are still single 
+port number without any characters or / characters.  If the configuration contains line cards
+or stacked switches, use of that particular switch's appropriate / syntax in generally called
+for.  The exception being stacked SMC 8848 switches, in which all ports are still single
 numbers, and the ports on the second switch begin at 57.
 
-If difficulty is encountered, or a switch is attempted with a format that doesn't match any 
+If difficulty is encountered, or a switch is attempted with a format that doesn't match any
 existing rule, it is recommended to use snmpwalk on the switch with the .1.3.6.1.2.1.31.1.1.1.1
-OID, and have the switch table port value match exactly the format suggested by that OID. 
+OID, and have the switch table port value match exactly the format suggested by that OID.
 
 =cut
 
@@ -267,7 +267,7 @@ sub scan_qbridge_vlans {
     Descriptions:
         Retrieve information (switchport and the mac addresses got for that port) for the specified switch or all switches if no specified.
     Arguments:
-        $req: the xcat request hash 
+        $req: the xcat request hash
         $callback: the function to output information
     Returns:
         The hash variable store retrieved inforamtions
@@ -368,7 +368,7 @@ sub dump_mac_info {
                     }
                     @{ $ret{$switch}->{$snmpportname}->{MACaddress} } = @{ $self->{macinfo}->{$switch}->{$snmpportname} };
                     @{ $ret{$switch}->{$snmpportname}->{Vlanid} } = @{ $self->{vlaninfo}->{$switch}->{$snmpportname} };
-                    @{ $ret{$switch}->{$snmpportname}->{Mtu} } = @{ $self->{mtuinfo}->{$switch}->{$snmpportname} }; 
+                    @{ $ret{$switch}->{$snmpportname}->{Mtu} } = @{ $self->{mtuinfo}->{$switch}->{$snmpportname} };
                 }
             }
         }
@@ -408,7 +408,7 @@ sub find_mac {
     #If requesting a cache only check or the cache is a mere 20 seconds old
     #don't bother querying switches
     if ($cachedonly or ($self->{timestamp} > (time() - 20))) { return undef; }
-    
+
     my $runstart = time;
     $self->refresh_table($discover_switch);    #not cached or stale cache, refresh
     my $runstop = time;
@@ -498,7 +498,7 @@ sub refresh_table {
 
     #Build hash of switch port names per switch
     $self->{switches} = {};
-    
+
     #get nodetype from nodetype table, build a temp hash
     my $typehash;
     my $ntable = xCAT::Table->new('nodetype');
@@ -719,7 +719,7 @@ sub refresh_switch {
 
     if($self->{switchparmhash}->{$switch}->{switchtype} eq 'onie'){
         #for cumulus switch, the MAC table can be retrieved with ssh
-        #which is much faster than snmp 
+        #which is much faster than snmp
         my $mymac;
         my $myport;
 
@@ -735,11 +735,11 @@ sub refresh_switch {
             foreach (@res){
                 if($_ =~ m/^([0-9a-z]{2}:[0-9a-z]{2}:[0-9a-z]{2}:[0-9a-z]{2}:[0-9a-z]{2}:[0-9a-z]{2}) dev swp([0-9]+) vlan ([0-9]+) .*/){
                     $mymac=$1;
-                    $myport=$2;         
+                    $myport=$2;
                     $myport=sprintf("%d",$myport);
                     my $macport=$2;
                     my $macvlan=$3;
- 
+
                     #try all the possible port number formats
                     #e.g, "5","swp5","05","swp05"
                     unless(exists $self->{switches}->{$switch}->{$myport}){
@@ -821,7 +821,7 @@ sub refresh_switch {
                 $self->{macinfo}->{$switch}->{ErrorStr} = "This command does not support Mellanox IB Switch";
                 return;
             }
-        } 
+        }
         last;
     }
 
@@ -962,7 +962,7 @@ sub refresh_switch {
                 # Skip "permanent" ports
                 if (!defined($mactostate->{$_}) || $mactostate->{$_} != 4) {
                     push @{ $index_to_mac{$index} }, $macstring;
-                    push @{ $index_to_vlan{$index} }, $vlan;    
+                    push @{ $index_to_vlan{$index} }, $vlan;
                }
             }
             foreach my $boid (keys %$bridgetoifmap) {
