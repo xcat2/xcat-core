@@ -35,7 +35,7 @@ scheduser=loadl
 #    updated by specifying different machine requirements, classes, or other
 #    controls that LL allows you in the LL job template that you provide.
 # If updateall is used, the following entries MUST be specified in this file:
-#       updateall_nodes  
+#       updateall_nodes
 #       updateall_nodecount
 #       job_template
 #       job_dir
@@ -61,7 +61,7 @@ updateall_nodes=compute
 # updateall_nodecount:  The number of nodes that will be reserved at one time
 #    in the scheduler and updated together.  The smaller the number, the more
 #    scheduler reservation jobs that will be submitted.
-# NOTE:  LoadLeveler performance decreases with large numbers of 
+# NOTE:  LoadLeveler performance decreases with large numbers of
 #        reservations.  Do not set this value so low that you will exceed
 #        the maximum number of reservations allowed for your cluster or
 #        that you will degrade LL performance for your production jobs.
@@ -87,7 +87,7 @@ updateall_nodecount=3
 
 
 
-# Scheduler Feature values 
+# Scheduler Feature values
 #    Node feature values that will be changed in the scheduler during the
 #    update process.  These features can be used if users need to run jobs
 #    on only old nodes or only new nodes, but cannot have the job span both
@@ -97,12 +97,12 @@ updateall_nodecount=3
 oldfeature=oldvalue
 
 # newfeature:  A new feature value that will be set in the scheduler for each
-#    node after it has been updated.  
+#    node after it has been updated.
 newfeature=newvalue
 
 
 
-# maxupdates:  Maximum number of updategroups that can be updated at one time 
+# maxupdates:  Maximum number of updategroups that can be updated at one time
 #    This allows you to ensure you will always have enough computing
 #    resources in your cluster and that not all nodes will attempt to
 #    be updated at once.
@@ -123,12 +123,12 @@ maxupdates=16
 
 
 
-#jobtemplate:  Scheduler job template file.  See this sample LoadLeveler file 
+#jobtemplate:  Scheduler job template file.  See this sample LoadLeveler file
 #    for details on how the template will be processed:
 jobtemplate=/opt/xcat/share/xcat/rollupdate/llall.tmpl
 
 
- 
+
 #jobdir:  Directory to write the job command files to
 #    For LL, this directory needs to be on a filesystem available to all nodes.
 jobdir=/u/loadl/rollupdate_jobs
@@ -173,12 +173,12 @@ update_if_down=no
 # prescript
 #    (optional) Command to be run on the xCAT management node before issuing
 #    the shutdown command for the nodes in the updategroup.
-# NOTE:  For updateall operation, prescriptnodes are not supported.  
+# NOTE:  For updateall operation, prescriptnodes are not supported.
 #        Prescripts will be run for all nodes.
 #    You may specify the string $NODELIST if you would like the
 #    comma-delimited list of xCAT nodenames passed into your command.
-#    Multiple prescript entries can be specified. Each command will be run in 
-#    order. 
+#    Multiple prescript entries can be specified. Each command will be run in
+#    order.
 #prescript=/u/admin/bin/shutdownGPFS $NODELIST
 
 
@@ -202,12 +202,12 @@ shutdowntimeout=5
 # outofbandcmd
 #   (optional) Out-of-band command to run on the xCAT management
 #    node once the node has been shutdown but before it is rebooted.
-# NOTE:  For updateall operation, outofbandnodes are not supported.  
+# NOTE:  For updateall operation, outofbandnodes are not supported.
 #        Out-of-band commands will be run for all nodes.
 #    You may specify the string $NODELIST if you would like the
 #    comma-delimited list of xCAT nodenames passed into your command.
-# Multiple outofbandcmd (with optional outofbandnodes) entries can be 
-#    specified. Each command will be run in order. 
+# Multiple outofbandcmd (with optional outofbandnodes) entries can be
+#    specified. Each command will be run in order.
 #outofbandcmd=/u/admin/bin/myfirmwareupdates $NODELIST
 
 
