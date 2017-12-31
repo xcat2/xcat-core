@@ -10,11 +10,11 @@ check:output=~Version
 end
 
 start:updatenode_diskful_syncfiles
-cmd:mkdir -p /install/custom/install/__GETNODEATTR($$CN,os)__/ 
+cmd:mkdir -p /install/custom/install/__GETNODEATTR($$CN,os)__/
 check:rc==0
-cmd:echo "/etc/hosts -> /etc/hosts" > /install/custom/install/__GETNODEATTR($$CN,os)__/compute.$$OS.synclist 
+cmd:echo "/etc/hosts -> /etc/hosts" > /install/custom/install/__GETNODEATTR($$CN,os)__/compute.$$OS.synclist
 check:rc==0
-cmd:echo "/etc/resolv.conf -> /etc/resolv.conf" >> /install/custom/install/__GETNODEATTR($$CN,os)__/compute.$$OS.synclist 
+cmd:echo "/etc/resolv.conf -> /etc/resolv.conf" >> /install/custom/install/__GETNODEATTR($$CN,os)__/compute.$$OS.synclist
 check:rc==0
 cmd:chdef -t osimage -o __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-install-compute synclists=/install/custom/install/__GETNODEATTR($$CN,os)__/compute.$$OS.synclist
 check:rc==0
@@ -35,7 +35,7 @@ check:rc==0
 cmd:rm -rf /install/custom/install/__GETNODEATTR($$CN,os)__/compute.$$OS.synclist
 cmd:chdef -t osimage -o  __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-install-compute synclists=
 check:rc==0
-end 
+end
 
 start:updatenode_diskful_syncfiles_rename
 cmd:mkdir -p /tmp/syncfile/
@@ -44,9 +44,9 @@ cmd:echo "test1" > /tmp/syncfile/test1.txt
 check:rc==0
 cmd:echo "test2" > /tmp/syncfile/test2.txt
 check:rc==0
-cmd:echo "/tmp/syncfile/test1.txt -> /tmp/testx.txt" > /install/custom/install/__GETNODEATTR($$CN,os)__/compute.$$OS.synclist 
+cmd:echo "/tmp/syncfile/test1.txt -> /tmp/testx.txt" > /install/custom/install/__GETNODEATTR($$CN,os)__/compute.$$OS.synclist
 check:rc==0
-cmd:echo "/tmp/syncfile/test2.txt -> /tmp/testy.txt" >> /install/custom/install/__GETNODEATTR($$CN,os)__/compute.$$OS.synclist 
+cmd:echo "/tmp/syncfile/test2.txt -> /tmp/testy.txt" >> /install/custom/install/__GETNODEATTR($$CN,os)__/compute.$$OS.synclist
 check:rc==0
 cmd:chdef -t osimage -o __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-install-compute synclists=/install/custom/install/__GETNODEATTR($$CN,os)__/compute.$$OS.synclist
 check:rc==0
@@ -74,24 +74,24 @@ cmd:echo "test1" > /tmp/sync/test1.txt
 check:rc==0
 cmd:echo "test2" > /tmp/sync/test2.txt
 check:rc==0
-cmd:echo "/tmp/sync/* -> /tmp/" > /install/custom/install/__GETNODEATTR($$CN,os)__/compute.$$OS.synclist  
+cmd:echo "/tmp/sync/* -> /tmp/" > /install/custom/install/__GETNODEATTR($$CN,os)__/compute.$$OS.synclist
 check:rc==0
 cmd:chdef -t osimage -o __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-install-compute synclists=/install/custom/install/__GETNODEATTR($$CN,os)__/compute.$$OS.synclist
 check:rc==0
-cmd:updatenode $$CN -F 
+cmd:updatenode $$CN -F
 check:rc==0
 cmd:xdsh $$CN "ls -l /tmp"
 check:output=~test1.txt
 check:output=~test2.txt
 cmd:xdsh $$CN "cat /tmp/test1.txt"
-check:output=~test1 
+check:output=~test1
 cmd:xdsh $$CN "cat /tmp/test2.txt"
-check:output=~test2 
+check:output=~test2
 cmd:xdsh $$CN "rm -rf /tmp/test1.txt /tmp/test2.txt"
 check:rc==0
 cmd:chdef -t osimage -o  __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-install-compute synclists=
 check:rc==0
-cmd:rm -rf /tmp/sync /install/custom/install/__GETNODEATTR($$CN,os)__/compute.$$OS.synclist 
+cmd:rm -rf /tmp/sync /install/custom/install/__GETNODEATTR($$CN,os)__/compute.$$OS.synclist
 check:rc==0
 end
 
@@ -125,7 +125,7 @@ check:rc==0
 cmd:xdsh $$CN diff /etc/hosts /tmp/etc/hosts
 check:rc==0
 cmd:xdsh $$CN "rm /tmp/hosts"
-cmd:scp /tmp/prog1/conf1.tmpl root@$$CN:/tmp/ 
+cmd:scp /tmp/prog1/conf1.tmpl root@$$CN:/tmp/
 check:rc==0
 cmd:xdsh $$CN "ls -l /prog1/conf1"
 check:rc==0
@@ -159,7 +159,7 @@ cmd:echo "EXECUTE:" >> /install/custom/install/__GETNODEATTR($$CN,os)__/compute.
 cmd:echo "/tmp/file.post" >> /install/custom/install/__GETNODEATTR($$CN,os)__/compute.$$OS.synclist
 cmd:chdef -t osimage -o __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-install-compute synclists=/install/custom/install/__GETNODEATTR($$CN,os)__/compute.$$OS.synclist
 check:rc==0
-cmd:updatenode $$CN -F 
+cmd:updatenode $$CN -F
 check:rc==0
 cmd:xdsh $$CN "cat /tmp/test"
 check:rc==0
@@ -247,12 +247,12 @@ cmd:xdsh $$CN "cat /etc/shadow |grep -i \"bogususer:\*:15385::::::\""
 check:rc==0
 cmd:xdsh $$CN "cat /etc/shadow |grep -i \"bogususer1:\*:15385::::::\""
 check:rc==0
-cmd:xdsh $$CN "cat /etc/group |grep -i bogusgroup1|grep 19998" 
+cmd:xdsh $$CN "cat /etc/group |grep -i bogusgroup1|grep 19998"
 check:output=~1
-cmd:xdsh $$CN "cat /etc/group |grep -i bogusgroup|grep 29999" 
+cmd:xdsh $$CN "cat /etc/group |grep -i bogusgroup|grep 29999"
 check:rc==0
 cmd:xdsh $$CN "mv -f /tmp/updatenode_syncfile_MERGE/passwd /etc/passwd"
-check:rc==0 
+check:rc==0
 cmd:xdsh $$CN "mv -f /tmp/updatenode_syncfile_MERGE/group /etc/group"
 check:rc==0
 cmd:xdsh $$CN "mv -f /tmp/updatenode_syncfile_MERGE/shadow /etc/shadow"
@@ -261,7 +261,7 @@ cmd:xdsh  $$CN "rm -rf /tmp/updatenode_syncfile_MERGE"
 check:rc==0
 cmd:chdef -t osimage -o  __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-install-compute synclists=
 check:rc==0
-cmd:rm -rf /tmp/updatenode_syncfile_MERGE 
+cmd:rm -rf /tmp/updatenode_syncfile_MERGE
 check:rc==0
 end
 
@@ -289,14 +289,14 @@ check:rc==0
 end
 
 start:updatenode_P_script2
-cmd:echo "#!/bin/bash" > /tmp/updatenode_P_script_input 
+cmd:echo "#!/bin/bash" > /tmp/updatenode_P_script_input
 cmd:echo "if [ -n \$1 ]" >> /tmp/updatenode_P_script_input
 cmd:echo "then" >> /tmp/updatenode_P_script_input
 cmd:echo "    echo \"There is input parameter\" > /tmp/updatenode_P_script2" >> /tmp/updatenode_P_script_input
 cmd:echo "    if [[ \$1 == \"-a\" ]];then" >>  /tmp/updatenode_P_script_input
 cmd:echo "        echo \"The input is a\" >> /tmp/updatenode_P_script2" >> /tmp/updatenode_P_script_input
 cmd:echo "    elif [[ \$1 == \"-b\" ]];then" >> /tmp/updatenode_P_script_input
-cmd:echo "        echo \"The input is b\" >> /tmp/updatenode_P_script2" >> /tmp/updatenode_P_script_input 
+cmd:echo "        echo \"The input is b\" >> /tmp/updatenode_P_script2" >> /tmp/updatenode_P_script_input
 cmd:echo "    fi" >> /tmp/updatenode_P_script_input
 cmd:echo "fi" >> /tmp/updatenode_P_script_input
 cmd:cp /tmp/updatenode_P_script_input /install/postscripts/
@@ -408,7 +408,7 @@ cmd:cp /tmp/updatenode_P_script_input /install/postscripts/
 check:rc==0
 cmd:ls /install/postscripts/
 check:rc==0
-check:output=~updatenode_P_script_input 
+check:output=~updatenode_P_script_input
 cmd:chdef $$CN postscripts=updatenode_P_script_input
 check:rc==0
 cmd:updatenode $$CN "updatenode_P_script_input c"
@@ -427,7 +427,7 @@ end
 
 start:updatenode_P_script1_script2
 description:check updatenode noderange -P "script1 a,script2 b"
-cmd:echo "#!/bin/bash" > /tmp/updatenode_P1_script_input 
+cmd:echo "#!/bin/bash" > /tmp/updatenode_P1_script_input
 cmd:echo "if [ -n \$1 ];then" >> /tmp/updatenode_P1_script_input
 cmd:echo "    if [[ \$1 == \"a\" ]];then" >>  /tmp/updatenode_P1_script_input
 cmd:echo "        echo \"The input is \$1.\" >> /tmp/updatenode_P1_script" >> /tmp/updatenode_P1_script_input
@@ -437,8 +437,8 @@ cmd:cp /tmp/updatenode_P1_script_input /install/postscripts/
 check:rc==0
 cmd:ls /install/postscripts/
 check:rc==0
-check:output=~updatenode_P1_script_input 
-cmd:echo "#!/bin/bash" > /tmp/updatenode_P2_script_input 
+check:output=~updatenode_P1_script_input
+cmd:echo "#!/bin/bash" > /tmp/updatenode_P2_script_input
 cmd:echo "if [ -n \$1 ];then" >> /tmp/updatenode_P2_script_input
 cmd:echo "    if [[ \$1 == \"b\" ]];then" >>  /tmp/updatenode_P2_script_input
 cmd:echo "        echo \"The input is \$1.\" >> /tmp/updatenode_P2_script" >> /tmp/updatenode_P2_script_input
@@ -447,7 +447,7 @@ cmd:echo "fi" >> /tmp/updatenode_P2_script_input
 cmd:cp /tmp/updatenode_P2_script_input /install/postscripts/
 check:rc==0
 cmd:ls /install/postscripts/
-check:output=~updatenode_P2_script_input 
+check:output=~updatenode_P2_script_input
 cmd:chdef $$CN postscripts=updatenode_P1_script_input,updatenode_P2_script_input
 check:rc==0
 cmd:updatenode $$CN -P "updatenode_P1_script_input a,updatenode_P2_script_input b"
