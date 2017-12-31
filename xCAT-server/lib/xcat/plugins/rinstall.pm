@@ -371,7 +371,7 @@ sub rinstall {
                 return 1;
             }
             if ($line =~ /Cannot wget/) {
-                # If nodeset returns error that runimage can not be downloaded by wget, 
+                # If nodeset returns error that runimage can not be downloaded by wget,
                 # display the error from nodeset (if not alredy displayed by VERBOSE above), stop processing and return.
                 unless ($VERBOSE) {
                     xCAT::MsgUtils->message("I", $rsp, $callback);
@@ -385,7 +385,7 @@ sub rinstall {
             delete $nodes{$node};
         }
 
-        if (0+@failurenodes > 0) { 
+        if (0+@failurenodes > 0) {
             $rsp->{error}->[0] = "Failed to run 'nodeset' against the following nodes: @failurenodes";
             $rsp->{errorcode}->[0] = 1;
             xCAT::MsgUtils->message("E", $rsp, $callback);
@@ -451,7 +451,7 @@ sub rinstall {
                         push @failurenodes, $node;
                     }
                 }
-                if (0+@failurenodes > 0) { 
+                if (0+@failurenodes > 0) {
                     $rsp->{error}->[0] = "Failed to run 'rnetboot' against the following nodes: @failurenodes";
                     $rsp->{errorcode}->[0] = 1;
                     xCAT::MsgUtils->message("E", $rsp, $callback);
@@ -476,9 +476,9 @@ sub rinstall {
                         arg     => \@rsetbootarg
                     );
 
-                #TODO: When OPENBMC support is finished, this line should be removed     
+                #TODO: When OPENBMC support is finished, this line should be removed
                 if($hmkey =~ /^openbmc$/){
-                    $req{environment}{XCAT_OPENBMC_DEVEL}= "YES";    
+                    $req{environment}{XCAT_OPENBMC_DEVEL}= "YES";
                 }
 
                 my $res =
@@ -518,7 +518,7 @@ sub rinstall {
                         }
                     }
                     my $rsp = {};
-                    if (0+@failurenodes > 0) { 
+                    if (0+@failurenodes > 0) {
                         $rsp->{error}->[0] = "Failed to run 'rsetboot' against the following nodes: @failurenodes";
                         $rsp->{errorcode}->[0] = 1;
                         xCAT::MsgUtils->message("E", $rsp, $callback);
@@ -538,7 +538,7 @@ sub rinstall {
                     node    => \@nodes,
                     arg     => \@rpowerarg
             );
-              
+
             my $res =
               xCAT::Utils->runxcmd(
                 \%req,
@@ -572,7 +572,7 @@ sub rinstall {
                     }
                 }
                 my $rsp = {};
-                if (0+@failurenodes > 0) { 
+                if (0+@failurenodes > 0) {
                     $rsp->{error}->[0] = "Failed to run 'rpower' against the following nodes: @failurenodes";
                     $rsp->{errorcode}->[0] = 1;
                     xCAT::MsgUtils->message("E", $rsp, $callback);
@@ -586,7 +586,7 @@ sub rinstall {
 
 #-------------------------------------------------------
 
-=head3  Usage 
+=head3  Usage
 
 
 =cut
