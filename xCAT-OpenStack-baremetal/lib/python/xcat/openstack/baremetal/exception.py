@@ -34,8 +34,8 @@ class xCATCommandError(xCATException):
 class xCATInvalidImageError(xCATException):
     errmsg = _("The image %(image)s is not an xCAT image")
 
-class xCATDeploymentFailure(xCATException):    
+class xCATDeploymentFailure(xCATException):
     errmsg = _("xCAT node deployment failed for node %(node)s:%(error)s")
 
-class xCATRebootFailure(xCATException):    
+class xCATRebootFailure(xCATException):
     errmsg = _("xCAT node rebooting failed for node %(node)s:%(error)s")
