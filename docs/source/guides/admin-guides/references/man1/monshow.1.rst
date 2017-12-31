@@ -19,9 +19,9 @@ SYNOPSIS
 ********
 
 
-\ **monshow [-h| -**\ **-help]**\ 
+\ **monshow [-h| -**\ **-help]**\
 
-\ **monshow [-v| -**\ **-version]**\ 
+\ **monshow [-v| -**\ **-version]**\
 
 \ **monshow**\  \ *name*\  \ *[noderange]*\  [\ **-s**\ ] [\ **-t**\  \ *time*\ ] [\ **-a**\  \ *attributes*\ ] [\ **-w**\  \ *attr*\  < \ *operator*\  > \ *val*\  [\ **-w**\  \ *attr*\  < \ *operator*\  > \ *val*\ ] ... ][\ **-o {p|e}**\ ]
 
