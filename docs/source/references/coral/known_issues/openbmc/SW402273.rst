@@ -5,9 +5,9 @@ SW402273 - Unable to tell the firmware level that is actually running on the nod
 * **Reported:** 1738B (ibm-v1.99.10-0-r7)
 * **Fixed:** 1740B (ibm-v1.99.10-0-r13)
 
-**Issue:** 
+**Issue:**
 
-Until 1740B firmware (> ibm-v1.99.10-0-r13), there's no method provided by OpenBMC to indicate the active running firmware on the node.  Until the BMC is rebooted or the HOST is rebooted, the Active firmware may or may not really be running. 
+Until 1740B firmware (> ibm-v1.99.10-0-r13), there's no method provided by OpenBMC to indicate the active running firmware on the node.  Until the BMC is rebooted or the HOST is rebooted, the Active firmware may or may not really be running.
 
 If you are running a version that prints the following message from ``rflash``:  ::
 
