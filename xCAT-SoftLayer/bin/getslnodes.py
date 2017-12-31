@@ -5,11 +5,11 @@ Usage: getslnodes.py [-h] [-v] [<hostname-match>]
 
 Description:
 Query your SoftLayer account and get attributes for each bare metal server.
-The attributes can be piped to 'mkdef -z' to define the nodes into the xCAT 
-Database so that xCAT can manage them.  
+The attributes can be piped to 'mkdef -z' to define the nodes into the xCAT
+Database so that xCAT can manage them.
 
 getslnodes requires a the .softlayer configuration file defined which can
-be set by running "sl config setup" on the command line. 
+be set by running "sl config setup" on the command line.
 
 positional arguments:
   hostname-match  Select servers that include this partial hostname.
@@ -29,7 +29,7 @@ except ImportError as e:
     print 'Error: install missing python module before running this command: ' + str(e)
     sys.exit(2)
 
-def get_sl_servers(): 
+def get_sl_servers():
 
     # username, api_key, endpoint_url come from the .softlayer file
     client = SoftLayer.Client()
@@ -44,9 +44,9 @@ def get_sl_servers():
     # But those 2 operations are ANDed together, so it will not work.  And currently, filtering does not work on fullyQualifiedDomainName.
     #
     servers = client['Account'].getHardware(mask=mask)
-    return servers 
-   
-def print_xcat_node_stanza(servers, hnmatch): 
+    return servers
+
+def print_xcat_node_stanza(servers, hnmatch):
 
     for server in servers:
         if hnmatch and server['fullyQualifiedDomainName'].find(hnmatch) == -1:
@@ -92,11 +92,11 @@ def print_xcat_node_stanza(servers, hnmatch):
 
 if __name__ == '__main__':
     try:
-        arguments = (docopt.docopt(__doc__, version="1.0")) 
+        arguments = (docopt.docopt(__doc__, version="1.0"))
         # print arguments
 
         servers = get_sl_servers()
-        if arguments['--verbose']: 
+        if arguments['--verbose']:
             pprint.pprint(servers)
 
         print_xcat_node_stanza(servers, arguments['<hostname-match>'])
@@ -106,6 +106,6 @@ if __name__ == '__main__':
     except SoftLayer.exceptions.SoftLayerAPIError as e:
         print e
 
-    sys.exit(1) 
+    sys.exit(1)
 
 
