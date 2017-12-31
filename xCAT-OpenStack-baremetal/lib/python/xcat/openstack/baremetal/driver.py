@@ -89,7 +89,7 @@ class xCATBareMetalDriver(bm_driver.BareMetalDriver):
             nodename = self.xcat.get_xcat_node_name(macs)
             imagename = self._get_xCAT_image_name(image_meta)
             hostname = instance.get('hostname')
-            
+
             #get the network information for the new node
             interfaces = bm_utils.map_network_interfaces(network_info, CONF.use_ipv6)
             if CONF.use_ipv6:
@@ -108,7 +108,7 @@ class xCATBareMetalDriver(bm_driver.BareMetalDriver):
             bm_driver._update_state(context, node, instance, baremetal_states.DEPLOYING)
             self.xcat.deploy_node(nodename, imagename, hostname, fixed_ip, netmask, gateway)
             bm_driver._update_state(context, node, instance, baremetal_states.ACTIVE)
-        except Exception as e: 
+        except Exception as e:
             with excutils.save_and_reraise_exception():
                 LOG.error(_("Error occured while deploying instance %(instance)s "
                             "on baremetal node %(node)s: %(error)s") %
@@ -135,13 +135,13 @@ class xCATBareMetalDriver(bm_driver.BareMetalDriver):
         :param bad_volumes_callback: Function to handle any bad volumes
             encountered
         """
-        try: 
+        try:
             node = bm_driver._get_baremetal_node_by_instance_uuid(instance['uuid'])
             macs = self.macs_for_instance(instance)
             nodename = self.xcat.get_xcat_node_name(macs)
             self.xcat.reboot_node(nodename)
             bm_driver._update_state(context, node, instance, baremetal_states.RUNNING)
-        except xcat_exception.xCATCommandError as e: 
+        except xcat_exception.xCATCommandError as e:
             with excutils.save_and_reraise_exception():
                 LOG.error(_("Error occured while rebooting instance %(instance)s "
                             "on baremetal node %(node)s: %(error)s") %
@@ -171,7 +171,7 @@ class xCATBareMetalDriver(bm_driver.BareMetalDriver):
         context = nova_context.get_admin_context()
         try:
             node = bm_driver._get_baremetal_node_by_instance_uuid(instance['uuid'])
-            
+
         except exception.InstanceNotFound:
             LOG.warning(_("Destroy function called on a non-existing instance %s")
                         % instance['uuid'])
@@ -182,7 +182,7 @@ class xCATBareMetalDriver(bm_driver.BareMetalDriver):
             nodename = self.xcat.get_xcat_node_name(macs)
             interfaces = bm_utils.map_network_interfaces(network_info, CONF.use_ipv6)
             fixed_ip=None
-            if interfaces and interfaces[0]: 
+            if interfaces and interfaces[0]:
                 if CONF.use_ipv6:
                     fixed_ip = interfaces[0].get('address_v6')
                 else:
@@ -199,11 +199,11 @@ class xCATBareMetalDriver(bm_driver.BareMetalDriver):
             self._detach_block_devices(instance, block_device_info)
             self._stop_firewall(instance, network_info)
             self._unplug_vifs(instance, network_info)
-            
+
             bm_driver._update_state(context, node, None, baremetal_states.DELETED)
         except Exception as e:
             with excutils.save_and_reraise_exception():
-                LOG.error(_("Error occurred while destroying instance %s: %s") 
+                LOG.error(_("Error occurred while destroying instance %s: %s")
                           % (instance['uuid'], str(e)))
                 bm_driver._update_state(context, node, instance,
                                         baremetal_states.ERROR)
@@ -213,7 +213,7 @@ class xCATBareMetalDriver(bm_driver.BareMetalDriver):
         macs = self.macs_for_instance(instance)
         nodename = self.xcat.get_xcat_node_name(macs)
         self.xcat.power_off_node(nodename)
-            
+
 
     def power_on(self, context, instance, network_info, block_device_info=None,
                  node=None):
