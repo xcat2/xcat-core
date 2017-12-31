@@ -1,7 +1,7 @@
 Disable Python Framework
 ========================
 
-By default, if ``xCAT-openbmc-py`` is installed and Python files are there, xCAT will default to running the Python framework. 
+By default, if ``xCAT-openbmc-py`` is installed and Python files are there, xCAT will default to running the Python framework.
 
 A site table attribute is created to allow the ability to control between Python and Perl.
 
