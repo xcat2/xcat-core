@@ -8,7 +8,7 @@ When the physical location of the server is not so important, sequential-based h
 Prepare node pool
 -----------------
 
-To prepare the node pool, shall predefine nodes first, then initialize the discovery process with the predefined nodes. 
+To prepare the node pool, shall predefine nodes first, then initialize the discovery process with the predefined nodes.
 
 Predefine nodes
 ```````````````
@@ -58,15 +58,15 @@ There are additional `nodediscover*` commands you can run during the discovery p
 
 
 Verify the status of discovery using :doc:`nodediscoverstatus </guides/admin-guides/references/man1/nodediscoverstatus.1>`::
-    
+
     nodediscoverstatus
 
 Show the nodes that have been discovered using :doc:`nodediscoverls </guides/admin-guides/references/man1/nodediscoverls.1>`::
-    
+
     nodediscoverls -t seq -l
 
 Stop the current sequential discovery process using: :doc:`nodediscoverstop </guides/admin-guides/references/man1/nodediscoverstop.1>`::
-    
+
     nodediscoverstop
 
 
@@ -80,6 +80,6 @@ To start the discovery process, the system administrator needs to power on the s
 Verify Node Definition
 ----------------------
 
-After discovery of the node, properties of the server will be added to the xCAT node definition.  
+After discovery of the node, properties of the server will be added to the xCAT node definition.
 
-Display the node definition and verify that the MAC address has been populated. 
+Display the node definition and verify that the MAC address has been populated.
