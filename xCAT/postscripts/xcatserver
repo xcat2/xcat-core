@@ -3,9 +3,9 @@
 #(C)IBM Corp
 # This scripts transfers the cfgloc files and the xCAT credentials from
 # the Management Node to the Service Node on Linux.
-# It only does something, if called with the -d flag. 
+# It only does something, if called with the -d flag.
 # The -d flag was implemented when the call to the routine was moved
-# from the postscript table into the servicenode postscript. 
+# from the postscript table into the servicenode postscript.
 #
 if [ ! $1 ]; then
    logger -t xcat -p local4.err "xcatserver call without -d, doing nothing."
@@ -67,8 +67,8 @@ if [ $? -ne 0 ]; then
    logger -t xcat -p local4.info "xcatserver: getting server-cred.pem"
     MAX_RETRIES=10
     RETRY=0
-    MYCONT=`cat /etc/xcat/cert/server-cred.pem` 
-    
+    MYCONT=`cat /etc/xcat/cert/server-cred.pem`
+
     while [ -z "$MYCONT" ]; do
               # not using flow control , need to sleep
               if [ $useflowcontrol = "0" ]; then
@@ -94,7 +94,7 @@ if [ $? -ne 0 ]; then
                   fi
                 fi
                 getcredentials.awk xcat_server_cred | grep -v '<'|sed -e 's/&lt;/</' -e 's/&gt;/>/' -e 's/&amp;/&/' -e 's/&quot/"/' -e "s/&apos;/'/" > /etc/xcat/cert/server-cred.pem
-                MYCONT=`cat /etc/xcat/cert/server-cred.pem` 
+                MYCONT=`cat /etc/xcat/cert/server-cred.pem`
     done
 
    chmod 600 /etc/xcat/cert/*
@@ -104,7 +104,7 @@ else  # error from first getcredential call
         #the message received is an error from credentials.pm, so parse it
         ERR_MSG=`sed -n 's%.*<error>\(.*\)</error>.*%\1%p' /etc/xcat/cert/server-cred.pem`
         logger -t xcat -p local4.err xcatserver: $ERR_MSG
-        rm /etc/xcat/cert/server-cred.pem 
+        rm /etc/xcat/cert/server-cred.pem
 fi
 
 # get the xcat cfgloc file
@@ -130,8 +130,8 @@ if [ $? -ne 0 ]; then
    logger -t xcat -p local4.info "xcatserver: getting cfgloc"
     MAX_RETRIES=10
     RETRY=0
-    MYCONT=`cat /etc/xcat/cfgloc` 
-    
+    MYCONT=`cat /etc/xcat/cfgloc`
+
     while [ -z "$MYCONT" ]; do
       # not using flow control , need to sleep
       if [ $useflowcontrol = "0" ]; then
@@ -157,9 +157,9 @@ if [ $? -ne 0 ]; then
          fi
       fi
       getcredentials.awk xcat_cfgloc | grep -v '<'|sed -e 's/&lt;/</' -e 's/&gt;/>/' -e 's/&amp;/&/' -e 's/&quot/"/' -e "s/&apos;/'/" > /etc/xcat/cfgloc
-      MYCONT=`cat /etc/xcat/cfgloc` 
+      MYCONT=`cat /etc/xcat/cfgloc`
     done
-    # if we successfully got cfgloc 
+    # if we successfully got cfgloc
     if [ -f /etc/xcat/cfgloc ]; then
       # if not DB2
       grep "DB2" /etc/xcat/cfgloc  2>&1 1> /dev/null
