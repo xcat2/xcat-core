@@ -15,7 +15,7 @@ cmd:chtab netname=testnetwork networks.net=100.100.100.0 networks.mask=255.255.2
 check:rc==0
 cmd:chdef -t node -o dnstestnode groups=all  ip=100.100.100.1
 check:rc==0
-cmd:hostname 
+cmd:hostname
 cmd:cat /etc/hosts
 cmd:ip a
 cmd:lsdef -l
@@ -83,10 +83,10 @@ cmd:echo "100.100.100.1  dnstestnode" >> /etc/hosts
 check:rc==0
 cmd:makedns -n
 check:rc==0
-cmd:cat /etc/bind/named.conf 
+cmd:cat /etc/bind/named.conf
 check:rc==0
 check:output~=zone "100.100.100.IN-ADDR.ARPA."
-cmd:nslookup dnstestnode $$MN 
+cmd:nslookup dnstestnode $$MN
 check:output~=Server:             $$MN
 check:output!~(server can't find dnstestnode)
 cmd:rm -f /etc/hosts
@@ -97,7 +97,7 @@ cmd:chtab -d netname=testnetwork networks
 check:rc==0
 cmd:makedns -n
 check:rc==0
-cmd:cat /etc/bind/named.conf 
+cmd:cat /etc/bind/named.conf
 check:rc==0
 check:output!~zone "100.100.100.IN-ADDR.ARPA."
 cmd:nslookup dnstestnode $$MN
@@ -521,7 +521,7 @@ check:rc==0
 cmd:xdsh $$SN "service xcatd restart"
 check:rc==0
 cmd:xdsh $$SN "service xcatd status"
-check:output~=running 
+check:output~=running
 end
 
 start:makedns_when_nameserver_on_mn_down
@@ -576,7 +576,7 @@ check:rc==0
 cmd:xdsh $$SN "service xcatd restart"
 check:rc==0
 cmd:xdsh $$SN "service xcatd status"
-check:output~=running  
+check:output~=running
 end
 
 
@@ -746,7 +746,7 @@ description:when nameserver's conf file on mn was changed, nameserver's conf fil
 label:cn_os_ready,dns,
 cmd:makedns -n
 check:rc==0
-cmd:cat /etc/named.conf 
+cmd:cat /etc/named.conf
 check:rc==0
 check:output!~zone "100.100.100.IN-ADDR.ARPA."
 cmd:xdsh $$SN "cat /etc/named.conf"
@@ -756,7 +756,7 @@ cmd:chtab netname=testnetwork networks.net=100.100.100.0 networks.mask=255.255.2
 check:rc==0
 cmd:makedns -n
 check:rc==0
-cmd:cat /etc/named.conf 
+cmd:cat /etc/named.conf
 check:rc==0
 check:output~=zone "100.100.100.IN-ADDR.ARPA."
 cmd:xdsh $$SN "cat /etc/named.conf"
@@ -771,7 +771,7 @@ cmd:chtab -d netname=testnetwork networks
 check:rc==0
 cmd:makedns -n
 check:rc==0
-cmd:cat /etc/named.conf 
+cmd:cat /etc/named.conf
 check:rc==0
 check:output!~zone "100.100.100.IN-ADDR.ARPA."
 cmd:xdsh $$SN "cat /etc/named.conf"
@@ -872,7 +872,7 @@ check:rc==0
 cmd:nslookup dnstestnode5 $$MN
 check:output~=Server:             $$MN
 check:output!~(server can't find dnstestnode)
-cmd:makedns -d dnsnode 
+cmd:makedns -d dnsnode
 check:rc==0
 cmd:nslookup dnstestnode5 $$MN
 check:output~=Server:             $$MN
