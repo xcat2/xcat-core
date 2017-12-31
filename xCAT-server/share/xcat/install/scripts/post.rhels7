@@ -7,21 +7,21 @@
 #INCLUDE:#ENV:XCATROOT#/share/xcat/install/scripts/scriptlib#
 
 for i in $(find /etc/sysconfig/network-scripts/ifcfg-*|egrep -v ifcfg-lo )
-do 
+do
   nicname=$(echo $i|awk -F 'ifcfg-' '{print $2}')
   if ethtool $nicname|grep -E -i "Link detected.*yes" >/dev/null 2>&1; then
      if [ "$XCATDEBUGMODE" = "1" ] || [ "$XCATDEBUGMODE" = "2" ]; then
         msgutil_r "$MASTER_IP" "info" "set NIC $nicname to be activated on system boot" "/var/log/xcat/xcat.log"
      fi
-     sed -i 's/ONBOOT=no/ONBOOT=yes/' $i 
+     sed -i 's/ONBOOT=no/ONBOOT=yes/' $i
   fi
 
-  #remove the entry 'HWADDR' from ifcfg-ethx, this is used to skip the 
+  #remove the entry 'HWADDR' from ifcfg-ethx, this is used to skip the
   #nic name change during the install and first_reboot
   sed -i '/HWADDR/d' $i
 done
 
-# NetworkManager will conflict with the configuring xcat do later in postboot script, so disable it in postscript 
+# NetworkManager will conflict with the configuring xcat do later in postboot script, so disable it in postscript
 
 # There are 2 other service related to NetworkManager: NetworkManager-dispatcher and NetworkManager-wait-online
 # Both of them are triggered by NetworkManager, so just disable NetworkManager here
