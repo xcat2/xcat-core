@@ -95,7 +95,7 @@ description:rpower
 cmd:rpower $$CN off
 check:rc==0
 cmd:sleep 50
-cmd:rpower $$CN state 
+cmd:rpower $$CN state
 check:rc==0
 cmd:rpower $$CN on
 check:rc==0
@@ -118,7 +118,7 @@ end
 
 start:getmacs_d_blade
 description:getmacs
-cmd:makeconservercf 
+cmd:makeconservercf
 check:rc==0
 cmd:chdef $$CN getmac=blade
 cmd:getmacs $$CN -d
@@ -134,7 +134,7 @@ start:rinv_firm_fb
 description:check firmware level
 cmd:rinv $$CN firm
 check:rc==0
-cmd:rvitals $$CN all 
+cmd:rvitals $$CN all
 check:rc==0
 check:output=~(Status: Good)
 end
