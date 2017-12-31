@@ -1,7 +1,7 @@
 2017-08-28 - OpenSSL Vulnerabilities
 ====================================
 
-*Aug 28, 2017*, OpenSSL announced the following security advisories: https://www.openssl.org/news/secadv/20170828.txt 
+*Aug 28, 2017*, OpenSSL announced the following security advisories: https://www.openssl.org/news/secadv/20170828.txt
 
 
 Advisory CVEs
@@ -24,8 +24,8 @@ Please see the security bulletin above for patch, upgrade, or suggested work aro
 Action
 ------
 
-xCAT uses OpenSSL for client-server communication but **does not** ship it.  
+xCAT uses OpenSSL for client-server communication but **does not** ship it.
 
-It is highly recommended to keep your OpenSSL levels up-to-date with the indicated versions in the security bulletins to prevent any potential security threats. Obtain the updated software packages from your Operating system distribution channels. 
+It is highly recommended to keep your OpenSSL levels up-to-date with the indicated versions in the security bulletins to prevent any potential security threats. Obtain the updated software packages from your Operating system distribution channels.
 
 
