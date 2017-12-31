@@ -71,7 +71,7 @@ if [[ $OS = "Linux" ]]; then
                             echo "setbootfromdisk: setting up sda sdb to be the default bootup device"
                             bootlist -m normal sda sdb
                             exit 0
-                        elif echo $i | grep "sdc" 
+                        elif echo $i | grep "sdc"
                         then
                             logger -t xcat -p local4.info setbootfromdisk: Setting sdc sdd to be the default bootup device
                             echo "setbootfromdisk: setting up sdc sdd to be the default bootup device"
@@ -96,10 +96,10 @@ if [[ $OS = "Linux" ]]; then
             else
                 logger -t xcat -p local4.info setbootfromdisk: Setting $BOOTDEVICE to be the default bootup device
                 echo "setbootfromdisk: setting up $BOOTDEVICE as the default bootup device"
-                bootlist -m normal $BOOTDEVICE 
+                bootlist -m normal $BOOTDEVICE
                 exit 0
             fi
-        else 
+        else
             logger -t xcat -p local4.err Could not find /usr/sbin/bootlist
             echo "setbootfromdisk: could not find /usr/sbin/bootlist"
             exit -1
