@@ -76,7 +76,7 @@ sub preprocess_request {
     }
     # Request usage for openbmc sections only
     my $usage_string = xCAT::Usage->parseCommand($command . ".openbmc", @exargs);
- 
+
     if ($usage_string) {
         if ($usage_string =~ /cannot be found/) {
             # Could not find usage for openbmc section, try getting usage for all sections
@@ -241,7 +241,7 @@ sub parse_args {
                 }
                 return ([ 1, "Invalid firmware specified with '$option'"]) if (!@ARGV);
                 my $param = $ARGV[0];
-                return ([ 1, "Invalid firmware specified with '$option': $param"]) if (($delete and $param !~ /^[[:xdigit:]]+$/i) 
+                return ([ 1, "Invalid firmware specified with '$option': $param"]) if (($delete and $param !~ /^[[:xdigit:]]+$/i)
                     or ($activate and $param !~ /^[[:xdigit:]]+$/i and $param !~ /.*\.tar$/i) or ($upload and $param !~ /.*\.tar$/i));
             }
         }
@@ -497,8 +497,8 @@ sub parse_node_info {
 sub refactor_args {
     my $request = shift;
     my $command   = $request->{command}->[0];
-    my $extrargs  = $request->{arg};    
-    my $subcommand; 
+    my $extrargs  = $request->{arg};
+    my $subcommand;
     if ($command eq "rspconfig") {
         $subcommand = $extrargs->[0];
         if ($subcommand !~ /^dump$|^sshcfg$|^ip=dhcp$|^gard$/) {
@@ -548,7 +548,7 @@ sub refactor_args {
             }
         }
         @$extrargs = grep(/.+/, @new_args);
-    } 
+    }
     return 0;
 }
 
