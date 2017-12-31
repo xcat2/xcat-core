@@ -12,7 +12,7 @@ Configure the correct console management by modifying the node definition:
         chdef -t node -o <noderange> cons=ipmi
 
     * For OpenPOWER, **OpenBMC** managed servers: ::
- 
+
         chdef -t node -o <noderange> cons=openbmc
 
 Open a console to ``compute1``: ::
@@ -67,9 +67,9 @@ More details for goconserver, see `goconserver documentation </advanced/goconser
          [sysvinit] service conserver status
          [systemd] systemctl status conserver.service
 
-   #. If ``conserver`` is not running, start the service using: :: 
+   #. If ``conserver`` is not running, start the service using: ::
 
-         [sysvinit] service conserver start 
+         [sysvinit] service conserver start
          [systemd] systemctl start conserver.service
 
    #. Invoke the console again: ``rcons <node>``
