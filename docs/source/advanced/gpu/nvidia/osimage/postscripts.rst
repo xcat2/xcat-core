@@ -16,7 +16,7 @@ Add this script to your node object using the ``chdef`` command: ::
 Setting GPU Configurations
 --------------------------
 
-NVIDIA allows for changing GPU attributes using the ``nvidia-smi`` commands.  These settings do not persist when a compute node is rebooted.  One way set these attributes is to use an xCAT postscript to set the values every time the node is rebooted.  
+NVIDIA allows for changing GPU attributes using the ``nvidia-smi`` commands.  These settings do not persist when a compute node is rebooted.  One way set these attributes is to use an xCAT postscript to set the values every time the node is rebooted.
 
 
 * Set the power limit to 175W: ::
