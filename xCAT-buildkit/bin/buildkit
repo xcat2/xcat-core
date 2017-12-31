@@ -4,7 +4,7 @@
 
 #-----------------------------------------------------------------------------
 
-=head1   buildkit 
+=head1   buildkit
 
  xCAT/PCM Kit Build utilities
 
@@ -496,7 +496,7 @@ exit $rc;
 
 #-----------------------------------------------------------------------------
 
-=head3    usage 
+=head3    usage
 	
 	Displays message for -h option
 
@@ -505,48 +505,48 @@ exit $rc;
 #-----------------------------------------------------------------------------
 sub usage
 {
-    print "Usage:  
+    print "Usage:
     buildkit [-?│-h│--help] [-v│--version]
 
     To build a new Kit
 
-    buildkit [-V│--verbose] <subcommand> [<kit_name>] [<repo_name>│all] 
+    buildkit [-V│--verbose] <subcommand> [<kit_name>] [<repo_name>│all]
        [-l│--kitloc <directory>]
 
     To add packages to an existing Kit.
 
     buildkit [-V│--verbose] addpkgs <kit_tarfile> [-p│--pkgdir <package_direc-
-       tory_list>] [-k│--kitversion <version>] [-r│--kitrelease <release] 
+       tory_list>] [-k│--kitversion <version>] [-r│--kitrelease <release]
        [-l│--kitloc <kit location>]
 
-    This tool is used to build and manage a Kit package.                          
-    The options are:                                                          
-        -h         - Provide usage info.                                      
+    This tool is used to build and manage a Kit package.
+    The options are:
+        -h         - Provide usage info.
         -k         - Kit version.
         -l         - Location of kit files. (Including kit name.)
         -p         - RPM package directory locations.
         -r         - Kit release.
-        -v         - Provide the version info.                                
-        command    - Several commands are supported. See the list below.      
-        -V         - Verbose mode. Outputs additional debug messages.         
-                                                                              
-    Supported subcommands:                                                       
-     create <kit basename> - creates a new Kit with the specified basename    
-     chkconfig             - checks the Kit build file                        
-     listrepo              - lists the Kit package repositories in the Kit    
-                             build file, and their build status               
-     buildrepo <reponame>  - builds the specified Kit package repository      
-     buildrepo all         - builds all the Kit package repositories      
-     cleanrepo <reponame>  - deletes the build files for the specified Kit    
-                             package repository                               
-     cleanrepo  all        - deletes the build files for all Kit package      
-                             repositories                                     
-     buildtar              - builds the Kit tarfile                           
-     cleantar              - deletes the Kit deployment directory and Kit     
-                             tarfile                   
+        -v         - Provide the version info.
+        command    - Several commands are supported. See the list below.
+        -V         - Verbose mode. Outputs additional debug messages.
+
+    Supported subcommands:
+     create <kit basename> - creates a new Kit with the specified basename
+     chkconfig             - checks the Kit build file
+     listrepo              - lists the Kit package repositories in the Kit
+                             build file, and their build status
+     buildrepo <reponame>  - builds the specified Kit package repository
+     buildrepo all         - builds all the Kit package repositories
+     cleanrepo <reponame>  - deletes the build files for the specified Kit
+                             package repository
+     cleanrepo  all        - deletes the build files for all Kit package
+                             repositories
+     buildtar              - builds the Kit tarfile
+     cleantar              - deletes the Kit deployment directory and Kit
+                             tarfile
      cleanall              - equivalent to buildkit cleanrepo all and
                                             buildkit cleantar
-     addpkgs -p <pkgdir> <kit tarfile> 
+     addpkgs -p <pkgdir> <kit tarfile>
                            - add product package rpms to a shipped tarfile
                              named kitname.NEEDS_PRODUCT_PKGS.tar.bz2
      \n";
@@ -667,7 +667,7 @@ sub kit_buildrepo
 
 =head3    kit_buildrepo1
 	
-          
+
 
 =cut
 
@@ -1224,7 +1224,7 @@ sub edit_bldkitconf
 
 =head3    load_bldkitconf
 	
-   load the kitbuild.conf file into a global data structure and 
+   load the kitbuild.conf file into a global data structure and
    verify that the general syntax is correct.
 
 =cut
@@ -1514,7 +1514,7 @@ sub validate_bldkitconf
                 print "Warning:  Kit osminorversion is set to \"$::bldkit_config->{kit}{entries}[0]->{osminorversion}\", but this does not match kitrepo $kr->{kitrepoid} osminorversion \"$kr->{osminorversion}\".  Processing will continue, but verify that you do not have an error in your buildkit configuration file. \n";
             }
             $reponame .= '.' . $krminor;
-            $::bldkit_config->{kit}{entries}[0]->{osminorversion} = $krminor;            
+            $::bldkit_config->{kit}{entries}[0]->{osminorversion} = $krminor;
         }
         if ((defined($::bldkit_config->{kit}{entries}[0]->{osarch})) &&
             ($::bldkit_config->{kit}{entries}[0]->{osarch} ne
@@ -2172,7 +2172,7 @@ sub build_kitcomp
 
 #-----------------------------------------------------------------------------
 
-=head3   update_kitcomp_kitpkgdeps 
+=head3   update_kitcomp_kitpkgdeps
 	
       Update the kitcomponent kitpkgdeps string
         For any kitpkgdep that does not explicitly specify a version-release
@@ -2181,7 +2181,7 @@ sub build_kitcomp
         comparison string.
       Reason we need to do all this:  We need to force yum/zypper to update
         the product rpms.  A simple package name in the kitcomponent meta rpm
-        REQUIRES entry will not cause the product to get updated if an older 
+        REQUIRES entry will not cause the product to get updated if an older
         version is already installed.  Need to explicitly require this version
         and release of the product package.
       input:  kitcomponent hash
@@ -2264,7 +2264,7 @@ sub update_kitcomp_kitpkgdeps
 
 =head3    gen_kitcomp_spec
 
-   generate the rpm spec file for the kitcomponent  metapkg rpm 
+   generate the rpm spec file for the kitcomponent  metapkg rpm
       input:  kitcomponent hash
               kitrepo hash
 
@@ -2466,7 +2466,7 @@ s/<<<INSERT_kitcomponent_postuninstall_script_HERE>>>/$postunscript/;
 
 #-----------------------------------------------------------------------------
 
-=head3   build_kitcomp_debian 
+=head3   build_kitcomp_debian
 
 
 
@@ -2822,7 +2822,7 @@ s/<<<INSERT_kitcomponent_postuninstall_script_HERE>>>/$postunscript/;
 
 =head3    load_script
 	
-   load a kitcomponent script into a single return string 
+   load a kitcomponent script into a single return string
      with imbedded newline chars
       input:  fullpath of scriptname
 
@@ -3186,7 +3186,7 @@ sub create_builddir
 	
    Create the build directory for a PARTIAL kit (needs external pkgs)
    and copy in all required files for building the kit tar file.
-   This includes most build input without editting files since 
+   This includes most build input without editting files since
    they will need to be generated at addpkgs time.
 
 =cut
@@ -3277,8 +3277,8 @@ sub create_PARTIAL_builddir
 =head3    edit_deployparams
 	
    Edit the kit deployment parameters to make sure it has correct
-   syntax for xCAT otherpkglist support 
-   
+   syntax for xCAT otherpkglist support
+
 
 =cut
 
@@ -3364,7 +3364,7 @@ sub edit_deployparams
 =head3    edit_plugin
 	
    Edit the kit plugin file to insert the full kit name
-   
+
 
 =cut
 
@@ -4058,11 +4058,11 @@ sub NEW_kit_addpkgs
     Check the compatible frameworks of the kit to see if it is
 	compatible with the running code.
 
-    If one of the compatible frameworks of the kit matches one of the 
+    If one of the compatible frameworks of the kit matches one of the
         compatible frameworks of the running code then we're good.
 
     NOTE:  compatible_kitframeworks are the kitframeworks that I can add
-        and kit frameworks that I can be added to. 
+        and kit frameworks that I can be added to.
 
     Returns:
         0 - kit framework value
