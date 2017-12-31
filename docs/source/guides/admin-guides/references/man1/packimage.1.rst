@@ -19,9 +19,9 @@ SYNOPSIS
 ********
 
 
-\ **packimage [-h| -**\ **-help]**\ 
+\ **packimage [-h| -**\ **-help]**\
 
-\ **packimage  [-v| -**\ **-version]**\ 
+\ **packimage  [-v| -**\ **-version]**\
 
 \ **packimage**\  [\ **-m | -**\ **-method**\  \ *cpio|tar*\ ] [\ **-c | -**\ **-compress**\  \ *gzip|pigz|xz*\ ] [\ **--nosyncfiles**\ ] \ *imagename*\
 
