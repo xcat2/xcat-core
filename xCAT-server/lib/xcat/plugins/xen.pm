@@ -709,7 +709,7 @@ sub process_request {
      if ($command eq "rpower" and grep(/^pduon|pduoff|pdureset|pdustat$/, @exargs)) {
          return;
      }
-     
+
     if ($command eq 'revacuate') {
         my $newnoderange;
         foreach (@$noderange) {
