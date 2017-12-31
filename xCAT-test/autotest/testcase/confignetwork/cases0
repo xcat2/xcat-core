@@ -1,5 +1,5 @@
 start: confignetwork_s_installnic_diskful
-description: this case is to test confignetwork -s could configure installnic successfully in diskful provision. 
+description: this case is to test confignetwork -s could configure installnic successfully in diskful provision.
 cmd:if ping -c 1 $$SN > /dev/null;then rpower $$SN off > /dev/null;fi
 cmd:chdef -t node -o $$CN servicenode= monserver=$$MN nfsserver=$$MN tftpserver=$$MN  xcatmaster=$$MN
 check:rc==0
@@ -21,7 +21,7 @@ cmd:copycds $$ISO
 check:rc==0
 cmd:chdef $$CN postscripts="confignetwork -s"
 check:rc==0
-cmd:rinstall $$CN osimage=__GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-install-compute 
+cmd:rinstall $$CN osimage=__GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-install-compute
 check:rc==0
 cmd:sleep 300
 cmd:a=0;while ! `lsdef -l $$CN|grep status|grep booted >/dev/null`; do sleep 20;((a++));if [ $a -gt 300 ];then break;fi done
@@ -70,7 +70,7 @@ cmd:packimage __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-comput
 check:rc==0
 cmd:rinstall $$CN osimage=__GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute
 check:rc==0
-cmd:sleep 180 
+cmd:sleep 180
 cmd:a=0;while ! `lsdef -l $$CN|grep status|grep booted >/dev/null`; do sleep 10;((a++));if [ $a -gt 60 ];then break;fi done
 cmd:ping $$CN -c 3
 check:rc==0
@@ -91,7 +91,7 @@ start: confignetwork_secondarynic_diskless
 description: this case is to test confignetwork -s could config installnic and secondarynic at the same time successfully in diskless provision.
 cmd:chdef -t node -o $$CN servicenode= monserver=$$MN nfsserver=$$MN tftpserver=$$MN  xcatmaster=$$MN
 check:rc==0
-cmd:mkdef -t network -o 100_1_0_0-255_255_0_0 net=100.1.0.0 mask=255.255.0.0 mgtifname=$$SECONDNIC 
+cmd:mkdef -t network -o 100_1_0_0-255_255_0_0 net=100.1.0.0 mask=255.255.0.0 mgtifname=$$SECONDNIC
 check:rc==0
 cmd:chdef $$CN nicips.$$SECONDNIC=100.1.0.100 nictypes.$$SECONDNIC=Ethernet nicnetworks.$$SECONDNIC=100_1_0_0-255_255_0_0
 check:rc==0
@@ -122,7 +122,7 @@ cmd:packimage __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-comput
 check:rc==0
 cmd:rinstall $$CN osimage=__GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute
 check:rc==0
-cmd:sleep 180 
+cmd:sleep 180
 cmd:a=0;while ! `lsdef -l $$CN|grep status|grep booted >/dev/null`; do sleep 10;((a++));if [ $a -gt 60 ];then break;fi done
 cmd:ping $$CN -c 3
 check:rc==0
@@ -156,7 +156,7 @@ cmd:xdsh $$CN "mkdir -p /tmp/backupnet/"
 check:rc==0
 cmd:if grep SUSE /etc/*release;then xdsh $$CN "cp -f /etc/sysconfig/network/ifcfg-* /tmp/backupnet/"; elif grep "Red Hat" /etc/*release;then xdsh $$CN "cp -f /etc/sysconfig/network-scripts/ifcfg-* /tmp/backupnet/"; elif grep Ubuntu /etc/*release;then xdsh $$CN "cp -f /etc/network/interfaces.d/* /tmp/backupnet/;cp -f /etc/network/interfaces /tmp";else echo "Sorry,this is not supported os"; fi
 check:rc==0
-cmd:mkdef -t network -o 11_1_0_0-255_255_0_0 net=11.1.0.0 mask=255.255.0.0 mgtifname=$$SECONDNIC 
+cmd:mkdef -t network -o 11_1_0_0-255_255_0_0 net=11.1.0.0 mask=255.255.0.0 mgtifname=$$SECONDNIC
 check:rc==0
 cmd:chdef $$CN nicips.$$SECONDNIC=11.1.0.100 nictypes.$$SECONDNIC=Ethernet nicnetworks.$$SECONDNIC=11_1_0_0-255_255_0_0
 check:rc==0
@@ -228,7 +228,7 @@ check:rc==0
 cmd:cat /etc/hosts
 check:output=~aliases1-1 aliases1-1-1
 check:output=~aliases1-2
-cmd:updatenode $$CN -P confignetwork 
+cmd:updatenode $$CN -P confignetwork
 check:rc==0
 cmd:if grep SUSE /etc/*release;then xdsh $$CN "cat /etc/sysconfig/network/ifcfg-$$SECONDNIC"; elif grep "Red Hat" /etc/*release;then xdsh $$CN  "cat /etc/sysconfig/network-scripts/ifcfg-$$SECONDNIC"; elif grep Ubuntu /etc/*release;then xdsh $$CN "cat /etc/network/interfaces.d/*";else echo "Sorry,this is not supported os"; fi
 check:output=~11.1.0.100
@@ -296,7 +296,7 @@ start:confignetwork_secondarynic_nicnetworks_updatenode_false
 description: this case is to test confignetwork could return error message when there is no not enough attributes when configing secondarynic with updatenode.
 cmd:lsdef $$CN;if [ $? -eq 0 ]; then lsdef -l $$CN -z >/tmp/CN.standa ;fi
 check:rc==0
-cmd:mkdef -t network -o 11_1_0_0-255_255_0_0 net=11.1.0.0 mask=255.255.0.0 mgtifname=$$SECONDNIC 
+cmd:mkdef -t network -o 11_1_0_0-255_255_0_0 net=11.1.0.0 mask=255.255.0.0 mgtifname=$$SECONDNIC
 check:rc==0
 cmd:chdef $$CN nicips.$$SECONDNIC=11.1.0.100 nictypes.$$SECONDNIC=Ethernet nicnetworks.$$SECONDNIC=
 check:rc==0
@@ -395,7 +395,7 @@ cmd:mkdef -t network -o 11_1_0_0-255_255_0_0 net=11.1.0.0 mask=255.255.0.0 mgtif
 check:rc==0
 cmd:chdef $$CN nicips.$$SECONDNIC=11.1.0.100 nictypes.$$SECONDNIC=Ethernet nicnetworks.$$SECONDNIC=11_1_0_0-255_255_0_0 niccustomscripts.$$SECONDNIC=script1
 check:rc==0
-cmd:updatenode $$CN -P confignetwork 
+cmd:updatenode $$CN -P confignetwork
 check:rc==0
 cmd:xdsh $$CN "cat /tmp/confignetwork_niccustomscript"
 check:rc==0
@@ -468,7 +468,7 @@ cmd:xdsh $$CN "rm -rf /tmp/backupnet/"
 end
 
 start:confignetwork_vlan_eth0
-description: this case is to verify if confignetwork could config vlan for CN.When CN has Ethernet nic eth0, user wants to confgure 2 vlans, Configure vlan eth0.6 60.5.106.9 and eth0.7 70.5.106.9 based on ethernet nic eth0 
+description: this case is to verify if confignetwork could config vlan for CN.When CN has Ethernet nic eth0, user wants to confgure 2 vlans, Configure vlan eth0.6 60.5.106.9 and eth0.7 70.5.106.9 based on ethernet nic eth0
 cmd:lsdef $$CN;if [ $? -eq 0 ]; then lsdef -l $$CN -z >/tmp/CN.standa ;fi
 check:rc==0
 cmd:xdsh $$CN "rm -rf /tmp/backupnet/"
@@ -486,7 +486,7 @@ cmd:if grep SUSE /etc/*release;then xdsh $$CN "grep 11.1.0.100 /etc/sysconfig/ne
 check:output=~11.1.0.100
 cmd:chdef $$CN nicips.$$SECONDNIC= nictypes.$$SECONDNIC= nicnetworks.$$SECONDNIC=
 check:rc==0
-cmd:mkdef -t network -o 60_0_0_0-255_0_0_0 net=60.0.0.0 mask=255.0.0.0 mgtifname=$$SECONDNIC 
+cmd:mkdef -t network -o 60_0_0_0-255_0_0_0 net=60.0.0.0 mask=255.0.0.0 mgtifname=$$SECONDNIC
 check:rc==0
 cmd:mkdef -t network -o 70_0_0_0-255_0_0_0 net=70.0.0.0 mask=255.0.0.0 mgtifname=$$SECONDNIC
 check:rc==0
@@ -504,7 +504,7 @@ check:rc==0
 cmd:rmdef -t network -o 60_0_0_0-255_0_0_0
 cmd:rmdef -t network -o 70_0_0_0-255_0_0_0
 cmd:xdsh $$CN "ip addr del 60.5.106.9/8 dev $$SECONDNIC.6"
-cmd:xdsh $$CN "ip addr del 70.5.106.9/8 dev $$SECONDNIC.7" 
+cmd:xdsh $$CN "ip addr del 70.5.106.9/8 dev $$SECONDNIC.7"
 cmd:xdsh $$CN "ip link del dev $$SECONDNIC.6"
 cmd:xdsh $$CN "ip link del dev $$SECONDNIC.7"
 cmd:xdsh $$CN "ip addr del 11.1.0.100/16 dev $$SECONDNIC"
@@ -535,13 +535,13 @@ cmd:updatenode $$CN -P confignetwork
 check:rc==0
 cmd:if grep SUSE /etc/*release;then xdsh $$CN "grep 11.1.0.100 /etc/sysconfig/network/ifcfg-$$SECONDNIC"; elif grep "Red Hat" /etc/*release;then xdsh $$CN  "grep 11.1.0.100 /etc/sysconfig/network-scripts/ifcfg-$$SECONDNIC"; elif grep Ubuntu /etc/*release;then xdsh $$CN "grep 11.1.0.100 /etc/network/interfaces.d/$$SECONDNIC";else echo "Sorry,this is not supported os"; fi
 check:output=~11.1.0.100
-cmd:chdef $$CN nicips.$$SECONDNIC= nictypes.$$SECONDNIC= nicnetworks.$$SECONDNIC= 
+cmd:chdef $$CN nicips.$$SECONDNIC= nictypes.$$SECONDNIC= nicnetworks.$$SECONDNIC=
 check:rc==0
 cmd:mkdef -t network -o 60_0_0_0-255_0_0_0 net=60.0.0.0 mask=255.0.0.0 mgtifname=$$SECONDNIC mtu=1500
 check:rc==0
 cmd:mkdef -t network -o 70_0_0_0-255_0_0_0 net=70.0.0.0 mask=255.0.0.0 mgtifname=$$SECONDNIC mtu=1500
 check:rc==0
-cmd:chdef $$CN nicnetworks.$$SECONDNIC.6="60_0_0_0-255_0_0_0" nicnetworks.$$SECONDNIC.7="70_0_0_0-255_0_0_0" nictypes.$$SECONDNIC.6=vlan nictypes.$$SECONDNIC.7=vlan nicips.$$SECONDNIC.6=60.5.106.9 nicips.$$SECONDNIC.7=70.5.106.9 
+cmd:chdef $$CN nicnetworks.$$SECONDNIC.6="60_0_0_0-255_0_0_0" nicnetworks.$$SECONDNIC.7="70_0_0_0-255_0_0_0" nictypes.$$SECONDNIC.6=vlan nictypes.$$SECONDNIC.7=vlan nicips.$$SECONDNIC.6=60.5.106.9 nicips.$$SECONDNIC.7=70.5.106.9
 check:rc==0
 cmd:updatenode $$CN -P confignetwork
 check:rc!=0
@@ -583,7 +583,7 @@ cmd:updatenode $$CN -P confignetwork
 check:rc==0
 cmd:chdef $$CN nicips.$$SECONDNIC= nictypes.$$SECONDNIC= nicnetworks.$$SECONDNIC= nicips.$$THIRDNIC= nictypes.$$THIRDNIC= nicnetworks.$$THIRDNIC=
 check:rc==0
-cmd:mkdef -t network -o 30_5_0_0-255_255_0_0 net=30.5.0.0 mask=255.255.0.0 
+cmd:mkdef -t network -o 30_5_0_0-255_255_0_0 net=30.5.0.0 mask=255.255.0.0
 check:rc==0
 cmd:chdef $$CN nicnetworks.bond0=30_5_0_0-255_255_0_0 nictypes.$$SECONDNIC=ethernet nictypes.$$THIRDNIC=ethernet nictypes.bond0=bond nicips.bond0=30.5.106.9 nicdevices.bond0="$$SECONDNIC|$$THIRDNIC"
 check:rc==0
@@ -602,7 +602,7 @@ check:rc==0
 cmd:rmdef -t network -o 12_1_0_0-255_255_0_0
 cmd:if grep SUSE /etc/*release;then xdsh $$CN "rm -rf /etc/sysconfig/network/ifcfg-$$THIRDNIC"; elif grep "Red Hat" /etc/*release;then xdsh $$CN "rm -rf /etc/sysconfig/network-scripts/ifcfg-$$THIRDNIC"; elif grep Ubuntu /etc/*release;then xdsh $$CN "rm -rf /etc/network/interfaces.d/$$THIRDNIC";else echo "Sorry,this is not supported os"; fi
 check:rc==0
-cmd:rmdef -t network -o 30_5_0_0-255_255_0_0  
+cmd:rmdef -t network -o 30_5_0_0-255_255_0_0
 cmd:xdsh $$CN "ip addr del 30.5.106.9/16 dev bond0"
 cmd:xdsh $$CN "ip link del dev bond0"
 cmd:xdsh $$CN "echo -bond0 > /sys/class/net/bonding_masters"
@@ -665,7 +665,7 @@ check:rc==0
 end
 
 start:confignetwork_vlan_bond
-description: this case is to verify if confignetwork could config bond for CN.CN has 2 Ethernet nic eth2 and eth3, user wants to bond them to bond0, then make 2 vlan bond0.2 and bond0.3 for data network. 
+description: this case is to verify if confignetwork could config bond for CN.CN has 2 Ethernet nic eth2 and eth3, user wants to bond them to bond0, then make 2 vlan bond0.2 and bond0.3 for data network.
 cmd:lsdef $$CN;if [ $? -eq 0 ]; then lsdef -l $$CN -z >/tmp/CN.standa ;fi
 check:rc==0
 cmd:xdsh $$CN "rm -rf /tmp/backupnet/"
@@ -866,7 +866,7 @@ cmd:mkdef -t network -o 12_1_0_0-255_255_0_0 net=12.1.0.0 mask=255.255.0.0 mgtif
 check:rc==0
 cmd:chdef $$CN nicips.$$THIRDNIC=12.1.0.100 nictypes.$$THIRDNIC=Ethernet nicnetworks.$$THIRDNIC=12_1_0_0-255_255_0_0
 check:rc==0
-cmd:updatenode $$CN -P confignetwork 
+cmd:updatenode $$CN -P confignetwork
 check:rc==0
 cmd:chdef $$CN nicips.$$SECONDNIC= nictypes.$$SECONDNIC= nicnetworks.$$SECONDNIC= nicips.$$THIRDNIC= nictypes.$$THIRDNIC= nicnetworks.$$THIRDNIC=
 check:rc==0
@@ -931,7 +931,7 @@ cmd:mkdef -t network -o 30_5_0_0-255_255_0_0 net=30.5.0.0 mask=255.255.0.0
 check:rc==0
 cmd:mkdef -t network -o 40_5_0_0-255_255_0_0 net=40.5.0.0 mask=255.255.0.0
 check:rc==0
-cmd:chdef $$CN nicdevices.br22= nicdevices.br33= nictypes.br22=bridge nictypes.br33=bridge nicnetworks.br22=30_5_0_0-255_255_0_0 nicnetworks.br33=40_5_0_0-255_255_0_0 nicips.br22=30.5.106.8 nicips.br33=40.5.106.8 nicdevices.bond0.2=bond0 nicdevices.bond0.3=bond0 nictypes.bond0.2=vlan nictypes.bond0.3=vlan nictypes.bond0=bond nictypes.$$SECONDNIC=ethernet nictypes.$$THIRDNIC=ethernet 
+cmd:chdef $$CN nicdevices.br22= nicdevices.br33= nictypes.br22=bridge nictypes.br33=bridge nicnetworks.br22=30_5_0_0-255_255_0_0 nicnetworks.br33=40_5_0_0-255_255_0_0 nicips.br22=30.5.106.8 nicips.br33=40.5.106.8 nicdevices.bond0.2=bond0 nicdevices.bond0.3=bond0 nictypes.bond0.2=vlan nictypes.bond0.3=vlan nictypes.bond0=bond nictypes.$$SECONDNIC=ethernet nictypes.$$THIRDNIC=ethernet
 check:rc==0
 cmd:updatenode $$CN -P "confignetwork -s"
 check:rc!=0
