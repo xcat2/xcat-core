@@ -1,8 +1,8 @@
 
-Getting Started 
+Getting Started
 ===============
 
-Confluent is intended to be used in conjunction with xCAT. 
+Confluent is intended to be used in conjunction with xCAT.
 The following documentation assumes that xCAT is already installed and configured on the management node.
 
 Download confluent
@@ -20,7 +20,7 @@ To build from source, ensure your machine has the correct development packages t
         cd confluent/confluent_client ; ./buildrpm ; cd -
 
 
-Install 
+Install
 =======
 
 dependency
@@ -59,7 +59,7 @@ To start confluent::
     service confluent start
 
 To stop confluent::
-   
+
     service confluent stop
 
 If you want confluent daemon to start automatically at bootup, add confluent service to ``chkconfig``::
@@ -113,11 +113,11 @@ Configure the httpd configuration for confluent-api by creating a ``confluent.co
     <Location /confluent-api>
             ProxyPass http://10.2.5.3:4005
     </Location>
-    
-    # restart httpd  
+
+    # restart httpd
     service httpd restart
 
-Now point your browser to: ``http://<server ip>:<port>`` and log in with the non-root user and password created above. 
+Now point your browser to: ``http://<server ip>:<port>`` and log in with the non-root user and password created above.
 
 Confluent consoles
 ==================
