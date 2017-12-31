@@ -6,12 +6,12 @@ B<lsdef> - Use this command to list xCAT data object definitions.
 
 B<lsdef> [B<-h>|B<--help>] [B<-t> I<object-types>] [B<-i> I<attr-list>]
 
-B<lsdef> [B<-V>|B<--verbose>] [B<-l>|B<--long>] [B<-s>|B<--short>] [B<-a>|B<--all>] [B<-S>] 
+B<lsdef> [B<-V>|B<--verbose>] [B<-l>|B<--long>] [B<-s>|B<--short>] [B<-a>|B<--all>] [B<-S>]
 [B<-t> I<object-types>] [B<-o> I<object-names>] [B<-z>|B<--stanza>] [B<-i> I<attr-list>]
 [B<-c>|B<--compress>] [B<--osimage>] [B<--nics>] [[B<-w> I<attr>==I<val>]
 [B<-w> I<attr>=~I<val>] ...] [I<noderange>]
 
-B<lsdef> [B<-l>|B<--long>] [B<-a>|B<--all>] [B<-t> I<object-types>] [B<-z>|B<--stanza>] 
+B<lsdef> [B<-l>|B<--long>] [B<-a>|B<--all>] [B<-t> I<object-types>] [B<-z>|B<--stanza>]
 [B<-i> I<attr-list>] [B<--template> [I<template-object-name>]]
 
 =head1 DESCRIPTION
@@ -33,7 +33,7 @@ To list auditlog or eventlog objects, use lsdef -t auditlog or lsdef -t eventlog
 =item B<-c|--compress>
 
 Display information in compressed mode, each output line has format "<object name>: <data>".
-The output can be passed to command xcoll or xdshbak for formatted output. 
+The output can be passed to command xcoll or xdshbak for formatted output.
 The -c flag must be used with -i flag.
 
 =item B<-h|--help>
@@ -52,7 +52,7 @@ List the complete object definition.
 
 Only list the object names.
 
-=item B<-S> 
+=item B<-S>
 
 List all the hidden nodes (FSP/BPA nodes) with other ones.
 
@@ -237,7 +237,7 @@ To list all the object definition templates shipped in xCAT.
 =item 19.
 
 To display the details of "node" object definition template "ppc64le-template" shipped in xCAT.
-  
+
  lsdef -t node --template ppc64le-template
 
 =item 20.
