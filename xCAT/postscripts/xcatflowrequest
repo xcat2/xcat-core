@@ -74,7 +74,7 @@ while ! grep 'resourcerequest: ok' /tmp/goahead.$parpid > /dev/null; do
     if [ $RETRY -eq $MAX_RETRIES ]
     then
        cleanup
-       exit 2 
+       exit 2
     fi
 	
 done
