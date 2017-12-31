@@ -5,5 +5,5 @@ Service Nodes
    :maxdepth: 2
 
    discover.rst
-   validation.rst 
+   validation.rst
 
