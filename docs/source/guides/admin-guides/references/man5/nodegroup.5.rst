@@ -19,7 +19,7 @@ SYNOPSIS
 ********
 
 
-\ **nodegroup Attributes:**\   \ *groupname*\ , \ *grouptype*\ , \ *members*\ , \ *membergroups*\ , \ *wherevals*\ , \ *comments*\ , \ *disable*\ 
+\ **nodegroup Attributes:**\   \ *groupname*\ , \ *grouptype*\ , \ *members*\ , \ *membergroups*\ , \ *wherevals*\ , \ *comments*\ , \ *disable*\
 
 
 ***********
@@ -36,46 +36,46 @@ nodegroup Attributes:
 
 
 
-\ **groupname**\ 
- 
+\ **groupname**\
+
  Name of the group.
- 
 
 
-\ **grouptype**\ 
- 
+
+\ **grouptype**\
+
  The only current valid value is dynamic.  We will be looking at having the object def commands working with static group definitions in the nodelist table.
- 
 
 
-\ **members**\ 
- 
+
+\ **members**\
+
  The value of the attribute is not used, but the attribute is necessary as a place holder for the object def commands.  (The membership for static groups is stored in the nodelist table.)
- 
 
 
-\ **membergroups**\ 
- 
+
+\ **membergroups**\
+
  This attribute stores a comma-separated list of nodegroups that this nodegroup refers to. This attribute is only used by PCM.
- 
 
 
-\ **wherevals**\ 
- 
+
+\ **wherevals**\
+
  A list of "attr\*val" pairs that can be used to determine the members of a dynamic group, the delimiter is "::" and the operator \* can be ==, =~, != or !~.
- 
 
 
-\ **comments**\ 
- 
+
+\ **comments**\
+
  Any user-written notes.
- 
 
 
-\ **disable**\ 
- 
+
+\ **disable**\
+
  Set to 'yes' or '1' to comment out this row.
- 
+
 
 
 
@@ -84,5 +84,5 @@ SEE ALSO
 ********
 
 
-\ **nodels(1)**\ , \ **chtab(8)**\ , \ **tabdump(8)**\ , \ **tabedit(8)**\ 
+\ **nodels(1)**\ , \ **chtab(8)**\ , \ **tabdump(8)**\ , \ **tabedit(8)**\
 
