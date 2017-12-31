@@ -255,7 +255,7 @@ BEGIN {
     xcatdhost = ARGV[1]
     xcatdport = ARGV[2]
     flag = ARGV[3]
-    
+
         if (!flag) flag = "next"
 
         ns = "/inet/tcp/0/" ARGV[1] "/" xcatdport
