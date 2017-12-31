@@ -81,7 +81,7 @@ cmd:service xcatd status
 check:output=~xcatd service|xcatd.service
 check:output=~xcatd service is running|active \(running\)
 check:rc==0
-cmd:service xcatd restart 
+cmd:service xcatd restart
 check:rc==0
 cmd:sleep 10
 cmd:service xcatd status
