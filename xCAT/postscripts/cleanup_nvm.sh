@@ -8,7 +8,7 @@
 #cleanup_nvm.sh
 # It is found that in some case, there will be nvram entries wrote that block
 #     the normal booting for Tuleta server running OPAL mode and OpenPOWER server.
-# This script is used to clean up the nvram entries within host OS, can be run as 
+# This script is used to clean up the nvram entries within host OS, can be run as
 #     a postscript for xCAT.
 #
 #-----------------------------------------------------------------------------
@@ -20,7 +20,7 @@ while true; do
 
     if [ $? -ne 0 ]; then
         if [ $tries -gt 0 ]; then
-            echo "The nvram cleaning up is done" 
+            echo "The nvram cleaning up is done"
         else
             echo "No nvram entry found that is releated to petitboot"
         fi
