@@ -30,9 +30,9 @@ The following commands are currently supported:
 Data
 ----
 
-The following graph shows performance gains in the Python code implementation of ``mgt=openbmc`` when compared to the Perl implementation.  
+The following graph shows performance gains in the Python code implementation of ``mgt=openbmc`` when compared to the Perl implementation.
 
-rpower <noderange> state 
+rpower <noderange> state
 ````````````````````````
 
 This chart gathers data points on a single 18-node frame, up to 4 frames (72-nodes).
