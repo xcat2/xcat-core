@@ -57,7 +57,7 @@ installroot=$installroot pedir=$otherpkgs/pe NODESETSTATE=genimage   $hpc/pe/pe_
 #installroot=$installroot essldir=$otherpkgs/essl NODESETSTATE=genimage   $hpc/essl/essl_install
 
 
-# Run script to accept LoadLeveler license, install product rpms, 
+# Run script to accept LoadLeveler license, install product rpms,
 # and do some config
 installroot=$installroot loadldir=$otherpkgs/loadl NODESETSTATE=genimage   $hpc/loadl/loadl_install-5103
 
