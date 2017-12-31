@@ -46,7 +46,7 @@ sub handled_commands
 #-------------------------------------------------------------------------------
 
 =head3
-      parse_args 
+      parse_args
          Parse the command arguments
 
         Arguments:
@@ -99,7 +99,7 @@ sub parse_args()
 =head3  preprocess_request
 
   Check and setup for hierarchy , if your command must run
-  on service nodes. Otherwise preprocess_request not necessary   
+  on service nodes. Otherwise preprocess_request not necessary
 
 =cut
 
@@ -480,7 +480,7 @@ sub usage
 #-------------------------------------------------------------------------------
 
 =head3
-      parse_hmc_output 
+      parse_hmc_output
          Parse the HMC commands output, the HMC commands output lines looks like:
          attr1=val1,attr2=val2,"attr3=val3,val4,val5",attr4=val6
 
@@ -530,7 +530,7 @@ sub parse_hmc_output()
 
         Arguments:
           $hmc - HMC hostname or ip address
-          $cmd - The command that will be run on the HMC 
+          $cmd - The command that will be run on the HMC
 
         Returns:
           Hash reference for HMC commands output
@@ -568,7 +568,7 @@ sub run_hmc_cmd()
           Get available LHEA logical ports for the lpar, and generate conf line
 
         Arguments:
-          $lhearesref - Hash reference for LHEA resources 
+          $lhearesref - Hash reference for LHEA resources
 
         Returns:
           Conf line for LHEA used by mksyscfg
