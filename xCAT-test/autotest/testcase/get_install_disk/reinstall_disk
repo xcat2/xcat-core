@@ -6,19 +6,19 @@ cmd:xdsh $$CN "dd if=/dev/zero of=/dev/sdb bs=1048576 count=100"
 cmd:xdsh $$CN "dd if=/dev/zero of=/dev/sdb bs=1048576 count=300 seek=60858"
 cmd:makedns -n
 check:rc==0
-cmd:makeconservercf 
+cmd:makeconservercf
 check:rc==0
 cmd:cat /etc/conserver.cf | grep $$CN
 check:output=~$$CN
 cmd:sleep 20
-cmd:if [ "__GETNODEATTR($$CN,arch)__" = "ppc64" -a  "__GETNODEATTR($$CN,mgt)__" != "ipmi" ]; then getmacs -D $$CN; fi 
+cmd:if [ "__GETNODEATTR($$CN,arch)__" = "ppc64" -a  "__GETNODEATTR($$CN,mgt)__" != "ipmi" ]; then getmacs -D $$CN; fi
 check:rc==0
 cmd:makedhcp -n
 check:rc==0
 cmd:makedhcp -a
 check:rc==0
 cmd:sleep 10
-cmd:if cat /etc/*release |grep SUSE >/dev/null;then cat /var/lib/dhcp/db/dhcpd.leases|grep $$CN;elif cat /etc/*release |grep "Red Hat" >/dev/null;then cat /var/lib/dhcpd/dhcpd.leases|grep $$CN;fi     
+cmd:if cat /etc/*release |grep SUSE >/dev/null;then cat /var/lib/dhcp/db/dhcpd.leases|grep $$CN;elif cat /etc/*release |grep "Red Hat" >/dev/null;then cat /var/lib/dhcpd/dhcpd.leases|grep $$CN;fi
 check:output=~$$CN
 
 cmd:if cat /etc/*release |grep "7.2" |grep "Red Hat">/dev/null;then mkdef $$STATELITE -u profile=compute provmethod=statelite osvers=rhels7.2;else mkdef $$STATELITE -u profile=compute provmethod=statelite; fi
@@ -71,7 +71,7 @@ cmd:cat /tmp/__GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__fr_$$NO | grep "
 check:output=~The disk sdb information
 cmd:cat /tmp/__GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__fr_$$NO | grep "disk_wwn="
 check:output=~0x500a0751036d9c24
-cmd:cat /tmp/__GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__fr_$$NO | grep "into wwn" 
+cmd:cat /tmp/__GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__fr_$$NO | grep "into wwn"
 check:output=~sdb 0x500a0751036d9c24 into wwn
 cmd:cat /tmp/__GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__fr_$$NO | grep "by sorting wwn and DRIVER"
 check:output=~sdb
