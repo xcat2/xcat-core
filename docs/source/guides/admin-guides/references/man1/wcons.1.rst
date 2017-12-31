@@ -15,17 +15,17 @@ wcons - windowed remote console
 
 
 ****************
-\ **Synopsis**\ 
+\ **Synopsis**\
 ****************
 
 
-\ **wcons**\   [\ **-t | -**\ **-tile**\ =\ *n*\ ] [\ *xterm-options*\ ] \ *noderange*\ 
+\ **wcons**\   [\ **-t | -**\ **-tile**\ =\ *n*\ ] [\ *xterm-options*\ ] \ *noderange*\
 
 \ **wcons**\  [\ **-h | -**\ **-help | -v | -**\ **-version**\ ]
 
 
 *******************
-\ **Description**\ 
+\ **Description**\
 *******************
 
 
@@ -36,45 +36,45 @@ range or nodes or groups.
 
 
 ***************
-\ **Options**\ 
+\ **Options**\
 ***************
 
 
 
-\ **-t | -**\ **-tile**\ =\ *n*\ 
- 
+\ **-t | -**\ **-tile**\ =\ *n*\
+
  Tile \ **wcons**\  windows from top left to bottom right.  If \ *n*\  is spec-
  ified  then  tile  \ *n*\  across.  If \ *n*\  is not specified then tile to
  edge of screen.  If tiled \ **wcons**\  windows reach bottom right, then
  the windows start at top left overlaying existing \ **wcons**\  windows.
- 
 
 
-\ **-h | -**\ **-help**\ 
- 
+
+\ **-h | -**\ **-help**\
+
  Print help.
- 
 
 
-\ **-v | -**\ **-version**\ 
- 
+
+\ **-v | -**\ **-version**\
+
  Print version.
- 
 
 
-\ *xterm options*\ 
- 
+
+\ *xterm options*\
+
  See xterm(1). Any options other than those listed above are passed
  directly to xterm. \ **Note:**\  when given multiple nodes, wcons will
- override \ **-title**\  and tries to figure out optimal \ **-geometry**\ 
+ override \ **-title**\  and tries to figure out optimal \ **-geometry**\
  options for the xterms (however, \ **-geometry**\  can still be
  specified).
- 
+
 
 
 
 *************
-\ **Files**\ 
+\ **Files**\
 *************
 
 
@@ -84,21 +84,21 @@ method.
 
 
 ****************
-\ **Examples**\ 
+\ **Examples**\
 ****************
 
 
-\ **wcons**\  \ *node1-node5*\ 
+\ **wcons**\  \ *node1-node5*\
 
-\ **wcons**\  \ **-**\ **-tile**\  \ **-**\ **-font**\ =\ *nil2*\  \ *all*\ 
+\ **wcons**\  \ **-**\ **-tile**\  \ **-**\ **-font**\ =\ *nil2*\  \ *all*\
 
-\ **wcons**\  \ **-t**\  \ *4*\  \ *node1-node16*\ 
+\ **wcons**\  \ **-t**\  \ *4*\  \ *node1-node16*\
 
-\ **wcons**\  \ **-f**\  \ *vs*\  \ **-t**\  \ *4*\  \ *node1-node4*\ 
+\ **wcons**\  \ **-f**\  \ *vs*\  \ **-t**\  \ *4*\  \ *node1-node4*\
 
 
 ************
-\ **Bugs**\ 
+\ **Bugs**\
 ************
 
 
@@ -109,7 +109,7 @@ window manager let me know.
 
 
 ************************
-\ **See**\  \ **Also**\ 
+\ **See**\  \ **Also**\
 ************************
 
 
