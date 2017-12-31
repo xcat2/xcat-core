@@ -1,4 +1,4 @@
-#!/bin/sh 
+#!/bin/sh
 #
 #
 # Sample script to customize options for PE
@@ -15,7 +15,7 @@
 #          (java accept program will hang)
 #        - Copy PE license files from MN into image
 #        - Install PE rpms
-#    - Create a smaller PNSD log file in /tmp 
+#    - Create a smaller PNSD log file in /tmp
 #    - Configure poe.limits file
 
 OS=`uname`
@@ -48,7 +48,7 @@ if [ $OS != "AIX" ]; then
             rpm -Uvh IBM_pe_license*.rpm
         fi
         IBM_PE_LICENSE_PROMPT=N /opt/ibmhpc/install/sbin/accept_ppe_license.sh
-        rpm -Uvh --force ibm_lapi*.rpm ibm_pe*.rpm ppe_*.rpm 
+        rpm -Uvh --force ibm_lapi*.rpm ibm_pe*.rpm ppe_*.rpm
         cd /
         rm -Rf /tmp/pe
     fi
@@ -69,7 +69,7 @@ if [ $OS != "AIX" ]; then
             mkdir -p $installroot/etc/opt/ibmhpc/license
             cp -pR /etc/opt/ibmhpc/license/* $installroot/etc/opt/ibmhpc/license
             # Install PE product rpms
-            INUCLIENTS=1 INUBOSTYPE=1 zypper -R $installroot install $PE_DIR/ibm_lapi*.rpm $PE_DIR/ibm_pe*.rpm $PE_DIR/ppe_*.rpm 
+            INUCLIENTS=1 INUBOSTYPE=1 zypper -R $installroot install $PE_DIR/ibm_lapi*.rpm $PE_DIR/ibm_pe*.rpm $PE_DIR/ppe_*.rpm
         else
         # For Redhat, etc., assume yum is available on the system running genimage
             if [ ! -d /etc/opt/ibmhpc/license ] ; then
@@ -85,7 +85,7 @@ if [ $OS != "AIX" ]; then
             cp -pR /etc/opt/ibmhpc/license/* $installroot/etc/opt/ibmhpc/license
  	    #chroot $installroot /opt/ibmhpc/install/sbin/accept_ppe_license.sh
             # Install PE product rpms
-            INUCLIENTS=1 INUBOSTYPE=1 yum --installroot $installroot --nogpgcheck install $PE_DIR/ibm_lapi*.rpm $PE_DIR/ibm_pe*.rpm $PE_DIR/ppe_*.rpm 
+            INUCLIENTS=1 INUBOSTYPE=1 yum --installroot $installroot --nogpgcheck install $PE_DIR/ibm_lapi*.rpm $PE_DIR/ibm_pe*.rpm $PE_DIR/ppe_*.rpm
         fi
     fi
 fi
@@ -93,7 +93,7 @@ fi
 
 
 # Configure the PNSD.cfg to use a smaller log so it doesn't use so much memory
-# for a stateless image.  Normally, pnsd creates this file if it does not 
+# for a stateless image.  Normally, pnsd creates this file if it does not
 # exist, but it will not fill it in if it does exist.
 if [ ! -f $installroot/etc/PNSD.cfg ]; then
     echo "log_file = /tmp/serverlog" > $installroot/etc/PNSD.cfg
