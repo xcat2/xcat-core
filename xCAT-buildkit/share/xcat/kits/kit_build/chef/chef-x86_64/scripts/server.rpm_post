@@ -10,7 +10,7 @@
 #-------------------------------------------------------------------------------
 if [ -f "/proc/cmdline" ]; then   # prevent running it during install into chroot image
         #Now configure the chef server
-	    /xcatpost/config_chef_server 
+	    /xcatpost/config_chef_server
 fi
 
 exit 0
