@@ -3,8 +3,8 @@ Generate Diskless Image
 
 The ``copycds`` command copies the contents of the Linux media to ``/install/<os>/<arch>`` so that it will be available for installing nodes or creating diskless images.  After executing ``copycds``, there are several ``osimage`` definitions created by default.  Run ``tabdump osimage`` to view these images: ::
 
-        tabdump osimage 
-   
+        tabdump osimage
+
 The output should be similar to the following: ::
 
         "rhels7.1-ppc64le-install-compute",,"compute","linux",,"install",,"rhels7.1-ppc64le",,,"Linux","rhels7.1","ppc64le",,,,,,,,
@@ -16,7 +16,7 @@ The ``netboot-compute`` is the default **diskless** osimage created rhels7.1 ppc
 
         genimage rhels7.1-ppc64le-netboot-compute
 
-Before packing the diskless image, you have the opportunity to change any files in the image by changing to the ``rootimgdir`` and making modifications.  (e.g. ``/install/netboot/rhels7.1/ppc64le/compute/rootimg``). 
+Before packing the diskless image, you have the opportunity to change any files in the image by changing to the ``rootimgdir`` and making modifications.  (e.g. ``/install/netboot/rhels7.1/ppc64le/compute/rootimg``).
 
 However it's recommended that all changes to the image are made via post install scripts so that it's easily repeatable. Although, instead, we recommend that you make all changes to the image via your postinstall script, so that it is repeatable.  Refer to :doc:`/guides/admin-guides/manage_clusters/ppc64le/diskless/customize_image/pre_post_script` for more details.
 
@@ -104,7 +104,7 @@ Skip this section if you want to use the image as is.
 
 * Modify .pkglist file to add or remove packages that are from the os distro
 
-* Modify .otherpkgs.pkglist to add or remove packages from other sources. Refer to ``Using_Updatenode`` for details 
+* Modify .otherpkgs.pkglist to add or remove packages from other sources. Refer to ``Using_Updatenode`` for details
 
 * For diskful, modify the .tmpl file to change the kickstart/autoyast configuration
 
@@ -125,7 +125,7 @@ Skip this section if you want to use the image as is.
 Deploying nodes
 ---------------
 
-You can change the provmethod of the node to the new image_name if different: :: 
+You can change the provmethod of the node to the new image_name if different: ::
 
         chdef <noderange> provmethod=<image_name>
         nodeset <noderange> osimage=<image_name>
