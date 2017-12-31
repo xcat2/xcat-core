@@ -15,7 +15,7 @@ Name
 
 
 ****************
-\ **Synopsis**\ 
+\ **Synopsis**\
 ****************
 
 
@@ -25,7 +25,7 @@ Name
 
 
 *******************
-\ **Description**\ 
+\ **Description**\
 *******************
 
 
@@ -40,26 +40,26 @@ wcons windows on your $DISPLAY will be killed.
 
 
 ***************
-\ **Options**\ 
+\ **Options**\
 ***************
 
 
 
-\ **-h | -**\ **-help**\ 
- 
+\ **-h | -**\ **-help**\
+
  Print help.
- 
 
 
-\ **-v | -**\ **-version**\ 
- 
+
+\ **-v | -**\ **-version**\
+
  Print version.
- 
+
 
 
 
 ****************
-\ **Examples**\ 
+\ **Examples**\
 ****************
 
 
@@ -71,7 +71,7 @@ wcons windows on your $DISPLAY will be killed.
 
 
 ************************
-\ **See**\  \ **Also**\ 
+\ **See**\  \ **Also**\
 ************************
 
 
