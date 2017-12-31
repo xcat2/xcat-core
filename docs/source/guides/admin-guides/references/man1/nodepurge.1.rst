@@ -19,9 +19,9 @@ SYNOPSIS
 ********
 
 
-\ **nodepurge [-h| -**\ **-help | -v | -**\ **-version]**\ 
+\ **nodepurge [-h| -**\ **-help | -v | -**\ **-version]**\
 
-\ **nodepurge**\  \ *noderange*\ 
+\ **nodepurge**\  \ *noderange*\
 
 
 ***********
@@ -39,15 +39,15 @@ OPTIONS
 *******
 
 
-\ **-h|-**\ **-help**\ 
+\ **-h|-**\ **-help**\
 
 Display usage message.
 
-\ **-v|-**\ **-version**\ 
+\ **-v|-**\ **-version**\
 
 Command Version
 
-\ *noderange*\ 
+\ *noderange*\
 
 The nodes to be removed.
 
