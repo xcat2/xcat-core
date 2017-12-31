@@ -1,4 +1,4 @@
-Setup ONIE switches with ZTP in large cluster 
+Setup ONIE switches with ZTP in large cluster
 =============================================
 
 Zero Touch Provisioning  (ZTP) is a feature shipped in many network devices to enable them to be quickly deployed in large-scale environments. In Cumulus OS on ONIE switches with ZTP enabled, the URL of an user provided script can be specified in the DHCP response for the DHCP request trigged by one of the following events:
@@ -14,29 +14,29 @@ Leveraging the ZTP mechanism, xCAT provides the capability to setup ONIE switche
 1. Ensure that xCAT is configured with an DHCP open range to detect when new switches request DHCP IPs
 
    (1). Make sure the network in which the management interface of the ONIE switches are connected has been defined in ``networks`` table ::
-   
+
        # tabdump networks
        #netname,net,mask,mgtifname,gateway,dhcpserver,tftpserver,nameservers,ntpservers,logservers,dynamicrange,staticrange,staticrangeincrement,nodehostname,ddnsdomain,vlanid,domain,mtu,comments,disable
        "172_21_0_0-255_255_0_0","172.21.0.0","255.255.0.0","enP3p3s0d1","<xcatmaster>","172.21.253.27","172.21.253.27",,,,"172.21.253.100-172.21.253.200",,,,,,,,,
-      
+
    (2). Prepare the DHCP configuration for ONIE switches setup
-   
+
       Add the management node's NIC facing the ONIE switches' management interface to the ``site.dhcpinterfaces`` ::
-     
-        chdef -t site -p dhcpinterfaces=enP3p3s0d1 
-   
+
+        chdef -t site -p dhcpinterfaces=enP3p3s0d1
+
       Add dynamic range for the temporary IP addresses used in the OS provision and discovery of ONIE switches ::
-       
+
         chdef -t network 172_21_0_0-255_255_0_0 dynamicrange="172.21.253.100-172.21.253.200"
-      
+
       Update DHCP configuration file ::
-       
+
         makedhcp -n
 
 2. Predefine ONIE switches according to the network plan ::
 
-     mkdef mid05tor10 --template onieswitch ip=172.21.205.10 switch=mgmtsw01 switchport=10 
- 
+     mkdef mid05tor10 --template onieswitch ip=172.21.205.10 switch=mgmtsw01 switchport=10
+
    ``ip`` is the IP address of the management interface of the ONIE switch
 
    ``switch`` is the core switch to which the management interface of ONIE switch is connected.
@@ -44,16 +44,16 @@ Leveraging the ZTP mechanism, xCAT provides the capability to setup ONIE switche
    ``switchport`` is the port on the core switch to which the management interface of ONIE switch is connected.
 
 3. Add the predefined switches into ``/etc/hosts`` ::
-    
+
      makehosts mid05tor10
 
 4. [If the Cumulus OS have been installed on the ONIE switches, please skip this step] Prepare the Cumulus installation image, ``/install/onie/onie-installer`` is the hard-coded path of the Cumulus installation image, or the link to the Cumulus installation image on the management node ::
-  
+
      mkdir -p /install/onie/
-     cp /install/custom/sw_os/cumulus/cumulus-linux-3.1.0-bcm-armel.bin /install/onie/ 
+     cp /install/custom/sw_os/cumulus/cumulus-linux-3.1.0-bcm-armel.bin /install/onie/
      ln -s /install/onie/cumulus-linux-3.1.0-bcm-armel.bin /install/onie/onie-installer
 
-5. Plug the ONIE switches into the cluster according to the network plan and power on them. 
+5. Plug the ONIE switches into the cluster according to the network plan and power on them.
 
    For the white-box ONIE switches, the Cumulus OS will be installed, then the switches will be discovered and configured automaticaly, the whole process will take about 1 hour.
 
@@ -88,4 +88,4 @@ Leveraging the ZTP mechanism, xCAT provides the capability to setup ONIE switche
          switchport=10
          switchtype=Edgecore Networks Switch
 
-   ``status=configured`` indicates that the switch has been discovered and configured. 
+   ``status=configured`` indicates that the switch has been discovered and configured.
