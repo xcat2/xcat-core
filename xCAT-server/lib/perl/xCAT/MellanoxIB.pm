@@ -21,7 +21,7 @@ use strict;
 
 =head1  xCAT::MellanoxIB
 =head2    Package Description
-  It handles Mellanox IB switch related function. It used the CLI interface of 
+  It handles Mellanox IB switch related function. It used the CLI interface of
   Mellanox IB switch
 
 =cut
@@ -31,7 +31,7 @@ use strict;
 #--------------------------------------------------------------------------------
 
 =head3    getConfigure
-      It queries the info from the given swithes.      
+      It queries the info from the given swithes.
     Arguments:
         noderange-- an array ref to switches.
         callback -- pointer for writes response back to the client.
@@ -228,7 +228,7 @@ sub parseOutput {
 #--------------------------------------------------------------------------------
 
 =head3    setConfigure
-      It configures the the given swithes.      
+      It configures the the given swithes.
     Arguments:
         noderange-- an array ref to switches.
         callback -- pointer for writes response back to the client.
@@ -409,7 +409,7 @@ sub setConfig {
 #--------------------------------------------------------------------------------
 
 =head3    querySSHcfg
-      It checks if the current host can ssh to the given switches without password.      
+      It checks if the current host can ssh to the given switches without password.
     Arguments:
         noderange-- an array ref to switches.
         callback -- pointer for writes response back to the client.
@@ -545,7 +545,7 @@ sub getMatchingKeys {
 #--------------------------------------------------------------------------------
 
 =head3    setSSHcfg
-      It enables/diables the current host to ssh to the given switches without password.      
+      It enables/diables the current host to ssh to the given switches without password.
     Arguments:
         noderange-- an array ref to switches.
         callback -- pointer for writes response back to the client.
