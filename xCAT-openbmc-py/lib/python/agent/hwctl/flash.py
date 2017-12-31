@@ -16,7 +16,7 @@ class FlashInterface(object):
         :param task: a Task instance containing the nodes to act on.
         :activate_arg: arg for activate
         """
-        return task.run('activate_firm', activate_arg) 
+        return task.run('activate_firm', activate_arg)
 
     def delete_firm(self, task, delete_id):
         """Delete firmware.
