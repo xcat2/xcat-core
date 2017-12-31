@@ -15,7 +15,7 @@ check:output=~Version
 end
 
 start:tabprune_a_eventlog
-description:tabprune eventlog -a 
+description:tabprune eventlog -a
 label:mn_only,db
 cmd:tabprune eventlog -a
 check:rc==0
