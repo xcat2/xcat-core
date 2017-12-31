@@ -11,4 +11,4 @@ Installation Guide for SUSE Linux Enterprise Server
    :maxdepth: 2
 
    prepare_mgmt_node.rst
-   install.rst 
+   install.rst
