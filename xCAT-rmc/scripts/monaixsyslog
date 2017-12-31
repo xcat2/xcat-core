@@ -3,7 +3,7 @@
 #------------------------------------------------------------------------------
 
 =head1  monaixsyslog
-=head2  
+=head2
 =cut
 
 #------------------------------------------------------------------------------
@@ -121,7 +121,7 @@ exit 0;
 
 	parse the command line and check the values
 
-	paras: 
+	paras:
 	-p  :    <facility>.<priority>, the default value is "*.warn"
 	-f  :    <fifo_name>, the default value is "/var/opt/xcat_aix_syslog/syslog_fifo"
 
@@ -191,7 +191,7 @@ sub getArgs()
     Return:
     $i            - the line number that has been read and refreshed to Sensor.
     $mark_content - the line content related to $i
-    $to_rfile     - the flag that indicates whether we need to read from the 
+    $to_rfile     - the flag that indicates whether we need to read from the
                     rotated file.
 
 =cut
@@ -315,7 +315,7 @@ sub updateRunfile()
 =head3    runcmd
     Run the given cmd and return the output in an array (already chopped).  Alternatively,
     if this function is used in a scalar context, the output is joined into a single string
-    with the newlines separating the lines.  
+    with the newlines separating the lines.
     Arguments:
         command, exitcode and reference to output
     Returns:
@@ -332,7 +332,7 @@ sub updateRunfile()
                 exit code.
         number > 0:    Display error msg and exit with the given code
     Example:
-        my $outref =  runcmd($cmd, -2, 1);     
+        my $outref =  runcmd($cmd, -2, 1);
     Comments:
         If refoutput is true, then the output will be returned as a reference to
         an array for efficiency.
