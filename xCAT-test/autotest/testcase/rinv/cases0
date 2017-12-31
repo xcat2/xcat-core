@@ -32,7 +32,7 @@ check:output=~Version
 end
 
 start:rinv_bus
-description:rinv list all buses for each I/O slot 
+description:rinv list all buses for each I/O slot
 Attribute: $$CN-The operation object of rinv command
 label:cn_bmc_ready,hctrl_fsp
 cmd:rinv $$CN bus
@@ -41,7 +41,7 @@ check:output=~I/O Bus Information
 end
 
 start:rinv_config
-description:Retrieves number of processors, speed, total memory, and DIMM locations. 
+description:Retrieves number of processors, speed, total memory, and DIMM locations.
 Attribute: $$CN-The operation object of rinv command
 label:cn_bmc_ready,hctrl_fsp
 cmd:rinv $$CN config
@@ -154,7 +154,7 @@ check:rc==0
 cmd:rinv $$CN all
 check:rc==1
 check:output=~$$CN: (\[.*?\]: )?Error:.+Invalid username or password|Error: (\[.*?\]: )?ERROR: Incorrect password provided
-cmd:cat /tmp/testnode.stanza | chdef -z;rm -rf /tmp/testnode.stanza 
+cmd:cat /tmp/testnode.stanza | chdef -z;rm -rf /tmp/testnode.stanza
 check:rc==0
 end
 
