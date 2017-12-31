@@ -15,7 +15,7 @@ export LD_LIBRARY_PATH=/opt/torque/x86_64/lib
 
 # let see how we were called
 case "$1" in
-	start) 
+	start)
 		echo -n "Starting MOAB Scheduler: "
 		if [ -r $MOAB_PREFIX/bin/moab ]
 		then
