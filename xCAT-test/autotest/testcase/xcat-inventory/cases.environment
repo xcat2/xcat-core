@@ -27,9 +27,9 @@ check:output=~Inventory import successfully!
 check:rc==0
 cmd:lsdef -t osimage -o test.environments.osimage
 check:rc==0
-cmd:genimage test.environments.osimage 
+cmd:genimage test.environments.osimage
 check:rc==0
-cmd:packimage test.environments.osimage 
+cmd:packimage test.environments.osimage
 check:rc==0
 cmd:rinstall $$CN osimage=test.environments.osimage
 check:rc==0
@@ -72,7 +72,7 @@ cmd:xdsh $$CN "rpm -qa |grep -i conserver-xcat"
 check:rc==0
 cmd:xdsh $$CN "rpm -qa |grep -i perl-Net-Telnet"
 check:rc==0
-cmd:xdsh $$CN "rpm -qa |grep -i tftp" 
+cmd:xdsh $$CN "rpm -qa |grep -i tftp"
 check:rc==0
 cmd:xdsh $$CN "rpm -qa |grep -w dhcp"
 check:rc==0
