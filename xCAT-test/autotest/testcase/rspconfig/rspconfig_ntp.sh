@@ -12,8 +12,8 @@ fi
 echo "The original BMC NTP Servers is $ntpservers"
 
 if [ $ntpservers != "None" ]; then
-   new_ntpservers=$ntpservers"_test"  
-else 
+   new_ntpservers=$ntpservers"_test"
+else
    new_ntpservers=$mn
 fi
 
@@ -25,7 +25,7 @@ fi
 
 if [[ $output =~ "$cn: BMC NTP Servers" ]]  && [[ $output =~ "$new_ntpservers" ]]; then
     echo "Setting NTPServers as $new_ntpservers success"
-else 
+else
     echo "Setting NTPServers as $new_ntpservers failed, the output is $output"
     exit 1
 fi
@@ -40,7 +40,7 @@ fi
 
 output=`rspconfig $cn ntpservers=$original_ntpservers`
 if [ $? -ne 0 ]; then
-    echo "rspconfig $cn ntpservers=$ntpservers failed when clearing environment"  
+    echo "rspconfig $cn ntpservers=$ntpservers failed when clearing environment"
     exit 1
 fi
 
