@@ -5,7 +5,7 @@ cmd:switchdiscover -h
 check:rc==0
 check:output=~Usage
 end
-start:switchdiscover_range_default 
+start:switchdiscover_range_default
 cmd:switchdiscover --range $$range
 check:rc==0
 check:output=~Discovering switches using nmap
