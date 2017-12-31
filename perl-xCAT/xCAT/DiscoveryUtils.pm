@@ -9,10 +9,10 @@ $XML::Simple::PREFERRED_PARSER = 'XML::Parser';
 
 use xCAT::MsgUtils;
 
-=head3 update_discovery_data 
+=head3 update_discovery_data
  Update the discovery data from the xcat request to discoverydata table to indicate the discovery events
  arg1 - the request
- 
+
 =cut
 
 sub update_discovery_data {
