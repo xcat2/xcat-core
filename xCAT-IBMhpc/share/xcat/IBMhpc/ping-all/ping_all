@@ -1,7 +1,7 @@
 #!/bin/ksh
 
 function do_pings {
-    #set -x 
+    #set -x
 
     integer dest_array_index=0
     integer total_ping_count=0
@@ -62,7 +62,7 @@ else
    file=$1
 fi
 
-#ifconfig -a  | grep 'inet ' | awk ' { print $2 } ' | grep -v 127.0.0.1 | 
+#ifconfig -a  | grep 'inet ' | awk ' { print $2 } ' | grep -v 127.0.0.1 |
 ip -4 -oneline addr show 2>/dev/null |grep inet | sed -ne "s/.*inet //p"|awk -F ' ' '{print $1}'|awk -F '/' '{print $1}'|
 while read my_address ; do
     ##print "checking $my_address"
@@ -73,7 +73,7 @@ while read my_address ; do
         integer starting_line_minus_1=$starting_line-1
         tail +${starting_line} $file         >  /tmp/current_ping_address_file
         head -${starting_line_minus_1} $file >> /tmp/current_ping_address_file
-        file=/tmp/current_ping_address_file 
+        file=/tmp/current_ping_address_file
         do_pings
         found_flag=1
         break
