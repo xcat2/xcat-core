@@ -27,14 +27,14 @@ PPC (with HMC) specific:
 ========================
 
 
-\ **lshwconn**\  [\ **-V**\ | \ **-**\ **-verbose**\ ] \ *noderange*\ 
+\ **lshwconn**\  [\ **-V**\ | \ **-**\ **-verbose**\ ] \ *noderange*\
 
 
 PPC (without HMC, using FSPAPI) specific:
 =========================================
 
 
-\ **lshwconn**\  \ *noderange*\  \ **-T**\  \ *tooltype*\ 
+\ **lshwconn**\  \ *noderange*\  \ **-T**\  \ *tooltype*\
 
 
 
@@ -52,22 +52,22 @@ OPTIONS
 
 
 
-\ **-h|-**\ **-help**\ 
- 
+\ **-h|-**\ **-help**\
+
  Display usage message.
- 
 
 
-\ **-V|-**\ **-verbose**\ 
- 
+
+\ **-V|-**\ **-verbose**\
+
  Verbose output.
- 
 
 
-\ **-T**\ 
- 
+
+\ **-T**\
+
  The tooltype is used to communicate to the CEC/Frame. The value could be lpar or fnm. The tooltype value lpar is for xCAT and fnm is for CNM.
- 
+
 
 
 
@@ -88,66 +88,66 @@ EXAMPLES
 
 
 1.
- 
+
  To display connection status for all CEC nodes in node group CEC:
- 
- 
+
+
  .. code-block:: perl
- 
+
    lshwconn cec
- 
- 
+
+
  Output is similar to:
- 
- 
+
+
  .. code-block:: perl
- 
+
    cec1: ipaddr=192.168.200.245,alt_ipaddr=unavailable,state=Connected
    cec2: Connection not found
- 
- 
+
+
 
 
 2.
- 
+
  To display connection status for Frame node frame1:
- 
- 
+
+
  .. code-block:: perl
- 
+
    lshwconn frame1
- 
- 
+
+
  Output is similar to:
- 
- 
+
+
  .. code-block:: perl
- 
+
    frame1: side=a,ipaddr=192.168.200.247,alt_ipaddr=unavailable,state=Connected
    frame1: side=b,ipaddr=192.168.200.248,alt_ipaddr=unavailable,state=Connected
- 
- 
+
+
 
 
 3.
- 
+
  To display connection status for all CEC nodes in node group CEC to hardware server, and using lpar tooltype:
- 
- 
+
+
  .. code-block:: perl
- 
+
    lshwconn cec -T lpar
- 
- 
+
+
  Output is similar to:
- 
- 
+
+
  .. code-block:: perl
- 
+
    cec1: sp=primary,ipadd=40.3.7.1,alt_ipadd=unavailable,state=LINE UP
    cec2: Connection not found
- 
- 
+
+
 
 
 
