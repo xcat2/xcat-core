@@ -16,27 +16,27 @@ use xCAT::Utils;
 
 #-------------------------------------------------------------------------------
 
-=head1  xCAT_monitoring:templatemon  
+=head1  xCAT_monitoring:templatemon
 =head2    Package Description
-   This is a xCAT monitoring plugin template. 
-   To use it, copy it to /opt/xcat/lib/perl/xCAT_monitoring/ directory. 
-   Note: 
-     There are two ways to configure a node for monitoring. The preferred way is to  
-     return the postscripts in the getPostScripts() function  and have the node 
-     deployment/install process to call them locally on the nodes. 
+   This is a xCAT monitoring plugin template.
+   To use it, copy it to /opt/xcat/lib/perl/xCAT_monitoring/ directory.
+   Note:
+     There are two ways to configure a node for monitoring. The preferred way is to
+     return the postscripts in the getPostScripts() function  and have the node
+     deployment/install process to call them locally on the nodes.
      The other way is to run command 'moncfg templatemon -r'
      after the nodes are up and running. For the latter case, you need to, in the
      config() function, push the scripts down to the node and use xdsh to run it.
-     We recommend you implement both to give user some freedom. 
+     We recommend you implement both to give user some freedom.
 
    The following are the ways of configure and start monitoring:
    1. The preferred way:
       (define nodes in the xCAT db)
       monadd templatemon [-n]
-      moncfg templatemon servicenode 
+      moncfg templatemon servicenode
       (nodeset servicenode netboot)
       (rpower servicenodde on)
-      moncfg templatemon conputenode 
+      moncfg templatemon conputenode
       (nodeset conputenode netboot)
       (rpower conputenode on)
       monstart templatemon
@@ -49,7 +49,7 @@ use xCAT::Utils;
 
    Use monstop templatemon [noderange] [-r] to stop monitoring.
    Use mondecfg templatemon [noderange] [-r] to clean up.
-   Use monrm templatemon [noderange] [-r] to remove it from the monitoring table. 
+   Use monrm templatemon [noderange] [-r] to remove it from the monitoring table.
 
 =cut
 
@@ -60,19 +60,19 @@ use xCAT::Utils;
 =head3    start
       This function gets called by the monitorctrl module
       when xcatd starts and when monstart command is issued by the user.
-      It should start daemons and do the necessary start-up process 
-      for the third party monitoring software. If the sope is 0, the operations 
+      It should start daemons and do the necessary start-up process
+      for the third party monitoring software. If the sope is 0, the operations
       shoul only be applied on the local host. If it is 2, then it should be applied
       to the children that the local host is monitoring.
     Arguments:
        p_nodes -- a pointer to an arrays of nodes to be monitored. null means all.
        scope -- the action scope, it indicates the node type the action will take place.
-                0 means localhost only. 
-                2 means both localhost and nodes, 
+                0 means localhost only.
+                2 means both localhost and nodes,
        callback -- the callback pointer for error and status displaying. It can be null.
     Returns:
-      (return code, message) 
-      if the callback is set, use callback to display the status and error. 
+      (return code, message)
+      if the callback is set, use callback to display the status and error.
 =cut
 
 #--------------------------------------------------------------------------------
@@ -143,19 +143,19 @@ sub start {
 
 =head3    stop
       This function gets called when monstop command is issued by the user.
-      It should stop the daemons and do the necessary backup process 
-      for the third party monitoring software. If the sope is 0, the operations 
+      It should stop the daemons and do the necessary backup process
+      for the third party monitoring software. If the sope is 0, the operations
       shoul only be applied on the local host. If it is 2, then it should be applied
       to the children that the local host is monitoring.
     Arguments:
        p_nodes -- a pointer to an arrays of nodes to be stopped. null means all.
        scope -- the action scope, it indicates the node type the action will take place.
-                0 means localhost only. 
-                2 means both localhost and nodes, 
+                0 means localhost only.
+                2 means both localhost and nodes,
        callback -- the callback pointer for error and status displaying. It can be null.
     Returns:
-      (return code, message) 
-      if the callback is set, use callback to display the status and error. 
+      (return code, message)
+      if the callback is set, use callback to display the status and error.
 =cut
 
 #--------------------------------------------------------------------------------
@@ -218,11 +218,11 @@ sub stop {
 =head3    supportNodeStatusMon
     This function is called by the monitorctrl module to check
     if this product can help monitoring and returning the node status.
-    
+
     Arguments:
         none
     Returns:
-           0 means not support. 
+           0 means not support.
            1 means yes.
 =cut
 
@@ -240,16 +240,16 @@ sub supportNodeStatusMon {
 =head3   startNodeStatusMon
     This function is called by the monitorctrl module when monstart gets called and
     when xcatd starts. It starts monitoring the node status and feed them back
-    to xCAT.  
+    to xCAT.
     Arguments:
        p_nodes -- a pointer to an arrays of nodes to be monitored. null means all.
        scope -- the action scope, it indicates the node type the action will take place.
-                0 means localhost only.  
-                2 means both monservers and nodes, 
+                0 means localhost only.
+                2 means both monservers and nodes,
        callback -- the callback pointer for error and status displaying. It can be null.
     Returns:
-      (return code, message) 
-      if the callback is set, use callback to display the status and error. 
+      (return code, message)
+      if the callback is set, use callback to display the status and error.
 =cut
 
 #--------------------------------------------------------------------------------
@@ -272,17 +272,17 @@ sub startNodeStatusMon {
 
 =head3   stopNodeStatusMon
     This function is called by the monitorctrl module when monstop command is issued.
-    It stops feeding the node status info back to xCAT. 
+    It stops feeding the node status info back to xCAT.
     Arguments:
        p_nodes -- a pointer to an arrays of nodes to stopped for monitoring. null means all.
        scope -- the action scope, it indicates the node type the action will take place.
-                0 means localhost only. 
-                2 means both monservers and nodes, 
+                0 means localhost only.
+                2 means both monservers and nodes,
        callback -- the callback pointer for error and status displaying. It can be null.
     note: p_nodes and scope are ignored by this plugin.
     Returns:
-      (return code, message) 
-      if the callback is set, use callback to display the status and error.  
+      (return code, message)
+      if the callback is set, use callback to display the status and error.
 =cut
 
 #--------------------------------------------------------------------------------
@@ -303,15 +303,15 @@ sub stopNodeStatusMon {
 #--------------------------------------------------------------------------------
 
 =head3    config
-      This function configures the cluster for the given nodes.  
+      This function configures the cluster for the given nodes.
       This function is called by when monconfig command is issued or when xcatd starts
      on the service node. It will configure the cluster to include the given nodes within
-     the monitoring doamin. 
+     the monitoring doamin.
     Arguments:
        p_nodes -- a pointer to an arrays of nodes to be added for monitoring. none means all.
        scope -- the action scope, it indicates the node type the action will take place.
-                0 means localhost only. 
-                2 means both monservers and nodes, 
+                0 means localhost only.
+                2 means both monservers and nodes,
        callback -- the callback pointer for error and status displaying. It can be null.
     Returns:
        (error code, error message)
@@ -335,12 +335,12 @@ sub config {
 
 =head3    deconfig
       This function is called by when mondeconfig command is issued.
-      It will deconfigure the cluster to remove the given nodes from the monitoring doamin. 
+      It will deconfigure the cluster to remove the given nodes from the monitoring doamin.
     Arguments:
        p_nodes -- a pointer to an arrays of nodes to be removed for monitoring. none means all.
        scope -- the action scope, it indicates the node type the action will take place.
-                0 means localhost only. 
-                2 means both monservers and nodes, 
+                0 means localhost only.
+                2 means both monservers and nodes,
        callback -- the callback pointer for error and status displaying. It can be null.
     Returns:
        (error code, error message)
@@ -363,7 +363,7 @@ sub deconfig {
 #--------------------------------------------------------------------------------
 
 =head3    processSettingChanges
-      This optional function gets called when the setting for this monitoring plugin 
+      This optional function gets called when the setting for this monitoring plugin
       has been changed in the monsetting table.
     Arguments:
        none.
@@ -384,7 +384,7 @@ sub processSettingChanges {
 
 =head3    getDiscription
       This function returns the detailed description of the plugin inluding the
-     valid values for its settings in the monsetting tabel. 
+     valid values for its settings in the monsetting tabel.
      Arguments:
         none
     Returns:
@@ -395,7 +395,7 @@ sub processSettingChanges {
 sub getDescription {
     return
       "  Description:
-    templatemon description goes here. 
+    templatemon description goes here.
   Settings:
     key:  explaination. default value etc.\n";
 }
@@ -407,23 +407,23 @@ sub getDescription {
       When monitoring commands get called, the default process is to dispatch the command
     to all the monserves of the given nodes. The monserver for a node is defined
     in noderes.monserver in the database. The monserver in the db is a comma separated
-    pairs. The first one the monitoring server name/ip seen by the mn, the second one is 
+    pairs. The first one the monitoring server name/ip seen by the mn, the second one is
     the same sever name/ip seen by the node. If it is not defined, noderes.servicenode and
-    noderes.xcatmaster pairs are used. If not defined neither, the 'noservicenode' and 
+    noderes.xcatmaster pairs are used. If not defined neither, the 'noservicenode' and
     site.master pairs are used.
       This optional function overrides the default behavior.
    Arguments:
        p_nodes -- a pointer to an arrays of nodes to be added for monitoring. none means all.
        callback -- the callback pointer for error and status displaying. It can be null.
-   Returns: 
+   Returns:
       A pointer to a hash table with monserver pairs as the key and an array
-                     pointer of nodes as the value. 
+                     pointer of nodes as the value.
                      For example: { "sv1,ma1"=>[node1,node2], "sv2,ma2"=>node3...}
-         The pair is in the format of "monserver,monmaser". First one is the monitoring service 
-      node ip/hostname that faces the mn and the second one is the monitoring service 
-      node ip/hostname that faces the cn. 
-      The value of the first one can be "noservicenode" meaning that there is no service node 
-      for that node. In this case the second one is the site master. 
+         The pair is in the format of "monserver,monmaser". First one is the monitoring service
+      node ip/hostname that faces the mn and the second one is the monitoring service
+      node ip/hostname that faces the cn.
+      The value of the first one can be "noservicenode" meaning that there is no service node
+      for that node. In this case the second one is the site master.
       It returns a pointer to an array if there is an error. Format is [code, message].
 =cut
 
@@ -445,7 +445,7 @@ sub getNodesMonServers
       This optional function returns the postscripts needed for configuring the the nodes
       for monitoring.  The postscripts get downloaded from mn to the nodes and
       called when the nodes are deployed/installed.
-      Please put the postscripts to /install/postscripts directory. 
+      Please put the postscripts to /install/postscripts directory.
      Arguments:
         none
     Returns:
@@ -469,8 +469,8 @@ sub getPostscripts {
 
 =head3    getNodeConfData
      This optional function gets called during the node deployment process before
-     the postscripts are invoked. It gets a list of environmental variables for 
-     the postscripts.  
+     the postscripts are invoked. It gets a list of environmental variables for
+     the postscripts.
     Arguments:
         pointet to a arry of nodes being deployed.
     Returns:
@@ -481,7 +481,7 @@ sub getPostscripts {
            'node2'=>{'env1'=>'value3',
                      'env2'=>'value4'}
         }
-                
+
 =cut
 
 #--------------------------------------------------------------------------------
