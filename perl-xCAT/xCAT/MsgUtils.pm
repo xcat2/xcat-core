@@ -73,13 +73,13 @@ This program module file, supports the xcat messaging and logging
 			If address of the callback is not provide, then
 			the message will be displayed to STDERR or STDOUT or
 			added to SYSLOG.  See flags below.
-    
-        	If logging (L) is requested, the message structure 
-			must be a simple string. The routine will convert 
-			it to the appropriate callback structure, if a callback 
+
+        	If logging (L) is requested, the message structure
+			must be a simple string. The routine will convert
+			it to the appropriate callback structure, if a callback
         	is provided.
 	        Note for logging xCAT:MsgUtils->start_logging and
-	        xCAT:MstUtils->stop_logging must be used to 
+	        xCAT:MstUtils->stop_logging must be used to
 			open and close the log.
 
 			For compatibility with existing code, the message routine will
@@ -120,31 +120,31 @@ This program module file, supports the xcat messaging and logging
 				routine and only use the I flag for the message.
 				If V flag is detected, it will be changed to an I flag.
                 W - warning this is displayed/logged by daemon/Client.pm.
-                L - Log error to xCAT Log on the local machine. 
+                L - Log error to xCAT Log on the local machine.
 					Routine must have setup log by calling
-					MsgUtils->start_log routine which returns 
+					MsgUtils->start_log routine which returns
 					$::LOG_FILE_HANDLE.  Log is closed with
 					MsgUtils->stop_log routine. Note can be combined with
 					other flags:
-                    LS - Log to xCAT Log and Syslog  
+                    LS - Log to xCAT Log and Syslog
                     LSE/LSI - Log to xCAT Log and Syslog  and display
 					if this option is used the message must be a simple
 					string. The message routine will format for callback
-					based on the (D,E,I,W) flag. 
- 
+					based on the (D,E,I,W) flag.
+
 
             Here's the meaning of the 1st character, if no callback specified:
 
                 D - DATA  goes to STDOUT
                 E - error.  This type of message will be sent to STDERR.
                 si - informational status info (sinfo)
-                I - informational  goes to STDOUT 
+                I - informational  goes to STDOUT
                 N - Node informational  goes to STDOUT
                 S - Message will be logged to syslog ( severe error)
                      Note S can be combined with other flags for example
 		            SE logs message to syslog and is sent to STDERR.
 			        SA logs message to syslog and to the auditlog DB table. (only xcatd)
-		        A logs message auditlog DB table only. (only for xcatd) 
+		        A logs message auditlog DB table only. (only for xcatd)
                 V - verbose.  This flag is not valid, the calling routine
 				should check for verbose mode before calling the message
 
@@ -158,7 +158,7 @@ This program module file, supports the xcat messaging and logging
 					$::LOG_FILE_HANDLE.  Log is closed with
 					MsgUtils->stop_log routine. Note can be combined with
 					other flags:
-                    LS - Log to xCAT Log and Syslog  
+                    LS - Log to xCAT Log and Syslog
                     LSE/LSI - Log to xCAT Log and Syslog  and display
 
     Returns:
@@ -177,39 +177,39 @@ This program module file, supports the xcat messaging and logging
 		# Message to STDERR
         xCAT::MsgUtils->message('E', "Operation $value1 failed\n");
 		
-        # Message to Syslog 
+        # Message to Syslog
         xCAT::MsgUtils->message('S', "Host $host not responding\n");
 		
-        # Message to Syslog and auditlog table (only used by xcatd) 
+        # Message to Syslog and auditlog table (only used by xcatd)
 		# see tabdump -d auditlog
         my $rsp = {};
 		$rsp->{syslogdata}->[0] = "$host not responding\n"; # for syslog
 		# the next data is for auditlog table,  audittime added below
-		$rsp->{userid} ->[0] = $user; 
-		$rsp->{clientname} -> [0] = $client; 
-		$rsp->{clienttype} -> [0] = $clienttype; 
-		$rsp->{command} -> [0] = $command; 
-		$rsp->{noderange} -> [0] = $noderange; 
-		$rsp->{args} -> [0] = $arguments; 
-		$rsp->{status} -> [0] = $status; 
+		$rsp->{userid} ->[0] = $user;
+		$rsp->{clientname} -> [0] = $client;
+		$rsp->{clienttype} -> [0] = $clienttype;
+		$rsp->{command} -> [0] = $command;
+		$rsp->{noderange} -> [0] = $noderange;
+		$rsp->{args} -> [0] = $arguments;
+		$rsp->{status} -> [0] = $status;
         xCAT::MsgUtils->message('SA', $rsp);
 		
-        # Message to only  auditlog table (only used by xcatd) 
+        # Message to only  auditlog table (only used by xcatd)
 		# see tabdump -d auditlog
         my $rsp = {};
-		$rsp->{userid} ->[0] = $user; 
-		$rsp->{clientname} -> [0] = $client; 
-		$rsp->{clienttype} -> [0] = $clienttype; 
-		$rsp->{command} -> [0] = $command; 
-		$rsp->{noderange} -> [0] = $noderange; 
-		$rsp->{args} -> [0] = $arguments; 
-		$rsp->{status} -> [0] = $status; 
+		$rsp->{userid} ->[0] = $user;
+		$rsp->{clientname} -> [0] = $client;
+		$rsp->{clienttype} -> [0] = $clienttype;
+		$rsp->{command} -> [0] = $command;
+		$rsp->{noderange} -> [0] = $noderange;
+		$rsp->{args} -> [0] = $arguments;
+		$rsp->{status} -> [0] = $status;
         xCAT::MsgUtils->message('A', $rsp);
 		
-        # Message to Log and Syslog 
+        # Message to Log and Syslog
         xCAT::MsgUtils->message('LS', "Host $host not responding\n");
 		
-        # Message to Log 
+        # Message to Log
         xCAT::MsgUtils->message('L', "Host $host not responding\n");
 
     Use with callback
@@ -273,7 +273,7 @@ This program module file, supports the xcat messaging and logging
 
 
     Returns:
-       1 for internal error ( invalid input to the routine) 
+       1 for internal error ( invalid input to the routine)
 
 
 
@@ -669,10 +669,10 @@ sub warn_message
 		    $msg = "Host not responding\n";
 	        xCAT::MsgUtils->message("L", $msg);
 						 .
-						  
+						
 	      my $rc=xCAT::MsgUtils->stop_logging(); # close log
 			 	
-                
+
 =cut
 
 #--------------------------------------------------------------------------------
@@ -680,7 +680,7 @@ sub warn_message
 =head3 start_logging
 
         Start logging messages to a logfile. Return the log file handle so it
-        can be used for updates and to close the file when done logging 
+        can be used for updates and to close the file when done logging
 		using stop_logging.
 
         Arguments:
@@ -791,9 +791,9 @@ sub stop_logging
 
 =head3    backup_logfile
 
-        Backup the current logfile. Move logfile to logfile.1. 
+        Backup the current logfile. Move logfile to logfile.1.
 		Shift all other logfiles
-        (logfile.[1-3]) up one number. The original logfile.4 is removed as in a FIFO.   
+        (logfile.[1-3]) up one number. The original logfile.4 is removed as in a FIFO.
 
         Arguments:
                 $logfile ( full path)
@@ -852,23 +852,23 @@ sub verbose_message
 =head3 trace
 
     Display different level trace message in syslog.
-    
+
     Arguments:
-        $verbose: indicate whether current command is with -V option. 1 is yes and 0 is no.  
+        $verbose: indicate whether current command is with -V option. 1 is yes and 0 is no.
         $level: the level of trace message, can be one of "I","W","E","D","i","w","e","d".
             "I" or "i": means information level.
             "W" or "w": means warning level.
             "E" or "e": means error level.
             "D" or "d": means debug level.
-        
+
             As long as the trace subroutine is called, "information", "warning" and "error" level message will be displayed in syslog.
             The "debug" level message is displayed in syslog only when any one of the below two conditions is true
             1. The current command with -V option. i.e. $verbose=1.
-            2. The xcatdebugmode, which is an attribute of site table, equals 1. 
-        
+            2. The xcatdebugmode, which is an attribute of site table, equals 1.
+
             If $level is not any one of "I","W","E","D","i","w","e","d", the trace subroutine do nothing.
-        
-        $logcontent: the specific message wanted to be displayed in syslog   
+
+        $logcontent: the specific message wanted to be displayed in syslog
     Returns:
         none
 		
@@ -877,7 +877,7 @@ sub verbose_message
 		
     Note:
         Label "xcat" and trace message level, such as "INFO", "ERR", "WARNING" AND "DEBUG", will be added before real trace message automatically. It's convenient to filter in syslog.
-    
+
     Example:
         xCAT::MsgUtils->trace(1,"D","this is debug trace message");
         xCAT::MsgUtils->trace(0,"i","this is information trace message");
@@ -988,7 +988,7 @@ sub perf_log_process
 =cut
 
 #-----------------------------------------------------------------
-sub report_node_error 
+sub report_node_error
 {
     shift;
     my ($cb, $node, $msg) = @_;
