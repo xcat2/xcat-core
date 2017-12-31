@@ -12,10 +12,10 @@ xcat-inventory
 * ability to intergrate with Ansible(Comming Soon)
 
 
-This section presents 2 typical user case of ``xcat-inventory`` 
+This section presents 2 typical user case of ``xcat-inventory``
 
 .. toctree::
    :maxdepth: 2
 
    version_control_inventory.rst
-   define_create_cluster.rst 
+   define_create_cluster.rst
