@@ -19,7 +19,7 @@ SYNOPSIS
 ********
 
 
-\ **openbmc Attributes:**\   \ *node*\ , \ *bmc*\ , \ *consport*\ , \ *taggedvlan*\ , \ *username*\ , \ *password*\ , \ *comments*\ , \ *disable*\ 
+\ **openbmc Attributes:**\   \ *node*\ , \ *bmc*\ , \ *consport*\ , \ *taggedvlan*\ , \ *username*\ , \ *password*\ , \ *comments*\ , \ *disable*\
 
 
 ***********
@@ -36,52 +36,52 @@ openbmc Attributes:
 
 
 
-\ **node**\ 
- 
+\ **node**\
+
  The node name or group name.
- 
 
 
-\ **bmc**\ 
- 
+
+\ **bmc**\
+
  The hostname of the BMC adapter.
- 
 
 
-\ **consport**\ 
- 
+
+\ **consport**\
+
  The console port for OpenBMC.
- 
 
 
-\ **taggedvlan**\ 
- 
+
+\ **taggedvlan**\
+
  bmcsetup script will configure the network interface of the BMC to be tagged to the VLAN specified.
- 
 
 
-\ **username**\ 
- 
+
+\ **username**\
+
  The BMC userid.
- 
 
 
-\ **password**\ 
- 
+
+\ **password**\
+
  The BMC password.
- 
 
 
-\ **comments**\ 
- 
+
+\ **comments**\
+
  Any user-written notes.
- 
 
 
-\ **disable**\ 
- 
+
+\ **disable**\
+
  Set to 'yes' or '1' to comment out this row.
- 
+
 
 
 
@@ -90,5 +90,5 @@ SEE ALSO
 ********
 
 
-\ **nodels(1)**\ , \ **chtab(8)**\ , \ **tabdump(8)**\ , \ **tabedit(8)**\ 
+\ **nodels(1)**\ , \ **chtab(8)**\ , \ **tabdump(8)**\ , \ **tabedit(8)**\
 
