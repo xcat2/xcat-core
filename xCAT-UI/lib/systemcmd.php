@@ -24,7 +24,7 @@ if (isset($_GET["cmd"])) {
     if (isset($_GET["msg"])) {
         $msg = $_GET["msg"];
     }
-    
+
     if ($cmd == "ostype") {
         $ret = strtolower(PHP_OS);
     } else {
