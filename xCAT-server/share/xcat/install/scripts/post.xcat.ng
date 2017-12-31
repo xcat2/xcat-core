@@ -324,7 +324,7 @@ case "$XCATDEBUGMODE" in
     ;;
 esac
 
-ln -s /etc/systemd/system/xcatpostinit1.service /etc/systemd/system/multi-user.target.wants/xcatpostinit1.service 
+ln -s /etc/systemd/system/xcatpostinit1.service /etc/systemd/system/multi-user.target.wants/xcatpostinit1.service
 
 case "$XCATDEBUGMODE" in
 "1"|"2")
@@ -371,7 +371,7 @@ else
     esac
 fi
 
-# Create the dskls post 
+# Create the dskls post
 cat >/opt/xcat/xcatdsklspost <<'EOF'
 #INCLUDE:#TABLE:site:key=installdir:value#/postscripts/xcatdsklspost#
 EOF
