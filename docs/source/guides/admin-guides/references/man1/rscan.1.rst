@@ -19,11 +19,11 @@ SYNOPSIS
 ********
 
 
-\ **rscan [-h|-**\ **-help]**\ 
+\ **rscan [-h|-**\ **-help]**\
 
-\ **rscan [-v|-**\ **-version]**\ 
+\ **rscan [-v|-**\ **-version]**\
 
-\ **rscan [-V|-**\ **-verbose]**\  \ *noderange*\   \ **[-u][-w][-x|-z]**\ 
+\ **rscan [-V|-**\ **-verbose]**\  \ *noderange*\   \ **[-u][-w][-x|-z]**\
 
 
 ***********
@@ -101,7 +101,7 @@ Output is similar to:
 .. code-block:: perl
 
    type    name                       id   type-model  serial-number  address
- 
+
    hmc     hmc01                           7310-C05    10F426A        hmc01
    fsp     Server-9117-MMA-SN10F6F3D       9117-MMA    10F6F3D        3.3.3.197
    lpar    lpar3                       4   9117-MMA    10F6F3D
@@ -136,7 +136,7 @@ Output is similar to:
     <groups>fsp,all</groups>
     <id>10</id>
   </Node>
- 
+
   <Node>
     <cons>ivm</cons>
     <profile>lpar01</profile>
@@ -150,7 +150,7 @@ Output is similar to:
     <groups>lpar,all</groups>
     <id>1</id>
   <Node>
- 
+
   </Node>
     <cons>ivm</cons>
     <profile>lpar02</profile>
@@ -191,7 +191,7 @@ Output is similar to:
      groups=bpa,all
      mgt=hmc
      cons=
- 
+
    Server-9119-590-SN02C5F9E:
      objtype=node
      type=fsp
@@ -204,7 +204,7 @@ Output is similar to:
      groups=fsp,all
      mgt=hmc
      cons=
- 
+
    lpar01:
      objtype=node
      nodetype=lpar,osi
@@ -217,7 +217,7 @@ Output is similar to:
      groups=lpar,all
      mgt=hmc
      cons=hmc
- 
+
    lpar02:
      objtype=node
      nodetype=lpar,osi
