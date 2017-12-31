@@ -86,13 +86,13 @@ until (($username or $password) and $bmcip ) {
 my $isintel = 0;
 my $sleepint;
 my $rc;
- 
+
 my $sshport = 2200;
 if ($ENV{SSHCONSOLEPORT}) {
     $sshport= $ENV{SSHCONSOLEPORT};
 }
 
-#check if sshport is up 
+#check if sshport is up
 my $sock = IO::Socket::INET->new(
     PeerAddr => $bmcip,
     PeerPort => $sshport,
@@ -116,7 +116,7 @@ while (!defined($sock)) {
 $sock->close();
 
 
-# To automatically connect to the console without the need to send over the ssh keys, 
+# To automatically connect to the console without the need to send over the ssh keys,
 # ensure sshpass is installed on the Management and/or Service Nodes.
 print "Unable to open console.  If BMC pings, ensure sshpass is installed or ssh keys have been configured on the BMC.\n";
 if (-x '/usr/bin/sshpass') {
