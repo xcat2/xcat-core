@@ -587,7 +587,7 @@ sub addnode
         );
         return;
     }
-    
+
     my @macs = split(/\|/, $ent->{mac});
     my $mace;
     my $deflstaments = $lstatements;
