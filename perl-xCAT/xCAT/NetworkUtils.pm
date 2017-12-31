@@ -47,15 +47,15 @@ This program module file, is a set of network utilities used by xCAT commands.
 
 		Gets the network domain for a list of nodes
 
-		The domain value comes from the network definition 
+		The domain value comes from the network definition
 		associated with the node ip address.
 
-		If the network domain is not set then the default is to 
+		If the network domain is not set then the default is to
 		use the site.domain value
 
     Arguments:
        list of nodes
-    Returns: 
+    Returns:
 		error - undef
 		success - hash ref of domains for each node
     Globals:
@@ -99,18 +99,18 @@ sub getNodeDomains()
 
 #-------------------------------------------------------------------------------
 
-=head3  gethostnameandip 
+=head3  gethostnameandip
     Works for both IPv4 and IPv6.
-    Takes either a host name or an IP address string 
-    and performs a lookup on that name, 
+    Takes either a host name or an IP address string
+    and performs a lookup on that name,
     returns an array with two elements: the hostname, the ip address
-    if the host name or ip address can not be resolved, 
+    if the host name or ip address can not be resolved,
     the corresponding element in the array will be undef
     Arguments:
        hostname or ip address
     Returns: the hostname and the ip address
     Globals:
-        
+
     Error:
         none
     Example:
@@ -139,13 +139,13 @@ sub gethostnameandip()
 =head3  gethostname
     Works for both IPv4 and IPv6.
     Takes an IP address string and performs a lookup on that name,
-    returns the hostname of the ip address 
+    returns the hostname of the ip address
     if the ip address can not be resolved, returns undef
     Arguments:
        ip address
     Returns: the hostname
     Globals:
-        cache: %::iphosthash 
+        cache: %::iphosthash
     Error:
         none
     Example:
@@ -237,7 +237,7 @@ sub gethostname()
     Error:
         none
     Example:
-        my $ip = xCAT::NetworkUtils->getipaddr($hostname);                  
+        my $ip = xCAT::NetworkUtils->getipaddr($hostname);
     Comments:
         none
 =cut
@@ -317,7 +317,7 @@ sub getipaddr
             @addrinfo=Socket6::getaddrinfo($iporhost, 0, $reqfamily, SOCK_STREAM, 6,Socket6::AI_NUMERICHOST());
         }else{
             @addrinfo=Socket6::getaddrinfo($iporhost, 0, $reqfamily, SOCK_STREAM, 6);
-        }  
+        }
         my ($family, $socket, $protocol, $ip, $name) = splice(@addrinfo, 0, 5);
         unless($reqfamily == AF_INET6){
             if($isip){
@@ -369,9 +369,9 @@ sub getipaddr
         {
             return undef;
         }
-        
+
         my $myip=inet_ntoa($packed_ip);
-        
+
         unless($isip) {
             $::hostiphash{$iporhost}{hostip}=$myip;
         }
@@ -409,7 +409,7 @@ sub clearcache
 #-------------------------------------------------------------------------------
 
 =head3  linklocaladdr
-    Only for IPv6.               
+    Only for IPv6.
     Takes a mac address, calculate the IPv6 link local address
     Arguments:
        mac address
@@ -419,7 +419,7 @@ sub clearcache
     Error:
         none
     Example:
-        my $linklocaladdr = xCAT::NetworkUtils->linklocaladdr($mac);                   
+        my $linklocaladdr = xCAT::NetworkUtils->linklocaladdr($mac);
     Comments:
         none
 =cut
@@ -474,7 +474,7 @@ sub linklocaladdr {
     chcek if the ip address is in the subnet
     Arguments:
        ip address, netmask, subnet
-    Returns: 
+    Returns:
        1 - if the ip address is in the subnet
        0 - if the ip address is NOT in the subnet
     Globals:
@@ -510,7 +510,7 @@ sub ishostinsubnet{
         } elsif($mask =~ /^0x/i ) {
             $maskType=2;
         }
-    } 
+    }
 
     my $ret=xCAT::NetworkUtils::isInSameSubnet( $ip, $subnet, $mask, $maskType);
     if(defined $ret and $ret==1){
@@ -630,7 +630,7 @@ sub setup_ipv6_forwarding
     Arguments:
        prefix length
     Returns:
-       netmask - netmask like ffff:ffff:ffff:ffff:0000:0000:0000:0000 
+       netmask - netmask like ffff:ffff:ffff:ffff:0000:0000:0000:0000
        0 - if the prefix length is not correct
     Globals:
     Error:
@@ -659,7 +659,7 @@ sub prefixtomask {
 
 #-------------------------------------------------------------------------------
 
-=head3  my_ip_in_subnet 
+=head3  my_ip_in_subnet
     Get the facing ip for some specific network
 
     Arguments:
@@ -696,8 +696,8 @@ sub my_ip_in_subnet
 
 #-------------------------------------------------------------------------------
 
-=head3  ip_forwarding_enabled 
-    Check if the ip_forward enabled on the system 
+=head3  ip_forwarding_enabled
+    Check if the ip_forward enabled on the system
 
     Arguments:
     Returns:
@@ -958,23 +958,23 @@ sub my_hexnets
     Description:
         Get the hostname of an IP addresses. First from hosts table, and then try system resultion.
         If there is a shortname, it will be returned. Otherwise it will return long name. If the IP cannot be resolved, return undef;
-        
+
     Arguments:
         $ip: the IP to get;
-        
-    Returns:  
+
+    Returns:
         Return: the hostname.
 For an example
-        
+
     Globals:
         none
-        
+
     Error:
         none
-        
+
     Example:
         xCAT::NetworkUtils::get_host_from_ip('192.168.200.1')
-    
+
     Comments:
 =cut
 
@@ -989,23 +989,23 @@ sub get_host_from_ip
 =head3 isPingable
     Description:
         Check if an IP address can be pinged
-        
+
     Arguments:
         $ip: the IP to ping;
-        
-    Returns:  
+
+    Returns:
         Return: 1 indicates yes; 0 indicates no.
 For an example
-        
+
     Globals:
         none
-        
+
     Error:
         none
-        
+
     Example:
         xCAT::NetworkUtils::isPingable('192.168.200.1')
-    
+
     Comments:
         none
 =cut
@@ -1044,25 +1044,25 @@ sub isPingable
 =head3 my_nets
     Description:
         Return a hash ref that contains all subnet and netmask on the mn (or sn). This subroutine can be invoked on both Linux and AIX.
-        
+
     Arguments:
         none.
-        
-    Returns:  
+
+    Returns:
         Return a hash ref. Each entry will be: <subnet/mask>=><existing ip>;
         For an example:
             '192.168.200.0/255.255.255.0' => '192.168.200.246';
 For an example
-        
+
     Globals:
         none
-        
+
     Error:
         none
-        
+
     Example:
         xCAT::NetworkUtils::my_nets().
-    
+
     Comments:
         none
 =cut
@@ -1208,7 +1208,7 @@ sub my_if_netmap
          Returns my ip address in the same network with the specified node
          Linux only
     Arguments:
-        nodename 
+        nodename
     Returns:
 	result and error message or my ip address
 	1. If node can not be resolved, the return info will be like this:
@@ -1216,7 +1216,7 @@ sub my_if_netmap
 	2. If no IP found that matching the giving node, the return info will be:
 	[2, "The IP address of node $node is in an undefined subnet"].
 	3. If IP found:
-	[0,ip1,ip2,...] 
+	[0,ip1,ip2,...]
     Globals:
         none
     Error:
@@ -1276,10 +1276,10 @@ sub my_ip_facing
 #-------------------------------------------------------------------------------
 
 =head3   my_ip_facing_aix
-         Returns my ip address  
+         Returns my ip address
          AIX only
     Arguments:
-        nodename 
+        nodename
     Returns:
     Globals:
         none
@@ -1336,7 +1336,7 @@ sub my_ip_facing_aix
 =head3 formatNetmask
     Description:
         Transform netmask to one of 3 formats (255.255.255.0, 24, 0xffffff00).
-        
+
     Arguments:
         $netmask: the original netmask
         $origType: the original netmask type. The valid value can be 0, 1, 2:
@@ -1344,19 +1344,19 @@ sub my_ip_facing_aix
             Type 1: 24
             Type 2: 0xffffff00
         $newType: the new netmask type, valid values can be 0,1,2, as above.
-        
-    Returns:  
+
+    Returns:
         Return undef if any error. Otherwise return the netmask in new format.
-        
+
     Globals:
         none
-        
+
     Error:
         none
-        
+
     Example:
         xCAT::NetworkUtils::formatNetmask( '24', 1, 0); #return '255.255.255.0'.
-    
+
     Comments:
         none
 =cut
@@ -1407,7 +1407,7 @@ sub formatNetmask
 =head3 isInSameSubnet
     Description:
         Check if 2 given IP addresses are in same subnet
-        
+
     Arguments:
         $ip1: the first IP
         $ip2: the second IP
@@ -1416,20 +1416,20 @@ sub formatNetmask
             Type 1: 24
             Type 2: 0xffffff00
         $masktype: the netmask type, 3 possible values: 0,1,2, as indicated above
-        
-    Returns:  
+
+    Returns:
         1: they are in same subnet
         undef: not in same subnet
-        
+
     Globals:
         none
-        
+
     Error:
         none
-        
+
     Example:
         xCAT::NetworkUtils::isInSameSubnet( '192.168.10.1', '192.168.10.2', '255.255.255.0', 0);
-    
+
     Comments:
         none
 =cut
@@ -1649,8 +1649,8 @@ sub nodeonmynet
 
 =head3   getNodeIPaddress
     Arguments:
-       Node name  only one at a time 
-    Returns: ip address(s) 
+       Node name  only one at a time
+    Returns: ip address(s)
     Globals:
         none
     Error:
@@ -1694,7 +1694,7 @@ sub getNodeIPaddress
 
 =head3   checkNodeIPaddress
     Arguments:
-       Node name  only one at a time 
+       Node name  only one at a time
     Returns: a hash object contains IP or Error
     Globals:
         none
@@ -1939,7 +1939,7 @@ sub gethost_ips
 
 #-------------------------------------------------------------------------------
 
-=head3 get_subnet_aix 
+=head3 get_subnet_aix
     Description:
         To get present subnet configuration by parsing the output of 'netstat'. Only designed for AIX.
     Arguments:
@@ -1948,7 +1948,7 @@ sub gethost_ips
         @aix_nrn : An array with entries in format "net:nic:netmask:flag". Following is an example entry:
             9.114.47.224:en0:27:U
     Globals:
-        none 
+        none
     Error:
         none
     Example:
@@ -1998,7 +1998,7 @@ sub get_subnet_aix
 =head3 determinehostname  and ip address(s)
 
   Used on the service node to figure out what hostname and ip address(s)
-  are valid names and addresses 
+  are valid names and addresses
   Input: None
   Output: ipaddress(s),nodename
 =cut
@@ -2044,7 +2044,7 @@ sub determinehostname
 
 #-----------------------------------------------------------------------------
 
-=head3 toIP 
+=head3 toIP
 
  IPv4 function to convert hostname to IP address
 
@@ -2171,9 +2171,9 @@ sub isIpaddr
 
 #-------------------------------------------------------------------------------
 
-=head3  getNodeNameservers 
+=head3  getNodeNameservers
     Description:
-        Get nameservers of  specified nodes. 
+        Get nameservers of  specified nodes.
         The priority: noderes.nameservers > networks.nameservers > site.nameservers
     Arguments:
         node: node name list
@@ -2229,9 +2229,9 @@ sub getNodeNameservers {
 
 #-------------------------------------------------------------------------------
 
-=head3   getNodeNetworkCfg 
+=head3   getNodeNetworkCfg
     Description:
-        Get node network configuration, including "IP, hostname(the nodename),and netmask" by this node's name. 
+        Get node network configuration, including "IP, hostname(the nodename),and netmask" by this node's name.
 
     Arguments:
         node: the nodename
@@ -2343,14 +2343,14 @@ sub getNodesNetworkCfg
 
 #-------------------------------------------------------------------------------
 
-=head3   get_hdwr_ip 
+=head3   get_hdwr_ip
     Description:
-        Get hardware(CEC, BPA) IP from the hosts table, and then /etc/hosts. 
+        Get hardware(CEC, BPA) IP from the hosts table, and then /etc/hosts.
 
     Arguments:
         node: the nodename(cec, or bpa)
     Returns:
-        Return the node IP 
+        Return the node IP
         -1  - Failed to get the IP.
     Globals:
         none
@@ -2396,7 +2396,7 @@ sub get_hdwr_ip
     Arguments:
        nodes-- an array of nodes.
     Returns:
-       a hash that has the node status. The format is: 
+       a hash that has the node status. The format is:
           {alive=>[node1, node3,...], unreachable=>[node4, node2...]}
 =cut
 
@@ -2704,25 +2704,25 @@ sub get_all_nicips {
             ksdevice - Specify network device for Anaconda. For rh6 and earlier. Format: 'ksdevice={$mac|$nicname}'
             BOOTIF - Specify network device for Anaconda. The boot device which set by pxe. xCAT also set it if the bootload is not pxe. Format 'BOOTIF={$mac}'
             ifname - Specify a interfacename<->mac pair, it will set the interfacename to the interface which has the <mac>. Format 'ifname=$ifname:$mac'
-               # This will only be generated when linuximage.nodebootif is set. 
+               # This will only be generated when linuximage.nodebootif is set.
             bootdev - Specify the boot device. Mostly it's used with <ip> parameter and when there are multiple <ip> params. Format 'bootdev={$mac|$ifname}
             ip - Specify the network configuration for an interface. Format: 'ip=dhcp', 'ip=$ifname:dhcp'
-           
+
             netdevice - Specify network device for Linuxrc (Suse bootloader). Format: 'netdevice={$mac|$nicname}'
-           
+
             netdev - Specify the interfacename which is used by xCAT diskless boot script to select the network interface. Format: 'netdev=$nicname'
 
         Reference:
             Redhat anaconda doc: https://github.com/rhinstaller/anaconda/blob/master/docs/boot-options.txt
             Suse Linuxrc do: https://en.opensuse.org/SDB:Linuxrc
-            
+
     Arguments:
         $installnic   <- node.installnic
         $primarynic <- node.primarynic
         $macmac    <- node.mac
         $nodebootif <- linuximage.nodebootif
-        
-    Returns: 
+
+    Returns:
         $net_params - The key will be the parameter name, the value for the key will be the parameter value.
         Valid Parameter Name:
             ksdevice
