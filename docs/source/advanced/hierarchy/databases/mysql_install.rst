@@ -15,7 +15,7 @@ The MySQL database is supported by xCAT since xCAT 2.1.  MariaDB is a fork of th
 | xCAT 2.10+ | Yes        | Yes        |
 +------------+------------+------------+
 
-MySQL/MariaDB packages are shipped as part of most Linux Distributions. 
+MySQL/MariaDB packages are shipped as part of most Linux Distributions.
 
 
 Red Hat Enterprise Linux
@@ -55,12 +55,12 @@ Suse Linux Enterprise Server
        libqt4-sql-mysql-*
        libmysqlclient18-*
        perl-DBD-mysql-*
-       
 
-Debian/Ubuntu 
+
+Debian/Ubuntu
 -------------
 
-* MySQL - Using ``apt-get``, ensure that the following packages are installed on the management node: :: 
+* MySQL - Using ``apt-get``, ensure that the following packages are installed on the management node: ::
 
         mysql-server
         mysql-common
