@@ -13,7 +13,7 @@ For very large clusters, xCAT has the ability to distribute the management opera
 * **[Linux]:**
         * Stateful or Stateless: 500 nodes
         * Statelite: 250 nodes
-* **[AIX]:** 
+* **[AIX]:**
         150 nodes
 
 These numbers can be higher (approximately double) if you are willing to "stage" the more intensive operations, like node deployment.
@@ -60,4 +60,4 @@ If you still have reasons to pursue HA service nodes:
 
 *   For **[AIX]** , see [TODO XCAT_HASN_with_GPFS]
 *   For **[Linux]** , a couple prototype clusters have been set up in which the NFS service on the SNs is provided by GPFS CNFS (Clustered NFS). A howto is being written to describe the setup as an example. Stay tuned.
- 
+
