@@ -363,8 +363,8 @@ sub process_request {
     #delete useless rootimg/tmp/dracut.* files
     #fix copy many dracut.* files cost too much time in liteimg
     $verbose && $callback->({ info => ["removing \"$rootimg_dir/tmp/dracut.*\""] });
-    unlink glob "$rootimg_dir/tmp/dracut.*"; 
-        
+    unlink glob "$rootimg_dir/tmp/dracut.*";
+
     # recovery the files in litefile.save if necessary
     foreach my $line (keys %hashSaved) {
         my @oldentry = split(/\s+/, $line);
@@ -765,7 +765,7 @@ sub parseLiteFiles {
 
 
 =head3
-    recoverFiles 
+    recoverFiles
 =cut
 
 sub recoverFiles {
