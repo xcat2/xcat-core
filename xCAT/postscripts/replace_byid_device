@@ -2,7 +2,7 @@
 
 #Only used by sysclone
 
-#if the /etc/systemimager/byid_real_map.conf exist, 
+#if the /etc/systemimager/byid_real_map.conf exist,
 #the device name used in fstab and grub are in "by-id" style
 #use the by-id name on target node to replace the name on the goden client
 
@@ -17,7 +17,7 @@ do
     str_real="${str_line##*:}"
     str_real="${str_line##*/}"
 #    str_dev_prefix=`basename $str_old_dev | awk -F'-' '{print $1}'`
-    
+
     #find out the new by-id name
     str_new_dev=`ls -l --time-style=locale /dev/disk/by-id/ | grep -E "$str_real\$" | awk '{print $9}'|head -n 1`
     if [ -z "$str_new_dev" ];then
