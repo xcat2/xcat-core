@@ -10,7 +10,7 @@ sub runcmd {
     my $cmd = shift;
     `$cmd >> $log 2>&1`;
     if ($?) {
-        
+
         exit 1;
     }
 }
@@ -21,7 +21,7 @@ my $fsptimeout_value=100;
 my $installdir_value="installdirtest";
 my $ipmimaxp_value=6400;
 my $ipmiretries_value=300;
-my $ipmitimeout_value=200;    
+my $ipmitimeout_value=200;
 my $consoleondemand_value="notest";
 my $master_value="mastertest";
 my $forwarders_value="forwarderstest";
@@ -33,11 +33,11 @@ my $ppctimeout_value=100;
 my $powerinterval_value=100;
 my $syspowerinterval_value=100;
 my $sharedtftp_value=100;
-my $SNsyncfiledir_value="syncdirtest";       
+my $SNsyncfiledir_value="syncdirtest";
 my $nodesyncfiledir_value="nodesyncdirtest";
-my $tftpdir_value="tftpdirtest";     
+my $tftpdir_value="tftpdirtest";
 my $xcatdport_value="xcatporttest";
-my $xcatiport_value="xcatiporttest";     
+my $xcatiport_value="xcatiporttest";
 my $xcatconfdir_value="confdirtest";
 my $timezone_value="test";
 my $useNmapfromMN_value="notest";
