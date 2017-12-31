@@ -15,20 +15,20 @@ prsync - parallel rsync
 
 
 ****************
-\ **Synopsis**\ 
+\ **Synopsis**\
 ****************
 
 
-\ **prsync**\  \ *filename*\  [\ *filename*\  \ *...*\ ] \ *noderange:destinationdirectory*\ 
+\ **prsync**\  \ *filename*\  [\ *filename*\  \ *...*\ ] \ *noderange:destinationdirectory*\
 
 \ **prsync**\   [\ **-o**\  \ *rsyncopts*\ ] [\ **-f**\  \ *fanout*\ ] [\ *filename*\  \ *filename*\  \ *...*\ ] [\ *directory*\  \ *directory*\  \ *...*\ ]
-\ *noderange:destinationdirectory*\ 
+\ *noderange:destinationdirectory*\
 
 \ **prsync**\  {\ **-h | -**\ **-help | -v | -**\ **-version**\ }
 
 
 *******************
-\ **Description**\ 
+\ **Description**\
 *******************
 
 
@@ -40,91 +40,91 @@ Note:  this command does not support the xcatd client/server communication and t
 
 
 ***************
-\ **Options**\ 
+\ **Options**\
 ***************
 
 
 
-\ **-o**\  \ *rsyncopts*\ 
- 
+\ **-o**\  \ *rsyncopts*\
+
  rsync options.  See \ **rsync(1)**\ .
- 
 
 
-\ **-f**\  \ *fanout*\ 
- 
+
+\ **-f**\  \ *fanout*\
+
  Specifies a fanout value for the maximum number of concurrently executing remote shell processes.
- 
 
 
-\ *filename*\ 
- 
+
+\ *filename*\
+
  A space delimited list of files to rsync.
- 
 
 
-\ *directory*\ 
- 
+
+\ *directory*\
+
  A space delimited list of directories to rsync.
- 
 
 
-\ *noderange:destination*\ 
- 
+
+\ *noderange:destination*\
+
  A noderange(3)|noderange.3 and destination directory.  The : is required.
- 
 
 
-\ **-h | -**\ **-help**\ 
- 
+
+\ **-h | -**\ **-help**\
+
  Print help.
- 
 
 
-\ **-v | -**\ **-version**\ 
- 
+
+\ **-v | -**\ **-version**\
+
  Print version.
- 
 
 
 
-\ **XCATPSHFANOUT**\ 
- 
+
+\ **XCATPSHFANOUT**\
+
  Specifies  the fanout value. This variable is overridden by
  the \ **-f**\  flag.  Default is 64.
- 
+
 
 
 
 ****************
-\ **Examples**\ 
+\ **Examples**\
 ****************
 
 
 
 1.
- 
- 
+
+
  .. code-block:: perl
- 
+
    cd /install; prsync -o "crz" post stage:/install
- 
- 
+
+
 
 
 2.
- 
- 
+
+
  .. code-block:: perl
- 
+
    prsync passwd group rack01:/etc
- 
- 
+
+
 
 
 
 ************************
-\ **See**\  \ **Also**\ 
+\ **See**\  \ **Also**\
 ************************
 
 
