@@ -4657,7 +4657,7 @@ sub injectMNKey {
     print $fh encode_json($md_json);
     close $fh;
 
-    # Replace the meta_data.json file in original config drive with the modified one 
+    # Replace the meta_data.json file in original config drive with the modified one
     system( "find $cfgpath/openstack -name meta_data.json -print | xargs -i cp  $cfgpath/meta_data.json {}");
     `rm -f $cfgpath/meta_data.json`;
 
