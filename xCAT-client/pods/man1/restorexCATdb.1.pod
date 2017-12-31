@@ -31,10 +31,10 @@ B<-V|--verbose>   Verbose.
 
 B<-a>             All,without this flag the eventlog and auditlog will be skipped. These tables are skipped by default because restoring will generate new indexes
 
-B<-b>             Restore from the binary image. 
- 
-B<-p|--path>      Path to the directory containing the database restore files. If restoring from the binary image (-b) and using postgeSQL, then this is the complete path to the restore file that was created with dumpxCATdb -b. 
- 
+B<-b>             Restore from the binary image.
+
+B<-p|--path>      Path to the directory containing the database restore files. If restoring from the binary image (-b) and using postgeSQL, then this is the complete path to the restore file that was created with dumpxCATdb -b.
+
 B<-t|--timestamp> Use with the -b flag to designate the timestamp of the binary image to use to restore for DB2.
 
 =head1 RETURN VALUE
