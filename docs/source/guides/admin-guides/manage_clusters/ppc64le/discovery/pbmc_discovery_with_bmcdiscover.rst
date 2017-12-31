@@ -3,7 +3,7 @@ Discover server and define
 
 After environment is ready, and the server is powered, we can start server discovery process. The first thing to do is discovering the FSP/BMC of the server. It is automatically powered on when the physical server is powered.
 
-Use the :doc:`bmcdiscover </guides/admin-guides/references/man1/bmcdiscover.1>` command to discover the BMCs responding over an IP range and write the output into the xCAT database.  This discovered BMC node is used to control the physical server during hardware discovery and will be deleted after the correct server node object is matched to a pre-defined node.  You **must** use the ``-w`` option to write the output into the xCAT database.  
+Use the :doc:`bmcdiscover </guides/admin-guides/references/man1/bmcdiscover.1>` command to discover the BMCs responding over an IP range and write the output into the xCAT database.  This discovered BMC node is used to control the physical server during hardware discovery and will be deleted after the correct server node object is matched to a pre-defined node.  You **must** use the ``-w`` option to write the output into the xCAT database.
 
 To discover the BMC with an IP address range of 50.0.100.1-100: ::
 
