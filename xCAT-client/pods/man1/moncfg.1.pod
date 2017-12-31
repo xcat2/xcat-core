@@ -15,7 +15,7 @@ B<moncfg> I<name> I<[noderange]> B<[-r|--remote]>
 
 =head1 DESCRIPTION
 
-This command is used to configure a 3rd party monitoring software to monitor the xCAT cluster. For example, it modifies the configuration file for the monitoring software so that the nodes can be included in the monitoring domain. The operation is performed on the management node and the service nodes of the given nodes. The operation will also be performed on the nodes if the I<-r> option is specified, though the configuration of the nodes is usually performed during the node deployment stage. 
+This command is used to configure a 3rd party monitoring software to monitor the xCAT cluster. For example, it modifies the configuration file for the monitoring software so that the nodes can be included in the monitoring domain. The operation is performed on the management node and the service nodes of the given nodes. The operation will also be performed on the nodes if the I<-r> option is specified, though the configuration of the nodes is usually performed during the node deployment stage.
 
 
 =head1 Parameters
