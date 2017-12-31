@@ -38,22 +38,22 @@ OPTIONS
 
 
 
-\ **-a | -**\ **-all**\ 
- 
+\ **-a | -**\ **-all**\
+
  If specified, try to delete all the OS Distros.
- 
 
 
-\ **-f | -**\ **-force**\ 
- 
+
+\ **-f | -**\ **-force**\
+
  Remove referenced OS Distros, never prompt.
- 
 
 
-\ **-h | -**\ **-help**\ 
- 
+
+\ **-h | -**\ **-help**\
+
  Show info of rmosdistro usage.
- 
+
 
 
 
@@ -62,7 +62,7 @@ RETURN VALUE
 ************
 
 
-Zero:                    
+Zero:
   The command completed successfully.
 
 Nonzero:
@@ -76,32 +76,32 @@ EXAMPLES
 
 
 1. To remove OS Distro "rhels6.2-ppc64" and "sles11.2-ppc64":
- 
- 
+
+
  .. code-block:: perl
- 
+
    rmosdistro rhels6.2-ppc64 sles11.2-ppc64
- 
- 
+
+
 
 
 2. To remove OS Distro "rhels6.2-ppc64", regardless of whether is referenced by any osimage:
- 
- 
+
+
  .. code-block:: perl
- 
+
    rmosdistro -f rhels6.2-ppc64
- 
- 
+
+
 
 
 3. To remove all OS Distros:
- 
- 
+
+
  .. code-block:: perl
- 
+
    rmosdistro -a
- 
- 
+
+
 
 
