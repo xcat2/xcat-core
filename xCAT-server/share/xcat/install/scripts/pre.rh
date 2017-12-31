@@ -206,9 +206,9 @@ BOOTFSTYPE=ext3
 EFIFSTYPE=vfat
 
 if [ `uname -m` = "ppc64" ]; then
-	echo 'part None --fstype "PPC PReP Boot" --ondisk '$instdisk' --size 8' >> /tmp/partitionfile 
+	echo 'part None --fstype "PPC PReP Boot" --ondisk '$instdisk' --size 8' >> /tmp/partitionfile
 fi
-if [ -d /sys/firmware/efi ]; then 
+if [ -d /sys/firmware/efi ]; then
     echo 'bootloader --driveorder='$instdisk >> /tmp/partitionfile
     echo 'part /boot/efi --size 50 --ondisk '$instdisk' --fstype '$EFIFSTYPE >> /tmp/partitionfile
 else
