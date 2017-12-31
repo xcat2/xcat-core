@@ -17,7 +17,7 @@ class SensorInterface(object):
         :param task: a Task instance containing the nodes to act on.
         :return: sensor info list
         """
-        return task.run('get_sensor_info', sensor_type) 
+        return task.run('get_sensor_info', sensor_type)
 
     def get_beacon_info(self, task, display_type='full'):
         """Return the beacon info of the task's nodes.
