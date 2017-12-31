@@ -70,7 +70,7 @@ Nothing to do.
 PostgreSQL
 ^^^^^^^^^^
 
-- Edit ``/etc/xcat/cfgloc`` file... 
+- Edit ``/etc/xcat/cfgloc`` file...
 
    Replace ``Pg:dbname=xcatdb;host=<old_MN_ip>|xcatadm|xcat20`` with ``Pg:dbname=xcatdb;host=<new_MN_ip>|xcatadm|xcat20``.
 
@@ -81,7 +81,7 @@ PostgreSQL
 MySQL
 ^^^^^
 
-- Edit ``/etc/xcat/cfglooc``... 
+- Edit ``/etc/xcat/cfglooc``...
     Replace ``mysql:dbname=xcatdb;host=<old_MN_ip>|xcatadmin|xcat20`` with ``mysql:dbname=xcatdb;host=<new_MN_ip>|xcatadmin|xcat20``
 
 Start the database
@@ -151,7 +151,7 @@ For example, the old IP address was "10.6.0.1"
 
     chdef -t node cn1-cn4 conserver=<new_ip_address>
 
-* Repeat the same process for the other attributes containing the old IP address. 
+* Repeat the same process for the other attributes containing the old IP address.
 
 Change networks table
 ^^^^^^^^^^^^^^^^^^^^^
@@ -178,7 +178,7 @@ If the old address still exists in the ``*.csv`` file, you can edit this file, t
 Generate SSL credentials(optional)
 ----------------------------------
 
-Use the following command to generate new SSL credentials: ``xcatconfig -c``. 
+Use the following command to generate new SSL credentials: ``xcatconfig -c``.
 
 Then update the following in xCAT:
 
