@@ -1,4 +1,4 @@
-# Reads the table input for the noderange and returns list of attributes 
+# Reads the table input for the noderange and returns list of attributes
 # requested
 <xcatrequest>
 <clienttype>PCM</clienttype>
