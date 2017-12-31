@@ -29,7 +29,7 @@ xargs="xargs"
 modprobe="modprobe"
 
 #########################################################################
-# ifdown/ifup will not be executed in diskful provision postscripts stage 
+# ifdown/ifup will not be executed in diskful provision postscripts stage
 #########################################################################
 reboot_nic_bool=1
 if [ -z "$UPDATENODE" ] || [ $UPDATENODE -ne 1 ] ; then
