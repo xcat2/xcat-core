@@ -12,7 +12,7 @@ If need to backup xcat database, you can use :doc:`dumpxCATdb </guides/admin-gui
 
 **[Note]** Maybe you need to dump some environment data for problem report when you hit defect, you can use :doc:`xcatsnap </guides/admin-guides/references/man8/xcatsnap.8>` command like below. ::
 
-    xcatsnap -B -d <path_to_save_the_data> 
+    xcatsnap -B -d <path_to_save_the_data>
 
 
 Restore User Data
