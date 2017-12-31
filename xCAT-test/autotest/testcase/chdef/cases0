@@ -12,12 +12,12 @@ cmd:mkdef -t node -o testnode groups=all
 check:rc==0
 cmd:chdef -t node -o testnode groups=aix
 check:rc==0
-cmd:lsdef -t node -l testnode 
+cmd:lsdef -t node -l testnode
 check:rc==0
 check:output=~groups=aix
 cmd:chdef testnode groups=linux
 check:rc==0
-cmd:lsdef -t node -l testnode 
+cmd:lsdef -t node -l testnode
 check:rc==0
 check:output=~groups=linux
 cmd:chdef -t node -o testnode postscripts="syslog,remoteshell,syncfiles"
@@ -60,7 +60,7 @@ cmd:mkdef -t node -o testnode groups=all
 check:rc==0
 cmd:chdef -p -t node -o testnode groups=aix
 check:rc==0
-cmd:lsdef -t node -l testnode 
+cmd:lsdef -t node -l testnode
 check:output=~groups=all,aix
 cmd:rmdef -t node testnode
 end
@@ -72,7 +72,7 @@ cmd:mkdef -t node -o testnode groups=all,testgroup
 check:rc==0
 cmd:chdef -m -t node -o testnode groups=testgroup
 check:rc==0
-cmd:lsdef -t node -l testnode 
+cmd:lsdef -t node -l testnode
 check:output!~testgroup
 cmd:rmdef -t node testnode
 end
@@ -247,7 +247,7 @@ end
 
 
 start:chdef_template
-description:try to change a template, a new node is created according to chdef. 
+description:try to change a template, a new node is created according to chdef.
 label:mn_only,db
 cmd:result=`lsdef | grep  switch-template`; if [[ $result =~ "switch-template" ]]; then echo $result; noderm switch-template; fi
 cmd:chdef -t node -o switch-template groups=test
