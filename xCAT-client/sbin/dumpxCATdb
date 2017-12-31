@@ -19,11 +19,11 @@ use strict;
 
 #-----------------------------------------------------------------------------
 
-=head1  dumpxCATdb 
+=head1  dumpxCATdb
 
 
 
- dumpxCATdb  -p <directory to place database dump> 
+ dumpxCATdb  -p <directory to place database dump>
  See man page.
 
 =cut
@@ -135,7 +135,7 @@ exit $rc;
 #-----------------------------------------------------------------------------
 
 =head3 parse_args
-  
+
   Parses for  input
 
 =cut
@@ -197,8 +197,8 @@ sub parse_args
 
 #-----------------------------------------------------------------------------
 
-=head3 DB2_bindump 
-  
+=head3 DB2_bindump
+
     Uses the DB2 Database supplied backup utility to backup the database
 
 =cut
@@ -271,8 +271,8 @@ sub DB2_bindump
 
 #-----------------------------------------------------------------------------
 
-=head3 PG_bindump 
-  
+=head3 PG_bindump
+
     Uses the PostgreSQL Database supplied backup utility to backup the database
 
 =cut
