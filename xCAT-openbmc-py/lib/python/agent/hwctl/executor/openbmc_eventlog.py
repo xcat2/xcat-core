@@ -31,7 +31,7 @@ class OpenBMCEventlogTask(ParallelNodesCommand):
             # All records to display
             number_to_display = 0
 
-        obmc = openbmc.OpenBMCRest(name=node, nodeinfo=kw['nodeinfo'], messager=self.callback, debugmode=self.debugmode, verbose=self.verbose) 
+        obmc = openbmc.OpenBMCRest(name=node, nodeinfo=kw['nodeinfo'], messager=self.callback, debugmode=self.debugmode, verbose=self.verbose)
         eventlog_info = []
         try:
             obmc.login()
@@ -56,7 +56,7 @@ class OpenBMCEventlogTask(ParallelNodesCommand):
     def clear_all_ev_records(self, **kw):
 
         node = kw['node']
-        obmc = openbmc.OpenBMCRest(name=node, nodeinfo=kw['nodeinfo'], messager=self.callback, debugmode=self.debugmode, verbose=self.verbose) 
+        obmc = openbmc.OpenBMCRest(name=node, nodeinfo=kw['nodeinfo'], messager=self.callback, debugmode=self.debugmode, verbose=self.verbose)
         try:
             obmc.login()
             obmc.clear_all_eventlog_records()
