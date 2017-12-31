@@ -9,18 +9,18 @@ B<lsflexnode> [B<-h> | B<--help>]
 
 B<lsflexnode> [B<-v> | B<--version>]
 
-B<lsflexnode> I<noderange> 
+B<lsflexnode> I<noderange>
 
 
 =head1 DESCRIPTION
 
-IBM BladeCenter HX5 offers flexibility ideal that the blades can be combined together for scalability. 
+IBM BladeCenter HX5 offers flexibility ideal that the blades can be combined together for scalability.
 
 There are several concepts to support the HX5 multiple blades combination:
 
 =over 2
 
-B<Complex>: Multiple blades which combined by a scalability card is a complex. 
+B<Complex>: Multiple blades which combined by a scalability card is a complex.
 
 B<Partition>: A logic concept which containing part of the B<Blade slot node> in a complex. Each partition can map to a system to install Operating System. Each partition could have 1HX5, 1HX5+1MD or 2HX5+2MD. (MD is the Memory Drawer)
 
@@ -28,7 +28,7 @@ B<Blade slot node>: The physical blade which installed in the slot of a chassis.
 
 =back
 
-A B<Complex> will be created automatically when a multiple blades combination is installed. In this B<Complex>, every blade belongs to it is working as a B<Blade slot node>. 
+A B<Complex> will be created automatically when a multiple blades combination is installed. In this B<Complex>, every blade belongs to it is working as a B<Blade slot node>.
 
 A B<Partition> can be created base on the B<Complex>, each B<Partition> can have one or multiple B<Blade slot node>.
 
@@ -57,7 +57,7 @@ The meaning of attributes which displayed by the B<lsflexnode>. The word 'node' 
 
 =over 4
 
-=item B<Complex>  
+=item B<Complex>
 
 The unique numeric identifier for a complex installed in the chassis.
 
