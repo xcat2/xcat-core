@@ -8,7 +8,7 @@ cmd:genimage __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-statelite-compu
 check:rc==0
 cmd:ls -l /install/netboot/__GETNODEATTR($$CN,os)__/__GETNODEATTR($$CN,arch)__/compute/rootimg
 check:rc==0
-cmd:packimage -o __GETNODEATTR($$CN,os)__ -p compute -a __GETNODEATTR($$CN,arch)__ 
+cmd:packimage -o __GETNODEATTR($$CN,os)__ -p compute -a __GETNODEATTR($$CN,arch)__
 check:rc==0
 cmd:ls -l /install/netboot/__GETNODEATTR($$CN,os)__/__GETNODEATTR($$CN,arch)__/compute/rootimg.gz
 check:rc==0
