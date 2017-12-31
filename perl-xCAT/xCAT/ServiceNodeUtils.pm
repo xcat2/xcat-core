@@ -75,7 +75,7 @@ sub readSNInfo
 =head3 isServiceReq
 
 
-  Checks the service node table in the database to see 
+  Checks the service node table in the database to see
   if input Service should be setup on the
   input service node or Management Node (used by AAsn.pm)
 
@@ -84,7 +84,7 @@ sub readSNInfo
         hash of services to setup  for this service node
     Globals:
         $::RUNCMD_RC = 0; good
-        $::RUNCMD_RC = 1; error 
+        $::RUNCMD_RC = 1; error
     Error:
         none
     Example:
@@ -205,13 +205,13 @@ sub isServiceReq
 
 #-----------------------------------------------------------------------------
 
-=head3 getAllSN 
- 
-    Returns an array of all service nodes from service node table 
+=head3 getAllSN
+
+    Returns an array of all service nodes from service node table
 
     Arguments:
        ALL"  - will also return the management node in the array, if
-        if has been defined in the servicenode table 
+        if has been defined in the servicenode table
     Returns:
 		array of Service Nodes or empty array, if none
     Globals:
@@ -271,20 +271,20 @@ sub getAllSN
 
 #-----------------------------------------------------------------------------
 
-=head3 getSNandNodes 
- 
+=head3 getSNandNodes
+
     Returns an hash-array of all service nodes and the nodes they service
 
     Arguments:
-       none 
+       none
 #-----------------------------------------------------------------------------
 
-=head3 getSNandNodes 
- 
+=head3 getSNandNodes
+
     Returns an hash-array of all service nodes and the nodes they service
 
     Arguments:
-       none 
+       none
     Returns:
 	 Service Nodes and the nodes they service or empty , if none
     Globals:
@@ -322,24 +322,24 @@ sub getSNandNodes
 
 #-----------------------------------------------------------------------------
 
-=head3 getSNList 
- 
+=head3 getSNList
+
 	Reads the servicenode table. Will return all the enabled Service Nodes
 	that will setup the input Service ( e.g tftpserver,nameserver,etc)
 	If service is blank, then will return the list of all enabled Service
-	Nodes. 
+	Nodes.
 
     Arguments:
-       Servicename ( xcat,tftpserver,dhcpserver,conserver,etc) 
+       Servicename ( xcat,tftpserver,dhcpserver,conserver,etc)
        If no servicename, returns all Servicenodes
-       "ALL" argument means you also want the MN returned. It can be in the 
-       servicenode list.  If no "ALL", take out the MN if it is there. 
+       "ALL" argument means you also want the MN returned. It can be in the
+       servicenode list.  If no "ALL", take out the MN if it is there.
     Returns:
-	  Array of service node names 
+	  Array of service node names
     Globals:
         none
     Error:
-        1 - error  
+        1 - error
     Example:
          $sn= xCAT::ServiceNodeUtils->getSNList($servicename) { blah; }
          $sn= xCAT::ServiceNodeUtils->getSNList($servicename,"ALL") { blah; }
@@ -376,7 +376,7 @@ sub getSNList
     @servicenodes=xCAT::NodeRange::noderange(join(',',map {$_->{node}} @servicenodes));
     if($options eq "ALL"){
         return @servicenodes;
-    }    
+    }
 
     @servicenodes = $nodetab->getAllAttribsWhere("node in ("."\'".join("\',\'", @servicenodes)."\'".") and groups not like '%__mgmtnode%'",'node');
     return map {$_->{node}} @servicenodes;
@@ -397,7 +397,7 @@ sub getSNList_orig
     }
     my @nodes = $servicenodetab->getAllNodeAttribs([$service]);
     $servicenodetab->close;
-    
+
     foreach my $node (@nodes)
     {
         if (!defined($service) || ($service eq "")) # want all the service nodes
@@ -443,7 +443,7 @@ sub getSNList_orig
 =head3 get_ServiceNode
 
      Will get the Service node ( name or ipaddress) as known by the Management
-	 Node  or Node for the input nodename or ipadress of the node 
+	 Node  or Node for the input nodename or ipadress of the node
          which can be a Service Node.
          If the input node is a Service Node then it's Service node
          is always the Management Node.
@@ -711,7 +711,7 @@ sub get_ServiceNode
 	 as known by the Management
 	 Server or Node for the input nodename or ipadress of the node
 	 It will then format the output into a single servicenode key with values
-	 the list of nodes service by that service node.  This routine will 
+	 the list of nodes service by that service node.  This routine will
 	 break up pools of service nodes into individual node in the hash unlike
 	 get_ServiceNode which leaves the pool as the key.
 
@@ -729,7 +729,7 @@ sub get_ServiceNode
 		specific service like tftp
 
 
-	 output: A hash ref  of arrays, the key is a single service node 
+	 output: A hash ref  of arrays, the key is a single service node
 	          pointing to
 			 a list of nodes that are serviced by that service node
 	        'rra000-m'=>['blade01', 'testnode']
@@ -861,14 +861,14 @@ sub getAIXSNinterfaces
 
 #-----------------------------------------------------------------------------
 
-=head3  
- 
-    getSNandCPnodes - Take an array of nodes and returns 
-    an array of the service 
-    nodes and an array of the computenode . 
+=head3
+
+    getSNandCPnodes - Take an array of nodes and returns
+    an array of the service
+    nodes and an array of the computenode .
 
     Arguments:
-       none 
+       none
     Returns:
 		array of Service Nodes and/or array of compute nodesarray of compute nodes       empty array, if none
     Globals:
