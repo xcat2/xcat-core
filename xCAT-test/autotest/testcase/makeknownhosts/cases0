@@ -13,12 +13,12 @@ check:rc==0
 cmd:cat  ~/.ssh/known_hosts|grep $$CN
 check:rc==0
 check:output=~$$CN
-cmd:makeknownhosts $$CN -r 
+cmd:makeknownhosts $$CN -r
 end
 
 start:makeknownhosts_node_r
 description:remove known node in $ROOTHOME/.ssh
-cmd:makeknownhosts $$CN 
+cmd:makeknownhosts $$CN
 cmd:cat  ~/.ssh/known_hosts|grep $$CN
 check:output=~$$CN
 cmd:makeknownhosts $$CN -r
@@ -30,14 +30,14 @@ end
 
 start:makeknownhosts_node_d
 description:delete known node entry from $ROOTHOME/.ssh
-cmd:makeknownhosts $$CN 
+cmd:makeknownhosts $$CN
 cmd:cat ~/.ssh/known_hosts|grep $$CN
 check:output=~$$CN
 cmd:cat ~/.ssh/known_hosts|grep __GETNODEATTR($$CN,ip)__
 check:rc==0
 cmd:makeknownhosts $$CN -d
 check:rc==0
-cmd:cat ~/.ssh/known_hosts|grep __GETNODEATTR($$CN,ip)__ 
+cmd:cat ~/.ssh/known_hosts|grep __GETNODEATTR($$CN,ip)__
 check:rc!=0
 check:output!~__GETNODEATTR($$CN,ip)__
 end
