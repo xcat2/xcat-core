@@ -17,10 +17,10 @@ use List::Util qw/sum/;
         Format is [<flag>] : <message>
         The valid <flag> are debug, warning, failed, info and ok
     Arguments:
-        output: where should the message be output 
+        output: where should the message be output
               The vaild values are:
               stdout : print message to STDOUT
-              a file name: print message to the specified "file name" 
+              a file name: print message to the specified "file name"
         tag:  the type of message, the valid values are:
               d: debug
               w: warning
@@ -29,11 +29,11 @@ use List::Util qw/sum/;
               i: info
 
               If tag is NULL, output message without a tag
-             
+
         msg:  the information need to output
      Returns:
-        1 : Failed 
-        0 : success 
+        1 : Failed
+        0 : success
 =cut
 
 #----------------------------------------
@@ -76,7 +76,7 @@ sub send_msg {
     Description:
         Test if a string is a IP address
     Arguments:
-        addr: the string want to be judged 
+        addr: the string want to be judged
     Returns:
         1 : yes
         0 : no
@@ -162,7 +162,7 @@ sub get_os {
 
 =head3
     Description:
-        Test if a IP address is a static IP address 
+        Test if a IP address is a static IP address
     Arguments:
         ip:   a ip address
         nic:  the network adapter which ip belongs to
@@ -216,7 +216,7 @@ sub is_static_ip {
 
 =head3
     Description:
-        Test if SELinux is opened in current operating system 
+        Test if SELinux is opened in current operating system
     Arguments:
          None
     Returns:
@@ -275,7 +275,7 @@ sub is_firewall_open {
     Description:
         Test if http service is ready to use in current operating system
     Arguments:
-        ip:  http server's ip 
+        ip:  http server's ip
         errormsg_ref: (output attribute) if there is something wrong for HTTP service, this attribute save the possible reason.
     Returns:
         1 : yes
@@ -369,7 +369,7 @@ sub is_tftp_ready {
     my $mnip = shift;
     $mnip = shift if (($mnip) && ($mnip =~ /probe_utils/));
     my $tftpdir = shift;
-    
+
     rename("/$tftpdir/tftptestt.tmp", "/$tftpdir/tftptestt.tmp.old") if (-e "/$tftpdir/tftptestt.tmp");
     rename("./tftptestt.tmp", "./tftptestt.tmp.old") if (-e "./tftptestt.tmp");
 
@@ -427,7 +427,7 @@ sub is_dns_ready {
 
 =head3
     Description:
-        Calculate network address from ip and netmask 
+        Calculate network address from ip and netmask
     Arguments:
         ip: ip address
         mask: network mask
@@ -456,14 +456,14 @@ sub get_network {
 
 =head3
     Description:
-        Check if the free space of specific directory is more than expected value 
+        Check if the free space of specific directory is more than expected value
     Arguments:
-        targetdir: The directory needed to be checked 
+        targetdir: The directory needed to be checked
         expect_free_space: the expected free space for above directory
     Returns:
         0: the free space of specific directory is less than expected value
         1: the free space of specific directory is more than expected value
-        2: the specific directory isn't mounted on standalone disk. it is a part of "/" 
+        2: the specific directory isn't mounted on standalone disk. it is a part of "/"
 =cut
 
 #------------------------------------------
@@ -605,7 +605,7 @@ sub is_rsyslog_ready {
         $$errormsg_ref = "rsyslog service is not running! Please check on current node";
         return 0;
     }
-    return 1; 
+    return 1;
 }
 
 #------------------------------------------
@@ -663,7 +663,7 @@ sub convert_second_to_time {
     Arguments:
         content: double dimensional array
         has_title: whether has title in content
-        
+
         eg: @content = ($title,
                         @content1,
                         @content2,
@@ -683,12 +683,12 @@ sub convert_second_to_time {
         --------------------------
         |         xxxxxxx        |
         --------------------------
-        | xxx | xxxx | xx   | xx |  
+        | xxx | xxxx | xx   | xx |
         --------------------------
-        | xx  | xxxx | xxxx | xx | 
+        | xx  | xxxx | xxxx | xx |
         --------------------------
 
-        or 
+        or
 
         --------------------------
         | xxx | xxxx | xx   | xx |
