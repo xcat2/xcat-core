@@ -688,7 +688,7 @@ sub process_request {
                 arg      => \@args ,
                 bootparams => \%bphash},
                 \&pass_along);
-        if ($errored) { 
+        if ($errored) {
             xCAT::MsgUtils->trace($verbose_on_off, "d", "xnba: Failed in processing setdestiny.");
             return if ($errored > 1);
         }
@@ -807,7 +807,7 @@ sub process_request {
         nodes  --- a pointer to an array of nodes
         states -- a pointer to a hash table. This hash will be filled by this
              function. The key is the nodeset status and the value is a pointer
-             to an array of nodes. 
+             to an array of nodes.
     Returns:
        (return code, error message)
 =cut
