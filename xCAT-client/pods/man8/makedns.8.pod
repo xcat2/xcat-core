@@ -14,11 +14,11 @@ B<makedns> [B<-V>|B<--verbose>] [B<-e>|B<--external>] [B<-d>|B<--delete> I<noder
 
 B<makedns> configures a DNS server on the system you run it on, which is typically the xCAT management node.
 
-The list of nodes to include comes from either the B<noderange> provided on the command line or the entries in the local /etc/hosts files. 
+The list of nodes to include comes from either the B<noderange> provided on the command line or the entries in the local /etc/hosts files.
 
 There are several bits of information that must be included in the xCAT database before running this command.
 
-You must set the B<forwarders> attributes in the xCAT B<site> definition. 
+You must set the B<forwarders> attributes in the xCAT B<site> definition.
 
 The B<forwarders> value should be set to the IP address of one or more nameservers at your site that can resolve names outside of your cluster.  With this set up, all nodes ask the local nameserver to resolve names, and if it is a name that the MN DNS does not know about, it will try the forwarder names.
 
