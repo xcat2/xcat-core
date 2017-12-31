@@ -19,11 +19,11 @@ SYNOPSIS
 ********
 
 
-\ **monadd  [-h| -**\ **-help]**\ 
+\ **monadd  [-h| -**\ **-help]**\
 
-\ **monadd  [-v| -**\ **-version]**\ 
+\ **monadd  [-v| -**\ **-version]**\
 
-\ **monadd  name [-n|-**\ **-nodestatmon] [-s|-**\ **-settings**\  \ *settings]*\ 
+\ **monadd  name [-n|-**\ **-nodestatmon] [-s|-**\ **-settings**\  \ *settings]*\
 
 
 ***********
@@ -50,28 +50,28 @@ OPTIONS
 
 
 
-\ **-h | -**\ **-help**\ 
- 
+\ **-h | -**\ **-help**\
+
  Display usage message.
- 
 
 
-\ **-n | -**\ **-nodestatmon**\ 
- 
+
+\ **-n | -**\ **-nodestatmon**\
+
  Indicate that this monitoring plug-in will be used for feeding the node liveness status to the xCAT \ *nodelist*\  table.
- 
 
 
-\ **-s | -**\ **-settings**\ 
- 
+
+\ **-s | -**\ **-settings**\
+
  Specifies the plug-in specific settings. These settings will be used by the plug-in to customize certain entities for the plug-in or the third party monitoring software. e.g. -s mon_interval=10 -s toggle=1.
- 
 
 
-\ **-v | -**\ **-version**\ 
- 
+
+\ **-v | -**\ **-version**\
+
  Command Version.
- 
+
 
 
 
@@ -92,52 +92,52 @@ EXAMPLES
 
 
 1.
- 
+
  To register gangliamon plug-in module (which interacts with Ganglia monitoring software) to monitor the xCAT cluster, enter:
- 
- 
+
+
  .. code-block:: perl
- 
+
     monadd gangliamon
- 
- 
+
+
 
 
 2.
- 
+
  To register rmcmon plug-in module (which interacts with IBM's RSCT monitoring software) to monitor the xCAT cluster and have it feed the node liveness status to xCAT's \ *nodelist*\  table, enter:
- 
- 
+
+
  .. code-block:: perl
- 
+
     monadd rmcmon -n
- 
- 
+
+
  This will also add the \ *configrmcnode*\  to the \ *postscripts*\  table. To view the content of the \ *postscripts*\  table, enter:
- 
- 
+
+
  .. code-block:: perl
- 
+
     tabdump postscritps
     #node,postscripts,comments,disable
     "service","servicenode",,
     "xcatdefaults","syslog,remoteshell,configrmcnode",,
- 
- 
+
+
 
 
 3.
- 
+
  To register xcatmon plug-in module to feed the node liveness status to xCAT's \ *nodelist*\  table, enter:
- 
- 
+
+
  .. code-block:: perl
- 
+
     monadd xcatmon -n -s ping-interval=2
- 
- 
+
+
  where 2 is the number of minutes between the pings.
- 
+
 
 
 
