@@ -18,7 +18,7 @@ Add the login user name and password to the switches table: ::
 
 The switches table will look like this: ::
 
-	#switch,...,sshusername,sshpassword,switchtype,....  
+	#switch,...,sshusername,sshpassword,switchtype,....
 	"mswitch",,,,,,,"admin","admin","MellanoxIB",,
 
 If there is only one admin and one password for all the switches then put the entry in the xCAT passwd table for the admin id and password to use to login. ::
