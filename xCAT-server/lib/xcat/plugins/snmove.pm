@@ -2024,7 +2024,7 @@ n";
 
 	Returns:
                 undef - error
-                hash ref - 
+                hash ref -
 
 =cut
 
@@ -2096,7 +2096,7 @@ sub getnimattr
             Does statelite setup when using a shared file system
 
 			The snmove cmd changes the xcatmaster value for the nodes
-			This means, that since we won't be running mkdsklsnode again, 
+			This means, that since we won't be running mkdsklsnode again,
 			we need to take care of the ststelite file changes here
 				- update statelite tables in DB
 				- run dolitesetup to re-create the statelite files stored
@@ -2111,7 +2111,7 @@ sub getnimattr
             0 - OK
             1 - error
 
-        Usage:  $ret = &sfsSLconfig(\@nodelist, \%nhash, \%sn_hash, $nimprime, 
+        Usage:  $ret = &sfsSLconfig(\@nodelist, \%nhash, \%sn_hash, $nimprime,
 							$callback, $sub_req);
 
 =cut
