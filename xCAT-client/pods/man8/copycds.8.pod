@@ -97,7 +97,7 @@ Also, remember to add the new directory to your osimage definition:
  chdef -t osimage myosimage -p pkgdir=/install/rhels6.5-supp/ppc64
 
 =back
- 
+
 =head1 SEE ALSO
 
 L<nodeset(8)|nodeset.8>, L<site(5)|site.5>, L<nodetype(5)|nodetype.5>
