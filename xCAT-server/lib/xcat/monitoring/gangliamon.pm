@@ -20,7 +20,7 @@ use warnings;
 
 #-------------------------------------------------------------------------------
 
-=head1  xCAT_monitoring:gangliamon  
+=head1  xCAT_monitoring:gangliamon
 =head2  Package Description
   xCAT monitoring plugin to handle Ganglia monitoring.
 =cut
@@ -30,16 +30,16 @@ use warnings;
 #--------------------------------------------------------------------------------
 
 =head3    start
-    This function gets called by the monitorctrl module when xcatd starts and 
-    when monstart command is issued by the user. It starts the daemons and 
-    does necessary startup process for the Ganglia monitoring. 
+    This function gets called by the monitorctrl module when xcatd starts and
+    when monstart command is issued by the user. It starts the daemons and
+    does necessary startup process for the Ganglia monitoring.
 
     p_nodes     -- A pointer to an arrays of nodes to be monitored. null means all.
     scope       -- The action scope, it indicates the node type the action will take place.
                     0 means localhost only.
                     2 means all nodes (except localhost),
     callback    -- The callback pointer for error and status displaying. It can be null.
-    
+
     Returns:
         (return code, message)
         If the callback is set, use callback to display the status and error.
@@ -194,21 +194,21 @@ sub start {
 #--------------------------------------------------------------
 
 =head3    config
-    This function configures the cluster for the given nodes. This function is called 
-    when moncfg command is issued or when xcatd starts on the service node. It will 
-    configure the cluster to include the given nodes within the monitoring domain. This 
+    This function configures the cluster for the given nodes. This function is called
+    when moncfg command is issued or when xcatd starts on the service node. It will
+    configure the cluster to include the given nodes within the monitoring domain. This
     calls two other functions called as confGmond and confGmetad which are used for configuring
     the Gmond and Gmetad configuration files respectively.
-    
+
     Arguments:
         p_nodes     -- A pointer to an arrays of nodes to be added for monitoring. none means all.
         scope       -- The action scope, it indicates the node type the action will take place.
-                        0 means localhost only. 
-                        2 means localhost and nodes, 
+                        0 means localhost only.
+                        2 means localhost and nodes,
         callback    -- The callback pointer for error and status displaying. It can be null.
     Returns:
         (error code, error message)
-=cut 
+=cut
 
 #--------------------------------------------------------------
 sub config {
@@ -228,14 +228,14 @@ sub config {
 #--------------------------------------------------------------
 
 =head3    confGmond
-    This function is called by the config() function. It configures the Gmond 
+    This function is called by the config() function. It configures the Gmond
     configuration files for the given nodes
-    
+
     Arguments:
         p_nodes      -- A pointer to an arrays of nodes to be added for monitoring. none means all.
         scope        -- The action scope, it indicates the node type the action will take place.
-                        0 means localhost only. 
-                        2 means localhost and nodes, 
+                        0 means localhost only.
+                        2 means localhost and nodes,
         callback     -- The callback pointer for error and status displaying. It can be null.
     Returns: none
 =cut
@@ -415,12 +415,12 @@ sub confGmond {
 =head3    confGmetad
     This function is called by the config() function. It configures the Gmetad
     configuration files for the given nodes
-    
+
     Arguments:
         p_nodes     -- A pointer to an arrays of nodes to be added for monitoring. none means all.
         scope       -- The action scope, it indicates the node type the action will take place.
-                        0 means localhost only. 
-                        2 means localhost and nodes, 
+                        0 means localhost only.
+                        2 means localhost and nodes,
         callback    -- The callback pointer for error and status displaying. It can be null.
     Returns : none
 =cut
@@ -535,19 +535,19 @@ sub confGmetad {
 #--------------------------------------------------------------
 
 =head3    deconfig
-    This function de-configures the cluster for the given nodes. This function is called 
+    This function de-configures the cluster for the given nodes. This function is called
     when mondecfg command is issued by the user. This function restores the original Gmond
-    and Gmetad configuration files by calling the deconfGmond and deconfGmetad functions 
+    and Gmetad configuration files by calling the deconfGmond and deconfGmetad functions
     respectively.
-      
+
     Arguments:
         p_nodes     -- A pointer to an arrays of nodes to be removed for monitoring. none means all.
         scope       -- The action scope, it indicates the node type the action will take place.
-                        0 means local host only. 
-                        2 means both local host and nodes, 
+                        0 means local host only.
+                        2 means both local host and nodes,
         callback    -- The callback pointer for error and status displaying. It can be null.
     Returns: none
-=cut 
+=cut
 
 #--------------------------------------------------------------
 sub deconfig {
@@ -569,12 +569,12 @@ sub deconfig {
 =head3    deconfGmond
     This function is called by the deconfig() function. It deconfigures the Gmetad
     configuration files for the given nodes
-    
+
     Arguments:
         p_nodes     -- A pointer to an arrays of nodes to be added for monitoring. none means all.
         scope       -- The action scope, it indicates the node type the action will take place.
-                        0 means localhost only. 
-                        2 means localhost and nodes, 
+                        0 means localhost only.
+                        2 means localhost and nodes,
         callback    -- The callback pointer for error and status displaying. It can be null.
     Returns:none
 =cut
@@ -696,12 +696,12 @@ sub deconfGmond {
 =head3    deconfGmetad
     This function is called by the deconfig() function. It deconfigures the Gmetad
     configuration files for the given nodes
-    
+
     Arguments:
         p_nodes     -- A pointer to an arrays of nodes to be added for monitoring. none means all.
         scope       -- The action scope, it indicates the node type the action will take place.
-                        0 means localhost only. 
-                        2 means localhost and nodes, 
+                        0 means localhost only.
+                        2 means localhost and nodes,
         callback    -- The callback pointer for error and status displaying. It can be null.
     Returns:none
 =cut
@@ -896,9 +896,9 @@ sub stop {
 =head3    supportNodeStatusMon
     This function is called by the monitorctrl module to check
     if Ganglia can help monitoring and returning the node status.
-    
+
     Arguments: None
-    Returns: 1  
+    Returns: 1
 =cut
 
 #--------------------------------------------------------------------------------
@@ -911,8 +911,8 @@ sub supportNodeStatusMon {
 =head3   startNodeStatusMon
     This function is called by the monitorctrl module to tell
     Ganglia to start monitoring the node status and feed them back
-    to xCAT. Ganglia will start setting up the condition/response 
-    to monitor the node status changes.  
+    to xCAT. Ganglia will start setting up the condition/response
+    to monitor the node status changes.
 
     Arguments: None
     Returns:
@@ -946,8 +946,8 @@ sub stopNodeStatusMon {
 
 =head3    getDiscription
     This function returns the detailed description of the plugin inluding the
-    valid values for its settings in the monsetting tabel. 
-    
+    valid values for its settings in the monsetting tabel.
+
     Arguments: None
     Returns: The description
 =cut
