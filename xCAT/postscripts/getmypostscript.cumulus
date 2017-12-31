@@ -1,5 +1,5 @@
 #!/bin/bash
-#this script send getpostscript request to xcatd on MN and generate /xcatpost/mypostscript 
+#this script send getpostscript request to xcatd on MN and generate /xcatpost/mypostscript
 #which includes the glocal environment variables to run postscripts
 
 if [ -z "$XCATDEST" ]; then
@@ -13,9 +13,9 @@ echo "<xcatrequest>
 
 
 
-if [ -f /tmp/resp.xml ]; then 
+if [ -f /tmp/resp.xml ]; then
     #remove any existing response file
-    rm /tmp/resp.xml; 
+    rm /tmp/resp.xml;
 fi
 
 
@@ -42,7 +42,7 @@ if [ -f /tmp/resp.xml ] && grep '<data>' /tmp/resp.xml >/dev/null 2>&1 ;then
     echo "Success to obtain mypostscript!"
 else
     echo "Failed to obtain mypostscript!"
-    exit 1 
+    exit 1
 fi
 
 #parse the script from the xml-formated  resposne
