@@ -59,36 +59,36 @@ OPTIONS
 
 
 
-\ **-V | -**\ **-verbose**\ 
- 
+\ **-V | -**\ **-verbose**\
+
  Verbose mode.
- 
 
 
-\ **-n | -**\ **-new**\ 
- 
+
+\ **-n | -**\ **-new**\
+
  Use this flag to create new named configuration and db files.
- 
 
 
-\ **-d | -**\ **-delete**\ 
- 
+
+\ **-d | -**\ **-delete**\
+
  Remove the DNS records.
- 
 
 
-\ **-e | -**\ **-external**\ 
- 
+
+\ **-e | -**\ **-external**\
+
  Update DNS records to the external DNS server listed in /etc/resolv.conf.
- 
+
  Enabling the site attribute \ *externaldns*\  means use 'external' DNS by default. If setting \ *externaldns*\  to 1, you need NOT use \ **-e**\  flag in every makedns call.
- 
 
 
-\ **noderange**\ 
- 
+
+\ **noderange**\
+
  A set of comma delimited node names and/or group names. See the "noderange" man page for details on additional supported formats.
- 
+
 
 
 
@@ -99,43 +99,43 @@ Examples
 
 
 1. To set up DNS for all the hosts in /etc/hosts file.
- 
- 
+
+
  .. code-block:: perl
- 
+
    makedns
- 
- 
+
+
 
 
 2. To set up DNS for \ *node1*\ .
- 
- 
+
+
  .. code-block:: perl
- 
+
    makedns node1
- 
- 
+
+
 
 
 3. To create a new named configuration and db files for all hosts in /etc/hosts.
- 
- 
+
+
  .. code-block:: perl
- 
+
    makedns -n
- 
- 
+
+
 
 
 4. To delete the DNS records for \ *node1*\ .
- 
- 
+
+
  .. code-block:: perl
- 
+
    makedns -d node1
- 
- 
+
+
 
 
 
