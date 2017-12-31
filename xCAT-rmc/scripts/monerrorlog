@@ -3,7 +3,7 @@
 #------------------------------------------------------------------------------
 
 =head1  monaixsyslog
-=head2  
+=head2
   When first run (by the sensor) this script adds an entry to the AIX ODM
   or Linux syslog.conf file so that it will be notified when an error is
   logged (through a message queue on AIX and a named pipe on Linux). Then
@@ -64,7 +64,7 @@ if (!-d $vardir) { mkdir($vardir); }
 
 #--------------------------------------------------------------------------------
 
-=head3   first_time_run 
+=head3   first_time_run
 
         Notes: check whether this is the first time that monerrlog is run
 	       on Linux, check the marker file /var/opt/xcat_err_mon/.monerrorlog_run
@@ -75,7 +75,7 @@ Arguments:
 
 Returns:
        0 - This is NOT the first time that monerrlog is run
-       1 - This is the first time that monerrlog is run 
+       1 - This is the first time that monerrlog is run
 =cut
 
 #--------------------------------------------------------------------------------
@@ -258,7 +258,7 @@ exit 0;
 
 	parse the command line and check the values
 
-	paras: 
+	paras:
 	-p  :    <facility>.<priority>, the default value is "*.warn"
 	-f  :    <fifo_name>, the default value is "/var/opt/xcat_err_mon/syslog_fifo"
 
@@ -320,7 +320,7 @@ sub getArgs()
 =head3    runcmd
     Run the given cmd and return the output in an array (already chopped).  Alternatively,
     if this function is used in a scalar context, the output is joined into a single string
-    with the newlines separating the lines.  
+    with the newlines separating the lines.
     Arguments:
         command, exitcode and reference to output
     Returns:
@@ -337,7 +337,7 @@ sub getArgs()
                 exit code.
         number > 0:    Display error msg and exit with the given code
     Example:
-        my $outref =  runcmd($cmd, -2, 1);     
+        my $outref =  runcmd($cmd, -2, 1);
     Comments:
         If refoutput is true, then the output will be returned as a reference to
         an array for efficiency.
@@ -527,12 +527,12 @@ sub createRandomName
     Arguments:
         $service  - a service name such as 'inetd','xinetd'
         $svcarg   - arguments for the service such as 'start',
-                    'stop' or 'status'. 
+                    'stop' or 'status'.
     Returns:
         A full cli for the service script.
     Comment:
         this subroutine is deprecated, use service subroutines in xCAT::Utils
-        instead   
+        instead
 =cut
 
 #--------------------------------------------------------------------------------
