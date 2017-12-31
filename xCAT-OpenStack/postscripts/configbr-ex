@@ -8,8 +8,8 @@ pubinterface=$PUBINTERFACE
 if [ -z "pubinterface" ]
 then
      errmsg="no pubinterface setting for the $NODE's cloudname in clouds table"
-     logger -t xcat -p local4.err $errmsg 
-     echo $errmsg 
+     logger -t xcat -p local4.err $errmsg
+     echo $errmsg
      exit -1
 fi
 ifconfig $pubinterface 0
@@ -28,8 +28,8 @@ else
         str_nic_type="ethernet"
     else
         errmsg="currently, it only supports eth|en, instead of $pubinterface."
-        logger -t xcat -p local4.err $errmsg 
-        echo $errmsg 
+        logger -t xcat -p local4.err $errmsg
+        echo $errmsg
         exit -1;
     fi
 fi
