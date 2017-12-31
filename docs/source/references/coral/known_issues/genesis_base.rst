@@ -13,8 +13,8 @@ Work-around
 xCAT cannot ship a kernel based on RHEL distribution, so the customer needs to build a version of the ``xCAT-genesis-base`` on-site using a server running Red Hat Enterprise Linux.
 
 1. Download the latest timestamp version of the ``xCAT-genesis-builder`` RPM provided here: http://xcat.org/files/xcat/xcat-dep/2.x_Linux/beta/
-   
-2. Install the ``xCAT-genesis-builder`` RPM on a node that is installed with the RHEL version being deployed. 
+
+2. Install the ``xCAT-genesis-builder`` RPM on a node that is installed with the RHEL version being deployed.
 
 3. Build the ``xCAT-genesis-base`` RPM: ::
 
