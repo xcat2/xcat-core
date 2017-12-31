@@ -73,7 +73,7 @@ EXAMPLES
 .. code-block:: perl
 
   cat node.stanza | chdef -z
- 
+
   cat device.stanza | chdef -z
 
 
