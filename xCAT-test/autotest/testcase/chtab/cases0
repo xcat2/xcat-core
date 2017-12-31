@@ -8,7 +8,7 @@ end
 
 
 start:chtab_d
-description:check chtab -d 
+description:check chtab -d
 label:mn_only,db
 cmd:chtab key=rsh_test site.value=/opt/xcat/bin/rcp site.comments="the rcp command" site.disable=no
 check:rc==0
@@ -37,12 +37,12 @@ end
 start:chtab_modify_key
 description:check chtab with key=xxx
 label:mn_only,db
-cmd:chtab key=rsh_test site.value=/opt/xcat/bin/rcp site.comments="the rcp command" 
+cmd:chtab key=rsh_test site.value=/opt/xcat/bin/rcp site.comments="the rcp command"
 check:rc==0
 cmd:tabdump site | grep rsh_test
 check:output=~/opt/xcat/bin/rcp
 check:output=~the rcp command
-cmd:chtab key=rsh_test site.value=/opt/xcat/bin/scp 
+cmd:chtab key=rsh_test site.value=/opt/xcat/bin/scp
 check:rc==0
 cmd:tabdump site | grep rsh_test
 check:output=~/opt/xcat/bin/scp
