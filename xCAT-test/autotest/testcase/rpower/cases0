@@ -1,5 +1,5 @@
 start:rpower_off
-description:This case is to test off option could remote power off nodes 
+description:This case is to test off option could remote power off nodes
 Attribute: $$CN-The operation object of rpower command
 label:cn_bmc_ready,hctrl_general
 cmd:rpower $$CN on
@@ -35,7 +35,7 @@ check:output=~Not Activated|off
 end
 
 start:rpower_boot
-description:This case is to test boot option could power on the nodes if nodes in off state.  Or could  hard reset the nodes if they are on. 
+description:This case is to test boot option could power on the nodes if nodes in off state.  Or could  hard reset the nodes if they are on.
 Attribute: $$CN-The operation object of rpower command
 label:cn_bmc_ready,hctrl_general
 cmd:rpower $$CN off
@@ -122,7 +122,7 @@ end
 
 start:rpower_err_noderange
 description:This case is to test rpower could process error usage and return help information.
-Attribute:N/A 
+Attribute:N/A
 label:mn_only,hctrl_general
 cmd:rpower testnode stat
 check:rc!=0
@@ -130,7 +130,7 @@ check:output=~Error
 end
 
 start:rpower_softoff
-description:This case is to test softoff option could remote shutdown nodes 
+description:This case is to test softoff option could remote shutdown nodes
 Attribute: $$CN-The operation object of rpower command
 label:cn_bmc_ready,hctrl_fsp,hctrl_openbmc
 cmd:rpower $$CN on
@@ -144,7 +144,7 @@ check:output=~Not Activated|off
 end
 
 start:rpower_onstandby
-description:This case is to test onstandby option could bring server to standby state 
+description:This case is to test onstandby option could bring server to standby state
 Attribute: $$CN-The operation object of rpower command
 label:cn_bmc_ready,hctrl_fsp
 arch:ppc64
@@ -159,12 +159,12 @@ check:ouptut=~standby|Standby
 end
 
 start:rpower_wrongpasswd
-description:rpower ipmi and openbmc using wrong passwd  
+description:rpower ipmi and openbmc using wrong passwd
 Attribute: $$CN-The operation object of rpower command
 label:cn_bmc_ready,hctrl_openpower_ipmi
 cmd:/opt/xcat/share/xcat/tools/autotest/testcase/rpower/rpower_wrongpasswd_test.sh  -pt $$CN  $$bmcpasswd $$bmcusername
 check:rc==0
-cmd:/opt/xcat/share/xcat/tools/autotest/testcase/rpower/rpower_wrongpasswd_test.sh  -c $$CN 
+cmd:/opt/xcat/share/xcat/tools/autotest/testcase/rpower/rpower_wrongpasswd_test.sh  -c $$CN
 check:rc==0
 cmd:/opt/xcat/share/xcat/tools/autotest/testcase/rpower/rpower_wrongpasswd_test.sh  -apt $$CN  $$bmcpasswd $$bmcusername
 check:rc==0
@@ -198,7 +198,7 @@ check:rc==1
 end
 
 start:rpower_bmcreboot_perl_python_output
-description:record the output for rpower bmcreboot and compare the output for perl and python version. 
+description:record the output for rpower bmcreboot and compare the output for perl and python version.
 hcp:openbmc
 label:cn_bmc_ready,hctrl_openbmc
 cmd: /opt/xcat/share/xcat/tools/autotest/testcase/UT_openbmc/scripts/bmcreboot.sh $$CN /tmp/xcattest.rpower.bmcstate.perl.out PERL
