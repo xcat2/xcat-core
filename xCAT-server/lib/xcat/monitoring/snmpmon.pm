@@ -36,9 +36,9 @@ if (xCAT::Utils->isAIX()) {
 
 #-------------------------------------------------------------------------------
 
-=head1  xCAT_monitoring:snmpmon  
+=head1  xCAT_monitoring:snmpmon
 =head2    Package Description
-  xCAT monitoring plugin package to handle SNMP monitoring. 
+  xCAT monitoring plugin package to handle SNMP monitoring.
 
 =cut
 
@@ -47,17 +47,17 @@ if (xCAT::Utils->isAIX()) {
 #--------------------------------------------------------------------------------
 
 =head3    start
-      This function gets called by the monitorctrl module when monstart command 
-     gets called and when xcatd starts.  
+      This function gets called by the monitorctrl module when monstart command
+     gets called and when xcatd starts.
     Arguments:
        p_nodes -- a pointer to an arrays of nodes to be monitored. null means all.
        scope -- the action scope, it indicates the node type the action will take place.
-                0 means localhost only. 
-                2 means both localhost and nodes, 
+                0 means localhost only.
+                2 means both localhost and nodes,
        callback -- the callback pointer for error and status displaying. It can be null.
     Returns:
-      (return code, message) 
-      if the callback is set, use callback to display the status and error. 
+      (return code, message)
+      if the callback is set, use callback to display the status and error.
 =cut
 
 #--------------------------------------------------------------------------------
@@ -131,16 +131,16 @@ sub start {
 #--------------------------------------------------------------------------------
 
 =head3    stop
-      This function gets called by the monitorctrl module when monstop command gets called. 
+      This function gets called by the monitorctrl module when monstop command gets called.
     Arguments:
        p_nodes -- a pointer to an arrays of nodes to be stopped for monitoring. null means all.
        scope -- the action scope, it indicates the node type the action will take place.
-                0 means localhost only. 
-                2 means both monservers and nodes, 
+                0 means localhost only.
+                2 means both monservers and nodes,
        callback -- the callback pointer for error and status displaying. It can be null.
     Returns:
-      (return code, message) 
-      if the callback is set, use callback to display the status and error. 
+      (return code, message)
+      if the callback is set, use callback to display the status and error.
 =cut
 
 #--------------------------------------------------------------------------------
@@ -199,11 +199,11 @@ sub stop {
     This function is called by the monitorctrl module to check
     if SNMP can help monitoring and returning the node status.
     SNMP does not support this function.
-    
+
     Arguments:
         none
     Returns:
-         0  
+         0
 =cut
 
 #--------------------------------------------------------------------------------
@@ -218,17 +218,17 @@ sub supportNodeStatusMon {
 =head3   startNodeStatusMon
     This function is called by the monitorctrl module when monstart gets called and
     when xcatd starts. It starts monitoring the node status and feed them back
-    to xCAT.  
+    to xCAT.
     Arguments:
        p_nodes -- a pointer to an arrays of nodes to be monitored. null means all.
        scope -- the action scope, it indicates the node type the action will take place.
-                0 means loca lhost only.  
-                2 means both localhost and nodes, 
+                0 means loca lhost only.
+                2 means both localhost and nodes,
        callback -- the callback pointer for error and status displaying. It can be null.
     note: p_nodes and scope are ignored by this plugin.
     Returns:
-      (return code, message) 
-      if the callback is set, use callback to display the status and error. 
+      (return code, message)
+      if the callback is set, use callback to display the status and error.
     This function is called by the monitorctrl module to tell
 =cut
 
@@ -242,17 +242,17 @@ sub startNodeStatusMon {
 
 =head3   stopNodeStatusMon
     This function is called by the monitorctrl module when monstop command is issued.
-    It stops feeding the node status info back to xCAT. 
+    It stops feeding the node status info back to xCAT.
     Arguments:
        p_nodes -- a pointer to an arrays of nodes to stopped for monitoring. null means all.
        scope -- the action scope, it indicates the node type the action will take place.
-                0 means local host only. 
-                2 means both local host and nodes, 
+                0 means local host only.
+                2 means both local host and nodes,
        callback -- the callback pointer for error and status displaying. It can be null.
     note: p_nodes and scope are ignored by this plugin.
     Returns:
-      (return code, message) 
-      if the callback is set, use callback to display the status and error. 
+      (return code, message)
+      if the callback is set, use callback to display the status and error.
 =cut
 
 #--------------------------------------------------------------------------------
@@ -265,15 +265,15 @@ sub stopNodeStatusMon {
 #--------------------------------------------------------------------------------
 
 =head3    config
-      This function configures the cluster for the given nodes.  
+      This function configures the cluster for the given nodes.
       This function is called when moncfg command is issued or when xcatd starts
       on the service node. It will configure the cluster to include the given nodes within
-      the monitoring doamin. 
+      the monitoring doamin.
     Arguments:
        p_nodes -- a pointer to an arrays of nodes to be added for monitoring. none means all.
        scope -- the action scope, it indicates the node type the action will take place.
-                0 means localhost only. 
-                2 means localhost and nodes, 
+                0 means localhost only.
+                2 means localhost and nodes,
        callback -- the callback pointer for error and status displaying. It can be null.
     Returns:
        (error code, error message)
@@ -341,14 +341,14 @@ sub config {
 #--------------------------------------------------------------------------------
 
 =head3    deconfig
-      This function de-configures the cluster for the given nodes.  
-      This function is called when mondecfg command is issued by the user. 
+      This function de-configures the cluster for the given nodes.
+      This function is called when mondecfg command is issued by the user.
       It should remove the given nodes from the product for monitoring.
     Arguments:
        p_nodes -- a pointer to an arrays of nodes to be removed for monitoring. none means all.
        scope -- the action scope, it indicates the node type the action will take place.
-                0 means local host only. 
-                2 means both local host and nodes, 
+                0 means local host only.
+                2 means both local host and nodes,
        callback -- the callback pointer for error and status displaying. It can be null.
     Returns:
        (error code, error message)
@@ -414,25 +414,25 @@ sub deconfig {
     Arguments:
       none.
     Returns:
-      (return code, message)      
+      (return code, message)
 =cut
 
 #--------------------------------------------------------------------------------
 sub deconfigSNMP {
-   return (0, ""); 
+   return (0, "");
 }
 
 #--------------------------------------------------------------------------------
 =head3    configBMC
       This function configures BMC to setup the snmp destination, enable/disable
-    PEF policy table entry number 1. 
+    PEF policy table entry number 1.
     Arguments:
       actioon -- 0 disable alert. 1 enable alert. 2 setup snmp destination
-            
+
       p_nodes -- a pointer to an arrays of nodes to be monitored. null means all.
       callback -- the callback pointer for error and status displaying. It can be null.
     Returns:
-      (return code, message)      
+      (return code, message)
 =cut
 
 #--------------------------------------------------------------------------------
@@ -562,15 +562,15 @@ sub configBMC {
 #--------------------------------------------------------------------------------
 
 =head3    configMPA
-      This function configures Blade Center Management Module to setup the snmp destination, 
-      enable/disable remote alert notification. 
+      This function configures Blade Center Management Module to setup the snmp destination,
+      enable/disable remote alert notification.
     Arguments:
-      actioon -- 1 enable remote alert notification. 0 disable remote alert notification. 
+      actioon -- 1 enable remote alert notification. 0 disable remote alert notification.
                  2 setting up snmp destination.
       p_nodes -- a pointer to an arrays of nodes to be monitored. null means all.
       callback -- the callback pointer for error and status displaying. It can be null.
     Returns:
-      (return code, message)      
+      (return code, message)
 =cut
 
 #--------------------------------------------------------------------------------
@@ -712,16 +712,16 @@ sub configMPA {
 
 =head3    configSwitch
       This function configures switches to setup the snmp destination, enable/disable
-    alerts. 
+    alerts.
     Arguments:
-      actioon -- 0 disable alert (called mon monstop). 
+      actioon -- 0 disable alert (called mon monstop).
                  1 enable alert. (called by monstart)
                  2 setup snmp destination (called by moncfg)
                  3 remove the snmp destination (called by mondecfg)
     p_nodes -- a pointer to an arrays of nodes to be monitored. null means all.
       callback -- the callback pointer for error and status displaying. It can be null.
     Returns:
-      (return code, message)      
+      (return code, message)
 =cut
 
 #--------------------------------------------------------------------------------
@@ -905,7 +905,7 @@ sub configSwitch {
     Arguments:
       none.
     Returns:
-      (return code, message)      
+      (return code, message)
 =cut
 
 #--------------------------------------------------------------------------------
@@ -1147,14 +1147,14 @@ s/authCommunity\s*(.*)\s* public/authCommunity $1,net public/; #modify it to hav
 #--------------------------------------------------------------------------------
 
 =head3    configMail
-      This function adds a "alerts" mail aliase so that the mail notification 
-      from the trap handler can be received. It the alerts already exists, this 
-      function does nothing. 
-      TODO: configure mail servers on MS to forward mails to MS 
+      This function adds a "alerts" mail aliase so that the mail notification
+      from the trap handler can be received. It the alerts already exists, this
+      function does nothing.
+      TODO: configure mail servers on MS to forward mails to MS
     Arguments:
       none
     Returns:
-      (return code, message)      
+      (return code, message)
 =cut
 
 #--------------------------------------------------------------------------------
@@ -1183,7 +1183,7 @@ sub configMail {
 #--------------------------------------------------------------------------------
 
 =head3    processSettingChanges
-      This function gets called when the setting for this monitoring plugin 
+      This function gets called when the setting for this monitoring plugin
       has been changed in the monsetting table.
     Arguments:
        none.
@@ -1201,7 +1201,7 @@ sub processSettingChanges {
 
 =head3    getDiscription
       This function returns the detailed description of the plugin inluding the
-     valid values for its settings in the monsetting tabel. 
+     valid values for its settings in the monsetting tabel.
      Arguments:
         none
     Returns:
@@ -1213,28 +1213,28 @@ sub getDescription {
     return
       "  Description:
     snmpmon sets up the snmptrapd on the management server to receive SNMP
-    traps for different nodes. It also sets the trap destination for Blade 
-    Center Management Module, RSA II, IPMIs that are managed by the xCAT cluster. 
-    xCAT has categorized some events into different event priorities (critical, 
-    warning and informational) based on the MIBs we know such as MM, RSA II and 
-    IPMI. All the unknown events are categorized as 'warning'. By default, 
+    traps for different nodes. It also sets the trap destination for Blade
+    Center Management Module, RSA II, IPMIs that are managed by the xCAT cluster.
+    xCAT has categorized some events into different event priorities (critical,
+    warning and informational) based on the MIBs we know such as MM, RSA II and
+    IPMI. All the unknown events are categorized as 'warning'. By default,
     the xCAT trap handler will log all events into the syslog and only
-    email the critical and the warning events to the mail alias called 'alerts'. 
+    email the critical and the warning events to the mail alias called 'alerts'.
     You can use the settings to override the default behavior.
-    Use command 'monstart snmpmon' to star monitoring and 'monstop snmpmon' 
-    to stop it. 
+    Use command 'monstart snmpmon' to star monitoring and 'monstop snmpmon'
+    to stop it.
   Settings:
-    ignore:  specifies the events that will be ignored. It's a comma separated 
-        pairs of oid=value. For example, 
+    ignore:  specifies the events that will be ignored. It's a comma separated
+        pairs of oid=value. For example,
         spTrapAppType=4,spTrapMsgText=~power,spTrapMsgText=Hello there.
     email:  specifies the events that will get email notification.
     log:    specifies the events that will get logged.
     runcmd#:specifies the events that will be passed to the user defined scripts.
-    cmds#:  specifies the command names that will be invoked for the events 
+    cmds#:  specifies the command names that will be invoked for the events
             specified in the runcmd# row. '#' is a number.
     db:     specifies the events that will be logged into the eventlog table
             in xCAT database.
-    
+
     Special keywords for specifying events:
       All -- all events.
       None -- none of the events.
@@ -1253,19 +1253,19 @@ sub getDescription {
 =head3    getNodesMonServers
       This function checks the given nodes, if they are bmc/ipmi nodes, the monserver pairs of
      the nodes will be returned. If the nodes are managed by MM, the monserver pairs of their
-     mpa will be returned.  
+     mpa will be returned.
      Arguments:
        p_nodes -- a pointer to an arrays of nodes to be added for monitoring. none means all.
        callback -- the callback pointer for error and status displaying. It can be null.
-   Returns: 
+   Returns:
       A pointer to a hash table with monserver pairs as the key and an array
-                     pointer of nodes as the value. 
+                     pointer of nodes as the value.
                      For example: { "sv1,ma1"=>[node1,node2], "sv2,ma2"=>node3...}
-         The pair is in the format of "monserver,monmaser". First one is the monitoring service 
-      node ip/hostname that faces the mn and the second one is the monitoring service 
-      node ip/hostname that faces the cn. 
-      The value of the first one can be "noservicenode" meaning that there is no service node 
-      for that node. In this case the second one is the site master. 
+         The pair is in the format of "monserver,monmaser". First one is the monitoring service
+      node ip/hostname that faces the mn and the second one is the monitoring service
+      node ip/hostname that faces the cn.
+      The value of the first one can be "noservicenode" meaning that there is no service node
+      for that node. In this case the second one is the site master.
       It retuens a pointer to an array if there is an error. Format is [code, message].
 =cut
 
