@@ -32,13 +32,13 @@ xcat_opts = [
                 default=0),
     cfg.IntOpt('reboot_timeout',
                 help='Timeout for rebooting a node. Default: 0 second (unlimited)',
-                default=0),    
+                default=0),
     cfg.IntOpt('deploy_checking_interval',
                 help='Checking interval for node deployment. Default: 10 seconds',
                 default=10),
     cfg.IntOpt('reboot_checking_interval',
                 help='Checking interval for rebooting a node. Default: 5 seconds',
-                default=5),    
+                default=5),
    ]
 xcat_group = cfg.OptGroup(name='xcat',
                           title='xCAT Options')
@@ -74,13 +74,13 @@ class xCAT(object):
             out, err = self._exec_xcat_command("lsdef -w mac=%s" % mac)
             if out:
                 return out.split(" ")[0]
-        
+
         errstr='No node found in xCAT with the following mac address: ' \
             + ','.join(macs)
         LOG.warning(errstr)
         raise exception.xCATCommandError(errstr)
 
-        
+
     def deploy_node(self, nodename, imagename, hostname, fixed_ip, netmask, gateway):
         """
         Install the node.
@@ -91,7 +91,7 @@ class xCAT(object):
         """
         out, err = self._exec_xcat_command(
             "deploy_ops_bm_node %(node)s --image %(image)s"
-            " --host %(host)s --ip %(ip)s --mask %(mask)s" 
+            " --host %(host)s --ip %(ip)s --mask %(mask)s"
             % {'node': nodename,
                'image': imagename,
                'host': hostname,
@@ -139,7 +139,7 @@ class xCAT(object):
         else:
             self._wait_for_node_reboot(nodename)
             return power_states.ON
-    
+
     def power_off_node(self, nodename):
         """Power off the node."""
         state = self.get_node_power_state(nodename)
@@ -163,10 +163,10 @@ class xCAT(object):
                     " for node %s:%s") % (nodename, err)
             LOG.warning(errstr)
             raise exception.xCATCommandError(errstr)
-        
+
         self._wait_for_node_reboot(nodename)
         return power_states.ON
-        
+
 
     def get_node_power_state(self, nodename):
         out, err = self._exec_xcat_command("rpower %s stat" % nodename)
@@ -183,9 +183,9 @@ class xCAT(object):
                     return power_states.ON
                 elif state == 'off':
                     return power_states.OFF
-            
+
             return power_states.ERROR
-            
+
     def _wait_for_node_deploy(self, nodename):
         """Wait for xCAT node deployment to complete."""
         locals = {'errstr':''}
