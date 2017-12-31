@@ -19,7 +19,7 @@ SYNOPSIS
 ********
 
 
-\ **mkdsklsnode [-h|-**\ **-help ]**\ 
+\ **mkdsklsnode [-h|-**\ **-help ]**\
 
 \ **mkdsklsnode [-V|-**\ **-verbose] [-f|-**\ **-force] [-n|-**\ **-newname] [-i**\  \ *osimage_name*\ ] [\ **-l**\  \ *location*\ ] [\ **-u | -**\ **-updateSN**\ ] [\ **-k | -**\ **-skipsync**\ ] [\ **-p | -**\ **-primarySN**\ ] [\ **-b | -**\ **-backupSN**\ ] [\ **-S | -**\ **-setuphanfs**\ ] \ *noderange*\  [\ *attr=val [attr=val ...]*\ ]
 
@@ -37,7 +37,7 @@ This command will also create a NIM resolv_conf resource to be used when install
 
 The "domain" and "nameservers" attributes can be set in either the xCAT "network" definition used by the nodes or in the xCAT cluster "site" definition. The setting in the "network" definition will take priority.
 
-The "search" field of the resolv.conf file will contain a list all the domains 
+The "search" field of the resolv.conf file will contain a list all the domains
 listed in the xCAT network definitions and the xCAT site definition.
 
 The "nameservers" value can either be set to a specific IP address or the "<xcatmaster>" key word.  The "<xcatmaster>" key word means that the value of the "xcatmaster" attribute of the node definition will be used in the /etc/resolv.conf file.  (I.e.  The name of the install server as known by the node.)
@@ -70,46 +70,46 @@ OPTIONS
 
 
 
-\ *attr=val [attr=val ...]*\ 
- 
+\ *attr=val [attr=val ...]*\
+
  Specifies one or more "attribute equals value" pairs, separated by spaces. Attr=
  val pairs must be specified last on the command line. These are used to specify additional values that can be passed to the underlying NIM commands.
- 
+
  Valid values:
- 
- 
- \ **duplex**\ 
-  
+
+
+ \ **duplex**\
+
   Specifies the duplex setting (optional). Used when defining the NIM machine. Use this setting to configure the client's network interface. This value can be full or half. The default is full. (ex. "duplex=full")
-  
- 
- 
- \ **speed**\ 
-  
+
+
+
+ \ **speed**\
+
   Specifies the speed setting (optional). Used when defining the NIM machine. This is the communication speed to use when configuring the client's network interface. This value can be 10, 100, or 1000. The default is 100. (ex. "speed=100")
-  
- 
- 
- \ **psize**\ 
-  
+
+
+
+ \ **psize**\
+
   Specifies the size in Megabytes of the paging space for the diskless node.(optional) Used when initializing the NIM machine. The minimum and default size is 64 MB of paging space. (ex. "psize=256")
-  
- 
- 
- \ **sparse_paging**\ 
-  
+
+
+
+ \ **sparse_paging**\
+
   Specifies that the paging file should be created as an AIX sparse file, (ex. "sparse_paging=yes").  The default is "no".
-  
- 
- 
- \ **dump_iscsi_port**\ 
-  
+
+
+
+ \ **dump_iscsi_port**\
+
   The tcpip port number to use to communicate dump images from the client to the dump	resource server. Normally set by default. This port number is used by a dump resource server.
-  
- 
- 
- \ **configdump**\ 
-  
+
+
+
+ \ **configdump**\
+
   Specifies the type dump to be collected from the client.  The values are
   "selective", "full", and "none".  If the configdump attribute is set to "full"
   or "selective" the client will automatically be configured to dump to an iSCSI
@@ -118,81 +118,81 @@ OPTIONS
   and full memory dumps will be stored in subdirectory of the dump resource
   allocated to the client. This attribute is saved in the xCAT osimage
   definition.
-  
- 
- 
 
 
-\ **-b |-**\ **-backupSN**\ 
- 
+
+
+
+\ **-b |-**\ **-backupSN**\
+
  When using backup service nodes only update the backup.  The default is to update both the primary and backup service nodes.
- 
 
 
-\ **-f |-**\ **-force**\ 
- 
+
+\ **-f |-**\ **-force**\
+
  Use the force option to reinitialize the NIM machines.
- 
 
 
-\ **-h |-**\ **-help**\ 
- 
+
+\ **-h |-**\ **-help**\
+
  Display usage message.
- 
 
 
-\ **-i**\  \ *image_name*\ 
- 
+
+\ **-i**\  \ *image_name*\
+
  The name of an existing xCAT osimage definition. If this information is not provided on the command line the code checks the node definition for the value of the "provmethod" attribute. If the "-i" value is provided on the command line then that value will be used to set the "provmethod" attribute of the node definitions.
- 
 
 
-\ **-k|-**\ **-skipsync**\ 
- 
+
+\ **-k|-**\ **-skipsync**\
+
  Use this option to have the mkdsklsnode command skip the NIM sync_roots operation.  This option should only be used if you are certain that the shared_root resource does not have to be updated from the SPOT.  Normally, when the SPOT is updated, you should do a sync_roots on the shared_root resource.
- 
 
 
-\ **-l|-**\ **-location**\ 
- 
+
+\ **-l|-**\ **-location**\
+
  The directory location to use when creating new NIM resolv_conf resources. The default location is /install/nim.
- 
 
 
-\ **-n|-**\ **-newname**\ 
- 
+
+\ **-n|-**\ **-newname**\
+
  Create a new NIM machine object name for the xCAT node. Use the naming convention "<xcat_node_name>_<image_name>" for the new NIM machine definition.
- 
 
 
-\ **-p|-**\ **-primarySN**\ 
- 
+
+\ **-p|-**\ **-primarySN**\
+
  When using backup service nodes only update the primary.  The default is to update both the primary and backup service nodes.
- 
 
 
-\ **-S|-**\ **-setuphanfs**\ 
- 
+
+\ **-S|-**\ **-setuphanfs**\
+
  Setup NFSv4 replication between the primary service nodes and backup service nodes to provide high availability NFS for the compute nodes. This option only exports the /install directory with NFSv4 replication settings, the data synchronization between the primary service nodes and backup service nodes needs to be taken care of through some mechanism.
- 
 
 
-\ **-u|-**\ **-updateSN**\ 
- 
+
+\ **-u|-**\ **-updateSN**\
+
  Use this option if you wish to update the osimages but do not want to define or initialize the NIM client definitions. This option is only valid when the xCAT "site" definition attribute "sharedinstall" is set to either "sns" or "all".
- 
 
 
-\ *noderange*\ 
- 
+
+\ *noderange*\
+
  A set of comma delimited node names and/or group names. See the "noderange" man page for details on additional supported formats.
- 
 
 
-\ **-V |-**\ **-verbose**\ 
- 
+
+\ **-V |-**\ **-verbose**\
+
  Verbose mode.
- 
+
 
 
 
@@ -218,45 +218,45 @@ EXAMPLES
 
 
 1. Initialize an xCAT node named "node01" as an AIX diskless machine.  The xCAT osimage named "61spot" should be used to boot the node.
- 
- 
+
+
  .. code-block:: perl
- 
+
    mkdsklsnode -i 61spot node01
- 
- 
+
+
 
 
 2. Initialize all AIX diskless nodes contained in the xCAT node group called "aixnodes" using the image definitions pointed to by the "provmethod" attribute of the xCAT node definitions.
- 
- 
+
+
  .. code-block:: perl
- 
+
    mkdsklsnode aixnodes
- 
- 
+
+
 
 
 3. Initialize diskless node "clstrn29" using the xCAT osimage called "61dskls".  Also set the paging size to be 128M and specify the paging file be an AIX sparse file.
- 
- 
+
+
  .. code-block:: perl
- 
+
    mkdsklsnode -i 61dskls clstrn29 psize=128 sparse_paging=yes
- 
- 
+
+
 
 
 4.
- 
+
  Initialize an xCAT node called "node02" as an AIX diskless node.  Create a new NIM machine definition name with the osimage as an extension to the xCAT node name.
- 
- 
+
+
  .. code-block:: perl
- 
+
    mkdsklsnode -n -i 61spot node02
- 
- 
+
+
 
 
 
