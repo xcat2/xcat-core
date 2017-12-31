@@ -20,7 +20,7 @@ No action is required for xCAT 2.12.3, and higher.
 
 If running older versions of xCAT, update xCAT to a higher level code base that has the hard-coded default passwords removed.
 
-The following table describes the recommended update path: 
+The following table describes the recommended update path:
 
 +-------------------------+-----------------------------------------------+---------------------------------------+
 | xCAT Version            | Action                                        | Release Notes                         |
