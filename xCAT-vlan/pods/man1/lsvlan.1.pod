@@ -4,7 +4,7 @@ B<lsvlan> - It lists the existing vlans for the cluster.
 
 =head1 SYNOPSIS
 
-B<lsvlan> 
+B<lsvlan>
 
 B<lsvlan> [I<vlanid>]
 
@@ -14,7 +14,7 @@ B<lsvlan> [B<-v>|B<--version>]
 
 =head1 DESCRIPTION
 
-The B<lsvlan> command lists all the vlans for the cluster. If I<vlanid> is specifined it will list more details about this vlan including the nodes in the vlan.  
+The B<lsvlan> command lists all the vlans for the cluster. If I<vlanid> is specifined it will list more details about this vlan including the nodes in the vlan.
 
 =head1 PARAMETERS
 
