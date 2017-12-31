@@ -1,4 +1,4 @@
-OpenBMC Management Issues 
+OpenBMC Management Issues
 =========================
 
 xCAT
@@ -17,7 +17,7 @@ Please see the `2.13.8 Release Notes <https://github.com/xcat2/xcat-core/wiki/XC
 Firmware
 --------
 
-The following versions indicate the level of firmware the issue was reported. 
+The following versions indicate the level of firmware the issue was reported.
 
 
 1742C - ibm-v1.99.10-113-g65edf7d-r8-0-g713d86d
