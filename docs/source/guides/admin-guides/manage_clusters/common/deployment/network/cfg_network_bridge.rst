@@ -23,7 +23,7 @@ Define attributes in the ``nics`` table
 
 #. Define bridge ``br1`` based on ``eth1`` ::
 
-    chdef cn1 nictypes.br1=bridge nicdevices.br1="eth1" 
+    chdef cn1 nictypes.br1=bridge nicdevices.br1="eth1"
     chdef cn1 nicips.br1=30.5.106.9
 
 #. Define ``nicnetworks`` for ``br1`` ::
@@ -50,7 +50,7 @@ Login to compute node cn1 and check configure files in ``ifcfg-br1`` under ``/et
     STP=on
 
 Check ``ifcfg-eth1`` under ``/etc/sysconfig/network-scripts/`` ::
-   
+
     BRIDGE=br1
 
 Use ``ip addr`` command to check if ``br1``, ``eth0.6`` and ``eth0.7`` are correct.
