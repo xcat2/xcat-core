@@ -52,7 +52,7 @@ Return the output with XML tags.  The data is returned as:
 
 =item B<-V|--verbose>
 
-Display additional progress and error messages. 
+Display additional progress and error messages.
 
 =item B<-v|--version>
 
