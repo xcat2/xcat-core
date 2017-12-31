@@ -21,7 +21,7 @@ package xCAT_monitoring::bootttmon;
     Returns:
       0
     Comment:
-       To use, 
+       To use,
         1. run regnotif bootttmon.pm boottarget,nodetype -o u
         2. Then change the boottarget or nodetype tables (add node, remove node, or change status column).
         3. Watch /var/log/bootttmon for output and updates to pxelinux.cfg files.
