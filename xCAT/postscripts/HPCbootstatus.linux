@@ -1,4 +1,4 @@
-#!/bin/sh 
+#!/bin/sh
 
 #
 # Sample postscript to check appstatus for GPFS,LAPI and LoadL on Linux system.
@@ -59,7 +59,7 @@ while [ true ]; do
 
 	# Query gpfs-filesystem
 	fs=`/bin/mount |grep "type gpfs"|awk '{print $3}'|tr '\n' '!'`
-    if [ "$fs" != "" ]; then        
+    if [ "$fs" != "" ]; then
         # Sent message to xcatd
         updateflag.awk $MASTER 3002 "hpcbootstatus gpfs-filesystem=$fs"
         echo "HPCbootstatus.linux: Reporting gpfs-filesystem=$fs to xcatd on $MASTER!"
@@ -68,17 +68,17 @@ while [ true ]; do
 
 	# Query lapi-pnsd
 	lapi=`/usr/bin/lssrc -s pnsd |/usr/bin/awk '(NR==2){print $3}'`
-    if [ "$lapi" != "" ]; then        
+    if [ "$lapi" != "" ]; then
         # Sent message to xcatd
         updateflag.awk $MASTER 3002 "hpcbootstatus lapi-pnsd=$lapi"
         echo "HPCbootstatus.linux: Reporting lapi-pnsd=$lapi to xcatd on $MASTER!"
         let COUNT=$COUNT+1
     fi
-    
+
 	# Query loadl-schedd
 	hn=`hostname| tr '[A-Z]' '[a-z]'`
 	llsc=`/usr/bin/llrstatus -h $hn -r %sca %scs`
-    if [ "$llsc" != "" ]; then        
+    if [ "$llsc" != "" ]; then
         # Sent message to xcatd
         updateflag.awk $MASTER 3002 "hpcbootstatus loadl-schedd=$llsc"
         echo "HPCbootstatus.linux: Reporting loadl-schedd=$llsc to xcatd on $MASTER!"
@@ -87,7 +87,7 @@ while [ true ]; do
 	
 	# Query loadl-startd
 	llst=`/usr/bin/llrstatus -h $hn -r %sta %sts`
-    if [ "$llst" != "" ]; then        
+    if [ "$llst" != "" ]; then
         # Sent message to xcatd
         updateflag.awk $MASTER 3002 "hpcbootstatus loadl-startd=$llst"
         echo "HPCbootstatus.linux: Reporting loadl-startd=$llst to xcatd on $MASTER!"
@@ -104,7 +104,7 @@ while [ true ]; do
 
     let PASSED=$PASSED+$INTERVAL
     sleep $INTERVAL
-    echo "HPCbootstatus.linux: passed $PASSED" 
+    echo "HPCbootstatus.linux: passed $PASSED"
 	
 done
 
