@@ -15,9 +15,9 @@ Configure the Base OS Repository
 
 xCAT uses the yum package manager on RHEL Linux distributions to install and resolve dependency packages provided by the base operating system.  Follow this section to create the repository for the base operating system on the Management Node
 
-#. Copy the DVD iso file to ``/tmp`` on the Management Node.  
+#. Copy the DVD iso file to ``/tmp`` on the Management Node.
    This example will use file ``RHEL-LE-7.1-20150219.1-Server-ppc64le-dvd1.iso``
-   
+
 #. Mount the iso to ``/mnt/iso/rhels7.1`` on the Management Node.  ::
 
      mkdir -p /mnt/iso/rhels7.1
@@ -41,12 +41,12 @@ By setting properties on the Management Node before installing the xCAT software
 
    #. To set the hostname of *xcatmn.cluster.com*: ::
 
-       hostname xcatmn.cluster.com 
+       hostname xcatmn.cluster.com
 
    #. Add the hostname to the ``/etc/sysconfig/network`` in order to persist the hostname on reboot.
 
-   
-   #. Reboot the server and verify the hostname by running the following commands: 
+
+   #. Reboot the server and verify the hostname by running the following commands:
 
         * ``hostname``
         * ``hostname -d`` - should display the domain
