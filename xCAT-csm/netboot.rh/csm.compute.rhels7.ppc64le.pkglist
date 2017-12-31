@@ -1,10 +1,10 @@
-# 
-# Basic xCAT Netboot Compute node package List 
-# 
+#
+# Basic xCAT Netboot Compute node package List
+#
 #INCLUDE:/opt/xcat/share/xcat/netboot/rh/compute.rhels7.ppc64le.pkglist#
-# 
-# Mellanox IB required packages 
-# 
+#
+# Mellanox IB required packages
+#
 #INCLUDE:/opt/xcat/share/xcat/ib/netboot/rh/ib.rhels7.ppc64le.pkglist#
 #
 yum
