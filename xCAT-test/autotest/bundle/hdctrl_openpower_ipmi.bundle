@@ -1,4 +1,4 @@
-description:the cases in this bundle is to verify xCAT hardware control functions on servers which are managed using IPMI. 
+description:the cases in this bundle is to verify xCAT hardware control functions on servers which are managed using IPMI.
 #INCLUDE:hdctrl_general.bundle#
 rinv_uuid
 rinv_vpd
