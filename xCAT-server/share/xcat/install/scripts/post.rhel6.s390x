@@ -29,19 +29,19 @@ do
             if [ ! -x /usr/bin/openssl ]; then
                 exit 1
             fi
-            
+
             USEOPENSSLFORXCAT=1
             export USEOPENSSLFORXCAT
-            
+
             # Get xcat server
             XCATSERVER=$i:3001
             export XCATSERVER
-         
+
             # Move postscripts into /xcatpost
             mv $i/postscripts /xcatpost
             # Remove postscritps
             rm -rf $i
-            
+
             # Make postscripts executable
             chmod +x /xcatpost/*
 
@@ -60,7 +60,7 @@ do
                 # Sleep a couple of seconds before trying again
                 let SLI=$RANDOM%10+10
                 sleep $SLI
-            
+
                 # Get postscript to run on this node from xcat server
                 /xcatpost/getpostscript.awk |egrep '<data>'|sed -e 's/<[^>]*>//g'|egrep -v '^ *$'|sed -e 's/^ *//' > /xcatpost/mypostscript
                 MYCONT=`grep MASTER /xcatpost/mypostscript`
@@ -72,7 +72,7 @@ do
             break
         fi
     done
-    
+
     # If postscripts for this node are found
     if [ "$GOTIT" = "1" ]; then
         # Save the master/service node to /opt/xcat/xcatinfo file
@@ -98,8 +98,8 @@ run_ps () {
     logdir=\"/var/log/xcat\"
     mkdir -p \$logdir
     logfile=\"/var/log/xcat/xcat.log\"
- 
-    if [ -f \$1 ]; then 
+
+    if [ -f \$1 ]; then
         echo \"Running postscript: \$@\" | tee -a \$logfile
         ./\$@ 2>&1 | tee -a $logfile
     else
@@ -111,7 +111,7 @@ run_ps () {
 " > /xcatpost/mypostscript
 echo "$TMP" >> /xcatpost/mypostscript
 TMP=`sed "/postbootscripts-start-here/,/postbootscripts-end-here/ s/\(.*\)/run_ps \1/;s/run_ps\s*#/#/;s/run_ps\s*$//" /xcatpost/mypostscript`
-echo "$TMP" > /xcatpost/mypostscript 
+echo "$TMP" > /xcatpost/mypostscript
 
 
 # Save post boot scripts to /xcatpost/mypostscript.post
