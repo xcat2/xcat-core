@@ -1,6 +1,6 @@
 .. include:: ../../common/discover/switch_discovery.rst
 
-For switch based hardware discovery, the servers are identified through the switches and switchposts they are directly connected to. 
+For switch based hardware discovery, the servers are identified through the switches and switchposts they are directly connected to.
 
 .. include:: schedule_environment.rst
 
@@ -34,7 +34,7 @@ The predefined switches will represent devices that the physical servers are con
 So the admin need to make sure those switches are configured correctly with SNMP v3 enabled. <TODO: The document that Configure Ethernet Switches>
 
 Then, define switch info into xCAT::
-    
+
     nodeadd switch1 groups=switch,all
     chdef switch1 ip=10.0.201.1
     tabch switch=switch1 switches.snmpversion=3 switches.username=xcat switches.password=passw0rd switches.auth=sha
@@ -77,7 +77,7 @@ Set the target `osimage` into the chain table to automatically provision the ope
 
     chdef cn1 -p chain="osimage=<osimage_name>"
 
-For more information about chain, refer to :doc:`Chain <../../../../../advanced/chain/index>` 
+For more information about chain, refer to :doc:`Chain <../../../../../advanced/chain/index>`
 
 Add cn1 into DNS::
 
