@@ -46,7 +46,7 @@ sub handled_commands
 
 =head3	preprocess_request
 
-  Check and setup for hierarchy 
+  Check and setup for hierarchy
 
 =cut
 
