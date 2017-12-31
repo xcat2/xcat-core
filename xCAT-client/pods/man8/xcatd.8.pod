@@ -1,6 +1,6 @@
 =head1 NAME
 
-B<xcatd> - The xCAT daemon 
+B<xcatd> - The xCAT daemon
 
 =head1 SYNOPSIS
 
@@ -21,11 +21,11 @@ See http://xcat-docs.readthedocs.org/en/latest/overview/index.html#xcat-architec
 =item 1.
 To start/stop/restart  xcatd on Linux, enter:
 
- service xcatd start 
+ service xcatd start
 
- service xcatd stop 
+ service xcatd stop
 
- service xcatd restart 
+ service xcatd restart
 
 =item 2.
 To start/stop/restart  xcatd on AIX, enter:
@@ -36,7 +36,7 @@ To start/stop/restart  xcatd on AIX, enter:
 
  startsrc -s xcatd
 
- stopsrc -s xcatd 
+ stopsrc -s xcatd
 
 =back
 
