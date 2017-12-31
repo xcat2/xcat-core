@@ -1,8 +1,8 @@
-Set attributes in the ``networks`` table 
+Set attributes in the ``networks`` table
 ========================================
 
 #. Display the network settings defined in the xCAT ``networks`` table using: ``tabdump networks`` ::
-  
+
        #netname,net,mask,mgtifname,gateway,dhcpserver,tftpserver,nameservers,ntpservers,logservers,
        dynamicrange,staticrange,staticrangeincrement,nodehostname,ddnsdomain,vlanid,domain,mtu,
        comments,disable
@@ -26,7 +26,7 @@ Set attributes in the ``networks`` table
 
           makenetworks
 
-#. Verify the network statements 
+#. Verify the network statements
 
    **Domain** and **nameserver** attributes must be configured in the ``networks`` table or in the ``site`` table for xCAT to function properly.
 
@@ -37,7 +37,7 @@ Initialize DHCP services
 
 Configure DHCP to listen on different network interfaces [**Optional**]
 
-   The default behavior of xCAT is to configure DHCP to listen on all interfaces defined in the ``networks`` table.  
+   The default behavior of xCAT is to configure DHCP to listen on all interfaces defined in the ``networks`` table.
 
    The ``dhcpinterfaces`` keyword in the ``site`` table allows administrators to limit the interfaces that DHCP will listen over.  If the management node has 4 interfaces, (eth0, eth1, eth2, and eth3), and you want DHCP to listen only on "eth1" and "eth3", set ``dhcpinterfaces`` using: ::
 
@@ -54,14 +54,14 @@ Configure DHCP to listen on different network interfaces [**Optional**]
 **noboot**
 ``````````
    For the *IBM OpenPOWER S822LC for HPC ("Minsky")* nodes, the BMC and compute "eth0" share the left-side integrated ethernet port and compute "eth1" is the right-side integrated ethernet port.  For these servers, it is recommended to use two physical cables allowing the BMC port to be dedicated and "eth1" used by the OS.  When an open range is configured on the two networks, the xCAT Genesis kernel will be sent to the BMC interface and causes problems during hardware discovery.  To support this scenario, on the xCAT management node, if "eth1" is connected to the BMC network and "eth3" is connected to the compute network, disable genesis boot for the BMC network by setting ``:noboot`` in ``dhcpinterfaces`` using: ::
-     
-      chdef -t site dhcpinterfaces="eth1:noboot,eth3" 
 
-      # run the mknb command to remove the genesis 
+      chdef -t site dhcpinterfaces="eth1:noboot,eth3"
+
+      # run the mknb command to remove the genesis
       # configuration file for the specified network
       mknb ppc64
 
-   
+
 For more information, see ``dhcpinterfaces`` keyword in the :doc:`site </guides/admin-guides/references/man5/site.5>` table.
 
 
