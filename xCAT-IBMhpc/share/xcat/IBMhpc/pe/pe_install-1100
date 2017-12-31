@@ -1,11 +1,11 @@
-#!/bin/sh 
+#!/bin/sh
 #
 #
 # Sample script to customize options for PE
 # For AIX:
 #    TBD
 # For Linux:
-#    - Create a smaller PNSD log file in /tmp 
+#    - Create a smaller PNSD log file in /tmp
 #    - Configure poe.limits file
 
 OS=`uname`
@@ -24,7 +24,7 @@ if [ $NODESETSTATE != "genimage" ]; then
 fi
 
 # Configure the PNSD.cfg to use a smaller log so it doesn't use so much memory
-# for a stateless image.  Normally, pnsd creates this file if it does not 
+# for a stateless image.  Normally, pnsd creates this file if it does not
 # exist, but it will not fill it in if it does exist.
 if [ ! -f $installroot/etc/PNSD.cfg ]; then
     echo "log_file = /tmp/serverlog" > $installroot/etc/PNSD.cfg
