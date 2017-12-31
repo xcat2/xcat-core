@@ -27,19 +27,19 @@ DESCRIPTION
 ***********
 
 
-Command to promote a VM's current configuration and storage to a master as well as 
+Command to promote a VM's current configuration and storage to a master as well as
 performing the converse operation of creating VMs based on a master.
 
-By default, attempting to create a master from a running VM will produce an error. 
+By default, attempting to create a master from a running VM will produce an error.
 The \ **-**\ **-force**\  argument will request that a master be made of the VM anyway.
 
-Also, by default a VM that is used to create a master will be rebased as a thin 
+Also, by default a VM that is used to create a master will be rebased as a thin
 clone of that master. If the \ **-**\ **-force**\  argument is used to create a master of a powered
-on vm, this will not be done.  Additionally, the \ **-**\ **-detached**\  option can be used to 
-explicitly request that a clone not be tethered to a master image, allowing the 
+on vm, this will not be done.  Additionally, the \ **-**\ **-detached**\  option can be used to
+explicitly request that a clone not be tethered to a master image, allowing the
 clones to not be tied to the health of a master, at the cost of additional storage.
 
-When promoting a VM's current state to master, all related virtual disks will be 
+When promoting a VM's current state to master, all related virtual disks will be
 copied and merged with any prerequisite images.  A master will not be tethered to
 other masters.
 
@@ -50,46 +50,46 @@ OPTIONS
 
 
 
-\ **-h|-**\ **-help**\ 
- 
+\ **-h|-**\ **-help**\
+
  Display usage message.
- 
 
 
-\ **-b**\  \ *master_to_base_vms_upon*\ 
- 
+
+\ **-b**\  \ *master_to_base_vms_upon*\
+
  The master to base the clones upon
- 
 
 
-\ **-t**\  \ *master_to_be_made*\ 
- 
+
+\ **-t**\  \ *master_to_be_made*\
+
  The target master to copy a single VM's state to
- 
 
 
-\ **-d|-**\ **-detached**\ 
- 
+
+\ **-d|-**\ **-detached**\
+
  Explicitly request that the noderange be untethered from any masters.
- 
 
 
-\ **-f|-**\ **-force**\ 
- 
+
+\ **-f|-**\ **-force**\
+
  Force cloning of a powered on VM.  Implies \ **-d**\  if the VM is on.
- 
 
 
-\ **-v|-**\ **-version**\ 
- 
+
+\ **-v|-**\ **-version**\
+
  Command Version.
- 
 
 
-\ **-V|-**\ **-verbose**\ 
- 
+
+\ **-V|-**\ **-verbose**\
+
  Verbose output.
- 
+
 
 
 
@@ -110,23 +110,23 @@ EXAMPLES
 
 
 1. Creating a master named \ *appserver*\  from a node called \ *vm1*\ :
- 
- 
+
+
  .. code-block:: perl
- 
+
    clonevm vm1 -t appserver
- 
- 
+
+
 
 
 2. Cleating 30 VMs from a master named \ *appserver*\ :
- 
- 
+
+
  .. code-block:: perl
- 
+
    clonevm vm1-vm30 -b appserver
- 
- 
+
+
 
 
 
