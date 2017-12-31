@@ -414,7 +414,7 @@ sub execute_dsh
 =head3
         _execute_dsh
 
-        Wrapper routine for execute_dsh 
+        Wrapper routine for execute_dsh
         to execute actual dsh call
 
         Arguments:
@@ -805,7 +805,7 @@ sub fork_fanout_dcp
         my @dcp_command;
         my $rsyncfile;
 
-        
+
         my %envardict;
         foreach my $varstr (split(',',$$target_properties{'envar'})){
             if($varstr =~ m/(.*)=(.*)/){
@@ -844,7 +844,7 @@ sub fork_fanout_dcp
             }
         }
 
-        
+
         if (!$$target_properties{'localhost'})    # this is to a remote host
         {
             my $target_type = $$target_properties{'type'};
@@ -1025,8 +1025,8 @@ sub fork_fanout_dsh
       )
       = @_;
 
-    #get username and passeword for switches 
-    if (($$options{'devicetype'} =~ /EthSwitch/) || 
+    #get username and passeword for switches
+    if (($$options{'devicetype'} =~ /EthSwitch/) ||
         (($$options{'devicetype'} =~ /IBSwitch/) && !($$options{'user'})) ){
         if (@$targets_waiting > 0) {
             if ($ENV{'DSH_REMOTE_PASSWORD'}) {
@@ -1373,7 +1373,7 @@ sub fork_fanout_dsh
         #print "Command=@dsh_command\n";
 
         #@process_info = xCAT::DSHCore->fork_output($user_target, @dsh_command);
-        push(@commands, \@dsh_command);    
+        push(@commands, \@dsh_command);
         @process_info = xCAT::DSHCore->fork_output_for_commands($user_target, @commands);
         if ($process_info[0] == -2)
         {
@@ -3292,7 +3292,7 @@ sub _resolve_nodes
         xdsh and just let ssh do it.  Stayed to preserve the logic of the old
         code.
         Does check if the Management Node is part of the node range and sets
-        localhost if it is.  The MN must be defined in nodelist and with 
+        localhost if it is.  The MN must be defined in nodelist and with
         nodetype.nodetype=mn.
 
         Arguments:
@@ -3302,13 +3302,13 @@ sub _resolve_nodes
 
         Returns:
         	None
-                
+
         Globals:
         	None
-    
+
         Error:
         	None
-    
+
         Example:
 
         Comments:
@@ -3335,7 +3335,7 @@ sub bld_resolve_nodes_hash
         xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
     }
 
-    
+
     my $ostab = xCAT::Table->new('nodetype');
     my %oents = %{ $ostab->getNodesAttribs(\@target_list, [qw(provmethod)]) };
 
@@ -3360,10 +3360,10 @@ sub bld_resolve_nodes_hash
         if ($ent and $ent->{provmethod} and \
                ($ent->{provmethod} ne 'install') and ($ent->{provmethod} ne 'netboot') and ($ent->{provmethod} ne 'statelite')) {
 
-            my $imagename = $ent->{provmethod};  
+            my $imagename = $ent->{provmethod};
             my $osimagetab = xCAT::Table->new('osimage', -create => 1);
             (my $ref) = $osimagetab->getAttribs({ imagename => $imagename }, 'environvar');
-            if($ref){ 
+            if($ref){
                 $envar=$ref->{'environvar'};
             }
         }
@@ -4640,7 +4640,7 @@ sub parse_and_run_dcp
              xCAT::MsgUtils->message("E", $rsp, $::CALLBACK, 1);
              return;
         }
-    
+
         if ($remotecopycommand !~ /\/(rcp|scp|rsync)$/){
              my $rsp = {};
              $rsp->{error}->[0] =
@@ -4740,7 +4740,7 @@ sub parse_and_run_dcp
         {
             $::SYNCSN = 1;
         }
-        
+
 
         # the parsing of the file will fill in an array of postscripts
         # need to be run if the associated file is updated
@@ -4947,13 +4947,13 @@ sub parse_and_run_dcp
           /.../file1 /..../filex  -> /...../dir1
 
        rsync command format
-	   /usr/bin/rsync -Lprgotz  /etc/services  $pathtoimage/etc/services 
+	   /usr/bin/rsync -Lprgotz  /etc/services  $pathtoimage/etc/services
 	   /usr/bin/rsync -Lprgotz  /tmp/lissa/file1 /tmp/lissa/file $pathtoimage/tmp/lissa
 
         Arguments:
 		  Input:
 		  sync file
-		  path to image 
+		  path to image
 
         Returns:
            Errors if invalid options or the executed dcp command
@@ -4978,13 +4978,13 @@ sub rsync_to_image
 
     my ($input_file, $image) = @_;
     my $rc = 0;
- 
+
     my %osimgenv;
     if($ENV{'XCAT_OSIMAGE_ENV'}){
         foreach my $myenv(split(',',$ENV{'XCAT_OSIMAGE_ENV'})){
             if($myenv =~ /\s*(\S+)\s*=\s*(\S+)\s*/) {
                 $osimgenv{$1}=$2;
-            } 
+            }
         }
     }
     open(INPUTFILE, "< $input_file") || die "File $input_file does not exist\n";
@@ -4996,7 +4996,7 @@ sub rsync_to_image
             next;
         }
 
-        $line=xCAT::Utils->varsubinline($line,\%osimgenv); 
+        $line=xCAT::Utils->varsubinline($line,\%osimgenv);
 
         # process no more lines, do not exec
         # do not execute postscripts when syncing images
@@ -5088,7 +5088,7 @@ sub rsync_to_image
 
 =head3
        parse_rsync_input_file_on_MN
-	  
+	
 
         This parses the -F rsync input file on the Management node.
 
@@ -5099,7 +5099,7 @@ sub rsync_to_image
           /.../file1 /..../filex  -> /...../dir1
           /tmp/file2  ->  /tmp/file2
           /tmp/file2.post -> /tmp/file2.post
-          EXECUTE: 
+          EXECUTE:
           /tmp/file2.post
           EXECUTEALWAYS:
           /tmp/myscript1
@@ -5108,11 +5108,11 @@ sub rsync_to_image
           .
 
         Arguments:
-		  Input nodelist,options, pointer to the sync file,flag is 
+		  Input nodelist,options, pointer to the sync file,flag is
 		  syncing the service node and
 		  the directory to syn the files to on the service node
 		  based on defaults or the site.SNsyncfiledir attribute,
-		  if syncing a service node for hierarchical support. 
+		  if syncing a service node for hierarchical support.
 
         Returns:
            Errors if invalid options or the executed dcp command
@@ -5370,7 +5370,7 @@ sub parse_rsync_input_file_on_MN
     if($remotecopycommand !~ /\/rsync$/ and @::postscripts){
         my $rsp = {};
         $rsp->{error}->[0] ="key word 'EXECUTE' is unavailable when the remote copy command specified by '-r|--node-rcp' is $remotecopycommand. Does 'EXECUTEALWAYS' work for you?";
-        xCAT::MsgUtils->message("E", $rsp, $::CALLBACK, 1);         
+        xCAT::MsgUtils->message("E", $rsp, $::CALLBACK, 1);
         return 1;
     }
 
@@ -5380,27 +5380,27 @@ sub parse_rsync_input_file_on_MN
 #-------------------------------------------------------------------------------
 
 =head3
-      build_append_rsync 
+      build_append_rsync
 
-        Handles the 
+        Handles the
            APPEND: clause in the synclist
            /tmp/appendfile -> /tmp/receivefile
 
            Syncs the append file from the left side of the arrow
            to the nodes into the site.nodesyncfiledir directory
-           After we find out which append file are actually changed, we 
+           After we find out which append file are actually changed, we
            will sync and run and the append script
            /opt/xcat/share/xcat/script/xdcpappend.sh
            See build_append_script.
 
         Returns:
-          Files do not exist, rsync errors. 
+          Files do not exist, rsync errors.
 
         Globals:
 
 
         Error:
-          Files do not exist, rsync errors. 
+          Files do not exist, rsync errors.
 
         Example:
 
@@ -5495,9 +5495,9 @@ sub build_append_rsync
 #-------------------------------------------------------------------------------
 
 =head3
-      build_merge_rsync 
+      build_merge_rsync
 
-        Handles the 
+        Handles the
            MERGE: clause in the synclist
            /tmp/mypasswd -> /etc/passwd
            /tmp/mygroup -> /etc/group
@@ -5507,13 +5507,13 @@ sub build_append_rsync
           myshadow into /etc/passwd, /etc/group , /etc/shadow on the nodes.
           These are the only files supported from MERGE and only on Linux
         Returns:
-          Files do not exist, rsync errors. 
+          Files do not exist, rsync errors.
 
         Globals:
 
 
         Error:
-          Files do not exist, rsync errors. 
+          Files do not exist, rsync errors.
 
         Example:
 
@@ -5624,7 +5624,7 @@ sub build_merge_rsync
 
         Arguments:
 		  Input nodelist,options, pointer to the sync file and
-		  the directory to syn the files from 
+		  the directory to syn the files from
 		  based on defaults or the site.SNsyncfiledir attribute,
 
         Returns:
@@ -5654,7 +5654,7 @@ sub build_merge_rsync
 
         Arguments:
 		  Input nodelist,options, pointer to the sync file and
-		  the directory to syn the files from 
+		  the directory to syn the files from
 		  based on defaults or the site.SNsyncfiledir attribute,
 
         Returns:
@@ -5758,7 +5758,7 @@ sub parse_rsync_input_file_on_SN
             # xCAT supports the syncfile format:
             #   file -> file
             #   file -> (noderange for permitted nodes) file
-            if ($line =~ /(.+) -> (.+)/ || $line =~ /(.+) -> +\((.+)\) +(.+)/) 
+            if ($line =~ /(.+) -> (.+)/ || $line =~ /(.+) -> +\((.+)\) +(.+)/)
             {
                 $process_line = 1;
                 my $src_file;
@@ -5875,7 +5875,7 @@ sub parse_rsync_input_file_on_SN
     if($remotecopycommand !~ /\/rsync$/ and @::postscripts){
         my $rsp = {};
         $rsp->{error}->[0] ="key word 'EXECUTE' is unavailable when the remote copy command specified by '-r|--node-rcp' is $remotecopycommand. Does 'EXECUTEALWAYS' work for you?";
-        xCAT::MsgUtils->message("E", $rsp, $::CALLBACK, 1);         
+        xCAT::MsgUtils->message("E", $rsp, $::CALLBACK, 1);
         return 1;
     }
 
@@ -5885,7 +5885,7 @@ sub parse_rsync_input_file_on_SN
 #-------------------------------------------------------------------------------
 
 =head3
-       run_rsync_postscripts 
+       run_rsync_postscripts
 
         This executes the postscript file on the nodes where
 	    the corresponding rsync file was updated
@@ -5895,20 +5895,20 @@ sub parse_rsync_input_file_on_SN
         For example:  node1: tmp/test/file1  ( yes it leaves the first / off)
         This routine must match that list to the input list of postscripts.
         If there is a match, for example
-        The postscript file is /tmp/test/file1.post  and tmp/test/file1 was 
-        updated, then it builds a xdsh command to the node to run  
+        The postscript file is /tmp/test/file1.post  and tmp/test/file1 was
+        updated, then it builds a xdsh command to the node to run
         /tmp/test/file1.post.
         On the service node, the file will be in $syncdir/tmp/test/file1.post.
-        Also the routine must preserve all other messages returned from rsync, 
-        to return to the admin.  It will remove the messages that the files 
+        Also the routine must preserve all other messages returned from rsync,
+        to return to the admin.  It will remove the messages that the files
         were updated, that is all of from hostname: <full file path>.	
        Input: the output from the xdcp rsync run
             : @::postscripts  to run
 
         Comments:
           Needs to remove the lines from rsync that are return to let
-          me know files were updated from the output to determine which 
-          postscripts to run and leave any other messages 
+          me know files were updated from the output to determine which
+          postscripts to run and leave any other messages
           to return to the admin.
 
 =cut
@@ -5991,31 +5991,31 @@ sub run_rsync_postscripts
 #-------------------------------------------------------------------------------
 
 =head3
-       &bld_and_run_append 
+       &bld_and_run_append
 
         This builds the parm list and executes (xdsh) the append script file
         on the nodes where
         the corresponding append file was updated.
-        The append postscript has been previous sync'd to the nodes. 
+        The append postscript has been previous sync'd to the nodes.
         These are the scripts after APPEND: in the syncfile
 
         rsync returns a list of files that have been updated
         in the form   hostname: <full file path>
         For example:  node1: tmp/test/file1  ( yes it leaves the first / off)
         This routine must match that list to the input list of append files.
-        If there is a match, it will add the append function to 
-        the append script 
+        If there is a match, it will add the append function to
+        the append script
        Input: the output from the xdcp rsync run
             : @::appendlines  to run
 
         Comments:
           Needs to remove the lines from rsync that are return to let
-          me know files were updated from the output to determine which 
-          postscripts to run and leave any other messages 
+          me know files were updated from the output to determine which
+          postscripts to run and leave any other messages
           to return to the admin.
 
         Runs xdsh with input to call /opt/xcat/share/xcat/scripts/xdcpappend.sh
-        which will perform the append function on the node.  
+        which will perform the append function on the node.
         Input is the nodesyncfiledir appendfile:orgfile appendfile2:orgfile2....
 =cut
 
@@ -6130,31 +6130,31 @@ sub bld_and_run_append
 #-------------------------------------------------------------------------------
 
 =head3
-       &bld_and_run_merge 
+       &bld_and_run_merge
 
         This builds the parm list and executes (xdsh) the merge script file
         on the nodes where
         the corresponding merge file was updated.
-        The merge script has been previous sync'd to the nodes. 
+        The merge script has been previous sync'd to the nodes.
         These are the scripts after MERGE: in the syncfile
 
         rsync returns a list of files that have been updated
         in the form   hostname: <full file path>
         For example:  node1: tmp/test/file1  ( yes it leaves the first / off)
         This routine must match that list to the input list of merge files.
-        If there is a match, it will add the merge function to 
-        the merge script 
+        If there is a match, it will add the merge function to
+        the merge script
        Input: the output from the xdcp rsync run
             : @::mergelines  to run
 
         Comments:
           Needs to remove the lines from rsync that are return to let
-          me know files were updated from the output to determine which 
-          postscripts to run and leave any other messages 
+          me know files were updated from the output to determine which
+          postscripts to run and leave any other messages
           to return to the admin.
 
         Runs xdsh with input to call /opt/xcat/share/xcat/scripts/xdcpmerge.sh
-        which will perform the merge function on the node.  
+        which will perform the merge function on the node.
         Input is the nodesyncfiledir mergefile1:orgfile mergefile2:orgfile2....]        Note: MERGE is only support on Linux and for /etc/passwd,/etc/shadow,
               and /etc/group
 =cut
@@ -6281,10 +6281,10 @@ sub bld_and_run_merge
 #-------------------------------------------------------------------------------
 
 =head3
-     run_always_rsync_postscript 
+     run_always_rsync_postscript
 
   This subroutine runs the xdsh command for all the scripts listed in the
-  EXECUTEALWAYS: clause of the synclist file. 
+  EXECUTEALWAYS: clause of the synclist file.
 
 =cut
 
@@ -6686,7 +6686,7 @@ sub show_dsh_config
 
 #-------------------------------------------------------------------------------
 
-=head3 
+=head3
      get_config
 
     Substitute specific keywords in hash
