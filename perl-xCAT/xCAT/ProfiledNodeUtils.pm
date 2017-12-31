@@ -80,7 +80,7 @@ sub get_allocable_staticips_innet
                     $rank - The start number.
                     $amount - The total hostname number to be generated.
       Returns     : numric hostname list
-      Example     : 
+      Example     :
               calling  genhosts_with_numric_tmpl("compute#NNnode") will return a list like:
               ("compute00node", "compute01node", ..."compute98node", "compute99node")
 =cut
@@ -104,7 +104,7 @@ sub genhosts_with_numric_tmpl
                     $prefix - the prefix string of hostname format.
                     $appendix - the appendix string of hostname format
                     $numlen - The number length in hostname format.
-      Example     : 
+      Example     :
               calling  split_hostname("compute#NNnode") will return a list like:
               ("compute", "node", 2)
 =cut
@@ -145,7 +145,7 @@ sub split_hostname
                     $rank - the start number for numric part
                     $amount - the amount of hostnames to be generated.
       Returns     : numric hostname list
-      Example     : 
+      Example     :
               calling  gen_numric_hostnames("compute", "node",2) will return a list like:
               ("compute00node", "compute01node", ..."compute98node", "compute99node")
 =cut
@@ -182,9 +182,9 @@ sub gen_numric_hostnames
       Returns     : hostname format type value:
                     "numric" - numric hostname format.
                     "rack" - rack info hostname format.
-      Example     : 
+      Example     :
               calling  get_hostname_format_type("compute#NNnode") will return "numric"
-              calling  get_hostname_format_type("compute-#RR-#NN") will return "rack" 
+              calling  get_hostname_format_type("compute-#RR-#NN") will return "rack"
 =cut
 
 #-------------------------------------------------------------------------------
@@ -235,8 +235,8 @@ sub get_hostname_format_type {
       Arguments   : $format - rack hostname format
                     $racknum - rack number.
       Returns     : numric hostname format.
-      Example     : 
-           calling  rackformat_to_numricformat("compute-#RR-#NN", 1) will return "compute-01-#NN" 
+      Example     :
+           calling  rackformat_to_numricformat("compute-#RR-#NN", 1) will return "compute-01-#NN"
 =cut
 
 #-------------------------------------------------------------------------------
@@ -385,7 +385,7 @@ sub get_nodes_nic_attrs {
 
 =head3 get_netprofile_bmcnet
       Description : Get bmc network name of a network profile.
-      Arguments   : $nettmpl - network profile name 
+      Arguments   : $nettmpl - network profile name
       Returns     : bmc network name of this network profile.
 =cut
 
@@ -406,7 +406,7 @@ sub get_netprofile_bmcnet {
 
 =head3 get_netprofile_provisionnet
       Description : Get deployment network of a network profile.
-      Arguments   : $nettmpl - network profile name 
+      Arguments   : $nettmpl - network profile name
       Returns     : deployment network name of this network profile.
 =cut
 
@@ -455,11 +455,11 @@ sub get_output_filename
       Description : Get all chassis in system.
       Arguments   : hashref: if not set, return a array ref.
                              if set, return a hash ref.
-                    type   : "all", get all chassis, 
+                    type   : "all", get all chassis,
                              "cmm", get all chassis whose type is cmm
                     if type not specify, it is 'all'
       Returns     : ref for chassis list.
-      Example     : 
+      Example     :
                     my $arrayref = xCAT::ProfiledNodeUtils->get_all_chassis();
                     my $hashref = xCAT::ProfiledNodeUtils->get_all_chassis(1);
                     my $hashref = xCAT::ProfiledNodeUtils->get_all_chassis(1, 'cmm');
@@ -495,7 +495,7 @@ sub get_all_chassis
       Arguments   : hashref: if not set, return a array ref.
                              if set, return a hash ref.
       Returns     : ref for rack list.
-      Example     : 
+      Example     :
                     my $arrayref = xCAT::ProfiledNodeUtils->get_all_rack();
                     my $hashref = xCAT::ProfiledNodeUtils->get_all_rack(1);
 =cut
@@ -554,7 +554,7 @@ sub get_racks_for_chassises
 
 =head3 get_allnode_singleattrib_hash
       Description : Get all records of a column from a table, then return a hash.
-                    The return hash's keys are the records of this attribute 
+                    The return hash's keys are the records of this attribute
                     and values are all set as 1.
       Arguments   : $tabname - the table name.
                     $attr - the attribute name.
@@ -636,7 +636,7 @@ sub get_db_switchports
       Arguments   : hashref: if not set, return a array ref.
                              if set, return a hash ref.
       Returns     : ref for CECs list.
-      Example     : 
+      Example     :
                     my $arrayref = xCAT::ProfiledNodeUtils->get_all_cecs();
                     my $hashref = xCAT::ProfiledNodeUtils->get_all_cecs(1);
 =cut
@@ -675,7 +675,7 @@ sub get_all_cecs
       Description : Get all LPAR ids  in system.
       Arguments   : ref of all cecs
       Returns     : ref for LPAR ids hash.
-      Example     : 
+      Example     :
                     my $arrayref = xCAT::ProfiledNodeUtils->get_all_lparids(\%allcecs);
 =cut
 
@@ -1070,12 +1070,12 @@ sub is_kvm_hypv_node
 #-------------------------------------------------------------------------------
 
 =head3 get_nodes_cmm
-      Description : Get the CMM of nodelist 
+      Description : Get the CMM of nodelist
       Arguments   : $nodelist - the ref of node list array
       Returns     : $cmm - the ref of hash like
                     {
                       "cmm1" => 1,
-                      "cmm2" => 1                          
+                      "cmm2" => 1
                     }
 =cut
 
@@ -1229,7 +1229,7 @@ sub update_windows_prodkey
 =head3 check_nicips
     Description: Check if the nicips defined in MAC file is correct
                  format
-    Arguments: $installnic: the installnic defined in networkprofile 
+    Arguments: $installnic: the installnic defined in networkprofile
                $netprofileattrsref: the attributes of all nics in networkprofile
                $freeipshash:  the hash of networks' staticrange
                $nicips: the string of nicips defined in MAC file
@@ -1300,7 +1300,7 @@ sub check_nicips {
 =head3 gen_chain_for_profiles
     Description: Generate a chain string based on Network/Hardware/Image profiles.
     Arguments: $profiles_hash: The reference for profiles hash.
-             For example: 
+             For example:
              $profiles_hash = { 'HardwareProfile' => 'IBM_NeXtScale_M4',
                                 'ImageProfile' => 'rhels6.5-x86_64-stateful-compute',
                                 'NetworkProfile' => 'default_network_profile',
@@ -1390,10 +1390,10 @@ sub gen_chain_for_profiles {
 #-------------------------------------------------------------------------------
 
 =head3 get_all_vmhosts
-      Description : Get all vm hosts/hypervisor from DB. 
+      Description : Get all vm hosts/hypervisor from DB.
       Arguments   : N/A
       Returns     : ref for vm hosts/hypervisor hash.
-      Example     : 
+      Example     :
                     my $hashref = xCAT::ProfiledNodeUtils->get_all_vmhosts();
 =cut
 
