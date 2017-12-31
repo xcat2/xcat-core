@@ -4,10 +4,10 @@ Verify CUDA Installation
 **The following verification steps only apply to the ``cudafull`` installations.**
 
 #. Verify driver version by looking at: ``/proc/driver/nvidia/version``: ::
-  
+
     # cat /proc/driver/nvidia/version
      NVRM version: NVIDIA UNIX ppc64le Kernel Module  352.39  Fri Aug 14 17:10:41 PDT 2015
-     GCC version:  gcc version 4.8.5 20150623 (Red Hat 4.8.5-4) (GCC) 
+     GCC version:  gcc version 4.8.5 20150623 (Red Hat 4.8.5-4) (GCC)
 
 #. Verify the CUDA Toolkit version ::
 
@@ -19,7 +19,7 @@ Verify CUDA Installation
 
 #. Verify running CUDA GPU jobs by compiling the samples and executing the ``deviceQuery`` or ``bandwidthTest`` programs.
 
-   * Compile the samples: 
+   * Compile the samples:
 
      **[RHEL]:** ::
 
@@ -32,13 +32,13 @@ Verify CUDA Installation
 
         cd ~/
         apt-get install cuda-samples-7-0 -y
-        cd /usr/local/cuda-7.0/samples 
-        make 
+        cd /usr/local/cuda-7.0/samples
+        make
 
 
    * Run the ``deviceQuery`` sample: ::
 
-        # ./bin/ppc64le/linux/release/deviceQuery   
+        # ./bin/ppc64le/linux/release/deviceQuery
           ./deviceQuery Starting...
           CUDA Device Query (Runtime API) version (CUDART static linking)
           Detected 4 CUDA Capable device(s)
@@ -54,9 +54,9 @@ Verify CUDA Installation
             ............
             deviceQuery, CUDA Driver = CUDART, CUDA Driver Version = 7.5, CUDA Runtime Version = 7.5, NumDevs = 4, Device0 = Tesla K80, Device1 = Tesla K80, Device2 = Tesla K80, Device3 = Tesla K80
             Result = PASS
-   
+
    * Run the ``bandwidthTest`` sample: ::
- 
+
         # ./bin/ppc64le/linux/release/bandwidthTest
           [CUDA Bandwidth Test] - Starting...
           Running on...
@@ -75,6 +75,6 @@ Verify CUDA Installation
             Transfer Size (Bytes)        Bandwidth(MB/s)
             33554432                     141485.3
           Result = PASS
-    
+
     NOTE: The CUDA Samples are not meant for performance measurements. Results may vary when GPU Boost is enabled.
-    
+
