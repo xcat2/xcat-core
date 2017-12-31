@@ -19,7 +19,7 @@ Compute nodes can access the internet
 
     chdef -t osimage <osimage name> otherpkglist=/install/custom/install/ubuntu/compute.otherpkgs.pkglist
 
-#. Run ``updatenode <noderange> -S`` or ``updatenode <noderange> -P otherpkgs`` 
+#. Run ``updatenode <noderange> -S`` or ``updatenode <noderange> -P otherpkgs``
 
    Run ``updatenode -S`` to **install/update** the packages on the compute nodes ::
 
