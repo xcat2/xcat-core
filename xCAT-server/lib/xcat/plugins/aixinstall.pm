@@ -580,7 +580,7 @@ sub process_request
 
 #----------------------------------------------------------------------------
 
-=head3   nimnodeset 
+=head3   nimnodeset
 
         Support for the nimnodeset command.
 
@@ -1381,19 +1381,19 @@ sub nimnodeset
 #----------------------------------------------------------------------------
 
 =head3	spot_updates
-			Update a NIM SPOT resource on the NIM primary 
+			Update a NIM SPOT resource on the NIM primary
 
 		Arguments:
 		Returns:
 			0 - OK
 			1 - error
 
-		Error:   
+		Error:
 
 		Example:
 
 		Usage:
-	my $rc = 
+	my $rc =
 		&spot_updates($callback, $imagename, \%osimagehash, \%attrvals, $lpp_source, $subreq);
 
 		Comments:
@@ -2164,7 +2164,7 @@ sub chkosimage
 
 	Arguments:
 	Returns:
-		0 - OK 
+		0 - OK
 		1 - error
 	Globals:
 	Example:
@@ -2230,7 +2230,7 @@ sub clean_lpp
 
 =head3   mknimimage
 
-		Creates an AIX/NIM image 
+		Creates an AIX/NIM image
 
         Arguments:
         Returns:
@@ -2245,7 +2245,7 @@ sub clean_lpp
         Usage:
 
 		mknimimage [-V] [-f | --force] [-l location] [-s image_source]
-		   [-u |--update] [-i current_image] image_name 
+		   [-u |--update] [-i current_image] image_name
 			[attr=val [attr=val ...]]
 
 		Comments:
@@ -6678,14 +6678,14 @@ sub update_rhosts
 
 #-------------------------------------------------------------------------
 
-=head3   update_inittab  
-                                                                         
-   Description:  This function updates the /etc/inittab file. 
-                                                                         
-   Arguments:    None.                                                   
-                                                                         
-   Return Codes: 0 - All was successful.                                 
-                 1 - An error occured.                                   
+=head3   update_inittab
+
+   Description:  This function updates the /etc/inittab file.
+
+   Arguments:    None.
+
+   Return Codes: 0 - All was successful.
+                 1 - An error occured.
 =cut
 
 #------------------------------------------------------------------------
@@ -6796,7 +6796,7 @@ sub get_res_loc
 
 =head3  chkFSspace
 	
-	See if there is enough space in file systems. If not try to increase 
+	See if there is enough space in file systems. If not try to increase
 	the size.
 
         Arguments:
@@ -6939,7 +6939,7 @@ sub chkFS
 
 =head3  enoughspace
 
-        See if the NIM root resource has enough space to initialize 
+        See if the NIM root resource has enough space to initialize
 			another node.  If not try to add space to the FS.
 
         Arguments:
@@ -7078,7 +7078,7 @@ sub enoughspace
         Globals:
 
         Example:
-			$rc = &mkdumpres($res_name, \%attrs, $callback, $location, 
+			$rc = &mkdumpres($res_name, \%attrs, $callback, $location,
 				\%nimres);
 
         Comments:
@@ -7568,16 +7568,16 @@ sub update_dd_boot
 
         my $odmrestore = qq~\n
 	# xCAT basecust support #1
-	#  when using a shared_root we need to see if there is a persistent 
-	#		/etc/basecust file available.  If we have one we need to 
-	#		restore it.  This will restore anything previously 
+	#  when using a shared_root we need to see if there is a persistent
+	#		/etc/basecust file available.  If we have one we need to
+	#		restore it.  This will restore anything previously
 	#		saved in the ODM.
 	if [ -n "\${NIM_SHARED_ROOT}" ]
 	then
-		#  Get the name of the server and the name of the persistent 
+		#  Get the name of the server and the name of the persistent
 		#     directory to mount
 		#  - /mnt is the shared_root dir at this point
-		#  - the statelite.table file has entries like: 
+		#  - the statelite.table file has entries like:
 		#			"compute04|10.2.0.200|/nodedata"
 		if [ -f "/mnt/statelite.table" ]
 		then
@@ -7648,14 +7648,14 @@ qq~\n\t# xCAT support #3\n\tif [ -z "\$(odmget -qattribute=syscons CuAt)" ] \n\t
 
         my $basecustrm = qq~
         # xCAT basecust removal support #5
-        # Check if BASECUST_REMOVAL is specified, 
+        # Check if BASECUST_REMOVAL is specified,
         # if yes, then remove the specified device
         # This change will finally go into AIX NIM support
         [ -n "\${BASECUST_REMOVAL}" ] && {
             cp /SPOT/usr/sbin/rmdev /usr/sbin
             rmdev -l \${BASECUST_REMOVAL} -d
             rm -f /usr/sbin/rmdev
-        }    
+        }
     \n\n~;
 
         if (open(DDBOOT, "<$dd_boot_file_mn"))
@@ -8068,8 +8068,8 @@ sub prenimnodecust
 
         Arguments:
         Returns:
-                0 - OK 
-                1 - error 
+                0 - OK
+                1 - error
         Globals:
         Example:
         Comments:
@@ -8237,7 +8237,7 @@ sub nimnodecust
         Globals:
         Example:
         Comments:
-			- Gather info from the management node and/or the NIM 
+			- Gather info from the management node and/or the NIM
 			 	primary server and pass it along to the requests that
 			 	go to the service nodes.
 			- If needed, copy NIM files to the service nodes
@@ -9195,7 +9195,7 @@ sub tarNIMresources
 
 =head3   copyres
 
-        Copy NIM resource files/dirs to remote service nodes 
+        Copy NIM resource files/dirs to remote service nodes
 
         Arguments:
         Returns:
@@ -9641,7 +9641,7 @@ sub copyres2
         Copy NIM resource files/dirs to remote service nodes so they can be
            defined locally
 
-        Also 
+        Also
 			-copy /etc/hosts to make sure we have name res for nodes
             from SN
 			- copy /install/postscripts so we have the latest
@@ -13015,7 +13015,7 @@ qq~/usr/sbin/nim -Fo change -a routing$rtindex='master_net $nethash{$node}{gatew
 
 #----------------------------------------------------------------------------
 
-=head3   make_SN_resource 
+=head3   make_SN_resource
 
 		See if the required NIM resources are created on the local server.
 		
@@ -14448,7 +14448,7 @@ sub getNodesetStates
     Arguments:
         nodes -- node name.
     Returns:
-       nodesetstate 
+       nodesetstate
 
 =cut
 
@@ -14491,13 +14491,13 @@ sub getNodesetState
 				- on NIM primary only
 				- install the additional software specified in the NIM
 					installp_bundle resources
-				- install the additional software specified by the 
+				- install the additional software specified by the
 					fileset names
 				- use installp flags if specified
 				- uses bnds, filesets and flags from osimage def or
 					command line
    Arguments:
-		   
+		
    Returns:
 			0 - OK
 			1 - error
@@ -15130,7 +15130,7 @@ qq~/usr/sbin/lsnim -a location $spot_name | /usr/bin/grep location 2>/dev/null~;
 
 =head3   parse_installp_bundle
 
-	generate tmp files for installp filesets and RPMs separately 
+	generate tmp files for installp filesets and RPMs separately
 	based on NIM installp_bundles
 	
 	/tmp/tmp_installp, /tmp/tmp_rpm, /tmp/tmp_epkg
@@ -15366,7 +15366,7 @@ sub parse_otherpkgs
 
    Arguments:
    callback, source_dir, listfile, installp_flags, spotname, niprime, subreq
-		   
+		
    Returns:
 			0 - OK
 			1 - error
@@ -15442,7 +15442,7 @@ sub update_spot_installp
 
    Arguments:
    callback, source_dir, ref_rlist, rpm_flags, spotname, niprime, subreq
-		   
+		
    Returns:
 			0 - OK
 			1 - error
@@ -15609,7 +15609,7 @@ sub update_spot_rpm
 
    Arguments:
    callback, source_dir, $listfile, eflags, spotname, niprime, subreq
-		   
+		
    Returns:
 			0 - OK
 			1 - error
