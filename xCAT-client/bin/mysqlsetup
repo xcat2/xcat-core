@@ -4,19 +4,19 @@
 
 #-----------------------------------------------------------------------------
 
-=head1   mysqlsetup 
+=head1   mysqlsetup
 
 
 
  This script  automates the setup of the MySQL/MariaDB server  and creates the xCAT database to run
   xCAT on MySQL/MariaDB.
-   Note: it will setup an xcat database (xcatdb),a xcatadmin id , and a MySQL root password. 
+   Note: it will setup an xcat database (xcatdb),a xcatadmin id , and a MySQL root password.
    It will interact for the
-   password to assign, unless the XCATMYSQLADMIN_PW and the XCATMYSQLROOT_PW 
-   env variables are set to the admin and mysql root password, resp.   
-   Setups up AIX and Linux,  but most work needs to be done on AIX. 
-   See man mysqlsetup for more information and the xCAT2.SetupMySQL.pdf 
-   documentation. 
+   password to assign, unless the XCATMYSQLADMIN_PW and the XCATMYSQLROOT_PW
+   env variables are set to the admin and mysql root password, resp.
+   Setups up AIX and Linux,  but most work needs to be done on AIX.
+   See man mysqlsetup for more information and the xCAT2.SetupMySQL.pdf
+   documentation.
 
 =cut
 
@@ -415,7 +415,7 @@ if (($::INIT) && ($::xcatrunningmysql == 0))
         $hname = `hostname`;
         chomp $hname;
     }
-    
+
     #my ($name, $aliases, $addrtype, $length, @addrs) = gethostbyname($hname);
     my $ipaddr = xCAT::NetworkUtils->getipaddr($hname);
     if ($ipaddr)
@@ -501,7 +501,7 @@ exit;
 
 #-----------------------------------------------------------------------------
 
-=head3    usage 
+=head3    usage
 	
 	Displays message for -h option
 
@@ -523,7 +523,7 @@ sub usage
 
 #-----------------------------------------------------------------------------
 
-=head3    setulimits 
+=head3    setulimits
 	
      sets ulimits unlimited, needed to run MySQL
 	 update /etc/security/limits with the info
@@ -606,9 +606,9 @@ sub setulimits
 
 #-----------------------------------------------------------------------------
 
-=head3    backupxcatdb 
+=head3    backupxcatdb
 	
-   Backup xCATdb 
+   Backup xCATdb
 
 =cut
 
@@ -664,9 +664,9 @@ sub backupxcatdb
 
 #-----------------------------------------------------------------------------
 
-=head3    shutdownxcatd 
+=head3    shutdownxcatd
 	
-  shutdown the daemon 
+  shutdown the daemon
 
 =cut
 
@@ -697,10 +697,10 @@ sub shutdownxcatd
 
 #-----------------------------------------------------------------------------
 
-=head3   fixinstall 
+=head3   fixinstall
 	
-        If AIX, Fixes ownership and permssion on install 
-         adds mysql user and group 
+        If AIX, Fixes ownership and permssion on install
+         adds mysql user and group
 	
 =cut
 
@@ -775,7 +775,7 @@ sub fixinstalldir
 
 #-----------------------------------------------------------------------------
 
-=head3   initmysqldb 
+=head3   initmysqldb
 
 	
     Create the MySQL data directory and initialize the grant tables
@@ -940,10 +940,10 @@ sub initmysqldb
 
 #-----------------------------------------------------------------------------
 
-=head3   mysqlstart 
+=head3   mysqlstart
 
 	
-    Start the mysql server 
+    Start the mysql server
 
 =cut
 
@@ -1023,10 +1023,10 @@ sub mysqlstart
 
 #-----------------------------------------------------------------------------
 
-=head3   mysqlreboot 
+=head3   mysqlreboot
 
 	
-    Setup for MySQL to start on reboot 
+    Setup for MySQL to start on reboot
 
 =cut
 
@@ -1151,10 +1151,10 @@ sub verifymysqlroot
 
 #-----------------------------------------------------------------------------
 
-=head3   setupmysqlroot 
+=head3   setupmysqlroot
 
 	
-    Set mysql root password in the database 
+    Set mysql root password in the database
 
 =cut
 
@@ -1196,9 +1196,9 @@ sub setupmysqlroot
 
 #-----------------------------------------------------------------------------
 
-=head3    setupxcatdb 
+=head3    setupxcatdb
 	
-      Creates the xcatdb in MySQL 
+      Creates the xcatdb in MySQL
       Add xcatadmin to the database
 	  Give Management Node database access
 
@@ -1335,9 +1335,9 @@ sub setupxcatdb
 
 #-----------------------------------------------------------------------------
 
-=head3    setupLL 
+=head3    setupLL
 	
-      Adds special LoadLeveler setup in MySQL 
+      Adds special LoadLeveler setup in MySQL
 	
 =cut
 
@@ -1453,11 +1453,11 @@ sub setupLL
 
 #-----------------------------------------------------------------------------
 
-=head3   addhosts 
+=head3   addhosts
 	
          Will add all host ids that need access to the MySQL database.
 		 User will input names, ipaddress or wild cards like 9.112.%.%
-		 or %.ibm.com in a file after the -f flag.  
+		 or %.ibm.com in a file after the -f flag.
 
 =cut
 
@@ -1591,7 +1591,7 @@ sub addhosts
 
 #-----------------------------------------------------------------------------
 
-=head3   setupODBC 
+=head3   setupODBC
 	
          Will setup the ODBC. Only needed if C, C++ applications are running
 		 that need access to the MySQL database for example LoadLeveler.
@@ -1832,7 +1832,7 @@ sub setupODBC
 
 #-----------------------------------------------------------------------------
 
-=head3   createcfgloc 
+=head3   createcfgloc
 	
 		 Creates the cfgloc.mysql file which will be copied to cfgloc
                  to run xCAT on MySQL
@@ -1885,8 +1885,8 @@ sub createcfgloc
 
 #-----------------------------------------------------------------------------
 
-=head3   restorexcatdb 
-	   
+=head3   restorexcatdb
+	
 		Restores the database from ~/xcat-dbback and restarts the xcatd using
 		MySQL
 	
