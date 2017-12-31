@@ -25,4 +25,4 @@ If the Kit Package Repository is not fully built, the command builds it as follo
     #. Build the Component Meta-Packages associated with this Kit Package Repository. Create the packages under the Kit Package Repository directory
     #. Build the Kit Packages associated with this Kit Package Repository. Create the packages under the Kit Package Repository directory
     #. Build the repository meta-data for the Kit Package Repository. The repository meta-data is based on the OS native package format. For example, for RHEL, we build the YUM repository meta-data with the createrepo command.
- 
+
