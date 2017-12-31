@@ -17,12 +17,12 @@ test_hca_state
             is passed to "egrep" and can be a simple string or a regular
             expression.
 
-    Purpose:  
-    
+    Purpose:
+
         This tool provides a quick and easily repeatable method of
         validating key InfiniBand adapter (HCA) and node based InfiniBand
-        settings across an entire cluster.  
-        
+        settings across an entire cluster.
+
         Having consistent OFED settings, and even HCA firmware, can be very
         important for a properly functioning InfiniBand fabric.  This tool
         can help you confirm that your nodes are using the settings you
@@ -55,7 +55,7 @@ test_hca_state
             rate: 10 Gb/sec (4X)
             symbol_error: 0
             port_rcv_errors: 0
-        
+
           IPoIB
             recv_queue_size: 8192
             send_queue_size: 8192
@@ -67,14 +67,14 @@ test_hca_state
               Mode: datagram
               MTU:  4092
               Mode: up
-    
-    
+
+
         #
         # This example uses a FILTER on the word 'firmware'.  In this case, we've
-        # upgraded the firmware across rack11 and rack12.  
+        # upgraded the firmware across rack11 and rack12.
         #
         #   - On rack11, we've also restarted the IB stack (/etc/init.d/openibd
-        #     restart) to activate the new firmware.  
+        #     restart) to activate the new firmware.
         #
         #   - Rack 12 has also been updated, as we can see from the 'Firmware
         #     installed' line, but it's nodes are still running with their prior
@@ -86,12 +86,12 @@ test_hca_state
         ====================================
           Firmware installed: 2.30.3200
           Firmware active:    2.30.3200
-        
+
         ====================================
         rack12
         ====================================
           Firmware installed: 2.30.3200
           Firmware active:    2.11.1260
-    
-    
+
+
 Author:  Brian Finley
