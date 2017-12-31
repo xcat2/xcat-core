@@ -19,7 +19,7 @@ SYNOPSIS
 ********
 
 
-\ **auditlog Attributes:**\   \ *recid*\ , \ *audittime*\ , \ *userid*\ , \ *clientname*\ , \ *clienttype*\ , \ *command*\ , \ *noderange*\ , \ *args*\ , \ *status*\ , \ *comments*\ , \ *disable*\ 
+\ **auditlog Attributes:**\   \ *recid*\ , \ *audittime*\ , \ *userid*\ , \ *clientname*\ , \ *clienttype*\ , \ *command*\ , \ *noderange*\ , \ *args*\ , \ *status*\ , \ *comments*\ , \ *disable*\
 
 
 ***********
@@ -36,70 +36,70 @@ auditlog Attributes:
 
 
 
-\ **recid**\ 
- 
+\ **recid**\
+
  The record id.
- 
 
 
-\ **audittime**\ 
- 
+
+\ **audittime**\
+
  The timestamp for the audit entry.
- 
 
 
-\ **userid**\ 
- 
+
+\ **userid**\
+
  The user running the command.
- 
 
 
-\ **clientname**\ 
- 
+
+\ **clientname**\
+
  The client machine, where the command originated.
- 
 
 
-\ **clienttype**\ 
- 
+
+\ **clienttype**\
+
  Type of command: cli, java, webui, other.
- 
 
 
-\ **command**\ 
- 
+
+\ **command**\
+
  Command executed. See auditskipcmds site table attribute to control which commands get logged.
- 
 
 
-\ **noderange**\ 
- 
+
+\ **noderange**\
+
  The noderange on which the command was run.
- 
 
 
-\ **args**\ 
- 
+
+\ **args**\
+
  The command argument list.
- 
 
 
-\ **status**\ 
- 
+
+\ **status**\
+
  Allowed or Denied.
- 
 
 
-\ **comments**\ 
- 
+
+\ **comments**\
+
  Any user-provided notes.
- 
 
 
-\ **disable**\ 
- 
+
+\ **disable**\
+
  Do not use.  tabprune will not work if set to yes or 1
- 
+
 
 
 
@@ -108,5 +108,5 @@ SEE ALSO
 ********
 
 
-\ **nodels(1)**\ , \ **chtab(8)**\ , \ **tabdump(8)**\ , \ **tabedit(8)**\ 
+\ **nodels(1)**\ , \ **chtab(8)**\ , \ **tabdump(8)**\ , \ **tabedit(8)**\
 
