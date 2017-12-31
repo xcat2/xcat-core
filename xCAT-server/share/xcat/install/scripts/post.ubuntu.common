@@ -12,7 +12,7 @@ echo "post scripts" >/root/post.log
 export PRINIC="#TABLEBLANKOKAY:noderes:THISNODE:primarynic#"
 if [ "$PRINIC" == "mac" ] || [ -z "$PRINIC" ]
 then
-    export PRINIC='#GETPRINICMAC:THISNODE#'    
+    export PRINIC='#GETPRINICMAC:THISNODE#'
 fi
 if [ -n "$PRINIC" ] && [[ "$(echo "$PRINIC" | grep -sqE ^[A-Fa-f0-9]+:[A-Fa-f0-9]+:[A-Fa-f0-9]+:[A-Fa-f0-9]+:[A-Fa-f0-9]+:[A-Fa-f0-9]+$ ;echo $?)" == "0" ]]
 then
