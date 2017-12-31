@@ -52,7 +52,7 @@ sub send_request {
 
 #--------------------------------------------------------------------------------
 
-=head3 run_cmd_in_perl 
+=head3 run_cmd_in_perl
       Check if specified command should run in perl
       The policy is:
             Get value from `openbmcperl`, `XCAT_OPENBMC_DEVEL`, agent.py:
