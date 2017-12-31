@@ -54,7 +54,7 @@ cmd:packimage -o __GETNODEATTR($$CN,os)__ -p compute -a __GETNODEATTR($$CN,arch)
 check:rc==0
 cmd:ls -l /install/netboot/__GETNODEATTR($$CN,os)__/__GETNODEATTR($$CN,arch)__/compute/rootimg.gz
 check:rc==0
-cmd:imgexport __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-statelite-compute foo.tgz 
+cmd:imgexport __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-statelite-compute foo.tgz
 check:rc==0
 check:output=~Done!
 cmd:ls foo.tgz
@@ -83,7 +83,7 @@ check:rc==0
 check:output=~Done!
 cmd:ls foo.tgz
 check:rc==0
-cmd:imgimport foo.tgz -f compute_test 
+cmd:imgimport foo.tgz -f compute_test
 check:rc==0
 check:output=~Successfully imported the image.
 cmd:ls /install/netboot/__GETNODEATTR($$CN,os)__/__GETNODEATTR($$CN,arch)__/compute_test
