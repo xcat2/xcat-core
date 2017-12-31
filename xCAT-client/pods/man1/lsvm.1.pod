@@ -40,12 +40,12 @@ The pump mode value has the valid options:
   1 - Node Pump Mode
   2 - Chip Pump Mode
 
-The Memory Interleaving Mode has 3 valid options: 
+The Memory Interleaving Mode has 3 valid options:
   0 - not Applicable
   1 - interleaved
   2 - non-interleaved
 
-More information about this part, refer to the section Using the *vm commands to define partitions in xCAT DFM  in the doc below. 
+More information about this part, refer to the section Using the *vm commands to define partitions in xCAT DFM  in the doc below.
   XCAT_Power_775_Hardware_Management
 
 =head2 For KVM and VMware
@@ -53,7 +53,7 @@ More information about this part, refer to the section Using the *vm commands to
 If I<noderange> is a hypervisor, virtual machines defined on that hypervisor will be displayed. If I<noderange> is a VM, details for that VM will be displayed.
 
 Note: Only the virtual machine which is in power on state can be listed by B<lsvm> command.
-  
+
 =head2 For zVM:
 
 Show the directory entry for a given virtual machine.
@@ -61,19 +61,19 @@ Show the directory entry for a given virtual machine.
 
 =head1 OPTIONS
 
-B<-h>          
+B<-h>
 
 Display usage message.
 
-B<-v>          
+B<-v>
 
 Command version.
 
-B<-V>          
+B<-V>
 
 Verbose output.
 
-B<-a>          
+B<-a>
 
 List all the profiles for one partition
 
@@ -81,7 +81,7 @@ B<--p775>
 
 Specify the operation is for Power 775 machines.
 
-B<-l>          
+B<-l>
 
 Show lparnames for lpars. It shall work with option B<--p775>.
 
@@ -112,7 +112,7 @@ Output is similar to:
    name=lp3,lpar_name=lp3,lpar_id=3,os_type=aixlinux,all_resources=0,min_mem=128,desired_mem=128,max_mem=128,proc_mode=shared,min_proc_units=0.10,desired_proc_units=0.10,max_proc_units=4.00,min_procs=1,desired_procs=1,max_procs=4,sharing_mode=uncap,uncap_weight=128,io_slots=none,lpar_io_pool_ids=none,max_virtual_slots=6, "virtual_serial_adapters=0/server/1/any//any/1,1/server/1/any//any/1",virtual_scsi_adapters=2/client/1/10-B7D1G/13/1,virtual_eth_adapters=4/0/1//0/0,boot_mode=of,conn_monitoring=0,auto_start=1, power_ctrl_lpar_ids=none
 
 3. For Power 775, to list the I/O slot information of lpar1, enter:
- 
+
  lsvm lpar1 --p775
 
 Output is similar to:
@@ -167,7 +167,7 @@ Output is similar to:
 6. To list the lparname of lpars, enter:
 
  lsvm cec1 -l --p775
- 
+
 Output is similar to:
 
  lpar1: 1: 514/U78A9.001.0123456-P1-C17/0x21010202/2/1: 32: 0/3/3
@@ -221,7 +221,7 @@ Output is similar to:
 
 8. For DFM-managed normal power machine, list out the detailed resource information:
 
- lsvm cec 
+ lsvm cec
 
 Output is similar to:
 
@@ -248,12 +248,12 @@ Output is similar to:
   Bytes per BSR array:  4096
   Available BSR array:  256
 
-Note: The lines listed in "All Physical I/O info" section represent all the physical I/O resource information. The format is like "owner_lparid,slot_id,physical resource name,drc_index,slot_class_code(class description)". The 'drc index' is short for Dynamic Resource Configuration Index, it uniquely indicates a physical I/O resource in a normal power machine. 
+Note: The lines listed in "All Physical I/O info" section represent all the physical I/O resource information. The format is like "owner_lparid,slot_id,physical resource name,drc_index,slot_class_code(class description)". The 'drc index' is short for Dynamic Resource Configuration Index, it uniquely indicates a physical I/O resource in a normal power machine.
 
 9. For DFM-managed partition on normal power machine, list out the detailed information:
 
-  lsvm lpar1 
- 
+  lsvm lpar1
+
 Output is similar to:
 
   lpar1: Lpar Processor Info:
