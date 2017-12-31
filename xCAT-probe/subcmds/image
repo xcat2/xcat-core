@@ -26,13 +26,13 @@ $::USAGE = "Usage:
     $program_name {-c|-d|-u uuid} [-n noderange] [-V]
 
 Description:
-    Use this command to check if diskless nodes have the same images installed as defines in xCAT DB. 
-    Use this command to check if all diskless nodes have the identical images installed. 
+    Use this command to check if diskless nodes have the same images installed as defines in xCAT DB.
+    Use this command to check if all diskless nodes have the identical images installed.
 
 Options:
     -h : Get usage information of $program_name
     -n : Range of nodes to check
-    -d : To verify diskless nodes have the same images installed as defines in xCAT DB. 
+    -d : To verify diskless nodes have the same images installed as defines in xCAT DB.
     -c : To verify all diskless nodes have the identical images installed.
     -u : To display a list of diskless nodes running an OS with the specified UUID
     -V : To print additional debug information.
@@ -324,7 +324,7 @@ if ($CONSISTENCY_CHECK) {
     my $image_name_and_uuid;
     my $image_uuid;
     my %unique_image_hash;
-    
+
 
     # Go through the nodes and build a hash of key=image_name+image_uuid and value of nodename
     foreach (@pingable_nodes) {
