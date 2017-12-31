@@ -196,8 +196,8 @@ sub setstate {
 
         if($tftpserver eq "<xcatmaster>"){
             my @nxtsrvd = xCAT::NetworkUtils->my_ip_facing($node);
-            unless ($nxtsrvd[0]) { 
-                $serverip = $nxtsrvd[1]; 
+            unless ($nxtsrvd[0]) {
+                $serverip = $nxtsrvd[1];
             } else {
                 return (1, $nxtsrvd[1]);
             }
@@ -311,8 +311,8 @@ sub setstate {
         unlink("$bootloader_root/" . $pname);
         link("$bootloader_root/" . $node, "$bootloader_root/" . $pname) if ($cref->{currstate} ne "offline");
     }
- 
-    my $nodemac;   
+
+    my $nodemac;
     my $nrent=$nrhash{$node}->[0];
     if($nrent and $nrent->{installnic}){
         my $myinstallnic=$nrent->{installnic};
@@ -340,7 +340,7 @@ my $errored = 0;
 
 sub pass_along {
     my $resp = shift;
-    return unless ($resp); 
+    return unless ($resp);
 
     my $failure = 0;
     if ($resp->{errorabort}) { # Global error, it normally means to stop the parent execution. For example, DB operation error.
@@ -672,7 +672,7 @@ sub process_request {
                 arg      => \@args,
                 bootparams => \%bphash
                 }, \&pass_along);
-        if ($errored) { 
+        if ($errored) {
             xCAT::MsgUtils->trace($verbose_on_off, "d", "grub2: Failed in processing setdestiny.");
             return if ($errored > 1);
         }
@@ -793,7 +793,7 @@ sub process_request {
         nodes  --- a pointer to an array of nodes
         states -- a pointer to a hash table. This hash will be filled by this
              function.The key is the nodeset status and the value is a pointer
-             to an array of nodes.  
+             to an array of nodes.
     Returns:
        (return code, error message)
 =cut
