@@ -48,11 +48,11 @@ FLASH_IMG_NULL_DATA=-1003 	# Bad data value in flash list block
 FLASH_IMG_READY=0     		# Firmware img ready for flash on reboot
 
 # manage_flash Status Values
-MANAGE_AUTH=-9002 		# RTAS Not Service Authority Partition 
-MANAGE_ACTIVE_ERR=-9001 	# RTAS Cannot Overwrite Active Img 
-MANAGE_NO_OP=-1099 		# No operation initiated by user 
-MANAGE_PARAM_ERR=-3    		# RTAS Parameter Error 
-MANAGE_HW_ERR=-1    		# RTAS Hardware Error 
+MANAGE_AUTH=-9002 		# RTAS Not Service Authority Partition
+MANAGE_ACTIVE_ERR=-9001 	# RTAS Cannot Overwrite Active Img
+MANAGE_NO_OP=-1099 		# No operation initiated by user
+MANAGE_PARAM_ERR=-3    		# RTAS Parameter Error
+MANAGE_HW_ERR=-1    		# RTAS Hardware Error
 MANAGE_SUCCESS=0		# Operation Successful
 
 # validate_flash Status Values
@@ -102,7 +102,7 @@ usage() {
 	echo "		-n		Do not overwrite Permanent side" >&2
 	echo "				image automatically." >&2
 	echo "		-f <filename>	Update with given image file.  If possible," >&2
-	echo "				the image is automatically validated prior" >&2 
+	echo "				the image is automatically validated prior" >&2
 	echo "				to update." >&2
 	echo "" >&2
 	exit $exit_code
@@ -111,7 +111,7 @@ usage() {
 query_support() {
 	local exit_status=$E_UNSUPPORTED
 
-	if [ ! -r "$PROCVALIDATE" ]; then 
+	if [ ! -r "$PROCVALIDATE" ]; then
 		modprobe rtas_flash || error $E_MODULE "could not load rtas_flash kernel module"
 	fi
 
@@ -184,7 +184,7 @@ echo_validate_return_status() {
 	local rc=$(echo "$output" | head -n 1)
 	local rtas_buf=$(echo "$output" | tail -n +2)
 
-	[ $# -eq 1 ] || error $E_USAGE "echo_validate_return_status(): usage" 
+	[ $# -eq 1 ] || error $E_USAGE "echo_validate_return_status(): usage"
 
 	case "$rc" in
 	$VALIDATE_PARAM_ERR)	
@@ -257,9 +257,9 @@ validate_flash() {
 validate_flash_from_file() {
 	local img_file=$1
 
-	[ $# -eq 1 ] || error $E_USAGE "validate_flash_from_file(): usage" 
+	[ $# -eq 1 ] || error $E_USAGE "validate_flash_from_file(): usage"
 
-	if [ ! -r "$PROCVALIDATE" ]; then 
+	if [ ! -r "$PROCVALIDATE" ]; then
 		modprobe rtas_flash || error $E_MODULE "could not load rtas_flash kernel module"
 		[ -r "$PROCVALIDATE" ] || error $E_PROC_FS "rtas_flash kernel module did not create $PROCVALIDATE"
 	fi
@@ -267,7 +267,7 @@ validate_flash_from_file() {
 	if validate_flash $img_file; then
 		return 0;
 	else
-		case "$?" in 
+		case "$?" in
 		$E_PROC_FS) error $E_PROC_FS "validate: $PROCVALIDATE does not exist";;
 		$E_RTAS) error $E_RTAS "validate: firmware validation not supported on this system";;
 		esac
@@ -277,16 +277,16 @@ validate_flash_from_file() {
 echo_update_status() {
 	local rc="$1"
 	
-	[ $# -eq 1 ] || error $E_USAGE "echo_update_status(): usage" 
+	[ $# -eq 1 ] || error $E_USAGE "echo_update_status(): usage"
 
 	case "$rc" in
-	$FLASH_AUTH) 
+	$FLASH_AUTH)
 		error $E_RTAS "RTAS: Partition does not have authority";;
-	$FLASH_IMG_SHORT) 
+	$FLASH_IMG_SHORT)
 		error $E_IMAGE "Flash image shorter than expected";;
-	$FLASH_IMG_BAD_LEN) 
+	$FLASH_IMG_BAD_LEN)
 		error $E_PROC_FS "Bad length value in flash list block";;
-	$FLASH_IMG_NULL_DATA) 
+	$FLASH_IMG_NULL_DATA)
 		error $E_PROC_FS "Bad data value in flash list block";;
 	$FLASH_IMG_READY)
 		echo "Flash image ready...rebooting the system...";;
@@ -299,13 +299,13 @@ update_flash_from_file() {
 	local output=""
 	local oldkernel=0
 
-	[ $# -eq 1 ] || error $E_USAGE "update_flash_from_file(): usage" 
+	[ $# -eq 1 ] || error $E_USAGE "update_flash_from_file(): usage"
 
 	[ -r "$img_file" ] || error $E_IMAGE "cannot read $img_file"
 
 	flashfile=$PROCFLASH
-	if [ ! -r "$PROCFLASH" ]; then 
-		modprobe rtas_flash 
+	if [ ! -r "$PROCFLASH" ]; then
+		modprobe rtas_flash
 		if [ ! -r "$PROCFLASH" ]; then
 			if [ -r "$OLDPROCFLASH" ]; then
 				oldkernel=1
@@ -340,12 +340,12 @@ echo_manage_return_status() {
 	local output=$2
 	local rc=$(echo $output)
 
-	[ $# -eq 2 ] || error $E_USAGE "echo_manage_return_status(): usage" 
+	[ $# -eq 2 ] || error $E_USAGE "echo_manage_return_status(): usage"
 	
 	case "$rc" in
 	$MANAGE_AUTH)
 		error $E_RTAS "RTAS: manage() Partition does not have authority";;
-	$MANAGE_ACTIVE_ERR)  
+	$MANAGE_ACTIVE_ERR)
 		error $E_RTAS "RTAS: manage() Cannot Overwrite the Active Firmware Image";;
 	$MANAGE_PARAM_ERR)	
 		error $E_RTAS "RTAS: manage() Parameter Error";;
@@ -368,9 +368,9 @@ manage_flash() {
 	local reject_str="0"
 	local output=""
 	
-	[ $# -eq 1 ] || error $E_USAGE "manage_flash(): usage" 
+	[ $# -eq 1 ] || error $E_USAGE "manage_flash(): usage"
 	
-	if [ ! -r "$PROCMANAGE" ]; then 
+	if [ ! -r "$PROCMANAGE" ]; then
 		modprobe rtas_flash || error $E_MODULE "could not load rtas_flash kernel module"
 		[ -r "$PROCMANAGE" ] || error $E_PROC_FS "rtas_flash kernel module did not create $PROCMANAGE"
 	fi
