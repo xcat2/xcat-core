@@ -1,7 +1,7 @@
 Set attributes in the ``site`` table
 ====================================
 
-#. Verify the following attributes have been correctly set in the xCAT ``site`` table. 
+#. Verify the following attributes have been correctly set in the xCAT ``site`` table.
 
     * domain
     * forwarders
@@ -24,13 +24,13 @@ Initialize DNS services
 
 #. Initialize the DNS [#]_ services on the xCAT Management Node: ::
 
-      makedns -n 
+      makedns -n
 
    Verify DNS is working by running ``nslookup`` against your Management Node: ::
 
       nslookup <management_node_hostname>
 
    For more information on DNS, refer to :ref:`dns_label`
- 
+
 
 .. [#] Setting up name resolution and the ability to have hostname resolved to IP addresses is **required** for xCAT.
