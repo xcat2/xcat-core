@@ -15,7 +15,7 @@ Name
 
 
 ****************
-\ **Synopsis**\ 
+\ **Synopsis**\
 ****************
 
 
@@ -25,7 +25,7 @@ Name
 
 
 *******************
-\ **Description**\ 
+\ **Description**\
 *******************
 
 
@@ -60,10 +60,10 @@ Keywords to use:
 .. code-block:: perl
 
      apps -- a list of comma separated application names whose status will be queried. For how to get the status of each app, look for app name in the key field in a different row.
-     port -- the application daemon port number, if not specified, use internal list, then /etc/services. 
+     port -- the application daemon port number, if not specified, use internal list, then /etc/services.
      group -- the name of a node group that needs to get the application status from. If not specified, assume all the nodes in the nodelist table. To specify more than one groups, use group=a,group=b format.
      cmd -- the command that will be run locally on mn or sn.
-     lcmd -- the command that will be run the mn only. 
+     lcmd -- the command that will be run the mn only.
      dcmd -- the command that will be run distributed on the nodes using xdsh <nodes> ....
 
 
@@ -81,144 +81,144 @@ For the command specified by 'dcmd', no input is needed, the output can be a str
 
 
 ***************
-\ **Options**\ 
+\ **Options**\
 ***************
 
 
 
 \ **-f | -**\ **-usefping**\
- 
+
  Uses fping instead of nmap even if nmap is available.  If you seem to be having a problem with false negatives, fping can be more forgiving, but slower.
- 
 
 
-\ **-m | -**\ **-usemon**\ 
- 
+
+\ **-m | -**\ **-usemon**\
+
  Uses the settings from the \ **monsetting**\  table to determine a list of applications that need to get status for.
- 
 
 
-\ **-p | -**\ **-powerstat**\ 
- 
+
+\ **-p | -**\ **-powerstat**\
+
  Gets the power status for the nodes that are 'noping'.
- 
 
 
-\ **-u | -**\ **-updatedb**\ 
- 
+
+\ **-u | -**\ **-updatedb**\
+
  Updates the status and appstatus columns of the nodelist table with the returned running status from the given nodes.
- 
 
 
-\ **-v | -**\ **-version**\ 
- 
+
+\ **-v | -**\ **-version**\
+
  Print version.
- 
 
 
-\ **-h | -**\ **-help**\ 
- 
+
+\ **-h | -**\ **-help**\
+
  Print help.
- 
+
 
 
 
 ****************
-\ **Examples**\ 
+\ **Examples**\
 ****************
 
 
 
 1.
- 
- 
+
+
  .. code-block:: perl
- 
+
    nodestat compute
- 
- 
+
+
  Output is similar to:
- 
- 
+
+
  .. code-block:: perl
- 
+
    node1   sshd
    node2   sshd
    node3   ping
    node4   pbs
    node5   noping
- 
- 
+
+
 
 
 2.
- 
- 
+
+
  .. code-block:: perl
- 
+
    nodestat compute -p
- 
- 
+
+
  Output is similar to:
- 
- 
+
+
  .. code-block:: perl
- 
+
    node1   sshd
    node2   sshd
    node3   ping
    node4   pbs
    node5   noping(Shutting down)
- 
- 
+
+
 
 
 3.
- 
- 
+
+
  .. code-block:: perl
- 
+
    nodestat compute -u
- 
- 
+
+
  Output is similar to:
- 
- 
+
+
  .. code-block:: perl
- 
+
    node1   sshd
    node2   sshd
    node3   ping
    node4   netboot
    node5   noping
- 
- 
+
+
 
 
 4.
- 
- 
+
+
  .. code-block:: perl
- 
+
    nodestat compute -m
- 
- 
+
+
  Output is similar to:
- 
- 
+
+
  .. code-block:: perl
- 
+
    node1   ping,sshd,ll,gpfs=ok
    node2   ping,sshd,ll,gpfs=not ok,someapp=something is wrong
    node3   netboot
    node4   noping
- 
- 
+
+
 
 
 
 ************************
-\ **See**\  \ **Also**\ 
+\ **See**\  \ **Also**\
 ************************
 
 
