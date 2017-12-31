@@ -160,7 +160,7 @@ check:rc==0
 cmd:cp -rf /install/postscripts/hostkeys /install/postscripts/hostkeysbak
 check:rc==0
 #step2:run command and check messages
-cmd:xcatconfig -s -c 2>&1 |tee /tmp/xcatconfig.test 
+cmd:xcatconfig -s -c 2>&1 |tee /tmp/xcatconfig.test
 check:rc==0
 cmd:grep -iE "fail|error" /tmp/xcatconfig.test
 check:rc!=0
@@ -168,9 +168,9 @@ cmd:grep "Created xCAT certificate" /tmp/xcatconfig.test
 check:rc==0
 cmd:grep "Generating new node hostkeys" /tmp/xcatconfig.test
 check:rc==0
-cmd:grep "Signature ok" /tmp/xcatconfig.test 
+cmd:grep "Signature ok" /tmp/xcatconfig.test
 check:rc==0
-cmd:grep "Generating SSH2 RSA Key" /tmp/xcatconfig.test 
+cmd:grep "Generating SSH2 RSA Key" /tmp/xcatconfig.test
 check:rc==0
 #step3:Make sure /etc/xcat/hostkeys/ssh_host_rsa_key.pub is regenerated
 cmd:diff /etc/xcat/hostkeys/ssh_host_rsa_key.pub /etc/xcat/hostkeysbak/ssh_host_rsa_key.pub
