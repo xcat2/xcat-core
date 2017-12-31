@@ -87,7 +87,7 @@ start:addkitcomp_a
 os:Linux
 cmd:rm -rf /opt/xcat/share/xcat/tools/autotest/testcase/addkitcomp/$$KITDATA
 cmd:mkdir -p /opt/xcat/share/xcat/tools/autotest/testcase/addkitcomp/$$KITDATA
-cmd:cp -rf /opt/xcat/share/xcat/tools/autotest/$$KITDATA /opt/xcat/share/xcat/tools/autotest/testcase/addkitcomp 
+cmd:cp -rf /opt/xcat/share/xcat/tools/autotest/$$KITDATA /opt/xcat/share/xcat/tools/autotest/testcase/addkitcomp
 cmd:cd /opt/xcat/share/xcat/tools/autotest/testcase/addkitcomp/$$KITDATA;buildkit buildrepo all
 check:rc==0
 cmd:cd /opt/xcat/share/xcat/tools/autotest/testcase/addkitcomp/$$KITDATA;buildkit buildtar
@@ -97,7 +97,7 @@ check:rc==0
 check:output=~successfully added
 cmd:mkdef testimage -u profile=compute provmethod=install osarch=__GETNODEATTR($$CN,arch)__
 check:rc==0
-cmd:addkitcomp -i testimage -a ubuntukit-compute-2 
+cmd:addkitcomp -i testimage -a ubuntukit-compute-2
 check:rc==0
 check:output=~Assigning kit component ubuntukit-compute-2
 cmd:lsdef -t osimage -o testimage |grep -i kitcomponents
@@ -108,16 +108,16 @@ cmd:lsdef -t osimage -o testimage
 check:rc==0
 check:output=~KIT_DEPLOY_PARAMS
 check:output=~KIT_COMPONENTS
-cmd:rmkitcomp -i testimage ubuntukit-compute-1-1.0-1-ubuntu-14.04-ppc64el 
+cmd:rmkitcomp -i testimage ubuntukit-compute-1-1.0-1-ubuntu-14.04-ppc64el
 check:rc==1
 check:output=~Error: (\[.*?\]: )?Failed to remove kitcomponent
 cmd:rmkitcomp -i testimage -f ubuntukit-compute-1-1.0-1-ubuntu-14.04-ppc64el
 check:rc==0
 check:output=~Removing kitcomponent ubuntukit-compute-1-1.0-1-ubuntu-14.04-ppc64el from osimage testimage
-cmd:rmkitcomp -i testimage -f ubuntukit-compute-2-1.0-1-ubuntu-14.04-ppc64el 
+cmd:rmkitcomp -i testimage -f ubuntukit-compute-2-1.0-1-ubuntu-14.04-ppc64el
 check:rc==0
 check:output=~Removing kitcomponent ubuntukit-compute-2-1.0-1-ubuntu-14.04-ppc64el from osimage testimage
-cmd:rmkit ubuntukit-1.0-1-ppc64el  
+cmd:rmkit ubuntukit-1.0-1-ppc64el
 check:rc==0
 cmd:rm -f /opt/xcat/share/xcat/tools/autotest/testcase/addkitcomp/$$KITDATA/ubuntukit-1.0-1-ppc64el.tar.bz2
 cmd:rm -rf /opt/xcat/share/xcat/tools/autotest/testcase/addkitcomp/$$KITDATA
@@ -142,7 +142,7 @@ check:rc==0
 cmd:addkitcomp -i testimage -a ubuntukit-compute-2 --noscripts
 check:rc==0
 check:output=~Assigning kit component ubuntukit-compute-2
-cmd:lsdef -t osimage -o testimage 
+cmd:lsdef -t osimage -o testimage
 check:rc==0
 check:output!=~postbootscripts
 cmd:rmkitcomp -i testimage -f ubuntukit-compute-1-1.0-1-ubuntu-14.04-ppc64el
