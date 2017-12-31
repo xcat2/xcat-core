@@ -12,13 +12,13 @@ xCAT doc page may have 4 levels of title at most: ::
 
     The First Title
     ===============
-    
+
     The Second Title
     ----------------
-    
+
     The Third Title
     ```````````````
-    
+
     The Forth Title
     '''''''''''''''
 
@@ -131,9 +131,9 @@ Add links to refer other web page  is a very common way in writing document, it'
 
     :doc:`support list <../overview/support_list>`
 
-.. 
+..
 
-  ``Usage:`` When you want to link to another whole page but don't want to make a ``Customized Link Target`` in that source page, you can use the file path to link it directly. 
+  ``Usage:`` When you want to link to another whole page but don't want to make a ``Customized Link Target`` in that source page, you can use the file path to link it directly.
 
 * **Add an External Link**
 
@@ -223,16 +223,16 @@ Add a Table
 
 Add a table in the doc:
 
-+------------+------------+-----------+ 
-| Header 1   | Header 2   | Header 3  | 
-+============+============+===========+ 
-| body row 1 | column 2   | column 3  | 
-+------------+------------+-----------+ 
-| body row 2 | Cells may span columns.| 
-+------------+------------+-----------+ 
-| body row 3 | Cells may  | - Cells   | 
-+------------+ span rows. | - contain | 
-| body row 4 |            | - blocks. | 
++------------+------------+-----------+
+| Header 1   | Header 2   | Header 3  |
++============+============+===========+
+| body row 1 | column 2   | column 3  |
++------------+------------+-----------+
+| body row 2 | Cells may span columns.|
++------------+------------+-----------+
+| body row 3 | Cells may  | - Cells   |
++------------+ span rows. | - contain |
+| body row 4 |            | - blocks. |
 +------------+------------+-----------+
 
 ::
