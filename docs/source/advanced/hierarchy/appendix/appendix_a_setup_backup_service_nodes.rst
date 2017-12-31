@@ -95,7 +95,7 @@ procedure to move its CNs over to the backup SN.
 Move the nodes to the new service nodes
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Use the :doc:`snmove </guides/admin-guides/references/man1/snmove.1>` command to make the database changes necessary to move a set of compute nodes from one Service Node to another. 
+Use the :doc:`snmove </guides/admin-guides/references/man1/snmove.1>` command to make the database changes necessary to move a set of compute nodes from one Service Node to another.
 
 To switch all the compute nodes from Service Node ``sn1`` to the backup Service Node ``sn2``, run: ::
 
