@@ -30,7 +30,7 @@ Add network object into the networks table
 
 Use the ``chdef`` command to add/modify the networks in the ``networks`` table ::
 
-    chdef -t network net60 net=60.0.0.0 mask=255.0.0.0 
+    chdef -t network net60 net=60.0.0.0 mask=255.0.0.0
     chdef -t network net70 net=70.0.0.0 mask=255.0.0.0
     chdef cn1 nicnetworks.br1=net60 nicnetworks.br2=net70
 
