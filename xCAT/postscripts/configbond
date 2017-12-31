@@ -5,16 +5,16 @@
 # configbond bondname nic1@nic2@... [opt1@opt2@...]
 #
 # Description:
-#   This script is used to configure bond interface base on the arguments from the 
+#   This script is used to configure bond interface base on the arguments from the
 #   command line and the network information from nics and networks tables.
 #
 #   This script will create bond interface named <bondname> with 'nic1','nic2'... as slave
 #   devices. The bonding options 'opt1','opt2'... will be configured to bond interface.
-#   
+#
 #   The network information for the bond interface will be gotten from the nics.nicsip and
-#   nics.nicnetworks for interface <bondname>. If cannot get for <bondname>, try to 
+#   nics.nicnetworks for interface <bondname>. If cannot get for <bondname>, try to
 #   search for nic1. If failed too, then nic2 ...
-#   
+#
 #   It only supports to configure one bond device at each run. If you want to create
 #   multiple bond devices, call it multiple times.
 #
@@ -22,13 +22,13 @@
 #   This script only works for IPv4 so far.
 
 
-# Following are examples of variables which are exported from mypostscript. Mostly, we need the nics and 
+# Following are examples of variables which are exported from mypostscript. Mostly, we need the nics and
 # networks related varirables which are exported from xcat nics and networks tables.
 #   NICIPS=bond0!10.0.0.12
 #   NICTYPES=bond0!Ethernet
 #   NICHOSTNAMESUFFIXES=bond0!-bond0
 #   NICNETWORKS=bond0!10_0_0_0-255_255_255_0
-#   NICCUSTOMSCRIPTS=bond0!configbond 
+#   NICCUSTOMSCRIPTS=bond0!configbond
 #   NETWORKS_LINES=2
 #   NETWORKS_LINE1=netname=10_0_0_0-255_255_255_0||net=10.0.0.0||mask=255.255.255.0||mgtifname=eth1||gateway=<xcatmaster>||dhcpserver=||tftpserver=10.0.0.10||nameservers=||ntpservers=||logservers=||dynamicrange=||staticrange=||staticrangeincrement=||nodehostname=||ddnsdomain=||vlanid=||domain=||mtu=||disable=||comments=
 #   NETWORKS_LINE2=netname=10_0_2_0-255_255_255_0||net=10.0.2.0||mask=255.255.255.0||mgtifname=eth0||gateway=10.0.2.2||dhcpserver=||tftpserver=10.0.2.15||nameservers=||ntpservers=||logservers=||dynamicrange=||staticrange=||staticrangeincrement=||nodehostname=||ddnsdomain=||vlanid=||domain=||mtu=||disable=||comments=
@@ -51,7 +51,7 @@ function showmsg() {
     else
         $(logger -t xcat -p local4.info $msg)
     fi
-    
+
     echo $msg
 }
 
@@ -74,7 +74,7 @@ if [ "$str_os_type" = "linux" ];then
     fi
 else
     showmsg "Does NOT support non-Linux Operating System" "error"
-    exit -1 
+    exit -1
 fi
 
 
@@ -164,7 +164,7 @@ while [ $num_i -le $NETWORKS_LINES ];do
     str_temp_net=${str_temp_net%%|*}             # remove the right part from first '|'
     str_temp_mask=${str_bond_network#*mask=}    # remove the left part from 'mask='
     str_temp_mask=${str_temp_mask%%|*}             # remove the right part from first '|'
-    
+
     str_temp_net1=$(v4calcnet $str_bond_ip $str_temp_mask)
     str_temp_net2=$(v4calcnet $str_temp_net $str_temp_mask)
     if [ "$str_temp_net1" = "$str_temp_net2" ];then
