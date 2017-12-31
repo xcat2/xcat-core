@@ -30,7 +30,7 @@ $::USAGE = "Usage:
     $program_name [-d|delete_duplicate] [-n noderange] [-V|--verbose]
 
 Description:
-    Use this command to check node defintions in xCAT DB. 
+    Use this command to check node defintions in xCAT DB.
 
 Options:
     -h : Get usage information of $program_name
@@ -120,7 +120,7 @@ sub check_for_duplicate_mtms_sn {
 
                 # Check if mtm and serial are set
                 unless ($value eq " mtm= serial=") {
-                    # Build a hash of key="mtm+serial" and value="nodename". Later, this entry 
+                    # Build a hash of key="mtm+serial" and value="nodename". Later, this entry
                     # will be removed if predefined node found with the same mtm + serial found
                     $waiting_to_be_discovered{$value} = $node_name;
                 }
