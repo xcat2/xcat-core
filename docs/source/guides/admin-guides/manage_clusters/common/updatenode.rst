@@ -16,7 +16,7 @@ Each of these will be explained in the document. The basic way to use ``updateno
 Most of what is described in this document applies to **stateful** and **stateless** nodes.
 In addition to the information in this document, check out the ``updatenode`` man page.
 
-Add Additional Software 
+Add Additional Software
 -------------------------
 
 The packages that will be installed on the node are stored in the packages list files. There are **two kinds of package list files**:
@@ -64,13 +64,13 @@ Updatenode can also be used in Sysclone environment to push delta changes to tar
 
     updatenode <targetnoderange> -S
 
-Rerun Postscripts or Run Additional Postcripts 
+Rerun Postscripts or Run Additional Postcripts
 --------------------------------------------------------------------------
 
 You can use the ``updatenode`` command to perform the following functions after the nodes are up and running:
 
   * Rerun postscripts defined in the postscripts table.
-  * Run any additional postscript one time. 
+  * Run any additional postscript one time.
 
 Go to :ref:`Using-Postscript-label` to see how to configure postscript.
 
@@ -99,7 +99,7 @@ You can customize what attributes you want made available to the postscript, usi
 Synchronize new/updated configuration files
 -------------------------------------------
 
-Setting up syncfile 
+Setting up syncfile
 ```````````````````
 
 Use instructions in doc: :ref:`The_synclist_file`.
