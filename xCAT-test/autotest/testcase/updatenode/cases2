@@ -2,7 +2,7 @@ start:updatenode_S
 cmd:updatenode $$CN -S >/tmp/updatenode.S.out
 cmd:grep 'Running of Software Maintenance has completed' /tmp/updatenode.S.out
 check:rc==0
-end 
+end
 
 start:updatenode_S_gcc
 cmd:lsdef $$CN -i provmethod | tail -n 1 | cut -d= -f2 | xargs lsdef -t osimage -i pkglist | tail -n 1 | cut -d= -f2 >/tmp/pkglist.filename
