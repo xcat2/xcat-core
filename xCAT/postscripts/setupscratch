@@ -2,9 +2,9 @@
 
 #
 # This postscript sets up a scratch area on the local disk for stateless
-# nodes. It is for Linux only. 
+# nodes. It is for Linux only.
 # If run with -f flag, it will wipe out all the contents on the disk and
-# repartition the disk before setting up the scratch area. 
+# repartition the disk before setting up the scratch area.
 #
 #====================================================================
 ME="setupscratch"
@@ -21,8 +21,8 @@ then
 	    echo Checking filesystem /dev/sda1
 	    logger -t xcat -p local4.info $ME Checking filesystem /dev/sda1
 	    fsck -y /dev/sda1
-	    mkdir -p $mydir 
-	    echo mounting existing /dev/sda1 to $mydir 
+	    mkdir -p $mydir
+	    echo mounting existing /dev/sda1 to $mydir
 	    logger -t xcat -p local4.info $ME mounting existing /dev/sda1 to $mydir
 	    if mount /dev/sda1 $mydir
 	    then
@@ -40,7 +40,7 @@ fi
 
 echo Creating Partition
 logger -t xcat -p local4.info $ME Creating Partition
-parted -s /dev/sda mklabel gpt 
+parted -s /dev/sda mklabel gpt
 parted -s -- /dev/sda mkpart primary ext3 0 -0
 if grep sda1 /proc/partitions >/dev/null 2>&1
 then
