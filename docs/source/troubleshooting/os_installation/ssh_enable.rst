@@ -15,7 +15,7 @@ When ssh access to the installer is enabled, the admin can login into the instal
     ***  login using 'ssh -X root@<node>'  ***
     ***  run 'yast' to start the installation  ***
 
-   Just as the message above suggests, the admin can open 2 sessions and run ``ssh -X root@<node>`` with the configured system password in the ``passwd`` table to login into the installer, then run ``yast`` to continue installation in one session and inspect the installation process in the installer in the other session. 
+   Just as the message above suggests, the admin can open 2 sessions and run ``ssh -X root@<node>`` with the configured system password in the ``passwd`` table to login into the installer, then run ``yast`` to continue installation in one session and inspect the installation process in the installer in the other session.
 
    After the installation is finished, the system requires a reboot. The installation will halt again before the system configuration, the console output looks like: ::
 
