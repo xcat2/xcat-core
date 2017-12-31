@@ -15,12 +15,12 @@ These man pages are auto generated from .pod files to .rst files using the ``cre
    man5/index.rst
    man7/index.rst
    man8/index.rst
-        
+
 
 xCAT Tools
 ----------
 
-*Disclaimer:* **Use at your own risk** 
+*Disclaimer:* **Use at your own risk**
 
 The following tools are shipped with xCAT and have been contributed by various xCAT community users.  The tools are located under ``/opt/xcat/share/xcat/tools/``.
 
