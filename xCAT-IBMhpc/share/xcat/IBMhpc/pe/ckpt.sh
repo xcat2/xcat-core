@@ -31,5 +31,5 @@ done
 if [ -f /root/.ckpt.key ]; then
     cat /root/.ckpt.key > /sys/kernel/checkpoint/checksum_key
 else
-    echo 'ERROR:  no checkpoint key found' 
+    echo 'ERROR:  no checkpoint key found'
 fi
