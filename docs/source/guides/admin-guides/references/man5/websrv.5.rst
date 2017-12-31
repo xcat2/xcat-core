@@ -19,7 +19,7 @@ SYNOPSIS
 ********
 
 
-\ **websrv Attributes:**\   \ *node*\ , \ *port*\ , \ *username*\ , \ *password*\ , \ *comments*\ , \ *disable*\ 
+\ **websrv Attributes:**\   \ *node*\ , \ *port*\ , \ *username*\ , \ *password*\ , \ *comments*\ , \ *disable*\
 
 
 ***********
@@ -36,40 +36,40 @@ websrv Attributes:
 
 
 
-\ **node**\ 
- 
+\ **node**\
+
  The web service hostname.
- 
 
 
-\ **port**\ 
- 
+
+\ **port**\
+
  The port of the web service.
- 
 
 
-\ **username**\ 
- 
+
+\ **username**\
+
  Userid to use to access the web service.
- 
 
 
-\ **password**\ 
- 
+
+\ **password**\
+
  Password to use to access the web service.
- 
 
 
-\ **comments**\ 
- 
+
+\ **comments**\
+
  Any user-written notes.
- 
 
 
-\ **disable**\ 
- 
+
+\ **disable**\
+
  Set to 'yes' or '1' to comment out this row.
- 
+
 
 
 
@@ -78,5 +78,5 @@ SEE ALSO
 ********
 
 
-\ **nodels(1)**\ , \ **chtab(8)**\ , \ **tabdump(8)**\ , \ **tabedit(8)**\ 
+\ **nodels(1)**\ , \ **chtab(8)**\ , \ **tabdump(8)**\ , \ **tabedit(8)**\
 
