@@ -57,7 +57,7 @@ If you want this output to be displayed, use this flag.
 
 =item B<-i|--interface> I<hostname-suffix>
 
-The hostname suffix to be appended to the node names.  
+The hostname suffix to be appended to the node names.
 
 =item B<-V|--verbose>
 
