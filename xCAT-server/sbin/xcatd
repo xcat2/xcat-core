@@ -838,7 +838,7 @@ sub do_udp_service {    # This function opens up a UDP port
                     } else {
                         ($sport, $clientn) = sockaddr_in($saddr);
                         $clientip = inet_ntoa($clientn);
-                    }                     
+                    }
                     if ($data =~ /^\037\213/) { # per rfc 1952, these two bytes are gzip, and they are invalid for
                         store_fd({ data => $data, sockaddr => $clientip, sport => $sport }, $discoctl); # for now, punt the gunzip to the worker process
                         #notify the client that its request is been processing
@@ -2902,7 +2902,7 @@ sub service_connection {
                     }
                 }
 
-    
+
                 # we have a full request..
                 $request = "";
                 if (xCAT::xcatd->validate($peername, $peerhost, $req, $peerhostorg, \@deferredmsgargs)) {
