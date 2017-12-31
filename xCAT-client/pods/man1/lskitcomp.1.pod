@@ -78,7 +78,7 @@ The data inside <kitinfo> is returned as:
 
 =item B<-V|--verbose>
 
-Display additional progress and error messages. 
+Display additional progress and error messages.
 
 =item B<-v|--version>
 
@@ -140,7 +140,7 @@ To list kit components compatible with "rhels-6.2-x86_64" osdistro and "computen
 =item 6.
 
 To list the kit component "testkit-compute-1.0-1-ubuntu-14.04-ppc64el" with XML tags, enter:
-  
+
   XCATXMLTRACE=1 lskitcomp -x testkit-compute-1.0-1-ubuntu-14.04-ppc64el
 
 =back
