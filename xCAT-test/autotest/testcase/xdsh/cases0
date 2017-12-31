@@ -33,7 +33,7 @@ cmd: xdsh $$SN "echo 'test' > /var/xcat/syncfiles/xdsh_c.tmp"
 check:rc==0
 cmd: xdsh $$SN -c
 check:rc==0
-cmd:xdsh $$SN "ls -l /var/xcat/syncfiles" 
+cmd:xdsh $$SN "ls -l /var/xcat/syncfiles"
 check:rc==0
 check:output=~
 end
@@ -46,7 +46,7 @@ cmd: xdsh $$CN "echo 'test' > /var/xcat/node/syncfiles/xdsh_c.tmp"
 check:rc==0
 cmd: xdsh $$CN -c
 check:rc==0
-cmd:xdsh $$CN "ls -l /var/xcat/node" 
+cmd:xdsh $$CN "ls -l /var/xcat/node"
 check:rc==0
 check:output=~
 end
@@ -69,7 +69,7 @@ cmd:rm -r /tmp/xdsh_script.sh
 check:rc==0
 end
 
-start:xdsh_E 
+start:xdsh_E
 label:cn_os_ready,parallel_cmds
 cmd:echo 'export DSH_FANOUT=8' > /tmp/xdsh.test
 check:rc==0
