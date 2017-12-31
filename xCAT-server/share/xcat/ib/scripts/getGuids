@@ -290,7 +290,7 @@ sub usage()
 
 =head3   checkxDshReachability
 
-        Notes: Check the xdsh reachability between the Management Nodes 
+        Notes: Check the xdsh reachability between the Management Nodes
                and node.
 
 Arguments:
