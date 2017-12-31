@@ -59,13 +59,13 @@ if [ "$os" == "ubuntu" ]; then
     rm -rf /etc/chef-server
     rm -rf /etc/chef
     rm -rf /root/.chef
-    rm -rf /opt/chef-server/    
+    rm -rf /opt/chef-server/
 
     #add the internet Ubuntu repositories
     #urelease="precise" #default release name
     urelease=`cat /etc/lsb-release |grep DISTRIB_CODENAME |cut -d= -f2`
 
-    
+
     hostname=`hostname -f`
     ##hostname="10.1.0.82"
 
@@ -79,16 +79,16 @@ deb http://us.archive.ubuntu.com/ubuntu/ ${urelease}-updates universe\n
 
     # download the chef-server deb packages
     #wget https://opscode-omnitruck-release.s3.amazonaws.com/ubuntu/12.04/x86_64/chef-server_11.0.6-1.ubuntu.12.04_amd64.deb
-    rm -rf /tmp/chef-server* 
+    rm -rf /tmp/chef-server*
     wget -N --waitretry=10 --random-wait -T 60  $chefserverurl   -O /tmp/chef-server.deb
     rc=$?
     if [ $rc -eq 0 ] && [ -f /tmp/chef-server.deb ]; then
         # install it
         dpkg -i /tmp/chef-server.deb
-    else 
+    else
         echo "Cannot download $chefserverurl"
         exit 1
-    fi   
+    fi
 
     apt-get -y update
 
