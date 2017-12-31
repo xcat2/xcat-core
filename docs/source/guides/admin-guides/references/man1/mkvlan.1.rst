@@ -147,65 +147,65 @@ The following is an example of the switches table
 
 
 1.
- 
+
  To make a private vlan for node1, node2 and node3
- 
- 
+
+
  .. code-block:: perl
- 
+
     mkvlan -n node1,node2,node3
- 
- 
+
+
  The vlan will be created on eth0 for the nodes.
- 
+
 
 
 2.
- 
+
  To make a private vlan for node1, node2 and node3 on eth1,
- 
- 
+
+
  .. code-block:: perl
- 
+
     mkvlan -n node1,node2,node3 -i eth1
- 
- 
+
+
 
 
 3.
- 
+
  To make a private vlan for node1, node2 with given subnet and netmask.
- 
- 
+
+
  .. code-block:: perl
- 
+
     mkvlan -n node1,node2,node3 -t 10.3.2.0 -m 255.255.255.0
- 
- 
+
+
 
 
 4.
- 
+
  To make a private vlan for KVM guests node1 and node2
- 
- 
+
+
  .. code-block:: perl
- 
+
     chtab key=usexhrm site.vlaue=1
-   
+
     mkdef node1 arch=x86_64 groups=kvm,all installnic=mac primarynic=mac mgt=kvm netboot=pxe nfsserver=10.1.0.204 os=rhels6 profile=compute provmethod=install serialport=0 serialspeed=115200 vmcpus=1 vmhost=x3650n01 vmmemory=512 vmnics=br0 vmstorage=nfs://10.1.0.203/vms
-  
+
     mkdef node2 arch=x86_64 groups=kvm,all installnic=mac primarynic=mac mgt=kvm netboot=pxe nfsserver=10.1.0.204 os=rhels6 profile=compute provmethod=install serialport=0 serialspeed=115200 vmcpus=1 vmhost=x3650n01 vmmemory=512 vmnics=br0 vmstorage=nfs://10.1.0.203/vms
-  
-    mkvlan -n node1,node2 
-  
+
+    mkvlan -n node1,node2
+
     mkvm node1,node2 -s 20G
-  
+
     rpower node1,node2 on
-  
+
     rinstall node1,node2
- 
- 
+
+
 
 
 
