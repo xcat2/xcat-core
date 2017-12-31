@@ -8,11 +8,11 @@
 #  To add node to the cluster:
 #    NODE=nodename NODEID=fbb5ec1f64dd299c \
 #    MONMASTER=msname_or_ip MS_NODEID=fbb5ec1f64dd299c \
-#    configrmcnode 1    
-#  To remove node to the cluster 
+#    configrmcnode 1
+#  To remove node to the cluster
 #    NODE=nodename configrmcnode -1
-########################################################################################## 
-if [ -n "$1" ]; then 
+##########################################################################################
+if [ -n "$1" ]; then
   ADD=$1
 else
   ADD=1
@@ -25,7 +25,7 @@ fi
 #logger -t xcat -p local4.info "configrmcnode: ADD=$ADD, NODE=$NODE, NODEID=$NODEID MONMASTER=$MONMASTER,MS_NODEID=$MS_NODEID"
 
 #check if rsct is installed and running
-if [ ! -e /usr/bin/lsrsrc ]; then  
+if [ ! -e /usr/bin/lsrsrc ]; then
    logger -t xcat -p local4.err "RMC setup on node $NODE: RSCT is not is not installed."
   exit 1;
 else
@@ -78,10 +78,10 @@ if [ $ADD -eq 1 ]; then
         if [ -e /usr/sbin/rsct/install/bin/recfgctnid ]; then
           result=`/usr/sbin/rsct/install/bin/recfgctnid $NODEID 2>&1`
           if [ $? -ne 0 ]; then
-            echo "Reset nodeid: $result" 
-            logger -t xcat -p local4.info "Reset nodeid: $result" 
+            echo "Reset nodeid: $result"
+            logger -t xcat -p local4.info "Reset nodeid: $result"
           fi
-        else 
+        else
           #stop all rmc daemons
           /usr/sbin/rsct/bin/rmcctrl -z
 
@@ -91,7 +91,7 @@ if [ $ADD -eq 1 ]; then
           else
             if [ -e /etc/ct_node_id ]; then
               sed s/^[^\#].*$/$NODEID/ /etc/ct_node_id >  /tmp/id.tmp
-            else 
+            else
               echo $NODEID > /tmp/id.tmp
             fi
           fi
@@ -102,13 +102,13 @@ if [ $ADD -eq 1 ]; then
           #reconfig RMC
           result=`/usr/sbin/rsct/install/bin/recfgct -s 2>&1`
           if [ $? -ne 0 ]; then
-            echo "RMC setup on node $NODE: Cannot reconfig RSCT with new node id" 
-            logger -t xcat -p local4.warning "RMC setup on node $NODE: Cannot reconfig RSCT with new node id" 
+            echo "RMC setup on node $NODE: Cannot reconfig RSCT with new node id"
+            logger -t xcat -p local4.warning "RMC setup on node $NODE: Cannot reconfig RSCT with new node id"
           fi
         fi
       fi
     fi
-  
+
     PID=`/bin/ps -ef | /bin/grep rmcd | /bin/grep -v grep | /bin/awk '{print $2}'`
     if [ -z "$PID" ]; then
       #restart rmc daemon
@@ -161,15 +161,15 @@ if [ $ADD -eq 1 ]; then
       length=`expr $length - 1`
       ms_ip=`expr substr "$result" $pos $length`
     else
-      echo "RMC setup on node $NODE:$result" 
+      echo "RMC setup on node $NODE:$result"
       logger -t xcat -p local4.info "RMC setup on node $NODE:$result"
     fi
-  
-    #define resource in IBM.MCP class on node       
+
+    #define resource in IBM.MCP class on node
     result1=`/usr/bin/mkrsrc-api IBM.MCP::MNName::"$NODE"::KeyToken::"$MONMASTER"::IPAddresses::"{\"$ms_ip\"}"::NodeID::0x$MS_NODEID 2>&1`
     if [ $? -gt 0 ]; then
-      echo "Define resource in IBM.MCP class on node $NODE. result=$result1" 
-      logger -t xcat -p local4.err  "Define resource in IBM.MCP class on node $NODE. result=$result1" 
+      echo "Define resource in IBM.MCP class on node $NODE. result=$result1"
+      logger -t xcat -p local4.err  "Define resource in IBM.MCP class on node $NODE. result=$result1"
       exit 1
     fi
   fi
@@ -178,14 +178,14 @@ if [ $ADD -eq 1 ]; then
   if [[ -z "$NFSSERVER" ]]; then
     NFSSERVER=$MASTER
   fi
- 
+
   if [ -f /opt/xcat/xcatinfo ]; then
     INSTALLDIR=`grep 'INSTALLDIR' /opt/xcat/xcatinfo |cut -d= -f2`
   fi
   if [ -z "$INSTALLDIR" ]; then
     INSTALLDIR="/install"
   fi
- 
+
   nodetype="node"
   if [[ $NTYPE = service ]]; then
       nodetype=sn
@@ -197,9 +197,9 @@ if [ $ADD -eq 1 ]; then
       mkdir -p /tmp/postage/
       rm -f -R /tmp/postage/rmcmon/*
       wget -l inf -N -r --waitretry=10 --random-wait --retry-connrefused -t 0 -T 60 -nH --cut-dirs=2 --reject "index.html*" --no-parent http://$NFSSERVER$INSTALLDIR/postscripts/rmcmon/scripts -P /tmp/postage/ 2> /tmp/wget.log
-      wget -l inf -N -r --waitretry=10 --random-wait --retry-connrefused -t 0 -T 60 -nH --cut-dirs=2 --reject "index.html*" --no-parent http://$NFSSERVER$INSTALLDIR/postscripts/rmcmon/resources/$nodetyp -P /tmp/postage/ 2> /tmp/wget.log      
-      mv /tmp/postage/rmcmon/* /var/xcat/rmcmon;      
-      rm -rf /tmp/postage/rmcmon/  
+      wget -l inf -N -r --waitretry=10 --random-wait --retry-connrefused -t 0 -T 60 -nH --cut-dirs=2 --reject "index.html*" --no-parent http://$NFSSERVER$INSTALLDIR/postscripts/rmcmon/resources/$nodetyp -P /tmp/postage/ 2> /tmp/wget.log
+      mv /tmp/postage/rmcmon/* /var/xcat/rmcmon;
+      rm -rf /tmp/postage/rmcmon/
   else
       mkdir -p /xcatmnt
       if [[ $USENFSV4ONAIX = yes ]] || [[ $USENFSV4ONAIX = 1 ]] || [[ $USENFSV4ONAIX = Yes ]] || [[ $USENFSV4ONAIX = YES ]] || [[ $USENFSV4ONAIX = Y ]] || [[ $USENFSV4ONAIX = y ]]; then
@@ -219,7 +219,7 @@ if [ $ADD -eq 1 ]; then
       umount /xcatmnt
       rmdir /xcatmnt
   fi
-  chmod 755 /var/xcat/rmcmon/scripts/* 
+  chmod 755 /var/xcat/rmcmon/scripts/*
   if [ -d /var/xcat/rmcmon/resources/$nodetype ]; then
       /var/xcat/rmcmon/scripts/mkrmcresources /var/xcat/rmcmon/resources/$nodetype
   fi
