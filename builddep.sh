@@ -3,21 +3,21 @@
 #
 # Package up all the xCAT open source dependencies
 # - creating the yum repos
-# - tar up the deps package 
+# - tar up the deps package
 #
 # This script assumes that the individual rpms have already been compiled
 # for the relevant architectures from the src & spec files in git.
 #
 # Dependencies:
-# - createrepo command needs to be present on the build machine 
+# - createrepo command needs to be present on the build machine
 #
 # Usage:  builddep.sh [attr=value attr=value ...]
-#       DESTDIR=<dir> - the dir to place the dep tarball in.  The default is ../../../xcat-dep, 
+#       DESTDIR=<dir> - the dir to place the dep tarball in.  The default is ../../../xcat-dep,
 #                       relative to where this script is located.
-#       UP=0 or UP=1  - override the default upload behavior 
-#       FRSYUM=0      - put the directory of individual rpms in the project web area instead 
+#       UP=0 or UP=1  - override the default upload behavior
+#       FRSYUM=0      - put the directory of individual rpms in the project web area instead
 #                       of the FRS area.
-#       VERBOSE=1     - Set to 1 to see more VERBOSE output 
+#       VERBOSE=1     - Set to 1 to see more VERBOSE output
 
 # you can change this if you need to
 USER=xcat
@@ -45,7 +45,7 @@ fi
 
 if [ ! -d $GSA ]; then
 	echo "ERROR: This script is intended to be used by xCAT development..."
-	echo "ERROR: The GSA directory ($GSA) directory does not appear to be mounted, cannot continue!" 
+	echo "ERROR: The GSA directory ($GSA) directory does not appear to be mounted, cannot continue!"
 	exit 1
 fi
 
@@ -73,7 +73,7 @@ XCATCOREDIR=`/bin/pwd`
 if [ -z "$DESTDIR" ]; then
 	# This is really a hack here because it depends on the build
 	# environment structure.  However, it's not expected that
-	# users are building the xcat-dep packages 
+	# users are building the xcat-dep packages
 	DESTDIR=../../xcat-dep
 fi
 
@@ -129,7 +129,7 @@ if [ "$OSNAME" != "AIX" ]; then
 	echo "===> Modifying the xcat-dep.repo files to point to the correct location..."
 	# 10/01/2015 - vkhu
 	# The URLs have been updated in GSA, this section is not needed at the moment
-	# 
+	#
 	#if [ "$FRSYUM" != 0 ]; then
 	#	newurl="$YUMREPOURL2"
 	#	oldurl="$YUMREPOURL1"
@@ -218,12 +218,12 @@ fi
 
 # Get the permissions and group correct
 if [ "$OSNAME" == "AIX" ]; then
-	# AIX 
+	# AIX
 	SYSGRP=system
 	YUM=aix
 	FRSDIR='2.x_AIX'
 else
-	# Linux 
+	# Linux
 	SYSGRP=root
 	YUM=yum/devel
 	FRSDIR='2.x_Linux'
@@ -232,9 +232,9 @@ chgrp -R -h $SYSGRP *
 chmod -R g+w *
 
 echo "===> Building the tarball..."
-# 
+#
 # Want to stay above xcat-dep so we can rsync the whole directory
-# DO NOT CHANGE DIRECTORY AFTER THIS POINT!! 
+# DO NOT CHANGE DIRECTORY AFTER THIS POINT!!
 #
 cd ..
 pwd
@@ -254,12 +254,12 @@ else
 	tar $verbosetar -jcf $DFNAME xcat-dep
 fi
 
-if [[ ${UP} -eq 0 ]]; then 
+if [[ ${UP} -eq 0 ]]; then
 	echo "Upload not being done, set UP=1 to upload to xcat.org"
 	exit 0;
 fi
 
-# Upload the directory structure to xcat.org yum area (xcat/repos/yum). 
+# Upload the directory structure to xcat.org yum area (xcat/repos/yum).
 if [ "$FRSYUM" != 0 ]; then
 	links="-L"	# FRS does not support rsyncing sym links
 else
@@ -284,7 +284,7 @@ echo "Uploading README to $FRS/xcat-dep/$FRSDIR/ ..."
 while [ $((i+=1)) -le 5 ] && ! rsync -v README  $USER@$TARGET_MACHINE:$FRS/xcat-dep/$FRSDIR/
 do : ; done
 
-# For some reason the README is not updated 
+# For some reason the README is not updated
 echo "Uploading README to $YUMDIR/$YUM/ ..."
 while [ $((i+=1)) -le 5 ] && ! rsync -v README  $USER@$TARGET_MACHINE:$YUMDIR/$YUM/
 do : ; done
