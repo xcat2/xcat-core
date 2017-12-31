@@ -1,4 +1,4 @@
-#!/bin/sh 
+#!/bin/sh
 # IBM(c) 2014 EPL license http://www.eclipse.org/legal/epl-v10.html
 
 # xCAT post script for configuring the openstack baremetal node.
@@ -116,7 +116,7 @@ change_host_name()
             echo "HOSTNAME=$str_hostname" >> $conf_file
         fi
     fi
-    
+
 }
 
 str_os_type=$(get_os_type)
@@ -192,7 +192,7 @@ if [[ -n $2 ]]; then
         continue
     fi
 	echo "mac=$mac"
-    
+
     #find the nic that has the mac
     if [[ -z $nic ]];  then
         #go to each nic to match the mac address
@@ -207,7 +207,7 @@ if [[ -n $2 ]]; then
     echo "nic=$nic"
 
 	#now setup the ip alias
-    setup_ip $str_os_type $nic:0 $ops_ip $ops_mask 
+    setup_ip $str_os_type $nic:0 $ops_ip $ops_mask
 fi
 
 
