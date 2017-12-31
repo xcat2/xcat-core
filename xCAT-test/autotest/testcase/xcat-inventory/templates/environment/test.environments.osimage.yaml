@@ -2,8 +2,8 @@ osimage:
   test.environments.osimage:
     basic_attributes:
       arch: ppc64le
-      distribution: rhels7.5 
-      osdistro: rhels7.5-ppc64le 
+      distribution: rhels7.5
+      osdistro: rhels7.5-ppc64le
       osname: Linux
     filestosync: {{GITREPO}}/syncfiles/synclist
     deprecated:
