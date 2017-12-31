@@ -16,7 +16,7 @@ use xCAT::NotifHandler;
 =head1  xCAT_plugin:notification
 =head2    Package Description
   xCAT notification plugini module. This mondule allows users to register and
-  unregister for the xCAT database table changes. 
+  unregister for the xCAT database table changes.
 =cut
 
 #-------------------------------------------------------------------------------
@@ -220,7 +220,7 @@ sub regNotification {
 
 #--------------------------------------------------------------------------------
 
-=head3   unregNotification 
+=head3   unregNotification
       It unregisters a notification routine or a command.
     Arguments:
       args - the format of the ares is:
