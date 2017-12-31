@@ -1,18 +1,18 @@
-# IBM_PROLOG_BEGIN_TAG 
-# This is an automatically generated prolog. 
-#  
-# bos61J src/bos/usr/lpp/bosinst/image.template/image.template 1.23.1.39 
-#  
-# Licensed Materials - Property of IBM 
-#  
-# COPYRIGHT International Business Machines Corp. 1993,2009 
-# All Rights Reserved 
-#  
-# US Government Users Restricted Rights - Use, duplication or 
-# disclosure restricted by GSA ADP Schedule Contract with IBM Corp. 
-#  
+# IBM_PROLOG_BEGIN_TAG
+# This is an automatically generated prolog.
+#
+# bos61J src/bos/usr/lpp/bosinst/image.template/image.template 1.23.1.39
+#
+# Licensed Materials - Property of IBM
+#
+# COPYRIGHT International Business Machines Corp. 1993,2009
+# All Rights Reserved
+#
+# US Government Users Restricted Rights - Use, duplication or
+# disclosure restricted by GSA ADP Schedule Contract with IBM Corp.
+#
 # @(#) 41 1.23.1.39 src/bos/usr/lpp/bosinst/image.template/image.template, bosinst, bos61J, 0935A_61J 8/12/09 12:53:55
-# IBM_PROLOG_END_TAG 
+# IBM_PROLOG_END_TAG
 #
 #   COMPONENT_NAME: BOSINST
 #
