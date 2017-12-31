@@ -10,15 +10,15 @@
 #     kvm
 #     libvirt.x86_64
 #     gpxe-kvm
-# 
-# 2.  In order to get those packaes, you'll need to add the 
+#
+# 2.  In order to get those packaes, you'll need to add the
 #     xCAT-dep repo.  For our test we added the line:
 #     repo  --name=xcat-dep --baseurl=http://#TABLE:noderes:$NODE:nfsserver#/install/xcat/xcat-dep/rh5/#TABLE:nodetype:$NODE:arch#
 #     This line can be added after the url --url <blah> line
 #
 #  Once you have that, then the following scripts just set up kvm
 #  When the machine boots the first time you'll know it works if you can
-#  run the command: 
+#  run the command:
 #  virsh list
 #  You'll then see output like:
 # Id Name                 State
