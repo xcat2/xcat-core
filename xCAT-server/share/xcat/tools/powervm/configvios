@@ -116,7 +116,7 @@ sub get_cmd
         $cmd = $cnt > 0 ? $cmd . ' && ioscli mkvdev' : 'ioscli mkvdev';
         $cnt++;
         $cmd = $cmd . ' -sea ' . $conf[0] . ' -vadapter ' . $conf[1] . ' -default ' . $conf[2] . ' -defaultid ' . $conf[3] . ' && mktcpip -hostname ' . $conf[4] .
-' -inetaddr ' . $conf[5] . ' -netmask ' . $conf[6] . ' -interface ' . $conf[0] . ' -gateway ' . $conf[7] . ' -nsrvdomain ' . $conf[8] . ' -nsrvaddr ' . $conf[9] . ' 
+' -inetaddr ' . $conf[5] . ' -netmask ' . $conf[6] . ' -interface ' . $conf[0] . ' -gateway ' . $conf[7] . ' -nsrvdomain ' . $conf[8] . ' -nsrvaddr ' . $conf[9] . '
 -start';
     }
     return $cmd;
