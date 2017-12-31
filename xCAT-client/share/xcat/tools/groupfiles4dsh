@@ -17,25 +17,25 @@ use xCAT::Utils;
 
 #-----------------------------------------------------------------------------
 
-=head1  groupfiles4dsh 
+=head1  groupfiles4dsh
 
 
- This tool will build a directory of files for each defined 
- nodegroup in xCAT.  The file will be named the nodegroup name and 
- contain a list of nodes that belong to the nodegroup. 
- The file can be used as input to the AIX dsh command run in the DSH 
+ This tool will build a directory of files for each defined
+ nodegroup in xCAT.  The file will be named the nodegroup name and
+ contain a list of nodes that belong to the nodegroup.
+ The file can be used as input to the AIX dsh command run in the DSH
  context.
- The purpose of this tool is to allow backward compatiblity with scripts 
+ The purpose of this tool is to allow backward compatiblity with scripts
  that were created using the AIX or CSM dsh command.
 
 
- groupfiles4dsh  -p <directory to place generated nodegroup files> 
+ groupfiles4dsh  -p <directory to place generated nodegroup files>
  example: groupfiles4dsh -p /tmp/dshnodegrpfiles
 
   Use:   export DSH_CONTEXT=DSH  ( default unless CSM is installed)
 		 export DSH_NODE_RSH=/bin/ssh   (default is rsh)
 		 export DSH_NODEGROUP_PATH= /tmp/dshnodegrpfiles
-         
+
 		 dsh  -N all  date  ( all is a group in xCAT)
 		 dsh -a date   ( see man dsh,  DSH context)
 
@@ -68,7 +68,7 @@ exit $rc;
 #-----------------------------------------------------------------------------
 
 =head3 parse_args
-  
+
   Parses for  input
 
 =cut
