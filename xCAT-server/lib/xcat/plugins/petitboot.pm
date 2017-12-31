@@ -89,7 +89,7 @@ sub setstate {
     my $tftpdir      = shift;
     my %nrhash       = %{ shift() };
     my $linuximghash = shift();
-    my $kern = $bphash{$node}->[0]; 
+    my $kern = $bphash{$node}->[0];
 
     if ($kern->{kernel} !~ /^$tftpdir/) {
         my $nodereshash = $nrhash{$node}->[0];
@@ -209,7 +209,7 @@ my $errored = 0;
 
 sub pass_along {
     my $resp = shift;
-    return unless ($resp); 
+    return unless ($resp);
 
     my $failure = 0;
     if ($resp->{errorabort}) { # Global error, it normally means to stop the parent execution. For example, DB operation error.
@@ -550,7 +550,7 @@ sub process_request {
                 arg      => \@args,
                 bootparams => \%bphash},
                 \&pass_along);
-        if ($errored) { 
+        if ($errored) {
             xCAT::MsgUtils->trace($verbose_on_off, "d", "petitboot: Failed in processing setdestiny.");
             return if ($errored > 1);
         }
