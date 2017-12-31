@@ -13,8 +13,8 @@ Key Attributes
    The type of operating system this definition represents (linux, AIX).
 
 * osarch:
-   The hardware architecture of the nodes this image supports. Valid values: x86_64, ppc64, ppc64le. 
- 
+   The hardware architecture of the nodes this image supports. Valid values: x86_64, ppc64, ppc64le.
+
 * osvers:
    The Linux distribution name and release number of the image. Valid values: rhels*, rhelc*, rhas*, centos*, SL*, fedora*, sles* (where * is the version #).
 
@@ -38,13 +38,13 @@ Key Attributes
 Use Cases
 ---------
 
-* Case 1: 
+* Case 1:
 
 List all the osimage objects ::
 
    lsdef -t osimage
 
-* Case 2: 
+* Case 2:
 
 Create a osimage definition "customized-rhels7-ppc64-install-compute" based on an existing osimage "rhels7-ppc64-install-compute", the osimage "customized-rhels7-ppc64-install-compute" will inherit all the attributes of "rhels7-ppc64-install-compute" except installing the additional packages specified in the file "/tmp/otherpkg.list":
 
@@ -55,7 +55,7 @@ Create a osimage definition "customized-rhels7-ppc64-install-compute" based on a
 The content will look like ::
 
    # <xCAT data object stanza file>
-   
+
    rhels7-ppc64-install-compute:
        objtype=osimage
        imagetype=linux
@@ -69,11 +69,11 @@ The content will look like ::
        profile=compute
        provmethod=install
        template=/opt/xcat/share/xcat/install/rh/compute.rhels7.tmpl
- 
+
 *step 2* : modify the stanza file according to the attributes of "customized-rhels7-ppc64-install-compute" ::
-  
+
    # <xCAT data object stanza file>
-   
+
    customized-rhels7-ppc64-install-compute:
        objtype=osimage
        imagetype=linux
