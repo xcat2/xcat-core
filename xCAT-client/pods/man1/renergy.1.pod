@@ -4,9 +4,9 @@ B<renergy> - remote energy management tool
 
 =head1 B<SYNOPSIS>
 
-B<renergy> [B<-h> | B<--help>] 
+B<renergy> [B<-h> | B<--help>]
 
-B<renergy> [B<-v> | B<--version>] 
+B<renergy> [B<-v> | B<--version>]
 
 B<Power 6 server specific :>
 
@@ -14,7 +14,7 @@ B<Power 6 server specific :>
 
 B<renergy> I<noderange> [B<-V>] {B<all | [savingstatus] [cappingstatus] [cappingmaxmin] [cappingvalue] [cappingsoftmin] [averageAC] [averageDC] [ambienttemp] [exhausttemp] [CPUspeed] [syssbpower] [sysIPLtime]>}
 
-B<renergy> I<noderange> [B<-V>] {B<savingstatus={on | off} | cappingstatus={on | off} | cappingwatt=watt | cappingperc=percentage>} 
+B<renergy> I<noderange> [B<-V>] {B<savingstatus={on | off} | cappingstatus={on | off} | cappingwatt=watt | cappingperc=percentage>}
 
 =back
 
@@ -36,8 +36,8 @@ B<renergy> I<noderange> [B<-V>] {B<all | [savingstatus] [dsavingstatus] [average
 
 B<renergy> I<noderange> B<[-V] {savingstatus={on | off} | dsavingstatus={on-norm | on-maxp | off} | fsavingstatus={on | off} | ffovalue=MHZ }>
 
-I<NOTE:> The setting operation for B<Power 8> server is only supported 
-for the server which is running in PowerVM mode. Do NOT run the setting 
+I<NOTE:> The setting operation for B<Power 8> server is only supported
+for the server which is running in PowerVM mode. Do NOT run the setting
 for the server which is running in OPAL mode.
 
 =back
@@ -50,7 +50,7 @@ B<For Management Modules:>
 
 =over 4
 
-B<renergy> I<noderange> [B<-V>] {B<all | pd1all | pd2all | [pd1status] [pd2status] [pd1policy] [pd2policy] [pd1powermodule1] [pd1powermodule2] [pd2powermodule1] [pd2powermodule2] [pd1avaiablepower] [pd2avaiablepower] [pd1reservedpower] [pd2reservedpower] [pd1remainpower] [pd2remainpower] [pd1inusedpower] [pd2inusedpower] [availableDC] [averageAC] [thermaloutput] [ambienttemp] [mmtemp]>} 
+B<renergy> I<noderange> [B<-V>] {B<all | pd1all | pd2all | [pd1status] [pd2status] [pd1policy] [pd2policy] [pd1powermodule1] [pd1powermodule2] [pd2powermodule1] [pd2powermodule2] [pd1avaiablepower] [pd2avaiablepower] [pd1reservedpower] [pd2reservedpower] [pd1remainpower] [pd2remainpower] [pd1inusedpower] [pd2inusedpower] [availableDC] [averageAC] [thermaloutput] [ambienttemp] [mmtemp]>}
 
 =back
 
@@ -60,7 +60,7 @@ B<For a blade server nodes:>
 
 B<renergy> I<noderange> [B<-V>] {B<all | [averageDC] [capability] [cappingvalue] [CPUspeed] [maxCPUspeed] [savingstatus] [dsavingstatus]>}
 
-B<renergy> I<noderange> [B<-V>] {B<savingstatus={on | off} | dsavingstatus={on-norm | on-maxp | off}>} 
+B<renergy> I<noderange> [B<-V>] {B<savingstatus={on | off} | dsavingstatus={on-norm | on-maxp | off}>}
 
 =back
 
@@ -112,28 +112,28 @@ B<renergy> I<noderange> {B<powerusage | temperature>}
 =head1 B<DESCRIPTION>
 
 This B<renergy> command can be used to manage the energy consumption of
-IBM servers which support IBM EnergyScale technology. Through this command, 
-user can query and set the power saving and power capping status, and also can 
-query the average consumed energy, the ambient and exhaust temperature, 
+IBM servers which support IBM EnergyScale technology. Through this command,
+user can query and set the power saving and power capping status, and also can
+query the average consumed energy, the ambient and exhaust temperature,
 the processor frequency for a server.
 
 B<renergy> command supports IBM POWER6, POWER7 and POWER8 rack-mounted servers,
-BladeCenter management modules, blade servers, and iDataPlex servers. 
+BladeCenter management modules, blade servers, and iDataPlex servers.
 For I<Power6> and I<Power7> rack-mounted servers, the following specific hardware types are supported:
 I<8203-E4A>, I<8204-E8A>, I<9125-F2A>, I<8233-E8B>, I<8236-E8C>.
 For I<Power8> server, there's no hardware type restriction.
 
-The parameter I<noderange> needs to be specified for the B<renergy> command to 
-get the target servers. The I<noderange> should be a list of CEC node names, blade 
+The parameter I<noderange> needs to be specified for the B<renergy> command to
+get the target servers. The I<noderange> should be a list of CEC node names, blade
 management module node names or blade server node names. Lpar name
 is not acceptable here.
 
-B<renergy> command can accept multiple of energy attributes to query or one of energy 
-attribute to set. If only the attribute name is specified, without the '=', B<renergy> 
-gets and displays the current value. Otherwise, if specifying the attribute with '=' like 
-'savingstatus=on', B<renergy> will set the attribute savingstatus to value 'on'. 
+B<renergy> command can accept multiple of energy attributes to query or one of energy
+attribute to set. If only the attribute name is specified, without the '=', B<renergy>
+gets and displays the current value. Otherwise, if specifying the attribute with '=' like
+'savingstatus=on', B<renergy> will set the attribute savingstatus to value 'on'.
 
-The attributes listed in the B<SYNOPSIS> section are which ones can be handled by 
+The attributes listed in the B<SYNOPSIS> section are which ones can be handled by
 B<renergy> command. But for each specific type of server, there are some attributes that
 are not supported. If user specifies an attribute which is not supported by a specific
 server, the return value of this attribute will be 'na'.
@@ -144,11 +144,11 @@ The supported attributes for each specific system p hardware type is listed as f
 
 =over 2
 
-B<8203-E4A>, B<8204-E8A> 
+B<8203-E4A>, B<8204-E8A>
 
 =over 4
 
-Supported attributes: 
+Supported attributes:
 
 B<Query>: savingstatus,cappingstatus,cappingmin,cappingmax,
 cappingvalue,cappingsoftmin,averageAC,averageDC,ambienttemp,
@@ -158,14 +158,14 @@ B<Set>:   savingstatus,cappingstatus,cappingwatt,cappingperc
 
 =back
 
-B<9125-F2A> 
+B<9125-F2A>
 
 =over 4
 
-Supported attributes: 
+Supported attributes:
 
 B<Query>: savingstatus,averageAC,ambienttemp,exhausttemp,
-CPUspeed 
+CPUspeed
 
 B<Set>:   savingstatus
 
@@ -206,7 +206,7 @@ B<Non of Above>
 
 =over 4
 
-For the machine type which is not in the above list, the following 
+For the machine type which is not in the above list, the following
 attributes can be tried but not guaranteed:
 
 B<Query>: savingstatus,dsavingstatus,cappingstatus,cappingmin,
@@ -214,28 +214,28 @@ cappingmax,,cappingvalue,cappingsoftmin,averageAC,averageDC,
 ambienttemp,exhausttemp,CPUspeed,syssbpower,sysIPLtime
 
 B<Set>:  savingstatus,dsavingstatus,cappingstatus,cappingwatt,
-cappingperc 
+cappingperc
 
 =back
 
 =back
 
 Note:
-For system P CEC nodes, each query operation for attribute CPUspeed, averageAC 
+For system P CEC nodes, each query operation for attribute CPUspeed, averageAC
 or averageDC needs about 30 seconds to complete. The query for others attributes
 will get response immediately.
 
 =head1 B<PREREQUISITES>
 
-For the I<Power6> and I<Power7> nodes, the B<renergy> command depends 
-on the Energy Management Plugin B<xCAT-pEnergy> to 
-communicate with server.  B<xCAT-pEnergy> can be downloaded from the IBM web site: 
+For the I<Power6> and I<Power7> nodes, the B<renergy> command depends
+on the Energy Management Plugin B<xCAT-pEnergy> to
+communicate with server.  B<xCAT-pEnergy> can be downloaded from the IBM web site:
 http://www.ibm.com/support/fixcentral/. (Other Software -> EM)
 
 NOTE: I<Power8> nodes don't need this specific energy management package.
 
-For iDataPlex nodes, the B<renergy> command depends 
-on the Energy Management Plugin B<xCAT-xEnergy> to 
+For iDataPlex nodes, the B<renergy> command depends
+on the Energy Management Plugin B<xCAT-xEnergy> to
 communicate with server.  This plugin must be requested from IBM.
 
 (The support for BladeCenter energy management is built into base xCAT,
@@ -259,7 +259,7 @@ Verbose output.
 
 =item B<all>
 
-Query all energy attributes which supported by the specific 
+Query all energy attributes which supported by the specific
 type of hardware.
 
 For I<Power8> machines, will not display the attributes
@@ -291,12 +291,12 @@ Query the total DC power available for the entire blade center chassis.
 
 Query the average power consumed (Input). (Unit is watt)
 
-Note: For 9125-F2A,9125-F2C server, the value of attribute 
+Note: For 9125-F2A,9125-F2C server, the value of attribute
 averageAC is the aggregate for all of the servers in a rack.
 
-Note: For Blade Center, the value of attribute 
+Note: For Blade Center, the value of attribute
 averageAC is the total AC power being consumed by all modules
-in the chassis. It also includes power consumed by the Chassis 
+in the chassis. It also includes power consumed by the Chassis
 Cooling Devices for BCH chassis.
 
 =item B<averageAChistory>
@@ -317,19 +317,19 @@ Query the Power Capabilities of the blade server.
 
 staticPowerManagement: the module with the static worst case power values.
 
-fixedPowermanagement: the module with the static power values but ability 
+fixedPowermanagement: the module with the static power values but ability
 to throttle.
 
-dynamicPowerManagement: the module with power meter capability, measurement 
+dynamicPowerManagement: the module with power meter capability, measurement
 enabled, but capping disabled.
 
-dynamicPowerMeasurement1: the module with power meter capability, measurement 
+dynamicPowerMeasurement1: the module with power meter capability, measurement
 enabled, phase 1 only
 
-dynamicPowerMeasurement2: the module with power meter capability, measurement 
+dynamicPowerMeasurement2: the module with power meter capability, measurement
 enabled, phase 2 or higher
 
-dynamicPowerMeasurementWithPowerCapping: the module with power meter capability, 
+dynamicPowerMeasurementWithPowerCapping: the module with power meter capability,
 both measurement and capping enabled, phase 2 or higher
 
 =item B<cappingGmin>
@@ -350,25 +350,25 @@ Query the Minimum of power capping value in watts.
 
 =item B<cappingperc>=B<percentage>
 
-Set the power capping value base on the percentage of 
-the max-min of capping value which getting from 
-I<cappingmaxmim> attribute. The valid value must be 
+Set the power capping value base on the percentage of
+the max-min of capping value which getting from
+I<cappingmaxmim> attribute. The valid value must be
 from 0 to 100.
 
 =item B<cappingsoftmin>
 
-Query the minimum value that can be assigned to power 
+Query the minimum value that can be assigned to power
 capping without guaranteed enforceability. (Unit is watt)
 
 =item B<cappingstatus>
 
-Query the power capping status. The result should be 'on' 
+Query the power capping status. The result should be 'on'
 or 'off'.
 
 =item B<cappingstatus>={B<on> | B<off>}
 
-Set the power capping status. The value must be 'on' 
-or 'off'. This is the switch to turn on or turn off the 
+Set the power capping status. The value must be 'on'
+or 'off'. This is the switch to turn on or turn off the
 power capping function.
 
 =item B<cappingvalue>
@@ -379,10 +379,10 @@ Query the current power capping value. (Unit is watt)
 
 Set the power capping value base on the watt unit.
 
-If the 'watt' >  maximum of I<cappingmaxmin> or 'watt' 
-< I<cappingsoftmin>, the setting operation 
-will be failed. If the 'watt' > I<cappingsoftmin> and 
-'watt' < minimum of I<cappingmaxmin>, the value can NOT be 
+If the 'watt' >  maximum of I<cappingmaxmin> or 'watt'
+< I<cappingsoftmin>, the setting operation
+will be failed. If the 'watt' > I<cappingsoftmin> and
+'watt' < minimum of I<cappingmaxmin>, the value can NOT be
 guaranteed.
 
 =item B<CPUspeed>
@@ -395,28 +395,28 @@ Query the historical records which were generated in last one hour for B<CPUspee
 
 =item B<dsavingstatus>
 
-Query the dynamic power saving status. The result should 
-be 'on-norm', 'on-maxp'  or 'off'. 
+Query the dynamic power saving status. The result should
+be 'on-norm', 'on-maxp'  or 'off'.
 
-If turning on the dynamic power saving, the processor 
-frequency and voltage will be dropped dynamically based on 
-the core utilization. It supports two modes for turn on state: 
+If turning on the dynamic power saving, the processor
+frequency and voltage will be dropped dynamically based on
+the core utilization. It supports two modes for turn on state:
 
-I<on-norm> - means normal, the processor frequency cannot 
-exceed the nominal value; 
+I<on-norm> - means normal, the processor frequency cannot
+exceed the nominal value;
 
-I<on-maxp> - means maximum performance, the processor 
+I<on-maxp> - means maximum performance, the processor
 frequency can exceed the nominal value.
 
 =item B<dsavingstatus>={B<on-norm> | B<on-maxp> | B<off>}
 
-Set the dynamic power saving. The value must be 'on-norm', 
+Set the dynamic power saving. The value must be 'on-norm',
 'on-maxp' or 'off'.
 
-The dsavingstatus setting operation needs about 2 minutes 
+The dsavingstatus setting operation needs about 2 minutes
 to take effect. (The used time depends on the hardware type)
 
-The B<dsavingstatus> only can be turned on when the 
+The B<dsavingstatus> only can be turned on when the
 B<savingstatus> is in turn off status.
 
 =item B<exhausttemp>
@@ -431,7 +431,7 @@ Query the historical records which were generated in last one hour for B<exhaust
 
 Query the fan speed for all the fans which installed in this node. (Unit is RPM - Rotations Per Minute))
 
-If there are multiple fans for a node, multiple lines will be output. And a fan name in bracket will be 
+If there are multiple fans for a node, multiple lines will be output. And a fan name in bracket will be
 appended after B<fanspped> attribute name.
 
 =item B<fanspeedhistory>
@@ -440,22 +440,22 @@ Query the historical records which were generated in last one hour for B<fanspee
 
 =item B<ffoMin>
 
-Query the minimum cpu frequency which can be set for FFO. (Fixed 
+Query the minimum cpu frequency which can be set for FFO. (Fixed
 Frequency Override)
 
 =item B<ffoNorm>
 
-Query the maximum cpu frequency which can be set for FFO. 
+Query the maximum cpu frequency which can be set for FFO.
 
 =item B<ffoTurbo>
 
-Query the advertised maximum cpu frequency (selling point). 
+Query the advertised maximum cpu frequency (selling point).
 
 =item B<ffoVmin>
 
-Query the minimum cpu frequency which can be set for dropping down 
-the voltage to save power. That means when you drop the cpu 
-frequency from the ffoVmin to ffoVmin, the voltage won't change, 
+Query the minimum cpu frequency which can be set for dropping down
+the voltage to save power. That means when you drop the cpu
+frequency from the ffoVmin to ffoVmin, the voltage won't change,
 then there's no obvious power to be saved.
 
 =item B<ffovalue>
@@ -464,30 +464,30 @@ Query the current value of FFO.
 
 =item B<ffovalue>=B<MHZ>
 
-Set the current value of FFO. The valid value of ffovalue should 
+Set the current value of FFO. The valid value of ffovalue should
 be between the ffoMin and ffoNorm.
 
-Note1: Due to the limitation of firmware, the frequency in the range 
-3501 MHz - 3807 MHz can NOT be set to ffovalue. This range may be 
+Note1: Due to the limitation of firmware, the frequency in the range
+3501 MHz - 3807 MHz can NOT be set to ffovalue. This range may be
 changed in future.
 
-Note2: The setting will take effect only when the fsavingstatus is in 
-'on' status. But you need to set the ffovalue to a valid value before 
-enabling the fsavingstatus. (It's a limitation of the initial firmware 
-and will be fixed in future.) 
+Note2: The setting will take effect only when the fsavingstatus is in
+'on' status. But you need to set the ffovalue to a valid value before
+enabling the fsavingstatus. (It's a limitation of the initial firmware
+and will be fixed in future.)
 
 The ffovalue setting operation needs about 1 minute to take effect.
 
 =item B<fsavingstatus>
 
-Query the status of FFO. The result should be 'on' or 'off'. 
+Query the status of FFO. The result should be 'on' or 'off'.
 'on' - enable; 'off' - disable.
 
 =item B<fsavingstatus>={B<on> | B<off>}
 
 Set the status of FFO. The value must be 'on' or 'off'.
 
-'on' - enable. It will take effect only when the B<ffovalue> 
+'on' - enable. It will take effect only when the B<ffovalue>
 has been set to a valid value.
 
 'off' -disable. It will take effect immediately.
@@ -500,20 +500,20 @@ Query the maximum processor frequency. (Unit is MHz)
 
 =item B<mmtemp>
 
-Query the current temperature of management module. 
+Query the current temperature of management module.
 (Unit is centigrade)
 
 =item B<pd1status | powerstatus>
 
-Query the status of power domain 1 for blade management 
+Query the status of power domain 1 for blade management
 module node.
 
-Note: for the attribute without the leading 'pd1' which 
+Note: for the attribute without the leading 'pd1' which
 means there's only one power doamin in the chassis.
 
 =item B<pd1policy | powerpolicy>
 
-Query the power management policy of power domain 1. 
+Query the power management policy of power domain 1.
 
 =item B<pd1powermodule1 | powermodule>
 
@@ -541,7 +541,7 @@ Query the total power being used in power domain 1.
 
 =item B<pd2status>
 
-Query the status of power domain 2 for blade management 
+Query the status of power domain 2 for blade management
 module node.
 
 =item B<pd2policy>
@@ -578,35 +578,35 @@ Query histogram data for wattage information
 
 =item B<savingstatus>
 
-Query the static power saving status. The result should be 
+Query the static power saving status. The result should be
 'on' or 'off'. 'on' - enable; 'off' - disable.
 
 =item B<savingstatus>={B<on> | B<off>}
 
-Set the static power saving. The value must be 'on' or 'off'. 
+Set the static power saving. The value must be 'on' or 'off'.
 
-If turning on the static power saving, the processor frequency 
+If turning on the static power saving, the processor frequency
 and voltage will be dropped to a fixed value to save energy.
 
-The savingstatus setting operation needs about 2 minutes to 
+The savingstatus setting operation needs about 2 minutes to
 take effect. (The used time depends on the hardware type)
 
-The B<savingstatus> only can be turned on when the 
+The B<savingstatus> only can be turned on when the
 B<dsavingstatus> is in turn off status.
 
 =item B<sysIPLtime>
 
-Query the time used from FSP standby to OS standby. 
+Query the time used from FSP standby to OS standby.
 (Unit is Second)
 
 =item B<syssbpower>
 
-Query the system power consumed prior to power on. 
+Query the system power consumed prior to power on.
 (Unit is Watt)
 
 =item B<thermaloutput>
 
-Query the thermal output (load) in BTUs per hour for the blade 
+Query the thermal output (load) in BTUs per hour for the blade
 center chassis.
 
 =item B<powerusage>
@@ -615,7 +615,7 @@ Query System Power Statistics with DCMI (Data Center Manageability Interface).
 
 =item B<temperature>
 
-Query the temperature from DCMI (Data Center Manageability Interface) Temperature sensor. 
+Query the temperature from DCMI (Data Center Manageability Interface) Temperature sensor.
 Currently, only CPU temperature and baseboard temperature sensor available for OpenPOWER servers.
 
 =back
@@ -744,7 +744,7 @@ The output of the query operation:
     blade1: savingstatus: off
 
 =item 6.
-Query the attributes savingstatus, cappingstatus 
+Query the attributes savingstatus, cappingstatus
 and CPUspeed for server CEC1.
 
  renergy CEC1 savingstatus cappingstatus CPUspeed
@@ -762,23 +762,23 @@ Turn on the power saving function of CEC1.
 
 The output of the setting operation:
 
-    CEC1: Set savingstatus succeeded.         
-    CEC1: This setting may need some minutes to take effect.   
+    CEC1: Set savingstatus succeeded.
+    CEC1: This setting may need some minutes to take effect.
 
 =item 8.
-Set the power capping value base on the percentage of the 
+Set the power capping value base on the percentage of the
 max-min capping value. Here, set it to 50%.
 
  renergy CEC1 cappingperc=50
 
-If the maximum capping value of the CEC1 is 850w, and the 
-minimum capping value of the CEC1 is 782w, the Power Capping 
+If the maximum capping value of the CEC1 is 850w, and the
+minimum capping value of the CEC1 is 782w, the Power Capping
 value will be set as ((850-782)*50% + 782) = 816w.
 
 The output of the setting operation:
 
     CEC1: Set cappingperc succeeded.
-    CEC1: cappingvalue: 816     
+    CEC1: cappingvalue: 816
 
 =item 9.
 Query powerusage and temperature for OpenPOWER servers.
