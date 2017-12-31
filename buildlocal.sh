@@ -35,7 +35,7 @@ ls $CURDIR/makerpm
 
 if [ $? -gt 0 ]; then
                 echo "Error:no repo exist, exit 1."
-                exit 1 
+                exit 1
 fi
 
 # Get a lock, so can not do 2 builds at once
@@ -77,8 +77,8 @@ echo "This is an Ubuntu system"
      fi
      cd -
      mv ${rpmname_low}* $CURDIR/build
- 
- done 
+
+ done
      #delete all files except  .deb file
      find $CURDIR/build/* ! -name *.deb | xargs rm -f
 
@@ -97,31 +97,31 @@ echo "This is an $OSNAME system"
      fi
 
      mkdir -p $CURDIR/build/
-  
+
    #always build perl-xCAT
-   $CURDIR/makerpm  perl-xCAT  
- 
+   $CURDIR/makerpm  perl-xCAT
+
 
    # Build the rest of the noarch rpms
    for rpmname in xCAT-client xCAT-server xCAT-IBMhpc xCAT-rmc xCAT-test xCAT-buildkit xCAT-vlan; do
-        if [ "$OSNAME" = "AIX" -a "$rpmname" = "xCAT-buildkit" ]; then continue; fi     
+        if [ "$OSNAME" = "AIX" -a "$rpmname" = "xCAT-buildkit" ]; then continue; fi
         $CURDIR/makerpm $rpmname
    done
-  
+
   #build xCAT-genesis-scripts if it is x86_64 platform
   ARCH=$(uname -p)
-  if [ "$ARCH" = "x86_64" ]; then 
-       $CURDIR/makerpm xCAT-genesis-scripts x86_64  
+  if [ "$ARCH" = "x86_64" ]; then
+       $CURDIR/makerpm xCAT-genesis-scripts x86_64
   else
        $CURDIR/makerpm xCAT-genesis-scripts ppc64
   fi
 
-  
+
   # Build the xCAT and xCATsn rpms for all platforms
   for rpmname in xCAT xCATsn; do
                 if [ "$OSNAME" = "AIX" ]; then
                         $CURDIR/makerpm $rpmname
-                        if [ $? -ne 0 ]; then FAILEDRPMS="$FAILEDRPMS $rpmname"; fi 
+                        if [ $? -ne 0 ]; then FAILEDRPMS="$FAILEDRPMS $rpmname"; fi
                 else
                         for arch in x86_64 ppc64 s390x; do
                                 $CURDIR/makerpm $rpmname $arch
@@ -133,7 +133,7 @@ echo "This is an $OSNAME system"
   if [ "$OS" = "SUSE" ]; then
       cp /usr/src/packages/RPMS/noarch/* $CURDIR/build/
       cp /usr/src/packages/RPMS/x86_64/* $CURDIR/build/
-      cp /usr/src/packages/RPMS/ppc64/* $CURDIR/build/ 
+      cp /usr/src/packages/RPMS/ppc64/* $CURDIR/build/
   else
       cp /root/rpmbuild/RPMS/noarch/* $CURDIR/build/
       cp /root/rpmbuild/RPMS/x86_64/* $CURDIR/build/
@@ -158,7 +158,7 @@ EOF
      rm -f /etc/zypp/repos.d/xcat-core.repo
      zypper ar file://$CURDIR/build xcat-core
   fi
-   
+
 fi
 
 
