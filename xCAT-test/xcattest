@@ -85,48 +85,48 @@ $::USAGE = "Usage:
 To get help:
     $program_name -h
 
-To list the information about all cases shipped by xcat test package  
+To list the information about all cases shipped by xcat test package
     $program_name -l {caselist|caseinfo|casenum}
 To list the information about all bunldes shipped by xcat test package
-    $program_name -l bundleinfo 
+    $program_name -l bundleinfo
 To list the information about label
     $program_name -l labelinfo
 To list the information about cases in specific bundles
     $program_name -l {caselist|caseinfo|casenum} -b <bundle_list>
 To list the information about cases related to specific commands
-    $program_name -l {caselist|caseinfo|casenum} -c <command_list> 
-To list the information about specific cases  
+    $program_name -l {caselist|caseinfo|casenum} -c <command_list>
+To list the information about specific cases
     $program_name -l {caselist|caseinfo|casenum} -t <case_list>
 
 To list cases information that satisfy specific filter expression
-    $program_name -l {caselist|caseinfo|casenum} -s \"filter_expression\"    
+    $program_name -l {caselist|caseinfo|casenum} -s \"filter_expression\"
 For short, show the cases list can use below command
     $program_name -l -s \"filter_expression\"
 To list information about cases in specific bundles and satisfy specific filter expression at same time
     $program_name -l {caselist|caseinfo|casenum} -b <bundle_list> -s \"filter_expression\"
 
-To run test cases in specific bundles 
+To run test cases in specific bundles
     $program_name [-f {configure_file|configure_file:System}] -b <bundle_list>  [-r] [-q]
-To run specific test cases 
+To run specific test cases
     $program_name [-f {configure_file|configure_file:System}] -t <case_list>  [-r] [-q]
-To run all cases related to specific commands 
+To run all cases related to specific commands
     $program_name [-f {configure_file|configure_file:System}] -c <command_list> [-r] [-q]
 To run test cases that satisfy specific filter expression
     $program_name -s \"filter_expression\"
 
 Options:
-    -h : Get $program_name usage information. 
+    -h : Get $program_name usage information.
     -l : list specific information. The valid options are caselist,caseinfo,casenum,bundleinfo. For list case information, caselist is default value.
     -f : specify the configuration file. If 'System' tag is used, only [System] section in the configuration file will be used. If 'System' is not used all other sections of the configuration file will be used, like [Table], [Object], etc.
-    -c : Comma separated list of command names to test. 
+    -c : Comma separated list of command names to test.
     -t : Comma separated list of test case names to test.
     -b : Comma separated list of bundle names to test. If a bundle name is specified without an absolute path, such like /<path/xxx.bundle, or ./xxx.bundle, bundles under $bundledir will be searched by default.
     -r : Back up the original environment settings before running test, and restore them after running test.
-    -q : Just record all the output of $program_name into log file under $resultdir, not print to STDOUT. Print to STDOUT by default. 
-    -s : Filter case by label. The acceptable value looks like 'label1+label2-label3\|label4\|label5', 'label1+label2-label3' works as sub expression. 
-         '|' means union filter, it has lower priority, expression1|expression2 means the case either satisfies expression1 or satisfies expression2. 
+    -q : Just record all the output of $program_name into log file under $resultdir, not print to STDOUT. Print to STDOUT by default.
+    -s : Filter case by label. The acceptable value looks like 'label1+label2-label3\|label4\|label5', 'label1+label2-label3' works as sub expression.
+         '|' means union filter, it has lower priority, expression1|expression2 means the case either satisfies expression1 or satisfies expression2.
          '+' means the case need have specific label. higher priority.
-         '-' means the case does not have specific label. higher priority. 
+         '-' means the case does not have specific label. higher priority.
 ";
 
 #==============================================================================================
@@ -199,7 +199,7 @@ if (defined $list) {
                 log_this($running_log_fd, "$_");
             }
         } elsif (!@cases_to_be_run && $search_expression){
-            log_this($running_log_fd, "There is no cases match search expression $search_expression"); 
+            log_this($running_log_fd, "There is no cases match search expression $search_expression");
         } else {
 
             #list the cases shipped by xcat test package
@@ -251,7 +251,7 @@ if (defined $list) {
         my %label_conut;
         my %case_label_str_map;
         foreach my $case (keys %case_label_map){
-            if($case_label_map{$case}{label_str}){ 
+            if($case_label_map{$case}{label_str}){
                 $case_label_str_map{$case} = $case_label_map{$case}{label_str};
                 my @labels = split(",", $case_label_map{$case}{label_str});
                 foreach my $label (@labels){
@@ -262,7 +262,7 @@ if (defined $list) {
                     }
                 }
             }
-        }  
+        }
 
         log_this($running_log_fd, "-------------------------------");
         log_this($running_log_fd, "The labels of cases:");
@@ -270,7 +270,7 @@ if (defined $list) {
         print_table(\%case_label_str_map);
         my $label_total_num=keys %label_conut;
         log_this($running_log_fd, "\n-------------------------------");
-        log_this($running_log_fd, "There are $label_total_num different labels"); 
+        log_this($running_log_fd, "There are $label_total_num different labels");
         log_this($running_log_fd, "The number of cases of each label:");
         log_this($running_log_fd, "-------------------------------");
         print_table(\%label_conut);
@@ -278,7 +278,7 @@ if (defined $list) {
         my $total_case = keys %case_label_map;
         my $case_with_label_num = keys %case_label_str_map;
         log_this($running_log_fd, "There are $total_case cases totaly, there are $case_with_label_num cases with label.");
-        
+
     }
 
     to_exit(0);
@@ -566,7 +566,7 @@ sub calculate_cases_to_be_run {
             return 1;
         }
 
-        @$cases_to_be_run_ref=@rest_cases_to_be_run;        
+        @$cases_to_be_run_ref=@rest_cases_to_be_run;
     }
     return 0;
 }
@@ -1052,12 +1052,12 @@ sub load_case {
                 $case_ref->[$i]->{arch} = $1;
 
                 if ($run_case_flag) {
-                    
+
                     #To judge whether need to skip the current case
 
                     my @vaild_archs_tmp = split(",", $case_ref->[$i]->{arch});
                     my @vaild_archs=();
-                    foreach my $arch (@vaild_archs_tmp){                    
+                    foreach my $arch (@vaild_archs_tmp){
                         my $tmp_str="";
                         if ($arch =~ /ppc/i && $arch !~ /le|el/i) {
                             $tmp_str = "ppc";
@@ -1066,7 +1066,7 @@ sub load_case {
                         } elsif ($arch =~ /x86/i) {
                             $tmp_str = "x86";
                         }
-                        push @vaild_archs, $tmp_str; 
+                        push @vaild_archs, $tmp_str;
                     }
 
                     my $env_arch = "";
@@ -1124,7 +1124,7 @@ sub load_case {
                             }
                             last;
                         }
-                    } 
+                    }
                     unless ($valid) {
                         if (exists($case_name_index_map_bak{ $case_ref->[$i]->{name} })) {
                             $$case_name_index_map_ref{ $case_ref->[$i]->{name} } = $case_name_index_map_bak{ $case_ref->[$i]->{name} };
