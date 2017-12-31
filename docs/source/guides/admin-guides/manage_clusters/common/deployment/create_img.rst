@@ -11,11 +11,11 @@ If using an ISO, copy it to (or NFS mount it on) the management node, and then r
 	
 If using a DVD, put it in the DVD drive of the management node and run: ::
 
-    copycds /dev/<dvd-drive-name> 
+    copycds /dev/<dvd-drive-name>
 
 To see the list of osimages: ::
 
-    lsdef -t osimage 
+    lsdef -t osimage
 	
 To see the attributes of a particular osimage: ::
 
@@ -31,7 +31,7 @@ Below is an example of osimage definitions created by ``copycds``: ::
 	rhels7.2-ppc64le-netboot-compute  (osimage)
 	rhels7.2-ppc64le-stateful-mgmtnode  (osimage)
 
-In these osimage definitions shown above 
+In these osimage definitions shown above
 
 * **<os>-<arch>-install-compute** is the default osimage definition used for diskful installation
 * **<os>-<arch>-netboot-compute** is the default osimage definition used for diskless installation
@@ -48,9 +48,9 @@ For pre-18.04 version of Ubuntu for ppc64el, the initrd.gz shipped with the ISO 
   [ubuntu 14.04.2]: http://xcat.org/files/netboot/ubuntu14.04.2/ppc64el/mini.iso
 
   [ubuntu 14.04.3]: http://xcat.org/files/netboot/ubuntu14.04.3/ppc64el/mini.iso
-  
+
   [ubuntu 14.04.4]: http://xcat.org/files/netboot/ubuntu14.04.4/ppc64el/mini.iso
-  
+
   [ubuntu 16.04]: http://xcat.org/files/netboot/ubuntu16.04/ppc64el/mini.iso
 
   [ubuntu 16.04.1]: http://xcat.org/files/netboot/ubuntu16.04.1/ppc64el/mini.iso
@@ -65,7 +65,7 @@ For pre-18.04 version of Ubuntu for ppc64el, the initrd.gz shipped with the ISO 
     mkdir -p /install/<ubuntu-version>/ppc64el/install/netboot
     cp /tmp/iso/install/initrd.gz /install/<ubuntu-version>/ppc64el/install/netboot
 
-**[Below tips maybe helpful for you]** 
+**[Below tips maybe helpful for you]**
 
 **[Tips 1]**
 
@@ -82,7 +82,7 @@ In this way, if you need to install some additional RPMs into your MN later, you
 **[Tips 2]**
 
 You can create/modify an osimage definition easily with any existing osimage definition, the command is ::
-    
+
     mkdef -t osimage -o <new osimage> --template <existing osimage> [<attribute>=<value>, ...]
 
 Except the specified attributes *<attribute>*, the attributes of *<new osimage>* will inherit the values of template osimage *<existing osimage>*.
