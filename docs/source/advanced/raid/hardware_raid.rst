@@ -6,9 +6,9 @@ Overview
 
 In many new compute machines, disks have been formatted into RAID oriented format in manufacturer, so admin must create raid arrays using these disks manually before provisioning OS. How to configure raid arrays in unattended way for hundreds of machines turns to be a problem.
 
-IBM has offered a tool ``iprconfig`` to configure raid for IBM power machine. To leverage this tool, xCAT enabled it in xCAT genesis.ppc64 so that admin can use genesis.ppc64 to configure RAID arrays. 
+IBM has offered a tool ``iprconfig`` to configure raid for IBM power machine. To leverage this tool, xCAT enabled it in xCAT genesis.ppc64 so that admin can use genesis.ppc64 to configure RAID arrays.
 
-There are two commands (``diskdiscover`` and ``configraid``) shipped in ``xCAT-genesis-scripts`` package to support RAID arrays configuration using ``iprconfig``, you can use the ``runcmd`` facility to configure raid in the hardware discovery procedure using them, ``runcmd`` is a facility which will be run in xcat genesis system. You can also use separated manual steps to use ``configraid`` in xcat genesis system shell.  
+There are two commands (``diskdiscover`` and ``configraid``) shipped in ``xCAT-genesis-scripts`` package to support RAID arrays configuration using ``iprconfig``, you can use the ``runcmd`` facility to configure raid in the hardware discovery procedure using them, ``runcmd`` is a facility which will be run in xcat genesis system. You can also use separated manual steps to use ``configraid`` in xcat genesis system shell.
 
 * **diskdiscover** : Scan disk devices in xcat genesis system, give out disks and RAID arrays information.
 * **configraid** : Delete RAID arrays, create RAID arrays in xcat genesis system.
@@ -38,7 +38,7 @@ Here are steps to use ``diskdiscover``:
     xdsh cn1 'diskdiscover <pci_id>'
 
    The outputs format is as following: ::
-   
+
     # xdsh cn1 diskdiscover
     cn1: --------------------------------------------------------------------------
     cn1: PCI_ID     PCI_SLOT_NAME  Resource_Path  Device  Description   Status
@@ -76,12 +76,12 @@ Here are the input parameters introduction:
 
 #. **stripe_size** : It is optional used when creating RAID arrays. If stripe size is not specified, it will default to the recommended stripe size for the selected RAID level.
 
-#. **create_raid** : To create a raid array, add a line beginning with create_raid, all attributes keys and values are separated by ``#``. The formats are as followings: 
+#. **create_raid** : To create a raid array, add a line beginning with create_raid, all attributes keys and values are separated by ``#``. The formats are as followings:
 
      * ``rl`` means RAID level, RAID level can be any supported RAID level for the given adapter, such as 0, 10,  5,  6. ``rl`` is a mandatory attribute for every create_raid. Supported RAID level is depend on physical server's RAID adapter.
 
      * User can select disks based on following attributes value. User can find these value based on ``diskdiscover`` outputs as above section described.
- 
+
          a. ``pci_id`` is PCI vendor and device ID.
          b. ``pci_slot_name`` is the specified PCI location. If using ``pci_slot_name``, this RAID array will be created using disks from it.
          c. ``disk_names`` is a list of advanced format disk names. If using ``disk_names``, this RAID array will be created using these disks.
@@ -104,7 +104,7 @@ More examples of input parameters:
 
     #. Create two RAID arrays, RAID level is 0, one array uses one disks from pci_id 1014:034a, the other array uses two disks from pci_slot_name ``0001:08:00.0``: ::
 
-        create_raid="rl#0|pci_id#1014:034a|disk_num#1" create_raid="rl#0|pci_slot_name#0001:08:00.0|disk_num#2" 
+        create_raid="rl#0|pci_id#1014:034a|disk_num#1" create_raid="rl#0|pci_slot_name#0001:08:00.0|disk_num#2"
 
     #. Create two RAID arrays, RAID level is 0, one array uses disks sg0 and sg1, the other array uses disks sg2 and sg3: ::
 
@@ -119,7 +119,7 @@ Configuring RAID in hardware discovery procedure
 '''''''''''''''''''''''''''''''''''''''''''''''''
 
 #. Using ``runcmd`` facility to configure raid in the hardware discovery procedure, after configuring RAID, compute node enter xcat genesis system shell. In the following example, ``configraid`` deletes all original RAID arrays, it creates one RAID 0 array with first two disks from pci_id ``1014:034a``: ::
-    
+
     nodeset cn1 runcmd="configraid delete_raid=all create_raid=rl#0|pci_id#1014:034a|disk_num#2",shell
     rpower cn1 reset
 
@@ -149,5 +149,5 @@ Monitoring and debuging RAID configuration process
 #. Logs for ``configraid`` is saved under ``tmp`` in compute node genesis system. User can login compute node and check ``configraid`` logs to debug.
 
 #. When configuring RAID in hardware discovery procedure, user can use ``rcons`` command to monitor or debug the process: ::
- 
+
     rcons cn1
