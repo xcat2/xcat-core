@@ -1,7 +1,7 @@
 
 .. BEGIN_see_release_notes
 
-For the current list of operating systems supported and verified by the development team for the different releases of xCAT, see the :doc:`xCAT2 Release Notes </overview/xcat2_release>`. 
+For the current list of operating systems supported and verified by the development team for the different releases of xCAT, see the :doc:`xCAT2 Release Notes </overview/xcat2_release>`.
 
 **Disclaimer** These instructions are intended to only be guidelines and specific details may differ slightly based on the operating system version.  Always refer to the operating system documentation for the latest recommended procedures.
 
@@ -33,7 +33,7 @@ The system requirements for your xCAT management node largely depend on the size
 
 xCAT consists of two software packages: ``xcat-core`` and ``xcat-dep``
 
-#. **xcat-core**  xCAT's main software package and is provided in one of the following options: 
+#. **xcat-core**  xCAT's main software package and is provided in one of the following options:
 
      * **Latest Release (Stable) Builds**
 
@@ -50,7 +50,7 @@ xCAT consists of two software packages: ``xcat-core`` and ``xcat-dep``
 #. **xcat-dep**  xCAT's dependency package.  This package is provided as a convenience for the user and contains dependency packages required by xCAT that are not provided by the operating system.
 
 
-.. END_install_xcat_introduction 
+.. END_install_xcat_introduction
 
 .. BEGIN_installation_methods
 
@@ -68,7 +68,7 @@ The following sections describe the different methods for installing xCAT.
         chmod +x /tmp/go-xcat
 
 #. Run the ``go-xcat`` tool: ::
-        
+
         /tmp/go-xcat install            # installs the latest stable version of xCAT
         /tmp/go-xcat -x devel install   # installs the latest development version of xCAT
 
@@ -126,7 +126,7 @@ The following sections describe the different methods for installing xCAT.
 
 **[xcat-dep]**
 
-Unless you are downloading ``xcat-dep`` to match a specific package tested with a GA release, it's recommended to download the latest version of xcat-dep. 
+Unless you are downloading ``xcat-dep`` to match a specific package tested with a GA release, it's recommended to download the latest version of xcat-dep.
 
 
 #. Download xcat-dep: ::
@@ -153,7 +153,7 @@ Unless you are downloading ``xcat-dep`` to match a specific package tested with 
 
 **[xcat-dep]**
 
-Unless you are downloading ``xcat-dep`` to match a specific package tested with a GA release, it's recommended to download the latest version of xcat-dep. 
+Unless you are downloading ``xcat-dep`` to match a specific package tested with a GA release, it's recommended to download the latest version of xcat-dep.
 
 
 #. Download xcat-dep: ::
@@ -205,7 +205,7 @@ Quick verification of the xCAT Install can be done running the following steps:
 Starting and Stopping
 ---------------------
 
-xCAT is started automatically after the installation, but the following commands can be used to start, stop, restart, and check xCAT status. 
+xCAT is started automatically after the installation, but the following commands can be used to start, stop, restart, and check xCAT status.
 
 * start xCAT: ::
 
@@ -228,5 +228,5 @@ xCAT is started automatically after the installation, but the following commands
     [systemd] systemctl status xcatd.service
 
 
-.. END_verifying_xcat 
+.. END_verifying_xcat
 
