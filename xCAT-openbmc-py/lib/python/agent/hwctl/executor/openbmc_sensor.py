@@ -55,7 +55,7 @@ class OpenBMCSensorTask(ParallelNodesCommand):
                 info_list.append('%s %s %s: %s' % (led_label, i, led_type, beacon_dict.get(key_type, 'N/A')))
 
         return info_list
-        
+
 
     def get_sensor_info(self, sensor_type, **kw):
 
@@ -118,5 +118,5 @@ class OpenBMCSensorTask(ParallelNodesCommand):
             self.callback.error(e.message, node)
 
         return beacon_info
-                
+
 
