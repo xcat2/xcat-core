@@ -12,7 +12,7 @@ The xCAT daemon uses SSL to only allow authorized users to run xCAT commands. Al
 Commands Access Control
 -----------------------
 
-Except SSL channel, xCAT only authorize root on the management node to run **xCAT** commands by default. But xCAT can be configured to allow both **non-root users** and **remote users** to run limited xCAT commands. For remote users, we mean the users who triggers the xCAT commands from other nodes and not have to login to the management node. xCAT uses the **policy** table to control who has authority to run specific xCAT commands. For a full explanation of the **policy** table, refer to :doc:`policy </guides/admin-guides/references/man5/policy.5>` man page. 
+Except SSL channel, xCAT only authorize root on the management node to run **xCAT** commands by default. But xCAT can be configured to allow both **non-root users** and **remote users** to run limited xCAT commands. For remote users, we mean the users who triggers the xCAT commands from other nodes and not have to login to the management node. xCAT uses the **policy** table to control who has authority to run specific xCAT commands. For a full explanation of the **policy** table, refer to :doc:`policy </guides/admin-guides/references/man5/policy.5>` man page.
 
 .. _granting_xcat_privileges:
 
@@ -40,17 +40,17 @@ CLI can also be used: ::
 **Note** Make sure the directories that contain the xCAT commands are in the user's ``$PATH``. If not, add them to ``$PATH`` as appropriate in your system. ::
 
     echo $PATH | grep xcat
-    /opt/xcat/bin:/opt/xcat/sbin: ....... 
+    /opt/xcat/bin:/opt/xcat/sbin: .......
 
 Extra Setup for Remote Commands
 ```````````````````````````````
 
 To give a user the ability to run remote commands (``xdsh``, ``xdcp``, ``psh``, ``pcp``) in some node, in addition to above steps, also need to run below steps:  ::
-  
+
     su - <username>
     xdsh <noderange> -K
 
-This will setup the user and root ssh keys for the user under the ``$HOME/.ssh`` directory of the user on the nodes. The root ssh keys are needed for the user to run the xCAT commands under the xcatd daemon, where the user will be running as root. **Note**: the uid and the password for the user on the management node, should match the uid and password on the managed nodes. 
+This will setup the user and root ssh keys for the user under the ``$HOME/.ssh`` directory of the user on the nodes. The root ssh keys are needed for the user to run the xCAT commands under the xcatd daemon, where the user will be running as root. **Note**: the uid and the password for the user on the management node, should match the uid and password on the managed nodes.
 
 
 Set Up Login Node (Remote Client)
@@ -67,25 +67,25 @@ Below are the steps of how to set up a login node.
   * :doc:`Configure xCAT Software Repository in RHEL</guides/install-guides/yum/configure_xcat>`
 
   * :ref:`Configure the Base OS Repository in SUSE <zypper_configure_the_base_os_repository>`
- 
+
   * :ref:`Configure the Base OS Repository in Ubuntu <apt_configure_the_base_os_repository>`
 
 
   Then install ``xCAT-client``.
 
   **[RHEL]** ::
-  
+
       yum install  xCAT-client
 
   **[SUSE]** ::
-      
+
       zypper install  xCAT-client
 
   **[Ubuntu]** ::
 
       apt-get install  xCAT-client
 
-2. Configure login node 
+2. Configure login node
 
   When running on the login node, the environment variable **XCATHOST** must be export to the name or address of the management node and the port for connections (usually 3001). ::
 
@@ -99,11 +99,11 @@ Below are the steps of how to set up a login node.
 
   The remote not-root user still needs to set up the credentials for communication with management node. By running the ``/opt/xcat/share/xcat/scripts/setup-local-client.sh <username>`` command as root in management node, the credentials are generated in <username>'s ``$HOME/.xcat`` directory in management node. These credential files must be copied to the <username>'s ``$HOME/.xcat`` directory on the login node.  **Note**: After ``scp``, in the login node, you must make sure the owner of the credentials is <username>.
 
-  Setup your ``policy`` table on the management node with the permissions that you would like the non-root id to have. 
+  Setup your ``policy`` table on the management node with the permissions that you would like the non-root id to have.
 
   At this time, the non-root id should be able to execute any commands that have been set in the ``policy`` table from the Login Node.
 
-  If any remote shell commands (psh,xdsh) are needed, then you need to follow `Extra Setup For Remote Commands`_. 
+  If any remote shell commands (psh,xdsh) are needed, then you need to follow `Extra Setup For Remote Commands`_.
 
 
 Auditing
@@ -122,7 +122,7 @@ xCAT logs all xCAT commands run by the xcatd daemon to both the syslog and the a
     args:	The command argument list.
     status:	Allowed or Denied.
     comments:	Any user-provided notes.
-    disable:	Do not use.  tabprune will not work if set to yes or 1 
+    disable:	Do not use.  tabprune will not work if set to yes or 1
 
 
 Password Management
@@ -130,7 +130,7 @@ Password Management
 
 xCAT is required to store passwords for various logons so that the application can login to the devices without having to prompt for a password. The issue is how to securely store these passwords.
 
-Currently xCAT stores passwords in ``passwd`` table. You can store them as plain text, you can also store them as MD5 ciphertext.  
+Currently xCAT stores passwords in ``passwd`` table. You can store them as plain text, you can also store them as MD5 ciphertext.
 
 Here is an example about how to store a MD5 encrypted password for root in ``passwd`` table.  ::
 
@@ -151,7 +151,7 @@ Nodes Inter-Access in The Cluster
 ---------------------------------
 
 
-xCAT performs the setup for root to be able to ssh without password from the Management Node(MN) to all the nodes in the cluster. All nodes are able to ssh to each other without password or being prompted for a ``known_host`` entry, unless restricted. Nodes cannot ssh back to the Management Node or Service Nodes without a password by default. 
+xCAT performs the setup for root to be able to ssh without password from the Management Node(MN) to all the nodes in the cluster. All nodes are able to ssh to each other without password or being prompted for a ``known_host`` entry, unless restricted. Nodes cannot ssh back to the Management Node or Service Nodes without a password by default.
 
 xCAT generates, on the MN, a new set of ssh hostkeys for the nodes to share, which are distributed to all the nodes during install. If ssh keys do not already exist for root on the MN, it will generate an id_rsa public and private key pair.
 
@@ -160,7 +160,7 @@ During node install, xCAT sends the ssh hostkeys to ``/etc/ssh`` on the node, th
 On the MN and the nodes, xCAT sets the ssh configuration file to ``strictHostKeyChecking no``, so that a ``known_host`` file does not have to be built in advanced. Each node can ssh to every other cluster node without being prompted for a password, and because they share the same ssh host keys there will be no prompting to add entries to ``known_hosts``.
 
 On the MN, you will be prompted to add entries to ``known_hosts`` file for each node once. See makeknownhosts command for a quick way to build a ``known_hosts`` file on the MN, if your nodes are defined in the xCAT database.
-   
+
 
 Restricting Node to Node SSH
 ````````````````````````````
@@ -169,7 +169,7 @@ By default, all nodes installed by one management node are able to ssh to each w
 
 This setting of site.sshbetweennodes will only enable root ssh between nodes of the compute1 and compute 2 groups and all service nodes. ::
 
-    "sshbetweennodes","compute1,compute2",, 
+    "sshbetweennodes","compute1,compute2",,
 
 
 Secure Zones
