@@ -3,14 +3,14 @@
 <command>setNodeAttribs</command>
 <table>tablename</table>
 <node>noderange</node>
-<attr>attribute1</attr> 
+<attr>attribute1</attr>
 <value>value1</value>
-<attr>attribute2</attr> 
+<attr>attribute2</attr>
 <value>value2</value>
 .
 .
 .
-<attr>attributeN</attr> 
+<attr>attributeN</attr>
 <value>valueN</value>
 </xcatrequest>
 <xcatresponse>
