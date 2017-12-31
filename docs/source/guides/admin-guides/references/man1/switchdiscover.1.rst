@@ -11,9 +11,9 @@ SYNOPSIS
 ********
 
 
-\ **switchdiscover [-h| -**\ **-help]**\ 
+\ **switchdiscover [-h| -**\ **-help]**\
 
-\ **switchdiscover [-v| -**\ **-version]**\ 
+\ **switchdiscover [-v| -**\ **-version]**\
 
 \ **switchdiscover**\  [\ *noderange*\  | \ **-**\ **-range**\  \ *ip_ranges*\ ] \ **[-V] [-w][-r|-x|-z][-s**\  \ *scan_methods*\ ] [\ **-**\ **-setup**\ ] [\ **-c**\  \ *community*\ ]
 
@@ -40,88 +40,88 @@ OPTIONS
 
 
 
-\ *noderange*\ 
- 
+\ *noderange*\
+
  The switches which the user want to discover.
  If the user specify the noderange, switchdiscover will just
- return the switches in the node range. Which means it will 
+ return the switches in the node range. Which means it will
  help to add the new switches to the xCAT database without
- modifying the existed definitions. But the switches' name 
- specified in noderange should be defined in database in advance. 
- The ips of the switches will be defined in /etc/hosts file. 
+ modifying the existed definitions. But the switches' name
+ specified in noderange should be defined in database in advance.
+ The ips of the switches will be defined in /etc/hosts file.
  This command will fill the switch attributes for the switches defined.
- 
 
 
-\ **-h|-**\ **-help**\ 
- 
+
+\ **-h|-**\ **-help**\
+
  Display usage message.
- 
 
 
-\ **-**\ **-range**\ 
- 
+
+\ **-**\ **-range**\
+
  Specify one or more IP ranges. Each can be an ip address (10.1.2.3) or an ip range (10.1.2.0/24). If the range is huge, for example, 192.168.1.1/8, the switch discover may take a very long time to scan. So the range should be exactly specified.
- 
+
  For nmap and snmp scan method, it accepts multiple formats. For example: 192.168.1.1/24, 40-41.1-2.3-4.1-100.
- 
+
  If the range is not specified, the command scans all the subnets that the active network interfaces (eth0, eth1) are on where this command is issued.
- 
 
 
-\ **-r**\ 
- 
+
+\ **-r**\
+
  Display Raw responses.
- 
 
 
-\ **-s**\ 
- 
- It is a comma separated list of methods for switch discovery. 
+
+\ **-s**\
+
+ It is a comma separated list of methods for switch discovery.
  The possible switch scan methods are: lldp, nmap or snmp. The default is nmap.
- 
 
 
-\ **-v|-**\ **-version**\ 
- 
+
+\ **-v|-**\ **-version**\
+
  Command Version.
- 
 
 
-\ **-V**\ 
- 
+
+\ **-V**\
+
  Verbose output.
- 
 
 
-\ **-w**\ 
- 
+
+\ **-w**\
+
  Writes output to xCAT database.
- 
 
 
-\ **-x**\ 
- 
+
+\ **-x**\
+
  XML formatted output.
- 
 
 
-\ **-z**\ 
- 
+
+\ **-z**\
+
  Stanza formatted output.
- 
 
 
-\ **-**\ **-setup**\ 
- 
+
+\ **-**\ **-setup**\
+
  Process switch-based switch discovery. Update discovered switch's ip address, hostname and enable snmpv3 configuration based on the predefined switch.
- 
 
 
-\ **-c**\ 
- 
+
+\ **-c**\
+
  User defined community string for snmp scan.
- 
+
 
 
 
@@ -142,45 +142,45 @@ EXAMPLES
 
 
 1. To discover the switches on some subnets:
- 
- 
+
+
  .. code-block:: perl
- 
+
    switchdiscover --range 10.2.3.0/24,192.168.3.0/24,11.5.6.7
- 
- 
+
+
 
 
 2. To do the switch discovery and save them to the xCAT database:
- 
- 
+
+
  .. code-block:: perl
- 
+
    switchdiscover --range 10.2.3.4/24 -w
- 
- 
+
+
  It is recommended to run \ **makehosts**\  after the switches are saved in the DB.
- 
+
 
 
 3. To use lldp method to discover the switches:
- 
- 
+
+
  .. code-block:: perl
- 
+
    switchdiscover -s lldp
- 
- 
+
+
 
 
 4. To process switch-based switch discovery, the core switch has to be configured and top-of-rack (edge) switch has to be predefine into xCAT databse with attribute \ **switch**\  and \ **switchport**\  to core switch:
- 
- 
+
+
  .. code-block:: perl
- 
+
    switchdiscover --range 192.168.5.150-170 -s snmp --setup
- 
- 
+
+
 
 
 
