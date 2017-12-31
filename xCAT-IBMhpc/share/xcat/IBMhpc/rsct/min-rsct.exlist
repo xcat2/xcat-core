@@ -10,7 +10,7 @@
 ./usr/sbin/rsct/include*
 ./usr/sbin/rsct/man/*
 ./usr/sbin/rsct/bin/trap2rmcd
-./usr/sbin/rsct/bin/ctadmingroup 
+./usr/sbin/rsct/bin/ctadmingroup
 ./usr/sbin/rsct/bin/mkcdef
 
 #fc funcitons
@@ -32,7 +32,7 @@
 ./usr/sbin/rsct/bin/fcstrip.sed
 ./usr/sbin/rsct/bin/fcsysparse
 ./usr/sbin/rsct/bin/fcteststk
-./usr/sbin/rsct/bin/fcinit.sh 
+./usr/sbin/rsct/bin/fcinit.sh
 #java interface
 ./usr/sbin/rsct/lib/java.exp
 ./usr/sbin/rsct/lib/librmcjni.so
@@ -43,32 +43,32 @@
 
 #remove assuming ctbackup/ctrestore not being used
 ./usr/sbin/rsct/bin/ctrestore
-./usr/sbin/rsct/bin/ctbrdefs  
-./usr/sbin/rsct/bin/ctbackup  
+./usr/sbin/rsct/bin/ctbrdefs
+./usr/sbin/rsct/bin/ctbackup
 
 #remove assuming trace spooling is not used
-./usr/sbin/rsct/bin/chkspool  
-./usr/sbin/rsct/bin/showtr 
+./usr/sbin/rsct/bin/chkspool
+./usr/sbin/rsct/bin/showtr
 ./usr/sbin/rsct/bin/lstrsp
 
 #remove; CtSec verification utility
-./usr/sbin/rsct/bin/ctsvhbar 
+./usr/sbin/rsct/bin/ctsvhbar
 ./usr/sbin/rsct/bin/ctsvhbal
-./usr/sbin/rsct/bin/ctsvhbac  
-./usr/sbin/rsct/bin/ctaclfck  
-./usr/sbin/rsct/bin/ctsidmck  
+./usr/sbin/rsct/bin/ctsvhbac
+./usr/sbin/rsct/bin/ctaclfck
+./usr/sbin/rsct/bin/ctsidmck
 
 #remove; System Registry diagnostic tool
-./usr/sbin/rsct/bin/sr_lstfs    
-./usr/sbin/rsct/bin/sr_lsfds       
-./usr/sbin/rsct/bin/sr_filter_trace   
-./usr/sbin/rsct/bin/sr_dump_table_raw 
-./usr/sbin/rsct/bin/sr_dump_table   
-./usr/sbin/rsct/bin/sr_diag        
-./usr/sbin/rsct/bin/ct_sr_trace_scan 
-./usr/sbin/rsct/bin/ct_sr_file_scan 
+./usr/sbin/rsct/bin/sr_lstfs
+./usr/sbin/rsct/bin/sr_lsfds
+./usr/sbin/rsct/bin/sr_filter_trace
+./usr/sbin/rsct/bin/sr_dump_table_raw
+./usr/sbin/rsct/bin/sr_dump_table
+./usr/sbin/rsct/bin/sr_diag
+./usr/sbin/rsct/bin/ct_sr_trace_scan
+./usr/sbin/rsct/bin/ct_sr_file_scan
 
-#System Registry -api commnd; probably not needed  
+#System Registry -api commnd; probably not needed
 ./usr/sbin/rsct/bin/rmsrtbl-api
 ./usr/sbin/rsct/bin/rmsrrow-api
 ./usr/sbin/rsct/bin/mksrtbl-api
@@ -76,10 +76,10 @@
 ./usr/sbin/rsct/bin/mksrcol-api
 ./usr/sbin/rsct/bin/lssrtbldef-api
 ./usr/sbin/rsct/bin/lssrtbl-api
-./usr/sbin/rsct/bin/lssr-api 
-./usr/sbin/rsct/bin/chsrfld-api 
+./usr/sbin/rsct/bin/lssr-api
+./usr/sbin/rsct/bin/chsrfld-api
 
-#remove if not monitoring IBM.NetworkInterface resources 
+#remove if not monitoring IBM.NetworkInterface resources
 ./usr/sbin/rsct/bin/IBM.ConfigRMd
 
 #remove if not using LPRM
@@ -104,9 +104,9 @@
 
 #remove if not using Condition/Response
 ./usr/sbin/rsct/bin/IBM.ERrmd
-./usr/sbin/rsct/bin/stopcondresp 
-./usr/sbin/rsct/bin/startcondresp 
-./usr/sbin/rsct/bin/rmresponse 
+./usr/sbin/rsct/bin/stopcondresp
+./usr/sbin/rsct/bin/startcondresp
+./usr/sbin/rsct/bin/rmresponse
 ./usr/sbin/rsct/bin/rmcondresp
 ./usr/sbin/rsct/bin/rmcondition
 ./usr/sbin/rsct/bin/mkresponse
@@ -120,7 +120,7 @@
 ./usr/sbin/rsct/bin/chcondition
 ./usr/sbin/rsct/bin/wallevent
 ./usr/sbin/rsct/bin/notifyevent
-./usr/sbin/rsct/bin/msgevent 
+./usr/sbin/rsct/bin/msgevent
 ./usr/sbin/rsct/bin/logevent
 ./usr/sbin/rsct/bin/ewallevent
 ./usr/sbin/rsct/bin/enotifyevent
