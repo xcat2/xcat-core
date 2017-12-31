@@ -4,13 +4,13 @@
 ################################################################################
 #
 #	aixlitesetup
-#		- This script is used to configure the xCAT statelite support 
+#		- This script is used to configure the xCAT statelite support
 #			for AIX
 #
 ###############################################################################
 
 SL="/.statelite"
-ROOTDIR="/"  
+ROOTDIR="/"
 MOUNTDIR="$SL/mnt"   # where I mount all the trees.
 PERSISTENT="$SL/persistent"
 TMPDIR="$SL/tmpdir"
@@ -66,7 +66,7 @@ ProcessStatelite () {
 		if [ ! -d ${PERSISTENT} ]; then
 		    echo "mkdir -m 755 -p ${PERSISTENT}" >>$LOG
 			mkdir -m 755 -p ${PERSISTENT} 2>&1 >>$LOG
-		fi 
+		fi
 
 		# mount 10.2.0.200:/nodedata /.statelite/persistent
 		echo "/usr/sbin/mount ${MNTOPTS} $SERVER:$TOMNT ${PERSISTENT}" >>$LOG
@@ -230,7 +230,7 @@ MountTrees () {
 
 		# ex. 10.2.0.200:/etc/ /.statelite/mnt/10.2.0.200/etc/
 		echo "/usr/sbin/mount ${MOPTS} $SERV:$DIR ${MOUNTDIR}/${SERV}${DIR}" >>$LOG
-        while ! /usr/sbin/mount ${MOPTS} $SERV:$DIR ${MOUNTDIR}/${SERV}${DIR} 
+        while ! /usr/sbin/mount ${MOPTS} $SERV:$DIR ${MOUNTDIR}/${SERV}${DIR}
         do
             if [ "$TRIES" = "$MAX" ]
             then
@@ -255,7 +255,7 @@ ProcessType () {
 
     PPATH=`/usr/bin/dirname ${2}` # ex. /etc
 	
-	case "${3}" in 
+	case "${3}" in
 		rw)
 			# item is mounted from litetree dir or .default location ($1)
 			#	onto local file
@@ -264,12 +264,12 @@ ProcessType () {
 			LOCAL=`echo ${2} |  /usr/bin/sed -e 's/\/$//'`
 
             if [ -d ${1} ]; then
-				# if it's a dir 
+				# if it's a dir
 				if [ ! -e ${LOCAL} ]; then
 					/usr/bin/mkdir -m 755 -p ${LOCAL}
 				fi
             else
-				# if file 
+				# if file
 				if [ ! -e ${LOCAL} ]; then
 					FDIR=`/usr/bin/dirname ${2}`
                     /usr/bin/mkdir -m 755 -p ${FDIR}
@@ -290,7 +290,7 @@ ProcessType () {
         persistent)
 			# the item is copied to the /.statelite/persistent subdir
 			#  from wherever it is found ( $1 above )
-			#	the /.statelite/persistent/blah is then mounted 
+			#	the /.statelite/persistent/blah is then mounted
 			#	over the local /blah
 			# ex. /.statelite/persistent/compute02/etc
             if [ ! -d ${PERSISTENT}/${ME}${PPATH} ]; then
@@ -385,7 +385,7 @@ FindFile () {
     isChild=$3
 	FOUND=0
 
-	# this assumes the dir are already in priority order in the 
+	# this assumes the dir are already in priority order in the
 	#	/litetree.table file
 	for i in `/usr/bin/cat $LITETREE | /usr/bin/grep -v '^#' | /usr/bin/grep $ME`
     do
@@ -432,8 +432,8 @@ FindFile () {
 
 # mount the persistent dir - if provided
 ProcessStatelite
- 
-# mount all the dirs from the litetree table. 
+
+# mount all the dirs from the litetree table.
 MountTrees
 
 # process the litefile table
