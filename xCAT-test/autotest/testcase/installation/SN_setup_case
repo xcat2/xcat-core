@@ -12,7 +12,7 @@ check:rc==0
 
 cmd:makedns -n
 check:rc==0
-cmd:makeconservercf $$SN 
+cmd:makeconservercf $$SN
 check:rc==0
 cmd:cat /etc/conserver.cf | grep $$SN
 check:output=~$$SN
@@ -23,7 +23,7 @@ cmd:makedhcp -n
 check:rc==0
 cmd:makedhcp -a
 check:rc==0
-cmd:if cat /etc/*release |grep SUSE >/dev/null;then cat /var/lib/dhcp/db/dhcpd.leases|grep $$SN;elif cat /etc/*release |grep "Red Hat" >/dev/null;then cat /var/lib/dhcpd/dhcpd.leases|grep $$SN;fi 
+cmd:if cat /etc/*release |grep SUSE >/dev/null;then cat /var/lib/dhcp/db/dhcpd.leases|grep $$SN;elif cat /etc/*release |grep "Red Hat" >/dev/null;then cat /var/lib/dhcpd/dhcpd.leases|grep $$SN;fi
 check:output=~$$SN
 cmd:chdef -t node $$SN groups=service,all
 check:rc==0
@@ -42,7 +42,7 @@ check:rc==0
 cmd:chdef -t site clustersite installloc="/install"
 check:rc==0
 
-cmd:cd /install/post/otherpkgs/__GETNODEATTR($$SN,os)__/__GETNODEATTR($$SN,arch)__/xcat/xcat-core && createrepo .  
+cmd:cd /install/post/otherpkgs/__GETNODEATTR($$SN,os)__/__GETNODEATTR($$SN,arch)__/xcat/xcat-core && createrepo .
 check:rc==0
 
 cmd:if [[ "__GETNODEATTR($$SN,os)__" =~ "rh" ]]; then path="rh";elif [[ "__GETNODEATTR($$SN,os)__" =~ "sles" ]];then path="sles";fi; ver="__GETNODEATTR($$SN,os)__"; tmp=${ver%.*};ver=`echo "$tmp"|sed 's:[a-zA-Z]::g'`;cd /install/post/otherpkgs/__GETNODEATTR($$SN,os)__/__GETNODEATTR($$SN,arch)__/xcat/xcat-dep/$path$ver/__GETNODEATTR($$SN,arch)__ && createrepo .;
@@ -84,7 +84,7 @@ check:rc==0
 check:output=~$$SN: $$SN
 cmd:xdsh $$SN "tabdump site"
 check:rc==0
-check:output=~tftpdir 
+check:output=~tftpdir
 cmd:xdsh $$SN "mount"
 check:rc==0
 check:output=~/install on /install
