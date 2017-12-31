@@ -255,7 +255,7 @@ sub buildDriverProgram{
         push( @driverText, "# User password defined to communicate with xCAT MN." );
         push( @driverText, "# From:");
         push( @driverText, split( '\n', $commonConf{'zvm_xcat_master'}{'fromLines'} ) );
-        
+
         if ( -e $obfuscateProg ) {
             # assume password is obfuscated already and get it in the clear.
             $clearPW = `$obfuscateProg -u $commonConf{'zvm_xcat_password'}{'value'}`;
@@ -444,7 +444,7 @@ sub hashFile{
     if ( $file eq '' ) {
         return 602;
     }
-    
+
     if ( ! -e $file ) {
         if ( $required ) {
             print "Warning: $file does not exist.\n";
@@ -618,8 +618,8 @@ sub saveCommonOpt {
         } else {
             print "Warning: \'$opt\' property in section \'$section\'\n" .
                   "         in $confFile\n" .
-                  "         has a value that is different from the value of the\n" . 
-                  "         \'$commonConf{$commonOptName}{'firstOpt'}\' property in section \'$commonConf{$commonOptName}{'firstSection'}\'\n" . 
+                  "         has a value that is different from the value of the\n" .
+                  "         \'$commonConf{$commonOptName}{'firstOpt'}\' property in section \'$commonConf{$commonOptName}{'firstSection'}\'\n" .
                   "         in $commonConf{$commonOptName}{'firstConf'}.\n" .
                   "         They should be the same.  The value\n" .
                   "         in $confFile is:\n" .
@@ -830,7 +830,7 @@ sub scanNova{
                   Section containing the desired property
                   Config property containing the value
     Returns     : Null - error locating the config file.
-                  Non-null - file specification of the 
+                  Non-null - file specification of the
                   configuration file.
     Example     : $confFile = scanServiceUnit( 'openstack-cinder-volume-$host',
                                                'Service', 'ExecStart' );
@@ -894,7 +894,7 @@ sub showHelp{
     The default name of the driver program is composed of the following:
       '$driverPrefix', and
       IP address of the system where driver was prepared, and
-      (optionally) a hypen and the value specified on --Host operand, and 
+      (optionally) a hypen and the value specified on --Host operand, and
       '.sh'.
     For example:
       $driverPrefix"."9.123.345.91.sh
@@ -1315,7 +1315,7 @@ sub validateConfigs{
             print "Warning: In $locNovaConf, instance_name_template will not\n" .
                   "         create a usable name with the value: $novaConf{'DEFAULT'}{'instance_name_template'}\n";
         }
-        my $words; 
+        my $words;
         $words++ while $base_name =~ /\S+/g;
         if ( $words != 1 ) {
             print "Warning: In $locNovaConf, instance_name_template will not create\n" .
