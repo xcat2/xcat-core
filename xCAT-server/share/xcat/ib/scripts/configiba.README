@@ -8,9 +8,9 @@ This configiba postscript is used to do secondary adapter configuration for Infi
 
 IB configuration with xCAT needs nameserver support to provide IP addresses for computes nodes.  We assume nameserver is setup on Management node.  Please follow similiar steps on the system that provide nameserver service if nameserver is not on management node.
 
-There are two times to configure IB adapters, during node installation or with command updatenode after node installation.  These two IB configuration ways are similar and finally they will trigger this sample postscript to configure IB adapters.  
+There are two times to configure IB adapters, during node installation or with command updatenode after node installation.  These two IB configuration ways are similar and finally they will trigger this sample postscript to configure IB adapters.
 
-To use this script, users need to firstly setup DNS for the new adapters before node installation or before triggering command updatenode depending on when to start IB configuration, either time is supported: 
+To use this script, users need to firstly setup DNS for the new adapters before node installation or before triggering command updatenode depending on when to start IB configuration, either time is supported:
 
 1.The IP address entries for IB interfaces in /etc/hosts on xCAT management nodes should have the node short hostname and the unique IB interface name in them.  The format should be <ip_address_for_this_ib_interface node_short_hostname-ib_interfacename>.
 For example:
@@ -27,9 +27,9 @@ makedns
 service named restart
 For AIX Managed Nodes:
 makedns
-stopsrc -s named 
+stopsrc -s named
 startsrc -s named
-lssrc -s named 
+lssrc -s named
 Note: Only if the state of named is active, we can continue to test DNS.
 
 4.Check if DNS for the IB network has been setup successfully
@@ -46,7 +46,7 @@ IP addresses for IB interfaces on compute nodes.
 
 6.Add this script to postscripts
 chtab node=c890f11ec01 postscripts.postscripts=configiba.1port
-or 
+or
 chtab node=c890f11ec01 postscripts.postscripts=configiba.2ports
 Note: The postscripts name depends on the script copied to /install/postscripts/
 
@@ -59,9 +59,9 @@ updatenode c890f11ec01 configiba.2ports
 
 As a sample postscript, the netmask is set to default value: 255.255.255.0 and gateway is set to "X.X.255.254".  If the IB interface name is not a simple combination of short hostname and ibX or netmask and gateway cannot meet user's requirement, user can modify this scripts by himself, like the example below:
 
-The node short hostname is 890f11ec01-en, and the IB interface name is 890f11ec01-ib0, c890f11ec01-ib1, etc. The user needs to modify 
+The node short hostname is 890f11ec01-en, and the IB interface name is 890f11ec01-ib0, c890f11ec01-ib1, etc. The user needs to modify
 my $hostname = "$ENV{NODE}-$nic";
-to 
+to
 my $fullname = `echo $ENV{NODE} | cut -c 1-11`;
 chomp($fullname);
 my $hostname = "$fullname-$nic";
