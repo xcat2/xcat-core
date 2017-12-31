@@ -1,10 +1,10 @@
 
-   Obtain a PowerKVM ISO and create PowerKVM osimages with it: :: 
+   Obtain a PowerKVM ISO and create PowerKVM osimages with it: ::
 
      copycds ibm-powerkvm-3.1.0.0-39.0-ppc64le-gold-201511041419.iso
-    
+
    The following PowerKVM osimage will be created ::
-     
+
      # lsdef -t osimage -o pkvm3.1-ppc64le-install-compute
      Object name: pkvm3.1-ppc64le-install-compute
          imagetype=linux
