@@ -15,11 +15,11 @@ hcp:openbmc
 label:cn_bmc_ready,hctrl_openbmc
 cmd:rbeacon $$CN stat
 check:rc==0
-check:output=~$$CN\s*:\s*Front:Off Rear:Off|Front:On Rear:On|Front:Off Rear:On|Front:On Rear:Off|Front:Blink Rear:Blink 
+check:output=~$$CN\s*:\s*Front:Off Rear:Off|Front:On Rear:On|Front:Off Rear:On|Front:On Rear:Off|Front:Blink Rear:Blink
 end
 
 start:rbeacon_help
-description: this case is to test rbeacon -h and --help output 
+description: this case is to test rbeacon -h and --help output
 os:Linux
 hcp:openbmc
 label:mn_only,hctrl_openbmc
@@ -49,7 +49,7 @@ check:output =~git commit
 end
 
 start:rbeacon_false
-description: this case is to test rbeacon could process false input 
+description: this case is to test rbeacon could process false input
 os:Linux
 hcp:openbmc
 label:cn_bmc_ready,hctrl_openbmc
