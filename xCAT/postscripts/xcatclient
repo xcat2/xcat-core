@@ -4,9 +4,9 @@
 #
 # This routine transfers the client credentials from ~/.xcat on the MN
 # to the SN for Linux.
-# It only does something, if called with the -d flag. 
+# It only does something, if called with the -d flag.
 # The -d flag was implemented when the call to the routine was moved
-# from the postscript table into the servicenode postscript. 
+# from the postscript table into the servicenode postscript.
 #
 if [ ! $1 ]; then
    logger -t xcat -p local4.err "xcatclient call without -d, doing nothing."
