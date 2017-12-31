@@ -793,7 +793,7 @@ sub look_for_file {
                   Current working directory
     Returns     : None
     Example     : make_bundle( $img_name, $dest, $remoteHost, $attrs, $callback, $cwd );
-    
+
 =cut
 
 #-------------------------------------------------------
@@ -1105,7 +1105,7 @@ sub make_bundle {
                   Remote host parameter from the command line
     Returns     : None
     Example     : extract_bundle( $request, $callback, $nodes, $new_profile, $remoteHost );
-    
+
 =cut
 
 #-------------------------------------------------------
