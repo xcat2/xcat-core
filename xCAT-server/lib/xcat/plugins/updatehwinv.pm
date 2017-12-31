@@ -65,7 +65,7 @@ sub update_hw_inv {
 
     if ($basicdata) {
         my $hwinv_tab = xCAT::Table->new("hwinv", -create => 1);
-        xCAT::MsgUtils->message("S", "xcat.hwinv: Update hwinv for $node"); 
+        xCAT::MsgUtils->message("S", "xcat.hwinv: Update hwinv for $node");
         $hwinv_tab->setNodeAttribs($node, $basicdata);
     }
     if (@nodefs) {
