@@ -22,7 +22,7 @@ use xCAT_monitoring::monitorctrl;
 =head2    Package Description
   xCAT monitoring table handler module. This is a helper module for monitorctrl module
   becuase the notification infrastructure does not allow a module to register more
-  than one callbacks. This module registers and unregisters notification to watch for 
+  than one callbacks. This module registers and unregisters notification to watch for
   the changes in the monitoring tables. When changes occurrs, it forward the info
   back to monitorctrl module for handling.
 =cut
@@ -35,7 +35,7 @@ use xCAT_monitoring::monitorctrl;
 #--------------------------------------------------------------------------------
 
 =head3    regMonitoringNotif
-      It registers this module in the notification table to watch for changes in 
+      It registers this module in the notification table to watch for changes in
       the monitoring table.
     Arguments:
         none
@@ -98,7 +98,7 @@ sub unregMonitoringNotif {
       It is called by the NotifHander module
       when the monitoring tables get changed.  If a plug-in
       is added or removed from the monitoring table. this function will start
-      or stop the plug-in for monitoing the xCAT cluster.  
+      or stop the plug-in for monitoing the xCAT cluster.
     Arguments:
       action - table action. It can be d for rows deleted, a for rows added
                     or u for rows updated.
