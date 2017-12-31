@@ -5,5 +5,5 @@ After modifying the ``buildkit.conf`` file and copying all the necessary files t
 
     buildkit chkconfig
 
-This command will verify all required fields defined in the buildkit.conf.  If errors are found, fix the specified error and rerun the command until all fields are validated. 
+This command will verify all required fields defined in the buildkit.conf.  If errors are found, fix the specified error and rerun the command until all fields are validated.
 
