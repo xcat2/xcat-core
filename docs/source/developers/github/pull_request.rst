@@ -4,7 +4,7 @@ Pull Requests
 Creating Pull Requests
 ----------------------
 
-Once your changes are ready to be submitted to the xcat team, the easiest way to generate a pull request is from the GitHub UI. 
+Once your changes are ready to be submitted to the xcat team, the easiest way to generate a pull request is from the GitHub UI.
 
 #. Under your project, click on the "branches" link
 
@@ -65,19 +65,19 @@ During the reviewing of your pull request, another pull request may be merged wh
 
     $ git push origin <mybranch> -f
 
-If all the conflicts are resolved, the pull request should automatically turn green again and is able to be merged automatically. 
+If all the conflicts are resolved, the pull request should automatically turn green again and is able to be merged automatically.
 
 Reviewing Pull Requests as a Maintainer
 ---------------------------------------
 
-When you are looking over a pull request, you can merge the changes into your own temporary branch to give the code or changes a try before merging into the parent project. 
+When you are looking over a pull request, you can merge the changes into your own temporary branch to give the code or changes a try before merging into the parent project.
 
-#. From the merge request, click on the ``command line instructions`` link: 
+#. From the merge request, click on the ``command line instructions`` link:
 
    .. image:: github-merge_command_line.png
 
-#. Then under **Step 1:**, there are instruction for creating a temp branch and pulling the changes from the pull request: 
+#. Then under **Step 1:**, there are instruction for creating a temp branch and pulling the changes from the pull request:
 
-   .. image:: github-merge_step1.png 
+   .. image:: github-merge_step1.png
 
 
