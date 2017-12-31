@@ -37,16 +37,16 @@ This program module file, is a set of Zone utilities used by xCAT *zone commands
 
 #--------------------------------------------------------------------------------
 
-=head3    genSSHRootKeys 
+=head3    genSSHRootKeys
     Arguments:
-      callback for error messages 
-      directory in which to put the ssh RSA keys 
-      zonename 
+      callback for error messages
+      directory in which to put the ssh RSA keys
+      zonename
       rsa private key to use for generation ( optional)
     Returns:
     Error:  1 - key generation failure.
     Example:
-     $rc =xCAT::Zone->genSSHRootKeys($callback,$keydir,$rsakey); 
+     $rc =xCAT::Zone->genSSHRootKeys($callback,$keydir,$rsakey);
 =cut
 
 #--------------------------------------------------------------------------------
@@ -144,13 +144,13 @@ sub genSSHRootKeys
 
 #--------------------------------------------------------------------------------
 
-=head3    getdefaultzone 
+=head3    getdefaultzone
     Arguments:
-      None 
+      None
     Returns:
     Name of the current default  zone from the zone table
     Example:
-     my $defaultzone =xCAT::Zone->getdefaultzone($callback); 
+     my $defaultzone =xCAT::Zone->getdefaultzone($callback);
 =cut
 
 #--------------------------------------------------------------------------------
@@ -185,13 +185,13 @@ sub getdefaultzone
 
 #--------------------------------------------------------------------------------
 
-=head3    iszonedefined 
+=head3    iszonedefined
     Arguments:
-      zonename 
+      zonename
     Returns:
      1 if the zone is already in the zone table.
     Example:
-     xCAT::Zone->iszonedefined($zonename); 
+     xCAT::Zone->iszonedefined($zonename);
 =cut
 
 #--------------------------------------------------------------------------------
@@ -212,14 +212,14 @@ sub iszonedefined
 
 #--------------------------------------------------------------------------------
 
-=head3  getzonekeydir 
+=head3  getzonekeydir
     Arguments:
-      zonename 
+      zonename
     Returns:
-     path to the root ssh keys for the zone /etc/xcat/sshkeys/<zonename>/.ssh 
-     1 - zone not defined 
+     path to the root ssh keys for the zone /etc/xcat/sshkeys/<zonename>/.ssh
+     1 - zone not defined
     Example:
-     xCAT::Zone->getzonekeydir($zonename); 
+     xCAT::Zone->getzonekeydir($zonename);
 =cut
 
 #--------------------------------------------------------------------------------
@@ -239,13 +239,13 @@ sub getzonekeydir
 
 #--------------------------------------------------------------------------------
 
-=head3    getmyzonename 
+=head3    getmyzonename
     Arguments:
-       $node -one nodename      
+       $node -one nodename
     Returns:
-     $zonename 
+     $zonename
     Example:
-     my $zonename=xCAT::Zone->getmyzonename($node); 
+     my $zonename=xCAT::Zone->getmyzonename($node);
 =cut
 
 #--------------------------------------------------------------------------------
@@ -268,14 +268,14 @@ sub getmyzonename
 
 #--------------------------------------------------------------------------------
 
-=head3    enableSSHbetweennodes 
+=head3    enableSSHbetweennodes
     Arguments:
-      zonename 
+      zonename
     Returns:
      1 if the  sshbetweennodes attribute is yes/1 or undefined
-     0 if the  sshbetweennodes attribute is no/0 
+     0 if the  sshbetweennodes attribute is no/0
     Example:
-     xCAT::Zone->enableSSHbetweennodes($zonename); 
+     xCAT::Zone->enableSSHbetweennodes($zonename);
 =cut
 
 #--------------------------------------------------------------------------------
@@ -316,14 +316,14 @@ sub enableSSHbetweennodes
 
 #--------------------------------------------------------------------------------
 
-=head3    usingzones 
+=head3    usingzones
     Arguments:
-      none 
+      none
     Returns:
      1 if the zone table is not empty
      0 if empty
     Example:
-     xCAT::Zone->usingzones; 
+     xCAT::Zone->usingzones;
 =cut
 
 #--------------------------------------------------------------------------------
@@ -352,9 +352,9 @@ sub usingzones
      Hash array  by zonename point to the nodes in that zonename  and sshkeydir
       <zonename1> -> {nodelist} -> array of nodes in the zone
                  -> {sshkeydir} -> directory containing ssh RSA keys
-                 -> {defaultzone} ->  is it the default zone             
+                 -> {defaultzone} ->  is it the default zone
     Example:
-     my %zonehash =xCAT::Zone->getzoneinfo($callback,@nodearray); 
+     my %zonehash =xCAT::Zone->getzoneinfo($callback,@nodearray);
     Rules:
        If the nodes nodelist.zonename attribute is a zonename, it is assigned to that zone
        If the nodes nodelist.zonename attribute is undefined:
@@ -449,11 +449,11 @@ sub getzoneinfo
 =head3    getnodesinzone
     Arguments:
      callback
-     zonename 
+     zonename
     Returns:
-     Array of nodes 
+     Array of nodes
     Example:
-     my @nodes =xCAT::Zone->getnodesinzone($callback,$zonename); 
+     my @nodes =xCAT::Zone->getnodesinzone($callback,$zonename);
 =cut
 
 #--------------------------------------------------------------------------------
