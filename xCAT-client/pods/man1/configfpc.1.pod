@@ -8,7 +8,7 @@ B<configfpc> B<-i> I<interface>
 
 B<configfpc> B<-i> I<interface> B<--ip> I<default ip address>
 
-B<configfpc> [B<-V>|B<--verbose>] 
+B<configfpc> [B<-V>|B<--verbose>]
 
 B<configfpc> [B<-h>|B<--help>|B<-?>]
 
@@ -22,9 +22,9 @@ There are several bits of information that must be included in the xCAT database
 
 You must create the FPC node definitions for all FPCs being discovered including the IP address and switch port information.
 
-The B<configfpc> command discovers the FPCs and collects the MAC address. The MAC address is used to relate the FPC to a FPC node using the switch information for this MAC. Once the relationship is discovered the FPC is configured with the FPC node IP settings. 
+The B<configfpc> command discovers the FPCs and collects the MAC address. The MAC address is used to relate the FPC to a FPC node using the switch information for this MAC. Once the relationship is discovered the FPC is configured with the FPC node IP settings.
 
-This process is repeated until no more FPCs are discovered. 
+This process is repeated until no more FPCs are discovered.
 
 For more information on xCAT support of NeXtScale and configfpc see the following doc:
 XCAT_NeXtScale_Clusters
@@ -35,11 +35,11 @@ XCAT_NeXtScale_Clusters
 
 =item B<-i> I<interface>
 
-Use this flag to specify which xCAT MN interface (example: eth4) that is connected to the NeXtScale FPCs. This option is required. 
+Use this flag to specify which xCAT MN interface (example: eth4) that is connected to the NeXtScale FPCs. This option is required.
 
 =item B<--ip> I<default ip address>
 
-Use this flag to override the default ip address of 192.168.0.100 with a new address. 
+Use this flag to override the default ip address of 192.168.0.100 with a new address.
 
 =item B<-V>|B<--verbose>
 
@@ -52,12 +52,12 @@ Verbose mode
 =over 6
 
 =item 1.
-To discover and configure all NeXtScale Fan Power Controllers (FPCs) connected on eth0 interface. 
+To discover and configure all NeXtScale Fan Power Controllers (FPCs) connected on eth0 interface.
 
  configfpc -i eth0
 
 =item 2.
-To override the default ip address and run in Verbose mode. 
+To override the default ip address and run in Verbose mode.
 
  configfpc -i eth0 --ip 196.68.0.100 -V
 
