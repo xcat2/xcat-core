@@ -1,12 +1,12 @@
 =head1 NAME
 
-B<xcattest> - Run automated xCAT test cases. 
+B<xcattest> - Run automated xCAT test cases.
 
 =head1 SYNOPSIS
 
-B<xcattest> [B<-?|-h>] 
+B<xcattest> [B<-?|-h>]
 
-B<xcattest> [B<-f> I<configure file>] [B<-b> I<case bundle list>] 
+B<xcattest> [B<-f> I<configure file>] [B<-b> I<case bundle list>]
 
 B<xcattest> [B<-f> I<configure file>] [B<-t> I<case list>]
 
@@ -46,7 +46,7 @@ Comma separated list of test cases bundle files, each test cases bundle can cont
 
 =item B<-t> I<cases list>
 
-Comma separated list of test cases that will be run. 
+Comma separated list of test cases that will be run.
 
 =item B<-c> I<cmd list>
 
@@ -76,7 +76,7 @@ The xCAT-test test cases are in flat text format, the testing framework will par
   start:case name
   #optional, description of the test case
   description: what the test case is for?
-  #optional, environment requirements 
+  #optional, environment requirements
   os:AIX/Linux
   #optional, environment requirements
   arch:ppc/x86
@@ -114,11 +114,11 @@ To run customized bundle with /tmp/config file:
 
 To run specified test cases with /tmp/config file:
 
-  xcattest -f /tmp/config -t lsdef_t_o_l_z 
+  xcattest -f /tmp/config -t lsdef_t_o_l_z
 
 =item 4.
 
-To add a new case to test chvm. In the example, we assume that the min_mem should not be equal to 16 in the lpar profile of computenode. The case name is chvm_custom. It create a test lpar named testnode firstly, that change the min_mem of the lpar to 16 using chvm, then check if min_mem have changed correctly. At last, the testnode be remove to ensure no garbage produced in the cases. 
+To add a new case to test chvm. In the example, we assume that the min_mem should not be equal to 16 in the lpar profile of computenode. The case name is chvm_custom. It create a test lpar named testnode firstly, that change the min_mem of the lpar to 16 using chvm, then check if min_mem have changed correctly. At last, the testnode be remove to ensure no garbage produced in the cases.
 
   add a new test case file in /opt/xcat/share/xcat/tools/autotest/chvm
   edit filename
@@ -142,7 +142,7 @@ To add a new case to test chvm. In the example, we assume that the min_mem shoul
 
 =head1 INLINE FUNCTIONS
 
-The xCAT-test testing framework provides some inline functions. The inline functions can be called in test cases as __FUNCTIONNAME(PARAMTERLIST)__ to get some necessary attributes defined in the configuration file. The inline functions can be used in I<cmd> section and the I<check:output> section. 
+The xCAT-test testing framework provides some inline functions. The inline functions can be called in test cases as __FUNCTIONNAME(PARAMTERLIST)__ to get some necessary attributes defined in the configuration file. The inline functions can be used in I<cmd> section and the I<check:output> section.
 
 1. B<GETNODEATTR(nodename, attribute)> To get the value of specified node's attribute
 
