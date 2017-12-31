@@ -9,13 +9,13 @@ Using PostgreSQL
 Use the psql command line utility to connect to the PostgreSQL database: ::
 
     su - postgres
-    psql -h <hostname> -U xcatadm -d xcatdb 
+    psql -h <hostname> -U xcatadm -d xcatdb
 
 
 Useful Commands
 ---------------
 
-* Show create statement for a table, for example prescripts table. :: 
+* Show create statement for a table, for example prescripts table. ::
 
     /usr/bin/pg_dump xcatdb -U xcatadm -t prescripts
 
@@ -26,7 +26,7 @@ Useful Commands
     # drop the xcatdb
     dropdb xcatdb
 
-    # remove the xcatadm database owner 
+    # remove the xcatadm database owner
     dropuser xcatadm
 
     # clean up the postgresql files (necessary if you want to re-create the database)
@@ -38,7 +38,7 @@ Useful Commands
     su - postgres
     psql -l
 
-* Access the database: :: 
+* Access the database: ::
 
     su - postgres
     psql xcatdb
