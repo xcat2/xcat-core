@@ -24,7 +24,7 @@ B<rmhwconn> B<-s>
 
 For PPC (with HMC) specific:
 
-This command is used to disconnect CEC and Frame nodes from HMC nodes, according to the connection information defined in ppc table in xCAT DB. 
+This command is used to disconnect CEC and Frame nodes from HMC nodes, according to the connection information defined in ppc table in xCAT DB.
 
 Note: If a CEC belongs to a frame with a BPA installed, this CEC cannot be disconnected individually. Instead, the whole frame should be disconnected.
 
@@ -80,7 +80,7 @@ To remove the connection for Frame node frame1:
 =item 3.
 
 To disconnect all CEC nodes in node group cec from their related hardware serveri, using lpar tooltype:
- 
+
  rmhwconn cec -T lpar
 
 =back
