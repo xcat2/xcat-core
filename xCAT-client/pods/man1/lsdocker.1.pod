@@ -15,7 +15,7 @@ B<lsdocker> {B<-v>|B<--version>}
 
 =head1 DESCRIPTION
 
-B<lsdocker> To list docker instance info or all the running docker instance info if dockerhost is specified. 
+B<lsdocker> To list docker instance info or all the running docker instance info if dockerhost is specified.
 
 =head1 OPTIONS
 
