@@ -28,7 +28,7 @@ Differentiators
 
 * Built in Automatic discovery
 
-  No need to power on one machine at a time for discovery.  Nodes that fail can be replaced and back in action simply by powering the new one on. 
+  No need to power on one machine at a time for discovery.  Nodes that fail can be replaced and back in action simply by powering the new one on.
 
 * RestFUL API
 
