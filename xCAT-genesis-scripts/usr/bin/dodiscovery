@@ -4,7 +4,7 @@ log_label="xcat.genesis.dodiscovery"
 #the time when the latest findme request is sent to master
 reqtime=0
 #the timeout value on the waiting for the "processed" response from master
-#when the xcatd on master finished the processing of my findme request, 
+#when the xcatd on master finished the processing of my findme request,
 #a "processed" response will be replied
 maxresptime=180
 
@@ -51,7 +51,7 @@ if [ $timewaiting != 700 -a $timewaiting -gt 450 ]; then
 fi
 logger -s -t $log_label -p local4.info "Network configuration complete, commencing transmit of discovery packets"
 read XCATMASTER XCATPORT < <(grep xcatd= /proc/cmdline| sed 's/.*xcatd=\([^ ]*\).*/\1/' |tr ':' ' ')
-if [[ -z $XCATPORT ]]; then 
+if [[ -z $XCATPORT ]]; then
     XCATPORT=3001
 fi
 export XCATPORT
@@ -60,7 +60,7 @@ export XCATPORT
 while [ ! -r /restart ]; do
 
     #record the current time
-    curtime=$(date +%s)       
+    curtime=$(date +%s)
 
     #the existence of "/processing" indicates that my  findme request is under processing
     if [ -f "/processing"  ]; then
@@ -83,13 +83,13 @@ PLATFORM=unknown
 if [ -r /sys/devices/virtual/dmi/id/product_name ]; then  #x86
 	PRODNAME=`cat /sys/devices/virtual/dmi/id/product_name`
 	IAMAVM=0
-	if [ "$PRODNAME" = "KVM" ]; then 
+	if [ "$PRODNAME" = "KVM" ]; then
 		IAMAVM=1
 		MTM=KVM
 	elif [ "$PRODNAME" = "VMware Virtual Platform" ]; then
 		IAMAVM=1
 		MTM=VMware
-	else 
+	else
 		MTM=`cat /sys/devices/virtual/dmi/id/product_name|awk -F'[' '{print $2}'|awk -F']' '{print $1}'`
 		if [ -z "$MTM" ]; then
 			FRU=`ipmitool fru print 0`
@@ -102,7 +102,7 @@ if [ -r /sys/devices/virtual/dmi/id/product_name ]; then  #x86
 				n=`cat /sys/devices/virtual/dmi/id/product_name`
 				MTM="$m:$n"
 			fi
-		fi 
+		fi
 		SERIAL=`cat /sys/devices/virtual/dmi/id/product_serial`
 	fi
         CPUCOUNT=`cat /proc/cpuinfo |grep "model name"|wc -l`
@@ -121,7 +121,7 @@ elif [ -r /proc/device-tree/model ]; then #POWER
         done
         CPUTYPE=`cat /tmp/cpumod|awk -F':' '{print $2}'|sed -e 's/^ //'`
         SERIAL=`cat /proc/device-tree/system-id -vT | sed -e 's/^.*,//' | sed -e 's/^[\t ]*//'| sed -e 's/[\t ]*\^@//'`
-        # For POWER servers, the /proc/sys/kernel/random/uuid is changing for each query, so use mtms + mac of first up nic as the UUID 
+        # For POWER servers, the /proc/sys/kernel/random/uuid is changing for each query, so use mtms + mac of first up nic as the UUID
         #UUID=`sed -e 's/\(..\)\(..\)\(..\)\(..\)-\(..\)\(..\)-\(..\)\(..\)/\4\3\2\1-\6\5-\8\7/' /proc/sys/kernel/random/uuid`
         UUID=unknown
 
@@ -242,10 +242,10 @@ for dev in `ip link|grep -B1 ether|grep UP|awk '{print $2}'|sed -e s/://|grep -v
         if [ ! -z "$PCI_SLOT" ]; then
         	echo "	<pcidev>$PCI_SLOT</pcidev>" >> /tmp/discopacket
         fi
-        if [ ! -z "$SLOTNAME" ]; then 
+        if [ ! -z "$SLOTNAME" ]; then
         	echo "	<location>$SLOTNAME</location>" >> /tmp/discopacket
         fi
-        if [ ! -z "$ONBOARDINDEX" ]; then 
+        if [ ! -z "$ONBOARDINDEX" ]; then
         	echo "	<onboardeth>$ONBOARDINDEX</onboardeth>" >> /tmp/discopacket
         fi
         if [ ! -z "$FIRMDESC" ]; then
@@ -298,9 +298,9 @@ gzip -9 /tmp/discopacket
 		logger -s -t $log_label -p local4.info "Sending the discovery packet to xCAT ($dhcps:$XCATPORT)..."
 		(cat /tmp/discopacket.gz | udpcat.awk $dhcps $XCATPORT ) &
 	done
-      
+
         #record the time when the "findme request is sent to master"
-        reqtime=$(date +%s) 
+        reqtime=$(date +%s)
 	#cat /tmp/discopacket
 	logger -s -t $log_label -p local4.info "Sleeping 5 seconds..."
 	sleep 5
