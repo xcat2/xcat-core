@@ -19,7 +19,7 @@ SYNOPSIS
 ********
 
 
-\ **token Attributes:**\   \ *tokenid*\ , \ *username*\ , \ *expire*\ , \ *created*\ , \ *access*\ , \ *comments*\ , \ *disable*\ 
+\ **token Attributes:**\   \ *tokenid*\ , \ *username*\ , \ *expire*\ , \ *created*\ , \ *access*\ , \ *comments*\ , \ *disable*\
 
 
 ***********
@@ -36,46 +36,46 @@ token Attributes:
 
 
 
-\ **tokenid**\ 
- 
+\ **tokenid**\
+
  It is a UUID as an unified identify for the user.
- 
 
 
-\ **username**\ 
- 
+
+\ **username**\
+
  The user name.
- 
 
 
-\ **expire**\ 
- 
+
+\ **expire**\
+
  The expire time for this token.
- 
 
 
-\ **created**\ 
- 
+
+\ **created**\
+
  Creation time for this token.
- 
 
 
-\ **access**\ 
- 
+
+\ **access**\
+
  Last access time for this token.
- 
 
 
-\ **comments**\ 
- 
+
+\ **comments**\
+
  Any user-provided notes.
- 
 
 
-\ **disable**\ 
- 
+
+\ **disable**\
+
  Set to 'yes' or '1' to comment out this row.
- 
+
 
 
 
@@ -84,5 +84,5 @@ SEE ALSO
 ********
 
 
-\ **nodels(1)**\ , \ **chtab(8)**\ , \ **tabdump(8)**\ , \ **tabedit(8)**\ 
+\ **nodels(1)**\ , \ **chtab(8)**\ , \ **tabdump(8)**\ , \ **tabedit(8)**\
 
