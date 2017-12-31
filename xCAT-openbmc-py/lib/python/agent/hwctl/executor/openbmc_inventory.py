@@ -112,7 +112,7 @@ class OpenBMCInventoryTask(ParallelNodesCommand):
             # Extract the data from the BMC
             inventory_info_dict = obmc.get_inventory_info(inventory_type)
 
-            # Process returned inventory_info_dict depending on the inventory requested 
+            # Process returned inventory_info_dict depending on the inventory requested
             if all == 1:
                 # Everything gets displayed, even firmware
                 keys = inventory_info_dict.keys()
@@ -156,7 +156,7 @@ class OpenBMCInventoryTask(ParallelNodesCommand):
         except (SelfServerException, SelfClientException) as e:
             self.callback.error(e.message, node)
 
-        return inventory_info 
+        return inventory_info
 
     def get_firm_info(self, target_file=None, **kw):
 
@@ -179,5 +179,5 @@ class OpenBMCInventoryTask(ParallelNodesCommand):
         return firm_info
 
 
-            
+
 
