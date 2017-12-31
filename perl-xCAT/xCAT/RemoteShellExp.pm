@@ -6,7 +6,7 @@ package xCAT::RemoteShellExp;
 
 #-----------------------------------------------------------------------------
 
-=head1   RemoteShellExp 
+=head1   RemoteShellExp
  Uses perl  Expect to set up ssh passwordless login on the input node list
  Called from  xdsh  <nodelist> -K command
  It works for node and devices ( such as QLogic Switch).
@@ -35,12 +35,12 @@ package xCAT::RemoteShellExp;
                   node.
    DSH_TO_USERID - The userid on the node where the ssh keys will be updated.
    DSH_ENABLE_SSH - Node to node root passwordless ssh will be setup.
-   DSH_ZONE_SSHKEYS  - directory containing the zones root .ssh keys 
+   DSH_ZONE_SSHKEYS  - directory containing the zones root .ssh keys
 
  Usage: remoteshellexp
-   [-t node list]  test ssh connection to the node 
-   [-k] Generates the ssh keys needed , for the user on the MN. 
-   [-s node list]  copies the ssh keys to the nodes 
+   [-t node list]  test ssh connection to the node
+   [-k] Generates the ssh keys needed , for the user on the MN.
+   [-s node list]  copies the ssh keys to the nodes
    optional $timeout = timeout value for the expect.  Usually from the xdsh -t flag
    default timeout is 10 seconds
     exit 0 - good
@@ -48,9 +48,9 @@ package xCAT::RemoteShellExp;
     exit 2 - usage error
 
 Examples:
-$rc=xCAT::RemoteShellExp->remoteshellexp("k",$callback,$remoteshellcmd,$nodes,$timeout); 
-$rc=xCAT::RemoteShellExp->remoteshellexp("s",$callback,$remoteshellcmd,$nodes,$timeout); 
-$rc=xCAT::RemoteShellExp->remoteshellexp("t",$callback,$remoteshellcmd,$nodes,$timeout); 
+$rc=xCAT::RemoteShellExp->remoteshellexp("k",$callback,$remoteshellcmd,$nodes,$timeout);
+$rc=xCAT::RemoteShellExp->remoteshellexp("s",$callback,$remoteshellcmd,$nodes,$timeout);
+$rc=xCAT::RemoteShellExp->remoteshellexp("t",$callback,$remoteshellcmd,$nodes,$timeout);
 
 =cut
 
@@ -226,10 +226,10 @@ sub remoteshellexp
 
 #-----------------------------------------------------------------------------
 
-=head3    gensshkeys 
+=head3    gensshkeys
 	
       Generates new ssh keys for the input userid on the MN, if they do not
-      already exist.  Test for id_rsa key existence. 
+      already exist.  Test for id_rsa key existence.
 
 =cut
 
@@ -355,9 +355,9 @@ sub gensshkeys
 
 #-----------------------------------------------------------------------------
 
-=head3    testkeys 
+=head3    testkeys
 	
-      Test to see if the remoteshell setup worked 
+      Test to see if the remoteshell setup worked
 
 =cut
 
@@ -479,9 +479,9 @@ sub testkeys
 
 #-------------------------------------------------------------------------------
 
-=head3    sendnodeskeys 
+=head3    sendnodeskeys
 	
-      Setup the ssh keys on the nodes 
+      Setup the ssh keys on the nodes
 
 =cut
 
@@ -592,7 +592,7 @@ sub sendnodeskeys
             my $rsp = {};
             $rsp->{error}->[0] = "Permission denied, please make sure the user $to_userid has been created on the node $node and the input password is right\n";
             xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
-        }        
+        }
         if (defined($result[1]))
         {
             my $msg = $result[1];
@@ -791,9 +791,9 @@ sub sendnodeskeys
 
 #-------------------------------------------------------------------------------
 
-=head3    senddeviceskeys 
+=head3    senddeviceskeys
 	
-      Setup the ssh keys on the switches 
+      Setup the ssh keys on the switches
 
 =cut
 
