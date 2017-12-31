@@ -1,4 +1,4 @@
-#!/bin/bash  
+#!/bin/bash
 # IBM(c) 2013 EPL license http://www.eclipse.org/legal/epl-v10.html
 
 
@@ -14,7 +14,7 @@ fi
 #=head2  This command configures the chef server on a xCAT node.
 #        It is used by install_chef_client on Ubuntu and chef kit on RH.
 #        It also can be used postscripts on diskless
-#    usage:  
+#    usage:
 #      1. configure the chef server using updatenode
 #            updatenode <noderange> -P "config_chef_server"
 #      2. configure chef server during os provisioning
@@ -35,8 +35,8 @@ fi
 # for ubuntu
 if [ -e "/etc/lsb-release" ]
 then
-    apt-get install nfs-kernel-server portmap nfs-common  -y 
-    
+    apt-get install nfs-kernel-server portmap nfs-common  -y
+
     grep "/etc/chef-server" /etc/exports
     if [ $? -ne 0 ]
     then
@@ -60,6 +60,6 @@ then
         echo $errmsg
         exit 1
     fi
-fi    
+fi
 
 exit 0;
