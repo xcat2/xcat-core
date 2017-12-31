@@ -6,11 +6,11 @@
 
 #-----------------------------------------------------------------------------
 
-=head1   aixremoteshell 
+=head1   aixremoteshell
 
    This sets up the remote shell for root on the AIX node,such that root can
    login with no password. The default is /bin/rsh and
-   /bin/rcp but can be overriden by setting the useSSHonAIX attribute in the 
+   /bin/rcp but can be overriden by setting the useSSHonAIX attribute in the
    site table to yes, in which case we will use ssh/scp.
    The aixremoteshell postscripts will be called from remoteshell postscript
    when on an AIX node.  It will input a -d ( for do)  flag, to indicate to run
