@@ -1,7 +1,7 @@
 Admin Guide
 ===========
 
-The admin guide is intended to help with learning how to manage a cluster using xCAT with the following major sections: 
+The admin guide is intended to help with learning how to manage a cluster using xCAT with the following major sections:
 
 
 * **Basic Concepts** Introduces some of the basic concepts in xCAT.
