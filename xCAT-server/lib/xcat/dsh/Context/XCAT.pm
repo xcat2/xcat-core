@@ -40,13 +40,13 @@ our %xcat_nodegroup_table = ();
         Returns:
         	A reference to a hash table with the configured
         	default properties for the xCAT context
-                
+
         Globals:
         	$XCAT_RSH_CMD
-    
+
         Error:
         	None
-    
+
         Example:
         	$default_properties = XCAT->config_defaults;
 
@@ -82,13 +82,13 @@ sub context_defaults
         Returns:
         	A reference to a hash table of user-configured properties for
         	the xCAT context.
-                
+
         Globals:
         	None
-    
+
         Error:
         	None
-    
+
         Example:
         	$properties = XCAT->config_properties
 
@@ -111,7 +111,7 @@ sub context_properties
 
 =head3
         all_devices
-            
+
         Comments: devices are nodes in the XCAT context.  Use node flags
         and not device flags.
 
@@ -142,13 +142,13 @@ sub all_devices
 
         Returns:
         	An array of node/device names
-                
+
         Globals:
         	@xcat_node_list
-    
+
         Error:
         	None
-    
+
         Example:
         	@nodes = XCAT->get_xcat_node_list;
 
@@ -176,13 +176,13 @@ sub all_nodes
 
         Returns:
         	An array of node/device group names
-                
+
         Globals:
         	%xcat_nodegroup_table
-    
+
         Error:
         	None
-    
+
         Example:
         	@nodegroups = XCAT->all_nodegroups;
 
@@ -210,13 +210,13 @@ sub all_nodegroups
 
         Returns:
         	An array of node group members
-                
+
         Globals:
         	$nodegroup_path
-    
+
         Error:
         	None
-    
+
         Example:
         	$members = XCAT->nodegroup_members('MyGroup1');
 
@@ -250,7 +250,7 @@ sub nodegroup_members
         resolve_node
 
         Within the xCAT context, resolve the name of a given node and
-        augment the supplied property hash table with xCAT node information.        
+        augment the supplied property hash table with xCAT node information.
 
         Arguments:
         	$target_properties - basic properties hash table reference for a node
@@ -258,14 +258,14 @@ sub nodegroup_members
         Returns:
         	1 if resolution was successful
         	undef otherwise
-                
+
         Globals:
         	$XCAT_RSH_CMD
         	$XCAT_RCP_CMD
-    
+
         Error:
         	None
-    
+
         Example:
         	XCAT->resolve_node($target_properties);
 
@@ -289,8 +289,8 @@ sub resolve_node
 =head3
         get_xcat_remote_cmds
 
-        Using xCAT native commands,check the useSSHonAIX attribute for AIX 
-          on Linux use ssh    
+        Using xCAT native commands,check the useSSHonAIX attribute for AIX
+          on Linux use ssh
           on AIX, check for useSSHonAIX,  if says use ssh and
            it is installed and configured, use it
           , otherwise use rsh
@@ -302,14 +302,14 @@ sub resolve_node
 
         Returns:
         	None
-        	                
+        	
         Globals:
         	$XCAT_RSH_CMD
         	$XCAT_RCP_CMD
-    
+
         Error:
         	None
-    
+
         Example:
         	XCAT->get_xcat_remote_cmds
 
@@ -361,13 +361,13 @@ sub get_xcat_remote_cmds
 
         Returns:
         	None
-                
+
         Globals:
         	%xcat_node_list
-    
+
         Error:
         	None
-    
+
         Example:
         	XCAT->get_xcat_node_list
 
@@ -396,13 +396,13 @@ sub get_xcat_node_list
 
         Returns:
         	None
-                
+
         Globals:
         	%xcat_nodegroup_table
-    
+
         Error:
         	None
-    
+
         Example:
            XCAT->get_xcat_nodegroup_table
 
