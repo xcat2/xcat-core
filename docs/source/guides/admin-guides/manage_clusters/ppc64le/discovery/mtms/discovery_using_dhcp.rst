@@ -1,7 +1,7 @@
 Set static BMC IP using dhcp provided IP address
 ================================================
 
-The following example outlines the MTMS based hardware discovery for a single IPMI-based compute node.  
+The following example outlines the MTMS based hardware discovery for a single IPMI-based compute node.
 
 +------------------------------+------------+
 | Compute Node Information     | Value      |
@@ -15,7 +15,7 @@ The following example outlines the MTMS based hardware discovery for a single IP
 | IP address                   | 10.0.101.1 |
 +------------------------------+------------+
 
-The BMC IP address is obtained by the open range dhcp server and the plan is to leave the IP address the same, except we want to change the IP address to be static in the BMC. 
+The BMC IP address is obtained by the open range dhcp server and the plan is to leave the IP address the same, except we want to change the IP address to be static in the BMC.
 
 +------------------------------+------------+
 | BMC Information              | Value      |
@@ -47,7 +47,7 @@ The BMC IP address is obtained by the open range dhcp server and the plan is to 
         serial=10112CA
 
 
-#. Edit the ``predefined.stanzas`` file and change the discovered nodes to the intended ``hostname`` and ``IP address``. 
+#. Edit the ``predefined.stanzas`` file and change the discovered nodes to the intended ``hostname`` and ``IP address``.
 
     #. Edit the ``predefined.stanzas`` file: ::
 
@@ -79,7 +79,7 @@ The BMC IP address is obtained by the open range dhcp server and the plan is to 
 
 #. Define the compute nodes into xCAT: ::
 
-       cat predefined.stanzas | mkdef -z 
+       cat predefined.stanzas | mkdef -z
 
 #. Set the chain table to run the ``bmcsetup`` script, this will set the BMC IP to static. ::
 
@@ -103,7 +103,7 @@ The BMC IP address is obtained by the open range dhcp server and the plan is to 
 
 #. Refresh the DNS configuration for the new hosts: ::
 
-       makedns -n 
+       makedns -n
 
 #. **[Optional]**  Monitor the node discovery process using rcons
 
@@ -120,5 +120,5 @@ The BMC IP address is obtained by the open range dhcp server and the plan is to 
        rsetboot cn01 net
        rpower cn01 on
 
-#. The discovery process will network boot the machine into the diskless xCAT genesis kernel and perform the discovery process. When the discovery process is complete, doing ``lsdef`` on the compute nodes should show discovered attributes for the machine.  The important ``mac`` information should be discovered, which is necessary for xCAT to perform OS provisioning. 
+#. The discovery process will network boot the machine into the diskless xCAT genesis kernel and perform the discovery process. When the discovery process is complete, doing ``lsdef`` on the compute nodes should show discovered attributes for the machine.  The important ``mac`` information should be discovered, which is necessary for xCAT to perform OS provisioning.
 
