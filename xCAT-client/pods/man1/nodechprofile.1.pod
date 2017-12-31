@@ -38,11 +38,11 @@ The nodes to be removed.
 
 B<imageprofile=> I<image-profile>
 
-Sets the new image profile name used by the node, where <image-profile> is the new image profile.  An image profile defines the provisioning method, OS information, kit information, and provisioning parameters for a node. If the "__ImageProfile_imgprofile" group already exists in the nodehm table, then "imgprofile" is used as the image profile name. 
+Sets the new image profile name used by the node, where <image-profile> is the new image profile.  An image profile defines the provisioning method, OS information, kit information, and provisioning parameters for a node. If the "__ImageProfile_imgprofile" group already exists in the nodehm table, then "imgprofile" is used as the image profile name.
 
 B<networkprofile=> I<network-profile>
 
-Sets the new network profile name used by the node, where <network-profile> is the new network profile. A network profile defines the network, NIC, and routes for a node. If the "__NetworkProfile_netprofile" group already exists in the nodehm table, then "netprofile" is used as the network profile name. 
+Sets the new network profile name used by the node, where <network-profile> is the new network profile. A network profile defines the network, NIC, and routes for a node. If the "__NetworkProfile_netprofile" group already exists in the nodehm table, then "netprofile" is used as the network profile name.
 
 B<hardwareprofile=> I<hardware-profile>
 
@@ -56,7 +56,7 @@ Sets the new hardware profile name used by the node, where <hardware-profile> is
 
 =head1 EXAMPLES
 
-=over 2 
+=over 2
 
 =item 1.
 To change the image profile to rhels6.3_packaged for compute nodes compute-000 and compute-001, use the following command:
@@ -68,7 +68,7 @@ To change all of the profiles for compute node compute-000, enter the following 
 
  nodechprofile compute-000 imageprofile=rhels6.3_packaged networkprofile=default_cn hardwareprofile=default_ipmi
 
-=back 
+=back
 
 =head1 SEE ALSO
 
