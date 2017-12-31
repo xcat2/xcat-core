@@ -34,7 +34,7 @@ The manually defined node will be like this::
 ``mkdef --template`` can be used to create node definitions easily from the typical node definition templates or existing node definitions, some examples:
 
 * creating node definition "cn2" with an existing node definition "cn1" ::
- 
+
      # mkdef -t node -o cn2 --template cn1 mac=66:55:44:33:22:11 ip=172.12.139.2 bmc=172.11.139.2
      1 object definitions have been created or modified.
 
@@ -45,16 +45,16 @@ The manually defined node will be like this::
      # mkdef -t node -o cn2 --template ppc64le-openbmc-template mac=66:55:44:33:22:11 ip=172.12.139.2 bmc=172.11.139.2 bmcpassword=USERID bmcusername=PASSW0RD
      1 object definitions have been created or modified.
 
-  the unspecified attributes of newly created node "cn2" will be assigned with the default values in the template 
+  the unspecified attributes of newly created node "cn2" will be assigned with the default values in the template
 
   to list all the node definition templates available in xCAT, run ::
 
-     # lsdef -t node --template 
+     # lsdef -t node --template
 
   to display the full definition of template "ppc64le-openbmc-template", run ::
-     
-     # lsdef -t node --template ppc64le-openbmc-template 
 
-  the mandatory attributes, which must be specified while creating definitions  with templates, are denoted with the value ``MANDATORY:<attribute description>`` in template definition. 
+     # lsdef -t node --template ppc64le-openbmc-template
+
+  the mandatory attributes, which must be specified while creating definitions  with templates, are denoted with the value ``MANDATORY:<attribute description>`` in template definition.
 
   the optional attributes, which can be specified optionally, are denoted with the value ``OPTIONAL:<attribute description>`` in template definition
