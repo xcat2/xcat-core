@@ -16,7 +16,7 @@ if [ "$(uname -s|tr 'A-Z' 'a-z')" = "linux" ];then
     . $str_dir_name/xcatlib.sh
 fi
 
-if [[ "$OSVER" != ubuntu* ]]; then 
+if [[ "$OSVER" != ubuntu* ]]; then
     echo "OS = $OSVER: Setup of Docker host is currently supported only on Ubuntu."
     exit 1
 fi
@@ -70,7 +70,7 @@ nicname=""
 if [ $# -ne 1 ]; then
     echo "Error: must be in format '$0 netname=net/mask@gateway[:nicname]'"
     exit 1
-else 
+else
     NETINFO="$1"
     netname=`echo $NETINFO | awk -F= '{print $1}'`
     netinfo=`echo $NETINFO | awk -F= '{print $2}'`
@@ -92,12 +92,12 @@ else
 fi
 
 
-#Setup TLS 
+#Setup TLS
 master=$MASTER
-if ! ping $master -c 1 > /dev/null 2>&1 ; then  
+if ! ping $master -c 1 > /dev/null 2>&1 ; then
     echo "Error: Host $master is not reachable"
     exit 1
-fi 
+fi
 
 if [ ! -d /root/.docker ]; then
     mkdir -p /root/.docker
@@ -116,9 +116,9 @@ kill -9 $CREDPID
 
 grep -E '<error>' /tmp/xcat_dockerhost_cert
 if [ $? -ne 0 ]; then
-    cat /tmp/xcat_dockerhost_cert |  
+    cat /tmp/xcat_dockerhost_cert |
     cat /tmp/xcat_dockerhost_cert | grep -E -v '</{0,1}errorcode>|/{0,1}data>|</{0,1}content>|</{0,1}desc>' >$HOST_CERT_PEM
-else 
+else
     echo "Error: can not get dockerhost certificate files"
     exit 1
 fi
@@ -146,7 +146,7 @@ else
         sed -i "s@--tlsverify=[^ |^\"]*@@g" $docker_conf_file
         sed -i "s@--tls@@g" $docker_conf_file
         sed -i "s@\ \{2,\}@@g" $docker_conf_file
-    fi 
+    fi
     sed -i "s@^\(DOCKER_OPTS\=\"[^\"]*\)@\1 -H unix:///var/run/docker.sock -H tcp://`hostname`:2375 --tls --tlscacert=$HOST_CA_PEM --tlscert=$HOST_CERT_PEM --tlskey=$HOST_CERT_PEM --tlsverify=true\"@" $docker_conf_file
     sed -i 's/\"\{2,\}/\"/' $docker_conf_file
 fi
