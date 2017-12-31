@@ -45,25 +45,25 @@ The diskless provision logs:
 
 * **Pre-Install** logs: the logs of pre-installation scripts, including:
 
-  * ``%pre`` section in anaconda, 
-  * ``<pre-scripts/>`` section for SUSE and ``partman/early_command`` and ``preseed/early_command`` sections for ubuntu. 
-  * STDOUT and STDERR of the scripts 
+  * ``%pre`` section in anaconda,
+  * ``<pre-scripts/>`` section for SUSE and ``partman/early_command`` and ``preseed/early_command`` sections for ubuntu.
+  * STDOUT and STDERR of the scripts
   * debug trace output of bash scripts with ``set -x``
 
 * **Installer** logs: the logs from the os installer itself, i.e, the logs of installation program (anaconda, autoyast and preseed,etc.)
 
-* **Post-Install** logs: the logs of post-installation scripts, including 
+* **Post-Install** logs: the logs of post-installation scripts, including
 
-  * ``%post`` section in anaconda, 
-  * ``<chroot-scripts/>`` and ``<post-scripts/>`` sections for SUSE and ``preseed/late_command`` section for ubuntu. 
-  * STDOUT and STDERR of the scripts 
+  * ``%post`` section in anaconda,
+  * ``<chroot-scripts/>`` and ``<post-scripts/>`` sections for SUSE and ``preseed/late_command`` section for ubuntu.
+  * STDOUT and STDERR of the scripts
   * debug trace output of bash scripts with ``set -x``
 
 * **Provision** logs: the logs during the diskless provision.
 
 * **PostBootScript** logs: the logs during the post boot scripts execution, which are specified in ``postbootscripts`` attribute of node and osimage definition and run during the 1st reboot after installation.
 
-MN: the logs forwarded to management node: 
+MN: the logs forwarded to management node:
 
 * M1: the installer logs will be forwarded to the MN in ``/var/log/xcat/computes.log`` file.
 
