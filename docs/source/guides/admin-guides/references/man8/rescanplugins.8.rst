@@ -19,7 +19,7 @@ SYNOPSIS
 ********
 
 
-\ **rescanplugins**\ 
+\ **rescanplugins**\
 
 \ **rescanplugins**\  [\ **-h | -**\ **-help**\ ]
 
@@ -44,22 +44,22 @@ OPTIONS
 
 
 
-\ **-h|-**\ **-help**\ 
- 
+\ **-h|-**\ **-help**\
+
  Displays the usage message.
- 
 
 
-\ **-v|-**\ **-version**\ 
- 
+
+\ **-v|-**\ **-version**\
+
  Displays the release version of the code.
- 
 
 
-\ **-s|-**\ **-servicenodes**\ 
- 
+
+\ **-s|-**\ **-servicenodes**\
+
  Process the rescanplugins on the management node and on all service nodes.  The rescanplugins command will be sent to the xcatd daemon on all nodes defined in the servicenode table.  The default is to only run on the management node.
- 
+
 
 
 
@@ -70,22 +70,22 @@ EXAMPLES
 
 
 1. To rescan the plugins only on the xCAT Management Node:
- 
- 
+
+
  .. code-block:: perl
- 
+
    rescanplugins
- 
- 
+
+
 
 
 2. To rescan the plugins on the xCAT Management Node and on all service nodes:
- 
- 
+
+
  .. code-block:: perl
- 
+
    rescanplugins -s
- 
- 
+
+
 
 
