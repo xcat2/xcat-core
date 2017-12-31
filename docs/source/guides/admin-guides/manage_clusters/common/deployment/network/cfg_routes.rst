@@ -3,7 +3,7 @@ Configure routes
 
 There are 2 ways to configure OS route in xCAT:
 
-  * ``makeroutes``: command to add or delete routes on the management node or any given nodes. 
+  * ``makeroutes``: command to add or delete routes on the management node or any given nodes.
   * ``setroute``: script to replace/add the routes to the node, it can be used in postscripts/postbootscripts.
 
 ``makeroutes`` or ``setroute`` will modify OS temporary route, it also modifies persistent route in ``/etc/sysconfig/static-routes`` file.
@@ -29,7 +29,7 @@ Configure ``routes`` table
     #routename,net,mask,gateway,ifname,comments,disable
     "30net","30.0.0.0","255.0.0.0","0.0.0.0","eth2",,
     "20net","20.0.0.0","255.0.0.0","0.0.0.0","eth1",,
-    "defaultroute","default","255.0.0.0","10.0.0.101",,, 
+    "defaultroute","default","255.0.0.0","10.0.0.101",,,
 
 Use ``makeroutes`` to configure OS route on xCAT management node
 ''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
@@ -58,7 +58,7 @@ Use ``makeroutes`` to configure OS route for compute node
 
 #. define the names of the routes to be setup on the compute node: ::
 
-    chdef -t cn1 routenames="defaultroute,20net" 
+    chdef -t cn1 routenames="defaultroute,20net"
 
 #. add all routes from the ``routenames`` to the OS route table for the compute node: ::
 
@@ -70,7 +70,7 @@ Use ``makeroutes`` to configure OS route for compute node
 
 #. delete route ``20net`` from the OS route table for the compute node: ::
 
-    makeroutes cn1,cn2 -d -r 20net  
+    makeroutes cn1,cn2 -d -r 20net
 
 Use ``setroute`` to configure OS route for compute node
 '''''''''''''''''''''''''''''''''''''''''''''''''''''''
