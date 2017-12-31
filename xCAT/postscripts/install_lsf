@@ -1,4 +1,4 @@
-#!/bin/bash 
+#!/bin/bash
 #README################################################################
 # (1)Check you have  LSF installer script package and  LSF distribution packages. e.g. "lsf9.1.3_lsfinstall.tar.Z" and "lsf9.1.3_lnx26-lib23-ppc64le.tar.Z"
 # (2)Get LSF entitlement file for the edition you are installing. e.g. "platform_lsf_std_entitlement.dat"
@@ -13,7 +13,7 @@
 # LSF_TARDIR=""
 # (4)Run this script on one compute node,you can also use "updatenode <nodename> -P install_lsf" to execute this script on one compute node
 #   (It's not necessary to run it on each compute node).
-# 
+#
 # NOTE for install.config:
 # -----------------
 # LSF_TOP="/usr/share/lsf"
@@ -190,7 +190,7 @@ else
 		exit 1
 	elif [[ $count -eq 1 ]]; then
 	 :
-	else 
+	else
 		echo "ERROR: lsfinstall TAR file not found in LSF_TARDIR $LSF_TARDIR."
 		exit 1
 	fi
@@ -222,7 +222,7 @@ is_parameter_set "SILENT_INSTALL"
 is_parameter_set "LSF_SILENT_INSTALL_TARLIST"
 
 
-#Extract lsfinstall package 
+#Extract lsfinstall package
 cd $LSF_TARDIR
 LSF_INSTALL_PACKAGE=`basename $LSF_INSTALL_FILE_PATH`
 zcat $LSF_INSTALL_PACKAGE | tar xvf -
@@ -268,18 +268,18 @@ echo "LSF_PE_NETWORK_UPDATE_INTERVAL=6" >> $LSF_CONF_FILE
 echo "EGO_DEFINE_NCPUS=threads" >> $LSF_CONF_FILE
 echo "LSF_HPC_EXTENSIONS="CUMULATIVE_RUSAGE"">> $LSF_CONF_FILE
 
-LSB_HOSTS_FILE="$LSF_TOP/conf/lsbatch/$LSF_CLUSTER_NAME/configdir/lsb.hosts" 
+LSB_HOSTS_FILE="$LSF_TOP/conf/lsbatch/$LSF_CLUSTER_NAME/configdir/lsb.hosts"
 LSB_HOSTS_FILE_ORIG="$LSF_TOP/conf/lsbatch/$LSF_CLUSTER_NAME/configdir/lsb.hosts.orig"
 mv $LSB_HOSTS_FILE $LSB_HOSTS_FILE_ORIG
 
 PRIMARY_MASTER_NODE=`echo $LSF_MASTER_LIST |  awk '{print $1}'`
-echo "Begin Host" >> $LSB_HOSTS_FILE 
+echo "Begin Host" >> $LSB_HOSTS_FILE
 echo "HOST_NAME MXJ   r1m     pg    ls    tmp  DISPATCH_WINDOW  AFFINITY" >> $LSB_HOSTS_FILE
 echo "default	!	()	()	()	()	()	(Y)" >> $LSB_HOSTS_FILE
 echo "$PRIMARY_MASTER_NODE	0	()	()	()	()	()    (Y)" >> $LSB_HOSTS_FILE
 echo "End Host" >> $LSB_HOSTS_FILE
 echo "Begin HostGroup" >> $LSB_HOSTS_FILE
 echo "GROUP_NAME    GROUP_MEMBER" >> $LSB_HOSTS_FILE
-echo "End HostGroup" >> $LSB_HOSTS_FILE 
+echo "End HostGroup" >> $LSB_HOSTS_FILE
 
 fi
