@@ -72,7 +72,7 @@ sub get_files_recursive
         print "[get_files_recursive]: failed to open $dir :$!\n";
         return 1;
     }
-    
+
     for (; ;)
     {
         my $direntry = readdir($fd);
@@ -126,7 +126,7 @@ sub check_pr_format{
         #print Dumper $pr_content;
         print "[check_pr_format] pr title = $pr_title\n";
         print "[check_pr_format] pr body = $pr_body \n";
-        
+
         my $checkrst="";
         if(! $pr_title){
             $checkrst.="Missing title.";
@@ -134,7 +134,7 @@ sub check_pr_format{
         if(! $pr_body){
              $checkrst.="Missing description.";
         }
-        
+
         if(! $pr_milestone){
              $checkrst.="Missing milestone.";
         }
@@ -148,14 +148,14 @@ sub check_pr_format{
 
         if(length($checkrst) == 0){
             $check_result_str .= "> **PR FORMAT CORRECT**";
-            send_back_comment("$check_result_str"); 
+            send_back_comment("$check_result_str");
         }else{
             if($checkrst =~ /milestone/ || $checkrst =~ /labels/){
                 $check_result_str .= "> **PR FORMAT WARNING** : $checkrst";
                 send_back_comment("$check_result_str");
             }else{
                 $check_result_str .= "> **PR FORMAT ERROR** : $checkrst";
-                send_back_comment("$check_result_str"); 
+                send_back_comment("$check_result_str");
                 return 1;
             }
         }
@@ -167,8 +167,8 @@ sub check_pr_format{
 # Fuction name: check_commit_owner
 # Description: Verify commits are not done by specified user
 # Attributes: user login to reject
-# Return: 
-#     Error string -User rejected, 
+# Return:
+#     Error string -User rejected,
 #     Empty string -User not rejected
 #--------------------------------------------------------
 sub check_commit_owner{
@@ -258,7 +258,7 @@ sub send_back_comment{
             }
         }
     }
-    
+
      print "[send_back_comment] method = $post_method to $post_url\n";
      `curl -u "$ENV{'xcatbotuser'}:$ENV{'xcatbotpw'}" -X $post_method -d '{"body":"$message"}' $post_url`;
 }
@@ -303,7 +303,7 @@ sub build_xcat_core{
     }
 
 #    my $buildpath ="/home/travis/build/xcat-core/";
-#    my @buildfils = (); 
+#    my @buildfils = ();
 #    get_files_recursive("$buildpath", \@buildfils);
 #    print "\n-----------Dumper build files-----------\n";
 #    print Dumper \@buildfils;
@@ -318,7 +318,7 @@ sub build_xcat_core{
 # Return code:
 #--------------------------------------------------------
 sub install_xcat{
-    
+
     my @cmds = ("cd ./../../xcat-core && sudo ./mklocalrepo.sh",
                "sudo chmod 777 /etc/apt/sources.list",
                "sudo echo \"deb [arch=amd64] http://xcat.org/files/xcat/repos/apt/devel/xcat-dep trusty main\" >> /etc/apt/sources.list",
@@ -350,11 +350,11 @@ sub install_xcat{
         print ">>>>>Dumper the output of '$cmd'\n";
         print Dumper \@output;
         $check_result_str .= "> **INSTALL XCAT ERROR** : Please click ``Details`` label in ``Merge pull request`` box for detailed information";
-        send_back_comment("$check_result_str");     
+        send_back_comment("$check_result_str");
         return 1;
     }else{
         print "[install_xcat] $cmd ....[Pass]\n";
-        
+
         print "\n------Config xcat and verify xcat is working correctly-----\n";
         @cmds = ("sudo -s /opt/xcat/share/xcat/scripts/setup-local-client.sh -f travis",
                  "sudo -s /opt/xcat/sbin/chtab priority=1.1 policy.name=travis policy.rule=allow",
@@ -408,7 +408,7 @@ sub check_syntax{
         foreach my $file (@files) {
             next if($file =~ /\/opt\/xcat\/share\/xcat\/netboot\/genesis\//);
             next if($file =~ /\/opt\/xcat\/probe\//);
-        
+
             @output = runcmd("file $file");
             if($output[0] =~ /perl /i){
                 @output = runcmd("sudo bash -c '. /etc/profile.d/xcat.sh && perl -I /opt/xcat/lib/perl -I /opt/xcat/lib -I /usr/lib/perl5 -I /usr/share/perl -c $file'");
@@ -468,9 +468,9 @@ sub run_fast_regression_test{
          return 1;
     }else{
          print "[run_fast_regression_test] $cmd .....:\n";
-         print Dumper \@output; 
+         print Dumper \@output;
     }
-  
+
     my $hostname = `hostname`;
     chomp($hostname);
     print "hostname = $hostname\n";
@@ -481,11 +481,11 @@ sub run_fast_regression_test{
          print RED "[run_fast_regression_test] $cmd ....[Failed]";
          print "[run_fast_regression_test] error dumper:\n";
          print Dumper \@output;
-         return 1; 
+         return 1;
     }
-    
+
     print "Dumper regression conf file:\n";
-    @output = runcmd("cat $conf_file"); 
+    @output = runcmd("cat $conf_file");
     print Dumper \@output;
 
 
@@ -498,7 +498,7 @@ sub run_fast_regression_test{
          return 1;
     }else{
          print "[run_fast_regression_test] $cmd .....:\n";
-         print Dumper \@caseslist; 
+         print Dumper \@caseslist;
     }
 
     #This is a black list for CI test
@@ -508,7 +508,7 @@ sub run_fast_regression_test{
 #        sub array_filter {
 #            my $src_array_ref    = shift;
 #            my $filter_array_ref = shift;
-#        
+#
 #            my @left_array;
 #            foreach my $item (@{$src_array_ref}) {
 #                my $hit = 0;
@@ -553,7 +553,7 @@ sub run_fast_regression_test{
         $check_result_str .= "> **FAST REGRESSION TEST Failed**: Totalcase $casenum Passed $passnum Failed $failnum FailedCases: $log_str.  Please click ``Details`` label in ``Merge pull request`` box for detailed information";
         send_back_comment("$check_result_str");
         return 1;
-    }else{   
+    }else{
         $check_result_str .= "> **FAST REGRESSION TEST Successful**: Totalcase $casenum Passed $passnum Failed $failnum";
         send_back_comment("$check_result_str");
     }
