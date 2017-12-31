@@ -2,9 +2,9 @@ osdeploy
 ========
 
 **osdeploy** operating system provision process. Supports two modes - 'Realtime monitor' and 'Replay history'.
-  
+
 Realtime monitor: This is a default. This tool with monitor provision state of the node. Trigger 'Realtime monitor' before rebooting target node to do provisioning.
-    
+
 Replay history: Used after provisioning is finished to probe the previously completed provisioning.
 
 **Note**: Currently, hierarchical structure is not supported.
@@ -56,7 +56,7 @@ When all the nodes complete provisioning, the probe will exit and display output
     -------------------------------------------------------------
     Start capturing every message during OS provision process......
     -------------------------------------------------------------
-    
+
     [c910f03c17k20] Use command rinstall to reboot node c910f03c17k20
     [c910f03c17k20] Node status is changed to powering-on
     [c910f03c17k20] Receive DHCPDISCOVER via enp0s1
@@ -75,7 +75,7 @@ When all the nodes complete provisioning, the probe will exit and display output
     ==================osdeploy_probe_report=================
     All nodes provisioned successfully                                                                                [ OK ]
 
-    
+
 If there is something wrong when provisioning, this probe will exit when timeout is reached or ``Ctrl+C`` is pressed by user. The maximum time can be set by using ``-t`` as below(default 30 minutes) ::
 
 
