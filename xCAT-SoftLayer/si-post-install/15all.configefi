@@ -51,7 +51,7 @@ else
         echo "Can not find the boot device, return error"
         exit 1
     fi
-    
+
     # set grub to use this boot device
     if grep -qe '^VERSION\s*=\s*11' /etc/SuSE-release; then
         #sles11, run grub-install.unsupported directly
