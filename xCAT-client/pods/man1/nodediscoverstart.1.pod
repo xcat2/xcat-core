@@ -98,7 +98,7 @@ Sets the node groups that the discovered nodes should be put in for either the S
 =item B<rack=>I<rack-name>>
 
 Sets the rack name where the node is located for either the Sequential Discovery or Profile Discovery methods.
- 
+
 =item B<chassis=>I<chassis-name>
 
 Sets the chassis name that the Blade server or PureFlex blade is located in, for either the Sequential Discovery or Profile Discovery methods. This option is used for the Blade server and PureFlex system only. You cannot specify this option with the rack option.
@@ -121,11 +121,11 @@ Specifies the osimage name that will be associated with the new discovered node,
 
 =item B<-n|--dns>
 
-Specifies to run makedns <nodename> for any new discovered node. This is useful mainly for non-predefined configuration, before running the "nodediscoverstart -n", the user needs to run makedns -n to initialize the named setup on the management node.  
+Specifies to run makedns <nodename> for any new discovered node. This is useful mainly for non-predefined configuration, before running the "nodediscoverstart -n", the user needs to run makedns -n to initialize the named setup on the management node.
 
 =item B<-s|--skipbmcsetup>
 
-Specifies to skip the bmcsetup during the sequential discovery process, if the bmciprange is specified with nodediscoverstart command, the BMC will be setup automatically during the discovery process, if the user does not want to run bmcsetup, could specify the "-s|--skipbmcsetup" with nodediscoverstart command to skip the bmcsetup.   
+Specifies to skip the bmcsetup during the sequential discovery process, if the bmciprange is specified with nodediscoverstart command, the BMC will be setup automatically during the discovery process, if the user does not want to run bmcsetup, could specify the "-s|--skipbmcsetup" with nodediscoverstart command to skip the bmcsetup.
 
 =item B<-V|--verbose>
 
