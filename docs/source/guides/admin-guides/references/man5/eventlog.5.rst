@@ -19,7 +19,7 @@ SYNOPSIS
 ********
 
 
-\ **eventlog Attributes:**\   \ *recid*\ , \ *eventtime*\ , \ *eventtype*\ , \ *monitor*\ , \ *monnode*\ , \ *node*\ , \ *application*\ , \ *component*\ , \ *id*\ , \ *severity*\ , \ *message*\ , \ *rawdata*\ , \ *comments*\ , \ *disable*\ 
+\ **eventlog Attributes:**\   \ *recid*\ , \ *eventtime*\ , \ *eventtype*\ , \ *monitor*\ , \ *monnode*\ , \ *node*\ , \ *application*\ , \ *component*\ , \ *id*\ , \ *severity*\ , \ *message*\ , \ *rawdata*\ , \ *comments*\ , \ *disable*\
 
 
 ***********
@@ -36,88 +36,88 @@ eventlog Attributes:
 
 
 
-\ **recid**\ 
- 
+\ **recid**\
+
  The record id.
- 
 
 
-\ **eventtime**\ 
- 
+
+\ **eventtime**\
+
  The timestamp for the event.
- 
 
 
-\ **eventtype**\ 
- 
+
+\ **eventtype**\
+
  The type of the event.
- 
 
 
-\ **monitor**\ 
- 
+
+\ **monitor**\
+
  The name of the monitor that monitors this event.
- 
 
 
-\ **monnode**\ 
- 
+
+\ **monnode**\
+
  The node that monitors this event.
- 
 
 
-\ **node**\ 
- 
+
+\ **node**\
+
  The node where the event occurred.
- 
 
 
-\ **application**\ 
- 
+
+\ **application**\
+
  The application that reports the event.
- 
 
 
-\ **component**\ 
- 
+
+\ **component**\
+
  The component where the event occurred.
- 
 
 
-\ **id**\ 
- 
+
+\ **id**\
+
  The location or the resource name where the event occurred.
- 
 
 
-\ **severity**\ 
- 
+
+\ **severity**\
+
  The severity of the event. Valid values are: informational, warning, critical.
- 
 
 
-\ **message**\ 
- 
+
+\ **message**\
+
  The full description of the event.
- 
 
 
-\ **rawdata**\ 
- 
+
+\ **rawdata**\
+
  The data that associated with the event.
- 
 
 
-\ **comments**\ 
- 
+
+\ **comments**\
+
  Any user-provided notes.
- 
 
 
-\ **disable**\ 
- 
+
+\ **disable**\
+
  Do not use.  tabprune will not work if set to yes or 1
- 
+
 
 
 
@@ -126,5 +126,5 @@ SEE ALSO
 ********
 
 
-\ **nodels(1)**\ , \ **chtab(8)**\ , \ **tabdump(8)**\ , \ **tabedit(8)**\ 
+\ **nodels(1)**\ , \ **chtab(8)**\ , \ **tabdump(8)**\ , \ **tabedit(8)**\
 
