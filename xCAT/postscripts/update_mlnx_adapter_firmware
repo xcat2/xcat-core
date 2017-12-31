@@ -1,34 +1,34 @@
 #!/bin/sh
-# 
-# Sample postscript that can be executed to help update the firmware level on 
+#
+# Sample postscript that can be executed to help update the firmware level on
 # Mellanox hardware adapters on the target nodes
 #
-# This script requires passing in the path of the Mellanox OFED ISO 
-# located on the xCAT Management node under the /install directory. 
+# This script requires passing in the path of the Mellanox OFED ISO
+# located on the xCAT Management node under the /install directory.
 #
-# If OFED file is located here: 
+# If OFED file is located here:
 # /install/mlnxofed/MLNX_OFED_LINUX-4.1-4.0.7.1-rhel7.4alternate-ppc64le.iso
 #
-# Call the script as follows: 
+# Call the script as follows:
 #    updatenode <noderange> -P "update_mlnx_adapter_firmware /install/mlnxofed/MLNX_OFED_LINUX-4.1-4.0.7.1-rhel7.4alternate-ppc64le.iso"
 #
 MLNX_OFED_PATH=${1}
 
-if [[ -z ${1} ]]; then 
-   echo "Error: you must provide the path of the MLNX OFED ISO file" 
+if [[ -z ${1} ]]; then
+   echo "Error: you must provide the path of the MLNX OFED ISO file"
    exit 1
-fi 
+fi
 
 WORKING_DIR="/"
 MLNX_ISO_FILE=`basename ${MLNX_OFED_PATH}`
 TARGET_ISO_FILE="${WORKING_DIR}/${MLNX_ISO_FILE}"
 
 echo "==> Mellanox OFED PATH: ${MLNX_OFED_PATH}"
-echo "==> Mellanox ODEF ISO: ${MLNX_ISO_FILE}" 
+echo "==> Mellanox ODEF ISO: ${MLNX_ISO_FILE}"
 
-if [[ -e ${TARGET_ISO_FILE} ]]; then 
+if [[ -e ${TARGET_ISO_FILE} ]]; then
    rm -f ${TARGET_ISO_FILE}
-fi 
+fi
 
 echo "==> Retrieving file from http://${MASTER}/${MLNX_OFED_PATH}"
 wget -q http://${MASTER}/${MLNX_OFED_PATH} -O ${TARGET_ISO_FILE}
