@@ -9,12 +9,12 @@
 
    This sounds horrible and most of the time it would be.  However, when dealing with unattended
    installs, it is better than nothing.  Apache does not appear to be able to give credence to
-   privileged ports vs. non-privileged ports on the client, so simple nfs-style authentication is 
+   privileged ports vs. non-privileged ports on the client, so simple nfs-style authentication is
    not possible.
 
    The problem with more secure methods and unattended installs is that all rely upon the client to
-   have a blessed credential, and giving that credential or blessing a credential I can't think of a 
-   way to feasibly do unattended truly securely, so here we try to mitigate the exposure and 
+   have a blessed credential, and giving that credential or blessing a credential I can't think of a
+   way to feasibly do unattended truly securely, so here we try to mitigate the exposure and
    implement nfs-like security (with the plus of encryption, hopefully)
 
    Supported command:
