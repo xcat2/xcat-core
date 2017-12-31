@@ -1,4 +1,4 @@
-Install 
+Install
 =======
 
 
@@ -13,4 +13,4 @@ Install the following RPMs Management Node.  They are used by various tools xCAT
 Install xCAT
 ------------
 
-See :ref:`rhel_install_guide` for detailed xCAT installation instructions. 
+See :ref:`rhel_install_guide` for detailed xCAT installation instructions.
