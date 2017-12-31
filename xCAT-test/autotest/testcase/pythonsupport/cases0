@@ -31,7 +31,7 @@ cmd:sed -i "s|__REPLACE_PATH__FED__|$$PYTHON_DEP_FED_DIR|" /etc/yum.repos.d/xcat
 check:rc==0
 cmd: cat /etc/yum.repos.d/xcat-dep-python-local.repo
 check:rc==0
-cmd:yum install -y  xCAT-openbmc-py  
+cmd:yum install -y  xCAT-openbmc-py
 check:rc==0
 cmd:rpm -qa|grep "^xCAT-openbmc-py"
 check:output=~ xCAT-openbmc-py-\d
