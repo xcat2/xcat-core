@@ -1,7 +1,7 @@
 xCAT2 Release Information
 =========================
 
-The following table is a summary of the new operating system (OS), hardware, and features that are added to each xCAT release.   The OS and hardware listed in the table have been fully tested with xCAT.   For a more detailed list of new function, bug fixes, restrictions and known problems, refer to the individual release notes for a specific release. 
+The following table is a summary of the new operating system (OS), hardware, and features that are added to each xCAT release.   The OS and hardware listed in the table have been fully tested with xCAT.   For a more detailed list of new function, bug fixes, restrictions and known problems, refer to the individual release notes for a specific release.
 
 * **RHEL** - Red Hat Enterprise Linux
 * **SLES** - Suse Linux Enterprise Server
@@ -115,14 +115,14 @@ xCAT 2.13.x
 | /XCAT_2.13.6_Release_Notes>`_   |               |             |  /delete/check                   |
 |                                 |               |             |                                  |
 |                                 |               |             |  rspconfig retrieve OpenBMC ip/  |
-|                                 |               |             |  netmask/gateway information     | 
+|                                 |               |             |  netmask/gateway information     |
 |                                 |               |             |- nodeset performance enhancement |
 |                                 |               |             |  (Phase 3)                       |
 |                                 |               |             |                                  |
 |                                 |               |             |  Dispatch request to the         |
-|                                 |               |             |  specified service nodes with    | 
+|                                 |               |             |  specified service nodes with    |
 |                                 |               |             |  'disjointdhcps'                 |
-|                                 |               |             |                                  |  
+|                                 |               |             |                                  |
 |                                 |               |             |  Enhance the output of nodeset   |
 |                                 |               |             |  in hierarchical cluster         |
 |                                 |               |             |                                  |
@@ -155,7 +155,7 @@ xCAT 2.13.x
 |                                 |               |             |  tool xcat-test                  |
 |                                 |               |             |- Service node pool support for   |
 |                                 |               |             |  rhels7 ppc64le diskless         |
-|                                 |               |             |- Mellanox cumulus switch ZTP     | 
+|                                 |               |             |- Mellanox cumulus switch ZTP     |
 |                                 |               |             |  based discovery and             |
 |                                 |               |             |  auto-configuration              |
 |                                 |               |             |- Performance enhancements        |
@@ -362,9 +362,9 @@ xCAT 2.9.x
 |                                 |               |             |                                  |
 +---------------------------------+---------------+-------------+----------------------------------+
 
-.. [#] xCAT 2.9.1 onwards provides support for Kernel-based Virtual Machines (KVM) and requires an operating system that ships the ``perl-Sys-Virt`` package.  
+.. [#] xCAT 2.9.1 onwards provides support for Kernel-based Virtual Machines (KVM) and requires an operating system that ships the ``perl-Sys-Virt`` package.
 
-xCAT 2.8.x 
+xCAT 2.8.x
 ----------
 
 +---------------------------------+---------------+-------------+----------------------------------+
