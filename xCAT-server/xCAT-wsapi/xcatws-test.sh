@@ -32,7 +32,7 @@ do
   if [ $i = '-t' ]; then
     token=yes
   fi
- 
+
 done
 
 # display the usage message
@@ -51,7 +51,7 @@ if [ "$USER" = "" ] || [ "$PW" = "" ]; then
   echo "Error: Miss username or userPW"
   usage
   exit 1
-fi 
+fi
 
 if [ "$cert" = "yes" ] && [ "$HOST" = "" ]; then
   echo "Error: -c must be used with -h that user needs specify the FQDN of xCAT MN"
@@ -80,10 +80,10 @@ function REST {
     else
       CMD="curl -X $METHOD --cacert /tmp/ca-cert.pem $datamsg https://$HOST/xcatws$SRC?pretty=1&userName=$USER&passwor=$PW"
     fi
-  else 
+  else
     if [ "$token" = "yes" ]; then
       CMD="curl -X $METHOD -k -H X-Auth-Token:$TOKENID $datamsg https://$HOST/xcatws$SRC?pretty=1"
-    else 
+    else
       CMD="curl -X $METHOD -k $datamsg https://$HOST/xcatws$SRC?pretty=1&userName=$USER&userPW=$PW"
     fi
   fi
@@ -112,7 +112,7 @@ function PUT {
 echo "***********************************************************"
 echo "** Username: $USER"
 echo "** Password: $PW"
-echo "** Hostname: $HOST" 
+echo "** Hostname: $HOST"
 
 
 # get the CA of server certificate
@@ -120,7 +120,7 @@ if [ "$cert" = "yes" ]; then
   rm -f /tmp/ca-cert.pem
   cd /tmp
   wget http://$HOST/install/postscripts/ca/ca-cert.pem  2>1 1>/dev/null
-  echo "** Using CA /tmp/ca-cert.pem for server certificate checking" 
+  echo "** Using CA /tmp/ca-cert.pem for server certificate checking"
 fi
 
 # get a token
@@ -182,7 +182,7 @@ REST GET "/nodes/restapinode1,restapinode2"
 RESTMSG="Display all the nodes in the cluster"
 REST GET "/nodes"
 
-# test group 
+# test group
 RESTMSG="Display the group restapi"
 REST GET "/groups/restapi"
 
