@@ -7,14 +7,14 @@ Usage:
 Options:
     -h --help                  Show help screen
     --version                  Show version
-    --type=<type>              Type of File Storage to mount ( consistent | nas ) 
+    --type=<type>              Type of File Storage to mount ( consistent | nas )
     --hostname=<hostname>      SoftLayer Storage hostname
-    --username=<username>      SoftLayer Storage LUN username 
+    --username=<username>      SoftLayer Storage LUN username
     --password=<password>      SoftLayer Storage LUN password
     --mountpoint=<mountpoint>  The mountpoint to use [default: /mnt/nas]
 
 Description:
-    For consistent performance file storate, make sure the host accessing the 
+    For consistent performance file storate, make sure the host accessing the
     file storage has been authorized through the SoftLayer portal.
 """
 import os
@@ -29,7 +29,7 @@ if path.startswith('/opt'):
 
 from xcat import xcatutils
 
-def mount_nas_storage(hostname, user, passwd, mountPoint): 
+def mount_nas_storage(hostname, user, passwd, mountPoint):
     print "Attempting to mount the NAS File Storage at %s" %(mountPoint)
 
     if xcatutils.isMounted(mountPoint):
@@ -37,17 +37,17 @@ def mount_nas_storage(hostname, user, passwd, mountPoint):
 
     cmd = "mount -t cifs //%s/%s -o username=%s,password=%s,rw,nounix,iocharset=utf8,file_mode=0644,dir_mode=0755 %s" %(hostname, user, user, passwd, mountPoint)
     out,err = xcatutils.run_command(cmd)
-    if err: 
+    if err:
         raise xcatutils.xCatError("Error when mounting. (%s)" %(err))
-    else: 
+    else:
         print "Success\n"
 
-    # To help out with automount, print this msg 
+    # To help out with automount, print this msg
     print "\nNote: To configure automount on reboot, add the following into /etc/fstab:"
     cmd = "//%s/%s   %s cifs defaults,username=%s,password=%s 0 0" %(hostname,user,mountPoint,user,passwd)
     print "%s\n" %(cmd)
 
-def mount_consistent_storage(hostname, user, mountPoint): 
+def mount_consistent_storage(hostname, user, mountPoint):
     # TODO: would be good to be able to specify the nfs version as a argument
     print "Attempting to mount the Consistent Performance File Storage at %s" %(mountPoint)
 
@@ -56,12 +56,12 @@ def mount_consistent_storage(hostname, user, mountPoint):
 
     cmd = "mount -t nfs4 %s:/%s %s" %(hostname, user, mountPoint)
     out,err = xcatutils.run_command(cmd)
-    if err: 
+    if err:
         raise xcatutils.xCatError("Error when mounting. (%s)" %(err))
-    else: 
+    else:
         print "Success\n"
 
-    # To help out with automount, print this msg 
+    # To help out with automount, print this msg
     print "\nNote: To configure automount on reboot, add the following into /etc/fstab:"
     cmd = "%s:/%s %s nfs4 defaults,hard,intr 0 0" %(hostname,user,mountPoint)
     print "%s\n" %(cmd)
@@ -71,36 +71,36 @@ def unmount_storage(mountPoint):
 
     if not xcatutils.isMounted(mountPoint):
         raise xcatutils.xCatError("The mount point %s is NOT mounted." %(mountPoint))
-    else: 
+    else:
         cmd = "umount %s" %(mountPoint)
         out,err = xcatutils.run_command(cmd)
 
-        if err: 
+        if err:
             print "Encountered error while unmounting..."
             print err
 
 
-def setup_softlayer_storage(): 
-    # 
-    # set code defaults to consistent file storage options 
-    # 
+def setup_softlayer_storage():
+    #
+    # set code defaults to consistent file storage options
+    #
     requirePassword=False
     preReqPackages = ['nfs-utils','nfs-utils-lib']
 
     #
-    # if NAS is selected as the type, override the code defaults 
+    # if NAS is selected as the type, override the code defaults
     #
     if 'nas' in arguments['--type']:
         requirePassword=True
         preReqPackages = ['cifs-utils']
 
     #
-    # verify information before starting 
+    # verify information before starting
     #
-    if arguments['--hostname'] is None: 
+    if arguments['--hostname'] is None:
         arguments['--hostname'] = xcatutils.getUserInput("Enter the SoftLayer storage hostname")
 
-    if arguments['--username'] is None: 
+    if arguments['--username'] is None:
         arguments['--username'] = xcatutils.getUserInput("Enter the SoftLayer storage username")
 
     if arguments['--password'] is None and requirePassword:
@@ -113,7 +113,7 @@ def setup_softlayer_storage():
     xcatutils.installPackages(preReqPackages)
 
     #
-    # mount the file storage 
+    # mount the file storage
     #
     if 'nas' in arguments['--type']:
         mount_nas_storage(arguments['--hostname'],arguments['--username'],arguments['--password'],arguments['--mountpoint'])
@@ -124,11 +124,11 @@ def setup_softlayer_storage():
 
 if __name__ == '__main__':
     try:
-        arguments = (docopt.docopt(__doc__, version="1.0")) 
+        arguments = (docopt.docopt(__doc__, version="1.0"))
 
         if not arguments['--type'] in ('nas', 'consistent'):
             raise xcatutils.xCatError("The type=%s is not a supported file system type." %(arguments['--type']))
-            
+
         if arguments['unmount']:
             unmount_storage(arguments['--mountpoint'])
         else:
@@ -137,4 +137,4 @@ if __name__ == '__main__':
     except docopt.DocoptExit as e:
         print e
     except xcatutils.xCatError as e:
-        print "xCatError: %s" %(e) 
+        print "xCatError: %s" %(e)
