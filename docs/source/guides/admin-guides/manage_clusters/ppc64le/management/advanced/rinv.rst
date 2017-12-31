@@ -9,7 +9,7 @@ To get all the hardware information for node ``cn1``: ::
 
     rinv cn1 all
 
-To get just the firmware information for ``cn1``: :: 
+To get just the firmware information for ``cn1``: ::
 
     rinv cn1 firm
 
