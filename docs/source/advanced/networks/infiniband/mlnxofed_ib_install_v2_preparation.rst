@@ -4,7 +4,7 @@ Preparation
 Download MLNX_OFED ISO
 ----------------------
 
-**xCAT only supports installation using the ISO format.** 
+**xCAT only supports installation using the ISO format.**
 
 Download the Mellanox OFED ISO file `here (MLNX_OFED) <http://www.mellanox.com/page/products_dyn?product_family=26&mtag=linux_sw_drivers>`_.
 
@@ -22,7 +22,7 @@ The ``mlnxofed_ib_install.v2`` is a sample script intended to assist with the in
        # ensure the script has execute permission
        chmod +x /install/postscripts/mlnxofed_ib_install
 
-#. Familiarize the options available for the xCAT ``mlnxofed_ib_install`` script. 
+#. Familiarize the options available for the xCAT ``mlnxofed_ib_install`` script.
 
    +---------+------------------+----------------------------------------------------------+
    | Option  | Required         | Description                                              |
@@ -55,5 +55,5 @@ The ``mlnxofed_ib_install.v2`` is a sample script intended to assist with the in
    To pass the ``--add-kernel-support`` option to ``mlnxofedinstall``, use the following command: ::
 
        /install/postscripts/mlnxofed_ib_install -p /install/<path-to>/<MLNX_OFED_LINUX.iso> \
-           -m --without-32bit --without-fw-update --add-kernel-support --force -end- 
+           -m --without-32bit --without-fw-update --add-kernel-support --force -end-
 
