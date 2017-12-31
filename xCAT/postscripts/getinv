@@ -40,7 +40,7 @@ while [ ! -f $xml_file ] || grep error $xml_file; do
             timer=$(($timer-1));
         done
     fi
- 
+
     if [ -f /etc/xcat/cert.pem -a -f /etc/xcat/certkey.pem ]; then
         cat $tmp_file | openssl s_client -key /etc/xcat/certkey.pem -cert /etc/xcat/cert.pem -connect $XCATDEST -quiet 2> /dev/null > $xml_file
     else
