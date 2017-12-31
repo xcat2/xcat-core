@@ -21,7 +21,7 @@ then
             #such as BOOTIF=01-40-f2-e9-68-de-90
             if [ "${#MACADDR}" == "20" ]; then
                MACADDR=${MACADDR:3:21}
-            fi 
+            fi
             #export PRINIC=`ifconfig -a|grep -i "hwaddr ${karg#*=01:}"|awk '{print $1}'`
             export PRINIC=`ip -o link|grep -i "$MACADDR"|awk  '{print $2}'|sed s/://`
         fi
