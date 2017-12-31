@@ -120,7 +120,7 @@ sub process_request
 #----------------------------------------------------------------------------
 
 =head3  donets
-			Get network information and display or create xCAT network defs 
+			Get network information and display or create xCAT network defs
 
         Returns:
             0 - OK
@@ -358,7 +358,7 @@ sub donets
                         if ($foundmatch) {
                             next;
                         }
-                        
+
                         # add new network def
                         $nettab->setAttribs({ 'net' => $net, 'mask' => $netmask }, { 'netname' => $netname, 'gateway' => $gateway, 'mgtifname' => $i });
                     }
@@ -371,7 +371,7 @@ sub donets
         # For Linux systems
         my @ip6table = split /\n/, `/sbin/ip -6 route`;
         my @rtable   = split /\n/, `/bin/netstat -rn`;
-        my @mtable   = split /\n/, `/bin/netstat -i`;  
+        my @mtable   = split /\n/, `/bin/netstat -i`;
 
         splice @rtable, 0, 2;
         splice @mtable, 0, 2;
@@ -545,7 +545,7 @@ sub donets
                     push @{ $rsp->{data} }, "    mgtifname=$mgtifname";
                     if ($mtu)
                     {
-                        push @{ $rsp->{data} }, "    mtu=$mtu";                      
+                        push @{ $rsp->{data} }, "    mtu=$mtu";
                     }
                 } else {
                     # if this net entry exists, go to next line in networks table
