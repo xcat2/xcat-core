@@ -26,7 +26,7 @@ scheduser=loadl
 
 
 
-# Scheduler Feature values 
+# Scheduler Feature values
 #    Node feature values that will be changed in the scheduler during the
 #    update process.  These features can be used if users need to run jobs
 #    on only old nodes or only new nodes, but cannot have the job span both
@@ -36,22 +36,22 @@ scheduser=loadl
 oldfeature=oldvalue
 
 # newfeature:  A new feature value that will be set in the scheduler for each
-#    node after it has been updated.  
+#    node after it has been updated.
 newfeature=newvalue
 
 
 #
 # updategroup:  A set of nodes to be updated as a single group
 #        updategroup = name(noderange)
-#    where "name" is the name to be assigned to the updategroup and 
+#    where "name" is the name to be assigned to the updategroup and
 #    "noderange" is any valid xCAT noderange syntax (see noderange man page)
 #    You may list multiple updategroup stanzas in this file and all of them will
 #    be processed.
 updategroup=ns01(c4lpar201-c4lpar204)
 updategroup=ns11(c4lpar211-c4lpar214)
 
-# mapgroups:  Many updategroups can also be defined through a 
-#    single statement using nodegroup mappings.    
+# mapgroups:  Many updategroups can also be defined through a
+#    single statement using nodegroup mappings.
 #        mapgroups=nodegroup_range
 #    Where nodegroup_range is processed in the same way xCAT handles node name
 #    ranges to generate a set of nodegroup names.  Each nodegroup will be
@@ -64,17 +64,17 @@ mapgroups=block[01-10]
 
 
 
-# mutex:  
+# mutex:
 # mutex_count:
-#    Identify updategroups that are mutually exclusive and must not be 
+#    Identify updategroups that are mutually exclusive and must not be
 #    updated at the same time in order to maintain active resources within
-#    the cluster. 
+#    the cluster.
 #    If the mutex stanza is immediately followed by a mutex_count stanza,
-#    up to mutex_count updategroups may be updated at the same time. 
-#    If no mutex_count stanza is specified, only 1 updategroup listed  
+#    up to mutex_count updategroups may be updated at the same time.
+#    If no mutex_count stanza is specified, only 1 updategroup listed
 #    in the entry will be updated at a time.
 #        mutex=updategroup,updategroup,...
-#    For example, the update jobs for ns1 and for ns2 will not be allowed 
+#    For example, the update jobs for ns1 and for ns2 will not be allowed
 #    to run at the same time:
 mutex=ns1,ns2
 
@@ -85,8 +85,8 @@ mutex_count=2
 
 
 # You may list multiple mutex stanzas in this file to identify different
-#    sets of mutual exclusion.  
-# Multiple mutually exclusive sets can be specified using updategroup name 
+#    sets of mutual exclusion.
+# Multiple mutually exclusive sets can be specified using updategroup name
 #    ranges. For example, the following:
 #mutex=block[1-3]a,block[1-3]b,block[1-3]c
 # would be equivalent to:
@@ -101,7 +101,7 @@ mutex_count=2
 #   in that group are a member of this xCAT nodegroup, add it to the mutex
 #   entry.
 #   For example, you specifiy:
-#      nodegroup_mutex=IOservers 
+#      nodegroup_mutex=IOservers
 #   Where your xCAT nodegroup is defined as:
 #      IOservers=n4,n8,n12
 #   And your updategroups specified above are:
@@ -142,7 +142,7 @@ mutex_count=2
 
 
 
-# maxupdates:  Maximum number of updategroups that can be updated at one time 
+# maxupdates:  Maximum number of updategroups that can be updated at one time
 #    This allows you to ensure you will always have enough computing
 #    resources in your cluster and that not all nodes will attempt to
 #    be updated at once.
@@ -163,7 +163,7 @@ maxupdates=all
 
 
 
-# jobtemplate:  Scheduler job template file.  See this sample LoadLeveler file 
+# jobtemplate:  Scheduler job template file.  See this sample LoadLeveler file
 #     for details on how the template will be processed:
 jobtemplate=/opt/xcat/share/xcat/rollupdate/ll.tmpl
 
@@ -176,7 +176,7 @@ jobdir=/u/loadl/rollupdate_jobs
 
 
 #reservationcallback:  INTERNAL KEYWORD used for development only.
-#    This is the reservation notify or callback command.  
+#    This is the reservation notify or callback command.
 #    For Loadleveler, this script must reside on the LoadLeveler central
 #    manager and will be called when the reservation for an updategroup
 #    becomes active.
@@ -185,19 +185,19 @@ jobdir=/u/loadl/rollupdate_jobs
 #
 
 
-#reservationduration:  Maximum time to hold a LoadLeveler reservation for 
-#    the update process.  This value in minutes should be longer than the 
-#    expected time to shutdown, update, and reboot all the nodes in an update 
-#    group.  xCAT will release the nodes from the reservation as they come 
+#reservationduration:  Maximum time to hold a LoadLeveler reservation for
+#    the update process.  This value in minutes should be longer than the
+#    expected time to shutdown, update, and reboot all the nodes in an update
+#    group.  xCAT will release the nodes from the reservation as they come
 #    back up, and will cancel the reservation when the last node has completed.
 reservationduration=15
 
 
 
-#update_if_down:  If set to "yes", also attempt the update for any node in an 
+#update_if_down:  If set to "yes", also attempt the update for any node in an
 #    updategroup that is down or not active/available in the scheduler
 #    (useful if you have nodes that are not part of your scheduler's cluster).
-# If set to "no", any node in an updategroup that is not active in the 
+# If set to "no", any node in an updategroup that is not active in the
 #    scheduler will be skipped.
 # If set to "cancel", if any node in an updategroup is not active,
 #    the entire updategroup will be skipped.
@@ -222,7 +222,7 @@ update_if_down=yes
 #    filesystem on all the nodes, or moving critical services
 #    to a backup server for specific nodes.
 # Multiple prescript entries or prescript/prescriptnodes pairs of entries may
-#    be specified. Each command will be run in order. 
+#    be specified. Each command will be run in order.
 #
 #prescript=/u/admin/bin/shutdownGPFS $NODELIST
 #
@@ -237,10 +237,10 @@ update_if_down=yes
 
 
 
-# skipshutdown:  Should a shutdown command be sent to the nodes.  
-#    Shutdown is required for diskless nodes.  For diskfull nodes, simple 
-#    updates may be applied to the nodes through prescripts, and a node 
-#    reboot may not be required. 
+# skipshutdown:  Should a shutdown command be sent to the nodes.
+#    Shutdown is required for diskless nodes.  For diskfull nodes, simple
+#    updates may be applied to the nodes through prescripts, and a node
+#    reboot may not be required.
 # If skipshutdown is set to "yes", outofbandcmd scripts will NOT be
 #    run and bringuporder will be ignored (since no bringup).  However,
 #    bringupstatus/bringupappstatus will still be checked to verify that
@@ -252,12 +252,12 @@ skipshutdown=no
 
 # NOT IMPLEMENTED YET!  FUTURE SUPPORT...
 # shutdownorder:  (optional) The order that nodes within an updategroup
-#    will be shut down.  The value is any valid xCAT noderange.  
-#    Multiple shutdownorder entries may be specified, and they will be 
-#    processed as entered in this file.  If more than one node in the 
-#    updategroup matches a shutdownorder entry, they will be shutdown at 
+#    will be shut down.  The value is any valid xCAT noderange.
+#    Multiple shutdownorder entries may be specified, and they will be
+#    processed as entered in this file.  If more than one node in the
+#    updategroup matches a shutdownorder entry, they will be shutdown at
 #    the same time.  xCAT will wait until the node is completely shutdown
-#    before proceeding to the next nodes.  Any nodes in the updategroup not 
+#    before proceeding to the next nodes.  Any nodes in the updategroup not
 #    listed will be shutdown at the end.
 #shutdownorder=compute
 #shutdownorder=gpfsio
@@ -284,7 +284,7 @@ shutdowntimeout=5
 #    comma-delimited list of xCAT nodenames passed into your command.
 #    This can be used to run operations such as firmware updates.
 # Multiple outofbandcmd entries or outofbandcmd/outofbandnodes pairs of
-#    entries can be specified. Each command will be run in order. 
+#    entries can be specified. Each command will be run in order.
 # outofbandcmd scripts will not be run if "skipshutdown" is set to "yes".
 #
 #outofbandcmd=/u/admin/bin/myfirmwareupdates $NODELIST
@@ -295,7 +295,7 @@ shutdowntimeout=5
 
 
 # bringuporder:  (optional) The order that nodes within an updategroup
-#    will be brought up  The value is any valid xCAT noderange.  
+#    will be brought up  The value is any valid xCAT noderange.
 # Multiple bringuporder entries may be specified, and they will be processed
 #    as entered in this file.  If more than one node in the updategroup
 #    matches a bringuporder entry, they will be brought up at the same time.
@@ -308,10 +308,10 @@ shutdowntimeout=5
 
 
 
-# bringupstatus:  
+# bringupstatus:
 #  OR
-# bringupappstatus:  
-#    The xCAT database node status or appstatus value that xCAT will check and 
+# bringupappstatus:
+#    The xCAT database node status or appstatus value that xCAT will check and
 #    will wait for to determine that the node is up.  Once this status is
 #    reached, xCAT will continue bringing up more nodes (if bringuporder is set)
 #    and will release this node from the scheduler reservation.
@@ -322,9 +322,9 @@ bringupstatus=booted
 
 
 # bringuptimeout:  (optional) The maximum number of minutes xCAT should wait
-#    after issuing the rpower on command for the nodes to reach bringupstatus 
+#    after issuing the rpower on command for the nodes to reach bringupstatus
 #    before giving up.  If using bringuporder and this timeout is reached for
-#    one set of nodes, no additional nodes will be attempted to be brought up.  
-#    The scheduler reservation will be cancelled. 
+#    one set of nodes, no additional nodes will be attempted to be brought up.
+#    The scheduler reservation will be cancelled.
 bringuptimeout=10
 
