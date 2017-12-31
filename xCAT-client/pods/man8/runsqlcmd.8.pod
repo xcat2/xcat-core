@@ -1,29 +1,29 @@
 =head1 NAME
 
-B<runsqlcmd> -Runs sql command files against the current xCAT database.  
+B<runsqlcmd> -Runs sql command files against the current xCAT database.
 
 =head1 SYNOPSIS
 
 
-B<runsqlcmd> 
+B<runsqlcmd>
 
 B<runsqlcmd> [B<-h>|B<--help>]
 
 B<runsqlcmd> [B<-v>|B<--version>]
 
-B<runsqlcmd> [B<-d>|B<--dir> I<directory_path>] [B<-V>|B<--verbose>] 
+B<runsqlcmd> [B<-d>|B<--dir> I<directory_path>] [B<-V>|B<--verbose>]
 
-B<runsqlcmd> [B<-f>|B<--files> I<list of files>] [B<-V>|B<--verbose>] 
+B<runsqlcmd> [B<-f>|B<--files> I<list of files>] [B<-V>|B<--verbose>]
 
-B<runsqlcmd> [B<-V>|B<--verbose>] [I<sql statement>] 
+B<runsqlcmd> [B<-V>|B<--verbose>] [I<sql statement>]
 
 
 =head1 DESCRIPTION
 
-The runsqlcmd routine,  runs the sql statements contained in the *.sql files as input to the command against the current running xCAT database. Only DB2,MySQL and PostgreSQL databases are supported.  SQLite is not supported.  
+The runsqlcmd routine,  runs the sql statements contained in the *.sql files as input to the command against the current running xCAT database. Only DB2,MySQL and PostgreSQL databases are supported.  SQLite is not supported.
 If no directory or filelist is provided,  the default /opt/xcat/lib/perl/xCAT_schema directory is used.
 If the directory is input with the -d flag,  that directory will be used.
-If a comma separated list of files is input with the -f flag, those files will be used. 
+If a comma separated list of files is input with the -f flag, those files will be used.
 
 =head1 OPTIONS
 
@@ -43,7 +43,7 @@ Displays extra debug information.
 
 =item B<-d|--dir>
 
-To use a directory other than the default directory,  enter the directory path here.  
+To use a directory other than the default directory,  enter the directory path here.
 
 =item B<-f|--files>
 
@@ -53,7 +53,7 @@ Comma separated list of files (full path), wildcard (*) can be used.
 
 The files must be of the form <name>.sql or <name>_<database>.sql  where
 
-<database>  is mysql,pgsql, or db2. Files must have permission 0755.  
+<database>  is mysql,pgsql, or db2. Files must have permission 0755.
 
 =item I<sql statement>
 
@@ -68,7 +68,7 @@ Quoted sql statement syntax appropriate for the current database.
 =item 1.
 To run the database appropriate *.sql files in /opt/xcat/lib/perl/xCAT_schema :
 
- runsqlcmd 
+ runsqlcmd
 
 =item 2.
 To run the database appropriate *.sql files in /tmp/mysql:
@@ -81,12 +81,12 @@ To run the database appropriate *.sql files in the input list:
  runsqlcmd -f "/tmp/mysql/test*,/tmp/mysql/test1*"
 
 =item 4.
-To checkout one DB2 sql file: 
+To checkout one DB2 sql file:
 
  runsqlcmd -f /tmp/db2/test_db2.sql
 
 =item 5.
-To run the following command to the database: 
+To run the following command to the database:
 
  runsqlcmd "Select * from site;"
 
