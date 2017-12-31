@@ -8,7 +8,7 @@ The name of the packages that will be installed on the node are stored in the pa
 
 The path to the package lists will be read from the osimage definition. Which osimage a node is using is specified by the provmethod attribute. To display this value for a node: ::
 
-     lsdef node1 -i provmethod 
+     lsdef node1 -i provmethod
      Object name: node
      provmethod=<osimagename>
 
@@ -31,7 +31,7 @@ You can display this details of this osimage by running the following command, s
         rootimgdir=/install/<inst_type>/<os>/<arch>/<profile>
         synclists=/install/custom/<inst_type>/<profile>.synclist
 
-You can set the pkglist and otherpkglist using the following command: :: 
+You can set the pkglist and otherpkglist using the following command: ::
 
         chdef -t osimage <osimagename> pkglist=/opt/xcat/share/xcat/<inst_type>/<distro>/<profile>.pkglist\
                                                  otherpkglist=/install/custom/<inst_type>/<distro>/my.otherpkgs.pkglist
