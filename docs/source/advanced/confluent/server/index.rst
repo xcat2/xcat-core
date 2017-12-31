@@ -1,8 +1,8 @@
-confluent-server 
+confluent-server
 ================
 
 
 .. toctree::
    :maxdepth: 2
 
-   confluent_server.rst 
+   confluent_server.rst
