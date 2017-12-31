@@ -1,6 +1,6 @@
 #!/bin/sh
 
-# 
+#
 # Sample script to accept licenses for the IBM vacpp and xlf compilers
 # For AIX:
 #    do nothing, license accepted with installp -Y flag
@@ -57,6 +57,6 @@ if [ $OS != "AIX" ]; then
            echo 1 | chroot $installroot /$xlf_script
        fi
     fi
-fi  
+fi
 
 
