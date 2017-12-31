@@ -24,7 +24,7 @@ use Data::Dumper;
 
 #-------------------------------------------------------------------------------
 
-=head1  xCAT_monitoring:nagiosmon  
+=head1  xCAT_monitoring:nagiosmon
 =head2    Package Description
   xCAT monitoring plugin package to handle Nagios monitoring.
 =cut
@@ -35,16 +35,16 @@ use Data::Dumper;
 
 =head3    start
       This function gets called by the monitorctrl module
-      when xcatd starts and when monstart command is issued by the user. 
+      when xcatd starts and when monstart command is issued by the user.
       It starts the daemons and does necessary startup process for the Nagios monitoring.
        p_nodes -- a pointer to an arrays of nodes to be monitored. null means all.
        scope -- the action scope, it indicates the node type the action will take place.
-                0 means localhost only. 
-                2 means both localhost and nodes, 
+                0 means localhost only.
+                2 means both localhost and nodes,
        callback -- the callback pointer for error and status displaying. It can be null.
     Returns:
-      (return code, message) 
-      if the callback is set, use callback to display the status and error. 
+      (return code, message)
+      if the callback is set, use callback to display the status and error.
 =cut
 
 #--------------------------------------------------------------------------------
@@ -114,17 +114,17 @@ sub start {
 #--------------------------------------------------------------------------------
 
 =head3    stop
-      This function gets called when monstop command is issued by the user. 
+      This function gets called when monstop command is issued by the user.
       It stops the monitoring on all nodes, stops the Nagios daemons.
     Arguments:
        p_nodes -- a pointer to an arrays of nodes to be stopped for monitoring. null means all.
        scope -- the action scope, it indicates the node type the action will take place.
-                0 means localhost only. 
-                2 means both monservers and nodes, 
+                0 means localhost only.
+                2 means both monservers and nodes,
        callback -- the callback pointer for error and status displaying. It can be null.
     Returns:
-      (return code, message) 
-      if the callback is set, use callback to display the status and error. 
+      (return code, message)
+      if the callback is set, use callback to display the status and error.
 =cut
 
 #--------------------------------------------------------------------------------
@@ -173,15 +173,15 @@ sub stop {
 #--------------------------------------------------------------------------------
 
 =head3    config
-      This function configures the cluster for the given nodes.  
+      This function configures the cluster for the given nodes.
       This function is called when moncfg command is issued or when xcatd starts
       on the service node. It will configure the cluster to include the given nodes within
-      the monitoring doamin. 
+      the monitoring doamin.
     Arguments:
        p_nodes -- a pointer to an arrays of nodes to be added for monitoring. none means all.
        scope -- the action scope, it indicates the node type the action will take place.
-                0 means localhost only. 
-                2 means localhost and nodes, 
+                0 means localhost only.
+                2 means localhost and nodes,
        callback -- the callback pointer for error and status displaying. It can be null.
        grands  -- a hash pointer to store the information of the grandchildren. key: "servicenode,xcatmaseter" for the grandchildren, value: a array pointer of grandchildren nodes. This one is only set when the current node is mn and handleGrandChildren returns 1 by the monitoring plugin.
 
@@ -562,11 +562,11 @@ echo \"1=\$1, 2=\$2, 3=\$3, return_code=\$return_code\" >> /tmp/5.txt
 =head3    addNodes
       This function adds the nodes into the nagios cluster.
     Arguments:
-       nodes --an array of nodes to be added. 
+       nodes --an array of nodes to be added.
        master -- the monitoring master of the node.
        scope -- the action scope, it indicates the node type the action will take place.
-                0 means localhost only. 
-                2 means localhost and nodes, 
+                0 means localhost only.
+                2 means localhost and nodes,
        callback -- the callback pointer for error and status displaying. It can be null.
     Returns:
        (error code, error message)
@@ -618,10 +618,10 @@ sub addNodes {
 
         #print "ip=$ip\n";
         `echo "\#BEGIN HOST $node
-define host\{\n    use             linux-server        
-    host_name       $node                
-    alias           $node    
-    address         $ip              
+define host\{\n    use             linux-server
+    host_name       $node
+    alias           $node
+    address         $ip
     max_check_attempts  10
     contact_groups 	admins
 \}
@@ -633,9 +633,9 @@ define host\{\n    use             linux-server
     my $rc = `grep "hostgroup_name" $mychildren_cfg`;
     if (!$rc || ($rc !~ /^(\s)*hostgroup_name(\s)+mychildren/)) {
         `echo "define hostgroup{
-        hostgroup_name  mychildren 
-        alias           mychildren 
-        members 
+        hostgroup_name  mychildren
+        alias           mychildren
+        members
 }
 " >> $mychildren_cfg`;
     }
@@ -764,11 +764,11 @@ cfg_file=/etc/nagios/objects/mychildren.cfg
 =head3    removeNodes
       This function removes the nodes from the nagios cluster.
     Arguments:
-       nodes --an array of nodes to be removed. 
+       nodes --an array of nodes to be removed.
        master -- the monitoring master of the node.
        scope -- the action scope, it indicates the node type the action will take place.
-                0 means localhost only. 
-                2 means localhost and nodes, 
+                0 means localhost only.
+                2 means localhost and nodes,
        callback -- the callback pointer for error and status displaying. It can be null.
     Returns:
        (error code, error message)
@@ -863,12 +863,12 @@ sub removeNodes {
 =head3    addGrandNodes
       This function adds the grand children nodes into the nagios cluster.
     Arguments:
-       grands -- pointer to a hash. key: "servicenode, xcatmaster" for the nodes, 
+       grands -- pointer to a hash. key: "servicenode, xcatmaster" for the nodes,
                  value: an array pointer to the nodes.
        master -- the monitoring master of the node.
        scope -- the action scope, it indicates the node type the action will take place.
-                0 means localhost only. 
-                2 means localhost and nodes, 
+                0 means localhost only.
+                2 means localhost and nodes,
        callback -- the callback pointer for error and status displaying. It can be null.
     Returns:
        (error code, error message)
@@ -975,9 +975,9 @@ define host\{\n    use         xCAT-node
         my $rc = `grep "hostgroup_name" $cn_cfg`;
         if (!$rc || ($rc !~ /^(\s)*hostgroup_name(\s)+cn_$sv/)) {
             `echo "define hostgroup{
-        hostgroup_name  cn_$sv 
-        alias           cn_$sv 
-        members 
+        hostgroup_name  cn_$sv
+        alias           cn_$sv
+        members
 }
 " >> $cn_cfg`;
         }
@@ -1080,12 +1080,12 @@ cfg_file=$cn_template_cfg
 =head3    removeGrandNodes
       This function removes the grand children nodes from the nagios cluster.
     Arguments:
-       grands -- pointer to a hash. key: "servicenode, xcatmaster" for the nodes, 
+       grands -- pointer to a hash. key: "servicenode, xcatmaster" for the nodes,
                  value: an array pointer to the nodes.
        master -- the monitoring master of the node.
        scope -- the action scope, it indicates the node type the action will take place.
-                0 means localhost only. 
-                2 means localhost and nodes, 
+                0 means localhost only.
+                2 means localhost and nodes,
        callback -- the callback pointer for error and status displaying. It can be null.
     Returns:
        (error code, error message)
@@ -1179,14 +1179,14 @@ sub removeGrandNodes {
 #--------------------------------------------------------------------------------
 
 =head3    deconfig
-      This function de-configures the cluster for the given nodes.  
-      This function is called when mondecfg command is issued by the user. 
+      This function de-configures the cluster for the given nodes.
+      This function is called when mondecfg command is issued by the user.
       It should remove the given nodes from the product for monitoring.
     Arguments:
        p_nodes -- a pointer to an arrays of nodes to be removed for monitoring. none means all.
        scope -- the action scope, it indicates the node type the action will take place.
-                0 means local host only. 
-                2 means both local host and nodes, 
+                0 means local host only.
+                2 means both local host and nodes,
        callback -- the callback pointer for error and status displaying. It can be null.
     Returns:
        (error code, error message)
@@ -1268,11 +1268,11 @@ sub deconfig {
 =head3    supportNodeStatusMon
     This function is called by the monitorctrl module to check
     if Nagios can help monitoring and returning the node status.
-    
+
     Arguments:
         none
     Returns:
-         1  
+         1
 =cut
 
 #--------------------------------------------------------------------------------
@@ -1288,14 +1288,14 @@ sub supportNodeStatusMon {
 =head3   startNodeStatusMon
     This function is called by the monitorctrl module to tell
     Nagios to start monitoring the node status and feed them back
-    to xCAT. Nagios will start setting up the notification 
-    to monitor the node status changes.  
+    to xCAT. Nagios will start setting up the notification
+    to monitor the node status changes.
 
     Arguments:
        p_nodes -- a pointer to an arrays of nodes for monitoring. none means all.
        scope -- the action scope, it indicates the node type the action will take place.
-                0 means local host only. 
-                2 means both local host and nodes, 
+                0 means local host only.
+                2 means both local host and nodes,
        callback -- the callback pointer for error and status displaying. It can be null.
     Returns:
        (error code, error message)
@@ -1348,8 +1348,8 @@ sub startNodeStatusMon {
     Arguments:
        p_nodes -- a pointer to an arrays of nodes for monitoring. none means all.
        scope -- the action scope, it indicates the node type the action will take place.
-                0 means local host only. 
-                2 means both local host and nodes, 
+                0 means local host only.
+                2 means both local host and nodes,
        callback -- the callback pointer for error and status displaying. It can be null.
     Returns:
         (return code, message)
@@ -1380,10 +1380,10 @@ sub stopNodeStatusMon {
 #--------------------------------------------------------------------------------
 
 =head3    reportError
-      This function writes the error message to the callback, otherwise to syslog. 
+      This function writes the error message to the callback, otherwise to syslog.
     Arguments:
        error
-       callback 
+       callback
     Returns:
        none
 =cut
@@ -1405,7 +1405,7 @@ sub reportError
 #--------------------------------------------------------------------------------
 
 =head3    processSettingChanges
-      This function gets called when the setting for this monitoring plugin 
+      This function gets called when the setting for this monitoring plugin
       has been changed in the monsetting table.
     Arguments:
        none.
@@ -1422,7 +1422,7 @@ sub processSettingChanges {
 
 =head3    getDiscription
       This function returns the detailed description of the plugin inluding the
-     valid values for its settings in the monsetting tabel. 
+     valid values for its settings in the monsetting tabel.
      Arguments:
         none
     Returns:
@@ -1439,7 +1439,7 @@ sub getDescription {
     moncfg nagiosmon compute -r
     monstart nagiosmon service -r
     monstart nagiosmon compute -r
-    where 'service' is the node group name for the service node, 'compute' is the node group name for the compute node.				  
+    where 'service' is the node group name for the service node, 'compute' is the node group name for the compute node.				
 ";
 
 }
@@ -1449,7 +1449,7 @@ sub getDescription {
 
 =head3    getPostscripts
       This function returns the postscripts needed for the nodes and for the servicd
-      nodes. 
+      nodes.
      Arguments:
         none
     Returns:
@@ -1471,13 +1471,13 @@ sub getPostscripts {
 #--------------------------------------------------------------------------------
 
 =head3    show
-      This function shows the monitoring status.   
+      This function shows the monitoring status.
       This function is called when monshow command is issued.
     Arguments:
        p_nodes -- a pointer to an arrays of nodes to be added for monitoring. none means all.
        scope -- the action scope, it indicates the node type the action will take place.
-                0 means localhost only. 
-                2 means localhost and nodes, 
+                0 means localhost only.
+                2 means localhost and nodes,
        callback -- the callback pointer for error and status displaying. It can be null.
     Returns:
        (error code, error message)
@@ -1497,8 +1497,8 @@ sub show
 #--------------------------------------------------------------------------
 
 =head3    handleGrandChildren
-      This function tells if the mn shall handle the nodes that are managed by the service nodes.    
-      
+      This function tells if the mn shall handle the nodes that are managed by the service nodes.
+
 =cut
 
 #---------------------------------------------------------------------------
