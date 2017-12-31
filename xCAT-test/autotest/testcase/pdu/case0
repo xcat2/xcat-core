@@ -23,7 +23,7 @@ cmd:lsdef -t pdu
 check:rc==0
 check:output=~$$PDU
 check:output=~pdu
-cmd:rmdef $$PDU 
+cmd:rmdef $$PDU
 check:rc==0
 cmd:lsdef $$PDU
 check:rc!=0
@@ -39,7 +39,7 @@ check:rc==0
 end
 
 start:noderm_pdu_object
-description:create a pdu object and use noderm to remove it 
+description:create a pdu object and use noderm to remove it
 cmd:mkdef $$PDU groups=pdu ip=$$PDUIP mgt=pdu nodetype=pdu
 check:rc==0
 cmd:lsdef -t pdu
@@ -122,7 +122,7 @@ check:rc==0
 end
 
 start:pdu_node_operation
-description:Verify operate node's pdu attribute could operate pdu 
+description:Verify operate node's pdu attribute could operate pdu
 cmd:mkdef $$PDU groups=pdu ip=$$PDUIP mgt=pdu nodetype=pdu
 check:rc==0
 cmd:makehosts $$PDU
@@ -140,7 +140,7 @@ cmd:rpower $$CN stat |awk -F: '{print $2}' > /tmp/cnstat
 check:rc==0
 cmd:rpower $$CN pdustat
 check:rc==0
-check:output=~$$CN: $$PDU outlet $$PORT is 
+check:output=~$$CN: $$PDU outlet $$PORT is
 cmd:rpower $$CN pduoff
 check:rc==0
 check:output=~$$CN: $$PDU outlet $$PORT is off
