@@ -20,17 +20,17 @@ Start/Stop MySQL/MariaDB service
     service mysql stop
 
 
-Basic MySQL/MariaDB commands 
+Basic MySQL/MariaDB commands
 -----------------------------
 
 Refer to `<https://www.mariadb.org/>`_ for the latest documentation.
 
 * Using ``mysql``, connect to the xcat database:  ::
-   
+
     mysql -u root -p
 
 * List the hosts and users which managed by this xcat MN: ::
-   
+
     MariaDB> SELECT host, user FROM mysql.user;
 
 * List the databases: ::
