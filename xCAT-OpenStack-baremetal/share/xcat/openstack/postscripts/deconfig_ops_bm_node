@@ -1,4 +1,4 @@
-#!/bin/sh 
+#!/bin/sh
 # IBM(c) 2014 EPL license http://www.eclipse.org/legal/epl-v10.html
 
 # xCAT post script for deconfiguring the openstack baremetal node.
@@ -37,7 +37,7 @@ change_host_name()
     if [ "$str_os_type" = "sles" ];then
         echo "Persistently changing the hostname not implemented yet."
     #debian ubuntu and rh7
-    elif [ -f "/etc/hostname" ];then 
+    elif [ -f "/etc/hostname" ];then
         conf_file="/etc/hostname"
         echo "$str_hostname" > $conf_file
     else
@@ -75,7 +75,7 @@ if [[ -n $1 ]]; then
 	echo "nic=$nic, ops_ip=$ops_ip"
 
 	ifconfig $nic del $ops_ip
- 
+
 	#delete the configuration file
     if [ "$str_os_type" = "sles" ]; then
         str_conf_file="/etc/sysconfig/network/ifcfg-$nic"
