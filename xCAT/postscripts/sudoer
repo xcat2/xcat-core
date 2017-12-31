@@ -1,8 +1,8 @@
-#!/bin/bash 
+#!/bin/bash
 # IBM(c) 2013 EPL license http://www.eclipse.org/legal/epl-v10.html
 #------------------------------------------------------------------------------
 #
-# Setup a sudoer named xcat and copy the xCAT public SSH key in its 
+# Setup a sudoer named xcat and copy the xCAT public SSH key in its
 # authorized_keys file. Only applies to Linux.
 #
 #------------------------------------------------------------------------------
