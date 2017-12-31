@@ -399,7 +399,7 @@ open($sh, ">", "$sandbox/start.sh");
 print $sh <<'ENDOFSH';
 #!/bin/sh -x
 #
-# This script prepares the current Linux environment for ToolsCenter. 
+# This script prepares the current Linux environment for ToolsCenter.
 export PATH=$PATH:/sbin:/usr/sbin:/usr/local/sbin:/root/bin:/usr/local/bin:/usr/bin:/usr/X11R6/bin:/bin:/usr/games:/usr/lib/mit/bin:/usr/lib/mit/sbin
 
 cp -f /toolscenter/media_check.sh /tmp/media_check.sh
@@ -543,7 +543,7 @@ then
         ${BOMC_EXIT_CMD} reboot
 else
         # Shut down the system when it's PXE image
-        echo "Shut down the system ..." 
+        echo "Shut down the system ..."
         ${BOMC_EXIT_CMD} shutdown
 fi
 exit 0
