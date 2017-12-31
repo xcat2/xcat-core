@@ -19,7 +19,7 @@ SYNOPSIS
 ********
 
 
-\ **rack Attributes:**\   \ *displayname*\ , \ *height*\ , \ *num*\ , \ *rackname*\ , \ *room*\ , \ *usercomment*\ 
+\ **rack Attributes:**\   \ *displayname*\ , \ *height*\ , \ *num*\ , \ *rackname*\ , \ *room*\ , \ *usercomment*\
 
 
 ***********
@@ -40,39 +40,39 @@ rack Attributes:
 
 
 \ **displayname**\  (rack.displayname)
- 
+
  Alternative name for rack. Only used by PCM.
- 
+
 
 
 \ **height**\  (rack.height)
- 
+
  Number of units which can be stored in the rack.
- 
+
 
 
 \ **num**\  (rack.num)
- 
+
  The rack number.
- 
+
 
 
 \ **rackname**\  (rack.rackname)
- 
+
  The rack name.
- 
+
 
 
 \ **room**\  (rack.room)
- 
+
  The room in which the rack is located.
- 
+
 
 
 \ **usercomment**\  (rack.comments)
- 
+
  Any user-written notes.
- 
+
 
 
 
@@ -81,5 +81,5 @@ SEE ALSO
 ********
 
 
-\ **mkdef(1)**\ , \ **chdef(1)**\ , \ **lsdef(1)**\ , \ **rmdef(1)**\ 
+\ **mkdef(1)**\ , \ **chdef(1)**\ , \ **lsdef(1)**\ , \ **rmdef(1)**\
 
