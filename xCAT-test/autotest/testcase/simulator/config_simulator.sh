@@ -48,12 +48,12 @@ if [ $flag = "-s" ]; then
         lsdef $cnhn -z > /tmp/$cnhn.stanza
         rmdef $cnhn
 
-        if [ $delay_type ] && [ $delay_time ]; then 
+        if [ $delay_type ] && [ $delay_time ]; then
             option_string="-d $delay_type -t $delay_time -n $nic -r $range"
         else
             option_string="-n $nic -r $range"
         fi
-        /root/openbmc_simulator/simulator $option_string 
+        /root/openbmc_simulator/simulator $option_string
         if [ $? != 0 ]; then
             echo "Start simulator Failed"
             exit 1
@@ -62,7 +62,7 @@ if [ $flag = "-s" ]; then
         node_end=$[nodes-1]
         chdef -t group $cnhn mgt=openbmc bmc="|\D+(\d+)$|10.100.(1+((\$1)/100)).((\$1)%100+1)|" bmcusername=$username bmcpassword=$password
         chdef simulator_test[0-$node_end] groups=$cnhn  # use CN hostname as group, so when run command against CN will rpower against all nodes added here
-    else 
+    else
         cnip=`lsdef $cnhn -i bmc -c | awk -F '=' '{print $2}'`
         echo $cnip > "/tmp/simulator"
         mnip=`ping $mnhn -c 1 | grep "64 bytes from" |awk -F'(' '{print $2}'|awk -F')' '{print $1}'`
@@ -78,7 +78,7 @@ elif [ $flag = "-c" ]; then
         /root/openbmc_simulator/simulator -c -n $nic -r $range
         rmdef $cnhn
         cat /tmp/$cnhn.stanza | mkdef -z
-    else 
+    else
         /root/openbmc_simulator/simulator -c
         cnip=`cat /tmp/simulator`
         chdef $cnhn bmc=$cnip
