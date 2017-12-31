@@ -118,13 +118,13 @@ my %HexConv = (0 => 0x80, 1 => 0x40, 2 => 0x20, 3 => 0x10,
 
 #--------------------------------------------------------------
 
-=head3 filter_string 
-  
+=head3 filter_string
+
     Every switch plugin must implement this subroutine.
 
-    The return value will be used comare against the string 
+    The return value will be used comare against the string
     from sysDescr value from snmpget. If the latter contains
-    this string, then this mudule will be used to handle the 
+    this string, then this mudule will be used to handle the
     requests for vlan configuration.
 
 =cut
@@ -137,8 +137,8 @@ sub filter_string {
 
 #--------------------------------------------------------------
 
-=head3 get_vlan_ids  
-  
+=head3 get_vlan_ids
+
   Every switch plugin must implement this subroutine.
 
   It gets the existing vlan IDs for the switch.
@@ -166,8 +166,8 @@ sub get_vlan_ids {
 
 #--------------------------------------------------------------
 
-=head3 get_vlanids_for_ports 
-  
+=head3 get_vlanids_for_ports
+
     Every switch plugin must implement this subroutine.
 
     It returns a hash pointer that contains the vlan id for each given port.
@@ -249,9 +249,9 @@ sub get_vlanids_for_ports {
 #--------------------------------------------------------------
 
 =head3 create_vlan
-  
+
     Every switch plugin must implement this subroutine.
- 
+
     Creates a new vlan on the switch
     Returns an array. (erorcode, errormsg). When errorcode=0, means no error.
 =cut
@@ -293,7 +293,7 @@ sub create_vlan {
 
 #--------------------------------------------------------------
 
-=head3 add_ports_to_vlan   
+=head3 add_ports_to_vlan
 
     Every switch plugin must implement this subroutine.
 
@@ -498,7 +498,7 @@ sub add_crossover_ports_to_vlan {
 
 #--------------------------------------------------------------
 
-=head3 remove_vlan   
+=head3 remove_vlan
 
     Every switch plugin must implement this subroutine.
 
@@ -529,7 +529,7 @@ sub remove_vlan {
 
 #--------------------------------------------------------------
 
-=head3 remove_ports_from_vlan  
+=head3 remove_ports_from_vlan
 
     Every switch plugin must implement this subroutine.
 
