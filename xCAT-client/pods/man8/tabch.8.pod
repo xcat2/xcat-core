@@ -34,10 +34,10 @@ B<-d>          Delete option.
 
 =over 2
 
-=item 0. 
+=item 0.
 The command completed successfully.
 
-=item 1. 
+=item 1.
 An error has occurred.
 
 =back
@@ -46,34 +46,34 @@ An error has occurred.
 
 =over 2
 
-=item 1. 
+=item 1.
 To add a node=node1 to the nodelist table with groups=all:
 
  tabch  node=node1 nodelist.groups=all
 
-=item 2. 
+=item 2.
 To add a keyword (tftpdir) and value (/tftpboot) to the site table:
 
  tabch  key=tftpdir site.value=/tftpboot
 
 
-=item 3. 
+=item 3.
 To add node1 to the  nodetype table with os=rhel5:
 
  tabch  node=node1 nodetype.os=rhel5
 
 
-=item 4. 
+=item 4.
 To change node1 in nodetype table setting os=sles:
 
  tabch  node=node1 nodetype.os=sles
 
-=item 5. 
+=item 5.
 To change node1 by appending otherpkgs to the postbootscripts field in the postscripts table:
 
  tabch node=node1 postscripts.postbootscripts+=otherpkgs
 
-=item 6. 
+=item 6.
 To delete node1 from nodetype table:
 
  tabch -d node=node1 nodetype
