@@ -2,4 +2,4 @@ start:copycds_bogus_disc
 description: Test cases for the copycds with a bogus disc
 cmd:/opt/xcat/share/xcat/tools/autotest/testcase/copycds/copycds_bogus_disc
 check:rc==0
-end 
+end
