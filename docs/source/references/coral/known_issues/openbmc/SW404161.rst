@@ -5,7 +5,7 @@ SW404161 - Firmware do not self extract tar, causing rflash cannot find ID to ac
 * **Reported:** 1738A (ibm-v1.99.10-0-r7)
 * **Fixed:** 1742D (ibm-v1.99.10-0-113-r10)
 
-**Issue:** 
+**Issue:**
 
 Firmware is not extracted and could not be found by rflash to activate ::
 
@@ -20,7 +20,7 @@ Firmware is not extracted and could not be found by rflash to activate ::
     c650f07p27: Could not find ID for firmware ibm-v1.99.10-113-g65edf7d-r8-0-g713d86d to activate, waiting 10 seconds and retry...
     c650f07p27: Error: Could not find firmware ibm-v1.99.10-113-g65edf7d-r8-0-g713d86d after waiting 60 seconds.
 
-**Work-around:** Use one of the following methods: 
+**Work-around:** Use one of the following methods:
 
 * Reboot the BMC before flashing firmware: ``rpower <> bmcreboot``
 * ssh into bmc and run:  ``systemctl restart xyz.openbmc_project.Software.Version.service``
