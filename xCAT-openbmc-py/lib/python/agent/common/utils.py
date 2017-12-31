@@ -72,7 +72,7 @@ def recv_all(sock, size):
 def update2Ddict(updata_dict, key_a, key_b, value):
     if key_a in updata_dict:
         updata_dict[key_a].update({key_b: value})
-    else: 
+    else:
         updata_dict.update({key_a: {key_b: value}})
 
 def emb_numbers(string):
@@ -97,7 +97,7 @@ def mask_int2str(mask_int):
     return "%s.%s.%s.%s" % (str((mask_num >> 24) & 0xff), str((mask_num >>16)&0xff), str((mask_num >> 8) & 0xff), str(mask_num & 0xff))
 
 def get_full_path(cwd, directory):
-    if not os.path.isabs(directory): 
+    if not os.path.isabs(directory):
         directory = os.path.join(cwd, directory)
     return directory
 
