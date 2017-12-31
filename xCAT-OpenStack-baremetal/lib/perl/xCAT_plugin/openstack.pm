@@ -488,9 +488,9 @@ sub opsaddimage {
 #-------------------------------------------------------------------------------
 
 =head3  deploy_ops_bm_node
-	This is a internel command called by OpenStack xCAT-baremetal driver. 
-	It prepares the node by adding the config_ops_bm_node postbootscript 
-	to the postscript table for the node, then call nodeset and then boot 
+	This is a internel command called by OpenStack xCAT-baremetal driver.
+	It prepares the node by adding the config_ops_bm_node postbootscript
+	to the postscript table for the node, then call nodeset and then boot
 	the node up.
 =cut
 
@@ -706,7 +706,7 @@ sub deploy_hmc_node {
 =head3  cleanup_ops_bm_node
 	This is a internel command called by OpenStack xCAT-baremetal driver.
 	It undoes all the changes made by deploy_ops_bm_node command. It removes
-	the config_ops_bmn_ode postbootscript from the postscript table for the 
+	the config_ops_bmn_ode postbootscript from the postscript table for the
 	node, removes the alias ip and then power off the node.
 =cut
 
@@ -811,7 +811,7 @@ sub cleanup_ops_bm_node {
 
 =head3  add_postscript
 
-	It adds the 'config_ops_bm_node' postbootscript to the 
+	It adds the 'config_ops_bm_node' postbootscript to the
 	postscript table for the given node.
 
 =cut
@@ -884,7 +884,7 @@ sub add_postscript {
 
 =head3  remove_postscript
 
-	It removes the 'config_ops_bm_node' postbootscript from 
+	It removes the 'config_ops_bm_node' postbootscript from
 	the postscript table for the given node.
 
 =cut
