@@ -11,7 +11,7 @@ SYNOPSIS
 ********
 
 
-\ **pping**\  [\ **-i | -**\ **-interface**\  \ *interfaces*\ ] [\ **-f | -**\ **-use_fping**\ ] \ *noderange*\ 
+\ **pping**\  [\ **-i | -**\ **-interface**\  \ *interfaces*\ ] [\ **-f | -**\ **-use_fping**\ ] \ *noderange*\
 
 \ **pping**\  [\ **-h | -**\ **-help**\ ]
 
@@ -36,32 +36,32 @@ OPTIONS
 
 
 
-\ **-i | -**\ **-interface**\  \ *interfaces*\ 
- 
+\ **-i | -**\ **-interface**\  \ *interfaces*\
+
  A comma separated list of network interface names that should be pinged instead of the interface represented by the nodename/hostname.
  The following name resolution convention is assumed:  an interface is reachable by the hostname <nodename>-<interface>.  For example,
  the ib2 interface on node3 has a hostname of node3-ib2.
- 
+
  If more than one interface is specified, each interface will be combined with the nodenames as described above and will be pinged in turn.
- 
 
 
-\ **-f | -**\ **-use_fping**\ 
- 
- Use \ **fping**\  instead of \ **nmap**\ 
- 
+
+\ **-f | -**\ **-use_fping**\
+
+ Use \ **fping**\  instead of \ **nmap**\
 
 
-\ **-h | -**\ **-help**\ 
- 
+
+\ **-h | -**\ **-help**\
+
  Show usage information.
- 
 
 
-\ **-v | -**\ **-version**\ 
- 
+
+\ **-v | -**\ **-version**\
+
  Display the installed version of xCAT.
- 
+
 
 
 
@@ -72,46 +72,46 @@ EXAMPLES
 
 
 1.
- 
- 
+
+
  .. code-block:: perl
- 
+
    pping all
- 
- 
+
+
  Output is similar to:
- 
- 
+
+
  .. code-block:: perl
- 
+
    node1: ping
    node2: ping
    node3: noping
- 
- 
+
+
 
 
 2.
- 
- 
+
+
  .. code-block:: perl
- 
+
    pping all -i ib0,ib1
- 
- 
+
+
  Output is similar to:
- 
- 
+
+
  .. code-block:: perl
- 
+
    node1-ib0: ping
    node2-ib0: ping
    node3-ib0: noping
    node1-ib1: ping
    node2-ib1: ping
    node3-ib1: noping
- 
- 
+
+
 
 
 
