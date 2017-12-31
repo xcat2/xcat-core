@@ -29,9 +29,9 @@ mac=""
 nic=""
 declare -a array=(`lsdef $cn -i mac -c|awk -F"=" '{print $2}'|sed 's/|/ /g'`)
 for i in "${array[@]}"
-do 
+do
     if ! echo $i|grep -q  NOIP
-    then 
+    then
        mac=$i
        break
     fi
@@ -40,6 +40,6 @@ mn=`lsdef -t site -i master -c|awk -F"=" '{print $2}'`
 nic=`ip -4 -o a|grep $mn|awk -F" " '{print $2}'`
 xcatprobe -w detect_dhcpd -i $nic -m $mac
 check:output !~ There are 0 servers replied to dhcp discover
-check:output =~ Server:__GETTABLEVALUE(key,master,value,site)__ assign IP .+__GETNODEATTR($$CN,ip)__ 
+check:output =~ Server:__GETTABLEVALUE(key,master,value,site)__ assign IP .+__GETNODEATTR($$CN,ip)__
 cmd:rm -rf /tmp/detect_dhcpd_work; if [ -d "/tmp/detect_dhcpd_work.bak" ]; then mv /tmp/detect_dhcpd_work.bak /tmp/detect_dhcpd_work;fi
 end
