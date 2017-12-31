@@ -203,7 +203,7 @@ label:cn_bmc_ready,hctrl_openbmc
 cmd:rflash $$CN -c /tmp/abc123.tz /tmp/abc124.tz
 check:output=~Error: (\[.*?\]: )?Invalid firmware specified with
 check:rc != 0
-cmd:rflash $$CN -c  1.tz 2.tz 3.tz 
+cmd:rflash $$CN -c  1.tz 2.tz 3.tz
 check:output=~Error: (\[.*?\]: )?Invalid firmware specified with
 check:rc != 0
 cmd:rflash $$CN 1.tz 2.tz 3.tz -c
@@ -320,7 +320,7 @@ cmd:rflash $$CN -u /tmp/abc123.tz /tmp/abc124.tz
 check:output=~Error: (\[.*?\]: )?Invalid firmware specified with
 check:output!~Attempting to
 check:rc != 0
-cmd:rflash $$CN -u 1.tz 2.tz 3.tz 
+cmd:rflash $$CN -u 1.tz 2.tz 3.tz
 check:output=~Error: (\[.*?\]: )?Invalid firmware specified with
 check:output!~Attempting to
 check:rc != 0
@@ -341,7 +341,7 @@ hcp:openbmc
 label:cn_bmc_ready,hctrl_openbmc
 cmd:rflash $$CN -a /tmp/abc123.tz
 check:output=~rror: Invalid firmware specified with
-check:output!~Attempting to 
+check:output!~Attempting to
 check:rc != 0
 cmd:rflash $$CN -a /tmp/
 check:output=~rror: Invalid firmware specified with
@@ -357,7 +357,7 @@ check:output!~Attempting to
 check:rc != 0
 cmd:rflash $$CN 1.tar -a
 check:output=~Error: (\[.*?\]: )?Cannot access
-check:output!~Attempting to 
+check:output!~Attempting to
 check:rc != 0
 cmd:rflash $$CN -a /tmp/1.tar
 check:output=~Error: (\[.*?\]: )?Cannot access
@@ -376,7 +376,7 @@ check:output!~Attempting to
 check:rc != 0
 cmd:rflash $$CN -a 1.tz 2.tz 3.tz
 check:output=~Error: (\[.*?\]: )?More than one firmware specified is not supported
-check:output!~Attempting to 
+check:output!~Attempting to
 check:rc != 0
 cmd:rflash $$CN 1.tz 2.tz 3.tz -a
 check:output=~Error: (\[.*?\]: )?More than one firmware specified is not supported
@@ -388,9 +388,9 @@ check:output!~Attempting to
 check:rc != 0
 cmd:rflash $$CN 1234567 -a 2345678
 check:output=~Error: (\[.*?\]: )?More than one firmware specified is not supported
-check:output!~Attempting to 
+check:output!~Attempting to
 check:rc != 0
-cmd:rflash $$CN -a 123 abc asdbas 
+cmd:rflash $$CN -a 123 abc asdbas
 check:output=~Error: (\[.*?\]: )?More than one firmware specified is not supported
 check:output!~Attempting to
 check:rc != 0
@@ -415,7 +415,7 @@ description: basic usage check for option delete. if there are multiple value as
 os:Linux
 hcp:openbmc
 label:cn_bmc_ready,hctrl_openbmc
-cmd:rflash $$CN --delete 1234567 2345678 
+cmd:rflash $$CN --delete 1234567 2345678
 check:output=~Error: (\[.*?\]: )?More than one firmware specified is not supported
 check:output!~Attempting to delete
 check:rc != 0
@@ -449,15 +449,15 @@ hcp:openbmc
 label:cn_bmc_ready,hctrl_openbmc
 cmd:rflash $$CN -d /123/   /234/
 check:output=~Error: (\[.*?\]: )?More than one
-check:output!~Attempting to 
+check:output!~Attempting to
 check:rc != 0
 cmd:rflash $$CN /123/   /234/  -d
-check:output=~Error: (\[.*?\]: )?More than one 
+check:output=~Error: (\[.*?\]: )?More than one
 check:output!~Attempting to
 check:rc != 0
 cmd:rflash $$CN /123/ -d /234/
-check:output=~Error: (\[.*?\]: )?More than one 
-check:output!~Attempting to 
+check:output=~Error: (\[.*?\]: )?More than one
+check:output!~Attempting to
 check:rc != 0
 end
 
@@ -469,9 +469,9 @@ hcp:openbmc
 label:cn_bmc_ready,hctrl_openbmc
 cmd:rm -rf /tmp/bogus123
 check:rc == 0
-cmd:rflash $$CN -d /tmp/bogus123 
+cmd:rflash $$CN -d /tmp/bogus123
 check:output=~Error: (\[.*?\]: )?Can't open directory
-check:output!~Attempting to 
+check:output!~Attempting to
 check:rc != 0
 cmd:rflash $$CN /tmp/bogus123
 check:output=~Error: (\[.*?\]: )?Invalid option specified
@@ -482,13 +482,13 @@ cmd:rflash $$CN /tmp/bogus123 -d
 check:output =~Error: (\[.*?\]: )?No BMC tar file found|Can't open directory
 check:output!~Attempting to
 check:rc != 0
-cmd:touch /tmp/bogus123/obmc-phosphor-image-witherspoon.ubi.mtd.tar 
+cmd:touch /tmp/bogus123/obmc-phosphor-image-witherspoon.ubi.mtd.tar
 check:rc == 0
 cmd:rflash $$CN -d /tmp/bogus123
 check:output =~Error: (\[.*?\]: )?No BMC tar file found|Can't open directory
 check:output!~Attempting to
 check:rc != 0
-cmd:touch /tmp/bogus123/witherspoon.pnor.squashfs.tar 
+cmd:touch /tmp/bogus123/witherspoon.pnor.squashfs.tar
 check:rc == 0
 cmd:rflash $$CN -d /tmp/bogus123
 check:output =~Error: (\[.*?\]: )?No BMC tar file found|Can't open directory
@@ -507,7 +507,7 @@ cmd:rflash -h
 check:output =~Usage:
 check:output =~OpenPOWER OpenBMC specific:
 check:output =~ -d.+no-host-reboot
-check:output =~ image_id.+--delete 
+check:output =~ image_id.+--delete
 check:rc == 0
 end
 
@@ -518,7 +518,7 @@ hcp:openbmc
 label:cn_bmc_ready,hctrl_openbmc
 cmd:activenum=`rflash $$CN -l |grep -w "Host\s*Active(\*)" |awk '{print $2}'`;rflash $$CN $activenum --delete
 check:rc != 0
-check:output =~$$CN\s*:\s*(\[.*?\]: )?Error: Deleting currently active firmware on powered on host is not supported 
+check:output =~$$CN\s*:\s*(\[.*?\]: )?Error: Deleting currently active firmware on powered on host is not supported
 cmd:activenum=`rflash $$CN -l |grep -w "BMC\s*Active(\*)" |awk '{print $2}'`;rflash $$CN $activenum --delete
 check:rc != 0
 check:output =~~$$CN\s*:\s*(\[.*?\]: )?Error: Deleting currently active BMC firmware is not supported
