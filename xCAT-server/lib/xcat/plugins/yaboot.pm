@@ -434,7 +434,7 @@ sub preprocess_request {
              $callback1->(\%rsp);
         }
         return;
-    }    
+    }
 
     #Assume shared tftp directory for boring people, but for cool people, help sync up tftpdirectory contents when
     #if they specify no sharedtftp in site table
@@ -876,7 +876,7 @@ sub process_request {
         nodes  --- a pointer to an array of nodes
         states -- a pointer to a hash table. This hash will be filled by this
              function.The key is the nodeset status and the value is a pointer
-             to an array of nodes.  
+             to an array of nodes.
     Returns:
        (return code, error message)
 =cut
