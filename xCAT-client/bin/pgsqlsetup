@@ -4,14 +4,14 @@
 
 #-----------------------------------------------------------------------------
 
-=head1   pgsqlsetup 
+=head1   pgsqlsetup
 
 
 
- This is script is called after the installation or upgrade of PostgreSQL 
+ This is script is called after the installation or upgrade of PostgreSQL
    on xCAT.  It will automate the setup of the PostgreSQL and xCAT to run
    xCAT on the PostgreSQL DB on AIX and Linux.
-   On AIX 6.1 or later , It will setup an xcatdb database ,a postgres id, 
+   On AIX 6.1 or later , It will setup an xcatdb database ,a postgres id,
    a xcatadm id and password to be used in the /etc/xcat/cfgloc file
    to access the database.
    On Linux , It will setup an xcatdb database , and get an xcatadm password
@@ -21,11 +21,11 @@
 
    You can set the XCATPGPW environment variable to a password for the database
    to avoid prompting otherwise it will prompt for the
-   password to assign to the xcatadm userid for the Unix id and PgSQL database 
-   id.   
+   password to assign to the xcatadm userid for the Unix id and PgSQL database
+   id.
 
-   Setups up AIX 6.1+ and Linux,  but most work needs to be done on AIX. 
-   See man pgsqlsetup for more information and the documentation. 
+   Setups up AIX 6.1+ and Linux,  but most work needs to be done on AIX.
+   See man pgsqlsetup for more information and the documentation.
 
    If the -P flag is supplied, we are supporting setup under PCM.
     Additional setup for PCM is required.
@@ -136,7 +136,7 @@ if ((!($INIT)) && ($SETUPODBC))
 my $listenaddrs = undef;
 if (@LISTENADDRS)
 {
-    $listenaddrs = join ',', @LISTENADDRS;  
+    $listenaddrs = join ',', @LISTENADDRS;
 }
 
 #
@@ -424,7 +424,7 @@ exit;
 
 #-----------------------------------------------------------------------------
 
-=head3    usage 
+=head3    usage
 	
 	Displays message for -h option
 
@@ -446,9 +446,9 @@ sub usage
 
 #-----------------------------------------------------------------------------
 
-=head3    shutdownxcatd 
+=head3    shutdownxcatd
 	
-  shutdown the daemon 
+  shutdown the daemon
 
 =cut
 
@@ -477,9 +477,9 @@ sub shutdownxcatd
 
 #-----------------------------------------------------------------------------
 
-=head3    backupxcatdb 
+=head3    backupxcatdb
 	
-   Backup xCATdb 
+   Backup xCATdb
 
 =cut
 
@@ -529,9 +529,9 @@ sub backupxcatdb
 
 #-----------------------------------------------------------------------------
 
-=head3  mkpgusers 
+=head3  mkpgusers
 	
-         adds postgres user and group and xcatadm id 
+         adds postgres user and group and xcatadm id
          Only needed on AIX,  Linux install does this	
          Note this does not support postgresql 9.0 on AIX
 =cut
@@ -642,11 +642,11 @@ sub mkpgusers
 
 #-----------------------------------------------------------------------------
 
-=head3   runpostgrescmd  
+=head3   runpostgrescmd
 
 	
-  Run a commmand as the postgres id 
-  Input: command 
+  Run a commmand as the postgres id
+  Input: command
 
 =cut
 
@@ -665,12 +665,12 @@ sub runpostgrescmd
 
 #-----------------------------------------------------------------------------
 
-=head3   runpgcmd_chkoutput  
+=head3   runpgcmd_chkoutput
 
 	
-  Run a commmand as the postgres id 
+  Run a commmand as the postgres id
   Input: command
-  Output: return code 
+  Output: return code
   Note: this version checks for specific error conditions
 
 =cut
@@ -714,7 +714,7 @@ sub runpgcmd_chkoutput
 
 #-----------------------------------------------------------------------------
 
-=head3   initpgdb 
+=head3   initpgdb
 
 	
     Create the PostgreSQL database and setup the config files
@@ -737,7 +737,7 @@ sub initpgdb
     }
     &runpostgrescmd($cmd);
 
-    # insert  MN ip address and any -a addresses 
+    # insert  MN ip address and any -a addresses
     # in the # IPv4 local connections: stanza of
     # the /var/lib/pgsql/data/pg_hba.conf file
     # if it is not already there
@@ -802,7 +802,7 @@ sub initpgdb
         if ($::osname eq 'Linux')
         {
             $cmd = qq~ echo listen_addresses = \\'localhost,$::MN\\' >> $pgconf~;
-             if ($::listenaddrs) 
+             if ($::listenaddrs)
              {
                  $cmd = qq~ echo listen_addresses = \\'localhost,$::MN,$::listenaddrs\\' >> $pgconf~;
              }
@@ -863,12 +863,12 @@ sub initpgdb
 
 #-----------------------------------------------------------------------------
 
-=head3   pgstart 
+=head3   pgstart
 
 	
-    Start or restart the Postgresql server 
-    startflg = 0  start postgresql 
-    startflg = 1  restart postgresql 
+    Start or restart the Postgresql server
+    startflg = 0  start postgresql
+    startflg = 1  restart postgresql
 
 =cut
 
@@ -942,10 +942,10 @@ sub pgstart
 
 #-----------------------------------------------------------------------------
 
-=head3   pgreboot 
+=head3   pgreboot
 
 	
-    Setup for postgresql to start on reboot, only Linux 
+    Setup for postgresql to start on reboot, only Linux
 
 =cut
 
@@ -990,10 +990,10 @@ sub pgreboot
 
 #-----------------------------------------------------------------------------
 
-=head3    setupxcatdb 
+=head3    setupxcatdb
 	
-      Creates the xcatdb in Postgresql 
-      Add xcatadm to the database and make owner of the database 
+      Creates the xcatdb in Postgresql
+      Add xcatadm to the database and make owner of the database
 
 =cut
 
@@ -1162,7 +1162,7 @@ sub setupxcatdb
 
 #-----------------------------------------------------------------------------
 
-=head3   setupODBC 
+=head3   setupODBC
 	
          Will setup the ODBC interface to the ODBC. Only supported on Linux
 
@@ -1319,10 +1319,10 @@ sub setupODBC
 
 #-----------------------------------------------------------------------------
 
-=head3   createcfgloc 
+=head3   createcfgloc
 	
 		 Creates the cfgloc file which will be copied to cfgloc
-                 to run xCAT on PostgreSQL 
+                 to run xCAT on PostgreSQL
 
 =cut
 
@@ -1369,8 +1369,8 @@ sub createcfgloc
 
 #-----------------------------------------------------------------------------
 
-=head3   restorexcatdb 
-	   
+=head3   restorexcatdb
+	
 		Restores the database from ~/xcat-dbback and restarts the xcatd using
 	   PostgreSQL	
 	
