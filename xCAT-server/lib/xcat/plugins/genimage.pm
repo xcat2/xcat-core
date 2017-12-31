@@ -196,7 +196,7 @@ sub process_request {
         $postinstall_filename = $ref_linuximage_tab->{'postinstall'};
         if ($postinstall_filename ne "") {
             foreach my $rawfile (split ',', $postinstall_filename) {
-                my ($file,@args)=split(" ",$rawfile); 
+                my ($file,@args)=split(" ",$rawfile);
                 if (!-r $file) {
                     $callback->({ error => ["The postinstall_filename specified \'$file\' does not exist!"], errorcode => [1] });
                     return 1;
