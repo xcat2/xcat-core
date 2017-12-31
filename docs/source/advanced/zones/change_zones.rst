@@ -28,7 +28,7 @@ The following command will change zone1 such that root cannot ssh between the no
        sshbetweennodes=no
        sshkeydir=/etc/xcat/sshkeys/zone1/.ssh
 
-The following command will change zone1 to the default zone. 
+The following command will change zone1 to the default zone.
 
 **Note**: you must use the ``-f`` flag to force the change. There can only be one default zone in the ``zone`` table. ::
 
