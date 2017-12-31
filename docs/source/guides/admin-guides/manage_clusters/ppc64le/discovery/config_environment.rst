@@ -48,10 +48,10 @@ For hardware management with ipmi, add the following line::
 Verify the genesis packages
 ```````````````````````````
 
-The **xcat-genesis** packages should have been installed when xCAT was installed, but would cause problems if missing.  **xcat-genesis** packages are required to create the genesis root image to do hardware discovery and the genesis kernel sits in ``/tftpboot/xcat/``.  Verify that the ``genesis-scripts`` and ``genesis-base`` packages are installed: 
+The **xcat-genesis** packages should have been installed when xCAT was installed, but would cause problems if missing.  **xcat-genesis** packages are required to create the genesis root image to do hardware discovery and the genesis kernel sits in ``/tftpboot/xcat/``.  Verify that the ``genesis-scripts`` and ``genesis-base`` packages are installed:
 
 * **[RHEL/SLES]**: ``rpm -qa | grep -i genesis``
 
-* **[Ubuntu]**: ``dpkg -l | grep -i genesis`` 
+* **[Ubuntu]**: ``dpkg -l | grep -i genesis``
 
-If missing, install them from the ``xcat-deps`` package and run ``mknb ppc64`` to create the genesis network boot root image. 
+If missing, install them from the ``xcat-deps`` package and run ``mknb ppc64`` to create the genesis network boot root image.
