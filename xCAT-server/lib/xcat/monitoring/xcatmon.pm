@@ -19,9 +19,9 @@ use Sys::Hostname;
 
 #-------------------------------------------------------------------------------
 
-=head1  xCAT_monitoring:xcatmon  
+=head1  xCAT_monitoring:xcatmon
 =head2    Package Description
-   This is a xCAT monitoring plugin. The only thing that this plug-in does is 
+   This is a xCAT monitoring plugin. The only thing that this plug-in does is
    the node monitoring. To activate it simply do the following command:
       chtab pname=xCAT monitoring.nodestatmon=Y
 =cut
@@ -31,19 +31,19 @@ use Sys::Hostname;
 #--------------------------------------------------------------------------------
 
 =head3    start
-      This function gets called by the monitorctrl module when monstart command 
-     gets called and when xcatd starts.  
+      This function gets called by the monitorctrl module when monstart command
+     gets called and when xcatd starts.
 
     Arguments:
        p_nodes -- a pointer to an arrays of nodes to be monitored. null means all.
        scope -- the action scope, it indicates the node type the action will take place.
-                0 means localhost only. 
-                2 means both monservers and nodes, 
+                0 means localhost only.
+                2 means both monservers and nodes,
        callback -- the callback pointer for error and status displaying. It can be null.
     Returns:
-      (return code, message) 
-      if the callback is set, use callback to display the status and error. 
-     
+      (return code, message)
+      if the callback is set, use callback to display the status and error.
+
 =cut
 
 #--------------------------------------------------------------------------------
@@ -58,16 +58,16 @@ sub start {
 #--------------------------------------------------------------------------------
 
 =head3    stop
-      This function gets called by the monitorctrl module when monstop command gets called. 
+      This function gets called by the monitorctrl module when monstop command gets called.
     Arguments:
        p_nodes -- a pointer to an arrays of nodes to be stopped for monitoring. null means all.
        scope -- the action scope, it indicates the node type the action will take place.
-                0 means localhost only. 
-                2 means both monservers and nodes, 
+                0 means localhost only.
+                2 means both monservers and nodes,
        callback -- the callback pointer for error and status displaying. It can be null.
     Returns:
-      (return code, message) 
-      if the callback is set, use callback to display the status and error. 
+      (return code, message)
+      if the callback is set, use callback to display the status and error.
 =cut
 
 #--------------------------------------------------------------------------------
@@ -85,7 +85,7 @@ sub stop {
 =head3    supportNodeStatusMon
     This function is called by the monitorctrl module to check
     if this product can help monitoring and returning the node status.
-    
+
     Arguments:
         none
     Returns:
@@ -105,17 +105,17 @@ sub supportNodeStatusMon {
 =head3   startNodeStatusMon
     This function is called by the monitorctrl module when monstart gets called and
     when xcatd starts. It starts monitoring the node status and feed them back
-    to xCAT.  
+    to xCAT.
     Arguments:
        p_nodes -- a pointer to an arrays of nodes to be monitored. null means all.
        scope -- the action scope, it indicates the node type the action will take place.
-                0 means localhost only.  
-                2 means both monservers and nodes, 
+                0 means localhost only.
+                2 means both monservers and nodes,
        callback -- the callback pointer for error and status displaying. It can be null.
     note: p_nodes and scope are ignored by this plugin.
     Returns:
-      (return code, message) 
-      if the callback is set, use callback to display the status and error. 
+      (return code, message)
+      if the callback is set, use callback to display the status and error.
 =cut
 
 #--------------------------------------------------------------------------------
@@ -198,17 +198,17 @@ sub startNodeStatusMon
 
 =head3   stopNodeStatusMon
     This function is called by the monitorctrl module when monstop command is issued.
-    It stops feeding the node status info back to xCAT. 
+    It stops feeding the node status info back to xCAT.
     Arguments:
        p_nodes -- a pointer to an arrays of nodes to stopped for monitoring. null means all.
        scope -- the action scope, it indicates the node type the action will take place.
-                0 means localhost only. 
-                2 means both monservers and nodes, 
+                0 means localhost only.
+                2 means both monservers and nodes,
        callback -- the callback pointer for error and status displaying. It can be null.
     note: p_nodes and scope are ignored by this plugin.
     Returns:
-      (return code, message) 
-      if the callback is set, use callback to display the status and error. 
+      (return code, message)
+      if the callback is set, use callback to display the status and error.
 =cut
 
 #--------------------------------------------------------------------------------
@@ -248,15 +248,15 @@ sub stopNodeStatusMon {
 #--------------------------------------------------------------------------------
 
 =head3    config
-      This function configures the cluster for the given nodes.  
+      This function configures the cluster for the given nodes.
       This function is called by when monconfig command is issued or when xcatd starts
      on the service node. It will configure the cluster to include the given nodes within
-     the monitoring doamin. 
+     the monitoring doamin.
     Arguments:
        p_nodes -- a pointer to an arrays of nodes to be added for monitoring. none means all.
        scope -- the action scope, it indicates the node type the action will take place.
-                0 means localhost only. 
-                2 means both monservers and nodes, 
+                0 means localhost only.
+                2 means both monservers and nodes,
        callback -- the callback pointer for error and status displaying. It can be null.
     Returns:
        (error code, error message)
@@ -273,14 +273,14 @@ sub config {
 #--------------------------------------------------------------------------------
 
 =head3    deconfig
-      This function de-configures the cluster for the given nodes.  
-      This function is called by the monitorctrl module when nodes are removed 
+      This function de-configures the cluster for the given nodes.
+      This function is called by the monitorctrl module when nodes are removed
       from the xCAT cluster. It should remove the nodes from the product for monitoring.
     Arguments:
        p_nodes -- a pointer to an arrays of nodes to be removed for monitoring. none means all.
        scope -- the action scope, it indicates the node type the action will take place.
-                0 means localhost only. 
-                2 means both monservers and nodes, 
+                0 means localhost only.
+                2 means both monservers and nodes,
        callback -- the callback pointer for error and status displaying. It can be null.
     Returns:
        (error code, error message)
@@ -303,7 +303,7 @@ sub deconfig {
     Arguments:
        none.
     Returns:
-       a hash that has the node status. The format is: 
+       a hash that has the node status. The format is:
           {alive=>[node1, node3,...], unreachable=>[node4, node2...], unknown=>[node8, node101...]}
 =cut
 
@@ -384,7 +384,7 @@ sub getMonNodesStatus {
 =head3    setNodeStatusAttributes
       This function will update the status column of the nodelist table with the new node status.
     Arguments:
-       status -- a hash pointer of the node status. A key is a status string. The value is 
+       status -- a hash pointer of the node status. A key is a status string. The value is
                 an array pointer of nodes that have the same status.
                 for example: {alive=>["node1", "node1"], unreachable=>["node5","node100"]}
        force -- 1 force the input values to be set.
@@ -408,7 +408,7 @@ sub setNodeStatusAttributes {
 #--------------------------------------------------------------------------------
 
 =head3    processSettingChanges
-      This function gets called when the setting for this monitoring plugin 
+      This function gets called when the setting for this monitoring plugin
       has been changed in the monsetting table.
     Arguments:
        none.
@@ -429,7 +429,7 @@ sub processSettingChanges {
 
 =head3    getDiscription
       This function returns the detailed description of the plugin inluding the
-     valid values for its settings in the mon setting tabel. 
+     valid values for its settings in the mon setting tabel.
      Arguments:
         none
     Returns:
@@ -440,32 +440,32 @@ sub processSettingChanges {
 sub getDescription {
     return
       "  Description:
-    xcatmon provides node status monitoring using fping on AIX and nmap on Linux. 
-    It also provides application status monitoring. The status and the appstatus 
-    columns of the nodelist table will be  updated periodically  with the latest 
-    status values for the nodes.   Use  command 'monadd xcatmon -n' and then 
-    'monstart xcatmon'  to start monitoring. 
+    xcatmon provides node status monitoring using fping on AIX and nmap on Linux.
+    It also provides application status monitoring. The status and the appstatus
+    columns of the nodelist table will be  updated periodically  with the latest
+    status values for the nodes.   Use  command 'monadd xcatmon -n' and then
+    'monstart xcatmon'  to start monitoring.
   Settings:
-    ping-interval:  the number of minutes between each nmap/fping operation. 
+    ping-interval:  the number of minutes between each nmap/fping operation.
         The default value is 3.
-    apps: a list of comma separated application names whose status will be queried. 
-        For how to get the status of each app, look for app name in the key field 
+    apps: a list of comma separated application names whose status will be queried.
+        For how to get the status of each app, look for app name in the key field
         in a different row.
-    port: the application daemon port number, if not specified, use internal list, 
+    port: the application daemon port number, if not specified, use internal list,
         then /etc/services.
     group:  the name of a node group that needs to get the application status from.
-         If not specified, assume all the nodes in the nodelist table. 
+         If not specified, assume all the nodes in the nodelist table.
          To specify more than one groups, use group=a,group=b format.
     cmd: the command that will be run locally on mn or sn.
     lcmd: the command that will be run locally on the mn only.
     dcmd: the command that will be run distributed on the nodes using xdsh.
 
-       For commands specified by 'cmd' and 'lcmd', the input of is a list of comma 
+       For commands specified by 'cmd' and 'lcmd', the input of is a list of comma
        separated node names, the output must be in the following format:
          node1:string1
          node2:string2
          ...
-       For the command specified by 'dcmd', no input is needed, the output can be a 
+       For the command specified by 'dcmd', no input is needed, the output can be a
        string.";
 
 }
