@@ -4,7 +4,7 @@ B<tabdump> - display an xCAT database table in CSV format.
 
 =head1 SYNOPSIS
 
-B<tabdump> 
+B<tabdump>
 
 B<tabdump> [B<-d>] [I<table>]
 
@@ -42,12 +42,12 @@ Show descriptions of the tables, instead of the contents of the tables.  If a ta
 
 =item B<-n>
 
-Shows the most recent number of entries as supplied on the -n flag from the auditlog or eventlog table.  
+Shows the most recent number of entries as supplied on the -n flag from the auditlog or eventlog table.
 
 =item B<-f>
 
 File name or path to file in which to dump the table. Without this the table is dumped
-to stdout.  Using the -f flag allows the table to be dumped one record at a time. If tables are very large, dumping to stdout can cause problems such as running out of memory. 
+to stdout.  Using the -f flag allows the table to be dumped one record at a time. If tables are very large, dumping to stdout can cause problems such as running out of memory.
 
 =item B<-w> I<'attr==val'> B<-w> I<'attr=~val'> ...
 
@@ -71,10 +71,10 @@ Operator descriptions:
 
 =over 3
 
-=item 0. 
+=item 0.
 The command completed successfully.
 
-=item 1. 
+=item 1.
 An error has occurred.
 
 =back
