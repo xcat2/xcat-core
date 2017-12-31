@@ -45,10 +45,10 @@ By setting properties on the Management Node before installing the xCAT software
 
    #. To set the hostname of *xcatmn.cluster.com*: ::
 
-       hostname xcatmn.cluster.com 
+       hostname xcatmn.cluster.com
 
-   #. Add the hostname to the ``/etc/hostname`` and ``/etc/hosts`` to persist the hostname on reboot. 
-   
+   #. Add the hostname to the ``/etc/hostname`` and ``/etc/hosts`` to persist the hostname on reboot.
+
    #. Reboot or run ``service hostname restart`` to allow the hostname to take effect and verify the hostname command returns correctly:
 
         * ``hostname``
@@ -56,4 +56,4 @@ By setting properties on the Management Node before installing the xCAT software
 
 #. Reduce the risk of the Management Node IP address being lost by setting the interface IP to **STATIC** in the ``/etc/network/interfaces`` configuration file.
 
-#. Configure any domain search strings and nameservers using the ``resolvconf`` command. 
+#. Configure any domain search strings and nameservers using the ``resolvconf`` command.
