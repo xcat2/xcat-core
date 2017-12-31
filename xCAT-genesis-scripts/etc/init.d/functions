@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# "SystemImager" 
+# "SystemImager"
 #
 #  Copyright (C) 1999-2011 Brian Elliott Finley <brian@thefinleys.com>
 #
@@ -50,8 +50,8 @@ logmsg() {
     # this is good for envs that have bad consoles
     local FILE=/tmp/si.log
     echo $@ >> $FILE || shellout
-    
-    # if syslog is running, log to it.  In order to avoid hangs we have to 
+
+    # if syslog is running, log to it.  In order to avoid hangs we have to
     # add the "logger: " part in case $@ is ""
     if [ ! -z $USELOGGER ] ;
         then logger "logger: $@"
@@ -120,45 +120,45 @@ write_variables() {
 
     # pass all variables set here on to the hostname.sh script
     rm -f /tmp/variables.txt
-    
+
     echo "HOSTNAME=$HOSTNAME"                   >> /tmp/variables.txt || shellout
     echo "DOMAINNAME=$DOMAINNAME"               >> /tmp/variables.txt
-    
+
     echo "DEVICE=$DEVICE"                       >> /tmp/variables.txt
     echo "IPADDR=$IPADDR"                       >> /tmp/variables.txt
     echo "NETMASK=$NETMASK"                     >> /tmp/variables.txt
     echo "NETWORK=$NETWORK"                     >> /tmp/variables.txt
     echo "BROADCAST=$BROADCAST"                 >> /tmp/variables.txt
-    
+
     echo "GATEWAY=$GATEWAY"                     >> /tmp/variables.txt
     echo "GATEWAYDEV=$GATEWAYDEV"               >> /tmp/variables.txt
-    
+
     echo "IMAGESERVER=$IMAGESERVER"             >> /tmp/variables.txt
     echo "IMAGENAME=$IMAGENAME"                 >> /tmp/variables.txt
-    
+
     echo "LOG_SERVER=$LOG_SERVER"               >> /tmp/variables.txt
     echo "LOG_SERVER_PORT=$LOG_SERVER_PORT" 	>> /tmp/variables.txt
     echo "USELOGGER=$USELOGGER"                 >> /tmp/variables.txt
-    
+
     echo "TMPFS_STAGING=$TMPFS_STAGING"         >> /tmp/variables.txt
-    
+
     echo "SSH=$SSH"	           	 		        >> /tmp/variables.txt
     echo "SSHD=$SSHD"	            		    >> /tmp/variables.txt
     echo "SSH_USER=$SSH_USER"	            	>> /tmp/variables.txt
     echo "SSH_DOWNLOAD_URL=$SSH_DOWNLOAD_URL"	>> /tmp/variables.txt
-    
+
     echo "FLAMETHROWER_DIRECTORY_PORTBASE=$FLAMETHROWER_DIRECTORY_PORTBASE"	>> /tmp/variables.txt
-    
+
     echo "MONITOR_SERVER=$MONITOR_SERVER"       >> /tmp/variables.txt
     echo "MONITOR_PORT=$MONITOR_PORT"           >> /tmp/variables.txt
     echo "MONITOR_CONSOLE=$MONITOR_CONSOLE"     >> /tmp/variables.txt
-    
+
     echo "BITTORRENT=$BITTORRENT"                           >> /tmp/variables.txt
     echo "BITTORRENT_STAGING=$BITTORRENT_STAGING"           >> /tmp/variables.txt
     echo "BITTORRENT_POLLING_TIME=$BITTORRENT_POLLING_TIME" >> /tmp/variables.txt
     echo "BITTORRENT_SEED_WAIT=$BITTORRENT_SEED_WAIT"       >> /tmp/variables.txt
     echo "BITTORRENT_UPLOAD_MIN=$BITTORRENT_UPLOAD_MIN"     >> /tmp/variables.txt
-    
+
     echo "GROUPNAMES=\"$GROUPNAMES\""               >> /tmp/variables.txt
     echo "GROUP_OVERRIDES=\"$GROUP_OVERRIDES\""     >> /tmp/variables.txt
 }
@@ -217,12 +217,12 @@ shellout() {
 #
 ################################################################################
 #
-#   Description:  
+#   Description:
 #   Count the specified number, printing each number, and exit only the count
-#   loop when <ctrl>+<c> is hit (SIGINT, or Signal 2).  Thanks to 
+#   loop when <ctrl>+<c> is hit (SIGINT, or Signal 2).  Thanks to
 #   CCB <ccb@acm.org> for this chunk of code.  -BEF-
 #
-#   Usage: 
+#   Usage:
 #   count_loop 35
 #   count_loop $ETHER_SLEEP
 #
@@ -258,7 +258,7 @@ get_torrents_directory() {
 
     if [ ! -z $FLAMETHROWER_DIRECTORY_PORTBASE ]; then
         #
-        # We're using Multicast, so we should already have a directory 
+        # We're using Multicast, so we should already have a directory
         # full of scripts.  Break out here, so that we don't try to pull
         # the scripts dir again (that would be redundant).
         #
@@ -285,7 +285,7 @@ get_scripts_directory() {
 
     if [ ! -z $FLAMETHROWER_DIRECTORY_PORTBASE ]; then
         #
-        # We're using Multicast, so we should already have a directory 
+        # We're using Multicast, so we should already have a directory
         # full of scripts.  Break out here, so that we don't try to pull
         # the scripts dir again (that would be redundant).
         #
@@ -320,7 +320,7 @@ get_flamethrower_directory() {
 #
 ################################################################################
 #
-# Usage: 
+# Usage:
 #
 #   MODULE_NAME=my_module   # Required
 #   DIR=/my/destination/dir # Required
@@ -437,7 +437,7 @@ flamethrower_client() {
 
     # done
     logmsg 'finished!'
-    logmsg 
+    logmsg
 
     # Unset vars, so next module (which may not have them set) won't use then unintentially
     unset TTL
@@ -635,7 +635,7 @@ get_boel_binaries_tarball() {
 ################################################################################
 #
 # Parse tmpfs options from /proc/cpuinfo
-# 
+#
 parse_tmpfs_opts() {
     logmsg
     logmsg parse_tmpfs_opts
@@ -947,16 +947,16 @@ start_network() {
 
         ### try dhcp ###
         logmsg "IP Address not set with pre-boot settings."
-        
+
         ### BEGIN ether sleep ###
         # Give the switch time to start passing packets.  Some switches won't
         # forward packets until 30 seconds or so after an interface comes up.
         # This means the dhcp server won't even get the request for 30 seconds.
         # Many ethernet cards aren't considered "up" by the switch until the
         # driver is loaded.  Because the driver is compiled directly into the
-        # kernel here, the driver is definitely loaded at this point. 
-        # 
-        # Default is 0.  The recommended setting of ETHER_SLEEP=35 can be set 
+        # kernel here, the driver is definitely loaded at this point.
+        #
+        # Default is 0.  The recommended setting of ETHER_SLEEP=35 can be set
         # with a local.cfg file. -BEF-
         #
         [ -z $ETHER_SLEEP ] && ETHER_SLEEP=0
@@ -968,11 +968,11 @@ start_network() {
         count_loop $ETHER_SLEEP
         logmsg
         ### END ether sleep ###
-        
+
         # create directory to catch dhcp information
         DHCLIENT_DIR="/var/state/dhcp"
         mkdir -p $DHCLIENT_DIR
-        
+
         # combine systemimager code to the stock debian dhclient-script
         # and make executable
         cat /etc/dhclient-script.si-prefix \
@@ -982,7 +982,7 @@ start_network() {
 
         # be sure AF_PACKET is supported in the kernel
         [ -f /lib/modules/`uname -r`/modules.dep ] && modprobe af_packet &> /dev/null
-        
+
         # get info via dhcp
         logmsg
         logmsg "dhclient"
@@ -993,7 +993,7 @@ start_network() {
             logmsg
             shellout
         fi
-        
+
         if [ -z ${DEVICE} ]; then
             # Figure out which interface actually got configured.
             # Suggested by James Oakley.
@@ -1001,13 +1001,13 @@ start_network() {
             DEVICE=`grep interface ${DHCLIENT_DIR}/dhclient.leases | \
                 sed -e 's/^.*interface "//' -e 's/";//'`
         fi
-        
-        # read dhcp info in as variables -- this file will be created by 
+
+        # read dhcp info in as variables -- this file will be created by
         # the /etc/dhclient-start script that is run automatically by
         # dhclient.
         . /tmp/dhcp_info.${DEVICE} || shellout
         ### END dhcp ###
-        
+
         # Re-read configuration information from local.cfg to over-ride
         # DHCP settings, if necessary. -BEF-
         if [ -f /tmp/local.cfg ]; then
@@ -1031,9 +1031,9 @@ ping_test() {
     logmsg ping_test
 
     # The reason we don't ping the IMAGESERVER if FLAMETHROWER_DIRECTORY_PORTBASE
-    # is set, is that the client may never be given, know, or need to know, the 
+    # is set, is that the client may never be given, know, or need to know, the
     # IP address of the imageserver because the client is receiving _all_ of it's
-    # data via multicast, which is more like listening to a channel, as compared 
+    # data via multicast, which is more like listening to a channel, as compared
     # with connecting directly to a server.  -BEF-
     #
     if [ ! -z "$FLAMETHROWER_DIRECTORY_PORTBASE" ]; then
@@ -1042,7 +1042,7 @@ ping_test() {
     else
         PING_DESTINATION=$IMAGESERVER
         HOST_TYPE="SystemImager server"
-    fi 
+    fi
     logmsg
     logmsg "Pinging your $HOST_TYPE to ensure we have network connectivity."
     logmsg
@@ -1128,10 +1128,10 @@ get_hostname_by_hosts_file() {
 
         # add escape characters to IPADDR so that it can be used to find HOSTNAME below
         IPADDR_ESCAPED=`echo "$IPADDR" | sed -e 's/\./\\\./g'`
-        
+
         # get HOSTNAME by parsing hosts file
         logmsg "Searching for this machine's hostname in $FILE by IP: $IPADDR"
-        
+
         # Command summary by line:
         # 1: convert tabs to spaces -- contains a literal tab: <ctrl>+<v> then <tab>
         # 2: remove comments
@@ -1141,7 +1141,7 @@ get_hostname_by_hosts_file() {
         # 6: strip out space(s) before first hostname on line
         # 7: remove any aliases on line
         # 8: remove domain name, leaving naught but the hostname, naked as the day it were born
-        
+
         HOSTNAME=`
             sed 's/[[:space:]]/ /g' $FILE | \
             grep -v '^ *#' | \
@@ -1171,7 +1171,7 @@ get_hostname_by_dns() {
 ################################################################################
 #
 get_base_hostname() {
-    BASE_HOSTNAME=`echo $HOSTNAME | sed "s/[.0-9].*$//"` 
+    BASE_HOSTNAME=`echo $HOSTNAME | sed "s/[.0-9].*$//"`
 }
 #
 ################################################################################
@@ -1199,7 +1199,7 @@ choose_autoinstall_script() {
 
     #
     # Get the base hostname for the last attempt at choosing an autoinstall
-    # script.  For example, if the hostname is compute99, then try to get 
+    # script.  For example, if the hostname is compute99, then try to get
     # compute.master. -BEF-
     #
     get_base_hostname
@@ -1208,7 +1208,7 @@ choose_autoinstall_script() {
     # server). -AR-
     get_group_name
 
-    # 
+    #
     # If SCRIPTNAME is specified as a kernel append, or via local.cfg, then use that script.
     #
     if [ ! -z $SCRIPTNAME ]; then
@@ -1218,7 +1218,7 @@ choose_autoinstall_script() {
         SCRIPTNAMES="${SCRIPTS_DIR}/${SCRIPTNAME} ${SCRIPTS_DIR}/${SCRIPTNAME}.sh ${SCRIPTS_DIR}/${SCRIPTNAME}.master"
 
     else
-        # 
+        #
         # If SCRIPTNAME was not specified, choose one, in order of preference.  First hit wins.
         # Order of preference is:
         #   HOSTNAME                (i.e. node001.sh)
@@ -1332,7 +1332,7 @@ run_pre_install_scripts() {
 
         # Now, to get rid of those pesky newlines. -BEF-
         PRE_INSTALL_SCRIPTS=`echo $PRE_INSTALL_SCRIPTS | tr '\n' ' '`
-        
+
         if [ ! -z "`echo ${PRE_INSTALL_SCRIPTS}|sed 's/ //'`" ]; then
 
             for PRE_INSTALL_SCRIPT in `unique $PRE_INSTALL_SCRIPTS`
@@ -1382,7 +1382,7 @@ run_post_install_scripts() {
 
         # Now, to get rid of those pesky newlines. -BEF-
         POST_INSTALL_SCRIPTS=`echo $POST_INSTALL_SCRIPTS | tr '\n' ' '`
-        
+
         if [ ! -z "`echo ${POST_INSTALL_SCRIPTS}|sed 's/ //'`" ]; then
 
             mkdir -p /a/tmp/post-install/ || shellout
@@ -1434,7 +1434,7 @@ start_sshd() {
 
     # must be owned by root
     chown -R 0.0 /root/
-        
+
     # create a private host key for this autoinstall client
     logmsg
     logmsg "Using ssh-keygen to create this hosts private key"
@@ -1516,7 +1516,7 @@ start_ssh() {
         CMD="ssh -N -l $SSH_USER -n -f -L873:127.0.0.1:873 $IMAGESERVER $REDIRECTION_OPTIONS"
         logmsg $CMD
         $CMD || shellout
-        
+
         # Since we're using SSH, change the $IMAGESERVER variable to reflect
         # the forwarded connection.
         IMAGESERVER=127.0.0.1
@@ -1534,7 +1534,7 @@ start_ssh() {
             logmsg
             get_hostname_by_dns
         fi
-        
+
         if [ -z $HOSTNAME ]; then
             HOST_OR_IP=$IPADDR
         else
@@ -1601,7 +1601,7 @@ send_monitor_msg() {
             cpu=$(echo `cat /proc/cpuinfo | grep "cpu\|clock\|model name\|cpu MHz" | grep -v "cpu family" | sed -ne '1,2p' | sed "s/.*: //" | sed "s/^\([0-9\.]*\)MHz$/(\1 MHz)/" | sed "s/^\([0-9\.]*\)$/(\1 MHz)/"` | sed "s/\(MHz)\)/\1 |/g" | sed "s/ |$//")
         fi
 
-        # Collect the number of CPUs.     
+        # Collect the number of CPUs.
         if [ -z "$ncpus" ]; then
             ncpus=$((`cat /proc/cpuinfo | grep "^processor" | sed -n '$p' | sed "s/.*: \([0-9]\)*$/\1/"` + 1))
         fi
@@ -1720,7 +1720,7 @@ start_report_task() {
         # Evaluate status.
         CURR_SIZE=$(($TOT - $DISKSIZE))
         status=`echo "scale=2; $CURR_SIZE * 100 / $IMAGESIZE" | bc`
-        if [ `echo "scale=2; $status <= 0" | bc` -eq 1 ]; then 
+        if [ `echo "scale=2; $status <= 0" | bc` -eq 1 ]; then
             status=1
         elif [ `echo "scale=2; $status >= 100" | bc` -eq 1 ]; then
             status=99
@@ -1728,7 +1728,7 @@ start_report_task() {
 
         # Send status and bandwidth to the monitor server.
         send_monitor_msg "status=$status:speed=$speed"
-        
+
         # Wait $REPORT_INTERVAL sec between each report -AR-
         sleep $REPORT_INTERVAL
     done
@@ -1764,14 +1764,14 @@ beep_incessantly() {
     { while :;
         do
             echo -n -e "\\a"
-            if [ $SECONDS -lt 60 ]; then 
+            if [ $SECONDS -lt 60 ]; then
                 logmsg "I have been done for $SECONDS seconds.  Reboot me already!"
             else
                 MINUTES=`echo "$SECONDS / 60"|bc`
                 MINUTES_X_SIXTY=`echo "$MINUTES * 60"|bc`
-                if [ "$MINUTES_X_SIXTY" = "$SECONDS" ]; then 
+                if [ "$MINUTES_X_SIXTY" = "$SECONDS" ]; then
                     logmsg "I have been done for $MINUTES minutes now.  Reboot me already!"
-                fi  
+                fi
             fi
             sleep 1
             SECONDS=`echo "$SECONDS + 1"|bc`
