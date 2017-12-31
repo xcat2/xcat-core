@@ -19,7 +19,7 @@ SYNOPSIS
 ********
 
 
-\ **imgexport [-h| -**\ **-help]**\ 
+\ **imgexport [-h| -**\ **-help]**\
 
 \ **imgexport**\  \ *image_name*\  [\ *destination*\ ] [[\ **-e | -**\ **-extra**\  \ *file:dir*\ ] ... ] [\ **-p | -**\ **-postscripts**\  \ *node_name*\ ] [\ **-v | -**\ **-verbose**\ ]
 
@@ -72,40 +72,40 @@ OPTIONS
 
 
 
-\ **-e|-**\ **-extra**\  \ *srcfile:destdir*\ 
- 
+\ **-e|-**\ **-extra**\  \ *srcfile:destdir*\
+
  Pack up extra files. If \ *destdir*\  is omitted, the destination directory will be the same as the source directory.
- 
 
 
-\ **-h|-**\ **-help**\ 
- 
+
+\ **-h|-**\ **-help**\
+
  Display usage message.
- 
 
 
-\ **-p|-**\ **-postscripts**\  \ *node_name*\ 
- 
+
+\ **-p|-**\ **-postscripts**\  \ *node_name*\
+
  Get the names of the postscripts and postbootscripts for the given node and pack them into the image.
- 
 
 
-\ **-v|-**\ **-verbose**\ 
- 
+
+\ **-v|-**\ **-verbose**\
+
  Verbose output.
- 
 
 
-\ *image_name*\ 
- 
+
+\ *image_name*\
+
  The name of the image. Use \ **lsdef -t osimage**\  to find out all the image names.
- 
 
 
-\ *destination*\ 
- 
+
+\ *destination*\
+
  The output bundle file name.
- 
+
 
 
 
