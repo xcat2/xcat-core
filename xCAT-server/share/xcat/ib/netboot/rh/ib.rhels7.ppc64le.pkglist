@@ -4,7 +4,7 @@ tcl
 tk
 tcsh
 gcc-gfortran
-lsof  
+lsof
 libnl
 libnl3
 libxml2-python
