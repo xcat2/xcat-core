@@ -19,7 +19,7 @@ SYNOPSIS
 ********
 
 
-\ **RHEV specific :**\ 
+\ **RHEV specific :**\
 
 
 \ **rmhypervisor**\  \ *noderange*\  [\ **-f**\ ]
@@ -39,10 +39,10 @@ OPTIONS
 
 
 
-\ **-f**\ 
- 
+\ **-f**\
+
  If \ **-f**\  is specified, the host will be deactivated to maintenance before the removing.
- 
+
 
 
 
@@ -63,13 +63,13 @@ EXAMPLES
 
 
 1. To remove the host 'host1', enter:
- 
- 
+
+
  .. code-block:: perl
- 
+
    rmhypervisor host1
- 
- 
+
+
 
 
 
