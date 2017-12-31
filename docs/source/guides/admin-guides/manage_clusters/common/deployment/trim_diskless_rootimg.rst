@@ -6,7 +6,7 @@ To reduce the memory and boot-up time for the diskless node, the initrd and root
 Exclude list
 ------------
 
-xCAT provides an attribute ``exlist`` in the **osimage** object definition, that allows the user to select files to exclude when building the ``rootimg.gz`` file for the diskless node. 
+xCAT provides an attribute ``exlist`` in the **osimage** object definition, that allows the user to select files to exclude when building the ``rootimg.gz`` file for the diskless node.
 
 
 Take the osimage **sles12.1-ppc64le-netboot-compute** for example::
@@ -29,7 +29,7 @@ The following is a sample of ``exlist`` file ::
   +./usr/share/X11/locale/C*
   ...
 
-The content above presents some syntax supported in exlist file: 
+The content above presents some syntax supported in exlist file:
 
 * Exclude files::
 
@@ -54,10 +54,10 @@ The content above presents some syntax supported in exlist file:
   It is useful to include files following an exclude entry to quickly remove a larger set of files using a wildcard and then adding back the few necessary files using the + sign. In the above example, all the files and sub-directories matching the pattern ``/usr/share/locale/C*`` will be included in the ``rootimg.gz`` file.
 
 
-Customize the ``exlist`` file and the osimage definition 
+Customize the ``exlist`` file and the osimage definition
 --------------------------------------------------------
 
-Check the default exlist file and make sure: 
+Check the default exlist file and make sure:
 
  * all files and directories you do not want in the image will be excluded from the rootimg.
 
@@ -68,10 +68,10 @@ If you want to customize the osimage ``sles12.1-ppc64le-netboot-compute`` with y
 
   #create a customized exlist file based on the default one
   cp /opt/xcat/share/xcat/netboot/sles/compute.sles12.ppc64le.exlist /install/custom/netboot/sles/compute.sles12.ppc64le.exlist
-   
+
   #edit the newly created exlist file according to your need
-  vi /install/custom/netboot/sles/compute.sles12.ppc64le.exlist 
-   
+  vi /install/custom/netboot/sles/compute.sles12.ppc64le.exlist
+
   #specify the newly created exlist file in the osimage definition
   chdef -t osimage -o sles12.1-ppc64le-netboot-compute exlist=/install/custom/netboot/sles/compute.sles12.ppc64le.exlist
 
