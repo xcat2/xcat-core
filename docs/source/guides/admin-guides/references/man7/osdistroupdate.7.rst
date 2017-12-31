@@ -19,7 +19,7 @@ SYNOPSIS
 ********
 
 
-\ **osdistroupdate Attributes:**\   \ *dirpath*\ , \ *downloadtime*\ , \ *osdistroname*\ , \ *osupdatename*\ , \ *usercomment*\ 
+\ **osdistroupdate Attributes:**\   \ *dirpath*\ , \ *downloadtime*\ , \ *osdistroname*\ , \ *osupdatename*\ , \ *usercomment*\
 
 
 ***********
@@ -40,33 +40,33 @@ osdistroupdate Attributes:
 
 
 \ **dirpath**\  (osdistroupdate.dirpath)
- 
+
  Path to where OS distro update is stored. (e.g. /install/osdistroupdates/rhels6.2-x86_64-20120716-update)
- 
+
 
 
 \ **downloadtime**\  (osdistroupdate.downloadtime)
- 
+
  The timestamp when OS distro update was downloaded..
- 
+
 
 
 \ **osdistroname**\  (osdistroupdate.osdistroname)
- 
+
  The OS distro name to update. (e.g. rhels)
- 
+
 
 
 \ **osupdatename**\  (osdistroupdate.osupdatename)
- 
+
  Name of OS update. (e.g. rhn-update1)
- 
+
 
 
 \ **usercomment**\  (osdistroupdate.comments)
- 
+
  Any user-written notes.
- 
+
 
 
 
@@ -75,5 +75,5 @@ SEE ALSO
 ********
 
 
-\ **mkdef(1)**\ , \ **chdef(1)**\ , \ **lsdef(1)**\ , \ **rmdef(1)**\ 
+\ **mkdef(1)**\ , \ **chdef(1)**\ , \ **lsdef(1)**\ , \ **rmdef(1)**\
 
