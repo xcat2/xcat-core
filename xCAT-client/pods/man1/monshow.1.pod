@@ -19,7 +19,7 @@ This command displays the events that happened on the given nodes or the monitor
 
 =head1 PARAMETERS
 
-I<name> is the name of the monitoring plug-in module to be invoked. 
+I<name> is the name of the monitoring plug-in module to be invoked.
 
 I<noderange> is a list of nodes to be showed for. If omitted, the data for all the nodes will be displayed.
 
@@ -30,15 +30,15 @@ B<-h | --help>          Display usage message.
 
 B<-v | --version>      Command Version.
 
-B<-s>	shows the summary data. 
+B<-s>	shows the summary data.
 
 B<-t>	specifies a range of time for the data, The default is last 60 minutes. For example -t 6-4, it will display the data from last 6 minutes to 4 minutes; If it is -t 6, it will display the data from last 6 minutes until now.
 
-B<-a>	specifies a comma-separated list of attributes or metrics names. The default is all. 
+B<-a>	specifies a comma-separated list of attributes or metrics names. The default is all.
 
 B<-w>	specify one or multiple selection string that can be used to select events. The operators ==, !=, =,!,>,<,>=,<= are available.  Wildcards % and _ are supported in the pattern string. % allows you to match any string of any length(including zero length) and _ allows you to match on a single character. The valid attributes are eventtype, monitor, monnode, application, component, id, severity, message, rawdata, comments. Valid severity are: Informational, Warning, Critical.
 
-Operator descriptions: 
+Operator descriptions:
 
 =over 10
 
