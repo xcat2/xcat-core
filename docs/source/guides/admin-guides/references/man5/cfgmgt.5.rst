@@ -19,7 +19,7 @@ SYNOPSIS
 ********
 
 
-\ **cfgmgt Attributes:**\   \ *node*\ , \ *cfgmgr*\ , \ *cfgserver*\ , \ *roles*\ , \ *comments*\ , \ *disable*\ 
+\ **cfgmgt Attributes:**\   \ *node*\ , \ *cfgmgr*\ , \ *cfgserver*\ , \ *roles*\ , \ *comments*\ , \ *disable*\
 
 
 ***********
@@ -36,40 +36,40 @@ cfgmgt Attributes:
 
 
 
-\ **node**\ 
- 
+\ **node**\
+
  The node being managed by the cfgmgr service
- 
 
 
-\ **cfgmgr**\ 
- 
+
+\ **cfgmgr**\
+
  The name of the configuration manager service.  Currently 'chef' and 'puppet' are supported services.
- 
 
 
-\ **cfgserver**\ 
- 
+
+\ **cfgserver**\
+
  The xCAT node name of the chef server or puppet master
- 
 
 
-\ **roles**\ 
- 
+
+\ **roles**\
+
  The roles associated with this node as recognized by the cfgmgr for the software that is to be installed and configured.  These role names map to chef recipes or puppet manifest classes that should be used for this node.  For example, chef OpenStack cookbooks have roles such as mysql-master,keystone, glance, nova-controller, nova-conductor, cinder-all.
- 
 
 
-\ **comments**\ 
- 
+
+\ **comments**\
+
  Any user-written notes.
- 
 
 
-\ **disable**\ 
- 
+
+\ **disable**\
+
  Set to 'yes' or '1' to comment out this row.
- 
+
 
 
 
@@ -78,5 +78,5 @@ SEE ALSO
 ********
 
 
-\ **nodels(1)**\ , \ **chtab(8)**\ , \ **tabdump(8)**\ , \ **tabedit(8)**\ 
+\ **nodels(1)**\ , \ **chtab(8)**\ , \ **tabdump(8)**\ , \ **tabedit(8)**\
 
