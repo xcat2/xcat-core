@@ -8,17 +8,17 @@ B<lsve> [B<-t> I<type>] [B<-m> I<manager>] [B<-o> I<object>]
 
 =head1 DESCRIPTION
 
-The B<lsve> command can be used to list a virtual environment for 
+The B<lsve> command can be used to list a virtual environment for
 'Data Center', 'Cluster', 'Storage Domain', 'Network' and 'Template' objects.
 
-The mandatory parameter B<-m> I<manager> is used to specify the address of the 
+The mandatory parameter B<-m> I<manager> is used to specify the address of the
 manager of virtual environment. xCAT needs it to access the RHEV manager.
 
-The mandatory parameter B<-t> I<type> is used to specify the type of the target 
+The mandatory parameter B<-t> I<type> is used to specify the type of the target
 object.
 
-Basically, B<lsve> command supports three types of object: B<dc>, B<cl>, B<sd>, B<nw> 
-and B<tpl>. 
+Basically, B<lsve> command supports three types of object: B<dc>, B<cl>, B<sd>, B<nw>
+and B<tpl>.
 
 The parameter B<-o object> is used to specify which object to list. If no B<-o> is specified,
 all the objects with the B<-t> type will be displayed.
@@ -31,7 +31,7 @@ all the objects with the B<-t> type will be displayed.
 Display usage message.
 
 =item B<-m>
-Specify the manager of the virtual environment. 
+Specify the manager of the virtual environment.
 
 For RHEV, the FQDN (Fully Qualified Domain Name) of the rhev manager have to be specified.
 
