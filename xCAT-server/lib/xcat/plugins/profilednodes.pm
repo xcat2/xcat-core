@@ -4,7 +4,7 @@
 =head1
 
     xCAT plugin to support Profiled nodes management
-    
+
 =cut
 
 #-------------------------------------------------------
@@ -327,14 +327,14 @@ sub validate_args {
 
 #-------------------------------------------------------
 
-=head3 nodeimport 
+=head3 nodeimport
 
-    Description : 
+    Description :
     Create profiled nodes by importing hostinfo file.
     This sub maps to request "nodeimport", we need to call this command from CLI like following steps:
     # ln -s /opt/xcat/bin/xcatclientnnr /opt/xcat/bin/nodeimport
-    # nodeimport file=/root/hostinfo.file networkprofile=network_cn imageprofile=rhel63_cn hardwareprofile=ipmi groups=group1,group2 
-    
+    # nodeimport file=/root/hostinfo.file networkprofile=network_cn imageprofile=rhel63_cn hardwareprofile=ipmi groups=group1,group2
+
     The hostinfo file should be written like: (MAC address is mandatory attribute)
     # Auto generate hostname for this node entry.
     __hostname__:
@@ -354,9 +354,9 @@ sub nodeimport {
     xCAT::MsgUtils->message('S', "Import profiled nodes through hostinfo file.");
 
     my $helpmsg = "nodeimport: create profiled nodes by importing hostinfo file.
-Usage: 
+Usage:
 \tnodeimport file=<hostinfo file> networkprofile=<networkprofile> imageprofile=<imageprofile> hostnameformat=<hostnameformat> [hardwareprofile=<hardwareprofile>] [groups=<groups>]
-\tnodeimport [-h|--help] 
+\tnodeimport [-h|--help]
 \tnodeimport {-v|--version}";
 
     my @enabledparams = ('file', 'groups', 'networkprofile', 'hardwareprofile', 'imageprofile', 'hostnameformat');
@@ -684,9 +684,9 @@ Usage:
 sub nodepurge {
     my $nodes = $request->{node};
     my $helpmsg = "nodepurge: Removes nodes from database and system configuration.
-Usage: 
+Usage:
 \tnodepurge <noderange>
-\tnodepurge [-h|--help] 
+\tnodepurge [-h|--help]
 \tnodepurge {-v|--version}";
 
     my $ret = validate_args($helpmsg);
@@ -753,9 +753,9 @@ sub noderefresh
 {
     my $nodes   = $request->{node};
     my $helpmsg = "noderefresh: Calls kit plugins for the nodes in the profile.
-Usage: 
+Usage:
 \tnoderefresh <noderange>
-\tnoderefresh [-h|--help] 
+\tnoderefresh [-h|--help]
 \tnoderefresh {-v|--version}";
 
     if (!$nodes) {
@@ -790,9 +790,9 @@ Usage:
 sub nodechprofile {
     my $nodes   = $request->{node};
     my $helpmsg = "nodechprofile: Update node profiles for profiled nodes.
-Usage: 
+Usage:
 \tnodechprofile <noderange> [networkprofile=<networkprofile>] [imageprofile=<imageprofile>] [hardwareprofile=<hardwareprofile>]
-\tnodechprofile [-h|--help] 
+\tnodechprofile [-h|--help]
 \tnodechprofile {-v|--version}";
     if (!$nodes) {
         setrsp_infostr($helpmsg);
@@ -1106,7 +1106,7 @@ sub noderegenips
     my $nodes   = $request->{node};
     my $helpmsg = "noderegenips: Regenerate nodes IP addresses.
 Usage:
-\tnoderegenips <noderange> [nics=<eth0,eth1...>] 
+\tnoderegenips <noderange> [nics=<eth0,eth1...>]
 \tnoderegenips [-h|--help]
 \tnoderegenips {-v|--version}";
     if (!$nodes) {
@@ -1316,9 +1316,9 @@ sub nodeaddunmged
 {
     xCAT::MsgUtils->message("Adding a unmanaged node.");
     my $helpmsg = "nodeaddunmged: Creates an unmanaged node specifying the node name and IP address
-Usage: 
+Usage:
 \tnodeaddunmged hostname<hostname> ip=<ip>
-\tnodeaddunmged [-h|--help] 
+\tnodeaddunmged [-h|--help]
 \tnodeaddunmged {-v|--version}";
 
     my @enabledparams = ('hostname', 'ip');
@@ -1400,9 +1400,9 @@ sub nodechmac
 {
     xCAT::MsgUtils->message("Replacing node's mac address.");
     my $helpmsg = "nodechmac: updates the MAC address for a provisioning network interface.
-Usage: 
+Usage:
 \tnodechmac <node> mac=<mac>
-\tnodechmac [-h|--help] 
+\tnodechmac [-h|--help]
 \tnodechmac  {-v|--version}";
 
     my @enabledparams = ('mac');
@@ -1546,16 +1546,16 @@ Usage:
 
 #-------------------------------------------------------
 
-=head3 nodediscoverstart 
+=head3 nodediscoverstart
 
     Description : Start profiled nodes discovery. If already started, return a failure.
-                  User should specify networkprofile, hardwareprofile, 
+                  User should specify networkprofile, hardwareprofile,
                   imageprofile, hostnameformat, rack, chassis, height and u so
-                  that node's IP address will be generated automatcially 
+                  that node's IP address will be generated automatcially
                   according to networkprofile, node's hardware settings will
                   be set according to hardware profile, node's os settings will
-                  be set according to image profile, node's hostname will be 
-                  set according to hostnameformat and rank. And other node's 
+                  be set according to image profile, node's hostname will be
+                  set according to hostnameformat and rank. And other node's
                   attribs will also be set according to rack, chassis, height and u.
     Arguments   : N/A
 
@@ -1566,9 +1566,9 @@ sub nodediscoverstart {
     xCAT::MsgUtils->message("Profiled nodes discovery started.");
 
     my $helpmsg = "nodediscoverstart: Start profiled nodes discovery.
-Usage: 
+Usage:
 \tnodediscoverstart networkprofile=<networkprofile> imageprofile=<imageprofile> hostnameformat=<hostnameformat> [hardwareprofile=<hardwareprofile>] [groups=<groups>] [rack=<rack>] [chassis=<chassis>] [height=<height>] [unit=<unit>] [rank=rank]
-\tnodediscoverstart [-h|--help] 
+\tnodediscoverstart [-h|--help]
 \tnodediscoverstart {-v|--version}
 ";
 
@@ -1708,7 +1708,7 @@ Usage:
 
 =head3  nodediscoverstop
 
-    Description : Stop profiled nodes auto discover. This action will remove the 
+    Description : Stop profiled nodes auto discover. This action will remove the
                   dababase flags.
     Arguments   : N/A
 
@@ -1718,9 +1718,9 @@ Usage:
 sub nodediscoverstop {
 
     my $helpmsg = "nodediscoverstop: stops node auto-discovery.
-Usage: 
+Usage:
 \tnodediscoverstop
-\tnodediscoverstop [-h|--help] 
+\tnodediscoverstop [-h|--help]
 \tnodediscoverstop {-v|--version}";
 
     my $ret = validate_args($helpmsg);
@@ -1771,9 +1771,9 @@ Usage:
 sub nodediscoverstatus {
 
     my $helpmsg = "nodediscoverstatus: detects if node discovery is running.
-Usage: 
+Usage:
 \tnodediscoverstatus
-\tnodediscoverstatus [-h|--help] 
+\tnodediscoverstatus [-h|--help]
 \tnodediscoverstatus {-v|--version}";
 
     my $ret = validate_args($helpmsg);
@@ -1803,9 +1803,9 @@ Usage:
 #-------------------------------------------------------
 sub nodediscoverls {
     my $helpmsg = "nodediscoverls: lists all discovered nodes using profiles.
-Usage: 
+Usage:
 \tnodediscoverls
-\tnodediscoverls [-h|--help] 
+\tnodediscoverls [-h|--help]
 \tnodediscoverls {-v|--version}";
 
     my $ret = validate_args($helpmsg);
@@ -1865,9 +1865,9 @@ Usage:
 
 =head3  findme
 
-    Description : The default interface for node discovery. 
-                  We must implement this method so that 
-                  profiled nodes's findme request can be answered 
+    Description : The default interface for node discovery.
+                  We must implement this method so that
+                  profiled nodes's findme request can be answered
                   while profiled nodes discovery is running.
     Arguments   : N/A
 
@@ -2074,7 +2074,7 @@ sub findme {
 
 =head3  gen_new_hostinfo_dict
 
-    Description : Generate full hostinfo dict 
+    Description : Generate full hostinfo dict
     Arguments   : hostinfo_dict_ref - The reference of hostinfo dict.
     Returns     : (returnvalue, returnmsg)
                   returnvalue - 0, stands for generate new hostinfo dict failed.
@@ -2352,13 +2352,13 @@ sub read_and_generate_hostnames {
 #-------------------------------------------------------
 
 =head3  validate_node_entries
-    
+
     Description : Validate the node entrie and generate proper attributes.
     Arguments   : N/A
     Returns     : (hostinfo_dict, invalid_records)
                   hostinfo_dict -  Reference of hostinfo dict. Key are hostnames and values is an attributes dict.
                   invalid_records - Reference of invalid records list.
-=cut    
+=cut
 
 #-------------------------------------------------------
 sub validate_node_entries {
@@ -2523,13 +2523,13 @@ sub validate_node_entries {
 #-------------------------------------------------------
 
 =head3  validate_node_entry
-    
+
     Description : Validate a node info hash.
     Arguments   : node_name - node hostname.
                   node_entry_ref - Reference of the node info hash.
     Returns     : errormsg
                       - undef: stands for no errror.
-                      - valid string: stands for the error message of validation.    
+                      - valid string: stands for the error message of validation.
 =cut
 
 #-------------------------------------------------------
@@ -2768,7 +2768,7 @@ sub validate_node_entry {
 #-------------------------------------------------------
 
 =head3  setrsp_invalidrecords
-    
+
     Description : Set response for processing invalid host records.
     Arguments   : recordsref - Refrence of invalid nodes list.
 
@@ -2805,7 +2805,7 @@ sub setrsp_invalidrecords
 #-------------------------------------------------------
 
 =head3  setrsp_errormsg
-    
+
     Description : Set response for error messages.
     Arguments   : errormsg - Error messages.
 
@@ -2825,7 +2825,7 @@ sub setrsp_errormsg
 #-------------------------------------------------------
 
 =head3  setrsp_infostr
-    
+
     Description : Set response for a info string.
     Arguments   : infostr - The info string..
 
@@ -2844,7 +2844,7 @@ sub setrsp_infostr
 #-------------------------------------------------------
 
 =head3  setrsp_progress
-    
+
     Description : Set response for running progress
     Arguments   : progress: the progress string.
 
@@ -2865,7 +2865,7 @@ sub setrsp_progress
 #-------------------------------------------------------
 
 =head3  setrsp_success
-    
+
     Description : Set response for successfully processed nodes.
     Arguments   : recordsref - Refrence of nodes list.
 
