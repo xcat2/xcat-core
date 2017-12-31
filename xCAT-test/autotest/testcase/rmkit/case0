@@ -62,7 +62,7 @@ check:rc==0
 check:output=~Kit mykits-1.0-1 was successfully added
 cmd:mkdef testimage -u profile=compute provmethod=install osarch=__GETNODEATTR($$CN,arch)__
 check:rc==0
-cmd:kitcompname=`lskit mykits-1.0-1 |grep kitcompname|awk -F= '{print $2}'`;addkitcomp -i testimage $kitcompname  
+cmd:kitcompname=`lskit mykits-1.0-1 |grep kitcompname|awk -F= '{print $2}'`;addkitcomp -i testimage $kitcompname
 check:rc==0
 check:output=~Assigning kit component
 cmd:rmkit -t mykits-1.0-1
