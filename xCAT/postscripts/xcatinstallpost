@@ -29,12 +29,12 @@ INSTALLNIC=`ip -o link|grep -i $MACADDR|awk  '{print $2}'|sed s/://`
 
 
 # the network between the node and MASTER might be not well configured and activated when running the PBS sometimes
-# need to make sure... 
+# need to make sure...
 RETRY=0
 while true; do
     #check whether the network access between MN/CN and the node is ready
-    ping $MASTER_IP -c 1 >/dev/null && break 
-    
+    ping $MASTER_IP -c 1 >/dev/null && break
+
     RETRY=$[ $RETRY + 1 ]
 
     if [ $RETRY -eq 90 ];then
@@ -42,13 +42,13 @@ while true; do
        msgutil_r "$MASTER_IP" "error" "the network between the node and $MASTER_IP is not ready, please check[retry=$RETRY]..." "/var/log/xcat/xcat.log" "$log_label"
        exit 1
     fi
-    
-    #sleep sometime before the next scan  
+
+    #sleep sometime before the next scan
     sleep 2
 done
 
 
-cd /xcatpost; 
+cd /xcatpost;
 PATH=/xcatpost:$PATH
 export PATH
 # To support the postscripts in the subdirectories under /install/postscripts
@@ -71,7 +71,7 @@ DHCP_TMP=`sed 's/\(DHCPINTERFACES=\)\(.*\)$/\1"\2"/' /xcatpost/mypostscript.post
 echo "$DHCP_TMP" > /xcatpost/mypostscript.post
 
 #mark that the first reboot after installation is finished
-grep 'REBOOT' /opt/xcat/xcatinfo > /dev/null 2>&1 
+grep 'REBOOT' /opt/xcat/xcatinfo > /dev/null 2>&1
 if [ $? -eq 0 ]; then
     sed -i "s/REBOOT=.*/REBOOT=TRUE/" /opt/xcat/xcatinfo
 else
@@ -79,7 +79,7 @@ else
 fi
 
 #add node name to xcatinfo
-grep 'NODE' /opt/xcat/xcatinfo > /dev/null 2>&1 
+grep 'NODE' /opt/xcat/xcatinfo > /dev/null 2>&1
 if [ $? -eq 0 ]; then
     sed -i "s/NODE=.*/NODE=$NODE/" /opt/xcat/xcatinfo
 else
@@ -87,7 +87,7 @@ else
 fi
 
 #add image name to xcatinfo
-grep 'IMAGENAME' /opt/xcat/xcatinfo > /dev/null 2>&1 
+grep 'IMAGENAME' /opt/xcat/xcatinfo > /dev/null 2>&1
 if [ $? -eq 0 ]; then
     sed -i "s/IMAGENAME=.*/IMAGENAME=$IMAGE/" /opt/xcat/xcatinfo
 else
