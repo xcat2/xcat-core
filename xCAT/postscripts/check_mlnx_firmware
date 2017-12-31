@@ -5,19 +5,19 @@
 #
 #
 BINARIES="ofed_info mst ibdev2netdev"
-for PROG in ${BINARIES}; do 
+for PROG in ${BINARIES}; do
     RC=`command -v ${PROG} >> /dev/nul 2>&1; echo $?`
     if [[ ${RC} != 0 ]]; then
         echo "${PROG} is not installed on this node, unable to check firmware levels."
         exit 1
-    fi 
+    fi
 done
 
 MELLANOX_SOFTWARE=`ofed_info -s | cut -d: -f1`
 echo "Mellanox Software: $MELLANOX_SOFTWARE"
 
 
-mst start >> /dev/null 
+mst start >> /dev/null
 if [[ $? != 0 ]]; then
    echo "Error:  Could not start mst, cannot check adapter firmware level."
    exit 1
