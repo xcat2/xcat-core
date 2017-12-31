@@ -23,7 +23,7 @@ there.  If "^=" is used, the specified value will be removed from the attribute'
 if it is there.  You can also use "^=" and ",=" in the same command to essentially replace one item
 in the list with another.  (See the Examples section.)
 
-Additionally, as in nodels, boolean expressions can be used to further limit the scope of nodech from 
+Additionally, as in nodels, boolean expressions can be used to further limit the scope of nodech from
 the given noderange.  The operators supported are the same as nodels (=~, !~, ==, and !=).
 
 With these operators in mind, the unambiguous assignment operator is '=@'.  If you need, for example, to set
