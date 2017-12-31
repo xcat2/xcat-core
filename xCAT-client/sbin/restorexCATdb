@@ -19,12 +19,12 @@ use strict;
 
 #-----------------------------------------------------------------------------
 
-=head1  restorexCATdb 
+=head1  restorexCATdb
 
 
 
- restorexCATdb  -p <directory containing db restore .csv files> 
- restorexCATdb -b -p <directory binary database backup> 
+ restorexCATdb  -p <directory containing db restore .csv files>
+ restorexCATdb -b -p <directory binary database backup>
 
 
 =cut
@@ -140,7 +140,7 @@ exit $rc;
 #-----------------------------------------------------------------------------
 
 =head3 parse_args
-  
+
   Parses for  input
 
 =cut
@@ -259,8 +259,8 @@ sub DB2_binrestore
 
 #-----------------------------------------------------------------------------
 
-=head3 PG_binrestore 
-  
+=head3 PG_binrestore
+
     Uses the PostgreSQL Database supplied backup utility to restore the database
 
 =cut
