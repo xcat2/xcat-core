@@ -39,7 +39,7 @@ class OpenBMCBmcConfigTask(ParallelNodesCommand):
        if download_arg == 'all':
             self.callback.info('Downloading all dumps...')
        if not os.path.exists(XCAT_LOG_DUMP_DIR):
-            os.makedirs(XCAT_LOG_DUMP_DIR) 
+            os.makedirs(XCAT_LOG_DUMP_DIR)
 
     def pre_dump_process(self, task, **kw):
 
@@ -158,9 +158,9 @@ class OpenBMCBmcConfigTask(ParallelNodesCommand):
             obmc.login()
             flag = False
             dump_id = obmc.create_dump()
-            self.callback.info('%s: Dump requested. Target ID is %s, waiting for BMC to generate...'  % (node, dump_id)) 
+            self.callback.info('%s: Dump requested. Target ID is %s, waiting for BMC to generate...'  % (node, dump_id))
             for i in range(20):
-                dump_dict = obmc.list_dump_info()            
+                dump_dict = obmc.list_dump_info()
                 if dump_id in dump_dict:
                     flag = True
                     break
@@ -169,7 +169,7 @@ class OpenBMCBmcConfigTask(ParallelNodesCommand):
 
                 sleep( 15 )
 
-            if flag: 
+            if flag:
                 self._dump_download(obmc, node, str(dump_id), flag_dump_process=True)
             else:
                 self.callback.error('Could not find dump %s after waiting %d seconds.' % (dump_id, 20 * 15), node)
@@ -270,7 +270,7 @@ rmdir \"/tmp/$userid\" \n")
                 self.callback.error("get_attributes can not deal with attr %s" % attr, kw['node'])
         if len(netinfo_dict):
             self._get_netinfo(ip=netinfo_dict.get('ip', False), ipsrc=netinfo_dict.get('ipsrc', False), netmask=netinfo_dict.get('netmask', False),
-                              gateway=netinfo_dict.get('gateway', False),vlan= netinfo_dict.get('vlan', False), 
+                              gateway=netinfo_dict.get('gateway', False),vlan= netinfo_dict.get('vlan', False),
                               hostname=netinfo_dict.get('hostname', False),
                               ntpservers=netinfo_dict.get('ntpservers', False), **kw)
 
@@ -306,7 +306,7 @@ rmdir \"/tmp/$userid\" \n")
             else:
                 return self.callback.error("Invalid OpenBMC Hostname %s, can't set to OpenBMC" % kw['nodeinfo']['bmc'], node)
         self._set_apis_values("hostname", hostname, **kw)
-        self._get_netinfo(hostname=True, ntpserver=False, **kw) 
+        self._get_netinfo(hostname=True, ntpserver=False, **kw)
         return
 
     def _set_ntp_servers(self, servers, **kw):
@@ -491,7 +491,7 @@ rmdir \"/tmp/$userid\" \n")
 
         set_success = False
         for net_id, attr in nic_netinfo.items():
-            if (attr['ip'] == ip and 
+            if (attr['ip'] == ip and
                 attr["netmask"] == prefix and
                 attr['gateway'] == gateway):
                 set_success = True
@@ -538,7 +538,7 @@ rmdir \"/tmp/$userid\" \n")
         if 'error' in netinfo:
             return self.callback.info('%s: %s' % (node, netinfo['error']))
 
-        dic_length = len(netinfo) 
+        dic_length = len(netinfo)
         netinfodict = {'ip':[], 'netmask':[], 'gateway':[],
                    'vlan':[], 'ipsrc':[], 'ntpservers':[]}
         for nic,attrs in netinfo.items():
