@@ -20,7 +20,7 @@ check:rc==0
 
 cmd:makedns -n
 check:rc==0
-cmd:makeconservercf 
+cmd:makeconservercf
 check:rc==0
 cmd:cat /etc/conserver.cf | grep $$CN
 check:output=~$$CN
