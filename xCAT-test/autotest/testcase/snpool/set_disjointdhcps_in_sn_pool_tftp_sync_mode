@@ -45,7 +45,7 @@ cmd:xdsh $$CN 'umount /tftpboot'
 
 cmd:cd / && rsync -P -p -r -o -g -v tftpboot $$SN:/
 check:rc==0
-cmd:cd / && rsync -P -p -r -o -g -v tftpboot $$CN:/ 
+cmd:cd / && rsync -P -p -r -o -g -v tftpboot $$CN:/
 check:rc==0
 
 cmd:nodeset testnode1 osimage=rhels7.99-ppc64le-install-compute
