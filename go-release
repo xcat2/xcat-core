@@ -1,0 +1,1055 @@
+#!/bin/bash
+#
+# go-release - A tool for the xCAT release process checking
+#
+# Version 0.0.1
+#
+# Copyright (C) 2017 International Business Machines
+# Eclipse Public License, Version 1.0 (EPL-1.0)
+#     <http://www.eclipse.org/legal/epl-v10.html>
+#
+# 2017-12-21 GONG Jie <gongjie@linux.vnet.ibm.com>
+#     - Initial release
+#
+
+function usage()
+{
+	local script="${0##*/}"
+	local version="$(version)"
+
+	while read -r ; do echo "${REPLY}" ; done <<-EOF
+	${script} version ${version}
+
+	Usage: ${script} [xCAT version]
+	A tool for the xCAT release process checking
+
+	Examples:
+	  ${script} 2.13.10
+
+	xCAT (Extreme Cloud/Cluster Administration Toolkit): <http://xcat.org/>
+	Full documentation at: <http://xcat-docs.readthedocs.io/en/stable/>
+	EOF
+}
+
+#
+# version		Print out the version number.
+#
+function version()
+{
+	# Read the first ten lines of this script
+	for i in {0..9}
+	do
+		read -r
+		[[ ${REPLY} =~ \#\ +[Vv]ersion ]] && echo "${REPLY##* }" && return 0
+	done <"$0"
+	return 1
+}
+
+PATH="/usr/bin:/usr/sbin:/bin:/sbin"
+
+for d in "/opt/local/libexec/gnubin" "/opt/local/bin" "/opt/local/sbin"
+do
+	[ -d "${d}" ] && PATH="${d}:${PATH}"
+done
+
+export PATH
+
+#
+# warn_if_bad		Put out warning message(s) if $1 has bad RC.
+#
+#	$1	0 (pass) or non-zero (fail).
+#	$2+	Remaining arguments printed only if the $1 is non-zero.
+#
+#	Incoming $1 is returned unless it is 0
+#
+function warn_if_bad()
+{
+	local -i rc="$1"
+	local script="${0##*/}"
+
+	# Ignore if no problems
+	[ "${rc}" -eq "0" ] && return 0
+
+	# Broken
+	shift
+	echo "${script}: $@" >&2
+	return "${rc}"
+}
+
+#
+# exit_if_bad		Put out error message(s) if $1 has bad RC.
+#
+#	$1	0 (pass) or non-zero (fail).
+#	$2+	Remaining arguments printed only if the $1 is non-zero.
+#
+#               Exits with 1 unless $1 is 0
+#
+function exit_if_bad()
+{
+	warn_if_bad "$@" || exit 1
+	return 0
+}
+
+#
+# check_root_or_exit
+#
+#	Breaks the script if not running as root.
+#
+#	If this returns 1, the invoker MUST abort the script.
+#
+#	Returns 0 if running as root
+#	Returns 1 if not (and breaks the script)
+#
+function check_root_or_exit()
+{
+	[ "${UID}" -eq "0" ]
+	exit_if_bad "$?" "Must be run by UID=0. Actual UID=${UID}."
+	return 0
+}
+
+#
+# check_executes	Check for executable(s)
+#
+#	Returns 0 if true.
+#	Returns 1 if not.
+#
+function check_executes()
+{
+	local cmd
+	local all_ok="yes"
+	for cmd in "$@"
+	do
+		if ! type "${cmd}" &>/dev/null
+		then
+			echo "Command \"${cmd}\" not found." >&2
+			all_ok="no"
+		fi
+	done
+	[ "${all_ok}" = "yes" ]
+}
+
+#
+# check_exec_or_exit	Check for required executables.
+#
+#	Exits (not returns) if commands listed on command line do not exist.
+#
+#	Returns 0 if true.
+#	Exits with 1 if not.
+#
+function check_exec_or_exit()
+{
+	check_executes "$@"
+	exit_if_bad "$?" "Above listed required command(s) not found."
+	return 0
+}
+
+TMP_DIR=""
+
+#
+# internal_setup	Script setup
+#
+#	Returns 0 on success.
+#	Exits (not returns) with 1 on failure.
+#
+function internal_setup()
+{
+	shopt -s extglob
+
+	# Trap exit for internal_cleanup function.
+	trap "internal_cleanup" EXIT
+
+	check_exec_or_exit mktemp rm
+
+	umask 0077
+
+	TMP_DIR="$(mktemp -d "/tmp/${0##*/}.XXXXXXXX" 2>/dev/null)"
+	[ -d "${TMP_DIR}" ]
+	exit_if_bad "$?" "Make temporary directory failed."
+
+	custom_setup
+}
+
+#
+# internal_cleanup	Script cleanup (reached via trap 0)
+#
+#	Destory any temporarily facility created by internal_setup.
+#
+function internal_cleanup()
+{
+	custom_cleanup
+
+	[ -d "${TMP_DIR}" ] && rm -rf "${TMP_DIR}"
+}
+
+#
+# custom_setup
+#
+function custom_setup()
+{
+	check_exec_or_exit awk cat git wget
+
+	local color_prompt
+
+	if type tput >/dev/null 2>&1 &&
+		( tput setf 1 >/dev/null 2>&1 || tput setaf 1 >/dev/null 2>&1 )
+	then
+		# We have color support; assume it's compliant with Ecma-48
+		# (ISO/IEC-6429). (Lack of such support is extremely rare, and such
+		# a case would tend to support setf rather than setaf.)
+		color_prompt=yes
+	else
+		color_prompt=
+	fi
+
+	if [ "${color_prompt}" = "yes" ]
+	then
+		RES_COL=70
+		MOVE_TO_COL="echo -en \\033[${RES_COL}G"
+		SETCOLOR_SUCCESS="echo -en \\033[1;32m"
+		SETCOLOR_FAILURE="echo -en \\033[1;31m"
+		SETCOLOR_WARNING="echo -en \\033[1;33m"
+		SETCOLOR_ERROR="echo -en \\033[1;38m"
+		SETCOLOR_NOTICE="echo -en \\033[1;36m"
+		SETCOLOR_DEBUG="echo -en \\033[1;34m"
+		SETCOLOR_INFORMATION="echo -en \\033[1;30m"
+		SETCOLOR_NORMAL="echo -en \\033[0;39m"
+	fi
+}
+
+#
+# custom_cleanup
+#
+function custom_cleanup()
+{
+	:
+}
+
+#
+# cleanup_n_exec	Do the cleanup, then execute the command
+#
+#	$1+	The command to execute
+#
+function cleanup_n_exec()
+{
+	internal_cleanup
+
+	exec "$@"
+}
+
+internal_setup
+
+GO_RELEASE_METERS=""
+
+function show_progress_meters()
+{
+	$MOVE_TO_COL
+	[[ -t 2 ]] || return 0
+	# Show the progress meters
+	(
+		declare -i length=0
+		while :
+		do
+			for bar in \
+				"........ " \
+				"o....... " \
+				"Oo...... " \
+				"OOo..... " \
+				"oOOo.... " \
+				".oOOo... " \
+				"..oOOo.. " \
+				"...oOOo. " \
+				"....oOOo " \
+				".....oOO " \
+				"......oO " \
+				".......o " \
+				"........ "
+				#12345678901234567890123456789012345678901
+			do
+				msg="${bar}"
+				for (( i = 0; i < length; ++i ))
+				do
+					echo -ne "\b"
+				done
+				length=${#msg}
+				echo -n "${msg}"
+
+				sleep 0.1 2>/dev/null || sleep 1
+				kill -0 "$$" >/dev/null 2>&1 || break 2
+			done
+		done
+	) >&2 &
+	GO_RELEASE_METERS="$!"
+	disown "${GO_RELEASE_METERS}"
+}
+
+function stop_progress_meters()
+{
+	if [[ -t 2 ]]
+	then
+		kill "${GO_RELEASE_METERS}" >/dev/null 2>&1
+		echo -ne "\b\b\b\b\b\b\b\b\b" >&2
+	fi
+	echo -n "........ "
+}
+
+function echo_success()
+{
+	${MOVE_TO_COL}
+	echo -n "["
+	${SETCOLOR_SUCCESS}
+	echo -n $"  OK  "
+	${SETCOLOR_NORMAL}
+	echo -n "]"
+	echo -ne "\r"
+	return 0
+}
+
+function echo_failure() {
+	${MOVE_TO_COL}
+	echo -n "["
+	${SETCOLOR_FAILURE}
+	echo -n $"FAILED"
+	${SETCOLOR_NORMAL}
+	echo -n "]"
+	echo -ne "\r"
+	return 1
+}
+
+function echo_passed() {
+	${MOVE_TO_COL}
+	echo -n "["
+	${SETCOLOR_WARNING}
+	echo -n $"PASSED"
+	${SETCOLOR_NORMAL}
+	echo -n "]"
+	echo -ne "\r"
+	return 1
+}
+
+function echo_warning() {
+	${MOVE_TO_COL}
+	echo -n "["
+	${SETCOLOR_WARNING}
+	echo -n $"WARNING"
+	${SETCOLOR_NORMAL}
+	echo -n "]"
+	echo -ne "\r"
+	return 1
+}
+
+function xcat_branch()
+{
+	local version="$1"
+	local old_ifs="${IFS}"
+
+	IFS="."
+	set -- $version
+	IFS="${old_ifs}"
+
+	echo "${1}.${2}"
+}
+
+function download_file()
+{
+	local script="${0##*/}"
+	local version="$(version)"
+	local user_agent="${script}/${version}"
+	type wget >/dev/null 2>&1 || return 255
+	local url="$1"
+	local local_file="$2"
+	local log_file="${TMP_DIR}/wget.log.${RANDOM}"
+	local -i rc=0
+	wget -U "${user_agent}" -nv "${url}" -O "${local_file}" -o "${log_file}"
+	rc="$?"
+	if [[ "${rc}" -ne "0" ]]
+	then
+		while read -r ; do echo "${REPLY}" ; done <"${log_file}"
+		echo -n "${script}: \`wget' exited with an error: (exit code ${rc}, "
+		case "${rc}" in
+		1) echo -n "generic error" ;;
+		2) echo -n "parse error" ;;
+		3) echo -n "file I/O error" ;;
+		4) echo -n "network failure" ;;
+		5) echo -n "SSL verification failure" ;;
+		6) echo -n "username/password authentication failure" ;;
+		7) echo -n "protocol errors" ;;
+		8) echo -n "server issued an error response" ;;
+		*) echo -n "unknown error" ;;
+		esac
+		echo ")"
+		echo "  ... while downloading \`${url}'"
+	fi >&2
+	[[ "${rc}" -eq "0" ]]
+}
+
+
+# Get the URL of latest xcat-core tarball
+# $1    Build type - rpm or deb
+# $2    Build branch - master
+#                      2.13
+function latest_xcat_core_url()
+{
+	local build_type="${1:-rpm}"
+	local build_branch="${2:-master}"
+
+	local base_url="http://c910f04x31.pok.stglabs.ibm.com/install/core/xcat/build/xcat2_autobuild_daily_builds/"
+	local build_tag=""
+	local sub_dir=""
+	local url=""
+	local xcat_core=""
+
+	case "${build_type}" in
+	"deb")
+		build_tag="linux_debian_${build_branch}"
+		;;
+	*)
+		build_tag="linux_rpm_${build_branch}"
+		;;
+	esac
+
+	case "${build_branch}" in
+	"master")
+		sub_dir="devel"
+		;;
+	*)
+		sub_dir="${build_branch}"
+		;;
+	esac
+
+	download_file "${base_url}" "${TMP_DIR}/build_catalog.html"
+	exit_if_bad "$?" "Download build catalog failed"
+
+	for time_tag in $(grep 'href=' <"${TMP_DIR}/build_catalog.html" |
+		sed -e 's/^.* href="\([^"]*\)".*$/\1/g' | tac)
+	do
+		url="${base_url}${time_tag}build_status"
+
+		download_file "${url}" "${TMP_DIR}/build_status.txt"
+		exit_if_bad "$?" "Download build status failed"
+
+		case "$(awk "/${build_tag}/ { print \$NF }" <"${TMP_DIR}/build_status.txt")" in
+		"SUCCESS")
+			# Good, go ahead
+			case "${build_type}" in
+			"deb")
+				xcat_core="${base_url}${time_tag}linux_debian/${sub_dir}/core-debs-snap.tar.bz2"
+				;;
+			*)
+				xcat_core="${base_url}${time_tag}linux_rpm/${sub_dir}/core-rpms-snap.tar.bz2"
+				;;
+			esac
+
+			echo "${xcat_core}"
+			return 0
+			;;
+		*)
+			# Boo
+			;;
+		esac
+	done
+
+	return 255
+}
+
+#       $1      archive
+#       $2      repo id
+#       $3      install path
+function extract_archive()
+{
+	local archive="$1"
+	local repo_id="$2"
+	local install_path="$3"
+	local umask="$(umask)"
+	local -i ret=0
+
+	[[ -f "${archive}" ]]
+	warn_if_bad "$?" "${archive}: archive file not found!" || return 1
+
+	umask 0022
+	mkdir -p "${install_path}" 2>/dev/null
+	ret="$?"
+	umask "${umask}"
+	warn_if_bad "${ret}" "Failed to create directory \`${install_path}'" ||
+		return 1
+
+	case "${archive##*.}" in
+	"Z")
+		check_executes uncompress tar grep || return 1
+		uncompress -c "${archive}" | tar -t -f - | grep -v "^${repo_id}/"
+		[[ "${PIPESTATUS[0]}" -eq 0 && "${PIPESTATUS[1]}" -eq 0 &&
+			"${PIPESTATUS[2]}" -eq 1 ]]
+		warn_if_bad "$?" "${archive}: bad compressed tarball" || return 1
+		rm -rf "${install_path}/${repo_id}"
+		uncompress -c "${archive}" | ( cd "${install_path}" && tar -x -f - )
+		;;
+	"tz"|"tgz"|"gz")
+		check_executes gzip tar grep || return 1
+		gzip -d -c "${archive}" | tar -t -f - | grep -v "^${repo_id}/"
+		[[ "${PIPESTATUS[0]}" -eq 0 && "${PIPESTATUS[1]}" -eq 0 &&
+			"${PIPESTATUS[2]}" -eq 1 ]]
+		exit_if_bad "$?" "${archive}: bad gzipped tarball"
+		rm -rf "${install_path}/${repo_id}"
+		gzip -d -c "${archive}" | ( cd "${install_path}" && tar -x -f - )
+		;;
+	"tbz"|"tbz2"|"bz"|"bz2")
+		check_executes bzip2 tar grep || return 1
+		bzip2 -d -c "${archive}" | tar -t -f - | grep -v "^${repo_id}/"
+		[[ "${PIPESTATUS[0]}" -eq 0 && "${PIPESTATUS[1]}" -eq 0 &&
+			"${PIPESTATUS[2]}" -eq 1 ]]
+		warn_if_bad "$?" "${archive}: bad bzipped tarball" || return 1
+		rm -rf "${install_path}/${repo_id}"
+		bzip2 -d -c "${archive}" | ( cd "${install_path}" && tar -x -f - )
+		;;
+	"txz"|"xz")
+		check_executes xz tar grep || return 1
+		xz -d -c "${archive}" | tar -t -f - | grep -v "^${repo_id}/"
+		[[ "${PIPESTATUS[0]}" -eq 0 && "${PIPESTATUS[1]}" -eq 0 &&
+			"${PIPESTATUS[2]}" -eq 1 ]]
+		warn_if_bad "$?" "${archive}: bad xzed tarball" || return 1
+		rm -rf "${install_path}/${repo_id}"
+		xz -d -c "${archive}" | ( cd "${install_path}" && tar -x -f - )
+		;;
+	"tar")
+		check_executes tar grep || return 1
+		tar -t -f "${archive}" | grep -v "^${repo_id}/"
+		[[ "${PIPESTATUS[0]}" -eq 0 && "${PIPESTATUS[1]}" -eq 1 ]]
+		warn_if_bad "$?" "${archive}: bad tarball" || return 1
+		rm -rf "${install_path}/${repo_id}"
+		( cd "${install_path}" && tar -x -f - ) <"${archive}"
+		;;
+	*)
+		warn_if_bad "1" "${archive}: unknown archive file"
+		return 1
+		;;
+	esac
+	[[ -d "${install_path}/${repo_id}" ]]
+	warn_if_bad "$?" "${install_path}/${repo_id}: no such directory"
+}
+
+TEST_0000="0.0 xCAT Version Number"
+
+function go_release_test_0000_version_number()
+{
+	local version="$1"
+	local old_ifs="${IFS}"
+
+	echo "${version}"
+
+	IFS="."
+	set -- $version
+	IFS="${old_ifs}"
+
+	[ "$#" -le "3" ]
+	exit_if_bad "$?" "Incorrect xCAT version number - 0x00"
+
+	[[ $1 =~ ^[1-9][0-9]*$ ]]
+	exit_if_bad "$?" "Incorrect xCAT version number - 0x01"
+	[[ $2 =~ ^[0-9]+$ ]]
+	exit_if_bad "$?" "Incorrect xCAT version number - 0x02"
+	[[ $3 =~ ^[0-9]*$ ]]
+	exit_if_bad "$?" "Incorrect xCAT version number - 0x03"
+}
+
+TEST_0010="0.1 Get a Clone Copy of xcat-core Git Repository"
+
+XCAT_CORE_GIT_REPO="https://github.com/xcat2/xcat-core.git"
+XCAT_CORE_GIT_DIR="/tmp/go-release/src/xcat-core"
+
+function go_release_test_0010_git_clone()
+{
+	local version="$1"
+	
+	# Update git repo
+	if [ -d "${XCAT_CORE_GIT_DIR}" ]
+	then
+		(
+			cd "${XCAT_CORE_GIT_DIR}"
+			git checkout master 2>&1
+			warn_if_bad "$?" "Command \`git checkout' failed"
+			git fetch origin 2>&1
+			exit_if_bad "$?" "Command \`git fetch' failed"
+			git pull origin master 2>&1
+			warn_if_bad "$?" "Command \`git pull' failed"
+			# Delete all other branches except the `master' branch
+			git branch | grep -v '^*' | xargs -r -n 1 git branch -D 2>&1
+		)
+	else
+		mkdir -p "${XCAT_CORE_GIT_DIR%/*}"
+		git clone "${XCAT_CORE_GIT_REPO}" "${XCAT_CORE_GIT_DIR}" 2>&1
+		exit_if_bad "$?" "Command \`git clone' failed"
+	fi
+}
+
+TEST_0110="1.1 \`docs/source/conf.py' in \`master' branch"
+
+function go_release_test_0110_conf_py()
+{
+	local version="$1"
+	local file="docs/source/conf.py"
+
+	cd "${XCAT_CORE_GIT_DIR}"
+	exit_if_bad "$?" "Change directory failed - \`${XCAT_CORE_GIT_DIR}'"
+
+	git checkout master 2>&1
+	warn_if_bad "$?" "Command \`git checkout' failed"
+
+	[ -f "${file}" ]
+	exit_if_bad "$?" "File not found - \`${file}'"
+
+	# Find the line in first 99 lines
+	head -n 99 "${file}" | grep -q "^release = '${version}'$"
+	if [ "$?" -ne "0" ]
+	then
+		echo "--- conf.py ----- 8< ----"
+		head -n 99 "${file}" | grep "^release ="
+		echo "---- 8< --------- 8< ----"
+		echo "release = '${version}' is expected" >&3
+		exit_if_bad 1 "Incorrect release version in file - \`${file}'"
+	fi
+}
+
+TEST_0120="1.2 \`docs/source/overview/xcat2_release.rst' in \`master' branch"
+
+function go_release_test_0120_xcat2_release_rst()
+{
+	local version="$1"
+	local file="docs/source/overview/xcat2_release.rst"
+
+	cd "${XCAT_CORE_GIT_DIR}"
+	exit_if_bad "$?" "Change directory failed - \`${XCAT_CORE_GIT_DIR}'"
+
+	git checkout master 2>&1
+	warn_if_bad "$?" "Command \`git checkout' failed"
+
+	[ -f "${file}" ]
+	exit_if_bad "$?" "File not found - \`${file}'"
+
+	head -n 99 "${file}" | grep -q "^|| xCAT ${version} "
+	warn_if_bad "$?" "Release information need to be updated in file"
+	exit_if_bad "$?" "- \`${file}' - 0x01"
+	head -n 99 "${file}" | grep -q "^| \`${version} Release Notes "
+	warn_if_bad "$?" "Release information need to be updated in file"
+	exit_if_bad "$?" "- \`${file}' - 0x02"
+}
+
+TEST_0130="1.3 xCAT Release Information"
+
+function go_release_test_0130_release_information()
+{
+	local version="$1"
+	local branch="$(xcat_branch "${version}")"
+	local url="https://github.com/xcat2/xcat-core/wiki/xCAT_${branch}_ReleaseInformation"
+	local file="${TMP_DIR}/release_information"
+
+	echo "Check web page ..."
+	echo "${url}"
+
+	download_file "${url}" "${file}"
+	exit_if_bad "$?" "Download release information failed"
+
+	# Check content of the web page
+	grep -P -z "<td>${version//./\\.}</td>\n<td>.*</td>\n<td><a href=\"https://github.com/xcat2/xcat-core/wiki/XCAT_${version//.\\.}_Release_Notes\">xCAT ${version//.\\.} .*elease Notes</a></td>" \
+		"${file}"
+	exit_if_bad "$?" "The web page of release information does not include version ${version}"
+}
+
+TEST_0210="2.1 Merge from \`master' Branch to the Release Branch"
+
+function go_release_test_0210_git_branch()
+{
+	local version="$1"
+	local branch="$(xcat_branch "${version}")"
+
+	cd "${XCAT_CORE_GIT_DIR}"
+	exit_if_bad "$?" "Change directory failed - \`${XCAT_CORE_GIT_DIR}'"
+
+	git checkout "${branch}" 2>&1
+	warn_if_bad "$?" "Command \`git checkout' failed"
+
+	git log --min-parents=2 --pretty="%B" -n 1 | grep -q " master to ${branch//.\\.} .* ${version//.\\.}"
+	if [ "$?" -ne "0" ]
+	then
+		echo
+		local latest_commit="$(git log --pretty="%h" -n 1)"
+		local merge_commit="$(git log --min-parents=2 --pretty="%h" -n 1)"
+		echo "--- git log ----- 8< ----"
+		git log --use-mailmap "${merge_commit}...${latest_commit}"
+		git log --use-mailmap -n 1 "${merge_commit}"
+		echo "---- 8< --------- 8< ----"
+		warn_if_bad "1" "Check the git log above in branch ${branch} since last merge"
+		exit_if_bad "1" "Need merge from master to ${branch} branch for ${version} release"
+	fi
+}
+
+TEST_0221="2.2 RPM Build on Build Server"
+
+XCAT_CORE_RPM_DIR="/tmp/go-release/build/rpm"
+
+function go_release_test_0221_rpm_build()
+{
+	local version="$1"
+	local branch="$(xcat_branch "${version}")"
+
+	export http_proxy="http://c910loginx03.pok.stglabs.ibm.com:3128/"
+
+	local tarball_url="$(latest_xcat_core_url rpm "${branch}")"
+	exit_if_bad "$?" "Fail to get the URL of xcat-core rpm tarball for branch ${branch}"
+
+	local tarball_file="${TMP_DIR}/${tarball_url##*/}"
+
+	echo "Check tarball ..."
+	echo "${tarball_url}"
+
+	download_file "${tarball_url}" "${tarball_file}"
+	exit_if_bad "$?" "Download xcat-core rpm tarball failed"
+
+	rm -rf "${XCAT_CORE_RPM_DIR}"
+	mkdir -p "${XCAT_CORE_RPM_DIR}"
+	extract_archive "${tarball_file}" "xcat-core" "${XCAT_CORE_RPM_DIR}"
+	exit_if_bad "$?" "Failed to extract archive ${tarball_file}"
+
+	[ -f "${XCAT_CORE_RPM_DIR}/xcat-core/buildinfo" ]
+	exit_if_bad "$?" "File buildinfo not found in tarball"
+
+	echo
+	echo "--- buildinfo --- 8< ----"
+	cat "${XCAT_CORE_RPM_DIR}/xcat-core/buildinfo"
+	echo "---- 8< --------- 8< ----"
+
+	# Check VERSION
+	grep -q "^VERSION=${version}$" "${XCAT_CORE_RPM_DIR}/xcat-core/buildinfo"
+	if [ "$?" -ne "0" ]
+	then
+		echo "VERSION=${version} is expected" >&3
+		exit_if_bad 1 "The latest build is not the expected version"
+	fi
+
+	# Check COMMIT_ID_LONG
+	cd "${XCAT_CORE_GIT_DIR}"
+
+	git checkout "${branch}" 2>&1
+	local commit="$(git log --pretty="%H" -n 1)"
+	warn_if_bad "$?" "Command \`git log' failed"
+
+	cd -
+
+	grep -q "^COMMIT_ID_LONG=${commit}$" "${XCAT_CORE_RPM_DIR}/xcat-core/buildinfo"
+	if [ "$?" -ne "0" ]
+	then
+		echo "COMMIT_ID_LONG=${commit} is expected" >&3
+		exit_if_bad 1 "The latest build is not against the expected git commit ID"
+	fi
+}
+
+TEST_0222="2.2 DEB Build on Build Server"
+
+XCAT_CORE_DEB_DIR="/tmp/go-release/build/deb"
+
+function go_release_test_0222_deb_build()
+{
+	local version="$1"
+	local branch="$(xcat_branch "${version}")"
+
+	export http_proxy="http://c910loginx03.pok.stglabs.ibm.com:3128/"
+
+	local tarball_url="$(latest_xcat_core_url deb "${branch}")"
+	exit_if_bad "$?" "Fail to get the URL of xcat-core deb tarball for branch ${branch}"
+
+	local tarball_file="${TMP_DIR}/${tarball_url##*/}"
+
+	echo "Check tarball ..."
+	echo "${tarball_url}"
+
+	download_file "${tarball_url}" "${tarball_file}"
+	exit_if_bad "$?" "Download xcat-core deb tarball failed"
+
+	rm -rf "${XCAT_CORE_DEB_DIR}"
+	mkdir -p "${XCAT_CORE_DEB_DIR}"
+	extract_archive "${tarball_file}" "xcat-core" "${XCAT_CORE_DEB_DIR}"
+	exit_if_bad "$?" "Failed to extract archive ${tarball_file}"
+
+	[ -f "${XCAT_CORE_DEB_DIR}/xcat-core/buildinfo" ]
+	exit_if_bad "$?" "File buildinfo not found in tarball"
+
+	echo
+	echo "--- buildinfo --- 8< ----"
+	cat "${XCAT_CORE_DEB_DIR}/xcat-core/buildinfo"
+	echo "---- 8< --------- 8< ----"
+
+	# Check VERSION
+	grep -q "^VERSION=${version}$" "${XCAT_CORE_DEB_DIR}/xcat-core/buildinfo"
+	if [ "$?" -ne "0" ]
+	then
+		echo "VERSION=${version} is expected" >&3
+		exit_if_bad 1 "The latest build is not the expected version"
+	fi
+
+	# Check COMMIT_ID_LONG
+	cd "${XCAT_CORE_GIT_DIR}"
+	exit_if_bad "$?" "Change directory failed - \`${XCAT_CORE_GIT_DIR}'"
+
+	git checkout "${branch}" 2>&1
+	local commit="$(git log --pretty="%H" -n 1)"
+	warn_if_bad "$?" "Command \`git log' failed"
+
+	cd -
+
+	grep -q "^COMMIT_ID_LONG=${commit}$" "${XCAT_CORE_DEB_DIR}/xcat-core/buildinfo"
+	if [ "$?" -ne "0" ]
+	then
+		echo "COMMIT_ID_LONG=${commit} is expected" >&3
+		exit_if_bad 1 "The latest build is not against the expected git commit ID"
+	fi
+}
+
+TEST_0300="3.0 Test Report against the Release Build"
+
+function go_release_test_0300_test_results()
+{
+	local version="$1"
+	local branch="$(xcat_branch "${version}")"
+
+	local rpm_version="$(awk -F = '/^VERSION=/ { print $2 }' \
+		<"${XCAT_CORE_RPM_DIR}/xcat-core/buildinfo")"
+	local rpm_release="$(awk -F = '/^RELEASE=/ { print $2 }' \
+		<"${XCAT_CORE_RPM_DIR}/xcat-core/buildinfo")"
+	local rpm_build_time="$(awk -F = '/^BUILD_TIME=/ { print $2 }' \
+		<"${XCAT_CORE_RPM_DIR}/xcat-core/buildinfo")"
+	local rpm_build_machine="$(awk -F = '/^BUILD_MACHINE=/ { print $2 }' \
+		<"${XCAT_CORE_RPM_DIR}/xcat-core/buildinfo")"
+	local rpm_commit_id="$(awk -F = '/^COMMIT_ID=/ { print $2 }' \
+		<"${XCAT_CORE_RPM_DIR}/xcat-core/buildinfo")"
+
+	local deb_version="$(awk -F = '/^VERSION=/ { print $2 }' \
+		<"${XCAT_CORE_DEB_DIR}/xcat-core/buildinfo")"
+	local deb_release="$(awk -F = '/^RELEASE=/ { print $2 }' \
+		<"${XCAT_CORE_DEB_DIR}/xcat-core/buildinfo")"
+	local deb_build_time="$(awk -F = '/^BUILD_TIME=/ { print $2 }' \
+		<"${XCAT_CORE_DEB_DIR}/xcat-core/buildinfo")"
+	local deb_build_machine="$(awk -F = '/^BUILD_MACHINE=/ { print $2 }' \
+		<"${XCAT_CORE_DEB_DIR}/xcat-core/buildinfo")"
+	local deb_commit_id="$(awk -F = '/^COMMIT_ID=/ { print $2 }' \
+		<"${XCAT_CORE_DEB_DIR}/xcat-core/buildinfo")"
+
+	local ret="254"
+
+	[ "${rpm_version}" = "${deb_version}" ]
+	warn_if_bad "$?" "RPM build and DEB build are against different xCAT version" || ret="1"
+	[ "${rpm_commit_id}" = "${deb_commit_id}" ]
+	warn_if_bad "$?" "RPM build and DEB build are against different git commit ID" || ret="1"
+
+	local test_result="${TMP_DIR}/test_result.out"
+
+	ssh -o 'PasswordAuthentication=no' c910f04x31.pok.stglabs.ibm.com \
+		'mysql -t -u root -pcluster xCATjkLogAnalyzer' \
+		>"${test_result}" \
+		2> >(grep -v '^Killed by signal ') \
+		<<-EOF
+	SELECT
+		ArchDict.ArchName AS Arch,
+		OSDict.OSName AS OS,
+		(
+			SELECT COUNT(0)
+			FROM TestResult
+			WHERE (
+				TestResult.TestRunId = TestRun.TestRunId AND
+				TestResult.ResultId IN (
+					SELECT ResultDict.ResultId
+					FROM ResultDict
+					WHERE ResultDict.ResultName = 'Passed'
+				)
+			)
+		) AS Passed,
+		(
+			SELECT COUNT(0)
+			FROM TestResult
+			WHERE (
+				TestResult.TestRunId = TestRun.TestRunId AND
+				TestResult.ResultId IN (
+					SELECT ResultDict.ResultId
+					FROM ResultDict
+					WHERE ResultDict.ResultName = 'Failed'
+				)
+			)
+		) AS Failed,
+		(
+			SELECT count(0)
+			FROM TestResult
+			WHERE (
+				TestResult.TestRunId = TestRun.TestRunId AND
+				TestResult.ResultId IN (
+					SELECT ResultDict.ResultId
+					FROM ResultDict
+					WHERE ResultDict.ResultName = 'No run'
+				)
+			)
+		) AS 'No run',
+		IFNULL(CONCAT(ROUND((((
+			SELECT COUNT(0)
+			FROM TestResult
+			WHERE (
+				TestResult.TestRunId = TestRun.TestRunId AND
+				TestResult.ResultId IN (
+					SELECT ResultDict.ResultId
+					FROM ResultDict
+					WHERE ResultDict.ResultName = 'Passed'
+				)
+			)
+		) / (
+			SELECT COUNT(0)
+			FROM TestResult
+			WHERE TestResult.TestRunId = TestRun.TestRunId
+		)) * 100),2),'%'),'N/A') AS 'Pass rate'
+	FROM TestRun
+	LEFT JOIN ArchDict ON (TestRun.ArchId = ArchDict.ArchId)
+	LEFT JOIN OSDict ON (TestRun.OSId = OSDict.OSId)
+	LEFT JOIN BuildDict ON (TestRun.BuildId = BuildDict.BuildId)
+	WHERE
+		TestRun.TestRunId IN (
+			SELECT MAX(TestRun.TestRunId) AS TestRunId
+			FROM TestRun
+			WHERE TestRun.BuildId IN (
+				SELECT MAX(BuildDict.BuildId) AS BuildId
+				FROM BuildDict
+				WHERE
+					BuildDict.BuildBranch = '${branch}' AND ((
+					BuildDict.BuildVersion = '${rpm_version}' AND
+					BuildDict.BuildRelease = '${rpm_release}' AND
+					BuildDict.BuildDateTime = '${rpm_build_time}' AND
+					BuildDict.BuildCommitId = '${rpm_commit_id}' AND
+					BuildDict.BuildMachine = '${rpm_build_machine}' AND
+					BuildDict.BuildType = 'rpm'
+					) OR (
+					BuildDict.BuildVersion = '${deb_version}' AND
+					BuildDict.BuildRelease = '${deb_release}' AND
+					BuildDict.BuildDateTime = '${deb_build_time}' AND
+					BuildDict.BuildCommitId = '${deb_commit_id}' AND
+					BuildDict.BuildMachine = '${deb_build_machine}' AND
+					BuildDict.BuildType = 'deb'
+					))
+				GROUP BY
+					BuildDict.BuildCommitId,
+					BuildDict.BuildType
+			)
+			GROUP BY
+				TestRun.ArchId,
+				TestRun.OSId,
+				TestRun.BuildId
+		)
+	ORDER BY
+		OSDict.OSName,
+		ArchDict.ArchName
+	EOF
+	warn_if_bad "$?" "Failed to ssh c910f04x31.pok.stglabs.ibm.com"
+	exit_if_bad "$?" "Configure ssh public key authentication if needed"
+
+	echo
+	cat "${test_result}"
+	echo "* RPM build version ${rpm_version} branch ${branch} commit ${rpm_commit_id}"
+	echo "+ DEB build version ${deb_version} branch ${branch} commit ${deb_commit_id}"
+
+	grep -q "rhels" "${test_result}"
+	warn_if_bad "$?" "No test result against RHEL" || ret="1"
+	grep -q "sles" "${test_result}"
+	warn_if_bad "$?" "No test result against SLES" || ret="1"
+	grep -q "ubuntu" "${test_result}"
+	warn_if_bad "$?" "No test result against Ubuntu" || ret="1"
+
+	local n="$(sed -e '1,3 d' -e '$ d' <"${test_result}" | grep -q -v ' 100% ' | wc -l)"
+	if [ "$n" -gt "0" ]
+	then
+		echo "Failed test cases in the test report" >&3
+	fi
+
+	return "${ret}"
+}
+
+TEST_0710="7.1 Tag the Release in GitHub Web Page"
+
+function go_release_test_0710_release_notes()
+{
+	local version="$1"
+	local url="https://github.com/xcat2/xcat-core/wiki/XCAT_${version}_Release_Notes"
+	local file="${TMP_DIR}/file"
+
+	echo "Check web page ..."
+	echo "${url}"
+
+	download_file "${url}" "${file}"
+	exit_if_bad "$?" "Download release notes failed"
+
+	# Check the HTML <title> line
+	grep -q -E "<title>XCAT_${version//./\\.}_Release_Notes.*</title>" "${file}"
+	exit_if_bad "$?" "The web page of release notes does not have a correct HTML title"
+
+	# Check the HTML <h1> line
+	grep -q -E "<h1 .*>XCAT_${version//./\\.}_Release_Notes</h1>" "${file}"
+	exit_if_bad "$?" "The web page of release notes does not have a correct H1 title"
+}
+
+TEST_0720="7.2 Tag Code in the Release Branch"
+
+function go_release_test_0720_release_branch()
+{
+	sleep 2
+	:
+}
+
+XCAT_VERSION="$1"
+
+if [ -z "${XCAT_VERSION}" ]
+then
+	usage
+	exit 1
+fi
+
+for t in $(compgen -A function "go_release_test_")
+do
+	tag="${t#go_release_test_}"
+	tag="${tag%%_*}"
+	a_test="TEST_${tag}"
+	a_test="${!a_test}"
+	[ -z "${a_test}" ] && a_test="${t#go_release_test_}"
+	echo -n "${a_test}"
+	show_progress_meters
+	(
+		"${t}" "${XCAT_VERSION}"
+	) >"${TMP_DIR}/${t}.stdout" \
+	 2>"${TMP_DIR}/${t}.stderr" \
+	 3>"${TMP_DIR}/${t}.notice" \
+	 4>"${TMP_DIR}/${t}.debug"
+	RET="$?"
+	stop_progress_meters
+	case "${RET}" in
+	"0")
+		echo_success
+		;;
+	"253")
+		echo_warning
+		;;
+	"254")
+		echo_passed
+		;;
+	"255")
+		echo_failure
+		echo
+		exit_if_bad 255 "Failed"
+		;;
+	*)
+		echo_failure
+		;;
+	esac
+	echo
+	if [ "${RET}" -ne "0" -o -s "${TMP_DIR}/${t}.stderr" ]
+	then
+		sed -e "s/^.*$/$(${SETCOLOR_INFORMATION})\0$(${SETCOLOR_NORMAL})/" \
+			-e 's/^/    /' <"${TMP_DIR}/${t}.stdout"
+	fi
+	sed -e "s/^.*$/$(${SETCOLOR_DEBUG})\0$(${SETCOLOR_NORMAL})/" \
+		-e 's/^/    /' <"${TMP_DIR}/${t}.debug"
+	sed -e "s/^.*$/$(${SETCOLOR_NOTICE})\0$(${SETCOLOR_NORMAL})/" \
+		-e 's/^/    /' <"${TMP_DIR}/${t}.notice"
+	sed -e "s/^${0##*/}: /${tag}: /" \
+		-e "s/^.*$/$(${SETCOLOR_ERROR})\0$(${SETCOLOR_NORMAL})/" \
+		-e 's/^/    /' <"${TMP_DIR}/${t}.stderr"
+done
