@@ -21,29 +21,27 @@ class Messager(object):
         self.sock = sock
         self.sem = BoundedSemaphore(1)
 
-    def info(self, msg):
-        d = {'type': MSG_TYPE, 'msg': {'type': 'info', 'data': msg}}
+    def _send(self, d):
         buf = json.dumps(d)
         self.sem.acquire()
-        self.sock.send(utils.int2bytes(len(buf)))
-        self.sock.send(buf)
+        self.sock.sendall(utils.int2bytes(len(buf)) + buf)
         self.sem.release()
+
+    def info(self, msg):
+        d = {'type': MSG_TYPE, 'msg': {'type': 'info', 'data': msg}}
+        self._send(d)
+
+    def warn(self, msg):
+        d = {'type': MSG_TYPE, 'msg': {'type': 'warning', 'data': msg}}
+        self._send(d)
 
     def error(self, msg):
         d = {'type': MSG_TYPE, 'msg': {'type': 'error', 'data': msg}}
-        buf = json.dumps(d)
-        self.sem.acquire()
-        self.sock.send(utils.int2bytes(len(buf)))
-        self.sock.send(buf)
-        self.sem.release()
+        self._send(d)
 
     def syslog(self, msg):
         d = {'type': MSG_TYPE, 'msg': {'type': 'syslog', 'data': msg}}
-        buf = json.dumps(d)
-        self.sem.acquire()
-        self.sock.send(utils.int2bytes(len(buf)))
-        self.sock.send(buf)
-        self.sem.release()
+        self._send(d)
 
 
 class Server(object):
