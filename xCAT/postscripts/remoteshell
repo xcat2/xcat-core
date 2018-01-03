@@ -56,8 +56,6 @@ then
         #delete all occurance of the attribute and then add xCAT settings
         sed -i '/X11Forwarding /'d /etc/ssh/sshd_config
         echo "X11Forwarding yes" >>/etc/ssh/sshd_config
-        sed -i '/KeyRegenerationInterval /'d /etc/ssh/sshd_config
-        echo "KeyRegenerationInterval 0" >>/etc/ssh/sshd_config
         sed -i '/MaxStartups /'d /etc/ssh/sshd_config
         echo "MaxStartups 1024" >>/etc/ssh/sshd_config
  
