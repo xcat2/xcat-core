@@ -86,7 +86,7 @@ class Server(object):
                 messager.error("Could not find manager for %s" % req['module'])
                 return
             nodes = req.get("nodes", None)
-            manager = manager_func(messager, req['cwd'], nodes, req['debugmode'])
+            manager = manager_func(messager, req['cwd'], nodes, req['envs'])
             if not hasattr(manager, req['command']):
                 messager.error("command %s is not supported" % req['command'])
             func = getattr(manager, req['command'])

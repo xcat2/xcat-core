@@ -41,8 +41,8 @@ class ClientShell(object):
 
         s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
         nodes = ['node1', 'node2']
-        nodeinfo = {'node1':{'bmc':'9.3.185.161', 'bmcip':'9.3.185.161', 'username':'root', 'password': '0penBmc1'},
-                    'node2':{'bmc':'10.6.17.100', 'bmcip': '10.6.17.100', 'username':'root', 'password': '0penBmc'}}
+        nodeinfo = {'node1':{'bmc':'10.0.0.1', 'bmcip':'10.0.0.1', 'username':'root', 'password': 'xxxxxx'},
+                    'node2':{'bmc':'10.0.0.2', 'bmcip':'10.0.0.2', 'username':'root', 'password': 'xxxxxx'}}
 
         s.connect(options.sock)
         req = {'module': 'openbmc',
@@ -51,7 +51,7 @@ class ClientShell(object):
                'cwd': os.getcwd(),
                'nodes': nodes,
                'nodeinfo': nodeinfo,
-               'debugmode': 1}
+               'envs': {'debugmode': 1}}
 
         buf = json.dumps(req)
         s.send(utils.int2bytes(len(buf)))

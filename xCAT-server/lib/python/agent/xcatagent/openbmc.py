@@ -223,11 +223,11 @@ class OpenBMC(base.BaseDriver):
 
 
 class OpenBMCManager(base.BaseManager):
-    def __init__(self, messager, cwd, nodes, debugmode):
+    def __init__(self, messager, cwd, nodes, envs):
         super(OpenBMCManager, self).__init__(messager, cwd)
         self.nodes = nodes
         global DEBUGMODE
-        DEBUGMODE = debugmode
+        DEBUGMODE = envs['debugmode']
 
     def rpower(self, nodeinfo, args):
         super(OpenBMCManager, self).process_nodes_worker('openbmc', 'OpenBMC', self.nodes, nodeinfo, 'rpower', args)
