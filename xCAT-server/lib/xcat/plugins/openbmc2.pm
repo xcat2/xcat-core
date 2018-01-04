@@ -29,7 +29,7 @@ use xCAT::OPENBMC;
 
 sub handled_commands {
     return {
-        # rpower         => 'nodehm:mgt=openbmc',
+        rpower         => 'nodehm:mgt=openbmc2',
     };
 }
 
