@@ -103,19 +103,19 @@ The command will update firmware for OpenPOWER BMC when given an OpenPOWER node 
 
 B<-l|--list>:
 
-   The list option will list out available firmware on the BMC.  It provides an interface to display the ID of the various firmware levels.  
+The list option will list out available firmware on the BMC.  It provides an interface to display the ID of the various firmware levels.  
 
-   The (*) symbol indicates the active running firmware on the server.  
+The (*) symbol indicates the active running firmware on the server.  
 
-   The (+) symbol indicates the firmware that is pending and a reboot is required to set it to be the active running firmware level. 
+The (+) symbol indicates the firmware that is pending and a reboot is required to set it to be the active running firmware level. 
 
 B<-u|--upload>:
 
-   The upload option expects a .tar file as the input and will upload the file to the BMC.  Use the list option to view the result. 
+The upload option expects a .tar file as the input and will upload the file to the BMC.  Use the list option to view the result. 
 
 B<-a|--activate>: 
 
-   The activate option expects either a .tar file or an ID as the input.  If a .tar file is provided, it will upload and activate the firmware in a single step 
+The activate option expects either a .tar file or an ID as the input.  If a .tar file is provided, it will upload and activate the firmware in a single step 
 
 To apply the firmware level, a reboot is required to BMC and HOST. 
 
@@ -123,13 +123,13 @@ B<Note:> When using B<rflash> in hierarchical environment, the .tar file must be
 
 B<-d>:
 
-   This option steamlines the update, activate, reboot BMC and reboot HOST procedure. It expects a directory containing both BMC and PNOR .tar files. When BMC and PNOR tar files are provided, the command will upload and activate firmware. After BMC becomes activate, it will reboot BMC. If BMC state is Ready, the command will reboot the HOST. If BMC state is NotReady, the command will exit. 
+This option steamlines the update, activate, reboot BMC and reboot HOST procedure. It expects a directory containing both BMC and PNOR .tar files. When BMC and PNOR tar files are provided, the command will upload and activate firmware. After BMC becomes activate, it will reboot BMC. If BMC state is Ready, the command will reboot the HOST. If BMC state is NotReady, the command will exit. 
 
 B<Note:> When using B<--no-host-reboot>, it will not reboot the host after BMC is reboot. 
 
 B<--delete>:
 
-   This delete option will delete update image from BMC. It expects an ID as the input.
+This delete option will delete update image from BMC. It expects an ID as the input.
 
 =head1 B<Options>
 
