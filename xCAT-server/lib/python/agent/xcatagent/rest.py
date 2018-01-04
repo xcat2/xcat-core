@@ -58,9 +58,9 @@ class RestSession :
                                         verify=False,
                                         timeout=30)
         except requests.exceptions.ConnectionError :
-            error = 'Unable to connect to server'
+            error = 'Error: Unable to connect to server'
         except requests.exceptions.Timeout :
-            error = 'Timeout to connect to server'
+            error = 'Error: Timeout to connect to server'
 
         if error :
             self._print_record_log(node, error, status)
@@ -69,13 +69,13 @@ class RestSession :
         try :
             response_dict = response.json()
         except ValueError :
-            error = 'Received wrong format response:' + response_dict
+            error = 'Error: Received wrong format response:' + response_dict
             self._print_record_log(node, error, status)
             raise xcat_exception.SelfServerException(error)
 
         if response.status_code != requests.codes.ok :
             description = ''.join(response_dict['data']['description'])
-            error = '[%d] %s' % (response.status_code, description)
+            error = 'Error: [%d] %s' % (response.status_code, description)
             self._print_record_log(node, error, status)
             raise xcat_exception.SelfClientException(error)
         else :
