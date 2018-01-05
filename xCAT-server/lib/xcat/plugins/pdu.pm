@@ -988,7 +988,6 @@ sub rinv_for_irpdu
     if ($output) {
         xCAT::SvrUtils::sendmsg("PDU Description: $output", $callback,$pdu);
     }
-
 }
 
 
@@ -1021,7 +1020,16 @@ sub showMonitorData {
 
     foreach my $pdu (@$noderange) {
         unless ($pduhash->{$pdu}->[0]->{pdutype} eq "crpdu") {
-            xCAT::SvrUtils::sendmsg("This command only supports CONSTELLATION PDU with pdutype=crpdu", $callback,$pdu);
+            my $session = connectTopdu($pdu,$callback);
+            if (!$session) {
+                $callback->({ errorcode => [1],error => "Couldn't connect to $pdu"});
+                next;
+            }
+            my $count = $pduhash->{$pdu}->[0]->{outlet};
+            unless ($count) {
+                $count = fill_outletCount($session, $pdu, $callback);
+            }
+            rvitals_for_irpdu($pdu, $count, $session, $callback);
             next;
         }
 
@@ -1048,6 +1056,48 @@ sub showMonitorData {
 
         $exp->hard_close();
     }
+}
+
+
+sub rvitals_for_irpdu
+{
+    my $pdu = shift;
+    my $count = shift;
+    my $session = shift;
+    my $callback = shift;
+    my $output;
+
+
+    # get power info for each outlet
+    # starts oid .2.6.223.8.2.2.1.7  to .2.6.223.8.2.2.1.14
+    my $oid;
+    #ibmPduVoltageWarning:  (voltageNormal(0),voltageOutOfRange(1))
+    $oid = ".1.3.6.1.4.1.2.6.223..0.1.1.7.0";
+    $output = $session->get("$oid");
+    xCAT::SvrUtils::sendmsg("ibmPduVoltageWarning: $output", $callback,$pdu);
+    for (my $outlet = 1; $outlet <= $count; $outlet++) {
+        #ibmPduOutletCurrent
+        $oid = ".1.3.6.1.4.1.2.6.223.8.2.2.1.7";
+        $output = $session->get("$oid.$outlet");
+        xCAT::SvrUtils::sendmsg("outlet $outlet ibmPduOutletCurrent: $output", $callback,$pdu);
+        #ibmPduOutletMaxCapacity
+        $oid = ".1.3.6.1.4.1.2.6.223.8.2.2.1.8";
+        $output = $session->get("$oid.$outlet");
+        xCAT::SvrUtils::sendmsg("outlet $outlet ibmPduOutletMaxCapacity: $output", $callback,$pdu);
+        #ibmPduOutletCurrentThresholdWarning
+        $oid = ".1.3.6.1.4.1.2.6.223.8.2.2.1.9";
+        $output = $session->get("$oid.$outlet");
+        xCAT::SvrUtils::sendmsg("outlet $outlet ibmPduOutletCurrentThresholdWarning: $output", $callback,$pdu);
+        #ibmPduOutletCurrentThresholdCritical
+        $oid = ".1.3.6.1.4.1.2.6.223.8.2.2.1.10";
+        $output = $session->get("$oid.$outlet");
+        xCAT::SvrUtils::sendmsg("outlet $outlet ibmPduOutletCurrentThresholdCritical: $output", $callback,$pdu);
+        #ibmPduOutletLastPowerReading
+        $oid = ".1.3.6.1.4.1.2.6.223.8.2.2.1.13";
+        $output = $session->get("$oid.$outlet");
+        xCAT::SvrUtils::sendmsg("outlet $outlet ibmPduOutletLastPowerReading: $output", $callback,$pdu);
+    }
+
 }
 
 #-------------------------------------------------------
