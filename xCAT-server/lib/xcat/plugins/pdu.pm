@@ -953,10 +953,6 @@ sub rinv_for_irpdu
         $callback->({ errorcode => [1],error => "Couldn't connect to $pdu"});
         next;
     }
-    my $line = "**********************************************************";
-    xCAT::SvrUtils::sendmsg("$line", $callback,$pdu);
-    xCAT::SvrUtils::sendmsg("MFR Info List", $callback,$pdu);
-    xCAT::SvrUtils::sendmsg("$line", $callback,$pdu);
     #ibmPduSoftwareVersion
     $output = $session->get(".1.3.6.1.4.1.2.6.223.7.3.0");
     if ($output) {
@@ -992,7 +988,6 @@ sub rinv_for_irpdu
     if ($output) {
         xCAT::SvrUtils::sendmsg("PDU Description: $output", $callback,$pdu);
     }
-    xCAT::SvrUtils::sendmsg("$line", $callback,$pdu);
 
 }
 
