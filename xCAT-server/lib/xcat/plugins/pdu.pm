@@ -913,7 +913,7 @@ sub showMFR {
 
     foreach my $pdu (@$noderange) {
         unless ($pduhash->{$pdu}->[0]->{pdutype} eq "crpdu") {
-            xCAT::SvrUtils::sendmsg("This command only supports CONSTELLATION PDU with pdutype=crpdu", $callback,$pdu);
+            rinv_for_irpdu($pdu, $callback);
             next;
         }
 
@@ -941,6 +941,56 @@ sub showMFR {
         $exp->hard_close();
     }
 }
+
+sub rinv_for_irpdu
+{
+    my $pdu = shift;
+    my $callback = shift;
+    my $output;
+
+    my $session = connectTopdu($pdu,$callback);
+    if (!$session) {
+        $callback->({ errorcode => [1],error => "Couldn't connect to $pdu"});
+        next;
+    }
+    #ibmPduSoftwareVersion
+    $output = $session->get(".1.3.6.1.4.1.2.6.223.7.3.0");
+    if ($output) {
+        xCAT::SvrUtils::sendmsg("PDU Software Version: $output", $callback,$pdu);
+    }
+    #ibmPduMachineType
+    $output = $session->get(".1.3.6.1.4.1.2.6.223.7.4.0");
+    if ($output) {
+        xCAT::SvrUtils::sendmsg("PDU Machine Type: $output", $callback,$pdu);
+    }
+    #ibmPduModelNumber
+    $output = $session->get(".1.3.6.1.4.1.2.6.223.7.5.0");
+    if ($output) {
+        xCAT::SvrUtils::sendmsg("PDU Model Number: $output", $callback,$pdu);
+    }
+    #ibmPduPartNumber
+    $output = $session->get(".1.3.6.1.4.1.2.6.223.7.6.0");
+    if ($output) {
+        xCAT::SvrUtils::sendmsg("PDU Part Number: $output", $callback,$pdu);
+    }
+    #ibmPduName
+    $output = $session->get(".1.3.6.1.4.1.2.6.223.7.7.0");
+    if ($output) {
+        xCAT::SvrUtils::sendmsg("PDU Name: $output", $callback,$pdu);
+    }
+    #ibmPduSerialNumber
+    $output = $session->get(".1.3.6.1.4.1.2.6.223.7.9.0");
+    if ($output) {
+        xCAT::SvrUtils::sendmsg("PDU Serial Number: $output", $callback,$pdu);
+    }
+    #ibmPduDescription
+    $output = $session->get(".1.3.6.1.4.1.2.6.223.7.10.0");
+    if ($output) {
+        xCAT::SvrUtils::sendmsg("PDU Description: $output", $callback,$pdu);
+    }
+
+}
+
 
 
 #-------------------------------------------------------
