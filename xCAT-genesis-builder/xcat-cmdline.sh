@@ -1,3 +1,4 @@
+#!/bin/bash
 root=1
 rootok=1
 netroot=xcat
@@ -8,11 +9,13 @@ mkdir -p /etc/ssh
 mkdir -p /var/tmp/
 mkdir -p /var/empty/sshd
 sed -i '/^root:x/d' /etc/passwd
-echo root:x:0:0::/:/bin/bash >> /etc/passwd
-echo sshd:x:30:30:SSH User:/var/empty/sshd:/sbin/nologin >> /etc/passwd
-echo rpc:x:32:32:Rpcbind Daemon:/var/cache/rpcbind:/sbin/nologin >> /etc/passwd
-echo rpcuser:x:29:29:RPC Service User:/var/lib/nfs:/sbin/nologin >> /etc/passwd
-echo qemu:x:107:107:qemu user:/:/sbin/nologin >> /etc/passwd
+cat >>/etc/passwd <<"__ENDL"
+root:x:0:0::/:/bin/bash
+sshd:x:30:30:SSH User:/var/empty/sshd:/sbin/nologin
+rpc:x:32:32:Rpcbind Daemon:/var/cache/rpcbind:/sbin/nologin
+rpcuser:x:29:29:RPC Service User:/var/lib/nfs:/sbin/nologin
+qemu:x:107:107:qemu user:/:/sbin/nologin
+__ENDL
 # Fedora 20 ppc64 uses /lib/dracut/hooks/initqueue/finished
 # CentOS 7 probably uses /lib/dracut/hooks/initqueue/finished also
 if [ -d "/initqueue-finished" ]; then
@@ -35,34 +38,30 @@ mkdir -p /var/lib/dhclient/
 mkdir -p /var/log
 ip link set lo up
 echo '127.0.0.1 localhost' >> /etc/hosts
-if grep console=ttyS /proc/cmdline > /dev/null; then
-	while :; do sleep 1; screen -x console < /dev/tty1 > /dev/tty1 2>&1; clear; done &
+if grep -q console=ttyS /proc/cmdline; then
+        while :; do sleep 1; screen -S console -ln screen -x doxcat </dev/tty1 &>/dev/tty1; clear &>/dev/tty1 ; done &
 fi
-while :; do screen -ln < /dev/tty2 > /dev/tty2 2>&1; done &
+while :; do screen -ln < /dev/tty2 &> /dev/tty2 ; done &
 
 # The section below is just for System P LE hardware discovery
 
 # Need to wait for NIC initialization
 sleep 20
-ARCH=`uname -m`
-#For Openpower
-if [ $ARCH = "ppc64le" ]; then
-    ARCH="ppc64"
-fi
+ARCH="$(uname -m)"
 
-if [ $ARCH == 'ppc64' ]; then
+if [[ ${ARCH} =~ ppc64 ]]; then
     waittime=2
-    ALL_NICS=`ip link show | grep -v "^ " | awk '{print $2}' | sed -e 's/:$//' | grep -v lo`
+    ALL_NICS=$(ip link show | grep -v "^ " | awk '{print $2}' | sed -e 's/:$//' | grep -v lo)
     for tmp in $ALL_NICS; do
-        tmp_data=`ip link show $tmp | grep -v "^ " | grep "UP"`
+        tmp_data="$(ip link show "$tmp" | grep -v "^ " | grep "UP")"
         if [ "$tmp_data" == "" ]; then
-            ip link set $tmp up
+            ip link set "$tmp" up
         fi
         tmp_data="UP"
-        waittime=$(($waittime+1))
+        waittime=$((waittime+1))
     done
     # wait 2+number_of_nics seconds for all the LINKed NICs to be UP
     sleep $waittime
 fi
 
-while :; do screen -L -ln doxcat; done 
+while :; do screen -dr doxcat || screen -S doxcat -L -ln doxcat; done 
