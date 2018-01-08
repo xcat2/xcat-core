@@ -662,6 +662,22 @@ sub preprocess_request {
     }
     ##############################################
 
+    # Provide a way to change to python code before formal release
+    if (ref($request->{environment}) eq 'ARRAY' and ref($request->{environment}->[0]->{XCAT_OPENBMC_PYTHON}) eq 'ARRAY') {
+        $::OPENBMC_PYTHON = $request->{environment}->[0]->{XCAT_OPENBMC_PYTHON}->[0];
+    } elsif (ref($request->{environment}) eq 'ARRAY') {
+        $::OPENBMC_PYTHON = $request->{environment}->[0]->{XCAT_OPENBMC_PYTHON};
+    } else {
+        $::OPENBMC_PYTHON = $request->{environment}->{XCAT_OPENBMC_PYTHON};
+    }
+    ##############################################
+
+    # if env XCAT_OPENBMC_PYTHON is 'YES', run python code
+    if (defined($::OPENBMC_PYTHON) and $::OPENBMC_PYTHON eq "YES") {
+        $request = {};
+        return;
+    }
+
     $callback  = shift;
 
     if ($::XCATSITEVALS{xcatdebugmode}) { $xcatdebugmode = $::XCATSITEVALS{xcatdebugmode} }

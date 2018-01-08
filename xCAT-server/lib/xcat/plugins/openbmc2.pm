@@ -29,7 +29,7 @@ use xCAT::OPENBMC;
 
 sub handled_commands {
     return {
-        rpower         => 'nodehm:mgt=openbmc2',
+        rpower         => 'nodehm:mgt=openbmc',
     };
 }
 
@@ -48,6 +48,20 @@ my $callback;
 sub preprocess_request {
     my $request = shift;
     $callback  = shift;
+
+    # if $::OPENBMC_PYTHON is 'YES', will run this script
+    if (ref($request->{environment}) eq 'ARRAY' and ref($request->{environment}->[0]->{XCAT_OPENBMC_PYTHON}) eq 'ARRAY') {
+        $::OPENBMC_PYTHON = $request->{environment}->[0]->{XCAT_OPENBMC_PYTHON}->[0];
+    } elsif (ref($request->{environment}) eq 'ARRAY') {
+        $::OPENBMC_PYTHON = $request->{environment}->[0]->{XCAT_OPENBMC_PYTHON};
+    } else {
+        $::OPENBMC_PYTHON = $request->{environment}->{XCAT_OPENBMC_PYTHON};
+    }
+
+    if (! (defined($::OPENBMC_PYTHON) and $::OPENBMC_PYTHON eq "YES")) {
+        $request = {};
+        return;
+    }
 
     my $command   = $request->{command}->[0];
     my $noderange = $request->{node};
@@ -140,6 +154,8 @@ sub parse_args {
         unless ($subcommand =~ /^on$|^off$|^softoff$|^reset$|^boot$|^bmcreboot$|^bmcstate$|^status$|^stat$|^state$/) {
             return ([ 1, "Unsupported command: $command $subcommand" ]);
         }
+    } else {
+        return ([ 1, "Unsupported command: $command" ]);
     }
 }
 
