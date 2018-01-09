@@ -95,7 +95,7 @@ unless (-d $::XCAT_LOG_DUMP_DIR) {
 
 # Common logging messages: 
 my $usage_errormsg = "Usage error.";
-my $reventlog_no_id_resolved_errormsg = "Provide a comma separated list of IDs to resolved. Example: 'resolved=x,y,z'";
+my $reventlog_no_id_resolved_errormsg = "Provide a comma separated list of IDs to be resolved. Example: 'resolved=x,y,z'";
 
 
 sub unsupported {
@@ -2262,7 +2262,7 @@ sub deal_with_response {
                         $cur_url = $status_info{REVENTLOG_RESOLVED_REQUEST}{init_url};
                     }
                     my $log_id = (split ('/', $cur_url))[5];
-                    $error = "Invalid ID=$log_id provided to resolved. [$::RESPONSE_FORBIDDEN]";
+                    $error = "Invalid ID=$log_id provided to be resolved. [$::RESPONSE_FORBIDDEN]";
                 } else{
                     $error = "$::RESPONSE_FORBIDDEN - Requested endpoint does not exists and may indicate function is not yet supported by OpenBMC firmware.";
                 }
@@ -2979,6 +2979,7 @@ sub reventlog_response {
 sub parse_event_data {
     my $content = shift;
     my $content_info = "";
+    my $LED_tag      = " [LED]"; # Indicate that the entry contributes to LED fault
 
     my $timestamp = $$content{Timestamp};
     my $id_num = $$content{Id};
@@ -2987,7 +2988,7 @@ sub parse_event_data {
         $mon += 1;
         $year += 1900;
         my $UTC_time = sprintf ("%02d/%02d/%04d %02d:%02d:%02d", $mon, $mday, $year, $hour, $min, $sec);
-        my $messgae = $$content{Message};
+        my $message = $$content{Message};
         my $callout;
         my $msg_pid;
         my $i2c_device;
@@ -3021,21 +3022,22 @@ sub parse_event_data {
             }
         }
 
-        $messgae .= "||$callout" if ($callout);
+        $message .= "||$callout" if ($callout);
 
         if (ref($event_mapping) eq "HASH") {
-            if ($event_mapping->{$messgae}) {
-                my $event_type = $event_mapping->{$messgae}{EventType};
-                my $event_message = $event_mapping->{$messgae}{Message};
-                my $severity = $event_mapping->{$messgae}{Severity};
-                my $affect = $event_mapping->{$messgae}{AffectedSubsystem};
+            if ($event_mapping->{$message}) {
+                my $event_type = $event_mapping->{$message}{EventType};
+                my $event_message = $event_mapping->{$message}{Message};
+                my $severity = $event_mapping->{$message}{Severity};
+                my $affect = $event_mapping->{$message}{AffectedSubsystem};
                 $content_info = "$UTC_time [$id_num]: $event_type, ($severity) $event_message (AffectedSubsystem: $affect, PID: $msg_pid), Resolved: $$content{Resolved}";
             } else {
-                $content_info = "$UTC_time [$id_num]: Not found in policy table: $messgae (PID: $msg_pid), Resolved: $$content{Resolved}";
+                $content_info = "$UTC_time [$id_num]: Not found in policy table: $message (PID: $msg_pid), Resolved: $$content{Resolved}";
             }
         } else {
-            $content_info = "$UTC_time [$id_num]: $messgae (PID: $msg_pid), Resolved: $$content{Resolved}";
+            $content_info = "$UTC_time [$id_num]: $message (PID: $msg_pid), Resolved: $$content{Resolved}";
         }
+        $content_info .= $LED_tag if ($callout);
     }
 
     return $content_info;
