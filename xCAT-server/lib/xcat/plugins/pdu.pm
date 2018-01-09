@@ -251,6 +251,8 @@ sub fill_outletCount {
     my $count = $session->get("$outletoid");
     if ($count) {
         $pdutab->setNodeAttribs($pdu, {outlet => $count});
+    } else {
+        xCAT::SvrUtils::sendmsg("Invalid Outlet number ", $callback,$pdu);
     }
 
     return $count;
