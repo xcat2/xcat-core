@@ -43,6 +43,10 @@ class Messager(object):
         d = {'type': MSG_TYPE, 'msg': {'type': 'syslog', 'data': msg}}
         self._send(d)
 
+    def update_db(self, msg):
+        d = {'type': MSG_TYPE, 'msg': {'type': 'db', 'data': msg}}
+        self._send(d)
+
 
 class Server(object):
     def __init__(self, address, standalone):

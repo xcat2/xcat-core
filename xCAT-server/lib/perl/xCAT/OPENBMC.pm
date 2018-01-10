@@ -21,6 +21,7 @@ use JSON;
 use File::Path;
 use Fcntl ":flock";
 use IO::Socket::UNIX qw( SOCK_STREAM );
+use xCAT_monitoring::monitorctrl;
 
 my $LOCK_DIR = "/var/lock/xcat/";
 my $LOCK_PATH = "/var/lock/xcat/agent.lock";
@@ -103,6 +104,11 @@ sub handle_message {
             xCAT::MsgUtils->message("E", { data => [$msg->{data}] }, $callback);
         } elsif ($msg->{type} eq 'syslog'){
             xCAT::MsgUtils->message("S", $msg->{data});
+        } elsif ($msg->{type} eq 'db') {
+            if ($msg->{data} =~ /power: \[(.+)\]: (.+)/) {
+                my %new_status = ($2 => [$1]);
+                xCAT_monitoring::monitorctrl::setNodeStatusAttributes(\%new_status, 1);
+            }
         }
     }
 }
