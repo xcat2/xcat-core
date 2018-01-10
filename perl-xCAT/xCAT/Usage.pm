@@ -90,6 +90,7 @@ my %usage = (
       rvitals noderange ",
     "reventlog" =>
 "Usage: reventlog <noderange> [all [-s]|clear|<number of entries to retrieve> [-s]] [-V|--verbose]
+       reventlog <noderange> [resolved={<id list>|LED}]
        reventlog [-h|--help|-v|--version]",
     "rinv" =>
       "Usage: 
