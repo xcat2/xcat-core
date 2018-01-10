@@ -1074,7 +1074,7 @@ sub rvitals_for_irpdu
     #ibmPduVoltageWarning:  (voltageNormal(0),voltageOutOfRange(1))
     my $voltagewarning = ".1.3.6.1.4.1.2.6.223.0.1.1.7.0";
     $output = $session->get("$voltagewarning");
-    xCAT::SvrUtils::sendmsg("ibmPduVoltageWarning: $output", $callback,$pdu);
+    xCAT::SvrUtils::sendmsg("Voltage Warning: $output", $callback,$pdu);
 
     # get power info for each outlet
     # starts oid .2.6.223.8.2.2.1.7  to .2.6.223.8.2.2.1.14
@@ -1090,15 +1090,15 @@ sub rvitals_for_irpdu
     my $lastpowerreading = ".1.3.6.1.4.1.2.6.223.8.2.2.1.13";
     for (my $outlet = 1; $outlet <= $count; $outlet++) {
         $output = $session->get("$outletcurrent.$outlet");
-        xCAT::SvrUtils::sendmsg("outlet $outlet ibmPduOutletCurrent: $output", $callback,$pdu);
+        xCAT::SvrUtils::sendmsg("outlet $outlet Current: $output mA", $callback,$pdu);
         $output = $session->get("$outletmaxcap.$outlet");
-        xCAT::SvrUtils::sendmsg("outlet $outlet ibmPduOutletMaxCapacity: $output", $callback,$pdu);
+        xCAT::SvrUtils::sendmsg("outlet $outlet Max Capacity of the current: $output mA", $callback,$pdu);
         $output = $session->get("$currentthrewarning.$outlet");
-        xCAT::SvrUtils::sendmsg("outlet $outlet ibmPduOutletCurrentThresholdWarning: $output", $callback,$pdu);
+        xCAT::SvrUtils::sendmsg("outlet $outlet Current Threshold Warning: $output mA", $callback,$pdu);
         $output = $session->get("$currentthrecrit.$outlet");
-        xCAT::SvrUtils::sendmsg("outlet $outlet ibmPduOutletCurrentThresholdCritical: $output", $callback,$pdu);
+        xCAT::SvrUtils::sendmsg("outlet $outlet Current Threshold Critical: $output mA", $callback,$pdu);
         $output = $session->get("$lastpowerreading.$outlet");
-        xCAT::SvrUtils::sendmsg("outlet $outlet ibmPduOutletLastPowerReading: $output", $callback,$pdu);
+        xCAT::SvrUtils::sendmsg("outlet $outlet Last Power Reading: $output Watts", $callback,$pdu);
     }
 
 }
