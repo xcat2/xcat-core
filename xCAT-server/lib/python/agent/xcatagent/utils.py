@@ -23,3 +23,18 @@ def get_classes(module_name):
 def class_func(module_name, class_name):
     func = getattr(sys.modules[module_name], class_name)
     return func
+
+
+def recv_all(sock, size):
+    recv_size = 4096
+    buf_size = 0
+    buf_part = []
+    while buf_size < size:
+        tmp_size = recv_size
+        left_size = size - buf_size
+        if left_size < recv_size:
+            tmp_size = left_size
+        buf_part.append(sock.recv(tmp_size))
+        buf_size += tmp_size
+    buf = ''.join(buf_part)
+    return buf

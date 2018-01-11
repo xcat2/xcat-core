@@ -58,7 +58,7 @@ class RestSession :
                                         verify=False,
                                         timeout=30)
         except requests.exceptions.ConnectionError :
-            error = 'Error: Unable to connect to server'
+            error = 'Error: BMC did not respond. Validate BMC configuration and retry the command.'
         except requests.exceptions.Timeout :
             error = 'Error: Timeout to connect to server'
 

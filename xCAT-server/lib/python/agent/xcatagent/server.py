@@ -13,6 +13,7 @@ from xcatagent import utils
 from xcatagent import base as xcat_manager
 
 MSG_TYPE = 'message'
+DB_TYPE  = 'db'
 LOCK_FILE = '/var/lock/xcat/agent.lock'
 
 
@@ -43,8 +44,8 @@ class Messager(object):
         d = {'type': MSG_TYPE, 'msg': {'type': 'syslog', 'data': msg}}
         self._send(d)
 
-    def update_db(self, msg):
-        d = {'type': MSG_TYPE, 'msg': {'type': 'db', 'data': msg}}
+    def update_node_attributes(self, attribute, node, data):
+        d = {'type': DB_TYPE, 'attribute': {'name': attribute, 'method': 'set', 'type': 'node', 'node': node, 'value': data}}
         self._send(d)
 
 
@@ -70,7 +71,7 @@ class Server(object):
             messager = Messager(sock)
             buf = sock.recv(4)
             sz = utils.bytes2int(buf)
-            buf = sock.recv(sz)
+            buf = utils.recv_all(sock, sz)
             req = json.loads(buf)
             if not 'command' in req:
                 messager.error("Could not find command")
@@ -81,7 +82,6 @@ class Server(object):
             if not 'cwd' in req:
                 messager.error("Please specify the cwd parameter")
                 return
-
             manager_func = xcat_manager.BaseManager.get_manager_func(
                 req['module'])
             if manager_func is None:

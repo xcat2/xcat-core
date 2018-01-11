@@ -1,5 +1,6 @@
 from xcatagent import utils
 import gevent
+from gevent.pool import Pool
 
 MODULE_MAP = {"openbmc": "OpenBMCManager"}
 
@@ -22,9 +23,10 @@ class BaseManager(object):
 
     def process_nodes_worker(self, name, classname, nodes, nodeinfo, command, args):
         
-        glist = []
         module_name = 'xcatagent.%s' % name
         obj_func = utils.class_func(module_name, classname)
+
+        gevent_pool = Pool(1000)
 
         for node in nodes:
             obj = obj_func(self.messager, node, nodeinfo[node])
@@ -32,12 +34,12 @@ class BaseManager(object):
                 self.messager.error('%s: command %s is not supported for %s' % (node, command, classname))
             func = getattr(obj, command)
             try:
-                glist.append( gevent.spawn(func, args) )
+                gevent_pool.add( gevent.spawn(func, args) )
             except Exception:
                 error = '%s: Internel Error occured in gevent' % node
                 self.messager.error(error)
 
-        gevent.joinall(glist)
+        gevent_pool.join()
 
 
 class BaseDriver(object):

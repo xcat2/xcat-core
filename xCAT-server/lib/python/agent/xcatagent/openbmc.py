@@ -160,7 +160,7 @@ class OpenBMC(base.BaseDriver):
         result = self._set_power_onoff('off')
         if result != RESULT_OK :
             return result
-        self.messager.update_db('power: [%s]: %s' % (self.node, POWER_STATE_DB['off']))
+        self.messager.update_node_attributes('status', self.node, POWER_STATE_DB['off'])
 
         start_timeStamp = int(time.time())
         for i in range (0,30) :
@@ -189,7 +189,7 @@ class OpenBMC(base.BaseDriver):
             result = self._login()
         except xcat_exception.SelfServerException as e :
             if subcommand == 'bmcstate' :
-                result = '%s: %s' % (self.node, RPOWER_STATE[Notready])
+                result = '%s: %s' % (self.node, RPOWER_STATE['NotReady'])
             else :
                 result = '%s: %s'  % (self.node, e.message)
         except xcat_exception.SelfClientException as e :
@@ -235,7 +235,7 @@ class OpenBMC(base.BaseDriver):
         message = '%s: %s' % (self.node, result)
         self.messager.info(message)
         if new_status :
-            self.messager.update_db('power: [%s]: %s' % (self.node, new_status))
+            self.messager.update_node_attributes('status', self.node, new_status)
 
 class OpenBMCManager(base.BaseManager):
     def __init__(self, messager, cwd, nodes, envs):

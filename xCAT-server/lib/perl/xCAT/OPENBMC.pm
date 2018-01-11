@@ -28,6 +28,7 @@ my $LOCK_PATH = "/var/lock/xcat/agent.lock";
 my $AGENT_SOCK_PATH = "/var/run/xcat/agent.sock";
 my $PYTHON_LOG_PATH = "/var/log/xcat/agent.log";
 my $MSG_TYPE = "message";
+my $DB_TYPE = "db";
 my $lock_fd;
 
 my $header = HTTP::Headers->new('Content-Type' => 'application/json');
@@ -104,11 +105,13 @@ sub handle_message {
             xCAT::MsgUtils->message("E", { data => [$msg->{data}] }, $callback);
         } elsif ($msg->{type} eq 'syslog'){
             xCAT::MsgUtils->message("S", $msg->{data});
-        } elsif ($msg->{type} eq 'db') {
-            if ($msg->{data} =~ /power: \[(.+)\]: (.+)/) {
-                my %new_status = ($2 => [$1]);
-                xCAT_monitoring::monitorctrl::setNodeStatusAttributes(\%new_status, 1);
-            }
+        }
+    } elsif ($data->{type} eq $DB_TYPE) {
+        my $attribute = $data->{attribute};
+        if ($attribute->{name} eq 'status' and $attribute->{method} eq 'set' and $attribute->{type} eq 'node') {
+             my %new_status = ($attribute->{value} => [$attribute->{node}]);
+             print Dumper(%new_status);
+             xCAT_monitoring::monitorctrl::setNodeStatusAttributes(\%new_status, 1)
         }
     }
 }
