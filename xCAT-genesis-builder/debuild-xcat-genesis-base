@@ -1,0 +1,39 @@
+#!/bin/bash
+
+# xCAT-genesis-base-x86_64-2.13.10-snap201801090246.noarch.rpm
+RPM_PACKAGE="$1"
+
+[ -n "${RPM_PACKAGE}" ] || exit 1
+[ -f "${RPM_PACKAGE}" ] || exit 1
+
+EXTRACT_DIR="${RPM_PACKAGE##*/}"
+EXTRACT_DIR="${EXTRACT_DIR%%-snap*}"
+
+rm -rf "${EXTRACT_DIR}"
+rm -rf "${EXTRACT_DIR}.orig"
+alien -d -g -c -k "${RPM_PACKAGE}" || exit 1
+
+PACKAGE_ARCH="${EXTRACT_DIR%-*}"
+PACKAGE_ARCH="${PACKAGE_ARCH##*-}"
+
+if [[ ${EXTRACT_DIR} =~ -x86_64- ]]
+then
+	rm -rf "${EXTRACT_DIR//x86_64/amd64}"
+	mv "${EXTRACT_DIR}" "${EXTRACT_DIR//x86_64/amd64}"
+	EXTRACT_DIR="${EXTRACT_DIR//x86_64/amd64}"
+
+	sed -i -e 's/x86-64/amd64/g' "${EXTRACT_DIR}/debian/control"
+	sed -i -e 's/x86-64/amd64/g' "${EXTRACT_DIR}/debian/changelog"
+fi
+
+cat >"${EXTRACT_DIR}/debian/preinst" <<-EOF
+#!/bin/bash
+
+rm -rf /opt/xcat/share/xcat/netboot/genesis/${PACKAGE_ARCH}/fs/bin
+rm -rf /opt/xcat/share/xcat/netboot/genesis/${PACKAGE_ARCH}/fs/sbin
+rm -rf /opt/xcat/share/xcat/netboot/genesis/${PACKAGE_ARCH}/fs/lib
+rm -rf /opt/xcat/share/xcat/netboot/genesis/${PACKAGE_ARCH}/fs/lib64
+rm -rf /opt/xcat/share/xcat/netboot/genesis/${PACKAGE_ARCH}/fs/var/run
+EOF
+
+( cd "${EXTRACT_DIR}" && debian/rules binary )

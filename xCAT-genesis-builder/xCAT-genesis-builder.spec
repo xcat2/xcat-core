@@ -34,6 +34,7 @@ mkdir -p $RPM_BUILD_ROOT/%{prefix}/share/xcat/netboot/genesis/builder
 cd $RPM_BUILD_ROOT/%{prefix}/share/xcat/netboot/genesis/builder
 tar jxvf %{SOURCE1}
 chmod +x $RPM_BUILD_ROOT/%{prefix}/share/xcat/netboot/genesis/builder/buildrpm
+chmod +x $RPM_BUILD_ROOT/%{prefix}/share/xcat/netboot/genesis/builder/debuild-xcat-genesis-base
 cd -
 
 
