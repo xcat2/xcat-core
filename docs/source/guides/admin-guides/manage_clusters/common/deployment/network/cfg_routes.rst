@@ -85,4 +85,9 @@ Use ``setroute`` to configure OS route for compute node
 
     updatenode cn1 -P "setroute replace"
 
+Check result
+````````````
 
+#. Use ``route`` command in xCAT management node to check OS route table.
+
+#. Use ``xdsh cn1 route`` to check compute node OS route table.
