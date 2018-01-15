@@ -539,6 +539,14 @@ my %status_info = (
     RSPCONFIG_API_CONFIG_OFF_RESPONSE => {
         process        => \&rspconfig_api_config_response,
     },
+    RSPCONFIG_API_CONFIG_ATTR_REQUEST  => {
+        method         => "PUT",
+        init_url       => "$openbmc_project_url",
+        data           => "false",
+    },
+    RSPCONFIG_API_CONFIG_ATTR_RESPONSE => {
+        process        => \&rspconfig_api_config_response,
+    },
     RSPCONFIG_API_CONFIG_QUERY_REQUEST  => {
         method         => "GET",
         init_url       => "$openbmc_project_url",
@@ -552,6 +560,7 @@ my %status_info = (
 # For example: rspconfig <subcommand>
 #              rspconfig <subcommand>=0
 #              rspconfig <subcommand>=1
+#              rspconfig <subcommand>=<attr_value>
 #
 #
 my %api_config_info = (
@@ -570,6 +579,19 @@ my %api_config_info = (
         display_name => "PowerSupplyRedundency",
         type         => "boolean",
         subcommand   => "powersupplyredundency",
+    },
+    RSPCONFIG_POWERRESTORE_POLICY => {
+        command      => "rspconfig",
+        url          => "/control/host0/power_restore_policy",
+        attr_url     => "PowerRestorePolicy",
+        display_name => "PowerRestorePolicy",
+        type         => "attribute",
+        subcommand   => "powerrestorepolicy",
+        attr_value   => {
+            restore     => "xyz.openbmc_project.Control.Power.RestorePolicy.Policy.Restore",
+            always_on   => "xyz.openbmc_project.Control.Power.RestorePolicy.Policy.AlwaysOn",
+            always_off  => "xyz.openbmc_project.Control.Power.RestorePolicy.Policy.AlwaysOff",
+        },
     },
 );
 
@@ -1508,17 +1530,24 @@ sub parse_command_status {
                 my $subcommand_key = $1;
                 my $subcommand_value = $2;
 
-                if ($subcommand_value eq "1") {
+                if (($subcommand_value eq "1") && ($api_config_info{$::RSPCONFIG_CONFIGURED_API_KEY}{type} eq "boolean")) {
                     # Setup chain for subcommand=1
                     $next_status{LOGIN_RESPONSE} = "RSPCONFIG_API_CONFIG_ON_REQUEST";
                     $status_info{RSPCONFIG_API_CONFIG_ON_REQUEST}{init_url} =  $status_info{RSPCONFIG_API_CONFIG_ON_REQUEST}{init_url} . $api_config_info{$::RSPCONFIG_CONFIGURED_API_KEY}{url} . "/attr/" . $api_config_info{$::RSPCONFIG_CONFIGURED_API_KEY}{attr_url};
                     $next_status{RSPCONFIG_API_CONFIG_ON_REQUEST} = "RSPCONFIG_API_CONFIG_ON_RESPONSE";
                 }
-                elsif ($subcommand_value eq "0") {
+                elsif (($subcommand_value eq "0") && ($api_config_info{$::RSPCONFIG_CONFIGURED_API_KEY}{type} eq "boolean")) {
                     # Setup chain for subcommand=0
                     $next_status{LOGIN_RESPONSE} = "RSPCONFIG_API_CONFIG_OFF_REQUEST";
                     $status_info{RSPCONFIG_API_CONFIG_OFF_REQUEST}{init_url} =  $status_info{RSPCONFIG_API_CONFIG_OFF_REQUEST}{init_url} . $api_config_info{$::RSPCONFIG_CONFIGURED_API_KEY}{url} . "/attr/" . $api_config_info{$::RSPCONFIG_CONFIGURED_API_KEY}{attr_url};
                     $next_status{RSPCONFIG_API_CONFIG_OFF_REQUEST} = "RSPCONFIG_API_CONFIG_OFF_RESPONSE";
+                }
+                elsif (($api_config_info{$::RSPCONFIG_CONFIGURED_API_KEY}{type} eq "attribute") && (exists $api_config_info{$::RSPCONFIG_CONFIGURED_API_KEY}{attr_value}{$subcommand_value})) {
+                    # Setup chain for subcommand=<attribute key>
+                    $next_status{LOGIN_RESPONSE} = "RSPCONFIG_API_CONFIG_ATTR_REQUEST";
+                    $status_info{RSPCONFIG_API_CONFIG_ATTR_REQUEST}{init_url} =  $status_info{RSPCONFIG_API_CONFIG_ATTR_REQUEST}{init_url} . $api_config_info{$::RSPCONFIG_CONFIGURED_API_KEY}{url} . "/attr/" . $api_config_info{$::RSPCONFIG_CONFIGURED_API_KEY}{attr_url};
+                    $status_info{RSPCONFIG_API_CONFIG_ATTR_REQUEST}{data} =  $api_config_info{$::RSPCONFIG_CONFIGURED_API_KEY}{attr_value}{$subcommand_value};
+                    $next_status{RSPCONFIG_API_CONFIG_ATTR_REQUEST} = "RSPCONFIG_API_CONFIG_ATTR_RESPONSE";
                 }
                 else {
                     # Everything else is invalid
@@ -3406,6 +3435,14 @@ sub rspconfig_api_config_response {
                 xCAT::SvrUtils::sendmsg("Error unsetting RSPCONFIG_API_CONFIG_OFF_RESPONSE", $callback, $node);
             }
         }
+        elsif ($node_info{$node}{cur_status} eq "RSPCONFIG_API_CONFIG_ATTR_RESPONSE") {
+            if ($response_info->{'message'} eq $::RESPONSE_OK) {
+                xCAT::SvrUtils::sendmsg("BMC Setting ". $api_config_info{$::RSPCONFIG_CONFIGURED_API_KEY}{display_name} . "...", $callback, $node);
+            }
+            else {
+                xCAT::SvrUtils::sendmsg("Error unsetting RSPCONFIG_API_CONFIG_OFF_RESPONSE", $callback, $node);
+            }
+        }
         elsif ($node_info{$node}{cur_status} eq "RSPCONFIG_API_CONFIG_QUERY_RESPONSE") {
             if ($response_info->{'message'} eq $::RESPONSE_OK) {
                 foreach my $key_url (keys %{$response_info->{data}}) {
@@ -3415,11 +3452,21 @@ sub rspconfig_api_config_response {
                         last;
                     }
                 }
-                if (scalar($value) >= 0) {
+                if (($value eq "0") || ($value eq "1")) {
+                    # If 0 or 1 display as a boolean value
                     xCAT::SvrUtils::sendmsg($api_config_info{$::RSPCONFIG_CONFIGURED_API_KEY}{display_name} . ": $value", $callback, $node);
                 }
                 else {
-                    xCAT::SvrUtils::sendmsg("Unable to query value for " . $api_config_info{$::RSPCONFIG_CONFIGURED_API_KEY}{attr_url}, $callback, $node);
+                    # If not a boolean value, display the last component of the attribute
+                    # For example "xyz.openbmc_project.Control.Power.RestorePolicy.Policy.Restore"
+                    #    will be displayed as "Restore"
+                    my @attr_value = split('\.', $value);
+                    if (@attr_value[-1]) {
+                        xCAT::SvrUtils::sendmsg($api_config_info{$::RSPCONFIG_CONFIGURED_API_KEY}{display_name} . ": @attr_value[-1]", $callback, $node);
+                    }
+                    else {
+                        xCAT::SvrUtils::sendmsg("Unable to query value for " . $api_config_info{$::RSPCONFIG_CONFIGURED_API_KEY}{attr_url}, $callback, $node);
+                    }
                 }
             }
             else {
