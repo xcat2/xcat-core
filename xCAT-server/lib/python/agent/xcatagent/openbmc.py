@@ -165,13 +165,13 @@ class OpenBMC(base.BaseDriver):
         start_timeStamp = int(time.time())
         for i in range (0,30) :
             status = self._get_power_state('state')
-            if status in RPOWER_STATE.keys() and RPOWER_STATE[status] == 'off':
+            if status in RPOWER_STATE and RPOWER_STATE[status] == 'off':
                 break
             gevent.sleep( 2 )
 
         end_timeStamp = int(time.time())
 
-        if status not in RPOWER_STATE.keys() or RPOWER_STATE[status] != 'off':
+        if status not in RPOWER_STATE or RPOWER_STATE[status] != 'off':
             wait_time = str(end_timeStamp - start_timeStamp)
             result = 'Error: Sent power-off command but state did not change to off after waiting ' + wait_time + ' seconds. (State=' + status + ').'
             return result
@@ -204,22 +204,17 @@ class OpenBMC(base.BaseDriver):
             result = self._set_power_onoff(subcommand)
             if result == RESULT_OK :
                 result = RPOWER_STATE[subcommand]
-                if subcommand in POWER_STATE_DB.keys():
-                    new_status = POWER_STATE_DB[subcommand]
+                new_status = POWER_STATE_DB.get(subcommand, '')
 
         if subcommand in POWER_GET_OPTIONS :
             tmp_result = self._get_power_state(subcommand)
-            if tmp_result in RPOWER_STATE.keys() :
-                result = RPOWER_STATE[tmp_result]
-            else :
-                result = tmp_result
+            result = RPOWER_STATE.get(tmp_result, tmp_result)
 
         if subcommand == 'boot' :
             result = self._rpower_boot()
             if result == RESULT_OK :
                 result = RPOWER_STATE[subcommand]
-                if subcommand in POWER_STATE_DB.keys():
-                    new_status = POWER_STATE_DB[subcommand]
+                new_status = POWER_STATE_DB.get(subcommand, '')
 
         if subcommand == 'reset' :
             status = self._get_power_state('state')
@@ -229,8 +224,7 @@ class OpenBMC(base.BaseDriver):
                 result = self._rpower_boot()
                 if result == RESULT_OK :
                     result = RPOWER_STATE[subcommand]
-                    if subcommand in POWER_STATE_DB.keys():
-                        new_status = POWER_STATE_DB[subcommand]
+                    new_status = POWER_STATE_DB.get(subcommand, '')
 
         message = '%s: %s' % (self.node, result)
         self.messager.info(message)

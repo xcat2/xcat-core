@@ -110,7 +110,6 @@ sub handle_message {
         my $attribute = $data->{attribute};
         if ($attribute->{name} eq 'status' and $attribute->{method} eq 'set' and $attribute->{type} eq 'node') {
              my %new_status = ($attribute->{value} => [$attribute->{node}]);
-             print Dumper(%new_status);
              xCAT_monitoring::monitorctrl::setNodeStatusAttributes(\%new_status, 1)
         }
     }

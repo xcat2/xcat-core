@@ -28,13 +28,14 @@ def class_func(module_name, class_name):
 def recv_all(sock, size):
     recv_size = 4096
     buf_size = 0
-    buf_part = []
+    buf_parts = []
     while buf_size < size:
         tmp_size = recv_size
         left_size = size - buf_size
         if left_size < recv_size:
             tmp_size = left_size
-        buf_part.append(sock.recv(tmp_size))
-        buf_size += tmp_size
-    buf = ''.join(buf_part)
+        buf_part = sock.recv(tmp_size)
+        buf_parts.append(buf_part)
+        buf_size += len(buf_part)
+    buf = ''.join(buf_parts)
     return buf
