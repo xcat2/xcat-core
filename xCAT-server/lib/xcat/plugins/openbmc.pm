@@ -211,6 +211,9 @@ my %status_info = (
     REVENTLOG_RESOLVED_RESPONSE => {
         process        => \&reventlog_response,
     },
+    REVENTLOG_RESOLVED_RESPONSE_LED => {
+        process        => \&reventlog_response,
+    },
 
     RFLASH_LIST_REQUEST  => {
         method         => "GET",
@@ -1084,7 +1087,7 @@ sub parse_args {
 
             my $nodes_num = @$noderange;
             if (@$noderange > 1) { 
-                xCAT::SvrUtils::sendmsg("WARN: Resolving faults over a xCAT noderange is not recommended.", $callback);
+                return ([ 1, "Resolving faults over a xCAT noderange is not recommended." ]);
             }
 
             xCAT::SvrUtils::sendmsg("Attempting to resolve the following log entries: $value...", $callback);
@@ -1471,6 +1474,9 @@ sub parse_command_status {
         if ($subcommand eq "clear") {
             $next_status{LOGIN_RESPONSE} = "REVENTLOG_CLEAR_REQUEST";
             $next_status{REVENTLOG_CLEAR_REQUEST} = "REVENTLOG_CLEAR_RESPONSE";
+        } elsif ($subcommand =~ /resolved=LED/) {
+            $next_status{LOGIN_RESPONSE} = "REVENTLOG_REQUEST";
+            $next_status{REVENTLOG_REQUEST} = "REVENTLOG_RESOLVED_RESPONSE_LED";
         } elsif ($subcommand =~ /resolved=(.+)/) {
             $next_status{LOGIN_RESPONSE} = "REVENTLOG_RESOLVED_REQUEST";
             $next_status{REVENTLOG_RESOLVED_REQUEST} = "REVENTLOG_RESOLVED_RESPONSE";
@@ -2932,6 +2938,31 @@ sub reventlog_response {
             $wait_node_num--;
             return;
         }
+    } elsif ($node_info{$node}{cur_status} eq "REVENTLOG_RESOLVED_RESPONSE_LED") {
+        # Scan all event log entries and build an array of all that have callout data
+        my @entries;
+        foreach my $key_url (keys %{$response_info->{data}}) {
+            my %content = %{ ${ $response_info->{data} }{$key_url} };
+            next unless ($content{Id});
+            my $event_msg = is_callout_event_data(\%content);
+            push(@entries, $event_msg) if ($event_msg); # Add array entry of log event id
+        }
+
+        # If some entries with callout data, send them off to be resolved
+        if (scalar(@entries) > 0) {
+            $next_status{"REVENTLOG_RESOLVED_RESPONSE_LED"} = "REVENTLOG_RESOLVED_REQUEST";
+            $next_status{"REVENTLOG_RESOLVED_REQUEST"} = "REVENTLOG_RESOLVED_RESPONSE";
+
+            my $init_entry = shift @entries;
+            $status_info{REVENTLOG_RESOLVED_REQUEST}{init_url} =~ s/#ENTRY_ID#/$init_entry/g;
+            push @{ $status_info{REVENTLOG_RESOLVED_RESPONSE}{remain_entries} }, @entries;
+        }
+        else {
+            # Return if there are no entries with callout data 
+            xCAT::SvrUtils::sendmsg("There are no event log entries contributing to LED fault", $callback, $node);
+            $wait_node_num--;
+            return;
+        }
     } else {
         my $entry_string = $status_info{REVENTLOG_RESPONSE}{argv};
         my $content_info; 
@@ -2965,6 +2996,33 @@ sub reventlog_response {
     }
 }
 
+#-------------------------------------------------------
+
+=head3  is_callout_event_data
+
+  Parse reventlog data and return entry ID if it has
+   CALLOUT data
+  Input:
+	$content: data for single entry
+
+=cut
+
+#-------------------------------------------------------
+sub is_callout_event_data {
+    my $content = shift;
+    my $id_num = $$content{Id};
+
+    if ($$content{Message}) {
+        if (defined $$content{AdditionalData} and $$content{AdditionalData}) {
+            foreach my $addition (@{ $$content{AdditionalData} }) {
+                if ($addition =~ /CALLOUT/) {
+                    return $id_num;
+                }
+            }
+        }
+    }
+    return "";
+}
 #-------------------------------------------------------
 
 =head3  parse_event_data
