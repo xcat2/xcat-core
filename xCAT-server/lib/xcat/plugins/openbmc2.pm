@@ -50,16 +50,7 @@ sub preprocess_request {
     my $request = shift;
     $callback  = shift;
 
-    # if $::OPENBMC_PYTHON is 'YES', will run this script
-    if (ref($request->{environment}) eq 'ARRAY' and ref($request->{environment}->[0]->{XCAT_OPENBMC_PYTHON}) eq 'ARRAY') {
-        $::OPENBMC_PYTHON = $request->{environment}->[0]->{XCAT_OPENBMC_PYTHON}->[0];
-    } elsif (ref($request->{environment}) eq 'ARRAY') {
-        $::OPENBMC_PYTHON = $request->{environment}->[0]->{XCAT_OPENBMC_PYTHON};
-    } else {
-        $::OPENBMC_PYTHON = $request->{environment}->{XCAT_OPENBMC_PYTHON};
-    }
-    
-    if (! (defined($::OPENBMC_PYTHON) and $::OPENBMC_PYTHON eq "YES")) {
+    if (!xCAT::OPENBMC->is_openbmc_python($request->{environment})) {
         $request = {};
         return;
     }
@@ -119,6 +110,7 @@ sub process_request {
     my $noderange = $request->{node};
     my $check = parse_node_info($noderange);
     $callback->({ errorcode => [$check] }) if ($check);
+    return unless(%node_info);
     my $pid = xCAT::OPENBMC::start_python_agent();
     if (!defined($pid)) {
         xCAT::MsgUtils->message("E", { data => ["Failed to start python agent"] }, $callback);
@@ -186,6 +178,7 @@ sub parse_node_info {
             }
             unless($node_info{$node}{bmc}) {
                 xCAT::SvrUtils::sendmsg("Error: Unable to get attribute bmc", $callback, $node);
+                delete $node_info{$node};
                 $rst = 1;
                 next;
             }

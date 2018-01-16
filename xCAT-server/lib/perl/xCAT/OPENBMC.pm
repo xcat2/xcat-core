@@ -27,6 +27,7 @@ my $LOCK_DIR = "/var/lock/xcat/";
 my $LOCK_PATH = "/var/lock/xcat/agent.lock";
 my $AGENT_SOCK_PATH = "/var/run/xcat/agent.sock";
 my $PYTHON_LOG_PATH = "/var/log/xcat/agent.log";
+my $PYTHON_AGENT_FILE = "/opt/xcat/lib/python/agent/agent.py";
 my $MSG_TYPE = "message";
 my $DB_TYPE = "db";
 my $lock_fd;
@@ -68,9 +69,8 @@ sub acquire_lock {
     return $lock_fd;
 }
 sub start_python_agent {
-    my $agent_file = "/opt/xcat/lib/python/agent/agent.py";
-    if (! -e $agent_file) {
-        xCAT::MsgUtils->message("S", "Error: '/opt/xcat/lib/python/agent/agent.py' does not exist");
+    if (! -e $PYTHON_AGENT_FILE) {
+        xCAT::MsgUtils->message("S", "'$PYTHON_AGENT_FILE' does not exist");
         return undef;
     }
 
@@ -91,9 +91,10 @@ sub start_python_agent {
         open($fd, ">>", $PYTHON_LOG_PATH) && close($fd);
         open(STDOUT, '>>', $PYTHON_LOG_PATH) or die("open: $!");
         open(STDERR, '>>&', \*STDOUT) or die("open: $!");
-        my $ret = exec ("/opt/xcat/lib/python/agent/agent.py");
+        my $ret = exec ($PYTHON_AGENT_FILE);
         if (!defined($ret)) {
             xCAT::MsgUtils->message("S", "Error: Failed to start python agent");
+            exit(1);
         }
     }
     return $pid;
@@ -153,6 +154,7 @@ sub submit_agent_request {
     $data->{envs} = \%env_hash;
     $buf = encode_json($data);
     $sz = pack('i', length($buf));
+    # send length of data first
     $ret = $sock->send($sz);
     if (!$ret) {
         xCAT::MsgUtils->message("E", { data => ["Failed to send message to the agent"] }, $callback);
@@ -160,6 +162,7 @@ sub submit_agent_request {
         kill('TERM', $pid);
         return;
     }
+    # send data
     $ret = $sock->send($buf);
     if (!$ret) {
         xCAT::MsgUtils->message("E", { data => ["Failed to send message to the agent"] }, $callback);
@@ -172,7 +175,9 @@ sub submit_agent_request {
         if (!$ret) {
             last;
         }
+        # receive the length of data
         $sz = unpack('i', $buf);
+        # read data with length is $sz
         $ret = $sock->recv($buf, $sz);
         if (!$ret) {
             xCAT::MsgUtils->message("E", { data => ["receive data from python agent unexpectedly"] }, $callback);
@@ -191,6 +196,24 @@ sub wait_agent {
     if ($? >> 8 != 0) {
         xCAT::MsgUtils->message("E", { data => ["python agent exited unexpectedly"] }, $callback);
     }
+}
+
+sub is_openbmc_python {
+    my $environment = shift;
+    $environment = shift if (($environment) && ($environment =~ /OPENBMC/));
+    # If XCAT_OPENBMC_PYTHON is YES, will run openbmc2.pm. If not, run openbmc.pm
+    if (ref($environment) eq 'ARRAY' and ref($environment->[0]->{XCAT_OPENBMC_PYTHON}) eq 'ARRAY') {
+        $::OPENBMC_PYTHON = $environment->[0]->{XCAT_OPENBMC_PYTHON}->[0];
+    } elsif (ref($environment) eq 'ARRAY') {
+        $::OPENBMC_PYTHON = $environment->[0]->{XCAT_OPENBMC_PYTHON};
+    } else {
+        $::OPENBMC_PYTHON = $environment->{XCAT_OPENBMC_PYTHON};
+    }
+    if (defined($::OPENBMC_PYTHON) and $::OPENBMC_PYTHON eq "YES") {
+        return 1;
+    }
+
+    return 0;
 }
 
 1;
