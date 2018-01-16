@@ -732,6 +732,18 @@ sub preprocess_request {
         @exargs = @$extrargs;
     }
     my $usage_string = xCAT::Usage->parseCommand($command, @exargs);
+
+    # Insert config api defined OpenBMC specific usage
+    my $iDataplex_tag = "iDataplex specific:";
+    my @usage_block = split($iDataplex_tag, $usage_string);
+    my $usage_before_iDataplex = @usage_block[0];
+    $usage_before_iDataplex =~ s/\s+$//; # Get rid of all training blanks
+    my $usage_after_iDataplex  = @usage_block[1];
+
+    $usage_string = $usage_before_iDataplex . "\n" . 
+                    &build_config_api_usage($callback) . "\n" . 
+                    $iDataplex_tag . $usage_after_iDataplex;
+
     if ($usage_string) {
         $callback->({ data => [$usage_string] });
         $request = {};
@@ -4478,7 +4490,7 @@ sub rflash_upload {
 
 =head3  is_valid_config_api
 
-  Verify passed in subcomaand is defined in the api_config_info
+  Verify passed in subcommand is defined in the api_config_info
   Input:
         $subcommand: subcommand to verify
         $callback: callback for message display
@@ -4505,5 +4517,55 @@ sub is_valid_config_api {
         }
     }
     return -1;
+}
+
+#-------------------------------------------------------
+
+=head3  build_config_api_usage
+
+  Build usage string from the api_config_info
+  Input:
+        $callback: callback for message display
+
+  Output:
+        returns usage string
+
+=cut
+
+#-------------------------------------------------------
+sub build_config_api_usage {
+    my $subcommand = shift;
+    my $command = "";
+    my $subcommand = "";
+    my $type = "";
+    my $usage_string = "";
+    my $attr_values = "";
+
+    foreach my $config_subcommand (keys %api_config_info) {
+        foreach my $config_attribute (keys %{ $api_config_info{$config_subcommand} }) {
+            if ($config_attribute eq "command") {
+                $command =  $api_config_info{$config_subcommand}{$config_attribute}
+            }
+            elsif ($config_attribute eq "subcommand") {
+                $subcommand =  $api_config_info{$config_subcommand}{$config_attribute}
+            }
+            elsif ($config_attribute eq "type") {
+                $type =  $api_config_info{$config_subcommand}{$config_attribute}
+            }
+        }
+        $usage_string .= "       $command <noderange> $subcommand" . "\n";
+
+        if ($type eq "boolean") {
+            $usage_string .= "       $command <noderange> $subcommand={0|1}" . "\n";
+        }
+        if ($type eq "attribute") {
+            foreach my $attribute_value (keys %{ $api_config_info{$config_subcommand}{attr_value} }) {
+                $attr_values .= $attribute_value . "|"
+            }
+            chop $attr_values;
+            $usage_string .= "       $command <noderange> $subcommand={" . $attr_values . "}". "\n";
+        }
+    }
+    return $usage_string;
 }
 1;
