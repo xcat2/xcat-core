@@ -156,7 +156,11 @@ sub remote_copy_command
             $dest_user_host =
               "$$config{'dest-user'}@" . "$$config{'dest-host'}";
         }
-        print RSCYCCMDFILE "#!/bin/sh\n";
+        if ($$config{'trace'}) {
+            print RSCYCCMDFILE "#!/bin/sh -x\n";
+        } else {
+            print RSCYCCMDFILE "#!/bin/sh\n";
+        }
         if ($localhost == 1) {    # running to the MN from the MN
             print RSCYCCMDFILE
               "/bin/mkdir -p $dest_dir_list\n";

@@ -14,6 +14,17 @@ xCAT 2.13.x
 |xCAT                             |New OS         |New          |New Feature                       |
 |Version                          |               |Hardware     |                                  |
 +=================================+===============+=============+==================================+
+|| xCAT 2.13.9                    |               |             |- OpenBMC support:                |
+|| 2017/12/18                     |               |             |                                  |
+||                                |               |             |  rflash -a/-u enhance, add -d    |
+| `2.13.9 Release Notes <https:// |               |             |                                  |
+| github.com/xcat2/xcat-core/wiki |               |             |  reventlog implementation        |
+| /XCAT_2.13.9_Release_Notes>`_   |               |             |                                  |
+|                                 |               |             |  rspconfig dump,hostname,        |
+|                                 |               |             |  ntpserver,admin_passwd          |
+|                                 |               |             |                                  |
+|                                 |               |             |- goconserver for OpenBMC         |
++---------------------------------+---------------+-------------+----------------------------------+
 || xCAT 2.13.8                    |               |             |- OpenBMC support:                |
 || 2017/11/3                      |               |             |                                  |
 ||                                |               |             |  rflash/rpower run parallelly    |

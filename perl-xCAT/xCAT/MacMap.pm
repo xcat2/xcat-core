@@ -510,7 +510,7 @@ sub refresh_table {
         # if we are doing switch discovery and the node is not a switch, skip
         # if we are NOT doing switch discovery, and the node is a switch, skip
         my $ntype = $typehash->{$entry->{node}}->[0]->{nodetype};
-        if ( (($discover_switch) and ( $ntype ne "switch"))
+        if ( (($discover_switch) and ($ntype ne "switch") and ($ntype ne "pdu") )
             or ( !($discover_switch) and ( $ntype eq "switch")) ){
             xCAT::MsgUtils->trace(0, "d", "refresh_table: skip node=$entry->{node} switch=$entry->{switch} discover_switch=$discover_switch nodetype=$ntype\n");
             next;

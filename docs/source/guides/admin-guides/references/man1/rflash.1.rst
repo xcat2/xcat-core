@@ -63,7 +63,9 @@ OpenPOWER OpenBMC specific :
 
 \ **rflash**\  \ *noderange*\  \ *tar_file_path*\  {[\ **-c | -**\ **-check**\ ] | [\ **-a | -**\ **-activate**\ ] | [\ **-u | -**\ **-upload**\ ]}
 
-\ **rflash**\  \ *noderange*\  \ *image_id*\  {[\ **-a | -**\ **-activate**\ ] | [\ **-d | -**\ **-delete**\ ]}
+\ **rflash**\  \ *noderange*\  \ *tar_file_directory*\  [\ **-d**\ ] [\ **-**\ **-no-host-reboot**\ ]
+
+\ **rflash**\  \ *noderange*\  \ *image_id*\  {[\ **-a | -**\ **-activate**\ ] | [\ **-**\ **-delete**\ ]}
 
 
 
@@ -148,35 +150,33 @@ The command will update firmware for OpenPOWER BMC when given an OpenPOWER node 
 
 \ **-l|-**\ **-list**\ :
 
+The list option will list out available firmware on the BMC.  It provides an interface to display the ID of the various firmware levels.
 
-.. code-block:: perl
+The (\*) symbol indicates the active running firmware on the server.
 
-    The list option will list out available firmware on the BMC.  It provides an interface to display the ID of the various firmware levels.  
- 
-    The (*) symbol indicates the active running firmware on the server.  
- 
-    The (+) symbol indicates the firmware that is pending and a reboot is required to set it to be the active running firmware level.
-
+The (+) symbol indicates the firmware that is pending and a reboot is required to set it to be the active running firmware level.
 
 \ **-u|-**\ **-upload**\ :
 
-
-.. code-block:: perl
-
-    The upload option expects a .tar file as the input and will upload the file to the BMC.  Use the list option to view the result.
-
+The upload option expects a .tar file as the input and will upload the file to the BMC.  Use the list option to view the result.
 
 \ **-a|-**\ **-activate**\ :
 
-
-.. code-block:: perl
-
-    The activate option expects either a .tar file or an ID as the input.  If a .tar file is provided, it will upload and activate the firmware in a single step
-
+The activate option expects either a .tar file or an ID as the input.  If a .tar file is provided, it will upload and activate the firmware in a single step
 
 To apply the firmware level, a reboot is required to BMC and HOST.
 
 \ **Note:**\  When using \ **rflash**\  in hierarchical environment, the .tar file must be accessible from Service Nodes.
+
+\ **-d**\ :
+
+This option steamlines the update, activate, reboot BMC and reboot HOST procedure. It expects a directory containing both BMC and PNOR .tar files. When BMC and PNOR tar files are provided, the command will upload and activate firmware. After BMC becomes activate, it will reboot BMC. If BMC state is Ready, the command will reboot the HOST. If BMC state is NotReady, the command will exit.
+
+\ **Note:**\  When using \ **-**\ **-no-host-reboot**\ , it will not reboot the host after BMC is reboot.
+
+\ **-**\ **-delete**\ :
+
+This delete option will delete update image from BMC. It expects an ID as the input.
 
 
 
@@ -264,7 +264,7 @@ To apply the firmware level, a reboot is required to BMC and HOST.
  
 
 
-\ **-d|-**\ **-delete**\ 
+\ **-**\ **-delete**\ 
  
  Delete update image from BMC
  
@@ -357,7 +357,7 @@ To apply the firmware level, a reboot is required to BMC and HOST.
  
 
 
-6. To update the firmware on IBM Power S822LC for Big Data machine specify the node name and the file path of the data directory containing pUpdate utility and BMC and/or PNOR update files:
+6. To update the firmware on IBM Power S822LC for Big Data machine specify the node name and the file path of the data directory containing pUpdate utility, both BMC and PNOR update files:
  
  
  .. code-block:: perl
@@ -372,7 +372,7 @@ To apply the firmware level, a reboot is required to BMC and HOST.
  
  .. code-block:: perl
  
-    rflash p9euh02 -a /tmp/witherspoon.pnor.squashfs.tar
+   rflash p9euh02 -a /tmp/witherspoon.pnor.squashfs.tar
  
  
 

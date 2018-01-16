@@ -300,7 +300,7 @@ if ($restore) {
     }
 }
 
-log_this($running_log_fd, "xCAT automated test finished at" . scalar(localtime()));
+log_this($running_log_fd, "xCAT automated test finished at " . scalar(localtime()));
 log_this($running_log_fd, "Please check results in the $resultdir, \nand see $failed_log_name file for failed cases.");
 
 #To generate performance report
@@ -886,6 +886,9 @@ sub load_case {
                             }
                             $$case_name_index_map_ref{"$name"} = $i;
                             $newcmdstart                       = 0;
+                            if(grep (/$case_ref->[$i]->{name}/,@{ $invalidcases{"noruncases"} })){
+                                delete_item_from_array($case_ref->[$i]->{name}, $invalidcases{"noruncases"});
+                            }
                         } else {
                             $skip = 1;
                             push @{ $invalidcases{"invalidcasename"} }, $name;

@@ -1336,7 +1336,7 @@ function create_bond_interface {
     
             # create required bond device
             ((i=0))
-            while ! grep -sq "^$ifname$" /sys/class/net/bonding_masters;
+            while ! grep -sq "\b$ifname\b" /sys/class/net/bonding_masters;
             do
                 [ $i -eq 0 ] && echo "+$ifname" >/sys/class/net/bonding_masters
                 $sleep 0.5

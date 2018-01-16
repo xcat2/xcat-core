@@ -219,6 +219,10 @@ sub get_broadcast_disjoint_scope_with_parallel {
     my $reqs = get_parallel_scope($req);
 
     my $handled4me = 0;  # indicate myself is already handled.
+    if (xCAT::Utils->isMN()) { # For MN, add itself always.
+        push @requests, @$reqs;
+        $handled4me = 1;
+    }
     my %prehandledhash = ();# the servers which is already handled.
     foreach (@$extras) {
         my $xcatdest = $_;

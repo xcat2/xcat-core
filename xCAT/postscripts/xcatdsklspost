@@ -24,6 +24,7 @@
 if [ -f /xcatpost/mypostscript.post ]; then
     XCATDEBUGMODE=`grep 'XCATDEBUGMODE=' /xcatpost/mypostscript.post | cut -d= -f2 | tr -d \'\" | tr A-Z a-z`
     MASTER_IP=`grep '^MASTER_IP=' /xcatpost/mypostscript.post |cut -d= -f2|sed s/\'//g`
+    NODE=`grep '^NODE=' /xcatpost/mypostscript.post |cut -d= -f2|sed s/\'//g`
 else
     for param in `cat /proc/cmdline`; do
             key=`echo $param|awk -F= '{print $1}'`
@@ -381,6 +382,9 @@ else # for common mode  MODE=1,2,3,5 (updatenode,moncfg,node deployment)
             break
         fi
      done
+     if [ -z "$NODE" ]; then
+         NODE=`hostname -s`
+     fi
      grep 'NODE' /opt/xcat/xcatinfo > /dev/null  2>&1
      if [ $? -eq 0 ]; then
         sed -i "s/NODE=.*/NODE=$NODE/" /opt/xcat/xcatinfo
@@ -679,15 +683,15 @@ if [ -n "$useflowcontrol" ]; then
     else 
        new_fc="NO"
     fi
-    grep 'USEFLOWCONTROL' /opt/xcat/xcatinfo > /dev/null  2>&1
-    if [ $? -eq 0 ]; then
-	sed -i "s/USEFLOWCONTROL=.*/USEFLOWCONTROL=$new_fc/" /opt/xcat/xcatinfo
-    else
-	echo "USEFLOWCONTROL=$new_fc" >> /opt/xcat/xcatinfo
-    fi
 # no setting means do not use flowcontrol
 else
-    echo "USEFLOWCONTROL=NO" >> /opt/xcat/xcatinfo
+    new_fc="NO"
+fi
+grep 'USEFLOWCONTROL' /opt/xcat/xcatinfo > /dev/null  2>&1
+if [ $? -eq 0 ]; then
+    sed -i "s/USEFLOWCONTROL=.*/USEFLOWCONTROL=$new_fc/" /opt/xcat/xcatinfo
+else
+    echo "USEFLOWCONTROL=$new_fc" >> /opt/xcat/xcatinfo
 fi
 
 # Store the SERVICEGROUP into the xcatinfo file for node deployment, and also for updatenode -s
@@ -718,6 +722,9 @@ if [ "$MODE" = "1" ] || [ "$MODE" = "2" ]; then
   if [ ! -f /opt/xcat/xcatinfo ]; then
 	mkdir -p /opt/xcat
 	touch /opt/xcat/xcatinfo
+  fi
+  if [ -z "$NODE" ]; then
+         NODE=`hostname -s`
   fi
   grep 'NODE' /opt/xcat/xcatinfo > /dev/null  2>&1
   if [ $? -eq 0 ]; then

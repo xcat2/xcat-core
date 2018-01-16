@@ -4,9 +4,14 @@ B<reventlog> - retrieve or clear remote hardware event logs
 
 =head1 B<Synopsis>
 
-B<reventlog> I<noderange> {I<number-of-entries> [B<-s>]|B<all [-s]>|B<clear>}
+B<reventlog> I<noderange> [I<number-of-entries> [B<-s>]|B<all [-s]>|B<clear>]
 
 B<reventlog> [B<-h>|B<--help>|B<-v>|B<--version>]
+
+=head2 OpenPOWER OpenBMC specific :
+
+B<reventlog> I<noderange> [B<resolved=>{I<id-list>|B<LED>}]
+
 
 =head1 B<Description>
 
@@ -34,6 +39,10 @@ To sort the entries from latest (always the last entry in event DB) to oldest (a
 
 Clear event logs.
 
+=item B<resolved=>{I<id-list>|B<LED>}
+
+Mark event log entries as resolved. Use comma separated list of entry ids to specify individual entries. Use B<LED> to mark as resolved all event log entries that contribute to LED fault.
+
 =item B<-h>|B<--help>
 
 Print help.
@@ -50,6 +59,7 @@ Print version.
 =over 2
 
 =item 1.
+List last 5 event log entries from node4 and node5
 
  reventlog node4,node5 5
 
@@ -67,6 +77,7 @@ Output is similar to:
  node5: SERVPROC I 09/06/00 15:21:29 System spn1 started a RS485 connection with us[00]
 
 =item 2.
+Clear all event log entries from node4 and node5
 
  reventlog node4,node5 clear
 
@@ -74,6 +85,18 @@ Output is similar to:
 
  node4: clear
  node5: clear
+
+=item 3.
+Mark as resolved all event log entries from node4 that contribute to LED fault
+
+ reventlog node4 resolved=LED
+
+Output is similar to:
+
+ Attempting to resolve the following log entries: LED...
+ node4: Resolved 51.
+ node4: Resolved 52.
+ node4: Resolved 58.
 
 =back 
 

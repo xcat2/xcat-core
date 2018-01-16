@@ -8,6 +8,7 @@ use xCAT::TableUtils;
 use Getopt::Long;
 use Sys::Hostname;
 use xCAT::SvrUtils;
+use xCAT::Scope;
 
 use strict;
 use Data::Dumper;
@@ -28,6 +29,7 @@ my $usage_string =
                      The default goes down to all the conservers on
                      the server nodes and set them up
     -d|--delete      Conserver has the relevant entries for the given noderange removed immediately from configuration
+    -C|--cleanup     To remove the entries for the nodes that do not exist in xCAT db
     -t|--trust       Add additional trusted hosts.
     -h|--help        Display this usage statement.
     -V|--verbose     Verbose mode.
@@ -71,6 +73,7 @@ sub preprocess_request {
             'l|local'     => \$::LOCAL,
             'h|help'      => \$::HELP,
             'D|debug'     => \$::DEBUG,
+            'C|cleanup'   => \$::CLEANUP,
             'v|version'   => \$::VERSION,
             'V|verbose'   => \$::VERBOSE)) {
         $request = {};
@@ -98,8 +101,25 @@ sub preprocess_request {
         $request = {};
         return;
     }
-
-
+    if ($::CLEANUP && ($::CONSERVER or $::LOCAL)) {
+        $callback->({ data => "Can not specify -l|--local or -c|--conserver together with -C|--cleanup." });
+        $request = {};
+        return;
+    }
+    # The cleanup shall run on both MN and all SNs
+    if ($::CLEANUP) {
+        if ($noderange && @$noderange > 0) {
+            $callback->({ data => "Can not specify noderange together with -C|--cleanup." });
+            $request = {};
+            return;
+        }
+        my @sns = xCAT::ServiceNodeUtils->getSNList();
+        unless ( @sns > 0 ) {
+            return xCAT::Scope->get_parallel_scope($request);
+        }
+        return xCAT::Scope->get_broadcast_scope_with_parallel($request, \@sns);
+    }
+   
     # get site master
     my $master = xCAT::TableUtils->get_site_Master();
     if (!$master) { $master = hostname(); }
@@ -183,9 +203,8 @@ sub process_request {
     my $cb  = shift;
     if ($req->{command}->[0] eq "makeconservercf") {
         if (-x "/usr/bin/goconserver") {
-            my $cmd = "ps axf | grep -v grep | grep \/usr\/bin\/goconserver";
-            xCAT::Utils->runcmd($cmd, 0);
-            if ($::RUNCMD_RC == 0) {
+            require xCAT::Goconserver;
+            if (xCAT::Goconserver::is_goconserver_running()) {
                 my $rsp->{data}->[0] = "goconserver is started, please stop it at first.";
                 xCAT::MsgUtils->message("E", $rsp, $cb);
                 return;
@@ -335,7 +354,8 @@ sub makeconservercf {
     #$Getopt::Long::pass_through=1;
     my $delmode;
     GetOptions('d|delete' => \$delmode,
-        't|trust=s' => \$::TRUSTED_HOST
+        't|trust=s' => \$::TRUSTED_HOST,
+        'C|cleanup' => \$::CLEANUP,
     );
     my $nodes  = $req->{node};
     my $svboot = 0;
@@ -409,6 +429,18 @@ sub makeconservercf {
             #$cb->({node=>[{name=>$node,error=>"Bad configuration, check attributes under the nodehm category",errorcode=>1}]});
             xCAT::SvrUtils::sendmsg([ 1, "Bad configuration, check attributes under the nodehm category" ], $cb, $node);
         }
+    } elsif ($::CLEANUP) {
+        my $nodelstab = xCAT::Table->new('nodelist');
+        my @allnodeset = $nodelstab->getAllAttribs('node');
+        my %allnodehash = map { $_->{node} => 1 } @allnodeset;
+        my $rmnodes = delete_undefined_nodes_entry(\@filecontent, \%allnodehash);
+        my $rsp;
+        if (!defined($rmnodes)) {
+            $rsp->{data}->[0] = "Nothing removed";
+        } else{
+            $rsp->{data}->[0] = "Remove console entry for the nodes:".join(',', @$rmnodes);
+        }
+        xCAT::MsgUtils->message("I", $rsp, $cb); 
     } else {    #no nodes specified, do em all up
         zapcfg(\@filecontent);    # strip all xCAT configured nodes from config
 
@@ -607,6 +639,41 @@ sub donodeent {
         push @$content, "#xCAT END $node CONS\n";
     }
     return 0;
+}
+# Remove cons entries for the undefined nodes
+sub delete_undefined_nodes_entry {
+    my $content = shift;
+    my $allnodeshash = shift;
+    my $idx      = 0;
+    my $toidx    = -1;
+    my $skip     = 0;
+    my $skipnext = 0;
+    my @rmnodes = ();
+    while ($idx <= $#$content) {
+        if ($content->[$idx] =~ /^#xCAT BEGIN (\S+) CONS/) {
+            $toidx   = $idx;
+            my $node = $1;
+            unless (exists($allnodeshash->{$node})) {
+                $skip  = 1;
+                $skipnext = 1; 
+                push @rmnodes, $node;
+                print __LINE__."===== push node: $node==\n";
+            }
+        } elsif ($content->[$idx] =~ /^#xCAT END/) {
+            $skipnext = 0;
+        }
+        if ($skip) {
+            splice(@$content, $idx, 1);
+        } else {
+            $idx++;
+        }
+        $skip = $skipnext;
+    }
+    if (scalar(@rmnodes) > 0) {
+        return \@rmnodes;
+    } else {
+        return undef;
+    }
 }
 
 # Delete any xcat added node entries from the file

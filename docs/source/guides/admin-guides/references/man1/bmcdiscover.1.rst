@@ -25,10 +25,6 @@ SYNOPSIS
 
 \ **bmcdiscover**\  [\ **-**\ **-sn**\  \ *SN_nodename*\ ] [\ **-s**\  \ *scan_method*\ ] [\ **-u**\  \ *bmc_user*\ ] [\ **-p**\  \ *bmc_passwd*\ ] [\ **-z**\ ] [\ **-w**\ ] \ **-**\ **-range**\  \ *ip_ranges*\ 
 
-\ **bmcdiscover**\  \ **-u**\  \ *bmc_user*\  \ **-p**\  \ *bmc_passwd*\  \ **-i**\  \ *bmc_ip*\  \ **-**\ **-check**\ 
-
-\ **bmcdiscover**\  [\ **-u**\  \ *bmc_user*\ ] [\ **-p**\  \ *bmc_passwd*\ ] \ **-i**\  \ *bmc_ip*\  \ **-**\ **-ipsource**\ 
-
 
 ***********
 DESCRIPTION
@@ -95,18 +91,6 @@ OPTIONS
 \ **-p|-**\ **-bmcpasswd**\ 
  
  BMC user password.
- 
-
-
-\ **-**\ **-check**\ 
- 
- Check BMC administrator User/Password.
- 
-
-
-\ **-**\ **-ipsource**\ 
- 
- Display the BMC IP configuration.
  
 
 
@@ -185,22 +169,6 @@ Output is similar to:
 .. code-block:: perl
 
      bmcdiscover -s nmap --range "10.4.22-23.100-254" -w -z
-
-
-5. To check if the username or password is correct against the BMC:
-
-
-.. code-block:: perl
-
-     bmcdiscover -i 10.4.23.254 -u USERID -p PASSW0RD --check
-
-
-6. Get BMC IP Address source, DHCP Address or static Address
-
-
-.. code-block:: perl
-
-     bmcdiscover -i 10.4.23.254 -u USERID -p PASSW0RD --ipsource
 
 
 

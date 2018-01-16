@@ -94,8 +94,8 @@ sub setstate {
     if ($kern->{kernel} !~ /^$tftpdir/) {
         my $nodereshash = $nrhash{$node}->[0];
         my $installsrv;
-        if ($nodereshash and $nodereshash->{nfsserver}) {
-            $installsrv = $nodereshash->{nfsserver};
+        if ($nodereshash and $nodereshash->{tftpserver}) {
+            $installsrv = $nodereshash->{tftpserver};
         } elsif ($nodereshash->{xcatmaster}) {
             $installsrv = $nodereshash->{xcatmaster};
         } else {
@@ -574,7 +574,7 @@ sub process_request {
     my $chaintab = xCAT::Table->new('chain', -create => 1);
     my $chainhash = $chaintab->getNodesAttribs(\@nodes, ['currstate']);
     my $noderestab = xCAT::Table->new('noderes', -create => 1);
-    my $nodereshash = $noderestab->getNodesAttribs(\@nodes, [ 'tftpdir', 'xcatmaster', 'nfsserver', 'servicenode' ]);
+    my $nodereshash = $noderestab->getNodesAttribs(\@nodes, [ 'tftpdir', 'xcatmaster', 'tftpserver', 'servicenode' ]);
     my $typetab = xCAT::Table->new('nodetype', -create => 1);
     my $typehash = $typetab->getNodesAttribs(\@nodes, [ 'os', 'provmethod', 'arch', 'profile' ]);
     my $linuximgtab = xCAT::Table->new('linuximage', -create => 1);

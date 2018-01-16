@@ -190,7 +190,8 @@ if [ "$1" = "1" ]; then #Only if installing for the first time..
 # setup sqlite if no other database
 
 %ifos linux
-if [ -f "/proc/cmdline" ]; then   #check to make sure this is not image install
+# prevent running it during install into chroot image
+if [ -f "/proc/cmdline" ] && [ "x$(stat -c '%i %d' /)" == "x$(stat -c '%i %d' /proc/1/root/. 2>/dev/null)" ]; then
  if [ ! -s /etc/xcat/cfgloc ]; then  # database is sqlite
    $RPM_INSTALL_PREFIX0/sbin/xcatconfig -d
  fi
@@ -216,10 +217,11 @@ fi
 # start xcatd on linux
 [ -e "/etc/init.d/$apachedaemon" ] && chkconfig $apachedaemon on
 [ -e "/usr/lib/systemd/system/$apacheserviceunit" ] && systemctl enable $apacheserviceunit
-if [ -f "/proc/cmdline" ]; then   # prevent running it during install into chroot image
-          XCATROOT=$RPM_INSTALL_PREFIX0 /etc/init.d/xcatd restart
-          [ -e "/etc/init.d/$apachedaemon" ] && /etc/init.d/$apachedaemon reload
-          [ -e "/usr/lib/systemd/system/$apacheserviceunit" ] && systemctl reload $apacheserviceunit
+# prevent running it during install into chroot image
+if [ -f "/proc/cmdline" ] && [ "x$(stat -c '%i %d' /)" == "x$(stat -c '%i %d' /proc/1/root/. 2>/dev/null)" ]; then
+    XCATROOT=$RPM_INSTALL_PREFIX0 /etc/init.d/xcatd restart
+    [ -e "/etc/init.d/$apachedaemon" ] && /etc/init.d/$apachedaemon reload
+    [ -e "/usr/lib/systemd/system/$apacheserviceunit" ] && systemctl reload $apacheserviceunit
 fi
     echo "xCATsn is now installed"
 %else
@@ -233,15 +235,17 @@ fi
 %ifos linux
 # prevent running it during install into chroot image and only run it if xCAT-genesis-scripts-x86_64
 # was recently updated.
-if [ -f "/proc/cmdline" -a -f "/etc/xcat/genesis-scripts-updated" ]; then
-  rm -f /etc/xcat/genesis-scripts-updated
-  # On the SN do not run mknb if we are sharing /tftpboot with the MN
-  SHAREDTFTP=`/opt/xcat/sbin/tabdump site | grep sharedtftp | cut -d'"' -f 4`
-  if [ "$SHAREDTFTP" != "1" ]; then
+if [ -f "/proc/cmdline" ] && [ "x$(stat -c '%i %d' /)" == "x$(stat -c '%i %d' /proc/1/root/. 2>/dev/null)" ]; then
+  if [ -f "/etc/xcat/genesis-scripts-updated" ]; then
+    rm -f /etc/xcat/genesis-scripts-updated
+    # On the SN do not run mknb if we are sharing /tftpboot with the MN
+    SHAREDTFTP=`/opt/xcat/sbin/tabdump site | grep sharedtftp | cut -d'"' -f 4`
+    if [ "$SHAREDTFTP" != "1" ]; then
       . /etc/profile.d/xcat.sh
       echo Running '"'mknb `uname -m`'"', triggered by the installation/update of xCAT-genesis-scripts-x86_64 ...
       mknb `uname -m`
     fi
+  fi
 fi
 %endif
 
