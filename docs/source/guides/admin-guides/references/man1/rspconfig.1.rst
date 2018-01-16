@@ -51,6 +51,18 @@ OpenBMC specific:
 
 \ **rspconfig**\  \ *noderange*\  \ **dump**\  [\ **-l | -**\ **-list**\ ] [\ **-g | -**\ **-generate**\ ] [\ **-c | -**\ **-clear**\  {\ *id*\  | \ **all**\ }] [\ **-d | -**\ **-download**\  {\ *id*\  | \ **all**\ }]
 
+\ **rspconfig**\  \ *noderange*\  \ **powerrestorepolicy**\ 
+
+\ **rspconfig**\  \ *noderange*\  \ **powerrestorepolicy={always_on|restore|always_off}**\ 
+
+\ **rspconfig**\  \ *noderange*\  \ **powersupplyredundancy**\ 
+
+\ **rspconfig**\  \ *noderange*\  \ **powersupplyredundancy={0|1}**\ 
+
+\ **rspconfig**\  \ *noderange*\  \ **autoreboot**\ 
+
+\ **rspconfig**\  \ *noderange*\  \ **autoreboot={0|1}**\ 
+
 
 MPA specific:
 =============
@@ -429,6 +441,24 @@ OPTIONS
 \ **netmask**\ 
  
  The subnet mask.
+ 
+
+
+\ **powerrestorepolicy**\ 
+ 
+ Display or control BMC powerrestorepolicy attribute setting.
+ 
+
+
+\ **powersupplyredundancy**\ 
+ 
+ Display or control BMC powersupplyredundancy attribute setting.
+ 
+
+
+\ **autoreboot**\ 
+ 
+ Display or control BMC autoreboot attribute setting.
  
 
 

@@ -733,18 +733,18 @@ sub preprocess_request {
     }
     my $usage_string = xCAT::Usage->parseCommand($command, @exargs);
 
-    # Insert config api defined OpenBMC specific usage
-    my $iDataplex_tag = "iDataplex specific:";
-    my @usage_block = split($iDataplex_tag, $usage_string);
-    my $usage_before_iDataplex = @usage_block[0];
-    $usage_before_iDataplex =~ s/\s+$//; # Get rid of all training blanks
-    my $usage_after_iDataplex  = @usage_block[1];
-
-    $usage_string = $usage_before_iDataplex . "\n" . 
-                    &build_config_api_usage($callback) . "\n" . 
-                    $iDataplex_tag . $usage_after_iDataplex;
-
     if ($usage_string) {
+        # Insert config api defined OpenBMC specific usage
+        my $iDataplex_tag = "iDataplex specific:";
+        my @usage_block = split($iDataplex_tag, $usage_string);
+        my $usage_before_iDataplex = @usage_block[0];
+        $usage_before_iDataplex =~ s/\s+$//; # Get rid of all training blanks
+        my $usage_after_iDataplex  = @usage_block[1];
+
+        $usage_string = $usage_before_iDataplex . "\n" . 
+                        &build_config_api_usage($callback) . "   " . 
+                        $iDataplex_tag . $usage_after_iDataplex;
+
         $callback->({ data => [$usage_string] });
         $request = {};
         return;
