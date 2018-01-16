@@ -25,19 +25,19 @@ The following commands are supported against a compute node:
          cn01: f5pdu3 outlet 7 is on
 
 
-   * Power off the PDU outlets on a compute node: :: 
+   * Power off the PDU outlets for a compute node: :: 
    
        # rpower cn01 pduoff
          cn01: f5pdu3 outlet 6 is off
          cn01: f5pdu3 outlet 7 is off
 
-   * Power on the PDU outlets on a compute node: :: 
+   * Power on the PDU outlets for a compute node: :: 
    
        # rpower cn01 pduon
          cn01: f5pdu3 outlet 6 is on
          cn01: f5pdu3 outlet 7 is on
 
-   * Power cycling the PDU outlets on a compute node: :: 
+   * Power cycling the PDU outlets for a compute node: :: 
    
        # rpower cn01 pdureset
          cn01: f5pdu3 outlet 6 is reset 
@@ -109,38 +109,38 @@ The following commands are supported against a PDU:
          f5pdu3: outlet 11 is reset
          f5pdu3: outlet 12 is reset
 
-    * PDU inventory information: ::
+   * PDU inventory information: ::
 
-        # rinv f6pdu16
-          f6pdu16: PDU Software Version: "OPDP_sIBM_v01.3_2"
-          f6pdu16: PDU Machine Type: "1U"
-          f6pdu16: PDU Model Number: "dPDU4230"
-          f6pdu16: PDU Part Number: "46W1608"
-          f6pdu16: PDU Name: "IBM PDU"
-          f6pdu16: PDU Serial Number: "4571S9"
-          f6pdu16: PDU Description: "description"
+       # rinv f6pdu16
+         f6pdu16: PDU Software Version: "OPDP_sIBM_v01.3_2"
+         f6pdu16: PDU Machine Type: "1U"
+         f6pdu16: PDU Model Number: "dPDU4230"
+         f6pdu16: PDU Part Number: "46W1608"
+         f6pdu16: PDU Name: "IBM PDU"
+         f6pdu16: PDU Serial Number: "4571S9"
+         f6pdu16: PDU Description: "description"
 
-    * PDU and outlet power information: ::
+   * PDU and outlet power information: ::
 
-        # rvitals f6pdu15
-          f6pdu15: Voltage Warning: 0
-          f6pdu15: outlet 1 Current: 0 mA
-          f6pdu15: outlet 1 Max Capacity of the current: 16000 mA
-          f6pdu15: outlet 1 Current Threshold Warning: 9600 mA
-          f6pdu15: outlet 1 Current Threshold Critical: 12800 mA
-          f6pdu15: outlet 1 Last Power Reading: 0 Watts
-          f6pdu15: outlet 2 Current: 0 mA
-          f6pdu15: outlet 2 Max Capacity of the current: 16000 mA
-          f6pdu15: outlet 2 Current Threshold Warning: 9600 mA
-          f6pdu15: outlet 2 Current Threshold Critical: 12800 mA
-          f6pdu15: outlet 2 Last Power Reading: 0 Watts
-          f6pdu15: outlet 3 Current: 1130 mA
-          f6pdu15: outlet 3 Max Capacity of the current: 16000 mA
-          f6pdu15: outlet 3 Current Threshold Warning: 9600 mA
-          f6pdu15: outlet 3 Current Threshold Critical: 12800 mA
-          f6pdu15: outlet 3 Last Power Reading: 217 Wattsv  
+       # rvitals f6pdu15
+         f6pdu15: Voltage Warning: 0
+         f6pdu15: outlet 1 Current: 0 mA
+         f6pdu15: outlet 1 Max Capacity of the current: 16000 mA
+         f6pdu15: outlet 1 Current Threshold Warning: 9600 mA
+         f6pdu15: outlet 1 Current Threshold Critical: 12800 mA
+         f6pdu15: outlet 1 Last Power Reading: 0 Watts
+         f6pdu15: outlet 2 Current: 0 mA
+         f6pdu15: outlet 2 Max Capacity of the current: 16000 mA
+         f6pdu15: outlet 2 Current Threshold Warning: 9600 mA
+         f6pdu15: outlet 2 Current Threshold Critical: 12800 mA
+         f6pdu15: outlet 2 Last Power Reading: 0 Watts
+         f6pdu15: outlet 3 Current: 1130 mA
+         f6pdu15: outlet 3 Max Capacity of the current: 16000 mA
+         f6pdu15: outlet 3 Current Threshold Warning: 9600 mA
+         f6pdu15: outlet 3 Current Threshold Critical: 12800 mA
+         f6pdu15: outlet 3 Last Power Reading: 217 Wattsv  
    
-**Note:** For BMC based compute nodes, turning the PDU outlet power on does not automatically power on the compute side.  Users will need to issue ``rpower <node> on`` to power on the compute node after the BMC boots. 
+**Note:** For BMC based compute nodes, turning the PDU outlet power on does not automatically power on the compute side.  Users will need to issue ``rpower <node> on`` to power on the compute side after the BMC boots. 
 
 
 

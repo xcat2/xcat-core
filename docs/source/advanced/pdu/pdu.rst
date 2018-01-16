@@ -31,7 +31,7 @@ Define PDU Objects
 
     mkdef f5pdu3 groups=pdu ip=50.0.0.8 mgt=pdu nodetype=pdu pdutype=irpdu
 
-#. Define switch attribute for pdu object will use for pdudiscover **--setup** options. ::
+#. Define switch attribute for pdu object which will be used for pdudiscover **--setup** options. ::
 
     chdef f5pdu3 switch=mid08 switchport=3
 

@@ -1,13 +1,13 @@
 Collaborative PDU
 =================
 
-Collaborative PDU is also refer as Coral PDU, it controls power for compute Rack.  
+Collaborative PDU is also referred as Coral PDU, it controls power for compute Rack.  
 
 
 Pre-Defined PDU Objects
 -----------------------
 
-User needs to pre-defined PDU node object if want to run pdudiscover command. ::
+A pre-defined PDU node object is required before running pdudiscover command. ::
 
         mkdef coralpdu groups=pdu mgt=pdu nodetype=pdu    (required)
 
@@ -20,7 +20,7 @@ all other attributes can be set by chdef command or pdudisocover command. ::
     --pdutype    crpdu(for coral pdu) or irpdu(for infrastructure PDUs)
 
 
-If user want to configure snmp other than default value, the following attributes need to be set. ::
+The following attributes need to be set in order to configure snmp with non-default values. ::
 
     --community  community string for coral pdu
     --snmpversion snmp version number, required if configure snmpv3 for coral pdu
@@ -31,7 +31,7 @@ If user want to configure snmp other than default value, the following attribute
     --privtype    priv protocol (AES|DES) for snmpv3 configuration
     --seclevel    security level (noAuthNoPriv|authNoPriv|authPriv) for snmpv3 configuration
 
-Make sure run makehosts after pre-defined PDU. ::
+Make sure to run makehosts after pre-defined PDU. ::
 
     makehosts coralpdu
 
@@ -39,7 +39,7 @@ Make sure run makehosts after pre-defined PDU. ::
 Configure PDUs
 --------------
 
-After pre-defined PDUs, user can use **pdudisocver --range ip_range --setup** to configure the PDUs, it covers following commands:
+After pre-defining PDUs, user can use **pdudisocver --range ip_range --setup** to configure the PDUs, or following commands can be used:
 
     * To configure passwordless of Coral PDU: ::
 
@@ -61,7 +61,7 @@ After pre-defined PDUs, user can use **pdudisocver --range ip_range --setup** to
 Remote Power Control of PDU
 ---------------------------
 
-Use the rpower command to remotely power on and off of PDU. 
+Use the rpower command to remotely power on and off PDU. 
 
     * To check power stat of PDU: ::
 
@@ -93,7 +93,7 @@ Coral PDUs have three relays, the following commands are for individual relay su
 Show Monitor Data
 -----------------
 
-Use the rvitals command to show realtime monitor data(inpute voltage, current, power) of PDU. ::
+Use the rvitals command to show realtime monitor data(input voltage, current, power) of PDU. ::
 
     # rvitals coralpdu
 
