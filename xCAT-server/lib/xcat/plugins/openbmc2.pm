@@ -30,6 +30,7 @@ use xCAT::OPENBMC;
 
 sub handled_commands {
     return {
+        rflash         => 'nodehm:mgt=openbmc',
         rpower         => 'nodehm:mgt=openbmc',
     };
 }
@@ -136,13 +137,61 @@ sub parse_args {
     my $noderange = shift;
     my $subcommand = undef;
 
-    if (scalar(@ARGV) != 2 and ($command =~ /rpower/)) {
+    if (scalar(@ARGV) >= 2 and ($command =~ /rpower/)) {
         return ([ 1, "Only one option is supported at the same time for $command" ]);
+    } elsif (scalar(@ARGV) == 0 and $command =~ /rpower|rflash/) {
+        return ([ 1, "No option specified for $command" ]);
     } else {
         $subcommand = $ARGV[0];
     }
 
-    if ($command eq "rpower") {
+    if ($command eq "rflash") {
+        my $verbose;
+        my ($activate, $check, $delete, $directory, $list, $upload) = (0) x 6;
+        my $no_host_reboot;
+        GetOptions(
+            'a|activate' => \$activate,
+            'c|check'    => \$check,
+            'delete'     => \$delete,
+            'd'          => \$directory,
+            'l|list'     => \$list,
+            'u|upload'   => \$upload,
+            'V|verbose'  => \$verbose,
+            'no-host-reboot' => \$no_host_reboot,
+        );
+        my $option_num = $activate+$check+$delete+$directory+$list+$upload;
+        if ($option_num >= 2) {
+            return ([ 1, "Multiple options are not supported."]);
+        } elsif ($option_num == 0) {
+            return ([ 1, "No options specified."]);
+        }
+        if ($activate or $check or $delete or $upload) {
+            return ([ 1, "More than one firmware specified is not supported."]) if ($#ARGV >= 1);
+            if ($check) {
+                return ([ 1, "Invalid firmware specified with '-c|--check'."]) if (@ARGV and ($ARGV[0] !~ /.*\.tar$/i or $#ARGV >= 1));
+            }
+            if ($activate or $delete or $upload) {
+                my $option = "-a|--activate";
+                if ($upload) {
+                    $option = "-u|--upload";
+                } elsif ($delete) {
+                    $option = "--delete"
+                }
+                return ([ 1, "Invalid firmware specified with '$option'"]) if (!@ARGV);
+                my $param = $ARGV[0];
+                return ([ 1, "Invalid firmware specified with '$option': $param"]) if (($delete and $param !~ /^[[:xdigit:]]+$/i) 
+                    or ($activate and $param !~ /^[[:xdigit:]]+$/i and $param !~ /.*\.tar$/i) or ($upload and $param !~ /.*\.tar$/i));
+            }
+        }
+        if ($directory) {
+            return ([ 1, "Unsupported command: $command '-d'" ]);
+            return ([ 1, "More than one directory specified is not supported."]) if ($#ARGV >= 1);
+            return ([ 1, "Invalid option specified with '-d'."]) if (!@ARGV);
+        }
+        if ($list) {
+            return ([ 1, "Invalid option specified with '-l|--list'."]) if (@ARGV);
+        }
+    } elsif ($command eq "rpower") {
         unless ($subcommand =~ /^on$|^off$|^softoff$|^reset$|^boot$|^bmcreboot$|^bmcstate$|^status$|^stat$|^state$/) {
             return ([ 1, "Unsupported command: $command $subcommand" ]);
         }
