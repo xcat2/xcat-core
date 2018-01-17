@@ -6,8 +6,11 @@
 
 # xCAT-genesis-base-x86_64-2.13.10-snap201801090246.noarch.rpm
 RPM_PACKAGE="$1"
-[ -n "${RPM_PACKAGE}" ] ||
-	echo "Usage: ${0##*/} /path/to/xCAT-genesis-base.rpm" && exit 0
+if [ -z "${RPM_PACKAGE}" ]
+then
+	echo "Usage: ${0##*/} /path/to/xCAT-genesis-base.rpm"
+	exit 0
+fi
 
 set -x
 
