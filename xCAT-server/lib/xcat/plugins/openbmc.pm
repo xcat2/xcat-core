@@ -679,6 +679,11 @@ sub preprocess_request {
     }
     ##############################################
 
+    if (xCAT::OPENBMC->is_openbmc_python($request->{environment})) {
+        $request = {};
+        return;
+    }
+
     $callback  = shift;
 
     if ($::XCATSITEVALS{xcatdebugmode}) { $xcatdebugmode = $::XCATSITEVALS{xcatdebugmode} }
