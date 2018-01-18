@@ -250,7 +250,7 @@ then
                             # shipping bmcsetup and getipmi scripts as part of postscripts
                             files=("bmcsetup" "getipmi")
                             for f in "${files[@]}"; do
-                                 cp ${CURDIR}/../xCAT-genesis-scripts/bin/$f ${CURDIR}/postscripts/$f
+                                 cp ${CURDIR}/../xCAT-genesis-scripts/usr/bin/$f ${CURDIR}/postscripts/$f
                                  sed -i "s/xcat.genesis.$f/$f/g" ${CURDIR}/postscripts/$f
                             done
                         fi
