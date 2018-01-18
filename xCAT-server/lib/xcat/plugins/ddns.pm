@@ -595,7 +595,8 @@ sub process_request {
         } else {
             my $rsp;
             push @{ $rsp->{data} }, "emptyzonesenable from xCAT site table should be yes or no.";
-            xCAT::MsgUtils->message("E", $rsp, $callback); 
+            xCAT::MsgUtils->message("E", $rsp, $callback);
+            return; 
         }
     }
     my @slave_ips;
