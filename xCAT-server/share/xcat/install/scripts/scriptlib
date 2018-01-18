@@ -3,24 +3,29 @@ declare -F msgutil_r &>/dev/null  || function msgutil_r {
    local msgtype=$2
    local msgstr=$3
    local logfile=$4
+   local logtag=$5
 
    if [ -z "$msgtype"  ]; then
       msgtype="debug"
    fi
-   
+
+   if [ -z "$logtag" ]; then
+      logtag="xcat"
+   fi
+
    if [ -n "$logserver" ];then
-      logger -n $logserver -t xcat -p local4.$msgtype "$msgstr" 
+      logger -n $logserver -t $logtag -p local4.$msgtype "$msgstr"
       if [ "$?" != "0" ];then
-         exec 3<>/dev/udp/$logserver/514 >/dev/null;logger -s -t xcat -p local4.$msgtype "$msgstr" 2>&3
+         exec 3<>/dev/udp/$logserver/514 >/dev/null;logger -s -t $logtag -p local4.$msgtype "$msgstr" 2>&3
          if [ "$?" != "0" ];then
-            logger -s -t xcat -p local4.$msgtype "$msgstr" 2>&1|nc $logserver 514 >/dev/null 2>&1
+            logger -s -t $logtag -p local4.$msgtype "$msgstr" 2>&1|nc $logserver 514 >/dev/null 2>&1
             if [ "$?" != "0" ];then
-               logger -t xcat -p local4.$msgtype "$msgstr"
+               logger -t $logtag -p local4.$msgtype "$msgstr"
             fi
          fi
       fi
    else
-       logger -t xcat -p local4.$msgtype "$msgstr"
+       logger -t $logtag -p local4.$msgtype "$msgstr"
    fi
    if [ -n "$logfile"  ]; then
       local logdir="$(dirname $logfile)"
@@ -29,7 +34,7 @@ declare -F msgutil_r &>/dev/null  || function msgutil_r {
          touch "$logfile"
       fi
 
-      echo "$msgstr" >> $logfile
+      echo "$(date) [$msgtype]: $logtag: $msgstr" >> $logfile
    fi
 
 }
