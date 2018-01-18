@@ -587,6 +587,11 @@ sub process_request {
         $ctx->{forwarders} = \@forwarders;
     }
 
+    my @options = xCAT::TableUtils->get_site_attribute("emptyzonesenable");
+    my $empty_zones = $options[0];
+    if (defined($empty_zones) and $empty_zones =~ /^yes$|^no$/) {
+        $ctx->{empty_zones_enable} = $empty_zones;
+    }
     my @slave_ips;
     my $dns_slaves = get_dns_slave();
     if (scalar @$dns_slaves) {
@@ -1098,6 +1103,9 @@ sub update_namedconf {
                             push @newnamed, "\t\t" . $_ . ";\n";
                         }
                         push @newnamed, "\t};\n";
+                    } elsif ($ctx->{empty_zones_enable} and $line =~ /empty-zones-enable/) {
+                        push @newnamed, "\tempty-zones-enable " . $_ . ";\n";
+                        $skip = 1;
                     } elsif ($ctx->{slaves} and $line =~ /allow-transfer \{/) {
                         push @newnamed, "\tallow-transfer \{\n";
                         $skip = 1;
@@ -1235,6 +1243,10 @@ sub update_namedconf {
                 push @newnamed, "\t\t$_;\n";
             }
             push @newnamed, "\t};\n";
+        }
+
+        if ($ctx->{empty_zones_enable}){
+            push @newnamed, "\tempty-zones-enable " . $ctx->{empty_zones_enable} . ";\n";
         }
 
         if ($slave) {
