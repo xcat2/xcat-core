@@ -1057,7 +1057,7 @@ passed as argument rather than by table value',
 "              requests it does not know to these servers. Note that the DNS servers on the\n" .
 "              service nodes will ignore this value and always be configured to forward \n" .
 "              to the management node.\n\n" .
-" emptyzonesenable: (yes or no). This is to set empty-zones-enable value in named.conf options section. The default is yes. \n\n"
+" emptyzonesenable: (yes or no). This is to set empty-zones-enable value in named.conf options section. \n\n"
 " master:  The hostname of the xCAT management node, as known by the nodes.\n\n" .
 " nameservers:  A comma delimited list of DNS servers that each node in the cluster should\n" .
 "               use. This value will end up in the nameserver settings of the\n" .
