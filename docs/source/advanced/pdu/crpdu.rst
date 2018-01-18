@@ -1,7 +1,7 @@
 Collaborative PDU
 =================
 
-Collaborative PDU is also referred as Coral PDU, it controls power for compute Rack.  
+Collaborative PDU is also referred as Coral PDU, it controls power for compute Rack. User can access PDU via SSH and can use the **PduManager** command to configure and manage the PDU product.  
 
 
 Pre-Defined PDU Objects

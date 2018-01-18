@@ -1,6 +1,8 @@
 Infrastructure PDU
 ==================
 
+Users can access Infrastructure PDU via telnet and use the **IBM PDU Configuration Utility** to set up and configure the PDU. xCAT supports PDU commands for power management and monitoring through SNMP.
+
 
 PDU Commands
 ------------
