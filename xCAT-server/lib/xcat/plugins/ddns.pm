@@ -589,8 +589,14 @@ sub process_request {
 
     my @options = xCAT::TableUtils->get_site_attribute("emptyzonesenable");
     my $empty_zones = $options[0];
-    if (defined($empty_zones) and $empty_zones =~ /^yes$|^no$/) {
-        $ctx->{empty_zones_enable} = $empty_zones;
+    if (defined($empty_zones)) {
+        if ($empty_zones =~ /^yes$|^no$/) {
+            $ctx->{empty_zones_enable} = $empty_zones;
+        } else {
+            my $rsp;
+            push @{ $rsp->{data} }, "emptyzonesenable from xCAT site table should be yes or no.";
+            xCAT::MsgUtils->message("E", $rsp, $callback); 
+        }
     }
     my @slave_ips;
     my $dns_slaves = get_dns_slave();
@@ -1104,8 +1110,7 @@ sub update_namedconf {
                         }
                         push @newnamed, "\t};\n";
                     } elsif ($ctx->{empty_zones_enable} and $line =~ /empty-zones-enable/) {
-                        push @newnamed, "\tempty-zones-enable " . $_ . ";\n";
-                        $skip = 1;
+                        push @newnamed, "\tempty-zones-enable " . $ctx->{empty_zones_enable} . ";\n";
                     } elsif ($ctx->{slaves} and $line =~ /allow-transfer \{/) {
                         push @newnamed, "\tallow-transfer \{\n";
                         $skip = 1;
