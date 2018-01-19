@@ -136,7 +136,7 @@ sub parse_args {
     my $noderange = shift;
     my $subcommand = undef;
 
-    if (scalar(@ARGV) != 2 and ($command =~ /rpower/)) {
+    if (scalar(@ARGV) != 1 and ($command =~ /rpower/)) {
         return ([ 1, "Only one option is supported at the same time for $command" ]);
     } else {
         $subcommand = $ARGV[0];
