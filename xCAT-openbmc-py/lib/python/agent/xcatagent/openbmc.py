@@ -117,7 +117,6 @@ class OpenBMC(base.BaseDriver):
             setattr(self, key, value)
         global DEBUGMODE
         self.client = rest.RestSession(messager, DEBUGMODE)
-        self.rflash_log_file = XCAT_LOG_RFLASH_DIR + '/' + self.node + '.log'
 
     def _login(self):
         """ Login
@@ -139,7 +138,7 @@ class OpenBMC(base.BaseDriver):
         self.rflash_log_handle.writelines(msg + '\n')
         self.rflash_log_handle.flush()
         if update_dict:
-            utils.update2Ddict(update_dict, self.node, 'rst', [msg]) 
+            utils.update2Ddict(update_dict, self.node, 'result', [msg]) 
 
     def _firm_info(self, status):
         """List firmware information including additional
@@ -273,7 +272,7 @@ class OpenBMC(base.BaseDriver):
                         % (firm_ver, 10*6)
                 self._msg_process_rflash(upload_msg, {}, False)
                 error_list.append(error)
-            utils.update2Ddict(ALL_NODES_RESULT, self.node, 'rst', error_list)
+            utils.update2Ddict(ALL_NODES_RESULT, self.node, 'result', error_list)
             return (RESULT_FAIL, [])
 
         return (RESULT_OK, firm_ids)
@@ -286,6 +285,7 @@ class OpenBMC(base.BaseDriver):
         result = RESULT_OK
         set_priority_ids = []
         process_status = {}
+        failed_msg = []
         for i in range(80):
             try:
                 (has_functional, firm_info) = self._get_firm_info('rflash_check_status')
@@ -303,6 +303,7 @@ class OpenBMC(base.BaseDriver):
                     if activation_state == 'Failed':
                         activation_msg = 'Firmware %s activation failed.' % (firm_version)
                         self._msg_process_rflash(activation_msg, {}, False)
+                        failed_msg.append(activation_msg)
                         result = RESULT_FAIL
                         firm_id_list.rempove(firm_id)
                     if activation_state == 'Active':
@@ -326,10 +327,12 @@ class OpenBMC(base.BaseDriver):
             result = RESULT_FAIL
             for firm_id in firm_id_list:
                 if firm_id in process_status: 
-                    warn_msg = 'After %d seconds check the current status is %s' \
-                               % (80*15, process_status[firm_id])
-                    self._msg_process_rflash(warn_msg, ALL_NODES_RESULT, False)
-            
+                    failed_msg.append('After %d seconds check the current status is %s' \
+                                    % (80*15, process_status[firm_id]))
+
+        if failed_msg:
+            utils.update2Ddict(ALL_NODES_RESULT, self.node, 'result', [failed_msg])
+
         return (result, set_priority_ids)
 
     def _set_priority(self, priority_ids):
@@ -383,16 +386,18 @@ class OpenBMC(base.BaseDriver):
         activate_id = activate_version = ''
         if 'activate_id' in activate_arg:
             activate_id = activate_arg['activate_id']
-        if 'activate_version' in activate_arg:
-            activate_version = activate_arg['activate_version']
         if 'update_file' in activate_arg:
             result = self._rflash_upload(activate_arg['update_file'])
             if result != RESULT_OK:
                 self._msg_process_rflash(result, ALL_NODES_RESULT, False)
+                return
 
+            activate_version = activate_arg['activate_version']
             (result, info) = self._get_firm_id([activate_version])
             if result == RESULT_OK:
                 activate_id = info.pop(0)
+            else:
+                return
 
         result = self._rflash_activate_id(activate_id)
         if result != RESULT_OK:
@@ -405,7 +410,7 @@ class OpenBMC(base.BaseDriver):
         firm_id_list = [activate_id]
         (result, priority_ids) = self._check_id_status(firm_id_list)
         if result == RESULT_OK:
-            utils.update2Ddict(ALL_NODES_RESULT, self.node, 'rst', 'OK')
+            utils.update2Ddict(ALL_NODES_RESULT, self.node, 'result', 'OK')
             if priority_ids:
                 self._set_priority(priority_ids)
 
@@ -475,7 +480,7 @@ class OpenBMC(base.BaseDriver):
         uploading_msg = 'Uploading %s ...' % upload_file
         self._msg_process_rflash(uploading_msg, {}, True)
         try:
-            self.client.request_upload_curl('PUT', url, headers, upload_file, 
+            self.client.request_upload('PUT', url, headers, upload_file, 
                                             self.node, 'rflash_upload')
         except (xcat_exception.SelfServerException,
                 xcat_exception.SelfClientException) as e:
@@ -591,6 +596,7 @@ class OpenBMC(base.BaseDriver):
         """
         subcommand = args[0]
         if subcommand == 'activate' or subcommand == 'upload':
+            self.rflash_log_file = XCAT_LOG_RFLASH_DIR + '/' + self.node + '.log'
             self.rflash_log_handle = open(self.rflash_log_file, 'a') 
 
         try:
@@ -605,7 +611,7 @@ class OpenBMC(base.BaseDriver):
                 self.rflash_log_handle.writelines(result + '\n')
                 self.rflash_log_handle.flush()
                 if subcommand == 'activate':
-                    utils.update2Ddict(ALL_NODES_RESULT, self.node, 'rst', error_list) 
+                    utils.update2Ddict(ALL_NODES_RESULT, self.node, 'result', [result]) 
             return
 
         if subcommand == 'activate':
@@ -725,12 +731,13 @@ class OpenBMCManager(base.BaseManager):
             success_num = failed_num = 0
             failed_list = []
             for key in ALL_NODES_RESULT:
-                if ALL_NODES_RESULT[key]['rst'] == 'OK':
+                if ALL_NODES_RESULT[key]['result'] == 'OK':
                     success_num += 1
                 else:
                     failed_num += 1
-                    for error in ALL_NODES_RESULT[key]['rst']:
-                        failed_list.append(error)
+                    for errors in ALL_NODES_RESULT[key]['result']:
+                        for error in errors:
+                            failed_list.append('%s: %s' % (key, error))
             self.messager.info('-' * 55)
             self.messager.info('%s complete: Total=%d Success=%d Failed=%d' % \
                                (title, nodes_num, success_num, failed_num))

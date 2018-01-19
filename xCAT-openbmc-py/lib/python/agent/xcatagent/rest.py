@@ -96,7 +96,7 @@ class RestSession :
         return response_dict
 
 
-    def request_upload_curl (self, method, url, headers, files, node, status):
+    def request_upload (self, method, url, headers, files, node, status):
         for key,value in headers.items():
             header_data = key + ': ' + value
         request_cmd = 'curl -k -b sid=%s -H "%s" -X %s -T %s %s -s' % \
