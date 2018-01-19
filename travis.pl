@@ -236,7 +236,7 @@ sub install_xcat{
         }
     }
 
-    my $cmd = "sudo apt-get install xcat --force-yes";
+    my $cmd = "sudo apt-get install xcat --allow";
     @output = runcmd("$cmd");
     #print ">>>>>Dumper the output of '$cmd'\n";
     #print Dumper \@output;
@@ -345,7 +345,7 @@ sub check_syntax{
 # Retrun code:
 #--------------------------------------------------------
 sub run_fast_regression_test{
-    my $cmd = "sudo apt-get install xcat-test --force-yes";
+    my $cmd = "sudo apt-get install xcat-test --allow";
     my @output = runcmd("$cmd");
     if($::RUNCMD_RC){
          print RED "[run_fast_regression_test] $cmd ....[Failed]\n";
