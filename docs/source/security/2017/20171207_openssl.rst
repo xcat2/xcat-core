@@ -1,0 +1,32 @@
+2017-12-07 - OpenSSL Vulnerabilities
+====================================
+
+*Dec 07, 2017*, OpenSSL announced the following security advisories: https://www.openssl.org/news/secadv/20171207.txt
+
+
+Advisory CVEs
+-------------
+
+* CVE-2017-3737 - **Read/write after SSL object in error state** (Severity: Moderate)
+
+  This issue does not affect OpenSSL 1.1.0.
+
+  OpenSSL 1.0.2 users should upgrade to 1.0.2n
+
+* CVE-2017-3738 - **rsaz_1024_mul_avx2 overflow bug on x86_64** (Severity: Low)
+
+  Due to the low severity of this issue we are not issuing a new release of OpenSSL 1.1.0 at this time. The fix will be included in OpenSSL 1.1.0h when it becomes available. The fix is also available in commit e502cc86d in the OpenSSL git repository.
+
+  OpenSSL 1.0.2 users should upgrade to 1.0.2n
+
+
+Please see the security bulletin above for patch, upgrade, or suggested work around information.
+
+Action
+------
+
+xCAT uses OpenSSL for client-server communication but **does not** ship it.  
+
+It is highly recommended to keep your OpenSSL levels up-to-date with the indicated versions in the security bulletins to prevent any potential security threats. Obtain the updated software packages from your Operating system distribution channels. 
+
+
