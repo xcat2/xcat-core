@@ -578,10 +578,14 @@ my %api_config_info = (
     RSPCONFIG_POWERSUPPLY_REDUNDENCY => {
         command      => "rspconfig",
         url          => "/sensors/chassis/PowerSupplyRedundancy",
-        attr_url     => "PowerSupplyRedundency",
-        display_name => "PowerSupplyRedundency",
-        type         => "boolean",
-        subcommand   => "powersupplyredundency",
+        attr_url     => "value",
+        display_name => "PowerSupplyRedundancy",
+        type         => "attribute",
+        subcommand   => "powersupplyredundancy",
+        attr_value   => {
+            enabled     => "Enabled",
+            disabled    => "Disabled",
+        },
     },
     RSPCONFIG_POWERRESTORE_POLICY => {
         command      => "rspconfig",
