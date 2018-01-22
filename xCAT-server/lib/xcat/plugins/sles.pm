@@ -203,8 +203,15 @@ sub mknetboot
             }
         } else {
             # This is deprecated mode to define node's provmethod, not supported now.
-            xCAT::MsgUtils->report_node_error($callback, $node, "OS image name must be specified in nodetype.provmethod");
-            next;
+            my @ents = xCAT::TableUtils->get_site_attribute("disablenodesetwarning");
+            my $site_ent = $ents[0];
+            if (!defined($site_ent) || ($site_ent =~ /no/i) || ($site_ent =~ /0/))
+            {
+                if (!defined($::DISABLENODESETWARNING)) {    # set by AAsn.pm
+                    xCAT::MsgUtils->report_node_error($callback, $node, "OS image name must be specified in nodetype.provmethod");
+                    next;
+		}
+            }
 
             $osver   = $ent->{os};
             $arch    = $ent->{arch};
@@ -849,10 +856,15 @@ sub mkinstall
             xCAT::MsgUtils->trace($verbose_on_off, "d", "sles->mkinstall: imagename=$imagename pkgdir=$pkgdir pkglistfile=$pkglistfile tmplfile=$tmplfile partfile=$partfile");
         }
         else {
-            # This is deprecated mode to define node's provmethod, not supported now.
-            xCAT::MsgUtils->report_node_error($callback, $node, "OS image name must be specified in nodetype.provmethod");
-            next;
-
+            my @ents = xCAT::TableUtils->get_site_attribute("disablenodesetwarning");
+            my $site_ent = $ents[0];
+            if (!defined($site_ent) || ($site_ent =~ /no/i) || ($site_ent =~ /0/))
+            {
+                if (!defined($::DISABLENODESETWARNING)) {    # set by AAsn.pm
+                    xCAT::MsgUtils->report_node_error($callback, $node, "OS image name must be specified in nodetype.provmethod");
+                    next;
+		}
+            }
             $os      = $ent->{os};
             $arch    = $ent->{arch};
             $profile = $ent->{profile};
