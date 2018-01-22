@@ -29,7 +29,7 @@ Vendor: IBM Corp.
 Summary: xCAT Genesis netboot image
 URL:	 https://xcat.org/
 Source1: xCAT-genesis-base-%{tarch}.tar.bz2
-Conflicts: xCAT-genesis-scripts-%{tarch} < 1:2.13.9
+Conflicts: xCAT-genesis-scripts-%{tarch} < 1:2.13.10
 
 Buildroot: %{_localstatedir}/tmp/xCAT-genesis
 BuildRequires: /usr/sbin/ntp-wait

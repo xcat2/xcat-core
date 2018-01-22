@@ -46,6 +46,7 @@ $::STATUS_INACTIVE     = "unreachable";
 $::STATUS_INSTALLING   = "installing";
 $::STATUS_INSTALLED    = "installed";
 $::STATUS_BOOTING      = "booting";
+$::STATUS_POSTBOOTING  = "postbooting";
 $::STATUS_NETBOOTING   = "netbooting";
 $::STATUS_BOOTED       = "booted";
 $::STATUS_POWERING_ON  = "powering-on";
@@ -66,6 +67,7 @@ $::STATUS_BMCREADY     = "bmcready";
     $::STATUS_INSTALLING   => 1,
     $::STATUS_INSTALLED    => 1,
     $::STATUS_BOOTING      => 1,
+    $::STATUS_POSTBOOTING  => 1,
     $::STATUS_NETBOOTING   => 1,
     $::STATUS_BOOTED       => 1,
     $::STATUS_POWERING_ON  => 1,
@@ -86,15 +88,16 @@ $::STATUS_BMCREADY     = "bmcready";
     $::STATUS_SYNCED      => 1,
 );
 
-#defined->[discovering]->[configuring]->[standingby]->installing->[installed]->booting->alive,  defined->[discovering]->[configuring]-[standingby]->netbooting->booted->alive,  alive/unreachable->booting->alive,  powering-off->unreachable, alive->unreachable
+#defined->[discovering]->[configuring]->[standingby]->installing->[installed]->booting->[postbooting]->booted->alive,  defined->[discovering]->[configuring]-[standingby]->netbooting->[postbooting]->booted->alive,  alive/unreachable->booting->alive,  powering-off->unreachable, alive->unreachable
 %::NEXT_NODESTAT_VAL = (
     $::STATUS_DEFINED => { $::STATUS_DISCOVERING => 1, $::STATUS_INSTALLING => 1, $::STATUS_NETBOOTING => 1, $::STATUS_POWERING_OFF => 1, $::STATUS_POWERING_ON => 1, $::STATUS_BOOTING => 1, $::STATUS_CONFIGURING => 1 },
     $::STATUS_DISCOVERING => { $::STATUS_INSTALLING => 1, $::STATUS_NETBOOTING => 1, $::STATUS_CONFIGURING => 1, $::STATUS_BOOTING => 1 },
     $::STATUS_CONFIGURING => { $::STATUS_INSTALLING => 1, $::STATUS_NETBOOTING => 1, $::STATUS_STANDING_BY => 1 },
     $::STATUS_INSTALLING => { $::STATUS_INSTALLED => 1, $::STATUS_BOOTING => 1 },
     $::STATUS_INSTALLED => { $::STATUS_BOOTING => 1 },
-    $::STATUS_BOOTING => { $::STATUS_BOOTED => 1, $::STATUS_ACTIVE => 1, $::STATUS_INACTIVE => 1 },
-    $::STATUS_NETBOOTING => { $::STATUS_BOOTED => 1 },
+    $::STATUS_BOOTING => { $::STATUS_BOOTED => 1, $::STATUS_ACTIVE => 1, $::STATUS_INACTIVE => 1, $::STATUS_POSTBOOTING => 1 },
+    $::STATUS_POSTBOOTING => { $::STATUS_BOOTED => 1 },
+    $::STATUS_NETBOOTING => { $::STATUS_POSTBOOTING => 1, $::STATUS_BOOTED => 1 },
     $::STATUS_BOOTED => { $::STATUS_ACTIVE => 1, $::STATUS_INACTIVE => 1 },
     $::STATUS_ACTIVE => { $::STATUS_INACTIVE => 1, $::STATUS_DISCOVERING => 1, $::STATUS_CONFIGURING => 1, $::STATUS_INSTALLING => 1, $::STATUS_NETBOOTING => 1, $::STATUS_POWERING_OFF => 1, $::STATUS_POWERING_ON => 1 },
     $::STATUS_INACTIVE => { $::STATUS_ACTIVE => 1, $::STATUS_DISCOVERING => 1, $::STATUS_CONFIGURING => 1, $::STATUS_INSTALLING => 1, $::STATUS_NETBOOTING => 1, $::STATUS_POWERING_OFF => 1, $::STATUS_POWERING_ON => 1 },
