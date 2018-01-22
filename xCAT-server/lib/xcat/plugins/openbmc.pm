@@ -76,6 +76,7 @@ $::BMC_CHECK_INTERVAL = 15;
 $::RSPCONFIG_DUMP_INTERVAL  = 15;
 $::RSPCONFIG_DUMP_MAX_RETRY = 20;
 $::RSPCONFIG_DUMP_WAIT_TOTALTIME = int($::RSPCONFIG_DUMP_INTERVAL*$::RSPCONFIG_DUMP_MAX_RETRY);
+$::RSPCONFIG_DUMP_DOWNLOAD_ALL_REQUESTED = 0;
 $::RSPCONFIG_WAIT_VLAN_DONE = 15;
 $::RSPCONFIG_WAIT_IP_DONE   = 3;
 $::RSPCONFIG_DUMP_CMD_TIME  = 0;
@@ -510,6 +511,9 @@ my %status_info = (
         process        => \&rspconfig_dump_response,
     },
     RSPCONFIG_DUMP_DOWNLOAD_RESPONSE => {
+        process        => \&rspconfig_dump_response,
+    },
+    RSPCONFIG_DUMP_DOWNLOAD_ALL_RESPONSE => {
         process        => \&rspconfig_dump_response,
     },
     RVITALS_REQUEST => {
@@ -1186,7 +1190,7 @@ sub parse_args {
                 $option = $ARGV[1] if (defined $ARGV[1]);
                 if ($option =~ /^-d$|^--download$/) {
                     return ([ 1, "No dump file ID specified" ]) unless ($ARGV[2]);
-                    return ([ 1, "Invalid parameter for $command $option $ARGV[2]" ]) if ($ARGV[2] !~ /^\d*$/);
+                    return ([ 1, "Invalid parameter for $command $option $ARGV[2]" ]) if ($ARGV[2] !~ /^\d*$/ and $ARGV[2] ne "all");
                 } elsif ($option =~ /^-c$|^--clear$/) {
                     return ([ 1, "No dump file ID specified. To clear all, specify 'all'." ]) unless ($ARGV[2]);
                     return ([ 1, "Invalid parameter for $command $option $ARGV[2]" ]) if ($ARGV[2] !~ /^\d*$/ and $ARGV[2] ne "all");
@@ -1643,10 +1647,19 @@ sub parse_command_status {
                     return 1;
                 }
                 $::RSPCONFIG_DUMP_CMD_TIME = time(); #Save time of rspcommand start to use in the dump filename
-                $next_status{LOGIN_RESPONSE} = "RSPCONFIG_DUMP_DOWNLOAD_REQUEST";
-                $next_status{RSPCONFIG_DUMP_DOWNLOAD_REQUEST} = "RSPCONFIG_DUMP_DOWNLOAD_RESPONSE";
-                $status_info{RSPCONFIG_DUMP_DOWNLOAD_REQUEST}{init_url} =~ s/#ID#/$$subcommands[2]/g; 
-                $status_info{RSPCONFIG_DUMP_DOWNLOAD_REQUEST}{argv} = $$subcommands[2];
+                if ($$subcommands[2] eq "all") {
+                    # if "download all" was passed in
+                    $next_status{LOGIN_RESPONSE} = "RSPCONFIG_DUMP_LIST_REQUEST";
+                    $next_status{RSPCONFIG_DUMP_LIST_REQUEST} = "RSPCONFIG_DUMP_LIST_RESPONSE";
+                    $next_status{RSPCONFIG_DUMP_LIST_RESPONSE} = "RSPCONFIG_DUMP_DOWNLOAD_ALL_RESPONSE";
+                    xCAT::SvrUtils::sendmsg("Downloading all dumps...", $callback);
+                    $::RSPCONFIG_DUMP_DOWNLOAD_ALL_REQUESTED = 1; # Set flag to download all dumps
+                } else {
+                    $next_status{LOGIN_RESPONSE} = "RSPCONFIG_DUMP_DOWNLOAD_REQUEST";
+                    $next_status{RSPCONFIG_DUMP_DOWNLOAD_REQUEST} = "RSPCONFIG_DUMP_DOWNLOAD_RESPONSE";
+                    $status_info{RSPCONFIG_DUMP_DOWNLOAD_REQUEST}{init_url} =~ s/#ID#/$$subcommands[2]/g; 
+                    $status_info{RSPCONFIG_DUMP_DOWNLOAD_REQUEST}{argv} = $$subcommands[2];
+                }
             } else {
                 # this section handles the dump support where no options are given and xCAT will 
                 # # handle the creation, waiting, and download of the dump across a given noderange
@@ -3680,12 +3693,22 @@ sub rspconfig_dump_response {
                 $year += 1900;
                 my $UTC_time = sprintf ("%02d/%02d/%04d %02d:%02d:%02d", $mon, $mday, $year, $hour, $min, $sec);
                 $dump_info{$id} = "[$id] Generated: $UTC_time, Size: $content{Size}"; 
+                
+                if ($::RSPCONFIG_DUMP_DOWNLOAD_ALL_REQUESTED) {
+                    # Save dump info for later, when dump download all
+                    $node_info{$node}{dump_info}{$id} = "[$id] Generated: $UTC_time, Size: $content{Size}";
+                }
             }
         }
 
         xCAT::SvrUtils::sendmsg("$::NO_ATTRIBUTES_RETURNED", $callback, $node) if (!%dump_info and $node_info{$node}{cur_status} eq "RSPCONFIG_DUMP_LIST_RESPONSE");
-        foreach my $key ( sort { $a <=> $b } keys %dump_info) {
-            xCAT::MsgUtils->message("I", { data => ["$node: $dump_info{$key}"] }, $callback) if ($dump_info{$key});
+        # If processing the "download all" request, do not print anything now. 
+        # Download function dump_download_process() will be
+        # printing the output for each downloaded dump
+        unless ($::RSPCONFIG_DUMP_DOWNLOAD_ALL_REQUESTED) {
+            foreach my $key ( sort { $a <=> $b } keys %dump_info) {
+                xCAT::MsgUtils->message("I", { data => ["$node: $dump_info{$key}"] }, $callback) if ($dump_info{$key});
+            }
         }
 
         if (!$gen_check and $node_info{$node}{cur_status} eq "RSPCONFIG_DUMP_CHECK_RESPONSE") {
@@ -3706,6 +3729,9 @@ sub rspconfig_dump_response {
             }
         }
     } 
+    if ($node_info{$node}{cur_status} eq "RSPCONFIG_DUMP_DOWNLOAD_ALL_RESPONSE") {
+       &dump_download_all_process($node);
+    }
 
     if ($node_info{$node}{cur_status} eq "RSPCONFIG_DUMP_DOWNLOAD_REQUEST") {
         my $child = xCAT::Utils->xfork;
@@ -3808,7 +3834,12 @@ sub dump_download_process {
         return 1;
     }
     if ($h->{message} eq $::RESPONSE_OK) {
-        xCAT::SvrUtils::sendmsg("Dump $dump_id generated. Downloading to $file_name", $callback, $node);
+        if ($::RSPCONFIG_DUMP_DOWNLOAD_ALL_REQUESTED) {
+            # Slightly different message if downloading dumps as part of "download all" processing
+            xCAT::SvrUtils::sendmsg("Downloading dump $dump_id to $file_name", $callback, $node);
+        } else {
+            xCAT::SvrUtils::sendmsg("Dump $dump_id generated. Downloading to $file_name", $callback, $node);
+        }
         my $curl_dwld_result = `$curl_dwld_cmd -s`;
         if (!$curl_dwld_result) {
             if ($xcatdebugmode) {
@@ -3833,6 +3864,27 @@ sub dump_download_process {
         return 1;
     }
     return 0;
+}
+
+#-------------------------------------------------------
+
+=head3  dump_download_all_process
+
+  Process to download all dumps
+  Input:
+        $node: nodename of current response
+
+=cut
+
+#-------------------------------------------------------
+sub dump_download_all_process {
+    my $node = shift;
+
+    # Call dump_download_process for each dump id in the list
+    foreach my $dump_id (keys %{$node_info{$node}{dump_info}}) {
+        $node_info{$node}{dump_id} = $dump_id;
+        &dump_download_process($node);
+    }
 }
 
 #-------------------------------------------------------

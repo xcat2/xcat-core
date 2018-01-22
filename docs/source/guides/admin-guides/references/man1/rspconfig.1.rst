@@ -49,7 +49,7 @@ OpenBMC specific:
 
 \ **rspconfig**\  \ *noderange*\  {\ **ipsrc | ip | netmask | gateway | hostname | vlan | sshcfg**\ }
 
-\ **rspconfig**\  \ *noderange*\  \ **dump**\  [\ **-l | -**\ **-list**\ ] [\ **-g | -**\ **-generate**\ ] [\ **-c | -**\ **-clear**\  {\ *id*\ |\ **all**\ }] [\ **-d | -**\ **-download**\  \ *id*\ ]
+\ **rspconfig**\  \ *noderange*\  \ **dump**\  [\ **-l | -**\ **-list**\ ] [\ **-g | -**\ **-generate**\ ] [\ **-c | -**\ **-clear**\  {\ *id*\  | \ **all**\ }] [\ **-d | -**\ **-download**\  {\ *id*\  | \ **all**\ }]
 
 
 MPA specific:
@@ -449,7 +449,7 @@ OPTIONS
  
  
  
- \ **-d**\  will download a single dump from the BMC to /var/log/xcat/dump on management or service node.
+ \ **-d**\  will download a single dump or all generated dumps from the BMC to /var/log/xcat/dump on management or service node.
  
  
  
