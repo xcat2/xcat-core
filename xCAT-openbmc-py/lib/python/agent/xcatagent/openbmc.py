@@ -6,7 +6,7 @@ import gevent
 
 import utils
 import xcat_exception
-import rest
+import openbmc_rest
 
 HTTP_PROTOCOL = "https://"
 PROJECT_URL = "/xyz/openbmc_project"
@@ -17,7 +17,7 @@ RESULT_FAIL = 'fail'
 DEBUGMODE = False
 VERBOSE = False
 
-ALL_NODES_RESULT = {}
+all_nodes_result = {}
 
 # global variables of rflash
 RFLASH_OPTIONS = {
@@ -47,7 +47,7 @@ RFLASH_URLS = {
     },
     "priority"  : {
         "url"   : PROJECT_URL + "/software/#PRIORITY_ID#/attr/Priority",
-        "field" : "false",
+        "field" : False,
     }
 }
 
@@ -116,7 +116,7 @@ class OpenBMC(base.BaseDriver):
         for key, value in node_info.items():
             setattr(self, key, value)
         global DEBUGMODE
-        self.client = rest.RestSession(messager, DEBUGMODE)
+        self.client = openbmc_rest.OpenBMCRest(name, messager, DEBUGMODE)
 
     def _login(self):
         """ Login
@@ -124,7 +124,7 @@ class OpenBMC(base.BaseDriver):
         """
         url = HTTP_PROTOCOL + self.bmcip + '/login'
         data = { "data": [ self.username, self.password ] }
-        self.client.request('POST', url, OpenBMC.headers, data, self.node, 'login')
+        self.client.request('POST', url, OpenBMC.headers, data, 'login')
         return RESULT_OK
 
     def _msg_process_rflash (self, msg, update_dict, checkv):
@@ -159,8 +159,8 @@ class OpenBMC(base.BaseDriver):
             flag = ''
             if 'is_functional' in firm_info[key]: 
                 flag = '*'
-            elif 'Priority' in firm_info[key] and 
-                 firm_info[key]['Priority'] == '0':
+            elif ('Priority' in firm_info[key] and
+                  firm_info[key]['Priority'] == '0'):
                 if not has_functional:
                     flag = '*'
                 else:
@@ -191,7 +191,7 @@ class OpenBMC(base.BaseDriver):
         firm_info = {}
         has_functional = False
         url = HTTP_PROTOCOL + self.bmcip + FIRM_URL
-        response = self.client.request('GET', url, OpenBMC.headers, '', self.node, status)
+        response = self.client.request('GET', url, OpenBMC.headers, '', status)
         functional_url = PROJECT_URL + '/software/functional'
 
         for key in response['data']:
@@ -207,8 +207,8 @@ class OpenBMC(base.BaseDriver):
             if 'Version' in response['data'][key]:
                 purpose = response['data'][key]['Purpose'].split('.')[-1]
                 key_sort = purpose + '-' + key_id
-                if functional_url in response['data'] and 
-                   key in response['data'][functional_url]['endpoints']:
+                if (functional_url in response['data'] and 
+                   key in response['data'][functional_url]['endpoints']):
                     utils.update2Ddict(firm_info, key_sort, 'is_functional', True)
                 utils.update2Ddict(firm_info, key_sort, 'Version', 
                                    response['data'][key]['Version'])
@@ -238,10 +238,10 @@ class OpenBMC(base.BaseDriver):
         for i in range(6):
             try:
                 response = self.client.request('GET', url, OpenBMC.headers, 
-                                               '', self.node, 'rflash_check_id')
+                                               '', 'rflash_check_id')
             except (xcat_exception.SelfServerException,
                     xcat_exception.SelfClientException) as e:
-                self._msg_process_rflash(e.message, ALL_NODES_RESULT, False)
+                self._msg_process_rflash(e.message, all_nodes_result, False)
                 return (RESULT_FAIL, [])
 
             for key in response['data']:
@@ -272,7 +272,7 @@ class OpenBMC(base.BaseDriver):
                         % (firm_ver, 10*6)
                 self._msg_process_rflash(upload_msg, {}, False)
                 error_list.append(error)
-            utils.update2Ddict(ALL_NODES_RESULT, self.node, 'result', error_list)
+            utils.update2Ddict(all_nodes_result, self.node, 'result', error_list)
             return (RESULT_FAIL, [])
 
         return (RESULT_OK, firm_ids)
@@ -291,7 +291,7 @@ class OpenBMC(base.BaseDriver):
                 (has_functional, firm_info) = self._get_firm_info('rflash_check_status')
             except (xcat_exception.SelfServerException,
                     xcat_exception.SelfClientException) as e:
-                self._msg_process_rflash(e.message, ALL_NODES_RESULT, False)
+                self._msg_process_rflash(e.message, all_nodes_result, False)
                 return (RESULT_FAIL, set_priority_ids)
 
             activation_num = 0
@@ -331,7 +331,7 @@ class OpenBMC(base.BaseDriver):
                                     % (80*15, process_status[firm_id]))
 
         if failed_msg:
-            utils.update2Ddict(ALL_NODES_RESULT, self.node, 'result', [failed_msg])
+            utils.update2Ddict(all_nodes_result, self.node, 'result', [failed_msg])
 
         return (result, set_priority_ids)
 
@@ -342,12 +342,12 @@ class OpenBMC(base.BaseDriver):
         :return error msg if failed
         """
         for priority_id in priority_ids:
-            url = HTTP_PROTOCOL + self.bmcip + 
-                  RFLASH_URLS['priority']['url'].replace('#PRIORITY_ID#', priority_id)
+            url = (HTTP_PROTOCOL + self.bmcip + 
+                  RFLASH_URLS['priority']['url'].replace('#PRIORITY_ID#', priority_id))
             data = { "data": RFLASH_URLS['priority']['field'] }
             try:
                 response = self.client.request('PUT', url, OpenBMC.headers, 
-                                               data, self.node, 'rflash_set_priority')
+                                               data, 'rflash_set_priority')
             except (xcat_exception.SelfServerException,
                     xcat_exception.SelfClientException) as e:
                 return e.message
@@ -359,12 +359,12 @@ class OpenBMC(base.BaseDriver):
         :param activate_id: the id want to activate
         :raise: error message if failed
         """
-        url = HTTP_PROTOCOL + self.bmcip + 
-              RFLASH_URLS['activate']['url'].replace('#ACTIVATE_ID#', activate_id)
+        url = (HTTP_PROTOCOL + self.bmcip + 
+              RFLASH_URLS['activate']['url'].replace('#ACTIVATE_ID#', activate_id))
         data = { "data": RFLASH_URLS['activate']['field'] }
         try:
             response = self.client.request('PUT', url, OpenBMC.headers, 
-                                           data, self.node, 'rflash_activate')
+                                           data, 'rflash_activate')
         except xcat_exception.SelfServerException as e:
             return e.message
         except xcat_exception.SelfClientException as e:
@@ -389,7 +389,7 @@ class OpenBMC(base.BaseDriver):
         if 'update_file' in activate_arg:
             result = self._rflash_upload(activate_arg['update_file'])
             if result != RESULT_OK:
-                self._msg_process_rflash(result, ALL_NODES_RESULT, False)
+                self._msg_process_rflash(result, all_nodes_result, False)
                 return
 
             activate_version = activate_arg['activate_version']
@@ -401,7 +401,7 @@ class OpenBMC(base.BaseDriver):
 
         result = self._rflash_activate_id(activate_id)
         if result != RESULT_OK:
-            self._msg_process_rflash(result, ALL_NODES_RESULT, False)
+            self._msg_process_rflash(result, all_nodes_result, False)
             return
         else:
             flash_started_msg = 'rflash %s started, please wait...' % activate_version
@@ -410,7 +410,7 @@ class OpenBMC(base.BaseDriver):
         firm_id_list = [activate_id]
         (result, priority_ids) = self._check_id_status(firm_id_list)
         if result == RESULT_OK:
-            utils.update2Ddict(ALL_NODES_RESULT, self.node, 'result', 'OK')
+            utils.update2Ddict(all_nodes_result, self.node, 'result', 'OK')
             if priority_ids:
                 self._set_priority(priority_ids)
 
@@ -421,12 +421,12 @@ class OpenBMC(base.BaseDriver):
         :returns: ok if success
         :raise: error message if failed
         """ 
-        url = HTTP_PROTOCOL + self.bmcip + 
-              RFLASH_URLS['delete']['url'].replace('#DELETE_ID#', delete_id)
+        url = (HTTP_PROTOCOL + self.bmcip + 
+              RFLASH_URLS['delete']['url'].replace('#DELETE_ID#', delete_id))
         data = { "data": RFLASH_URLS['delete']['field'] }
         try:
             response = self.client.request('POST', url, OpenBMC.headers, 
-                                           data, self.node, 'rflash_delete')
+                                           data, 'rflash_delete')
         except xcat_exception.SelfServerException as e:
             return e.message
         except xcat_exception.SelfClientException as e:
@@ -480,8 +480,8 @@ class OpenBMC(base.BaseDriver):
         uploading_msg = 'Uploading %s ...' % upload_file
         self._msg_process_rflash(uploading_msg, {}, True)
         try:
-            self.client.request_upload('PUT', url, headers, upload_file, 
-                                            self.node, 'rflash_upload')
+            self.client.request_upload('PUT', url, headers, 
+                                       upload_file, 'rflash_upload')
         except (xcat_exception.SelfServerException,
                 xcat_exception.SelfClientException) as e:
             result = e.message
@@ -498,8 +498,8 @@ class OpenBMC(base.BaseDriver):
         url = HTTP_PROTOCOL + self.bmcip + RPOWER_URLS[subcommand]['url']
         data = { "data": RPOWER_URLS[subcommand]['field'] }
         try:
-            response = self.client.request('PUT', url, OpenBMC.headers, data,
-                                           self.node, 'rpower_' + subcommand)
+            response = self.client.request('PUT', url, OpenBMC.headers, 
+                                           data, 'rpower_' + subcommand)
         except (xcat_exception.SelfServerException,
                 xcat_exception.SelfClientException) as e:
             if subcommand != 'bmcreboot':
@@ -519,8 +519,8 @@ class OpenBMC(base.BaseDriver):
         bmc_not_ready = 'NotReady'
         url = HTTP_PROTOCOL + self.bmcip + RPOWER_URLS['state']['url']
         try:
-            response = self.client.request('GET', url, OpenBMC.headers, '',
-                                           self.node, 'rpower_' + subcommand)
+            response = self.client.request('GET', url, OpenBMC.headers,
+                                           '', 'rpower_' + subcommand)
         except xcat_exception.SelfServerException, e:
             if subcommand == 'bmcstate':
                 result = bmc_not_ready
@@ -611,7 +611,7 @@ class OpenBMC(base.BaseDriver):
                 self.rflash_log_handle.writelines(result + '\n')
                 self.rflash_log_handle.flush()
                 if subcommand == 'activate':
-                    utils.update2Ddict(ALL_NODES_RESULT, self.node, 'result', [result]) 
+                    utils.update2Ddict(all_nodes_result, self.node, 'result', [result]) 
             return
 
         if subcommand == 'activate':
@@ -672,6 +672,7 @@ class OpenBMC(base.BaseDriver):
             self.messager.info(result)
             return
 
+        new_status = ''
         if subcommand in POWER_SET_OPTIONS:
             result = self._set_power_onoff(subcommand)
             if result == RESULT_OK:
@@ -727,15 +728,15 @@ class OpenBMCManager(base.BaseManager):
                 args.remove(i)
 
     def _summary(self, nodes_num, title):
-        if ALL_NODES_RESULT:
+        if all_nodes_result:
             success_num = failed_num = 0
             failed_list = []
-            for key in ALL_NODES_RESULT:
-                if ALL_NODES_RESULT[key]['result'] == 'OK':
+            for key in all_nodes_result:
+                if all_nodes_result[key]['result'] == 'OK':
                     success_num += 1
                 else:
                     failed_num += 1
-                    for errors in ALL_NODES_RESULT[key]['result']:
+                    for errors in all_nodes_result[key]['result']:
                         for error in errors:
                             failed_list.append('%s: %s' % (key, error))
             self.messager.info('-' * 55)
@@ -762,16 +763,16 @@ class OpenBMCManager(base.BaseManager):
         activate_arg = {}
         args_num = len(args)
         subcommand = args[0]
-        if subcommand == 'upload' or subcommand == 'activate' or
-           (subcommand == 'check' and args_num > 1):
+        if (subcommand == 'upload' or subcommand == 'activate' or
+           (subcommand == 'check' and args_num > 1)):
             arg_type = args[1].split('.')[-1]
             if arg_type == 'tar':
                 upload_file = args[1]
                 if not os.path.isabs(upload_file):
                     upload_file =  self._get_full_path(upload_file)
 
-                if not os.access(upload_file, os.F_OK) or 
-                   not os.access(upload_file, os.R_OK):
+                if (not os.access(upload_file, os.F_OK) or 
+                    not os.access(upload_file, os.R_OK)):
                     error = 'Error: Cannot access %s. Check the management ' \
                             'node and/or service nodes.' % upload_file
                     self.messager.error(error)
