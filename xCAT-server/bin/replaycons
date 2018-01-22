@@ -72,7 +72,7 @@ if ($hmtab) {
 my $file = "/var/log/consoles/$node";
 
 #use confluent if it is there
-if ((-x "/opt/confluent/bin/confetty") || (-x "/usr/bin/confetty")) {
+if (((-x "/opt/confluent/bin/confetty") || (-x "/usr/bin/confetty")) && -f "/var/log/confluent/consoles/$node") {
     $file = "/var/log/confluent/consoles/$node";
 }
 
