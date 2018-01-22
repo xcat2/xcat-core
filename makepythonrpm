@@ -22,7 +22,7 @@ VER=`cat Version`
 REL="--define"
 EASE='usedate 1'
 RPMROOT=/root/rpmbuild
-
+mkdir -p $RPMROOT/SOURCES
 rpmbuild --version > /dev/null
 if [ $? -gt 0 ]; then
     echo "Error: rpmbuild does not appear to be installed or working."
