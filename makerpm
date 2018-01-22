@@ -126,7 +126,7 @@ function makexcat {
 			# shipping bmcsetup and getipmi scripts as part of postscripts
 			files=("bmcsetup" "getipmi")
 			for f in "${files[@]}"; do
-				cp "xCAT-genesis-scripts/bin/"$f ${RPMNAME}/postscripts/$f
+				cp "xCAT-genesis-scripts/usr/bin/"$f ${RPMNAME}/postscripts/$f
 				sed -i  "s/xcat.genesis.$f/$f/g" ${RPMNAME}/postscripts/$f
 			done
 			cd `dirname $0`/$RPMNAME
