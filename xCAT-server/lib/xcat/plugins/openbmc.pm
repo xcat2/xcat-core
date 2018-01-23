@@ -571,15 +571,15 @@ my %api_config_info = (
         command      => "rspconfig",
         url          => "/control/host0/auto_reboot",
         attr_url     => "AutoReboot",
-        display_name => "AutoReboot",
+        display_name => "BMC AutoReboot",
         type         => "boolean",
         subcommand   => "autoreboot",
     },
-    RSPCONFIG_POWERSUPPLY_REDUNDENCY => {
+    RSPCONFIG_POWERSUPPLY_REDUNDANCY => {
         command      => "rspconfig",
         url          => "/sensors/chassis/PowerSupplyRedundancy",
         attr_url     => "value",
-        display_name => "PowerSupplyRedundancy",
+        display_name => "BMC PowerSupplyRedundancy",
         type         => "attribute",
         subcommand   => "powersupplyredundancy",
         attr_value   => {
@@ -591,7 +591,7 @@ my %api_config_info = (
         command      => "rspconfig",
         url          => "/control/host0/power_restore_policy",
         attr_url     => "PowerRestorePolicy",
-        display_name => "PowerRestorePolicy",
+        display_name => "BMC PowerRestorePolicy",
         type         => "attribute",
         subcommand   => "powerrestorepolicy",
         attr_value   => {
@@ -4448,10 +4448,8 @@ sub is_valid_config_api {
         $subcommand_value = $2;
     }
     foreach my $config_subcommand (keys %api_config_info) {
-        foreach my $config_attribute (keys %{ $api_config_info{$config_subcommand} }) {
-            if ($subcommand_key eq $api_config_info{$config_subcommand}{subcommand}) {
-                return $config_subcommand;
-            }
+        if ($subcommand_key eq $api_config_info{$config_subcommand}{subcommand}) {
+            return $config_subcommand;
         }
     }
     return -1;
