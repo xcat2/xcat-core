@@ -754,11 +754,14 @@ function msgutil_r {
    local msgtype=$2
    local msgstr=$3
    local logfile=$4
+   local logtag=$5
 
-   if [ -z "$msgtype"  ]; then
+   if [ -z "$msgtype" ]; then
       msgtype="debug"
    fi
-
+   if [ -z "$logtag" ]; then
+      logtag="xcat"
+   fi
 
    if [ -n "$logserver" ];then
        #In Ubuntu, there is a bug in some logger version that "-n" is ignored. The workaround is to specify the 
@@ -770,24 +773,24 @@ function msgutil_r {
         then
             eval $(logger -V 2>/dev/null | awk '{print $4}' | awk -F '.' '{printf("var1=%s; var2=%s",$1,$2)}')
             if [ $var1 -eq 2 ] && [ $var2 -lt 25 ]; then
-                logger -u /tmp/ignored -n $logserver -t xcat -p local4.$msgtype "$msgstr" >/dev/null 2>&1
+                logger -u /tmp/ignored -n $logserver -t $logtag -p local4.$msgtype "$msgstr" >/dev/null 2>&1
             else
-                logger -n $logserver -t xcat -p local4.$msgtype "$msgstr" >/dev/null 2>&1
+                logger -n $logserver -t $logtag -p local4.$msgtype "$msgstr" >/dev/null 2>&1
             fi
         else
-            logger -n $logserver -t xcat -p local4.$msgtype "$msgstr" >/dev/null 2>&1
+            logger -n $logserver -t $logtag -p local4.$msgtype "$msgstr" >/dev/null 2>&1
         fi
       if [ "$?" != "0" ];then
-         exec 3<>/dev/udp/$logserver/514 && logger -s -t xcat -p local4.$msgtype "$msgstr" 1>&3  2>&1 && exec 3>&-
+         exec 3<>/dev/udp/$logserver/514 && logger -s -t $logtag -p local4.$msgtype "$msgstr" 1>&3  2>&1 && exec 3>&-
          if [ "$?" != "0" ];then
-            logger -s -t xcat -p local4.$msgtype "$msgstr" 2>&1|nc $logserver 514 >/dev/null 2>&1
+            logger -s -t $logtag -p local4.$msgtype "$msgstr" 2>&1|nc $logserver 514 >/dev/null 2>&1
             if [ "$?" != "0" ];then
-               logger -t xcat -p local4.$msgtype "$msgstr"
+               logger -t $logtag -p local4.$msgtype "$msgstr"
             fi
          fi
       fi
    else
-       logger -t xcat -p local4.$msgtype "$msgstr"
+       logger -t $logtag -p local4.$msgtype "$msgstr"
    fi
 
    if [ -n "$logfile"  ]; then
@@ -799,7 +802,7 @@ function msgutil_r {
 
       #   echo "$msgstr" | tee -a $logfile
       #else
-      echo "$msgstr" >> $logfile
+      echo "$(date) [$msgtype]: $logtag: $msgstr" >> $logfile
    fi
 
 }

@@ -6,6 +6,7 @@
 #################################################################
 
 . /xcatpost/xcatlib.sh
+log_label="xcat.xcatinstallpost"
 if [ -f /xcatpost/mypostscript.post ]; then
     XCATDEBUGMODE=`grep 'XCATDEBUGMODE=' /xcatpost/mypostscript.post |cut -d= -f2 | tr -d \'\" | tr A-Z a-z `
     MASTER_IP=`grep '^MASTER_IP=' /xcatpost/mypostscript.post |cut -d= -f2|sed s/\'//g`
@@ -16,7 +17,7 @@ fi
 
 
 if [ ! `uname` = Linux ]; then
-   msgutil_r "$MASTER_IP" "err" "$0: the OS name is not Linux" "/var/log/xcat/xcat.log"
+   msgutil_r "$MASTER_IP" "error" "The OS is not Linux" "/var/log/xcat/xcat.log" "$log_label"
    exit
 fi
 SLI=$(awk 'BEGIN{srand(); printf("%d\n",rand()*10)}')
@@ -38,7 +39,7 @@ while true; do
 
     if [ $RETRY -eq 90 ];then
        #timeout, complain and exit
-       msgutil_r "$MASTER_IP" "err" "`date`: xcatinstallpost: the network between the node and $MASTER_IP is not ready, please check[retry=$RETRY]..." "/var/log/xcat/xcat.log"
+       msgutil_r "$MASTER_IP" "error" "the network between the node and $MASTER_IP is not ready, please check[retry=$RETRY]..." "/var/log/xcat/xcat.log" "$log_label"
        exit 1
     fi
     
@@ -124,15 +125,16 @@ echo "
 
 if [ \"\$return_value\" -eq \"0\" ]; then
     if [ \"\$XCATDEBUGMODE\" = \"1\" ] || [ \"\$XCATDEBUGMODE\" = \"2\" ]; then
-        msgutil_r \"\$MASTER_IP\" \"info\" \"node booted, reporting status...\" \"/var/log/xcat/xcat.log\"
+        msgutil_r \"\$MASTER_IP\" \"debug\" \"node booted, reporting status...\" \"/var/log/xcat/xcat.log\" \"xcat.mypostscript\"
     fi
     updateflag.awk \$MASTER 3002 \"installstatus booted\"
-    msgutil_r \$MASTER_IP \"info\" \"provision completed.(\$NODE)\" \"/var/log/xcat/xcat.log\"
+    msgutil_r \$MASTER_IP \"info\" \"provision completed.(\$NODE)\" \"/var/log/xcat/xcat.log\" \"xcat.mypostscript\"
 else
     if [ \"\$XCATDEBUGMODE\" = \"1\" ] || [ \"\$XCATDEBUGMODE\" = \"2\" ]; then
-        msgutil_r \"\$MASTER_IP\" \"info\" \"node boot failed, reporting status...\" \"/var/log/xcat/xcat.log\"
+        msgutil_r \"\$MASTER_IP\" \"debug\" \"node boot failed, reporting status...\" \"/var/log/xcat/xcat.log\" \"xcat.mypostscript\"
     fi
     updateflag.awk \$MASTER 3002 \"installstatus failed\"
+    msgutil_r \$MASTER_IP \"error\" \"provision completed with error.(\$NODE)\" \"/var/log/xcat/xcat.log\" \"xcat.mypostscript\"
 fi
 " >> /xcatpost/mypostscript.post
 fi
@@ -140,7 +142,7 @@ fi
 
 chmod +x /xcatpost/mypostscript.post
 if [ -x /xcatpost/mypostscript.post ];then
-   msgutil_r "$MASTER_IP" "info" "running /xcatpost/mypostscript.post" "/var/log/xcat/xcat.log"
+   msgutil_r "$MASTER_IP" "info" "Running /xcatpost/mypostscript.post" "/var/log/xcat/xcat.log" "$log_label"
    /xcatpost/mypostscript.post
-   msgutil_r "$MASTER_IP" "info" "/xcatpost/mypostscript.post return" "/var/log/xcat/xcat.log"
+   msgutil_r "$MASTER_IP" "info" "/xcatpost/mypostscript.post return" "/var/log/xcat/xcat.log" "$log_label"
 fi
