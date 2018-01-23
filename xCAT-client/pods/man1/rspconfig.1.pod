@@ -34,7 +34,7 @@ B<rspconfig> I<noderange> B<powerrestorepolicy={always_on|restore|always_off}>
 
 B<rspconfig> I<noderange> B<powersupplyredundancy>
 
-B<rspconfig> I<noderange> B<powersupplyredundancy={0|1}>
+B<rspconfig> I<noderange> B<powersupplyredundancy={disabled|enabled}>
 
 B<rspconfig> I<noderange> B<autoreboot>
 
@@ -340,15 +340,15 @@ The subnet mask.
 
 =item B<powerrestorepolicy>
 
-Display or control BMC powerrestorepolicy attribute setting.
+Display or control BMC Power Restore Policy attribute setting.
 
 =item B<powersupplyredundancy>
 
-Display or control BMC powersupplyredundancy attribute setting.
+Display or control BMC Power Supply Redundancy attribute setting.
 
 =item B<autoreboot>
 
-Display or control BMC autoreboot attribute setting.
+Display or control BMC Auto Reboot attribute setting.
 
 =item B<dump>
 

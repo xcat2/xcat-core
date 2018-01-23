@@ -57,7 +57,7 @@ OpenBMC specific:
 
 \ **rspconfig**\  \ *noderange*\  \ **powersupplyredundancy**\ 
 
-\ **rspconfig**\  \ *noderange*\  \ **powersupplyredundancy={0|1}**\ 
+\ **rspconfig**\  \ *noderange*\  \ **powersupplyredundancy={disabled|enabled}**\ 
 
 \ **rspconfig**\  \ *noderange*\  \ **autoreboot**\ 
 
@@ -446,19 +446,19 @@ OPTIONS
 
 \ **powerrestorepolicy**\ 
  
- Display or control BMC powerrestorepolicy attribute setting.
+ Display or control BMC Power Restore Policy attribute setting.
  
 
 
 \ **powersupplyredundancy**\ 
  
- Display or control BMC powersupplyredundancy attribute setting.
+ Display or control BMC Power Supply Redundancy attribute setting.
  
 
 
 \ **autoreboot**\ 
  
- Display or control BMC autoreboot attribute setting.
+ Display or control BMC Auto Reboot attribute setting.
  
 
 
