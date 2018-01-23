@@ -349,23 +349,23 @@ check:output=~Error: Invalid firmware specified with
 check:output!~Attempting to
 check:rc != 0
 cmd:rflash $$CN -a 1.tz 2.tz 3.tz
-check:output=~Error: Invalid firmware specified with
+check:output=~Error: More than one firmware specified is not supported
 check:output!~Attempting to 
 check:rc != 0
 cmd:rflash $$CN 1.tz 2.tz 3.tz -a
-check:output=~Error: Invalid firmware specified with
+check:output=~Error: More than one firmware specified is not supported
 check:output!~Attempting to
 check:rc != 0
 cmd:rflash $$CN 1.tz -a 2.tz
-check:output=~Error: Invalid firmware specified with
+check:output=~Error: More than one firmware specified is not supported
 check:output!~Attempting to
 check:rc != 0
 cmd:rflash $$CN 1234567 -a 2345678
-check:output=~Error: Invalid firmware specified with
+check:output=~Error: More than one firmware specified is not supported
 check:output!~Attempting to 
 check:rc != 0
 cmd:rflash $$CN -a 123 abc asdbas 
-check:output=~Error: Invalid firmware specified with
+check:output=~Error: More than one firmware specified is not supported
 check:output!~Attempting to
 check:rc != 0
 end
@@ -377,11 +377,9 @@ os:Linux
 hcp:openbmc
 cmd:rflash $$CN -a 1234567
 check:output=~Error: Invalid ID provided to activate
-check:output!~Attempting to activate 
 check:rc != 0
-cmd:rflash $$CN -a 123abcm
+cmd:rflash $$CN -a d123abc
 check:output=~Error: Invalid ID provided to activate
-check:output!~Attempting to activate
 check:rc != 0
 end
 
@@ -390,15 +388,15 @@ description: basic usage check for option delete. if there are multiple value as
 os:Linux
 hcp:openbmc
 cmd:rflash $$CN --delete 1234567 2345678 
-check:output=~Error: Invalid firmware specified with
+check:output=~Error: More than one firmware specified is not supported
 check:output!~Attempting to delete
 check:rc != 0
 cmd:rflash $$CN 1234567 2345678 --delete
-check:output=~Error: Invalid firmware specified with
+check:output=~Error: More than one firmware specified is not supported
 check:output!~Attempting to delete
 check:rc != 0
 cmd:rflash $$CN 1234567 --delete 2345678
-check:output=~Error: Invalid firmware specified with
+check:output=~Error: More than one firmware specified is not supported
 check:output!~Attempting to delete
 check:rc != 0
 end
@@ -409,11 +407,9 @@ os:Linux
 hcp:openbmc
 cmd:rflash $$CN --delete 1234567
 check:output=~Error: Invalid ID provided to delete
-check:output!~Attempting to delete
 check:rc != 0
-cmd:rflash $$CN --delete 123abcm
+cmd:rflash $$CN --delete d123abc
 check:output=~Error: Invalid ID provided to delete
-check:output!~Attempting to delete
 check:rc != 0
 end
 

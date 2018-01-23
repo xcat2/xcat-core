@@ -587,6 +587,18 @@ sub process_request {
         $ctx->{forwarders} = \@forwarders;
     }
 
+    my @options = xCAT::TableUtils->get_site_attribute("emptyzonesenable");
+    my $empty_zones = $options[0];
+    if (defined($empty_zones)) {
+        if ($empty_zones =~ /^yes$|^no$/) {
+            $ctx->{empty_zones_enable} = $empty_zones;
+        } else {
+            my $rsp;
+            push @{ $rsp->{data} }, "emptyzonesenable from xCAT site table should be yes or no.";
+            xCAT::MsgUtils->message("E", $rsp, $callback);
+            return; 
+        }
+    }
     my @slave_ips;
     my $dns_slaves = get_dns_slave();
     if (scalar @$dns_slaves) {
@@ -1098,6 +1110,8 @@ sub update_namedconf {
                             push @newnamed, "\t\t" . $_ . ";\n";
                         }
                         push @newnamed, "\t};\n";
+                    } elsif ($ctx->{empty_zones_enable} and $line =~ /empty-zones-enable/) {
+                        push @newnamed, "\tempty-zones-enable " . $ctx->{empty_zones_enable} . ";\n";
                     } elsif ($ctx->{slaves} and $line =~ /allow-transfer \{/) {
                         push @newnamed, "\tallow-transfer \{\n";
                         $skip = 1;
@@ -1237,6 +1251,10 @@ sub update_namedconf {
             push @newnamed, "\t};\n";
         }
 
+        if ($ctx->{empty_zones_enable}){
+            push @newnamed, "\tempty-zones-enable " . $ctx->{empty_zones_enable} . ";\n";
+        }
+
         if ($slave) {
             push @newnamed, "\tallow-transfer { any; };\n";
         } else {
@@ -1281,10 +1299,13 @@ sub update_namedconf {
         my @includes = split /[ ,]/, $site_entry;
         foreach (@includes) {
             if (defined($_)) {
-                push @newnamed, "include \"$_\";\n";
+                my $line = "include \"$_\";\n";
+                unless (grep{/$line/} @newnamed) {
+                    push @newnamed, "include \"$_\";\n";
+                }
             }
-        }
         push @newnamed, "\n";
+        }
     }
 
     unless ($slave) {

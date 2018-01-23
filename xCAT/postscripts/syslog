@@ -117,11 +117,8 @@ config_Rsyslog_C3()
 
   #enable to send the logging to master
   if [ $isLocal -eq 1 ]; then
-      #enable the MN to log all the logs from CN and MN itself
-      sed -i 's/\(^[^\#].*\/var\/log\/messages\)/\#\1/g' $2
-      echo "#*.debug  /var/log/messages" >> $2
-      touch  /var/log/messages  
       if ( pmatch $OSVER "ubuntu*" ) || ( is_lsb_ubuntu ) || ( pmatch $OSVER "debian*" ); then
+        touch /var/log/messages
         chown syslog:adm /var/log/messages
         sed -i 's/\$PrivDropToGroup syslog/\$PrivDropToGroup adm/' $2
         chown syslog:adm /var/log/xcat
@@ -200,7 +197,7 @@ config_rsyslog_V8()
 
   if [ $goLocal -eq 1 ]; then
     #logging is local, do not forward
-    #making sure all the messages goes to /var/log/messages
+    #making sure /var/log/messages is setup for xcat-debug
     touch  /var/log/messages
     if ( pmatch $OSVER "ubuntu*" ) || ( is_lsb_ubuntu ) || ( pmatch $OSVER "debian*" ); then
       chown syslog:adm /var/log/messages
@@ -208,14 +205,9 @@ config_rsyslog_V8()
       chown syslog:adm /var/log/xcat
     fi
 
-    #comment out the rules which will write logs to /var/log/messages
-    # to prevent duplicate logs after "syslog" script is run 
-    sed -i '/^[^#].*\/var\/log\/messages/s/^/#/' $conf_file
-
     # Mark the start of xCAT section
     echo "# $xCATSettingsSTART" >> $conf_file
     echo "# $xCATSettingsInfo" >> $conf_file
-    echo "#*.debug   /var/log/messages"  >> $conf_file
     # Need to uncomment the lines $ModLoad imudp.so and $UDPServerRun 514,
     # to make the MN be able to receive syslog from remote hosts
     if [ -f "$remoteconf" ]; then

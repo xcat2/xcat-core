@@ -498,7 +498,6 @@ dracut_install /usr/share/zoneinfo/posix/Asia/Phnom_Penh
 dracut_install /usr/share/zoneinfo/posix/Asia/Ulan_Bator
 dracut_install /usr/share/zoneinfo/posix/Asia/Sakhalin
 dracut_install /usr/share/zoneinfo/posix/MST7MDT
-dracut_install /usr/share/zoneinfo/posix/Canada/East-Saskatchewan
 dracut_install /usr/share/zoneinfo/posix/Canada/Atlantic
 dracut_install /usr/share/zoneinfo/posix/Canada/Central
 dracut_install /usr/share/zoneinfo/posix/Canada/Eastern

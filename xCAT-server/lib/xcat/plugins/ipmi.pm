@@ -2427,9 +2427,9 @@ sub rflash {
                 my $c_id          = ${ $sessdata->{component_ids} }[$i];
                 my $version       = $firmware_version{$c_id};
                 my $format_string = $comp_string{$c_id};
-                my $format_ver    = sprintf("%3d.%02x %02X%02X%02X%02X",
-                    $version->[0], $version->[1], $version->[2],
-                    $version->[3], $version->[4], $version->[5]);
+                my $format_ver    = sprintf("%3d.%02x.%d",
+                    $version->[0], $version->[1],
+                    $version->[5]*0x1000000 +$version->[4]*0x10000+ $version->[3]*0x100+$version->[2]);
                 $msg = $msg . $sessdata->{node} . ": " .
 "Node firmware version for $format_string component: $format_ver";
                 if ($i != scalar(@{ $sessdata->{component_ids} }) - 1) {
@@ -4696,7 +4696,7 @@ sub parseboard {
         my $macdata   = $boardinf{extra}->[6]->{value};
         my $macstring = "1";
         my $macprefix;
-        while ($macdata and $macstring !~ /00:00:00:00:00:00/ and not ref $global_sessdata->{currmacs}) {
+        while ($macdata and ref $macdata and $macstring !~ /00:00:00:00:00:00/ and not ref $global_sessdata->{currmacs}) {
             my @currmac = splice @$macdata, 0, 6;
             unless ((scalar @currmac) == 6) {
                 last;
@@ -8747,16 +8747,16 @@ sub hpm_action_version {
         return -1;
     }
     my $version = $hpm_data_hash{1}{action_version};
-    my $ver = sprintf("%3d.%02x %02X%02X%02X%02X", $version->[0], $version->[1], $version->[2],
-        $version->[3], $version->[4], $version->[5]);
+    my $ver = sprintf("%3d.%02x.%d", $version->[0], $version->[1],
+        $version->[5]*0x1000000+$version->[4]*0x10000+$version->[3]*0x100+$version->[2]);
     $callback->({ data => "HPM firmware version for BOOT component:$ver" });
     $version = $hpm_data_hash{2}{action_version};
-    $ver = sprintf("%3d.%02x %02X%02X%02X%02X", $version->[0], $version->[1], $version->[2],
-        $version->[3], $version->[4], $version->[5]);
+    $ver = sprintf("%3d.%02x.%d", $version->[0], $version->[1],
+        $version->[5]*0x1000000+$version->[4]*0x10000+$version->[3]*0x100+$version->[2]);
     $callback->({ data => "HPM firmware version for APP  component:$ver" });
     $version = $hpm_data_hash{4}{action_version};
-    $ver = sprintf("%3d.%02x %02X%02X%02X%02X", $version->[0], $version->[1], $version->[2],
-        $version->[3], $version->[4], $version->[5]);
+    $ver = sprintf("%3d.%02x.%d", $version->[0], $version->[1],
+        $version->[5]*0x1000000+$version->[4]*0x10000+$version->[3]*0x100+$version->[2]);
     $callback->({ data => "HPM firmware version for BIOS component:$ver" });
 }
 

@@ -17,8 +17,6 @@ use Data::Dumper;
 
 my $isSN;
 my $host;
-my $go_api_port = 12429;
-my $go_cons_port = 12430;
 my $bmc_cons_port = "2200";
 my $usage_string ="   makegocons [-V|--verbose] [-d|--delete] noderange
     -h|--help        Display this usage statement.
@@ -56,8 +54,6 @@ sub preprocess_request {
 
     #$Getopt::Long::pass_through=1;
     if (!GetOptions(
-        'c|conserver' => \$::CONSERVER,
-        'l|local'     => \$::LOCAL,
         'h|help'      => \$::HELP,
         'D|debug'     => \$::DEBUG,
         'v|version'   => \$::VERSION,
@@ -75,19 +71,6 @@ sub preprocess_request {
         $request = {};
         return;
     }
-    if ($::LOCAL) {
-        if ($noderange && @$noderange > 0) {
-            $::callback->({ data => "Invalid option -l or --local when there are nodes specified." });
-            $request = {};
-            return;
-        }
-    }
-    if ($::CONSERVER && $::LOCAL) {
-        $::callback->({ data => "Can not specify -l or --local together with -c or --conserver." });
-        $request = {};
-        return;
-    }
-
 
     # get site master
     my $master = xCAT::TableUtils->get_site_Master();
@@ -122,42 +105,14 @@ sub preprocess_request {
         push @nodes, $_->{node};
     }
 
-    #send all nodes to the MN
-    if (!$isSN && !$::CONSERVER) { #If -c flag is set, do not add the all nodes to the management node
-        if ($::VERBOSE) {
-            my $rsp;
-            $rsp->{data}->[0] = "Setting the nodes into goconserver on the management node";
-            xCAT::MsgUtils->message("I", $rsp, $::callback);
-        }
-        my $reqcopy = {%$request};
-        $reqcopy->{'_xcatdest'} = $master;
-        $reqcopy->{_xcatpreprocessed}->[0] = 1;
-        $reqcopy->{'_allnodes'} = $allnodes; # the original command comes with nodes or not
-        if ($allnodes == 1) { @nodes = (); }
-        $reqcopy->{node} = \@nodes;
-        push @requests, $reqcopy;
-        if ($::LOCAL) { return \@requests; }
-    }
-
     # send to conserver hosts
-    foreach my $cons (keys %cons_hash) {
-
-        #print "cons=$cons\n";
-        my $doit = 0;
-        if ($isSN) {
-            if (exists($iphash{$cons})) { $doit = 1; }
-        } else {
-            if (!exists($iphash{$cons}) || $::CONSERVER) { $doit = 1; }
-        }
-
-        if ($doit) {
-            my $reqcopy = {%$request};
-            $reqcopy->{'_xcatdest'} = $cons;
-            $reqcopy->{_xcatpreprocessed}->[0] = 1;
-            $reqcopy->{'_allnodes'} = [$allnodes]; # the original command comes with nodes or not
-            $reqcopy->{node} = $cons_hash{$cons}{nodes};
-            push @requests, $reqcopy;
-        }    #end if
+    foreach my $host (keys %cons_hash) {
+        my $reqcopy = {%$request};
+        $reqcopy->{'_xcatdest'} = $host;
+        $reqcopy->{_xcatpreprocessed}->[0] = 1;
+        $reqcopy->{'_allnodes'} = [$allnodes]; # the original command comes with nodes or not
+        $reqcopy->{node} = $cons_hash{$host}{nodes};
+        push @requests, $reqcopy;
     }    #end foreach
 
     if ($::DEBUG) {
@@ -308,54 +263,44 @@ sub gen_request_data {
     return $data;
 }
 
-
 sub start_goconserver {
-    my $rsp;
+    my ($rsp, $running, $ready, $ret);
     unless (-x "/usr/bin/goconserver") {
         $rsp->{data}->[0] = "goconserver is not installed.";
         xCAT::MsgUtils->message("E", $rsp, $::callback);
         return 1;
     }
-    # As conserver is always installed, we check the existence of goconserver at first.
     # if goconserver is installed, check the status of conserver service.
-    my $cmd = "ps axf | grep -v grep | grep \/usr\/sbin\/conserver";
-    xCAT::Utils->runcmd($cmd, 0);
-    if ($::RUNCMD_RC == 0) {
+    if (xCAT::Goconserver::is_conserver_running()) {
         $rsp->{data}->[0] = "conserver is started, please stop it at first.";
         xCAT::MsgUtils->message("E", $rsp, $::callback);
         return 1;
     }
-    $cmd = "ps axf | grep -v grep | grep \/usr\/bin\/goconserver";
-    xCAT::Utils->runcmd($cmd, 0);
-    if ($::RUNCMD_RC != 0) {
-        my $config= "global:\n".
-                    "  host: 0.0.0.0\n".
-                    "  ssl_key_file: /etc/xcat/cert/server-key.pem\n".
-                    "  ssl_cert_file: /etc/xcat/cert/server-cert.pem\n".
-                    "  ssl_ca_cert_file: /etc/xcat/cert/ca.pem\n".
-                    "  logfile: /var/log/goconserver/server.log\n".
-                    "api:\n".
-                    "  port: $go_api_port\n".
-                    "console:\n".
-                    "  port: $go_cons_port\n";
-        my $file;
-        my $ret = open ($file, '>', '/etc/goconserver/server.conf');
-        if ($ret == 0) {
-            $rsp->{data}->[0] = "Could not open file /etc/goconserver/server.conf.";
-            xCAT::MsgUtils->message("E", $rsp, $::callback);
-            return 1;
-        }
-        print $file $config;
-        close $file;
-        my $cmd = "service goconserver start";
-        xCAT::Utils->runcmd($cmd, 0);
-        if ($::RUNCMD_RC != 0) {
-            $rsp->{data}->[0] = "Could not start goconserver service.";
-            xCAT::MsgUtils->message("E", $rsp, $::callback);
-            return 1;
-        }
-        sleep(3);
+    $running = xCAT::Goconserver::is_goconserver_running();
+    $ready = xCAT::Goconserver::is_xcat_conf_ready();
+    if ( $running && $ready ) {
+        # Already started by xcat
+        return 0;
     }
+    # user could customize the configuration, do not rewrite the configuration if this file has been
+    # generated by xcat
+    if (!$ready) {
+        $ret = xCAT::Goconserver::build_conf();
+        if ($ret) {
+            $rsp->{data}->[0] = "Failed to create configuration file for goconserver.";
+            xCAT::MsgUtils->message("E", $rsp, $::callback);
+            return 1;
+        }
+    }
+    $ret = xCAT::Goconserver::restart_service();
+    if ($ret) {
+        $rsp->{data}->[0] = "Failed to start goconserver service.";
+        xCAT::MsgUtils->message("E", $rsp, $::callback);
+        return 1;
+    }
+    $rsp->{data}->[0] = "Starting goconserver service ...";
+    xCAT::MsgUtils->message("I", $rsp, $::callback);
+    sleep(3);
     return 0;
 }
 
@@ -406,7 +351,7 @@ sub makegocons {
         xCAT::SvrUtils::sendmsg([ 1, "Could not generate the request data" ], $::callback);
         return 1;
     }
-    my $api_url = "https://$host:$go_api_port";
+    my $api_url = "https://$host:". xCAT::Goconserver::get_api_port();
     $ret = xCAT::Goconserver::delete_nodes($api_url, $data, $delmode, $::callback);
     if ($delmode) {
         return $ret;

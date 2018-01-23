@@ -61,6 +61,8 @@ sub validate {
     my $peerhostorg     = shift;
     my $deferredmsgargs = shift;
 
+    my @filtered_cmds   = qw( getdestiny getbladecons getipmicons getopenbmccons getcons);
+
     # now check the policy table if user can run the command
     my $policytable = xCAT::Table->new('policy');
     unless ($policytable) {
@@ -192,7 +194,7 @@ sub validate {
                 $status = "Denied";
                 $rc     = 0;
             }
-            if (($request->{command}->[0] ne "getdestiny") && ($request->{command}->[0] ne "getbladecons") && ($request->{command}->[0] ne "getipmicons") && ($request->{command}->[0] ne "getopenbmccons")) {
+            if (! grep { /$request->{command}->[0]/ } @filtered_cmds) {
 
                 # set username authenticated to run command
                 # if from Trusted host, use input username,  else set from creds

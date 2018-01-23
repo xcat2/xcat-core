@@ -482,7 +482,12 @@ for user in $BMCUS; do
 
     TRIES=0
     # Enable the channel link for the specified user
-    while ! ipmitool -d $idev channel setaccess $LANCHAN $USERSLOT link=on; do
+    if [ "$IPMIMFG" == 343 -a "$XPROD" == 124 ]; then # For Intel S2600BP system boards
+        cmd="ipmitool -d $idev channel setaccess $LANCHAN $USERSLOT link=on ipmi=on"
+    else
+        cmd="ipmitool -d $idev channel setaccess $LANCHAN $USERSLOT link=on"
+    fi
+    while ! eval $cmd; do
         sleep 1
         let TRIES=TRIES+1
         if [ $TRIES -gt $TIMEOUT ]; then break; fi

@@ -179,6 +179,7 @@ my $xcatdir;
 my $sitetab;
 my $retries = 0;
 
+xCAT::MsgUtils->trace(0, 'I', 'xcatd is going to start...');
 # The database initialization may take some time in the system boot scenario
 # wait for a while for the database initialization
 while (!($sitetab = xCAT::Table->new('site')) && $retries < 200)
@@ -188,13 +189,13 @@ while (!($sitetab = xCAT::Table->new('site')) && $retries < 200)
     $retries++;
 }
 unless ($sitetab) {
-    xCAT::MsgUtils->message("S", "ERROR: Unable to open basic site table for configuration");
+    xCAT::MsgUtils->message("SE", "ERROR: Unable to open basic site table for configuration");
     die;
 }
 
 my ($tmp) = $sitetab->getAttribs({ 'key' => 'xcatdport' }, 'value');
 unless ($tmp) {
-    xCAT::MsgUtils->message("S", "ERROR:Need xcatdport defined in site table, try chtab key=xcatdport site.value=3001");
+    xCAT::MsgUtils->message("SE", "ERROR: Need xcatdport defined in site table, try chtab key=xcatdport site.value=3001");
     die;
 }
 $port = $tmp->{value};
@@ -376,7 +377,7 @@ sub do_installm_service {
     }
 
     unless ($socket) {
-        xCAT::MsgUtils->message("S", "xcatd unable to open install monitor services on $sport");
+        xCAT::MsgUtils->message("SE", "xcatd unable to open install monitor services on $sport");
         die;
     }
 
@@ -401,6 +402,8 @@ sub do_installm_service {
                 }
             }
         }
+        my $conn_peer_addr = $conn->peerhost();
+        xCAT::MsgUtils->trace(0, "I", "xcatd received a connection request from $conn_peer_addr");
 
         my $client_name;
         my $client_aliases;
@@ -411,11 +414,12 @@ sub do_installm_service {
         } else {
             ($client_name, $client_aliases) = gethostbyaddr($conn->peeraddr, AF_INET);
         }
+
         unless ($client_name) {
-	    my $addrfamily=sockaddr_family(getpeername($conn));
-	    my $myaddr=Socket::inet_ntop($addrfamily,$conn->peeraddr);
-            xCAT::MsgUtils->message("S", "xcatd received a connection request from unknown host with ip address $myaddr, please check whether the reverse name resolution works correctly. The connection request will be ignored");
-            print "xcatd received a connection request from unknown host with ip address $myaddr, please check whether the reverse name resolution works correctly. The connection request will be ignored\n";
+            my $addrfamily=sockaddr_family(getpeername($conn));
+            my $myaddr=Socket::inet_ntop($addrfamily,$conn->peeraddr);
+            xCAT::MsgUtils->message("SE", "xcatd received a connection request from unknown host with ip address $myaddr, please check whether the reverse name resolution works correctly. The connection request will be ignored");
+            #print "xcatd received a connection request from unknown host with ip address $myaddr, please check whether the reverse name resolution works correctly. The connection request will be ignored\n";
             close($conn);
             next;
         }
@@ -447,8 +451,8 @@ sub do_installm_service {
                 $validclient = 1;
                 last;
             } else {
-                xCAT::MsgUtils->message("S", "xcatd received a connection request from $client, which can not be found in xCAT nodelist table. The connection request will be ignored");
-                print "xcatd received a connection request from $client, which can not be found in xCAT nodelist table. The connection request will be ignored\n";
+                xCAT::MsgUtils->message("SE", "xcatd received a connection request from $client, which can not be found in xCAT nodelist table. The connection request will be ignored");
+                #print "xcatd received a connection request from $client, which can not be found in xCAT nodelist table. The connection request will be ignored\n";
             }
 
         }
@@ -475,6 +479,7 @@ sub do_installm_service {
                     # node should be blocked, race condition may occur otherwise
                     #my $pid=xCAT::Utils->xfork();
                     #unless ($pid) { # fork off the nodeset and potential slowness
+                    xCAT::MsgUtils->trace(0, "I", "xcatd: triggering \'nodeset $node next\'...");
                     plugin_command(\%request, undef, \&build_response);
 
                     #exit(0);
@@ -563,7 +568,7 @@ sub do_installm_service {
 
                     # remove the BASECUST_REMOVAL line from /tftpboot/hostname.info file
                     my $myfile = "/tftpboot/$text" . ".info";
-`/usr/bin/cat $myfile | /usr/bin/sed "/BASECUST_REMOVAL/d">/tmp/$text.nimtmp`;
+                    `/usr/bin/cat $myfile | /usr/bin/sed "/BASECUST_REMOVAL/d">/tmp/$text.nimtmp`;
                     `/usr/bin/mv /tmp/$text.nimtmp $myfile`;
                     close($conn);
                 }
@@ -573,9 +578,10 @@ sub do_installm_service {
         };
         if ($@) {
             if ($@ =~ /XCATTIMEOUT/) {
-                xCAT::MsgUtils->message("S", "xcatd installmonitor timed out talking to $node");
+                xCAT::MsgUtils->message("S", "xcatd: install monitor timed out talking to $node");
             } else {
                 xCAT::MsgUtils->message("S", "xcatd: possible BUG encountered by xCAT install monitor service: " . $@);
+                close($conn);
             }
         }
     }
@@ -668,13 +674,13 @@ sub do_discovery_process {
 }
 
 sub do_udp_service {    # This function opens up a UDP port
-        # It will do similar to the standard service, except:
-        # -Obviously, unencrypted and messages are not guaranteed
-        # -For that reason, more often than not plugins designed with
-        # -this method will not expect to have a callback
-     # Also, this throttles to handle one message at a time, so no forking either
-     # Explicitly, to handle whatever operations nodes periodically send during discover state
-     # Could be used for heartbeating and such as desired
+    # It will do similar to the standard service, except:
+    # -Obviously, unencrypted and messages are not guaranteed
+    # -For that reason, more often than not plugins designed with
+    # -this method will not expect to have a callback
+    # Also, this throttles to handle one message at a time, so no forking either
+    # Explicitly, to handle whatever operations nodes periodically send during discover state
+    # Could be used for heartbeating and such as desired
     my %args     = @_;
     my $discoctl = $args{discoctl};
     $dispatch_requests = 0;
@@ -730,7 +736,7 @@ sub do_udp_service {    # This function opens up a UDP port
 
     openlog("xcat", '', 'local4');
     unless ($socket) {
-        xCAT::MsgUtils->message("S", "xCAT UDP service unable to open port $port: $!");
+        xCAT::MsgUtils->message("SE", "xCAT UDP service unable to open port $port: $!");
         closelog();
         die "Unable to start UDP on $port";
     }
@@ -756,7 +762,7 @@ sub do_udp_service {    # This function opens up a UDP port
             my $tcclients;    # hash reference to store traffic control requests
             while (1) {
                 unless ($actualpid == $$) { # This really should be impossible now...
-                    xCAT::MsgUtils->message("S", "xcatd: Something absolutely ludicrous happpened, xCAT developers think this message is impossible to see, post if you see it, fork bomb averted");
+                    xCAT::MsgUtils->message("SE", "xcatd: Something absolutely ludicrous happpened, xCAT developers think this message is impossible to see, post if you see it, fork bomb averted");
                     exit(1);
                 }
                 until ($select->can_read(5)) {    # Wait for data
@@ -928,7 +934,7 @@ if (defined $pid_init) {
         exit(0);
     }
 } else {
-    print "Unable to branch the initialization portion, will use more memory\n";
+    xCAT::MsgUtils->message("SW", "WARN: Unable to branch the plugins initialization portion, will use more memory");
     scan_plugins();
 }
 
@@ -1870,7 +1876,7 @@ sub plugin_command {
                     $$progname = $oldprogname;
                 };    # REMOVEEVALFORDEBUG
                 if ($@) { # We are still alive, should be alive, but yet we have an error.  This means we are in the case of 'do_request' or something similar.  Forward up the death since our communication channel is intact..
-                    xCAT::MsgUtils->message("S", "$@");
+                    xCAT::MsgUtils->trace(0, "E", "$@");
                     die $@;
                 }
             } else {
@@ -2012,7 +2018,8 @@ sub plugin_command {
                         $callback->({ error => [$error], errorcode => [1] });
                         xexit(0);             # Die like we should have done
                     } elsif ($@) { # We are still alive, should be alive, but yet we have an error.  This means we are in the case of 'do_request' or something similar.  Forward up the death since our communication channel is intact..
-                        xCAT::MsgUtils->message("S", "$@");
+                        xCAT::MsgUtils->trace(0, "E", "$@");
+                        $$progname = $oldprogname;
                         die $@;
                     }
                 } else {
