@@ -39,3 +39,11 @@ def recv_all(sock, size):
         buf_size += len(buf_part)
     buf = ''.join(buf_parts)
     return buf
+
+
+def update2Ddict(updata_dict, key_a, key_b, value):
+    if key_a in updata_dict:
+        updata_dict[key_a].update({key_b: value})
+    else: 
+        updata_dict.update({key_a: {key_b: value}})
+

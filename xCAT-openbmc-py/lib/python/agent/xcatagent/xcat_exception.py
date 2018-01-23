@@ -4,4 +4,6 @@ class SelfServerException(Exception) :
     pass
 
 class SelfClientException(Exception) :
-    pass
+    def __init__(self, message, code) :
+        super(Exception, self).__init__(message)
+        self.code = code
