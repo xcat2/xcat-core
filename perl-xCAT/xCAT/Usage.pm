@@ -134,21 +134,28 @@ my %usage = (
     "rscan" =>
       "Usage: rscan <noderange> [-u][-w][-x|-z] [-V|--verbose]
        rscan [-h|--help|-v|--version]",
-    "rspconfig" =>
+    "rspconfig" => "",
+    "rspconfig.common" =>
       "Usage: 
    Common:
        rspconfig [-h|--help|-v|--version|-V|--verbose]
-   BMC/MPA Common:
+   ",
+    "rspconfig.openbmc" =>
+      "OpenBMC specific:
+       rspconfig <noderange> [ipsrc|ip|netmask|gateway|hostname|vlan]
+       rspconfig <noderange> dump [-l|--list] [-g|--generate] [-c|--clear {<id>|all}] [-d|--download {<id>|all}]
+",
+    "rspconfig.begin" =>
+   "BMC/MPA Common:
        rspconfig <noderange> [snmpdest|alert|community] [-V|--verbose]
        rspconfig <noderange> [snmpdest=<dest ip address>|alert=<on|off|en|dis|enable|disable>|community=<string>]
    BMC specific:
        rspconfig <noderange> [ip|netmask|gateway|backupgateway|garp|vlan]
        rspconfig <noderange> [garp=<number of 1/2 second>]
        rspconfig <noderange> [userid=<userid> username=<username> password=<password>]
-   OpenBMC specific:
-       rspconfig <noderange> [ipsrc|ip|netmask|gateway|hostname|vlan]
-       rspconfig <noderange> dump [-l|--list] [-g|--generate] [-c|--clear {<id>|all}] [-d|--download {<id>|all}]
-   iDataplex specific:
+   ",
+    "rspconfig.end" =>
+   "iDataplex specific:
        rspconfig <noderange> [thermprofile]
        rspconfig <noderange> [thermprofile=<two digit number from chassis>]
    MPA specific:
@@ -528,6 +535,17 @@ Options:
       "Usage:
     clonevm noderange [-t createmaster -f | -b basemaster -d | -h]",
 );
+
+# Rebuild full command usage from its components
+$usage{"rspconfig"} = $usage{"rspconfig.common"} . 
+                      $usage{"rspconfig.begin"} .
+                      $usage{"rspconfig.openbmc"} .
+                      "   " .
+                      $usage{"rspconfig.end"};
+
+$usage{"rspconfig.openbmc"} = $usage{"rspconfig.common"} .
+                      $usage{"rspconfig.openbmc"};
+
 my $vers    = xCAT::Utils->Version();
 my %version = (
     "rnetboot"       => "$vers",

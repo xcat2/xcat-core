@@ -28,6 +28,18 @@ B<rspconfig> I<noderange> {B<ipsrc>|B<ip>|B<netmask>|B<gateway>|B<hostname>|B<vl
 
 B<rspconfig> I<noderange> B<dump> [B<-l>|B<--list>] [B<-g>|B<--generate>] [B<-c>|B<--clear> {I<id> | B<all>}] [B<-d>|B<--download> {I<id> | B<all>}]
 
+B<rspconfig> I<noderange> B<powerrestorepolicy>
+
+B<rspconfig> I<noderange> B<powerrestorepolicy={always_on|restore|always_off}>
+
+B<rspconfig> I<noderange> B<powersupplyredundancy>
+
+B<rspconfig> I<noderange> B<powersupplyredundancy={disabled|enabled}>
+
+B<rspconfig> I<noderange> B<autoreboot>
+
+B<rspconfig> I<noderange> B<autoreboot={0|1}>
+
 =head2 MPA specific:
 
 B<rspconfig> I<noderange> {B<sshcfg>|B<snmpcfg>|B<pd1>|B<pd2>|B<network>|B<swnet>|B<ntp>|B<textid>|B<frame>}
@@ -325,6 +337,18 @@ Select whether each memory bank should be enabled or disabled. State changes tak
 =item B<netmask>
 
 The subnet mask.
+
+=item B<powerrestorepolicy>
+
+Display or control BMC Power Restore Policy attribute setting.
+
+=item B<powersupplyredundancy>
+
+Display or control BMC Power Supply Redundancy attribute setting.
+
+=item B<autoreboot>
+
+Display or control BMC Auto Reboot attribute setting.
 
 =item B<dump>
 
