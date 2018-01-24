@@ -134,21 +134,28 @@ my %usage = (
     "rscan" =>
       "Usage: rscan <noderange> [-u][-w][-x|-z] [-V|--verbose]
        rscan [-h|--help|-v|--version]",
-    "rspconfig" =>
+    "rspconfig" => "",
+    "rspconfig.common" =>
       "Usage: 
    Common:
        rspconfig [-h|--help|-v|--version|-V|--verbose]
-   BMC/MPA Common:
+   ",
+    "rspconfig.openbmc" =>
+      "OpenBMC specific:
+       rspconfig <noderange> [ipsrc|ip|netmask|gateway|hostname|vlan]
+       rspconfig <noderange> dump [-l|--list] [-g|--generate] [-c|--clear {<id>|all}] [-d|--download {<id>|all}]
+",
+    "rspconfig.begin" =>
+   "BMC/MPA Common:
        rspconfig <noderange> [snmpdest|alert|community] [-V|--verbose]
        rspconfig <noderange> [snmpdest=<dest ip address>|alert=<on|off|en|dis|enable|disable>|community=<string>]
    BMC specific:
        rspconfig <noderange> [ip|netmask|gateway|backupgateway|garp|vlan]
        rspconfig <noderange> [garp=<number of 1/2 second>]
        rspconfig <noderange> [userid=<userid> username=<username> password=<password>]
-   OpenBMC specific:
-       rspconfig <noderange> [ipsrc|ip|netmask|gateway|hostname|vlan]
-       rspconfig <noderange> dump [-l|--list] [-g|--generate] [-c|--clear {<id>|all}] [-d|--download {<id>|all}]
-   iDataplex specific:
+   ",
+    "rspconfig.end" =>
+   "iDataplex specific:
        rspconfig <noderange> [thermprofile]
        rspconfig <noderange> [thermprofile=<two digit number from chassis>]
    MPA specific:
@@ -214,6 +221,9 @@ my %usage = (
        rspconfig <noderange>  [sshcfg]
        rspconfig <noderange>  [sshcfg=<enable|disable>]
     ",
+    "rspreset" =>
+      "Usage:
+        rspreset <noderange>",
     "getmacs" =>
       "Usage: 
    Common:
@@ -527,7 +537,25 @@ Options:
     "clonevm" =>
       "Usage:
     clonevm noderange [-t createmaster -f | -b basemaster -d | -h]",
+    "rmigrate" =>
+      "Usage:
+    Common:
+        rmigrate <noderange> target_host
+    zVM specific:
+        rmigrate <noderange> [destination=target_host|action=action|force=force|immediate=yes_no|max_total=total|max_quiesce=quiesce]
+    ",
 );
+
+# Rebuild full command usage from its components
+$usage{"rspconfig"} = $usage{"rspconfig.common"} . 
+                      $usage{"rspconfig.begin"} .
+                      $usage{"rspconfig.openbmc"} .
+                      "   " .
+                      $usage{"rspconfig.end"};
+
+$usage{"rspconfig.openbmc"} = $usage{"rspconfig.common"} .
+                      $usage{"rspconfig.openbmc"};
+
 my $vers    = xCAT::Utils->Version();
 my %version = (
     "rnetboot"       => "$vers",
@@ -540,6 +568,7 @@ my %version = (
     "rbootseq"       => "$vers",
     "rscan"          => "$vers",
     "rspconfig"      => "$vers",
+    "rspreset"       => "$vers",
     "getmacs"        => "$vers",
     "mkvm"           => "$vers",
     "lsvm"           => "$vers",
@@ -558,6 +587,7 @@ my %version = (
     "cfgve"          => "$vers",
     "chhypervisor"   => "$vers",
     "rmhypervisor"   => "$vers",
+    "rmigrate"       => "$vers",
     "clonevm"        => "$vers",
 );
 
