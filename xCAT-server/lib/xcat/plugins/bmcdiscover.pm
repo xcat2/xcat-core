@@ -47,6 +47,7 @@ my $bmc_user;
 my $bmc_pass;
 my $openbmc_user;
 my $openbmc_pass;
+my $done_num = 0;
 $::P9_WITHERSPOON_MFG_ID     = "42817";
 $::P9_WITHERSPOON_PRODUCT_ID = "16975";
 
@@ -724,6 +725,12 @@ sub scan_process {
         while($children > 0) {
             sleep(1);
         }
+        unless ($done_num) {
+            my %rsp;
+            $rsp{data} = ["No bmc found.\n"];
+            xCAT::MsgUtils->message("W", \%rsp, $::CALLBACK);
+        }
+
     }
     else
     {
@@ -855,18 +862,12 @@ sub forward_data {
     if (!($@ and $@ =~ /^Magic number checking on storable file/)) { #this most likely means we ran over the end of available input
         $callback->($responses);
     }
-    my $num = 0;
     eval {
         $responses = fd_retrieve($cfd);
         if ($responses->{data}) {
-            $num += $responses->{data};
+            $done_num += $responses->{data};
         }
     };
-    unless ($num) {
-        my %rsp;
-        $rsp{data} = ["No bmc found.\n"];
-        xCAT::MsgUtils->message("W", \%rsp, $::CALLBACK);
-    }
 }
 
 
