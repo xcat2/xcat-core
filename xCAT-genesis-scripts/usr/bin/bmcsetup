@@ -263,7 +263,7 @@ elif [ "$IPMIMFG" == "674" ]; then # DELL
     elif [ "$BMCPORT" == "1" -o "$BMCPORT" == "2" -o "$BMCPORT" == "3" -o "$BMCPORT" == "4" ]; then # shared
         ipmitool delloem lan set shared &>/dev/null
         ipmitool delloem lan set shared with lom$BMCPORT &>/dev/null
-        ipmitool delloem lan set shared with failover all loms &>dev/null
+        ipmitool delloem lan set shared with failover all loms &>/dev/null
     fi
 elif [ "$IPMIMFG" = "42817" -a "$XPROD" = "16975" ]; then # IBM OpenPOWER servers with OpenBMC
     ISOPENBMC=1
