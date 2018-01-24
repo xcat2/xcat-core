@@ -3671,7 +3671,9 @@ sub preprocess_request {
 
     my $usage_string = xCAT::Usage->parseCommand($command, @exargs);
     if ($usage_string) {
-        $callback->({ data => $usage_string });
+        if ($command ne "rscan") {
+            $callback->({ data => $usage_string });
+        }
         $request = {};
         return;
     }
