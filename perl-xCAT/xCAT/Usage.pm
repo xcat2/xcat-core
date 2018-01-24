@@ -221,6 +221,9 @@ my %usage = (
        rspconfig <noderange>  [sshcfg]
        rspconfig <noderange>  [sshcfg=<enable|disable>]
     ",
+    "rspreset" =>
+      "Usage:
+        rspreset <noderange>",
     "getmacs" =>
       "Usage: 
    Common:
@@ -534,6 +537,13 @@ Options:
     "clonevm" =>
       "Usage:
     clonevm noderange [-t createmaster -f | -b basemaster -d | -h]",
+    "rmigrate" =>
+      "Usage:
+    Common:
+        rmigrate <noderange> target_host
+    zVM specific:
+        rmigrate <noderange> [destination=target_host|action=action|force=force|immediate=yes_no|max_total=total|max_quiesce=quiesce]
+    ",
 );
 
 # Rebuild full command usage from its components
@@ -558,6 +568,7 @@ my %version = (
     "rbootseq"       => "$vers",
     "rscan"          => "$vers",
     "rspconfig"      => "$vers",
+    "rspreset"       => "$vers",
     "getmacs"        => "$vers",
     "mkvm"           => "$vers",
     "lsvm"           => "$vers",
@@ -576,6 +587,7 @@ my %version = (
     "cfgve"          => "$vers",
     "chhypervisor"   => "$vers",
     "rmhypervisor"   => "$vers",
+    "rmigrate"       => "$vers",
     "clonevm"        => "$vers",
 );
 

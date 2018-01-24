@@ -37,7 +37,11 @@ sub handled_commands {
         rmhwconn => 'AAAusage',
         lshwconn => 'AAAusage',
         renergy  => 'AAAusage',
-        nodeset  => 'AAAusage'
+        nodeset  => 'AAAusage',
+        rspreset => 'AAAusage',
+        rmhypervisor => 'AAAusage',
+        rmigrate => 'AAAusage',
+        rshutdown => 'AAAusage',
     };
 }
 
