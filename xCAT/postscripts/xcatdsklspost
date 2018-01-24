@@ -881,7 +881,7 @@ run_ps () {
  fi
 
  if [ -f \$1 ]; then 
-  #echo \"\`date\` Running \$scriptype: \$1\"
+  echo \"\`date\` Running \$scriptype: \$1\"
   msgutil_r \"\$MASTER_IP\" \"info\" "\"Running \$scriptype: \$1\"" \"\$logfile\" \"xcat.mypostscript\"
   if [ \"\$XCATDEBUGMODE\" = \"1\" ] || [ \"\$XCATDEBUGMODE\" = \"2\" ]; then
      local compt=\$(file \$1)
@@ -901,10 +901,10 @@ run_ps () {
   if [ \"\$ret_local\" -ne \"0\" ]; then
      return_value=\$ret_local
   fi
-  #echo \"\$scriptype: \$1 exited with code \$ret_local\"
+  echo \"\$scriptype: \$1 exited with code \$ret_local\"
   msgutil_r \"\$MASTER_IP\" \"info\" "\"\$scriptype \$1 return with \$ret_local\"" \"\$logfile\" \"xcat.mypostscript\"
  else
-  #echo \"\`date\` \$scriptype \$1 does NOT exist.\"
+  echo \"\`date\` \$scriptype \$1 does NOT exist.\"
   msgutil_r \"\$MASTER_IP\" \"error\" "\"\$scriptype \$1 does NOT exist.\"" \"\$logfile\" \"xcat.mypostscript\"
   return_value=-1
  fi
