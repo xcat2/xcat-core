@@ -76,20 +76,21 @@ sub pdu_usage
     my ($callback, $command) = @_;
     my $usagemsg = 
     "Usage: 
+     The following commands support both type of PDUs :
         pdudiscover [<noderange>|--range ipranges] [-r|-x|-z] [-w] [-V|--verbose] [--setup]
         rpower pdunodes [off|on|stat|reset]
+        rinv      pdunodes
+        rvitals   pdunodes
 
-     The following command supports IR PDU with pdutype=irpdu :
-        rpower CN [pduoff|pduon|pdustat|pdustatus|pdureset] 
+     The following commands support IR PDU with pdutype=irpdu :
+        rpower computenodes [pduoff|pduon|pdustat|pdustatus|pdureset] 
+        rspconfig irpdunode [hostname=<NAME>|ip=<IP>|gateway=<GATEWAY>|mask=<MASK>]
 
      The following commands support CR PDU with pdutype=crpdu :
         rpower    pdunodes relay=[1|2|3] [on|off]
-        rinv      pdunodes
-        rvitals   pdunodes
         rspconfig pdunodes sshcfg
         rspconfig pdunodes snmpcfg
         rspconfig pdunode [hostname=<NAME>|ip=<IP>|mask=<MASK>]
-         
         \n";
                     
     if ($callback)
@@ -214,7 +215,7 @@ sub process_request
             process_sshcfg($noderange, $subcmd, $callback);
         }elsif ($subcmd eq 'snmpcfg') {
             process_snmpcfg($noderange, $subcmd, $callback);
-        }elsif ($subcmd =~ /ip|netmask|hostname/) {
+        }elsif ($subcmd =~ /ip|gateway|netmask|hostname/) {
             process_netcfg($request, $subreq, $subcmd, $callback);
         } else {
             $callback->({ errorcode => [1],error => "The input $command $subcmd is not support for pdu"});
@@ -628,17 +629,19 @@ sub process_netcfg {
 
     my $pdutab = xCAT::Table->new('pdu');
     my $pduhash = $pdutab->getNodesAttribs($nodes, ['pdutype']);
-    unless ($pduhash->{$pdu}->[0]->{pdutype} eq "crpdu") {
-        xCAT::SvrUtils::sendmsg("This command only supports CONSTELLATION PDU with pdutype=crpdu", $callback,$pdu);
-        return;
-    }
 
     my $nodetab = xCAT::Table->new('hosts');
     my $nodehash = $nodetab->getNodesAttribs($nodes,['ip','otherinterfaces']);
-
-    # connect to PDU
     my $static_ip = $nodehash->{$pdu}->[0]->{ip};
     my $discover_ip = $nodehash->{$pdu}->[0]->{otherinterfaces};
+
+    unless ($pduhash->{$pdu}->[0]->{pdutype} eq "crpdu") {
+        netcfg_for_irpdu($pdu, $static_ip, $discover_ip, $request, $subreq, $callback); 
+        return;
+    }
+
+
+    # connect to PDU
     ($exp, $errstr) = session_connect($static_ip, $discover_ip);
     if (defined $errstr) {
         xCAT::SvrUtils::sendmsg("Failed to connect", $callback,$pdu);
@@ -1360,6 +1363,158 @@ sub process_snmpcfg {
         $exp->hard_close();
     }
 }
+
+#-------------------------------------------------------
+
+=head3  netcfg_for_irpdu
+
+  change hostname and network setting for IR PDU.
+
+=cut
+#-------------------------------------------------------
+sub netcfg_for_irpdu {
+    my $pdu = shift;
+    my $static_ip = shift;
+    my $discover_ip = shift;
+    my $request = shift;
+    my $subreq = shift;
+    my $callback = shift;
+    my $hostname;
+    my $ip;
+    my $gateway;
+    my $netmask;
+
+    my $extrargs  = $request->{arg};
+    my @exargs    = ($request->{arg});
+    if (ref($extrargs)) {
+        @exargs = @$extrargs;
+    }
+
+    #default password for irpdu
+    my $passwd = "1001";
+    my $username = "ADMIN";
+    my $timeout = 20;
+    my $send_change = "N";
+  
+    my $login_ip;
+   
+    # somehow, only system command works for checking if irpdu is pingable
+    # Net::Ping Module and xCAT::NetworkUtils::isPingable both are not working
+    if (system("ping -c 2 $static_ip") == 0 ) {
+        $login_ip = $static_ip;
+    } elsif (system("ping -c 2 $discover_ip") == 0) {
+        $login_ip = $discover_ip;
+    } else {
+        xCAT::SvrUtils::sendmsg(" is not reachable", $callback,$pdu);
+    }
+    
+    foreach my $cmd (@exargs) {
+        my ($key, $value) = split(/=/, $cmd);
+        if ($key =~ /hostname/) {
+            $hostname = $value;
+            xCAT::SvrUtils::sendmsg("change pdu hostname to $hostname", $callback);
+        }
+        if ($key =~ /ip/) {
+            $ip = $value;
+            $send_change = "Y";
+            xCAT::SvrUtils::sendmsg("change ip address for $pdu to $ip", $callback);
+        }
+        if ($key =~ /gateway/) {
+            $gateway = $value;
+            $send_change = "Y";
+            xCAT::SvrUtils::sendmsg("change gateway for $pdu to $gateway", $callback);
+        }
+        if ($key =~ /netmask/) {
+            $netmask = $value;
+            $send_change = "Y";
+            xCAT::SvrUtils::sendmsg("change netmask for $pdu to $netmask", $callback);
+        }
+
+    }
+
+    my $login_cmd = "telnet $login_ip\r";
+    my $user_prompt = " Login: ";
+    my $pwd_prompt = "Password: ";
+    my $pdu_prompt = "Please Enter Your Selection => ";
+    my $send_zero = 0;
+    my $send_one = 1;
+    my $send_two = 2;
+
+    my $mypdu = new Expect;
+
+    $mypdu->log_stdout(1);    # suppress stdout output..
+    $mypdu->slave->stty(qw(sane -echo));
+
+    unless ($mypdu->spawn($login_cmd))
+    {
+        $mypdu->soft_close();
+        xCAT::SvrUtils::sendmsg("Unable to run $login_cmd", $callback);
+        return;
+    }
+    my @result = $mypdu->expect(
+        $timeout,
+        [
+            $user_prompt,
+            sub {
+                $mypdu->clear_accum();
+                $mypdu->send("$username\r");
+                $mypdu->clear_accum();
+                $mypdu->exp_continue();
+            }
+        ],
+        [
+            $pwd_prompt,
+            sub {
+                $mypdu->clear_accum();
+                $mypdu->send("$passwd\r");
+                $mypdu->clear_accum();
+                $mypdu->exp_continue();
+            }
+        ],
+        [
+            $pdu_prompt,
+            sub {
+                $mypdu->clear_accum();
+                $mypdu->send("$send_one\r");
+                $mypdu->send("$send_one\r");
+                #change hostname
+                $mypdu->send("$send_one\r");
+                $mypdu->send("$hostname\r");
+                $mypdu->send("$send_zero\r");
+                #change network setting
+                $mypdu->send("$send_two\r");
+                $mypdu->send("$send_one\r");
+                $mypdu->send("$ip\r");
+                $mypdu->send("$gateway\r");
+                $mypdu->send("$netmask\r");
+                $mypdu->send("$send_change\r");
+                # go back Previous Menu
+                $mypdu->send("$send_zero\r");
+                $mypdu->send("$send_zero\r");
+            }
+        ],
+    );
+
+    if (defined($result[1]))
+    {
+        my $errmsg = $result[1];
+        $mypdu->soft_close();
+        xCAT::SvrUtils::sendmsg("Failed expect command $errmsg", $callback);
+        return;
+    }
+    $mypdu->soft_close();
+
+    xCAT::SvrUtils::sendmsg("hostname or network setting changed, update node definition ", $callback);
+    xCAT::Utils->runxcmd({ command => ['chdef'], arg => ['-t','node','-o',$pdu,"otherinterfaces="] }, $subreq, 0, 1);
+    if ( (defined $ip) and ($static_ip ne $ip) ) {
+        xCAT::Utils->runxcmd({ command => ['chdef'], arg => ['-t','node','-o',$pdu,"ip=$ip",'status=configured'] }, $subreq, 0, 1);
+        xCAT::Utils->runxcmd({ command => ['makehosts'], node => [$pdu] },  $subreq, 0, 1);
+    }
+
+    return;
+}
+
+
 
 
 
