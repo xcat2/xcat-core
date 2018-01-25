@@ -137,9 +137,6 @@ sub config_ssh {
     my $nodehash = $nodetab->getNodesAttribs(\@nodes,['ip','otherinterfaces']);
 
     foreach my $switch (@nodes) {
-        #remove old host key from /root/.ssh/known_hosts
-        $cmd = `ssh-keygen -R $switch`;
-
         my $static_ip = $nodehash->{$switch}->[0]->{ip};
         my $discover_ip = $nodehash->{$switch}->[0]->{otherinterfaces};
         my $ssh_ip;
@@ -153,6 +150,10 @@ sub config_ssh {
             print "$switch is not reachable\n";
             next;
         }
+
+        #remove old host key from /root/.ssh/known_hosts
+        $cmd = `ssh-keygen -R $switch`;
+        $cmd = `ssh-keygen -R $ssh_ip`;
         
 
         my ($exp, $errstr) = cumulus_connect($ssh_ip, $userid, $password, $timeout);
