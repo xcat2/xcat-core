@@ -17,7 +17,7 @@ AutoReqProv: no
 %endif
 
 BuildArch: noarch
-Requires: xCAT-server, python-requests 
+Requires: xCAT-server 
 
 %description
 xCAT-openbmc-py provides openbmc related functions. 
