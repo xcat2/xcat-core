@@ -63,6 +63,10 @@ OpenBMC specific:
 
 \ **rspconfig**\  \ *noderange*\  \ **autoreboot={0|1}**\ 
 
+\ **rspconfig**\  \ *noderange*\  \ **bootmode**\ 
+
+\ **rspconfig**\  \ *noderange*\  \ **bootmode={safe|regular|setup}**\ 
+
 
 MPA specific:
 =============
@@ -459,6 +463,12 @@ OPTIONS
 \ **autoreboot**\ 
  
  Display or control BMC Auto Reboot attribute setting.
+ 
+
+
+\ **bootmode**\ 
+ 
+ Display or control BMC Boot Mode attribute setting.
  
 
 

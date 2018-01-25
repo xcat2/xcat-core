@@ -40,6 +40,10 @@ B<rspconfig> I<noderange> B<autoreboot>
 
 B<rspconfig> I<noderange> B<autoreboot={0|1}>
 
+B<rspconfig> I<noderange> B<bootmode>
+
+B<rspconfig> I<noderange> B<bootmode={safe|regular|setup}>
+
 =head2 MPA specific:
 
 B<rspconfig> I<noderange> {B<sshcfg>|B<snmpcfg>|B<pd1>|B<pd2>|B<network>|B<swnet>|B<ntp>|B<textid>|B<frame>}
@@ -349,6 +353,10 @@ Display or control BMC Power Supply Redundancy attribute setting.
 =item B<autoreboot>
 
 Display or control BMC Auto Reboot attribute setting.
+
+=item B<bootmode>
+
+Display or control BMC Boot Mode attribute setting.
 
 =item B<dump>
 
