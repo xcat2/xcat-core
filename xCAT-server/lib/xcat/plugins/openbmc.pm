@@ -3626,13 +3626,12 @@ sub rspconfig_api_config_response {
                     my $last_component = $attr_value[-1];
                     my @valid_values = values $api_config_info{$::RSPCONFIG_CONFIGURED_API_KEY}{attr_value};
                     if ($value) {
-                        if ($value ~~ @valid_values) {
-                            # Received one of the expected values (defined in attr_value hash for this command
-                            xCAT::SvrUtils::sendmsg($api_config_info{$::RSPCONFIG_CONFIGURED_API_KEY}{display_name} . " : $last_component", $callback, $node);
-                        } else {
+                        xCAT::SvrUtils::sendmsg($api_config_info{$::RSPCONFIG_CONFIGURED_API_KEY}{display_name} . " : $last_component", $callback, $node);
+                        my $found = grep(/$value/, @valid_values);
+                        if ($found eq 0) { 
                             # Received data value not expected
-                            xCAT::SvrUtils::sendmsg($api_config_info{$::RSPCONFIG_CONFIGURED_API_KEY}{display_name} . " : $last_component", $callback, $node);
-                            xCAT::SvrUtils::sendmsg("Warning: Unexpected value set. Valid values: " . join(",", @valid_values), $callback, $node);
+                            xCAT::SvrUtils::sendmsg("WARNING: Unexpected value set: $value", $callback, $node);
+                            xCAT::SvrUtils::sendmsg("WARNING: Valid values: " . join(",", @valid_values), $callback, $node);
                         }
                     }
                     else {
