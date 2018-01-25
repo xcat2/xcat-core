@@ -1171,7 +1171,7 @@ sub parse_args {
         my $all_subcommand = "";
         foreach $subcommand (@ARGV) {
             $::RSPCONFIG_CONFIGURED_API_KEY = &is_valid_config_api($subcommand, $callback);
-            if ($::RSPCONFIG_CONFIGURED_API_KEY != -1) {
+            if ($::RSPCONFIG_CONFIGURED_API_KEY ne -1) {
                 # subcommand defined in the configured API hash, return from here, the RSPCONFIG_CONFIGURED_API_KEY is the key into the hash
                 return;
             }
@@ -1574,7 +1574,7 @@ sub parse_command_status {
         my @options = ();
         my $num_subcommand = @$subcommands;
         #Setup chain to process the configured command
-        if ($::RSPCONFIG_CONFIGURED_API_KEY != -1) {
+        if ($::RSPCONFIG_CONFIGURED_API_KEY ne -1) {
             $subcommand = $$subcommands[0];
             # Check if setting or quering
             if ($subcommand =~ /^(\w+)=(.*)/) {
@@ -3609,7 +3609,7 @@ sub rspconfig_api_config_response {
                     # For example "xyz.openbmc_project.Control.Power.RestorePolicy.Policy.Restore"
                     #    will be displayed as "Restore"
                     my @attr_value = split('\.', $value);
-                    my $last_component = @attr_value[-1];
+                    my $last_component = $attr_value[-1];
                     my @valid_values = values $api_config_info{$::RSPCONFIG_CONFIGURED_API_KEY}{attr_value};
                     if ($value) {
                         if ($value ~~ @valid_values) {
