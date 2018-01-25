@@ -596,13 +596,27 @@ my %api_config_info = (
         type         => "boolean",
         subcommand   => "autoreboot",
     },
+    RSPCONFIG_BOOT_MODE => {
+        command      => "rspconfig",
+        url          => "/control/host0/boot",
+        attr_url     => "BootMode",
+        display_name => "BMC BootMode",
+        instruct_msg => "",
+        type         => "attribute",
+        subcommand   => "bootmode",
+        attr_value   => {
+            regular     => "xyz.openbmc_project.Control.Boot.Mode.Modes.Regular",
+            safe        => "xyz.openbmc_project.Control.Boot.Mode.Modes.Safe",
+            setup       => "xyz.openbmc_project.Control.Boot.Mode.Modes.Setup",
+        },
+    },
     RSPCONFIG_POWERSUPPLY_REDUNDANCY => {
         command      => "rspconfig",
         url          => "/sensors/chassis/PowerSupplyRedundancy",
         attr_url     => "/action/setValue",
         query_url    => "/action/getValue",
         display_name => "BMC PowerSupplyRedundancy",
-        instruct_msg => "bmc reboot is required",
+        instruct_msg => "",
         type         => "action_attribute",
         subcommand   => "powersupplyredundancy",
         attr_value   => {
@@ -1171,7 +1185,7 @@ sub parse_args {
         my $all_subcommand = "";
         foreach $subcommand (@ARGV) {
             $::RSPCONFIG_CONFIGURED_API_KEY = &is_valid_config_api($subcommand, $callback);
-            if ($::RSPCONFIG_CONFIGURED_API_KEY != -1) {
+            if ($::RSPCONFIG_CONFIGURED_API_KEY ne -1) {
                 # subcommand defined in the configured API hash, return from here, the RSPCONFIG_CONFIGURED_API_KEY is the key into the hash
                 return;
             }
@@ -1574,7 +1588,7 @@ sub parse_command_status {
         my @options = ();
         my $num_subcommand = @$subcommands;
         #Setup chain to process the configured command
-        if ($::RSPCONFIG_CONFIGURED_API_KEY != -1) {
+        if ($::RSPCONFIG_CONFIGURED_API_KEY ne -1) {
             $subcommand = $$subcommands[0];
             # Check if setting or quering
             if ($subcommand =~ /^(\w+)=(.*)/) {
@@ -3609,16 +3623,15 @@ sub rspconfig_api_config_response {
                     # For example "xyz.openbmc_project.Control.Power.RestorePolicy.Policy.Restore"
                     #    will be displayed as "Restore"
                     my @attr_value = split('\.', $value);
-                    my $last_component = @attr_value[-1];
+                    my $last_component = $attr_value[-1];
                     my @valid_values = values $api_config_info{$::RSPCONFIG_CONFIGURED_API_KEY}{attr_value};
                     if ($value) {
-                        if ($value ~~ @valid_values) {
-                            # Received one of the expected values (defined in attr_value hash for this command
-                            xCAT::SvrUtils::sendmsg($api_config_info{$::RSPCONFIG_CONFIGURED_API_KEY}{display_name} . " : $last_component", $callback, $node);
-                        } else {
+                        xCAT::SvrUtils::sendmsg($api_config_info{$::RSPCONFIG_CONFIGURED_API_KEY}{display_name} . " : $last_component", $callback, $node);
+                        my $found = grep(/$value/, @valid_values);
+                        if ($found eq 0) { 
                             # Received data value not expected
-                            xCAT::SvrUtils::sendmsg($api_config_info{$::RSPCONFIG_CONFIGURED_API_KEY}{display_name} . " : $last_component", $callback, $node);
-                            xCAT::SvrUtils::sendmsg("Warning: Unexpected value set. Valid values: " . join(",", @valid_values), $callback, $node);
+                            xCAT::SvrUtils::sendmsg("WARNING: Unexpected value set: $value", $callback, $node);
+                            xCAT::SvrUtils::sendmsg("WARNING: Valid values: " . join(",", @valid_values), $callback, $node);
                         }
                     }
                     else {
