@@ -596,6 +596,20 @@ my %api_config_info = (
         type         => "boolean",
         subcommand   => "autoreboot",
     },
+    RSPCONFIG_BOOT_MODE => {
+        command      => "rspconfig",
+        url          => "/control/host0/boot",
+        attr_url     => "BootMode",
+        display_name => "BMC BootMode",
+        instruct_msg => "",
+        type         => "attribute",
+        subcommand   => "bootmode",
+        attr_value   => {
+            regular     => "xyz.openbmc_project.Control.Boot.Mode.Modes.Regular",
+            safe        => "xyz.openbmc_project.Control.Boot.Mode.Modes.Safe",
+            setup       => "xyz.openbmc_project.Control.Boot.Mode.Modes.Setup",
+        },
+    },
     RSPCONFIG_POWERSUPPLY_REDUNDANCY => {
         command      => "rspconfig",
         url          => "/sensors/chassis/PowerSupplyRedundancy",
