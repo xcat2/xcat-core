@@ -1625,7 +1625,7 @@ sub parse_command_status {
                 else {
                     # Everything else is invalid
                         xCAT::SvrUtils::sendmsg([1, "Invalid value '$subcommand_value' for '$subcommand_key'"], $callback);
-                        my @valid_values = keys $api_config_info{$::RSPCONFIG_CONFIGURED_API_KEY}{attr_value};
+                        my @valid_values = keys %{ $api_config_info{$::RSPCONFIG_CONFIGURED_API_KEY}{attr_value} };
                         xCAT::SvrUtils::sendmsg([1, "Valid values: " . join(",", @valid_values)], $callback);
                         return 1;
                 }
@@ -3624,7 +3624,7 @@ sub rspconfig_api_config_response {
                     #    will be displayed as "Restore"
                     my @attr_value = split('\.', $value);
                     my $last_component = $attr_value[-1];
-                    my @valid_values = values $api_config_info{$::RSPCONFIG_CONFIGURED_API_KEY}{attr_value};
+                    my @valid_values = values %{ $api_config_info{$::RSPCONFIG_CONFIGURED_API_KEY}{attr_value} };
                     if ($value) {
                         xCAT::SvrUtils::sendmsg($api_config_info{$::RSPCONFIG_CONFIGURED_API_KEY}{display_name} . " : $last_component", $callback, $node);
                         my $found = grep(/$value/, @valid_values);
