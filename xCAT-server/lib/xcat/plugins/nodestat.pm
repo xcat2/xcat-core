@@ -797,7 +797,9 @@ sub process_request_port {
         my $node;
         my $fping;
         open($fping, "fping " . join(' ', @nodes) . " 2> /dev/null|") or die("Can't start fping: $!");
+	my $havefping = 0;
         while (<$fping>) {
+            $havefping = 1;
             my %rsp;
             my $node = $_;
             $node =~ s/ .*//;
@@ -809,6 +811,12 @@ sub process_request_port {
             } elsif (/ address not found/) {
                 $status->{$node}->{'status'} = "nosuchhost";
             }
+        }
+	unless ($havefping) {
+            my $rsp = {};
+            $rsp->{error}->[0] =
+              "Unable to find fping on system, must install fping package to use nodestat -f";
+            xCAT::MsgUtils->message("E", $rsp, $callback, 1);
         }
     }
 
