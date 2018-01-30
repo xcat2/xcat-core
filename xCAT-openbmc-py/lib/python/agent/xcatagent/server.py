@@ -9,7 +9,7 @@ import traceback
 from gevent import socket
 from gevent.server import StreamServer
 from gevent.lock import BoundedSemaphore
-from xcatagent import utils
+from common import utils
 from xcatagent import base as xcat_manager
 
 MSG_TYPE = 'message'
@@ -17,7 +17,7 @@ DB_TYPE  = 'db'
 LOCK_FILE = '/var/lock/xcat/agent.lock'
 
 
-class Messager(object):
+class XCATMessager(utils.Messager):
     def __init__(self, sock):
         self.sock = sock
         self.sem = BoundedSemaphore(1)
@@ -68,7 +68,7 @@ class Server(object):
 
     def _handle(self, sock, address):
         try:
-            messager = Messager(sock)
+            messager = XCATMessager(sock)
             buf = sock.recv(4)
             sz = utils.bytes2int(buf)
             buf = utils.recv_all(sock, sz)

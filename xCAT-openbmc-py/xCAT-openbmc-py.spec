@@ -30,11 +30,15 @@ xCAT-openbmc-py provides openbmc related functions.
 rm -rf $RPM_BUILD_ROOT
 install -d $RPM_BUILD_ROOT/%{prefix}/lib/python/agent
 install -d $RPM_BUILD_ROOT/%{prefix}/lib/python/agent/xcatagent
+install -d $RPM_BUILD_ROOT/%{prefix}/lib/python/agent/common
+install -d $RPM_BUILD_ROOT/%{prefix}/lib/python/agent/hwctl
 install -m755 lib/python/agent/*.py $RPM_BUILD_ROOT/%{prefix}/lib/python/agent
 install -m644 lib/python/agent/xcatagent/*.py $RPM_BUILD_ROOT/%{prefix}/lib/python/agent/xcatagent
+install -m644 lib/python/agent/common/*.py $RPM_BUILD_ROOT/%{prefix}/lib/python/agent/common
+install -m644 lib/python/agent/hwctl/*.py $RPM_BUILD_ROOT/%{prefix}/lib/python/agent/hwctl
 
 %ifnos linux
-rm -rf $RPM_BUILD_ROOT/%{prefix}/lib/python
+rm -rf $RPM_BUILD_ROOT/%{prefix}/lib/python/agent
 %endif
 
 %clean

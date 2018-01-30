@@ -8,7 +8,7 @@ import json
 import os
 import socket
 import sys
-from xcatagent import utils
+from common import utils
 
 class ClientShell(object):
     def get_base_parser(self):

@@ -1,9 +1,8 @@
-from xcatagent import utils
+from common import utils
 import gevent
 from gevent.pool import Pool
 
 MODULE_MAP = {"openbmc": "OpenBMCManager"}
-
 
 class BaseManager(object):
     def __init__(self, messager, cwd):

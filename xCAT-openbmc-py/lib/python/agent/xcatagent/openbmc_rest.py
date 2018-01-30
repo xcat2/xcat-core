@@ -3,8 +3,8 @@ import requests
 import json
 import time
 
-import rest
-import xcat_exception
+from common import rest
+from common import exceptions as xcat_exception
 
 class OpenBMCRest:
 

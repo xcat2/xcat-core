@@ -1,11 +1,22 @@
-from xcatagent import base
+#!/usr/bin/env python
+###############################################################################
+# IBM(c) 2018 EPL license http://www.eclipse.org/legal/epl-v10.html
+###############################################################################
+# -*- coding: utf-8 -*-
+#
+
+import argparse
 import os
 import time
 import sys
 import gevent
 
-import utils
-import xcat_exception
+from common import utils
+from common import exceptions as xcat_exception
+from hwctl.task import OpenBMCPowerTask
+from hwctl.power import DefaultPowerManager
+
+from xcatagent import base
 import openbmc_rest
 
 HTTP_PROTOCOL = "https://"
@@ -58,6 +69,7 @@ XCAT_LOG_RFLASH_DIR = XCAT_LOG_DIR + "/rflash/"
 FIRM_URL = PROJECT_URL + "/software/enumerate"
 
 # global variables of rpower
+POWER_REBOOT_OPTIONS = ('boot', 'reset')
 POWER_SET_OPTIONS = ('on', 'off', 'bmcreboot', 'softoff')
 POWER_GET_OPTIONS = ('bmcstate', 'state', 'stat', 'status')
 
@@ -808,5 +820,55 @@ class OpenBMCManager(base.BaseManager):
         self._summary(nodes_num, 'Firmware update')
 
     def rpower(self, nodeinfo, args):
-        super(OpenBMCManager, self).process_nodes_worker('openbmc', 'OpenBMC', 
+        mgr = OpenBMCManager2(self.messager, self.cwd, nodes=self.nodes)
+        mgr.debugmode = DEBUGMODE
+        mgr.rpower(nodeinfo, args)
+
+    def _rpower(self, nodeinfo, args):
+        super(OpenBMCManager, self).process_nodes_worker('openbmc', 'OpenBMC',
                     self.nodes, nodeinfo, 'rpower', args)
+
+class OpenBMCManager2(base.BaseManager):
+    def __init__(self, messager, cwd, nodes=None, envs=None):
+        super(OpenBMCManager2, self).__init__(messager, cwd)
+        self.nodes = nodes
+        self.debugmode = (envs and envs.get('debugmode')) or None
+
+    def rpower(self, nodesinfo, args):
+
+        # 1, parse args
+        parser = argparse.ArgumentParser(description='Handle rpower operations.')
+        parser.add_argument('--action',
+                            help="rpower subcommand.")
+        parser.add_argument('-V', '--verbose', action='store_true',
+                            help="rpower verbose mode.")
+        args.insert(0,'--action')
+        opts = parser.parse_args(args)
+
+        # 2, validate the args
+        if opts.action is None:
+            self.messager.error("Not specify the subcommand for rpower")
+            return
+
+        if opts.action not in (POWER_GET_OPTIONS + POWER_SET_OPTIONS + POWER_REBOOT_OPTIONS):
+            self.messager.error("Not supported subcommand for rpower: %s" % opts.action)
+            return
+
+        # 3, run the subcommands
+        runner = OpenBMCPowerTask(nodesinfo, callback=self.messager, debugmode=self.debugmode, verbose=opts.verbose)
+        if opts.action == 'bmcstate':
+            DefaultPowerManager().get_bmc_state(runner)
+        elif opts.action == 'bmcreboot':
+            DefaultPowerManager().reboot_bmc(runner)
+        elif opts.action in POWER_GET_OPTIONS:
+            DefaultPowerManager().get_power_state(runner)
+        elif opts.action in POWER_REBOOT_OPTIONS:
+            DefaultPowerManager().reboot(runner, optype=opts.action)
+        else:
+            DefaultPowerManager().set_power_state(runner, power_state=opts.action)     
+
+    def rflash(self, nodesinfo, args):
+        # 1, parse args
+        # 2, validate the args
+        # 3, run the subcommands
+        pass

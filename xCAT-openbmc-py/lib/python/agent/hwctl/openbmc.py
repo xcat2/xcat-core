@@ -1,0 +1,227 @@
+#!/usr/bin/env python
+###############################################################################
+# IBM(c) 2018 EPL license http://www.eclipse.org/legal/epl-v10.html
+###############################################################################
+# -*- coding: utf-8 -*-
+#
+
+import requests
+import json
+import time
+
+from common import rest
+from common.exceptions import SelfClientException, SelfServerException
+
+import logging
+logger = logging.getLogger('xcatagent')
+
+HTTP_PROTOCOL = "https://"
+PROJECT_URL = "/xyz/openbmc_project"
+PROJECT_PAYLOAD = "xyz.openbmc_project."
+
+RPOWER_STATES = {
+    "on"        : "on",
+    "off"       : "off",
+    "Off"       : "off",
+    "softoff"   : "softoff",
+    "boot"      : "reset",
+    "reset"     : "reset",
+    "bmcreboot" : "BMC reboot",
+    "Ready"     : "BMC Ready",
+    "NotReady"  : "BMC NotReady",
+    "chassison" : "on (Chassis)",
+    "Running"   : "on",
+    "Quiesced"  : "quiesced",
+}
+
+RPOWER_URLS = {
+    "on"        : {
+        "path"  : "/state/host0/attr/RequestedHostTransition",
+        "field" : "State.Host.Transition.On",
+    },
+    "off"       : {
+        "path"  : "/state/chassis0/attr/RequestedPowerTransition",
+        "field" : "State.Chassis.Transition.Off",
+    },
+    "softoff"   : {
+        "path"  : "/state/host0/attr/RequestedHostTransition",
+        "field" : "State.Host.Transition.Off",
+    },
+    "state"     : {
+        "path"  : "/state/enumerate",
+    },
+}
+
+BMC_URLS = {
+    "reboot" : {
+        "path"  : "/state/bmc0/attr/RequestedBMCTransition",
+        "field" : "State.BMC.Transition.Reboot",
+    },
+    "state"     : {
+        "path"  : "/state/bmc0/attr/CurrentBMCState",
+    },
+}
+
+RESULT_OK = 'ok'
+RESULT_FAIL = 'fail'
+
+class OpenBMCRest(object):
+
+    headers = {'Content-Type': 'application/json'}
+
+    def __init__(self, name, **kwargs):
+
+        #set default user/passwd
+        self.name = name
+        self.username, self.password = ('root', '0penBmc')
+
+        if 'nodeinfo' in kwargs:
+            for key, value in kwargs['nodeinfo'].items():
+                setattr(self, key, value)
+        if not hasattr(self, 'bmcip'):
+            self.bmcip = self.name
+
+        self.verbose = kwargs.get('debugmode')
+        # print back to xcatd or just stdout
+        self.messager = kwargs.get('messager')
+
+        self.session = rest.RestSession()
+        self.root_url = HTTP_PROTOCOL + self.bmcip + PROJECT_URL
+
+    def _print_record_log (self, msg, cmd):
+
+        if self.verbose :
+            localtime = time.asctime( time.localtime(time.time()) )
+            log = self.name + ': [openbmc_debug] ' + cmd + ' ' + msg
+            self.messager.info(localtime + ' ' + log)
+            logger.debug(log)
+
+    def _log_request (self, method, url, headers, data=None, files=None, cmd=''):
+
+        header_str = ' '.join([ "%s: %s" % (k, v) for k,v in headers.items() ])
+        msg = 'curl -k -c cjar -b cjar -X %s -H \"%s\" ' % (method, header_str)
+
+        if files:
+            msg += '-T \'%s\' %s -s' % (files, url)
+        elif data:
+            if cmd == 'login':
+                data = data.replace(self.password, "xxxxxx")
+            msg += '%s -d \'%s\'' % (url, data)
+        else:
+            msg += url
+
+        self._print_record_log(msg, cmd)
+        return msg
+
+    def handle_response (self, resp, cmd=''):
+
+        data = resp.json() # it will raise ValueError
+        code = resp.status_code
+        if code != requests.codes.ok:
+            description = ''.join(data['data']['description'])
+            error = 'Error: [%d] %s' % (code, description)
+            self._print_record_log(error, cmd)
+            raise SelfClientException(error, code)
+
+        self._print_record_log(data['message'], cmd)
+        return data['data']
+
+    def request (self, method, resource, headers=None, payload=None, timeout=30, cmd=''):
+
+        httpheaders = headers or OpenBMCRest.headers
+        url = resource
+        if not url.startswith(HTTP_PROTOCOL):
+            url = self.root_url + resource
+
+        data = None
+        if payload:
+            data=json.dumps(payload)
+
+        self._log_request(method, url, httpheaders, data=data, cmd=cmd)
+        try:
+            response = self.session.request(method, url, httpheaders, data=data)
+            return self.handle_response(response, cmd=cmd)
+        except SelfServerException as e:
+            e.message = 'Error: BMC did not respond. ' \
+                        'Validate BMC configuration and retry the command.'
+            self._print_record_log(e.message, cmd)
+            raise
+        except ValueError:
+            error = 'Error: Received wrong format response: %s' % response
+            self._print_record_log(error, cmd)
+            raise SelfServerException(error)
+
+    def upload (self, method, resource, files, headers=None, cmd=''):
+
+        httpheaders = headers or OpenBMCRest.headers
+        url = resource
+        if not url.startswith(HTTP_PROTOCOL):
+            url = self.root_url + resource
+
+        request_cmd = self._log_request(method, url, httpheaders, files=files, cmd=cmd)
+
+        try:
+            response = self.session.request_upload(method, url, httpheaders, files)
+        except SelfServerException:
+            self._print_record_log(error, cmd=cmd)
+            raise
+        try:
+            data = json.loads(response)
+        except ValueError:
+            error = 'Error: Received wrong format response when running command \'%s\': %s' % \
+                    (request_cmd, response)
+            self._print_record_log(error, cmd=cmd)
+            raise SelfServerException(error)
+
+        if data['message'] != '200 OK':
+            error = 'Error: Failed to upload update file %s : %s-%s' % \
+                    (files, data['message'], \
+                    ''.join(data['data']['description']))
+            self._print_record_log(error, cmd=cmd)
+            raise SelfClientException(error, code)
+
+        self._print_record_log(data['message'], cmd=cmd) 
+
+        return True
+
+    def login(self):
+
+        payload = { "data": [ self.username, self.password ] }
+
+        url = HTTP_PROTOCOL + self.bmcip + '/login'
+        self.request('POST', url, payload=payload, timeout=20, cmd='login')
+
+    def list_power_states(self):
+
+        states = self.request('GET', RPOWER_URLS['state']['path'], cmd='list_power_states')
+        #filter non used states
+        try:
+            host_stat = states[PROJECT_URL + '/state/host0']['CurrentHostState']
+            chassis_stat = states[PROJECT_URL + '/state/chassis0']['CurrentPowerState']
+            return {'host': host_stat.split('.')[-1], 'chassis': chassis_stat.split('.')[-1]}
+        except KeyError:
+            error = 'Error: Received wrong format response: %s' % states
+            raise SelfServerException(error)
+
+    def set_power_state(self, state):
+
+        payload = { "data": PROJECT_PAYLOAD + RPOWER_URLS[state]['field'] }
+        return self.request('PUT', RPOWER_URLS[state]['path'], payload=payload, cmd='set_power_state')
+
+    def get_bmc_state(self):
+
+        state = self.request('GET', BMC_URLS['state']['path'], cmd='get_bmc_state')
+        try:
+            return {'bmc': state.split('.')[-1]}
+        except KeyError:
+            error = 'Error: Received wrong format response: %s' % state
+            raise SelfServerException(error)
+
+    def reboot_bmc(self, optype='warm'):
+
+        payload = { "data": PROJECT_PAYLOAD + BMC_URLS['reboot']['field'] }
+        try:
+            self.request('PUT', BMC_URLS['reboot']['path'], payload=payload, cmd='bmc_reset')
+        except SelfServerException,SelfClientException:
+            # TODO: Need special handling for bmc reset, as it is normal bmc may return error
+            pass
