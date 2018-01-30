@@ -1130,8 +1130,6 @@ sub bmcdiscovery_ipmi {
         }
 
         display_output($opz,$opw,$mtms_node,$mac_node,$node_data,"ipmi",$request_command);
-    } else {
-        store_fd({data=>0}, $fd);
     }
 }
 
@@ -1156,6 +1154,7 @@ sub bmcdiscovery_openbmc{
     my $mtms_node       = "";
     my $mac_node        = "";
 
+    store_fd({data=>1}, $fd);
     print "$ip: Detected openbmc, attempting to obtain system information...\n";
     my $http_protocol="https";
     my $openbmc_project_url = "xyz/openbmc_project";
