@@ -4245,22 +4245,7 @@ push(@{ $defspec{group}->{'attrs'} }, @nodeattrs);
         tabentry        => 'pdu.outlet',
         access_tabentry => 'pdu.node=attr:node',
     },
-    {   attr_name => 'machinetype',
-        only_if         => 'nodetype=pdu',
-        tabentry        => 'pdu.machinetype',
-        access_tabentry => 'pdu.node=attr:node',
-    },
-    { attr_name => 'modelnum',
-        only_if         => 'nodetype=pdu',
-        tabentry        => 'pdu.modelnum',
-        access_tabentry => 'pdu.node=attr:node',
-    },
-    { attr_name => 'serialnum',
-        only_if         => 'nodetype=pdu',
-        tabentry        => 'pdu.serialnum',
-        access_tabentry => 'pdu.node=attr:node',
-    },
-);
+  );
 
 
 
