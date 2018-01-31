@@ -4,13 +4,13 @@ B<rflash> - Performs Licensed Internal Code (LIC) update or firmware update on s
 
 =head1 B<Synopsis>
 
-B<rflash> [B<-h>|B<--help> | B<-v>|B<--version>]
+B<rflash> [B<-h>|B<--help> | B<-v>|B<--version> | B<-V>|B<--verbose>]
 
 =head2 PPC (with HMC) specific:
 
-B<rflash> I<noderange> B<-p> I<directory> [B<--activate> {B<concurrent>|B<disruptive>}] [B<-V>|B<--verbose>]
+B<rflash> I<noderange> B<-p> I<directory> [B<--activate> {B<concurrent>|B<disruptive>}]
 
-B<rflash> I<noderange> {B<--commit>|B<--recover>} [B<-V>|B<--verbose>]
+B<rflash> I<noderange> {B<--commit>|B<--recover>}
 
 =head2 PPC (without HMC, using Direct FSP Management) specific:
 
@@ -24,7 +24,7 @@ B<rflash> I<noderange> I<http_directory>
 
 =head2 OpenPOWER BMC specific (using IPMI):
 
-B<rflash> I<noderange> [I<hpm_file_path> | B<-d> I<data_directory>] [B<-c>|B<--check>] [B<--retry=>I<count>] [B<-V>]
+B<rflash> I<noderange> [I<hpm_file_path> | B<-d> I<data_directory>] [B<-c>|B<--check>] [B<--retry=>I<count>]
 
 B<rflash> I<noderange> B<--recover> I<bmc_file_path>
 

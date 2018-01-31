@@ -19,15 +19,15 @@ Name
 ****************
 
 
-\ **rflash**\  [\ **-h | -**\ **-help**\  | \ **-v | -**\ **-version**\ ]
+\ **rflash**\  [\ **-h | -**\ **-help**\  | \ **-v | -**\ **-version**\  | \ **-V | -**\ **-verbose**\ ]
 
 PPC (with HMC) specific:
 ========================
 
 
-\ **rflash**\  \ *noderange*\  \ **-p**\  \ *directory*\  [\ **-**\ **-activate**\  {\ **concurrent | disruptive**\ }] [\ **-V | -**\ **-verbose**\ ]
+\ **rflash**\  \ *noderange*\  \ **-p**\  \ *directory*\  [\ **-**\ **-activate**\  {\ **concurrent | disruptive**\ }]
 
-\ **rflash**\  \ *noderange*\  {\ **-**\ **-commit | -**\ **-recover**\ } [\ **-V | -**\ **-verbose**\ ]
+\ **rflash**\  \ *noderange*\  {\ **-**\ **-commit | -**\ **-recover**\ }
 
 
 PPC (without HMC, using Direct FSP Management) specific:
@@ -50,7 +50,7 @@ OpenPOWER BMC specific (using IPMI):
 ====================================
 
 
-\ **rflash**\  \ *noderange*\  [\ *hpm_file_path*\  | \ **-d**\  \ *data_directory*\ ] [\ **-c | -**\ **-check**\ ] [\ **-**\ **-retry=**\ \ *count*\ ] [\ **-V**\ ]
+\ **rflash**\  \ *noderange*\  [\ *hpm_file_path*\  | \ **-d**\  \ *data_directory*\ ] [\ **-c | -**\ **-check**\ ] [\ **-**\ **-retry=**\ \ *count*\ ]
 
 \ **rflash**\  \ *noderange*\  \ **-**\ **-recover**\  \ *bmc_file_path*\ 
 
