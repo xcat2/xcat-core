@@ -1406,6 +1406,7 @@ sub netcfg_for_irpdu {
         $login_ip = $discover_ip;
     } else {
         xCAT::SvrUtils::sendmsg(" is not reachable", $callback,$pdu);
+        return;
     }
     
     foreach my $cmd (@exargs) {
