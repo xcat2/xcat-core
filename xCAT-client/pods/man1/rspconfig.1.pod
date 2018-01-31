@@ -26,6 +26,14 @@ B<rspconfig> I<noderange> B<garp>=I<time>
 
 B<rspconfig> I<noderange> {B<ipsrc>|B<ip>|B<netmask>|B<gateway>|B<hostname>|B<vlan>|B<sshcfg>}
 
+B<rspconfig> I<noderange> B<autoreboot>
+
+B<rspconfig> I<noderange> B<autoreboot={0|1}>
+
+B<rspconfig> I<noderange> B<bootmode>
+
+B<rspconfig> I<noderange> B<bootmode={safe|regular|setup}>
+
 B<rspconfig> I<noderange> B<dump> [B<-l>|B<--list>] [B<-g>|B<--generate>] [B<-c>|B<--clear> {I<id> | B<all>}] [B<-d>|B<--download> {I<id> | B<all>}]
 
 B<rspconfig> I<noderange> B<powerrestorepolicy>
@@ -36,13 +44,9 @@ B<rspconfig> I<noderange> B<powersupplyredundancy>
 
 B<rspconfig> I<noderange> B<powersupplyredundancy={disabled|enabled}>
 
-B<rspconfig> I<noderange> B<autoreboot>
+B<rspconfig> I<noderange> B<timesyncmethod>
 
-B<rspconfig> I<noderange> B<autoreboot={0|1}>
-
-B<rspconfig> I<noderange> B<bootmode>
-
-B<rspconfig> I<noderange> B<bootmode={safe|regular|setup}>
+B<rspconfig> I<noderange> B<timesyncmethod={manual|ntp}>
 
 =head2 MPA specific:
 
@@ -344,23 +348,23 @@ The subnet mask.
 
 =item B<powerrestorepolicy>
 
-Display or control BMC Power Restore Policy attribute setting.
+Display or control BMC Power Restore Policy attribute setting. [OpenBMC]
 
 =item B<powersupplyredundancy>
 
-Display or control BMC Power Supply Redundancy attribute setting.
+Display or control BMC Power Supply Redundancy attribute setting. [OpenBMC]
 
 =item B<autoreboot>
 
-Display or control BMC Auto Reboot attribute setting.
+Display or control BMC Auto Reboot attribute setting. [OpenBMC]
 
 =item B<bootmode>
 
-Display or control BMC Boot Mode attribute setting.
+Display or control BMC Boot Mode attribute setting. [OpenBMC]
 
 =item B<dump>
 
-Manage OpenBMC system dumps. If no sub-option is provided, will generate, wait, and download the dump.
+Generate BMC system dump. If no sub-option is provided, will generate, wait, and download the dump. [OpenBMC]
 
 =over 4
 
@@ -377,6 +381,10 @@ B<-g> will generate a new dump on the BMC. Dump generation can take a few minute
 B<-d> will download a single dump or all generated dumps from the BMC to /var/log/xcat/dump on management or service node.
 
 =back
+
+=item B<timesyncmethod>
+
+Set the method for time synchronization on the BMC. [OpenBMC]
 
 =item B<network>={[I<ip>],[I<host>],[I<gateway>],[I<netmask>]|*}
 

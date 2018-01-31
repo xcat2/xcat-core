@@ -638,6 +638,19 @@ my %api_config_info = (
             always_off  => "xyz.openbmc_project.Control.Power.RestorePolicy.Policy.AlwaysOff",
         },
     },
+    RSPCONFIG_TIME_SYNC_METHOD => {
+        command      => "rspconfig",
+        url          => "/time/sync_method",
+        attr_url     => "TimeSyncMethod",
+        display_name => "BMC TimeSyncMethod",
+        instruct_msg => "",
+        type         => "attribute",
+        subcommand   => "timesyncmethod",
+        attr_value   => {
+            ntp         => "xyz.openbmc_project.Time.Synchronization.Method.NTP",
+            manual      => "xyz.openbmc_project.Time.Synchronization.Method.Manual",
+        },
+    },
 );
 
 $::RESPONSE_OK                  = "200 OK";
