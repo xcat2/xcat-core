@@ -302,7 +302,7 @@ sub subvars {
                         $source .= "repo --name=pkg$c --baseurl=http://#TABLE:noderes:\$NODE:nfsserver#/$pkgdir\n"; #for rhels5.9
                     }
                     my $distrepofile="/install/postscripts/repos/$pkgdir/local-repository.tmpl";
-                    if( -f "$distrepofile"){
+                    if( -f "$distrepofile" and -s "$distrepofile"){
                         my $repofd;
                         my $repo_in_post;
                         local $/=undef;
