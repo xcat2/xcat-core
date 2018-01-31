@@ -351,16 +351,16 @@ my %usage = (
        makentp [-a|--all] [-V|--verbose]",
     "rflash" =>
       "Usage: 
-    rflash [ -h|--help|-v|--version]
+    rflash [ -h|--help|-v|--version|-V|--verbose]
     PPC (with HMC) specific:
-	rflash <noderange> -p <rpm_directory> [--activate {concurrent | disruptive}] [-V|--verbose] 
-	rflash <noderange> {--commit | --recover} [-V|--verbose]
+	rflash <noderange> -p <rpm_directory> [--activate {concurrent | disruptive}] 
+	rflash <noderange> {--commit | --recover}
     PPC (using Direct FSP Management) specific:
 	rflash <noderange> -p <rpm_directory> [--activate {disruptive|deferred}] [-d <data_directory>]
-	rflash <noderange> [--commit | --recover] [-V|--verbose]
+	rflash <noderange> [--commit | --recover]
         rflash <noderange> [--bpa_acdl]
     OpenPOWER BMC specific (using IPMI):
-        rflash <noderange> [<hpm_file_path>|-d <data_directory>] [-c|--check] [--retry=<count>] [-V]
+        rflash <noderange> [<hpm_file_path>|-d <data_directory>] [-c|--check] [--retry=<count>]
         rflash <noderange> --recover <bmc_file_path>
     OpenPOWER OpenBMC specific:
         rflash <noderange> {[-c|--check] | [-l|--list]}
