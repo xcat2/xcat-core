@@ -163,6 +163,11 @@ sub parse_args {
         if ($option_num >= 2) {
             return ([ 1, "Multiple options are not supported."]);
         } elsif ($option_num == 0) {
+            for my $arg (@ARGV) {
+                if ($arg =~ /^-/) {
+                    return ([ 1, "Unsupported command: $command $arg" ]);
+                }
+            }
             return ([ 1, "No options specified."]);
         }
         if ($activate or $check or $delete or $upload) {
