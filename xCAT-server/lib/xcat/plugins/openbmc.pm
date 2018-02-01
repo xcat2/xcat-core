@@ -4076,11 +4076,19 @@ sub rvitals_response {
             # Calculate the adjusted value based on the scale attribute
             #  
             $calc_value = $content{Value};
-            if ( $content{Scale} != 0 ) { 
+            if (!defined($calc_value)) {
+                # Handle the bug where the keyword in the API is lower case value 
+                $calc_value = $content{value};
+            }
+
+            if (defined $content{Scale} and $content{Scale} != 0) { 
                 $calc_value = ($content{Value} * (10 ** $content{Scale}));
             } 
 
-            $content_info = $label . ": " . $calc_value . " " . $sensor_units{ $content{Unit} };
+            $content_info = $label . ": " . $calc_value;
+            if (defined($content{Unit})) { 
+	        $content_info = $content_info . " " . $sensor_units{ $content{Unit} };
+            }
             push (@sorted_output, $content_info); #Save output in array
         } 
     }
