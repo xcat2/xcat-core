@@ -478,7 +478,7 @@ OPTIONS
 
 \ **dump**\ 
  
- Generate BMC system dump. If no sub-option is provided, will generate, wait, and download the dump. [OpenBMC]
+ Generate/Manage BMC system dumps. If no sub-option is provided, will generate, wait, and download the dump. [OpenBMC]
  
  
  \ **-c**\  will clear a single specified dump, or use 'all' to clear all dumps on the BMC.

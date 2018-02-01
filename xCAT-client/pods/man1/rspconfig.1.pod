@@ -364,7 +364,7 @@ Display or control BMC Boot Mode attribute setting. [OpenBMC]
 
 =item B<dump>
 
-Generate BMC system dump. If no sub-option is provided, will generate, wait, and download the dump. [OpenBMC]
+Generate/Manage BMC system dumps. If no sub-option is provided, will generate, wait, and download the dump. [OpenBMC]
 
 =over 4
 
