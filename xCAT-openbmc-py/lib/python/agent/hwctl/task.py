@@ -146,7 +146,7 @@ class OpenBMCPowerTask(ParallelNodesCommand):
                 ret = obmc.set_power_state('on')
                 self.callback.update_node_attributes('status', node, POWER_STATE_DB['on'])
 
-                result = '%s: %s'  % (node, optype)
+                result = '%s: %s'  % (node, 'reset')
 
         except (SelfServerException, SelfClientException) as e:
             result = '%s: %s'  % (node, e.message)
