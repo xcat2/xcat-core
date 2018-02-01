@@ -49,6 +49,14 @@ OpenBMC specific:
 
 \ **rspconfig**\  \ *noderange*\  {\ **ipsrc | ip | netmask | gateway | hostname | vlan | sshcfg**\ }
 
+\ **rspconfig**\  \ *noderange*\  \ **autoreboot**\ 
+
+\ **rspconfig**\  \ *noderange*\  \ **autoreboot={0|1}**\ 
+
+\ **rspconfig**\  \ *noderange*\  \ **bootmode**\ 
+
+\ **rspconfig**\  \ *noderange*\  \ **bootmode={safe|regular|setup}**\ 
+
 \ **rspconfig**\  \ *noderange*\  \ **dump**\  [\ **-l | -**\ **-list**\ ] [\ **-g | -**\ **-generate**\ ] [\ **-c | -**\ **-clear**\  {\ *id*\  | \ **all**\ }] [\ **-d | -**\ **-download**\  {\ *id*\  | \ **all**\ }]
 
 \ **rspconfig**\  \ *noderange*\  \ **powerrestorepolicy**\ 
@@ -59,13 +67,9 @@ OpenBMC specific:
 
 \ **rspconfig**\  \ *noderange*\  \ **powersupplyredundancy={disabled|enabled}**\ 
 
-\ **rspconfig**\  \ *noderange*\  \ **autoreboot**\ 
+\ **rspconfig**\  \ *noderange*\  \ **timesyncmethod**\ 
 
-\ **rspconfig**\  \ *noderange*\  \ **autoreboot={0|1}**\ 
-
-\ **rspconfig**\  \ *noderange*\  \ **bootmode**\ 
-
-\ **rspconfig**\  \ *noderange*\  \ **bootmode={safe|regular|setup}**\ 
+\ **rspconfig**\  \ *noderange*\  \ **timesyncmethod={manual|ntp}**\ 
 
 
 MPA specific:
@@ -450,31 +454,31 @@ OPTIONS
 
 \ **powerrestorepolicy**\ 
  
- Display or control BMC Power Restore Policy attribute setting.
+ Display or control BMC Power Restore Policy attribute setting. [OpenBMC]
  
 
 
 \ **powersupplyredundancy**\ 
  
- Display or control BMC Power Supply Redundancy attribute setting.
+ Display or control BMC Power Supply Redundancy attribute setting. [OpenBMC]
  
 
 
 \ **autoreboot**\ 
  
- Display or control BMC Auto Reboot attribute setting.
+ Display or control BMC Auto Reboot attribute setting. [OpenBMC]
  
 
 
 \ **bootmode**\ 
  
- Display or control BMC Boot Mode attribute setting.
+ Display or control BMC Boot Mode attribute setting. [OpenBMC]
  
 
 
 \ **dump**\ 
  
- Manage OpenBMC system dumps. If no sub-option is provided, will generate, wait, and download the dump.
+ Generate/Manage BMC system dumps. If no sub-option is provided, will generate, wait, and download the dump. [OpenBMC]
  
  
  \ **-c**\  will clear a single specified dump, or use 'all' to clear all dumps on the BMC.
@@ -492,6 +496,12 @@ OPTIONS
  \ **-d**\  will download a single dump or all generated dumps from the BMC to /var/log/xcat/dump on management or service node.
  
  
+ 
+
+
+\ **timesyncmethod**\ 
+ 
+ Set the method for time synchronization on the BMC. [OpenBMC]
  
 
 
