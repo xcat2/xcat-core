@@ -1,6 +1,7 @@
 import struct
 import sys
 import inspect
+import logging
 
 
 def int2bytes(num):
@@ -47,3 +48,21 @@ def update2Ddict(updata_dict, key_a, key_b, value):
     else: 
         updata_dict.update({key_a: {key_b: value}})
 
+class Messager(object):
+    def __init__(self, name=None):
+        self.logger = logging.getLogger(name or 'xcatagent')
+
+    def info(self, msg):
+        self.logger.info(msg)
+
+    def warn(self, msg):
+        self.logger.warn(msg)
+
+    def error(self, msg):
+        self.logger.error(msg)
+
+    def syslog(self, msg):
+        pass
+
+    def update_node_attributes(self, attribute, node, data):
+        pass
