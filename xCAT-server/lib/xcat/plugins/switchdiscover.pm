@@ -1439,12 +1439,21 @@ sub switchsetup {
         if ($nettab) {
             @nets = $nettab->getAllAttribs('net','mask');
         }
+        #get master from site table
+        my @entries = xCAT::TableUtils->get_site_attribute("master");
+        my $master  = $entries[0];
+
         foreach my $mytype (keys %$nodes_to_config) {
             my $nodetab = xCAT::Table->new('hosts');
             my $nodehash = $nodetab->getNodesAttribs(\@{${nodes_to_config}->{$mytype}},['ip','otherinterfaces']);
             foreach my $pdu(@{${nodes_to_config}->{$mytype}}) {
                 my $ip = $nodehash->{$pdu}->[0]->{ip};
                 my $mask;
+                my $gateway = $master;
+                my @master_ips = xCAT::NetworkUtils->my_ip_facing($ip);
+                unless ($master_ips[0]) {
+                    $gateway = $master_ips[1];
+                }
                 foreach my $net (@nets) {
                     if (xCAT::NetworkUtils::isInSameSubnet( $net->{'net'}, $ip, $net->{'mask'}, 0)) {
                         $mask=$net->{'mask'};
@@ -1460,7 +1469,7 @@ sub switchsetup {
                     send_msg($request, 0, "process command: $cmd\n");
                     $rc  = xCAT::Utils->runcmd($cmd, 0);
                 } elsif ( $mytype eq "irpdu" ) {
-                    $cmd = "rspconfig $pdu hostname=$pdu ip=$ip netmask=$mask";
+                    $cmd = "rspconfig $pdu hostname=$pdu ip=$ip gateway=$gateway netmask=$mask";
                     send_msg($request, 0, "process command: $cmd\n");
                     $rc = xCAT::Utils->runcmd($cmd, 0);
                 } else {
