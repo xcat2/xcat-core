@@ -32,10 +32,12 @@ install -d $RPM_BUILD_ROOT/%{prefix}/lib/python/agent
 install -d $RPM_BUILD_ROOT/%{prefix}/lib/python/agent/xcatagent
 install -d $RPM_BUILD_ROOT/%{prefix}/lib/python/agent/common
 install -d $RPM_BUILD_ROOT/%{prefix}/lib/python/agent/hwctl
+install -d $RPM_BUILD_ROOT/%{prefix}/lib/python/agent/hwctl/executor
 install -m755 lib/python/agent/*.py $RPM_BUILD_ROOT/%{prefix}/lib/python/agent
 install -m644 lib/python/agent/xcatagent/*.py $RPM_BUILD_ROOT/%{prefix}/lib/python/agent/xcatagent
 install -m644 lib/python/agent/common/*.py $RPM_BUILD_ROOT/%{prefix}/lib/python/agent/common
 install -m644 lib/python/agent/hwctl/*.py $RPM_BUILD_ROOT/%{prefix}/lib/python/agent/hwctl
+install -m644 lib/python/agent/hwctl/executor/*.py $RPM_BUILD_ROOT/%{prefix}/lib/python/agent/hwctl/executor
 
 %ifnos linux
 rm -rf $RPM_BUILD_ROOT/%{prefix}/lib/python/agent

@@ -10,7 +10,7 @@ import time
 
 from common.task import ParallelNodesCommand
 from common.exceptions import SelfClientException, SelfServerException
-from hwctl import openbmc
+from hwctl import openbmc_client as openbmc
 
 import logging
 logger = logging.getLogger('xcatagent')
