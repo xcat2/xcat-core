@@ -696,7 +696,6 @@ class OpenBMCManager(base.BaseManager):
         else:
             DefaultSensorManager().get_sensor_info(runner, action)
 
-
     def _get_full_path(self,file_path):
         if type(self.cwd) == 'unicode':
             dir_path = self.cwd

@@ -113,6 +113,10 @@ sub process_request {
     $callback = shift;
     my $noderange = $request->{node};
     my $check = parse_node_info($noderange);
+    if (&refactor_args($request)) {
+        xCAT::MsgUtils->message("E", { data => ["Failed to refactor arguments"] }, $callback);
+        return;
+    }
     $callback->({ errorcode => [$check] }) if ($check);
     return unless(%node_info);
     my $pid = xCAT::OPENBMC::start_python_agent();
@@ -296,6 +300,34 @@ sub parse_node_info {
     }
 
     return $rst;
+}
+
+#-------------------------------------------------------
+
+=head3  refactor_args
+
+  refractor args to be easily dealt by python client
+
+=cut
+
+#-------------------------------------------------------
+
+sub refactor_args {
+    my $request = shift;
+    my $command   = $request->{command}->[0];
+    my $extrargs  = $request->{arg};    
+    if ($command eq "rspconfig") {
+        if ($extrargs->[0] eq "dump") {
+            $request->{arg}->[0] = "--dump";
+        } else {
+            foreach my $arg (@$extrargs) {
+                if ($arg !~ /^-/) {
+                    $arg = "--".$arg;
+                }
+            }
+        }
+    }
+    return 0;
 }
 
 1;
