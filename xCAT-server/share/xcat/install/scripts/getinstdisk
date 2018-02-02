@@ -179,22 +179,26 @@ if [ -z "$install_disk" ]; then
 
         # Sort disks by DRIVER type
         case "$disk_driver" in
-        "ata_piix"*|"PMC MaxRAID"|"ahci"|"megaraid_sas")
+        "ata_piix"*|"ahci")
             echo "$disk $disk_data" >> "$tmpfile""$file_pre""firstchoicedisks"
             echo "[get_install_disk]    Add disk: $disk $disk_data into $file_pre firstchoicedisks"
             ;;
-        "mptsas"|"mpt2sas"|"mpt3sas")
+        "PMC MaxRAID"|"megaraid_sas")
             echo "$disk $disk_data" >> "$tmpfile""$file_pre""secondchoicedisks"
             echo "[get_install_disk]    Add disk: $disk $disk_data into $file_pre secondchoicedisks"
             ;;
-        *)
+        "mptsas"|"mpt2sas"|"mpt3sas")
             echo "$disk $disk_data" >> "$tmpfile""$file_pre""thirdchoicedisks"
             echo "[get_install_disk]    Add disk: $disk $disk_data into $file_pre thirdchoicedisks"
+            ;;
+        *)
+            echo "$disk $disk_data" >> "$tmpfile""$file_pre""fourthchoicedisks"
+            echo "[get_install_disk]    Add disk: $disk $disk_data into $file_pre fourthchoicedisks"
             ;;
         esac
     done
 
-    for seq in first second third; do
+    for seq in first second third fourth; do
         if [ -s $tmpfile$file_pre${seq}choicedisks ]; then
             install_file="$tmpfile$file_pre${seq}choicedisks"
             break
