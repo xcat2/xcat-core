@@ -73,10 +73,6 @@ Requires: conserver-xcat
 %endif
 %endif
 
-%ifos linux
-Recommends: goconserver
-%endif
-
 #support mixed cluster
 %if %nots390x
 Requires: elilo-xcat xnba-undi
