@@ -14,7 +14,9 @@ import gevent
 from common import utils
 from common import exceptions as xcat_exception
 from hwctl.executor.openbmc_power import OpenBMCPowerTask
+from hwctl.executor.openbmc_setboot import OpenBMCSetbootTask
 from hwctl.power import DefaultPowerManager
+from hwctl.setboot import DefaultSetbootManager
 
 from xcatagent import base
 import openbmc_rest
@@ -72,6 +74,10 @@ FIRM_URL = PROJECT_URL + "/software/enumerate"
 POWER_REBOOT_OPTIONS = ('boot', 'reset')
 POWER_SET_OPTIONS = ('on', 'off', 'bmcreboot', 'softoff')
 POWER_GET_OPTIONS = ('bmcstate', 'state', 'stat', 'status')
+
+# global variables of rsetboot
+SETBOOT_GET_OPTIONS = ('stat', '')
+SETBOOT_SET_OPTIONS = ('cd', 'def', 'default', 'hd', 'net')
 
 class OpenBMC(base.BaseDriver):
 
@@ -561,6 +567,34 @@ class OpenBMCManager(base.BaseManager):
             DefaultPowerManager().reboot(runner, optype=opts.action)
         else:
             DefaultPowerManager().set_power_state(runner, power_state=opts.action)
+
+    def rsetboot(self, nodesinfo, args):
+
+        # 1, parse args
+        if not args:
+            args = ['stat']
+        parser = argparse.ArgumentParser(description='Handle rpower operations.')
+        parser.add_argument('--action',
+                            help="rsetboot subcommand.")
+        parser.add_argument('-V', '--verbose', action='store_true',
+                            help="rsetboot verbose mode.")
+        parser.add_argument('-p', action='store_true',
+                            help="rsetboot persistant mode.")
+        args.insert(0,'--action')
+        opts = parser.parse_args(args)
+
+        # 2, validate the args
+        if opts.action not in (SETBOOT_GET_OPTIONS + SETBOOT_SET_OPTIONS):
+            self.messager.error("Not supported subcommand for rsetboot: %s" % opts.action)
+            return
+
+        # 3, run the subcommands
+        runner = OpenBMCSetbootTask(nodesinfo, callback=self.messager, debugmode=self.debugmode, verbose=opts.verbose)
+        if opts.action in SETBOOT_GET_OPTIONS:
+            DefaultSetbootManager().get_setboot_state(runner)
+        else:
+            DefaultSetbootManager().set_setboot_state(runner, setboot_state=opts.action, persistant=opts.p)
+
 
     def _get_full_path(self,file_path):
         if type(self.cwd) == 'unicode':
