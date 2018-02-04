@@ -9,6 +9,7 @@ import os
 import time
 import sys
 import gevent
+import re
 from docopt import docopt
 
 from common import utils
@@ -17,10 +18,12 @@ from hwctl.executor.openbmc_beacon import OpenBMCBeaconTask
 from hwctl.executor.openbmc_power import OpenBMCPowerTask
 from hwctl.executor.openbmc_setboot import OpenBMCBootTask
 from hwctl.executor.openbmc_sensor import OpenBMCSensorTask
+from hwctl.executor.openbmc_bmcconfig import OpenBMCBmcConfigTask
 from hwctl.beacon import DefaultBeaconManager
 from hwctl.power import DefaultPowerManager
 from hwctl.setboot import DefaultBootManager
 from hwctl.sensor import DefaultSensorManager
+from hwctl.bmcconfig import DefaultBmcConfigManager
 
 from xcatagent import base
 import openbmc_rest
@@ -74,6 +77,46 @@ RFLASH_URLS = {
         "field" : False,
     }
 }
+
+RSPCONFIG_GET_OPTIONS = ['ip','ipsrc','netmask','gateway','vlan','hostname','bootmode','autoreboot','powersupplyredundancy','powerrestorepolicy']
+RSPCONFIG_SET_OPTIONS = {
+    'ip':'.*',
+    'netmask':'.*',
+    'gateway':'.*',
+    'vlan':'\d+',
+    'hostname':"\*|.*",
+    'autoreboot':"^0|1$",
+    'powersupplyredundancy':"^enabled$|^disabled$",
+    'powerrestorepolicy':"^always_on$|^always_off$|^restore$",
+    'bootmode':"^regular$|^safe$|^setup$",
+}
+RSPCONFIG_USAGE = """
+Handle rspconfig operations.
+
+Usage:
+       rspconfig -h|--help
+       rspconfig -V|--verbose
+       rspconfig dump [[-l|--list] | [-g|--generate] | [-c|--clear <arg>] | [-d|--download <arg>]]
+       rspconfig sshcfg
+       rspconfig ip=dhcp
+       rspconfig get [<args>...]
+       rspconfig set [<args>...]
+
+Options:
+  -l,--list           List are dump files
+  -g,--generate       Trigger a new dump file
+  -c,--clear <arg>    The id of file to clear or all if specify 'all'
+  -d,--download <arg> The id of file to download or all if specify 'all'
+
+The supported attributes to get are: %s
+
+The supported attributes and its values to set are:
+   ip=<ip address> netmask=<mask> gateway=<gateway> [vlan=<vlanid>]
+   hostname=*|<string>
+   autoreboot={0|1}
+   powersupplyredundancy={enabled|disabled}
+   powerrestorepolicy={always_on|always_off|restore}
+""" % RSPCONFIG_GET_OPTIONS
 
 XCAT_LOG_DIR = "/var/log/xcat"
 XCAT_LOG_RFLASH_DIR = XCAT_LOG_DIR + "/rflash/"
@@ -623,7 +666,60 @@ class OpenBMCManager(base.BaseManager):
             DefaultPowerManager().reboot(runner, optype=action)
         else:
             DefaultPowerManager().set_power_state(runner, power_state=action)
+    def rspconfig(self, nodesinfo, args):
+        try:
+            new_args=[]
+            for a in args:
+               new_a = a.encode('utf-8')
+               new_args.append(new_a)
+            opts=docopt(RSPCONFIG_USAGE, argv=new_args)
+            self.verbose=opts.pop('--verbose')
+        except Exception as e:
+            self.messager.error("Failed to parse arguments for rspconfig: %s" % args)
+            return
 
+        runner = OpenBMCBmcConfigTask(nodesinfo, callback=self.messager, debugmode=self.debugmode, verbose=self.verbose)
+
+        if opts['dump']:
+            if opts['--list']:
+                DefaultBmcConfigManager().dump_list(runner)
+            elif opts['--generate']:
+                DefaultBmcConfigManager().dump_generate(runner)
+            elif opts['--clear']:
+                DefaultBmcConfigManager().dump_clear(runner, opts['--clear'])
+            elif opts['--download']:
+                DefaultBmcConfigManager().dump_download(runner, opts['--download'])
+            else:
+                DefaultBmcConfigManager().dump_process(runner)
+        elif opts['sshcfg']:
+            DefaultBmcConfigManager().set_sshcfg(runner)
+        elif opts['ip=dhcp']:
+            DefaultBmcConfigManager().set_ipdhcp(runner)
+        elif opts['get']:
+            unsupport_list=list(set(opts['<args>']) - set(RSPCONFIG_GET_OPTIONS))
+            for attr in opts['<args>']:
+                if attr not in RSPCONFIG_GET_OPTIONS:
+                    self.messager.error("The attribute %s is not supported to get" % attr)
+            if len(unsupport_list) > 0:
+                return
+            else:
+                DefaultBmcConfigManager().get_attributes(runner, opts['<args>'])
+        elif opts['set']:
+            rc=0
+            for attr in opts['<args>']:
+                k,v = attr.split('=')
+                if not RSPCONFIG_SET_OPTIONS.has_key(k):
+                    self.messager.error("The attribute %s is not support to set" % k)
+                    rc=1
+                elif not re.match(RSPCONFIG_SET_OPTIONS[k], v):
+                    self.messager.error("The value %s is invalid for %s" %(v, k))
+                    rc=1
+            if rc:
+                return
+            else:
+                DefaultBmcConfigManager().set_attributes(runner, opts['<args>'])
+        else:
+            self.messager.error("Failed to deal with rspconfig: %s" % args)
     def rsetboot(self, nodesinfo, args):
 
         # 1, parse args

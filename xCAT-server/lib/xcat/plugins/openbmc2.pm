@@ -17,6 +17,7 @@ use xCAT::Utils;
 use xCAT::Usage;
 use xCAT::SvrUtils;
 use xCAT::OPENBMC;
+use xCAT_plugin::openbmc;
 
 #-------------------------------------------------------
 
@@ -35,6 +36,7 @@ sub handled_commands {
         rpower         => 'nodehm:mgt=openbmc',
         rsetboot       => 'nodehm:mgt=openbmc',
         rvitals        => 'nodehm:mgt=openbmc',
+        rspconfig      => 'nodehm:mgt=openbmc',
     };
 }
 
@@ -229,6 +231,8 @@ sub parse_args {
         unless ($subcommand =~ /^all$|^altitude$|^fanspeed$|^leds$|^power$|^temp$|^voltage$|^wattage$/) {
             return ([ 1, "Unsupported command: $command $subcommand" ]);
         }
+    } elsif ($command eq 'rspconfig') {
+        xCAT_plugin::openbmc::parse_args('rspconfig', $extrargs, $noderange);
     } else {
         return ([ 1, "Unsupported command: $command" ]);
     }
@@ -317,13 +321,12 @@ sub refactor_args {
     my $command   = $request->{command}->[0];
     my $extrargs  = $request->{arg};    
     if ($command eq "rspconfig") {
-        if ($extrargs->[0] eq "dump") {
-            $request->{arg}->[0] = "--dump";
-        } else {
-            foreach my $arg (@$extrargs) {
-                if ($arg !~ /^-/) {
-                    $arg = "--".$arg;
-                }
+        my $subcommand = $extrargs->[0];
+        if ($subcommand !~ /^dump$|^sshcfg$|^ip=dhcp$/) {
+            if (grep /=/, @$extrargs) {
+                unshift @$extrargs, "set";
+            } else {
+                unshift @$extrargs, "get";
             }
         }
     }
