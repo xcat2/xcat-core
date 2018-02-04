@@ -3939,12 +3939,7 @@ sub dump_download_process {
         return 1;
     }
     if ($h->{message} eq $::RESPONSE_OK) {
-        if ($::RSPCONFIG_DUMP_DOWNLOAD_ALL_REQUESTED) {
-            # Slightly different message if downloading dumps as part of "download all" processing
-            xCAT::SvrUtils::sendmsg("Downloading dump $dump_id to $file_name", $callback, $node);
-        } else {
-            xCAT::SvrUtils::sendmsg("Dump $dump_id generated. Downloading to $file_name", $callback, $node);
-        }
+        xCAT::SvrUtils::sendmsg("Downloading dump $dump_id to $file_name", $callback, $node);
         my $curl_dwld_result = `$curl_dwld_cmd -s`;
         if (!$curl_dwld_result) {
             if ($xcatdebugmode) {
@@ -3954,7 +3949,17 @@ sub dump_download_process {
             `$curl_logout_cmd -s`;
             # Verify the file actually got downloaded
             if (-e $file_name) {
-                xCAT::SvrUtils::sendmsg("Downloaded dump $dump_id to $file_name", $callback, $node) if ($::VERBOSE);
+                # Check inside downloaded file, if there is a "Path not found" -> invalid ID
+                my $grep_cmd = "/usr/bin/grep -a";
+                my $path_not_found = "Path not found";
+                my $grep_for_path = `$grep_cmd $path_not_found $file_name`;
+                if ($grep_for_path) {
+                    xCAT::SvrUtils::sendmsg([1, "Invalid dump $dump_id was specified. Use -l option to list."], $callback, $node);
+                    # Remove downloaded file, nothing useful inside of it
+                    unlink $file_name;
+                } else {
+                    xCAT::SvrUtils::sendmsg("Downloaded dump $dump_id to $file_name", $callback, $node) if ($::VERBOSE);
+                }
             }
             else {
                 xCAT::SvrUtils::sendmsg([1, "Failed to download dump $dump_id to $file_name. Verify destination directory exists and has correct access permissions."], $callback, $node);
