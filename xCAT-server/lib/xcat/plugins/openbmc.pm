@@ -1863,23 +1863,23 @@ sub parse_command_status {
         my $nohost_reboot = 0;
 
         foreach $subcommand (@$subcommands) {
-            if ($subcommand =~ /-c|--check/) {
+            if ($subcommand =~ /^-c|^--check/) {
                 $check_version = 1;
-            } elsif ($subcommand =~ /-l|--list/) {
+            } elsif ($subcommand =~ /^-l|^--list/) {
                 $list = 1;
-            } elsif ($subcommand =~ /--delete/) {
+            } elsif ($subcommand =~ /^--delete/) {
                 $delete = 1;
-            } elsif ($subcommand =~ /-u|--upload/) {
+            } elsif ($subcommand =~ /^-u|^--upload/) {
                 $upload = 1;
-            } elsif ($subcommand =~ /-a|--activate/) {
+            } elsif ($subcommand =~ /^-a|^--activate/) {
                 $activate = 1;
-            } elsif ($subcommand =~ /-d/) {
+            } elsif ($subcommand =~ /^-d/) {
                 my $check = unsupported($callback); if (ref($check) eq "ARRAY") {
                     xCAT::SvrUtils::sendmsg($check, $callback);
                     return 1;
                 }
                 $streamline = 1;
-            } elsif ($subcommand =~ /--no-host-reboot/) {
+            } elsif ($subcommand =~ /^--no-host-reboot/) {
                 $nohost_reboot = 1;
             } else {
                 $update_file = $subcommand;
