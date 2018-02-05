@@ -1,8 +1,30 @@
+#!/usr/bin/env python
+###############################################################################
+# IBM(c) 2018 EPL license http://www.eclipse.org/legal/epl-v10.html
+###############################################################################
+# -*- coding: utf-8 -*-
+#
 import struct
 import sys
 import inspect
 import logging
+from logging.handlers import SysLogHandler
 
+XCAT_LOG_FMT = logging.Formatter("%(asctime)s %(levelname)s " +
+                                 "%(name)s %(process)d " +
+                                 "(%(filename)s:%(lineno)d) "+
+                                 "%(message)s")
+XCAT_LOG_FMT.datefmt = '%Y-%m-%d %H:%M:%S'
+
+def getxCATLog(name=None):
+    xl = logging.getLogger(name)
+    xl.fmt = XCAT_LOG_FMT
+    return xl
+
+def enableSyslog(name='xcat'):
+    h = SysLogHandler(address='/dev/log', facility=SysLogHandler.LOG_LOCAL4)
+    h.setFormatter(logging.Formatter('%s: ' % name + '%(levelname)s %(message)s'))
+    logging.getLogger('xcatagent').addHandler(h)
 
 def int2bytes(num):
     return struct.pack('i', num)

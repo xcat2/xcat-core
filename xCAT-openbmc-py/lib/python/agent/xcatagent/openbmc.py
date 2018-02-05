@@ -5,11 +5,11 @@
 # -*- coding: utf-8 -*-
 #
 
-import argparse
 import os
 import time
 import sys
 import gevent
+from docopt import docopt
 
 from common import utils
 from common import exceptions as xcat_exception
@@ -18,6 +18,10 @@ from hwctl.power import DefaultPowerManager
 
 from xcatagent import base
 import openbmc_rest
+import logging
+logger = logging.getLogger('xcatagent')
+if not logger.handlers:
+    utils.enableSyslog('xcat.agent')
 
 HTTP_PROTOCOL = "https://"
 PROJECT_URL = "/xyz/openbmc_project"
@@ -524,43 +528,51 @@ class OpenBMCManager(base.BaseManager):
         super(OpenBMCManager, self).__init__(messager, cwd)
         self.nodes = nodes
         self.debugmode = (envs and envs.get('debugmode')) or None
-
         #TODO, remove the global variable DEBUGMODE
         global DEBUGMODE
         DEBUGMODE = envs['debugmode']
 
+        if self.debugmode:
+            logger.setLevel(logging.DEBUG)
+
     def rpower(self, nodesinfo, args):
 
         # 1, parse args
-        parser = argparse.ArgumentParser(description='Handle rpower operations.')
-        parser.add_argument('--action',
-                            help="rpower subcommand.")
-        parser.add_argument('-V', '--verbose', action='store_true',
-                            help="rpower verbose mode.")
-        args.insert(0,'--action')
-        opts = parser.parse_args(args)
+        rpower_usage = """
+        Usage:
+            rpower [-V|--verbose] [on|off|softoff|reset|boot|bmcreboot|bmcstate|stat|state|status]
 
-        # 2, validate the args
-        if opts.action is None:
-            self.messager.error("Not specify the subcommand for rpower")
+        Options:
+            -V --verbose   rpower verbose mode.
+        """
+
+        try:
+            opts=docopt(rpower_usage, argv=args)
+
+            self.verbose=opts.pop('--verbose')
+            action=[k for k,v in opts.items() if v][0]
+        except Exception as e:
+            # It will not be here as perl has validation for args
+            self.messager.error("Failed to parse arguments for rpower: %s" % args)
             return
 
-        if opts.action not in (POWER_GET_OPTIONS + POWER_SET_OPTIONS + POWER_REBOOT_OPTIONS):
-            self.messager.error("Not supported subcommand for rpower: %s" % opts.action)
+        # 2, validate the args
+        if action not in (POWER_GET_OPTIONS + POWER_SET_OPTIONS + POWER_REBOOT_OPTIONS):
+            self.messager.error("Not supported subcommand for rpower: %s" % action)
             return
 
         # 3, run the subcommands
-        runner = OpenBMCPowerTask(nodesinfo, callback=self.messager, debugmode=self.debugmode, verbose=opts.verbose)
-        if opts.action == 'bmcstate':
+        runner = OpenBMCPowerTask(nodesinfo, callback=self.messager, debugmode=self.debugmode, verbose=self.verbose)
+        if action == 'bmcstate':
             DefaultPowerManager().get_bmc_state(runner)
-        elif opts.action == 'bmcreboot':
+        elif action == 'bmcreboot':
             DefaultPowerManager().reboot_bmc(runner)
-        elif opts.action in POWER_GET_OPTIONS:
+        elif action in POWER_GET_OPTIONS:
             DefaultPowerManager().get_power_state(runner)
-        elif opts.action in POWER_REBOOT_OPTIONS:
-            DefaultPowerManager().reboot(runner, optype=opts.action)
+        elif action in POWER_REBOOT_OPTIONS:
+            DefaultPowerManager().reboot(runner, optype=action)
         else:
-            DefaultPowerManager().set_power_state(runner, power_state=opts.action)
+            DefaultPowerManager().set_power_state(runner, power_state=action)
 
     def _get_full_path(self,file_path):
         if type(self.cwd) == 'unicode':
