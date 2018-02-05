@@ -4,7 +4,9 @@
 
 function makepythonrpm {
     RPMNAME="$1"
-    SPEC_FILE="$RPMNAME.spec"
+    SPEC_FILE="$RPMNAME/$RPMNAME.spec"
+    RPMROOT=`rpmbuild --eval '%_topdir' ${SPEC_FILE}`
+    mkdir -p $RPMROOT/SOURCES
     tar --exclude .svn -czvf $RPMROOT/SOURCES/$RPMNAME-${VER}.tar.gz $RPMNAME
     rm -f $RPMROOT/SRPMS/$RPMNAME-$VER*rpm $RPMROOT/RPMS/noarch/$RPMNAME-$VER*rpm
     echo "Building $RPMROOT/RPMS/noarch/$RPMNAME-$VER-snap*.noarch.rpm $EMBEDTXT..."
@@ -15,14 +17,12 @@ function makepythonrpm {
         exit 1
     fi
 }	
-	
+
 # Main code....
 OSNAME=$(uname)
 VER=`cat Version`
 REL="--define"
 EASE='usedate 1'
-RPMROOT=/root/rpmbuild
-mkdir -p $RPMROOT/SOURCES
 rpmbuild --version > /dev/null
 if [ $? -gt 0 ]; then
     echo "Error: rpmbuild does not appear to be installed or working."
