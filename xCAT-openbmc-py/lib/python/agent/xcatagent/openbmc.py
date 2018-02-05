@@ -10,13 +10,14 @@ import os
 import time
 import sys
 import gevent
+from docopt import docopt
 
 from common import utils
 from common import exceptions as xcat_exception
 from hwctl.executor.openbmc_power import OpenBMCPowerTask
-from hwctl.executor.openbmc_setboot import OpenBMCSetbootTask
+from hwctl.executor.openbmc_setboot import OpenBMCBootTask
 from hwctl.power import DefaultPowerManager
-from hwctl.setboot import DefaultSetbootManager
+from hwctl.setboot import DefaultBootManager
 
 from xcatagent import base
 import openbmc_rest
@@ -573,27 +574,37 @@ class OpenBMCManager(base.BaseManager):
         # 1, parse args
         if not args:
             args = ['stat']
-        parser = argparse.ArgumentParser(description='Handle rpower operations.')
-        parser.add_argument('--action',
-                            help="rsetboot subcommand.")
-        parser.add_argument('-V', '--verbose', action='store_true',
-                            help="rsetboot verbose mode.")
-        parser.add_argument('-p', action='store_true',
-                            help="rsetboot persistant mode.")
-        args.insert(0,'--action')
-        opts = parser.parse_args(args)
+
+        rsetboot_usage = """
+        Usage:
+            rsetboot [-V|--verbose] [cd|def|default|hd|net|stat] [-p]
+
+        Options:
+            -V --verbose    rsetboot verbose mode.
+            -p              persistant boot source.
+        """
+
+        try:
+            opts = docopt(rsetboot_usage, argv=args)
+
+            self.verbose = opts.pop('--verbose')
+            action_type = opts.pop('-p')
+            action = [k for k,v in opts.items() if v][0]
+        except Exception as e:
+            self.messager.error("Failed to parse arguments for rsetboot: %s" % args)
+            return
 
         # 2, validate the args
-        if opts.action not in (SETBOOT_GET_OPTIONS + SETBOOT_SET_OPTIONS):
-            self.messager.error("Not supported subcommand for rsetboot: %s" % opts.action)
+        if action not in (SETBOOT_GET_OPTIONS + SETBOOT_SET_OPTIONS):
+            self.messager.error("Not supported subcommand for rsetboot: %s" % action)
             return
 
         # 3, run the subcommands
-        runner = OpenBMCSetbootTask(nodesinfo, callback=self.messager, debugmode=self.debugmode, verbose=opts.verbose)
-        if opts.action in SETBOOT_GET_OPTIONS:
-            DefaultSetbootManager().get_setboot_state(runner)
+        runner = OpenBMCBootTask(nodesinfo, callback=self.messager, debugmode=self.debugmode, verbose=self.verbose)
+        if action in SETBOOT_GET_OPTIONS:
+            DefaultBootManager().get_boot_state(runner)
         else:
-            DefaultSetbootManager().set_setboot_state(runner, setboot_state=opts.action, persistant=opts.p)
+            DefaultBootManager().set_boot_state(runner, setboot_state=action, persistant=action_type)
 
 
     def _get_full_path(self,file_path):

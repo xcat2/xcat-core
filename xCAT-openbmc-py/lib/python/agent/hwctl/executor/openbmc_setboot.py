@@ -16,7 +16,7 @@ import logging
 logger = logging.getLogger('xcatagent')
 
 
-class OpenBMCSetbootTask(ParallelNodesCommand):
+class OpenBMCBootTask(ParallelNodesCommand):
     """Executor for setboot-related actions."""
 
     def get_state(self, **kw):
