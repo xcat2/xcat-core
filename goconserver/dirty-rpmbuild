@@ -1,0 +1,141 @@
+#!/bin/bash
+
+#
+# warn_if_bad		Put out warning message(s) if $1 has bad RC.
+#
+#	$1	0 (pass) or non-zero (fail).
+#	$2+	Remaining arguments printed only if the $1 is non-zero.
+#
+#	Incoming $1 is returned unless it is 0
+#
+function warn_if_bad()
+{
+	local -i rc="$1"
+	local script="${0##*/}"
+
+	# Ignore if no problems
+	[ "${rc}" -eq "0" ] && return 0
+
+	# Broken
+	shift
+	echo "${script}: $@" >&2
+	return "${rc}"
+}
+
+#
+# exit_if_bad		Put out error message(s) if $1 has bad RC.
+#
+#	$1	0 (pass) or non-zero (fail).
+#	$2+	Remaining arguments printed only if the $1 is non-zero.
+#
+#               Exits with 1 unless $1 is 0
+#
+function exit_if_bad()
+{
+	warn_if_bad "$@" || exit 1
+	return 0
+}
+
+TMP_DIR=""
+
+function internal_cleanup()
+{
+	[ -d "${TMP_DIR}" ] && rm -rf "${TMP_DIR}"
+}
+
+#trap internal_cleanup EXIT
+
+TMP_DIR="$(mktemp -d "/tmp/${0##*/}.XXXXXXXX" 2>/dev/null)"
+exit_if_bad "$?" "Above listed required command(s) not found."
+
+# Main
+if [ -z "$1" ]
+then
+	echo "Usage: ${0##*/} <goconserver binary tarball>"
+	echo
+	echo "Examples:"
+	echo "  ${0##*/} goconserver_linux_ppc64le.tar.gz"
+	echo "  ${0##*/} https://github.com/chenglch/goconserver/files/1505167/goconserver_linux_ppc64le.tar.gz"
+	exit 0
+fi
+
+BASE_DIR="${0%/*}"
+
+GOCONSERVER_BINARY_TARBALL="$1"
+"${BASE_DIR}/prep-tarball" "${GOCONSERVER_BINARY_TARBALL}"
+exit_if_bad "$?" "prep-tarball failed."
+
+tmp_b="${GOCONSERVER_BINARY_TARBALL##*/}"
+tmp_b="${tmp_b%%.*}"
+ARCH="${tmp_b##*_}"
+GOCONSERVER_REPACK_TARBALL="goconserver-repack-${ARCH}.tar.gz"
+
+GOCONSERVER_SPEC="${TMP_DIR}/goconserver.spec"
+
+
+case "${ARCH}" in
+"amd64")
+	ARCH="x86_64"
+	;;
+esac
+
+cat <<EOF >"${GOCONSERVER_SPEC}"
+Summary: Independent tool to provide terminal session service.
+Name: goconserver
+Version: 0.1.0
+Release: snap$(date '+%Y%m%d%H%M')
+License: EPL
+Group: Applications/System
+BuildArch: ${ARCH}
+URL: https://github.com/chenglch/goconserver/
+Vendor: IBM Corp.
+Packager: IBM Corp.
+Distribution: %{?_distribution:%{_distribution}}%{!?_distribution:%{_vendor}}
+Prefix: /
+BuildRoot: /var/tmp/%{name}-%{version}-%{release}-root
+Source0: ${GOCONSERVER_REPACK_TARBALL}
+
+%description
+goconserver is written in golang and is a part of microservice of xcat3. It can work as a independent tool to provide the terminal session service. Terminal session could run in the background and help logging the terminal content.
+
+%prep
+
+%build
+
+%install
+mkdir -p \$RPM_BUILD_ROOT/%{prefix}
+( cd \$RPM_BUILD_ROOT/%{prefix} && tar xfz - ) <%{SOURCE0}
+
+%clean
+
+%files
+/etc/profile.d/congo.sh
+/etc/goconserver
+/etc/goconserver/server.conf
+/usr/lib/systemd/system/goconserver.service
+/usr/bin/goconserver
+/usr/bin/congo
+/var/lib/goconserver
+/var/log/goconserver
+/var/log/goconserver/nodes/
+
+EOF
+
+RPMROOT="$(rpmbuild --eval '%_topdir')"
+
+umask 0022
+mkdir -p "${RPMROOT}/SOURCES"
+cp "${GOCONSERVER_REPACK_TARBALL}" "${RPMROOT}/SOURCES"
+exit_if_bad "$?" "Copy ${GOCONSERVER_REPACK_TARBALL} failed."
+
+rpmbuild -bb "${GOCONSERVER_SPEC}" | tee "${TMP_DIR}/rpmbuild.log"
+exit_if_bad "$?" "rpmbuild failed."
+
+RPM_BIN="$(awk '/^Wrote: / { print $NF }' <"${TMP_DIR}/rpmbuild.log")"
+[ -n "${RPM_BIN}" ]
+exit_if_bad "$?" "Parse binary rpm package file name failed."
+[ -f "${RPM_BIN}" ]
+exit_if_bad "$?" "Binary rpm package not found."
+
+cp "${RPM_BIN}" .
+exit_if_bad "$?" "Copy ${RPM_BIN} failed."
