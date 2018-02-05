@@ -10,11 +10,14 @@ import os
 import time
 import sys
 import gevent
+from docopt import docopt
 
 from common import utils
 from common import exceptions as xcat_exception
 from hwctl.executor.openbmc_power import OpenBMCPowerTask
+from hwctl.executor.openbmc_setboot import OpenBMCBootTask
 from hwctl.power import DefaultPowerManager
+from hwctl.setboot import DefaultBootManager
 
 from xcatagent import base
 import openbmc_rest
@@ -72,6 +75,10 @@ FIRM_URL = PROJECT_URL + "/software/enumerate"
 POWER_REBOOT_OPTIONS = ('boot', 'reset')
 POWER_SET_OPTIONS = ('on', 'off', 'bmcreboot', 'softoff')
 POWER_GET_OPTIONS = ('bmcstate', 'state', 'stat', 'status')
+
+# global variables of rsetboot
+SETBOOT_GET_OPTIONS = ('stat', '')
+SETBOOT_SET_OPTIONS = ('cd', 'def', 'default', 'hd', 'net')
 
 class OpenBMC(base.BaseDriver):
 
@@ -561,6 +568,44 @@ class OpenBMCManager(base.BaseManager):
             DefaultPowerManager().reboot(runner, optype=opts.action)
         else:
             DefaultPowerManager().set_power_state(runner, power_state=opts.action)
+
+    def rsetboot(self, nodesinfo, args):
+
+        # 1, parse args
+        if not args:
+            args = ['stat']
+
+        rsetboot_usage = """
+        Usage:
+            rsetboot [-V|--verbose] [cd|def|default|hd|net|stat] [-p]
+
+        Options:
+            -V --verbose    rsetboot verbose mode.
+            -p              persistant boot source.
+        """
+
+        try:
+            opts = docopt(rsetboot_usage, argv=args)
+
+            self.verbose = opts.pop('--verbose')
+            action_type = opts.pop('-p')
+            action = [k for k,v in opts.items() if v][0]
+        except Exception as e:
+            self.messager.error("Failed to parse arguments for rsetboot: %s" % args)
+            return
+
+        # 2, validate the args
+        if action not in (SETBOOT_GET_OPTIONS + SETBOOT_SET_OPTIONS):
+            self.messager.error("Not supported subcommand for rsetboot: %s" % action)
+            return
+
+        # 3, run the subcommands
+        runner = OpenBMCBootTask(nodesinfo, callback=self.messager, debugmode=self.debugmode, verbose=self.verbose)
+        if action in SETBOOT_GET_OPTIONS:
+            DefaultBootManager().get_boot_state(runner)
+        else:
+            DefaultBootManager().set_boot_state(runner, setboot_state=action, persistant=action_type)
+
 
     def _get_full_path(self,file_path):
         if type(self.cwd) == 'unicode':

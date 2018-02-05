@@ -62,6 +62,37 @@ BMC_URLS = {
     },
 }
 
+BOOTSOURCE_URLS = {
+    "enable"       : {
+        "path"      : "/control/host0/boot/one_time/attr/Enabled",
+    },
+    "get"          : {
+        "path"      : "/control/host0/enumerate",
+    },
+    "set_one_time" : {
+        "path"      : "/control/host0/boot/one_time/attr/BootSource",
+    },
+    "set"          : {
+        "path"      : "/control/host0/boot/attr/BootSource",
+    },
+    "field"        : "xyz.openbmc_project.Control.Boot.Source.Sources.",
+}
+
+BOOTSOURCE_GET_STATE = {
+    "Default"       : "Default",
+    "Disk"          : "Hard Drive",
+    "ExternalMedia" : "CD/DVD",
+    "Network"       : "Network",
+}
+
+BOOTSOURCE_SET_STATE = {
+    "cd"      : "ExternalMedia",
+    "def"     : "Default",
+    "default" : "Default",
+    "hd"      : "Disk",
+    "net"     : "Network",
+}
+
 RESULT_OK = 'ok'
 RESULT_FAIL = 'fail'
 
@@ -225,3 +256,37 @@ class OpenBMCRest(object):
         except SelfServerException,SelfClientException:
             # TODO: Need special handling for bmc reset, as it is normal bmc may return error
             pass
+
+    def set_one_time_boot_enable(self, enabled):
+
+        payload = { "data": enabled }
+        self.request('PUT', BOOTSOURCE_URLS['enable']['path'], payload=payload, cmd='set_one_time_boot_enable')
+
+    def set_boot_state(self, state):
+
+        payload = { "data": BOOTSOURCE_URLS['field'] + BOOTSOURCE_SET_STATE[state] } 
+        self.request('PUT', BOOTSOURCE_URLS['set']['path'], payload=payload, cmd='set_boot_state')
+
+    def set_one_time_boot_state(self, state):
+
+        payload = { "data": BOOTSOURCE_URLS['field'] + BOOTSOURCE_SET_STATE[state] }
+        self.request('PUT', BOOTSOURCE_URLS['set_one_time']['path'], payload=payload, cmd='set_one_time_boot_state')
+
+    def get_boot_state(self):
+
+        state = self.request('GET', BOOTSOURCE_URLS['get']['path'], cmd='get_boot_state')
+        try:
+            one_time_path = PROJECT_URL + '/control/host0/boot/one_time'
+            one_time_enabled =  state[one_time_path]['Enabled']
+            if one_time_enabled:
+                boot_source = state[one_time_path]['BootSource'].split('.')[-1]
+            else:
+                boot_source = state[PROJECT_URL + '/control/host0/boot']['BootSource'].split('.')[-1]
+
+            error = 'Can not get valid rsetboot status, the data is %s' % boot_source
+            boot_state = BOOTSOURCE_GET_STATE.get(boot_source.split('.')[-1], error)
+            return boot_state
+        except KeyError:
+            error = 'Error: Received wrong format response: %s' % states
+            raise SelfServerException(error)
+

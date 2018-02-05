@@ -137,6 +137,13 @@ sub parse_args {
     my $noderange = shift;
     my $subcommand = undef;
 
+    my $verbose;
+    unless (GetOptions(
+        'V|verbose'  => \$verbose,
+    )) {
+        return ([ 1, "Error parsing arguments." ]);
+    }
+
     if (scalar(@ARGV) >= 2 and ($command =~ /rpower/)) {
         return ([ 1, "Only one option is supported at the same time for $command" ]);
     } elsif (scalar(@ARGV) == 0 and $command =~ /rpower|rflash/) {
@@ -146,7 +153,6 @@ sub parse_args {
     }
 
     if ($command eq "rflash") {
-        my $verbose;
         my ($activate, $check, $delete, $directory, $list, $upload) = (0) x 6;
         my $no_host_reboot;
         GetOptions(
@@ -156,7 +162,6 @@ sub parse_args {
             'd'          => \$directory,
             'l|list'     => \$list,
             'u|upload'   => \$upload,
-            'V|verbose'  => \$verbose,
             'no-host-reboot' => \$no_host_reboot,
         );
         my $option_num = $activate+$check+$delete+$directory+$list+$upload;
@@ -198,6 +203,14 @@ sub parse_args {
         }
     } elsif ($command eq "rpower") {
         unless ($subcommand =~ /^on$|^off$|^softoff$|^reset$|^boot$|^bmcreboot$|^bmcstate$|^status$|^stat$|^state$/) {
+            return ([ 1, "Unsupported command: $command $subcommand" ]);
+        }
+    } elsif ($command eq "rsetboot") {
+        my $persistant;
+        GetOptions('p'  => \$persistant);
+        return ([ 1, "Only one option is supported at the same time for $command" ]) if (@ARGV > 1);
+        $subcommand = "stat" if (!defined($ARGV[0]));
+        unless ($subcommand =~ /^net$|^hd$|^cd$|^def$|^default$|^stat$/) {
             return ([ 1, "Unsupported command: $command $subcommand" ]);
         }
     } else {
