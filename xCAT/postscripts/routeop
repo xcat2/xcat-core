@@ -271,7 +271,7 @@ replace_persistent_route()
             #echo "rh/fedora/centos"
             if [ -z "$ifname" ]; then
                 echo "Error: the device name is necessary to configure static route."
-                return
+                return 1
             fi
             
             if echo $net | grep : 2>&1 1>/dev/null
@@ -319,7 +319,7 @@ replace_persistent_route()
             # on debian/ubuntu need the network device name
             if [ -z "$ifname" ]; then
                 echo "Error: the device name is necessary to configure static route."
-                return
+                return 1
             fi
             filename="/etc/network/interfaces.d/$ifname"
 
@@ -901,7 +901,10 @@ elif [ "$op" = "replace" ]; then
     #replace the persistent route
     # the $cmd param is used for Ubuntu since it needs to run the specific cmd to enable 
     # the route during the up of the device
-    replace_persistent_route $net $mask $gw $ifname 
+    replace_persistent_route $net $mask $gw $ifname
+    if [ $? -ne 0 ]; then
+        exit 1
+    fi 
 fi
 
 exit 0

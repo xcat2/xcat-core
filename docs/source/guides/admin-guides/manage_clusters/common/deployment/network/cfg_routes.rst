@@ -10,6 +10,8 @@ There are 2 ways to configure OS route in xCAT:
 
 Before using ``makeroutes`` or ``setroute`` to configure OS route, details of the routes data such as routename, subnet, net mask and gateway should be stored in ``routes`` table.
 
+**Notes**: the ``gateway`` in the ``networks`` table assigns ``gateway`` from DHCP to compute node, so if use ``makeroutes`` or ``setroute`` to configure OS static route for compute node, make sure there is no ``gateway`` for the specific network in ``networks`` table.
+
 Configure ``routes`` table
 ``````````````````````````
 
