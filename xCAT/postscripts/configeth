@@ -640,7 +640,7 @@ elif [ "$1" = "-s" ];then
         fi
     fi
 
-    if [ "$UPDATENODE" -eq 1 ] || grep "REBOOT=TRUE" /opt/xcat/xcatinfo 2>&1 1> /dev/null; then
+    if [ "$UPDATENODE" -eq 1 ] || grep "REBOOT=TRUE" /opt/xcat/xcatinfo >/dev/null 2>&1; then
         ifdown $str_inst_nic;ifup $str_inst_nic
     fi 
     if [ $? -ne 0 ]; then
