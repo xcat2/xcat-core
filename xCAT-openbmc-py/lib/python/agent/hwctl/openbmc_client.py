@@ -93,6 +93,24 @@ BOOTSOURCE_SET_STATE = {
     "net"     : "Network",
 }
 
+FIRM_URLS = {
+    "activate"  : {
+        "path"   : "/software/%(id)s/attr/RequestedActivation",
+        "field" : "Software.Activation.RequestedActivations.Active",
+    },
+    "delete"    : {
+        "path"   : "/software/%(id)s/action/Delete",
+        "field" : [],
+    },
+    "priority"  : {
+        "path"   : "/software/%(id)s/attr/Priority",
+        "field" : False,
+    },
+    "list"      : {
+        "path"   : "/software/enumerate",
+    }
+}
+
 RESULT_OK = 'ok'
 RESULT_FAIL = 'fail'
 
@@ -290,3 +308,42 @@ class OpenBMCRest(object):
             error = 'Error: Received wrong format response: %s' % states
             raise SelfServerException(error)
 
+    def list_firmware(self):
+
+        data = self.request('GET', FIRM_URLS['list']['path'], cmd='list_firmware')
+        try:
+            func_list = data.pop('/xyz/openbmc_project/software/functional')['endpoints']
+        except:
+            logger.debug('Not found functional firmwares')
+            func_list = []
+
+        fw_dict={}
+        for key, swinfo in data.items():
+            if 'Version' not in swinfo:
+                logger.debug('Not found version information for %s' % key)
+                continue
+            fw = OpenBMCImage(key, swinfo)
+            if func_list:
+                fw.functional = key in func_list
+            
+            fw_dict[str(fw)]=fw
+
+        return bool(func_list), fw_dict
+
+class OpenBMCImage(object):
+    def __init__(self, rawid, data=None):
+        self.id = rawid.split('/')[-1]
+        self.functional = False
+        self.purpose = 'Unknown'
+        if data:
+            self.version = data.get('Version')
+            self.purpose = data.get('Purpose', self.purpose).split('.')[-1]
+            self.priority = data.get('Priority')
+            self.extver   = data.get('ExtendedVersion')
+            self.progress   = data.get('Progress')
+            self.active = data.get('Activation')
+            if self.active:
+                self.active = self.active.split('.')[-1]
+
+    def __str__(self):
+        return '%s-%s' % (self.purpose, self.id)
