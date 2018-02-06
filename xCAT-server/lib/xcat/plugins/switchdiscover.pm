@@ -1439,32 +1439,48 @@ sub switchsetup {
         if ($nettab) {
             @nets = $nettab->getAllAttribs('net','mask');
         }
+        #get master from site table
+        my @entries = xCAT::TableUtils->get_site_attribute("master");
+        my $master  = $entries[0];
+
         foreach my $mytype (keys %$nodes_to_config) {
-            if ( $mytype eq "irpdu" ) {
-                send_msg($request, 0, "the setup options for irpdu is not support yet\n");
-            } elsif ( $mytype eq "crpdu" ) {
-                my $nodetab = xCAT::Table->new('hosts');
-                my $nodehash = $nodetab->getNodesAttribs(\@{${nodes_to_config}->{$mytype}},['ip','otherinterfaces']);
-                foreach my $pdu(@{${nodes_to_config}->{$mytype}}) {
-                    my $cmd = "rspconfig $pdu sshcfg"; 
-                    xCAT::Utils->runcmd($cmd, 0);
-                    my $ip = $nodehash->{$pdu}->[0]->{ip};
-                    my $mask;
-                    foreach my $net (@nets) {
-                        if (xCAT::NetworkUtils::isInSameSubnet( $net->{'net'}, $ip, $net->{'mask'}, 0)) {
-                            $mask=$net->{'mask'};
-                        }
-                    }
-                    $cmd = "rspconfig $pdu hostname=$pdu ip=$ip netmask=$mask";
-                    xCAT::Utils->runcmd($cmd, 0);
-                    if ($::RUNCMD_RC == 0) {
-                        xCAT::Utils->runxcmd({ command => ['chdef'], arg => ['-t','node','-o',$pdu,"ip=$ip","otherinterfaces="] }, $sub_req, 0, 1);
-                    } else {
-                        send_msg($request, 0, "Failed to run rspconfig command to set ip/netmask\n");
+            my $nodetab = xCAT::Table->new('hosts');
+            my $nodehash = $nodetab->getNodesAttribs(\@{${nodes_to_config}->{$mytype}},['ip','otherinterfaces']);
+            foreach my $pdu(@{${nodes_to_config}->{$mytype}}) {
+                my $ip = $nodehash->{$pdu}->[0]->{ip};
+                my $mask;
+                my $gateway = $master;
+                my @master_ips = xCAT::NetworkUtils->my_ip_facing($ip);
+                unless ($master_ips[0]) {
+                    $gateway = $master_ips[1];
+                }
+                foreach my $net (@nets) {
+                    if (xCAT::NetworkUtils::isInSameSubnet( $net->{'net'}, $ip, $net->{'mask'}, 0)) {
+                        $mask=$net->{'mask'};
                     }
                 }
-            } else {
-                send_msg($request, 0, "the pdu type $mytype is not support\n");
+                my $cmd;
+                my $rc = 0;
+                if ( $mytype eq "crpdu" ) {
+                    $cmd = "rspconfig $pdu sshcfg"; 
+                    send_msg($request, 0, "process command: $cmd\n");
+                    $rc = xCAT::Utils->runcmd($cmd, 0);
+                    $cmd = "rspconfig $pdu hostname=$pdu ip=$ip netmask=$mask";
+                    send_msg($request, 0, "process command: $cmd\n");
+                    $rc  = xCAT::Utils->runcmd($cmd, 0);
+                } elsif ( $mytype eq "irpdu" ) {
+                    $cmd = "rspconfig $pdu hostname=$pdu ip=$ip gateway=$gateway netmask=$mask";
+                    send_msg($request, 0, "process command: $cmd\n");
+                    $rc = xCAT::Utils->runcmd($cmd, 0);
+                } else {
+                    send_msg($request, 0, "the pdu type $mytype is not support\n");
+                    $rc = 1;
+                }
+                if ($rc == 0) {
+                    xCAT::Utils->runxcmd({ command => ['chdef'], arg => ['-t','node','-o',$pdu,'status=configured',"ip=$ip","otherinterfaces="] }, $sub_req, 0, 1);
+                } else {
+                    send_msg($request, 0, "Failed to run rspconfig command to set ip/netmask\n");
+                }
             }
         }
         return;
