@@ -1194,9 +1194,9 @@ sub xCATdB {
         # it's attribute 
         ##################################################
         if (exists($globalopt{pdu})) {
-            $ret = xCAT::Utils->runxcmd({ command => ['chdef'], arg => ['-t','node','-o',$host,"groups=$device","ip=$ip","mac=$mac","nodetype=$device","mgt=$device","usercomment=$vendor","pdutype=$stype"] }, $sub_req, 0, 1);
+            $ret = xCAT::Utils->runxcmd({ command => ['chdef'], arg => ['-t','node','-o',$host,"groups=$device","ip=$ip","mac=$mac","nodetype=$device","mgt=$device","usercomment=$vendor","pdutype=$stype","community=$community"] }, $sub_req, 0, 1);
         } else {
-            $ret = xCAT::Utils->runxcmd({ command => ['chdef'], arg => ['-t','node','-o',$host,"groups=$device","ip=$ip","mac=$mac","nodetype=$device","mgt=$device","usercomment=$vendor","switchtype=$stype"] }, $sub_req, 0, 1);
+            $ret = xCAT::Utils->runxcmd({ command => ['chdef'], arg => ['-t','node','-o',$host,"groups=$device","ip=$ip","mac=$mac","nodetype=$device","mgt=$device","usercomment=$vendor","switchtype=$stype","community=$community"] }, $sub_req, 0, 1);
         }
     }
 }
@@ -1407,9 +1407,9 @@ sub matchPredefineSwitch {
         # only write to xcatdb if -w or --setup option specified
         if ( (exists($globalopt{w})) || (exists($globalopt{setup})) ) {
             if (exists($globalopt{pdu})) {
-                xCAT::Utils->runxcmd({ command => ['chdef'], arg => ['-t','node','-o',$node,"otherinterfaces=$ip",'status=Matched',"mac=$mac","usercomment=$vendor","pdutype=$stype"] }, $sub_req, 0, 1);
+                xCAT::Utils->runxcmd({ command => ['chdef'], arg => ['-t','node','-o',$node,"otherinterfaces=$ip",'status=Matched',"mac=$mac","usercomment=$vendor","pdutype=$stype","community=$community"] }, $sub_req, 0, 1);
             } else {
-                xCAT::Utils->runxcmd({ command => ['chdef'], arg => ['-t','node','-o',$node,"otherinterfaces=$ip",'status=Matched',"mac=$mac","switchtype=$stype","usercomment=$vendor"] }, $sub_req, 0, 1);
+                xCAT::Utils->runxcmd({ command => ['chdef'], arg => ['-t','node','-o',$node,"otherinterfaces=$ip",'status=Matched',"mac=$mac","switchtype=$stype","usercomment=$vendor","community=$community"] }, $sub_req, 0, 1);
             }
         }
 
