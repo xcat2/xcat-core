@@ -30,8 +30,11 @@ use xCAT::OPENBMC;
 
 sub handled_commands {
     return {
+        rbeacon        => 'nodehm:mgt=openbmc',
         rflash         => 'nodehm:mgt=openbmc',
         rpower         => 'nodehm:mgt=openbmc',
+        rsetboot       => 'nodehm:mgt=openbmc',
+        rvitals        => 'nodehm:mgt=openbmc',
     };
 }
 
@@ -144,15 +147,19 @@ sub parse_args {
         return ([ 1, "Error parsing arguments." ]);
     }
 
-    if (scalar(@ARGV) >= 2 and ($command =~ /rpower/)) {
+    if (scalar(@ARGV) >= 2 and ($command =~ /rbeacon|rpower|rvitals/)) {
         return ([ 1, "Only one option is supported at the same time for $command" ]);
-    } elsif (scalar(@ARGV) == 0 and $command =~ /rpower|rflash/) {
+    } elsif (scalar(@ARGV) == 0 and $command =~ /rbeacon|rpower|rflash/) {
         return ([ 1, "No option specified for $command" ]);
     } else {
         $subcommand = $ARGV[0];
     }
 
-    if ($command eq "rflash") {
+    if ($command eq "rbeacon") {
+        unless ($subcommand =~ /^on$|^off$/) {
+            return ([ 1, "Only 'on' or 'off' is supported for OpenBMC managed nodes."]);
+        }
+    } elsif ($command eq "rflash") {
         my ($activate, $check, $delete, $directory, $list, $upload) = (0) x 6;
         my $no_host_reboot;
         GetOptions(
@@ -173,7 +180,7 @@ sub parse_args {
                     return ([ 1, "Unsupported command: $command $arg" ]);
                 }
             }
-            return ([ 1, "No options specified."]);
+            return ([ 1, "No options specified." ]);
         }
         if ($activate or $check or $delete or $upload) {
             return ([ 1, "More than one firmware specified is not supported."]) if ($#ARGV >= 1);
@@ -211,6 +218,11 @@ sub parse_args {
         return ([ 1, "Only one option is supported at the same time for $command" ]) if (@ARGV > 1);
         $subcommand = "stat" if (!defined($ARGV[0]));
         unless ($subcommand =~ /^net$|^hd$|^cd$|^def$|^default$|^stat$/) {
+            return ([ 1, "Unsupported command: $command $subcommand" ]);
+        }
+    } elsif ($command eq "rvitals") {
+        $subcommand = "all" if (!defined($ARGV[0]));
+        unless ($subcommand =~ /^all$|^altitude$|^fanspeed$|^leds$|^power$|^temp$|^voltage$|^wattage$/) {
             return ([ 1, "Unsupported command: $command $subcommand" ]);
         }
     } else {

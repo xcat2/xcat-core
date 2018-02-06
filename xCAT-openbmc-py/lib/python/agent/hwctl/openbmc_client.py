@@ -19,6 +19,34 @@ HTTP_PROTOCOL = "https://"
 PROJECT_URL = "/xyz/openbmc_project"
 PROJECT_PAYLOAD = "xyz.openbmc_project."
 
+RBEACON_URLS = {
+    "path"      : "/led/groups/enclosure_identify/attr/Asserted",
+    "on"        : {
+        "field" : True,
+    },
+    "off"        : {
+        "field" : False,
+    },
+}
+
+LEDS_URL = "/led/physical/enumerate"
+
+LEDS_KEY_LIST = ("fan0", "fan1", "fan2", "fan3",
+                 "front_id", "front_fault", "front_power",
+                 "rear_id", "rear_fault", "rear_power")
+
+SENSOR_URL = "/sensors/enumerate"
+
+SENSOR_UNITS = {
+    "Amperes"  : "Amps",
+    "DegreesC" : "C",
+    "Joules"   : "Joules",
+    "Meters"   : "Meters",
+    "RPMS"     : "RPMS",
+    "Volts"    : "Volts",
+    "Watts"    : "Watts",
+}
+
 RPOWER_STATES = {
     "on"        : "on",
     "off"       : "off",
@@ -308,6 +336,52 @@ class OpenBMCRest(object):
             error = 'Error: Received wrong format response: %s' % states
             raise SelfServerException(error)
 
+    def get_beacon_info(self):
+
+        beacon_data = self.request('GET', LEDS_URL, cmd='get_beacon_info') 
+        try:
+            beacon_dict = {}
+            for key, value in beacon_data.items():
+                key_id = key.split('/')[-1]
+                if key_id in LEDS_KEY_LIST:
+                    beacon_dict[key_id] = value['State'].split('.')[-1]
+            return beacon_dict
+        except KeyError:
+            error = 'Error: Received wrong format response: %s' % beacon_data
+            raise SelfServerException(error)
+
+    def set_beacon_state(self, state):
+
+        payload = { "data": RBEACON_URLS[state]['field'] }
+        self.request('PUT', RBEACON_URLS['path'], payload=payload, cmd='set_beacon_state')
+
+    def get_sensor_info(self):
+
+        sensor_data = self.request('GET', SENSOR_URL, cmd='get_sensor_info')
+        try:
+            sensor_dict = {}
+            for k, v in sensor_data.items():
+                if 'Unit' in v:
+                    unit = v['Unit'].split('.')[-1]
+                    if unit in SENSOR_UNITS:
+                        label = k.split('/')[-1].replace('_', ' ').title()
+                        value = v['Value']
+                        scale = v['Scale']
+                        value = value * pow(10, scale)
+                        value = '{:g}'.format(value)
+                        if unit not in sensor_dict:
+                            sensor_dict[unit] = []
+                        sensor_dict[unit].append('%s: %s %s' % (label, value, SENSOR_UNITS[unit]))
+                elif 'units' in v and 'value' in v:
+                    label = k.split('/')[-1]
+                    value = v['value']
+                    sensor_dict[label] = ['%s: %s' % (label, value)]
+                    
+            return sensor_dict
+        except KeyError:
+            error = 'Error: Received wrong format response: %s' % sensor_data
+            raise SelfServerException(error)
+
     def list_firmware(self):
 
         data = self.request('GET', FIRM_URLS['list']['path'], cmd='list_firmware')
@@ -347,3 +421,4 @@ class OpenBMCImage(object):
 
     def __str__(self):
         return '%s-%s' % (self.purpose, self.id)
+
