@@ -13,10 +13,14 @@ from docopt import docopt
 
 from common import utils
 from common import exceptions as xcat_exception
+from hwctl.executor.openbmc_beacon import OpenBMCBeaconTask
 from hwctl.executor.openbmc_power import OpenBMCPowerTask
 from hwctl.executor.openbmc_setboot import OpenBMCBootTask
+from hwctl.executor.openbmc_sensor import OpenBMCSensorTask
+from hwctl.beacon import DefaultBeaconManager
 from hwctl.power import DefaultPowerManager
 from hwctl.setboot import DefaultBootManager
+from hwctl.sensor import DefaultSensorManager
 
 from xcatagent import base
 import openbmc_rest
@@ -35,6 +39,9 @@ DEBUGMODE = False
 VERBOSE = False
 
 all_nodes_result = {}
+
+# global variables of rbeacon
+BEACON_SET_OPTIONS = ('on', 'off')
 
 # global variables of rflash
 RFLASH_OPTIONS = {
@@ -82,6 +89,10 @@ POWER_GET_OPTIONS = ('bmcstate', 'state', 'stat', 'status')
 # global variables of rsetboot
 SETBOOT_GET_OPTIONS = ('stat', '')
 SETBOOT_SET_OPTIONS = ('cd', 'def', 'default', 'hd', 'net')
+
+# global variables of rvitals
+VITALS_OPTIONS = ('all', 'altitude', 'fanspeed', 'leds', 'power',
+                  'temp', 'voltage', 'wattage')
 
 class OpenBMC(base.BaseDriver):
 
@@ -541,6 +552,39 @@ class OpenBMCManager(base.BaseManager):
         if self.debugmode:
             logger.setLevel(logging.DEBUG)
 
+    def rbeacon(self, nodesinfo, args):
+
+        # 1, parse args
+        rbeacon_usage = """
+        Usage:
+            rbeacon [-V|--verbose] [on|off]
+
+        Options:
+            -V --verbose   rbeacon verbose mode.
+        """
+
+        try:
+            opts = docopt(rbeacon_usage, argv=args)
+
+            self.verbose = opts.pop('--verbose')
+            action = [k for k,v in opts.items() if v][0]
+        except Exception as e:
+            self.messager.error("Failed to parse arguments for rbeacon: %s" % args)
+            return
+
+        # 2, validate the args
+        if action is None:
+            self.messager.error("Not specify the subcommand for rbeacon")
+            return
+
+        if action not in BEACON_SET_OPTIONS:
+            self.messager.error("Not supported subcommand for rbeacon: %s" % action)
+            return
+
+        # 3, run the subcommands
+        runner = OpenBMCBeaconTask(nodesinfo, callback=self.messager, debugmode=self.debugmode, verbose=self.verbose)
+        DefaultBeaconManager().set_beacon_state(runner, beacon_state=action)
+
     def rpower(self, nodesinfo, args):
 
         # 1, parse args
@@ -616,6 +660,42 @@ class OpenBMCManager(base.BaseManager):
             DefaultBootManager().get_boot_state(runner)
         else:
             DefaultBootManager().set_boot_state(runner, setboot_state=action, persistant=action_type)
+
+    def rvitals(self, nodesinfo, args):
+
+        # 1, parse agrs
+        if not args:
+            args = ['all']
+
+        rvitals_usage = """
+        Usage:
+            rvitals [-V|--verbose] [all|altitude|fanspeed|leds|power|temp|voltage|wattage]
+
+        Options:
+            -V --verbose   rvitals verbose mode.
+        """
+
+        try:
+            opts = docopt(rvitals_usage, argv=args)
+
+            self.verbose = opts.pop('--verbose')
+            action = [k for k,v in opts.items() if v][0]
+        except Exception as e:
+            self.messager.error("Failed to parse arguments for rvitals: %s" % args)
+            return
+
+        # 2, validate the args
+        if action not in VITALS_OPTIONS:
+            self.messager.error("Not supported subcommand for rvitals: %s" % action)
+            return
+
+        # 3, run the subcommands
+        if action == 'leds':
+            runner = OpenBMCBeaconTask(nodesinfo, callback=self.messager, debugmode=self.debugmode, verbose=self.verbose)
+            DefaultBeaconManager().get_beacon_info(runner)
+        else:
+            runner = OpenBMCSensorTask(nodesinfo, callback=self.messager, debugmode=self.debugmode, verbose=self.verbose)
+            DefaultSensorManager().get_sensor_info(runner, action)
 
 
     def _get_full_path(self,file_path):

@@ -7,6 +7,7 @@
 import struct
 import sys
 import inspect
+import re
 import logging
 from logging.handlers import SysLogHandler
 
@@ -69,6 +70,17 @@ def update2Ddict(updata_dict, key_a, key_b, value):
         updata_dict[key_a].update({key_b: value})
     else: 
         updata_dict.update({key_a: {key_b: value}})
+
+def emb_numbers(string):
+    re_digits = re.compile(r'(\d+)')
+    pieces = re_digits.split(string)
+    pieces[1::2] = map(int,pieces[1::2])
+    return pieces
+
+def sort_string_with_numbers(origin_list):
+    new_list = [(emb_numbers(string),string) for string in origin_list]
+    new_list.sort()
+    return [string for __,string in new_list]
 
 class Messager(object):
     def __init__(self, name=None):

@@ -11,6 +11,7 @@ import time
 
 from common import rest
 from common.exceptions import SelfClientException, SelfServerException
+from common import utils
 
 import logging
 logger = logging.getLogger('xcatagent')
@@ -18,6 +19,34 @@ logger = logging.getLogger('xcatagent')
 HTTP_PROTOCOL = "https://"
 PROJECT_URL = "/xyz/openbmc_project"
 PROJECT_PAYLOAD = "xyz.openbmc_project."
+
+RBEACON_URLS = {
+    "path"      : "/led/groups/enclosure_identify/attr/Asserted",
+    "on"        : {
+        "field" : True,
+    },
+    "off"        : {
+        "field" : False,
+    },
+}
+
+LEDS_URL = "/led/physical/enumerate"
+
+LEDS_KEY_LIST = ("fan0", "fan1", "fan2", "fan3",
+                 "front_id", "front_fault", "front_power",
+                 "rear_id", "rear_fault", "rear_power")
+
+SENSOR_URL = "/sensors/enumerate"
+
+SENSOR_UNITS = {
+    "Amperes"  : "Amps",
+    "DegreesC" : "C",
+    "Joules"   : "Joules",
+    "Meters"   : "Meters",
+    "RPMS"     : "RPMS",
+    "Volts"    : "Volts",
+    "Watts"    : "Watts",
+}
 
 RPOWER_STATES = {
     "on"        : "on",
@@ -290,3 +319,60 @@ class OpenBMCRest(object):
             error = 'Error: Received wrong format response: %s' % states
             raise SelfServerException(error)
 
+    def get_beacon_info(self):
+
+        beacon_data = self.request('GET', LEDS_URL, cmd='get_beacon_info') 
+        try:
+            beacon_dict = {}
+            for key in beacon_data:
+                key_id = key.split('/')[-1]
+                if key_id in LEDS_KEY_LIST:
+                    beacon_dict[key_id] = beacon_data[key]['State'].split('.')[-1]
+
+            info_list = []
+            info_list.append('Front . . . . . : Power:%s Fault:%s Identify:%s' %
+                             (beacon_dict['front_power'], beacon_dict['front_fault'], beacon_dict['front_id']))
+            info_list.append('Rear  . . . . . : Power:%s Fault:%s Identify:%s' %
+                             (beacon_dict['rear_power'], beacon_dict['rear_fault'], beacon_dict['rear_id']))
+            if (beacon_dict['fan0'] == 'Off' and beacon_dict['fan1'] == 'Off' and
+                beacon_dict['fan2'] == 'Off' and beacon_dict['fan3'] == 'Off'):
+                info_list.append('Front Fans  . . : No LEDs On')
+            else:
+                info_list.append('Front Fans  . . : fan0:%s fan1:%s fan2:%s fan3:%s' %
+                                 (beacon_dict['fan0'], beacon_dict['fan1'], beacon_dict['fan2'], beacon_dict['fan3']))
+            return utils.sort_string_with_numbers(info_list)
+        except KeyError:
+            error = 'Error: Received wrong format response: %s' % beacon_data
+            raise SelfServerException(error)
+
+    def set_beacon_state(self, state):
+
+        payload = { "data": RBEACON_URLS[state]['field'] }
+        self.request('PUT', RBEACON_URLS['path'], payload=payload, cmd='set_beacon_state')
+
+    def get_sensor_info(self):
+
+        sensor_data = self.request('GET', SENSOR_URL, cmd='get_sensor_info')
+        try:
+            sensor_dict = {}
+            for key in sensor_data:
+                if 'Unit' in sensor_data[key]:
+                    unit = sensor_data[key]['Unit'].split('.')[-1]
+                    if unit in SENSOR_UNITS:
+                        label = key.split('/')[-1].replace('_', ' ').title()
+                        value = sensor_data[key]['Value']
+                        scale = sensor_data[key]['Scale']
+                        value = value * pow(10, scale)
+                        value = '{:g}'.format(value)
+                        if unit not in sensor_dict:
+                            sensor_dict[unit] = []
+                        sensor_dict[unit].append('%s: %s %s' % (label, value, SENSOR_UNITS[unit]))
+                elif 'units' in sensor_data[key] and 'value' in sensor_data[key]:
+                    label = key.split('/')[-1]
+                    value = sensor_data[key]['value']
+                    sensor_dict[label] = ['%s: %s' % (label, value)]
+                    
+            return sensor_dict
+        except KeyError:
+            error = 'Error: Received wrong format response: %s' % sensor_data
+            raise SelfServerException(error)
