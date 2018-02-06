@@ -640,7 +640,9 @@ elif [ "$1" = "-s" ];then
         fi
     fi
 
-    ifdown $str_inst_nic;ifup $str_inst_nic
+    if [ "$UPDATENODE" = "1" ] || grep "REBOOT=TRUE" /opt/xcat/xcatinfo >/dev/null 2>&1; then
+        ifdown $str_inst_nic;ifup $str_inst_nic
+    fi 
     if [ $? -ne 0 ]; then
         log_error "ifup $str_inst_nic failed."
         error_code=1
