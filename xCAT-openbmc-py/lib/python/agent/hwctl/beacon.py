@@ -10,14 +10,6 @@ class BeaconInterface(object):
     interface_type = 'beacon'
     version = '1.0'
 
-    def get_beacon_info(self, task):
-        """Return the beacon state of the task's nodes.
-
-        :param task: a Task instance containing the nodes to act on.
-        :returns: beacon info list.
-        """
-        return task.run('get_state')
-
     def set_beacon_state(self, task, beacon_state, timeout=None):
         """Set the beacon state of the task's nodes.
 

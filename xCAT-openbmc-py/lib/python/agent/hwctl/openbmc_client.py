@@ -11,7 +11,6 @@ import time
 
 from common import rest
 from common.exceptions import SelfClientException, SelfServerException
-from common import utils
 
 import logging
 logger = logging.getLogger('xcatagent')
@@ -324,23 +323,11 @@ class OpenBMCRest(object):
         beacon_data = self.request('GET', LEDS_URL, cmd='get_beacon_info') 
         try:
             beacon_dict = {}
-            for key in beacon_data:
+            for key, value in beacon_data.items():
                 key_id = key.split('/')[-1]
                 if key_id in LEDS_KEY_LIST:
-                    beacon_dict[key_id] = beacon_data[key]['State'].split('.')[-1]
-
-            info_list = []
-            info_list.append('Front . . . . . : Power:%s Fault:%s Identify:%s' %
-                             (beacon_dict['front_power'], beacon_dict['front_fault'], beacon_dict['front_id']))
-            info_list.append('Rear  . . . . . : Power:%s Fault:%s Identify:%s' %
-                             (beacon_dict['rear_power'], beacon_dict['rear_fault'], beacon_dict['rear_id']))
-            if (beacon_dict['fan0'] == 'Off' and beacon_dict['fan1'] == 'Off' and
-                beacon_dict['fan2'] == 'Off' and beacon_dict['fan3'] == 'Off'):
-                info_list.append('Front Fans  . . : No LEDs On')
-            else:
-                info_list.append('Front Fans  . . : fan0:%s fan1:%s fan2:%s fan3:%s' %
-                                 (beacon_dict['fan0'], beacon_dict['fan1'], beacon_dict['fan2'], beacon_dict['fan3']))
-            return utils.sort_string_with_numbers(info_list)
+                    beacon_dict[key_id] = value['State'].split('.')[-1]
+            return beacon_dict
         except KeyError:
             error = 'Error: Received wrong format response: %s' % beacon_data
             raise SelfServerException(error)
@@ -355,21 +342,21 @@ class OpenBMCRest(object):
         sensor_data = self.request('GET', SENSOR_URL, cmd='get_sensor_info')
         try:
             sensor_dict = {}
-            for key in sensor_data:
-                if 'Unit' in sensor_data[key]:
-                    unit = sensor_data[key]['Unit'].split('.')[-1]
+            for k, v in sensor_data.items():
+                if 'Unit' in v:
+                    unit = v['Unit'].split('.')[-1]
                     if unit in SENSOR_UNITS:
-                        label = key.split('/')[-1].replace('_', ' ').title()
-                        value = sensor_data[key]['Value']
-                        scale = sensor_data[key]['Scale']
+                        label = k.split('/')[-1].replace('_', ' ').title()
+                        value = v['Value']
+                        scale = v['Scale']
                         value = value * pow(10, scale)
                         value = '{:g}'.format(value)
                         if unit not in sensor_dict:
                             sensor_dict[unit] = []
                         sensor_dict[unit].append('%s: %s %s' % (label, value, SENSOR_UNITS[unit]))
-                elif 'units' in sensor_data[key] and 'value' in sensor_data[key]:
-                    label = key.split('/')[-1]
-                    value = sensor_data[key]['value']
+                elif 'units' in v and 'value' in v:
+                    label = k.split('/')[-1]
+                    value = v['value']
                     sensor_dict[label] = ['%s: %s' % (label, value)]
                     
             return sensor_dict

@@ -690,11 +690,10 @@ class OpenBMCManager(base.BaseManager):
             return
 
         # 3, run the subcommands
+        runner = OpenBMCSensorTask(nodesinfo, callback=self.messager, debugmode=self.debugmode, verbose=self.verbose)
         if action == 'leds':
-            runner = OpenBMCBeaconTask(nodesinfo, callback=self.messager, debugmode=self.debugmode, verbose=self.verbose)
-            DefaultBeaconManager().get_beacon_info(runner)
+            DefaultSensorManager().get_beacon_info(runner)
         else:
-            runner = OpenBMCSensorTask(nodesinfo, callback=self.messager, debugmode=self.debugmode, verbose=self.verbose)
             DefaultSensorManager().get_sensor_info(runner, action)
 
 
