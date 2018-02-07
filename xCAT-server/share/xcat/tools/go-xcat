@@ -2,7 +2,7 @@
 #
 # go-xcat - Install xCAT automatically.
 #
-# Version 1.0.22
+# Version 1.0.23
 #
 # Copyright (C) 2016 International Business Machines
 # Eclipse Public License, Version 1.0 (EPL-1.0)
@@ -632,7 +632,112 @@ function get_package_list()
 	function_dispatch "${FUNCNAME}" "$@"
 }
 
-function download_file()
+function download_file_curl()
+{
+	local script="${0##*/}"
+	local version="$(version)"
+	local user_agent="${script}/${version} (${GO_XCAT_OS}; ${GO_XCAT_ARCH}; ${GO_XCAT_LINUX_DISTRO} ${GO_XCAT_LINUX_VERSION})"
+	type curl >/dev/null 2>&1 || return 255
+	local url="$1"
+	local local_file="$2"
+	local log_file="${TMP_DIR}/curl.log.${RANDOM}"
+	local -i rc=0
+	curl -A "${user_agent}" "${url}" -f -o "${local_file}" -S -s >"${log_file}" 2>&1
+	rc="$?"
+	if [[ "${rc}" -ne "0" ]]
+	then
+		while read -r ; do echo "${REPLY}" ; done <"${log_file}"
+		echo -n "${script}: \`curl' exited with an error: (exit code ${rc}, "
+		case "${rc}" in
+		1) echo -n "unsupported protocol" ;;
+		2) echo -n "failed to initialize" ;;
+		3) echo -n "URL malformed" ;;
+		4) echo -n "you probably need another build of libcurl!" ;;
+		5) echo -n "couldn't resolve proxy" ;;
+		6) echo -n "couldn't resolve host" ;;
+		7) echo -n "failed to connect to host" ;;
+		8) echo -n "weird server reply" ;;
+		9) echo -n "FTP access denied" ;;
+		10) echo -n "FTP accept failed" ;;
+		11) echo -n "FTP weird PASS reply" ;;
+		12) echo -n "During an active FTP session while waiting for the server to connect back to curl, the timeout expired." ;;
+		13) echo -n "FTP weird PASV reply" ;;
+		14) echo -n "FTP weird 227 format" ;;
+		15) echo -n "FTP can't get host" ;;
+		16) echo -n "HTTP/2 error" ;;
+		17) echo -n "FTP couldn't set binary" ;;
+		18) echo -n "Partial file" ;;
+		19) echo -n "FTP couldn't download/access the given file" ;;
+		21) echo -n "FTP quote error" ;;
+		22) echo -n "HTTP page not retrieved" ;;
+		23) echo -n "write error" ;;
+		25) echo -n "FTP couldn't STOR file" ;;
+		26) echo -n "read error" ;;
+		27) echo -n "out of memory" ;;
+		28) echo -n "operation timeout" ;;
+		30) echo -n "FTP PORT failed" ;;
+		31) echo -n "FTP  couldn't  use REST" ;;
+		33) echo -n "HTTP range error" ;;
+		34) echo -n "HTTP post error" ;;
+		35) echo -n "SSL connect error" ;;
+		36) echo -n "bad download resume" ;;
+		37) echo -n "FILE couldn't read file" ;;
+		38) echo -n "LDAP cannot bind" ;;
+		39) echo -n "LDAP search failed." ;;
+		41) echo -n "function not found" ;;
+		42) echo -n "aborted by callback" ;;
+		43) echo -n "internal error" ;;
+		45) echo -n "interface error" ;;
+		47) echo -n "too many redirects" ;;
+		48) echo -n "unknown option specified to libcurl" ;;
+		49) echo -n "malformed telnet option" ;;
+		51) echo -n "the peer's SSL certificate or SSH MD5 fingerprint was not OK" ;;
+		52) echo -n "the server didn't reply anything, which here is considered an error" ;;
+		53) echo -n "SSL crypto engine not found" ;;
+		54) echo -n "cannot set SSL crypto engine as default" ;;
+		55) echo -n "failed sending network data" ;;
+		56) echo -n "failure in receiving network data" ;;
+		58) echo -n "problem with the local certificate" ;;
+		59) echo -n "couldn't use specified SSL cipher" ;;
+		60) echo -n "peer certificate cannot be authenticated with known CA certificates" ;;
+		61) echo -n "unrecognized transfer encoding." ;;
+		62) echo -n "invalid LDAP URL" ;;
+		63) echo -n "maximum file size exceeded" ;;
+		64) echo -n "requested FTP SSL level failed" ;;
+		65) echo -n "sending the data requires a rewind that failed" ;;
+		66) echo -n "failed to initialise SSL Engine" ;;
+		67) echo -n "the user name, password, or similar was not accepted and curl failed to log in" ;;
+		68) echo -n "file not found on TFTP server" ;;
+		69) echo -n "permission problem on TFTP server" ;;
+		70) echo -n "out of disk space on TFTP server" ;;
+		71) echo -n "illegal TFTP operation" ;;
+		72) echo -n "unknown TFTP transfer ID" ;;
+		73) echo -n "file already exists (TFTP)" ;;
+		74) echo -n "no such user (TFTP)" ;;
+		75) echo -n "character conversion failed" ;;
+		76) echo -n "character conversion functions required" ;;
+		77) echo -n "problem with reading the SSL CA cert" ;;
+		78) echo -n "the resource referenced in the URL does not exist" ;;
+		79) echo -n "an unspecified error occurred during the SSH session" ;;
+		80) echo -n "failed to shut down the SSL connection" ;;
+		82) echo -n "could not load CRL file, missing or wrong format" ;;
+		83) echo -n "issuer check failed" ;;
+		84) echo -n "the FTP PRET command failed" ;;
+		85) echo -n "RTSP: mismatch of CSeq numbers" ;;
+		86) echo -n "RTSP: mismatch of Session Identifiers" ;;
+		87) echo -n "unable to parse FTP file list" ;;
+		88) echo -n "FTP chunk callback reported error" ;;
+		89) echo -n "no connection available, the session will be queued" ;;
+		90) echo -n "SSL public key does not matched pinned public key" ;;
+		*) echo -n "unknown error" ;;
+		esac
+		echo ")"
+		echo "  ... while downloading \`${url}'"
+	fi >&2
+	[[ "${rc}" -eq "0" ]]
+}
+
+function download_file_wget()
 {
 	local script="${0##*/}"
 	local version="$(version)"
@@ -663,6 +768,11 @@ function download_file()
 		echo "  ... while downloading \`${url}'"
 	fi >&2
 	[[ "${rc}" -eq "0" ]]
+}
+
+function download_file()
+{
+	function_dispatch "${FUNCNAME}" "$@"
 }
 
 #       $1      repo file
