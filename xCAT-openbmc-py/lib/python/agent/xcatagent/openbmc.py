@@ -14,12 +14,14 @@ from docopt import docopt
 from common import utils
 from common import exceptions as xcat_exception
 from hwctl.executor.openbmc_beacon import OpenBMCBeaconTask
-from hwctl.executor.openbmc_power import OpenBMCPowerTask
 from hwctl.executor.openbmc_setboot import OpenBMCBootTask
+from hwctl.executor.openbmc_inventory import OpenBMCInventoryTask
+from hwctl.executor.openbmc_power import OpenBMCPowerTask
 from hwctl.executor.openbmc_sensor import OpenBMCSensorTask
 from hwctl.beacon import DefaultBeaconManager
-from hwctl.power import DefaultPowerManager
 from hwctl.setboot import DefaultBootManager
+from hwctl.inventory import DefaultInventoryManager
+from hwctl.power import DefaultPowerManager
 from hwctl.sensor import DefaultSensorManager
 
 from xcatagent import base
@@ -80,6 +82,9 @@ XCAT_LOG_RFLASH_DIR = XCAT_LOG_DIR + "/rflash/"
 
 # global variable of firmware information
 FIRM_URL = PROJECT_URL + "/software/enumerate"
+
+#global variables of rinv
+INVENTORY_OPTIONS = ('all', 'cpu', 'dimm', 'firm', 'model', 'serial')
 
 # global variables of rpower
 POWER_REBOOT_OPTIONS = ('boot', 'reset')
@@ -584,6 +589,41 @@ class OpenBMCManager(base.BaseManager):
         # 3, run the subcommands
         runner = OpenBMCBeaconTask(nodesinfo, callback=self.messager, debugmode=self.debugmode, verbose=self.verbose)
         DefaultBeaconManager().set_beacon_state(runner, beacon_state=action)
+
+    def rinv(self, nodesinfo, args):
+
+        # 1, parse agrs
+        if not args:
+            args = ['all']
+
+        rinv_usage = """
+        Usage:
+            rinv [-V|--verbose] [all|cpu|dimm|firm|model|serial]
+
+        Options:
+            -V --verbose   rinv verbose mode.
+        """
+
+        try:
+            opts = docopt(rinv_usage, argv=args)
+
+            self.verbose = opts.pop('--verbose')
+            action = [k for k,v in opts.items() if v][0]
+        except Exception as e:
+            self.messager.error("Failed to parse arguments for rinv: %s" % args)
+            return
+
+        # 2, validate the args
+        if action not in INVENTORY_OPTIONS:
+            self.messager.error("Not supported subcommand for rinv: %s" % action)
+            return
+
+        # 3, run the subcommands
+        runner = OpenBMCInventoryTask(nodesinfo, callback=self.messager, debugmode=self.debugmode, verbose=self.verbose)
+        if action == 'firm':
+            DefaultInventoryManager().get_firm_info(runner)
+        else:
+            DefaultInventoryManager().get_inventory_info(runner, action)
 
     def rpower(self, nodesinfo, args):
 

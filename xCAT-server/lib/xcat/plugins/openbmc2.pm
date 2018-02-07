@@ -32,6 +32,7 @@ sub handled_commands {
     return {
         rbeacon        => 'nodehm:mgt=openbmc',
         rflash         => 'nodehm:mgt=openbmc',
+        rinv           => 'nodehm:mgt=openbmc',
         rpower         => 'nodehm:mgt=openbmc',
         rsetboot       => 'nodehm:mgt=openbmc',
         rvitals        => 'nodehm:mgt=openbmc',
@@ -147,7 +148,7 @@ sub parse_args {
         return ([ 1, "Error parsing arguments." ]);
     }
 
-    if (scalar(@ARGV) >= 2 and ($command =~ /rbeacon|rpower|rvitals/)) {
+    if (scalar(@ARGV) >= 2 and ($command =~ /rbeacon|rinv|rpower|rvitals/)) {
         return ([ 1, "Only one option is supported at the same time for $command" ]);
     } elsif (scalar(@ARGV) == 0 and $command =~ /rbeacon|rpower|rflash/) {
         return ([ 1, "No option specified for $command" ]);
@@ -207,6 +208,11 @@ sub parse_args {
         }
         if ($list) {
             return ([ 1, "Invalid option specified with '-l|--list'."]) if (@ARGV);
+        }
+    } elsif ($command eq "rinv") {
+        $subcommand = "all" if (!defined($ARGV[0]));
+        unless ($subcommand =~ /^all$|^cpu$|^dimm$|^firm$|^model$|^serial$/) {
+            return ([ 1, "Unsupported command: $command $subcommand" ]);
         }
     } elsif ($command eq "rpower") {
         unless ($subcommand =~ /^on$|^off$|^softoff$|^reset$|^boot$|^bmcreboot$|^bmcstate$|^status$|^stat$|^state$/) {

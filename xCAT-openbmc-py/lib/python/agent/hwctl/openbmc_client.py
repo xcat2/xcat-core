@@ -29,6 +29,8 @@ RBEACON_URLS = {
     },
 }
 
+INVENTORY_URL = "/inventory/enumerate"
+
 LEDS_URL = "/led/physical/enumerate"
 
 LEDS_KEY_LIST = ("fan0", "fan1", "fan2", "fan3",
@@ -382,6 +384,36 @@ class OpenBMCRest(object):
             error = 'Error: Received wrong format response: %s' % sensor_data
             raise SelfServerException(error)
 
+    def get_inventory_info(self):
+
+        inventory_data = self.request('GET', INVENTORY_URL, cmd='get_inventory_info')
+        try:
+            inverntory_dict = {}
+            for key, value in inventory_data.items():
+                key_list = key.split('/')
+                key_id = key_list[-1]
+                key_type = filter(lambda x:x not in '0123456789', key_id).upper()
+
+                if 'Present' not in value:
+                    continue
+
+                if key_type == 'CORE':
+                    key_type = 'CPU'
+                    source = '%s %s' % (key_list[-2], key_id)
+                else:
+                    source = key_id
+
+                if key_type not in inverntory_dict:
+                    inverntory_dict[key_type] = []
+
+                for (sub_key, v) in value.items():
+                    inverntory_dict[key_type].append('%s %s : %s' % (source.upper(), sub_key, v))
+
+            return inverntory_dict
+        except KeyError:
+            error = 'Error: Received wrong format response: %s' % inventory_data
+            raise SelfServerException(error)
+
     def list_firmware(self):
 
         data = self.request('GET', FIRM_URLS['list']['path'], cmd='list_firmware')
@@ -407,8 +439,12 @@ class OpenBMCRest(object):
 class OpenBMCImage(object):
     def __init__(self, rawid, data=None):
         self.id = rawid.split('/')[-1]
+        self.extver = None
         self.functional = False
+        self.priority = None
+        self.progress = None
         self.purpose = 'Unknown'
+
         if data:
             self.version = data.get('Version')
             self.purpose = data.get('Purpose', self.purpose).split('.')[-1]
