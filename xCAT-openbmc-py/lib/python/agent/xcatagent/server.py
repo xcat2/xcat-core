@@ -92,8 +92,12 @@ class Server(object):
             if not hasattr(manager, req['command']):
                 messager.error("command %s is not supported" % req['command'])
             func = getattr(manager, req['command'])
+            # translate unicode string to normal string to avoid docopt error
+            new_args=[]
+            for a in req['args']:
+                new_args.append(a.encode('utf-8'))
             # call the function in the specified manager
-            func(req['nodeinfo'], req['args'])
+            func(req['nodeinfo'], new_args)
             # after the method returns, the request should be handled
             # completely, close the socket for client
             if not self.standalone:

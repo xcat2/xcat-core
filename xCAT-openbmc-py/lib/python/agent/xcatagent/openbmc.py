@@ -10,7 +10,7 @@ import time
 import sys
 import gevent
 import re
-from docopt import docopt
+from docopt import docopt,DocoptExit
 
 from common import utils
 from common import exceptions as xcat_exception
@@ -95,14 +95,14 @@ Handle rspconfig operations.
 
 Usage:
        rspconfig -h|--help
-       rspconfig -V|--verbose
-       rspconfig dump [[-l|--list] | [-g|--generate] | [-c|--clear <arg>] | [-d|--download <arg>]]
-       rspconfig sshcfg
-       rspconfig ip=dhcp
-       rspconfig get [<args>...]
-       rspconfig set [<args>...]
+       rspconfig dump [[-l|--list] | [-g|--generate] | [-c|--clear <arg>] | [-d|--download <arg>]] [-V|--verbose]
+       rspconfig sshcfg [-V|--verbose]
+       rspconfig ip=dhcp [-V|--verbose]
+       rspconfig get [<args>...] [-V|--verbose]
+       rspconfig set [<args>...] [-V|--verbose]
 
 Options:
+  -V,--verbose        Show verbose message
   -l,--list           List are dump files
   -g,--generate       Trigger a new dump file
   -c,--clear <arg>    The id of file to clear or all if specify 'all'
@@ -668,16 +668,14 @@ class OpenBMCManager(base.BaseManager):
             DefaultPowerManager().set_power_state(runner, power_state=action)
     def rspconfig(self, nodesinfo, args):
         try:
-            new_args=[]
-            for a in args:
-               new_a = a.encode('utf-8')
-               new_args.append(new_a)
-            opts=docopt(RSPCONFIG_USAGE, argv=new_args)
-            self.verbose=opts.pop('--verbose')
+            opts=docopt(RSPCONFIG_USAGE, argv=args)
+        except DocoptExit as e:
+            self.messager.error("Failed to parse args by docopt: %s" % e)
+            return
         except Exception as e:
             self.messager.error("Failed to parse arguments for rspconfig: %s" % args)
             return
-
+        self.verbose=opts.pop('--verbose')
         runner = OpenBMCBmcConfigTask(nodesinfo, callback=self.messager, debugmode=self.debugmode, verbose=self.verbose)
 
         if opts['dump']:
@@ -697,10 +695,8 @@ class OpenBMCManager(base.BaseManager):
             DefaultBmcConfigManager().set_ipdhcp(runner)
         elif opts['get']:
             unsupport_list=list(set(opts['<args>']) - set(RSPCONFIG_GET_OPTIONS))
-            for attr in opts['<args>']:
-                if attr not in RSPCONFIG_GET_OPTIONS:
-                    self.messager.error("The attribute %s is not supported to get" % attr)
             if len(unsupport_list) > 0:
+                self.messager.error("Have unsupported option: %s" % unsupport_args)
                 return
             else:
                 DefaultBmcConfigManager().get_attributes(runner, opts['<args>'])
