@@ -587,6 +587,7 @@ sub setup_GOCONS
         xCAT::MsgUtils->message("S", "Error: failed to start goconserver service.");
         return 1;
     }
+    xCAT::Goconserver::init_local_console();
     return 0;
 }
 
