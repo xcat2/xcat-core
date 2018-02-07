@@ -269,7 +269,7 @@ replace_persistent_route()
 
         redhat)
             #echo "rh/fedora/centos"
-            if [ -z "$ifname" ]; then
+            if [ -z "$ifname" -a "$net" != "default" ]; then
                 echo "Error: the device name is necessary to configure static route."
                 return
             fi
@@ -295,6 +295,12 @@ replace_persistent_route()
                     route="$net/$mask via $gw"
                     route1="$net\/$mask via $gw"
                 fi
+            fi
+            # default route is handled separately
+            if [ "$net" = "default" ]; then
+                filename="/etc/sysconfig/network"
+                route="GATEWAY=$gw"
+                routedest="$route"
             fi
             if [ -f $filename ]; then
                 egrep "^$routedest" $filename 2>&1 1>/dev/null
