@@ -390,16 +390,23 @@ class OpenBMCRest(object):
         try:
             inverntory_dict = {}
             for key, value in inventory_data.items():
-                key_list = key.split('/')
-                key_id = key_list[-1]
-                key_type = filter(lambda x:x not in '0123456789', key_id).upper()
-
                 if 'Present' not in value:
+                    logger.debug('Not "Present" for %s' % key)
                     continue
+
+                key_list = key.split('/')
+                try:
+                    key_id = key_list[-1]
+                    key_tmp = key_list[-2]
+                except IndexError:
+                    logger.debug('IndexError (-2) for %s' % key)
+                    continue
+
+                key_type = filter(lambda x:x not in '0123456789', key_id).upper()
 
                 if key_type == 'CORE':
                     key_type = 'CPU'
-                    source = '%s %s' % (key_list[-2], key_id)
+                    source = '%s %s' % (key_tmp, key_id)
                 else:
                     source = key_id
 
