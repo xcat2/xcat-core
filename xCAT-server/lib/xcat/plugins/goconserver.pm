@@ -19,8 +19,9 @@ my $isSN;
 my $host;
 my $bmc_cons_port = "2200";
 my $usage_string ="   makegocons [-V|--verbose] [-d|--delete] noderange
-    -h|--help        Display this usage statement.
-    -v|--version     Display the version number.";
+    -h|--help                   Display this usage statement.
+    -v|--version                Display the version number.
+    -q|--query  [noderange]     Display the console connection status.";
 
 my $version_string = xCAT::Utils->Version();
 
@@ -86,13 +87,17 @@ sub preprocess_request {
         my $hmcache = $hmtab->getNodesAttribs($noderange, [ 'node', 'serialport', 'cons', 'conserver' ]);
         foreach my $node (@$noderange) {
             my $ent = $hmcache->{$node}->[0]; #$hmtab->getNodeAttribs($node,['node', 'serialport','cons', 'conserver']);
-            push @items, $ent;
+            if ($ent) {
+                push (@items, $ent);
+            } else {
+                my $rsp->{data}->[0] = $node .": ignore, cons attribute or serialport attribute is not specified.";
+                xCAT::MsgUtils->message("I", $rsp, $::callback);
+            }
         }
     } else {
         $allnodes = 1;
         @items = $hmtab->getAllNodeAttribs([ 'node', 'serialport', 'cons', 'conserver' ]);
     }
-
     my @nodes = ();
     foreach (@items) {
         if (((!defined($_->{cons})) || ($_->{cons} eq "")) and !defined($_->{serialport})) {
@@ -314,8 +319,9 @@ sub makegocons {
     }
     @ARGV = @exargs;
     $Getopt::Long::ignorecase = 0;
-    my $delmode;
+    my ($delmode, $querymode);
     GetOptions('d|delete' => \$delmode,
+        'q|query' => \$querymode,
     );
 
     my $svboot = 0;
@@ -329,6 +335,11 @@ sub makegocons {
         xCAT::SvrUtils::sendmsg([ 1, "Could not get any console request entry" ], $::callback);
         return 1;
     }
+    my $api_url = "https://$host:". xCAT::Goconserver::get_api_port();
+    if ($querymode) {
+        return xCAT::Goconserver::list_nodes($api_url, \%cons_map, $::callback)
+    }
+
     my $ret = start_goconserver();
     if ($ret != 0) {
         return 1;
@@ -351,7 +362,6 @@ sub makegocons {
         xCAT::SvrUtils::sendmsg([ 1, "Could not generate the request data" ], $::callback);
         return 1;
     }
-    my $api_url = "https://$host:". xCAT::Goconserver::get_api_port();
     $ret = xCAT::Goconserver::delete_nodes($api_url, $data, $delmode, $::callback);
     if ($delmode) {
         return $ret;
