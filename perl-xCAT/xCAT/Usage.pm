@@ -26,7 +26,7 @@ my %usage = (
 "Usage: rpower <noderange> [--nodeps] [on|onstandby|off|suspend|reset|stat|state|boot] [-V|--verbose] [-m table.colum==expectedstatus][-m table.colum==expectedstatus...] [-r <retrycount>] [-t <timeout>]
        rpower [-h|--help|-v|--version]
      BMC (using IPMI):
-       rpower noderange [on|off|softoff|reset|boot|stat|state|status|wake|suspend [-w timeout] [-o] [-r]]
+       rpower noderange [on|off|softoff|reset|boot|cycle|stat|state|status|wake|suspend [-w timeout] [-o] [-r]]
        rpower noderange [pduon|pduoff|pdustat]
      OpenPOWER BMC:
        rpower noderange [on|off|reset|boot|stat|state|status]
