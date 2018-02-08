@@ -17,6 +17,7 @@ use xCAT::Utils;
 use xCAT::Usage;
 use xCAT::SvrUtils;
 use xCAT::OPENBMC;
+use xCAT_plugin::openbmc;
 
 #-------------------------------------------------------
 
@@ -36,6 +37,7 @@ sub handled_commands {
         rpower         => 'nodehm:mgt=openbmc',
         rsetboot       => 'nodehm:mgt=openbmc',
         rvitals        => 'nodehm:mgt=openbmc',
+        rspconfig      => 'nodehm:mgt=openbmc',
     };
 }
 
@@ -114,6 +116,10 @@ sub process_request {
     $callback = shift;
     my $noderange = $request->{node};
     my $check = parse_node_info($noderange);
+    if (&refactor_args($request)) {
+        xCAT::MsgUtils->message("E", { data => ["Failed to refactor arguments"] }, $callback);
+        return;
+    }
     $callback->({ errorcode => [$check] }) if ($check);
     return unless(%node_info);
     my $pid = xCAT::OPENBMC::start_python_agent();
@@ -231,6 +237,8 @@ sub parse_args {
         unless ($subcommand =~ /^all$|^altitude$|^fanspeed$|^leds$|^power$|^temp$|^voltage$|^wattage$/) {
             return ([ 1, "Unsupported command: $command $subcommand" ]);
         }
+    } elsif ($command eq 'rspconfig') {
+        xCAT_plugin::openbmc::parse_args('rspconfig', $extrargs, $noderange);
     } else {
         return ([ 1, "Unsupported command: $command" ]);
     }
@@ -302,6 +310,33 @@ sub parse_node_info {
     }
 
     return $rst;
+}
+
+#-------------------------------------------------------
+
+=head3  refactor_args
+
+  refractor args to be easily dealt by python client
+
+=cut
+
+#-------------------------------------------------------
+
+sub refactor_args {
+    my $request = shift;
+    my $command   = $request->{command}->[0];
+    my $extrargs  = $request->{arg};    
+    if ($command eq "rspconfig") {
+        my $subcommand = $extrargs->[0];
+        if ($subcommand !~ /^dump$|^sshcfg$|^ip=dhcp$/) {
+            if (grep /=/, @$extrargs) {
+                unshift @$extrargs, "set";
+            } else {
+                unshift @$extrargs, "get";
+            }
+        }
+    }
+    return 0;
 }
 
 1;

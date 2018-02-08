@@ -141,6 +141,49 @@ FIRM_URLS = {
     }
 }
 
+RSPCONFIG_APIS = {
+    'autoreboot' : {
+        'baseurl': "/control/host0/auto_reboot/",
+        'set_url': "attr/AutoReboot",
+        'get_url': "attr/AutoReboot",
+        'display_name': "BMC AutoReboot",
+    },
+    'powersupplyredundancy':{
+        'baseurl': "/sensors/chassis/PowerSupplyRedundancy/",
+        'set_url': "/action/setValue",
+        'get_url': "/action/getValue",
+        'get_method': 'POST',
+        'get_data': '[]',
+        'display_name': "BMC PowerSupplyRedundancy",
+        'attr_values': {
+            'disabled': "Disables",
+            'enabled': "Enabled",
+        },
+    },
+    'powerrestorepolicy': {
+        'baseurl': "/control/host0/power_restore_policy/",
+        'set_url': "attr/PowerRestorePolicy",
+        'get_url': "attr/PowerRestorePolicy",
+        'display_name': "BMC PowerRestorePolicy",
+         'attr_values': {
+             'restore': "xyz.openbmc_project.Control.Power.RestorePolicy.Policy.Restore",
+             'always_on': "xyz.openbmc_project.Control.Power.RestorePolicy.Policy.AlwaysOn",
+             'always_off': "xyz.openbmc_project.Control.Power.RestorePolicy.Policy.AlwaysOff",
+         },
+    },
+    'bootmode': {
+        'baseurl': "/control/host0/boot/",
+        'set_url': "attr/BootMode",
+        'get_url': "attr/BootMode",
+        'display_name':"BMC BootMode",
+        'attr_values': {
+            'regular': "xyz.openbmc_project.Control.Boot.Mode.Modes.Regular",
+            'safe': "xyz.openbmc_project.Control.Boot.Mode.Modes.Safe",
+            'setup': "xyz.openbmc_project.Control.Boot.Mode.Modes.Setup",
+        },
+    },
+}
+
 RESULT_OK = 'ok'
 RESULT_FAIL = 'fail'
 
@@ -442,6 +485,31 @@ class OpenBMCRest(object):
             fw_dict[str(fw)]=fw
 
         return bool(func_list), fw_dict
+
+    def set_apis_values(self, key, value):
+        attr_info = RSPCONFIG_APIS[key]
+        if not attr_info.has_key('set_url'):
+            raise SelfServerException("config %s failed, not url available" % key)
+        set_url = attr_info['baseurl']+attr_info['set_url']
+        if attr_info.has_key('attr_values') and attr_info['attr_values'].has_key(value):
+            data = attr_info['attr_values'][value]
+        else:
+            data = value
+        self.request('PUT', set_url, payload={"data": data}, cmd="set_%s" % key)
+
+    def get_apis_values(self, key):
+        attr_info = RSPCONFIG_APIS[key]
+        if not attr_info.has_key('get_url'):
+            raise SelfServerException("Reading %s failed, not url available" % key)
+        get_url = attr_info['baseurl']+attr_info['get_url']
+
+        method = 'GET'
+        if attr_info.has_key('get_method'):
+            method = attr_info['get_method']
+        data = None
+        if attr_info.has_key('get_data'):
+            data={"data": attr_info['get_data']}
+        return self.request(method, get_url, payload=data, cmd="get_%s" % key)
 
 class OpenBMCImage(object):
     def __init__(self, rawid, data=None):
