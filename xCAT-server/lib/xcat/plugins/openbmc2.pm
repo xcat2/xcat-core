@@ -57,12 +57,16 @@ sub preprocess_request {
     my $request = shift;
     $callback  = shift;
 
-    if (!xCAT::OPENBMC->is_openbmc_python($request->{environment})) {
+    my $command   = $request->{command}->[0];
+    my $python_env = xCAT::OPENBMC->is_openbmc_python($request->{environment});
+    # Process command in this module only if PYTHON env is not NO or 
+    # command is listed in the PYTHON env list. All other cases => return
+    if (($python_env eq "NO") || 
+       (($python_env ne "ALL") && ($python_env !~ $command))) {
         $request = {};
         return;
     }
 
-    my $command   = $request->{command}->[0];
     my $noderange = $request->{node};
     my $extrargs  = $request->{arg};
     my @exargs    = ($request->{arg});

@@ -201,7 +201,13 @@ sub wait_agent {
 sub is_openbmc_python {
     my $environment = shift;
     $environment = shift if (($environment) && ($environment =~ /OPENBMC/));
-    # If XCAT_OPENBMC_PYTHON is YES, will run openbmc2.pm. If not, run openbmc.pm
+    # If XCAT_OPENBMC_PYTHON is YES, 
+    # will return "ALL" and caller will run openbmc2.pm. 
+    # If XCAT_OPENBMC_PYTHON is not set or is set to NO, return "NO" and caller
+    # will run openbmc.pm
+    # If XCAT_OPENBMC_PYTHON is a list of commands, return that list and caller
+    # will run openbmc2.pm if the command is on the list, caller will run
+    # openbmc.pm if command is not on the list
     if (ref($environment) eq 'ARRAY' and ref($environment->[0]->{XCAT_OPENBMC_PYTHON}) eq 'ARRAY') {
         $::OPENBMC_PYTHON = $environment->[0]->{XCAT_OPENBMC_PYTHON}->[0];
     } elsif (ref($environment) eq 'ARRAY') {
@@ -209,11 +215,19 @@ sub is_openbmc_python {
     } else {
         $::OPENBMC_PYTHON = $environment->{XCAT_OPENBMC_PYTHON};
     }
-    if (defined($::OPENBMC_PYTHON) and $::OPENBMC_PYTHON eq "YES") {
-        return 1;
+    if (defined($::OPENBMC_PYTHON)) { 
+        if ($::OPENBMC_PYTHON eq "YES") {
+            return "ALL";
+        }
+        elsif ($::OPENBMC_PYTHON eq "NO") {
+            return "NO";
+        }
+        else {
+            return $::OPENBMC_PYTHON;
+        }
     }
 
-    return 0;
+    return "NO";
 }
 
 1;
