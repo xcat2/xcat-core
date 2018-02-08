@@ -758,7 +758,7 @@ rm_persistent_route()
         fi
         filename="/etc/sysconfig/network";
         if [ "$net" = "default" -a -f $filename ]; then
-            grep "GATEWAY" $filename >/dev/null 2>&1
+            grep "GATEWAY=$gw" $filename >/dev/null 2>&1
             if [ $? -eq 0 ]; then
                 sed -i '/GATEWAY=/d' $filename
                 echo "Persistent GATEWAY=$gw removed from $filename."
