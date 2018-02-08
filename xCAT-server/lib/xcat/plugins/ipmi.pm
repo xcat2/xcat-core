@@ -2849,7 +2849,8 @@ sub power_with_context {
         "off"     => 0,
         "softoff" => 5,
         "reset"   => 3,
-        "nmi"     => 4
+        "nmi"     => 4,
+        "cycle"   => 2,
     );
     if ($subcommand eq "on") {
         if ($sessdata->{powerstatus} eq "on") {
