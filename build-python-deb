@@ -13,22 +13,20 @@ if [[ ! -f /etc/lsb-release ]]; then
     exit 1
 fi
 . /etc/lsb-release
-# Check the necessary packages before starting the build
-declare -a packages=( "reprepro" "devscripts" "debhelper" "quilt" )
-
-for package in ${packages[@]}; do
-    RC=`dpkg -l | grep $package >> /dev/null 2>&1; echo $?`
-    if [[ ${RC} != 0 ]]; then
-        echo "ERROR: Could not find $package, install using 'apt-get install $package' to continue"
+# Check the necessary commands before starting the build
+for cmd in dh dpkg-buildpackage
+do
+    if ! type "$cmd" >/dev/null 2>&1
+    then
+        echo "ERROR: Required command, $package, not found." >&2
         exit 1
     fi
 done
 
 # Supported distributions
-dists="saucy trusty utopic xenial"
 pkg_name=$1
 
-if [ -z "$pkg_name" ] || [ "$pkg_name" != "xcat-openbmc-py" ]; then
+if [ "$pkg_name" != "xcat-openbmc-py" ]; then
     printusage
     exit 1
 fi
@@ -37,12 +35,6 @@ fi
 old_pwd=`pwd`
 cd `dirname $0`
 curdir=`pwd`
-export HOME=/root
-
-WGET_CMD="wget"
-if [ ! -z ${LOG} ]; then
-    WGET_CMD="wget -o ${LOG}"
-fi
 
 if [ -z "$REL" ]; then
     t=${curdir%/src/xcat-core}
@@ -50,14 +42,7 @@ if [ -z "$REL" ]; then
 fi
 
 if [ "$PROMOTE" != 1 ]; then
-    code_change=1
     ver=`cat Version`
-    short_ver=`cat Version|cut -d. -f 1,2`
-    short_short_ver=`cat Version|cut -d. -f 1`
-    build_time=`date`
-    build_machine=`hostname`
-    commit_id=`git rev-parse --short HEAD`
-    commit_id_long=`git rev-parse HEAD`
 
     echo "###############################"
     echo "# Building xcat-openbmc-py package #"
@@ -69,10 +54,9 @@ if [ "$PROMOTE" != 1 ]; then
     xcat_release="snap$(date '+%Y%m%d%H%M')"
     pkg_version="${ver}-${xcat_release}"
     packages="xCAT-openbmc-py"
-    target_archs=(all)
     for file in $packages
     do
-        file_low=`echo $file | tr '[A-Z]' '[a-z]'`
+        file_low="${file,,}"
         target_archs="all"
         for target_arch in $target_archs
         do
