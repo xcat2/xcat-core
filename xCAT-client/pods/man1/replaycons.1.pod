@@ -19,6 +19,10 @@ the speed of the output play back.  (The conserver logs are stored in /var/log/c
 For now, replaycons must be run locally on the system on which the console log is stored.  This is normally
 that management node, but in a hierarchical cluster will usually be the service node.
 
+Note that when used with confluent, log rotation will cause older logs to have a filename that replaycons
+does not understand.  You can have replaycons process an older log by appending the suffix seen in
+/var/log/confluent/consoles/.  For example, 'replaycons n1.2018-02-02' will show the log file indicated.
+
 
 =head1 OPTIONS
 
