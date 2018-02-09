@@ -17,7 +17,6 @@ use Data::Dumper;
 
 my $isSN;
 my $host;
-my $bmc_cons_port = "2200";
 my $usage_string ="   makegocons [-V|--verbose] [-d|--delete] noderange
     -h|--help                   Display this usage statement.
     -v|--version                Display the version number.
@@ -183,91 +182,6 @@ sub get_cons_map {
     return %cons_map;
 }
 
-sub gen_request_data {
-    my ($cons_map, $siteondemand) = @_;
-    my (@openbmc_nodes, $data);
-    while (my ($k, $v) = each %{$cons_map}) {
-        my $ondemand;
-        if ($siteondemand) {
-            $ondemand = \1;
-        } else {
-            $ondemand = \0;
-        }
-        my $cmd;
-        my $cmeth  = $v->{cons};
-        if ($cmeth eq "openbmc") {
-            push @openbmc_nodes, $k;
-        }  else {
-            $cmd = $::XCATROOT . "/share/xcat/cons/$cmeth"." ".$k;
-            if (!(!$isSN && $v->{conserver} && xCAT::NetworkUtils->thishostisnot($v->{conserver}))) {
-                my $env;
-                my $locerror = $isSN ? "PERL_BADLANG=0 " : '';
-                if (defined($ENV{'XCATSSLVER'})) {
-                    $env = "XCATSSLVER=$ENV{'XCATSSLVER'} ";
-                }
-                $cmd = $locerror.$env.$cmd;
-            }
-            $data->{$k}->{driver} = "cmd";
-            $data->{$k}->{params}->{cmd} = $cmd;
-            $data->{$k}->{name} = $k;
-        }
-        if (defined($v->{consoleondemand})) {
-            # consoleondemand attribute for node can be "1", "yes", "0" and "no"
-            if (($v->{consoleondemand} eq "1") || lc($v->{consoleondemand}) eq "yes") {
-                $ondemand = \1;
-            }
-            elsif (($v->{consoleondemand} eq "0") || lc($v->{consoleondemand}) eq "no") {
-                $ondemand = \0;
-            }
-        }
-        $data->{$k}->{ondemand} = $ondemand;
-    }
-    if (@openbmc_nodes) {
-        my $passwd_table = xCAT::Table->new('passwd');
-        my $passwd_hash = $passwd_table->getAttribs({ 'key' => 'openbmc' }, qw(username password));
-        $passwd_table->close();
-        my $openbmc_table = xCAT::Table->new('openbmc');
-        my $openbmc_hash = $openbmc_table->getNodesAttribs(\@openbmc_nodes, ['bmc','consport', 'username', 'password']);
-        $openbmc_table->close();
-        foreach my $node (@openbmc_nodes) {
-            if (defined($openbmc_hash->{$node}->[0])) {
-                if (!$openbmc_hash->{$node}->[0]->{'bmc'}) {
-                    xCAT::SvrUtils::sendmsg("Error: Unable to get attribute bmc", $::callback, $node);
-                    delete $data->{$node};
-                    next;
-                }
-                $data->{$node}->{params}->{host} = $openbmc_hash->{$node}->[0]->{'bmc'};
-                if ($openbmc_hash->{$node}->[0]->{'username'}) {
-                    $data->{$node}->{params}->{user} = $openbmc_hash->{$node}->[0]->{'username'};
-                } elsif ($passwd_hash and $passwd_hash->{username}) {
-                    $data->{$node}->{params}->{user} = $passwd_hash->{username};
-                } else {
-                    xCAT::SvrUtils::sendmsg("Error: Unable to get attribute username", $::callback, $node);
-                    delete $data->{$node};
-                    next;
-                }
-                if ($openbmc_hash->{$node}->[0]->{'password'}) {
-                    $data->{$node}->{params}->{password} = $openbmc_hash->{$node}->[0]->{'password'};
-                } elsif ($passwd_hash and $passwd_hash->{password}) {
-                    $data->{$node}->{params}->{password} = $passwd_hash->{password};
-                } else {
-                    xCAT::SvrUtils::sendmsg("Error: Unable to get attribute password", $::callback, $node);
-                    delete $data->{$node};
-                    next;
-                }
-                if ($openbmc_hash->{$node}->[0]->{'consport'}) {
-                    $data->{$node}->{params}->{consport} = $openbmc_hash->{$node}->[0]->{'consport'};
-                } else {
-                    $data->{$node}->{params}->{port} = $bmc_cons_port;
-                }
-                $data->{$node}->{name} = $node;
-                $data->{$node}->{driver} = "ssh";
-            }
-        }
-    }
-    return $data;
-}
-
 sub start_goconserver {
     my ($rsp, $running, $ready, $ret);
     unless (-x "/usr/bin/goconserver") {
@@ -357,7 +271,7 @@ sub makegocons {
         }
     }
     my (@nodes);
-    my $data = gen_request_data(\%cons_map, $siteondemand);
+    my $data = xCAT::Goconserver::gen_request_data(\%cons_map, $siteondemand, $isSN, $::callback);
     if (! $data) {
         xCAT::SvrUtils::sendmsg([ 1, "Could not generate the request data" ], $::callback);
         return 1;
