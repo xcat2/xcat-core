@@ -14,7 +14,7 @@ if [[ ! -f /etc/lsb-release ]]; then
 fi
 . /etc/lsb-release
 # Check the necessary commands before starting the build
-for cmd in dh dpkg-buildpackage
+for cmd in dch dpkg-buildpackage
 do
     if ! type "$cmd" >/dev/null 2>&1
     then
