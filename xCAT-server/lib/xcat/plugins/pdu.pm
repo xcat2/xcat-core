@@ -480,6 +480,7 @@ sub powerstat {
                 } else {
                     xCAT::SvrUtils::sendmsg("ERROR: No snmpuser or Security level defined for snmpV3 configuration", $callback,$pdu);
                     xCAT::SvrUtils::sendmsg("    use chdef command to add pdu snmpV3 attributes to pdu table", $callback,$pdu);
+                    xCAT::SvrUtils::sendmsg("    ex:  chdef coral-pdu snmpversion=3, snmpuser=admin, authtype=MD5 authkey=password1 privtype=DES privkey=password2 seclevel=authPriv", $callback,$pdu);
                     xCAT::SvrUtils::sendmsg("    then run 'rspconfig $pdu snmpcfg' command ", $callback,$pdu);
                     next;
                 }
