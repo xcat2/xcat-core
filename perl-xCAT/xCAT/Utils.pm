@@ -4949,4 +4949,24 @@ sub natural_sort_cmp($$) {
     }
 }
 
+#--------------------------------------------------------------------------------
+
+=head3  console_sleep
+      A wrap for sleep subroutine, if goconserver is used, just exit immidiately
+      as goconserver has its own sleep mechanism.
+=cut
+
+#--------------------------------------------------------------------------------
+sub console_sleep {
+    my $time = shift;
+    my $message = shift;
+    if($ENV{CONSOLE_TYPE} && $ENV{CONSOLE_TYPE} eq "gocons") {
+        # sleep time is handled by goconserver itself
+        exit(1);
+    }
+    print $message if $message;
+    sleep($time);
+}
+
+
 1;
