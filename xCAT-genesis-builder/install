@@ -7,6 +7,7 @@ dracut_install grep ip hostname /usr/bin/awk egrep grep dirname expr
 dracut_install mount.nfs sshd vi reboot lspci parted screen mkfs mkfs.ext4 mkfs.xfs xfs_db #mkfs.btrfs removed
 #dracut_install libvirtd /usr/share/libvirt/cpu_map.xml /usr/bin/qemu-img /usr/libexec/qemu-kvm
 dracut_install mkswap df brctl vconfig ifenslave ssh-keygen scp clear dhclient lldpad
+dracut_install /lib64/libnss_dns-2.12.so /lib64/libnss_dns.so.2
 dracut_install poweroff ntpq ntpd ntp-wait hwclock date /usr/share/terminfo/x/xterm /usr/share/terminfo/s/screen /etc/nsswitch.conf /etc/services
 dracut_install /sbin/rsyslogd /etc/protocols umount /bin/rpm /usr/lib/rpm/rpmrc
 dracut_install chmod /sbin/route /sbin/ifconfig /usr/bin/whoami /usr/bin/head /usr/bin/tail basename /etc/redhat-release ping tr lsusb /usr/share/hwdata/usb.ids #ibm fw wrapper requirements
@@ -587,6 +588,7 @@ inst_dir /var/lib/nfs/statd/sm
 inst_dir /var/lib/nfs/statd/sm.bak
 inst_dir /var/lib/nfs/rpc_pipefs/nfs
 inst "/bin/bash" "/bin/sh"
+inst "/lib64/libnss_dns-2.12.so"
 inst "/lib/terminfo/l/linux" "/lib/terminfo/l/linux"
 inst "/lib/terminfo/v/vt100" "/lib/terminfo/v/vt100"
 inst_hook cmdline 10 "$moddir/xcat-cmdline.sh" 
