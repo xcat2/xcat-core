@@ -104,7 +104,7 @@ sub check_pr_format{
         my $pr_milestone = $pr_content->{milestone};
 
         #print "[check_pr_format] Dumper pr_content:\n";
-        #print Dumper $pr_content;
+        print Dumper $pr_content;
         print "[check_pr_format] pr title = $pr_title\n";
         print "[check_pr_format] pr body = $pr_body \n";
         
