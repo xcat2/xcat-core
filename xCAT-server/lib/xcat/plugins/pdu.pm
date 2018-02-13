@@ -44,9 +44,7 @@ my $VERBOSE = 0;
 my %allerrornodes = ();
 my $callback;
 my $pdutab;
-my @pduents;
-my $pdunodes;
-
+my $pduhash;
 
 
 #-------------------------------------------------------
@@ -170,6 +168,19 @@ sub process_request
         @exargs = @$extrargs;
     }
 
+    # get all entries from pdu table
+    my @attrs=();
+    my $schema = xCAT::Table->getTableSchema('pdu');
+    my $desc   = $schema->{descriptions};
+    foreach my $c (@{ $schema->{cols} }) {
+        push @attrs, $c;
+    }
+
+    $pdutab = xCAT::Table->new('pdu');
+    if ($pdutab) {
+        $pduhash = $pdutab->getAllNodeAttribs(\@attrs, 1);
+    }
+
     if( $command eq "rinv") {
         #for higher performance, handle node in batch
         return showMFR($noderange, $callback);
@@ -279,9 +290,6 @@ sub powerpdu {
         return powerstat($noderange, $callback);
     }
 
-    my $pdutab = xCAT::Table->new('pdu');
-    my $pduhash = $pdutab->getNodesAttribs($noderange, ['pdutype','outlet']);
-
     foreach my $node (@$noderange) {
         if ($pduhash->{$node}->[0]->{pdutype} eq 'crpdu') {
             process_relay($node,$subcmd,$callback,1,3);
@@ -346,8 +354,6 @@ sub powerpduoutlet {
 
     my $nodetab = xCAT::Table->new('pduoutlet');
     my $nodepdu = $nodetab->getNodesAttribs($noderange,['pdu']);
-    my $pdutab = xCAT::Table->new('pdu');
-    my $pduhash = $pdutab->getNodesAttribs($noderange, ['pdutype','outlet']);
 
     foreach my $node (@$noderange) {
         # the pdu attribute needs to be set
@@ -444,12 +450,10 @@ sub powerstat {
     my $callback = shift;
     my $output;
 
-    my $pdutab = xCAT::Table->new('pdu');
-    my $pduhash = $pdutab->getNodesAttribs($noderange, ['pdutype','outlet','snmpversion','snmpuser','authtype','authkey','privtype','privkey','seclevel']);
-
     foreach my $pdu (@$noderange) {
         if ($pduhash->{$pdu}->[0]->{pdutype} eq 'crpdu') {
             my $snmpversion = $pduhash->{$pdu}->[0]->{snmpversion};
+            my $snmpcmd;
             if ($snmpversion =~ /3/) {
                 my $snmpuser = $pduhash->{$pdu}->[0]->{snmpuser};
                 my $seclevel = $pduhash->{$pdu}->[0]->{seclevel};
@@ -469,7 +473,6 @@ sub powerstat {
                             $privkey=$authkey;
                         }
                     }
-                    my $snmpcmd;
                     if ($seclevel eq "authNoPriv") {
                         $snmpcmd = "snmpwalk -v3 -u $snmpuser -a $authtype -A $authkey -l $seclevel"; 
                     } elsif ($seclevel eq "authPriv") {
@@ -477,16 +480,20 @@ sub powerstat {
                     } else {   #default to notAuthNoPriv
                         $snmpcmd = "snmpwalk -v3 -u $snmpuser -l $seclevel"; 
                     }
-
-                    for (my $relay = 1; $relay <= 3; $relay++) {
-                        relaystat($pdu, $relay, $snmpcmd, $callback);
-                    }
+                } else {
+                    xCAT::SvrUtils::sendmsg("ERROR: No snmpuser or Security level defined for snmpV3 configuration", $callback,$pdu);
+                    xCAT::SvrUtils::sendmsg("    use chdef command to add pdu snmpV3 attributes to pdu table", $callback,$pdu);
+                    xCAT::SvrUtils::sendmsg("    ex:  chdef coral-pdu snmpversion=3, snmpuser=admin, authtype=MD5 authkey=password1 privtype=DES privkey=password2 seclevel=authPriv", $callback,$pdu);
+                    xCAT::SvrUtils::sendmsg("    then run 'rspconfig $pdu snmpcfg' command ", $callback,$pdu);
                     next;
                 }
-           } 
-            xCAT::SvrUtils::sendmsg("please config snmpv3 to be able to query pdu relay status", $callback,$pdu);
-            xCAT::SvrUtils::sendmsg("    use chdef command to add pdu snmpv3 attributes to pdu table", $callback);
-            xCAT::SvrUtils::sendmsg("    then run 'rspconfig $pdu snmpcfg' command ", $callback);
+            } else { 
+                # use default value
+                $snmpcmd = "snmpwalk -v3 -u admin -a MD5 -A password1 -l authPriv -x DES -X password2";
+            } 
+            for (my $relay = 1; $relay <= 3; $relay++) {
+                relaystat($pdu, $relay, $snmpcmd, $callback);
+            }
             next;
         }
         my $session = connectTopdu($pdu,$callback);
@@ -551,8 +558,16 @@ sub connectTopdu {
     my $pdu = shift;
     my $callback = shift;
 
+    #get community string from pdu table if defined,
+    #otherwise, use default
+    my $community;
+    if ($pduhash->{$pdu}->[0]->{community}) {
+        $community = $pduhash->{$pdu}->[0]->{community};
+    } else {
+        $community = "public";
+    }
+
     my $snmpver = "1";
-    my $community = "public";
     my $session;
     my $msg = "connectTopdu";
     my $versionoid = ".1.3.6.1.4.1.2.6.223.7.3.0";
@@ -627,9 +642,6 @@ sub process_netcfg {
     my $pdu = @$nodes[0];
     my $rsp = {};
 
-    my $pdutab = xCAT::Table->new('pdu');
-    my $pduhash = $pdutab->getNodesAttribs($nodes, ['pdutype']);
-
     my $nodetab = xCAT::Table->new('hosts');
     my $nodehash = $nodetab->getNodesAttribs($nodes,['ip','otherinterfaces']);
     my $static_ip = $nodehash->{$pdu}->[0]->{ip};
@@ -640,9 +652,10 @@ sub process_netcfg {
         return;
     }
 
-
     # connect to PDU
-    ($exp, $errstr) = session_connect($static_ip, $discover_ip);
+    my $username = $pduhash->{$pdu}->[0]->{username};
+    my $password = $pduhash->{$pdu}->[0]->{password};
+    ($exp, $errstr) = session_connect($static_ip, $discover_ip,$username,$password);
     if (defined $errstr) {
         xCAT::SvrUtils::sendmsg("Failed to connect", $callback,$pdu);
         return;
@@ -711,19 +724,12 @@ sub process_sshcfg {
     my $subcmd = shift;
     my $callback = shift;
 
-    #this is default password for CoralPDU
-    my $password = "password8";
-    my $userid = "root";
-    my $timeout = 30;
     my $keyfile = "/root/.ssh/id_rsa.pub";
     my $rootkey = `cat /root/.ssh/id_rsa.pub`;
     my $cmd;
 
     my $nodetab = xCAT::Table->new('hosts');
     my $nodehash = $nodetab->getNodesAttribs($noderange,['ip','otherinterfaces']);
-
-    my $pdutab = xCAT::Table->new('pdu');
-    my $pduhash = $pdutab->getNodesAttribs($noderange, ['pdutype']);
 
     foreach my $pdu (@$noderange) {
         unless ($pduhash->{$pdu}->[0]->{pdutype} eq "crpdu") {
@@ -740,7 +746,10 @@ sub process_sshcfg {
 
         my $static_ip = $nodehash->{$pdu}->[0]->{ip};
         my $discover_ip = $nodehash->{$pdu}->[0]->{otherinterfaces};
-        my ($exp, $errstr) = session_connect($static_ip, $discover_ip);
+        my $username = $pduhash->{$pdu}->[0]->{username};
+        my $password = $pduhash->{$pdu}->[0]->{password};
+
+        my ($exp, $errstr) = session_connect($static_ip, $discover_ip,$username,$password);
         if (!defined $exp) {
             $msg = " Failed to connect $errstr";
             xCAT::SvrUtils::sendmsg($msg, $callback, $pdu, %allerrornodes);
@@ -773,10 +782,17 @@ sub process_sshcfg {
 sub session_connect {
     my $static_ip   = shift;
     my $discover_ip   = shift;
+    my $userid = shift;
+    my $password = shift;
 
     #default password for coral pdu
-    my $password = "password8";
-    my $userid = "root";
+    if (!defined $userid) {
+        $userid = "root";
+    }
+    if (!defined $password) {
+        $password = "password8";
+    }
+
     my $timeout = 30;
 
     my $ssh_ip;
@@ -913,9 +929,6 @@ sub showMFR {
     my $nodetab = xCAT::Table->new('hosts');
     my $nodehash = $nodetab->getNodesAttribs($noderange,['ip','otherinterfaces']);
 
-    my $pdutab = xCAT::Table->new('pdu');
-    my $pduhash = $pdutab->getNodesAttribs($noderange, ['pdutype']);
-
     foreach my $pdu (@$noderange) {
         unless ($pduhash->{$pdu}->[0]->{pdutype} eq "crpdu") {
             rinv_for_irpdu($pdu, $callback);
@@ -925,7 +938,10 @@ sub showMFR {
         # connect to PDU
         my $static_ip = $nodehash->{$pdu}->[0]->{ip};
         my $discover_ip = $nodehash->{$pdu}->[0]->{otherinterfaces};
-        my ($exp, $errstr) = session_connect($static_ip, $discover_ip);
+        my $username = $pduhash->{$pdu}->[0]->{username};
+        my $password = $pduhash->{$pdu}->[0]->{password};
+
+        my ($exp, $errstr) = session_connect($static_ip, $discover_ip,$username,$password);
         if (defined $errstr) {
             xCAT::SvrUtils::sendmsg("Failed to connect: $errstr", $callback);
         }
@@ -1020,9 +1036,6 @@ sub showMonitorData {
     my $nodetab = xCAT::Table->new('hosts');
     my $nodehash = $nodetab->getNodesAttribs($noderange,['ip','otherinterfaces']);
 
-    my $pdutab = xCAT::Table->new('pdu');
-    my $pduhash = $pdutab->getNodesAttribs($noderange, ['pdutype']);
-
     foreach my $pdu (@$noderange) {
         unless ($pduhash->{$pdu}->[0]->{pdutype} eq "crpdu") {
             my $session = connectTopdu($pdu,$callback);
@@ -1043,7 +1056,10 @@ sub showMonitorData {
         # connect to PDU
         my $static_ip = $nodehash->{$pdu}->[0]->{ip};
         my $discover_ip = $nodehash->{$pdu}->[0]->{otherinterfaces};
-        my ($exp, $errstr) = session_connect($static_ip, $discover_ip);
+        my $username = $pduhash->{$pdu}->[0]->{username};
+        my $password = $pduhash->{$pdu}->[0]->{password};
+
+        my ($exp, $errstr) = session_connect($static_ip, $discover_ip,$username,$password);
 
         my $ret;
         my $err;
@@ -1137,7 +1153,7 @@ sub relaystat {
     } elsif ( $stat eq "0" ) {
         xCAT::SvrUtils::sendmsg(" relay $relay is off", $callback, $pdu, %allerrornodes);
     } else {
-        xCAT::SvrUtils::sendmsg(" relay $relay is unknown", $callback, $pdu, %allerrornodes);
+        xCAT::SvrUtils::sendmsg(" relay $relay is $stat=unknown", $callback, $pdu, %allerrornodes);
     }
 
     return;
@@ -1211,11 +1227,13 @@ sub process_relay {
 
     my $nodetab = xCAT::Table->new('hosts');
     my $nodehash = $nodetab->getNodeAttribs($pdu,['ip','otherinterfaces']);
+    my $username = $pduhash->{$pdu}->[0]->{username};
+    my $passwd = $pduhash->{$pdu}->[0]->{password};
 
     # connect to PDU
     my $static_ip = $nodehash->{$pdu}->[0]->{ip};
     my $discover_ip = $nodehash->{$pdu}->[0]->{otherinterfaces};
-    my ($session, $errstr) = session_connect($static_ip, $discover_ip);
+    my ($session, $errstr) = session_connect($static_ip, $discover_ip,$username,$passwd);
 
     my $ret;
     my $err;
@@ -1288,9 +1306,6 @@ sub process_snmpcfg {
     my $nodetab = xCAT::Table->new('hosts');
     my $nodehash = $nodetab->getNodesAttribs($noderange,['ip','otherinterfaces']);
 
-    my $pdutab = xCAT::Table->new('pdu');
-    my $pduhash = $pdutab->getNodesAttribs($noderange, ['pdutype','community','snmpversion','snmpuser','authtype','authkey','privtype','privkey','seclevel']);
-
     foreach my $pdu (@$noderange) {
         unless ($pduhash->{$pdu}->[0]->{pdutype} eq "crpdu") {
             xCAT::SvrUtils::sendmsg("This command only supports CONSTELLATION PDU with pdutype=crpdu", $callback,$pdu);
@@ -1320,7 +1335,10 @@ sub process_snmpcfg {
         # connect to PDU
         my $static_ip = $nodehash->{$pdu}->[0]->{ip};
         my $discover_ip = $nodehash->{$pdu}->[0]->{otherinterfaces};
-        my ($exp, $errstr) = session_connect($static_ip, $discover_ip);
+        my $username = $pduhash->{$pdu}->[0]->{username};
+        my $password = $pduhash->{$pdu}->[0]->{password};
+
+        my ($exp, $errstr) = session_connect($static_ip, $discover_ip,$username,$password);
 
         my $ret;
         my $err;
@@ -1390,10 +1408,19 @@ sub netcfg_for_irpdu {
         @exargs = @$extrargs;
     }
 
+    #get user/password from pdu table if defined
     #default password for irpdu
     my $passwd = "1001";
     my $username = "ADMIN";
-    my $timeout = 20;
+
+    if ($pduhash->{$pdu}->[0]->{username}) {
+        $username = $pduhash->{$pdu}->[0]->{username};
+    }
+    if ($pduhash->{$pdu}->[0]->{password}) {
+        $passwd = $pduhash->{$pdu}->[0]->{password};
+    }
+
+    my $timeout = 10;
     my $send_change = "N";
   
     my $login_ip;
@@ -1496,11 +1523,11 @@ sub netcfg_for_irpdu {
         ],
     );
 
-    if (defined($result[1]))
+    if (defined($result[1])) 
     {
         my $errmsg = $result[1];
         $mypdu->soft_close();
-        xCAT::SvrUtils::sendmsg("Failed expect command $errmsg", $callback);
+        xCAT::SvrUtils::sendmsg("Failed expect command: $errmsg", $callback,$pdu);
         return;
     }
     $mypdu->soft_close();
