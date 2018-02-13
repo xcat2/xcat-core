@@ -102,7 +102,7 @@ sub check_pr_format{
         my $pr_title = $pr_content->{title};
         my $pr_body  = $pr_content->{body};
         my $pr_milestone = $pr_content->{milestone};
-        my $pr_labels = $pr_content->{labels};
+        my $pr_labels_len = @{$pr_content->{labels}};
 
         #print "[check_pr_format] Dumper pr_content:\n";
         #print Dumper $pr_content;
@@ -121,7 +121,7 @@ sub check_pr_format{
              $checkrst.="Miss milestone.";
         }
 
-        if(! $pr_labels){
+        if(! $pr_labels_len){
              $checkrst.="Miss labels.";
         }
 
