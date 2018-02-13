@@ -141,6 +141,15 @@ FIRM_URLS = {
     }
 }
 
+RSPCONFIG_NETINFO_URL = {
+    'get_netinfo': "/network/enumerate",
+    'hostname': "/network/config/attr/HostName",
+    'nic_ip': "/network/#NIC#/action/IP",
+    'vlan': "/network/action/VLAN",
+    'ipdhcp': "/network/action/Reset",
+    'ntpserver': "/network/#NIC#/attr/NTPServers",
+}
+
 RSPCONFIG_APIS = {
     'autoreboot' : {
         'baseurl': "/control/host0/auto_reboot/",
@@ -510,6 +519,9 @@ class OpenBMCRest(object):
         if attr_info.has_key('get_data'):
             data={"data": attr_info['get_data']}
         return self.request(method, get_url, payload=data, cmd="get_%s" % key)
+
+    def get_netinfo(self):
+        return self.request('GET', RSPCONFIG_NETINFO_URL['get_netinfo'], cmd="get_netinfo")
 
 class OpenBMCImage(object):
     def __init__(self, rawid, data=None):
