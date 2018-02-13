@@ -44,9 +44,7 @@ my $VERBOSE = 0;
 my %allerrornodes = ();
 my $callback;
 my $pdutab;
-my @pduents;
-my $pdunodes;
-
+my $pduhash;
 
 
 #-------------------------------------------------------
@@ -170,6 +168,19 @@ sub process_request
         @exargs = @$extrargs;
     }
 
+    # get all entries from pdu table
+    my @attrs=();
+    my $schema = xCAT::Table->getTableSchema('pdu');
+    my $desc   = $schema->{descriptions};
+    foreach my $c (@{ $schema->{cols} }) {
+        push @attrs, $c;
+    }
+
+    $pdutab = xCAT::Table->new('pdu');
+    if ($pdutab) {
+        $pduhash = $pdutab->getAllNodeAttribs(\@attrs, 1);
+    }
+
     if( $command eq "rinv") {
         #for higher performance, handle node in batch
         return showMFR($noderange, $callback);
@@ -279,9 +290,6 @@ sub powerpdu {
         return powerstat($noderange, $callback);
     }
 
-    my $pdutab = xCAT::Table->new('pdu');
-    my $pduhash = $pdutab->getNodesAttribs($noderange, ['pdutype','outlet']);
-
     foreach my $node (@$noderange) {
         if ($pduhash->{$node}->[0]->{pdutype} eq 'crpdu') {
             process_relay($node,$subcmd,$callback,1,3);
@@ -346,8 +354,6 @@ sub powerpduoutlet {
 
     my $nodetab = xCAT::Table->new('pduoutlet');
     my $nodepdu = $nodetab->getNodesAttribs($noderange,['pdu']);
-    my $pdutab = xCAT::Table->new('pdu');
-    my $pduhash = $pdutab->getNodesAttribs($noderange, ['pdutype','outlet']);
 
     foreach my $node (@$noderange) {
         # the pdu attribute needs to be set
@@ -443,9 +449,6 @@ sub powerstat {
     my $noderange = shift;
     my $callback = shift;
     my $output;
-
-    my $pdutab = xCAT::Table->new('pdu');
-    my $pduhash = $pdutab->getNodesAttribs($noderange, ['pdutype','outlet','snmpversion','snmpuser','authtype','authkey','privtype','privkey','seclevel']);
 
     foreach my $pdu (@$noderange) {
         if ($pduhash->{$pdu}->[0]->{pdutype} eq 'crpdu') {
@@ -558,10 +561,8 @@ sub connectTopdu {
     #get community string from pdu table if defined,
     #otherwise, use default
     my $community;
-    my $pdutab = xCAT::Table->new('pdu');
-    my $pduent = $pdutab->getNodeAttribs($pdu, ['community']);
-    if ($pduent->{community}) {
-        $community = $pduent->{community};
+    if ($pduhash->{$pdu}->[0]->{community}) {
+        $community = $pduhash->{$pdu}->[0]->{community};
     } else {
         $community = "public";
     }
@@ -640,9 +641,6 @@ sub process_netcfg {
 
     my $pdu = @$nodes[0];
     my $rsp = {};
-
-    my $pdutab = xCAT::Table->new('pdu');
-    my $pduhash = $pdutab->getNodesAttribs($nodes, ['pdutype','username','password']);
 
     my $nodetab = xCAT::Table->new('hosts');
     my $nodehash = $nodetab->getNodesAttribs($nodes,['ip','otherinterfaces']);
@@ -732,9 +730,6 @@ sub process_sshcfg {
 
     my $nodetab = xCAT::Table->new('hosts');
     my $nodehash = $nodetab->getNodesAttribs($noderange,['ip','otherinterfaces']);
-
-    my $pdutab = xCAT::Table->new('pdu');
-    my $pduhash = $pdutab->getNodesAttribs($noderange, ['pdutype','username','password']);
 
     foreach my $pdu (@$noderange) {
         unless ($pduhash->{$pdu}->[0]->{pdutype} eq "crpdu") {
@@ -934,9 +929,6 @@ sub showMFR {
     my $nodetab = xCAT::Table->new('hosts');
     my $nodehash = $nodetab->getNodesAttribs($noderange,['ip','otherinterfaces']);
 
-    my $pdutab = xCAT::Table->new('pdu');
-    my $pduhash = $pdutab->getNodesAttribs($noderange, ['pdutype','username','password']);
-
     foreach my $pdu (@$noderange) {
         unless ($pduhash->{$pdu}->[0]->{pdutype} eq "crpdu") {
             rinv_for_irpdu($pdu, $callback);
@@ -1043,9 +1035,6 @@ sub showMonitorData {
 
     my $nodetab = xCAT::Table->new('hosts');
     my $nodehash = $nodetab->getNodesAttribs($noderange,['ip','otherinterfaces']);
-
-    my $pdutab = xCAT::Table->new('pdu');
-    my $pduhash = $pdutab->getNodesAttribs($noderange, ['pdutype','username','password']);
 
     foreach my $pdu (@$noderange) {
         unless ($pduhash->{$pdu}->[0]->{pdutype} eq "crpdu") {
@@ -1238,10 +1227,8 @@ sub process_relay {
 
     my $nodetab = xCAT::Table->new('hosts');
     my $nodehash = $nodetab->getNodeAttribs($pdu,['ip','otherinterfaces']);
-    my $pdutab = xCAT::Table->new('pdu');
-    my $pduent = $pdutab->getNodeAttribs($pdu, ['username','password']);
-    my $username = $pduent->{username};
-    my $passwd = $pduent->{password};
+    my $username = $pduhash->{$pdu}->[0]->{username};
+    my $passwd = $pduhash->{$pdu}->[0]->{password};
 
     # connect to PDU
     my $static_ip = $nodehash->{$pdu}->[0]->{ip};
@@ -1318,9 +1305,6 @@ sub process_snmpcfg {
 
     my $nodetab = xCAT::Table->new('hosts');
     my $nodehash = $nodetab->getNodesAttribs($noderange,['ip','otherinterfaces']);
-
-    my $pdutab = xCAT::Table->new('pdu');
-    my $pduhash = $pdutab->getNodesAttribs($noderange, ['pdutype','community','username','password','snmpversion','snmpuser','authtype','authkey','privtype','privkey','seclevel']);
 
     foreach my $pdu (@$noderange) {
         unless ($pduhash->{$pdu}->[0]->{pdutype} eq "crpdu") {
@@ -1428,15 +1412,12 @@ sub netcfg_for_irpdu {
     #default password for irpdu
     my $passwd = "1001";
     my $username = "ADMIN";
-    my $pdutab = xCAT::Table->new('pdu');
-    my $pduent = $pdutab->getNodeAttribs($pdu, ['username','password']);
-    if ($pduent) {
-        if ($pduent->{username}) {
-            $username = $pduent->{username};
-        }
-        if ($pduent->{password}) {
-            $passwd = $pduent->{password};
-        }
+
+    if ($pduhash->{$pdu}->[0]->{username}) {
+        $username = $pduhash->{$pdu}->[0]->{username};
+    }
+    if ($pduhash->{$pdu}->[0]->{password}) {
+        $passwd = $pduhash->{$pdu}->[0]->{password};
     }
 
     my $timeout = 10;
