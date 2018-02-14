@@ -191,7 +191,7 @@ sub start_goconserver {
     }
     # if goconserver is installed, check the status of conserver service.
     if (xCAT::Goconserver::is_conserver_running()) {
-        $rsp->{data}->[0] = "conserver is started, please stop it at first.";
+        $rsp->{data}->[0] = "conserver is running, did you mean 'makeconservercf'? If not, stop conserver and retry.";
         xCAT::MsgUtils->message("E", $rsp, $::callback);
         return 1;
     }
