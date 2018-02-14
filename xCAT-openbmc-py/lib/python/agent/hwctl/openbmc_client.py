@@ -143,7 +143,6 @@ FIRM_URLS = {
 
 RSPCONFIG_NETINFO_URL = {
     'get_netinfo': "/network/enumerate",
-    'hostname': "/network/config/attr/HostName",
     'nic_ip': "/network/#NIC#/action/IP",
     'vlan': "/network/action/VLAN",
     'ipdhcp': "/network/action/Reset",
@@ -151,6 +150,11 @@ RSPCONFIG_NETINFO_URL = {
 }
 
 RSPCONFIG_APIS = {
+    'hostname': {
+        'baseurl': "/network/config/",
+        'set_url': "attr/HostName",
+        'display_name': "BMC Hostname",
+    },
     'autoreboot' : {
         'baseurl': "/control/host0/auto_reboot/",
         'set_url': "attr/AutoReboot",
@@ -522,6 +526,9 @@ class OpenBMCRest(object):
 
     def get_netinfo(self):
         return self.request('GET', RSPCONFIG_NETINFO_URL['get_netinfo'], cmd="get_netinfo")
+
+    def set_ipdhcp(self):
+        return self.request('PUT', RSPCONFIG_NETINFO_URL['ipdhcp'], cmd="set_bmcip_dhcp")
 
 class OpenBMCImage(object):
     def __init__(self, rawid, data=None):

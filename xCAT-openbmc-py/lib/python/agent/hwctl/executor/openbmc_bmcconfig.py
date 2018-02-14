@@ -96,7 +96,20 @@ rmdir \"/tmp/$userid\" \n")
 
 
     def set_ipdhcp(self, **kw):
-        return self.callback.info("set_ipdhcp")
+        node = kw['node']
+        obmc = openbmc.OpenBMCRest(name=node, nodeinfo=kw['nodeinfo'], messager=self.callback,
+                                   debugmode=self.debugmode, verbose=self.verbose)
+        try:
+            obmc.login()
+            obmc.set_ipdhcp(key)
+        except (SelfServerException, SelfClientException) as e:
+            self.callback.info("%s: %s" % (node, e.message))
+
+        self.callback.info("%s: BMC Setting IP to DHCP..." % (node))
+        try:
+            obmc.reboot_bmc()
+        except (SelfServerException, SelfClientException) as e:
+            self.callback.info("%s: %s" % (node, e.message))
 
     def get_attributes(self, attributes, **kw):
         netinfo_dict={}
@@ -127,18 +140,22 @@ rmdir \"/tmp/$userid\" \n")
                 return self.callback.error("set_attributes unsupported attribute:%s" % k)
         if len(netinfo_dict) > 1 and (not netinfo_dict.has_key('ip') or not netinfo_dict.has_key('netmask') or not netinfo_dict.has_key('gateway')):
             self.callback.info("set_attributes miss either ip, netmask or gateway to set network information")
+        elif len(netinfo_dict) <= 1:
+            return
         else:
             self._set_netinfo(netinfo_dict['ip'], netinfo_dict['netmask'],
                               netinfo_dict['gateway'], netinfo_dict['vlan'])
 
     def _set_hostname(self, hostname, **kw):
+        node = kw['node']
         if hostname == '*':
-            if kw['nodeinfo']['bmc'] != kw['nodeinfo']['bmcip']:
-                hostname = kw['nodeinfo']['bmc']
-            else:
-                hostname = '%s-bmc' % kw['node']
-        return self.callback.info("set_hostname: %s" % hostname)
-
+            if kw['nodeinfo']['bmc'] == kw['nodeinfo']['bmcip']:
+                self.callback.info("%s: set BMC ip as BMC Hostname" % node)
+            hostname = kw['nodeinfo']['bmc']
+        self._set_apis_values("hostname", hostname, **kw)
+        self._get_netinfo(hostname=True, ntpserver=False, **kw) 
+        return
+        
     def _set_apis_values(self, key, value, **kw):
         node = kw['node']
         obmc = openbmc.OpenBMCRest(name=node, nodeinfo=kw['nodeinfo'], messager=self.callback,
@@ -266,3 +283,5 @@ rmdir \"/tmp/$userid\" \n")
             for i in ntpserver_list:
                 self.callback.info("%s: %s" % (node, i))
         return
+    def get_netinfo(self, ip=False, ipsrc=False, netmask=False, gateway=False, vlan=False, hostname=False, ntpserver=True, **kw):
+
