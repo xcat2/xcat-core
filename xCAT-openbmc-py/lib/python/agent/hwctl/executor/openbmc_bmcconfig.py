@@ -11,9 +11,12 @@ from common import utils
 from common.task import ParallelNodesCommand
 from common.exceptions import SelfClientException, SelfServerException
 from hwctl import openbmc_client as openbmc
-#from paramiko import SSHClient
-from pssh.pssh_client import ParallelSSHClient
-from gevent import joinall
+
+#For rspconfig sshcfg
+from pssh.ssh_client import SSHClient
+from pssh.exceptions import UnknownHostException, AuthenticationException, \
+     ConnectionErrorException, SSHException
+from scp import SCPClient
 
 import logging
 logger = logging.getLogger('xcatagent')
@@ -40,8 +43,12 @@ class OpenBMCBmcConfigTask(ParallelNodesCommand):
     def dump_process(self, **kw):
         return self.callback.info("dump_process: trigger, list and download")
 
-    def _create_copy_file(self, filename):
-        f = open(filename, 'w')
+    def pre_set_sshcfg(self, *arg, **kw):
+        local_home_dir=os.path.expanduser('~')
+        self.local_ssh_dir = local_home_dir + "/.ssh/"
+        self.local_public_key = self.local_ssh_dir + "id_rsa.pub"
+        self.copy_sh_file = self.local_ssh_dir + "./copy.sh"
+        f = open(self.copy_sh_file, 'w')
         f.write("#!/bin/sh \n\
 umask 0077 \n\
 userid=$1 \n\
@@ -53,52 +60,40 @@ else \n\
   dest_dir=\"$home/.ssh\" \n\
 fi \n\
 mkdir -p $dest_dir \n\
-cat /tmp/$userid/.ssh/id_rsa.pub >> $dest_dir/authorized_keys 2>&1 \n\
+cat /tmp/$userid/.ssh/id_rsa.pub >> $home/.ssh/authorized_keys 2>&1 \n\
 rm -f /tmp/$userid/.ssh/* 2>&1 \n\
 rmdir \"/tmp/$userid/.ssh\" \n\
 rmdir \"/tmp/$userid\" \n")
 
         f.close()
-        os.chmod(filename,stat.S_IRWXU)
-        return
-
-    def _prepare_hosts_cfg(self, nodesinfo):
-        host_config = {}
-        for node in nodesinfo.keys():
-            nodeinfo = nodesinfo[node]
-            utils.update2Ddict(host_config, nodeinfo['bmcip'], 'user', nodeinfo['username'])
-            utils.update2Ddict(host_config, nodeinfo['bmcip'], 'password', nodeinfo['password'])
-        return host_config 
-
-    def pre_set_sshcfg(self, *arg, **kw):
-        self.callback.syslog("Run into pre_set_sshcfg")
-        local_home_dir=os.path.expanduser('~')
-        local_ssh_dir = local_home_dir + "/.ssh/"
-        local_public_key = local_ssh_dir + "id_rsa.pub"
-        copy_sh_file = local_ssh_dir + "./copy.sh"
-        tmp_remote_dir = "/tmp/root/.ssh/"
-        self._create_copy_file(copy_sh_file) 
-        self.callback.syslog("Generate %s file done" % copy_sh_file)
-        hosts_config = self._prepare_hosts_cfg(self.inventory)
-
-        self.callback.syslog("Start to run SSH parallelly")
-        client = ParallelSSHClient(hosts_config.keys(), host_config=hosts_config)
-        self.callback.syslog("mkdir -p %s" % tmp_remote_dir)
-        client.run_command("/bin/mkdir -p %s" % tmp_remote_dir)
-        self.callback.info("Copy files to remote hosts: %s-->%s" % (local_ssh_dir, tmp_remote_dir))
-        nodes_copy = client.copy_file(local_ssh_dir, tmp_remote_dir, recurse=True)
-        try:
-            joinall(nodes_copy, raise_error=True)
-        except Exception as e:
-            self.callback.info("Error: %s" % e)
-        self.callback.info("run copy.sh")
-        client.run_command("%s/copy.sh root" %(tmp_remote_dir, )) 
-        return
+        os.chmod(self.copy_sh_file,stat.S_IRWXU)
+        self.callback.info("Prepared %s file done" % self.copy_sh_file)
 
     def set_sshcfg(self, **kw):
         node = kw['node']
         nodeinfo = kw['nodeinfo']
-        return self.callback.info("%s: ssh keys copied to %s" %(node, nodeinfo['bmcip']))
+        tmp_remote_dir = "/tmp/%s/.ssh/" % nodeinfo['username']
+        #try: 
+        ssh_client = SSHClient(nodeinfo['bmcip'], user=nodeinfo['username'], password=nodeinfo['password'])
+        #except (SSHException, NoValidConnectionsError,BadHostKeyException) as e: 
+        #    self.callback.info("%s: %s" % (node, e))
+        self.callback.info("ip: %s, name: %s, ps: %s" % (nodeinfo['bmcip'], nodeinfo['username'], nodeinfo['password']))
+        if not ssh_client.client.get_transport().is_active():
+            self.callback.info("SSH session is not active")
+        if not ssh_client.client.get_transport().is_authenticated():
+            self.callback.info("SSH session is not authenticated")
+        try:
+            ssh_client.client.exec_command("/bin/mkdir -p %s\n" % tmp_remote_dir)
+        except (SSHException, ConnectionErrorException) as e: 
+            self.callback.info("%s: ----%s------" % (host, e))
+        scp = SCPClient(ssh_client.client.get_transport()) 
+        scp.put(self.copy_sh_file, tmp_remote_dir + "copy.sh")
+        scp.put(self.local_public_key, tmp_remote_dir + "id_rsa.pub")
+        ssh_client.client.exec_command("%s/copy.sh %s" % (tmp_remote_dir, nodeinfo['username']))
+        ssh_client.client.close()
+        return self.callback.info("ssh keys copied to %s" % nodeinfo['bmcip'])
+
+
 
     def set_ipdhcp(self, **kw):
         return self.callback.info("set_ipdhcp")
