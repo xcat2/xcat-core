@@ -141,6 +141,8 @@ FIRM_URLS = {
     }
 }
 
+EVENTLOG_URL = "/logging/enumerate"
+
 RSPCONFIG_APIS = {
     'autoreboot' : {
         'baseurl': "/control/host0/auto_reboot/",
@@ -485,6 +487,18 @@ class OpenBMCRest(object):
             fw_dict[str(fw)]=fw
 
         return bool(func_list), fw_dict
+
+    def get_eventlog_info(self):
+
+        eventlog_data = self.request('GET', EVENTLOG_URL, cmd='get_eventlog_info')
+        try:
+            eventlog_dict = {}
+            for key, value in eventlog_data.items():
+                self.messager.info("EVENTLOG DATA: key=%s" %key)
+        except KeyError:
+            error = 'Error: Received wrong format response: %s' % eventlog_data
+            raise SelfServerException(error)
+
 
     def set_apis_values(self, key, value):
         attr_info = RSPCONFIG_APIS[key]
