@@ -14,8 +14,8 @@ class BaseManager(object):
         module_name = 'xcatagent.%s' % name
         try:
             __import__(module_name)
-        except ImportError:
-            return None
+        except ImportError as err:
+            raise ImportError(err) 
 
         class_name = MODULE_MAP[name]
         return utils.class_func(module_name, class_name)
