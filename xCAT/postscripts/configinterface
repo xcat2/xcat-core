@@ -9,6 +9,7 @@ fi
 
 xcat_intf="/etc/network/interfaces.d/xCAT.intf"
 
+MASTER=$(cat /var/lib/dhcp/dhclient.eth0.leases |grep cumulus-provision-url|tail -1|awk -F/ '{print $3}')
 if [ -z "$MASTER" ]; then
     echo "xCAT Master unset! Cannot download interface description"
     exit 2
