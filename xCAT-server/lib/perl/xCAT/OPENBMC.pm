@@ -70,19 +70,19 @@ sub acquire_lock {
 }
 sub start_python_agent {
     if (! -e $PYTHON_AGENT_FILE) {
-        xCAT::MsgUtils->message("S", "'$PYTHON_AGENT_FILE' does not exist");
+        xCAT::MsgUtils->message("S", "start_python_agent() Error: '$PYTHON_AGENT_FILE' does not exist");
         return undef;
     }
 
     if (!defined(acquire_lock())) {
-        xCAT::MsgUtils->message("S", "Error: Faild to require lock");
+        xCAT::MsgUtils->message("S", "start_python_agent() Error: Failed to acquire lock");
         return undef;
     }
     my $fd;
     open($fd, '>', $AGENT_SOCK_PATH) && close($fd);
     my $pid = fork;
     if (!defined $pid) {
-        xCAT::MsgUtils->message("S", "Error: Unable to fork process");
+        xCAT::MsgUtils->message("S", "start_python_agent() Error: Unable to fork process");
         return undef;
     }
     $SIG{CHLD} = 'DEFAULT';
@@ -93,7 +93,7 @@ sub start_python_agent {
         open(STDERR, '>>&', \*STDOUT) or die("open: $!");
         my $ret = exec ($PYTHON_AGENT_FILE);
         if (!defined($ret)) {
-            xCAT::MsgUtils->message("S", "Error: Failed to start python agent");
+            xCAT::MsgUtils->message("S", "start_python_agent() Error: Failed to start the xCAT Python agent.");
             exit(1);
         }
     }
@@ -194,7 +194,7 @@ sub wait_agent {
     my ($pid, $callback) = @_;
     waitpid($pid, 0);
     if ($? >> 8 != 0) {
-        xCAT::MsgUtils->message("E", { data => ["python agent exited unexpectedly"] }, $callback);
+        xCAT::MsgUtils->message("E", { data => ["python agent exited unexpectedly. See $PYTHON_LOG_PATH for more details."] }, $callback);
     }
 }
 
