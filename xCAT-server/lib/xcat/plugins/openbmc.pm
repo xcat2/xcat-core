@@ -1581,7 +1581,7 @@ sub parse_command_status {
         if ($subcommand eq "clear") {
             $next_status{LOGIN_RESPONSE} = "REVENTLOG_CLEAR_REQUEST";
             $next_status{REVENTLOG_CLEAR_REQUEST} = "REVENTLOG_CLEAR_RESPONSE";
-        } elsif ($subcommand =~ /resolved=LED/) {
+        } elsif (uc($subcommand) =~ /RESOLVED=LED/) {
             $next_status{LOGIN_RESPONSE} = "REVENTLOG_REQUEST";
             $next_status{REVENTLOG_REQUEST} = "REVENTLOG_RESOLVED_RESPONSE_LED";
         } elsif ($subcommand =~ /resolved=(.+)/) {
