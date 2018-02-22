@@ -990,7 +990,8 @@ sub check_options
             #my @output = xCAT::Utils->runcmd("service $DHCPSERVER status", -1);
             #if ($::RUNCMD_RC != 0)  { # not running
             my $ret = 0;
-            $ret = xCAT::Utils->checkservicestatus("dhcp");
+			# If dhcp is shut off on a master node, then it may still be valid... for now
+            #$ret = xCAT::Utils->checkservicestatus("dhcp");
             if ($ret != 0)
             {
                 my $rsp = {};
@@ -1302,6 +1303,53 @@ sub preprocess_request
                 my $reqcopy = {%$req};
                 $reqcopy->{'_xcatdest'} = $entries[0];
                 push @requests, $reqcopy;
+            } else {
+                  my $nettab = xCAT::Table->new('networks');
+                  my @nets = $nettab->getAllAttribs('dhcpserver');
+                  my @dhcpservers;
+                  foreach (@nets) {
+                       if ($_->{dhcpserver}) {
+                          push @dhcpservers, $_->{dhcpserver};
+                       }
+                  }
+                  my %localnodehash;
+                  my %dispatchhash;
+                  my $nrtab = xCAT::Table->new('noderes');
+                  my $nrents = $nrtab->getNodesAttribs($req->{node}, [qw(tftpserver servicenode)]);
+                  foreach my $node (@{ $req->{node} })
+                  {
+                      my $nodeserver;
+                      my $tent = $nrents->{$node}->[0]; #$nrtab->getNodeAttribs($node, ['tftpserver']);
+                      if ($tent) { $nodeserver = $tent->{tftpserver} }
+                      unless ($tent and $tent->{tftpserver})
+                      {
+                          $tent = $nrents->{$node}->[0]; #$nrtab->getNodeAttribs($node, ['servicenode']);
+                          if ($tent) { $nodeserver = $tent->{servicenode} }
+                      }
+                      if ($nodeserver)
+                      {
+                          foreach my $ns (split /,/, $nodeserver) {
+                              $dispatchhash{$ns}->{$node} = 1;
+                          }
+                      }
+                      $localnodehash{$node} = 1;
+                  }
+                  my @requests;
+                  my $reqc = {%$req};
+                  foreach my $dhcps (@dhcpservers) {
+                      my $reqcopy = {%$req};    #deep copy
+                      $reqcopy->{'_xcatdest'} = $dhcps;
+                      $reqcopy->{node} = [ keys %localnodehash ];
+                      if (scalar(@{ $reqcopy->{node} })) { push @requests, $reqcopy }
+                  }
+                  foreach my $dtarg (keys %dispatchhash)
+                  {    #iterate dispatch targets
+                      my $reqcopy = {%$req};    #deep copy
+                      $reqcopy->{'_xcatdest'} = $dtarg;
+                      $reqcopy->{node} = [ keys %{ $dispatchhash{$dtarg} } ];
+                      push @requests, $reqcopy;
+                  }
+                  return \@requests;
             }
 
             foreach my $s (@snlist)
@@ -1315,6 +1363,7 @@ sub preprocess_request
             }
         }
     }
+
 
 
     #print Dumper(@requests);
