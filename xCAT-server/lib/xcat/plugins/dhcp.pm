@@ -2440,9 +2440,10 @@ sub addnet
             } else {
                 $callback->(
                     {
-                        warning => [
+                        error => [
                             "No $net specific entry for domain, and no domain defined in site table."
-                          ]
+                          ],
+                        errorcode => [1]
                     });
             }
 
