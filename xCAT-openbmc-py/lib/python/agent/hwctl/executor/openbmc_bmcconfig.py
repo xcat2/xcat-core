@@ -67,7 +67,8 @@ rmdir \"/tmp/$userid\" \n")
 
         f.close()
         os.chmod(self.copy_sh_file,stat.S_IRWXU)
-        self.callback.info("Prepared %s file done" % self.copy_sh_file)
+        if self.verbose:
+            self.callback.info("Prepared %s file done" % self.copy_sh_file)
 
     def set_sshcfg(self, **kw):
         node = kw['node']
@@ -77,7 +78,6 @@ rmdir \"/tmp/$userid\" \n")
         ssh_client = SSHClient(nodeinfo['bmcip'], user=nodeinfo['username'], password=nodeinfo['password'])
         #except (SSHException, NoValidConnectionsError,BadHostKeyException) as e: 
         #    self.callback.info("%s: %s" % (node, e))
-        self.callback.info("ip: %s, name: %s, ps: %s" % (nodeinfo['bmcip'], nodeinfo['username'], nodeinfo['password']))
         if not ssh_client.client.get_transport().is_active():
             self.callback.info("SSH session is not active")
         if not ssh_client.client.get_transport().is_authenticated():
@@ -117,14 +117,14 @@ rmdir \"/tmp/$userid\" \n")
             if attr in RSPCONFIG_GET_NETINFO:
                 netinfo_dict[attr]=True
                 getnet=1
-            elif openbmc.RSPCONFIG_APIS.has_key(attr):
+            elif attr in openbmc.RSPCONFIG_APIS:
                 self._get_apis_values(attr, **kw)
             else:
                 self.callback.error("get_attributes can not deal with attr %s" % attr)
         if len(netinfo_dict):
-            self._get_netinfo(ip=netinfo_dict.has_key('ip'), ipsrc=netinfo_dict.has_key('ipsrc'), netmask=netinfo_dict.has_key('netmask'),
-                              gateway=netinfo_dict.has_key('gateway'),vlan= netinfo_dict.has_key('vlan'), 
-                              hostname=netinfo_dict.has_key('hostname'), **kw)
+            self._get_netinfo(ip=netinfo_dict.get('ip', False), ipsrc=netinfo_dict.get('ipsrc', False), netmask=netinfo_dict.get('netmask', False),
+                              gateway=netinfo_dict.get('gateway', False),vlan= netinfo_dict.get('vlan', False), 
+                              hostname=netinfo_dict.get('hostname', False), **kw)
 
     def set_attributes(self, attributes, **kw):
         netinfo_dict={'vlan':False}
@@ -134,11 +134,11 @@ rmdir \"/tmp/$userid\" \n")
                 netinfo_dict[k] = v
             elif k == 'hostname':
                 self._set_hostname(v, **kw)
-            elif openbmc.RSPCONFIG_APIS.has_key(k):
+            elif k in openbmc.RSPCONFIG_APIS:
                 self._set_apis_values(k, v, **kw)
             else:
                 return self.callback.error("set_attributes unsupported attribute:%s" % k)
-        if len(netinfo_dict) > 1 and (not netinfo_dict.has_key('ip') or not netinfo_dict.has_key('netmask') or not netinfo_dict.has_key('gateway')):
+        if len(netinfo_dict) > 1 and ('ip' not in netinfo_dict or 'netmask' not in netinfo_dict or 'gateway' not in netinfo_dict):
             self.callback.info("set_attributes miss either ip, netmask or gateway to set network information")
         elif len(netinfo_dict) <= 1:
             return
@@ -190,64 +190,30 @@ rmdir \"/tmp/$userid\" \n")
             result = "set net(%s, %s, %s) for eth0" % (ip, netmask, gateway)
         return self.callback.info("set_netinfo %s" % result)
 
-    def _get_and_parse_netinfo(self, **kw):
+    def _get_netinfo(self, ip=False, ipsrc=False, netmask=False, gateway=False, vlan=False, hostname=False, ntpserver=True, **kw):
         node = kw['node']
         obmc = openbmc.OpenBMCRest(name=node, nodeinfo=kw['nodeinfo'], messager=self.callback,
                                    debugmode=self.debugmode, verbose=self.verbose)
         try:
             obmc.login()
-            data = obmc.get_netinfo()
+            netinfo = obmc.get_netinfo()
         except (SelfServerException, SelfClientException) as e:
             self.callback.info('%s: %s' % (node, e.message))
             return
-        netinfo = {}
-        for k, v in data.items():
-            if k.find("network/config") >= 0:
-                if v.has_key("HostName"):
-                    netinfo["hostname"] = v["HostName"]
-                if v.has_key("DefaultGateway"):
-                    netinfo["defaultgateway"] = v["DefaultGateway"]
-                continue
-            dev,match,netid = k.partition("/ipv4/")
-            if netid:
-                if v["Origin"].find("LinkLocal") >= 0 or v["Address"].startswith("169.254"):
-                    self.callback.info("%s: Found LinkLocal address %s for interface %s, Ignoring..." % (node, v["Address"], dev))
-                    continue
-                nicid = dev.split('/')[-1]
-                if not netinfo.has_key(nicid):
-                    netinfo[nicid] = {}
-                if netinfo[nicid].has_key("ip"):
-                    self.callback.error("%s: Another valid ip %s found." % (node, v["Address"]))
-                    continue
-                utils.update2Ddict(netinfo, nicid, "ipsrc", v["Origin"].split('.')[-1])
-                utils.update2Ddict(netinfo, nicid, "netmask", v["PrefixLength"])
-                utils.update2Ddict(netinfo, nicid, "gateway", v["Gateway"])
-                utils.update2Ddict(netinfo, nicid, "ip", v["Address"])
-                if data.has_key(dev):
-                    info = data[dev]
-                    utils.update2Ddict(netinfo, nicid, "vlanid", info["Id"])
-                    utils.update2Ddict(netinfo, nicid, "mac", info["MACAddress"])
-                    utils.update2Ddict(netinfo, nicid, "ntpservers", info["NTPServers"])
-        self.callback.info("Netinfo: %s" % netinfo) 
-        return netinfo
-    def _get_netinfo(self, ip=False, ipsrc=False, netmask=False, gateway=False, vlan=False, hostname=False, ntpserver=True, **kw):
-        node = kw["node"]
-        netinfo = self._get_and_parse_netinfo(**kw)
         if not netinfo:
             return self.callback.error("%s: No network information get" % node)
         defaultgateway = "n/a"
         bmchostname = ""
-        if netinfo.has_key("defaultgateway"):
+        if 'defaultgateway' in netinfo:
             defaultgateway = netinfo["defaultgateway"]
             del netinfo["defaultgateway"]
-        if netinfo.has_key("hostname"):
+        if 'hostname' in netinfo:
             bmchostname = netinfo["hostname"]
             del netinfo["hostname"]
 
         if hostname:
             self.callback.info("%s: BMC Hostname: %s" %(node, bmchostname))
         dic_length = len(netinfo) 
-        self.callback.info("dic_length: %s: %s" %(dic_length, netinfo))
         ip_list = []
         ipsrc_list = []
         netmask_list = []
@@ -282,6 +248,4 @@ rmdir \"/tmp/$userid\" \n")
         if ntpserver:
             for i in ntpserver_list:
                 self.callback.info("%s: %s" % (node, i))
-        return
-    def get_netinfo(self, ip=False, ipsrc=False, netmask=False, gateway=False, vlan=False, hostname=False, ntpserver=True, **kw):
-
+        return netinfo

@@ -9,7 +9,7 @@ import requests
 import json
 import time
 
-from common import rest
+from common import utils, rest
 from common.exceptions import SelfClientException, SelfServerException
 
 import logging
@@ -501,10 +501,10 @@ class OpenBMCRest(object):
 
     def set_apis_values(self, key, value):
         attr_info = RSPCONFIG_APIS[key]
-        if not attr_info.has_key('set_url'):
+        if 'set_url' not in attr_info:
             raise SelfServerException("config %s failed, not url available" % key)
         set_url = attr_info['baseurl']+attr_info['set_url']
-        if attr_info.has_key('attr_values') and attr_info['attr_values'].has_key(value):
+        if 'attr_values' in attr_info and value in attr_info['attr_values']:
             data = attr_info['attr_values'][value]
         else:
             data = value
@@ -512,20 +512,56 @@ class OpenBMCRest(object):
 
     def get_apis_values(self, key):
         attr_info = RSPCONFIG_APIS[key]
-        if not attr_info.has_key('get_url'):
+        if 'get_url' not in attr_info:
             raise SelfServerException("Reading %s failed, not url available" % key)
         get_url = attr_info['baseurl']+attr_info['get_url']
 
         method = 'GET'
-        if attr_info.has_key('get_method'):
+        if 'get_method' in attr_info:
             method = attr_info['get_method']
         data = None
-        if attr_info.has_key('get_data'):
+        if 'get_data' in attr_info:
             data={"data": attr_info['get_data']}
         return self.request(method, get_url, payload=data, cmd="get_%s" % key)
 
     def get_netinfo(self):
-        return self.request('GET', RSPCONFIG_NETINFO_URL['get_netinfo'], cmd="get_netinfo")
+        data = self.request('GET', RSPCONFIG_NETINFO_URL['get_netinfo'], cmd="get_netinfo")
+        try:
+            netinfo = {}
+            for k, v in data.items():
+                if 'network/config' in k:
+                    if 'HostName' in v:
+                        netinfo["hostname"] = v["HostName"]
+                    if 'DefaultGateway' in v:
+                        netinfo["defaultgateway"] = v["DefaultGateway"]
+                    continue
+                dev,match,netid = k.partition("/ipv4/")
+                if netid:
+                    if 'LinkLocal' in v["Origin"] or v["Address"].startswith("169.254"):
+                        msg = "Found LinkLocal address %s for interface %s, Ignoring..." % (v["Address"], dev)
+                        self._print_record_log(msg, 'get_netinfo')
+                        continue
+                    nicid = dev.split('/')[-1]
+                    if nicid not in netinfo:
+                        netinfo[nicid] = {}
+                    if 'ip' in netinfo[nicid]:
+                        msg = "%s: Another valid ip %s found." % (node, v["Address"])
+                        self._print_record_log(msg, 'get_netinfo')
+                        continue
+                    utils.update2Ddict(netinfo, nicid, "ipsrc", v["Origin"].split('.')[-1])
+                    utils.update2Ddict(netinfo, nicid, "netmask", v["PrefixLength"])
+                    utils.update2Ddict(netinfo, nicid, "gateway", v["Gateway"])
+                    utils.update2Ddict(netinfo, nicid, "ip", v["Address"])
+                    if dev in data:
+                        info = data[dev]
+                        utils.update2Ddict(netinfo, nicid, "vlanid", info["Id"])
+                        utils.update2Ddict(netinfo, nicid, "mac", info["MACAddress"])
+                        utils.update2Ddict(netinfo, nicid, "ntpservers", info["NTPServers"])            
+            return netinfo
+        except KeyError:
+            error = 'Error: Received wrong format response: %s' % data
+            raise SelfServerException(error)
+        
 
     def set_ipdhcp(self):
         return self.request('PUT', RSPCONFIG_NETINFO_URL['ipdhcp'], cmd="set_bmcip_dhcp")
