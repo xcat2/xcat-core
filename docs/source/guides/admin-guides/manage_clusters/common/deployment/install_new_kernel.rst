@@ -70,7 +70,7 @@ Generally, the genimage command has a default driver list which will be added to
 
 The default driver list: :: 
 
-         rh-x86:   tg3 bnx2 bnx2x e1000 e1000e igb mlx_en virtio_net be2net
+         rh-x86:   tg3 bnx2 bnx2x e1000 e1000e igb mlx4_en virtio_net be2net
          rh-ppc:   e1000 e1000e igb ibmveth ehea
          rh-ppcle: ext3 ext4
          sles-x86: tg3 bnx2 bnx2x e1000 e1000e igb mlx_en be2net

@@ -112,7 +112,7 @@ if [ ! -z "$DUMP" ]; then
             if (pmatch $OSVER "*10*"); then
                 #run mkinitrd to generater the kdump-init base
                 if (pmatch $ARCH "x86*"); then
-                    /sbin/mkinitrd -m "nfs tg3 bnx2 bnx2x e1000 e1000e igb mlx_en be2net af_packet firmware_class"
+                    /sbin/mkinitrd -m "nfs tg3 bnx2 bnx2x e1000 e1000e igb mlx4_en be2net af_packet firmware_class"
                 else
                     /sbin/mkinitrd -m "nfs be2net e1000e ibmveth igb firmware_class tg3 e1000"
                 fi

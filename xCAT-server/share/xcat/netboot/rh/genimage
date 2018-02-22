@@ -270,7 +270,7 @@ if ($netdriver) {
 
 # Add the default driver list
 if ($arch eq 'x86' or $arch eq 'x86_64') {
-    push @ndrivers, qw/tg3 bnx2 bnx2x e1000 e1000e igb mlx_en virtio_net be2net/;
+    push @ndrivers, qw/tg3 bnx2 bnx2x e1000 e1000e igb mlx4_en virtio_net be2net/;
 } elsif ($arch eq 'ppc64') {
     push @ndrivers, qw/e1000 e1000e igb ibmveth ehea/;
 } elsif ($arch eq 's390x') {
