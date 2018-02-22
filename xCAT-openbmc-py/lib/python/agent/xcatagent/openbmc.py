@@ -841,7 +841,7 @@ class OpenBMCManager(base.BaseManager):
 
         reventlog_usage = """
         Usage:
-            eventlog [-V|--verbose] [all|clear|resolved]
+            eventlog [-V|--verbose] [<number>|all|clear|resolved=(<id>|LED)]
 
         Options:
             -V --verbose   eventlog verbose mode.
@@ -857,16 +857,15 @@ class OpenBMCManager(base.BaseManager):
             return
 
         # 2, validate the args
-        if action not in EVENTLOG_OPTIONS:
-            self.messager.error("Not supported subcommand for reventlog: %s" % action)
-            return
+        self.messager.error("reventlog action: %s" % action)
+        self.messager.error("reventlog args: %s" % args)
+        #if action not in EVENTLOG_OPTIONS:
+        #    self.messager.error("Not supported subcommand for reventlog: %s" % action)
+        #    return
 
         # 3, run the subcommands
         runner = OpenBMCEventlogTask(nodesinfo, callback=self.messager, debugmode=self.debugmode, verbose=self.verbose)
-        if action == 'resolved':
-            DefaultEventlogManager().get_eventlog_info(runner)
-        else:
-            DefaultEventlogManager().get_eventlog_info(runner, action)
+        DefaultEventlogManager().get_eventlog_info(runner, args)
 
     def _get_full_path(self,file_path):
         if type(self.cwd) == 'unicode':

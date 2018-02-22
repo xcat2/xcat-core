@@ -20,13 +20,35 @@ logger = logging.getLogger('xcatagent')
 class OpenBMCEventlogTask(ParallelNodesCommand):
     """Executor for eventlog-related actions."""
 
-    def get_ev_info(self, eventlog_type, **kw):
+    def get_ev_info(self, args, **kw):
 
         node = kw['node']
+        number_to_display = 0
+        try:
+            # Number of records to display from the end
+            number_to_display = 0-int(args[0])
+        except Exception:
+            # All records to display
+            number_to_display = 0
+
         obmc = openbmc.OpenBMCRest(name=node, nodeinfo=kw['nodeinfo'], messager=self.callback, debugmode=self.debugmode, verbose=self.verbose) 
         eventlog_info = []
         try:
             obmc.login()
+
+            # Get all eventlog records
             eventlog_info_dict = obmc.get_eventlog_info()
+
+            keys = eventlog_info_dict.keys()
+            # Sort thy keys in natural order
+            keys.sort(key=lambda x : int(x[0:]))
+
+            # Display all, or specified number of records from the end
+            for key in list(keys)[number_to_display:]:
+                self.callback.info('%s: %s'  % (node, eventlog_info_dict[key]))
+                eventlog_info += eventlog_info_dict[key]
+
         except (SelfServerException, SelfClientException) as e:
             self.callback.info('%s: %s'  % (node, e.message))
+
+        return eventlog_info

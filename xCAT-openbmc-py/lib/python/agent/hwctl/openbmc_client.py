@@ -488,17 +488,68 @@ class OpenBMCRest(object):
 
         return bool(func_list), fw_dict
 
+    # Extract all eventlog info and build a dictionary with eventid as a key
     def get_eventlog_info(self):
 
         eventlog_data = self.request('GET', EVENTLOG_URL, cmd='get_eventlog_info')
         try:
             eventlog_dict = {}
-            for key, value in eventlog_data.items():
-                self.messager.info("EVENTLOG DATA: key=%s" %key)
+            for key, value in sorted(eventlog_data.items()):
+                id, event_log_line = self.parse_event_data(value)
+                if int(id) != 0:
+                    eventlog_dict[str(id)] = event_log_line
+            return eventlog_dict
         except KeyError:
             error = 'Error: Received wrong format response: %s' % eventlog_data
             raise SelfServerException(error)
 
+    # Parse a single eventlog entry and return data in formatted string
+    def parse_event_data(self, event_log_entry):
+        formatted_line = ""
+        LED_tag = " [LED]"
+        timestamp_str = ""
+        message_str = ""
+        pid_str = ""
+        resolved_str = ""
+        id_str = "0"
+        callout = False
+        for (sub_key, v) in event_log_entry.items():
+            if sub_key == 'AdditionalData':
+                for (data_key) in v:
+                    additional_data = data_key.split("=");
+                    if additional_data[0] == 'ESEL':
+                        #self.messager.info('        ESEL : <long data string>')
+                        info = additional_data[0].split('=')
+                        #esel = info[1]
+                    elif additional_data[0] == '_PID':
+                        pid_str = " (PID: " + str(additional_data[1]) + ")"
+                    elif 'CALLOUT_DEVICE_PATH' in additional_data[0]:
+                        callout = True
+                        info = additional_data[0].split('=')
+                        #callout_data = info[1]
+                    elif 'CALLOUT_INVENTORY_PATH' in additional_data[0]:
+                        callout = True
+                        callout_data="I2C"
+                    elif 'CALLOUT' in additional_data[0]:
+                        callout = True
+                    #else:
+                    #    self.messager.info('        %s : %s' % (additional_data[0], additional_data[1]))
+            elif sub_key == 'Timestamp':
+                timestamp = time.localtime(v / 1000)
+                timestamp_str = time.strftime("%m/%d/%Y %T", timestamp)
+            elif sub_key == 'Id':
+                #id_str = " [{0}]".format(v)
+                id_str = str(v)
+            elif sub_key == 'Resolved':
+                resolved_str = " Resolved: " + str(v)
+            elif sub_key == 'Message':
+                message_str = " " + v
+            #else:
+            #    self.messager.info('    %s : %s' % (sub_key, v))
+        formatted_line = timestamp_str + " [" + id_str +"]" + ":" + message_str + pid_str + resolved_str
+        if callout:
+            formatted_line += LED_tag
+        return id_str, formatted_line
 
     def set_apis_values(self, key, value):
         attr_info = RSPCONFIG_APIS[key]
