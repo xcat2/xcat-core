@@ -45,7 +45,7 @@ if ($::VERSION) {
 }
 
 if (@ARGV < 1) {
-    print "Please specify a node name.\n";
+    print "$usage_string\n";
     exit(1);
 }
 
