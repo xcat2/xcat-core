@@ -724,9 +724,9 @@ class OpenBMCManager(base.BaseManager):
             elif opts['--generate']:
                 DefaultBmcConfigManager().dump_generate(runner)
             elif opts['--clear']:
-                DefaultBmcConfigManager().dump_clear(runner, opts['--clear'])
+                DefaultBmcConfigManager().dump_clear(runner, opts['--clear'][0])
             elif opts['--download']:
-                DefaultBmcConfigManager().dump_download(runner, opts['--download'])
+                DefaultBmcConfigManager().dump_download(runner, opts['--download'][0])
             else:
                 DefaultBmcConfigManager().dump_process(runner)
         elif opts['sshcfg']:

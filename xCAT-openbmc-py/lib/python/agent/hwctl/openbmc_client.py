@@ -9,7 +9,7 @@ import requests
 import json
 import time
 
-from common import rest
+from common import utils, rest
 from common.exceptions import SelfClientException, SelfServerException
 
 import logging
@@ -27,6 +27,23 @@ RBEACON_URLS = {
     "off"        : {
         "field" : False,
     },
+}
+
+DUMP_URLS = {
+    "clear"     : {
+        "path"  : "/dump/entry/#ID#/action/Delete",
+        "field" : [],
+    },
+    "clear_all" : {
+        "path"  : "/dump/action/DeleteAll",
+        "field" : [],
+    },
+    "create"    : {
+        "path"  : "/dump/action/CreateDump",
+        "field" : [],
+    },
+    "download"  : "download/dump/#ID#",
+    "list"      : "/dump/enumerate", 
 }
 
 INVENTORY_URL = "/inventory/enumerate"
@@ -209,6 +226,7 @@ class OpenBMCRest(object):
 
         self.session = rest.RestSession()
         self.root_url = HTTP_PROTOCOL + self.bmcip + PROJECT_URL
+        self.download_root_url = HTTP_PROTOCOL + self.bmcip + '/'
 
     def _print_record_log (self, msg, cmd):
 
@@ -218,13 +236,16 @@ class OpenBMCRest(object):
             self.messager.info(localtime + ' ' + log)
             logger.debug(log)
 
-    def _log_request (self, method, url, headers, data=None, files=None, cmd=''):
+    def _log_request (self, method, url, headers, data=None, files=None, file_path=None, cmd=''):
 
         header_str = ' '.join([ "%s: %s" % (k, v) for k,v in headers.items() ])
         msg = 'curl -k -c cjar -b cjar -X %s -H \"%s\" ' % (method, header_str)
 
         if files:
             msg += '-T \'%s\' %s -s' % (files, url)
+        elif file_path:
+            msg = 'curl -J -k -c cjar -b cjar -X %s -H \"%s\" %s -o %s' % \
+                  (method, header_str, url, file_path)
         elif data:
             if cmd == 'login':
                 data = data.replace(self.password, "xxxxxx")
@@ -272,6 +293,32 @@ class OpenBMCRest(object):
             error = 'Error: Received wrong format response: %s' % response
             self._print_record_log(error, cmd)
             raise SelfServerException(error)
+
+    def download(self, method, resource, file_path, headers=None, cmd=''):
+
+        httpheaders = headers or OpenBMCRest.headers
+        url = resource
+        if not url.startswith(HTTP_PROTOCOL):
+            url = self.download_root_url + resource
+
+        request_cmd = self._log_request(method, url, httpheaders, file_path=file_path, cmd=cmd)
+
+        try:
+            response = self.session.request_download(method, url, httpheaders, file_path)
+        except SelfServerException as e:
+            self._print_record_log(e.message, cmd=cmd)
+            raise
+        except SelfClientException as e:
+            error = e.message
+            self._print_record_log(error, cmd=cmd)
+            raise
+
+        if not response:
+            self._print_record_log('No response received', cmd=cmd)
+            return True
+
+        self._print_record_log(str(response.status_code), cmd=cmd)
+        return True
 
     def upload (self, method, resource, files, headers=None, cmd=''):
 
@@ -510,6 +557,48 @@ class OpenBMCRest(object):
         if attr_info.has_key('get_data'):
             data={"data": attr_info['get_data']}
         return self.request(method, get_url, payload=data, cmd="get_%s" % key)
+
+    def clear_dump(self, clear_arg):
+
+        if clear_arg == 'all':
+            payload = { "data": DUMP_URLS['clear_all']['field'] }
+            self.request('POST', DUMP_URLS['clear_all']['path'], payload=payload, cmd='clear_dump_all')
+        else: 
+            path = DUMP_URLS['clear']['path'].replace('#ID#', clear_arg)
+            payload = { "data": DUMP_URLS['clear']['field'] }
+            self.request('POST', path, payload=payload, cmd='clear_dump')
+
+    def create_dump(self):
+
+        payload = payload = { "data": DUMP_URLS['create']['field'] }
+        return self.request('POST', DUMP_URLS['create']['path'], payload=payload, cmd='create_dump')
+
+    def list_dump_info(self):
+
+        dump_data = self.request('GET', DUMP_URLS['list'], cmd='list_dump_info')
+
+        try:
+            dump_dict = {}
+            for key, value in dump_data.items():
+                if 'Size' not in value or 'Elapsed' not in value:
+                    continue
+
+                key_id = int(key.split('/')[-1])
+                timestamp = value['Elapsed']
+                gen_time = time.strftime("%m/%d/%Y %H:%M:%S", time.localtime(timestamp))
+                dump_dict.update({key_id: {'Size': value['Size'], 'Generated': gen_time}})
+
+            return dump_dict
+        except KeyError:
+            error = 'Error: Received wrong format response: %s' % inventory_data
+            raise SelfServerException(error) 
+
+    def download_dump(self, download_id, file_path):
+
+        headers = {'Content-Type': 'application/octet-stream'}
+        path = DUMP_URLS['download'].replace('#ID#', download_id)
+        self.download('GET', path, file_path, headers=headers, cmd='download_dump')
+
 
 class OpenBMCImage(object):
     def __init__(self, rawid, data=None):
