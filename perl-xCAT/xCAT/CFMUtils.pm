@@ -340,6 +340,11 @@ sub updateCFMSynclistFile {
 
     foreach my $osimg (@osimgs)
     {
+
+        # this is for Cumulus switch 
+        if ($osimg eq "onie") {
+            next;
+        }
         my $cfmdir;
         $cfmdir = xCAT::CFMUtils->setCFMSynclistFile($osimg);
         if ($cfmdir)    # check for /install/osiamges/$osimg/cfmdir

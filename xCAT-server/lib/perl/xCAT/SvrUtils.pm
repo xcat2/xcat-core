@@ -373,7 +373,7 @@ sub getsynclistfile()
         unless ($nodetype_t) {
             return;
         }
-        my $nodetype_v = $nodetype_t->getNodesAttribs($nodes, [ 'profile', 'os', 'arch', 'provmethod' ]);
+        my $nodetype_v = $nodetype_t->getNodesAttribs($nodes, [ 'profile', 'os', 'arch', 'provmethod', 'nodetype' ]);
 
         my $osimage_t = xCAT::Table->new('osimage');
         unless ($osimage_t) {
@@ -381,6 +381,13 @@ sub getsynclistfile()
         }
         foreach my $node (@$nodes) {
             my $provmethod = $nodetype_v->{$node}->[0]->{'provmethod'};
+            my $nodetype = $nodetype_v->{$node}->[0]->{'nodetype'};
+            my $nodeprofile = $nodetype_v->{$node}->[0]->{'profile'};
+            #This is for cumulus switch
+            if ($nodetype eq "switch") {
+                $node_syncfile{$node} = $nodeprofile;
+                next;
+            }
             if (($provmethod) && ($provmethod ne "install") && ($provmethod ne "netboot") && ($provmethod ne "statelite")) {
 
                 # get the syncfiles base on the osimage
