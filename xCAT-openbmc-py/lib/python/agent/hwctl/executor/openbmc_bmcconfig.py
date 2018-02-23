@@ -6,6 +6,8 @@
 #
 from __future__ import print_function
 import os, stat
+import gevent
+import time
 
 from common import utils
 from common.task import ParallelNodesCommand
@@ -24,24 +26,157 @@ logger = logging.getLogger('xcatagent')
 RSPCONFIG_GET_NETINFO=['ip', 'netmask', 'gateway', 'vlan', 'ipsrc', 'hostname']
 RSPCONFIG_SET_NETINFO=['ip', 'netmask', 'gateway', 'vlan']
 
-
+XCAT_LOG_DUMP_DIR = "/var/log/xcat/dump/"
 
 class OpenBMCBmcConfigTask(ParallelNodesCommand):
-        
+
+    def pre_dump_download(self, task, download_arg, **kw):
+
+       if download_arg == 'all':
+            self.callback.info('Downloading all dumps...')
+       if not os.path.exists(XCAT_LOG_DUMP_DIR):
+            os.makedirs(XCAT_LOG_DUMP_DIR) 
+
+    def pre_dump_process(self, task, **kw):
+
+        self.callback.info('Capturing BMC Diagnostic information, this will take some time...')
+
+    def _dump_download(self, obmc, node, download_id, flag_dump_process=False):
+
+        formatted_time = time.strftime("%Y%m%d-%H%M", time.localtime(time.time()))
+        dump_log_file = '%s%s_%s_dump_%s.tar.xz' % (XCAT_LOG_DUMP_DIR, formatted_time, node, download_id)
+        if flag_dump_process:
+            self.callback.info('%s: Downloading dump %s to %s' % (node, download_id, dump_log_file))
+
+        obmc.download_dump(download_id, dump_log_file)
+        if os.path.exists(dump_log_file):
+            grep_cmd = '/usr/bin/grep -a'
+            path_not_found = '"Path not found"'
+            check_cmd = grep_cmd + ' ' + path_not_found + ' ' + dump_log_file
+            grep_string = os.popen(check_cmd).readlines()
+            if grep_string:
+                result = 'Invalid dump %s was specified. Use -l option to list.' % download_id
+            else:
+                result = 'Downloaded dump %s to %s.' % (download_id, dump_log_file)
+        else:
+            result = 'Failed to download dump %s to %s.' % (download_id, dump_log_file)
+        return result
+
     def dump_list(self, **kw):
-        return self.callback.info('dump_list') 
+
+        node = kw['node']
+        obmc = openbmc.OpenBMCRest(name=node, nodeinfo=kw['nodeinfo'], messager=self.callback,
+                                   debugmode=self.debugmode, verbose=self.verbose)
+
+        dump_info = []
+        try:
+            obmc.login()
+            dump_dict = obmc.list_dump_info()
+
+            if not dump_dict:
+                self.callback.info('%s: No attributes returned from the BMC.' % node)
+
+            keys = dump_dict.keys()
+            keys.sort()
+            for key in keys:
+                info = '[%d] Generated: %s, Size: %s' % \
+                       (key, dump_dict[key]['Generated'], dump_dict[key]['Size'])
+                dump_info += info
+                self.callback.info('%s: %s'  % (node, info))
+
+        except (SelfServerException, SelfClientException) as e:
+            self.callback.info('%s: %s'  % (node, e.message))
+
+        return dump_info
 
     def dump_generate(self, **kw):
-        return self.callback.info("dump_generate")
 
-    def dump_clear(self, id, **kw):
-        return self.callback.info("dump_clear id: %s" % id)
+        node = kw['node']
+        obmc = openbmc.OpenBMCRest(name=node, nodeinfo=kw['nodeinfo'], messager=self.callback,
+                                   debugmode=self.debugmode, verbose=self.verbose)
 
-    def dump_download(self, id, **kw):
-        return self.callback.info("dump_download id: %s" % id)
+        dump_id = None
+        try:
+            obmc.login()
+            dump_id = obmc.create_dump()
+            if not dump_id:
+                self.callback.info('%s: BMC returned 200 OK but no ID was returned.  Verify manually on the BMC.' % node)
+            else:
+                self.callback.info('%s: [%s] success'  % (node, dump_id))
+        except (SelfServerException, SelfClientException) as e:
+            self.callback.info('%s: %s'  % (node, e.message))
+
+        return dump_id
+
+    def dump_clear(self, clear_arg, **kw):
+
+        node = kw['node']
+        obmc = openbmc.OpenBMCRest(name=node, nodeinfo=kw['nodeinfo'], messager=self.callback,
+                                   debugmode=self.debugmode, verbose=self.verbose)
+
+        try:
+            obmc.login()
+            obmc.clear_dump(clear_arg)
+
+            result = '%s: [%s] clear' % (node, clear_arg)  
+        except (SelfServerException, SelfClientException) as e:
+            result = '%s: %s'  % (node, e.message)
+
+        self.callback.info(result) 
+
+    def dump_download(self, download_arg, **kw):
+
+        node = kw['node']
+        obmc = openbmc.OpenBMCRest(name=node, nodeinfo=kw['nodeinfo'], messager=self.callback,
+                                   debugmode=self.debugmode, verbose=self.verbose)
+
+        try:
+            obmc.login()
+            if download_arg != 'all':
+                result = self._dump_download(obmc, node, download_arg)
+                self.callback.info('%s: %s'  % (node, result))
+                return
+
+            dump_dict = obmc.list_dump_info()
+            keys = dump_dict.keys()
+            keys.sort()
+
+            for key in keys:
+                result = self._dump_download(obmc, node, str(key))
+                self.callback.info('%s: %s'  % (node, result))
+        except SelfServerException as e:
+            self.callback.info('%s: %s'  % (node, e.message))
 
     def dump_process(self, **kw):
-        return self.callback.info("dump_process: trigger, list and download")
+
+        node = kw['node']
+        obmc = openbmc.OpenBMCRest(name=node, nodeinfo=kw['nodeinfo'], messager=self.callback,
+                                   debugmode=self.debugmode, verbose=self.verbose)
+
+        try:
+            obmc.login()
+            flag = False
+            dump_id = obmc.create_dump()
+            self.callback.info('%s: Dump requested. Target ID is %s, waiting for BMC to generate...'  % (node, dump_id)) 
+            for i in range(20):
+                dump_dict = obmc.list_dump_info()            
+                if dump_id in dump_dict:
+                    flag = True
+                    break
+                if (20-i) % 8 == 0:
+                    self.callback.info('%s: Still waiting for dump %s to be generated... '  % (node, dump_id))
+
+                gevent.sleep( 15 )
+
+            if flag: 
+                result = self._dump_download(obmc, node, str(dump_id), flag_dump_process=True)
+            else:
+                result = 'Could not find dump %s after waiting %d seconds.' % (dump_id, 20 * 15) 
+
+            self.callback.info('%s: %s'  % (node, result))
+
+        except SelfServerException as e:
+            self.callback.info('%s: %s'  % (node, e.message))
 
     def pre_set_sshcfg(self, *arg, **kw):
         local_home_dir=os.path.expanduser('~')

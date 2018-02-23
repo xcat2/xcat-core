@@ -16,11 +16,11 @@ class BmcConfigInterface(object):
     def dump_generate(self, task):
         return task.run("dump_generate")
 
-    def dump_clear(self, task, id):
-        return task.run("dump_clear", id)
+    def dump_clear(self, task, clear_arg):
+        return task.run("dump_clear", clear_arg)
 
-    def dump_download(self, task, id):
-        return task.run("dump_download", id)
+    def dump_download(self, task, download_arg):
+        return task.run("dump_download", download_arg)
 
     def dump_process(self, task):
         return task.run("dump_process")
