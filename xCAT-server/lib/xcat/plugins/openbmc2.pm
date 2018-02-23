@@ -259,9 +259,8 @@ sub parse_args {
         xCAT_plugin::openbmc::parse_args('rspconfig', $extrargs, $noderange);
     } elsif ($command eq "reventlog") {
         $subcommand = "all" if (!defined($ARGV[0]));
-        if ($subcommand =~ /^(\w+)=(.*)/) {
-            my $key = $1;
-            my $value = $2;
+        if ($subcommand =~ /^resolved=(.*)/) {
+            my $value = $1;
             if (not $value) {
                 return ([ 1, "$usage_errormsg $reventlog_no_id_resolved_errormsg" ]);
             }
@@ -272,7 +271,7 @@ sub parse_args {
             }
 
             xCAT::SvrUtils::sendmsg("Attempting to resolve the following log entries: $value...", $callback);
-        } elsif ($subcommand !~ /^\d$|^\d+$|^all$|^clear$/) {
+        } elsif ($subcommand !~ /^\d+$|^all$|^clear$/) {
             if ($subcommand =~ "resolved") {
                 return ([ 1, "$usage_errormsg $reventlog_no_id_resolved_errormsg" ]);
             }

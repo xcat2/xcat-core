@@ -841,7 +841,9 @@ class OpenBMCManager(base.BaseManager):
 
         reventlog_usage = """
         Usage:
-            eventlog [-V|--verbose] [<number>|all|clear|resolved=(<id>|LED)]
+            reventlog [-V|--verbose] [resolved=LED|resolved=<num>]
+            reventlog [-V|--verbose] [clear|all]
+            reventlog [-V|--verbose] [<number>]
 
         Options:
             -V --verbose   eventlog verbose mode.
@@ -857,8 +859,6 @@ class OpenBMCManager(base.BaseManager):
             return
 
         # 2, validate the args
-        self.messager.error("reventlog action: %s" % action)
-        self.messager.error("reventlog args: %s" % args)
         #if action not in EVENTLOG_OPTIONS:
         #    self.messager.error("Not supported subcommand for reventlog: %s" % action)
         #    return

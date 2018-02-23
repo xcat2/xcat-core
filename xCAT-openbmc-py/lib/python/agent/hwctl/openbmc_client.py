@@ -5,6 +5,7 @@
 # -*- coding: utf-8 -*-
 #
 
+import os
 import requests
 import json
 import time
@@ -141,8 +142,6 @@ FIRM_URLS = {
     }
 }
 
-EVENTLOG_URL = "/logging/enumerate"
-
 RSPCONFIG_APIS = {
     'autoreboot' : {
         'baseurl': "/control/host0/auto_reboot/",
@@ -185,6 +184,11 @@ RSPCONFIG_APIS = {
         },
     },
 }
+
+EVENTLOG_URL      = "/logging/enumerate"
+RAS_POLICY_TABLE  = "/opt/ibm/ras/lib/policyTable.json"
+RAS_POLICY_MSG    = "Install the OpenBMC RAS package to obtain more details logging messages."
+RAS_NOT_FOUND_MSG = " Not found in policy table: "
 
 RESULT_OK = 'ok'
 RESULT_FAIL = 'fail'
@@ -492,10 +496,23 @@ class OpenBMCRest(object):
     def get_eventlog_info(self):
 
         eventlog_data = self.request('GET', EVENTLOG_URL, cmd='get_eventlog_info')
+
+        # Check if policy table file is there
+        ras_event_mapping = {}
+        if os.path.isfile(RAS_POLICY_TABLE):
+            with open(RAS_POLICY_TABLE, "r") as data_file:
+                policy_hash = json.load(data_file)
+                if policy_hash:
+                    ras_event_mapping = policy_hash['events']
+                else:
+                    self.messager.info(RAS_POLICY_MSG)
+                data_file.close()
+        else:
+            self.messager.info(RAS_POLICY_MSG)
         try:
             eventlog_dict = {}
             for key, value in sorted(eventlog_data.items()):
-                id, event_log_line = self.parse_event_data(value)
+                id, event_log_line = self.parse_event_data(value, ras_event_mapping)
                 if int(id) != 0:
                     eventlog_dict[str(id)] = event_log_line
             return eventlog_dict
@@ -504,8 +521,9 @@ class OpenBMCRest(object):
             raise SelfServerException(error)
 
     # Parse a single eventlog entry and return data in formatted string
-    def parse_event_data(self, event_log_entry):
+    def parse_event_data(self, event_log_entry, ras_event_mapping):
         formatted_line = ""
+        callout_data = ""
         LED_tag = " [LED]"
         timestamp_str = ""
         message_str = ""
@@ -518,35 +536,46 @@ class OpenBMCRest(object):
                 for (data_key) in v:
                     additional_data = data_key.split("=");
                     if additional_data[0] == 'ESEL':
-                        #self.messager.info('        ESEL : <long data string>')
-                        info = additional_data[0].split('=')
-                        #esel = info[1]
+                        esel = additional_data[1]
+                        # Placeholder, not currently used
                     elif additional_data[0] == '_PID':
-                        pid_str = " (PID: " + str(additional_data[1]) + ")"
+                        pid_str = "PID: " + str(additional_data[1]) + "),"
                     elif 'CALLOUT_DEVICE_PATH' in additional_data[0]:
                         callout = True
-                        info = additional_data[0].split('=')
-                        #callout_data = info[1]
+                        callout_data = "I2C"
                     elif 'CALLOUT_INVENTORY_PATH' in additional_data[0]:
                         callout = True
-                        callout_data="I2C"
+                        callout_data = additional_data[1]
                     elif 'CALLOUT' in additional_data[0]:
                         callout = True
-                    #else:
-                    #    self.messager.info('        %s : %s' % (additional_data[0], additional_data[1]))
+                    elif 'GPU' in additional_data[0]:
+                        callout_data="/xyz/openbmc_project/inventory/system/chassis/motherboard/gpu"
+                    elif 'PROCEDURE' in additional_data[0]:
+                        callout_data = '{:x}'.format(int(additional_data[1])) #Convert to hext
             elif sub_key == 'Timestamp':
                 timestamp = time.localtime(v / 1000)
                 timestamp_str = time.strftime("%m/%d/%Y %T", timestamp)
             elif sub_key == 'Id':
-                #id_str = " [{0}]".format(v)
                 id_str = str(v)
             elif sub_key == 'Resolved':
                 resolved_str = " Resolved: " + str(v)
             elif sub_key == 'Message':
-                message_str = " " + v
-            #else:
-            #    self.messager.info('    %s : %s' % (sub_key, v))
-        formatted_line = timestamp_str + " [" + id_str +"]" + ":" + message_str + pid_str + resolved_str
+                message_str = v
+        if callout_data:
+            message_str += "||" + callout_data
+
+        # If event data mapping was read in from RAS policy table, display a more detailed message
+        if ras_event_mapping:
+            if message_str in ras_event_mapping:
+                event_type = ras_event_mapping[message_str]['EventType']
+                event_message = ras_event_mapping[message_str]['Message']
+                severity = ras_event_mapping[message_str]['Severity']
+                affect = ras_event_mapping[message_str]['AffectedSubsystem']
+                formatted_line = timestamp_str + " [" + id_str +"]" + ": " + event_type + ", " + "(" + severity + ") " + event_message + " (AffectedSubsystem: " + affect + ", " + pid_str + resolved_str
+            else:
+                formatted_line = timestamp_str + " [" + id_str +"]" + ":" + RAS_NOT_FOUND_MSG + message_str + " (" + pid_str + resolved_str
+        else:
+            formatted_line = timestamp_str + " [" + id_str +"]" + ": " + message_str + " (" + pid_str + resolved_str
         if callout:
             formatted_line += LED_tag
         return id_str, formatted_line
