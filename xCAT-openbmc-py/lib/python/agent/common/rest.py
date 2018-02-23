@@ -37,6 +37,29 @@ class RestSession(object):
 
         return response
 
+    def request_download(self, method, url, headers, file_path, using_curl=True):
+
+        if using_curl:
+            response = self._download_by_curl(method, url, headers, file_path)
+        else:
+            response = self.session.request('GET', url, headers=headers)
+            file_handle = open(file_path, "wb")
+            for chunk in response.iter_content(chunk_size=1024):
+                if chunk:
+                    file_handle.write(chunk)
+
+        return response
+
+    def _download_by_curl(self, method, url, headers, file_path):
+
+        header_str = ' '.join([ "%s: %s" % (k, v) for k,v in headers.items() ])
+        request_cmd = 'curl -J -k -b sid=%s -H "%s" -X %s -o %s %s -s' % \
+                      (self.cookies['sid'], header_str, method, file_path, url)
+
+        sub = Popen(request_cmd, stdout=PIPE, shell=True)
+        response, err = sub.communicate()
+        return response
+
     def request_upload(self, method, url, headers, files, using_curl=True):
         if using_curl:
             return self._upload_by_curl(method, url, headers, files)
