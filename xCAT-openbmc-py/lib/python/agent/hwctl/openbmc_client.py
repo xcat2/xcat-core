@@ -327,7 +327,7 @@ class OpenBMCRest(object):
             raise
 
         if not response:
-            self._print_record_log('No response received', cmd=cmd)
+            self._print_record_log('No response received for command %s' % request_cmd, cmd=cmd)
             return True
 
         self._print_record_log(str(response.status_code), cmd=cmd)
@@ -603,7 +603,7 @@ class OpenBMCRest(object):
 
             return dump_dict
         except KeyError:
-            error = 'Error: Received wrong format response: %s' % inventory_data
+            error = 'Error: Received wrong format response: %s' % dump_data
             raise SelfServerException(error) 
 
     def download_dump(self, download_id, file_path):

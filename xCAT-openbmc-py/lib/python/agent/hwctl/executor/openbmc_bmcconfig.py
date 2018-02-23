@@ -75,6 +75,7 @@ class OpenBMCBmcConfigTask(ParallelNodesCommand):
 
             if not dump_dict:
                 self.callback.info('%s: No attributes returned from the BMC.' % node)
+                return dump_info
 
             keys = dump_dict.keys()
             keys.sort()
