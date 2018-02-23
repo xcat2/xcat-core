@@ -736,7 +736,7 @@ class OpenBMCManager(base.BaseManager):
         elif opts['get']:
             unsupport_list=list(set(opts['<args>']) - set(RSPCONFIG_GET_OPTIONS))
             if len(unsupport_list) > 0:
-                self.messager.error("Have unsupported option: %s" % unsupport_args)
+                self.messager.error("Have unsupported option: %s" % unsupport_list)
                 return
             else:
                 DefaultBmcConfigManager().get_attributes(runner, opts['<args>'])
@@ -744,7 +744,7 @@ class OpenBMCManager(base.BaseManager):
             rc=0
             for attr in opts['<args>']:
                 k,v = attr.split('=')
-                if not RSPCONFIG_SET_OPTIONS.has_key(k):
+                if k not in RSPCONFIG_SET_OPTIONS:
                     self.messager.error("The attribute %s is not support to set" % k)
                     rc=1
                 elif not re.match(RSPCONFIG_SET_OPTIONS[k], v):
