@@ -1338,7 +1338,9 @@ sub preprocess_request
                   my $reqc = {%$req};
                   foreach my $dhcps (@dhcpservers) {
                       my $reqcopy = {%$req};    #deep copy
-                      $reqcopy->{'_xcatdest'} = $dhcps;
+                      if ($dhcps ne "<xcatmaster>") {
+                          $reqcopy->{'_xcatdest'} = $dhcps;
+                      }
                       $reqcopy->{node} = [ keys %localnodehash ];
                       if (scalar(@{ $reqcopy->{node} })) { push @requests, $reqcopy }
                   }
