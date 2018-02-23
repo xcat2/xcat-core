@@ -2441,7 +2441,7 @@ sub addnet
                 $callback->(
                     {
                         error => [
-                            "No $net specific entry for domain, and no domain defined in site table."
+                            "No domain defined for $net entry in networks table, and no domain defined in site table."
                           ],
                         errorcode => [1]
                     });
