@@ -583,7 +583,7 @@ class OpenBMCRest(object):
 
     def create_dump(self):
 
-        payload = payload = { "data": DUMP_URLS['create']['field'] }
+        payload = { "data": DUMP_URLS['create']['field'] }
         return self.request('POST', DUMP_URLS['create']['path'], payload=payload, cmd='create_dump')
 
     def list_dump_info(self):
@@ -611,6 +611,50 @@ class OpenBMCRest(object):
         headers = {'Content-Type': 'application/octet-stream'}
         path = DUMP_URLS['download'].replace('#ID#', download_id)
         self.download('GET', path, file_path, headers=headers, cmd='download_dump')
+
+    def get_netinfo(self):
+        data = self.request('GET', RSPCONFIG_NETINFO_URL['get_netinfo'], cmd="get_netinfo")
+        try:
+            netinfo = {}
+            for k, v in data.items():
+                if 'network/config' in k:
+                    if 'HostName' in v:
+                        netinfo["hostname"] = v["HostName"]
+                    if 'DefaultGateway' in v:
+                        netinfo["defaultgateway"] = v["DefaultGateway"]
+                    continue
+                dev,match,netid = k.partition("/ipv4/")
+                if netid:
+                    if 'LinkLocal' in v["Origin"] or v["Address"].startswith("169.254"):
+                        msg = "Found LinkLocal address %s for interface %s, Ignoring..." % (v["Address"], dev)
+                        self._print_record_log(msg, 'get_netinfo')
+                        continue
+                    nicid = dev.split('/')[-1]
+                    if nicid not in netinfo:
+                        netinfo[nicid] = {}
+                    if 'ip' in netinfo[nicid]:
+                        msg = "%s: Another valid ip %s found." % (node, v["Address"])
+                        self._print_record_log(msg, 'get_netinfo')
+                        continue
+                    utils.update2Ddict(netinfo, nicid, "ipsrc", v["Origin"].split('.')[-1])
+                    utils.update2Ddict(netinfo, nicid, "netmask", v["PrefixLength"])
+                    utils.update2Ddict(netinfo, nicid, "gateway", v["Gateway"])
+                    utils.update2Ddict(netinfo, nicid, "ip", v["Address"])
+                    if dev in data:
+                        info = data[dev]
+                        utils.update2Ddict(netinfo, nicid, "vlanid", info.get("Id", "Disable"))
+                        utils.update2Ddict(netinfo, nicid, "mac", info["MACAddress"])
+                        utils.update2Ddict(netinfo, nicid, "ntpservers", info["NTPServers"])            
+            return netinfo
+        except KeyError:
+            error = 'Error: Received wrong format response: %s' % data
+            raise SelfServerException(error)
+        
+
+    def set_ipdhcp(self):
+        payload = { "data": [] }
+        return self.request('PUT', RSPCONFIG_NETINFO_URL['ipdhcp'], payload=payload, cmd="set_bmcip_dhcp")
+
 
 class OpenBMCImage(object):
     def __init__(self, rawid, data=None):

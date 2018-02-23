@@ -37,7 +37,7 @@ class RestSession(object):
 
         return response
 
-    def request_download(self, method, url, headers, file_path, using_curl=False):
+    def request_download(self, method, url, headers, file_path, using_curl=True):
 
         if using_curl:
             response = self._download_by_curl(method, url, headers, file_path)
