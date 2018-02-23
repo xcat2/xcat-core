@@ -72,9 +72,15 @@ if ($hmtab) {
 my $file = "/var/log/consoles/$node";
 
 #use confluent if it is there
-if (((-x "/opt/confluent/bin/confetty") || (-x "/usr/bin/confetty")) && -f "/var/log/confluent/consoles/$node") {
-    $file = "/var/log/confluent/consoles/$node";
-}
+USE_CONFLUENT=0
+CONSOLE_SERVICE_KEYWORD=`tabdump site | grep consoleservice | cut -d, -f1 | tr -d '"'`
+CONSOLE_SERVICE_VALUE=`tabdump site | grep consoleservice | cut -d, -f2 | tr -d '"'`
+
+if [ "$CONSOLE_SERVICE_KEYWORD" == "consoleservice" ]; then
+    if [ "$CONSOLE_SERVICE_VALUE" == "confluent" ]; then
+        $file = "/var/log/confluent/consoles/$node";
+    fi
+fi
 
 #print "file=$file\n";
 
