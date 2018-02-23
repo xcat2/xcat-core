@@ -101,9 +101,10 @@ rmdir \"/tmp/$userid\" \n")
                                    debugmode=self.debugmode, verbose=self.verbose)
         try:
             obmc.login()
-            obmc.set_ipdhcp(key)
+            obmc.set_ipdhcp()
         except (SelfServerException, SelfClientException) as e:
             self.callback.info("%s: %s" % (node, e.message))
+            return
 
         self.callback.info("%s: BMC Setting IP to DHCP..." % (node))
         try:
@@ -214,38 +215,34 @@ rmdir \"/tmp/$userid\" \n")
         if hostname:
             self.callback.info("%s: BMC Hostname: %s" %(node, bmchostname))
         dic_length = len(netinfo) 
-        ip_list = []
-        ipsrc_list = []
-        netmask_list = []
-        gateway_list = []
-        vlan_list = []
-        ntpserver_list = []
+        netinfodict = {'ip':[], 'netmask':[], 'gateway':[],
+                   'vlan':[], 'ipsrc':[], 'ntpserver':[]}
         for nic,attrs in netinfo.items():
             addon_string = ''
             if dic_length > 1:
                 addon_string = " for %s" % nic
-            ip_list.append("BMC IP"+addon_string+": %s" % attrs["ip"])
-            netmask_list.append("BMC Netmask"+addon_string+": %s" % attrs["netmask"])
-            gateway_list.append("BMC Gateway"+addon_string+": %s (default: %s)" % (attrs["gateway"], defaultgateway))
-            vlan_list.append("BMC VLAN ID"+addon_string+": %s" % attrs["vlanid"])
-            ipsrc_list.append("BMC IP Source"+addon_string+": %s" % attrs["ipsrc"])
-            ntpserver_list.append("BMC NTP Servers"+addon_string+": %s" % attrs["ntpservers"])
+            netinfodict['ip'].append("BMC IP"+addon_string+": %s" % attrs["ip"])
+            netinfodict['netmask'].append("BMC Netmask"+addon_string+": %s" % attrs["netmask"])
+            netinfodict['gateway'].append("BMC Gateway"+addon_string+": %s (default: %s)" % (attrs["gateway"], defaultgateway))
+            netinfodict['vlan'].append("BMC VLAN ID"+addon_string+": %s" % attrs["vlanid"])
+            netinfodict['ipsrc'].append("BMC IP Source"+addon_string+": %s" % attrs["ipsrc"])
+            netinfodict['ntpserver'].append("BMC NTP Servers"+addon_string+": %s" % attrs["ntpservers"])
         if ip:
-            for i in ip_list:
+            for i in netinfodict['ip']:
                 self.callback.info("%s: %s" % (node, i))
         if netmask:
-            for i in netmask_list:
+            for i in netinfodict['netmask']:
                 self.callback.info("%s: %s" % (node, i))
         if gateway:
-            for i in gateway_list:
+            for i in netinfodict['gateway']:
                 self.callback.info("%s: %s" % (node, i))
         if ipsrc:
-            for i in ipsrc_list:
+            for i in netinfodict['ipsrc']:
                 self.callback.info("%s: %s" % (node, i))
         if vlan:
-            for i in vlan_list:
+            for i in netinfodict['vlan']:
                 self.callback.info("%s: %s" % (node, i))
         if ntpserver:
-            for i in ntpserver_list:
+            for i in netinfodict['netserver']:
                 self.callback.info("%s: %s" % (node, i))
         return netinfo

@@ -554,7 +554,7 @@ class OpenBMCRest(object):
                     utils.update2Ddict(netinfo, nicid, "ip", v["Address"])
                     if dev in data:
                         info = data[dev]
-                        utils.update2Ddict(netinfo, nicid, "vlanid", info["Id"])
+                        utils.update2Ddict(netinfo, nicid, "vlanid", info.get("Id", "Disable"))
                         utils.update2Ddict(netinfo, nicid, "mac", info["MACAddress"])
                         utils.update2Ddict(netinfo, nicid, "ntpservers", info["NTPServers"])            
             return netinfo
