@@ -91,13 +91,15 @@ RSPCONFIG_SET_OPTIONS = {
     'powersupplyredundancy':"^enabled$|^disabled$",
     'powerrestorepolicy':"^always_on$|^always_off$|^restore$",
     'bootmode':"^regular$|^safe$|^setup$",
+    'admin_passwd':'.*,.*',
 }
 RSPCONFIG_USAGE = """
 Handle rspconfig operations.
 
 Usage:
        rspconfig -h|--help
-       rspconfig dump [[-l|--list] | [-g|--generate] | [-c|--clear <arg>] | [-d|--download <arg>]] [-V|--verbose]
+       rspconfig dump [[-l|--list] | [-g|--generate] | [-c|--clear --id <arg>] | [-d|--download --id <arg>]] [-V|--verbose]
+       rspconfig gard -c|--clear [-V|--verbose]
        rspconfig sshcfg [-V|--verbose]
        rspconfig ip=dhcp [-V|--verbose]
        rspconfig get [<args>...] [-V|--verbose]
@@ -107,8 +109,9 @@ Options:
   -V,--verbose        Show verbose message
   -l,--list           List are dump files
   -g,--generate       Trigger a new dump file
-  -c,--clear <arg>    The id of file to clear or all if specify 'all'
-  -d,--download <arg> The id of file to download or all if specify 'all'
+  -c,--clear          To clear the specified dump file
+  -d,--download       To download specified dump file
+  --id <arg>          The dump file id or 'all'
 
 The supported attributes to get are: %s
 
@@ -724,11 +727,14 @@ class OpenBMCManager(base.BaseManager):
             elif opts['--generate']:
                 DefaultBmcConfigManager().dump_generate(runner)
             elif opts['--clear']:
-                DefaultBmcConfigManager().dump_clear(runner, opts['--clear'][0])
+                DefaultBmcConfigManager().dump_clear(runner, opts['--id'])
             elif opts['--download']:
-                DefaultBmcConfigManager().dump_download(runner, opts['--download'][0])
+                DefaultBmcConfigManager().dump_download(runner, opts['--id'])
             else:
                 DefaultBmcConfigManager().dump_process(runner)
+        elif opts['gard']:
+            if opts['--clear']:
+                DefaultBmcConfigManager().gard_clear(runner)
         elif opts['sshcfg']:
             DefaultBmcConfigManager().set_sshcfg(runner)
         elif opts['ip=dhcp']:

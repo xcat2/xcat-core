@@ -179,6 +179,20 @@ class OpenBMCBmcConfigTask(ParallelNodesCommand):
         except SelfServerException as e:
             self.callback.info('%s: %s'  % (node, e.message))
 
+    def gard_clear(self, **kw):
+
+        node = kw['node']
+        obmc = openbmc.OpenBMCRest(name=node, nodeinfo=kw['nodeinfo'], messager=self.callback,
+                                   debugmode=self.debugmode, verbose=self.verbose)
+
+        try:
+            obmc.login()
+            obmc.clear_gard()
+            self.callback.info('%s: GARD cleared' % node)
+
+        except SelfServerException as e:
+            self.callback.info('%s: %s'  % (node, e.message))
+
     def pre_set_sshcfg(self, *arg, **kw):
         local_home_dir=os.path.expanduser('~')
         self.local_ssh_dir = local_home_dir + "/.ssh/"
@@ -271,6 +285,8 @@ rmdir \"/tmp/$userid\" \n")
                 netinfo_dict[k] = v
             elif k == 'hostname':
                 self._set_hostname(v, **kw)
+            elif k == 'admin_passwd':
+                self._set_admin_password(v, **kw)
             elif k in openbmc.RSPCONFIG_APIS:
                 self._set_apis_values(k, v, **kw)
             else:
@@ -292,7 +308,26 @@ rmdir \"/tmp/$userid\" \n")
         self._set_apis_values("hostname", hostname, **kw)
         self._get_netinfo(hostname=True, ntpserver=False, **kw) 
         return
-        
+
+    def _set_admin_password(self, admin_passwd, **kw):
+        node = kw['node']
+        node_info = kw['nodeinfo']
+
+        origin_passwd, new_passwd = admin_passwd.split(',')
+
+        if origin_passwd != node_info['password']:
+            self.callback.info('%s: Current BMC password is incorrect, cannot set the new password.' % node)
+            return
+
+        obmc = openbmc.OpenBMCRest(name=node, nodeinfo=node_info, messager=self.callback,
+                                   debugmode=self.debugmode, verbose=self.verbose)
+        try:
+            obmc.login()
+            obmc.set_admin_passwd(new_passwd)
+            self.callback.info("%s: BMC Setting Password..." % node)
+        except (SelfServerException, SelfClientException) as e:
+            self.callback.info("%s: %s" % (node, e.message))
+
     def _set_apis_values(self, key, value, **kw):
         node = kw['node']
         obmc = openbmc.OpenBMCRest(name=node, nodeinfo=kw['nodeinfo'], messager=self.callback,

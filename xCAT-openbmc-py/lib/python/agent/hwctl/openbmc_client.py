@@ -46,6 +46,8 @@ DUMP_URLS = {
     "list"      : "/dump/enumerate", 
 }
 
+GARD_CLEAR_URL = "/org/open_power/control/gard/action/Reset"
+
 INVENTORY_URL = "/inventory/enumerate"
 
 LEDS_URL = "/led/physical/enumerate"
@@ -165,6 +167,8 @@ RSPCONFIG_NETINFO_URL = {
     'ipdhcp': "/network/action/Reset",
     'ntpserver': "/network/#NIC#/attr/NTPServers",
 }
+
+PASSWD_URL = '/user/root/action/SetPassword'
 
 RSPCONFIG_APIS = {
     'hostname': {
@@ -571,6 +575,11 @@ class OpenBMCRest(object):
             data={"data": attr_info['get_data']}
         return self.request(method, get_url, payload=data, cmd="get_%s" % key)
 
+    def set_admin_passwd(self, passwd):
+
+        payload = { "data": [passwd] }
+        self.request('POST', PASSWD_URL, payload=payload, cmd='set_admin_password')
+
     def clear_dump(self, clear_arg):
 
         if clear_arg == 'all':
@@ -611,6 +620,12 @@ class OpenBMCRest(object):
         headers = {'Content-Type': 'application/octet-stream'}
         path = DUMP_URLS['download'].replace('#ID#', download_id)
         self.download('GET', path, file_path, headers=headers, cmd='download_dump')
+
+    def clear_gard(self):
+
+        payload = { "data": [] }
+        url = HTTP_PROTOCOL + self.bmcip + GARD_CLEAR_URL
+        return self.request('POST', url, payload=payload, cmd='clear_gard')
 
     def get_netinfo(self):
         data = self.request('GET', RSPCONFIG_NETINFO_URL['get_netinfo'], cmd="get_netinfo")

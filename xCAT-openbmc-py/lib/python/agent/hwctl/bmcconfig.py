@@ -25,6 +25,9 @@ class BmcConfigInterface(object):
     def dump_process(self, task):
         return task.run("dump_process")
 
+    def gard_clear(self, task):
+        return task.run("gard_clear")
+
     def set_sshcfg(self, task):
         return task.run("set_sshcfg")
 
