@@ -150,8 +150,7 @@ sub preprocess_request
                 'u|updatedb'  => \$::UPDATE,
                 'p|powerstat' => \$::POWER,
                 'h|help'      => \$::HELP,
-                'v|version'   => \$::VERSION,
-                'f|usefping'  => \$::USEFPING))
+                'v|version'   => \$::VERSION))
         {
             &usage($cb,1);
             return (1);
