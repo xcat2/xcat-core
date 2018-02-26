@@ -150,7 +150,8 @@ sub preprocess_request
                 'u|updatedb'  => \$::UPDATE,
                 'p|powerstat' => \$::POWER,
                 'h|help'      => \$::HELP,
-                'v|version'   => \$::VERSION))
+                'v|version'   => \$::VERSION,
+                'f|usefping'  => \$::USEFPING))
         {
             &usage($cb,1);
             return (1);
@@ -1217,7 +1218,7 @@ sub usage
     my $retcode=shift;
     my $rsp = {};
     $rsp->{data}->[0] = "Usage:";
-    $rsp->{data}->[1] = "  nodestat [noderange] [-m|--usemon] [-p|powerstat] [-u|--updatedb]";
+    $rsp->{data}->[1] = "  nodestat [noderange] [-m|--usemon] [-p|powerstat] [-u|--updatedb] [-f|--usefping]";
     $rsp->{data}->[2] = "  nodestat [-h|--help|-v|--version]";
     if($retcode){
        $rsp->{errorcode}->[0]=$retcode;
