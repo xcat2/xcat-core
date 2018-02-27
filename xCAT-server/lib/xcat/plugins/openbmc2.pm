@@ -364,14 +364,33 @@ sub refactor_args {
     my $request = shift;
     my $command   = $request->{command}->[0];
     my $extrargs  = $request->{arg};    
+    my $subcommand;
     if ($command eq "rspconfig") {
-        my $subcommand = $extrargs->[0];
+        $subcommand = $extrargs->[0];
         if ($subcommand !~ /^dump$|^sshcfg$|^ip=dhcp$/) {
             if (grep /=/, @$extrargs) {
                 unshift @$extrargs, "set";
             } else {
                 unshift @$extrargs, "get";
             }
+        }
+    }
+    if ($command eq "reventlog") {
+        if (!defined($extrargs->[0])) {
+            # If no parameters are passed, default to list all records
+            $request->{arg} = ["list","all"];
+        }
+        else {
+            $subcommand = $extrargs->[0];
+        }
+        if ($subcommand =~ /^\d+$/) {
+            unshift @$extrargs, "list";
+        }
+        elsif ($subcommand =~/^resolved=(.*)/) {
+            unshift @$extrargs, "resolved";
+        }
+        elsif ($subcommand =~/^all$/) {
+            unshift @$extrargs, "list";
         }
     }
     return 0;

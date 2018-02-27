@@ -20,13 +20,13 @@ logger = logging.getLogger('xcatagent')
 class OpenBMCEventlogTask(ParallelNodesCommand):
     """Executor for eventlog-related actions."""
 
-    def get_ev_info(self, args, **kw):
+    def get_ev_info(self, num_to_display, **kw):
 
         node = kw['node']
         number_to_display = 0
         try:
             # Number of records to display from the end
-            number_to_display = 0-int(args[0])
+            number_to_display = 0-int(num_to_display[0])
         except Exception:
             # All records to display
             number_to_display = 0
@@ -52,3 +52,11 @@ class OpenBMCEventlogTask(ParallelNodesCommand):
             self.callback.info('%s: %s'  % (node, e.message))
 
         return eventlog_info
+
+    def clear_all_ev_records(self, **kw):
+
+        node = kw['node']
+
+    def resolve_ev_records(self, resolve_list, **kw):
+
+        node = kw['node']

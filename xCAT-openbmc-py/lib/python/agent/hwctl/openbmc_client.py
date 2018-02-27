@@ -492,10 +492,15 @@ class OpenBMCRest(object):
 
         return bool(func_list), fw_dict
 
-    # Extract all eventlog info and build a dictionary with eventid as a key
+    # Extract all eventlog info and parse it
     def get_eventlog_info(self):
 
         eventlog_data = self.request('GET', EVENTLOG_URL, cmd='get_eventlog_info')
+
+        return self.parse_eventlog_data(eventlog_data)
+
+    # Parse eventlog data and build a dictionary with eventid as a key
+    def parse_eventlog_data(self, eventlog_data):
 
         # Check if policy table file is there
         ras_event_mapping = {}
@@ -512,7 +517,7 @@ class OpenBMCRest(object):
         try:
             eventlog_dict = {}
             for key, value in sorted(eventlog_data.items()):
-                id, event_log_line = self.parse_event_data(value, ras_event_mapping)
+                id, event_log_line = self.parse_eventlog_data_record(value, ras_event_mapping)
                 if int(id) != 0:
                     eventlog_dict[str(id)] = event_log_line
             return eventlog_dict
@@ -521,7 +526,7 @@ class OpenBMCRest(object):
             raise SelfServerException(error)
 
     # Parse a single eventlog entry and return data in formatted string
-    def parse_event_data(self, event_log_entry, ras_event_mapping):
+    def parse_eventlog_data_record(self, event_log_entry, ras_event_mapping):
         formatted_line = ""
         callout_data = ""
         LED_tag = " [LED]"

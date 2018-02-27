@@ -145,7 +145,7 @@ VITALS_OPTIONS = ('all', 'altitude', 'fanspeed', 'leds', 'power',
                   'temp', 'voltage', 'wattage')
 
 # global variables of reventlog
-EVENTLOG_OPTIONS = ('all', 'clear', 'resolved')
+EVENTLOG_OPTIONS = ('list', 'clear', 'resolved')
 
 class OpenBMC(base.BaseDriver):
 
@@ -841,9 +841,9 @@ class OpenBMCManager(base.BaseManager):
 
         reventlog_usage = """
         Usage:
-            reventlog [-V|--verbose] [resolved=LED|resolved=<num>]
-            reventlog [-V|--verbose] [clear|all]
-            reventlog [-V|--verbose] [<number>]
+            reventlog [-V|--verbose] resolved <id_list>
+            reventlog [-V|--verbose] clear
+            reventlog [-V|--verbose] list <number_of_records>
 
         Options:
             -V --verbose   eventlog verbose mode.
@@ -859,13 +859,23 @@ class OpenBMCManager(base.BaseManager):
             return
 
         # 2, validate the args
-        #if action not in EVENTLOG_OPTIONS:
-        #    self.messager.error("Not supported subcommand for reventlog: %s" % action)
-        #    return
+        if action not in EVENTLOG_OPTIONS:
+            self.messager.error("Not supported subcommand for reventlog: %s" % action)
+            return
 
         # 3, run the subcommands
         runner = OpenBMCEventlogTask(nodesinfo, callback=self.messager, debugmode=self.debugmode, verbose=self.verbose)
-        DefaultEventlogManager().get_eventlog_info(runner, args)
+        self.messager.info('revetlog.py processing action=%s args=%s' % (action, args))
+        if action == 'clear':
+            DefaultEventlogManager().clear_all_eventlog_records(runner)
+        elif action == 'resolved':
+            eventlog_id_list = opts.pop('<id_list>')
+            DefaultEventlogManager().resolve_eventlog_records(runner, eventlog_id_list)
+        elif action == 'list':
+            eventlog_number_of_records = opts.pop('<number_of_records>')
+            DefaultEventlogManager().get_eventlog_info(runner, eventlog_number_of_records)
+        else:
+            DefaultEventlogManager().get_eventlog_info(runner, "all")
 
     def _get_full_path(self,file_path):
         if type(self.cwd) == 'unicode':
