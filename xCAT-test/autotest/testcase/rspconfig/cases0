@@ -269,7 +269,9 @@ cmd:mkdir -p /tmp/rspconfig_set_hostname_equal_star_with_bmc_is_hostname
 check:rc == 0
 cmd:lsdef $$CN -z > /tmp/rspconfig_set_hostname_equal_star_with_bmc_is_hostname/$$CN.stanza
 check:rc == 0
-cmd:chdef -t node -o bogus_bmc_hostname groups=bmc ip=10.6.17.100
+cmd:chdef -t node -o bogus_bmc_hostname groups=bmc ip=__GETNODEATTR($$CN,bmc)__
+check:rc == 0
+cmd:lsdef bogus_bmc_hostname
 check:rc == 0
 cmd:makehosts bogus_bmc_hostname
 check:rc == 0
