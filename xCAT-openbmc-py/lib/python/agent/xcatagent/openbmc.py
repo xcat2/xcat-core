@@ -80,13 +80,14 @@ RFLASH_URLS = {
     }
 }
 
-RSPCONFIG_GET_OPTIONS = ['ip','ipsrc','netmask','gateway','vlan','hostname','bootmode','autoreboot','powersupplyredundancy','powerrestorepolicy']
+RSPCONFIG_GET_OPTIONS = ['ip','ipsrc','netmask','gateway','vlan','ntpservers','hostname','bootmode','autoreboot','powersupplyredundancy','powerrestorepolicy']
 RSPCONFIG_SET_OPTIONS = {
     'ip':'.*',
     'netmask':'.*',
     'gateway':'.*',
     'vlan':'\d+',
     'hostname':"\*|.*",
+    'ntpservers':'.*',
     'autoreboot':"^0|1$",
     'powersupplyredundancy':"^enabled$|^disabled$",
     'powerrestorepolicy':"^always_on$|^always_off$|^restore$",

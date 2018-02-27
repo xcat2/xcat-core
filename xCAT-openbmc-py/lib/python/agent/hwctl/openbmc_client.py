@@ -165,7 +165,7 @@ RSPCONFIG_NETINFO_URL = {
     'nic_ip': "/network/#NIC#/action/IP",
     'vlan': "/network/action/VLAN",
     'ipdhcp': "/network/action/Reset",
-    'ntpserver': "/network/#NIC#/attr/NTPServers",
+    'ntpservers': "/network/#NIC#/attr/NTPServers",
 }
 
 PASSWD_URL = '/user/root/action/SetPassword'
@@ -580,6 +580,12 @@ class OpenBMCRest(object):
         payload = { "data": [passwd] }
         self.request('POST', PASSWD_URL, payload=payload, cmd='set_admin_password')
 
+    def set_ntp_servers(self, nic, servers):
+
+        payload = { "data": [servers] }
+        url = RSPCONFIG_NETINFO_URL['ntpservers'].replace('#NIC#', nic)
+        self.request('PUT', url, payload=payload, cmd='set_ntp_servers')
+
     def clear_dump(self, clear_arg):
 
         if clear_arg == 'all':
@@ -659,7 +665,11 @@ class OpenBMCRest(object):
                         info = data[dev]
                         utils.update2Ddict(netinfo, nicid, "vlanid", info.get("Id", "Disable"))
                         utils.update2Ddict(netinfo, nicid, "mac", info["MACAddress"])
-                        utils.update2Ddict(netinfo, nicid, "ntpservers", info["NTPServers"])            
+                        ntpservers = None
+                        tmp_ntpservers = ''.join(info["NTPServers"])
+                        if tmp_ntpservers:
+                            ntpservers = tmp_ntpservers
+                        utils.update2Ddict(netinfo, nicid, "ntpservers", ntpservers)            
             return netinfo
         except KeyError:
             error = 'Error: Received wrong format response: %s' % data

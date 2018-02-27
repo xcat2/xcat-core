@@ -23,7 +23,7 @@ from scp import SCPClient
 import logging
 logger = logging.getLogger('xcatagent')
 
-RSPCONFIG_GET_NETINFO=['ip', 'netmask', 'gateway', 'vlan', 'ipsrc', 'hostname']
+RSPCONFIG_GET_NETINFO=['ip', 'netmask', 'gateway', 'vlan', 'ipsrc', 'hostname', 'ntpservers']
 RSPCONFIG_SET_NETINFO=['ip', 'netmask', 'gateway', 'vlan']
 
 XCAT_LOG_DUMP_DIR = "/var/log/xcat/dump/"
@@ -275,7 +275,8 @@ rmdir \"/tmp/$userid\" \n")
         if len(netinfo_dict):
             self._get_netinfo(ip=netinfo_dict.get('ip', False), ipsrc=netinfo_dict.get('ipsrc', False), netmask=netinfo_dict.get('netmask', False),
                               gateway=netinfo_dict.get('gateway', False),vlan= netinfo_dict.get('vlan', False), 
-                              hostname=netinfo_dict.get('hostname', False), **kw)
+                              hostname=netinfo_dict.get('hostname', False),
+                              ntpservers=netinfo_dict.get('ntpservers', False), **kw)
 
     def set_attributes(self, attributes, **kw):
         netinfo_dict={'vlan':False}
@@ -287,6 +288,8 @@ rmdir \"/tmp/$userid\" \n")
                 self._set_hostname(v, **kw)
             elif k == 'admin_passwd':
                 self._set_admin_password(v, **kw)
+            elif k == 'ntpservers':
+                self._set_ntp_servers(v, **kw)
             elif k in openbmc.RSPCONFIG_APIS:
                 self._set_apis_values(k, v, **kw)
             else:
@@ -308,6 +311,40 @@ rmdir \"/tmp/$userid\" \n")
         self._set_apis_values("hostname", hostname, **kw)
         self._get_netinfo(hostname=True, ntpserver=False, **kw) 
         return
+
+    def _set_ntp_servers(self, servers, **kw):
+        node = kw['node']
+        node_info = kw['nodeinfo']
+        obmc = openbmc.OpenBMCRest(name=node, nodeinfo=node_info, messager=self.callback,
+                                   debugmode=self.debugmode, verbose=self.verbose)
+
+        try:
+            obmc.login()
+            netinfo = obmc.get_netinfo()
+        except (SelfServerException, SelfClientException) as e:
+            self.callback.info('%s: %s' % (node, e.message))
+            return
+
+        if not netinfo:
+            return self.callback.error("%s: No network information get" % node)
+
+        nic = None
+        for k,v in netinfo.items():
+            if 'ip' in v and v['ip'] == node_info['bmcip']:
+                nic = k
+
+        try:
+            obmc.set_ntp_servers(nic, servers)
+            self.callback.info('%s: BMC Setting NTPServers...' % node)
+            netinfo = obmc.get_netinfo()
+        except (SelfServerException, SelfClientException) as e:
+            self.callback.info('%s: %s' % (node, e.message))
+            return
+
+        ntpservers = None
+        if nic in netinfo:
+            ntpservers = netinfo[nic]['ntpservers']
+        self.callback.info('%s: BMC NTP Servers: %s' % (node, ntpservers))
 
     def _set_admin_password(self, admin_passwd, **kw):
         node = kw['node']
@@ -362,7 +399,7 @@ rmdir \"/tmp/$userid\" \n")
             result = "set net(%s, %s, %s) for eth0" % (ip, netmask, gateway)
         return self.callback.info("set_netinfo %s" % result)
 
-    def _get_netinfo(self, ip=False, ipsrc=False, netmask=False, gateway=False, vlan=False, hostname=False, ntpserver=True, **kw):
+    def _get_netinfo(self, ip=False, ipsrc=False, netmask=False, gateway=False, vlan=False, hostname=False, ntpservers=False, **kw):
         node = kw['node']
         obmc = openbmc.OpenBMCRest(name=node, nodeinfo=kw['nodeinfo'], messager=self.callback,
                                    debugmode=self.debugmode, verbose=self.verbose)
@@ -387,7 +424,7 @@ rmdir \"/tmp/$userid\" \n")
             self.callback.info("%s: BMC Hostname: %s" %(node, bmchostname))
         dic_length = len(netinfo) 
         netinfodict = {'ip':[], 'netmask':[], 'gateway':[],
-                   'vlan':[], 'ipsrc':[], 'ntpserver':[]}
+                   'vlan':[], 'ipsrc':[], 'ntpservers':[]}
         for nic,attrs in netinfo.items():
             addon_string = ''
             if dic_length > 1:
@@ -397,7 +434,7 @@ rmdir \"/tmp/$userid\" \n")
             netinfodict['gateway'].append("BMC Gateway"+addon_string+": %s (default: %s)" % (attrs["gateway"], defaultgateway))
             netinfodict['vlan'].append("BMC VLAN ID"+addon_string+": %s" % attrs["vlanid"])
             netinfodict['ipsrc'].append("BMC IP Source"+addon_string+": %s" % attrs["ipsrc"])
-            netinfodict['ntpserver'].append("BMC NTP Servers"+addon_string+": %s" % attrs["ntpservers"])
+            netinfodict['ntpservers'].append("BMC NTP Servers"+addon_string+": %s" % attrs["ntpservers"])
         if ip:
             for i in netinfodict['ip']:
                 self.callback.info("%s: %s" % (node, i))
@@ -413,7 +450,7 @@ rmdir \"/tmp/$userid\" \n")
         if vlan:
             for i in netinfodict['vlan']:
                 self.callback.info("%s: %s" % (node, i))
-        if ntpserver:
-            for i in netinfodict['netserver']:
+        if ntpservers:
+            for i in netinfodict['ntpservers']:
                 self.callback.info("%s: %s" % (node, i))
         return netinfo

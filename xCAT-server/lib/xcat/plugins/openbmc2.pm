@@ -342,8 +342,9 @@ sub refactor_args {
     my $request = shift;
     my $command   = $request->{command}->[0];
     my $extrargs  = $request->{arg};    
+    my $subcommand; 
     if ($command eq "rspconfig") {
-        my $subcommand = $extrargs->[0];
+        $subcommand = $extrargs->[0];
         if ($subcommand !~ /^dump$|^sshcfg$|^ip=dhcp$|^gard$/) {
             if (grep /=/, @$extrargs) {
                 unshift @$extrargs, "set";
