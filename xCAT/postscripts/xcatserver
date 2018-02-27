@@ -164,8 +164,8 @@ if [ $? -ne 0 ]; then
       # if not DB2
       grep "DB2" /etc/xcat/cfgloc  2>&1 1> /dev/null
       if [ $? -ne 0 ]; then
-        sed s/host=[^\|]*/host=$MASTER/ /etc/xcat/cfgloc > /etc/xcat/cfgloc.new
-        mv /etc/xcat/cfgloc.new /etc/xcat/cfgloc
+        mv  /etc/xcat/cfgloc /etc/xcat/cfgloc.orig
+        sed s/host=[^\|]*/host=$MASTER/ /etc/xcat/cfgloc.orig > /etc/xcat/cfgloc
       else # DB2 cfgloc has different format
         if [ -n "$UPDATENODE" ] && [ $UPDATENODE -eq 1 ]; then
         cp /etc/xcat/cfgloc /etc/xcat/cfgloc.db2
