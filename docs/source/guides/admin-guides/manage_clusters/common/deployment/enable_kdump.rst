@@ -108,7 +108,7 @@ For system x machine, on sles10 set the crashkernelsize attribute like this: ::
 
     chdef -t osimage <image name> crashkernelsize=<size>M@16M
 
-On sles11 and rhels6 set the crashkernelsize attribute like this: ::
+On sles11, rhels6 and above set the crashkernelsize attribute like this: ::
 
     chdef -t osimage <image name> crashkernelsize=<size>M
 
@@ -118,12 +118,20 @@ Where <size> recommended value is 256. For more information about the size can r
     `<http://www.novell.com/support/kb/doc.php?id=3374462>`_.  
     
     `<https://access.redhat.com/knowledge/docs/en-US/Red_Hat_Enterprise_Linux/6/html/Deployment_Guide/s2-kdump-configuration-cli.html>`_.  
+
+    `<https://access.redhat.com/documentation/en-us/red_hat_enterprise_linux/7/html/kernel_crash_dump_guide/sect-kdump-config-cli>`_.
     
 For system p machine, set the crashkernelsize attribute to this: ::
 
     chdef -t osimage <image name> crashkernelsize=<size>@32M
 
+For Power System AC922, set the crashkernelsize attribute to this: ::
+    
+    chdef -t osimage <image name> crashkernelsize=<size>M
+
 Where <size> recommended value is 256, more information can refer the kdump document for the system x.
+
+**Notes**: The ``crashkernel=`` option can be defined in multiple ways. If it is hard to decide the specific crashkernelsize, auto value can be used, the auto value enables automatic configuration of reserved memory based on the total amount of memory in the system like ``crashkernel=auto``. 
 
 When your node starts, and you get a kdump start error like this: ::
 
