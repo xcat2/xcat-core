@@ -2,7 +2,7 @@
 #
 # go-xcat - Install xCAT automatically.
 #
-# Version 1.0.23
+# Version 1.0.24
 #
 # Copyright (C) 2016 International Business Machines
 # Eclipse Public License, Version 1.0 (EPL-1.0)
@@ -867,8 +867,8 @@ function extract_archive()
 	warn_if_bad "${ret}" "Failed to create directory \`${install_path}'" ||
 		return 1
 
-	case "${archive##*.}" in
-	"Z")
+	case "${archive##*/}" in
+	*".tar.Z")
 		check_executes uncompress tar grep || return 1
 		uncompress -c "${archive}" | tar -t -f - | grep -v "^${repo_id}/"
 		[[ "${PIPESTATUS[0]}" -eq 0 && "${PIPESTATUS[1]}" -eq 0 &&
@@ -877,7 +877,7 @@ function extract_archive()
 		rm -rf "${install_path}/${repo_id}"
 		uncompress -c "${archive}" | ( cd "${install_path}" && tar -x -f - )
 		;;
-	"tz"|"tgz"|"gz")
+	*".tz"|*".tgz"|*".tar.gz")
 		check_executes gzip tar grep || return 1
 		gzip -d -c "${archive}" | tar -t -f - | grep -v "^${repo_id}/"
 		[[ "${PIPESTATUS[0]}" -eq 0 && "${PIPESTATUS[1]}" -eq 0 &&
@@ -886,7 +886,7 @@ function extract_archive()
 		rm -rf "${install_path}/${repo_id}"
 		gzip -d -c "${archive}" | ( cd "${install_path}" && tar -x -f - )
 		;;
-	"tbz"|"tbz2"|"bz"|"bz2")
+	*".tbz"|*".tbz2"|*".tar.bz"|*".tar.bz2")
 		check_executes bzip2 tar grep || return 1
 		bzip2 -d -c "${archive}" | tar -t -f - | grep -v "^${repo_id}/"
 		[[ "${PIPESTATUS[0]}" -eq 0 && "${PIPESTATUS[1]}" -eq 0 &&
@@ -895,7 +895,7 @@ function extract_archive()
 		rm -rf "${install_path}/${repo_id}"
 		bzip2 -d -c "${archive}" | ( cd "${install_path}" && tar -x -f - )
 		;;
-	"txz"|"xz")
+	*".txz"|*".tar.xz")
 		check_executes xz tar grep || return 1
 		xz -d -c "${archive}" | tar -t -f - | grep -v "^${repo_id}/"
 		[[ "${PIPESTATUS[0]}" -eq 0 && "${PIPESTATUS[1]}" -eq 0 &&
@@ -904,7 +904,7 @@ function extract_archive()
 		rm -rf "${install_path}/${repo_id}"
 		xz -d -c "${archive}" | ( cd "${install_path}" && tar -x -f - )
 		;;
-	"tar")
+	*".tar")
 		check_executes tar grep || return 1
 		tar -t -f "${archive}" | grep -v "^${repo_id}/"
 		[[ "${PIPESTATUS[0]}" -eq 0 && "${PIPESTATUS[1]}" -eq 1 ]]
@@ -933,8 +933,8 @@ function add_repo_by_url_yum_or_zypper()
 	local install_path="${GO_XCAT_DEFAULT_INSTALL_PATH}"
 	case "${url%%://*}" in
 	"ftp"|"http"|"https")
-		case "${url##*.}" in
-		"repo"|"Z"|"bz"|"bz2"|"gz"|"tar"|"tbz"|"tbz2"|"tgz"|"tz"|"txz"|"xz")
+		case "${url##*/}" in
+		*".repo"|*".tar"|*".tar.Z"|*".tar.bz"|*".tar.bz2"|*".tar.gz"|*".tar.xz"|*".tbz"|*".tbz2"|*".tgz"|*".tz"|*".txz")
 			# an online repo or tarball
 			tmp="${TMP_DIR}/tmp_${url##*/}"
 			download_file "${url}" "${tmp}"
@@ -1010,8 +1010,8 @@ function add_repo_by_url_apt()
 	warn_if_bad "$?" "unknown debian/ubuntu codename" || return 1
 	case "${url%%://*}" in
 	"ftp"|"http"|"https"|"ssh")
-		case "${url##*.}" in
-		"Z"|"bz"|"bz2"|"gz"|"tar"|"tbz"|"tbz2"|"tgz"|"tz"|"txz"|"xz")
+		case "${url##*/}" in
+		*".tar"|*".tar.Z"|*".tar.bz"|*".tar.bz2"|*".tar.gz"|*".tar.xz"|*".tbz"|*".tbz2"|*".tgz"|*".tz"|*".txz")
 			# an online tarball
 			tmp="${TMP_DIR}/tmp_${url##*/}"
 			download_file "${url}" "${tmp}"
@@ -1185,8 +1185,8 @@ function add_xcat_dep_repo_yum_or_zypper()
 	esac
 	case "${url%%://*}" in
 	"ftp"|"http"|"https")
-		case "${url##*.}" in
-		"Z"|"bz"|"bz2"|"gz"|"tar"|"tbz"|"tbz2"|"tgz"|"tz"|"txz"|"xz")
+		case "${url##*/}" in
+		*".tar"|*".tar.Z"|*".tar.bz"|*".tar.bz2"|*".tar.gz"|*".tar.xz"|*".tbz"|*".tbz2"|*".tgz"|*".tz"|*".txz")
 			# an online archive file
 			tmp="${TMP_DIR}/tmp_${url##*/}"
 			download_file "${url}" "${tmp}"
