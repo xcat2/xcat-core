@@ -83,7 +83,8 @@ class OpenBMCPowerTask(ParallelNodesCommand):
 
         except SelfServerException, SelfClientException:
             # There is no response when BMC is not ready
-            result = '%s: %s'  % (node, openbmc.RPOWER_STATES[bmc_not_ready])
+            # Do not print bmc_state, instead, error messages from login failure will be displayed
+            return bmc_state
 
         self.callback.info(result)
         return bmc_state
