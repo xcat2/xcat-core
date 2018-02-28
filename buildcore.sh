@@ -188,8 +188,8 @@ function setversionvars {
     SHORTSHORTVER=`echo $VER|cut -d. -f 1`
     BUILD_TIME=`date`
     BUILD_MACHINE=`hostname`
-    COMMIT_ID=`git rev-parse --short HEAD`
     COMMIT_ID_LONG=`git rev-parse HEAD`
+    COMMIT_ID="${COMMIT_ID_LONG:0:7}"
     XCAT_RELEASE="snap$(date '+%Y%m%d%H%M')"
     echo "$XCAT_RELEASE" >Release
 }
