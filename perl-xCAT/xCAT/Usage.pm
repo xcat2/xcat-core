@@ -72,9 +72,22 @@ my %usage = (
        rpower noderange [off|on|stat|status|reset]
        rpower noderange [pduoff|pduon|pdustat|pdustatus|pdureset]
 ",
-    "rbeacon" =>
-      "Usage: rbeacon <noderange> [on|off|stat] [-V|--verbose]
-       rbeacon [-h|--help|-v|--version]",
+    "rbeacon" =>"",
+    "rbeacon.common" =>
+      "Usage: 
+    Common:
+       rbeacon [-h|--help|-v|--version]
+    ",
+    "rbeacon.begin" =>
+    "BMC specific:
+       rbeacon [on|blink|off|stat]
+    OpenPOWER (IPMI) specific:
+       rbeacon [on|blink|off|stat]
+    ",
+    "rbeacon.openbmc" =>
+    "OpenPOWER (OpenBMC) specific:
+       rbeacon [on|off]
+    ",    
     "rvitals" => "",
     "rvitals.common" =>
       "Usage:
@@ -165,8 +178,13 @@ my %usage = (
    ",
     "rspconfig.openbmc" =>
       "OpenBMC specific:
-       rspconfig <noderange> [ipsrc|ip|netmask|gateway|hostname|vlan]
+       rspconfig <noderange> [ipsrc|ip|netmask|gateway|vlan]
+       rspconfig <noderange> admin_passwd=<currentpasswd,newpasswd>
        rspconfig <noderange> dump [-l|--list] [-g|--generate] [-c|--clear {<id>|all}] [-d|--download {<id>|all}]
+       rspconfig <noderange> gard -c|--clear
+       rspconfig <noderange> [hostname|ntpservers]
+       rspconfig <noderange> [hostname=<*|hostname>|ntpservers=<ntpservers>]
+       rspconfig <noderange> sshcfg
 ",
     "rspconfig.begin" =>
    "BMC/MPA Common:
@@ -593,6 +611,13 @@ $usage{"rinv"} = $usage{"rinv.common"} .
 
 $usage{"rinv.openbmc"} = $usage{"rinv.common"} .
                       $usage{"rinv.openbmc"};
+
+$usage{"rbeacon"} = $usage{"rbeacon.common"} .
+                      $usage{"rbeacon.begin"} .
+                      $usage{"rbeacon.openbmc"};
+
+$usage{"rbeacon.openbmc"} = $usage{"rbeacon.common"} .
+                      $usage{"rbeacon.openbmc"};
 
 $usage{"rvitals"} = $usage{"rvitals.common"} . 
                       $usage{"rvitals.begin"} .

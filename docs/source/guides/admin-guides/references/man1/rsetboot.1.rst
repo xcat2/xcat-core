@@ -62,7 +62,7 @@ OPTIONS
 
 \ **-u**\ 
  
- To specify the next boot mode to be "UEFI Mode".
+ To specify the next boot mode to be "UEFI Mode". (Not supported for OpenBMC)
  
 
 
