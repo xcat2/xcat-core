@@ -4,7 +4,7 @@ B<rspconfig> - Configures nodes' service processors
 
 =head1 SYNOPSIS
 
-B<rspconfig> [B<-h>|B<--help>|B<-v>|B<--version>]
+B<rspconfig> [B<-h>|B<--help>|B<-v>|B<--version>|B<-V>|B<--verbose>]
 
 =head2 BMC/MPA specific:
 

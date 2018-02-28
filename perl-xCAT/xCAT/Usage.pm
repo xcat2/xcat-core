@@ -76,7 +76,7 @@ my %usage = (
     "rbeacon.common" =>
       "Usage: 
     Common:
-       rbeacon [-h|--help|-v|--version]
+       rbeacon [-h|--help|-v|--version|-V|--verbose]
     ",
     "rbeacon.begin" =>
     "BMC specific:

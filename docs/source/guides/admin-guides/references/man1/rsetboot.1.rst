@@ -13,7 +13,7 @@ SYNOPSIS
 
 \ **rsetboot**\  \ *noderange*\  [\ **hd | net | cd | default | stat**\ ] [\ **-u**\ ] [\ **-p**\ ]
 
-\ **rsetboot**\  [\ **-h | -**\ **-help | -v | -**\ **-version**\ ]
+\ **rsetboot**\  [\ **-h | -**\ **-help | -v | -**\ **-version | -V | -**\ **-verbose**\ ]
 
 
 ***********

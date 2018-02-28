@@ -11,7 +11,7 @@ SYNOPSIS
 ********
 
 
-\ **rbeacon**\  [\ **-h | -**\ **-help | -v | -**\ **-version**\ ]
+\ **rbeacon**\  [\ **-h | -**\ **-help | -v | -**\ **-version | -V | -**\ **-verbose**\ ]
 
 BMC (using IPMI):
 =================

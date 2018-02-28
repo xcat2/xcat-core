@@ -5,7 +5,7 @@ B<rbeacon> - Turns beacon on/off/blink or gives status of a node or noderange.
 
 =head1 SYNOPSIS
 
-B<rbeacon> [B<-h>|B<--help>|B<-v>|B<--version>]
+B<rbeacon> [B<-h>|B<--help>|B<-v>|B<--version>|B<-V>|B<--verbose>]
 
 =head2 BMC (using IPMI):
 

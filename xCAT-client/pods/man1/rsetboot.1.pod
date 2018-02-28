@@ -7,7 +7,7 @@ B<rsetboot> - Sets the boot device to be used for BMC-based servers for the next
 
 B<rsetboot> I<noderange> [B<hd>|B<net>|B<cd>|B<default>|B<stat>] [B<-u>] [B<-p>]
 
-B<rsetboot> [B<-h>|B<--help>|B<-v>|B<--version>]
+B<rsetboot> [B<-h>|B<--help>|B<-v>|B<--version>|B<-V>|B<--verbose>]
 
 
 =head1 DESCRIPTION

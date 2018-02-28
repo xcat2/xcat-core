@@ -19,7 +19,7 @@ SYNOPSIS
 ********
 
 
-\ **rspconfig**\  [\ **-h | -**\ **-help | -v | -**\ **-version**\ ]
+\ **rspconfig**\  [\ **-h | -**\ **-help | -v | -**\ **-version | -V | -**\ **-verbose**\ ]
 
 BMC/MPA specific:
 =================
