@@ -11,6 +11,7 @@ Advanced Topics
    docker/index.rst
    domain_name_resolution/index.rst
    gpu/index.rst
+   goconserver/index.rst
    hamn/index.rst
    hierarchy/index.rst
    kit/index.rst
