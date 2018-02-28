@@ -59,6 +59,7 @@ my $dhcpconffile = $^O eq 'aix' ? '/etc/dhcpsd.cnf' : '/etc/dhcpd.conf';
 my %dynamicranges; #track dynamic ranges defined to see if a host that resolves is actually a dynamic address
 my %netcfgs;
 my $distro = xCAT::Utils->osver();
+my $checkdomain=0;
 
 # dhcp 4.x will use /etc/dhcp/dhcpd.conf as the config file
 my $dhcp6conffile;
@@ -1931,6 +1932,14 @@ sub process_request
             addnet($line[0], $line[2]);
         }
     }
+    if ($checkdomain)
+    {
+         $callback->({ error => [ "above error fail to generate new dhcp configuration file, restore dhcp configuration file $dhcpconffile" ], errorcode => [1] });
+         my $backupfile = $dhcpconffile.".xcatbak";
+         rename("$backupfile", $dhcpconffile);
+         xCAT::MsgUtils->trace($verbose_on_off, "d", "dhcp: Restore dhcp configuration file to  $dhcpconffile"); 
+         exit 1;
+    }
     foreach (@nrn6) {    #do the ipv6 networks
         addnet6($_);     #already did all the filtering before putting into nrn6
     }
@@ -2440,10 +2449,12 @@ sub addnet
             } else {
                 $callback->(
                     {
-                        warning => [
-                            "No $net specific entry for domain, and no domain defined in site table."
-                          ]
+                        error => [
+                            "No domain defined for $net entry in networks table, and no domain defined in site table."
+                          ],
+                        errorcode => [1]
                     });
+                $checkdomain=1;
             }
 
             if ($ent and $ent->{nameservers})
