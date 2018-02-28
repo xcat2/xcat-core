@@ -94,8 +94,9 @@ class Server(object):
             func = getattr(manager, req['command'])
             # translate unicode string to normal string to avoid docopt error
             new_args=[]
-            for a in req['args']:
-                new_args.append(a.encode('utf-8'))
+            if req['args']:
+                for a in req['args']:
+                    new_args.append(a.encode('utf-8'))
             # call the function in the specified manager
             func(req['nodeinfo'], new_args)
             # after the method returns, the request should be handled

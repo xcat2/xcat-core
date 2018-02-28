@@ -20,12 +20,14 @@ from hwctl.executor.openbmc_inventory import OpenBMCInventoryTask
 from hwctl.executor.openbmc_power import OpenBMCPowerTask
 from hwctl.executor.openbmc_sensor import OpenBMCSensorTask
 from hwctl.executor.openbmc_bmcconfig import OpenBMCBmcConfigTask
+from hwctl.executor.openbmc_eventlog import OpenBMCEventlogTask
 from hwctl.beacon import DefaultBeaconManager
 from hwctl.setboot import DefaultBootManager
 from hwctl.inventory import DefaultInventoryManager
 from hwctl.power import DefaultPowerManager
 from hwctl.sensor import DefaultSensorManager
 from hwctl.bmcconfig import DefaultBmcConfigManager
+from hwctl.eventlog import DefaultEventlogManager
 
 from xcatagent import base
 import openbmc_rest
@@ -141,6 +143,9 @@ SETBOOT_SET_OPTIONS = ('cd', 'def', 'default', 'hd', 'net')
 # global variables of rvitals
 VITALS_OPTIONS = ('all', 'altitude', 'fanspeed', 'leds', 'power',
                   'temp', 'voltage', 'wattage')
+
+# global variables of reventlog
+EVENTLOG_OPTIONS = ('list', 'clear', 'resolved')
 
 class OpenBMC(base.BaseDriver):
 
@@ -827,6 +832,50 @@ class OpenBMCManager(base.BaseManager):
             DefaultSensorManager().get_beacon_info(runner)
         else:
             DefaultSensorManager().get_sensor_info(runner, action)
+
+    def reventlog(self, nodesinfo, args):
+
+        # 1, parse agrs
+        if not args:
+            args = ['all']
+
+        reventlog_usage = """
+        Usage:
+            reventlog [-V|--verbose] resolved <id_list>
+            reventlog [-V|--verbose] clear
+            reventlog [-V|--verbose] list <number_of_records>
+
+        Options:
+            -V --verbose   eventlog verbose mode.
+        """
+
+        try:
+            opts = docopt(reventlog_usage, argv=args)
+
+            self.verbose = opts.pop('--verbose')
+            action = [k for k,v in opts.items() if v][0]
+        except Exception as e:
+            self.messager.error("Failed to parse arguments for reventlog: %s" % args)
+            return
+
+        # 2, validate the args
+        if action not in EVENTLOG_OPTIONS:
+            self.messager.error("Not supported subcommand for reventlog: %s" % action)
+            return
+
+        # 3, run the subcommands
+        runner = OpenBMCEventlogTask(nodesinfo, callback=self.messager, debugmode=self.debugmode, verbose=self.verbose)
+        self.messager.info('revetlog.py processing action=%s args=%s' % (action, args))
+        if action == 'clear':
+            DefaultEventlogManager().clear_all_eventlog_records(runner)
+        elif action == 'resolved':
+            eventlog_id_list = opts.pop('<id_list>')
+            DefaultEventlogManager().resolve_eventlog_records(runner, eventlog_id_list)
+        elif action == 'list':
+            eventlog_number_of_records = opts.pop('<number_of_records>')
+            DefaultEventlogManager().get_eventlog_info(runner, eventlog_number_of_records)
+        else:
+            DefaultEventlogManager().get_eventlog_info(runner, "all")
 
     def _get_full_path(self,file_path):
         if type(self.cwd) == 'unicode':

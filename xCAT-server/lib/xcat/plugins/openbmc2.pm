@@ -38,8 +38,13 @@ sub handled_commands {
         rsetboot       => 'nodehm:mgt=openbmc',
         rvitals        => 'nodehm:mgt=openbmc',
         rspconfig      => 'nodehm:mgt=openbmc',
+        reventlog      => 'nodehm:mgt=openbmc',
     };
 }
+
+# Common logging messages:
+my $usage_errormsg = "Usage error.";
+my $reventlog_no_id_resolved_errormsg = "Provide a comma separated list of IDs to be resolved. Example: 'resolved=x,y,z'";
 
 my %node_info = ();
 my $callback;
@@ -255,6 +260,26 @@ sub parse_args {
         }
     } elsif ($command eq 'rspconfig') {
         xCAT_plugin::openbmc::parse_args('rspconfig', $extrargs, $noderange);
+    } elsif ($command eq "reventlog") {
+        $subcommand = "all" if (!defined($ARGV[0]));
+        if ($subcommand =~ /^resolved=(.*)/) {
+            my $value = $1;
+            if (not $value) {
+                return ([ 1, "$usage_errormsg $reventlog_no_id_resolved_errormsg" ]);
+            }
+
+            my $nodes_num = @$noderange;
+            if (@$noderange > 1) {
+                return ([ 1, "Resolving faults over a xCAT noderange is not recommended." ]);
+            }
+
+            xCAT::SvrUtils::sendmsg("Attempting to resolve the following log entries: $value...", $callback);
+        } elsif ($subcommand !~ /^\d+$|^all$|^clear$/) {
+            if ($subcommand =~ "resolved") {
+                return ([ 1, "$usage_errormsg $reventlog_no_id_resolved_errormsg" ]);
+            }
+            return ([ 1, "Unsupported command: $command $subcommand" ]);
+        }
     } else {
         return ([ 1, "Unsupported command: $command" ]);
     }
@@ -342,14 +367,33 @@ sub refactor_args {
     my $request = shift;
     my $command   = $request->{command}->[0];
     my $extrargs  = $request->{arg};    
+    my $subcommand;
     if ($command eq "rspconfig") {
-        my $subcommand = $extrargs->[0];
+        $subcommand = $extrargs->[0];
         if ($subcommand !~ /^dump$|^sshcfg$|^ip=dhcp$/) {
             if (grep /=/, @$extrargs) {
                 unshift @$extrargs, "set";
             } else {
                 unshift @$extrargs, "get";
             }
+        }
+    }
+    if ($command eq "reventlog") {
+        if (!defined($extrargs->[0])) {
+            # If no parameters are passed, default to list all records
+            $request->{arg} = ["list","all"];
+        }
+        else {
+            $subcommand = $extrargs->[0];
+        }
+        if ($subcommand =~ /^\d+$/) {
+            unshift @$extrargs, "list";
+        }
+        elsif ($subcommand =~/^resolved=(.*)/) {
+            unshift @$extrargs, "resolved";
+        }
+        elsif ($subcommand =~/^all$/) {
+            unshift @$extrargs, "list";
         }
     }
     return 0;
