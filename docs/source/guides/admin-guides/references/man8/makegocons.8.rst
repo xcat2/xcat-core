@@ -21,6 +21,8 @@ SYNOPSIS
 
 \ **makegocons**\  [\ **-V|-**\ **-verbose**\ ] [\ **-d|-**\ **-delete**\ ] [\ **-q|-**\ **-query**\ ] [\ *noderange*\ ]
 
+\ **makegocons**\  [\ **-V|-**\ **-verbose**\ ] [\ **-C|-**\ **-cleanup**\ ]
+
 
 ***********
 DESCRIPTION
@@ -67,6 +69,12 @@ OPTIONS
 \ **-d|-**\ **-delete**\ 
  
  Delete rather than add or refresh the nodes specified as a noderange.
+ 
+
+
+\ **-C|-**\ **-cleanup**\ 
+ 
+ Remove the entries for the nodes whose definitions have been removed from xCAT db.
  
 
 

@@ -20,6 +20,7 @@ my $host;
 my $usage_string ="   makegocons [-V|--verbose] [-d|--delete] noderange
     -h|--help                   Display this usage statement.
     -v|--version                Display the version number.
+    -C|--cleanup                Remove the entries for the nodes whose definitions have been removed from xCAT db.
     -q|--query  [noderange]     Display the console connection status.";
 
 my $version_string = xCAT::Utils->Version();
@@ -138,50 +139,6 @@ sub process_request {
     }
 }
 
-sub get_cons_map {
-    my ($req, $iphashref) = @_;
-    my %cons_map;
-    my %iphash = %{$iphashref};
-    my $hmtab = xCAT::Table->new('nodehm');
-    my @cons_nodes;
-
-    if (($req->{node} and @{$req->{node}} > 0) or $req->{noderange}->[0]) {
-        # Note: do not consider terminal server currently
-        @cons_nodes = $hmtab->getNodesAttribs($req->{node}, [ 'node', 'cons', 'serialport', 'mgt', 'conserver', 'consoleondemand' ]);
-        # Adjust the data structure to make the result consistent with the getAllNodeAttribs() call we make if a noderange was not specified
-        my @tmpcons_nodes;
-        foreach my $ent (@cons_nodes)
-        {
-            foreach my $nodeent (keys %$ent)
-            {
-                push @tmpcons_nodes, $ent->{$nodeent}->[0];
-            }
-        }
-        @cons_nodes = @tmpcons_nodes
-
-    } else {
-        @cons_nodes = $hmtab->getAllNodeAttribs([ 'cons', 'serialport', 'mgt', 'conserver', 'consoleondemand' ]);
-    }
-    $hmtab->close();
-    my $rsp;
-
-    foreach (@cons_nodes) {
-        if ($_->{cons} or defined($_->{'serialport'})) {
-            unless ($_->{cons}) { $_->{cons} = $_->{mgt}; } #populate with fallback
-            if ($isSN && $_->{conserver} && exists($iphash{ $_->{conserver} }) || !$isSN) {
-                $cons_map{ $_->{node} } = $_; # also put the ref to the entry in a hash for quick look up
-            } else {
-                $rsp->{data}->[0] = $_->{node} .": ignore, the host for conserver could not be determined.";
-                xCAT::MsgUtils->message("I", $rsp, $::callback);
-            }
-        } else {
-            $rsp->{data}->[0] = $_->{node} .": ignore, cons attribute or serialport attribute is not specified.";
-            xCAT::MsgUtils->message("I", $rsp, $::callback);
-        }
-    }
-    return %cons_map;
-}
-
 sub start_goconserver {
     my ($rsp, $running, $ready, $ret);
     unless (-x "/usr/bin/goconserver") {
@@ -233,18 +190,24 @@ sub makegocons {
     }
     @ARGV = @exargs;
     $Getopt::Long::ignorecase = 0;
-    my ($delmode, $querymode);
+    my ($delmode, $querymode, $cleanupmode);
     GetOptions('d|delete' => \$delmode,
         'q|query' => \$querymode,
+        'C|cleanup' => \$cleanupmode,
     );
 
     my $svboot = 0;
     if (exists($req->{svboot})) {
         $svboot = 1;
     }
-    my %iphash   = ();
-    foreach (@$hostinfo) { $iphash{$_} = 1; }
-    my %cons_map = get_cons_map($req, \%iphash);
+    if ($cleanupmode) {
+        if (exists($req->{_allnodes}) && $req->{_allnodes}->[0] != 1) {
+            xCAT::SvrUtils::sendmsg([ 1, "Can not specify noderange together with -C|--cleanup." ], $::callback);
+            return 1;
+        }
+        return xCAT::Goconserver::cleanup_nodes($::callback);
+    }
+    my %cons_map = xCAT::Goconserver::get_cons_map($req);
     if (! %cons_map) {
         xCAT::SvrUtils::sendmsg([ 1, "Could not get any console request entry" ], $::callback);
         return 1;
@@ -271,7 +234,7 @@ sub makegocons {
         }
     }
     my (@nodes);
-    my $data = xCAT::Goconserver::gen_request_data(\%cons_map, $siteondemand, $isSN, $::callback);
+    my $data = xCAT::Goconserver::gen_request_data(\%cons_map, $siteondemand, $::callback);
     if (! $data) {
         xCAT::SvrUtils::sendmsg([ 1, "Could not generate the request data" ], $::callback);
         return 1;
