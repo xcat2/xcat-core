@@ -36,8 +36,8 @@ class XCATMessager(utils.Messager):
         d = {'type': MSG_TYPE, 'msg': {'type': 'warning', 'data': msg}}
         self._send(d)
 
-    def error(self, msg):
-        d = {'type': MSG_TYPE, 'msg': {'type': 'error', 'data': msg}}
+    def error(self,  msg, node=''):
+        d = {'type': MSG_TYPE, 'msg': {'type': 'error', 'node': node, 'data': msg}}
         self._send(d)
 
     def syslog(self, msg):

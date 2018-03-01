@@ -109,7 +109,7 @@ sub handle_message {
         } elsif ($msg->{type} eq 'warning') {
             xCAT::MsgUtils->message("W", { data => [$msg->{data}] }, $callback);
         } elsif ($msg->{type} eq 'error'){
-            xCAT::MsgUtils->message("E", { data => [$msg->{data}] }, $callback);
+            xCAT::SvrUtils::sendmsg([ 1, $msg->{data} ], $callback, $msg->{node});
         } elsif ($msg->{type} eq 'syslog'){
             xCAT::MsgUtils->message("S", $msg->{data});
         }

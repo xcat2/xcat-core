@@ -88,7 +88,7 @@ class OpenBMCSensorTask(ParallelNodesCommand):
                 self.callback.info( '%s: %s' % (node, info))
 
         except (SelfServerException, SelfClientException) as e:
-            self.callback.info('%s: %s'  % (node, e.message))
+            self.callback.error(e.message, node)
 
         return sensor_info
 
@@ -111,7 +111,7 @@ class OpenBMCSensorTask(ParallelNodesCommand):
                 self.callback.info( '%s: %s' % (node, info))
 
         except (SelfServerException, SelfClientException) as e:
-            self.callback.info('%s: %s'  % (node, e.message))
+            self.callback.error(e.message, node)
 
         return beacon_info
                 

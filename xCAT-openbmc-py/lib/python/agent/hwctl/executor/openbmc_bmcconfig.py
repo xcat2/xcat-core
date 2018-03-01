@@ -55,12 +55,12 @@ class OpenBMCBmcConfigTask(ParallelNodesCommand):
             check_cmd = grep_cmd + ' ' + path_not_found + ' ' + dump_log_file
             grep_string = os.popen(check_cmd).readlines()
             if grep_string:
-                result = 'Invalid dump %s was specified. Use -l option to list.' % download_id
+                self.callback.error('Invalid dump %s was specified. Use -l option to list.' % download_id, node)
             else:
-                result = 'Downloaded dump %s to %s.' % (download_id, dump_log_file)
+                self.callback.info('%s: Downloaded dump %s to %s.' % (node, download_id, dump_log_file))
         else:
-            result = 'Failed to download dump %s to %s.' % (download_id, dump_log_file)
-        return result
+            self.callback.error('Failed to download dump %s to %s.' % (download_id, dump_log_file), node)
+        return
 
     def dump_list(self, **kw):
 
@@ -86,7 +86,7 @@ class OpenBMCBmcConfigTask(ParallelNodesCommand):
                 self.callback.info('%s: %s'  % (node, info))
 
         except (SelfServerException, SelfClientException) as e:
-            self.callback.info('%s: %s'  % (node, e.message))
+            self.callback.error(e.message, node)
 
         return dump_info
 
@@ -105,7 +105,7 @@ class OpenBMCBmcConfigTask(ParallelNodesCommand):
             else:
                 self.callback.info('%s: [%s] success'  % (node, dump_id))
         except (SelfServerException, SelfClientException) as e:
-            self.callback.info('%s: %s'  % (node, e.message))
+            self.callback.error(e.message, node)
 
         return dump_id
 
@@ -119,11 +119,9 @@ class OpenBMCBmcConfigTask(ParallelNodesCommand):
             obmc.login()
             obmc.clear_dump(clear_arg)
 
-            result = '%s: [%s] clear' % (node, clear_arg)  
+            self.callback.info('%s: [%s] clear' % (node, clear_arg))
         except (SelfServerException, SelfClientException) as e:
-            result = '%s: %s'  % (node, e.message)
-
-        self.callback.info(result) 
+            self.callback.error(e.message, node)
 
     def dump_download(self, download_arg, **kw):
 
@@ -134,8 +132,7 @@ class OpenBMCBmcConfigTask(ParallelNodesCommand):
         try:
             obmc.login()
             if download_arg != 'all':
-                result = self._dump_download(obmc, node, download_arg)
-                self.callback.info('%s: %s'  % (node, result))
+                self._dump_download(obmc, node, download_arg)
                 return
 
             dump_dict = obmc.list_dump_info()
@@ -143,10 +140,9 @@ class OpenBMCBmcConfigTask(ParallelNodesCommand):
             keys.sort()
 
             for key in keys:
-                result = self._dump_download(obmc, node, str(key))
-                self.callback.info('%s: %s'  % (node, result))
+                self._dump_download(obmc, node, str(key))
         except SelfServerException as e:
-            self.callback.info('%s: %s'  % (node, e.message))
+            self.callback.error(e.message, node)
 
     def dump_process(self, **kw):
 
@@ -170,14 +166,12 @@ class OpenBMCBmcConfigTask(ParallelNodesCommand):
                 gevent.sleep( 15 )
 
             if flag: 
-                result = self._dump_download(obmc, node, str(dump_id), flag_dump_process=True)
+                self._dump_download(obmc, node, str(dump_id), flag_dump_process=True)
             else:
-                result = 'Could not find dump %s after waiting %d seconds.' % (dump_id, 20 * 15) 
-
-            self.callback.info('%s: %s'  % (node, result))
+                self.callback.error('Could not find dump %s after waiting %d seconds.' % (dump_id, 20 * 15), node)
 
         except SelfServerException as e:
-            self.callback.info('%s: %s'  % (node, e.message))
+            self.callback.error(e.message, node)
 
     def gard_clear(self, **kw):
 
@@ -191,7 +185,7 @@ class OpenBMCBmcConfigTask(ParallelNodesCommand):
             self.callback.info('%s: GARD cleared' % node)
 
         except SelfServerException as e:
-            self.callback.info('%s: %s'  % (node, e.message))
+            self.callback.error(e.message, node)
 
     def pre_set_sshcfg(self, *arg, **kw):
         local_home_dir=os.path.expanduser('~')
@@ -235,7 +229,7 @@ rmdir \"/tmp/$userid\" \n")
         try:
             ssh_client.client.exec_command("/bin/mkdir -p %s\n" % tmp_remote_dir)
         except (SSHException, ConnectionErrorException) as e: 
-            self.callback.info("%s: ----%s------" % (host, e))
+            self.callback.error("----%s------" % e, host)
         scp = SCPClient(ssh_client.client.get_transport()) 
         scp.put(self.copy_sh_file, tmp_remote_dir + "copy.sh")
         scp.put(self.local_public_key, tmp_remote_dir + "id_rsa.pub")
@@ -253,14 +247,14 @@ rmdir \"/tmp/$userid\" \n")
             obmc.login()
             obmc.set_ipdhcp()
         except (SelfServerException, SelfClientException) as e:
-            self.callback.info("%s: %s" % (node, e.message))
+            self.callback.error(e.message, node)
             return
 
         self.callback.info("%s: BMC Setting IP to DHCP..." % (node))
         try:
             obmc.reboot_bmc()
         except (SelfServerException, SelfClientException) as e:
-            self.callback.info("%s: %s" % (node, e.message))
+            self.callback.error(e.message, node)
 
     def get_attributes(self, attributes, **kw):
         netinfo_dict={}
@@ -271,7 +265,7 @@ rmdir \"/tmp/$userid\" \n")
             elif attr in openbmc.RSPCONFIG_APIS:
                 self._get_apis_values(attr, **kw)
             else:
-                self.callback.error("get_attributes can not deal with attr %s" % attr)
+                self.callback.error("get_attributes can not deal with attr %s" % attr, kw['node'])
         if len(netinfo_dict):
             self._get_netinfo(ip=netinfo_dict.get('ip', False), ipsrc=netinfo_dict.get('ipsrc', False), netmask=netinfo_dict.get('netmask', False),
                               gateway=netinfo_dict.get('gateway', False),vlan= netinfo_dict.get('vlan', False), 
@@ -293,7 +287,7 @@ rmdir \"/tmp/$userid\" \n")
             elif k in openbmc.RSPCONFIG_APIS:
                 self._set_apis_values(k, v, **kw)
             else:
-                return self.callback.error("set_attributes unsupported attribute:%s" % k)
+                return self.callback.error("set_attributes unsupported attribute:%s" % k, node)
         if len(netinfo_dict) > 1 and ('ip' not in netinfo_dict or 'netmask' not in netinfo_dict or 'gateway' not in netinfo_dict):
             self.callback.info("set_attributes miss either ip, netmask or gateway to set network information")
         elif len(netinfo_dict) <= 1:
@@ -322,23 +316,23 @@ rmdir \"/tmp/$userid\" \n")
             obmc.login()
             netinfo = obmc.get_netinfo()
         except (SelfServerException, SelfClientException) as e:
-            self.callback.info('%s: %s' % (node, e.message))
+            self.callback.error(e.message, node)
             return
 
         if not netinfo:
-            return self.callback.error("%s: No network information get" % node)
+            return self.callback.error('No network information get', node)
 
         bmcip = node_info['bmcip']
         nic = self._get_facing_nic(bmcip, netinfo)
         if not nic:
-            return self.callback.error('%s: Can not get facing NIC for %s' % (node, bmcip))
+            return self.callback.error('Can not get facing NIC for %s' % bmcip, node)
 
         try:
             obmc.set_ntp_servers(nic, servers)
             self.callback.info('%s: BMC Setting NTPServers...' % node)
             netinfo = obmc.get_netinfo()
         except (SelfServerException, SelfClientException) as e:
-            self.callback.info('%s: %s' % (node, e.message))
+            self.callback.error(e.message, node)
             return
 
         ntpservers = None
@@ -359,7 +353,7 @@ rmdir \"/tmp/$userid\" \n")
         origin_passwd, new_passwd = admin_passwd.split(',')
 
         if origin_passwd != node_info['password']:
-            self.callback.info('%s: Current BMC password is incorrect, cannot set the new password.' % node)
+            self.callback.error('Current BMC password is incorrect, cannot set the new password.', node)
             return
 
         obmc = openbmc.OpenBMCRest(name=node, nodeinfo=node_info, messager=self.callback,
@@ -369,7 +363,7 @@ rmdir \"/tmp/$userid\" \n")
             obmc.set_admin_passwd(new_passwd)
             self.callback.info("%s: BMC Setting Password..." % node)
         except (SelfServerException, SelfClientException) as e:
-            self.callback.info("%s: %s" % (node, e.message))
+            self.callback.error(e.message, node)
 
     def _set_apis_values(self, key, value, **kw):
         node = kw['node']
@@ -379,7 +373,7 @@ rmdir \"/tmp/$userid\" \n")
             obmc.login()
             obmc.set_apis_values(key, value)
         except (SelfServerException, SelfClientException) as e:
-            self.callback.info("%s: %s" % (node, e.message))
+            self.callback.error(e.message, node)
 
         self.callback.info("%s: BMC Setting %s..." % (node, openbmc.RSPCONFIG_APIS[key]['display_name']))
 
@@ -392,7 +386,7 @@ rmdir \"/tmp/$userid\" \n")
             value = obmc.get_apis_values(key)
 
         except (SelfServerException, SelfClientException) as e:
-            self.callback.info('%s: %s' % (node, e.message))
+            self.callback.error(e.message, node)
 
         str_value = '0.'+str(value)
         result = '%s: %s: %s' % (node, openbmc.RSPCONFIG_APIS[key]['display_name'], str_value.split('.')[-1])
@@ -413,10 +407,10 @@ rmdir \"/tmp/$userid\" \n")
             obmc.login()
             netinfo = obmc.get_netinfo()
         except (SelfServerException, SelfClientException) as e:
-            self.callback.info('%s: %s' % (node, e.message))
+            self.callback.error(e.message, node)
             return
         if not netinfo:
-            return self.callback.error("%s: No network information get" % node)
+            return self.callback.error("No network information get", node)
         defaultgateway = "n/a"
         bmchostname = ""
         if 'defaultgateway' in netinfo:

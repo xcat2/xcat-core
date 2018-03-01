@@ -49,7 +49,7 @@ class OpenBMCEventlogTask(ParallelNodesCommand):
                 eventlog_info += eventlog_info_dict[key]
 
         except (SelfServerException, SelfClientException) as e:
-            self.callback.info('%s: %s'  % (node, e.message))
+            self.callback.error(e.message, node)
 
         return eventlog_info
 
