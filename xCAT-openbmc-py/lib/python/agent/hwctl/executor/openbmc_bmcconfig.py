@@ -328,10 +328,10 @@ rmdir \"/tmp/$userid\" \n")
         if not netinfo:
             return self.callback.error("%s: No network information get" % node)
 
-        nic = None
-        for k,v in netinfo.items():
-            if 'ip' in v and v['ip'] == node_info['bmcip']:
-                nic = k
+        bmcip = node_info['bmcip']
+        nic = self._get_facing_nic(bmcip, netinfo)
+        if not nic:
+            return self.callback.error('%s: Can not get facing NIC for %s' % (node, bmcip))
 
         try:
             obmc.set_ntp_servers(nic, servers)
@@ -345,6 +345,12 @@ rmdir \"/tmp/$userid\" \n")
         if nic in netinfo:
             ntpservers = netinfo[nic]['ntpservers']
         self.callback.info('%s: BMC NTP Servers: %s' % (node, ntpservers))
+
+    def _get_facing_nic(self, bmcip, netinfo):
+        for k,v in netinfo.items():
+            if 'ip' in v and v['ip'] == bmcip:
+                return k
+        return None
 
     def _set_admin_password(self, admin_passwd, **kw):
         node = kw['node']
