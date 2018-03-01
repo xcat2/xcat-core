@@ -11,11 +11,28 @@ SYNOPSIS
 ********
 
 
+\ **rbeacon**\  [\ **-h | -**\ **-help | -v | -**\ **-version | -V | -**\ **-verbose**\ ]
+
+BMC (using IPMI):
+=================
+
+
 \ **rbeacon**\  \ *noderange*\  {\ **on | blink | off | stat**\ }
 
-\ **rbeacon**\  [\ **-h | -**\ **-help**\ ]
 
-\ **rbeacon**\  {\ **-v | -**\ **-version**\ }
+OpenPOWER BMC (using IPMI):
+===========================
+
+
+\ **rbeacon**\  \ *noderange*\  {\ **on | blink | off | stat**\ }
+
+
+OpenPOWER OpenBMC:
+==================
+
+
+\ **rbeacon**\  \ *noderange*\  {\ **on | off**\ }
+
 
 
 ***********

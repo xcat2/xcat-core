@@ -19,7 +19,7 @@ SYNOPSIS
 ********
 
 
-\ **rspconfig**\  [\ **-h | -**\ **-help | -v | -**\ **-version**\ ]
+\ **rspconfig**\  [\ **-h | -**\ **-help | -v | -**\ **-version | -V | -**\ **-verbose**\ ]
 
 BMC/MPA specific:
 =================
@@ -47,7 +47,9 @@ OpenBMC specific:
 =================
 
 
-\ **rspconfig**\  \ *noderange*\  {\ **ipsrc | ip | netmask | gateway | hostname | vlan | sshcfg**\ }
+\ **rspconfig**\  \ *noderange*\  {\ **ipsrc | ip | netmask | gateway | vlan**\ }
+
+\ **rspconfig**\  \ *noderange*\  \ **admin_passwd**\ ={\ *currentpasswd,newpasswd*\ }
 
 \ **rspconfig**\  \ *noderange*\  \ **autoreboot**\ 
 
@@ -59,6 +61,18 @@ OpenBMC specific:
 
 \ **rspconfig**\  \ *noderange*\  \ **dump**\  [\ **-l | -**\ **-list**\ ] [\ **-g | -**\ **-generate**\ ] [\ **-c | -**\ **-clear**\  {\ *id*\  | \ **all**\ }] [\ **-d | -**\ **-download**\  {\ *id*\  | \ **all**\ }]
 
+\ **rspconfig**\  \ *noderange*\  \ **gard -c|-**\ **-clear**\ 
+
+\ **rspconfig**\  \ *noderange*\  \ **ip=dhcp**\ 
+
+\ **rspconfig**\  \ *noderange*\  \ **hostname**\ 
+
+\ **rspconfig**\  \ *noderange*\  \ **hostname**\ ={\* | \ *name*\ }
+
+\ **rspconfig**\  \ *noderange*\  \ **ntpservers**\ 
+
+\ **rspconfig**\  \ *noderange*\  \ **ntpservers**\ ={\ *ntpservers*\ }
+
 \ **rspconfig**\  \ *noderange*\  \ **powerrestorepolicy**\ 
 
 \ **rspconfig**\  \ *noderange*\  \ **powerrestorepolicy={always_on|restore|always_off}**\ 
@@ -66,6 +80,8 @@ OpenBMC specific:
 \ **rspconfig**\  \ *noderange*\  \ **powersupplyredundancy**\ 
 
 \ **rspconfig**\  \ *noderange*\  \ **powersupplyredundancy={disabled|enabled}**\ 
+
+\ **rspconfig**\  \ *noderange*\  \ **sshcfg**\ 
 
 \ **rspconfig**\  \ *noderange*\  \ **timesyncmethod**\ 
 
@@ -135,9 +151,9 @@ FSP/CEC specific:
 
 \ **rspconfig**\  \ *noderange*\  \ **admin_passwd**\ ={\ *currentpasswd,newpasswd*\ }
 
-\ **rspconfig**\  \ *noderange*\  \ **general_passwd**\ ={\ **currentpasswd,newpasswd**\ }
+\ **rspconfig**\  \ *noderange*\  \ **general_passwd**\ ={\ *currentpasswd,newpasswd*\ }
 
-\ **rspconfig**\  \ *noderange*\  \*\ **_passwd**\ ={\ **currentpasswd,newpasswd**\ }
+\ **rspconfig**\  \ *noderange*\  \*\ **_passwd**\ ={\ *currentpasswd,newpasswd*\ }
 
 \ **rspconfig**\  \ *noderange*\  {\ *hostname*\ }
 
@@ -198,9 +214,9 @@ FSP/CEC (using Direct FSP Management) Specific:
 
 \ **rspconfig**\  \ *noderange*\  \ **admin_passwd**\ ={\ *currentpasswd,newpasswd*\ }
 
-\ **rspconfig**\  \ *noderange*\  \ **general_passwd**\ ={\ **currentpasswd,newpasswd**\ }
+\ **rspconfig**\  \ *noderange*\  \ **general_passwd**\ ={\ *currentpasswd,newpasswd*\ }
 
-\ **rspconfig**\  \ *noderange*\  \*\ **_passwd**\ ={\ **currentpasswd,newpasswd**\ }
+\ **rspconfig**\  \ *noderange*\  \*\ **_passwd**\ ={\ *currentpasswd,newpasswd*\ }
 
 \ **rspconfig**\  \ *noderange*\  {\ **sysname**\ }
 
@@ -237,9 +253,9 @@ BPA/Frame (using Direct FSP Management) Specific:
 
 \ **rspconfig**\  \ *noderange*\  \ **admin_passwd**\ ={\ *currentpasswd,newpasswd*\ }
 
-\ **rspconfig**\  \ *noderange*\  \ **general_passwd**\ ={\ **currentpasswd,newpasswd**\ }
+\ **rspconfig**\  \ *noderange*\  \ **general_passwd**\ ={\ *currentpasswd,newpasswd*\ }
 
-\ **rspconfig**\  \ *noderange*\  \*\ **_passwd**\ ={\ **currentpasswd,newpasswd**\ }
+\ **rspconfig**\  \ *noderange*\  \*\ **_passwd**\ ={\ *currentpasswd,newpasswd*\ }
 
 \ **rspconfig**\  \ *noderange*\  {\ **frame**\ }
 
@@ -359,6 +375,12 @@ OPTIONS
 \ **frequency**\ 
  
  The NTP update frequency (in minutes).
+ 
+
+
+\ **gard -c|-**\ **-clear**\ 
+ 
+ Clear gard file. [OpenBMC]
  
 
 
@@ -549,6 +571,12 @@ OPTIONS
 \ **ntpserver**\ 
  
  Get or set NTP server IP address or name.
+ 
+
+
+\ **ntpservers**\ 
+ 
+ Get or set NTP servers name. [OpenBMC]
  
 
 
