@@ -25,6 +25,10 @@ description: Record the output file into the xCAT test framework
 cmd: cat /tmp/xcattest.rpower.bmcstate.perl.out
 end
 
+start:rpower_bmcreboot_remove_tmpfile_perl 
+description: Remove the temporary file, output is captures above 
+cmd: rm -f /tmp/xcattest.rpower.bmcstate.perl.out
+end
 
 start:rpower_bmcreboot_record_python_output
 description: Start the test for python code
@@ -51,5 +55,10 @@ end
 start:rpower_bmcreboot_record_logs_python
 description: Record the output file into the xCAT test framework
 cmd: cat /tmp/xcattest.rpower.bmcstate.python.out
+end
+
+start:rpower_bmcreboot_remove_tmpfile_python
+description: Remove the temporary file, output is captures above 
+cmd: rm -f /tmp/xcattest.rpower.bmcstate.python.out
 end
 
