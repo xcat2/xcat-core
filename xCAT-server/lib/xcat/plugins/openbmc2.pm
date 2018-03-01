@@ -367,14 +367,19 @@ sub refactor_args {
     my $request = shift;
     my $command   = $request->{command}->[0];
     my $extrargs  = $request->{arg};    
-    my $subcommand;
+    my $subcommand; 
     if ($command eq "rspconfig") {
         $subcommand = $extrargs->[0];
-        if ($subcommand !~ /^dump$|^sshcfg$|^ip=dhcp$/) {
+        if ($subcommand !~ /^dump$|^sshcfg$|^ip=dhcp$|^gard$/) {
             if (grep /=/, @$extrargs) {
                 unshift @$extrargs, "set";
             } else {
                 unshift @$extrargs, "get";
+            }
+        }
+        if ($subcommand eq "dump") {
+            if (defined($extrargs->[1]) and $extrargs->[1] =~ /-c|--clear|-d|--download/){
+                splice(@$extrargs, 2, 0, "--id");
             }
         }
     }

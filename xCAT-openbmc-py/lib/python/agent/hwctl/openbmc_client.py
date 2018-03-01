@@ -47,6 +47,8 @@ DUMP_URLS = {
     "list"      : "/dump/enumerate", 
 }
 
+GARD_CLEAR_URL = "/org/open_power/control/gard/action/Reset"
+
 INVENTORY_URL = "/inventory/enumerate"
 
 LEDS_URL = "/led/physical/enumerate"
@@ -164,8 +166,10 @@ RSPCONFIG_NETINFO_URL = {
     'nic_ip': "/network/#NIC#/action/IP",
     'vlan': "/network/action/VLAN",
     'ipdhcp': "/network/action/Reset",
-    'ntpserver': "/network/#NIC#/attr/NTPServers",
+    'ntpservers': "/network/#NIC#/attr/NTPServers",
 }
+
+PASSWD_URL = '/user/root/action/SetPassword'
 
 RSPCONFIG_APIS = {
     'hostname': {
@@ -670,6 +674,17 @@ class OpenBMCRest(object):
             data={"data": attr_info['get_data']}
         return self.request(method, get_url, payload=data, cmd="get_%s" % key)
 
+    def set_admin_passwd(self, passwd):
+
+        payload = { "data": [passwd] }
+        self.request('POST', PASSWD_URL, payload=payload, cmd='set_admin_password')
+
+    def set_ntp_servers(self, nic, servers):
+
+        payload = { "data": [servers] }
+        url = RSPCONFIG_NETINFO_URL['ntpservers'].replace('#NIC#', nic)
+        self.request('PUT', url, payload=payload, cmd='set_ntp_servers')
+
     def clear_dump(self, clear_arg):
 
         if clear_arg == 'all':
@@ -711,6 +726,12 @@ class OpenBMCRest(object):
         path = DUMP_URLS['download'].replace('#ID#', download_id)
         self.download('GET', path, file_path, headers=headers, cmd='download_dump')
 
+    def clear_gard(self):
+
+        payload = { "data": [] }
+        url = HTTP_PROTOCOL + self.bmcip + GARD_CLEAR_URL
+        return self.request('POST', url, payload=payload, cmd='clear_gard')
+
     def get_netinfo(self):
         data = self.request('GET', RSPCONFIG_NETINFO_URL['get_netinfo'], cmd="get_netinfo")
         try:
@@ -743,7 +764,11 @@ class OpenBMCRest(object):
                         info = data[dev]
                         utils.update2Ddict(netinfo, nicid, "vlanid", info.get("Id", "Disable"))
                         utils.update2Ddict(netinfo, nicid, "mac", info["MACAddress"])
-                        utils.update2Ddict(netinfo, nicid, "ntpservers", info["NTPServers"])            
+                        ntpservers = None
+                        tmp_ntpservers = ''.join(info["NTPServers"])
+                        if tmp_ntpservers:
+                            ntpservers = tmp_ntpservers
+                        utils.update2Ddict(netinfo, nicid, "ntpservers", ntpservers)            
             return netinfo
         except KeyError:
             error = 'Error: Received wrong format response: %s' % data
