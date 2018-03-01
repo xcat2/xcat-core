@@ -219,6 +219,7 @@ sub config_ip {
             }
         }
 
+        print "Sending xdsh command to change ip address.......\n";
         $cmd="xdsh $dswitch -t 10 -l admin --devicetype IBSwitch::Mellanox 'enable;configure terminal;no interface mgmt0 dhcp;interface mgmt0 ip address $static_ip $mask;configuration write;exit;exit' ";
         $rc= xCAT::Utils->runcmd($cmd, 0);
 
@@ -279,6 +280,7 @@ sub config_hostname {
         $rc= xCAT::Utils->runcmd($cmd, 0);
         if ($::RUNCMD_RC != 0) {
             xCAT::MsgUtils->message("E","Failed to setup hostname for $switch");
+            print "$switch: Failed to setup hostname\n";
             next;
         }
         push (@config_switches, $switch);
@@ -349,8 +351,10 @@ sub config_snmp {
 
         $cmd = $cmd . "configuration write\;exit\;";
         my $final_cmd = $cmd_prefix . " \"" . $cmd . "\"";
-
-        `$final_cmd`
+        my $rc= xCAT::Utils->runcmd($final_cmd, 0);
+        if ($::RUNCMD_RC != 0) {
+            print "Failed to config snmp";
+        }
     }
 }
 
@@ -482,7 +486,10 @@ sub config_vlan {
             $cmd = $cmd . "exit\;exit\;exit\;";
             my $final_cmd = $cmd_prefix . " \"" . $cmd . "\"";
 
-            `$final_cmd`
+            my $rc= xCAT::Utils->runcmd($final_cmd, 0);
+            if ($::RUNCMD_RC != 0) {
+                print "Failed to config VLAN";
+            }
         }
     }
 }

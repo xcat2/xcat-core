@@ -220,6 +220,7 @@ sub config_ip {
             }
         }
 
+        print "Sending command to change ip address .............\n";
         # For RackSwitch G8124
         if ($mac =~ /fc\:cf\:62/i) {
             $cmd="xdsh $dswitch -t 10 --devicetype EthSwitch::BNT 'enable;configure terminal;show interface ip;interface ip-mgmt enable;interface ip-mgmt address $static_ip $mask;exit' ";
@@ -259,6 +260,7 @@ sub config_ip {
         my $csw = join(",",@config_switches);
         $cmd = "chdef $csw status=ip_configed otherinterfaces=";
         $rc= xCAT::Utils->runcmd($cmd, 0);
+        print "$csw:  ip address configured\n";
     }
     if (@discover_switches) {
         my $dsw = join(",",@discover_switches);
@@ -292,6 +294,7 @@ sub config_hostname {
         $rc= xCAT::Utils->runcmd($cmd, 0);
         if ($::RUNCMD_RC != 0) {
             xCAT::MsgUtils->message("E","Failed to setup hostname for $switch");
+            print "$switch:  Failed to setup hostname\n";
             next;
         }
         push (@config_switches, $switch);
@@ -301,6 +304,7 @@ sub config_hostname {
         my $csw = join(",",@config_switches);
         $cmd = "chdef $csw status=hostname_configed" ;
         $rc= xCAT::Utils->runcmd($cmd, 0);
+        print "$csw:  hostname changed\n";
     }
 }
 
@@ -487,6 +491,7 @@ sub config_snmp {
         my $csw = join(",",@config_switches);
         $cmd = "chdef $csw status=switch_configed snmpversion=3 snmpauth=sha snmpprivacy=authNoPriv snmpusername=$snmp_user snmppassword=$snmp_passwd";
         $rc= xCAT::Utils->runcmd($cmd, 0);
+        print "$csw:  snmp configured\n";
     }
 }
 
@@ -567,7 +572,12 @@ sub config_vlan {
     $vlan = $::VLAN;
     print "Tagging VLAN=$vlan for $switches port $port\n";
     #create vlan, tagged vlan
-    $cmd = `xdsh $switches --devicetype EthSwitch::BNT "enable;configure terminal;vlan $vlan;exit;interface port $port;switchport mode trunk;switchport trunk allowed vlan $vlan;write memory;exit;exit"`;
+    $cmd = "xdsh $switches --devicetype EthSwitch::BNT 'enable;configure terminal;vlan $vlan;exit;interface port $port;switchport mode trunk;switchport trunk allowed vlan $vlan;write memory;exit;exit' ";
+    $rc= xCAT::Utils->runcmd($cmd, 0);
+    if ($::RUNCMD_RC != 0) {
+        xCAT::MsgUtils->message("E","Failed to setup Vlan number");
+        print "$switches:  Failed to setup Vlan\n";
+    }
 
 }
 
@@ -597,7 +607,10 @@ sub config_desc {
     if ($::VERBOSE) { 
         print "Executing cmd: \n==> $final_cmd\n";
     }
-   `$final_cmd`
+    $rc= xCAT::Utils->runcmd($final_cmd, 0);
+    if ($::RUNCMD_RC != 0) {
+        xCAT::MsgUtils->message("E","Failed to setup port description");
+    }
 }
 
 #---------------------------------------------------------
