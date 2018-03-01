@@ -46,16 +46,16 @@ class RestSession(object):
                 causing_error = "timeout"
                 host_and_port = self.extract_server_and_port(e.message[0], "STRING")
 
-            message = 'Error: Failed to connect to server.'
+            message = 'Failed to connect to server.'
             # message = '\n\n--> {0} \n\n'.format(e.message[0])
-            raise xcat_exception.SelfServerException(message, "500", '({0})'.format(causing_error), host_and_port)
+            raise xcat_exception.SelfServerException(message, '({0})'.format(causing_error), host_and_port)
 
         except requests.exceptions.Timeout as e:
             causing_error = "timeout"
             host_and_port = self.extract_server_and_port(e.message[0], "STRING")
 
-            message = 'Error: Timeout to connect to server'
-            raise xcat_exception.SelfServerException(message, "500", '({0})'.format(causing_error), host_and_port)
+            message = 'Timeout to connect to server'
+            raise xcat_exception.SelfServerException(message, '({0})'.format(causing_error), host_and_port)
 
         if not self.cookies:
             self.cookies = requests.utils.dict_from_cookiejar(self.session.cookies)

@@ -73,6 +73,13 @@ class OpenBMCPowerTask(ParallelNodesCommand):
         bmc_not_ready = bmc_state = 'NotReady'
         try:
             obmc.login()
+        except SelfServerException as e:
+            # Special exception handling for login failure
+            login_message = "Login to BMC failed: Can't connect to {0} {1}.".format(e.host_and_port, e.detail_msg)
+            self.callback.error(login_message, node)
+            return bmc_state
+
+        try:
             state = obmc.get_bmc_state()
             bmc_state = state.get('bmc')
 
@@ -83,8 +90,7 @@ class OpenBMCPowerTask(ParallelNodesCommand):
 
         except SelfServerException, SelfClientException:
             # There is no response when BMC is not ready
-            # Do not print bmc_state, instead, error messages from login failure will be displayed
-            return bmc_state
+            result = '%s: %s'  % (node, openbmc.RPOWER_STATES[bmc_not_ready])
 
         self.callback.info(result)
         return bmc_state

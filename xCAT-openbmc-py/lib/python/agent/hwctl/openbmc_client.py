@@ -249,15 +249,6 @@ class OpenBMCRest(object):
             self.messager.info(localtime + ' ' + log)
             logger.debug(log)
 
-    def _print_record (self, msg, cmd, type="I"):
-
-        log = self.name + ': ' + msg
-        logger.debug(log)
-        if type == "E":
-            self.messager.error(log)
-        else:
-            self.messager.info(log)
-
     def _log_request (self, method, url, headers, data=None, files=None, file_path=None, cmd=''):
 
         header_str = ' '.join([ "%s: %s" % (k, v) for k,v in headers.items() ])
@@ -285,7 +276,7 @@ class OpenBMCRest(object):
         if code != requests.codes.ok:
             description = ''.join(data['data']['description'])
             error = 'Error: [%d] %s' % (code, description)
-            self._print_record(error, cmd, "E")
+            self._print_record_log(error, cmd)
             raise SelfClientException(error, code)
 
         self._print_record_log(data['message'], cmd)
@@ -307,13 +298,9 @@ class OpenBMCRest(object):
             response = self.session.request(method, url, httpheaders, data=data)
             return self.handle_response(response, cmd=cmd)
         except SelfServerException as e:
-            message = 'Error: BMC did not respond. ' \
-                      'Validate BMC configuration and retry the command.'
-            if cmd == 'login':
-                login_message = "Error: [{0}] Login to BMC failed: {1} Can't connect to {2} {3}.".format(e.code, e.code, e.host_and_port, e.detail_msg)
-                self._print_record(login_message, cmd, "I")
-
-            self._print_record(message, cmd, "E")
+            e.message = 'Error: BMC did not respond. ' \
+                        'Validate BMC configuration and retry the command.'
+            self._print_record_log(e.message, cmd)
             raise
         except ValueError:
             error = 'Error: Received wrong format response: %s' % response
