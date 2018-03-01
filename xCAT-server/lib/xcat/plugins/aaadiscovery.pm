@@ -36,12 +36,16 @@ sub process_request {
             $arptable = `/sbin/arp -n`;
         }
         my @arpents = split /\n/, $arptable;
-        my $mac = "$req->{mtm}->[0]*$req->{serial}->[0]";
+        my $mac;
         foreach (@arpents) {
             if (m/^($client_ip)\s+\S+\s+(\S+)\s/) {
                 $mac = $2;
                 last;
             }
+        }
+        unless ($mac) {
+            xCAT::MsgUtils->message("S", "xcat.discovery.aaadiscovery: Failed to get MAC address for $client_ip in arp cache.");
+            $mac = "$req->{mtm}->[0]*$req->{serial}->[0]";
         }
 
         xCAT::MsgUtils->message("S", "xcat.discovery.aaadiscovery: ($mac) Got a discovery request, attempting to discover the node...");

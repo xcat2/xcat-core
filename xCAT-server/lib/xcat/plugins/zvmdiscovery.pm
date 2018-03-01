@@ -852,7 +852,7 @@ sub getSiteVal {
 #-------------------------------------------------------
 sub handled_commands {
     return {
-        findme             => 'zvmdiscovery',
+        #findme             => 'zvmdiscovery',   # Not handle findme in this plugin, #4860
         #nodediscoverdef   => 'zvmdiscovery',    # Handled by sequential discovery
         nodediscoverls     => 'zvmdiscovery',
         nodediscoverstart  => 'zvmdiscovery',
@@ -1710,6 +1710,11 @@ sub process_request {
     my $args = $request->{arg};
 
     if ($command eq "findme"){
+        if (defined($request->{discoverymethod}) and defined($request->{discoverymethod}->[0]) and ($request->{discoverymethod}->[0] ne 'undef')) {
+
+            # The findme request had been processed by other module, just return
+            return;
+        }
         findme( $request, $callback, $request_command );
     } elsif ($command eq "nodediscoverls") {
         nodediscoverls( $callback, $args );
