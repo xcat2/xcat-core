@@ -105,7 +105,7 @@ if **--setup** flag is specified, the command will perform following steps:
        snmppassword=xcatadminpassw0rd@snmp
        snmpusername=xcatadmin
        snmpversion=3
-       status=hostname_configed
+       status=hostname_configured
        statustime=08-31-2016 15:35:49
        supportedarchs=ppc64
        switch=switch-10-5-23-1
@@ -155,13 +155,13 @@ These two config files are located in the **/opt/xcat/share/xcat/scripts** direc
 Switch Status
 ~~~~~~~~~~~~~
 
-During the switch-based switch discovery process, there are four states displayed.  User may only see **switch_configed** status on node definition if discovery process successfully finished.  
+During the switch-based switch discovery process, there are four states displayed.  User may only see **switch_configured** status on node definition if discovery process successfully finished.  
 
 **Matched** --- Discovered switch is matched to predefine switch, **otherinterfaces** attribute is updated to dhcp IP address, and mac address, **switch type** and **usercomment** also updated with vendor information for the predefined switch.
 
-**ip_configed** --- switch is set up to static IP address based on predefine switch IP address.  If failure to set up IP address, the status will stay as **Matched**.
+**ip_configured** --- switch is set up to static IP address based on predefine switch IP address.  If failure to set up IP address, the status will stay as **Matched**.
 
-**hostname_configed** -- switch host name is changed based on predefine switch hostname. If failure to change hostname on the switch, the status will stay as **ip_configed**.
+**hostname_configured** -- switch host name is changed based on predefine switch hostname. If failure to change hostname on the switch, the status will stay as **ip_configured**.
 
-**switch_configed** -- snmpv3 is setup for the switches.  This should be finial status after running ``switchdiscover --setup`` command. If failure to setup snmpv3,  the status will stay as **hostname_configed**.
+**switch_configured** -- snmpv3 is setup for the switches.  This should be finial status after running ``switchdiscover --setup`` command. If failure to setup snmpv3,  the status will stay as **hostname_configured**.
 

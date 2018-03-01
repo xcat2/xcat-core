@@ -452,7 +452,7 @@ sub config_ntp {
         my $csw = join(",",@config_switches);
         $cmd = "chdef $csw status=ntp_configured";
         $rc= xCAT::Utils->runcmd($cmd, 0);
-        print "$csw: ntp configured\n";
+        print "$csw: NTP service is configured\n";
     }
 
     

@@ -219,7 +219,7 @@ sub config_ip {
             }
         }
 
-        print "Sending xdsh command to change ip address.......\n";
+        print "Sending xdsh command to change IP address...\n";
         $cmd="xdsh $dswitch -t 10 -l admin --devicetype IBSwitch::Mellanox 'enable;configure terminal;no interface mgmt0 dhcp;interface mgmt0 ip address $static_ip $mask;configuration write;exit;exit' ";
         $rc= xCAT::Utils->runcmd($cmd, 0);
 
@@ -236,7 +236,7 @@ sub config_ip {
     if (@config_switches) {
         # update switch status
         my $csw = join(",",@config_switches);
-        $cmd = "chdef $csw status=ip_configed otherinterfaces=";
+        $cmd = "chdef $csw status=ip_configured otherinterfaces=";
         $rc= xCAT::Utils->runcmd($cmd, 0);
         $cmd = "makehosts $csw";
         $rc= xCAT::Utils->runcmd($cmd, 0);
@@ -289,7 +289,7 @@ sub config_hostname {
     if (@config_switches) {
         # update switch status
         my $csw = join(",",@config_switches);
-        $cmd = "chdef $csw status=hostname_configed" ;
+        $cmd = "chdef $csw status=hostname_configured" ;
         $rc= xCAT::Utils->runcmd($cmd, 0);
     }
 }
@@ -353,7 +353,7 @@ sub config_snmp {
         my $final_cmd = $cmd_prefix . " \"" . $cmd . "\"";
         my $rc= xCAT::Utils->runcmd($final_cmd, 0);
         if ($::RUNCMD_RC != 0) {
-            print "Failed to config snmp";
+            print "Failed to configure SNMP";
         }
     }
 }
@@ -386,7 +386,7 @@ sub run_rspconfig {
     if (@config_switches) {
         # update switch status
         my $csw = join(",",@config_switches);
-        $cmd = "chdef $csw status=switch_configed" ;
+        $cmd = "chdef $csw status=switch_configured" ;
         $rc= xCAT::Utils->runcmd($cmd, 0);
     }
 
