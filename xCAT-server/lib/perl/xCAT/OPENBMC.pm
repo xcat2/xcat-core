@@ -22,7 +22,8 @@ use File::Path;
 use Fcntl ":flock";
 use IO::Socket::UNIX qw( SOCK_STREAM );
 use xCAT_monitoring::monitorctrl;
-
+use xCAT::TableUtils;
+ 
 my $LOCK_DIR = "/var/lock/xcat/";
 my $LOCK_PATH = "/var/lock/xcat/agent.lock";
 my $AGENT_SOCK_PATH = "/var/run/xcat/agent.sock";
@@ -196,6 +197,21 @@ sub wait_agent {
     if ($? >> 8 != 0) {
         xCAT::MsgUtils->message("E", { data => ["python agent exited unexpectedly. See $PYTHON_LOG_PATH for more details."] }, $callback);
     }
+}
+
+sub is_openbmc_perl {
+    my @entries    = xCAT::TableUtils->get_site_attribute("openbmc_perl_commands");
+    my $site_entry = $entries[0];
+    if (defined($site_entry)) {
+        if ($site_entry eq "YES") {
+            return "ALL";
+        } elsif ($site_entry eq "NO") {
+            return "NO";
+        } else {
+            return $site_entry;
+        }
+    }
+    return "NO";
 }
 
 sub is_openbmc_python {
