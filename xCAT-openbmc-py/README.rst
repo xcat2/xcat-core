@@ -2,15 +2,15 @@
 
     * install dependent packages for **Redhat**:
 
-      yum install -y gcc python-devel libffi-devel openssl-devel libssh2-devel
+      yum install -y gcc python-devel
 
     * install dependent packages for **ubuntu**:
 
-      apt-get install gcc libffi-dev python-dev libssh2-1-dev
+      apt-get install gcc python-dev
 
     * Install pip related packages:
 
-      pip install gevent greenlet certifi chardet idna urllib3 requests paramiko cryptography ssh2-python==0.8.0 parallel-ssh scp
+      pip install gevent greenlet certifi chardet idna urllib3 requests paramiko scp
     
     * Install openbmc-python:
     
