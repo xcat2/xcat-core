@@ -56,6 +56,15 @@ class OpenBMCEventlogTask(ParallelNodesCommand):
     def clear_all_ev_records(self, **kw):
 
         node = kw['node']
+        obmc = openbmc.OpenBMCRest(name=node, nodeinfo=kw['nodeinfo'], messager=self.callback, debugmode=self.debugmode, verbose=self.verbose) 
+        try:
+            obmc.login()
+            obmc.clear_all_eventlog_records()
+
+        except (SelfServerException, SelfClientException) as e:
+            self.callback.error('%s'  % e.message, node)
+
+        self.callback.info('%s: %s'  % (node, "Logs cleared"))
 
     def resolve_ev_records(self, resolve_list, **kw):
 

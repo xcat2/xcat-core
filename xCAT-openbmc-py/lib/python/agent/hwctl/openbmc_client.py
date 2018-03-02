@@ -219,7 +219,11 @@ RSPCONFIG_APIS = {
     },
 }
 
-EVENTLOG_URL      = "/logging/enumerate"
+EVENTLOG_URLS     = {
+        "list": "/logging/enumerate",
+        "clear_all": "/logging/action/deleteAll",
+}
+
 RAS_POLICY_TABLE  = "/opt/ibm/ras/lib/policyTable.json"
 RAS_POLICY_MSG    = "Install the OpenBMC RAS package to obtain more details logging messages."
 RAS_NOT_FOUND_MSG = " Not found in policy table: "
@@ -559,7 +563,7 @@ class OpenBMCRest(object):
     # Extract all eventlog info and parse it
     def get_eventlog_info(self):
 
-        eventlog_data = self.request('GET', EVENTLOG_URL, cmd='get_eventlog_info')
+        eventlog_data = self.request('GET', EVENTLOG_URLS['list'], cmd='get_eventlog_info')
 
         return self.parse_eventlog_data(eventlog_data)
 
@@ -584,6 +588,11 @@ class OpenBMCRest(object):
                 id, event_log_line = self.parse_eventlog_data_record(value, ras_event_mapping)
                 if int(id) != 0:
                     eventlog_dict[str(id)] = event_log_line
+
+            if not eventlog_dict:
+                # Nothing was returned from BMC
+                eventlog_dict['0'] ='No attributes returned from the BMC.'
+
             return eventlog_dict
         except KeyError:
             error = 'Error: Received wrong format response: %s' % eventlog_data
@@ -648,6 +657,12 @@ class OpenBMCRest(object):
         if callout:
             formatted_line += LED_tag
         return id_str, formatted_line
+
+    # Clear all eventlog records
+    def clear_all_eventlog_records(self):
+
+        return self.request('POST', EVENTLOG_URLS['clear_all'], cmd='clear_all_eventlog_records')
+
 
     def set_apis_values(self, key, value):
         attr_info = RSPCONFIG_APIS[key]
