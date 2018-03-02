@@ -227,11 +227,11 @@ rmdir \"/tmp/$userid\" \n")
             ssh_client.set_missing_host_key_policy(paramiko.MissingHostKeyPolicy())
             ssh_client.connect(nodeinfo['bmcip'], username=nodeinfo['username'], password=nodeinfo['password'])
         except (NoValidConnectionsError) as e:
-            return self.callback.error("%s: Unable to connect to bmc %s" % (node, nodeinfo['bmcip']))
+            return self.callback.error("Unable to connect to bmc %s" % nodeinfo['bmcip'], node)
         if not ssh_client.get_transport().is_active():
-            return self.callback.error("%s: SSH session to bmc %s is not active" % (node, nodeinfo['bmcip']))
+            return self.callback.error("SSH session to bmc %s is not active" % nodeinfo['bmcip'], node)
         if not ssh_client.get_transport().is_authenticated():
-            return self.callback.error("%s: SSH session to bmc %s is not authenticated" % (node, nodeinfo['bmcip']))
+            return self.callback.error("SSH session to bmc %s is not authenticated" % nodeinfo['bmcip'], node)
         ssh_client.exec_command("/bin/mkdir -p %s\n" % tmp_remote_dir)
         scp = SCPClient(ssh_client.get_transport())
         scp.put(self.copy_sh_file, tmp_remote_dir + "copy.sh")
