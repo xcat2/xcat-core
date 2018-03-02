@@ -149,14 +149,22 @@ if [ -z "$install_disk" ]; then
         disk_path=$(echo $output_for_path | $utolcmd)
         disk_driver=$(udevadm info --attribute-walk --name=$disk | grep DRIVERS| grep -v '""'| grep -v '"sd"'|
                     \head -n 1| sed -e 's/[^"]*"//' -e 's/"//' | $utolcmd)
-
+         disk_model=$(udevadm info --attribute-walk --name=$disk | grep {model}|sed -e 's/[^"]*"//' -e 's/"//' -e 's/ *$//'| $utolcmd)
         echo "[get_install_disk]The disk $disk information: "
         echo "[get_install_disk]    disk_wwn=$disk_wwn"
         echo "[get_install_disk]    disk_path=$disk_path"
         echo "[get_install_disk]    disk_driver=$disk_driver"
 
         # Check whether there is WWN, PATH information
-        if [ "$disk_wwn" ]; then
+        if [ "$disk_model" == "thinksystem m.2" ]; then
+            echo "$disk $disk_data" > "$tmpfile""$file_pre""firstchoicedisks"
+            echo "[get_install_disk]    Add disk: $disk $disk_data into $file_pre firstchoicedisks"
+            break # M.2 raid modules are the OS install targets
+        elif [ "$disk_driver" == "ahci" ]; then
+            echo "$disk $disk_data" >> "$tmpfile""$file_pre""firstchoicedisks"
+            echo "[get_install_disk]    Add disk: $disk $disk_data into $file_pre firstchoicedisks"
+            continue
+        elif [ "$disk_wwn" ]; then
             has_wwn=1
             file_pre="wwn"
             disk_data=$disk_wwn
