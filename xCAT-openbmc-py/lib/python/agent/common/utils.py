@@ -92,8 +92,11 @@ class Messager(object):
     def warn(self, msg):
         self.logger.warn(msg)
 
-    def error(self, msg):
-        self.logger.error(msg)
+    def error(self, msg, node=''):
+        if node:
+            self.logger.error('%s: Error: %s' % (node, msg))
+        else:
+            self.logger.error('Error: %s' % msg)
 
     def syslog(self, msg):
         pass

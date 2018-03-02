@@ -30,12 +30,11 @@ class OpenBMCBootTask(ParallelNodesCommand):
             obmc.login()
             state = obmc.get_boot_state()
 
-            result = '%s: %s' % (node, state)
+            self.callback.info('%s: %s' % (node, state))
 
         except (SelfServerException, SelfClientException) as e:
-            result = '%s: %s'  % (node, e.message)
+            self.callback.error(e.message, node)
 
-        self.callback.info(result)
         return state
 
     def set_state(self, state, persistant, **kw):
@@ -55,10 +54,9 @@ class OpenBMCBootTask(ParallelNodesCommand):
 
             state = obmc.get_boot_state()
 
-            result = '%s: %s' % (node, state)
+            self.callback.info('%s: %s' % (node, state))
 
         except (SelfServerException, SelfClientException) as e:
-            result = '%s: %s'  % (node, e.message)
+            self.callback.error(e.message, node)
 
-        self.callback.info(result)
 
