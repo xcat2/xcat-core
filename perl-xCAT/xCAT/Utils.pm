@@ -4968,5 +4968,36 @@ sub console_sleep {
     sleep($time);
 }
 
+#--------------------------------------------------------------------------------
+
+=head3 is_support_in_perl 
+      Based on the specified module and command, check whether included in site attribute cmds_in_perl
+=cut
+
+#--------------------------------------------------------------------------------
+sub is_support_in_perl {
+    my ($class, $module, $command) = @_;
+    my @entries = xCAT::TableUtils->get_site_attribute("cmds_in_perl");
+    my $site_entry = $entries[0];
+    if ($site_entry) {
+        if ($site_entry eq 'NO') {
+            return (0, '');
+        } elsif ($site_entry eq 'YES') {
+            return (1, '');
+        } elsif ($site_entry =~ /^(EXCEPT:)?(\w+\.\w+,?)+$/) {
+            my $except = $1;
+            if ($site_entry =~ $module.'.'.$command) {
+                return (($except ? 0 : 1), '');
+            } else {
+                return (($except ? 1 : 0), '');
+            }
+        } else {
+            return (-1, "The value format is invalid, shall be \"$module.$command,...\" or  \
+                         \"EXCEPT:$module.$command,...\"");
+        }
+    } else {
+        return (0, '');
+    }
+}
 
 1;
