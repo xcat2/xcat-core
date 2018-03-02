@@ -6,7 +6,15 @@
 #
 from __future__ import print_function
 import os, stat
-import gevent
+import sys
+if 'threading' in sys.modules:
+    del sys.modules['threading']
+from gevent import monkey
+monkey.patch_all()
+from gevent import sleep
+import paramiko
+from paramiko.ssh_exception import NoValidConnectionsError
+
 import time
 
 from common import utils
@@ -14,10 +22,6 @@ from common.task import ParallelNodesCommand
 from common.exceptions import SelfClientException, SelfServerException
 from hwctl import openbmc_client as openbmc
 
-#For rspconfig sshcfg
-from pssh.ssh_client import SSHClient
-from pssh.exceptions import UnknownHostException, AuthenticationException, \
-     ConnectionErrorException, SSHException
 from scp import SCPClient
 
 import logging
@@ -167,7 +171,7 @@ class OpenBMCBmcConfigTask(ParallelNodesCommand):
                 if (20-i) % 8 == 0:
                     self.callback.info('%s: Still waiting for dump %s to be generated... '  % (node, dump_id))
 
-                gevent.sleep( 15 )
+                sleep( 15 )
 
             if flag: 
                 result = self._dump_download(obmc, node, str(dump_id), flag_dump_process=True)
@@ -224,25 +228,23 @@ rmdir \"/tmp/$userid\" \n")
         node = kw['node']
         nodeinfo = kw['nodeinfo']
         tmp_remote_dir = "/tmp/%s/.ssh/" % nodeinfo['username']
-        #try: 
-        ssh_client = SSHClient(nodeinfo['bmcip'], user=nodeinfo['username'], password=nodeinfo['password'])
-        #except (SSHException, NoValidConnectionsError,BadHostKeyException) as e: 
-        #    self.callback.info("%s: %s" % (node, e))
-        if not ssh_client.client.get_transport().is_active():
-            self.callback.info("SSH session is not active")
-        if not ssh_client.client.get_transport().is_authenticated():
-            self.callback.info("SSH session is not authenticated")
         try:
-            ssh_client.client.exec_command("/bin/mkdir -p %s\n" % tmp_remote_dir)
-        except (SSHException, ConnectionErrorException) as e: 
-            self.callback.info("%s: ----%s------" % (host, e))
-        scp = SCPClient(ssh_client.client.get_transport()) 
+            ssh_client = paramiko.SSHClient()
+            ssh_client.set_missing_host_key_policy(paramiko.MissingHostKeyPolicy())
+            ssh_client.connect(nodeinfo['bmcip'], username=nodeinfo['username'], password=nodeinfo['password'])
+        except (NoValidConnectionsError) as e:
+            return self.callback.error("%s: Unable to connect to bmc %s" % (node, nodeinfo['bmcip']))
+        if not ssh_client.get_transport().is_active():
+            return self.callback.error("%s: SSH session to bmc %s is not active" % (node, nodeinfo['bmcip']))
+        if not ssh_client.get_transport().is_authenticated():
+            return self.callback.error("%s: SSH session to bmc %s is not authenticated" % (node, nodeinfo['bmcip']))
+        ssh_client.exec_command("/bin/mkdir -p %s\n" % tmp_remote_dir)
+        scp = SCPClient(ssh_client.get_transport())
         scp.put(self.copy_sh_file, tmp_remote_dir + "copy.sh")
         scp.put(self.local_public_key, tmp_remote_dir + "id_rsa.pub")
-        ssh_client.client.exec_command("%s/copy.sh %s" % (tmp_remote_dir, nodeinfo['username']))
-        ssh_client.client.close()
+        ssh_client.exec_command("%s/copy.sh %s" % (tmp_remote_dir, nodeinfo['username']))
+        ssh_client.close()
         return self.callback.info("ssh keys copied to %s" % nodeinfo['bmcip'])
-
 
 
     def set_ipdhcp(self, **kw):
