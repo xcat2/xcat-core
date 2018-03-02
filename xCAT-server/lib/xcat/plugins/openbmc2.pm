@@ -63,23 +63,8 @@ sub preprocess_request {
     $callback  = shift;
 
     my $command   = $request->{command}->[0];
-    my $perl_env = xCAT::OPENBMC->is_openbmc_perl();
-    # Process command in this module only if PYTHON env is not NO or 
-    # command is listed in the PYTHON env list (without EXCEPT: prefix). 
-    # All other cases => return
-
-    SWITCH: {
-        if ($perl_env eq "ALL")  {$request = {}; return;}
-        if ($perl_env eq "NO") {last SWITCH;}
-        if ($perl_env !~ $command) {
-            if ($perl_env =~ /^EXCEPT:/) {$request = {}; return;}
-            else {last SWITCH;}
-        }
-        if ($perl_env =~ $command) {
-            if ($perl_env =~ /^EXCEPT:/) {last SWITCH;}
-            else {$request = {}; return;}
-        }
-    }
+    my ($rc, $msg) = xCAT::Utils->is_support_in_perl("openbmc", $command);
+    if ($rc != 0) { $request = {}; return;}
 
     my $noderange = $request->{node};
     my $extrargs  = $request->{arg};

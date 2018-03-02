@@ -199,21 +199,6 @@ sub wait_agent {
     }
 }
 
-sub is_openbmc_perl {
-    my @entries    = xCAT::TableUtils->get_site_attribute("openbmc_perl_commands");
-    my $site_entry = $entries[0];
-    if (defined($site_entry)) {
-        if ($site_entry eq "YES") {
-            return "ALL";
-        } elsif ($site_entry eq "NO") {
-            return "NO";
-        } else {
-            return $site_entry;
-        }
-    }
-    return "NO";
-}
-
 sub is_openbmc_python {
     my $environment = shift;
     $environment = shift if (($environment) && ($environment =~ /OPENBMC/));
