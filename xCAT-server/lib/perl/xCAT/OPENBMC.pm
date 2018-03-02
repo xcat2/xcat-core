@@ -22,6 +22,7 @@ use File::Path;
 use Fcntl ":flock";
 use IO::Socket::UNIX qw( SOCK_STREAM );
 use xCAT_monitoring::monitorctrl;
+use xCAT::TableUtils;
 
 my $LOCK_DIR = "/var/lock/xcat/";
 my $LOCK_PATH = "/var/lock/xcat/agent.lock";

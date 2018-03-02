@@ -4968,5 +4968,26 @@ sub console_sleep {
     sleep($time);
 }
 
+#--------------------------------------------------------------------------------
+
+=head3 is_support_in_perl 
+      check if specified command is included in site attribute openbmcperl
+=cut
+
+#--------------------------------------------------------------------------------
+sub is_support_in_perl {
+    my ($class, $command) = @_;
+    my @entries = xCAT::TableUtils->get_site_attribute("openbmcperl");
+    my $site_entry = $entries[0];
+    if ($site_entry) {
+        if ($site_entry =~ $command) {
+            return (1, '');
+        } else {
+            return (0, '');
+        }
+    } else {
+        return (0, '');
+    }
+}
 
 1;
