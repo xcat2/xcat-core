@@ -137,7 +137,7 @@ sub submit_agent_request {
         $retry++;
     }
     if (!defined($sock)) {
-        xCAT::MsgUtils->message("E", { data => ["Failed to connect to the agent"] }, $callback);
+        xCAT::MsgUtils->message("E", { data => ["OpenBMC management is using a Python framework. An error has occured when trying to create socket $AGENT_SOCK_PATH."] }, $callback);
         kill('TERM', $pid);
         return;
     }
@@ -195,7 +195,7 @@ sub wait_agent {
     my ($pid, $callback) = @_;
     waitpid($pid, 0);
     if ($? >> 8 != 0) {
-        xCAT::MsgUtils->message("E", { data => ["python agent exited unexpectedly. See $PYTHON_LOG_PATH for more details."] }, $callback);
+        xCAT::MsgUtils->message("E", { data => ["Agent exited unexpectedly.  See $PYTHON_LOG_PATH for details."] }, $callback);
     }
 }
 
