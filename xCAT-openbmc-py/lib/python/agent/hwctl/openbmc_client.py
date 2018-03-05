@@ -162,11 +162,14 @@ FIRM_URLS = {
 }
 
 RSPCONFIG_NETINFO_URL = {
+    'delete_ip_object': "/network/#NIC#/ipv4/#OBJ#",
+    'disable_dhcp': "/network/#NIC#/attr/DHCPEnabled",
     'get_netinfo': "/network/enumerate",
-    'nic_ip': "/network/#NIC#/action/IP",
-    'vlan': "/network/action/VLAN",
+    'get_nic_netinfo': "/network/#NIC#/ipv4/enumerate",
     'ipdhcp': "/network/action/Reset",
+    'nic_ip': "/network/#NIC#/action/IP",
     'ntpservers': "/network/#NIC#/attr/NTPServers",
+    'vlan': "/network/action/VLAN",
 }
 
 PASSWD_URL = '/user/root/action/SetPassword'
@@ -285,7 +288,7 @@ class OpenBMCRest(object):
         code = resp.status_code
         if code != requests.codes.ok:
             description = ''.join(data['data']['description'])
-            error = 'Error: [%d] %s' % (code, description)
+            error = '[%d] %s' % (code, description)
             self._print_record_log(error, cmd)
             raise SelfClientException(error, code)
 
@@ -308,12 +311,12 @@ class OpenBMCRest(object):
             response = self.session.request(method, url, httpheaders, data=data)
             return self.handle_response(response, cmd=cmd)
         except SelfServerException as e:
-            e.message = 'Error: BMC did not respond. ' \
+            e.message = 'BMC did not respond. ' \
                         'Validate BMC configuration and retry the command.'
             self._print_record_log(e.message, cmd)
             raise
         except ValueError:
-            error = 'Error: Received wrong format response: %s' % response
+            error = 'Received wrong format response: %s' % response
             self._print_record_log(error, cmd)
             raise SelfServerException(error)
 
@@ -360,13 +363,13 @@ class OpenBMCRest(object):
         try:
             data = json.loads(response)
         except ValueError:
-            error = 'Error: Received wrong format response when running command \'%s\': %s' % \
+            error = 'Received wrong format response when running command \'%s\': %s' % \
                     (request_cmd, response)
             self._print_record_log(error, cmd=cmd)
             raise SelfServerException(error)
 
         if data['message'] != '200 OK':
-            error = 'Error: Failed to upload update file %s : %s-%s' % \
+            error = 'Failed to upload update file %s : %s-%s' % \
                     (files, data['message'], \
                     ''.join(data['data']['description']))
             self._print_record_log(error, cmd=cmd)
@@ -392,7 +395,7 @@ class OpenBMCRest(object):
             chassis_stat = states[PROJECT_URL + '/state/chassis0']['CurrentPowerState']
             return {'host': host_stat.split('.')[-1], 'chassis': chassis_stat.split('.')[-1]}
         except KeyError:
-            error = 'Error: Received wrong format response: %s' % states
+            error = 'Received wrong format response: %s' % states
             raise SelfServerException(error)
 
     def set_power_state(self, state):
@@ -406,7 +409,7 @@ class OpenBMCRest(object):
         try:
             return {'bmc': state.split('.')[-1]}
         except KeyError:
-            error = 'Error: Received wrong format response: %s' % state
+            error = 'Received wrong format response: %s' % state
             raise SelfServerException(error)
 
     def reboot_bmc(self, optype='warm'):
@@ -448,7 +451,7 @@ class OpenBMCRest(object):
             boot_state = BOOTSOURCE_GET_STATE.get(boot_source.split('.')[-1], error)
             return boot_state
         except KeyError:
-            error = 'Error: Received wrong format response: %s' % states
+            error = 'Received wrong format response: %s' % states
             raise SelfServerException(error)
 
     def get_beacon_info(self):
@@ -462,7 +465,7 @@ class OpenBMCRest(object):
                     beacon_dict[key_id] = value['State'].split('.')[-1]
             return beacon_dict
         except KeyError:
-            error = 'Error: Received wrong format response: %s' % beacon_data
+            error = 'Received wrong format response: %s' % beacon_data
             raise SelfServerException(error)
 
     def set_beacon_state(self, state):
@@ -494,7 +497,7 @@ class OpenBMCRest(object):
                     
             return sensor_dict
         except KeyError:
-            error = 'Error: Received wrong format response: %s' % sensor_data
+            error = 'Received wrong format response: %s' % sensor_data
             raise SelfServerException(error)
 
     def get_inventory_info(self):
@@ -531,7 +534,7 @@ class OpenBMCRest(object):
 
             return inverntory_dict
         except KeyError:
-            error = 'Error: Received wrong format response: %s' % inventory_data
+            error = 'Received wrong format response: %s' % inventory_data
             raise SelfServerException(error)
 
     def list_firmware(self):
@@ -586,7 +589,7 @@ class OpenBMCRest(object):
                     eventlog_dict[str(id)] = event_log_line
             return eventlog_dict
         except KeyError:
-            error = 'Error: Received wrong format response: %s' % eventlog_data
+            error = 'Received wrong format response: %s' % eventlog_data
             raise SelfServerException(error)
 
     # Parse a single eventlog entry and return data in formatted string
@@ -717,7 +720,7 @@ class OpenBMCRest(object):
 
             return dump_dict
         except KeyError:
-            error = 'Error: Received wrong format response: %s' % dump_data
+            error = 'Received wrong format response: %s' % dump_data
             raise SelfServerException(error) 
 
     def download_dump(self, download_id, file_path):
@@ -731,6 +734,50 @@ class OpenBMCRest(object):
         payload = { "data": [] }
         url = HTTP_PROTOCOL + self.bmcip + GARD_CLEAR_URL
         return self.request('POST', url, payload=payload, cmd='clear_gard')
+
+    def set_vlan(self, nic, vlan_id):
+
+        payload = { "data": [nic, vlan_id] }
+        return self.request('POST', RSPCONFIG_NETINFO_URL['vlan'], payload=payload, cmd='set_vlan')
+
+    def set_netinfo(self, nic, ip, netmask, gateway):
+
+        payload = { "data": ["xyz.openbmc_project.Network.IP.Protocol.IPv4", ip, netmask, gateway] }
+        path = RSPCONFIG_NETINFO_URL['nic_ip'].replace('#NIC#', nic)
+        return self.request('POST', path, payload=payload, cmd='set_netinfo')
+
+    def disable_dhcp(self, nic):
+
+        payload = { "data": 0 }
+        path = RSPCONFIG_NETINFO_URL['disable_dhcp'].replace('#NIC#', nic)
+        return self.request('PUT', path, payload=payload, cmd='disable_dhcp')
+
+    def delete_ip_object(self, nic, ip_object):
+
+        path = RSPCONFIG_NETINFO_URL['delete_ip_object'].replace('#OBJ#', ip_object).replace('#NIC#', nic)
+        return self.request('DELETE', path, cmd='delete_ip_object')
+
+    def get_nic_netinfo(self, nic):
+
+        path = RSPCONFIG_NETINFO_URL['get_nic_netinfo'].replace('#NIC#', nic)
+        data = self.request('GET', path, cmd='get_nic_netinfo')
+
+        try:
+            netinfo = {}
+            for k, v in data.items():
+                dev,match,netid = k.partition("/ipv4/")
+                if 'LinkLocal' in v["Origin"] or v["Address"].startswith("169.254"):
+                    msg = "Found LinkLocal address %s for interface %s, Ignoring..." % (v["Address"], dev)
+                    self._print_record_log(msg, 'get_netinfo')
+                    continue
+                utils.update2Ddict(netinfo, netid, 'ip', v['Address'])
+                utils.update2Ddict(netinfo, netid, 'ipsrc', v['Origin'].split('.')[-1])
+                utils.update2Ddict(netinfo, netid, 'netmask', v['PrefixLength'])
+                utils.update2Ddict(netinfo, netid, 'gateway', v['Gateway'])
+            return netinfo
+        except KeyError:
+            error = 'Received wrong format response: %s' % data
+            raise SelfServerException(error)
 
     def get_netinfo(self):
         data = self.request('GET', RSPCONFIG_NETINFO_URL['get_netinfo'], cmd="get_netinfo")
@@ -755,11 +802,14 @@ class OpenBMCRest(object):
                     if 'ip' in netinfo[nicid]:
                         msg = "%s: Another valid ip %s found." % (node, v["Address"])
                         self._print_record_log(msg, 'get_netinfo')
-                        continue
+                        del netinfo[nicid]
+                        netinfo['error'] = 'Interfaces with multiple IP addresses are not supported'
+                        break
                     utils.update2Ddict(netinfo, nicid, "ipsrc", v["Origin"].split('.')[-1])
                     utils.update2Ddict(netinfo, nicid, "netmask", v["PrefixLength"])
                     utils.update2Ddict(netinfo, nicid, "gateway", v["Gateway"])
                     utils.update2Ddict(netinfo, nicid, "ip", v["Address"])
+                    utils.update2Ddict(netinfo, nicid, "ipobj", netid)
                     if dev in data:
                         info = data[dev]
                         utils.update2Ddict(netinfo, nicid, "vlanid", info.get("Id", "Disable"))
@@ -771,7 +821,7 @@ class OpenBMCRest(object):
                         utils.update2Ddict(netinfo, nicid, "ntpservers", ntpservers)            
             return netinfo
         except KeyError:
-            error = 'Error: Received wrong format response: %s' % data
+            error = 'Received wrong format response: %s' % data
             raise SelfServerException(error)
         
 

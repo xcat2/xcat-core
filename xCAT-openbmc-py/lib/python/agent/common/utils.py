@@ -82,6 +82,20 @@ def sort_string_with_numbers(origin_list):
     new_list.sort()
     return [string for __,string in new_list]
 
+def exchange_mask(mask):
+    count_bit = lambda bin_str: len([i for i in bin_str if i=='1'])
+    mask_splited = mask.split('.')
+    mask_count = [count_bit(bin(int(i))) for i in mask_splited]
+    return sum(mask_count)
+
+def exchange_maskint(mask_int):
+    bin_arr = ['0' for i in range(32)]
+    for i in range(mask_int):
+        bin_arr[i] = '1'
+    tmpmask = [''.join(bin_arr[i * 8:i * 8 + 8]) for i in range(4)]
+    tmpmask = [str(int(tmpstr, 2)) for tmpstr in tmpmask]
+    return '.'.join(tmpmask)
+
 class Messager(object):
     def __init__(self, name=None):
         self.logger = logging.getLogger(name or 'xcatagent')
