@@ -2187,7 +2187,10 @@ sub getzonesfornet {
             $rev .= $_ . ".";
             $nibbs--;
         }
-        while ($nibbs) {
+	if ($nibbs < 1) {
+		return ();  # Don't presume to handle maskless subnets...
+        }
+        while ($nibbs > 0) {
             $rev .= "0.";
             $nibbs--;
         }
