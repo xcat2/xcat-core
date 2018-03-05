@@ -202,8 +202,8 @@ sub wait_agent {
 sub is_openbmc_python {
     my $environment = shift;
     $environment = shift if (($environment) && ($environment =~ /OPENBMC/));
-    # If XCAT_OPENBMC_PYTHON is YES, 
-    # will return "ALL" and caller will run openbmc2.pm. 
+    # If XCAT_OPENBMC_PYTHON is YES,
+    # will return "ALL" and caller will run openbmc2.pm.
     # If XCAT_OPENBMC_PYTHON is not set or is set to NO, return "NO" and caller
     # will run openbmc.pm
     # If XCAT_OPENBMC_PYTHON is a list of commands, return that list and caller
@@ -216,7 +216,7 @@ sub is_openbmc_python {
     } else {
         $::OPENBMC_PYTHON = $environment->{XCAT_OPENBMC_PYTHON};
     }
-    if (defined($::OPENBMC_PYTHON)) { 
+    if (defined($::OPENBMC_PYTHON)) {
         if ($::OPENBMC_PYTHON eq "YES") {
             return "ALL";
         }
@@ -229,6 +229,55 @@ sub is_openbmc_python {
     }
 
     return "NO";
+}
+
+#--------------------------------------------------------------------------------
+
+=head3 is_support_in_perl 
+      check if specified command is included in site attribute openbmcperl
+      The policy is:
+            Get value from `openbmcperl`, `XCAT_OPENBMC_DEVEL`, agent.py:
+            1. If agent.py not exist: ==>Go Perl
+            2. If `openbmcperl` not set or not include a command:
+                    if `XCAT_OPENBMC_DEVEL` set to `NO`:  ==> Go Perl
+                    else if set to `YES` or not set: ==> Go Python
+            3. If `openbmcperl` set and include a command
+                    if `XCAT_OPENBMC_DEVEL` set to `YES`: == >Go Python
+                    else ==> Go Perl
+=cut
+
+#--------------------------------------------------------------------------------
+sub is_support_in_perl {
+    my ($class, $command, $env) = @_;
+    if (! -e $PYTHON_AGENT_FILE) {
+        return (1, '');
+    }
+    my @entries = xCAT::TableUtils->get_site_attribute("openbmcperl");
+    my $site_entry = $entries[0];
+    my $support_obmc = undef;
+    if (ref($env) eq 'ARRAY' and ref($env->[0]->{XCAT_OPENBMC_DEVEL}) eq 'ARRAY') {
+        $support_obmc = $env->[0]->{XCAT_OPENBMC_DEVEL}->[0];
+    } elsif (ref($env) eq 'ARRAY') {
+        $support_obmc = $env->[0]->{XCAT_OPENBMC_DEVEL};
+    } else {
+        $support_obmc = $env->{XCAT_OPENBMC_DEVEL};
+    }
+    if ($support_obmc and $support_obmc ne 'YES' and $support_obmc ne 'NO') {
+        return (-1, "Value $support_obmc is invalid for XCAT_OPENBMC_DEVEL, only support 'YES' and 'NO'");
+    }
+    if ($site_entry and $site_entry =~ $command) {
+        if ($support_obmc and $support_obmc eq 'YES') {
+            return (0, '');
+        } else {
+            return (1, '');
+        }
+    } else {
+        if ($support_obmc and $support_obmc eq 'NO') {
+            return (1, '');
+        } else {
+            return (0, '');
+        }
+    }
 }
 
 1;

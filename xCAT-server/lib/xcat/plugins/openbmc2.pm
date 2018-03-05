@@ -13,7 +13,6 @@ use warnings "all";
 
 use JSON;
 use Getopt::Long;
-use xCAT::Utils;
 use xCAT::Usage;
 use xCAT::SvrUtils;
 use xCAT::OPENBMC;
@@ -63,7 +62,7 @@ sub preprocess_request {
     $callback  = shift;
 
     my $command   = $request->{command}->[0];
-    my ($rc, $msg) = xCAT::Utils->is_support_in_perl($command);
+    my ($rc, $msg) = xCAT::OPENBMC->is_support_in_perl($command, $request->{environment});
     if ($rc != 0) { $request = {}; return;}
 
     my $noderange = $request->{node};
