@@ -101,6 +101,8 @@ sub check_pr_format{
         my $pr_content = decode_json($pr_url_resp);
         my $pr_title = $pr_content->{title};
         my $pr_body  = $pr_content->{body};
+        my $pr_milestone = $pr_content->{milestone};
+        my $pr_labels_len = @{$pr_content->{labels}};
 
         #print "[check_pr_format] Dumper pr_content:\n";
         #print Dumper $pr_content;
@@ -115,6 +117,14 @@ sub check_pr_format{
              $checkrst.="Miss description.";
         }
         
+        if(! $pr_milestone){
+             $checkrst.="Miss milestone.";
+        }
+
+        if(! $pr_labels_len){
+             $checkrst.="Miss labels.";
+        }
+
         if(length($checkrst) == 0){
             $check_result_str .= "> **PR FORMAT CORRECT**";
             send_back_comment("$check_result_str"); 

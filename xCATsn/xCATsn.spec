@@ -56,6 +56,10 @@ Requires: conserver-xcat
 %endif
 %endif
 
+%ifos linux
+Requires: goconserver
+%endif
+
 #support mixed cluster
 %ifnarch s390x
 Requires: elilo-xcat xnba-undi
@@ -68,6 +72,10 @@ Requires: ipmitool-xcat >= 1.8.17-1
 %ifos linux
 %ifarch ppc ppc64 ppc64le
 Requires: ipmitool-xcat >= 1.8.17-1
+%endif
+%ifarch ppc64le
+# only OpenBMC support
+Requires: xCAT-openbmc-py
 %endif
 %endif
 

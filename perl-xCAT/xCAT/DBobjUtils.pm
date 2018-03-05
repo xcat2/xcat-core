@@ -1676,13 +1676,10 @@ sub readFileInput
 
             #  could have different default stanzas for different object types
 
-            if ($objectname =~ /default/) {
+            if ($objectname =~ /^default-([^-]+)$/) {
 
-                ($junk1, $objtype) = split(/-/, $objectname);
-
-                if ($objtype) {
-                    $objectname = 'default';
-                }
+                $objtype = $1;
+                $objectname = 'default';
 
                 next;
             }

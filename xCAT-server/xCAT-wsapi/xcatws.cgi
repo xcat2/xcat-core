@@ -45,6 +45,12 @@ my %usagemsg = (
     non_getreturn => "No output when execution is successfull. Otherwise output the error information in the Standard Error Format: {error:[msg1,msg2...],errocode:errornum}."
 );
 
+# ver(1.0): Use array type instread of string split by '|' or ','
+# ver(1.0): Specify the version number as 'ver=1.0' which is a url parameter
+# ver(1.0): Example: curl -X GET -k 'http://hostname/xcatws/nodes/restnode1?userName=root&userPW=cluster&ver=1.0'
+my @ARRAY_ATTRS = ('groups', 'members', 'postscripts', 'postbootscripts');
+my $NICS_ATTR = 'nicips';
+
 my %URIdef = (
     #### definition for node resources
     nodes => {
@@ -1387,13 +1393,18 @@ if ($ARGV[0] eq "-h") {
     $pathInfo    = $ARGV[1];
 
     unless ($pathInfo) { dbgusage(); exit 1; }
-
-    if ($ARGV[2] =~ /(.*):(.*)/) {
-        $ENV{userName} = $1;
-        $ENV{password} = $2;
-    } else {
+    # userName:userPW:version
+    my @params = split(':', $ARGV[2]);
+    if (@params < 2) {
         dbgusage();
         exit 0;
+    }
+    if(@params >= 2) {
+        $ENV{userName} = $params[0];
+        $ENV{password} = $params[1];
+    }
+    if(@params == 3) {
+        $ENV{ver} = $params[2];
     }
     $dbgdata = $ARGV[3] if defined($ARGV[3]);
 } elsif (defined($ARGV[0])) {
@@ -1626,6 +1637,23 @@ sub defout {
                 if (!$nodename) { error('improperly formatted lsdef output from xcatd', $STATUS_TEAPOT); }
                 my ($attr, $val) = $l =~ /^\s*(\S+?)=(.*)$/;
                 if (!defined($attr)) { error('improperly formatted lsdef output from xcatd', $STATUS_TEAPOT); }
+                if ((defined($generalparams->{ver}) && $generalparams->{ver} eq '1.0') ||
+                    (defined($ENV{ver}) && $ENV{ver} eq '1.0')) {
+                    # ver(1.0): Return array type directly instead of string split by '|' or ','
+                    if (grep(/^$attr$/, @ARRAY_ATTRS)) {
+                        my @vals = split(',', $val);
+                        if (@vals) {
+                            $json->{$nodename}->{$attr} = \@vals;
+                        }
+                        next;
+                    } elsif ($attr =~ /^$NICS_ATTR.+/) {
+                        my @vals = split('\|', $val);
+                        if (@vals) {
+                            $json->{$nodename}->{$attr} = \@vals;
+                        }
+                        next;
+                    }
+                }
                 $json->{$nodename}->{$attr} = $val;
             }
         }
@@ -1970,6 +1998,16 @@ sub defhdl {
                 push @args, $opt_key;
                 push @args, $opt_val if $opt_val;
             }
+            next;
+        } elsif (ref($paramhash->{$k}) eq "ARRAY") {
+            # ver(1.0): Accept array type for the attributes split by ',' or '|'
+            my $val;
+            if (grep(/^$k$/, @ARRAY_ATTRS)) {
+                $val = join(',', @{$paramhash->{$k}});
+            } elsif ($k =~ /^$NICS_ATTR.+/) {
+                $val = join('|', @{$paramhash->{$k}});
+            }
+            push(@args, "$k=$val") if $val;
             next;
         }
         push @args, "$k=$paramhash->{$k}" if $paramhash->{$k};
@@ -3302,7 +3340,7 @@ sub sendRequest {
 # 1st output param - The params which are listed in @generalparamlis as a general parameters like 'debug=1, pretty=1'
 # 2nd output param - All the params from url params and 'PUTDATA'/'POSTDATA' except the ones in @generalparamlis
 sub fetchParameters {
-    my @generalparamlist = qw(userName userPW pretty debug xcoll);
+    my @generalparamlist = qw(userName userPW pretty debug xcoll ver);
 
     # 1st check for put/post data and put that in the hash
     my $pdata;

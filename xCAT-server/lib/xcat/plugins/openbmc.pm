@@ -638,6 +638,19 @@ my %api_config_info = (
             always_off  => "xyz.openbmc_project.Control.Power.RestorePolicy.Policy.AlwaysOff",
         },
     },
+    RSPCONFIG_TIME_SYNC_METHOD => {
+        command      => "rspconfig",
+        url          => "/time/sync_method",
+        attr_url     => "TimeSyncMethod",
+        display_name => "BMC TimeSyncMethod",
+        instruct_msg => "",
+        type         => "attribute",
+        subcommand   => "timesyncmethod",
+        attr_value   => {
+            ntp         => "xyz.openbmc_project.Time.Synchronization.Method.NTP",
+            manual      => "xyz.openbmc_project.Time.Synchronization.Method.Manual",
+        },
+    },
 );
 
 $::RESPONSE_OK                  = "200 OK";
@@ -743,12 +756,15 @@ sub preprocess_request {
     }
     ##############################################
 
-    if (xCAT::OPENBMC->is_openbmc_python($request->{environment})) {
+    $callback  = shift;
+    my $command   = $request->{command}->[0];
+    my ($rc, $msg) = xCAT::OPENBMC->is_support_in_perl($command, $request->{environment});
+    if ($rc == 0) { $request = {}; return;}
+    if ($rc < 0) {
         $request = {};
+        $callback->({ errorcode => [1], data => [$msg] });
         return;
     }
-
-    $callback  = shift;
 
     if ($::XCATSITEVALS{xcatdebugmode}) { $xcatdebugmode = $::XCATSITEVALS{xcatdebugmode} }
 
@@ -756,7 +772,6 @@ sub preprocess_request {
         process_debug_info("OpenBMC");
     }
 
-    my $command   = $request->{command}->[0];
     my $noderange = $request->{node};
     my $extrargs  = $request->{arg};
     my @exargs    = ($request->{arg});
@@ -1186,6 +1201,7 @@ sub parse_args {
         foreach $subcommand (@ARGV) {
             $::RSPCONFIG_CONFIGURED_API_KEY = &is_valid_config_api($subcommand, $callback);
             if ($::RSPCONFIG_CONFIGURED_API_KEY ne -1) {
+                return ([ 1, "Can not query $api_config_info{$::RSPCONFIG_CONFIGURED_API_KEY}{subcommand} information with other options at the same time" ]) if ($#ARGV > 1);
                 # subcommand defined in the configured API hash, return from here, the RSPCONFIG_CONFIGURED_API_KEY is the key into the hash
                 return;
             }
@@ -1556,7 +1572,7 @@ sub parse_command_status {
         if ($subcommand eq "clear") {
             $next_status{LOGIN_RESPONSE} = "REVENTLOG_CLEAR_REQUEST";
             $next_status{REVENTLOG_CLEAR_REQUEST} = "REVENTLOG_CLEAR_RESPONSE";
-        } elsif ($subcommand =~ /resolved=LED/) {
+        } elsif (uc($subcommand) =~ /RESOLVED=LED/) {
             $next_status{LOGIN_RESPONSE} = "REVENTLOG_REQUEST";
             $next_status{REVENTLOG_REQUEST} = "REVENTLOG_RESOLVED_RESPONSE_LED";
         } elsif ($subcommand =~ /resolved=(.+)/) {
@@ -1588,8 +1604,9 @@ sub parse_command_status {
         my @options = ();
         my $num_subcommand = @$subcommands;
         #Setup chain to process the configured command
+        $subcommand = $$subcommands[0];
+        $::RSPCONFIG_CONFIGURED_API_KEY = &is_valid_config_api($subcommand, $callback);
         if ($::RSPCONFIG_CONFIGURED_API_KEY ne -1) {
-            $subcommand = $$subcommands[0];
             # Check if setting or quering
             if ($subcommand =~ /^(\w+)=(.*)/) {
                 # setting
@@ -1850,23 +1867,23 @@ sub parse_command_status {
         my $nohost_reboot = 0;
 
         foreach $subcommand (@$subcommands) {
-            if ($subcommand =~ /-c|--check/) {
+            if ($subcommand =~ /^-c|^--check/) {
                 $check_version = 1;
-            } elsif ($subcommand =~ /-l|--list/) {
+            } elsif ($subcommand =~ /^-l|^--list/) {
                 $list = 1;
-            } elsif ($subcommand =~ /--delete/) {
+            } elsif ($subcommand =~ /^--delete/) {
                 $delete = 1;
-            } elsif ($subcommand =~ /-u|--upload/) {
+            } elsif ($subcommand =~ /^-u|^--upload/) {
                 $upload = 1;
-            } elsif ($subcommand =~ /-a|--activate/) {
+            } elsif ($subcommand =~ /^-a|^--activate/) {
                 $activate = 1;
-            } elsif ($subcommand =~ /-d/) {
+            } elsif ($subcommand =~ /^-d/) {
                 my $check = unsupported($callback); if (ref($check) eq "ARRAY") {
                     xCAT::SvrUtils::sendmsg($check, $callback);
                     return 1;
                 }
                 $streamline = 1;
-            } elsif ($subcommand =~ /--no-host-reboot/) {
+            } elsif ($subcommand =~ /^--no-host-reboot/) {
                 $nohost_reboot = 1;
             } else {
                 $update_file = $subcommand;
@@ -3926,12 +3943,7 @@ sub dump_download_process {
         return 1;
     }
     if ($h->{message} eq $::RESPONSE_OK) {
-        if ($::RSPCONFIG_DUMP_DOWNLOAD_ALL_REQUESTED) {
-            # Slightly different message if downloading dumps as part of "download all" processing
-            xCAT::SvrUtils::sendmsg("Downloading dump $dump_id to $file_name", $callback, $node);
-        } else {
-            xCAT::SvrUtils::sendmsg("Dump $dump_id generated. Downloading to $file_name", $callback, $node);
-        }
+        xCAT::SvrUtils::sendmsg("Downloading dump $dump_id to $file_name", $callback, $node);
         my $curl_dwld_result = `$curl_dwld_cmd -s`;
         if (!$curl_dwld_result) {
             if ($xcatdebugmode) {
@@ -3941,7 +3953,17 @@ sub dump_download_process {
             `$curl_logout_cmd -s`;
             # Verify the file actually got downloaded
             if (-e $file_name) {
-                xCAT::SvrUtils::sendmsg("Downloaded dump $dump_id to $file_name", $callback, $node) if ($::VERBOSE);
+                # Check inside downloaded file, if there is a "Path not found" -> invalid ID
+                my $grep_cmd = "/usr/bin/grep -a";
+                my $path_not_found = "Path not found";
+                my $grep_for_path = `$grep_cmd $path_not_found $file_name`;
+                if ($grep_for_path) {
+                    xCAT::SvrUtils::sendmsg([1, "Invalid dump $dump_id was specified. Use -l option to list."], $callback, $node);
+                    # Remove downloaded file, nothing useful inside of it
+                    unlink $file_name;
+                } else {
+                    xCAT::SvrUtils::sendmsg("Downloaded dump $dump_id to $file_name", $callback, $node) if ($::VERBOSE);
+                }
             }
             else {
                 xCAT::SvrUtils::sendmsg([1, "Failed to download dump $dump_id to $file_name. Verify destination directory exists and has correct access permissions."], $callback, $node);
@@ -4063,11 +4085,19 @@ sub rvitals_response {
             # Calculate the adjusted value based on the scale attribute
             #  
             $calc_value = $content{Value};
-            if ( $content{Scale} != 0 ) { 
+            if (!defined($calc_value)) {
+                # Handle the bug where the keyword in the API is lower case value 
+                $calc_value = $content{value};
+            }
+
+            if (defined $content{Scale} and $content{Scale} != 0) { 
                 $calc_value = ($content{Value} * (10 ** $content{Scale}));
             } 
 
-            $content_info = $label . ": " . $calc_value . " " . $sensor_units{ $content{Unit} };
+            $content_info = $label . ": " . $calc_value;
+            if (defined($content{Unit})) { 
+	        $content_info = $content_info . " " . $sensor_units{ $content{Unit} };
+            }
             push (@sorted_output, $content_info); #Save output in array
         } 
     }

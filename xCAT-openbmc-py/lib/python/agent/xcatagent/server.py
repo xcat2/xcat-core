@@ -9,7 +9,7 @@ import traceback
 from gevent import socket
 from gevent.server import StreamServer
 from gevent.lock import BoundedSemaphore
-from xcatagent import utils
+from common import utils
 from xcatagent import base as xcat_manager
 
 MSG_TYPE = 'message'
@@ -17,7 +17,7 @@ DB_TYPE  = 'db'
 LOCK_FILE = '/var/lock/xcat/agent.lock'
 
 
-class Messager(object):
+class XCATMessager(utils.Messager):
     def __init__(self, sock):
         self.sock = sock
         self.sem = BoundedSemaphore(1)
@@ -36,8 +36,8 @@ class Messager(object):
         d = {'type': MSG_TYPE, 'msg': {'type': 'warning', 'data': msg}}
         self._send(d)
 
-    def error(self, msg):
-        d = {'type': MSG_TYPE, 'msg': {'type': 'error', 'data': msg}}
+    def error(self,  msg, node=''):
+        d = {'type': MSG_TYPE, 'msg': {'type': 'error', 'node': node, 'data': msg}}
         self._send(d)
 
     def syslog(self, msg):
@@ -68,7 +68,7 @@ class Server(object):
 
     def _handle(self, sock, address):
         try:
-            messager = Messager(sock)
+            messager = XCATMessager(sock)
             buf = sock.recv(4)
             sz = utils.bytes2int(buf)
             buf = utils.recv_all(sock, sz)
@@ -92,14 +92,24 @@ class Server(object):
             if not hasattr(manager, req['command']):
                 messager.error("command %s is not supported" % req['command'])
             func = getattr(manager, req['command'])
+            # translate unicode string to normal string to avoid docopt error
+            new_args=[]
+            if req['args']:
+                for a in req['args']:
+                    new_args.append(a.encode('utf-8'))
             # call the function in the specified manager
-            func(req['nodeinfo'], req['args'])
+            func(req['nodeinfo'], new_args)
             # after the method returns, the request should be handled
             # completely, close the socket for client
             if not self.standalone:
                 sock.close()
                 self.server.stop()
                 os._exit(0)
+        except ImportError:
+            messager.error("xCAT mgt=openbmc is using a Python based framework and there are some dependencies that are not met.")
+            print(traceback.format_exc(), file=sys.stderr)
+            self.server.stop()
+            os._exit(1)
         except Exception:
             print(traceback.format_exc(), file=sys.stderr)
             self.server.stop()

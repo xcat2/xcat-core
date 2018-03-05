@@ -1,0 +1,5 @@
+opt/xcat/lib/python/agent
+opt/xcat/lib/python/agent/xcatagent
+opt/xcat/lib/python/agent/common
+opt/xcat/lib/python/agent/hwctl
+opt/xcat/lib/python/agent/hwctl/executor

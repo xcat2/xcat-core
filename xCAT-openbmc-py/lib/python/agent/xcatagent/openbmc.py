@@ -1,12 +1,40 @@
-from xcatagent import base
+#!/usr/bin/env python
+###############################################################################
+# IBM(c) 2018 EPL license http://www.eclipse.org/legal/epl-v10.html
+###############################################################################
+# -*- coding: utf-8 -*-
+#
+
 import os
 import time
 import sys
 import gevent
+import re
+from docopt import docopt,DocoptExit
 
-import utils
-import xcat_exception
+from common import utils
+from common import exceptions as xcat_exception
+from hwctl.executor.openbmc_beacon import OpenBMCBeaconTask
+from hwctl.executor.openbmc_setboot import OpenBMCBootTask
+from hwctl.executor.openbmc_inventory import OpenBMCInventoryTask
+from hwctl.executor.openbmc_power import OpenBMCPowerTask
+from hwctl.executor.openbmc_sensor import OpenBMCSensorTask
+from hwctl.executor.openbmc_bmcconfig import OpenBMCBmcConfigTask
+from hwctl.executor.openbmc_eventlog import OpenBMCEventlogTask
+from hwctl.beacon import DefaultBeaconManager
+from hwctl.setboot import DefaultBootManager
+from hwctl.inventory import DefaultInventoryManager
+from hwctl.power import DefaultPowerManager
+from hwctl.sensor import DefaultSensorManager
+from hwctl.bmcconfig import DefaultBmcConfigManager
+from hwctl.eventlog import DefaultEventlogManager
+
+from xcatagent import base
 import openbmc_rest
+import logging
+logger = logging.getLogger('xcatagent')
+if not logger.handlers:
+    utils.enableSyslog('xcat.agent')
 
 HTTP_PROTOCOL = "https://"
 PROJECT_URL = "/xyz/openbmc_project"
@@ -18,6 +46,9 @@ DEBUGMODE = False
 VERBOSE = False
 
 all_nodes_result = {}
+
+# global variables of rbeacon
+BEACON_SET_OPTIONS = ('on', 'off')
 
 # global variables of rflash
 RFLASH_OPTIONS = {
@@ -51,60 +82,74 @@ RFLASH_URLS = {
     }
 }
 
+RSPCONFIG_GET_OPTIONS = ['ip','ipsrc','netmask','gateway','vlan','ntpservers','hostname','bootmode','autoreboot','powersupplyredundancy','powerrestorepolicy']
+RSPCONFIG_SET_OPTIONS = {
+    'ip':'.*',
+    'netmask':'.*',
+    'gateway':'.*',
+    'vlan':'\d+',
+    'hostname':"\*|.*",
+    'ntpservers':'.*',
+    'autoreboot':"^0|1$",
+    'powersupplyredundancy':"^enabled$|^disabled$",
+    'powerrestorepolicy':"^always_on$|^always_off$|^restore$",
+    'bootmode':"^regular$|^safe$|^setup$",
+    'admin_passwd':'.*,.*',
+}
+RSPCONFIG_USAGE = """
+Handle rspconfig operations.
+
+Usage:
+       rspconfig -h|--help
+       rspconfig dump [[-l|--list] | [-g|--generate] | [-c|--clear --id <arg>] | [-d|--download --id <arg>]] [-V|--verbose]
+       rspconfig gard -c|--clear [-V|--verbose]
+       rspconfig sshcfg [-V|--verbose]
+       rspconfig ip=dhcp [-V|--verbose]
+       rspconfig get [<args>...] [-V|--verbose]
+       rspconfig set [<args>...] [-V|--verbose]
+
+Options:
+  -V,--verbose        Show verbose message
+  -l,--list           List are dump files
+  -g,--generate       Trigger a new dump file
+  -c,--clear          To clear the specified dump file
+  -d,--download       To download specified dump file
+  --id <arg>          The dump file id or 'all'
+
+The supported attributes to get are: %s
+
+The supported attributes and its values to set are:
+   ip=<ip address> netmask=<mask> gateway=<gateway> [vlan=<vlanid>]
+   hostname=*|<string>
+   autoreboot={0|1}
+   powersupplyredundancy={enabled|disabled}
+   powerrestorepolicy={always_on|always_off|restore}
+""" % RSPCONFIG_GET_OPTIONS
+
 XCAT_LOG_DIR = "/var/log/xcat"
 XCAT_LOG_RFLASH_DIR = XCAT_LOG_DIR + "/rflash/"
 
 # global variable of firmware information
 FIRM_URL = PROJECT_URL + "/software/enumerate"
 
+#global variables of rinv
+INVENTORY_OPTIONS = ('all', 'cpu', 'dimm', 'firm', 'model', 'serial')
+
 # global variables of rpower
+POWER_REBOOT_OPTIONS = ('boot', 'reset')
 POWER_SET_OPTIONS = ('on', 'off', 'bmcreboot', 'softoff')
 POWER_GET_OPTIONS = ('bmcstate', 'state', 'stat', 'status')
 
-RPOWER_URLS = {
-    "on"        : {
-        "url"   : PROJECT_URL + "/state/host0/attr/RequestedHostTransition",
-        "field" : "xyz.openbmc_project.State.Host.Transition.On",
-    },
-    "off"       : {
-        "url"   : PROJECT_URL + "/state/chassis0/attr/RequestedPowerTransition",
-        "field" : "xyz.openbmc_project.State.Chassis.Transition.Off",
-    },
-    "softoff"   : {
-        "url"   : PROJECT_URL + "/state/host0/attr/RequestedHostTransition",
-        "field" : "xyz.openbmc_project.State.Host.Transition.Off",
-    },
-    "bmcreboot" : {
-        "url"   : PROJECT_URL + "/state/bmc0/attr/RequestedBMCTransition",
-        "field" : "xyz.openbmc_project.State.BMC.Transition.Reboot",
-    },
-    "state"     : {
-        "url"   : PROJECT_URL + "/state/enumerate",
-    },
-}
+# global variables of rsetboot
+SETBOOT_GET_OPTIONS = ('stat', '')
+SETBOOT_SET_OPTIONS = ('cd', 'def', 'default', 'hd', 'net')
 
-RPOWER_STATE = {
-    "on"        : "on",
-    "off"       : "off",
-    "Off"       : "off",
-    "softoff"   : "softoff",
-    "boot"      : "reset",
-    "reset"     : "reset",
-    "bmcreboot" : "BMC reboot",
-    "Ready"     : "BMC Ready",
-    "NotReady"  : "BMC NotReady",
-    "chassison" : "on (Chassis)",
-    "Running"   : "on",
-    "Quiesced"  : "quiesced",
-}
+# global variables of rvitals
+VITALS_OPTIONS = ('all', 'altitude', 'fanspeed', 'leds', 'power',
+                  'temp', 'voltage', 'wattage')
 
-POWER_STATE_DB = {
-    "on"      : "powering-on",
-    "off"     : "powering-off",
-    "softoff" : "powering-off",
-    "boot"    : "powering-on",
-    "reset"   : "powering-on",
-}
+# global variables of reventlog
+EVENTLOG_OPTIONS = ('list', 'clear', 'resolved')
 
 class OpenBMC(base.BaseDriver):
 
@@ -489,107 +534,6 @@ class OpenBMC(base.BaseDriver):
 
         return RESULT_OK
 
-    def _set_power_onoff(self, subcommand):
-        """ Set power on/off/softoff/bmcreboot
-        :param subcommand: subcommand for rpower
-        :returns: ok if success
-        :raise: error message if failed
-        """
-        url = HTTP_PROTOCOL + self.bmcip + RPOWER_URLS[subcommand]['url']
-        data = { "data": RPOWER_URLS[subcommand]['field'] }
-        try:
-            response = self.client.request('PUT', url, OpenBMC.headers, 
-                                           data, 'rpower_' + subcommand)
-        except (xcat_exception.SelfServerException,
-                xcat_exception.SelfClientException) as e:
-            if subcommand != 'bmcreboot':
-                result = e.message
-            return result
-
-        return RESULT_OK
-
-
-    def _get_power_state(self, subcommand):
-        """ Get power current state
-        :param subcommand: state/stat/status/bmcstate
-        :returns: current state if success
-        :raise: error message if failed
-        """
-        result = ''
-        bmc_not_ready = 'NotReady'
-        url = HTTP_PROTOCOL + self.bmcip + RPOWER_URLS['state']['url']
-        try:
-            response = self.client.request('GET', url, OpenBMC.headers,
-                                           '', 'rpower_' + subcommand)
-        except xcat_exception.SelfServerException, e:
-            if subcommand == 'bmcstate':
-                result = bmc_not_ready
-            else:
-                result = e.message
-        except xcat_exception.SelfClientException, e:
-            result = e.message
-
-        if result: 
-            return result
-
-        for key in response['data']:
-            key_type = key.split('/')[-1]
-            if key_type == 'bmc0':
-                bmc_current_state = response['data'][key]['CurrentBMCState'].split('.')[-1]
-            if key_type == 'chassis0':
-                chassis_current_state = response['data'][key]['CurrentPowerState'].split('.')[-1]
-            if key_type == 'host0':
-                host_current_state = response['data'][key]['CurrentHostState'].split('.')[-1]
-
-        if subcommand == 'bmcstate':
-            if bmc_current_state == 'Ready':
-                return bmc_current_state 
-            else:
-                return bmc_not_ready
-
-        if chassis_current_state == 'Off':
-            return chassis_current_state
-        elif chassis_current_state == 'On':
-            if host_current_state == 'Off':
-                return 'chassison'
-            elif host_current_state == 'Quiesced':
-                return host_current_state
-            elif host_current_state == 'Running':
-                return host_current_state
-            else:
-                return 'Unexpected chassis state=' + host_current_state
-        else:
-            return 'Unexpected chassis state=' + chassis_current_state
-
-
-    def _rpower_boot(self):
-        """Power boot
-        :returns: 'reset' if success
-        :raise: error message if failed
-        """
-        result = self._set_power_onoff('off')
-        if result != RESULT_OK:
-            return result
-        self.messager.update_node_attributes('status', self.node, POWER_STATE_DB['off'])
-
-        start_timeStamp = int(time.time())
-        for i in range (0,30):
-            status = self._get_power_state('state')
-            if status in RPOWER_STATE and RPOWER_STATE[status] == 'off':
-                break
-            gevent.sleep( 2 )
-
-        end_timeStamp = int(time.time())
-
-        if status not in RPOWER_STATE or RPOWER_STATE[status] != 'off':
-            wait_time = str(end_timeStamp - start_timeStamp)
-            result = 'Error: Sent power-off command but state did not change ' \
-                     'to off after waiting %s seconds. (State= %s).' % (wait_time, status)
-            return result
-
-        result = self._set_power_onoff('on')
-        return result
-
     def rflash(self, args):
         """handle rflash command
         :param args: subcommands and parameters for rflash
@@ -653,64 +597,292 @@ class OpenBMC(base.BaseDriver):
             self.rflash_log_handle.close()
 
 
-    def rpower(self, args):
-        """handle rpower command
-        :param args: subcommands for rpower
-        """
-        subcommand = args[0]
-        try:
-            result = self._login()
-        except xcat_exception.SelfServerException as e:
-            if subcommand == 'bmcstate':
-                result = '%s: %s' % (self.node, RPOWER_STATE['NotReady'])
-            else:
-                result = '%s: %s'  % (self.node, e.message)
-        except xcat_exception.SelfClientException as e:
-            result = '%s: %s'  % (self.node, e.message)
-
-        if result != RESULT_OK:
-            self.messager.info(result)
-            return
-
-        new_status = ''
-        if subcommand in POWER_SET_OPTIONS:
-            result = self._set_power_onoff(subcommand)
-            if result == RESULT_OK:
-                result = RPOWER_STATE[subcommand]
-                new_status = POWER_STATE_DB.get(subcommand, '')
-
-        if subcommand in POWER_GET_OPTIONS:
-            tmp_result = self._get_power_state(subcommand)
-            result = RPOWER_STATE.get(tmp_result, tmp_result)
-
-        if subcommand == 'boot':
-            result = self._rpower_boot()
-            if result == RESULT_OK:
-                result = RPOWER_STATE[subcommand]
-                new_status = POWER_STATE_DB.get(subcommand, '')
-
-        if subcommand == 'reset':
-            status = self._get_power_state('state')
-            if status == 'Off' or status == 'chassison':
-                result = RPOWER_STATE['Off']
-            else:
-                result = self._rpower_boot()
-                if result == RESULT_OK:
-                    result = RPOWER_STATE[subcommand]
-                    new_status = POWER_STATE_DB.get(subcommand, '')
-
-        message = '%s: %s' % (self.node, result)
-        self.messager.info(message)
-        if new_status:
-            self.messager.update_node_attributes('status', self.node, new_status)
-
-
 class OpenBMCManager(base.BaseManager):
-    def __init__(self, messager, cwd, nodes, envs):
+    def __init__(self, messager, cwd, nodes=None, envs=None):
         super(OpenBMCManager, self).__init__(messager, cwd)
         self.nodes = nodes
+        self.debugmode = (envs and envs.get('debugmode')) or None
+        #TODO, remove the global variable DEBUGMODE
         global DEBUGMODE
         DEBUGMODE = envs['debugmode']
+
+        if self.debugmode:
+            logger.setLevel(logging.DEBUG)
+
+    def rbeacon(self, nodesinfo, args):
+
+        # 1, parse args
+        rbeacon_usage = """
+        Usage:
+            rbeacon [-V|--verbose] [on|off]
+
+        Options:
+            -V --verbose   rbeacon verbose mode.
+        """
+
+        try:
+            opts = docopt(rbeacon_usage, argv=args)
+
+            self.verbose = opts.pop('--verbose')
+            action = [k for k,v in opts.items() if v][0]
+        except Exception as e:
+            self.messager.error("Failed to parse arguments for rbeacon: %s" % args)
+            return
+
+        # 2, validate the args
+        if action is None:
+            self.messager.error("Not specify the subcommand for rbeacon")
+            return
+
+        if action not in BEACON_SET_OPTIONS:
+            self.messager.error("Not supported subcommand for rbeacon: %s" % action)
+            return
+
+        # 3, run the subcommands
+        runner = OpenBMCBeaconTask(nodesinfo, callback=self.messager, debugmode=self.debugmode, verbose=self.verbose)
+        DefaultBeaconManager().set_beacon_state(runner, beacon_state=action)
+
+    def rinv(self, nodesinfo, args):
+
+        # 1, parse agrs
+        if not args:
+            args = ['all']
+
+        rinv_usage = """
+        Usage:
+            rinv [-V|--verbose] [all|cpu|dimm|firm|model|serial]
+
+        Options:
+            -V --verbose   rinv verbose mode.
+        """
+
+        try:
+            opts = docopt(rinv_usage, argv=args)
+
+            self.verbose = opts.pop('--verbose')
+            action = [k for k,v in opts.items() if v][0]
+        except Exception as e:
+            self.messager.error("Failed to parse arguments for rinv: %s" % args)
+            return
+
+        # 2, validate the args
+        if action not in INVENTORY_OPTIONS:
+            self.messager.error("Not supported subcommand for rinv: %s" % action)
+            return
+
+        # 3, run the subcommands
+        runner = OpenBMCInventoryTask(nodesinfo, callback=self.messager, debugmode=self.debugmode, verbose=self.verbose)
+        if action == 'firm':
+            DefaultInventoryManager().get_firm_info(runner)
+        else:
+            DefaultInventoryManager().get_inventory_info(runner, action)
+
+    def rpower(self, nodesinfo, args):
+
+        # 1, parse args
+        rpower_usage = """
+        Usage:
+            rpower [-V|--verbose] [on|off|softoff|reset|boot|bmcreboot|bmcstate|stat|state|status]
+
+        Options:
+            -V --verbose   rpower verbose mode.
+        """
+
+        try:
+            opts=docopt(rpower_usage, argv=args)
+
+            self.verbose=opts.pop('--verbose')
+            action=[k for k,v in opts.items() if v][0]
+        except Exception as e:
+            # It will not be here as perl has validation for args
+            self.messager.error("Failed to parse arguments for rpower: %s" % args)
+            return
+
+        # 2, validate the args
+        if action not in (POWER_GET_OPTIONS + POWER_SET_OPTIONS + POWER_REBOOT_OPTIONS):
+            self.messager.error("Not supported subcommand for rpower: %s" % action)
+            return
+
+        # 3, run the subcommands
+        runner = OpenBMCPowerTask(nodesinfo, callback=self.messager, debugmode=self.debugmode, verbose=self.verbose)
+        if action == 'bmcstate':
+            DefaultPowerManager().get_bmc_state(runner)
+        elif action == 'bmcreboot':
+            DefaultPowerManager().reboot_bmc(runner)
+        elif action in POWER_GET_OPTIONS:
+            DefaultPowerManager().get_power_state(runner)
+        elif action in POWER_REBOOT_OPTIONS:
+            DefaultPowerManager().reboot(runner, optype=action)
+        else:
+            DefaultPowerManager().set_power_state(runner, power_state=action)
+    def rspconfig(self, nodesinfo, args):
+        try:
+            opts=docopt(RSPCONFIG_USAGE, argv=args)
+        except DocoptExit as e:
+            self.messager.error("Failed to parse args by docopt: %s" % e)
+            return
+        except Exception as e:
+            self.messager.error("Failed to parse arguments for rspconfig: %s" % args)
+            return
+        self.verbose=opts.pop('--verbose')
+        runner = OpenBMCBmcConfigTask(nodesinfo, callback=self.messager, debugmode=self.debugmode, verbose=self.verbose)
+
+        if opts['dump']:
+            if opts['--list']:
+                DefaultBmcConfigManager().dump_list(runner)
+            elif opts['--generate']:
+                DefaultBmcConfigManager().dump_generate(runner)
+            elif opts['--clear']:
+                DefaultBmcConfigManager().dump_clear(runner, opts['--id'])
+            elif opts['--download']:
+                DefaultBmcConfigManager().dump_download(runner, opts['--id'])
+            else:
+                DefaultBmcConfigManager().dump_process(runner)
+        elif opts['gard']:
+            if opts['--clear']:
+                DefaultBmcConfigManager().gard_clear(runner)
+        elif opts['sshcfg']:
+            DefaultBmcConfigManager().set_sshcfg(runner)
+        elif opts['ip=dhcp']:
+            DefaultBmcConfigManager().set_ipdhcp(runner)
+        elif opts['get']:
+            unsupport_list=list(set(opts['<args>']) - set(RSPCONFIG_GET_OPTIONS))
+            if len(unsupport_list) > 0:
+                self.messager.error("Have unsupported option: %s" % unsupport_list)
+                return
+            else:
+                DefaultBmcConfigManager().get_attributes(runner, opts['<args>'])
+        elif opts['set']:
+            rc=0
+            for attr in opts['<args>']:
+                k,v = attr.split('=')
+                if k not in RSPCONFIG_SET_OPTIONS:
+                    self.messager.error("The attribute %s is not support to set" % k)
+                    rc=1
+                elif not re.match(RSPCONFIG_SET_OPTIONS[k], v):
+                    self.messager.error("The value %s is invalid for %s" %(v, k))
+                    rc=1
+            if rc:
+                return
+            else:
+                DefaultBmcConfigManager().set_attributes(runner, opts['<args>'])
+        else:
+            self.messager.error("Failed to deal with rspconfig: %s" % args)
+    def rsetboot(self, nodesinfo, args):
+
+        # 1, parse args
+        if not args:
+            args = ['stat']
+
+        rsetboot_usage = """
+        Usage:
+            rsetboot [-V|--verbose] [cd|def|default|hd|net|stat] [-p]
+
+        Options:
+            -V --verbose    rsetboot verbose mode.
+            -p              persistant boot source.
+        """
+
+        try:
+            opts = docopt(rsetboot_usage, argv=args)
+
+            self.verbose = opts.pop('--verbose')
+            action_type = opts.pop('-p')
+            action = [k for k,v in opts.items() if v][0]
+        except Exception as e:
+            self.messager.error("Failed to parse arguments for rsetboot: %s" % args)
+            return
+
+        # 2, validate the args
+        if action not in (SETBOOT_GET_OPTIONS + SETBOOT_SET_OPTIONS):
+            self.messager.error("Not supported subcommand for rsetboot: %s" % action)
+            return
+
+        # 3, run the subcommands
+        runner = OpenBMCBootTask(nodesinfo, callback=self.messager, debugmode=self.debugmode, verbose=self.verbose)
+        if action in SETBOOT_GET_OPTIONS:
+            DefaultBootManager().get_boot_state(runner)
+        else:
+            DefaultBootManager().set_boot_state(runner, setboot_state=action, persistant=action_type)
+
+    def rvitals(self, nodesinfo, args):
+
+        # 1, parse agrs
+        if not args:
+            args = ['all']
+
+        rvitals_usage = """
+        Usage:
+            rvitals [-V|--verbose] [all|altitude|fanspeed|leds|power|temp|voltage|wattage]
+
+        Options:
+            -V --verbose   rvitals verbose mode.
+        """
+
+        try:
+            opts = docopt(rvitals_usage, argv=args)
+
+            self.verbose = opts.pop('--verbose')
+            action = [k for k,v in opts.items() if v][0]
+        except Exception as e:
+            self.messager.error("Failed to parse arguments for rvitals: %s" % args)
+            return
+
+        # 2, validate the args
+        if action not in VITALS_OPTIONS:
+            self.messager.error("Not supported subcommand for rvitals: %s" % action)
+            return
+
+        # 3, run the subcommands
+        runner = OpenBMCSensorTask(nodesinfo, callback=self.messager, debugmode=self.debugmode, verbose=self.verbose)
+        if action == 'leds':
+            DefaultSensorManager().get_beacon_info(runner)
+        else:
+            DefaultSensorManager().get_sensor_info(runner, action)
+
+    def reventlog(self, nodesinfo, args):
+
+        # 1, parse agrs
+        if not args:
+            args = ['all']
+
+        reventlog_usage = """
+        Usage:
+            reventlog [-V|--verbose] resolved <id_list>
+            reventlog [-V|--verbose] clear
+            reventlog [-V|--verbose] list <number_of_records>
+
+        Options:
+            -V --verbose   eventlog verbose mode.
+        """
+
+        try:
+            opts = docopt(reventlog_usage, argv=args)
+
+            self.verbose = opts.pop('--verbose')
+            action = [k for k,v in opts.items() if v][0]
+        except Exception as e:
+            self.messager.error("Failed to parse arguments for reventlog: %s" % args)
+            return
+
+        # 2, validate the args
+        if action not in EVENTLOG_OPTIONS:
+            self.messager.error("Not supported subcommand for reventlog: %s" % action)
+            return
+
+        # 3, run the subcommands
+        runner = OpenBMCEventlogTask(nodesinfo, callback=self.messager, debugmode=self.debugmode, verbose=self.verbose)
+        self.messager.info('revetlog.py processing action=%s args=%s' % (action, args))
+        if action == 'clear':
+            DefaultEventlogManager().clear_all_eventlog_records(runner)
+        elif action == 'resolved':
+            eventlog_id_list = opts.pop('<id_list>')
+            DefaultEventlogManager().resolve_eventlog_records(runner, eventlog_id_list)
+        elif action == 'list':
+            eventlog_number_of_records = opts.pop('<number_of_records>')
+            DefaultEventlogManager().get_eventlog_info(runner, eventlog_number_of_records)
+        else:
+            DefaultEventlogManager().get_eventlog_info(runner, "all")
 
     def _get_full_path(self,file_path):
         if type(self.cwd) == 'unicode':
@@ -807,6 +979,3 @@ class OpenBMCManager(base.BaseManager):
                     self.nodes, nodeinfo, 'rflash', args)
         self._summary(nodes_num, 'Firmware update')
 
-    def rpower(self, nodeinfo, args):
-        super(OpenBMCManager, self).process_nodes_worker('openbmc', 'OpenBMC', 
-                    self.nodes, nodeinfo, 'rpower', args)

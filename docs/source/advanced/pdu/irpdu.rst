@@ -47,6 +47,14 @@ The following commands are supported against a compute node:
 
 The following commands are supported against a PDU: 
 
+   * To change hostname of IR PDU: ::
+
+       # rspconfig f5pdu3 hosname=f5pdu3
+
+   * To change ip address of IR PDU: ::
+
+       # rsconfig f5pdu3 ip=x.x.x.x netmaks=255.x.x.x
+
    * Check the status of the full PDU: ::
 
        # rpower f5pdu3 stat

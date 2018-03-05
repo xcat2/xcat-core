@@ -1,0 +1,91 @@
+#!/bin/bash
+#
+# Author: Yuan Bai (bybai@cn.ibm.com)
+#
+#
+printusage()
+{
+    echo "Usage : build-python-deb xcat-openbmc-py"
+}
+# For the purpose of getting the distribution name
+if [[ ! -f /etc/lsb-release ]]; then
+    echo "ERROR: Could not find /etc/lsb-release, is this script executed on a Ubuntu machine?"
+    exit 1
+fi
+. /etc/lsb-release
+# Check the necessary commands before starting the build
+for cmd in dch dpkg-buildpackage
+do
+    if ! type "$cmd" >/dev/null 2>&1
+    then
+        echo "ERROR: Required command, $package, not found." >&2
+        exit 1
+    fi
+done
+
+# Supported distributions
+pkg_name=$1
+
+if [ "$pkg_name" != "xcat-openbmc-py" ]; then
+    printusage
+    exit 1
+fi
+
+# Find where this script is located to set some build variables
+old_pwd=`pwd`
+cd `dirname $0`
+curdir=`pwd`
+
+if [ -z "$REL" ]; then
+    t=${curdir%/src/xcat-core}
+    REL=`basename $t`
+fi
+
+if [ "$PROMOTE" != 1 ]; then
+    ver=`cat Version`
+
+    echo "###############################"
+    echo "# Building xcat-openbmc-py package #"
+    echo "###############################"
+
+    #the package type:  local | snap | alpha
+    #the build introduce string
+    build_string="Snap_Build"
+    xcat_release="snap$(date '+%Y%m%d%H%M')"
+    pkg_version="${ver}-${xcat_release}"
+    packages="xCAT-openbmc-py"
+    for file in $packages
+    do
+        file_low="${file,,}"
+        target_archs="all"
+        for target_arch in $target_archs
+        do
+            cd $file
+            CURDIR=$(pwd)
+            dch -v $pkg_version -b -c debian/changelog $build_string
+            if [ "$target_arch" = "all" ]; then
+                CURDIR=$(pwd)
+                cp ${CURDIR}/debian/control ${CURDIR}/debian/control.save.998
+                sed -i -e "s#>= 2.13-snap000000000000#= ${pkg_version}#g" ${CURDIR}/debian/control
+                dpkg-buildpackage -rfakeroot -uc -us
+                mv ${CURDIR}/debian/control.save.998 ${CURDIR}/debian/control
+                dh_testdir
+                dh_testroot
+                dh_clean -d
+            fi
+            rc=$?
+            if [ $rc -gt 0 ]; then
+                echo "Error: $file build package failed exit code $rc"
+                exit $rc
+            fi
+            rm -f debian/files
+            rm -f debian/xcat-openbmc-py.debhelper.log
+            rm -f debian/xcat-openbmc-py.substvars
+            sed -i -e "s/* Snap_Build//g" debian/changelog
+            cd -
+            rm -f ${file_low}_*.tar.gz
+            rm -f ${file_low}_*.changes
+            rm -f ${file_low}_*.dsc
+        done
+    done
+fi

@@ -15,8 +15,10 @@ cmd:if grep Ubuntu /etc/*release;then xdsh $$CN "scp -r $$MN:/etc/resolv.conf /e
 check:rc==0
 cmd:if grep Ubuntu /etc/*release;then xdsh $$CN "apt-get clean && apt-get update"; fi
 check:rc==0
+cmd:rm -rf /tmp/go-xcat.log
 cmd:xdsh $$CN "cd /; ./go-xcat --yes install"
 check:rc==0
+cmd:cat /tmp/go-xcat.log
 cmd:xdsh $$CN "source /etc/profile.d/xcat.sh;lsxcatd -v"
 check:rc==0
 cmd:xdsh $$CN "service xcatd status"
@@ -47,8 +49,10 @@ cmd:if grep Ubuntu /etc/*release;then xdsh $$CN "scp -r $$MN:/etc/resolv.conf /e
 check:rc==0
 cmd:if grep Ubuntu /etc/*release;then xdsh $$CN "apt-get clean && apt-get update"; fi
 check:rc==0
+cmd:rm -rf /tmp/go-xcat.log
 cmd:xdsh $$CN "cd /; ./go-xcat -x $$MIGRATION2_VERSION -y install"
 check:rc==0
+cmd:cat /tmp/go-xcat.log
 cmd:xdsh $$CN "source /etc/profile.d/xcat.sh;lsxcatd -v"
 check:output=~Version $$MIGRATION2_VERSION 
 cmd:xdsh $$CN "service xcatd status"
@@ -79,8 +83,10 @@ cmd:if grep Ubuntu /etc/*release;then xdsh $$CN "scp -r $$MN:/etc/resolv.conf /e
 check:rc==0
 cmd:if grep Ubuntu /etc/*release;then xdsh $$CN "apt-get clean && apt-get update"; fi
 check:rc==0
+cmd:rm -rf /tmp/go-xcat.log
 cmd:xdsh $$CN "cd /; ./go-xcat --xcat-version=devel -y install"
 check:rc==0
+cmd:cat /tmp/go-xcat.log
 cmd:xdsh $$CN "source /etc/profile.d/xcat.sh;lsxcatd -v"
 check:rc==0
 cmd:xdsh $$CN "service xcatd status"
@@ -111,8 +117,10 @@ cmd:if grep Ubuntu /etc/*release;then xdsh $$CN "scp -r $$MN:/etc/resolv.conf /e
 check:rc==0
 cmd:if grep Ubuntu /etc/*release;then xdsh $$CN "apt-get clean && apt-get update"; fi
 check:rc==0
+cmd:rm -rf /tmp/go-xcat.log
 cmd:xdsh $$CN "cd /; ./go-xcat --xcat-version=$$MIGRATION2_VERSION -y install"
 check:rc==0
+cmd:cat /tmp/go-xcat.log
 cmd:xdsh $$CN "source /etc/profile.d/xcat.sh;lsxcatd -v"
 check:rc==0
 check:output=~Version $$MIGRATION2_VERSION 

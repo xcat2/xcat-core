@@ -269,9 +269,9 @@ replace_persistent_route()
 
         redhat)
             #echo "rh/fedora/centos"
-            if [ -z "$ifname" ]; then
+            if [ -z "$ifname" -a "$net" != "default" ]; then
                 echo "Error: the device name is necessary to configure static route."
-                return
+                return 1
             fi
             
             if echo $net | grep : 2>&1 1>/dev/null
@@ -296,6 +296,12 @@ replace_persistent_route()
                     route1="$net\/$mask via $gw"
                 fi
             fi
+            # default route is handled separately
+            if [ "$net" = "default" ]; then
+                filename="/etc/sysconfig/network"
+                route="GATEWAY=$gw"
+                routedest="$route"
+            fi
             if [ -f $filename ]; then
                 egrep "^$routedest" $filename 2>&1 1>/dev/null
                 if [ $? -ne 0 ]; then #route does not exist
@@ -319,7 +325,7 @@ replace_persistent_route()
             # on debian/ubuntu need the network device name
             if [ -z "$ifname" ]; then
                 echo "Error: the device name is necessary to configure static route."
-                return
+                return 1
             fi
             filename="/etc/network/interfaces.d/$ifname"
 
@@ -750,6 +756,14 @@ rm_persistent_route()
         else
             echo "Persistent route file $filename does not exist."
         fi
+        filename="/etc/sysconfig/network";
+        if [ "$net" = "default" -a -f $filename ]; then
+            grep "GATEWAY=$gw" $filename >/dev/null 2>&1
+            if [ $? -eq 0 ]; then
+                sed -i '/GATEWAY=/d' $filename
+                echo "Persistent GATEWAY=$gw removed from $filename."
+            fi
+        fi
         ;;
     esac
     else #AIX
@@ -901,7 +915,10 @@ elif [ "$op" = "replace" ]; then
     #replace the persistent route
     # the $cmd param is used for Ubuntu since it needs to run the specific cmd to enable 
     # the route during the up of the device
-    replace_persistent_route $net $mask $gw $ifname 
+    replace_persistent_route $net $mask $gw $ifname
+    if [ $? -ne 0 ]; then
+        exit 1
+    fi 
 fi
 
 exit 0
