@@ -106,7 +106,7 @@ class Server(object):
                 self.server.stop()
                 os._exit(0)
         except ImportError:
-            messager.error("xCAT mgt=openbmc is using a Python based framework and there are some dependencies that are not met.")
+            messager.error("OpenBMC management is using a Python framework and some dependency libraries could not be imported.")
             print(traceback.format_exc(), file=sys.stderr)
             self.server.stop()
             os._exit(1)
