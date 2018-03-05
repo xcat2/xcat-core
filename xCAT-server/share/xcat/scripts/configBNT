@@ -162,7 +162,7 @@ sub config_ip {
     }
 
     foreach my $switch (@nodes) {
-        print "change $switch to static ip address\n";
+        print "change $switch to static IP address\n";
 
         #makesure host is in the /etc/hosts
         $cmd = "makehosts $switch";
@@ -171,7 +171,7 @@ sub config_ip {
         my $dip= $nodehash->{$switch}->[0]->{otherinterfaces};
         my $mac= $machash->{$switch}->[0]->{mac};
         if (!$dip) {
-            print "ERROR: Add otherinterfaces attribute for discover ip: chdef $switch otherinterfaces=x.x.x.x\n";
+            print "ERROR: Add otherinterfaces attribute for discover IP: chdef $switch otherinterfaces=x.x.x.x\n";
             next;
         }
 
@@ -186,7 +186,7 @@ sub config_ip {
 
         # don't need to set if ip addresses are same
         if ($dip eq $static_ip) {
-            print "static ip $static_ip and discovery ip $dip is same, will not process command for $switch\n";
+            print "static IP $static_ip and discovery IP $dip is same, will not process command for $switch\n";
             $cmd = "chdef $switch otherinterfaces=";
             $rc= xCAT::Utils->runcmd($cmd, 0);
             next;
@@ -247,7 +247,7 @@ sub config_ip {
         }
         print "retry $retry_failed\n";
         if ($retry_failed) {
-            print "Failed to set up static ip address: $static_ip for $switch\n";
+            print "Failed to set up static IP address: $static_ip for $switch\n";
             push (@discover_switches, $dswitch);
             next;
         }
@@ -631,7 +631,7 @@ sub usage
     configBNT --switches switchnames --snmp [--user snmp_user] [--password snmp_password] [--group snmp_group]
     configBNT --switches switchnames --port port --vlan vlan
 
-    To set the ip address, hostname and config snmp:
+    To set the IP address, hostname and config snmp:
         configBNT --switches switchnames --all 
 
     To set the description for a port on the switch: 

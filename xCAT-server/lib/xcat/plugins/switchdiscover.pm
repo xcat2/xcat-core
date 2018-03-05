@@ -1491,20 +1491,20 @@ sub switchsetup {
         if (-r -x $config_script) {
             my $switches = join(",",@{${nodes_to_config}->{$mytype}});
             if ($mytype eq "onie") {
-                send_msg($request, 0, "Calling $config_script to configure $mytype switches  $switches...\n");
+                send_msg($request, 0, "Calling $config_script to configure $mytype switches  $switches...");
                 my $out = `$config_script --switches $switches --all`;
-                send_msg($request, 0, "output = $out\n");
+                send_msg($request, 0, "$out");
             } else {
-                send_msg($request, 0, "Calling $config_script to configure $mytype switches $switches...\n");
+                send_msg($request, 0, "Calling $config_script to configure $mytype switches $switches...");
                 if ($mytype =~ /Mellanox/) {
-                    send_msg($request, 0, "NOTE: If command takes too long for Mellanox IB switch, open another window and ping the switches being configured, once they are complete, ctrl-c out of this command\n");
-                    send_msg($request, 0, "then run $config_script --switches $switches --all again\n");
+                    send_msg($request, 0, "NOTE: If command takes too long for Mellanox IB switch, open another window and ping the switches being configured, once they are complete, ctrl-c out of this command");
+                    send_msg($request, 0, "then run $config_script --switches $switches --all again");
                 }
                 my $out = `$config_script --switches $switches --all`;
-                send_msg($request, 0, "output = $out\n");
+                send_msg($request, 0, "$out");
             }
         } else {
-            send_msg($request, 0, "the switch type $mytype is not support yet\n");
+            send_msg($request, 0, "the switch type $mytype is not support yet");
         }
     }
 
