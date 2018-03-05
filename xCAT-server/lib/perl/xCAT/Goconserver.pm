@@ -25,7 +25,7 @@ my $bmc_cons_port = "2200";
 my $isSN = xCAT::Utils->isServiceNode();
 
 use constant CONSOLE_LOG_DIR => "/var/log/consoles";
-use constant PRINT_FORMAT => "%-32s %-32s %-64s";
+use constant PRINT_FORMAT => "%-32s %-32s %s";
 unless (-d CONSOLE_LOG_DIR) {
     mkpath(CONSOLE_LOG_DIR, 0, 0755);
 }
@@ -385,7 +385,7 @@ sub list_nodes {
             xCAT::MsgUtils->message("E", $rsp, $callback);
             next;
         }
-        $rsp->{data}->[0] = sprintf(PRINT_FORMAT, $node->{name}, $node->{host}, $node->{state});
+        $rsp->{data}->[0] = sprintf(PRINT_FORMAT, $node->{name}, $node->{host}, substr($node->{state}, 0, 16));
         xCAT::MsgUtils->message("I", $rsp, $callback);
     }
     my %node_hash = %{$node_map};
