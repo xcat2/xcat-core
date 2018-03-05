@@ -13,7 +13,6 @@ use warnings "all";
 
 use JSON;
 use Getopt::Long;
-use xCAT::Utils;
 use xCAT::Usage;
 use xCAT::SvrUtils;
 use xCAT::OPENBMC;
@@ -63,23 +62,8 @@ sub preprocess_request {
     $callback  = shift;
 
     my $command   = $request->{command}->[0];
-    my $python_env = xCAT::OPENBMC->is_openbmc_python($request->{environment});
-    # Process command in this module only if PYTHON env is not NO or 
-    # command is listed in the PYTHON env list (without EXCEPT: prefix). 
-    # All other cases => return
-
-    SWITCH: {
-        if ($python_env eq "NO")  {$request = {}; return;}
-        if ($python_env eq "ALL") {last SWITCH;}
-        if ($python_env !~ $command) {
-            if ($python_env =~ /^EXCEPT:/) {last SWITCH}
-            else {$request = {}; return;}
-        }
-        if ($python_env =~ $command) {
-            if ($python_env =~ /^EXCEPT:/) {$request = {}; return;}
-            else {last SWITCH;}
-        }
-    }
+    my ($rc, $msg) = xCAT::OPENBMC->is_support_in_perl($command, $request->{environment});
+    if ($rc != 0) { $request = {}; return;}
 
     my $noderange = $request->{node};
     my $extrargs  = $request->{arg};
