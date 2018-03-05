@@ -105,6 +105,11 @@ class Server(object):
                 sock.close()
                 self.server.stop()
                 os._exit(0)
+        except ImportError:
+            messager.error("xCAT mgt=openbmc is using a Python based framework and there are some dependencies that are not met.")
+            print(traceback.format_exc(), file=sys.stderr)
+            self.server.stop()
+            os._exit(1)
         except Exception:
             print(traceback.format_exc(), file=sys.stderr)
             self.server.stop()
