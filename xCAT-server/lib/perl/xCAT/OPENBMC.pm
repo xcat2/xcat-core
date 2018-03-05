@@ -199,59 +199,28 @@ sub wait_agent {
     }
 }
 
-sub is_openbmc_python {
-    my $environment = shift;
-    $environment = shift if (($environment) && ($environment =~ /OPENBMC/));
-    # If XCAT_OPENBMC_PYTHON is YES,
-    # will return "ALL" and caller will run openbmc2.pm.
-    # If XCAT_OPENBMC_PYTHON is not set or is set to NO, return "NO" and caller
-    # will run openbmc.pm
-    # If XCAT_OPENBMC_PYTHON is a list of commands, return that list and caller
-    # will run openbmc2.pm if the command is on the list, caller will run
-    # openbmc.pm if command is not on the list
-    if (ref($environment) eq 'ARRAY' and ref($environment->[0]->{XCAT_OPENBMC_PYTHON}) eq 'ARRAY') {
-        $::OPENBMC_PYTHON = $environment->[0]->{XCAT_OPENBMC_PYTHON}->[0];
-    } elsif (ref($environment) eq 'ARRAY') {
-        $::OPENBMC_PYTHON = $environment->[0]->{XCAT_OPENBMC_PYTHON};
-    } else {
-        $::OPENBMC_PYTHON = $environment->{XCAT_OPENBMC_PYTHON};
-    }
-    if (defined($::OPENBMC_PYTHON)) {
-        if ($::OPENBMC_PYTHON eq "YES") {
-            return "ALL";
-        }
-        elsif ($::OPENBMC_PYTHON eq "NO") {
-            return "NO";
-        }
-        else {
-            return $::OPENBMC_PYTHON;
-        }
-    }
-
-    return "NO";
-}
-
 #--------------------------------------------------------------------------------
 
-=head3 is_support_in_perl 
-      check if specified command is included in site attribute openbmcperl
+=head3 run_cmd_in_perl 
+      Check if specified command should run in perl
       The policy is:
             Get value from `openbmcperl`, `XCAT_OPENBMC_DEVEL`, agent.py:
-            1. If agent.py not exist: ==>Go Perl
-            2. If `openbmcperl` not set or not include a command:
-                    if `XCAT_OPENBMC_DEVEL` set to `NO`:  ==> Go Perl
-                    else if set to `YES` or not set: ==> Go Python
-            3. If `openbmcperl` set and include a command
-                    if `XCAT_OPENBMC_DEVEL` set to `YES`: == >Go Python
-                    else ==> Go Perl
+
+            1. If agent.py does not exist:                          ==> 1: Go Perl
+            2. If `openbmcperl` not set or doesn't contain command: ==> 0: Go Python
+            3. If `openbmcperl` lists the command OR set to "ALL"   ==> 1: Go Perl
+            4. If command is one of unsupported commands AND
+                  a. XCAT_OPENBMC_DEVEL = YES                       ==> 0: Go Python
+                  b. XCAT_OPENBMC_DEVEL = NO or not set             ==> 1: Go Perl
 =cut
 
 #--------------------------------------------------------------------------------
-sub is_support_in_perl {
+sub run_cmd_in_perl {
     my ($class, $command, $env) = @_;
     if (! -e $PYTHON_AGENT_FILE) {
-        return (1, '');
+        return (1, ''); # Go Perl: agent file is not there
     }
+
     my @entries = xCAT::TableUtils->get_site_attribute("openbmcperl");
     my $site_entry = $entries[0];
     my $support_obmc = undef;
@@ -262,22 +231,26 @@ sub is_support_in_perl {
     } else {
         $support_obmc = $env->{XCAT_OPENBMC_DEVEL};
     }
-    if ($support_obmc and $support_obmc ne 'YES' and $support_obmc ne 'NO') {
-        return (-1, "Value $support_obmc is invalid for XCAT_OPENBMC_DEVEL, only support 'YES' and 'NO'");
+    if ($support_obmc and uc($support_obmc) ne 'YES' and uc($support_obmc) ne 'NO') {
+        return (-1, "Invalid value $support_obmc for XCAT_OPENBMC_DEVEL, only 'YES' and 'NO' are supported.");
     }
-    if ($site_entry and $site_entry =~ $command) {
-        if ($support_obmc and $support_obmc eq 'YES') {
-            return (0, '');
+    if ($site_entry and ($site_entry =~ $command or uc($site_entry) eq "ALL")) {
+        return (1, ''); # Go Perl: command listed in "openbmcperl" or "ALL"
+    }
+
+    # List of commands currently not supported in Python
+    my @unsupported_in_python_commands = ('rflash', 'rspconfig', 'reventlog');
+
+    if ($command ~~ @unsupported_in_python_commands) {
+        # Command currently not supported in Python
+        if ($support_obmc and uc($support_obmc) eq 'YES') {
+            return (0, ''); # Go Python: unsuppored command, but XCAT_OPENBMC_DEVEL=YES overrides
         } else {
-            return (1, '');
-        }
-    } else {
-        if ($support_obmc and $support_obmc eq 'NO') {
-            return (1, '');
-        } else {
-            return (0, '');
+            return (1, ''); # Go Perl: unsuppored command
         }
     }
+
+    return (0, ''); # Go Python: default
 }
 
 1;
