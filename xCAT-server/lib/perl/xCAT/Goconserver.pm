@@ -22,6 +22,7 @@ use IO::Socket::SSL qw( SSL_VERIFY_PEER );
 my $go_api_port = 12429;
 my $go_cons_port = 12430;
 my $bmc_cons_port = "2200";
+my $isSN = xCAT::Utils->isServiceNode();
 
 use constant CONSOLE_LOG_DIR => "/var/log/consoles";
 use constant PRINT_FORMAT => "%-32s %-32s %-64s";
@@ -58,7 +59,7 @@ sub http_request {
 }
 
 sub gen_request_data {
-    my ($cons_map, $siteondemand, $isSN, $callback) = @_;
+    my ($cons_map, $siteondemand, $callback) = @_;
     my (@openbmc_nodes, $data);
     while (my ($k, $v) = each %{$cons_map}) {
         my $ondemand;
@@ -396,6 +397,81 @@ sub list_nodes {
     }
     return 0;
 }
+
+sub cleanup_nodes {
+    my $callback = shift;
+    my @hostinfo = xCAT::NetworkUtils->determinehostname();
+    my $host = $hostinfo[-1];
+    my $api_url = "https://$host:". get_api_port();
+    my $rsp;
+    my $response = http_request("GET", "$api_url/nodes");
+    if (!defined($response)) {
+        if ($callback) {
+            $rsp->{data}->[0] = "Failed to send list request.";
+            xCAT::MsgUtils->message("E", $rsp, $callback);
+        } else {
+            xCAT::MsgUtils->message("S", "Failed to send list request.");
+        }
+        return 1;
+    }
+    if (!$response->{nodes}) {
+        return 0;
+    }
+    my %delete_map;
+    my %cons_map = get_cons_map(undef);
+    foreach my $node (@{$response->{nodes}}) {
+        # not in xcatdb but exist in goconserver
+        $delete_map{$node->{name}} = 1 if !exists($cons_map{$node->{name}});
+    }
+    return delete_nodes($api_url, \%delete_map, 1, $callback);
+}
+
+sub get_cons_map {
+    my $req = shift;
+    my %iphash   = ();
+    my %cons_map;
+    my $hmtab = xCAT::Table->new('nodehm');
+    my @cons_nodes;
+    my @hostinfo = xCAT::NetworkUtils->determinehostname();
+    foreach (@hostinfo) {
+        $iphash{$_} = 1;
+    }
+    if (defined($req) && (($req->{node} and @{$req->{node}} > 0) or $req->{noderange}->[0])) {
+        # Note: do not consider terminal server currently
+        @cons_nodes = $hmtab->getNodesAttribs($req->{node}, [ 'node', 'cons', 'serialport', 'mgt', 'conserver', 'consoleondemand' ]);
+        # Adjust the data structure to make the result consistent with the getAllNodeAttribs() call we make if a noderange was not specified
+        my @tmpcons_nodes;
+        foreach my $ent (@cons_nodes)
+        {
+            foreach my $nodeent (keys %$ent)
+            {
+                push @tmpcons_nodes, $ent->{$nodeent}->[0];
+            }
+        }
+        @cons_nodes = @tmpcons_nodes
+    } else {
+        @cons_nodes = $hmtab->getAllNodeAttribs([ 'cons', 'serialport', 'mgt', 'conserver', 'consoleondemand' ]);
+    }
+    $hmtab->close();
+    my $rsp;
+
+    foreach (@cons_nodes) {
+        if ($_->{cons} or defined($_->{'serialport'})) {
+            unless ($_->{cons}) { $_->{cons} = $_->{mgt}; } #populate with fallback
+            if ($isSN && $_->{conserver} && exists($iphash{ $_->{conserver} }) || !$isSN) {
+                $cons_map{ $_->{node} } = $_; # also put the ref to the entry in a hash for quick look up
+            } else {
+                $rsp->{data}->[0] = $_->{node} .": ignore, the host for conserver could not be determined.";
+                xCAT::MsgUtils->message("I", $rsp, $::callback);
+            }
+        } else {
+            $rsp->{data}->[0] = $_->{node} .": ignore, cons attribute or serialport attribute is not specified.";
+            xCAT::MsgUtils->message("I", $rsp, $::callback);
+        }
+    }
+    return %cons_map;
+}
+
 
 #-------------------------------------------------------------------------------
 

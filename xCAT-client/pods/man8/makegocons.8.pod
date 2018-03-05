@@ -6,6 +6,7 @@ B<makegocons> - Register or unregister the node in the goconserver service
 
 B<makegocons> [B<-V|--verbose>] [B<-d|--delete>] [B<-q|--query>] [I<noderange>]
 
+B<makegocons> [B<-V|--verbose>] [B<-C|--cleanup>]
 
 =head1 DESCRIPTION
 
@@ -47,6 +48,10 @@ B<Note:> goconserver only support the systemd based systems. It has been integra
 =item B<-d|--delete>
 
 Delete rather than add or refresh the nodes specified as a noderange.
+
+=item B<-C|--cleanup>
+
+Remove the entries for the nodes whose definitions have been removed from xCAT db.
 
 =item B<-q|--query>
 

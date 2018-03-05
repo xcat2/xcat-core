@@ -4423,6 +4423,12 @@ sub defrm
                 command => ['makeconservercf'],
                 node => [@allnodes],
                 arg => ['-d'],}, $doreq, 0, 1);
+            if (-x "/usr/bin/goconserver") {
+                require xCAT::Goconserver;
+                if (xCAT::Goconserver::is_goconserver_running()) {
+                    xCAT::Goconserver::cleanup_nodes(undef);
+                }
+            }
         }
     }
 
