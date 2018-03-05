@@ -661,7 +661,8 @@ class OpenBMCRest(object):
     # Clear all eventlog records
     def clear_all_eventlog_records(self):
 
-        return self.request('POST', EVENTLOG_URLS['clear_all'], cmd='clear_all_eventlog_records')
+        payload = { "data": [] }
+        return self.request('POST', EVENTLOG_URLS['clear_all'], payload=payload, cmd='clear_all_eventlog_records')
 
 
     def set_apis_values(self, key, value):
