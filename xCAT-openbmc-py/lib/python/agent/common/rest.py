@@ -26,16 +26,64 @@ class RestSession(object):
                                             headers=headers,
                                             verify=False,
                                             timeout=timeout)
-        except requests.exceptions.ConnectionError:
-            raise xcat_exception.SelfServerException('Error: Failed to connect to server.')
+        except requests.exceptions.ConnectionError as e:
+            # Extract real reason for the exception and host/port from ConnectionError message
+            # Sometimes e.message is a list, sometimes is a string. Look for different patterns
+            # to extract the data needed.
+            causing_error = "n/a"
+            host_and_port = "n/a"
+            if "]" in e.message[0]:
+                causing_error_part1 = e.message[0].split("]")[1]
+                causing_error       = causing_error_part1.split("'")[0]
+                causing_error       = causing_error.strip()
+                host_and_port = self.extract_server_and_port(e.message[0], "STRING")
 
-        except requests.exceptions.Timeout:
-            raise xcat_exception.SelfServerException('Error: Timeout to connect to server')
+            if "Connection aborted." in e.message[0]:
+                causing_error = "Connection reset by peer"
+                host_and_port = self.extract_server_and_port(url, "URL")
+
+            if "connect timeout=" in e.message[0]:
+                causing_error = "timeout"
+                host_and_port = self.extract_server_and_port(e.message[0], "STRING")
+
+            message = 'Failed to connect to server.'
+            # message = '\n\n--> {0} \n\n'.format(e.message[0])
+            raise xcat_exception.SelfServerException(message, '({0})'.format(causing_error), host_and_port)
+
+        except requests.exceptions.Timeout as e:
+            causing_error = "timeout"
+            host_and_port = self.extract_server_and_port(e.message[0], "STRING")
+
+            message = 'Timeout to connect to server'
+            raise xcat_exception.SelfServerException(message, '({0})'.format(causing_error), host_and_port)
 
         if not self.cookies:
             self.cookies = requests.utils.dict_from_cookiejar(self.session.cookies)
 
         return response
+
+    def extract_server_and_port(self, message_string, format="STRING"):
+        # Extract hostip and port number from ConnectionError message
+        # If format="STRING" look for host='IP' and port=xxxx pattern
+        # If format="URL"    look for https://IP/login pattern
+        if format == "STRING":
+            start   = "host='"
+            end     = "',"
+            host_ip = message_string[message_string.find(start)+len(start):message_string.find(end)]
+            start   = "port="
+            end     = "):"
+            port = message_string[message_string.find(start)+len(start):message_string.find(end)]
+            host_and_port = host_ip + ":" + port
+        elif format == "URL":
+            start   = "https://"
+            end     = "/login"
+            host_ip = message_string[message_string.find(start)+len(start):message_string.find(end)]
+            host_and_port = host_ip
+        else:
+            host_and_port = "n/a"
+
+        return host_and_port
+
 
     def request_download(self, method, url, headers, file_path, using_curl=True):
 
