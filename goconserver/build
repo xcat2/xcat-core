@@ -1,0 +1,32 @@
+#!/bin/bash
+
+if type debuild >/dev/null 2>&1
+then
+	PACKAGE_TYPE="deb"
+elif type rpmbuild >/dev/null 2>&1
+	PACKAGE_TYPE="rpm"
+fi
+
+# Get the latest deb or rpm package from somewhere
+
+
+PACKAGE="/path/to/package"
+
+# Re-packaging
+case "${PACKAGE_TYPE}" in
+"deb")
+	dirty-debuild "${BINARY_PACKAGE}"
+	;;
+"rpm")
+	dirty-rpmbuild "${BINARY_PACKAGE}"
+	;;
+*)
+	echo "Unknown package" >&2
+	exit 1
+	;;
+esac
+
+NEW_PACKAGE="$(ls -t *".${PACKAGE_TYPE}" | head -n 1)"
+
+# Upload the new package
+scp "${NEW_PACKAGE}" pokgsa.ibm.com:/path/to/somewhere

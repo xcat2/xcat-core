@@ -1,0 +1,114 @@
+#!/bin/bash
+
+#
+# warn_if_bad		Put out warning message(s) if $1 has bad RC.
+#
+#	$1	0 (pass) or non-zero (fail).
+#	$2+	Remaining arguments printed only if the $1 is non-zero.
+#
+#	Incoming $1 is returned unless it is 0
+#
+function warn_if_bad()
+{
+	local -i rc="$1"
+	local script="${0##*/}"
+
+	# Ignore if no problems
+	[ "${rc}" -eq "0" ] && return 0
+
+	# Broken
+	shift
+	echo "${script}: $@" >&2
+	return "${rc}"
+}
+
+#
+# exit_if_bad		Put out error message(s) if $1 has bad RC.
+#
+#	$1	0 (pass) or non-zero (fail).
+#	$2+	Remaining arguments printed only if the $1 is non-zero.
+#
+#               Exits with 1 unless $1 is 0
+#
+function exit_if_bad()
+{
+	warn_if_bad "$@" || exit 1
+	return 0
+}
+
+TMP_DIR=""
+
+function internal_cleanup()
+{
+	[ -d "${TMP_DIR}" ] && rm -rf "${TMP_DIR}"
+}
+
+trap internal_cleanup EXIT
+
+TMP_DIR="$(mktemp -d "/tmp/${0##*/}.XXXXXXXX" 2>/dev/null)"
+exit_if_bad "$?" "Above listed required command(s) not found."
+
+# Main
+if [ -z "$1" ]
+then
+	echo "Usage: ${0##*/} <goconserver binary tarball>"
+	exit 0
+fi
+
+GOCONSERVER_BINARY_TARBALL="$1"
+
+if [ "${GOCONSERVER_BINARY_TARBALL:0:7}" = "http://" -o \
+	"${GOCONSERVER_BINARY_TARBALL:0:8}" = "https://" ]
+then
+	wget -O "${GOCONSERVER_BINARY_TARBALL##*/}" "${GOCONSERVER_BINARY_TARBALL}" 
+	exit_if_bad "$?" "Downloading failed."
+
+	GOCONSERVER_BINARY_TARBALL="${GOCONSERVER_BINARY_TARBALL##*/}"
+fi
+
+[ -f "${GOCONSERVER_BINARY_TARBALL}" ]
+exit_if_bad "$?" "${GOCONSERVER_BINARY_TARBALL} - File not found."
+
+tmp_b="${GOCONSERVER_BINARY_TARBALL##*/}"
+tmp_b="${tmp_b%%.*}"
+ARCH="${tmp_b##*_}"
+GOCONSERVER_REPACK_TARBALL="goconserver-repack-${ARCH}.tar.gz"
+
+umask 0022
+
+mkdir -p "${TMP_DIR}/extract"
+( cd "${TMP_DIR}/extract" && tar xfz - ) <"${GOCONSERVER_BINARY_TARBALL}"
+
+mkdir -p "${TMP_DIR}/repack"
+mkdir -p "${TMP_DIR}/repack/etc/goconserver"
+mkdir -p "${TMP_DIR}/repack/etc/profile.d"
+mkdir -p "${TMP_DIR}/repack/usr/bin"
+mkdir -p "${TMP_DIR}/repack/usr/lib/systemd/system"
+mkdir -p "${TMP_DIR}/repack/var/log/goconserver/nodes"
+mkdir -p "${TMP_DIR}/repack/var/lib/goconserver"
+chmod 0700 "${TMP_DIR}/repack/etc/goconserver" \
+	"${TMP_DIR}/repack/var/log/goconserver" \
+	"${TMP_DIR}/repack/var/log/goconserver/nodes" \
+	"${TMP_DIR}/repack/var/lib/goconserver"
+install -o root -g root -m 0755 \
+	"${TMP_DIR}/extract/goconserver_linux_${ARCH}/goconserver" \
+	"${TMP_DIR}/repack/usr/bin"
+install -o root -g root -m 0755 \
+	"${TMP_DIR}/extract/goconserver_linux_${ARCH}/congo" \
+	"${TMP_DIR}/repack/usr/bin"
+install -o root -g root -m 0644 \
+	"${TMP_DIR}/extract/goconserver_linux_${ARCH}/etc/goconserver/server.conf" \
+	"${TMP_DIR}/repack/etc/goconserver"
+install -o root -g root -m 0644 \
+	"${TMP_DIR}/extract/goconserver_linux_${ARCH}/etc/goconserver/client.sh" \
+	"${TMP_DIR}/repack/etc/profile.d/congo.sh"
+install -o root -g root -m 0644 \
+	"${TMP_DIR}/extract/goconserver_linux_${ARCH}/etc/systemd/goconserver.service" \
+	"${TMP_DIR}/repack/usr/lib/systemd/system"
+
+( cd "${TMP_DIR}/repack" && tar cfz - *) >"${GOCONSERVER_REPACK_TARBALL}"
+
+# Verification
+
+ls -lad "${GOCONSERVER_REPACK_TARBALL}"
+tar tvfz "${GOCONSERVER_REPACK_TARBALL}"
