@@ -220,8 +220,9 @@ RSPCONFIG_APIS = {
 }
 
 EVENTLOG_URLS     = {
-        "list": "/logging/enumerate",
+        "list":      "/logging/enumerate",
         "clear_all": "/logging/action/deleteAll",
+        "resolve":   "/logging/entry/{}/attr/Resolved",
 }
 
 RAS_POLICY_TABLE  = "/opt/ibm/ras/lib/policyTable.json"
@@ -664,6 +665,14 @@ class OpenBMCRest(object):
         payload = { "data": [] }
         return self.request('POST', EVENTLOG_URLS['clear_all'], payload=payload, cmd='clear_all_eventlog_records')
 
+    # Resolve eventlog records
+    def resolve_event_log_entries(self, eventlog_ids_to_resolve):
+
+        payload = { "data": "1" }
+        for event_id in eventlog_ids_to_resolve:
+            self.request('PUT', EVENTLOG_URLS['resolve'].format(event_id), payload=payload, cmd='resolve_event_log_entries')
+
+        return
 
     def set_apis_values(self, key, value):
         attr_info = RSPCONFIG_APIS[key]
