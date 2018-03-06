@@ -55,14 +55,11 @@ class OpenBMCPowerTask(ParallelNodesCommand):
             obmc.login()
             states = obmc.list_power_states()
             state = self._determine_state(states)
-            result = '%s: %s' % (node, openbmc.RPOWER_STATES.get(state, state))
+            self.callback.info('%s: %s' % (node, openbmc.RPOWER_STATES.get(state, state)))
 
-        except SelfServerException as e:
-            result = '%s: %s'  % (node, e.message)
-        except SelfClientException as e:
-            result = '%s: %s'  % (node, e.message)
+        except (SelfServerException, SelfClientException) as e:
+            self.callback.error(e.message, node)
 
-        self.callback.info(result)
         return state
 
     def get_bmcstate(self, **kw):
@@ -86,13 +83,12 @@ class OpenBMCPowerTask(ParallelNodesCommand):
             if bmc_state != 'Ready':
                 bmc_state = bmc_not_ready
 
-            result = '%s: %s' % (node, openbmc.RPOWER_STATES.get(bmc_state, bmc_state))
+            self.callback.info('%s: %s' % (node, openbmc.RPOWER_STATES.get(bmc_state, bmc_state)))
 
         except SelfServerException, SelfClientException:
             # There is no response when BMC is not ready
-            result = '%s: %s'  % (node, openbmc.RPOWER_STATES[bmc_not_ready])
+            self.callback.error(openbmc.RPOWER_STATES[bmc_not_ready], node)
 
-        self.callback.info(result)
         return bmc_state
 
     def set_state(self, state, **kw):
@@ -105,14 +101,11 @@ class OpenBMCPowerTask(ParallelNodesCommand):
             ret = obmc.set_power_state(state)
             new_status = POWER_STATE_DB.get(state, '')
 
-            result = '%s: %s' % (node, state)
+            self.callback.info('%s: %s' % (node, state))
             if new_status:
                 self.callback.update_node_attributes('status', node, new_status)
         except (SelfServerException, SelfClientException) as e:
-            result = '%s: %s'  % (node, e.message)
-
-        self.callback.info(result)
-
+            self.callback.error(e.message, node)
 
     def reboot(self, optype='boot', **kw):
 
@@ -127,7 +120,7 @@ class OpenBMCPowerTask(ParallelNodesCommand):
             new_status =''
             if optype == 'reset' and status in ['Off', 'chassison']:
                 status = openbmc.RPOWER_STATES['Off']
-                result = '%s: %s'  % (node, status)
+                self.callback.info('%s: %s'  % (node, status))
             else:
                 if status not in ['Off', 'off']:
                     obmc.set_power_state('off')
@@ -153,13 +146,10 @@ class OpenBMCPowerTask(ParallelNodesCommand):
                 ret = obmc.set_power_state('on')
                 self.callback.update_node_attributes('status', node, POWER_STATE_DB['on'])
 
-                result = '%s: %s'  % (node, 'reset')
+                self.callback.info('%s: %s'  % (node, 'reset'))
 
         except (SelfServerException, SelfClientException) as e:
-            result = '%s: %s'  % (node, e.message)
-
-        self.callback.info(result)
-
+            self.callback.error(e.message, node)
 
     def reboot_bmc(self, optype='warm', **kw):
 
@@ -170,13 +160,12 @@ class OpenBMCPowerTask(ParallelNodesCommand):
         try:
             obmc.login()
         except (SelfServerException, SelfClientException) as e:
-            result = '%s: %s'  % (node, e.message)
+            self.callback.error(e.message, node)
         else:
             try:
                 obmc.reboot_bmc(optype)
             except (SelfServerException, SelfClientException) as e:
-                result = '%s: %s'  % (node, e.message)
+                self.callback.error(e.message, node)
             else:
-                result = '%s: %s'  % (node, openbmc.RPOWER_STATES['bmcreboot'])
-        self.callback.info(result)
+                self.callback.info('%s: %s' % (node, openbmc.RPOWER_STATES['bmcreboot']))
 

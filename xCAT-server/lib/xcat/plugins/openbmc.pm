@@ -703,7 +703,7 @@ my %allerrornodes = ();
 
 my $xcatdebugmode = 0;
 
-my $flag_debug = "[openbmc_debug]";
+my $flag_debug = "[openbmc_debug_perl]";
 
 my %login_pid_node; # used in process_request, record login fork pid map
 
@@ -758,7 +758,7 @@ sub preprocess_request {
 
     $callback  = shift;
     my $command   = $request->{command}->[0];
-    my ($rc, $msg) = xCAT::OPENBMC->is_support_in_perl($command, $request->{environment});
+    my ($rc, $msg) = xCAT::OPENBMC->run_cmd_in_perl($command, $request->{environment});
     if ($rc == 0) { $request = {}; return;}
     if ($rc < 0) {
         $request = {};
