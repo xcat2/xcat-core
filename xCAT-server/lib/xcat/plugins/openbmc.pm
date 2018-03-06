@@ -703,7 +703,7 @@ my %allerrornodes = ();
 
 my $xcatdebugmode = 0;
 
-my $flag_debug = "[openbmc_debug]";
+my $flag_debug = "[openbmc_debug_perl]";
 
 my %login_pid_node; # used in process_request, record login fork pid map
 
