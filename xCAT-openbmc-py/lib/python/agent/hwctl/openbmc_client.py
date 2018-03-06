@@ -305,7 +305,7 @@ class OpenBMCRest(object):
 
         self._log_request(method, url, httpheaders, data=data, cmd=cmd)
         try:
-            response = self.session.request(method, url, httpheaders, data=data)
+            response = self.session.request(method, url, httpheaders, data=data, timeout=timeout)
             return self.handle_response(response, cmd=cmd)
         except SelfServerException as e:
             e.message = 'Error: BMC did not respond. ' \
