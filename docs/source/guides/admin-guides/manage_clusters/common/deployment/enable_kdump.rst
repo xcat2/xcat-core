@@ -14,27 +14,28 @@ The following attributes of an osimage should be modified to enable ``kdump``:
 
 * pkglist
 * exlist
+* postinstall
 * dump
-* crashkernel
 * crashkernelsize
+* postscripts
 
 Configure the ``pkglist`` file
 ------------------------------
 
 The ``pkglist`` for the osimage needs to include the appropriate RPMs.  The following list of RPMs are provided as a sample, always refer to the Operating System specific documentataion to ensure the required packages are there for ``kdump`` support. 
 
-* **For RHEL** ::
+* **[RHELS]** ::
     
     kexec-tools
     crash
 
-* **For SLES** ::
+* **[SLES]** ::
 
     kdump
     kexec-tools
     makedumpfile
 
-* **For Ubuntu** ::
+* **[Ubuntu]** ::
 
     <TODO>
 
@@ -45,15 +46,31 @@ The default diskless image created by ``copycds`` excludes the ``/boot`` directo
 
 Update the ``exlist`` for the target osimage and remove the line ``/boot``: ::
 
-   ./boot*  # <-- remove this line
+    ./boot*  # <-- remove this line
 
 Run ``packimage`` to update the diskless image with the changes.
 
+The ``postinstall`` file
+------------------------
+
+The kdump will create a new initrd which used in the dumping stage. The ``/tmp`` or ``/var/tmp`` directory will be used as the temporary directory. These 2 directory only are allocated 10M space by default. You need to enlarge it to 200M. Modify the postinstall file to increase ``/tmp`` space.
+
+* **[RHELS]** ::
+
+    tmpfs   /var/tmp    tmpfs   defaults,size=200m   0 2
+
+* **[SLES11]** ::
+
+    tmpfs   /tmp    tmpfs   defaults,size=200m       0 2
+
+* **[Ubuntu]** ::
+
+    <TODO>
 
 The ``dump`` attribute 
 ----------------------
 
-To support kernel dumps, the ``dump`` attribute **must** be set on the osimage definition.  If not set, kdump service will not be enabled.  The ``dump`` attribute defines the NFS remote oath where the crash information is to be stored. 
+To support kernel dumps, the ``dump`` attribute **must** be set on the osimage definition.  If not set, kdump service will not be enabled.  The ``dump`` attribute defines the NFS remote path where the crash information is to be stored. 
 
 Use the ``chdef`` command to set a value of the ``dump`` attribute: ::
 
@@ -72,7 +89,7 @@ Currently, only NFS is supported for the setup of kdump.
 
 If the dump attribute is not set, the kdump service will not be enabled.
 
-Make sure the NFS remote path(nfs://<nfs_server_ip>/<kdump_path>) is exported and it is read-writeable to the node where kdump service is enabled.
+Make sure the NFS remote path(``nfs://<nfs_server_ip>/<kdump_path>``) is exported and it is read-writeable to the node where kdump service is enabled.
 
 
 The ``crashkernelsize`` attribute
@@ -86,18 +103,21 @@ For setting specific sizes, use the following example:
 
     chdef -t osimage <image name> crashkernelsize=<size>M
 
+* For Power System AC922, set the ``crashkernelsize`` using this format: ::
+
+    chdef -t osimage <image name> crashkernelsize=<size>M
 
 * For System P machines, set the ``crashkernelsize`` using this format: :: 
 
     chdef -t osimage <image name> crashkernelsize=<size>@32M
 
+**Notes**: the value of the ``crashkernelsize`` depends on the total physical memory size on the machine. If it is hard to decide the specific ``crashkernelsize``, ``auto`` value can be used, like ``crashkernelsize=auto``.  For more about size, refer to the Operating System specific documentation describing kdump.*
 
-* For OpenPower Systems (i.e. IBM Power System AC922), set the ``crashkernelsize`` using this format: ::
-    
-    chdef -t osimage <image name> crashkernelsize=<size>M
+If kdump start error like this: ::
 
-*where <size> is recommended to be at least 256.  For more about size, refer to the Operating System specific documentation describing kdump.*
+    Your running kernel is using more than 70% of the amount of space you reserved for kdump, you should consider increasing your crashkernel
 
+The ``crashkernelsize`` is not large enough, you should change the ``crashkernelsize`` larger until the error message disappear.
 
 The ``enablekdump`` postscript
 ------------------------------
@@ -107,17 +127,20 @@ xCAT provides a postscript ``enablekdump`` that can be added to the Nodes to aut
     chdef -t node <node range> -p postscripts=enablekdump
 
 
-
 Manually trigger a kernel panic on Linux
 ----------------------------------------
 
-Normally, kernel panic() will trigger booting into capture kernel. Once the kernel panic is triggered, the node will reboot into the capture kernel, and a kernel dump (vmcore) will be automatically saved to the directory on the specified NFS server (``<nfs_server_ip>``).
+Normally, kernel ``panic()`` will trigger booting into capture kernel. Once the kernel panic is triggered, the node will reboot into the capture kernel, and a kernel dump (vmcore) will be automatically saved to the directory on the specified NFS server (``<nfs_server_ip>``).
 
 Check your Operating System specific documentation for the path where the kernel dump is saved.  For example: 
 
-    * For RHELS 6, check ``<kdump_path>/var/crash/<node_ip>-<time>/``
+* **[RHELS6]** ::
+
+    <kdump_path>/var/crash/<node_ip>-<time>/
 	
-    * For SLES 11, check ``<kdump_path>/<node hostname>/<date>``
+* **[SLES11]** ::
+
+    <kdump_path>/<node hostname>/<date>
 
 To trigger a dump, use the following commands: :: 	
 
@@ -131,14 +154,30 @@ Dump Analysis
 
 Once the system has returned from recovering the crash, you can analyze the kernel dump using the ``crash`` tool. 
 
-  #. Locate the recent vmcore dump file.
+#. Locate the recent vmcore dump file.
 
-  #. Locate the kernel file for the crash server.  
-     The kernel is under ``/tftpboot/xcat/netboot/<OS name="">/<ARCH>/<profile>/kernel`` on the managenent node.
+#. Locate the kernel file for the crash server.  
+    The kernel is under ``/tftpboot/xcat/netboot/<OS name="">/<ARCH>/<profile>/kernel`` on the managenent node.
 
-  #. Once you have located a vmcore dump file and kernel file, call ``crash``: :: 
+#. Once you have located a vmcore dump file and kernel file, call ``crash``: :: 
 
-        crash <vmcore_dump_file> <kernel_file>
+    crash <vmcore_dump_file> <kernel_file>
 
 **Note:** If ``crash`` cannot find any files, make sure you have the ``kernel-debuginfo`` package installed.
 
+Appedix
+-------
+
+#. Configuring kdump related documents: 
+
+    * http://www.novell.com/support/kb/doc.php?id=3374462.
+
+    * https://access.redhat.com/knowledge/docs/en-US/Red_Hat_Enterprise_Linux/6/html/Deployment_Guide/s2-kdump-configuration-cli.html.
+
+    * https://access.redhat.com/documentation/en-us/red_hat_enterprise_linux/7/html/kernel_crash_dump_guide/sect-kdump-config-cli.
+
+#. Dump analysis documents:
+
+    * http://docs.redhat.com/docs/en-US/Red_Hat_Enterprise_Linux/5/html/Deployment_Guide/s1-kdump-crash.htmlRHELdocument
+
+    * http://www.novell.com/support/kb/doc.php?id=3374462SLESdocument
