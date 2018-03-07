@@ -1,5 +1,5 @@
 start:set_up_env_for_support_openbmc_in_python
-description:this case is used to test set up environemtn for supporting openbmc in python
+description:this case is used to test environment setup for supporting openbmc in python
 os:Linux
 hcp:openbmc
 cmd:mkdir -p /tmp/set_up_env_for_support_openbmc_in_python
