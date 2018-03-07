@@ -1878,10 +1878,6 @@ sub parse_command_status {
             } elsif ($subcommand =~ /^-a|^--activate/) {
                 $activate = 1;
             } elsif ($subcommand =~ /^-d/) {
-                my $check = unsupported($callback); if (ref($check) eq "ARRAY") {
-                    xCAT::SvrUtils::sendmsg($check, $callback);
-                    return 1;
-                }
                 $streamline = 1;
             } elsif ($subcommand =~ /^--no-host-reboot/) {
                 $nohost_reboot = 1;
