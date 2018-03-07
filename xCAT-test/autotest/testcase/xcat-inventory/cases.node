@@ -13,7 +13,7 @@ cmd:ssh $$DSTMN 'lsdef bogusnode > /dev/null 2>&1;if [[ $? -eq 0 ]]; then lsdef 
 check:rc==0
 cmd:ssh $$DSTMN 'lsdef -t group bogusgroup  > /dev/null 2>&1;if [[ $? -eq 0 ]]; then lsdef -t group bogusgroup -z > /tmp/export_import_single_ppc_by_json_$$DSTMN/bogusgroup.stanza; rmdef -t group bogusgroup;fi'
 check:rc==0
-cmd:mkdef -t node -o bogusnode groups=bogusgroup  mgt=hmc nodetype=ppc,osi  addkcmdline=addkcmdline arch=arch authdomain=authdomain cfgmgr=cfgmgr cfgmgtroles=cfgmgtroles cfgserver=cfgserver chain=chain chassis=chassis cmdmapping=cmdmapping cons=cons conserver=conserver consoleondemand=consoleondemand cpucount=cpucount cputype=cputype  dhcpinterfaces=dhcpinterfaces disksize=disksize domainadminpassword=domainadminpassword domainadminuser=domainadminuser domaintype=domaintype getmac=getmac hcp=hcp height=height hidden=hidden hostcluster=hostcluster hostinterface=hostinterface hostmanager=hostmanager hostnames=hostnames hosttype=hosttype hwtype=hwtype id=id installnic=installnic interface=interface ip=ip iscsipassword=iscsipassword iscsiserver=iscsiserver iscsitarget=iscsitarget iscsiuserid=iscsiuserid mac=mac memory=memory migrationdest=migrationdest monserver=monserver mpa=mpa mtm=mtm nameservers=nameservers netboot=netboot nfsdir=nfsdir nfsserver=nfsserver  nimserver=nimserver node=node ondiscover=ondiscover osvolume=osvolume otherinterfaces=otherinterfaces ou=ou parent=parent password=password pdu=pdu postbootscripts=postbootscripts postscripts=postscripts power=power pprofile=pprofile prescripts-begin=prescripts-begin prescripts-end=prescripts-end primarynic=primarynic primarysn=primarysn productkey=productkey  provmethod=provmethod rack=rack room=room routenames=routenames serial=serial serialflow=serialflow serialport=serialport serialspeed=serialspeed servicenode=servicenode setupconserver=setupconserver setupdhcp=setupdhcp setupftp=setupftp setupipforward=setupipforward setupldap=setupldap setupnameserver=setupnameserver setupnfs=setupnfs setupnim=setupnim setupntp=setupntp setupproxydhcp=setupproxydhcp setuptftp=setuptftp sfp=sfp side=side slot=slot  storagcontroller=storagcontroller storagetype=storagetype supernode=supernode supportedarchs=supportedarchs supportproxydhcp=supportproxydhcp switch=switch switchinterface=switchinterface switchport=switchport switchvlan=switchvlan syslog=syslog termport=termport termserver=termserver tftpdir=tftpdir tftpserver=tftpserver unit=unit  usercomment=usercomment username=username vmbeacon=vmbeacon vmbootorder=vmbootorder vmcfgstore=vmcfgstore vmcluster=vmcluster vmmanager=vmmanager vmmaster=vmmaster vmnicnicmodel=vmnicnicmodel vmphyslots=vmphyslots vmstorage=vmstorage vmstoragecache=vmstoragecache vmstorageformat=vmstorageformat vmstoragemodel=vmstoragemodel vmtextconsole=vmtextconsole vmvirtflags=vmvirtflags vmvncport=vmvncport xcatmaster=xcatmaster zonename=zonename  nicaliases.eth0="moe larry curly" nicaliases.eth1="tom|jerry" niccustomscripts.eth0="configeth eth0" niccustomscripts.ib0="configib ib0" nicdevices.bond0="eth0|eth2" nicdevices.br0=bond0 nicextraparams.eth0="MTU=1500" nicextraparams.ib0="MTU=65520 CONNECTED_MODE=yes" nichostnameprefixes.eth0="eth0-" nichostnameprefixes.ib0="ib-" nichostnamesuffixes.eth0="-eth0" nichostnamesuffixes.ib0="-ib0" nicips.ib0=10.10.100.9 nicips.enP48p1s0f0=129.40.234.11 nicips.ib1=10.11.100.9 nicnetworks.enP5p1s0f1.4=xcat_bmc nicnetworks.enP48p1s0f1=xcat_util nicnetworks.ib0=IB00 nicnetworks.enP48p1s0f0=pub_yellow nicnetworks.ib3=IB03 nicnetworks.ib2=IB02 nicnetworks.enP5p1s0f1=xcat_compute nicnetworks.ib1=IB01 nicnetworks.enP5p1s0f1.5=xcat_infra nicnetworks.enP5p1s0f1.6=xcat_pdu nicsadapter.enP3p3s0f1="mac=98:be:94:59:fa:cd linkstate=DOWN" nicsadapter.enP3p3s0f2="mac=98:be:94:59:fa:ce candidatename=enP3p3s0f2/enx98be9459face" nictypes.enP5p1s0f1.4=unused nictypes.enP48p1s0f1=unused nictypes.ib0=Infiniband nictypes.enP48p1s0f0=Ethernet nictypes.ib3=unused nictypes.ib2=unused nictypes.enP5p1s0f1=unused nictypes.ib1=Infiniband nictypes.enP5p1s0f1.5=unused nictypes.enP5p1s0f1.6=unused
+cmd:mkdef -t node -o bogusnode groups=bogusgroup  mgt=hmc nodetype=ppc,osi  addkcmdline=addkcmdline arch=ppc64 authdomain=authdomain cfgmgr=cfgmgr cfgmgtroles=cfgmgtroles cfgserver=cfgserver chain=chain chassis=chassis cmdmapping=cmdmapping cons=cons conserver=conserver consoleondemand=consoleondemand cpucount=cpucount cputype=cputype  dhcpinterfaces=dhcpinterfaces disksize=disksize domainadminpassword=domainadminpassword domainadminuser=domainadminuser domaintype=domaintype getmac=getmac hcp=HMC height=height hidden=hidden hostcluster=hostcluster hostinterface=hostinterface hostmanager=hostmanager hostnames=hostnames hosttype=hosttype hwtype=hwtype id=5 installnic=installnic interface=interface ip=10.10.10.10 iscsipassword=iscsipassword iscsiserver=iscsiserver iscsitarget=iscsitarget iscsiuserid=iscsiuserid mac=42:d6:0a:03:05:08 memory=memory migrationdest=migrationdest monserver=monserver mpa=mpa mtm=mtm nameservers=nameservers netboot=grub2 nfsdir=nfsdir nfsserver=nfsserver  nimserver=nimserver node=node ondiscover=ondiscover osvolume=osvolume otherinterfaces=otherinterfaces ou=ou parent=parent password=password pdu=pdu postbootscripts=postbootscripts postscripts=postscripts power=power pprofile=pprofile prescripts-begin=prescripts-begin prescripts-end=prescripts-end primarynic=primarynic primarysn=primarysn productkey=productkey  provmethod=provmethod rack=rack room=room routenames=routenames serial=serial serialflow=serialflow serialport=serialport serialspeed=serialspeed servicenode=servicenode setupconserver=0 setupdhcp=0 setupftp=setupftp setupipforward=0 setupldap=0 setupnameserver=0 setupnfs=0 setupnim=setupnim setupntp=0 setupproxydhcp=0 setuptftp=0 sfp=sfp side=side slot=slot  storagcontroller=storagcontroller storagetype=storagetype supernode=supernode supportedarchs=supportedarchs supportproxydhcp=supportproxydhcp switch=switch switchinterface=switchinterface switchport=50 switchvlan=switchvlan syslog=syslog termport=termport termserver=termserver tftpdir=tftpdir tftpserver=tftpserver unit=unit  usercomment=usercomment username=username vmbeacon=vmbeacon vmbootorder=vmbootorder vmcfgstore=vmcfgstore vmcluster=vmcluster vmmanager=vmmanager vmmaster=vmmaster vmnicnicmodel=vmnicnicmodel vmphyslots=vmphyslots vmstorage=vmstorage vmstoragecache=vmstoragecache vmstorageformat=vmstorageformat vmstoragemodel=vmstoragemodel vmtextconsole=vmtextconsole vmvirtflags=vmvirtflags vmvncport=vmvncport xcatmaster=xcatmaster zonename=zonename  nicaliases.eth0="moe larry curly" nicaliases.eth1="tom|jerry" niccustomscripts.eth0="configeth eth0" niccustomscripts.ib0="configib ib0" nicdevices.bond0="eth0|eth2" nicdevices.br0=bond0 nicextraparams.eth0="MTU=1500" nicextraparams.ib0="MTU=65520 CONNECTED_MODE=yes" nichostnameprefixes.eth0="eth0-" nichostnameprefixes.ib0="ib-" nichostnamesuffixes.eth0="-eth0" nichostnamesuffixes.ib0="-ib0" nicips.ib0=10.10.100.9 nicips.enP48p1s0f0=129.40.234.11 nicips.ib1=10.11.100.9 nicnetworks.enP5p1s0f1.4=xcat_bmc nicnetworks.enP48p1s0f1=xcat_util nicnetworks.ib0=IB00 nicnetworks.enP48p1s0f0=pub_yellow nicnetworks.ib3=IB03 nicnetworks.ib2=IB02 nicnetworks.enP5p1s0f1=xcat_compute nicnetworks.ib1=IB01 nicnetworks.enP5p1s0f1.5=xcat_infra nicnetworks.enP5p1s0f1.6=xcat_pdu nicsadapter.enP3p3s0f1="mac=98:be:94:59:fa:cd linkstate=DOWN" nicsadapter.enP3p3s0f2="mac=98:be:94:59:fa:ce candidatename=enP3p3s0f2/enx98be9459face" nictypes.enP5p1s0f1.4=unused nictypes.enP48p1s0f1=unused nictypes.ib0=Infiniband nictypes.enP48p1s0f0=Ethernet nictypes.ib3=unused nictypes.ib2=unused nictypes.enP5p1s0f1=unused nictypes.ib1=Infiniband nictypes.enP5p1s0f1.5=unused nictypes.enP5p1s0f1.6=unused
 check:rc==0
 cmd:lsdef bogusnode -z|sort -t'=' -k1 |tee  /tmp/export_import_single_ppc_by_json/srcbogusnode.stanza
 check:rc==0
@@ -65,7 +65,7 @@ cmd:ssh $$DSTMN 'lsdef bogusnode > /dev/null 2>&1;if [[ $? -eq 0 ]]; then lsdef 
 check:rc==0
 cmd:ssh $$DSTMN 'lsdef -t group bogusgroup  > /dev/null 2>&1;if [[ $? -eq 0 ]]; then lsdef -t group bogusgroup -z > /tmp/export_import_single_ppc_by_yaml_$$DSTMN/bogusgroup.stanza; rmdef -t group bogusgroup;fi'
 check:rc==0
-cmd:mkdef -t node -o bogusnode groups=bogusgroup  mgt=hmc nodetype=ppc,osi  addkcmdline=addkcmdline arch=arch authdomain=authdomain cfgmgr=cfgmgr cfgmgtroles=cfgmgtroles cfgserver=cfgserver chain=chain chassis=chassis cmdmapping=cmdmapping cons=cons conserver=conserver consoleondemand=consoleondemand cpucount=cpucount cputype=cputype  dhcpinterfaces=dhcpinterfaces disksize=disksize domainadminpassword=domainadminpassword domainadminuser=domainadminuser domaintype=domaintype getmac=getmac hcp=hcp height=height hidden=hidden hostcluster=hostcluster hostinterface=hostinterface hostmanager=hostmanager hostnames=hostnames hosttype=hosttype hwtype=hwtype id=id installnic=installnic interface=interface ip=ip iscsipassword=iscsipassword iscsiserver=iscsiserver iscsitarget=iscsitarget iscsiuserid=iscsiuserid mac=mac memory=memory migrationdest=migrationdest monserver=monserver mpa=mpa mtm=mtm nameservers=nameservers netboot=netboot nfsdir=nfsdir nfsserver=nfsserver  nimserver=nimserver node=node ondiscover=ondiscover osvolume=osvolume otherinterfaces=otherinterfaces ou=ou parent=parent password=password pdu=pdu postbootscripts=postbootscripts postscripts=postscripts power=power pprofile=pprofile prescripts-begin=prescripts-begin prescripts-end=prescripts-end primarynic=primarynic primarysn=primarysn productkey=productkey  provmethod=provmethod rack=rack room=room routenames=routenames serial=serial serialflow=serialflow serialport=serialport serialspeed=serialspeed servicenode=servicenode setupconserver=setupconserver setupdhcp=setupdhcp setupftp=setupftp setupipforward=setupipforward setupldap=setupldap setupnameserver=setupnameserver setupnfs=setupnfs setupnim=setupnim setupntp=setupntp setupproxydhcp=setupproxydhcp setuptftp=setuptftp sfp=sfp side=side slot=slot  storagcontroller=storagcontroller storagetype=storagetype supernode=supernode supportedarchs=supportedarchs supportproxydhcp=supportproxydhcp switch=switch switchinterface=switchinterface switchport=switchport switchvlan=switchvlan syslog=syslog termport=termport termserver=termserver tftpdir=tftpdir tftpserver=tftpserver unit=unit  usercomment=usercomment username=username vmbeacon=vmbeacon vmbootorder=vmbootorder vmcfgstore=vmcfgstore vmcluster=vmcluster vmmanager=vmmanager vmmaster=vmmaster vmnicnicmodel=vmnicnicmodel vmphyslots=vmphyslots vmstorage=vmstorage vmstoragecache=vmstoragecache vmstorageformat=vmstorageformat vmstoragemodel=vmstoragemodel vmtextconsole=vmtextconsole vmvirtflags=vmvirtflags vmvncport=vmvncport xcatmaster=xcatmaster zonename=zonename  nicaliases.eth0="moe larry curly" nicaliases.eth1="tom|jerry" niccustomscripts.eth0="configeth eth0" niccustomscripts.ib0="configib ib0" nicdevices.bond0="eth0|eth2" nicdevices.br0=bond0 nicextraparams.eth0="MTU=1500" nicextraparams.ib0="MTU=65520 CONNECTED_MODE=yes" nichostnameprefixes.eth0="eth0-" nichostnameprefixes.ib0="ib-" nichostnamesuffixes.eth0="-eth0" nichostnamesuffixes.ib0="-ib0" nicips.ib0=10.10.100.9 nicips.enP48p1s0f0=129.40.234.11 nicips.ib1=10.11.100.9 nicnetworks.enP5p1s0f1.4=xcat_bmc nicnetworks.enP48p1s0f1=xcat_util nicnetworks.ib0=IB00 nicnetworks.enP48p1s0f0=pub_yellow nicnetworks.ib3=IB03 nicnetworks.ib2=IB02 nicnetworks.enP5p1s0f1=xcat_compute nicnetworks.ib1=IB01 nicnetworks.enP5p1s0f1.5=xcat_infra nicnetworks.enP5p1s0f1.6=xcat_pdu nicsadapter.enP3p3s0f1="mac=98:be:94:59:fa:cd linkstate=DOWN" nicsadapter.enP3p3s0f2="mac=98:be:94:59:fa:ce candidatename=enP3p3s0f2/enx98be9459face" nictypes.enP5p1s0f1.4=unused nictypes.enP48p1s0f1=unused nictypes.ib0=Infiniband nictypes.enP48p1s0f0=Ethernet nictypes.ib3=unused nictypes.ib2=unused nictypes.enP5p1s0f1=unused nictypes.ib1=Infiniband nictypes.enP5p1s0f1.5=unused nictypes.enP5p1s0f1.6=unused
+cmd:mkdef -t node -o bogusnode groups=bogusgroup  mgt=hmc nodetype=ppc,osi  addkcmdline=addkcmdline arch=ppc64 authdomain=authdomain cfgmgr=cfgmgr cfgmgtroles=cfgmgtroles cfgserver=cfgserver chain=chain chassis=chassis cmdmapping=cmdmapping cons=cons conserver=conserver consoleondemand=consoleondemand cpucount=cpucount cputype=cputype  dhcpinterfaces=dhcpinterfaces disksize=disksize domainadminpassword=domainadminpassword domainadminuser=domainadminuser domaintype=domaintype getmac=getmac hcp=HMC height=height hidden=hidden hostcluster=hostcluster hostinterface=hostinterface hostmanager=hostmanager hostnames=hostnames hosttype=hosttype hwtype=hwtype id=5 installnic=installnic interface=interface ip=10.10.10.10 iscsipassword=iscsipassword iscsiserver=iscsiserver iscsitarget=iscsitarget iscsiuserid=iscsiuserid mac=42:d6:0a:03:05:08 memory=memory migrationdest=migrationdest monserver=monserver mpa=mpa mtm=mtm nameservers=nameservers netboot=grub2 nfsdir=nfsdir nfsserver=nfsserver  nimserver=nimserver node=node ondiscover=ondiscover osvolume=osvolume otherinterfaces=otherinterfaces ou=ou parent=parent password=password pdu=pdu postbootscripts=postbootscripts postscripts=postscripts power=power pprofile=pprofile prescripts-begin=prescripts-begin prescripts-end=prescripts-end primarynic=primarynic primarysn=primarysn productkey=productkey  provmethod=provmethod rack=rack room=room routenames=routenames serial=serial serialflow=serialflow serialport=serialport serialspeed=serialspeed servicenode=servicenode setupconserver=0 setupdhcp=0 setupftp=setupftp setupipforward=0 setupldap=0 setupnameserver=0 setupnfs=0 setupnim=setupnim setupntp=0 setupproxydhcp=0 setuptftp=0 sfp=sfp side=side slot=slot  storagcontroller=storagcontroller storagetype=storagetype supernode=supernode supportedarchs=supportedarchs supportproxydhcp=supportproxydhcp switch=switch switchinterface=switchinterface switchport=50 switchvlan=switchvlan syslog=syslog termport=termport termserver=termserver tftpdir=tftpdir tftpserver=tftpserver unit=unit  usercomment=usercomment username=username vmbeacon=vmbeacon vmbootorder=vmbootorder vmcfgstore=vmcfgstore vmcluster=vmcluster vmmanager=vmmanager vmmaster=vmmaster vmnicnicmodel=vmnicnicmodel vmphyslots=vmphyslots vmstorage=vmstorage vmstoragecache=vmstoragecache vmstorageformat=vmstorageformat vmstoragemodel=vmstoragemodel vmtextconsole=vmtextconsole vmvirtflags=vmvirtflags vmvncport=vmvncport xcatmaster=xcatmaster zonename=zonename  nicaliases.eth0="moe larry curly" nicaliases.eth1="tom|jerry" niccustomscripts.eth0="configeth eth0" niccustomscripts.ib0="configib ib0" nicdevices.bond0="eth0|eth2" nicdevices.br0=bond0 nicextraparams.eth0="MTU=1500" nicextraparams.ib0="MTU=65520 CONNECTED_MODE=yes" nichostnameprefixes.eth0="eth0-" nichostnameprefixes.ib0="ib-" nichostnamesuffixes.eth0="-eth0" nichostnamesuffixes.ib0="-ib0" nicips.ib0=10.10.100.9 nicips.enP48p1s0f0=129.40.234.11 nicips.ib1=10.11.100.9 nicnetworks.enP5p1s0f1.4=xcat_bmc nicnetworks.enP48p1s0f1=xcat_util nicnetworks.ib0=IB00 nicnetworks.enP48p1s0f0=pub_yellow nicnetworks.ib3=IB03 nicnetworks.ib2=IB02 nicnetworks.enP5p1s0f1=xcat_compute nicnetworks.ib1=IB01 nicnetworks.enP5p1s0f1.5=xcat_infra nicnetworks.enP5p1s0f1.6=xcat_pdu nicsadapter.enP3p3s0f1="mac=98:be:94:59:fa:cd linkstate=DOWN" nicsadapter.enP3p3s0f2="mac=98:be:94:59:fa:ce candidatename=enP3p3s0f2/enx98be9459face" nictypes.enP5p1s0f1.4=unused nictypes.enP48p1s0f1=unused nictypes.ib0=Infiniband nictypes.enP48p1s0f0=Ethernet nictypes.ib3=unused nictypes.ib2=unused nictypes.enP5p1s0f1=unused nictypes.ib1=Infiniband nictypes.enP5p1s0f1.5=unused nictypes.enP5p1s0f1.6=unused
 check:rc==0
 cmd:lsdef bogusnode -z|sort -t'=' -k1 |tee  /tmp/export_import_single_ppc_by_yaml/srcbogusnode.stanza
 check:rc==0
@@ -117,7 +117,7 @@ cmd:ssh $$DSTMN 'lsdef bogusnode > /dev/null 2>&1;if [[ $? -eq 0 ]]; then lsdef 
 check:rc==0
 cmd:ssh $$DSTMN 'lsdef -t group bogusgroup  > /dev/null 2>&1;if [[ $? -eq 0 ]]; then lsdef -t group bogusgroup -z > /tmp/export_import_single_kvm_by_json_$$DSTMN/bogusgroup.stanza; rmdef -t group bogusgroup;fi'
 check:rc==0
-cmd:mkdef -t node -o bogusnode groups=bogusgroup mgt=kvm  addkcmdline=addkcmdline arch=arch authdomain=authdomain cfgmgr=cfgmgr cfgmgtroles=cfgmgtroles cfgserver=cfgserver chain=chain chassis=chassis cmdmapping=cmdmapping cons=cons conserver=conserver consoleondemand=consoleondemand cpucount=cpucount cputype=cputype dhcpinterfaces=dhcpinterfaces disksize=disksize domainadminpassword=domainadminpassword domainadminuser=domainadminuser domaintype=domaintype getmac=getmac hcp=hcp height=height hidden=hidden hostcluster=hostcluster hostinterface=hostinterface hostmanager=hostmanager hostnames=hostnames hosttype=hosttype id=id installnic=installnic interface=interface ip=ip iscsipassword=iscsipassword iscsiserver=iscsiserver iscsitarget=iscsitarget iscsiuserid=iscsiuserid mac=mac memory=memory migrationdest=migrationdest monserver=monserver mpa=mpa mtm=mtm nameservers=nameservers netboot=netboot nfsdir=nfsdir nfsserver=nfsserver  nimserver=nimserver node=node ondiscover=ondiscover osvolume=osvolume otherinterfaces=otherinterfaces ou=ou pdu=pdu postbootscripts=postbootscripts postscripts=postscripts power=power prescripts-begin=prescripts-begin prescripts-end=prescripts-end primarynic=primarynic primarysn=primarysn productkey=productkey provmethod=provmethod rack=rack room=room routenames=routenames serial=serial serialflow=serialflow serialport=serialport serialspeed=serialspeed servicenode=servicenode setupconserver=setupconserver setupdhcp=setupdhcp setupftp=setupftp setupipforward=setupipforward setupldap=setupldap setupnameserver=setupnameserver setupnfs=setupnfs setupnim=setupnim setupntp=setupntp setupproxydhcp=setupproxydhcp setuptftp=setuptftp sfp=sfp side=side slot=slot storagcontroller=storagcontroller storagetype=storagetype supernode=supernode supportedarchs=supportedarchs supportproxydhcp=supportproxydhcp switch=switch switchinterface=switchinterface switchport=switchport switchvlan=switchvlan syslog=syslog termport=termport termserver=termserver tftpdir=tftpdir tftpserver=tftpserver unit=unit usercomment=usercomment vmbeacon=vmbeacon vmbootorder=vmbootorder vmcfgstore=vmcfgstore vmcluster=vmcluster vmcpus=vmcpus vmhost=vmhost vmmanager=vmmanager vmmaster=vmmaster vmmemory=vmmemory vmnicnicmodel=vmnicnicmodel vmnics=vmnics vmothersetting=vmothersetting vmphyslots=vmphyslots vmstorage=vmstorage vmstoragecache=vmstoragecache vmstorageformat=vmstorageformat vmstoragemodel=vmstoragemodel vmtextconsole=vmtextconsole vmvirtflags=vmvirtflags vmvncport=vmvncport xcatmaster=xcatmaster zonename=zonename   nicaliases.eth0="moe larry curly" nicaliases.eth1="tom|jerry" niccustomscripts.eth0="configeth eth0" niccustomscripts.ib0="configib ib0" nicdevices.bond0="eth0|eth2" nicdevices.br0=bond0 nicextraparams.eth0="MTU=1500" nicextraparams.ib0="MTU=65520 CONNECTED_MODE=yes" nichostnameprefixes.eth0="eth0-" nichostnameprefixes.ib0="ib-" nichostnamesuffixes.eth0="-eth0" nichostnamesuffixes.ib0="-ib0" nicips.ib0=10.10.100.9 nicips.enP48p1s0f0=129.40.234.11 nicips.ib1=10.11.100.9 nicnetworks.enP5p1s0f1.4=xcat_bmc nicnetworks.enP48p1s0f1=xcat_util nicnetworks.ib0=IB00 nicnetworks.enP48p1s0f0=pub_yellow nicnetworks.ib3=IB03 nicnetworks.ib2=IB02 nicnetworks.enP5p1s0f1=xcat_compute nicnetworks.ib1=IB01 nicnetworks.enP5p1s0f1.5=xcat_infra nicnetworks.enP5p1s0f1.6=xcat_pdu nicsadapter.enP3p3s0f1="mac=98:be:94:59:fa:cd linkstate=DOWN" nicsadapter.enP3p3s0f2="mac=98:be:94:59:fa:ce candidatename=enP3p3s0f2/enx98be9459face" nictypes.enP5p1s0f1.4=unused nictypes.enP48p1s0f1=unused nictypes.ib0=Infiniband nictypes.enP48p1s0f0=Ethernet nictypes.ib3=unused nictypes.ib2=unused nictypes.enP5p1s0f1=unused nictypes.ib1=Infiniband nictypes.enP5p1s0f1.5=unused nictypes.enP5p1s0f1.6=unused
+cmd:mkdef -t node -o bogusnode groups=bogusgroup mgt=kvm  addkcmdline=addkcmdline arch=ppc64le authdomain=authdomain cfgmgr=cfgmgr cfgmgtroles=cfgmgtroles cfgserver=cfgserver chain=chain chassis=chassis cmdmapping=cmdmapping cons=cons conserver=conserver consoleondemand=consoleondemand cpucount=cpucount cputype=cputype dhcpinterfaces=dhcpinterfaces disksize=disksize domainadminpassword=domainadminpassword domainadminuser=domainadminuser domaintype=domaintype getmac=getmac  height=height hidden=hidden hostcluster=hostcluster hostinterface=hostinterface hostmanager=hostmanager hostnames=hostnames hosttype=hosttype id=5 installnic=installnic interface=interface ip=10.10.10.10 iscsipassword=iscsipassword iscsiserver=iscsiserver iscsitarget=iscsitarget iscsiuserid=iscsiuserid mac=42:d6:0a:03:05:08 memory=memory migrationdest=migrationdest monserver=monserver mpa=mpa mtm=mtm nameservers=nameservers netboot=grub2 nfsdir=nfsdir nfsserver=nfsserver  nimserver=nimserver node=node ondiscover=ondiscover osvolume=osvolume otherinterfaces=otherinterfaces ou=ou pdu=pdu postbootscripts=postbootscripts postscripts=postscripts power=power prescripts-begin=prescripts-begin prescripts-end=prescripts-end primarynic=primarynic primarysn=primarysn productkey=productkey provmethod=provmethod rack=rack room=room routenames=routenames serial=serial serialflow=serialflow serialport=serialport serialspeed=serialspeed servicenode=servicenode setupconserver=0 setupdhcp=0 setupftp=setupftp setupipforward=0 setupldap=0 setupnameserver=0 setupnfs=0 setupnim=setupnim setupntp=0 setupproxydhcp=0 setuptftp=0 sfp=sfp side=side slot=slot storagcontroller=storagcontroller storagetype=storagetype supernode=supernode supportedarchs=supportedarchs supportproxydhcp=supportproxydhcp switch=switch switchinterface=switchinterface switchport=50 switchvlan=switchvlan syslog=syslog termport=termport termserver=termserver tftpdir=tftpdir tftpserver=tftpserver unit=unit usercomment=usercomment vmbeacon=vmbeacon vmbootorder=vmbootorder vmcfgstore=vmcfgstore vmcluster=vmcluster vmcpus=vmcpus vmhost=vmhost vmmanager=vmmanager vmmaster=vmmaster vmmemory=vmmemory vmnicnicmodel=vmnicnicmodel vmnics=vmnics vmothersetting=vmothersetting vmphyslots=vmphyslots vmstorage=vmstorage vmstoragecache=vmstoragecache vmstorageformat=vmstorageformat vmstoragemodel=vmstoragemodel vmtextconsole=vmtextconsole vmvirtflags=vmvirtflags vmvncport=vmvncport xcatmaster=xcatmaster zonename=zonename   nicaliases.eth0="moe larry curly" nicaliases.eth1="tom|jerry" niccustomscripts.eth0="configeth eth0" niccustomscripts.ib0="configib ib0" nicdevices.bond0="eth0|eth2" nicdevices.br0=bond0 nicextraparams.eth0="MTU=1500" nicextraparams.ib0="MTU=65520 CONNECTED_MODE=yes" nichostnameprefixes.eth0="eth0-" nichostnameprefixes.ib0="ib-" nichostnamesuffixes.eth0="-eth0" nichostnamesuffixes.ib0="-ib0" nicips.ib0=10.10.100.9 nicips.enP48p1s0f0=129.40.234.11 nicips.ib1=10.11.100.9 nicnetworks.enP5p1s0f1.4=xcat_bmc nicnetworks.enP48p1s0f1=xcat_util nicnetworks.ib0=IB00 nicnetworks.enP48p1s0f0=pub_yellow nicnetworks.ib3=IB03 nicnetworks.ib2=IB02 nicnetworks.enP5p1s0f1=xcat_compute nicnetworks.ib1=IB01 nicnetworks.enP5p1s0f1.5=xcat_infra nicnetworks.enP5p1s0f1.6=xcat_pdu nicsadapter.enP3p3s0f1="mac=98:be:94:59:fa:cd linkstate=DOWN" nicsadapter.enP3p3s0f2="mac=98:be:94:59:fa:ce candidatename=enP3p3s0f2/enx98be9459face" nictypes.enP5p1s0f1.4=unused nictypes.enP48p1s0f1=unused nictypes.ib0=Infiniband nictypes.enP48p1s0f0=Ethernet nictypes.ib3=unused nictypes.ib2=unused nictypes.enP5p1s0f1=unused nictypes.ib1=Infiniband nictypes.enP5p1s0f1.5=unused nictypes.enP5p1s0f1.6=unused
 check:rc==0
 cmd:lsdef bogusnode -z|sort -t'=' -k1 |tee  /tmp/export_import_single_kvm_by_json/srcbogusnode.stanza
 check:rc==0
@@ -170,7 +170,7 @@ cmd:ssh $$DSTMN 'lsdef bogusnode > /dev/null 2>&1;if [[ $? -eq 0 ]]; then lsdef 
 check:rc==0
 cmd:ssh $$DSTMN 'lsdef -t group bogusgroup  > /dev/null 2>&1;if [[ $? -eq 0 ]]; then lsdef -t group bogusgroup -z > /tmp/export_import_single_kvm_by_yaml_$$DSTMN/bogusgroup.stanza; rmdef -t group bogusgroup;fi'
 check:rc==0
-cmd:mkdef -t node -o bogusnode groups=bogusgroup mgt=kvm  addkcmdline=addkcmdline arch=arch authdomain=authdomain cfgmgr=cfgmgr cfgmgtroles=cfgmgtroles cfgserver=cfgserver chain=chain chassis=chassis cmdmapping=cmdmapping cons=cons conserver=conserver consoleondemand=consoleondemand cpucount=cpucount cputype=cputype dhcpinterfaces=dhcpinterfaces disksize=disksize domainadminpassword=domainadminpassword domainadminuser=domainadminuser domaintype=domaintype getmac=getmac hcp=hcp height=height hidden=hidden hostcluster=hostcluster hostinterface=hostinterface hostmanager=hostmanager hostnames=hostnames hosttype=hosttype id=id installnic=installnic interface=interface ip=ip iscsipassword=iscsipassword iscsiserver=iscsiserver iscsitarget=iscsitarget iscsiuserid=iscsiuserid mac=mac memory=memory migrationdest=migrationdest monserver=monserver mpa=mpa mtm=mtm nameservers=nameservers netboot=netboot nfsdir=nfsdir nfsserver=nfsserver  nimserver=nimserver node=node ondiscover=ondiscover osvolume=osvolume otherinterfaces=otherinterfaces ou=ou pdu=pdu postbootscripts=postbootscripts postscripts=postscripts power=power prescripts-begin=prescripts-begin prescripts-end=prescripts-end primarynic=primarynic primarysn=primarysn productkey=productkey provmethod=provmethod rack=rack room=room routenames=routenames serial=serial serialflow=serialflow serialport=serialport serialspeed=serialspeed servicenode=servicenode setupconserver=setupconserver setupdhcp=setupdhcp setupftp=setupftp setupipforward=setupipforward setupldap=setupldap setupnameserver=setupnameserver setupnfs=setupnfs setupnim=setupnim setupntp=setupntp setupproxydhcp=setupproxydhcp setuptftp=setuptftp sfp=sfp side=side slot=slot storagcontroller=storagcontroller storagetype=storagetype supernode=supernode supportedarchs=supportedarchs supportproxydhcp=supportproxydhcp switch=switch switchinterface=switchinterface switchport=switchport switchvlan=switchvlan syslog=syslog termport=termport termserver=termserver tftpdir=tftpdir tftpserver=tftpserver unit=unit usercomment=usercomment vmbeacon=vmbeacon vmbootorder=vmbootorder vmcfgstore=vmcfgstore vmcluster=vmcluster vmcpus=vmcpus vmhost=vmhost vmmanager=vmmanager vmmaster=vmmaster vmmemory=vmmemory vmnicnicmodel=vmnicnicmodel vmnics=vmnics vmothersetting=vmothersetting vmphyslots=vmphyslots vmstorage=vmstorage vmstoragecache=vmstoragecache vmstorageformat=vmstorageformat vmstoragemodel=vmstoragemodel vmtextconsole=vmtextconsole vmvirtflags=vmvirtflags vmvncport=vmvncport xcatmaster=xcatmaster zonename=zonename   nicaliases.eth0="moe larry curly" nicaliases.eth1="tom|jerry" niccustomscripts.eth0="configeth eth0" niccustomscripts.ib0="configib ib0" nicdevices.bond0="eth0|eth2" nicdevices.br0=bond0 nicextraparams.eth0="MTU=1500" nicextraparams.ib0="MTU=65520 CONNECTED_MODE=yes" nichostnameprefixes.eth0="eth0-" nichostnameprefixes.ib0="ib-" nichostnamesuffixes.eth0="-eth0" nichostnamesuffixes.ib0="-ib0" nicips.ib0=10.10.100.9 nicips.enP48p1s0f0=129.40.234.11 nicips.ib1=10.11.100.9 nicnetworks.enP5p1s0f1.4=xcat_bmc nicnetworks.enP48p1s0f1=xcat_util nicnetworks.ib0=IB00 nicnetworks.enP48p1s0f0=pub_yellow nicnetworks.ib3=IB03 nicnetworks.ib2=IB02 nicnetworks.enP5p1s0f1=xcat_compute nicnetworks.ib1=IB01 nicnetworks.enP5p1s0f1.5=xcat_infra nicnetworks.enP5p1s0f1.6=xcat_pdu nicsadapter.enP3p3s0f1="mac=98:be:94:59:fa:cd linkstate=DOWN" nicsadapter.enP3p3s0f2="mac=98:be:94:59:fa:ce candidatename=enP3p3s0f2/enx98be9459face" nictypes.enP5p1s0f1.4=unused nictypes.enP48p1s0f1=unused nictypes.ib0=Infiniband nictypes.enP48p1s0f0=Ethernet nictypes.ib3=unused nictypes.ib2=unused nictypes.enP5p1s0f1=unused nictypes.ib1=Infiniband nictypes.enP5p1s0f1.5=unused nictypes.enP5p1s0f1.6=unused
+cmd:mkdef -t node -o bogusnode groups=bogusgroup mgt=kvm  addkcmdline=addkcmdline arch=ppc64le authdomain=authdomain cfgmgr=cfgmgr cfgmgtroles=cfgmgtroles cfgserver=cfgserver chain=chain chassis=chassis cmdmapping=cmdmapping cons=cons conserver=conserver consoleondemand=consoleondemand cpucount=cpucount cputype=cputype dhcpinterfaces=dhcpinterfaces disksize=disksize domainadminpassword=domainadminpassword domainadminuser=domainadminuser domaintype=domaintype getmac=getmac  height=height hidden=hidden hostcluster=hostcluster hostinterface=hostinterface hostmanager=hostmanager hostnames=hostnames hosttype=hosttype id=5 installnic=installnic interface=interface ip=10.10.10.10 iscsipassword=iscsipassword iscsiserver=iscsiserver iscsitarget=iscsitarget iscsiuserid=iscsiuserid mac=42:d6:0a:03:05:08 memory=memory migrationdest=migrationdest monserver=monserver mpa=mpa mtm=mtm nameservers=nameservers netboot=grub2 nfsdir=nfsdir nfsserver=nfsserver  nimserver=nimserver node=node ondiscover=ondiscover osvolume=osvolume otherinterfaces=otherinterfaces ou=ou pdu=pdu postbootscripts=postbootscripts postscripts=postscripts power=power prescripts-begin=prescripts-begin prescripts-end=prescripts-end primarynic=primarynic primarysn=primarysn productkey=productkey provmethod=provmethod rack=rack room=room routenames=routenames serial=serial serialflow=serialflow serialport=serialport serialspeed=serialspeed servicenode=servicenode setupconserver=0 setupdhcp=0 setupftp=setupftp setupipforward=0 setupldap=0 setupnameserver=0 setupnfs=0 setupnim=setupnim setupntp=0 setupproxydhcp=0 setuptftp=0 sfp=sfp side=side slot=slot storagcontroller=storagcontroller storagetype=storagetype supernode=supernode supportedarchs=supportedarchs supportproxydhcp=supportproxydhcp switch=switch switchinterface=switchinterface switchport=50 switchvlan=switchvlan syslog=syslog termport=termport termserver=termserver tftpdir=tftpdir tftpserver=tftpserver unit=unit usercomment=usercomment vmbeacon=vmbeacon vmbootorder=vmbootorder vmcfgstore=vmcfgstore vmcluster=vmcluster vmcpus=vmcpus vmhost=vmhost vmmanager=vmmanager vmmaster=vmmaster vmmemory=vmmemory vmnicnicmodel=vmnicnicmodel vmnics=vmnics vmothersetting=vmothersetting vmphyslots=vmphyslots vmstorage=vmstorage vmstoragecache=vmstoragecache vmstorageformat=vmstorageformat vmstoragemodel=vmstoragemodel vmtextconsole=vmtextconsole vmvirtflags=vmvirtflags vmvncport=vmvncport xcatmaster=xcatmaster zonename=zonename   nicaliases.eth0="moe larry curly" nicaliases.eth1="tom|jerry" niccustomscripts.eth0="configeth eth0" niccustomscripts.ib0="configib ib0" nicdevices.bond0="eth0|eth2" nicdevices.br0=bond0 nicextraparams.eth0="MTU=1500" nicextraparams.ib0="MTU=65520 CONNECTED_MODE=yes" nichostnameprefixes.eth0="eth0-" nichostnameprefixes.ib0="ib-" nichostnamesuffixes.eth0="-eth0" nichostnamesuffixes.ib0="-ib0" nicips.ib0=10.10.100.9 nicips.enP48p1s0f0=129.40.234.11 nicips.ib1=10.11.100.9 nicnetworks.enP5p1s0f1.4=xcat_bmc nicnetworks.enP48p1s0f1=xcat_util nicnetworks.ib0=IB00 nicnetworks.enP48p1s0f0=pub_yellow nicnetworks.ib3=IB03 nicnetworks.ib2=IB02 nicnetworks.enP5p1s0f1=xcat_compute nicnetworks.ib1=IB01 nicnetworks.enP5p1s0f1.5=xcat_infra nicnetworks.enP5p1s0f1.6=xcat_pdu nicsadapter.enP3p3s0f1="mac=98:be:94:59:fa:cd linkstate=DOWN" nicsadapter.enP3p3s0f2="mac=98:be:94:59:fa:ce candidatename=enP3p3s0f2/enx98be9459face" nictypes.enP5p1s0f1.4=unused nictypes.enP48p1s0f1=unused nictypes.ib0=Infiniband nictypes.enP48p1s0f0=Ethernet nictypes.ib3=unused nictypes.ib2=unused nictypes.enP5p1s0f1=unused nictypes.ib1=Infiniband nictypes.enP5p1s0f1.5=unused nictypes.enP5p1s0f1.6=unused
 check:rc==0
 cmd:lsdef bogusnode -z|sort -t'=' -k1 |tee  /tmp/export_import_single_kvm_by_yaml/srcbogusnode.stanza
 check:rc==0
@@ -223,7 +223,7 @@ cmd:ssh $$DSTMN 'lsdef bogusnode > /dev/null 2>&1;if [[ $? -eq 0 ]]; then lsdef 
 check:rc==0
 cmd:ssh $$DSTMN 'lsdef -t group bogusgroup  > /dev/null 2>&1;if [[ $? -eq 0 ]]; then lsdef -t group bogusgroup -z > /tmp/export_import_single_pdu_by_json_$$DSTMN/bogusgroup.stanza; rmdef -t group bogusgroup;fi'
 check:rc==0
-cmd:mkdef -t node -o bogusnode groups=bogusgroup mgt=pdu nodetype=pdu  addkcmdline=addkcmdline arch=arch authdomain=authdomain authkey=authkey authtype=authtype cfgmgr=cfgmgr cfgmgtroles=cfgmgtroles cfgserver=cfgserver chain=chain chassis=chassis cmdmapping=cmdmapping community=community cons=cons conserver=conserver consoleondemand=consoleondemand cpucount=cpucount cputype=cputype dhcpinterfaces=dhcpinterfaces disksize=disksize domainadminpassword=domainadminpassword domainadminuser=domainadminuser domaintype=domaintype getmac=getmac hcp=hcp height=height hidden=hidden hostcluster=hostcluster hostinterface=hostinterface hostmanager=hostmanager hostnames=hostnames hosttype=hosttype id=id installnic=installnic interface=interface ip=ip iscsipassword=iscsipassword iscsiserver=iscsiserver iscsitarget=iscsitarget iscsiuserid=iscsiuserid mac=mac memory=memory migrationdest=migrationdest monserver=monserver mpa=mpa mtm=mtm nameservers=nameservers netboot=netboot nfsdir=nfsdir nfsserver=nfsserver  nimserver=nimserver node=node ondiscover=ondiscover  osvolume=osvolume otherinterfaces=otherinterfaces ou=ou outlet=outlet password=password pdu=pdu pdutype=pdutype postbootscripts=postbootscripts postscripts=postscripts power=power prescripts-begin=prescripts-begin prescripts-end=prescripts-end primarynic=primarynic primarysn=primarysn privkey=privkey privtype=privtype productkey=productkey provmethod=provmethod rack=rack room=room routenames=routenames seclevel=seclevel serial=serial serialflow=serialflow serialport=serialport serialspeed=serialspeed servicenode=servicenode setupconserver=setupconserver setupdhcp=setupdhcp setupftp=setupftp setupipforward=setupipforward setupldap=setupldap setupnameserver=setupnameserver setupnfs=setupnfs setupnim=setupnim setupntp=setupntp setupproxydhcp=setupproxydhcp setuptftp=setuptftp sfp=sfp side=side slot=slot snmpuser=snmpuser snmpversion=snmpversion storagcontroller=storagcontroller storagetype=storagetype supernode=supernode supportedarchs=supportedarchs supportproxydhcp=supportproxydhcp switch=switch switchinterface=switchinterface switchport=switchport switchvlan=switchvlan syslog=syslog termport=termport termserver=termserver tftpdir=tftpdir tftpserver=tftpserver unit=unit usercomment=usercomment username=username vmbeacon=vmbeacon vmbootorder=vmbootorder vmcfgstore=vmcfgstore vmcluster=vmcluster vmmanager=vmmanager vmmaster=vmmaster vmnicnicmodel=vmnicnicmodel vmphyslots=vmphyslots vmstorage=vmstorage vmstoragecache=vmstoragecache vmstorageformat=vmstorageformat vmstoragemodel=vmstoragemodel vmtextconsole=vmtextconsole vmvirtflags=vmvirtflags vmvncport=vmvncport xcatmaster=xcatmaster zonename=zonename nicaliases.eth0="moe larry curly" nicaliases.eth1="tom|jerry" niccustomscripts.eth0="configeth eth0" niccustomscripts.ib0="configib ib0" nicdevices.bond0="eth0|eth2" nicdevices.br0=bond0 nicextraparams.eth0="MTU=1500" nicextraparams.ib0="MTU=65520 CONNECTED_MODE=yes" nichostnameprefixes.eth0="eth0-" nichostnameprefixes.ib0="ib-" nichostnamesuffixes.eth0="-eth0" nichostnamesuffixes.ib0="-ib0" nicips.ib0=10.10.100.9 nicips.enP48p1s0f0=129.40.234.11 nicips.ib1=10.11.100.9 nicnetworks.enP5p1s0f1.4=xcat_bmc nicnetworks.enP48p1s0f1=xcat_util nicnetworks.ib0=IB00 nicnetworks.enP48p1s0f0=pub_yellow nicnetworks.ib3=IB03 nicnetworks.ib2=IB02 nicnetworks.enP5p1s0f1=xcat_compute nicnetworks.ib1=IB01 nicnetworks.enP5p1s0f1.5=xcat_infra nicnetworks.enP5p1s0f1.6=xcat_pdu nicsadapter.enP3p3s0f1="mac=98:be:94:59:fa:cd linkstate=DOWN" nicsadapter.enP3p3s0f2="mac=98:be:94:59:fa:ce candidatename=enP3p3s0f2/enx98be9459face" nictypes.enP5p1s0f1.4=unused nictypes.enP48p1s0f1=unused nictypes.ib0=Infiniband nictypes.enP48p1s0f0=Ethernet nictypes.ib3=unused nictypes.ib2=unused nictypes.enP5p1s0f1=unused nictypes.ib1=Infiniband nictypes.enP5p1s0f1.5=unused nictypes.enP5p1s0f1.6=unused
+cmd:mkdef -t node -o bogusnode groups=bogusgroup mgt=pdu nodetype=pdu  addkcmdline=addkcmdline arch=ppc64 authdomain=authdomain authkey=authkey authtype=MD5 cfgmgr=cfgmgr cfgmgtroles=cfgmgtroles cfgserver=cfgserver chain=chain chassis=chassis cmdmapping=cmdmapping community=community cons=cons conserver=conserver consoleondemand=consoleondemand cpucount=cpucount cputype=cputype dhcpinterfaces=dhcpinterfaces disksize=disksize domainadminpassword=domainadminpassword domainadminuser=domainadminuser domaintype=domaintype getmac=getmac  height=height hidden=hidden hostcluster=hostcluster hostinterface=hostinterface hostmanager=hostmanager hostnames=hostnames hosttype=hosttype id=5 installnic=installnic interface=interface ip=10.10.10.10 iscsipassword=iscsipassword iscsiserver=iscsiserver iscsitarget=iscsitarget iscsiuserid=iscsiuserid mac=42:d6:0a:03:05:08 memory=memory migrationdest=migrationdest monserver=monserver mpa=mpa mtm=mtm nameservers=nameservers netboot=grub2 nfsdir=nfsdir nfsserver=nfsserver  nimserver=nimserver node=node ondiscover=ondiscover  osvolume=osvolume otherinterfaces=otherinterfaces ou=ou outlet=outlet password=password pdu=pdu pdutype=pdutype postbootscripts=postbootscripts postscripts=postscripts power=power prescripts-begin=prescripts-begin prescripts-end=prescripts-end primarynic=primarynic primarysn=primarysn privkey=privkey privtype=AES productkey=productkey provmethod=provmethod rack=rack room=room routenames=routenames seclevel=noAuthNoPriv serial=serial serialflow=serialflow serialport=serialport serialspeed=serialspeed servicenode=servicenode setupconserver=0 setupdhcp=0 setupftp=setupftp setupipforward=0 setupldap=0 setupnameserver=0 setupnfs=0 setupnim=setupnim setupntp=0 setupproxydhcp=0 setuptftp=0 sfp=sfp side=side slot=slot snmpuser=snmpuser snmpversion=snmpversion storagcontroller=storagcontroller storagetype=storagetype supernode=supernode supportedarchs=supportedarchs supportproxydhcp=supportproxydhcp switch=switch switchinterface=switchinterface switchport=50 switchvlan=switchvlan syslog=syslog termport=termport termserver=termserver tftpdir=tftpdir tftpserver=tftpserver unit=unit usercomment=usercomment username=username vmbeacon=vmbeacon vmbootorder=vmbootorder vmcfgstore=vmcfgstore vmcluster=vmcluster vmmanager=vmmanager vmmaster=vmmaster vmnicnicmodel=vmnicnicmodel vmphyslots=vmphyslots vmstorage=vmstorage vmstoragecache=vmstoragecache vmstorageformat=vmstorageformat vmstoragemodel=vmstoragemodel vmtextconsole=vmtextconsole vmvirtflags=vmvirtflags vmvncport=vmvncport xcatmaster=xcatmaster zonename=zonename nicaliases.eth0="moe larry curly" nicaliases.eth1="tom|jerry" niccustomscripts.eth0="configeth eth0" niccustomscripts.ib0="configib ib0" nicdevices.bond0="eth0|eth2" nicdevices.br0=bond0 nicextraparams.eth0="MTU=1500" nicextraparams.ib0="MTU=65520 CONNECTED_MODE=yes" nichostnameprefixes.eth0="eth0-" nichostnameprefixes.ib0="ib-" nichostnamesuffixes.eth0="-eth0" nichostnamesuffixes.ib0="-ib0" nicips.ib0=10.10.100.9 nicips.enP48p1s0f0=129.40.234.11 nicips.ib1=10.11.100.9 nicnetworks.enP5p1s0f1.4=xcat_bmc nicnetworks.enP48p1s0f1=xcat_util nicnetworks.ib0=IB00 nicnetworks.enP48p1s0f0=pub_yellow nicnetworks.ib3=IB03 nicnetworks.ib2=IB02 nicnetworks.enP5p1s0f1=xcat_compute nicnetworks.ib1=IB01 nicnetworks.enP5p1s0f1.5=xcat_infra nicnetworks.enP5p1s0f1.6=xcat_pdu nicsadapter.enP3p3s0f1="mac=98:be:94:59:fa:cd linkstate=DOWN" nicsadapter.enP3p3s0f2="mac=98:be:94:59:fa:ce candidatename=enP3p3s0f2/enx98be9459face" nictypes.enP5p1s0f1.4=unused nictypes.enP48p1s0f1=unused nictypes.ib0=Infiniband nictypes.enP48p1s0f0=Ethernet nictypes.ib3=unused nictypes.ib2=unused nictypes.enP5p1s0f1=unused nictypes.ib1=Infiniband nictypes.enP5p1s0f1.5=unused nictypes.enP5p1s0f1.6=unused
 check:rc==0
 cmd:lsdef bogusnode -z|sort -t'=' -k1 |tee  /tmp/export_import_single_pdu_by_json/srcbogusnode.stanza
 check:rc==0
@@ -275,7 +275,7 @@ cmd:ssh $$DSTMN 'lsdef bogusnode > /dev/null 2>&1;if [[ $? -eq 0 ]]; then lsdef 
 check:rc==0
 cmd:ssh $$DSTMN 'lsdef -t group bogusgroup  > /dev/null 2>&1;if [[ $? -eq 0 ]]; then lsdef -t group bogusgroup -z > /tmp/export_import_single_pdu_by_yaml_$$DSTMN/bogusgroup.stanza; rmdef -t group bogusgroup;fi'
 check:rc==0
-cmd:mkdef -t node -o bogusnode groups=bogusgroup mgt=pdu nodetype=pdu  addkcmdline=addkcmdline arch=arch authdomain=authdomain authkey=authkey authtype=authtype cfgmgr=cfgmgr cfgmgtroles=cfgmgtroles cfgserver=cfgserver chain=chain chassis=chassis cmdmapping=cmdmapping community=community cons=cons conserver=conserver consoleondemand=consoleondemand cpucount=cpucount cputype=cputype dhcpinterfaces=dhcpinterfaces disksize=disksize domainadminpassword=domainadminpassword domainadminuser=domainadminuser domaintype=domaintype getmac=getmac hcp=hcp height=height hidden=hidden hostcluster=hostcluster hostinterface=hostinterface hostmanager=hostmanager hostnames=hostnames hosttype=hosttype id=id installnic=installnic interface=interface ip=ip iscsipassword=iscsipassword iscsiserver=iscsiserver iscsitarget=iscsitarget iscsiuserid=iscsiuserid mac=mac memory=memory migrationdest=migrationdest monserver=monserver mpa=mpa mtm=mtm nameservers=nameservers netboot=netboot nfsdir=nfsdir nfsserver=nfsserver  nimserver=nimserver node=node ondiscover=ondiscover  osvolume=osvolume otherinterfaces=otherinterfaces ou=ou outlet=outlet password=password pdu=pdu pdutype=pdutype postbootscripts=postbootscripts postscripts=postscripts power=power prescripts-begin=prescripts-begin prescripts-end=prescripts-end primarynic=primarynic primarysn=primarysn privkey=privkey privtype=privtype productkey=productkey provmethod=provmethod rack=rack room=room routenames=routenames seclevel=seclevel serial=serial serialflow=serialflow serialport=serialport serialspeed=serialspeed servicenode=servicenode setupconserver=setupconserver setupdhcp=setupdhcp setupftp=setupftp setupipforward=setupipforward setupldap=setupldap setupnameserver=setupnameserver setupnfs=setupnfs setupnim=setupnim setupntp=setupntp setupproxydhcp=setupproxydhcp setuptftp=setuptftp sfp=sfp side=side slot=slot snmpuser=snmpuser snmpversion=snmpversion storagcontroller=storagcontroller storagetype=storagetype supernode=supernode supportedarchs=supportedarchs supportproxydhcp=supportproxydhcp switch=switch switchinterface=switchinterface switchport=switchport switchvlan=switchvlan syslog=syslog termport=termport termserver=termserver tftpdir=tftpdir tftpserver=tftpserver unit=unit usercomment=usercomment username=username vmbeacon=vmbeacon vmbootorder=vmbootorder vmcfgstore=vmcfgstore vmcluster=vmcluster vmmanager=vmmanager vmmaster=vmmaster vmnicnicmodel=vmnicnicmodel vmphyslots=vmphyslots vmstorage=vmstorage vmstoragecache=vmstoragecache vmstorageformat=vmstorageformat vmstoragemodel=vmstoragemodel vmtextconsole=vmtextconsole vmvirtflags=vmvirtflags vmvncport=vmvncport xcatmaster=xcatmaster zonename=zonename nicaliases.eth0="moe larry curly" nicaliases.eth1="tom|jerry" niccustomscripts.eth0="configeth eth0" niccustomscripts.ib0="configib ib0" nicdevices.bond0="eth0|eth2" nicdevices.br0=bond0 nicextraparams.eth0="MTU=1500" nicextraparams.ib0="MTU=65520 CONNECTED_MODE=yes" nichostnameprefixes.eth0="eth0-" nichostnameprefixes.ib0="ib-" nichostnamesuffixes.eth0="-eth0" nichostnamesuffixes.ib0="-ib0" nicips.ib0=10.10.100.9 nicips.enP48p1s0f0=129.40.234.11 nicips.ib1=10.11.100.9 nicnetworks.enP5p1s0f1.4=xcat_bmc nicnetworks.enP48p1s0f1=xcat_util nicnetworks.ib0=IB00 nicnetworks.enP48p1s0f0=pub_yellow nicnetworks.ib3=IB03 nicnetworks.ib2=IB02 nicnetworks.enP5p1s0f1=xcat_compute nicnetworks.ib1=IB01 nicnetworks.enP5p1s0f1.5=xcat_infra nicnetworks.enP5p1s0f1.6=xcat_pdu nicsadapter.enP3p3s0f1="mac=98:be:94:59:fa:cd linkstate=DOWN" nicsadapter.enP3p3s0f2="mac=98:be:94:59:fa:ce candidatename=enP3p3s0f2/enx98be9459face" nictypes.enP5p1s0f1.4=unused nictypes.enP48p1s0f1=unused nictypes.ib0=Infiniband nictypes.enP48p1s0f0=Ethernet nictypes.ib3=unused nictypes.ib2=unused nictypes.enP5p1s0f1=unused nictypes.ib1=Infiniband nictypes.enP5p1s0f1.5=unused nictypes.enP5p1s0f1.6=unused
+cmd:mkdef -t node -o bogusnode groups=bogusgroup mgt=pdu nodetype=pdu  addkcmdline=addkcmdline arch=ppc64 authdomain=authdomain authkey=authkey authtype=MD5 cfgmgr=cfgmgr cfgmgtroles=cfgmgtroles cfgserver=cfgserver chain=chain chassis=chassis cmdmapping=cmdmapping community=community cons=cons conserver=conserver consoleondemand=consoleondemand cpucount=cpucount cputype=cputype dhcpinterfaces=dhcpinterfaces disksize=disksize domainadminpassword=domainadminpassword domainadminuser=domainadminuser domaintype=domaintype getmac=getmac  height=height hidden=hidden hostcluster=hostcluster hostinterface=hostinterface hostmanager=hostmanager hostnames=hostnames hosttype=hosttype id=5 installnic=installnic interface=interface ip=10.10.10.10 iscsipassword=iscsipassword iscsiserver=iscsiserver iscsitarget=iscsitarget iscsiuserid=iscsiuserid mac=42:d6:0a:03:05:08 memory=memory migrationdest=migrationdest monserver=monserver mpa=mpa mtm=mtm nameservers=nameservers netboot=grub2 nfsdir=nfsdir nfsserver=nfsserver  nimserver=nimserver node=node ondiscover=ondiscover  osvolume=osvolume otherinterfaces=otherinterfaces ou=ou outlet=outlet password=password pdu=pdu pdutype=pdutype postbootscripts=postbootscripts postscripts=postscripts power=power prescripts-begin=prescripts-begin prescripts-end=prescripts-end primarynic=primarynic primarysn=primarysn privkey=privkey privtype=AES productkey=productkey provmethod=provmethod rack=rack room=room routenames=routenames seclevel=noAuthNoPriv serial=serial serialflow=serialflow serialport=serialport serialspeed=serialspeed servicenode=servicenode setupconserver=0 setupdhcp=0 setupftp=setupftp setupipforward=0 setupldap=0 setupnameserver=0 setupnfs=0 setupnim=setupnim setupntp=0 setupproxydhcp=0 setuptftp=0 sfp=sfp side=side slot=slot snmpuser=snmpuser snmpversion=snmpversion storagcontroller=storagcontroller storagetype=storagetype supernode=supernode supportedarchs=supportedarchs supportproxydhcp=supportproxydhcp switch=switch switchinterface=switchinterface switchport=50 switchvlan=switchvlan syslog=syslog termport=termport termserver=termserver tftpdir=tftpdir tftpserver=tftpserver unit=unit usercomment=usercomment username=username vmbeacon=vmbeacon vmbootorder=vmbootorder vmcfgstore=vmcfgstore vmcluster=vmcluster vmmanager=vmmanager vmmaster=vmmaster vmnicnicmodel=vmnicnicmodel vmphyslots=vmphyslots vmstorage=vmstorage vmstoragecache=vmstoragecache vmstorageformat=vmstorageformat vmstoragemodel=vmstoragemodel vmtextconsole=vmtextconsole vmvirtflags=vmvirtflags vmvncport=vmvncport xcatmaster=xcatmaster zonename=zonename nicaliases.eth0="moe larry curly" nicaliases.eth1="tom|jerry" niccustomscripts.eth0="configeth eth0" niccustomscripts.ib0="configib ib0" nicdevices.bond0="eth0|eth2" nicdevices.br0=bond0 nicextraparams.eth0="MTU=1500" nicextraparams.ib0="MTU=65520 CONNECTED_MODE=yes" nichostnameprefixes.eth0="eth0-" nichostnameprefixes.ib0="ib-" nichostnamesuffixes.eth0="-eth0" nichostnamesuffixes.ib0="-ib0" nicips.ib0=10.10.100.9 nicips.enP48p1s0f0=129.40.234.11 nicips.ib1=10.11.100.9 nicnetworks.enP5p1s0f1.4=xcat_bmc nicnetworks.enP48p1s0f1=xcat_util nicnetworks.ib0=IB00 nicnetworks.enP48p1s0f0=pub_yellow nicnetworks.ib3=IB03 nicnetworks.ib2=IB02 nicnetworks.enP5p1s0f1=xcat_compute nicnetworks.ib1=IB01 nicnetworks.enP5p1s0f1.5=xcat_infra nicnetworks.enP5p1s0f1.6=xcat_pdu nicsadapter.enP3p3s0f1="mac=98:be:94:59:fa:cd linkstate=DOWN" nicsadapter.enP3p3s0f2="mac=98:be:94:59:fa:ce candidatename=enP3p3s0f2/enx98be9459face" nictypes.enP5p1s0f1.4=unused nictypes.enP48p1s0f1=unused nictypes.ib0=Infiniband nictypes.enP48p1s0f0=Ethernet nictypes.ib3=unused nictypes.ib2=unused nictypes.enP5p1s0f1=unused nictypes.ib1=Infiniband nictypes.enP5p1s0f1.5=unused nictypes.enP5p1s0f1.6=unused
 check:rc==0
 cmd:lsdef bogusnode -z|sort -t'=' -k1 |tee  /tmp/export_import_single_pdu_by_yaml/srcbogusnode.stanza
 check:rc==0
@@ -327,7 +327,7 @@ cmd:ssh $$DSTMN 'lsdef bogusnode > /dev/null 2>&1;if [[ $? -eq 0 ]]; then lsdef 
 check:rc==0
 cmd:ssh $$DSTMN 'lsdef -t group bogusgroup  > /dev/null 2>&1;if [[ $? -eq 0 ]]; then lsdef -t group bogusgroup -z > /tmp/export_import_single_boston_by_yaml_$$DSTMN/bogusgroup.stanza; rmdef -t group bogusgroup;fi'
 check:rc==0
-cmd:mkdef -t node -o bogusnode groups=bogusgroup mgt=ipmi  addkcmdline=addkcmdline  arch=arch authdomain=authdomain bmc=bmc bmcpassword=bmcpassword bmcport=bmcport bmcusername=bmcusername bmcvlantag=bmcvlantag cfgmgr=cfgmgr cfgmgtroles=cfgmgtroles cfgserver=cfgserver chain=chain chassis=chassis cmdmapping=cmdmapping cons=cons conserver=conserver consoleondemand=consoleondemand cpucount=cpucount cputype=cputype dhcpinterfaces=dhcpinterfaces disksize=disksize domainadminpassword=domainadminpassword domainadminuser=domainadminuser domaintype=domaintype getmac=getmac hcp=hcp height=height hidden=hidden hostcluster=hostcluster hostinterface=hostinterface hostmanager=hostmanager hostnames=hostnames hosttype=hosttype hwtype=hwtype id=id installnic=installnic interface=interface ip=ip iscsipassword=iscsipassword iscsiserver=iscsiserver iscsitarget=iscsitarget iscsiuserid=iscsiuserid mac=mac memory=memory migrationdest=migrationdest monserver=monserver mpa=mpa mtm=mtm nameservers=nameservers netboot=netboot nfsdir=nfsdir nfsserver=nfsserver nimserver=nimserver node=node ondiscover=ondiscover osvolume=osvolume otherinterfaces=otherinterfaces ou=ou pdu=pdu postbootscripts=postbootscripts postscripts=postscripts power=power prescripts-begin=prescripts-begin prescripts-end=prescripts-end primarynic=primarynic primarysn=primarysn productkey=productkey  provmethod=provmethod rack=rack room=room routenames=routenames serial=serial serialflow=serialflow serialport=serialport serialspeed=serialspeed servicenode=servicenode setupconserver=setupconserver setupdhcp=setupdhcp setupftp=setupftp setupipforward=setupipforward setupldap=setupldap setupnameserver=setupnameserver setupnfs=setupnfs setupnim=setupnim setupntp=setupntp setupproxydhcp=setupproxydhcp setuptftp=setuptftp sfp=sfp side=side slot=slot slotid=slotid  storagcontroller=storagcontroller storagetype=storagetype supernode=supernode supportedarchs=supportedarchs supportproxydhcp=supportproxydhcp switch=switch switchinterface=switchinterface switchport=switchport switchvlan=switchvlan syslog=syslog termport=termport termserver=termserver tftpdir=tftpdir tftpserver=tftpserver unit=unit usercomment=usercomment vmbeacon=vmbeacon vmbootorder=vmbootorder vmcfgstore=vmcfgstore vmcluster=vmcluster vmmanager=vmmanager vmmaster=vmmaster vmnicnicmodel=vmnicnicmodel vmphyslots=vmphyslots vmstorage=vmstorage vmstoragecache=vmstoragecache vmstorageformat=vmstorageformat vmstoragemodel=vmstoragemodel vmtextconsole=vmtextconsole vmvirtflags=vmvirtflags vmvncport=vmvncport xcatmaster=xcatmaster zonename=zonename  nicaliases.eth0="moe larry curly" nicaliases.eth1="tom|jerry" niccustomscripts.eth0="configeth eth0" niccustomscripts.ib0="configib ib0" nicdevices.bond0="eth0|eth2" nicdevices.br0=bond0 nicextraparams.eth0="MTU=1500" nicextraparams.ib0="MTU=65520 CONNECTED_MODE=yes" nichostnameprefixes.eth0="eth0-" nichostnameprefixes.ib0="ib-" nichostnamesuffixes.eth0="-eth0" nichostnamesuffixes.ib0="-ib0" nicips.ib0=10.10.100.9 nicips.enP48p1s0f0=129.40.234.11 nicips.ib1=10.11.100.9 nicnetworks.enP5p1s0f1.4=xcat_bmc nicnetworks.enP48p1s0f1=xcat_util nicnetworks.ib0=IB00 nicnetworks.enP48p1s0f0=pub_yellow nicnetworks.ib3=IB03 nicnetworks.ib2=IB02 nicnetworks.enP5p1s0f1=xcat_compute nicnetworks.ib1=IB01 nicnetworks.enP5p1s0f1.5=xcat_infra nicnetworks.enP5p1s0f1.6=xcat_pdu nicsadapter.enP3p3s0f1="mac=98:be:94:59:fa:cd linkstate=DOWN" nicsadapter.enP3p3s0f2="mac=98:be:94:59:fa:ce candidatename=enP3p3s0f2/enx98be9459face" nictypes.enP5p1s0f1.4=unused nictypes.enP48p1s0f1=unused nictypes.ib0=Infiniband nictypes.enP48p1s0f0=Ethernet nictypes.ib3=unused nictypes.ib2=unused nictypes.enP5p1s0f1=unused nictypes.ib1=Infiniband nictypes.enP5p1s0f1.5=unused nictypes.enP5p1s0f1.6=unused
+cmd:mkdef -t node -o bogusnode groups=bogusgroup mgt=ipmi  addkcmdline=addkcmdline  arch=ppc64le authdomain=authdomain bmc=bmc bmcpassword=bmcpassword bmcport=bmcport bmcusername=bmcusername bmcvlantag=bmcvlantag cfgmgr=cfgmgr cfgmgtroles=cfgmgtroles cfgserver=cfgserver chain=chain chassis=chassis cmdmapping=cmdmapping cons=cons conserver=conserver consoleondemand=consoleondemand cpucount=cpucount cputype=cputype dhcpinterfaces=dhcpinterfaces disksize=disksize domainadminpassword=domainadminpassword domainadminuser=domainadminuser domaintype=domaintype getmac=getmac  height=height hidden=hidden hostcluster=hostcluster hostinterface=hostinterface hostmanager=hostmanager hostnames=hostnames hosttype=hosttype hwtype=hwtype id=5 installnic=installnic interface=interface ip=10.10.10.10 iscsipassword=iscsipassword iscsiserver=iscsiserver iscsitarget=iscsitarget iscsiuserid=iscsiuserid mac=42:d6:0a:03:05:08 memory=memory migrationdest=migrationdest monserver=monserver mpa=mpa mtm=mtm nameservers=nameservers netboot=grub2 nfsdir=nfsdir nfsserver=nfsserver nimserver=nimserver node=node ondiscover=ondiscover osvolume=osvolume otherinterfaces=otherinterfaces ou=ou pdu=pdu postbootscripts=postbootscripts postscripts=postscripts power=power prescripts-begin=prescripts-begin prescripts-end=prescripts-end primarynic=primarynic primarysn=primarysn productkey=productkey  provmethod=provmethod rack=rack room=room routenames=routenames serial=serial serialflow=serialflow serialport=serialport serialspeed=serialspeed servicenode=servicenode setupconserver=0 setupdhcp=0 setupftp=setupftp setupipforward=0 setupldap=0 setupnameserver=0 setupnfs=0 setupnim=setupnim setupntp=0 setupproxydhcp=0 setuptftp=0 sfp=sfp side=side slot=slot slotid=slotid  storagcontroller=storagcontroller storagetype=storagetype supernode=supernode supportedarchs=supportedarchs supportproxydhcp=supportproxydhcp switch=switch switchinterface=switchinterface switchport=50 switchvlan=switchvlan syslog=syslog termport=termport termserver=termserver tftpdir=tftpdir tftpserver=tftpserver unit=unit usercomment=usercomment vmbeacon=vmbeacon vmbootorder=vmbootorder vmcfgstore=vmcfgstore vmcluster=vmcluster vmmanager=vmmanager vmmaster=vmmaster vmnicnicmodel=vmnicnicmodel vmphyslots=vmphyslots vmstorage=vmstorage vmstoragecache=vmstoragecache vmstorageformat=vmstorageformat vmstoragemodel=vmstoragemodel vmtextconsole=vmtextconsole vmvirtflags=vmvirtflags vmvncport=vmvncport xcatmaster=xcatmaster zonename=zonename  nicaliases.eth0="moe larry curly" nicaliases.eth1="tom|jerry" niccustomscripts.eth0="configeth eth0" niccustomscripts.ib0="configib ib0" nicdevices.bond0="eth0|eth2" nicdevices.br0=bond0 nicextraparams.eth0="MTU=1500" nicextraparams.ib0="MTU=65520 CONNECTED_MODE=yes" nichostnameprefixes.eth0="eth0-" nichostnameprefixes.ib0="ib-" nichostnamesuffixes.eth0="-eth0" nichostnamesuffixes.ib0="-ib0" nicips.ib0=10.10.100.9 nicips.enP48p1s0f0=129.40.234.11 nicips.ib1=10.11.100.9 nicnetworks.enP5p1s0f1.4=xcat_bmc nicnetworks.enP48p1s0f1=xcat_util nicnetworks.ib0=IB00 nicnetworks.enP48p1s0f0=pub_yellow nicnetworks.ib3=IB03 nicnetworks.ib2=IB02 nicnetworks.enP5p1s0f1=xcat_compute nicnetworks.ib1=IB01 nicnetworks.enP5p1s0f1.5=xcat_infra nicnetworks.enP5p1s0f1.6=xcat_pdu nicsadapter.enP3p3s0f1="mac=98:be:94:59:fa:cd linkstate=DOWN" nicsadapter.enP3p3s0f2="mac=98:be:94:59:fa:ce candidatename=enP3p3s0f2/enx98be9459face" nictypes.enP5p1s0f1.4=unused nictypes.enP48p1s0f1=unused nictypes.ib0=Infiniband nictypes.enP48p1s0f0=Ethernet nictypes.ib3=unused nictypes.ib2=unused nictypes.enP5p1s0f1=unused nictypes.ib1=Infiniband nictypes.enP5p1s0f1.5=unused nictypes.enP5p1s0f1.6=unused
 check:rc==0
 cmd:lsdef bogusnode -z|sort -t'=' -k1 |tee  /tmp/export_import_single_boston_by_yaml/srcbogusnode.stanza
 check:rc==0
@@ -378,7 +378,7 @@ cmd:ssh $$DSTMN 'lsdef bogusnode > /dev/null 2>&1;if [[ $? -eq 0 ]]; then lsdef 
 check:rc==0
 cmd:ssh $$DSTMN 'lsdef -t group bogusgroup  > /dev/null 2>&1;if [[ $? -eq 0 ]]; then lsdef -t group bogusgroup -z > /tmp/export_import_single_boston_by_json_$$DSTMN/bogusgroup.stanza; rmdef -t group bogusgroup;fi'
 check:rc==0
-cmd:mkdef -t node -o bogusnode groups=bogusgroup mgt=ipmi  addkcmdline=addkcmdline  arch=arch authdomain=authdomain bmc=bmc bmcpassword=bmcpassword bmcport=bmcport bmcusername=bmcusername bmcvlantag=bmcvlantag cfgmgr=cfgmgr cfgmgtroles=cfgmgtroles cfgserver=cfgserver chain=chain chassis=chassis cmdmapping=cmdmapping cons=cons conserver=conserver consoleondemand=consoleondemand cpucount=cpucount cputype=cputype dhcpinterfaces=dhcpinterfaces disksize=disksize domainadminpassword=domainadminpassword domainadminuser=domainadminuser domaintype=domaintype getmac=getmac hcp=hcp height=height hidden=hidden hostcluster=hostcluster hostinterface=hostinterface hostmanager=hostmanager hostnames=hostnames hosttype=hosttype hwtype=hwtype id=id installnic=installnic interface=interface ip=ip iscsipassword=iscsipassword iscsiserver=iscsiserver iscsitarget=iscsitarget iscsiuserid=iscsiuserid mac=mac memory=memory migrationdest=migrationdest monserver=monserver mpa=mpa mtm=mtm nameservers=nameservers netboot=netboot nfsdir=nfsdir nfsserver=nfsserver nimserver=nimserver node=node ondiscover=ondiscover osvolume=osvolume otherinterfaces=otherinterfaces ou=ou pdu=pdu postbootscripts=postbootscripts postscripts=postscripts power=power prescripts-begin=prescripts-begin prescripts-end=prescripts-end primarynic=primarynic primarysn=primarysn productkey=productkey  provmethod=provmethod rack=rack room=room routenames=routenames serial=serial serialflow=serialflow serialport=serialport serialspeed=serialspeed servicenode=servicenode setupconserver=setupconserver setupdhcp=setupdhcp setupftp=setupftp setupipforward=setupipforward setupldap=setupldap setupnameserver=setupnameserver setupnfs=setupnfs setupnim=setupnim setupntp=setupntp setupproxydhcp=setupproxydhcp setuptftp=setuptftp sfp=sfp side=side slot=slot slotid=slotid  storagcontroller=storagcontroller storagetype=storagetype supernode=supernode supportedarchs=supportedarchs supportproxydhcp=supportproxydhcp switch=switch switchinterface=switchinterface switchport=switchport switchvlan=switchvlan syslog=syslog termport=termport termserver=termserver tftpdir=tftpdir tftpserver=tftpserver unit=unit usercomment=usercomment vmbeacon=vmbeacon vmbootorder=vmbootorder vmcfgstore=vmcfgstore vmcluster=vmcluster vmmanager=vmmanager vmmaster=vmmaster vmnicnicmodel=vmnicnicmodel vmphyslots=vmphyslots vmstorage=vmstorage vmstoragecache=vmstoragecache vmstorageformat=vmstorageformat vmstoragemodel=vmstoragemodel vmtextconsole=vmtextconsole vmvirtflags=vmvirtflags vmvncport=vmvncport xcatmaster=xcatmaster zonename=zonename  nicaliases.eth0="moe larry curly" nicaliases.eth1="tom|jerry" niccustomscripts.eth0="configeth eth0" niccustomscripts.ib0="configib ib0" nicdevices.bond0="eth0|eth2" nicdevices.br0=bond0 nicextraparams.eth0="MTU=1500" nicextraparams.ib0="MTU=65520 CONNECTED_MODE=yes" nichostnameprefixes.eth0="eth0-" nichostnameprefixes.ib0="ib-" nichostnamesuffixes.eth0="-eth0" nichostnamesuffixes.ib0="-ib0" nicips.ib0=10.10.100.9 nicips.enP48p1s0f0=129.40.234.11 nicips.ib1=10.11.100.9 nicnetworks.enP5p1s0f1.4=xcat_bmc nicnetworks.enP48p1s0f1=xcat_util nicnetworks.ib0=IB00 nicnetworks.enP48p1s0f0=pub_yellow nicnetworks.ib3=IB03 nicnetworks.ib2=IB02 nicnetworks.enP5p1s0f1=xcat_compute nicnetworks.ib1=IB01 nicnetworks.enP5p1s0f1.5=xcat_infra nicnetworks.enP5p1s0f1.6=xcat_pdu nicsadapter.enP3p3s0f1="mac=98:be:94:59:fa:cd linkstate=DOWN" nicsadapter.enP3p3s0f2="mac=98:be:94:59:fa:ce candidatename=enP3p3s0f2/enx98be9459face" nictypes.enP5p1s0f1.4=unused nictypes.enP48p1s0f1=unused nictypes.ib0=Infiniband nictypes.enP48p1s0f0=Ethernet nictypes.ib3=unused nictypes.ib2=unused nictypes.enP5p1s0f1=unused nictypes.ib1=Infiniband nictypes.enP5p1s0f1.5=unused nictypes.enP5p1s0f1.6=unused
+cmd:mkdef -t node -o bogusnode groups=bogusgroup mgt=ipmi  addkcmdline=addkcmdline  arch=ppc64le authdomain=authdomain bmc=bmc bmcpassword=bmcpassword bmcport=bmcport bmcusername=bmcusername bmcvlantag=bmcvlantag cfgmgr=cfgmgr cfgmgtroles=cfgmgtroles cfgserver=cfgserver chain=chain chassis=chassis cmdmapping=cmdmapping cons=cons conserver=conserver consoleondemand=consoleondemand cpucount=cpucount cputype=cputype dhcpinterfaces=dhcpinterfaces disksize=disksize domainadminpassword=domainadminpassword domainadminuser=domainadminuser domaintype=domaintype getmac=getmac  height=height hidden=hidden hostcluster=hostcluster hostinterface=hostinterface hostmanager=hostmanager hostnames=hostnames hosttype=hosttype hwtype=hwtype id=5 installnic=installnic interface=interface ip=10.10.10.10 iscsipassword=iscsipassword iscsiserver=iscsiserver iscsitarget=iscsitarget iscsiuserid=iscsiuserid mac=42:d6:0a:03:05:08 memory=memory migrationdest=migrationdest monserver=monserver mpa=mpa mtm=mtm nameservers=nameservers netboot=grub2 nfsdir=nfsdir nfsserver=nfsserver nimserver=nimserver node=node ondiscover=ondiscover osvolume=osvolume otherinterfaces=otherinterfaces ou=ou pdu=pdu postbootscripts=postbootscripts postscripts=postscripts power=power prescripts-begin=prescripts-begin prescripts-end=prescripts-end primarynic=primarynic primarysn=primarysn productkey=productkey  provmethod=provmethod rack=rack room=room routenames=routenames serial=serial serialflow=serialflow serialport=serialport serialspeed=serialspeed servicenode=servicenode setupconserver=0 setupdhcp=0 setupftp=setupftp setupipforward=0 setupldap=0 setupnameserver=0 setupnfs=0 setupnim=setupnim setupntp=0 setupproxydhcp=0 setuptftp=0 sfp=sfp side=side slot=slot slotid=slotid  storagcontroller=storagcontroller storagetype=storagetype supernode=supernode supportedarchs=supportedarchs supportproxydhcp=supportproxydhcp switch=switch switchinterface=switchinterface switchport=50 switchvlan=switchvlan syslog=syslog termport=termport termserver=termserver tftpdir=tftpdir tftpserver=tftpserver unit=unit usercomment=usercomment vmbeacon=vmbeacon vmbootorder=vmbootorder vmcfgstore=vmcfgstore vmcluster=vmcluster vmmanager=vmmanager vmmaster=vmmaster vmnicnicmodel=vmnicnicmodel vmphyslots=vmphyslots vmstorage=vmstorage vmstoragecache=vmstoragecache vmstorageformat=vmstorageformat vmstoragemodel=vmstoragemodel vmtextconsole=vmtextconsole vmvirtflags=vmvirtflags vmvncport=vmvncport xcatmaster=xcatmaster zonename=zonename  nicaliases.eth0="moe larry curly" nicaliases.eth1="tom|jerry" niccustomscripts.eth0="configeth eth0" niccustomscripts.ib0="configib ib0" nicdevices.bond0="eth0|eth2" nicdevices.br0=bond0 nicextraparams.eth0="MTU=1500" nicextraparams.ib0="MTU=65520 CONNECTED_MODE=yes" nichostnameprefixes.eth0="eth0-" nichostnameprefixes.ib0="ib-" nichostnamesuffixes.eth0="-eth0" nichostnamesuffixes.ib0="-ib0" nicips.ib0=10.10.100.9 nicips.enP48p1s0f0=129.40.234.11 nicips.ib1=10.11.100.9 nicnetworks.enP5p1s0f1.4=xcat_bmc nicnetworks.enP48p1s0f1=xcat_util nicnetworks.ib0=IB00 nicnetworks.enP48p1s0f0=pub_yellow nicnetworks.ib3=IB03 nicnetworks.ib2=IB02 nicnetworks.enP5p1s0f1=xcat_compute nicnetworks.ib1=IB01 nicnetworks.enP5p1s0f1.5=xcat_infra nicnetworks.enP5p1s0f1.6=xcat_pdu nicsadapter.enP3p3s0f1="mac=98:be:94:59:fa:cd linkstate=DOWN" nicsadapter.enP3p3s0f2="mac=98:be:94:59:fa:ce candidatename=enP3p3s0f2/enx98be9459face" nictypes.enP5p1s0f1.4=unused nictypes.enP48p1s0f1=unused nictypes.ib0=Infiniband nictypes.enP48p1s0f0=Ethernet nictypes.ib3=unused nictypes.ib2=unused nictypes.enP5p1s0f1=unused nictypes.ib1=Infiniband nictypes.enP5p1s0f1.5=unused nictypes.enP5p1s0f1.6=unused
 check:rc==0
 cmd:lsdef bogusnode -z|sort -t'=' -k1 |tee  /tmp/export_import_single_boston_by_json/srcbogusnode.stanza
 check:rc==0
@@ -429,7 +429,7 @@ cmd:ssh $$DSTMN 'lsdef bogusnode > /dev/null 2>&1;if [[ $? -eq 0 ]]; then lsdef 
 check:rc==0
 cmd:ssh $$DSTMN 'lsdef -t group bogusgroup  > /dev/null 2>&1;if [[ $? -eq 0 ]]; then lsdef -t group bogusgroup -z > /tmp/export_import_single_witherspoon_by_yaml_$$DSTMN/bogusgroup.stanza; rmdef -t group bogusgroup;fi'
 check:rc==0
-cmd:mkdef -t node -o bogusnode groups=bogusgroup mgt=openbmc nodetype=mp  addkcmdline=addkcmdline  arch=arch authdomain=authdomain bmc=bmc bmcpassword=bmcpassword bmcusername=bmcusername bmcvlantag=bmcvlantag cfgmgr=cfgmgr cfgmgtroles=cfgmgtroles cfgserver=cfgserver chain=chain chassis=chassis cmdmapping=cmdmapping cons=cons conserver=conserver consoleondemand=consoleondemand consport=consport cpucount=cpucount cputype=cputype dhcpinterfaces=dhcpinterfaces disksize=disksize domainadminpassword=domainadminpassword domainadminuser=domainadminuser domaintype=domaintype getmac=getmac hcp=hcp height=height hidden=hidden hostcluster=hostcluster hostinterface=hostinterface hostmanager=hostmanager hostnames=hostnames hosttype=hosttype hwtype=hwtype id=id installnic=installnic interface=interface ip=ip iscsipassword=iscsipassword iscsiserver=iscsiserver iscsitarget=iscsitarget iscsiuserid=iscsiuserid  mac=mac memory=memory migrationdest=migrationdest monserver=monserver mpa=mpa mtm=mtm nameservers=nameservers netboot=netboot nfsdir=nfsdir nfsserver=nfsserver  nimserver=nimserver node=node ondiscover=ondiscover osvolume=osvolume otherinterfaces=otherinterfaces ou=ou pdu=pdu postbootscripts=postbootscripts postscripts=postscripts power=power prescripts-begin=prescripts-begin prescripts-end=prescripts-end primarynic=primarynic primarysn=primarysn productkey=productkey provmethod=provmethod rack=rack room=room routenames=routenames serial=serial serialflow=serialflow serialport=serialport serialspeed=serialspeed servicenode=servicenode setupconserver=setupconserver setupdhcp=setupdhcp setupftp=setupftp setupipforward=setupipforward setupldap=setupldap setupnameserver=setupnameserver setupnfs=setupnfs setupnim=setupnim setupntp=setupntp setupproxydhcp=setupproxydhcp setuptftp=setuptftp sfp=sfp side=side slot=slot storagcontroller=storagcontroller storagetype=storagetype supernode=supernode supportedarchs=supportedarchs supportproxydhcp=supportproxydhcp switch=switch switchinterface=switchinterface switchport=switchport switchvlan=switchvlan syslog=syslog termport=termport termserver=termserver tftpdir=tftpdir tftpserver=tftpserver unit=unit usercomment=usercomment vmbeacon=vmbeacon vmbootorder=vmbootorder vmcfgstore=vmcfgstore vmcluster=vmcluster vmmanager=vmmanager vmmaster=vmmaster vmnicnicmodel=vmnicnicmodel vmphyslots=vmphyslots vmstorage=vmstorage vmstoragecache=vmstoragecache vmstorageformat=vmstorageformat vmstoragemodel=vmstoragemodel vmtextconsole=vmtextconsole vmvirtflags=vmvirtflags vmvncport=vmvncport xcatmaster=xcatmaster zonename=zonename  nicaliases.eth0="moe larry curly" nicaliases.eth1="tom|jerry" niccustomscripts.eth0="configeth eth0" niccustomscripts.ib0="configib ib0" nicdevices.bond0="eth0|eth2" nicdevices.br0=bond0 nicextraparams.eth0="MTU=1500" nicextraparams.ib0="MTU=65520 CONNECTED_MODE=yes" nichostnameprefixes.eth0="eth0-" nichostnameprefixes.ib0="ib-" nichostnamesuffixes.eth0="-eth0" nichostnamesuffixes.ib0="-ib0" nicips.ib0=10.10.100.9 nicips.enP48p1s0f0=129.40.234.11 nicips.ib1=10.11.100.9 nicnetworks.enP5p1s0f1.4=xcat_bmc nicnetworks.enP48p1s0f1=xcat_util nicnetworks.ib0=IB00 nicnetworks.enP48p1s0f0=pub_yellow nicnetworks.ib3=IB03 nicnetworks.ib2=IB02 nicnetworks.enP5p1s0f1=xcat_compute nicnetworks.ib1=IB01 nicnetworks.enP5p1s0f1.5=xcat_infra nicnetworks.enP5p1s0f1.6=xcat_pdu nicsadapter.enP3p3s0f1="mac=98:be:94:59:fa:cd linkstate=DOWN" nicsadapter.enP3p3s0f2="mac=98:be:94:59:fa:ce candidatename=enP3p3s0f2/enx98be9459face" nictypes.enP5p1s0f1.4=unused nictypes.enP48p1s0f1=unused nictypes.ib0=Infiniband nictypes.enP48p1s0f0=Ethernet nictypes.ib3=unused nictypes.ib2=unused nictypes.enP5p1s0f1=unused nictypes.ib1=Infiniband nictypes.enP5p1s0f1.5=unused nictypes.enP5p1s0f1.6=unused
+cmd:mkdef -t node -o bogusnode groups=bogusgroup mgt=openbmc nodetype=mp  addkcmdline=addkcmdline  arch=ppc64le authdomain=authdomain bmc=bmc bmcpassword=bmcpassword bmcusername=bmcusername bmcvlantag=bmcvlantag cfgmgr=cfgmgr cfgmgtroles=cfgmgtroles cfgserver=cfgserver chain=chain chassis=chassis cmdmapping=cmdmapping cons=cons conserver=conserver consoleondemand=consoleondemand consport=consport cpucount=cpucount cputype=cputype dhcpinterfaces=dhcpinterfaces disksize=disksize domainadminpassword=domainadminpassword domainadminuser=domainadminuser domaintype=domaintype getmac=getmac  height=height hidden=hidden hostcluster=hostcluster hostinterface=hostinterface hostmanager=hostmanager hostnames=hostnames hosttype=hosttype hwtype=hwtype id=5 installnic=installnic interface=interface ip=10.10.10.10 iscsipassword=iscsipassword iscsiserver=iscsiserver iscsitarget=iscsitarget iscsiuserid=iscsiuserid  mac=42:d6:0a:03:05:08 memory=memory migrationdest=migrationdest monserver=monserver mpa=mpa mtm=mtm nameservers=nameservers netboot=grub2 nfsdir=nfsdir nfsserver=nfsserver  nimserver=nimserver node=node ondiscover=ondiscover osvolume=osvolume otherinterfaces=otherinterfaces ou=ou pdu=pdu postbootscripts=postbootscripts postscripts=postscripts power=power prescripts-begin=prescripts-begin prescripts-end=prescripts-end primarynic=primarynic primarysn=primarysn productkey=productkey provmethod=provmethod rack=rack room=room routenames=routenames serial=serial serialflow=serialflow serialport=serialport serialspeed=serialspeed servicenode=servicenode setupconserver=0 setupdhcp=0 setupftp=setupftp setupipforward=0 setupldap=0 setupnameserver=0 setupnfs=0 setupnim=setupnim setupntp=0 setupproxydhcp=0 setuptftp=0 sfp=sfp side=side slot=slot storagcontroller=storagcontroller storagetype=storagetype supernode=supernode supportedarchs=supportedarchs supportproxydhcp=supportproxydhcp switch=switch switchinterface=switchinterface switchport=50 switchvlan=switchvlan syslog=syslog termport=termport termserver=termserver tftpdir=tftpdir tftpserver=tftpserver unit=unit usercomment=usercomment vmbeacon=vmbeacon vmbootorder=vmbootorder vmcfgstore=vmcfgstore vmcluster=vmcluster vmmanager=vmmanager vmmaster=vmmaster vmnicnicmodel=vmnicnicmodel vmphyslots=vmphyslots vmstorage=vmstorage vmstoragecache=vmstoragecache vmstorageformat=vmstorageformat vmstoragemodel=vmstoragemodel vmtextconsole=vmtextconsole vmvirtflags=vmvirtflags vmvncport=vmvncport xcatmaster=xcatmaster zonename=zonename  nicaliases.eth0="moe larry curly" nicaliases.eth1="tom|jerry" niccustomscripts.eth0="configeth eth0" niccustomscripts.ib0="configib ib0" nicdevices.bond0="eth0|eth2" nicdevices.br0=bond0 nicextraparams.eth0="MTU=1500" nicextraparams.ib0="MTU=65520 CONNECTED_MODE=yes" nichostnameprefixes.eth0="eth0-" nichostnameprefixes.ib0="ib-" nichostnamesuffixes.eth0="-eth0" nichostnamesuffixes.ib0="-ib0" nicips.ib0=10.10.100.9 nicips.enP48p1s0f0=129.40.234.11 nicips.ib1=10.11.100.9 nicnetworks.enP5p1s0f1.4=xcat_bmc nicnetworks.enP48p1s0f1=xcat_util nicnetworks.ib0=IB00 nicnetworks.enP48p1s0f0=pub_yellow nicnetworks.ib3=IB03 nicnetworks.ib2=IB02 nicnetworks.enP5p1s0f1=xcat_compute nicnetworks.ib1=IB01 nicnetworks.enP5p1s0f1.5=xcat_infra nicnetworks.enP5p1s0f1.6=xcat_pdu nicsadapter.enP3p3s0f1="mac=98:be:94:59:fa:cd linkstate=DOWN" nicsadapter.enP3p3s0f2="mac=98:be:94:59:fa:ce candidatename=enP3p3s0f2/enx98be9459face" nictypes.enP5p1s0f1.4=unused nictypes.enP48p1s0f1=unused nictypes.ib0=Infiniband nictypes.enP48p1s0f0=Ethernet nictypes.ib3=unused nictypes.ib2=unused nictypes.enP5p1s0f1=unused nictypes.ib1=Infiniband nictypes.enP5p1s0f1.5=unused nictypes.enP5p1s0f1.6=unused
 check:rc==0
 cmd:lsdef bogusnode -z|sort -t'=' -k1 |tee  /tmp/export_import_single_witherspoon_by_yaml/srcbogusnode.stanza
 check:rc==0
@@ -480,7 +480,7 @@ cmd:ssh $$DSTMN 'lsdef bogusnode > /dev/null 2>&1;if [[ $? -eq 0 ]]; then lsdef 
 check:rc==0
 cmd:ssh $$DSTMN 'lsdef -t group bogusgroup  > /dev/null 2>&1;if [[ $? -eq 0 ]]; then lsdef -t group bogusgroup -z > /tmp/export_import_single_witherspoon_by_json_$$DSTMN/bogusgroup.stanza; rmdef -t group bogusgroup;fi'
 check:rc==0
-cmd:mkdef -t node -o bogusnode groups=bogusgroup mgt=openbmc nodetype=mp  addkcmdline=addkcmdline  arch=arch authdomain=authdomain bmc=bmc bmcpassword=bmcpassword bmcusername=bmcusername bmcvlantag=bmcvlantag cfgmgr=cfgmgr cfgmgtroles=cfgmgtroles cfgserver=cfgserver chain=chain chassis=chassis cmdmapping=cmdmapping cons=cons conserver=conserver consoleondemand=consoleondemand consport=consport cpucount=cpucount cputype=cputype dhcpinterfaces=dhcpinterfaces disksize=disksize domainadminpassword=domainadminpassword domainadminuser=domainadminuser domaintype=domaintype getmac=getmac hcp=hcp height=height hidden=hidden hostcluster=hostcluster hostinterface=hostinterface hostmanager=hostmanager hostnames=hostnames hosttype=hosttype hwtype=hwtype id=id installnic=installnic interface=interface ip=ip iscsipassword=iscsipassword iscsiserver=iscsiserver iscsitarget=iscsitarget iscsiuserid=iscsiuserid  mac=mac memory=memory migrationdest=migrationdest monserver=monserver mpa=mpa mtm=mtm nameservers=nameservers netboot=netboot nfsdir=nfsdir nfsserver=nfsserver  nimserver=nimserver node=node ondiscover=ondiscover osvolume=osvolume otherinterfaces=otherinterfaces ou=ou pdu=pdu postbootscripts=postbootscripts postscripts=postscripts power=power prescripts-begin=prescripts-begin prescripts-end=prescripts-end primarynic=primarynic primarysn=primarysn productkey=productkey provmethod=provmethod rack=rack room=room routenames=routenames serial=serial serialflow=serialflow serialport=serialport serialspeed=serialspeed servicenode=servicenode setupconserver=setupconserver setupdhcp=setupdhcp setupftp=setupftp setupipforward=setupipforward setupldap=setupldap setupnameserver=setupnameserver setupnfs=setupnfs setupnim=setupnim setupntp=setupntp setupproxydhcp=setupproxydhcp setuptftp=setuptftp sfp=sfp side=side slot=slot storagcontroller=storagcontroller storagetype=storagetype supernode=supernode supportedarchs=supportedarchs supportproxydhcp=supportproxydhcp switch=switch switchinterface=switchinterface switchport=switchport switchvlan=switchvlan syslog=syslog termport=termport termserver=termserver tftpdir=tftpdir tftpserver=tftpserver unit=unit usercomment=usercomment vmbeacon=vmbeacon vmbootorder=vmbootorder vmcfgstore=vmcfgstore vmcluster=vmcluster vmmanager=vmmanager vmmaster=vmmaster vmnicnicmodel=vmnicnicmodel vmphyslots=vmphyslots vmstorage=vmstorage vmstoragecache=vmstoragecache vmstorageformat=vmstorageformat vmstoragemodel=vmstoragemodel vmtextconsole=vmtextconsole vmvirtflags=vmvirtflags vmvncport=vmvncport xcatmaster=xcatmaster zonename=zonename  nicaliases.eth0="moe larry curly" nicaliases.eth1="tom|jerry" niccustomscripts.eth0="configeth eth0" niccustomscripts.ib0="configib ib0" nicdevices.bond0="eth0|eth2" nicdevices.br0=bond0 nicextraparams.eth0="MTU=1500" nicextraparams.ib0="MTU=65520 CONNECTED_MODE=yes" nichostnameprefixes.eth0="eth0-" nichostnameprefixes.ib0="ib-" nichostnamesuffixes.eth0="-eth0" nichostnamesuffixes.ib0="-ib0" nicips.ib0=10.10.100.9 nicips.enP48p1s0f0=129.40.234.11 nicips.ib1=10.11.100.9 nicnetworks.enP5p1s0f1.4=xcat_bmc nicnetworks.enP48p1s0f1=xcat_util nicnetworks.ib0=IB00 nicnetworks.enP48p1s0f0=pub_yellow nicnetworks.ib3=IB03 nicnetworks.ib2=IB02 nicnetworks.enP5p1s0f1=xcat_compute nicnetworks.ib1=IB01 nicnetworks.enP5p1s0f1.5=xcat_infra nicnetworks.enP5p1s0f1.6=xcat_pdu nicsadapter.enP3p3s0f1="mac=98:be:94:59:fa:cd linkstate=DOWN" nicsadapter.enP3p3s0f2="mac=98:be:94:59:fa:ce candidatename=enP3p3s0f2/enx98be9459face" nictypes.enP5p1s0f1.4=unused nictypes.enP48p1s0f1=unused nictypes.ib0=Infiniband nictypes.enP48p1s0f0=Ethernet nictypes.ib3=unused nictypes.ib2=unused nictypes.enP5p1s0f1=unused nictypes.ib1=Infiniband nictypes.enP5p1s0f1.5=unused nictypes.enP5p1s0f1.6=unused
+cmd:mkdef -t node -o bogusnode groups=bogusgroup mgt=openbmc nodetype=mp  addkcmdline=addkcmdline  arch=ppc64le authdomain=authdomain bmc=bmc bmcpassword=bmcpassword bmcusername=bmcusername bmcvlantag=bmcvlantag cfgmgr=cfgmgr cfgmgtroles=cfgmgtroles cfgserver=cfgserver chain=chain chassis=chassis cmdmapping=cmdmapping cons=cons conserver=conserver consoleondemand=consoleondemand consport=consport cpucount=cpucount cputype=cputype dhcpinterfaces=dhcpinterfaces disksize=disksize domainadminpassword=domainadminpassword domainadminuser=domainadminuser domaintype=domaintype getmac=getmac  height=height hidden=hidden hostcluster=hostcluster hostinterface=hostinterface hostmanager=hostmanager hostnames=hostnames hosttype=hosttype hwtype=hwtype id=5 installnic=installnic interface=interface ip=10.10.10.10 iscsipassword=iscsipassword iscsiserver=iscsiserver iscsitarget=iscsitarget iscsiuserid=iscsiuserid  mac=42:d6:0a:03:05:08 memory=memory migrationdest=migrationdest monserver=monserver mpa=mpa mtm=mtm nameservers=nameservers netboot=grub2 nfsdir=nfsdir nfsserver=nfsserver  nimserver=nimserver node=node ondiscover=ondiscover osvolume=osvolume otherinterfaces=otherinterfaces ou=ou pdu=pdu postbootscripts=postbootscripts postscripts=postscripts power=power prescripts-begin=prescripts-begin prescripts-end=prescripts-end primarynic=primarynic primarysn=primarysn productkey=productkey provmethod=provmethod rack=rack room=room routenames=routenames serial=serial serialflow=serialflow serialport=serialport serialspeed=serialspeed servicenode=servicenode setupconserver=0 setupdhcp=0 setupftp=setupftp setupipforward=0 setupldap=0 setupnameserver=0 setupnfs=0 setupnim=setupnim setupntp=0 setupproxydhcp=0 setuptftp=0 sfp=sfp side=side slot=slot storagcontroller=storagcontroller storagetype=storagetype supernode=supernode supportedarchs=supportedarchs supportproxydhcp=supportproxydhcp switch=switch switchinterface=switchinterface switchport=50 switchvlan=switchvlan syslog=syslog termport=termport termserver=termserver tftpdir=tftpdir tftpserver=tftpserver unit=unit usercomment=usercomment vmbeacon=vmbeacon vmbootorder=vmbootorder vmcfgstore=vmcfgstore vmcluster=vmcluster vmmanager=vmmanager vmmaster=vmmaster vmnicnicmodel=vmnicnicmodel vmphyslots=vmphyslots vmstorage=vmstorage vmstoragecache=vmstoragecache vmstorageformat=vmstorageformat vmstoragemodel=vmstoragemodel vmtextconsole=vmtextconsole vmvirtflags=vmvirtflags vmvncport=vmvncport xcatmaster=xcatmaster zonename=zonename  nicaliases.eth0="moe larry curly" nicaliases.eth1="tom|jerry" niccustomscripts.eth0="configeth eth0" niccustomscripts.ib0="configib ib0" nicdevices.bond0="eth0|eth2" nicdevices.br0=bond0 nicextraparams.eth0="MTU=1500" nicextraparams.ib0="MTU=65520 CONNECTED_MODE=yes" nichostnameprefixes.eth0="eth0-" nichostnameprefixes.ib0="ib-" nichostnamesuffixes.eth0="-eth0" nichostnamesuffixes.ib0="-ib0" nicips.ib0=10.10.100.9 nicips.enP48p1s0f0=129.40.234.11 nicips.ib1=10.11.100.9 nicnetworks.enP5p1s0f1.4=xcat_bmc nicnetworks.enP48p1s0f1=xcat_util nicnetworks.ib0=IB00 nicnetworks.enP48p1s0f0=pub_yellow nicnetworks.ib3=IB03 nicnetworks.ib2=IB02 nicnetworks.enP5p1s0f1=xcat_compute nicnetworks.ib1=IB01 nicnetworks.enP5p1s0f1.5=xcat_infra nicnetworks.enP5p1s0f1.6=xcat_pdu nicsadapter.enP3p3s0f1="mac=98:be:94:59:fa:cd linkstate=DOWN" nicsadapter.enP3p3s0f2="mac=98:be:94:59:fa:ce candidatename=enP3p3s0f2/enx98be9459face" nictypes.enP5p1s0f1.4=unused nictypes.enP48p1s0f1=unused nictypes.ib0=Infiniband nictypes.enP48p1s0f0=Ethernet nictypes.ib3=unused nictypes.ib2=unused nictypes.enP5p1s0f1=unused nictypes.ib1=Infiniband nictypes.enP5p1s0f1.5=unused nictypes.enP5p1s0f1.6=unused
 check:rc==0
 cmd:lsdef bogusnode -z|sort -t'=' -k1 |tee  /tmp/export_import_single_witherspoon_by_json/srcbogusnode.stanza
 check:rc==0
@@ -532,7 +532,7 @@ cmd:ssh $$DSTMN 'lsdef bogusnode > /dev/null 2>&1;if [[ $? -eq 0 ]]; then lsdef 
 check:rc==0
 cmd:ssh $$DSTMN 'lsdef -t group bogusgroup  > /dev/null 2>&1;if [[ $? -eq 0 ]]; then lsdef -t group bogusgroup -z > /tmp/export_import_single_switch_by_json_$$DSTMN/bogusgroup.stanza; rmdef -t group bogusgroup;fi'
 check:rc==0
-cmd:mkdef -t node -o bogusnode groups=bogusgroup mgt=switch nodetype=switch addkcmdline=addkcmdline arch=arch authdomain=authdomain cfgmgr=cfgmgr cfgmgtroles=cfgmgtroles cfgserver=cfgserver chain=chain chassis=chassis cmdmapping=cmdmapping cons=cons conserver=conserver consoleondemand=consoleondemand cpucount=cpucount cputype=cputype dhcpinterfaces=dhcpinterfaces disksize=disksize domainadminpassword=domainadminpassword domainadminuser=domainadminuser domaintype=domaintype getmac=getmac hcp=hcp height=height hidden=hidden hostcluster=hostcluster hostinterface=hostinterface hostmanager=hostmanager hostnames=hostnames hosttype=hosttype id=id installnic=installnic interface=interface ip=ip iscsipassword=iscsipassword iscsiserver=iscsiserver iscsitarget=iscsitarget iscsiuserid=iscsiuserid linkports=linkports mac=mac memory=memory migrationdest=migrationdest monserver=monserver mpa=mpa mtm=mtm nameservers=nameservers netboot=netboot nfsdir=nfsdir nfsserver=nfsserver nimserver=nimserver node=node ondiscover=ondiscover osvolume=osvolume otherinterfaces=otherinterfaces ou=ou password=password pdu=pdu postbootscripts=postbootscripts postscripts=postscripts power=power prescripts-begin=prescripts-begin prescripts-end=prescripts-end primarynic=primarynic primarysn=primarysn productkey=productkey protocol=protocol provmethod=provmethod rack=rack room=room routenames=routenames serial=serial serialflow=serialflow serialport=serialport serialspeed=serialspeed servicenode=servicenode setupconserver=setupconserver setupdhcp=setupdhcp setupftp=setupftp setupipforward=setupipforward setupldap=setupldap setupnameserver=setupnameserver setupnfs=setupnfs setupnim=setupnim setupntp=setupntp setupproxydhcp=setupproxydhcp setuptftp=setuptftp sfp=sfp side=side slot=slot snmpauth=snmpauth snmppassword=snmppassword snmpprivacy=snmpprivacy snmpusername=snmpusername snmpversion=snmpversion storagcontroller=storagcontroller storagetype=storagetype supernode=supernode supportedarchs=supportedarchs supportproxydhcp=supportproxydhcp switch=switch switchinterface=switchinterface switchport=switchport switchtype=switchtype switchvlan=switchvlan syslog=syslog termport=termport termserver=termserver tftpdir=tftpdir tftpserver=tftpserver unit=unit usercomment=usercomment username=username vmbeacon=vmbeacon vmbootorder=vmbootorder vmcfgstore=vmcfgstore vmcluster=vmcluster vmmanager=vmmanager vmmaster=vmmaster vmnicnicmodel=vmnicnicmodel vmphyslots=vmphyslots vmstorage=vmstorage vmstoragecache=vmstoragecache vmstorageformat=vmstorageformat vmstoragemodel=vmstoragemodel vmtextconsole=vmtextconsole vmvirtflags=vmvirtflags vmvncport=vmvncport xcatmaster=xcatmaster zonename=zonename  nicaliases.eth0="moe larry curly" nicaliases.eth1="tom|jerry" niccustomscripts.eth0="configeth eth0" niccustomscripts.ib0="configib ib0" nicdevices.bond0="eth0|eth2" nicdevices.br0=bond0 nicextraparams.eth0="MTU=1500" nicextraparams.ib0="MTU=65520 CONNECTED_MODE=yes" nichostnameprefixes.eth0="eth0-" nichostnameprefixes.ib0="ib-" nichostnamesuffixes.eth0="-eth0" nichostnamesuffixes.ib0="-ib0" nicips.ib0=10.10.100.9 nicips.enP48p1s0f0=129.40.234.11 nicips.ib1=10.11.100.9 nicnetworks.enP5p1s0f1.4=xcat_bmc nicnetworks.enP48p1s0f1=xcat_util nicnetworks.ib0=IB00 nicnetworks.enP48p1s0f0=pub_yellow nicnetworks.ib3=IB03 nicnetworks.ib2=IB02 nicnetworks.enP5p1s0f1=xcat_compute nicnetworks.ib1=IB01 nicnetworks.enP5p1s0f1.5=xcat_infra nicnetworks.enP5p1s0f1.6=xcat_pdu nicsadapter.enP3p3s0f1="mac=98:be:94:59:fa:cd linkstate=DOWN" nicsadapter.enP3p3s0f2="mac=98:be:94:59:fa:ce candidatename=enP3p3s0f2/enx98be9459face" nictypes.enP5p1s0f1.4=unused nictypes.enP48p1s0f1=unused nictypes.ib0=Infiniband nictypes.enP48p1s0f0=Ethernet nictypes.ib3=unused nictypes.ib2=unused nictypes.enP5p1s0f1=unused nictypes.ib1=Infiniband nictypes.enP5p1s0f1.5=unused nictypes.enP5p1s0f1.6=unused
+cmd:mkdef -t node -o bogusnode groups=bogusgroup mgt=switch nodetype=switch addkcmdline=addkcmdline arch=ppc64 authdomain=authdomain cfgmgr=cfgmgr cfgmgtroles=cfgmgtroles cfgserver=cfgserver chain=chain chassis=chassis cmdmapping=cmdmapping cons=cons conserver=conserver consoleondemand=consoleondemand cpucount=cpucount cputype=cputype dhcpinterfaces=dhcpinterfaces disksize=disksize domainadminpassword=domainadminpassword domainadminuser=domainadminuser domaintype=domaintype getmac=getmac height=height hidden=hidden hostcluster=hostcluster hostinterface=hostinterface hostmanager=hostmanager hostnames=hostnames hosttype=hosttype id=5 installnic=installnic interface=interface ip=10.10.10.10 iscsipassword=iscsipassword iscsiserver=iscsiserver iscsitarget=iscsitarget iscsiuserid=iscsiuserid linkports=linkports mac=42:d6:0a:03:05:08 memory=memory migrationdest=migrationdest monserver=monserver mpa=mpa mtm=mtm nameservers=nameservers netboot=grub2 nfsdir=nfsdir nfsserver=nfsserver nimserver=nimserver node=node ondiscover=ondiscover osvolume=osvolume otherinterfaces=otherinterfaces ou=ou password=password pdu=pdu postbootscripts=postbootscripts postscripts=postscripts power=power prescripts-begin=prescripts-begin prescripts-end=prescripts-end primarynic=primarynic primarysn=primarysn productkey=productkey protocol=ssh provmethod=provmethod rack=rack room=room routenames=routenames serial=serial serialflow=serialflow serialport=serialport serialspeed=serialspeed servicenode=servicenode setupconserver=0 setupdhcp=0 setupftp=setupftp setupipforward=0 setupldap=0 setupnameserver=0 setupnfs=0 setupnim=setupnim setupntp=0 setupproxydhcp=0 setuptftp=0 sfp=sfp side=side slot=slot snmpauth=SHA snmppassword=snmppassword snmpprivacy=snmpprivacy snmpusername=snmpusername snmpversion=snmpversion storagcontroller=storagcontroller storagetype=storagetype supernode=supernode supportedarchs=supportedarchs supportproxydhcp=supportproxydhcp switch=switch switchinterface=switchinterface switchport=50 switchtype=switchtype switchvlan=switchvlan syslog=syslog termport=termport termserver=termserver tftpdir=tftpdir tftpserver=tftpserver unit=unit usercomment=usercomment username=username vmbeacon=vmbeacon vmbootorder=vmbootorder vmcfgstore=vmcfgstore vmcluster=vmcluster vmmanager=vmmanager vmmaster=vmmaster vmnicnicmodel=vmnicnicmodel vmphyslots=vmphyslots vmstorage=vmstorage vmstoragecache=vmstoragecache vmstorageformat=vmstorageformat vmstoragemodel=vmstoragemodel vmtextconsole=vmtextconsole vmvirtflags=vmvirtflags vmvncport=vmvncport xcatmaster=xcatmaster zonename=zonename  nicaliases.eth0="moe larry curly" nicaliases.eth1="tom|jerry" niccustomscripts.eth0="configeth eth0" niccustomscripts.ib0="configib ib0" nicdevices.bond0="eth0|eth2" nicdevices.br0=bond0 nicextraparams.eth0="MTU=1500" nicextraparams.ib0="MTU=65520 CONNECTED_MODE=yes" nichostnameprefixes.eth0="eth0-" nichostnameprefixes.ib0="ib-" nichostnamesuffixes.eth0="-eth0" nichostnamesuffixes.ib0="-ib0" nicips.ib0=10.10.100.9 nicips.enP48p1s0f0=129.40.234.11 nicips.ib1=10.11.100.9 nicnetworks.enP5p1s0f1.4=xcat_bmc nicnetworks.enP48p1s0f1=xcat_util nicnetworks.ib0=IB00 nicnetworks.enP48p1s0f0=pub_yellow nicnetworks.ib3=IB03 nicnetworks.ib2=IB02 nicnetworks.enP5p1s0f1=xcat_compute nicnetworks.ib1=IB01 nicnetworks.enP5p1s0f1.5=xcat_infra nicnetworks.enP5p1s0f1.6=xcat_pdu nicsadapter.enP3p3s0f1="mac=98:be:94:59:fa:cd linkstate=DOWN" nicsadapter.enP3p3s0f2="mac=98:be:94:59:fa:ce candidatename=enP3p3s0f2/enx98be9459face" nictypes.enP5p1s0f1.4=unused nictypes.enP48p1s0f1=unused nictypes.ib0=Infiniband nictypes.enP48p1s0f0=Ethernet nictypes.ib3=unused nictypes.ib2=unused nictypes.enP5p1s0f1=unused nictypes.ib1=Infiniband nictypes.enP5p1s0f1.5=unused nictypes.enP5p1s0f1.6=unused
 check:rc==0
 cmd:lsdef bogusnode -z|sort -t'=' -k1 |tee  /tmp/export_import_single_switch_by_json/srcbogusnode.stanza
 check:rc==0
@@ -583,7 +583,7 @@ cmd:ssh $$DSTMN 'lsdef bogusnode > /dev/null 2>&1;if [[ $? -eq 0 ]]; then lsdef 
 check:rc==0
 cmd:ssh $$DSTMN 'lsdef -t group bogusgroup  > /dev/null 2>&1;if [[ $? -eq 0 ]]; then lsdef -t group bogusgroup -z > /tmp/export_import_single_switch_by_yaml_$$DSTMN/bogusgroup.stanza; rmdef -t group bogusgroup;fi'
 check:rc==0
-cmd:mkdef -t node -o bogusnode groups=bogusgroup mgt=switch nodetype=switch addkcmdline=addkcmdline arch=arch authdomain=authdomain cfgmgr=cfgmgr cfgmgtroles=cfgmgtroles cfgserver=cfgserver chain=chain chassis=chassis cmdmapping=cmdmapping cons=cons conserver=conserver consoleondemand=consoleondemand cpucount=cpucount cputype=cputype dhcpinterfaces=dhcpinterfaces disksize=disksize domainadminpassword=domainadminpassword domainadminuser=domainadminuser domaintype=domaintype getmac=getmac hcp=hcp height=height hidden=hidden hostcluster=hostcluster hostinterface=hostinterface hostmanager=hostmanager hostnames=hostnames hosttype=hosttype id=id installnic=installnic interface=interface ip=ip iscsipassword=iscsipassword iscsiserver=iscsiserver iscsitarget=iscsitarget iscsiuserid=iscsiuserid linkports=linkports mac=mac memory=memory migrationdest=migrationdest monserver=monserver mpa=mpa mtm=mtm nameservers=nameservers netboot=netboot nfsdir=nfsdir nfsserver=nfsserver nimserver=nimserver node=node ondiscover=ondiscover osvolume=osvolume otherinterfaces=otherinterfaces ou=ou password=password pdu=pdu postbootscripts=postbootscripts postscripts=postscripts power=power prescripts-begin=prescripts-begin prescripts-end=prescripts-end primarynic=primarynic primarysn=primarysn productkey=productkey protocol=protocol provmethod=provmethod rack=rack room=room routenames=routenames serial=serial serialflow=serialflow serialport=serialport serialspeed=serialspeed servicenode=servicenode setupconserver=setupconserver setupdhcp=setupdhcp setupftp=setupftp setupipforward=setupipforward setupldap=setupldap setupnameserver=setupnameserver setupnfs=setupnfs setupnim=setupnim setupntp=setupntp setupproxydhcp=setupproxydhcp setuptftp=setuptftp sfp=sfp side=side slot=slot snmpauth=snmpauth snmppassword=snmppassword snmpprivacy=snmpprivacy snmpusername=snmpusername snmpversion=snmpversion storagcontroller=storagcontroller storagetype=storagetype supernode=supernode supportedarchs=supportedarchs supportproxydhcp=supportproxydhcp switch=switch switchinterface=switchinterface switchport=switchport switchtype=switchtype switchvlan=switchvlan syslog=syslog termport=termport termserver=termserver tftpdir=tftpdir tftpserver=tftpserver unit=unit usercomment=usercomment username=username vmbeacon=vmbeacon vmbootorder=vmbootorder vmcfgstore=vmcfgstore vmcluster=vmcluster vmmanager=vmmanager vmmaster=vmmaster vmnicnicmodel=vmnicnicmodel vmphyslots=vmphyslots vmstorage=vmstorage vmstoragecache=vmstoragecache vmstorageformat=vmstorageformat vmstoragemodel=vmstoragemodel vmtextconsole=vmtextconsole vmvirtflags=vmvirtflags vmvncport=vmvncport xcatmaster=xcatmaster zonename=zonename  nicaliases.eth0="moe larry curly" nicaliases.eth1="tom|jerry" niccustomscripts.eth0="configeth eth0" niccustomscripts.ib0="configib ib0" nicdevices.bond0="eth0|eth2" nicdevices.br0=bond0 nicextraparams.eth0="MTU=1500" nicextraparams.ib0="MTU=65520 CONNECTED_MODE=yes" nichostnameprefixes.eth0="eth0-" nichostnameprefixes.ib0="ib-" nichostnamesuffixes.eth0="-eth0" nichostnamesuffixes.ib0="-ib0" nicips.ib0=10.10.100.9 nicips.enP48p1s0f0=129.40.234.11 nicips.ib1=10.11.100.9 nicnetworks.enP5p1s0f1.4=xcat_bmc nicnetworks.enP48p1s0f1=xcat_util nicnetworks.ib0=IB00 nicnetworks.enP48p1s0f0=pub_yellow nicnetworks.ib3=IB03 nicnetworks.ib2=IB02 nicnetworks.enP5p1s0f1=xcat_compute nicnetworks.ib1=IB01 nicnetworks.enP5p1s0f1.5=xcat_infra nicnetworks.enP5p1s0f1.6=xcat_pdu nicsadapter.enP3p3s0f1="mac=98:be:94:59:fa:cd linkstate=DOWN" nicsadapter.enP3p3s0f2="mac=98:be:94:59:fa:ce candidatename=enP3p3s0f2/enx98be9459face" nictypes.enP5p1s0f1.4=unused nictypes.enP48p1s0f1=unused nictypes.ib0=Infiniband nictypes.enP48p1s0f0=Ethernet nictypes.ib3=unused nictypes.ib2=unused nictypes.enP5p1s0f1=unused nictypes.ib1=Infiniband nictypes.enP5p1s0f1.5=unused nictypes.enP5p1s0f1.6=unused
+cmd:mkdef -t node -o bogusnode groups=bogusgroup mgt=switch nodetype=switch addkcmdline=addkcmdline arch=ppc64 authdomain=authdomain cfgmgr=cfgmgr cfgmgtroles=cfgmgtroles cfgserver=cfgserver chain=chain chassis=chassis cmdmapping=cmdmapping cons=cons conserver=conserver consoleondemand=consoleondemand cpucount=cpucount cputype=cputype dhcpinterfaces=dhcpinterfaces disksize=disksize domainadminpassword=domainadminpassword domainadminuser=domainadminuser domaintype=domaintype getmac=getmac  height=height hidden=hidden hostcluster=hostcluster hostinterface=hostinterface hostmanager=hostmanager hostnames=hostnames hosttype=hosttype id=5 installnic=installnic interface=interface ip=10.10.10.10 iscsipassword=iscsipassword iscsiserver=iscsiserver iscsitarget=iscsitarget iscsiuserid=iscsiuserid linkports=linkports mac=42:d6:0a:03:05:08 memory=memory migrationdest=migrationdest monserver=monserver mpa=mpa mtm=mtm nameservers=nameservers netboot=grub2 nfsdir=nfsdir nfsserver=nfsserver nimserver=nimserver node=node ondiscover=ondiscover osvolume=osvolume otherinterfaces=otherinterfaces ou=ou password=password pdu=pdu postbootscripts=postbootscripts postscripts=postscripts power=power prescripts-begin=prescripts-begin prescripts-end=prescripts-end primarynic=primarynic primarysn=primarysn productkey=productkey protocol=ssh provmethod=provmethod rack=rack room=room routenames=routenames serial=serial serialflow=serialflow serialport=serialport serialspeed=serialspeed servicenode=servicenode setupconserver=0 setupdhcp=0 setupftp=setupftp setupipforward=0 setupldap=0 setupnameserver=0 setupnfs=0 setupnim=setupnim setupntp=0 setupproxydhcp=0 setuptftp=0 sfp=sfp side=side slot=slot snmpauth=SHA snmppassword=snmppassword snmpprivacy=snmpprivacy snmpusername=snmpusername snmpversion=snmpversion storagcontroller=storagcontroller storagetype=storagetype supernode=supernode supportedarchs=supportedarchs supportproxydhcp=supportproxydhcp switch=switch switchinterface=switchinterface switchport=50 switchtype=switchtype switchvlan=switchvlan syslog=syslog termport=termport termserver=termserver tftpdir=tftpdir tftpserver=tftpserver unit=unit usercomment=usercomment username=username vmbeacon=vmbeacon vmbootorder=vmbootorder vmcfgstore=vmcfgstore vmcluster=vmcluster vmmanager=vmmanager vmmaster=vmmaster vmnicnicmodel=vmnicnicmodel vmphyslots=vmphyslots vmstorage=vmstorage vmstoragecache=vmstoragecache vmstorageformat=vmstorageformat vmstoragemodel=vmstoragemodel vmtextconsole=vmtextconsole vmvirtflags=vmvirtflags vmvncport=vmvncport xcatmaster=xcatmaster zonename=zonename  nicaliases.eth0="moe larry curly" nicaliases.eth1="tom|jerry" niccustomscripts.eth0="configeth eth0" niccustomscripts.ib0="configib ib0" nicdevices.bond0="eth0|eth2" nicdevices.br0=bond0 nicextraparams.eth0="MTU=1500" nicextraparams.ib0="MTU=65520 CONNECTED_MODE=yes" nichostnameprefixes.eth0="eth0-" nichostnameprefixes.ib0="ib-" nichostnamesuffixes.eth0="-eth0" nichostnamesuffixes.ib0="-ib0" nicips.ib0=10.10.100.9 nicips.enP48p1s0f0=129.40.234.11 nicips.ib1=10.11.100.9 nicnetworks.enP5p1s0f1.4=xcat_bmc nicnetworks.enP48p1s0f1=xcat_util nicnetworks.ib0=IB00 nicnetworks.enP48p1s0f0=pub_yellow nicnetworks.ib3=IB03 nicnetworks.ib2=IB02 nicnetworks.enP5p1s0f1=xcat_compute nicnetworks.ib1=IB01 nicnetworks.enP5p1s0f1.5=xcat_infra nicnetworks.enP5p1s0f1.6=xcat_pdu nicsadapter.enP3p3s0f1="mac=98:be:94:59:fa:cd linkstate=DOWN" nicsadapter.enP3p3s0f2="mac=98:be:94:59:fa:ce candidatename=enP3p3s0f2/enx98be9459face" nictypes.enP5p1s0f1.4=unused nictypes.enP48p1s0f1=unused nictypes.ib0=Infiniband nictypes.enP48p1s0f0=Ethernet nictypes.ib3=unused nictypes.ib2=unused nictypes.enP5p1s0f1=unused nictypes.ib1=Infiniband nictypes.enP5p1s0f1.5=unused nictypes.enP5p1s0f1.6=unused
 check:rc==0
 cmd:lsdef bogusnode -z|sort -t'=' -k1 |tee  /tmp/export_import_single_switch_by_yaml/srcbogusnode.stanza
 check:rc==0
@@ -790,7 +790,7 @@ cmd: grep " \"xcatdefaults\": " /tmp/xcat_inventory_try_to_export_all_type_is_no
 check:rc==0
 cmd: grep " \"service\": " /tmp/xcat_inventory_try_to_export_all_type_is_node_default_format/export_all_node > /dev/null 2>&1; if [[ $? -eq 0 ]]; then exit 0; else exit 1;fi
 check:rc==0
-cmd:dn=$(cat /tmp/xcat_inventory_try_to_export_all_type_is_node_default_format/node_in_xcat_db|wc -l);dg=$(cat /tmp/xcat_inventory_try_to_export_all_type_is_node_default_format/group_in_xcat_db |wc -l);((da=$dn+$dg+2));ia=$(grep " \"obj_type\": " /tmp/xcat_inventory_try_to_export_all_type_is_node_default_format/export_all_node|wc -l); if [[ $da -eq $ia ]];then exit 0; else exit 1;fi
+cmd:dn=$(cat /tmp/xcat_inventory_try_to_export_all_type_is_node_default_format/node_in_xcat_db|wc -l);dg=$(cat /tmp/xcat_inventory_try_to_export_all_type_is_node_default_format/group_in_xcat_db |wc -l);((da=$dn+$dg+2));echo "dn=$dn dg=$dg da=$da";ia=$(grep " \"obj_type\": " /tmp/xcat_inventory_try_to_export_all_type_is_node_default_format/export_all_node|wc -l);echo "ia=$ia"; if [[ $da -eq $ia ]];then exit 0; else exit 1;fi
 check:rc==0
 cmd:a=0;for i in `awk -F':' '{print $1}' /tmp/xcat_inventory_try_to_export_all_type_is_node_default_format/group_in_xcat_db`; do  grep -E " \"$i\": " /tmp/xcat_inventory_try_to_export_all_type_is_node_default_format/export_all_node; if [[ $? -eq 0 ]]; then ((a++));fi;done;dg=$(cat /tmp/xcat_inventory_try_to_export_all_type_is_node_default_format/group_in_xcat_db|wc -l);if [[ $a -eq $dg ]]; then exit 0; else exit 1;fi
 check:rc==0
@@ -918,15 +918,14 @@ node:
         engine_type: openbmc
       hardware_mgt_engine:
         engine_info:
-          openbmc_info:
-            bmcpassword: 0penBmc
-            bmcusername: root
+          bmcpassword: 0penBmc
+          bmcusername: root
         engine_type: openbmc
       netboot_engine:
         engine_type: petitboot
     network_info:
       primarynic:
-        ip: '|\D+(\d+)|10.100.100.(\$1)|'
+        ip: '|\D+(\d+)|10.100.100.($1)|'
     obj_info:
       grouptype: static
     obj_type: group
@@ -1090,7 +1089,7 @@ policy:
 route: {}
 schema_version: '1.0'
 site:
-  cluster:
+  clustersite:
     SNsyncfiledir: /var/xcat/syncfiles
     auditnosyslog: '0'
     auditskipcmds: ALL
@@ -1785,3 +1784,616 @@ check:rc==0
 cmd:rm -rf /tmp/export_import_single_group_json
 check:rc==0
 end
+
+
+start:import_validation_json_node_obj_type
+description:This case is used to test node validation function of xcat-inventory import json file. To test "obj_type" attribute
+cmd:mkdir -p /tmp/import_validation_json_node_obj_type
+check:rc==0
+cmd:lsdef bogusnode > /dev/null 2>&1;if [[ $? -eq 0 ]]; then lsdef bogusnode -z >/tmp/import_validation_json_node_obj_type/bogusnode.stanza ;rmdef bogusnode;fi
+check:rc==0
+cmd:lsdef -t group bogusgroup  > /dev/null 2>&1;if [[ $? -eq 0 ]]; then lsdef -t group bogusgroup -z > /tmp/import_validation_json_node_obj_type/bogusgroup.stanza; rmdef -t group bogusgroup;fi
+check:rc==0 
+cmd:#!/bin/bash
+echo '{
+    "node": {
+        "bogusnode": {
+            "device_type": "server",
+            "network_info": {
+                "primarynic": {
+                    "mac": [
+                        "11:11:11:11:11:11"
+                    ]
+                }
+            },
+            "obj_info": {
+                "groups": "bogusgroup"
+            },
+            "role": "compute"
+        }
+    },
+}' > /tmp/import_validation_json_node_obj_type/node.json
+check:rc==0
+cmd:xcat-inventory import -f /tmp/import_validation_json_node_obj_type/node.json 
+check:output=~Error: failed to validate schema entry
+check:output=~obj_type
+check:rc!=0
+cmd:lsdef bogusnode
+check:output=~Error: Could not find an object named 'bogusnode'
+check:rc!=0
+cmd:#!/bin/bash
+echo '{
+    "node": {
+        "bogusnode": {
+            "device_type": "server",
+            "network_info": {
+                "primarynic": {
+                    "mac": [
+                        "11:11:11:11:11:11"
+                    ]
+                }
+            },
+            "obj_info": {
+                "groups": "bogusgroup"
+            },
+            "obj_type": "aaa",
+            "role": "compute"
+        }
+    },
+}' > /tmp/import_validation_json_node_obj_type/node.json
+check:rc==0
+cmd:xcat-inventory import -f /tmp/import_validation_json_node_obj_type/node.json
+check:output=~Error: failed to validate schema entry
+check:output=~obj_type
+check:rc!=0
+cmd:lsdef bogusnode
+check:output=~Error: Could not find an object named 'bogusnode'
+check:rc!=0
+cmd:#!/bin/bash
+echo '{
+    "node": {
+        "bogusnode": {
+            "device_type": "server",
+            "network_info": {
+                "primarynic": {
+                    "mac": [
+                        "11:11:11:11:11:11"
+                    ]
+                }
+            },
+            "obj_info": {
+                "groups": "bogusgroup"
+            },
+            "obj_type": "node",
+            "role": "compute"
+        }
+    },
+}' > /tmp/import_validation_json_node_obj_type/node.json
+check:rc==0
+cmd:xcat-inventory import -f /tmp/import_validation_json_node_obj_type/node.json
+check:output=~import object successfully
+check:rc==0
+cmd:lsdef bogusnode
+check:output=~Object name: bogusnode
+check:rc==0
+cmd:rmdef bogusnode
+check:rc==0
+cmd:#!/bin/bash
+echo '{
+    "node": {
+        "bogusgroup": {
+            "device_type": "server",
+            "engines": {
+                "hardware_mgt_engine": {
+                    "engine_type": "ipmi"
+                }
+            },
+            "obj_info": {
+                "grouptype": "static"
+            },
+            "obj_type": "group",
+            "role": "compute"
+        }
+    },
+}' > /tmp/import_validation_json_node_obj_type/node.json
+check:rc==0
+cmd:xcat-inventory import -f /tmp/import_validation_json_node_obj_type/node.json
+check:output=~import object successfully
+check:rc==0
+cmd:lsdef -t group -o bogusgroup
+check:output=~Object name: bogusgroup
+check:rc==0
+cmd:rmdef -t group -o bogusgroup
+check:rc==0
+cmd:if [[ -e /tmp/import_validation_json_node_obj_type/bogusnode.stanza ]]; then cat /tmp/import_validation_json_node_obj_type/bogusnode.stanza | mkdef -z;fi
+check:rc==0
+cmd:if [[ -e /tmp/import_validation_json_node_obj_type/bogusgroup.stanza ]]; then cat /tmp/import_validation_json_node_obj_type/bogusgroup.stanza |mkdef -z -f;fi
+check:rc==0
+cmd:rm -rf /tmp/import_validation_json_node_obj_type
+check:rc==0
+end
+
+
+start:import_validation_yaml_node_obj_type
+description:This case is used to test node validation function of xcat-inventory import yaml file. To test "obj_type" attribute
+cmd:mkdir -p /tmp/import_validation_yaml_node_obj_type
+check:rc==0
+cmd:lsdef bogusnode > /dev/null 2>&1;if [[ $? -eq 0 ]]; then lsdef bogusnode -z >/tmp/import_validation_yaml_node_obj_type/bogusnode.stanza ;rmdef bogusnode;fi
+check:rc==0
+cmd:lsdef -t group bogusgroup  > /dev/null 2>&1;if [[ $? -eq 0 ]]; then lsdef -t group bogusgroup -z > /tmp/import_validation_yaml_node_obj_type/bogusgroup.stanza; rmdef -t group bogusgroup;fi
+check:rc==0 
+cmd:#!/bin/bash
+echo "node:
+  bogusnode:
+    device_type: server
+    network_info:
+      primarynic:
+        mac:
+        - '11:11:11:11:11:11'
+    obj_info:
+      groups: bogusgroup
+    role: compute" >  /tmp/import_validation_yaml_node_obj_type/node.yaml
+check:rc==0
+cmd:xcat-inventory import -f /tmp/import_validation_yaml_node_obj_type/node.yaml 
+check:output=~Error: failed to validate schema entry
+check:output=~obj_type
+check:rc!=0
+cmd:lsdef bogusnode
+check:output=~Error: Could not find an object named 'bogusnode'
+check:rc!=0
+cmd:#!/bin/bash
+echo "node:
+  bogusnode:
+    device_type: server
+    network_info:
+      primarynic:
+        mac:
+        - '11:11:11:11:11:11'
+    obj_info:
+      groups: bogusgroup
+    obj_type: aaa 
+    role: compute" > /tmp/import_validation_yaml_node_obj_type/node.yaml
+check:rc==0
+cmd:xcat-inventory import -f /tmp/import_validation_yaml_node_obj_type/node.yaml
+check:output=~Error: failed to validate schema entry
+check:output=~obj_type
+check:rc!=0
+cmd:lsdef bogusnode
+check:output=~Error: Could not find an object named 'bogusnode'
+check:rc!=0
+cmd:#!/bin/bash
+echo "node:
+  bogusnode:
+    device_type: server
+    network_info:
+      primarynic:
+        mac:
+        - '11:11:11:11:11:11'
+    obj_info:
+      groups: bogusgroup
+    obj_type: node
+    role: compute" > /tmp/import_validation_yaml_node_obj_type/node.yaml
+check:rc==0
+cmd:xcat-inventory import -f /tmp/import_validation_yaml_node_obj_type/node.yaml
+check:output=~import object successfully
+check:rc==0
+cmd:lsdef bogusnode
+check:output=~Object name: bogusnode
+check:rc==0
+cmd:rmdef bogusnode
+check:rc==0
+cmd:#!/bin/bash
+echo "node:
+  bogusgroup:
+    device_type: server
+    engines:
+      hardware_mgt_engine:
+        engine_type: ipmi
+    obj_info:
+      grouptype: static
+    obj_type: group
+    role: compute" >  /tmp/import_validation_yaml_node_obj_type/node.yaml
+check:rc==0
+cmd:xcat-inventory import -f /tmp/import_validation_yaml_node_obj_type/node.yaml
+check:output=~import object successfully
+check:rc==0
+cmd:lsdef -t group -o bogusgroup
+check:output=~Object name: bogusgroup
+check:rc==0
+cmd:rmdef -t group -o bogusgroup
+check:rc==0
+cmd:if [[ -e /tmp/import_validation_yaml_node_obj_type/bogusnode.stanza ]]; then cat /tmp/import_validation_yaml_node_obj_type/bogusnode.stanza | mkdef -z;fi
+check:rc==0
+cmd:if [[ -e /tmp/import_validation_yaml_node_obj_type/bogusgroup.stanza ]]; then cat /tmp/import_validation_yaml_node_obj_type/bogusgroup.stanza |mkdef -z -f;fi
+check:rc==0
+cmd:rm -rf /tmp/import_validation_yaml_node_obj_type
+check:rc==0
+end
+
+
+start:import_validation_json_node_group
+description:This case is used to test node validation function of xcat-inventory import json file. To test "group" attribute
+cmd:mkdir -p /tmp/import_validation_json_node_group
+check:rc==0
+cmd:lsdef bogusnode > /dev/null 2>&1;if [[ $? -eq 0 ]]; then lsdef bogusnode -z >/tmp/import_validation_json_node_group/bogusnode.stanza ;rmdef bogusnode;fi
+check:rc==0
+cmd:lsdef -t group bogusgroup  > /dev/null 2>&1;if [[ $? -eq 0 ]]; then lsdef -t group bogusgroup -z > /tmp/import_validation_json_node_group/bogusgroup.stanza; rmdef -t group bogusgroup;fi
+check:rc==0
+cmd:#!/bin/bash
+echo '{
+    "node": {
+        "bogusnode": {
+            "device_type": "server",
+            "network_info": {
+                "primarynic": {
+                    "mac": [
+                        "11:11:11:11:11:11"
+                    ]
+                }
+            },
+            "obj_type": "node",
+            "role": "compute"
+        }
+    },
+}' > /tmp/import_validation_json_node_group/node.inv
+check:rc==0
+cmd:xcat-inventory import -f /tmp/import_validation_json_node_group/node.inv
+check:output=~Error: failed to validate schema entry
+check:output=~group
+check:rc!=0
+cmd:lsdef bogusnode
+check:output=~Error: Could not find an object named 'bogusnode'
+check:rc!=0
+cmd:if [[ -e /tmp/import_validation_json_node_group/bogusnode.stanza ]]; then cat /tmp/import_validation_json_node_group/bogusnode.stanza | mkdef -z;fi
+check:rc==0
+cmd:if [[ -e /tmp/import_validation_json_node_group/bogusgroup.stanza ]]; then cat /tmp/import_validation_json_node_group/bogusgroup.stanza |mkdef -z -f;fi
+check:rc==0
+cmd:rm -rf /tmp/import_validation_json_node_group
+check:rc==0
+end
+
+start:import_validation_yaml_node_group
+description:This case is used to test node validation function of xcat-inventory import yaml file. To test "group" attribute
+cmd:mkdir -p /tmp/import_validation_yaml_node_group
+check:rc==0
+cmd:lsdef bogusnode > /dev/null 2>&1;if [[ $? -eq 0 ]]; then lsdef bogusnode -z >/tmp/import_validation_yaml_node_group/bogusnode.stanza ;rmdef bogusnode;fi
+check:rc==0
+cmd:lsdef -t group bogusgroup  > /dev/null 2>&1;if [[ $? -eq 0 ]]; then lsdef -t group bogusgroup -z > /tmp/import_validation_yaml_node_group/bogusgroup.stanza; rmdef -t group bogusgroup;fi
+check:rc==0
+cmd:#!/bin/bash
+echo "node:
+  bogusnode:
+    device_type: server
+    network_info:
+      primarynic:
+        mac:
+        - '11:11:11:11:11:11'
+    obj_type: node
+    role: compute" > /tmp/import_validation_yaml_node_group/node.inv
+check:rc==0
+cmd:xcat-inventory import -f /tmp/import_validation_yaml_node_group/node.inv
+check:output=~Error: failed to validate schema entry
+check:output=~group
+check:rc!=0
+cmd:lsdef bogusnode
+check:output=~Error: Could not find an object named 'bogusnode'
+check:rc!=0
+cmd:if [[ -e /tmp/import_validation_yaml_node_group/bogusnode.stanza ]]; then cat /tmp/import_validation_yaml_node_group/bogusnode.stanza | mkdef -z;fi
+check:rc==0
+cmd:if [[ -e /tmp/import_validation_yaml_node_group/bogusgroup.stanza ]]; then cat /tmp/import_validation_yaml_node_group/bogusgroup.stanza |mkdef -z -f;fi
+check:rc==0
+cmd:rm -rf /tmp/import_validation_yaml_node_group
+check:rc==0
+end
+
+start:import_validation_json_node_device_type
+description:This case is used to test node validation function of xcat-inventory import json file. To test "device_type" attribute
+cmd:mkdir -p /tmp/import_validation_json_node_device_type
+check:rc==0
+cmd:lsdef bogusnode > /dev/null 2>&1;if [[ $? -eq 0 ]]; then lsdef bogusnode -z >/tmp/import_validation_json_node_device_type/bogusnode.stanza ;rmdef bogusnode;fi
+check:rc==0
+cmd:lsdef -t group bogusgroup  > /dev/null 2>&1;if [[ $? -eq 0 ]]; then lsdef -t group bogusgroup -z > /tmp/import_validation_json_node_device_type/bogusgroup.stanza; rmdef -t group bogusgroup;fi
+check:rc==0
+cmd:#!/bin/bash
+echo '{
+    "node": {
+        "bogusnode": {
+            "obj_info": {
+                "groups": "bogusgroup"
+            },
+            "obj_type": "node",
+            "role": "compute"
+        }
+    },
+}' > /tmp/import_validation_json_node_device_type/node.inv
+check:rc==0
+cmd:xcat-inventory import -f /tmp/import_validation_json_node_device_type/node.inv 
+check:output=~Error: failed to validate schema entry
+check:output=~devtype
+check:rc!=0
+cmd:lsdef bogusnode
+check:output=~Error: Could not find an object named 'bogusnode'
+check:rc!=0
+cmd:#!/bin/bash
+echo '{
+    "node": {
+        "bogusnode": {
+            "device_type": "aaa",
+            "obj_info": {
+                "groups": "bogusgroup"
+            },
+            "obj_type": "node",
+            "role": "compute"
+        }
+    },
+}' > /tmp/import_validation_json_node_device_type/node.inv
+check:rc==0
+cmd:xcat-inventory import -f /tmp/import_validation_json_node_device_type/node.inv 
+check:output=~Error: failed to validate schema entry
+check:output=~devtype
+check:rc!=0
+cmd:lsdef bogusnode
+check:output=~Error: Could not find an object named 'bogusnode'
+check:rc!=0
+cmd:#!/bin/bash
+echo '{
+    "node": {
+        "bogusnode": {
+            "device_type": "server",
+            "network_info": {
+                "primarynic": {
+                    "mac": [
+                        "11:11:11:11:11:11"
+                    ]
+                }
+            },
+            "obj_info": {
+                "groups": "bogusgroup"
+            },
+            "obj_type": "node",
+            "role": "compute"
+        }
+    },
+}' > /tmp/import_validation_json_node_device_type/node.inv
+check:rc==0
+cmd:xcat-inventory import -f /tmp/import_validation_json_node_device_type/node.inv
+check:output=~import object successfully
+check:rc==0
+cmd:lsdef bogusnode
+check:output=~Object name: bogusnode
+check:rc==0
+cmd:rmdef bogusnode
+check:rc==0
+cmd:#!/bin/bash
+echo '{
+    "node": {
+        "bogusnode": {
+            "device_type": "switch",
+            "obj_info": {
+                "groups": "bogusgroup"
+            },
+            "obj_type": "node",
+            "role": "compute"
+        }
+    },
+}' > /tmp/import_validation_json_node_device_type/node.inv
+check:rc==0
+cmd:xcat-inventory import -f /tmp/import_validation_json_node_device_type/node.inv
+check:output=~import object successfully
+check:rc==0
+cmd:lsdef bogusnode
+check:output=~Object name: bogusnode
+check:rc==0
+cmd:rmdef bogusnode
+check:rc==0
+cmd:#!/bin/bash
+echo '{
+    "node": {
+        "bogusnode": {
+            "device_type": "pdu",
+            "obj_info": {
+                "groups": "bogusgroup"
+            },
+            "obj_type": "node",
+            "role": "compute"
+        }
+    },
+}' > /tmp/import_validation_json_node_device_type/node.inv
+check:rc==0
+cmd:xcat-inventory import -f /tmp/import_validation_json_node_device_type/node.inv
+check:output=~import object successfully
+check:rc==0
+cmd:lsdef bogusnode
+check:output=~Object name: bogusnode
+check:rc==0
+cmd:rmdef bogusnode
+check:rc==0
+cmd:#!/bin/bash
+echo '{
+    "node": {
+        "bogusnode": {
+            "device_type": "hmc",
+            "obj_info": {
+                "groups": "bogusgroup"
+            },
+            "obj_type": "node",
+            "role": "compute"
+        }
+    },
+}' > /tmp/import_validation_json_node_device_type/node.inv
+check:rc==0
+cmd:xcat-inventory import -f /tmp/import_validation_json_node_device_type/node.inv
+check:output=~import object successfully
+check:rc==0
+cmd:lsdef bogusnode
+check:output=~Object name: bogusnode
+check:rc==0
+cmd:rmdef bogusnode
+check:rc==0
+cmd:#!/bin/bash
+echo '{
+    "node": {
+        "bogusnode": {
+            "device_type": "rack",
+            "obj_info": {
+                "groups": "bogusgroup"
+            },
+            "obj_type": "node",
+            "role": "compute"
+        }
+    },
+}' > /tmp/import_validation_json_node_device_type/node.inv
+check:rc==0
+cmd:xcat-inventory import -f /tmp/import_validation_json_node_device_type/node.inv
+check:output=~import object successfully
+check:rc==0
+cmd:lsdef bogusnode
+check:output=~Object name: bogusnode
+check:rc==0
+cmd:rmdef bogusnode
+check:rc==0
+cmd:if [[ -e /tmp/import_validation_json_node_device_type/bogusnode.stanza ]]; then cat /tmp/import_validation_json_node_device_type/bogusnode.stanza | mkdef -z;fi
+check:rc==0
+cmd:if [[ -e /tmp/import_validation_json_node_device_type/bogusgroup.stanza ]]; then cat /tmp/import_validation_json_node_device_type/bogusgroup.stanza |mkdef -z -f;fi
+check:rc==0
+cmd:rm -rf /tmp/import_validation_json_node_device_type
+check:rc==0
+end
+
+
+start:import_validation_yaml_node_device_type
+description:This case is used to test node validation function of xcat-inventory import yaml file. To test "device_type" attribute
+cmd:mkdir -p /tmp/import_validation_yaml_node_device_type
+check:rc==0
+cmd:lsdef bogusnode > /dev/null 2>&1;if [[ $? -eq 0 ]]; then lsdef bogusnode -z >/tmp/import_validation_yaml_node_device_type/bogusnode.stanza ;rmdef bogusnode;fi
+check:rc==0
+cmd:lsdef -t group bogusgroup  > /dev/null 2>&1;if [[ $? -eq 0 ]]; then lsdef -t group bogusgroup -z > /tmp/import_validation_yaml_node_device_type/bogusgroup.stanza; rmdef -t group bogusgroup;fi
+check:rc==0
+cmd:#!/bin/bash
+echo "node:
+  bogusnode:
+    obj_info:
+      groups: bogusgroup
+    obj_type: node
+    role: compute" > /tmp/import_validation_yaml_node_device_type/node.inv
+check:rc==0
+cmd:xcat-inventory import -f /tmp/import_validation_yaml_node_device_type/node.inv 
+check:output=~Error: failed to validate schema entry
+check:output=~devtype
+check:rc!=0
+cmd:lsdef bogusnode
+check:output=~Error: Could not find an object named 'bogusnode'
+check:rc!=0
+cmd:#!/bin/bash
+echo "node:
+  bogusnode:
+    device_type: aaa 
+    obj_info:
+      groups: bogusgroup
+    obj_type: node
+    role: compute" > /tmp/import_validation_yaml_node_device_type/node.inv
+check:rc==0
+cmd:xcat-inventory import -f /tmp/import_validation_yaml_node_device_type/node.inv 
+check:output=~Error: failed to validate schema entry
+check:output=~devtype
+check:rc!=0
+cmd:lsdef bogusnode
+check:output=~Error: Could not find an object named 'bogusnode'
+check:rc!=0
+cmd:#!/bin/bash
+echo "node:
+  bogusnode:
+    device_type: switch 
+    obj_info:
+      groups: bogusgroup
+    obj_type: node
+    role: compute" > /tmp/import_validation_yaml_node_device_type/node.inv
+check:rc==0
+cmd:xcat-inventory import -f /tmp/import_validation_yaml_node_device_type/node.inv
+check:output=~import object successfully
+check:rc==0
+cmd:lsdef bogusnode
+check:output=~Object name: bogusnode
+check:rc==0
+cmd:rmdef bogusnode
+check:rc==0
+cmd:#!/bin/bash
+echo "node:
+  bogusnode:
+    device_type: pdu 
+    obj_info:
+      groups: bogusgroup
+    obj_type: node
+    role: compute" > /tmp/import_validation_yaml_node_device_type/node.inv
+check:rc==0
+cmd:xcat-inventory import -f /tmp/import_validation_yaml_node_device_type/node.inv
+check:output=~import object successfully
+check:rc==0
+cmd:lsdef bogusnode
+check:output=~Object name: bogusnode
+check:rc==0
+cmd:rmdef bogusnode
+check:rc==0
+cmd:#!/bin/bash
+echo "node:
+  bogusnode:
+    device_type: rack 
+    obj_info:
+      groups: bogusgroup
+    obj_type: node
+    role: compute" > /tmp/import_validation_yaml_node_device_type/node.inv
+check:rc==0
+cmd:xcat-inventory import -f /tmp/import_validation_yaml_node_device_type/node.inv
+check:output=~import object successfully
+check:rc==0
+cmd:lsdef bogusnode
+check:output=~Object name: bogusnode
+check:rc==0
+cmd:rmdef bogusnode
+check:rc==0
+cmd:#!/bin/bash
+echo "node:
+  bogusnode:
+    device_type: hmc 
+    obj_info:
+      groups: bogusgroup
+    obj_type: node
+    role: compute"  > /tmp/import_validation_yaml_node_device_type/node.inv
+check:rc==0
+cmd:xcat-inventory import -f /tmp/import_validation_yaml_node_device_type/node.inv
+check:output=~import object successfully
+check:rc==0
+cmd:lsdef bogusnode
+check:output=~Object name: bogusnode
+check:rc==0
+cmd:rmdef bogusnode
+check:rc==0
+cmd:#!/bin/bash
+echo "node:
+  bogusnode:
+    device_type: server
+    network_info:
+      primarynic:
+        mac:
+        - '11:11:11:11:11:11'
+    obj_info:
+      groups: bogusgroup
+    obj_type: node
+    role: compute"  > /tmp/import_validation_yaml_node_device_type/node.inv
+check:rc==0
+cmd:xcat-inventory import -f /tmp/import_validation_yaml_node_device_type/node.inv
+check:output=~import object successfully
+check:rc==0
+cmd:lsdef bogusnode
+check:output=~Object name: bogusnode
+check:rc==0
+cmd:rmdef bogusnode
+check:rc==0
+cmd:if [[ -e /tmp/import_validation_yaml_node_device_type/bogusnode.stanza ]]; then cat /tmp/import_validation_yaml_node_device_type/bogusnode.stanza | mkdef -z;fi
+check:rc==0
+cmd:if [[ -e /tmp/import_validation_yaml_node_device_type/bogusgroup.stanza ]]; then cat /tmp/import_validation_yaml_node_device_type/bogusgroup.stanza |mkdef -z -f;fi
+check:rc==0
+cmd:rm -rf /tmp/import_validation_yaml_node_device_type
+check:rc==0
+end
+

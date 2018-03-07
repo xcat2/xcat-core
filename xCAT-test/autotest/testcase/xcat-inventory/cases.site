@@ -453,7 +453,6 @@ echo '{
                 "mtu": "1500",
                 "net": "100.0.0.0"
             },
-            "schema_version": 1.0,
             "service": {
                 "tftpserver": "<xcatmaster>"
             }
@@ -494,7 +493,6 @@ echo '{
             },
             "obj_type": "node",
             "role": "compute",
-            "schema_version": 1.0
         },
         "bogusnode2": {
             "device_type": "server",
@@ -530,7 +528,6 @@ echo '{
             },
             "obj_type": "node",
             "role": "compute",
-            "schema_version": 1.0
         },
         "bogusnode3": {
             "device_type": "server",
@@ -566,7 +563,6 @@ echo '{
             },
             "obj_type": "node",
             "role": "compute",
-            "schema_version": 1.0
         },
         "service": {
             "device_type": "server",
@@ -579,7 +575,6 @@ echo '{
             },
             "obj_type": "group",
             "role": "compute",
-            "schema_version": 1.0
         },
         "xcatdefaults": {
             "device_type": "server",
@@ -593,7 +588,6 @@ echo '{
             },
             "obj_type": "group",
             "role": "compute",
-            "schema_version": 1.0
         }
     },
     "osimage": {},
@@ -601,68 +595,55 @@ echo '{
     "policy": {
         "1": {
             "name": "root",
-            "rule": "allow",
-            "schema_version": 1.0
+            "rule": "allow"
         },
         "1.2": {
             "name": "c910f03c05k08.pok.stglabs.ibm.com",
-            "rule": "trusted",
-            "schema_version": 1.0
+            "rule": "trusted"
         },
         "2": {
             "commands": "getbmcconfig",
-            "rule": "allow",
-            "schema_version": 1.0
+            "rule": "allow"
         },
         "2.1": {
             "commands": "remoteimmsetup",
-            "rule": "allow",
-            "schema_version": 1.0
+            "rule": "allow"
         },
         "2.3": {
             "commands": "lsxcatd",
-            "rule": "allow",
-            "schema_version": 1.0
+            "rule": "allow"
         },
         "3": {
             "commands": "nextdestiny",
-            "rule": "allow",
-            "schema_version": 1.0
+            "rule": "allow"
         },
         "4": {
             "commands": "getdestiny",
-            "rule": "allow",
-            "schema_version": 1.0
+            "rule": "allow"
         },
         "4.4": {
             "commands": "getpostscript",
-            "rule": "allow",
-            "schema_version": 1.0
+            "rule": "allow"
         },
         "4.5": {
             "commands": "getcredentials",
-            "rule": "allow",
-            "schema_version": 1.0
+            "rule": "allow"
         },
         "4.6": {
             "commands": "syncfiles",
-            "rule": "allow",
-            "schema_version": 1.0
+            "rule": "allow"
         },
         "4.7": {
             "commands": "litefile",
-            "rule": "allow",
-            "schema_version": 1.0
+            "rule": "allow"
         },
         "4.8": {
             "commands": "litetree",
-            "rule": "allow",
-            "schema_version": 1.0
+            "rule": "allow"
         },
         "4.9": {
             "commands": "getadapter",
-            "rule": "allow",
-            "schema_version": 1.0
+            "rule": "allow"
         }
     },
     "route": {},
@@ -725,7 +706,6 @@ echo '{
             "precreatemypostscripts": "1",
             "pruneservices": "1",
             "runbootscripts": "yes",
-            "schema_version": 1.0,
             "setinstallnic": "1",
             "sharedinstall": "no",
             "sharedtftp": "1",
@@ -900,7 +880,6 @@ echo "network:
       mgtifname: eth0
       mtu: '1500'
       net: 100.0.0.0
-    schema_version: 1.0
     service:
       tftpserver: <xcatmaster>
 node:
@@ -928,7 +907,6 @@ node:
       groups: testgroup
     obj_type: node
     role: compute
-    schema_version: 1.0
   bogusnode2:
     device_type: server
     engines:
@@ -953,7 +931,6 @@ node:
       groups: testgroup
     obj_type: node
     role: compute
-    schema_version: 1.0
   bogusnode3:
     device_type: server
     engines:
@@ -978,7 +955,6 @@ node:
       groups: testgroup
     obj_type: node
     role: compute
-    schema_version: 1.0
   service:
     device_type: server
     engines:
@@ -987,7 +963,6 @@ node:
           postscripts: servicenode
     obj_type: group
     role: compute
-    schema_version: 1.0
   xcatdefaults:
     device_type: server
     engines:
@@ -997,62 +972,48 @@ node:
           postscripts: syslog,remoteshell,syncfiles
     obj_type: group
     role: compute
-    schema_version: 1.0
 osimage: {}
 passwd: {}
 policy:
   '1':
     name: root
     rule: allow
-    schema_version: 1.0
   '1.2':
     name: c910f03c05k08.pok.stglabs.ibm.com
     rule: trusted
-    schema_version: 1.0
   '2':
     commands: getbmcconfig
     rule: allow
-    schema_version: 1.0
   '2.1':
     commands: remoteimmsetup
     rule: allow
-    schema_version: 1.0
   '2.3':
     commands: lsxcatd
     rule: allow
-    schema_version: 1.0
   '3':
     commands: nextdestiny
     rule: allow
-    schema_version: 1.0
   '4':
     commands: getdestiny
     rule: allow
-    schema_version: 1.0
   '4.4':
     commands: getpostscript
     rule: allow
-    schema_version: 1.0
   '4.5':
     commands: getcredentials
     rule: allow
-    schema_version: 1.0
   '4.6':
     commands: syncfiles
     rule: allow
-    schema_version: 1.0
   '4.7':
     commands: litefile
     rule: allow
-    schema_version: 1.0
   '4.8':
     commands: litetree
     rule: allow
-    schema_version: 1.0
   '4.9':
     commands: getadapter
     rule: allow
-    schema_version: 1.0
 route: {}
 site:
   clustersite:
@@ -1113,7 +1074,6 @@ site:
     precreatemypostscripts: '1'
     pruneservices: '1'
     runbootscripts: 'yes'
-    schema_version: 1.0
     setinstallnic: '1'
     sharedinstall: 'no'
     sharedtftp: '1'
@@ -1278,13 +1238,29 @@ cmd: lsdef -t site -o clustersite -z >/tmp/export_site_table_then_modify_yaml_th
 check:rc==0
 cmd:ssh $$DSTMN 'lsdef -t site -o clustersite -z >/tmp/export_site_table_then_modify_yaml_then_import_$$DSTMN/site.stanza '
 check:rc==0
-cmd:mnip=$(lsdef -t site -o clustersite -i master -c|awk -F'=' '{print $2}');chdef -t site -o clustersite  useSSHonAIX=1111 useNFSv4onAIX=1111 FQDNfirst=1111 SNsyncfiledir='/var/xcat/1111' auditnosyslog=1111 auditskipcmds=ALL blademaxp=641111 cleanupxcatpost=1111 consoleondemand=1111 databaseloc='/var/lib1111' db2installloc='/mntdb1111' dbtracelevel=1111 defserialflow=1111 defserialport=1111 defserialspeed=9611111111 dhcpinterfaces=eth1111 dhcplease=43211111111 dhcpsetup=1111 disjointdhcps=1111 dnshandler=ddns1111 dnsinterfaces='xcatmn|eth1,eth2;service|bond1111' dnsupdaters=dnsupdaters1111 domain='pok1111.stglabs.ibm.com' enableASMI=1111 excludenodes=1111 externaldns=1111 extntpservers=1111 forwarders=$mnip fsptimeout=1111 genmacprefix='11111111:11:aa' genpasswords=1111 hierarchicalattrs=1111 httpport=81111 hwctrldispatch=1111 installdir='/install1111/' installloc='hostname:/path1111' ipmidispatch=1111 ipmimaxp=641111 ipmiretries=31111 ipmisdrcache=1111 ipmitimeout=21111 iscsidir='/iscsidir1111' managedaddressmode=dhcp1111 master=$mnip maxssh=81111 mnroutenames=1111 nameservers=$mnip nmapoptions='--min-rtt-timeout 1111' nodestatus=n nodesyncfiledir='/var/xcat/node/syncfiles1111' ntpservers=$mnip persistkvmguests=1111 powerinterval=1111 ppcmaxp=641111 ppcretry=31111 ppctimeout=1111 precreatemypostchdef -t site -o clustersite  useSSHonAIX=1111 useNFSv4onAIX=1111 FQDNfirst=1111 SNsyncfiledir='/var/xcat/1111' auditnosyslog=1111 auditskipcmds=ALL blademaxp=641111 pruneservices=1111 runbootscripts=1111 setinstallnic=1111 sharedinstall=1111 sharedtftp=1111 skiptables=nics1111 skipvalidatelog=1111 snmpc=xc1111 sshbetweennodes=ALLGROUPS1111 svloglocal=1111 syspowerinterval=11111 syspowermaxnodes=11111 tftpdir='/tftprot1111/' tftpflags='-v1111' timezone='America/New_York1111' useNmapfromMN=1111 useflowcontrol=1111 usexhrm=1111 vcenterautojoin=1111 vmwarereconfigonpower=1111 vsftp=1111 xcatconfdir='/etc/xcat1111' xcatdebugmode=1111 xcatdport=3001 xcatiport=3002 xcatlport=3003 xcatmaxbatchconnections=641111 xcatmaxconnections=61111 xcatsslciphers='3DES' xcatsslversion=TLSv1
+cmd:mnip=$(lsdef -t site -o clustersite -i master -c|awk -F'=' '{print $2}');chdef -t site -o clustersite  useSSHonAIX=1111 useNFSv4onAIX=1111 FQDNfirst=1111 SNsyncfiledir='/var/xcat/1111' auditnosyslog=1111 auditskipcmds=ALL blademaxp=641111 cleanupxcatpost=1111 consoleondemand=1111 databaseloc='/var/lib1111' db2installloc='/mntdb1111' dbtracelevel=0 defserialflow=1111 defserialport=1111 defserialspeed=9611111111 dhcpinterfaces=eth1111 dhcplease=43211111111 dhcpsetup=1111 disjointdhcps=0 dnshandler=ddns1111 dnsinterfaces='xcatmn|eth1,eth2;service|bond1111' dnsupdaters=dnsupdaters1111 domain='pok1111.stglabs.ibm.com' enableASMI=1111 excludenodes=1111 externaldns=1111 extntpservers=1111 forwarders=$mnip fsptimeout=1111 genmacprefix='11111111:11:aa' genpasswords=1111 hierarchicalattrs=1111 httpport=81111 hwctrldispatch=1111 installdir='/install1111/' installloc='hostname:/path1111' ipmidispatch=1111 ipmimaxp=641111 ipmiretries=31111 ipmisdrcache=1111 ipmitimeout=21111 iscsidir='/iscsidir1111' managedaddressmode=dhcp master=$mnip maxssh=81111 mnroutenames=1111 nameservers=$mnip nmapoptions='--min-rtt-timeout 1111' nodestatus=n nodesyncfiledir='/var/xcat/node/syncfiles1111' ntpservers=$mnip persistkvmguests=1111 powerinterval=1111 ppcmaxp=641111 ppcretry=31111 ppctimeout=1111 precreatemypostchdef -t site -o clustersite  useSSHonAIX=1111 useNFSv4onAIX=1111 FQDNfirst=1111 SNsyncfiledir='/var/xcat/1111' auditnosyslog=1111 auditskipcmds=ALL blademaxp=641111 pruneservices=1111 runbootscripts=1111 setinstallnic=1111 sharedinstall=no sharedtftp=1111 skiptables=nics1111 skipvalidatelog=1111 snmpc=xc1111 sshbetweennodes=ALLGROUPS svloglocal=1111 syspowerinterval=11111 syspowermaxnodes=11111 tftpdir='/tftprot1111/' tftpflags='-v1111' timezone='America/New_York1111' useNmapfromMN=1111 useflowcontrol=1111 usexhrm=1111 vcenterautojoin=1111 vmwarereconfigonpower=1111 vsftp=1111 xcatconfdir='/etc/xcat1111' xcatdebugmode=0 xcatdport=3001 xcatiport=3002 xcatlport=3003 xcatmaxbatchconnections=641111 xcatmaxconnections=61111 xcatsslciphers='3DES' xcatsslversion=TLSv1
 check:rc==0
-cmd:lsdef -t site -o clustersite -z|sed 's/1111/2222/g'|sort -t'=' -k1 |tee  /tmp/export_site_table_then_modify_yaml_then_import/srcsite.stanza
+cmd:lsdef -t site -o clustersite -z|sed 's/=0$/=1/g' |sort -t'=' -k1 |tee  /tmp/export_site_table_then_modify_yaml_then_import/srcsite.stanza
+check:rc==0
+cmd:sed -i 's/1111/2222/g' /tmp/export_site_table_then_modify_yaml_then_import/srcsite.stanza
+check:rc==0
+cmd:sed -i 's/managedaddressmode=dhcp/managedaddressmode=static/g' /tmp/export_site_table_then_modify_yaml_then_import/srcsite.stanza
+check:rc==0
+cmd:sed -i 's/sharedinstall=no/sharedinstall=sns/g' /tmp/export_site_table_then_modify_yaml_then_import/srcsite.stanza
+check:rc==0
+cmd:sed -i 's/sshbetweennodes=ALLGROUPS/sshbetweennodes=NOGROUPS/g' /tmp/export_site_table_then_modify_yaml_then_import/srcsite.stanza
 check:rc==0
 cmd:xcat-inventory export --format=yaml -t site -o clustersite |tee /tmp/export_site_table_then_modify_yaml_then_import/export_site_yaml.inv
 check:rc==0
 cmd:mnip=$(lsdef -t site -o clustersite -i master -c|awk -F'=' '{print $2}');sed -i "s/$mnip/$$DSTMN/g" /tmp/export_site_table_then_modify_yaml_then_import/export_site_yaml.inv
+check:rc==0
+cmd:sed -i "s/: '*0'*$/: '1'/g" /tmp/export_site_table_then_modify_yaml_then_import/export_site_yaml.inv
+check:rc==0
+cmd:sed -i "s/managedaddressmode: '*dhcp'*/managedaddressmode: 'static'/g" /tmp/export_site_table_then_modify_yaml_then_import/export_site_yaml.inv
+check:rc==0
+cmd:sed -i "s/sharedinstall: '*no'*/sharedinstall: 'sns'/g" /tmp/export_site_table_then_modify_yaml_then_import/export_site_yaml.inv
+check:rc==0
+cmd:sed -i "s/sshbetweennodes: '*ALLGROUPS'*/sshbetweennodes: 'NOGROUPS'/g" /tmp/export_site_table_then_modify_yaml_then_import/export_site_yaml.inv
 check:rc==0
 cmd:sed -i 's/1111/2222/g' /tmp/export_site_table_then_modify_yaml_then_import/export_site_yaml.inv
 check:rc==0
@@ -1325,13 +1301,29 @@ cmd: lsdef -t site -o clustersite -z >/tmp/export_site_table_then_modify_json_th
 check:rc==0
 cmd:ssh $$DSTMN 'lsdef -t site -o clustersite -z >/tmp/export_site_table_then_modify_json_then_import_$$DSTMN/site.stanza '
 check:rc==0
-cmd:mnip=$(lsdef -t site -o clustersite -i master -c|awk -F'=' '{print $2}');chdef -t site -o clustersite  useSSHonAIX=1111 useNFSv4onAIX=1111 FQDNfirst=1111 SNsyncfiledir='/var/xcat/1111' auditnosyslog=1111 auditskipcmds=ALL blademaxp=641111 cleanupxcatpost=1111 consoleondemand=1111 databaseloc='/var/lib1111' db2installloc='/mntdb1111' dbtracelevel=1111 defserialflow=1111 defserialport=1111 defserialspeed=9611111111 dhcpinterfaces=eth1111 dhcplease=43211111111 dhcpsetup=1111 disjointdhcps=1111 dnshandler=ddns1111 dnsinterfaces='xcatmn|eth1,eth2;service|bond1111' dnsupdaters=dnsupdaters1111 domain='pok1111.stglabs.ibm.com' enableASMI=1111 excludenodes=1111 externaldns=1111 extntpservers=1111 forwarders=$mnip fsptimeout=1111 genmacprefix='11111111:11:aa' genpasswords=1111 hierarchicalattrs=1111 httpport=81111 hwctrldispatch=1111 installdir='/install1111/' installloc='hostname:/path1111' ipmidispatch=1111 ipmimaxp=641111 ipmiretries=31111 ipmisdrcache=1111 ipmitimeout=21111 iscsidir='/iscsidir1111' managedaddressmode=dhcp1111 master=$mnip maxssh=81111 mnroutenames=1111 nameservers=$mnip nmapoptions='--min-rtt-timeout 1111' nodestatus=n nodesyncfiledir='/var/xcat/node/syncfiles1111' ntpservers=$mnip persistkvmguests=1111 powerinterval=1111 ppcmaxp=641111 ppcretry=31111 ppctimeout=1111 precreatemypostchdef -t site -o clustersite  useSSHonAIX=1111 useNFSv4onAIX=1111 FQDNfirst=1111 SNsyncfiledir='/var/xcat/1111' auditnosyslog=1111 auditskipcmds=ALL blademaxp=641111 pruneservices=1111 runbootscripts=1111 setinstallnic=1111 sharedinstall=1111 sharedtftp=1111 skiptables=nics1111 skipvalidatelog=1111 snmpc=xc1111 sshbetweennodes=ALLGROUPS1111 svloglocal=1111 syspowerinterval=11111 syspowermaxnodes=11111 tftpdir='/tftprot1111/' tftpflags='-v1111' timezone='America/New_York1111' useNmapfromMN=1111 useflowcontrol=1111 usexhrm=1111 vcenterautojoin=1111 vmwarereconfigonpower=1111 vsftp=1111 xcatconfdir='/etc/xcat1111' xcatdebugmode=1111 xcatdport=3001 xcatiport=3002 xcatlport=3003 xcatmaxbatchconnections=641111 xcatmaxconnections=61111 xcatsslciphers='3DES' xcatsslversion=TLSv1
+cmd:mnip=$(lsdef -t site -o clustersite -i master -c|awk -F'=' '{print $2}');chdef -t site -o clustersite  useSSHonAIX=1111 useNFSv4onAIX=1111 FQDNfirst=1111 SNsyncfiledir='/var/xcat/1111' auditnosyslog=1111 auditskipcmds=ALL blademaxp=641111 cleanupxcatpost=1111 consoleondemand=1111 databaseloc='/var/lib1111' db2installloc='/mntdb1111' dbtracelevel=0 defserialflow=1111 defserialport=1111 defserialspeed=9611111111 dhcpinterfaces=eth1111 dhcplease=43211111111 dhcpsetup=1111 disjointdhcps=0 dnshandler=ddns1111 dnsinterfaces='xcatmn|eth1,eth2;service|bond1111' dnsupdaters=dnsupdaters1111 domain='pok1111.stglabs.ibm.com' enableASMI=1111 excludenodes=1111 externaldns=1111 extntpservers=1111 forwarders=$mnip fsptimeout=1111 genmacprefix='11111111:11:aa' genpasswords=1111 hierarchicalattrs=1111 httpport=81111 hwctrldispatch=1111 installdir='/install1111/' installloc='hostname:/path1111' ipmidispatch=1111 ipmimaxp=641111 ipmiretries=31111 ipmisdrcache=1111 ipmitimeout=21111 iscsidir='/iscsidir1111' managedaddressmode=dhcp master=$mnip maxssh=81111 mnroutenames=1111 nameservers=$mnip nmapoptions='--min-rtt-timeout 1111' nodestatus=n nodesyncfiledir='/var/xcat/node/syncfiles1111' ntpservers=$mnip persistkvmguests=1111 powerinterval=1111 ppcmaxp=641111 ppcretry=31111 ppctimeout=1111 precreatemypostchdef -t site -o clustersite  useSSHonAIX=1111 useNFSv4onAIX=1111 FQDNfirst=1111 SNsyncfiledir='/var/xcat/1111' auditnosyslog=1111 auditskipcmds=ALL blademaxp=641111 pruneservices=1111 runbootscripts=1111 setinstallnic=1111 sharedinstall=no sharedtftp=1111 skiptables=nics1111 skipvalidatelog=1111 snmpc=xc1111 sshbetweennodes=ALLGROUPS svloglocal=1111 syspowerinterval=11111 syspowermaxnodes=11111 tftpdir='/tftprot1111/' tftpflags='-v1111' timezone='America/New_York1111' useNmapfromMN=1111 useflowcontrol=1111 usexhrm=1111 vcenterautojoin=1111 vmwarereconfigonpower=1111 vsftp=1111 xcatconfdir='/etc/xcat1111' xcatdebugmode=0 xcatdport=3001 xcatiport=3002 xcatlport=3003 xcatmaxbatchconnections=641111 xcatmaxconnections=61111 xcatsslciphers='3DES' xcatsslversion=TLSv1
 check:rc==0
-cmd:lsdef -t site -o clustersite -z|sed 's/1111/2222/g'|sort -t'=' -k1 |tee  /tmp/export_site_table_then_modify_json_then_import/srcsite.stanza
+cmd:lsdef -t site -o clustersite -z|sed 's/=0$/=1/g' |sort -t'=' -k1 |tee  /tmp/export_site_table_then_modify_json_then_import/srcsite.stanza
+check:rc==0
+cmd:sed -i 's/1111/2222/g' /tmp/export_site_table_then_modify_json_then_import/srcsite.stanza
+check:rc==0
+cmd:sed -i 's/managedaddressmode=dhcp/managedaddressmode=static/g' /tmp/export_site_table_then_modify_json_then_import/srcsite.stanza
+check:rc==0
+cmd:sed -i 's/sharedinstall=no/sharedinstall=sns/g' /tmp/export_site_table_then_modify_json_then_import/srcsite.stanza
+check:rc==0
+cmd:sed -i 's/sshbetweennodes=ALLGROUPS/sshbetweennodes=NOGROUPS/g' /tmp/export_site_table_then_modify_json_then_import/srcsite.stanza
 check:rc==0
 cmd:xcat-inventory export --format=json -t site -o clustersite |tee /tmp/export_site_table_then_modify_json_then_import/export_site_json.inv
 check:rc==0
 cmd:mnip=$(lsdef -t site -o clustersite -i master -c|awk -F'=' '{print $2}');sed -i "s/$mnip/$$DSTMN/g" /tmp/export_site_table_then_modify_json_then_import/export_site_json.inv
+check:rc==0
+cmd:sed -i 's/"0"/"1"/g' /tmp/export_site_table_then_modify_json_then_import/export_site_json.inv
+check:rc==0
+cmd:sed -i 's/"managedaddressmode": "dhcp"/"managedaddressmode": "static"/g' /tmp/export_site_table_then_modify_json_then_import/export_site_json.inv
+check:rc==0
+cmd:sed -i 's/"sharedinstall": "no"/"sharedinstall": "sns"/g' /tmp/export_site_table_then_modify_json_then_import/export_site_json.inv
+check:rc==0
+cmd:sed -i 's/"sshbetweennodes": "ALLGROUPS"/"sshbetweennodes": "NOGROUPS"/g' /tmp/export_site_table_then_modify_json_then_import/export_site_json.inv
 check:rc==0
 cmd:sed -i 's/1111/2222/g' /tmp/export_site_table_then_modify_json_then_import/export_site_json.inv
 check:rc==0

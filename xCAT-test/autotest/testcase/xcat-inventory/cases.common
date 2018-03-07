@@ -104,7 +104,7 @@ check:rc==0
 cmd:cat /tmp/xcat_inventory_import_option_f_invalid_file/invaild_yaml
 check:rc==0
 cmd:xcat-inventory import -f /tmp/xcat_inventory_import_option_f_invalid_file/invaild_yaml
-check:output =~ Error: failed to load file 
+check:output =~ Error: 
 check:output !~Traceback
 check:rc!=0
 cmd:rm -rf /tmp/xcat_inventory_import_option_f_invalid_file

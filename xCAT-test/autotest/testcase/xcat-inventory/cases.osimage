@@ -9,7 +9,7 @@ cmd:lsdef -t osimage -o bogus_image >/dev/null 2>&1;if [[ $? -eq 0 ]]; then lsde
 check:rc==0
 cmd:ssh $$DSTMN 'lsdef -t osimage -o  bogus_image > /dev/null 2>&1; if [[ $? -eq 0 ]]; then lsdef -t osimage -o bogus_image -z >/tmp/export_import_single_osimage_by_yaml_$$DSTMN/bogus_image.stanza ;rmdef -t osimage -o bogus_image;fi'
 check:rc==0
-cmd:chdef -t osimage -o bogus_image addkcmdline=addkcmdline boottarget=boottarget cfmdir=cfmdir crashkernelsize=crashkernelsize description=description driverupdatesrc=driverupdatesrc dump=dump exlist=exlist groups=groups imagename=imagename imagetype=linux isdeletable=isdeletable kerneldir=kerneldir kernelver=kernelver kitcomponents=kitcomponents krpmver=krpmver netdrivers=netdrivers nodebootif=nodebootif osarch=osarch osdistroname=osdistroname osname=osname osupdatename=osupdatename osvers=osvers otherifce=otherifce otherpkgdir=otherpkgdir otherpkglist=otherpkglist partitionfile=partitionfile permission=permission pkgdir=pkgdir pkglist=pkglist postbootscripts=postbootscripts postinstall=postinstall postscripts=postscripts profile=profile provmethod=provmethod rootfstype=rootfstype rootimgdir=rootimgdir serverrole=serverrole synclists=synclists template=template usercomment=usercomment
+cmd:chdef -t osimage -o bogus_image addkcmdline=addkcmdline boottarget=boottarget cfmdir=cfmdir crashkernelsize=crashkernelsize description=description driverupdatesrc=driverupdatesrc dump=dump exlist=exlist groups=groups imagename=imagename imagetype=linux isdeletable=isdeletable kerneldir=kerneldir kernelver=kernelver kitcomponents=kitcomponents krpmver=krpmver netdrivers=netdrivers nodebootif=nodebootif osarch=osarch osdistroname=osdistroname osname=osname osupdatename=osupdatename osvers=osvers otherifce=otherifce otherpkgdir=otherpkgdir otherpkglist=otherpkglist partitionfile=partitionfile permission=permission pkgdir=pkgdir pkglist=pkglist postbootscripts=postbootscripts postinstall=postinstall postscripts=postscripts profile=compute provmethod=netboot rootfstype=nfs rootimgdir=rootimgdir serverrole=serverrole synclists=synclists template=template usercomment=usercomment
 check:rc==0
 cmd:lsdef -t osimage -o  bogus_image -z|sort -t'=' -k1 |tee  /tmp/export_import_single_osimage_by_yaml/src_bogus_osimage.stanza
 check:rc==0
@@ -52,7 +52,7 @@ cmd:lsdef -t osimage -o bogus_image >/dev/null 2>&1;if [[ $? -eq 0 ]]; then lsde
 check:rc==0
 cmd:ssh $$DSTMN 'lsdef -t osimage -o  bogus_image > /dev/null 2>&1; if [[ $? -eq 0 ]]; then lsdef -t osimage -o bogus_image -z >/tmp/export_import_single_osimage_by_json_$$DSTMN/bogus_image.stanza ;rmdef -t osimage -o bogus_image;fi'
 check:rc==0
-cmd:chdef -t osimage -o bogus_image addkcmdline=addkcmdline boottarget=boottarget cfmdir=cfmdir crashkernelsize=crashkernelsize description=description driverupdatesrc=driverupdatesrc dump=dump exlist=exlist groups=groups imagename=imagename imagetype=linux isdeletable=isdeletable kerneldir=kerneldir kernelver=kernelver kitcomponents=kitcomponents krpmver=krpmver netdrivers=netdrivers nodebootif=nodebootif osarch=osarch osdistroname=osdistroname osname=osname osupdatename=osupdatename osvers=osvers otherifce=otherifce otherpkgdir=otherpkgdir otherpkglist=otherpkglist partitionfile=partitionfile permission=permission pkgdir=pkgdir pkglist=pkglist postbootscripts=postbootscripts postinstall=postinstall postscripts=postscripts profile=profile provmethod=provmethod rootfstype=rootfstype rootimgdir=rootimgdir serverrole=serverrole synclists=synclists template=template usercomment=usercomment
+cmd:chdef -t osimage -o bogus_image addkcmdline=addkcmdline boottarget=boottarget cfmdir=cfmdir crashkernelsize=crashkernelsize description=description driverupdatesrc=driverupdatesrc dump=dump exlist=exlist groups=groups imagename=imagename imagetype=linux isdeletable=isdeletable kerneldir=kerneldir kernelver=kernelver kitcomponents=kitcomponents krpmver=krpmver netdrivers=netdrivers nodebootif=nodebootif osarch=osarch osdistroname=osdistroname osname=osname osupdatename=osupdatename osvers=osvers otherifce=otherifce otherpkgdir=otherpkgdir otherpkglist=otherpkglist partitionfile=partitionfile permission=permission pkgdir=pkgdir pkglist=pkglist postbootscripts=postbootscripts postinstall=postinstall postscripts=postscripts profile=compute provmethod=netboot rootfstype=nfs rootimgdir=rootimgdir serverrole=serverrole synclists=synclists template=template usercomment=usercomment
 check:rc==0
 cmd:lsdef -t osimage -o  bogus_image -z|sort -t'=' -k1 |tee  /tmp/export_import_single_osimage_by_json/src_bogus_osimage.stanza
 check:rc==0
@@ -92,7 +92,7 @@ cmd:mkdir -p /tmp/xcat_inventory_try_to_export_all_type_is_osimage_default_forma
 check:rc==0
 cmd:lsdef -t osimage -o bogus_image >/dev/null 2>&1;if [[ $? -eq 0 ]]; then lsdef -t osimage -o bogus_image -z >/tmp/xcat_inventory_try_to_export_all_type_is_osimage_default_format/bogus_image.stanza ;rmdef -t osimage -o bogus_image;fi
 check:rc==0
-cmd:chdef -t osimage -o bogus_image addkcmdline=addkcmdline boottarget=boottarget cfmdir=cfmdir crashkernelsize=crashkernelsize description=description driverupdatesrc=driverupdatesrc dump=dump exlist=exlist groups=groups imagename=imagename imagetype=linux isdeletable=isdeletable kerneldir=kerneldir kernelver=kernelver kitcomponents=kitcomponents krpmver=krpmver netdrivers=netdrivers nodebootif=nodebootif osarch=osarch osdistroname=osdistroname osname=osname osupdatename=osupdatename osvers=osvers otherifce=otherifce otherpkgdir=otherpkgdir otherpkglist=otherpkglist partitionfile=partitionfile permission=permission pkgdir=pkgdir pkglist=pkglist postbootscripts=postbootscripts postinstall=postinstall postscripts=postscripts profile=profile provmethod=provmethod rootfstype=rootfstype rootimgdir=rootimgdir serverrole=serverrole synclists=synclists template=template usercomment=usercomment
+cmd:chdef -t osimage -o bogus_image addkcmdline=addkcmdline boottarget=boottarget cfmdir=cfmdir crashkernelsize=crashkernelsize description=description driverupdatesrc=driverupdatesrc dump=dump exlist=exlist groups=groups imagename=imagename imagetype=linux isdeletable=isdeletable kerneldir=kerneldir kernelver=kernelver kitcomponents=kitcomponents krpmver=krpmver netdrivers=netdrivers nodebootif=nodebootif osarch=osarch osdistroname=osdistroname osname=osname osupdatename=osupdatename osvers=osvers otherifce=otherifce otherpkgdir=otherpkgdir otherpkglist=otherpkglist partitionfile=partitionfile permission=permission pkgdir=pkgdir pkglist=pkglist postbootscripts=postbootscripts postinstall=postinstall postscripts=postscripts profile=compute provmethod=netboot rootfstype=nfs rootimgdir=rootimgdir serverrole=serverrole synclists=synclists template=template usercomment=usercomment
 check:rc==0
 cmd:xcat-inventory export -t osimage |tee /tmp/xcat_inventory_try_to_export_all_type_is_osimage_default_format/export.file
 check:rc==0
@@ -132,7 +132,7 @@ cmd:mkdir -p /tmp/xcat_inventory_try_to_export_all_type_is_osimage_json_format
 check:rc==0
 cmd:lsdef -t osimage -o bogus_image >/dev/null 2>&1;if [[ $? -eq 0 ]]; then lsdef -t osimage -o bogus_image -z >/tmp/xcat_inventory_try_to_export_all_type_is_osimage_json_format/bogus_image.stanza ;rmdef -t osimage -o bogus_image;fi
 check:rc==0
-cmd:chdef -t osimage -o bogus_image addkcmdline=addkcmdline boottarget=boottarget cfmdir=cfmdir crashkernelsize=crashkernelsize description=description driverupdatesrc=driverupdatesrc dump=dump exlist=exlist groups=groups imagename=imagename imagetype=linux isdeletable=isdeletable kerneldir=kerneldir kernelver=kernelver kitcomponents=kitcomponents krpmver=krpmver netdrivers=netdrivers nodebootif=nodebootif osarch=osarch osdistroname=osdistroname osname=osname osupdatename=osupdatename osvers=osvers otherifce=otherifce otherpkgdir=otherpkgdir otherpkglist=otherpkglist partitionfile=partitionfile permission=permission pkgdir=pkgdir pkglist=pkglist postbootscripts=postbootscripts postinstall=postinstall postscripts=postscripts profile=profile provmethod=provmethod rootfstype=rootfstype rootimgdir=rootimgdir serverrole=serverrole synclists=synclists template=template usercomment=usercomment
+cmd:chdef -t osimage -o bogus_image addkcmdline=addkcmdline boottarget=boottarget cfmdir=cfmdir crashkernelsize=crashkernelsize description=description driverupdatesrc=driverupdatesrc dump=dump exlist=exlist groups=groups imagename=imagename imagetype=linux isdeletable=isdeletable kerneldir=kerneldir kernelver=kernelver kitcomponents=kitcomponents krpmver=krpmver netdrivers=netdrivers nodebootif=nodebootif osarch=osarch osdistroname=osdistroname osname=osname osupdatename=osupdatename osvers=osvers otherifce=otherifce otherpkgdir=otherpkgdir otherpkglist=otherpkglist partitionfile=partitionfile permission=permission pkgdir=pkgdir pkglist=pkglist postbootscripts=postbootscripts postinstall=postinstall postscripts=postscripts profile=compute provmethod=netboot rootfstype=nfs rootimgdir=rootimgdir serverrole=serverrole synclists=synclists template=template usercomment=usercomment
 check:rc==0
 cmd:xcat-inventory export --format=json -t osimage |tee /tmp/xcat_inventory_try_to_export_all_type_is_osimage_json_format/export.file
 check:rc==0
@@ -172,7 +172,7 @@ cmd:mkdir -p /tmp/xcat_inventory_try_to_export_all_type_is_osimage_yaml_format
 check:rc==0
 cmd:lsdef -t osimage -o bogus_image >/dev/null 2>&1;if [[ $? -eq 0 ]]; then lsdef -t osimage -o bogus_image -z >/tmp/xcat_inventory_try_to_export_all_type_is_osimage_yaml_format/bogus_image.stanza ;rmdef -t osimage -o bogus_image;fi
 check:rc==0
-cmd:chdef -t osimage -o bogus_image addkcmdline=addkcmdline boottarget=boottarget cfmdir=cfmdir crashkernelsize=crashkernelsize description=description driverupdatesrc=driverupdatesrc dump=dump exlist=exlist groups=groups imagename=imagename imagetype=linux isdeletable=isdeletable kerneldir=kerneldir kernelver=kernelver kitcomponents=kitcomponents krpmver=krpmver netdrivers=netdrivers nodebootif=nodebootif osarch=osarch osdistroname=osdistroname osname=osname osupdatename=osupdatename osvers=osvers otherifce=otherifce otherpkgdir=otherpkgdir otherpkglist=otherpkglist partitionfile=partitionfile permission=permission pkgdir=pkgdir pkglist=pkglist postbootscripts=postbootscripts postinstall=postinstall postscripts=postscripts profile=profile provmethod=provmethod rootfstype=rootfstype rootimgdir=rootimgdir serverrole=serverrole synclists=synclists template=template usercomment=usercomment
+cmd:chdef -t osimage -o bogus_image addkcmdline=addkcmdline boottarget=boottarget cfmdir=cfmdir crashkernelsize=crashkernelsize description=description driverupdatesrc=driverupdatesrc dump=dump exlist=exlist groups=groups imagename=imagename imagetype=linux isdeletable=isdeletable kerneldir=kerneldir kernelver=kernelver kitcomponents=kitcomponents krpmver=krpmver netdrivers=netdrivers nodebootif=nodebootif osarch=osarch osdistroname=osdistroname osname=osname osupdatename=osupdatename osvers=osvers otherifce=otherifce otherpkgdir=otherpkgdir otherpkglist=otherpkglist partitionfile=partitionfile permission=permission pkgdir=pkgdir pkglist=pkglist postbootscripts=postbootscripts postinstall=postinstall postscripts=postscripts profile=compute provmethod=netboot rootfstype=nfs rootimgdir=rootimgdir serverrole=serverrole synclists=synclists template=template usercomment=usercomment
 check:rc==0
 cmd:xcat-inventory export --format=yaml -t osimage |tee /tmp/xcat_inventory_try_to_export_all_type_is_osimage_yaml_format/export.file
 check:rc==0
@@ -238,7 +238,6 @@ echo "network:
       mgtifname: eth0
       mtu: '1500'
       net: 10.0.0.0
-    schema_version: 1.0
     service:
       tftpserver: <xcatmaster>
 node:
@@ -266,7 +265,6 @@ node:
       groups: bogusgroup
     obj_type: node
     role: compute
-    schema_version: 1.0
   bogusnode2:
     device_type: server
     engines:
@@ -291,7 +289,6 @@ node:
       groups: bogusgroup
     obj_type: node
     role: compute
-    schema_version: 1.0
   bogusnode3:
     device_type: server
     engines:
@@ -316,7 +313,6 @@ node:
       groups: bogusgroup
     obj_type: node
     role: compute
-    schema_version: 1.0
   service:
     device_type: server
     engines:
@@ -325,7 +321,6 @@ node:
           postscripts: servicenode
     obj_type: group
     role: compute
-    schema_version: 1.0
   xcatdefaults:
     device_type: server
     engines:
@@ -335,67 +330,54 @@ node:
           postscripts: syslog,remoteshell,syncfiles
     obj_type: group
     role: compute
-    schema_version: 1.0
 osimage:
   bogus_image:
     addkcmdline: aaaa
     boottarget: aaa
     imagetype: linux
-    schema_version: 1.0
+    provision_mode: statelite
+    role: compute
 passwd: {}
 policy:
   '1':
     name: root
     rule: allow
-    schema_version: 1.0
   '1.2':
     name: c910f03c05k08.pok.stglabs.ibm.com
     rule: trusted
-    schema_version: 1.0
   '2':
     commands: getbmcconfig
     rule: allow
-    schema_version: 1.0
   '2.1':
     commands: remoteimmsetup
     rule: allow
-    schema_version: 1.0
   '2.3':
     commands: lsxcatd
     rule: allow
-    schema_version: 1.0
   '3':
     commands: nextdestiny
     rule: allow
-    schema_version: 1.0
   '4':
     commands: getdestiny
     rule: allow
-    schema_version: 1.0
   '4.4':
     commands: getpostscript
     rule: allow
-    schema_version: 1.0
   '4.5':
     commands: getcredentials
     rule: allow
-    schema_version: 1.0
   '4.6':
     commands: syncfiles
     rule: allow
-    schema_version: 1.0
   '4.7':
     commands: litefile
     rule: allow
-    schema_version: 1.0
   '4.8':
     commands: litetree
     rule: allow
-    schema_version: 1.0
   '4.9':
     commands: getadapter
     rule: allow
-    schema_version: 1.0
 route: {}
 site:
   cluster:
@@ -424,7 +406,6 @@ site:
     ppcmaxp: '64'
     ppcretry: '3'
     ppctimeout: '0'
-    schema_version: 1.0
     sharedtftp: '1'
     sshbetweennodes: ALLGROUPS
     syspowerinterval: '0'
@@ -441,7 +422,9 @@ cmd:#!/bin/bash
 echo "Object name: bogus_image
     addkcmdline=aaaa
     boottarget=aaa
-    imagetype=linux">> /tmp/xcat_inventory_try_to_import_all_type_is_osimage_yaml_format/org_osimage_db
+    imagetype=linux
+    profile=compute
+    provmethod=statelite" >> /tmp/xcat_inventory_try_to_import_all_type_is_osimage_yaml_format/org_osimage_db
 check:rc==0
 cmd:sort /tmp/xcat_inventory_try_to_import_all_type_is_osimage_yaml_format/org_osimage_db > /tmp/xcat_inventory_try_to_import_all_type_is_osimage_yaml_format/target_osimage_sort
 cmd:xcat-inventory import -f /tmp/xcat_inventory_try_to_import_all_type_is_osimage_yaml_format/import.file -t osimage
@@ -521,7 +504,6 @@ echo '{
                 "mtu": "1500",
                 "net": "10.0.0.0"
             },
-            "schema_version": 1.0,
             "service": {
                 "tftpserver": "<xcatmaster>"
             }
@@ -562,7 +544,6 @@ echo '{
             },
             "obj_type": "node",
             "role": "compute",
-            "schema_version": 1.0
         },
         "bogusnode2": {
             "device_type": "server",
@@ -598,7 +579,6 @@ echo '{
             },
             "obj_type": "node",
             "role": "compute",
-            "schema_version": 1.0
         },
         "bogusnode3": {
             "device_type": "server",
@@ -634,7 +614,6 @@ echo '{
             },
             "obj_type": "node",
             "role": "compute",
-            "schema_version": 1.0
         },
         "service": {
             "device_type": "server",
@@ -647,7 +626,6 @@ echo '{
             },
             "obj_type": "group",
             "role": "compute",
-            "schema_version": 1.0
         },
         "xcatdefaults": {
             "device_type": "server",
@@ -661,7 +639,6 @@ echo '{
             },
             "obj_type": "group",
             "role": "compute",
-            "schema_version": 1.0
         }
     },
     "osimage": {
@@ -669,75 +646,63 @@ echo '{
             "addkcmdline": "aaaa",
             "boottarget": "aaa",
             "imagetype": "linux",
-            "schema_version": 1.0
+            "provision_mode": "statelite",
+            "role": "compute"
         }
     },
     "passwd": {},
     "policy": {
         "1": {
             "name": "root",
-            "rule": "allow",
-            "schema_version": 1.0
+            "rule": "allow"
         },
         "1.2": {
             "name": "c910f03c05k08.pok.stglabs.ibm.com",
-            "rule": "trusted",
-            "schema_version": 1.0
+            "rule": "trusted"
         },
         "2": {
             "commands": "getbmcconfig",
-            "rule": "allow",
-            "schema_version": 1.0
+            "rule": "allow"
         },
         "2.1": {
             "commands": "remoteimmsetup",
-            "rule": "allow",
-            "schema_version": 1.0
+            "rule": "allow"
         },
         "2.3": {
             "commands": "lsxcatd",
-            "rule": "allow",
-            "schema_version": 1.0
+            "rule": "allow"
         },
         "3": {
             "commands": "nextdestiny",
-            "rule": "allow",
-            "schema_version": 1.0
+            "rule": "allow"
         },
         "4": {
             "commands": "getdestiny",
-            "rule": "allow",
-            "schema_version": 1.0
+            "rule": "allow"
         },
         "4.4": {
             "commands": "getpostscript",
-            "rule": "allow",
-            "schema_version": 1.0
+            "rule": "allow"
         },
         "4.5": {
             "commands": "getcredentials",
-            "rule": "allow",
-            "schema_version": 1.0
+            "rule": "allow"
         },
         "4.6": {
             "commands": "syncfiles",
-            "rule": "allow",
-            "schema_version": 1.0
+            "rule": "allow"
         },
         "4.7": {
             "commands": "litefile",
-            "rule": "allow",
-            "schema_version": 1.0
+            "rule": "allow"
         },
         "4.8": {
             "commands": "litetree",
-            "rule": "allow",
-            "schema_version": 1.0
+            "rule": "allow"
         },
         "4.9": {
             "commands": "getadapter",
-            "rule": "allow",
-            "schema_version": 1.0
+            "rule": "allow"
         }
     },
     "route": {},
@@ -768,7 +733,6 @@ echo '{
             "ppcmaxp": "64",
             "ppcretry": "3",
             "ppctimeout": "0",
-            "schema_version": 1.0,
             "sharedtftp": "1",
             "sshbetweennodes": "ALLGROUPS",
             "syspowerinterval": "0",
@@ -788,7 +752,9 @@ cmd:#!/bin/bash
 echo "Object name: bogus_image
     addkcmdline=aaaa
     boottarget=aaa
-    imagetype=linux">> /tmp/xcat_inventory_try_to_import_all_type_is_osimage_json_format/org_osimage_db
+    imagetype=linux
+    profile=compute
+    provmethod=statelite" >> /tmp/xcat_inventory_try_to_import_all_type_is_osimage_json_format/org_osimage_db
 check:rc==0
 cmd:sort /tmp/xcat_inventory_try_to_import_all_type_is_osimage_json_format/org_osimage_db > /tmp/xcat_inventory_try_to_import_all_type_is_osimage_json_format/target_osimage_sort
 cmd:xcat-inventory import -f /tmp/xcat_inventory_try_to_import_all_type_is_osimage_json_format/import.file -t osimage
@@ -829,8 +795,8 @@ cmd: rmdef -t osimage -o  bogus_image
 check:rc==0
 cmd:if [[ -e /tmp/xcat_inventory_try_to_import_all_type_is_osimage_json_format/bogus_image.stanza ]]; then cat /tmp/xcat_inventory_try_to_import_all_type_is_osimage_json_format/bogus_image.stanza | mkdef -z;fi
 check:rc==0
-cmd:rm -rf /tmp/xcat_inventory_try_to_import_all_type_is_osimage_json_format
-check:rc==0
+#cmd:rm -rf /tmp/xcat_inventory_try_to_import_all_type_is_osimage_json_format
+#check:rc==0
 end
 
 
@@ -845,13 +811,25 @@ cmd:lsdef -t osimage -o bogus_image >/dev/null 2>&1;if [[ $? -eq 0 ]]; then lsde
 check:rc==0
 cmd:ssh $$DSTMN 'lsdef -t osimage -o  bogus_image > /dev/null 2>&1; if [[ $? -eq 0 ]]; then lsdef -t osimage -o bogus_image -z >/tmp/export_single_osimage_then_modify_json_then_import_$$DSTMN/bogus_image.stanza ;rmdef -t osimage -o bogus_image;fi'
 check:rc==0
-cmd:chdef -t osimage -o bogus_image addkcmdline=1111 boottarget=1111 cfmdir=1111 crashkernelsize=1111 description=1111 driverupdatesrc=1111 dump=1111 exlist=1111 groups=1111 imagename=1111 imagetype=linux isdeletable=1111 kerneldir=1111 kernelver=1111 kitcomponents=1111 krpmver=1111 netdrivers=1111 nodebootif=1111 osarch=1111 osdistroname=1111 osname=1111 osupdatename=1111 osvers=1111 otherifce=1111 otherpkgdir=1111 otherpkglist=1111 partitionfile=1111 permission=1111 pkgdir=1111 pkglist=1111 postbootscripts=1111 postinstall=1111 postscripts=1111 profile=1111 provmethod=1111 rootfstype=1111 rootimgdir=1111 serverrole=1111 synclists=1111 template=1111 usercomment=1111
+cmd:chdef -t osimage -o bogus_image addkcmdline=1111 boottarget=1111 cfmdir=1111 crashkernelsize=1111 description=1111 driverupdatesrc=1111 dump=1111 exlist=1111 groups=1111 imagename=1111 imagetype=linux isdeletable=1111 kerneldir=1111 kernelver=1111 kitcomponents=1111 krpmver=1111 netdrivers=1111 nodebootif=1111 osarch=1111 osdistroname=1111 osname=1111 osupdatename=1111 osvers=1111 otherifce=1111 otherpkgdir=1111 otherpkglist=1111 partitionfile=1111 permission=1111 pkgdir=1111 pkglist=1111 postbootscripts=1111 postinstall=1111 postscripts=1111 profile=compute  provmethod=statelite rootfstype=nfs rootimgdir=1111 serverrole=1111 synclists=1111 template=1111 usercomment=1111
 check:rc==0
 cmd:lsdef -t osimage -o  bogus_image -z|sed 's/1111/2222/g'|sort -t'=' -k1 |tee  /tmp/export_single_osimage_then_modify_json_then_import/src_bogus_osimage.stanza
+check:rc==0
+cmd:sed -i 's/profile=compute/profile=service/g'   /tmp/export_single_osimage_then_modify_json_then_import/src_bogus_osimage.stanza
+check:rc==0
+cmd:sed -i 's/provmethod=statelite/provmethod=netboot/g'   /tmp/export_single_osimage_then_modify_json_then_import/src_bogus_osimage.stanza
+check:rc==0
+cmd:sed -i 's/rootfstype=nfs/rootfstype=ramdisk/g'   /tmp/export_single_osimage_then_modify_json_then_import/src_bogus_osimage.stanza
 check:rc==0
 cmd:xcat-inventory export --format=json -t osimage -o bogus_image |tee /tmp/export_single_osimage_then_modify_json_then_import/bogus_image.json
 check:rc==0
 cmd:sed -i 's/1111/2222/g' /tmp/export_single_osimage_then_modify_json_then_import/bogus_image.json
+check:rc==0
+cmd:sed -i 's/"role": "compute"/"role": "service"/g' /tmp/export_single_osimage_then_modify_json_then_import/bogus_image.json
+check:rc==0
+cmd:sed -i 's/"provision_mode": "statelite"/"provision_mode": "netboot"/g' /tmp/export_single_osimage_then_modify_json_then_import/bogus_image.json
+check:rc==0
+cmd:sed -i 's/"rootfstype": "nfs"/"rootfstype": "ramdisk"/g' /tmp/export_single_osimage_then_modify_json_then_import/bogus_image.json
 check:rc==0
 cmd:scp /tmp/export_single_osimage_then_modify_json_then_import/bogus_image.json $$DSTMN:/tmp/export_single_osimage_then_modify_json_then_import_$$DSTMN/
 check:rc==0
@@ -889,13 +867,25 @@ cmd:lsdef -t osimage -o bogus_image >/dev/null 2>&1;if [[ $? -eq 0 ]]; then lsde
 check:rc==0
 cmd:ssh $$DSTMN 'lsdef -t osimage -o  bogus_image > /dev/null 2>&1; if [[ $? -eq 0 ]]; then lsdef -t osimage -o bogus_image -z >/tmp/export_single_osimage_then_modify_yaml_then_import_$$DSTMN/bogus_image.stanza ;rmdef -t osimage -o bogus_image;fi'
 check:rc==0
-cmd:chdef -t osimage -o bogus_image addkcmdline=1111 boottarget=1111 cfmdir=1111 crashkernelsize=1111 description=1111 driverupdatesrc=1111 dump=1111 exlist=1111 groups=1111 imagename=1111 imagetype=linux isdeletable=1111 kerneldir=1111 kernelver=1111 kitcomponents=1111 krpmver=1111 netdrivers=1111 nodebootif=1111 osarch=1111 osdistroname=1111 osname=1111 osupdatename=1111 osvers=1111 otherifce=1111 otherpkgdir=1111 otherpkglist=1111 partitionfile=1111 permission=1111 pkgdir=1111 pkglist=1111 postbootscripts=1111 postinstall=1111 postscripts=1111 profile=1111 provmethod=1111 rootfstype=1111 rootimgdir=1111 serverrole=1111 synclists=1111 template=1111 usercomment=1111
+cmd:chdef -t osimage -o bogus_image addkcmdline=1111 boottarget=1111 cfmdir=1111 crashkernelsize=1111 description=1111 driverupdatesrc=1111 dump=1111 exlist=1111 groups=1111 imagename=1111 imagetype=linux isdeletable=1111 kerneldir=1111 kernelver=1111 kitcomponents=1111 krpmver=1111 netdrivers=1111 nodebootif=1111 osarch=1111 osdistroname=1111 osname=1111 osupdatename=1111 osvers=1111 otherifce=1111 otherpkgdir=1111 otherpkglist=1111 partitionfile=1111 permission=1111 pkgdir=1111 pkglist=1111 postbootscripts=1111 postinstall=1111 postscripts=1111 profile=compute provmethod=statelite rootfstype=nfs rootimgdir=1111 serverrole=1111 synclists=1111 template=1111 usercomment=1111
 check:rc==0
 cmd:lsdef -t osimage -o  bogus_image -z|sed 's/1111/2222/g'|sort -t'=' -k1 |tee  /tmp/export_single_osimage_then_modify_yaml_then_import/src_bogus_osimage.stanza
+check:rc==0
+cmd:sed -i 's/profile=compute/profile=service/g'   /tmp/export_single_osimage_then_modify_yaml_then_import/src_bogus_osimage.stanza
+check:rc==0
+cmd:sed -i 's/provmethod=statelite/provmethod=netboot/g'   /tmp/export_single_osimage_then_modify_yaml_then_import/src_bogus_osimage.stanza
+check:rc==0
+cmd:sed -i 's/rootfstype=nfs/rootfstype=ramdisk/g'   /tmp/export_single_osimage_then_modify_yaml_then_import/src_bogus_osimage.stanza
 check:rc==0
 cmd:xcat-inventory export --format=yaml -t osimage -o bogus_image |tee /tmp/export_single_osimage_then_modify_yaml_then_import/bogus_image.yaml
 check:rc==0
 cmd:sed -i 's/1111/2222/g' /tmp/export_single_osimage_then_modify_yaml_then_import/bogus_image.yaml
+check:rc==0
+cmd:sed -i "s/role: '*compute'*/role: 'service'/g" /tmp/export_single_osimage_then_modify_yaml_then_import/bogus_image.yaml
+check:rc==0
+cmd:sed -i "s/provision_mode: '*statelite'*/provision_mode: 'netboot'/g" /tmp/export_single_osimage_then_modify_yaml_then_import/bogus_image.yaml
+check:rc==0
+cmd:sed -i "s/rootfstype: '*nfs'*/rootfstype: 'ramdisk'/g" /tmp/export_single_osimage_then_modify_yaml_then_import/bogus_image.yaml
 check:rc==0
 cmd:scp /tmp/export_single_osimage_then_modify_yaml_then_import/bogus_image.yaml $$DSTMN:/tmp/export_single_osimage_then_modify_yaml_then_import_$$DSTMN/
 check:rc==0
