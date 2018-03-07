@@ -1,0 +1,46 @@
+start:set_up_env_for_support_openbmc_in_python
+description:this case is used to test environment setup for supporting openbmc in python
+os:Linux
+hcp:openbmc
+cmd:mkdir -p /tmp/set_up_env_for_support_openbmc_in_python
+check:rc==0
+cmd: wget https://bootstrap.pypa.io/get-pip.py --retry-connrefused  -O /tmp/set_up_env_for_support_openbmc_in_python/get-pip.py
+check:rc==0
+cmd:python /tmp/set_up_env_for_support_openbmc_in_python/get-pip.py
+check:rc==0
+cmd:yum -y install gcc python-devel libffi-devel openssl-devel
+check:rc==0
+cmd:rpm -qa |grep "^gcc-"
+check:output=~ gcc-\d
+check:rc==0
+cmd:rpm -qa|grep "^python-devel"
+check:output=~ python-devel-\d
+check:rc==0
+cmd:rpm -qa|grep "^libffi-devel"
+check:output=~ libffi-devel-\d 
+check:rc==0
+cmd:rpm -qa|grep "^openssl-devel"
+check:output=~ openssl-devel-\d
+check:rc==0
+cmd:pip install gevent docopt requests paramiko  scp 
+check:rc==0
+cmd:pip list 2>/dev/null | grep "^gevent"
+check:output=~ gevent \(\d
+check:rc==0 
+cmd:pip list 2>/dev/null | grep "^docopt"
+check:output=~ docopt \(\d
+check:rc==0
+cmd:pip list 2>/dev/null | grep "^requests"
+check:output=~ requests \(\d
+check:rc==0
+cmd:pip list 2>/dev/null | grep "^paramiko"
+check:output=~ paramiko \(\d
+check:rc==0
+cmd:pip list 2>/dev/null | grep "^scp"
+check:output=~ scp \(\d
+check:rc==0
+cmd:rm -rf /tmp/set_up_env_for_support_openbmc_in_python
+check:rc==0
+end
+
+
