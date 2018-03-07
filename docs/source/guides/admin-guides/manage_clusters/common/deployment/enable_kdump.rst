@@ -80,16 +80,7 @@ If the NFS server is the Service Node or Management Node, the server can be left
 
     chdef -t osimage <image name> dump=nfs:///<kdump_path>
 
-**Note:** Only NFS is currently supported as a storage location.
-
-Notes
------
-
-Currently, only NFS is supported for the setup of kdump.
-
-If the dump attribute is not set, the kdump service will not be enabled.
-
-Make sure the NFS remote path(``nfs://<nfs_server_ip>/<kdump_path>``) is exported and it is read-writeable to the node where kdump service is enabled.
+**Note:** Only NFS is currently supported as a storage location. Make sure the NFS remote path(``nfs://<nfs_server_ip>/<kdump_path>``) is exported and it is read-writeable to the node where kdump service is enabled.
 
 
 The ``crashkernelsize`` attribute
@@ -111,7 +102,7 @@ For setting specific sizes, use the following example:
 
     chdef -t osimage <image name> crashkernelsize=<size>@32M
 
-**Notes**: the value of the ``crashkernelsize`` depends on the total physical memory size on the machine. If it is hard to decide the specific ``crashkernelsize``, ``auto`` value can be used, like ``crashkernelsize=auto``.  For more about size, refer to the Operating System specific documentation describing kdump.*
+**Notes**: the value of the ``crashkernelsize`` depends on the total physical memory size on the machine. For more about size, refer to `Appedix`_
 
 If kdump start error like this: ::
 
@@ -156,8 +147,7 @@ Once the system has returned from recovering the crash, you can analyze the kern
 
 #. Locate the recent vmcore dump file.
 
-#. Locate the kernel file for the crash server.  
-    The kernel is under ``/tftpboot/xcat/netboot/<OS name="">/<ARCH>/<profile>/kernel`` on the managenent node.
+#. Locate the kernel file for the crash server. The kernel is under ``/tftpboot/xcat/netboot/<OS name="">/<ARCH>/<profile>/kernel`` on the managenent node.
 
 #. Once you have located a vmcore dump file and kernel file, call ``crash``: :: 
 
@@ -168,7 +158,7 @@ Once the system has returned from recovering the crash, you can analyze the kern
 Appedix
 -------
 
-#. Configuring kdump related documents: 
+#. OS Documentations on kdump configuration: 
 
     * http://www.novell.com/support/kb/doc.php?id=3374462.
 
@@ -176,7 +166,7 @@ Appedix
 
     * https://access.redhat.com/documentation/en-us/red_hat_enterprise_linux/7/html/kernel_crash_dump_guide/sect-kdump-config-cli.
 
-#. Dump analysis documents:
+#. OS Documentation on dump analysis:
 
     * http://docs.redhat.com/docs/en-US/Red_Hat_Enterprise_Linux/5/html/Deployment_Guide/s1-kdump-crash.htmlRHELdocument
 
