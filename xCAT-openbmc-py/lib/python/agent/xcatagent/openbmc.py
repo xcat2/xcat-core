@@ -19,14 +19,12 @@ from hwctl.executor.openbmc_setboot import OpenBMCBootTask
 from hwctl.executor.openbmc_inventory import OpenBMCInventoryTask
 from hwctl.executor.openbmc_power import OpenBMCPowerTask
 from hwctl.executor.openbmc_sensor import OpenBMCSensorTask
-from hwctl.executor.openbmc_bmcconfig import OpenBMCBmcConfigTask
 from hwctl.executor.openbmc_eventlog import OpenBMCEventlogTask
 from hwctl.beacon import DefaultBeaconManager
 from hwctl.setboot import DefaultBootManager
 from hwctl.inventory import DefaultInventoryManager
 from hwctl.power import DefaultPowerManager
 from hwctl.sensor import DefaultSensorManager
-from hwctl.bmcconfig import DefaultBmcConfigManager
 from hwctl.eventlog import DefaultEventlogManager
 
 from xcatagent import base
@@ -716,6 +714,7 @@ class OpenBMCManager(base.BaseManager):
         else:
             DefaultPowerManager().set_power_state(runner, power_state=action)
     def rspconfig(self, nodesinfo, args):
+
         try:
             opts=docopt(RSPCONFIG_USAGE, argv=args)
         except DocoptExit as e:
@@ -725,6 +724,10 @@ class OpenBMCManager(base.BaseManager):
             self.messager.error("Failed to parse arguments for rspconfig: %s" % args)
             return
         self.verbose=opts.pop('--verbose')
+
+        from hwctl.executor.openbmc_bmcconfig import OpenBMCBmcConfigTask
+        from hwctl.bmcconfig import DefaultBmcConfigManager
+
         runner = OpenBMCBmcConfigTask(nodesinfo, callback=self.messager, debugmode=self.debugmode, verbose=self.verbose)
 
         if opts['dump']:
