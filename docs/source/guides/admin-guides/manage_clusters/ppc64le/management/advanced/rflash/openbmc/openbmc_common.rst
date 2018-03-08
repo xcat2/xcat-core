@@ -2,12 +2,18 @@
 
 Unattended flash of OpenBMC managed BMC means that xCAT will attempt to:
 
-#. Upload and active BMC, PNOR or both depending on which files are provided.
-#. Reboot the necessary components (BMC and/or HOST) to activate the firmware levels
+#. Upload both BMC and PNOR
+#. Activate both BMC and PNOR
+#. If BMC state is ready, reboot BMC to apply BMC, or else, ``rflash`` will exit
+#. If PNOR state is ready, and use ``--no-host-reboot`` option, ``rflash`` will not reboot HOST
+#. If PNOR state is ready, and do not use ``--no-host-reboot`` option, ``rflash`` will reboot HOST to apply PNOR
 
 Use the following command to flash the firmware unattended: ::
 
-    rpower <noderange> -d /path/to/directory
+    rflash <noderange> -d /path/to/directory
+Use the following command to flash the firmware unattended and not reboot HOST: ::
+
+    rflash <noderange> -d /path/to/directory --no-host-reboot
 
 If there are errors encountered during the flash process, take a look at the manual steps to continue flashing the BMC.
 
