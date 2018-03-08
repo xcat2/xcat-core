@@ -86,19 +86,16 @@ for i in $*; do
     userlist=$userlisttmp$listend
     grepcmd=$grepcmd$userlist
     #set -x
-    grepcmd="$grepcmd $mergefile > $mergefile.nodups"
+    cp -p $filebackup $filebackup.nodups # preserve ownership and such
+    grepcmd="$grepcmd $filebackup > $filebackup.nodups"
     #echo "grepcmd=$grepcmd"
     # now run it
     eval $grepcmd
+    mv $filebackup.nodups $filebackup
   fi 
   
   # add new entries from mergefile, if any 
-  if [ -a "$mergefile.nodups" ]; then
-    cat $mergefile.nodups >> $curfile
-    rm $mergefile.nodups
-  else # no set intersection, make it a simple append
-    cat $filebackup $mergefile > $curfile
-  fi
+  cat $filebackup $mergefile > $curfile
   
   # now cleanup
   rm $filebackup.userlist 
