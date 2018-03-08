@@ -96,6 +96,8 @@ for i in $*; do
   if [ -a "$mergefile.nodups" ]; then
     cat $mergefile.nodups >> $curfile
     rm $mergefile.nodups
+  else # no set intersection, make it a simple append
+    cat $filebackup $mergefile > $curfile
   fi
   
   # now cleanup
