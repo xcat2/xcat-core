@@ -121,12 +121,6 @@ sub process_request {
         xCAT::MsgUtils->message("E", { data => ["The xCAT Python agent does not exist. Check if xCAT-openbmc-py package is installed on management node and service nodes."] }, $callback);
         return;
     }
-    # If we can't start the python agent, exit immediately
-    my $pid = xCAT::OPENBMC::start_python_agent();
-    if (!defined($pid)) {
-        xCAT::MsgUtils->message("E", { data => ["Failed to start the xCAT Python agent. Check /var/log/xcat/cluster.log for more information."] }, $callback);
-        return;
-    }
 
     my $noderange = $request->{node};
     my $check = parse_node_info($noderange);
@@ -136,6 +130,13 @@ sub process_request {
     }
     $callback->({ errorcode => [$check] }) if ($check);
     return unless(%node_info);
+
+    # If we can't start the python agent, exit immediately
+    my $pid = xCAT::OPENBMC::start_python_agent();
+    if (!defined($pid)) {
+        xCAT::MsgUtils->message("E", { data => ["Failed to start the xCAT Python agent. Check /var/log/xcat/cluster.log for more information."] }, $callback);
+        return;
+    }
 
     xCAT::OPENBMC::submit_agent_request($pid, $request, \%node_info, $callback);
     xCAT::OPENBMC::wait_agent($pid, $callback);
