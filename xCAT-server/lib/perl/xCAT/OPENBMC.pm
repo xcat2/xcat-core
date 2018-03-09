@@ -69,11 +69,14 @@ sub acquire_lock {
     flock($lock_fd, LOCK_EX) or return undef;
     return $lock_fd;
 }
-sub start_python_agent {
-    if (! -e $PYTHON_AGENT_FILE) {
-        xCAT::MsgUtils->message("S", "start_python_agent() Error: '$PYTHON_AGENT_FILE' does not exist");
-        return undef;
+
+sub exists_python_agent {
+    if ( -e $PYTHON_AGENT_FILE) {
+        return 1;
     }
+    return 0;
+}
+sub start_python_agent {
 
     if (!defined(acquire_lock())) {
         xCAT::MsgUtils->message("S", "start_python_agent() Error: Failed to acquire lock");

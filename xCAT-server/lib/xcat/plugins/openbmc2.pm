@@ -117,6 +117,10 @@ sub process_request {
     my $request = shift;
     $callback = shift;
 
+    if (!xCAT::OPENBMC::exists_python_agent()) {
+        xCAT::MsgUtils->message("E", { data => ["The xCAT Python agent does not exist. Check if xCAT-openbmc-py package is installed on management node and service nodes."] }, $callback);
+        return;
+    }
     # If we can't start the python agent, exit immediately
     my $pid = xCAT::OPENBMC::start_python_agent();
     if (!defined($pid)) {
