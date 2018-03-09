@@ -25,3 +25,4 @@ Advanced Topics
    softlayer/index.rst
    sysclone/index.rst
    zones/index.rst
+   xcat-inventory/index.rst
