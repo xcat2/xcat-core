@@ -1,17 +1,19 @@
 .. BEGIN_unattended_OpenBMC_flashing
 
-Unattended flash of OpenBMC managed BMC means that xCAT will attempt to:
+Unattended flash of OpenBMC firmware will do the following events:
 
-#. Upload both BMC and PNOR
-#. Activate both BMC and PNOR
-#. If BMC state is ready, reboot BMC to apply BMC, or else, ``rflash`` will exit
-#. If PNOR state is ready, and use ``--no-host-reboot`` option, ``rflash`` will not reboot HOST
-#. If PNOR state is ready, and do not use ``--no-host-reboot`` option, ``rflash`` will reboot HOST to apply PNOR
+#. Upload both BMC firmware file and PNOR firmware file
+#. Activate both BMC firmware and PNOR firmware
+#. If BMC firmware becomes activate, reboot BMC to apply new BMC firmware, or else, ``rflash`` will exit
+#. If BMC itself state is ``NotReady``, ``rflash`` will exit
+#. If BMC itself state is ``Ready``, and use ``--no-host-reboot`` option, ``rflash`` will not reboot the compute node
+#. If BMC itself state is ``Ready``, and do not use ``--no-host-reboot`` option, ``rflash`` will reboot the compute node to apply PNOR firmware
 
 Use the following command to flash the firmware unattended: ::
 
     rflash <noderange> -d /path/to/directory
-Use the following command to flash the firmware unattended and not reboot HOST: ::
+
+Use the following command to flash the firmware unattended and not reboot the compute node: ::
 
     rflash <noderange> -d /path/to/directory --no-host-reboot
 
@@ -46,7 +48,7 @@ Use the rflash command to upload and activate the PNOR firmware: ::
 
 If running ``rflash`` in Hierarchy, the firmware files must be accessible on the Service Nodes.
 
-**Note:** The ``-a`` option does an upload and activate in one step, after firmware is activated, use the ``rflash <noderange> -l`` to view.  The ``rflash`` command shows ``(*)`` as the active firmware and ``(+)`` on the firmware that requires reboot to become effective. 
+**Note:** If a .tar file is provided, the ``-a`` option does an upload and activate in one step. If an ID is provided, the ``-a`` option just does activate the specified firmware. After firmware is activated, use the ``rflash <noderange> -l`` to view.  The ``rflash`` command shows ``(*)`` as the active firmware and ``(+)`` on the firmware that requires reboot to become effective. 
 
 Reboot the BMC
 --------------
