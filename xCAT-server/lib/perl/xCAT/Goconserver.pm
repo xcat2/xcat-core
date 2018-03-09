@@ -596,23 +596,23 @@ sub build_conf {
                  "  reconnect_interval: 10                               # retry interval in second if console could not be connected\n".
                  "  logger:                                              # multiple logger targets could be specified\n".
                  "    file:                                              # file logger, valid fields: name,logdir. Accept array in yaml format\n".
-                 "       - name: default                                 # the identity name customized by user\n".
-                 "         logdir: ".CONSOLE_LOG_DIR."                   # default log directory of xcat\n".
-                 "    #  - name: goconserver                             \n".
-                 "    #    logdir: /var/log/goconserver/nodes            \n".
-                 "  # tcp:                                               # valied fields: name, host, port, timeout, ssl_key_file, ssl_cert_file, ssl_ca_cert_file, ssl_insecure\n".
-                 "     # - name: logstash                                \n".
-                 "     #   host: 127.0.0.1                               \n".
-                 "     #   port: 9653                                    \n".
-                 "     #   timeout:  3                                   # default 3 second\n".
-                 "     # - name: filebeat                                \n".
-                 "     #   host: <hostname or ip>                        \n".
-                 "     #   port: <port>                                  \n".
-                 "  # udp:                                               # valid fiedls: name, host, port, timeout\n".
-                 "     # - name: rsyslog                                 \n".
-                 "     #   host:                                         \n".
-                 "     #   port:                                         \n".
-                 "     #   timeout:                                      # default 3 second\n";
+                 "      - name: default                                  # the identity name customized by user\n".
+                 "        logdir: ".CONSOLE_LOG_DIR."                    # default log directory of xcat\n".
+                 "      #- name: goconserver                             \n".
+                 "      #  logdir: /var/log/goconserver/nodes            \n".
+                 "    #tcp:                                              # valied fields: name, host, port, timeout, ssl_key_file, ssl_cert_file, ssl_ca_cert_file, ssl_insecure\n".
+                 "      #- name: logstash                                \n".
+                 "      #  host: 127.0.0.1                               \n".
+                 "      #  port: 9653                                    \n".
+                 "      #  timeout:  3                                   # default 3 second\n".
+                 "      #- name: filebeat                                \n".
+                 "      #  host: <hostname or ip>                        \n".
+                 "      #  port: <port>                                  \n".
+                 "    #udp:                                              # valid fiedls: name, host, port, timeout\n".
+                 "      #- name: rsyslog                                 \n".
+                 "      #  host: 127.0.0.1                               \n".
+                 "      #  port: 512                                     \n".
+                 "      #  timeout: 3                                    # default 3 second\n";
 
     my $file;
     my $ret = open ($file, '>', '/etc/goconserver/server.conf');

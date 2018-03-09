@@ -190,9 +190,9 @@ Then update the following in xCAT:
 
      "1.4","new_MN_name",,,,,,"trusted",,``
 
-* Setup up conserver with new credentials ::
+* Setup up goconserver with new credentials ::
 
-    makeconservercf
+    makegocons
 
 External DNS Server Changed
 ---------------------------
@@ -262,9 +262,9 @@ If it exists, then use the return name and do the following:
 
       makedhcp -a
 
-  - Add the MN to conserver ::
+  - Add the MN to goconserver ::
 
-      makeconservercf
+      makegocons
 
 Update the genesis packages
 ---------------------------
