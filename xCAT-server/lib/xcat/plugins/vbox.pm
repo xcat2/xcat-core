@@ -105,7 +105,7 @@ sub process_request
 
     my $soapsupport = eval { require SOAP::Lite; };
     unless ($soapsupport) {    #Still no SOAP::Lite module
-        $callback->({ error => "SOAP::Lite perl module missing, unable to fulfill Virtual Box plugin requirements", errorcode => [42] });
+        $callback->({ error => "SOAP::Lite perl module missing. Install perl-SOAP-Lite before running commands on Virtual Box nodes.", errorcode => [42] });
         return [];
     }
     require xCAT::vboxService;
