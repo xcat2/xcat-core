@@ -8,5 +8,5 @@ The team investigated the possibility of using Python framework
 .. toctree::
    :maxdepth: 2
 
-   performance.rst
    install/index.rst
+   performance.rst
