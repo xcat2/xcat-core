@@ -33,6 +33,7 @@ clearpart --all --initlabel
 #XCAT_PARTITION_START#
 # xCAT based partitioning
 %include /tmp/partitionfile
+
 #No RAID
 #/boot really significant for this sort of setup nowadays?
 #part /boot --size 50 --fstype ext3
@@ -133,7 +134,6 @@ rootpw --iscrypted #CRYPT:passwd:key=system,username=root:password#
 #
 # OR
 auth --useshadow --enablemd5
-
 
 #
 # SE Linux

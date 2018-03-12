@@ -31,13 +31,14 @@ clearpart --all --initlabel
 #
 
 #XCAT_PARTITION_START#
+#Use script based partition table creation
+%include /tmp/partitionfile
+
 #No RAID
 #/boot really significant for this sort of setup nowadays?
 #part /boot --size 50 --fstype ext3
-%include /tmp/partitionfile
 #part swap --size 1024
 #part / --size 1 --grow --fstype ext4
-#XCAT_PARTITION_END#
 
 #RAID 0 /scr for performance
 #part / --size 1024 --ondisk sda
@@ -68,6 +69,7 @@ clearpart --all --initlabel
 #part raid.41 --size 1 --grow --ondisk sda
 #part raid.42 --size 1 --grow --ondisk sdb
 #raid /scr --level 1 --device md4 raid.41 raid.42
+#XCAT_PARTITION_END#
 
 #
 # bootloader config
@@ -128,7 +130,6 @@ rootpw --iscrypted #CRYPT:passwd:key=system,username=root:password#
 # OR
 auth --useshadow --enablemd5
 
-
 #
 # SE Linux
 #
@@ -146,8 +147,18 @@ reboot
 #INCLUDE_DEFAULT_PKGLIST#
 %end
 %pre
+{
+echo "Running Kickstart Pre-Installation script..."
 #INCLUDE:#ENV:XCATROOT#/share/xcat/install/scripts/pre.rh.rhels7#
+} &>>/tmp/pre-install.log
 %end
 %post
+mkdir -p /var/log/xcat/
+{
+cat >> /var/log/xcat/xcat.log << "EOF"
+%include /tmp/pre-install.log
+EOF
+echo "Running Kickstart Post-Installation script..."
 #INCLUDE:#ENV:XCATROOT#/share/xcat/install/scripts/post.xcat#
+} &>>/var/log/xcat/xcat.log
 %end
