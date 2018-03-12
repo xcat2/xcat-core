@@ -1,3 +1,4 @@
+#!/bin/bash
 #
 # 2013.02.07 Brian Elliott Finley <bfinley@us.ibm.com>
 #   - Added slash in front of "var" in the NICSTOBRINGUP dhclient section.
