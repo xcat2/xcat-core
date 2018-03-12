@@ -64,10 +64,10 @@ sub send_request {
 sub acquire_lock {
     mkpath($LOCK_DIR);
     # always create a new lock file
-    unlink($LOCK_PATH);
-    open($lock_fd, ">>", $LOCK_PATH) or return undef;
+    unlink($LOCK_PATH . $$);
+    open($lock_fd, ">>", $LOCK_PATH . $$) or return undef;
     flock($lock_fd, LOCK_EX) or return undef;
-    return $lock_fd;
+    return $LOCK_PATH . $$;
 }
 
 sub exists_python_agent {
@@ -78,30 +78,38 @@ sub exists_python_agent {
 }
 sub start_python_agent {
 
-    if (!defined(acquire_lock())) {
+    my $lockfile = acquire_lock();
+    if (!defined($lockfile)) {
         xCAT::MsgUtils->message("S", "start_python_agent() Error: Failed to acquire lock");
         return undef;
     }
+
     my $fd;
-    open($fd, '>', $AGENT_SOCK_PATH) && close($fd);
     my $pid = fork;
     if (!defined $pid) {
         xCAT::MsgUtils->message("S", "start_python_agent() Error: Unable to fork process");
         return undef;
+    } elsif ($pid){
+
+        open($fd, '>', $AGENT_SOCK_PATH . $pid) && close($fd);
+        return $pid;
     }
+
     $SIG{CHLD} = 'DEFAULT';
     if (!$pid) {
+
         # child
         open($fd, ">>", $PYTHON_LOG_PATH) && close($fd);
         open(STDOUT, '>>', $PYTHON_LOG_PATH) or die("open: $!");
         open(STDERR, '>>&', \*STDOUT) or die("open: $!");
-        my $ret = exec ($PYTHON_AGENT_FILE);
+        my @args = ( "$PYTHON_AGENT_FILE --sock $AGENT_SOCK_PATH$$ --lockfile $lockfile" );
+        my $ret = exec @args;
         if (!defined($ret)) {
             xCAT::MsgUtils->message("S", "start_python_agent() Error: Failed to start the xCAT Python agent.");
             exit(1);
         }
     }
-    return $pid;
+
 }
 
 sub handle_message {
@@ -131,7 +139,7 @@ sub submit_agent_request {
     my $sock;
     my $retry = 0;
     while($retry < 30) {
-        $sock = IO::Socket::UNIX->new(Peer => $AGENT_SOCK_PATH, Type => SOCK_STREAM, Timeout => 10, Blocking => 1);
+        $sock = IO::Socket::UNIX->new(Peer => $AGENT_SOCK_PATH . $pid, Type => SOCK_STREAM, Timeout => 10, Blocking => 1);
         if (!defined($sock)) {
             sleep(0.1);
         } else {
@@ -140,7 +148,7 @@ sub submit_agent_request {
         $retry++;
     }
     if (!defined($sock)) {
-        xCAT::MsgUtils->message("E", { data => ["OpenBMC management is using a Python framework. An error has occurred when trying to create socket $AGENT_SOCK_PATH."] }, $callback);
+        xCAT::MsgUtils->message("E", { data => ["OpenBMC management is using a Python framework. An error has occurred when trying to create socket $AGENT_SOCK_PATH$pid."] }, $callback);
         kill('TERM', $pid);
         return;
     }
@@ -201,6 +209,8 @@ sub wait_agent {
         xCAT::MsgUtils->message("E", { data => ["Agent exited unexpectedly.  See $PYTHON_LOG_PATH for details."] }, $callback);
         xCAT::MsgUtils->message("I", { data => ["To revert to Perl framework: chdef -t site clustersite openbmcperl=ALL"] }, $callback);
     }
+    unlink($AGENT_SOCK_PATH . $pid);
+    unlink($LOCK_PATH . $$);
 }
 
 #--------------------------------------------------------------------------------

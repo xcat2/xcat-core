@@ -14,7 +14,7 @@ from xcatagent import base as xcat_manager
 
 MSG_TYPE = 'message'
 DB_TYPE  = 'db'
-LOCK_FILE = '/var/lock/xcat/agent.lock'
+#LOCK_FILE = '/var/lock/xcat/agent.lock'
 
 
 class XCATMessager(utils.Messager):
@@ -50,7 +50,7 @@ class XCATMessager(utils.Messager):
 
 
 class Server(object):
-    def __init__(self, address, standalone):
+    def __init__(self, address, standalone=True, lockfile=None):
         try:
             os.unlink(address)
         except OSError:
@@ -58,6 +58,7 @@ class Server(object):
                 raise
         self.address = address
         self.standalone = standalone
+        self.lockfile = lockfile
         self.server = StreamServer(self._serve(), self._handle)
 
     def _serve(self):
@@ -117,7 +118,7 @@ class Server(object):
 
     def keep_peer_alive(self):
         def acquire():
-            fd = open(LOCK_FILE, "r+")
+            fd = open(self.lockfile, "r+")
             fcntl.flock(fd.fileno(), fcntl.LOCK_EX)
             # if reach here, parent process may exit
             print("xcat process exit unexpectedly.", file=sys.stderr)
@@ -128,6 +129,6 @@ class Server(object):
         t.start()
 
     def start(self):
-        if not self.standalone:
+        if not self.standalone and self.lockfile:
             self.keep_peer_alive()
         self.server.serve_forever()
