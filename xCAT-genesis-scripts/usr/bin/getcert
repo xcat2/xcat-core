@@ -27,7 +27,7 @@ openssl s_client -connect "$XCATDEST" -quiet </tmp/certreq.xml 2>/dev/null >/tmp
 if grep -q 'BEGIN CERTIFICATE' /tmp/certresp.xml ; then
     awk '/BEGIN CERTIFICATE/,/END CERTIFICATE/' < /tmp/certresp.xml > /etc/xcat/cert.pem
     #stop transmitting sysDesc, allowing the public key to age out of validity
-    while read iface ; do
+    while read -r iface ; do
         lldptool -T -i "$iface" -V sysDesc enableTx=no >& /dev/null
     done < <(awk '/^  e/{print $1}' /var/lib/lldpad/lldpad.conf)
 fi

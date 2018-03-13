@@ -58,36 +58,30 @@ done
 for pci in $(lspci |awk '/Ethernet/ {print $1}'); do
     if ! grep -q "$pci" "$ADAPTERFILE" 2>/dev/null; then 
         tmp="$(lspci |grep "$pci")"
-        cat >> "$ADAPTERFILE" <<__ENDL
-<nic>
+        echo "<nic>
 <pcilocation>$pci</pcilocation>
 <model>${tmp##*:}</model>
-</nic>
-__ENDL
+</nic>" >> "$ADAPTERFILE"
     fi
 done
 
 for pci in $(lspci |awk '/Network/ {print $1}'); do
     if ! grep -q "$pci" "$ADAPTERFILE" 2>/dev/null; then 
         tmp="$(lspci |grep "$pci")"
-        cat >> "$ADAPTERFILE" <<__ENDL
-<nic>
+        echo "<nic>
 <pcilocation>$pci</pcilocation>
 <model>${tmp##*: }</model>
-</nic>
-__ENDL
+</nic>" >> "$ADAPTERFILE"
     fi
 done
 
 for pci in $(lspci |awk '/Mellanox/ {print $1}'); do
     if ! grep -q "$pci" "$ADAPTERFILE" 2>/dev/null; then 
         tmp="$(lspci |grep "$pci")"
-        cat >> "$ADAPTERFILE" <<__ENDL
-<nic>
+        echo "<nic>
 <pcilocation>$pci</pcilocation>
 <model>${tmp##*: }</model>
-</nic>
-__ENDL
+</nic>" >> "$ADAPTERFILE"
     fi
 done
 

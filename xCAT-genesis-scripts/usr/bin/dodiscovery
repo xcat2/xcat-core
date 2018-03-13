@@ -97,19 +97,19 @@ if [ -r /sys/devices/virtual/dmi/id/product_name ]; then  #x86
 			fi
 			if [ -z "$MTM" -o "$MTM" == ":" ]; then
 				logger -s -t $log_label -p local4.warning "Couldn't find MTM information in FRU, falling back to DMI (MTMS-based discovery may fail)"
-				read m </sys/devices/virtual/dmi/id/sys_vendor
-				read n </sys/devices/virtual/dmi/id/product_name
+				read -r m </sys/devices/virtual/dmi/id/sys_vendor
+				read -r n </sys/devices/virtual/dmi/id/product_name
 				MTM="$m:$n"
 			fi
 		fi 
 		SERIAL=`cat /sys/devices/virtual/dmi/id/product_serial`
 	fi
-        read CPUCOUNT CPUTYPE < <(awk -F: 'BEGIN{c=0; n=""} /model name/{c=c+1; n=$2} END{printf "%d %s",c,n}' /proc/cpuinfo)
+        read -r CPUCOUNT CPUTYPE < <(awk -F: 'BEGIN{c=0; n=""} /model name/{c=c+1; n=$2} END{printf "%d %s",c,n}' /proc/cpuinfo)
         UUID=`sed -e 's/\(..\)\(..\)\(..\)\(..\)-\(..\)\(..\)-\(..\)\(..\)/\4\3\2\1-\6\5-\8\7/' /sys/devices/virtual/dmi/id/product_uuid`
 
 elif [ -r /proc/device-tree/model ]; then #POWER
         MTM=`cat /proc/device-tree/model -vT | sed -e 's/^.*,//' | sed -e 's/^[\t ]*//'| sed -e 's/[\t ]*\^@//'`
-        PLATFORM=$(awk '/^platform\s*:/{print \$3}' /proc/cpuinfo)
+        PLATFORM="$(awk '/^platform\s*:/{print $3}' /proc/cpuinfo)"
         read CPUCOUNT CPUTYPE < <(awk -F':' 'BEGIN{c=0; n=""} /^cpu\s*:/{c=c+1; n=$2} END{printf "%d %s",c,n}' /proc/cpuinfo)
         SERIAL=`cat /proc/device-tree/system-id -vT | sed -e 's/^.*,//' | sed -e 's/^[\t ]*//'| sed -e 's/[\t ]*\^@//'`
         # For POWER servers, the /proc/sys/kernel/random/uuid is changing for each query, so use mtms + mac of first up nic as the UUID 
@@ -119,27 +119,23 @@ elif [ -r /proc/device-tree/model ]; then #POWER
 fi
 
 # The MEMORY will look like this: 32868920
-MEMORY=$(awk '/MemTotal/{printf "%.0fMB\n", $2/1024}' /proc/meminfo)
+MEMORY="$(awk '/MemTotal/{printf "%.0fMB\n", $2/1024}' /proc/meminfo)"
 
 # The DISKSIZE will look like this: sda:960GB,sdb:960GB,sdc:480GB,sdd:480GB (sorted by major,minor)
 DISKSIZE="$(grep -v name /proc/partitions |sort -g -k 1,2 |awk 'BEGIN{sep=""} /[^0-9]$/{printf("%s%s:%.0fGB", sep, $4, $3/1024^2) ; sep=","}')"
 
 logger -s -t $log_label -p local4.info "Beginning echo information to discovery packet file..."
-cat >/tmp/discopacket <<__ENDL
-<xcatrequest>
+echo "<xcatrequest>
 <command>findme</command>
 <sequential>1</sequential>
-<arch>$ARCH</arch>
-__ENDL
+<arch>$ARCH</arch>" >/tmp/discopacket
 if [ "$IAMAVM" = 1 ]; then
 	echo "<nodetype>virtual</nodetype>" >> /tmp/discopacket
 fi
-cat >>/tmp/discopacket <<__ENDL
-<cpucount>$CPUCOUNT</cpucount>
+echo "<cpucount>$CPUCOUNT</cpucount>
 <cputype>$CPUTYPE</cputype>
 <memory>$MEMORY</memory>
-<disksize>$DISKSIZE</disksize>
-__ENDL
+<disksize>$DISKSIZE</disksize>" >>/tmp/discopacket
 if [ "$UUID" != "unknown" ]; then
         echo "<uuid>$UUID</uuid>" >> /tmp/discopacket
 fi
@@ -225,8 +221,7 @@ for dev in `ip link|grep -B1 ether|grep UP|awk '{print $2}'|sed -e s/://|grep -v
 		fi
 	fi
 	fi
-        cat >>/tmp/discopacket <<__ENDL
-<mac>$DRIVER|$dev|$MAC|$ADDRESS</mac>
+        echo "<mac>$DRIVER|$dev|$MAC|$ADDRESS</mac>
 <nic>
 	<devname>$dev</devname>
 	<driver>$DRIVER</driver>
@@ -235,8 +230,7 @@ ${ADDRESS:+	<ip4address>$ADDRESS</ip4address>}
 ${PCI_SLOT:+	<pcidev>$PCI_SLOT</pcidev>}
 ${SLOTNAME:+	<location>$SLOTNAME</location>}
 ${ONBOARDINDEX:+	<onboardeth>$ONBOARDINDEX</onboardeth>}
-${FIRMDESC:+	<firmdesc>$FIRMDESC</firmdesc>}
-__ENDL
+${FIRMDESC:+	<firmdesc>$FIRMDESC</firmdesc>}" >>/tmp/discopacket
         myswitch=`lldptool -n -i $dev -t -V sysName|grep -v 'System Name TLV'|sed -e 's/^	*//'`
         if [ ! -z "$myswitch" -a "$myswitch" != "Agent instance for device not found" ]; then
         	echo "	<switchname>$myswitch</switchname>" >> /tmp/discopacket
@@ -261,12 +255,10 @@ if [ "$UUID" == "unknown" ]; then
     echo "<uuid>$UUID</uuid>" >> /tmp/discopacket
 fi
 #this is not secure to use by itself, switch sourced pubkey for security
-cat >>/tmp/discopacket <<__ENDL
-<xcatpubkey>$PUBKEY</xcatpubkey>
+echo "<xcatpubkey>$PUBKEY</xcatpubkey>
 <sha512sig>
 </sha512sig>
-</xcatrequest>
-__ENDL
+</xcatrequest>" >>/tmp/discopacket
 openssl dgst -sha512 -out /tmp/discopacket.sha512 -sign /etc/xcat/privkey.pem /tmp/discopacket
 openssl enc -e -a -in /tmp/discopacket.sha512  > /tmp/discopacket.b64sig
 sed -i "/^<sha512sig>$/ r /tmp/discopacket.b64sig" /tmp/discopacket
