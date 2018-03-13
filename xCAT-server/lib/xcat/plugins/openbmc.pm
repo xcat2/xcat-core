@@ -908,6 +908,9 @@ sub process_request {
     my $rst = parse_command_status($command, \@exargs);
     return if ($rst);
 
+    if ($::VERBOSE) {
+        xCAT::SvrUtils::sendmsg("Running command in Perl", $callback);
+    }
     if ($request->{command}->[0] ne "getopenbmccons") {
         $cookie_jar = HTTP::Cookies->new({});
         $async = HTTP::Async->new(

@@ -47,6 +47,7 @@ my $reventlog_no_id_resolved_errormsg = "Provide a comma separated list of IDs t
 
 my %node_info = ();
 my $callback;
+$::VERBOSE = 0;
 
 #-------------------------------------------------------
 
@@ -92,6 +93,9 @@ sub preprocess_request {
         return;
     }
 
+    if ($::VERBOSE) {
+        xCAT::SvrUtils::sendmsg("Running command in Python", $callback);
+    }
     my $sn = xCAT::ServiceNodeUtils->get_ServiceNode($noderange, "xcat", "MN");
     foreach my $snkey (keys %$sn) {
         my $reqcopy = {%$request};
@@ -157,9 +161,8 @@ sub parse_args {
     my $noderange = shift;
     my $subcommand = undef;
 
-    my $verbose;
     unless (GetOptions(
-        'V|verbose'  => \$verbose,
+        'V|verbose'  => \$::VERBOSE,
     )) {
         return ([ 1, "Error parsing arguments." ]);
     }
