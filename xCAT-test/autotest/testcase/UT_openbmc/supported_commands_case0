@@ -1,0 +1,36 @@
+start:supported_cmds_rpower
+description: Make sure the rpower command works ...
+os:Linux
+hcp:openbmc
+cmd:rpower $$CN state
+check:rc==0
+check:output=~$$CN: 
+cmd: rpower $$CN bmcstate
+check:rc==0
+check:output=~$$CN: BMC
+end
+
+start:supported_cmds_rinv
+description: Make sure that the rinv command works...
+os:Linux
+hcp:openbmc
+cmd: rinv $$CN
+check:rc==0
+check:output=~$$CN:
+cmd: rinv $$CN model
+check:rc==0
+check:output=~$$CN: SYSTEM Model
+cmd: rinv $$CN serial
+check:rc==0
+check:output=~$$CN: SYSTEM SerialNumber
+cmd: rinv $$CN firm
+check:rc==0
+check:output=~$$CN: HOST Firmware
+check:output=~$$CN: BMC Firmware
+cmd: rinv $$CN cpu
+check:rc==0
+check:output=~$$CN: CPU
+cmd: rinv $$CN dimm
+check:rc==0
+check:output=~$$CN: DIMM
+end 
