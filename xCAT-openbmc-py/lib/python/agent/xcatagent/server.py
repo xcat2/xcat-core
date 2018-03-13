@@ -129,6 +129,6 @@ class Server(object):
         t.start()
 
     def start(self):
-        if not self.standalone and self.lockfile:
+        if not self.standalone:
             self.keep_peer_alive()
         self.server.serve_forever()
