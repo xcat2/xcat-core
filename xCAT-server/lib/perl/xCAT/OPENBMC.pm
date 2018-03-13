@@ -25,8 +25,8 @@ use xCAT_monitoring::monitorctrl;
 use xCAT::TableUtils;
 
 my $LOCK_DIR = "/var/lock/xcat/";
-my $LOCK_PATH = "/var/lock/xcat/agent.lock";
-my $AGENT_SOCK_PATH = "/var/run/xcat/agent.sock";
+my $LOCK_PATH = "/var/lock/xcat/agent-$$.lock";
+my $AGENT_SOCK_PATH = "/var/run/xcat/agent-$$.sock";
 my $PYTHON_LOG_PATH = "/var/log/xcat/agent.log";
 my $PYTHON_AGENT_FILE = "/opt/xcat/lib/python/agent/agent.py";
 my $MSG_TYPE = "message";
@@ -76,32 +76,43 @@ sub exists_python_agent {
     }
     return 0;
 }
+sub python_agent_reaper {
+    unlink($LOCK_PATH);
+    unlink($AGENT_SOCK_PATH);
+}
 sub start_python_agent {
 
     if (!defined(acquire_lock())) {
         xCAT::MsgUtils->message("S", "start_python_agent() Error: Failed to acquire lock");
         return undef;
     }
+
     my $fd;
-    open($fd, '>', $AGENT_SOCK_PATH) && close($fd);
     my $pid = fork;
     if (!defined $pid) {
         xCAT::MsgUtils->message("S", "start_python_agent() Error: Unable to fork process");
         return undef;
+    } elsif ($pid){
+
+        open($fd, '>', $AGENT_SOCK_PATH) && close($fd);
+        $SIG{INT} = $SIG{TERM} = \&python_agent_reaper;
+        return $pid;
     }
+
     $SIG{CHLD} = 'DEFAULT';
     if (!$pid) {
         # child
         open($fd, ">>", $PYTHON_LOG_PATH) && close($fd);
         open(STDOUT, '>>', $PYTHON_LOG_PATH) or die("open: $!");
         open(STDERR, '>>&', \*STDOUT) or die("open: $!");
-        my $ret = exec ($PYTHON_AGENT_FILE);
+        my @args = ( "$PYTHON_AGENT_FILE --sock $AGENT_SOCK_PATH --lockfile $LOCK_PATH" );
+        my $ret = exec @args;
         if (!defined($ret)) {
             xCAT::MsgUtils->message("S", "start_python_agent() Error: Failed to start the xCAT Python agent.");
             exit(1);
         }
     }
-    return $pid;
+
 }
 
 sub handle_message {
@@ -201,6 +212,7 @@ sub wait_agent {
         xCAT::MsgUtils->message("E", { data => ["Agent exited unexpectedly.  See $PYTHON_LOG_PATH for details."] }, $callback);
         xCAT::MsgUtils->message("I", { data => ["To revert to Perl framework: chdef -t site clustersite openbmcperl=ALL"] }, $callback);
     }
+    python_agent_reaper();
 }
 
 #--------------------------------------------------------------------------------
