@@ -4721,12 +4721,20 @@ sub initialize_variables
 sub isobjnamevalid{
     my $objname=shift;
     my $objtype=shift;
+    my %options;
+    $options{keepmissing}=1;
+    $options{genericrange}=1;
     $objtype="node" unless(defined $objtype and ($objtype ne ""));
     if($objtype eq "node"){
         #the ip address as a valid node object name is a hack for p7IH support   
         if(($objname !~ /^[a-zA-Z0-9-_]+$/) and !xCAT::NetworkUtils->isIpaddr($objname)){
             return 0;
         }
+    } elsif ($objtype eq "group"){
+        my @tmpnodes=xCAT::NodeRange::noderange($objname,0,0,%options);
+        if(scalar(@tmpnodes)>1 || $tmpnodes[0] ne $objname ){
+           return 0;
+        }    
     }
     return 1;
 }
