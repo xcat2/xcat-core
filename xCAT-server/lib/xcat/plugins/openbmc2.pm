@@ -89,10 +89,6 @@ sub preprocess_request {
         $callback->({ errorcode => [$parse_result->[0]], data => [$error_data] });
         $request = {};
         return;
-    } elsif ($command eq 'rspconfig') {
-        $callback->({ data => ["rspconfig is fine"]});
-        $request = {};
-        return;
     }
 
     my $sn = xCAT::ServiceNodeUtils->get_ServiceNode($noderange, "xcat", "MN");
@@ -272,7 +268,7 @@ sub parse_args {
             }
             if ($set and $get) {
                 return ([1, "Can not set and query OpenBMC information at the same time"]);
-            } elsif ($set and $value eq '') {
+            } elsif ($set and $value eq '' and ($key ne "ntpservers")) {
                 return ([1, "Invalid parameter for option $key"]);
             }
             if (($set and !grep /$key/, @rspconfig_set_options) or
@@ -282,32 +278,27 @@ sub parse_args {
             if ($set) {
                 if ($key =~ /^hostname$|^admin_passwd$|^ntpservers$/ and $num_subcommand > 1) {
                     return([1, "The option '$key' can not work with other options"]);
-                }
-                elsif ($key eq "admin_passwd") {
-                    if ($value =~ /(.*),(.*)/) {
+                } elsif ($key eq "admin_passwd") {
+                    if ($value =~ /^([^,]*),([^,]*)$/) {
                         if ($1 eq '' or $2 eq '') {
                             return([1, "Invalid parameter for option $key: $value"]);
                         }
                     } else {
                         return([1, "Invalid parameter for option $key: $value"]);
                     }
-                }
-                elsif ($key eq "netmask") {
+                } elsif ($key eq "netmask") {
                     if (!xCAT::NetworkUtils->isIpaddr($value)) {
                         return ([ 1, "Invalid parameter for option $key: $value" ]);
                     }
                     $set_net_info{"netmask"} = 1;
-                }
-                elsif ($key eq "gateway") {
+                } elsif ($key eq "gateway") {
                     if ($value ne "0.0.0.0" and !xCAT::NetworkUtils->isIpaddr($value)) {
                         return ([ 1, "Invalid parameter for option $key: $value" ]);
                     }
                     $set_net_info{"gateway"} = 1;
-                }
-                elsif ($key eq "vlan") {
+                } elsif ($key eq "vlan") {
                     $set_net_info{"vlan"} = 1;
-                }
-                elsif ($key eq "ip") {
+                } elsif ($key eq "ip") {
                     if ($value ne "dhcp") {
                         if (@$noderange > 1) {
                             return ([ 1, "Can not configure more than 1 nodes' ip at the same time" ]);
@@ -322,32 +313,34 @@ sub parse_args {
             } else {
                 if ($key eq "sshcfg" and $num_subcommand > 1) {
                     return ([ 1, "Configure sshcfg must be issued without other options." ]);
-                }
-                elsif ($key eq "gard") {
+                } elsif ($key eq "gard") {
                     if ($num_subcommand > 2) {
                         return  ([ 1, "Clear GARD cannot be issued with other options." ]);
                     } elsif (!defined($ARGV[1]) or $ARGV[1] !~ /^-c$|^--clear$/) {
                         return ([ 1, "Invalid parameter for $command $key" ]);
                     }
                     return;
-                }
-                elsif ($key eq "dump") {
+                } elsif ($key eq "dump") {
                     my $dump_option = "";
                     $dump_option = $ARGV[1] if (defined $ARGV[1]);
                     if ($dump_option =~ /^-d$|^--download$/) {
                         return ([ 1, "No dump file ID specified" ]) unless ($ARGV[2]);
                         return ([ 1, "Invalid parameter for $command $key $dump_option $ARGV[2]" ]) if ($ARGV[2] !~ /^\d*$/ and $ARGV[2] ne "all");
+                        return ([ 1, "dump $dump_option must be issued without other options." ]) if ($num_subcommand > 3);
                     } elsif ($dump_option =~ /^-c$|^--clear$/) {
                         return ([ 1, "No dump file ID specified. To clear all, specify 'all'." ]) unless ($ARGV[2]);
                         return ([ 1, "Invalid parameter for $command $key $dump_option $ARGV[2]" ]) if ($ARGV[2] !~ /^\d*$/ and $ARGV[2] ne "all");
-                    } elsif ($dump_option and $dump_option !~ /^-l$|^--list$|^-g$|^--generate$/) {
+                        return ([ 1, "dump $dump_option must be issued without other options." ]) if ($num_subcommand > 3);
+                    } elsif ($dump_option =~ /^-l$|^--list$|^-g$|^--generate$/) {
+                        return ([ 1, "dump $dump_option must be issued without other options." ]) if ($num_subcommand > 2);
+                    } elsif ($dump_option) {
                         return ([ 1, "Invalid parameter for $command $dump_option" ]);
                     }
                     return;
                 }
             }
         }
-        if ($set) {
+        if ($set and scalar(keys %set_net_info) > 0) {
             if (!exists($set_net_info{"ip"}) or !exists($set_net_info{"netmask"}) or !exists($set_net_info{"gateway"})) {
                 if (exists($set_net_info{"vlan"})) {
                     return ([ 1, "VLAN must be configured with IP, netmask and gateway" ]);
