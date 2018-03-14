@@ -1554,6 +1554,7 @@ sub defmk
     } else {
         my $invalidobjname = ();
         my $invalidnodename = ();
+        my $nodewithdomain = ();
         foreach my $node (@::allobjnames) {
             my $myobjtype=$::opt_t;
             if(!$myobjtype and $::FILEATTRS{$node}{'objtype'}){
@@ -1563,9 +1564,21 @@ sub defmk
             unless(isobjnamevalid($node,$myobjtype)){
                $invalidobjname .= ",$node";
             }
-            if (($node =~ /[A-Z]/) && (((!$::opt_t) && (!$::FILEATTRS{$node}{'objtype'})) || ($::FILEATTRS{$node}{'objtype'} eq "node") || ($::opt_t eq "node"))) { 
-               $invalidnodename .= ",$node";
+            if (((!$::opt_t) && (!$::FILEATTRS{$node}{'objtype'})) || ($::FILEATTRS{$node}{'objtype'} eq "node") || ($::opt_t eq "node")) { 
+                if($node =~ /[A-Z]/){
+                    $invalidnodename .= ",$node";
+                }elsif($node =~ /\./){
+                    $nodewithdomain .= ",$node"; 
+                }
             }
+        }
+        if ($nodewithdomain) {
+            $nodewithdomain =~ s/,//;
+            my $rsp;
+            $rsp->{data}->[0] = "The object name \'$nodewithdomain\' is invalid, Cannot use '.' in node name.";
+            xCAT::MsgUtils->message("E", $rsp, $::callback);
+            $error = 1;
+            return 1;
         }
         if ($invalidobjname) {
             $invalidobjname =~ s/,//;
