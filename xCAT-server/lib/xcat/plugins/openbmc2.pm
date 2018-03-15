@@ -144,7 +144,13 @@ sub process_request {
 my @rsp_common_options = qw/autoreboot bootmode powersupplyredundancy powerrestorepolicy timesyncmethod
                             ip netmask gateway hostname vlan ntpservers/;
 my @rspconfig_set_options = (@rsp_common_options, qw/admin_passwd/);
-
+my %rsp_set_valid_values = (
+    autoreboot            => "0|1",
+    bootmode              => "regular|safe|setup",
+    powersupplyredundancy => "disabled|enabled",
+    powerrestorepolicy    => "restore|always_on|always_off",
+    timesyncmethod        => "ntp|manual",
+);
 my @rspconfig_get_options = (@rsp_common_options, qw/ipsrc sshcfg gard dump/);
 #-------------------------------------------------------
 
@@ -270,6 +276,10 @@ sub parse_args {
                 return ([1, "Can not set and query OpenBMC information at the same time"]);
             } elsif ($set and $value eq '' and ($key ne "ntpservers")) {
                 return ([1, "Invalid parameter for option $key"]);
+            } elsif ($set and $value ne '' and exists($rsp_set_valid_values{$key})) {
+                unless ($value =~ /^($rsp_set_valid_values{$key})$/) {
+                    return([1, "Invalid value '$value' for '$key', Valid values: " . join(',', split('\|',$rsp_set_valid_values{$key}))]);
+                }
             }
             if (($set and !grep /$key/, @rspconfig_set_options) or
                 ($get and !grep /$key/, @rspconfig_get_options)) {
