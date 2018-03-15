@@ -326,7 +326,7 @@ sub preprocess_updatenode
     if (@invalidnodes){
         my %allnodes=map {$_,1} @{$request->{node}};
         foreach my $node (@invalidnodes){
-           xCAT::MsgUtils->report_node_error($callback,$node,"Could not determine or resolve xcatmaster for $node. Will skip this node.")
+           xCAT::MsgUtils->report_node_error($callback,$node,"Could not determine or resolve xcatmaster for $node. Will skip this node.");
            delete $allnodes{$node};
         }
         $request->{node}=[];
