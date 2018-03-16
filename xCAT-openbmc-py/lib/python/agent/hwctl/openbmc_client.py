@@ -254,12 +254,13 @@ class OpenBMCRest(object):
         self.root_url = HTTP_PROTOCOL + self.bmcip + PROJECT_URL
         self.download_root_url = HTTP_PROTOCOL + self.bmcip + '/'
 
-    def _print_record_log (self, msg, cmd):
+    def _print_record_log (self, msg, cmd, error_msg=False):
 
-        if self.verbose :
+        if self.verbose or error_msg:
             localtime = time.asctime( time.localtime(time.time()) )
             log = self.name + ': [openbmc_debug] ' + cmd + ' ' + msg
-            self.messager.info(localtime + ' ' + log)
+            if self.verbose:
+                self.messager.info(localtime + ' ' + log)
             logger.debug(log)
 
     def _log_request (self, method, url, headers, data=None, files=None, file_path=None, cmd=''):
@@ -289,7 +290,7 @@ class OpenBMCRest(object):
         if code != requests.codes.ok:
             description = ''.join(data['data']['description'])
             error = '[%d] %s' % (code, description)
-            self._print_record_log(error, cmd)
+            self._print_record_log(error, cmd, error_msg=True)
             raise SelfClientException(error, code)
 
         self._print_record_log(data['message'], cmd)
@@ -313,11 +314,11 @@ class OpenBMCRest(object):
         except SelfServerException as e:
             e.message = 'BMC did not respond. ' \
                         'Validate BMC configuration and retry the command.'
-            self._print_record_log(e.message, cmd)
+            self._print_record_log(e.message, cmd, error_msg=True)
             raise
         except ValueError:
             error = 'Received wrong format response: %s' % response
-            self._print_record_log(error, cmd)
+            self._print_record_log(error, cmd, error_msg=True)
             raise SelfServerException(error)
 
     def download(self, method, resource, file_path, headers=None, cmd=''):
@@ -332,15 +333,15 @@ class OpenBMCRest(object):
         try:
             response = self.session.request_download(method, url, httpheaders, file_path)
         except SelfServerException as e:
-            self._print_record_log(e.message, cmd=cmd)
+            self._print_record_log(e.message, cmd=cmd, error_msg=True)
             raise
         except SelfClientException as e:
             error = e.message
-            self._print_record_log(error, cmd=cmd)
+            self._print_record_log(error, cmd=cmd, error_msg=True)
             raise
 
         if not response:
-            self._print_record_log('No response received for command %s' % request_cmd, cmd=cmd)
+            self._print_record_log('No response received for command %s' % request_cmd, cmd=cmd, error_msg=True)
             return True
 
         self._print_record_log(str(response.status_code), cmd=cmd)
@@ -358,21 +359,21 @@ class OpenBMCRest(object):
         try:
             response = self.session.request_upload(method, url, httpheaders, files)
         except SelfServerException:
-            self._print_record_log(error, cmd=cmd)
+            self._print_record_log(error, cmd=cmd, error_msg=True)
             raise
         try:
             data = json.loads(response)
         except ValueError:
             error = 'Received wrong format response when running command \'%s\': %s' % \
                     (request_cmd, response)
-            self._print_record_log(error, cmd=cmd)
+            self._print_record_log(error, cmd=cmd, error_msg=True)
             raise SelfServerException(error)
 
         if data['message'] != '200 OK':
             error = 'Failed to upload update file %s : %s-%s' % \
                     (files, data['message'], \
                     ''.join(data['data']['description']))
-            self._print_record_log(error, cmd=cmd)
+            self._print_record_log(error, cmd=cmd, error_msg=True)
             raise SelfClientException(error, code)
 
         self._print_record_log(data['message'], cmd=cmd) 
