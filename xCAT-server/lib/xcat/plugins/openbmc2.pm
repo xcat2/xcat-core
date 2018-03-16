@@ -186,8 +186,8 @@ sub parse_args {
     }
 
     if ($command eq "rbeacon") {
-        unless ($subcommand =~ /^on$|^off$/) {
-            return ([ 1, "Only 'on' or 'off' is supported for OpenBMC managed nodes."]);
+        unless ($subcommand =~ /^on$|^off$|^stat$/) {
+            return ([ 1, "Only 'on', 'off' or 'stat' is supported for OpenBMC managed nodes."]);
         }
     } elsif ($command eq "rflash") {
         my ($activate, $check, $delete, $directory, $list, $upload) = (0) x 6;
