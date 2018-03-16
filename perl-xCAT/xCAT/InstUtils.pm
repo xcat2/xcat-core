@@ -769,7 +769,7 @@ sub get_server_nodes
             unless ($servd[0]) { $serv = $servd[1]; }
         }
         else{
-            continue;
+            next;
         }
         chomp $serv;
 
