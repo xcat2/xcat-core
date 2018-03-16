@@ -86,7 +86,7 @@ my %usage = (
     ",
     "rbeacon.openbmc" =>
     "OpenPOWER (OpenBMC) specific:
-       rbeacon [on|off]
+       rbeacon [on|off|stat]
     ",    
     "rvitals" => "",
     "rvitals.common" =>
