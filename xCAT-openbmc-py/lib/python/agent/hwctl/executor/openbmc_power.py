@@ -179,7 +179,7 @@ class OpenBMCPowerTask(ParallelNodesCommand):
             try:
                 obmc.clear_dump('all')
             except (SelfServerException, SelfClientException) as e:
-                self.callback.warn('%s: Could not clear BMC diagnostics successfully %s, ignoring...' % (node, e.message))
+                self.callback.warn('%s: Could not clear BMC diagnostics successfully %s' % (node, e.message))
 
         try:
             obmc.reboot_bmc(optype)
