@@ -167,7 +167,7 @@ class OpenBMCBmcConfigTask(ParallelNodesCommand):
                 if (20-i) % 8 == 0:
                     self.callback.info('%s: Still waiting for dump %s to be generated... '  % (node, dump_id))
 
-                gevent.sleep( 15 )
+                sleep( 15 )
 
             if flag: 
                 self._dump_download(obmc, node, str(dump_id), flag_dump_process=True)
@@ -430,7 +430,9 @@ rmdir \"/tmp/$userid\" \n")
         if not nic:
             return self.callback.error('Can not get facing NIC for %s' % bmcip, node)
 
-        if (ip == netinfo[nic]['ip'] and netmask == utils.exchange_maskint(netinfo[nic]['netmask']) and
+        prefix = int(utils.mask_str2int(netmask))
+
+        if (ip == netinfo[nic]['ip'] and prefix == netinfo[nic]['netmask'] and
            gateway == netinfo[nic]['gateway']):
             if not vlan or vlan == str(netinfo[nic]['vlanid']):
                 self._print_bmc_netinfo(node, ip, netmask, gateway, vlan)
@@ -443,31 +445,29 @@ rmdir \"/tmp/$userid\" \n")
             pre_nic = nic.split('_')[0]
             try:
                 obmc.set_vlan(pre_nic, vlan)
-                gevent.sleep( 15 )
+                sleep( 15 )
             except (SelfServerException, SelfClientException) as e:
                 self.callback.error(e.message, node)
                 return
             nic = pre_nic + '_' + vlan
 
-        prefix = int(utils.exchange_mask(netmask))
         try:
             obmc.set_netinfo(nic, ip, prefix, gateway)
-            gevent.sleep( 5 )
+            sleep( 5 )
             nic_netinfo = obmc.get_nic_netinfo(nic)
         except (SelfServerException, SelfClientException) as e:
             self.callback.error(e.message, node)
             return
 
-        if not netinfo:
+        if not nic_netinfo:
             return self.callback.error('Did not get info for NIC %s' % nic, node)
 
         set_success = False
         for net_id, attr in nic_netinfo.items():
-            if attr['ip'] == ip:
-                attr_netmask = utils.exchange_maskint(attr["netmask"])
-                if (attr_netmask == netmask and
-                   attr['gateway'] == gateway):
-                    set_success = True
+            if (attr['ip'] == ip and 
+                attr["netmask"] == prefix and
+                attr['gateway'] == gateway):
+                set_success = True
 
         if not set_success:
             return self.callback.error('Config BMC IP failed', node)
@@ -519,7 +519,7 @@ rmdir \"/tmp/$userid\" \n")
             if dic_length > 1:
                 addon_string = " for %s" % nic
             netinfodict['ip'].append("BMC IP"+addon_string+": %s" % attrs["ip"])
-            netinfodict['netmask'].append("BMC Netmask"+addon_string+": %s" % utils.exchange_maskint(attrs["netmask"]))
+            netinfodict['netmask'].append("BMC Netmask"+addon_string+": %s" % utils.mask_int2str(attrs["netmask"]))
             netinfodict['gateway'].append("BMC Gateway"+addon_string+": %s (default: %s)" % (attrs["gateway"], defaultgateway))
             netinfodict['vlan'].append("BMC VLAN ID"+addon_string+": %s" % attrs["vlanid"])
             netinfodict['ipsrc'].append("BMC IP Source"+addon_string+": %s" % attrs["ipsrc"])
