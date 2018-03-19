@@ -73,17 +73,14 @@ sub gen_request_data {
         if ($cmeth eq "openbmc") {
             push @openbmc_nodes, $k;
         }  else {
-            $cmd = $::XCATROOT . "/share/xcat/cons/$cmeth"." ".$k;
-            if (!(!$isSN && $v->{conserver} && xCAT::NetworkUtils->thishostisnot($v->{conserver}))) {
-                my $env;
-                my $locerror = $isSN ? "PERL_BADLANG=0 " : '';
-                if (defined($ENV{'XCATSSLVER'})) {
-                    $env = "XCATSSLVER=$ENV{'XCATSSLVER'} ";
-                }
-                $cmd = $locerror.$env.$cmd;
+            my $env = "";
+            my $locerror = $isSN ? "PERL_BADLANG=0 " : '';
+            if (defined($ENV{'XCATSSLVER'})) {
+                $env = "XCATSSLVER=$ENV{'XCATSSLVER'} ";
             }
+            $data->{$k}->{params}->{env} = $locerror.$env;
             $data->{$k}->{driver} = "cmd";
-            $data->{$k}->{params}->{cmd} = $cmd;
+            $data->{$k}->{params}->{cmd} = $::XCATROOT . "/share/xcat/cons/$cmeth"." ".$k;
             $data->{$k}->{name} = $k;
         }
         if (defined($v->{consoleondemand})) {
