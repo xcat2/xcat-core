@@ -1148,6 +1148,10 @@ sub handle_response {
             $xCAT::Client::EXITCODE |= $rsp->{errorcode};
         }    # assume it is a non-reference scalar
     }
+    my $host = "";
+    if ($rsp->{host}) {
+        $host = "[".$rsp->{host}->[0]."]" if !$msgsource;
+    }
 
     if ($rsp->{error}) {
 
@@ -1156,14 +1160,14 @@ sub handle_response {
             foreach my $text (@{ $rsp->{error} }) {
                 my $desc = "$text";
                 $desc = "[$msgsource]: $desc" if ($msgsource && $desc);
-                $desc = "Error: $desc" unless ($rsp->{NoErrorPrefix});
+                $desc = "Error$host: $desc" unless ($rsp->{NoErrorPrefix});
                 print STDERR "$desc\n";
             }
         }
         else {
             my $desc = $rsp->{error};
             $desc = "[$msgsource]: $desc" if ($msgsource && $desc);
-            $desc = "Error: $desc" unless ($rsp->{NoErrorPrefix});
+            $desc = "Error$host: $desc" unless ($rsp->{NoErrorPrefix});
             print STDERR "$desc\n";
         }
     }
@@ -1174,23 +1178,22 @@ sub handle_response {
             foreach my $text (@{ $rsp->{warning} }) {
                 my $desc = "$text";
                 $desc = "[$msgsource]: $desc" if ($msgsource && $desc);
-                $desc = "Warning: $desc" unless ($rsp->{NoWarnPrefix});
+                $desc = "Warning$host: $desc" unless ($rsp->{NoWarnPrefix});
                 print STDERR "$desc\n";
             }
         }
         else {
             my $desc = $rsp->{warning};
             $desc = "[$msgsource]: $desc" if ($msgsource && $desc);
-            $desc = "Warning: $desc" unless ($rsp->{NoWarnPrefix});
+            $desc = "Warning$host: $desc" unless ($rsp->{NoWarnPrefix});
             print STDERR "$desc\n";
         }
     }
     if ($rsp->{info}) {
-
         #print "printing info\n";
         if (ref($rsp->{info}) eq 'ARRAY') {
             foreach my $text (@{ $rsp->{info} }) {
-                my $desc = "$text";
+                my $desc = "$host$text";
                 $desc = "[$msgsource]: $desc" if ($msgsource && $desc);
                 print "$desc\n";
             }
