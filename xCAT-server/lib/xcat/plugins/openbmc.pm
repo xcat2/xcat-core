@@ -4248,71 +4248,77 @@ sub rflash_response {
         xCAT::SvrUtils::sendmsg("", $callback, $node); #Separate output in case more than 1 endpoint
     }
     if ($node_info{$node}{cur_status} eq "RFLASH_DELETE_CHECK_STATE_RESPONSE") {
-        # Verify selected FW ID is not active. If active display error message,
+        # Verify selected FW ID is not active. If active, display error message,
         # If not active, proceed to delete
         my $to_delete_id = (split ('/', $status_info{RFLASH_DELETE_IMAGE_REQUEST}{init_url}))[4];
-        # Get the functional IDs to accurately mark the active running FW
+        # Get the functional IDs to determint if active running FW can be deleted
         my $functional = get_functional_software_ids($response_info);
-        foreach my $key_url (keys %{$response_info->{data}}) {
-            $update_id = (split(/\//, $key_url))[ -1 ];
-            if ($update_id ne $to_delete_id) {
-                # Not a match on the id, try next one
-                next;
-            }
-            # Initialize values to Unknown for each loop, incase they are not defined in the BMC
-            $update_activation = "Unknown";
-            $update_purpose = "Unknown";
-            $update_version = "Unknown";
+        if (!%{$functional}) {
+            # Can not figure out if FW functional, attempt to delete anyway.
+            # Worst case, BMC will not allow FW deletion if we are wrong
+            $next_status{"RFLASH_DELETE_CHECK_STATE_RESPONSE"} = "RFLASH_DELETE_IMAGE_REQUEST";
+            $next_status{"RFLASH_DELETE_IMAGE_REQUEST"} = "RFLASH_DELETE_IMAGE_RESPONSE";
+        } else {
+            foreach my $key_url (keys %{$response_info->{data}}) {
+                $update_id = (split(/\//, $key_url))[ -1 ];
+                if ($update_id ne $to_delete_id) {
+                    # Not a match on the id, try next one
+                    next;
+                }
+                # Initialize values to Unknown for each loop, incase they are not defined in the BMC
+                $update_activation = "Unknown";
+                $update_purpose = "Unknown";
+                $update_version = "Unknown";
 
-            my %content = %{ ${ $response_info->{data} }{$key_url} };
+                my %content = %{ ${ $response_info->{data} }{$key_url} };
 
-            if (defined($content{Version}) and $content{Version}) {
-                $update_version = $content{Version};
-            }
-            else {
-                # Entry has no Version attribute, skip listing it
-                next;
-            }
-            if (defined($content{Purpose}) and $content{Purpose}) {
-                $update_purpose = (split(/\./, $content{Purpose}))[ -1 ];
-            }
-            my $update_priority = -1;
-            # Just check defined, because priority=0 is a valid value
-            if (defined($content{Priority}))  {
-                $update_priority = (split(/\./, $content{Priority}))[ -1 ];
-            }
-
-            # Check if this is active firmware
-            if (exists($functional->{$update_id}) ) {
-                if ($update_purpose eq "BMC") {
-                    # Active BMC firmware can not be deleted
-                    xCAT::SvrUtils::sendmsg([1, "Deleting currently active BMC firmware is not supported"], $callback, $node);
-                    $wait_node_num--;
-                    return;
-                } elsif ($update_purpose eq "Host") {
-                    # Active Host firmware can NOT be deleted if host is ON
-                    # Active Host firmware can     be deleted if host is OFF
-
-                    # Send the request to check Host state
-                    $next_status{"RFLASH_DELETE_CHECK_STATE_RESPONSE"} = "RPOWER_STATUS_REQUEST";
-                    $next_status{"RPOWER_STATUS_REQUEST"} = "RPOWER_STATUS_RESPONSE";
-                    # Set special argv to deleter_fw if Host is off
-                    $status_info{RPOWER_STATUS_RESPONSE}{argv} = "fw_delete";
-                    last;
+                if (defined($content{Version}) and $content{Version}) {
+                    $update_version = $content{Version};
                 } else {
-                    xCAT::SvrUtils::sendmsg([1, "Unable to determine the purpose of the firmware to delete"], $callback, $node);
-                    # Can not figure out if Host or BMC, attempt to delete anyway.
-                    # Worst case, BMC will not allow FW deletion if we are wrong
+                    # Entry has no Version attribute, skip listing it
+                    next;
+                }
+                if (defined($content{Purpose}) and $content{Purpose}) {
+                    $update_purpose = (split(/\./, $content{Purpose}))[ -1 ];
+                }
+                my $update_priority = -1;
+                # Just check defined, because priority=0 is a valid value
+                if (defined($content{Priority}))  {
+                    $update_priority = (split(/\./, $content{Priority}))[ -1 ];
+                }
+
+                # Check if this is active firmware
+                if (exists($functional->{$update_id}) ) {
+                    if ($update_purpose eq "BMC") {
+                        # Active BMC firmware can not be deleted
+                        xCAT::SvrUtils::sendmsg([1, "Deleting currently active BMC firmware is not supported"], $callback, $node);
+                        $wait_node_num--;
+                        return;
+                    } elsif ($update_purpose eq "Host") {
+                        # Active Host firmware can NOT be deleted if host is ON
+                        # Active Host firmware can     be deleted if host is OFF
+
+                        # Send the request to check Host state
+                        $next_status{"RFLASH_DELETE_CHECK_STATE_RESPONSE"} = "RPOWER_STATUS_REQUEST";
+                        $next_status{"RPOWER_STATUS_REQUEST"} = "RPOWER_STATUS_RESPONSE";
+                        # Set special argv to fw_delete if Host is off
+                        $status_info{RPOWER_STATUS_RESPONSE}{argv} = "fw_delete";
+                        last;
+                    } else {
+                        xCAT::SvrUtils::sendmsg([1, "Unable to determine the purpose of the firmware to delete"], $callback, $node);
+                        # Can not figure out if Host or BMC, attempt to delete anyway.
+                        # Worst case, BMC will not allow FW deletion if we are wrong
+                        $next_status{"RFLASH_DELETE_CHECK_STATE_RESPONSE"} = "RFLASH_DELETE_IMAGE_REQUEST";
+                        $next_status{"RFLASH_DELETE_IMAGE_REQUEST"} = "RFLASH_DELETE_IMAGE_RESPONSE";
+                        last;
+                    }
+                }
+                    else {
+                    # FW is not active, it can be deleted. Send the request to do the deletion
                     $next_status{"RFLASH_DELETE_CHECK_STATE_RESPONSE"} = "RFLASH_DELETE_IMAGE_REQUEST";
                     $next_status{"RFLASH_DELETE_IMAGE_REQUEST"} = "RFLASH_DELETE_IMAGE_RESPONSE";
                     last;
                 }
-            }
-            else {
-                # FW is not active, it can be deleted. Send the request to do the deletion
-                $next_status{"RFLASH_DELETE_CHECK_STATE_RESPONSE"} = "RFLASH_DELETE_IMAGE_REQUEST";
-                $next_status{"RFLASH_DELETE_IMAGE_REQUEST"} = "RFLASH_DELETE_IMAGE_RESPONSE";
-                last;
             }
         }
     }
