@@ -19,13 +19,14 @@ class InventoryInterface(object):
         """
         return task.run('get_info', inventory_type)
 
-    def get_firm_info(self, task):
+    def get_firm_info(self, task, target_arg=None):
         """Return the firm info of the task's nodes.
 
         :param task: a Task instance containing the nodes to act on.
+        :param check_arg: firmware file to check, for rflash check
         :return firm info list
         """
-        return task.run('get_firm_info')
+        return task.run('get_firm_info', target_arg)
 
 class DefaultInventoryManager(InventoryInterface):
     """Interface for inventory-related actions."""

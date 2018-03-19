@@ -7,7 +7,7 @@
 import struct
 import sys
 import inspect
-import re
+import re, os
 import logging
 from logging.handlers import SysLogHandler
 
@@ -91,6 +91,11 @@ def mask_str2int(mask):
 def mask_int2str(mask_int):
     mask_num = (0x1 << 32) - (0x1 << (32 - mask_int))
     return "%s.%s.%s.%s" % (str((mask_num >> 24) & 0xff), str((mask_num >>16)&0xff), str((mask_num >> 8) & 0xff), str(mask_num & 0xff))
+
+def get_full_path(cwd, directory):
+    if not os.path.isabs(directory): 
+        directory = '%s/%s' % (cwd, directory)
+    return directory
 
 class Messager(object):
     def __init__(self, name=None):

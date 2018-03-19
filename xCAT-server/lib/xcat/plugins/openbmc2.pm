@@ -231,7 +231,6 @@ sub parse_args {
             }
         }
         if ($directory) {
-            return ([ 1, "Unsupported command: $command '-d'" ]);
             return ([ 1, "More than one directory specified is not supported."]) if ($#ARGV >= 1);
             return ([ 1, "Invalid option specified with '-d'."]) if (!@ARGV);
         }

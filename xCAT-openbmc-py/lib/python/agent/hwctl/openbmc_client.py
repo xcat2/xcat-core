@@ -145,15 +145,15 @@ BOOTSOURCE_SET_STATE = {
 
 FIRM_URLS = {
     "activate"  : {
-        "path"   : "/software/%(id)s/attr/RequestedActivation",
-        "field" : "Software.Activation.RequestedActivations.Active",
+        "path"   : "/software/%s/attr/RequestedActivation",
+        "field" : "xyz.openbmc_project.Software.Activation.RequestedActivations.Active",
     },
     "delete"    : {
-        "path"   : "/software/%(id)s/action/Delete",
+        "path"   : "/software/%s/action/Delete",
         "field" : [],
     },
     "priority"  : {
-        "path"   : "/software/%(id)s/attr/Priority",
+        "path"   : "/software/%s/attr/Priority",
         "field" : False,
     },
     "list"      : {
@@ -426,6 +426,25 @@ class OpenBMCRest(object):
             # TODO: Need special handling for bmc reset, as it is normal bmc may return error
             pass
 
+    def get_host_state(self, states):
+
+        chassis_state = states.get('chassis')
+        host_state = states.get('host')
+        state = 'Unknown'
+        if chassis_state == 'Off':
+            state = chassis_state
+
+        elif chassis_state == 'On':
+            if host_state == 'Off':
+                state = 'chassison'
+            elif host_state in ['Quiesced', 'Running']:
+                state = host_state
+            else:
+                state = 'Unexpected host state=%s' % host_state
+        else:
+            state = 'Unexpected chassis state=%s' % chassis_state
+        return state
+
     def set_one_time_boot_enable(self, enabled):
 
         payload = { "data": enabled }
@@ -542,6 +561,18 @@ class OpenBMCRest(object):
             error = 'Received wrong format response: %s' % inventory_data
             raise SelfServerException(error)
 
+    def activate_firmware(self, activate_id):
+
+        payload = { "data": FIRM_URLS['activate']['field'] }
+        url = FIRM_URLS['activate']['path'] % activate_id
+        return self.request('PUT', url, payload=payload, cmd='activate_firmware')
+
+    def delete_firmware(self, delete_id):
+
+        payload = { "data": FIRM_URLS['delete']['field'] }
+        url = FIRM_URLS['delete']['path'] % delete_id
+        return self.request('POST', url, payload=payload, cmd='delete_firmware')
+
     def list_firmware(self):
 
         data = self.request('GET', FIRM_URLS['list']['path'], cmd='list_firmware')
@@ -563,6 +594,18 @@ class OpenBMCRest(object):
             fw_dict[str(fw)]=fw
 
         return bool(func_list), fw_dict
+
+    def upload_firmware(self, upload_file):
+
+        headers = {'Content-Type': 'application/octet-stream'}
+        path = HTTP_PROTOCOL + self.bmcip + '/upload/image/' 
+        self.upload('PUT', path, upload_file, headers=headers, cmd='upload_firmware') 
+
+    def set_priority(self, firm_id):
+
+        payload = { "data": FIRM_URLS['priority']['field'] }
+        url = FIRM_URLS['priority']['path'] % firm_id
+        return self.request('PUT', url, payload=payload, cmd='set_priority')
 
     # Extract all eventlog info and parse it
     def get_eventlog_info(self):
