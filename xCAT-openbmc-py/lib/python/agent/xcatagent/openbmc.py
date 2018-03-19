@@ -639,12 +639,13 @@ class OpenBMCManager(base.BaseManager):
             return
 
         # 3, run the subcommands
-        runnerB = OpenBMCBeaconTask(nodesinfo, callback=self.messager, debugmode=self.debugmode, verbose=self.verbose)
-        runnerS = OpenBMCSensorTask(nodesinfo, callback=self.messager, debugmode=self.debugmode, verbose=self.verbose)
         if action == 'stat':
-            DefaultSensorManager().get_beacon_info(runnerS, display_type='compact')
+            runner = OpenBMCSensorTask(nodesinfo, callback=self.messager, debugmode=self.debugmode, verbose=self.verbose)
+
+            DefaultSensorManager().get_beacon_info(runner, display_type='compact')
         else:
-            DefaultBeaconManager().set_beacon_state(runnerB, beacon_state=action)
+            runner = OpenBMCBeaconTask(nodesinfo, callback=self.messager, debugmode=self.debugmode, verbose=self.verbose)
+            DefaultBeaconManager().set_beacon_state(runner, beacon_state=action)
 
     def rinv(self, nodesinfo, args):
 
