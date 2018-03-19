@@ -330,7 +330,7 @@ sub preprocess_updatenode
            delete $allnodes{$node};
         }
         $request->{node}=[];
-        push $request->{node}, map  $_ ,keys %allnodes;
+        push @{$request->{node}}, map  $_ ,keys %allnodes;
     }
 
     unless (scalar @{$request->{node}}){
