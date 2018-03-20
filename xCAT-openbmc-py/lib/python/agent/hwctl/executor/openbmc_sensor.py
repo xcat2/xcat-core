@@ -32,9 +32,14 @@ SENSOR_POWER_UNITS = ("Amperes", "Joules", "Watts")
 class OpenBMCSensorTask(ParallelNodesCommand):
     """Executor for sensor-related actions."""
 
-    def _get_beacon_info(self, beacon_dict):
+    def _get_beacon_info(self, beacon_dict, display_type='full'):
 
         info_list = []
+        # display_type == 'full'    for detailed output for 'rvitals leds' command
+        # display_type == 'compact' for compact  output for 'rbeacon stat' command
+        if display_type == 'compact':
+            info_list.append('Front:%s Rear:%s' % (beacon_dict.get('front_id'), beacon_dict.get('rear_id', 'N/A'))) 
+            return info_list
         info_list.append('Front . . . . . : Power:%s Fault:%s Identify:%s' %
                          (beacon_dict.get('front_power', 'N/A'),
                           beacon_dict.get('front_fault', 'N/A'),
@@ -92,7 +97,7 @@ class OpenBMCSensorTask(ParallelNodesCommand):
 
         return sensor_info
 
-    def get_beacon_info(self, **kw):
+    def get_beacon_info(self, display_type, **kw):
 
         node = kw['node']
         obmc = openbmc.OpenBMCRest(name=node, nodeinfo=kw['nodeinfo'], messager=self.callback,
@@ -102,7 +107,7 @@ class OpenBMCSensorTask(ParallelNodesCommand):
         try:
             obmc.login()
             beacon_dict = obmc.get_beacon_info()
-            beacon_info = self._get_beacon_info(beacon_dict)
+            beacon_info = self._get_beacon_info(beacon_dict, display_type)
 
             if not beacon_info:
                 beacon_info = ['No attributes returned from the BMC.']

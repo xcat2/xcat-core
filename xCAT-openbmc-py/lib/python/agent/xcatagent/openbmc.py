@@ -48,7 +48,7 @@ VERBOSE = False
 all_nodes_result = {}
 
 # global variables of rbeacon
-BEACON_SET_OPTIONS = ('on', 'off')
+BEACON_OPTIONS = ('on', 'off', 'stat')
 
 # global variables of rflash
 RFLASH_OPTIONS = {
@@ -614,7 +614,7 @@ class OpenBMCManager(base.BaseManager):
         # 1, parse args
         rbeacon_usage = """
         Usage:
-            rbeacon [-V|--verbose] [on|off]
+            rbeacon [-V|--verbose] [on|off|stat]
 
         Options:
             -V --verbose   rbeacon verbose mode.
@@ -631,16 +631,21 @@ class OpenBMCManager(base.BaseManager):
 
         # 2, validate the args
         if action is None:
-            self.messager.error("Not specify the subcommand for rbeacon")
+            self.messager.error("Subcommand for rbeacon was not specified")
             return
 
-        if action not in BEACON_SET_OPTIONS:
+        if action not in BEACON_OPTIONS:
             self.messager.error("Not supported subcommand for rbeacon: %s" % action)
             return
 
         # 3, run the subcommands
-        runner = OpenBMCBeaconTask(nodesinfo, callback=self.messager, debugmode=self.debugmode, verbose=self.verbose)
-        DefaultBeaconManager().set_beacon_state(runner, beacon_state=action)
+        if action == 'stat':
+            runner = OpenBMCSensorTask(nodesinfo, callback=self.messager, debugmode=self.debugmode, verbose=self.verbose)
+
+            DefaultSensorManager().get_beacon_info(runner, display_type='compact')
+        else:
+            runner = OpenBMCBeaconTask(nodesinfo, callback=self.messager, debugmode=self.debugmode, verbose=self.verbose)
+            DefaultBeaconManager().set_beacon_state(runner, beacon_state=action)
 
     def rinv(self, nodesinfo, args):
 
