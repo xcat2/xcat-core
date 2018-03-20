@@ -484,7 +484,8 @@ sub message
         if ($errstr)
         {
             print $stdouterrf
-              "Unable to log $rsp to syslog because of $errstr\n";
+              "Error: Unable to log to syslog: $errstr\n";
+            print "$rsp\n";
         }
     }
 
@@ -794,9 +795,6 @@ sub trace() {
     if (($level eq "I") || ($level eq "i")) { $prefix = "INFO"; }
     if (($level eq "D") || ($level eq "d")) { $prefix = "DEBUG"; }
 
-    my @tmp           = xCAT::TableUtils->get_site_attribute("xcatdebugmode");
-    my $xcatdebugmode = $tmp[0];
-
     if (($level eq "E")
         || ($level eq "e")
         || ($level eq "I")
@@ -809,8 +807,15 @@ sub trace() {
             syslog("$prefix", $msg);
             closelog();
         };
+        if ($@) {
+            print "Error: Unable to log to syslog: $@\n";
+            print "$msg\n";
+        }
+        return;
     }
 
+    my @tmp           = xCAT::TableUtils->get_site_attribute("xcatdebugmode");
+    my $xcatdebugmode = $tmp[0];
     if (($level eq "D")
         || ($level eq "d")) {
         if (($verbose == 1) || ($xcatdebugmode eq "1") || ($xcatdebugmode eq "2")) {
@@ -819,6 +824,10 @@ sub trace() {
                 openlog("xcat", "nofatal,pid", "local4");
                 syslog("$prefix", $msg);
                 closelog();
+            };
+            if ($@) {
+                print "Error: Unable to log to syslog: $@\n";
+                print "$msg\n";
             }
         }
     }
