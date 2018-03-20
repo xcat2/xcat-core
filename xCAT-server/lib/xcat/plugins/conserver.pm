@@ -205,7 +205,7 @@ sub process_request {
         if (-x "/usr/bin/goconserver") {
             require xCAT::Goconserver;
             if (xCAT::Goconserver::is_goconserver_running()) {
-                my $rsp->{data}->[0] = "goconserver is started, please stop it at first.";
+                my $rsp->{data}->[0] = "goconserver is being used as the console service, did you mean: makegocons <noderange>? If not, stop goconserver and retry.";
                 xCAT::MsgUtils->message("E", $rsp, $cb);
                 return;
             }
