@@ -2591,4 +2591,345 @@ check:rc==0
 end
 
 
+start:import_validation_json_node_arch_type
+description:This case is used to test node validation function of xcat-inventory import json file. To test "arch" attribute
+cmd:mkdir -p /tmp/import_validation_json_node_arch_type
+check:rc==0
+cmd:lsdef bogusnode > /dev/null 2>&1;if [[ $? -eq 0 ]]; then lsdef bogusnode -z >/tmp/import_validation_json_node_arch_type/bogusnode.stanza ;rmdef bogusnode;fi
+check:rc==0
+cmd:lsdef -t group bogusgroup  > /dev/null 2>&1;if [[ $? -eq 0 ]]; then lsdef -t group bogusgroup -z > /tmp/import_validation_json_node_arch_type/bogusgroup.stanza; rmdef -t group bogusgroup;fi
+check:rc==0
+cmd:#!/bin/bash
+echo '{
+    "node": {
+        "bogusnode": {
+            "device_info": {
+               "arch": "ppc"
+            },
+            "device_type": "server",
+            "obj_info": {
+                "groups": "bogusgroup"
+            },
+            "obj_type": "node",
+            "role": "compute"
+        }
+    },
+}' > /tmp/import_validation_json_node_arch_type/node.inv
+check:rc==0
+cmd:xcat-inventory import -f /tmp/import_validation_json_node_arch_type/node.inv
+check:output=~Error: failed to validate attribute
+check:output=~arch
+check:rc!=0
+cmd:lsdef bogusnode
+check:output=~Error: Could not find an object named 'bogusnode'
+check:rc!=0
+cmd:#!/bin/bash
+echo '{
+    "node": {
+        "bogusnode": {
+            "device_info": {
+               "arch": "ppc64"
+            },
+            "device_type": "server",
+            "obj_info": {
+                "groups": "bogusgroup"
+            },
+            "obj_type": "node",
+            "role": "compute"
+        }
+    },
+}' > /tmp/import_validation_json_node_arch_type/node.inv
+check:rc==0
+cmd:xcat-inventory import -f /tmp/import_validation_json_node_arch_type/node.inv
+check:output=~Inventory import successfully
+check:rc==0
+cmd:lsdef bogusnode
+check:output=~Object name: bogusnode
+check:output=~arch=ppc64
+check:rc==0
+cmd:rmdef bogusnode
+check:rc==0
+cmd:#!/bin/bash
+echo '{
+    "node": {
+        "bogusnode": {
+            "device_info": {
+               "arch": "ppc64el"
+            },
+            "device_type": "server",
+            "obj_info": {
+                "groups": "bogusgroup"
+            },
+            "obj_type": "node",
+            "role": "compute"
+        }
+    },
+}' > /tmp/import_validation_json_node_arch_type/node.inv
+check:rc==0
+cmd:xcat-inventory import -f /tmp/import_validation_json_node_arch_type/node.inv
+check:output=~Inventory import successfully
+check:rc==0
+cmd:lsdef bogusnode
+check:output=~Object name: bogusnode
+check:output=~arch=ppc64el
+check:rc==0
+cmd:rmdef bogusnode
+check:rc==0
+cmd:#!/bin/bash
+echo '{
+    "node": {
+        "bogusnode": {
+            "device_info": {
+               "arch": "ppc64le"
+            },
+            "device_type": "server",
+            "obj_info": {
+                "groups": "bogusgroup"
+            },
+            "obj_type": "node",
+            "role": "compute"
+        }
+    },
+}' > /tmp/import_validation_json_node_arch_type/node.inv
+check:rc==0
+cmd:xcat-inventory import -f /tmp/import_validation_json_node_arch_type/node.inv
+check:output=~Inventory import successfully
+check:rc==0
+cmd:lsdef bogusnode
+check:output=~Object name: bogusnode
+check:output=~arch=ppc64le
+check:rc==0
+cmd:rmdef bogusnode
+check:rc==0
+cmd:#!/bin/bash
+echo '{
+    "node": {
+        "bogusnode": {
+            "device_info": {
+               "arch": "x86_64"
+            },
+            "device_type": "server",
+            "obj_info": {
+                "groups": "bogusgroup"
+            },
+            "obj_type": "node",
+            "role": "compute"
+        }
+    },
+}' > /tmp/import_validation_json_node_arch_type/node.inv
+check:rc==0
+cmd:xcat-inventory import -f /tmp/import_validation_json_node_arch_type/node.inv
+check:output=~Inventory import successfully
+check:rc==0
+cmd:lsdef bogusnode
+check:output=~Object name: bogusnode
+check:output=~arch=x86_64
+check:rc==0
+cmd:rmdef bogusnode
+check:rc==0
+cmd:#!/bin/bash
+echo '{
+    "node": {
+        "bogusnode": {
+            "device_info": {
+               "arch": "armv71"
+            },
+            "device_type": "server",
+            "obj_info": {
+                "groups": "bogusgroup"
+            },
+            "obj_type": "node",
+            "role": "compute"
+        }
+    },
+}' > /tmp/import_validation_json_node_arch_type/node.inv
+check:rc==0
+cmd:xcat-inventory import -f /tmp/import_validation_json_node_arch_type/node.inv
+check:output=~Inventory import successfully
+check:rc==0
+cmd:lsdef bogusnode
+check:output=~Object name: bogusnode
+check:output=~arch=armv71
+check:rc==0
+cmd:rmdef bogusnode
+check:rc==0
+cmd:if [[ -e /tmp/import_validation_json_node_arch_type/bogusnode.stanza ]]; then cat /tmp/import_validation_json_node_arch_type/bogusnode.stanza | mkdef -z;fi
+check:rc==0
+cmd:if [[ -e /tmp/import_validation_json_node_arch_type/bogusgroup.stanza ]]; then cat /tmp/import_validation_json_node_arch_type/bogusgroup.stanza |mkdef -z -f;fi
+check:rc==0
+cmd:rm -rf /tmp/import_validation_json_node_arch_type
+check:rc==0
+end
 
+start:import_validation_yaml_node_arch_type
+description:This case is used to test node validation function of xcat-inventory import yaml file. To test "arch" attribute
+cmd:mkdir -p /tmp/import_validation_yaml_node_arch_type
+check:rc==0
+cmd:lsdef bogusnode > /dev/null 2>&1;if [[ $? -eq 0 ]]; then lsdef bogusnode -z >/tmp/import_validation_yaml_node_arch_type/bogusnode.stanza ;rmdef bogusnode;fi
+check:rc==0
+cmd:lsdef -t group bogusgroup  > /dev/null 2>&1;if [[ $? -eq 0 ]]; then lsdef -t group bogusgroup -z > /tmp/import_validation_yaml_node_arch_type/bogusgroup.stanza; rmdef -t group bogusgroup;fi
+check:rc==0
+cmd:#!/bin/bash
+echo "node:
+  bogusnode:
+    device_info:
+      arch: ppc
+    device_type: server
+    obj_info:
+      groups: bogusgroup
+    obj_type: node
+    role: compute" > /tmp/import_validation_yaml_node_arch_type/node.inv
+check:rc==0
+cmd:xcat-inventory import -f /tmp/import_validation_yaml_node_arch_type/node.inv
+check:output=~Error: failed to validate attribute
+check:output=~arch
+check:rc!=0
+cmd:lsdef bogusnode
+check:output=~Error: Could not find an object named 'bogusnode'
+check:rc!=0
+cmd:#!/bin/bash
+echo "node:
+  bogusnode:
+    device_info:
+      arch: ppc64
+    device_type: server
+    obj_info:
+      groups: bogusgroup
+    obj_type: node
+    role: compute" > /tmp/import_validation_yaml_node_arch_type/node.inv
+check:rc==0
+cmd:xcat-inventory import -f /tmp/import_validation_yaml_node_arch_type/node.inv
+check:output=~Inventory import successfully
+check:rc==0
+cmd:lsdef bogusnode
+check:output=~Object name: bogusnode
+check:output=~arch=ppc64
+check:rc==0
+cmd:rmdef bogusnode
+check:rc==0
+cmd:#!/bin/bash
+echo "node:
+  bogusnode:
+    device_info:
+      arch: ppc64el
+    device_type: server
+    obj_info:
+      groups: bogusgroup
+    obj_type: node
+    role: compute" > /tmp/import_validation_yaml_node_arch_type/node.inv
+cmd:xcat-inventory import -f /tmp/import_validation_yaml_node_arch_type/node.inv
+check:output=~Inventory import successfully
+check:rc==0
+cmd:lsdef bogusnode
+check:output=~Object name: bogusnode
+check:output=~arch=ppc64el
+check:rc==0
+cmd:rmdef bogusnode
+check:rc==0
+cmd:#!/bin/bash
+echo "node:
+  bogusnode:
+    device_info:
+      arch: ppc64le
+    device_type: server
+    obj_info:
+      groups: bogusgroup
+    obj_type: node
+    role: compute" > /tmp/import_validation_yaml_node_arch_type/node.inv
+check:rc==0
+cmd:xcat-inventory import -f /tmp/import_validation_yaml_node_arch_type/node.inv
+check:output=~Inventory import successfully
+check:rc==0
+cmd:lsdef bogusnode
+check:output=~Object name: bogusnode
+check:output=~arch=ppc64le
+check:rc==0
+cmd:rmdef bogusnode
+check:rc==0
+cmd:#!/bin/bash
+echo "node:
+  bogusnode:
+    device_info:
+      arch: x86_64
+    device_type: server
+    obj_info:
+      groups: bogusgroup
+    obj_type: node
+    role: compute" > /tmp/import_validation_yaml_node_arch_type/node.inv
+check:rc==0
+cmd:xcat-inventory import -f /tmp/import_validation_yaml_node_arch_type/node.inv
+check:output=~Inventory import successfully
+check:rc==0
+cmd:lsdef bogusnode
+check:output=~Object name: bogusnode
+check:output=~arch=x86_64
+check:rc==0
+cmd:rmdef bogusnode
+check:rc==0
+cmd:#!/bin/bash
+echo "node:
+  bogusnode:
+    device_info:
+      arch: armv71 
+    device_type: server
+    obj_info:
+      groups: bogusgroup
+    obj_type: node
+    role: compute" > /tmp/import_validation_yaml_node_arch_type/node.inv
+check:rc==0
+cmd:xcat-inventory import -f /tmp/import_validation_yaml_node_arch_type/node.inv
+check:output=~Inventory import successfully
+check:rc==0
+cmd:lsdef bogusnode
+check:output=~Object name: bogusnode
+check:output=~arch=armv71
+check:rc==0
+cmd:rmdef bogusnode
+check:rc==0
+cmd:if [[ -e /tmp/import_validation_yaml_node_arch_type/bogusnode.stanza ]]; then cat /tmp/import_validation_yaml_node_arch_type/bogusnode.stanza | mkdef -z;fi
+check:rc==0
+cmd:if [[ -e /tmp/import_validation_yaml_node_arch_type/bogusgroup.stanza ]]; then cat /tmp/import_validation_yaml_node_arch_type/bogusgroup.stanza |mkdef -z -f;fi
+check:rc==0
+cmd:rm -rf /tmp/import_validation_yaml_node_arch_type
+check:rc==0
+end
+
+start:import_validation_yaml_node_securitylevel
+description:This case is used to test node validation function of xcat-inventory import yaml file. To test "securitylevel" attribute
+cmd:mkdir -p /tmp/import_validation_yaml_node_securitylevel
+check:rc==0
+cmd:lsdef bogusnode > /dev/null 2>&1;if [[ $? -eq 0 ]]; then lsdef bogusnode -z >/tmp/import_validation_yaml_node_securitylevel/bogusnode.stanza ;rmdef bogusnode;fi
+check:rc==0
+cmd:lsdef -t group bogusgroup  > /dev/null 2>&1;if [[ $? -eq 0 ]]; then lsdef -t group bogusgroup -z > /tmp/import_validation_yaml_node_securitylevel/bogusgroup.stanza; rmdef -t group bogusgroup;fi
+check:rc==0
+cmd:#!/bin/bash
+echo "node:
+  bogusnode:
+    deprecated:
+      pdunodetype: pdu
+    device_info:
+      characteristics: pdu
+    device_type: server 
+    obj_info:
+      groups: bogusgroup
+    obj_type: node
+    role: compute
+    security_info:
+      snmp:
+        securitylevel: noAuthNoPriv" >/tmp/import_validation_yaml_node_securitylevel/node.inv
+check:rc==0
+cmd:xcat-inventory import -f /tmp/import_validation_yaml_node_securitylevel/node.inv
+check:output=~Error: failed to validate attribute
+check:output=~securitylevel
+check:rc!=0
+cmd:lsdef bogusnode
+check:output=~Error: Could not find an object named 'bogusnode'
+check:rc!=0
+
+cmd:if [[ -e /tmp/import_validation_yaml_node_securitylevel/bogusnode.stanza ]]; then cat /tmp/import_validation_yaml_node_securitylevel/bogusnode.stanza | mkdef -z;fi
+check:rc==0
+cmd:if [[ -e /tmp/import_validation_yaml_node_securitylevel/bogusgroup.stanza ]]; then cat /tmp/import_validation_yaml_node_securitylevel/bogusgroup.stanza |mkdef -z -f;fi
+check:rc==0
+cmd:rm -rf /tmp/import_validation_yaml_node_securitylevel
+check:rc==0
+end
