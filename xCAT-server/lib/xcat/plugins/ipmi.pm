@@ -8275,9 +8275,9 @@ sub preprocess_request {
             my $error_data = "";
             foreach (@$all_noderange) {
                 $error_data .= "\n" if ($error_data);
-                $error_data .= "$_: Please enter an action (eg: boot,off,on, etc)";
+                $error_data .= "$_: Please enter an action (eg: boot,off,on, etc) for ipmi management method";
             }
-            $callback->({ errorcode => [1], data => [ $error_data, $usage_string ] });
+            $callback->({ errorcode => [1], data => [ $error_data ] });
             $request = {};
             return 0;
         }
@@ -8294,9 +8294,9 @@ sub preprocess_request {
             my $error_data = "";
             foreach (@$all_noderange) {
                 $error_data .= "\n" if ($error_data);
-                $error_data .= "$_: Error: Unsupported command: $command $subcmd";
+                $error_data .= "$_: Error: Unsupported command: $command $subcmd for ipmi management method";
             }
-            $callback->({ errorcode => [1], data => [ $error_data, $usage_string ] });
+            $callback->({ errorcode => [1], data => [ $error_data ] });
             $request = {};
             return;
         }
@@ -8335,7 +8335,7 @@ sub preprocess_request {
                     if ($optset eq 0) {
                         foreach (@$all_noderange) {
                             $error_data .= "\n" if ($error_data);
-                            $error_data .= "$_: Usage Error: Cannot display and change attributes on the same command.";
+                            $error_data .= "$_: Usage Error: Cannot display and change attributes on the same command for ipmi management method.";
                         }
                         $callback->({ errorcode => [1], data => [ $error_data] });
                         $request = {};
@@ -8347,7 +8347,7 @@ sub preprocess_request {
                     if ($optset eq 1) {
                         foreach (@$all_noderange) {
                             $error_data .= "\n" if ($error_data);
-                            $error_data .= "$_: Usage Error: Cannot display and change attributes on the same command.";
+                            $error_data .= "$_: Usage Error: Cannot display and change attributes on the same command for ipmi management method.";
                         }
                         $callback->({ errorcode => [1], data => [ $error_data] });
                         $request = {};
@@ -8359,7 +8359,7 @@ sub preprocess_request {
                 unless ($option =~ /^USERID$|^ip$|^netmask$|^gateway$|^vlan$|^userid$|^username$|^password$|^snmpdest|^thermprofile$|^alert$|^garp$|^community$|^backupgateway$/) {
                     foreach (@$all_noderange) {
                         $error_data .= "\n" if ($error_data);
-                        $error_data .= "$_: Error: Unsupported command: $command $option";
+                        $error_data .= "$_: Error: Unsupported command: $command $option for ipmi management method";
                     }
                     $callback->({ errorcode => [1], data => [ $error_data ] });
                     $request = {};
@@ -8374,7 +8374,7 @@ sub preprocess_request {
             my $error_data = "";
             foreach (@$all_noderange) {
                 $error_data .= "\n" if ($error_data);
-                $error_data .= "$_: option '-t' can only work with 'all' or 'vpd";
+                $error_data .= "$_: option '-t' can only work with 'all' or 'vpd' for ipmi management method";
             }
             $callback->({ errorcode => [1], data => [ $error_data ] });
             $request = {};
