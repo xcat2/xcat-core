@@ -1,0 +1,146 @@
+start:xcat_inventory_option_h
+description:This case is used to test xcat-inventory usage information
+cmd:xcat-inventory -h
+check:ouptut=~usage: xcat-inventory
+check:ouptut!~usage: xcat-inventory export
+check:ouptut!~usage: xcat-inventory import
+check:rc==0
+cmd:xcat-inventory help
+check:ouptut=~usage: xcat-inventory
+check:ouptut!~usage: xcat-inventory export
+check:ouptut!~usage: xcat-inventory import
+check:rc==0
+cmd:xcat-inventory help export
+check:ouptut=~usage: xcat-inventory export
+check:rc==0
+cmd:xcat-inventory help import
+check:output=~usage: xcat-inventory import
+check:rc==0
+cmd:xcat-inventory help help
+check:output=~usage: xcat-inventory help
+check:rc==0
+end
+
+
+start:xcat_inventory_option_V
+description:This case is used to test xcat-inventory option V which used to get version information
+cmd:xcat-inventory -V
+check:ouptut=~\d\.\d
+check:rc==0
+end
+
+start:xcat_inventory_invalid_subcmd
+description:This case is used to test xcat-inventory export subcommand to handle invalid subcommand. The vaild subcommand are export and import.
+cmd:xcat-inventory aaa
+check:output=~ xcat-inventory: error: argument <subcommand>: invalid choice:
+check:output=~ usage:
+check:rc!=0
+end
+
+start:xcat_inventory_export_option_t_invalid_type
+description:This case is used to test xcat-inventory export subcommand to handle invalid type for option t
+cmd:xcat-inventory export -t aaa
+check:output=~Invalid object type 
+check:output!~Traceback (most recent call last):
+check:rc!=0
+end
+
+start:xcat_inventory_export_option_format_invalid_type
+description:This case is used to test xcat-inventory export subcommand to handle invalid type for option format 
+cmd:xcat-inventory export --format aaa
+check:output=~Invalid exporting format: aaa
+check:output!~Traceback (most recent call last):
+check:rc!=0
+end
+
+#start:xcat_inventory_export_option_f_invalid_file
+#description:This case is used to test xcat-inventory export subcommand to handle invalid file for option f
+#cmd:xcat-inventory export -f aaa
+#check:output=~The specified path does not exist
+#check:output !~Traceback
+#check:rc!=0
+#end
+
+start:xcat_inventory_import_option_f_invalid_file
+description:This case is used to test xcat-inventory import subcommand to handle invalid file for option f
+cmd:mkdir -p /tmp/xcat_inventory_import_option_f_invalid_file
+check:rc==0
+#to handle a non-existed file
+cmd:xcat-inventory import -f aaa
+check:output=~The specified path does not exist
+check:output !~Traceback
+check:rc!=0
+#To handle a invalid json file
+cmd:#!/usr/bin/bash
+echo "{
+    "node": {
+        "bogusnode": {
+            "device_type": "server",
+            "obj_info": {
+                "groups": "test"
+            },
+            "obj_type": "node",
+            "role": "compute"
+        }
+    }
+" > /tmp/xcat_inventory_import_option_f_invalid_file/invaild_json
+check:rc==0
+cmd:cat /tmp/xcat_inventory_import_option_f_invalid_file/invaild_json
+check:rc==0
+cmd:xcat-inventory import -f /tmp/xcat_inventory_import_option_f_invalid_file/invaild_json
+check:output =~ Error: failed to load file 
+check:output !~Traceback
+check:rc!=0
+#To handle a invalid yaml file
+cmd:#!/usr/bin/bash
+echo "node:
+    device_type: server
+    obj_info:
+      groups: test
+    obj_type: node
+    role: compute
+"  > /tmp/xcat_inventory_import_option_f_invalid_file/invaild_yaml
+check:rc==0
+cmd:cat /tmp/xcat_inventory_import_option_f_invalid_file/invaild_yaml
+check:rc==0
+cmd:xcat-inventory import -f /tmp/xcat_inventory_import_option_f_invalid_file/invaild_yaml
+check:output =~ Error: 
+check:output !~Traceback
+check:rc!=0
+cmd:rm -rf /tmp/xcat_inventory_import_option_f_invalid_file
+check:rc==0
+end
+
+
+start:xcat_inventory_import_option_t_invalid_type
+description:This case is used to test xcat-inventory import subcommand to handle invalid type for option t
+cmd:xcat-inventory import -t aaa
+check:output=~Invalid object type
+check:output!~Traceback (most recent call last):
+check:rc!=0
+end
+
+
+start:xcat_inventory_import_miss_option
+description:This case is used to test xcat-inventory import subcommand to handle missing -t or -o option
+cmd:mkdir -p /tmp/export_import_nodes_delimited_with_comma_by_json
+check:rc==0
+cmd:#!/usr/bin/bash
+echo "{
+    "node": {
+        "test": {
+            "device_type": "server",
+            "obj_info": {
+                "groups": "testgroup"
+            },
+            "obj_type": "node",
+            "role": "compute"
+        }
+    }
+}" >  /tmp/export_import_nodes_delimited_with_comma_by_json/aaa
+cmd:xcat-inventory import -f /tmp/export_import_nodes_delimited_with_comma_by_json/aaa -o aaa
+check:output=~Missing object type for object
+check:rc!=0
+cmd:rm -rf  /tmp/export_import_nodes_delimited_with_comma_by_json
+check:rc==0
+end

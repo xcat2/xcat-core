@@ -847,7 +847,11 @@ sub load_case {
             return 1;
         }
         while ($line = <$fd>) {
-            $line =~ s/^\s+|#[^!].+|\s+$//g;
+            if($newcmdstart){
+                $line =~ s/\s+$//g ;
+             }else{
+                $line =~ s/^\s+|#[^!].+|\s+$//g ;
+             }
 
             #skip blank and comment lines
             next if (length($line) == 0 || ($line =~ /^\s*#/));
