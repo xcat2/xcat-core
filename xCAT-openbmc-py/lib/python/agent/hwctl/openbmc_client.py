@@ -320,6 +320,8 @@ class OpenBMCRest(object):
                         'Validate BMC configuration and retry the command.'
             self._print_error_log(e.message, cmd)
             raise
+        except SelfClientException as e:
+            raise SelfClientException(e.message, e.code)
         except ValueError:
             error = 'Received wrong format response: %s' % response
             self._print_error_log(error, cmd)
@@ -410,9 +412,12 @@ class OpenBMCRest(object):
 
     def get_bmc_state(self):
 
-        state = self.request('GET', BMC_URLS['state']['path'], cmd='get_bmc_state')
         try:
+            state = self.request('GET', BMC_URLS['state']['path'], cmd='get_bmc_state')
             return {'bmc': state.split('.')[-1]}
+        except SelfClientException as e:
+            # Return error message received from the request
+            return {'bmc': "NotReady", 'error': e.message}
         except KeyError:
             error = 'Received wrong format response: %s' % state
             raise SelfServerException(error)
