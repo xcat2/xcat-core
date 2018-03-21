@@ -3,11 +3,11 @@
 ########
 # Set all the variables below
 
-LINUX_DISTRO="rhels7.4"
+LINUX_DISTRO="rhels7.5-alternate"
 LINUX_ARCH="ppc64le"
 
 COMPUTE_NODE="c910f03c01p10"
-SOURCE_DIR="/media/xcat"
+SOURCE_DIR="/install/tmp"
 
 ########
 
@@ -56,6 +56,9 @@ do
 		;;
 	"dkms-"*".el7.noarch.rpm")
 		DKMS_RPM="${r}"
+		;;
+	"nvidia-driver-local-repo-rhel"*"-"*".${LINUX_ARCH}.rpm")
+		CUDA_RPMS+=("${r}")
 		;;
 	esac
 done
@@ -123,12 +126,24 @@ ${OSIMAGE_NAME}:
     permission=755
     pkgdir=/install/${LINUX_DISTRO}/${LINUX_ARCH}
     pkglist=/opt/xcat/share/xcat/netboot/rh/compute.${LINUX_DISTRO%%.*}.${LINUX_ARCH}.pkglist
-    postinstall=/opt/xcat/share/xcat/netboot/rh/compute.${LINUX_DISTRO%%.*}.${LINUX_ARCH}.postinstall
+    postinstall=/install/custom/netboot/rh/cudafull.${LINUX_DISTRO%%.*}.${LINUX_ARCH}.postinstall
     profile=compute
     provmethod=netboot
     rootimgdir=${OSIMAGE_ROOTIMGDIR}
 EOF
 [ "$?" -ne "0" ] && echo "Make osimage definition failed." >&2 && exit 1
+
+(
+	cat "/opt/xcat/share/xcat/netboot/rh/compute.${LINUX_DISTRO%%.*}.${LINUX_ARCH}.postinstall"
+	cat <<-EOF
+
+	cp /install/postscripts/cuda_power9_setup "${OSIMAGE_ROOTIMGDIR}/rootimg/tmp/cuda_power9_setup"
+	chroot "${OSIMAGE_ROOTIMGDIR}/rootimg" /tmp/cuda_power9_setup
+
+	rm -f "${OSIMAGE_ROOTIMGDIR}/rootimg/tmp/cuda_power9_setup"
+	EOF
+) >"/install/custom/netboot/rh/cudafull.${LINUX_DISTRO%%.*}.${LINUX_ARCH}.postinstall"
+chmod 0755 "/install/custom/netboot/rh/cudafull.${LINUX_DISTRO%%.*}.${LINUX_ARCH}.postinstall"
 
 rm -rf "${OSIMAGE_OTHERPKGDIR}"
 mkdir -p "${OSIMAGE_OTHERPKGDIR}"
