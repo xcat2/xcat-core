@@ -1,0 +1,188 @@
+#!/usr/bin/bash
+
+objtype=$1
+objname=$2
+attribute=$3
+attrvalue=$4
+tmpdir=$5
+
+
+SOURCE="${BASH_SOURCE[0]}"
+while [ -h "$SOURCE" ]; do # resolve $SOURCE until the file is no longer a symlink
+  DIR="$( cd -P "$( dirname "$SOURCE" )" && pwd )"
+  SOURCE="$(readlink "$SOURCE")"
+  [[ $SOURCE != /* ]] && SOURCE="$DIR/$SOURCE" # if $SOURCE was a relative symlink, we need to resolve it relative to the path where the symlink file was located
+done
+DIR="$( cd -P "$( dirname "$SOURCE" )" && pwd )"
+
+
+function usage {
+    echo "Usage:"
+    echo "${BASH_SOURCE[0]} [ OBJTYPE OBJNAME ATTRIBUTE ATTRVALUE TMPDIR]"
+}
+
+echo objtype=\"${objtype}\"
+echo objname=\"${objname}\"
+echo attribute=\"${attribute}\"
+echo attrvalue=\"${attrvalue}\"
+echo tmpdir=\"${tmpdir}\"
+
+
+if [ -z "$objtype" ] || [ -z "$objname" ] || [ -z "$attribute" ] || [ -z "$tmpdir" ]; then
+    usage
+    exit 1
+fi
+
+RETCODE_YAML=0
+RETCODE_JSON=0
+
+[ -e "$tmpdir" ] || rm -rf $tmpdir
+mkdir -p $tmpdir
+echo "Temporary directory to hold intermediate files: $tmpdir"
+
+cp ${DIR}/templates/${objtype}.json ${tmpdir}/
+cp ${DIR}/templates/${objtype}.yaml ${tmpdir}/
+
+#the intermediate inventory files to import
+yamldef="${tmpdir}/${objtype}.yaml"
+jsondef="${tmpdir}/${objtype}.json"
+
+#the intermediate inventory files exported
+yamldefout="${tmpdir}/${objtype}.out.yaml"
+jsondefout="${tmpdir}/${objtype}.out.json"
+
+#substitute the attribute value in inventory files
+if [ ${#attrvalue} -ne 0 ];then
+    sed -i -E -e "s/^(\s*["'"'"']?$attribute["'"'"']?:\s*["'"'"']?)[^'"'"'"]*(["'"'"']?[,]?\s*)$/\1$attrvalue\2/g" $yamldef
+else
+    sed -i -e "/^\s*["'"'"']*$attribute["'"'"']*:/d" $yamldef
+fi
+
+echo "=================the inventory file to import: ${yamldef}====================="
+cat $yamldef
+echo "=============================================================================="
+
+echo "removing existing \"$objtype\" type object \"$objname\" from xCAT"
+echo "osimage node network site route zone policy "|grep -q -w "$objtype"
+if [ $? -eq 0 ];then
+    rmdef -t $objtype -o $objname
+fi
+if [ "$objtype" = "passwd" ];then
+    tabch -d key=$objname passwd
+fi
+
+
+echo "import the inventory file $yamldef "
+xcat-inventory import -t $objtype -o $objname -f $yamldef 
+if [ $? -ne 0 ];then
+    echo "failed to import the inventory file $yamldef"
+    RETCODE_YAML=1
+else
+    echo "the inventory file $yamldef imported successfully"
+    echo "export the \"$objtype\" type object \"$objname\" just imported"
+    xcat-inventory export -t $objtype -o $objname --format=yaml 1>$yamldefout
+    if [ $? -ne 0 ];then
+        echo "failed to export the \"$objtype\" type object \"$objname\""
+        RETCODE_YAML=1
+    else
+        echo "the inventory data of the \"$objtype\" type object \"$objname\" exported to $yamldefout"
+        echo "==============the exported inventory file $yamldefout======================"
+        cat $yamldefout
+        echo "==========================================================================="
+        echo "make sure the attribute  $attribute is imported and exported successfully"
+        if [ -n "$attrvalue" ]; then
+            cat $yamldefout|grep -w "$attribute"|grep -q -w "$attrvalue"
+            if [ $? -ne 0 ];then
+                RETCODE_YAML=1 
+            fi       
+        else
+            cat $yamldefout|grep -q -w "$attribute"
+            if [ $? -eq 0 ];then
+                RETCODE_YAML=1 
+            fi       
+        fi
+
+
+    fi
+fi
+
+if [ $RETCODE_YAML -eq 0 ]; then  
+    echo "yaml validation passed"
+else
+    echo "yaml validation failed"
+fi
+
+echo "removing existing \"$objtype\" type object \"$objname\" from xCAT"
+echo "osimage node network site route zone policy "|grep -q -w "$objtype"
+if [ $? -eq 0 ];then
+    rmdef -t $objtype -o $objname
+fi
+
+if [ "$objtype" = "passwd" ];then
+    tabch -d key=$objname passwd
+fi
+
+
+if [ ${#attrvalue} -ne 0 ];then
+    sed -i -E -e "s/^(\s*["'"'"']?$attribute["'"'"']?:\s*["'"'"']?)[^'"'"'"]*(["'"'"']?[,]?\s*)$/\1$attrvalue\2/g" $jsondef
+else
+    sed -i -e "/^\s*["'"'"']*$attribute["'"'"']*:/d" $jsondef
+fi
+
+echo "=================the inventory file to import: ${jsondef}====================="
+cat $jsondef
+echo "=============================================================================="
+
+echo "import the inventory file $jsondef "
+xcat-inventory import -t $objtype -o $objname -f $jsondef 
+if [ $? -ne 0 ];then
+    echo "failed to import the inventory file $jsondef"
+    RETCODE_JSON=1
+else
+    xcat-inventory export -t $objtype -o $objname 1>$jsondefout 
+    if [ $? -ne 0 ];then
+    echo "the inventory file $jsondef imported successfully"
+    echo "export the \"$objtype\" type object \"$objname\" just imported"
+        RETCODE_JSON=1
+    else
+        echo "the inventory data of the \"$objtype\" type object \"$objname\" exported to $jsondefout"
+        echo "==============the exported inventory file $jsondefout======================"   
+        cat $jsondefout
+        echo "==========================================================================="
+        echo "make sure the attribute  $attribute is imported and exported successfully"
+        if [ -n "$attrvalue" ]; then
+            cat $jsondefout|grep -w "$attribute"|grep -q -w "$attrvalue"
+            if [ $? -ne 0 ];then
+                RETCODE_JSON=1 
+            fi       
+        else
+            cat $jsondefout|grep -q -w "$attribute"
+            if [ $? -eq 0 ];then
+                RETCODE_JSON=1 
+            fi       
+        fi
+
+    fi
+fi
+
+if [ $RETCODE_JSON -eq 0 ]; then  
+    echo "json validation passed"
+else
+    echo "json validation failed"
+fi
+
+
+echo "osimage node network site route zone policy "|grep -q -w "$objtype"
+if [ $? -eq 0 ];then
+    rmdef -t $objtype -o $objname
+fi
+
+if [ "$objtype" = "passwd" ];then
+    tabch -d key=$objname passwd
+fi
+
+if [ $RETCODE_YAML -ne 0 ] || [ $RETCODE_JSON -ne 0  ]; then
+    exit 1
+fi 
+
+exit 0
