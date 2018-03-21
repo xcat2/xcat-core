@@ -60,7 +60,6 @@ $::RSETBOOT_URL_PATH        = "boot";
 $::UPLOAD_AND_ACTIVATE      = 0;
 $::UPLOAD_ACTIVATE_STREAM   = 0;
 $::RFLASH_STREAM_NO_HOST_REBOOT = 0;
-$::TAR_FILE_PATH = "";
 $::NO_ATTRIBUTES_RETURNED   = "No attributes returned from the BMC.";
 
 $::UPLOAD_WAIT_ATTEMPT      = 6;
@@ -1388,12 +1387,6 @@ sub parse_args {
                     if ($invalid_options) {
                         return ([ 1, "Invalid option specified $invalid_options"]);
                     }
-                    if (!opendir(DIR, $tarball_path[0])) {
-                        return ([1, "Can't open directory : $tarball_path[0]"]);
-                    } else {
-                        $::TAR_FILE_PATH = $tarball_path[0];
-                        closedir(DIR);
-                    }
                 } elsif ($option_flag =~ /^-c$|^--check$|^-u$|^--upload$|^-a$|^--activate$/) {
                     return ([ 1, "Invalid firmware specified with $option_flag" ]);
                 } else {
@@ -1897,8 +1890,15 @@ sub parse_command_status {
         my $purpose_tag = '"purpose="';
         my $purpose_value;
         my $version_value;
-
+        my $tarfile_path;
         if (defined $update_file) {
+            if ($streamline) {
+                if ($update_file =~ /^\//){
+                    $tarfile_path = $update_file;
+                } else {
+                    $tarfile_path =xCAT::Utils->full_path($update_file, $::cwd);
+                }
+            }
             # Filename or file id was specified 
             if ($update_file =~ /.*\.tar$/) {
                 # Filename ending on .tar was specified
@@ -1950,13 +1950,18 @@ sub parse_command_status {
                     # Display firmware version of the specified .tar file
                     xCAT::SvrUtils::sendmsg("TAR $purpose_value Firmware Product Version\: $version_value", $callback);
                 }
-            } elsif (opendir(DIR, $::TAR_FILE_PATH)) {
+            } elsif (defined $tarfile_path) {
+                if (!opendir(DIR, $tarfile_path)) {
+                    xCAT::SvrUtils::sendmsg("Can't open directory : $tarfile_path", $callback);
+                    closedir(DIR);
+                    return 1;
+                }
                 my @tar_files = readdir(DIR);
                 foreach my $file (@tar_files) {
                     if ($file !~ /.*\.tar$/) {
                         next;
                     } else {
-                        my $full_path_file = $::TAR_FILE_PATH."/".$file;
+                        my $full_path_file = $tarfile_path."/".$file;
                         $full_path_file=~s/\/\//\//g;
                         my $firmware_version_in_file = `$grep_cmd $version_tag $full_path_file`;
                         my $purpose_version_in_file = `$grep_cmd $purpose_tag $full_path_file`;
