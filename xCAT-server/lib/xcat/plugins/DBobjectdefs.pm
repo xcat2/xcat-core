@@ -2374,7 +2374,7 @@ sub defch
             $objTypeListsHash{$objk}{$obj} = 1;
         }
     }
-    my $nodewithdomain = ();
+    my $nodewithdomain;
     my $invalidobjname = ();
     foreach my $obj (keys %::FINALATTRS)
     {
@@ -2406,7 +2406,6 @@ sub defch
         }
         unless(isobjnamevalid($obj,$type)){
             $invalidobjname .= ",$obj";
-            #delete($::FINALATTRS{$obj});
             next;
         }
         if (defined($objTypeListsHash{$type}{$obj}) && ($objTypeListsHash{$type}{$obj} == 1))
