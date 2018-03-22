@@ -82,7 +82,7 @@ RFLASH_URLS = {
     }
 }
 
-RSPCONFIG_GET_OPTIONS = ['ip','ipsrc','netmask','gateway','vlan','ntpservers','hostname','bootmode','autoreboot','powersupplyredundancy','powerrestorepolicy']
+RSPCONFIG_GET_OPTIONS = ['ip','ipsrc','netmask','gateway','vlan','ntpservers','hostname','bootmode','autoreboot','powersupplyredundancy','powerrestorepolicy', 'timesyncmethod']
 RSPCONFIG_SET_OPTIONS = {
     'ip':'.*',
     'netmask':'.*',
@@ -95,6 +95,7 @@ RSPCONFIG_SET_OPTIONS = {
     'powerrestorepolicy':"^always_on$|^always_off$|^restore$",
     'bootmode':"^regular$|^safe$|^setup$",
     'admin_passwd':'.*,.*',
+    'timesyncmethod':'^ntp$|^manual$',
 }
 RSPCONFIG_USAGE = """
 Handle rspconfig operations.
@@ -124,6 +125,7 @@ The supported attributes and its values to set are:
    autoreboot={0|1}
    powersupplyredundancy={enabled|disabled}
    powerrestorepolicy={always_on|always_off|restore}
+   timesyncmethod={ntp|manual}
 """ % RSPCONFIG_GET_OPTIONS
 
 XCAT_LOG_DIR = "/var/log/xcat"
