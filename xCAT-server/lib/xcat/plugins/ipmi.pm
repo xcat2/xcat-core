@@ -2518,6 +2518,10 @@ sub do_rflash_process {
             my $cmd = "/usr/bin/tftp $bmcip -m binary -c put $recover_image ".basename($recover_image);
             my $output = xCAT::Utils->runcmd($cmd, -1);
             if ($::RUNCMD_RC != 0) {
+                if ($output =~ "timed out") {
+                    # Time out running tftp command. One possible reason is BMC not in "brick protection" mode
+                    $output .= " BMC might not be in 'Brick protection' state";
+                }
                 $callback->({ error => "Running tftp command \'$cmd\' failed. Error Code: $::RUNCMD_RC. Output: $output.",
                         errorcode => 1 });
                 exit(1);
