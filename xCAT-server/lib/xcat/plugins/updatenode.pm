@@ -309,7 +309,7 @@ sub preprocess_updatenode
 
     # get server names as known by the nodes
     my %servernodes =
-      %{ xCAT::InstUtils->get_server_nodes($callback, $request->{node}) };
+      %{ xCAT::InstUtils->get_server_nodes($callback, $request->{node},1) };
 
     # it's possible that the nodes could have diff server names
     # do all the nodes for a particular server at once
@@ -1555,7 +1555,7 @@ sub updatenoderunps
 
     # get server names as known by the nodes
     my %servernodes =
-      %{ xCAT::InstUtils->get_server_nodes($callback, \@$nodes,1) };
+      %{ xCAT::InstUtils->get_server_nodes($callback, \@$nodes) };
 
     # it's possible that the nodes could have diff server names
     # do all the nodes for a particular server at once
