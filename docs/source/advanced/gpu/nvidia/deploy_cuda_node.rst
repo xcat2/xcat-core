@@ -1,15 +1,14 @@
 Deploy CUDA nodes
 =================
 
-Diskful 
+Diskful
 -------
 
 * To provision diskful nodes using osimage ``rhels7.5-ppc64le-install-cudafull``: ::
 
     nodeset <noderange> osimage=rhels7.5-ppc64le-install-cudafull
     rsetboot <noderange> net
-    rpower <noderange> boot 
-
+    rpower <noderange> boot
 
 Diskless
 --------
@@ -18,5 +17,4 @@ Diskless
 
     nodeset <noderange> osimage=rhels7.5-ppc64le-netboot-cudafull
     rsetboot <noderange> net
-    rpower <noderange> boot 
-
+    rpower <noderange> boot
