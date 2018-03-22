@@ -82,17 +82,13 @@ class OpenBMCPowerTask(ParallelNodesCommand):
 
             if bmc_state != 'Ready':
                 bmc_state = bmc_not_ready
-                bmc_state_error = state.get('error')
-                if bmc_state_error is not None:
-                    # BMC is not ready and we have some error as to why
-                    self.callback.info('%s: %s (%s)' % (node, openbmc.RPOWER_STATES.get(bmc_state, bmc_state), bmc_state_error))
-                    return bmc_state
 
             self.callback.info('%s: %s' % (node, openbmc.RPOWER_STATES.get(bmc_state, bmc_state)))
 
-        except SelfServerException, SelfClientException:
-            # There is no response when BMC is not ready
+        except SelfServerException as e:
             self.callback.error(openbmc.RPOWER_STATES[bmc_not_ready], node)
+        except SelfClientException as e:
+            self.callback.error("%s (%s)" % (openbmc.RPOWER_STATES[bmc_not_ready], e.message), node)
 
         return bmc_state
 
