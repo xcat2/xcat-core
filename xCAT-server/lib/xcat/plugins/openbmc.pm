@@ -1160,8 +1160,8 @@ sub parse_args {
     }
 
     if ($command eq "rbeacon") { 
-        unless ($subcommand =~ /^on$|^off$/) {
-	    return ([ 1, "Only 'on' or 'off' is supported for OpenBMC managed nodes."]);
+        unless ($subcommand =~ /^on$|^off$|^stat$/) {
+	    return ([ 1, "Only 'on', 'off' or 'stat' are supported for OpenBMC managed nodes."]);
         }
     } elsif ($command eq "rpower") {
         unless ($subcommand =~ /^on$|^off$|^softoff$|^reset$|^boot$|^bmcreboot$|^bmcstate$|^status$|^stat$|^state$/) {
@@ -1442,6 +1442,10 @@ sub parse_command_status {
         } elsif ($subcommand eq "off") {
             $next_status{LOGIN_RESPONSE} = "RBEACON_OFF_REQUEST";
             $next_status{RBEACON_OFF_REQUEST} = "RBEACON_OFF_RESPONSE";
+        } elsif ($subcommand eq "stat") {
+            $next_status{LOGIN_RESPONSE} = "RVITALS_LEDS_REQUEST";
+            $next_status{RVITALS_LEDS_REQUEST} = "RVITALS_LEDS_RESPONSE";
+            $status_info{RVITALS_LEDS_RESPONSE}{argv} = "compact";
         }
     }
 
@@ -4133,17 +4137,24 @@ sub rvitals_response {
     }
 
     if ($node_info{$node}{cur_status} =~ "RVITALS_LEDS_RESPONSE") {
-        $content_info = "Front . . . . . : Power:$leds{front_power} Fault:$leds{front_fault} Identify:$leds{front_id}";
-        push (@sorted_output, $content_info);
-        $content_info = "Rear  . . . . . : Power:$leds{rear_power} Fault:$leds{rear_fault} Identify:$leds{rear_id}";
-        push (@sorted_output, $content_info);
-        # Fans 
-        if ($leds{fan0} =~ "Off" and $leds{fan1} =~ "Off" and $leds{fan2} eq "Off" and $leds{fan3} eq "Off") {
-            $content_info = "Front Fans  . . : No LEDs On";
-        } else { 
-            $content_info = "Front Fans  . . : fan0:$leds{fan0} fan1:$leds{fan1} fan2:$leds{fan2} fan3:$leds{fan3}";
-        } 
-        push (@sorted_output, $content_info);
+        if ($grep_string =~ "compact") {
+            # Compact output for "rbeacon stat" command
+            $content_info = "Front:$leds{front_id} Rear:$leds{rear_id}";
+            push (@sorted_output, $content_info);
+        } else {
+            # Full output for "rvitals leds" command
+            $content_info = "Front . . . . . : Power:$leds{front_power} Fault:$leds{front_fault} Identify:$leds{front_id}";
+            push (@sorted_output, $content_info);
+            $content_info = "Rear  . . . . . : Power:$leds{rear_power} Fault:$leds{rear_fault} Identify:$leds{rear_id}";
+            push (@sorted_output, $content_info);
+            # Fans 
+            if ($leds{fan0} =~ "Off" and $leds{fan1} =~ "Off" and $leds{fan2} eq "Off" and $leds{fan3} eq "Off") {
+                $content_info = "Front Fans  . . : No LEDs On";
+            } else { 
+                $content_info = "Front Fans  . . : fan0:$leds{fan0} fan1:$leds{fan1} fan2:$leds{fan2} fan3:$leds{fan3}";
+            } 
+            push (@sorted_output, $content_info);
+        }
     }
 
     # If sorted array has any contents, sort it and print it
