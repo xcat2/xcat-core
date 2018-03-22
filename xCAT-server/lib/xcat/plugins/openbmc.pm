@@ -1643,7 +1643,13 @@ sub parse_command_status {
                     # Everything else is invalid
                         xCAT::SvrUtils::sendmsg([1, "Invalid value '$subcommand_value' for '$subcommand_key'"], $callback);
                         my @valid_values = keys %{ $api_config_info{$::RSPCONFIG_CONFIGURED_API_KEY}{attr_value} };
-                        xCAT::SvrUtils::sendmsg([1, "Valid values: " . join(",", @valid_values)], $callback);
+                        if (!@valid_values) {
+                            if ($api_config_info{$::RSPCONFIG_CONFIGURED_API_KEY}{type} eq "boolean") {
+                                xCAT::SvrUtils::sendmsg([1, "Valid values: 0,1"], $callback);
+                            }
+                        } else {
+                            xCAT::SvrUtils::sendmsg([1, "Valid values: " . join(",", @valid_values)], $callback);
+                        }
                         return 1;
                 }
             }

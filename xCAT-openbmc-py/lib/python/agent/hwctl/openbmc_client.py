@@ -185,13 +185,17 @@ RSPCONFIG_APIS = {
         'set_url': "attr/AutoReboot",
         'get_url': "attr/AutoReboot",
         'display_name': "BMC AutoReboot",
+        'attr_values': {
+            '0': False,
+            '1': True,
+         },
     },
     'powersupplyredundancy':{
         'baseurl': "/sensors/chassis/PowerSupplyRedundancy/",
-        'set_url': "/action/setValue",
-        'get_url': "/action/getValue",
+        'set_url': "action/setValue",
+        'get_url': "action/getValue",
         'get_method': 'POST',
-        'get_data': '[]',
+        'get_data': [],
         'display_name': "BMC PowerSupplyRedundancy",
         'attr_values': {
             'disabled': "Disables",
@@ -218,6 +222,16 @@ RSPCONFIG_APIS = {
             'regular': "xyz.openbmc_project.Control.Boot.Mode.Modes.Regular",
             'safe': "xyz.openbmc_project.Control.Boot.Mode.Modes.Safe",
             'setup': "xyz.openbmc_project.Control.Boot.Mode.Modes.Setup",
+        },
+    },
+    'timesyncmethod': {
+        'baseurl': '/time/sync_method',
+        'get_url': '',
+        'set_url': '/attr/TimeSyncMethod',
+        'display_name': 'BMC TimeSyncMethod',
+        'attr_values': {
+            'ntp': 'xyz.openbmc_project.Time.Synchronization.Method.NTP',
+            'manual': 'xyz.openbmc_project.Time.Synchronization.Method.Manual',
         },
     },
 }
