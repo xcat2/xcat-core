@@ -189,24 +189,24 @@ xCAT includes a script, ``cuda_power9_setup`` as example, to help user handle th
 Diskful osimage
 ^^^^^^^^^^^^^^^
 
-For diskful deployment, there is no need to change the osimage definition. Instead, add this postscript to your compute node postbootscrtips list.
+For diskful deployment, there is no need to change the osimage definition. Instead, add this postscript to your compute node postbootscrtips list. ::
 
     chdef p9compute -p postbootscripts=cuda_power9_setup
 
 Disless osimage
 ^^^^^^^^^^^^^^^
 
-For diskless deployment, the script need to add to the postinstall script of the osimage. And it should be run in the chroot environment. Please refer the following commands as an example.
+For diskless deployment, the script need to add to the postinstall script of the osimage. And it should be run in the chroot environment. Please refer the following commands as an example. ::
 
-    mkdir -p /install/custom/netboot
-    cp /opt/xcat/share/xcat/netboot/rh/compute.rhels7.ppc64le.postinstall /opt/xcat/share/xcat/netboot/rh/compute.rhels7.ppc64le.postinstall
+    mkdir -p /install/custom/netboot/rh
+    cp /opt/xcat/share/xcat/netboot/rh/compute.rhels7.ppc64le.postinstall /install/custom/netboot/rh/cudafull.rhels7.ppc64le.postinstall
 
-    cat >>/install/custom/netboot/rh/cudafull.rhels7.ppc64le.postinstall <-EOF
+    cat >>/install/custom/netboot/rh/cudafull.rhels7.ppc64le.postinstall <<-EOF
 
-    cp /install/postscripts/cuda_power9_setup /install/netboot/rhels7.5/ppc64le/compute/rootimg/tmp/cuda_power9_setup"
-    chroot /install/netboot/rhels7.5/ppc64le/compute/rootimg" /tmp/cuda_power9_setup
+    cp /install/postscripts/cuda_power9_setup \$installroot/tmp/cuda_power9_setup
+    chroot \$installroot /tmp/cuda_power9_setup
 
-    rm -f /install/netboot/rhels7.5/ppc64le/compute/rootimg/tmp/cuda_power9_setup
+    rm -f \$installroot/tmp/cuda_power9_setup
     EOF
 
-    chdef -t osimage rhels7.5-ppc64le-netboot-cudafull postinstall=/opt/xcat/share/xcat/netboot/rh/compute.rhels7.ppc64le.postinstall
+    chdef -t osimage rhels7.5-ppc64le-netboot-cudafull postinstall=/install/custom/netboot/rh/cudafull.rhels7.ppc64le.postinstall
