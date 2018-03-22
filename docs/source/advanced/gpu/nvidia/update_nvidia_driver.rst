@@ -3,15 +3,15 @@ Update NVIDIA Driver
 
 If the user wants to update the newer NVIDIA driver on the system,  follow the :doc:`Create CUDA software repository </advanced/gpu/nvidia/repo/index>` document to create another repository for the new driver.
 
-The following example assumes the new driver is in ``/install/cuda-7.5/ppc64le/nvidia_new``.  
+The following example assumes the new driver is in ``/install/cuda-9.2/ppc64le/nvidia_new``.  
 
 Diskful
 -------
 
 #.  Change pkgdir for the cuda image: ::
 
-      chdef -t osimage -o rhels7.2-ppc64le-install-cudafull \
-        pkgdir=/install/cuda-7.5/ppc64le/nvidia_new,/install/cuda-7.5/ppc64le/cuda-deps
+      chdef -t osimage -o rhels7.5-ppc64le-install-cudafull \
+        pkgdir=/install/cuda-9.2/ppc64le/nvidia_new,/install/cuda-9.2/ppc64le/cuda-deps
 
 
 #.  Use xdsh command to remove all the NVIDIA rpms: ::
