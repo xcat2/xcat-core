@@ -184,7 +184,7 @@ NVIDIA POWER9 CUDA driver need some additional setup. Refer the URL below for de
 
 http://docs.nvidia.com/cuda/cuda-installation-guide-linux/index.html#power9-setup
 
-xCAT includes a script, `cuda_power9_setup` as example, to help user handle this situation.
+xCAT includes a script, ``cuda_power9_setup`` as example, to help user handle this situation.
 
 Diskful osimage
 ^^^^^^^^^^^^^^^
