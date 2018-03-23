@@ -2409,7 +2409,8 @@ sub rflash {
             } elsif ($opt !~ /.*\.hpm$/i && $opt !~ /^-V{1,4}$|^--buffersize=|^--retry=/) {
                 # An unexpected flag was passed, but it could be a directory name. Display error only if not -d option
                 unless ($directory_flag) {
-                    $callback->({ error => "The option $opt is not supported or invalid update file specified",
+                    my $node =  $sessdata->{node};
+                    $callback->({ data => "$node: Error: The option $opt is not supported or invalid update file specified",
                         errorcode => 1 });
                     return;
                 }
@@ -8275,7 +8276,7 @@ sub preprocess_request {
             my $error_data = "";
             foreach (@$all_noderange) {
                 $error_data .= "\n" if ($error_data);
-                $error_data .= "$_: Please enter an action (eg: boot,off,on, etc) for ipmi management method";
+                $error_data .= "$_: Please enter an action (eg: boot,off,on, etc) when using mgt=ipmi.";
             }
             $callback->({ errorcode => [1], data => [ $error_data ] });
             $request = {};
@@ -8294,7 +8295,7 @@ sub preprocess_request {
             my $error_data = "";
             foreach (@$all_noderange) {
                 $error_data .= "\n" if ($error_data);
-                $error_data .= "$_: Error: Unsupported command: $command $subcmd for ipmi management method";
+                $error_data .= "$_: Error: Unsupported command: $command $subcmd when using mgt=ipmi.";
             }
             $callback->({ errorcode => [1], data => [ $error_data ] });
             $request = {};
@@ -8305,7 +8306,7 @@ sub preprocess_request {
                 my $error_data = "";
                 foreach (@$all_noderange) {
                     $error_data .= "\n" if ($error_data);
-                    $error_data .= "$_: IPMI plugin requires syspowermaxnodes be defined if syspowerinterval is defined";
+                    $error_data .= "$_: 'syspowermaxnodes` is required if 'syspowerinterval' is configured in the site table.";
                 }
                 $callback->({ errorcode => [1], error => [$error_data] });
                 $request = {};
@@ -8335,7 +8336,7 @@ sub preprocess_request {
                     if ($optset eq 0) {
                         foreach (@$all_noderange) {
                             $error_data .= "\n" if ($error_data);
-                            $error_data .= "$_: Usage Error: Cannot display and change attributes on the same command for ipmi management method.";
+                            $error_data .= "$_: Usage Error: Cannot display and change attributes on the same command when using mgt=ipmi..";
                         }
                         $callback->({ errorcode => [1], data => [ $error_data] });
                         $request = {};
@@ -8347,7 +8348,7 @@ sub preprocess_request {
                     if ($optset eq 1) {
                         foreach (@$all_noderange) {
                             $error_data .= "\n" if ($error_data);
-                            $error_data .= "$_: Usage Error: Cannot display and change attributes on the same command for ipmi management method.";
+                            $error_data .= "$_: Usage Error: Cannot display and change attributes on the same command when using mgt=ipmi.";
                         }
                         $callback->({ errorcode => [1], data => [ $error_data] });
                         $request = {};
@@ -8359,7 +8360,7 @@ sub preprocess_request {
                 unless ($option =~ /^USERID$|^ip$|^netmask$|^gateway$|^vlan$|^userid$|^username$|^password$|^snmpdest|^thermprofile$|^alert$|^garp$|^community$|^backupgateway$/) {
                     foreach (@$all_noderange) {
                         $error_data .= "\n" if ($error_data);
-                        $error_data .= "$_: Error: Unsupported command: $command $option for ipmi management method";
+                        $error_data .= "$_: Error: Unsupported command: $command $option when using mgt=ipmi.";
                     }
                     $callback->({ errorcode => [1], data => [ $error_data ] });
                     $request = {};
@@ -8374,7 +8375,7 @@ sub preprocess_request {
             my $error_data = "";
             foreach (@$all_noderange) {
                 $error_data .= "\n" if ($error_data);
-                $error_data .= "$_: option '-t' can only work with 'all' or 'vpd' for ipmi management method";
+                $error_data .= "$_: option '-t' can only work with 'all' or 'vpd' when using mgt=ipmi.";
             }
             $callback->({ errorcode => [1], data => [ $error_data ] });
             $request = {};
