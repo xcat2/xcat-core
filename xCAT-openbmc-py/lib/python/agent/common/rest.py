@@ -122,7 +122,7 @@ class RestSession(object):
         response, err = sub.communicate()
 
         if not response:
-            error = 'Error: Did not receive response from server after ' \
+            error = 'Did not receive response from server after ' \
                     'running command \'%s\'' % request_cmd
             raise SelfServerException(error)
 

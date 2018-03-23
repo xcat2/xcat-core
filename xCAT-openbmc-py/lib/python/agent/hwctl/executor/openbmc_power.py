@@ -26,25 +26,6 @@ POWER_STATE_DB = {
 class OpenBMCPowerTask(ParallelNodesCommand):
     """Executor for power-related actions."""
 
-    def _determine_state(self, states):
-
-        chassis_state = states.get('chassis')
-        host_state = states.get('host')
-        state = 'Unknown'
-        if chassis_state == 'Off':
-            state = chassis_state
-
-        elif chassis_state == 'On':
-            if host_state == 'Off':
-                state = 'chassison'
-            elif host_state in ['Quiesced', 'Running']:
-                state = host_state
-            else:
-                state = 'Unexpected host state=%s' % host_state
-        else:
-            state = 'Unexpected chassis state=%s' % chassis_state
-        return state
-
     def get_state(self, **kw):
 
         node = kw['node']
@@ -54,7 +35,7 @@ class OpenBMCPowerTask(ParallelNodesCommand):
         try:
             obmc.login()
             states = obmc.list_power_states()
-            state = self._determine_state(states)
+            state = obmc.get_host_state(states)
             self.callback.info('%s: %s' % (node, openbmc.RPOWER_STATES.get(state, state)))
 
         except (SelfServerException, SelfClientException) as e:
@@ -119,7 +100,7 @@ class OpenBMCPowerTask(ParallelNodesCommand):
         try:
             obmc.login()
             states = obmc.list_power_states()
-            status = self._determine_state(states)
+            status = obmc.get_host_state(states)
 
             new_status =''
             if optype == 'reset' and status in ['Off', 'chassison']:
@@ -134,7 +115,7 @@ class OpenBMCPowerTask(ParallelNodesCommand):
                     start_timeStamp = int(time.time())
                     for i in range (0, 30):
                         states = obmc.list_power_states()
-                        status = self._determine_state(states)
+                        status = obmc.get_host_state(states)
                         if openbmc.RPOWER_STATES.get(status) == 'off':
                             off_flag = True
                             break
