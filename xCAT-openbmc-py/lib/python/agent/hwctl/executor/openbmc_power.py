@@ -75,6 +75,9 @@ class OpenBMCPowerTask(ParallelNodesCommand):
             login_message = "Login to BMC failed: Can't connect to {0} {1}.".format(e.host_and_port, e.detail_msg)
             self.callback.error(login_message, node)
             return bmc_state
+        except SelfClientException as e:
+            self.callback.error(e.message, node)
+            return bmc_state
 
         try:
             state = obmc.get_bmc_state()
