@@ -209,6 +209,7 @@ sub process_request {
                 xCAT::MsgUtils->message("E", $rsp, $cb);
                 return;
             }
+            xCAT::Goconserver::switch_conserver($cb);
         }
         makeconservercf($req, $cb);
     }

@@ -559,16 +559,17 @@ sub message
 
   Example:
 
-          $rsp->{data}->[0] = "message";
-          xCAT::MsgUtils->error_message($rsp, $callback);
+          xCAT::MsgUtils->error_message($msg, $callback);
 =cut
 
 #-----------------------------------------------------------------------------
 sub error_message
 {
     shift;
-    my $rsp = shift;
+    my $msg = shift;
     my $callback = shift;
+    my $rsp;
+    $rsp->{data}->[0] = $msg;
     if (!defined($callback)) {
         message(undef, "S", $rsp, undef);
         return;
@@ -591,16 +592,17 @@ sub error_message
 
   Example:
 
-          $rsp->{data}->[0] = "message";
-          xCAT::MsgUtils->info_message($rsp, $callback);
+          xCAT::MsgUtils->info_message($msg, $callback);
 =cut
 
 #-----------------------------------------------------------------------------
 sub info_message
 {
     shift;
-    my $rsp = shift;
+    my $msg = shift;
     my $callback = shift;
+    my $rsp;
+    $rsp->{data}->[0] = $msg;
     if (!defined($callback)) {
         message(undef, "S", $rsp, undef);
         return;
@@ -613,7 +615,38 @@ sub info_message
     message(undef, "I", $rsp, $callback);
 }
 
+#-----------------------------------------------------------------------------
 
+=head3 warn_message
+
+  A wrap function for message. If $callback is not defined, send the log to
+  syslog, otherwise, send warning message to client. Print service host if runs
+  on service node.
+
+  Example:
+
+          xCAT::MsgUtils->warn_message($msg, $callback);
+=cut
+
+#-----------------------------------------------------------------------------
+sub warn_message
+{
+    shift;
+    my $msg = shift;
+    my $callback = shift;
+    my $rsp;
+    $rsp->{data}->[0] = $msg;
+    if (!defined($callback)) {
+        message(undef, "S", $rsp, undef);
+        return;
+    }
+    if ($isSN && !$host) {
+        my @hostinfo = xCAT::NetworkUtils->determinehostname();
+        $host = $hostinfo[-1];
+    }
+    $rsp->{host} = $host if $host;
+    message(undef, "W", $rsp, $callback);
+}
 
 #--------------------------------------------------------------------------------
 
