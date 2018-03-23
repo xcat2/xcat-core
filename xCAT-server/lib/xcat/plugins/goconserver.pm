@@ -143,13 +143,13 @@ sub start_goconserver {
     my ($rsp, $running, $ready, $ret);
     unless (-x "/usr/bin/goconserver") {
         $rsp->{data}->[0] = "goconserver is not installed.";
-        xCAT::MsgUtils->message("E", $rsp, $::callback);
+        xCAT::MsgUtils->error_message($rsp, $::callback);
         return 1;
     }
     # if goconserver is installed, check the status of conserver service.
     if (xCAT::Goconserver::is_conserver_running()) {
         $rsp->{data}->[0] = "conserver is started, please stop it at first.";
-        xCAT::MsgUtils->message("E", $rsp, $::callback);
+        xCAT::MsgUtils->error_message($rsp, $::callback);
         return 1;
     }
     $running = xCAT::Goconserver::is_goconserver_running();
@@ -164,18 +164,18 @@ sub start_goconserver {
         $ret = xCAT::Goconserver::build_conf();
         if ($ret) {
             $rsp->{data}->[0] = "Failed to create configuration file for goconserver.";
-            xCAT::MsgUtils->message("E", $rsp, $::callback);
+            xCAT::MsgUtils->error_message($rsp, $::callback);
             return 1;
         }
     }
     $ret = xCAT::Goconserver::restart_service();
     if ($ret) {
         $rsp->{data}->[0] = "Failed to start goconserver service.";
-        xCAT::MsgUtils->message("E", $rsp, $::callback);
+        xCAT::MsgUtils->error_message($rsp, $::callback);
         return 1;
     }
     $rsp->{data}->[0] = "Starting goconserver service ...";
-    xCAT::MsgUtils->message("I", $rsp, $::callback);
+    xCAT::MsgUtils->info_message($rsp, $::callback);
     sleep(3);
     return 0;
 }
@@ -197,19 +197,22 @@ sub makegocons {
     );
 
     my $svboot = 0;
+    my $rsp;
     if (exists($req->{svboot})) {
         $svboot = 1;
     }
     if ($cleanupmode) {
         if (exists($req->{_allnodes}) && $req->{_allnodes}->[0] != 1) {
-            xCAT::SvrUtils::sendmsg([ 1, "Can not specify noderange together with -C|--cleanup." ], $::callback);
+            $rsp->{data}->[0] = "Failed to start goconserver service.";
+            xCAT::MsgUtils->error_message($rsp, $::callback);
             return 1;
         }
         return xCAT::Goconserver::cleanup_nodes($::callback);
     }
     my %cons_map = xCAT::Goconserver::get_cons_map($req);
     if (! %cons_map) {
-        xCAT::SvrUtils::sendmsg([ 1, "Could not get any console request entry" ], $::callback);
+        $rsp->{data}->[0] = "Could not get any console request entry.";
+        xCAT::MsgUtils->error_message($rsp, $::callback);
         return 1;
     }
     my $api_url = "https://$host:". xCAT::Goconserver::get_api_port();
@@ -230,13 +233,15 @@ sub makegocons {
         }
         elsif (lc($site_entry) ne "no") {
             # consoleondemand attribute is set, but it is not "yes" or "no"
-            xCAT::SvrUtils::sendmsg([ 1, "Unexpected value $site_entry for consoleondemand attribute in site table" ], $::callback);
+            $rsp->{data}->[0] = "Unexpected value $site_entry for consoleondemand attribute in site table.";
+            xCAT::MsgUtils->error_message($rsp, $::callback);
         }
     }
     my (@nodes);
     my $data = xCAT::Goconserver::gen_request_data(\%cons_map, $siteondemand, $::callback);
     if (! $data) {
-        xCAT::SvrUtils::sendmsg([ 1, "Could not generate the request data" ], $::callback);
+        $rsp->{data}->[0] = "Could not generate the request data.";
+        xCAT::MsgUtils->error_message($rsp, $::callback);
         return 1;
     }
     $ret = xCAT::Goconserver::delete_nodes($api_url, $data, $delmode, $::callback);
@@ -245,7 +250,8 @@ sub makegocons {
     }
     $ret = xCAT::Goconserver::create_nodes($api_url, $data, $::callback);
     if ($ret != 0) {
-        xCAT::SvrUtils::sendmsg([ 1, "Failed to create console entry in goconserver. "], $::callback);
+        $rsp->{data}->[0] = "Failed to create console entry in goconserver.";
+        xCAT::MsgUtils->error_message($rsp, $::callback);
         return $ret;
     }
     return 0;

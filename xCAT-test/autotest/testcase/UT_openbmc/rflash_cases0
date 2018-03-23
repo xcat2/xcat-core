@@ -77,5 +77,5 @@ os:Linux
 hcp:openbmc
 cmd: rflash $$CN -l | grep \* | grep BMC | awk '{print $2}' | xargs -i{} rflash $$CN --delete {}
 check:rc==1
-check:output=~$$CN: Error: Deleting currently active firmware is not supported
+check:output=~$$CN: Error: Deleting currently active BMC firmware is not supported
 end

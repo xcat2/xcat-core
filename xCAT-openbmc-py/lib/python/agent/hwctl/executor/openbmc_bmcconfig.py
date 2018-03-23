@@ -375,11 +375,12 @@ rmdir \"/tmp/$userid\" \n")
         node = kw['node']
         obmc = openbmc.OpenBMCRest(name=node, nodeinfo=kw['nodeinfo'], messager=self.callback,
                                    debugmode=self.debugmode, verbose=self.verbose)
+
         try:
             obmc.login()
             obmc.set_apis_values(key, value)
         except (SelfServerException, SelfClientException) as e:
-            self.callback.error(e.message, node)
+            return self.callback.error(e.message, node)
 
         self.callback.info("%s: BMC Setting %s..." % (node, openbmc.RSPCONFIG_APIS[key]['display_name']))
 
@@ -392,9 +393,12 @@ rmdir \"/tmp/$userid\" \n")
             value = obmc.get_apis_values(key)
 
         except (SelfServerException, SelfClientException) as e:
-            self.callback.error(e.message, node)
+            return self.callback.error(e.message, node)
 
-        str_value = '0.'+str(value)
+        if isinstance(value, dict):
+            str_value = value.values()[0]
+        else:
+            str_value = value 
         result = '%s: %s: %s' % (node, openbmc.RSPCONFIG_APIS[key]['display_name'], str_value.split('.')[-1])
         self.callback.info(result)
 
