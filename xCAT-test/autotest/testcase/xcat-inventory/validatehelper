@@ -51,6 +51,15 @@ jsondef="${tmpdir}/${objtype}.json"
 yamldefout="${tmpdir}/${objtype}.out.yaml"
 jsondefout="${tmpdir}/${objtype}.out.json"
 
+echo "removing existing \"$objtype\" type object \"$objname\" from xCAT"
+echo "osimage node network site route zone policy "|grep -q -w "$objtype"
+if [ $? -eq 0 ];then
+    rmdef -t $objtype -o $objname
+fi
+if [ "$objtype" = "passwd" ];then
+    tabch -d key=$objname passwd
+fi
+
 #substitute the attribute value in inventory files
 if [ ${#attrvalue} -ne 0 ];then
     sed -i -E -e "s/^(\s*["'"'"']?$attribute["'"'"']?:\s*["'"'"']?)[^'"'"'"]*(["'"'"']?[,]?\s*)$/\1$attrvalue\2/g" $yamldef
@@ -61,15 +70,6 @@ fi
 echo "=================the inventory file to import: ${yamldef}====================="
 cat $yamldef
 echo "=============================================================================="
-
-echo "removing existing \"$objtype\" type object \"$objname\" from xCAT"
-echo "osimage node network site route zone policy "|grep -q -w "$objtype"
-if [ $? -eq 0 ];then
-    rmdef -t $objtype -o $objname
-fi
-if [ "$objtype" = "passwd" ];then
-    tabch -d key=$objname passwd
-fi
 
 
 echo "import the inventory file $yamldef "
@@ -180,6 +180,9 @@ fi
 if [ "$objtype" = "passwd" ];then
     tabch -d key=$objname passwd
 fi
+
+echo "remove intermediate directory $tmpdir"
+[ -e "$tmpdir" ] || rm -rf $tmpdir
 
 if [ $RETCODE_YAML -ne 0 ] || [ $RETCODE_JSON -ne 0  ]; then
     exit 1
