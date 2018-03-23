@@ -80,12 +80,17 @@ class OpenBMCFlashTask(ParallelNodesCommand):
 
     def _get_firmware_version(self, target_file):
 
-        grep_cmd = '/usr/bin/grep -a'
-        version_cmd = grep_cmd + ' ^version= ' + target_file
-        purpose_cmd = grep_cmd + ' purpose= ' + target_file
-        firmware = os.popen(version_cmd).readlines()[0].split('=')[-1].strip()
-        purpose = os.popen(purpose_cmd).readlines()[0].split('=')[-1].strip().split('.')[-1]
-        return { firmware: {'purpose': purpose} }
+        version = purpose = None
+        with open(target_file, 'r') as fh:
+            for line in fh:
+                if 'version=' in line:
+                    version = line.split('=')[-1].strip()
+                if 'purpose=' in line:
+                    purpose = line.split('=')[-1].strip().split('.')[-1]
+                if version and purpose:
+                    break
+
+        return { version: {'purpose': purpose} }
 
     def pre_activate_firm(self, task, activate_arg, **kw):
 

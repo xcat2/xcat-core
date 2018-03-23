@@ -28,22 +28,18 @@ class OpenBMCInventoryTask(ParallelNodesCommand):
 
         target_file = utils.get_full_path(self.cwd, target_file)
 
-        grep_cmd = '/usr/bin/grep -a'
-        version_cmd = grep_cmd + ' ^version= ' + target_file
-        purpose_cmd = grep_cmd + ' purpose= ' + target_file
-        purpose_ver = os.popen(purpose_cmd).readlines()
-        firmware_ver = os.popen(version_cmd).readlines()
-        if purpose_ver:
-            purpose_ver = purpose_ver[0].split('=')[-1].strip()
-        else:
-            purpose_ver = ''
-        if firmware_ver:
-            firmware_ver = firmware_ver[0].split('=')[-1].strip()
-        else:
-            firmware_ver = ''
+        version = purpose = None
+        with open(target_file, 'r') as fh:
+            for line in fh:
+                if 'version=' in line:
+                    version = line.split('=')[-1].strip()
+                if 'purpose=' in line:
+                    purpose = line.split('=')[-1].strip().split('.')[-1]
+                if version and purpose:
+                    break
 
         self.callback.info('TAR %s Firmware Product Version: %s' \
-                            % (purpose_ver,firmware_ver))
+                            % (purpose, version))
 
     def _get_firm_info(self, firm_info_list):
         (has_functional, firm_obj_dict) = firm_info_list
