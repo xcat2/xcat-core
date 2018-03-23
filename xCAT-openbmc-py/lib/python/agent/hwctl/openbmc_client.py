@@ -424,8 +424,8 @@ class OpenBMCRest(object):
 
     def get_bmc_state(self):
 
-        state = self.request('GET', BMC_URLS['state']['path'], cmd='get_bmc_state')
         try:
+            state = self.request('GET', BMC_URLS['state']['path'], cmd='get_bmc_state')
             return {'bmc': state.split('.')[-1]}
         except KeyError:
             error = 'Received wrong format response: %s' % state

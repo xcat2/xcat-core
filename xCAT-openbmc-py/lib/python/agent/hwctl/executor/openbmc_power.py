@@ -85,9 +85,10 @@ class OpenBMCPowerTask(ParallelNodesCommand):
 
             self.callback.info('%s: %s' % (node, openbmc.RPOWER_STATES.get(bmc_state, bmc_state)))
 
-        except SelfServerException, SelfClientException:
-            # There is no response when BMC is not ready
+        except SelfServerException as e:
             self.callback.error(openbmc.RPOWER_STATES[bmc_not_ready], node)
+        except SelfClientException as e:
+            self.callback.error("%s (%s)" % (openbmc.RPOWER_STATES[bmc_not_ready], e.message), node)
 
         return bmc_state
 
