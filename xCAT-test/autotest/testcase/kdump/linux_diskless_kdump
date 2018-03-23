@@ -66,11 +66,11 @@ cmd:xdsh $$CN date
 check:rc==0
 check:output=~\d\d:\d\d:\d\d
 
-cmd:xdsh $$CN echo 1 > /proc/sys/kernel/sysrq
-cmd:xdsh $$CN echo c > /proc/sysrq-trigger
+cmd:xdsh $$CN "echo 1 > /proc/sys/kernel/sysrq"
+cmd:xdsh $$CN "echo c > /proc/sysrq-trigger"
 cmd:sleep 600
 
-cmd:if [[ -s /hello ]]; then echo "this file is not empty";else echo "this file is empty"; fi
+cmd:vmcorefile=`find /kdumpdir/ -name vmcore`;if [[ -s $vmcorefile ]]; then echo "this file is not empty";else echo "this file is empty"; fi
 check:output=~not empty
 
 cmd:pkglistfile=`lsdef -t osimage __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute|grep pkglist|awk -F'=' '{print $2}'`;mv -f $pkglistfile.bak $pkglistfile
@@ -78,4 +78,5 @@ cmd:exlistfile=`lsdef -t osimage __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arc
 cmd:postinstallfile=`lsdef -t osimage __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute|grep postinstall|awk -F'=' '{print $2}'`;mv -f $postinstallfile.bak $postinstallfile
 
 cmd:if [ -f /etc/exports.bak ] ;then mv -f /etc/exports.bak /etc/exports; fi
+#cmd:rm -rf /kdumpdir
 end
