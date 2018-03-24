@@ -1,5 +1,7 @@
 start:linux_diskless_kdump
 os:Linux
+cmd:lsdef -z $$CN > /tmp/node.stanza
+cmd:lsdef -t osimage -z __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute > /tmp/osimage.stanza
 cmd:chdef -t node -o $$CN servicenode= monserver=$$MN nfsserver=$$MN tftpserver=$$MN  xcatmaster=$$MN
 check:rc==0
 
@@ -78,5 +80,7 @@ cmd:exlistfile=`lsdef -t osimage __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arc
 cmd:postinstallfile=`lsdef -t osimage __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute|grep postinstall|awk -F'=' '{print $2}'`;mv -f $postinstallfile.bak $postinstallfile
 
 cmd:if [ -f /etc/exports.bak ] ;then mv -f /etc/exports.bak /etc/exports; fi
-#cmd:rm -rf /kdumpdir
+cmd:rm -rf /kdumpdir
+cmd:cat /tmp/node.stanza | chdef -z;rm -rf /tmp/node.stanza
+cmd:cat /tmp/osimage.stanza | chdef -z;rm -rf /tmp/osimage.stanza
 end
