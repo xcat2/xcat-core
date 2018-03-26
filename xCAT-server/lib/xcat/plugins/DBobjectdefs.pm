@@ -2374,7 +2374,8 @@ sub defch
             $objTypeListsHash{$objk}{$obj} = 1;
         }
     }
-
+    my $nodewithdomain;
+    my $invalidobjname = ();
     foreach my $obj (keys %::FINALATTRS)
     {
 
@@ -2397,7 +2398,17 @@ sub defch
             $error = 1;
             next;
         }
-
+        if ($obj =~ /\./ && $type eq "node")
+        {
+            $nodewithdomain .= ",$obj";
+            delete($::FINALATTRS{$obj});
+            next;
+        }
+        unless(isobjnamevalid($obj,$type)){
+            $invalidobjname .= ",$obj";
+            delete($::FINALATTRS{$obj});
+            next;
+        }
         if (defined($objTypeListsHash{$type}{$obj}) && ($objTypeListsHash{$type}{$obj} == 1))
         {
             $isDefined = 1;
@@ -2860,7 +2871,17 @@ sub defch
         }
 
     }    # end - for each object to update
-
+    my $rsp;
+    if ($nodewithdomain) {
+        $nodewithdomain =~ s/,//;
+        $rsp->{data}->[0] = "The object name \'$nodewithdomain\' is invalid, Cannot use '.' in node name.";
+        xCAT::MsgUtils->message("E", $rsp, $::callback);
+    }
+    if ($invalidobjname) {
+        $invalidobjname =~ s/,//;
+        $rsp->{data}->[0] = "The object name \'$invalidobjname\' is invalid, please refer to \"man xcatdb\" for the valid \"xCAT Object Name Format\"";
+        xCAT::MsgUtils->message("E", $rsp, $::callback);
+    }
     #
     #  write each object into the tables in the xCAT database
     #
