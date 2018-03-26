@@ -2406,6 +2406,7 @@ sub defch
         }
         unless(isobjnamevalid($obj,$type)){
             $invalidobjname .= ",$obj";
+            delete($::FINALATTRS{$obj});
             next;
         }
         if (defined($objTypeListsHash{$type}{$obj}) && ($objTypeListsHash{$type}{$obj} == 1))
@@ -2962,11 +2963,8 @@ sub defch
                 my $newobj          = ();
                 my $invalidnodename = ();
                 foreach my $node (keys %newobjects) {
-                    if (((!$::opt_t) && (!$::FILEATTRS{$node}{'objtype'})) || ($::FILEATTRS{$node}{'objtype'} eq "node") || ($::opt_t eq "node")) {
-                        if($node =~ /[A-Z]/){
-                            $invalidnodename .= ",$node";
-                        }
-                            
+                    if (($node =~ /[A-Z]/) && (((!$::opt_t) && (!$::FILEATTRS{$node}{'objtype'})) || ($::FILEATTRS{$node}{'objtype'} eq "node") || ($::opt_t eq "node"))) {
+                        $invalidnodename .= ",$node";
                     }
                     $newobj .= ",$node";
                 }
