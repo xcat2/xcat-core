@@ -639,7 +639,6 @@ sub process_servicenodes_xdcp
         $addreq->{'_xcatdest'} = $::mnname;
         $addreq->{node}        = \@sn;
         $addreq->{noderange}   = \@sn;
-        $addreq->{forceroot}->[0]   = 1;
 
         # check input request for --nodestatus
         my $args = $req->{arg};    # argument
@@ -1215,9 +1214,6 @@ sub process_request
         if (($request->{username}) && defined($request->{username}->[0])) {
             $ENV{DSH_FROM_USERID} = $request->{username}->[0];
         }
-    }
-    if ($request->{forceroot}) {
-        $ENV{DSH_FROM_USERID} = 'root';
     }
     if ($command eq "xdsh")
     {
