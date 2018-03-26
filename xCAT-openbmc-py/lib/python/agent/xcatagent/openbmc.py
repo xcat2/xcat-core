@@ -444,7 +444,6 @@ class OpenBMCManager(base.BaseManager):
 
         # 3, run the subcommands
         runner = OpenBMCEventlogTask(nodesinfo, callback=self.messager, debugmode=self.debugmode, verbose=self.verbose)
-        self.messager.info('revetlog.py processing action=%s args=%s' % (action, args))
         if action == 'clear':
             DefaultEventlogManager().clear_all_eventlog_records(runner)
         elif action == 'resolved':

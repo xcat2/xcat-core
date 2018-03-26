@@ -26,7 +26,7 @@ class OpenBMCEventlogTask(ParallelNodesCommand):
         number_to_display = 0
         try:
             # Number of records to display from the end
-            number_to_display = 0-int(num_to_display[0])
+            number_to_display = 0-int(num_to_display)
         except Exception:
             # All records to display
             number_to_display = 0
@@ -56,7 +56,63 @@ class OpenBMCEventlogTask(ParallelNodesCommand):
     def clear_all_ev_records(self, **kw):
 
         node = kw['node']
+        obmc = openbmc.OpenBMCRest(name=node, nodeinfo=kw['nodeinfo'], messager=self.callback, debugmode=self.debugmode, verbose=self.verbose) 
+        try:
+            obmc.login()
+            obmc.clear_all_eventlog_records()
+            self.callback.info('%s: %s'  % (node, "Logs cleared"))
+
+        except (SelfServerException, SelfClientException) as e:
+            self.callback.error('%s'  % e.message, node)
+
 
     def resolve_ev_records(self, resolve_list, **kw):
 
         node = kw['node']
+        obmc = openbmc.OpenBMCRest(name=node, nodeinfo=kw['nodeinfo'], messager=self.callback, debugmode=self.debugmode, verbose=self.verbose)
+        try:
+            obmc.login()
+
+            # Get all eventlog records
+            eventlog_info_dict = obmc.get_eventlog_info()
+
+            keys = eventlog_info_dict.keys()
+            # Sort the keys in natural order
+            keys.sort(key=lambda x : int(x[0:]))
+
+            resolved, ids = resolve_list.split('=')
+            eventlog_ids_to_resolve = []
+            if ids.upper() == "LED":
+
+                # loop through eventlog_info_dict and collect LED ids to be resolved into a eventlog_ids_to_resolve array
+                for key in list(keys):
+                    if "[LED]" in eventlog_info_dict[key]:
+                        if "Resolved: 0" in eventlog_info_dict[key]:
+                            eventlog_ids_to_resolve.append(key)
+                        else:
+                            if self.verbose:
+                                self.callback.info('%s: Not resolving already resolved eventlog ID %s'  % (node, key))
+            else:
+                # loop through list of ids and collect ids to resolve into a eventlog_ids_to_resolve array
+                for id_to_resolve in ids.split(','):
+                    if id_to_resolve in eventlog_info_dict:
+                        if "Resolved: 0" in eventlog_info_dict[id_to_resolve]:
+                            eventlog_ids_to_resolve.append(id_to_resolve)
+                        else:
+                            if self.verbose:
+                                self.callback.info('%s: Not resolving already resolved eventlog ID %s'  % (node, id_to_resolve))
+                    else:
+                        self.callback.info('%s: Invalid ID: %s'  % (node, id_to_resolve))
+
+            if len(eventlog_ids_to_resolve) == 0:
+                # At the end and there are no entries to resolve
+                self.callback.info('%s: No event log entries needed to be resolved'  % node)
+            else:
+                # Resolve entries that were collected into the eventlog_ids_to_resolve array
+                obmc.resolve_event_log_entries(eventlog_ids_to_resolve)
+                for entry in eventlog_ids_to_resolve:
+                    self.callback.info('%s: Resolved %s'  % (node, entry))
+
+        except (SelfServerException, SelfClientException) as e:
+            self.callback.error('%s' % e.message, node)
+
