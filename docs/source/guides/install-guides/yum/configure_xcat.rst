@@ -8,7 +8,7 @@ Internet Repository
 
 **[xcat-core]**
 
-For the xCAT build you want to install, download the ``xCAT-core.repo`` file and copy to ``/etc/yum.repos.d``
+For the xCAT build you want to install, download the ``xcat-core.repo`` file and copy to ``/etc/yum.repos.d``
 
 **[xcat-dep]**
 
