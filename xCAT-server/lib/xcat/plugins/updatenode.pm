@@ -1801,6 +1801,7 @@ sub updatenodesyncfiles
                 {
                     command => ["xdcp"],
                     node    => $syncfile_node{$synclist},
+                    username => $request->{username},
                     arg     => $args,
                     env     => $env
                 },
