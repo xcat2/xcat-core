@@ -2,7 +2,7 @@
 #
 # go-xcat - Install xCAT automatically.
 #
-# Version 1.0.24
+# Version 1.0.26
 #
 # Copyright (C) 2016 International Business Machines
 # Eclipse Public License, Version 1.0 (EPL-1.0)
@@ -34,8 +34,11 @@ function usage()
 	                                repository
 	  --xcat-dep=[URL]              use a different URL or path for the xcat-dep
 	                                repository
-	  -x, --xcat-version=[VERSION]  specify the version of xCAT; cannot use with
-	                                --xcat-core
+	  -x, --xcat-version=[VERSION]  specify the version of xCAT; imply the subdirectory
+	                                of corresponding xCAT version under
+	                                  http://xcat.org/files/xcat/repos/yum/  or
+	                                  http://xcat.org/files/xcat/repos/apt/
+	                                cannot use with --xcat-core
 	  -y, --yes                     answer yes for all questions
 
 	Actions:
@@ -89,7 +92,7 @@ function verbose_usage()
 	  -h, --help                    display a simply version of help and exit
 	  --long-help                   display this help and exit
 	EOF
-	println 9
+	println 12
 	while read -r ; do echo "${REPLY}" ; done <<-EOF
 	  check                         check the version of the installed packages
 	                                of xCAT and packages in the repository
@@ -1063,7 +1066,7 @@ function remove_repo_yum()
 	type yum >/dev/null 2>&1 || return 255
 	local repo_id="$1"
 	# This deleting method is not good enough. Since there could be more
-	# than one repostory definitions in a single repo file.
+	# than one repository definitions in a single repo file.
 	# This is a quick and dirty method.
 	rm -f $(grep -l "^\[${repo_id}\]$" "/etc/yum.repos.d/"*".repo" 2>/dev/null)
 	yum clean metadata
@@ -1107,10 +1110,10 @@ function add_xcat_core_repo_yum_or_zypper()
 	then
 		case "${ver}" in
 		"devel")
-			url="${GO_XCAT_DEFAULT_BASE_URL}/yum/devel/core-snap/xCAT-core.repo"
+			url="${GO_XCAT_DEFAULT_BASE_URL}/yum/devel/core-snap"
 			;;
 		*)
-			url="${GO_XCAT_DEFAULT_BASE_URL}/yum/${ver}/xcat-core/xCAT-core.repo"
+			url="${GO_XCAT_DEFAULT_BASE_URL}/yum/${ver}/xcat-core"
 			;;
 		esac
 	fi
