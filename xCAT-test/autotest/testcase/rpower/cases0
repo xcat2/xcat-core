@@ -160,25 +160,23 @@ check:rc==0
 end
 
 start:rpower_suspend_OpenpowerBmc
+hcp:openbmc
 cmd:rpower $$CN suspend
-check:output=~Error: unsupported command rpower suspend for OpenPOWER
+check:output=~Error: Unsupported command: rpower suspend
 check:rc==1
 end
 
-start:rpower_softoff_OpenpowerBmc
-cmd:rpower $$CN softoff
-check:output=~Error: unsupported command rpower softoff for OpenPOWER
-check:rc==1
-end
 
 start:rpower_wake_OpenpowerBmc
+hcp:openbmc
 cmd:rpower $$CN wake
-check:output=~Error: unsupported command rpower wake for OpenPOWER
+check:output=~Error: Unsupported command: rpower wake
 check:rc==1
 end
 
 start:rpower_errorcommand_OpenpowerBmc
+hcp:openbmc
 cmd:rpower $$CN ddd
-check:output=~Unsupported command: 
+check:output=~Error: Unsupported command: rpower ddd 
 check:rc==1
 end

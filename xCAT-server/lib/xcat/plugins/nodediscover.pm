@@ -182,9 +182,7 @@ sub process_request {
             $basicdata->{memory} = $request->{memory}->[0];
         }
         if ($request->{disksize}->[0]) {
-            my @disks = split /\n/, $request->{disksize}->[0];
-            my $disk_info = join(",", @disks);
-            $basicdata->{disksize} = $disk_info;
+            $basicdata->{disksize} = $request->{disksize}->[0];
         }
         if ($request->{cpucount}->[0]) {
             $basicdata->{cpucount} = $request->{cpucount}->[0];
@@ -267,6 +265,12 @@ sub process_request {
 
     my $macstring = "";
     if (defined($request->{mac})) {
+        if (!inet_aton($node)) {
+            xCAT::MsgUtils->message("S", "xcat.discovery.nodediscover: Can not resolve IP for the matching node:$node. Make sure \"makehosts\" and \"makedns\" have been run for $node.");
+            $request->{error} = [0];
+            $request->{error_msg} = ["Can not resolve IP for the matching node:$node."];
+            return;
+        }
         my $mactab = xCAT::Table->new("mac", -create => 1);
         my @ifinfo;
         my %usednames;
@@ -274,6 +278,7 @@ sub process_request {
         my @hostnames_to_update = ();
         my %bydriverindex;
         my $forcenic = 0; #-1 is force skip, 0 is use default behavior, 1 is force to be declared even if hosttag is skipped to do so
+        my $localnic = 0;
         foreach (@{ $request->{mac} }) {
             @ifinfo = split /\|/;
 
@@ -320,9 +325,6 @@ sub process_request {
                             $hosttag = "$node-$ifinfo[1]";
                             push @hostnames_to_update, $hosttag;
                         }
-                        elsif (!inet_aton($node)) {
-                            xCAT::MsgUtils->message("S", "xcat.discovery.nodediscover: Can not resolve IP for the matching node:$node. Make sure \"makehosts\" and \"makedns\" have been run for $node.");
-                        }
                     }
                     #print Dumper($hosttag) . "\n";
                     if ($hosttag) {
@@ -332,6 +334,7 @@ sub process_request {
                         }
                         if ($hosttag eq $node) {
                             $macstring .= $currmac . "|";
+                            $localnic = 1;
                         } else {
                             $macstring .= $currmac . "!" . $hosttag . "|";
                         }
@@ -348,6 +351,11 @@ sub process_request {
             } else {
                 if ($forcenic == 1) { $macstring .= $currmac . "|"; }
             }
+        }
+        unless ($localnic) {
+            $request->{error} = [1];
+            $request->{error_msg} = ["No nic found in deploy network for $node"];
+            return;
         }
         $macstring =~ s/\|\z//;
         $mactab->setNodeAttribs($node, { mac => $macstring });
@@ -451,7 +459,7 @@ sub process_request {
     if (defined($request->{bmcinband})) {
         if (defined($request->{bmc_node}) and defined($request->{bmc_node}->[0])) {
             my $bmc_node = $request->{bmc_node}->[0];
-            xCAT::MsgUtils->message("S", "xcat.discovery.nodediscover: Removing discovered node definition: $bmc_node...");
+            xCAT::MsgUtils->message("S", "xcat.discovery.nodediscover: Removing discovered BMC nodes definition: $bmc_node...");
             my $rmcmd = "rmdef $bmc_node";
             xCAT::Utils->runcmd($rmcmd, 0);
             if ($::RUNCMD_RC != 0)
@@ -487,7 +495,7 @@ sub process_request {
         Timeout  => '1',
         Proto    => 'tcp'
     );
-    unless ($sock) { xCAT::MsgUtils->message("S", "xcat.discovery.nodediscover: Failed to notify $clientip that it's actually $node."); return; }
+    unless ($sock) { xCAT::MsgUtils->message("S", "xcat.discovery.nodediscover: Failed to notify $clientip that it's actually $node. $node has not been discovered."); return; }
     print $sock $restartstring;
     close($sock);
 

@@ -12,12 +12,16 @@ xCAT provides support for detecting and installing the Cumulus Linux OS into ONI
 
    The mac address of the switch management port is required for xCAT to configure the DHCP information and send over the OS to install on the switch. 
 
-   **[small clusters]** If you know the mac address of the management port on the switch, create the pre-defined switch definition providing the mac address. ::
+   **Small Clusters** 
+
+   If you know the mac address of the management port on the switch, create the pre-defined switch definition providing the mac address. ::
 
        mkdef frame01sw1 --template onieswitch arch=armv71 \
            ip=192.168.1.1 mac="aa:bb:cc:dd:ee:ff"
 
-   **[large clusters]** xCAT's :doc:`switchdiscover </guides/admin-guides/references/man1/switchdiscover.1>` command can be used to discover the mac address and fill in the predefined switch definitions based on the switch/switchport mapping.  
+   **Large Clusters** 
+
+   xCAT's :doc:`switchdiscover </guides/admin-guides/references/man1/switchdiscover.1>` command can be used to discover the mac address and fill in the predefined switch definitions based on the switch/switchport mapping.  
 
 
     #. Define all the switch objects providing the switch/switchport mapping: ::

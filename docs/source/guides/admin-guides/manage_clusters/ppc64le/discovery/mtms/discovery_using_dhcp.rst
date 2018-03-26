@@ -99,9 +99,9 @@ The BMC IP address is obtained by the open range dhcp server and the plan is to 
 
 #. **[Optional]**  Monitor the node discovery process using rcons
 
-   Configure the conserver for the **predefined** node to watch the discovery process using ``rcons``::
+   Configure the goconserver for the **predefined** node to watch the discovery process using ``rcons``::
 
-       makeconservercf cn01
+       makegocons cn01
 
    In another terminal window, open the remote console: ::
 

@@ -4156,7 +4156,9 @@ sub preprocess_request {
 
     my $usage_string = xCAT::Usage->parseCommand($command, @exargs);
     if ($usage_string) {
-        $callback->({ data => $usage_string });
+        if ($command !~ /renergy|rspconfig/) {
+            $callback->({ data => $usage_string });
+        }
         $request = {};
         return;
     }
@@ -4583,6 +4585,10 @@ sub process_request {
         $req->{noderange}       = [$node];
         $req->{discoverymethod} = ['blade'];
         $doreq->($req);
+        if (defined($req->{error})) {
+            $request->{error}->[0] = '1';
+            $request->{error_msg}->[0] = $req->{error_msg}->[0];
+        }
         %{$req} = ();    #Clear request. it is done
         return 0;
     }

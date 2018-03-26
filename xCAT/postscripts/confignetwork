@@ -297,6 +297,7 @@ function sort_nics_device_order {
 
     all_nics_list=$*
     eth_slot=""
+    ib_slot=""
     bond_slot=""
     vlan_slot=""
     ib_slots=""
@@ -365,6 +366,7 @@ function sort_nics_device_order {
             #find nicdevice type as base_nic_type
             base_nic_dev=`echo "$nics_list" |sed -n "${num}p"|awk '{print $2}'`
             if echo "$base_nic_dev"|grep "@" >/dev/null; then
+                temp_base_nic_type_one=''
                 for i in `echo "$base_nic_dev" |sed 's/@/ /g'`
                 do
                     temp_base_nic_type=`find_nic_type "$i" | $utolcmd`
@@ -392,6 +394,16 @@ function sort_nics_device_order {
                     eth_slot=$num
                 else
                     eth_slot=$eth_slot" "$num
+                fi
+
+            #valid nic_dev and base_nic_dev pair as bond-infiniband
+            elif [ x"$base_nic_type" = "xinfiniband" ]&& \
+                [ x"$nic_dev_type" = "xbond" ]; then
+
+                if [ x"$ib_slot" = x ]; then
+                    ib_slot=$num
+                else
+                    ib_slot=$ib_slot" "$num
                 fi
 
             #valid nic_dev and base_nic_dev pair as vlan-bond or bridge-bond
@@ -422,7 +434,7 @@ function sort_nics_device_order {
         log_error "Only support configuration of Bond/VLAN/Bridge on Red Hat."
       fi
     fi
-    new_order=$eth_slot" "$bond_slot" "$vlan_slot
+    new_order=$eth_slot" "$ib_slot" "$bond_slot" "$vlan_slot
     new_order_list=""
     if [ -n "$new_order" ]; then
 
@@ -512,8 +524,13 @@ function configure_nicdevice {
         nic_pair=`echo "$nics_pair" |sed -n "${num}p"`
         echo "configure nic and its device : $nic_pair"
 
+        #ignore bmc interfaces. They're allowed in the nics table to generate DNS/hostname records, but they
+        #can't be configured here (it's done in bmcsetup
+        if [ x"$nic_dev_type" = "xbmc" ]; then
+            log_info "$nic_dev is of type $nic_dev_type, ignoring"
+
         #configure standalone ethernet nic
-        if [ x"$nic_dev_type" = "xethernet" ]; then
+        elif [ x"$nic_dev_type" = "xethernet" ]; then
             xcatnet=`query_nicnetworks_net $nic_dev`            
             ipaddrs=`find_nic_ips $nic_dev`
             if [ -n "$ipaddrs" ]; then
@@ -557,7 +574,7 @@ function configure_nicdevice {
 
         #configure bond 
         elif [ x"$nic_dev_type" = "xbond" ]; then
-            create_bond_interface ifname=$nic_dev slave_ports=$base_nic_for_bond       
+            create_bond_interface ifname=$nic_dev slave_ports=$base_nic_for_bond slave_type=$base_nic_type 
         elif [ x"$nic_dev_type" = "xinfiniband" ]; then
             log_info "Call configib for IB nics: $nic_dev, ports: $num_iba_ports"
             log_info "NIC_IBNICS=$nic_dev NIC_IBAPORTS=$num_iba_ports configib"
@@ -615,7 +632,7 @@ if [ $boot_install_nic -eq 1 ];then
         echo "++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++"
         log_info "configure the install nic $installnic. "
         instnic_conf=1
-        configeth -s $installnic |log_lines info
+        configeth -s $installnic 
         if [ $? -ne 0 ]; then
             errorcode=1
         fi

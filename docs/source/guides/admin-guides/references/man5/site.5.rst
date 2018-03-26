@@ -136,6 +136,8 @@ site Attributes:
                 service nodes will ignore this value and always be configured to forward 
                 to the management node.
   
+   emptyzonesenable: (yes or no). This is to set empty-zones-enable value in named.conf options section. 
+  
    master:  The hostname of the xCAT management node, as known by the nodes.
   
    nameservers:  A comma delimited list of DNS servers that each node in the cluster should
@@ -259,6 +261,8 @@ site Attributes:
    defserialport:  The default serial port - currently only used by mknb.
   
    defserialspeed:  The default serial speed - currently only used by mknb.
+  
+   disablenodesetwarning:  Allow the legacy xCAT non-osimage style nodeset to execute.
   
    genmacprefix:  When generating mac addresses automatically, use this manufacturing
                   prefix (e.g. 00:11:aa)

@@ -255,7 +255,7 @@ osimage Attributes:
 
 \ **otherpkgdir**\  (linuximage.otherpkgdir)
  
- The base directory where the non-distro packages are stored. Only 1 local directory supported at present.
+ The base directory and urls of internet repos from which the non-distro packages are retrived. Only 1 local directory is supported at present. The entries should be delimited with comma ",". Currently, the internet repos are only supported on Ubuntu and Redhat.
  
 
 
@@ -324,15 +324,15 @@ osimage Attributes:
  
  .. code-block:: perl
  
-        IMG_ARCH(The architecture of the osimage, such as "ppc64le","x86_64"), 
-        IMG_NAME(The name of the osimage, such as "rhels7.3-ppc64le-netboot-compute"), 
-        IMG_OSVER(The os release of the osimage, such as "rhels7.3","sles11.4"), 
+        IMG_ARCH(The architecture of the osimage, such as "ppc64le","x86_64"),
+        IMG_NAME(The name of the osimage, such as "rhels7.3-ppc64le-netboot-compute"),
+        IMG_OSVER(The os release of the osimage, such as "rhels7.3","sles11.4"),
         IMG_KERNELVERSION(the "kernelver" attribute of the osimage),
-        IMG_PROFILE(the profile of the osimage, such as "service","compute"), 
-        IMG_PKGLIST(the "pkglist" attribute of the osimage), 
-        IMG_PKGDIR(the "pkgdir" attribute of the osimage), 
-        IMG_OTHERPKGLIST(the "otherpkglist" attribute of the osimage), 
-        IMG_OTHERPKGDIR(the "otherpkgdir" attribute of the osimage), 
+        IMG_PROFILE(the profile of the osimage, such as "service","compute"),
+        IMG_PKGLIST(the "pkglist" attribute of the osimage),
+        IMG_PKGDIR(the "pkgdir" attribute of the osimage),
+        IMG_OTHERPKGLIST(the "otherpkglist" attribute of the osimage),
+        IMG_OTHERPKGDIR(the "otherpkgdir" attribute of the osimage),
         IMG_ROOTIMGDIR(the "rootimgdir" attribute of the osimage)
  
  

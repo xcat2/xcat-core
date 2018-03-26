@@ -14,6 +14,39 @@ xCAT 2.13.x
 |xCAT                             |New OS         |New          |New Feature                       |
 |Version                          |               |Hardware     |                                  |
 +=================================+===============+=============+==================================+
+|| xCAT 2.13.11                   |               |             |- OpenBMC support in python:      |
+|| 2018/3/9                       |               |             |                                  |
+||                                |               |             |  rpower,rbeacon,rsetboot         |
+| `2.13.11 Release Notes <https://|               |             |  rinv,rvitals                    |
+| github.com/xcat2/xcat-core/wiki |               |             |                                  |
+| /XCAT_2.13.11_Release_Notes>`_  |               |             |- goconserver enhancement         |
+|                                 |               |             |                                  |
+|                                 |               |             |  makegocons -q, -C\|--cleanup    |
+|                                 |               |             |                                  |
++---------------------------------+---------------+-------------+----------------------------------+
+|| xCAT 2.13.10                   |               |             |- OpenBMC support:                |
+|| 2018/1/26                      |               |             |                                  |
+||                                |               |             |  rspconfig powersupplyredundancy,|
+| `2.13.10 Release Notes <https://|               |             |  powerrestorepolicy,bootmode     |
+| github.com/xcat2/xcat-core/wiki |               |             |  reventlog implementation        |
+| /XCAT_2.13.10_Release_Notes>`_  |               |             |                                  |
+|                                 |               |             |- goconserver enhancement         |
+|                                 |               |             |                                  |
+|                                 |               |             |  run goconserver on SN           |
+|                                 |               |             |                                  |
+|                                 |               |             |  redirect console log            |
++---------------------------------+---------------+-------------+----------------------------------+
+|| xCAT 2.13.9                    |               |             |- OpenBMC support:                |
+|| 2017/12/18                     |               |             |                                  |
+||                                |               |             |  rflash -a/-u enhance, add -d    |
+| `2.13.9 Release Notes <https:// |               |             |                                  |
+| github.com/xcat2/xcat-core/wiki |               |             |  reventlog implementation        |
+| /XCAT_2.13.9_Release_Notes>`_   |               |             |                                  |
+|                                 |               |             |  rspconfig dump,hostname,        |
+|                                 |               |             |  ntpserver,admin_passwd          |
+|                                 |               |             |                                  |
+|                                 |               |             |- goconserver for OpenBMC         |
++---------------------------------+---------------+-------------+----------------------------------+
 || xCAT 2.13.8                    |               |             |- OpenBMC support:                |
 || 2017/11/3                      |               |             |                                  |
 ||                                |               |             |  rflash/rpower run parallelly    |

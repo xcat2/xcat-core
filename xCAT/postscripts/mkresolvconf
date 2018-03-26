@@ -4,9 +4,9 @@
 #---------------------------------------------------------------------------
 #  create an /etc/resolv.conf file on the node
 #
-#	- this script assumes the nameserver for the node will be 
-#		the value of the "xcatmaster" attribute (SN as known by 
-#		the node) or the name of the management node as known 
+#	- this script assumes the nameserver for the node will be
+#		the value of the "xcatmaster" attribute (SN as known by
+#		the node) or the name of the management node as known
 #		by the node.
 
 #---------------------------------------------------------------------------
@@ -15,8 +15,9 @@ conf_file="/etc/resolv.conf"
 conf_file_bak="/etc/resolv.conf.bak"
 
 # get values set when the myxcatpost_<node> script was run
-master=$MASTER  # this is the ip for the nodes xcatmaster attribute
-domain=$DOMAIN  # this is the domain name used in this cluster
+master=$MASTER_IP  # this is the ip for the nodes xcatmaster attribute
+domain=$DOMAIN     # this is the domain name used in this cluster
+nameservers=$NAMESERVERS # nameservers defined in the site table
 node=$NODE
 
 if [ -n "$master" ] && [ -n "$domain" ]; then
@@ -24,8 +25,16 @@ if [ -n "$master" ] && [ -n "$domain" ]; then
 	#logger -t xcat "Created /etc/resolv.conf file on $node."
 	cp $conf_file $conf_file_bak > /dev/null 2>&1
 	echo "search $domain" >$conf_file
-	echo "nameserver $master" >>$conf_file
-else     
+    if [[ "$nameservers" != "" ]]; then
+        for ns in ${nameservers//,/ }; do
+    	    grep -q $ns $conf_file || \
+                echo "nameserver ${ns/<xcatmaster>/$master}" >>$conf_file
+        done
+    else
+        echo "nameserver $master" >>$conf_file
+    fi
+
+else
 	logger -t xcat -p local4.err "Could not create resolv.conf on $node."
 	exit 1
 fi

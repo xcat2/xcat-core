@@ -1,0 +1,18 @@
+# <the template for openbmc controlled PowerLE NV node definition>
+
+ppc64le-openbmc-template:
+    objtype=node
+    arch=ppc64le
+    bmc="MANDATORY:The hostname or ip address of the BMC adapater"
+    bmcpassword="MANDATORY:the password of the BMC"
+    bmcusername="MANDATORY:the username of the BMC"
+    cons=openbmc
+    groups=all
+    ip=OPTIONAL:the ip address of the node
+    mac=OPTIONAL:the mac of the node
+    mgt=openbmc
+    netboot=petitboot
+    nodetype=mp
+    serialport=0
+    serialspeed=115200
+    usercomment="the template for openbmc controlled PowerLE NV node definition"

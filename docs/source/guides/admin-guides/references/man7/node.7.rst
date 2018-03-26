@@ -19,7 +19,7 @@ SYNOPSIS
 ********
 
 
-\ **node Attributes:**\   \ *addkcmdline*\ , \ *appstatus*\ , \ *appstatustime*\ , \ *arch*\ , \ *authdomain*\ , \ *bmc*\ , \ *bmcpassword*\ , \ *bmcport*\ , \ *bmcusername*\ , \ *bmcvlantag*\ , \ *cfgmgr*\ , \ *cfgmgtroles*\ , \ *cfgserver*\ , \ *chain*\ , \ *chassis*\ , \ *cmdmapping*\ , \ *cons*\ , \ *conserver*\ , \ *consoleondemand*\ , \ *consport*\ , \ *cpucount*\ , \ *cputype*\ , \ *currchain*\ , \ *currstate*\ , \ *dhcpinterfaces*\ , \ *disksize*\ , \ *displayname*\ , \ *dockercpus*\ , \ *dockerflag*\ , \ *dockerhost*\ , \ *dockermemory*\ , \ *dockernics*\ , \ *domainadminpassword*\ , \ *domainadminuser*\ , \ *domaintype*\ , \ *getmac*\ , \ *groups*\ , \ *hcp*\ , \ *height*\ , \ *hidden*\ , \ *hostcluster*\ , \ *hostinterface*\ , \ *hostmanager*\ , \ *hostnames*\ , \ *hosttype*\ , \ *hwtype*\ , \ *id*\ , \ *initrd*\ , \ *installnic*\ , \ *interface*\ , \ *ip*\ , \ *iscsipassword*\ , \ *iscsiserver*\ , \ *iscsitarget*\ , \ *iscsiuserid*\ , \ *kcmdline*\ , \ *kernel*\ , \ *linkports*\ , \ *mac*\ , \ *machinetype*\ , \ *memory*\ , \ *mgt*\ , \ *micbridge*\ , \ *michost*\ , \ *micid*\ , \ *miconboot*\ , \ *micpowermgt*\ , \ *micvlog*\ , \ *migrationdest*\ , \ *modelnum*\ , \ *monserver*\ , \ *mpa*\ , \ *mtm*\ , \ *nameservers*\ , \ *netboot*\ , \ *nfsdir*\ , \ *nfsserver*\ , \ *nicaliases*\ , \ *niccustomscripts*\ , \ *nicdevices*\ , \ *nicextraparams*\ , \ *nichostnameprefixes*\ , \ *nichostnamesuffixes*\ , \ *nicips*\ , \ *nicnetworks*\ , \ *nicsadapter*\ , \ *nictypes*\ , \ *nimserver*\ , \ *node*\ , \ *nodetype*\ , \ *ondiscover*\ , \ *os*\ , \ *osvolume*\ , \ *otherinterfaces*\ , \ *ou*\ , \ *outlet*\ , \ *parent*\ , \ *passwd.HMC*\ , \ *passwd.admin*\ , \ *passwd.celogin*\ , \ *passwd.general*\ , \ *passwd.hscroot*\ , \ *password*\ , \ *pdu*\ , \ *postbootscripts*\ , \ *postscripts*\ , \ *power*\ , \ *pprofile*\ , \ *prescripts-begin*\ , \ *prescripts-end*\ , \ *primarynic*\ , \ *primarysn*\ , \ *productkey*\ , \ *profile*\ , \ *protocol*\ , \ *provmethod*\ , \ *rack*\ , \ *room*\ , \ *routenames*\ , \ *serial*\ , \ *serialflow*\ , \ *serialnum*\ , \ *serialport*\ , \ *serialspeed*\ , \ *servicenode*\ , \ *setupconserver*\ , \ *setupdhcp*\ , \ *setupftp*\ , \ *setupipforward*\ , \ *setupldap*\ , \ *setupnameserver*\ , \ *setupnfs*\ , \ *setupnim*\ , \ *setupntp*\ , \ *setupproxydhcp*\ , \ *setuptftp*\ , \ *sfp*\ , \ *side*\ , \ *slot*\ , \ *slotid*\ , \ *slots*\ , \ *snmpauth*\ , \ *snmppassword*\ , \ *snmpprivacy*\ , \ *snmpusername*\ , \ *snmpversion*\ , \ *status*\ , \ *statustime*\ , \ *storagcontroller*\ , \ *storagetype*\ , \ *supernode*\ , \ *supportedarchs*\ , \ *supportproxydhcp*\ , \ *switch*\ , \ *switchinterface*\ , \ *switchport*\ , \ *switchtype*\ , \ *switchvlan*\ , \ *syslog*\ , \ *termport*\ , \ *termserver*\ , \ *tftpdir*\ , \ *tftpserver*\ , \ *unit*\ , \ *updatestatus*\ , \ *updatestatustime*\ , \ *urlpath*\ , \ *usercomment*\ , \ *userid*\ , \ *username*\ , \ *vmbeacon*\ , \ *vmbootorder*\ , \ *vmcfgstore*\ , \ *vmcluster*\ , \ *vmcpus*\ , \ *vmhost*\ , \ *vmmanager*\ , \ *vmmaster*\ , \ *vmmemory*\ , \ *vmnicnicmodel*\ , \ *vmnics*\ , \ *vmothersetting*\ , \ *vmphyslots*\ , \ *vmstorage*\ , \ *vmstoragecache*\ , \ *vmstorageformat*\ , \ *vmstoragemodel*\ , \ *vmtextconsole*\ , \ *vmvirtflags*\ , \ *vmvncport*\ , \ *webport*\ , \ *xcatmaster*\ , \ *zonename*\ 
+\ **node Attributes:**\   \ *addkcmdline*\ , \ *appstatus*\ , \ *appstatustime*\ , \ *arch*\ , \ *authdomain*\ , \ *authkey*\ , \ *authtype*\ , \ *bmc*\ , \ *bmcpassword*\ , \ *bmcport*\ , \ *bmcusername*\ , \ *bmcvlantag*\ , \ *cfgmgr*\ , \ *cfgmgtroles*\ , \ *cfgserver*\ , \ *chain*\ , \ *chassis*\ , \ *cmdmapping*\ , \ *community*\ , \ *cons*\ , \ *conserver*\ , \ *consoleondemand*\ , \ *consport*\ , \ *cpucount*\ , \ *cputype*\ , \ *currchain*\ , \ *currstate*\ , \ *dhcpinterfaces*\ , \ *disksize*\ , \ *displayname*\ , \ *dockercpus*\ , \ *dockerflag*\ , \ *dockerhost*\ , \ *dockermemory*\ , \ *dockernics*\ , \ *domainadminpassword*\ , \ *domainadminuser*\ , \ *domaintype*\ , \ *getmac*\ , \ *groups*\ , \ *hcp*\ , \ *height*\ , \ *hidden*\ , \ *hostcluster*\ , \ *hostinterface*\ , \ *hostmanager*\ , \ *hostnames*\ , \ *hosttype*\ , \ *hwtype*\ , \ *id*\ , \ *initrd*\ , \ *installnic*\ , \ *interface*\ , \ *ip*\ , \ *iscsipassword*\ , \ *iscsiserver*\ , \ *iscsitarget*\ , \ *iscsiuserid*\ , \ *kcmdline*\ , \ *kernel*\ , \ *linkports*\ , \ *mac*\ , \ *memory*\ , \ *mgt*\ , \ *micbridge*\ , \ *michost*\ , \ *micid*\ , \ *miconboot*\ , \ *micpowermgt*\ , \ *micvlog*\ , \ *migrationdest*\ , \ *monserver*\ , \ *mpa*\ , \ *mtm*\ , \ *nameservers*\ , \ *netboot*\ , \ *nfsdir*\ , \ *nfsserver*\ , \ *nicaliases*\ , \ *niccustomscripts*\ , \ *nicdevices*\ , \ *nicextraparams*\ , \ *nichostnameprefixes*\ , \ *nichostnamesuffixes*\ , \ *nicips*\ , \ *nicnetworks*\ , \ *nicsadapter*\ , \ *nictypes*\ , \ *nimserver*\ , \ *node*\ , \ *nodetype*\ , \ *ondiscover*\ , \ *os*\ , \ *osvolume*\ , \ *otherinterfaces*\ , \ *ou*\ , \ *outlet*\ , \ *parent*\ , \ *passwd.HMC*\ , \ *passwd.admin*\ , \ *passwd.celogin*\ , \ *passwd.general*\ , \ *passwd.hscroot*\ , \ *password*\ , \ *pdu*\ , \ *pdutype*\ , \ *postbootscripts*\ , \ *postscripts*\ , \ *power*\ , \ *pprofile*\ , \ *prescripts-begin*\ , \ *prescripts-end*\ , \ *primarynic*\ , \ *primarysn*\ , \ *privkey*\ , \ *privtype*\ , \ *productkey*\ , \ *profile*\ , \ *protocol*\ , \ *provmethod*\ , \ *rack*\ , \ *room*\ , \ *routenames*\ , \ *seclevel*\ , \ *serial*\ , \ *serialflow*\ , \ *serialport*\ , \ *serialspeed*\ , \ *servicenode*\ , \ *setupconserver*\ , \ *setupdhcp*\ , \ *setupftp*\ , \ *setupipforward*\ , \ *setupldap*\ , \ *setupnameserver*\ , \ *setupnfs*\ , \ *setupnim*\ , \ *setupntp*\ , \ *setupproxydhcp*\ , \ *setuptftp*\ , \ *sfp*\ , \ *side*\ , \ *slot*\ , \ *slotid*\ , \ *slots*\ , \ *snmpauth*\ , \ *snmppassword*\ , \ *snmpprivacy*\ , \ *snmpuser*\ , \ *snmpusername*\ , \ *snmpversion*\ , \ *status*\ , \ *statustime*\ , \ *storagcontroller*\ , \ *storagetype*\ , \ *supernode*\ , \ *supportedarchs*\ , \ *supportproxydhcp*\ , \ *switch*\ , \ *switchinterface*\ , \ *switchport*\ , \ *switchtype*\ , \ *switchvlan*\ , \ *syslog*\ , \ *termport*\ , \ *termserver*\ , \ *tftpdir*\ , \ *tftpserver*\ , \ *unit*\ , \ *updatestatus*\ , \ *updatestatustime*\ , \ *urlpath*\ , \ *usercomment*\ , \ *userid*\ , \ *username*\ , \ *vmbeacon*\ , \ *vmbootorder*\ , \ *vmcfgstore*\ , \ *vmcluster*\ , \ *vmcpus*\ , \ *vmhost*\ , \ *vmmanager*\ , \ *vmmaster*\ , \ *vmmemory*\ , \ *vmnicnicmodel*\ , \ *vmnics*\ , \ *vmothersetting*\ , \ *vmphyslots*\ , \ *vmstorage*\ , \ *vmstoragecache*\ , \ *vmstorageformat*\ , \ *vmstoragemodel*\ , \ *vmtextconsole*\ , \ *vmvirtflags*\ , \ *vmvncport*\ , \ *webport*\ , \ *xcatmaster*\ , \ *zonename*\ 
 
 
 ***********
@@ -66,6 +66,18 @@ node Attributes:
 \ **authdomain**\  (domain.authdomain)
  
  If a node should participate in an AD domain or Kerberos realm distinct from domain indicated in site, this field can be used to specify that
+ 
+
+
+\ **authkey**\  (pdu.authkey)
+ 
+ The authentication passphrase for SNMPv3
+ 
+
+
+\ **authtype**\  (pdu.authtype)
+ 
+ The authentication protocol(MD5|SHA) to use for SNMPv3.
  
 
 
@@ -191,6 +203,12 @@ node Attributes:
  
 
 
+\ **community**\  (pdu.community)
+ 
+ The community string to use for SNMPv1/v2
+ 
+
+
 \ **cons**\  (nodehm.cons)
  
  The console method. If nodehm.serialport is set, this will default to the nodehm.mgt setting, otherwise it defaults to unused.  Valid values: cyclades, mrv, or the values valid for the mgt attribute.
@@ -265,7 +283,7 @@ node Attributes:
 
 \ **dockerflag**\  (vm.othersettings)
  
- This allows specifying a semicolon delimited list of key->value pairs to include in a vmx file of VMware or KVM. For partitioning on normal power machines, this option is used to specify the hugepage and/or bsr information, the value is like:'hugepage:1,bsr=2'. For KVM cpu pinning, this option is used to specify the physical cpu set on the host, the value is like:"vcpupin:'0-15,^8'",Its syntax is a comma separated list and a special markup using '-' and '^' (ex. '0-4', '0-3,^2') can also be allowed, the '-' denotes the range and the '^' denotes exclusive. For KVM memory binding, the value is like:'membind:0', restrict a guest to allocate memory from the specified set of NUMA nodes. For PCI passthrough, the value is like:'devpassthrough:pci_0001_01_00_0,pci_0000_03_00_0',the PCI devices are assigned to a virtual machine, and the virtual machine can use this I/O exclusively, the devices list are a list of PCI device names delimited with comma, the PCI device names can be obtained by running \ **virsh nodedev-list**\  on the host.
+ This allows specifying a semicolon delimited list of key->value pairs to include in a vmx file of VMware or KVM. For partitioning on normal power machines, this option is used to specify the hugepage and/or bsr information, the value is like:'hugepage:1,bsr=2'. For KVM cpu pinning, this option is used to specify the physical cpu set on the host, the value is like:"vcpupin:'0-15,^8'",Its syntax is a comma separated list and a special markup using '-' and '^' (ex. '0-4', '0-3,^2') can also be allowed, the '-' denotes the range and the '^' denotes exclusive. For KVM memory binding, the value is like:'membind:0', restrict a guest to allocate memory from the specified set of NUMA nodes. For PCI passthrough, the value is like:'devpassthrough:pci_0001_01_00_0,pci_0000_03_00_0', the value for PCI device format also can be like:'devpassthrough:0001:01:00.1', the PCI devices are assigned to a virtual machine, and the virtual machine can use this I/O exclusively, the devices list are a list of PCI device names delimited with comma, the PCI device names can be obtained by running \ **virsh nodedev-list**\  on the host.
  
 
 
@@ -469,12 +487,6 @@ node Attributes:
  
 
 
-\ **machinetype**\  (pdu.machinetype)
- 
- The pdu machine type
- 
-
-
 \ **memory**\  (hwinv.memory)
  
  The size of the memory for the node in MB.
@@ -529,12 +541,6 @@ node Attributes:
  
 
 
-\ **modelnum**\  (pdu.modelnum)
- 
- The pdu model number
- 
-
-
 \ **monserver**\  (noderes.monserver)
  
  The monitoring aggregation point for this node. The format is "x,y" where x is the ip address as known by the management node and y is the ip address as known by the node.
@@ -566,8 +572,8 @@ node Attributes:
  
  .. code-block:: perl
  
-                         Arch                    OS                           valid netboot options 
-                         x86, x86_64             ALL                          pxe, xnba 
+                         Arch                    OS                           valid netboot options
+                         x86, x86_64             ALL                          pxe, xnba
                          ppc64                   <=rhel6, <=sles11.3          yaboot
                          ppc64                   >=rhels7, >=sles11.4         grub2,grub2-http,grub2-tftp
                          ppc64le NonVirtualize   ALL                          petitboot
@@ -629,7 +635,7 @@ node Attributes:
                          If multiple ip addresses are associated with each NIC:
                              <nic1>!<ext1>|<ext2>,<nic2>!<ext1>|<ext2>,..., for example,  eth0!eth0-|eth0-ipv6i-,ib0!ib-|ib-ipv6-. 
                          The xCAT object definition commands support to use nichostnameprefixes.<nicname> as the sub attributes. 
-                         Note:  According to DNS rules a hostname must be a text string up to 24 characters drawn from the alphabet (A-Z), digits (0-9), minus sign (-),and period (.). When you are specifying "nichostnameprefixes" or "nicaliases" make sure the resulting hostnames will conform to this naming convention
+                         Note:  According to DNS rules a hostname must be a text string up to 24 characters drawn from the alphabet (A-Z), digits (0-9) and minus sign (-). When you are specifying "nichostnameprefixes" or "nicaliases" make sure the resulting hostnames will conform to this naming convention
  
 
 
@@ -640,8 +646,13 @@ node Attributes:
                              <nic1>!<ext1>,<nic2>!<ext2>,..., for example, eth0!-eth0,ib0!-ib0
                          If multiple ip addresses are associated with each NIC:
                              <nic1>!<ext1>|<ext2>,<nic2>!<ext1>|<ext2>,..., for example,  eth0!-eth0|-eth0-ipv6,ib0!-ib0|-ib0-ipv6. 
-                         The xCAT object definition commands support to use nichostnamesuffixes.<nicname> as the sub attributes. 
-                         Note:  According to DNS rules a hostname must be a text string up to 24 characters drawn from the alphabet (A-Z), digits (0-9), minus sign (-),and period (.). When you are specifying "nichostnamesuffixes" or "nicaliases" make sure the resulting hostnames will conform to this naming convention
+                         The xCAT object definition commands support to use nichostnamesuffixes.<nicname> as the sub attributes.
+ 
+ 
+ .. code-block:: perl
+ 
+                          Note:  According to DNS rules a hostname must be a text string up to 24 characters drawn from the alphabet (A-Z), digits (0-9) and minus sign (-). When you are specifying "nichostnamesuffixes" or "nicaliases" make sure the resulting hostnames will conform to this naming convention
+ 
  
 
 
@@ -668,8 +679,7 @@ node Attributes:
 
 \ **nicsadapter**\  (nics.nicsadapter)
  
- Comma-separated list of extra parameters that will be used for each NIC configuration.
-                     <nic1>!<param1=value1 param2=value2>,<nic2>!<param4=value4 param5=value5>, for example, enP3p3s0f1!mac=98:be:94:59:fa:cd linkstate=DOWN,enP3p3s0f2!mac=98:be:94:59:fa:ce candidatename=enP3p3s0f2/enx98be9459face
+ Comma-separated list of NIC information collected by getadapter. <nic1>!<param1=value1 param2=value2>,<nic2>!<param4=value4 param5=value5>, for example, enP3p3s0f1!mac=98:be:94:59:fa:cd linkstate=DOWN,enP3p3s0f2!mac=98:be:94:59:fa:ce candidatename=enP3p3s0f2/enx98be9459face
  
 
 
@@ -781,7 +791,7 @@ node Attributes:
  
 
 
-\ **password**\  (ppchcp.password, mpa.password, websrv.password, switches.sshpassword)
+\ **password**\  (ppchcp.password, mpa.password, websrv.password, pdu.password, switches.sshpassword)
  
  Password of the HMC or IVM.  If not filled in, xCAT will look in the passwd table for key=hmc or key=ivm.  If not in the passwd table, the default used is abc123 for HMCs and padmin for IVMs.
  
@@ -795,6 +805,10 @@ node Attributes:
  
  or
  
+ The remote login password
+ 
+ or
+ 
  The remote login password. It can be for ssh or telnet. If it is for telnet, set protocol to "telnet". If the sshusername is blank, the username, password and protocol will be retrieved from the passwd table with "switch" as the key.
  
 
@@ -802,6 +816,12 @@ node Attributes:
 \ **pdu**\  (pduoutlet.pdu)
  
  a comma-separated list of outlet number for each PDU, ex: pdu1:outlet1,pdu2:outlet1
+ 
+
+
+\ **pdutype**\  (pdu.pdutype)
+ 
+ The type of pdu
  
 
 
@@ -874,6 +894,18 @@ node Attributes:
  
 
 
+\ **privkey**\  (pdu.privkey)
+ 
+ The privacy passphrase to use for SNMPv3.
+ 
+
+
+\ **privtype**\  (pdu.privtype)
+ 
+ The privacy protocol(AES|DES) to use for SNMPv3.
+ 
+
+
 \ **productkey**\  (prodkey.key)
  
  The product key relevant to the aforementioned node/group and product combination
@@ -916,6 +948,12 @@ node Attributes:
  
 
 
+\ **seclevel**\  (pdu.seclevel)
+ 
+ The Security Level(noAuthNoPriv|authNoPriv|authPriv) to use for SNMPv3.
+ 
+
+
 \ **serial**\  (vpd.serial)
  
  The serial number of the node.
@@ -925,12 +963,6 @@ node Attributes:
 \ **serialflow**\  (nodehm.serialflow)
  
  The flow control value of the serial port for this node.  For SOL this is typically 'hard'.
- 
-
-
-\ **serialnum**\  (pdu.serialnum)
- 
- The pdu serial number
  
 
 
@@ -954,67 +986,67 @@ node Attributes:
 
 \ **setupconserver**\  (servicenode.conserver)
  
- Do we set up Conserver on this service node?  Valid values:yes or 1, no or 0. If yes, configures and starts conserver daemon. If no or 0, it does not change the current state of the service.
+ Do we set up console service on this service node?  Valid values: 0, 1, or 2. If 0, it does not change the current state of the service. If 1, configures and starts conserver daemon. If 2, configures and starts goconserver daemon.
  
 
 
 \ **setupdhcp**\  (servicenode.dhcpserver)
  
- Do we set up DHCP on this service node? Not supported on AIX. Valid values:yes or 1, no or 0. If yes, runs makedhcp -n. If no or 0, it does not change the current state of the service.
+ Do we set up DHCP on this service node? Not supported on AIX. Valid values:1 or 0. If 1, runs makedhcp -n. If 0, it does not change the current state of the service.
  
 
 
 \ **setupftp**\  (servicenode.ftpserver)
  
- Do we set up a ftp server on this service node? Not supported on AIX Valid values:yes or 1, no or 0. If yes, configure and start vsftpd.  (You must manually install vsftpd on the service nodes before this.) If no or 0, it does not change the current state of the service. xCAT is not using ftp for compute nodes provisioning or any other xCAT features, so this attribute can be set to 0 if the ftp service will not be used for other purposes
+ Do we set up a ftp server on this service node? Not supported on AIX Valid values:1 or 0. If 1, configure and start vsftpd.  (You must manually install vsftpd on the service nodes before this.) If 0, it does not change the current state of the service. xCAT is not using ftp for compute nodes provisioning or any other xCAT features, so this attribute can be set to 0 if the ftp service will not be used for other purposes
  
 
 
 \ **setupipforward**\  (servicenode.ipforward)
  
- Do we set up ip forwarding on this service node? Valid values:yes or 1, no or 0. If no or 0, it does not change the current state of the service.
+ Do we set up ip forwarding on this service node? Valid values:1 or 0. If 0, it does not change the current state of the service.
  
 
 
 \ **setupldap**\  (servicenode.ldapserver)
  
- Do we set up ldap caching proxy on this service node? Not supported on AIX.  Valid values:yes or 1, no or 0. If no or 0, it does not change the current state of the service.
+ Do we set up ldap caching proxy on this service node? Not supported on AIX.  Valid values:1 or 0. If 0, it does not change the current state of the service.
  
 
 
 \ **setupnameserver**\  (servicenode.nameserver)
  
- Do we set up DNS on this service node? Valid values: 2, 1, no or 0. If 2, creates named.conf as dns slave, using the management node as dns master, and starts named. If 1, creates named.conf file with forwarding to the management node and starts named. If no or 0, it does not change the current state of the service.
+ Do we set up DNS on this service node? Valid values: 2, 1, or 0. If 2, creates named.conf as dns slave, using the management node as dns master, and starts named. If 1, creates named.conf file with forwarding to the management node and starts named. If 0, it does not change the current state of the service.
  
 
 
 \ **setupnfs**\  (servicenode.nfsserver)
  
- Do we set up file services (HTTP,FTP,or NFS) on this service node? For AIX will only setup NFS, not HTTP or FTP. Valid values:yes or 1, no or 0.If no or 0, it does not change the current state of the service.
+ Do we set up file services (HTTP,FTP,or NFS) on this service node? For AIX will only setup NFS, not HTTP or FTP. Valid values:1 or 0.If 0, it does not change the current state of the service.
  
 
 
 \ **setupnim**\  (servicenode.nimserver)
  
- Not used. Do we set up a NIM server on this service node? Valid values:yes or 1, no or 0. If no or 0, it does not change the current state of the service.
+ Not used. Do we set up a NIM server on this service node? Valid values:1 or 0. If 0, it does not change the current state of the service.
  
 
 
 \ **setupntp**\  (servicenode.ntpserver)
  
- Not used. Use setupntp postscript to setup a ntp server on this service node? Valid values:yes or 1, no or 0. If no or 0, it does not change the current state of the service.
+ Not used. Use setupntp postscript to setup a ntp server on this service node? Valid values:1 or 0. If 0, it does not change the current state of the service.
  
 
 
 \ **setupproxydhcp**\  (servicenode.proxydhcp)
  
- Do we set up proxydhcp service on this node? valid values: yes or 1, no or 0. If yes, the proxydhcp daemon will be enabled on this node.
+ Do we set up proxydhcp service on this node? valid values: 1 or 0. If 1, the proxydhcp daemon will be enabled on this node.
  
 
 
 \ **setuptftp**\  (servicenode.tftpserver)
  
- Do we set up TFTP on this service node? Not supported on AIX. Valid values:yes or 1, no or 0. If yes, configures and starts atftp. If no or 0, it does not change the current state of the service.
+ Do we set up TFTP on this service node? Not supported on AIX. Valid values:1 or 0. If 1, configures and starts atftp. If 0, it does not change the current state of the service.
  
 
 
@@ -1074,13 +1106,23 @@ node Attributes:
  
 
 
+\ **snmpuser**\  (pdu.snmpuser)
+ 
+ The username to use for SNMPv3 communication, ignored for SNMPv1
+ 
+
+
 \ **snmpusername**\  (switches.username)
  
  The username to use for SNMPv3 communication, ignored for SNMPv1
  
 
 
-\ **snmpversion**\  (switches.snmpversion)
+\ **snmpversion**\  (pdu.snmpversion, switches.snmpversion)
+ 
+ The version to use to communicate with switch.  SNMPv1 is assumed by default.
+ 
+ or
  
  The version to use to communicate with switch.  SNMPv1 is assumed by default.
  
@@ -1088,7 +1130,7 @@ node Attributes:
 
 \ **status**\  (nodelist.status)
  
- The current status of this node.  This attribute will be set by xCAT software.  Valid values: defined, booting, netbooting, booted, discovering, configuring, installing, alive, standingby, powering-off, unreachable. If blank, defined is assumed. The possible status change sequences are: For installation: defined->[discovering]->[configuring]->[standingby]->installing->booting->booted->[alive],  For diskless deployment: defined->[discovering]->[configuring]->[standingby]->netbooting->booted->[alive],  For booting: [alive/unreachable]->booting->[alive],  For powering off: [alive]->powering-off->[unreachable], For monitoring: alive->unreachable. Discovering and configuring are for x Series discovery process. Alive and unreachable are set only when there is a monitoring plug-in start monitor the node status for xCAT. Note that the status values will not reflect the real node status if you change the state of the node from outside of xCAT (i.e. power off the node using HMC GUI).
+ The current status of this node.  This attribute will be set by xCAT software.  Valid values: defined, booting, netbooting, booted, discovering, configuring, installing, alive, standingby, powering-off, unreachable. If blank, defined is assumed. The possible status change sequences are: For installation: defined->[discovering]->[configuring]->[standingby]->installing->booting->[postbooting]->booted->[alive],  For diskless deployment: defined->[discovering]->[configuring]->[standingby]->netbooting->[postbooting]->booted->[alive],  For booting: [alive/unreachable]->booting->[postbooting]->booted->[alive],  For powering off: [alive]->powering-off->[unreachable], For monitoring: alive->unreachable. Discovering and configuring are for x Series discovery process. Alive and unreachable are set only when there is a monitoring plug-in start monitor the node status for xCAT. Note that the status values will not reflect the real node status if you change the state of the node from outside of xCAT (i.e. power off the node using HMC GUI).
  
 
 
@@ -1100,7 +1142,7 @@ node Attributes:
 
 \ **storagcontroller**\  (storage.controller)
  
- The management address to attach/detach new volumes. 
+ The management address to attach/detach new volumes.
  In the scenario involving multiple controllers, this data must be
  passed as argument rather than by table value
  
@@ -1226,7 +1268,7 @@ node Attributes:
  
 
 
-\ **username**\  (ppchcp.username, mpa.username, websrv.username, switches.sshusername)
+\ **username**\  (ppchcp.username, mpa.username, websrv.username, pdu.username, switches.sshusername)
  
  Userid of the HMC or IVM.  If not filled in, xCAT will look in the passwd table for key=hmc or key=ivm.  If not in the passwd table, the default used is hscroot for HMCs and padmin for IVMs.
  
@@ -1237,6 +1279,10 @@ node Attributes:
  or
  
  Userid to use to access the web service.
+ 
+ or
+ 
+ The remote login user name
  
  or
  
@@ -1312,7 +1358,7 @@ node Attributes:
 
 \ **vmothersetting**\  (vm.othersettings)
  
- This allows specifying a semicolon delimited list of key->value pairs to include in a vmx file of VMware or KVM. For partitioning on normal power machines, this option is used to specify the hugepage and/or bsr information, the value is like:'hugepage:1,bsr=2'. For KVM cpu pinning, this option is used to specify the physical cpu set on the host, the value is like:"vcpupin:'0-15,^8'",Its syntax is a comma separated list and a special markup using '-' and '^' (ex. '0-4', '0-3,^2') can also be allowed, the '-' denotes the range and the '^' denotes exclusive. For KVM memory binding, the value is like:'membind:0', restrict a guest to allocate memory from the specified set of NUMA nodes. For PCI passthrough, the value is like:'devpassthrough:pci_0001_01_00_0,pci_0000_03_00_0',the PCI devices are assigned to a virtual machine, and the virtual machine can use this I/O exclusively, the devices list are a list of PCI device names delimited with comma, the PCI device names can be obtained by running \ **virsh nodedev-list**\  on the host.
+ This allows specifying a semicolon delimited list of key->value pairs to include in a vmx file of VMware or KVM. For partitioning on normal power machines, this option is used to specify the hugepage and/or bsr information, the value is like:'hugepage:1,bsr=2'. For KVM cpu pinning, this option is used to specify the physical cpu set on the host, the value is like:"vcpupin:'0-15,^8'",Its syntax is a comma separated list and a special markup using '-' and '^' (ex. '0-4', '0-3,^2') can also be allowed, the '-' denotes the range and the '^' denotes exclusive. For KVM memory binding, the value is like:'membind:0', restrict a guest to allocate memory from the specified set of NUMA nodes. For PCI passthrough, the value is like:'devpassthrough:pci_0001_01_00_0,pci_0000_03_00_0', the value for PCI device format also can be like:'devpassthrough:0001:01:00.1', the PCI devices are assigned to a virtual machine, and the virtual machine can use this I/O exclusively, the devices list are a list of PCI device names delimited with comma, the PCI device names can be obtained by running \ **virsh nodedev-list**\  on the host.
  
 
 

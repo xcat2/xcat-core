@@ -952,6 +952,7 @@ sub setobjdefs
         my @setattrlist = ();
         my %checkedattrs;
         my $invalidattr;
+        my $conditionlist;
 
         foreach my $this_attr (@{ $datatype->{'attrs'} }) {
             my %keyhash;
@@ -1011,7 +1012,12 @@ sub setobjdefs
                         $checkedattrs{$attr_name} = 1;
                         if ($invalidattr->{$attr_name}->{valid} != 1) {
                             $invalidattr->{$attr_name}->{valid} = 0;
-                            $invalidattr->{$attr_name}->{condition} = "\'$check_attr=$check_value\'";
+                            $invalidattr->{$attr_name}->{condition}=$check_attr;
+                            if (defined($conditionlist->{$check_attr})) {
+                                $conditionlist->{$check_attr}=$conditionlist->{$check_attr}.",".$check_value;
+                            } else {
+                                $conditionlist->{$check_attr}=$check_value;
+                            }
                         }
 
                         next;
@@ -1020,8 +1026,12 @@ sub setobjdefs
                     if (!($objhash{$objname}{$check_attr} =~ /\b$check_value\b/) && !($DBattrvals{$objname}{$check_attr} =~ /\b$check_value\b/)) {
                         if ($invalidattr->{$attr_name}->{valid} != 1) {
                             $invalidattr->{$attr_name}->{valid} = 0;
-                            $invalidattr->{$attr_name}->{condition} = "\'$check_attr=$check_value\'";
-
+                            $invalidattr->{$attr_name}->{condition}=$check_attr;
+                            if (defined($conditionlist->{$check_attr})) {
+                                $conditionlist->{$check_attr}=$conditionlist->{$check_attr}.",".$check_value;
+                            } else {
+                                $conditionlist->{$check_attr}=$check_value;
+                            }
                         }
 
                         next;
@@ -1166,20 +1176,19 @@ sub setobjdefs
             if ($invalidattr->{$att}->{valid} != 1) {
                 my $tt = $invalidattr->{$att}->{valid};
                 #if attribute is set invalid, check if its pre-check attribute exists in group objects, pick the attribute into valid. 
-                # ex. if I want to set hdwctrlpoint I will have
-                # to match the right value for mgtmethod, but mgtmethod does exist in node object in chdef command
-                # if mgtmethod exists in group objects, set hdwctrlpoint valid 
-                my $conditionkv=$invalidattr->{$att}->{condition};
-                $conditionkv=~s/(^'|'$)//g;
-                my ($attk, $attv)=split("=", $conditionkv);
-                    foreach my $tmpgrp (@tmplgrplist) {
-                        if ($DBgroupsattr{$tmpgrp}{$attk} eq $attv) {
-                            $pickvalidattr=1;
-                            last;
-                        }
+                # ex. like if I want to set hdwctrlpoint I will have
+                # to match the right value for mgtmethod 
+                # if mgtmethod exists in group objects and its value match the one of only_if value, set hdwctrlpoint valid 
+                my $conditionkey=$invalidattr->{$att}->{condition};
+                foreach my $tmpgrp (@tmplgrplist) {
+                    if (($DBgroupsattr{$tmpgrp}{$conditionkey}) && ($conditionlist->{$conditionkey} =~ $DBgroupsattr{$tmpgrp}{$conditionkey})) {
+                        $pickvalidattr=1;
+                        last;
                     }
+                }
                 if ($pickvalidattr != 1) {
-                    push @{ $rsp->{data} }, "Cannot set the attr=\'$att\' attribute unless $invalidattr->{$att}->{condition}.";
+                    $conditionlist->{$conditionkey}=~s/,/ or /g;
+                    push @{ $rsp->{data} }, "Cannot set the attr=\'$att\' attribute unless $invalidattr->{$att}->{condition} value is $conditionlist->{$conditionkey}.";
                     xCAT::MsgUtils->message("E", $rsp, $::callback);
                 }
             }
@@ -1670,13 +1679,10 @@ sub readFileInput
 
             #  could have different default stanzas for different object types
 
-            if ($objectname =~ /default/) {
+            if ($objectname =~ /^default-([^-]+)$/) {
 
-                ($junk1, $objtype) = split(/-/, $objectname);
-
-                if ($objtype) {
-                    $objectname = 'default';
-                }
+                $objtype = $1;
+                $objectname = 'default';
 
                 next;
             }

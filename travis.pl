@@ -101,6 +101,8 @@ sub check_pr_format{
         my $pr_content = decode_json($pr_url_resp);
         my $pr_title = $pr_content->{title};
         my $pr_body  = $pr_content->{body};
+        my $pr_milestone = $pr_content->{milestone};
+        my $pr_labels_len = @{$pr_content->{labels}};
 
         #print "[check_pr_format] Dumper pr_content:\n";
         #print Dumper $pr_content;
@@ -115,6 +117,14 @@ sub check_pr_format{
              $checkrst.="Miss description.";
         }
         
+        if(! $pr_milestone){
+             $checkrst.="Miss milestone.";
+        }
+
+        if(! $pr_labels_len){
+             $checkrst.="Miss labels.";
+        }
+
         if(length($checkrst) == 0){
             $check_result_str .= "> **PR FORMAT CORRECT**";
             send_back_comment("$check_result_str"); 
@@ -218,8 +228,8 @@ sub install_xcat{
     
     my @cmds = ("cd ./../../xcat-core && sudo ./mklocalrepo.sh",
                "sudo chmod 777 /etc/apt/sources.list",
-               "sudo echo \"deb [arch=amd64] http://xcat.org/files/xcat/repos/apt/xcat-dep trusty main\" >> /etc/apt/sources.list",
-               "sudo echo \"deb [arch=ppc64el] http://xcat.org/files/xcat/repos/apt/xcat-dep trusty main\" >> /etc/apt/sources.list",
+               "sudo echo \"deb [arch=amd64] http://xcat.org/files/xcat/repos/apt/devel/xcat-dep trusty main\" >> /etc/apt/sources.list",
+               "sudo echo \"deb [arch=ppc64el] http://xcat.org/files/xcat/repos/apt/devel/xcat-dep trusty main\" >> /etc/apt/sources.list",
                "sudo wget -q -O - \"http://xcat.org/files/xcat/repos/apt/apt.key\" | sudo apt-key add -",
                "sudo apt-get -qq update");
     my @output;

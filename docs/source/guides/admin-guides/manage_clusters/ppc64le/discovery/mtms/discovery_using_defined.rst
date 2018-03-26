@@ -126,7 +126,7 @@ The BMC IP address is obtained by the open range dhcp server and the plan in thi
 
    Configure the conserver for the **discovered** node to watch the discovery process using ``rcons``::
 
-       makeconservercf node-8247-22l-10112ca
+       makegocons node-8247-22l-10112ca
 
    In another terminal window, open the remote console: ::
 

@@ -64,7 +64,8 @@ sub process_request
         unless ($request->{'_xcat_clienthost'}->[0]) {
 
             #ERROR? malformed request
-            return;                                   #nothing to do here...
+            xCAT::MsgUtils->trace(0, 'E', "Received malformed getpostscript requesting, ignore it.");
+            return;
         }
         $client = $request->{'_xcat_clienthost'}->[0];
     }
@@ -72,7 +73,7 @@ sub process_request
     my $origclient = $client;
     if ($client) { ($client) = noderange($client) }
     unless ($client) {    #Not able to do identify the host in question
-        xCAT::MsgUtils->message("S", "Received getpostscript from $origclient, which couldn't be correlated to a node (domain mismatch?)");
+        xCAT::MsgUtils->trace(0, "E", "Received getpostscript from $origclient, which couldn't be correlated to a node (domain mismatch?)");
         return;
     }
     my $state;
@@ -88,18 +89,18 @@ sub process_request
     my $notmpfiles;
     my $nofiles;
 
-    # If not version=2, then we return the mypostscript file  in an array.
+    # If not version=2, then we return the mypostscript file in an array.
     if ($version != 2) {
         $notmpfiles = 1;    # no tmp files and no files
         $nofiles = 1; # do not create /tftpboot/mypostscript/mypostscript.<nodename>
         @scriptcontents = xCAT::Postage::makescript([$client], $state, $callback, $notmpfiles, $nofiles);
-        `logger -t xcat -p local4.info "getpostscript: sending data"`;
+        xCAT::MsgUtils->trace(0, "I", "getpostscript: Sending scripts data to $client...");
         $rsp->{data} = \@scriptcontents;
         $callback->($rsp);
     } else {          # version 2, make files, do not return array
-           #  make the mypostscript.<nodename> file
-           # or the mypostscript.<nodename>.tmp file if precreatemypostscripts=0
-           # xcatdsklspost will wget the file
+        #  make the mypostscript.<nodename> file
+        # or the mypostscript.<nodename>.tmp file if precreatemypostscripts=0
+        # xcatdsklspost will wget the file
         $notmpfiles = 0;
         $nofiles    = 0;
         xCAT::Postage::makescript([$client], $state, $callback, $notmpfiles, $nofiles);

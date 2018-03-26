@@ -8,6 +8,7 @@ Advanced Topics
    cluster_maintenance/index.rst
    migration/index.rst
    confluent/index.rst
+   goconserver/index.rst
    docker/index.rst
    domain_name_resolution/index.rst
    gpu/index.rst
@@ -23,6 +24,6 @@ Advanced Topics
    restapi/index.rst
    security/index.rst
    softlayer/index.rst
-   switches/index.rst
    sysclone/index.rst
    zones/index.rst
+   xcat-inventory/index.rst

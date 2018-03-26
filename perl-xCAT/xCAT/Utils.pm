@@ -48,7 +48,7 @@ require xCAT::Version;
 require DBI;
 
 our @ISA       = qw(Exporter);
-our @EXPORT_OK = qw(genpassword runcmd3);
+our @EXPORT_OK = qw(genpassword runcmd3 natural_sort_cmp);
 
 # The functions that has been moved to TableUtils.pm
 
@@ -4918,5 +4918,54 @@ sub acquire_lock_imageop {
     return (0,$lock);
 }
 
+#--------------------------------------------------------------------------------
+
+=head3  natural_sort_cmp
+      compare $left and $right by natural ordering.
+=cut
+
+#--------------------------------------------------------------------------------
+sub natural_sort_cmp($$) {
+    my $left = shift;
+    my $right = shift;
+    while() {
+        if( !($left =~ /\d+(\.\d+)?/) ) {
+            return $left cmp $right;
+        }
+        my $before = $`;
+        my $match = $&;
+        my $after = $';
+        if( !($right =~ /\d+(\.\d+)?/) ) {
+            return $left cmp $right;
+        }
+        if( $before ne $` ) {
+            return $left cmp $right;
+        } elsif( $match != $& ) {
+            return $match <=> $&;
+        } else {
+            $left = $after;
+            $right = $';
+        }
+    }
+}
+
+#--------------------------------------------------------------------------------
+
+=head3  console_sleep
+      A wrap for sleep subroutine, if goconserver is used, just exit immidiately
+      as goconserver has its own sleep mechanism.
+=cut
+
+#--------------------------------------------------------------------------------
+sub console_sleep {
+    my $time = shift;
+    my $message = shift;
+    if($ENV{CONSOLE_TYPE} && $ENV{CONSOLE_TYPE} eq "gocons") {
+        # sleep time is handled by goconserver itself
+        exit(1);
+    }
+    print $message if $message;
+    sleep($time);
+}
 
 1;

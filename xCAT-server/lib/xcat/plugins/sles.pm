@@ -418,41 +418,21 @@ sub mknetboot
         my $ient;
         my $xcatmaster;
 
-        $ient = $restab->getNodeAttribs($node, ['xcatmaster']);
-        if ($ient and $ient->{xcatmaster})
-        {
+        $ient = $reshash->{$node}->[0]; #$restab->getNodeAttribs($node, ['tftpserver']);
+        if ($ient and $ient->{xcatmaster}) {
             $xcatmaster = $ient->{xcatmaster};
         } else {
             $xcatmaster = '!myipfn!'; #allow service nodes to dynamically nominate themselves as a good contact point, this is of limited use in the event that xcat is not the dhcp/tftp server
         }
 
-        $ient = $restab->getNodeAttribs($node, ['tftpserver']);
-        if ($ient and $ient->{tftpserver})
-        {
+        if ($ient and $ient->{nfsserver} and $ient->{nfsserver} ne '<xcatmaster>') {
+            $imgsrv = $ient->{nfsserver};
+        }elsif ($ient and $ient->{tftpserver} and $ient->{tftpserver} ne '<xcatmaster>') {
             $imgsrv = $ient->{tftpserver};
-        }
-        else
-        {
-            #    $ient = $restab->getNodeAttribs($node, ['xcatmaster']);
-            #    if ($ient and $ient->{xcatmaster})
-            #    {
-            #        $imgsrv = $ient->{xcatmaster};
-            #    }
-            #    else
-            #    {
-            #        # master removed, does not work for servicenode pools
-            #        #$ient = $sitetab->getAttribs({key => master}, value);
-            #        #if ($ient and $ient->{value})
-            #        #{
-            #         #   $imgsrv = $ient->{value};
-            #        #}
-            #        #else
-            #        #{
-            #        $imgsrv = '!myipfn!';
-            #        #}
-            #    }
+        } else {
             $imgsrv = $xcatmaster;
         }
+
         unless ($imgsrv)
         {
             xCAT::MsgUtils->report_node_error($callback, $node, "Unable to determine or reasonably guess the image server for $node");
@@ -470,14 +450,8 @@ sub mknetboot
                 my $nfssrv = $imgsrv;
                 my $nfsdir = $rootimgdir;
 
-                if ($restab) {
-                    my $resHash = $restab->getNodeAttribs($node, [ 'nfsserver', 'nfsdir' ]);
-                    if ($resHash and $resHash->{nfsserver}) {
-                        $nfssrv = $resHash->{nfsserver};
-                    }
-                    if ($resHash and $resHash->{nfsdir} ne '') {
-                        $nfsdir = $resHash->{nfsdir} . "/netboot/$osver/$arch/$profile";
-                    }
+                if ($ient->{nfsdir} ne '') {
+                    $nfsdir = $ient->{nfsdir} . "/netboot/$osver/$arch/$profile";
                 }
                 if (&using_dracut($rootimgdir)) {
                     $kcmdline = "root=nfs:$nfssrv:$nfsdir/rootimg:ro STATEMNT=";

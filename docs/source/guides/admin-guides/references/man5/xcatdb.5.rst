@@ -356,6 +356,10 @@ zone(7)|zone.7
 
 
 
+zvmivp(7)|zvmivp.7
+
+
+
 
 
 ******
@@ -801,6 +805,12 @@ zone(5)|zone.5
 zvm(5)|zvm.5
  
  List of z/VM virtual servers.
+ 
+
+
+zvmivp(5)|zvmivp.5
+ 
+ List of z/VM Installation Verification Procedures (IVPs) to be periodically run.
  
 
 

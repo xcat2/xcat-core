@@ -24,24 +24,23 @@ BEGIN
     use File::Path;
     use Fcntl qw(:DEFAULT :flock);
     $::XCATROOT = $ENV{'XCATROOT'} ? $ENV{'XCATROOT'} : '/opt/xcat';
-    umask 0077;
-    mkpath("/tmp/xcat/");
-    unless (sysopen(LOCKHANDLE, "/tmp/xcat/consolelock", O_WRONLY | O_CREAT)) {
-        sleep 15;
-        print "Unable to open lock file";
-        exit 0;
-    }
-    get_lock();
 }
 my $sleepint = int(rand(10));
 use lib "$::XCATROOT/lib/perl";
 require xCAT::Client;
+require xCAT::Utils;
 use strict;
 use xCAT::PPCcli qw(SUCCESS EXPECT_ERROR RC_ERROR NR_ERROR);
 use Data::Dumper;
 require File::Basename;
-import File::Basename;
-my $scriptname = $0;
+
+umask 0077;
+mkpath("/tmp/xcat/");
+unless (sysopen(LOCKHANDLE, "/tmp/xcat/consolelock", O_WRONLY | O_CREAT)) {
+    xCAT::Utils::console_sleep(15, "Unable to open lock file");
+    exit 0;
+}
+get_lock();
 
 ##############################################
 # Globals
@@ -109,8 +108,7 @@ xCAT::Client::submit_request($cmdref, \&getans);
 until ($lparid and $host and $mtms) {
     release_lock();    #Let other clients have a go
     $sleepint = 10 + int(rand(20)); #Stagger to minimize lock collisions, but no big deal when it does happen
-    print "Console not ready, retrying in $sleepint seconds (Hit Ctrl-E,c,o to skip delay)\n";
-    sleep $sleepint;
+    xCAT::Utils::console_sleep($sleepint, "Console not ready, retrying in $sleepint seconds (Hit Ctrl-E,c,o to skip delay)\n");
     get_lock();
     xCAT::Client::submit_request($cmdref, \&getans);
 }

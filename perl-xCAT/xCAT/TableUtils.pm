@@ -186,6 +186,8 @@ sub bldnonrootSSHFiles
     if (xCAT::Utils->isMN()) {    # if on Management Node
         if (!(-e "$home/.ssh/id_rsa.pub"))
         {
+            $rsp->{data}->[0] = "$home/.ssh/id_rsa.pub does not exist!";
+            xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);            
             return 1;
         }
     }
@@ -208,6 +210,11 @@ sub bldnonrootSSHFiles
     if (xCAT::Utils->isMN()) {    # if on Management Node
         $cmd = " cp $home/.ssh/id_rsa.pub $home/.ssh/tmp/authorized_keys";
     } else {                      # SN
+        if(!(-e "$home/.ssh/authorized_keys")){
+            $rsp->{data}->[0] = "$home/.ssh/authorized_keys does not exist, make sure you have setup the ssh-keys on this service node.\n";
+            xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
+            return (1);   
+        }
         $cmd = " cp $home/.ssh/authorized_keys $home/.ssh/tmp/authorized_keys";
     }
     xCAT::Utils->runcmd($cmd, 0);
@@ -344,6 +351,11 @@ sub setupSSH
 
     # Get the home directory
     my $home = xCAT::Utils->getHomeDir($from_userid);
+    unless($home){
+        $rsp->{data}->[0] = "Cannot get the home directory for user \"$from_userid\", please make sure \"$from_userid\" user exists!";
+        xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
+        return 1;
+    }
     $ENV{'DSH_FROM_USERID_HOME'} = $home;
     if ($from_userid eq "root")
     {
@@ -356,6 +368,10 @@ sub setupSSH
         # generates new keys for root, if they do not already exist ~/.ssh
 
         # nodes not used on this option but in there to preserve the interface
+        if($::VERBOSE){
+            $rsp->{data}->[0] = "Generating SSH keys for $from_userid.\n";
+            xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
+        }
         my $rc =
           xCAT::RemoteShellExp->remoteshellexp("k", $::CALLBACK, $::REMOTE_SHELL, $n_str, $expecttimeout);
         if ($rc != 0) {
@@ -363,11 +379,20 @@ sub setupSSH
             xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
         }
     }
-
     # build the shell copy script, needed Perl not always there
     # for root and non-root ids
-    open(FILE, ">$home/.ssh/copy.sh")
-      or die "cannot open file $home/.ssh/copy.sh\n";
+    if($::VERBOSE){
+        $rsp->{data}->[0] = "Creating helper script \"$home/.ssh/copy.sh\" to install the ssh key files, which will be sent and invoked to target node then.\n";
+        xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
+    }
+
+
+    unless(open(FILE, ">$home/.ssh/copy.sh"))
+    { 
+        $rsp->{data}->[0] ="cannot create file $home/.ssh/copy.sh, please make sure the directory \"$home/.ssh\" exists and ssh keys have been setup on this node!\n";
+        xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
+        return 1;
+    }
     print FILE "#!/bin/sh
 umask 0077
 home=`egrep \"^$to_userid:\" /etc/passwd | cut -f6 -d :`

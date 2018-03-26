@@ -9,6 +9,7 @@ fi
 
 xcat_intf="/etc/network/interfaces.d/xCAT.intf"
 
+MASTER=$(cat /var/lib/dhcp/dhclient.eth0.leases|sed -n 's/.*cumulus-provision-url.*http:\/\+\([^\/]\+\)\/.*/\1/p'|tail -1)
 if [ -z "$MASTER" ]; then
     echo "xCAT Master unset! Cannot download interface description"
     exit 2
@@ -61,8 +62,9 @@ if [ ! -f $xcat_intf ]; then
 fi
 
 # license needs to set before start switchd
-if [ ! -e /etc/cumulus/.license* ]; then
-   echo "ERROR: cumulus license file does not exist";
+/usr/cumulus/bin/cl-license 2>/dev/null
+if [ $? -ne 0 ]; then
+   echo "ERROR: cumulus license does not exist";
    exit 1;
 fi
 

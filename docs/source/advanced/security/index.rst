@@ -6,4 +6,5 @@ The security of a system covers a wide range of elements, from the security of s
 .. toctree::
    :maxdepth: 2
 
-   security
+   ssl_config.rst
+   security.rst

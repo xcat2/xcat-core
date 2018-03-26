@@ -6,6 +6,10 @@ use File::Path;
 BEGIN {
     $::XCATROOT = $ENV{'XCATROOT'} ? $ENV{'XCATROOT'} : -d '/opt/xcat' ? '/opt/xcat' : '/usr';
 }
+use lib "$::XCATROOT/lib/perl";
+require xCAT::Client;
+require xCAT::Utils;
+
 my $sleepint = int(rand(10)); #Stagger start to avoid overwhelming conserver/xCATd
 my ($lockfd, $bmc);
 my $username = 'USERID';
@@ -20,21 +24,18 @@ sub acquire_lock {
     mkpath(CONSOLE_LOCK_DIR);
     print "Acquiring startup lock...";
     unless (sysopen($lockfd, CONSOLE_LOCK_FILE, O_WRONLY | O_CREAT)) {
-        print "Unable to open file ".CONSOLE_LOCK_FILE."\n";
-        sleep(15);
+        xCAT::Utils::console_sleep(15, "Unable to open file ".CONSOLE_LOCK_FILE."\n");
         exit 1;
     }
     unless (flock($lockfd, LOCK_EX)) {
-        print "Unable to lock file ".CONSOLE_LOCK_FILE."\n";
         close($lockfd);
-        sleep(15);
+        xCAT::Utils::console_sleep(15, "Unable to lock file ".CONSOLE_LOCK_FILE."\n");
         exit 1;
     }
     print "done\n";
     unless (syswrite($lockfd, $$, length($$))) {
-        print "Unable to write file ".CONSOLE_LOCK_FILE."\n";
         close($lockfd);
-        sleep(15);
+        xCAT::Utils::console_sleep(15, "Unable to write file ".CONSOLE_LOCK_FILE."\n");
         exit 1;
     }
 }
@@ -43,10 +44,6 @@ sub release_lock {
     flock($lockfd, LOCK_UN);
     close($lockfd);
 }
-
-
-use lib "$::XCATROOT/lib/perl";
-require xCAT::Client;
 
 sub getans {
     my $rsp = shift;
@@ -74,8 +71,7 @@ xCAT::Client::submit_request($cmdref, \&getans);
 until (($username or $password) and $bmc) {
     #Let other clients have a go
     $sleepint = 10 + int(rand(20));
-    print "Console not ready, retrying in $sleepint seconds (Ctrl-e,c,o to skip delay) \n";
-    sleep ($sleepint);
+    xCAT::Utils::console_sleep($sleepint, "Console not ready, retrying in $sleepint seconds (Ctrl-e,c,o to skip delay) \n");
     acquire_lock();
     sleep(0.1);
     release_lock();
@@ -109,8 +105,7 @@ if ($rc) { #some shoddy vendors ignore the IPMI 2.0 requirement to support IPMI 
 }
 while ($rc != 0) {
     $sleepint = 10 + int(rand(20));
-    print "Failure to reach IPMI device, retrying in $sleepint seconds (Hit Ctrl-E,c,o to skip)\n";
-    sleep ($sleepint);
+    xCAT::Utils::console_sleep($sleepint, "Failure to reach IPMI device, retrying in $sleepint seconds (Hit Ctrl-E,c,o to skip)\n");
     @mcinfo = `$ipmitool -I lanplus $user $pass -H $bmc mc info`;
     $rc     = $?;
     if ($rc) {    #repeat workaround for shoddy vendors

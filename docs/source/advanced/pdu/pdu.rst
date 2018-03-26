@@ -1,17 +1,39 @@
-PDU
-===
+Discovering PDUs
+================
 
-xCAT provides basic remote management for each power outlet plugged into the PDUs using SNMP communication.  This documentation will focus on configuration of the PDU and Node objects to allow xCAT to control power at the PDU outlet level.  
+xCAT provides `pdudiscover` command to discover the PDUs that are attached to the neighboring subnets on xCAT management node. ::
+
+    pdudiscover [<noderange>|--range ipranges] [-r|-x|-z] [-w] [-V|--verbose] [--setup]
+
+xCAT uses snmp scan method to discover PDU.  Make sure net-snmp-utils package is installed on xCAT MN in order to use snmpwalk command. ::
+
+    Options:
+     --range   Specify one or more IP ranges. Each can be an ip address (10.1.2.3) or an ip range
+                 (10.1.2.0/24). If the range is huge, for example, 192.168.1.1/8, the pdu
+                 discover may take a very long time to scan. So the range should be exactly
+                 specified.  It accepts multiple formats. For example:
+                 192.168.1.1/24, 40-41.1-2.3-4.1-100.
+
+                 If the range is not specified, the command scans all the subnets that the active
+                 network interfaces (eth0, eth1) are on where this command is issued.
+       -r        Display Raw responses.
+       -x        XML formatted output.
+       -z        Stanza formatted output.
+       -w        Writes output to xCAT database.
+       --setup   Process switch-based pdu discovery and configure the PDUs. For crpdu, --setup options will configure passwordless , change ip address from dhcp to static, hostname changes and snmp v3 configuration. For irpdu, it will configure ip address and hostname.  It required predefined PDU node definition with switch name and switch port attributes for mapping.
 
 
 Define PDU Objects
 ------------------
 
 
-
 #. Define pdu object ::
 
-    mkdef f5pdu3 groups=pdu ip=50.0.0.8 mgt=pdu nodetype=pdu
+    mkdef f5pdu3 groups=pdu ip=50.0.0.8 mgt=pdu nodetype=pdu pdutype=irpdu
+
+#. Define switch attribute for pdu object which will be used for pdudiscover **--setup** options. ::
+
+    chdef f5pdu3 switch=mid08 switchport=3
 
 #. Add hostname to /etc/hosts::
 
@@ -19,129 +41,6 @@ Define PDU Objects
 
 #. Verify the SNMP command responds against the PDU: ::
 
-    snmpwalk -v1 -cpublic -mALL f5pdu3 .1.3.6.1.2.1.1
-
-
-Define PDU Attribute
---------------------
-
-Administrators will need to know the exact mapping of the outlets to each server in the frame.  xCAT cannot validate the physical cable is connected to the correct server. 
-
-Add a ``pdu`` attribute to the compute node definition in the form "PDU_Name:outlet": ::
-
-    #
-    # Compute server cn01 has two power supplies 
-    # connected to outlet 6 and 7 on pdu=f5pdu3
-    #
-    chdef cn01 pdu=f5pdu3:6,f5pdu3:7
-
-
-Verify the setting: ``lsdef cn01 -i pdu``
-
-
-PDU Commands
-------------
-
-The following commands are supported against a compute node: 
-
-   * Check the pdu status for a compute node: ::
-   
-       # rpower cn01 pdustat
-         cn01: f5pdu3 outlet 6 is on
-         cn01: f5pdu3 outlet 7 is on
-
-
-   * Power off the PDU outlets on a compute node: :: 
-   
-       # rpower cn01 pduoff
-         cn01: f5pdu3 outlet 6 is off
-         cn01: f5pdu3 outlet 7 is off
-
-   * Power on the PDU outlets on a compute node: :: 
-   
-       # rpower cn01 pduon
-         cn01: f5pdu3 outlet 6 is on
-         cn01: f5pdu3 outlet 7 is on
-
-   * Power cycling the PDU outlets on a compute node: :: 
-   
-       # rpower cn01 pdureset
-         cn01: f5pdu3 outlet 6 is reset 
-         cn01: f5pdu3 outlet 7 is reset
-
-The following commands are supported against a PDU: 
-
-   * Check the status of the full PDU: ::
-
-       # rinv f5pdu3
-         f5pdu3: outlet 1 is on
-         f5pdu3: outlet 2 is on
-         f5pdu3: outlet 3 is on
-         f5pdu3: outlet 4 is on
-         f5pdu3: outlet 5 is on
-         f5pdu3: outlet 6 is off
-         f5pdu3: outlet 7 is off
-         f5pdu3: outlet 8 is on
-         f5pdu3: outlet 9 is on
-         f5pdu3: outlet 10 is on
-         f5pdu3: outlet 11 is on
-         f5pdu3: outlet 12 is on
-
-   * Power off the full PDU: ::
-   
-       # rpower f5pdu3 off
-         f5pdu3: outlet 1 is off
-         f5pdu3: outlet 2 is off
-         f5pdu3: outlet 3 is off
-         f5pdu3: outlet 4 is off
-         f5pdu3: outlet 5 is off
-         f5pdu3: outlet 6 is off
-         f5pdu3: outlet 7 is off
-         f5pdu3: outlet 8 is off
-         f5pdu3: outlet 9 is off
-         f5pdu3: outlet 10 is off
-         f5pdu3: outlet 11 is off
-         f5pdu3: outlet 12 is off
-
-   * Power on the full PDU: ::
-
-       # rpower f5pdu3 on
-         f5pdu3: outlet 1 is on
-         f5pdu3: outlet 2 is on
-         f5pdu3: outlet 3 is on
-         f5pdu3: outlet 4 is on
-         f5pdu3: outlet 5 is on
-         f5pdu3: outlet 6 is on
-         f5pdu3: outlet 7 is on
-         f5pdu3: outlet 8 is on
-         f5pdu3: outlet 9 is on
-         f5pdu3: outlet 10 is on
-         f5pdu3: outlet 11 is on
-         f5pdu3: outlet 12 is on
-
-   * Power reset the full PDU: ::
-   
-       # rpower f5pdu3 reset
-         f5pdu3: outlet 1 is reset
-         f5pdu3: outlet 2 is reset
-         f5pdu3: outlet 3 is reset
-         f5pdu3: outlet 4 is reset
-         f5pdu3: outlet 5 is reset
-         f5pdu3: outlet 6 is reset
-         f5pdu3: outlet 7 is reset
-         f5pdu3: outlet 8 is reset
-         f5pdu3: outlet 9 is reset
-         f5pdu3: outlet 10 is reset
-         f5pdu3: outlet 11 is reset
-         f5pdu3: outlet 12 is reset
-   
-   
-**Note:** For BMC based compute nodes, turning the PDU outlet power on does not automatically power on the compute side.  Users will need to issue ``rpower <node> on`` to power on the compute node after the BMC boots. 
-
-
-
-
-
-
+    snmpwalk -v1 -cpublic -mALL f5pdu3 system 
 
 

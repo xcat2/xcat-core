@@ -19,7 +19,7 @@ SYNOPSIS
 ********
 
 
-\ **rspconfig**\  [\ **-h | -**\ **-help | -v | -**\ **-version**\ ]
+\ **rspconfig**\  [\ **-h | -**\ **-help | -v | -**\ **-version | -V | -**\ **-verbose**\ ]
 
 BMC/MPA specific:
 =================
@@ -47,7 +47,45 @@ OpenBMC specific:
 =================
 
 
-\ **rspconfig**\  \ *noderange*\  {\ **ipsrc | ip | netmask | gateway | hostname | vlan | sshcfg**\ }
+\ **rspconfig**\  \ *noderange*\  {\ **ipsrc | ip | netmask | gateway | vlan**\ }
+
+\ **rspconfig**\  \ *noderange*\  \ **admin_passwd**\ ={\ *currentpasswd,newpasswd*\ }
+
+\ **rspconfig**\  \ *noderange*\  \ **autoreboot**\ 
+
+\ **rspconfig**\  \ *noderange*\  \ **autoreboot={0|1}**\ 
+
+\ **rspconfig**\  \ *noderange*\  \ **bootmode**\ 
+
+\ **rspconfig**\  \ *noderange*\  \ **bootmode={safe|regular|setup}**\ 
+
+\ **rspconfig**\  \ *noderange*\  \ **dump**\  [\ **-l | -**\ **-list**\ ] [\ **-g | -**\ **-generate**\ ] [\ **-c | -**\ **-clear**\  {\ *id*\  | \ **all**\ }] [\ **-d | -**\ **-download**\  {\ *id*\  | \ **all**\ }]
+
+\ **rspconfig**\  \ *noderange*\  \ **gard -c|-**\ **-clear**\ 
+
+\ **rspconfig**\  \ *noderange*\  \ **ip=dhcp**\ 
+
+\ **rspconfig**\  \ *noderange*\  \ **hostname**\ 
+
+\ **rspconfig**\  \ *noderange*\  \ **hostname**\ ={\* | \ *name*\ }
+
+\ **rspconfig**\  \ *noderange*\  \ **ntpservers**\ 
+
+\ **rspconfig**\  \ *noderange*\  \ **ntpservers**\ ={\ *ntpservers*\ }
+
+\ **rspconfig**\  \ *noderange*\  \ **powerrestorepolicy**\ 
+
+\ **rspconfig**\  \ *noderange*\  \ **powerrestorepolicy={always_on|restore|always_off}**\ 
+
+\ **rspconfig**\  \ *noderange*\  \ **powersupplyredundancy**\ 
+
+\ **rspconfig**\  \ *noderange*\  \ **powersupplyredundancy={disabled|enabled}**\ 
+
+\ **rspconfig**\  \ *noderange*\  \ **sshcfg**\ 
+
+\ **rspconfig**\  \ *noderange*\  \ **timesyncmethod**\ 
+
+\ **rspconfig**\  \ *noderange*\  \ **timesyncmethod={manual|ntp}**\ 
 
 
 MPA specific:
@@ -113,9 +151,9 @@ FSP/CEC specific:
 
 \ **rspconfig**\  \ *noderange*\  \ **admin_passwd**\ ={\ *currentpasswd,newpasswd*\ }
 
-\ **rspconfig**\  \ *noderange*\  \ **general_passwd**\ ={\ **currentpasswd,newpasswd**\ }
+\ **rspconfig**\  \ *noderange*\  \ **general_passwd**\ ={\ *currentpasswd,newpasswd*\ }
 
-\ **rspconfig**\  \ *noderange*\  \*\ **_passwd**\ ={\ **currentpasswd,newpasswd**\ }
+\ **rspconfig**\  \ *noderange*\  \*\ **_passwd**\ ={\ *currentpasswd,newpasswd*\ }
 
 \ **rspconfig**\  \ *noderange*\  {\ *hostname*\ }
 
@@ -176,9 +214,9 @@ FSP/CEC (using Direct FSP Management) Specific:
 
 \ **rspconfig**\  \ *noderange*\  \ **admin_passwd**\ ={\ *currentpasswd,newpasswd*\ }
 
-\ **rspconfig**\  \ *noderange*\  \ **general_passwd**\ ={\ **currentpasswd,newpasswd**\ }
+\ **rspconfig**\  \ *noderange*\  \ **general_passwd**\ ={\ *currentpasswd,newpasswd*\ }
 
-\ **rspconfig**\  \ *noderange*\  \*\ **_passwd**\ ={\ **currentpasswd,newpasswd**\ }
+\ **rspconfig**\  \ *noderange*\  \*\ **_passwd**\ ={\ *currentpasswd,newpasswd*\ }
 
 \ **rspconfig**\  \ *noderange*\  {\ **sysname**\ }
 
@@ -215,9 +253,9 @@ BPA/Frame (using Direct FSP Management) Specific:
 
 \ **rspconfig**\  \ *noderange*\  \ **admin_passwd**\ ={\ *currentpasswd,newpasswd*\ }
 
-\ **rspconfig**\  \ *noderange*\  \ **general_passwd**\ ={\ **currentpasswd,newpasswd**\ }
+\ **rspconfig**\  \ *noderange*\  \ **general_passwd**\ ={\ *currentpasswd,newpasswd*\ }
 
-\ **rspconfig**\  \ *noderange*\  \*\ **_passwd**\ ={\ **currentpasswd,newpasswd**\ }
+\ **rspconfig**\  \ *noderange*\  \*\ **_passwd**\ ={\ *currentpasswd,newpasswd*\ }
 
 \ **rspconfig**\  \ *noderange*\  {\ **frame**\ }
 
@@ -340,6 +378,12 @@ OPTIONS
  
 
 
+\ **gard -c|-**\ **-clear**\ 
+ 
+ Clear gard file. [OpenBMC]
+ 
+
+
 \ **garp**\ =\ *time*\ 
  
  Get or set Gratuitous ARP generation interval. The unit is number of 1/2 second.
@@ -430,6 +474,59 @@ OPTIONS
  
 
 
+\ **powerrestorepolicy**\ 
+ 
+ Display or control BMC Power Restore Policy attribute setting. [OpenBMC]
+ 
+
+
+\ **powersupplyredundancy**\ 
+ 
+ Display or control BMC Power Supply Redundancy attribute setting. [OpenBMC]
+ 
+
+
+\ **autoreboot**\ 
+ 
+ Display or control BMC Auto Reboot attribute setting. [OpenBMC]
+ 
+
+
+\ **bootmode**\ 
+ 
+ Display or control BMC Boot Mode attribute setting. [OpenBMC]
+ 
+
+
+\ **dump**\ 
+ 
+ Generate/Manage BMC system dumps. If no sub-option is provided, will generate, wait, and download the dump. [OpenBMC]
+ 
+ 
+ \ **-c**\  will clear a single specified dump, or use 'all' to clear all dumps on the BMC.
+ 
+ 
+ 
+ \ **-l**\  will list all the generated dumps on the BMC.
+ 
+ 
+ 
+ \ **-g**\  will generate a new dump on the BMC. Dump generation can take a few minutes.
+ 
+ 
+ 
+ \ **-d**\  will download a single dump or all generated dumps from the BMC to /var/log/xcat/dump on management or service node.
+ 
+ 
+ 
+
+
+\ **timesyncmethod**\ 
+ 
+ Set the method for time synchronization on the BMC. [OpenBMC]
+ 
+
+
 \ **network**\ ={[\ *ip*\ ],[\ *host*\ ],[\ *gateway*\ ],[\ *netmask*\ ]|\*}
  
  For MPA:  get or set the MPA network parameters. If '\*' is specified, all parameters are read from the xCAT database.
@@ -474,6 +571,12 @@ OPTIONS
 \ **ntpserver**\ 
  
  Get or set NTP server IP address or name.
+ 
+
+
+\ **ntpservers**\ 
+ 
+ Get or set NTP servers name. [OpenBMC]
  
 
 
@@ -1226,6 +1329,48 @@ EXAMPLES
  .. code-block:: perl
  
    fsp: Success
+ 
+ 
+
+
+31. To list BMC dumps available for download:
+ 
+ 
+ .. code-block:: perl
+ 
+   rspconfig p9euh02 dump -l
+ 
+ 
+ Output is similar to:
+ 
+ 
+ .. code-block:: perl
+ 
+   p9euh02: [1] Generated: 09/06/2017 14:31:49, Size: 4528
+   p9euh02: [2] Generated: 09/06/2017 14:31:55, Size: 4516
+   p9euh02: [3] Generated: 09/06/2017 14:32:01, Size: 4236
+   p9euh02: [4] Generated: 09/06/2017 14:32:07, Size: 4248
+   p9euh02: [5] Generated: 09/06/2017 14:32:11, Size: 4268
+ 
+ 
+
+
+32. To generate and download BMC dump:
+ 
+ 
+ .. code-block:: perl
+ 
+   rspconfig p9euh02 dump
+ 
+ 
+ Output is similar to:
+ 
+ 
+ .. code-block:: perl
+ 
+   Capturing BMC Diagnostic information, this will take some time...
+   p9euh02: Dump requested. Target ID is 6, waiting for BMC to generate...
+   p9euh02: Dump 6 generated. Downloading to /var/log/xcat/dump/20171211-0951_p9euh02_dump_6.tar.xz
  
  
 
