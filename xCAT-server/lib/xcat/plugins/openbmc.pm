@@ -1966,7 +1966,7 @@ sub parse_command_status {
                 }
             } elsif (defined $tarfile_path) {
                 if (!opendir(DIR, $tarfile_path)) {
-                    xCAT::SvrUtils::sendmsg("Can't open directory : $tarfile_path", $callback);
+                    xCAT::SvrUtils::sendmsg([1,"Can't open directory : $tarfile_path"], $callback);
                     closedir(DIR);
                     return 1;
                 }
