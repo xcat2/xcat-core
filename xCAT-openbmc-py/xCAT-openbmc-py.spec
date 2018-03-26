@@ -18,6 +18,9 @@ AutoReqProv: no
 
 BuildArch: noarch
 Requires: xCAT-server 
+Requires: python-gevent >= 1.2.2-2
+Requires: python-greenlet >= 0.4.13-2
+Requires: python2-docopt python-requests python-paramiko python-scp
 
 %description
 xCAT-openbmc-py provides openbmc related functions. 

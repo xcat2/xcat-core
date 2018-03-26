@@ -26,6 +26,11 @@ class AgentShell(object):
                                  "with the client",
                             default='/var/run/xcat/agent.sock',
                             type=str)
+        parser.add_argument('--lockfile',
+                            help="The lock file to communicate "
+                                 "with the xcat",
+                            default='/var/lock/xcat/agent.lock',
+                            type=str)
         return parser
 
     def do_help(self, args):
@@ -38,7 +43,8 @@ class AgentShell(object):
         if options.help:
             self.do_help(options)
             return 0
-        s = server.Server(options.sock, options.standalone)
+
+        s = server.Server(options.sock, options.standalone, options.lockfile)
         s.start()
 
 class HelpFormatter(argparse.HelpFormatter):

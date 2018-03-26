@@ -1,4 +1,4 @@
-# <the template for PowerLE NV node definition>
+# <the template for ipmi controlled PowerLE NV node definition>
 
 ppc64le-template:
     objtype=node
@@ -15,4 +15,4 @@ ppc64le-template:
     nodetype=mp
     serialport=0
     serialspeed=115200
-    usercomment="the template for PowerLE NV node definition"
+    usercomment="the template for ipmi controlled PowerLE NV node definition"

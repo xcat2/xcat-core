@@ -716,7 +716,8 @@ sub getOSnodes
    		Determines the server node names as known by a lists of nodes. 
 
     Arguments:
-		A list of node names.
+                $nodes: A list of node names.
+                $skipfacing: do not get facing ip when noderes.xcatmaster is not set
 
     Returns:
 		A hash ref  of arrays, the key is the service node pointing to
@@ -736,6 +737,7 @@ sub get_server_nodes
     my $class    = shift;
     my $callback = shift;
     my $nodes    = shift;
+    my $skipfacing=shift;
 
     my @nodelist;
     if ($nodes)
@@ -760,11 +762,14 @@ sub get_server_nodes
             my $xcatmaster = $xcatmasters->{$node}->[0]->{xcatmaster};
             $serv = xCAT::NetworkUtils->getipaddr($xcatmaster);
         }
-        else
+        elsif (!$skipfacing)
         {
             #  get ip facing node
             my @servd = xCAT::NetworkUtils->my_ip_facing($node);
             unless ($servd[0]) { $serv = $servd[1]; }
+        }
+        else{
+            next;
         }
         chomp $serv;
 

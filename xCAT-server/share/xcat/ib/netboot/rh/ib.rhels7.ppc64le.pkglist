@@ -6,6 +6,7 @@ tcsh
 gcc-gfortran
 lsof  
 libnl
+libnl3
 libxml2-python
 python-devel
 redhat-rpm-config

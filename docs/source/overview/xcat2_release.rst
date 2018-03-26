@@ -14,6 +14,16 @@ xCAT 2.13.x
 |xCAT                             |New OS         |New          |New Feature                       |
 |Version                          |               |Hardware     |                                  |
 +=================================+===============+=============+==================================+
+|| xCAT 2.13.11                   |               |             |- OpenBMC support in python:      |
+|| 2018/3/9                       |               |             |                                  |
+||                                |               |             |  rpower,rbeacon,rsetboot         |
+| `2.13.11 Release Notes <https://|               |             |  rinv,rvitals                    |
+| github.com/xcat2/xcat-core/wiki |               |             |                                  |
+| /XCAT_2.13.11_Release_Notes>`_  |               |             |- goconserver enhancement         |
+|                                 |               |             |                                  |
+|                                 |               |             |  makegocons -q, -C\|--cleanup    |
+|                                 |               |             |                                  |
++---------------------------------+---------------+-------------+----------------------------------+
 || xCAT 2.13.10                   |               |             |- OpenBMC support:                |
 || 2018/1/26                      |               |             |                                  |
 ||                                |               |             |  rspconfig powersupplyredundancy,|

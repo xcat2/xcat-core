@@ -155,7 +155,7 @@ if [ "$flag_mtm" ] && [ "$MTM" != "unknown" ]; then
 	echo "<mtm>$MTM</mtm>" >> /tmp/discopacket
 fi
 flag_serial=`echo "$SERIAL" | sed 's/0//g'`
-if [ $flag_serial ] && [ "$SERIAL" != "unknown" ]; then
+if [ "$flag_serial" ] && [ "$SERIAL" != "unknown" ]; then
 	SERIAL=`echo $SERIAL | sed 's/\.//g'`
 	echo "<serial>$SERIAL</serial>" >> /tmp/discopacket
 fi
@@ -163,7 +163,7 @@ if [ "$PLATFORM" != "unknown" ]; then
         echo "<platform>$PLATFORM</platform>" >> /tmp/discopacket
 fi
 
-LANCHAN=$(ipmitool sol info |awk '/Payload Channel/{print $4}')
+LANCHAN=$(ipmitool sol info 2>/dev/null|awk '/Payload Channel/{print $4}')
 IsStatic=`ipmitool lan print $LANCHAN | grep 'IP Address Source' | grep 'Static'`
 if [ "$IsStatic" ]; then
     BMCIPADDR=`ipmitool lan print $LANCHAN | grep 'IP Address' | grep -v 'IP Address Source' | cut -d ":" -f2 | sed 's/ //'`

@@ -18,6 +18,8 @@ use Socket;
 use File::Path;
 use constant PERF_LOG => "/var/log/xcat/perf.log";
 
+my $host = "";
+my $isSN = xCAT::Utils->isServiceNode();
 $::NOK = -1;
 $::OK  = 0;
 
@@ -544,6 +546,106 @@ sub message
         }
     }
     return;
+}
+
+
+#-----------------------------------------------------------------------------
+
+=head3 error_message
+
+  A wrap function for message. If $callback is not defined, send the log to
+  syslog, otherwise, send error message to client. Print service host if runs
+  on service node.
+
+  Example:
+
+          xCAT::MsgUtils->error_message($msg, $callback);
+=cut
+
+#-----------------------------------------------------------------------------
+sub error_message
+{
+    shift;
+    my $msg = shift;
+    my $callback = shift;
+    my $rsp;
+    $rsp->{data}->[0] = $msg;
+    if (!defined($callback)) {
+        message(undef, "S", $rsp, undef);
+        return;
+    }
+    if ($isSN && !$host) {
+        my @hostinfo = xCAT::NetworkUtils->determinehostname();
+        $host = $hostinfo[-1];
+    }
+    $rsp->{host} = $host if $host;
+    message(undef, "E", $rsp, $callback);
+}
+
+#-----------------------------------------------------------------------------
+
+=head3 info_message
+
+  A wrap function for message. If $callback is not defined, send the log to
+  syslog, otherwise, send info message to client. Print service host if runs
+  on service node.
+
+  Example:
+
+          xCAT::MsgUtils->info_message($msg, $callback);
+=cut
+
+#-----------------------------------------------------------------------------
+sub info_message
+{
+    shift;
+    my $msg = shift;
+    my $callback = shift;
+    my $rsp;
+    $rsp->{data}->[0] = $msg;
+    if (!defined($callback)) {
+        message(undef, "S", $rsp, undef);
+        return;
+    }
+    if ($isSN && !$host) {
+        my @hostinfo = xCAT::NetworkUtils->determinehostname();
+        $host = $hostinfo[-1];
+    }
+    $rsp->{host} = $host if $host;
+    message(undef, "I", $rsp, $callback);
+}
+
+#-----------------------------------------------------------------------------
+
+=head3 warn_message
+
+  A wrap function for message. If $callback is not defined, send the log to
+  syslog, otherwise, send warning message to client. Print service host if runs
+  on service node.
+
+  Example:
+
+          xCAT::MsgUtils->warn_message($msg, $callback);
+=cut
+
+#-----------------------------------------------------------------------------
+sub warn_message
+{
+    shift;
+    my $msg = shift;
+    my $callback = shift;
+    my $rsp;
+    $rsp->{data}->[0] = $msg;
+    if (!defined($callback)) {
+        message(undef, "S", $rsp, undef);
+        return;
+    }
+    if ($isSN && !$host) {
+        my @hostinfo = xCAT::NetworkUtils->determinehostname();
+        $host = $hostinfo[-1];
+    }
+    $rsp->{host} = $host if $host;
+    message(undef, "W", $rsp, $callback);
 }
 
 #--------------------------------------------------------------------------------

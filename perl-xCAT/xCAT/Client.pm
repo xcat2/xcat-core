@@ -1129,11 +1129,14 @@ sub handle_response {
         return;
     }
 
-    my $msgsource;
+    my $msgsource = "";
     if ($ENV{'XCATSHOWSVR'}) {
         unless ($rsp->{NoSvrPrefix}) { # some plugins could disable the prefix forcely by seting the flag in response.
             $msgsource = $rsp->{xcatdsource}->[0] if ($rsp->{xcatdsource});
         }
+    }
+    if ($rsp->{host}) {
+        $msgsource = $rsp->{xcatdsource}->[0] if ($rsp->{xcatdsource});
     }
 
     #print "in handle_response\n";
@@ -1186,7 +1189,6 @@ sub handle_response {
         }
     }
     if ($rsp->{info}) {
-
         #print "printing info\n";
         if (ref($rsp->{info}) eq 'ARRAY') {
             foreach my $text (@{ $rsp->{info} }) {

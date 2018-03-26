@@ -632,7 +632,7 @@ if [ $boot_install_nic -eq 1 ];then
         echo "++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++"
         log_info "configure the install nic $installnic. "
         instnic_conf=1
-        configeth -s $installnic |log_lines info
+        configeth -s $installnic 
         if [ $? -ne 0 ]; then
             errorcode=1
         fi

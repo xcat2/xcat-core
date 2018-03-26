@@ -18,9 +18,9 @@ Remove Old Provision Environment
 
     makedhcp -d <noderange>
 
-#. Remove the nodes from the conserver configuration ::
+#. Remove the nodes from the goconserver configuration ::
 
-    makeconservercf -d <noderange>
+    makegocons -d <noderange>
 
 Change Definition
 -----------------
@@ -76,6 +76,6 @@ Update The Provision Environment
 
     makedhcp -a
 
-#. Configure the new names in conserver ::
+#. Configure the new names in goconserver ::
 
-    makeconservercf
+    makegocons

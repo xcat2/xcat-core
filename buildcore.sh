@@ -70,7 +70,7 @@ if [ -z "$UP" ]; then
 fi
 
 # These are the rpms that should be built for each kind of xcat build
-ALLBUILD="perl-xCAT xCAT-client xCAT-server xCAT-test xCAT-buildkit xCAT xCATsn xCAT-genesis-scripts xCAT-SoftLayer xCAT-vlan xCAT-confluent xCAT-probe xCAT-csm"
+ALLBUILD="perl-xCAT xCAT-client xCAT-server xCAT-test xCAT-buildkit xCAT xCATsn xCAT-genesis-scripts xCAT-SoftLayer xCAT-vlan xCAT-confluent xCAT-probe xCAT-csm xCAT-openbmc-py"
 ZVMBUILD="perl-xCAT xCAT-server xCAT-UI"
 ZVMLINK="xCAT-client xCAT xCATsn"
 # xCAT and xCATsn have PCM specific configuration - conserver-xcat, syslinux-xcat
@@ -188,8 +188,8 @@ function setversionvars {
     SHORTSHORTVER=`echo $VER|cut -d. -f 1`
     BUILD_TIME=`date`
     BUILD_MACHINE=`hostname`
-    COMMIT_ID=`git rev-parse --short HEAD`
     COMMIT_ID_LONG=`git rev-parse HEAD`
+    COMMIT_ID="${COMMIT_ID_LONG:0:7}"
     XCAT_RELEASE="snap$(date '+%Y%m%d%H%M')"
     echo "$XCAT_RELEASE" >Release
 }
@@ -323,7 +323,7 @@ if [ "$OSNAME" = "AIX" ]; then
 fi
 
 # Build the rest of the noarch rpms
-for rpmname in xCAT-client xCAT-server xCAT-IBMhpc xCAT-rmc xCAT-UI xCAT-test xCAT-buildkit xCAT-SoftLayer xCAT-vlan xCAT-confluent xCAT-probe xCAT-csm; do
+for rpmname in xCAT-client xCAT-server xCAT-IBMhpc xCAT-rmc xCAT-UI xCAT-test xCAT-buildkit xCAT-SoftLayer xCAT-vlan xCAT-confluent xCAT-probe xCAT-csm xCAT-openbmc-py; do
     if [[ " $EMBEDBUILD " != *\ $rpmname\ * ]]; then continue; fi
     if [ "$OSNAME" = "AIX" -a "$rpmname" = "xCAT-buildkit" ]; then continue; fi  # do not build xCAT-buildkit on aix
     if [ "$OSNAME" = "AIX" -a "$rpmname" = "xCAT-SoftLayer" ]; then continue; fi # do not build xCAT-softlayer on aix

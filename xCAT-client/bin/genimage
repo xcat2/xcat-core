@@ -116,7 +116,7 @@ if (@ARGV > 0) {
 }
 
 if ((!$imagename) && (!$profile) && (!$os) && (!$arch)) {
-    my $tmpimgs = `lsdef -t osimage -w provmethod=~'/statelite|netboot/' |cut -d' ' -f1`;
+    my $tmpimgs = `XCATXMLTRACE=0 XCATBYPASS=0 lsdef -t osimage -w provmethod=~'/statelite|netboot/' |cut -d' ' -f1`;
     if ($? == 0) {
         if (($tmpimgs) && ($tmpimgs !~ /^Could/)) { #Could is returned when the osimage table is empty
             my @images = split('\n', $tmpimgs);
@@ -162,8 +162,7 @@ if ((!$imagename) && (!$profile) && (!$os) && (!$arch)) {
 
 
 # get the install directory
-my @entries    = xCAT::TableUtils->get_site_attribute("installdir");
-my $installdir = $entries[0];
+my $installdir = `XCATXMLTRACE=0 XCATBYPASS=0 lsdef -t site -o clustersite -i installdir|grep -w 'installdir'|cut -d= -f2`;
 chomp($installdir);
 
 # lots of error checking to make sure it exists.

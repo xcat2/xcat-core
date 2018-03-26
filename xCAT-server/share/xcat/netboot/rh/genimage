@@ -85,7 +85,7 @@ sub majversion {
     my $version = shift;
     my $majorrel;
 
-    if ($osver =~ /^\D*(\d*)[.\d]*$/) {
+    if ($osver =~ /^\D*(\d*)[.\d]*.*$/) {
         $majorrel = $1;
     }
 
@@ -141,6 +141,9 @@ sub umount_chroot {
         #only remove the /dev in rootimg directory if it is not a mount point
         system("findmnt $rootimage_dir/dev/ >/dev/null 2>&1 || rm -rf $rootimage_dir/dev/*");
     }
+    
+    #rpm complains "Failed to initialize NSS library" when /dev/urandom does not exist,  leave /dev/urandom
+    use_devurandom();
 }
 
 #check whether a dir is NFS mounted
@@ -375,7 +378,6 @@ unless ($onlyinitrd) {
 
 
     mount_chroot($rootimg_dir);
-
     my %pkg_hash = imgutils::get_package_names($pkglist);
 
     my $index = 1;
@@ -2352,6 +2354,18 @@ sub use_devnull {
     }
     if (!-e "$rootimg_dir/dev/null") {
         system("mknod $rootimg_dir/dev/null c 1 3");
+    }
+}
+
+#in rhels7.5, the /dev/urandom does not exist in rootimg directory
+#which cause any rpm command fail with `error: Failed to initialize NSS library`
+#create urandom in genimage to avoid the error
+sub use_devurandom {
+    if (-e "$rootimg_dir/dev/urandom" and !-c "$rootimg_dir/dev/urandom") {
+        system("rm -f $rootimg_dir/dev/urandom");
+    }
+    if (!-e "$rootimg_dir/dev/urandom") {
+        system("mknod -m444 $rootimg_dir/dev/urandom c 1 9");
     }
 }
 

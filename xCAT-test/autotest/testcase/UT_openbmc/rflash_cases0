@@ -70,3 +70,12 @@ cmd: rflash $$CN --delete 221d9020 221d9020
 check:rc==1 
 check:output=~Error: More than one firmware specified is not supported
 end
+
+start:rflash_delete_active_bmc
+description: Attempt to delete the active BMC firmware
+os:Linux
+hcp:openbmc
+cmd: rflash $$CN -l | grep \* | grep BMC | awk '{print $2}' | xargs -i{} rflash $$CN --delete {}
+check:rc==1
+check:output=~$$CN: Error: Deleting currently active BMC firmware is not supported
+end

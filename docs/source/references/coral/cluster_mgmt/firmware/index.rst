@@ -5,4 +5,4 @@ Power9 Firmware Update
    :maxdepth: 2
 
    ipmi.rst
-   openbmc.rst
+   openbmc/index.rst

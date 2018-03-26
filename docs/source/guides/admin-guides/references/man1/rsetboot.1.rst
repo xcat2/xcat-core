@@ -13,7 +13,7 @@ SYNOPSIS
 
 \ **rsetboot**\  \ *noderange*\  [\ **hd | net | cd | default | stat**\ ] [\ **-u**\ ] [\ **-p**\ ]
 
-\ **rsetboot**\  [\ **-h | -**\ **-help | -v | -**\ **-version**\ ]
+\ **rsetboot**\  [\ **-h | -**\ **-help | -v | -**\ **-version | -V | -**\ **-verbose**\ ]
 
 
 ***********
@@ -62,7 +62,7 @@ OPTIONS
 
 \ **-u**\ 
  
- To specify the next boot mode to be "UEFI Mode".
+ To specify the next boot mode to be "UEFI Mode". (Not supported for OpenBMC)
  
 
 

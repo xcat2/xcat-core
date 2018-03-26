@@ -19,7 +19,7 @@ SYNOPSIS
 ********
 
 
-\ **nodehm Attributes:**\   \ *node*\ , \ *power*\ , \ *mgt*\ , \ *cons*\ , \ *termserver*\ , \ *termport*\ , \ *conserver*\ , \ *serialport*\ , \ *serialspeed*\ , \ *serialflow*\ , \ *getmac*\ , \ *cmdmapping*\ , \ *consoleondemand*\ , \ *comments*\ , \ *disable*\ 
+\ **nodehm Attributes:**\   \ *node*\ , \ *power*\ , \ *mgt*\ , \ *cons*\ , \ *termserver*\ , \ *termport*\ , \ *conserver*\ , \ *serialport*\ , \ *serialspeed*\ , \ *serialflow*\ , \ *getmac*\ , \ *cmdmapping*\ , \ *consoleondemand*\ , \ *consoleenabled*\ , \ *comments*\ , \ *disable*\ 
 
 
 ***********
@@ -111,6 +111,12 @@ nodehm Attributes:
 \ **consoleondemand**\ 
  
  This overrides the value from site.consoleondemand. Set to 'yes', 'no', '1' (equivalent to 'yes'), or '0' (equivalent to 'no'). If not set, the default is the value from site.consoleondemand.
+ 
+
+
+\ **consoleenabled**\ 
+ 
+ A flag field to indicate whether the node is registered in the console server. If '1', console is enabled, if not set, console is not enabled.
  
 
 

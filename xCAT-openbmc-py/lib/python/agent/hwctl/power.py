@@ -14,7 +14,6 @@ class PowerInterface(object):
         """Return the power state of the task's nodes.
 
         :param task: a Task instance containing the nodes to act on.
-        :raises: MissingParameterValue if a required parameter is missing.
         :returns: a power state.
         """
         return task.run('get_state')
@@ -23,18 +22,14 @@ class PowerInterface(object):
         """Set the power state of the task's nodes.
 
         :param task: a Task instance containing the nodes to act on.
-        :param power_state: Any power state from :mod:`ironic.common.states`.
+        :param power_state: Any supported power state.
         :param timeout: timeout (in seconds) positive integer (> 0) for any
           power state. ``None`` indicates to use default timeout.
-        :raises: MissingParameterValue if a required parameter is missing.
         """
         return task.run('set_state', power_state, timeout=timeout)
 
     def reboot(self, task, optype='boot', timeout=None):
         """Perform a hard reboot of the task's nodes.
-
-        Drivers are expected to properly handle case when node is powered off
-        by powering it on.
 
         :param task: a Task instance containing the node to act on.
         :param timeout: timeout (in seconds) positive integer (> 0) for any
@@ -46,16 +41,14 @@ class PowerInterface(object):
         """Return the bmc state of the task's nodes.
 
         :param task: a Task instance containing the nodes to act on.
-        :raises: MissingParameterValue if a required parameter is missing.
-        :returns: a power state.
+        :returns: a bmc state.
         """
         return task.run('get_bmcstate')
 
     def reboot_bmc(self, task, optype='warm'):
-        """Return the bmc state of the task's nodes.
+        """Set the BMC state of the task's nodes.
 
         :param task: a Task instance containing the nodes to act on.
-        :raises: MissingParameterValue if a required parameter is missing.
         :returns: a power state.
         """
         return task.run('reboot_bmc', optype)
