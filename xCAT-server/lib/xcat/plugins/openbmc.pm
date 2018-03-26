@@ -3383,6 +3383,7 @@ sub rspconfig_response {
             my @gateway = ();
             my @vlan = (); 
             my @ntpservers = ();
+            my $real_ntp_server = 0;
             my @nics = keys %nicinfo;
             foreach my $nic (@nics) {
                 my $addon_info = '';
@@ -3392,6 +3393,7 @@ sub rspconfig_response {
 
                 if ($nicinfo{$nic}{ntpservers}) {
                     push @ntpservers, "BMC NTP Servers$addon_info: $nicinfo{$nic}{ntpservers}";
+                    $real_ntp_server = 1;
                 } else {
                     push @ntpservers, "BMC NTP Servers$addon_info: None";
                 }
@@ -3414,6 +3416,11 @@ sub rspconfig_response {
                     push @output, "BMC Hostname: $hostname";
                 } elsif ($opt eq "ntpservers") {
                     push @output, @ntpservers;
+                    if (($real_ntp_server) && ($status_info{RSPCONFIG_SET_RESPONSE}{argv} =~ "NTPServers")) {
+                        # Display a warning if the host in not powered off
+                        # Time on the BMC is not synced while the host is powered on.
+                        push @output, "Warning: time will not be synchronized until the host is powered off.";
+                    }
                 }
 
                 if ($multiple_error and ($opt =~  /^ip$|^ipsrc$|^netmask$|^gateway$|^vlan$/)) {

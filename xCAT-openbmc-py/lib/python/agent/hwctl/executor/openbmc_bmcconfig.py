@@ -345,6 +345,10 @@ rmdir \"/tmp/$userid\" \n")
         if nic in netinfo:
             ntpservers = netinfo[nic]['ntpservers']
         self.callback.info('%s: BMC NTP Servers: %s' % (node, ntpservers))
+        if ntpservers != None:
+            # Display a warning if the host in not powered off
+            # Time on the BMC is not synced while the host is powered on
+            self.callback.info('%s: Warning: time will not be synchronized until the host is powered off.' % node)
 
     def _get_facing_nic(self, bmcip, netinfo):
         for k,v in netinfo.items():
