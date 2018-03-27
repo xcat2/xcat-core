@@ -236,7 +236,7 @@ This delete option will delete update image from BMC. It expects an ID as the in
  
  OpenPOWER BMC specific (using IPMI):
  
- Used for IBM Power S822LC for Big Data systems only. Used to recover the BMC with a BMC image downloaded from FixCentral.
+ Used for IBM Power S822LC for Big Data systems only. Used to recover the BMC with a BMC image downloaded from FixCentral. This option will only work if BMC is in "Brick protection" state.
  
 
 

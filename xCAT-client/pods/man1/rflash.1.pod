@@ -173,7 +173,7 @@ Used to recover the flash image in the permanent side of the chip to the tempora
 
 OpenPOWER BMC specific (using IPMI):
 
-Used for IBM Power S822LC for Big Data systems only. Used to recover the BMC with a BMC image downloaded from FixCentral.
+Used for IBM Power S822LC for Big Data systems only. Used to recover the BMC with a BMC image downloaded from FixCentral. This option will only work if BMC is in "Brick protection" state.
 
 =item B<--retry=>I<count>
 
