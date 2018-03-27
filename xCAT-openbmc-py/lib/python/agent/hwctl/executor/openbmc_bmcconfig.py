@@ -401,8 +401,10 @@ rmdir \"/tmp/$userid\" \n")
 
         if isinstance(value, dict):
             str_value = value.values()[0]
+        elif value:
+            str_value = str(value)
         else:
-            str_value = value 
+            str_value = '0'
         result = '%s: %s: %s' % (node, openbmc.RSPCONFIG_APIS[key]['display_name'], str_value.split('.')[-1])
         self.callback.info(result)
 
