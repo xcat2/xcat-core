@@ -183,7 +183,7 @@ RSPCONFIG_APIS = {
     'autoreboot' : {
         'baseurl': "/control/host0/auto_reboot/",
         'set_url': "attr/AutoReboot",
-        'get_url': "attr/AutoReboot",
+        'get_url': "",
         'display_name': "BMC AutoReboot",
         'attr_values': {
             '0': False,
@@ -203,9 +203,9 @@ RSPCONFIG_APIS = {
         },
     },
     'powerrestorepolicy': {
-        'baseurl': "/control/host0/power_restore_policy/",
-        'set_url': "attr/PowerRestorePolicy",
-        'get_url': "attr/PowerRestorePolicy",
+        'baseurl': "/control/host0/power_restore_policy",
+        'set_url': "/attr/PowerRestorePolicy",
+        'get_url': "",
         'display_name': "BMC PowerRestorePolicy",
          'attr_values': {
              'restore': "xyz.openbmc_project.Control.Power.RestorePolicy.Policy.Restore",
@@ -214,9 +214,9 @@ RSPCONFIG_APIS = {
          },
     },
     'bootmode': {
-        'baseurl': "/control/host0/boot/",
-        'set_url': "attr/BootMode",
-        'get_url': "attr/BootMode",
+        'baseurl': "/control/host0/boot",
+        'set_url': "/attr/BootMode",
+        'get_url': "",
         'display_name':"BMC BootMode",
         'attr_values': {
             'regular': "xyz.openbmc_project.Control.Boot.Mode.Modes.Regular",
