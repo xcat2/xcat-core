@@ -481,6 +481,8 @@ sub do_installm_service {
                 alarm(0);
                 print $conn "done\n";
                 $text =~ s/\r//g;
+                # Clear IP-Name cache, Workaround (#4913) for IP changed cases.
+                xCAT::NetworkUtils->clearcache();
                 if ($text =~ /next/) {
                     my %request = (
                         command => ['nodeset'],
