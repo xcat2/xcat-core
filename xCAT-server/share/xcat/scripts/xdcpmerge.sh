@@ -61,8 +61,8 @@ for i in $*; do
   # in the merge file and create a new backup 
   # first get a list of  duplicate lines to remove 
   # based on only username:  the first field in the file
- cut -d: -f1 $filebackup > $filebackup.userlist
- cut -d: -f1 $mergefile > $mergefile.userlist
+  cut -d: -f1 $filebackup > $filebackup.userlist
+  cut -d: -f1 $mergefile > $mergefile.userlist
   comm -12 <(sort $filebackup.userlist | uniq) <(sort $mergefile.userlist | uniq) > $filebackup.remove
  
   # now if there is a remove file,  use it to remove the dup lines in backup 
@@ -86,16 +86,15 @@ for i in $*; do
     userlist=$userlisttmp$listend
     grepcmd=$grepcmd$userlist
     #set -x
-    grepcmd="$grepcmd $mergefile > $mergefile.nodups"
-    #echo "grepcmd=$grepcmd"
+    grepcmd="$grepcmd $filebackup > $filebackup.nodups"
     # now run it
     eval $grepcmd
-  fi 
-  
-  # add new entries from mergefile, if any 
-  if [ -a "$mergefile.nodups" ]; then
-    cat $mergefile.nodups >> $curfile
-    rm $mergefile.nodups
+    #echo "grepcmd=$grepcmd"
+    cat $filebackup.nodups $mergefile > $curfile
+    #echo "$filebackup.nodups $mergefile > $curfile"
+  else
+    cat $filebackup $mergefile > $curfile
+    #echo "cat $filebackup $mergefile > $curfile"
   fi
   
   # now cleanup
