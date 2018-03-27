@@ -54,9 +54,6 @@ Requires: /usr/bin/ssh
 Requires: /etc/xinetd.d/tftp
 
 
-%ifos linux
-Requires: goconserver
-%endif
 
 #support mixed cluster
 %if %nots390x
