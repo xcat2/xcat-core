@@ -2,12 +2,12 @@
 
 Unattended flash of OpenBMC firmware will do the following events:
 
-#. Upload both BMC firmware file and PNOR firmware file
-#. Activate both BMC firmware and PNOR firmware
+#. Upload both BMC firmware file and Host firmware file
+#. Activate both BMC firmware and Host firmware
 #. If BMC firmware becomes activate, reboot BMC to apply new BMC firmware, or else, ``rflash`` will exit
 #. If BMC itself state is ``NotReady``, ``rflash`` will exit
 #. If BMC itself state is ``Ready``, and use ``--no-host-reboot`` option, ``rflash`` will not reboot the compute node
-#. If BMC itself state is ``Ready``, and do not use ``--no-host-reboot`` option, ``rflash`` will reboot the compute node to apply PNOR firmware
+#. If BMC itself state is ``Ready``, and do not use ``--no-host-reboot`` option, ``rflash`` will reboot the compute node to apply Host firmware
 
 Use the following command to flash the firmware unattended: ::
 
@@ -28,8 +28,8 @@ The sequence of events that must happen to flash OpenBMC firmware is the followi
 #. Power off the Host 
 #. Upload and Activate BMC 
 #. Reboot the BMC (applies BMC)
-#. Upload and Activate PNOR
-#. Power on the Host (applies PNOR) 
+#. Upload and Activate Host
+#. Power on the Host (applies Host) 
 
 
 Power off Host 
@@ -42,7 +42,7 @@ Use the rpower command to power off the host: ::
 Upload and Activate BMC Firmware
 --------------------------------
 
-Use the rflash command to upload and activate the PNOR firmware: ::
+Use the rflash command to upload and activate the Host firmware: ::
 
    rflash <noderange> -a /path/to/obmc-phosphor-image-witherspoon.ubi.mtd.tar
 
@@ -61,10 +61,10 @@ The BMC will take 2-5 minutes to reboot, check the status using: ``rpower <noder
 
 **Known Issue:**  On reboot, the first call to the BMC after reboot, xCAT will return ``Error: BMC did not respond within 10 seconds, retry the command.``.  Please retry. 
 
-Upload and Activate PNOR Firmware
+Upload and Activate Host Firmware
 ---------------------------------
 
-Use the rflash command to upload and activate the PNOR firmware: ::
+Use the rflash command to upload and activate the Host firmware: ::
 
    rflash <noderange> -a /path/to/witherspoon.pnor.squashfs.tar
 

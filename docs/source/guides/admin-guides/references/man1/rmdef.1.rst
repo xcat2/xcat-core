@@ -90,7 +90,7 @@ OPTIONS
 
 \ **-C|-**\ **-cleanup**\ 
  
- Perform additional cleanup by running \ **nodeset offline**\, \ **makeconservercf -d**\ and \ **makegocons --cleanup**\ on the objects specified in the \ *noderange*\ .
+ Perform additional cleanup by running \ **nodeset offline**\ , \ **makeconservercf -d**\  and \ **makegocons -**\ **-cleanup**\  on the objects specified in the \ *noderange*\ .
  
 
 

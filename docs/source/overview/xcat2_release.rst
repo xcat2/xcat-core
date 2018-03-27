@@ -59,7 +59,7 @@ xCAT 2.13.x
 +---------------------------------+---------------+-------------+----------------------------------+
 || xCAT 2.13.7                    |               |             |- OpenBMC support:                |
 || 2017/9/22                      |               |             |                                  |
-||                                |               |             |  rflash for OpenBMC and PNOR     |
+||                                |               |             |  rflash for OpenBMC and Host     |
 | `2.13.7 Release Notes <https:// |               |             |                                  |
 | github.com/xcat2/xcat-core/wiki |               |             |  reventlog to get/clear event log|
 | /XCAT_2.13.7_Release_Notes>`_   |               |             |                                  |
