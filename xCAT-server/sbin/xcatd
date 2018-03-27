@@ -589,10 +589,10 @@ sub do_installm_service {
                     `/usr/bin/mv /tmp/$text.nimtmp $myfile`;
                     close($conn);
                 } else {
-                    close($conn); #close it to avoid the DDOS attack
                     sleep 0.01;
                     chomp $text;
                     xCAT::MsgUtils->trace(0, "E", "xcatd: install monitor does not support \'$text\', the connection request from $conn_peer_addr will be ignored.");
+                    close($conn); #close it to avoid the DDOS attack
                     next;
                 }
                 xCAT::MsgUtils->trace(0, "I", "xcatd: finish a connection request for $node from $conn_peer_addr");
@@ -605,6 +605,7 @@ sub do_installm_service {
                 xCAT::MsgUtils->trace(0, "W", "xcatd: install monitor timed out talking to $node($conn_peer_addr)");
             } else {
                 xCAT::MsgUtils->trace(0, "E", "xcatd: possible BUG encountered by xCAT install monitor service: " . $@);
+                close($conn);
             }
         }
 
@@ -1439,7 +1440,7 @@ until ($quit) {
     if (@pendingconnections) {
         while ($listenwatcher->can_read(0)) { # grab everything we can, but don't spend any time waiting for more
             $tconn = $listener->accept;
-            unless ($tconn) { next; }
+            unless ($tconn) { sleep 0.01; next; } # increase max open file number might cause dead-loop here, sleep for a while
             push @pendingconnections, $tconn;
         }
     } else {
