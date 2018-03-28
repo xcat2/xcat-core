@@ -2,7 +2,7 @@
 #
 # go-xcat - Install xCAT automatically.
 #
-# Version 1.0.26
+# Version 1.0.27
 #
 # Copyright (C) 2016 International Business Machines
 # Eclipse Public License, Version 1.0 (EPL-1.0)
@@ -1069,6 +1069,14 @@ function remove_repo_yum()
 	# than one repository definitions in a single repo file.
 	# This is a quick and dirty method.
 	rm -f $(grep -l "^\[${repo_id}\]$" "/etc/yum.repos.d/"*".repo" 2>/dev/null)
+	case "${repo_id}" in
+	"xcat-core")
+		mv /etc/yum.repos.d/xCAT-core.repo{,.nouse} 2>/dev/null
+		;;
+	"xcat-dep")
+		mv /etc/yum.repos.d/xCAT-dep.repo{,.nouse} 2>/dev/null
+		;;
+	esac
 	yum clean metadata
 	:
 }
@@ -1079,6 +1087,15 @@ function remove_repo_zypper()
 	type zypper >/dev/null 2>&1 || return 255
 	local repo_id="$1"
 	zypper removerepo "${repo_id}"
+	case "${repo_id}" in
+	"xcat-core")
+		mv /etc/zypp/repos.d/xCAT-core.repo{,.nouse} 2>/dev/null
+		;;
+	"xcat-dep")
+		mv /etc/zypp/repos.d/xCAT-dep.repo{,.nouse} 2>/dev/null
+		;;
+	esac
+	:
 }
 
 #       $1      repo id
