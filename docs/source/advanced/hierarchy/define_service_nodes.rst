@@ -55,12 +55,13 @@ The following table illustrates the cluster being used in this example:
                                   setupdhcp=1 \
                                   setuptftp=1 \ 
                                   setupnameserver=1 \
-                                  setupconserver=1
+                                  setupconserver=2
 
    **Tips/Hint**
       * Even if you do not want xCAT to configure any services, you must define the service nodes in the ``servicenode`` table with at least one attribute, set to 0, otherwise xCAT will not recognize the node as a service node
       * See the ``setup*`` attributes in the node definition man page for the list of available services:  ``man node``
       * For clusters with subnetted management networks, you might want to set ``setupupforward=1``
+      * For the ``setupconserver`` attribute, if ``conserver`` is used, set to ``1``, if ``goconserver`` is used, set to ``2``
 
 #. Add additional postscripts for Service Nodes (optional) 
 
