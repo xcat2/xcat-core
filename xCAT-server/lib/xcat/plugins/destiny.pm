@@ -235,21 +235,11 @@ sub setdestiny {
             $callback->({ error => "invalid argument: \"$state\"", errorcode => [1] });
             return;
         }
-        my @cmds = ();
-        while ($target ) {
-             my ($cmd, $next_cmds) = split '\|', $target, 2;
-             push (@cmds, $cmd);
-             if (!$next_cmds) {
-                 last;
-             } else {
-                 $target = $next_cmds;
-             }
-        }
-
+        my @cmds = split '\|', $target;
         foreach my $tmpnode (@{ $req->{node} }) {
             foreach my $cmd (@cmds) {
                 my $action;
-               ($cmd, $action) = split ':', $cmd, 2;
+               ($cmd, $action) = split ':', $cmd;
                 my $runcmd = "$cmd $tmpnode $action";
                 xCAT::Utils->runcmd($runcmd, 0);
                 xCAT::MsgUtils->trace($verbose, "d", "run ondiscover command: $runcmd");
