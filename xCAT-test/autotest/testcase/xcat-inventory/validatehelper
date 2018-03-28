@@ -50,6 +50,7 @@ def Util_setdictval(mydict,keystr,value):
         else:
             mydict[key]=value
 
+
 def GetAttrInFile(fpath,objtype,objname,attrpath):
     f=open(fpath,'r')
     try:
@@ -63,9 +64,22 @@ def GetAttrInFile(fpath,objtype,objname,attrpath):
     f.close()
     myattrpath=objtype+"."+objname+"."+attrpath
     myvalue=Util_getdictval(objdict,myattrpath)
-    if isinstance(myvalue,list):
-        myvalue=myvalue[0]
     return myvalue
+
+def compattr(exptattr,rawattr):
+    if isinstance(exptattr,list) and isinstance(rawattr,str):
+        rawattr=eval(rawattr)
+        if isinstance(rawattr,str): 
+            if rawattr in exptattr:
+                return 0
+            else:
+                return 1
+        else:
+            return cmp(exptattr,rawattr)
+    else:
+        return cmp(exptattr,rawattr)
+     
+        
 
 def runCommand(cmd, env=None):
     """ Run one command only, when you don't want to bother setting up
@@ -106,10 +120,15 @@ def UpdateAttrInFile(fpath,fformat,objtype,objname,attrpath,value):
         Util_rmnullindict(objdict)
     else:
         origobjdict=Util_getdictval(objdict,myattrpath)
-        if isinstance(origobjdict,list) and not isinstance(value,list):
-            newvalue=[value]
+        origattrtype=type(origobjdict)
+        if origattrtype != str and type(value) == str:
+            print(value)
+            newvalue=eval(value)
         else:
-            newvalue=value
+            if isinstance(origobjdict,list) and  isinstance(value,str):
+                newvalue=[value]
+            else:
+                newvalue=value
         Util_setdictval(objdict,myattrpath,newvalue)
     f=open(fpath,'w') 
     if fformat  == "yaml":
@@ -191,7 +210,7 @@ else:
             if myattrvalue is not None:
                 rcyaml=1
         else:
-            if myattrvalue != attrvalue:
+            if compattr(myattrvalue,attrvalue) != 0 :
                 rcyaml=1           
 
 if rcyaml == 0:
@@ -229,7 +248,7 @@ else:
             if myattrvalue is not None:
                 rcjson=1
         else:
-            if myattrvalue != attrvalue:
+            if compattr(myattrvalue,attrvalue) != 0 :
                 rcjson=1           
 
 if rcjson ==0:
