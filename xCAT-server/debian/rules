@@ -47,6 +47,7 @@ binary-arch:
 	chmod 755 $(rootdir)/bin/*
 	chmod 755 $(rootdir)/sbin/*
 	chmod 644 $(rootdir)/share/xcat/ca/*
+	chmod 644 $(rootdir)/share/xcat/conf/*
 	chmod 755 $(rootdir)/share/xcat/cons/*
 	chmod 755 $(rootdir)/share/xcat/ib/*
 	chmod 755 $(rootdir)/share/xcat/ib/netboot/sles/*
