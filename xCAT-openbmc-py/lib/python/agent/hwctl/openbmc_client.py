@@ -335,8 +335,11 @@ class OpenBMCRest(object):
             response = self.session.request(method, url, httpheaders, data=data, timeout=timeout)
             return self.handle_response(response, cmd=cmd)
         except SelfServerException as e:
-            e.message = 'BMC did not respond. ' \
-                        'Validate BMC configuration and retry the command.'
+            if cmd == 'login':
+                e.message = "Login to BMC failed: Can't connect to {0} {1}.".format(e.host_and_port, e.detail_msg)
+            else:
+                e.message = 'BMC did not respond. ' \
+                            'Validate BMC configuration and retry the command.'
             self._print_error_log(e.message, cmd)
             raise
         except ValueError:
