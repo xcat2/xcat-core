@@ -4,16 +4,20 @@
 #
 # Version 1.0.27
 #
-# Copyright (C) 2016 International Business Machines
+# Copyright (C) 2016, 2017, 2018 International Business Machines
 # Eclipse Public License, Version 1.0 (EPL-1.0)
 #     <http://www.eclipse.org/legal/epl-v10.html>
 #
 # 2016-06-16 GONG Jie <gongjie@linux.vnet.ibm.com>
-#     - created
+#     - Draft
 # 2016-06-20 GONG Jie <gongjie@linux.vnet.ibm.com>
-#     - released to the field
+#     - Released to the field
 # 2016-09-20 GONG Jie <gongjie@linux.vnet.ibm.com>
-#     - bug fix
+#     - Bug fix
+# 2018-03-28 GONG Jie <gongjie@linux.vnet.ibm.com>
+#     - Use curl when it is available. Otherwise fall back to use wget
+#     - Improved tarball file extension handling
+#     - Disable xCAT-core.repo and xCAT-dep.repo if they exist
 #
 
 function usage()
