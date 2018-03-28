@@ -67,15 +67,13 @@ def GetAttrInFile(fpath,objtype,objname,attrpath):
     return myvalue
 
 def compattr(exptattr,rawattr):
-    if isinstance(exptattr,list) and isinstance(rawattr,str):
+    if isinstance(exptattr,list) and re.match(r'^\[.*\]$',rawattr):
         rawattr=eval(rawattr)
-        if isinstance(rawattr,str): 
-            if rawattr in exptattr:
-                return 0
-            else:
-                return 1
+    if isinstance(rawattr,str): 
+        if rawattr in exptattr:
+            return 0
         else:
-            return cmp(exptattr,rawattr)
+            return 1
     else:
         return cmp(exptattr,rawattr)
      
@@ -121,14 +119,13 @@ def UpdateAttrInFile(fpath,fformat,objtype,objname,attrpath,value):
     else:
         origobjdict=Util_getdictval(objdict,myattrpath)
         origattrtype=type(origobjdict)
-        if origattrtype != str and type(value) == str:
-            print(value)
+        newvalue=value
+        if origattrtype == list and re.match(r'^\[.*\]$',value):
+            #import pdb
+            #pdb.set_trace()
             newvalue=eval(value)
-        else:
-            if isinstance(origobjdict,list) and  isinstance(value,str):
-                newvalue=[value]
-            else:
-                newvalue=value
+        if isinstance(origobjdict,list) and  isinstance(newvalue,str):
+            newvalue=[newvalue]
         Util_setdictval(objdict,myattrpath,newvalue)
     f=open(fpath,'w') 
     if fformat  == "yaml":
