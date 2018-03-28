@@ -2409,7 +2409,8 @@ sub rflash {
             } elsif ($opt !~ /.*\.hpm$/i && $opt !~ /^-V{1,4}$|^--buffersize=|^--retry=/) {
                 # An unexpected flag was passed, but it could be a directory name. Display error only if not -d option
                 unless ($directory_flag) {
-                    $callback->({ error => "The option $opt is not supported or invalid update file specified",
+                    my $node =  $sessdata->{node};
+                    $callback->({ data => "$node: Error: The option $opt is not supported or invalid update file specified",
                         errorcode => 1 });
                     return;
                 }
@@ -8268,13 +8269,20 @@ sub preprocess_request {
         return;
     }
 
+    my $all_noderange = $realnoderange;
+
     if ($command eq "rpower") {
         my $subcmd = $exargs[0];
         if ($subcmd eq '') {
 
             #$callback->({data=>["Please enter an action (eg: boot,off,on, etc)",  $usage_string]});
             #Above statement will miss error code, so replaced by the below statement
-            $callback->({ errorcode => [1], data => [ "Please enter an action (eg: boot,off,on, etc)", $usage_string ] });
+            my $error_data = "";
+            foreach (@$all_noderange) {
+                $error_data .= "\n" if ($error_data);
+                $error_data .= "$_: Please enter an action (eg: boot,off,on, etc) when using mgt=ipmi.";
+            }
+            $callback->({ errorcode => [1], data => [ $error_data ] });
             $request = {};
             return 0;
         }
@@ -8288,13 +8296,23 @@ sub preprocess_request {
 
             #$callback->({data=>["Unsupported command: $command $subcmd", $usage_string]});
             #Above statement will miss error code, so replaced by the below statement
-            $callback->({ errorcode => [1], data => [ "Unsupported command: $command $subcmd", $usage_string ] });
+            my $error_data = "";
+            foreach (@$all_noderange) {
+                $error_data .= "\n" if ($error_data);
+                $error_data .= "$_: Error: Unsupported command: $command $subcmd when using mgt=ipmi.";
+            }
+            $callback->({ errorcode => [1], data => [ $error_data ] });
             $request = {};
             return;
         }
         if (($subcmd eq 'on' or $subcmd eq 'reset' or $subcmd eq 'boot') and $::XCATSITEVALS{syspowerinterval}) {
             unless ($::XCATSITEVALS{syspowermaxnodes}) {
-                $callback->({ errorcode => [1], error => ["IPMI plugin requires syspowermaxnodes be defined if syspowerinterval is defined"] });
+                my $error_data = "";
+                foreach (@$all_noderange) {
+                    $error_data .= "\n" if ($error_data);
+                    $error_data .= "$_: 'syspowermaxnodes` is required if 'syspowerinterval' is configured in the site table.";
+                }
+                $callback->({ errorcode => [1], error => [$error_data] });
                 $request = {};
                 return 0;
             }
@@ -8316,10 +8334,15 @@ sub preprocess_request {
         if ($realnoderange) {
             my $optset;
             my $option;
+            my $error_data = "";
             foreach (@exargs) {
                 if ($_ =~ /^(\w+)=(.*)/) {
                     if ($optset eq 0) {
-                        $callback->({ errorcode => [1], data => [ "Usage Error: Cannot display and change attributes on the same command."] });
+                        foreach (@$all_noderange) {
+                            $error_data .= "\n" if ($error_data);
+                            $error_data .= "$_: Usage Error: Cannot display and change attributes on the same command when using mgt=ipmi..";
+                        }
+                        $callback->({ errorcode => [1], data => [ $error_data] });
                         $request = {};
                         return;
                     }
@@ -8327,7 +8350,11 @@ sub preprocess_request {
                     $option = $1;
                 } else {
                     if ($optset eq 1) {
-                        $callback->({ errorcode => [1], data => [ "Usage Error: Cannot display and change attributes on the same command."] });
+                        foreach (@$all_noderange) {
+                            $error_data .= "\n" if ($error_data);
+                            $error_data .= "$_: Usage Error: Cannot display and change attributes on the same command when using mgt=ipmi.";
+                        }
+                        $callback->({ errorcode => [1], data => [ $error_data] });
                         $request = {};
                         return;
                     }
@@ -8335,7 +8362,11 @@ sub preprocess_request {
                     $optset = 0;
                 }
                 unless ($option =~ /^USERID$|^ip$|^netmask$|^gateway$|^vlan$|^userid$|^username$|^password$|^snmpdest|^thermprofile$|^alert$|^garp$|^community$|^backupgateway$/) {
-                    $callback->({ errorcode => [1], data => [ "Unsupported command: $command $_"] });
+                    foreach (@$all_noderange) {
+                        $error_data .= "\n" if ($error_data);
+                        $error_data .= "$_: Error: Unsupported command: $command $option when using mgt=ipmi.";
+                    }
+                    $callback->({ errorcode => [1], data => [ $error_data ] });
                     $request = {};
                     return;
                 }
@@ -8345,7 +8376,12 @@ sub preprocess_request {
         if ($exargs[0] eq "-t" and $#exargs == 0) {
             unshift @{ $request->{arg} }, 'all';
         } elsif ((grep /-t/, @exargs) and !(grep /(all|vpd)/, @exargs)) {
-            $callback->({ errorcode => [1], error => ["option '-t' can only work with 'all' or 'vpd'"] });
+            my $error_data = "";
+            foreach (@$all_noderange) {
+                $error_data .= "\n" if ($error_data);
+                $error_data .= "$_: option '-t' can only work with 'all' or 'vpd' when using mgt=ipmi.";
+            }
+            $callback->({ errorcode => [1], data => [ $error_data ] });
             $request = {};
             return 0;
         }
