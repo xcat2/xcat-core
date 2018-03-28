@@ -364,7 +364,12 @@ sub parse_args {
         }
     } elsif ($command eq "reventlog") {
         $subcommand = "all" if (!defined($ARGV[0]));
-        if ($subcommand =~ /^resolved=(.*)/) {
+        if (scalar(@ARGV) >= 2) {
+            if ($ARGV[1] =~ /^-s$/) {
+                return ([ 1, "The -s option is not supported for OpenBMC." ]);
+            }
+            return ([ 1, "Only one option is supported at the same time for $command" ]);
+        } elsif ($subcommand =~ /^resolved=(.*)/) {
             my $value = $1;
             if (not $value) {
                 return ([ 1, "$usage_errormsg $reventlog_no_id_resolved_errormsg" ]);
