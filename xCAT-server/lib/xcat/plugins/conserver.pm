@@ -201,6 +201,7 @@ sub preprocess_request {
 sub process_request {
     my $req = shift;
     my $cb  = shift;
+    $::callback = $cb;
     if ($req->{command}->[0] eq "makeconservercf") {
         if (-x "/usr/bin/goconserver") {
             require xCAT::Goconserver;
@@ -602,6 +603,10 @@ sub donodeent {
 
             # either there is no console method (shouldnt happen) or not one of the supported terminal servers
             return $node;
+        }
+        if (!grep(/^$cmeth$/, @cservers) && ! -x $::XCATROOT . "/share/xcat/cons/" . $cmeth) {
+            xCAT::SvrUtils::sendmsg([ 0, "ignore, ". $::XCATROOT . "/share/xcat/cons/$cmeth is not excutable. Please check mgt or cons attribute." ], $::callback, $node);
+            next;
         }
         push @$content, "#xCAT BEGIN $node CONS\n";
         push @$content, "console $node {\n";
