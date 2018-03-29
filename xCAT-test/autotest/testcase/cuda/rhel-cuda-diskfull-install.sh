@@ -3,11 +3,11 @@
 ########
 # Set all the variables below
 
-LINUX_DISTRO="rhels7.4"
+LINUX_DISTRO="rhels7.5-alternate"
 LINUX_ARCH="ppc64le"
 
 COMPUTE_NODE="c910f03c01p10"
-SOURCE_DIR="/media/xcat"
+SOURCE_DIR="/install/tmp"
 
 ########
 
@@ -57,6 +57,9 @@ do
 	"dkms-"*".el7.noarch.rpm")
 		DKMS_RPM="${r}"
 		;;
+        "nvidia-driver-local-repo-rhel"*"-"*".${LINUX_ARCH}.rpm")
+                CUDA_RPMS+=("${r}")
+                ;;
 	esac
 done
 
@@ -96,6 +99,8 @@ do
 	echo -n -e "\b\b\b\b\b\b"
 done
 ########
+
+umask 0022
 
 OSIMAGE_NAME="${LINUX_DISTRO}-${LINUX_ARCH}-install-cudafull"
 OSIMAGE_OTHERPKGDIR="/install/post/otherpkgs/${LINUX_DISTRO}/${LINUX_ARCH}"
