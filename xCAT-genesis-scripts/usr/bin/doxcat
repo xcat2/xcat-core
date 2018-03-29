@@ -399,7 +399,10 @@ while :; do
 		/bin/nextdestiny $XCATMASTER:$XCATPORT
 		logger -s -t $log_label -p local4.info "nextdestiny - Complete."
 		if [ $IPMI_SUPPORT -ne 0 ]; then
-		    ipmitool chassis bootdev pxe
+                    # Set boot from network will cause OpenPOWER server wait at petitboot menu, so do nothing here
+                    if uname -m | grep x86_64; then
+		        ipmitool chassis bootdev pxe
+                    fi
 		fi
 		reboot -f
 	elif [ "$dest" = "install" -o "$dest" = "netboot" ]; then
