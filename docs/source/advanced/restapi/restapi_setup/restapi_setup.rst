@@ -83,10 +83,10 @@ Extend the Timeout of Web Server
 Some operations like 'create osimage' (copycds) need a long time (longer than 3 minutes sometimes) to complete. It would fail with a ``timeout error`` (504 Gateway Time-out) if the timeout setting in the web server is not extended: ::
 
     For [RHEL]
-        sed -i 's/^Timeout.*/Timeout 600/' /etc/httpd/conf/httpd.conf
+        Edit /etc/httpd/conf/httpd.conf and change existing or add new entry: "Timeout 600"
         service htttd restart
     For [SLES]
-        echo "Timeout 600" >> /etc/apache2/httpd.conf
+        Edit /etc/apache2/httpd.conf and change existing or add new entry: "Timeout 600"
         service apache2 restart
 
 Set Up an Account for Web Service Access
@@ -114,12 +114,17 @@ Use non-root Account
 
 Create new user and setup the password and policy rules. ::
 
-    useradd wsuser
+    useradd -u <wsuser-id> wsuser
     passwd wsuser     # set the password
-    tabch key=xcat,username=wsuser passwd.password=cluster
+    tabch key=xcat,username=wsuser passwd.password=<wsuser-pw>
     mkdef -t policy 6 name=wsuser rule=allow
 
 ``Note:`` in the tabch command above you can put the salted password (from /etc/shadow) in the xCAT passwd table instead of the clear text password, if you prefer. 
+
+Identical user with the same name and userid need to be created on each compute node. ::
+
+    useradd -u <wsuser-id> wsuser
+    passwd wsuser     # set the password
 
 Create the SSL certificate under that user's home directory so that user can be authenticated to xCAT. This is done by running the following command on the Management node as root: ::
 
@@ -140,4 +145,6 @@ or if you did not set up the certificate: ::
     curl -X GET -k 'https://<xcat-mn-host>/xcatws/nodes?userName=<user>&userPW=<password>'
 
 You should see some output that includes your list of nodes. 
+
+If errors returned, check `/var/log/httpd/ssl_error_log` on xCAT MN.
 
