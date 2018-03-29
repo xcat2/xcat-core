@@ -100,6 +100,8 @@ do
 done
 ########
 
+umask 0022
+
 OSIMAGE_NAME="${LINUX_DISTRO}-${LINUX_ARCH}-netboot-cudafull"
 OSIMAGE_OTHERPKGDIR="/install/post/otherpkgs/${LINUX_DISTRO}/${LINUX_ARCH}"
 OSIMAGE_ROOTIMGDIR="/install/netboot/${LINUX_DISTRO}/${LINUX_ARCH}/${OSIMAGE_NAME}"
@@ -133,6 +135,7 @@ ${OSIMAGE_NAME}:
 EOF
 [ "$?" -ne "0" ] && echo "Make osimage definition failed." >&2 && exit 1
 
+mkdir -p "/install/custom/netboot/rh"
 (
 	cat "/opt/xcat/share/xcat/netboot/rh/compute.${LINUX_DISTRO%%.*}.${LINUX_ARCH}.postinstall"
 	cat <<-EOF

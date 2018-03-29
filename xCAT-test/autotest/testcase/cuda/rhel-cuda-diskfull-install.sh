@@ -100,6 +100,8 @@ do
 done
 ########
 
+umask 0022
+
 OSIMAGE_NAME="${LINUX_DISTRO}-${LINUX_ARCH}-install-cudafull"
 OSIMAGE_OTHERPKGDIR="/install/post/otherpkgs/${LINUX_DISTRO}/${LINUX_ARCH}"
 
