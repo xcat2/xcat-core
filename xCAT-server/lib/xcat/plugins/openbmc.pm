@@ -2000,7 +2000,7 @@ sub parse_command_status {
                     $return_code = 1;
                 }
                 if (!$::UPLOAD_PNOR) {
-                    xCAT::SvrUtils::sendmsg([1,"No PNOR tar file found in $update_file"], $callback);
+                    xCAT::SvrUtils::sendmsg([1,"No Host tar file found in $update_file"], $callback);
                     $return_code = 1;
                 }
                 if ($return_code) {

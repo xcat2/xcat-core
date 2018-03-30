@@ -2016,7 +2016,7 @@ sub do_firmware_update {
         if (scalar(@pnor_files) > 1) {
             # Error if more than one .pnor file in data directory
             $exit_with_error_func->($sessdata->{node}, $callback,
-                "Multiple PNOR update files detected in data directory $pUpdate_directory.");
+                "Multiple Host update files detected in data directory $pUpdate_directory.");
         }
 
         if (scalar(@bmc_files) > 1) {
@@ -2059,7 +2059,7 @@ sub do_firmware_update {
             "Timeout to check the bmc status");
         }
 
-        # step 2 update BMC file or PNOR file, or both
+        # step 2 update BMC file or Host file, or both
         if ($bmc_file) {
             # BMC file was found in data directory, run update with it
             my $pUpdate_bmc_cmd = "$pUpdate_directory/pUpdate -f $bmc_file -i lan -h $bmc_addr -u $bmc_userid -p $bmc_password >".$rflash_log_file." 2>&1";
@@ -2083,11 +2083,11 @@ sub do_firmware_update {
 
 
         if ($pnor_file) {
-            # PNOR file was found in data directory, run update with it
+            # Host file was found in data directory, run update with it
             my $pUpdate_pnor_cmd = "$pUpdate_directory/pUpdate -pnor $pnor_file -i lan -h $bmc_addr -u $bmc_userid -p $bmc_password >>".$rflash_log_file." 2>&1";
             if ($verbose) {
                 xCAT::SvrUtils::sendmsg([ 0,
-                    "rflashing PNOR, see the detail progress :\"tail -f $rflash_log_file\"" ],
+                    "rflashing Host, see the detail progress :\"tail -f $rflash_log_file\"" ],
                     $callback, $sessdata->{node});
             }
             my $output = xCAT::Utils->runcmd($pUpdate_pnor_cmd, -1);

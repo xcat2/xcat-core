@@ -19,7 +19,7 @@ SYNOPSIS
 ********
 
 
-\ **pdu Attributes:**\   \ *machinetype*\ , \ *modelnum*\ , \ *node*\ , \ *nodetype*\ , \ *outlet*\ , \ *serialnum*\ 
+\ **pdu Attributes:**\   \ *node*\ , \ *nodetype*\ , \ *outlet*\ 
 
 
 ***********
@@ -39,14 +39,6 @@ pdu Attributes:
 
 
 
-\ **machinetype**\  (pdu.machinetype)
-
-
-
-\ **modelnum**\  (pdu.modelnum)
-
-
-
 \ **node**\  (pdu.node)
  
  The hostname/address of the pdu to which the settings apply
@@ -63,10 +55,6 @@ pdu Attributes:
  
  The pdu outlet count
  
-
-
-\ **serialnum**\  (pdu.serialnum)
-
 
 
 

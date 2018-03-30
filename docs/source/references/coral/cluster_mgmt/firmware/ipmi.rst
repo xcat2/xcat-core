@@ -9,9 +9,9 @@ Collect the required files
 
 Collect the following files and put them into a directory on the Management Node. 
 
-   * pUpdate
-   * pnor
-   * bmc 
+   * pUpdate utility
+   * .pnor for host
+   * .bin for bmc 
 
 If running ``rflash`` in Hierarchy, the firmware files/directory must be accessible on the Service Nodes.
 
@@ -26,7 +26,7 @@ The ``pUpdate`` utility is leveraged in doing the firmware update against the ta
 
    * power off the host
    * flash bmc and reboot
-   * flash pnor 
+   * flash host
    * power on the host 
 
 Monitor the progress for the nodes by looking at the files under ``/var/log/xcat/rflash/``.
