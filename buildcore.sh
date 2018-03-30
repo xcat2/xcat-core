@@ -500,8 +500,8 @@ if [ "$OSNAME" != "AIX" ]; then
     # Always recreate it, in case the whole dir was copied from devel to 2.x
     if [ -n "$1" ]; then embed="$1/"
     else embed=""; fi
-    cat >xCAT-core.repo << EOF
-[xcat-2-core]
+    cat >xcat-core.repo << EOF
+[xcat-core]
 name=xCAT 2 Core packages
 baseurl=$YUMREPOURL/$REL$EMBEDDIR/$CORE
 enabled=1
@@ -514,8 +514,8 @@ EOF
     cat >mklocalrepo.sh << 'EOF2'
 #!/bin/sh
 cd `dirname $0`
-REPOFILE=`basename xCAT-*.repo`
-if [[ $REPOFILE == "xCAT-*.repo" ]]; then
+REPOFILE=`basename xcat-*.repo`
+if [[ $REPOFILE == "xcat-*.repo" ]]; then
     echo "ERROR: For xcat-dep, please execute $0 in the correct <os>/<arch> subdirectory"
     exit 1
 fi
@@ -527,6 +527,9 @@ if [ ! -d "$DIRECTORY" ]; then
     DIRECTORY="/etc/zypp/repos.d"
 fi
 sed -e 's|baseurl=.*|baseurl=file://'"`pwd`"'|' $REPOFILE | sed -e 's|gpgkey=.*|gpgkey=file://'"`pwd`"'/repodata/repomd.xml.key|' > "$DIRECTORY/$REPOFILE"
+if [ -f "$DIRECTORY/xCAT-core.repo" ]; then
+    mv "$DIRECTORY/xCAT-core.repo" "$DIRECTORY/xCAT-core.repo.nouse"
+fi
 cd -
 EOF2
 chmod 775 mklocalrepo.sh
