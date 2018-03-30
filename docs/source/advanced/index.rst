@@ -23,6 +23,7 @@ Advanced Topics
    raid/index.rst
    restapi/index.rst
    security/index.rst
+   performance_tuning/index.rst
    softlayer/index.rst
    sysclone/index.rst
    zones/index.rst
