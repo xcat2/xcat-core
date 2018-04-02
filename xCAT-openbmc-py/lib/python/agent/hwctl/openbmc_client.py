@@ -917,7 +917,7 @@ class OpenBMCRest(object):
 
     def set_ipdhcp(self):
         payload = { "data": [] }
-        return self.request('PUT', RSPCONFIG_NETINFO_URL['ipdhcp'], payload=payload, cmd="set_bmcip_dhcp")
+        return self.request('POST', RSPCONFIG_NETINFO_URL['ipdhcp'], payload=payload, cmd="set_bmcip_dhcp")
 
 
 class OpenBMCImage(object):
