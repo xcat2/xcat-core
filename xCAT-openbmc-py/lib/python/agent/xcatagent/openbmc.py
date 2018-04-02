@@ -20,7 +20,6 @@ from hwctl.executor.openbmc_flash import OpenBMCFlashTask
 from hwctl.executor.openbmc_inventory import OpenBMCInventoryTask
 from hwctl.executor.openbmc_power import OpenBMCPowerTask
 from hwctl.executor.openbmc_sensor import OpenBMCSensorTask
-from hwctl.executor.openbmc_bmcconfig import OpenBMCBmcConfigTask
 from hwctl.executor.openbmc_eventlog import OpenBMCEventlogTask
 from hwctl.beacon import DefaultBeaconManager
 from hwctl.setboot import DefaultBootManager
@@ -287,6 +286,9 @@ class OpenBMCManager(base.BaseManager):
             DefaultPowerManager().set_power_state(runner, power_state=action)
 
     def rspconfig(self, nodesinfo, args):
+
+        from hwctl.executor.openbmc_bmcconfig import OpenBMCBmcConfigTask
+
         try:
             opts=docopt(RSPCONFIG_USAGE, argv=args)
         except DocoptExit as e:
