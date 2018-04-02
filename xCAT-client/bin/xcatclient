@@ -102,9 +102,9 @@ foreach (keys %ENV) {
     }
 }
 
-# Allow to print server information when -V
+# Allow to print server information when -V/--verbose
 foreach (reverse(@ARGV)) {
-    if ($_ eq '-V') {
+    if ($_ eq '-V' || $_ eq '--verbose') {
         $ENV{'XCATSHOWSVR'} = 1;
         last;
     }
