@@ -145,7 +145,7 @@ class OpenBMCBmcConfigTask(ParallelNodesCommand):
 
             for key in keys:
                 self._dump_download(obmc, node, str(key))
-        except SelfServerException as e:
+        except (SelfServerException, SelfClientException) as e:
             self.callback.error(e.message, node)
 
     def dump_process(self, **kw):
@@ -174,7 +174,7 @@ class OpenBMCBmcConfigTask(ParallelNodesCommand):
             else:
                 self.callback.error('Could not find dump %s after waiting %d seconds.' % (dump_id, 20 * 15), node)
 
-        except SelfServerException as e:
+        except (SelfServerException, SelfClientException) as e:
             self.callback.error(e.message, node)
 
     def gard_clear(self, **kw):
@@ -188,7 +188,7 @@ class OpenBMCBmcConfigTask(ParallelNodesCommand):
             obmc.clear_gard()
             self.callback.info('%s: GARD cleared' % node)
 
-        except SelfServerException as e:
+        except (SelfServerException, SelfClientException) as e:
             self.callback.error(e.message, node)
 
     def pre_set_sshcfg(self, *arg, **kw):

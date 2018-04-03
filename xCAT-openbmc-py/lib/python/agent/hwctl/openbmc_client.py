@@ -198,8 +198,8 @@ RSPCONFIG_APIS = {
         'get_data': [],
         'display_name': "BMC PowerSupplyRedundancy",
         'attr_values': {
-            'disabled': "Disables",
-            'enabled': "Enabled",
+            'disabled': ["Disables"],
+            'enabled': ["Enabled"],
         },
     },
     'powerrestorepolicy': {
@@ -751,7 +751,11 @@ class OpenBMCRest(object):
             data = attr_info['attr_values'][value]
         else:
             data = value
-        self.request('PUT', set_url, payload={"data": data}, cmd="set_%s" % key)
+
+        method = 'PUT'
+        if key == 'powersupplyredundancy':
+            method = 'POST'
+        self.request(method, set_url, payload={"data": data}, cmd="set_%s" % key)
 
     def get_apis_values(self, key):
         attr_info = RSPCONFIG_APIS[key]
