@@ -33,8 +33,11 @@ from hwctl.eventlog import DefaultEventlogManager
 from xcatagent import base
 import logging
 logger = logging.getLogger('xcatagent')
-if not logger.handlers:
-    utils.enableSyslog('xcat.agent')
+try:
+    if not logger.handlers:
+        utils.enableSyslog('xcat.agent')
+except:
+    pass
 
 HTTP_PROTOCOL = "https://"
 PROJECT_URL = "/xyz/openbmc_project"
