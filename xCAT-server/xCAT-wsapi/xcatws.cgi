@@ -138,6 +138,18 @@ my %URIdef = (
                 outhdler => \&actionout,
             },
         },
+        nodels => {
+            desc => "[URI:/nodes/{noderange}/nodels}] - Lists the nodes",
+            matcher => '^/nodes/[^/]*/nodels$',
+            GET     => {
+                desc => "Lists the nodes.",
+                usage => "||An object which includes multiple entries like: <nodename> : nodels|",
+                example => "|Get the running status for node node1|GET|/nodes/node1/nodels|",
+                cmd      => "nodels",
+                fhandler => \&actionhdl,
+                outhdler => \&nodelsout,
+            },
+        },
         nodehost => {
             desc => "[URI:/nodes/{noderange}/host] - The mapping of ip and hostname for the node {noderange}",
             matcher => '^/nodes/[^/]*/host$',
@@ -1755,6 +1767,56 @@ sub defout_remove_appended_info {
     }
 }
 
+#handle output of nodels command
+#input data like:
+#$VAR1 = [
+#          {
+#            'xcatdsource' => [
+#                             'bybc0602'
+#                           ],
+#            'node' => [
+#                        {
+#                          'name' => [
+#                                    'node1'
+#                                  ]
+#                        },
+#                        {
+#                          'name' => [
+#                                    'node2'
+#                                  ]
+#                        },
+#                        {
+#                          'name' => [
+#                                    'node3'
+#                                  ]
+#                        }
+#                      ]
+#          }
+#        ];
+
+#TO:
+#------------
+# [
+#    'node1',
+#    'node2',
+#    'node3'
+# ];
+sub nodelsout {
+    my $data = shift;
+    my $json;
+    foreach my $d (@$data) {
+        my $jsonnode;
+        my $lines = $d->{node};
+        foreach my $l (@$lines) {
+
+            push(@{$json}, $l->{name}[0]);
+
+        }
+    }
+    if ($json) {
+        addPageContent($JSON->encode($json), 1);
+    }
+}
 
 sub localresout {
     my $data = shift;
@@ -2059,6 +2121,10 @@ sub actionhdl {
             push @args, $paramhash->{'action'};
         } else {
             error("Missed Action.", $STATUS_NOT_FOUND);
+        }
+    } elsif ($params->{'resourcename'} eq "nodels") {
+        if (isGET()) {
+
         }
     } elsif ($params->{'resourcename'} =~ /(energy|energyattr)/) {
         if (isGET()) {
