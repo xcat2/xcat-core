@@ -7,7 +7,7 @@ cmd: mkdir -p /tmp/xcat_inventory_import_validation_osimage/trash/
 cmd: mkdir -p /tmp/xcat_inventory_import_validation_osimage/backup/
 cmd: lsdef -t osimage -o testosimage1 -z 2>/dev/null  >/tmp/xcat_inventory_import_validation_osimage/backup/testosimage1.stanza
 
-cmd: /opt/xcat/share/xcat/tools/autotest/testcase/xcat-inventory/validatehelper "osimage" "testosimage1" "role" "compute" "/tmp/tmp/xcat_inventory_import_validation_osimage/trash/"
+cmd: /opt/xcat/share/xcat/tools/autotest/testcase/xcat-inventory/validatehelper "osimage" "testosimage1" "role" "compute" "/tmp/xcat_inventory_import_validation_osimage/trash/"
 check: rc==0
 cmd: /opt/xcat/share/xcat/tools/autotest/testcase/xcat-inventory/validatehelper "osimage" "testosimage1" "role" "service" "/tmp/xcat_inventory_import_validation_osimage/trash/"
 check: rc==0
