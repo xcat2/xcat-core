@@ -531,6 +531,18 @@ sub process_request {
         # before packaging the image
         system("umount $rootimg_dir/proc");
 
+        #put the image name, uuid and timestamp into diskless image when it is packed.
+        $callback->({ data => ["add image info to xcatinfo file"] });
+        `echo IMAGENAME="'$imagename'" > $rootimg_dir/opt/xcat/xcatinfo`;
+
+        my $uuid = `uuidgen`;
+        chomp $uuid;
+        `echo IMAGEUUID="'$uuid'" >> $rootimg_dir/opt/xcat/xcatinfo`;
+
+        my $timestamp = `date`;
+        chomp $timestamp;
+        `echo TIMESTAMP="'$timestamp'" >> $rootimg_dir/opt/xcat/xcatinfo`;
+
         my $verb = "Packing";
 
         my $temppath;
