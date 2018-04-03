@@ -21,10 +21,10 @@ cmd:if grep Ubuntu /etc/*release;then xdsh $$CN "scp -r $$MN:/etc/resolv.conf /e
 check:rc==0
 cmd:if grep Ubuntu /etc/*release;then xdsh $$CN "apt-get clean && apt-get update"; fi
 check:rc==0
-cmd:rm -rf /tmp/go-xcat.log
+cmd:xdsh $$CN "rm -rf /tmp/go-xcat.log"
 cmd:if grep SUSE /etc/*release;then xdsh $$CN "cd /; ./go-xcat --xcat-core=/etc/zypp/repos.d/xCAT-core.repo -y install"; elif grep "Red Hat" /etc/*release;then xdsh $$CN  "cd /; ./go-xcat --xcat-core=/etc/yum.repos.d/xCAT-core.repo -y install"; elif grep Ubuntu /etc/*release;then xdsh $$CN "cd /; ./go-xcat --xcat-core=/etc/apt/sources.list.d/xcat-core.list -y install";else echo "Sorry,this is not supported os"; fi
 check:rc==0
-cmd:cat /tmp/go-xcat.log
+cmd:xdsh $$CN "cat /tmp/go-xcat.log"
 cmd:xdsh $$CN "source /etc/profile.d/xcat.sh;lsxcatd -v"
 check:rc==0
 cmd:xdsh $$CN "service xcatd status"
@@ -59,10 +59,10 @@ cmd:if grep Ubuntu /etc/*release;then xdsh $$CN "scp -r $$MN:/etc/resolv.conf /e
 check:rc==0
 cmd:if grep Ubuntu /etc/*release;then xdsh $$CN "apt-get clean && apt-get update"; fi
 check:rc==0
-cmd:rm -rf /tmp/go-xcat.log
+cmd:xdsh $$CN "rm -rf /tmp/go-xcat.log"
 cmd:xdsh $$CN "cd /; ./go-xcat --xcat-core=/xcat-core -y install"
 check:rc==0
-cmd:cat /tmp/go-xcat.log
+cmd:xdsh $$CN "cat /tmp/go-xcat.log"
 cmd:xdsh $$CN "source /etc/profile.d/xcat.sh;lsxcatd -v"
 check:rc==0
 cmd:xdsh $$CN "service xcatd status"
@@ -97,10 +97,10 @@ cmd:if grep Ubuntu /etc/*release;then xdsh $$CN "scp -r $$MN:/etc/resolv.conf /e
 check:rc==0
 cmd:if grep Ubuntu /etc/*release;then xdsh $$CN "apt-get clean && apt-get update"; fi
 check:rc==0
-cmd:rm -rf /tmp/go-xcat.log
+cmd:xdsh $$CN "rm -rf /tmp/go-xcat.log"
 cmd:xdsh $$CN "cd /; ./go-xcat --xcat-core=/xcat-core.tar -y install"
 check:rc==0
-cmd:cat /tmp/go-xcat.log
+cmd:xdsh $$CN "cat /tmp/go-xcat.log"
 cmd:xdsh $$CN "source /etc/profile.d/xcat.sh;lsxcatd -v"
 check:rc==0
 cmd:xdsh $$CN "service xcatd status"
@@ -135,10 +135,10 @@ cmd:if grep Ubuntu /etc/*release;then xdsh $$CN "scp -r $$MN:/etc/resolv.conf /e
 check:rc==0
 cmd:if grep Ubuntu /etc/*release;then xdsh $$CN "apt-get clean && apt-get update"; fi
 check:rc==0
-cmd:rm -rf /tmp/go-xcat.log
+cmd:xdsh $$CN "rm -rf /tmp/go-xcat.log"
 cmd:xdsh $$CN "cd /; ./go-xcat --xcat-core=/xcat-core.tar.bz2 --xcat-dep=/xcat-dep.tar.bz2 -y install"
 check:rc==0
-cmd:cat /tmp/go-xcat.log
+cmd:xdsh $$CN "cat /tmp/go-xcat.log"
 cmd:xdsh $$CN "source /etc/profile.d/xcat.sh;lsxcatd -v"
 check:rc==0
 cmd:xdsh $$CN "service xcatd status"
@@ -181,10 +181,10 @@ cmd:if grep Ubuntu /etc/*release;then xdsh $$CN "scp -r $$MN:/etc/resolv.conf /e
 check:rc==0
 cmd:if grep Ubuntu /etc/*release;then xdsh $$CN "apt-get clean && apt-get update"; fi
 check:rc==0
-cmd:rm -rf /tmp/go-xcat.log
+cmd:xdsh $$CN "rm -rf /tmp/go-xcat.log"
 cmd:if grep SUSE /etc/*release;then xdsh $$CN "cd /; ./go-xcat --xcat-core=/etc/zypp/repos.d/xCAT-core.repo --xcat-dep=/etc/zypp/repos.d/xCAT-dep.repo -y install"; elif grep "Red Hat" /etc/*release;then xdsh $$CN  "cd /; ./go-xcat --xcat-core=/etc/yum.repos.d/xCAT-core.repo --xcat-dep=/etc/yum.repos.d/xCAT-dep.repo -y install"; elif grep Ubuntu /etc/*release;then xdsh $$CN "cd /; ./go-xcat --xcat-core=/etc/apt/sources.list.d/xcat-core.list --xcat-dep=/etc/apt/sources.list.d/xcat-dep.list -y install"; else echo "Sorry,this is not supported os"; fi
 check:rc==0
-cmd:cat /tmp/go-xcat.log
+cmd:xdsh $$CN "cat /tmp/go-xcat.log"
 cmd:xdsh $$CN "source /etc/profile.d/xcat.sh;lsxcatd -v"
 check:rc==0
 cmd:xdsh $$CN "service xcatd status"
@@ -223,10 +223,10 @@ cmd:if grep Ubuntu /etc/*release;then xdsh $$CN "scp -r $$MN:/etc/resolv.conf /e
 check:rc==0
 cmd:if grep Ubuntu /etc/*release;then xdsh $$CN "apt-get clean && apt-get update"; fi
 check:rc==0
-cmd:rm -rf /tmp/go-xcat.log
+cmd:xdsh $$CN "rm -rf /tmp/go-xcat.log"
 cmd:xdsh $$CN "cd /; ./go-xcat --xcat-core=/xcat-core --xcat-dep=/xcat-dep -y install"
 check:rc==0
-cmd:cat /tmp/go-xcat.log
+cmd:xdsh $$CN "cat /tmp/go-xcat.log"
 cmd:xdsh $$CN "source /etc/profile.d/xcat.sh;lsxcatd -v"
 check:rc==0
 cmd:xdsh $$CN "service xcatd status"
@@ -259,10 +259,10 @@ cmd:if grep Ubuntu /etc/*release;then xdsh $$CN "scp -r $$MN:/etc/resolv.conf /e
 check:rc==0
 cmd:if grep Ubuntu /etc/*release;then xdsh $$CN "apt-get clean && apt-get update"; fi
 check:rc==0
-cmd:rm -rf /tmp/go-xcat.log
+cmd:xdsh $$CN "rm -rf /tmp/go-xcat.log"
 cmd:xdsh $$CN "cd /; ./go-xcat --xcat-core=/xcat-core.tar.bz2 --xcat-dep=/xcat-dep.tar.bz2 -y install"
 check:rc==0
-cmd:cat /tmp/go-xcat.log
+cmd:xdsh $$CN "cat /tmp/go-xcat.log"
 cmd:xdsh $$CN "source /etc/profile.d/xcat.sh;lsxcatd -v"
 check:rc==0
 cmd:xdsh $$CN "service xcatd status"
