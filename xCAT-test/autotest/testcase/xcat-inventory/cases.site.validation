@@ -7,7 +7,7 @@ cmd: mkdir -p /tmp/xcat_inventory_import_validation_site/trash/
 cmd: mkdir -p /tmp/xcat_inventory_import_validation_site/backup/
 cmd: lsdef -t site -o clustersite -z 2>/dev/null  >/tmp/xcat_inventory_import_validation_site/backup/clustersite.stanza
 
-cmd: /opt/xcat/share/xcat/tools/autotest/testcase/xcat-inventory/validatehelper "site" "clustersite" "dbtracelevel" "0" "/tmp/tmp/xcat_inventory_import_validation_site/trash/"
+cmd: /opt/xcat/share/xcat/tools/autotest/testcase/xcat-inventory/validatehelper "site" "clustersite" "dbtracelevel" "0" "/tmp/xcat_inventory_import_validation_site/trash/"
 check: rc==0
 cmd: /opt/xcat/share/xcat/tools/autotest/testcase/xcat-inventory/validatehelper "site" "clustersite" "dbtracelevel" "1" "/tmp/xcat_inventory_import_validation_site/trash/"
 check: rc==0
