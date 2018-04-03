@@ -23,7 +23,11 @@ def getxCATLog(name=None):
     return xl
 
 def enableSyslog(name='xcat'):
-    h = SysLogHandler(address='/dev/log', facility=SysLogHandler.LOG_LOCAL4)
+    try:
+        h = SysLogHandler(address='/dev/log', facility=SysLogHandler.LOG_LOCAL4)
+    except:
+        # this will connect localhost:514
+        h = SysLogHandler(facility=SysLogHandler.LOG_LOCAL4)
     h.setFormatter(logging.Formatter('%s: ' % name + '%(levelname)s %(message)s'))
     logging.getLogger('xcatagent').addHandler(h)
 
