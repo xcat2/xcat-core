@@ -181,8 +181,8 @@ RSPCONFIG_APIS = {
         'display_name': "BMC Hostname",
     },
     'autoreboot' : {
-        'baseurl': "/control/host0/auto_reboot/",
-        'set_url': "attr/AutoReboot",
+        'baseurl': "/control/host0/auto_reboot",
+        'set_url': "/attr/AutoReboot",
         'get_url': "",
         'display_name': "BMC AutoReboot",
         'attr_values': {

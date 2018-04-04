@@ -400,7 +400,7 @@ rmdir \"/tmp/$userid\" \n")
             return self.callback.error(e.message, node)
 
         if isinstance(value, dict):
-            str_value = value.values()[0]
+            str_value = str(value.values()[0])
         elif value:
             str_value = str(value)
         else:
