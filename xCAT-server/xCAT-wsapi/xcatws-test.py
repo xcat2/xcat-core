@@ -1,25 +1,30 @@
-#!/usr/bin/python
+#!/usr/bin/env python
 import requests
 import json
 
-xCAT_MN = "<host name>"
-user    = "wsuser"
-pw      = "cluster_rest"
+XCATMN        = "127.0.0.1"
+REST_ENDPOINT = "https://" + XCATMN + "/xcatws"
+username      = "wsuser"
+password      = "cluster_rest"
 
-get_all_nodes    = "https://" + xCAT_MN + "/xcatws/nodes/"
-get_all_osimages = "https://" + xCAT_MN + "/xcatws/osimages/"
-get_token        = "https://" + xCAT_MN + "/xcatws/tokens"
+get_all_nodes    = REST_ENDPOINT + "/nodes/"
+get_all_osimages = REST_ENDPOINT + "/osimages/"
+get_token        = REST_ENDPOINT + "/tokens"
 
-# Send request with user and pw
-r = requests.get(get_all_nodes + "?userName=" + user + "&userPW=" + pw, verify=False)
+#
+# Send a request to get all nodes, passing in user and password
+#
+r = requests.get(get_all_nodes + "?userName=" + username + "&userPW=" + password, verify=False)
 
-# Display output
+# Display returned data
 print r.content
 
-# Send request with a token
-user_data = {'userName': 'wsuser','userPW': 'cluster_rest'}
+#
+# Send a request to get all osimages, passing in a token
+#
+user_data = {'userName': username,'userPW': password}
 token = requests.post(get_token, verify=False, headers={'Content-Type': 'application/json'}, data=json.dumps(user_data))
 r = requests.get(get_all_osimages, verify=False, headers={'X-Auth-Token': token.json()['token']['id']})
 
-# Display output
+# Display returned data
 print r.content

@@ -186,14 +186,14 @@ Normally you will make REST API calls from your code. You can use any language t
 An Example of How to Use xCAT REST API from Python
 --------------------------------------------------
 
-Refer to the file /opt/xcat/ws/xcatws-test.py: ::
+Refer to the file `/opt/xcat/ws/xcatws-test.py <https://github.com/xcat2/xcat-core/blob/master/xCAT-server/xCAT-wsapi/xcatws-test.py>`_: ::
 
     ./xcatws-test.py
 
 An Example of How to Use xCAT REST API from PERL
 ------------------------------------------------
 
-Refer to the file /opt/xcat/ws/xcatws-test.pl: ::
+Refer to the file `/opt/xcat/ws/xcatws-test.pl <https://github.com/xcat2/xcat-core/blob/master/xCAT-server/xCAT-wsapi/xcatws-test.pl>`_: ::
 
     ./xcatws-test.pl -m GET -u "https://127.0.0.1/xcatws/nodes?userName=root&userPW=cluster"
 
