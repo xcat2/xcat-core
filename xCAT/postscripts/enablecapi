@@ -14,51 +14,46 @@ fi
 #
 #---------------------------------------------------------------------------
 
-#check if mlnx ofed installed
-if [ ! -x /usr/bin/ofed_info ]; then
-   logger -t xcat -p local4.err "MOFED is not installed"
-   echo "MOFED is not installed on the system"
-   exit -1
-fi
+function logerr {
+    echo "$@"
+    logger -t xcat -p local4.err $@
+}
+
+
+#check if mlnx ofed commands are installed
+COMMANDS="ofed_info mst mlxconfig"
+for CMD in ${COMMANDS}; do
+    RC=`command -v ${CMD} >> /dev/nul 2>&1; echo $?`
+    if [[ ${RC} != 0 ]]; then
+        ERRMSG="Command: ${CMD} is not found, unable to run the scripts"
+        logerr $ERRMSG
+        exit 1
+    fi
+done
 
 #mofed version at least 4.3-1
 version=`/usr/bin/ofed_info -n`
 majorversion=`echo $version | cut -d- -f1`
 minorversion=`echo $version | cut -d- -f2`
 if (( $(echo "$majorversion < 4.3" |bc -l) )); then
-   logger -t xcat -p local4.err "Current MOFED version is $version and needs to be at least 4.3-1"
-   echo "Current MOFED version is $version and needs to be at least 4.3-1"
-   exit -1
+   ERRMSG="Current MOFED version is $version and needs to be at least 4.3-1"
+   logerr $ERRMSG
+   exit 1
 fi
 if (( $(echo "$majorversion == 4.3" |bc -l) )); then
    minor=`echo $minorversion | cut -d. -f1`
    if (( $(echo "$minor < 1") )); then
-       logger -t xcat -p local4.err "MOFED version needs to be at least 4.3-1"
-       echo "Current MOFED version is $version and needs to be at least 4.3-1"
-       exit -1
+       ERRMSG="Current MOFED version is $version and needs to be at least 4.3-1"
+       logerr $ERRMSG
+       exit 1
    fi 
-fi
-
-#check if mst is existed
-if [ ! -x /usr/bin/mst ]; then
-   logger -t xcat -p local4.err "mst command is not available"
-   echo "mst command is not available"
-   exit -1
 fi
 
 service mst restart >/dev/null 2>&1
 if [ "$?" != "0" ] ;then
-    logger -t xcat -p local4.err "[Error] failed to start mst."
-    echo "[Error] failed to start mst."
-    exit -1
-fi
-
-
-#check if mlxconfig is existed
-if [ ! -x /usr/bin/mlxconfig ]; then
-   logger -t xcat -p local4.err "mlxconfig command is not available"
-   echo "mlxconfig command is not available"
-   exit -1
+    ERRMSG "[Error] failed to start mst."
+    logerr $ERRMSG
+    exit 1
 fi
 
 reboot_flag=0
@@ -79,9 +74,7 @@ done
 
 if [[ $reboot_flag == 0 ]]; then
     echo "Didn't find ConnectX5 Devices, will not apply the new configuration"
-fi
-
-if [[ $reboot_flag == 1 ]]; then
+else
     echo "******************************************************"
     echo "     New configuration applied"
     echo "     Please reboot system to load new configurations"
