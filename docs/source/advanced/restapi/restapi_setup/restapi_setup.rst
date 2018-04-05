@@ -133,7 +133,7 @@ To enable the POST method of resources like nodeshell, nodecopy, updating and fi
 
 Run a test request to see if everything is working: ::
 
-    curl -X GET --cacert /root/ca-cert.pem 'https://<xcat-mn-host>/xcatws/nodes?userName=<user>&userPW=<password>'
+    curl -X GET -k 'https://<xcat-mn-host>/xcatws/nodes?userName=<user>&userPW=<password>'
 
 or if you did not set up the certificate: ::
 
