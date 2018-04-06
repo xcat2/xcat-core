@@ -188,7 +188,7 @@ An Example of How to Use xCAT REST API from Python
 
 Refer to the file `/opt/xcat/ws/xcatws-test.py <https://github.com/xcat2/xcat-core/blob/master/xCAT-server/xCAT-wsapi/xcatws-test.py>`_: ::
 
-    ./xcatws-test.py
+    ./xcatws-test.py --user wsuser -password cluster_rest --xcatmn <FQDN of xCAT MN>
 
 An Example of How to Use xCAT REST API from PERL
 ------------------------------------------------
