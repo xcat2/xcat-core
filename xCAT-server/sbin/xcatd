@@ -598,7 +598,8 @@ sub do_installm_service {
                     chomp $text;
                     xCAT::MsgUtils->trace(0, "E", "xcatd: install monitor does not support \'$text\', the connection request from $conn_peer_addr will be ignored.");
                     close($conn); #close it to avoid the DDOS attack
-                    last;
+                    alarm(2);
+                    next;
                 }
                 xCAT::MsgUtils->trace(0, "I", "xcatd: finish a connection request for $node from $conn_peer_addr");
                 alarm(2);
