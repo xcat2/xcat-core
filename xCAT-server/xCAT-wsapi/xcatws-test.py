@@ -21,12 +21,12 @@ try:
         username = arguments['--user']
     if arguments['--password']:
         password = arguments['--password']
+except ImportError:
+    print "WARNING: docopt is not installed, will continue with hard coded defaults..."
 except DocoptExit as e:
     # Invalid arguments
     print e
     sys.exit(1)
-except ImportError:
-    print "WARNING: docopt is not installed, will continue with hard coded defaults..."
 
 REST_ENDPOINT    = "https://" + XCATMN + "/xcatws"
 create_node      = REST_ENDPOINT + "/nodes/"
@@ -49,7 +49,7 @@ try:
         print new_node.content
         sys.exit(1)
     else:
-        print "New node definition created for " + testnode_name
+        print "New node definition created for " + testnode_name + ".\n"
 except requests.exceptions.HTTPError as e:
     print ("Http Error:",e)
     sys.exit(1)
@@ -63,6 +63,14 @@ except requests.exceptions.Timeout as e:
     sys.exit(1)
 except requests.exceptions.RequestException as e:
     print "Unexpected error connecting to xCAT management node " + XCATMN
+    print e
+    sys.exit(1)
+except Exception as e:
+    print "AttributeError caught, you may need to update the Perl libraries."
+    print e
+    sys.exit(1)
+except Exception as e:
+    print "Unexpected error."
     print e
     sys.exit(1)
 
