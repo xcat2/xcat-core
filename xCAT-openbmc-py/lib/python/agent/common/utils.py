@@ -98,7 +98,7 @@ def mask_int2str(mask_int):
 
 def get_full_path(cwd, directory):
     if not os.path.isabs(directory): 
-        directory = '%s/%s' % (cwd, directory)
+        directory = os.path.join(cwd, directory)
     return directory
 
 class Messager(object):
