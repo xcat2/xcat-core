@@ -116,7 +116,7 @@ cmd:xdsh $$SN "service httpd status"
 check:rc==0
 cmd:xdsh $$SN "service systemd status"
 #check:rc==0
-
+cmd:xdsh $$SN  "cat /var/log/xcat/xcat.log"
 cmd:rootimgdir=`lsdef -t osimage  __GETNODEATTR($$SN,os)__-__GETNODEATTR($$SN,arch)__-netboot-service|grep rootimgdir|awk -F'=' '{print $2}'`; if [ -d $rootimgdir.org ]; then rm -rf $rootimgdir; mv $rootimgdir.org $rootimgdir; fi
 check:rc==0
 cmd:xdsh $$SN  "cat /var/log/xcat/xcat.log"

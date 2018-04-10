@@ -190,6 +190,9 @@ class OpenBMCManager(base.BaseManager):
         try:
             opts = docopt(rflash_usage, argv=args)
             self.verbose = opts.pop('--verbose')
+        except DocoptExit as e:
+            self.messager.error("Failed to parse args by docopt: %s" % e)
+            return
         except Exception as e:
             self.messager.error("Failed to parse arguments for rflash: %s" % args)
             return

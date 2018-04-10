@@ -409,7 +409,7 @@ sub do_installm_service {
                 }
             }
             $conn_peer_addr = $conn->peerhost();
-            xCAT::MsgUtils->trace(0, "I", "xcatd: received a connection request from $conn_peer_addr");
+            xCAT::MsgUtils->trace(0, "I", "xcatd: install monitor received a connection request from $conn_peer_addr");
 
             my $client_name;
             my $client_aliases;
@@ -590,11 +590,15 @@ sub do_installm_service {
                     `/usr/bin/cat $myfile | /usr/bin/sed "/BASECUST_REMOVAL/d">/tmp/$text.nimtmp`;
                     `/usr/bin/mv /tmp/$text.nimtmp $myfile`;
                     close($conn);
+                } elsif ($text =~ /installmonitor/) {
+                    xCAT::MsgUtils->trace(0, "I", "xcatd: handle installmonitor requesting from $text...");
+                    close($conn);
                 } else {
                     sleep 0.01;
                     chomp $text;
                     xCAT::MsgUtils->trace(0, "E", "xcatd: install monitor does not support \'$text\', the connection request from $conn_peer_addr will be ignored.");
                     close($conn); #close it to avoid the DDOS attack
+                    alarm(2);
                     next;
                 }
                 xCAT::MsgUtils->trace(0, "I", "xcatd: finish a connection request for $node from $conn_peer_addr");

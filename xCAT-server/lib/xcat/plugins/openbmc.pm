@@ -2423,7 +2423,7 @@ sub deal_with_response {
                     my $log_id = (split ('/', $cur_url))[5];
                     $error = "Invalid ID=$log_id provided to be resolved. [$::RESPONSE_FORBIDDEN]";
                 } else{
-                    $error = "$::RESPONSE_FORBIDDEN - Requested endpoint does not exists and may indicate function is not yet supported by OpenBMC firmware.";
+                    $error = "$::RESPONSE_FORBIDDEN - Requested endpoint does not exist or may indicate function is not yet supported by OpenBMC firmware.";
                 }
             # Handle 404 
             } elsif ($response->status_line eq $::RESPONSE_NOT_FOUND) {
@@ -2434,7 +2434,7 @@ sub deal_with_response {
                     $error = "Invalid ID provided to delete.  Use the -l option to view valid firmware IDs.";
                 } elsif (($node_info{$node}{cur_status} eq "RSPCONFIG_API_CONFIG_QUERY_RESPONSE") || 
                          ($node_info{$node}{cur_status} eq "RSPCONFIG_API_CONFIG_ATTR_RESPONSE")) { 
-                    $error = "$::RESPONSE_NOT_FOUND - Requested endpoint does not exists and may indicate function is not supported on this OpenBMC firmware.";
+                    $error = "$::RESPONSE_NOT_FOUND - Requested endpoint does not exist or may indicate function is not supported on this OpenBMC firmware.";
                 } else {
                     $error = "[" . $response->code . "] " . $response_info->{'data'}->{'description'};
                 }
