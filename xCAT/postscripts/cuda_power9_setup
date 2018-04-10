@@ -40,3 +40,36 @@ chmod 0644 /usr/lib/systemd/system/nvidia-persistenced.service
 systemctl enable nvidia-persistenced
 
 rm -f /lib/udev/rules.d/40-redhat.rules
+
+#
+# Extra steps for passing parameters to kernel module nvidia
+#
+mkdir -p /usr/lib/dracut/modules.d/95nvidia
+cat >/usr/lib/dracut/modules.d/95nvidia/module-setup.sh <<EOF
+#!/bin/bash
+# module setup file for dracut
+# nvidia patch described in:
+
+check() {
+    return 0
+}
+
+depends() {
+    return 0
+}
+
+installkernel() {
+    return 0
+}
+
+install() {
+    [ -d \$initdir/etc/modprobe.d/ ] || mkdir \$initdir/etc/modprobe.d
+    echo 'options nvidia NVreg_RegistryDwords="RMNumaOnlining=0x1;RMNvLinkSpeedControl=0x9;PeerMappingOverride=1"' >\$initdir/etc/modprobe.d/nvidia.conf
+}
+EOF
+
+chmod 0755 /usr/lib/dracut/modules.d/95nvidia/module-setup.sh
+echo 'dracutmodules+="nvidia"' >/etc/dracut.conf.d/nvidia_patch.conf
+
+# Patch for the diskfull environment, or in case kernel module nvidia need to be reloaded
+echo 'options nvidia NVreg_RegistryDwords="RMNumaOnlining=0x1;RMNvLinkSpeedControl=0x9;PeerMappingOverride=1"' >/etc/modprobe.d/nvidia.conf
