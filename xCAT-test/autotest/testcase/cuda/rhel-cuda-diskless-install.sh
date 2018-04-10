@@ -135,15 +135,15 @@ ${OSIMAGE_NAME}:
 EOF
 [ "$?" -ne "0" ] && echo "Make osimage definition failed." >&2 && exit 1
 
-mkdir -p "/install/custom/netboot/rh"
+mkdir -p /install/custom/netboot/rh
 (
 	cat "/opt/xcat/share/xcat/netboot/rh/compute.${LINUX_DISTRO%%.*}.${LINUX_ARCH}.postinstall"
 	cat <<-EOF
 
-	cp /install/postscripts/cuda_power9_setup "${OSIMAGE_ROOTIMGDIR}/rootimg/tmp/cuda_power9_setup"
-	chroot "${OSIMAGE_ROOTIMGDIR}/rootimg" /tmp/cuda_power9_setup
+	cp /install/postscripts/cuda_power9_setup "\$installroot/tmp/cuda_power9_setup"
+	chroot "\$installroot" /tmp/cuda_power9_setup
 
-	rm -f "${OSIMAGE_ROOTIMGDIR}/rootimg/tmp/cuda_power9_setup"
+	rm -f "\$installroot/tmp/cuda_power9_setup"
 	EOF
 ) >"/install/custom/netboot/rh/cudafull.${LINUX_DISTRO%%.*}.${LINUX_ARCH}.postinstall"
 chmod 0755 "/install/custom/netboot/rh/cudafull.${LINUX_DISTRO%%.*}.${LINUX_ARCH}.postinstall"
