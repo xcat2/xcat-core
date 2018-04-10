@@ -54,6 +54,7 @@ class ParallelNodesCommand(BaseCommand):
         """
         self.inventory = inventory
         self.callback = callback
+        self.cwd = kwargs.get('cwd')
         self.debugmode = kwargs.get('debugmode')
         self.verbose = kwargs.get('verbose')
 

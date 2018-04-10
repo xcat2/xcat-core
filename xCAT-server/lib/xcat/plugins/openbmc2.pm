@@ -508,6 +508,23 @@ sub refactor_args {
             unshift @$extrargs, "list";
         }
     }
+    if ($command eq "rflash") {
+        my @new_args = ('') x 4;
+        foreach my $tmp (@$extrargs) {
+            if ($tmp =~ /^-/) {
+                if ($tmp !~ /^-V$|^--verbose$/) {
+                    $new_args[0] = $tmp;
+                } elsif ($tmp =~ /^--no-host-reboot$/) {
+                    $new_args[2] = $tmp;
+                } else {
+                    $new_args[3] = $tmp;
+                }
+            } else {
+                $new_args[1] = $tmp;
+            }
+        }
+        @$extrargs = grep(/.+/, @new_args);
+    } 
     return 0;
 }
 
