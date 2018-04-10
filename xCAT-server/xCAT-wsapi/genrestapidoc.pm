@@ -181,9 +181,9 @@ sub make_rst_format {
                 my ($uri, $data);
                 if ($parts[3] =~ /\s+/) {
                     ($uri, $data) = split(/ /, $parts[3]);
-                    print "\n    #curl -X $parts[2] -k \'https://127.0.0.1/xcatws$uri$postfix\' -H Content-Type:application/json --data \'$data\'\n";
+                    print "\n    curl -X $parts[2] -k \'https://127.0.0.1/xcatws$uri$postfix\' -H Content-Type:application/json --data \'$data\'\n";
                 } else {
-                    print "\n    #curl -X $parts[2] -k \'https://127.0.0.1/xcatws$parts[3]$postfix\'\n";
+                    print "\n    curl -X $parts[2] -k \'https://127.0.0.1/xcatws$parts[3]$postfix\'\n";
                 }
 
                 if ($parts[4]) {
