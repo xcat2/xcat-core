@@ -15,7 +15,7 @@ POST - Create a token.
 
 **Example:** 
 
-Aquire a token for user 'root'. :: 
+Acquire a token for user 'root'. :: 
 
 
     curl -X POST -k 'https://127.0.0.1/xcatws/tokens?userName=root&userPW=cluster&pretty=1' -H Content-Type:application/json --data '{"userName":"root","userPW":"cluster"}'
