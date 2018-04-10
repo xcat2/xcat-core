@@ -217,8 +217,8 @@ class OpenBMCManager(base.BaseManager):
     def rinv(self, nodesinfo, args):
 
         # 1, parse agrs
-        if not args:
-            args = ['all']
+        if not args or (len(args) == 1 and args[0] in ['-V', '--verbose']):
+            args.append('all')
 
         rinv_usage = """
         Usage:
@@ -385,8 +385,8 @@ class OpenBMCManager(base.BaseManager):
     def rvitals(self, nodesinfo, args):
 
         # 1, parse agrs
-        if not args:
-            args = ['all']
+        if not args or (len(args) == 1 and args[0] in ['-V', '--verbose']):
+            args.append('all')
 
         rvitals_usage = """
         Usage:
