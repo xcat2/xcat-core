@@ -728,12 +728,12 @@ sub refresh_switch {
 
         my @res=xCAT::Utils->runcmd("ssh -o StrictHostKeyChecking=no -o PasswordAuthentication=no $switch 'bridge fdb show|grep -i -v permanent|tr A-Z a-z  2>/dev/null' 2>/dev/null",-1);
         if ($::RUNCMD_RC) {
-            my $errmsg = "Failed to get MAC table from $switch. Make sure passwordless SSH to the switch is enabled.";
-            xCAT::MsgUtils->message("S", $errmsg);
+            xCAT::MsgUtils->message("S", "Failed to get mac table with ssh to $switch, fall back to snmp! To obtain mac table with ssh, please make sure the passwordless root ssh to $switch is available");
             if ($self->{collect_mac_info}) {
+                my $errmsg = "Failed to get MAC table from $switch. Make sure passwordless SSH to the switch is enabled.";
                 $self->{macinfo}->{$switch}->{ErrorStr} = $errmsg;
+                return;
             }
-            return;
         }else{
             foreach (@res){
                 if($_ =~ m/^([0-9a-z]{2}:[0-9a-z]{2}:[0-9a-z]{2}:[0-9a-z]{2}:[0-9a-z]{2}:[0-9a-z]{2}) dev swp([0-9]+) vlan ([0-9]+) .*/){
