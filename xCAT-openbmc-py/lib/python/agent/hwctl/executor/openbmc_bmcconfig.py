@@ -388,10 +388,10 @@ rmdir \"/tmp/$userid\" \n")
             return self.callback.error(e.message, node)
         except SelfClientException:
             if e.code == 404:
-                return self.callback.error('404 Not Found - Requested endpoint does not exists and may \
+                return self.callback.error('404 Not Found - Requested endpoint does not exist or may \
                                             indicate function is not supported on this OpenBMC firmware.', node)
             if e.code == 403:
-                return self.callback.error('403 Forbidden - Requested endpoint does not exists and may \
+                return self.callback.error('403 Forbidden - Requested endpoint does not exist or may \
                                             indicate function is not yet supported by OpenBMC firmware.', node)
             return self.callback.error(e.message, node)
 
@@ -409,10 +409,10 @@ rmdir \"/tmp/$userid\" \n")
             return self.callback.error(e.message, node)
         except SelfClientException:
             if e.code == 404:
-                return self.callback.error('404 Not Found - Requested endpoint does not exists and may \
+                return self.callback.error('404 Not Found - Requested endpoint does not exist or may \
                                             indicate function is not supported on this OpenBMC firmware.', node)
             if e.code == 403:
-                return self.callback.error('403 Forbidden - Requested endpoint does not exists and may \
+                return self.callback.error('403 Forbidden - Requested endpoint does not exist or may \
                                             indicate function is not yet supported by OpenBMC firmware.', node)
             return self.callback.error(e.message, node)
 
