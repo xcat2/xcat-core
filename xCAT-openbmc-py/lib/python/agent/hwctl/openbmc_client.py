@@ -198,7 +198,7 @@ RSPCONFIG_APIS = {
         'get_data': [],
         'display_name': "BMC PowerSupplyRedundancy",
         'attr_values': {
-            'disabled': ["Disables"],
+            'disabled': ["Disabled"],
             'enabled': ["Enabled"],
         },
     },
