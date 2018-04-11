@@ -69,7 +69,7 @@ install() {
 EOF
 
 chmod 0755 /usr/lib/dracut/modules.d/95nvidia/module-setup.sh
-echo 'dracutmodules+="nvidia"' >/etc/dracut.conf.d/nvidia_patch.conf
+echo 'add_dracutmodules+=" nvidia "' >/etc/dracut.conf.d/nvidia_patch.conf
 
 # Patch for the diskfull environment, or in case kernel module nvidia need to be reloaded
 echo 'options nvidia NVreg_RegistryDwords="RMNumaOnlining=0x1;RMNvLinkSpeedControl=0x9;PeerMappingOverride=1"' >/etc/modprobe.d/nvidia.conf
