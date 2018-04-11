@@ -191,7 +191,7 @@ Diskful osimage
 
 For diskful deployment, there is no need to change the osimage definition. Instead, add this postscript to your compute node postbootscrtips list. ::
 
-    chdef p9compute -p postbootscripts=cuda_power9_setup
+    chdef p9compute -p postscripts=cuda_power9_setup
 
 Disless osimage
 ^^^^^^^^^^^^^^^
