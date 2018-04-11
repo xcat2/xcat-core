@@ -256,7 +256,7 @@ hcp:openbmc
 cmd:lsdef $$CN -i bmc -c
 check:rc == 0
 cmd:rspconfig $$CN hostname=*
-check:rc == 0
+check:rc != 0
 check:output =~ Invalid OpenBMC Hostname
 cmd:ssh __GETNODEATTR(f6u03,bmc)__ "hostname"
 end
