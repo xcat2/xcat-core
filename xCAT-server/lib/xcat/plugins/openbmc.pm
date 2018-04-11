@@ -983,7 +983,7 @@ sub process_request {
         if ($next_status{LOGIN_RESPONSE} eq "RSPCONFIG_SET_HOSTNAME_REQUEST" and $status_info{RSPCONFIG_SET_HOSTNAME_REQUEST}{data} =~ /^\*$/) {
             if ($node_info{$node}{bmc} =~ /^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/) {
                 my $info_msg = "Invalid OpenBMC Hostname $node_info{$node}{bmc}, can't set to OpenBMC";
-                xCAT::SvrUtils::sendmsg($info_msg, $callback, $node);
+                xCAT::SvrUtils::sendmsg([1, $info_msg], $callback, $node);
                 $wait_node_num--;
                 next; 
             }
