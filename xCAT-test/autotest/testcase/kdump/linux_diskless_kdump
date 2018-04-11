@@ -69,8 +69,7 @@ cmd:xdsh $$CN date
 check:rc==0
 check:output=~\d\d:\d\d:\d\d
 
-cmd:xdsh $$CN "echo 1 > /proc/sys/kernel/sysrq"
-cmd:xdsh $$CN "echo c > /proc/sysrq-trigger" -t 30
+cmd:xdsh $$CN "setsid 'echo 1 > /proc/sys/kernel/sysrq; echo c > /proc/sysrq-trigger'"
 cmd:sleep 300
 
 cmd:vmcorefile=`find /kdumpdir/ -name vmcore`;if [[ -s $vmcorefile ]]; then echo "this file is not empty";else echo "this file is empty"; fi
