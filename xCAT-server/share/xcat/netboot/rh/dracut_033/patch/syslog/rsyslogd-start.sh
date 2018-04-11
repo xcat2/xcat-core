@@ -21,7 +21,12 @@ rsyslog_config() {
 #        echo "${filter} @${server}"
 #    done
 
-    
+    # In dracut 33, default rsyslogd configuration does not use journald. Then when
+    # rsyslog in debug mode, it causes `/dev/log` is not available after switch_root (#4929)
+    echo "\$ModLoad imjournal"
+    echo "\$OmitLocalLogging on"
+    echo "\$IMJournalStateFile imjournal.state"
+
     if [ -n "$filters" ];then
         confline="${filters}";
     else
