@@ -35,7 +35,8 @@ check:rc==0
 
 cmd:if [ ! -d /kdumpdir ]; then mkdir -p /kdumpdir && chmod 777 /kdumpdir; fi
 cmd:if [ ! -f /etc/exports ] ;then touch /etc/exports;else cp /etc/exports /etc/exports.bak;fi
-cmd:echo -e "/kdumpdir *(rw,no_root_squash,sync,no_subtree_check)" >> /etc/exports && exportfs /etc/exports  fi;
+cmd:cat /etc/exports|grep kdumpdir; if [ "$?" -ne "0" ]; then echo "/kdumpdir *(rw,no_root_squash,sync,no_subtree_check)" >> /etc/exports; fi
+cmd:cd /etc; export exports;cd -;service nfs restart
 cmd:chdef -t osimage __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute dump=nfs://$$MN/kdumpdir
 check:rc==0
 
@@ -55,7 +56,7 @@ cmd:rinstall $$CN osimage=__GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-ne
 check:rc==0
 check:output=~Provision node\(s\)\: $$CN
 
-cmd:sleep 900
+cmd:sleep 300
 cmd:a=0;while ! `lsdef -l $$CN|grep status|grep booted >/dev/null`; do sleep 10;((a++));if [ $a -gt 60 ];then break;fi done
 
 cmd:ping $$CN -c 3
