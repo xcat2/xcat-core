@@ -101,6 +101,12 @@ The BMC IP address is obtained by the open range dhcp server and the plan in thi
 
        chdef cn01 chain="runcmd=bmcsetup"
 
+#. **[Optional]** More operation plan to do after hardware disocvery is done, ``ondiscover`` option can be used.
+
+   For example, configure console and copy SSH key for **OpenBMC** ::
+
+       chdef cn01 -p chain=ondiscover="makegocons|rspconfig:sshcfg"
+
 #. Set the target `osimage` into the chain table to automatically provision the operating system after the node discovery is complete. ::
 
        chdef cn01 -p chain="osimage=<osimage_name>"
@@ -113,6 +119,11 @@ The BMC IP address is obtained by the open range dhcp server and the plan in thi
 
        chdef cn01 bmc=50.0.101.1
 
+   **[Optional]** If more configuration planed to be done on BMC, the following command is also needed. ::
+
+       chdef cn01 bmcvlantag=<vlanid>                 # tag VLAN ID for BMC
+       chdef cn01 bmcusername=<desired_username>
+       chdef cn01 bmcpassword=<desired_password>
 
 #. Add the compute node IP information to ``/etc/hosts``: ::
 
