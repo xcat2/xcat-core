@@ -193,8 +193,8 @@ For diskful deployment, there is no need to change the osimage definition. Inste
 
     chdef p9compute -p postscripts=cuda_power9_setup
 
-Disless osimage
-^^^^^^^^^^^^^^^
+Diskless osimage
+^^^^^^^^^^^^^^^^
 
 For diskless deployment, the script need to add to the postinstall script of the osimage. And it should be run in the chroot environment. Please refer the following commands as an example. ::
 
