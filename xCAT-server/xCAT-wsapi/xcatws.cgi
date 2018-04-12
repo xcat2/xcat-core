@@ -1251,7 +1251,7 @@ my %URIdef = (
             POST    => {
                 desc  => "Create a token.",
                 usage => "||An array of all the global configuration list.|",
-                example => "|Aquire a token for user \'root\'.|POST|/tokens {\"userName\":\"root\",\"userPW\":\"cluster\"}|{\n   \"token\":{\n      \"id\":\"a6e89b59-2b23-429a-b3fe-d16807dd19eb\",\n      \"expire\":\"2014-3-8 14:55:0\"\n   }\n}|",
+                example => "|Acquire a token for user \'root\'.|POST|/tokens {\"userName\":\"root\",\"userPW\":\"cluster\"}|{\n   \"token\":{\n      \"id\":\"a6e89b59-2b23-429a-b3fe-d16807dd19eb\",\n      \"expire\":\"2014-3-8 14:55:0\"\n   }\n}|",
                 fhandler => \&nonobjhdl,
                 outhdler => \&tokenout,
             },

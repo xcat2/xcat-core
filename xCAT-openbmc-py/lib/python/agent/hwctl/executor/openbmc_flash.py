@@ -98,7 +98,7 @@ class OpenBMCFlashTask(ParallelNodesCommand):
             os.makedirs(XCAT_LOG_RFLASH_DIR)
 
         if activate_arg.endswith('.tar'):
-            version = self._get_firmware_version()
+            version = self._get_firmware_version(self.firmware_file)
             self.firmware.update(version) 
             self.callback.info('Attempting to upload %s, please wait...' % self.firmware_file)
         else:

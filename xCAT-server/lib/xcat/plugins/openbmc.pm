@@ -1863,6 +1863,10 @@ sub parse_command_status {
             $next_status{LOGIN_RESPONSE} = "RVITALS_REQUEST";
             $next_status{RVITALS_REQUEST} = "RVITALS_RESPONSE";
             $status_info{RVITALS_RESPONSE}{argv} = "$subcommand";
+            if ($subcommand eq "all") {
+                $next_status{RVITALS_RESPONSE} = "RVITALS_LEDS_REQUEST";
+                $next_status{RVITALS_LEDS_REQUEST} = "RVITALS_LEDS_RESPONSE";
+            }
         }
     }
 
@@ -4150,17 +4154,23 @@ sub rvitals_response {
             push (@sorted_output, $content_info);
         } else {
             # Full output for "rvitals leds" command
-            $content_info = "Front . . . . . : Power:$leds{front_power} Fault:$leds{front_fault} Identify:$leds{front_id}";
-            push (@sorted_output, $content_info);
-            $content_info = "Rear  . . . . . : Power:$leds{rear_power} Fault:$leds{rear_fault} Identify:$leds{rear_id}";
-            push (@sorted_output, $content_info);
-            # Fans 
-            if ($leds{fan0} =~ "Off" and $leds{fan1} =~ "Off" and $leds{fan2} eq "Off" and $leds{fan3} eq "Off") {
-                $content_info = "Front Fans  . . : No LEDs On";
-            } else { 
-                $content_info = "Front Fans  . . : fan0:$leds{fan0} fan1:$leds{fan1} fan2:$leds{fan2} fan3:$leds{fan3}";
-            } 
-            push (@sorted_output, $content_info);
+            my @front_rear = ("Front", "Rear");
+            my @led_types = ("Power", "Fault", "Identify");
+            foreach my $i (@front_rear) {
+                foreach my $led_type (@led_types) {
+                    my $tmp_type = lc($led_type);
+                    $tmp_type = "id" if ($led_type eq "Identify");
+                    my $key_type = lc($i) . "_" . $tmp_type;
+                    $content_info = "LEDs $i $led_type: $leds{$key_type}";
+                    push (@sorted_output, $content_info);
+                }
+            }
+            # Fans
+            for (my $i = 0; $i < 4; $i++) {
+                my $tmp_key = "fan" . $i;
+                $content_info = "LEDs Fan$i: $leds{$tmp_key}";
+                push (@sorted_output, $content_info);
+            }
         }
     }
 
