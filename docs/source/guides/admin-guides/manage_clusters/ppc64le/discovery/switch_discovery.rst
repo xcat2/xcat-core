@@ -67,9 +67,11 @@ In order to do BMC configuration during the discovery process, set ``runcmd=bmcs
 
 **[Optional]** More operation plan to do after hardware disocvery is done, ``ondiscover`` option can be used.
 
-   For example, configure console and copy SSH key for **OpenBMC** ::
+   For example, configure console, copy SSH key for **OpenBMC**, then disable ``powersupplyredundancy`` ::
 
-       chdef cn01 -p chain=ondiscover="makegocons|rspconfig:sshcfg"
+       chdef cn01 -p chain="ondiscover=makegocons|rspconfig:sshcfg|rspconfig:powersupplyredundancy=disabled"
+
+   **Note**: ``|`` is used to split commands, and ``:`` is used to split command with its option.
 
 Set the target `osimage` into the chain table to automatically provision the operating system after the node discovery is complete. ::
 
