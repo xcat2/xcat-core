@@ -1,5 +1,7 @@
 start:rbeacon_null
 description: this case is to test rbeacon usage
+os:Linux
+hcp:openbmc
 cmd:rbeacon
 check:rc==0
 check:output=~Usage
@@ -7,27 +9,17 @@ end
 
 start:rbeacon_stat
 description: this case is to test rbeacon CN stat
+os:Linux
+hcp:openbmc
 cmd:rbeacon $$CN stat
 check:rc==0
 check:output=~$$CN\s*:\s*Front:Off Rear:Off|Front:On Rear:On|Front:Off Rear:On|Front:On Rear:Off 
 end
 
-start:rbeacon_on_off
-description: this case is to test rbeacon CN on/off
-cmd:rbeacon $$CN stat |tee /tmp/rbeaconstat
-check:rc==0
-cmd:if grep "Front:Off Rear:Off" /tmp/rbeaconstat;then rbeacon $$CN on; fi
-check:rc==0
-check:output=~$$CN\s*:\s*on
-cmd:rbeacon $$CN stat
-check:output=~$$CN\s*:\s*Front:Blink Rear:Blink
-cmd:if grep "Front:Off Rear:Off" /tmp/rbeaconstat;then rbeacon $$CN off; fi
-check:rc==0
-check:output=~$$CN\s*:\s*off
-end
-
 start:rbeacon_help
 description: this case is to test rbeacon -h and --help output 
+os:Linux
+hcp:openbmc
 cmd:rbeacon -h
 check:rc==0
 check:output=~Usage
@@ -40,6 +32,8 @@ end
 
 start:rbeacon_version
 description: this case is to test rbeacon -v and --version output
+os:Linux
+hcp:openbmc
 cmd:rbeacon -v
 check:rc==0
 check:output=~Version
@@ -52,6 +46,8 @@ end
 
 start:rbeacon_false
 description: this case is to test rbeacon could process false input 
+os:Linux
+hcp:openbmc
 cmd:rbeacon $$CN abc
 check:rc!=0
 check:output=~$$CN\s*:\s*Error:\s*Only \'on\', \'off\' or \'stat\' is supported
