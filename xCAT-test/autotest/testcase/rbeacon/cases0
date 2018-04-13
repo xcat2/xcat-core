@@ -13,7 +13,7 @@ os:Linux
 hcp:openbmc
 cmd:rbeacon $$CN stat
 check:rc==0
-check:output=~$$CN\s*:\s*Front:Off Rear:Off|Front:On Rear:On|Front:Off Rear:On|Front:On Rear:Off 
+check:output=~$$CN\s*:\s*Front:Off Rear:Off|Front:On Rear:On|Front:Off Rear:On|Front:On Rear:Off|Front:Blink Rear:Blink 
 end
 
 start:rbeacon_help
