@@ -386,13 +386,13 @@ rmdir \"/tmp/$userid\" \n")
             obmc.set_apis_values(key, value)
         except SelfServerException as e:
             return self.callback.error(e.message, node)
-        except SelfClientException:
+        except SelfClientException as e:
             if e.code == 404:
-                return self.callback.error('404 Not Found - Requested endpoint does not exist or may \
-                                            indicate function is not supported on this OpenBMC firmware.', node)
+                return self.callback.error('404 Not Found - Requested endpoint does not exist or may ' \
+                                           'indicate function is not supported on this OpenBMC firmware.', node)
             if e.code == 403:
-                return self.callback.error('403 Forbidden - Requested endpoint does not exist or may \
-                                            indicate function is not yet supported by OpenBMC firmware.', node)
+                return self.callback.error('403 Forbidden - Requested endpoint does not exist or may ' \
+                                           'indicate function is not yet supported by OpenBMC firmware.', node)
             return self.callback.error(e.message, node)
 
         self.callback.info("%s: BMC Setting %s..." % (node, openbmc.RSPCONFIG_APIS[key]['display_name']))
@@ -407,13 +407,13 @@ rmdir \"/tmp/$userid\" \n")
 
         except SelfServerException as e:
             return self.callback.error(e.message, node)
-        except SelfClientException:
+        except SelfClientException as e:
             if e.code == 404:
-                return self.callback.error('404 Not Found - Requested endpoint does not exist or may \
-                                            indicate function is not supported on this OpenBMC firmware.', node)
+                return self.callback.error('404 Not Found - Requested endpoint does not exist or may ' \
+                                           'indicate function is not supported on this OpenBMC firmware.', node)
             if e.code == 403:
-                return self.callback.error('403 Forbidden - Requested endpoint does not exist or may \
-                                            indicate function is not yet supported by OpenBMC firmware.', node)
+                return self.callback.error('403 Forbidden - Requested endpoint does not exist or may ' \
+                                           'indicate function is not yet supported by OpenBMC firmware.', node)
             return self.callback.error(e.message, node)
 
         if isinstance(value, dict):
