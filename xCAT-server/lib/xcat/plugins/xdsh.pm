@@ -639,12 +639,17 @@ sub process_servicenodes_xdcp
         $addreq->{'_xcatdest'} = $::mnname;
         $addreq->{node}        = \@sn;
         $addreq->{noderange}   = \@sn;
-        $addreq->{forceroot}->[0]   = 1;
 
         # check input request for --nodestatus
         my $args = $req->{arg};    # argument
         if (grep(/^--nodestatus$/, @$args)) {
             push(@{ $addreq->{arg} }, "--nodestatus");    # return nodestatus
+        }
+
+        if (defined($req->{username}) && ($req->{username}->[0] ne "root")) {
+            # Using `root` when sync temporary files to `site.SNsyncfiledir` (default: /var/xcat/syncfiles)
+            push(@{ $addreq->{arg} }, "-l");
+            push(@{ $addreq->{arg} }, "root");
         }
         push(@{ $addreq->{arg} }, "-v");
         push(@{ $addreq->{arg} }, "-s");
@@ -1215,9 +1220,6 @@ sub process_request
         if (($request->{username}) && defined($request->{username}->[0])) {
             $ENV{DSH_FROM_USERID} = $request->{username}->[0];
         }
-    }
-    if ($request->{forceroot}) {
-        $ENV{DSH_FROM_USERID} = 'root';
     }
     if ($command eq "xdsh")
     {
