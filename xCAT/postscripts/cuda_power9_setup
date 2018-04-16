@@ -64,7 +64,7 @@ installkernel() {
 
 install() {
     [ -d \$initdir/etc/modprobe.d/ ] || mkdir \$initdir/etc/modprobe.d
-    echo 'options nvidia NVreg_RegistryDwords="RMNumaOnlining=0x1;RMNvLinkSpeedControl=0x9;PeerMappingOverride=1"' >\$initdir/etc/modprobe.d/nvidia.conf
+    echo 'options nvidia NVreg_EnableStreamMemOPs=1 NVreg_RegistryDwords="PeerMappingOverride=1"' >\$initdir/etc/modprobe.d/nvidia.conf
 }
 EOF
 
@@ -72,7 +72,7 @@ chmod 0755 /usr/lib/dracut/modules.d/95nvidia/module-setup.sh
 echo 'add_dracutmodules+=" nvidia "' >/etc/dracut.conf.d/nvidia_patch.conf
 
 # Patch for the diskfull environment, or in case kernel module nvidia need to be reloaded
-echo 'options nvidia NVreg_RegistryDwords="RMNumaOnlining=0x1;RMNvLinkSpeedControl=0x9;PeerMappingOverride=1"' >/etc/modprobe.d/nvidia.conf
+echo 'options nvidia NVreg_EnableStreamMemOPs=1 NVreg_RegistryDwords="PeerMappingOverride=1"' >/etc/modprobe.d/nvidia.conf
 
 # Redo the initrd image
 kernel_version="$(for d in $(ls /lib/modules | sort -V) ; do : ; done && echo $d)"
