@@ -156,6 +156,7 @@ cd $RPM_BUILD_ROOT/install
 tar zxf %{SOURCE2}
 tar zxf %{SOURCE4}
 tar zxf %{SOURCE6}
+rm -f postscripts/sudoer
 %else
 cp %{SOURCE2} $RPM_BUILD_ROOT/install
 gunzip -f postscripts.tar.gz
