@@ -87,6 +87,7 @@ tar zxf %{SOURCE2}
 tar zxf %{SOURCE4}
 tar zxf %{SOURCE6}
 tar zxf %{SOURCE8}
+rm -f postscripts/sudoers
 %else
 rm -rf postscripts
 cp %{SOURCE2} /opt/freeware/src/packages/BUILD
