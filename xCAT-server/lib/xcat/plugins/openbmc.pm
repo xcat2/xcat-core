@@ -4625,6 +4625,7 @@ sub rflash_upload {
     # curl commands
     my $curl_login_cmd  = "curl -c $cjar_id -k -H 'Content-Type: application/json' -X POST $request_url/login -d '" . $content_login . "'";
     my $curl_logout_cmd = "curl -b $cjar_id -k -H 'Content-Type: application/json' -X POST $request_url/logout -d '" . $content_logout . "'";
+     my $curl_check_cpu_dd_cmd = "curl -b $cjar_id -k -H 'Content-Type: application/json' -X GET $request_url/xyz/openbmc_project/inventory/system/chassis/motherboard/cpu0 | grep Version | cut -d: -f2";
 
     if (%fw_tar_files) {
         foreach my $key (keys %fw_tar_files) {
@@ -4656,6 +4657,17 @@ sub rflash_upload {
     }
     if ($h->{message} eq $::RESPONSE_OK) {
         if(%curl_upload_cmds){
+            # Before uploading file, check CPU DD version
+            my $curl_dd_check_result = `$curl_check_cpu_dd_cmd`;
+            if ($curl_dd_check_result =~ "20") {
+                # Display warning the only certain firmware versions are supported on DD 2.0
+                xCAT::SvrUtils::sendmsg("Warning: DD 2.0 processor detected on this node, should not have firmware > ibm-v2.0-0-r13.6 (BMC) and > v1.19_1.94 (Host).", $callback, $node);
+            }
+            if ($curl_dd_check_result =~ "21") {
+                if ($::VERBOSE) {
+                    xCAT::SvrUtils::sendmsg("DD 2.1 processor", $callback, $node);
+                }
+            }
             while((my $file,my $version)=each(%fw_tar_files)){
                 my $uploading_msg = "Uploading $file ...";
                 my $upload_cmd = $curl_upload_cmds{$file};
