@@ -19,7 +19,7 @@ SYNOPSIS
 ********
 
 
-\ **token Attributes:**\   \ *tokenid*\ , \ *username*\ , \ *expire*\ , \ *comments*\ , \ *disable*\ 
+\ **token Attributes:**\   \ *tokenid*\ , \ *username*\ , \ *created*\ , \ *access*\ , \ *expire*\ , \ *comments*\ , \ *disable*\ 
 
 
 ***********
@@ -45,6 +45,18 @@ token Attributes:
 \ **username**\ 
  
  The user name.
+ 
+
+
+\ **created**\ 
+ 
+ Creation time for this token.
+ 
+
+
+\ **access**\ 
+ 
+ Last access time for this token.
  
 
 

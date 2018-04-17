@@ -429,6 +429,8 @@ site Attributes:
    --------------------
   XCAT DAEMON ATTRIBUTES
    --------------------
+   expiretokendays: Number of days before REST API token will expire. The default is 1.
+                    use 'never' if you want your token to never expire.
    useflowcontrol:  (yes/1 or no/0). If yes, the postscript processing on each node
                  contacts xcatd on the MN/SN using a lightweight UDP packet to wait
                  until xcatd is ready to handle the requests associated with
