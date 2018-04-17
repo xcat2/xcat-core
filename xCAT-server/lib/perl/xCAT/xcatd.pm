@@ -250,7 +250,7 @@ sub validate {
                         $saveArglist = "$first$restcommand";
                    }
                 }
-                if ($arglist)  { $logst .= $saveArglist; }
+		#if ($arglist)  { $logst .= $saveArglist; }
                 if ($peername) { $logst .= " for " . $request->{username}->[0] }
                 if ($peerhost) { $logst .= " from " . $peerhost }
 
