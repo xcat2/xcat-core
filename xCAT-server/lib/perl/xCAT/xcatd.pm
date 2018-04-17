@@ -7,7 +7,9 @@ BEGIN
     $::XCATROOT = $ENV{'XCATROOT'} ? $ENV{'XCATROOT'} : -d '/opt/xcat' ? '/opt/xcat' : '/usr';
 }
 use strict;
+use Date::Parse;
 use xCAT::Table;
+use xCAT::TableUtils;
 use xCAT::MsgUtils;
 use Data::Dumper;
 use xCAT::NodeRange;
@@ -351,18 +353,21 @@ sub validate {
     return 0;
 }
 
-my $tokentimeout = 86400;    # one day
+#MG
+my $one_day = 86400;      # one day in seconds
+my $days = 1;             # default days for token expiration 
+my $never_label = "never";
 
-# this subroutine search the token table
-# 1. find the existed token entry for the user and reset the expire time
-# 1.1. if not find existed token, create a new one and add it to token table
-# 2. clean up the expired token
+# this subroutine creates a new token in token table
+# 1. clean up the expired token
+# 2. create a new token and add it to token table
 #
 # this subroutine is called after the account has been authorized
 sub gettoken {
     my $class = shift;
     my $req   = shift;
 
+    my $current_time = time();
     my $user    = $req->{gettoken}->[0]->{username}->[0];
     my $tokentb = xCAT::Table->new('token');
     unless ($tokentb) {
@@ -371,16 +376,34 @@ sub gettoken {
     my $tokens = $tokentb->getAllEntries;
     foreach my $token (@{$tokens}) {
 
-        #clean the expired token
-        if ($token->{'expire'} < time()) {
+        # Clean the expired tokens
+        if (($token->{'expire'} ne $never_label) and (str2time($token->{'expire'}) < $current_time)) {
             $tokentb->delEntries({ 'tokenid' => $token->{tokenid} });
         }
     }
 
-    # create a new token for this request
+    # create a new token id
     my $uuid       = xCAT::Utils->genUUID();
-    my $expiretime = time() + $tokentimeout;
-    $tokentb->setAttribs({ tokenid => $uuid, username => $user }, { expire => $expiretime });
+    # extract site table setting for number of days before token expires
+    my @entries = xCAT::TableUtils->get_site_attribute("expiretokendays");
+    my $token_days = $entries[0];
+    my $expiretime = $current_time + $one_day; # default is one day
+    my $expire_time_string = timeToString($expiretime);
+    if ($token_days and (uc($token_days) eq uc($never_label))) {
+        # Tokens never expire
+        $expiretime = $never_label;
+        $expire_time_string = $never_label;
+    }
+    elsif ($token_days and $token_days >  0) {
+        # Use number of days from site table
+        $days = $token_days;
+        $expiretime = $current_time + $one_day * $days;
+        $expire_time_string = timeToString($expiretime);
+    }
+    my $access_time_string = timeToString($current_time);
+    # create a new token and set its expiration and creation time
+    $tokentb->setAttribs({ tokenid => $uuid, username => $user }, 
+        { expire => $expire_time_string, created => $access_time_string });
     $tokentb->close();
 
     return ($uuid, $expiretime);
@@ -391,6 +414,7 @@ sub verifytoken {
     my $class = shift;
     my $req   = shift;
 
+    my $current_time = time();
     my $tokenid = $req->{tokens}->[0]->{tokenid}->[0];
     my $tokentb = xCAT::Table->new('token');
     unless ($tokentb) {
@@ -398,16 +422,30 @@ sub verifytoken {
     }
     my $token = $tokentb->getAttribs({ 'tokenid' => $tokenid }, ('username', 'expire'));
     if (defined($token) && defined($token->{'username'}) && defined($token->{'expire'})) {
-        my $expiretime = time() + $tokentimeout;
-        if ($token->{'expire'} < time()) {
+        # Clean the expired token and return
+        if (($token->{'expire'} ne $never_label) and (str2time($token->{'expire'}) < $current_time)) {
+            xCAT::MsgUtils->message("S", "MG (verify) Removing expired token " . $token->{tokenid});
             $tokentb->delEntries({ 'tokenid' => $token->{tokenid} });
             return undef;
         } else {
+            # Store current access time
+            $tokentb->setAttribs({ tokenid => $tokenid, username => $token->{'username'} }, {access => timeToString($current_time)});
             return $token->{'username'};
         }
     } else {
+        # Token entry was not found
         return undef;
     }
+}
+
+# Return passed in time as a string in YYYY/MM/DD HH:MM:SS format
+sub timeToString() {
+    my $unixtime = shift;
+
+    my ($sec, $min, $hour, $mday, $mon, $year) = localtime($unixtime);
+    $year += 1900;
+    $mon  += 1;
+    return "$year/$mon/$mday $hour:$min:$sec";
 }
 
 1;

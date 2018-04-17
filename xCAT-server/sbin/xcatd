@@ -2826,11 +2826,18 @@ sub service_connection {
                     if ($peername) {
 
                         # for a valid account, get a token
+                        my $htime;
                         my ($tokenid, $exptime) = xCAT::xcatd->gettoken($req);
-                        my ($sec, $min, $hour, $mday, $mon, $year) = localtime($exptime);
-                        $year += 1900;
-                        $mon  += 1;
-                        my $htime = "$year-$mon-$mday $hour:$min:$sec";
+                        if ($exptime eq "never") {
+                            # If token expiration time was set to "never", return that to the user.
+                            $htime = $exptime;
+                        } else {
+                            # Token expiration is a datetime, convert to readable string
+                            my ($sec, $min, $hour, $mday, $mon, $year) = localtime($exptime);
+                            $year += 1900;
+                            $mon  += 1;
+                            $htime = "$year-$mon-$mday $hour:$min:$sec";
+                        }
                         $resp = { data => [ { token => [ { id => $tokenid, expire => $htime } ] } ] };
                     } else {
                         $resp = { error => ["Authentication failure"], errorcode => [1] };
