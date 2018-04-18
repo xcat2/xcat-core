@@ -1285,7 +1285,7 @@ passed as argument rather than by table value',
 " --------------------\n" .
 "XCAT DAEMON ATTRIBUTES\n" .
 " --------------------\n" .
-" expiretokendays: Number of days before REST API token will expire. The default is 1.\n" .
+" tokenexpiredays: Number of days before REST API token will expire. The default is 1.\n" .
 "                  use 'never' if you want your token to never expire.\n" .
 " useflowcontrol:  (yes/1 or no/0). If yes, the postscript processing on each node\n" .
 "               contacts xcatd on the MN/SN using a lightweight UDP packet to wait\n" .
@@ -1804,15 +1804,15 @@ zvmivp => {
         },
     },
     token => {
-        cols         => [qw(tokenid username created access expire comments disable)],
+        cols         => [qw(tokenid username expire created access comments disable)],
         keys         => [qw(tokenid)],
         table_desc   => 'The token of users for authentication.',
         descriptions => {
             tokenid  => 'It is a UUID as an unified identify for the user.',
             username => 'The user name.',
+            expire   => 'The expire time for this token.',
             created  => 'Creation time for this token.',
             access   => 'Last access time for this token.',
-            expire   => 'The expire time for this token.',
             comments => 'Any user-provided notes.',
             disable  => "Set to 'yes' or '1' to comment out this row.",
         },

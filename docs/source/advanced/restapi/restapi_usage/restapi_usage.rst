@@ -58,13 +58,13 @@ Then in the subsequent REST API access, the token can be used to replace the use
 
     curl -X GET -k -H X-Auth-Token:5cabd675-bc2e-4318-b1d6-831fd1f32f97 'https://<FQDN of xCAT MN>/xcatws/<resource>?<parameters>
 
-The default validity of a token is 1 day. This default can be changed by the setting of `expiretokendays` attribute in `site` table. :: 
+The default validity of a token is 1 day. This default can be changed by the setting of `tokenexpiredays` attribute in `site` table. :: 
 
-    chdef -t site clustersite expiretokendays=<days>
+    chdef -t site clustersite tokenexpiredays=<days>
 
 To make tokens valid forever use "never". ::
 
-    chdef -t site clustersite expiretokendays=never
+    chdef -t site clustersite tokenexpiredays=never
 
 If an old token has expired, you will get a 'Authentication failure' error. You will need to reacquire a token for your account.
 

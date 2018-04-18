@@ -14,6 +14,7 @@ use xCAT::MsgUtils;
 use Data::Dumper;
 use xCAT::NodeRange;
 use xCAT::Utils;
+use Scalar::Util qw/looks_like_number/;
 
 #--------------------------------------------------------------------------------
 
@@ -353,13 +354,14 @@ sub validate {
     return 0;
 }
 
-#MG
 my $one_day = 86400;      # one day in seconds
 my $days = 1;             # default days for token expiration 
 my $never_label = "never";
 
 # this subroutine creates a new token in token table
-# 1. clean up the expired token
+# 1. If old style unix DateTime format token found in the token table
+#      if expired -> remove it
+#      if not expired -> replace unix DateTime expiration with new human readable format
 # 2. create a new token and add it to token table
 #
 # this subroutine is called after the account has been authorized
@@ -374,21 +376,29 @@ sub gettoken {
         return undef;
     }
     my $tokens = $tokentb->getAllEntries;
+
+    # Search for "old" style tokens containing unix DateTime format expiration date
     foreach my $token (@{$tokens}) {
 
-        # Clean the expired tokens
-        if (($token->{'expire'} ne $never_label) and (str2time($token->{'expire'}) < $current_time)) {
-            $tokentb->delEntries({ 'tokenid' => $token->{tokenid} });
+        if ($token->{'expire'} and looks_like_number($token->{'expire'})) {
+            # Expiration field contains only digits -> this is a old style token with unix DateTime format
+
+            if ($token->{'expire'} and ($token->{'expire'} < $current_time)) {
+                # Clean expired token with old unix DateTime format
+                $tokentb->delEntries({ tokenid => $token->{tokenid} });
+            } else {
+                # Change non-expired old style token to new human readable format
+                $tokentb->setAttribs({ tokenid => $token->{tokenid}, username => $token->{'username'} }, {expire => xCAT::Utils->time2string($token->{'expire'}, "-")});
+            } 
         }
     }
 
     # create a new token id
     my $uuid       = xCAT::Utils->genUUID();
     # extract site table setting for number of days before token expires
-    my @entries = xCAT::TableUtils->get_site_attribute("expiretokendays");
-    my $token_days = $entries[0];
+    my $token_days = xCAT::TableUtils->get_site_attribute("tokenexpiredays");
     my $expiretime = $current_time + $one_day; # default is one day
-    my $expire_time_string = timeToString($expiretime);
+    my $expire_time_string = xCAT::Utils->time2string($expiretime, "-");
     if ($token_days and (uc($token_days) eq uc($never_label))) {
         # Tokens never expire
         $expiretime = $never_label;
@@ -398,9 +408,9 @@ sub gettoken {
         # Use number of days from site table
         $days = $token_days;
         $expiretime = $current_time + $one_day * $days;
-        $expire_time_string = timeToString($expiretime);
+        $expire_time_string = xCAT::Utils->time2string($expiretime, "-");
     }
-    my $access_time_string = timeToString($current_time);
+    my $access_time_string = xCAT::Utils->time2string($current_time, "-");
     # create a new token and set its expiration and creation time
     $tokentb->setAttribs({ tokenid => $uuid, username => $user }, 
         { expire => $expire_time_string, created => $access_time_string });
@@ -422,30 +432,32 @@ sub verifytoken {
     }
     my $token = $tokentb->getAttribs({ 'tokenid' => $tokenid }, ('username', 'expire'));
     if (defined($token) && defined($token->{'username'}) && defined($token->{'expire'})) {
-        # Clean the expired token and return
-        if (($token->{'expire'} ne $never_label) and (str2time($token->{'expire'}) < $current_time)) {
-            xCAT::MsgUtils->message("S", "MG (verify) Removing expired token " . $token->{tokenid});
-            $tokentb->delEntries({ 'tokenid' => $token->{tokenid} });
-            return undef;
+
+        if ($token->{'expire'} and looks_like_number($token->{'expire'})) {
+            # Expiration field contains only digits -> this is a old style token with unix DateTime format
+            if ($token->{'expire'} and $token->{'expire'} < $current_time) {
+                # Clean expired token with old unix DateTime format
+                $tokentb->delEntries({ 'tokenid' => $token->{tokenid} });
+                return undef;
+            } else {
+                # Change non-expired old style token to new human readable format
+                $tokentb->setAttribs({ tokenid => $tokenid, username => $token->{'username'} }, 
+                                     {access => xCAT::Utils->time2string($current_time, "-"),
+                                      expire => xCAT::Utils->time2string($token->{'expire'}, "-")});
+                return $token->{'username'};
+            }
         } else {
-            # Store current access time
-            $tokentb->setAttribs({ tokenid => $tokenid, username => $token->{'username'} }, {access => timeToString($current_time)});
-            return $token->{'username'};
+            if ($token->{'expire'} and ($token->{'expire'} ne "never") and str2time($token->{'expire'}) < $current_time) {
+                # Expired new style token
+                return undef;
+            } else {
+                # Not expired new style token - update current access time
+                $tokentb->setAttribs({ tokenid => $tokenid, username => $token->{'username'} }, {access => xCAT::Utils->time2string($current_time, "-")});
+                return $token->{'username'};
+            }
         }
     } else {
         # Token entry was not found
         return undef;
     }
-}
-
-# Return passed in time as a string in YYYY/MM/DD HH:MM:SS format
-sub timeToString() {
-    my $unixtime = shift;
-
-    my ($sec, $min, $hour, $mday, $mon, $year) = localtime($unixtime);
-    $year += 1900;
-    $mon  += 1;
-    return "$year/$mon/$mday $hour:$min:$sec";
-}
-
 1;

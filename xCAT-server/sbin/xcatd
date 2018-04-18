@@ -2832,11 +2832,8 @@ sub service_connection {
                             # If token expiration time was set to "never", return that to the user.
                             $htime = $exptime;
                         } else {
-                            # Token expiration is a datetime, convert to readable string
-                            my ($sec, $min, $hour, $mday, $mon, $year) = localtime($exptime);
-                            $year += 1900;
-                            $mon  += 1;
-                            $htime = "$year-$mon-$mday $hour:$min:$sec";
+                            # Token expiration is a unix DateTime, convert to readable string
+                            $htime = xCAT::Utils->time2string($exptime, "-");
                         }
                         $resp = { data => [ { token => [ { id => $tokenid, expire => $htime } ] } ] };
                     } else {
