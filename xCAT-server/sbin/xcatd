@@ -2738,17 +2738,21 @@ sub service_connection {
                 $cmdlog_alllog .= "$tmpstr ";
             }
 
-	    #if (exists($req->{arg})) {
-	    #    foreach my $arg (@{ $req->{arg} }) {
-	    #        if ($arg =~ /[^A-Za-z0-9.-]/) {
-	    #            my $tmparg = $arg;
-	    #            $tmparg =~ s/'/'\\''/g;
-	    #            $cmdlog_alllog .= "'" . $tmparg . "' ";
-	    #        } else {
-	    #            $cmdlog_alllog .= $arg . " ";
-	    #        }
-	    #    }
-	    #}
+	    if (exists($req->{arg})) {
+	        foreach my $arg (@{ $req->{arg} }) {
+		    if ($arg =~ /password/i) {
+	                $cmdlog_alllog .= "'*REDACTED*' ";
+			last;
+	            }
+	            if ($arg =~ /[^A-Za-z0-9.-]/) {
+	                my $tmparg = $arg;
+	                $tmparg =~ s/'/'\\''/g;
+	                $cmdlog_alllog .= "'" . $tmparg . "' ";
+	            } else {
+	                $cmdlog_alllog .= $arg . " ";
+	            }
+	        }
+	    }
             $cmdlog_alllog .= "\n[Response]\n";
 
             # ----used for command log end----------
