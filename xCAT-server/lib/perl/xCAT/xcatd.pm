@@ -251,8 +251,10 @@ sub validate {
                         $restcommand =~ s/^\S+\s*//;
                         $saveArglist = "$first$restcommand";
                    }
-                }
-		#if ($arglist)  { $logst .= $saveArglist; }
+                } elsif ($arglist =~ /password/i) {
+			$saveArglist =~ s/password.*/*REDACTED*/;
+		}
+		if ($arglist)  { $logst .= $saveArglist; }
                 if ($peername) { $logst .= " for " . $request->{username}->[0] }
                 if ($peerhost) { $logst .= " from " . $peerhost }
 
