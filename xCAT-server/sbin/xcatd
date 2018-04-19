@@ -2751,11 +2751,13 @@ sub service_connection {
                 my $tmpstr = join(",", @{$req->{noderange}});
                 $cmdlog_alllog .= "$tmpstr ";
             }
+	    my $redacted = 0;
 
             if (exists($req->{arg})) {
                 foreach my $arg (@{ $req->{arg} }) {
                     if ($arg =~ /password/i or $arg =~ /passwd/i) {
                         $cmdlog_alllog .= "'*REDACTED*' ";
+                        $redacted = 1;
                         last;
                     }
                     if ($arg =~ /[^A-Za-z0-9.-]/) {
@@ -2768,6 +2770,7 @@ sub service_connection {
                 }
             }
             $cmdlog_alllog .= "\n[Response]\n";
+            if ($redacted) { $cmdlog_alllog .= "*REDACTED*\n"; }
 
             # ----used for command log end----------
 
@@ -3487,7 +3490,7 @@ sub cmdlog_collectlog() {
         }
     }
     if ($rsp_log =~ /password/i or $rsp_log =~ /passwd/i) {
-        $rsp_log = '*REDACTED*';
+        $rsp_log = "*REDACTED*\n";
     }
     $cmdlog_alllog .= $rsp_log;
     return 0;
