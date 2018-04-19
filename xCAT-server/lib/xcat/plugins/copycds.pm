@@ -97,7 +97,7 @@ sub process_request {
         else { $file = $_; }
 
         # handle the copycds for tar file
-        # if the source file is tar format, call the 'copytar' command to handle it.
+        # if the source file is tar format, call the 'opytar' command to handle it.
         # currently it's used for Xeon Phi (mic) support
         if (-r $file) {
             my @filestat = `file $file`;
@@ -109,6 +109,15 @@ sub process_request {
                 $newreq->{arg} = [ "-f", $file, "-n", $distname ];
                 $doreq->($newreq, $callback);
 
+                return;
+            }
+            if (grep /armel/, @filestat) {
+                $distname="cumulus";
+                $callback->({ info => "run copycds for cumulus OS file = $file, distname=$distname" });
+                my $newreq = dclone($request);
+                $newreq->{command} = ['copycd']; #Note the singular, it's different
+                $newreq->{arg} = [ "-f", $file, "-n", $distname ];
+                $doreq->($newreq, $callback);
                 return;
             }
         }
