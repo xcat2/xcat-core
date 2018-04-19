@@ -22,6 +22,7 @@ use xCAT::MsgUtils;
 use xCAT::Utils;
 use xCAT::TableUtils;
 use xCAT::NodeRange;
+use xCAT::DSHCLI;
 use lib '/opt/xcat/xdsh';
 our @dsh_available_contexts = ();
 our @dsh_valid_contexts     = ();
@@ -922,6 +923,7 @@ sub fork_fanout_dcp
         $dsh_trace
           && (xCAT::MsgUtils->message("I", $rsp, $::CALLBACK));
 
+
         my @process_info =
           xCAT::DSHCore->fork_output($user_target, @dcp_command);
         vec($$outfh_targets{'bitmap'}, fileno($process_info[1]), 1) = 1;
@@ -1329,7 +1331,7 @@ sub fork_fanout_dsh
         #print "Command=@dsh_command\n";
 
         #@process_info = xCAT::DSHCore->fork_output($user_target, @dsh_command);
-        push(@commands, \@dsh_command);    #print Dumper(\@commands);
+        push(@commands, \@dsh_command);    
         @process_info = xCAT::DSHCore->fork_output_for_commands($user_target, @commands);
         if ($process_info[0] == -2)
         {
@@ -4531,15 +4533,6 @@ sub parse_and_run_dcp
         }
     }
 
-    # invalid to put the -F  with the -r flag
-    if ($options{'File'} && $options{'node-rcp'})
-    {
-        my $rsp = {};
-        $rsp->{error}->[0] =
-"If -F option is use, then -r is invalid. The command will always the rsync using ssh.";
-        xCAT::MsgUtils->message("E", $rsp, $::CALLBACK, 1);
-        return;
-    }
 
     # invalid to put the -s  without the -F flag
     if (!($options{'File'}) && $options{'rsyncSN'})
@@ -4566,7 +4559,7 @@ sub parse_and_run_dcp
             }
 
         }
-        elsif ($^O eq 'linux')
+        elsif (($^O eq 'linux') and !$options{'node-rcp'})
         {
             $options{'node-rcp'} = '/usr/bin/rsync';
         }

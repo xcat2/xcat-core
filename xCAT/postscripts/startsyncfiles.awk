@@ -11,6 +11,10 @@ BEGIN {
 
   print "<xcatrequest>" |& server
   print "   <command>syncfiles</command>" |& server
+  if(RCP){
+      print "   <arg>-r</arg>" |& server
+      print "   <arg>"RCP"</arg>" |& server
+  }
   print "</xcatrequest>" |& server
 
   while (server |& getline) {
