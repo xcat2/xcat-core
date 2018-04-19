@@ -120,24 +120,34 @@ sub copycd {
         return;
     }
 
+    if (!(-x $file)) {
+        xCAT::MsgUtils->message("E", { error => ["$file is not executable, will not process"], errorcode => ["1"] }, $callback);
+        return;
+    }
+
     my $filename = basename($file);
 
-    #xCAT::MsgUtils->message("I", { data => ["running copycd for onie image: $file"] }, $callback);
-    my $release = `$file | grep 'Release' | cut -d' ' -f2`;
-    chomp $release;
-    #xCAT::MsgUtils->message("I", { data => ["running copycd for onie image: $release"] }, $callback);
     my $arch = `$file | grep '^Architecture' | cut -d' ' -f2 `;
     chomp $arch;
-    #xCAT::MsgUtils->message("I", { data => ["running copycd for onie image: $arch"] }, $callback);
+    if ($arch !~ /armel/){
+        xCAT::MsgUtils->message("E", { error => ["$arch is not support, only support armel Architecture for now"], errorcode => ["1"] }, $callback);
+        return;
+    }
+
+    my $release = `$file | grep 'Release' | cut -d' ' -f2`;
+    chomp $release;
     my $imagename = $osname . "-" . $release . "-" . $arch;
-    #xCAT::MsgUtils->message("I", { data => ["running copycd for onie image: $imagename"] }, $callback);
     my $distname = $osname . $release;
     my $defaultpath = "$installroot/$distname/$imagename";
-    #xCAT::MsgUtils->message("I", { data => ["running copycd for onie image: $distname, $defaultpath"] }, $callback);
 
-    $callback->({ data => "Copying media to $defaultpath" });
-    mkpath ("$defaultpath");
-    system("cp $file $defaultpath");
+    #check if file exists
+    if (-e "$defaultpath/$filename") {
+        xCAT::MsgUtils->message("I", { data => ["$defaultpath/$filename is already exists"] }, $callback);
+    } else {
+        $callback->({ data => "Copying media to $defaultpath" });
+        mkpath ("$defaultpath");
+        system("cp $file $defaultpath");
+    }
 
     # generate the image objects
     my $oitab = xCAT::Table->new('osimage');
@@ -148,7 +158,7 @@ sub copycd {
 
     my %values;
     $values{'imagetype'}   = "linux";
-    $values{'provmethod'} = "onie";
+    $values{'provmethod'}  = "install";
     $values{'description'} = "Cumulus Linux";
     $values{'osname'}      = "$osname";
     $values{'osvers'}      = "$distname";
@@ -162,11 +172,17 @@ sub copycd {
         return 1;
     }
 
+    # set a default package list
     my $pkgdir = "$defaultpath/$filename";
     $litab->setAttribs({ 'imagename' => $imagename }, { 'pkgdir' => $pkgdir });
 
-    xCAT::MsgUtils->message("I", { data => ["The image $imagename is created."] }, $callback);
+    #Need to update osdistro table?
+    my @ret = xCAT::SvrUtils->update_osdistro_table($distname, $arch, $defaultpath, $imagename);
+    if ($ret[0] != 0) {
+        xCAT::MsgUtils->message("E", { error => ["Error when updating the osdistro tables."], errorcode => ["1"] }, $callback);
+    }
 
+    xCAT::MsgUtils->message("I", { data => ["The image $imagename is created."] }, $callback);
 }
 
 

@@ -111,7 +111,7 @@ sub process_request {
 
                 return;
             }
-            if (grep /armel/, @filestat) {
+            if (grep /$file: data/, @filestat) {
                 $distname="cumulus";
                 $callback->({ info => "run copycds for cumulus OS file = $file, distname=$distname" });
                 my $newreq = dclone($request);
