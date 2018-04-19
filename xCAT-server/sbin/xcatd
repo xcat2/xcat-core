@@ -2738,21 +2738,21 @@ sub service_connection {
                 $cmdlog_alllog .= "$tmpstr ";
             }
 
-	    if (exists($req->{arg})) {
-	        foreach my $arg (@{ $req->{arg} }) {
-		    if ($arg =~ /password/i) {
-	                $cmdlog_alllog .= "'*REDACTED*' ";
-			last;
-	            }
-	            if ($arg =~ /[^A-Za-z0-9.-]/) {
-	                my $tmparg = $arg;
-	                $tmparg =~ s/'/'\\''/g;
-	                $cmdlog_alllog .= "'" . $tmparg . "' ";
-	            } else {
-	                $cmdlog_alllog .= $arg . " ";
-	            }
-	        }
-	    }
+            if (exists($req->{arg})) {
+                foreach my $arg (@{ $req->{arg} }) {
+                    if ($arg =~ /password/i or $arg =~ /passwd/i) {
+                        $cmdlog_alllog .= "'*REDACTED*' ";
+                        last;
+                    }
+                    if ($arg =~ /[^A-Za-z0-9.-]/) {
+                        my $tmparg = $arg;
+                        $tmparg =~ s/'/'\\''/g;
+                        $cmdlog_alllog .= "'" . $tmparg . "' ";
+                    } else {
+                        $cmdlog_alllog .= $arg . " ";
+                    }
+                }
+            }
             $cmdlog_alllog .= "\n[Response]\n";
 
             # ----used for command log end----------
@@ -3266,6 +3266,7 @@ sub cmdlog_collectlog() {
     my $rsp_log = "";
 
     if ((exists($rsponse->{xcatresponse}->[0]->{serverdone})) && (!exists($rsponse->{xcatresponse}->[0]->{error}))) { return 0; }
+    if ($cmdlog_all =~ /redacted/i) { return 0; }
     my $rsp;
     if (exists($rsponse->{xcatresponse})) {
         $rsp = $rsponse->{xcatresponse};
@@ -3470,6 +3471,9 @@ sub cmdlog_collectlog() {
                 }
             }
         }
+    }
+    if ($rsp_log =~ /password/i or $rsp_log =~ /passwd/i) {
+        $rsp_log = '*REDACTED*';
     }
     $cmdlog_alllog .= $rsp_log;
     return 0;
