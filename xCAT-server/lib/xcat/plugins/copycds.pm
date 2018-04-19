@@ -97,7 +97,7 @@ sub process_request {
         else { $file = $_; }
 
         # handle the copycds for tar file
-        # if the source file is tar format, call the 'opytar' command to handle it.
+        # if the source file is tar format, call the 'copytar' command to handle it.
         # currently it's used for Xeon Phi (mic) support
         if (-r $file) {
             my @filestat = `file $file`;
