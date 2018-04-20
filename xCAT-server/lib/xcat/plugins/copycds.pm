@@ -14,6 +14,7 @@ use Cwd;
 Getopt::Long::Configure("bundling");
 Getopt::Long::Configure("pass_through");
 
+my $xcatdebugmode = 0;
 my $processed = 0;
 my $callback;
 
@@ -75,6 +76,9 @@ sub process_request {
         $callback->({ error => "copycds needs at least one full path to ISO currently.", errorcode => [1] });
         return;
     }
+
+    if ($::XCATSITEVALS{xcatdebugmode}) { $xcatdebugmode = $::XCATSITEVALS{xcatdebugmode} }
+
     my $file;
     foreach (@args) {
         $identified = 0;
@@ -97,7 +101,7 @@ sub process_request {
         else { $file = $_; }
 
         # handle the copycds for tar file
-        # if the source file is tar format, call the 'copytar' command to handle it.
+        # if the source file is tar format, call the 'opytar' command to handle it.
         # currently it's used for Xeon Phi (mic) support
         if (-r $file) {
             my @filestat = `file $file`;
@@ -113,7 +117,9 @@ sub process_request {
             }
             if (grep /$file: data/, @filestat) {
                 $distname="cumulus";
-                $callback->({ info => "run copycds for cumulus OS file = $file, distname=$distname" });
+                if ($xcatdebugmode) {
+                    $callback->({ info => "run copycds for cumulus OS file = $file, distname=$distname" });
+                }
                 my $newreq = dclone($request);
                 $newreq->{command} = ['copycd']; #Note the singular, it's different
                 $newreq->{arg} = [ "-f", $file, "-n", $distname ];

@@ -23,6 +23,9 @@ use xCAT::MsgUtils;
 use xCAT::TableUtils;
 use xCAT::Table;
 
+my $xcatdebugmode = 0;
+$::VERBOSE        = 0;
+
 sub handled_commands {
     return {
         nodeset => "nodehm:mgt",    
@@ -69,6 +72,9 @@ sub preprocess_request {
             xCAT::MsgUtils->message("I", $rsp, $callback);
             return ();
         }
+        if ($verbose) {
+            $::VERBOSE = 1;
+        }
     }
 
     return [$request];
@@ -84,6 +90,8 @@ sub process_request {
     my $args    = $request->{arg};
 
     my %hosts;
+
+    if ($::XCATSITEVALS{xcatdebugmode} != 0) { $::VERBOSE = 1}
 
     if ($command eq "copycd") {
         copycd($request, $callback);
@@ -108,6 +116,7 @@ sub copycd {
         $installroot = $site_ent;
     }
 
+
     my $args = $request->{arg};
     my ($osname, $file);
     if ($args) {
@@ -117,6 +126,7 @@ sub copycd {
     }
 
     if ($osname !~ /^cumulus/) {
+        xCAT::MsgUtils->message("E", { error => ["$osname is not support"], errorcode => ["1"] }, $callback);
         return;
     }
 
@@ -142,11 +152,12 @@ sub copycd {
 
     #check if file exists
     if (-e "$defaultpath/$filename") {
-        xCAT::MsgUtils->message("I", { data => ["$defaultpath/$filename is already exists"] }, $callback);
+        $callback->({ data => "$defaultpath/$filename is already exists." });
     } else {
         $callback->({ data => "Copying media to $defaultpath" });
         mkpath ("$defaultpath");
         system("cp $file $defaultpath");
+        $callback->({ data => "Media copy operation successful" });
     }
 
     # generate the image objects
@@ -154,6 +165,9 @@ sub copycd {
     unless ($oitab) {
         xCAT::MsgUtils->message("E", { error => ["Error: Cannot open table osimage."], errorcode => ["1"] }, $callback);
         return 1;
+    }
+    if ($::VERBOSE) {
+        $callback->({ data => "creating image $imagename with osarch=$arch, osvers=$distname" });
     }
 
     my %values;
@@ -175,6 +189,9 @@ sub copycd {
     # set a default package list
     my $pkgdir = "$defaultpath/$filename";
     $litab->setAttribs({ 'imagename' => $imagename }, { 'pkgdir' => $pkgdir });
+    if ($::VERBOSE) {
+        $callback->({ data => "setting pkgdir=$pkgdir for image $imagename" });
+    }
 
     #Need to update osdistro table?
     my @ret = xCAT::SvrUtils->update_osdistro_table($distname, $arch, $defaultpath, $imagename);
