@@ -890,7 +890,7 @@ passed as argument rather than by table value',
             noderange => 'The Noderange that this rule applies to.  Default is "*" (all nodes). Not supported with the *def commands.',
             parameters => 'A regular expression that matches the command parameters (everything except the noderange) that this rule applies to.  Default is "*" (all parameters). Not supported with the *def commands.',
             time => 'Time ranges that this command may be executed in.  This is not supported.',
-            rule => 'Specifies how this rule should be applied.  Valid values are: allow, accept, trusted. Allow or accept  will allow the user to run the commands. Any other value will deny the user access to the commands. Trusted means that once this client has been authenticated via the certificate, all other information that is sent (e.g. the username) is believed without question.  This authorization should only be given to the xcatd on the management node at this time.',
+            rule => 'Specifies how this rule should be applied.  Valid values are: allow, trusted. Allow will allow the user to run the commands. Any other value will deny the user access to the commands. Trusted means that once this client has been authenticated via the certificate, all other information that is sent (e.g. the username) is believed without question.  This authorization should only be given to the xcatd on the management node at this time.',
             comments => 'Any user-written notes.',
             disable  => "Set to 'yes' or '1' to comment out this row.",
         },
@@ -1285,6 +1285,8 @@ passed as argument rather than by table value',
 " --------------------\n" .
 "XCAT DAEMON ATTRIBUTES\n" .
 " --------------------\n" .
+" tokenexpiredays: Number of days before REST API token will expire. The default is 1.\n" .
+"                  use 'never' if you want your token to never expire.\n" .
 " useflowcontrol:  (yes/1 or no/0). If yes, the postscript processing on each node\n" .
 "               contacts xcatd on the MN/SN using a lightweight UDP packet to wait\n" .
 "               until xcatd is ready to handle the requests associated with\n" .
@@ -1802,13 +1804,15 @@ zvmivp => {
         },
     },
     token => {
-        cols         => [qw(tokenid username expire comments disable)],
+        cols         => [qw(tokenid username expire created access comments disable)],
         keys         => [qw(tokenid)],
         table_desc   => 'The token of users for authentication.',
         descriptions => {
             tokenid  => 'It is a UUID as an unified identify for the user.',
             username => 'The user name.',
             expire   => 'The expire time for this token.',
+            created  => 'Creation time for this token.',
+            access   => 'Last access time for this token.',
             comments => 'Any user-provided notes.',
             disable  => "Set to 'yes' or '1' to comment out this row.",
         },
