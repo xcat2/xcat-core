@@ -476,4 +476,5 @@ sub verifytoken {
         # Token entry was not found
         return undef;
     }
+}
 1;
