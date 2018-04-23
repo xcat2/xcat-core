@@ -126,7 +126,6 @@ sub copycd {
     }
 
     if ($osname !~ /^cumulus/) {
-        xCAT::MsgUtils->message("E", { error => ["$osname is not support"], errorcode => ["1"] }, $callback);
         return;
     }
 
