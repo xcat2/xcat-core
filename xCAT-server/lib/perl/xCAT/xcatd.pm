@@ -73,6 +73,11 @@ sub validate {
         return 0;
     }
 
+    my $remote_host = undef;
+    if ($request->{'remote_client'} && defined($request->{'remote_client'}->[0])) {
+        $remote_host = $request->{'remote_client'}->[0];
+    }
+
     my $policies = $policytable->getAllEntries;
     $policytable->close;
     my $rule;
@@ -114,9 +119,20 @@ sub validate {
             #TODO: time ranges
         }
         if ($rule->{host} and $rule->{host} ne '*') {
-
             #TODO: more complex matching (lists, noderanges?, wildcards)
-            next unless ($peerhost eq $rule->{host});
+            if (defined($remote_host) and $remote_host ne '') {
+                my @tmp_hosts = split(",",$remote_host);
+                my $found = 0;
+                foreach my $tmp_host (@tmp_hosts) {
+                    if ($tmp_host eq $rule->{host}) {
+                        $found = 1;
+                        last;
+                    }
+                }
+                next unless ($found);
+            } else {
+                next unless ($peerhost eq $rule->{host});
+            }
         }
         if ($rule->{commands} and $rule->{commands} ne '*') {
             my @commands = split(",", $rule->{commands});
