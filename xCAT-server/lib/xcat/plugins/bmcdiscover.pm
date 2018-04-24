@@ -756,7 +756,7 @@ sub format_stanza {
     my $node = shift;
     my $data = shift;
     my $mgt_type = shift;
-    my ($bmcip, $bmcmtm, $bmcserial, $bmcuser, $bmcpass, $nodetype, $hwtype, $sn, $conserver) = split(/,/, $data);
+    my ($bmcip, $bmcmtm, $bmcserial, $bmcuser, $bmcpass, $nodetype, $hwtype, $mac, $sn, $conserver) = split(/,/, $data);
     my $result;
     if (defined($bmcip)) {
         $result .= "$node:\n\tobjtype=node\n";
@@ -803,7 +803,7 @@ sub write_to_xcatdb {
     my $node = shift;
     my $data = shift;
     my $mgt_type = shift;
-    my ($bmcip, $bmcmtm, $bmcserial, $bmcuser, $bmcpass, $nodetype, $hwtype, $sn, $conserver) = split(/,/, $data);
+    my ($bmcip, $bmcmtm, $bmcserial, $bmcuser, $bmcpass, $nodetype, $hwtype, $mac, $sn, $conserver) = split(/,/, $data);
     my $request_command = shift;
     my $ret;
 
@@ -1112,15 +1112,17 @@ sub bmcdiscovery_ipmi {
             } else {
                 $node_data .= ",,";
             }
-            $node_data .= ",mp,bmc,$::opt_SN,$::opt_SN";
+            $node_data .= ",mp,bmc";
             if ($mtm and $serial) {
                 $mtms_node = "node-$mtm-$serial";
                 $mtms_node =~ s/(.*)/\L$1/g;
                 $mtms_node =~ s/[\s:\._]/-/g;
-            } 
-            if ($ipmac{$ip}) {
+                $node_data .= ",";
+            } elsif ($ipmac{$ip}) {
                 $mac_node = "node-$ipmac{$ip}";
+                $node_data .= ",$ipmac{$ip}";
             }
+            $node_data .= ",$::opt_SN,$::opt_SN";
         } elsif ($output =~ /error : unauthorized name/) {
             xCAT::MsgUtils->message("W", { data => ["BMC username is incorrect for $ip"] }, $::CALLBACK);
             return;
@@ -1230,15 +1232,17 @@ sub bmcdiscovery_openbmc{
         } else {
             $node_data .= ",,";
         }
-        $node_data .= ",mp,bmc,$::opt_SN,$::opt_SN";
+        $node_data .= ",mp,bmc";
         if ($mtm and $serial) {
             $mtms_node = "node-$mtm-$serial";
             $mtms_node =~ s/(.*)/\L$1/g;
             $mtms_node =~ s/[\s:\._]/-/g;
-        }
-        if ($ipmac{$ip}) {
+            $node_data .= ",";
+        } elsif ($ipmac{$ip}) {
             $mac_node = "node-$ipmac{$ip}";
+            $node_data .= ",$ipmac{$ip}";
         }
+        $node_data .= ",$::opt_SN,$::opt_SN";
     } else {
         if ($login_response->status_line =~ /401 Unauthorized/) {
             xCAT::MsgUtils->message("W", { data => ["Invalid username or password for $ip"] }, $::CALLBACK); 
