@@ -23,6 +23,7 @@ use xCAT::Utils;
 use xCAT::TableUtils;
 use xCAT::NodeRange;
 use xCAT::DSHCLI;
+use Data::Dumper;
 use lib '/opt/xcat/xdsh';
 our @dsh_available_contexts = ();
 our @dsh_valid_contexts     = ();
@@ -4666,6 +4667,7 @@ sub parse_and_run_dcp
         {
             $::SYNCSN = 1;
         }
+        
 
         # the parsing of the file will fill in an array of postscripts
         # need to be run if the associated file is updated
@@ -4719,6 +4721,8 @@ sub parse_and_run_dcp
             my $rsp = {};
             $rsp->{error}->[0] = "Error parsing the rsync file:$syncfile.";
             xCAT::MsgUtils->message("E", $rsp, $::CALLBACK, 1);
+            $::FAILED_NODES=scalar @nodelist;
+            print $::FAILED_NODES;
             return;
         }
 
@@ -5060,6 +5064,7 @@ sub parse_rsync_input_file_on_MN
     my $addappendscript = 0;
     open(INPUTFILE, "< $input_file") || die "File $input_file does not exist\n";
 
+
     while (my $line = <INPUTFILE>)
     {
         chomp $line;
@@ -5277,6 +5282,15 @@ sub parse_rsync_input_file_on_MN
     {
         $$options{'nodes'} = join ',', keys %{ $$options{'destDir_srcFile'} };
     }
+
+    my $remotecopycommand=$$options{'node-rcp'};
+    if($remotecopycommand !~ /\/rsync$/ and @::postscripts){
+        my $rsp = {};
+        $rsp->{error}->[0] ="key word 'EXECUTE' is unavailable when the remote copy command specified by '-r|--node-rcp' is $remotecopycommand. Does 'EXECUTEALWAYS' work for you?";
+        xCAT::MsgUtils->message("E", $rsp, $::CALLBACK, 1);         
+        return 1;
+    }
+
     return 0;
 }
 
@@ -5773,6 +5787,15 @@ sub parse_rsync_input_file_on_SN
     {
         $$options{'nodes'} = join ',', keys %{ $$options{'destDir_srcFile'} };
     }
+
+    my $remotecopycommand=$$options{'node-rcp'};
+    if($remotecopycommand !~ /\/rsync$/ and @::postscripts){
+        my $rsp = {};
+        $rsp->{error}->[0] ="key word 'EXECUTE' is unavailable when the remote copy command specified by '-r|--node-rcp' is $remotecopycommand. Does 'EXECUTEALWAYS' work for you?";
+        xCAT::MsgUtils->message("E", $rsp, $::CALLBACK, 1);         
+        return 1;
+    }
+
     return 0;
 }
 

@@ -170,7 +170,7 @@ sub remote_copy_command {
                   @{ $$config{'destDir_srcFile'}{$dest_dir}{'same_dest_name'} };
                 my $src_file_list = join ' ', @src_file;
                 print SCPCMDFILE
-                    "$exec_path  -r $src_file_list $dest_user_host:$dest_dir\n";
+                    "$exec_path -p -r $src_file_list $dest_user_host:$dest_dir\n";
             }
 
             if($$config{'destDir_srcFile'}{$dest_dir}{'diff_dest_name'}){
@@ -180,7 +180,7 @@ sub remote_copy_command {
                 {
                     my $diff_basename = $diff_dest_hash{$src_file_diff_dest};
                     print SCPCMDFILE
-                        "$exec_path  -r $src_file_diff_dest $dest_user_host:$dest_dir/$diff_basename\n";
+                        "$exec_path -p -r $src_file_diff_dest $dest_user_host:$dest_dir/$diff_basename\n";
                 }
             }
         }        

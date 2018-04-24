@@ -17,7 +17,7 @@ use File::Basename;
 use File::Path;
 use POSIX;
 require xCAT::Table;
-
+use Data::Dumper;
 require xCAT::Utils;
 require xCAT::Zone;
 require xCAT::TableUtils;

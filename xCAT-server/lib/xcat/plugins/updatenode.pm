@@ -29,6 +29,7 @@ use File::Basename;
 use xCAT::GlobalDef;
 use xCAT_monitoring::monitorctrl;
 use Socket;
+use Data::Dumper;
 
 use strict;
 my $CALLBACK;
@@ -1863,21 +1864,32 @@ sub updatenodesyncfiles
 
             # build the list of good and bad nodes
             &buildnodestatus(\@$output, $callback);
+            if($::RUNCMD_RC and !@::FAILEDNODES){
+                 push @::FAILEDNODES,@{$syncfile_node{$synclist}};
+            }
         }
 
         if ($request->{SNFileSyncing}->[0] eq "yes") {
             my $rsp = {};
-            $rsp->{data}->[0] = "File synchronization has completed for service nodes.";
+            if(@::SUCCESSFULLNODES){
+                $rsp->{data}->[0] = "File synchronization has completed for service nodes: \"".join(',',@::SUCCESSFULLNODES)."\"";
+            }
             if (@::FAILEDNODES) {
                 $rsp->{errorcode}->[0] = 1;
+                $rsp->{data}->[0] = "File synchronization failed for service nodes: \"".join(',',@::FAILEDNODES)."\"";
             }
             $callback->($rsp);
         }
+
         if ($request->{FileSyncing}->[0] eq "yes") {
             my $rsp = {};
-            $rsp->{data}->[0] = "File synchronization has completed for nodes.";
+            if(@::SUCCESSFULLNODES){
+                $rsp->{data}->[0] = "File synchronization has completed for nodes: \"".join(',',@::SUCCESSFULLNODES)."\"";
+            }
+
             if (@::FAILEDNODES) {
                 $rsp->{errorcode}->[0] = 1;
+                $rsp->{data}->[0] = "File synchronization failed for nodes: \"".join(',',@::FAILEDNODES)."\"";
             }
             $callback->($rsp);
         }
