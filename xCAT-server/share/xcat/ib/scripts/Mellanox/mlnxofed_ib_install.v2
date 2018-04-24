@@ -160,7 +160,7 @@ function hack_uname()
                         if [ -n "\$KERNELVERSION" ]; then
                             echo \$KERNELVERSION
                         else
-                            for d in \$(ls /lib/modules | sort -V) ; do : ; done && echo \$d
+                            for d in \$(cd /lib/modules && echo [0-9]* 2>/dev/null | sort -V) ; do : ; done && echo \$d
                         fi
 			;;
 		"-s"|"")
