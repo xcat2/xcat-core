@@ -915,6 +915,16 @@ sub getdestiny {
     my %node_status = ();
     foreach $node (@$nodes) {
         unless ($chaintab) { #Without destiny, have the node wait with ssh hopefully open at least
+            my $stat = xCAT_monitoring::monitorctrl->getNodeStatusFromNodesetState("standby", "getdestiny");
+            if ($stat) {
+                if (exists($node_status{$stat})) {
+                    push @{ $node_status{$stat} }, $node;
+                } else { 
+                    $node_status{$stat} = [$node];
+                }
+                xCAT_monitoring::monitorctrl::setNodeStatusAttributes(\%node_status, 1);
+            }
+            
             $callback->({ node => [ { name => [$node], data => ['standby'], destiny => ['standby'] } ] });
             return;
         }
@@ -928,10 +938,10 @@ sub getdestiny {
                 #print "node=$node, stat=$stat\n";
                 if ($stat) {
                     if (exists($node_status{$stat})) {
-                        my $pa = $node_status{$stat};
-                        push(@$pa, $node);
+                        push @{ $node_status{$stat} }, $node;
+                    } else {
+                        $node_status{$stat} = [$node];
                     }
-                    else { $node_status{$stat} = [$node]; }
                 }
             }
 
@@ -979,10 +989,10 @@ sub getdestiny {
             #print  "node=$node, stat=$stat\n";
             if ($stat) {
                 if (exists($node_status{$stat})) {
-                    my $pa = $node_status{$stat};
-                    push(@$pa, $node);
+                    push @{ $node_status{$stat} }, $node;
+                } else {
+                    $node_status{$stat} = [$node];
                 }
-                else { $node_status{$stat} = [$node]; }
             }
         }
 
