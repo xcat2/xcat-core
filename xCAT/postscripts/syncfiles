@@ -45,7 +45,10 @@ quit="no"
 count=5
 returncode=0
 while [ $quit = "no" ]; do
-  if [ $osname = "Linux" ]
+  if cat /etc/os-release |grep -i cumulus >/dev/null 2>&1; then
+    RCP=$RCP $xcatpostdir/startsyncfiles
+    returncode=$?
+  elif [ $osname = "Linux" ]
   then
     `$xcatpostdir/startsyncfiles.awk -v RCP=$RCP`
     returncode=$?

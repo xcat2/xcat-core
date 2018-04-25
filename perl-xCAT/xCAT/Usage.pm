@@ -521,7 +521,7 @@ Options:
     [-f|--snsync] Performs File Syncing to the service nodes that service 
         the nodes in the noderange.
  
-    [-r|--node-rcp] Specifies  the  full  path of the remote copy command used for remote command execution on node targets, such as "/usr/bin/rsync" and "/usr/bin/scp"
+    [-r|--node-rcp] Specifies  the  full  path of the remote copy command used for sync files to node targets, such as /usr/bin/rsync and /usr/bin/scp
    
     [-g|--genmypost] Will generate a new mypostscript file for the
         the nodes in the noderange, if site precreatemypostscripts is 1 or YES.

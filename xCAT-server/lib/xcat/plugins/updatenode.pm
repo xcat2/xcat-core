@@ -434,6 +434,15 @@ sub preprocess_updatenode
         return;
     }
 
+    if (($RCP) and (!$FILESYNC) and (!$SNFILESYNC)){
+        my $rsp = {};
+        $rsp->{data}->[0] = "-r|--node-rcp option is valid when option -f or -F is specified";
+        $rsp->{errorcode}->[0] = 1;
+        $callback->($rsp);
+        return;        
+    }
+    
+
     # -f must not be with any other flag, this updates service nodes syncfiles
     if ($SNFILESYNC && ($SWMAINTENANCE || $RERUNPS || defined($RERUNPS) || $SECURITY || $FILESYNC))
     {
