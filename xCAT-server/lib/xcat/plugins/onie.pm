@@ -21,6 +21,7 @@ use File::Basename;
 use xCAT::Utils;
 use xCAT::MsgUtils;
 use xCAT::TableUtils;
+use xCAT::SvrUtils;
 use xCAT::Table;
 
 my $xcatdebugmode = 0;
@@ -28,8 +29,8 @@ $::VERBOSE        = 0;
 
 sub handled_commands {
     return {
-        nodeset => "nodehm:mgt",    
-        copycd => 'onie',
+        nodeset => 'nodehm:mgt=switch',    
+        copydata => 'onie',
       }
 }
 
@@ -39,7 +40,7 @@ sub preprocess_request {
     my $request  = shift;
     my $callback = shift;
 
-    if ($request->{command}->[0] eq 'copycd')
+    if ($request->{command}->[0] eq 'copydata')
     {
         return [$request];
     }
@@ -72,6 +73,7 @@ sub preprocess_request {
             xCAT::MsgUtils->message("I", $rsp, $callback);
             return ();
         }
+
         if ($verbose) {
             $::VERBOSE = 1;
         }
@@ -93,8 +95,8 @@ sub process_request {
 
     if ($::XCATSITEVALS{xcatdebugmode} != 0) { $::VERBOSE = 1}
 
-    if ($command eq "copycd") {
-        copycd($request, $callback);
+    if ($command eq "copydata") {
+        copydata($request, $callback);
     } elsif ($command eq "nodeset") {
         nodeset($request, $callback, $subreq, \%hosts);
     }
@@ -102,7 +104,7 @@ sub process_request {
 }
 
 # build cumulus OS image 
-sub copycd {
+sub copydata {
     my $request  = shift;
     my $callback = shift;
     
@@ -116,17 +118,12 @@ sub copycd {
         $installroot = $site_ent;
     }
 
-
     my $args = $request->{arg};
-    my ($osname, $file);
+    my ($nooverwrite, $file);
     if ($args) {
         @ARGV = @{$args};
-        GetOptions('n=s' => \$osname,
+        GetOptions('w=s' => \$nooverwrite,
             'f=s' => \$file);
-    }
-
-    if ($osname !~ /^cumulus/) {
-        return;
     }
 
     if (!(-x $file)) {
@@ -134,23 +131,38 @@ sub copycd {
         return;
     }
 
+    my $arch;
+    my $desc;
+    my $release;
+    my $osname;
     my $filename = basename($file);
+    my $output = `$file`;
+    $callback->({ data => "file output: $output" });
+    foreach my $line (split /[\r\n]+/, $output) {
+        if ($line =~ /^Architecture/) {
+            ($desc, $arch) = split /: /, $line ;
+        }
+        if ($line =~ /^Release/) {
+            ($desc, $release) = split /: /, $line ;
+        }
+        if ($line =~ /cumulus/) {
+            $osname = "cumulus" ;
+        }
+    }
 
-    my $arch = `$file | grep '^Architecture' | cut -d' ' -f2 `;
     chomp $arch;
     if ($arch !~ /armel/){
         xCAT::MsgUtils->message("E", { error => ["$arch is not support, only support armel Architecture for now"], errorcode => ["1"] }, $callback);
         return;
     }
 
-    my $release = `$file | grep 'Release' | cut -d' ' -f2`;
     chomp $release;
     my $imagename = $osname . "-" . $release . "-" . $arch;
     my $distname = $osname . $release;
-    my $defaultpath = "$installroot/$distname/$imagename";
+    my $defaultpath = "$installroot/$distname/$arch/$imagename";
 
     #check if file exists
-    if (-e "$defaultpath/$filename") {
+    if ( (-e "$defaultpath/$filename") && !($nooverwrite)){
         $callback->({ data => "$defaultpath/$filename is already exists." });
     } else {
         $callback->({ data => "Copying media to $defaultpath" });
@@ -165,6 +177,19 @@ sub copycd {
         xCAT::MsgUtils->message("E", { error => ["Error: Cannot open table osimage."], errorcode => ["1"] }, $callback);
         return 1;
     }
+    my $litab = xCAT::Table->new('linuximage');
+    unless ($litab) {
+        xCAT::MsgUtils->message("E", { error => ["Error: Cannot open table linuximage."], errorcode => ["1"] }, $callback);
+        return 1;
+    }
+    my $pkgdir = "$defaultpath/$filename";
+    my $imgdir = $litab->getAttribs({ 'imagename' => $imagename }, 'pkgdir');
+
+    if ( ($pkgdir eq $imgdir->{'pkgdir'}) && !($nooverwrite) ) {
+        $callback->({ data => "$imagename is available, will not overwrite" });
+        return;
+    }
+
     if ($::VERBOSE) {
         $callback->({ data => "creating image $imagename with osarch=$arch, osvers=$distname" });
     }
@@ -179,14 +204,7 @@ sub copycd {
 
     $oitab->setAttribs({ 'imagename' => $imagename }, \%values);
 
-    my $litab = xCAT::Table->new('linuximage');
-    unless ($litab) {
-        xCAT::MsgUtils->message("E", { error => ["Error: Cannot open table linuximage."], errorcode => ["1"] }, $callback);
-        return 1;
-    }
-
     # set a default package list
-    my $pkgdir = "$defaultpath/$filename";
     $litab->setAttribs({ 'imagename' => $imagename }, { 'pkgdir' => $pkgdir });
     if ($::VERBOSE) {
         $callback->({ data => "setting pkgdir=$pkgdir for image $imagename" });
@@ -208,13 +226,11 @@ sub nodeset {
     my $callback = shift;
     my $subreq   = shift;
 
-    xCAT::MsgUtils->message("E", { error => ["DIDN't support nodeset yet"], errorcode => ["1"] }, $callback);
-    return;
-
-    my $usage_string = "nodeset noderange osimage[=imagename]";
-
-    my $nodes = $request->{'node'};
+    my $switches = $request->{'node'};
     my $args  = $request->{arg};
+    my $provmethod; 
+    my $image_pkgdir;
+
     my $setosimg;
     foreach (@$args) {
         if (/osimage=(.*)/) {
@@ -222,21 +238,55 @@ sub nodeset {
         }
     }
 
-    # get the provision method for all the nodes
-    my $nttab = xCAT::Table->new("nodetype");
-    unless ($nttab) {
-        xCAT::MsgUtils->message("E", { error => ["Cannot open the nodetype table."], errorcode => ["1"] }, $callback);
-        return;
-    }
+    my $switchestab = xCAT::Table->new('switches');
+    my $switcheshash = $switchestab->getNodesAttribs($switches, ['switchtype']);
 
-    # if the osimage=xxx has been specified, then set it to the provmethod attr .
-    if ($setosimg) {
-        my %setpmethod;
-        foreach (@$nodes) {
-            $setpmethod{$_}{'provmethod'} = $setosimg;
+    my $nodetab  = xCAT::Table->new('nodetype');
+    my $nodehash = $nodetab->getNodesAttribs($switches, [ 'provmethod' ]);
+
+    foreach my $switch (@$switches) {
+        if ($switcheshash->{$switch}->[0]->{switchtype} ne "onie") {
+            xCAT::MsgUtils->message("E", { error => ["nodeset command is not processed for $switch, only supports switchtype=onie"], errorcode => ["1"] }, $callback);
+            next;
         }
-        $nttab->setNodesAttribs(\%setpmethod);
-    }
+        if ($setosimg) {
+            $provmethod = $setosimg;
+            $nodetab->setAttribs({ 'node' => $switch }, {'provmethod' => $setosimg});
+        } else {
+            $provmethod = $nodehash->{$switch}->[0]->{provmethod}; 
+        }
+        if ($::VERBOSE) {
+            xCAT::MsgUtils->message("I", { data => ["$switch has provmethod=$provmethod"] }, $callback);
+        }
+        #get pkgdir from osimage
+        my $linuximagetab = xCAT::Table->new('linuximage');
+        my $imagetab = $linuximagetab->getAttribs({ imagename => $provmethod }, 'pkgdir');
+        $image_pkgdir = $imagetab->{'pkgdir'};
+       
+        #validate the image pkgdir 
+        my $flag=0;
+        if (-r $image_pkgdir) {
+            my @filestat = `file $image_pkgdir`;
+            if (grep /$image_pkgdir: data/, @filestat) {
+                $flag=1;
+            }
+        }
+        unless ($flag) {
+            xCAT::MsgUtils->message("E", { error => ["The image '$image_pkgdir' is invalid"], errorcode => ["1"] }, $callback);
+            next;
+        }
+        if ($::VERBOSE) {
+            xCAT::MsgUtils->message("I", { data => ["osimage=$provmethod, pkgdir=$image_pkgdir"] }, $callback);
+        }
 
+        #updateing DHCP entries
+        my $ret = xCAT::Utils->runxcmd({ command => ["makedhcp"], node => [$switch], arg => ['-a'] }, $subreq, 0, 1);
+        if ($::RUNCMD_RC) {
+            xCAT::MsgUtils->message("E", { error => ["Failed to run 'makedhcp -a' command"], errorcode => ["$::RUNCMD_RC"] }, $callback);
+        }
+
+        xCAT::MsgUtils->message("I", { data => ["$switch: install $provmethod"] }, $callback);
+    }
+    return;
 }
 1;

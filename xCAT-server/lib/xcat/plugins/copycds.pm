@@ -101,7 +101,7 @@ sub process_request {
         else { $file = $_; }
 
         # handle the copycds for tar file
-        # if the source file is tar format, call the 'opytar' command to handle it.
+        # if the source file is tar format, call the 'copytar' command to handle it.
         # currently it's used for Xeon Phi (mic) support
         if (-r $file) {
             my @filestat = `file $file`;
@@ -116,13 +116,15 @@ sub process_request {
                 return;
             }
             if (grep /$file: data/, @filestat) {
-                $distname="cumulus";
                 if ($xcatdebugmode) {
-                    $callback->({ info => "run copycds for cumulus OS file = $file, distname=$distname" });
+                    $callback->({ info => "run copydata for data file = $file" });
                 }
                 my $newreq = dclone($request);
-                $newreq->{command} = ['copycd']; #Note the singular, it's different
-                $newreq->{arg} = [ "-f", $file, "-n", $distname ];
+                $newreq->{command} = ['copydata']; #Note the singular, it's different
+                unless ($nonoverwrite) {
+                    $nonoverwrite=0;
+                }
+                $newreq->{arg} = [ "-f", $file, "-w", $nonoverwrite ];
                 $doreq->($newreq, $callback);
                 return;
             }
