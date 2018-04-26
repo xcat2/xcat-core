@@ -4722,7 +4722,6 @@ sub parse_and_run_dcp
             $rsp->{error}->[0] = "Error parsing the rsync file:$syncfile.";
             xCAT::MsgUtils->message("E", $rsp, $::CALLBACK, 1);
             $::FAILED_NODES=scalar @nodelist;
-            print $::FAILED_NODES;
             return;
         }
 

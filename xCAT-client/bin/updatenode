@@ -56,7 +56,7 @@ if (!($tmp =~ / (--help|-h|-v|--version)/)) {
     my $arg = shift(@ARGV);
 
     # Set the noderange
-    if ($arg !~ /^-/) {
+    if ($arg and $arg !~ /^-/) {
         my @tempnr = ();
         foreach my $nr (split(/,/, $arg)) {
             if ($nr =~ /^\^(.*)$/) {
