@@ -33,8 +33,7 @@ cmd:rspconfig $$CN dump -g|tee /tmp/dumpgenerate
 check:rc == 0
 check:output =~$$CN:\s*\[\d+\]\s* success
 cmd:sleep 300
-cmd:rspconfig $$CN dump -l
-check:output =~$$CN:\s*\[\d+\]\s* Generated:
+cmd:dumpnumber=`sed -r 's/.+\[(.+)\].+/\1/g' /tmp/dumpgenerate `; rspconfig $$CN dump -l|grep "\[$dumpnumber\] Generated"
 check:rc == 0
 cmd:dumpnumber=`cat /tmp/dumpgenerate |awk -F '[' '{ print $2 }' | awk -F ']' '{ print $1 }'`;rspconfig $$CN dump --clear $dumpnumber
 check:rc == 0
@@ -46,8 +45,7 @@ cmd:rspconfig $$CN dump --generate|tee /tmp/dumpgenerate
 check:rc == 0
 check:output =~$$CN:\s*\[\d+\]\s* success
 cmd:sleep 300
-cmd:rspconfig $$CN dump -l
-check:output =~$$CN:\s*\[\d+\]\s* Generated:
+cmd:dumpnumber=`sed -r 's/.+\[(.+)\].+/\1/g' /tmp/dumpgenerate `; rspconfig $$CN dump -l|grep "\[$dumpnumber\] Generated"
 check:rc == 0
 cmd:dumpnumber=`cat /tmp/dumpgenerate |awk -F '[' '{ print $2 }' | awk -F ']' '{ print $1 }'`;rspconfig $$CN dump --clear $dumpnumber
 check:rc == 0
@@ -68,7 +66,7 @@ check:output =~$$CN:\s*\[\d+\]\s* success
 cmd:sleep 300
 cmd:dumpnumber=`sed -r 's/.+\[(.+)\].+/\1/g' /tmp/dumpgenerate `; rspconfig $$CN dump -l|grep "\[$dumpnumber\] Generated"
 check:rc == 0
-cmd:dumpnumber=`cat /tmp/dumpgenerate |awk -F '[' '{ print $2 }' | awk -F ']' '{ print $1 }'`;rspconfig $$CN dump --clear $dumpnumber
+cmd:dumpnumber=`sed -r 's/.+\[(.+)\].+/\1/g' /tmp/dumpgenerate`;rspconfig $$CN dump --clear $dumpnumber
 check:rc == 0
 check:output =~$$CN:\s*\[\d+\]\s* clear
 cmd:rspconfig $$CN dump -g 
@@ -95,6 +93,7 @@ check:rc == 0
 check:output =~$$CN:\s*\[all\]\s* clear
 cmd:rspconfig $$CN dump -l
 check:output =~$$CN:\s*No attributes returned from the BMC.
+cmd:rm -rf /tmp/dumpgenerate
 end
 
 start:rspconfig_dump_download
@@ -105,37 +104,45 @@ cmd:rspconfig $$CN dump -g |tee /tmp/dumpgenerate
 check:rc == 0
 check:output =~$$CN:\s*\[\d+\]\s* success
 cmd:sleep 300
-cmd:dumpnumber=`cat /tmp/dumpgenerate |awk -F '[' '{ print $2 }' | awk -F ']' '{ print $1 }'`;rspconfig $$CN dump -d $dumpnumber |tee /tmp/dumpdown
+cmd:dumpnumber=`sed -r 's/.+\[(.+)\].+/\1/g' /tmp/dumpgenerate`;rspconfig $$CN dump -d $dumpnumber |tee /tmp/dumpdown
 check:rc == 0
 cmd:dumpnumber=`sed -r 's/.+\[(.+)\].+/\1/g' /tmp/dumpgenerate`;grep "Downloaded dump $dumpnumber to /var/log/xcat/dump/" /tmp/dumpdown
 check:rc == 0
 cmd:dumpnumber=`sed -r 's/.+\[(.+)\].+/\1/g' /tmp/dumpgenerate`;dumpsize=`rspconfig $$CN dump -l |grep "\[$dumpnumber\] Generated" |cut -d : -f 6`;ls -l /var/log/xcat/dump/*_$$CN_dump_$dumpnumber.tar.xz|grep $dumpsize
+check:rc == 0
 cmd:rspconfig $$CN dump -g |tee /tmp/dumpgenerate
 check:rc == 0
 check:output =~$$CN:\s*\[\d+\]\s* success
 cmd:sleep 300
-cmd:dumpnumber=`cat /tmp/dumpgenerate |awk -F '[' '{ print $2 }' | awk -F ']' '{ print $1 }'`;rspconfig $$CN dump --download $dumpnumber |tee /tmp/dumpdown
+cmd:dumpnumber=`sed -r 's/.+\[(.+)\].+/\1/g' /tmp/dumpgenerate`;rspconfig $$CN dump --download $dumpnumber |tee /tmp/dumpdown
 check:rc == 0
 cmd:dumpnumber=`sed -r 's/.+\[(.+)\].+/\1/g' /tmp/dumpgenerate`;grep "Downloaded dump $dumpnumber to /var/log/xcat/dump/" /tmp/dumpdown
 check:rc == 0
 cmd:dumpnumber=`sed -r 's/.+\[(.+)\].+/\1/g' /tmp/dumpgenerate`;dumpsize=`rspconfig $$CN dump -l |grep "\[$dumpnumber\] Generated" |cut -d : -f 6`;ls -l /var/log/xcat/dump/*_$$CN_dump_$dumpnumber.tar.xz|grep $dumpsize
+check:rc == 0
 cmd:rspconfig $$CN dump -d all
 check:rc == 0
 check:output =~Downloading all dumps
 cmd:rspconfig $$CN dump --download all
 check:rc == 0
 check:output =~Downloading all dumps 
-cmd:rm -rf /tmp/dumpgenerate
+cmd:rm -rf /tmp/dumpgenerate /tmp/dumpdown
 end
 
 start:rspconfig_dump_no_option
 description: To test "rspconfig <node> dump"
 os:Linux
 hcp:openbmc
-cmd:rspconfig $$CN dump 
+cmd:rspconfig $$CN dump  
 check:rc == 0
 check:output =~$$CN:\s*Dump requested
 check:output =~$$CN:\s*Downloading dump
+cmd:rspconfig $$CN dump -l |tail -n 1 |tee /tmp/dumpgenerate
+check:rc == 0
+#cmd:dumpnumber=`sed -r 's/.+\[(.+)\].+/\1/g' /tmp/dumpgenerate`;dumpsize=`cat /tmp/dumpgenerate |cut -d : -f 6`;ls -l /var/log/xcat/dump/*_$$CN_dump_$dumpnumber.tar.xz|grep $dumpsize
+cmd:dumpnumber=`sed -r 's/.+\[(.+)\].+/\1/g' /tmp/dumpgenerate`;dumpsize=`rspconfig $$CN dump -l |grep "\[$dumpnumber\] Generated" |cut -d : -f 6`;ls -l /var/log/xcat/dump/*_$$CN_dump_$dumpnumber.tar.xz|grep $dumpsize
+check:rc == 0
+cmd:rm -rf /tmp/dumpgenerate
 end
 
 start:rspconfig_gard
