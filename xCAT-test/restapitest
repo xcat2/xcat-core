@@ -97,51 +97,25 @@ if ($resource) {
     }
 }
 
-
-##############################################################
-# ONLY check result,exit immediately
-##############################################################
-if ($output and !defined($method)) {
-    my $res = check_result($output, $loperator, $outputfile);
-    log_debug(2, "check result runs with $output and $loperator, result is $res\n");
-    exit $res;
-}
-
 ##############################################################
 # Give default values for optional vars.
 ###############################################################
 my $rootdir   = "$::XCATROOT/share/xcat/tools/autotest";
 my $resultdir = "$rootdir/result";
 my $logfile   = "$rootdir/result/restapitest.log";
+#logfile: /opt/xcat/share/xcat/tools/autotest/result/restapitest.log
 
-#/opt/xcat/share/xcat/tools/autotest/result/restapitest.log
-my $confile = "$rootdir/default.conf";
+unless (($user) && ($passwd)) {
 
-
-# read configuration file
-if (!open(CONF, "<$confile")) {
-    log_debug(1, "can't open configuration file $confile");
+    # No user or passwd passed in, read configuration file, they might be there
+    print "Userid and password must be supplied\n";
     exit 1;
-}
-my %confhash;
-while (<CONF>) {
-    if (/restapi-(\w+)=(\S+)/) {
-        $confhash{$1} = $2;
-    }
 }
 
 # get hostname or default to local host if not specified
 unless ($host) {
     $host = "127.0.0.1";
 }
-
-unless ($user) {
-    $user = $confhash{DefaultUser1};
-}
-unless ($passwd) {
-    $passwd = $confhash{DefaultPasswd1};
-}
-my $DefaultPasswd = $confhash{DefaultPasswd1};
 
 if ($usetoken) {
 # get token
@@ -155,64 +129,11 @@ log_debug(3, "User $user. \n");
 log_debug(3, "Password $passwd. \n");
 log_debug(3, "Host $host. \n");
 log_debug(3, "Got token $token. \n");
-log_debug(3, "get path of ca $confhash{Cert} \n");
 
 my $res = run_restapi($method, $resource, $data, "", $port, "$host", "$user", "$passwd", "$token");
-$defaulthash       = parse_json($res);
 $defaulthttpresult = check_errcode();
 
-print Dumper $defaulthash;
-exit $defaulthttpresult;
-
-####################################################
-# Begin to run test cases
-####################################################
-my @users   = ($confhash{DefaultUser1},   $confhash{DefaultUser2},   $user);
-my @passwds = ($confhash{DefaultPasswd1}, $confhash{DefaultPasswd2}, $passwd);
-my @tokens = ("", $token, $token);
-my @certs = ("", $confhash{Cert}, $cert);
-my $i = 0;
-unless ($method eq "POST") {    # Should not post sevral times
-    for my $u (@users) {
-        next unless ($u);
-        my $p = $passwds[$i];
-        $i++;
-        for my $t (@tokens) {
-            for my $c (@certs) {
-
-                #if ($method eq "POST" and ($resource =~ /^\/nodes\/(\w+)$/)) {
-                #     `/opt/xcat/bin/rmdef $1`;
-                #     log_debug(2,"restapi test rmdef $1\n");
-                #}
-                my $res = run_restapi($method, $resource, $data, $c, $port, $host, $u, $p, $t);
-                if ($res) {
-                    my $reshash = parse_json($res);
-                    log_debug(2, "parse curl result and got:\n");
-                    log_debug(2, $reshash);
-                    if (%$reshash != %$defaulthash) {
-                        log_debug(3, "restapi test cases run different result with $method, $resource, $data, $c, $port, $host, $u, $p, $t\n");
-                        exit 1;
-                    }
-                }
-                my $errcode = check_errcode();
-                log_debug(2, "get curl error code: $errcode\n");
-                if ($errcode != $defaulthttpresult) {
-                    log_debug(3, "restapi test cases run different error code with $method, $resource, $data, $c, $port, $host, $u, $p, $t\n");
-                    exit 1;
-                }
-            }
-        }
-    }
-}
-##############################################################
-# check result
-##############################################################
-if ($output) {
-    my $res = check_result($output, $loperator, $res);
-    log_debug(2, "check result runs with $output and $loperator, result is $res\n");
-    exit $res;
-}
-
+print Dumper $res;
 exit $defaulthttpresult;
 
 ################################################
@@ -287,10 +208,9 @@ sub run_restapi
     $cmd .= "/xcatws";
     $cmd .= "$r?";
     unless ($t) {
-        $cmd .= "userName=$u&userPW=$a'";
-    } else {
-        $cmd .= "'";
+        $cmd .= "userName=$u&userPW=$a";
     }
+    $cmd .= "&pretty=1'";
     if ($d) {
         $cmd .= " -H Content-Type:application/json --data '$d'";
     }

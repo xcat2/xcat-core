@@ -1,0 +1,7 @@
+# The test for the REST API needs to specify
+# the specific node and userid/password for REST API access
+
+[System]
+username=
+password=
+CN=
