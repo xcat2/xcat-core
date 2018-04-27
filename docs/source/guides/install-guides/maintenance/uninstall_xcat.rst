@@ -53,6 +53,7 @@ Remove xCAT Files
   [RHEL and SLES] ::
 
       yum remove '*xcat*'
+      yum remove '*xCAT*'
 
   [Ubuntu] ::	  
   
@@ -81,7 +82,7 @@ Remove xCAT Files
         http://xcat.org/files/xcat/repos/apt/xcat-dep/pool/main
 
 
-  When ``yum install xCAT`` is used to install xCAT, some RPMs shipped by operating system are installed. There is no easy way to find all of them, but keeping those RPMs is harmless. 
+  When ``yum install xCAT`` is used to install xCAT, dependency RPMs provided by the Operating System will be installed. Keeping those rpms installed on the system is harmless. 
 
 
 2. Remove xCAT certificate file ::
@@ -96,7 +97,7 @@ Remove xCAT Files
 
 4. Remove xCAT related files (optional)
 
-  XCAT might have also created additional files and directories below. Be careful removing these files, as they might be used for other purposes in your environment. ::
+  XCAT might have also created additional files and directories below. Take caution when removing these files as they may be used for other purposes in your environment. ::
 
     /install
     /tftpboot
