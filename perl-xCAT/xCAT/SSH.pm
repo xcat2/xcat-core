@@ -5,7 +5,6 @@ package xCAT::SSH;
 
 # cannot use strict
 use base xCAT::DSHRemoteShell;
-
 # Determine if OS is AIX or Linux
 # Configure standard locations of commands based on OS
 
@@ -136,33 +135,87 @@ sub remote_copy_command {
     my @src_files = ();
     my @dest_file = ();
 
-    my @src_file_list = split $::__DCP_DELIM, $$config{'src-file'};
+    if ($$config{'destDir_srcFile'}){
+        my $dest_dir_list = join ' ', keys %{ $$config{'destDir_srcFile'} };
+        my $dest_user_host = $$config{'dest-host'};
+        if ($::SYNCSN == 1)
+        {                                                 # syncing service node
+            #todo
+            $scpfile = "/tmp/scp_$$config{'dest-host'}";
+        }
+        else
+        {
+            $scpfile = "/tmp/scp_$$config{'dest-host'}";
+        }
+       
+        open SCPCMDFILE, "> $scpfile"
+          or die "Can not open file $scpfile";
+        if ($$config{'dest-user'})
+        {
+            $dest_user_host =
+              "$$config{'dest-user'}@" . "$$config{'dest-host'}";
+        }
+        if ($$config{'trace'}) {
+            print SCPCMDFILE "#!/bin/sh -x\n";
+        } else {
+            print SCPCMDFILE "#!/bin/sh\n";
+        }
 
-    foreach $src_file (@src_file_list) {
-        my @src_path = ();
-        $$config{'src-user'} && push @src_path, "$$config{'src-user'}@";
-        $$config{'src-host'} && push @src_path, "$$config{'src-host'}:";
-        $$config{'src-file'} && push @src_path, $src_file;
-        push @src_files, (join '', @src_path);
+        print SCPCMDFILE
+            "/usr/bin/ssh  $dest_user_host '/bin/mkdir -p $dest_dir_list'\n";
+
+        foreach my $dest_dir (keys %{ $$config{'destDir_srcFile'} }){
+            if($$config{'destDir_srcFile'}{$dest_dir}{'same_dest_name'}){
+                my @src_file =
+                  @{ $$config{'destDir_srcFile'}{$dest_dir}{'same_dest_name'} };
+                my $src_file_list = join ' ', @src_file;
+                print SCPCMDFILE
+                    "$exec_path -p -r $src_file_list $dest_user_host:$dest_dir\n";
+            }
+
+            if($$config{'destDir_srcFile'}{$dest_dir}{'diff_dest_name'}){
+                my %diff_dest_hash =
+                    %{ $$config{'destDir_srcFile'}{$dest_dir}{'diff_dest_name'} };
+                foreach my $src_file_diff_dest (keys %diff_dest_hash)
+                {
+                    my $diff_basename = $diff_dest_hash{$src_file_diff_dest};
+                    print SCPCMDFILE
+                        "$exec_path -p -r $src_file_diff_dest $dest_user_host:$dest_dir/$diff_basename\n";
+                }
+            }
+        }        
+
+        close SCPCMDFILE;
+        chmod 0755, $scpfile;
+        @command = ('/bin/sh', '-c', $scpfile);
+    }else{
+        my @src_file_list = split $::__DCP_DELIM, $$config{'src-file'};
+
+        foreach $src_file (@src_file_list) {
+            my @src_path = ();
+            $$config{'src-user'} && push @src_path, "$$config{'src-user'}@";
+            $$config{'src-host'} && push @src_path, "$$config{'src-host'}:";
+            $$config{'src-file'} && push @src_path, $src_file;
+            push @src_files, (join '', @src_path);
+        }
+
+        $$config{'dest-user'} && push @dest_file, "$$config{'dest-user'}@";
+        $$config{'dest-host'} && push @dest_file, "$$config{'dest-host'}:";
+        $$config{'dest-file'} && push @dest_file, $$config{'dest-file'};
+
+        push @command, $exec_path;
+        $$config{'preserve'}  && push @command, '-p';
+        $$config{'recursive'} && push @command, '-r';
+
+        if ($$config{'options'}) {
+            my @options = split ' ', $$config{'options'};
+            push @command, @options;
+        }
+
+        ($ssh_version eq 'OpenSSH') && push @command, '-B';
+        push @command, @src_files;
+        push @command, (join '', @dest_file);
     }
-
-    $$config{'dest-user'} && push @dest_file, "$$config{'dest-user'}@";
-    $$config{'dest-host'} && push @dest_file, "$$config{'dest-host'}:";
-    $$config{'dest-file'} && push @dest_file, $$config{'dest-file'};
-
-    push @command, $exec_path;
-    $$config{'preserve'}  && push @command, '-p';
-    $$config{'recursive'} && push @command, '-r';
-
-    if ($$config{'options'}) {
-        my @options = split ' ', $$config{'options'};
-        push @command, @options;
-    }
-
-    ($ssh_version eq 'OpenSSH') && push @command, '-B';
-    push @command, @src_files;
-    push @command, (join '', @dest_file);
-
     return @command;
 }
 

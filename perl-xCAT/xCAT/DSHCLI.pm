@@ -22,6 +22,8 @@ use xCAT::MsgUtils;
 use xCAT::Utils;
 use xCAT::TableUtils;
 use xCAT::NodeRange;
+use xCAT::DSHCLI;
+use Data::Dumper;
 use lib '/opt/xcat/xdsh';
 our @dsh_available_contexts = ();
 our @dsh_valid_contexts     = ();
@@ -922,6 +924,7 @@ sub fork_fanout_dcp
         $dsh_trace
           && (xCAT::MsgUtils->message("I", $rsp, $::CALLBACK));
 
+
         my @process_info =
           xCAT::DSHCore->fork_output($user_target, @dcp_command);
         vec($$outfh_targets{'bitmap'}, fileno($process_info[1]), 1) = 1;
@@ -1329,7 +1332,7 @@ sub fork_fanout_dsh
         #print "Command=@dsh_command\n";
 
         #@process_info = xCAT::DSHCore->fork_output($user_target, @dsh_command);
-        push(@commands, \@dsh_command);    #print Dumper(\@commands);
+        push(@commands, \@dsh_command);    
         @process_info = xCAT::DSHCore->fork_output_for_commands($user_target, @commands);
         if ($process_info[0] == -2)
         {
@@ -4531,15 +4534,6 @@ sub parse_and_run_dcp
         }
     }
 
-    # invalid to put the -F  with the -r flag
-    if ($options{'File'} && $options{'node-rcp'})
-    {
-        my $rsp = {};
-        $rsp->{error}->[0] =
-"If -F option is use, then -r is invalid. The command will always the rsync using ssh.";
-        xCAT::MsgUtils->message("E", $rsp, $::CALLBACK, 1);
-        return;
-    }
 
     # invalid to put the -s  without the -F flag
     if (!($options{'File'}) && $options{'rsyncSN'})
@@ -4566,22 +4560,31 @@ sub parse_and_run_dcp
             }
 
         }
-        elsif ($^O eq 'linux')
+        elsif (($^O eq 'linux') and !$options{'node-rcp'})
         {
             $options{'node-rcp'} = '/usr/bin/rsync';
         }
     }
-    my $remotecopycommand = $options{'node-rcp'};
-    if ($options{'node-rcp'}
-        && (!-f $options{'node-rcp'} || !-x $options{'node-rcp'}))
-    {
-        my $rsp = {};
-        $rsp->{error}->[0] =
-"Remote command: $remotecopycommand does not exist or is not executable.";
-        xCAT::MsgUtils->message("E", $rsp, $::CALLBACK, 1);
-        return;
-    }
 
+    my $remotecopycommand = $options{'node-rcp'};
+    if ($options{'node-rcp'}) {
+        if (!-f $options{'node-rcp'} || !-x $options{'node-rcp'})
+        {
+             my $rsp = {};
+             $rsp->{error}->[0] =
+                 "Remote command: $remotecopycommand does not exist or is not executable.";
+             xCAT::MsgUtils->message("E", $rsp, $::CALLBACK, 1);
+             return;
+        }
+    
+        if ($remotecopycommand !~ /\/(rcp|scp|rsync)$/){
+             my $rsp = {};
+             $rsp->{error}->[0] =
+                 "Remote command: $remotecopycommand is invalid, the support remote commands: scp,rcp,rsync.";
+             xCAT::MsgUtils->message("E", $rsp, $::CALLBACK, 1);
+             return;
+        }
+    }
     #
     # build list of nodes
     my @nodelist;
@@ -4673,6 +4676,7 @@ sub parse_and_run_dcp
         {
             $::SYNCSN = 1;
         }
+        
 
         # the parsing of the file will fill in an array of postscripts
         # need to be run if the associated file is updated
@@ -4726,6 +4730,7 @@ sub parse_and_run_dcp
             my $rsp = {};
             $rsp->{error}->[0] = "Error parsing the rsync file:$syncfile.";
             xCAT::MsgUtils->message("E", $rsp, $::CALLBACK, 1);
+            $::FAILED_NODES=scalar @nodelist;
             return;
         }
 
@@ -5067,6 +5072,7 @@ sub parse_rsync_input_file_on_MN
     my $addappendscript = 0;
     open(INPUTFILE, "< $input_file") || die "File $input_file does not exist\n";
 
+
     while (my $line = <INPUTFILE>)
     {
         chomp $line;
@@ -5284,6 +5290,15 @@ sub parse_rsync_input_file_on_MN
     {
         $$options{'nodes'} = join ',', keys %{ $$options{'destDir_srcFile'} };
     }
+
+    my $remotecopycommand=$$options{'node-rcp'};
+    if($remotecopycommand !~ /\/rsync$/ and @::postscripts){
+        my $rsp = {};
+        $rsp->{error}->[0] ="key word 'EXECUTE' is unavailable when the remote copy command specified by '-r|--node-rcp' is $remotecopycommand. Does 'EXECUTEALWAYS' work for you?";
+        xCAT::MsgUtils->message("E", $rsp, $::CALLBACK, 1);         
+        return 1;
+    }
+
     return 0;
 }
 
@@ -5780,6 +5795,15 @@ sub parse_rsync_input_file_on_SN
     {
         $$options{'nodes'} = join ',', keys %{ $$options{'destDir_srcFile'} };
     }
+
+    my $remotecopycommand=$$options{'node-rcp'};
+    if($remotecopycommand !~ /\/rsync$/ and @::postscripts){
+        my $rsp = {};
+        $rsp->{error}->[0] ="key word 'EXECUTE' is unavailable when the remote copy command specified by '-r|--node-rcp' is $remotecopycommand. Does 'EXECUTEALWAYS' work for you?";
+        xCAT::MsgUtils->message("E", $rsp, $::CALLBACK, 1);         
+        return 1;
+    }
+
     return 0;
 }
 

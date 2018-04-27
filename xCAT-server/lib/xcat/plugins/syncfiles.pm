@@ -12,7 +12,8 @@ use xCAT::Utils;
 use xCAT::MsgUtils;
 use xCAT::SvrUtils;
 use xCAT::NodeRange;
-
+use Data::Dumper;
+use Getopt::Long;
 1;
 
 #-------------------------------------------------------
@@ -46,9 +47,30 @@ sub process_request
     my $callback = shift;
     my $subreq   = shift;
 
+    my $args= $request->{arg};    # argument
+    @ARGV = @{$args};
     my $client;
     if ($request->{'_xcat_clienthost'}) {
         $client = $request->{'_xcat_clienthost'}->[0];
+    }
+
+
+    my %options  = ();
+    Getopt::Long::Configure("posix_default");
+    Getopt::Long::Configure("no_gnu_compat");
+    Getopt::Long::Configure("bundling");
+    if (
+        !GetOptions(
+            'r|c|node-rcp=s'        => \$options{'node-rcp'},
+        )
+      )
+    {
+        xCAT::MsgUtils->message("S", "Received syncfiles from $client, with invalid options @ARGV");
+        return;    
+    }
+
+    if ($options{'node-rcp'}){
+         $::RCP=$options{'node-rcp'};
     }
 
     if ($client) { ($client) = noderange($client) }
@@ -101,7 +123,11 @@ sub syncfiles {
     foreach my $synclistfile (@sl) {
 
         # call the xdcp plugin to handle the syncfile operation
-        my $args = [ "-F", "$synclistfile" ];
+        my $args = [ "-F", "$synclistfile"];
+        if($::RCP){
+            push @$args,"-r"; 
+            push @$args, "$::RCP";
+        }
         my $env = ["DSH_RSYNC_FILE=$synclistfile"];
         $subreq->({ command => ['xdcp'], node => [$node], arg => $args, env => $env }, $callback);
     }

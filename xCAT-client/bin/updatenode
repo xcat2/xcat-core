@@ -56,7 +56,7 @@ if (!($tmp =~ / (--help|-h|-v|--version)/)) {
     my $arg = shift(@ARGV);
 
     # Set the noderange
-    if ($arg !~ /^-/) {
+    if ($arg and $arg !~ /^-/) {
         my @tempnr = ();
         foreach my $nr (split(/,/, $arg)) {
             if ($nr =~ /^\^(.*)$/) {
@@ -82,7 +82,7 @@ if (!($tmp =~ / (--help|-h|-v|--version)/)) {
 push(@{ $cmdref->{arg} }, @ARGV);
 
 # check the syntax
-my ($ALLSW, $CMDLINE, $ALTSRC, $HELP, $VERSION, $VERBOSE, $FILESYNC, $GENMYPOST, $USER, $SNFILESYNC, $SWMAINTENANCE, $SETSERVER, $RERUNPS, $SECURITY, $OS, $fanout, $timeout, $NOVERIFY);
+my ($ALLSW, $CMDLINE, $ALTSRC, $HELP, $VERSION, $VERBOSE, $FILESYNC, $GENMYPOST, $USER, $SNFILESYNC, $SWMAINTENANCE, $SETSERVER, $RERUNPS, $SECURITY, $OS, $fanout, $timeout, $NOVERIFY,$RCP);
 if (
     !GetOptions(
         'A|updateallsw' => \$ALLSW,
@@ -103,6 +103,7 @@ if (
         'fanout=i'      => \$fanout,
         't|timetout=i'  => \$timeout,
         'n|noverify'    => \$NOVERIFY,
+        'r|node-rcp'    => \$RCP,
     )
   ) {
     &updatenode_usage();
