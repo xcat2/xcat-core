@@ -107,7 +107,28 @@ sub process_request {
 sub copydata {
     my $request  = shift;
     my $callback = shift;
+    my $file;
+    my $inspection   = undef;
+    my $noosimage    = undef;
+    my $nooverwrite = undef;
     
+    # get arguments
+    my $args = $request->{arg};
+    if ($args) {
+        @ARGV = @{$args};
+        GetOptions(
+            'w'   => \$nooverwrite,
+            'o'   => \$noosimage,
+            'i'   => \$inspection,
+            'f=s' => \$file
+        );
+    }
+
+    if (!(-x $file)) {
+        xCAT::MsgUtils->message("E", { error => ["$file is not executable, will not process"], errorcode => ["1"] }, $callback);
+        return;
+    }
+
     #get install dir
     my $installroot = "/install";
     my $sitetab     = xCAT::Table->new('site');
@@ -118,57 +139,50 @@ sub copydata {
         $installroot = $site_ent;
     }
 
-    my $args = $request->{arg};
-    my ($nooverwrite, $file);
-    if ($args) {
-        @ARGV = @{$args};
-        GetOptions('w=s' => \$nooverwrite,
-            'f=s' => \$file);
-    }
-
-    if (!(-x $file)) {
-        xCAT::MsgUtils->message("E", { error => ["$file is not executable, will not process"], errorcode => ["1"] }, $callback);
-        return;
-    }
-
     my $arch;
     my $desc;
     my $release;
     my $osname;
     my $filename = basename($file);
     my $output = `$file`;
-    $callback->({ data => "file output: $output" });
+    if ($inspection) {
+        $callback->({ data => "file output: $output" });
+        return;
+    }
     foreach my $line (split /[\r\n]+/, $output) {
         if ($line =~ /^Architecture/) {
             ($desc, $arch) = split /: /, $line ;
+            chomp $arch;
         }
         if ($line =~ /^Release/) {
             ($desc, $release) = split /: /, $line ;
+            chomp $release;
         }
         if ($line =~ /cumulus/) {
             $osname = "cumulus" ;
         }
     }
-
-    chomp $arch;
-    if ($arch !~ /armel/){
-        xCAT::MsgUtils->message("E", { error => ["$arch is not support, only support armel Architecture for now"], errorcode => ["1"] }, $callback);
-        return;
+    unless ($osname) {
+        $osname="image";
     }
 
-    chomp $release;
-    my $imagename = $osname . "-" . $release . "-" . $arch;
     my $distname = $osname . $release;
-    my $defaultpath = "$installroot/$distname/$arch/$imagename";
+    my $imagename = $distname . "-" . $arch;
+    my $defaultpath = "$installroot/$distname/$arch";
 
     #check if file exists
-    if ( (-e "$defaultpath/$filename") && !($nooverwrite)){
-        $callback->({ data => "$defaultpath/$filename is already exists." });
+    if ( (-e "$defaultpath/$filename") && ($nooverwrite)){
+        $callback->({ data => "$defaultpath/$filename is already exists, will not overwrite" });
     } else {
         $callback->({ data => "Copying media to $defaultpath" });
         mkpath ("$defaultpath");
         system("cp $file $defaultpath");
         $callback->({ data => "Media copy operation successful" });
+    }
+
+    if ($noosimage) {
+        $callback->({ data => "Option noosimage is specified, will not create osimage definition" });
+        return;
     }
 
     # generate the image objects
@@ -185,7 +199,7 @@ sub copydata {
     my $pkgdir = "$defaultpath/$filename";
     my $imgdir = $litab->getAttribs({ 'imagename' => $imagename }, 'pkgdir');
 
-    if ( ($pkgdir eq $imgdir->{'pkgdir'}) && !($nooverwrite) ) {
+    if ( ($pkgdir eq $imgdir->{'pkgdir'}) && ($nooverwrite) ) {
         $callback->({ data => "$imagename is available, will not overwrite" });
         return;
     }
@@ -280,9 +294,9 @@ sub nodeset {
         }
 
         #updateing DHCP entries
-        my $ret = xCAT::Utils->runxcmd({ command => ["makedhcp"], node => [$switch], arg => ['-a'] }, $subreq, 0, 1);
+        my $ret = xCAT::Utils->runxcmd({ command => ["makedhcp"], node => [$switch] }, $subreq, 0, 1);
         if ($::RUNCMD_RC) {
-            xCAT::MsgUtils->message("E", { error => ["Failed to run 'makedhcp -a' command"], errorcode => ["$::RUNCMD_RC"] }, $callback);
+            xCAT::MsgUtils->message("E", { error => ["Failed to run 'makedhcp' command"], errorcode => ["$::RUNCMD_RC"] }, $callback);
         }
 
         xCAT::MsgUtils->message("I", { data => ["$switch: install $provmethod"] }, $callback);

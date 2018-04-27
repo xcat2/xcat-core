@@ -121,10 +121,20 @@ sub process_request {
                 }
                 my $newreq = dclone($request);
                 $newreq->{command} = ['copydata']; #Note the singular, it's different
-                unless ($nonoverwrite) {
-                    $nonoverwrite=0;
+                $newreq->{arg} = [ "-f", $file ];
+                if ($inspection)
+                {
+                    push @{ $newreq->{arg} }, ("-i");
                 }
-                $newreq->{arg} = [ "-f", $file, "-w", $nonoverwrite ];
+                if ($nonoverwrite)
+                {
+                    push @{ $newreq->{arg} }, ("-w");
+                }
+                if ($noosimage)
+                {
+                    push @{ $newreq->{arg} }, ("-o");
+                }
+
                 $doreq->($newreq, $callback);
                 return;
             }
