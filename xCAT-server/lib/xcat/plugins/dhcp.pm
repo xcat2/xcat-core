@@ -693,7 +693,11 @@ sub addnode
         } elsif ($nrent and $nrent->{netboot} and $nrent->{netboot} eq 'petitboot') {
             $lstatements = 'option conf-file \"http://' . $nxtsrv . '/tftpboot/petitboot/' . $node . '\";' . $lstatements;
         } elsif ($nrent and $nrent->{netboot} and $nrent->{netboot} eq 'onie') {
-            $lstatements = 'if substring (option vendor-class-identifier,0,11) = \"onie_vendor\" { option www-server = \"http://' . $nxtsrv . $ntent->{provmethod} . '\";}' . $lstatements;
+            my $provmethod = $ntent->{provmethod};
+            my $linuximagetab = xCAT::Table->new('linuximage');
+            my $imagetab = $linuximagetab->getAttribs({ imagename => $provmethod }, 'pkgdir');
+            my $image_pkgdir = $imagetab->{'pkgdir'};
+            $lstatements = 'if substring (option vendor-class-identifier,0,11) = \"onie_vendor\" { option www-server = \"http://' . $nxtsrv . $image_pkgdir . '\";}' . $lstatements;
         } elsif ($nrent and $nrent->{netboot} and $nrent->{netboot} eq 'nimol') {
             $lstatements = 'supersede server.filename=\"/vios/nodes/' . $node . '\";' . $lstatements;
         }
