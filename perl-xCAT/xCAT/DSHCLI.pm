@@ -4565,17 +4565,26 @@ sub parse_and_run_dcp
             $options{'node-rcp'} = '/usr/bin/rsync';
         }
     }
-    my $remotecopycommand = $options{'node-rcp'};
-    if ($options{'node-rcp'}
-        && (!-f $options{'node-rcp'} || !-x $options{'node-rcp'}))
-    {
-        my $rsp = {};
-        $rsp->{error}->[0] =
-"Remote command: $remotecopycommand does not exist or is not executable.";
-        xCAT::MsgUtils->message("E", $rsp, $::CALLBACK, 1);
-        return;
-    }
 
+    my $remotecopycommand = $options{'node-rcp'};
+    if ($options{'node-rcp'}) {
+        if (!-f $options{'node-rcp'} || !-x $options{'node-rcp'})
+        {
+             my $rsp = {};
+             $rsp->{error}->[0] =
+                 "Remote command: $remotecopycommand does not exist or is not executable.";
+             xCAT::MsgUtils->message("E", $rsp, $::CALLBACK, 1);
+             return;
+        }
+    
+        if ($remotecopycommand !~ /\/(rcp|scp|rsync)$/){
+             my $rsp = {};
+             $rsp->{error}->[0] =
+                 "Remote command: $remotecopycommand is invalid, the support remote commands: scp,rcp,rsync.";
+             xCAT::MsgUtils->message("E", $rsp, $::CALLBACK, 1);
+             return;
+        }
+    }
     #
     # build list of nodes
     my @nodelist;
