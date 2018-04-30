@@ -1192,7 +1192,7 @@ my %URIdef = (
         },
         table_all_rows => {
             desc => "[URI:/tables/{tablelist}/rows] - The non-node table resource",
-            desc1 => "Use this for tables that don't have node name as the key of the table, for example: passwd, site, networks, polciy, etc.",
+            desc1 => "Use this for tables that don't have node name as the key of the table, for example: passwd, site, networks, policy, etc.",
             matcher => '^/tables/[^/]+/rows$',
             GET     => {
                 desc => "Get all rows from non-node tables.",
@@ -1204,13 +1204,13 @@ my %URIdef = (
         },
         table_rows => {
             desc => "[URI:/tables/{tablelist}/rows/{keys}] - The non-node table rows resource",
-            desc1 => "Use this for tables that don't have node name as the key of the table, for example: passwd, site, networks, polciy, etc.",
+            desc1 => "Use this for tables that don't have node name as the key of the table, for example: passwd, site, networks, policy, etc.",
             desc2 => "{keys} should be the name=value pairs which are used to search table. e.g. {keys} should be [net=192.168.1.0,mask=255.255.255.0] for networks table query since the net and mask are the keys of networks table.",
             matcher => '^/tables/[^/]+/rows/[^/]+$',
             GET     => {
                 desc => "Get attributes for rows from non-node tables.",
                 usage => "||An object containing each table.  Within each table object is an array of row objects containing the attributes.|",
-                example => qq(|Get row which net=192.168.1.0,mask=255.255.255.0 from networks table.|GET|/tables/networks/rows/net=192.168.1.0,mask=255.255.255.0|{\n   \"networks\":[\n      {\n         \"mgtifname\":\"eth0\",\n         \"netname\":\"192_168_1_0-255_255_255_0\",\n         \"tftpserver\":\"192.168.1.15\",\n         \"gateway\":\"192.168.1.100\",\n         \"staticrangeincrement\":\"1\",\n         \"net\":\"192.168.1.0\",\n         \"mask\":\"255.255.255.0\"\n      }\n   ]\n}|),
+                example => qq(|Get rows from networks table where net=192.168.1.0,mask=255.255.255.0.|GET|/tables/networks/rows/net=192.168.1.0,mask=255.255.255.0|{\n   \"networks\":[\n      {\n         \"mgtifname\":\"eth0\",\n         \"netname\":\"192_168_1_0-255_255_255_0\",\n         \"tftpserver\":\"192.168.1.15\",\n         \"gateway\":\"192.168.1.100\",\n         \"staticrangeincrement\":\"1\",\n         \"net\":\"192.168.1.0\",\n         \"mask\":\"255.255.255.0\"\n      }\n   ]\n}|),
                 fhandler => \&tablerowhdl,
                 outhdler => \&tableout,
             },
@@ -1224,19 +1224,19 @@ my %URIdef = (
             DELETE => {
                 desc => "Delete rows from a non-node table that have the attribute values specified in {keys}.",
                 usage => "||$usagemsg{non_getreturn}|",
-                example => '|Delete a route row which routename=privnet in the routes table.|DELETE|/tables/routes/rows/routename=privnet||',
+                example => '|Delete rows from routes table where routename=privnet.|DELETE|/tables/routes/rows/routename=privnet||',
                 fhandler => \&tablerowdelhdl,
                 outhdler => \&noout,
             },
         },
         table_rows_attrs => {
             desc => "[URI:/tables/{tablelist}/rows/{keys}/{attrlist}] - The non-node table attributes resource",
-            desc1 => "Use this for tables that don't have node name as the key of the table, for example: passwd, site, networks, polciy, etc.",
+            desc1 => "Use this for tables that don't have node name as the key of the table, for example: passwd, site, networks, policy, etc.",
             matcher => '^/tables/[^/]+/rows/[^/]+/[^/]+$',
             GET     => {
                 desc => "Get specific attributes for rows from non-node tables.",
                 usage => "||An object containing each table.  Within each table object is an array of row objects containing the attributes.|",
-                example => qq(|Get attributes mgtifname and tftpserver which net=192.168.1.0,mask=255.255.255.0 from networks table.|GET|/tables/networks/rows/net=192.168.1.0,mask=255.255.255.0/mgtifname,tftpserver|{\n   \"networks\":[\n      {\n         \"mgtifname\":\"eth0\",\n         \"tftpserver\":\"192.168.1.15\"\n      }\n   ]\n}|),
+                example => qq(|Get attributes mgtifname and tftpserver from networks table for each row where net=192.168.1.0,mask=255.255.255.0.|GET|/tables/networks/rows/net=192.168.1.0,mask=255.255.255.0/mgtifname,tftpserver|{\n   \"networks\":[\n      {\n         \"mgtifname\":\"eth0\",\n         \"tftpserver\":\"192.168.1.15\"\n      }\n   ]\n}|),
                 fhandler => \&tablerowhdl,
                 outhdler => \&tableout,
             },
@@ -2853,6 +2853,10 @@ sub tablerowhdl {
     # out of the node hash and make it the key
     my $responses = sendRequest($req, { SuppressEmpty => undef, ForceArray => 0, KeyAttr => [] });
 
+    if (@$responses[0]->{error}) {
+        # Error returned, most likely invalid table, substitute a better error msg
+        @$responses[0]->{error} = "No such table: @tables";
+    }
     return $responses;
 }
 
