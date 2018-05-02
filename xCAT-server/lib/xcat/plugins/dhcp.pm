@@ -694,10 +694,30 @@ sub addnode
             $lstatements = 'option conf-file \"http://' . $nxtsrv . '/tftpboot/petitboot/' . $node . '\";' . $lstatements;
         } elsif ($nrent and $nrent->{netboot} and $nrent->{netboot} eq 'onie') {
             my $provmethod = $ntent->{provmethod};
-            my $linuximagetab = xCAT::Table->new('linuximage');
-            my $imagetab = $linuximagetab->getAttribs({ imagename => $provmethod }, 'pkgdir');
-            my $image_pkgdir = $imagetab->{'pkgdir'};
-            $lstatements = 'if substring (option vendor-class-identifier,0,11) = \"onie_vendor\" { option www-server = \"http://' . $nxtsrv . $image_pkgdir . '\";}' . $lstatements;
+            if ($provmethod) {
+                my $linuximagetab = xCAT::Table->new('linuximage');
+                my $imagetab = $linuximagetab->getAttribs({ imagename => $provmethod }, 'pkgdir');
+                if ($imagetab) {
+                    my $image_pkgdir = $imagetab->{'pkgdir'};
+                    my @pkgdirs = split(/,/,$image_pkgdir);
+                    my $validpkgdir;
+                    foreach my $mypkgdir (@pkgdirs){
+                        if (-f $mypkgdir) {
+                            $lstatements = 'if substring (option vendor-class-identifier,0,11) = \"onie_vendor\" { option www-server = \"http://' . $nxtsrv . $mypkgdir . '\";}' . $lstatements;
+                            $validpkgdir = 1;
+                            last;
+                        } 
+                     }
+                     unless ($validpkgdir) {
+                        $callback->({ warning => ["osimage $provmethod pkgdir doesn't exists"]});
+                     }
+                 } else {
+                    $callback->({ warning => ["osimage $provmethod is not defined in the osimage table"]});
+                 }
+             } else {
+                $callback->({ warning => ["provmethod is not defined for $node"]});
+             }
+         
         } elsif ($nrent and $nrent->{netboot} and $nrent->{netboot} eq 'nimol') {
             $lstatements = 'supersede server.filename=\"/vios/nodes/' . $node . '\";' . $lstatements;
         }
