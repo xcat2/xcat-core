@@ -786,7 +786,7 @@ sub check_log_record {
             }
         }
         $done = 1  if ($check_num == $all_num);
-        if (time() - $start_time > 5) {
+        if (time() - $start_time > 20) {
             $done = 1;
         }
     }
@@ -795,7 +795,7 @@ sub check_log_record {
     my %hash_pass = map{$_=>1} @checked_node;
     my @error_nodes = grep {!$hash_pass{$_}} @all_nodes;
     if (@error_nodes) {
-        push @$error_ref, "Failed to record log when run 'logger' n " . join(",", @error_nodes);
+        push @$error_ref, "Failed to record logs come from " . join(",", @error_nodes) . " to $log_file on MN";
         $rst = 1;
     }
     if (@invld_nodes) {

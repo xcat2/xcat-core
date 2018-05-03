@@ -569,7 +569,8 @@ sub is_rsyslog_ready {
     $errormsg_ref= shift if (($errormsg_ref) && ($errormsg_ref =~ /probe_utils/));
 
     my $is_active = 1;
-    my $tmp = `whereis systemctl | grep "systemctl:" | awk -F':' '{print \$2}'`;
+    my $tmp = `pidof systemd`;
+    chomp($tmp);
     if ($tmp) {
         `systemctl is-active --quiet rsyslog 2>&1`;
         if ($?) {
