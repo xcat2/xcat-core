@@ -479,3 +479,15 @@ check:output =~ image_id.+--delete
 check:rc == 0
 end
 
+start:rflash_delete_no_active
+description:this case is to check if --delete is not allowed to be used for the active state firmware. This case is for issue 4770.
+os:Linux
+hcp:openbmc
+cmd:activenum=`rflash $$CN -l |grep -w "Host\s*Active(\*)" |awk '{print $2}'`;rflash $$CN $activenum --delete
+check:rc != 0
+check:output =~$$CN\s*:\s*Error: Deleting currently active firmware on powered on host is not supported 
+cmd:activenum=`rflash $$CN -l |grep -w "BMC\s*Active(\*)" |awk '{print $2}'`;rflash $$CN $activenum --delete
+check:rc != 0
+check:output =~~$$CN\s*:\s*Error: Deleting currently active BMC firmware is not supported
+end
+
