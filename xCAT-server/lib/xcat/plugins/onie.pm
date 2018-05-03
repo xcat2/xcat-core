@@ -23,7 +23,6 @@ use xCAT::MsgUtils;
 use xCAT::TableUtils;
 use xCAT::SvrUtils;
 use xCAT::Table;
-
 my $xcatdebugmode = 0;
 $::VERBOSE        = 0;
 
@@ -256,18 +255,30 @@ sub nodeset {
             xCAT::MsgUtils->message("E", { error => ["nodeset command is not processed for $switch, only supports switchtype=onie"], errorcode => ["1"] }, $callback);
             next;
         }
+
+
         if ($setosimg) {
             $provmethod = $setosimg;
-            $nodetab->setAttribs({ 'node' => $switch }, {'provmethod' => $setosimg});
         } else {
             $provmethod = $nodehash->{$switch}->[0]->{provmethod}; 
         }
         if ($::VERBOSE) {
             xCAT::MsgUtils->message("I", { data => ["$switch has provmethod=$provmethod"] }, $callback);
         }
+
         #get pkgdir from osimage
         my $linuximagetab = xCAT::Table->new('linuximage');
-        my $imagetab = $linuximagetab->getAttribs({ imagename => $provmethod }, 'pkgdir');
+        my $osimagetab = xCAT::Table->new('osimage');
+        my $imagetab = $linuximagetab->getAttribs({ imagename => $provmethod },'pkgdir');
+        my $osimghash = $osimagetab->getAttribs({ imagename => $provmethod },'osvers','osarch');
+        unless($imagetab and $osimghash){
+            xCAT::MsgUtils->message("E", { error => ["cannot find osimage \"$provmethod\" for $switch, please make sure the osimage specified in command line or node.provmethod exists!"], errorcode => ["1"] }, $callback);
+            next;            
+        }
+
+
+        my %attribs=('provmethod' => $provmethod,'os'=>$osimghash->{'osvers'},'arch'=>$osimghash->{'osarch'} );
+        $nodetab->setAttribs({ 'node' => $switch }, \%attribs);
         $image_pkgdir = $imagetab->{'pkgdir'};
        
         #validate the image pkgdir 
