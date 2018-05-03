@@ -198,11 +198,6 @@ sub copydata {
     my $pkgdir = "$defaultpath/$filename";
     my $imgdir = $litab->getAttribs({ 'imagename' => $imagename }, 'pkgdir');
 
-    if ( ($pkgdir eq $imgdir->{'pkgdir'}) && ($nooverwrite) ) {
-        $callback->({ data => "$imagename is available, will not overwrite" });
-        return;
-    }
-
     if ($::VERBOSE) {
         $callback->({ data => "creating image $imagename with osarch=$arch, osvers=$distname" });
     }
