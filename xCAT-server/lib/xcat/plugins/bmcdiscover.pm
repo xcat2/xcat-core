@@ -34,6 +34,7 @@ use HTTP::Cookies;
 use HTTP::Response;
 use JSON;
 
+my $log_label = "bmcdiscover:";
 my $nmap_path;
 my %ipmac = ();
 
@@ -615,9 +616,12 @@ sub scan_process {
 
     my $live_ip  = split_comma_delim_str($ip_list);
     my $live_mac = split_comma_delim_str($mac_list);
+    if (scalar(@{$live_ip}) != scalar(@{$live_mac})) {
+        xCAT::MsgUtils->trace(0, 'W', "$log_label Scaned live IPs number is not the same with MACs");
+    }
     my %pipe_map;
     if (scalar(@{$live_ip}) > 0) {
-
+        xCAT::MsgUtils->trace(0, "I", "$log_label Scaned live IPs " . join(",", @{$live_ip}) . " with mac " . join(",", @{$live_mac}));
         foreach (@{$live_ip}) {
             my $new_mac = lc(shift @{$live_mac});
             $new_mac =~ s/\://g;
@@ -697,10 +701,14 @@ sub scan_process {
                 foreach my $mc_cmd (@mc_cmds) {
                     $mc_info = xCAT::Utils->runcmd($mc_cmd, -1);
                     if ($mc_info =~ /Manufacturer ID\s*:\s*(\d+)\s*Manufacturer Name.+\s*Product ID\s*:\s*(\d+)/) {
+                        my $log_info = "Manufacturer ID: $1 Product ID: $2";
                         if ($1 eq $::P9_WITHERSPOON_MFG_ID and $2 eq $::P9_WITHERSPOON_PRODUCT_ID) {
+                            xCAT::MsgUtils->trace(0, "D", "$log_label Get $log_info by command $mc_cmd, ${$live_ip}[$i] is OpenBMC");
                             bmcdiscovery_openbmc(${$live_ip}[$i], $opz, $opw, $request_command,$parent_fd);
                             $is_openbmc = 1;
                             last; 
+                        } else {
+                            xCAT::MsgUtils->trace(0, "D", "$log_label $log_info for ${$live_ip}[$i] by command $mc_cmd");
                         }
                     }
                 }
@@ -1044,6 +1052,9 @@ sub bmcdiscovery_ipmi {
         $bmcpassword = "-P $bmc_pass";
     }
 
+    my $log_info = "$ip: Detected ipmi, attempting to obtain system information...";
+    xCAT::MsgUtils->trace(0, "D", "$log_label $log_info");
+
     my $mtms_node = "";
     my $mac_node = "";
 
@@ -1160,7 +1171,10 @@ sub bmcdiscovery_openbmc{
     my $mac_node        = "";
 
     store_fd({data=>1}, $fd);
-    print "$ip: Detected openbmc, attempting to obtain system information...\n";
+    my $log_info = "$ip: Detected openbmc, attempting to obtain system information...";
+    print "$log_info\n";
+    xCAT::MsgUtils->trace(0, "D", "$log_label $log_info");
+
     my $http_protocol="https";
     my $openbmc_project_url = "xyz/openbmc_project";
     my $login_endpoint = "login";
@@ -1244,8 +1258,14 @@ sub bmcdiscovery_openbmc{
         }
         $node_data .= ",$::opt_SN,$::opt_SN";
     } else {
-        if ($login_response->status_line =~ /401 Unauthorized/) {
-            xCAT::MsgUtils->message("W", { data => ["Invalid username or password for $ip"] }, $::CALLBACK); 
+        my $login_status;
+        eval { $login_status = $login_response->status_line };
+        if ($@) {
+            xCAT::MsgUtils->message("W", { data => ["Login failed for $ip and no status received from response"] }, $::CALLBACK);
+            return;
+        }
+        if ($login_status =~ /401 Unauthorized/) {
+            xCAT::MsgUtils->message("W", { data => ["Invalid username or password for $ip"] }, $::CALLBACK);
         } else {
             xCAT::MsgUtils->message("W", { data => ["Received response " . $login_response->status_line . " for $ip"] }, $::CALLBACK);
         }
