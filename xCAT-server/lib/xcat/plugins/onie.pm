@@ -91,14 +91,12 @@ sub process_request {
     my $command = $request->{command}->[0];
     my $args    = $request->{arg};
 
-    my %hosts;
-
     if ($::XCATSITEVALS{xcatdebugmode} != 0) { $::VERBOSE = 1}
 
     if ($command eq "copydata") {
         copydata($request, $callback);
     } elsif ($command eq "nodeset") {
-        nodeset($request, $callback, $subreq, \%hosts);
+        nodeset($request, $callback, $subreq);
     }
 
 }
