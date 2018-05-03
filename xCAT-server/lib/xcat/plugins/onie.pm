@@ -91,7 +91,6 @@ sub process_request {
     my $command = $request->{command}->[0];
     my $args    = $request->{arg};
 
-
     if ($::XCATSITEVALS{xcatdebugmode} != 0) { $::VERBOSE = 1}
 
     if ($command eq "copydata") {
