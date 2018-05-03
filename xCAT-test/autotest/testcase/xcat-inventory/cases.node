@@ -1,4 +1,4 @@
-star:texport_import_single_ppc_by_json
+start:export_import_single_ppc_by_json
 description:This case is used to test xcat-inventory export and import one ppc definition by json between 2 exact same MNs. This case can cover hmc,lpar. Before running this case, make sure these two MNs have been installed same exactly, and the current MN can connect the other MN by ssh without password. This case also can be run in one MN, this is, export from currnet node then import back to currnet node, in this case, just need to set $$DSTMN=<currnet node ip>
 Attribute: $$DSTMN - the ip of MN which is used to run import operation.
 cmd:mkdir -p /tmp/export_import_single_ppc_by_json
