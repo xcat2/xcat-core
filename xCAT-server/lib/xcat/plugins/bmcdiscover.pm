@@ -596,6 +596,7 @@ sub scan_process {
         $bcmd = join(" ", $nmap_path, " -sn -n $range");
     }
 
+    xCAT::MsgUtils->trace(0, "I", "$log_label Try to scan live IPs by command $bcmd ...");
     $ip_info_list = xCAT::Utils->runcmd("$bcmd", -1);
     if ($::RUNCMD_RC != 0) {
         my $rsp = {};
@@ -616,12 +617,9 @@ sub scan_process {
 
     my $live_ip  = split_comma_delim_str($ip_list);
     my $live_mac = split_comma_delim_str($mac_list);
-    if (scalar(@{$live_ip}) != scalar(@{$live_mac})) {
-        xCAT::MsgUtils->trace(0, 'W', "$log_label Scaned live IPs number is not the same with MACs");
-    }
     my %pipe_map;
     if (scalar(@{$live_ip}) > 0) {
-        xCAT::MsgUtils->trace(0, "I", "$log_label Scaned live IPs " . join(",", @{$live_ip}) . " with mac " . join(",", @{$live_mac}));
+        xCAT::MsgUtils->trace(0, "I", "$log_label Scaned live IPs " . scalar(@{$live_ip}) . " with mac " . scalar(@{$live_mac}));
         foreach (@{$live_ip}) {
             my $new_mac = lc(shift @{$live_mac});
             $new_mac =~ s/\://g;
@@ -700,15 +698,15 @@ sub scan_process {
                 my $is_openbmc = 0;
                 foreach my $mc_cmd (@mc_cmds) {
                     $mc_info = xCAT::Utils->runcmd($mc_cmd, -1);
+                    if ($::RUNCMD_RC != 0) {
+                        next;
+                    }
                     if ($mc_info =~ /Manufacturer ID\s*:\s*(\d+)\s*Manufacturer Name.+\s*Product ID\s*:\s*(\d+)/) {
-                        my $log_info = "Manufacturer ID: $1 Product ID: $2";
+                        xCAT::MsgUtils->trace(0, "D", "$log_label Found ${$live_ip}[$i] Manufacturer ID: $1 Product ID: $2");
                         if ($1 eq $::P9_WITHERSPOON_MFG_ID and $2 eq $::P9_WITHERSPOON_PRODUCT_ID) {
-                            xCAT::MsgUtils->trace(0, "D", "$log_label Get $log_info by command $mc_cmd, ${$live_ip}[$i] is OpenBMC");
                             bmcdiscovery_openbmc(${$live_ip}[$i], $opz, $opw, $request_command,$parent_fd);
                             $is_openbmc = 1;
                             last; 
-                        } else {
-                            xCAT::MsgUtils->trace(0, "D", "$log_label $log_info for ${$live_ip}[$i] by command $mc_cmd");
                         }
                     }
                 }
