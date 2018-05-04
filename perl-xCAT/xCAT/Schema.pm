@@ -998,15 +998,15 @@ passed as argument rather than by table value',
 "DATABASE ATTRIBUTES\n" .
 " -----------------\n" .
 " auditnosyslog: If set to 1, then commands will only be written to the auditlog table.\n" .
-"                This attribute set to 1 and auditskipcmds=ALL means no logging of commands.\n" .
+"                If this attribute is set to 1 and auditskipcmds=ALL means no logging of commands.\n" .
 "                Default is to write to both the auditlog table and syslog.\n" .
 " auditskipcmds: List of commands and/or client types that will not be\n" .
 "                written to the auditlog table and syslog. See auditnosyslog.\n" .
 "                'ALL' means all cmds will be skipped. If attribute is null, all\n" .
-              "                commands will be written.\n" .
+"                commands will be written.\n" .
 "                clienttype:web would skip all commands from the web client\n" .
-              "                For example: tabdump,nodels,clienttype:web \n" .
-"                will not log tabdump,nodels and any web client commands.\n\n" .
+"                For example: tabdump,nodels,clienttype:web \n" .
+"                will not log tabdump, nodels or any web client commands.\n" .
 " databaseloc:    Directory where we create the db instance directory.\n" .
 "                 Default is /var/lib. Only DB2 is currently supported.\n" .
 "                 Do not use the directory in the site.installloc or\n" .
@@ -1450,8 +1450,8 @@ passed as argument rather than by table value',
             audittime  => 'The timestamp for the audit entry.',
             userid     => 'The user running the command.',
             clientname => 'The client machine, where the command originated.',
-            clienttype => 'Type of command: cli,java,webui,other.',
-            command    => 'Command executed.',
+            clienttype => 'Type of command: cli, java, webui, other.',
+            command    => 'Command executed. See auditskipcmds site table attribute to control which commands get logged.',
             noderange  => 'The noderange on which the command was run.',
             args       => 'The command argument list.',
             status     => 'Allowed or Denied.',
