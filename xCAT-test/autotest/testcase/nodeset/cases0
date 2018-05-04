@@ -450,3 +450,26 @@ cmd:rmdef -t osimage -o "rhels7.99-ppc64le-install-compute"
 cmd:rm -rf /install/rhels7.99
 cmd:xdsh $$SN 'rm -rf /install/rhels7.99'
 end
+
+start:nodeset_switch_osimage
+description: This case is to verify if xcat supports nodeset <switch> osimage command for cumulus switch. This case is for bug 5126.
+os:Linux
+cmd:copycds $$CUMULUSOS |tee /tmp/cumulusimage
+check:rc==0
+cmd:grep "The image" /tmp/cumulusimage |sed -r 's/.*\image(.*)\is.*/\1/' |tee /tmp/imagename
+check:rc==0
+cmd:imagename=`cat /tmp/imagename`;lsdef -t osimage -o $imagename
+check:rc==0
+check:output=~description=Cumulus Linux
+check:output=~osarch=armel
+check:output=~osname=cumulus
+cmd:imagename=`cat /tmp/imagename`;osversion=`lsdef -t osimage -o $imagename |grep osvers|awk -F= '{print $2}'`;versionnum=`echo $osversion |sed 's:[a-zA-Z]::g'`;ls -l /install/$osversion/armel/cumulus-linux-$versionnum-bcm-armel.bin
+check:rc==0
+cmd:echo "/etc/resolv.conf /etc/nsswitch.conf -> ($$CN) /tmp/\n /etc/rsyslog.conf  ->  /tmp/aa\n /etc/rsyslog.d/ -> /tmp/bb/\n /tmp/post1 -> /tmp/\n\n EXECUTEALWAYS:\n/tmp/post1\n" >> /tmp/synclists;echo "#!/bin/sh\n\nmv /tmp/aa /tmp/mm" >> /tmp/posts1;imagename=`cat /tmp/imagename`; chdef -t osimage -o $imagename synclists=/tmp/synclists
+check:rc==0
+cmd:imagename=`cat /tmp/imagename`;nodeset $$CN osimage=$imagename
+check:rc==0
+check:output=~$$CN:\s*install
+cmd:imagename=`cat /tmp/imagename`;osversion=`lsdef -t osimage -o $imagename |grep osvers|awk -F= '{print $2}'`;versionnum=`echo $osversion |sed 's:[a-zA-Z]::g'`;grep -w -A10 "$$CN" /var/lib/dhcpd/dhcpd.leases | grep "/install/$osversion/armel/cumulus-linux-$versionnum-bcm-armel.bin"
+check:rc==0
+end
