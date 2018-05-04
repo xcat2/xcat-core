@@ -736,64 +736,44 @@ sub check_log_record {
 
     my @snlist = xCAT::ServiceNodeUtils->getAllSN();
     my $service_nodes = join(",", @snlist);
-    my @all_nodes = ("mn", @snlist);
-    my $all_num = @all_nodes;
     my $log_file = "/var/log/messages";
     $log_file = "/var/log/xcat/cluster.log" if (-e "/var/log/xcat/cluster.log");
 
     my $start_time = time();
     my $log_msg = "xcatprobe rsyslog checking $start_time";
+    my @valid_nodes;
 
-    my $pid;
-    my $fd;
-    if (!($pid = open($fd, "tail -f -n 0 $log_file 2>&1 |"))) {
-        push @$error_ref, "Can't open $log_file to get logs, did not check log record";
-        return $rst;
+    `logger -p local4.info -t xcat $log_msg on MN 2>&1`;
+    if ($?) {
+        push @$error_ref, "Failed to run command 'logger' on MN"; 
+        $rst = 1;
+    } else {
+        push @valid_nodes, 'mn';
     }
 
-    my ($mn_fd, $sn_fd);
-    open($mn_fd, "logger -p local4.info -t xcat $log_msg on MN 2>&1 |");
-    open($sn_fd, "xdsh $service_nodes -s logger -p local4.info -t xcat $log_msg on SN 2>&1 |");
-
-    my $select = new IO::Select;
-    $select->add(\*$fd);
-    $select->add(\*$mn_fd);
-    $select->add(\*$sn_fd);
-    $| = 1;
-
-    my $done = 0;
-    my $check_num = 0;
-    my @checked_node = ();
     my @invld_nodes = ();
+    my @output = `xdsh $service_nodes -s "logger -p local4.info -t xcat $log_msg on SN && echo OKAY" 2>&1`;
 
-    my @hdls;
-    while(!$done) {
-        if (@hdls = $select->can_read(0)) {
-            foreach my $hdl (@hdls) {
-                my $line = "";
-                chomp($line = <$hdl>);
-                if ($line =~ /$log_msg on MN/) {
-                    push @checked_node, 'mn';
-                    $check_num++;
-                } elsif ($line =~ /.+ \d+:\d+:\d+ (\w+) xcat:  $log_msg on SN/) {
-                    push @checked_node, $1;
-                    $check_num++;
-                } elsif ($line =~ /(\w+): ssh: connect to host .+ No route to host/) {
-                    push @invld_nodes, $1;
-                    push @checked_node, $1;
-                    $check_num++;
-                }
-            }
-        }
-        $done = 1  if ($check_num == $all_num);
-        if (time() - $start_time > 20) {
-            $done = 1;
+    foreach my $line (@output) {
+        chomp($line);
+        if ($line =~ /(\w+): OKAY/) {
+            push @valid_nodes, $1;
+        } elsif ($line =~ /(\w+): ssh: connect to host .+ No route to host/) {
+            push @invld_nodes, $1;
         }
     }
 
-    kill 'KILL', $pid; 
-    my %hash_pass = map{$_=>1} @checked_node;
-    my @error_nodes = grep {!$hash_pass{$_}} @all_nodes;
+    my @grep_logs = `grep "$log_msg" $log_file | grep -v "Allowing" | grep -v "dispatch"`;
+    foreach my $grep_log (@grep_logs) {
+        if ($grep_log =~ /on MN/) {
+            push @checked_nodes, 'mn';
+        } elsif ($grep_log =~ /.+ \d+:\d+:\d+ (\w+) xcat:  $log_msg on SN/) {
+            push @checked_nodes, $1;
+        }
+    }
+
+    my %hash_pass = map{$_=>1} @checked_nodes;
+    my @error_nodes = grep {!$hash_pass{$_}} @valid_nodes;
     if (@error_nodes) {
         push @$error_ref, "Failed to record logs come from " . join(",", @error_nodes) . " to $log_file on MN";
         $rst = 1;
