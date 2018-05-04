@@ -1943,6 +1943,20 @@ sub actionout {
 
     my $jsonnode;
     foreach my $d (@$data) {
+        if (defined($d->{info})) {
+            # OpenBMC format
+            if ($param->{'resourcename'} eq "eventlog") {
+                my ($node, $logentry) = split(/:/, $d->{info}->[0], 2);
+                $logentry =~ s/^\s+|\s+$//g; # trim whitespace from log entry
+                push @{ $jsonnode->{$node}->{ $param->{'resourcename'} } }, $logentry;
+            } else {
+                my ($node, $resourcename, $value) = split(/:/, $d->{info}->[0]);
+                $resourcename =~ s/^\s+|\s+$//g; # trim whitespace from resourcename
+                $value =~ s/^\s+|\s+$//g; # trim whitespace from value
+                $jsonnode->{ $node }->{ $resourcename } = $value;
+            }
+            next;
+        }
         unless (defined($d->{node}->[0]->{name})) {
             next;
         }
