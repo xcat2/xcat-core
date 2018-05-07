@@ -41,16 +41,27 @@ xCAT provides support for detecting and installing the Cumulus Linux OS into ONI
          switchdiscover --range <IP range>
 
 
-#. Set the ``provmethod`` attribute of the target switch(es) to the Cumulus Linux install image:  ::
+#. Run the ``nodeset`` command to set the ``provmethod`` attribute of the target switch(es) to the Cumulus Linux install image and prepare the DHCP/BOOTP lease information for the switch:  ::
 
-    chdef frame[01-04]sw1 \
-      provmethod="/install/custom/sw_os/cumulus/cumulus-linux-3.1.0-bcm-armel.bin"
+    # nodeset frame01sw1 osimage=cumulus3.5.2-armel 
+    # lsdef frame01sw1
+    Object name: frame01sw1 
+    arch=armv7l
+    groups=switch,edge_switch
+    ip=172.21.208.03
+    mac=8C:EA:1B:E8:78:C0
+    mgt=switch
+    netboot=onie
+    nodetype=switch
+    postbootscripts=otherpkgs
+    postscripts=syslog,remoteshell
+    provmethod=cumulus3.5.2-armel
+    switch=mid08
+    switchport=3
+    switchtype=onie
+    usercomment=Edgecore Networks Switch
 
-#. Run ``makedhcp`` to prepare the DHCP/BOOTP lease information for the switch: ::
-
-    makedhcp -a frame[01-04]sw1
-
-   Executing the ``makedhcp`` command will kick off the network install of the ONIE enabled switch.  If there is no OS pre-loaded on the switch, the switch continues to send a DHCPREQUEST out to the network.   After ``makedhcp`` is run against the switch, an entry is added to the leases file that will respond to the request with the Cumulus Linux installer file. ::
+   ``nodeset`` will executing the ``makedhcp`` command and kick off the network install of the ONIE enabled switch.  If there is no OS pre-loaded on the switch, the switch continues to send a DHCPREQUEST out to the network.   After ``makedhcp`` is run against the switch, an entry is added to the leases file that will respond to the request with the Cumulus Linux installer file. ::
 
        host frame1sw1 {
          dynamic;
@@ -59,7 +70,7 @@ xCAT provides support for detecting and installing the Cumulus Linux OS into ONI
                supersede server.ddns-hostname = "frame1sw1";
                supersede host-name = "frame1sw1";
                if substring (option vendor-class-identifier, 0, 11) = "onie_vendor" {
-                 supersede www-server = "http://192.168.27.1/install/custom/sw_os/cumulus/cumulus-linux-3.1.0-bcm-armel.bin";
+                 supersede www-server = "http://192.168.27.1/install/cumulus3.5.2/armel/cumulus-linux-3.5.2-bcm-armel.bin";
                }
        }
 

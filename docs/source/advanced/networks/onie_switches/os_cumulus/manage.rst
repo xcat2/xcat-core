@@ -1,6 +1,24 @@
 Switch Management
 =================
 
+Sync File support
+------------------
+
+xCAT supports synchronize of configuration files for cumulus switches.  
+
+#. Use instructions in doc: :ref:`The_synclist_file` to set up syncfile.  
+#. Add syncfile to cumulus osimage. ::
+
+    # chdef -t osimage cumulus3.5.2-armel synclists=/tmp/synclists
+       1 object definitions have been created or modified.
+
+#. run ``updatenode`` to sync the files to cumulus switches.  ::
+
+    # updatenode mid08tor03 -F
+       File synchronization has completed for nodes: "mid08tor03"
+
+
+
 Switch Port and VLAN Configuration
 ----------------------------------
 
