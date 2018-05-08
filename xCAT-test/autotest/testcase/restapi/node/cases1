@@ -45,3 +45,27 @@ cmd:restapitest -m GET -r /nodes/$$CN/eventlog -u $$username -p $$password
 check:rc==200
 check:output=~eventlog
 end
+
+start:beacon_node_rest
+description: get OpenBMC node beacon with REST API
+hcp:openbmc
+cmd:restapitest -m GET -r /nodes/$$CN/beacon -u $$username -p $$password
+check:rc==200
+check:output=~Front
+check:output=~Rear
+end
+
+start:beacon_set_node_rest
+description: set OpenBMC node beacon with REST API
+hcp:openbmc
+cmd:restapitest -m PUT -r /nodes/$$CN/beacon -d '{"action":"on"}' -u $$username -p $$password
+check:rc==200
+end
+
+start:beacon_set_node_rest2
+description: set IPMI node beacon with REST API
+hcp:ipmi
+cmd:restapitest -m PUT -r /nodes/$$CN/beacon -d '{"action":"on"}' -u $$username -p $$password
+check:rc==200
+end
+

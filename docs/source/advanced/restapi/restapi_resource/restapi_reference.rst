@@ -755,6 +755,29 @@ Delete all the event log for node1. ::
 [URI:/nodes/{noderange}/beacon] - The beacon resource for the node {noderange}
 ------------------------------------------------------------------------------
 
+GET - Get the beacon status for the node {noderange}.
+`````````````````````````````````````````````````````
+
+Refer to the man page: :doc:`rbeacon </guides/admin-guides/references/man1/rbeacon.1>`
+
+**Returns:**
+
+* Json format: An object which includes multiple '<name> : {att:value, attr:value ...}' pairs.
+
+**Example:** 
+
+Get beacon for node1. :: 
+
+
+    curl -X GET -k 'https://127.0.0.1/xcatws/nodes/node1/beacon?userName=root&userPW=cluster&pretty=1'
+    {
+       "node1":{
+          "beacon":[
+             "Front:Blink Rear:Blink"
+          ]
+       }
+    }
+
 PUT - Change the beacon status for the node {noderange}.
 ````````````````````````````````````````````````````````
 
@@ -774,13 +797,6 @@ Turn on the beacon. ::
 
 
     curl -X PUT -k 'https://127.0.0.1/xcatws/nodes/node1/beacon?userName=root&userPW=cluster&pretty=1' -H Content-Type:application/json --data '{"action":"on"}'
-    [
-       {
-          "name":"node1",
-          "beacon":"on"
-       }
-    ]
-
 [URI:/nodes/{noderange}/updating] - The updating resource for the node {noderange}
 ----------------------------------------------------------------------------------
 

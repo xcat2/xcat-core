@@ -431,15 +431,18 @@ my %URIdef = (
         beacon => {
             desc => "[URI:/nodes/{noderange}/beacon] - The beacon resource for the node {noderange}",
             matcher    => '^/nodes/[^/]*/beacon$',
-            GET_backup => {
+            GET => {
                 desc     => "Get the beacon status for the node {noderange}.",
+                usage => "||$usagemsg{objreturn}|",
+                example => "|Get beacon for node1.|GET|/nodes/node1/beacon|{\n   \"node1\":{\n      \"beacon\":[\n         \"Front:Blink Rear:Blink\"\n      ]\n   }\n}|",
                 cmd      => "rbeacon",
-                fhandler => \&common,
+                fhandler => \&actionhdl,
+                outhdler => \&actionout,
             },
             PUT => {
                 desc => "Change the beacon status for the node {noderange}.",
                 usage => "|$usagemsg{objchparam} DataBody: {action:on/off/blink}.|$usagemsg{non_getreturn}|",
-                example => "|Turn on the beacon.|PUT|/nodes/node1/beacon {\"action\":\"on\"}|[\n   {\n      \"name\":\"node1\",\n      \"beacon\":\"on\"\n   }\n]|",
+                example => "|Turn on the beacon.|PUT|/nodes/node1/beacon {\"action\":\"on\"}||",
                 cmd      => "rbeacon",
                 fhandler => \&actionhdl,
                 outhdler => \&noout,
@@ -1563,12 +1566,12 @@ if (defined($URIdef{$uriLayer1})) {
 } else {
 
     # not matches to any resource group. Check the 'resource group' to improve the performance
-    error("Unspported resource.", $STATUS_NOT_FOUND);
+    error("Unsupported resource.", $STATUS_NOT_FOUND);
 }
 
 # the URI cannot match to any resources which are defined in %URIdef
 unless ($handled) {
-    error("Unspported resource.", $STATUS_NOT_FOUND);
+    error("Unsupported resource.", $STATUS_NOT_FOUND);
 }
 
 
@@ -1945,7 +1948,7 @@ sub actionout {
     foreach my $d (@$data) {
         if (defined($d->{info})) {
             # OpenBMC format
-            if ($param->{'resourcename'} eq "eventlog") {
+            if ($param->{'resourcename'} =~ /(^eventlog$|^beacon$)/) {
                 my ($node, $logentry) = split(/:/, $d->{info}->[0], 2);
                 $logentry =~ s/^\s+|\s+$//g; # trim whitespace from log entry
                 push @{ $jsonnode->{$node}->{ $param->{'resourcename'} } }, $logentry;
@@ -2213,7 +2216,9 @@ sub actionhdl {
             push @args, 'clear';
         }
     } elsif ($params->{'resourcename'} eq "beacon") {
-        if (isPut()) {
+        if (isGET()) {
+            push @args, 'stat';
+        } elsif (isPut()) {
             push @args, $paramhash->{'action'};
         }
     } elsif ($params->{'resourcename'} eq "filesyncing") {
