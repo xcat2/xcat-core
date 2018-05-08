@@ -8,7 +8,6 @@ use probe_utils;
 use hierarchy;
 use xCAT::ServiceNodeUtils;
 use xCAT::NetworkUtils;
-use IO::Select;
 use File::Basename;
 use File::Copy;
 use Data::Dumper;
@@ -715,7 +714,7 @@ sub check_rsyslog_service {
     my $error_ref = shift;
     my $rst       = 0;
 
-    $$checkpoint_ref = "Checking rsyslog service is working...";
+    $$checkpoint_ref = "Checking rsyslog service is configured...";
     @$error_ref = ();
 
     my $error;
@@ -731,13 +730,22 @@ sub check_log_record {
     my $error_ref = shift;
     my $rst   = 0;
 
-    $$checkpoint_ref = "Checking log record...";
+    my $log_file = "/var/log/xcat/cluster.log";
+    $$checkpoint_ref = "Checking xCAT log is stored in $log_file...";
     @$error_ref = ();
+
+    unless (-e $log_file) {
+        my $os_ver = `cat /etc/*release* 2>&1`;
+        if ($os_ver =~ /suse/i and $os_ver =~ /VERSION=\"11.*\"/) {
+            return 2;
+        } else {
+            push @$error_ref, "No log file $log_file found";
+            return 1;
+        }
+    }
 
     my @snlist = xCAT::ServiceNodeUtils->getAllSN();
     my $service_nodes = join(",", @snlist);
-    my $log_file = "/var/log/messages";
-    $log_file = "/var/log/xcat/cluster.log" if (-e "/var/log/xcat/cluster.log");
 
     my $start_time = time();
     my $log_msg = "xcatprobe rsyslog checking $start_time";
@@ -747,8 +755,15 @@ sub check_log_record {
     if ($?) {
         push @$error_ref, "Failed to run command 'logger' on MN"; 
         $rst = 1;
-    } else {
-        push @valid_nodes, 'mn';
+        return $rst;
+    }
+    sleep(5);
+
+    my @mn_grep_logs = `grep "$log_msg on MN" $log_file`;
+    unless (@mn_grep_logs) {
+        push @$error_ref, "Failed to store MN logs to $log_file";
+        $rst = 1;
+        return $rst;
     }
 
     my @invld_nodes = ();
@@ -762,12 +777,11 @@ sub check_log_record {
             push @invld_nodes, $1;
         }
     }
+    sleep(5);
 
-    my @grep_logs = `grep "$log_msg" $log_file | grep -v "Allowing" | grep -v "dispatch"`;
+    my @grep_logs = `grep "$log_msg on SN" $log_file | grep -v "Allowing" | grep -v "dispatch"`;
     foreach my $grep_log (@grep_logs) {
-        if ($grep_log =~ /on MN/) {
-            push @checked_nodes, 'mn';
-        } elsif ($grep_log =~ /.+ \d+:\d+:\d+ (\w+) xcat:  $log_msg on SN/) {
+        if ($grep_log =~ /.+ \d+:\d+:\d+ (\w+) xcat:  $log_msg on SN/) {
             push @checked_nodes, $1;
         }
     }
@@ -775,7 +789,7 @@ sub check_log_record {
     my %hash_pass = map{$_=>1} @checked_nodes;
     my @error_nodes = grep {!$hash_pass{$_}} @valid_nodes;
     if (@error_nodes) {
-        push @$error_ref, "Failed to record logs come from " . join(",", @error_nodes) . " to $log_file on MN";
+        push @$error_ref, "Failed to store logs come from " . join(",", @error_nodes) . " to $log_file on MN";
         $rst = 1;
     }
     if (@invld_nodes) {
