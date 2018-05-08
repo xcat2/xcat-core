@@ -463,7 +463,7 @@ check:rc==0
 check:output=~description=Cumulus Linux
 check:output=~osarch=armel
 check:output=~osname=cumulus
-cmd:pkgfile=`lsdef -t osimage -o $imagename |grep pkgdir|awk -F= '{print $2}'`;ls -l $pkgfile
+cmd:imagename=`cat /tmp/imagename`;pkgfile=`lsdef -t osimage -o $imagename |grep pkgdir|awk -F= '{print $2}'`;ls -l $pkgfile
 check:rc==0
 cmd:echo "/etc/resolv.conf /etc/nsswitch.conf -> ($$CN) /tmp/\n /etc/rsyslog.conf  ->  /tmp/aa\n /etc/rsyslog.d/ -> /tmp/bb/\n /tmp/post1 -> /tmp/\n\n EXECUTEALWAYS:\n/tmp/post1\n" >> /tmp/synclists;echo "#!/bin/sh\n\nmv /tmp/aa /tmp/mm" >> /tmp/posts1;imagename=`cat /tmp/imagename`; chdef -t osimage -o $imagename synclists=/tmp/synclists
 check:rc==0
