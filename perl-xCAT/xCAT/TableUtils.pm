@@ -2000,10 +2000,18 @@ sub getimagenames()
     my @nodelist = @$nodes;
     my $nodetab  = xCAT::Table->new('nodetype');
     my $images =
-      $nodetab->getNodesAttribs(\@nodelist, [ 'node', 'provmethod', 'profile' ]);
+      $nodetab->getNodesAttribs(\@nodelist, [ 'node', 'provmethod', 'profile', 'nodetype' ]);
     my @imagenames;
     foreach my $node (@nodelist)
     {
+        #set imagename as "onie" if it is switch
+        #it used for cumulus switch
+        if ($images->{$node}->[0]->{nodetype} eq "switch" )
+        {
+            push  @imagenames, "onie";
+            next;
+        }
+        
         my $imgname;
         if ($images->{$node}->[0]->{provmethod})
         {
