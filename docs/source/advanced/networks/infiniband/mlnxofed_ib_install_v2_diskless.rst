@@ -26,13 +26,16 @@ Diskless Installation
                   /install/postscripts/mlnxofed_ib_install \
                      -p /install/<path-to>/<MLNX_OFED_LINUX.iso> -i $1 -n genimage
     
-              *Note: The $1 is a argument that is passed to the the postinstall script at runtime.*
+              .. note:: The ``$1`` is a argument that is passed to the the postinstall script at runtime.
 
-   **[kernel mismatch issue]** The Mellanox OFED ISO is built against a series of specific kernel version.  If the version of the linux kernel does not match any of the Mellanox offered pre-built kernel modules, you can pass the ``--add-kernel-support --without-32bit --without-fw-update --force`` arguments to the Mellanox installation script to build the kernel modules based on the version you are using. ::
+   .. tip:: **Kernel Mismatch** 
+      
+            The Mellanox OFED ISO is built against a series of specific kernel version. If the version of the linux kernel being used does not match any of the pre-built kernels, pass ``--add-kernel-support --without-32bit --without-fw-update --force`` to the Mellanox installation script to build the kernel modules based on the kernel you are using.  Example: :: 
 
-       /install/postscripts/mlnxofed_ib_install \
-         -p /install/<path-to>/<MLNX_OFED_LINUX.iso> -m --add-kernel-support --without-32bit --without-fw-update --force -end- \
-         -i $1 -n genimage
+                 /install/postscripts/mlnxofed_ib_install \
+                 -p /install/<path-to>/<MLNX_OFED_LINUX.iso> -m --add-kernel-support --without-32bit --without-fw-update --force -end- \
+                 -i $1 -n genimage
+
     
 #. Generate the diskless image 
 

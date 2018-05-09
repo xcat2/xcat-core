@@ -71,7 +71,7 @@ Running Remote Commands in Parallel
 
 You can use xdsh to run parallel commands on Ethernet switches. The following shows how to configure xCAT to run xdsh on the switches: 
 
-**[Note]**:Configure the switch to allow **ssh** or **telnet**. This varies for switch to switch. Refer to the switch command references to find out how to do it.
+.. note:: For this to work, configure the switch to allow **ssh** or **telnet**. The procedure varies from switch to switch, consult the reference guides for your switch to find out how to do this.
 
 Add the switch in xCAT DB. Refer to the "Discovering Switches" section if you want xCAT to discover and define the switches for you. ::
 
@@ -97,7 +97,7 @@ Set the ssh or telnet username an d password. ::
 
     xdsh bntc125 --devicetype EthSwitch::BNT "enable;configure terminal;vlan 3;end;show vlan"
 
-Note that you can run multiple switch commands, they are separated by comma.
+.. note:: You can run multiple switch commands, each command is comma separated.
 
 Also note that --devicetype is used here. xCAT supports the following switch types out of the box: ::
 

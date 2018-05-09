@@ -53,7 +53,7 @@ For example: ::
 
 This means port 42 of switch1 is connected to port 50 of switch2. And switch1 can be accessed using SNMP version 3 and switch 2 can be accessed using SNMP version 2.
 
-Note: The **username** and the **password** on the switches table are NOT the same as SSH user name and password. You have to configure SNMP on the switch for these parameters and then fill up this table. Use **tabdump switches -d** command to find out the meaning of each column.
+.. note:: The **username** and the **password** on the switches table are NOT the same as SSH user name and password. You have to configure SNMP on the switch for these parameters and then fill up this table. Use **tabdump switches -d** command to find out the meaning of each column.
 
 **2. Populate the switch table**
 
@@ -148,7 +148,7 @@ For xCAT-vlan 2.7.5 and later versions, you can create vlans for other networks.
 
 A tagged vlan will be created for the network that is on eth1 for node1, node2 and node3. For KVM clients, -i specifies the interface name on the KVM host that the vlan will be tagged on. If -i is omitted, the management networks will be assumed.
 
-Note: After the vlan is created, the nodes can still be accessed by the mn using the management network. You can use **lsvan** command to list all the vlans.
+.. note:: After the vlan is created, the nodes can still be accessed by the mn using the management network. You can use **lsvan** command to list all the vlans.
 
 For example: ::
 

@@ -4,7 +4,7 @@ Installation and Configuration
 Cumulus OS Installtion
 ----------------------
 
-**Note:** *The following assumes that the physical switches have power and have obtained a DHCP IP address from the xCAT open range.*
+.. important:: The following assumes that the physical switches have power and have obtained a DHCP IP address from the xCAT open range.
 
 xCAT provides support for detecting and installing the Cumulus Linux OS into ONIE enabled switches by utilizing DHCP to detect "**onie_vendor**" from the ``vendor-class-identifier`` string and then send it the Cumulus Linux OS installer.
 
