@@ -119,6 +119,11 @@ sub do_main_job {
     print_check_result($checkpoint, "f", $rst, \@error);
     $rc |= $rst;
 
+    #check rsyslog service
+    $rst        = check_rsyslog_service(\$checkpoint, \@error);
+    print_check_result($checkpoint, "f", $rst, \@error);
+    $rc |= $rst;
+
     #Below are the 'warning` level check points
 
     #check if firewall is close
@@ -134,6 +139,11 @@ sub do_main_job {
 
     #some sepecific check points in MN
     if (!$is_sn) {
+
+        #check if log can be recorded in log file
+        $rst        = check_log_record(\$checkpoint, \@error);
+        print_check_result($checkpoint, "w", $rst, \@error);
+        $rc |= $rst;
 
         #check if server ip is a static ip in MN
         $rst = check_server_ip_static($installnicip,\$checkpoint, \@error);
@@ -694,6 +704,97 @@ sub check_tftp_service {
         }
     } else {
         $rst = 2;
+    }
+
+    return $rst;
+}
+
+sub check_rsyslog_service {
+    my $checkpoint_ref =  shift;
+    my $error_ref = shift;
+    my $rst       = 0;
+
+    $$checkpoint_ref = "Checking rsyslog service is configured...";
+    @$error_ref = ();
+
+    my $error;
+    if (!probe_utils->is_rsyslog_ready(\$error)) {
+        push @$error_ref, "$error";
+        $rst = 1;
+    }
+    return $rst;
+}
+
+sub check_log_record {
+    my $checkpoint_ref =  shift;
+    my $error_ref = shift;
+    my $rst   = 0;
+
+    my $log_file = "/var/log/xcat/cluster.log";
+    $$checkpoint_ref = "Checking xCAT log is stored in $log_file...";
+    @$error_ref = ();
+
+    unless (-e $log_file) {
+        my $os_ver = `cat /etc/*release* 2>&1`;
+        if ($os_ver =~ /suse/i and $os_ver =~ /VERSION=\"11.*\"/) {
+            return 2;
+        } else {
+            push @$error_ref, "No log file $log_file found";
+            return 1;
+        }
+    }
+
+    my @snlist = xCAT::ServiceNodeUtils->getAllSN();
+    my $service_nodes = join(",", @snlist);
+
+    my $start_time = time();
+    my $log_msg = "xcatprobe rsyslog checking $start_time";
+    my @valid_nodes;
+
+    `logger -p local4.info -t xcat $log_msg on MN 2>&1`;
+    if ($?) {
+        push @$error_ref, "Failed to run command 'logger' on MN"; 
+        $rst = 1;
+        return $rst;
+    }
+    sleep(5);
+
+    my @mn_grep_logs = `grep "$log_msg on MN" $log_file`;
+    unless (@mn_grep_logs) {
+        push @$error_ref, "Failed to store MN logs to $log_file";
+        $rst = 1;
+        return $rst;
+    }
+
+    my @invld_nodes = ();
+    my @output = `xdsh $service_nodes -s "logger -p local4.info -t xcat $log_msg on SN && echo OKAY" 2>&1`;
+
+    foreach my $line (@output) {
+        chomp($line);
+        if ($line =~ /(\w+): OKAY/) {
+            push @valid_nodes, $1;
+        } elsif ($line =~ /(\w+): ssh: connect to host .+ No route to host/) {
+            push @invld_nodes, $1;
+        }
+    }
+    sleep(5);
+
+    my @grep_logs = `grep "$log_msg on SN" $log_file | grep -v "Allowing" | grep -v "dispatch"`;
+    foreach my $grep_log (@grep_logs) {
+        if ($grep_log =~ /.+ \d+:\d+:\d+ (\w+) xcat:  $log_msg on SN/) {
+            push @checked_nodes, $1;
+        }
+    }
+
+    my %hash_pass = map{$_=>1} @checked_nodes;
+    my @error_nodes = grep {!$hash_pass{$_}} @valid_nodes;
+    if (@error_nodes) {
+        push @$error_ref, "Failed to store logs come from " . join(",", @error_nodes) . " to $log_file on MN";
+        $rst = 1;
+    }
+    if (@invld_nodes) {
+        push @$error_ref, "Failed to connect SN " . join(",", @invld_nodes);
+        $rst = 1;
     }
 
     return $rst;
