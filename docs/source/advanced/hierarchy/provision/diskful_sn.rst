@@ -6,7 +6,7 @@ Diskful (Stateful) Installation
 
 Any cluster using statelite compute nodes must use a stateful (diskful) Service Nodes.
 
-**Note:** All xCAT Service Nodes must be at the exact same xCAT version as the xCAT Management Node.
+.. note:: All xCAT Service Nodes must be at the exact same xCAT version as the xCAT Management Node.
 
 Configure ``otherpkgdir`` and ``otherpkglist`` for service node osimage
 -----------------------------------------------------------------------
@@ -50,7 +50,7 @@ Configure ``otherpkgdir`` and ``otherpkglist`` for service node osimage
        xcat/xcat-dep/rh7/x86_64/perl-Net-Telnet
        xcat/xcat-dep/rh7/x86_64/perl-Expect
 
-**Note:** you will be installing the xCAT Service Node rpm xCATsn meta-package on the Service Node, not the xCAT Management Node meta-package. Do not install both.
+.. note:: You will be installing the xCAT Service Node RPM ``xCATsn`` on the Service Node, not the xCAT Management Node RPM.  Do not install both.
 
 Update the rhels6 RPM repository (rhels6 only)
 ----------------------------------------------
@@ -87,7 +87,7 @@ Update the rhels6 RPM repository (rhels6 only)
       createrepo \
       -g repodata /98462d05248098ef1724eddb2c0a127954aade64d4bb7d4e693cff32ab1e463c-comps-rhel6-Server.xml
 
-**Note:** you should use ``comps-rhel6-Server.xml`` with its key as the group file.
+.. note:: You should use ``comps-rhel6-Server.xml`` with its key as the group file.
 
 Install Service Nodes
 ---------------------
@@ -109,12 +109,7 @@ Watch the installation progress using either wcons or rcons: ::
     rcons <node_name>
     tail -f /var/log/messages
 
-Note: We have experienced one problem while trying to install RHEL6 diskful
-Service Node working with SAS disks. The Service Node cannot reboots from SAS
-disk after the RHEL6 operating system has been installed. We are waiting for
-the build with fixes from RHEL6 team, once meet this problem, you need to
-manually select the SAS disk to be the first boot device and boots from the
-SAS disk.
+.. note:: We have experienced one problem while trying to install RHEL6 diskful Service Node working with SAS disks. The Service Node cannot reboots from SAS disk after the RHEL6 operating system has been installed. We are waiting for the build with fixes from RHEL6 team, once meet this problem, you need to manually select the SAS disk to be the first boot device and boots from the SAS disk.
 
 Update Service Node Diskful Image
 ---------------------------------

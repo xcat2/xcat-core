@@ -21,7 +21,11 @@ Burn new firmware on each ibaX: ::
 
 	mstflint -d 0002:01:00.0 -i <image location> b
 
-Note: if this is a PureFlex MezzanineP adapter then you must select the correct image for each ibaX device. Note the difference in the firmware image at end of filename: _0.bin (iba0/iba2) & _1.bin (iba1/iba3)
+.. note:: If this is a PureFlex MezzanineP adapter, you must select the correct image for each ibaX device. 
+
+          The difference in the firmware image at the end of the file name: 
+            * _0.bin (iba0/iba2)
+            * _1.bin (iba1/iba3)
 
 Verify download successful: ::
 
@@ -31,7 +35,7 @@ Activate the new firmware: ::
 
 	reboot the image
 
-Note: the above 0002:01:00.0 device location was used as an example only. it is not meant to imply that there is only one device location or that your device will have the same device location.
+.. note:: The above ``0002:01:00.0`` device location is used as an example only.  Validate your device location using the ``lspci`` command.
 
 Mellanox Switch Firmware Upgrade
 --------------------------------

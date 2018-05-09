@@ -3,7 +3,7 @@
 Diskless (Stateless) Installation
 =================================
 
-**Note: The stateless Service Node is not supported in ubuntu hierarchy cluster. For ubuntu, skip this section.**
+.. note:: The stateless Service Node is not supported in Ubunti hierarchy cluster. For Ubunti, skip this section.
 
 If you want, your Service Nodes can be stateless (diskless). The Service Node
 must contain not only the OS, but also the xCAT software and its dependencies.
@@ -56,7 +56,7 @@ When you run ``copycds``, xCAT will only create a Service Node stateful osimage 
     postinstall
     rootimgdir
 
-  1, Create the exlist, pkglist and otherpkglist file.
+#. Create the exlist, pkglist and otherpkglist file.
 
   xCAT ships a basic requirements lists that will create a fully functional Service Node. However, you may want to customize your service node by adding additional operating system packages or modifying the files excluded by the exclude list. Check the below files to see if it meets your needs. ::
 
@@ -95,9 +95,9 @@ When you run ``copycds``, xCAT will only create a Service Node stateful osimage 
     xcat/xcat-dep/rh7/ppc64le/perl-Net-Telnet
     xcat/xcat-dep/rh7/ppc64le/perl-Expect
 
-  **Note:** you will be installing the xCAT Service Node rpm xCATsn meta-package on the Service Node, not the xCAT Management Node meta-package. Do not install both.
+.. note:: You will be installing the xCAT Service Node RPM ``xCATsn`` on the Service Node, not the xCAT Management Node RPM.  Do not install both.
 
-  2, Create the postinstall script.
+#. Create the postinstall script.
 
   xCAT ships a default postinstall script for stateless Service Node. You may also choose to create an appropriate /etc/fstab file in your
   Service Node image. :
@@ -116,7 +116,7 @@ When you run ``copycds``, xCAT will only create a Service Node stateful osimage 
       none /tmp tmpfs defaults,size=10m 0 2
       none /var/tmp tmpfs defaults,size=10m 0 2
 
-  3, Modify the Service Node osimage definition with given attributes.
+#. Modify the Service Node osimage definition with given attributes.
 
   ::
 
