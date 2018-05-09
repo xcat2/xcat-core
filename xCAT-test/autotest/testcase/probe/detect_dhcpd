@@ -19,7 +19,7 @@ elif [ -e "/etc/SuSE-release" ]; then
 elif [ -e "/etc/lsb-release" ]; then
     dpkg -l|grep tcpdump
     if [ "$?" != "0" ] ;then
-        apt-get install -y
+        apt-get install -y tcpdump
     fi
 fi
 cmd:echo "$$CN" |tee /tmp/detect_dhcpd_work/cn
