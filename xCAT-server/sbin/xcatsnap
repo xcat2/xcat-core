@@ -195,7 +195,8 @@ sub snap_it {
             "/etc/hosts",                "/etc/conserver.cf",
             "/var/log/conserver",        "/etc/db_file.cr",
             "/etc/dhcpsd.cnf",           "/var/adm/ras/nimlog",
-"/etc/resolv.conf", "/etc/named.conf", "/var/log/messages", "/var/log/xcat/*");
+            "/etc/resolv.conf",          "/etc/named.conf",
+            "/var/log/messages",         "/var/log/xcat/*");
     }
 
     elsif ($OSname eq "Linux") {
@@ -205,6 +206,7 @@ sub snap_it {
 "$INSTALLDIR/postscripts/*", "$INSTALLDIR/prescripts/*", "$INSTALLDIR/custom/*",
             "/tftpboot/*",               "/var/log/consoles/*",
             "/etc/*-release",            "/etc/dhcpd.conf",
+            "/etc/rsyslog.conf",            "/etc/rsyslog.d/*",
             "/var/lib/dhcpd/dhcpd.leases", "/etc/hosts", "/etc/resolv.conf",
             "/etc/named.conf",    "/etc/conserver.cf", "/var/log/conserver",
             "/etc/nsswitch.conf", "/var/log/messages", "/var/log/xcat/*");
@@ -382,6 +384,7 @@ chop($hostname = `hostname -s`);
 my ($sec, $min, $hour, $mday, $mon, $year, $wday, $yday, $isdst) =
   localtime(time);
 $mon = $mon + 1;
+$year += 1900;
 my @date_array = ($mon, $mday, $hour, $min);
 
 foreach my $item (@date_array) {
@@ -390,8 +393,8 @@ foreach my $item (@date_array) {
     $item =~ tr/ /0/;
 }
 my $logdate = $date_array[0] . $date_array[1] . $date_array[2] . $date_array[3];
-$LogFile = $logDirectory . "/xcatsnap." . $hostname . "." . $logdate . ".log";
-$TarFile = $logDirectory . "/xcatsnap." . $hostname . "." . $logdate . ".tar";
+$LogFile = $logDirectory . "/xcatsnap." . $hostname . "." . $year . "-" . $logdate . ".log";
+$TarFile = $logDirectory . "/xcatsnap." . $hostname . "." . $year . "-" . $logdate . ".tar";
 
 open(STDOUT, "| tee  $LogFile");
 print "Time Stamp:" . `date`;
@@ -408,6 +411,7 @@ print "Compiling Information...\n";
 print "Information compiled...\n";
 `chmod 400 $LogFile`;    # Processing the log file
 print "Send $LogFile to IBM Support.\n";
+print "Compressing $TarFile ...\n";
 my $donotdelete = 0;
 if (`which gunzip` == 0) {    # Compressing the tar file
     `gzip -f $TarFile`;
