@@ -351,7 +351,7 @@ sub init_dbworker {
                             xCAT::MsgUtils->message("S", "xcatd: possible BUG encountered by xCAT DB worker " . $err);
                             if ($currcon) {
                                 eval {  #avoid hang by allowin client to die too
-                                    store_fd("*XCATBUGDETECTED*:$err:*XCATBUGDETECTED*\n", $currcon);
+                                    store_fd(["*XCATBUGDETECTED*:$err:*XCATBUGDETECTED*\n"], $currcon);
                                     $clientset->remove($currcon);
                                     close($currcon);
                                 };
