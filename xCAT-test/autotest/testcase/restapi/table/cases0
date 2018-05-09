@@ -19,6 +19,20 @@ check:rc==200
 check:output=~"mask":"255.0.0.0"
 end
 
+start:get_network_table_with_attr_selection_error_rest
+description: get all attribute matching networks table entries with REST API, invalid attribute name
+cmd:restapitest -m GET -r /tables/networks/rows/abc=255.0.0.0 -u $$username -p $$password
+check:rc==147
+check:output=~No table rows
+end
+
+start:get_network_table_with_attr_selection_error_rest2
+description: get all attribute matching networks table entries with REST API, no match
+cmd:restapitest -m GET -r /tables/networks/rows/mask=a.b.c.d -u $$username -p $$password
+check:rc==147
+check:output=~No table rows
+end
+
 start:get_network_table_with_attr_selection_rest2
 description: get attribute matching networks table attributes with REST API
 cmd:restapitest -m GET -r /tables/networks/rows/mask=255.0.0.0/gateway -u $$username -p $$password
