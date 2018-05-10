@@ -848,6 +848,10 @@ sub nextdestiny {
         }
         unless ($ref->{currchain}) {    #If no current chain, copy the default
             $ref->{currchain} = $ref->{chain};
+        } else {
+            if ($ref->{currstate} and ($ref->{currstate} eq $ref->{currchain})) {
+                $ref->{currchain} = 'standby';
+            }
         }
         my @chain = split /[,;]/, $ref->{currchain};
 
