@@ -83,7 +83,7 @@ class OpenBMCInventoryTask(ParallelNodesCommand):
         inventory_info = []
         try:
             obmc.login()
-            inventory_info_dict = obmc.get_inventory_info()
+            inventory_info_dict = obmc.get_inventory_info(inventory_type)
 
             if inventory_type == 'all' or not inventory_type:
                 keys = inventory_info_dict.keys()

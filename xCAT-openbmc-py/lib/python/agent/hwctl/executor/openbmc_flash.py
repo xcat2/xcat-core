@@ -528,7 +528,7 @@ class OpenBMCFlashTask(ParallelNodesCommand):
         try:
             obmc.login()
             # Before uploading file, check CPU DD version
-            inventory_info_dict = obmc.get_inventory_info()
+            inventory_info_dict = obmc.get_inventory_info('cpu')
             cpu_info = inventory_info_dict["CPU"]
             for info in cpu_info:
                 if info.startswith("CPU0 Version : 20"):
