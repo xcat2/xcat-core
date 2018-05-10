@@ -786,6 +786,11 @@ sub mkinstall {
             (
                 ($arch =~ /x86/ and
                     (
+                        (-r "$pkgdir/install/hwe-netboot/ubuntu-installer/$darch/linux"
+                            and $kernpath = "$pkgdir/hwe-install/netboot/ubuntu-installer/$darch/linux"
+                            and -r "$pkgdir/install/hwe-netboot/ubuntu-installer/$darch/initrd.gz"
+                            and $initrdpath = "$pkgdir/install/hwe-netboot/ubuntu-installer/$darch/initrd.gz"
+                        ) or
                         (-r "$pkgdir/install/netboot/ubuntu-installer/$darch/linux"
                             and $kernpath = "$pkgdir/install/netboot/ubuntu-installer/$darch/linux"
                             and -r "$pkgdir/install/netboot/ubuntu-installer/$darch/initrd.gz"
