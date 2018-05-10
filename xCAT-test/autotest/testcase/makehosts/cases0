@@ -171,3 +171,27 @@ cmd:if [ -e /tmp/s01r1b01.standa ]; then rmdef s01r1b01; cat /tmp/s01r1b01.stand
 check:rc==0
 cmd:mv -f /etc/hosts.xcatbakautotest /etc/hosts
 end
+
+start:makehosts_regex
+description:this case is to test if makehosts support regex. This case is for bug 2578.
+cmd:cp /etc/hosts /etc/hosts.bak
+cmd:if lsdef -z sn4b;then lsdef -z sn4b|tee /tmp/sn4bdef;noderm sn4b;fi
+cmd:if lsdef -t group -z regextest;then lsdef -t group -z regextest |tee /tmp/regextestdef;rmdef -t group -o regextest;fi
+cmd:if grep sn4b /etc/hosts;then sed -i '/sn4b/d' /etc/hosts;fi
+check:rc==0
+cmd:mkdef -t node sn4b groups=compute
+check:rc==0
+cmd:mkdef -t group regextest ip="|\D+(\d+)\D+|20.80.1.($1*2+103)|" members=sn4b nichostnamesuffixes.eth0=-eth0 nicips.eth0="|\D+(\d+)\D+|10.80.1.($1*2+103)|" nicnetworks.eth0=10_0_0_0-255_0_0_0
+check:rc==0
+cmd:lsdef -t group regex
+check:rc==0
+cmd:makehosts sn4b
+check:rc==0
+cmd:sn4bip=`lsdef sn4b |grep -w ip|awk -F= '{print $2}'`;grep $sn4bip /etc/hosts
+check:rc==0
+cmd:sn4beth0ip=`lsdef sn4b |grep -w nicips.eth0|awk -F= '{print $2}'`;grep $sn4beth0ip /etc/hosts
+check:rc==0
+cmd:cp -f /etc/hosts.bak /etc/hosts
+cmd:noderm sn4b;if [ -e /tmp/sn4bdef ]; then cat /tmp/sn4bdef |mkdef -z;fi
+cmd:rmdef -t group -o regextest;if [ -e /tmp/regextestdef ]; then cat /tmp/regextestdef |mkdef -z;fi
+end
