@@ -59,6 +59,7 @@ my $dhcpconffile = $^O eq 'aix' ? '/etc/dhcpsd.cnf' : '/etc/dhcpd.conf';
 my %dynamicranges; #track dynamic ranges defined to see if a host that resolves is actually a dynamic address
 my %netcfgs;
 my $distro = xCAT::Utils->osver();
+my $checkdomain=0;
 
 # dhcp 4.x will use /etc/dhcp/dhcpd.conf as the config file
 my $dhcp6conffile;
@@ -692,7 +693,31 @@ sub addnode
         } elsif ($nrent and $nrent->{netboot} and $nrent->{netboot} eq 'petitboot') {
             $lstatements = 'option conf-file \"http://' . $nxtsrv . '/tftpboot/petitboot/' . $node . '\";' . $lstatements;
         } elsif ($nrent and $nrent->{netboot} and $nrent->{netboot} eq 'onie') {
-            $lstatements = 'if substring (option vendor-class-identifier,0,11) = \"onie_vendor\" { option www-server = \"http://' . $nxtsrv . $ntent->{provmethod} . '\";}' . $lstatements;
+            my $provmethod = $ntent->{provmethod};
+            if ($provmethod) {
+                my $linuximagetab = xCAT::Table->new('linuximage');
+                my $imagetab = $linuximagetab->getAttribs({ imagename => $provmethod }, 'pkgdir');
+                if ($imagetab) {
+                    my $image_pkgdir = $imagetab->{'pkgdir'};
+                    my @pkgdirs = split(/,/,$image_pkgdir);
+                    my $validpkgdir;
+                    foreach my $mypkgdir (@pkgdirs){
+                        if (-f $mypkgdir) {
+                            $lstatements = 'if substring (option vendor-class-identifier,0,11) = \"onie_vendor\" { option www-server = \"http://' . $nxtsrv . $mypkgdir . '\";}' . $lstatements;
+                            $validpkgdir = 1;
+                            last;
+                        } 
+                     }
+                     unless ($validpkgdir) {
+                        $callback->({ warning => ["osimage $provmethod pkgdir doesn't exists"]});
+                     }
+                 } else {
+                    $callback->({ warning => ["osimage $provmethod is not defined in the osimage table"]});
+                 }
+             } else {
+                $callback->({ warning => ["provmethod is not defined for $node"]});
+             }
+         
         } elsif ($nrent and $nrent->{netboot} and $nrent->{netboot} eq 'nimol') {
             $lstatements = 'supersede server.filename=\"/vios/nodes/' . $node . '\";' . $lstatements;
         }
@@ -1931,6 +1956,14 @@ sub process_request
             addnet($line[0], $line[2]);
         }
     }
+    if ($checkdomain)
+    {
+         $callback->({ error => [ "above error fail to generate new dhcp configuration file, restore dhcp configuration file $dhcpconffile" ], errorcode => [1] });
+         my $backupfile = $dhcpconffile.".xcatbak";
+         rename("$backupfile", $dhcpconffile);
+         xCAT::MsgUtils->trace($verbose_on_off, "d", "dhcp: Restore dhcp configuration file to  $dhcpconffile"); 
+         exit 1;
+    }
     foreach (@nrn6) {    #do the ipv6 networks
         addnet6($_);     #already did all the filtering before putting into nrn6
     }
@@ -2440,10 +2473,12 @@ sub addnet
             } else {
                 $callback->(
                     {
-                        warning => [
-                            "No $net specific entry for domain, and no domain defined in site table."
-                          ]
+                        error => [
+                            "No domain defined for $net entry in networks table, and no domain defined in site table."
+                          ],
+                        errorcode => [1]
                     });
+                $checkdomain=1;
             }
 
             if ($ent and $ent->{nameservers})

@@ -1,0 +1,89 @@
+start:linux_diskless_kdump
+os:Linux
+cmd:lsdef -z $$CN > /tmp/node.stanza
+cmd:lsdef -t osimage -z __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute > /tmp/osimage.stanza
+cmd:chdef -t node -o $$CN servicenode= monserver=$$MN nfsserver=$$MN tftpserver=$$MN  xcatmaster=$$MN
+check:rc==0
+
+cmd:makedns -n
+check:rc==0
+cmd:if [[ "__GETNODEATTR($$CN,arch)__" = "ppc64" ]] && [[ "__GETNODEATTR($$CN,mgt)__" != "ipmi" ]]; then getmacs -D $$CN; fi
+check:rc==0
+cmd:makedhcp -n
+check:rc==0
+cmd:makedhcp -a
+check:rc==0
+cmd:a=0;while true; do [ $a -eq 100 ] && exit 1;output=$(makedhcp -q $$CN);[ $? -ne 0 ] && exit 1;echo $output|grep $$CN 2>/dev/null && exit 0;a=$[$a+1];sleep 1;done
+check:rc==0
+cmd:copycds $$ISO
+check:rc==0
+
+cmd:rootimgdir=`lsdef -t osimage __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute|grep rootimgdir|awk -F'=' '{print $2}'`; if [ -d $rootimgdir ]; then mv $rootimgdir $rootimgdir.regbak -f;fi
+check:rc==0
+
+cmd:pkglistfile=`lsdef -t osimage __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute|grep pkglist|awk -F'=' '{print $2}'`;cp $pkglistfile $pkglistfile.bak
+cmd:pkglistfile=`lsdef -t osimage __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute|grep pkglist|awk -F'=' '{print $2}'`; if grep SUSE /etc/*release;then echo -e "kdump\nkexec-tools\nmakedumpfile\nat\n" >> $pkglistfile; elif grep "Red Hat" /etc/*release;then echo -e "kexec-tools\ncrash\nat\n" >> $pkglistfile;fi
+check:rc==0
+
+cmd:exlistfile=`lsdef -t osimage __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute|grep exlist|awk -F'=' '{print $2}'`;cp $exlistfile $exlistfile.bak
+cmd:exlistfile=`lsdef -t osimage __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute|grep exlist|awk -F'=' '{print $2}'`; sed -i '/boot/d' $exlistfile
+check:rc==0
+
+cmd:postinstallfile=`lsdef -t osimage __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute|grep postinstall|awk -F'=' '{print $2}'`;cp $postinstallfile $postinstallfile.bak
+cmd:postinstallfile=`lsdef -t osimage __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute|grep postinstall|awk -F'=' '{print $2}'`; if grep SUSE /etc/*release;then sed -i "/\/tmp/ s/10/200/g" $postinstallfile; elif grep "Red Hat" /etc/*release;then sed -i /devpts/a"tmpfs         /var/tmp    tmpfs   defaults,size=200m   0 2" $postinstallfile;fi
+check:rc==0
+
+cmd:if [ ! -d /kdumpdir ]; then mkdir -p /kdumpdir && chmod 777 /kdumpdir; fi
+cmd:if [ ! -f /etc/exports ] ;then touch /etc/exports;else cp /etc/exports /etc/exports.bak;fi
+cmd:cat /etc/exports|grep kdumpdir; if [ "$?" -ne "0" ]; then echo "/kdumpdir *(rw,no_root_squash,sync,no_subtree_check)" >> /etc/exports; fi
+cmd:cd /etc; export exports;cd -;service nfs restart
+cmd:chdef -t osimage __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute dump=nfs://$$MN/kdumpdir
+check:rc==0
+
+cmd:chdef -t osimage __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute crashkernelsize=auto
+check:rc==0
+
+cmd:chdef -t node $$CN -p postscripts=enablekdump
+check:rc==0
+
+cmd:genimage  __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute
+check:rc==0
+cmd:packimage __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute
+check:rc==0
+
+cmd:rinstall $$CN osimage=__GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute
+check:rc==0
+check:output=~Provision node\(s\)\: $$CN
+
+cmd:sleep 300
+cmd:a=0;while ! `lsdef -l $$CN|grep status|grep booted >/dev/null`; do sleep 10;((a++));if [ $a -gt 60 ];then break;fi done
+
+cmd:ping $$CN -c 3
+check:rc==0
+check:output=~64 bytes from $$CN
+cmd:lsdef -l $$CN | grep status
+check:rc==0
+check:output=~booted
+cmd:xdsh $$CN date
+check:rc==0
+check:output=~\d\d:\d\d:\d\d
+
+cmd:xdsh $$CN "echo 'echo 1 > /proc/sys/kernel/sysrq; echo c > /proc/sysrq-trigger' > /tmp/kdump.trigger"
+cmd:xdsh $$CN "chmod 755 /tmp/kdump.trigger"
+cmd:xdsh $$CN "service atd start"
+cmd:xdsh $$CN "at now +1 minutes <<< /tmp/kdump.trigger"
+cmd:sleep 300
+
+cmd:vmcorefile=`find /kdumpdir/ -name vmcore`;if [[ -s $vmcorefile ]]; then echo "this file is not empty";else echo "this file is empty"; fi
+check:output=~not empty
+
+cmd:pkglistfile=`lsdef -t osimage __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute|grep pkglist|awk -F'=' '{print $2}'`;mv -f $pkglistfile.bak $pkglistfile
+cmd:exlistfile=`lsdef -t osimage __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute|grep exlist|awk -F'=' '{print $2}'`;mv -f $exlistfile.bak $exlistfile
+cmd:postinstallfile=`lsdef -t osimage __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute|grep postinstall|awk -F'=' '{print $2}'`;mv -f $postinstallfile.bak $postinstallfile
+
+cmd:if [ -f /etc/exports.bak ] ;then mv -f /etc/exports.bak /etc/exports; fi
+cmd:rm -rf /kdumpdir
+cmd:cat /tmp/node.stanza | chdef -z;rm -rf /tmp/node.stanza
+cmd:cat /tmp/osimage.stanza | chdef -z;rm -rf /tmp/osimage.stanza
+cmd:rootimgdir=`lsdef -t osimage __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute|grep rootimgdir|awk -F'=' '{print $2}'`; if [ -d $rootimgdir.regbak ]; then mv $rootimgdir.regbak $rootimgdir -f;fi
+end

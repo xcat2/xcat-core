@@ -14,7 +14,7 @@ from xcatagent import base as xcat_manager
 
 MSG_TYPE = 'message'
 DB_TYPE  = 'db'
-LOCK_FILE = '/var/lock/xcat/agent.lock'
+#LOCK_FILE = '/var/lock/xcat/agent.lock'
 
 
 class XCATMessager(utils.Messager):
@@ -36,8 +36,8 @@ class XCATMessager(utils.Messager):
         d = {'type': MSG_TYPE, 'msg': {'type': 'warning', 'data': msg}}
         self._send(d)
 
-    def error(self, msg):
-        d = {'type': MSG_TYPE, 'msg': {'type': 'error', 'data': msg}}
+    def error(self,  msg, node=''):
+        d = {'type': MSG_TYPE, 'msg': {'type': 'error', 'node': node, 'data': msg}}
         self._send(d)
 
     def syslog(self, msg):
@@ -50,7 +50,7 @@ class XCATMessager(utils.Messager):
 
 
 class Server(object):
-    def __init__(self, address, standalone):
+    def __init__(self, address, standalone=True, lockfile=None):
         try:
             os.unlink(address)
         except OSError:
@@ -58,6 +58,7 @@ class Server(object):
                 raise
         self.address = address
         self.standalone = standalone
+        self.lockfile = lockfile
         self.server = StreamServer(self._serve(), self._handle)
 
     def _serve(self):
@@ -92,14 +93,24 @@ class Server(object):
             if not hasattr(manager, req['command']):
                 messager.error("command %s is not supported" % req['command'])
             func = getattr(manager, req['command'])
+            # translate unicode string to normal string to avoid docopt error
+            new_args=[]
+            if req['args']:
+                for a in req['args']:
+                    new_args.append(a.encode('utf-8'))
             # call the function in the specified manager
-            func(req['nodeinfo'], req['args'])
+            func(req['nodeinfo'], new_args)
             # after the method returns, the request should be handled
             # completely, close the socket for client
             if not self.standalone:
                 sock.close()
                 self.server.stop()
                 os._exit(0)
+        except ImportError:
+            messager.error("OpenBMC management is using a Python framework and some dependency libraries could not be imported.")
+            print(traceback.format_exc(), file=sys.stderr)
+            self.server.stop()
+            os._exit(1)
         except Exception:
             print(traceback.format_exc(), file=sys.stderr)
             self.server.stop()
@@ -107,7 +118,7 @@ class Server(object):
 
     def keep_peer_alive(self):
         def acquire():
-            fd = open(LOCK_FILE, "r+")
+            fd = open(self.lockfile, "r+")
             fcntl.flock(fd.fileno(), fcntl.LOCK_EX)
             # if reach here, parent process may exit
             print("xcat process exit unexpectedly.", file=sys.stderr)

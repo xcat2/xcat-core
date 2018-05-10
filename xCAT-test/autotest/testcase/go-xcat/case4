@@ -26,10 +26,10 @@ check:rc==0
 cmd:xdsh $$CN "lsxcatd -v"
 check:rc==0
 check:output=~Version $$MIGRATION1_VERSION
-cmd:rm -rf /tmp/go-xcat.log
+cmd:xdsh $$CN "rm -rf /tmp/go-xcat.log"
 cmd:xdsh $$CN "cd /; ./go-xcat update -y"
 check:rc==0
-cmd:cat /tmp/go-xcat.log
+cmd:xdsh $$CN "cat /tmp/go-xcat.log"
 check:output=~xCAT has been successfully updated
 cmd:xdsh $$CN "source /etc/profile.d/xcat.sh;lsxcatd -v"
 check:rc==0

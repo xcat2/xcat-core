@@ -23,11 +23,11 @@ SYNOPSIS
 
 \ **chtab**\  [\ **-v**\  | \ **-**\ **-version**\ ]
 
-\ **chtab**\  [\ *keycolname=keyvalue*\ ] [\ *tablename.colname=newvalue*\ ]
+\ **chtab**\  \ *keycolname=keyvalue*\ [,\ *keycolname=keyvalue*\ ,...] \ *tablename.colname=newvalue*\  [\ *tablename.colname=newvalue*\  ...]
 
-\ **chtab**\  [\ *keycolname=keyvalue*\ ] [\ *tablename.colname+=newvalue*\ ]
+\ **chtab**\  \ *keycolname=keyvalue*\ [,\ *keycolname=keyvalue*\ ,...] \ *tablename.colname+=newvalue*\  [\ *tablename.colname+=newvalue*\  ...]
 
-\ **chtab -d**\  [\ *keycolname=keyvalue*\ ] [\ *tablename.colname=newvalue*\ ]
+\ **chtab -d**\  \ *keycolname=keyvalue*\ [,\ *keycolname=keyvalue*\ ,...] \ *tablename*\  [\ *tabname*\  ...]
 
 
 ***********
@@ -35,9 +35,9 @@ DESCRIPTION
 ***********
 
 
-The chtab command adds, deletes or updates the attribute value in the specified table.column for the specified keyvalue.  Normally, the given value will completely replace the current attribute value.  But if "+=" is used instead of "=", the specified value will be appended to the coma separated list of the attribute, if it is not already there.
+The \ **chtab**\  command adds, deletes or updates the attribute values in the specified table.column for the specified \ *keyvalue*\ .  Normally, the given value will completely replace the current attribute value.  But if "+=" is used instead of "=", the specified value will be appended to the comma separated list of attributes, if it is not already there.
 
-The chtab is designed to work without passing xcatd, so it's out of control of policy mechanism.
+The \ **chtab**\  does not pass through xcatd, so it is not controlled by the policy mechanism.
 
 
 *******

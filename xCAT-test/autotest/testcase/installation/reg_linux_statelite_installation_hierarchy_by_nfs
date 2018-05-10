@@ -69,6 +69,8 @@ check:rc==0
 
 cmd:genimage __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-statelite-compute
 check:rc==0
+cmd:rootimagedir=`lsdef -t osimage __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-statelite-compute  -i  rootimgdir -c|awk -F"=" '{print $2}'`; chroot $rootimagedir/rootimg useradd xcatuser
+check:rc==0
 cmd:liteimg __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-statelite-compute
 check:rc==0
 cmd:prsync /install $$SN:/
@@ -79,7 +81,7 @@ check:rc==0
 check:output=~Provision node\(s\)\: $$CN
 
 cmd:xdsh $$SN "if [[ -f /var/lib/dhcp/db/dhcpd.leases ]]; then cat /var/lib/dhcp/db/dhcpd.leases; elif [[ -f /var/lib/dhcpd/dhcpd.leases ]];then cat /var/lib/dhcpd/dhcpd.leases;elif [[ -f /var/lib/dhcp/dhcpd.leases ]];then cat /var/lib/dhcp/dhcpd.leases; fi"
-cmd:sleep 900
+cmd:sleep 300
 cmd:a=0;while ! `lsdef -l $$CN|grep status|grep booted >/dev/null`; do sleep 10;((a++));if [ $a -gt 60 ];then break;fi done
 
 cmd:ping $$CN -c 3
@@ -101,6 +103,12 @@ check:output=~$$CN: $$CN
 cmd:xdsh $$CN  "cat /var/log/xcat/xcat.log"
 cmd:xdsh $$CN "echo "test"> /test.statelite"
 check:rc!=0
+#add test for issue922
+cmd:xdsh $$CN  "ls -l /bin/ping"
+cmd:xdsh $$CN "ping -c 1 127.0.0.1"
+check:rc==0
+cmd:xdsh $$CN "su - xcatuser sh  -c \"ping -c 1 127.0.0.1\""
+check:rc==0
 cmd:output=$(xdsh $$CN ls -al / |grep test.statelite);if [[ $? -eq 0 ]];then  xdsh $$CN rm -rf /test.tatelite;fi
 cmd:rootimgdir=`lsdef -t osimage __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-statelite-compute|grep rootimgdir|awk -F'=' '{print $2}'`; if [ -d $rootimgdir ]; then rm -rf $rootimgdir;fi
 check:rc==0

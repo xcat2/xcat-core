@@ -89,7 +89,7 @@ sub process_request {
     my $osver;
     my $arch;
     my $profile;
-    my $method = 'cpio';
+    my $method = 'tar';
     my $compress;
     my $exlistloc;
     my $syncfile;

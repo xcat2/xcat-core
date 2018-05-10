@@ -171,7 +171,7 @@ end
 
 start:xcatstanzafile_specificvalue
 description:When a specific value for an attribute is provided in the stanza, it takes priority over any default value that had been set.
-cmd:echo -e "default-node:\n    groups=all,compute\ntestnode:\n    objtype=node\n    groups=all,rhels5.5\n	xcatmaster= MS02.ppd.pok.com\n       nfsserver=IS227.ppd.pok.com" > testfile
+cmd:bash -c 'echo -e "default-node:\n    groups=all,compute\ntestnode:\n    objtype=node\n    groups=all,rhels5.5\n	xcatmaster= MS02.ppd.pok.com\n       nfsserver=IS227.ppd.pok.com" > testfile'
 check:rc==0
 cmd:cat testfile|mkdef -z
 check:rc==0

@@ -20,7 +20,7 @@ xCAT uses snmp scan method to discover PDU.  Make sure net-snmp-utils package is
        -x        XML formatted output.
        -z        Stanza formatted output.
        -w        Writes output to xCAT database.
-       --setup   Process switch-based pdu discovery and configure the PDUs(it included passwordless , change ip address from dhcp to static and snmp configuration). It required predefined PDU node definition with switch name and switch port attributes for mapping. (Notes: only support for crpdu for now for this options)
+       --setup   Process switch-based pdu discovery and configure the PDUs. For crpdu, --setup options will configure passwordless , change ip address from dhcp to static, hostname changes and snmp v3 configuration. For irpdu, it will configure ip address and hostname.  It required predefined PDU node definition with switch name and switch port attributes for mapping.
 
 
 Define PDU Objects

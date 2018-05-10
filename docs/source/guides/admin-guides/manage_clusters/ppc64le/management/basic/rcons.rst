@@ -28,7 +28,37 @@ Troubleshooting
 General
 ```````
 
-The xCAT ``rcons`` command relies on conserver (http://www.conserver.com/).  The ``conserver`` package should have been installed with xCAT as it's part of the xCAT dependency package.  If you are having problems seeing the console, try the following. 
+``xCAT`` has been integrated with 3 kinds of console server service, they are
+
+    - `conserver <http://www.conserver.com/>`_
+    - `goconserver <https://github.com/xcat2/goconserver/>`_
+    - `confluent <https://github.com/xcat2/confluent/>`_
+
+``rcons`` command relies on one of them. The ``conserver`` and ``goconserver``
+packages should have been installed with xCAT as they are part of the xCAT
+dependency packages. If you hope to try ``confluent``,
+see `confluent </advanced/confluent/>`_.
+
+For systemd based systems, ``goconserver`` is used by default. If you are
+having problems seeing the console, try the following.
+
+   #. Make sure ``goconserver`` is configured by running ``makegocons``.
+
+   #. Check if ``goconserver`` is up and running ::
+
+      systemctl status goconserver.service
+
+   #. If ``goconserver`` is not running, start the service using: ::
+
+      systemctl start goconserver.service
+
+   #. Try ``makegocons -q [<node>]`` to verify if the node has been registered.
+
+   #. Invoke the console again: ``rcons <node>``
+
+More details for goconserver, see `goconserver documentation </advanced/goconserver/>`_.
+
+**[Deprecated]** If ``conserver`` is used, try the following.
 
    #. Make sure ``conserver`` is configured by running ``makeconservercf``.
 
@@ -42,12 +72,4 @@ The xCAT ``rcons`` command relies on conserver (http://www.conserver.com/).  The
          [sysvinit] service conserver start 
          [systemd] systemctl start conserver.service
 
-   #. After this, try invoking the console again:  ``rcons <node>``
-
-
-OpenBMC Specific
-````````````````
-
-   #. For OpenBMC managed servers, the root user must be able to ssh passwordless to the BMC for the ``rcons`` function to work.  
-
-      Copy the ``/root/.ssh/id_rsa.pub`` public key to the BMC's ``~/.ssh/authorized_keys`` file.
+   #. Invoke the console again: ``rcons <node>``

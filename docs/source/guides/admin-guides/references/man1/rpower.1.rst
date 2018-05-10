@@ -27,7 +27,7 @@ BMC (using IPMI):
 =================
 
 
-\ **rpower**\  \ *noderange*\  [\ **on | off | softoff | reset | boot | stat | state | status | wake | suspend**\  [\ **-w**\  \ *timeout*\ ] [\ **-o**\ ] [\ **-r**\ ]]
+\ **rpower**\  \ *noderange*\  [\ **on | off | softoff | reset | boot | cycle | stat | state | status | wake | suspend**\  [\ **-w**\  \ *timeout*\ ] [\ **-o**\ ] [\ **-r**\ ]]
 
 \ **rpower**\  \ *noderange*\  [\ **pduon | pduoff | pdustat | pdureset**\ ]
 

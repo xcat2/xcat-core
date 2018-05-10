@@ -75,7 +75,7 @@ The REST API client needs to download the xCAT certificate CA from the xCAT http
 
 When accessing the REST API, the certificate CA must be specified and the FQDN of the https server must be used. For example: ::
 
-    curl -X GET --cacert /root/ca-cert.pem 'https://<FQDN of xCAT MN>/xcatws/nodes?userName=root& userPW=cluster'
+    curl -X GET --cacert /root/ca-cert.pem 'https://<FQDN of xCAT MN>/xcatws/nodes?userName=root&userPW=<root-pw>'
 
 Extend the Timeout of Web Server
 ================================
@@ -83,10 +83,10 @@ Extend the Timeout of Web Server
 Some operations like 'create osimage' (copycds) need a long time (longer than 3 minutes sometimes) to complete. It would fail with a ``timeout error`` (504 Gateway Time-out) if the timeout setting in the web server is not extended: ::
 
     For [RHEL]
-        sed -i 's/^Timeout.*/Timeout 600/' /etc/httpd/conf/httpd.conf
-        service htttd restart
+        Edit "/etc/httpd/conf/httpd.conf" and change existing or add new entry: "Timeout 600"
+        service httpd restart
     For [SLES]
-        echo "Timeout 600" >> /etc/apache2/httpd.conf
+        Edit "/etc/apache2/httpd.conf" and change existing or add new entry: "Timeout 600"
         service apache2 restart
 
 Set Up an Account for Web Service Access
@@ -114,16 +114,27 @@ Use non-root Account
 
 Create new user and setup the password and policy rules. ::
 
-    useradd wsuser
-    passwd wsuser     # set the password
-    tabch key=xcat,username=wsuser passwd.password=cluster
-    mkdef -t policy 6 name=wsuser rule=allow
+    # create a user
+    useradd -u <wsuid> <wsuser>
+    # set the password
+    passwd <wsuser>
+    # add password to passwd table
+    tabch key=xcat,username=<wsuser> passwd.password=<wspw>
+    # add user to policy table
+    mkdef -t policy 6 name=<wsuser> rule=allow
 
 ``Note:`` in the tabch command above you can put the salted password (from /etc/shadow) in the xCAT passwd table instead of the clear text password, if you prefer. 
 
+Identical user with the same name and uid need to be created on each compute node. ::
+
+    # create a user
+    useradd -u <wsuid> <wsuser>
+    # set the password
+    passwd <wsuser>
+
 Create the SSL certificate under that user's home directory so that user can be authenticated to xCAT. This is done by running the following command on the Management node as root: ::
 
-    /opt/xcat/share/xcat/scripts/setup-local-client.sh <username>
+    /opt/xcat/share/xcat/scripts/setup-local-client.sh <wsuser>
 
 When running this command you'll see SSL certificates created. Enter "y" where prompted and take the defaults. 
 
@@ -133,11 +144,15 @@ To enable the POST method of resources like nodeshell, nodecopy, updating and fi
 
 Run a test request to see if everything is working: ::
 
-    curl -X GET --cacert /root/ca-cert.pem 'https://<xcat-mn-host>/xcatws/nodes?userName=<user>&userPW=<password>'
+    curl -X GET --cacert /root/ca-cert.pem 'https://<xcat-mn-host>/xcatws/nodes?userName=<wsuser>&userPW=<wspw>'
 
 or if you did not set up the certificate: ::
 
-    curl -X GET -k 'https://<xcat-mn-host>/xcatws/nodes?userName=<user>&userPW=<password>'
+    curl -X GET -k 'https://<xcat-mn-host>/xcatws/nodes?userName=<wsuser>&userPW=<wspw>'
 
 You should see some output that includes your list of nodes. 
+
+If errors returned, check `/var/log/httpd/ssl_error_log` on xCAT MN.
+
+``Note:`` if passwords need to be changed in the future, make sure to update the xCAT passwd table. xCAT REST API uses passwords stored in that table to authenticate users. 
 

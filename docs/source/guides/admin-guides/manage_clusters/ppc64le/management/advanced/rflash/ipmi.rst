@@ -1,7 +1,5 @@
-``rflash`` - Remote Firmware Flashing
-=====================================
-
-See :doc:`rflash manpage </guides/admin-guides/references/man1/rflash.1>` for more information.
+IPMI Firmware Update
+====================
 
 The ``rflash`` command is provided to assist the system administrator in updating firmware. 
 

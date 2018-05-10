@@ -22,88 +22,124 @@ my %usage = (
        rnetboot [-h|--help|-v|--version]
      zVM specific:
        rnetboot <noderange> [ipl= address]",
-    "rpower" =>
-"Usage: rpower <noderange> [--nodeps] [on|onstandby|off|suspend|reset|stat|state|boot] [-V|--verbose] [-m table.colum==expectedstatus][-m table.colum==expectedstatus...] [-r <retrycount>] [-t <timeout>]
+    "rpower" => "",
+    "rpower.common" =>
+    "Usage: 
+    Common:
+       rpower <noderange> [--nodeps] [on|onstandby|off|suspend|reset|stat|state|boot] [-V|--verbose] [-m table.colum==expectedstatus][-m table.colum==expectedstatus...] [-r <retrycount>] [-t <timeout>]
        rpower [-h|--help|-v|--version]
-     BMC (using IPMI):
-       rpower noderange [on|off|softoff|reset|boot|stat|state|status|wake|suspend [-w timeout] [-o] [-r]]
+    ",
+    "rpower.begin" =>
+    "BMC (using IPMI):
+       rpower noderange [on|off|softoff|reset|boot|cycle|stat|state|status|wake|suspend [-w timeout] [-o] [-r]]
        rpower noderange [pduon|pduoff|pdustat]
-     OpenPOWER BMC:
+    OpenPOWER BMC:
        rpower noderange [on|off|reset|boot|stat|state|status]
        rpower noderange [pduon|pduoff|pdustat]
-     OpenPOWER OpenBMC:
+    ",
+    "rpower.openbmc" =>
+    "OpenPOWER OpenBMC:
        rpower noderange [on|off|softoff|reset|boot|bmcreboot|bmcstate|stat|state|status]
-     KVM Virtualization specific:
+    ",
+    "rpower.end" =>
+    "KVM Virtualization specific:
        rpower <noderange> [boot] [ -c <path to iso> ]
-     PPC (with IVM or HMC) specific:
+    PPC (with IVM or HMC) specific:
        rpower <noderange> [--nodeps] [of] [-V|--verbose]
-     CEC (with HMC) specific:
+    CEC (with HMC) specific:
        rpower <noderange> [on|off|reset|boot|onstandby]
-     LPAR(with HMC) specific:
+    LPAR(with HMC) specific:
        rpower <noderange> [on|off|reset|stat|state|boot|of|sms|softoff]
-     CEC(using Direct FSP Management) specific:
+    CEC(using Direct FSP Management) specific:
        rpower <noderange> [on|onstandby|off|stat|state|resetsp]
-     Frame(using Direct FSP Management) specific:
+    Frame(using Direct FSP Management) specific:
        rpower <noderange> [stat|state|rackstandby|exit_rackstandby|resetsp]
-     LPAR(using Direct FSP Management) specific:
+    LPAR(using Direct FSP Management) specific:
        rpower <noderange> [on|off|reset|stat|state|boot|of|sms]
-     Blade(using Direct FSP Management) specific:
+    Blade(using Direct FSP Management) specific:
        rpower <noderange> [on|onstandby|off|cycle|state|sms]
-     Blade(using AMM) specific:
+    Blade(using AMM) specific:
        rpower <noderange> [cycle|softoff] [-V|--verbose]
     Lenovo high-density server specific:
        rpower <noderange> [on|off|reset|boot|reseat]
-     zVM specific:
+    zVM specific:
        rpower noderange [on|off|reset|stat|softoff]
-     MIC specific:
+    MIC specific:
        rpower noderange [stat|state|on|off|reset|boot]
-     docker specific:
+    docker specific:
        rpower noderange [start|stop|restart|pause|unpause|state]
-     pdu specific:
+    pdu specific:
        rpower noderange [off|on|stat|status|reset]
        rpower noderange [pduoff|pduon|pdustat|pdustatus|pdureset]
 ",
-    "rbeacon" =>
-      "Usage: rbeacon <noderange> [on|off|stat] [-V|--verbose]
-       rbeacon [-h|--help|-v|--version]",
-    "rvitals" =>
+    "rbeacon" =>"",
+    "rbeacon.common" =>
+      "Usage: 
+    Common:
+       rbeacon [-h|--help|-v|--version|-V|--verbose]
+    ",
+    "rbeacon.begin" =>
+    "BMC specific:
+       rbeacon [on|blink|off|stat]
+    OpenPOWER (IPMI) specific:
+       rbeacon [on|blink|off|stat]
+    ",
+    "rbeacon.openbmc" =>
+    "OpenPOWER (OpenBMC) specific:
+       rbeacon [on|off|stat]
+    ",    
+    "rvitals" => "",
+    "rvitals.common" =>
       "Usage:
-  Common:
-      rvitals [-h|--help|-v|--version]
-  FSP/LPAR (with HMC) specific:
-      rvitals noderange {temp|voltage|lcds|all}
-  CEC/LPAR/Frame (using Direct FSP Management) specific:
-      rvitals noderange {rackenv|lcds|all}
-  MPA specific:
-      rvitals noderange {temp|voltage|wattage|fanspeed|power|leds|summary|all}
-  Blade specific:
-      rvitals noderange {temp|wattage|fanspeed|leds|summary|all}
-  BMC specific:
-      rvitals noderange {temp|voltage|wattage|fanspeed|power|leds|all}
-  OpenPOWER (IPMI) specific:
-      rvitals noderange [temp|voltage|wattage|fanspeed|power|leds|chassis|all]
-  OpenPOWER (OpenBMC) specific:
-      rvitals noderange [temp|voltage|wattage|fanspeed|power|leds|altitude|all]
-  MIC specific:
-      rvitals noderange {thermal|all}
-  pdu specific:
-      rvitals noderange ",
+    Common:
+       rvitals [-h|--help|-v|--version]
+    ",
+    "rvitals.begin" =>
+    "FSP/LPAR (with HMC) specific:
+       rvitals noderange {temp|voltage|lcds|all}
+    CEC/LPAR/Frame (using Direct FSP Management) specific:
+       rvitals noderange {rackenv|lcds|all}
+    MPA specific:
+       rvitals noderange {temp|voltage|wattage|fanspeed|power|leds|summary|all}
+    Blade specific:
+       rvitals noderange {temp|wattage|fanspeed|leds|summary|all}
+    BMC specific:
+       rvitals noderange {temp|voltage|wattage|fanspeed|power|leds|all}
+    OpenPOWER (IPMI) specific:
+       rvitals noderange [temp|voltage|wattage|fanspeed|power|leds|chassis|all]
+    ",
+    "rvitals.openbmc" =>
+    "OpenPOWER (OpenBMC) specific:
+       rvitals noderange [temp|voltage|wattage|fanspeed|power|leds|altitude|all]
+    ",
+    "rvitals.end" =>
+    "MIC specific:
+       rvitals noderange {thermal|all}
+    pdu specific:
+       rvitals noderange ",
     "reventlog" =>
 "Usage: reventlog <noderange> [all [-s]|clear|<number of entries to retrieve> [-s]] [-V|--verbose]
        reventlog <noderange> [resolved={<id list>|LED}]
        reventlog [-h|--help|-v|--version]",
-    "rinv" =>
+    "rinv" => "",
+    "rinv.common" =>
       "Usage: 
     Common:
        rinv <noderange> [all|model|serial] [-V|--verbose]
        rinv [-h|--help|-v|--version]
-    BMC/MPA specific:
+    ",
+    "rinv.begin" =>
+    "BMC/MPA specific:
        rinv <noderange> [model|serial|asset|vpd|deviceid|guid|firm|dimm|mprom|all]
     OpenPOWER (IPMI) server specific:
        rinv <noderange> [model|serial|deviceid|uuid|guid|vpd|mprom|firm|all] 
-    OpenPOWER (OpenBMC) server specific:
+    ",
+    "rinv.openbmc" =>
+    "OpenPOWER (OpenBMC) server specific:
        rinv <noderange> [model|serial|firm|cpu|dimm|all] [-V|--verbose]
-    PPC specific(with HMC):
+    ", 
+    "rinv.end" =>
+    "PPC specific(with HMC):
        rinv <noderange> [all|bus|config|serial|model|firm]
     PPC specific(using Direct FSP Management):
        rinv <noderange> [firm]
@@ -142,8 +178,23 @@ my %usage = (
    ",
     "rspconfig.openbmc" =>
       "OpenBMC specific:
-       rspconfig <noderange> [ipsrc|ip|netmask|gateway|hostname|vlan]
+       rspconfig <noderange> [ipsrc|ip|netmask|gateway|vlan]
+       rspconfig <noderange> admin_passwd=<currentpasswd,newpasswd>
        rspconfig <noderange> dump [-l|--list] [-g|--generate] [-c|--clear {<id>|all}] [-d|--download {<id>|all}]
+       rspconfig <noderange> gard -c|--clear
+       rspconfig <noderange> [hostname|ntpservers]
+       rspconfig <noderange> [hostname=<*|hostname>|ntpservers=<ntpservers>]
+       rspconfig <noderange> sshcfg
+       rspconfig <noderange> powerrestorepolicy
+       rspconfig <noderange> powerrestorepolicy={always_on|restore|always_off}
+       rspconfig <noderange> powersupplyredundancy
+       rspconfig <noderange> powersupplyredundancy={disabled|enabled}
+       rspconfig <noderange> timesyncmethod
+       rspconfig <noderange> timesyncmethod={ntp|manual}
+       rspconfig <noderange> bootmode
+       rspconfig <noderange> bootmode={safe|regular|setup}
+       rspconfig <noderange> autoreboot
+       rspconfig <noderange> autoreboot={0|1}
 ",
     "rspconfig.begin" =>
    "BMC/MPA Common:
@@ -349,10 +400,14 @@ my %usage = (
     "makentp" =>
       "Usage: makentp [-h|--help|-v|--version]
        makentp [-a|--all] [-V|--verbose]",
-    "rflash" =>
-      "Usage: 
-    rflash [ -h|--help|-v|--version|-V|--verbose]
-    PPC (with HMC) specific:
+    "rflash" => "",
+    "rflash.common" =>
+    "Usage: 
+    Common:
+        rflash [ -h|--help|-v|--version|-V|--verbose]
+    ",
+    "rflash.begin" =>
+    "PPC (with HMC) specific:
 	rflash <noderange> -p <rpm_directory> [--activate {concurrent | disruptive}] 
 	rflash <noderange> {--commit | --recover}
     PPC (using Direct FSP Management) specific:
@@ -362,7 +417,9 @@ my %usage = (
     OpenPOWER BMC specific (using IPMI):
         rflash <noderange> [<hpm_file_path>|-d <data_directory>] [-c|--check] [--retry=<count>]
         rflash <noderange> --recover <bmc_file_path>
-    OpenPOWER OpenBMC specific:
+    ",
+    "rflash.openbmc" =>
+    "OpenPOWER OpenBMC specific:
         rflash <noderange> {[-c|--check] | [-l|--list]}
         rflash <noderange> <tar_file_path> {[-c|--check] | [-a|--activate] | [-u|--upload]}
         rflash <noderange> <tar_file_diretory> [-d] [--no-host-reboot]
@@ -443,7 +500,7 @@ my %usage = (
     or
     updatenode <noderange> [-V|--verbose] [-k|--security] [-s|--sn] [-t <timeout>]
     or
-    updatenode <noderange> [-V|--verbose] [-F|--sync | -f|--snsync] [-l|--user[username]] [--fanout=[fanout value]] [-S|--sw] [-t <timeout>]
+    updatenode <noderange> [-V|--verbose] [-F|--sync | -f|--snsync] [-r|--node-rcp <node_remote_copy>] [-l|--user[username]] [--fanout=[fanout value]] [-S|--sw] [-t <timeout>]
         [-P|--scripts [script1,script2,...]] [-s|--sn] 
         [-A|--updateallsw] [-c|--cmdlineonly] [-d alt_source_dir]
         [attr=val [attr=val...]]
@@ -463,7 +520,9 @@ Options:
 
     [-f|--snsync] Performs File Syncing to the service nodes that service 
         the nodes in the noderange.
-
+ 
+    [-r|--node-rcp] Specifies  the  full  path of the remote copy command used for sync files to node targets, such as /usr/bin/rsync and /usr/bin/scp
+   
     [-g|--genmypost] Will generate a new mypostscript file for the
         the nodes in the noderange, if site precreatemypostscripts is 1 or YES.
 
@@ -555,6 +614,49 @@ $usage{"rspconfig"} = $usage{"rspconfig.common"} .
 
 $usage{"rspconfig.openbmc"} = $usage{"rspconfig.common"} .
                       $usage{"rspconfig.openbmc"};
+
+$usage{"rinv"} = $usage{"rinv.common"} . 
+                      $usage{"rinv.begin"} .
+                      $usage{"rinv.openbmc"} .
+                      "   " .
+                      $usage{"rinv.end"};
+
+$usage{"rinv.openbmc"} = $usage{"rinv.common"} .
+                      $usage{"rinv.openbmc"};
+
+$usage{"rbeacon"} = $usage{"rbeacon.common"} .
+                      $usage{"rbeacon.begin"} .
+                      $usage{"rbeacon.openbmc"};
+
+$usage{"rbeacon.openbmc"} = $usage{"rbeacon.common"} .
+                      $usage{"rbeacon.openbmc"};
+
+$usage{"rvitals"} = $usage{"rvitals.common"} . 
+                      $usage{"rvitals.begin"} .
+                      $usage{"rvitals.openbmc"} .
+                      "   " .
+                      $usage{"rvitals.end"};
+
+$usage{"rvitals.openbmc"} = $usage{"rvitals.common"} .
+                      $usage{"rvitals.openbmc"};
+
+$usage{"rflash"} = $usage{"rflash.common"} . 
+                      $usage{"rflash.begin"} .
+                      $usage{"rflash.openbmc"} .
+                      "   " .
+                      $usage{"rflash.end"};
+
+$usage{"rflash.openbmc"} = $usage{"rflash.common"} .
+                      $usage{"rflash.openbmc"};
+
+$usage{"rpower"} = $usage{"rpower.common"} . 
+                      $usage{"rpower.begin"} .
+                      $usage{"rpower.openbmc"} .
+                      "   " .
+                      $usage{"rpower.end"};
+
+$usage{"rpower.openbmc"} = $usage{"rpower.common"} .
+                      $usage{"rpower.openbmc"};
 
 my $vers    = xCAT::Utils->Version();
 my %version = (

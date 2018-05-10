@@ -469,13 +469,25 @@ sub get_file_name {
     elsif (($genos) && (-r "$searchpath/$profile.$genos.$extension")) {
         return "$searchpath/$profile.$genos.$extension";
     }
-    elsif (-r "$searchpath/$profile.$osbase.$arch.$extension") {
-        return "$searchpath/$profile.$osbase.$arch.$extension";
+    # If the osimge name was specified with -n, the name might contain multiple "."
+    # Chop them off one at a time until filename match is found
+    else {
+        while ($dotpos > 0) {
+
+            if (-r "$searchpath/$profile.$osbase.$arch.$extension") {
+                return "$searchpath/$profile.$osbase.$arch.$extension";
+            }
+            elsif (-r "$searchpath/$profile.$osbase.$extension") {
+                return "$searchpath/$profile.$osbase.$extension";
+            }
+            # Chop off "." from the end and try again
+            $dotpos = rindex($osbase, ".");
+            $osbase = substr($osbase, 0, $dotpos);
+        }
     }
-    elsif (-r "$searchpath/$profile.$osbase.$extension") {
-        return "$searchpath/$profile.$osbase.$extension";
-    }
-    elsif (-r "$searchpath/$profile.$arch.$extension") {
+
+    # No file matching OS name was found, next try just arch, if still nothing -> default to just profile
+    if (-r "$searchpath/$profile.$arch.$extension") {
         return "$searchpath/$profile.$arch.$extension";
     }
     elsif (-r "$searchpath/$profile.$extension") {

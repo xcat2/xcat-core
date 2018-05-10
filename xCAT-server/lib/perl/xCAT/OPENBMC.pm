@@ -22,10 +22,11 @@ use File::Path;
 use Fcntl ":flock";
 use IO::Socket::UNIX qw( SOCK_STREAM );
 use xCAT_monitoring::monitorctrl;
+use xCAT::TableUtils;
 
 my $LOCK_DIR = "/var/lock/xcat/";
-my $LOCK_PATH = "/var/lock/xcat/agent.lock";
-my $AGENT_SOCK_PATH = "/var/run/xcat/agent.sock";
+my $LOCK_PATH = "/var/lock/xcat/agent-$$.lock";
+my $AGENT_SOCK_PATH = "/var/run/xcat/agent-$$.sock";
 my $PYTHON_LOG_PATH = "/var/log/xcat/agent.log";
 my $PYTHON_AGENT_FILE = "/opt/xcat/lib/python/agent/agent.py";
 my $MSG_TYPE = "message";
@@ -68,36 +69,50 @@ sub acquire_lock {
     flock($lock_fd, LOCK_EX) or return undef;
     return $lock_fd;
 }
+
+sub exists_python_agent {
+    if ( -e $PYTHON_AGENT_FILE) {
+        return 1;
+    }
+    return 0;
+}
+sub python_agent_reaper {
+    unlink($LOCK_PATH);
+    unlink($AGENT_SOCK_PATH);
+}
 sub start_python_agent {
-    if (! -e $PYTHON_AGENT_FILE) {
-        xCAT::MsgUtils->message("S", "'$PYTHON_AGENT_FILE' does not exist");
+
+    if (!defined(acquire_lock())) {
+        xCAT::MsgUtils->message("S", "start_python_agent() Error: Failed to acquire lock");
         return undef;
     }
 
-    if (!defined(acquire_lock())) {
-        xCAT::MsgUtils->message("S", "Error: Faild to require lock");
-        return undef;
-    }
     my $fd;
-    open($fd, '>', $AGENT_SOCK_PATH) && close($fd);
     my $pid = fork;
     if (!defined $pid) {
-        xCAT::MsgUtils->message("S", "Error: Unable to fork process");
+        xCAT::MsgUtils->message("S", "start_python_agent() Error: Unable to fork process");
         return undef;
+    } elsif ($pid){
+
+        open($fd, '>', $AGENT_SOCK_PATH) && close($fd);
+        $SIG{INT} = $SIG{TERM} = \&python_agent_reaper;
+        return $pid;
     }
+
     $SIG{CHLD} = 'DEFAULT';
     if (!$pid) {
         # child
         open($fd, ">>", $PYTHON_LOG_PATH) && close($fd);
         open(STDOUT, '>>', $PYTHON_LOG_PATH) or die("open: $!");
         open(STDERR, '>>&', \*STDOUT) or die("open: $!");
-        my $ret = exec ($PYTHON_AGENT_FILE);
+        my @args = ( "$PYTHON_AGENT_FILE --sock $AGENT_SOCK_PATH --lockfile $LOCK_PATH" );
+        my $ret = exec @args;
         if (!defined($ret)) {
-            xCAT::MsgUtils->message("S", "Error: Failed to start python agent");
+            xCAT::MsgUtils->message("S", "start_python_agent() Error: Failed to start the xCAT Python agent.");
             exit(1);
         }
     }
-    return $pid;
+
 }
 
 sub handle_message {
@@ -109,7 +124,7 @@ sub handle_message {
         } elsif ($msg->{type} eq 'warning') {
             xCAT::MsgUtils->message("W", { data => [$msg->{data}] }, $callback);
         } elsif ($msg->{type} eq 'error'){
-            xCAT::MsgUtils->message("E", { data => [$msg->{data}] }, $callback);
+            xCAT::SvrUtils::sendmsg([ 1, $msg->{data} ], $callback, $msg->{node});
         } elsif ($msg->{type} eq 'syslog'){
             xCAT::MsgUtils->message("S", $msg->{data});
         }
@@ -136,7 +151,7 @@ sub submit_agent_request {
         $retry++;
     }
     if (!defined($sock)) {
-        xCAT::MsgUtils->message("E", { data => ["Failed to connect to the agent"] }, $callback);
+        xCAT::MsgUtils->message("E", { data => ["OpenBMC management is using a Python framework. An error has occurred when trying to create socket $AGENT_SOCK_PATH."] }, $callback);
         kill('TERM', $pid);
         return;
     }
@@ -194,26 +209,64 @@ sub wait_agent {
     my ($pid, $callback) = @_;
     waitpid($pid, 0);
     if ($? >> 8 != 0) {
-        xCAT::MsgUtils->message("E", { data => ["python agent exited unexpectedly"] }, $callback);
+        xCAT::MsgUtils->message("E", { data => ["Agent exited unexpectedly.  See $PYTHON_LOG_PATH for details."] }, $callback);
+        xCAT::MsgUtils->message("I", { data => ["To revert to Perl framework: chdef -t site clustersite openbmcperl=ALL"] }, $callback);
     }
+    python_agent_reaper();
 }
 
-sub is_openbmc_python {
-    my $environment = shift;
-    $environment = shift if (($environment) && ($environment =~ /OPENBMC/));
-    # If XCAT_OPENBMC_PYTHON is YES, will run openbmc2.pm. If not, run openbmc.pm
-    if (ref($environment) eq 'ARRAY' and ref($environment->[0]->{XCAT_OPENBMC_PYTHON}) eq 'ARRAY') {
-        $::OPENBMC_PYTHON = $environment->[0]->{XCAT_OPENBMC_PYTHON}->[0];
-    } elsif (ref($environment) eq 'ARRAY') {
-        $::OPENBMC_PYTHON = $environment->[0]->{XCAT_OPENBMC_PYTHON};
-    } else {
-        $::OPENBMC_PYTHON = $environment->{XCAT_OPENBMC_PYTHON};
-    }
-    if (defined($::OPENBMC_PYTHON) and $::OPENBMC_PYTHON eq "YES") {
-        return 1;
+#--------------------------------------------------------------------------------
+
+=head3 run_cmd_in_perl 
+      Check if specified command should run in perl
+      The policy is:
+            Get value from `openbmcperl`, `XCAT_OPENBMC_DEVEL`, agent.py:
+
+            1. If agent.py does not exist:                          ==> 1: Go Perl
+            2. If `openbmcperl` not set or doesn't contain command: ==> 0: Go Python
+            3. If `openbmcperl` lists the command OR set to "ALL"   ==> 1: Go Perl
+            4. If command is one of unsupported commands AND
+                  a. XCAT_OPENBMC_DEVEL = YES                       ==> 0: Go Python
+                  b. XCAT_OPENBMC_DEVEL = NO or not set             ==> 1: Go Perl
+=cut
+
+#--------------------------------------------------------------------------------
+sub run_cmd_in_perl {
+    my ($class, $command, $env) = @_;
+    if (! -e $PYTHON_AGENT_FILE) {
+        return (1, ''); # Go Perl: agent file is not there
     }
 
-    return 0;
+    my @entries = xCAT::TableUtils->get_site_attribute("openbmcperl");
+    my $site_entry = $entries[0];
+    my $support_obmc = undef;
+    if (ref($env) eq 'ARRAY' and ref($env->[0]->{XCAT_OPENBMC_DEVEL}) eq 'ARRAY') {
+        $support_obmc = $env->[0]->{XCAT_OPENBMC_DEVEL}->[0];
+    } elsif (ref($env) eq 'ARRAY') {
+        $support_obmc = $env->[0]->{XCAT_OPENBMC_DEVEL};
+    } else {
+        $support_obmc = $env->{XCAT_OPENBMC_DEVEL};
+    }
+    if ($support_obmc and uc($support_obmc) ne 'YES' and uc($support_obmc) ne 'NO') {
+        return (-1, "Invalid value $support_obmc for XCAT_OPENBMC_DEVEL, only 'YES' and 'NO' are supported.");
+    }
+    if ($site_entry and ($site_entry =~ $command or uc($site_entry) eq "ALL")) {
+        return (1, ''); # Go Perl: command listed in "openbmcperl" or "ALL"
+    }
+
+    # List of commands currently not supported in Python
+    my @unsupported_in_python_commands = ('rflash', 'getopenbmccons');
+
+    if ($command ~~ @unsupported_in_python_commands) {
+        # Command currently not supported in Python
+        if ($support_obmc and uc($support_obmc) eq 'YES') {
+            return (0, ''); # Go Python: unsuppored command, but XCAT_OPENBMC_DEVEL=YES overrides
+        } else {
+            return (1, ''); # Go Perl: unsuppored command
+        }
+    }
+
+    return (0, ''); # Go Python: default
 }
 
 1;

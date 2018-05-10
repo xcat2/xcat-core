@@ -4,7 +4,7 @@ B<updatenode> - Update nodes in an xCAT cluster environment.
 
 =head1 SYNOPSIS
 
-B<updatenode> I<noderange> [B<-V>|B<--verbose>] [B<-F>|B<--sync>] [B<-f>|B<--snsync>] [B<-S>|B<--sw>]  [B<-l>  I<userID>]  [B<-P>|B<--scripts> [I<script1,script2...>]] [B<-s>|B<--sn>] [B<-A>|B<--updateallsw>] [B<-c>|B<--cmdlineonly>] [B<-d> I<alt_source_dir>] [B<--fanout>=I<fanout_value>] [B<-t> I<timeout>} [I<attr=val> [I<attr=val...>]] [B<-n>|B<--noverify>]
+B<updatenode> I<noderange> [B<-V>|B<--verbose>] [B<-F>|B<--sync>] [B<-f>|B<--snsync>] [B<-r>|B<--node-rcp> [I<full_path_to_remote_copy_command>]]  [B<-S>|B<--sw>]  [B<-l>  I<userID>]  [B<-P>|B<--scripts> [I<script1,script2...>]] [B<-s>|B<--sn>] [B<-A>|B<--updateallsw>] [B<-c>|B<--cmdlineonly>] [B<-d> I<alt_source_dir>] [B<--fanout>=I<fanout_value>] [B<-t> I<timeout>} [I<attr=val> [I<attr=val...>]] [B<-n>|B<--noverify>]
 
 B<updatenode> B<noderange> [B<-k>|B<--security>] [B<-t> I<timeout>]
 
@@ -289,7 +289,7 @@ Used to specify a source directory other than the standard lpp_source directory 
 =item B<-F|--sync>
 
 Specifies that file synchronization should be
-performed on the nodes.  rsync and ssh must
+performed on the nodes.  rsync/scp and ssh must
 be installed and configured on the nodes. 
 The function is not supported for NFS-based statelite installations.
 For NFS-based statelite installations to sync files, you should use the
@@ -302,7 +302,7 @@ litefile table with source location specified in the litetree table.
 Specifies that file synchronization should be
 performed to the service nodes that service the
 nodes in the noderange. This updates the service
-nodes with the data to sync to the nodes. rsync and ssh must
+nodes with the data to sync to the nodes. rsync/scp and ssh must
 be installed and configured on the service nodes.
 For hierarchy, this optionally can  be done before syncing the files
 to the nodes with the -F flag.  If the -f flag is not used, then
@@ -315,6 +315,12 @@ The function is not supported for NFS-based statelite installations.
 For statelite installations to sync files, you should use the
 read-only option for files/directories listed in
 litefile table with source location specified in the litetree table.
+
+
+=item [B<-r>|B<--node-rcp> [I<full_path_to_remote_copy_command>]]
+
+Specifies  the  full  path of the remote copy command used for syncing files to node targets, such as "/usr/bin/rsync" or "/usr/bin/scp". If not specified, rsync will be used by default.
+
 
 =item B<-g|--genmypost>
 

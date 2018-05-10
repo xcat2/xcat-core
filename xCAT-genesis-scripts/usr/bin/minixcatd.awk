@@ -11,12 +11,16 @@ BEGIN {
                     quit="yes"
                     system("echo \"" $0 "\" > /restart")
                     close(listener)
+                    system("rm -rf /processing")
+                    system("logger -s -t 'xcat.genesis.minixcatd' -p local4.info 'The request is processed by xCAT master successfully.'")
                 }else if(match($0,"processing")){
                     print "processing request" |& listener
                     system("echo \"" $0 "\" > /processing")
+                    system("logger -s -t 'xcat.genesis.minixcatd' -p local4.info 'The request is processing by xCAT master...'")
                 }else if(match($0,"processed")){
                     print "finished request process" |& listener
                     system("rm -rf /processing")
+                    system("logger -s -t 'xcat.genesis.minixcatd' -p local4.warning 'The request is already processed by xCAT master, but not matched.'")
                 }
            }
            close(listener)

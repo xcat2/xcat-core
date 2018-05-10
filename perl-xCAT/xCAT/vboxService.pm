@@ -813,7 +813,7 @@ my %methods = (
     },    # end IConsole_getPowerButtonHandled
 );        # end my %methods
 
-use SOAP::Lite; # vbox.pm requires SOAP::Lite before requiring vboxService.pm, so we can check for SOAP::Lite dynamically
+#use SOAP::Lite; # vbox.pm requires SOAP::Lite before requiring vboxService.pm, so we can check for SOAP::Lite dynamically
 use Exporter;
 use Carp ();
 

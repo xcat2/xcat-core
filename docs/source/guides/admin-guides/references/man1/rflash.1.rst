@@ -170,7 +170,7 @@ To apply the firmware level, a reboot is required to BMC and HOST.
 
 \ **-d**\ :
 
-This option steamlines the update, activate, reboot BMC and reboot HOST procedure. It expects a directory containing both BMC and PNOR .tar files. When BMC and PNOR tar files are provided, the command will upload and activate firmware. After BMC becomes activate, it will reboot BMC. If BMC state is Ready, the command will reboot the HOST. If BMC state is NotReady, the command will exit.
+This option steamlines the update, activate, reboot BMC and reboot HOST procedure. It expects a directory containing both BMC and Host .tar files. When BMC and Host tar files are provided, the command will upload and activate firmware. After BMC becomes activate, it will reboot BMC. If BMC state is Ready, the command will reboot the HOST. If BMC state is NotReady, the command will exit.
 
 \ **Note:**\  When using \ **-**\ **-no-host-reboot**\ , it will not reboot the host after BMC is reboot.
 
@@ -212,7 +212,7 @@ This delete option will delete update image from BMC. It expects an ID as the in
  
  OpenPOWER BMC specific (using IPMI):
  
- Used for IBM Power S822LC for Big Data systems only. Specifies the directory where the \ **pUpdate**\  utility and at least one of BMC or PNOR update files are located. The utility and update files can be downloaded from FixCentral.
+ Used for IBM Power S822LC for Big Data systems only. Specifies the directory where the \ **pUpdate**\  utility and at least one of BMC or Host update files are located. The utility and update files can be downloaded from FixCentral.
  
 
 
@@ -236,7 +236,7 @@ This delete option will delete update image from BMC. It expects an ID as the in
  
  OpenPOWER BMC specific (using IPMI):
  
- Used for IBM Power S822LC for Big Data systems only. Used to recover the BMC with a BMC image downloaded from FixCentral.
+ Used for IBM Power S822LC for Big Data systems only. Used to recover the BMC with a BMC image downloaded from FixCentral. This option will only work if BMC is in "Brick protection" state.
  
 
 
@@ -357,7 +357,7 @@ This delete option will delete update image from BMC. It expects an ID as the in
  
 
 
-6. To update the firmware on IBM Power S822LC for Big Data machine specify the node name and the file path of the data directory containing pUpdate utility, both BMC and PNOR update files:
+6. To update the firmware on IBM Power S822LC for Big Data machine specify the node name and the file path of the data directory containing pUpdate utility, both BMC and Host update files:
  
  
  .. code-block:: perl

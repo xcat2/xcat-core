@@ -573,6 +573,13 @@ sub makescript {
             $master_ip = "$ipaddr";
         }
 
+        unless($master_ip){
+            my $rsp;
+            $rsp->{data}->[0] = "makescript failed: unable to resolve xcatmaster \"$master\" for $node";
+            xCAT::MsgUtils->message("SE", $rsp, $callback, 1);
+            return;
+        }
+
         #ok, now do everything else..
         #$inc =~ s/#XCATVAR:([^#]+)#/envvar($1)/eg;
         #$inc =~ s/#ENV:([^#]+)#/xCAT::Template::envvar($1)/eg;

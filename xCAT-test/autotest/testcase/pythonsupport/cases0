@@ -1,0 +1,43 @@
+start:set_up_env_for_support_openbmc_in_python
+description:this case is used to test environment setup for supporting openbmc in python
+os:Linux
+hcp:openbmc,kvm
+cmd:mkdir -p /tmp/set_up_env_for_support_openbmc_in_python
+check:rc==0
+cmd:#!/usr/bin/bash
+echo "[xcat-python-dep-EPEL]
+name=epel generated repo
+baseurl=file://__REPLACE_PATH__EPEL__
+enabled=1
+gpgcheck=0
+
+[xcat-python-dep-EXTRAS]
+name=extras generated repo
+baseurl=file://__REPLACE_PATH__EXTRAS__
+enabled=1
+gpgcheck=0
+
+[xcat-python-dep-FEDORA28]
+name=FC28 generated repo
+baseurl=file://__REPLACE_PATH__FED__
+enabled=1
+gpgcheck=0" > /etc/yum.repos.d/xcat-dep-python-local.repo
+check:rc==0
+cmd:sed -i "s|__REPLACE_PATH__EPEL__|$$PYTHON_DEP_EPEL_DIR|g" /etc/yum.repos.d/xcat-dep-python-local.repo
+check:rc==0
+cmd:sed -i "s|__REPLACE_PATH__EXTRAS__|$$PYTHON_DEP_EXTRAS_DIR|g" /etc/yum.repos.d/xcat-dep-python-local.repo
+check:rc==0
+cmd:sed -i "s|__REPLACE_PATH__FED__|$$PYTHON_DEP_FED_DIR|" /etc/yum.repos.d/xcat-dep-python-local.repo
+check:rc==0
+cmd: cat /etc/yum.repos.d/xcat-dep-python-local.repo
+check:rc==0
+cmd:yum install -y  xCAT-openbmc-py  
+check:rc==0
+cmd:rpm -qa|grep "^xCAT-openbmc-py"
+check:output=~ xCAT-openbmc-py-\d
+check:rc==0
+cmd:rm -rf /tmp/set_up_env_for_support_openbmc_in_python
+check:rc==0
+end
+
+

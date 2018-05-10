@@ -187,7 +187,7 @@ os:linux
 description:create a node with cec template once
 cmd:result=`lsdef | grep  auto_test_cec_node_1`; if [[ $result =~ "auto_test_cec_node_1" ]]; then echo $result; noderm auto_test_cec_node_1; fi
 cmd:mkdef -t node -o auto_test_cec_node_1 --template cec-template serial=test mtm=test hcp=test
-check：rc==0
+check:rc==0
 check:output=~1 object definitions have been created or modified
 cmd:lsdef auto_test_cec_node_1
 check:output=~Object name\: auto\_test\_cec\_node\_1
@@ -214,7 +214,7 @@ cmd:lsdef --template auto_test_invalid_template
 check:rc==1
 check:output=~Error\: Could not find auto\_test\_invalid\_template in xCAT templates
 cmd:mkdef -t node -o auto_test_node --template auto_test_invalid_template
-check：rc==1
+check:rc==1
 check:output=~Error\: Could not find the template object named \'auto\_test\_invalid\_template\' of type \'node\'
 end
 
@@ -224,11 +224,11 @@ description:create a node with a node template, using cec template to create nod
 cmd:result=`lsdef | grep  auto_test_cec_node_1`; if [[ $result =~ "auto_test_cec_node_1" ]]; then echo $result; noderm auto_test_cec_node_1; fi
 cmd:result=`lsdef | grep  auto_test_cec_node_2`; if [[ $result =~ "auto_test_cec_node_2" ]]; then echo $result; noderm auto_test_cec_node_2; fi
 cmd:mkdef -t node -o auto_test_cec_node_1 --template cec-template serial=test mtm=test hcp=test groups=test_template
-check：rc==0
+check:rc==0
 check:output=~1 object definitions have been created or modified
 check:output=~created
 cmd:mkdef -t node -o auto_test_cec_node_2 --template auto_test_cec_node_1 serial=test2 mtm=test2 hcp=test2
-check：rc==0
+check:rc==0
 check:output=~1 object definitions have been created or modified
 cmd:lsdef auto_test_cec_node_2
 check:output=~Object name\: auto\_test\_cec\_node\_2
@@ -263,7 +263,7 @@ cmd:mkdef -t node -o auto_test_cec_node_1 --template cec-template serial=test mt
 check:rc==1
 check:output=~Error\: The attribute \"hcp\" must be specified!
 cmd:mkdef -t node -o auto_test_cec_node_1 --template cec-template serial=test mtm=test hcp=test
-check：rc==0
+check:rc==0
 check:output=~1 object definitions have been created or modified
 cmd:lsdef auto_test_cec_node_1
 check:output=~Object name\: auto\_test\_cec\_node\_1
@@ -287,10 +287,10 @@ description:create node named cec-template with cec template at beginning, the n
 cmd:result=`lsdef | grep  cec-template`; if [[ $result =~ "cec-template" ]]; then echo $result; noderm cec-template; fi
 cmd:result=`lsdef | grep  auto_test_cec_node`; if [[ $result =~ "auto_test_cec_node" ]]; then echo $result; noderm auto_test_cec_node; fi
 cmd:mkdef -t node -o cec-template --template cec-template serial=test mtm=test hcp=test groups=test_template_priority
-check：rc==0
+check:rc==0
 check:output=~1 object definitions have been created or modified
 cmd:mkdef -t node -o auto_test_cec_node --template cec-template serial=test2 mtm=test2 hcp=test2
-check：rc==0
+check:rc==0
 check:output=~1 object definitions have been created or modified
 cmd:lsdef auto_test_cec_node
 check:output=~Object name\: auto\_test\_cec\_node
@@ -306,9 +306,9 @@ check:output=~hcp\=test2
 check:output=~mtm\=test2
 check:output=~serial\=test2
 cmd:noderm cec-template
-check：rc==0
+check:rc==0
 cmd:noderm auto_test_cec_node
-check：rc==0
+check:rc==0
 end
 
 start:mkdef_template_diskless_osimage_rootimgdir

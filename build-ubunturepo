@@ -183,8 +183,8 @@ then
         short_short_ver=`cat Version|cut -d. -f 1`
         build_time=`date`
         build_machine=`hostname`
-        commit_id=`git rev-parse --short HEAD`
         commit_id_long=`git rev-parse HEAD`
+        commit_id="${commit_id_long:0:7}"
 
         package_dir_name=debs$REL
         #TODO: define the core path and tarball name

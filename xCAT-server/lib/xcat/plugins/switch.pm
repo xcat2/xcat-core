@@ -371,7 +371,7 @@ sub process_request {
             my $request = {%$req};
             $request->{command}   = ['discovered'];
             $request->{noderange} = [$node];
-            $request->{bmc_node}  = [$bmc_node];
+            $request->{bmc_node}  = [$bmc_node] if $bmc_node;
             $doreq->($request);
             if (defined($request->{error})) {
                 $req->{error}->[0] = '1';

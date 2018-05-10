@@ -57,7 +57,7 @@ Requires: conserver-xcat
 %endif
 
 %ifos linux
-Recommends: goconserver
+Requires: goconserver
 %endif
 
 #support mixed cluster

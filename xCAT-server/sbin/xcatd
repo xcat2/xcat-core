@@ -332,6 +332,7 @@ sub do_installm_service {
     my $socket;
     my $installpidfile;
     my $retry = 1;
+    $SIG{TERM} = $SIG{INT} = 'DEFAULT';
     $SIG{USR2} = sub {
         if ($socket) { # do not mess with pid file except when we still have the socket.
             unlink("/var/run/xcat/installservice.pid"); close($socket); $quit = 1;
@@ -385,80 +386,91 @@ sub do_installm_service {
     open($installpidfile, ">", "/var/run/xcat/installservice.pid"); # if here, everyone else has unlinked installservicepid or doesn't care
     print $installpidfile $$;
     close($installpidfile);
+    xCAT::MsgUtils->trace(0, "I", "xcatd: install monitor process $$ start");
     until ($quit) {
-        $SIG{ALRM} = sub { xCAT::MsgUtils->message("S", "XCATTIMEOUT"); die; };
+        $SIG{ALRM} = sub { die "XCATTIMEOUT"; };
         my $conn;
-        next unless $conn = $socket->accept;
+        my $conn_peer_addr;
+        my $node;
+        my $validclient = 0;
 
-        # check if a rescanplugins request has come in
-        my @rescans;
-        if (@rescans = $rescanrselect->can_read(0)) {
-            foreach my $rrequest (@rescans) {
-                my $rescan_request = fd_retrieve($rrequest);
-                if ($$rescan_request =~ /rescanplugins/) {
-                    scan_plugins('', '1');
-                } else {
-                    print "ignoring unrecognized pipe request received by install monitor from ssl listener:  $rescan_request \n";
+        next unless $conn = $socket->accept;
+        eval {
+            # check if a rescanplugins request has come in
+            my @rescans;
+            if (@rescans = $rescanrselect->can_read(0)) {
+                foreach my $rrequest (@rescans) {
+                    my $rescan_request = fd_retrieve($rrequest);
+                    if ($$rescan_request =~ /rescanplugins/) {
+                        scan_plugins('', '1');
+                    } else {
+                        xCAT::MsgUtils->trace(0, "W", "xcatd: ignoring unrecognized pipe request received by install monitor from ssl listener:  $rescan_request.");
+                    }
                 }
             }
-        }
-        my $conn_peer_addr = $conn->peerhost();
-        xCAT::MsgUtils->trace(0, "I", "xcatd received a connection request from $conn_peer_addr");
+            $conn_peer_addr = $conn->peerhost();
+            xCAT::MsgUtils->trace(0, "I", "xcatd: install monitor received a connection request from $conn_peer_addr");
 
-        my $client_name;
-        my $client_aliases;
-        my @clients;
-        if ($inet6support) {
-            ($client_name, $client_aliases) = gethostbyaddr($conn->peeraddr, AF_INET6);
-            unless ($client_name) { ($client_name, $client_aliases) = gethostbyaddr($conn->peeraddr, AF_INET); }
-        } else {
-            ($client_name, $client_aliases) = gethostbyaddr($conn->peeraddr, AF_INET);
-        }
-
-        unless ($client_name) {
-            my $addrfamily=sockaddr_family(getpeername($conn));
-            my $myaddr=Socket::inet_ntop($addrfamily,$conn->peeraddr);
-            xCAT::MsgUtils->message("SE", "xcatd received a connection request from unknown host with ip address $myaddr, please check whether the reverse name resolution works correctly. The connection request will be ignored");
-            #print "xcatd received a connection request from unknown host with ip address $myaddr, please check whether the reverse name resolution works correctly. The connection request will be ignored\n";
-            close($conn);
-            next;
-        }
-
-        $clients[0] = $client_name;
-        if ($client_aliases) {
-            push @clients, split(/\s+/, $client_aliases);
-        }
-
-        my $validclient = 0;
-        my $node;
-        my $domain;
-
-        foreach my $client (@clients) {
-            my @ndn         = ($client);
-            my $nd          = xCAT::NetworkUtils->getNodeDomains(\@ndn);
-            my %nodedomains = %{$nd};
-            $domain = $nodedomains{$client};
-            $client =~ s/\..*//;
-            if ($domain) {
-                $client =~ s/\.$domain//;
+            my $client_name;
+            my $client_aliases;
+            my @clients;
+            if ($inet6support) {
+                ($client_name, $client_aliases) = gethostbyaddr($conn->peeraddr, AF_INET6);
+                unless ($client_name) {
+                    ($client_name, $client_aliases) = gethostbyaddr($conn->peeraddr, AF_INET);
+                }
             } else {
+                ($client_name, $client_aliases) = gethostbyaddr($conn->peeraddr, AF_INET);
+            }
+
+            unless ($client_name) {
+                die "XCATUNKOWNCLIENT"; # use die instead of next to avoid 'Exiting eval via next' message
+            }
+
+            $clients[0] = $client_name;
+            if ($client_aliases) {
+                push @clients, split(/\s+/, $client_aliases);
+            }
+
+            my $domain;
+            my %handled_client=();
+            foreach my $client (@clients) {
+                next if (exists $handled_client{$client});
+                $handled_client{$client}=1;
+                my @ndn         = ($client);
+                my $nd          = xCAT::NetworkUtils->getNodeDomains(\@ndn);
+                my %nodedomains = %{$nd};
+                $domain = $nodedomains{$client};
                 $client =~ s/\..*//;
-            }
+                if ($domain) {
+                    $client =~ s/\.$domain//;
+                } else {
+                    $client =~ s/\..*//;
+                }
 
-            # ensure this is coming from a node IP at least
-            ($node) = noderange($client);
-            if ($node) {    # Means the source isn't valid
-                $validclient = 1;
-                last;
+                # ensure this is coming from a node IP at least
+                ($node) = noderange($client);
+                if ($node) {    # Means the source isn't valid
+                    #$validclient = 1;
+                    xCAT::MsgUtils->trace(0, "I", "xcatd: $conn_peer_addr is matched with node $node");
+                    last;
+                }
+            }
+            unless ($node) {
+                xCAT::MsgUtils->trace(0, "E", "xcatd: received a connection request from $conn_peer_addr($client_name), which can not be found in xCAT nodelist table. The connection request will be ignored");
+            }
+        };
+        if ($@) {
+            $node = undef;
+            if ($@ =~ /XCATUNKOWNCLIENT/) {
+                xCAT::MsgUtils->trace(0, "E", "xcatd: received a connection request from unknown host with ip address $conn_peer_addr, please check whether the reverse name resolution works correctly. The connection request will be ignored");
             } else {
-                xCAT::MsgUtils->message("SE", "xcatd received a connection request from $client, which can not be found in xCAT nodelist table. The connection request will be ignored");
-                #print "xcatd received a connection request from $client, which can not be found in xCAT nodelist table. The connection request will be ignored\n";
+                xCAT::MsgUtils->trace(0, "E", "xcatd: possible BUG encountered by xCAT install monitor service: " . $@);
             }
-
         }
-
-        unless ($validclient) {
+        unless ($node) {
             close($conn);
+            sleep 0.01;
             next;
         }
         my $tftpdir = xCAT::TableUtils->getTftpDir();
@@ -469,6 +481,8 @@ sub do_installm_service {
                 alarm(0);
                 print $conn "done\n";
                 $text =~ s/\r//g;
+                # Clear IP-Name cache, Workaround (#4913) for IP changed cases.
+                xCAT::NetworkUtils->clearcache();
                 if ($text =~ /next/) {
                     my %request = (
                         command => ['nodeset'],
@@ -481,7 +495,6 @@ sub do_installm_service {
                     #unless ($pid) { # fork off the nodeset and potential slowness
                     xCAT::MsgUtils->trace(0, "I", "xcatd: triggering \'nodeset $node next\'...");
                     plugin_command(\%request, undef, \&build_response);
-
                     #exit(0);
                     #}
                     close($conn);
@@ -494,7 +507,7 @@ sub do_installm_service {
                             node    => [$node],
                             arg     => ["$newstat"],
                         );
-
+                        xCAT::MsgUtils->trace(0, "I", "xcatd: triggering \'updatenodestat $node $newstat\'...");
                         # node should be blocked, race condition may occur otherwise
                         #my $pid=xCAT::Utils->xfork();
                         #unless ($pid) { # fork off the nodeset and potential slowness
@@ -505,14 +518,17 @@ sub do_installm_service {
                     }
                     close($conn);
                 } elsif ($text =~ /^unlocktftpdir/) { # TODO: only nodes in install state should be allowed
+                    xCAT::MsgUtils->trace(0, "I", "xcatd: unlock tftpdir for $node...");
                     mkpath("$tftpdir/xcat/$node");
                     chmod 01777, "$tftpdir/xcat/$node";
                     chmod 0666,  glob("$tftpdir/xcat/$node/*");
                     close($conn);
                 } elsif ($text =~ /locktftpdir/) {
+                    xCAT::MsgUtils->trace(0, "I", "xcatd: lock tftpdir for $node...");
                     chmod 0755, "$tftpdir/xcat/$node";
                     chmod 0644, glob("$tftpdir/xcat/$node/*");
                 } elsif ($text =~ /^getpostscript/) {
+                    xCAT::MsgUtils->trace(0, "I", "xcatd: handle getpostscript requesting from $node...");
                     my $reply = plugin_command({ command => ['getpostscript'], _xcat_clienthost => [$node] }, undef, \&build_response);
                     foreach (@{ $reply->{data} }) {
                         print $conn $_;
@@ -520,10 +536,12 @@ sub do_installm_service {
                     print $conn "#END OF SCRIPT\n";
                     close($conn);
                 } elsif ($text =~ /^syncfiles/) {
+                    xCAT::MsgUtils->trace(0, "I", "xcatd: handle syncfiles requesting from $node...");
                     plugin_command({ command => ['syncfiles'], _xcat_clienthost => [$node] }, undef, \&build_response);
                     print $conn "syncfiles done\n";
                     close($conn);
                 } elsif ($text =~ /^setiscsiparms/) {
+                    xCAT::MsgUtils->trace(0, "I", "xcatd: handle setiscsiparms requesting from $node...");
                     $text =~ s/^setiscsiparms\s+//;
                     my $kname;
                     my $iname;
@@ -559,31 +577,44 @@ sub do_installm_service {
                         arg     => ["$text"],
                     );
 
+                    xCAT::MsgUtils->trace(0, "I", "xcatd: triggering \'updatenodeappstat $node $text\'...");
                     plugin_command(\%request, undef, \&build_response);
                     close($conn);
                 } elsif ($text =~ /basecustremv/) {
-
                     $text =~ s/basecustremv //;
                     chomp $text;
 
+                    xCAT::MsgUtils->trace(0, "I", "xcatd: handle basecustremv requesting for $text...");
                     # remove the BASECUST_REMOVAL line from /tftpboot/hostname.info file
                     my $myfile = "/tftpboot/$text" . ".info";
                     `/usr/bin/cat $myfile | /usr/bin/sed "/BASECUST_REMOVAL/d">/tmp/$text.nimtmp`;
                     `/usr/bin/mv /tmp/$text.nimtmp $myfile`;
                     close($conn);
+                } elsif ($text =~ /installmonitor/) {
+                    xCAT::MsgUtils->trace(0, "I", "xcatd: handle installmonitor requesting from $text...");
+                    close($conn);
+                } else {
+                    sleep 0.01;
+                    chomp $text;
+                    xCAT::MsgUtils->trace(0, "E", "xcatd: install monitor does not support \'$text\', the connection request from $conn_peer_addr will be ignored.");
+                    close($conn); #close it to avoid the DDOS attack
+                    alarm(2);
+                    next;
                 }
+                xCAT::MsgUtils->trace(0, "I", "xcatd: finish a connection request for $node from $conn_peer_addr");
                 alarm(2);
             }
             alarm(0);
         };
         if ($@) {
             if ($@ =~ /XCATTIMEOUT/) {
-                xCAT::MsgUtils->message("S", "xcatd: install monitor timed out talking to $node");
+                xCAT::MsgUtils->trace(0, "W", "xcatd: install monitor timed out talking to $node($conn_peer_addr)");
             } else {
-                xCAT::MsgUtils->message("S", "xcatd: possible BUG encountered by xCAT install monitor service: " . $@);
+                xCAT::MsgUtils->trace(0, "E", "xcatd: possible BUG encountered by xCAT install monitor service: " . $@);
                 close($conn);
             }
         }
+
     }
     if (open($installpidfile, "<", "/var/run/xcat/installservice.pid")) {
         my $pid = <$installpidfile>;
@@ -634,6 +665,7 @@ sub do_discovery_process {
     populate_vpd_hash();
     populate_mp_hash();
 
+    xCAT::MsgUtils->trace(0, "I", "xcatd: Discovery worker process $$ start");
     while (not $quit) {
         my $msg = fd_retrieve($broker);
         if ((time() - $vintage) > 15) {
@@ -745,6 +777,8 @@ sub do_udp_service {    # This function opens up a UDP port
     open($udppidfile, ">", "/var/run/xcat/udpservice.pid"); # if here, everyone else has unlinked udpservicepid or doesn't care
     print $udppidfile $$;
     close($udppidfile);
+    xCAT::MsgUtils->trace(0, "I", "xcatd: UDP listener process $$ start");
+
     $select->add($socket);
     $udpcontext->{socket} = $socket;
     $select->add($sslctl);
@@ -945,7 +979,8 @@ unless (xCAT::Utils->isLinux()) { # messes up the output of the service cmd on l
     };
 }
 if ($@) {
-    print "ERROR: $@";
+    #print "ERROR: $@";
+    xCAT::MsgUtils->trace(0, "E", "xcatd: possible BUG encountered: " . $@);
     xexit;
 }
 unless ($foreground) {
@@ -1229,7 +1264,7 @@ unless ($cmdlog_svrpid) {
     open($cmdlogpidfile, ">$cmdlogservicefile");
     print $cmdlogpidfile $$;
     close($cmdlogpidfile);
-    xCAT::MsgUtils->trace(0, "I", "xcatd: command log process $$ start");
+    xCAT::MsgUtils->trace(0, "I", "xcatd: Command log writer process $$ start");
 
     my $cmdlog_logfile_path = dirname($cmdlog_logfile);
     mkpath("$cmdlog_logfile_path") unless (-d "$cmdlog_logfile_path");
@@ -1411,7 +1446,7 @@ until ($quit) {
     if (@pendingconnections) {
         while ($listenwatcher->can_read(0)) { # grab everything we can, but don't spend any time waiting for more
             $tconn = $listener->accept;
-            unless ($tconn) { next; }
+            unless ($tconn) { sleep 0.01; next; } # increase max open file number might cause dead-loop here, sleep for a while
             push @pendingconnections, $tconn;
         }
     } else {
@@ -2791,11 +2826,15 @@ sub service_connection {
                     if ($peername) {
 
                         # for a valid account, get a token
+                        my $htime;
                         my ($tokenid, $exptime) = xCAT::xcatd->gettoken($req);
-                        my ($sec, $min, $hour, $mday, $mon, $year) = localtime($exptime);
-                        $year += 1900;
-                        $mon  += 1;
-                        my $htime = "$year-$mon-$mday $hour:$min:$sec";
+                        if ($exptime eq "never") {
+                            # If token expiration time was set to "never", return that to the user.
+                            $htime = $exptime;
+                        } else {
+                            # Token expiration is a unix DateTime, convert to readable string
+                            $htime = xCAT::Utils->time2string($exptime, "-");
+                        }
                         $resp = { data => [ { token => [ { id => $tokenid, expire => $htime } ] } ] };
                     } else {
                         $resp = { error => ["Authentication failure"], errorcode => [1] };

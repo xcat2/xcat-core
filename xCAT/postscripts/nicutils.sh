@@ -77,7 +77,7 @@ function log_lines {
 function log_error {
     local __msg="$*"
     $log_print_cmd $log_print_arg "[E]:Error: $__msg" 
-    return 0
+    return 1
 }
 
 ######################################################

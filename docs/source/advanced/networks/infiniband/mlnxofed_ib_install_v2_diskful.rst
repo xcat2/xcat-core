@@ -18,11 +18,11 @@ Diskful Installation
        chdef -t node -o <node_name> \ 
           -p postscripts="mlnxofed_ib_install -p /install/<path-to>/<MLNX_OFED_LINUX.iso>"
 
-   **[kernel mismatch issue]** The Mellanox OFED ISO is built against a series of specific kernel version.  If the version of the linux kernel does not match any of the Mellanox offered pre-built kernel modules, you can pass the ``--add-kernel-support`` argument to the Mellanox installation script to build the kernel modules based on the version you are using. ::
+   **[kernel mismatch issue]** The Mellanox OFED ISO is built against a series of specific kernel version.  If the version of the linux kernel does not match any of the Mellanox offered pre-built kernel modules, you can pass the ``--add-kernel-support --force`` argument to the Mellanox installation script to build the kernel modules based on the version you are using. ::
 
        chdef -t node -o <node_name> \ 
           -p postscripts="mlnxofed_ib_install -p /install/<path-to>/<MLNX_OFED_LINUX.iso> \
-          -m --add-kernel-support -end-"
+          -m --add-kernel-support --force -end-"
 
 #. Provision the node ::
 

@@ -1194,9 +1194,9 @@ sub xCATdB {
         # it's attribute 
         ##################################################
         if (exists($globalopt{pdu})) {
-            $ret = xCAT::Utils->runxcmd({ command => ['chdef'], arg => ['-t','node','-o',$host,"groups=$device","ip=$ip","mac=$mac","nodetype=$device","mgt=$device","usercomment=$vendor","pdutype=$stype"] }, $sub_req, 0, 1);
+            $ret = xCAT::Utils->runxcmd({ command => ['chdef'], arg => ['-t','node','-o',$host,"groups=$device","ip=$ip","mac=$mac","nodetype=$device","mgt=$device","usercomment=$vendor","pdutype=$stype","community=$community"] }, $sub_req, 0, 1);
         } else {
-            $ret = xCAT::Utils->runxcmd({ command => ['chdef'], arg => ['-t','node','-o',$host,"groups=$device","ip=$ip","mac=$mac","nodetype=$device","mgt=$device","usercomment=$vendor","switchtype=$stype"] }, $sub_req, 0, 1);
+            $ret = xCAT::Utils->runxcmd({ command => ['chdef'], arg => ['-t','node','-o',$host,"groups=$device","ip=$ip","mac=$mac","nodetype=$device","mgt=$device","usercomment=$vendor","switchtype=$stype","community=$community"] }, $sub_req, 0, 1);
         }
     }
 }
@@ -1407,9 +1407,9 @@ sub matchPredefineSwitch {
         # only write to xcatdb if -w or --setup option specified
         if ( (exists($globalopt{w})) || (exists($globalopt{setup})) ) {
             if (exists($globalopt{pdu})) {
-                xCAT::Utils->runxcmd({ command => ['chdef'], arg => ['-t','node','-o',$node,"otherinterfaces=$ip",'status=Matched',"mac=$mac","usercomment=$vendor","pdutype=$stype"] }, $sub_req, 0, 1);
+                xCAT::Utils->runxcmd({ command => ['chdef'], arg => ['-t','node','-o',$node,"otherinterfaces=$ip",'status=Matched',"mac=$mac","usercomment=$vendor","pdutype=$stype","community=$community"] }, $sub_req, 0, 1);
             } else {
-                xCAT::Utils->runxcmd({ command => ['chdef'], arg => ['-t','node','-o',$node,"otherinterfaces=$ip",'status=Matched',"mac=$mac","switchtype=$stype","usercomment=$vendor"] }, $sub_req, 0, 1);
+                xCAT::Utils->runxcmd({ command => ['chdef'], arg => ['-t','node','-o',$node,"otherinterfaces=$ip",'status=Matched',"mac=$mac","switchtype=$stype","usercomment=$vendor","community=$community"] }, $sub_req, 0, 1);
             }
         }
 
@@ -1439,32 +1439,48 @@ sub switchsetup {
         if ($nettab) {
             @nets = $nettab->getAllAttribs('net','mask');
         }
+        #get master from site table
+        my @entries = xCAT::TableUtils->get_site_attribute("master");
+        my $master  = $entries[0];
+
         foreach my $mytype (keys %$nodes_to_config) {
-            if ( $mytype eq "irpdu" ) {
-                send_msg($request, 0, "the setup options for irpdu is not support yet\n");
-            } elsif ( $mytype eq "crpdu" ) {
-                my $nodetab = xCAT::Table->new('hosts');
-                my $nodehash = $nodetab->getNodesAttribs(\@{${nodes_to_config}->{$mytype}},['ip','otherinterfaces']);
-                foreach my $pdu(@{${nodes_to_config}->{$mytype}}) {
-                    my $cmd = "rspconfig $pdu sshcfg"; 
-                    xCAT::Utils->runcmd($cmd, 0);
-                    my $ip = $nodehash->{$pdu}->[0]->{ip};
-                    my $mask;
-                    foreach my $net (@nets) {
-                        if (xCAT::NetworkUtils::isInSameSubnet( $net->{'net'}, $ip, $net->{'mask'}, 0)) {
-                            $mask=$net->{'mask'};
-                        }
-                    }
-                    $cmd = "rspconfig $pdu hostname=$pdu ip=$ip netmask=$mask";
-                    xCAT::Utils->runcmd($cmd, 0);
-                    if ($::RUNCMD_RC == 0) {
-                        xCAT::Utils->runxcmd({ command => ['chdef'], arg => ['-t','node','-o',$pdu,"ip=$ip","otherinterfaces="] }, $sub_req, 0, 1);
-                    } else {
-                        send_msg($request, 0, "Failed to run rspconfig command to set ip/netmask\n");
+            my $nodetab = xCAT::Table->new('hosts');
+            my $nodehash = $nodetab->getNodesAttribs(\@{${nodes_to_config}->{$mytype}},['ip','otherinterfaces']);
+            foreach my $pdu(@{${nodes_to_config}->{$mytype}}) {
+                my $ip = $nodehash->{$pdu}->[0]->{ip};
+                my $mask;
+                my $gateway = $master;
+                my @master_ips = xCAT::NetworkUtils->my_ip_facing($ip);
+                unless ($master_ips[0]) {
+                    $gateway = $master_ips[1];
+                }
+                foreach my $net (@nets) {
+                    if (xCAT::NetworkUtils::isInSameSubnet( $net->{'net'}, $ip, $net->{'mask'}, 0)) {
+                        $mask=$net->{'mask'};
                     }
                 }
-            } else {
-                send_msg($request, 0, "the pdu type $mytype is not support\n");
+                my $cmd;
+                my $rc = 0;
+                if ( $mytype eq "crpdu" ) {
+                    $cmd = "rspconfig $pdu sshcfg"; 
+                    send_msg($request, 0, "process command: $cmd\n");
+                    $rc = xCAT::Utils->runcmd($cmd, 0);
+                    $cmd = "rspconfig $pdu hostname=$pdu ip=$ip netmask=$mask";
+                    send_msg($request, 0, "process command: $cmd\n");
+                    $rc  = xCAT::Utils->runcmd($cmd, 0);
+                } elsif ( $mytype eq "irpdu" ) {
+                    $cmd = "rspconfig $pdu hostname=$pdu ip=$ip gateway=$gateway netmask=$mask";
+                    send_msg($request, 0, "process command: $cmd\n");
+                    $rc = xCAT::Utils->runcmd($cmd, 0);
+                } else {
+                    send_msg($request, 0, "the pdu type $mytype is not support\n");
+                    $rc = 1;
+                }
+                if ($rc == 0) {
+                    xCAT::Utils->runxcmd({ command => ['chdef'], arg => ['-t','node','-o',$pdu,'status=configured',"ip=$ip","otherinterfaces="] }, $sub_req, 0, 1);
+                } else {
+                    send_msg($request, 0, "Failed to run rspconfig command to set ip/netmask\n");
+                }
             }
         }
         return;
@@ -1475,20 +1491,20 @@ sub switchsetup {
         if (-r -x $config_script) {
             my $switches = join(",",@{${nodes_to_config}->{$mytype}});
             if ($mytype eq "onie") {
-                send_msg($request, 0, "Call to config $switches\n");
+                send_msg($request, 0, "Calling $config_script to configure $mytype switches  $switches...");
                 my $out = `$config_script --switches $switches --all`;
-                send_msg($request, 0, "output = $out\n");
+                send_msg($request, 0, "$out");
             } else {
-                send_msg($request, 0, "call to config $mytype switches $switches\n");
+                send_msg($request, 0, "Calling $config_script to configure $mytype switches $switches...");
                 if ($mytype =~ /Mellanox/) {
-                    send_msg($request, 0, "NOTE: If command takes too long for Mellanox IB switch, please CTRL C out of the command\n");
-                    send_msg($request, 0, "then run $config_script --switches $switches --all\n");
+                    send_msg($request, 0, "NOTE: If command takes too long for Mellanox IB switch, open another window and ping the switches being configured, once they are complete, ctrl-c out of this command");
+                    send_msg($request, 0, "then run $config_script --switches $switches --all again");
                 }
                 my $out = `$config_script --switches $switches --all`;
-                send_msg($request, 0, "output = $out\n");
+                send_msg($request, 0, "$out");
             }
         } else {
-            send_msg($request, 0, "the switch type $mytype is not support yet\n");
+            send_msg($request, 0, "the switch type $mytype is not support yet");
         }
     }
 

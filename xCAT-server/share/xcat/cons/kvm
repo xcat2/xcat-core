@@ -1,5 +1,6 @@
 #!/usr/bin/env perl
 # IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
+use strict;
 use Fcntl qw(:DEFAULT :flock);
 
 sub get_lock {
@@ -25,23 +26,22 @@ BEGIN
     use Fcntl qw(:DEFAULT :flock);
     $::XCATROOT = $ENV{'XCATROOT'} ? $ENV{'XCATROOT'} : '/opt/xcat';
     umask 0077;
-    mkpath("/tmp/xcat/");
-    unless (sysopen(LOCKHANDLE, "/tmp/xcat/consolelock", O_WRONLY | O_CREAT)) {
-        sleep 15;
-        print "Unable to open lock file";
-        exit 0;
-    }
-    get_lock();
-
 }
 
 my $sleepint;
 use lib "$::XCATROOT/lib/perl";
 require xCAT::Client;
-
+require xCAT::Utils;
 require File::Basename;
-import File::Basename;
+
 my $scriptname = $0;
+
+mkpath("/tmp/xcat/");
+unless (sysopen(LOCKHANDLE, "/tmp/xcat/consolelock", O_WRONLY | O_CREAT)) {
+    xCAT::Utils::console_sleep(15, "Unable to open lock file");
+    exit 0;
+}
+get_lock();
 
 my $cmdref = {
     command   => ["getcons"],
@@ -65,8 +65,7 @@ xCAT::Client::submit_request($cmdref, \&getans);
 until ($dsthost and $speed and $dstty) {
     release_lock();
     $sleepint = int(rand(30)) + 60;
-    print "Console not ready, retrying in $sleepint seconds (Ctrl-C to skip delay)\n";
-    exec "sleep $sleepint";
+    xCAT::Utils::console_sleep($sleepint, "Console not ready, retrying in $sleepint seconds ( Ctrl-E c o to skip delay)\n");
 }
 release_lock();
 

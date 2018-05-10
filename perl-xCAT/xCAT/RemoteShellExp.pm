@@ -541,7 +541,7 @@ sub sendnodeskeys
 
         # command to make the temp directory on the node
         my $spawnmkdir =
-          "$remoteshell $node -l $to_userid /bin/mkdir -p /tmp/$to_userid/.ssh";
+          "$remoteshell -o GlobalKnownHostsFile=/dev/null -o UserKnownHostsFile=/dev/null $node -l $to_userid  /bin/mkdir -p /tmp/$to_userid/.ssh";
 
         # command to copy the needed files to the node
 
@@ -588,6 +588,11 @@ sub sendnodeskeys
         ##########################################
         # Expect error - report
         ##########################################
+        if($rc==1){
+            my $rsp = {};
+            $rsp->{error}->[0] = "Permission denied, please make sure the user $to_userid has been created on the node $node and the input password is right\n";
+            xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
+        }        
         if (defined($result[1]))
         {
             my $msg = $result[1];
@@ -629,11 +634,11 @@ sub sendnodeskeys
         my $spawncopyfiles;
         if ($ENV{'DSH_ENABLE_SSH'}) {    # we will enable node to node ssh
             $spawncopyfiles =
-"$remotecopy $home/.ssh/id_rsa $home/.ssh/id_rsa.pub $home/.ssh/copy.sh $home/.ssh/tmp/authorized_keys $to_userid\@$node:/tmp/$to_userid/.ssh";
+"$remotecopy -o GlobalKnownHostsFile=/dev/null -o UserKnownHostsFile=/dev/null  $home/.ssh/id_rsa $home/.ssh/id_rsa.pub $home/.ssh/copy.sh $home/.ssh/tmp/authorized_keys $to_userid\@$node:/tmp/$to_userid/.ssh";
 
         } else {    # no node to node ssh ( don't send private key)
             $spawncopyfiles =
-"$remotecopy $home/.ssh/id_rsa.pub $home/.ssh/copy.sh $home/.ssh/tmp/authorized_keys $to_userid\@$node:/tmp/$to_userid/.ssh";
+"$remotecopy -o GlobalKnownHostsFile=/dev/null -o UserKnownHostsFile=/dev/null $home/.ssh/id_rsa.pub $home/.ssh/copy.sh $home/.ssh/tmp/authorized_keys $to_userid\@$node:/tmp/$to_userid/.ssh";
         }
 
         # send copy command
@@ -715,7 +720,7 @@ sub sendnodeskeys
 
         # command to run copy.sh
         my $spawnruncopy =
-          "$remoteshell $node -l $to_userid /tmp/$to_userid/.ssh/copy.sh $to_userid";
+          "$remoteshell -o GlobalKnownHostsFile=/dev/null -o UserKnownHostsFile=/dev/null  $node -l $to_userid /tmp/$to_userid/.ssh/copy.sh $to_userid";
 
         # send mkdir command
         unless ($sendkeys->spawn($spawnruncopy))

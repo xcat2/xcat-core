@@ -3894,6 +3894,42 @@ sub gettimezone
 
 #--------------------------------------------------------------------------------
 
+=head3   time2string
+    Return passed in time (in DateTime format) as a string in YYYY/MM/DD HH:MM:SS format
+    Arguments:
+      Unix DateTime as returned by time() for example
+      Optional Separator character for date, default is "/"
+    Returns:
+      String in YYYY/MM/DD HH:MM:SS format
+    Globals:
+      none
+    Error:
+      None
+    Example:
+      my $time_string = xCAT::Utils->time2string($time,"-");
+    Comments:
+      none
+=cut
+
+#--------------------------------------------------------------------------------
+sub time2string
+{
+     my $unixtime = shift;
+     my $date_separator;
+     if ($unixtime =~ /xCAT::Utils/)
+     {
+         $unixtime = shift;
+         $date_separator = shift // "/"; # Optional date separator, if not specified, default to "/"
+     }
+     my $time_separator = ":";
+
+     my ($sec, $min, $hour, $mday, $mon, $year) = localtime($unixtime);
+     $year += 1900;
+     $mon  += 1;
+     return $year . $date_separator . $mon . $date_separator . $mday . " " . $hour . $time_separator . $min . $time_separator . $sec;
+}
+#--------------------------------------------------------------------------------
+
 =head3  specialservicemgr 
     some special services cannot be processed in sysVinit, upstart and systemd framework, should be process here...
     Arguments:
@@ -4947,6 +4983,25 @@ sub natural_sort_cmp($$) {
             $right = $';
         }
     }
+}
+
+#--------------------------------------------------------------------------------
+
+=head3  console_sleep
+      A wrap for sleep subroutine, if goconserver is used, just exit immidiately
+      as goconserver has its own sleep mechanism.
+=cut
+
+#--------------------------------------------------------------------------------
+sub console_sleep {
+    my $time = shift;
+    my $message = shift;
+    if($ENV{CONSOLE_TYPE} && $ENV{CONSOLE_TYPE} eq "gocons") {
+        # sleep time is handled by goconserver itself
+        exit(1);
+    }
+    print $message if $message;
+    sleep($time);
 }
 
 1;

@@ -1,0 +1,156 @@
+start:supported_cmds_rpower
+description: Make sure the rpower command works ...
+os:Linux
+hcp:openbmc
+cmd:rpower $$CN state
+check:rc==0
+check:output=~$$CN: 
+cmd: rpower $$CN bmcstate
+check:rc==0
+check:output=~$$CN: BMC
+end
+
+start:supported_cmds_rinv
+description: Make sure that the rinv command works...
+os:Linux
+hcp:openbmc
+cmd: rinv $$CN
+check:rc==0
+check:output=~$$CN:
+cmd: rinv $$CN model
+check:rc==0
+check:output=~$$CN: SYSTEM Model
+cmd: rinv $$CN serial
+check:rc==0
+check:output=~$$CN: SYSTEM SerialNumber
+cmd: rinv $$CN firm
+check:rc==0
+check:output=~$$CN: Host Firmware
+check:output=~$$CN: BMC Firmware
+cmd: rinv $$CN cpu
+check:rc==0
+check:output=~$$CN: CPU
+cmd: rinv $$CN dimm
+check:rc==0
+check:output=~$$CN: DIMM
+end 
+
+start:supported_cmds_rvitals
+description: Make sure that the rvitals command works...
+os:Linux
+hcp:openbmc
+cmd: rvitals $$CN
+check:rc==0
+check:output=~$$CN:
+cmd: rvitals $$CN temp
+check:rc==0
+check:output=~$$CN: Ambient:
+cmd: rvitals $$CN voltage
+check:rc==0
+check:output=~$$CN: Ps0 Input Voltage:
+cmd: rvitals $$CN wattage
+check:rc==0
+check:output=~$$CN: Total Power:
+cmd: rvitals $$CN fanspeed
+check:rc==0
+check:output=~$$CN: Fan
+cmd: rvitals $$CN power
+check:rc==0
+check:output=~$$CN: Total Power:
+cmd: rvitals $$CN leds
+check:rc==0
+check:output=~$$CN: Front
+check:output=~$$CN: Front Fans
+check:output=~$$CN: Rear
+cmd: rvitals $$CN all
+check:rc==0
+check:output=~$$CN: Ambient:
+end 
+
+start:supported_cmds_rbeacon
+description: Make sure the rbeacon command works ...
+os:Linux
+hcp:openbmc
+cmd:rbeacon $$CN on
+check:rc==0
+check:output=~$$CN: on 
+cmd: rbeacon $$CN off
+check:rc==0
+check:output=~$$CN: off
+end
+
+start:supported_cmds_reventlog
+description: Make sure the reventlog command works ...
+os:Linux
+hcp:openbmc
+cmd:reventlog $$CN
+check:rc==0
+check:output=~$$CN:
+cmd: reventlog $$CN 1
+check:rc==0
+check:output=~$$CN:
+cmd: reventlog $$CN all
+check:rc==0
+check:output=~$$CN:
+end
+
+start:supported_cmds_rflash
+description: Make sure the rflash command works ...
+os:Linux
+hcp:openbmc
+cmd:rflash $$CN -c
+check:rc==0
+check:output=~$$CN: BMC Firmware Product:
+check:output=~$$CN: HOST Firmware Product:
+cmd:rflash $$CN -l
+check:rc==0
+check:output=~$$CN: ID
+end
+
+start:supported_cmds_rsetboot
+description: Make sure the rsetboot command works ...
+os:Linux
+hcp:openbmc
+cmd:rsetboot $$CN stat
+check:rc==0
+check:output=~$$CN:
+end
+
+start:supported_cmds_rspconfig
+description: Make sure the rspconfig command works ...
+os:Linux
+hcp:openbmc
+cmd:rspconfig $$CN ipsrc
+check:rc==0
+check:output=~$$CN: BMC IP Source:
+cmd:rspconfig $$CN ip
+check:rc==0
+check:output=~$$CN: BMC IP:
+cmd:rspconfig $$CN netmask
+check:rc==0
+check:output=~$$CN: BMC Netmask:
+cmd:rspconfig $$CN gateway
+check:rc==0
+check:output=~$$CN: BMC Gateway:
+cmd:rspconfig $$CN hostname
+check:rc==0
+check:output=~$$CN: BMC Hostname:
+cmd:rspconfig $$CN vlan
+check:rc==0
+check:output=~$$CN: BMC VLAN ID:
+cmd:rspconfig $$CN dump -l
+check:rc==0
+check:output=~$$CN:
+cmd:rspconfig $$CN powerrestorepolicy
+check:rc==0
+check:output=~$$CN: BMC PowerRestorePolicy
+cmd:rspconfig $$CN powersupplyredundancy
+check:rc==0
+check:output=~$$CN: BMC PowerSupplyRedundancy
+cmd:rspconfig $$CN autoreboot
+check:rc==0
+check:output=~$$CN: BMC AutoReboot
+cmd:rspconfig $$CN bootmode
+check:rc==0
+check:output=~$$CN: BMC BootMode
+end
