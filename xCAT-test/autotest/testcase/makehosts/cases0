@@ -183,7 +183,7 @@ cmd:mkdef -t node sn4b groups=compute
 check:rc==0
 cmd:mkdef -t group regextest ip="|\D+(\d+)\D+|20.80.1.($1*2+103)|" members=sn4b nichostnamesuffixes.eth0=-eth0 nicips.eth0="|\D+(\d+)\D+|10.80.1.($1*2+103)|" nicnetworks.eth0=10_0_0_0-255_0_0_0
 check:rc==0
-cmd:lsdef -t group regex
+cmd:lsdef -t group regextest
 check:rc==0
 cmd:makehosts sn4b
 check:rc==0
