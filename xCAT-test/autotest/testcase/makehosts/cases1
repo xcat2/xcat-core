@@ -1,0 +1,21 @@
+start:makehosts_regex
+description:Verify github issue #3409
+cmd:chdef tz0a,tz1a,tz2a groups=foo
+cmd:chdef foo 'ip=|\D+(\d+)\D+|10.80.1.($1*2+103)|' 'nicips.ib0=|\D+(\d+)\D+|10.160.1.($1*2+3)|' 'switchport=|\D+(\d+)\D+|($1+15)|'
+check:rc==0
+cmd:makehosts foo
+check:rc==0
+cmd:grep '^10\.80\.1\.103\stz0a' /etc/hosts
+check:rc==0
+cmd:grep '^10\.80\.1\.105\stz1a' /etc/hosts
+check:rc==0
+cmd:grep '^10\.80\.1\.107\stz2a' /etc/hosts
+check:rc==0
+cmd:grep '^10\.160\.1\.3\stz0a-ib0' /etc/hosts
+check:rc==0
+cmd:grep '^10\.160\.1\.5\stz1a-ib0' /etc/hosts
+check:rc==0
+cmd:grep '^10\.160\.1\.7\stz2a-ib0' /etc/hosts
+check:rc==0
+cmd:rmdef tz0a,tz1a,tz2a
+end
