@@ -133,7 +133,6 @@ elif [ $BUILDARCH = "ppc64" ]; then
            sed -i 's/ mkreiserfs//' $DRACUTMODDIR/install
            sed -i 's/ reiserfstune//' $DRACUTMODDIR/install
            sed -i 's/ vconfig//' $DRACUTMODDIR/install
-           sed -i 's/ ntp-wait//' $DRACUTMODDIR/install
         fi
         sed -i 's/ efibootmgr//' $DRACUTMODDIR/install
         sed -i 's/ dmidecode//' $DRACUTMODDIR/install
