@@ -10,10 +10,10 @@ class InventoryInterface(object):
     interface_type = 'inventory'
     version = '1.0'
 
-    def get_inventory_info(self, task, inventory_type=None):
+    def get_inventory_info(self, task, inventory_type=[]):
         """Return the inventory info of the task's nodes.
 
-        :param inventory_type: type of inventory info want to get.
+        :param inventory_type: array of type of inventory info want to get.
         :param task: a Task instance containing the nodes to act on.
         :return inventory info list
         """
