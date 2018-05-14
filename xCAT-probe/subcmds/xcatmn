@@ -136,9 +136,25 @@ sub do_main_job {
     print_check_result($checkpoint, "w", $rst, \@error);
     $rc |= $rst;
 
+    my $flag = "w";
+
+    #check linux ulimits configuration
+    ($rst, $flag) = check_ulimits(\$checkpoint, \@error);
+    print_check_result($checkpoint, $flag, $rst, \@error);
+    $rc |= $rst;
+
+    #check network parameter configuration
+    ($rst, $flag) = check_network_parameter(\$checkpoint, \@error);
+    print_check_result($checkpoint, $flag, $rst, \@error);
+    $rc |= $rst;
 
     #some sepecific check points in MN
     if (!$is_sn) {
+
+        #check xCAT daemon attributes configuration
+        ($rst, $flag) = check_deamon_attributes(\$checkpoint, \@error);
+        print_check_result($checkpoint, $flag, $rst, \@error);
+        $rc |= $rst;
 
         #check if log can be recorded in log file
         $rst        = check_log_record(\$checkpoint, \@error);
@@ -284,7 +300,11 @@ sub check_all_xcat_deamons {
 
     my $output = `ps aux 2>&1|grep -v grep|grep xcatd`;
     foreach my $deamon (@deamon_list) {
-        if ($output !~ /$deamon/) {
+        my $counter = $output =~ s/$deamon/$deamon/g;
+        if ($counter > 1) {
+            push @$error_ref, "More Deamon '$deamon' is running";
+            $rst = 1;
+        } elsif ($counter == 0) {
             push @$error_ref, "Deamon '$deamon' isn't running";
             $rst = 1;
         }
@@ -1041,6 +1061,104 @@ sub check_dhcp_leases {
 
     return $rst;
 }
+
+sub check_ulimits {
+    my $checkpoint_ref = shift;
+    my $error_ref      = shift;
+    my $rst            = 0;
+    my $rst_type       = "w";
+
+    $$checkpoint_ref = "Checking Linux ulimits configuration...";
+    @$error_ref = (); 
+
+    my $nofile_num = `sh -c 'ulimit -n' 2>&1`;
+    chomp($nofile_num);
+
+    my $process_id = `ps aux | grep "xcatd: SSL listener" | grep -v grep | awk -F' ' '{print \$2}'`;
+    chomp($process_id);
+    my $process_folder = "/proc/$process_id/fd/";
+
+    my $open_num = 0;
+    $open_num = `ls $process_folder | wc -l` if (-e $process_folder);
+    chomp($open_num);
+
+    my $percent = $open_num/$nofile_num;
+    if ($percent >= 1) {
+        push @$error_ref, "Opened too many files, please tuning linux ulimits as document";
+        $rst = 1;
+        $rst_type = "f"; 
+    } elsif ($percent >= 0.8) {
+        push @$error_ref, "Opened too many files, please tuning linux ulimits as document";
+        $rst = 1;
+    }
+    return ($rst, $rst_type);
+}
+
+sub check_network_parameter {
+    my $checkpoint_ref = shift;
+    my $error_ref      = shift;
+    my $rst            = 0;
+    my $rst_type       = "w";
+
+    $$checkpoint_ref = "Checking network kernel parameter configuration...";
+    @$error_ref = ();
+
+    my $net_set_file = "/etc/sysctl.conf";
+    my $net_gc_thresh = 512;
+    my $net_set_value = `cat $net_set_file | grep "net.ipv4.neigh.default.gc_thresh2" | awk -F'=' '{print \$2}' | tr '\n' ' ' | sed s/[[:space:]]//g`;
+    $net_gc_thresh = $net_set_value if ($net_set_value);
+
+    my $arp_num = `arp -a | wc -l`;
+    chomp($arp_num);
+
+    my $percent = $arp_num/$net_gc_thresh;
+    if ($percent >= 1) {
+        push @$error_ref, "Most ARP has been used, please tuning network parameter as document";
+        $rst = 1;
+        $rst_type = "f";
+    } elsif ($percent >= 0.8) {
+        push @$error_ref, "Most ARP has been used, please tuning network parameter as document";
+        $rst = 1;
+    }
+    return ($rst, $rst_type);
+}
+
+sub check_deamon_attributes {
+    my $checkpoint_ref = shift;
+    my $error_ref      = shift;
+    my $rst            = 0;
+    $rst_type          = "w";
+
+    $$checkpoint_ref = "Checking xCAT deamon attributes configuration...";
+    @$error_ref = ();
+
+    my $node_num = `nodels 2>&1 | wc -l`;
+    chomp($node_num);
+    my $xcatmaxconnections = 64;
+    my $xcatmaxbatchconnections = 50;
+
+    my @site_max_info = `lsdef -t site -i xcatmaxconnections,xcatmaxbatchconnections -c 2>&1`;
+    foreach my $site_max (@site_max_info) {
+        if ($site_max =~ /xcatmaxconnections=(\d+)/) {
+            $xcatmaxconnections_site = $1;
+        }
+        if ($site_max =~ /xcatmaxbatchconnections=(\d+)/) {
+            $xcatmaxbatchconnections_site = $1;
+        }
+    }
+
+    if ($xcatmaxconnections_site <= $xcatmaxbatchconnections_site) {
+        push @$error_ref, "Attribute xcatmaxbatchconnections must be less than xcatmaxconnections.";
+        $rst = 1;
+        $rst_type = "f";
+    } elsif ($xcatmaxconnections_site < $xcatmaxconnections or 
+             $xcatmaxbatchconnections_site < $xcatmaxbatchconnections and
+             $node_num >= 500) {
+        push @$error_ref, "Management nodes are more than 500, please tuning xCAT daemon attributes as document";
+        $rst = 1;
+    } 
+    return ($rst, $rst_type);
+} 
 
 sub returncmdoutput {
     my $rst       = shift;
