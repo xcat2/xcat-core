@@ -29,7 +29,9 @@ cmd:ls -l /install/netboot/__GETNODEATTR($$CN,os)__/__GETNODEATTR($$CN,arch)__/c
 check:rc==0
 cmd:packimage __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute
 check:rc==0
-cmd:ls -l /install/netboot/__GETNODEATTR($$CN,os)__/__GETNODEATTR($$CN,arch)__/compute;ls -l /install/netboot/__GETNODEATTR($$CN,os)__/__GETNODEATTR($$CN,arch)__/compute/rootimg.tar.gz
+cmd:ls -l /install/netboot/__GETNODEATTR($$CN,os)__/__GETNODEATTR($$CN,arch)__/compute
+check:rc==0
+cmd:ls -l /install/netboot/__GETNODEATTR($$CN,os)__/__GETNODEATTR($$CN,arch)__/compute/rootimg.tar.gz
 check:rc==0
 cmd:rm -rf /install/netboot/__GETNODEATTR($$CN,os)__/__GETNODEATTR($$CN,arch)__/compute/rootimg.tar.gz
 cmd:mv -f /rootimg.cpio.gz.bak /install/netboot/__GETNODEATTR($$CN,os)__/__GETNODEATTR($$CN,arch)__/compute/rootimg.cpio.gz
