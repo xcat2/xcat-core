@@ -73,8 +73,14 @@ sub preprocess_request {
     if (ref($extrargs)) {
         @exargs = @$extrargs;
     }
-    my $usage_string = xCAT::Usage->parseCommand($command, @exargs);
+    # Request usage for openbmc sections only
+    my $usage_string = xCAT::Usage->parseCommand($command . ".openbmc", @exargs);
+ 
     if ($usage_string) {
+        if ($usage_string =~ /cannot be found/) {
+            # Could not find usage for openbmc section, try getting usage for all sections
+            $usage_string = xCAT::Usage->parseCommand($command, @exargs);
+        }
         $callback->({ data => [$usage_string] });
         $request = {};
         return;
