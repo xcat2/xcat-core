@@ -67,6 +67,7 @@ check:output=~Writing node
 check:output=~$$bmcrange,.+,.+,$$bmcusername,$$bmcpasswd 
 end
 
+
 start:bmcdiscover_range_z
 cmd:bmcdiscover --range  $$bmcrange -u $$bmcusername -p $$bmcpasswd -z
 check:rc==0
