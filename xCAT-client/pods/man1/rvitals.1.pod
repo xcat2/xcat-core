@@ -32,7 +32,7 @@ B<rvitals> I<noderange> [B<temp>|B<voltage>|B<wattage>|B<fanspeed>|B<power>|B<le
 
 =head2 OpenPOWER (OpenBMC) specific:
 
-B<rvitals> I<noderange> [B<temp>|B<voltage>|B<wattage>|B<fanspeed>|B<power>|B<leds>|B<altitude>|B<all>]
+B<rvitals> I<noderange> [B<temp>|B<voltage>|B<wattage>|B<fanspeed>|B<power>|B<leds>|B<altitude>|B<all>] [B<-V>| B<--verbose>]
 
 =head1 B<Description>
 

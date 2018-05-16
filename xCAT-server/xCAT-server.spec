@@ -106,6 +106,7 @@ mkdir -p $RPM_BUILD_ROOT/%{prefix}/share/xcat/scripts
 mkdir -p $RPM_BUILD_ROOT/%{prefix}/share/xcat/samples
 mkdir -p $RPM_BUILD_ROOT/%{prefix}/share/xcat/tools
 mkdir -p $RPM_BUILD_ROOT/%{prefix}/share/xcat/cons
+mkdir -p $RPM_BUILD_ROOT/%{prefix}/share/xcat/conf
 mkdir -p $RPM_BUILD_ROOT/%{prefix}/share/xcat/rollupdate
 mkdir -p $RPM_BUILD_ROOT/%{prefix}/share/xcat/installp_bundles
 mkdir -p $RPM_BUILD_ROOT/%{prefix}/share/xcat/image_data
@@ -151,6 +152,7 @@ chmod 644 $RPM_BUILD_ROOT/%{prefix}/share/xcat/ca/*
 
 cp share/xcat/mypostscript/* $RPM_BUILD_ROOT/%{prefix}/share/xcat/mypostscript
 cp share/xcat/scripts/* $RPM_BUILD_ROOT/%{prefix}/share/xcat/scripts
+cp share/xcat/conf/* $RPM_BUILD_ROOT/%{prefix}/share/xcat/conf
 cp share/xcat/samples/* $RPM_BUILD_ROOT/%{prefix}/share/xcat/samples
 cp -r share/xcat/tools/* $RPM_BUILD_ROOT/%{prefix}/share/xcat/tools
 cp -r share/xcat/hamn/* $RPM_BUILD_ROOT/%{prefix}/share/xcat/hamn

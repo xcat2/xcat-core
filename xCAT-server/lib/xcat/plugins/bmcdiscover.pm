@@ -1053,7 +1053,7 @@ sub bmcdiscovery_ipmi {
     if ($output =~ $bmcstr) {
         store_fd({data=>1}, $fd);
 
-        if ($output =~ /RAKP 2 message indicates an error : (.+)\nError: (.+)/) {
+        if ($output =~ /RAKP \d+ message indicates an error : (.+)\nError: (.+)/) {
             xCAT::MsgUtils->message("W", { data => ["$2: $1 for $ip"] }, $::CALLBACK);
             return;
         }
@@ -1126,6 +1126,9 @@ sub bmcdiscovery_ipmi {
             return;
         } elsif ($output =~ /RAKP \S* \S* is invalid/) {
             xCAT::MsgUtils->message("W", { data => ["BMC password is incorrect for $ip"] }, $::CALLBACK);
+            return;
+        } else {
+            xCAT::MsgUtils->message("W", { data => ["Unknown error get from $ip"] }, $::CALLBACK);
             return;
         }
 

@@ -1,0 +1,123 @@
+start:SN_diskless_setup_case
+description:this case is used to test diskless service node installation
+os:Linux
+#stop:yes
+cmd:fdisk -l
+cmd:df -T
+cmd:XCAT_DATABASE=$$XCAT_DATABASE /opt/xcat/share/xcat/tools/autotest/testcase/installation/pre_deploy_sn __GETNODEATTR($$SN,os)__  __GETNODEATTR($$SN,arch)__
+check:rc==0
+cmd:chtab key=nameservers site.value="<xcatmaster>"
+check:rc==0
+cmd:makedns -n
+check:rc==0
+cmd:makeconservercf $$SN
+check:rc==0
+cmd:cat /etc/conserver.cf | grep $$SN
+check:output=~$$SN
+cmd:sleep 20
+cmd:if [[ "__GETNODEATTR($$SN,arch)__" = "ppc64" ]]; then getmacs -D $$SN -V; fi
+check:rc==0
+cmd:makedhcp -n
+check:rc==0
+cmd:makedhcp -a
+check:rc==0
+cmd:if cat /etc/*release |grep SUSE >/dev/null;then cat /var/lib/dhcp/db/dhcpd.leases|grep $$SN;elif cat /etc/*release |grep "Red Hat" >/dev/null;then cat /var/lib/dhcpd/dhcpd.leases|grep $$SN;fi
+check:output=~$$SN
+cmd:chdef -t node $$SN groups=service,all
+check:rc==0
+cmd:chdef -t group -o service profile=service  primarynic=mac installnic=mac
+check:rc==0
+cmd:chdef -t group -o service setupnfs=1 setupdhcp=1 setuptftp=1 setupnameserver=1 setupconserver=1 setupntp=1
+check:rc==0
+cmd:chdef -t group -o service nfsserver=$$MN tftpserver=$$MN xcatmaster=$$MN monserver=$$MN
+check:rc==0
+cmd:chtab node=service postscripts.postscripts="servicenode"
+check:rc==0
+
+cmd:if ! lsdef -t osimage |grep -q __GETNODEATTR($$SN,os)__-__GETNODEATTR($$SN,arch)__-netboot-compute; then copycds $$ISO; fi
+check:rc==0
+
+cmd:chdef -t site clustersite installloc="/install"
+check:rc==0
+
+
+cmd:cd /install/post/otherpkgs/__GETNODEATTR($$SN,os)__/__GETNODEATTR($$SN,arch)__/xcat/xcat-core && createrepo .
+check:rc==0
+
+cmd:if [[ "__GETNODEATTR($$SN,os)__" =~ "rh" ]]; then path="rh";elif [[ "__GETNODEATTR($$SN,os)__" =~ "sles" ]];then path="sles";fi; ver="__GETNODEATTR($$SN,os)__"; tmp=${ver%.*};ver=`echo "$tmp"|sed 's:[a-zA-Z]::g'`;cd /install/post/otherpkgs/__GETNODEATTR($$SN,os)__/__GETNODEATTR($$SN,arch)__/xcat/xcat-dep/$path$ver/__GETNODEATTR($$SN,arch)__ && createrepo .;
+check:rc==0
+
+cmd:mkdef -t osimage -o __GETNODEATTR($$SN,os)__-__GETNODEATTR($$SN,arch)__-netboot-service --template __GETNODEATTR($$SN,os)__-__GETNODEATTR($$SN,arch)__-netboot-compute  profile=service provmethod=netboot postscripts=servicenode
+check:rc==0
+
+cmd:chdef -t osimage __GETNODEATTR($$SN,os)__-__GETNODEATTR($$SN,arch)__-netboot-service otherpkgdir=/install/post/otherpkgs/__GETNODEATTR($$SN,os)__/__GETNODEATTR($$SN,arch)__
+check:rc==0
+
+cmd:if [[ "__GETNODEATTR($$SN,os)__" =~ "rh" ]]; then path="rh";elif [[ "__GETNODEATTR($$SN,os)__" =~ "sles" ]];then path="sles";fi; ver="__GETNODEATTR($$SN,os)__"; chdef -t osimage __GETNODEATTR($$SN,os)__-__GETNODEATTR($$SN,arch)__-netboot-service otherpkglist=/opt/xcat/share/xcat/netboot/$path/service.${ver%.*}.__GETNODEATTR($$SN,arch)__.otherpkgs.pkglist pkglist=/opt/xcat/share/xcat/netboot/$path/service.${ver%.*}.__GETNODEATTR($$SN,arch)__.pkglist exlist=/opt/xcat/share/xcat/netboot/$path/service.${ver%.*}.__GETNODEATTR($$SN,arch)__.exlist postinstall=/opt/xcat/share/xcat/netboot/$path/service.${ver%.*}.__GETNODEATTR($$SN,arch)__.postinstall; echo "xcat/xcat-core/xCAT-openbmc-py" >> /opt/xcat/share/xcat/netboot/$path/service.${ver%.*}.__GETNODEATTR($$SN,arch)__.otherpkgs.pkglist; cat /opt/xcat/share/xcat/netboot/$path/service.${ver%.*}.__GETNODEATTR($$SN,arch)__.otherpkgs.pkglist
+check:rc==0
+
+
+cmd:path="/install/netboot/__GETNODEATTR($$SN,os)__/__GETNODEATTR($$SN,arch)__/service"; if [ -d "$path" ]; then mv $path $path."org"; fi; mkdir -p $path 
+check:rc==0
+cmd:chdef -t osimage __GETNODEATTR($$SN,os)__-__GETNODEATTR($$SN,arch)__-netboot-service rootimgdir=/install/netboot/__GETNODEATTR($$SN,os)__/__GETNODEATTR($$SN,arch)__/service
+check:rc==0
+
+cmd:chdef -t osimage __GETNODEATTR($$SN,os)__-__GETNODEATTR($$SN,arch)__-netboot-service -p pkgdir=$$PYTHON_DEP_EPEL_DIR,$$PYTHON_DEP_EXTRAS_DIR,$$PYTHON_DEP_FED_DIR
+check:rc==0
+
+cmd:lsdef -t osimage __GETNODEATTR($$SN,os)__-__GETNODEATTR($$SN,arch)__-netboot-service
+check:rc==0
+
+
+cmd:if [ ! -d /tmp/mountoutput ]; then mkdir -p /tmp/mountoutput; fi
+cmd:mount |sort > /tmp/mountoutput/file.org
+
+cmd:genimage __GETNODEATTR($$SN,os)__-__GETNODEATTR($$SN,arch)__-netboot-service 
+check:rc==0
+
+cmd:mount |sort > /tmp/mountoutput/file.new
+cmd:diff -y /tmp/mountoutput/file.org /tmp/mountoutput/file.new
+check:rc==0
+cmd:rm -rf /tmp/mountoutput
+
+cmd:packimage __GETNODEATTR($$SN,os)__-__GETNODEATTR($$SN,arch)__-netboot-service 
+check:rc==0
+
+cmd:rinstall $$SN osimage=__GETNODEATTR($$SN,os)__-__GETNODEATTR($$SN,arch)__-netboot-service
+check:rc==0
+check:output=~Provision node\(s\)\: $$SN
+
+
+cmd:if [[ -f /var/lib/dhcp/db/dhcpd.leases ]]; then cat /var/lib/dhcp/db/dhcpd.leases; elif [[ -f /var/lib/dhcpd/dhcpd.leases ]];then cat /var/lib/dhcpd/dhcpd.leases;elif [[ -f /var/lib/dhcp/dhcpd.leases ]];then cat /var/lib/dhcp/dhcpd.leases; fi
+
+cmd:sleep 180
+
+cmd:a=0;while ! `lsdef -l $$SN|grep status|grep booted >/dev/null`; do sleep 10;((a++));if [ $a -gt 60 ];then break;fi done
+
+cmd:ping $$SN -c 3
+check:rc==0
+check:output=~64 bytes from $$SN
+cmd:lsdef -l $$SN | grep status
+check:rc==0
+check:output=~booted
+cmd:xdsh $$SN date
+check:rc==0
+check:output=~\d\d:\d\d:\d\d
+cmd:xdsh $$SN mount
+check:rc==0
+check:output=~on / type tmpfs
+cmd:xdsh $$SN rpm -qa|grep "xCAT-openbmc-py"
+check:rc==0
+check:output=~xCAT-openbmc-py-\d
+cmd:xdsh $$SN rpm -qa|grep "gevent"
+check:rc==0
+check:output=~ gevent-\d
+cmd:xdsh $$SN "service httpd status"
+check:rc==0
+cmd:xdsh $$SN "service systemd status"
+#check:rc==0
+cmd:xdsh $$SN  "cat /var/log/xcat/xcat.log"
+cmd:rootimgdir=`lsdef -t osimage  __GETNODEATTR($$SN,os)__-__GETNODEATTR($$SN,arch)__-netboot-service|grep rootimgdir|awk -F'=' '{print $2}'`; if [ -d $rootimgdir.org ]; then rm -rf $rootimgdir; mv $rootimgdir.org $rootimgdir; fi
+check:rc==0
+cmd:xdsh $$SN  "cat /var/log/xcat/xcat.log"
+end

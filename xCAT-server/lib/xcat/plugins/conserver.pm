@@ -201,14 +201,16 @@ sub preprocess_request {
 sub process_request {
     my $req = shift;
     my $cb  = shift;
+    $::callback = $cb;
     if ($req->{command}->[0] eq "makeconservercf") {
         if (-x "/usr/bin/goconserver") {
             require xCAT::Goconserver;
             if (xCAT::Goconserver::is_goconserver_running()) {
-                my $rsp->{data}->[0] = "goconserver is started, please stop it at first.";
+                my $rsp->{data}->[0] = "goconserver is being used as the console service, did you mean: makegocons <noderange>? If not, stop goconserver and retry.";
                 xCAT::MsgUtils->message("E", $rsp, $cb);
                 return;
             }
+            xCAT::Goconserver::switch_conserver($cb);
         }
         makeconservercf($req, $cb);
     }
@@ -601,6 +603,10 @@ sub donodeent {
 
             # either there is no console method (shouldnt happen) or not one of the supported terminal servers
             return $node;
+        }
+        if (!grep(/^$cmeth$/, @cservers) && ! -x $::XCATROOT . "/share/xcat/cons/" . $cmeth) {
+            xCAT::SvrUtils::sendmsg([ 0, "ignore, ". $::XCATROOT . "/share/xcat/cons/$cmeth is not excutable. Please check mgt or cons attribute." ], $::callback, $node);
+            next;
         }
         push @$content, "#xCAT BEGIN $node CONS\n";
         push @$content, "console $node {\n";

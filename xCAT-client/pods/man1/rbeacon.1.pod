@@ -17,12 +17,12 @@ B<rbeacon> I<noderange> {B<on>|B<blink>|B<off>|B<stat>}
 
 =head2 OpenPOWER OpenBMC:
 
-B<rbeacon> I<noderange> {B<on>|B<off>}
+B<rbeacon> I<noderange> {B<on>|B<off>|B<stat>}
 
 
 =head1 DESCRIPTION
 
-B<rbeacon> Turns beacon (a light on the front of the physical server) on/off/blink or gives status of a node or noderange.
+B<rbeacon> Turns beacon (a light on the front and/or rear of the physical server) on/off/blink or gives status of a node or noderange.
 
 =head1 EXAMPLES
 

@@ -306,6 +306,37 @@ sub preprocess_updatenode
         return;
     }
 
+
+    # get server names as known by the nodes
+    my %servernodes =
+      %{ xCAT::InstUtils->get_server_nodes($callback, $request->{node},1) };
+
+    # it's possible that the nodes could have diff server names
+    # do all the nodes for a particular server at once
+
+    my @invalidnodes;
+    if($servernodes{undef}){
+        push @invalidnodes,@{$servernodes{undef}};
+    }
+
+    if ($servernodes{""}){
+        push @invalidnodes,@{$servernodes{""}};
+    }
+
+    if (@invalidnodes){
+        my %allnodes=map {$_,1} @{$request->{node}};
+        foreach my $node (@invalidnodes){
+           xCAT::MsgUtils->report_node_error($callback,$node,"Could not determine or resolve xcatmaster for $node. Will skip this node.");
+           delete $allnodes{$node};
+        }
+        $request->{node}=[];
+        push @{$request->{node}}, map  $_ ,keys %allnodes;
+    }
+
+    unless (scalar @{$request->{node}}){
+        return;
+    }
+
     # preprocess generate mypostscripts files (-g) for hierarchy
     # if no sharedtftp then we need to broadcast this updatenode -g to all service nodes inorder
     # to be able to support service node pools
@@ -1534,6 +1565,7 @@ sub updatenoderunps
         if ((!defined($snkey)) or ($snkey eq "")) { # if we could not find the xcatmaster
 
             my $rsp = {};
+            $rsp->{errorcode}->[0]=1;
             $rsp->{error}->[0] = "Could not find xcatmaster for @{$servernodes{$snkey}}. Will skip this node. ";
             $callback->($rsp);
             next;

@@ -211,35 +211,58 @@ check:rc==0
 end
 
 start:updatenode_syncfile_MERGE
-cmd:echo "bin:x:1:1:bin:/bin:/bin/bash" > /tmp/passwd
-cmd:echo "test:x:1:1:bin:/bin:/bin/bash" >> /tmp/passwd
-cmd:echo "bin:*:15385::::::" > /tmp/shadow
-cmd:echo "test:*:15385::::::" >> /tmp/shadow
-cmd:echo "bin:x:1:daemon" > /tmp/group
-cmd:echo "test:x:1:daemon" >> /tmp/group
-cmd:echo "MERGE:" > /install/custom/install/__GETNODEATTR($$CN,os)__/compute.$$OS.synclist
-cmd:echo "/tmp/passwd -> /etc/passwd" >> /install/custom/install/__GETNODEATTR($$CN,os)__/compute.$$OS.synclist
-cmd:echo "/tmp/shadow -> /etc/shadow" >> /install/custom/install/__GETNODEATTR($$CN,os)__/compute.$$OS.synclist
-cmd:echo "/tmp/group -> /etc/group" >> /install/custom/install/__GETNODEATTR($$CN,os)__/compute.$$OS.synclist
-cmd:chdef -t osimage -o __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-install-compute synclists=/install/custom/install/__GETNODEATTR($$CN,os)__/compute.$$OS.synclist
+cmd:mkdir -p /tmp/updatenode_syncfile_MERGE
+check:rc==0
+cmd:xdsh $$CN "mkdir -p /tmp/updatenode_syncfile_MERGE"
+check:rc==0
+cmd:xdsh $$CN "cp /etc/passwd /etc/shadow /etc/group /tmp/updatenode_syncfile_MERGE"
+check:rc==0
+cmd:xdsh $$CN "groupadd -g 19999 bogusgroup"
+check:rc==0
+cmd:xdsh $$CN "useradd  -g bogusgroup  bogususer"
+check:rc==0
+cmd:xdsh $$CN "grep bogususer /etc/passwd"
+cmd:xdsh $$CN "grep bogususer /etc/shadow"
+cmd:xdsh $$CN "grep bogusgroup /etc/group"
+cmd:echo "bogususer:x:1000:19998::/home/bogususer:/bin/bash" > /tmp/updatenode_syncfile_MERGE/passwd
+cmd:echo "bogususer1:x:1001:19998::/home/bogususer1:/bin/bash" >> /tmp/updatenode_syncfile_MERGE/passwd
+cmd:echo "bogususer:*:15385::::::" > /tmp/updatenode_syncfile_MERGE/shadow
+cmd:echo "bogususer1:*:15385::::::" >> /tmp/updatenode_syncfile_MERGE/shadow
+cmd:echo "bogusgroup:x:29999:" > /tmp/updatenode_syncfile_MERGE/group
+cmd:echo "bogusgroup1:x:19998:" >> /tmp/updatenode_syncfile_MERGE/group
+cmd:echo "MERGE:" > /tmp/updatenode_syncfile_MERGE/compute.synclist
+cmd:echo "/tmp/updatenode_syncfile_MERGE/passwd -> /etc/passwd" >> /tmp/updatenode_syncfile_MERGE/compute.synclist
+cmd:echo "/tmp/updatenode_syncfile_MERGE/shadow -> /etc/shadow" >> /tmp/updatenode_syncfile_MERGE/compute.synclist
+cmd:echo "/tmp/updatenode_syncfile_MERGE/group -> /etc/group" >> /tmp/updatenode_syncfile_MERGE/compute.synclist
+cmd:cat   /tmp/updatenode_syncfile_MERGE/compute.synclist
+cmd:chdef -t osimage -o __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-install-compute synclists=/tmp/updatenode_syncfile_MERGE/compute.synclist
 check:rc==0
 cmd:updatenode $$CN -F
 check:rc==0
-cmd:xdsh $$CN "cat /etc/passwd |grep -i \"bin:x:1:1:bin:/bin:/bin/bash\"|wc -l"
-check:output=~1
-cmd:xdsh $$CN "cat /etc/passwd |grep -i \"test:x:1:1:bin:/bin:/bin/bash\""
+cmd:xdsh $$CN "cat /etc/passwd |grep -i \"bogususer1:x:1001:19998::/home/bogususer1:/bin/bash\""
 check:rc==0
-cmd:xdsh $$CN "cat /etc/shadow |grep -i \"bin:*:15385::::::\"|wc -l"
-check:output=~1
-cmd:xdsh $$CN "cat /etc/shadow |grep -i test"
+cmd:xdsh $$CN "cat /etc/passwd |grep -i bogususer||grep -v -i bogususer1|grep 19998"
 check:rc==0
-cmd:xdsh $$CN "cat /etc/group |grep -i \"bin:x:1:daemon\"|wc -l" 
+cmd:xdsh $$CN "cat /etc/shadow |grep -i \"bogususer:\*:15385::::::\""
+check:rc==0
+cmd:xdsh $$CN "cat /etc/shadow |grep -i \"bogususer1:\*:15385::::::\""
+check:rc==0
+cmd:xdsh $$CN "cat /etc/group |grep -i bogusgroup1|grep 19998" 
 check:output=~1
-cmd:xdsh $$CN "cat /etc/group |grep -i test"
+cmd:xdsh $$CN "cat /etc/group |grep -i bogusgroup|grep 29999" 
+check:rc==0
+cmd:xdsh $$CN "mv -f /tmp/updatenode_syncfile_MERGE/passwd /etc/passwd"
+check:rc==0 
+cmd:xdsh $$CN "mv -f /tmp/updatenode_syncfile_MERGE/group /etc/group"
+check:rc==0
+cmd:xdsh $$CN "mv -f /tmp/updatenode_syncfile_MERGE/shadow /etc/shadow"
+check:rc==0
+cmd:xdsh  $$CN "rm -rf /tmp/updatenode_syncfile_MERGE"
 check:rc==0
 cmd:chdef -t osimage -o  __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-install-compute synclists=
 check:rc==0
-cmd:rm -rf /install/custom/install/__GETNODEATTR($$CN,os)__/compute.$$OS.synclist
+cmd:rm -rf /tmp/updatenode_syncfile_MERGE 
+check:rc==0
 end
 
 start:updatenode_P_script1

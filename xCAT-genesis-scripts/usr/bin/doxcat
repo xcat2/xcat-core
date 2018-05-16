@@ -360,17 +360,17 @@ while :; do
 		logger -s -t $log_label -p local4.info "Running nextdestiny $XCATMASTER:$XCATPORT..."
 		destiny=`/bin/nextdestiny $XCATMASTER:$XCATPORT`
 		logger -s -t $log_label -p local4.info "nextdestiny - Complete."
+        elif [ "$dest" = ondiscover ]; then
+		logger -s -t $log_label -p local4.info "Running nextdestiny (ondiscover) $XCATMASTER:$XCATPORT..."
+		destiny=`/bin/nextdestiny $XCATMASTER:$XCATPORT`
+		logger -s -t $log_label -p local4.info "nextdestiny (ondiscover) - Complete."
 	elif [ "$dest" = runcmd ]; then
+		$destparameter
 		logger -s -t $log_label -p local4.info "Running nextdestiny $XCATMASTER:$XCATPORT..."
 		destiny=`/bin/nextdestiny $XCATMASTER:$XCATPORT`
 		dest=`echo $destiny|awk -F= '{print $1}'`
-		$destparameter
 		logger -s -t $log_label -p local4.info "nextdestiny - Complete."
 	elif [ "$dest" = runimage ]; then
-		logger -s -t $log_label -p local4.info "Running nextdestiny $XCATMASTER:$XCATPORT..."
-		destiny=`/bin/nextdestiny $XCATMASTER:$XCATPORT`
-		dest=`echo $destiny|awk -F= '{print $1}'`
-		logger -s -t $log_label -p local4.info "nextdestiny - Complete."
 		mkdir /tmp/`basename $destparameter`
 		cd /tmp/`basename $destparameter`
 		eval destparameter=$destparameter
@@ -390,12 +390,20 @@ while :; do
 		tar xvf `basename $destparameter`
 		./runme.sh
 		cd -
+                logger -s -t $log_label -p local4.info "Running nextdestiny $XCATMASTER:$XCATPORT..."
+		destiny=`/bin/nextdestiny $XCATMASTER:$XCATPORT`
+		dest=`echo $destiny|awk -F= '{print $1}'`
+		logger -s -t $log_label -p local4.info "nextdestiny - Complete."
+
 	elif [ "$dest" = "reboot" -o "$dest" = "boot" ]; then
 		logger -s -t $log_label -p local4.info "Running nextdestiny $XCATMASTER:$XCATPORT..."
 		/bin/nextdestiny $XCATMASTER:$XCATPORT
 		logger -s -t $log_label -p local4.info "nextdestiny - Complete."
 		if [ $IPMI_SUPPORT -ne 0 ]; then
-		    ipmitool chassis bootdev pxe
+                    # Set boot from network will cause OpenPOWER server wait at petitboot menu, so do nothing here
+                    if uname -m | grep x86_64; then
+		        ipmitool chassis bootdev pxe
+                    fi
 		fi
 		reboot -f
 	elif [ "$dest" = "install" -o "$dest" = "netboot" ]; then

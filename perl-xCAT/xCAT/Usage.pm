@@ -86,7 +86,7 @@ my %usage = (
     ",
     "rbeacon.openbmc" =>
     "OpenPOWER (OpenBMC) specific:
-       rbeacon [on|off]
+       rbeacon [on|off|stat]
     ",    
     "rvitals" => "",
     "rvitals.common" =>
@@ -185,6 +185,16 @@ my %usage = (
        rspconfig <noderange> [hostname|ntpservers]
        rspconfig <noderange> [hostname=<*|hostname>|ntpservers=<ntpservers>]
        rspconfig <noderange> sshcfg
+       rspconfig <noderange> powerrestorepolicy
+       rspconfig <noderange> powerrestorepolicy={always_on|restore|always_off}
+       rspconfig <noderange> powersupplyredundancy
+       rspconfig <noderange> powersupplyredundancy={disabled|enabled}
+       rspconfig <noderange> timesyncmethod
+       rspconfig <noderange> timesyncmethod={ntp|manual}
+       rspconfig <noderange> bootmode
+       rspconfig <noderange> bootmode={safe|regular|setup}
+       rspconfig <noderange> autoreboot
+       rspconfig <noderange> autoreboot={0|1}
 ",
     "rspconfig.begin" =>
    "BMC/MPA Common:

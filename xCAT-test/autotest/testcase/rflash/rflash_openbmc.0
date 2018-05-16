@@ -448,22 +448,19 @@ check:rc != 0
 cmd:mkdir -p /tmp/bogus123
 check:rc == 0
 cmd:rflash $$CN /tmp/bogus123 -d
-check:output =~Error: No BMC tar file found
-check:output =~Error: No PNOR tar file found
+check:output =~Error: No BMC tar file found|Can't open directory
 check:output!~Attempting to
 check:rc != 0
 cmd:touch /tmp/bogus123/obmc-phosphor-image-witherspoon.ubi.mtd.tar 
 check:rc == 0
 cmd:rflash $$CN -d /tmp/bogus123
-check:output =~Error: No BMC tar file found
-check:output =~Error: No PNOR tar file found
+check:output =~Error: No BMC tar file found|Can't open directory
 check:output!~Attempting to
 check:rc != 0
 cmd:touch /tmp/bogus123/witherspoon.pnor.squashfs.tar 
 check:rc == 0
 cmd:rflash $$CN -d /tmp/bogus123
-check:output =~Error: No BMC tar file found
-check:output =~Error: No PNOR tar file found
+check:output =~Error: No BMC tar file found|Can't open directory
 check:output!~Attempting to
 check:rc != 0
 cmd:rm -rf /tmp/bogus123

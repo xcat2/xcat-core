@@ -255,7 +255,7 @@ sub run_cmd_in_perl {
     }
 
     # List of commands currently not supported in Python
-    my @unsupported_in_python_commands = ('rflash', 'rspconfig', 'reventlog');
+    my @unsupported_in_python_commands = ('rflash', 'getopenbmccons');
 
     if ($command ~~ @unsupported_in_python_commands) {
         # Command currently not supported in Python

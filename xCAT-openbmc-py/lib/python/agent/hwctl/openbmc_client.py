@@ -145,15 +145,15 @@ BOOTSOURCE_SET_STATE = {
 
 FIRM_URLS = {
     "activate"  : {
-        "path"   : "/software/%(id)s/attr/RequestedActivation",
-        "field" : "Software.Activation.RequestedActivations.Active",
+        "path"   : "/software/%s/attr/RequestedActivation",
+        "field" : "xyz.openbmc_project.Software.Activation.RequestedActivations.Active",
     },
     "delete"    : {
-        "path"   : "/software/%(id)s/action/Delete",
+        "path"   : "/software/%s/action/Delete",
         "field" : [],
     },
     "priority"  : {
-        "path"   : "/software/%(id)s/attr/Priority",
+        "path"   : "/software/%s/attr/Priority",
         "field" : False,
     },
     "list"      : {
@@ -162,11 +162,14 @@ FIRM_URLS = {
 }
 
 RSPCONFIG_NETINFO_URL = {
+    'delete_ip_object': "/network/#NIC#/ipv4/#OBJ#",
+    'disable_dhcp': "/network/#NIC#/attr/DHCPEnabled",
     'get_netinfo': "/network/enumerate",
-    'nic_ip': "/network/#NIC#/action/IP",
-    'vlan': "/network/action/VLAN",
+    'get_nic_netinfo': "/network/#NIC#/ipv4/enumerate",
     'ipdhcp': "/network/action/Reset",
+    'nic_ip': "/network/#NIC#/action/IP",
     'ntpservers': "/network/#NIC#/attr/NTPServers",
+    'vlan': "/network/action/VLAN",
 }
 
 PASSWD_URL = '/user/root/action/SetPassword'
@@ -178,27 +181,31 @@ RSPCONFIG_APIS = {
         'display_name': "BMC Hostname",
     },
     'autoreboot' : {
-        'baseurl': "/control/host0/auto_reboot/",
-        'set_url': "attr/AutoReboot",
-        'get_url': "attr/AutoReboot",
+        'baseurl': "/control/host0/auto_reboot",
+        'set_url': "/attr/AutoReboot",
+        'get_url': "",
         'display_name': "BMC AutoReboot",
+        'attr_values': {
+            '0': False,
+            '1': True,
+         },
     },
     'powersupplyredundancy':{
         'baseurl': "/sensors/chassis/PowerSupplyRedundancy/",
-        'set_url': "/action/setValue",
-        'get_url': "/action/getValue",
+        'set_url': "action/setValue",
+        'get_url': "action/getValue",
         'get_method': 'POST',
-        'get_data': '[]',
+        'get_data': [],
         'display_name': "BMC PowerSupplyRedundancy",
         'attr_values': {
-            'disabled': "Disables",
-            'enabled': "Enabled",
+            'disabled': ["Disabled"],
+            'enabled': ["Enabled"],
         },
     },
     'powerrestorepolicy': {
-        'baseurl': "/control/host0/power_restore_policy/",
-        'set_url': "attr/PowerRestorePolicy",
-        'get_url': "attr/PowerRestorePolicy",
+        'baseurl': "/control/host0/power_restore_policy",
+        'set_url': "/attr/PowerRestorePolicy",
+        'get_url': "",
         'display_name': "BMC PowerRestorePolicy",
          'attr_values': {
              'restore': "xyz.openbmc_project.Control.Power.RestorePolicy.Policy.Restore",
@@ -207,9 +214,9 @@ RSPCONFIG_APIS = {
          },
     },
     'bootmode': {
-        'baseurl': "/control/host0/boot/",
-        'set_url': "attr/BootMode",
-        'get_url': "attr/BootMode",
+        'baseurl': "/control/host0/boot",
+        'set_url': "/attr/BootMode",
+        'get_url': "",
         'display_name':"BMC BootMode",
         'attr_values': {
             'regular': "xyz.openbmc_project.Control.Boot.Mode.Modes.Regular",
@@ -217,9 +224,24 @@ RSPCONFIG_APIS = {
             'setup': "xyz.openbmc_project.Control.Boot.Mode.Modes.Setup",
         },
     },
+    'timesyncmethod': {
+        'baseurl': '/time/sync_method',
+        'get_url': '',
+        'set_url': '/attr/TimeSyncMethod',
+        'display_name': 'BMC TimeSyncMethod',
+        'attr_values': {
+            'ntp': 'xyz.openbmc_project.Time.Synchronization.Method.NTP',
+            'manual': 'xyz.openbmc_project.Time.Synchronization.Method.Manual',
+        },
+    },
 }
 
-EVENTLOG_URL      = "/logging/enumerate"
+EVENTLOG_URLS     = {
+        "list":      "/logging/enumerate",
+        "clear_all": "/logging/action/deleteAll",
+        "resolve":   "/logging/entry/{}/attr/Resolved",
+}
+
 RAS_POLICY_TABLE  = "/opt/ibm/ras/lib/policyTable.json"
 RAS_POLICY_MSG    = "Install the OpenBMC RAS package to obtain more details logging messages."
 RAS_NOT_FOUND_MSG = " Not found in policy table: "
@@ -251,13 +273,18 @@ class OpenBMCRest(object):
         self.root_url = HTTP_PROTOCOL + self.bmcip + PROJECT_URL
         self.download_root_url = HTTP_PROTOCOL + self.bmcip + '/'
 
-    def _print_record_log (self, msg, cmd):
+    def _print_record_log (self, msg, cmd, error_flag=False):
 
-        if self.verbose :
+        if self.verbose or error_flag:
             localtime = time.asctime( time.localtime(time.time()) )
             log = self.name + ': [openbmc_debug] ' + cmd + ' ' + msg
-            self.messager.info(localtime + ' ' + log)
+            if self.verbose:
+                self.messager.info(localtime + ' ' + log)
             logger.debug(log)
+
+    def _print_error_log (self, msg, cmd):
+
+        self._print_record_log(msg, cmd, True)
 
     def _log_request (self, method, url, headers, data=None, files=None, file_path=None, cmd=''):
 
@@ -285,8 +312,8 @@ class OpenBMCRest(object):
         code = resp.status_code
         if code != requests.codes.ok:
             description = ''.join(data['data']['description'])
-            error = 'Error: [%d] %s' % (code, description)
-            self._print_record_log(error, cmd)
+            error = '[%d] %s' % (code, description)
+            self._print_error_log(error, cmd)
             raise SelfClientException(error, code)
 
         self._print_record_log(data['message'], cmd)
@@ -308,13 +335,16 @@ class OpenBMCRest(object):
             response = self.session.request(method, url, httpheaders, data=data, timeout=timeout)
             return self.handle_response(response, cmd=cmd)
         except SelfServerException as e:
-            e.message = 'Error: BMC did not respond. ' \
-                        'Validate BMC configuration and retry the command.'
-            self._print_record_log(e.message, cmd)
+            if cmd == 'login':
+                e.message = "Login to BMC failed: Can't connect to {0} {1}.".format(e.host_and_port, e.detail_msg)
+            else:
+                e.message = 'BMC did not respond. ' \
+                            'Validate BMC configuration and retry the command.'
+            self._print_error_log(e.message, cmd)
             raise
         except ValueError:
-            error = 'Error: Received wrong format response: %s' % response
-            self._print_record_log(error, cmd)
+            error = 'Received wrong format response: %s' % response
+            self._print_error_log(error, cmd)
             raise SelfServerException(error)
 
     def download(self, method, resource, file_path, headers=None, cmd=''):
@@ -329,15 +359,15 @@ class OpenBMCRest(object):
         try:
             response = self.session.request_download(method, url, httpheaders, file_path)
         except SelfServerException as e:
-            self._print_record_log(e.message, cmd=cmd)
+            self._print_error_log(e.message, cmd=cmd)
             raise
         except SelfClientException as e:
             error = e.message
-            self._print_record_log(error, cmd=cmd)
+            self._print_error_log(error, cmd=cmd)
             raise
 
         if not response:
-            self._print_record_log('No response received for command %s' % request_cmd, cmd=cmd)
+            self._print_error_log('No response received for command %s' % request_cmd, cmd)
             return True
 
         self._print_record_log(str(response.status_code), cmd=cmd)
@@ -354,22 +384,22 @@ class OpenBMCRest(object):
 
         try:
             response = self.session.request_upload(method, url, httpheaders, files)
-        except SelfServerException:
-            self._print_record_log(error, cmd=cmd)
+        except SelfServerException as e:
+            self._print_error_log(e.message, cmd=cmd)
             raise
         try:
             data = json.loads(response)
         except ValueError:
-            error = 'Error: Received wrong format response when running command \'%s\': %s' % \
+            error = 'Received wrong format response when running command \'%s\': %s' % \
                     (request_cmd, response)
-            self._print_record_log(error, cmd=cmd)
+            self._print_error_log(error, cmd=cmd)
             raise SelfServerException(error)
 
         if data['message'] != '200 OK':
-            error = 'Error: Failed to upload update file %s : %s-%s' % \
+            error = 'Failed to upload update file %s : %s-%s' % \
                     (files, data['message'], \
                     ''.join(data['data']['description']))
-            self._print_record_log(error, cmd=cmd)
+            self._print_error_log(error, cmd=cmd)
             raise SelfClientException(error, code)
 
         self._print_record_log(data['message'], cmd=cmd) 
@@ -392,7 +422,7 @@ class OpenBMCRest(object):
             chassis_stat = states[PROJECT_URL + '/state/chassis0']['CurrentPowerState']
             return {'host': host_stat.split('.')[-1], 'chassis': chassis_stat.split('.')[-1]}
         except KeyError:
-            error = 'Error: Received wrong format response: %s' % states
+            error = 'Received wrong format response: %s' % states
             raise SelfServerException(error)
 
     def set_power_state(self, state):
@@ -402,11 +432,11 @@ class OpenBMCRest(object):
 
     def get_bmc_state(self):
 
-        state = self.request('GET', BMC_URLS['state']['path'], cmd='get_bmc_state')
         try:
+            state = self.request('GET', BMC_URLS['state']['path'], cmd='get_bmc_state')
             return {'bmc': state.split('.')[-1]}
         except KeyError:
-            error = 'Error: Received wrong format response: %s' % state
+            error = 'Received wrong format response: %s' % state
             raise SelfServerException(error)
 
     def reboot_bmc(self, optype='warm'):
@@ -417,6 +447,25 @@ class OpenBMCRest(object):
         except SelfServerException,SelfClientException:
             # TODO: Need special handling for bmc reset, as it is normal bmc may return error
             pass
+
+    def get_host_state(self, states):
+
+        chassis_state = states.get('chassis')
+        host_state = states.get('host')
+        state = 'Unknown'
+        if chassis_state == 'Off':
+            state = chassis_state
+
+        elif chassis_state == 'On':
+            if host_state == 'Off':
+                state = 'chassison'
+            elif host_state in ['Quiesced', 'Running']:
+                state = host_state
+            else:
+                state = 'Unexpected host state=%s' % host_state
+        else:
+            state = 'Unexpected chassis state=%s' % chassis_state
+        return state
 
     def set_one_time_boot_enable(self, enabled):
 
@@ -448,7 +497,7 @@ class OpenBMCRest(object):
             boot_state = BOOTSOURCE_GET_STATE.get(boot_source.split('.')[-1], error)
             return boot_state
         except KeyError:
-            error = 'Error: Received wrong format response: %s' % states
+            error = 'Received wrong format response: %s' % states
             raise SelfServerException(error)
 
     def get_beacon_info(self):
@@ -462,7 +511,7 @@ class OpenBMCRest(object):
                     beacon_dict[key_id] = value['State'].split('.')[-1]
             return beacon_dict
         except KeyError:
-            error = 'Error: Received wrong format response: %s' % beacon_data
+            error = 'Received wrong format response: %s' % beacon_data
             raise SelfServerException(error)
 
     def set_beacon_state(self, state):
@@ -494,7 +543,7 @@ class OpenBMCRest(object):
                     
             return sensor_dict
         except KeyError:
-            error = 'Error: Received wrong format response: %s' % sensor_data
+            error = 'Received wrong format response: %s' % sensor_data
             raise SelfServerException(error)
 
     def get_inventory_info(self):
@@ -531,8 +580,20 @@ class OpenBMCRest(object):
 
             return inverntory_dict
         except KeyError:
-            error = 'Error: Received wrong format response: %s' % inventory_data
+            error = 'Received wrong format response: %s' % inventory_data
             raise SelfServerException(error)
+
+    def activate_firmware(self, activate_id):
+
+        payload = { "data": FIRM_URLS['activate']['field'] }
+        url = FIRM_URLS['activate']['path'] % activate_id
+        return self.request('PUT', url, payload=payload, cmd='activate_firmware')
+
+    def delete_firmware(self, delete_id):
+
+        payload = { "data": FIRM_URLS['delete']['field'] }
+        url = FIRM_URLS['delete']['path'] % delete_id
+        return self.request('POST', url, payload=payload, cmd='delete_firmware')
 
     def list_firmware(self):
 
@@ -556,10 +617,22 @@ class OpenBMCRest(object):
 
         return bool(func_list), fw_dict
 
+    def upload_firmware(self, upload_file):
+
+        headers = {'Content-Type': 'application/octet-stream'}
+        path = HTTP_PROTOCOL + self.bmcip + '/upload/image/' 
+        self.upload('PUT', path, upload_file, headers=headers, cmd='upload_firmware') 
+
+    def set_priority(self, firm_id):
+
+        payload = { "data": FIRM_URLS['priority']['field'] }
+        url = FIRM_URLS['priority']['path'] % firm_id
+        return self.request('PUT', url, payload=payload, cmd='set_priority')
+
     # Extract all eventlog info and parse it
     def get_eventlog_info(self):
 
-        eventlog_data = self.request('GET', EVENTLOG_URL, cmd='get_eventlog_info')
+        eventlog_data = self.request('GET', EVENTLOG_URLS['list'], cmd='get_eventlog_info')
 
         return self.parse_eventlog_data(eventlog_data)
 
@@ -584,9 +657,14 @@ class OpenBMCRest(object):
                 id, event_log_line = self.parse_eventlog_data_record(value, ras_event_mapping)
                 if int(id) != 0:
                     eventlog_dict[str(id)] = event_log_line
+
+            if not eventlog_dict:
+                # Nothing was returned from BMC
+                eventlog_dict['0'] ='No attributes returned from the BMC.'
+
             return eventlog_dict
         except KeyError:
-            error = 'Error: Received wrong format response: %s' % eventlog_data
+            error = 'Received wrong format response: %s' % eventlog_data
             raise SelfServerException(error)
 
     # Parse a single eventlog entry and return data in formatted string
@@ -649,6 +727,21 @@ class OpenBMCRest(object):
             formatted_line += LED_tag
         return id_str, formatted_line
 
+    # Clear all eventlog records
+    def clear_all_eventlog_records(self):
+
+        payload = { "data": [] }
+        return self.request('POST', EVENTLOG_URLS['clear_all'], payload=payload, cmd='clear_all_eventlog_records')
+
+    # Resolve eventlog records
+    def resolve_event_log_entries(self, eventlog_ids_to_resolve):
+
+        payload = { "data": "1" }
+        for event_id in eventlog_ids_to_resolve:
+            self.request('PUT', EVENTLOG_URLS['resolve'].format(event_id), payload=payload, cmd='resolve_event_log_entries')
+
+        return
+
     def set_apis_values(self, key, value):
         attr_info = RSPCONFIG_APIS[key]
         if 'set_url' not in attr_info:
@@ -658,7 +751,11 @@ class OpenBMCRest(object):
             data = attr_info['attr_values'][value]
         else:
             data = value
-        self.request('PUT', set_url, payload={"data": data}, cmd="set_%s" % key)
+
+        method = 'PUT'
+        if key == 'powersupplyredundancy':
+            method = 'POST'
+        self.request(method, set_url, payload={"data": data}, cmd="set_%s" % key)
 
     def get_apis_values(self, key):
         attr_info = RSPCONFIG_APIS[key]
@@ -717,7 +814,7 @@ class OpenBMCRest(object):
 
             return dump_dict
         except KeyError:
-            error = 'Error: Received wrong format response: %s' % dump_data
+            error = 'Received wrong format response: %s' % dump_data
             raise SelfServerException(error) 
 
     def download_dump(self, download_id, file_path):
@@ -731,6 +828,50 @@ class OpenBMCRest(object):
         payload = { "data": [] }
         url = HTTP_PROTOCOL + self.bmcip + GARD_CLEAR_URL
         return self.request('POST', url, payload=payload, cmd='clear_gard')
+
+    def set_vlan(self, nic, vlan_id):
+
+        payload = { "data": [nic, vlan_id] }
+        return self.request('POST', RSPCONFIG_NETINFO_URL['vlan'], payload=payload, cmd='set_vlan')
+
+    def set_netinfo(self, nic, ip, netmask, gateway):
+
+        payload = { "data": ["xyz.openbmc_project.Network.IP.Protocol.IPv4", ip, netmask, gateway] }
+        path = RSPCONFIG_NETINFO_URL['nic_ip'].replace('#NIC#', nic)
+        return self.request('POST', path, payload=payload, cmd='set_netinfo')
+
+    def disable_dhcp(self, nic):
+
+        payload = { "data": 0 }
+        path = RSPCONFIG_NETINFO_URL['disable_dhcp'].replace('#NIC#', nic)
+        return self.request('PUT', path, payload=payload, cmd='disable_dhcp')
+
+    def delete_ip_object(self, nic, ip_object):
+
+        path = RSPCONFIG_NETINFO_URL['delete_ip_object'].replace('#OBJ#', ip_object).replace('#NIC#', nic)
+        return self.request('DELETE', path, cmd='delete_ip_object')
+
+    def get_nic_netinfo(self, nic):
+
+        path = RSPCONFIG_NETINFO_URL['get_nic_netinfo'].replace('#NIC#', nic)
+        data = self.request('GET', path, cmd='get_nic_netinfo')
+
+        try:
+            netinfo = {}
+            for k, v in data.items():
+                dev,match,netid = k.partition("/ipv4/")
+                if 'LinkLocal' in v["Origin"] or v["Address"].startswith("169.254"):
+                    msg = "Found LinkLocal address %s for interface %s, Ignoring..." % (v["Address"], dev)
+                    self._print_record_log(msg, 'get_netinfo')
+                    continue
+                utils.update2Ddict(netinfo, netid, 'ip', v['Address'])
+                utils.update2Ddict(netinfo, netid, 'ipsrc', v['Origin'].split('.')[-1])
+                utils.update2Ddict(netinfo, netid, 'netmask', v['PrefixLength'])
+                utils.update2Ddict(netinfo, netid, 'gateway', v['Gateway'])
+            return netinfo
+        except KeyError:
+            error = 'Received wrong format response: %s' % data
+            raise SelfServerException(error)
 
     def get_netinfo(self):
         data = self.request('GET', RSPCONFIG_NETINFO_URL['get_netinfo'], cmd="get_netinfo")
@@ -755,11 +896,14 @@ class OpenBMCRest(object):
                     if 'ip' in netinfo[nicid]:
                         msg = "%s: Another valid ip %s found." % (node, v["Address"])
                         self._print_record_log(msg, 'get_netinfo')
-                        continue
+                        del netinfo[nicid]
+                        netinfo['error'] = 'Interfaces with multiple IP addresses are not supported'
+                        break
                     utils.update2Ddict(netinfo, nicid, "ipsrc", v["Origin"].split('.')[-1])
                     utils.update2Ddict(netinfo, nicid, "netmask", v["PrefixLength"])
                     utils.update2Ddict(netinfo, nicid, "gateway", v["Gateway"])
                     utils.update2Ddict(netinfo, nicid, "ip", v["Address"])
+                    utils.update2Ddict(netinfo, nicid, "ipobj", netid)
                     if dev in data:
                         info = data[dev]
                         utils.update2Ddict(netinfo, nicid, "vlanid", info.get("Id", "Disable"))
@@ -771,13 +915,13 @@ class OpenBMCRest(object):
                         utils.update2Ddict(netinfo, nicid, "ntpservers", ntpservers)            
             return netinfo
         except KeyError:
-            error = 'Error: Received wrong format response: %s' % data
+            error = 'Received wrong format response: %s' % data
             raise SelfServerException(error)
         
 
     def set_ipdhcp(self):
         payload = { "data": [] }
-        return self.request('PUT', RSPCONFIG_NETINFO_URL['ipdhcp'], payload=payload, cmd="set_bmcip_dhcp")
+        return self.request('POST', RSPCONFIG_NETINFO_URL['ipdhcp'], payload=payload, cmd="set_bmcip_dhcp")
 
 
 class OpenBMCImage(object):

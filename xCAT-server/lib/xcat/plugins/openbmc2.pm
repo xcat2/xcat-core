@@ -16,7 +16,6 @@ use Getopt::Long;
 use xCAT::Usage;
 use xCAT::SvrUtils;
 use xCAT::OPENBMC;
-use xCAT_plugin::openbmc;
 
 #-------------------------------------------------------
 
@@ -47,6 +46,7 @@ my $reventlog_no_id_resolved_errormsg = "Provide a comma separated list of IDs t
 
 my %node_info = ();
 my $callback;
+$::VERBOSE = 0;
 
 #-------------------------------------------------------
 
@@ -92,6 +92,9 @@ sub preprocess_request {
         return;
     }
 
+    if ($::VERBOSE) {
+        xCAT::SvrUtils::sendmsg("Running command in Python", $callback);
+    }
     my $sn = xCAT::ServiceNodeUtils->get_ServiceNode($noderange, "xcat", "MN");
     foreach my $snkey (keys %$sn) {
         my $reqcopy = {%$request};
@@ -142,6 +145,17 @@ sub process_request {
     xCAT::OPENBMC::wait_agent($pid, $callback);
 }
 
+my @rsp_common_options = qw/autoreboot bootmode powersupplyredundancy powerrestorepolicy timesyncmethod
+                            ip netmask gateway hostname vlan ntpservers/;
+my @rspconfig_set_options = (@rsp_common_options, qw/admin_passwd/);
+my %rsp_set_valid_values = (
+    autoreboot            => "0|1",
+    bootmode              => "regular|safe|setup",
+    powersupplyredundancy => "disabled|enabled",
+    powerrestorepolicy    => "restore|always_on|always_off",
+    timesyncmethod        => "ntp|manual",
+);
+my @rspconfig_get_options = (@rsp_common_options, qw/ipsrc sshcfg gard dump/);
 #-------------------------------------------------------
 
 =head3  parse_args
@@ -157,24 +171,23 @@ sub parse_args {
     my $noderange = shift;
     my $subcommand = undef;
 
-    my $verbose;
     unless (GetOptions(
-        'V|verbose'  => \$verbose,
+        'V|verbose'  => \$::VERBOSE,
     )) {
         return ([ 1, "Error parsing arguments." ]);
     }
 
     if (scalar(@ARGV) >= 2 and ($command =~ /rbeacon|rinv|rpower|rvitals/)) {
         return ([ 1, "Only one option is supported at the same time for $command" ]);
-    } elsif (scalar(@ARGV) == 0 and $command =~ /rbeacon|rpower|rflash/) {
+    } elsif (scalar(@ARGV) == 0 and $command =~ /rbeacon|rspconfig|rpower|rflash/) {
         return ([ 1, "No option specified for $command" ]);
     } else {
         $subcommand = $ARGV[0];
     }
 
     if ($command eq "rbeacon") {
-        unless ($subcommand =~ /^on$|^off$/) {
-            return ([ 1, "Only 'on' or 'off' is supported for OpenBMC managed nodes."]);
+        unless ($subcommand =~ /^on$|^off$|^stat$/) {
+            return ([ 1, "Only 'on', 'off' or 'stat' is supported for OpenBMC managed nodes."]);
         }
     } elsif ($command eq "rflash") {
         my ($activate, $check, $delete, $directory, $list, $upload) = (0) x 6;
@@ -218,7 +231,6 @@ sub parse_args {
             }
         }
         if ($directory) {
-            return ([ 1, "Unsupported command: $command '-d'" ]);
             return ([ 1, "More than one directory specified is not supported."]) if ($#ARGV >= 1);
             return ([ 1, "Invalid option specified with '-d'."]) if (!@ARGV);
         }
@@ -248,10 +260,116 @@ sub parse_args {
             return ([ 1, "Unsupported command: $command $subcommand" ]);
         }
     } elsif ($command eq 'rspconfig') {
-        xCAT_plugin::openbmc::parse_args('rspconfig', $extrargs, $noderange);
+        my $num_subcommand = @ARGV;
+        my ($set, $get);
+        my $all_subcommand = "";
+        my %set_net_info = ();
+        foreach $subcommand (@ARGV) {
+            my ($key, $value);
+            if ($subcommand =~ /^(\w+)=(.*)/) {
+                $key = $1;
+                $value = $2;
+                $set = 1;
+            } else {
+                $key = $subcommand;
+                $get = 1;
+            }
+            if ($set and $get) {
+                return ([1, "Can not set and query OpenBMC information at the same time"]);
+            } elsif ($set and $value eq '' and ($key ne "ntpservers")) {
+                return ([1, "Invalid parameter for option $key"]);
+            } elsif ($set and $value ne '' and exists($rsp_set_valid_values{$key})) {
+                unless ($value =~ /^($rsp_set_valid_values{$key})$/) {
+                    return([1, "Invalid value '$value' for '$key', Valid values: " . join(',', split('\|',$rsp_set_valid_values{$key}))]);
+                }
+            }
+            if (($set and !grep /$key/, @rspconfig_set_options) or
+                ($get and !grep /$key/, @rspconfig_get_options)) {
+                return ([1, "Unsupported command: $command $subcommand"]);
+            }
+            if ($set) {
+                if ($key =~ /^hostname$|^admin_passwd$|^ntpservers$/ and $num_subcommand > 1) {
+                    return([1, "The option '$key' can not work with other options"]);
+                } elsif ($key eq "admin_passwd") {
+                    if ($value =~ /^([^,]*),([^,]*)$/) {
+                        if ($1 eq '' or $2 eq '') {
+                            return([1, "Invalid parameter for option $key: $value"]);
+                        }
+                    } else {
+                        return([1, "Invalid parameter for option $key: $value"]);
+                    }
+                } elsif ($key eq "netmask") {
+                    if (!xCAT::NetworkUtils->isIpaddr($value)) {
+                        return ([ 1, "Invalid parameter for option $key: $value" ]);
+                    }
+                    $set_net_info{"netmask"} = 1;
+                } elsif ($key eq "gateway") {
+                    if ($value ne "0.0.0.0" and !xCAT::NetworkUtils->isIpaddr($value)) {
+                        return ([ 1, "Invalid parameter for option $key: $value" ]);
+                    }
+                    $set_net_info{"gateway"} = 1;
+                } elsif ($key eq "vlan") {
+                    $set_net_info{"vlan"} = 1;
+                } elsif ($key eq "ip") {
+                    if ($value ne "dhcp") {
+                        if (@$noderange > 1) {
+                            return ([ 1, "Can not configure more than 1 nodes' ip at the same time" ]);
+                        } elsif (!xCAT::NetworkUtils->isIpaddr($value)) {
+                            return ([ 1, "Invalid parameter for option $key: $value" ]);
+                        }
+                        $set_net_info{"ip"} = 1;
+                    } elsif($num_subcommand > 1) {
+                        return ([ 1, "Setting ip=dhcp must be issued without other options." ]);
+                    }
+                }
+            } else {
+                if ($key eq "sshcfg" and $num_subcommand > 1) {
+                    return ([ 1, "Configure sshcfg must be issued without other options." ]);
+                } elsif ($key eq "gard") {
+                    if ($num_subcommand > 2) {
+                        return  ([ 1, "Clear GARD cannot be issued with other options." ]);
+                    } elsif (!defined($ARGV[1]) or $ARGV[1] !~ /^-c$|^--clear$/) {
+                        return ([ 1, "Invalid parameter for $command $key" ]);
+                    }
+                    return;
+                } elsif ($key eq "dump") {
+                    my $dump_option = "";
+                    $dump_option = $ARGV[1] if (defined $ARGV[1]);
+                    if ($dump_option =~ /^-d$|^--download$/) {
+                        return ([ 1, "No dump file ID specified" ]) unless ($ARGV[2]);
+                        return ([ 1, "Invalid parameter for $command $key $dump_option $ARGV[2]" ]) if ($ARGV[2] !~ /^\d*$/ and $ARGV[2] ne "all");
+                        return ([ 1, "dump $dump_option must be issued without other options." ]) if ($num_subcommand > 3);
+                    } elsif ($dump_option =~ /^-c$|^--clear$/) {
+                        return ([ 1, "No dump file ID specified. To clear all, specify 'all'." ]) unless ($ARGV[2]);
+                        return ([ 1, "Invalid parameter for $command $key $dump_option $ARGV[2]" ]) if ($ARGV[2] !~ /^\d*$/ and $ARGV[2] ne "all");
+                        return ([ 1, "dump $dump_option must be issued without other options." ]) if ($num_subcommand > 3);
+                    } elsif ($dump_option =~ /^-l$|^--list$|^-g$|^--generate$/) {
+                        return ([ 1, "dump $dump_option must be issued without other options." ]) if ($num_subcommand > 2);
+                    } elsif ($dump_option) {
+                        return ([ 1, "Invalid parameter for $command $dump_option" ]);
+                    }
+                    return;
+                }
+            }
+        }
+        if ($set and scalar(keys %set_net_info) > 0) {
+            if (!exists($set_net_info{"ip"}) or !exists($set_net_info{"netmask"}) or !exists($set_net_info{"gateway"})) {
+                if (exists($set_net_info{"vlan"})) {
+                    return ([ 1, "VLAN must be configured with IP, netmask and gateway" ]);
+                } else {
+                    return ([ 1, "IP, netmask and gateway must be configured together." ]);
+                }
+            }
+
+        }
     } elsif ($command eq "reventlog") {
         $subcommand = "all" if (!defined($ARGV[0]));
-        if ($subcommand =~ /^resolved=(.*)/) {
+        if (scalar(@ARGV) >= 2) {
+            if ($ARGV[1] =~ /^-s$/) {
+                return ([ 1, "The -s option is not supported for OpenBMC." ]);
+            }
+            return ([ 1, "Only one option is supported at the same time for $command" ]);
+        } elsif ($subcommand =~ /^resolved=(.*)/) {
             my $value = $1;
             if (not $value) {
                 return ([ 1, "$usage_errormsg $reventlog_no_id_resolved_errormsg" ]);
@@ -390,6 +508,23 @@ sub refactor_args {
             unshift @$extrargs, "list";
         }
     }
+    if ($command eq "rflash") {
+        my @new_args = ('') x 4;
+        foreach my $tmp (@$extrargs) {
+            if ($tmp =~ /^-/) {
+                if ($tmp !~ /^-V$|^--verbose$/) {
+                    $new_args[0] = $tmp;
+                } elsif ($tmp =~ /^--no-host-reboot$/) {
+                    $new_args[2] = $tmp;
+                } else {
+                    $new_args[3] = $tmp;
+                }
+            } else {
+                $new_args[1] = $tmp;
+            }
+        }
+        @$extrargs = grep(/.+/, @new_args);
+    } 
     return 0;
 }
 

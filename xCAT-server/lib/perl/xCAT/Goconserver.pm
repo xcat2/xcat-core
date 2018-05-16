@@ -60,7 +60,7 @@ sub http_request {
 
 sub gen_request_data {
     my ($cons_map, $siteondemand, $callback) = @_;
-    my (@openbmc_nodes, $data);
+    my (@openbmc_nodes, $data, $rsp);
     while (my ($k, $v) = each %{$cons_map}) {
         my $ondemand;
         if ($siteondemand) {
@@ -73,17 +73,14 @@ sub gen_request_data {
         if ($cmeth eq "openbmc") {
             push @openbmc_nodes, $k;
         }  else {
-            $cmd = $::XCATROOT . "/share/xcat/cons/$cmeth"." ".$k;
-            if (!(!$isSN && $v->{conserver} && xCAT::NetworkUtils->thishostisnot($v->{conserver}))) {
-                my $env;
-                my $locerror = $isSN ? "PERL_BADLANG=0 " : '';
-                if (defined($ENV{'XCATSSLVER'})) {
-                    $env = "XCATSSLVER=$ENV{'XCATSSLVER'} ";
-                }
-                $cmd = $locerror.$env.$cmd;
+            my $env = "";
+            my $locerror = $isSN ? "PERL_BADLANG=0 " : '';
+            if (defined($ENV{'XCATSSLVER'})) {
+                $env = "XCATSSLVER=$ENV{'XCATSSLVER'} ";
             }
+            $data->{$k}->{params}->{env} = $locerror.$env;
             $data->{$k}->{driver} = "cmd";
-            $data->{$k}->{params}->{cmd} = $cmd;
+            $data->{$k}->{params}->{cmd} = $::XCATROOT . "/share/xcat/cons/$cmeth"." ".$k;
             $data->{$k}->{name} = $k;
         }
         if (defined($v->{consoleondemand})) {
@@ -107,11 +104,7 @@ sub gen_request_data {
         foreach my $node (@openbmc_nodes) {
             if (defined($openbmc_hash->{$node}->[0])) {
                 if (!$openbmc_hash->{$node}->[0]->{'bmc'}) {
-                    if($callback) {
-                        xCAT::SvrUtils::sendmsg("Error: Unable to get attribute bmc", $callback, $node);
-                    } else {
-                        xCAT::MsgUtils->message("S", "$node: Error: Unable to get attribute bmc");
-                    }
+                    xCAT::MsgUtils->error_message("$node: Unable to get attribute bmc.", $callback);
                     delete $data->{$node};
                     next;
                 }
@@ -121,11 +114,7 @@ sub gen_request_data {
                 } elsif ($passwd_hash and $passwd_hash->{username}) {
                     $data->{$node}->{params}->{user} = $passwd_hash->{username};
                 } else {
-                    if ($callback) {
-                        xCAT::SvrUtils::sendmsg("Error: Unable to get attribute username", $callback, $node)
-                    } else {
-                        xCAT::MsgUtils->message("S", "$node: Error: Unable to get attribute username");
-                    }
+                    xCAT::MsgUtils->error_message("$node: Unable to get attribute username.", $callback);
                     delete $data->{$node};
                     next;
                 }
@@ -134,11 +123,7 @@ sub gen_request_data {
                 } elsif ($passwd_hash and $passwd_hash->{password}) {
                     $data->{$node}->{params}->{password} = $passwd_hash->{password};
                 } else {
-                    if ($callback) {
-                        xCAT::SvrUtils::sendmsg("Error: Unable to get attribute password", $callback, $node)
-                    } else {
-                        xCAT::MsgUtils->message("S", "$node: Error: Unable to get attribute password");
-                    }
+                    xCAT::MsgUtils->error_message("$node: Unable to get attribute password.", $callback);
                     delete $data->{$node};
                     next;
                 }
@@ -207,6 +192,10 @@ sub init_local_console {
             unless ($_->{cons}) {
                 $_->{cons} = $_->{mgt};
             }
+            if ( $_->{cons} ne 'openbmc' && ! -x $::XCATROOT . "/share/xcat/cons/".$_->{cons}) {
+                xCAT::MsgUtils->message("S", $_->{node} .": ignore, ". $::XCATROOT . "/share/xcat/cons/".$_->{cons}." is not excutable. Please check mgt or cons attribute.");
+                next;
+            }
             if ($_->{conserver} && exists($iphash{ $_->{conserver} })) {
                 $cons_map{ $_->{node} } = $_;
             }
@@ -271,22 +260,12 @@ sub delete_nodes {
     $ret = 0;
     my $response = http_request("DELETE", $url, $data);
     if (!defined($response)) {
-        if ($callback) {
-            $rsp->{data}->[0] = "Failed to send delete request.";
-            xCAT::MsgUtils->message("E", $rsp, $callback)
-        } else {
-            xCAT::MsgUtils->message("S", "Failed to send delete request.");
-        }
+        xCAT::MsgUtils->error_message("Failed to send delete request.", $callback);
         return 1;
     } elsif ($delmode) {
         while (my ($k, $v) = each %{$response}) {
             if ($v ne "Deleted") {
-                if ($callback) {
-                    $rsp->{data}->[0] = "$k: Failed to delete entry in goconserver: $v";
-                    xCAT::MsgUtils->message("E", $rsp, $callback)
-                } else {
-                    xCAT::MsgUtils->message("S", "$k: Failed to delete entry in goconserver: $v");
-                }
+                xCAT::MsgUtils->error_message("$k: Failed to delete entry in goconserver: $v", $callback);
                 $ret = 1;
             } else {
                 if ($callback) {
@@ -299,12 +278,7 @@ sub delete_nodes {
     }
     if (@update_nodes) {
         if (disable_nodes_in_db(\@update_nodes)) {
-            if ($callback) {
-                $rsp->{data}->[0] = "Failed to update consoleenabled status in db.";
-                xCAT::MsgUtils->message("E", $rsp, $callback);
-            } else {
-                xCAT::MsgUtils->message("S", "Failed to update consoleenabled status in db.");
-            }
+            xCAT::MsgUtils->error_message("Failed to update consoleenabled status in db.", $callback);
         }
     }
     return $ret;
@@ -321,22 +295,12 @@ sub create_nodes {
     $ret = 0;
     my $response = http_request("POST", $url, $data);
     if (!defined($response)) {
-        if ($callback) {
-            $rsp->{data}->[0] = "Failed to send create request.";
-            xCAT::MsgUtils->message("E", $rsp, $callback)
-        } else {
-            xCAT::MsgUtils->message("S", "Failed to send create request.");
-        }
+        xCAT::MsgUtils->error_message("Failed to send create request.", $callback);
         return 1;
     } elsif ($response) {
         while (my ($k, $v) = each %{$response}) {
             if ($v ne "Created") {
-                if ($callback) {
-                    $rsp->{data}->[0] = "$k: Failed to create console entry in goconserver: $v";
-                    xCAT::MsgUtils->message("E", $rsp, $callback);
-                } else {
-                    xCAT::MsgUtils->message("S", "$k: Failed to create console entry in goconserver: $v");
-                }
+                xCAT::MsgUtils->error_message("$k: Failed to create console entry in goconserver: $v", $callback);
                 $ret = 1;
             } else {
                 $rsp->{data}->[0] = "$k: $v";
@@ -347,12 +311,7 @@ sub create_nodes {
     }
     if (@update_nodes) {
         if (enable_nodes_in_db(\@update_nodes)) {
-            if ($callback) {
-                $rsp->{data}->[0] = "Failed to update consoleenabled status in db.";
-                xCAT::MsgUtils->message("E", $rsp, $callback);
-            } else {
-                CAT::MsgUtils->message("S", "Failed to update consoleenabled status in db.");
-            }
+            xCAT::MsgUtils->error_message("Failed to update consoleenabled status in db.", $callback);
         }
     }
     return $ret;
@@ -364,13 +323,11 @@ sub list_nodes {
     my $rsp;
     my $response = http_request("GET", $url);
     if (!defined($response)) {
-        $rsp->{data}->[0] = "Failed to send list request.";
-        xCAT::MsgUtils->message("E", $rsp, $callback);
+        xCAT::MsgUtils->error_message("Failed to send list request. Is goconserver service started?", $callback);
         return 1;
     }
     if (!$response->{nodes}) {
-        $rsp->{data}->[0] = "Could not find any node.";
-        xCAT::MsgUtils->message("I", $rsp, $callback);
+        xCAT::MsgUtils->info_message("Could not find any node.", $callback);
         return 0;
     }
     $rsp->{data}->[0] = sprintf("\n".PRINT_FORMAT, "NODE", "SERVER", "STATE");
@@ -381,8 +338,7 @@ sub list_nodes {
         }
         $node_map->{$node->{name}}->{vis} = 1;
         if (!$node->{host} || !$node->{state}) {
-            $rsp->{data}->[0] = sprintf(PRINT_FORMAT, $node->{name}, "", "Unable to parse the response message");
-            xCAT::MsgUtils->message("E", $rsp, $callback);
+            xCAT::MsgUtils->error_message(sprintf(PRINT_FORMAT, $node->{name}, "", "Unable to parse the response message"), $callback);
             next;
         }
         $rsp->{data}->[0] = sprintf(PRINT_FORMAT, $node->{name}, $node->{host}, substr($node->{state}, 0, 16));
@@ -406,12 +362,7 @@ sub cleanup_nodes {
     my $rsp;
     my $response = http_request("GET", "$api_url/nodes");
     if (!defined($response)) {
-        if ($callback) {
-            $rsp->{data}->[0] = "Failed to send list request.";
-            xCAT::MsgUtils->message("E", $rsp, $callback);
-        } else {
-            xCAT::MsgUtils->message("S", "Failed to send list request.");
-        }
+        xCAT::MsgUtils->error_message("Failed to send list request. Is goconserver service started?", $callback);
         return 1;
     }
     if (!$response->{nodes}) {
@@ -459,6 +410,11 @@ sub get_cons_map {
         if ($_->{cons} or defined($_->{'serialport'})) {
             unless ($_->{cons}) { $_->{cons} = $_->{mgt}; } #populate with fallback
             if ($isSN && $_->{conserver} && exists($iphash{ $_->{conserver} }) || !$isSN) {
+                if ( $_->{cons} ne 'openbmc' && ! -x $::XCATROOT . "/share/xcat/cons/".$_->{cons}) {
+                    $rsp->{data}->[0] = $_->{node} .": ignore, ". $::XCATROOT . "/share/xcat/cons/".$_->{cons}." is not excutable. Please check mgt or cons attribute.";
+                    xCAT::MsgUtils->message("I", $rsp, $::callback);
+                    next;
+                }
                 $cons_map{ $_->{node} } = $_; # also put the ref to the entry in a hash for quick look up
             } else {
                 $rsp->{data}->[0] = $_->{node} .": ignore, the host for conserver could not be determined.";
@@ -527,6 +483,70 @@ sub is_goconserver_running {
         return 0;
     }
     return 1;
+}
+
+#-------------------------------------------------------------------------------
+
+=head3  switch_goconserver
+        Disable conserver and enable goconserver during startup.
+
+    Globals:
+        none
+    Example:
+         xCAT::Goconserver::switch_goconserver()
+    Comments:
+        none
+
+=cut
+
+#-------------------------------------------------------------------------------
+sub switch_goconserver {
+    my $callback = shift;
+    # ignore SN as it is handled by AAsn
+    if ((-x "/usr/bin/systemctl" || -x "-x /bin/systemctl") && !$isSN) {
+        my $cmd = "systemctl disable conserver";
+        xCAT::Utils->runcmd($cmd, -1);
+        if ($::RUNCMD_RC != 0) {
+            xCAT::MsgUtils->warn_message("Failed to execute command: $cmd.", $callback);
+        }
+        $cmd = "systemctl enable goconserver";
+        xCAT::Utils->runcmd($cmd, -1);
+        if ($::RUNCMD_RC != 0) {
+            xCAT::MsgUtils->warn_message("Failed to execute command: $cmd.", $callback);
+        }
+    }
+}
+
+#-------------------------------------------------------------------------------
+
+=head3  switch_conserver
+        Disable goconserver and enable conserver during startup.
+
+    Globals:
+        none
+    Example:
+         xCAT::Goconserver::switch_conserver()
+    Comments:
+        none
+
+=cut
+
+#-------------------------------------------------------------------------------
+sub switch_conserver {
+    my $callback = shift;
+    # ignore SN as it is handled by AAsn
+    if ((-x "/usr/bin/systemctl" || -x "-x /bin/systemctl") && !$isSN) {
+        my $cmd = "systemctl disable goconserver";
+        xCAT::Utils->runcmd($cmd, -1);
+        if ($::RUNCMD_RC != 0) {
+            xCAT::MsgUtils->warn_message("Failed to execute command: $cmd.", $callback);
+        }
+        $cmd = "systemctl enable conserver";
+        xCAT::Utils->runcmd($cmd, -1);
+        if ($::RUNCMD_RC != 0) {
+            xCAT::MsgUtils->warn_message("Failed to execute command: $cmd.", $callback);
+        }
+    }
 }
 
 #-------------------------------------------------------------------------------

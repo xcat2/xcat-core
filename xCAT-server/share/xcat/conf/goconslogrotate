@@ -1,0 +1,9 @@
+/var/log/consoles/*.log
+/var/log/goconserver/server.log
+{
+    missingok
+    sharedscripts
+    postrotate
+        kill -HUP `systemctl show -p MainPID goconserver.service 2> /dev/null |awk -F= '{print $2}'` 2> /dev/null || true
+    endscript
+}

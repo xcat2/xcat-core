@@ -19,13 +19,14 @@ class SensorInterface(object):
         """
         return task.run('get_sensor_info', sensor_type) 
 
-    def get_beacon_info(self, task):
+    def get_beacon_info(self, task, display_type='full'):
         """Return the beacon info of the task's nodes.
 
+        :param task: type of display to produce - full (rvitals leds) or compact (rbeacon stat)
         :param task: a Task instance containing the nodes to act on.
         :return: beacon info list
         """
-        return task.run('get_beacon_info')
+        return task.run('get_beacon_info', display_type)
 
 class DefaultSensorManager(SensorInterface):
     """Interface for sensor-related actions."""

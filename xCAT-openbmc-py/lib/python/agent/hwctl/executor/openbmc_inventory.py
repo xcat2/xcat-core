@@ -8,6 +8,7 @@
 from __future__ import print_function
 import gevent
 import time
+import os
 
 from common.task import ParallelNodesCommand
 from common.exceptions import SelfClientException, SelfServerException
@@ -19,6 +20,26 @@ logger = logging.getLogger('xcatagent')
 
 class OpenBMCInventoryTask(ParallelNodesCommand):
     """Executor for inventory-related actions."""
+
+    def pre_get_firm_info(self, task, target_file=None, **kw):
+
+        if not target_file:
+            return
+
+        target_file = utils.get_full_path(self.cwd, target_file)
+
+        version = purpose = None
+        with open(target_file, 'r') as fh:
+            for line in fh:
+                if 'version=' in line:
+                    version = line.split('=')[-1].strip()
+                if 'purpose=' in line:
+                    purpose = line.split('=')[-1].strip()
+                if version and purpose:
+                    break
+
+        self.callback.info('TAR %s Firmware Product Version: %s' \
+                            % (purpose, version))
 
     def _get_firm_info(self, firm_info_list):
         (has_functional, firm_obj_dict) = firm_info_list
@@ -97,7 +118,7 @@ class OpenBMCInventoryTask(ParallelNodesCommand):
 
         return inventory_info 
 
-    def get_firm_info(self, **kw):
+    def get_firm_info(self, target_file=None, **kw):
 
         node = kw['node']
         obmc = openbmc.OpenBMCRest(name=node, nodeinfo=kw['nodeinfo'], messager=self.callback,

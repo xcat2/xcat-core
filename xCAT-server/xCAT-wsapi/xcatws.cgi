@@ -42,7 +42,7 @@ use IO::Socket::SSL;
 my %usagemsg = (
     objreturn => "Json format: An object which includes multiple \'<name> : {att:value, attr:value ...}\' pairs.",
     objchparam => "Json format: An object which includes multiple \'att:value\' pairs.",
-    non_getreturn => "No output when execution is successfull. Otherwise output the error information in the Standard Error Format: {error:[msg1,msg2...],errocode:errornum}."
+    non_getreturn => "No output when execution is successful. Otherwise output the error information in the Standard Error Format: {error:[msg1,msg2...],errocode:errornum}."
 );
 
 # ver(1.0): Use array type instread of string split by '|' or ','
@@ -72,16 +72,16 @@ my %URIdef = (
             desc    => "[URI:/nodes/{noderange}] - The node resource",
             matcher => '^/nodes/[^/]*$',
             GET     => {
-                desc => "Get all the attibutes for the node {noderange}.",
+                desc => "Get all the attributes for the node {noderange}.",
                 desc1 => "The keyword ALLRESOURCES can be used as {noderange} which means to get node attributes for all the nodes.",
                 usage => "||$usagemsg{objreturn}|",
-                example => "|Get all the attibutes for node \'node1\'.|GET|/nodes/node1|{\n   \"node1\":{\n      \"profile\":\"compute\",\n      \"netboot\":\"xnba\",\n      \"arch\":\"x86_64\",\n      \"mgt\":\"ipmi\",\n      \"groups\":\"all\",\n      ...\n   }\n}|",
+                example => "|Get all the attributes for node \'node1\'.|GET|/nodes/node1|{\n   \"node1\":{\n      \"profile\":\"compute\",\n      \"netboot\":\"xnba\",\n      \"arch\":\"x86_64\",\n      \"mgt\":\"ipmi\",\n      \"groups\":\"all\",\n      ...\n   }\n}|",
                 cmd      => "lsdef",
                 fhandler => \&defhdl,
                 outhdler => \&defout,
             },
             PUT => {
-                desc => "Change the attibutes for the node {noderange}.",
+                desc => "Change the attributes for the node {noderange}.",
                 usage => "|$usagemsg{objchparam} DataBody: {attr1:v1,att2:v2,...}.|$usagemsg{non_getreturn}|",
                 example => "|Change the attributes mgt=dfm and netboot=yaboot.|PUT|/nodes/node1 {\"mgt\":\"dfm\",\"netboot\":\"yaboot\"}||",
                 cmd      => "chdef",
@@ -136,6 +136,18 @@ my %URIdef = (
                 cmd      => "nodestat",
                 fhandler => \&actionhdl,
                 outhdler => \&actionout,
+            },
+        },
+        nodels => {
+            desc => "[URI:/nodes/{noderange}/nodels}] - Lists the nodes, noderange cannot start with /",
+            matcher => '^/nodes/[^/]*/nodels$',
+            GET     => {
+                desc => "Lists the nodes.",
+                usage => "||Json format: An array of node names.|",
+                example => "|Get the node names from xCAT database.|GET|/nodes/node[1-3]/nodels|[\n   \"node1\",\n   \"node2\",\n   \"node3\",\n]|",
+                cmd      => "nodels",
+                fhandler => \&actionhdl,
+                outhdler => \&nodelsout,
             },
         },
         nodehost => {
@@ -351,7 +363,7 @@ my %URIdef = (
             desc => "[URI:/nodes/{noderange}/vitals] - The vitals resources for the node {noderange}",
             matcher => '^/nodes/[^/]*/vitals$',
             GET     => {
-                desc  => "Get all the vitals attibutes.",
+                desc  => "Get all the vitals attributes.",
                 usage => "||$usagemsg{objreturn}|",
                 example => "|Get all the vitails attributes for the node1.|GET|/nodes/node1/vitals|{\n   \"node1\":{\n      \"SysBrd Fault\":\"0\",\n      \"CPUs\":\"0\",\n      \"Fan 4A Tach\":\"3330 RPM\",\n      \"Drive 15\":\"0\",\n      \"SysBrd Vol Fault\":\"0\",\n      \"nvDIMM Flash\":\"0\",\n      \"Progress\":\"0\"\n      ...\n   }\n}|",
                 cmd      => "rvitals",
@@ -364,7 +376,7 @@ my %URIdef = (
             desc => "[URI:/nodes/{noderange}/vitals/{temp|voltage|wattage|fanspeed|power|leds...}] - The specific vital attributes for the node {noderange}",
             matcher => '^/nodes/[^/]*/vitals/\S+$',
             GET     => {
-                desc  => "Get the specific vitals attibutes.",
+                desc  => "Get the specific vitals attributes.",
                 usage => "||$usagemsg{objreturn}|",
                 example => "|Get the \'fanspeed\' vitals attribute.|GET|/nodes/node1/vitals/fanspeed|{\n   \"node1\":{\n      \"Fan 1A Tach\":\"3219 RPM\",\n      \"Fan 4B Tach\":\"2688 RPM\",\n      \"Fan 3B Tach\":\"2560 RPM\",\n      \"Fan 4A Tach\":\"3330 RPM\",\n      \"Fan 2A Tach\":\"3293 RPM\",\n      \"Fan 1B Tach\":\"2592 RPM\",\n      \"Fan 3A Tach\":\"3182 RPM\",\n      \"Fan 2B Tach\":\"2592 RPM\"\n   }\n}|",
                 cmd      => "rvitals",
@@ -376,7 +388,7 @@ my %URIdef = (
             desc => "[URI:/nodes/{noderange}/inventory] - The inventory attributes for the node {noderange}",
             matcher => '^/nodes/[^/]*/inventory$',
             GET     => {
-                desc  => "Get all the inventory attibutes.",
+                desc  => "Get all the inventory attributes.",
                 usage => "||$usagemsg{objreturn}|",
                 example => "|Get all the inventory attributes for node1.|GET|/nodes/node1/inventory|{\n   \"node1\":{\n      \"DIMM 21 \":\"8GB PC3-12800 (1600 MT/s) ECC RDIMM\",\n      \"DIMM 1 Manufacturer\":\"Hyundai Electronics\",\n      \"Power Supply 2 Board FRU Number\":\"94Y8105\",\n      \"DIMM 9 Model\":\"HMT31GR7EFR4C-PB\",\n      \"DIMM 8 Manufacture Location\":\"01\",\n      \"DIMM 13 Manufacturer\":\"Hyundai Electronics\",\n      \"DASD Backplane 4\":\"Not Present\",\n      ...\n   }\n}|",
                 cmd      => "rinv",
@@ -388,7 +400,7 @@ my %URIdef = (
             desc => "[URI:/nodes/{noderange}/inventory/{pci|model...}] - The specific inventory attributes for the node {noderange}",
             matcher => '^/nodes/[^/]*/inventory/\S+$',
             GET     => {
-                desc  => "Get the specific inventory attibutes.",
+                desc  => "Get the specific inventory attributes.",
                 usage => "||$usagemsg{objreturn}|",
                 example => "|Get the \'model\' inventory attribute for node1.|GET|/nodes/node1/inventory/model|{\n   \"node1\":{\n      \"System Description\":\"System x3650 M4\",\n      \"System Model/MTM\":\"7915C2A\"\n   }\n}|",
                 cmd      => "rinv",
@@ -632,15 +644,15 @@ my %URIdef = (
             desc    => "[URI:/groups/{groupname}] - The group resource",
             matcher => '^/groups/[^/]*$',
             GET     => {
-                desc  => "Get all the attibutes for the group {groupname}.",
+                desc  => "Get all the attributes for the group {groupname}.",
                 usage => "||$usagemsg{objreturn}|",
-                example => "|Get all the attibutes for group \'all\'.|GET|/groups/all|{\n   \"all\":{\n      \"members\":\"zxnode2,nodexxx,node1,node4\"\n   }\n}|",
+                example => "|Get all the attributes for group \'all\'.|GET|/groups/all|{\n   \"all\":{\n      \"members\":\"zxnode2,nodexxx,node1,node4\"\n   }\n}|",
                 cmd      => "lsdef",
                 fhandler => \&defhdl,
                 outhdler => \&defout,
             },
             PUT => {
-                desc => "Change the attibutes for the group {groupname}.",
+                desc => "Change the attributes for the group {groupname}.",
                 usage => "|$usagemsg{objchparam} DataBody: {attr1:v1,att2:v2,...}.|$usagemsg{non_getreturn}|",
                 example => "|Change the attributes mgt=dfm and netboot=yaboot.|PUT|/groups/all {\"mgt\":\"dfm\",\"netboot\":\"yaboot\"}||",
                 cmd      => "chdef",
@@ -830,16 +842,16 @@ my %URIdef = (
             desc    => "[URI:/networks/{netname}] - The network resource",
             matcher => '^\/networks\/[^\/]*$',
             GET     => {
-                desc => "Get all the attibutes for the network {netname}.",
+                desc => "Get all the attributes for the network {netname}.",
                 desc1 => "The keyword ALLRESOURCES can be used as {netname} which means to get network attributes for all the networks.",
                 usage => "||$usagemsg{objreturn}|",
-                example => "|Get all the attibutes for network \'network1\'.|GET|/networks/network1|{\n   \"network1\":{\n      \"gateway\":\"<xcatmaster>\",\n      \"mask\":\"255.255.255.0\",\n      \"mgtifname\":\"eth2\",\n      \"net\":\"10.0.0.0\",\n      \"tftpserver\":\"10.0.0.119\",\n      ...\n   }\n}|",
+                example => "|Get all the attributes for network \'network1\'.|GET|/networks/network1|{\n   \"network1\":{\n      \"gateway\":\"<xcatmaster>\",\n      \"mask\":\"255.255.255.0\",\n      \"mgtifname\":\"eth2\",\n      \"net\":\"10.0.0.0\",\n      \"tftpserver\":\"10.0.0.119\",\n      ...\n   }\n}|",
                 cmd      => "lsdef",
                 fhandler => \&defhdl,
                 outhdler => \&defout,
             },
             PUT => {
-                desc => "Change the attibutes for the network {netname}.",
+                desc => "Change the attributes for the network {netname}.",
                 usage => "|$usagemsg{objchparam} DataBody: {attr1:v1,att2:v2,...}.|$usagemsg{non_getreturn}|",
                 example => "|Change the attributes mgtifname=eth0 and net=10.1.0.0.|PUT|/networks/network1 {\"mgtifname\":\"eth0\",\"net\":\"10.1.0.0\"}||",
                 cmd      => "chdef",
@@ -919,7 +931,7 @@ my %URIdef = (
             desc    => "[URI:/osimages/{imgname}] - The osimage resource",
             matcher => '^\/osimages\/[^\/]*$',
             GET     => {
-                desc => "Get all the attibutes for the osimage {imgname}.",
+                desc => "Get all the attributes for the osimage {imgname}.",
                 desc1 => "The keyword ALLRESOURCES can be used as {imgname} which means to get image attributes for all the osimages.",
                 usage => "||$usagemsg{objreturn}|",
                 example => "|Get the attributes for the specified osimage.|GET|/osimages/sles11.2-x86_64-install-compute|{\n   \"sles11.2-x86_64-install-compute\":{\n      \"provmethod\":\"install\",\n      \"profile\":\"compute\",\n      \"template\":\"/opt/xcat/share/xcat/install/sles/compute.sles11.tmpl\",\n      \"pkglist\":\"/opt/xcat/share/xcat/install/sles/compute.sles11.pkglist\",\n      \"osvers\":\"sles11.2\",\n      \"osarch\":\"x86_64\",\n      \"osname\":\"Linux\",\n      \"imagetype\":\"linux\",\n      \"otherpkgdir\":\"/install/post/otherpkgs/sles11.2/x86_64\",\n      \"osdistroname\":\"sles11.2-x86_64\",\n      \"pkgdir\":\"/install/sles11.2/x86_64\"\n   }\n}|",
@@ -937,7 +949,7 @@ my %URIdef = (
                 outhdler => \&noout,
             },
             PUT => {
-                desc => "Change the attibutes for the osimage {imgname}.",
+                desc => "Change the attributes for the osimage {imgname}.",
                 usage => "|$usagemsg{objchparam} DataBody: {attr1:v1,attr2:v2...}|$usagemsg{non_getreturn}|",
                 example => "|Change the 'osvers' and 'osarch' attributes for the osiamge.|PUT|/osimages/sles11.2-ppc64-install-compute/ {\"osvers\":\"sles11.3\",\"osarch\":\"x86_64\"}||",
                 cmd      => "chdef",
@@ -968,7 +980,7 @@ my %URIdef = (
 
             # TD, the implementation may need to be change.
             PUT_backup => {
-                desc => "Change the attibutes for the osimage {imgname}.",
+                desc => "Change the attributes for the osimage {imgname}.",
                 usage => "|$usagemsg{objchparam} DataBody: {attr1:v1,attr2:v2...}|$usagemsg{non_getreturn}|",
                 example => "|Change the 'osvers' and 'osarch' attributes for the osiamge.|PUT|/osimages/sles11.2-ppc64-install-compute/attrs/osvers;osarch {\"osvers\":\"sles11.3\",\"osarch\":\"x86_64\"}||",
                 cmd      => "chdef",
@@ -1020,7 +1032,7 @@ my %URIdef = (
             desc    => "[URI:/policy/{policy_priority}] - The policy resource",
             matcher => '^\/policy\/[^\/]*$',
             GET     => {
-                desc => "Get all the attibutes for a policy {policy_priority}.",
+                desc => "Get all the attributes for a policy {policy_priority}.",
                 desc1 => "It will display all the policy attributes for one policy resource.",
                 desc2 => "The keyword ALLRESOURCES can be used as {policy_priority} which means to get policy attributes for all the policies.",
                 usage => "||$usagemsg{objreturn}|",
@@ -1030,7 +1042,7 @@ my %URIdef = (
                 outhdler => \&defout,
             },
             PUT => {
-                desc => "Change the attibutes for the policy {policy_priority}.",
+                desc => "Change the attributes for the policy {policy_priority}.",
                 desc1 => "It will change one or more attributes for a policy.",
                 usage => "|$usagemsg{objchparam} DataBody: {attr1:v1,att2:v2,...}.|$usagemsg{non_getreturn}|",
                 example => "|Set the name attribute for policy 3.|PUT|/policy/3 {\"name\":\"root\"}||",
@@ -1144,7 +1156,7 @@ my %URIdef = (
             desc1 => "For a large number of nodes, this API call can be faster than using the corresponding nodes resource.  The disadvantage is that you need to know the table names the attributes are stored in.",
             matcher => '^/tables/[^/]+/nodes/[^/]+$',
             GET     => {
-                desc => "Get attibutes of tables for a noderange.",
+                desc => "Get attributes of tables for a noderange.",
                 usage => "||An object containing each table.  Within each table object is an array of node objects containing the attributes.|",
                 example1 => qq(|Get all the columns from table nodetype for node1 and node2.|GET|/tables/nodetype/nodes/node1,node2|{\n   \"nodetype\":[\n      {\n         \"provmethod\":\"rhels6.4-x86_64-install-compute\",\n         \"profile\":\"compute\",\n         \"arch\":\"x86_64\",\n         \"name\":\"node1\",\n         \"os\":\"rhels6.4\"\n      },\n      {\n         \"provmethod\":\"rhels6.3-x86_64-install-compute\",\n         \"profile\":\"compute\",\n         \"arch\":\"x86_64\",\n         \"name\":\"node2\",\n         \"os\":\"rhels6.3\"\n      }\n   ]\n}|),
                 example2 => qq(|Get all the columns from tables nodetype and noderes for node1 and node2.|GET|/tables/nodetype,noderes/nodes/node1,node2|{\n   \"noderes\":[\n      {\n         \"installnic\":\"mac\",\n         \"netboot\":\"xnba\",\n         \"name\":\"node1\",\n         \"nfsserver\":\"192.168.1.15\"\n      },\n      {\n         \"installnic\":\"mac\",\n         \"netboot\":\"pxe\",\n         \"name\":\"node2\",\n         \"proxydhcp\":\"no\"\n      }\n   ],\n   \"nodetype\":[\n      {\n         \"provmethod\":\"rhels6.4-x86_64-install-compute\",\n         \"profile\":\"compute\",\n         \"arch\":\"x86_64\",\n         \"name\":\"node1\",\n         \"os\":\"rhels6.4\"\n      },\n      {\n         \"provmethod\":\"rhels6.3-x86_64-install-compute\",\n         \"profile\":\"compute\",\n         \"arch\":\"x86_64\",\n         \"name\":\"node2\",\n         \"os\":\"rhels6.3\"\n      }\n   ]\n}|),
@@ -1152,7 +1164,7 @@ my %URIdef = (
                 outhdler => \&tableout,
             },
             PUT => {
-                desc => "Change the node table attibutes for {noderange}.",
+                desc => "Change the node table attributes for {noderange}.",
                 usage => "|A hash of table names and attribute objects.  DataBody: {table1:{attr1:v1,att2:v2,...}}.|$usagemsg{non_getreturn}|",
                 example => '|Change the nodetype.arch and noderes.netboot attributes for nodes node1,node2.|PUT|/tables/nodetype,noderes/nodes/node1,node2 {"nodetype":{"arch":"x86_64"},"noderes":{"netboot":"xnba"}}||',
                 fhandler => \&tablenodeputhdl,
@@ -1164,14 +1176,14 @@ my %URIdef = (
             desc1 => "For a large number of nodes, this API call can be faster than using the corresponding nodes resource.  The disadvantage is that you need to know the table names the attributes are stored in.",
             matcher => '^/tables/[^/]+/nodes/[^/]+/[^/]+$',
             GET     => {
-                desc => "Get table attibutes for a noderange.",
+                desc => "Get table attributes for a noderange.",
                 usage => "||An object containing each table.  Within each table object is an array of node objects containing the attributes.|",
                 example => qq(|Get OS and ARCH attributes from nodetype table for node1 and node2.|GET|/tables/nodetype/nodes/node1,node2/os,arch|{\n   \"nodetype\":[\n      {\n         \"arch\":\"x86_64\",\n         \"name\":\"node1\",\n         \"os\":\"rhels6.4\"\n      },\n      {\n         \"arch\":\"x86_64\",\n         \"name\":\"node2\",\n         \"os\":\"rhels6.3\"\n      }\n   ]\n}|),
                 fhandler => \&tablenodehdl,
                 outhdler => \&tableout,
             },
             PUT_backup => {
-                desc => "[URI:/tables/nodes/{noderange}] - Change the node table attibutes for the {noderange}.",
+                desc => "[URI:/tables/nodes/{noderange}] - Change the node table attributes for the {noderange}.",
                 usage => "|A hash of table names and attribute objects.  DataBody: {table1:{attr1:v1,att2:v2,...}}.|$usagemsg{non_getreturn}|",
                 example => '|Change the nodehm.mgmt and noderes.netboot attributes for nodes node1-node5.|PUT|/tables/nodes/node1-node5 {"nodehm":{"mgmt":"ipmi"},"noderes":{"netboot":"xnba"}}||',
                 fhandler => \&tablenodeputhdl,
@@ -1196,14 +1208,14 @@ my %URIdef = (
             desc2 => "{keys} should be the name=value pairs which are used to search table. e.g. {keys} should be [net=192.168.1.0,mask=255.255.255.0] for networks table query since the net and mask are the keys of networks table.",
             matcher => '^/tables/[^/]+/rows/[^/]+$',
             GET     => {
-                desc => "Get attibutes for rows from non-node tables.",
+                desc => "Get attributes for rows from non-node tables.",
                 usage => "||An object containing each table.  Within each table object is an array of row objects containing the attributes.|",
                 example => qq(|Get row which net=192.168.1.0,mask=255.255.255.0 from networks table.|GET|/tables/networks/rows/net=192.168.1.0,mask=255.255.255.0|{\n   \"networks\":[\n      {\n         \"mgtifname\":\"eth0\",\n         \"netname\":\"192_168_1_0-255_255_255_0\",\n         \"tftpserver\":\"192.168.1.15\",\n         \"gateway\":\"192.168.1.100\",\n         \"staticrangeincrement\":\"1\",\n         \"net\":\"192.168.1.0\",\n         \"mask\":\"255.255.255.0\"\n      }\n   ]\n}|),
                 fhandler => \&tablerowhdl,
                 outhdler => \&tableout,
             },
             PUT => {
-                desc => "Change the non-node table attibutes for the row that matches the {keys}.",
+                desc => "Change the non-node table attributes for the row that matches the {keys}.",
                 usage => "|A hash of attribute names and values.  DataBody: {attr1:v1,att2:v2,...}.|$usagemsg{non_getreturn}|",
                 example => '|Create a route row in the routes table.|PUT|/tables/routes/rows/routename=privnet {"net":"10.0.1.0","mask":"255.255.255.0","gateway":"10.0.1.254","ifname":"eth1"}||',
                 fhandler => \&tablerowputhdl,
@@ -1222,7 +1234,7 @@ my %URIdef = (
             desc1 => "Use this for tables that don't have node name as the key of the table, for example: passwd, site, networks, polciy, etc.",
             matcher => '^/tables/[^/]+/rows/[^/]+/[^/]+$',
             GET     => {
-                desc => "Get specific attibutes for rows from non-node tables.",
+                desc => "Get specific attributes for rows from non-node tables.",
                 usage => "||An object containing each table.  Within each table object is an array of row objects containing the attributes.|",
                 example => qq(|Get attributes mgtifname and tftpserver which net=192.168.1.0,mask=255.255.255.0 from networks table.|GET|/tables/networks/rows/net=192.168.1.0,mask=255.255.255.0/mgtifname,tftpserver|{\n   \"networks\":[\n      {\n         \"mgtifname\":\"eth0\",\n         \"tftpserver\":\"192.168.1.15\"\n      }\n   ]\n}|),
                 fhandler => \&tablerowhdl,
@@ -1239,7 +1251,7 @@ my %URIdef = (
             POST    => {
                 desc  => "Create a token.",
                 usage => "||An array of all the global configuration list.|",
-                example => "|Aquire a token for user \'root\'.|POST|/tokens {\"userName\":\"root\",\"userPW\":\"cluster\"}|{\n   \"token\":{\n      \"id\":\"a6e89b59-2b23-429a-b3fe-d16807dd19eb\",\n      \"expire\":\"2014-3-8 14:55:0\"\n   }\n}|",
+                example => "|Acquire a token for user \'root\'.|POST|/tokens {\"userName\":\"root\",\"userPW\":\"cluster\"}|{\n   \"token\":{\n      \"id\":\"a6e89b59-2b23-429a-b3fe-d16807dd19eb\",\n      \"expire\":\"2014-3-8 14:55:0\"\n   }\n}|",
                 fhandler => \&nonobjhdl,
                 outhdler => \&tokenout,
             },
@@ -1279,7 +1291,7 @@ my %URIdef = (
             GET     => {
                 desc     => "Show attributes of a node template.",
                 usage    => "||$usagemsg{objreturn}|",
-                example  => "|GET all the attibutes of node template \'x86_64kvmguest-template\'.|GET|/templates/node {\"options\":{\"--template\":\"x86_64kvmguest-template\"}} |{\n   \"arch\":{\n      \"x86_64\":\"compute\",\n      \"bmc\":\"MANDATORY:The hostname or ip address of the BMC adapater\",\n      \bmcpassword\":\"MANDATORY:the password of the BMC\",\n      \"mgt\":\"ipmi\",\n      \"groups\":\"all\",\n      ...\n   }\n}",
+                example  => "|GET all the attributes of node template \'x86_64kvmguest-template\'.|GET|/templates/node {\"options\":{\"--template\":\"x86_64kvmguest-template\"}} |{\n   \"arch\":{\n      \"x86_64\":\"compute\",\n      \"bmc\":\"MANDATORY:The hostname or ip address of the BMC adapater\",\n      \bmcpassword\":\"MANDATORY:the password of the BMC\",\n      \"mgt\":\"ipmi\",\n      \"groups\":\"all\",\n      ...\n   }\n}",
                 cmd      => "lsdef",
                 fhandler => \&defhdl,
                 outhdler => \&defout,
@@ -1755,6 +1767,56 @@ sub defout_remove_appended_info {
     }
 }
 
+#handle output of nodels command
+#input data like:
+#$VAR1 = [
+#          {
+#            'xcatdsource' => [
+#                             'bybc0602'
+#                           ],
+#            'node' => [
+#                        {
+#                          'name' => [
+#                                    'node1'
+#                                  ]
+#                        },
+#                        {
+#                          'name' => [
+#                                    'node2'
+#                                  ]
+#                        },
+#                        {
+#                          'name' => [
+#                                    'node3'
+#                                  ]
+#                        }
+#                      ]
+#          }
+#        ];
+
+#TO:
+#------------
+# [
+#    'node1',
+#    'node2',
+#    'node3'
+# ];
+sub nodelsout {
+    my $data = shift;
+    my $json;
+    foreach my $d (@$data) {
+        my $jsonnode;
+        my $lines = $d->{node};
+        foreach my $l (@$lines) {
+
+            push(@{$json}, $l->{name}[0]);
+
+        }
+    }
+    if ($json) {
+        addPageContent($JSON->encode($json), 1);
+    }
+}
 
 sub localresout {
     my $data = shift;
@@ -2059,6 +2121,10 @@ sub actionhdl {
             push @args, $paramhash->{'action'};
         } else {
             error("Missed Action.", $STATUS_NOT_FOUND);
+        }
+    } elsif ($params->{'resourcename'} eq "nodels") {
+        if (isGET()) {
+
         }
     } elsif ($params->{'resourcename'} =~ /(energy|energyattr)/) {
         if (isGET()) {
@@ -2828,7 +2894,7 @@ sub tablenodeputhdl {
     my $params = shift;
 
     # from the %URIdef:
-    # desc => "[URI:/tables/nodes/{noderange}] - Change the table attibutes for the {noderange}.",
+    # desc => "[URI:/tables/nodes/{noderange}] - Change the table attributes for the {noderange}.",
     # usage => "|An array of table objects.  Each table object contains the table name and an object of attribute values. DataBody: {table1:{attr1:v1,att2:v2,...}}.|$usagemsg{non_getreturn}|",
     # example => '|Change the nodehm.mgmt and noderes.netboot attributes for nodes node1-node5.|PUT|/tables/nodes/node1-node5 {"nodehm":{"mgmt":"ipmi"},"noderes":{"netboot":"xnba"}}||',
 
@@ -2895,7 +2961,7 @@ sub tablerowputhdl {
     my $params = shift;
 
     # from %URIdef:
-    # desc => "[URI:/tables/{table}/rows/{keys}] - Change the non-node table attibutes for the row that matches the {keys}.",
+    # desc => "[URI:/tables/{table}/rows/{keys}] - Change the non-node table attributes for the row that matches the {keys}.",
     # usage => "|A hash of attribute names and values.  DataBody: {attr1:v1,att2:v2,...}.|$usagemsg{non_getreturn}|",
     # example => '|Creat a route row in the routes table.|PUT|/tables/routes/rows/routename=privnet {"net":"10.0.1.0","mask":"255.255.255.0","gateway":"10.0.1.254","ifname":"eth1"}||',
 

@@ -226,6 +226,25 @@ sub setdestiny {
             if ($ient->{initrd})   { $bphash->{initrd}   = $ient->{initrd} }
             if ($ient->{kcmdline}) { $bphash->{kcmdline} = $ient->{kcmdline} }
         }
+    } elsif ($state =~ /ondiscover/) {
+        my $target;
+        if ($state =~ /=/) {
+            ($state, $target) = split '=', $state, 2;
+        }
+        if(!$target){
+            $callback->({ error => "invalid argument: \"$state\"", errorcode => [1] });
+            return;
+        }
+        my @cmds = split '\|', $target;
+        foreach my $tmpnode (@{ $req->{node} }) {
+            foreach my $cmd (@cmds) {
+                my $action;
+               ($cmd, $action) = split ':', $cmd;
+                my $runcmd = "$cmd $tmpnode $action";
+                xCAT::Utils->runcmd($runcmd, 0);
+                xCAT::MsgUtils->trace($verbose, "d", "run ondiscover command: $runcmd");
+            }
+        }
     } elsif ($state =~ /^install[=\$]/ or $state eq 'install' or $state =~ /^netboot[=\$]/ or $state eq 'netboot' or $state eq "image" or $state eq "winshell" or $state =~ /^osimage/ or $state =~ /^statelite/) {
         my $target;
         my $action;

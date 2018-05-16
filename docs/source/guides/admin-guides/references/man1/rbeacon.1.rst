@@ -31,7 +31,7 @@ OpenPOWER OpenBMC:
 ==================
 
 
-\ **rbeacon**\  \ *noderange*\  {\ **on | off**\ }
+\ **rbeacon**\  \ *noderange*\  {\ **on | off | stat**\ }
 
 
 
@@ -40,7 +40,7 @@ DESCRIPTION
 ***********
 
 
-\ **rbeacon**\  Turns beacon (a light on the front of the physical server) on/off/blink or gives status of a node or noderange.
+\ **rbeacon**\  Turns beacon (a light on the front and/or rear of the physical server) on/off/blink or gives status of a node or noderange.
 
 
 ********

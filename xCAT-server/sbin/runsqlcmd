@@ -356,6 +356,7 @@ sub runpgsqlcmd
     if ($? > 0)    # error
     {
         $rc = $? >> 8;
+        $cmd = "PGPASSWORD=xxxxxx $psql -d $dbname -h $hostname -U $admin -f $file   ";
         xCAT::MsgUtils->message("SE",
             "The command $cmd had errors. Return=$rc");
     }

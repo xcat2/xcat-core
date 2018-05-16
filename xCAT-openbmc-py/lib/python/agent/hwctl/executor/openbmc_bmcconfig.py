@@ -145,7 +145,7 @@ class OpenBMCBmcConfigTask(ParallelNodesCommand):
 
             for key in keys:
                 self._dump_download(obmc, node, str(key))
-        except SelfServerException as e:
+        except (SelfServerException, SelfClientException) as e:
             self.callback.error(e.message, node)
 
     def dump_process(self, **kw):
@@ -174,7 +174,7 @@ class OpenBMCBmcConfigTask(ParallelNodesCommand):
             else:
                 self.callback.error('Could not find dump %s after waiting %d seconds.' % (dump_id, 20 * 15), node)
 
-        except SelfServerException as e:
+        except (SelfServerException, SelfClientException) as e:
             self.callback.error(e.message, node)
 
     def gard_clear(self, **kw):
@@ -188,7 +188,7 @@ class OpenBMCBmcConfigTask(ParallelNodesCommand):
             obmc.clear_gard()
             self.callback.info('%s: GARD cleared' % node)
 
-        except SelfServerException as e:
+        except (SelfServerException, SelfClientException) as e:
             self.callback.error(e.message, node)
 
     def pre_set_sshcfg(self, *arg, **kw):
@@ -296,14 +296,15 @@ rmdir \"/tmp/$userid\" \n")
             return
         else:
             self._set_netinfo(netinfo_dict['ip'], netinfo_dict['netmask'],
-                              netinfo_dict['gateway'], netinfo_dict['vlan'])
+                              netinfo_dict['gateway'], netinfo_dict['vlan'], **kw)
 
     def _set_hostname(self, hostname, **kw):
         node = kw['node']
         if hostname == '*':
-            if kw['nodeinfo']['bmc'] == kw['nodeinfo']['bmcip']:
-                self.callback.info("%s: set BMC ip as BMC Hostname" % node)
-            hostname = kw['nodeinfo']['bmc']
+            if kw['nodeinfo']['bmc'] != kw['nodeinfo']['bmcip']:
+                hostname = kw['nodeinfo']['bmc']
+            else:
+                return self.callback.error("Invalid OpenBMC Hostname %s, can't set to OpenBMC" % kw['nodeinfo']['bmc'], node)
         self._set_apis_values("hostname", hostname, **kw)
         self._get_netinfo(hostname=True, ntpserver=False, **kw) 
         return
@@ -324,6 +325,10 @@ rmdir \"/tmp/$userid\" \n")
         if not netinfo:
             return self.callback.error('No network information get', node)
 
+        if 'error' in netinfo:
+            self.callback.info('%s: %s' % (node, netinfo['error']))
+            return
+
         bmcip = node_info['bmcip']
         nic = self._get_facing_nic(bmcip, netinfo)
         if not nic:
@@ -341,6 +346,10 @@ rmdir \"/tmp/$userid\" \n")
         if nic in netinfo:
             ntpservers = netinfo[nic]['ntpservers']
         self.callback.info('%s: BMC NTP Servers: %s' % (node, ntpservers))
+        if ntpservers != None:
+            # Display a warning if the host in not powered off
+            # Time on the BMC is not synced while the host is powered on
+            self.callback.info('%s: Warning: time will not be synchronized until the host is powered off.' % node)
 
     def _get_facing_nic(self, bmcip, netinfo):
         for k,v in netinfo.items():
@@ -371,11 +380,20 @@ rmdir \"/tmp/$userid\" \n")
         node = kw['node']
         obmc = openbmc.OpenBMCRest(name=node, nodeinfo=kw['nodeinfo'], messager=self.callback,
                                    debugmode=self.debugmode, verbose=self.verbose)
+
         try:
             obmc.login()
             obmc.set_apis_values(key, value)
-        except (SelfServerException, SelfClientException) as e:
-            self.callback.error(e.message, node)
+        except SelfServerException as e:
+            return self.callback.error(e.message, node)
+        except SelfClientException as e:
+            if e.code == 404:
+                return self.callback.error('404 Not Found - Requested endpoint does not exist or may ' \
+                                           'indicate function is not supported on this OpenBMC firmware.', node)
+            if e.code == 403:
+                return self.callback.error('403 Forbidden - Requested endpoint does not exist or may ' \
+                                           'indicate function is not yet supported by OpenBMC firmware.', node)
+            return self.callback.error(e.message, node)
 
         self.callback.info("%s: BMC Setting %s..." % (node, openbmc.RSPCONFIG_APIS[key]['display_name']))
 
@@ -387,19 +405,111 @@ rmdir \"/tmp/$userid\" \n")
             obmc.login()
             value = obmc.get_apis_values(key)
 
-        except (SelfServerException, SelfClientException) as e:
-            self.callback.error(e.message, node)
+        except SelfServerException as e:
+            return self.callback.error(e.message, node)
+        except SelfClientException as e:
+            if e.code == 404:
+                return self.callback.error('404 Not Found - Requested endpoint does not exist or may ' \
+                                           'indicate function is not supported on this OpenBMC firmware.', node)
+            if e.code == 403:
+                return self.callback.error('403 Forbidden - Requested endpoint does not exist or may ' \
+                                           'indicate function is not yet supported by OpenBMC firmware.', node)
+            return self.callback.error(e.message, node)
 
-        str_value = '0.'+str(value)
+        if isinstance(value, dict):
+            str_value = str(value.values()[0])
+        elif value:
+            str_value = str(value)
+        else:
+            str_value = '0'
         result = '%s: %s: %s' % (node, openbmc.RSPCONFIG_APIS[key]['display_name'], str_value.split('.')[-1])
         self.callback.info(result)
 
-    def _set_netinfo(self, ip, netmask, gateway, vlan=False, **kw):
+    def _print_bmc_netinfo(self, node, ip, netmask, gateway, vlan):
+
+        self.callback.info('%s: BMC IP: %s'% (node, ip))
+        self.callback.info('%s: BMC Netmask: %s' %  (node, netmask))
+        self.callback.info('%s: BMC Gateway: %s' % (node, gateway))
         if vlan:
-            result = "set net(%s, %s, %s) for vlan %s" % (ip, netmask, gateway, vlan)
-        else:
-            result = "set net(%s, %s, %s) for eth0" % (ip, netmask, gateway)
-        return self.callback.info("set_netinfo %s" % result)
+            self.callback.info('%s: BMC VLAN ID: %s' % (node, vlan))
+
+    def _set_netinfo(self, ip, netmask, gateway, vlan=False, **kw):
+
+        node = kw['node']
+        node_info = kw['nodeinfo']
+        obmc = openbmc.OpenBMCRest(name=node, nodeinfo=node_info, messager=self.callback,
+                                   debugmode=self.debugmode, verbose=self.verbose)
+
+        try:
+            obmc.login()
+            netinfo = obmc.get_netinfo()
+        except (SelfServerException, SelfClientException) as e:
+            self.callback.error(e.message, node)
+            return
+
+        if not netinfo:
+            return self.callback.error("No network information get", node)
+        if 'error' in netinfo:
+            return self.callback.info('%s: %s' % (node, netinfo['error']))
+
+        bmcip = node_info['bmcip']
+        origin_nic = nic = self._get_facing_nic(bmcip, netinfo)
+        if not nic:
+            return self.callback.error('Can not get facing NIC for %s' % bmcip, node)
+
+        prefix = int(utils.mask_str2int(netmask))
+
+        if (ip == netinfo[nic]['ip'] and prefix == netinfo[nic]['netmask'] and
+           gateway == netinfo[nic]['gateway']):
+            if not vlan or vlan == str(netinfo[nic]['vlanid']):
+                self._print_bmc_netinfo(node, ip, netmask, gateway, vlan)
+                return
+
+        origin_type = netinfo[origin_nic]['ipsrc']
+        origin_ip_obj = netinfo[origin_nic]['ipobj']
+
+        if vlan:
+            pre_nic = nic.split('_')[0]
+            try:
+                obmc.set_vlan(pre_nic, vlan)
+                sleep( 15 )
+            except (SelfServerException, SelfClientException) as e:
+                self.callback.error(e.message, node)
+                return
+            nic = pre_nic + '_' + vlan
+
+        try:
+            obmc.set_netinfo(nic, ip, prefix, gateway)
+            sleep( 5 )
+            nic_netinfo = obmc.get_nic_netinfo(nic)
+        except (SelfServerException, SelfClientException) as e:
+            self.callback.error(e.message, node)
+            return
+
+        if not nic_netinfo:
+            return self.callback.error('Did not get info for NIC %s' % nic, node)
+
+        set_success = False
+        for net_id, attr in nic_netinfo.items():
+            if (attr['ip'] == ip and 
+                attr["netmask"] == prefix and
+                attr['gateway'] == gateway):
+                set_success = True
+
+        if not set_success:
+            return self.callback.error('Config BMC IP failed', node)
+
+        try:
+            if origin_type == 'DHCP':
+                obmc.disable_dhcp(origin_nic)
+            elif origin_type == 'Static':
+                obmc.delete_ip_object(origin_nic, origin_ip_obj)
+            else:
+                self.callback.error('Get wrong Origin type %s for NIC %s IP object %s' % (origin_type, nic, origin_ip_obj), node)
+        except (SelfServerException, SelfClientException) as e:
+            self.callback.error(e.message, node)
+
+        self. _print_bmc_netinfo(node, ip, netmask, gateway, vlan)
 
     def _get_netinfo(self, ip=False, ipsrc=False, netmask=False, gateway=False, vlan=False, hostname=False, ntpservers=False, **kw):
         node = kw['node']
@@ -424,6 +534,10 @@ rmdir \"/tmp/$userid\" \n")
 
         if hostname:
             self.callback.info("%s: BMC Hostname: %s" %(node, bmchostname))
+
+        if 'error' in netinfo:
+            return self.callback.info('%s: %s' % (node, netinfo['error']))
+
         dic_length = len(netinfo) 
         netinfodict = {'ip':[], 'netmask':[], 'gateway':[],
                    'vlan':[], 'ipsrc':[], 'ntpservers':[]}
@@ -432,7 +546,7 @@ rmdir \"/tmp/$userid\" \n")
             if dic_length > 1:
                 addon_string = " for %s" % nic
             netinfodict['ip'].append("BMC IP"+addon_string+": %s" % attrs["ip"])
-            netinfodict['netmask'].append("BMC Netmask"+addon_string+": %s" % attrs["netmask"])
+            netinfodict['netmask'].append("BMC Netmask"+addon_string+": %s" % utils.mask_int2str(attrs["netmask"]))
             netinfodict['gateway'].append("BMC Gateway"+addon_string+": %s (default: %s)" % (attrs["gateway"], defaultgateway))
             netinfodict['vlan'].append("BMC VLAN ID"+addon_string+": %s" % attrs["vlanid"])
             netinfodict['ipsrc'].append("BMC IP Source"+addon_string+": %s" % attrs["ipsrc"])

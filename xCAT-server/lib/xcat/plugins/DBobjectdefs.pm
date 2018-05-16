@@ -1554,6 +1554,7 @@ sub defmk
     } else {
         my $invalidobjname = ();
         my $invalidnodename = ();
+        my $nodewithdomain = ();
         foreach my $node (@::allobjnames) {
             my $myobjtype=$::opt_t;
             if(!$myobjtype and $::FILEATTRS{$node}{'objtype'}){
@@ -1563,9 +1564,21 @@ sub defmk
             unless(isobjnamevalid($node,$myobjtype)){
                $invalidobjname .= ",$node";
             }
-            if (($node =~ /[A-Z]/) && (((!$::opt_t) && (!$::FILEATTRS{$node}{'objtype'})) || ($::FILEATTRS{$node}{'objtype'} eq "node") || ($::opt_t eq "node"))) { 
-               $invalidnodename .= ",$node";
+            if (((!$::opt_t) && (!$::FILEATTRS{$node}{'objtype'})) || ($::FILEATTRS{$node}{'objtype'} eq "node") || ($::opt_t eq "node")) { 
+                if($node =~ /[A-Z]/){
+                    $invalidnodename .= ",$node";
+                }elsif($node =~ /\./){
+                    $nodewithdomain .= ",$node"; 
+                }
             }
+        }
+        if ($nodewithdomain) {
+            $nodewithdomain =~ s/,//;
+            my $rsp;
+            $rsp->{data}->[0] = "The object name \'$nodewithdomain\' is invalid, Cannot use '.' in node name.";
+            xCAT::MsgUtils->message("E", $rsp, $::callback);
+            $error = 1;
+            return 1;
         }
         if ($invalidobjname) {
             $invalidobjname =~ s/,//;
@@ -2361,7 +2374,8 @@ sub defch
             $objTypeListsHash{$objk}{$obj} = 1;
         }
     }
-
+    my $nodewithdomain;
+    my $invalidobjname = ();
     foreach my $obj (keys %::FINALATTRS)
     {
 
@@ -2384,7 +2398,17 @@ sub defch
             $error = 1;
             next;
         }
-
+        if ($obj =~ /\./ && $type eq "node")
+        {
+            $nodewithdomain .= ",$obj";
+            delete($::FINALATTRS{$obj});
+            next;
+        }
+        unless(isobjnamevalid($obj,$type)){
+            $invalidobjname .= ",$obj";
+            delete($::FINALATTRS{$obj});
+            next;
+        }
         if (defined($objTypeListsHash{$type}{$obj}) && ($objTypeListsHash{$type}{$obj} == 1))
         {
             $isDefined = 1;
@@ -2847,7 +2871,17 @@ sub defch
         }
 
     }    # end - for each object to update
-
+    my $rsp;
+    if ($nodewithdomain) {
+        $nodewithdomain =~ s/,//;
+        $rsp->{data}->[0] = "The object name \'$nodewithdomain\' is invalid, Cannot use '.' in node name.";
+        xCAT::MsgUtils->message("E", $rsp, $::callback);
+    }
+    if ($invalidobjname) {
+        $invalidobjname =~ s/,//;
+        $rsp->{data}->[0] = "The object name \'$invalidobjname\' is invalid, please refer to \"man xcatdb\" for the valid \"xCAT Object Name Format\"";
+        xCAT::MsgUtils->message("E", $rsp, $::callback);
+    }
     #
     #  write each object into the tables in the xCAT database
     #
@@ -4710,12 +4744,20 @@ sub initialize_variables
 sub isobjnamevalid{
     my $objname=shift;
     my $objtype=shift;
+    my %options;
+    $options{keepmissing}=1;
+    $options{genericrange}=1;
     $objtype="node" unless(defined $objtype and ($objtype ne ""));
     if($objtype eq "node"){
         #the ip address as a valid node object name is a hack for p7IH support   
         if(($objname !~ /^[a-zA-Z0-9-_]+$/) and !xCAT::NetworkUtils->isIpaddr($objname)){
             return 0;
         }
+    } elsif ($objtype eq "group"){
+        my @tmpnodes=xCAT::NodeRange::noderange($objname,0,0,%options);
+        if(scalar(@tmpnodes)>1 || $tmpnodes[0] ne $objname ){
+           return 0;
+        }    
     }
     return 1;
 }

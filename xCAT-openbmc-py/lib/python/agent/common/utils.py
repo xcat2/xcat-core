@@ -7,7 +7,7 @@
 import struct
 import sys
 import inspect
-import re
+import re, os
 import logging
 from logging.handlers import SysLogHandler
 
@@ -23,7 +23,11 @@ def getxCATLog(name=None):
     return xl
 
 def enableSyslog(name='xcat'):
-    h = SysLogHandler(address='/dev/log', facility=SysLogHandler.LOG_LOCAL4)
+    try:
+        h = SysLogHandler(address='/dev/log', facility=SysLogHandler.LOG_LOCAL4)
+    except:
+        # this will connect localhost:514
+        h = SysLogHandler(facility=SysLogHandler.LOG_LOCAL4)
     h.setFormatter(logging.Formatter('%s: ' % name + '%(levelname)s %(message)s'))
     logging.getLogger('xcatagent').addHandler(h)
 
@@ -81,6 +85,21 @@ def sort_string_with_numbers(origin_list):
     new_list = [(emb_numbers(string),string) for string in origin_list]
     new_list.sort()
     return [string for __,string in new_list]
+
+def mask_str2int(mask):
+    count_bit = lambda bin_str: len([i for i in bin_str if i=='1'])
+    mask_splited = mask.split('.')
+    mask_count = [count_bit(bin(int(i))) for i in mask_splited]
+    return sum(mask_count)
+
+def mask_int2str(mask_int):
+    mask_num = (0x1 << 32) - (0x1 << (32 - mask_int))
+    return "%s.%s.%s.%s" % (str((mask_num >> 24) & 0xff), str((mask_num >>16)&0xff), str((mask_num >> 8) & 0xff), str(mask_num & 0xff))
+
+def get_full_path(cwd, directory):
+    if not os.path.isabs(directory): 
+        directory = os.path.join(cwd, directory)
+    return directory
 
 class Messager(object):
     def __init__(self, name=None):

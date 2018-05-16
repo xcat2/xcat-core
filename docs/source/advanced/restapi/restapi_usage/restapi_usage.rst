@@ -37,14 +37,14 @@ where:
 
 Example: ::
 
-    curl -X GET --cacert /root/ca-cert.pem 'https://<FQDN of xCAT MN>/xcatws/nodes?userName=root&userPW=cluster'
+    curl -X GET -k 'https://<FQDN of xCAT MN>/xcatws/nodes?userName=root&userPW=cluster'
 
 Access Token
 ------------
 
 xCAT also supports the use the Access Token to replace the using of username+password in every access. Before accessing any resource, you need get a token with your account (username+password) ::
 
-    # curl -X POST --cacert /root/ca-cert.pem \
+    # curl -X POST -k \
         'https://<FQDN of xCAT MN>/xcatws/tokens?pretty=1' -H Content-Type:application/json --data \
         '{"userName":"root","userPW":"cluster"}'
      {
@@ -56,7 +56,7 @@ xCAT also supports the use the Access Token to replace the using of username+pas
 
 Then in the subsequent REST API access, the token can be used to replace the user account (username+password)  ::
 
-    curl -X GET --cacert /root/ca-cert.pem -H X-Auth-Token:5cabd675-bc2e-4318-b1d6-831fd1f32f97 'https://<FQDN of xCAT MN>/xcatws/<resource>?<parameters>
+    curl -X GET -k -H X-Auth-Token:5cabd675-bc2e-4318-b1d6-831fd1f32f97 'https://<FQDN of xCAT MN>/xcatws/<resource>?<parameters>
 
 The validity of token is 24 hours. If an old token has expired, you will get a 'Authentication failure' error. Then you need reacquire a token with your account.
 
@@ -183,10 +183,17 @@ Testing the API
 
 Normally you will make REST API calls from your code. You can use any language that has REST API bindings (most modern languages do).
 
+An Example of How to Use xCAT REST API from Python
+--------------------------------------------------
+
+Refer to the file `/opt/xcat/ws/xcatws-test.py <https://github.com/xcat2/xcat-core/blob/master/xCAT-server/xCAT-wsapi/xcatws-test.py>`_: ::
+
+    ./xcatws-test.py --user wsuser -password cluster_rest --xcatmn <FQDN of xCAT MN>
+
 An Example of How to Use xCAT REST API from PERL
 ------------------------------------------------
 
-Refer to the file /opt/xcat/ws/xcatws-test.pl: ::
+Refer to the file `/opt/xcat/ws/xcatws-test.pl <https://github.com/xcat2/xcat-core/blob/master/xCAT-server/xCAT-wsapi/xcatws-test.pl>`_: ::
 
     ./xcatws-test.pl -m GET -u "https://127.0.0.1/xcatws/nodes?userName=root&userPW=cluster"
 
@@ -202,9 +209,9 @@ It can be used as an example script to access and control xCAT resources. From t
     ./xcatws-test.sh -u root -p cluster -h <FQDN of xCAT MN> -t
     ./xcatws-test.sh -u root -p cluster -h <FQDN of xCAT MN> -c -t
 
-But for exploration and experimentation, you can make API calls from your browser or using the **curl** command.
+But for exploration and experimentation, you can make API calls from your browser or by using the **curl** command.
 
-To make an API call from your browser, uses the desired URL from this document. To simplify the test step, all the examples for the resources uses 'curl -k' to use insecure http connection and use the 'username+password' to authenticate the user. ::
+To make an API call from your browser, use the desired URL from this document. To simplify the test step, all the examples for the resources use 'curl -k' for unsecure http connection and use the 'username+password' to authenticate the user. ::
 
     curl -X GET -k 'https://myserver/xcatws/nodes?userName=xxx&userPW=xxx&pretty=1'
 

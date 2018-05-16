@@ -51,7 +51,7 @@ the \ **console**\  column of \ **servicenode**\  table to \ **2**\ .
 
 To support diskless service node, a new column \ **consoleenabled**\  has been added in \ **nodehm**\  table, it is used by \ **makegocons**\ 
 command to save the current console state for the node. After reinstalling the service node, the console storage file which maintain
-the console nodes for goconserver is lost, xCAT would register the console nodes into goconserver based on \ **consoleenabled**\  attribute
+the console nodes by goconserver is lost, xCAT would register the console nodes into goconserver based on \ **consoleenabled**\  attribute
 when restarting xcatd service.
 
 For openbmc which uses ssh as the terminal session connection method, goconserver can help save the system

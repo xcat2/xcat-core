@@ -32,24 +32,28 @@ SENSOR_POWER_UNITS = ("Amperes", "Joules", "Watts")
 class OpenBMCSensorTask(ParallelNodesCommand):
     """Executor for sensor-related actions."""
 
-    def _get_beacon_info(self, beacon_dict):
+    def _get_beacon_info(self, beacon_dict, display_type='full'):
 
+        led_label = 'LEDs'
         info_list = []
-        info_list.append('Front . . . . . : Power:%s Fault:%s Identify:%s' %
-                         (beacon_dict.get('front_power', 'N/A'),
-                          beacon_dict.get('front_fault', 'N/A'),
-                          beacon_dict.get('front_id', 'N/A')))
-        if (beacon_dict.get('fan0', 'N/A') == 'Off' and beacon_dict.get('fan1', 'N/A') == 'Off' and
-            beacon_dict.get('fan2', 'N/A') == 'Off' and beacon_dict.get('fan3', 'N/A') == 'Off'):
-            info_list.append('Front Fans  . . : No LEDs On')
-        else:
-            info_list.append('Front Fans  . . : fan0:%s fan1:%s fan2:%s fan3:%s' %
-                             (beacon_dict.get('fan0', 'N/A'), beacon_dict.get('fan1', 'N/A'),
-                              beacon_dict.get('fan2', 'N/A'), beacon_dict.get('fan3', 'N/A')))
-        info_list.append('Rear  . . . . . : Power:%s Fault:%s Identify:%s' %
-                         (beacon_dict.get('rear_power', 'N/A'),
-                          beacon_dict.get('rear_fault', 'N/A'),
-                          beacon_dict.get('rear_id', 'N/A')))
+        # display_type == 'full'    for detailed output for 'rvitals leds' command
+        # display_type == 'compact' for compact  output for 'rbeacon stat' command
+        if display_type == 'compact':
+            info_list.append('Front:%s Rear:%s' % (beacon_dict.get('front_id'), beacon_dict.get('rear_id', 'N/A')))
+            return info_list
+
+        for i in range(4):
+            info_list.append('%s Fan%s: %s' % (led_label, i, beacon_dict.get('fan' + str(i), 'N/A')))
+
+        led_types = ('Fault', 'Identify', 'Power')
+        for i in ('Front', 'Rear'):
+            for led_type in led_types:
+                tmp_type = led_type.lower()
+                if led_type == 'Identify':
+                    tmp_type = 'id'
+                key_type = i.lower() + '_' + tmp_type
+                info_list.append('%s %s %s: %s' % (led_label, i, led_type, beacon_dict.get(key_type, 'N/A')))
+
         return info_list
         
 
@@ -92,7 +96,7 @@ class OpenBMCSensorTask(ParallelNodesCommand):
 
         return sensor_info
 
-    def get_beacon_info(self, **kw):
+    def get_beacon_info(self, display_type, **kw):
 
         node = kw['node']
         obmc = openbmc.OpenBMCRest(name=node, nodeinfo=kw['nodeinfo'], messager=self.callback,
@@ -102,7 +106,7 @@ class OpenBMCSensorTask(ParallelNodesCommand):
         try:
             obmc.login()
             beacon_dict = obmc.get_beacon_info()
-            beacon_info = self._get_beacon_info(beacon_dict)
+            beacon_info = self._get_beacon_info(beacon_dict, display_type)
 
             if not beacon_info:
                 beacon_info = ['No attributes returned from the BMC.']

@@ -129,9 +129,14 @@ sub check_pr_format{
             $check_result_str .= "> **PR FORMAT CORRECT**";
             send_back_comment("$check_result_str"); 
         }else{
-            $check_result_str .= "> **PR FORMAT ERROR** : $checkrst";
-            send_back_comment("$check_result_str"); 
-            return 1;
+            if($checkrst =~ /milestone/ || $checkrst =~ /labels/){
+                $check_result_str .= "> **PR FORMAT WARNING** : $checkrst";
+                send_back_comment("$check_result_str");
+            }else{
+                $check_result_str .= "> **PR FORMAT ERROR** : $checkrst";
+                send_back_comment("$check_result_str"); 
+                return 1;
+            }
         }
     }
     return 0;

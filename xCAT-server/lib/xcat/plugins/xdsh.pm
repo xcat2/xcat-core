@@ -645,6 +645,12 @@ sub process_servicenodes_xdcp
         if (grep(/^--nodestatus$/, @$args)) {
             push(@{ $addreq->{arg} }, "--nodestatus");    # return nodestatus
         }
+
+        if (defined($req->{username}) && ($req->{username}->[0] ne "root")) {
+            # Using `root` when sync temporary files to `site.SNsyncfiledir` (default: /var/xcat/syncfiles)
+            push(@{ $addreq->{arg} }, "-l");
+            push(@{ $addreq->{arg} }, "root");
+        }
         push(@{ $addreq->{arg} }, "-v");
         push(@{ $addreq->{arg} }, "-s");
         push(@{ $addreq->{arg} }, "-F");
