@@ -384,12 +384,6 @@ else # for common mode  MODE=1,2,3,5 (updatenode,moncfg,node deployment)
     if [ -z "$NODE" ]; then
          NODE=`hostname -s`
     fi
-    grep 'NODE' /opt/xcat/xcatinfo > /dev/null  2>&1
-    if [ $? -eq 0 ]; then
-        sed -i "s/NODE=.*/NODE=$NODE/" /opt/xcat/xcatinfo
-    else
-        echo "NODE=$NODE" >> /opt/xcat/xcatinfo
-    fi
 
     downloaded=0;  #  have not downloaded the postscripts
     # try the -m/-M input (P_SIP) if it is specified,
@@ -692,6 +686,18 @@ if [ $? -eq 0 ]; then
 else
     echo "USEFLOWCONTROL=$new_fc" >> /opt/xcat/xcatinfo
 fi
+
+# Add Node name to /opt/xcat/xcatinfo
+if [ -z "$NODE" ]; then
+    NODE=`hostname -s`
+fi
+grep 'NODE' /opt/xcat/xcatinfo > /dev/null  2>&1
+if [ $? -eq 0 ]; then
+    sed -i "s/NODE=.*/NODE=$NODE/" /opt/xcat/xcatinfo
+else
+    echo "NODE=$NODE" >> /opt/xcat/xcatinfo
+fi
+
 
 # Store the SERVICEGROUP into the xcatinfo file for node deployment, and also for updatenode -s
 if [ $NODE_DEPLOYMENT -eq 1 ] || [ "$MODE" = "1" ]; then

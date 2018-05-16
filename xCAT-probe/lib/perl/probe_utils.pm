@@ -555,6 +555,45 @@ sub is_ntp_ready{
 
 =head3
     Description:
+        Test if rsyslog service is ready to use in current operating system
+    Arguments:
+        errormsg_ref: if there is something wrong for ntp service, this attribute save the possible reason.
+    Returns:
+        1 : yes
+        0 : no
+=cut
+
+#------------------------------------------
+sub is_rsyslog_ready {
+    my $errormsg_ref = shift;
+    $errormsg_ref= shift if (($errormsg_ref) && ($errormsg_ref =~ /probe_utils/));
+
+    my $is_active = 1;
+    my $tmp = `pidof systemd`;
+    chomp($tmp);
+    if ($tmp) {
+        `systemctl is-active --quiet rsyslog 2>&1`;
+        if ($?) {
+            $is_active = 0;
+        }
+    } else {
+        my $output = `service rsyslog status 2>&1 | grep "Active: active (running)"`;
+        if (!$output) {
+            $is_active = 0;
+        }
+    }
+
+    if (!$is_active) {
+        $$errormsg_ref = "rsyslog service is not running! Please check on current node";
+        return 0;
+    }
+    return 1; 
+}
+
+#------------------------------------------
+
+=head3
+    Description:
         Convert second to time
     Arguments:
         second_in : the time in seconds

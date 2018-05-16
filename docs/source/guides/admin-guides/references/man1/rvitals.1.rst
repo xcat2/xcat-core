@@ -67,7 +67,7 @@ OpenPOWER (OpenBMC) specific:
 =============================
 
 
-\ **rvitals**\  \ *noderange*\  [\ **temp | voltage | wattage | fanspeed | power | leds | altitude | all**\ ]
+\ **rvitals**\  \ *noderange*\  [\ **temp | voltage | wattage | fanspeed | power | leds | altitude | all**\ ] [\ **-V**\ | \ **-**\ **-verbose**\ ]
 
 
 

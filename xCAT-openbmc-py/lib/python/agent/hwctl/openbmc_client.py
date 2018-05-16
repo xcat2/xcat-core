@@ -49,7 +49,13 @@ DUMP_URLS = {
 
 GARD_CLEAR_URL = "/org/open_power/control/gard/action/Reset"
 
-INVENTORY_URL = "/inventory/enumerate"
+INVENTORY_URLS = {
+    "all"       : "/inventory/enumerate",
+    "model"     : "/inventory/system",
+    "serial"    : "/inventory/system",
+    "cpu"       : "/inventory/system/chassis/motherboard/enumerate",
+    "dimm"      : "/inventory/system/chassis/motherboard/enumerate",
+}    
 
 LEDS_URL = "/led/physical/enumerate"
 
@@ -181,9 +187,9 @@ RSPCONFIG_APIS = {
         'display_name': "BMC Hostname",
     },
     'autoreboot' : {
-        'baseurl': "/control/host0/auto_reboot/",
-        'set_url': "attr/AutoReboot",
-        'get_url': "attr/AutoReboot",
+        'baseurl': "/control/host0/auto_reboot",
+        'set_url': "/attr/AutoReboot",
+        'get_url': "",
         'display_name': "BMC AutoReboot",
         'attr_values': {
             '0': False,
@@ -198,14 +204,14 @@ RSPCONFIG_APIS = {
         'get_data': [],
         'display_name': "BMC PowerSupplyRedundancy",
         'attr_values': {
-            'disabled': "Disables",
-            'enabled': "Enabled",
+            'disabled': ["Disabled"],
+            'enabled': ["Enabled"],
         },
     },
     'powerrestorepolicy': {
-        'baseurl': "/control/host0/power_restore_policy/",
-        'set_url': "attr/PowerRestorePolicy",
-        'get_url': "attr/PowerRestorePolicy",
+        'baseurl': "/control/host0/power_restore_policy",
+        'set_url': "/attr/PowerRestorePolicy",
+        'get_url': "",
         'display_name': "BMC PowerRestorePolicy",
          'attr_values': {
              'restore': "xyz.openbmc_project.Control.Power.RestorePolicy.Policy.Restore",
@@ -214,9 +220,9 @@ RSPCONFIG_APIS = {
          },
     },
     'bootmode': {
-        'baseurl': "/control/host0/boot/",
-        'set_url': "attr/BootMode",
-        'get_url': "attr/BootMode",
+        'baseurl': "/control/host0/boot",
+        'set_url': "/attr/BootMode",
+        'get_url': "",
         'display_name':"BMC BootMode",
         'attr_values': {
             'regular': "xyz.openbmc_project.Control.Boot.Mode.Modes.Regular",
@@ -335,8 +341,11 @@ class OpenBMCRest(object):
             response = self.session.request(method, url, httpheaders, data=data, timeout=timeout)
             return self.handle_response(response, cmd=cmd)
         except SelfServerException as e:
-            e.message = 'BMC did not respond. ' \
-                        'Validate BMC configuration and retry the command.'
+            if cmd == 'login':
+                e.message = "Login to BMC failed: Can't connect to {0} {1}.".format(e.host_and_port, e.detail_msg)
+            else:
+                e.message = 'BMC did not respond. ' \
+                            'Validate BMC configuration and retry the command.'
             self._print_error_log(e.message, cmd)
             raise
         except ValueError:
@@ -543,11 +552,19 @@ class OpenBMCRest(object):
             error = 'Received wrong format response: %s' % sensor_data
             raise SelfServerException(error)
 
-    def get_inventory_info(self):
+    def get_inventory_info(self, inventory_type):
 
-        inventory_data = self.request('GET', INVENTORY_URL, cmd='get_inventory_info')
+        inventory_data = self.request('GET', INVENTORY_URLS[inventory_type], cmd='get_inventory_info')
         try:
-            inverntory_dict = {}
+            inventory_dict = {}
+            if inventory_type == 'model' or inventory_type == 'serial':
+                # The format of returned data for model and serial a different from other inventory types
+                inventory_dict['SYSTEM'] = []
+                for key, value in inventory_data.items():
+                    inventory_dict['SYSTEM'].append('%s %s : %s' % ("SYSTEM", key, value))
+
+                return inventory_dict
+
             for key, value in inventory_data.items():
                 if 'Present' not in value:
                     logger.debug('Not "Present" for %s' % key)
@@ -569,13 +586,13 @@ class OpenBMCRest(object):
                 else:
                     source = key_id
 
-                if key_type not in inverntory_dict:
-                    inverntory_dict[key_type] = []
+                if key_type not in inventory_dict:
+                    inventory_dict[key_type] = []
 
                 for (sub_key, v) in value.items():
-                    inverntory_dict[key_type].append('%s %s : %s' % (source.upper(), sub_key, v))
+                    inventory_dict[key_type].append('%s %s : %s' % (source.upper(), sub_key, v))
 
-            return inverntory_dict
+            return inventory_dict
         except KeyError:
             error = 'Received wrong format response: %s' % inventory_data
             raise SelfServerException(error)
@@ -748,7 +765,11 @@ class OpenBMCRest(object):
             data = attr_info['attr_values'][value]
         else:
             data = value
-        self.request('PUT', set_url, payload={"data": data}, cmd="set_%s" % key)
+
+        method = 'PUT'
+        if key == 'powersupplyredundancy':
+            method = 'POST'
+        self.request(method, set_url, payload={"data": data}, cmd="set_%s" % key)
 
     def get_apis_values(self, key):
         attr_info = RSPCONFIG_APIS[key]
@@ -914,7 +935,7 @@ class OpenBMCRest(object):
 
     def set_ipdhcp(self):
         payload = { "data": [] }
-        return self.request('PUT', RSPCONFIG_NETINFO_URL['ipdhcp'], payload=payload, cmd="set_bmcip_dhcp")
+        return self.request('POST', RSPCONFIG_NETINFO_URL['ipdhcp'], payload=payload, cmd="set_bmcip_dhcp")
 
 
 class OpenBMCImage(object):

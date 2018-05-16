@@ -6,6 +6,7 @@ share/xcat/mypostscript/* opt/xcat/share/xcat/mypostscript/
 share/xcat/ca/* opt/xcat/share/xcat/ca
 
 share/xcat/scripts/* opt/xcat/share/xcat/scripts
+share/xcat/conf/* opt/xcat/share/xcat/conf
 share/xcat/tools/* opt/xcat/share/xcat/tools
 share/xcat/rollupdate/* opt/xcat/share/xcat/rollupdate
 share/xcat/installp_bundles/* opt/xcat/share/xcat/installp_bundles

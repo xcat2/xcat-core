@@ -33,7 +33,7 @@ Stop xCAT Service
 
     service xcatd stop
 
-2. Stop xCAT related services(Optional)
+2. Stop xCAT related services (optional)
 
   XCAT uses various network services on the management node and service nodes, the network services setup by xCAT may need to be cleaned up on the management node and service nodes before uninstalling xCAT.
 
@@ -48,128 +48,19 @@ Remove xCAT Files
 
 1. Remove the xCAT RPMs
 
-  There is no easy way to distinct all the packages depending by xCAT. For packages shipped by xCAT, you can remove them by the commands below.
+  There is no easy way to identify all xCAT packages. For packages shipped by xCAT, you can remove them by using the commands below.
   
   [RHEL and SLES] ::
 
-      rpm -qa |grep -i xcat
+      yum remove '*xcat*'
+      yum remove '*xCAT*'
 
   [Ubuntu] ::	  
   
       dpkg -l | awk '/xcat/ { print $2 }'
 
-  If you want to remove more cleanly, the list below maybe helpful. Listed are the packages of xcat installation tarball. Some RPMs may not to be installed in a specific environment.
+  To do an even more thorough cleanup, use links below to get a list of RPMs installed by xCAT. Some RPMs may not to be installed in a specific environment.
 
-  * XCAT Core Packages list (xcat-core):
-
-    [RHEL and SLES] ::
-	
-      perl-xCAT
-      xCAT
-      xCAT-buildkit
-      xCAT-client
-      xCAT-confluent
-      xCAT-genesis-scripts-ppc64
-      xCAT-genesis-scripts-x86_64
-      xCAT-server
-      xCATsn
-      xCAT-SoftLayer
-      xCAT-test
-      xCAT-vlan
-	
-    [Ubuntu] ::
-	
-      perl-xcat
-      xcat
-      xcat-buildkit
-      xcat-client
-      xcat-confluent
-      xcat-genesis-scripts
-      xcat-server
-      xcatsn
-      xcat-test
-      xcat-vlan
-
-  * XCAT Dependency Packages (xcat-dep):	
-
-    [RHEL and SLES] ::
-	
-	conserver-xcat
-	cpio
-	cpio-lang
-	elilo-xcat
-	esxboot-xcat
-	fping
-	ganglia-devel
-	ganglia-gmetad
-	ganglia-gmond
-	ganglia-gmond-modules-python
-	ganglia-web
-	grub2-xcat
-	ipmitool-xcat
-	libconfuse
-	libconfuse-devel
-	libganglia
-	lldpd
-	net-snmp-perl
-	perl-AppConfig
-	perl-Compress-Raw-Zlib
-	perl-Crypt-Blowfish
-	perl-Crypt-CBC
-	perl-Crypt-Rijndael
-	perl-Crypt-SSLeay
-	perl-DBD-DB2
-	perl-DBD-DB2Lite
-	perl-DBD-Pg
-	perl-DBD-SQLite
-	perl-Expect
-	perl-HTML-Form
-	perl-IO-Compress-Base
-	perl-IO-Compress-Zlib
-	perl-IO-Socket-SSL
-	perl-IO-Stty
-	perl-IO-Tty
-	perl-JSON
-	perl-Net-DNS
-	perl-Net-Telnet
-	perl-SOAP-Lite
-	perl-Test-Manifest
-	perl-version
-	perl-XML-Simple
-	pyodbc
-	rrdtool
-	scsi-target-utils
-	stunnel
-	syslinux-xcat
-	systemconfigurator
-	systemimager-client
-	systemimager-common
-	systemimager-server
-	xCAT-genesis-base-ppc64
-	xCAT-genesis-base-x86_64
-	xCAT-genesis-x86_64
-	xCAT-UI-deps
-	xnba-kvm
-	xnba-undi
-	yaboot-xcat
-	zhcp
-
-    [Ubuntu] ::
-	
-	conserver-xcat
-	elilo-xcat
-	grub2-xcat
-	ipmitool-xcat
-	syslinux
-	syslinux-extlinux
-	syslinux-xcat
-	xcat-genesis-base-amd64
-	xcat-genesis-base-ppc64
-	xnba-undi	
-
-  Along with xCAT development, above lists maybe change, you can get the latest list through below links:
-
-  
   * XCAT Core Packages List (xcat-core)	
 
     [RHEL and SLES] ::
@@ -178,31 +69,35 @@ Remove xCAT Files
 
     [Ubuntu] ::	
   
-        http://xcat.org/files/xcat/repos/apt/<version>/xcat-core/
+        http://xcat.org/files/xcat/repos/apt/<version>/xcat-core/pool/main
 	  
   * XCAT Dependency Packages (xcat-dep) 
 
-   `RPM Packages List (RHEL and SLES) <http://xcat.org/files/xcat/repos/yum/xcat-dep/>`_
-	  
-   `Debian Packages List (Ubuntu) <http://xcat.org/files/xcat/repos/apt/xcat-dep/>`_
-	
+    [RHEL and SLES] ::
+  
+        http://xcat.org/files/xcat/repos/yum/xcat-dep/<os>/<arch>
 
-  Generally, we use ``yum install xCAT`` to install xCAT, so these are some RPMs shipped by operating system are installed during xCAT installation. We don't have an easy way to find out all of them, but keep these RPMs are harmless. 
+    [Ubuntu] ::	
+  
+        http://xcat.org/files/xcat/repos/apt/xcat-dep/pool/main
+
+
+  When ``yum install xCAT`` is used to install xCAT, dependency RPMs provided by the Operating System will be installed. Keeping those rpms installed on the system is harmless. 
 
 
 2. Remove xCAT certificate file ::
 
     rm -rf /root/.xcat
 
-3. Remove xCAT data file 
+3. Remove xCAT data files 
 
-  By default, xCAT use SQLite, remove SQLite data file under ``/etc/xcat/``. ::
+  By default, xCAT uses SQLite, remove SQLite data files under ``/etc/xcat/``. ::
 
     rm -rf /etc/xcat
 
-4. Remove xCAT related file(Optional)
+4. Remove xCAT related files (optional)
 
-  XCAT has ever operated below directory when it was running. Do judgment by yourself before removing these directory, to avoid removing some directories used for other purpose in your environment. ::
+  XCAT might have also created additional files and directories below. Take caution when removing these files as they may be used for other purposes in your environment. ::
 
     /install
     /tftpboot

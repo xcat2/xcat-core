@@ -53,7 +53,7 @@ OPTIONS
 
 \ **-v**\           Command Version.
 
-\ **-m| -**\ **-method**\           Archive Method (cpio,tar,squashfs, default is cpio)
+\ **-m| -**\ **-method**\           Archive Method (cpio,tar,squashfs, default is tar)
 
 \ **-c| -**\ **-compress**\           Compress Method (pigz,gzip,xz, default is pigz/gzip)
 

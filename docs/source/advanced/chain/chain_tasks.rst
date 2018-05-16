@@ -11,7 +11,7 @@ Currently only the ``bmcsetup`` command is officially supplied by xCAT to run to
 
     runcmd=bmcsetup
 
-**Note**: the command ``mknb <arch>`` is needed before reboot the node.
+.. note:: The command ``mknb <arch>`` is needed before reboot the node.
 
 * runimage ::
 

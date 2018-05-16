@@ -34,7 +34,7 @@ class OpenBMCInventoryTask(ParallelNodesCommand):
                 if 'version=' in line:
                     version = line.split('=')[-1].strip()
                 if 'purpose=' in line:
-                    purpose = line.split('=')[-1].strip().split('.')[-1]
+                    purpose = line.split('=')[-1].strip()
                 if version and purpose:
                     break
 
@@ -83,7 +83,7 @@ class OpenBMCInventoryTask(ParallelNodesCommand):
         inventory_info = []
         try:
             obmc.login()
-            inventory_info_dict = obmc.get_inventory_info()
+            inventory_info_dict = obmc.get_inventory_info(inventory_type)
 
             if inventory_type == 'all' or not inventory_type:
                 keys = inventory_info_dict.keys()

@@ -20,7 +20,6 @@ from hwctl.executor.openbmc_flash import OpenBMCFlashTask
 from hwctl.executor.openbmc_inventory import OpenBMCInventoryTask
 from hwctl.executor.openbmc_power import OpenBMCPowerTask
 from hwctl.executor.openbmc_sensor import OpenBMCSensorTask
-from hwctl.executor.openbmc_bmcconfig import OpenBMCBmcConfigTask
 from hwctl.executor.openbmc_eventlog import OpenBMCEventlogTask
 from hwctl.beacon import DefaultBeaconManager
 from hwctl.setboot import DefaultBootManager
@@ -34,8 +33,11 @@ from hwctl.eventlog import DefaultEventlogManager
 from xcatagent import base
 import logging
 logger = logging.getLogger('xcatagent')
-if not logger.handlers:
-    utils.enableSyslog('xcat.agent')
+try:
+    if not logger.handlers:
+        utils.enableSyslog('xcat.agent')
+except:
+    pass
 
 HTTP_PROTOCOL = "https://"
 PROJECT_URL = "/xyz/openbmc_project"
@@ -188,6 +190,9 @@ class OpenBMCManager(base.BaseManager):
         try:
             opts = docopt(rflash_usage, argv=args)
             self.verbose = opts.pop('--verbose')
+        except DocoptExit as e:
+            self.messager.error("Failed to parse args by docopt: %s" % e)
+            return
         except Exception as e:
             self.messager.error("Failed to parse arguments for rflash: %s" % args)
             return
@@ -215,8 +220,8 @@ class OpenBMCManager(base.BaseManager):
     def rinv(self, nodesinfo, args):
 
         # 1, parse agrs
-        if not args:
-            args = ['all']
+        if not args or (len(args) == 1 and args[0] in ['-V', '--verbose']):
+            args.append('all')
 
         rinv_usage = """
         Usage:
@@ -287,6 +292,9 @@ class OpenBMCManager(base.BaseManager):
             DefaultPowerManager().set_power_state(runner, power_state=action)
 
     def rspconfig(self, nodesinfo, args):
+
+        from hwctl.executor.openbmc_bmcconfig import OpenBMCBmcConfigTask
+
         try:
             opts=docopt(RSPCONFIG_USAGE, argv=args)
         except DocoptExit as e:
@@ -380,8 +388,8 @@ class OpenBMCManager(base.BaseManager):
     def rvitals(self, nodesinfo, args):
 
         # 1, parse agrs
-        if not args:
-            args = ['all']
+        if not args or (len(args) == 1 and args[0] in ['-V', '--verbose']):
+            args.append('all')
 
         rvitals_usage = """
         Usage:

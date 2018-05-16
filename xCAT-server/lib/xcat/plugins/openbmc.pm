@@ -983,7 +983,7 @@ sub process_request {
         if ($next_status{LOGIN_RESPONSE} eq "RSPCONFIG_SET_HOSTNAME_REQUEST" and $status_info{RSPCONFIG_SET_HOSTNAME_REQUEST}{data} =~ /^\*$/) {
             if ($node_info{$node}{bmc} =~ /^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/) {
                 my $info_msg = "Invalid OpenBMC Hostname $node_info{$node}{bmc}, can't set to OpenBMC";
-                xCAT::SvrUtils::sendmsg($info_msg, $callback, $node);
+                xCAT::SvrUtils::sendmsg([1, $info_msg], $callback, $node);
                 $wait_node_num--;
                 next; 
             }
@@ -1863,6 +1863,10 @@ sub parse_command_status {
             $next_status{LOGIN_RESPONSE} = "RVITALS_REQUEST";
             $next_status{RVITALS_REQUEST} = "RVITALS_RESPONSE";
             $status_info{RVITALS_RESPONSE}{argv} = "$subcommand";
+            if ($subcommand eq "all") {
+                $next_status{RVITALS_RESPONSE} = "RVITALS_LEDS_REQUEST";
+                $next_status{RVITALS_LEDS_REQUEST} = "RVITALS_LEDS_RESPONSE";
+            }
         }
     }
 
@@ -2000,7 +2004,7 @@ sub parse_command_status {
                     $return_code = 1;
                 }
                 if (!$::UPLOAD_PNOR) {
-                    xCAT::SvrUtils::sendmsg([1,"No PNOR tar file found in $update_file"], $callback);
+                    xCAT::SvrUtils::sendmsg([1,"No Host tar file found in $update_file"], $callback);
                     $return_code = 1;
                 }
                 if ($return_code) {
@@ -2423,7 +2427,7 @@ sub deal_with_response {
                     my $log_id = (split ('/', $cur_url))[5];
                     $error = "Invalid ID=$log_id provided to be resolved. [$::RESPONSE_FORBIDDEN]";
                 } else{
-                    $error = "$::RESPONSE_FORBIDDEN - Requested endpoint does not exists and may indicate function is not yet supported by OpenBMC firmware.";
+                    $error = "$::RESPONSE_FORBIDDEN - Requested endpoint does not exist or may indicate function is not yet supported by OpenBMC firmware.";
                 }
             # Handle 404 
             } elsif ($response->status_line eq $::RESPONSE_NOT_FOUND) {
@@ -2434,7 +2438,7 @@ sub deal_with_response {
                     $error = "Invalid ID provided to delete.  Use the -l option to view valid firmware IDs.";
                 } elsif (($node_info{$node}{cur_status} eq "RSPCONFIG_API_CONFIG_QUERY_RESPONSE") || 
                          ($node_info{$node}{cur_status} eq "RSPCONFIG_API_CONFIG_ATTR_RESPONSE")) { 
-                    $error = "$::RESPONSE_NOT_FOUND - Requested endpoint does not exists and may indicate function is not supported on this OpenBMC firmware.";
+                    $error = "$::RESPONSE_NOT_FOUND - Requested endpoint does not exist or may indicate function is not supported on this OpenBMC firmware.";
                 } else {
                     $error = "[" . $response->code . "] " . $response_info->{'data'}->{'description'};
                 }
@@ -3383,6 +3387,7 @@ sub rspconfig_response {
             my @gateway = ();
             my @vlan = (); 
             my @ntpservers = ();
+            my $real_ntp_server = 0;
             my @nics = keys %nicinfo;
             foreach my $nic (@nics) {
                 my $addon_info = '';
@@ -3392,6 +3397,7 @@ sub rspconfig_response {
 
                 if ($nicinfo{$nic}{ntpservers}) {
                     push @ntpservers, "BMC NTP Servers$addon_info: $nicinfo{$nic}{ntpservers}";
+                    $real_ntp_server = 1;
                 } else {
                     push @ntpservers, "BMC NTP Servers$addon_info: None";
                 }
@@ -3414,6 +3420,11 @@ sub rspconfig_response {
                     push @output, "BMC Hostname: $hostname";
                 } elsif ($opt eq "ntpservers") {
                     push @output, @ntpservers;
+                    if (($real_ntp_server) && ($status_info{RSPCONFIG_SET_RESPONSE}{argv} =~ "NTPServers")) {
+                        # Display a warning if the host in not powered off
+                        # Time on the BMC is not synced while the host is powered on.
+                        push @output, "Warning: time will not be synchronized until the host is powered off.";
+                    }
                 }
 
                 if ($multiple_error and ($opt =~  /^ip$|^ipsrc$|^netmask$|^gateway$|^vlan$/)) {
@@ -4143,17 +4154,23 @@ sub rvitals_response {
             push (@sorted_output, $content_info);
         } else {
             # Full output for "rvitals leds" command
-            $content_info = "Front . . . . . : Power:$leds{front_power} Fault:$leds{front_fault} Identify:$leds{front_id}";
-            push (@sorted_output, $content_info);
-            $content_info = "Rear  . . . . . : Power:$leds{rear_power} Fault:$leds{rear_fault} Identify:$leds{rear_id}";
-            push (@sorted_output, $content_info);
-            # Fans 
-            if ($leds{fan0} =~ "Off" and $leds{fan1} =~ "Off" and $leds{fan2} eq "Off" and $leds{fan3} eq "Off") {
-                $content_info = "Front Fans  . . : No LEDs On";
-            } else { 
-                $content_info = "Front Fans  . . : fan0:$leds{fan0} fan1:$leds{fan1} fan2:$leds{fan2} fan3:$leds{fan3}";
-            } 
-            push (@sorted_output, $content_info);
+            my @front_rear = ("Front", "Rear");
+            my @led_types = ("Power", "Fault", "Identify");
+            foreach my $i (@front_rear) {
+                foreach my $led_type (@led_types) {
+                    my $tmp_type = lc($led_type);
+                    $tmp_type = "id" if ($led_type eq "Identify");
+                    my $key_type = lc($i) . "_" . $tmp_type;
+                    $content_info = "LEDs $i $led_type: $leds{$key_type}";
+                    push (@sorted_output, $content_info);
+                }
+            }
+            # Fans
+            for (my $i = 0; $i < 4; $i++) {
+                my $tmp_key = "fan" . $i;
+                $content_info = "LEDs Fan$i: $leds{$tmp_key}";
+                push (@sorted_output, $content_info);
+            }
         }
     }
 
@@ -4608,6 +4625,7 @@ sub rflash_upload {
     # curl commands
     my $curl_login_cmd  = "curl -c $cjar_id -k -H 'Content-Type: application/json' -X POST $request_url/login -d '" . $content_login . "'";
     my $curl_logout_cmd = "curl -b $cjar_id -k -H 'Content-Type: application/json' -X POST $request_url/logout -d '" . $content_logout . "'";
+     my $curl_check_cpu_dd_cmd = "curl -b $cjar_id -k -H 'Content-Type: application/json' -X GET $request_url/xyz/openbmc_project/inventory/system/chassis/motherboard/cpu0 | grep Version | cut -d: -f2";
 
     if (%fw_tar_files) {
         foreach my $key (keys %fw_tar_files) {
@@ -4639,6 +4657,17 @@ sub rflash_upload {
     }
     if ($h->{message} eq $::RESPONSE_OK) {
         if(%curl_upload_cmds){
+            # Before uploading file, check CPU DD version
+            my $curl_dd_check_result = `$curl_check_cpu_dd_cmd`;
+            if ($curl_dd_check_result =~ "20") {
+                # Display warning the only certain firmware versions are supported on DD 2.0
+                xCAT::SvrUtils::sendmsg("Warning: DD 2.0 processor detected on this node, should not have firmware > ibm-v2.0-0-r13.6 (BMC) and > v1.19_1.94 (Host).", $callback, $node);
+            }
+            if ($curl_dd_check_result =~ "21") {
+                if ($::VERBOSE) {
+                    xCAT::SvrUtils::sendmsg("DD 2.1 processor", $callback, $node);
+                }
+            }
             while((my $file,my $version)=each(%fw_tar_files)){
                 my $uploading_msg = "Uploading $file ...";
                 my $upload_cmd = $curl_upload_cmds{$file};

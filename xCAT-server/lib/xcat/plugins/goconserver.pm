@@ -6,6 +6,7 @@ BEGIN {
 }
 use lib "$::XCATROOT/lib/perl";
 use strict;
+use File::Copy;
 use xCAT::Table;
 use xCAT::Utils;
 use xCAT::TableUtils;
@@ -164,6 +165,9 @@ sub start_goconserver {
         if ($ret) {
             xCAT::MsgUtils->error_message("Failed to create configuration file for goconserver.", $::callback);
             return 1;
+        }
+        if (!copy($::XCATROOT."/share/xcat/conf/goconslogrotate", "/etc/logrotate.d/goconserver")) {
+            xCAT::MsgUtils->warn_message("Failed to create logrotate configuration for goconserver.", $::callback);
         }
     }
     $ret = xCAT::Goconserver::restart_service();

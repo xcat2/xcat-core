@@ -1,4 +1,4 @@
-star:texport_import_single_ppc_by_json
+start:export_import_single_ppc_by_json
 description:This case is used to test xcat-inventory export and import one ppc definition by json between 2 exact same MNs. This case can cover hmc,lpar. Before running this case, make sure these two MNs have been installed same exactly, and the current MN can connect the other MN by ssh without password. This case also can be run in one MN, this is, export from currnet node then import back to currnet node, in this case, just need to set $$DSTMN=<currnet node ip>
 Attribute: $$DSTMN - the ip of MN which is used to run import operation.
 cmd:mkdir -p /tmp/export_import_single_ppc_by_json
@@ -1979,957 +1979,657 @@ cmd:rm -rf /tmp/export_import_single_group_yaml
 check:rc==0
 end
 
-start:import_validation_json_node_obj_type
-description:This case is used to test node validation function of xcat-inventory import json file. To test "obj_type" attribute
-cmd:mkdir -p /tmp/import_validation_json_node_obj_type
+start:import_validation_node_obj_type
+description:This case is used to test node validation function of xcat-inventory import yaml and json file. To test "obj_type" attribute
+cmd:mkdir -p /tmp/import_validation_node_obj_type_bak
 check:rc==0
-cmd:lsdef bogusnode > /dev/null 2>&1;if [[ $? -eq 0 ]]; then lsdef bogusnode -z >/tmp/import_validation_json_node_obj_type/bogusnode.stanza ;rmdef bogusnode;fi
+cmd:lsdef bogusnode > /dev/null 2>&1;if [[ $? -eq 0 ]]; then lsdef bogusnode -z >/tmp/import_validation_node_obj_type_bak/bogusnode.stanza ;rmdef bogusnode;fi
 check:rc==0
-cmd:lsdef -t group bogusgroup  > /dev/null 2>&1;if [[ $? -eq 0 ]]; then lsdef -t group bogusgroup -z > /tmp/import_validation_json_node_obj_type/bogusgroup.stanza; rmdef -t group bogusgroup;fi
-check:rc==0 
-cmd:#!/bin/bash
-echo '{
-    "node": {
-        "bogusnode": {
-            "device_type": "server",
-            "network_info": {
-                "primarynic": {
-                    "mac": [
-                        "11:11:11:11:11:11"
-                    ]
-                }
-            },
-            "obj_info": {
-                "groups": "bogusgroup"
-            },
-            "role": "compute"
-        }
-    },
-}' > /tmp/import_validation_json_node_obj_type/node.json
+cmd:lsdef -t group bogusgroup  > /dev/null 2>&1;if [[ $? -eq 0 ]]; then lsdef -t group bogusgroup -z > /tmp/import_validation_node_obj_type_bak/bogusgroup.stanza; rmdef -t group bogusgroup;fi
 check:rc==0
-cmd:xcat-inventory import -f /tmp/import_validation_json_node_obj_type/node.json 
-check:output=~Error: failed to validate attribute
-check:output=~obj_type
+cmd:/opt/xcat/share/xcat/tools/autotest/testcase/xcat-inventory/validatehelper "node" "bogusnode" "obj_type" "" "import_validation_node_obj_type"
 check:rc!=0
-cmd:lsdef bogusnode
-check:output=~Error: Could not find an object named 'bogusnode'
+cmd:/opt/xcat/share/xcat/tools/autotest/testcase/xcat-inventory/validatehelper "node" "bogusnode" "obj_type" "aaa" "import_validation_node_obj_type"
 check:rc!=0
-cmd:#!/bin/bash
-echo '{
-    "node": {
-        "bogusnode": {
-            "device_type": "server",
-            "network_info": {
-                "primarynic": {
-                    "mac": [
-                        "11:11:11:11:11:11"
-                    ]
-                }
-            },
-            "obj_info": {
-                "groups": "bogusgroup"
-            },
-            "obj_type": "aaa",
-            "role": "compute"
-        }
-    },
-}' > /tmp/import_validation_json_node_obj_type/node.json
+cmd:/opt/xcat/share/xcat/tools/autotest/testcase/xcat-inventory/validatehelper "node" "bogusnode" "obj_type" "node" "import_validation_node_obj_type"
 check:rc==0
-cmd:xcat-inventory import -f /tmp/import_validation_json_node_obj_type/node.json
-check:output=~Error: failed to validate attribute
-check:output=~obj_type
+cmd:/opt/xcat/share/xcat/tools/autotest/testcase/xcat-inventory/validatehelper "node" "bogusnode" "obj_type" "group" "import_validation_node_obj_type"
+check:rc==0
+cmd:if [[ -e /tmp/import_validation_node_obj_type_bak/bogusnode.stanza ]]; then cat /tmp/import_validation_node_obj_type_bak/bogusnode.stanza | mkdef -z;fi
+check:rc==0
+cmd:if [[ -e /tmp/import_validation_node_obj_type_bak/bogusgroup.stanza ]]; then cat /tmp/import_validation_node_obj_type_bak/bogusgroup.stanza |mkdef -z -f;fi
+check:rc==0
+cmd:rm -rf /tmp/import_validation_node_obj_type_bak
+check:rc==0
+end
+
+start:import_validation_node_obj_info_groups
+description:This case is used to test node validation function of xcat-inventory import yaml and json file. To test "obj_info.groups" attribute
+cmd:mkdir -p /tmp/import_validation_node_obj_info_groups_bak
+check:rc==0
+cmd:lsdef bogusnode > /dev/null 2>&1;if [[ $? -eq 0 ]]; then lsdef bogusnode -z >/tmp/import_validation_node_obj_info_groups_bak/bogusnode.stanza ;rmdef bogusnode;fi
+check:rc==0
+cmd:lsdef -t group bogusgroup  > /dev/null 2>&1;if [[ $? -eq 0 ]]; then lsdef -t group bogusgroup -z > /tmp/import_validation_node_obj_info_groups_bak/bogusgroup.stanza; rmdef -t group bogusgroup;fi
+check:rc==0
+cmd:/opt/xcat/share/xcat/tools/autotest/testcase/xcat-inventory/validatehelper "node" "bogusnode" "obj_info.groups" "" "import_validation_node_obj_info_groups"
 check:rc!=0
-cmd:lsdef bogusnode
-check:output=~Error: Could not find an object named 'bogusnode'
+cmd:/opt/xcat/share/xcat/tools/autotest/testcase/xcat-inventory/validatehelper "node" "bogusnode" "obj_info.groups" "aaa" "import_validation_node_obj_info_groups"
+check:rc==0
+cmd:if [[ -e /tmp/import_validation_node_obj_info_groups_bak/bogusnode.stanza ]]; then cat /tmp/import_validation_node_obj_info_groups_bak/bogusnode.stanza | mkdef -z;fi
+check:rc==0
+cmd:if [[ -e /tmp/import_validation_node_obj_info_groups_bak/bogusgroup.stanza ]]; then cat /tmp/import_validation_node_obj_info_groups_bak/bogusgroup.stanza |mkdef -z -f;fi
+check:rc==0
+cmd:rm -rf /tmp/import_validation_node_obj_info_groups_bak
+check:rc==0
+end
+
+start:import_validation_node_device_type
+description:This case is used to test node validation function of xcat-inventory import yaml and json file. To test "device_type" attribute
+cmd:mkdir -p /tmp/import_validation_node_device_type_bak
+check:rc==0
+cmd:lsdef bogusnode > /dev/null 2>&1;if [[ $? -eq 0 ]]; then lsdef bogusnode -z >/tmp/import_validation_node_device_type_bak/bogusnode.stanza ;rmdef bogusnode;fi
+check:rc==0
+cmd:lsdef -t group bogusgroup  > /dev/null 2>&1;if [[ $? -eq 0 ]]; then lsdef -t group bogusgroup -z > /tmp/import_validation_node_device_type_bak/bogusgroup.stanza; rmdef -t group bogusgroup;fi
+check:rc==0
+cmd:/opt/xcat/share/xcat/tools/autotest/testcase/xcat-inventory/validatehelper "node" "bogusnode" "device_type" "" "import_validation_node_device_type"
 check:rc!=0
-cmd:#!/bin/bash
-echo '{
-    "node": {
-        "bogusnode": {
-            "device_type": "server",
-            "network_info": {
-                "primarynic": {
-                    "mac": [
-                        "11:11:11:11:11:11"
-                    ]
-                }
-            },
-            "obj_info": {
-                "groups": "bogusgroup"
-            },
-            "obj_type": "node",
-            "role": "compute"
-        }
-    },
-}' > /tmp/import_validation_json_node_obj_type/node.json
+cmd:/opt/xcat/share/xcat/tools/autotest/testcase/xcat-inventory/validatehelper "node" "bogusnode" "device_type" "aaa" "import_validation_node_device_type"
+check:rc!=0
+cmd:/opt/xcat/share/xcat/tools/autotest/testcase/xcat-inventory/validatehelper "node" "bogusnode" "device_type" "switch" "import_validation_node_device_type"
 check:rc==0
-cmd:xcat-inventory import -f /tmp/import_validation_json_node_obj_type/node.json
-check:output=~Inventory import successfully
+cmd:/opt/xcat/share/xcat/tools/autotest/testcase/xcat-inventory/validatehelper "node" "bogusnode" "device_type" "pdu" "import_validation_node_device_type"
 check:rc==0
-cmd:lsdef bogusnode
-check:output=~Object name: bogusnode
+cmd:/opt/xcat/share/xcat/tools/autotest/testcase/xcat-inventory/validatehelper "node" "bogusnode" "device_type" "rack" "import_validation_node_device_type"
 check:rc==0
-cmd:rmdef bogusnode
+cmd:/opt/xcat/share/xcat/tools/autotest/testcase/xcat-inventory/validatehelper "node" "bogusnode" "device_type" "hmc"  "import_validation_node_device_type"
 check:rc==0
-cmd:#!/bin/bash
-echo '{
-    "node": {
-        "bogusgroup": {
-            "device_type": "server",
-            "engines": {
-                "hardware_mgt_engine": {
-                    "engine_type": "ipmi"
-                }
-            },
-            "obj_info": {
-                "grouptype": "static"
-            },
-            "obj_type": "group",
-            "role": "compute"
-        }
-    },
-}' > /tmp/import_validation_json_node_obj_type/node.json
+cmd:/opt/xcat/share/xcat/tools/autotest/testcase/xcat-inventory/validatehelper "node" "bogusnode" "device_type" "server"  "import_validation_node_device_type"
 check:rc==0
-cmd:xcat-inventory import -f /tmp/import_validation_json_node_obj_type/node.json
-check:output=~Inventory import successfully
+cmd:if [[ -e /tmp/import_validation_node_device_type_bak/bogusnode.stanza ]]; then cat /tmp/import_validation_node_device_type_bak/bogusnode.stanza | mkdef -z;fi
 check:rc==0
-cmd:lsdef -t group -o bogusgroup
-check:output=~Object name: bogusgroup
+cmd:if [[ -e /tmp/import_validation_node_device_type_bak/bogusgroup.stanza ]]; then cat /tmp/import_validation_node_device_type_bak/bogusgroup.stanza |mkdef -z -f;fi
 check:rc==0
-cmd:rmdef -t group -o bogusgroup
+cmd:rm -rf /tmp/import_validation_node_device_type_bak
 check:rc==0
-cmd:if [[ -e /tmp/import_validation_json_node_obj_type/bogusnode.stanza ]]; then cat /tmp/import_validation_json_node_obj_type/bogusnode.stanza | mkdef -z;fi
+end
+
+start:import_validation_node_device_info_arch
+description:This case is used to test node validation function of xcat-inventory import yaml and json file. To test "device_info.arch" attribute
+cmd:mkdir -p /tmp/import_validation_node_device_info_arch_bak
 check:rc==0
-cmd:if [[ -e /tmp/import_validation_json_node_obj_type/bogusgroup.stanza ]]; then cat /tmp/import_validation_json_node_obj_type/bogusgroup.stanza |mkdef -z -f;fi
+cmd:lsdef bogusnode > /dev/null 2>&1;if [[ $? -eq 0 ]]; then lsdef bogusnode -z >/tmp/import_validation_node_device_info_arch_bak/bogusnode.stanza ;rmdef bogusnode;fi
 check:rc==0
-cmd:rm -rf /tmp/import_validation_json_node_obj_type
+cmd:lsdef -t group bogusgroup  > /dev/null 2>&1;if [[ $? -eq 0 ]]; then lsdef -t group bogusgroup -z > /tmp/import_validation_node_device_info_arch_bak/bogusgroup.stanza; rmdef -t group bogusgroup;fi
+check:rc==0
+cmd:/opt/xcat/share/xcat/tools/autotest/testcase/xcat-inventory/validatehelper "node" "bogusnode" "device_info.arch" "" "import_validation_node_device_info_arch"
+check:rc==0
+cmd:/opt/xcat/share/xcat/tools/autotest/testcase/xcat-inventory/validatehelper "node" "bogusnode" "device_info.arch" "aaa" "import_validation_node_device_info_arch"
+check:rc!=0
+cmd:/opt/xcat/share/xcat/tools/autotest/testcase/xcat-inventory/validatehelper "node" "bogusnode" "device_info.arch" "ppc64" "import_validation_node_device_info_arch"
+check:rc==0
+cmd:/opt/xcat/share/xcat/tools/autotest/testcase/xcat-inventory/validatehelper "node" "bogusnode" "device_info.arch" "ppc64el" "import_validation_node_device_info_arch"
+check:rc==0
+cmd:/opt/xcat/share/xcat/tools/autotest/testcase/xcat-inventory/validatehelper "node" "bogusnode" "device_info.arch" "ppc64le" "import_validation_node_device_info_arch"
+check:rc==0
+cmd:/opt/xcat/share/xcat/tools/autotest/testcase/xcat-inventory/validatehelper "node" "bogusnode" "device_info.arch" "x86_64" "import_validation_node_device_info_arch"
+check:rc==0
+cmd:/opt/xcat/share/xcat/tools/autotest/testcase/xcat-inventory/validatehelper "node" "bogusnode" "device_info.arch" "armv7l" "import_validation_node_device_info_arch"
+check:rc==0
+cmd:if [[ -e /tmp/import_validation_node_device_info_arch_bak/bogusnode.stanza ]]; then cat /tmp/import_validation_node_device_info_arch_bak/bogusnode.stanza | mkdef -z;fi
+check:rc==0
+cmd:if [[ -e /tmp/import_validation_node_device_info_arch_bak/bogusgroup.stanza ]]; then cat /tmp/import_validation_node_device_info_arch_bak/bogusgroup.stanza |mkdef -z -f;fi
+check:rc==0
+cmd:rm -rf /tmp/import_validation_node_device_info_arch_bak
+check:rc==0
+end
+
+start:import_validation_node_security_info_snmp_securitylevel
+description:This case is used to test node validation function of xcat-inventory import yaml and json file. To test "security_info.snmp.securitylevel" attribute
+cmd:mkdir -p /tmp/import_validation_node_security_info_snmp_securitylevel_bak
+check:rc==0
+cmd:lsdef boguspdu > /dev/null 2>&1;if [[ $? -eq 0 ]]; then lsdef boguspdu -z >/tmp/import_validation_node_security_info_snmp_securitylevel_bak/boguspdu.stanza ;rmdef boguspdu;fi
+check:rc==0
+cmd:lsdef -t group bogusgroup  > /dev/null 2>&1;if [[ $? -eq 0 ]]; then lsdef -t group bogusgroup -z > /tmp/import_validation_node_security_info_snmp_securitylevel_bak/bogusgroup.stanza; rmdef -t group bogusgroup;fi
+check:rc==0
+cmd:/opt/xcat/share/xcat/tools/autotest/testcase/xcat-inventory/validatehelper "node" "boguspdu" "security_info.snmp.securitylevel" "" "/tmp/import_validation_node_security_info_snmp_securitylevel"
+check:rc==0
+cmd:/opt/xcat/share/xcat/tools/autotest/testcase/xcat-inventory/validatehelper "node" "boguspdu" "security_info.snmp.securitylevel" "noAuthNoPriv" "/tmp/import_validation_node_security_info_snmp_securitylevel"
+check:rc==0
+cmd:/opt/xcat/share/xcat/tools/autotest/testcase/xcat-inventory/validatehelper "node" "boguspdu" "security_info.snmp.securitylevel" "authNoPriv" "/tmp/import_validation_node_security_info_snmp_securitylevel"
+check:rc==0
+cmd:/opt/xcat/share/xcat/tools/autotest/testcase/xcat-inventory/validatehelper "node" "boguspdu" "security_info.snmp.securitylevel" "authPriv" "/tmp/import_validation_node_security_info_snmp_securitylevel"
+check:rc==0
+cmd:/opt/xcat/share/xcat/tools/autotest/testcase/xcat-inventory/validatehelper "node" "boguspdu" "security_info.snmp.securitylevel" "aaaaa" "/tmp/import_validation_node_security_info_snmp_securitylevel"
+check:rc!=0
+cmd:/opt/xcat/share/xcat/tools/autotest/testcase/xcat-inventory/validatehelper "node" "boguspdu" "security_info.snmp.securitylevel" "noauthnopriv" "/tmp/import_validation_node_security_info_snmp_securitylevel"
+check:rc!=0
+cmd:if [[ -e /tmp/import_validation_node_security_info_snmp_securitylevel_bak/boguspdu.stanza ]]; then cat /tmp/import_validation_node_security_info_snmp_securitylevel_bak/boguspdu.stanza | mkdef -z;fi
+check:rc==0
+cmd:if [[ -e /tmp/import_validation_node_security_info_snmp_securitylevel_bak/bogusgroup.stanza ]]; then cat /tmp/import_validation_node_security_info_snmp_securitylevel_bak/bogusgroup.stanza |mkdef -z -f;fi
+check:rc==0
+cmd:rm -rf /tmp/import_validation_node_security_info_snmp_securitylevel_bak
+check:rc==0
+end
+
+start:import_validation_node_security_info_snmp_authprotocol
+description:This case is used to test node validation function of xcat-inventory import yaml and json file. To test "security_info.snmp.authprotocol" attribute
+cmd:mkdir -p /tmp/import_validation_node_security_info_snmp_authprotocol_bak
+check:rc==0
+cmd:lsdef boguspdu > /dev/null 2>&1;if [[ $? -eq 0 ]]; then lsdef boguspdu -z >/tmp/import_validation_node_security_info_snmp_authprotocol_bak/boguspdu.stanza ;rmdef boguspdu;fi
+check:rc==0
+cmd:lsdef -t group bogusgroup  > /dev/null 2>&1;if [[ $? -eq 0 ]]; then lsdef -t group bogusgroup -z > /tmp/import_validation_node_security_info_snmp_authprotocol_bak/bogusgroup.stanza; rmdef -t group bogusgroup;fi
+check:rc==0
+cmd:/opt/xcat/share/xcat/tools/autotest/testcase/xcat-inventory/validatehelper "node" "boguspdu" "security_info.snmp.authprotocol" "" "/tmp/import_validation_node_security_info_snmp_authprotocol"
+check:rc==0
+cmd:/opt/xcat/share/xcat/tools/autotest/testcase/xcat-inventory/validatehelper "node" "boguspdu" "security_info.snmp.authprotocol" "MD5" "/tmp/import_validation_node_security_info_snmp_authprotocol"
+check:rc==0
+cmd:/opt/xcat/share/xcat/tools/autotest/testcase/xcat-inventory/validatehelper "node" "boguspdu" "security_info.snmp.authprotocol" "SHA" "/tmp/import_validation_node_security_info_snmp_authprotocol"
+check:rc==0
+cmd:/opt/xcat/share/xcat/tools/autotest/testcase/xcat-inventory/validatehelper "node" "boguspdu" "security_info.snmp.authprotocol" "aaaa" "/tmp/import_validation_node_security_info_snmp_authprotocol"
+check:rc!=0
+cmd:/opt/xcat/share/xcat/tools/autotest/testcase/xcat-inventory/validatehelper "node" "boguspdu" "security_info.snmp.authprotocol" "md5" "/tmp/import_validation_node_security_info_snmp_authprotocol"
+check:rc==0
+cmd:/opt/xcat/share/xcat/tools/autotest/testcase/xcat-inventory/validatehelper "node" "boguspdu" "security_info.snmp.authprotocol" "sha" "/tmp/import_validation_node_security_info_snmp_authprotocol"
+check:rc==0
+cmd:/opt/xcat/share/xcat/tools/autotest/testcase/xcat-inventory/validatehelper "node" "boguspdu" "security_info.snmp.authprotocol" "SHA256" "/tmp/import_validation_node_security_info_snmp_authprotocol"
+check:rc!=0
+cmd:if [[ -e /tmp/import_validation_node_security_info_snmp_authprotocol_bak/boguspdu.stanza ]]; then cat /tmp/import_validation_node_security_info_snmp_authprotocol_bak/boguspdu.stanza | mkdef -z;fi
+check:rc==0
+cmd:if [[ -e /tmp/import_validation_node_security_info_snmp_authprotocol_bak/bogusgroup.stanza ]]; then cat /tmp/import_validation_node_security_info_snmp_authprotocol_bak/bogusgroup.stanza |mkdef -z -f;fi
+check:rc==0
+cmd:rm -rf /tmp/import_validation_node_security_info_snmp_authprotocol_bak
 check:rc==0
 end
 
 
-start:import_validation_yaml_node_obj_type
-description:This case is used to test node validation function of xcat-inventory import yaml file. To test "obj_type" attribute
-cmd:mkdir -p /tmp/import_validation_yaml_node_obj_type
+start:import_validation_node_security_info_snmp_privacyprotocol
+description:This case is used to test node validation function of xcat-inventory import yaml and json file. To test "security_info.snmp.privacyprotocol" attribute
+cmd:mkdir -p /tmp/import_validation_node_security_info_snmp_privacyprotocol_bak
 check:rc==0
-cmd:lsdef bogusnode > /dev/null 2>&1;if [[ $? -eq 0 ]]; then lsdef bogusnode -z >/tmp/import_validation_yaml_node_obj_type/bogusnode.stanza ;rmdef bogusnode;fi
+cmd:lsdef bogusswitch > /dev/null 2>&1;if [[ $? -eq 0 ]]; then lsdef bogusswitch -z >/tmp/import_validation_node_security_info_snmp_privacyprotocol_bak/bogusswitch.stanza ;rmdef bogusswitch;fi
 check:rc==0
-cmd:lsdef -t group bogusgroup  > /dev/null 2>&1;if [[ $? -eq 0 ]]; then lsdef -t group bogusgroup -z > /tmp/import_validation_yaml_node_obj_type/bogusgroup.stanza; rmdef -t group bogusgroup;fi
-check:rc==0 
-cmd:#!/bin/bash
-echo "node:
-  bogusnode:
-    device_type: server
-    network_info:
-      primarynic:
-        mac:
-        - '11:11:11:11:11:11'
-    obj_info:
-      groups: bogusgroup
-    role: compute" >  /tmp/import_validation_yaml_node_obj_type/node.yaml
+cmd:lsdef -t group bogusgroup  > /dev/null 2>&1;if [[ $? -eq 0 ]]; then lsdef -t group bogusgroup -z > /tmp/import_validation_node_security_info_snmp_privacyprotocol_bak/bogusgroup.stanza; rmdef -t group bogusgroup;fi
 check:rc==0
-cmd:xcat-inventory import -f /tmp/import_validation_yaml_node_obj_type/node.yaml 
-check:output=~Error: failed to validate attribute
-check:output=~obj_type
+cmd:/opt/xcat/share/xcat/tools/autotest/testcase/xcat-inventory/validatehelper "node" "bogusswitch" "security_info.snmp.privacyprotocol" "AES" "/tmp/import_validation_node_security_info_snmp_privacyprotocol"
+check:rc==0
+cmd:/opt/xcat/share/xcat/tools/autotest/testcase/xcat-inventory/validatehelper "node" "bogusswitch" "security_info.snmp.privacyprotocol" "DES" "/tmp/import_validation_node_security_info_snmp_privacyprotocol"
+check:rc==0
+cmd:/opt/xcat/share/xcat/tools/autotest/testcase/xcat-inventory/validatehelper "node" "bogusswitch" "security_info.snmp.privacyprotocol" "authNoPriv" "/tmp/import_validation_node_security_info_snmp_privacyprotocol"
+check:rc==0
+cmd:/opt/xcat/share/xcat/tools/autotest/testcase/xcat-inventory/validatehelper "node" "bogusswitch" "security_info.snmp.privacyprotocol" ""  "/tmp/import_validation_node_security_info_snmp_privacyprotocol"
+check:rc==0
+cmd:/opt/xcat/share/xcat/tools/autotest/testcase/xcat-inventory/validatehelper "node" "bogusswitch" "security_info.snmp.privacyprotocol" "authnopriv" "/tmp/import_validation_node_security_info_snmp_privacyprotocol"
 check:rc!=0
-cmd:lsdef bogusnode
-check:output=~Error: Could not find an object named 'bogusnode'
+cmd:/opt/xcat/share/xcat/tools/autotest/testcase/xcat-inventory/validatehelper "node" "bogusswitch" "security_info.snmp.privacyprotocol" "aaaa"  "/tmp/import_validation_node_security_info_snmp_privacyprotocol"
 check:rc!=0
-cmd:#!/bin/bash
-echo "node:
-  bogusnode:
-    device_type: server
-    network_info:
-      primarynic:
-        mac:
-        - '11:11:11:11:11:11'
-    obj_info:
-      groups: bogusgroup
-    obj_type: aaa 
-    role: compute" > /tmp/import_validation_yaml_node_obj_type/node.yaml
+cmd:if [[ -e /tmp/import_validation_node_security_info_snmp_privacyprotocol_bak/bogusswitch.stanza ]]; then cat /tmp/import_validation_node_security_info_snmp_privacyprotocol_bak/bogusswitch.stanza | mkdef -z;fi
 check:rc==0
-cmd:xcat-inventory import -f /tmp/import_validation_yaml_node_obj_type/node.yaml
-check:output=~Error: failed to validate attribute
-check:output=~obj_type
-check:rc!=0
-cmd:lsdef bogusnode
-check:output=~Error: Could not find an object named 'bogusnode'
-check:rc!=0
-cmd:#!/bin/bash
-echo "node:
-  bogusnode:
-    device_type: server
-    network_info:
-      primarynic:
-        mac:
-        - '11:11:11:11:11:11'
-    obj_info:
-      groups: bogusgroup
-    obj_type: node
-    role: compute" > /tmp/import_validation_yaml_node_obj_type/node.yaml
+cmd:if [[ -e /tmp/import_validation_node_security_info_snmp_privacyprotocol_bak/bogusgroup.stanza ]]; then cat /tmp/import_validation_node_security_info_snmp_privacyprotocol_bak/bogusgroup.stanza |mkdef -z -f;fi
 check:rc==0
-cmd:xcat-inventory import -f /tmp/import_validation_yaml_node_obj_type/node.yaml
-check:output=~Inventory import successfully
-check:rc==0
-cmd:lsdef bogusnode
-check:output=~Object name: bogusnode
-check:rc==0
-cmd:rmdef bogusnode
-check:rc==0
-cmd:#!/bin/bash
-echo "node:
-  bogusgroup:
-    device_type: server
-    engines:
-      hardware_mgt_engine:
-        engine_type: ipmi
-    obj_info:
-      grouptype: static
-    obj_type: group
-    role: compute" >  /tmp/import_validation_yaml_node_obj_type/node.yaml
-check:rc==0
-cmd:xcat-inventory import -f /tmp/import_validation_yaml_node_obj_type/node.yaml
-check:output=~Inventory import successfully
-check:rc==0
-cmd:lsdef -t group -o bogusgroup
-check:output=~Object name: bogusgroup
-check:rc==0
-cmd:rmdef -t group -o bogusgroup
-check:rc==0
-cmd:if [[ -e /tmp/import_validation_yaml_node_obj_type/bogusnode.stanza ]]; then cat /tmp/import_validation_yaml_node_obj_type/bogusnode.stanza | mkdef -z;fi
-check:rc==0
-cmd:if [[ -e /tmp/import_validation_yaml_node_obj_type/bogusgroup.stanza ]]; then cat /tmp/import_validation_yaml_node_obj_type/bogusgroup.stanza |mkdef -z -f;fi
-check:rc==0
-cmd:rm -rf /tmp/import_validation_yaml_node_obj_type
+cmd:rm -rf /tmp/import_validation_node_security_info_snmp_privacyprotocol_bak
 check:rc==0
 end
 
 
-start:import_validation_json_node_group
-description:This case is used to test node validation function of xcat-inventory import json file. To test "group" attribute
-cmd:mkdir -p /tmp/import_validation_json_node_group
+start:import_validation_node_security_info_remotecontrol_remoteprotocol
+descrremoteprotocoltion:This case is used to test node validation function of xcat-inventory import yaml and json file. To test "security_info.remotecontrol.remoteprotocol" attribute
+cmd:mkdir -p /tmp/import_validation_node_security_info_remotecontrol_remoteprotocol_bak
 check:rc==0
-cmd:lsdef bogusnode > /dev/null 2>&1;if [[ $? -eq 0 ]]; then lsdef bogusnode -z >/tmp/import_validation_json_node_group/bogusnode.stanza ;rmdef bogusnode;fi
+cmd:lsdef bogusswitch > /dev/null 2>&1;if [[ $? -eq 0 ]]; then lsdef bogusswitch -z >/tmp/import_validation_node_security_info_remotecontrol_remoteprotocol_bak/bogusswitch.stanza ;rmdef bogusswitch;fi
 check:rc==0
-cmd:lsdef -t group bogusgroup  > /dev/null 2>&1;if [[ $? -eq 0 ]]; then lsdef -t group bogusgroup -z > /tmp/import_validation_json_node_group/bogusgroup.stanza; rmdef -t group bogusgroup;fi
+cmd:lsdef -t group bogusgroup  > /dev/null 2>&1;if [[ $? -eq 0 ]]; then lsdef -t group bogusgroup -z > /tmp/import_validation_node_security_info_remotecontrol_remoteprotocol_bak/bogusgroup.stanza; rmdef -t group bogusgroup;fi
 check:rc==0
-cmd:#!/bin/bash
-echo '{
-    "node": {
-        "bogusnode": {
-            "device_type": "server",
-            "network_info": {
-                "primarynic": {
-                    "mac": [
-                        "11:11:11:11:11:11"
-                    ]
-                }
-            },
-            "obj_type": "node",
-            "role": "compute"
-        }
-    },
-}' > /tmp/import_validation_json_node_group/node.inv
+cmd:/opt/xcat/share/xcat/tools/autotest/testcase/xcat-inventory/validatehelper "node" "bogusswitch" "security_info.remotecontrol.remoteprotocol" "telnet" "/tmp/import_validation_node_security_info_remotecontrol_remoteprotocol"
 check:rc==0
-cmd:xcat-inventory import -f /tmp/import_validation_json_node_group/node.inv
-check:output=~Error: failed to validate attribute
-check:output=~group
+cmd:/opt/xcat/share/xcat/tools/autotest/testcase/xcat-inventory/validatehelper "node" "bogusswitch" "security_info.remotecontrol.remoteprotocol" "ssh" "/tmp/import_validation_node_security_info_remotecontrol_remoteprotocol"
+check:rc==0
+cmd:/opt/xcat/share/xcat/tools/autotest/testcase/xcat-inventory/validatehelper "node" "bogusswitch" "security_info.remotecontrol.remoteprotocol" "" "/tmp/import_validation_node_security_info_remotecontrol_remoteprotocol"
+check:rc==0
+cmd:/opt/xcat/share/xcat/tools/autotest/testcase/xcat-inventory/validatehelper "node" "bogusswitch" "security_info.remotecontrol.remoteprotocol" "SSH" "/tmp/import_validation_node_security_info_remotecontrol_remoteprotocol"
 check:rc!=0
-cmd:lsdef bogusnode
-check:output=~Error: Could not find an object named 'bogusnode'
+cmd:/opt/xcat/share/xcat/tools/autotest/testcase/xcat-inventory/validatehelper "node" "bogusswitch" "security_info.remotecontrol.remoteprotocol" "aaa" "/tmp/import_validation_node_security_info_remotecontrol_remoteprotocol"
 check:rc!=0
-cmd:if [[ -e /tmp/import_validation_json_node_group/bogusnode.stanza ]]; then cat /tmp/import_validation_json_node_group/bogusnode.stanza | mkdef -z;fi
+cmd:if [[ -e /tmp/import_validation_node_security_info_remotecontrol_remoteprotocol_bak/bogusswitch.stanza ]]; then cat /tmp/import_validation_node_security_info_remotecontrol_remoteprotocol_bak/bogusswitch.stanza | mkdef -z;fi
 check:rc==0
-cmd:if [[ -e /tmp/import_validation_json_node_group/bogusgroup.stanza ]]; then cat /tmp/import_validation_json_node_group/bogusgroup.stanza |mkdef -z -f;fi
+cmd:if [[ -e /tmp/import_validation_node_security_info_remotecontrol_remoteprotocol_bak/bogusgroup.stanza ]]; then cat /tmp/import_validation_node_security_info_remotecontrol_remoteprotocol_bak/bogusgroup.stanza |mkdef -z -f;fi
 check:rc==0
-cmd:rm -rf /tmp/import_validation_json_node_group
+cmd:rm -rf /tmp/import_validation_node_security_info_remotecontrol_remoteprotocol_bak
 check:rc==0
 end
 
-start:import_validation_yaml_node_group
-description:This case is used to test node validation function of xcat-inventory import yaml file. To test "group" attribute
-cmd:mkdir -p /tmp/import_validation_yaml_node_group
+start:import_validation_node_network_info_primarynic_ip
+description:This case is used to test node validation function of xcat-inventory import yaml and json file. To test "network_info.primarynic.ip" attribute
+cmd:mkdir -p /tmp/import_validation_node_network_info_primarynic_ip_bak
 check:rc==0
-cmd:lsdef bogusnode > /dev/null 2>&1;if [[ $? -eq 0 ]]; then lsdef bogusnode -z >/tmp/import_validation_yaml_node_group/bogusnode.stanza ;rmdef bogusnode;fi
+cmd:lsdef bogusnode > /dev/null 2>&1;if [[ $? -eq 0 ]]; then lsdef bogusnode -z >/tmp/import_validation_node_network_info_primarynic_ip_bak/bogusnode.stanza ;rmdef bogusnode;fi
 check:rc==0
-cmd:lsdef -t group bogusgroup  > /dev/null 2>&1;if [[ $? -eq 0 ]]; then lsdef -t group bogusgroup -z > /tmp/import_validation_yaml_node_group/bogusgroup.stanza; rmdef -t group bogusgroup;fi
+cmd:lsdef -t group bogusgroup  > /dev/null 2>&1;if [[ $? -eq 0 ]]; then lsdef -t group bogusgroup -z > /tmp/import_validation_node_network_info_primarynic_ip_bak/bogusgroup.stanza; rmdef -t group bogusgroup;fi
 check:rc==0
-cmd:#!/bin/bash
-echo "node:
-  bogusnode:
-    device_type: server
-    network_info:
-      primarynic:
-        mac:
-        - '11:11:11:11:11:11'
-    obj_type: node
-    role: compute" > /tmp/import_validation_yaml_node_group/node.inv
+cmd:/opt/xcat/share/xcat/tools/autotest/testcase/xcat-inventory/validatehelper "node" "bogusnode" "network_info.primarynic.ip" "" "/tmp/import_validation_node_network_info_primarynic_ip"
 check:rc==0
-cmd:xcat-inventory import -f /tmp/import_validation_yaml_node_group/node.inv
-check:output=~Error: failed to validate attribute
-check:output=~group
+cmd:/opt/xcat/share/xcat/tools/autotest/testcase/xcat-inventory/validatehelper "node" "bogusnode" "network_info.primarynic.ip" "100.100.100.100" "/tmp/import_validation_node_network_info_primarynic_ip"
+check:rc==0
+cmd:/opt/xcat/share/xcat/tools/autotest/testcase/xcat-inventory/validatehelper "node" "bogusnode" "network_info.primarynic.ip" "100.100.100.a" "/tmp/import_validation_node_network_info_primarynic_ip"
 check:rc!=0
-cmd:lsdef bogusnode
-check:output=~Error: Could not find an object named 'bogusnode'
+cmd:/opt/xcat/share/xcat/tools/autotest/testcase/xcat-inventory/validatehelper "node" "bogusnode" "network_info.primarynic.ip" "100.100" "/tmp/import_validation_node_network_info_primarynic_ip"
 check:rc!=0
-cmd:if [[ -e /tmp/import_validation_yaml_node_group/bogusnode.stanza ]]; then cat /tmp/import_validation_yaml_node_group/bogusnode.stanza | mkdef -z;fi
+cmd:/opt/xcat/share/xcat/tools/autotest/testcase/xcat-inventory/validatehelper "node" "bogusnode" "network_info.primarynic.ip" "fe80::40d6:aff:fe03:508" "/tmp/import_validation_node_network_info_primarynic_ip"
+check:rc!=0
+cmd:if [[ -e /tmp/import_validation_node_network_info_primarynic_ip_bak/bogusnode.stanza ]]; then cat /tmp/import_validation_node_network_info_primarynic_ip_bak/bogusnode.stanza | mkdef -z;fi
 check:rc==0
-cmd:if [[ -e /tmp/import_validation_yaml_node_group/bogusgroup.stanza ]]; then cat /tmp/import_validation_yaml_node_group/bogusgroup.stanza |mkdef -z -f;fi
+cmd:if [[ -e /tmp/import_validation_node_network_info_primarynic_ip_bak/bogusgroup.stanza ]]; then cat /tmp/import_validation_node_network_info_primarynic_ip_bak/bogusgroup.stanza |mkdef -z -f;fi
 check:rc==0
-cmd:rm -rf /tmp/import_validation_yaml_node_group
+cmd:rm -rf /tmp/import_validation_node_network_info_primarynic_ip_bak
 check:rc==0
 end
 
-start:import_validation_json_node_device_type
-description:This case is used to test node validation function of xcat-inventory import json file. To test "device_type" attribute
-cmd:mkdir -p /tmp/import_validation_json_node_device_type
+start:import_validation_node_network_info_primarynic_mac
+descrmaction:This case is used to test node validation function of xcat-inventory import yaml and json file. To test "network_info.primarynic.mac" attribute
+cmd:mkdir -p /tmp/import_validation_node_network_info_primarynic_mac_bak
 check:rc==0
-cmd:lsdef bogusnode > /dev/null 2>&1;if [[ $? -eq 0 ]]; then lsdef bogusnode -z >/tmp/import_validation_json_node_device_type/bogusnode.stanza ;rmdef bogusnode;fi
+cmd:lsdef bogusnode > /dev/null 2>&1;if [[ $? -eq 0 ]]; then lsdef bogusnode -z >/tmp/import_validation_node_network_info_primarynic_mac_bak/bogusnode.stanza ;rmdef bogusnode;fi
 check:rc==0
-cmd:lsdef -t group bogusgroup  > /dev/null 2>&1;if [[ $? -eq 0 ]]; then lsdef -t group bogusgroup -z > /tmp/import_validation_json_node_device_type/bogusgroup.stanza; rmdef -t group bogusgroup;fi
+cmd:lsdef -t group bogusgroup  > /dev/null 2>&1;if [[ $? -eq 0 ]]; then lsdef -t group bogusgroup -z > /tmp/import_validation_node_network_info_primarynic_mac_bak/bogusgroup.stanza; rmdef -t group bogusgroup;fi
 check:rc==0
-cmd:#!/bin/bash
-echo '{
-    "node": {
-        "bogusnode": {
-            "obj_info": {
-                "groups": "bogusgroup"
-            },
-            "obj_type": "node",
-            "role": "compute"
-        }
-    },
-}' > /tmp/import_validation_json_node_device_type/node.inv
+cmd:/opt/xcat/share/xcat/tools/autotest/testcase/xcat-inventory/validatehelper "node" "bogusnode" "network_info.primarynic.mac" "" "/tmp/import_validation_node_network_info_primarynic_mac"
 check:rc==0
-cmd:xcat-inventory import -f /tmp/import_validation_json_node_device_type/node.inv 
-check:output=~Error: failed to validate attribute
-check:output=~devtype
+cmd:/opt/xcat/share/xcat/tools/autotest/testcase/xcat-inventory/validatehelper "node" "bogusnode" "network_info.primarynic.mac" "42:d6:0a:03:05:08" "/tmp/import_validation_node_network_info_primarynic_mac"
+check:rc==0
+cmd:/opt/xcat/share/xcat/tools/autotest/testcase/xcat-inventory/validatehelper "node" "bogusnode" "network_info.primarynic.mac" "42:6:a:03:05:08" "/tmp/import_validation_node_network_info_primarynic_mac"
 check:rc!=0
-cmd:lsdef bogusnode
-check:output=~Error: Could not find an object named 'bogusnode'
+cmd:/opt/xcat/share/xcat/tools/autotest/testcase/xcat-inventory/validatehelper "node" "bogusnode" "network_info.primarynic.mac" "42:d6:0a:03:05:08:05:08" "/tmp/import_validation_node_network_info_primarynic_mac"
 check:rc!=0
-cmd:#!/bin/bash
-echo '{
-    "node": {
-        "bogusnode": {
-            "device_type": "aaa",
-            "obj_info": {
-                "groups": "bogusgroup"
-            },
-            "obj_type": "node",
-            "role": "compute"
-        }
-    },
-}' > /tmp/import_validation_json_node_device_type/node.inv
+cmd:if [[ -e /tmp/import_validation_node_network_info_primarynic_mac_bak/bogusnode.stanza ]]; then cat /tmp/import_validation_node_network_info_primarynic_mac_bak/bogusnode.stanza | mkdef -z;fi
 check:rc==0
-cmd:xcat-inventory import -f /tmp/import_validation_json_node_device_type/node.inv 
-check:output=~Error: failed to validate attribute
-check:output=~devtype
+cmd:if [[ -e /tmp/import_validation_node_network_info_primarynic_mac_bak/bogusgroup.stanza ]]; then cat /tmp/import_validation_node_network_info_primarynic_mac_bak/bogusgroup.stanza |mkdef -z -f;fi
+check:rc==0
+cmd:rm -rf /tmp/import_validation_node_network_info_primarynic_mac_bak
+check:rc==0
+end
+
+start:import_validation_node_nics_network_info_nics_ips
+descrnics_network_info_nics_ipstion:This case is used to test node validation function of xcat-inventory import yaml and json file. To test "network_info.nics.ips" attribute
+cmd:mkdir -p /tmp/import_validation_node_nics_network_info_nics_ips_bak
+check:rc==0
+cmd:lsdef bogusnode > /dev/null 2>&1;if [[ $? -eq 0 ]]; then lsdef bogusnode -z >/tmp/import_validation_node_nics_network_info_nics_ips_bak/bogusnode.stanza ;rmdef bogusnode;fi
+check:rc==0
+cmd:lsdef -t group bogusgroup  > /dev/null 2>&1;if [[ $? -eq 0 ]]; then lsdef -t group bogusgroup -z > /tmp/import_validation_node_nics_network_info_nics_ips_bak/bogusgroup.stanza; rmdef -t group bogusgroup;fi
+check:rc==0
+cmd:/opt/xcat/share/xcat/tools/autotest/testcase/xcat-inventory/validatehelper "node" "bogusnode" "network_info.nics.eth0.ips" "" "/tmp/import_validation_node_nics_network_info_nics_ips"
+check:rc==0
+cmd:/opt/xcat/share/xcat/tools/autotest/testcase/xcat-inventory/validatehelper "node" "bogusnode" "network_info.nics.eth0.ips" "['192.168.30.101','192.168.30.102']" "/tmp/import_validation_node_nics_network_info_nics_ips"
+check:rc==0
+cmd:/opt/xcat/share/xcat/tools/autotest/testcase/xcat-inventory/validatehelper "node" "bogusnode" "network_info.nics.eth0.ips" "|\D+(\d+)|30.0.0.($1%100)|" "/tmp/import_validation_node_nics_network_info_nics_ips"
+check:rc==0
+cmd:/opt/xcat/share/xcat/tools/autotest/testcase/xcat-inventory/validatehelper "node" "bogusnode" "network_info.nics.eth0.ips" "10.10" "/tmp/import_validation_node_nics_network_info_nics_ips"
 check:rc!=0
-cmd:lsdef bogusnode
-check:output=~Error: Could not find an object named 'bogusnode'
+cmd:/opt/xcat/share/xcat/tools/autotest/testcase/xcat-inventory/validatehelper "node" "bogusnode" "network_info.nics.eth0.ips" "aa" "/tmp/import_validation_node_nics_network_info_nics_ips"
 check:rc!=0
-cmd:#!/bin/bash
-echo '{
-    "node": {
-        "bogusnode": {
-            "device_type": "server",
-            "network_info": {
-                "primarynic": {
-                    "mac": [
-                        "11:11:11:11:11:11"
-                    ]
-                }
-            },
-            "obj_info": {
-                "groups": "bogusgroup"
-            },
-            "obj_type": "node",
-            "role": "compute"
-        }
-    },
-}' > /tmp/import_validation_json_node_device_type/node.inv
+cmd:if [[ -e /tmp/import_validation_node_nics_network_info_nics_ips_bak/bogusnode.stanza ]]; then cat /tmp/import_validation_node_nics_network_info_nics_ips_bak/bogusnode.stanza | mkdef -z;fi
 check:rc==0
-cmd:xcat-inventory import -f /tmp/import_validation_json_node_device_type/node.inv
-check:output=~Inventory import successfully
+cmd:if [[ -e /tmp/import_validation_node_nics_network_info_nics_ips_bak/bogusgroup.stanza ]]; then cat /tmp/import_validation_node_nics_network_info_nics_ips_bak/bogusgroup.stanza |mkdef -z -f;fi
 check:rc==0
-cmd:lsdef bogusnode
-check:output=~Object name: bogusnode
-check:rc==0
-cmd:rmdef bogusnode
-check:rc==0
-cmd:#!/bin/bash
-echo '{
-    "node": {
-        "bogusnode": {
-            "device_type": "switch",
-            "obj_info": {
-                "groups": "bogusgroup"
-            },
-            "obj_type": "node",
-            "role": "compute"
-        }
-    },
-}' > /tmp/import_validation_json_node_device_type/node.inv
-check:rc==0
-cmd:xcat-inventory import -f /tmp/import_validation_json_node_device_type/node.inv
-check:output=~Inventory import successfully
-check:rc==0
-cmd:lsdef bogusnode
-check:output=~Object name: bogusnode
-check:rc==0
-cmd:rmdef bogusnode
-check:rc==0
-cmd:#!/bin/bash
-echo '{
-    "node": {
-        "bogusnode": {
-            "device_type": "pdu",
-            "obj_info": {
-                "groups": "bogusgroup"
-            },
-            "obj_type": "node",
-            "role": "compute"
-        }
-    },
-}' > /tmp/import_validation_json_node_device_type/node.inv
-check:rc==0
-cmd:xcat-inventory import -f /tmp/import_validation_json_node_device_type/node.inv
-check:output=~Inventory import successfully
-check:rc==0
-cmd:lsdef bogusnode
-check:output=~Object name: bogusnode
-check:rc==0
-cmd:rmdef bogusnode
-check:rc==0
-cmd:#!/bin/bash
-echo '{
-    "node": {
-        "bogusnode": {
-            "device_type": "hmc",
-            "obj_info": {
-                "groups": "bogusgroup"
-            },
-            "obj_type": "node",
-            "role": "compute"
-        }
-    },
-}' > /tmp/import_validation_json_node_device_type/node.inv
-check:rc==0
-cmd:xcat-inventory import -f /tmp/import_validation_json_node_device_type/node.inv
-check:output=~Inventory import successfully
-check:rc==0
-cmd:lsdef bogusnode
-check:output=~Object name: bogusnode
-check:rc==0
-cmd:rmdef bogusnode
-check:rc==0
-cmd:#!/bin/bash
-echo '{
-    "node": {
-        "bogusnode": {
-            "device_type": "rack",
-            "obj_info": {
-                "groups": "bogusgroup"
-            },
-            "obj_type": "node",
-            "role": "compute"
-        }
-    },
-}' > /tmp/import_validation_json_node_device_type/node.inv
-check:rc==0
-cmd:xcat-inventory import -f /tmp/import_validation_json_node_device_type/node.inv
-check:output=~Inventory import successfully
-check:rc==0
-cmd:lsdef bogusnode
-check:output=~Object name: bogusnode
-check:rc==0
-cmd:rmdef bogusnode
-check:rc==0
-cmd:if [[ -e /tmp/import_validation_json_node_device_type/bogusnode.stanza ]]; then cat /tmp/import_validation_json_node_device_type/bogusnode.stanza | mkdef -z;fi
-check:rc==0
-cmd:if [[ -e /tmp/import_validation_json_node_device_type/bogusgroup.stanza ]]; then cat /tmp/import_validation_json_node_device_type/bogusgroup.stanza |mkdef -z -f;fi
-check:rc==0
-cmd:rm -rf /tmp/import_validation_json_node_device_type
+cmd:rm -rf /tmp/import_validation_node_nics_network_info_nics_ips_bak
 check:rc==0
 end
 
 
-start:import_validation_yaml_node_device_type
-description:This case is used to test node validation function of xcat-inventory import yaml file. To test "device_type" attribute
-cmd:mkdir -p /tmp/import_validation_yaml_node_device_type
+start:import_validation_node_network_info_primarynic_switchport
+descrswitchporttion:This case is used to test node validation function of xcat-inventory import yaml and json file. To test "network_info.primarynic.switchport" attribute
+cmd:mkdir -p /tmp/import_validation_node_network_info_primarynic_switchport_bak
 check:rc==0
-cmd:lsdef bogusnode > /dev/null 2>&1;if [[ $? -eq 0 ]]; then lsdef bogusnode -z >/tmp/import_validation_yaml_node_device_type/bogusnode.stanza ;rmdef bogusnode;fi
+cmd:lsdef bogusnode > /dev/null 2>&1;if [[ $? -eq 0 ]]; then lsdef bogusnode -z >/tmp/import_validation_node_network_info_primarynic_switchport_bak/bogusnode.stanza ;rmdef bogusnode;fi
 check:rc==0
-cmd:lsdef -t group bogusgroup  > /dev/null 2>&1;if [[ $? -eq 0 ]]; then lsdef -t group bogusgroup -z > /tmp/import_validation_yaml_node_device_type/bogusgroup.stanza; rmdef -t group bogusgroup;fi
+cmd:lsdef -t group bogusgroup  > /dev/null 2>&1;if [[ $? -eq 0 ]]; then lsdef -t group bogusgroup -z > /tmp/import_validation_node_network_info_primarynic_switchport_bak/bogusgroup.stanza; rmdef -t group bogusgroup;fi
 check:rc==0
-cmd:#!/bin/bash
-echo "node:
-  bogusnode:
-    obj_info:
-      groups: bogusgroup
-    obj_type: node
-    role: compute" > /tmp/import_validation_yaml_node_device_type/node.inv
+cmd:/opt/xcat/share/xcat/tools/autotest/testcase/xcat-inventory/validatehelper "node" "bogusnode" "network_info.primarynic.switchport" "" "/tmp/import_validation_node_network_info_primarynic_switchport"
 check:rc==0
-cmd:xcat-inventory import -f /tmp/import_validation_yaml_node_device_type/node.inv 
-check:output=~Error: failed to validate attribute
-check:output=~devtype
+cmd:/opt/xcat/share/xcat/tools/autotest/testcase/xcat-inventory/validatehelper "node" "bogusnode" "network_info.primarynic.switchport" "70" "/tmp/import_validation_node_network_info_primarynic_switchport"
+check:rc==0
+cmd:/opt/xcat/share/xcat/tools/autotest/testcase/xcat-inventory/validatehelper "node" "bogusnode" "network_info.primarynic.switchport" "a90" "/tmp/import_validation_node_network_info_primarynic_switchport"
 check:rc!=0
-cmd:lsdef bogusnode
-check:output=~Error: Could not find an object named 'bogusnode'
-check:rc!=0
-cmd:#!/bin/bash
-echo "node:
-  bogusnode:
-    device_type: aaa 
-    obj_info:
-      groups: bogusgroup
-    obj_type: node
-    role: compute" > /tmp/import_validation_yaml_node_device_type/node.inv
+cmd:if [[ -e /tmp/import_validation_node_network_info_primarynic_switchport_bak/bogusnode.stanza ]]; then cat /tmp/import_validation_node_network_info_primarynic_switchport_bak/bogusnode.stanza | mkdef -z;fi
 check:rc==0
-cmd:xcat-inventory import -f /tmp/import_validation_yaml_node_device_type/node.inv 
-check:output=~Error: failed to validate attribute
-check:output=~devtype
-check:rc!=0
-cmd:lsdef bogusnode
-check:output=~Error: Could not find an object named 'bogusnode'
-check:rc!=0
-cmd:#!/bin/bash
-echo "node:
-  bogusnode:
-    device_type: switch 
-    obj_info:
-      groups: bogusgroup
-    obj_type: node
-    role: compute" > /tmp/import_validation_yaml_node_device_type/node.inv
+cmd:if [[ -e /tmp/import_validation_node_network_info_primarynic_switchport_bak/bogusgroup.stanza ]]; then cat /tmp/import_validation_node_network_info_primarynic_switchport_bak/bogusgroup.stanza |mkdef -z -f;fi
 check:rc==0
-cmd:xcat-inventory import -f /tmp/import_validation_yaml_node_device_type/node.inv
-check:output=~Inventory import successfully
-check:rc==0
-cmd:lsdef bogusnode
-check:output=~Object name: bogusnode
-check:rc==0
-cmd:rmdef bogusnode
-check:rc==0
-cmd:#!/bin/bash
-echo "node:
-  bogusnode:
-    device_type: pdu 
-    obj_info:
-      groups: bogusgroup
-    obj_type: node
-    role: compute" > /tmp/import_validation_yaml_node_device_type/node.inv
-check:rc==0
-cmd:xcat-inventory import -f /tmp/import_validation_yaml_node_device_type/node.inv
-check:output=~Inventory import successfully
-check:rc==0
-cmd:lsdef bogusnode
-check:output=~Object name: bogusnode
-check:rc==0
-cmd:rmdef bogusnode
-check:rc==0
-cmd:#!/bin/bash
-echo "node:
-  bogusnode:
-    device_type: rack 
-    obj_info:
-      groups: bogusgroup
-    obj_type: node
-    role: compute" > /tmp/import_validation_yaml_node_device_type/node.inv
-check:rc==0
-cmd:xcat-inventory import -f /tmp/import_validation_yaml_node_device_type/node.inv
-check:output=~Inventory import successfully
-check:rc==0
-cmd:lsdef bogusnode
-check:output=~Object name: bogusnode
-check:rc==0
-cmd:rmdef bogusnode
-check:rc==0
-cmd:#!/bin/bash
-echo "node:
-  bogusnode:
-    device_type: hmc 
-    obj_info:
-      groups: bogusgroup
-    obj_type: node
-    role: compute"  > /tmp/import_validation_yaml_node_device_type/node.inv
-check:rc==0
-cmd:xcat-inventory import -f /tmp/import_validation_yaml_node_device_type/node.inv
-check:output=~Inventory import successfully
-check:rc==0
-cmd:lsdef bogusnode
-check:output=~Object name: bogusnode
-check:rc==0
-cmd:rmdef bogusnode
-check:rc==0
-cmd:#!/bin/bash
-echo "node:
-  bogusnode:
-    device_type: server
-    network_info:
-      primarynic:
-        mac:
-        - '11:11:11:11:11:11'
-    obj_info:
-      groups: bogusgroup
-    obj_type: node
-    role: compute"  > /tmp/import_validation_yaml_node_device_type/node.inv
-check:rc==0
-cmd:xcat-inventory import -f /tmp/import_validation_yaml_node_device_type/node.inv
-check:output=~Inventory import successfully
-check:rc==0
-cmd:lsdef bogusnode
-check:output=~Object name: bogusnode
-check:rc==0
-cmd:rmdef bogusnode
-check:rc==0
-cmd:if [[ -e /tmp/import_validation_yaml_node_device_type/bogusnode.stanza ]]; then cat /tmp/import_validation_yaml_node_device_type/bogusnode.stanza | mkdef -z;fi
-check:rc==0
-cmd:if [[ -e /tmp/import_validation_yaml_node_device_type/bogusgroup.stanza ]]; then cat /tmp/import_validation_yaml_node_device_type/bogusgroup.stanza |mkdef -z -f;fi
-check:rc==0
-cmd:rm -rf /tmp/import_validation_yaml_node_device_type
+cmd:rm -rf /tmp/import_validation_node_network_info_primarynic_switchport_bak
 check:rc==0
 end
 
 
-start:import_validation_json_node_arch_type
-description:This case is used to test node validation function of xcat-inventory import json file. To test "arch" attribute
-cmd:mkdir -p /tmp/import_validation_json_node_arch_type
+start:import_validation_node_engines_hardware_mgt_engine_engine_type
+descrengine_typetion:This case is used to test node validation function of xcat-inventory import yaml and json file. To test "engines.hardware_mgt_engine.engine_type" attribute
+cmd:mkdir -p /tmp/import_validation_node_engines_hardware_mgt_engine_engine_type_bak
 check:rc==0
-cmd:lsdef bogusnode > /dev/null 2>&1;if [[ $? -eq 0 ]]; then lsdef bogusnode -z >/tmp/import_validation_json_node_arch_type/bogusnode.stanza ;rmdef bogusnode;fi
+cmd:lsdef bogusnode > /dev/null 2>&1;if [[ $? -eq 0 ]]; then lsdef bogusnode -z >/tmp/import_validation_node_engines_hardware_mgt_engine_engine_type_bak/bogusnode.stanza ;rmdef bogusnode;fi
 check:rc==0
-cmd:lsdef -t group bogusgroup  > /dev/null 2>&1;if [[ $? -eq 0 ]]; then lsdef -t group bogusgroup -z > /tmp/import_validation_json_node_arch_type/bogusgroup.stanza; rmdef -t group bogusgroup;fi
+cmd:lsdef -t group bogusgroup  > /dev/null 2>&1;if [[ $? -eq 0 ]]; then lsdef -t group bogusgroup -z > /tmp/import_validation_node_engines_hardware_mgt_engine_engine_type_bak/bogusgroup.stanza; rmdef -t group bogusgroup;fi
 check:rc==0
-cmd:#!/bin/bash
-echo '{
-    "node": {
-        "bogusnode": {
-            "device_info": {
-               "arch": "ppc"
-            },
-            "device_type": "server",
-            "obj_info": {
-                "groups": "bogusgroup"
-            },
-            "obj_type": "node",
-            "role": "compute"
-        }
-    },
-}' > /tmp/import_validation_json_node_arch_type/node.inv
+cmd:/opt/xcat/share/xcat/tools/autotest/testcase/xcat-inventory/validatehelper "node" "bogusnode" "engines.hardware_mgt_engine.engine_type" "openbmc" "/tmp/import_validation_node_engines_hardware_mgt_engine_engine_type"
 check:rc==0
-cmd:xcat-inventory import -f /tmp/import_validation_json_node_arch_type/node.inv
-check:output=~Error: failed to validate attribute
-check:output=~arch
+cmd:/opt/xcat/share/xcat/tools/autotest/testcase/xcat-inventory/validatehelper "node" "bogusnode" "engines.hardware_mgt_engine.engine_type" "ipmi" "/tmp/import_validation_node_engines_hardware_mgt_engine_engine_type"
+check:rc==0
+cmd:/opt/xcat/share/xcat/tools/autotest/testcase/xcat-inventory/validatehelper "node" "bogusnode" "engines.hardware_mgt_engine.engine_type" "hmc" "/tmp/import_validation_node_engines_hardware_mgt_engine_engine_type"
+check:rc==0
+cmd:/opt/xcat/share/xcat/tools/autotest/testcase/xcat-inventory/validatehelper "node" "bogusnode" "engines.hardware_mgt_engine.engine_type" "fsp" "/tmp/import_validation_node_engines_hardware_mgt_engine_engine_type"
+check:rc==0
+cmd:/opt/xcat/share/xcat/tools/autotest/testcase/xcat-inventory/validatehelper "node" "bogusnode" "engines.hardware_mgt_engine.engine_type" "kvm" "/tmp/import_validation_node_engines_hardware_mgt_engine_engine_type"
+check:rc==0
+cmd:/opt/xcat/share/xcat/tools/autotest/testcase/xcat-inventory/validatehelper "node" "bogusnode" "engines.hardware_mgt_engine.engine_type" "mp" "/tmp/import_validation_node_engines_hardware_mgt_engine_engine_type"
+check:rc==0
+cmd:/opt/xcat/share/xcat/tools/autotest/testcase/xcat-inventory/validatehelper "node" "bogusnode" "engines.hardware_mgt_engine.engine_type" "bpa" "/tmp/import_validation_node_engines_hardware_mgt_engine_engine_type"
+check:rc==0
+cmd:/opt/xcat/share/xcat/tools/autotest/testcase/xcat-inventory/validatehelper "node" "bogusnode" "engines.hardware_mgt_engine.engine_type" "ivm" "/tmp/import_validation_node_engines_hardware_mgt_engine_engine_type"
+check:rc==0
+cmd:/opt/xcat/share/xcat/tools/autotest/testcase/xcat-inventory/validatehelper "node" "bogusnode" "engines.hardware_mgt_engine.engine_type" "blade" "/tmp/import_validation_node_engines_hardware_mgt_engine_engine_type"
+check:rc==0
+cmd:/opt/xcat/share/xcat/tools/autotest/testcase/xcat-inventory/validatehelper "node" "bogusnode" "engines.hardware_mgt_engine.engine_type" "" "/tmp/import_validation_node_engines_hardware_mgt_engine_engine_type"
+check:rc==0
+cmd:/opt/xcat/share/xcat/tools/autotest/testcase/xcat-inventory/validatehelper "node" "bogusnode" "engines.hardware_mgt_engine.engine_type" "HMC" "/tmp/import_validation_node_engines_hardware_mgt_engine_engine_type"
 check:rc!=0
-cmd:lsdef bogusnode
-check:output=~Error: Could not find an object named 'bogusnode'
+cmd:/opt/xcat/share/xcat/tools/autotest/testcase/xcat-inventory/validatehelper "node" "bogusnode" "engines.hardware_mgt_engine.engine_type" "OpenBMC" "/tmp/import_validation_node_engines_hardware_mgt_engine_engine_type"
 check:rc!=0
-cmd:#!/bin/bash
-echo '{
-    "node": {
-        "bogusnode": {
-            "device_info": {
-               "arch": "ppc64"
-            },
-            "device_type": "server",
-            "obj_info": {
-                "groups": "bogusgroup"
-            },
-            "obj_type": "node",
-            "role": "compute"
-        }
-    },
-}' > /tmp/import_validation_json_node_arch_type/node.inv
+cmd:/opt/xcat/share/xcat/tools/autotest/testcase/xcat-inventory/validatehelper "node" "bogusnode" "engines.hardware_mgt_engine.engine_type" "aaa" "/tmp/import_validation_node_engines_hardware_mgt_engine_engine_type"
+check:rc!=0
+cmd:if [[ -e /tmp/import_validation_node_engines_hardware_mgt_engine_engine_type_bak/bogusnode.stanza ]]; then cat /tmp/import_validation_node_engines_hardware_mgt_engine_engine_type_bak/bogusnode.stanza | mkdef -z;fi
 check:rc==0
-cmd:xcat-inventory import -f /tmp/import_validation_json_node_arch_type/node.inv
-check:output=~Inventory import successfully
+cmd:if [[ -e /tmp/import_validation_node_engines_hardware_mgt_engine_engine_type_bak/bogusgroup.stanza ]]; then cat /tmp/import_validation_node_engines_hardware_mgt_engine_engine_type_bak/bogusgroup.stanza |mkdef -z -f;fi
 check:rc==0
-cmd:lsdef bogusnode
-check:output=~Object name: bogusnode
-check:output=~arch=ppc64
-check:rc==0
-cmd:rmdef bogusnode
-check:rc==0
-cmd:#!/bin/bash
-echo '{
-    "node": {
-        "bogusnode": {
-            "device_info": {
-               "arch": "ppc64el"
-            },
-            "device_type": "server",
-            "obj_info": {
-                "groups": "bogusgroup"
-            },
-            "obj_type": "node",
-            "role": "compute"
-        }
-    },
-}' > /tmp/import_validation_json_node_arch_type/node.inv
-check:rc==0
-cmd:xcat-inventory import -f /tmp/import_validation_json_node_arch_type/node.inv
-check:output=~Inventory import successfully
-check:rc==0
-cmd:lsdef bogusnode
-check:output=~Object name: bogusnode
-check:output=~arch=ppc64el
-check:rc==0
-cmd:rmdef bogusnode
-check:rc==0
-cmd:#!/bin/bash
-echo '{
-    "node": {
-        "bogusnode": {
-            "device_info": {
-               "arch": "ppc64le"
-            },
-            "device_type": "server",
-            "obj_info": {
-                "groups": "bogusgroup"
-            },
-            "obj_type": "node",
-            "role": "compute"
-        }
-    },
-}' > /tmp/import_validation_json_node_arch_type/node.inv
-check:rc==0
-cmd:xcat-inventory import -f /tmp/import_validation_json_node_arch_type/node.inv
-check:output=~Inventory import successfully
-check:rc==0
-cmd:lsdef bogusnode
-check:output=~Object name: bogusnode
-check:output=~arch=ppc64le
-check:rc==0
-cmd:rmdef bogusnode
-check:rc==0
-cmd:#!/bin/bash
-echo '{
-    "node": {
-        "bogusnode": {
-            "device_info": {
-               "arch": "x86_64"
-            },
-            "device_type": "server",
-            "obj_info": {
-                "groups": "bogusgroup"
-            },
-            "obj_type": "node",
-            "role": "compute"
-        }
-    },
-}' > /tmp/import_validation_json_node_arch_type/node.inv
-check:rc==0
-cmd:xcat-inventory import -f /tmp/import_validation_json_node_arch_type/node.inv
-check:output=~Inventory import successfully
-check:rc==0
-cmd:lsdef bogusnode
-check:output=~Object name: bogusnode
-check:output=~arch=x86_64
-check:rc==0
-cmd:rmdef bogusnode
-check:rc==0
-cmd:#!/bin/bash
-echo '{
-    "node": {
-        "bogusnode": {
-            "device_info": {
-               "arch": "armv71"
-            },
-            "device_type": "server",
-            "obj_info": {
-                "groups": "bogusgroup"
-            },
-            "obj_type": "node",
-            "role": "compute"
-        }
-    },
-}' > /tmp/import_validation_json_node_arch_type/node.inv
-check:rc==0
-cmd:xcat-inventory import -f /tmp/import_validation_json_node_arch_type/node.inv
-check:output=~Inventory import successfully
-check:rc==0
-cmd:lsdef bogusnode
-check:output=~Object name: bogusnode
-check:output=~arch=armv71
-check:rc==0
-cmd:rmdef bogusnode
-check:rc==0
-cmd:if [[ -e /tmp/import_validation_json_node_arch_type/bogusnode.stanza ]]; then cat /tmp/import_validation_json_node_arch_type/bogusnode.stanza | mkdef -z;fi
-check:rc==0
-cmd:if [[ -e /tmp/import_validation_json_node_arch_type/bogusgroup.stanza ]]; then cat /tmp/import_validation_json_node_arch_type/bogusgroup.stanza |mkdef -z -f;fi
-check:rc==0
-cmd:rm -rf /tmp/import_validation_json_node_arch_type
+cmd:rm -rf /tmp/import_validation_node_engines_hardware_mgt_engine_engine_type_bak
 check:rc==0
 end
 
-start:import_validation_yaml_node_arch_type
-description:This case is used to test node validation function of xcat-inventory import yaml file. To test "arch" attribute
-cmd:mkdir -p /tmp/import_validation_yaml_node_arch_type
+
+
+start:import_validation_node_engines_netboot_engine_engine_type
+descrengine_typetion:This case is used to test node validation function of xcat-inventory import yaml and json file. To test "engines.netboot_engine.engine_type" attribute
+cmd:mkdir -p /tmp/import_validation_node_engines_netboot_engine_engine_type_bak
 check:rc==0
-cmd:lsdef bogusnode > /dev/null 2>&1;if [[ $? -eq 0 ]]; then lsdef bogusnode -z >/tmp/import_validation_yaml_node_arch_type/bogusnode.stanza ;rmdef bogusnode;fi
+cmd:lsdef bogusnode > /dev/null 2>&1;if [[ $? -eq 0 ]]; then lsdef bogusnode -z >/tmp/import_validation_node_engines_netboot_engine_engine_type_bak/bogusnode.stanza ;rmdef bogusnode;fi
 check:rc==0
-cmd:lsdef -t group bogusgroup  > /dev/null 2>&1;if [[ $? -eq 0 ]]; then lsdef -t group bogusgroup -z > /tmp/import_validation_yaml_node_arch_type/bogusgroup.stanza; rmdef -t group bogusgroup;fi
+cmd:lsdef -t group bogusgroup  > /dev/null 2>&1;if [[ $? -eq 0 ]]; then lsdef -t group bogusgroup -z > /tmp/import_validation_node_engines_netboot_engine_engine_type_bak/bogusgroup.stanza; rmdef -t group bogusgroup;fi
 check:rc==0
-cmd:#!/bin/bash
-echo "node:
-  bogusnode:
-    device_info:
-      arch: ppc
-    device_type: server
-    obj_info:
-      groups: bogusgroup
-    obj_type: node
-    role: compute" > /tmp/import_validation_yaml_node_arch_type/node.inv
+cmd:/opt/xcat/share/xcat/tools/autotest/testcase/xcat-inventory/validatehelper "node" "bogusnode" "engines.netboot_engine.engine_type" "" "/tmp/import_validation_node_engines_netboot_engine_engine_type"
 check:rc==0
-cmd:xcat-inventory import -f /tmp/import_validation_yaml_node_arch_type/node.inv
-check:output=~Error: failed to validate attribute
-check:output=~arch
+cmd:/opt/xcat/share/xcat/tools/autotest/testcase/xcat-inventory/validatehelper "node" "bogusnode" "engines.netboot_engine.engine_type" "pxe" "/tmp/import_validation_node_engines_netboot_engine_engine_type"
+check:rc==0
+cmd:/opt/xcat/share/xcat/tools/autotest/testcase/xcat-inventory/validatehelper "node" "bogusnode" "engines.netboot_engine.engine_type" "xnba" "/tmp/import_validation_node_engines_netboot_engine_engine_type"
+check:rc==0
+cmd:/opt/xcat/share/xcat/tools/autotest/testcase/xcat-inventory/validatehelper "node" "bogusnode" "engines.netboot_engine.engine_type" "grub2" "/tmp/import_validation_node_engines_netboot_engine_engine_type"
+check:rc==0
+cmd:/opt/xcat/share/xcat/tools/autotest/testcase/xcat-inventory/validatehelper "node" "bogusnode" "engines.netboot_engine.engine_type" "yaboot" "/tmp/import_validation_node_engines_netboot_engine_engine_type"
+check:rc==0
+cmd:/opt/xcat/share/xcat/tools/autotest/testcase/xcat-inventory/validatehelper "node" "bogusnode" "engines.netboot_engine.engine_type" "petitboot" "/tmp/import_validation_node_engines_netboot_engine_engine_type"
+check:rc==0
+cmd:/opt/xcat/share/xcat/tools/autotest/testcase/xcat-inventory/validatehelper "node" "bogusnode" "engines.netboot_engine.engine_type" "Grub2" "/tmp/import_validation_node_engines_netboot_engine_engine_type"
 check:rc!=0
-cmd:lsdef bogusnode
-check:output=~Error: Could not find an object named 'bogusnode'
+cmd:/opt/xcat/share/xcat/tools/autotest/testcase/xcat-inventory/validatehelper "node" "bogusnode" "engines.netboot_engine.engine_type" "aaa" "/tmp/import_validation_node_engines_netboot_engine_engine_type"
 check:rc!=0
-cmd:#!/bin/bash
-echo "node:
-  bogusnode:
-    device_info:
-      arch: ppc64
-    device_type: server
-    obj_info:
-      groups: bogusgroup
-    obj_type: node
-    role: compute" > /tmp/import_validation_yaml_node_arch_type/node.inv
+cmd:if [[ -e /tmp/import_validation_node_engines_netboot_engine_engine_type_bak/bogusnode.stanza ]]; then cat /tmp/import_validation_node_engines_netboot_engine_engine_type_bak/bogusnode.stanza | mkdef -z;fi
 check:rc==0
-cmd:xcat-inventory import -f /tmp/import_validation_yaml_node_arch_type/node.inv
-check:output=~Inventory import successfully
+cmd:if [[ -e /tmp/import_validation_node_engines_netboot_engine_engine_type_bak/bogusgroup.stanza ]]; then cat /tmp/import_validation_node_engines_netboot_engine_engine_type_bak/bogusgroup.stanza |mkdef -z -f;fi
 check:rc==0
-cmd:lsdef bogusnode
-check:output=~Object name: bogusnode
-check:output=~arch=ppc64
-check:rc==0
-cmd:rmdef bogusnode
-check:rc==0
-cmd:#!/bin/bash
-echo "node:
-  bogusnode:
-    device_info:
-      arch: ppc64el
-    device_type: server
-    obj_info:
-      groups: bogusgroup
-    obj_type: node
-    role: compute" > /tmp/import_validation_yaml_node_arch_type/node.inv
-cmd:xcat-inventory import -f /tmp/import_validation_yaml_node_arch_type/node.inv
-check:output=~Inventory import successfully
-check:rc==0
-cmd:lsdef bogusnode
-check:output=~Object name: bogusnode
-check:output=~arch=ppc64el
-check:rc==0
-cmd:rmdef bogusnode
-check:rc==0
-cmd:#!/bin/bash
-echo "node:
-  bogusnode:
-    device_info:
-      arch: ppc64le
-    device_type: server
-    obj_info:
-      groups: bogusgroup
-    obj_type: node
-    role: compute" > /tmp/import_validation_yaml_node_arch_type/node.inv
-check:rc==0
-cmd:xcat-inventory import -f /tmp/import_validation_yaml_node_arch_type/node.inv
-check:output=~Inventory import successfully
-check:rc==0
-cmd:lsdef bogusnode
-check:output=~Object name: bogusnode
-check:output=~arch=ppc64le
-check:rc==0
-cmd:rmdef bogusnode
-check:rc==0
-cmd:#!/bin/bash
-echo "node:
-  bogusnode:
-    device_info:
-      arch: x86_64
-    device_type: server
-    obj_info:
-      groups: bogusgroup
-    obj_type: node
-    role: compute" > /tmp/import_validation_yaml_node_arch_type/node.inv
-check:rc==0
-cmd:xcat-inventory import -f /tmp/import_validation_yaml_node_arch_type/node.inv
-check:output=~Inventory import successfully
-check:rc==0
-cmd:lsdef bogusnode
-check:output=~Object name: bogusnode
-check:output=~arch=x86_64
-check:rc==0
-cmd:rmdef bogusnode
-check:rc==0
-cmd:#!/bin/bash
-echo "node:
-  bogusnode:
-    device_info:
-      arch: armv71 
-    device_type: server
-    obj_info:
-      groups: bogusgroup
-    obj_type: node
-    role: compute" > /tmp/import_validation_yaml_node_arch_type/node.inv
-check:rc==0
-cmd:xcat-inventory import -f /tmp/import_validation_yaml_node_arch_type/node.inv
-check:output=~Inventory import successfully
-check:rc==0
-cmd:lsdef bogusnode
-check:output=~Object name: bogusnode
-check:output=~arch=armv71
-check:rc==0
-cmd:rmdef bogusnode
-check:rc==0
-cmd:if [[ -e /tmp/import_validation_yaml_node_arch_type/bogusnode.stanza ]]; then cat /tmp/import_validation_yaml_node_arch_type/bogusnode.stanza | mkdef -z;fi
-check:rc==0
-cmd:if [[ -e /tmp/import_validation_yaml_node_arch_type/bogusgroup.stanza ]]; then cat /tmp/import_validation_yaml_node_arch_type/bogusgroup.stanza |mkdef -z -f;fi
-check:rc==0
-cmd:rm -rf /tmp/import_validation_yaml_node_arch_type
+cmd:rm -rf /tmp/import_validation_node_engines_netboot_engine_engine_type_bak
 check:rc==0
 end
 
-start:import_validation_yaml_node_securitylevel
-description:This case is used to test node validation function of xcat-inventory import yaml file. To test "securitylevel" attribute
-cmd:mkdir -p /tmp/import_validation_yaml_node_securitylevel
-check:rc==0
-cmd:lsdef bogusnode > /dev/null 2>&1;if [[ $? -eq 0 ]]; then lsdef bogusnode -z >/tmp/import_validation_yaml_node_securitylevel/bogusnode.stanza ;rmdef bogusnode;fi
-check:rc==0
-cmd:lsdef -t group bogusgroup  > /dev/null 2>&1;if [[ $? -eq 0 ]]; then lsdef -t group bogusgroup -z > /tmp/import_validation_yaml_node_securitylevel/bogusgroup.stanza; rmdef -t group bogusgroup;fi
-check:rc==0
-cmd:#!/bin/bash
-echo "node:
-  bogusnode:
-    deprecated:
-      pdunodetype: pdu
-    device_info:
-      characteristics: pdu
-    device_type: server 
-    obj_info:
-      groups: bogusgroup
-    obj_type: node
-    role: compute
-    security_info:
-      snmp:
-        securitylevel: noAuthNoPriv" >/tmp/import_validation_yaml_node_securitylevel/node.inv
-check:rc==0
-cmd:xcat-inventory import -f /tmp/import_validation_yaml_node_securitylevel/node.inv
-check:output=~Error: failed to validate attribute
-check:output=~securitylevel
-check:rc!=0
-cmd:lsdef bogusnode
-check:output=~Error: Could not find an object named 'bogusnode'
-check:rc!=0
 
-cmd:if [[ -e /tmp/import_validation_yaml_node_securitylevel/bogusnode.stanza ]]; then cat /tmp/import_validation_yaml_node_securitylevel/bogusnode.stanza | mkdef -z;fi
+start:import_validation_node_role
+descrroletion:This case is used to test node validation function of xcat-inventory import yaml and json file. To test "role" attribute
+cmd:mkdir -p /tmp/import_validation_node_role_bak
 check:rc==0
-cmd:if [[ -e /tmp/import_validation_yaml_node_securitylevel/bogusgroup.stanza ]]; then cat /tmp/import_validation_yaml_node_securitylevel/bogusgroup.stanza |mkdef -z -f;fi
+cmd:lsdef bogusnode > /dev/null 2>&1;if [[ $? -eq 0 ]]; then lsdef bogusnode -z >/tmp/import_validation_node_role_bak/bogusnode.stanza ;rmdef bogusnode;fi
 check:rc==0
-cmd:rm -rf /tmp/import_validation_yaml_node_securitylevel
+cmd:lsdef -t group bogusgroup  > /dev/null 2>&1;if [[ $? -eq 0 ]]; then lsdef -t group bogusgroup -z > /tmp/import_validation_node_role_bak/bogusgroup.stanza; rmdef -t group bogusgroup;fi
+check:rc==0
+cmd:/opt/xcat/share/xcat/tools/autotest/testcase/xcat-inventory/validatehelper "node" "bogusnode" "role" "compute" "/tmp/import_validation_node_role"
+check:rc==0
+cmd:/opt/xcat/share/xcat/tools/autotest/testcase/xcat-inventory/validatehelper "node" "bogusnode" "role" "service" "/tmp/import_validation_node_role"
+check:rc==0
+cmd:/opt/xcat/share/xcat/tools/autotest/testcase/xcat-inventory/validatehelper "node" "bogusnode" "role" "" "/tmp/import_validation_node_role"
+check:rc!=0
+cmd:/opt/xcat/share/xcat/tools/autotest/testcase/xcat-inventory/validatehelper "node" "bogusnode" "role" "Compute" "/tmp/import_validation_node_role"
+check:rc!=0
+cmd:/opt/xcat/share/xcat/tools/autotest/testcase/xcat-inventory/validatehelper "node" "bogusnode" "role" "aa" "/tmp/import_validation_node_role"
+check:rc!=0
+cmd:if [[ -e /tmp/import_validation_node_role_bak/bogusnode.stanza ]]; then cat /tmp/import_validation_node_role_bak/bogusnode.stanza | mkdef -z;fi
+check:rc==0
+cmd:if [[ -e /tmp/import_validation_node_role_bak/bogusgroup.stanza ]]; then cat /tmp/import_validation_node_role_bak/bogusgroup.stanza |mkdef -z -f;fi
+check:rc==0
+cmd:rm -rf /tmp/import_validation_node_role_bak
 check:rc==0
 end
+
+start:import_validation_node_role_info_setuptftp
+descrsetuptftption:This case is used to test node validation function of xcat-inventory import yaml and json file. To test "role_info.setuptftp" attribute
+cmd:mkdir -p /tmp/import_validation_node_role_info_setuptftp_bak
+check:rc==0
+cmd:lsdef bogusnode > /dev/null 2>&1;if [[ $? -eq 0 ]]; then lsdef bogusnode -z >/tmp/import_validation_node_role_info_setuptftp_bak/bogusnode.stanza ;rmdef bogusnode;fi
+check:rc==0
+cmd:lsdef -t group bogusgroup  > /dev/null 2>&1;if [[ $? -eq 0 ]]; then lsdef -t group bogusgroup -z > /tmp/import_validation_node_role_info_setuptftp_bak/bogusgroup.stanza; rmdef -t group bogusgroup;fi
+check:rc==0
+cmd:/opt/xcat/share/xcat/tools/autotest/testcase/xcat-inventory/validatehelper "node" "bogusnode" "role_info.setuptftp" "" "/tmp/import_validation_node_role_info_setuptftp"
+check:rc==0
+cmd:/opt/xcat/share/xcat/tools/autotest/testcase/xcat-inventory/validatehelper "node" "bogusnode" "role_info.setuptftp" "0" "/tmp/import_validation_node_role_info_setuptftp"
+check:rc==0
+cmd:/opt/xcat/share/xcat/tools/autotest/testcase/xcat-inventory/validatehelper "node" "bogusnode" "role_info.setuptftp" "1" "/tmp/import_validation_node_role_info_setuptftp"
+check:rc==0
+cmd:/opt/xcat/share/xcat/tools/autotest/testcase/xcat-inventory/validatehelper "node" "bogusnode" "role_info.setuptftp" "aa" "/tmp/import_validation_node_role_info_setuptftp"
+check:rc!=0
+cmd:/opt/xcat/share/xcat/tools/autotest/testcase/xcat-inventory/validatehelper "node" "bogusnode" "role_info.setuptftp" "10" "/tmp/import_validation_node_role_info_setuptftp"
+check:rc!=0
+cmd:if [[ -e /tmp/import_validation_node_role_info_setuptftp_bak/bogusnode.stanza ]]; then cat /tmp/import_validation_node_role_info_setuptftp_bak/bogusnode.stanza | mkdef -z;fi
+check:rc==0
+cmd:if [[ -e /tmp/import_validation_node_role_info_setuptftp_bak/bogusgroup.stanza ]]; then cat /tmp/import_validation_node_role_info_setuptftp_bak/bogusgroup.stanza |mkdef -z -f;fi
+check:rc==0
+cmd:rm -rf /tmp/import_validation_node_role_info_setuptftp_bak
+check:rc==0
+end
+
+start:import_validation_node_role_info_setupnameserver
+descrsetupnameservertion:This case is used to test node validation function of xcat-inventory import yaml and json file. To test "role_info.setupnameserver" attribute
+cmd:mkdir -p /tmp/import_validation_node_role_info_setupnameserver_bak
+check:rc==0
+cmd:lsdef bogusnode > /dev/null 2>&1;if [[ $? -eq 0 ]]; then lsdef bogusnode -z >/tmp/import_validation_node_role_info_setupnameserver_bak/bogusnode.stanza ;rmdef bogusnode;fi
+check:rc==0
+cmd:lsdef -t group bogusgroup  > /dev/null 2>&1;if [[ $? -eq 0 ]]; then lsdef -t group bogusgroup -z > /tmp/import_validation_node_role_info_setupnameserver_bak/bogusgroup.stanza; rmdef -t group bogusgroup;fi
+check:rc==0
+cmd:/opt/xcat/share/xcat/tools/autotest/testcase/xcat-inventory/validatehelper "node" "bogusnode" "role_info.setupnameserver" "" "/tmp/import_validation_node_role_info_setupnameserver"
+check:rc==0
+cmd:/opt/xcat/share/xcat/tools/autotest/testcase/xcat-inventory/validatehelper "node" "bogusnode" "role_info.setupnameserver" "0" "/tmp/import_validation_node_role_info_setupnameserver"
+check:rc==0
+cmd:/opt/xcat/share/xcat/tools/autotest/testcase/xcat-inventory/validatehelper "node" "bogusnode" "role_info.setupnameserver" "1" "/tmp/import_validation_node_role_info_setupnameserver"
+check:rc==0
+cmd:/opt/xcat/share/xcat/tools/autotest/testcase/xcat-inventory/validatehelper "node" "bogusnode" "role_info.setupnameserver" "2" "/tmp/import_validation_node_role_info_setupnameserver"
+check:rc==0
+cmd:/opt/xcat/share/xcat/tools/autotest/testcase/xcat-inventory/validatehelper "node" "bogusnode" "role_info.setupnameserver" "3" "/tmp/import_validation_node_role_info_setupnameserver"
+check:rc!=0
+cmd:/opt/xcat/share/xcat/tools/autotest/testcase/xcat-inventory/validatehelper "node" "bogusnode" "role_info.setupnameserver" "a" "/tmp/import_validation_node_role_info_setupnameserver"
+check:rc!=0
+cmd:if [[ -e /tmp/import_validation_node_role_info_setupnameserver_bak/bogusnode.stanza ]]; then cat /tmp/import_validation_node_role_info_setupnameserver_bak/bogusnode.stanza | mkdef -z;fi
+check:rc==0
+cmd:if [[ -e /tmp/import_validation_node_role_info_setupnameserver_bak/bogusgroup.stanza ]]; then cat /tmp/import_validation_node_role_info_setupnameserver_bak/bogusgroup.stanza |mkdef -z -f;fi
+check:rc==0
+cmd:rm -rf /tmp/import_validation_node_role_info_setupnameserver_bak
+end
+
+
+start:import_validation_node_role_info_setupdhcp
+descrsetupdhcption:This case is used to test node validation function of xcat-inventory import yaml and json file. To test "role_info.setupdhcp" attribute
+cmd:mkdir -p /tmp/import_validation_node_role_info_setupdhcp_bak
+check:rc==0
+cmd:lsdef bogusnode > /dev/null 2>&1;if [[ $? -eq 0 ]]; then lsdef bogusnode -z >/tmp/import_validation_node_role_info_setupdhcp_bak/bogusnode.stanza ;rmdef bogusnode;fi
+check:rc==0
+cmd:lsdef -t group bogusgroup  > /dev/null 2>&1;if [[ $? -eq 0 ]]; then lsdef -t group bogusgroup -z > /tmp/import_validation_node_role_info_setupdhcp_bak/bogusgroup.stanza; rmdef -t group bogusgroup;fi
+check:rc==0
+cmd:/opt/xcat/share/xcat/tools/autotest/testcase/xcat-inventory/validatehelper "node" "bogusnode" "role_info.setupdhcp" "" "/tmp/import_validation_node_role_info_setupdhcp"
+check:rc==0
+cmd:/opt/xcat/share/xcat/tools/autotest/testcase/xcat-inventory/validatehelper "node" "bogusnode" "role_info.setupdhcp" "0" "/tmp/import_validation_node_role_info_setupdhcp"
+check:rc==0
+cmd:/opt/xcat/share/xcat/tools/autotest/testcase/xcat-inventory/validatehelper "node" "bogusnode" "role_info.setupdhcp" "1" "/tmp/import_validation_node_role_info_setupdhcp"
+check:rc==0
+cmd:/opt/xcat/share/xcat/tools/autotest/testcase/xcat-inventory/validatehelper "node" "bogusnode" "role_info.setupdhcp" "2" "/tmp/import_validation_node_role_info_setupdhcp"
+check:rc!=0
+cmd:/opt/xcat/share/xcat/tools/autotest/testcase/xcat-inventory/validatehelper "node" "bogusnode" "role_info.setupdhcp" "a" "/tmp/import_validation_node_role_info_setupdhcp"
+check:rc!=0
+cmd:if [[ -e /tmp/import_validation_node_role_info_setupdhcp_bak/bogusnode.stanza ]]; then cat /tmp/import_validation_node_role_info_setupdhcp_bak/bogusnode.stanza | mkdef -z;fi
+check:rc==0
+cmd:if [[ -e /tmp/import_validation_node_role_info_setupdhcp_bak/bogusgroup.stanza ]]; then cat /tmp/import_validation_node_role_info_setupdhcp_bak/bogusgroup.stanza |mkdef -z -f;fi
+check:rc==0
+cmd:rm -rf /tmp/import_validation_node_role_info_setupdhcp_bak
+end
+
+start:import_validation_node_role_info_setupntp
+descrsetupntption:This case is used to test node validation function of xcat-inventory import yaml and json file. To test "role_info.setupntp" attribute
+cmd:mkdir -p /tmp/import_validation_node_role_info_setupntp_bak
+check:rc==0
+cmd:lsdef bogusnode > /dev/null 2>&1;if [[ $? -eq 0 ]]; then lsdef bogusnode -z >/tmp/import_validation_node_role_info_setupntp_bak/bogusnode.stanza ;rmdef bogusnode;fi
+check:rc==0
+cmd:lsdef -t group bogusgroup  > /dev/null 2>&1;if [[ $? -eq 0 ]]; then lsdef -t group bogusgroup -z > /tmp/import_validation_node_role_info_setupntp_bak/bogusgroup.stanza; rmdef -t group bogusgroup;fi
+check:rc==0
+cmd:/opt/xcat/share/xcat/tools/autotest/testcase/xcat-inventory/validatehelper "node" "bogusnode" "role_info.setupntp" "" "/tmp/import_validation_node_role_info_setupntp"
+check:rc==0
+cmd:/opt/xcat/share/xcat/tools/autotest/testcase/xcat-inventory/validatehelper "node" "bogusnode" "role_info.setupntp" "0" "/tmp/import_validation_node_role_info_setupntp"
+check:rc==0
+cmd:/opt/xcat/share/xcat/tools/autotest/testcase/xcat-inventory/validatehelper "node" "bogusnode" "role_info.setupntp" "1" "/tmp/import_validation_node_role_info_setupntp"
+check:rc==0
+cmd:/opt/xcat/share/xcat/tools/autotest/testcase/xcat-inventory/validatehelper "node" "bogusnode" "role_info.setupntp" "2" "/tmp/import_validation_node_role_info_setupntp"
+check:rc!=0
+cmd:/opt/xcat/share/xcat/tools/autotest/testcase/xcat-inventory/validatehelper "node" "bogusnode" "role_info.setupntp" "a" "/tmp/import_validation_node_role_info_setupntp"
+check:rc!=0
+cmd:if [[ -e /tmp/import_validation_node_role_info_setupntp_bak/bogusnode.stanza ]]; then cat /tmp/import_validation_node_role_info_setupntp_bak/bogusnode.stanza | mkdef -z;fi
+check:rc==0
+cmd:if [[ -e /tmp/import_validation_node_role_info_setupntp_bak/bogusgroup.stanza ]]; then cat /tmp/import_validation_node_role_info_setupntp_bak/bogusgroup.stanza |mkdef -z -f;fi
+check:rc==0
+cmd:rm -rf /tmp/import_validation_node_role_info_setupntp_bak
+end
+
+start:import_validation_node_role_info_setupldap
+descrsetupldaption:This case is used to test node validation function of xcat-inventory import yaml and json file. To test "role_info.setupldap" attribute
+cmd:mkdir -p /tmp/import_validation_node_role_info_setupldap_bak
+check:rc==0
+cmd:lsdef bogusnode > /dev/null 2>&1;if [[ $? -eq 0 ]]; then lsdef bogusnode -z >/tmp/import_validation_node_role_info_setupldap_bak/bogusnode.stanza ;rmdef bogusnode;fi
+check:rc==0
+cmd:lsdef -t group bogusgroup  > /dev/null 2>&1;if [[ $? -eq 0 ]]; then lsdef -t group bogusgroup -z > /tmp/import_validation_node_role_info_setupldap_bak/bogusgroup.stanza; rmdef -t group bogusgroup;fi
+check:rc==0
+cmd:/opt/xcat/share/xcat/tools/autotest/testcase/xcat-inventory/validatehelper "node" "bogusnode" "role_info.setupldap" "" "/tmp/import_validation_node_role_info_setupldap"
+check:rc==0
+cmd:/opt/xcat/share/xcat/tools/autotest/testcase/xcat-inventory/validatehelper "node" "bogusnode" "role_info.setupldap" "0" "/tmp/import_validation_node_role_info_setupldap"
+check:rc==0
+cmd:/opt/xcat/share/xcat/tools/autotest/testcase/xcat-inventory/validatehelper "node" "bogusnode" "role_info.setupldap" "1" "/tmp/import_validation_node_role_info_setupldap"
+check:rc==0
+cmd:/opt/xcat/share/xcat/tools/autotest/testcase/xcat-inventory/validatehelper "node" "bogusnode" "role_info.setupldap" "2" "/tmp/import_validation_node_role_info_setupldap"
+check:rc!=0
+cmd:/opt/xcat/share/xcat/tools/autotest/testcase/xcat-inventory/validatehelper "node" "bogusnode" "role_info.setupldap" "a" "/tmp/import_validation_node_role_info_setupldap"
+check:rc!=0
+cmd:if [[ -e /tmp/import_validation_node_role_info_setupldap_bak/bogusnode.stanza ]]; then cat /tmp/import_validation_node_role_info_setupldap_bak/bogusnode.stanza | mkdef -z;fi
+check:rc==0
+cmd:if [[ -e /tmp/import_validation_node_role_info_setupldap_bak/bogusgroup.stanza ]]; then cat /tmp/import_validation_node_role_info_setupldap_bak/bogusgroup.stanza |mkdef -z -f;fi
+check:rc==0
+cmd:rm -rf /tmp/import_validation_node_role_info_setupldap_bak
+end
+
+start:import_validation_node_role_info_setupproxydhcp
+descrsetupproxydhcption:This case is used to test node validation function of xcat-inventory import yaml and json file. To test "role_info.setupproxydhcp" attribute
+cmd:mkdir -p /tmp/import_validation_node_role_info_setupproxydhcp_bak
+check:rc==0
+cmd:lsdef bogusnode > /dev/null 2>&1;if [[ $? -eq 0 ]]; then lsdef bogusnode -z >/tmp/import_validation_node_role_info_setupproxydhcp_bak/bogusnode.stanza ;rmdef bogusnode;fi
+check:rc==0
+cmd:lsdef -t group bogusgroup  > /dev/null 2>&1;if [[ $? -eq 0 ]]; then lsdef -t group bogusgroup -z > /tmp/import_validation_node_role_info_setupproxydhcp_bak/bogusgroup.stanza; rmdef -t group bogusgroup;fi
+check:rc==0
+cmd:/opt/xcat/share/xcat/tools/autotest/testcase/xcat-inventory/validatehelper "node" "bogusnode" "role_info.setupproxydhcp" "" "/tmp/import_validation_node_role_info_setupproxydhcp"
+check:rc==0
+cmd:/opt/xcat/share/xcat/tools/autotest/testcase/xcat-inventory/validatehelper "node" "bogusnode" "role_info.setupproxydhcp" "0" "/tmp/import_validation_node_role_info_setupproxydhcp"
+check:rc==0
+cmd:/opt/xcat/share/xcat/tools/autotest/testcase/xcat-inventory/validatehelper "node" "bogusnode" "role_info.setupproxydhcp" "1" "/tmp/import_validation_node_role_info_setupproxydhcp"
+check:rc==0
+cmd:/opt/xcat/share/xcat/tools/autotest/testcase/xcat-inventory/validatehelper "node" "bogusnode" "role_info.setupproxydhcp" "2" "/tmp/import_validation_node_role_info_setupproxydhcp"
+check:rc!=0
+cmd:/opt/xcat/share/xcat/tools/autotest/testcase/xcat-inventory/validatehelper "node" "bogusnode" "role_info.setupproxydhcp" "a" "/tmp/import_validation_node_role_info_setupproxydhcp"
+check:rc!=0
+cmd:if [[ -e /tmp/import_validation_node_role_info_setupproxydhcp_bak/bogusnode.stanza ]]; then cat /tmp/import_validation_node_role_info_setupproxydhcp_bak/bogusnode.stanza | mkdef -z;fi
+check:rc==0
+cmd:if [[ -e /tmp/import_validation_node_role_info_setupproxydhcp_bak/bogusgroup.stanza ]]; then cat /tmp/import_validation_node_role_info_setupproxydhcp_bak/bogusgroup.stanza |mkdef -z -f;fi
+check:rc==0
+cmd:rm -rf /tmp/import_validation_node_role_info_setupproxydhcp_bak
+end
+
+start:import_validation_node_role_info_setupipforward
+descrsetupipforwardtion:This case is used to test node validation function of xcat-inventory import yaml and json file. To test "role_info.setupipforward" attribute
+cmd:mkdir -p /tmp/import_validation_node_role_info_setupipforward_bak
+check:rc==0
+cmd:lsdef bogusnode > /dev/null 2>&1;if [[ $? -eq 0 ]]; then lsdef bogusnode -z >/tmp/import_validation_node_role_info_setupipforward_bak/bogusnode.stanza ;rmdef bogusnode;fi
+check:rc==0
+cmd:lsdef -t group bogusgroup  > /dev/null 2>&1;if [[ $? -eq 0 ]]; then lsdef -t group bogusgroup -z > /tmp/import_validation_node_role_info_setupipforward_bak/bogusgroup.stanza; rmdef -t group bogusgroup;fi
+check:rc==0
+cmd:/opt/xcat/share/xcat/tools/autotest/testcase/xcat-inventory/validatehelper "node" "bogusnode" "role_info.setupipforward" "" "/tmp/import_validation_node_role_info_setupipforward"
+check:rc==0
+cmd:/opt/xcat/share/xcat/tools/autotest/testcase/xcat-inventory/validatehelper "node" "bogusnode" "role_info.setupipforward" "0" "/tmp/import_validation_node_role_info_setupipforward"
+check:rc==0
+cmd:/opt/xcat/share/xcat/tools/autotest/testcase/xcat-inventory/validatehelper "node" "bogusnode" "role_info.setupipforward" "1" "/tmp/import_validation_node_role_info_setupipforward"
+check:rc==0
+cmd:/opt/xcat/share/xcat/tools/autotest/testcase/xcat-inventory/validatehelper "node" "bogusnode" "role_info.setupipforward" "2" "/tmp/import_validation_node_role_info_setupipforward"
+check:rc!=0
+cmd:/opt/xcat/share/xcat/tools/autotest/testcase/xcat-inventory/validatehelper "node" "bogusnode" "role_info.setupipforward" "a" "/tmp/import_validation_node_role_info_setupipforward"
+check:rc!=0
+cmd:if [[ -e /tmp/import_validation_node_role_info_setupipforward_bak/bogusnode.stanza ]]; then cat /tmp/import_validation_node_role_info_setupipforward_bak/bogusnode.stanza | mkdef -z;fi
+check:rc==0
+cmd:if [[ -e /tmp/import_validation_node_role_info_setupipforward_bak/bogusgroup.stanza ]]; then cat /tmp/import_validation_node_role_info_setupipforward_bak/bogusgroup.stanza |mkdef -z -f;fi
+check:rc==0
+cmd:rm -rf /tmp/import_validation_node_role_info_setupipforward_bak
+end
+
+start:import_validation_node_role_info_setupconserver
+descrsetupnfstion:This case is used to test node validation function of xcat-inventory import yaml and json file. To test "role_info.setupconserver" attribute
+cmd:mkdir -p /tmp/import_validation_node_role_info_setupconserver_bak
+check:rc==0
+cmd:lsdef bogusnode > /dev/null 2>&1;if [[ $? -eq 0 ]]; then lsdef bogusnode -z >/tmp/import_validation_node_role_info_setupconserver_bak/bogusnode.stanza ;rmdef bogusnode;fi
+check:rc==0
+cmd:lsdef -t group bogusgroup  > /dev/null 2>&1;if [[ $? -eq 0 ]]; then lsdef -t group bogusgroup -z > /tmp/import_validation_node_role_info_setupconserver_bak/bogusgroup.stanza; rmdef -t group bogusgroup;fi
+check:rc==0
+cmd:/opt/xcat/share/xcat/tools/autotest/testcase/xcat-inventory/validatehelper "node" "bogusnode" "role_info.setupconserver" "" "/tmp/import_validation_node_role_info_setupconserver"
+check:rc==0
+cmd:/opt/xcat/share/xcat/tools/autotest/testcase/xcat-inventory/validatehelper "node" "bogusnode" "role_info.setupconserver" "0" "/tmp/import_validation_node_role_info_setupconserver"
+check:rc==0
+cmd:/opt/xcat/share/xcat/tools/autotest/testcase/xcat-inventory/validatehelper "node" "bogusnode" "role_info.setupconserver" "1" "/tmp/import_validation_node_role_info_setupconserver"
+check:rc==0
+cmd:/opt/xcat/share/xcat/tools/autotest/testcase/xcat-inventory/validatehelper "node" "bogusnode" "role_info.setupconserver" "2" "/tmp/import_validation_node_role_info_setupconserver"
+check:rc==0
+cmd:/opt/xcat/share/xcat/tools/autotest/testcase/xcat-inventory/validatehelper "node" "bogusnode" "role_info.setupconserver" "3" "/tmp/import_validation_node_role_info_setupconserver"
+check:rc!=0
+cmd:/opt/xcat/share/xcat/tools/autotest/testcase/xcat-inventory/validatehelper "node" "bogusnode" "role_info.setupconserver" "a" "/tmp/import_validation_node_role_info_setupconserver"
+check:rc!=0
+cmd:if [[ -e /tmp/import_validation_node_role_info_setupconserver_bak/bogusnode.stanza ]]; then cat /tmp/import_validation_node_role_info_setupconserver_bak/bogusnode.stanza | mkdef -z;fi
+check:rc==0
+cmd:if [[ -e /tmp/import_validation_node_role_info_setupconserver_bak/bogusgroup.stanza ]]; then cat /tmp/import_validation_node_role_info_setupconserver_bak/bogusgroup.stanza |mkdef -z -f;fi
+check:rc==0
+cmd:rm -rf /tmp/import_validation_node_role_info_setupconserver_bak
+end
+
+
+
+start:import_validation_node_role_info_setupnfs
+descrsetupconservertion:This case is used to test node validation function of xcat-inventory import yaml and json file. To test "role_info.setupnfs" attribute
+cmd:mkdir -p /tmp/import_validation_node_role_info_setupnfs_bak
+check:rc==0
+cmd:lsdef bogusnode > /dev/null 2>&1;if [[ $? -eq 0 ]]; then lsdef bogusnode -z >/tmp/import_validation_node_role_info_setupnfs_bak/bogusnode.stanza ;rmdef bogusnode;fi
+check:rc==0
+cmd:lsdef -t group bogusgroup  > /dev/null 2>&1;if [[ $? -eq 0 ]]; then lsdef -t group bogusgroup -z > /tmp/import_validation_node_role_info_setupnfs_bak/bogusgroup.stanza; rmdef -t group bogusgroup;fi
+check:rc==0
+cmd:/opt/xcat/share/xcat/tools/autotest/testcase/xcat-inventory/validatehelper "node" "bogusnode" "role_info.setupnfs" "" "/tmp/import_validation_node_role_info_setupnfs"
+check:rc==0
+cmd:/opt/xcat/share/xcat/tools/autotest/testcase/xcat-inventory/validatehelper "node" "bogusnode" "role_info.setupnfs" "0" "/tmp/import_validation_node_role_info_setupnfs"
+check:rc==0
+cmd:/opt/xcat/share/xcat/tools/autotest/testcase/xcat-inventory/validatehelper "node" "bogusnode" "role_info.setupnfs" "1" "/tmp/import_validation_node_role_info_setupnfs"
+check:rc==0
+cmd:/opt/xcat/share/xcat/tools/autotest/testcase/xcat-inventory/validatehelper "node" "bogusnode" "role_info.setupnfs" "2" "/tmp/import_validation_node_role_info_setupnfs"
+check:rc!=0
+cmd:/opt/xcat/share/xcat/tools/autotest/testcase/xcat-inventory/validatehelper "node" "bogusnode" "role_info.setupnfs" "a" "/tmp/import_validation_node_role_info_setupnfs"
+check:rc!=0
+cmd:if [[ -e /tmp/import_validation_node_role_info_setupnfs_bak/bogusnode.stanza ]]; then cat /tmp/import_validation_node_role_info_setupnfs_bak/bogusnode.stanza | mkdef -z;fi
+check:rc==0
+cmd:if [[ -e /tmp/import_validation_node_role_info_setupnfs_bak/bogusgroup.stanza ]]; then cat /tmp/import_validation_node_role_info_setupnfs_bak/bogusgroup.stanza |mkdef -z -f;fi
+check:rc==0
+cmd:rm -rf /tmp/import_validation_node_role_info_setupnfs_bak
+end
+

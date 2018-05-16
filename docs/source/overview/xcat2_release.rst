@@ -7,6 +7,22 @@ The following table is a summary of the new operating system (OS), hardware, and
 * **SLES** - Suse Linux Enterprise Server
 * **UBT** - Ubuntu
 
+xCAT 2.14.x
+-----------
+
++---------------------------------+---------------+-------------+----------------------------------+
+|xCAT                             |New OS         |New          |New Feature                       |
+|Version                          |               |Hardware     |                                  |
++=================================+===============+=============+==================================+
+|| xCAT 2.14                      |- RHEL 7.5     |             |- OpenBMC support in python:      |
+|| 2018/4/20                      |               |             |                                  |
+||                                |               |             |  rspconfig,reventlog             |
+| `2.14 Release Notes <https://   |               |             |                                  |
+| github.com/xcat2/xcat-core/wiki |               |             |- Performance Tuning doc update   |
+| /XCAT_2.14_Release_Notes>`_     |               |             |                                  |
++---------------------------------+---------------+-------------+----------------------------------+
+
+
 xCAT 2.13.x
 -----------
 
@@ -59,7 +75,7 @@ xCAT 2.13.x
 +---------------------------------+---------------+-------------+----------------------------------+
 || xCAT 2.13.7                    |               |             |- OpenBMC support:                |
 || 2017/9/22                      |               |             |                                  |
-||                                |               |             |  rflash for OpenBMC and PNOR     |
+||                                |               |             |  rflash for OpenBMC and Host     |
 | `2.13.7 Release Notes <https:// |               |             |                                  |
 | github.com/xcat2/xcat-core/wiki |               |             |  reventlog to get/clear event log|
 | /XCAT_2.13.7_Release_Notes>`_   |               |             |                                  |

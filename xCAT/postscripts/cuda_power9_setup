@@ -1,0 +1,79 @@
+#!/bin/bash
+#
+# Copyright (C) 2018 International Business Machines
+# Eclipse Public License, Version 1.0 (EPL-1.0)
+#     <http://www.eclipse.org/legal/epl-v10.html>
+#
+# 2018-03-21 GONG Jie <gongjie@linux.vnet.ibm.com>
+#
+# This script is used for doing extra setup steps for NVIDIA POWER9 CUDA driver
+# on RHEL 7. Please refer document below for details.
+#
+# http://docs.nvidia.com/cuda/cuda-installation-guide-linux/index.html#power9-setup
+#
+
+umask 0022
+
+grep '^#' /usr/lib/systemd/system/nvidia-persistenced.service >/tmp/nvidia-persistenced.service
+cat >>/tmp/nvidia-persistenced.service <<-EOF
+
+[Unit]
+Description=NVIDIA Persistence Daemon
+Wants=syslog.target
+
+[Service]
+Type=forking
+PIDFile=/var/run/nvidia-persistenced/nvidia-persistenced.pid
+Restart=always
+ExecStart=/usr/bin/nvidia-persistenced --user root --verbose
+ExecStopPost=/bin/rm -rf /var/run/nvidia-persistenced
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+mv /tmp/nvidia-persistenced.service /usr/lib/systemd/system/nvidia-persistenced.service
+
+chown root.root /usr/lib/systemd/system/nvidia-persistenced.service
+chmod 0644 /usr/lib/systemd/system/nvidia-persistenced.service
+
+systemctl enable nvidia-persistenced
+
+rm -f /lib/udev/rules.d/40-redhat.rules
+
+#
+# Extra steps for passing parameters to kernel module nvidia
+#
+mkdir -p /usr/lib/dracut/modules.d/95nvidia
+cat >/usr/lib/dracut/modules.d/95nvidia/module-setup.sh <<EOF
+#!/bin/bash
+# module setup file for dracut
+# nvidia patch described in:
+
+check() {
+    return 0
+}
+
+depends() {
+    return 0
+}
+
+installkernel() {
+    return 0
+}
+
+install() {
+    [ -d \$initdir/etc/modprobe.d/ ] || mkdir \$initdir/etc/modprobe.d
+    echo 'options nvidia NVreg_EnableStreamMemOPs=1 NVreg_RegistryDwords="PeerMappingOverride=1"' >\$initdir/etc/modprobe.d/nvidia.conf
+}
+EOF
+
+chmod 0755 /usr/lib/dracut/modules.d/95nvidia/module-setup.sh
+echo 'add_dracutmodules+=" nvidia "' >/etc/dracut.conf.d/nvidia_patch.conf
+
+# Patch for the diskfull environment, or in case kernel module nvidia need to be reloaded
+echo 'options nvidia NVreg_EnableStreamMemOPs=1 NVreg_RegistryDwords="PeerMappingOverride=1"' >/etc/modprobe.d/nvidia.conf
+
+# Redo the initrd image
+kernel_version="$(for d in $(ls /lib/modules | sort -V) ; do : ; done && echo $d)"
+mkinitrd -v -f "/boot/initramfs-${kernel_version}.img" "${kernel_version}"

@@ -98,7 +98,7 @@ class OpenBMCFlashTask(ParallelNodesCommand):
             os.makedirs(XCAT_LOG_RFLASH_DIR)
 
         if activate_arg.endswith('.tar'):
-            version = self._get_firmware_version()
+            version = self._get_firmware_version(self.firmware_file)
             self.firmware.update(version) 
             self.callback.info('Attempting to upload %s, please wait...' % self.firmware_file)
         else:
@@ -527,6 +527,16 @@ class OpenBMCFlashTask(ParallelNodesCommand):
 
         try:
             obmc.login()
+            # Before uploading file, check CPU DD version
+            inventory_info_dict = obmc.get_inventory_info('cpu')
+            cpu_info = inventory_info_dict["CPU"]
+            for info in cpu_info:
+                if info.startswith("CPU0 Version : 20"):
+                    # Display warning the only certain firmware versions are supported on DD 2.0
+                    self.callback.info( '%s: Warning: DD 2.0 processor detected on this node, should not have firmware > ibm-v2.0-0-r13.6 (BMC) and > v1.19_1.94 (Host).' % node)
+                if info.startswith("CPU0 Version : 21"):
+                    if self.verbose:
+                        self.callback.info( '%s: DD 2.1 processor' % node)
         except (SelfServerException, SelfClientException) as e:
             return self._msg_process(node, e.message, msg_type='E')
 

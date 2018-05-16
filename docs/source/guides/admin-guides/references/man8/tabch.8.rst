@@ -23,11 +23,11 @@ SYNOPSIS
 
 \ **tabch**\  [\ **-v**\  | \ **-**\ **-version**\ ]
 
-\ **tabch**\  [\ *keycolname=keyvalue*\ ] [\ *tablename.colname=newvalue*\ ]
+\ **tabch**\  \ *keycolname=keyvalue*\ [,\ *keycolname=keyvalue*\ ,...] \ *tablename.colname=newvalue*\  [\ *tablename.colname=newvalue*\  ...]
 
-\ **tabch**\  [\ *keycolname=keyvalue*\ ] [\ *tablename.colname+=newvalue*\ ]
+\ **tabch**\  \ *keycolname=keyvalue*\ [,\ *keycolname=keyvalue*\ ,...] \ *tablename.colname+=newvalue*\  [\ *tablename.colname+=newvalue*\  ...]
 
-\ **tabch -d**\  [\ *keycolname=keyvalue*\ ] [\ *tablename.colname=newvalue*\ ]
+\ **tabch -d**\  \ *keycolname=keyvalue*\ [,\ *keycolname=keyvalue*\ ,...] \ *tablename*\  [\ *tablename*\  ...]
 
 
 ***********
@@ -35,7 +35,7 @@ DESCRIPTION
 ***********
 
 
-The tabch command adds, deletes or updates the attribute value in the specified table.column for the specified keyvalue.  The difference between tabch and chtab is tabch runs as a plugin under the xcatd daemon. This give the additional security of being authorized by the daemon. Normally, the given value will completely replace the current attribute value.  But if "+=" is used instead of "=", the specified value will be appended to the coma separated list of the attribute, if it is not already there.
+The \ **tabch**\  command adds, deletes or updates the attribute values in the specified table.column for the specified keyvalue.  The difference between \ **tabch**\  and \ **chtab**\  is \ **tabch**\  runs as a plugin under the xcatd daemon. This give the additional security of being authorized by the daemon. Normally, the given value will completely replace the current attribute value.  But if "+=" is used instead of "=", the specified value will be appended to the comma separated list of attributes, if it is not already there.
 
 
 *******

@@ -8,6 +8,8 @@ Documentation
 
 Latest xCAT documentation is available at: http://xcat-docs.readthedocs.io/en/latest/
 
+`document for xCAT 2.14 <http://xcat-docs.readthedocs.io/en/2.14.0/>`_
+
 `document for xCAT 2.13.11 <http://xcat-docs.readthedocs.io/en/2.13.11/>`_
 
 `document for xCAT 2.13.10 <http://xcat-docs.readthedocs.io/en/2.13.10/>`_

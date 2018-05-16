@@ -23,7 +23,11 @@ def getxCATLog(name=None):
     return xl
 
 def enableSyslog(name='xcat'):
-    h = SysLogHandler(address='/dev/log', facility=SysLogHandler.LOG_LOCAL4)
+    try:
+        h = SysLogHandler(address='/dev/log', facility=SysLogHandler.LOG_LOCAL4)
+    except:
+        # this will connect localhost:514
+        h = SysLogHandler(facility=SysLogHandler.LOG_LOCAL4)
     h.setFormatter(logging.Formatter('%s: ' % name + '%(levelname)s %(message)s'))
     logging.getLogger('xcatagent').addHandler(h)
 
@@ -94,7 +98,7 @@ def mask_int2str(mask_int):
 
 def get_full_path(cwd, directory):
     if not os.path.isabs(directory): 
-        directory = '%s/%s' % (cwd, directory)
+        directory = os.path.join(cwd, directory)
     return directory
 
 class Messager(object):

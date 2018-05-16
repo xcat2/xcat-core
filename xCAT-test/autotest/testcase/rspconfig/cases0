@@ -127,7 +127,7 @@ start:rspconfig_set_vlan
 description:rspconfig change openbmc gateway
 Attribute: $$CN-The operation object of rspconfig command
 cmd:rspconfig $$CN vlan=0
-check:output=~Error: Invalid parameter for option vlan
+check:output=~Error: Invalid parameter for option vlan|Error: VLAN must be configured with IP, netmask and gateway
 check:rc!=0
 cmd:rspconfig $$CN vlan=111
 check:output=~Error: VLAN must be configured with IP, netmask and gateway
@@ -256,8 +256,9 @@ hcp:openbmc
 cmd:lsdef $$CN -i bmc -c
 check:rc == 0
 cmd:rspconfig $$CN hostname=*
-check:rc == 0
+check:rc != 0
 check:output =~ Invalid OpenBMC Hostname
+cmd:ssh __GETNODEATTR(f6u03,bmc)__ "hostname"
 end
 
 
@@ -342,17 +343,15 @@ cmd:rspconfig $$CN sshcfg
 check:rc == 0
 cmd:ssh __GETNODEATTR($$CN,bmc)__ "hostname" | tee /tmp/rspconfig_set_hostname/working_hostname
 check:rc == 0
-cmd:cat  /tmp/rspconfig_set_hostname/working_hostname
-check:rc == 0
 cmd:a=$(cat /tmp/rspconfig_set_hostname/working_hostname); rspconfig $$CN hostname=test_$a |tee /tmp/rspconfig_set_hostname/rspconfig_output 
 check:rc == 0
-cmd:grep -i 'BMC hostname' /tmp/rspconfig_set_hostname/rspconfig_output|awk -F':' '{print $3}'  |sed s/\\s//g > /tmp/rspconfig_set_hostname/rspconfig_get_hostname
+cmd:grep -i '$$CN: BMC hostname:' /tmp/rspconfig_set_hostname/rspconfig_output|awk -F':' '{print $3}'  |sed s/\\s//g |tee /tmp/rspconfig_set_hostname/rspconfig_get_hostname
 check:rc == 0
 cmd:ssh __GETNODEATTR($$CN,bmc)__ "hostname" | tee /tmp/rspconfig_set_hostname/new_working_hostname
 check:rc == 0
-cmd:diff /tmp/rspconfig_set_hostname/rspconfig_get_hostname /tmp/rspconfig_set_hostname/new_working_hostname
+cmd:diff -y /tmp/rspconfig_set_hostname/rspconfig_get_hostname /tmp/rspconfig_set_hostname/new_working_hostname
 check:rc == 0
-cmd:diff /tmp/rspconfig_set_hostname/new_working_hostname /tmp/rspconfig_set_hostname/working_hostname
+cmd:diff -y /tmp/rspconfig_set_hostname/new_working_hostname /tmp/rspconfig_set_hostname/working_hostname
 check:rc != 0
 cmd:a=test_$(cat /tmp/rspconfig_set_hostname/working_hostname);b=$(cat /tmp/rspconfig_set_hostname/new_working_hostname);echo "a=$a b=$b";if [ "$a" = "$b" ];then exit 0;else exit 1; fi
 check:rc == 0

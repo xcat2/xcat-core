@@ -192,6 +192,10 @@ sub init_local_console {
             unless ($_->{cons}) {
                 $_->{cons} = $_->{mgt};
             }
+            if ( $_->{cons} ne 'openbmc' && ! -x $::XCATROOT . "/share/xcat/cons/".$_->{cons}) {
+                xCAT::MsgUtils->message("S", $_->{node} .": ignore, ". $::XCATROOT . "/share/xcat/cons/".$_->{cons}." is not excutable. Please check mgt or cons attribute.");
+                next;
+            }
             if ($_->{conserver} && exists($iphash{ $_->{conserver} })) {
                 $cons_map{ $_->{node} } = $_;
             }
@@ -406,6 +410,11 @@ sub get_cons_map {
         if ($_->{cons} or defined($_->{'serialport'})) {
             unless ($_->{cons}) { $_->{cons} = $_->{mgt}; } #populate with fallback
             if ($isSN && $_->{conserver} && exists($iphash{ $_->{conserver} }) || !$isSN) {
+                if ( $_->{cons} ne 'openbmc' && ! -x $::XCATROOT . "/share/xcat/cons/".$_->{cons}) {
+                    $rsp->{data}->[0] = $_->{node} .": ignore, ". $::XCATROOT . "/share/xcat/cons/".$_->{cons}." is not excutable. Please check mgt or cons attribute.";
+                    xCAT::MsgUtils->message("I", $rsp, $::callback);
+                    next;
+                }
                 $cons_map{ $_->{node} } = $_; # also put the ref to the entry in a hash for quick look up
             } else {
                 $rsp->{data}->[0] = $_->{node} .": ignore, the host for conserver could not be determined.";

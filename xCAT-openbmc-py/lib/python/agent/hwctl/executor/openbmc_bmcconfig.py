@@ -145,7 +145,7 @@ class OpenBMCBmcConfigTask(ParallelNodesCommand):
 
             for key in keys:
                 self._dump_download(obmc, node, str(key))
-        except SelfServerException as e:
+        except (SelfServerException, SelfClientException) as e:
             self.callback.error(e.message, node)
 
     def dump_process(self, **kw):
@@ -174,7 +174,7 @@ class OpenBMCBmcConfigTask(ParallelNodesCommand):
             else:
                 self.callback.error('Could not find dump %s after waiting %d seconds.' % (dump_id, 20 * 15), node)
 
-        except SelfServerException as e:
+        except (SelfServerException, SelfClientException) as e:
             self.callback.error(e.message, node)
 
     def gard_clear(self, **kw):
@@ -188,7 +188,7 @@ class OpenBMCBmcConfigTask(ParallelNodesCommand):
             obmc.clear_gard()
             self.callback.info('%s: GARD cleared' % node)
 
-        except SelfServerException as e:
+        except (SelfServerException, SelfClientException) as e:
             self.callback.error(e.message, node)
 
     def pre_set_sshcfg(self, *arg, **kw):
@@ -301,9 +301,10 @@ rmdir \"/tmp/$userid\" \n")
     def _set_hostname(self, hostname, **kw):
         node = kw['node']
         if hostname == '*':
-            if kw['nodeinfo']['bmc'] == kw['nodeinfo']['bmcip']:
-                self.callback.info("%s: set BMC ip as BMC Hostname" % node)
-            hostname = kw['nodeinfo']['bmc']
+            if kw['nodeinfo']['bmc'] != kw['nodeinfo']['bmcip']:
+                hostname = kw['nodeinfo']['bmc']
+            else:
+                return self.callback.error("Invalid OpenBMC Hostname %s, can't set to OpenBMC" % kw['nodeinfo']['bmc'], node)
         self._set_apis_values("hostname", hostname, **kw)
         self._get_netinfo(hostname=True, ntpserver=False, **kw) 
         return
@@ -345,6 +346,10 @@ rmdir \"/tmp/$userid\" \n")
         if nic in netinfo:
             ntpservers = netinfo[nic]['ntpservers']
         self.callback.info('%s: BMC NTP Servers: %s' % (node, ntpservers))
+        if ntpservers != None:
+            # Display a warning if the host in not powered off
+            # Time on the BMC is not synced while the host is powered on
+            self.callback.info('%s: Warning: time will not be synchronized until the host is powered off.' % node)
 
     def _get_facing_nic(self, bmcip, netinfo):
         for k,v in netinfo.items():
@@ -379,7 +384,15 @@ rmdir \"/tmp/$userid\" \n")
         try:
             obmc.login()
             obmc.set_apis_values(key, value)
-        except (SelfServerException, SelfClientException) as e:
+        except SelfServerException as e:
+            return self.callback.error(e.message, node)
+        except SelfClientException as e:
+            if e.code == 404:
+                return self.callback.error('404 Not Found - Requested endpoint does not exist or may ' \
+                                           'indicate function is not supported on this OpenBMC firmware.', node)
+            if e.code == 403:
+                return self.callback.error('403 Forbidden - Requested endpoint does not exist or may ' \
+                                           'indicate function is not yet supported by OpenBMC firmware.', node)
             return self.callback.error(e.message, node)
 
         self.callback.info("%s: BMC Setting %s..." % (node, openbmc.RSPCONFIG_APIS[key]['display_name']))
@@ -392,13 +405,23 @@ rmdir \"/tmp/$userid\" \n")
             obmc.login()
             value = obmc.get_apis_values(key)
 
-        except (SelfServerException, SelfClientException) as e:
+        except SelfServerException as e:
+            return self.callback.error(e.message, node)
+        except SelfClientException as e:
+            if e.code == 404:
+                return self.callback.error('404 Not Found - Requested endpoint does not exist or may ' \
+                                           'indicate function is not supported on this OpenBMC firmware.', node)
+            if e.code == 403:
+                return self.callback.error('403 Forbidden - Requested endpoint does not exist or may ' \
+                                           'indicate function is not yet supported by OpenBMC firmware.', node)
             return self.callback.error(e.message, node)
 
         if isinstance(value, dict):
-            str_value = value.values()[0]
+            str_value = str(value.values()[0])
+        elif value:
+            str_value = str(value)
         else:
-            str_value = value 
+            str_value = '0'
         result = '%s: %s: %s' % (node, openbmc.RSPCONFIG_APIS[key]['display_name'], str_value.split('.')[-1])
         self.callback.info(result)
 

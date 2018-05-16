@@ -13,7 +13,7 @@ my @apigroups = (
         groupname => 'nodes',
         header    => "Node Resources",
         desc => "The URI list which can be used to create, query, change and manage node objects.",
-        resources => [ 'allnode', 'nodeallattr', 'nodeattr', 'nodehost', 'nodedns', 'nodedhcp', 'nodestat', 'subnodes',
+        resources => [ 'allnode', 'nodeallattr', 'nodeattr', 'nodehost', 'nodedns', 'nodedhcp', 'nodestat', 'nodels', 'subnodes',
 'power', 'energy', 'energyattr', 'serviceprocessor', 'nextboot', 'bootstate',
 'vitals', 'vitalsattr', 'inventory', 'inventoryattr', 'eventlog', 'beacon',
 'updating', 'filesyncing', 'software_maintenance', 'postscript', 'nodeshell', 'nodecopy',
@@ -181,9 +181,9 @@ sub make_rst_format {
                 my ($uri, $data);
                 if ($parts[3] =~ /\s+/) {
                     ($uri, $data) = split(/ /, $parts[3]);
-                    print "\n    #curl -X $parts[2] -k \'https://127.0.0.1/xcatws$uri$postfix\' -H Content-Type:application/json --data \'$data\'\n";
+                    print "\n    curl -X $parts[2] -k \'https://127.0.0.1/xcatws$uri$postfix\' -H Content-Type:application/json --data \'$data\'\n";
                 } else {
-                    print "\n    #curl -X $parts[2] -k \'https://127.0.0.1/xcatws$parts[3]$postfix\'\n";
+                    print "\n    curl -X $parts[2] -k \'https://127.0.0.1/xcatws$parts[3]$postfix\'\n";
                 }
 
                 if ($parts[4]) {

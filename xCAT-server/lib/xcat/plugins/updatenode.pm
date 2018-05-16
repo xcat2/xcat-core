@@ -11,7 +11,6 @@ use lib "$::XCATROOT/lib/perl";
 
 use xCAT::Table;
 use xCAT::Schema;
-use Data::Dumper;
 use xCAT::Utils;
 use xCAT::SvrUtils;
 use xCAT::Scope;
@@ -30,6 +29,7 @@ use File::Basename;
 use xCAT::GlobalDef;
 use xCAT_monitoring::monitorctrl;
 use Socket;
+use Data::Dumper;
 
 use strict;
 my $CALLBACK;
@@ -209,7 +209,7 @@ sub preprocess_updatenode
     }
 
     # parse the options
-    my ($ALLSW, $CMDLINE, $ALTSRC, $HELP, $VERSION, $VERBOSE, $FILESYNC, $GENMYPOST, $USER, $SNFILESYNC, $SWMAINTENANCE, $SETSERVER, $RERUNPS, $SECURITY, $OS, $fanout, $timeout, $NOVERIFY);
+    my ($ALLSW, $CMDLINE, $ALTSRC, $HELP, $VERSION, $VERBOSE, $FILESYNC, $GENMYPOST, $USER, $SNFILESYNC, $SWMAINTENANCE, $SETSERVER, $RERUNPS, $SECURITY, $OS, $fanout, $timeout, $NOVERIFY, $RCP);
     Getopt::Long::Configure("bundling");
     Getopt::Long::Configure("no_pass_through");
     if (
@@ -232,6 +232,7 @@ sub preprocess_updatenode
             'fanout=i'      => \$fanout,
             't|timetout=i'  => \$timeout,
             'n|noverify'    => \$NOVERIFY,
+            'r|node-rcp=s'  =>\$RCP,
 
         )
       )
@@ -288,6 +289,11 @@ sub preprocess_updatenode
         $::OS = $OS;
     } else {
         undef $::OS;
+    }
+    if (defined($RCP)) {
+        $::RCP = $RCP;
+    } else {
+        undef $::RCP;
     }
 
     # display the usage if -h or --help is specified
@@ -427,6 +433,15 @@ sub preprocess_updatenode
         $callback->($rsp);
         return;
     }
+
+    if (($RCP) and (!$FILESYNC) and (!$SNFILESYNC)){
+        my $rsp = {};
+        $rsp->{data}->[0] = "-r|--node-rcp option is valid when option -f or -F is specified";
+        $rsp->{errorcode}->[0] = 1;
+        $callback->($rsp);
+        return;        
+    }
+    
 
     # -f must not be with any other flag, this updates service nodes syncfiles
     if ($SNFILESYNC && ($SWMAINTENANCE || $RERUNPS || defined($RERUNPS) || $SECURITY || $FILESYNC))
@@ -658,7 +673,11 @@ sub preprocess_updatenode
     {
         $request->{SNFileSyncing}->[0] = "yes";
     }
-
+   
+    if ($RCP){
+        $request->{rcp}->[0]=$RCP;
+    }
+   
     # If -F  or -f then,  call CFMUtils  to check if any PCM CFM data is to be
     # built for the node.   This will also create the synclists attribute in
     # the osimage for each node in the noderange
@@ -683,6 +702,7 @@ sub preprocess_updatenode
 
         }
     }
+
 
 
     #  - need to consider the mixed cluster case
@@ -752,6 +772,7 @@ sub preprocess_updatenode
     # process the -F or -f flags
     if (($FILESYNC) || ($SNFILESYNC))
     {
+
         # If it is only -F or -f  in the command, which are always run on the MN,
         # then run it now and you are
         # finished.
@@ -819,6 +840,7 @@ sub preprocess_updatenode
     {
         $request->{os}->[0] = "yes";
     }
+
 
 
     #
@@ -1078,7 +1100,6 @@ sub updatenode
     @::SUCCESSFULLNODES = ();
     @::FAILEDNODES      = ();
 
-    #print Dumper($request);
     my $nodes = $request->{node};
 
     #$request->{status}= "yes";  # for testing
@@ -1135,7 +1156,7 @@ sub updatenode
     chomp $nimprime;
 
     # parse the options
-    my ($ALLSW, $CMDLINE, $ALTSRC, $HELP, $VERSION, $VERBOSE, $FILESYNC, $GENMYPOST, $USER, $SNFILESYNC, $SWMAINTENANCE, $SETSERVER, $RERUNPS, $SECURITY, $OS, $fanout, $timeout, $NOVERIFY);
+    my ($ALLSW, $CMDLINE, $ALTSRC, $HELP, $VERSION, $VERBOSE, $FILESYNC, $GENMYPOST, $USER, $SNFILESYNC, $SWMAINTENANCE, $SETSERVER, $RERUNPS, $SECURITY, $OS, $fanout, $timeout, $NOVERIFY, $RCP);
     Getopt::Long::Configure("bundling");
     Getopt::Long::Configure("no_pass_through");
     if (
@@ -1158,6 +1179,7 @@ sub updatenode
             'fanout=i'      => \$fanout,
             't|timetout=i'  => \$timeout,
             'n|noverify'    => \$NOVERIFY,
+            'r|node-rcp=s'   => \$RCP,
         )
       )
     {
@@ -1210,6 +1232,11 @@ sub updatenode
         $::OS = $OS;
     } else {
         undef $::OS;
+    }
+    if (defined($RCP)) {
+        $::RCP = $RCP;
+    } else {
+        undef $::RCP;
     }
 
     #
@@ -1712,6 +1739,7 @@ sub updatenodesyncfiles
     my %syncfile_node      = ();
     my %syncfile_rootimage = ();
 
+
     # $::NOSYNCFILE default value is 0
     # if there is no syncfiles, set $::NOSYNCFILE=1
     $::NOSYNCFILE = 0;
@@ -1828,11 +1856,16 @@ sub updatenodesyncfiles
             $CALLBACK = $callback;
 
 
+            if($::RCP){
+                push @$args, "--node-rcp";
+                push @$args, "$::RCP";
+            }
             $output =
               xCAT::Utils->runxcmd(
                 {
                     command => ["xdcp"],
                     node    => $syncfile_node{$synclist},
+                    username => $request->{username},
                     arg     => $args,
                     env     => $env
                 },
@@ -1840,21 +1873,32 @@ sub updatenodesyncfiles
 
             # build the list of good and bad nodes
             &buildnodestatus(\@$output, $callback);
+            if($::RUNCMD_RC and !@::FAILEDNODES){
+                 push @::FAILEDNODES,@{$syncfile_node{$synclist}};
+            }
         }
 
         if ($request->{SNFileSyncing}->[0] eq "yes") {
             my $rsp = {};
-            $rsp->{data}->[0] = "File synchronization has completed for service nodes.";
+            if(@::SUCCESSFULLNODES){
+                $rsp->{data}->[0] = "File synchronization has completed for service nodes: \"".join(',',@::SUCCESSFULLNODES)."\"";
+            }
             if (@::FAILEDNODES) {
                 $rsp->{errorcode}->[0] = 1;
+                $rsp->{data}->[0] = "File synchronization failed for service nodes: \"".join(',',@::FAILEDNODES)."\"";
             }
             $callback->($rsp);
         }
+
         if ($request->{FileSyncing}->[0] eq "yes") {
             my $rsp = {};
-            $rsp->{data}->[0] = "File synchronization has completed for nodes.";
+            if(@::SUCCESSFULLNODES){
+                $rsp->{data}->[0] = "File synchronization has completed for nodes: \"".join(',',@::SUCCESSFULLNODES)."\"";
+            }
+
             if (@::FAILEDNODES) {
                 $rsp->{errorcode}->[0] = 1;
+                $rsp->{data}->[0] = "File synchronization failed for nodes: \"".join(',',@::FAILEDNODES)."\"";
             }
             $callback->($rsp);
         }
