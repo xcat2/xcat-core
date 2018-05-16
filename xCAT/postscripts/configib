@@ -94,17 +94,28 @@ else
     ib_driver="openibd"
 fi
 
+restart_ib_driver=0
 #make changes to the confiuration file
 if [ $PLTFRM == "Linux" ]
 then
     if [ -f "/etc/rdma/rdma.conf" ]
     then
+        md5f1=$(md5sum /etc/rdma/rdma.conf |cut -d' ' -f1)
         TMP1=`sed "s/SDP_LOAD=yes/SDP_LOAD=no/g" /etc/rdma/rdma.conf`
 	echo "$TMP1" > /etc/rdma/rdma.conf 
+        md5f2=$(md5sum /etc/rdma/rdma.conf |cut -d' ' -f1)
+        if [ "$md5f2" != "$md5f1" ]; then
+            restart_ib_driver=1
+        fi
     elif [ -f "/etc/infiniband/openib.conf" ]
     then
+        md5f1=$(md5sum /etc/infiniband/openib.conf |cut -d' ' -f1)
         TMP1=`sed "s/SDP_LOAD=yes/SDP_LOAD=no/g" /etc/infiniband/openib.conf`
 	echo "$TMP1" > /etc/infiniband/openib.conf
+        md5f2=$(md5sum /etc/infiniband/openib.conf |cut -d' ' -f1)
+        if [ "$md5f2" != "$md5f1" ]; then
+            restart_ib_driver=1
+        fi
     fi
 
     if [ -f "/etc/modprobe.conf" ]
@@ -667,7 +678,11 @@ done # end for nic
 if [ $PLTFRM == "Linux" ]
 then
     #/sbin/service $ib_driver restart
-    restartservice $ib_driver
+    if [ $restart_ib_driver = "1" ]; then
+            echo "restart $ib_driver service"
+            logger -p local4.info -t xcat "restart $ib_driver service"
+            restartservice $ib_driver
+    fi
     for nic in `echo "$goodnics" | tr "," "\n"|sort -u`
     do     
         sleep 5
