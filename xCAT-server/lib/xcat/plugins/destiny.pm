@@ -185,6 +185,11 @@ sub setdestiny {
                 $state = $stents{$_}->[0]->{currstate};
                 $state =~ s/ .*//;
 
+                #skip the node if state=ondiscover
+                if ($state eq 'ondiscover') {
+                    next;
+                }
+
                 #get the osimagename if nodetype.provmethod has osimage specified
                 #use it for both sninit and genesis operating
                 if (($state eq 'install') || ($state eq 'netboot') || ($state eq 'statelite')) {
@@ -848,6 +853,11 @@ sub nextdestiny {
         }
         unless ($ref->{currchain}) {    #If no current chain, copy the default
             $ref->{currchain} = $ref->{chain};
+        } elsif ($ref->{currchain} !~ /[,;]/){
+            if ($ref->{currstate} and ($ref->{currchain} =~ /$ref->{currstate}/)) {
+                $ref->{currchain} = 'standby';
+                $callnodeset = 0;
+            }
         }
         my @chain = split /[,;]/, $ref->{currchain};
 

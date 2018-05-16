@@ -618,7 +618,6 @@ $usage{"rspconfig.openbmc"} = $usage{"rspconfig.common"} .
 $usage{"rinv"} = $usage{"rinv.common"} . 
                       $usage{"rinv.begin"} .
                       $usage{"rinv.openbmc"} .
-                      "   " .
                       $usage{"rinv.end"};
 
 $usage{"rinv.openbmc"} = $usage{"rinv.common"} .
@@ -634,7 +633,6 @@ $usage{"rbeacon.openbmc"} = $usage{"rbeacon.common"} .
 $usage{"rvitals"} = $usage{"rvitals.common"} . 
                       $usage{"rvitals.begin"} .
                       $usage{"rvitals.openbmc"} .
-                      "   " .
                       $usage{"rvitals.end"};
 
 $usage{"rvitals.openbmc"} = $usage{"rvitals.common"} .
@@ -652,7 +650,6 @@ $usage{"rflash.openbmc"} = $usage{"rflash.common"} .
 $usage{"rpower"} = $usage{"rpower.common"} . 
                       $usage{"rpower.begin"} .
                       $usage{"rpower.openbmc"} .
-                      "   " .
                       $usage{"rpower.end"};
 
 $usage{"rpower.openbmc"} = $usage{"rpower.common"} .
