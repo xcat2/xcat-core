@@ -1,0 +1,64 @@
+start:rpower_bmcreboot_record_perl_output
+description: Start the test for perl code
+hcp:openbmc
+cmd: /opt/xcat/share/xcat/tools/autotest/testcase/UT_openbmc/scripts/bmcreboot.sh $$CN /tmp/xcattest.rpower.bmcstate.perl.out PERL
+check:rc==0
+end
+
+start:rpower_bmcreboot_check_lines_perl
+description: Check that we receive the correct output when we reboot the BMC - PERL
+hcp:openbmc
+cmd: grep "Login to BMC failed: 500" /tmp/xcattest.rpower.bmcstate.perl.out | sort | uniq | wc -l
+check:output=~3
+cmd: grep "timeout" /tmp/xcattest.rpower.bmcstate.perl.out | sort | uniq | wc -l
+check:output=~1
+cmd: grep "No route to host" /tmp/xcattest.rpower.bmcstate.perl.out | sort | uniq | wc -l
+check:output=~1
+cmd: grep "BMC NotReady" /tmp/xcattest.rpower.bmcstate.perl.out | sort | uniq | wc -l
+check:output=~1
+cmd: grep "BMC Ready" /tmp/xcattest.rpower.bmcstate.perl.out | sort | uniq | wc -l
+check:output=~1
+end
+
+start:rpower_bmcreboot_record_logs_perl
+description: Record the output file into the xCAT test framework
+cmd: cat /tmp/xcattest.rpower.bmcstate.perl.out
+end
+
+start:rpower_bmcreboot_remove_tmpfile_perl 
+description: Remove the temporary file, output is captures above 
+cmd: rm -f /tmp/xcattest.rpower.bmcstate.perl.out
+end
+
+start:rpower_bmcreboot_record_python_output
+description: Start the test for python code
+hcp:openbmc
+cmd: /opt/xcat/share/xcat/tools/autotest/testcase/UT_openbmc/scripts/bmcreboot.sh $$CN /tmp/xcattest.rpower.bmcstate.python.out PYTHON
+check:rc==0
+end
+
+start:rpower_bmcreboot_check_lines_python
+description: Check that we receive the correct output when we reboot the BMC - PYTHON
+hcp:openbmc
+cmd: grep "Login to BMC failed: 500" /tmp/xcattest.rpower.bmcstate.python.out | sort | uniq | wc -l
+check:output=~3
+cmd: grep "timeout" /tmp/xcattest.rpower.bmcstate.python.out | sort | uniq | wc -l
+check:output=~1
+cmd: grep "No route to host" /tmp/xcattest.rpower.bmcstate.python.out | sort | uniq | wc -l
+check:output=~1
+cmd: grep "BMC NotReady" /tmp/xcattest.rpower.bmcstate.python.out | sort | uniq | wc -l
+check:output=~1
+cmd: grep "BMC Ready" /tmp/xcattest.rpower.bmcstate.python.out | sort | uniq | wc -l
+check:output=~1
+end
+
+start:rpower_bmcreboot_record_logs_python
+description: Record the output file into the xCAT test framework
+cmd: cat /tmp/xcattest.rpower.bmcstate.python.out
+end
+
+start:rpower_bmcreboot_remove_tmpfile_python
+description: Remove the temporary file, output is captures above 
+cmd: rm -f /tmp/xcattest.rpower.bmcstate.python.out
+end
+
