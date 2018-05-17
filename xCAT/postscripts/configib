@@ -678,7 +678,7 @@ done # end for nic
 if [ $PLTFRM == "Linux" ]
 then
     #/sbin/service $ib_driver restart
-    if [ $restart_ib_driver = "1" ]; then
+    if [ "$restart_ib_driver" = "1" ]; then
             echo "restart $ib_driver service"
             logger -p local4.info -t xcat "restart $ib_driver service"
             restartservice $ib_driver
