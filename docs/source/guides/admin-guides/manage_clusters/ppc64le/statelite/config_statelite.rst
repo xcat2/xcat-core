@@ -33,7 +33,7 @@ The litefile table specifies the directories and files on the statelite nodes th
 
 Currently, xCAT does not handle the relative links very well. The relative links are commonly used by the system libraries, for example, under ``/lib/`` directory, there will be one relative link matching one ``.so`` file. So, when you add one relative link to the litefile table (Not recommend), make sure the real file also be included, or put its directory name into the litefile table. 
 
-**Note**: It is recommended that you specify at least the entries listed below in the litefile table, because most of these files need to be writeable for the node to boot up successfully. When any changes are made to their options, make sure they won't affect the whole system. If you want to run a command using non-root users, add this command into ``litefile`` table and use "tmpfs" options, its permission will be the same as the original version on the server.
+.. Note:: It is recommended that you specify at least the entries listed below in the litefile table, because most of these files need to be writeable for the node to boot up successfully. When any changes are made to their options, make sure they won't affect the whole system. If you want to run a command like ``/bin/ping`` using non-root users, add this command into ``litefile``, then root user have privilege to authorize the command for non-root users.
 
 Sample Data for Redhat statelite setup
 ``````````````````````````````````````
