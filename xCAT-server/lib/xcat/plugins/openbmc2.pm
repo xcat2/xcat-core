@@ -183,7 +183,7 @@ sub parse_args {
         return ([ 1, "Error parsing arguments." ]);
     }
 
-    if (scalar(@ARGV) >= 2 and ($command =~ /rbeacon|rinv|rpower|rvitals/)) {
+    if (scalar(@ARGV) >= 2 and ($command =~ /rbeacon|rpower|rvitals/)) {
         return ([ 1, "Only one option is supported at the same time for $command" ]);
     } elsif (scalar(@ARGV) == 0 and $command =~ /rbeacon|rspconfig|rpower|rflash/) {
         return ([ 1, "No option specified for $command" ]);
@@ -244,9 +244,18 @@ sub parse_args {
             return ([ 1, "Invalid option specified with '-l|--list'."]) if (@ARGV);
         }
     } elsif ($command eq "rinv") {
-        $subcommand = "all" if (!defined($ARGV[0]));
-        unless ($subcommand =~ /^all$|^cpu$|^dimm$|^firm$|^model$|^serial$/) {
-            return ([ 1, "Unsupported command: $command $subcommand" ]);
+        if (!defined($ARGV[0])) {
+            $subcommand = "all";
+        } else {
+            foreach my $each_subcommand (@ARGV) {
+                # Check if each passed subcommand is valid
+                if ($each_subcommand =~ /^all$|^cpu$|^dimm$|^firm$|^model$|^serial$/) {
+                    $subcommand .= $each_subcommand . " ";
+                } else {
+                    # Exit once we find an invalid subcommand
+                    return ([ 1, "Unsupported command: $command $each_subcommand" ]);
+                }
+            }
         }
     } elsif ($command eq "rpower") {
         unless ($subcommand =~ /^on$|^off$|^softoff$|^reset$|^boot$|^bmcreboot$|^bmcstate$|^status$|^stat$|^state$/) {

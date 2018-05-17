@@ -223,9 +223,16 @@ class OpenBMCManager(base.BaseManager):
         if not args or (len(args) == 1 and args[0] in ['-V', '--verbose']):
             args.append('all')
 
+        # We are not using a standard Python options (with - or --) because
+        # of that, we need to specify multiple identical choices. If only
+        # one optional choice is specified - [all|cpu|dimm|firm|model|serial]
+        # only one option at a time is allowed.
+        # If specified - [all][cpu][dimm][firm][model][serial], then multiple
+        # options are accepted, but they are required to be ordered,
+        # e.g "cpu dimm" will work, but not "dimm cpu"
         rinv_usage = """
         Usage:
-            rinv [-V|--verbose] [all|cpu|dimm|firm|model|serial]
+            rinv [-V|--verbose] [all|cpu|dimm|firm|model|serial] [all|cpu|dimm|firm|model|serial] [all|cpu|dimm|firm|model|serial] [all|cpu|dimm|firm|model|serial] [all|cpu|dimm|firm|model|serial]
 
         Options:
             -V --verbose   rinv verbose mode.
@@ -235,22 +242,37 @@ class OpenBMCManager(base.BaseManager):
             opts = docopt(rinv_usage, argv=args)
 
             self.verbose = opts.pop('--verbose')
-            action = [k for k,v in opts.items() if v][0]
+            actions = [k for k,v in opts.items() if v]
         except Exception as e:
             self.messager.error("Failed to parse arguments for rinv: %s" % args)
             return
 
         # 2, validate the args
-        if action not in INVENTORY_OPTIONS:
-            self.messager.error("Not supported subcommand for rinv: %s" % action)
-            return
+        run_firmware_inventory = 0
+        run_other_inventory = 0
+        for action in actions:
+            # Check if each action is valid
+            if action not in INVENTORY_OPTIONS:
+                self.messager.error("Not supported subcommand for rinv: %s" % action)
+                return
+            else:
+                # Valid action, set flags for which calls to make later
+                if action == 'all':
+                    run_firmware_inventory = 0
+                    run_other_inventory = 1
+                    break # get all inventory, nothing else matters
+                elif action == 'firm':
+                    run_firmware_inventory = 1
+                else:
+                    run_other_inventory = 1
 
         # 3, run the subcommands
         runner = OpenBMCInventoryTask(nodesinfo, callback=self.messager, debugmode=self.debugmode, verbose=self.verbose)
-        if action == 'firm':
+        if run_firmware_inventory == 1:
             DefaultInventoryManager().get_firm_info(runner)
-        else:
-            DefaultInventoryManager().get_inventory_info(runner, action)
+            actions.remove('firm') # Remove element from actions array
+        if run_other_inventory == 1:
+            DefaultInventoryManager().get_inventory_info(runner, actions)
 
     def rpower(self, nodesinfo, args):
 
