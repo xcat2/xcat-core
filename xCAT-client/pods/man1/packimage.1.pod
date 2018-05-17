@@ -27,7 +27,7 @@ B<-h>          Display usage message.
 
 B<-v>          Command Version.
 
-B<-m| --method>          Archive Method (cpio,tar,squashfs, default is tar)
+B<-m| --method>          Archive Method (cpio,tar,squashfs, default is cpio)
 
 B<-c| --compress>          Compress Method (pigz,gzip,xz, default is pigz/gzip)
 
