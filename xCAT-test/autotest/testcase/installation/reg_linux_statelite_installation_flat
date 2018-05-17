@@ -51,8 +51,8 @@ check:rc==0
 
 cmd:genimage __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-statelite-compute
 check:rc==0
-#cmd:rootimagedir=`lsdef -t osimage __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-statelite-compute  -i  rootimgdir -c|awk -F"=" '{print $2}'`; chroot $rootimagedir/rootimg useradd xcatuser
-#check:rc==0
+cmd:rootimagedir=`lsdef -t osimage __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-statelite-compute  -i  rootimgdir -c|awk -F"=" '{print $2}'`; chroot $rootimagedir/rootimg useradd xcatuser
+check:rc==0
 cmd:liteimg  __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-statelite-compute
 check:rc==0
 
@@ -84,11 +84,11 @@ cmd:xdsh $$CN  "cat /var/log/xcat/xcat.log"
 cmd:xdsh $$CN "echo "test"> /test.statelite"
 check:rc!=0
 #add test for issue922
-#cmd:xdsh $$CN  "ls -l /bin/ping"
-#cmd:xdsh $$CN "ping -c 1 127.0.0.1"
-#check:rc==0
-#cmd:xdsh $$CN "su - xcatuser sh  -c \"ping -c 1 127.0.0.1\""
-#check:rc==0
+cmd:xdsh $$CN  "ls -l /bin/ping"
+cmd:xdsh $$CN "ping -c 1 127.0.0.1"
+check:rc==0
+cmd:xdsh $$CN "su - xcatuser sh  -c \"ping -c 1 127.0.0.1\""
+check:rc==0
 cmd:output=$(xdsh $$CN ls -al / |grep test.statelite);if [[ $? -eq 0 ]];then  xdsh $$CN rm -rf /test.tatelite;fi
 cmd:rootimgdir=`lsdef -t osimage __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-statelite-compute|grep rootimgdir|awk -F'=' '{print $2}'`; if [ -d $rootimgdir ]; then rm -rf $rootimgdir;fi
 check:rc==0
@@ -130,15 +130,15 @@ check:rc==0
 check:output=~64 bytes from $$CN
 cmd:xdsh $$CN  "cat /var/log/xcat/xcat.log"
 #add test for issue922
-#cmd:xdsh $$CN  "ls -l /bin/ping"
-#cmd:xdsh $$CN "ping -c 1 127.0.0.1"
-#check:rc==0
-#cmd:xdsh $$CN "useradd -m xcatuser"
-#check:rc==0
-#cmd:xdsh $$CN "su - xcatuser sh  -c \"ping -c 1 127.0.0.1\""
-#check:rc==0
-#cmd:xdsh $$CN "userdel xcatuser"
-#check:rc==0
+cmd:xdsh $$CN  "ls -l /bin/ping"
+cmd:xdsh $$CN "ping -c 1 127.0.0.1"
+check:rc==0
+cmd:xdsh $$CN "useradd -m xcatuser"
+check:rc==0
+cmd:xdsh $$CN "su - xcatuser sh  -c \"ping -c 1 127.0.0.1\""
+check:rc==0
+cmd:xdsh $$CN "userdel xcatuser"
+check:rc==0
 cmd:rm -rf /tmp/image;mkdir /tmp/image
 check:rc==0
 cmd:imgexport __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-statelite-compute /tmp/image/image.tgz
