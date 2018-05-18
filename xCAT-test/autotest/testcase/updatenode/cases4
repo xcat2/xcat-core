@@ -1,0 +1,5 @@
+start:updatenode_syncfiles
+description: Test cases for the syncfiles feature
+cmd:/opt/xcat/share/xcat/tools/autotest/testcase/updatenode/syncfiles $$CN
+check:rc==0
+end 
