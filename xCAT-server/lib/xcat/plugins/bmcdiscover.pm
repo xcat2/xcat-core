@@ -819,10 +819,10 @@ sub write_to_xcatdb {
                                            "bmcusername=$bmcuser", "bmcpassword=$bmcpass", "nodetype=$nodetype", 
                                            "servicenode=$sn", "conserver=$conserver",
                                            "hwtype=$hwtype", "groups=all" ] },
-                                  $request_command, 0, 1);
+                                  $request_command, -1, 1);
     if ($::RUNCMD_RC != 0) {
         my $rsp = {};
-        push @{ $rsp->{data} }, "create or modify node is failed.\n";
+        push @{ $rsp->{data} }, "Failed to run chdef command for node=$node\n";
         xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
         return 2;
     }
