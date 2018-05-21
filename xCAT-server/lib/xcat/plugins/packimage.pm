@@ -500,7 +500,7 @@ sub process_request {
         my $checkoption2 = `tar --selinux 2>&1`;
         my $option;
         if ($checkoption1 !~ /unrecognized/) {
-            $option .= "--xattrs-include='*' ";
+            $option .= " --xattrs --xattrs-include='*' ";
         }
         if ($checkoption2 !~ /unrecognized/) {
             $option .= "--selinux ";
