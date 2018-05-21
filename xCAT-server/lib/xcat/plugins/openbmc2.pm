@@ -86,6 +86,14 @@ sub preprocess_request {
         return;
     }
 
+    #pdu commands will be handled in the pdu plugin
+    if ($command eq "rpower") {
+        my $subcmd = $exargs[0];
+        if(($subcmd eq 'pduoff') || ($subcmd eq 'pduon') || ($subcmd eq 'pdustat') || ($subcmd eq 'pdureset')){
+             return;
+        }
+    }
+
     my $parse_result = parse_args($command, $extrargs, $noderange);
     if (ref($parse_result) eq 'ARRAY') {
         my $error_data;

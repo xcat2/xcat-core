@@ -404,7 +404,7 @@ sub powerpduoutlet {
             if ($session->{ErrorStr}) { 
                 $callback->({ errorcode => [1],error => "$node: $pdu outlet $outlet has error = $session->{ErrorStr}"});
             } else {
-                $output = "$pdu outlet $outlet is $statstr"; 
+                $output = "$pdu operational state for outlet $outlet is $statstr"; 
                 xCAT::SvrUtils::sendmsg($output, $callback, $node, %allerrornodes);
             }
         }
@@ -508,7 +508,7 @@ sub powerstat {
         for (my $outlet =1; $outlet <= $count; $outlet++)
         {
             my $statstr = outletstat($session, $outlet);
-            my $msg = " outlet $outlet is $statstr";
+            my $msg = " operational state for the outlet $outlet is $statstr";
             xCAT::SvrUtils::sendmsg($msg, $callback, $pdu, %allerrornodes);
         }
     }
@@ -519,6 +519,13 @@ sub powerstat {
 =head3  outletstat 
 
     Process command to query status of one pdu outlet
+    ibmPduOutletState defined from mib file
+         off(0) 
+         on(1)
+         cycling(2)
+         delaySwitch10(3)
+         delaySwitch30(4)
+         delaySwitch60(5)
 
 =cut
 
@@ -535,12 +542,20 @@ sub outletstat {
     }
 
     $output = $session->get("$oid.$outlet");
-    if ($output eq 1) {
-        $statstr = "on";
-    } elsif ($output eq 0) {
+    if ($output eq 0) {
         $statstr = "off";
+    } elsif ($output eq 1) {
+        $statstr = "on";
+    } elsif ($output eq 2) {
+        $statstr = "cycling";
+    } elsif ($output eq 3) {
+        $statstr = "delaySwitch10";
+    } elsif ($output eq 4) {
+        $statstr = "delaySwitch30";
+    } elsif ($output eq 5) {
+        $statstr = "delaySwitch60";
     } else {
-        return;
+        $statstr = "$output(unknown state)" ;
     }
     return $statstr;
 }
