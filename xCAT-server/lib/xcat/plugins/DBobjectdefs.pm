@@ -4604,7 +4604,11 @@ sub defch_usage
 
     foreach my $t (sort(keys %{xCAT::Schema::defspec}))
     {
-        $dataobj = $dataobj . ' ' . $t;
+        if ($dataobj) {
+            $dataobj = $dataobj . ',' . $t;
+        } else {
+            $dataobj = $t;
+        }
     }
     $rsp->{data}->[$n] = "$dataobj\n";
     $n++;
