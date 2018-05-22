@@ -730,7 +730,7 @@ check:rc==0
 cmd:lsdef bogusnode > /dev/null 2>&1;if [[ $? -eq 0 ]]; then lsdef bogusnode -z >/tmp/xcat_inventory_try_to_export_nonexisted_node/bogusnode.stanza ;rmdef bogusnode;fi
 check:rc==0
 cmd: xcat-inventory export --format=json -t node -o bogusnode
-check:output=~Error: cannot find objects: bogusnode!
+check:output=~Error: cannot find node objects: bogusnode!
 check:rc!=0
 cmd: xcat-inventory export --format=yaml -t node -o bogusnode
 check:output=~Error: cannot find objects: bogusnode!
