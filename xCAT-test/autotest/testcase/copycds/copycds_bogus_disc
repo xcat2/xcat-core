@@ -1,0 +1,18 @@
+#!/bin/bash
+
+set -x
+
+function cleanup()
+{
+	rm -rf /install/rhels7/ppc64
+	rmdef -t osimage rhels7-ppc64-install-compute
+	rmdef -t osimage rhels7-ppc64-install-service
+	rmdef -t osimage rhels7-ppc64-netboot-compute
+	rmdef -t osimage rhels7-ppc64-statelite-compute
+}
+
+trap cleanup EXIT
+
+ISO_FILE="/opt/xcat/share/xcat/tools/autotest/testcase/copycds/BOGUS-RHEL-7.0-ppc64.iso"
+
+copycds "${ISO_FILE}"
