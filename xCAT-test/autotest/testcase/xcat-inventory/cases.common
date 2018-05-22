@@ -32,7 +32,7 @@ end
 start:xcat_inventory_invalid_subcmd
 description:This case is used to test xcat-inventory export subcommand to handle invalid subcommand. The vaild subcommand are export and import.
 cmd:xcat-inventory aaa
-check:output=~ xcat-inventory: error: argument <subcommand>: invalid choice:
+check:output=~ Error: not a valid subcommand to run
 check:output=~ usage:
 check:rc!=0
 end
@@ -67,7 +67,7 @@ cmd:mkdir -p /tmp/xcat_inventory_import_option_f_invalid_file
 check:rc==0
 #to handle a non-existed file
 cmd:xcat-inventory import -f aaa
-check:output=~The specified path does not exist
+check:output=~The specified inventory file does not exist
 check:output !~Traceback
 check:rc!=0
 #To handle a invalid json file

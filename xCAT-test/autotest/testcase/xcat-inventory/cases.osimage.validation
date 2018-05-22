@@ -14,7 +14,7 @@ check: rc==0
 cmd: /opt/xcat/share/xcat/tools/autotest/testcase/xcat-inventory/validatehelper "osimage" "testosimage1" "role" "invalid" "/tmp/xcat_inventory_import_validation_osimage/trash/"
 check: rc!=0
 cmd: /opt/xcat/share/xcat/tools/autotest/testcase/xcat-inventory/validatehelper "osimage" "testosimage1" "role" "" "/tmp/xcat_inventory_import_validation_osimage/trash/"
-check: rc!=0
+check: rc==0
 
 cmd: /opt/xcat/share/xcat/tools/autotest/testcase/xcat-inventory/validatehelper "osimage" "testosimage1" "imagetype" "windows" "/tmp/xcat_inventory_import_validation_osimage/trash/"
 check: rc==0
