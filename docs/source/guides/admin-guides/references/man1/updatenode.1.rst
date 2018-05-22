@@ -416,6 +416,14 @@ OPTIONS
  
  Specifies  the  full  path of the remote copy command used for syncing files to node targets, such as "/usr/bin/rsync" or "/usr/bin/scp". If not specified, rsync will be used by default.
  
+ Notice: The synclist for "-r /usr/bin/scp" has some differences with "-r /usr/bin/rsync":
+ 
+ 1) the ``EXECUTE`` clause is not supported in "-r /usr/bin/scp"
+ 
+ 2) if the destination directory specified in synclist is an existing file on target node, "updatenode -r /usr/bin/scp" will fail with ``scp: <destination directory>: Not a directory``
+ 
+ 3) if the destination file specified in synclist is an existing directory on target node, "updatenode -r /usr/bin/scp" will fail with ``scp: <destination file>: Is a directory``
+ 
 
 
 \ **-g|-**\ **-genmypost**\ 
