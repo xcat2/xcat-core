@@ -21,8 +21,10 @@ $Term::ANSIColor::AUTORESET = 1;
 
 #---Global attributes---
 my $rst = 0;
+my $retries = 5; # Try this many times to get response
 my $check_result_str="``CI CHECK RESULT`` : ";
 my $last_func_start = timelocal(localtime());
+my $GITHUB_API = "https://api.github.com";
 
 #--------------------------------------------------------
 # Fuction name: runcmd
@@ -96,10 +98,22 @@ sub get_files_recursive
 #--------------------------------------------------------
 sub check_pr_format{
     if($ENV{'TRAVIS_EVENT_TYPE'} eq "pull_request"){
-        my $pr_url = "https://api.github.com/repos/$ENV{'TRAVIS_REPO_SLUG'}/pulls/$ENV{'TRAVIS_PULL_REQUEST'}";
-        my $pr_url_resp = get($pr_url);
+        my $pr_url = "$GITHUB_API/repos/$ENV{'TRAVIS_REPO_SLUG'}/pulls/$ENV{'TRAVIS_PULL_REQUEST'}";
+        my $pr_url_resp;
+        my $counter = 1;
+        while($counter <= $retries) {
+            $pr_url_resp = get($pr_url);
+            if ($pr_url_resp) {
+                last; # Got response, no more retries
+            } else {
+                sleep($counter*2); # Sleep and try again
+                print "[check_pr_format] $counter Did not get response, sleeping ". $counter*2 . "\n";
+                $counter++;
+            }
+        }
         unless ($pr_url_resp) {
-            print "[check_pr_format] Not able to get response from $pr_url \n";
+            print "[check_pr_format] After $retries retries, not able to get response from $pr_url \n";
+            # Failed after trying a few times, return error
             return 1;
         }
         my $pr_content = decode_json($pr_url_resp);
@@ -129,6 +143,9 @@ sub check_pr_format{
              $checkrst.="Missing labels.";
         }
 
+        # Guard against root user making commits
+        $checkrst.=check_commit_owner('root');
+
         if(length($checkrst) == 0){
             $check_result_str .= "> **PR FORMAT CORRECT**";
             send_back_comment("$check_result_str"); 
@@ -147,31 +164,89 @@ sub check_pr_format{
 }
 
 #--------------------------------------------------------
+# Fuction name: check_commit_owner
+# Description: Verify commits are not done by specified user
+# Attributes: user login to reject
+# Return: 
+#     Error string -User rejected, 
+#     Empty string -User not rejected
+#--------------------------------------------------------
+sub check_commit_owner{
+    my $invalid_user = shift;
+    if($ENV{'TRAVIS_EVENT_TYPE'} eq "pull_request"){
+        my $commits_content;
+        my $commits_len = 0;
+        my $json = new JSON;
+        my $commits_url = "$GITHUB_API/repos/$ENV{'TRAVIS_REPO_SLUG'}/pulls/$ENV{'TRAVIS_PULL_REQUEST'}/commits";
+        my $commits_url_resp;
+        my $counter = 1;
+        while($counter <= $retries) {
+            $commits_url_resp = get($commits_url);
+            if ($commits_url_resp) {
+                last; # Got response, no more retries
+            } else {
+                sleep($counter*2); # Sleep and try again
+                print "[check_commit_owner] $counter Did not get response, sleeping ". $counter*2 . "\n";
+                $counter++;
+            }
+        }
+        if ($commits_url_resp) {
+            $commits_content = $json->decode($commits_url_resp);
+            $commits_len = @$commits_content;
+        } else {
+            print "[check_commit_owner] After $retries retries, not able to get response from $commits_url \n";
+            return "Unable to verify login of committer.";
+        }
+
+        if($commits_len > 0) {
+            foreach my $commit (@{$commits_content}){
+                my $committer = $commit->{committer};
+                my $committer_login  = $committer->{login};
+                print "[check_commit_owner] Committer login $committer_login \n";
+                if($committer_login =~ /^$invalid_user$/) {
+                    # Committer logins matches
+                    return "Commits by $invalid_user not allowed";
+                }
+            }
+        }
+    }
+    return "";
+}
+#--------------------------------------------------------
 # Fuction name: send_back_comment
-# Description:
-# Attributes:
+# Description: Append to comment of the PR passed $message
+# Attributes: Message to append to PR
 # Return code:
 #--------------------------------------------------------
 sub send_back_comment{
     my $message = shift;
 
-    my $comment_url = "https://api.github.com/repos/$ENV{'TRAVIS_REPO_SLUG'}/issues/$ENV{'TRAVIS_PULL_REQUEST'}/comments";
-    my $comment_url_resp = get($comment_url);
+    my $comment_url = "$GITHUB_API/repos/$ENV{'TRAVIS_REPO_SLUG'}/issues/$ENV{'TRAVIS_PULL_REQUEST'}/comments";
     my $json = new JSON;
     my $comment_len = 0;
     my $comment_content;
-    if ($comment_url_resp) {
-        print "\n\n>>>>>Dumper comment_url_resp:\n";
-        print Dumper $comment_url_resp;
-
-        $comment_content = $json->decode($comment_url_resp);
-        $comment_len = @$comment_content;
-    } else {
-        print "[send_back_comment] Not able to get response from $comment_url \n";
+    my $comment_url_resp;
+    my $counter = 1;
+    while($counter <= $retries) {
+        $comment_url_resp = get($comment_url);
+        if ($comment_url_resp) {
+            last; # Got response, no more retries
+        } else {
+            sleep($counter*2); # Sleep and try again
+            print "[send_back_comment] $counter Did not get response, sleeping ". $counter*2 . "\n";
+            $counter++;
+        }
     }
+    unless ($comment_url_resp) {
+        print "[send_back_comment] After $retries retries, not able to get response from $comment_url \n";
+        # Failed after trying a few times, return
+        return;
+    }
+    print "\n\n>>>>>Dumper comment_url_resp:\n";
+    print Dumper $comment_url_resp;
 
-    #print "\n\n>>>>>Dumper comment_content: $comment_len\n";
-    #print Dumper $comment_content;
+    $comment_content = $json->decode($comment_url_resp);
+    $comment_len = @$comment_content;
 
     my $post_url = $comment_url;
     my $post_method = "POST";
