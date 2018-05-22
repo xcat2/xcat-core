@@ -57,10 +57,12 @@ sub do_main_job {
     my $checkpoint;
     my $rc = 0;
     my $installnicip;
+    my $flag = "w";
 
-    #check if all xcat deamons are running
-    $rst        = check_all_xcat_deamons(\$checkpoint, \@error);
-    print_check_result($checkpoint, "f", $rst, \@error);
+    #check if all xcat daemons are running
+    ($rst, $flag) = check_all_xcat_daemons(\$checkpoint, \@error);
+    print_check_result($checkpoint, $flag, $rst, \@error);
+    $rst = 0 if ($flag == "w");
     return $rst if ($rst);
 
     #check if xcatd can receive request
@@ -136,8 +138,6 @@ sub do_main_job {
     print_check_result($checkpoint, "w", $rst, \@error);
     $rc |= $rst;
 
-    my $flag = "w";
-
     #check linux ulimits configuration
     ($rst, $flag) = check_ulimits(\$checkpoint, \@error);
     print_check_result($checkpoint, $flag, $rst, \@error);
@@ -152,7 +152,7 @@ sub do_main_job {
     if (!$is_sn) {
 
         #check xCAT daemon attributes configuration
-        ($rst, $flag) = check_deamon_attributes(\$checkpoint, \@error);
+        ($rst, $flag) = check_daemon_attributes(\$checkpoint, \@error);
         print_check_result($checkpoint, $flag, $rst, \@error);
         $rc |= $rst;
 
@@ -283,15 +283,16 @@ sub print_check_result {
 
 }
 
-sub check_all_xcat_deamons {
+sub check_all_xcat_daemons {
     my $checkpoint_ref =  shift;
     my $error_ref = shift;
     my $rst = 0;
+    my $rst_type = "f";
 
-    $$checkpoint_ref = "Checking all xCAT deamons are running...";
+    $$checkpoint_ref = "Checking all xCAT daemons are running...";
     @$error_ref = ();
 
-    my @deamon_list = ("SSL listener",
+    my @daemon_list = ("SSL listener",
         "DB Access",
         "UDP listener",
         "install monitor",
@@ -299,18 +300,28 @@ sub check_all_xcat_deamons {
         "Command log writer");
 
     my $output = `ps aux 2>&1|grep -v grep|grep xcatd`;
-    foreach my $deamon (@deamon_list) {
-        my $counter = $output =~ s/$deamon/$deamon/g;
+    foreach my $daemon (@daemon_list) {
+        my $counter = $output =~ s/$daemon/$daemon/g;
         if ($counter > 1) {
-            push @$error_ref, "More Deamon '$deamon' is running";
+            if ($daemon == "SSL listener")  {
+                my $cur_pid = `cat /var/run/xcatd.pid`;
+                my @ssl_pids = `ps aux 2>&1|grep -v grep|grep "xcatd: $daemon"|awk -F' ' '{print \$2}'`; 
+                foreach my $ssl_pid (@ssl_pids) {
+                    next if ($cur_pid == $ssl_pid);
+                    my $child_pid = `pstree -p $ssl_pid 2>&1 | grep "SSL" | wc -l`;
+                    chomp($child_pid);
+                    $rst_type = "w" if ($child_pid);
+                }
+            }
+            push @$error_ref, "More Daemon '$daemon' is running";
             $rst = 1;
         } elsif ($counter == 0) {
-            push @$error_ref, "Deamon '$deamon' isn't running";
+            push @$error_ref, "Daemon '$daemon' isn't running";
             $rst = 1;
         }
     }
 
-    return $rst;
+    return ($rst, $rst_type);
 }
 
 sub check_xcatd_receive_request {
@@ -937,7 +948,7 @@ sub check_dhcp_service {
             # on sn, just check dhcpd service whether running
             my $dhcpoutput = `ps aux 2>&1| grep dhcpd |grep -v grep`;
             if (!$dhcpoutput) {
-                push @$error_ref, "There isn't 'dhcpd' deamon in current server";
+                push @$error_ref, "There isn't 'dhcpd' daemon in current server";
                 $rst = 1;
             }
         } else {
@@ -1074,22 +1085,22 @@ sub check_ulimits {
     my $nofile_num = `sh -c 'ulimit -n' 2>&1`;
     chomp($nofile_num);
 
-    my $process_id = `ps aux | grep "xcatd: SSL listener" | grep -v grep | awk -F' ' '{print \$2}'`;
+    my $process_id = `cat /var/run/xcatd.pid`;
     chomp($process_id);
     my $process_folder = "/proc/$process_id/fd/";
 
     my $open_num = 0;
     $open_num = `ls $process_folder | wc -l` if (-e $process_folder);
     chomp($open_num);
+    return ($rst, $rst_type) unless($open_num);
 
     my $percent = $open_num/$nofile_num;
-    if ($percent >= 1) {
-        push @$error_ref, "Opened too many files, please tuning linux ulimits as document";
+    unless ($percent < 0.8) {
+        push @$error_ref, "The number of open files is not enough for xcatd service, increase the limits for it according to xCAT document";
         $rst = 1;
-        $rst_type = "f"; 
-    } elsif ($percent >= 0.8) {
-        push @$error_ref, "Opened too many files, please tuning linux ulimits as document";
-        $rst = 1;
+        if ($percent >= 1) {
+            $rst_type = "f"; 
+        }
     }
     return ($rst, $rst_type);
 }
@@ -1105,31 +1116,31 @@ sub check_network_parameter {
 
     my $net_set_file = "/etc/sysctl.conf";
     my $net_gc_thresh = 512;
-    my $net_set_value = `cat $net_set_file | grep "net.ipv4.neigh.default.gc_thresh2" | awk -F'=' '{print \$2}' | tr '\n' ' ' | sed s/[[:space:]]//g`;
+    my $net_set_value = `sysctl -n net.ipv4.neigh.default.gc_thresh2`;
+    chomp($net_set_value);
     $net_gc_thresh = $net_set_value if ($net_set_value);
 
     my $arp_num = `arp -a | wc -l`;
     chomp($arp_num);
 
     my $percent = $arp_num/$net_gc_thresh;
-    if ($percent >= 1) {
+    unless ($percent < 0.8) {
         push @$error_ref, "Most ARP has been used, please tuning network parameter as document";
         $rst = 1;
-        $rst_type = "f";
-    } elsif ($percent >= 0.8) {
-        push @$error_ref, "Most ARP has been used, please tuning network parameter as document";
-        $rst = 1;
+        if ($percent >= 1) {
+            $rst_type = "f";
+        }
     }
     return ($rst, $rst_type);
 }
 
-sub check_deamon_attributes {
+sub check_daemon_attributes {
     my $checkpoint_ref = shift;
     my $error_ref      = shift;
     my $rst            = 0;
     $rst_type          = "w";
 
-    $$checkpoint_ref = "Checking xCAT deamon attributes configuration...";
+    $$checkpoint_ref = "Checking xCAT daemon attributes configuration...";
     @$error_ref = ();
 
     my $node_num = `nodels 2>&1 | wc -l`;
@@ -1253,7 +1264,7 @@ while ($hierarchy_instance->read_reply(\%reply_cache)) {
 
                 #print ">>>$reply_cache{$servers}->[$_]<<<\n";
                 #For cases like below:
-                #c910f02c04p04: [ok]     :All xCAT deamons are running
+                #c910f02c04p04: [ok]     :All xCAT daemons are running
                 if ($reply_cache{$servers}->[$_] =~ /^(\w+)\s*:\s*(\[\w+\]\s*):\s*(.*)/) {
                     if ("$1" eq "$server") {
                         $logmsg = "$2: $3";
