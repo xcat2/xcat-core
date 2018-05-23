@@ -3,3 +3,9 @@ description: Test cases for the syncfiles feature
 cmd:/opt/xcat/share/xcat/tools/autotest/testcase/updatenode/syncfiles $$CN
 check:rc==0
 end 
+
+start:updatenode_syncfiles_scp
+description: Test cases for the syncfiles feature with scp
+cmd:/opt/xcat/share/xcat/tools/autotest/testcase/updatenode/syncfiles $$CN scp
+check:rc==0
+end 
