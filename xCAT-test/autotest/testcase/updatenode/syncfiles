@@ -127,4 +127,32 @@ xdsh "${COMPUTE_NODE}" 'grep baz /etc/files/baz'
 (( failed += $? ))
 compute_node_cleanup
 
+# ====== #
+
+cat >"${TMP_DIR}/files/qux" <<EOF
+#!/bin/bash
+cat /etc/files/foo /etc/files/baz >/etc/files/zzz
+EOF
+chmod 0755 "${TMP_DIR}/files/qux"
+cat >>"${TMP_DIR}/foobar.synclist" <<EOF
+EXECUTEALWAYS:
+${TMP_DIR}/files/qux
+EOF
+
+updatenode "${COMPUTE_NODE}" -F
+(( failed += $? ))
+xdsh "${COMPUTE_NODE}" 'grep foo /etc/files/zzz'
+(( failed += $? ))
+xdsh "${COMPUTE_NODE}" 'grep baz /etc/files/zzz'
+(( failed += $? ))
+compute_node_cleanup
+
+updatenode "${COMPUTE_NODE}" -F -r /usr/bin/scp
+(( failed += $? ))
+xdsh "${COMPUTE_NODE}" 'grep foo /etc/files/zzz'
+(( failed += $? ))
+xdsh "${COMPUTE_NODE}" 'grep baz /etc/files/zzz'
+(( failed += $? ))
+compute_node_cleanup
+
 exit "${failed}"
