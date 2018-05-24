@@ -29,7 +29,7 @@ start:xcatsnap_v
 description:xcatsnap -v and --version
 cmd:xcatsnap -v
 check:output=~version|Version
-cmd:xcatsnamp --version
+cmd:xcatsnap --version
 check:output=~version|Version
 end
 

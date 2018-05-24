@@ -173,7 +173,7 @@ end
 
 start:nodech_d_error
 description:nodech --delete
-cmd:chdef -t node -o testnode os=hello
+cmd:chdef -t node -o testnode os=hello groups=test
 check:rc==0
 cmd:nodech --delete
 check:rc!=0

@@ -44,7 +44,15 @@ check:rc!=0
 check:output=~Usage
 end
 start:chvm_err_node
-cmd:chvm testnode
+cmd:dir="/tmp/chvm_err_node";echo ${dir}".old";if [ -d "${dir}" ];then mv ${dir} ${dir}".old"; fi; mkdir -p $dir
+check:rc==0
+cmd:lsdef bogusnode > /dev/null 2>&1;if [[ $? -eq 0 ]]; then lsdef bogusnode -z >/tmp/chvm_err_node/bogusnode.stanza ;rmdef bogusnode;fi
+check:rc==0
+cmd:chvm bogusnode 
 check:rc!=0
-check:output=~Usage
+check:output=~Error: Invalid nodes and/or groups in noderange
+cmd:if [[ -e /tmp/chvm_err_node/bogusnode.stanza ]]; then cat /tmp/chvm_err_node/bogusnode.stanza | mkdef -z;fi
+check:rc==0
+cmd:dir="/tmp/chvm_err_node"; rm -rf $dir; if [ -d ${dir}".old" ];then mv ${dir}".old" $dir; fi
+check:rc==0
 end
