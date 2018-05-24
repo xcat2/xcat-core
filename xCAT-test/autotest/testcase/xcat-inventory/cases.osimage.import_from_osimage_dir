@@ -9,7 +9,7 @@ cmd:lsdef -t osimage -o test_myimage >/dev/null 2>&1;if [[ $? -eq 0 ]]; then lsd
 cmd:rmdef -t osimage -o test_myimage
 cmd: lsdef -t osimage -o test_myimage
 check:rc!=0
-cmd: rm -rf /tmp/test_myimage
+cmd:dir="/tmp/test_myimage";if [ -d "${dir}" ];then mv ${dir} ${dir}".old"; fi
 
 #import test_myimage
 cmd: xcat-inventory import -d /opt/xcat/share/xcat/tools/autotest/testcase/xcat-inventory/templates/cluster_invdir/osimage/test_myimage
@@ -26,10 +26,10 @@ check:rc==0
 
 #cleanup
 cmd:rmdef -t osimage -o test_myimage
-cmd:rm -rf /tmp/test_myimage
+cmd:dir="/tmp/test_myimage"; rm -rf $dir; if [ -d ${dir}".old" ];then mv ${dir}".old" $dir; fi
 
 #restore the original test_myimage if any
-#cmd: [ -e '/tmp/export_import_an_osimage_directory/backup/test_myimage.stanza' ] && cat /tmp/export_import_an_osimage_directory/backup/test_myimage.stanza|mkdef -z
+cmd: if [ -e '/tmp/export_import_an_osimage_directory/backup/test_myimage.stanza' ]; then cat /tmp/export_import_an_osimage_directory/backup/test_myimage.stanza|mkdef -z;fi
 cmd: rm -rf /tmp/export_import_an_osimage_directory
 end
 
@@ -50,8 +50,8 @@ cmd: lsdef -t osimage -o test_myimage
 check:rc!=0
 cmd: lsdef -t osimage -o test_myimage2
 check:rc!=0
-cmd: rm -rf /tmp/test_myimage
-cmd: rm -rf /tmp/test_myimage2
+cmd:dir="/tmp/test_myimage";if [ -d "${dir}" ];then mv ${dir} ${dir}".old"; fi
+cmd:dir="/tmp/test_myimage2";if [ -d "${dir}" ];then mv ${dir} ${dir}".old"; fi
 
 #import osimages 
 cmd: xcat-inventory import -d /opt/xcat/share/xcat/tools/autotest/testcase/xcat-inventory/templates/cluster_invdir/osimage/
@@ -74,9 +74,10 @@ check:rc==0
 
 #cleanup
 cmd:rmdef -t osimage -o test_myimage
-cmd:rm -rf /tmp/test_myimage
+cmd:dir="/tmp/test_myimage"; rm -rf $dir; if [ -d ${dir}".old" ];then mv ${dir}".old" $dir; fi
+
 cmd:rmdef -t osimage -o test_myimage2
-cmd:rm -rf /tmp/test_myimage2
+cmd:dir="/tmp/test_myimage2"; rm -rf $dir; if [ -d ${dir}".old" ];then mv ${dir}".old" $dir; fi
 
 #restore the original osimages if any
 cmd: if [ -e '/tmp/export_import_multiple_osimages_from_osimage_directory/backup/test_myimage.stanza' ]; then cat /tmp/export_import_multiple_osimages_from_osimage_directory/backup/test_myimage.stanza|mkdef -z;fi
@@ -99,7 +100,7 @@ cmd:lsdef -t osimage -o test_myimage >/dev/null 2>&1;if [[ $? -eq 0 ]]; then lsd
 cmd:rmdef -t osimage -o test_myimage
 cmd: lsdef -t osimage -o test_myimage
 check:rc!=0
-cmd: rm -rf /tmp/test_myimage
+cmd:dir="/tmp/test_myimage";if [ -d "${dir}" ];then mv ${dir} ${dir}".old"; fi
 
 #import test_myimage
 cmd: xcat-inventory import -d /opt/xcat/share/xcat/tools/autotest/testcase/xcat-inventory/templates/cluster_invdir/osimage/ -t osimage -o test_myimage
@@ -116,9 +117,9 @@ check:rc==0
 
 #cleanup
 cmd:rmdef -t osimage -o test_myimage
-cmd:rm -rf /tmp/test_myimage
+cmd:dir="/tmp/test_myimage"; rm -rf $dir; if [ -d ${dir}".old" ];then mv ${dir}".old" $dir; fi
 
 #restore the original test_myimage if any
-#cmd: [ -e '/tmp/export_import_specified_from_osimage_directory/backup/test_myimage.stanza' ] && cat /tmp/export_import_specified_from_osimage_directory/backup/test_myimage.stanza|mkdef -z
+cmd: if [ -e '/tmp/export_import_specified_from_osimage_directory/backup/test_myimage.stanza' ]; then cat /tmp/export_import_specified_from_osimage_directory/backup/test_myimage.stanza|mkdef -z;fi
 cmd: rm -rf /tmp/export_import_specified_from_osimage_directory
 end
