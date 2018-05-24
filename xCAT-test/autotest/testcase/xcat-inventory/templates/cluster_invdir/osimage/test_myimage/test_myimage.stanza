@@ -1,0 +1,13 @@
+# <xCAT data object stanza file>
+
+test_myimage:
+    objtype=osimage
+    exlist=/tmp/test_myimage/exlist
+    imagetype=linux
+    otherpkglist=/tmp/test_myimage/otherpkglist
+    partitionfile=/tmp/test_myimage/partitionfile
+    pkglist=/opt/xcat/share/xcat/install/rh/compute.rhels7.pkglist
+    postinstall=/tmp/test_myimage/postinstall
+    provmethod=install
+    synclists=/tmp/test_myimage/synclists
+    template=/opt/xcat/share/xcat/install/rh/compute.rhels7.tmpl
