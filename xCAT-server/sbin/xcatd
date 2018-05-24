@@ -809,7 +809,7 @@ sub do_udp_service {    # This function opens up a UDP port
                     my $hdl;
                     foreach $hdl (@hdls) {
                         if ($hdl == $socket) {
-                            $part = $socket->recv($data, 2000);
+                            $part = $socket->recv($data, 3000);
                             $packets{$part} = [ $part, $data ];
                         } elsif ($hdl == $sslctl) {
                             next;
@@ -861,7 +861,7 @@ sub do_udp_service {    # This function opens up a UDP port
                     while (@hdls = $select->can_read(0)) { # grab any incoming requests during run
                         foreach my $hdl (@hdls) {
                             if ($hdl == $socket) {
-                                $part = $socket->recv($data, 1500);
+                                $part = $socket->recv($data,3000);
                                 $packets{$part} = [ $part, $data ];
 
                                 #} elsif ($hdl == $sslctl) {
