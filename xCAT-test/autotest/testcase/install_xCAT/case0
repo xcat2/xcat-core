@@ -18,10 +18,6 @@ check:output=~Version
 cmd:service xcatd status
 check:rc==0
 check:output=~running
-cmd:rpm -ql xCAT-genesis-base-x86_64 |grep ntp-wait
-check:rc==0
-cmd:rpm -ql xCAT-genesis-base-ppc64 |grep ntp-wait
-check:rc==0
 cmd:rm -rf /install_xCAT_xcat-core.tar.bz2 /install_xCAT_xcat-dep.tar.bz2
 end
 
@@ -47,10 +43,6 @@ check:output=~Version
 cmd:service xcatd status
 check:rc==0
 check:output=~running
-cmd:dpkg -L xcat-genesis-base-ppc64 |grep ntp-wait
-check:rc==0
-cmd:dpkg -L xcat-genesis-base-amd64 |grep ntp-wait
-check:rc==0
 cmd:rm -rf /install_xCAT_xcat-core.tar.bz2 /install_xCAT_xcat-dep.tar.bz2
 end
 

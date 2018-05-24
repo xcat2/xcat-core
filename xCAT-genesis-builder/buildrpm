@@ -144,6 +144,20 @@ libnss_pkgname=`find /usr/lib64/ -name libnss_dns-2*.so | xargs basename`
 sed -i "s/\/lib64\/libnss_dns-2.12.so/\/usr\/lib64\/$libnss_pkgname/g" $DRACUTMODDIR/install
 sed -i 's/\/lib64\/libnss_dns.so.2/\/usr\/lib64\/libnss_dns.so.2/' $DRACUTMODDIR/install
 
+# Based on cmdlist_check, makesure the commands are included in $DRACUTMODDIR/install
+if [ -e "${DRACUTMODDIR}/cmdlist_check" ]; then
+    miss_cmd=0
+    for cmd in `cat ${DRACUTMODDIR}/cmdlist_check`; do
+        if ! grep $cmd $DRACUTMODDIR/install; then
+            echo "The $cmd is missed in install file"
+            miss_cmd=1
+        fi
+    done
+    if [ "$miss_cmd" = 1 ]; then
+        exit 1
+    fi
+fi
+
 mkdir -p /tmp/xcatgenesis.$$/opt/xcat/share/xcat/netboot/genesis/$BUILDARCH/fs 
 
 # run dracut
