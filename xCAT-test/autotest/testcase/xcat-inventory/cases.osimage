@@ -27,7 +27,7 @@ cmd: scp $$DSTMN:/tmp/export_import_single_osimage_by_yaml_$$DSTMN/dst_bogus_ima
 check:rc==0
 cmd: cat /tmp/export_import_single_osimage_by_yaml/dst_bogus_image.stanza
 check:rc==0
-cmd:diff -y -y /tmp/export_import_single_osimage_by_yaml/src_bogus_osimage.stanza /tmp/export_import_single_osimage_by_yaml/dst_bogus_image.stanza
+cmd:diff -y /tmp/export_import_single_osimage_by_yaml/src_bogus_osimage.stanza /tmp/export_import_single_osimage_by_yaml/dst_bogus_image.stanza
 check:rc==0
 cmd:ssh  $$DSTMN 'rmdef -t osimage -o bogus_image'
 check:rc==0
@@ -70,7 +70,7 @@ cmd: scp $$DSTMN:/tmp/export_import_single_osimage_by_json_$$DSTMN/dst_bogus_ima
 check:rc==0
 cmd: cat /tmp/export_import_single_osimage_by_json/dst_bogus_image.stanza
 check:rc==0
-cmd:diff -y -y /tmp/export_import_single_osimage_by_json/src_bogus_osimage.stanza /tmp/export_import_single_osimage_by_json/dst_bogus_image.stanza
+cmd:diff -y /tmp/export_import_single_osimage_by_json/src_bogus_osimage.stanza /tmp/export_import_single_osimage_by_json/dst_bogus_image.stanza
 check:rc==0
 cmd:ssh  $$DSTMN 'rmdef -t osimage -o bogus_image'
 check:rc==0
@@ -431,7 +431,7 @@ cmd:xcat-inventory import -f /tmp/xcat_inventory_try_to_import_all_type_is_osima
 check:rc==0
 cmd:lsdef -t osimage -l|sort > /tmp/xcat_inventory_try_to_import_all_type_is_osimage_yaml_format/import_osimage
 check:rc==0
-cmd:diff -y -y /tmp/xcat_inventory_try_to_import_all_type_is_osimage_yaml_format/target_osimage_sort /tmp/xcat_inventory_try_to_import_all_type_is_osimage_yaml_format/import_osimage
+cmd:diff -y /tmp/xcat_inventory_try_to_import_all_type_is_osimage_yaml_format/target_osimage_sort /tmp/xcat_inventory_try_to_import_all_type_is_osimage_yaml_format/import_osimage
 check:rc==0
 cmd:lsdef -t node -l > /tmp/xcat_inventory_try_to_import_all_type_is_osimage_yaml_format/after_nodes_db
 check:rc==0
@@ -447,19 +447,19 @@ cmd:tabdump networks > /tmp/xcat_inventory_try_to_import_all_type_is_osimage_yam
 check:rc==0
 cmd:tabdump routes >  /tmp/xcat_inventory_try_to_import_all_type_is_osimage_yaml_format/after_route_db
 check:rc==0
-cmd:diff -y -y /tmp/xcat_inventory_try_to_import_all_type_is_osimage_yaml_format/org_nodes_db /tmp/xcat_inventory_try_to_import_all_type_is_osimage_yaml_format/after_nodes_db
+cmd:diff -y /tmp/xcat_inventory_try_to_import_all_type_is_osimage_yaml_format/org_nodes_db /tmp/xcat_inventory_try_to_import_all_type_is_osimage_yaml_format/after_nodes_db
 check:rc==0
-cmd:diff -y -y /tmp/xcat_inventory_try_to_import_all_type_is_osimage_yaml_format/org_group_db /tmp/xcat_inventory_try_to_import_all_type_is_osimage_yaml_format/after_group_db
+cmd:diff -y /tmp/xcat_inventory_try_to_import_all_type_is_osimage_yaml_format/org_group_db /tmp/xcat_inventory_try_to_import_all_type_is_osimage_yaml_format/after_group_db
 check:rc==0
-cmd:diff -y -y /tmp/xcat_inventory_try_to_import_all_type_is_osimage_yaml_format/org_site_db /tmp/xcat_inventory_try_to_import_all_type_is_osimage_yaml_format/after_site_db
+cmd:diff -y /tmp/xcat_inventory_try_to_import_all_type_is_osimage_yaml_format/org_site_db /tmp/xcat_inventory_try_to_import_all_type_is_osimage_yaml_format/after_site_db
 check:rc==0
-cmd:diff -y -y /tmp/xcat_inventory_try_to_import_all_type_is_osimage_yaml_format/org_pw_db /tmp/xcat_inventory_try_to_import_all_type_is_osimage_yaml_format/after_pw_db
+cmd:diff -y /tmp/xcat_inventory_try_to_import_all_type_is_osimage_yaml_format/org_pw_db /tmp/xcat_inventory_try_to_import_all_type_is_osimage_yaml_format/after_pw_db
 check:rc==0
-cmd:diff -y -y /tmp/xcat_inventory_try_to_import_all_type_is_osimage_yaml_format/org_policy_db /tmp/xcat_inventory_try_to_import_all_type_is_osimage_yaml_format/after_policy_db
+cmd:diff -y /tmp/xcat_inventory_try_to_import_all_type_is_osimage_yaml_format/org_policy_db /tmp/xcat_inventory_try_to_import_all_type_is_osimage_yaml_format/after_policy_db
 check:rc==0
-cmd:diff -y -y /tmp/xcat_inventory_try_to_import_all_type_is_osimage_yaml_format/org_network_db /tmp/xcat_inventory_try_to_import_all_type_is_osimage_yaml_format/after_network_db
+cmd:diff -y /tmp/xcat_inventory_try_to_import_all_type_is_osimage_yaml_format/org_network_db /tmp/xcat_inventory_try_to_import_all_type_is_osimage_yaml_format/after_network_db
 check:rc==0
-cmd:diff -y -y /tmp/xcat_inventory_try_to_import_all_type_is_osimage_yaml_format/org_route_db  /tmp/xcat_inventory_try_to_import_all_type_is_osimage_yaml_format/after_route_db
+cmd:diff -y /tmp/xcat_inventory_try_to_import_all_type_is_osimage_yaml_format/org_route_db  /tmp/xcat_inventory_try_to_import_all_type_is_osimage_yaml_format/after_route_db
 check:rc==0
 cmd: rmdef -t osimage -o  bogus_image
 check:rc==0
@@ -761,7 +761,7 @@ cmd:xcat-inventory import -f /tmp/xcat_inventory_try_to_import_all_type_is_osima
 check:rc==0
 cmd:lsdef -t osimage -l|sort > /tmp/xcat_inventory_try_to_import_all_type_is_osimage_json_format/import_osimage
 check:rc==0
-cmd:diff -y -y /tmp/xcat_inventory_try_to_import_all_type_is_osimage_json_format/target_osimage_sort /tmp/xcat_inventory_try_to_import_all_type_is_osimage_json_format/import_osimage
+cmd:diff -y /tmp/xcat_inventory_try_to_import_all_type_is_osimage_json_format/target_osimage_sort /tmp/xcat_inventory_try_to_import_all_type_is_osimage_json_format/import_osimage
 check:rc==0
 cmd:lsdef -t node -l > /tmp/xcat_inventory_try_to_import_all_type_is_osimage_json_format/after_nodes_db
 check:rc==0
@@ -777,19 +777,19 @@ cmd:tabdump networks > /tmp/xcat_inventory_try_to_import_all_type_is_osimage_jso
 check:rc==0
 cmd:tabdump routes >  /tmp/xcat_inventory_try_to_import_all_type_is_osimage_json_format/after_route_db
 check:rc==0
-cmd:diff -y -y /tmp/xcat_inventory_try_to_import_all_type_is_osimage_json_format/org_nodes_db /tmp/xcat_inventory_try_to_import_all_type_is_osimage_json_format/after_nodes_db
+cmd:diff -y /tmp/xcat_inventory_try_to_import_all_type_is_osimage_json_format/org_nodes_db /tmp/xcat_inventory_try_to_import_all_type_is_osimage_json_format/after_nodes_db
 check:rc==0
-cmd:diff -y -y /tmp/xcat_inventory_try_to_import_all_type_is_osimage_json_format/org_group_db /tmp/xcat_inventory_try_to_import_all_type_is_osimage_json_format/after_group_db
+cmd:diff -y /tmp/xcat_inventory_try_to_import_all_type_is_osimage_json_format/org_group_db /tmp/xcat_inventory_try_to_import_all_type_is_osimage_json_format/after_group_db
 check:rc==0
-cmd:diff -y -y /tmp/xcat_inventory_try_to_import_all_type_is_osimage_json_format/org_site_db /tmp/xcat_inventory_try_to_import_all_type_is_osimage_json_format/after_site_db
+cmd:diff -y /tmp/xcat_inventory_try_to_import_all_type_is_osimage_json_format/org_site_db /tmp/xcat_inventory_try_to_import_all_type_is_osimage_json_format/after_site_db
 check:rc==0
-cmd:diff -y -y /tmp/xcat_inventory_try_to_import_all_type_is_osimage_json_format/org_pw_db /tmp/xcat_inventory_try_to_import_all_type_is_osimage_json_format/after_pw_db
+cmd:diff -y /tmp/xcat_inventory_try_to_import_all_type_is_osimage_json_format/org_pw_db /tmp/xcat_inventory_try_to_import_all_type_is_osimage_json_format/after_pw_db
 check:rc==0
-cmd:diff -y -y /tmp/xcat_inventory_try_to_import_all_type_is_osimage_json_format/org_policy_db /tmp/xcat_inventory_try_to_import_all_type_is_osimage_json_format/after_policy_db
+cmd:diff -y /tmp/xcat_inventory_try_to_import_all_type_is_osimage_json_format/org_policy_db /tmp/xcat_inventory_try_to_import_all_type_is_osimage_json_format/after_policy_db
 check:rc==0
-cmd:diff -y -y /tmp/xcat_inventory_try_to_import_all_type_is_osimage_json_format/org_network_db /tmp/xcat_inventory_try_to_import_all_type_is_osimage_json_format/after_network_db
+cmd:diff -y /tmp/xcat_inventory_try_to_import_all_type_is_osimage_json_format/org_network_db /tmp/xcat_inventory_try_to_import_all_type_is_osimage_json_format/after_network_db
 check:rc==0
-cmd:diff -y -y /tmp/xcat_inventory_try_to_import_all_type_is_osimage_json_format/org_route_db  /tmp/xcat_inventory_try_to_import_all_type_is_osimage_json_format/after_route_db
+cmd:diff -y /tmp/xcat_inventory_try_to_import_all_type_is_osimage_json_format/org_route_db  /tmp/xcat_inventory_try_to_import_all_type_is_osimage_json_format/after_route_db
 check:rc==0
 cmd: rmdef -t osimage -o  bogus_image
 check:rc==0
@@ -843,7 +843,7 @@ cmd: scp $$DSTMN:/tmp/export_single_osimage_then_modify_json_then_import_$$DSTMN
 check:rc==0
 cmd: cat /tmp/export_single_osimage_then_modify_json_then_import/dst_bogus_image.stanza
 check:rc==0
-cmd:diff -y -y /tmp/export_single_osimage_then_modify_json_then_import/src_bogus_osimage.stanza /tmp/export_single_osimage_then_modify_json_then_import/dst_bogus_image.stanza
+cmd:diff -y /tmp/export_single_osimage_then_modify_json_then_import/src_bogus_osimage.stanza /tmp/export_single_osimage_then_modify_json_then_import/dst_bogus_image.stanza
 check:rc==0
 cmd:ssh  $$DSTMN 'rmdef -t osimage -o bogus_image'
 check:rc==0
@@ -899,7 +899,7 @@ cmd: scp $$DSTMN:/tmp/export_single_osimage_then_modify_yaml_then_import_$$DSTMN
 check:rc==0
 cmd: cat /tmp/export_single_osimage_then_modify_yaml_then_import/dst_bogus_image.stanza
 check:rc==0
-cmd:diff -y -y /tmp/export_single_osimage_then_modify_yaml_then_import/src_bogus_osimage.stanza /tmp/export_single_osimage_then_modify_yaml_then_import/dst_bogus_image.stanza
+cmd:diff -y /tmp/export_single_osimage_then_modify_yaml_then_import/src_bogus_osimage.stanza /tmp/export_single_osimage_then_modify_yaml_then_import/dst_bogus_image.stanza
 check:rc==0
 cmd:ssh  $$DSTMN 'rmdef -t osimage -o bogus_image'
 check:rc==0
