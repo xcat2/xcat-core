@@ -308,7 +308,7 @@ sub check_all_xcat_daemons {
                 my @ssl_pids = `ps aux 2>&1|grep -v grep|grep "xcatd: $daemon"|awk -F' ' '{print \$2}'`; 
                 foreach my $ssl_pid (@ssl_pids) {
                     next if ($cur_pid == $ssl_pid);
-                    my $child_pid = `pstree -p $ssl_pid 2>&1 | grep "SSL" | wc -l`;
+                    my $child_pid = `ps --ppid $ssl_pid 2>&1 | grep "xcatd SSL:" | wc -l`;
                     chomp($child_pid);
                     $rst_type = "w" if ($child_pid);
                 }
