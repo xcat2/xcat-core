@@ -54,11 +54,11 @@ compute_node_cleanup
 xdsh "${COMPUTE_NODE}" 'mkdir -p /etc/files/bar'
 updatenode "${COMPUTE_NODE}" -F ${NODE_RCP}
 # Check return code
-(( failed += $? ))
+[ -z "${NODE_RCP}" ] && (( failed += $? ))
 xdsh "${COMPUTE_NODE}" 'grep foo /etc/files/foo'
 (( failed += $? ))
 xdsh "${COMPUTE_NODE}" 'grep bar /etc/files/bar'
-(( failed += $? ))
+[ -z "${NODE_RCP}" ] && (( failed += $? ))
 xdsh "${COMPUTE_NODE}" 'grep baz /etc/files/baz'
 (( failed += $? ))
 compute_node_cleanup
@@ -79,11 +79,11 @@ compute_node_cleanup
 mkdir -p "${TMP_DIR}/files/bar"
 xdsh "${COMPUTE_NODE}" 'mkdir -p /etc/files && echo bar >/etc/files/bar'
 updatenode "${COMPUTE_NODE}" -F ${NODE_RCP}
-(( failed += $? ))
+[ -z "${NODE_RCP}" ] && (( failed += $? ))
 xdsh "${COMPUTE_NODE}" 'grep foo /etc/files/foo'
 (( failed += $? ))
 xdsh "${COMPUTE_NODE}" 'test -d /etc/files/bar'
-(( failed += $? ))
+[ -z "${NODE_RCP}" ] && (( failed += $? ))
 xdsh "${COMPUTE_NODE}" 'grep baz /etc/files/baz'
 (( failed += $? ))
 compute_node_cleanup
