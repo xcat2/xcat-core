@@ -149,7 +149,7 @@ if [ -e "${DRACUTMODDIR}/cmdlist_check" ]; then
     miss_cmd=0
     for cmd in `cat ${DRACUTMODDIR}/cmdlist_check`; do
         if ! grep $cmd $DRACUTMODDIR/install; then
-            echo "The $cmd is missed in install file"
+            echo "ERROR: The required $cmd is not included in the install file to build the Genesis base package"
             miss_cmd=1
         fi
     done
