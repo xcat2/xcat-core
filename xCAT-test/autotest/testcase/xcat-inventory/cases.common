@@ -66,13 +66,15 @@ check:rc==0
 cmd:xcat-inventory export --format=yaml -t node -o bogusnode -f /tmp/xcat_inventory_export_option_f/export_yaml_with_f
 check:rc==0
 check:output !~Traceback
-cmd:diff  /tmp/xcat_inventory_export_option_f/export_yaml_without_f /tmp/xcat_inventory_export_option_f/export_yaml_with_f
+cmd:#!/bin/bash
+diff -y --ignore-blank-lines --ignore-matching-lines="^#"   /tmp/xcat_inventory_export_option_f/export_yaml_without_f /tmp/xcat_inventory_export_option_f/export_yaml_with_f
 check:rc==0
 cmd:xcat-inventory export -t node -o bogusnode | tee /tmp/xcat_inventory_export_option_f/export_json_without_f
 check:rc==0
 cmd:xcat-inventory export -t node -o bogusnode --path /tmp/xcat_inventory_export_option_f/export_json_with_f
 check:rc==0
-cmd:diff /tmp/xcat_inventory_export_option_f/export_json_without_f  /tmp/xcat_inventory_export_option_f/export_json_with_f
+cmd:#!/bin/bash
+diff -y --ignore-blank-lines --ignore-matching-lines="^#"  /tmp/xcat_inventory_export_option_f/export_json_without_f  /tmp/xcat_inventory_export_option_f/export_json_with_f
 check:rc==0
 cmd:xcat-inventory export -t node -o bogusnode -f
 check:rc!=0
@@ -101,7 +103,7 @@ cmd:mkdir -p /tmp/xcat_inventory_import_option_f_invalid_file
 check:rc==0
 #to handle a non-existed file
 cmd:xcat-inventory import -f aaa
-check:output=~The specified inventory file does not exist
+check:output=~the directory  does not exist or is not a directory
 check:output !~Traceback
 check:rc!=0
 #To handle a invalid json file
