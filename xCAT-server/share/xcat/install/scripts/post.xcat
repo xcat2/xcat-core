@@ -88,7 +88,7 @@ if [ ! -x /usr/bin/wget ]; then
     sleep 36500d
 fi
 
-wget -l inf -N -r --waitretry=10 --random-wait --retry-connrefused  -e robots=off -nH --cut-dirs=2 --reject "index.html*" --no-parent -t 20 -T 60 http://$MASTER_IP$INSTALLDIR/postscripts/ -P /xcatpost
+wget -l inf -N -r --waitretry=10 --random-wait --retry-connrefused  -e robots=off -nH --cut-dirs=2 --reject "index.html*" --no-parent -t 20 -T 60 http://$MASTER_IP$INSTALLDIR/postscripts/ -P /xcatpost 2> /tmp/wget.log
 if [ "$?" != "0" ]; then
     msgutil_r "$MASTER_IP" "error" "failed to download postscripts from http://$MASTER_IP$INSTALLDIR/postscripts/, halt ..." "/var/log/xcat/xcat.log" "$log_label"
     /tmp/updateflag $MASTER $XCATIPORT "installstatus failed"
