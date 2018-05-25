@@ -27,7 +27,7 @@ cmd: scp $$DSTMN:/tmp/export_import_single_osimage_by_yaml_$$DSTMN/dst_bogus_ima
 check:rc==0
 cmd: cat /tmp/export_import_single_osimage_by_yaml/dst_bogus_image.stanza
 check:rc==0
-cmd:diff -y /tmp/export_import_single_osimage_by_yaml/src_bogus_osimage.stanza /tmp/export_import_single_osimage_by_yaml/dst_bogus_image.stanza
+cmd:diff -y -y /tmp/export_import_single_osimage_by_yaml/src_bogus_osimage.stanza /tmp/export_import_single_osimage_by_yaml/dst_bogus_image.stanza
 check:rc==0
 cmd:ssh  $$DSTMN 'rmdef -t osimage -o bogus_image'
 check:rc==0
@@ -70,7 +70,7 @@ cmd: scp $$DSTMN:/tmp/export_import_single_osimage_by_json_$$DSTMN/dst_bogus_ima
 check:rc==0
 cmd: cat /tmp/export_import_single_osimage_by_json/dst_bogus_image.stanza
 check:rc==0
-cmd:diff -y /tmp/export_import_single_osimage_by_json/src_bogus_osimage.stanza /tmp/export_import_single_osimage_by_json/dst_bogus_image.stanza
+cmd:diff -y -y /tmp/export_import_single_osimage_by_json/src_bogus_osimage.stanza /tmp/export_import_single_osimage_by_json/dst_bogus_image.stanza
 check:rc==0
 cmd:ssh  $$DSTMN 'rmdef -t osimage -o bogus_image'
 check:rc==0
@@ -431,7 +431,7 @@ cmd:xcat-inventory import -f /tmp/xcat_inventory_try_to_import_all_type_is_osima
 check:rc==0
 cmd:lsdef -t osimage -l|sort > /tmp/xcat_inventory_try_to_import_all_type_is_osimage_yaml_format/import_osimage
 check:rc==0
-cmd:diff -y /tmp/xcat_inventory_try_to_import_all_type_is_osimage_yaml_format/target_osimage_sort /tmp/xcat_inventory_try_to_import_all_type_is_osimage_yaml_format/import_osimage
+cmd:diff -y -y /tmp/xcat_inventory_try_to_import_all_type_is_osimage_yaml_format/target_osimage_sort /tmp/xcat_inventory_try_to_import_all_type_is_osimage_yaml_format/import_osimage
 check:rc==0
 cmd:lsdef -t node -l > /tmp/xcat_inventory_try_to_import_all_type_is_osimage_yaml_format/after_nodes_db
 check:rc==0
@@ -447,19 +447,19 @@ cmd:tabdump networks > /tmp/xcat_inventory_try_to_import_all_type_is_osimage_yam
 check:rc==0
 cmd:tabdump routes >  /tmp/xcat_inventory_try_to_import_all_type_is_osimage_yaml_format/after_route_db
 check:rc==0
-cmd:diff -y /tmp/xcat_inventory_try_to_import_all_type_is_osimage_yaml_format/org_nodes_db /tmp/xcat_inventory_try_to_import_all_type_is_osimage_yaml_format/after_nodes_db
+cmd:diff -y -y /tmp/xcat_inventory_try_to_import_all_type_is_osimage_yaml_format/org_nodes_db /tmp/xcat_inventory_try_to_import_all_type_is_osimage_yaml_format/after_nodes_db
 check:rc==0
-cmd:diff -y /tmp/xcat_inventory_try_to_import_all_type_is_osimage_yaml_format/org_group_db /tmp/xcat_inventory_try_to_import_all_type_is_osimage_yaml_format/after_group_db
+cmd:diff -y -y /tmp/xcat_inventory_try_to_import_all_type_is_osimage_yaml_format/org_group_db /tmp/xcat_inventory_try_to_import_all_type_is_osimage_yaml_format/after_group_db
 check:rc==0
-cmd:diff -y /tmp/xcat_inventory_try_to_import_all_type_is_osimage_yaml_format/org_site_db /tmp/xcat_inventory_try_to_import_all_type_is_osimage_yaml_format/after_site_db
+cmd:diff -y -y /tmp/xcat_inventory_try_to_import_all_type_is_osimage_yaml_format/org_site_db /tmp/xcat_inventory_try_to_import_all_type_is_osimage_yaml_format/after_site_db
 check:rc==0
-cmd:diff -y /tmp/xcat_inventory_try_to_import_all_type_is_osimage_yaml_format/org_pw_db /tmp/xcat_inventory_try_to_import_all_type_is_osimage_yaml_format/after_pw_db
+cmd:diff -y -y /tmp/xcat_inventory_try_to_import_all_type_is_osimage_yaml_format/org_pw_db /tmp/xcat_inventory_try_to_import_all_type_is_osimage_yaml_format/after_pw_db
 check:rc==0
-cmd:diff -y /tmp/xcat_inventory_try_to_import_all_type_is_osimage_yaml_format/org_policy_db /tmp/xcat_inventory_try_to_import_all_type_is_osimage_yaml_format/after_policy_db
+cmd:diff -y -y /tmp/xcat_inventory_try_to_import_all_type_is_osimage_yaml_format/org_policy_db /tmp/xcat_inventory_try_to_import_all_type_is_osimage_yaml_format/after_policy_db
 check:rc==0
-cmd:diff -y /tmp/xcat_inventory_try_to_import_all_type_is_osimage_yaml_format/org_network_db /tmp/xcat_inventory_try_to_import_all_type_is_osimage_yaml_format/after_network_db
+cmd:diff -y -y /tmp/xcat_inventory_try_to_import_all_type_is_osimage_yaml_format/org_network_db /tmp/xcat_inventory_try_to_import_all_type_is_osimage_yaml_format/after_network_db
 check:rc==0
-cmd:diff -y /tmp/xcat_inventory_try_to_import_all_type_is_osimage_yaml_format/org_route_db  /tmp/xcat_inventory_try_to_import_all_type_is_osimage_yaml_format/after_route_db
+cmd:diff -y -y /tmp/xcat_inventory_try_to_import_all_type_is_osimage_yaml_format/org_route_db  /tmp/xcat_inventory_try_to_import_all_type_is_osimage_yaml_format/after_route_db
 check:rc==0
 cmd: rmdef -t osimage -o  bogus_image
 check:rc==0
@@ -761,7 +761,7 @@ cmd:xcat-inventory import -f /tmp/xcat_inventory_try_to_import_all_type_is_osima
 check:rc==0
 cmd:lsdef -t osimage -l|sort > /tmp/xcat_inventory_try_to_import_all_type_is_osimage_json_format/import_osimage
 check:rc==0
-cmd:diff -y /tmp/xcat_inventory_try_to_import_all_type_is_osimage_json_format/target_osimage_sort /tmp/xcat_inventory_try_to_import_all_type_is_osimage_json_format/import_osimage
+cmd:diff -y -y /tmp/xcat_inventory_try_to_import_all_type_is_osimage_json_format/target_osimage_sort /tmp/xcat_inventory_try_to_import_all_type_is_osimage_json_format/import_osimage
 check:rc==0
 cmd:lsdef -t node -l > /tmp/xcat_inventory_try_to_import_all_type_is_osimage_json_format/after_nodes_db
 check:rc==0
@@ -777,19 +777,19 @@ cmd:tabdump networks > /tmp/xcat_inventory_try_to_import_all_type_is_osimage_jso
 check:rc==0
 cmd:tabdump routes >  /tmp/xcat_inventory_try_to_import_all_type_is_osimage_json_format/after_route_db
 check:rc==0
-cmd:diff -y /tmp/xcat_inventory_try_to_import_all_type_is_osimage_json_format/org_nodes_db /tmp/xcat_inventory_try_to_import_all_type_is_osimage_json_format/after_nodes_db
+cmd:diff -y -y /tmp/xcat_inventory_try_to_import_all_type_is_osimage_json_format/org_nodes_db /tmp/xcat_inventory_try_to_import_all_type_is_osimage_json_format/after_nodes_db
 check:rc==0
-cmd:diff -y /tmp/xcat_inventory_try_to_import_all_type_is_osimage_json_format/org_group_db /tmp/xcat_inventory_try_to_import_all_type_is_osimage_json_format/after_group_db
+cmd:diff -y -y /tmp/xcat_inventory_try_to_import_all_type_is_osimage_json_format/org_group_db /tmp/xcat_inventory_try_to_import_all_type_is_osimage_json_format/after_group_db
 check:rc==0
-cmd:diff -y /tmp/xcat_inventory_try_to_import_all_type_is_osimage_json_format/org_site_db /tmp/xcat_inventory_try_to_import_all_type_is_osimage_json_format/after_site_db
+cmd:diff -y -y /tmp/xcat_inventory_try_to_import_all_type_is_osimage_json_format/org_site_db /tmp/xcat_inventory_try_to_import_all_type_is_osimage_json_format/after_site_db
 check:rc==0
-cmd:diff -y /tmp/xcat_inventory_try_to_import_all_type_is_osimage_json_format/org_pw_db /tmp/xcat_inventory_try_to_import_all_type_is_osimage_json_format/after_pw_db
+cmd:diff -y -y /tmp/xcat_inventory_try_to_import_all_type_is_osimage_json_format/org_pw_db /tmp/xcat_inventory_try_to_import_all_type_is_osimage_json_format/after_pw_db
 check:rc==0
-cmd:diff -y /tmp/xcat_inventory_try_to_import_all_type_is_osimage_json_format/org_policy_db /tmp/xcat_inventory_try_to_import_all_type_is_osimage_json_format/after_policy_db
+cmd:diff -y -y /tmp/xcat_inventory_try_to_import_all_type_is_osimage_json_format/org_policy_db /tmp/xcat_inventory_try_to_import_all_type_is_osimage_json_format/after_policy_db
 check:rc==0
-cmd:diff -y /tmp/xcat_inventory_try_to_import_all_type_is_osimage_json_format/org_network_db /tmp/xcat_inventory_try_to_import_all_type_is_osimage_json_format/after_network_db
+cmd:diff -y -y /tmp/xcat_inventory_try_to_import_all_type_is_osimage_json_format/org_network_db /tmp/xcat_inventory_try_to_import_all_type_is_osimage_json_format/after_network_db
 check:rc==0
-cmd:diff -y /tmp/xcat_inventory_try_to_import_all_type_is_osimage_json_format/org_route_db  /tmp/xcat_inventory_try_to_import_all_type_is_osimage_json_format/after_route_db
+cmd:diff -y -y /tmp/xcat_inventory_try_to_import_all_type_is_osimage_json_format/org_route_db  /tmp/xcat_inventory_try_to_import_all_type_is_osimage_json_format/after_route_db
 check:rc==0
 cmd: rmdef -t osimage -o  bogus_image
 check:rc==0
@@ -843,7 +843,7 @@ cmd: scp $$DSTMN:/tmp/export_single_osimage_then_modify_json_then_import_$$DSTMN
 check:rc==0
 cmd: cat /tmp/export_single_osimage_then_modify_json_then_import/dst_bogus_image.stanza
 check:rc==0
-cmd:diff -y /tmp/export_single_osimage_then_modify_json_then_import/src_bogus_osimage.stanza /tmp/export_single_osimage_then_modify_json_then_import/dst_bogus_image.stanza
+cmd:diff -y -y /tmp/export_single_osimage_then_modify_json_then_import/src_bogus_osimage.stanza /tmp/export_single_osimage_then_modify_json_then_import/dst_bogus_image.stanza
 check:rc==0
 cmd:ssh  $$DSTMN 'rmdef -t osimage -o bogus_image'
 check:rc==0
@@ -899,7 +899,7 @@ cmd: scp $$DSTMN:/tmp/export_single_osimage_then_modify_yaml_then_import_$$DSTMN
 check:rc==0
 cmd: cat /tmp/export_single_osimage_then_modify_yaml_then_import/dst_bogus_image.stanza
 check:rc==0
-cmd:diff -y /tmp/export_single_osimage_then_modify_yaml_then_import/src_bogus_osimage.stanza /tmp/export_single_osimage_then_modify_yaml_then_import/dst_bogus_image.stanza
+cmd:diff -y -y /tmp/export_single_osimage_then_modify_yaml_then_import/src_bogus_osimage.stanza /tmp/export_single_osimage_then_modify_yaml_then_import/dst_bogus_image.stanza
 check:rc==0
 cmd:ssh  $$DSTMN 'rmdef -t osimage -o bogus_image'
 check:rc==0
@@ -932,19 +932,21 @@ check:rc==0
 #check:rc==0
 cmd:chdef -t osimage -o test_myimage imagetype=linux provmethod=install pkglist=/opt/xcat/share/xcat/install/rh/compute.rhels7.pkglist template=/opt/xcat/share/xcat/install/rh/compute.rhels7.tmpl otherpkglist=/tmp/otherpkglist synclists=/tmp/synclists postinstall=/tmp/postinstall exlist=/tmp/exlist partitionfile=/tmp/partitionfile
 check:rc==0
-cmd:if [ -e /opt/inventory/site/osimage ]; then cp -f /opt/inventory/site/osimage /opt/inventory/site/osimage.bak; else mkdir -p /opt/inventory/site/osimage; fi
+cmd:lsdef -t osimage test_myimage
+cmd:dir="/opt/inventory/site/osimage";if [ -e "${dir}" ];then mv ${dir} ${dir}".bak"; fi; mkdir -p $dir
 cmd:xcat-inventory export -t osimage -o test_myimage --format yaml -d /opt/inventory/site/osimage
 check:rc==0
 check:output=~The osimage objects has been exported to directory /opt/inventory/site/osimage
-cmd:otherpkglist=`lsdef -t osimage -o test_myimage |grep otherpkglist|awk -F= '{print $2}'`;diff $otherpkglist /opt/inventory/site/osimage/test_myimage$otherpkglist
+cmd: ls -lFR /opt/inventory/site/osimage
+cmd:otherpkglist=`lsdef -t osimage -o test_myimage |grep otherpkglist|awk -F= '{print $2}'`;diff -y $otherpkglist /opt/inventory/site/osimage/test_myimage$otherpkglist
 check:rc==0
-cmd:synclists=`lsdef -t osimage -o test_myimage |grep synclists|awk -F= '{print $2}'`;diff $synclists /opt/inventory/site/osimage/test_myimage$synclists
+cmd:synclists=`lsdef -t osimage -o test_myimage |grep synclists|awk -F= '{print $2}'`;diff -y $synclists /opt/inventory/site/osimage/test_myimage$synclists
 check:rc==0
-cmd:postinstall=`lsdef -t osimage -o test_myimage |grep postinstall|awk -F= '{print $2}'`;diff $postinstall /opt/inventory/site/osimage/test_myimage$postinstall
+cmd:postinstall=`lsdef -t osimage -o test_myimage |grep postinstall|awk -F= '{print $2}'`;diff -y $postinstall /opt/inventory/site/osimage/test_myimage$postinstall
 check:rc==0
-cmd:exlist=`lsdef -t osimage -o test_myimage |grep exlist|awk -F= '{print $2}'`;diff $exlist /opt/inventory/site/osimage/test_myimage$exlist
+cmd:exlist=`lsdef -t osimage -o test_myimage |grep exlist|awk -F= '{print $2}'`;diff -y $exlist /opt/inventory/site/osimage/test_myimage$exlist
 check:rc==0
-cmd:partitionfile=`lsdef -t osimage -o test_myimage |grep partitionfile|awk -F= '{print $2}'`;diff $partitionfile /opt/inventory/site/osimage/test_myimage$partitionfile
+cmd:partitionfile=`lsdef -t osimage -o test_myimage |grep partitionfile|awk -F= '{print $2}'`;diff -y $partitionfile /opt/inventory/site/osimage/test_myimage$partitionfile
 check:rc==0
 cmd:pkglist=`lsdef -t osimage -o test_myimage |grep -w pkglist|awk -F= '{print $2}'`;ls -l /opt/inventory/site/osimage/test_myimage$pkglist
 check:rc!=0
@@ -958,30 +960,30 @@ check:rc==0
 check:output=~The object test_myimage has been imported
 cmd:lsdef -t osimage -o test_myimage
 check:rc==0
-cmd:otherpkglist=`lsdef -t osimage -o test_myimage |grep otherpkglist|awk -F= '{print $2}'`;diff $otherpkglist /opt/inventory/site/osimage/test_myimage$otherpkglist
+cmd:otherpkglist=`lsdef -t osimage -o test_myimage |grep otherpkglist|awk -F= '{print $2}'`;diff -y $otherpkglist /opt/inventory/site/osimage/test_myimage$otherpkglist
 check:rc==0
-cmd:synclists=`lsdef -t osimage -o test_myimage |grep synclists|awk -F= '{print $2}'`;diff $synclists /opt/inventory/site/osimage/test_myimage$synclists
+cmd:synclists=`lsdef -t osimage -o test_myimage |grep synclists|awk -F= '{print $2}'`;diff -y $synclists /opt/inventory/site/osimage/test_myimage$synclists
 check:rc==0
-cmd:postinstall=`lsdef -t osimage -o test_myimage |grep postinstall|awk -F= '{print $2}'`;diff $postinstall /opt/inventory/site/osimage/test_myimage$postinstall
+cmd:postinstall=`lsdef -t osimage -o test_myimage |grep postinstall|awk -F= '{print $2}'`;diff -y $postinstall /opt/inventory/site/osimage/test_myimage$postinstall
 check:rc==0
-cmd:exlist=`lsdef -t osimage -o test_myimage |grep exlist|awk -F= '{print $2}'`;diff $exlist /opt/inventory/site/osimage/test_myimage$exlist
+cmd:exlist=`lsdef -t osimage -o test_myimage |grep exlist|awk -F= '{print $2}'`;diff -y $exlist /opt/inventory/site/osimage/test_myimage$exlist
 check:rc==0
-cmd:partitionfile=`lsdef -t osimage -o test_myimage |grep partitionfile|awk -F= '{print $2}'`;diff $partitionfile /opt/inventory/site/osimage/test_myimage$partitionfile
+cmd:partitionfile=`lsdef -t osimage -o test_myimage |grep partitionfile|awk -F= '{print $2}'`;diff -y $partitionfile /opt/inventory/site/osimage/test_myimage$partitionfile
 check:rc==0
-cmd:pkglist=`lsdef -t osimage -o test_myimage |grep -w pkglist|awk -F= '{print $2}'`;if [ $pkglist == "/opt/xcat/share/xcat/install/rh/compute.rhels7.pkglist" ]; then echo 0; else echo 1; fi
+cmd:pkglist=`lsdef -t osimage -o test_myimage |grep -w pkglist|awk -F= '{print $2}'`;if [ $pkglist == "/opt/xcat/share/xcat/install/rh/compute.rhels7.pkglist" ]; then exit 0; else exit 1; fi
 check:rc==0
-cmd:template=`lsdef -t osimage -o test_myimage |grep template|awk -F= '{print $2}'`;if [ $template == "/opt/xcat/share/xcat/install/rh/compute.rhels7.tmpl" ]; then echo 0; else echo 1; fi
+cmd:template=`lsdef -t osimage -o test_myimage |grep template|awk -F= '{print $2}'`;if [ $template == "/opt/xcat/share/xcat/install/rh/compute.rhels7.tmpl" ]; then exit 0; else exit 1; fi
 check:rc==0
 cmd: rmdef -t osimage -o  test_myimage
 check:rc==0
 cmd: if [ -e /tmp/test_myimage.stanza ]; then cat /tmp/test_myimage.stanza |mkdef -z;fi
-cmd: if [ -e /opt/inventory/site/osimage/ ]; then rm -rf /opt/inventory/site/osimage/;fi
-cmd: if [ -e /opt/inventory/site/osimage.bak ]; then mv /opt/inventory/site/osimage.bak  /opt/inventory/site/osimage;fi
+cmd:dir="/opt/inventory/site/osimage"; rm -rf $dir; if [ -d ${dir}".bak" ];then mv ${dir}".bak" $dir; fi
 cmd:if [ -e /tmp/otherpkglist.bak ]; then mv -f /tmp/otherpkglist.bak /tmp/otherpkglist; fi
-cmd:if [ -e /tmp/synclists.bak ]; then mv -f /tmp/synclists.bak /tmp/synclists; fi
-cmd:if [ -e /tmp/postinstall.bak ]; then mv -f /tmp/postinstall.bak /tmp/postinstall; fi
-cmd:if [ -e /tmp/exlist.bak ]; then mv -f /tmp/exlist.bak /tmp/exlist; fi
-cmd:if [ -e /tmp/partitionfile.bak ]; then mv -f /tmp/partitionfile.bak /tmp/partitionfile; fi
+cmd:file="/tmp/otherpkglist"; rm -rf $file; if [ -d ${file}".bak" ];then mv ${file}".bak" $file; fi
+cmd:file="/tmp/synclists"; rm -rf $file; if [ -d ${file}".bak" ];then mv ${file}".bak" $file; fi
+cmd:file="/tmp/postinstall"; rm -rf $file; if [ -d ${file}".bak" ];then mv ${file}".bak" $file; fi
+cmd:file="/tmp/exlist"; rm -rf $file; if [ -d ${file}".bak" ];then mv ${file}".bak" $file; fi
+cmd:file="/tmp/partitionfile"; rm -rf $file; if [ -d ${file}".bak" ];then mv ${file}".bak" $file; fi
 end
 
 start:export_import_multiple_osimages_by_dir
@@ -1024,19 +1026,20 @@ cmd:chdef -t osimage -o test_myimage1 imagetype=linux provmethod=install pkglist
 check:rc==0
 cmd:chdef -t osimage -o test_myimage2 imagetype=linux provmethod=install pkglist=/tmp/pkglist template=/tmp/template otherpkglist=/opt/xcat/share/xcat/install/rh/otherpkglist synclists=/opt/xcat/share/xcat/install/rh/synclists postinstall=/opt/xcat/share/xcat/install/rh/postinstall exlist=/opt/xcat/share/xcat/install/rh/exlist partitionfile=/opt/xcat/share/xcat/install/rh/partitionfile
 check:rc==0
-cmd:if [ -e /opt/inventory/site/osimage/ ]; then cp -f /opt/inventory/site/osimage /opt/inventory/site/osimage.bak; else mkdir -p /opt/inventory/site/osimage/; fi
-cmd:xcat-inventory export -t osimage -o test_myimage1,test_myimage2 --format yaml -d /opt/inventory/site/osimage
+cmd:lsdef -t osimage test_myimage1,test_myimage2
+cmd:dir="/opt/inventory/site/osimage";if [ -e "${dir}" ];then mv ${dir} ${dir}".bak"; fi; mkdir -p $dir
+cmd:xcat-inventory export -t osimage -o test_myimage1,test_myimage2 --format json -d /opt/inventory/site/osimage
 check:rc==0
 check:output=~The osimage objects has been exported to directory /opt/inventory/site/osimage
-cmd:otherpkglist=`lsdef -t osimage -o test_myimage1 |grep otherpkglist|awk -F= '{print $2}'`;diff $otherpkglist /opt/inventory/site/osimage/test_myimage1$otherpkglist
+cmd:otherpkglist=`lsdef -t osimage -o test_myimage1 |grep otherpkglist|awk -F= '{print $2}'`;diff -y $otherpkglist /opt/inventory/site/osimage/test_myimage1$otherpkglist
 check:rc==0
-cmd:synclists=`lsdef -t osimage -o test_myimage1 |grep synclists|awk -F= '{print $2}'`;diff $synclists /opt/inventory/site/osimage/test_myimage1$synclists
+cmd:synclists=`lsdef -t osimage -o test_myimage1 |grep synclists|awk -F= '{print $2}'`;diff -y $synclists /opt/inventory/site/osimage/test_myimage1$synclists
 check:rc==0
-cmd:postinstall=`lsdef -t osimage -o test_myimage1 |grep postinstall|awk -F= '{print $2}'`;diff $postinstall /opt/inventory/site/osimage/test_myimage1$postinstall
+cmd:postinstall=`lsdef -t osimage -o test_myimage1 |grep postinstall|awk -F= '{print $2}'`;diff -y $postinstall /opt/inventory/site/osimage/test_myimage1$postinstall
 check:rc==0
-cmd:exlist=`lsdef -t osimage -o test_myimage1 |grep exlist|awk -F= '{print $2}'`;diff $exlist /opt/inventory/site/osimage/test_myimage1$exlist
+cmd:exlist=`lsdef -t osimage -o test_myimage1 |grep exlist|awk -F= '{print $2}'`;diff -y $exlist /opt/inventory/site/osimage/test_myimage1$exlist
 check:rc==0
-cmd:partitionfile=`lsdef -t osimage -o test_myimage1 |grep partitionfile|awk -F= '{print $2}'`;diff $partitionfile /opt/inventory/site/osimage/test_myimage1$partitionfile
+cmd:partitionfile=`lsdef -t osimage -o test_myimage1 |grep partitionfile|awk -F= '{print $2}'`;diff -y $partitionfile /opt/inventory/site/osimage/test_myimage1$partitionfile
 check:rc==0
 cmd:pkglist=`lsdef -t osimage -o test_myimage1 |grep -w pkglist|awk -F= '{print $2}'`;ls -l /opt/inventory/site/osimage/test_myimage1$pkglist
 check:rc!=0
@@ -1052,9 +1055,9 @@ cmd:exlist=`lsdef -t osimage -o test_myimage2 |grep exlist|awk -F= '{print $2}'`
 check:rc!=0
 cmd:partitionfile=`lsdef -t osimage -o test_myimage2 |grep partitionfile|awk -F= '{print $2}'`;ls -l /opt/inventory/site/osimage/test_myimage2$partitionfile
 check:rc!=0
-cmd:pkglist=`lsdef -t osimage -o test_myimage2 |grep -w pkglist|awk -F= '{print $2}'`;diff $pkglist /opt/inventory/site/osimage/test_myimage2$pkglist
+cmd:pkglist=`lsdef -t osimage -o test_myimage2 |grep -w pkglist|awk -F= '{print $2}'`;diff -y $pkglist /opt/inventory/site/osimage/test_myimage2$pkglist
 check:rc==0
-cmd:template=`lsdef -t osimage -o test_myimage2 |grep template|awk -F= '{print $2}'`;diff $template /opt/inventory/site/osimage/test_myimage2$template
+cmd:template=`lsdef -t osimage -o test_myimage2 |grep template|awk -F= '{print $2}'`;diff -y $template /opt/inventory/site/osimage/test_myimage2$template
 check:rc==0
 cmd: rmdef -t osimage -o  test_myimage1,test_myimage2
 check:rc==0
@@ -1065,53 +1068,53 @@ check:output=~The object test_myimage1 has been imported
 check:output=~The object test_myimage2 has been imported
 cmd:lsdef -t osimage -o test_myimage1,test_myimage2
 check:rc==0
-cmd:otherpkglist=`lsdef -t osimage -o test_myimage1 |grep otherpkglist|awk -F= '{print $2}'`;diff $otherpkglist /opt/inventory/site/osimage/test_myimage1$otherpkglist
+cmd:otherpkglist=`lsdef -t osimage -o test_myimage1 |grep otherpkglist|awk -F= '{print $2}'`;diff -y $otherpkglist /opt/inventory/site/osimage/test_myimage1$otherpkglist
 check:rc==0
-cmd:synclists=`lsdef -t osimage -o test_myimage1 |grep synclists|awk -F= '{print $2}'`;diff $synclists /opt/inventory/site/osimage/test_myimage1$synclists
+cmd:synclists=`lsdef -t osimage -o test_myimage1 |grep synclists|awk -F= '{print $2}'`;diff -y $synclists /opt/inventory/site/osimage/test_myimage1$synclists
 check:rc==0
-cmd:postinstall=`lsdef -t osimage -o test_myimage1 |grep postinstall|awk -F= '{print $2}'`;diff $postinstall /opt/inventory/site/osimage/test_myimage1$postinstall
+cmd:postinstall=`lsdef -t osimage -o test_myimage1 |grep postinstall|awk -F= '{print $2}'`;diff -y $postinstall /opt/inventory/site/osimage/test_myimage1$postinstall
 check:rc==0
-cmd:exlist=`lsdef -t osimage -o test_myimage1 |grep exlist|awk -F= '{print $2}'`;diff $exlist /opt/inventory/site/osimage/test_myimage1$exlist
+cmd:exlist=`lsdef -t osimage -o test_myimage1 |grep exlist|awk -F= '{print $2}'`;diff -y $exlist /opt/inventory/site/osimage/test_myimage1$exlist
 check:rc==0
-cmd:partitionfile=`lsdef -t osimage -o test_myimage1 |grep partitionfile|awk -F= '{print $2}'`;diff $partitionfile /opt/inventory/site/osimage/test_myimage1$partitionfile
+cmd:partitionfile=`lsdef -t osimage -o test_myimage1 |grep partitionfile|awk -F= '{print $2}'`;diff -y $partitionfile /opt/inventory/site/osimage/test_myimage1$partitionfile
 check:rc==0
-cmd:pkglist=`lsdef -t osimage -o test_myimage1 |grep -w pkglist|awk -F= '{print $2}'`;if [ $pkglist == "/opt/xcat/share/xcat/install/rh/compute.rhels7.pkglist" ]; then echo 0; else echo 1; fi
+cmd:pkglist=`lsdef -t osimage -o test_myimage1 |grep -w pkglist|awk -F= '{print $2}'`;if [ $pkglist == "/opt/xcat/share/xcat/install/rh/compute.rhels7.pkglist" ]; then exit 0; else exit 1; fi
 check:rc==0
-cmd:template=`lsdef -t osimage -o test_myimage1 |grep template|awk -F= '{print $2}'`;if [ $template == "/opt/xcat/share/xcat/install/rh/compute.rhels7.tmpl" ]; then echo 0; else echo 1; fi
+cmd:template=`lsdef -t osimage -o test_myimage1 |grep template|awk -F= '{print $2}'`;if [ $template == "/opt/xcat/share/xcat/install/rh/compute.rhels7.tmpl" ]; then exit 0; else exit 1; fi
 check:rc==0
-cmd:otherpkglist=`lsdef -t osimage -o test_myimage2 |grep otherpkglist|awk -F= '{print $2}'`;if [ $otherpkglist == "/opt/xcat/share/xcat/install/rh/otherpkglist" ]; then echo 0; else echo 1; fi
+cmd:otherpkglist=`lsdef -t osimage -o test_myimage2 |grep otherpkglist|awk -F= '{print $2}'`;if [ $otherpkglist == "/opt/xcat/share/xcat/install/rh/otherpkglist" ]; then exit 0; else exit 1; fi
 check:rc==0
-cmd:synclists=`lsdef -t osimage -o test_myimage2 |grep synclists|awk -F= '{print $2}'`;if [ $synclists == "/opt/xcat/share/xcat/install/rh/synclists" ]; then echo 0; else echo 1; fi
+cmd:synclists=`lsdef -t osimage -o test_myimage2 |grep synclists|awk -F= '{print $2}'`;if [ $synclists == "/opt/xcat/share/xcat/install/rh/synclists" ]; then exit 0; else exit 1; fi
 check:rc==0
-cmd:postinstall=`lsdef -t osimage -o test_myimage2 |grep postinstall|awk -F= '{print $2}'`;if [ $postinstall == "/opt/xcat/share/xcat/install/rh/postinstall" ]; then echo 0; else echo 1; fi
+cmd:postinstall=`lsdef -t osimage -o test_myimage2 |grep postinstall|awk -F= '{print $2}'`;if [ $postinstall == "/opt/xcat/share/xcat/install/rh/postinstall" ]; then exit 0; else exit 1; fi
 check:rc==0
-cmd:exlist=`lsdef -t osimage -o test_myimage2 |grep exlist|awk -F= '{print $2}'`;if [ $exlist == "/opt/xcat/share/xcat/install/rh/exlist" ]; then echo 0; else echo 1; fi
+cmd:exlist=`lsdef -t osimage -o test_myimage2 |grep exlist|awk -F= '{print $2}'`;if [ $exlist == "/opt/xcat/share/xcat/install/rh/exlist" ]; then exit 0; else exit 1; fi
 check:rc==0
-cmd:partitionfile=`lsdef -t osimage -o test_myimage2 |grep partitionfile|awk -F= '{print $2}'`;if [ $partitionfile == "/opt/xcat/share/xcat/install/rh/partitionfile" ]; then echo 0; else echo 1; fi
+cmd:partitionfile=`lsdef -t osimage -o test_myimage2 |grep partitionfile|awk -F= '{print $2}'`;if [ $partitionfile == "/opt/xcat/share/xcat/install/rh/partitionfile" ]; then exit 0; else echo 1; fi
 check:rc==0
-cmd:pkglist=`lsdef -t osimage -o test_myimage2 |grep -w pkglist|awk -F= '{print $2}'`;diff $pkglist /opt/inventory/site/osimage/test_myimage2$pkglist
+cmd:pkglist=`lsdef -t osimage -o test_myimage2 |grep -w pkglist|awk -F= '{print $2}'`;diff -y $pkglist /opt/inventory/site/osimage/test_myimage2$pkglist
 check:rc==0
-cmd:template=`lsdef -t osimage -o test_myimage2 |grep template|awk -F= '{print $2}'`;diff $template /opt/inventory/site/osimage/test_myimage2$template
+cmd:template=`lsdef -t osimage -o test_myimage2 |grep template|awk -F= '{print $2}'`;diff -y $template /opt/inventory/site/osimage/test_myimage2$template
 check:rc==0
 cmd: rmdef -t osimage -o  test_myimage1,test_myimage2
 check:rc==0
 cmd: if [ -e /tmp/test_myimage1.stanza ]; then cat /tmp/test_myimage1.stanza |mkdef -z;fi
 cmd: if [ -e /tmp/test_myimage2.stanza ]; then cat /tmp/test_myimage2.stanza |mkdef -z;fi
-cmd: if [ -e /opt/inventory/site/osimage/ ]; then rm -rf /opt/inventory/site/osimage/;fi
-cmd: if [ -e /opt/inventory/site/osimage.bak ]; then mv /opt/inventory/site/osimage.bak  /opt/inventory/site/osimage;fi
-cmd:if [ -e /tmp/otherpkglist.bak ]; then mv -f /tmp/otherpkglist.bak /tmp/otherpkglist; fi
-cmd:if [ -e /tmp/synclists.bak ]; then mv -f /tmp/synclists.bak /tmp/synclists; fi
-cmd:if [ -e /tmp/postinstall.bak ]; then mv -f /tmp/postinstall.bak /tmp/postinstall; fi
-cmd:if [ -e /tmp/exlist.bak ]; then mv -f /tmp/exlist.bak /tmp/exlist; fi
-cmd:if [ -e /tmp/partitionfile.bak ]; then mv -f /tmp/partitionfile.bak /tmp/partitionfile; fi
-cmd:if [ -e /tmp/pkglist.bak ]; then mv -f /tmp/pkglist.bak /tmp/pkglist fi
-cmd:if [ -e /opt/xcat/share/xcat/install/rh/otherpkglist.bak ]; then mv -f /opt/xcat/share/xcat/install/rh/otherpkglist.bak /opt/xcat/share/xcat/install/rh/otherpkglist; fi
-cmd:if [ -e /opt/xcat/share/xcat/install/rh/synclists.bak ]; then mv -f /opt/xcat/share/xcat/install/rh/synclists.bak /opt/xcat/share/xcat/install/rh/synclists; fi
-cmd:if [ -e /opt/xcat/share/xcat/install/rh/postinstall.bak ]; then mv -f /opt/xcat/share/xcat/install/rh/postinstall.bak /opt/xcat/share/xcat/install/rh/postinstall; fi
-cmd:if [ -e /opt/xcat/share/xcat/install/rh/exlist.bak ]; then mv -f /opt/xcat/share/xcat/install/rh/exlist.bak /opt/xcat/share/xcat/install/rh/exlist; fi
-cmd:if [ -e /opt/xcat/share/xcat/install/rh/partitionfile.bak ]; then mv -f /opt/xcat/share/xcat/install/rh/partitionfile.bak /opt/xcat/share/xcat/install/rh/partitionfile; fi
-cmd:if [ -e /opt/xcat/share/xcat/install/rh/pkglist.bak ]; then mv -f /opt/xcat/share/xcat/install/rh/pkglist.bak /opt/xcat/share/xcat/install/rh/pkglist; fi
-cmd:if [ -e /opt/xcat/share/xcat/install/rh/template.bak ]; then mv -f /opt/xcat/share/xcat/install/rh/template.bak /opt/xcat/share/xcat/install/rh/template; fi
+cmd:dir="/opt/inventory/site/osimage"; rm -rf $dir; if [ -d ${dir}".bak" ];then mv ${dir}".bak" $dir; fi
+cmd:file="/tmp/otherpkglist"; rm -rf $file; if [ -d ${file}".bak" ];then mv ${file}".bak" $file; fi
+cmd:file="/tmp/synclists"; rm -rf $file; if [ -d ${file}".bak" ];then mv ${file}".bak" $file; fi
+cmd:file="/tmp/postinstall"; rm -rf $file; if [ -d ${file}".bak" ];then mv ${file}".bak" $file; fi
+cmd:file="/tmp/exlist"; rm -rf $file; if [ -d ${file}".bak" ];then mv ${file}".bak" $file; fi
+cmd:file="/tmp/partitionfile"; rm -rf $file; if [ -d ${file}".bak" ];then mv ${file}".bak" $file; fi
+cmd:file="/tmp/pkglist"; rm -rf $file; if [ -d ${file}".bak" ];then mv ${file}".bak" $file; fi
+cmd:file="/tmp/template"; rm -rf $file; if [ -d ${file}".bak" ];then mv ${file}".bak" $file; fi
+cmd:file="/opt/xcat/share/xcat/install/rh/otherpkglist"; rm -rf $file; if [ -d ${file}".bak" ];then mv ${file}".bak" $file; fi
+cmd:file="/opt/xcat/share/xcat/install/rh/synclists"; rm -rf $file; if [ -d ${file}".bak" ];then mv ${file}".bak" $file; fi
+cmd:file="/opt/xcat/share/xcat/install/rh/postinstall"; rm -rf $file; if [ -d ${file}".bak" ];then mv ${file}".bak" $file; fi
+cmd:file="/opt/xcat/share/xcat/install/rh/exlist"; rm -rf $file; if [ -d ${file}".bak" ];then mv ${file}".bak" $file; fi
+cmd:file="/opt/xcat/share/xcat/install/rh/partitionfile"; rm -rf $file; if [ -d ${file}".bak" ];then mv ${file}".bak" $file; fi
+cmd:file="/opt/xcat/share/xcat/install/rh/pkglist"; rm -rf $file; if [ -d ${file}".bak" ];then mv ${file}".bak" $file; fi
+cmd:file="/opt/xcat/share/xcat/install/rh/template"; rm -rf $file; if [ -d ${file}".bak" ];then mv ${file}".bak" $file; fi
 end
 
 start:export_import_all_osimages_by_dir
@@ -1156,19 +1159,19 @@ cmd:chdef -t osimage -o test_myimage1 imagetype=linux provmethod=install pkglist
 check:rc==0
 cmd:chdef -t osimage -o test_myimage2 imagetype=linux provmethod=install pkglist=/tmp/pkglist template=/tmp/template otherpkglist=/opt/xcat/share/xcat/install/rh/otherpkglist synclists=/opt/xcat/share/xcat/install/rh/synclists postinstall=/opt/xcat/share/xcat/install/rh/postinstall exlist=/opt/xcat/share/xcat/install/rh/exlist partitionfile=/opt/xcat/share/xcat/install/rh/partitionfile
 check:rc==0
-cmd:if [ -e /opt/inventory/site/osimage/ ]; then cp -f /opt/inventory/site/osimage/ /opt/inventory/site/osimage.bak; else mkdir -p /opt/inventory/site/osimage/; fi
+cmd:dir="/opt/inventory/site/osimage";if [ -e "${dir}" ];then mv ${dir} ${dir}".bak"; fi; mkdir -p $dir
 cmd:xcat-inventory export -d /opt/inventory/site/
 check:rc==0
 check:output=~The osimage objects has been exported to directory /opt/inventory/site/
-cmd:otherpkglist=`lsdef -t osimage -o test_myimage1 |grep otherpkglist|awk -F= '{print $2}'`;diff $otherpkglist /opt/inventory/site/osimage/test_myimage1$otherpkglist
+cmd:otherpkglist=`lsdef -t osimage -o test_myimage1 |grep otherpkglist|awk -F= '{print $2}'`;diff -y $otherpkglist /opt/inventory/site/osimage/test_myimage1$otherpkglist
 check:rc==0
-cmd:synclists=`lsdef -t osimage -o test_myimage1 |grep synclists|awk -F= '{print $2}'`;diff $synclists /opt/inventory/site/osimage/test_myimage1$synclists
+cmd:synclists=`lsdef -t osimage -o test_myimage1 |grep synclists|awk -F= '{print $2}'`;diff -y $synclists /opt/inventory/site/osimage/test_myimage1$synclists
 check:rc==0
-cmd:postinstall=`lsdef -t osimage -o test_myimage1 |grep postinstall|awk -F= '{print $2}'`;diff $postinstall /opt/inventory/site/osimage/test_myimage1$postinstall
+cmd:postinstall=`lsdef -t osimage -o test_myimage1 |grep postinstall|awk -F= '{print $2}'`;diff -y $postinstall /opt/inventory/site/osimage/test_myimage1$postinstall
 check:rc==0
-cmd:exlist=`lsdef -t osimage -o test_myimage1 |grep exlist|awk -F= '{print $2}'`;diff $exlist /opt/inventory/site/osimage/test_myimage1$exlist
+cmd:exlist=`lsdef -t osimage -o test_myimage1 |grep exlist|awk -F= '{print $2}'`;diff -y $exlist /opt/inventory/site/osimage/test_myimage1$exlist
 check:rc==0
-cmd:partitionfile=`lsdef -t osimage -o test_myimage1 |grep partitionfile|awk -F= '{print $2}'`;diff $partitionfile /opt/inventory/site/osimage/test_myimage1$partitionfile
+cmd:partitionfile=`lsdef -t osimage -o test_myimage1 |grep partitionfile|awk -F= '{print $2}'`;diff -y $partitionfile /opt/inventory/site/osimage/test_myimage1$partitionfile
 check:rc==0
 cmd:pkglist=`lsdef -t osimage -o test_myimage1 |grep -w pkglist|awk -F= '{print $2}'`;ls -l /opt/inventory/site/osimage/test_myimage1$pkglist
 check:rc!=0
@@ -1184,14 +1187,14 @@ cmd:exlist=`lsdef -t osimage -o test_myimage2 |grep exlist|awk -F= '{print $2}'`
 check:rc!=0
 cmd:partitionfile=`lsdef -t osimage -o test_myimage2 |grep partitionfile|awk -F= '{print $2}'`;ls -l /opt/inventory/site/osimage/test_myimage2$partitionfile
 check:rc!=0
-cmd:pkglist=`lsdef -t osimage -o test_myimage2 |grep -w pkglist|awk -F= '{print $2}'`;diff $pkglist /opt/inventory/site/osimage/test_myimage2$pkglist
+cmd:pkglist=`lsdef -t osimage -o test_myimage2 |grep -w pkglist|awk -F= '{print $2}'`;diff -y $pkglist /opt/inventory/site/osimage/test_myimage2$pkglist
 check:rc==0
-cmd:template=`lsdef -t osimage -o test_myimage2 |grep template|awk -F= '{print $2}'`;diff $template /opt/inventory/site/osimage/test_myimage2$template
+cmd:template=`lsdef -t osimage -o test_myimage2 |grep template|awk -F= '{print $2}'`;diff -y $template /opt/inventory/site/osimage/test_myimage2$template
 check:rc==0
 cmd: rmdef -t osimage -o  test_myimage1,test_myimage2
 check:rc==0
 cmd:rm -rf /tmp/otherpkglist /tmp/synclists /tmp/postinstall /tmp/exlist /tmp/pkglist /tmp/template /tmp/partitionfile
-cmd:xcat-inventory import -t osimage -d /opt/inventory/site/osimage/
+cmd:xcat-inventory import -t osimage -d /opt/inventory/site
 check:rc==0
 check:output=~Importing object: test_myimage1
 check:output=~Inventory import successfully!
@@ -1201,53 +1204,54 @@ check:output=~Inventory import successfully!
 check:output=~The object test_myimage2 has been imported
 cmd:lsdef -t osimage -o test_myimage1,test_myimage2
 check:rc==0
-cmd:otherpkglist=`lsdef -t osimage -o test_myimage1 |grep otherpkglist|awk -F= '{print $2}'`;diff $otherpkglist /opt/inventory/site/osimage/test_myimage1$otherpkglist
+cmd:otherpkglist=`lsdef -t osimage -o test_myimage1 |grep otherpkglist|awk -F= '{print $2}'`;diff -y $otherpkglist /opt/inventory/site/osimage/test_myimage1$otherpkglist
 check:rc==0
-cmd:synclists=`lsdef -t osimage -o test_myimage1 |grep synclists|awk -F= '{print $2}'`;diff $synclists /opt/inventory/site/osimage/test_myimage1$synclists
+cmd:synclists=`lsdef -t osimage -o test_myimage1 |grep synclists|awk -F= '{print $2}'`;diff -y $synclists /opt/inventory/site/osimage/test_myimage1$synclists
 check:rc==0
-cmd:postinstall=`lsdef -t osimage -o test_myimage1 |grep postinstall|awk -F= '{print $2}'`;diff $postinstall /opt/inventory/site/osimage/test_myimage1$postinstall
+cmd:postinstall=`lsdef -t osimage -o test_myimage1 |grep postinstall|awk -F= '{print $2}'`;diff -y $postinstall /opt/inventory/site/osimage/test_myimage1$postinstall
 check:rc==0
-cmd:exlist=`lsdef -t osimage -o test_myimage1 |grep exlist|awk -F= '{print $2}'`;diff $exlist /opt/inventory/site/osimage/test_myimage1$exlist
+cmd:exlist=`lsdef -t osimage -o test_myimage1 |grep exlist|awk -F= '{print $2}'`;diff -y $exlist /opt/inventory/site/osimage/test_myimage1$exlist
 check:rc==0
-cmd:partitionfile=`lsdef -t osimage -o test_myimage1 |grep partitionfile|awk -F= '{print $2}'`;diff $partitionfile /opt/inventory/site/osimage/test_myimage1$partitionfile
+cmd:partitionfile=`lsdef -t osimage -o test_myimage1 |grep partitionfile|awk -F= '{print $2}'`;diff -y $partitionfile /opt/inventory/site/osimage/test_myimage1$partitionfile
 check:rc==0
-cmd:pkglist=`lsdef -t osimage -o test_myimage1 |grep -w pkglist|awk -F= '{print $2}'`;if [ $pkglist == "/opt/xcat/share/xcat/install/rh/compute.rhels7.pkglist" ]; then echo 0; else echo 1; fi
+cmd:pkglist=`lsdef -t osimage -o test_myimage1 |grep -w pkglist|awk -F= '{print $2}'`;if [ $pkglist == "/opt/xcat/share/xcat/install/rh/compute.rhels7.pkglist" ]; then exit 0; else exit 1; fi
 check:rc==0
-cmd:template=`lsdef -t osimage -o test_myimage1 |grep template|awk -F= '{print $2}'`;if [ $template == "/opt/xcat/share/xcat/install/rh/compute.rhels7.tmpl" ]; then echo 0; else echo 1; fi
+cmd:template=`lsdef -t osimage -o test_myimage1 |grep template|awk -F= '{print $2}'`;if [ $template == "/opt/xcat/share/xcat/install/rh/compute.rhels7.tmpl" ]; then exit 0; else exit 1; fi
 check:rc==0
-cmd:otherpkglist=`lsdef -t osimage -o test_myimage2 |grep otherpkglist|awk -F= '{print $2}'`;if [ $otherpkglist == "/opt/xcat/share/xcat/install/rh/otherpkglist" ]; then echo 0; else echo 1; fi
+cmd:otherpkglist=`lsdef -t osimage -o test_myimage2 |grep otherpkglist|awk -F= '{print $2}'`;if [ $otherpkglist == "/opt/xcat/share/xcat/install/rh/otherpkglist" ]; then exit 0; else exit 1; fi
 check:rc==0
-cmd:synclists=`lsdef -t osimage -o test_myimage2 |grep synclists|awk -F= '{print $2}'`;if [ $synclists == "/opt/xcat/share/xcat/install/rh/synclists" ]; then echo 0; else echo 1; fi
+cmd:synclists=`lsdef -t osimage -o test_myimage2 |grep synclists|awk -F= '{print $2}'`;if [ $synclists == "/opt/xcat/share/xcat/install/rh/synclists" ]; then exit 0; else exit 1; fi
 check:rc==0
-cmd:postinstall=`lsdef -t osimage -o test_myimage2 |grep postinstall|awk -F= '{print $2}'`;if [ $postinstall == "/opt/xcat/share/xcat/install/rh/postinstall" ]; then echo 0; else echo 1; fi
+cmd:postinstall=`lsdef -t osimage -o test_myimage2 |grep postinstall|awk -F= '{print $2}'`;if [ $postinstall == "/opt/xcat/share/xcat/install/rh/postinstall" ]; then exit 0; else exit 1; fi
 check:rc==0
-cmd:exlist=`lsdef -t osimage -o test_myimage2 |grep exlist|awk -F= '{print $2}'`;if [ $exlist == "/opt/xcat/share/xcat/install/rh/exlist" ]; then echo 0; else echo 1; fi
+cmd:exlist=`lsdef -t osimage -o test_myimage2 |grep exlist|awk -F= '{print $2}'`;if [ $exlist == "/opt/xcat/share/xcat/install/rh/exlist" ]; then exit 0; else exit 1; fi
 check:rc==0
-cmd:partitionfile=`lsdef -t osimage -o test_myimage2 |grep partitionfile|awk -F= '{print $2}'`;if [ $partitionfile == "/opt/xcat/share/xcat/install/rh/partitionfile" ]; then echo 0; else echo 1; fi
+cmd:partitionfile=`lsdef -t osimage -o test_myimage2 |grep partitionfile|awk -F= '{print $2}'`;if [ $partitionfile == "/opt/xcat/share/xcat/install/rh/partitionfile" ]; then exit 0; else exit 1; fi
 check:rc==0
-cmd:pkglist=`lsdef -t osimage -o test_myimage2 |grep -w pkglist|awk -F= '{print $2}'`;diff $pkglist /opt/inventory/site/osimage/test_myimage2$pkglist
+cmd:pkglist=`lsdef -t osimage -o test_myimage2 |grep -w pkglist|awk -F= '{print $2}'`;diff -y $pkglist /opt/inventory/site/osimage/test_myimage2$pkglist
 check:rc==0
-cmd:template=`lsdef -t osimage -o test_myimage2 |grep template|awk -F= '{print $2}'`;diff $template /opt/inventory/site/osimage/test_myimage2$template
+cmd:template=`lsdef -t osimage -o test_myimage2 |grep template|awk -F= '{print $2}'`;diff -y $template /opt/inventory/site/osimage/test_myimage2$template
 check:rc==0
 cmd: rmdef -t osimage -o  test_myimage1,test_myimage2
 check:rc==0
 cmd: if [ -e /tmp/test_myimage1.stanza ]; then cat /tmp/test_myimage1.stanza |mkdef -z;fi
 cmd: if [ -e /tmp/test_myimage2.stanza ]; then cat /tmp/test_myimage2.stanza |mkdef -z;fi
-cmd: if [ -e /opt/inventory/site/osimage/ ]; then rm -rf /opt/inventory/site/osimage/;fi
-cmd: if [ -e /opt/inventory/site/osimage.bak ]; then mv /opt/inventory/site/osimage.bak  /opt/inventory/site/osimage;fi
-cmd:if [ -e /tmp/otherpkglist.bak ]; then mv -f /tmp/otherpkglist.bak /tmp/otherpkglist; fi
-cmd:if [ -e /tmp/synclists.bak ]; then mv -f /tmp/synclists.bak /tmp/synclists; fi
-cmd:if [ -e /tmp/postinstall.bak ]; then mv -f /tmp/postinstall.bak /tmp/postinstall; fi
-cmd:if [ -e /tmp/exlist.bak ]; then mv -f /tmp/exlist.bak /tmp/exlist; fi
-cmd:if [ -e /tmp/partitionfile.bak ]; then mv -f /tmp/partitionfile.bak /tmp/partitionfile; fi
-cmd:if [ -e /tmp/pkglist.bak ]; then mv -f /tmp/pkglist.bak /tmp/pkglist fi
-cmd:if [ -e /opt/xcat/share/xcat/install/rh/otherpkglist.bak ]; then mv -f /opt/xcat/share/xcat/install/rh/otherpkglist.bak /opt/xcat/share/xcat/install/rh/otherpkglist; fi
-cmd:if [ -e /opt/xcat/share/xcat/install/rh/synclists.bak ]; then mv -f /opt/xcat/share/xcat/install/rh/synclists.bak /opt/xcat/share/xcat/install/rh/synclists; fi
-cmd:if [ -e /opt/xcat/share/xcat/install/rh/postinstall.bak ]; then mv -f /opt/xcat/share/xcat/install/rh/postinstall.bak /opt/xcat/share/xcat/install/rh/postinstall; fi
-cmd:if [ -e /opt/xcat/share/xcat/install/rh/exlist.bak ]; then mv -f /opt/xcat/share/xcat/install/rh/exlist.bak /opt/xcat/share/xcat/install/rh/exlist; fi
-cmd:if [ -e /opt/xcat/share/xcat/install/rh/partitionfile.bak ]; then mv -f /opt/xcat/share/xcat/install/rh/partitionfile.bak /opt/xcat/share/xcat/install/rh/partitionfile; fi
-cmd:if [ -e /opt/xcat/share/xcat/install/rh/pkglist.bak ]; then mv -f /opt/xcat/share/xcat/install/rh/pkglist.bak /opt/xcat/share/xcat/install/rh/pkglist; fi
-cmd:if [ -e /opt/xcat/share/xcat/install/rh/template.bak ]; then mv -f /opt/xcat/share/xcat/install/rh/template.bak /opt/xcat/share/xcat/install/rh/template; fi
+cmd:dir="/opt/inventory/site/osimage"; rm -rf $dir; if [ -d ${dir}".bak" ];then mv ${dir}".bak" $dir; fi
+cmd:dir="/opt/inventory/site/osimage"; rm -rf $dir; if [ -d ${dir}".bak" ];then mv ${dir}".bak" $dir; fi
+cmd:file="/tmp/otherpkglist"; rm -rf $file; if [ -d ${file}".bak" ];then mv ${file}".bak" $file; fi
+cmd:file="/tmp/synclists"; rm -rf $file; if [ -d ${file}".bak" ];then mv ${file}".bak" $file; fi
+cmd:file="/tmp/postinstall"; rm -rf $file; if [ -d ${file}".bak" ];then mv ${file}".bak" $file; fi
+cmd:file="/tmp/exlist"; rm -rf $file; if [ -d ${file}".bak" ];then mv ${file}".bak" $file; fi
+cmd:file="/tmp/partitionfile"; rm -rf $file; if [ -d ${file}".bak" ];then mv ${file}".bak" $file; fi
+cmd:file="/tmp/pkglist"; rm -rf $file; if [ -d ${file}".bak" ];then mv ${file}".bak" $file; fi
+cmd:file="/tmp/template"; rm -rf $file; if [ -d ${file}".bak" ];then mv ${file}".bak" $file; fi
+cmd:file="/opt/xcat/share/xcat/install/rh/otherpkglist"; rm -rf $file; if [ -d ${file}".bak" ];then mv ${file}".bak" $file; fi
+cmd:file="/opt/xcat/share/xcat/install/rh/synclists"; rm -rf $file; if [ -d ${file}".bak" ];then mv ${file}".bak" $file; fi
+cmd:file="/opt/xcat/share/xcat/install/rh/postinstall"; rm -rf $file; if [ -d ${file}".bak" ];then mv ${file}".bak" $file; fi
+cmd:file="/opt/xcat/share/xcat/install/rh/exlist"; rm -rf $file; if [ -d ${file}".bak" ];then mv ${file}".bak" $file; fi
+cmd:file="/opt/xcat/share/xcat/install/rh/partitionfile"; rm -rf $file; if [ -d ${file}".bak" ];then mv ${file}".bak" $file; fi
+cmd:file="/opt/xcat/share/xcat/install/rh/pkglist"; rm -rf $file; if [ -d ${file}".bak" ];then mv ${file}".bak" $file; fi
+cmd:file="/opt/xcat/share/xcat/install/rh/template"; rm -rf $file; if [ -d ${file}".bak" ];then mv ${file}".bak" $file; fi
 cmd:for file in /tmp/osimages/*.stanza; do cat $file|mkdef -z; done
 cmd:if [ -e /tmp/osimages.bak ]; then mv -f /tmp/osimages.bak /tmp/osimages; fi
 end
