@@ -29,6 +29,7 @@ lib/xcat/Confluent/* opt/xcat/lib/perl/Confluent/
 
 lib/xcat/shfunctions opt/xcat/lib
 etc/init.d/xcatd etc/init.d
+etc/init.d/xcatd.service lib/systemd/system/
 xCAT-wsapi/* opt/xcat/ws/
 
 LICENSE.html opt/xcat/share/doc/packages/xCAT-server
