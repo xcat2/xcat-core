@@ -10,7 +10,7 @@ AliasMatch ^/tftpboot/(.*)$ "/tftpboot/$1"
 <Directory "/tftpboot">
     AllowOverride None
     Require all granted
-    Options -Indexes +FollowSymLinks
+    Options +Indexes +FollowSymLinks
     Header always append  X-Frame-Options SAMEORIGIN
     Header always append X-XSS-Protection "1; mode=block"
     Header always append X-Content-Type-Options nosniff
@@ -20,7 +20,7 @@ AliasMatch ^/tftpboot/(.*)$ "/tftpboot/$1"
 <Directory "/install">
     AllowOverride None
     Require all granted
-    Options -Indexes +FollowSymLinks
+    Options +Indexes +FollowSymLinks
     Header always append  X-Frame-Options SAMEORIGIN
     Header always append X-XSS-Protection "1; mode=block"
     Header always append X-Content-Type-Options nosniff
@@ -32,7 +32,7 @@ Alias /xcat-doc "/opt/xcat/share/doc"
 <Directory "/opt/xcat/share/doc">
  AllowOverride None
  Require all granted
-    Options -Indexes +FollowSymLinks
+    Options +Indexes +FollowSymLinks
     Header always append  X-Frame-Options SAMEORIGIN
     Header always append X-XSS-Protection "1; mode=block"
     Header always append X-Content-Type-Options nosniff
