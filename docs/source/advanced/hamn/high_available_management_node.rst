@@ -57,7 +57,7 @@ The combinations of data synchronization mechanism and manual/automatic failover
 
 Option 1, :ref:`setup_ha_mgmt_node_with_raid1_and_disks_move` 
 
-Option 2, :ref:`setup_ha_mgmt_node_with_shared_data` 
+Option 2, :ref:`setup_ha_mgmt_node_with_shared_data_auto` 
 
 Option 3, it is doable but not currently supported.
 
