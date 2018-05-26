@@ -59,7 +59,7 @@ def GetAttrInFile(fpath,objtype,objname,attrpath):
         try:
             objdict=yaml.load(f)
         except Exception,e:
-            raise Exception("Error: cannot open file "+fpath+"! "+str(e))
+            raise Exception("Error: (\[.*?\]: )?cannot open file "+fpath+"! "+str(e))
 
     f.close()
     myattrpath=objtype+"."+objname+"."+attrpath
@@ -109,7 +109,7 @@ def UpdateAttrInFile(fpath,fformat,objtype,objname,attrpath,value):
         try:
             objdict=yaml.load(f)
         except Exception,e:
-            raise Exception("Error: cannot open file "+fpath+"! "+str(e))
+            raise Exception("Error: (\[.*?\]: )?cannot open file "+fpath+"! "+str(e))
 
     f.close()
     myattrpath=objtype+"."+objname+"."+attrpath

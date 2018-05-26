@@ -173,7 +173,7 @@ cmd:if [[ "__GETNODEATTR($$CN,arch)__" =~ "el" || "__GETNODEATTR($$CN,arch)__" =
 check:rc==0
 cmd:lsdef testnode1
 cmd:nodeset testnode1 osimage=__GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-install-compute
-check:output=~Warning: testnode1:.+might be invalid
+check:output=~Warning: (\[.*?\]: )?testnode1:.+might be invalid
 cmd:noderm testnode1
 end
 
@@ -349,7 +349,7 @@ description:This testcase is to very nodeset osimage errorcommand could give rig
 Attribute: $$CN-The operation object of nodeset command
 cmd:nodeset $$CN osimage= __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-install-compute
 check:rc==1
-check:output=~Error: Invalid argument:
+check:output=~Error: (\[.*?\]: )?Invalid argument:
 check:output=~Usage: nodeset <noderange>
 end
 

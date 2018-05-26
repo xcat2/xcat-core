@@ -6,7 +6,7 @@ cmd:rspconfig $$CN ipsrc
 check:output=~$$CN\s*:\s*BMC IP Source: Static|BMC IP Source: Dynamic 
 check:rc == 0
 cmd:rspconfig $$CN  hostname sshcfg
-check:output =~Error: Configure sshcfg must be issued without other options.
+check:output =~Error: (\[.*?\]: )?Configure sshcfg must be issued without other options.
 check:rc != 0
 end
 
@@ -188,7 +188,7 @@ cmd:rspconfig $$CN powerrestorepolicy=restore
 check:output =~$$CN:\s*BMC Setting BMC PowerRestorePolicy...
 check:rc == 0
 cmd:rspconfig $$CN powerrestorepolicy=abc
-check:output =~$$CN:\s*Error: Invalid value '\S*' for 'powerrestorepolicy', Valid values: restore,always_on,always_off 
+check:output =~$$CN:\s*(\[.*?\]: )?Error: Invalid value '\S*' for 'powerrestorepolicy', Valid values: restore,always_on,always_off
 check:rc != 0
 cmd:rspconfig $$CN powerrestorepolicy
 check:rc == 0
@@ -218,7 +218,7 @@ cmd:rspconfig $$CN powersupplyredundancy
 check:rc == 0
 check:output =~$$CN:\s*BMC PowerSupplyRedundancy:\s*Disabled 
 cmd:rspconfig $$CN powersupplyredundancy=abc
-check:output =~$$CN:\s*Error: Invalid value \S* for 'powersupplyredundancy', Valid values: disabled,enabled 
+check:output =~$$CN:\s*(\[.*?\]: )?Error: Invalid value \S* for 'powersupplyredundancy', Valid values: disabled,enabled
 check:rc != 0
 cmd:redundancy=`cat /tmp/powersupplyredundancy | awk -F ":" '{print $3}'`;newredundancy=`echo $redundancy |tr 'A-Z' 'a-z'`;rspconfig $$CN powersupplyredundancy=$newredundancy
 check:rc == 0
@@ -245,7 +245,7 @@ cmd:rspconfig $$CN timesyncmethod
 check:rc == 0
 check:output =~$$CN:\s*BMC TimeSyncMethod:\s*Manual
 cmd:rspconfig $$CN  timesyncmethod=abc
-check:output =~$$CN:\s*Error: Invalid value \S* for 'timesyncmethod', Valid values: ntp,manual
+check:output =~$$CN:\s*(\[.*?\]: )?Error: Invalid value \S* for 'timesyncmethod', Valid values: ntp,manual
 check:rc != 0
 cmd:syncmethod=`cat /tmp/timesyncmethod | awk -F ":" '{print $3}'`;newsyncmethod=`echo $syncmethod |tr 'A-Z' 'a-z'`;rspconfig $$CN timesyncmethod=$newsyncmethod
 check:rc == 0
@@ -278,7 +278,7 @@ cmd:rspconfig $$CN bootmode
 check:rc == 0
 check:output =~$$CN:\s*BMC BootMode:\s*Setup
 cmd:rspconfig $$CN bootmode=abc
-check:output =~$$CN:\s*Error: Invalid value \S* for 'bootmode', Valid values: regular,safe,setup
+check:output =~$$CN:\s*(\[.*?\]: )?Error: Invalid value \S* for 'bootmode', Valid values: regular,safe,setup
 check:rc != 0
 cmd:mode=`cat /tmp/bootmode |awk -F ":" '{print $3}'`;newmode=`echo $mode |tr 'A-Z' 'a-z'`;rspconfig $$CN bootmode=$newmode
 check:rc == 0
@@ -305,7 +305,7 @@ cmd:rspconfig $$CN autoreboot
 check:rc == 0
 check:output =~$$CN:\s*BMC AutoReboot:\s*0
 cmd:rspconfig $$CN autoreboot=2
-check:output =~$$CN:\s*Error: Invalid value \S* for 'autoreboot', Valid values: 0,1
+check:output =~$$CN:\s*(\[.*?\]: )?Error: Invalid value \S* for 'autoreboot', Valid values: 0,1
 check:rc != 0
 cmd:autoreboot=`cat /tmp/autoreboot |awk -F ":" '{print $3}'`;newautoreboot=`echo $autoreboot |tr 'A-Z' 'a-z'`;rspconfig $$CN autoreboot=$newautoreboot
 check:rc == 0
@@ -317,7 +317,7 @@ description: To test "rspconfig <node> invalid_value"  should throw out error me
 os:Linux
 hcp:openbmc
 cmd:rspconfig $$CN aaa
-check:output =~Error: Unsupported command: rspconfig aaa 
+check:output =~Error: (\[.*?\]: )?Unsupported command: rspconfig aaa
 check:rc != 0
 end
 

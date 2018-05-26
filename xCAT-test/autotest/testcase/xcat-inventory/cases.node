@@ -730,10 +730,10 @@ check:rc==0
 cmd:lsdef bogusnode > /dev/null 2>&1;if [[ $? -eq 0 ]]; then lsdef bogusnode -z >/tmp/xcat_inventory_try_to_export_nonexisted_node/bogusnode.stanza ;rmdef bogusnode;fi
 check:rc==0
 cmd: xcat-inventory export --format=json -t node -o bogusnode
-check:output=~Error: cannot find node objects: bogusnode!
+check:output=~Error: (\[.*?\]: )?cannot find node objects: bogusnode!
 check:rc!=0
 cmd: xcat-inventory export --format=yaml -t node -o bogusnode
-check:output=~Error: cannot find node objects: bogusnode!
+check:output=~Error: (\[.*?\]: )?cannot find node objects: bogusnode!
 check:rc!=0
 cmd:if [[ -e /tmp/xcat_inventory_try_to_export_nonexisted_node/bogusnode.stanza ]]; then cat /tmp/xcat_inventory_try_to_export_nonexisted_node/bogusnode.stanza | mkdef -z;fi
 check:rc==0
@@ -752,12 +752,12 @@ check:rc==0
 cmd:xcat-inventory export --format=json  -t node -o bogusnode |tee  /tmp/xcat_inventory_try_to_import_nonexisted_node/json
 check:rc==0
 cmd:xcat-inventory import -f /tmp/xcat_inventory_try_to_import_nonexisted_node/json  -t node -o bogusnode1
-check:output=~Error: cannot find node objects: bogusnode1!
+check:output=~Error: (\[.*?\]: )?cannot find node objects: bogusnode1!
 check:rc!=0
 cmd:xcat-inventory export --format=yaml -t node -o bogusnode |tee  /tmp/xcat_inventory_try_to_import_nonexisted_node/yaml
 check:rc==0
 cmd:xcat-inventory import -f /tmp/xcat_inventory_try_to_import_nonexisted_node/yaml  -t node -o bogusnode1
-check:output=~Error: cannot find node objects: bogusnode1!
+check:output=~Error: (\[.*?\]: )?cannot find node objects: bogusnode1!
 check:rc!=0
 cmd:rmdef bogusnode
 check:rc==0
@@ -1647,7 +1647,7 @@ check:rc==0
 cmd:diff -y /tmp/export_more_nodes_import_part_nodes_json/nodes.bogus /tmp/export_more_nodes_import_part_nodes_json/nodes.import
 check:rc==0
 cmd:lsdef -t node bogusnode3
-check:output=~Error: Could not find an object 
+check:output=~Error: (\[.*?\]: )?Could not find an object
 check:rc!=0
 cmd:rmdef bogusnode[1-2]
 check:rc==0
@@ -1689,7 +1689,7 @@ check:rc==0
 cmd:diff -y /tmp/export_more_nodes_import_part_nodes_yaml/nodes.bogus /tmp/export_more_nodes_import_part_nodes_yaml/nodes.import
 check:rc==0
 cmd:lsdef -t node bogusnode3
-check:output=~Error: Could not find an object 
+check:output=~Error: (\[.*?\]: )?Could not find an object
 check:rc!=0
 cmd:rmdef bogusnode[1-2]
 check:rc==0
