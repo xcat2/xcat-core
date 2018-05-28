@@ -810,6 +810,9 @@ sub do_udp_service {    # This function opens up a UDP port
                     foreach $hdl (@hdls) {
                         if ($hdl == $socket) {
                             $part = $socket->recv($data, 3000);
+                            if(length($data)>1500){
+                                xCAT::MsgUtils->message("S", "$0: received ".length($data)."B data packet from ".$socket->peerhost);
+                            }
                             $packets{$part} = [ $part, $data ];
                         } elsif ($hdl == $sslctl) {
                             next;
@@ -862,6 +865,9 @@ sub do_udp_service {    # This function opens up a UDP port
                         foreach my $hdl (@hdls) {
                             if ($hdl == $socket) {
                                 $part = $socket->recv($data,3000);
+                                if(length($data)>1500){
+                                    xCAT::MsgUtils->message("S", "$0: received ".length($data)."B data packet from ".$socket->peerhost);
+                                }
                                 $packets{$part} = [ $part, $data ];
 
                                 #} elsif ($hdl == $sslctl) {
