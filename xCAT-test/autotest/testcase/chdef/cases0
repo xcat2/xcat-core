@@ -21,13 +21,13 @@ check:output=~groups=linux
 cmd:chdef -t node -o testnode postscripts="syslog,remoteshell,syncfiles"
 check:rc==0
 check:output!~Error
-check:output=~Warning: testnode: postscripts 'syslog' is already included
-check:output=~Warning: testnode: postscripts 'remoteshell' is already included
-check:output=~Warning: testnode: postscripts 'syncfiles' is already included
+check:output=~Warning: (\[.*?\]: )?testnode: postscripts 'syslog' is already included
+check:output=~Warning: (\[.*?\]: )?testnode: postscripts 'remoteshell' is already included
+check:output=~Warning: (\[.*?\]: )?testnode: postscripts 'syncfiles' is already included
 cmd:chdef -t node -o testnode postbootscripts=otherpkgs
 check:rc==0
 check:output!~Error
-check:output=~Warning: testnode: postbootscripts 'otherpkgs' is already included
+check:output=~Warning: (\[.*?\]: )?testnode: postbootscripts 'otherpkgs' is already included
 cmd:rmdef -t node testnode
 check:rc==0
 end

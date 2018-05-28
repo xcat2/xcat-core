@@ -110,7 +110,7 @@ check:output=~KIT_DEPLOY_PARAMS
 check:output=~KIT_COMPONENTS
 cmd:rmkitcomp -i testimage ubuntukit-compute-1-1.0-1-ubuntu-14.04-ppc64el 
 check:rc==1
-check:output=~Error: Failed to remove kitcomponent
+check:output=~Error: (\[.*?\]: )?Failed to remove kitcomponent
 cmd:rmkitcomp -i testimage -f ubuntukit-compute-1-1.0-1-ubuntu-14.04-ppc64el
 check:rc==0
 check:output=~Removing kitcomponent ubuntukit-compute-1-1.0-1-ubuntu-14.04-ppc64el from osimage testimage

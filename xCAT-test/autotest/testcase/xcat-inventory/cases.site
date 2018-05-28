@@ -845,13 +845,13 @@ cmd:#!/bin/bash
 diff -y --ignore-blank-lines  --ignore-matching-lines="^#"  /tmp/xcat_inventory_try_to_import_all_type_is_site_json_format/site.org  /tmp/xcat_inventory_try_to_import_all_type_is_site_json_format/site.import
 check:rc==0
 cmd:lsdef bogusgroup1
-check:output=~Error: Could not find an object
+check:output=~Error: (\[.*?\]: )?Could not find an object
 check:rc!=0
 cmd:lsdef bogusgroup2
-check:output=~Error: Could not find an object
+check:output=~Error: (\[.*?\]: )?Could not find an object
 check:rc!=0
 cmd:lsdef bogusgroup3
-check:output=~Error: Could not find an object
+check:output=~Error: (\[.*?\]: )?Could not find an object
 check:rc!=0
 cmd:tabdump networks|grep 100_0_0_0-255_0_0_0
 check:rc!=0
@@ -1211,13 +1211,13 @@ cmd:#!/bin/bash
 diff -y --ignore-blank-lines  --ignore-matching-lines="^#"  /tmp/xcat_inventory_try_to_import_all_type_is_site_yaml_format/site.org  /tmp/xcat_inventory_try_to_import_all_type_is_site_yaml_format/site.import
 check:rc==0
 cmd:lsdef bogusgroup1
-check:output=~Error: Could not find an object
+check:output=~Error: (\[.*?\]: )?Could not find an object
 check:rc!=0
 cmd:lsdef bogusgroup2
-check:output=~Error: Could not find an object
+check:output=~Error: (\[.*?\]: )?Could not find an object
 check:rc!=0
 cmd:lsdef bogusgroup3
-check:output=~Error: Could not find an object
+check:output=~Error: (\[.*?\]: )?Could not find an object
 check:rc!=0
 cmd:tabdump networks|grep 100_0_0_0-255_0_0_0
 check:rc!=0

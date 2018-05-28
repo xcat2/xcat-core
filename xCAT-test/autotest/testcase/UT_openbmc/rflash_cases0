@@ -14,7 +14,7 @@ os:Linux
 hcp:openbmc
 cmd: rflash $$CN -a /tmp/abc123.tz
 check:rc==1
-check:output=~Error: Invalid firmware specified with -a
+check:output=~Error: (\[.*?\]: )?Invalid firmware specified with -a
 end 
 
 start:rflash_invalid_activate_and_delete
@@ -23,7 +23,7 @@ os:Linux
 hcp:openbmc
 cmd: rflash $$CN -a 123 --delete 123
 check:rc==1
-check:output=~Error: Multiple options are not supported
+check:output=~Error: (\[.*?\]: )?Multiple options are not supported
 end 
 
 start:rflash_invalid_id 
@@ -32,7 +32,7 @@ os:Linux
 hcp:openbmc
 cmd: rflash $$CN -a 123
 check:rc==1
-check:output=~Error: Invalid ID provided to activate
+check:output=~Error: (\[.*?\]: )?Invalid ID provided to activate
 end 
 
 start:rflash_invalid_multiple_id_3
@@ -41,7 +41,7 @@ os:Linux
 hcp:openbmc
 cmd: rflash $$CN -a 123 abc asdbas 
 check:rc==1
-check:output=~Error: More than one firmware specified is not supported
+check:output=~Error: (\[.*?\]: )?More than one firmware specified is not supported
 end 
 
 start:rflash_invalid_multiple_id_2
@@ -50,7 +50,7 @@ os:Linux
 hcp:openbmc
 cmd: rflash $$CN -a asdbas 123
 check:rc==1
-check:output=~Error: More than one firmware specified is not supported
+check:output=~Error: (\[.*?\]: )?More than one firmware specified is not supported
 end 
 
 start:rflash_invalid_node
@@ -59,7 +59,7 @@ os:Linux
 hcp:openbmc
 cmd: rflash -a 221d9020
 check:rc==1 
-check:output=~Error: Invalid nodes and/or groups in noderange: 221d9020
+check:output=~Error: (\[.*?\]: )?Invalid nodes and/or groups in noderange: 221d9020
 end
 
 start:rflash_invalid_delete_2
@@ -68,7 +68,7 @@ os:Linux
 hcp:openbmc
 cmd: rflash $$CN --delete 221d9020 221d9020
 check:rc==1 
-check:output=~Error: More than one firmware specified is not supported
+check:output=~Error: (\[.*?\]: )?More than one firmware specified is not supported
 end
 
 start:rflash_delete_active_bmc
@@ -77,5 +77,5 @@ os:Linux
 hcp:openbmc
 cmd: rflash $$CN -l | grep \* | grep BMC | awk '{print $2}' | xargs -i{} rflash $$CN --delete {}
 check:rc==1
-check:output=~$$CN: Error: Deleting currently active BMC firmware is not supported
+check:output=~$$CN: (\[.*?\]: )?Error: Deleting currently active BMC firmware is not supported
 end

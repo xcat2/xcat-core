@@ -120,7 +120,7 @@ description:rsetboot node using invalidaction
 Attribute: $$CN-The operation object of rsetboot command.
 cmd:rsetboot $$CN dsdf
 check:rc!=0
-check:output=~Error: unsupported command|Unsupported command
+check:output=~Error: (\[.*?\]: )?unsupported command|Unsupported command
 end
 
 start:rsetboot_group_net

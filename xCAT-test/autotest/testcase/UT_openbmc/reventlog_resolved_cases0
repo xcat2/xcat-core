@@ -4,7 +4,7 @@ os:Linux
 hcp:openbmc
 cmd:reventlog $$CN resolved
 check:rc==1
-check:output=~Error: Usage error. Provide a comma separated
+check:output=~Error: (\[.*?\]: )?Usage error. Provide a comma separated
 end
 
 start:reventlog_resolved_parse_error2
@@ -13,7 +13,7 @@ os:Linux
 hcp:openbmc
 cmd:reventlog $$CN resolved=
 check:rc==1
-check:output=~Error: Usage error. Provide a comma separated
+check:output=~Error: (\[.*?\]: )?Usage error. Provide a comma separated
 end
 
 start:reventlog_resolved_parse_error3
@@ -22,7 +22,7 @@ os:Linux
 hcp:openbmc
 cmd:reventlog $$CN resolved 1,2,3
 check:rc==1
-check:output=~Error: Usage error. Provide a comma separated
+check:output=~Error: (\[.*?\]: )?Usage error. Provide a comma separated
 end
 
 start:reventlog_resolved_parse_error4
@@ -31,7 +31,7 @@ os:Linux
 hcp:openbmc
 cmd:reventlog $$CN resolved=-1
 check:rc==1
-check:output=~Error: Invalid ID=
+check:output=~Error: (\[.*?\]: )?Invalid ID=
 end
 
 start:reventlog_resolved_parse_error5
@@ -40,7 +40,7 @@ os:Linux
 hcp:openbmc
 cmd:reventlog $$CN resolved=abc
 check:rc==1
-check:output=~Error: Invalid ID=
+check:output=~Error: (\[.*?\]: )?Invalid ID=
 end
 
 start:reventlog_resolved_list

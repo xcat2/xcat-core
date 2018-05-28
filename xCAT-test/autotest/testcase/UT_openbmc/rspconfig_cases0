@@ -23,7 +23,7 @@ description: Check the parsing code for rspconfig (error cases)
 hcp: openbmc
 cmd: rspconfig $$CN ip,netmask,gateway,hostname,vlan
 check:rc==1
-check:output=~Error: Unsupported command
+check:output=~Error: (\[.*?\]: )?Unsupported command
 end 
 
 start:rspconfig_get_set_error
@@ -31,7 +31,7 @@ description: Check the parsing code for rspconfig (error cases) - Cannot get/set
 hcp: openbmc
 cmd: rspconfig $$CN ip netmask=255.0.0.0
 check:rc==1
-check:output=~Error: Can not set and query OpenBMC information at the same time
+check:output=~Error: (\[.*?\]: )?Can not set and query OpenBMC information at the same time
 end
 
 start:rspconfig_get_and_set_hostname

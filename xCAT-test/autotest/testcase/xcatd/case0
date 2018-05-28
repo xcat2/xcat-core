@@ -242,7 +242,7 @@ check:output=~xcatd service is running
 cmd:chtab name=root policy.rule=disable
 check:rc==0
 cmd:lsdef
-check:output=~Error: Permission denied for request
+check:output=~Error: (\[.*?\]: )?Permission denied for request
 cmd:XCATBYPASS=YES lsdef
 check:rc==0
 cmd:XCATBYPASS=YES chtab name=root policy.rule=allow
@@ -261,7 +261,7 @@ check:output=~active \(running\)
 cmd:chtab name=root policy.rule=disable
 check:rc==0
 cmd:lsdef
-check:output=~Error: Permission denied for request
+check:output=~Error: (\[.*?\]: )?Permission denied for request
 cmd:XCATBYPASS=YES lsdef
 check:rc==0
 cmd:XCATBYPASS=YES chtab name=root policy.rule=allow
@@ -285,7 +285,7 @@ check:rc==0
 cmd:lsdef
 check:rc==0 
 cmd:tabdump policy
-check:output=~Error: Permission denied for request
+check:output=~Error: (\[.*?\]: )?Permission denied for request
 cmd:chtab name=root policy.commands= policy.rule=allow
 check:rc==0
 end
@@ -306,7 +306,7 @@ check:rc==0
 cmd:lsdef
 check:rc==0
 cmd:tabdump policy
-check:output=~Error: Permission denied for request
+check:output=~Error: (\[.*?\]: )?Permission denied for request
 cmd:chtab name=root policy.commands= policy.rule=allow
 check:rc==0
 end

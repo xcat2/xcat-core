@@ -88,7 +88,7 @@ cmd:date +%s > /tmp/start.txt
 check:rc==0
 cmd:xdsh $$CN -t 5 "ssh 1.1.1.1"
 check:rc!=0
-check:output=~Error: Caught SIGINT - terminating the child processes.
+check:output=~Error: (\[.*?\]: )?Caught SIGINT - terminating the child processes.
 cmd:date +%s > /tmp/end.txt
 check:rc==0
 cmd:a=`cat /tmp/start.txt`;b=`cat /tmp/end.txt`;c=$[$b-$a];echo $c
