@@ -103,10 +103,10 @@ cmd:if [[ -f /tmp/rsetboot.stat ]];then mv -f /tmp/rsetboot.stat /tmp/rsetboot.s
 check:rc==0
 cmd:rsetboot $$CN,testnode net
 check:output=~$$CN: Network
-check:output=~testnode: Error
+check:output=~testnode: (\[.*?\]: )?Error
 cmd:rsetboot $$CN,testnode stat
 check:output=~$$CN: Network
-check:output=~testnode: Error
+check:output=~testnode: (\[.*?\]: )?Error
 cmd:if [[ `grep CD /tmp/rsetboot.stat` ]];then rsetboot $$CN cd;elif [[ `grep  Network /tmp/rsetboot.stat` ]];then rsetboot $$CN  net;else  rsetboot $$CN hd;fi
 check:rc==0
 cmd:if [[ -f /tmp/rsetboot.stat.bak ]];then mv -f /tmp/rsetboot.stat.bak /tmp/rsetboot.stat;else rm -rf /tmp/rsetboot.stat;fi
