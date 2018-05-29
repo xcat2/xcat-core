@@ -803,6 +803,14 @@ sub preprocess_request {
         return;
     }
 
+    #pdu commands will be handled in the pdu plugin
+    if ($command eq "rpower") {
+        my $subcmd = $exargs[0];
+        if(($subcmd eq 'pduoff') || ($subcmd eq 'pduon') || ($subcmd eq 'pdustat') || ($subcmd eq 'pdureset')){
+            return;
+        }
+    }
+
     my $parse_result = parse_args($command, $extrargs, $noderange);
     if (ref($parse_result) eq 'ARRAY') {
         my $error_data;
@@ -953,8 +961,8 @@ sub process_request {
 
     while (1) {
         last if ($child_num == 0 and !@nodes_login);
-        my $cpid;
-        while (($cpid = waitpid(-1, WNOHANG)) > 0) {
+        my $cpid = waitpid(-1, WNOHANG);
+        if ($cpid > 0) {
             if ($login_pid_node{$cpid}) {
                 $child_num--;
                 my $node = $login_pid_node{$cpid};
@@ -964,7 +972,12 @@ sub process_request {
                 }
                 delete $login_pid_node{$cpid};
             }
+        } elsif ($cpid == 0) {
+            select(undef, undef, undef, 0.01);
+        } elsif ($cpid < 0 and !@nodes_login) {
+            last;
         }
+
         if (@nodes_login) {
             if ($child_num < $max_child_num) {
                 my $node = shift @nodes_login;
@@ -1073,23 +1086,26 @@ rmdir \"/tmp/\$userid\" \n";
         while (my ($response, $handle_id) = $async->wait_for_next_response) {
             deal_with_response($handle_id, $response);
         }
-        while ((my $cpid = waitpid(-1, WNOHANG)) > 0) {
-            if ($child_node_map{$cpid}) {
-                my $node = $child_node_map{$cpid};
-                my $rc = $? >> 8;
-                if ($rc != 0) {
-                    $wait_node_num--;
-                } else {
-                    if ($status_info{ $node_info{$node}{cur_status} }->{process}) {
-                        $status_info{ $node_info{$node}{cur_status} }->{process}->($node, undef);
-                    } else {
-                        xCAT::SvrUtils::sendmsg([1,"Internal error, check the process handler for current status "
-                                    .$node_info{$node}{cur_status}."."], $callback, $node);
-                        $wait_node_num--;
-                    }
 
+        if (%child_node_map) {
+            while ((my $cpid = waitpid(-1, WNOHANG)) > 0) {
+                if ($child_node_map{$cpid}) {
+                    my $node = $child_node_map{$cpid};
+                    my $rc = $? >> 8;
+                    if ($rc != 0) {
+                        $wait_node_num--;
+                    } else {
+                        if ($status_info{ $node_info{$node}{cur_status} }->{process}) {
+                            $status_info{ $node_info{$node}{cur_status} }->{process}->($node, undef);
+                        } else {
+                            xCAT::SvrUtils::sendmsg([1,"Internal error, check the process handler for current status "
+                                        .$node_info{$node}{cur_status}."."], $callback, $node);
+                            $wait_node_num--;
+                        }
+
+                    }
+                    delete $child_node_map{$cpid};
                 }
-                delete $child_node_map{$cpid};
             }
         }
         my @del;
@@ -4625,6 +4641,7 @@ sub rflash_upload {
     # curl commands
     my $curl_login_cmd  = "curl -c $cjar_id -k -H 'Content-Type: application/json' -X POST $request_url/login -d '" . $content_login . "'";
     my $curl_logout_cmd = "curl -b $cjar_id -k -H 'Content-Type: application/json' -X POST $request_url/logout -d '" . $content_logout . "'";
+     my $curl_check_cpu_dd_cmd = "curl -b $cjar_id -k -H 'Content-Type: application/json' -X GET $request_url/xyz/openbmc_project/inventory/system/chassis/motherboard/cpu0 | grep Version | cut -d: -f2";
 
     if (%fw_tar_files) {
         foreach my $key (keys %fw_tar_files) {
@@ -4656,6 +4673,17 @@ sub rflash_upload {
     }
     if ($h->{message} eq $::RESPONSE_OK) {
         if(%curl_upload_cmds){
+            # Before uploading file, check CPU DD version
+            my $curl_dd_check_result = `$curl_check_cpu_dd_cmd`;
+            if ($curl_dd_check_result =~ "20") {
+                # Display warning the only certain firmware versions are supported on DD 2.0
+                xCAT::SvrUtils::sendmsg("Warning: DD 2.0 processor detected on this node, should not have firmware > ibm-v2.0-0-r13.6 (BMC) and > v1.19_1.94 (Host).", $callback, $node);
+            }
+            if ($curl_dd_check_result =~ "21") {
+                if ($::VERBOSE) {
+                    xCAT::SvrUtils::sendmsg("DD 2.1 processor", $callback, $node);
+                }
+            }
             while((my $file,my $version)=each(%fw_tar_files)){
                 my $uploading_msg = "Uploading $file ...";
                 my $upload_cmd = $curl_upload_cmds{$file};

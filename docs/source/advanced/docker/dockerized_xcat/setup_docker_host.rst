@@ -6,10 +6,7 @@ Install Docker Engine
 
 The Docker host to run xCAT Docker image should be a baremental or virtual server with Docker v1.10 or above installed. For the details on system requirements and Docker installation, refer to `Docker Installation Docs <https://docs.docker.com/engine/installation/>`_. 
 
-**Note:** 
-
-1. **Docker image** can only run on **Docker host** with the same architecture. Since xCAT currently only ships x86_64 and ppc64le Docker images, running xCAT in Docker requires x86_64 or ppc64le **Docker hosts**.
-
+.. note:: Docker images can only run on Docker hosts with the same architecture.  Since xCAT only ships x86_64 and ppc64le Docker images, running xCAT in Docker requires x86_64 or ppc64 Docker Hosts.
 
 Shutdown the SELinux/Apparmor on Docker host
 --------------------------------------------

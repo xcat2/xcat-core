@@ -4555,17 +4555,19 @@ sub defmk_usage
     $rsp->{data}->[3] = "      [-o object-names] [-z|--stanza ]";
     $rsp->{data}->[4] = "      [-d | --dynamic] [-w attr==val [-w attr=~val] ...]";
     $rsp->{data}->[5] = "      [-f | --force] [noderange] [attr=val [attr=val...]]";
-    $rsp->{data}->[6] = "\nThe following data object types are supported by xCAT.\n";
-    my $n = 6;
+    $rsp->{data}->[6] = "\nThe following data object types are supported by xCAT:\n";
+    my $n = 7;
+    my $dataobj;
 
     foreach my $t (sort(keys %{xCAT::Schema::defspec}))
     {
-        $rsp->{data}->[$n] = "$t";
-        $n++;
+        $dataobj = $dataobj . ' ' . $t;
     }
+    $rsp->{data}->[$n] = "$dataobj\n";
+    $n++;
     $rsp->{data}->[$n] = "\nUse the \'-h\' option together with the \'-t\' option to";
     $n++;
-    $rsp->{data}->[$n] = "get a list of valid attribute names for each object type.\n";
+    $rsp->{data}->[$n] = " get a list of valid attribute names for each object type.\n";
     xCAT::MsgUtils->message("I", $rsp, $::callback);
     return 0;
 }
@@ -4596,17 +4598,23 @@ sub defch_usage
     $rsp->{data}->[3] = "  chdef [-V | --verbose] [-t object-types] [-o object-names] [-d | --dynamic]";
     $rsp->{data}->[4] = "    [-z | --stanza] [-m | --minus] [-p | --plus]";
     $rsp->{data}->[5] = "    [-w attr==val [-w attr=~val] ... ] [noderange] [attr=val [attr=val...]]\n";
-    $rsp->{data}->[6] = "\nThe following data object types are supported by xCAT.\n";
+    $rsp->{data}->[6] = "\nThe following data object types are supported by xCAT:\n";
     my $n = 7;
+    my $dataobj;
 
     foreach my $t (sort(keys %{xCAT::Schema::defspec}))
     {
-        $rsp->{data}->[$n] = "$t";
-        $n++;
+        if ($dataobj) {
+            $dataobj = $dataobj . ',' . $t;
+        } else {
+            $dataobj = $t;
+        }
     }
+    $rsp->{data}->[$n] = "$dataobj\n";
+    $n++;
     $rsp->{data}->[$n] = "\nUse the \'-h\' option together with the \'-t\' option to";
     $n++;
-    $rsp->{data}->[$n] = "get a list of valid attribute names for each object type.\n";
+    $rsp->{data}->[$n] = " get a list of valid attribute names for each object type.\n";
     xCAT::MsgUtils->message("I", $rsp, $::callback);
     return 0;
 }
@@ -4638,17 +4646,19 @@ sub defls_usage
     $rsp->{data}->[4] = "  lsdef [-V | --verbose] [-t object-types] [-o object-names]";
     $rsp->{data}->[5] = "        [ -l | --long] [-s | --short] [-a | --all] [-z | --stanza ] [-S]";
     $rsp->{data}->[6] = "        [-i attr-list] [-w attr==val [-w attr=~val] ...] [noderange]\n";
-    $rsp->{data}->[7] = "\nThe following data object types are supported by xCAT.\n";
-    my $n = 6;
+    $rsp->{data}->[7] = "\nThe following data object types are supported by xCAT:\n";
+    my $n = 8;
+    my $dataobj;
 
     foreach my $t (sort(keys %{xCAT::Schema::defspec}))
     {
-        $rsp->{data}->[$n] = "$t";
-        $n++;
+        $dataobj = $dataobj . ' ' . $t;
     }
+    $rsp->{data}->[$n] = "$dataobj\n";
+    $n++;
     $rsp->{data}->[$n] = "\nUse the \'-h\' option together with the \'-t\' option to";
     $n++;
-    $rsp->{data}->[$n] = "get a list of valid attribute names for each object type.\n";
+    $rsp->{data}->[$n] = " get a list of valid attribute names for each object type.\n";
     xCAT::MsgUtils->message("I", $rsp, $::callback);
     return 0;
 }
@@ -4677,17 +4687,19 @@ sub defrm_usage
     $rsp->{data}->[1] = "  rmdef [-h | --help ] [-t object-types]\n";
     $rsp->{data}->[2] = "  rmdef [-V | --verbose] [-t object-types] [-a | --all] [-f | --force]";
     $rsp->{data}->[3] = "    [-o object-names] [-C | --cleanup] [noderange]\n";
-    $rsp->{data}->[4] = "\nThe following data object types are supported by xCAT.\n";
+    $rsp->{data}->[4] = "\nThe following data object types are supported by xCAT:\n";
     my $n = 5;
+    my $dataobj;
 
     foreach my $t (sort(keys %{xCAT::Schema::defspec}))
     {
-        $rsp->{data}->[$n] = "$t";
-        $n++;
+        $dataobj = $dataobj . ' ' . $t;
     }
+    $rsp->{data}->[$n] = "$dataobj\n";
+    $n++;
     $rsp->{data}->[$n] = "\nUse the \'-h\' option together with the \'-t\' option to";
     $n++;
-    $rsp->{data}->[$n] = "get a list of valid attribute names for each object type.\n";
+    $rsp->{data}->[$n] = " get a list of valid attribute names for each object type.\n";
     xCAT::MsgUtils->message("I", $rsp, $::callback);
     return 0;
 }

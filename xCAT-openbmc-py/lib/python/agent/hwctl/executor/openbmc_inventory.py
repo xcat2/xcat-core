@@ -74,18 +74,47 @@ class OpenBMCInventoryTask(ParallelNodesCommand):
 
         return firm_info
 
-    def get_info(self, inventory_type, **kw):
+    def get_info(self, inventory_types, **kw):
 
         node = kw['node']
         obmc = openbmc.OpenBMCRest(name=node, nodeinfo=kw['nodeinfo'], messager=self.callback,
                                    debugmode=self.debugmode, verbose=self.verbose)
 
         inventory_info = []
+
+        # inventory_types contains an array of different inventories to get
+        # Go through the array and set flags to optimize invnetory calls
+        model_or_serial = 0
+        cpu_or_dimm = 0
+        all = 0
+        inventory_type = 'all'
+        for type in inventory_types:
+            if type == 'model' or type == 'serial':
+                # For model and serial we can make a single call
+                model_or_serial = 1
+            if type == 'cpu' or type == 'dimm':
+                # For cpu and dimm we can make a single call
+                cpu_or_dimm = 1
+            if type == 'all':
+                all = 1
+        if all == 1:
+            inventory_type = 'all'
+        elif model_or_serial == 1 and cpu_or_dimm == 1:
+            # Both model_or_serial and cpu_or_dimm were set, might as well ask for all
+            inventory_type = 'all'
+        elif model_or_serial == 1:
+            inventory_type = 'model'
+        elif cpu_or_dimm == 1:
+            inventory_type = 'cpu'
+
         try:
             obmc.login()
-            inventory_info_dict = obmc.get_inventory_info()
+            # Extract the data from the BMC
+            inventory_info_dict = obmc.get_inventory_info(inventory_type)
 
-            if inventory_type == 'all' or not inventory_type:
+            # Process returned inventory_info_dict depending on the inventory requested 
+            if all == 1:
+                # Everything gets displayed, even firmware
                 keys = inventory_info_dict.keys()
                 keys.sort()
                 for key in keys:
@@ -95,17 +124,28 @@ class OpenBMCInventoryTask(ParallelNodesCommand):
                 firm_info = self._get_firm_info(firm_dict_list)
 
                 inventory_info += firm_info
-            elif inventory_type == 'model' or inventory_type == 'serial':
-                key = 'Model' if inventory_type == 'model' else 'SerialNumber'
-                if 'SYSTEM' in inventory_info_dict:
-                    for system_info in inventory_info_dict['SYSTEM']:
-                        if key in system_info:
-                            inventory_info = [system_info]
-                            break
             else:
-                key = inventory_type.upper()
-                if key in inventory_info_dict:
-                    inventory_info = utils.sort_string_with_numbers(inventory_info_dict[key])
+                if model_or_serial == 1:
+                    # Model or serial was requested
+                    for one_inventory_type in inventory_types:
+                        if one_inventory_type == 'model':
+                            key = 'Model'
+                        elif one_inventory_type == 'serial':
+                            key = 'SerialNumber'
+                        else:
+                            continue
+
+                        if 'SYSTEM' in inventory_info_dict:
+                            for system_info in inventory_info_dict['SYSTEM']:
+                                if key in system_info:
+                                    inventory_info += [system_info]
+                                    break
+                if cpu_or_dimm:
+                    # cpu or dimm was requested
+                    for one_inventory_type in inventory_types:
+                        key = one_inventory_type.upper()
+                        if key in inventory_info_dict:
+                            inventory_info += utils.sort_string_with_numbers(inventory_info_dict[key])
 
             if not inventory_info:
                 inventory_info = ['No attributes returned from the BMC.']

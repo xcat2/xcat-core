@@ -50,18 +50,7 @@ Then run the following: ::
 
 	rspconfig mswitch sshcfg=enable
 
-**[Note]** For Mellanox switch in manufacturing defaults status, the user need to answer 'no' for the initial configuration wizard prompt as follows before run 'rspconfig'. ::
-
-	[s1mn][/](/)> ssh -l admin mswitch
-	Mellanox MLNX-OS Switch Management
-	Password:
-	Last login: Wed Feb 20 20:09:50 2013 from 1.2.3.4
-	Mellanox Switch
-	Mellanox configuration wizard
-	Do you want to use the wizard for initial configuration? **no**
-	To return to the wizard from the CLI, enter the "configuration jump-start"
-	command from configure mode. Launching CLI...
-	switch-xxxxxx [standalone: unknown] > exit
+.. warning:: For Mellanox switch in manufacturing defaults, the  user may need to log in once and answer **no** to the configuration wizard as ``rspconfig`` will fail when prompted against the wizard.
 
 Setup syslog on the Switch
 --------------------------

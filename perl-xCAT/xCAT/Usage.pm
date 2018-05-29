@@ -136,7 +136,7 @@ my %usage = (
     ",
     "rinv.openbmc" =>
     "OpenPOWER (OpenBMC) server specific:
-       rinv <noderange> [model|serial|firm|cpu|dimm|all] [-V|--verbose]
+       rinv <noderange> [model][serial][firm][cpu][dimm][all] [-V|--verbose]
     ", 
     "rinv.end" =>
     "PPC specific(with HMC):
@@ -500,7 +500,7 @@ my %usage = (
     or
     updatenode <noderange> [-V|--verbose] [-k|--security] [-s|--sn] [-t <timeout>]
     or
-    updatenode <noderange> [-V|--verbose] [-F|--sync | -f|--snsync] [-l|--user[username]] [--fanout=[fanout value]] [-S|--sw] [-t <timeout>]
+    updatenode <noderange> [-V|--verbose] [-F|--sync | -f|--snsync] [-r|--node-rcp <node_remote_copy>] [-l|--user[username]] [--fanout=[fanout value]] [-S|--sw] [-t <timeout>]
         [-P|--scripts [script1,script2,...]] [-s|--sn] 
         [-A|--updateallsw] [-c|--cmdlineonly] [-d alt_source_dir]
         [attr=val [attr=val...]]
@@ -520,7 +520,9 @@ Options:
 
     [-f|--snsync] Performs File Syncing to the service nodes that service 
         the nodes in the noderange.
-
+ 
+    [-r|--node-rcp] Specifies  the  full  path of the remote copy command used for sync files to node targets, such as /usr/bin/rsync and /usr/bin/scp
+   
     [-g|--genmypost] Will generate a new mypostscript file for the
         the nodes in the noderange, if site precreatemypostscripts is 1 or YES.
 
@@ -616,7 +618,6 @@ $usage{"rspconfig.openbmc"} = $usage{"rspconfig.common"} .
 $usage{"rinv"} = $usage{"rinv.common"} . 
                       $usage{"rinv.begin"} .
                       $usage{"rinv.openbmc"} .
-                      "   " .
                       $usage{"rinv.end"};
 
 $usage{"rinv.openbmc"} = $usage{"rinv.common"} .
@@ -632,7 +633,6 @@ $usage{"rbeacon.openbmc"} = $usage{"rbeacon.common"} .
 $usage{"rvitals"} = $usage{"rvitals.common"} . 
                       $usage{"rvitals.begin"} .
                       $usage{"rvitals.openbmc"} .
-                      "   " .
                       $usage{"rvitals.end"};
 
 $usage{"rvitals.openbmc"} = $usage{"rvitals.common"} .
@@ -650,7 +650,6 @@ $usage{"rflash.openbmc"} = $usage{"rflash.common"} .
 $usage{"rpower"} = $usage{"rpower.common"} . 
                       $usage{"rpower.begin"} .
                       $usage{"rpower.openbmc"} .
-                      "   " .
                       $usage{"rpower.end"};
 
 $usage{"rpower.openbmc"} = $usage{"rpower.common"} .

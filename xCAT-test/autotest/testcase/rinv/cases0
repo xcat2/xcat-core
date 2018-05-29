@@ -121,7 +121,7 @@ cmd:chdef $$CN bmcpassword=test
 check:rc==0
 cmd:rinv $$CN all
 check:rc==1
-check:output=~$$CN: Error:.+Invalid username or password|Error: ERROR: Incorrect password provided
+check:output=~$$CN: (\[.*?\]: )?Error:.+Invalid username or password|Error: (\[.*?\]: )?ERROR: Incorrect password provided
 cmd:cat /tmp/testnode.stanza | chdef -z;rm -rf /tmp/testnode.stanza 
 check:rc==0
 end
@@ -129,5 +129,5 @@ start:rinv_errorcommand
 description:get right return if input error command
 cmd:rinv $$CN dafds
 check:rc==1
-check:output=~Unsupported command|Error: Usage:
+check:output=~Unsupported command|Error: (\[.*?\]: )?Usage:
 end

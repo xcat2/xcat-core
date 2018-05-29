@@ -73,11 +73,25 @@ sub preprocess_request {
     if (ref($extrargs)) {
         @exargs = @$extrargs;
     }
-    my $usage_string = xCAT::Usage->parseCommand($command, @exargs);
+    # Request usage for openbmc sections only
+    my $usage_string = xCAT::Usage->parseCommand($command . ".openbmc", @exargs);
+ 
     if ($usage_string) {
+        if ($usage_string =~ /cannot be found/) {
+            # Could not find usage for openbmc section, try getting usage for all sections
+            $usage_string = xCAT::Usage->parseCommand($command, @exargs);
+        }
         $callback->({ data => [$usage_string] });
         $request = {};
         return;
+    }
+
+    #pdu commands will be handled in the pdu plugin
+    if ($command eq "rpower") {
+        my $subcmd = $exargs[0];
+        if(($subcmd eq 'pduoff') || ($subcmd eq 'pduon') || ($subcmd eq 'pdustat') || ($subcmd eq 'pdureset')){
+             return;
+        }
     }
 
     my $parse_result = parse_args($command, $extrargs, $noderange);
@@ -135,7 +149,7 @@ sub process_request {
     return unless(%node_info);
 
     # If we can't start the python agent, exit immediately
-    my $pid = xCAT::OPENBMC::start_python_agent();
+    my $pid = xCAT::OPENBMC::start_python_agent($$);
     if (!defined($pid)) {
         xCAT::MsgUtils->message("E", { data => ["Failed to start the xCAT Python agent. Check /var/log/xcat/cluster.log for more information."] }, $callback);
         return;
@@ -177,7 +191,7 @@ sub parse_args {
         return ([ 1, "Error parsing arguments." ]);
     }
 
-    if (scalar(@ARGV) >= 2 and ($command =~ /rbeacon|rinv|rpower|rvitals/)) {
+    if (scalar(@ARGV) >= 2 and ($command =~ /rbeacon|rpower|rvitals/)) {
         return ([ 1, "Only one option is supported at the same time for $command" ]);
     } elsif (scalar(@ARGV) == 0 and $command =~ /rbeacon|rspconfig|rpower|rflash/) {
         return ([ 1, "No option specified for $command" ]);
@@ -238,9 +252,18 @@ sub parse_args {
             return ([ 1, "Invalid option specified with '-l|--list'."]) if (@ARGV);
         }
     } elsif ($command eq "rinv") {
-        $subcommand = "all" if (!defined($ARGV[0]));
-        unless ($subcommand =~ /^all$|^cpu$|^dimm$|^firm$|^model$|^serial$/) {
-            return ([ 1, "Unsupported command: $command $subcommand" ]);
+        if (!defined($ARGV[0])) {
+            $subcommand = "all";
+        } else {
+            foreach my $each_subcommand (@ARGV) {
+                # Check if each passed subcommand is valid
+                if ($each_subcommand =~ /^all$|^cpu$|^dimm$|^firm$|^model$|^serial$/) {
+                    $subcommand .= $each_subcommand . " ";
+                } else {
+                    # Exit once we find an invalid subcommand
+                    return ([ 1, "Unsupported command: $command $each_subcommand" ]);
+                }
+            }
         }
     } elsif ($command eq "rpower") {
         unless ($subcommand =~ /^on$|^off$|^softoff$|^reset$|^boot$|^bmcreboot$|^bmcstate$|^status$|^stat$|^state$/) {

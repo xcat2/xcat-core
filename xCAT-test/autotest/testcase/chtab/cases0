@@ -61,7 +61,7 @@ start:chtab_err_table
 description:chtab with error table
 cmd:chtab error=error site.comment=error
 check:rc!=0
-check:output=~no such column
+check:output=~no such column|column \"error\" does not exist
 end
 
 

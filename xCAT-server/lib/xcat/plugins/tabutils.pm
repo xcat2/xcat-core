@@ -2225,13 +2225,10 @@ sub tabch {
         my %rsp;
         push @{ $rsp{data} }, "Usage: tabch";
         push @{ $rsp{data} }, "       To add or update rows for tables:";
-        push @{ $rsp{data} }, "       tabch [keycolname=keyvalue[,keycolname=keyvalue...]] [tablename.colname=newvalue] [tablename.colname=newvalue]...";
+        push @{ $rsp{data} }, "       tabch keycolname=keyvalue[,keycolname=keyvalue...] tablename.colname=newvalue [tablename.colname=newvalue...]";
         push @{ $rsp{data} }, "       To delete rows from tables:";
-        push @{ $rsp{data} }, "       tabch -d|--delete keycolname=keyvalue[,keycolname=keyvalue...] tablename [tablename]...";
+        push @{ $rsp{data} }, "       tabch -d|--delete keycolname=keyvalue[,keycolname=keyvalue...] tablename [tablename...]";
         push @{ $rsp{data} }, "         keycolname=keyvalue   a column name-and-value pair ";
-        push @{ $rsp{data} }, "         that identifies the rows in a table to be changed.";
-        push @{ $rsp{data} }, "         a column name-and-value pair that identifies ";
-        push @{ $rsp{data} }, "         the rows in a table to be changed.";
         push @{ $rsp{data} }, "         that identifies the rows in a table to be changed.";
         push @{ $rsp{data} }, "         tablename.colname=newvalue ";
         push @{ $rsp{data} }, "         the new value for the specified row and column of the table.";

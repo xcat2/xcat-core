@@ -16,6 +16,8 @@ my $program_name = basename("$0");
 my $help;
 my $noderange = "";
 my $test;
+my $osimage;
+my $osimagecmd = "";
 my $output  = "stdout";
 my $verbose = 0;
 my $rst     = 0;
@@ -30,6 +32,7 @@ Description:
 Options:
     -h : Get usage information of $program_name
     -V : To print additional debug information.
+    --osimage=<name>: Provide the osimage name to run the probe against
 ";
 
 #-------------------------------------
@@ -38,6 +41,7 @@ Options:
 if (
     !GetOptions("--help|h" => \$help,
         "T"                  => \$test,
+        "osimage=s"          => \$osimage,
         "V|verbose"          => \$VERBOSE))
 {
     probe_utils->send_msg("$output", "f", "Invalid parameter for $program_name");
@@ -68,18 +72,15 @@ if (scalar(@ARGV) >= 1) {
     exit 1;
 }
 
-# Run all osinage probe checks one after another
-check_for_duplicate_rootimgdir();
-check_for_valid_osimage_attributes();
-
 # Check for osimage definitions with duplicate values for rootimgdir
 sub check_for_duplicate_rootimgdir {
+    probe_utils->send_msg("$output", "i", "==> Checking for duplicate usage of the rootimgdir in diskless images...");
     my $na = "N/A";
 
     my %rootimgdir_osimage_hash;
     my $any_dups = 0;
 
-    my $all_osimages_rootimgdir = `lsdef -t osimage -i rootimgdir -c 2> /dev/null`;
+    my $all_osimages_rootimgdir = `lsdef -t osimage $osimagecmd -i rootimgdir -c 2> /dev/null`;
     chomp($all_osimages_rootimgdir);
     my @all_osimages_rootimgdir_lines = split("[\n\r]", $all_osimages_rootimgdir);
 
@@ -137,6 +138,7 @@ sub check_for_duplicate_rootimgdir {
 
 # Check attributes in osimage definitions for valid format
 sub check_for_valid_osimage_attributes {
+    probe_utils->send_msg("$output", "i", "==> Checking for valid osimage template attribute ... ");
     my $na = "N/A";
 
     my $rc = 0;
@@ -145,7 +147,7 @@ sub check_for_valid_osimage_attributes {
     my $any_dups = 0;
 
     # Check if any osimage object has "template" attribute set to service.tmpl or compute.tmpl
-    my $all_osimages_template = `lsdef -t osimage -i template -c 2> /dev/null`;
+    my $all_osimages_template = `lsdef -t osimage $osimagecmd -i template -c 2> /dev/null`;
     chomp($all_osimages_template);
     my @all_osimages_template_lines = split("[\n\r]", $all_osimages_template);
 
@@ -176,3 +178,66 @@ sub check_for_valid_osimage_attributes {
 
     return $rc;
 }
+
+sub check_valid_files_defined { 
+    probe_utils->send_msg("$output", "i", "==> Checking that valid files are specified in osimage attributes ...");
+    my $rc = 0;
+    my $osimage_list = `lsdef -t osimage $osimagecmd -s 2> /dev/null`;
+    chomp($osimage_list);
+    my @all_osimage_lists = split("[\n]", $osimage_list);
+    
+    foreach (@all_osimage_lists) {
+        # loop over the osimage name
+        my ($osimage_name, $junk) = split " ", $_;
+        probe_utils->send_msg("$output", "d", "Inspecting osimage=$osimage_name") if ($VERBOSE);
+
+        my @attributes = qw ( otherpkglist pkglist template );
+        foreach (@attributes) {
+            # loop over the attributes to check
+            probe_utils->send_msg("$output", "d", "Checking attribute=$_ ...") if ($VERBOSE);
+   
+            my $osimage_attribute = `lsdef -t osimage -o $osimage_name -i $_ -c 2> /dev/null`;
+            chomp($osimage_attribute);
+            my ($junk, $file) = split "=", $osimage_attribute;
+            if ($file eq "") {
+                # if no file is defined, skip 
+                next;
+            }
+
+            if ($file =~ /\,/) {
+                my @files = split /,/, $file;
+                foreach my $f (@files) {
+                    probe_utils->send_msg("$output", "d", "Defined in $_, checking for file: $f") if ($VERBOSE);
+                   if (! -e $f) {
+                       probe_utils->send_msg("$output", "f", "In $_, NON-EXISTANT FILE: $f");
+                       $rc = 1;
+                   }
+                } 
+            }
+        }
+    }
+    if ($rc == 0) { 
+        probe_utils->send_msg("$output", "o", "Files specified in the osimage attributes seem to be valid.");
+    }
+}
+#
+# MAIN
+#
+# Run all osimage probe checks one after another
+
+if ($osimage) {
+    $osimagecmd = "-o $osimage";
+    probe_utils->send_msg("$output", "d", "[osimagecheck] osimage passed in: $osimage") if ($VERBOSE);
+    # verify a valid osimage name was passed in
+    my $osimage_output = `lsdef -t osimage $osimagecmd 2>&1`;
+    if ($osimage_output =~ /Error: Could not find/) {
+        probe_utils->send_msg("$output", "f", "Invalid osimage name passed in: $osimage"); 
+        exit 1;
+    } 
+} else {
+    probe_utils->send_msg("$output", "d", "[osimagecheck] No osimage passed in, checking all osimages ...") if ($VERBOSE);
+}
+check_for_duplicate_rootimgdir();
+check_for_valid_osimage_attributes();
+check_valid_files_defined();
+

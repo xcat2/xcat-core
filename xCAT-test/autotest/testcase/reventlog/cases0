@@ -36,9 +36,9 @@ cmd:reventlog $$CN -s all
 check:output=~The -s option is not supported for OpenBMC|Only one option is supported at the same time for reventlog
 check:rc!=0
 cmd:reventlog $$CN -s
-check:output=~Error: Unsupported command
+check:output=~Error: (\[.*?\]: )?Unsupported command
 check:rc!=0
 cmd:reventlog $$CN all aaa
-check:output=~Error: Only one option is supported at the same time
+check:output=~Error: (\[.*?\]: )?Only one option is supported at the same time
 check:rc!=0
 end

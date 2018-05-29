@@ -62,7 +62,7 @@ Attribute: $$CN-The operation object of rspconfig command
 os:Linux
 hcp:openbmc
 cmd:rspconfig $$CN ip=__GETNODEATTR($$CN,bmc)__
-check:output=~Error: IP, netmask and gateway must be configured together.
+check:output=~Error: (\[.*?\]: )?IP, netmask and gateway must be configured together.
 check:rc!=0
 end
 
@@ -72,7 +72,7 @@ Attribute: $$CN-The operation object of rspconfig command
 os:Linux
 hcp:openbmc
 cmd:rspconfig $$CN ip=ddd gateway=0.0.0.0  netmask=255.255.0.0
-check:output=~Error: Invalid parameter for option ip
+check:output=~Error: (\[.*?\]: )?Invalid parameter for option ip
 check:rc!=0
 end
 
@@ -95,7 +95,7 @@ Attribute: $$CN-The operation object of rspconfig command
 os:Linux
 hcp:openbmc
 cmd:rspconfig $$CN netmask=255.255.0.0
-check:output=~Error: IP, netmask and gateway must be configured together.
+check:output=~Error: (\[.*?\]: )?IP, netmask and gateway must be configured together.
 check:rc!=0
 end
 
@@ -103,13 +103,13 @@ start:rspconfig_netmask_invalid
 despcription:rspconfig could not change openbmc netmask using invalid netmask
 Attribute: $$CN-The operation object of rspconfig command
 cmd:rspconfig $$CN netmask=ddd
-check:output=~Error: Invalid parameter for option netmask
+check:output=~Error: (\[.*?\]: )?Invalid parameter for option netmask
 check:rc!=0
 cmd:rspconfig $$CN netmask=ddd ip=__GETNODEATTR($$CN,bmc)__ gateway=0.0.0.0
-check:output=~Error: Invalid parameter for option netmask
+check:output=~Error: (\[.*?\]: )?Invalid parameter for option netmask
 check:rc!=0
 cmd:rspconfig $$CN netmask= ip=__GETNODEATTR($$CN,bmc)__ gateway=0.0.0.0
-check:output=~Error: Invalid parameter for option netmask
+check:output=~Error: (\[.*?\]: )?Invalid parameter for option netmask
 check:rc!=0
 end
  
@@ -119,7 +119,7 @@ Attribute: $$CN-The operation object of rspconfig command
 os:Linux
 hcp:openbmc
 cmd:rspconfig $$CN gateway=0.0.0.0
-check:output=~Error: IP, netmask and gateway must be configured together.
+check:output=~Error: (\[.*?\]: )?IP, netmask and gateway must be configured together.
 check:rc!=0
 end
 
@@ -127,10 +127,10 @@ start:rspconfig_set_vlan
 description:rspconfig change openbmc gateway
 Attribute: $$CN-The operation object of rspconfig command
 cmd:rspconfig $$CN vlan=0
-check:output=~Error: Invalid parameter for option vlan|Error: VLAN must be configured with IP, netmask and gateway
+check:output=~Error: (\[.*?\]: )?Invalid parameter for option vlan|Error: (\[.*?\]: )?VLAN must be configured with IP, netmask and gateway
 check:rc!=0
 cmd:rspconfig $$CN vlan=111
-check:output=~Error: VLAN must be configured with IP, netmask and gateway
+check:output=~Error: (\[.*?\]: )?VLAN must be configured with IP, netmask and gateway
 check:rc!=0
 end
 
@@ -147,13 +147,13 @@ Attribute: $$CN-The operation object of rspconfig command
 os:Linux
 hcp:openbmc
 cmd:rspconfig $$CN gateway=ddd
-check:output=~Error: Invalid parameter for option gateway
+check:output=~Error: (\[.*?\]: )?Invalid parameter for option gateway
 check:rc!=0
 cmd:rspconfig $$CN gateway= ip=__GETNODEATTR($$CN,bmc)__ netmask=255.0.0.0
-check:output=~Error: Invalid parameter for option gateway
+check:output=~Error: (\[.*?\]: )?Invalid parameter for option gateway
 check:rc!=0
 cmd:rspconfig $$CN gateway=
-check:output=~Error: Invalid parameter for option gateway
+check:output=~Error: (\[.*?\]: )?Invalid parameter for option gateway
 check:rc!=0
 end
 
@@ -163,7 +163,7 @@ Attribute: $$CN-The operation object of rspconfig command
 os:Linux
 hcp:openbmc
 cmd:rspconfig $$CN vlan=dddsdsdfs
-check:output=~Error: VLAN must be configured with IP, netmask and gateway
+check:output=~Error: (\[.*?\]: )?VLAN must be configured with IP, netmask and gateway
 check:rc!=0
 end
 
@@ -173,7 +173,7 @@ Attribute: $$CN-The operation object of rspconfig command
 os:Linux
 hcp:openbmc
 cmd:rspconfig $$CN ip=dsd gateway=ooo netmask=asfsf vlan=dddsdsdfs
-check:output=~Error: Invalid parameter
+check:output=~Error: (\[.*?\]: )?Invalid parameter
 check:rc!=0
 end
 
@@ -184,7 +184,7 @@ hcp:openbmc
 cmd:test=$(lsdef testnode);if [[ $? -eq 0 ]]; then lsdef -l testnode -z >/tmp/testnode.stanza ;rmdef testnode;fi
 check:rc==0
 cmd:rspconfig testnode ip
-check:output=~Error: Invalid nodes and/or groups in noderange
+check:output=~Error: (\[.*?\]: )?Invalid nodes and/or groups in noderange
 check:rc!=0
 cmd:if [[ -e /tmp/testnode.stanza ]]; then cat /tmp/testnode.stanza | chdef -z;rm -rf /tmp/testnode.stanza;fi
 check:rc==0
@@ -197,7 +197,7 @@ hcp:openbmc
 cmd:test=$(lsdef testnode);if [[ $? -eq 0 ]]; then lsdef -l testnode -z >/tmp/testnode.stanza ;rmdef testnode;fi
 check:rc==0
 cmd:rspconfig testnode,$$CN ip
-check:output=~Error: Invalid nodes
+check:output=~Error: (\[.*?\]: )?Invalid nodes
 check:rc!=0
 cmd:if [[ -e /tmp/testnode.stanza ]]; then cat /tmp/testnode.stanza | chdef -z;rm -rf /tmp/testnode.stanza;fi
 check:rc==0
@@ -323,13 +323,13 @@ description: To test <get node hostname> with error input, should throw out erro
 os:Linux
 hcp:openbmc
 cmd:rspconfig $$CN hostname bogus
-check:output =~Error: Unsupported command
+check:output =~Error: (\[.*?\]: )?Unsupported command
 check:rc != 0
 cmd:rspconfig $$CN bogus hostname
-check:output =~Error: Unsupported command
+check:output =~Error: (\[.*?\]: )?Unsupported command
 check:rc != 0
 cmd:rspconfig $$CN hostname=
-check:output =~Error: Invalid parameter for option hostname
+check:output =~Error: (\[.*?\]: )?Invalid parameter for option hostname
 check:rc != 0
 end
 
@@ -364,19 +364,19 @@ description: To test "rspconfig <node> admin_passwd=xxx,yyy". If the format of "
 os:Linux
 hcp:openbmc
 cmd:rspconfig $$CN admin_passwd=cluster,
-check:output =~Error: Invalid parameter for option admin_passwd
+check:output =~Error: (\[.*?\]: )?Invalid parameter for option admin_passwd
 check:rc != 0
 cmd:rspconfig $$CN admin_passwd=,cluster
-check:output =~Error: Invalid parameter for option admin_passwd
+check:output =~Error: (\[.*?\]: )?Invalid parameter for option admin_passwd
 check:rc != 0
 cmd:rspconfig $$CN admin_passwd=,
-check:output =~Error: Invalid parameter for option admin_passwd
+check:output =~Error: (\[.*?\]: )?Invalid parameter for option admin_passwd
 check:rc != 0
 cmd:rspconfig $$CN admin_passwd=
-check:output =~Error: Invalid parameter for option admin_passwd
+check:output =~Error: (\[.*?\]: )?Invalid parameter for option admin_passwd
 check:rc != 0
 cmd:rspconfig $$CN admin_passwd=;
-check:output =~Error: Invalid parameter for option admin_passwd
+check:output =~Error: (\[.*?\]: )?Invalid parameter for option admin_passwd
 end
 
 start:rspconfig_set_admin_passwd_with_error_origin_password
@@ -393,10 +393,10 @@ description: To test "rspconfig <node> sshcfg" with error input, should throw ou
 os:Linux
 hcp:openbmc
 cmd:rspconfig $$CN sshcfg aaa
-check:output =~Error: Configure sshcfg must be issued without other options.
+check:output =~Error: (\[.*?\]: )?Configure sshcfg must be issued without other options.
 check:rc != 0
 cmd:rspconfig $$CN  hostname sshcfg
-check:output =~Error: Configure sshcfg must be issued without other options.
+check:output =~Error: (\[.*?\]: )?Configure sshcfg must be issued without other options.
 check:rc != 0
 end
 

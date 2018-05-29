@@ -8,15 +8,15 @@ B<tabch> [B<-h> | B<--help>]
 
 B<tabch> [B<-v> | B<--version>]
 
-B<tabch> [I<keycolname=keyvalue>] [I<tablename.colname=newvalue>]
+B<tabch> I<keycolname=keyvalue>[,I<keycolname=keyvalue>,...] I<tablename.colname=newvalue> [I<tablename.colname=newvalue> ...]
 
-B<tabch> [I<keycolname=keyvalue>] [I<tablename.colname+=newvalue>]
+B<tabch> I<keycolname=keyvalue>[,I<keycolname=keyvalue>,...] I<tablename.colname+=newvalue> [I<tablename.colname+=newvalue> ...]
 
-B<tabch -d> [I<keycolname=keyvalue>] [I<tablename.colname=newvalue>]
+B<tabch -d> I<keycolname=keyvalue>[,I<keycolname=keyvalue>,...] I<tablename> [I<tablename> ...]
 
 =head1 DESCRIPTION
 
-The tabch command adds, deletes or updates the attribute value in the specified table.column for the specified keyvalue.  The difference between tabch and chtab is tabch runs as a plugin under the xcatd daemon. This give the additional security of being authorized by the daemon. Normally, the given value will completely replace the current attribute value.  But if "+=" is used instead of "=", the specified value will be appended to the coma separated list of the attribute, if it is not already there.
+The B<tabch> command adds, deletes or updates the attribute values in the specified table.column for the specified keyvalue.  The difference between B<tabch> and B<chtab> is B<tabch> runs as a plugin under the xcatd daemon. This give the additional security of being authorized by the daemon. Normally, the given value will completely replace the current attribute value.  But if "+=" is used instead of "=", the specified value will be appended to the comma separated list of attributes, if it is not already there.
 
 
 =head1 OPTIONS
