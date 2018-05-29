@@ -25,8 +25,8 @@ use xCAT_monitoring::monitorctrl;
 use xCAT::TableUtils;
 
 my $LOCK_DIR = "/var/lock/xcat/";
-my $LOCK_PATH = "/var/lock/xcat/agent-$$.lock";
-my $AGENT_SOCK_PATH = "/var/run/xcat/agent-$$.sock";
+my $LOCK_PATH = "/var/lock/xcat/agent.lock";
+my $AGENT_SOCK_PATH = "/var/run/xcat/agent.sock";
 my $PYTHON_LOG_PATH = "/var/log/xcat/agent.log";
 my $PYTHON_AGENT_FILE = "/opt/xcat/lib/python/agent/agent.py";
 my $MSG_TYPE = "message";
@@ -62,8 +62,15 @@ sub send_request {
 # if lock is released unexpectedly, python side would aware of the error after
 # getting this lock
 sub acquire_lock {
+    my $ppid = shift;
+    $ppid = shift if (($ppid) && ($ppid =~ /OPENBMC/));
+
     mkpath($LOCK_DIR);
     # always create a new lock file
+    if ($ppid) {
+        $LOCK_PATH = "$LOCK_PATH.$ppid";
+        $AGENT_SOCK_PATH = "$AGENT_SOCK_PATH.$ppid";
+    }
     unlink($LOCK_PATH);
     open($lock_fd, ">>", $LOCK_PATH) or return undef;
     flock($lock_fd, LOCK_EX) or return undef;
@@ -82,7 +89,10 @@ sub python_agent_reaper {
 }
 sub start_python_agent {
 
-    if (!defined(acquire_lock())) {
+    my $ppid = shift;
+    $ppid = shift if (($ppid) && ($ppid =~ /OPENBMC/));
+
+    if (!defined(acquire_lock($ppid))) {
         xCAT::MsgUtils->message("S", "start_python_agent() Error: Failed to acquire lock");
         return undef;
     }

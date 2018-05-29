@@ -149,7 +149,7 @@ sub process_request {
     return unless(%node_info);
 
     # If we can't start the python agent, exit immediately
-    my $pid = xCAT::OPENBMC::start_python_agent();
+    my $pid = xCAT::OPENBMC::start_python_agent($$);
     if (!defined($pid)) {
         xCAT::MsgUtils->message("E", { data => ["Failed to start the xCAT Python agent. Check /var/log/xcat/cluster.log for more information."] }, $callback);
         return;
