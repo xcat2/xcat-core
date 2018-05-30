@@ -63,6 +63,12 @@ unless ($target) {
     exit(1);
 }
 
+my $current_userid = getpwuid($>);
+if ($current_userid ne "root")
+{
+    print "WARNING: chtab worked without passing xcatd, using tabch command instead if user is controled by policy mechanism\n";
+}
+
 my %keyhash = ();
 my @keypairs = split(/,/, $target);
 if ($keypairs[0] !~ /([^\.\=]+)\.([^\.\=]+)\=(.+)/) {
