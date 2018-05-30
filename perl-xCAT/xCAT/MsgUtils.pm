@@ -897,42 +897,24 @@ sub trace() {
     if (($level eq "I") || ($level eq "i")) { $prefix = "INFO"; }
     if (($level eq "D") || ($level eq "d")) { $prefix = "DEBUG"; }
 
-    if (($level eq "E")
-        || ($level eq "e")
-        || ($level eq "I")
-        || ($level eq "i")
-        || ($level eq "W")
-        || ($level eq "w")) {
-        my $msg = $prefix . " " . $logcontent;
-        eval {
-            openlog("xcat", "nofatal,pid", "local4");
-            syslog("$prefix", $msg);
-            closelog();
-        };
-        if ($@) {
-            print "Error: Unable to log to syslog: $@\n";
-            print "$msg\n";
-        }
-        return;
+    return unless ($prefix); #unknown level, do nothing.
+
+    if (($verbose == 0) && ($prefix eq "DEBUG")) {
+        my @tmp = xCAT::TableUtils->get_site_attribute("xcatdebugmode");
+        my $xcatdebugmode = $tmp[0];
+        return unless (($xcatdebugmode == 1) || ($xcatdebugmode == 2));
     }
 
-    my @tmp           = xCAT::TableUtils->get_site_attribute("xcatdebugmode");
-    my $xcatdebugmode = $tmp[0];
-    if (($level eq "D")
-        || ($level eq "d")) {
-        if (($verbose == 1) || ($xcatdebugmode eq "1") || ($xcatdebugmode eq "2")) {
-            my $msg = $prefix . " " . $logcontent;
-            eval {
-                openlog("xcat", "nofatal,pid", "local4");
-                syslog("$prefix", $msg);
-                closelog();
-            };
-            if ($@) {
-                print "Error: Unable to log to syslog: $@\n";
-                print "$msg\n";
-            }
-        }
+    eval {
+        openlog("xcat", "nofatal,pid", "local4");
+        syslog("$prefix", $logcontent);
+        closelog();
+    };
+    if ($@) {
+        print "Error: Unable to log to syslog: $@\n";
+        print "$prefix . $logcontent\n";
     }
+
 }
 
 #------------------------------------------------------------------
