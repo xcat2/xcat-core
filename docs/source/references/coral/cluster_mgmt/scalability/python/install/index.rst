@@ -8,5 +8,4 @@ A new RPM is created that contains the Python code: ``xCAT-openbmc-py``.  The Py
    :maxdepth: 2
 
    rpm.rst
-   pip.rst
    disable.rst
