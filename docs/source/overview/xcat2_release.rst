@@ -14,6 +14,20 @@ xCAT 2.14.x
 |xCAT                             |New OS         |New          |New Feature                       |
 |Version                          |               |Hardware     |                                  |
 +=================================+===============+=============+==================================+
+|| xCAT 2.14.1                    |- RHV4.2 +     |             |- OpenBMC in python enhance:      |
+|| 2018/6/1                       |  RHEL7.5 + p8 |             |                                  |
+||                                |               |             |  rinv enhance,issue #5176        |
+| `2.14.1 Release Notes <https:// |               |             |                                  |
+| github.com/xcat2/xcat-core/wiki |               |             |- Cumulus Switch OS - syncfile    |
+| /XCAT_2.14.1_Release_Notes>`_   |               |             |                                  |
+|                                 |               |             |- Discover process enhance        |
+|                                 |               |             |                                  |
+|                                 |               |             |- xcatprobe `xcatmn` enhance      |
+|                                 |               |             |                                  |
+|                                 |               |             |- xcat-inventory enhance(beta)    |
+|                                 |               |             |                                  |
+|                                 |               |             |- goconserver v0.2.2              |
++---------------------------------+---------------+-------------+----------------------------------+
 || xCAT 2.14                      |- RHEL 7.5     |             |- OpenBMC support in python:      |
 || 2018/4/20                      |               |             |                                  |
 ||                                |               |             |  rspconfig,reventlog             |
