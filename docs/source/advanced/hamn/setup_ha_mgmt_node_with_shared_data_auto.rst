@@ -3,7 +3,7 @@
 Setup xCAT HA MN Node With Shared Data
 ======================================
 
-This documentation illustrates how to use ``xcatha.py`` script to rapidly setup xCAT primary and standby management nodes to provide high availability management capability, using shared data between the two management nodes. 
+This documentation illustrates how to use ``xcatha.py`` script to setup xCAT primary and standby management nodes to provide high availability management capability, using shared data between the two management nodes. 
 
 If you wish to manually setup xCAT primary and standby management nodes, see the following advanced documentation :doc:`Setup HA Mgmt Node With Shared Data <setup_ha_mgmt_node_with_shared_data>`
 
@@ -12,10 +12,10 @@ xCAT ships a script `xcatha.py <https://github.com/xcat2/xcat-extensions/tree/ma
 User Scenarios
 ==============
 
-User case
----------
+Use case
+--------
 
-As a xCAT user, I have ``host1`` and ``host2`` with the same shared data directory, I want to configure xCAT HA management nodes rapidly.
+As a xCAT user, I have ``host1`` and ``host2`` with the same shared data directory, I want to configure xCAT HA management nodes.
 
 The following scenarios are **examples** to ``setup/failover`` xCAT HA management nodes.
 
@@ -26,7 +26,7 @@ User should prepare the followings before setup shared data based xCAT HA manage
 
     #. Two nodes, for example: ``host1`` and ``host2``
 
-    #. User should prepare shared data by himself, and from nodes ``host1|host2``, we can find shared data directory, for example: ``/HA``
+    #. Setup shared data location (for example ``/HA``) accessible from both ``host1`` and ``host2`` nodes.
 
     #. Virtual IP, for example: ``10.5.106.50``
 
@@ -36,16 +36,16 @@ User should prepare the followings before setup shared data based xCAT HA manage
 
     #. Net mask for virtual IP (it is optional, default value is ``255.255.255.0``): ``255.0.0.0``
 
-    #. Target database type (it is optional, choice value is ``postgresql`` or ``sqlite``, default value is ``postgresql``): ``postgresql``
+    #. Optional database type, supported choices are ``postgresql`` or ``mysql`` or ``sqlite``, default is ``postgresql``
 
 Setup xCAT HA Management Node
 -----------------------------
 
-This section use ``xcatha.py`` to setup xCAT MN management node. During setup process, ``xcatha.py`` will to the following work:
+This section use ``xcatha.py`` to setup xCAT management node to the following work:
 
     #. Configure VIP and its hostname
 
-    #. Copy xCAT data into shared data directory, and make symbolic link from xCAT directory to share data directories::
+    #. Copy xCAT data into shared data directory, and make symbolic links from xCAT directory to share data directories::
 
         /install -> /HA/install
         /etc/xcat -> /HA/etc/xcat
@@ -59,7 +59,7 @@ This section use ``xcatha.py`` to setup xCAT MN management node. During setup pr
 
     #. Deactivate this MN
 
-        #. Configure all following services stop from starting on reboot, and stop these services::
+        #. Stop the following services and configure them not to start on reboot::
 
             console service(conserver, goconserver)
             dhcpd
@@ -67,7 +67,7 @@ This section use ``xcatha.py`` to setup xCAT MN management node. During setup pr
             xcatd
             database (postgresql)
 
-        #. remove symbolic link
+        #. remove symbolic links from xCAT directory to share data directories
 
         #. remove VIP and its hostname
 
@@ -76,7 +76,7 @@ The following scenarios are examples to setup xCAT HA management nodes.
 Scenario 1: xCAT is not installed on 2 xCAT MN nodes
 ````````````````````````````````````````````````````
 
-``host1`` is installed as xCAT primary MN, ``host2`` is installed as xCAT standby MN. They can access to `xcat.org <http://xcat.org/>`_
+``host1`` is installed as xCAT primary MN, ``host2`` is installed as xCAT standby MN. They can access `xcat.org <http://xcat.org/>`_
 
     #. Copy `xcatha.py <https://github.com/xcat2/xcat-extensions/tree/master/HA/xcatha.py>`_ on ``host1``, execute ``xcatha.py`` to setup and configure ``host1`` using ``VIP`` and ``hostname`` as xCAT standby MN::
 
@@ -146,8 +146,8 @@ This section use ``xcatha.py`` to failover ``activate|deactivate`` the ``primary
 
     #. remove VIP and its hostname 
 
-Scenario 1: active xCAT MN host1 is broken and we can access to its OS
-``````````````````````````````````````````````````````````````````````
+Scenario 1: active xCAT MN host1 has problems, but OS is still accessible
+`````````````````````````````````````````````````````````````````````````
 
 This Scenario can execute a planned failover.
 
@@ -159,8 +159,8 @@ This Scenario can execute a planned failover.
 
         python xcatha.py -a -p /HA -v 10.5.106.50 -i eth0:0 -m 255.0.0.0 -t postgresql
 
-Scenario 2: active xCAT MN host1 is broken and we cannot access to its OS
-`````````````````````````````````````````````````````````````````````````
+Scenario 2: active xCAT MN host1 is not accessible
+``````````````````````````````````````````````````
 
 Reboot this xCAT MN node ``host1``, after it boots:
 
@@ -172,4 +172,4 @@ Reboot this xCAT MN node ``host1``, after it boots:
 
             python xcatha.py -a -p /HA -v 10.5.106.50 -i eth0:0 -m 255.0.0.0 -t postgresql
 
-        #. Recommend to fix ``host1`` OS or hardware.
+        #. Recommend recover ``host1``.
