@@ -61,16 +61,13 @@ rm -rf $RPM_BUILD_ROOT
 - "Create xCAT probe package"
 
 %post
-echo "In RPM post section..."
-echo "Create %{prefix}/probe/subcmds/bin/switchprobe link to xcatclient..."
 if [ -e %{prefix}/probe/subcmds/bin/switchprobe ]; then
     rm -rf %{prefix}/probe/subcmds/bin/switchprobe
+else
+    mkdir -p %{prefix}/probe/subcmds/bin/
 fi
-mkdir -p %{prefix}/probe/subcmds/bin/
 cd %{prefix}/probe/subcmds/bin/ 
 ln %{prefix}/bin/xcatclient switchprobe
 
 %preun
-echo "In RPM preun section..."
-echo "Remove %{prefix}/probe/subcmds/bin/switchprobe ..."
 rm -rf %{prefix}/probe/subcmds/bin/
