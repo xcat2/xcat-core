@@ -17,13 +17,15 @@ use File::Basename;
 use File::Path;
 use POSIX;
 require xCAT::Table;
-
+use Data::Dumper;
 require xCAT::Utils;
 require xCAT::Zone;
 require xCAT::TableUtils;
 require xCAT::ServiceNodeUtils;
 require xCAT::MsgUtils;
 use Getopt::Long;
+
+
 require xCAT::DSHCLI;
 1;
 
@@ -62,6 +64,7 @@ sub preprocess_request
     my %sn;
     my $sn;
     my $rc = 0;
+
 
     #if already preprocessed, go straight to request
     if ((defined($req->{_xcatpreprocessed}))
@@ -330,6 +333,11 @@ sub parse_xdcp_cmd
         exit 1;
     }
     my $changedfile = 0;
+
+    if ($options{'node-rcp'}){
+        $::RCP=$options{'node-rcp'};
+    }
+
 
     # check to see if -F option and if there is, is the
     # input file fully defined path
@@ -658,6 +666,10 @@ sub process_servicenodes_xdcp
         $addreq->{command}->[0] = $cmd;
         $addreq->{cwd}->[0]     = $req->{cwd}->[0];
         $addreq->{env}          = $req->{env};
+        if($::RCP){
+            push(@{ $addreq->{arg} }, "-r");
+            push(@{ $addreq->{arg} }, "$::RCP");
+        }
         &process_request($addreq, $callback, $sub_req);
 
         if ($::FAILED_NODES == 0)

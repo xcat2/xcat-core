@@ -60,7 +60,7 @@ site Attributes:
   DATABASE ATTRIBUTES
    -----------------
    auditnosyslog: If set to 1, then commands will only be written to the auditlog table.
-                  This attribute set to 1 and auditskipcmds=ALL means no logging of commands.
+                  If this attribute is set to 1 and auditskipcmds=ALL means no logging of commands.
                   Default is to write to both the auditlog table and syslog.
    auditskipcmds: List of commands and/or client types that will not be
                   written to the auditlog table and syslog. See auditnosyslog.
@@ -68,8 +68,7 @@ site Attributes:
                   commands will be written.
                   clienttype:web would skip all commands from the web client
                   For example: tabdump,nodels,clienttype:web 
-                  will not log tabdump,nodels and any web client commands.
-  
+                  will not log tabdump, nodels or any web client commands.
    databaseloc:    Directory where we create the db instance directory.
                    Default is /var/lib. Only DB2 is currently supported.
                    Do not use the directory in the site.installloc or
@@ -429,6 +428,8 @@ site Attributes:
    --------------------
   XCAT DAEMON ATTRIBUTES
    --------------------
+   tokenexpiredays: Number of days before REST API token will expire. The default is 1.
+                    use 'never' if you want your token to never expire.
    useflowcontrol:  (yes/1 or no/0). If yes, the postscript processing on each node
                  contacts xcatd on the MN/SN using a lightweight UDP packet to wait
                  until xcatd is ready to handle the requests associated with

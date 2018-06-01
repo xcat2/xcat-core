@@ -162,7 +162,7 @@ end
 start:rpower_suspend_OpenpowerBmc
 hcp:openbmc
 cmd:rpower $$CN suspend
-check:output=~Error: Unsupported command: rpower suspend
+check:output=~Error: (\[.*?\]: )?Unsupported command: rpower suspend
 check:rc==1
 end
 
@@ -170,13 +170,45 @@ end
 start:rpower_wake_OpenpowerBmc
 hcp:openbmc
 cmd:rpower $$CN wake
-check:output=~Error: Unsupported command: rpower wake
+check:output=~Error: (\[.*?\]: )?Unsupported command: rpower wake
 check:rc==1
 end
 
 start:rpower_errorcommand_OpenpowerBmc
 hcp:openbmc
 cmd:rpower $$CN ddd
-check:output=~Error: Unsupported command: rpower ddd 
+check:output=~Error: (\[.*?\]: )?Unsupported command: rpower ddd 
 check:rc==1
+end
+
+start:rpower_bmcreboot_perl_python_output
+description:record the output for rpower bmcreboot and compare the output for perl and python version. 
+hcp:openbmc
+cmd: /opt/xcat/share/xcat/tools/autotest/testcase/UT_openbmc/scripts/bmcreboot.sh $$CN /tmp/xcattest.rpower.bmcstate.perl.out PERL
+check:rc==0
+cmd: grep "Login to BMC failed: 500" /tmp/xcattest.rpower.bmcstate.perl.out | sort | uniq | wc -l
+check:output=~3
+cmd: grep "timeout" /tmp/xcattest.rpower.bmcstate.perl.out | sort | uniq | wc -l
+check:output=~1
+cmd: grep "No route to host" /tmp/xcattest.rpower.bmcstate.perl.out | sort | uniq | wc -l
+check:output=~1
+cmd: grep "BMC NotReady" /tmp/xcattest.rpower.bmcstate.perl.out | sort | uniq | wc -l
+check:output=~1
+cmd: grep "BMC Ready" /tmp/xcattest.rpower.bmcstate.perl.out | sort | uniq | wc -l
+check:output=~1
+cmd: cat /tmp/xcattest.rpower.bmcstate.perl.out
+cmd: /opt/xcat/share/xcat/tools/autotest/testcase/UT_openbmc/scripts/bmcreboot.sh $$CN /tmp/xcattest.rpower.bmcstate.python.out PYTHON
+check:rc==0
+cmd: grep "Login to BMC failed: 500" /tmp/xcattest.rpower.bmcstate.python.out | sort | uniq | wc -l
+check:output=~3
+cmd: grep "timeout" /tmp/xcattest.rpower.bmcstate.python.out | sort | uniq | wc -l
+check:output=~1
+cmd: grep "No route to host" /tmp/xcattest.rpower.bmcstate.python.out | sort | uniq | wc -l
+check:output=~1
+cmd: grep "BMC NotReady" /tmp/xcattest.rpower.bmcstate.python.out | sort | uniq | wc -l
+check:output=~1
+cmd: grep "BMC Ready" /tmp/xcattest.rpower.bmcstate.python.out | sort | uniq | wc -l
+check:output=~1
+cmd: cat /tmp/xcattest.rpower.bmcstate.python.out
+cmd:rm -rf /tmp/xcattest.rpower.bmcstate.perl.out /tmp/xcattest.rpower.bmcstate.python.out
 end

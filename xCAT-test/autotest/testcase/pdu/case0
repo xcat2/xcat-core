@@ -27,7 +27,7 @@ cmd:rmdef $$PDU
 check:rc==0
 cmd:lsdef $$PDU
 check:rc!=0
-check:output=~Error: Could not find an object named '$$PDU'
+check:output=~Error: (\[.*?\]: )?Could not find an object named '$$PDU'
 cmd:mkdef $$PDU groups=pdu ip=$$PDUIP mgt=pdu nodetype=pdu
 check:rc==0
 cmd:chdef $$PDU machinetype=1u

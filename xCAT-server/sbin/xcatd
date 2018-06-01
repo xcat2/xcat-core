@@ -809,7 +809,10 @@ sub do_udp_service {    # This function opens up a UDP port
                     my $hdl;
                     foreach $hdl (@hdls) {
                         if ($hdl == $socket) {
-                            $part = $socket->recv($data, 2000);
+                            $part = $socket->recv($data, 3000);
+                            if(length($data)>1500){
+                                xCAT::MsgUtils->message("S", "$0: received ".length($data)."B data packet from ".$socket->peerhost);
+                            }
                             $packets{$part} = [ $part, $data ];
                         } elsif ($hdl == $sslctl) {
                             next;
@@ -861,7 +864,10 @@ sub do_udp_service {    # This function opens up a UDP port
                     while (@hdls = $select->can_read(0)) { # grab any incoming requests during run
                         foreach my $hdl (@hdls) {
                             if ($hdl == $socket) {
-                                $part = $socket->recv($data, 1500);
+                                $part = $socket->recv($data,3000);
+                                if(length($data)>1500){
+                                    xCAT::MsgUtils->message("S", "$0: received ".length($data)."B data packet from ".$socket->peerhost);
+                                }
                                 $packets{$part} = [ $part, $data ];
 
                                 #} elsif ($hdl == $sslctl) {
@@ -1003,11 +1009,16 @@ my %immediatechildren;
 
 sub generic_reaper {
     local ($!);
+    #print "generic_reaper in $$...";
     while (($CHILDPID = waitpid(-1, WNOHANG)) > 0) {
-        if (($CHILDPID == $pid_UDP) && ($udpctl)) {
-
-            # got here because UDP child is gone
-            close($udpctl); $udpctl = 0;
+        #print "reaper for $CHILDPID...\n";
+        if ($CHILDPID == $pid_UDP) {
+            if ($udpctl) {
+                # got here because UDP child is gone
+                close($udpctl);
+                $udpctl = 0;
+            }
+            $pid_UDP = 0;
         }
         yield;
     }
@@ -1017,16 +1028,20 @@ sub generic_reaper {
 sub ssl_reaper {
     local ($!);
     my $numdone = 0;
+    #print "ssl_reaper in $$...";
     while (($CHILDPID = waitpid(-1, WNOHANG)) > 0) {
+        #print "reaper for $CHILDPID...\n";
         if ($immediatechildren{$CHILDPID}) {
             delete $immediatechildren{$CHILDPID};
             $sslclients--;
             $numdone--;
         }
-        if (($CHILDPID == $pid_UDP) && ($udpctl)) {
-
-            # got here because UDP child is gone
-            close($udpctl); $udpctl = 0;
+        if ($CHILDPID == $pid_UDP) {
+            if ($udpctl) {
+                # got here because UDP child is gone
+                close($udpctl);
+                $udpctl = 0;
+            }
             $pid_UDP = 0;
         }
         if ($CHILDPID == $cmdlog_svrpid) {
@@ -1041,32 +1056,36 @@ sub ssl_reaper {
 
 sub dispatch_reaper {
     local ($!);
+    #print "dispatch_reaper in $$...";
     while (($CHILDPID = waitpid(-1, WNOHANG)) > 0) {
+        #print "reaper for $CHILDPID...\n";
         if ($dispatched_children{$CHILDPID}) {
             delete $dispatched_children{$CHILDPID};
             $dispatch_children--;
         }
-        if (($CHILDPID == $pid_UDP) && ($udpctl)) {
-
-            # got here because UDP child is gone
-            close($udpctl); $udpctl = 0;
-        }
+        #if (($CHILDPID == $pid_UDP) && ($udpctl)) {
+        #
+        #    # got here because UDP child is gone
+        #    close($udpctl); $udpctl = 0;
+        #}
     }
     $SIG{CHLD} = \&dispatch_reaper;
 }
 
 sub plugin_reaper {
     local ($!);
+    #print "plugin_reaper in $$...";
     while (($CHILDPID = waitpid(-1, WNOHANG)) > 0) {
+        #print "reaper for $CHILDPID...\n";
         if ($plugin_children{$CHILDPID}) {
             delete $plugin_children{$CHILDPID};
             $plugin_numchildren--;
         }
-        if (($CHILDPID == $pid_UDP) && ($udpctl)) {
-
-            # got here because UDP child is gone
-            close($udpctl); $udpctl = 0;
-        }
+        #if (($CHILDPID == $pid_UDP) && ($udpctl)) {
+        #
+        #    # got here because UDP child is gone
+        #    close($udpctl); $udpctl = 0;
+        #}
     }
     $SIG{CHLD} = \&plugin_reaper;
 }
@@ -1162,6 +1181,7 @@ if (!defined $pid_MON) {
 }
 unless ($pid_MON) {
     $$progname = "xcatd: install monitor";
+    $pid_UDP = 0;
     close($udpctl); $udpctl = 0;
     do_installm_service;
     xexit(0);
@@ -1510,7 +1530,7 @@ until ($quit) {
     }
 
     if ($child == 0) {
-        close($udpctl); $udpctl = 0;
+        close($udpctl); $udpctl = 0; $pid_UDP=0;
         $SIG{TERM} = $SIG{INT} = 'DEFAULT';
         $SIG{CHLD} = \&generic_reaper;    # THROTTLE
         $listener->close;
@@ -1614,16 +1634,27 @@ if (open($mainpidfile, "<", "/var/run/xcat/mainservice.pid")) {
     close($mainpidfile);
 }
 if ($listener) { $listener->close; }
-my $lastpid;
-while (keys %immediatechildren || $pid_UDP || $cmdlog_svrpid || $pid_MON) {
-    $lastpid = wait();
+
+$SIG{CHLD} = "DEFAULT"; # Disable the signal handler and let wait to cover the children quit
+
+my $remains = keys %immediatechildren;
+xCAT::MsgUtils->trace(0, 'I', "xcatd is going to stop, waiting for $remains plugins to quit...");
+while ($remains || $pid_UDP || $cmdlog_svrpid || $pid_MON) {
+    my $lastpid = wait();
+    last if ($lastpid < 0);
+
+    # Found an valid child process
     if ($immediatechildren{$lastpid}) {
         delete $immediatechildren{$lastpid};
-    } elsif ($lastpid == $pid_UDP) {
+        $remains = keys %immediatechildren;
+    }
+    elsif ($lastpid == $pid_UDP) {
         $pid_UDP = 0;
-    } elsif ($lastpid == $cmdlog_svrpid) {
+    }
+    elsif ($lastpid == $cmdlog_svrpid) {
         $cmdlog_svrpid = 0;
-    } elsif ($lastpid == $pid_MON) {
+    }
+    elsif ($lastpid == $pid_MON) {
         $pid_MON = 0;
     }
 }
@@ -2833,11 +2864,15 @@ sub service_connection {
                     if ($peername) {
 
                         # for a valid account, get a token
+                        my $htime;
                         my ($tokenid, $exptime) = xCAT::xcatd->gettoken($req);
-                        my ($sec, $min, $hour, $mday, $mon, $year) = localtime($exptime);
-                        $year += 1900;
-                        $mon  += 1;
-                        my $htime = "$year-$mon-$mday $hour:$min:$sec";
+                        if ($exptime eq "never") {
+                            # If token expiration time was set to "never", return that to the user.
+                            $htime = $exptime;
+                        } else {
+                            # Token expiration is a unix DateTime, convert to readable string
+                            $htime = xCAT::Utils->time2string($exptime, "-");
+                        }
                         $resp = { data => [ { token => [ { id => $tokenid, expire => $htime } ] } ] };
                     } else {
                         $resp = { error => ["Authentication failure"], errorcode => [1] };

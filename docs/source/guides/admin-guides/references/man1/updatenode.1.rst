@@ -19,7 +19,7 @@ SYNOPSIS
 ********
 
 
-\ **updatenode**\  \ *noderange*\  [\ **-V | -**\ **-verbose**\ ] [\ **-F | -**\ **-sync**\ ] [\ **-f | -**\ **-snsync**\ ] [\ **-S | -**\ **-sw**\ ]  [\ **-l**\   \ *userID*\ ]  [\ **-P | -**\ **-scripts**\  [\ *script1,script2...*\ ]] [\ **-s | -**\ **-sn**\ ] [\ **-A | -**\ **-updateallsw**\ ] [\ **-c | -**\ **-cmdlineonly**\ ] [\ **-d**\  \ *alt_source_dir*\ ] [\ **-**\ **-fanout**\ =\ *fanout_value*\ ] [\ **-t**\  \ *timeout*\ } [\ *attr=val*\  [\ *attr=val...*\ ]] [\ **-n | -**\ **-noverify**\ ]
+\ **updatenode**\  \ *noderange*\  [\ **-V | -**\ **-verbose**\ ] [\ **-F | -**\ **-sync**\ ] [\ **-f | -**\ **-snsync**\ ] [\ **-r | -**\ **-node-rcp**\  [\ *full_path_to_remote_copy_command*\ ]]  [\ **-S | -**\ **-sw**\ ]  [\ **-l**\   \ *userID*\ ]  [\ **-P | -**\ **-scripts**\  [\ *script1,script2...*\ ]] [\ **-s | -**\ **-sn**\ ] [\ **-A | -**\ **-updateallsw**\ ] [\ **-c | -**\ **-cmdlineonly**\ ] [\ **-d**\  \ *alt_source_dir*\ ] [\ **-**\ **-fanout**\ =\ *fanout_value*\ ] [\ **-t**\  \ *timeout*\ } [\ *attr=val*\  [\ *attr=val...*\ ]] [\ **-n | -**\ **-noverify**\ ]
 
 \ **updatenode**\  \ **noderange**\  [\ **-k | -**\ **-security**\ ] [\ **-t**\  \ *timeout*\ ]
 
@@ -382,7 +382,7 @@ OPTIONS
 \ **-F|-**\ **-sync**\ 
  
  Specifies that file synchronization should be
- performed on the nodes.  rsync and ssh must
+ performed on the nodes.  rsync/scp and ssh must
  be installed and configured on the nodes. 
  The function is not supported for NFS-based statelite installations.
  For NFS-based statelite installations to sync files, you should use the
@@ -396,7 +396,7 @@ OPTIONS
  Specifies that file synchronization should be
  performed to the service nodes that service the
  nodes in the noderange. This updates the service
- nodes with the data to sync to the nodes. rsync and ssh must
+ nodes with the data to sync to the nodes. rsync/scp and ssh must
  be installed and configured on the service nodes.
  For hierarchy, this optionally can  be done before syncing the files
  to the nodes with the -F flag.  If the -f flag is not used, then
@@ -409,6 +409,20 @@ OPTIONS
  For statelite installations to sync files, you should use the
  read-only option for files/directories listed in
  litefile table with source location specified in the litetree table.
+ 
+
+
+[\ **-r | -**\ **-node-rcp**\  [\ *full_path_to_remote_copy_command*\ ]]
+ 
+ Specifies  the  full  path of the remote copy command used for syncing files to node targets, such as "/usr/bin/rsync" or "/usr/bin/scp". If not specified, rsync will be used by default.
+ 
+ Notice: The synclist for "-r /usr/bin/scp" has some differences with "-r /usr/bin/rsync":
+ 
+ 1) the ``EXECUTE`` clause is not supported in "-r /usr/bin/scp"
+ 
+ 2) if the destination directory specified in synclist is an existing file on target node, "updatenode -r /usr/bin/scp" will fail with ``scp: <destination directory>: Not a directory``
+ 
+ 3) if the destination file specified in synclist is an existing directory on target node, "updatenode -r /usr/bin/scp" will fail with ``scp: <destination file>: Is a directory``
  
 
 

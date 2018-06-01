@@ -1501,9 +1501,9 @@ EOMS
     print $inifile "    ([ \"\$xcatdebugmode\" = \"1\" ] || [ \"\$xcatdebugmode\" = \"2\" ]) && logger -t xcat -p debug \"Extracting root filesystem:\"\n";
     print $inifile "    echo -n \"Extracting root filesystem:\"\n";
     print $inifile "    if [ -r /rootimg.tar.gz ]; then\n";
-    print $inifile "        /bin/tar --selinux --xattrs-include='*' -zxf /rootimg.tar.gz\n";
+    print $inifile "        /bin/tar --selinux --xattrs --xattrs-include='*' -zxf /rootimg.tar.gz\n";
     print $inifile "    elif [ -r /rootimg.tar.xz ]; then\n";
-    print $inifile "        /bin/tar --selinux --xattrs-include='*' -Jxf /rootimg.tar.xz\n";
+    print $inifile "        /bin/tar --selinux --xattrs --xattrs-include='*' -Jxf /rootimg.tar.xz\n";
     print $inifile "    fi\n";
     print $inifile "    ([ \"\$xcatdebugmode\" = \"1\" ] || [ \"\$xcatdebugmode\" = \"2\" ]) && logger -t xcat -p debug \"Done...\"\n";
     print $inifile "    echo Done\n";

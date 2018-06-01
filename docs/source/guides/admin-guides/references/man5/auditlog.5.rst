@@ -62,13 +62,13 @@ auditlog Attributes:
 
 \ **clienttype**\ 
  
- Type of command: cli,java,webui,other.
+ Type of command: cli, java, webui, other.
  
 
 
 \ **command**\ 
  
- Command executed.
+ Command executed. See auditskipcmds site table attribute to control which commands get logged.
  
 
 

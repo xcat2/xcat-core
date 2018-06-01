@@ -4,14 +4,14 @@
 # Flags are used for test input:
 #     -m method. Should be GET, POST, PUT, DELETE
 #     -r resource
-#     -t token
+#     -t
 #     -h host
 #     -u user
 #     -p passwd
 #     -P port (BC)
 #     -d data
 #     -c cert
-#     -n hostname
+#     --debug
 # Flags are used for check output:
 #     -o expected output
 #     -O logical operator
@@ -36,6 +36,7 @@ use strict;
 my $help;
 my $method;
 my $token;
+my $usetoken;
 my $resource;
 my $host;
 my $user;
@@ -43,7 +44,6 @@ my $passwd;
 my $port;
 my $data;
 my $cert;
-my $hostname;
 my $output;
 my $loperator;
 my $debug;
@@ -54,7 +54,7 @@ my $outputfile        = "/tmp/testrestapiresult";
 if (
     !GetOptions("h|?" => \$help,
         "m=s"   => \$method,
-        "t=s"   => \$token,
+        "t"     => \$usetoken, # use generated token instead of the user/pw
         "r=s"   => \$resource,
         "h=s"   => \$host,
         "u=s"   => \$user,
@@ -62,7 +62,6 @@ if (
         "P=s"   => \$port,
         "d=s"   => \$data,
         "c=s"   => \$cert,
-        "n=s"   => \$hostname,
         "o=s"   => \$output,
         "O=s"   => \$loperator,
         "debug" => \$debug,
@@ -98,128 +97,43 @@ if ($resource) {
     }
 }
 
-
-##############################################################
-# ONLY check result,exit immediately
-##############################################################
-if ($output and !defined($method)) {
-    my $res = check_result($output, $loperator, $outputfile);
-    log_debug(2, "check result runs with $output and $loperator, result is $res\n");
-    exit $res;
-}
-
 ##############################################################
 # Give default values for optional vars.
 ###############################################################
 my $rootdir   = "$::XCATROOT/share/xcat/tools/autotest";
 my $resultdir = "$rootdir/result";
 my $logfile   = "$rootdir/result/restapitest.log";
+#logfile: /opt/xcat/share/xcat/tools/autotest/result/restapitest.log
 
-#/opt/xcat/share/xcat/tools/autotest/result/restapitest.log
-my $confile = "$rootdir/default.conf";
+unless (($user) && ($passwd)) {
 
-
-# read configuration file
-if (!open(CONF, "<$confile")) {
-    log_debug(1, "can't open configuration file $confile");
+    # No user or passwd passed in, read configuration file, they might be there
+    print "Userid and password must be supplied\n";
     exit 1;
 }
-my %confhash;
-while (<CONF>) {
-    if (/restapi-(\w+)=(\S+)/) {
-        $confhash{$1} = $2;
-    }
-}
 
-# get token
-my $defaultserver = $confhash{DefaultServer};
-my $defaultuser   = $confhash{DefaultUser1};
-my $DefaultPasswd = $confhash{DefaultPasswd1};
-my $gettoken = `curl -X POST -k 'https://$defaultserver/xcatws/tokens?userName=$defaultuser&password=$DefaultPasswd' -H Content-Type:application/json --data '{"userName":"$defaultuser","password":"$DefaultPasswd"}' 2>/dev/null`;
-my $reshash = parse_json($gettoken);
-my $token1  = $$reshash{token}{id};
-
-# get hostname
-unless ($hostname) {
-    $hostname = `hostname`;
-    chomp($hostname);
-}
-unless ($defaultserver) {
+# get hostname or default to local host if not specified
+unless ($host) {
     $host = "127.0.0.1";
-} else {
-    $host = $defaultserver;
 }
 
-# keey default test result for save
-my $res = run_restapi($method, $resource, $data, "", $port, "$host", "$defaultuser", "$DefaultPasswd");
-$defaulthash       = parse_json($res);
-$defaulthttpresult = check_errcode();
+if ($usetoken) {
+# get token
+    my $gettoken = `curl -X POST -k 'https://$host/xcatws/tokens' -H Content-Type:application/json --data '{"userName":"$user","userPW":"$passwd"}' 2>/dev/null`;
+    my $reshash = parse_json($gettoken);
+    $token  = $$reshash{token}{id};
+}
 
 # debug and log info
-log_debug(3, "get token $token1. \n");
-log_debug(3, "get first default user $confhash{DefaultUser1} \n");
-log_debug(3, "get first default user's passwd is $confhash{DefaultPasswd1} \n");
-log_debug(3, "get second default user $confhash{DefaultUser2} \n");
-log_debug(3, "get second default user's passwd is $confhash{DefaultPasswd2} \n");
-log_debug(3, "get path of ca $confhash{Cert} \n");
-log_debug(3, "get server $defaultserver from configuration file and it is $host\n");
-log_debug(3, "get hostname $hostname.\n");
-log_debug(3, "default result is $res. \n");
-log_debug(3, "default resulthash is: \n");
-log_debug(3, $defaulthash);
-log_debug(3, "default errcode is $defaulthttpresult \n");
-log_debug(3, "**************begin to run more restapi test, stop when post***************");
+log_debug(3, "User $user. \n");
+log_debug(3, "Password $passwd. \n");
+log_debug(3, "Host $host. \n");
+log_debug(3, "Got token $token. \n");
 
+my $res = run_restapi($method, $resource, $data, "", $port, "$host", "$user", "$passwd", "$token");
+$defaulthttpresult = check_errcode();
 
-####################################################
-# Begin to run test cases
-####################################################
-my @users   = ($confhash{DefaultUser1},   $confhash{DefaultUser2},   $user);
-my @passwds = ($confhash{DefaultPasswd1}, $confhash{DefaultPasswd2}, $passwd);
-my @tokens = ("", $token1, $token);
-my @certs = ("", $confhash{Cert}, $cert);
-my $i = 0;
-unless ($method eq "POST") {    # Should not post sevral times
-    for my $u (@users) {
-        next unless ($u);
-        my $p = $passwds[$i];
-        $i++;
-        for my $t (@tokens) {
-            for my $c (@certs) {
-
-                #if ($method eq "POST" and ($resource =~ /^\/nodes\/(\w+)$/)) {
-                #     `/opt/xcat/bin/rmdef $1`;
-                #     log_debug(2,"restapi test rmdef $1\n");
-                #}
-                my $res = run_restapi($method, $resource, $data, $c, $port, $host, $u, $p, $t);
-                if ($res) {
-                    my $reshash = parse_json($res);
-                    log_debug(2, "parse curl result and got:\n");
-                    log_debug(2, $reshash);
-                    if (%$reshash != %$defaulthash) {
-                        log_debug(3, "restapi test cases run different result with $method, $resource, $data, $c, $port, $host, $u, $p, $t\n");
-                        exit 1;
-                    }
-                }
-                my $errcode = check_errcode();
-                log_debug(2, "get curl error code: $errcode\n");
-                if ($errcode != $defaulthttpresult) {
-                    log_debug(3, "restapi test cases run different error code with $method, $resource, $data, $c, $port, $host, $u, $p, $t\n");
-                    exit 1;
-                }
-            }
-        }
-    }
-}
-##############################################################
-# check result
-##############################################################
-if ($output) {
-    my $res = check_result($output, $loperator, $res);
-    log_debug(2, "check result runs with $output and $loperator, result is $res\n");
-    exit $res;
-}
-
+print Dumper $res;
 exit $defaulthttpresult;
 
 ################################################
@@ -235,7 +149,7 @@ sub usage
     print "  testrestapi [-?|-h]\n";
     print "  testrestapi [-m method] [-r resource] [-t tocken]\n";
     print "  [-h host] [-P port][-u user] [-p passwd]\n";
-    print "  [-d data] [-c cert] [-n hostname]\n";
+    print "  [-d data] [-c cert] \n";
     print "  [-o expect_output] [-O logical_operator] \n";
     print "  [--debug]\n";
     print "\n";
@@ -287,21 +201,16 @@ sub run_restapi
     if ($t) {
         $cmd .= " -H X-Auth-Token:$t ";
     }
-    if ($t or $c) {
-        $cmd .= " 'https://$hostname";
-    } else {
-        $cmd .= " 'https://$h";
-    }
+    $cmd .= " 'https://$h";
     if ($p) {
         $cmd .= ":$p";
     }
     $cmd .= "/xcatws";
     $cmd .= "$r?";
     unless ($t) {
-        $cmd .= "userName=$u&password=$a'";
-    } else {
-        $cmd .= "'";
+        $cmd .= "userName=$u&userPW=$a";
     }
+    $cmd .= "&pretty=1'";
     if ($d) {
         $cmd .= " -H Content-Type:application/json --data '$d'";
     }
@@ -331,7 +240,7 @@ sub parse_json
         # {"networks":[{"mgtifname":"eth1","mask":"255.255.255.0"},{"mgtifname":"eth1","mask":"255.255.255.0"}]}
         if ($input =~ /^\[(.*)\]$/s) {
             my $content = $1;
-            log_debug(2, "[:] content is $content \n");
+            # log_debug(2, "[:] content is $content \n");
             parse_json($content);
         }
 
@@ -344,7 +253,7 @@ sub parse_json
 
             # record result
             foreach my $t (@contents) {
-                log_debug(2, ":{}, content is $t \n");
+                #log_debug(2, ":{}, content is $t \n");
                 my $re = parse_json($t);
                 push @reval, $re;
             }
@@ -366,7 +275,7 @@ sub parse_json
 
             # record result
             foreach my $t (@contents) {
-                log_debug(2, "{},{}, content is $t \n");
+                #log_debug(2, "{},{}, content is $t \n");
                 my $re = parse_json($t);
                 push @reval, $re;
             }
@@ -386,7 +295,7 @@ sub parse_json
         # {"clustersite":{"domain":"cluster.com","master":"192.168.1.15"}}
         elsif ($input =~ /^\s*{(.*)}\s*$/s) {
             my $content = $1;
-            log_debug(2, "{} content is $content \n");
+            #log_debug(2, "{} content is $content \n");
             parse_json($content);
         }
         elsif ($input =~ /],\"\S+\":/) {
@@ -396,7 +305,7 @@ sub parse_json
 
             # record result
             foreach my $t (@contents) {
-                log_debug(2, "],:, content is $t \n");
+                #log_debug(2, "],:, content is $t \n");
                 my $re = parse_json($t);
                 push @reval, $re;
             }
@@ -420,7 +329,7 @@ sub parse_json
 
             # record result
             foreach my $t (@contents) {
-                log_debug(2, ", content is $t \n");
+                #log_debug(2, ", content is $t \n");
                 my $re = parse_json($t);
                 push @reval, $re;
             }
@@ -446,7 +355,7 @@ sub parse_json
             if ($value =~ /{/) {
 
                 # "clustersite":{"domain":"cluster.com","master":"192.168.1.15"}
-                log_debug(2, "{ content is $value \n");
+                #log_debug(2, "{ content is $value \n");
                 $hash{$key} = parse_json($value, $key);
                 return \%hash;
             } else {
@@ -464,7 +373,7 @@ sub parse_json
     else {
         if ($input =~ /^\[(.*)\]/s) {
             my $content = $1;
-            log_debug(2, "[] content is $content \n");
+            #log_debug(2, "[] content is $content \n");
             my @all = split /,/, $content;
             foreach my $n (@all) {
                 $n =~ /\"(.*)\"/;

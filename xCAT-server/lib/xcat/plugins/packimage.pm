@@ -82,7 +82,7 @@ sub process_request {
         @ARGV = @{$args};
     }
     if (scalar(@ARGV) == 0) {
-        $callback->({ info => ["Usage:\n   packimage [-m| --method=cpio|tar] [-c| --compress=gzip|pigz|xz] <imagename>\n   packimage [-h| --help]\n   packimage [-v| --version]"] });
+        $callback->({ info => ["Usage:\n   packimage [-m| --method=cpio|tar] [-c| --compress=gzip|pigz|xz] [--nosyncfiles] <imagename>\n   packimage [-h| --help]\n   packimage [-v| --version]"] });
         return 0;
     }
 
@@ -95,6 +95,7 @@ sub process_request {
     my $syncfile;
     my $rootimg_dir;
     my $destdir;
+    my $nosyncfiles;
     my $imagename;
     my $dotorrent;
     my $provmethod;
@@ -109,6 +110,7 @@ sub process_request {
         "method|m=s"  => \$method,
         "compress|c=s"  => \$compress,
         "tracker=s"   => \$dotorrent,
+        'nosyncfiles'      => \$nosyncfiles,
         "help|h"      => \$help,
         "version|v"   => \$version
     );
@@ -127,7 +129,7 @@ sub process_request {
         return 0;
     }
     if ($help) {
-        $callback->({ info => ["Usage:\n   packimage [-m| --method=cpio|tar] [-c| --compress=gzip|pigz|xz] <imagename>\n   packimage [-h| --help]\n   packimage [-v| --version]"] });
+        $callback->({ info => ["Usage:\n   packimage [-m| --method=cpio|tar] [-c| --compress=gzip|pigz|xz] [--nosyncfiles] <imagename>\n   packimage [-h| --help]\n   packimage [-v| --version]"] });
         return 0;
     }
 
@@ -417,12 +419,15 @@ sub process_request {
     close($shadow);
     umask($oldmask);
 
-    # sync fils configured in the synclist to the rootimage
-    $syncfile = xCAT::SvrUtils->getsynclistfile(undef, $osver, $arch, $profile, "netboot", $imagename);
-    if (defined($syncfile) && -f $syncfile
-        && -d $rootimg_dir) {
-        print "sync files from $syncfile to the $rootimg_dir\n";
-        system("$::XCATROOT/bin/xdcp -i $rootimg_dir -F $syncfile");
+    if (not $nosyncfiles) {
+        # sync fils configured in the synclist to the rootimage
+        $syncfile = xCAT::SvrUtils->getsynclistfile(undef, $osver, $arch, $profile, "netboot", $imagename);
+        if ( defined($syncfile) && -f $syncfile && -d $rootimg_dir) {
+            print "Syncing files from $syncfile to root image dir: $rootimg_dir\n";
+            system("$::XCATROOT/bin/xdcp -i $rootimg_dir -F $syncfile");
+        }
+    } else {
+        print "Bypass of syncfiles requested, will not sync files to root image directory.\n";
     }
 
     my $temppath;
@@ -505,7 +510,7 @@ sub process_request {
         my $checkoption2 = `tar --selinux 2>&1`;
         my $option;
         if ($checkoption1 !~ /unrecognized/) {
-            $option .= "--xattrs-include='*' ";
+            $option .= " --xattrs --xattrs-include='*' ";
         }
         if ($checkoption2 !~ /unrecognized/) {
             $option .= "--selinux ";

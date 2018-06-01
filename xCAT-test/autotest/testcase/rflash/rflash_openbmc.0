@@ -6,7 +6,7 @@ cmd:rflash -c
 check:output=~Usage:
 cmd:rflash -c 1.tar
 check:rc != 0
-check:output=~Error: Invalid nodes and/or groups in noderange
+check:output=~Error: (\[.*?\]: )?Invalid nodes and/or groups in noderange
 end
 
 start:rflash_option_l_without_specify_noderange
@@ -25,10 +25,10 @@ cmd:rflash -a
 check:output=~Usage:
 cmd:rflash -a 1.tar
 check:rc != 0
-check:output=~Error: Invalid nodes and/or groups in noderange
+check:output=~Error: (\[.*?\]: )?Invalid nodes and/or groups in noderange
 cmd:rflash -a 123abc
 check:rc != 0
-check:output=~Error: Invalid nodes and/or groups in noderange
+check:output=~Error: (\[.*?\]: )?Invalid nodes and/or groups in noderange
 end
 
 start:rflash_option_u_without_specify_noderange
@@ -39,7 +39,7 @@ cmd:rflash -u
 check:output=~Usage:
 cmd:rflash -u  1.tar
 check:rc != 0
-check:output=~Error: Invalid nodes and/or groups in noderange
+check:output=~Error: (\[.*?\]: )?Invalid nodes and/or groups in noderange
 end
 
 start:rflash_option_d_without_specify_noderange
@@ -52,7 +52,7 @@ cmd:rflash -d /1234
 check:Usage:
 cmd:rflash --delete 1234abc
 check:rc != 0
-check:output=~Error: Invalid nodes and/or groups in noderange
+check:output=~Error: (\[.*?\]: )?Invalid nodes and/or groups in noderange
 end
 
 start:rflash_without_option
@@ -61,7 +61,7 @@ os:Linux
 hcp:openbmc
 cmd:rflash $$CN 1.tar
 check:rc != 0
-check:output=~Error: Invalid option specified when a file is provided:
+check:output=~Error: (\[.*?\]: )?Invalid option specified when a file is provided:
 end
 
 start:rflash_unsupport_multiple_option_a_u
@@ -69,7 +69,7 @@ description: basic usage check. If specify multiple options a+u, should throw ou
 os:Linux
 hcp:openbmc
 cmd:rflash $$CN -a 1.tz -u
-check:output=~Error: Multiple options are not supported
+check:output=~Error: (\[.*?\]: )?Multiple options are not supported
 check:rc != 0
 end
 
@@ -78,7 +78,7 @@ description: basic usage check. If specify multiple options a+c, should throw ou
 os:Linux
 hcp:openbmc
 cmd:rflash $$CN -a 1.tz -c
-check:output=~Error: Multiple options are not supported
+check:output=~Error: (\[.*?\]: )?Multiple options are not supported
 check:rc != 0
 end
 
@@ -87,7 +87,7 @@ description: basic usage check. If specify multiple options a+l, should throw ou
 os:Linux
 hcp:openbmc
 cmd:rflash $$CN -a 1.tz -l
-check:output=~Error: Multiple options are not supported
+check:output=~Error: (\[.*?\]: )?Multiple options are not supported
 check:rc != 0
 end
 
@@ -96,7 +96,7 @@ description: basic usage check. If specify multiple options a+d, should throw ou
 os:Linux
 hcp:openbmc
 cmd:rflash $$CN -a 1.tz -d
-check:output=~Error: Multiple options are not supported
+check:output=~Error: (\[.*?\]: )?Multiple options are not supported
 check:rc != 0
 end
 
@@ -105,7 +105,7 @@ description: basic usage check. If specify multiple options c+l, should throw ou
 os:Linux
 hcp:openbmc
 cmd:rflash $$CN -c 1.tz -l
-check:output=~Error: Multiple options are not supported
+check:output=~Error: (\[.*?\]: )?Multiple options are not supported
 check:rc != 0
 end
 
@@ -114,7 +114,7 @@ description: basic usage check. If specify multiple options c+u, should throw ou
 os:Linux
 hcp:openbmc
 cmd:rflash $$CN -c 1.tz -u
-check:output=~Error: Multiple options are not supported
+check:output=~Error: (\[.*?\]: )?Multiple options are not supported
 check:rc != 0
 end
 
@@ -123,7 +123,7 @@ description: basic usage check. If specify multiple options c+d, should throw ou
 os:Linux
 hcp:openbmc
 cmd:rflash $$CN -c 1.tz -d
-check:output=~Error: Multiple options are not supported
+check:output=~Error: (\[.*?\]: )?Multiple options are not supported
 check:rc != 0
 end
 
@@ -132,7 +132,7 @@ description: basic usage check. If specify multiple options l+d, should throw ou
 os:Linux
 hcp:openbmc
 cmd:rflash $$CN -l -d
-check:output=~Error: Multiple options are not supported
+check:output=~Error: (\[.*?\]: )?Multiple options are not supported
 check:rc != 0
 end
 
@@ -141,7 +141,7 @@ description: basic usage check. If specify multiple options l+u, should throw ou
 os:Linux
 hcp:openbmc
 cmd:rflash $$CN -l -u
-check:output=~Error: Multiple options are not supported
+check:output=~Error: (\[.*?\]: )?Multiple options are not supported
 check:rc != 0
 end
 
@@ -150,7 +150,7 @@ description: basic usage check. If specify multiple options u+d, should throw ou
 os:Linux
 hcp:openbmc
 cmd:rflash $$CN -u -d
-check:output=~Error: Multiple options are not supported
+check:output=~Error: (\[.*?\]: )?Multiple options are not supported
 check:rc != 0
 end
 
@@ -159,22 +159,22 @@ description: basic usage check for option c. if the file does not exist, should 
 os:Linux
 hcp:openbmc
 cmd:rflash $$CN -c /tmp/abc123.tz
-check:output=~Error: Invalid firmware specified with
+check:output=~Error: (\[.*?\]: )?Invalid firmware specified with
 check:rc != 0
 cmd:rflash $$CN -c /tmp/
-check:output=~Error: Invalid firmware specified with
+check:output=~Error: (\[.*?\]: )?Invalid firmware specified with
 check:rc != 0
 cmd:rflash $$CN /tmp/abc123.tz -c
-check:output=~Error: Invalid firmware specified with
+check:output=~Error: (\[.*?\]: )?Invalid firmware specified with
 check:rc != 0
 cmd:rflash $$CN /tmp/ -c
-check:output=~Error: Invalid firmware specified with
+check:output=~Error: (\[.*?\]: )?Invalid firmware specified with
 check:rc != 0
 cmd:rflash $$CN  1.tar -c
-check:output=~Error: Cannot access
+check:output=~Error: (\[.*?\]: )?Cannot access
 check:rc != 0
 cmd:rflash $$CN -c /tmp/1.tar
-check:output=~Error: Cannot access
+check:output=~Error: (\[.*?\]: )?Cannot access
 check:rc != 0
 end
 
@@ -183,16 +183,16 @@ description: basic usage check for option c. if there are multiple value assigne
 os:Linux
 hcp:openbmc
 cmd:rflash $$CN -c /tmp/abc123.tz /tmp/abc124.tz
-check:output=~Error: Invalid firmware specified with
+check:output=~Error: (\[.*?\]: )?Invalid firmware specified with
 check:rc != 0
 cmd:rflash $$CN -c  1.tz 2.tz 3.tz 
-check:output=~Error: Invalid firmware specified with
+check:output=~Error: (\[.*?\]: )?Invalid firmware specified with
 check:rc != 0
 cmd:rflash $$CN 1.tz 2.tz 3.tz -c
-check:output=~Error: Invalid firmware specified with
+check:output=~Error: (\[.*?\]: )?Invalid firmware specified with
 check:rc != 0
 cmd:rflash $$CN 1.tz -c 2.tz
-check:output=~Error: Invalid firmware specified with
+check:output=~Error: (\[.*?\]: )?Invalid firmware specified with
 check:rc != 0
 end
 
@@ -234,10 +234,10 @@ description: basic usage check for option l. if there is value for l option,  sh
 os:Linux
 hcp:openbmc
 cmd:rflash $$CN -l /tmp/abc123.tz
-check:output=~Error: Invalid option
+check:output=~Error: (\[.*?\]: )?Invalid option
 check:rc != 0
 cmd: rflash $$CN /tmp/abc123.tz -l
-check:output=~Error: Invalid option
+check:output=~Error: (\[.*?\]: )?Invalid option
 check:rc != 0
 end
 
@@ -263,27 +263,27 @@ description: basic usage check for option u. if the file does not exist, should 
 os:Linux
 hcp:openbmc
 cmd:rflash $$CN -u /tmp/abc123.tz
-check:output=~Error: Invalid firmware specified with
+check:output=~Error: (\[.*?\]: )?Invalid firmware specified with
 check:output!~Attempting to
 check:rc != 0
 cmd:rflash $$CN -u /tmp/
-check:output=~Error: Invalid firmware specified with
+check:output=~Error: (\[.*?\]: )?Invalid firmware specified with
 check:output!~Attempting to
 check:rc != 0
 cmd:rflash $$CN /tmp/abc123.tz -u
-check:output=~Error: Invalid firmware specified with
+check:output=~Error: (\[.*?\]: )?Invalid firmware specified with
 check:output!~Attempting to
 check:rc != 0
 cmd:rflash $$CN /tmp/ -u
-check:output=~Error: Invalid firmware specified with
+check:output=~Error: (\[.*?\]: )?Invalid firmware specified with
 check:output!~Attempting to
 check:rc != 0
 cmd:rflash $$CN 1.tar -u
-check:output=~Error: Cannot access
+check:output=~Error: (\[.*?\]: )?Cannot access
 check:output!~Attempting to
 check:rc != 0
 cmd:rflash $$CN -u /tmp/1.tar
-check:output=~Error: Cannot access
+check:output=~Error: (\[.*?\]: )?Cannot access
 check:output!~Attempting to
 check:rc != 0
 end
@@ -293,19 +293,19 @@ description: basic usage check for option u. if there are multiple value assigne
 os:Linux
 hcp:openbmc
 cmd:rflash $$CN -u /tmp/abc123.tz /tmp/abc124.tz
-check:output=~Error: Invalid firmware specified with
+check:output=~Error: (\[.*?\]: )?Invalid firmware specified with
 check:output!~Attempting to
 check:rc != 0
 cmd:rflash $$CN -u 1.tz 2.tz 3.tz 
-check:output=~Error: Invalid firmware specified with
+check:output=~Error: (\[.*?\]: )?Invalid firmware specified with
 check:output!~Attempting to
 check:rc != 0
 cmd:rflash $$CN 1.tz 2.tz 3.tz -u
-check:output=~Error: Invalid firmware specified with
+check:output=~Error: (\[.*?\]: )?Invalid firmware specified with
 check:output!~Attempting to
 check:rc != 0
 cmd:rflash $$CN 1.tz -u 2.tz
-check:output=~Error: Invalid firmware specified with
+check:output=~Error: (\[.*?\]: )?Invalid firmware specified with
 check:output!~Attempting to
 check:rc != 0
 end
@@ -331,11 +331,11 @@ check:output=~rror: Invalid firmware specified with
 check:output!~Attempting to
 check:rc != 0
 cmd:rflash $$CN 1.tar -a
-check:output=~Error: Cannot access
+check:output=~Error: (\[.*?\]: )?Cannot access
 check:output!~Attempting to 
 check:rc != 0
 cmd:rflash $$CN -a /tmp/1.tar
-check:output=~Error: Cannot access
+check:output=~Error: (\[.*?\]: )?Cannot access
 check:output!~Attempting to
 check:rc != 0
 end
@@ -345,27 +345,27 @@ description: basic usage check for option a. if there are multiple value assigne
 os:Linux
 hcp:openbmc
 cmd:rflash $$CN -a /tmp/abc123.tz /tmp/abc124.tz
-check:output=~Error: Invalid firmware specified with
+check:output=~Error: (\[.*?\]: )?Invalid firmware specified with
 check:output!~Attempting to
 check:rc != 0
 cmd:rflash $$CN -a 1.tz 2.tz 3.tz
-check:output=~Error: More than one firmware specified is not supported
+check:output=~Error: (\[.*?\]: )?More than one firmware specified is not supported
 check:output!~Attempting to 
 check:rc != 0
 cmd:rflash $$CN 1.tz 2.tz 3.tz -a
-check:output=~Error: More than one firmware specified is not supported
+check:output=~Error: (\[.*?\]: )?More than one firmware specified is not supported
 check:output!~Attempting to
 check:rc != 0
 cmd:rflash $$CN 1.tz -a 2.tz
-check:output=~Error: More than one firmware specified is not supported
+check:output=~Error: (\[.*?\]: )?More than one firmware specified is not supported
 check:output!~Attempting to
 check:rc != 0
 cmd:rflash $$CN 1234567 -a 2345678
-check:output=~Error: More than one firmware specified is not supported
+check:output=~Error: (\[.*?\]: )?More than one firmware specified is not supported
 check:output!~Attempting to 
 check:rc != 0
 cmd:rflash $$CN -a 123 abc asdbas 
-check:output=~Error: More than one firmware specified is not supported
+check:output=~Error: (\[.*?\]: )?More than one firmware specified is not supported
 check:output!~Attempting to
 check:rc != 0
 end
@@ -376,10 +376,10 @@ description: basic usage check for option a. if active a non-existent firmware I
 os:Linux
 hcp:openbmc
 cmd:rflash $$CN -a 1234567
-check:output=~Error: Invalid ID provided to activate
+check:output=~Error: (\[.*?\]: )?Invalid ID provided to activate
 check:rc != 0
 cmd:rflash $$CN -a d123abc
-check:output=~Error: Invalid ID provided to activate
+check:output=~Error: (\[.*?\]: )?Invalid ID provided to activate
 check:rc != 0
 end
 
@@ -388,15 +388,15 @@ description: basic usage check for option delete. if there are multiple value as
 os:Linux
 hcp:openbmc
 cmd:rflash $$CN --delete 1234567 2345678 
-check:output=~Error: More than one firmware specified is not supported
+check:output=~Error: (\[.*?\]: )?More than one firmware specified is not supported
 check:output!~Attempting to delete
 check:rc != 0
 cmd:rflash $$CN 1234567 2345678 --delete
-check:output=~Error: More than one firmware specified is not supported
+check:output=~Error: (\[.*?\]: )?More than one firmware specified is not supported
 check:output!~Attempting to delete
 check:rc != 0
 cmd:rflash $$CN 1234567 --delete 2345678
-check:output=~Error: More than one firmware specified is not supported
+check:output=~Error: (\[.*?\]: )?More than one firmware specified is not supported
 check:output!~Attempting to delete
 check:rc != 0
 end
@@ -406,10 +406,10 @@ description: basic usage check for option --delete. if delete a non-existent fir
 os:Linux
 hcp:openbmc
 cmd:rflash $$CN --delete 1234567
-check:output=~Error: Invalid ID provided to delete
+check:output=~Error: (\[.*?\]: )?Invalid ID provided to delete
 check:rc != 0
 cmd:rflash $$CN --delete d123abc
-check:output=~Error: Invalid ID provided to delete
+check:output=~Error: (\[.*?\]: )?Invalid ID provided to delete
 check:rc != 0
 end
 
@@ -418,15 +418,15 @@ description: basic usage check for option d. if there are multiple value assigne
 os:Linux
 hcp:openbmc
 cmd:rflash $$CN -d /123/   /234/
-check:output=~Error: More than one
+check:output=~Error: (\[.*?\]: )?More than one
 check:output!~Attempting to 
 check:rc != 0
 cmd:rflash $$CN /123/   /234/  -d
-check:output=~Error: More than one 
+check:output=~Error: (\[.*?\]: )?More than one 
 check:output!~Attempting to
 check:rc != 0
 cmd:rflash $$CN /123/ -d /234/
-check:output=~Error: More than one 
+check:output=~Error: (\[.*?\]: )?More than one 
 check:output!~Attempting to 
 check:rc != 0
 end
@@ -439,28 +439,28 @@ hcp:openbmc
 cmd:rm -rf /tmp/bogus123
 check:rc == 0
 cmd:rflash $$CN -d /tmp/bogus123 
-check:output=~Error: Can't open directory
+check:output=~Error: (\[.*?\]: )?Can't open directory
 check:output!~Attempting to 
 check:rc != 0
 cmd:rflash $$CN /tmp/bogus123
-check:output=~Error: Invalid option specified
+check:output=~Error: (\[.*?\]: )?Invalid option specified
 check:rc != 0
 cmd:mkdir -p /tmp/bogus123
 check:rc == 0
 cmd:rflash $$CN /tmp/bogus123 -d
-check:output =~Error: No BMC tar file found|Can't open directory
+check:output =~Error: (\[.*?\]: )?No BMC tar file found|Can't open directory
 check:output!~Attempting to
 check:rc != 0
 cmd:touch /tmp/bogus123/obmc-phosphor-image-witherspoon.ubi.mtd.tar 
 check:rc == 0
 cmd:rflash $$CN -d /tmp/bogus123
-check:output =~Error: No BMC tar file found|Can't open directory
+check:output =~Error: (\[.*?\]: )?No BMC tar file found|Can't open directory
 check:output!~Attempting to
 check:rc != 0
 cmd:touch /tmp/bogus123/witherspoon.pnor.squashfs.tar 
 check:rc == 0
 cmd:rflash $$CN -d /tmp/bogus123
-check:output =~Error: No BMC tar file found|Can't open directory
+check:output =~Error: (\[.*?\]: )?No BMC tar file found|Can't open directory
 check:output!~Attempting to
 check:rc != 0
 cmd:rm -rf /tmp/bogus123
@@ -477,5 +477,17 @@ check:output =~OpenPOWER OpenBMC specific:
 check:output =~ -d.+no-host-reboot
 check:output =~ image_id.+--delete 
 check:rc == 0
+end
+
+start:rflash_delete_no_active
+description:this case is to check if --delete is not allowed to be used for the active state firmware. This case is for issue 4770.
+os:Linux
+hcp:openbmc
+cmd:activenum=`rflash $$CN -l |grep -w "Host\s*Active(\*)" |awk '{print $2}'`;rflash $$CN $activenum --delete
+check:rc != 0
+check:output =~$$CN\s*:\s*(\[.*?\]: )?Error: Deleting currently active firmware on powered on host is not supported 
+cmd:activenum=`rflash $$CN -l |grep -w "BMC\s*Active(\*)" |awk '{print $2}'`;rflash $$CN $activenum --delete
+check:rc != 0
+check:output =~~$$CN\s*:\s*(\[.*?\]: )?Error: Deleting currently active BMC firmware is not supported
 end
 

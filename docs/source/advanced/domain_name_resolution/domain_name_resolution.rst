@@ -30,7 +30,7 @@ Use the ``mkdef`` command to add additional networks to the xCAT database. (See 
 
     mkdef -t network clusternet net=11.0.0.0 mask=255.255.0.0 gateway=11.0.0.254 domain=app.cluster.com
 
-Note: The ``makedns`` command (mentioned below) will only add nodes into the DNS configuration if the network for the node is defined.
+.. note:: The ``makedns`` command (mentioned below) will only add nodes into the DNS configuration if the network for the node is defined.
 
 If you want to use a different hostname domain or a different set of nameservers for nodes that are on a particular network, set those attributes in the corresponding network object: ::
 
@@ -71,7 +71,7 @@ and the following entries will be added to **/etc/hosts**: ::
 
 This information is used by the ``makehosts`` command to add the additional interface hostnames etc. to the **/etc/hosts** file. It is also used by xCAT adapter configuration postscripts to automatically configure the additional network interfaces on the node. See the section (refer to :ref:`specifying_additional_network_interfaces_for_cluster_nodes` ).
 
-Note that it is a convention of xCAT that for Linux systems the short hostname is the primary hostname for the node, and the long hostname is an alias. To have the long hostname be the primary hostname, you can use the -l option on the makehosts command.
+.. note:: It is a convention of xCAT that for Linux systems the short hostname is the primary hostname for the node, and the long hostname is an alias. To have the long hostname be the primary hostname, you can use the -l option on the ``makehosts`` command.
 
 Preparing for Using a DNS
 ~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -207,7 +207,7 @@ For example: ::
 
 The **<xcatmaster>** keyword will be interpreted as the value of the **<xcatmaster>** attribute of the node definition. The **<xcatmaster>** value for a node is the name of it's server as known by the node. This would be either the cluster-facing name of the service node or the cluster-facing name of the management node.
 
-Note: for Linux, the site **nameservers** value must be set to **<xcatmaster>** before you run ``makedhcp``.
+.. note:: The site **nameservers** value must be set to **<xcatmaster>** before you run ``makedhcp``.
 
 Make sure that the DNS service on the service nodes will be set up by xCAT.
 
@@ -293,7 +293,7 @@ Setting individual nic attribute values
 The nic attribute values may be set using the ``chdef`` or ``mkdef`` commands. You can specify the nic* values
 when creating an xCAT node definition with ``mkdef`` or you can update an existing node definition using ``chdef``.
 
-Note: ``chdef`` does not support using the "-m" and "-p" options to modify the nic* attributes.
+.. note:: ``chdef`` does not support using the "-m" and "-p" options to modify the nic* attributes.
 
 nicips example: ::
 
@@ -311,7 +311,7 @@ This value indicates that the hostname for **"eth1"** should be **"compute02-eth
 
 The suffixes provided may be any string that will conform to the DNS naming rules.
 
-Important Note: According to DNS rules a hostname must be a text string up to 24 characters drawn from the alphabet (A-Z), digits (0-9), minus sign (-), and period (.). When you are specifying **"nichostnamesuffixes"** or **"nicaliases"** make sure the resulting hostnames will conform to this naming convention.
+.. warning:: According to DNS rules a hostname must be a text string up to 24 characters drawn from the alphabet (A-Z), digits (0-9), minus sign (-), and period (.). When you are specifying **"nichostnamesuffixes"** or **"nicaliases"** make sure the resulting hostnames will conform to this naming convention.
 
 nictypes example: ::
 

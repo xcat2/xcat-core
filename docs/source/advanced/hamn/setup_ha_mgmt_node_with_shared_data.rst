@@ -46,7 +46,7 @@ You need to substitute the hostnames and ip address with your own values when se
 Configuring Shared Data
 =======================
 
-``Note``: Shared data itself needs high availability also, the shared data should not become a single point of failure.
+.. note:: Shared data itself needs high availability also, the shared data should not become a single point of failure.
 
 The configuration procedure will be quite different based on the shared data mechanism that will be used. Configuring these shared data mechanisms is beyond the scope of this documentation. After the shared data mechanism is configured, the following xCAT directory structure should be on the shared data, if this is done before xCAT is installed, you need to create the directories manually; if this is done after xCAT is installed, the directories need to be copied to the shared data. ::
 
@@ -57,7 +57,10 @@ The configuration procedure will be quite different based on the shared data mec
     /tftpboot 
 
 
-``Note``:For MySQL, the database directory is ``/var/lib/mysql``; for PostGreSQL, the database directory is ``/var/lib/pgsql``; for DB2, the database directory is specified with the site attribute databaseloc; for sqlite, the database directory is /etc/xcat, already listed above. 
+.. note:: * For MySQL, the database directory is ``/var/lib/mysql``
+          * For PostGreSQL, the database directory is ``/var/lib/pgsql``
+          * For DB2, the database directory is specified with the site attribute ``databaseloc``
+          * For SQLite, the database directory is ``/etc/xcat``
 
 Here is an example of how to make directories be shared data through NFS: ::
 
@@ -67,7 +70,6 @@ Here is an example of how to make directories be shared data through NFS: ::
     mount -o rw <nfssvr>:/dir4 /<dbdirectory>
     mount -o rw <nfssvr>:/dir5 /tftpboot
 
-``Note``: if you need to setup high availability for some other applications, like the HPC software stack, between the two xCAT management nodes, the applications data should be on the shared data.
 
 Setup xCAT on the Primary Management Node
 =========================================
@@ -260,9 +262,7 @@ Besides the files mentioned above, there may be some additional customization fi
     /etc/inittab
     (and more)
 
-``Note``:
-If the IBM HPC software stack is configured in your environment, execute additional steps required to copy additional data or configuration files for HAMN setup.
-The dhcpsd.cnf should be synchronized between the primary management node and standby management node only when the DHCP configuration on the two management nodes are exactly the same.
+.. note:: If the IBM HPC software stack is configured in your environment, execute additional steps required to copy additional data or configuration files for HAMN setup.  The ``dhcpsd.cnf`` should be synchronized between the primary management node and standby management node only when the DHCP configuration on the two management nodes are exactly the same.
 
 Cluster Maintenance Considerations
 ==================================
@@ -275,7 +275,7 @@ The standby management node should be taken into account when doing any maintena
 
 #.  Reboot management nodes - In the primary management node needs to be rebooted, since the daemons are set to not auto start at boot time, and the shared data will not be mounted automatically, you should mount the shared data and start the daemons manually.
 
-``Note``: after software upgrade, some services that were set to not autostart on boot might be started by the software upgrade process, or even set to autostart on boot, the admin should check the services on both primary and standby management node, if any of the services are set to autostart on boot, turn it off; if any of the services are started on the backup management node, stop the service.
+.. note:: After software upgrade, some services that were set to not autostart on boot might be started by the software upgrade process, or even set to autostart on boot, the admin should check the services on both primary and standby management node, if any of the services are set to autostart on boot, turn it off; if any of the services are started on the backup management node, stop the service.
 
 At this point, the HA MN Setup is complete, and customer workloads and system administration can continue on the primary management node until a failure occurs. The xcatdb and files on the standby management node will continue to be synchronized until such a failure occurs.
 
@@ -306,7 +306,7 @@ Here is an example of how to use this script: ::
 
     /opt/xcat/share/xcat/hamn/deactivate-mn -i eth1:2 -v 9.114.47.97
 
-**Notes**: This script will be over-written after xCAT is upgraded. If this script is customized, make sure backup it before upgrading xCAT.
+.. warning:: This script will be over-written after xCAT is upgraded. If this script is customized, make sure to back it up before upgrading xCAT.
 
 On the current primary management node:
 
@@ -317,12 +317,12 @@ If the management node is still available and running the cluster, perform the f
     rmhwconn cec,frame
     rmhwconn cec,frame -T fnm
 
-#. Stop the xCAT daemon.
-
-   ``Note``: xCAT must be stopped on all Service Nodes also, and LL if using the database. ::
+#. Stop the xCAT daemon. ::
 
     service xcatd stop
     service dhcpd stop
+
+   .. note:: xCAT must be stopped on all Service Nodes as well.
 
 #. unexport the xCAT NFS directories
 
@@ -372,7 +372,7 @@ Here is an example of how to use this script to make the machine be a primary ma
 
      /opt/xcat/share/xcat/hamn/activate-mn -i eth1:2 -v 9.114.47.97 -m 255.255.255.0
 
-**Notes**: This script will be over-written after xCAT is upgraded. If this script is customized, make sure backup it before upgrading xCAT.
+.. warning:: This script will be over-written after xCAT is upgraded. If this script is customized, make sure to back it up before upgrading xCAT.
 
 On the new primary management node:
 
@@ -509,7 +509,7 @@ The operating system is installed on the internal disks.
 
    If you place entries for the disk in ``/etc/fstab``, which is not required, ensure that the entries do not have the system automatically mount the disk. 
 
-   ``Note``: Since the file systems will not be mounted automatically during system reboot, it implies that you need to manually mount the file systems after the primary management node reboot. Before mounting the file systems, stop xcat daemon first; after the file systems are mounted, start xcat daemon. 
+   .. note::  Since the file systems will not be mounted automatically during system reboot this must be manually done and xCAT should be started **after** the filesystem is mounted. 
 
 #. Verify the file systems on the primary management node.
 

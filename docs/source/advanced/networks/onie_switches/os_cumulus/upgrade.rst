@@ -8,7 +8,7 @@ Full Install
 
 Perform a full install from the ``.bin`` file of the new Cumulus Linux OS version, using ONIE.  
 
-**Note:** Make sure you back up all your data and configuration files as the binary install will erase all previous configuration. 
+.. important:: Make sure you back up all your data and configuration files as the binary install will erase all previous configuration. 
  
 #. Place the binary image under ``/install`` on the xCAT MN node. 
 
@@ -22,7 +22,7 @@ Perform a full install from the ``.bin`` file of the new Cumulus Linux OS versio
       xdsh switch1 "/usr/cumulus/bin/onie-install -a -f -i \
       http://172.21.253.37/install/onie/cumulus-linux-3.4.1.bin && reboot"
 
-   **Note:** The full upgrade process may run 30 minutes or longer. 
+   .. attention:: The full upgrade process may run 30 minutes or longer. 
 
 #. After upgrading, the license should be installed, see :ref:`Activate the License <activate-the-license>` for details.
 

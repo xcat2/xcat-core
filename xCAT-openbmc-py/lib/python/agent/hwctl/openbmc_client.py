@@ -49,7 +49,13 @@ DUMP_URLS = {
 
 GARD_CLEAR_URL = "/org/open_power/control/gard/action/Reset"
 
-INVENTORY_URL = "/inventory/enumerate"
+INVENTORY_URLS = {
+    "all"       : "/inventory/enumerate",
+    "model"     : "/inventory/system",
+    "serial"    : "/inventory/system",
+    "cpu"       : "/inventory/system/chassis/motherboard/enumerate",
+    "dimm"      : "/inventory/system/chassis/motherboard/enumerate",
+}    
 
 LEDS_URL = "/led/physical/enumerate"
 
@@ -546,11 +552,19 @@ class OpenBMCRest(object):
             error = 'Received wrong format response: %s' % sensor_data
             raise SelfServerException(error)
 
-    def get_inventory_info(self):
+    def get_inventory_info(self, inventory_type):
 
-        inventory_data = self.request('GET', INVENTORY_URL, cmd='get_inventory_info')
+        inventory_data = self.request('GET', INVENTORY_URLS[inventory_type], cmd='get_inventory_info')
         try:
-            inverntory_dict = {}
+            inventory_dict = {}
+            if inventory_type == 'model' or inventory_type == 'serial':
+                # The format of returned data for model and serial a different from other inventory types
+                inventory_dict['SYSTEM'] = []
+                for key, value in inventory_data.items():
+                    inventory_dict['SYSTEM'].append('%s %s : %s' % ("SYSTEM", key, value))
+
+                return inventory_dict
+
             for key, value in inventory_data.items():
                 if 'Present' not in value:
                     logger.debug('Not "Present" for %s' % key)
@@ -572,13 +586,13 @@ class OpenBMCRest(object):
                 else:
                     source = key_id
 
-                if key_type not in inverntory_dict:
-                    inverntory_dict[key_type] = []
+                if key_type not in inventory_dict:
+                    inventory_dict[key_type] = []
 
                 for (sub_key, v) in value.items():
-                    inverntory_dict[key_type].append('%s %s : %s' % (source.upper(), sub_key, v))
+                    inventory_dict[key_type].append('%s %s : %s' % (source.upper(), sub_key, v))
 
-            return inverntory_dict
+            return inventory_dict
         except KeyError:
             error = 'Received wrong format response: %s' % inventory_data
             raise SelfServerException(error)
