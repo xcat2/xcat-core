@@ -1088,8 +1088,10 @@ rmdir \"/tmp/\$userid\" \n";
         }
 
         if (%child_node_map) {
+            my $pid_flag = 0;
             while ((my $cpid = waitpid(-1, WNOHANG)) > 0) {
                 if ($child_node_map{$cpid}) {
+                    $pid_flag = 1;
                     my $node = $child_node_map{$cpid};
                     my $rc = $? >> 8;
                     if ($rc != 0) {
@@ -1106,6 +1108,9 @@ rmdir \"/tmp/\$userid\" \n";
                     }
                     delete $child_node_map{$cpid};
                 }
+            }
+            unless ($pid_flag) {
+                select(undef, undef, undef, 0.01);
             }
         }
         my @del;
