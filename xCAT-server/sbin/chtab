@@ -66,7 +66,7 @@ unless ($target) {
 my $current_userid = getpwuid($>);
 if ($current_userid ne "root")
 {
-    print "WARNING: chtab bypasses xcatd and does not enforce xCAT policy tables. Using tabch instead.\n";
+    print "WARNING: chtab bypasses xcatd and does not enforce xCAT policy tables. Consider using tabch instead.\n";
 }
 
 my %keyhash = ();
