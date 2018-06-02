@@ -264,7 +264,7 @@ sub delete_nodes {
         return 1;
     } elsif ($delmode) {
         while (my ($k, $v) = each %{$response}) {
-            if ($v ne "Deleted") {
+            if ($v ne "Deleted" && $v ne "Accepted") {
                 xCAT::MsgUtils->error_message("$k: Failed to delete entry in goconserver: $v", $callback);
                 $ret = 1;
             } else {
@@ -299,7 +299,7 @@ sub create_nodes {
         return 1;
     } elsif ($response) {
         while (my ($k, $v) = each %{$response}) {
-            if ($v ne "Created") {
+            if ($v ne "Created" && $v ne "Accepted") {
                 xCAT::MsgUtils->error_message("$k: Failed to create console entry in goconserver: $v", $callback);
                 $ret = 1;
             } else {
