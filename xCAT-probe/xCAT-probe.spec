@@ -70,4 +70,6 @@ cd %{prefix}/probe/subcmds/bin/
 ln %{prefix}/bin/xcatclient switchprobe
 
 %preun
-rm -rf %{prefix}/probe/subcmds/bin/
+if [ "$1" != "1" ]; then
+    rm -rf %{prefix}/probe/subcmds/bin/
+fi
