@@ -135,6 +135,6 @@ description:try to delete a template, then error messages appear
 cmd:result=`lsdef | grep  switch-template`; if [[ $result =~ "switch-template" ]]; then echo $result; noderm switch-template; fi
 cmd:rmdef switch-template
 check:rc==1
-check:output=~Error\: Could not find an object named \'switch-template\' of type \'node\'
+check:output=~Error\: (\[.*?\]: )?Could not find an object named \'switch-template\' of type \'node\'
 check:output=~No objects have been removed from the xCAT database.
 end
