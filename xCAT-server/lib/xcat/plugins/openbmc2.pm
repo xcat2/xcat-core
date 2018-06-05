@@ -16,6 +16,7 @@ use Getopt::Long;
 use xCAT::Usage;
 use xCAT::SvrUtils;
 use xCAT::OPENBMC;
+use xCAT::AGENT;
 
 #-------------------------------------------------------
 
@@ -134,7 +135,7 @@ sub process_request {
     my $request = shift;
     $callback = shift;
 
-    if (!xCAT::OPENBMC::exists_python_agent()) {
+    if (!xCAT::AGENT::exists_python_agent()) {
         xCAT::MsgUtils->message("E", { data => ["The xCAT Python agent does not exist. Check if xCAT-openbmc-py package is installed on management node and service nodes."] }, $callback);
         return;
     }
@@ -149,14 +150,14 @@ sub process_request {
     return unless(%node_info);
 
     # If we can't start the python agent, exit immediately
-    my $pid = xCAT::OPENBMC::start_python_agent($$);
+    my $pid = xCAT::AGENT::start_python_agent($$);
     if (!defined($pid)) {
         xCAT::MsgUtils->message("E", { data => ["Failed to start the xCAT Python agent. Check /var/log/xcat/cluster.log for more information."] }, $callback);
         return;
     }
 
-    xCAT::OPENBMC::submit_agent_request($pid, $request, \%node_info, $callback);
-    xCAT::OPENBMC::wait_agent($pid, $callback);
+    xCAT::AGENT::submit_agent_request($pid, $request, "openbmc", \%node_info, $callback);
+    xCAT::AGENT::wait_agent($pid, $callback);
 }
 
 my @rsp_common_options = qw/autoreboot bootmode powersupplyredundancy powerrestorepolicy timesyncmethod
