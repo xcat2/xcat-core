@@ -36,7 +36,7 @@ User should prepare the followings before setup shared data based xCAT HA manage
 
     #. Optional net mask for virtual IP, default value is ``255.255.255.0``
 
-    #. Optional database type, supported choices are ``postgresql`` or ``mysql`` or ``sqlite``, default is ``sqlite``
+    #. Optional database type, supported choices are ``postgresql`` or ``mariadb`` or ``sqlite``, default is ``sqlite``
 
 Setup xCAT HA Management Node
 -----------------------------
