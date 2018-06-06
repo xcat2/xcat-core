@@ -338,7 +338,7 @@ if ((($odbconly == 0) && ($::xcatrunningmysql == 0)) || $::UPDATE || $::SETUPLL)
 }
 
 # initial setup request, if not already running mysql
-my $hostfile_configured=1;
+my $hostfile_configured=0;
 if (($::INIT) && ($::xcatrunningmysql == 0))
 {
     # MySQL not running, then initialize the database
@@ -447,7 +447,7 @@ if (($::INIT) && ($::xcatrunningmysql == 0))
         if ($::HOSTFILE)
         {
            &addhosts;
-           $hostfile_configured=0
+           $hostfile_configured=1
         }
 
         #
@@ -488,7 +488,7 @@ if ($::SETUPLL)
 
 
 # if input a list of hosts to add to the database, to give access to MySQL
-if (($::HOSTFILE) && ($hostfile_configured == 1))
+if (($::HOSTFILE) && ($hostfile_configured == 0))
 {
     &addhosts;
 
