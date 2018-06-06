@@ -21,6 +21,7 @@ use lib "$FindBin::Bin/../imgutils";
 use imgutils;
 use xCAT::Utils;
 use Digest::MD5 qw(md5_hex);
+use Data::Dumper;
 
 #use strict;
 Getopt::Long::Configure("bundling");
@@ -69,7 +70,7 @@ my $prompt;
 my $ignorekernelchk;
 my $noupdate;
 my $lock;
-
+my $envar;
 
 
 sub xdie {
@@ -186,6 +187,7 @@ GetOptions(
     'onlyinitrd'        => \$onlyinitrd,
     'ignorekernelchk'   => \$ignorekernelchk,
     'noupdate'          => \$noupdate,
+    'env=s'             => \$envar,
 );
 
 if (@ARGV > 0) {
@@ -784,6 +786,12 @@ if ($postinstall_filename) {
     $ENV{IMG_OTHERPKGLIST}=$otherpkglist if("" ne $otherpkglist);
     $ENV{IMG_OTHERPKGDIR}=$srcdir_otherpkgs if("" ne $srcdir_otherpkgs);
     $ENV{IMG_ROOTIMGDIR}=$rootimg_dir if("" ne $rootimg_dir);
+   
+    my @envarlist=split(',',$envar);
+    foreach my $entry (@envarlist){
+        my ($key,$value)=split('=',$entry);
+        $ENV{$key}=$value;
+    }
 
     foreach my $postinstall (split /,/, $postinstall_filename) {
         if (!-x $postinstall) {
