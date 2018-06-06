@@ -1598,6 +1598,7 @@ sub crydb
     };
     $kp = $get_query_map->($key);
     return undef if (!defined($kp));
+    return '*' if ($::XCATSITEVALS{secureroot} eq "1");
     return xCAT::PasswordUtils::crypt_system_password($table, $kp, \@fields);
 }
 
