@@ -1517,8 +1517,8 @@ until ($quit) {
 
         populate_site_hash();
         my %extrasslargs;
-        if ($::XCATSITEVALS{xcatsslversion}) { $extrasslargs{SSL_version} = $::XCATSITEVALS{xcatsslversion}; }
-        if ($::XCATSITEVALS{xcatsslciphers}) { $extrasslargs{SSL_cipher_list} = $::XCATSITEVALS{xcatsslciphers}; }
+	#if ($::XCATSITEVALS{xcatsslversion}) { $extrasslargs{SSL_version} = $::XCATSITEVALS{xcatsslversion}; }
+        if ($::XCATSITEVALS{xcatsslciphers}) { $extrasslargs{SSL_cipher_list} = $::XCATSITEVALS{xcatsslciphers}; } else { $extrasslargs{SSL_cipher_list} = "ECDHE-RSA-AES128-GCM-SHA256:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384"; }
         use Data::Dumper;
 
         $SIG{ALRM} = sub { $ssltimeout = 1; die; };
@@ -1528,6 +1528,7 @@ until ($quit) {
                 SSL_key_file    => $xcatdir . "/cert/server-cred.pem",
                 SSL_cert_file   => $xcatdir . "/cert/server-cred.pem",
                 SSL_ca_file     => $xcatdir . "/cert/ca.pem",
+		SSL_ecdh_curve => 'prime256v1',
                 SSL_server      => 1,
                 SSL_verify_mode => 1,
                 %extrasslargs,
