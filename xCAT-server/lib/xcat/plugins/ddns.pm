@@ -1528,7 +1528,7 @@ sub add_or_delete_records {
                                 next;
                             }
                             if ($reply->header->rcode ne 'NOERROR') {
-                                xCAT::SvrUtils::sendmsg([ 1, "Failure encountered updating $zone, error was " . $reply->header->rcode . ". See more details in system log." ], $callback);
+                                xCAT::SvrUtils::sendmsg([ 1, "Failure encountered updating $zone with entry '$entry', error was " . $reply->header->rcode . ". See more details in system log." ], $callback);
                             }
                         }
                         else {
@@ -1549,7 +1549,7 @@ sub add_or_delete_records {
                             next;
                         }
                         if ($reply->header->rcode ne 'NOERROR') {
-                            xCAT::SvrUtils::sendmsg([ 1, "Failure encountered updating $zone, error was " . $reply->header->rcode . ". See more details in system log." ], $callback);
+                            xCAT::SvrUtils::sendmsg([ 1, "Failure encountered updating $zone with entry '$entry', error was " . $reply->header->rcode . ". See more details in system log." ], $callback);
                         }
                     }
                     else {

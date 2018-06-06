@@ -562,7 +562,7 @@ passed as argument rather than by table value',
             mask    => 'The network mask.',
             mgtifname => 'The interface name of the management/service node facing this network.  !remote!<nicname> indicates a non-local network on a specific nic for relay DHCP.',
             gateway => 'The network gateway. It can be set to an ip address or the keyword <xcatmaster>, the keyword <xcatmaster> indicates the cluster-facing ip address configured on this management node or service node. Leaving this field blank means that there is no gateway for this network.',
-            dhcpserver => 'The DHCP server that is servicing this network.  Required to be explicitly set for pooled service node operation.',
+            dhcpserver => 'The DHCP server that is servicing this network. Required to be explicitly set for pooled service node operation. This field should not be set except for service node operation.  Also, <xcatmaster> is not a valid field value for this field.',
             tftpserver => 'The TFTP server that is servicing this network.  If not set, the DHCP server is assumed.',
             nameservers => 'A comma delimited list of DNS servers that each node in this network should use. This value will end up in the nameserver settings of the /etc/resolv.conf on each node in this network. If this attribute value is set to the IP address of an xCAT node, make sure DNS is running on it. In a hierarchical cluster, you can also set this attribute to "<xcatmaster>" to mean the DNS server for each node in this network should be the node that is managing it (either its service node or the management node).  Used in creating the DHCP network definition, and DNS configuration.',
             ntpservers => 'The ntp servers for this network.  Used in creating the DHCP network definition.  Assumed to be the DHCP server if not set.',
@@ -890,7 +890,7 @@ passed as argument rather than by table value',
             noderange => 'The Noderange that this rule applies to.  Default is "*" (all nodes). Not supported with the *def commands.',
             parameters => 'A regular expression that matches the command parameters (everything except the noderange) that this rule applies to.  Default is "*" (all parameters). Not supported with the *def commands.',
             time => 'Time ranges that this command may be executed in.  This is not supported.',
-            rule => 'Specifies how this rule should be applied.  Valid values are: allow, accept, trusted. Allow or accept  will allow the user to run the commands. Any other value will deny the user access to the commands. Trusted means that once this client has been authenticated via the certificate, all other information that is sent (e.g. the username) is believed without question.  This authorization should only be given to the xcatd on the management node at this time.',
+            rule => 'Specifies how this rule should be applied.  Valid values are: allow, trusted. Allow will allow the user to run the commands. Any other value will deny the user access to the commands. Trusted means that once this client has been authenticated via the certificate, all other information that is sent (e.g. the username) is believed without question.  This authorization should only be given to the xcatd on the management node at this time.',
             comments => 'Any user-written notes.',
             disable  => "Set to 'yes' or '1' to comment out this row.",
         },
@@ -998,15 +998,15 @@ passed as argument rather than by table value',
 "DATABASE ATTRIBUTES\n" .
 " -----------------\n" .
 " auditnosyslog: If set to 1, then commands will only be written to the auditlog table.\n" .
-"                This attribute set to 1 and auditskipcmds=ALL means no logging of commands.\n" .
+"                If this attribute is set to 1 and auditskipcmds=ALL means no logging of commands.\n" .
 "                Default is to write to both the auditlog table and syslog.\n" .
 " auditskipcmds: List of commands and/or client types that will not be\n" .
 "                written to the auditlog table and syslog. See auditnosyslog.\n" .
 "                'ALL' means all cmds will be skipped. If attribute is null, all\n" .
-              "                commands will be written.\n" .
+"                commands will be written.\n" .
 "                clienttype:web would skip all commands from the web client\n" .
-              "                For example: tabdump,nodels,clienttype:web \n" .
-"                will not log tabdump,nodels and any web client commands.\n\n" .
+"                For example: tabdump,nodels,clienttype:web \n" .
+"                will not log tabdump, nodels or any web client commands.\n" .
 " databaseloc:    Directory where we create the db instance directory.\n" .
 "                 Default is /var/lib. Only DB2 is currently supported.\n" .
 "                 Do not use the directory in the site.installloc or\n" .
@@ -1285,6 +1285,8 @@ passed as argument rather than by table value',
 " --------------------\n" .
 "XCAT DAEMON ATTRIBUTES\n" .
 " --------------------\n" .
+" tokenexpiredays: Number of days before REST API token will expire. The default is 1.\n" .
+"                  use 'never' if you want your token to never expire.\n" .
 " useflowcontrol:  (yes/1 or no/0). If yes, the postscript processing on each node\n" .
 "               contacts xcatd on the MN/SN using a lightweight UDP packet to wait\n" .
 "               until xcatd is ready to handle the requests associated with\n" .
@@ -1448,8 +1450,8 @@ passed as argument rather than by table value',
             audittime  => 'The timestamp for the audit entry.',
             userid     => 'The user running the command.',
             clientname => 'The client machine, where the command originated.',
-            clienttype => 'Type of command: cli,java,webui,other.',
-            command    => 'Command executed.',
+            clienttype => 'Type of command: cli, java, webui, other.',
+            command    => 'Command executed. See auditskipcmds site table attribute to control which commands get logged.',
             noderange  => 'The noderange on which the command was run.',
             args       => 'The command argument list.',
             status     => 'Allowed or Denied.',
@@ -1802,13 +1804,15 @@ zvmivp => {
         },
     },
     token => {
-        cols         => [qw(tokenid username expire comments disable)],
+        cols         => [qw(tokenid username expire created access comments disable)],
         keys         => [qw(tokenid)],
         table_desc   => 'The token of users for authentication.',
         descriptions => {
             tokenid  => 'It is a UUID as an unified identify for the user.',
             username => 'The user name.',
             expire   => 'The expire time for this token.',
+            created  => 'Creation time for this token.',
+            access   => 'Last access time for this token.',
             comments => 'Any user-provided notes.',
             disable  => "Set to 'yes' or '1' to comment out this row.",
         },

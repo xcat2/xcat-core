@@ -1,0 +1,111 @@
+#!/bin/bash
+
+set -x
+
+COMPUTE_NODE="${1:?empty compute node}"
+
+NODE_RCP="${2:+-r /usr/bin/scp}"
+
+OSIMAGE="$(lsdef "${COMPUTE_NODE}" -i provmethod | awk -F = '/provmethod=/ { print $2 }')"
+
+TMP_DIR="$(mktemp -d "/tmp/${0##*/}.XXXXXXXX" 2>/dev/null)"
+
+function cleanup()
+{
+	rm -rf "${TMP_DIR}"
+	chdef -t osimage "${OSIMAGE}" "synclists="
+}
+
+trap cleanup EXIT
+
+function compute_node_cleanup()
+{
+	xdsh "${COMPUTE_NODE}" "rm -rf /etc/files"
+}
+
+declare -i failed=0
+
+mkdir -p "${TMP_DIR}/files"
+echo foo >"${TMP_DIR}/files/foo"
+echo bar >"${TMP_DIR}/files/bar"
+echo baz >"${TMP_DIR}/files/baz"
+
+cat >"${TMP_DIR}/foobar.synclist" <<EOF
+${TMP_DIR}/files/foo -> /etc/files/foo
+${TMP_DIR}/files/bar -> /etc/files/bar
+${TMP_DIR}/files/baz -> /etc/files/baz
+EOF
+
+chdef -t osimage "${OSIMAGE}" "synclists=${TMP_DIR}/foobar.synclist"
+
+updatenode "${COMPUTE_NODE}" -F ${NODE_RCP}
+# Check return code
+(( failed += $? ))
+xdsh "${COMPUTE_NODE}" 'grep foo /etc/files/foo'
+(( failed += $? ))
+xdsh "${COMPUTE_NODE}" 'grep bar /etc/files/bar'
+(( failed += $? ))
+xdsh "${COMPUTE_NODE}" 'grep baz /etc/files/baz'
+(( failed += $? ))
+compute_node_cleanup
+
+# ====== #
+
+xdsh "${COMPUTE_NODE}" 'mkdir -p /etc/files/bar'
+updatenode "${COMPUTE_NODE}" -F ${NODE_RCP}
+# Check return code
+[ -z "${NODE_RCP}" ] && (( failed += $? ))
+xdsh "${COMPUTE_NODE}" 'grep foo /etc/files/foo'
+(( failed += $? ))
+xdsh "${COMPUTE_NODE}" 'grep bar /etc/files/bar'
+[ -z "${NODE_RCP}" ] && (( failed += $? ))
+xdsh "${COMPUTE_NODE}" 'grep baz /etc/files/baz'
+(( failed += $? ))
+compute_node_cleanup
+
+# ====== #
+
+rm -f "${TMP_DIR}/files/bar"
+
+updatenode "${COMPUTE_NODE}" -F ${NODE_RCP}
+xdsh "${COMPUTE_NODE}" 'grep foo /etc/files/foo'
+(( failed += $? ))
+xdsh "${COMPUTE_NODE}" 'grep baz /etc/files/baz'
+(( failed += $? ))
+compute_node_cleanup
+
+# ====== #
+
+mkdir -p "${TMP_DIR}/files/bar"
+xdsh "${COMPUTE_NODE}" 'mkdir -p /etc/files && echo bar >/etc/files/bar'
+updatenode "${COMPUTE_NODE}" -F ${NODE_RCP}
+[ -z "${NODE_RCP}" ] && (( failed += $? ))
+xdsh "${COMPUTE_NODE}" 'grep foo /etc/files/foo'
+(( failed += $? ))
+xdsh "${COMPUTE_NODE}" 'test -d /etc/files/bar'
+[ -z "${NODE_RCP}" ] && (( failed += $? ))
+xdsh "${COMPUTE_NODE}" 'grep baz /etc/files/baz'
+(( failed += $? ))
+compute_node_cleanup
+
+# ====== #
+
+cat >"${TMP_DIR}/files/qux" <<EOF
+#!/bin/bash
+cat /etc/files/foo /etc/files/baz >/etc/files/zzz
+EOF
+chmod 0755 "${TMP_DIR}/files/qux"
+cat >>"${TMP_DIR}/foobar.synclist" <<EOF
+EXECUTEALWAYS:
+${TMP_DIR}/files/qux
+EOF
+
+updatenode "${COMPUTE_NODE}" -F ${NODE_RCP}
+(( failed += $? ))
+xdsh "${COMPUTE_NODE}" 'grep foo /etc/files/zzz'
+(( failed += $? ))
+xdsh "${COMPUTE_NODE}" 'grep baz /etc/files/zzz'
+(( failed += $? ))
+compute_node_cleanup
+
+exit "${failed}"

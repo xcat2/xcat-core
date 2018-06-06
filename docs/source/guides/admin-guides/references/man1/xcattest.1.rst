@@ -229,8 +229,9 @@ For example, to run rscan command against the hardware control point of compute 
 .. code-block:: perl
 
    rscan __GETNODEATTR($$CN, hcp)__ -z
- 3. B<GETTABLEVALUE(keyname, key, colname, table)> To get the value of column where keyname == key in specified table.
 
+
+3. \ **GETTABLEVALUE(keyname, key, colname, table)**\  To get the value of column where keyname == key in specified table.
 
 
 *****

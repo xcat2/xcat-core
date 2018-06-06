@@ -5,7 +5,15 @@ The Docker linux container technology is currently very popular. xCAT can help m
 
 This document describes how to use xCAT for docker management, from Docker Host setup to docker container operations. 
 
-**Note:** The document was verified with **Docker Version 1.10, 1.11** and **Docker API version 1.22.** The Docker Host was verified on **ubuntu14.04.3 x86_64**, **ubuntu15.10 x86_64**, **ubuntu16.04 x86_64** and **ubuntu16.04 ppc64el**.
+.. note:: This document was verified with: 
+             * Docker Version 1.10, 1.11
+             * Docker API version 1.22
+
+          Docker Host has been verified on the following OS/ARCH combinations:
+             * Ubuntu 14.04.3,x86_64
+             * Ubuntu 15.10,x86_64
+             * Ubuntu 16.04,x86_64
+             * Ubuntu 16.04,ppc64el
 
 
 Setting up Docker Host

@@ -9,13 +9,13 @@ Adjusting Operating System tunables can improve large scale cluster performance,
     The open file limits are important to high concurrence network services, such as ``xcatd``. For a large cluster, it is required to increase the number of open file limit to avoid **Too many open files** error. The default value is *1024* in most OS distributions, to add below configuration in ``/etc/security/limits.conf`` to increase to *14096*.
     ::
 
-        *   soft    nofiles     14096
-        *   hard    nofiles     14096
+        *   soft    nofile     14096
+        *   hard    nofile     14096
 
 
 #. Tuning Network kernel parameters:
 
-    There might be hundreds of hosts in a big network for large cluster, tuning the network kernel parameters for optimum throughput and latency could improve the performance of distributed application. For example, adding below configuration in ``/etc/sysctl.conf`` to increase the buffer.
+    There might be hundreds of hosts in a big network for large cluster, tuning the network kernel parameters for optimum throughput and latency could improve the performance of distributed application. For example, adding below configuration in ``/etc/sysctl.conf`` to increase the buffer size and queue length of **xCAT SSL listener** service access point ( port **3001** ).
 
     ::
 
@@ -23,6 +23,7 @@ Adjusting Operating System tunables can improve large scale cluster performance,
         net.core.wmem_max = 33554432
         net.core.rmem_default = 65536
         net.core.wmem_default = 65536
+        net.core.somaxconn = 8192
         
         net.ipv4.tcp_rmem = 4096 33554432 33554432
         net.ipv4.tcp_wmem = 4096 33554432 33554432

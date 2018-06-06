@@ -68,7 +68,7 @@ networks Attributes:
 
 \ **dhcpserver**\ 
  
- The DHCP server that is servicing this network.  Required to be explicitly set for pooled service node operation.
+ The DHCP server that is servicing this network.  Required to be explicitly set for pooled service node operation.  This field should not be set except for service node operation.  Also, <xcatmaster> is not a valid field value for this field.
  
 
 

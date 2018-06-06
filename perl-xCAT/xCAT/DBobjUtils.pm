@@ -1314,7 +1314,7 @@ sub setobjdefs
                             if (grep(/^$tempps$/, @xcatdefps)) {
                                 my $rsp;
                                 $rsp->{data}->[0] = "$obj: postscripts \'$tempps\' is already included in the \'xcatdefaults\'.";
-                                xCAT::MsgUtils->message("E", $rsp, $::callback);
+                                xCAT::MsgUtils->message("W", $rsp, $::callback);
                             } else {
                                 push @newps, $tempps;
                             }
@@ -1328,7 +1328,7 @@ sub setobjdefs
                             if (grep(/^$temppbs$/, @xcatdefpbs)) {
                                 my $rsp;
                                 $rsp->{data}->[0] = "$obj: postbootscripts \'$temppbs\' is already included in the \'xcatdefaults\'.";
-                                xCAT::MsgUtils->message("E", $rsp, $::callback);
+                                xCAT::MsgUtils->message("W", $rsp, $::callback);
                             } else {
                                 push @newpbs, $temppbs;
                             }

@@ -1,101 +1,58 @@
-start:node_post_for_table_get
-description: node_for_table_get
-cmd:restapitest -m POST -r /nodes/tnode1 -d '{"groups":"all","mgt":"dfm","netboot":"xnba","provmethod":"rhels6.4-x86_64-install-compute","profile":"compute","arch":"x86_64","os":"rhels6.4"}'
-check:rc==201
-end
-
-start:node_post_for_table_get
-description: node_for_table_get
-cmd:restapitest -m POST -r /nodes/tnode2 -d '{"groups":"all","mgt":"dfm","netboot":"yaboot","provmethod":"rhels6.4-ppc64-install-compute","profile":"compute","arch":"ppc64","os":"rhels6.4"}'
-check:rc==201
-end
-
-start:table_get
-description: table_get
-cmd:restapitest -m GET -r /tables/nodetype/nodes/tnode1,tnode2 
+start:get_networks_table_rest
+description: get all networks table entries with REST API
+cmd:restapitest -m GET -r /tables/networks/rows -u $$username -p $$password
 check:rc==200
-cmdcheck:restapitest -o '{"nodetype":[{"arch":"ppc64"}]}' -O ==
+check:output=~netname
 end
 
-start:table_get2
-description: table_get2
-cmd:restapitest -m GET -r /tables/nodetype,noderes/nodes/tnode1,tnode2 
+start:get_network_table_rest
+description: get all entries from invalid table name with REST API
+cmd:restapitest -m GET -r /tables/network/rows -u $$username -p $$password
+check:rc==147
+check:output=~No such table
+end
+
+start:get_network_table_with_attr_selection_rest
+description: get all attribute matching networks table entries with REST API
+cmd:restapitest -m GET -r /tables/networks/rows/mask=255.0.0.0 -u $$username -p $$password
 check:rc==200
-cmdcheck:restapitest -o '{"nodetype":[{"arch":"ppc64"}]}' -O ==
+check:output=~"mask":"255.0.0.0"
 end
 
-start:table_put
-description: table_put 
-cmd:restapitest -m PUT -r /tables/nodetype,noderes/nodes/tnode1,tnode2 -d '{"nodetype":{"arch":"x86_64"},"noderes":{"netboot":"xnba"}}' 
+start:get_network_table_with_attr_selection_error_rest
+description: get all attribute matching networks table entries with REST API, invalid attribute name
+cmd:restapitest -m GET -r /tables/networks/rows/abc=255.0.0.0 -u $$username -p $$password
+check:rc==147
+check:output=~No table rows
+end
+
+start:get_network_table_with_attr_selection_error_rest2
+description: get all attribute matching networks table entries with REST API, no match
+cmd:restapitest -m GET -r /tables/networks/rows/mask=a.b.c.d -u $$username -p $$password
+check:rc==147
+check:output=~No table rows
+end
+
+start:get_network_table_with_attr_selection_rest2
+description: get attribute matching networks table attributes with REST API
+cmd:restapitest -m GET -r /tables/networks/rows/mask=255.0.0.0/gateway -u $$username -p $$password
 check:rc==200
+check:output=~"gateway":"
 end
 
-start:table_get3
-description: table_get3
-cmd:restapitest -m GET -r /tables/nodetype,noderes/nodes/tnode1,tnode2 
+start:set_network_table_attr_with_attr_selection_rest2
+description: set attribute for network table for attr seleection with REST API
+cmd:restapitest -m PUT -r /tables/networks/rows/mask=255.0.0.0 -d '{"comments":"REST API TEST"}' -u $$username -p $$password
 check:rc==200
-cmdcheck:restapitest -o '{"nodetype":[{"arch":"x86_64"}]}' -O ==
+cmd:lsdef -l -t network
+check:output=~REST API TEST
 end
 
-start:table_get_attr
-description: table_get_attr
-cmd:restapitest -m GET -r /tables/nodetype,noderes/nodes/tnode1,tnode2 
+start:delete_network_rest
+description: create a network and delele network with REST API
+cmd: restapitest -m POST -r /networks/network_rest -d '{"gateway":"10.1.0.1","mask":"255.255.0.0","net":"199.168.0.0"}' -u $$username -p $$password
+cmd: restapitest -m DELETE -r /tables/networks/rows/net=199.168.0.0 -u $$username -p $$password
 check:rc==200
-cmdcheck:restapitest -o '{"nodetype":[{"arch":"x86_64"}]}' -O ==
+cmd: lsdef -t network network_rest
+check:output=~Error: (\[.*?\]: )?Could not find an object named 'network_rest' of type 'network'.
 end
-
-start:table_get_row
-description: table_get_row
-cmd:restapitest -m GET -r /tables/networks/rows
-check:rc==200
-cmdcheck:restapitest -o '{"networks":[{"netname":"ANY"}]}' -O ==
-end
-
-start:table_get_row_key
-description: table_get_row_key
-cmd:restapitest -m GET -r /tables/networks/rows/net=9.114.154.64,mask=255.255.255.192
-check:rc==200
-cmdcheck:restapitest -o '{"networks":[{"mask":"255.255.255.192"}]}' -O ==
-end
-
-start:table_put
-description: table_put
-cmd:restapitest -m PUT -r /tables/routes/rows/routename=privnet -d '{"net":"10.0.1.0","mask":"255.255.255.0","gateway":"10.0.1.254","ifname":"eth1"}'
-check:rc==200
-end
-
-start:table_get_row1
-description: table_get_row1
-cmd:restapitest -m GET -r /tables/routes/privnet
-check:rc==200
-cmdcheck:restapitest -o '{"routes":[{"gateway":"10.0.1.254"}]}' -O ==
-end
-
-start:table_get_row_key1
-description: table_get_row_key1
-cmd:restapitest -m GET -r /tables/routes/rows/routename=privnet
-check:rc==200
-cmdcheck:restapitest -o '{"networks":[{"ifname":"eth1"}]}' -O ==
-end
-
-start:table_delete_row
-description: table_delete_row
-cmd:restapitest -m DELETE -r /tables/routes/rows/routename=privnet
-check:rc==200
-cmdcheck:restapitest -o '{"networks":[{"ifname":"eth1"}]}' -O ==
-end
-
-start:table_get_row_for_delete
-description: table_get_row_for_delete
-cmd:restapitest -m GET -r /tables/routes/privnet
-check:rc==200
-cmdcheck:restapitest -o '{"routes":[{"gateway":"10.0.1.254"}]}' -O !==
-end
-
-start:table_get_special_key
-description: table_get_special_key
-cmd:restapitest -m GET -r /tables/networks/rows/net=192.168.1.0,mask=255.255.255.0/mgtifname,tftpserver
-check:rc==200
-cmdcheck:restapitest -o '{"networks":[{"mgtifname":"eth0"}]}' -O !==
-end
-

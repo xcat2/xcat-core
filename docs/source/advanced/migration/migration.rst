@@ -26,7 +26,7 @@ Backup xCAT management node data to backup server:
         ~/.xcat
         /etc/xcat
 
-       **Notes**: backing up ``~/.xcat`` is for all users who have xCAT client certs. 
+       .. note:: Backing up ``~/.xcat`` is for all users who have xCAT client certs. 
 
     #. If there are customized files and directories for ``otherpkgdir``, ``pkgdir``, ``pkglist`` or ``template`` in some `osimage` definitions, backup these files and directories. for example: ::
         

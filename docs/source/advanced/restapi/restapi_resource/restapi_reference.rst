@@ -755,6 +755,29 @@ Delete all the event log for node1. ::
 [URI:/nodes/{noderange}/beacon] - The beacon resource for the node {noderange}
 ------------------------------------------------------------------------------
 
+GET - Get the beacon status for the node {noderange}.
+`````````````````````````````````````````````````````
+
+Refer to the man page: :doc:`rbeacon </guides/admin-guides/references/man1/rbeacon.1>`
+
+**Returns:**
+
+* Json format: An object which includes multiple '<name> : {att:value, attr:value ...}' pairs.
+
+**Example:** 
+
+Get beacon for node1. :: 
+
+
+    curl -X GET -k 'https://127.0.0.1/xcatws/nodes/node1/beacon?userName=root&userPW=cluster&pretty=1'
+    {
+       "node1":{
+          "beacon":[
+             "Front:Blink Rear:Blink"
+          ]
+       }
+    }
+
 PUT - Change the beacon status for the node {noderange}.
 ````````````````````````````````````````````````````````
 
@@ -774,13 +797,6 @@ Turn on the beacon. ::
 
 
     curl -X PUT -k 'https://127.0.0.1/xcatws/nodes/node1/beacon?userName=root&userPW=cluster&pretty=1' -H Content-Type:application/json --data '{"action":"on"}'
-    [
-       {
-          "name":"node1",
-          "beacon":"on"
-       }
-    ]
-
 [URI:/nodes/{noderange}/updating] - The updating resource for the node {noderange}
 ----------------------------------------------------------------------------------
 
@@ -2107,7 +2123,7 @@ Get OS and ARCH attributes from nodetype table for node1 and node2. ::
 [URI:/tables/{tablelist}/rows] - The non-node table resource
 ------------------------------------------------------------
 
-Use this for tables that don't have node name as the key of the table, for example: passwd, site, networks, polciy, etc.
+Use this for tables that don't have node name as the key of the table, for example: passwd, site, networks, policy, etc.
 
 GET - Get all rows from non-node tables.
 ````````````````````````````````````````
@@ -2144,7 +2160,7 @@ Get all rows from networks table. ::
 [URI:/tables/{tablelist}/rows/{keys}] - The non-node table rows resource
 ------------------------------------------------------------------------
 
-Use this for tables that don't have node name as the key of the table, for example: passwd, site, networks, polciy, etc.
+Use this for tables that don't have node name as the key of the table, for example: passwd, site, networks, policy, etc.
 
 {keys} should be the name=value pairs which are used to search table. e.g. {keys} should be [net=192.168.1.0,mask=255.255.255.0] for networks table query since the net and mask are the keys of networks table.
 
@@ -2157,7 +2173,7 @@ GET - Get attributes for rows from non-node tables.
 
 **Example:** 
 
-Get row which net=192.168.1.0,mask=255.255.255.0 from networks table. :: 
+Get rows from networks table where net=192.168.1.0,mask=255.255.255.0. :: 
 
 
     curl -X GET -k 'https://127.0.0.1/xcatws/tables/networks/rows/net=192.168.1.0,mask=255.255.255.0?userName=root&userPW=cluster&pretty=1'
@@ -2201,14 +2217,14 @@ DELETE - Delete rows from a non-node table that have the attribute values specif
 
 **Example:** 
 
-Delete a route row which routename=privnet in the routes table. :: 
+Delete rows from routes table where routename=privnet. :: 
 
 
     curl -X DELETE -k 'https://127.0.0.1/xcatws/tables/routes/rows/routename=privnet?userName=root&userPW=cluster&pretty=1'
 [URI:/tables/{tablelist}/rows/{keys}/{attrlist}] - The non-node table attributes resource
 -----------------------------------------------------------------------------------------
 
-Use this for tables that don't have node name as the key of the table, for example: passwd, site, networks, polciy, etc.
+Use this for tables that don't have node name as the key of the table, for example: passwd, site, networks, policy, etc.
 
 GET - Get specific attributes for rows from non-node tables.
 ````````````````````````````````````````````````````````````
@@ -2219,7 +2235,7 @@ GET - Get specific attributes for rows from non-node tables.
 
 **Example:** 
 
-Get attributes mgtifname and tftpserver which net=192.168.1.0,mask=255.255.255.0 from networks table. :: 
+Get attributes mgtifname and tftpserver from networks table for each row where net=192.168.1.0,mask=255.255.255.0. :: 
 
 
     curl -X GET -k 'https://127.0.0.1/xcatws/tables/networks/rows/net=192.168.1.0,mask=255.255.255.0/mgtifname,tftpserver?userName=root&userPW=cluster&pretty=1'

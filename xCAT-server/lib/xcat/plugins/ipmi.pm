@@ -9057,7 +9057,7 @@ sub donode {
         on_bmc_connect(0, $sessiondata{$node});
         return 0;
     }
-    $sessiondata{$node}->{ipmisession} = xCAT::IPMI->new(bmc => $bmcip, userid => $user, password => $pass);
+    $sessiondata{$node}->{ipmisession} = xCAT::IPMI->new(bmc => $bmcip, userid => $user, password => $pass, node => $node);
     if ($sessiondata{$node}->{ipmisession}->{error}) {
         xCAT::SvrUtils::sendmsg([ 1, $sessiondata{$node}->{ipmisession}->{error} ], $callback, $node, %allerrornodes);
     } else {

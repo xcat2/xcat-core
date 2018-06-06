@@ -185,6 +185,11 @@ sub setdestiny {
                 $state = $stents{$_}->[0]->{currstate};
                 $state =~ s/ .*//;
 
+                #skip the node if state=ondiscover
+                if ($state eq 'ondiscover') {
+                    next;
+                }
+
                 #get the osimagename if nodetype.provmethod has osimage specified
                 #use it for both sninit and genesis operating
                 if (($state eq 'install') || ($state eq 'netboot') || ($state eq 'statelite')) {
@@ -859,6 +864,11 @@ sub nextdestiny {
         }
         unless ($ref->{currchain}) {    #If no current chain, copy the default
             $ref->{currchain} = $ref->{chain};
+        } elsif ($ref->{currchain} !~ /[,;]/){
+            if ($ref->{currstate} and ($ref->{currchain} =~ /$ref->{currstate}/)) {
+                $ref->{currchain} = 'standby';
+                $callnodeset = 0;
+            }
         }
         my @chain = split /[,;]/, $ref->{currchain};
 
@@ -926,6 +936,16 @@ sub getdestiny {
     my %node_status = ();
     foreach $node (@$nodes) {
         unless ($chaintab) { #Without destiny, have the node wait with ssh hopefully open at least
+            my $stat = xCAT_monitoring::monitorctrl->getNodeStatusFromNodesetState("standby", "getdestiny");
+            if ($stat) {
+                if (exists($node_status{$stat})) {
+                    push @{ $node_status{$stat} }, $node;
+                } else { 
+                    $node_status{$stat} = [$node];
+                }
+                xCAT_monitoring::monitorctrl::setNodeStatusAttributes(\%node_status, 1);
+            }
+            
             $callback->({ node => [ { name => [$node], data => ['standby'], destiny => ['standby'] } ] });
             return;
         }
@@ -939,10 +959,10 @@ sub getdestiny {
                 #print "node=$node, stat=$stat\n";
                 if ($stat) {
                     if (exists($node_status{$stat})) {
-                        my $pa = $node_status{$stat};
-                        push(@$pa, $node);
+                        push @{ $node_status{$stat} }, $node;
+                    } else {
+                        $node_status{$stat} = [$node];
                     }
-                    else { $node_status{$stat} = [$node]; }
                 }
             }
 
@@ -990,10 +1010,10 @@ sub getdestiny {
             #print  "node=$node, stat=$stat\n";
             if ($stat) {
                 if (exists($node_status{$stat})) {
-                    my $pa = $node_status{$stat};
-                    push(@$pa, $node);
+                    push @{ $node_status{$stat} }, $node;
+                } else {
+                    $node_status{$stat} = [$node];
                 }
-                else { $node_status{$stat} = [$node]; }
             }
         }
 

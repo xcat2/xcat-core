@@ -31,7 +31,7 @@ cmd:mnip=$(lsdef -t site -o clustersite -i master -c|awk -F'=' '{print $2}');sed
 check:rc==0
 cmd: cat /tmp/export_import_site_by_yaml/dstsite.stanza
 check:rc==0
-cmd:diff -y /tmp/export_import_site_by_yaml/srcsite.stanza /tmp/export_import_site_by_yaml/dstsite.stanza
+cmd:diff -y --ignore-blank-lines  /tmp/export_import_site_by_yaml/srcsite.stanza /tmp/export_import_site_by_yaml/dstsite.stanza
 check:rc==0
 cmd:cat /tmp/export_import_site_by_yaml/site.stanza | mkdef -z -f
 check:rc==0
@@ -77,7 +77,7 @@ cmd:mnip=$(lsdef -t site -o clustersite -i master -c|awk -F'=' '{print $2}');sed
 check:rc==0
 cmd: cat /tmp/export_import_site_by_json/dstsite.stanza
 check:rc==0
-cmd:diff -y /tmp/export_import_site_by_json/srcsite.stanza /tmp/export_import_site_by_json/dstsite.stanza
+cmd:diff -y --ignore-blank-lines  /tmp/export_import_site_by_json/srcsite.stanza /tmp/export_import_site_by_json/dstsite.stanza
 check:rc==0
 cmd:cat /tmp/export_import_site_by_json/site.stanza | mkdef -z -f
 check:rc==0
@@ -197,7 +197,8 @@ cmd:mnip=$(lsdef -t site -o clustersite -i master -c|awk -F'=' '{print $2}');sed
 check:rc==0
 cmd:xcat-inventory export -t site |tee /tmp/xcat_inventory_try_to_export_all_type_is_site_default_format/site.export 
 check:rc==0
-cmd:diff -y /tmp/xcat_inventory_try_to_export_all_type_is_site_default_format/site.org /tmp/xcat_inventory_try_to_export_all_type_is_site_default_format/site.export
+cmd:#!/bin/bash
+diff -y --ignore-blank-lines  --ignore-matching-lines="^#"  /tmp/xcat_inventory_try_to_export_all_type_is_site_default_format/site.org /tmp/xcat_inventory_try_to_export_all_type_is_site_default_format/site.export
 check:rc==0
 cmd:cat /tmp/xcat_inventory_try_to_export_all_type_is_site_default_format/site.stanza | mkdef -z -f
 check:rc==0
@@ -312,7 +313,8 @@ cmd:mnip=$(lsdef -t site -o clustersite -i master -c|awk -F'=' '{print $2}');sed
 check:rc==0
 cmd:xcat-inventory export --format=json -t site |tee /tmp/xcat_inventory_try_to_export_all_type_is_site_json_format/site.export 
 check:rc==0
-cmd:diff -y /tmp/xcat_inventory_try_to_export_all_type_is_site_json_format/site.org /tmp/xcat_inventory_try_to_export_all_type_is_site_json_format/site.export
+cmd:#!/bin/bash
+diff -y --ignore-blank-lines  --ignore-matching-lines="^#"  /tmp/xcat_inventory_try_to_export_all_type_is_site_json_format/site.org /tmp/xcat_inventory_try_to_export_all_type_is_site_json_format/site.export
 check:rc==0
 cmd:cat /tmp/xcat_inventory_try_to_export_all_type_is_site_json_format/site.stanza | mkdef -z -f
 check:rc==0
@@ -423,7 +425,8 @@ cmd:mnip=$(lsdef -t site -o clustersite -i master -c|awk -F'=' '{print $2}');sed
 check:rc==0
 cmd:xcat-inventory export --format=yaml -t site|sed -e '/^\s*$/d' |tee /tmp/xcat_inventory_try_to_export_all_type_is_site_yaml_format/site.export 
 check:rc==0
-cmd:diff -y /tmp/xcat_inventory_try_to_export_all_type_is_site_yaml_format/site.org /tmp/xcat_inventory_try_to_export_all_type_is_site_yaml_format/site.export
+cmd:#!/bin/bash
+diff -y --ignore-blank-lines  --ignore-matching-lines="^#"  /tmp/xcat_inventory_try_to_export_all_type_is_site_yaml_format/site.org /tmp/xcat_inventory_try_to_export_all_type_is_site_yaml_format/site.export
 check:rc==0
 cmd:cat /tmp/xcat_inventory_try_to_export_all_type_is_site_yaml_format/site.stanza | mkdef -z -f
 check:rc==0
@@ -838,16 +841,17 @@ cmd:xcat-inventory import -f /tmp/xcat_inventory_try_to_import_all_type_is_site_
 check:rc==0
 cmd:lsdef -t site -o clustersite > /tmp/xcat_inventory_try_to_import_all_type_is_site_json_format/site.import
 check:rc==0
-cmd:diff -y  /tmp/xcat_inventory_try_to_import_all_type_is_site_json_format/site.org  /tmp/xcat_inventory_try_to_import_all_type_is_site_json_format/site.import
+cmd:#!/bin/bash
+diff -y --ignore-blank-lines  --ignore-matching-lines="^#"  /tmp/xcat_inventory_try_to_import_all_type_is_site_json_format/site.org  /tmp/xcat_inventory_try_to_import_all_type_is_site_json_format/site.import
 check:rc==0
 cmd:lsdef bogusgroup1
-check:output=~Error: Could not find an object
+check:output=~Error: (\[.*?\]: )?Could not find an object
 check:rc!=0
 cmd:lsdef bogusgroup2
-check:output=~Error: Could not find an object
+check:output=~Error: (\[.*?\]: )?Could not find an object
 check:rc!=0
 cmd:lsdef bogusgroup3
-check:output=~Error: Could not find an object
+check:output=~Error: (\[.*?\]: )?Could not find an object
 check:rc!=0
 cmd:tabdump networks|grep 100_0_0_0-255_0_0_0
 check:rc!=0
@@ -1203,16 +1207,17 @@ cmd:xcat-inventory import -f /tmp/xcat_inventory_try_to_import_all_type_is_site_
 check:rc==0
 cmd:lsdef -t site -o clustersite > /tmp/xcat_inventory_try_to_import_all_type_is_site_yaml_format/site.import
 check:rc==0
-cmd:diff -y  /tmp/xcat_inventory_try_to_import_all_type_is_site_yaml_format/site.org  /tmp/xcat_inventory_try_to_import_all_type_is_site_yaml_format/site.import
+cmd:#!/bin/bash
+diff -y --ignore-blank-lines  --ignore-matching-lines="^#"  /tmp/xcat_inventory_try_to_import_all_type_is_site_yaml_format/site.org  /tmp/xcat_inventory_try_to_import_all_type_is_site_yaml_format/site.import
 check:rc==0
 cmd:lsdef bogusgroup1
-check:output=~Error: Could not find an object
+check:output=~Error: (\[.*?\]: )?Could not find an object
 check:rc!=0
 cmd:lsdef bogusgroup2
-check:output=~Error: Could not find an object
+check:output=~Error: (\[.*?\]: )?Could not find an object
 check:rc!=0
 cmd:lsdef bogusgroup3
-check:output=~Error: Could not find an object
+check:output=~Error: (\[.*?\]: )?Could not find an object
 check:rc!=0
 cmd:tabdump networks|grep 100_0_0_0-255_0_0_0
 check:rc!=0
@@ -1278,7 +1283,7 @@ cmd:mnip=$(lsdef -t site -o clustersite -i master -c|awk -F'=' '{print $2}');sed
 check:rc==0
 cmd: cat /tmp/export_site_table_then_modify_yaml_then_import/dstsite.stanza
 check:rc==0
-cmd:diff -y /tmp/export_site_table_then_modify_yaml_then_import/srcsite.stanza /tmp/export_site_table_then_modify_yaml_then_import/dstsite.stanza
+cmd:diff -y --ignore-blank-lines  /tmp/export_site_table_then_modify_yaml_then_import/srcsite.stanza /tmp/export_site_table_then_modify_yaml_then_import/dstsite.stanza
 check:rc==0
 cmd:cat /tmp/export_site_table_then_modify_yaml_then_import/site.stanza | mkdef -z -f
 check:rc==0
@@ -1341,7 +1346,7 @@ cmd:mnip=$(lsdef -t site -o clustersite -i master -c|awk -F'=' '{print $2}');sed
 check:rc==0
 cmd: cat /tmp/export_site_table_then_modify_json_then_import/dstsite.stanza
 check:rc==0
-cmd:diff -y /tmp/export_site_table_then_modify_json_then_import/srcsite.stanza /tmp/export_site_table_then_modify_json_then_import/dstsite.stanza
+cmd:diff -y --ignore-blank-lines  /tmp/export_site_table_then_modify_json_then_import/srcsite.stanza /tmp/export_site_table_then_modify_json_then_import/dstsite.stanza
 check:rc==0
 cmd:cat /tmp/export_site_table_then_modify_json_then_import/site.stanza | mkdef -z -f
 check:rc==0

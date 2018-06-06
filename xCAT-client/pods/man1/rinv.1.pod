@@ -16,7 +16,7 @@ B<rinv> I<noderange> [B<model>|B<serial>|B<deviceid>|B<uuid>|B<guid>|B<vpd>|B<mp
 
 =head2 OpenPOWER (OpenBMC) server specific:
 
-B<rinv> I<noderange> [B<model>|B<serial>|B<firm>|B<cpu>|B<dimm>|B<all>] [B<-V>|B<--verbose>]
+B<rinv> I<noderange> [B<model>][B<serial>][B<firm>][B<cpu>][B<dimm>][B<all>] [B<-V>|B<--verbose>]
 
 =head2 PPC (with HMC) specific:
 
