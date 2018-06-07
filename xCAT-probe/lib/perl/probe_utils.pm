@@ -179,6 +179,24 @@ sub is_static_ip {
     my $os  = get_os();
     my $rst = 0;
 
+    `which nmcli > /dev/null 2>&1`;
+    unless ($?) {
+        my $device_connection = `nmcli device show $nic 2>&1 | grep GENERAL.CONNECTION`;
+        my $net_name;
+        if ($device_connection =~ /GENERAL.CONNECTION:\s*(.+)/) {
+            $net_name = $1;
+        }
+        if ($net_name) {
+            my $ipv4_method = `nmcli con show "$net_name" 2>&1 | grep -E 'ipv4.method'`;
+            unless ($?) {
+                if ($ipv4_method =~ /manual/) {
+                    $rst = 1;
+                }
+                return $rst;
+            }
+        }
+    }
+
     if ($os =~ /redhat/) {
         my $output1 = `cat /etc/sysconfig/network-scripts/ifcfg-$nic 2>&1 |grep -i IPADDR`;
         my $output2 = `cat /etc/sysconfig/network-scripts/ifcfg-$nic 2>&1 |grep -i BOOTPROTO`;
