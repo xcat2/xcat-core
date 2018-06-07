@@ -982,7 +982,7 @@ sub get_snmpvendorinfo {
 
     foreach $comms(@comm_list) {
         #get sysDescr.0";
-        my $ccmd = "snmpwalk -Os -v1 -c $comms $ip 1.3.6.1.2.1.1.1";
+        my $ccmd = "snmpwalk -Os -v1 -c $comms $ip 1.3.6.1.2.1.47.1.1.1.1.2.1";
         if (exists($globalopt{verbose}))    {
            send_msg($request, 0, "Process command: $ccmd\n");
         }
