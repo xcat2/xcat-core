@@ -804,6 +804,33 @@ sub fork_fanout_dcp
         my @dcp_command;
         my $rsyncfile;
 
+        print("xxxxxxx".$user_target."\n");
+        
+        print("target_properties=".Dumper($target_properties));
+
+        my %envardict;
+        foreach my $varstr (split(',',$$target_properties{'envar'})){
+            if($varstr =~ m/(.*)=(.*)/){
+               my ($myvar,$myvalue)=($1,$2);
+               $envardict{$myvar}=$myvalue;
+            }
+        }
+
+        if(%envardict){
+            my $dest_srcdict=$$options{'destDir_srcFile'}{$user_target};
+            for my $dest (keys %{$dest_srcdict}){
+                for my $label(keys %{$$dest_srcdict{$dest}}){
+                    for my $path(@{$$dest_srcdict{$dest}{$label}}){
+                        for my $myenvar(keys %envardict){
+                            $path=~s/\$$myenvar/$envardict{$myenvar}/;
+                            print("$path\n\n");
+                        }
+                    }
+                }
+            }
+        }
+
+        print("options==".Dumper($options));
         if (!$$target_properties{'localhost'})    # this is to a remote host
         {
             my $target_type = $$target_properties{'type'};
@@ -3167,6 +3194,7 @@ sub resolve_nodes
     my @node_list = ();
     @node_list = split ',', $$options{'nodes'};
 
+    print(Dumper(\@node_list));
     foreach my $context_node (@node_list)
     {
         my ($context, $node) = split ':', $context_node;
@@ -3293,6 +3321,13 @@ sub bld_resolve_nodes_hash
         $rsp->{info}->[0] = "Command: $cmd failed. Continuing...";
         xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
     }
+
+    
+    my $ostab = xCAT::Table->new('nodetype');
+    my %oents = %{ $ostab->getNodesAttribs(\@target_list, [qw(provmethod)]) };
+
+
+
     foreach my $target (@target_list)
     {
 
@@ -3306,12 +3341,28 @@ sub bld_resolve_nodes_hash
         if (($mname eq $target) || ($localhostname eq $target)) {
             $localhost = $target;
         }
+
+        my $envar=undef;
+        my $ent = $oents{$target}->[0];
+        if ($ent and $ent->{provmethod} and \
+               ($ent->{provmethod} ne 'install') and ($ent->{provmethod} ne 'netboot') and ($ent->{provmethod} ne 'statelite')) {
+
+            my $imagename = $ent->{provmethod};  
+            print("imagenami=$imagename\n");
+            my $osimagetab = xCAT::Table->new('osimage', -create => 1);
+            (my $ref) = $osimagetab->getAttribs({ imagename => $imagename }, 'environvar');
+            if($ref){ 
+                $envar=$ref->{'environvar'};
+            }
+        }
+
         my %properties = (
             'hostname'   => $hostname,
             'ip-address' => $ip_address,
             'localhost'  => $localhost,
             'user'       => $user,
             'context'    => $context,
+            'envar'    => $envar,
             'unresolved' => $target
         );
 
@@ -5073,9 +5124,11 @@ sub parse_rsync_input_file_on_MN
     open(INPUTFILE, "< $input_file") || die "File $input_file does not exist\n";
 
 
+    print(Dumper($options));
     while (my $line = <INPUTFILE>)
     {
         chomp $line;
+        print("$line\n");
         if (($line =~ /^#/) || ($line =~ /^\s*$/))
 
           # skip commments  and blanks
