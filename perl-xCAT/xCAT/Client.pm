@@ -260,6 +260,7 @@ sub submit_request {
             SSL_ca_file         => $cafile,
             SSL_verify_mode     => SSL_VERIFY_PEER,
             SSL_verifycn_scheme => "none",
+	    SSL_cipher_list => undef,
             SSL_use_cert        => 1,
             Timeout             => 0,
             %sslargs,
@@ -270,6 +271,7 @@ sub submit_request {
         #need to specify SSL_verify_mode => SSL_VERIFY_NONE explicitly 
         $client = IO::Socket::SSL->start_SSL($pclient,
             SSL_verify_mode => SSL_VERIFY_NONE,
+	    SSL_cipher_list => undef,
             Timeout => 0,
         );
     }
