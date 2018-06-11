@@ -2,60 +2,39 @@ start:export_import_osimage_with_INCLUDE_in_file
 description:This case is used to test xcat-inventory export and import one linux osimage definition which has INCLUDE in the attribute's specified files. The attributes are pkglist, otherpkglist,exlist,synclists,template,postinstall and partitionfile.
 cmd:dir="/tmp/imagedata/";if [ -e "${dir}" ];then mv ${dir} ${dir}".bak"; fi; mkdir -p $dir
 check:rc==0
-cmd:dir="/opt/inventory/site";if [ -e "${dir}" ];then mv ${dir} ${dir}".bak"; fi; mkdir -p $dir
+cmd:dir="/tmp/imagedata/export";if [ -e "${dir}" ];then mv ${dir} ${dir}".bak"; fi; mkdir -p $dir
 check:rc==0
 cmd:cp -rf /opt/xcat/share/xcat/tools/autotest/testcase/xcat-inventory/templates/imagedata/test_osimage /tmp/imagedata
 check:rc==0
-cmd:lsdef -t osimage -o test_osimage >/dev/null 2>&1;if [[ $? -eq 0 ]]; then lsdef -t osimage -o test_osimage -z >/tmp/test_osimage.stanza ;rmdef -t osimage -o test_osimage;fi
+cmd:lsdef -t osimage -o test_osimage >/dev/null 2>&1;if [[ $? -eq 0 ]]; then lsdef -t osimage -o test_osimage -z >/tmp/imagedata/test_osimage.org.stanza ;rmdef -t osimage -o test_osimage;fi
 check:rc==0
 cmd:cat /tmp/imagedata/test_osimage/test_osimage.stanza |mkdef -z
 check:rc==0
 cmd:lsdef -t osimage -o test_osimage
 check:rc==0
-cmd:xcat-inventory export -t osimage -o test_osimage -d /opt/inventory/site/ 
-check:output=~The osimage objects has been exported to directory /opt/inventory/site/
-cmd:ls -lFR /opt/inventory/site/
-cmd:diff -y /tmp/imagedata/test_osimage/file1.1 /opt/inventory/site/test_osimage/tmp/imagedata/test_osimage/file1.1
+cmd:xcat-inventory export -t osimage -o test_osimage -d /tmp/imagedata/export 
+check:output=~The osimage objects has been exported to directory /tmp/imagedata/export 
+cmd:ls -lFR /tmp/imagedata/export
+cmd:diff -r /tmp/imagedata/test_osimage /tmp/imagedata/export/osimage/tmp/imagedata/test_osimage/
 check:rc==0
-cmd:diff -y /tmp/imagedata/test_osimage/file2.1 /opt/inventory/site/test_osimage/tmp/imagedata/test_osimage/file2.1
+cmd:diff -y /etc/hosts /tmp/imagedata/export/osimage/tmp/imagedata/test_osimage/etc/hosts
 check:rc==0
-cmd:diff -y /tmp/imagedata/test_osimage/file2.2 /opt/inventory/site/test_osimage/tmp/imagedata/test_osimage/file2.2
-check:rc==0
-cmd:diff -y /tmp/imagedata/test_osimage/file2.3 /opt/inventory/site/test_osimage/tmp/imagedata/test_osimage/file2.3
-check:rc==0
-cmd:diff -y /tmp/imagedata/test_osimage/file3.1 /opt/inventory/site/test_osimage/tmp/imagedata/test_osimage/file3.1
-check:rc==0
-cmd:diff -y /tmp/imagedata/test_osimage/file3.2 /opt/inventory/site/test_osimage/tmp/imagedata/test_osimage/file3.2
-check:rc==0
-cmd:diff -y /tmp/imagedata/test_osimage/file3.3 /opt/inventory/site/test_osimage/tmp/imagedata/test_osimage/file3.3
-check:rc==0
-cmd:diff -y /tmp/imagedata/test_osimage/file4.1 /opt/inventory/site/test_osimage/tmp/imagedata/test_osimage/file4.1
-check:rc==0
-cmd:diff -y /tmp/imagedata/test_osimage/file4.2 /opt/inventory/site/test_osimage/tmp/imagedata/test_osimage/file4.2
-check:rc==0
-cmd:diff -y /tmp/imagedata/test_osimage/file4.3 /opt/inventory/site/test_osimage/tmp/imagedata/test_osimage/file4.3
-check:rc==0
-cmd:diff -y /etc/hosts /opt/inventory/site/osimages/test_osimage/etc/hosts
-check:rc==0
-cmd:diff -y /tmp/imagedata/test_osimage/file6 /opt/inventory/site/test_osimage/tmp/imagedata/test_osimage/file6
-check:rc==0
-cmd:ls -l /opt/inventory/site/osimages/test_osimage/file7
+cmd:ls -l /tmp/imagedata/export/osimage/tmp/imagedata/test_osimage/file7
 check:rc!=0 
 cmd: rmdef -t osimage -o  test_osimage
 check:rc==0
 cmd:rm -rf /tmp/imagedata/test_osimage
-cmd:xcat-inventory import -t osimage -d /opt/inventory/site
+cmd:xcat-inventory import -t osimage -d /tmp/imagedata/export
 check:rc==0
 check:output=~Importing object: test_osimage
 check:output=~Inventory import successfully!
 check:output=~The object test_osimage has been imported
 cmd:lsdef -t osimage -o test_osimage
 check:rc==0
-cmd:diff -r /opt/inventory/site/osimages/test_osimage /tmp/imagedata/test_osimage
+cmd:diff -r /tmp/imagedata/export /tmp/imagedata/test_osimage 
 check:rc==0
 cmd: rmdef -t osimage -o  test_osimage
 check:rc==0
-#cmd:dir="/opt/inventory/site/osimage"; rm -rf $dir; if [ -d ${dir}".bak" ];then mv ${dir}".bak" $dir; fi
-#cmd:dir="/tmp/imagedata"; rm -rf $dir; if [ -d ${dir}".bak" ];then mv ${dir}".bak" $dir; fi
-cmd: if [ -e /tmp/test_osimage.stanza ]; then cat /tmp/test_osimage.stanza |mkdef -z;fi
+cmd:dir="/tmp/imagedata"; rm -rf $dir; if [ -d ${dir}".bak" ];then mv ${dir}".bak" $dir; fi
+cmd: if [ -e /tmp/imagedata/test_osimage.org.stanza ]; then cat /tmp/imagedata/test_osimage.org.stanza |mkdef -z;fi
 end
