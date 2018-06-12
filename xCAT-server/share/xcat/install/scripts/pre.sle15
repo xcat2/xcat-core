@@ -1,0 +1,165 @@
+      <pre-scripts config:type="list">
+        <script>
+          <filename>foo.sh</filename>
+          <interpreter>shell</interpreter>
+          <debug config:type="boolean">false</debug>
+          <source>
+
+<![CDATA[
+#!/bin/sh
+
+{
+echo "Running AutoYaST Pre-Installation script..."
+
+export XCATDEBUGMODE="#TABLEBLANKOKAY:site:key=xcatdebugmode:value#"
+if [ "$XCATDEBUGMODE" = "1" ] || [ "$XCATDEBUGMODE" = "2" ]; then
+    set -x
+fi
+
+AWK=`find / -name awk | tail -1`
+#old awk /mounts/instsys/bin/awk -f
+if [ ! -e /usr/bin/awk ]; then
+    ln -s $AWK /usr/bin/awk
+fi
+
+XCATDPORT=#TABLE:site:key=xcatiport:value#
+XCATDHOST="#XCATVAR:XCATMASTER#"
+
+(
+cat << 'EOF'
+#INCLUDE:#TABLE:site:key=installdir:value#/postscripts/updateflag.awk#
+EOF
+) > /tmp/updateflag
+
+
+if [ ! -c /dev/vcs ]; then
+	mknod /dev/vcs c 7 0
+fi
+cat >/tmp/foo.awk <<EOF
+#!$AWK -f
+
+BEGIN {
+	ns = "/inet/tcp/3054/0/0"
+
+	while(1) {
+		ns |& getline
+
+#UNCOMMENTOENABLEDEBUGPORT#		if(\$1 == "sh") { #TODO: ENABLE IF DEBUG
+#UNCOMMENTOENABLEDEBUGPORT#			sub(/^sh +/,"",\$0)
+#UNCOMMENTOENABLEDEBUGPORT#			output = \$0
+#UNCOMMENTOENABLEDEBUGPORT#			while((output | getline) > 0)
+#UNCOMMENTOENABLEDEBUGPORT#				print \$0 |& ns
+#UNCOMMENTOENABLEDEBUGPORT#			print "EOO" |& ns
+#UNCOMMENTOENABLEDEBUGPORT#			close(output)
+#UNCOMMENTOENABLEDEBUGPORT#		}
+
+		if(\$1 == "screendump") {
+			output = "chvt " \$2 ";cat /dev/vcs"
+			while((output | getline) > 0)
+				print \$0 |& ns
+			close(output)
+		}
+
+		if(\$1 == "stat") {
+		    if( system( "[ -f /mnt/var/log/YaST2/y2logRPM ]" )  == 0 ) {		
+			while((getline < "/mnt/var/log/YaST2/y2logRPM") > 0) {
+				line = \$0
+			}
+			close("/mnt/var/log/YaST2/y2logRPM")
+
+			if(line ~ /\.rpm /) {
+				sub(/\.[^\.]+\.rpm .*$/,"",line)
+				sub(/^.* /,"",line)
+			}
+			else {
+				line = "prep"
+			}
+
+			print ("installing " line) |& ns
+		    }
+         	    else {
+			# The format of /var/log/zypp/history is documented at
+			#     http://en.opensuse.org/Libzypp/Package_History
+
+			lastrpm = "prep"
+
+			oldFS = FS
+			FS="|"
+
+			while((getline < "/mnt/var/log/zypp/history") > 0) {
+				if (\$0 !~ /#/ && \$2 == "install") {
+					lastrpm = (\$3 "-" \$4)
+				}
+			}
+			close("/mnt/var/log/zypp/history")
+
+			FS = oldFS
+
+			print ("installing " lastrpm) |& ns
+                   }
+               }
+
+	       close(ns)
+	}
+}
+EOF
+
+chmod 755 /tmp/foo.awk
+chmod 755 /tmp/updateflag
+
+
+/tmp/updateflag $XCATDHOST $XCATDPORT "installmonitor" &
+
+NODESTATUS=#TABLEBLANKOKAY:site:key=nodestatus:value#
+
+if [ -z "$NODESTATUS" ] || [ "$NODESTATUS" != "0" -a   "$NODESTATUS" != "N"  -a  "$NODESTATUS" != "n" ]; then
+   /tmp/updateflag $XCATDHOST $XCATDPORT "installstatus installing" &
+fi
+
+/tmp/foo.awk >/tmp/foo.log 2>&1 &
+
+shopt -s nullglob
+
+#
+# The getinstdisk script is common for RHEL/SLES/PowerKVM/Ubuntu. 
+# It will attempt to select the install disk and write the selection to /tmp/xcat.install_disk
+#
+#INCLUDE:#ENV:XCATROOT#/share/xcat/install/scripts/getinstdisk#
+if [ -e "/tmp/xcat.install_disk" ]; then
+    instdisk=`cat /tmp/xcat.install_disk`
+fi
+
+
+if [ -d /sys/firmware/efi ]; then
+	sed -e 's!<device>XCATPARTITIONHOOK</device>!<device>'$instdisk'</device><partitions config:type="list"><partition><filesystem config:type="symbol">vfat</filesystem><mount>/boot/efi</mount><size>128mb</size></partition><partition><mount>swap</mount><size>auto</size></partition><partition><mount>/</mount><size>auto</size></partition></partitions>!' /tmp/profile/autoinst.xml > /tmp/profile/modified.xml
+else
+	sed -e 's!<device>XCATPARTITIONHOOK</device>!<device>'$instdisk'</device>!' /tmp/profile/autoinst.xml > /tmp/profile/modified.xml
+fi
+#XCA_PARTITION_SCRIPT#
+#add the following part for replace the partition definition in /tmp/profile/autoinst.xml
+if [ -r "/tmp/partitionfile" ]; then
+    while read line
+    do
+        con="${con}${line}"
+    done < /tmp/partitionfile
+    con=${con//>\s+</><}
+    con=${con// /xcattempspace}
+    sed -e '/<drive>/{N;N;s!.*!'$con'!}' /tmp/profile/autoinst.xml > /tmp/profile/modified1.xml
+    sed -e 's!xcattempspace! !g' /tmp/profile/modified1.xml > /tmp/profile/modified.xml
+fi
+
+export nextserver=`cat /proc/cmdline | grep http | awk -F'autoyast=http://' {'print \$2'} | awk -F':' {'print \$1'}`
+cp /tmp/profile/modified.xml /tmp/profile/modified1.xml
+sed -e 's!XCATNEXTSERVERHOOK!'$nextserver'!' /tmp/profile/modified1.xml > /tmp/profile/modified.xml
+
+
+
+if [ "$XCATDEBUGMODE" = "1" ] || [ "$XCATDEBUGMODE" = "2" ]; then
+    set +x
+fi
+} >>/tmp/pre-install.log 2>&1
+]]>
+
+          </source>
+        </script>
+      </pre-scripts>
