@@ -37,10 +37,10 @@ sub handled_commands
 {
     return {
         copycd      => "sles",
-        mknetboot   => "nodetype:os=(sles.*)|(suse.*)",
-        mkinstall   => "nodetype:os=(sles.*)|(suse.*)",
-        mkstatelite => "nodetype:os=(sles.*)",
-        mksysclone  => "nodetype:os=(sles.*)|(suse.*)"
+        mknetboot   => "nodetype:os=(sle.*)|(suse.*)",
+        mkinstall   => "nodetype:os=(sle.*)|(suse.*)",
+        mkstatelite => "nodetype:os=(sle.*)",
+        mksysclone  => "nodetype:os=(sle.*)|(suse.*)"
     };
 }
 
@@ -210,7 +210,7 @@ sub mknetboot
                 if (!defined($::DISABLENODESETWARNING)) {    # set by AAsn.pm
                     xCAT::MsgUtils->report_node_error($callback, $node, "OS image name must be specified in nodetype.provmethod");
                     next;
-		}
+                }
             }
 
             $osver   = $ent->{os};
@@ -863,7 +863,7 @@ sub mkinstall
                 if (!defined($::DISABLENODESETWARNING)) {    # set by AAsn.pm
                     xCAT::MsgUtils->report_node_error($callback, $node, "OS image name must be specified in nodetype.provmethod");
                     next;
-		}
+                }
             }
             $os      = $ent->{os};
             $arch    = $ent->{arch};
@@ -1616,7 +1616,7 @@ sub copycd
         $path =~ s,//*,/,g;
     }
 
-    if ($distname and $distname !~ /^sles|^suse/)
+    if ($distname and $distname !~ /^sle|^suse/)
     {
 
         #If they say to call it something other than SLES or SUSE, give up?
@@ -1624,121 +1624,136 @@ sub copycd
     }
 
     #parse the disc info of the os media to get the distribution, arch of the os
-    unless (-r $mntpath . "/content")
+    if (-r $mntpath . "/content")
     {
-        return;
-    }
-    my $dinfo;
-    open($dinfo, $mntpath . "/content");
-    my $darch;
-    while (<$dinfo>)
-    {
-        if (m/^DEFAULTBASE\s+(\S+)/)
+        my $dinfo;
+        open($dinfo, $mntpath . "/content");
+        my $darch;
+        while (<$dinfo>)
         {
-            $darch = $1;
-            chomp($darch);
-            last;
-        }
-        if (not $darch and m/^BASEARCHS\s+(\S+)/) {
-            $darch = $1;
-        }
-        if (not $darch and m/^REPOID.*\/(\S+)/) {
-            $darch = $1;
-        }
-    }
-    close($dinfo);
-    unless ($darch)
-    {
-        return;
-    }
-    my $dirh;
-    opendir($dirh, $mntpath);
-    my $discnumber;
-    my $totaldiscnumber;
-    while (my $pname = readdir($dirh))
-    {
-        if ($pname =~ /media.(\d+)/)
-        {
-            $discnumber = $1;
-            chomp($discnumber);
-            my $mfile;
-            open($mfile, $mntpath . "/" . $pname . "/media");
-            <$mfile>;
-            <$mfile>;
-            $totaldiscnumber = <$mfile>;
-            chomp($totaldiscnumber);
-            close($mfile);
-            open($mfile, $mntpath . "/" . $pname . "/products");
-            my $prod = <$mfile>;
-            close($mfile);
-
-            if ($prod =~ m/SUSE-Linux-Enterprise-Server/ || $prod =~ m/SUSE-Linux-Enterprise-Software-Development-Kit/ || $prod =~ m/SLES/ || $prod =~ m/SDK/)
+            if (m/^DEFAULTBASE\s+(\S+)/)
             {
-                if (-f "$mntpath/content") {
-                    my $content;
-                    open($content, "<", "$mntpath/content");
-                    my @contents = <$content>;
-                    close($content);
-                    foreach (@contents) {
-                        if (/^VERSION/) {
-                            my @verpair = split /\s+|-/;
-                            $detdistname = "sles" . $verpair[1];
-                            unless ($distname) { $distname = $detdistname; }
-                        }
-                        unless ($distname) {
-                            if (/^DISTRO/ || /^LABEL/) {
+                $darch = $1;
+                chomp($darch);
+                last;
+            }
+            if (not $darch and m/^BASEARCHS\s+(\S+)/) {
+                $darch = $1;
+            }
+            if (not $darch and m/^REPOID.*\/(\S+)/) {
+                $darch = $1;
+            }
+        }
+        close($dinfo);
+        unless ($darch)
+        {
+            return;
+        }
 
-                                # only set to $1 if the regex was successful
-                                if ($_ =~ /sles:(\d+),/) {
-                                    $distname = "sles" . $1;
-                                } elsif ($_ =~ /sles:(\d+):sp(\d+),/) {
-                                    $distname = "sles" . $1 . "." . $2;
-                                } elsif ($_ =~ /Software Development Kit\s*(\d+)\s*SP(\d+)/) {
-                                    $distname = "sles" . $1 . "." . $2;
-                                } elsif ($_ =~ /Software Development Kit\s*(\d+)/) {
-                                    $distname = "sles" . $1;
-                                    if ($_ =~ /sdk:(\d+):sp(\d+),/) {
+        my $dirh;
+        opendir($dirh, $mntpath);
+        my $discnumber;
+        my $totaldiscnumber;
+        while (my $pname = readdir($dirh))
+        {
+            if ($pname =~ /media.(\d+)/)
+            {
+                $discnumber = $1;
+                chomp($discnumber);
+                my $mfile;
+                open($mfile, $mntpath . "/" . $pname . "/media");
+                <$mfile>;
+                <$mfile>;
+                $totaldiscnumber = <$mfile>;
+                chomp($totaldiscnumber);
+                close($mfile);
+                open($mfile, $mntpath . "/" . $pname . "/products");
+                my $prod = <$mfile>;
+                close($mfile);
+    
+                if ($prod =~ m/SUSE-Linux-Enterprise-Server/ || $prod =~ m/SUSE-Linux-Enterprise-Software-Development-Kit/ || $prod =~ m/SLES/ || $prod =~ m/SDK/)
+                {
+                    if (-f "$mntpath/content") {
+                        my $content;
+                        open($content, "<", "$mntpath/content");
+                        my @contents = <$content>;
+                        close($content);
+                        foreach (@contents) {
+                            if (/^VERSION/) {
+                                my @verpair = split /\s+|-/;
+                                $detdistname = "sles" . $verpair[1];
+                                unless ($distname) { $distname = $detdistname; }
+                            }
+                            unless ($distname) {
+                                if (/^DISTRO/ || /^LABEL/) {
+    
+                                    # only set to $1 if the regex was successful
+                                    if ($_ =~ /sles:(\d+),/) {
+                                        $distname = "sles" . $1;
+                                    } elsif ($_ =~ /sles:(\d+):sp(\d+),/) {
                                         $distname = "sles" . $1 . "." . $2;
+                                    } elsif ($_ =~ /Software Development Kit\s*(\d+)\s*SP(\d+)/) {
+                                        $distname = "sles" . $1 . "." . $2;
+                                    } elsif ($_ =~ /Software Development Kit\s*(\d+)/) {
+                                        $distname = "sles" . $1;
+                                        if ($_ =~ /sdk:(\d+):sp(\d+),/) {
+                                            $distname = "sles" . $1 . "." . $2;
+                                        }
                                     }
                                 }
                             }
                         }
+                    } else {
+                        my @parts    = split /\s+/, $prod;
+                        my @subparts = split /-/,   $parts[2];
+                        $detdistname = "sles" . $subparts[0];
+                        unless ($distname) { $distname = "sles" . $subparts[0] }
                     }
-                } else {
-                    my @parts    = split /\s+/, $prod;
-                    my @subparts = split /-/,   $parts[2];
-                    $detdistname = "sles" . $subparts[0];
-                    unless ($distname) { $distname = "sles" . $subparts[0] }
-                }
-                if ($prod =~ m/Software-Development-Kit/ || $prod =~ m/SDK/) {
-                    #
-                    # It's been seen that the 3rd disc on the SDK ISO images are using 'media.1' instead of
-                    # media.3 to represent the 3rd disc.  This code here is to work around this issue.  I'm not
-                    # sure why this only applies to sles 11.3 since I do see the same issue in sles 11.  But will
-                    # keep the logic as is... checking for >= 11.3
-                    #
-                    (my $numver = $distname) =~ s/[^0-9]//g;
-                    if ($numver >= 11.3) {
-                        if ($discnumber == 1 and $totaldiscnumber == 1) { #disc 3, aka disc1 of 'debug'
-                            $discnumber = 3;
+                    if ($prod =~ m/Software-Development-Kit/ || $prod =~ m/SDK/) {
+                        #
+                        # It's been seen that the 3rd disc on the SDK ISO images are using 'media.1' instead of
+                        # media.3 to represent the 3rd disc.  This code here is to work around this issue.  I'm not
+                        # sure why this only applies to sles 11.3 since I do see the same issue in sles 11.  But will
+                        # keep the logic as is... checking for >= 11.3
+                        #
+                        (my $numver = $distname) =~ s/[^0-9]//g;
+                        if ($numver >= 11.3) {
+                            if ($discnumber == 1 and $totaldiscnumber == 1) { #disc 3, aka disc1 of 'debug'
+                                $discnumber = 3;
+                            }
                         }
+                        $discnumber = 'sdk' . $discnumber;
                     }
-                    $discnumber = 'sdk' . $discnumber;
+    
+                    # check media.1/products for text.
+                    # the cselx is a special GE built version.
+                    # openSUSE is the normal one.
+                } elsif ($prod =~ m/cselx 1.0-0|openSUSE 11.1-0/) {
+                    $distname    = "suse11";
+                    $detdistname = "suse11";
                 }
-
-                # check media.1/products for text.
-                # the cselx is a special GE built version.
-                # openSUSE is the normal one.
-            } elsif ($prod =~ m/cselx 1.0-0|openSUSE 11.1-0/) {
-                $distname    = "suse11";
-                $detdistname = "suse11";
+    
             }
-
+        }
+    
+        closedir($dirh);
+    } elsif (-r $mntpath . "/media.1/media") {
+        my $dinfo;
+        open($dinfo, $mntpath . "/media.1/media");
+    my $dsc = <$dinfo>;
+    if ($dsc =~ /x86_64/) {
+        $darch = "x86_64";
+    }
+    if ($dsc =~ /Installer/ and $dsc =~ /SLE-/) {
+            $discnumber = 1;
+        $distname = "sle";
+    } elsif ($dsc =~ /SLE-/ and $dsc =~ /Packages/) {
+            $discnumber = 2;
+        $distname = "sle";
         }
     }
 
-    closedir($dirh);
-
+    
     unless ($distname and $discnumber)
     {
         #failed to parse the disc info
