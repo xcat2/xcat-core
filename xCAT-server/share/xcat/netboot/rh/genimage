@@ -378,6 +378,11 @@ unless ($onlyinitrd) {
         exit 1;
     } 
 
+    my @envarlist=split(',',$envar);
+    foreach my $entry (@envarlist){
+        my ($key,$value)=split('=',$entry);
+        $ENV{$key}=$value;
+    }
 
     mount_chroot($rootimg_dir);
     my %pkg_hash = imgutils::get_package_names($pkglist);
@@ -787,11 +792,6 @@ if ($postinstall_filename) {
     $ENV{IMG_OTHERPKGDIR}=$srcdir_otherpkgs if("" ne $srcdir_otherpkgs);
     $ENV{IMG_ROOTIMGDIR}=$rootimg_dir if("" ne $rootimg_dir);
    
-    my @envarlist=split(',',$envar);
-    foreach my $entry (@envarlist){
-        my ($key,$value)=split('=',$entry);
-        $ENV{$key}=$value;
-    }
 
     foreach my $postinstall (split /,/, $postinstall_filename) {
         if (!-x $postinstall) {
@@ -1952,7 +1952,6 @@ sub generic_post { #This function is meant to leave the image in a state approxi
     print $cfgfile "tmpfs   /dev/shm tmpfs    defaults       0 0\n";
     print $cfgfile "proc    /proc    proc     defaults       0 0\n";
     print $cfgfile "sysfs   /sys     sysfs    defaults       0 0\n";
-
     if (!&using_systemd($osver)) {
         if ($tmplimit) {
             print $cfgfile "tmpfs   /tmp     tmpfs    defaults,size=$tmplimit       0 2\n";

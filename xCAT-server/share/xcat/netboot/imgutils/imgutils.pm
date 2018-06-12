@@ -8,6 +8,7 @@ use warnings "all";
 
 use File::Basename;
 use File::Path;
+use Data::Dumper;
 use Cwd qw(realpath);
 
 sub get_profile_def_filename {
@@ -54,6 +55,9 @@ sub include_file
     my $file = shift;
     my $idir = shift;
     my @text = ();
+
+    $file=~ s/\$\{(\w+)\}/$ENV{$1}/g;
+    $file=~ s/\$(\w+)/$ENV{$1}/g;
     unless ($file =~ /^\//) {
         $file = $idir . "/" . $file;
     }
@@ -117,7 +121,6 @@ sub get_package_names {
                         $pkgtext =~ s/#INCLUDE:([^#^\n]+)#/include_file($1,$idir)/eg;
                     }
                 }
-
                 #print "\n\npkgtext=$pkgtext\n\n";
                 my @tmp = split(',', $pkgtext);
                 my $pass = 1;
@@ -169,7 +172,6 @@ sub get_package_names {
             }
         }
     }
-
     return %pkgnames;
 }
 

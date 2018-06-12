@@ -1489,6 +1489,8 @@ sub includefile
                             #2 means pattern list, pattern list starts with @,
          #3 means remove package list, packages to be removed start with -.
     my $text = "";
+    $file=~ s/\$\{(\w+)\}/$ENV{$1}/g;
+    $file=~ s/\$(\w+)/$ENV{$1}/g;
     unless ($file =~ /^\//) {
         $file = $idir . "/" . $file;
     }
