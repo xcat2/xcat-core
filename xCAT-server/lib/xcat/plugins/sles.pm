@@ -1624,6 +1624,8 @@ sub copycd
     }
 
     #parse the disc info of the os media to get the distribution, arch of the os
+    my $discnumber;
+    my $darch;
     if (-r $mntpath . "/content")
     {
         my $dinfo;
@@ -1740,16 +1742,16 @@ sub copycd
     } elsif (-r $mntpath . "/media.1/media") {
         my $dinfo;
         open($dinfo, $mntpath . "/media.1/media");
-    my $dsc = <$dinfo>;
-    if ($dsc =~ /x86_64/) {
-        $darch = "x86_64";
-    }
-    if ($dsc =~ /Installer/ and $dsc =~ /SLE-/) {
+        my $dsc = <$dinfo>;
+        if ($dsc =~ /x86_64/) {
+            $darch = "x86_64";
+        }
+        if ($dsc =~ /Installer/ and $dsc =~ /SLE-15/) {
             $discnumber = 1;
-        $distname = "sle";
-    } elsif ($dsc =~ /SLE-/ and $dsc =~ /Packages/) {
+            unless ($distname) { $distname = "sle15" };
+        } elsif ($dsc =~ /SLE-15/ and $dsc =~ /Packages/) {
             $discnumber = 2;
-        $distname = "sle";
+            unless ($distname) { $distname = "sle15" };
         }
     }
 
