@@ -804,10 +804,7 @@ sub fork_fanout_dcp
         my @dcp_command;
         my $rsyncfile;
 
-        print("xxxxxxx".$user_target."\n");
         
-        print("target_properties=".Dumper($target_properties));
-
         my %envardict;
         foreach my $varstr (split(',',$$target_properties{'envar'})){
             if($varstr =~ m/(.*)=(.*)/){
@@ -823,14 +820,12 @@ sub fork_fanout_dcp
                     for my $path(@{$$dest_srcdict{$dest}{$label}}){
                         for my $myenvar(keys %envardict){
                             $path=~s/\$$myenvar/$envardict{$myenvar}/;
-                            print("$path\n\n");
                         }
                     }
                 }
             }
         }
 
-        print("options==".Dumper($options));
         if (!$$target_properties{'localhost'})    # this is to a remote host
         {
             my $target_type = $$target_properties{'type'};
@@ -3194,7 +3189,6 @@ sub resolve_nodes
     my @node_list = ();
     @node_list = split ',', $$options{'nodes'};
 
-    print(Dumper(\@node_list));
     foreach my $context_node (@node_list)
     {
         my ($context, $node) = split ':', $context_node;
@@ -3348,7 +3342,6 @@ sub bld_resolve_nodes_hash
                ($ent->{provmethod} ne 'install') and ($ent->{provmethod} ne 'netboot') and ($ent->{provmethod} ne 'statelite')) {
 
             my $imagename = $ent->{provmethod};  
-            print("imagenami=$imagename\n");
             my $osimagetab = xCAT::Table->new('osimage', -create => 1);
             (my $ref) = $osimagetab->getAttribs({ imagename => $imagename }, 'environvar');
             if($ref){ 
@@ -4456,6 +4449,7 @@ sub parse_and_run_dcp
         $::XCATROOT = "/opt/xcat";
     }
 
+
     # parse the arguments
     Getopt::Long::Configure("posix_default");
     Getopt::Long::Configure("no_gnu_compat");
@@ -4965,6 +4959,15 @@ sub rsync_to_image
 
     my ($input_file, $image) = @_;
     my $rc = 0;
+ 
+    my %osimgenv;
+    if($ENV{'XCAT_OSIMAGE_ENV'}){
+        foreach my $myenv(split(',',$ENV{'XCAT_OSIMAGE_ENV'})){
+            if($myenv =~ /\s*(\S+)\s*=\s*(\S+)\s*/) {
+                $osimgenv{$1}=$2;
+            } 
+        }
+    }
     open(INPUTFILE, "< $input_file") || die "File $input_file does not exist\n";
     while (my $line = <INPUTFILE>)
     {
@@ -4973,6 +4976,9 @@ sub rsync_to_image
         {
             next;
         }
+ 
+        $line=~ s/\$\{(\w+)\}/$osimgenv{$1}/g;
+        $line=~ s/\$(\w+)/$osimgenv{$1}/g;
 
         # process no more lines, do not exec
         # do not execute postscripts when syncing images
@@ -5124,11 +5130,9 @@ sub parse_rsync_input_file_on_MN
     open(INPUTFILE, "< $input_file") || die "File $input_file does not exist\n";
 
 
-    print(Dumper($options));
     while (my $line = <INPUTFILE>)
     {
         chomp $line;
-        print("$line\n");
         if (($line =~ /^#/) || ($line =~ /^\s*$/))
 
           # skip commments  and blanks
