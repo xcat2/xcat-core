@@ -69,6 +69,7 @@ my $quiet             = 0;
 my $search_expression = undef;
 
 my %label_map;
+my %case_label_map;
 my @label_order = (["xcat_install"],
     ["mn_only"],
     [ "sn_diskful", "sn_diskless" ],
@@ -110,7 +111,7 @@ To run test cases that satisfy specific filter expression
 
 Options:
     -h : Get $program_name usage information. 
-    -l : list specific information. The valid options are caselist,caseinfo,casenum,bundleinfo
+    -l : list specific information. The valid options are caselist,caseinfo,casenum,bundleinfo.
     -f : specify the configuration file. If 'System' tag is used, only [System] section in the configuration file will be used. If 'System' is not used all other sections of the configuration file will be used, like [Table], [Object], etc.
     -c : Comma separated list of command names to test. 
     -t : Comma separated list of test case names to test.
@@ -148,6 +149,8 @@ if (
     to_exit(1);
 }
 
+#$list="caselist" unless($list);
+
 if ($needhelp) {
     log_this($running_log_fd, "$::USAGE");
     to_exit(0);
@@ -160,10 +163,12 @@ if ($rst) {
     to_exit(1);
 }
 
-$rst = scan_existed_labels(\%label_map, \$error);
-if($rst) {
-    log_this($running_log_fd, "$error");
-    to_exit(1);
+if($search_expression){
+    $rst = scan_existed_labels(\%case_label_map, \%label_map, \$error);
+    if($rst) {
+        log_this($running_log_fd, "$error");
+        to_exit(1);
+    }
 }
 
 $rst = calculate_cases_to_be_run(\@cases_to_be_run, \$error);
@@ -171,7 +176,6 @@ if ($rst) {
     log_this($running_log_fd, "$error");
     to_exit(1);
 }
-
 
 #print "----case to be run-----------------\n";
 #print Dumper \@cases_to_be_run;
@@ -227,18 +231,13 @@ if ($list) {
             to_exit(1);
         }
     } elsif ($list eq "labelinfo"){
-        $rst = load_case(\@cases_to_be_run, \@cases, \%case_name_index_map, \$error, $NORUN);
-        if ($rst) {
-            log_this($running_log_fd, "$error");
-            to_exit(1);
-        }
-        
-        my %case_label_table;
+        $rst = scan_existed_labels(\%case_label_map, \%label_map, \$error);
         my %label_conut;
-        for(my $i=0; $i <= $#cases; $i++){
-            if(exists $cases[$i]{label_str}){
-                $case_label_table{$cases[$i]{name}} = $cases[$i]{label_str} if(length($cases[$i]{label_str}));
-                my @labels = split(",", $cases[$i]{label_str});
+        my %case_label_str_map;
+        foreach my $case (keys %case_label_map){
+            if($case_label_map{$case}{label_str}){ 
+                $case_label_str_map{$case} = $case_label_map{$case}{label_str};
+                my @labels = split(",", $case_label_map{$case}{label_str});
                 foreach my $label (@labels){
                     if(!exists $label_conut{$label}){
                         $label_conut{$label}=1;
@@ -249,19 +248,19 @@ if ($list) {
             }
         }  
 
-        #my $exist_label = join(" ", keys(%label_conut));
-        #log_this($running_log_fd, "Existed labels are: $exist_label");
         log_this($running_log_fd, "-------------------------------");
         log_this($running_log_fd, "The labels of cases:");
         log_this($running_log_fd, "-------------------------------");
-        print_table(\%case_label_table);
+        print_table(\%case_label_str_map);
+        my $label_total_num=keys %label_conut;
         log_this($running_log_fd, "\n-------------------------------");
+        log_this($running_log_fd, "There are $label_total_num different labels"); 
         log_this($running_log_fd, "The number of cases of each label:");
         log_this($running_log_fd, "-------------------------------");
         print_table(\%label_conut);
         log_this($running_log_fd, "-------------------------------");
-        my $total_case = @cases;
-        my $case_with_label_num = keys %case_label_table;
+        my $total_case = keys %case_label_map;
+        my $case_with_label_num = keys %case_label_str_map;
         log_this($running_log_fd, "There are $total_case cases totaly, there are $case_with_label_num cases with label.");
         
     }
@@ -270,7 +269,7 @@ if ($list) {
 }
 
 unless (@cases_to_be_run) {
-    log_this($running_log_fd, "Please indicate the cases to run by option -b,-c,-t");
+    log_this($running_log_fd, "There is no case to run, Please indicate case by option -b,-c,-t,-s");
     to_exit(1);
 }
 
@@ -543,16 +542,8 @@ sub calculate_cases_to_be_run {
 
 
     if($search_expression){
-        my @tmp_cases=();
-        my %tmp_case_name_index_map;
         my @rest_cases_to_be_run=();
-
-        my $rst = load_case($cases_to_be_run_ref, \@tmp_cases, \%tmp_case_name_index_map, $error_ref, $NORUN);
-        if ($rst) {
-            return 1;
-        }
-     
-        $rst = filter_case_by_label(\@tmp_cases, \%tmp_case_name_index_map, \@rest_cases_to_be_run, $error_ref);
+        $rst = filter_case_by_label($cases_to_be_run_ref,\%case_label_map,\@rest_cases_to_be_run, $error_ref);
         if ($rst) {
             return 1;
         }
@@ -1975,8 +1966,8 @@ sub delete_item_from_array {
 }
 
 sub filter_case_by_label {
-    my $cases_ref                = shift;
-    my $case_name_index_map_ref  = shift;
+    my $cases_to_be_run_ref      = shift;
+    my $case_label_map_ref       = shift;
     my $rest_cases_to_be_run_ref = shift;
     my $error_ref                = shift;
 
@@ -1988,19 +1979,22 @@ sub filter_case_by_label {
     #print Dumper \@filters;
 
     my @targetcases = ();
-    foreach my $case (@{$cases_ref}) {
+    foreach my $case (keys %{$case_label_map_ref}) {
+        if(@$cases_to_be_run_ref){
+            next unless(grep { /^$case$/ } @$cases_to_be_run_ref);
+        }
         foreach my $f (@filters) {
             my $hit = 1;
             foreach my $c (@$f) {
-                if (($c > 0) and (($case->{label} & $c) == 0)) {
+                if (($c > 0) and (($case_label_map_ref->{$case}->{label} & $c) == 0)) {
                     $hit = 0;
                     last;
-                } elsif (($c < 0) and (($case->{label} & ($c * -1)) != 0)) {
+                } elsif (($c < 0) and (($case_label_map_ref->{$case}->{label} & ($c * -1)) != 0)) {
                     $hit = 0;
                     last;
                 }
             }
-            push @targetcases, $case->{name} if ($hit and !(grep { /^$case->{name}$/ } @targetcases));
+            push @targetcases, $case if ($hit and !(grep { /^$case$/ } @targetcases));
         }
     }
 
@@ -2009,7 +2003,7 @@ sub filter_case_by_label {
     for (my $i = 0 ; $i <= $#label_order ; $i++) {
         foreach my $l (@{ $label_order[$i] }) {
             foreach my $c (@targetcases) {
-                push @{$rest_cases_to_be_run_ref}, $c unless (($cases_ref->[ $case_name_index_map_ref->{$c} ]->{label} & $label_map{$l}) == 0);
+                push @{$rest_cases_to_be_run_ref}, $c unless (($case_label_map_ref->{$c}->{label} & $label_map{$l}) == 0);
             }
         }
     }
@@ -2046,41 +2040,43 @@ sub parse_filters{
         $index += 1;
     }
 
-    if (@undefined_labels) {
-        $$error_ref = "Label \"" . join(",", @undefined_labels) . "\" are not exist. Existed labels are: " . join(" ", keys(%label_map));
-        return 1;
-    }
+#    if (@undefined_labels) {
+#        $$error_ref = "Label \"" . join(",", @undefined_labels) . "\" are not exist. Existed labels are: " . join(" ", keys(%label_map));
+#        return 1;
+#    }
     return 0;
 }
 
 sub scan_existed_labels {
-    my $label_map_ref = shift;
-    my $error_ref     = shift;
+    my $case_label_map_ref = shift;
+    my $label_map_ref      = shift;
+    my $error_ref          = shift;
 
     my $label_value = 1;
     my @files       = ();
     my @cmdfiles    = ();
     get_files_recursive("$casedir", \@files);
 
-    my $fd = undef;
     foreach my $file (@files) {
-        if (!open($fd, "<$file")) {
-            $$error_ref = "can't open $file:$!";
-            return 1;
-        }
-        while (my $line = <$fd>) {
+        my @output = runcmd("grep -E \"start:|hcp:|os:|arch:|label:\" $file");
+        my $current_case_name = "";
+        foreach my $line (@output) {
             $line =~ s/^\s+|#[^!].+|\s+$//g;
 
             #skip blank and comment lines
             next if (length($line) == 0 || ($line =~ /^\s*#/));
 
             my @labels = ();
-            if ($line =~ /^os\s*:\s*(\w[\w\, ]+)/) {
+            if ($line =~ /^start\s*:\s*(.*)/) {
+                $current_case_name                                     = $1;
+                $case_label_map_ref->{$current_case_name}->{label}     = 0;
+                $case_label_map_ref->{$current_case_name}->{label_str} = "";
+            } elsif ($line =~ /^os\s*:\s*(\w[\w\, ]+)/) {
                 my @oss = split(",", $1);
-                foreach my $os (@oss){
+                foreach my $os (@oss) {
                     $os =~ s/^\s+|\s+$//g;
-                      push @labels, "os=$os";
-                  }
+                    push @labels, "os=$os";
+                }
             } elsif ($line =~ /^arch\s*:\s*(\w[\w\, ]+)/) {
                 my @archs = split(",", $1);
                 foreach my $arch (@archs) {
@@ -2094,19 +2090,24 @@ sub scan_existed_labels {
                     push @labels, "hcp=$hcp";
                 }
             } elsif ($line =~ /^label\s*:\s*(.+)/) {
-                push @labels, split(",", $1);
-            }
-
-            foreach my $t (@labels) {
-                unless (exists $label_map_ref->{$t}) {
-                    $label_map_ref->{$t} = $label_value;
-                    $label_value *= 2;
+                my @tmp = split(",", $1);
+                foreach my $l (@tmp){
+                   $l =~ s/^\s+|\s+$//g;
+                   push @labels, $l;
                 }
             }
 
+            if($current_case_name){
+                foreach my $t (@labels) {
+                    unless (exists $label_map_ref->{$t}) {
+                        $label_map_ref->{$t} = $label_value;
+                        $label_value *= 2;
+                    }
+                    $case_label_map_ref->{$current_case_name}->{label} |= $label_map_ref->{$t};
+                    $case_label_map_ref->{$current_case_name}->{label_str} .= "$t,";
+                }
+            }
         }
-
-        close($fd);
     }
     return 0;
 }
