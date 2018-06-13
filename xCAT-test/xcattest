@@ -2027,7 +2027,7 @@ sub scan_existed_labels {
     get_files_recursive("$casedir", \@files);
 
     foreach my $file (@files) {
-        my @output = runcmd("grep -E \"start:|hcp:|os:|arch:|label:\" $file");
+        my @output = runcmd("grep -E \"^start:|^hcp:|^os:|^arch:|^label:\" $file");
         my $current_case_name = "";
         foreach my $line (@output) {
             $line =~ s/^\s+|#[^!].+|\s+$//g;
