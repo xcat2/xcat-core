@@ -818,9 +818,8 @@ sub fork_fanout_dcp
             for my $dest (keys %{$dest_srcdict}){
                 for my $label(keys %{$$dest_srcdict{$dest}}){
                     for my $path(@{$$dest_srcdict{$dest}{$label}}){
-                        for my $myenvar(keys %envardict){
-                            $path=~s/\$$myenvar/$envardict{$myenvar}/;
-                        }
+                            $path=~ s/\$\{(\w+)\}/$envardict{$1}/g;
+                            $path=~ s/\$(\w+)/$envardict{$1}/g;
                     }
                 }
             }
