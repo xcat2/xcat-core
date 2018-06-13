@@ -981,8 +981,14 @@ sub get_snmpvendorinfo {
     push @comm_list, 'public';
 
     foreach $comms(@comm_list) {
-        #get sysDescr.0";
-        my $ccmd = "snmpwalk -Os -v1 -c $comms $ip 1.3.6.1.2.1.47.1.1.1.1.2.1";
+        #for pdu: get vendor info from sysDescr.0
+        #for switches: get vendor info from product OID 
+        my $ccmd;
+        if (exists($globalopt{pdu})) {
+            $ccmd = "snmpwalk -Os -v1 -c $comms $ip 1.3.6.1.2.1.1.1";
+        } else {
+            $ccmd = "snmpwalk -Os -v1 -c $comms $ip 1.3.6.1.2.1.47.1.1.1.1.2.1";
+        }
         if (exists($globalopt{verbose}))    {
            send_msg($request, 0, "Process command: $ccmd\n");
         }
