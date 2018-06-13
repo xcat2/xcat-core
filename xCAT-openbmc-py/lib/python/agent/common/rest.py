@@ -18,12 +18,13 @@ class RestSession(object):
         self.session = requests.Session()
         self.cookies = None
 
-    def request(self, method, url, headers, data=None, timeout=30):
+    def request(self, method, url, headers, authType=None,  data=None, timeout=30):
 
         try:
             response = self.session.request(method, url,
                                             data=data,
                                             headers=headers,
+                                            auth=authType,
                                             verify=False,
                                             timeout=timeout)
         except requests.exceptions.ConnectionError as e:

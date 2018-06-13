@@ -152,13 +152,29 @@ sub parse_args {
         return ([ 1, "Error parsing arguments." ]);
     }
 
-    if (scalar(@ARGV) != 1 and ($command =~ /rpower/)) {
+    if (scalar(@ARGV) >= 2 and ($command =~ /rbeacon|rpower|rvitals/)) {
         return ([ 1, "Only one option is supported at the same time for $command" ]);
+    } elsif (scalar(@ARGV) == 0 and $command =~ /rbeacon|rspconfig|rpower/) {
+        return ([ 1, "No option specified for $command" ]);
     } else {
         $subcommand = $ARGV[0];
     }
 
-    return ([ 1, "Unsupported any command for redfish now" ]);
+    if ($command eq "rpower") {
+        unless ($subcommand =~ /^bmcstate$|^status$|^stat$|^state$/) {
+            return ([ 1, "Unsupported command: $command $subcommand" ]);
+        }
+    } elsif ($command eq "rsetboot") {
+        my $persistant;
+        GetOptions('p'  => \$persistant);
+        return ([ 1, "Only one option is supported at the same time for $command" ]) if (@ARGV > 1);
+        $subcommand = "stat" if (!defined($ARGV[0]));
+        unless ($subcommand =~ /^stat$/) {
+            return ([ 1, "Unsupported command: $command $subcommand" ]);
+        }
+    } else {
+        return ([ 1, "Unsupported command: $command" ]);
+    }
 }
 
 #-------------------------------------------------------
