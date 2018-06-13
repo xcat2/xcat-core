@@ -1029,13 +1029,6 @@ sub load_case {
                     }
                 }
                 $newcmdstart = 0;
-                my @oss = split(",", $case_ref->[$i]->{os});
-                foreach my $os (@oss){ 
-                   $os =~ s/^\s+|\s+$//g;
-                   my $str = "os=$os";
-                   $case_ref->[$i]->{label} |= $label_map{$str};
-                   $case_ref->[$i]->{label_str} .= "$str,";
-                }
             } elsif ($line =~ /^arch\s*:\s*(\w[\w\, ]+)/) {
                 next if $skip;
                 $case_ref->[$i]->{arch} = $1;
@@ -1086,14 +1079,6 @@ sub load_case {
                     }
                 }
                 $newcmdstart = 0;
-
-                my @archs = split(",", $case_ref->[$i]->{arch});
-                foreach my $arch (@archs){
-                   $arch =~ s/^\s+|\s+$//g;
-                   my $str = "arch=$arch";
-                   $case_ref->[$i]->{label} |= $label_map{$str};
-                   $case_ref->[$i]->{label_str} .= "$str,";
-                }
             } elsif ($line =~ /^hcp\s*:\s*(\w[\w\, ]+)/) {
                 next if $skip;
                 $case_ref->[$i]->{hcp} = $1;
@@ -1119,14 +1104,6 @@ sub load_case {
                     }
                 }
                 $newcmdstart = 0;
-
-                my @hcps = split(",", $case_ref->[$i]->{hcp});
-                foreach my $hcp (@hcps){
-                   $hcp =~ s/^\s+|\s+$//g;
-                   my $str = "hcp=$hcp";
-                   $case_ref->[$i]->{label} |= $label_map{$str};
-                   $case_ref->[$i]->{label_str} .= "$str,";
-                }
             } elsif ($line =~ /^type\s*:\s*(\w[\w\,-]+)/) {
                 next if $skip;
                 $case_ref->[$i]->{type} = $1;
@@ -1143,14 +1120,6 @@ sub load_case {
                 next if $skip;
                 $case_ref->[$i]->{attribute} = $1;
                 $newcmdstart = 0;
-            } elsif ($line =~ /^label\s*:\s*(.+)/) {
-                next if $skip;
-                my @labels = split(",", $1);
-                foreach my $t (@labels) {
-                    $t=~s/^\s+|\s+$//g;
-                    $case_ref->[$i]->{label} |= $label_map{$t};
-                    $case_ref->[$i]->{label_str} .= "$t,";
-                }
             } elsif ($line =~ /^cmd\s*:\s*([\#\/\$\w].+)/) {
                 next if $skip;
                 $newcmdstart = 0;
