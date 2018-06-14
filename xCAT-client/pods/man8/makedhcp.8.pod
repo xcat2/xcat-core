@@ -21,7 +21,8 @@ B<makedhcp> B<[-h|--help]>
 =head1 DESCRIPTION
 
 The B<makedhcp> command creates and updates the DHCP configuration on the management node and service nodes. 
-The B<makedhcp> command is supported for both Linux and AIX clusters.
+The B<makedhcp> command is supported for both Linux and AIX clusters.  Note that it will intentionally not
+generate UEFI configuration if the OS indicated in nodetype.os is not UEFI supported, even if the OS being booted is shell.
 
 =over 3
 
