@@ -816,15 +816,37 @@ sub fork_fanout_dcp
         if(%envardict){
             my $dest_srcdict=$$options{'destDir_srcFile'}{$user_target};
             for my $dest (keys %{$dest_srcdict}){
+                my $newdest=$dest;
+                $newdest=~ s/\$\{(\w+)\}/$envardict{$1}/g;
+                $newdest=~ s/\$(\w+)/$envardict{$1}/g;  
                 for my $label(keys %{$$dest_srcdict{$dest}}){
-                    for my $path(@{$$dest_srcdict{$dest}{$label}}){
+                    my $myref;
+                    if('ARRAY' eq ref($$dest_srcdict{$dest}{$label})){
+                        for my $path(@{$$dest_srcdict{$dest}{$label}}){
                             $path=~ s/\$\{(\w+)\}/$envardict{$1}/g;
                             $path=~ s/\$(\w+)/$envardict{$1}/g;
+                        }
+                    }elsif('HASH' eq ref($$dest_srcdict{$dest}{$label})){
+                        for my $path(keys(%{$$dest_srcdict{$dest}{$label}})){
+                            my $newpath=$path;
+                            $newpath=~ s/\$\{(\w+)\}/$envardict{$1}/g;
+                            $newpath=~ s/\$(\w+)/$envardict{$1}/g;
+                            if($newpath ne $path){
+                                $$dest_srcdict{$dest}{$label}{$newpath}=$$dest_srcdict{$dest}{$label}{$path};
+                                delete $$dest_srcdict{$dest}{$label}{$path};
+                            }
+                        }
                     }
                 }
+                if($newdest ne $dest){
+                    $$dest_srcdict{$newdest}=$$dest_srcdict{$dest};
+                    delete $$dest_srcdict{$dest};
+                }
+
             }
         }
 
+        
         if (!$$target_properties{'localhost'})    # this is to a remote host
         {
             my $target_type = $$target_properties{'type'};
