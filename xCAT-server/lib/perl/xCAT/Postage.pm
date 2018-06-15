@@ -1831,8 +1831,7 @@ sub includefile
     my $idir = shift;
     my @text = ();
 
-    $file=~ s/\$\{(\w+)\}/$ENV{$1}/g;
-    $file=~ s/\$(\w+)/$ENV{$1}/g;
+    $file=xCAT::Utils->varsubinline($file,\%ENV);
     unless ($file =~ /^\//)
     {
         $file = $idir . "/" . $file;

@@ -5004,4 +5004,25 @@ sub console_sleep {
     sleep($time);
 }
 
-1;
+
+# replace the variables in $line with the values in dict ref $refvardict
+# return the substitued $line
+sub varsubinline{
+    my $class=shift;
+    my $line=shift;
+    my $refvardict=shift;
+
+    my @varsinline= $line =~ /\$\{?(\w+)\}?/g;
+    my @unresolvedvars;
+    foreach my $var(@varsinline){
+        if(exists $refvardict->{$var}){
+            $line=~ s/\$\{$var\}/$refvardict->{$var}/g;
+            $line=~ s/\$$var/$refvardict->{$var}/g;
+        }else{
+            push @unresolvedvars,$var;
+        }
+    }
+
+    return $line;
+}
+

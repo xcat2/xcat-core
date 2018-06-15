@@ -817,20 +817,17 @@ sub fork_fanout_dcp
             my $dest_srcdict=$$options{'destDir_srcFile'}{$user_target};
             for my $dest (keys %{$dest_srcdict}){
                 my $newdest=$dest;
-                $newdest=~ s/\$\{(\w+)\}/$envardict{$1}/g;
-                $newdest=~ s/\$(\w+)/$envardict{$1}/g;  
+                $newdest=xCAT::Utils->varsubinline($newdest,\%envardict);
                 for my $label(keys %{$$dest_srcdict{$dest}}){
                     my $myref;
                     if('ARRAY' eq ref($$dest_srcdict{$dest}{$label})){
                         for my $path(@{$$dest_srcdict{$dest}{$label}}){
-                            $path=~ s/\$\{(\w+)\}/$envardict{$1}/g;
-                            $path=~ s/\$(\w+)/$envardict{$1}/g;
+                            $path=xCAT::Utils->varsubinline($path,\%envardict);
                         }
                     }elsif('HASH' eq ref($$dest_srcdict{$dest}{$label})){
                         for my $path(keys(%{$$dest_srcdict{$dest}{$label}})){
                             my $newpath=$path;
-                            $newpath=~ s/\$\{(\w+)\}/$envardict{$1}/g;
-                            $newpath=~ s/\$(\w+)/$envardict{$1}/g;
+                            $newpath=xCAT::Utils->varsubinline($newpath,\%envardict);
                             if($newpath ne $path){
                                 $$dest_srcdict{$dest}{$label}{$newpath}=$$dest_srcdict{$dest}{$label}{$path};
                                 delete $$dest_srcdict{$dest}{$label}{$path};
@@ -4997,9 +4994,8 @@ sub rsync_to_image
         {
             next;
         }
- 
-        $line=~ s/\$\{(\w+)\}/$osimgenv{$1}/g;
-        $line=~ s/\$(\w+)/$osimgenv{$1}/g;
+
+        $line=xCAT::Utils->varsubinline($line,\%osimgenv); 
 
         # process no more lines, do not exec
         # do not execute postscripts when syncing images

@@ -11,6 +11,24 @@ use File::Path;
 use Data::Dumper;
 use Cwd qw(realpath);
 
+sub varsubinline{
+    my $line=shift;
+    my $refvardict=shift;
+
+    my @varsinline= $line =~ /\$\{?(\w+)\}?/g;
+    my @unresolvedvars;
+    foreach my $var(@varsinline){
+        if(exists $refvardict->{$var}){
+            $line=~ s/\$\{$var\}/$refvardict->{$var}/g;
+            $line=~ s/\$$var/$refvardict->{$var}/g;
+        }else{
+            push @unresolvedvars,$var;
+        }
+    }
+
+    return $line;
+}
+
 sub get_profile_def_filename {
     my $osver   = shift;
     my $profile = shift;
@@ -56,8 +74,7 @@ sub include_file
     my $idir = shift;
     my @text = ();
 
-    $file=~ s/\$\{(\w+)\}/$ENV{$1}/g;
-    $file=~ s/\$(\w+)/$ENV{$1}/g;
+    $file=varsubinline($file,\%ENV);
     unless ($file =~ /^\//) {
         $file = $idir . "/" . $file;
     }
