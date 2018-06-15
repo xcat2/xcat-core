@@ -1,5 +1,6 @@
 start:export_import_osimage_with_INCLUDE_in_file
 description:This case is used to test xcat-inventory export and import one linux osimage definition which has INCLUDE in the attribute's specified files. The attributes are pkglist, otherpkglist,exlist,synclists,template,postinstall and partitionfile.
+label:xcat-inventory
 cmd:dir="/tmp/imagedata/";if [ -e "${dir}" ];then mv ${dir} ${dir}".bak"; fi; mkdir -p $dir
 check:rc==0
 cmd:dir="/tmp/imagedata/export";if [ -e "${dir}" ];then mv ${dir} ${dir}".bak"; fi; mkdir -p $dir
