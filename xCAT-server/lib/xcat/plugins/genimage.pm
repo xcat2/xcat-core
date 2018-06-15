@@ -73,6 +73,7 @@ sub process_request {
     my $dryrun;
     my $ignorekernelchk;
     my $noupdate;
+    my $envar;
 
     GetOptions(
         'a=s'             => \$arch,
@@ -138,7 +139,7 @@ sub process_request {
             return 1;
         }
 
-        (my $ref_osimage_tab) = $osimagetab->getAttribs({ imagename => $imagename }, 'osvers', 'osarch', 'profile', 'provmethod');
+        (my $ref_osimage_tab) = $osimagetab->getAttribs({ imagename => $imagename }, 'osvers', 'osarch', 'profile', 'provmethod','environvar');
         unless ($ref_osimage_tab) {
             $callback->({ error => ["Cannot find image \'$imagename\' from the osimage table."], errorcode => [1] });
             return 1;
@@ -153,6 +154,7 @@ sub process_request {
         $osver   = $ref_osimage_tab->{'osvers'};
         $arch    = $ref_osimage_tab->{'osarch'};
         $profile = $ref_osimage_tab->{'profile'};
+        $envar   = $ref_osimage_tab->{'environvar'};
         my $provmethod = $ref_osimage_tab->{'provmethod'}; # TODO: not necessary, and need to update both statelite and stateless modes
 
         unless ($osver and $arch and $profile and $provmethod) {
@@ -318,7 +320,7 @@ sub process_request {
     if ($kerneldir)   { $cmd .= " --kerneldir $kerneldir"; }
     if ($interactive) { $cmd .= " --interactive" }
     if ($onlyinitrd)  { $cmd .= " --onlyinitrd" }
-
+    if ($envar)       { $cmd .= " --env $envar"; }
     if ($srcdir)           { $cmd .= " --srcdir \"$srcdir\""; }
     if ($pkglist)          { $cmd .= " --pkglist $pkglist"; }
     if ($srcdir_otherpkgs) { $cmd .= " --otherpkgdir \"$srcdir_otherpkgs\""; }

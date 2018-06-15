@@ -1489,6 +1489,7 @@ sub includefile
                             #2 means pattern list, pattern list starts with @,
          #3 means remove package list, packages to be removed start with -.
     my $text = "";
+    $file=xCAT::Utils->varsubinline($file,\%ENV);
     unless ($file =~ /^\//) {
         $file = $idir . "/" . $file;
     }
