@@ -1,0 +1,5 @@
+#Test for postinstall script
+installroot=$1
+echo "test postisntall" >> $installroot/tmp/test2.postinstall
+
+
