@@ -1,0 +1,4 @@
+#Test file for otherpkglist
+#INCLUDE: /tmp/imagedata/test_osimage/file2.1#
+#INCLUDE: /tmp/imagedata/test_osimage/file2.2#
+#INCLUDE: /tmp/imagedata/test_osimage/file2.3#
