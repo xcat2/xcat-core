@@ -1,5 +1,7 @@
 start:import_osimage_with_environments_in_yaml
+description:this case is to verify if osimage import could support environment variables.
 os:Linux
+label:xcat_install
 cmd:chdef -t node -o $$CN servicenode= monserver=$$MN nfsserver=$$MN tftpserver=$$MN  xcatmaster=$$MN
 check:rc==0
 
