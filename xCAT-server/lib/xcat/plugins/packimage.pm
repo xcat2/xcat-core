@@ -422,7 +422,7 @@ sub process_request {
         if ( defined($syncfile) && -f $syncfile && -d $rootimg_dir) {
             my $myenv='';
             if($envars){
-                $myenv.="XCAT_OSIMAGE_ENV=$envars";
+                $myenv.=" XCAT_OSIMAGE_ENV=$envars";
             }
             print "Syncing files from $syncfile to root image dir: $rootimg_dir\n";
             system("$myenv $::XCATROOT/bin/xdcp -i $rootimg_dir -F $syncfile");

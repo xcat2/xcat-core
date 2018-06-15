@@ -21,7 +21,6 @@ use lib "$FindBin::Bin/../imgutils";
 use imgutils;
 use xCAT::Utils;
 use Digest::MD5 qw(md5_hex);
-use Data::Dumper;
 
 #use strict;
 Getopt::Long::Configure("bundling");
@@ -381,7 +380,7 @@ unless ($onlyinitrd) {
     my @envarlist=split(',',$envar);
     foreach my $entry (@envarlist){
         my ($key,$value)=split('=',$entry);
-        $ENV{$key}=$value;
+        $ENV{xCAT::Utils->strim($key)}=xCAT::Utils->strim($value);
     }
 
     mount_chroot($rootimg_dir);

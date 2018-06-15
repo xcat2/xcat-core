@@ -5026,3 +5026,10 @@ sub varsubinline{
     return $line;
 }
 
+#remove the left and right white spaces from string
+sub strim{
+    my $class=shift;
+    my $str=shift;
+    $str =~ s/^\s+|\s+$//g;
+    return $str;
+}
