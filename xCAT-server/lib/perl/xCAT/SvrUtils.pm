@@ -452,37 +452,44 @@ sub get_file_name {
     #usally there're only 4 arguments passed for this function
     #the $genos is only used for the Redhat family
 
-    my $dotpos = rindex($os, ".");
-    my $osbase = substr($os, 0, $dotpos);
-
     #handle the following ostypes: sles10.2, sles11.1, rhels5.3, rhels5.4, etc
 
     if (-r "$searchpath/$profile.$os.$arch.$extension") {
         return "$searchpath/$profile.$os.$arch.$extension";
     }
-    elsif (-r "$searchpath/$profile.$os.$extension") {
+    if (-r "$searchpath/$profile.$os.$extension") {
         return "$searchpath/$profile.$os.$extension";
     }
-    elsif (($genos) && (-r "$searchpath/$profile.$genos.$arch.$extension")) {
+    if (($genos) && (-r "$searchpath/$profile.$genos.$arch.$extension")) {
         return "$searchpath/$profile.$genos.$arch.$extension";
     }
-    elsif (($genos) && (-r "$searchpath/$profile.$genos.$extension")) {
+    if (($genos) && (-r "$searchpath/$profile.$genos.$extension")) {
         return "$searchpath/$profile.$genos.$extension";
     }
-    # If the osimge name was specified with -n, the name might contain multiple "."
-    # Chop them off one at a time until filename match is found
-    else {
-        while ($dotpos > 0) {
 
-            if (-r "$searchpath/$profile.$osbase.$arch.$extension") {
-                return "$searchpath/$profile.$osbase.$arch.$extension";
-            }
-            elsif (-r "$searchpath/$profile.$osbase.$extension") {
-                return "$searchpath/$profile.$osbase.$extension";
-            }
-            # Chop off "." from the end and try again
-            $dotpos = rindex($osbase, ".");
-            $osbase = substr($osbase, 0, $dotpos);
+    my $osbase;
+    #check if version number has two digit number
+    #case sles12.5
+    if ($os =~ m/([a-zA-Z]+\d\d)/)
+    {
+        $osbase=$1;
+        if (-r "$searchpath/$profile.$osbase.$arch.$extension") {
+            return "$searchpath/$profile.$osbase.$arch.$extension";
+        }
+        if (-r "$searchpath/$profile.$osbase.$extension") {
+            return "$searchpath/$profile.$osbase.$extension";
+        }
+    }
+
+    #will take care if os=rhels7.5 or rhels75
+    if ($os =~ m/([a-zA-Z]+\d)/) 
+    {
+        $osbase = $1;
+        if (-r "$searchpath/$profile.$osbase.$arch.$extension") {
+            return "$searchpath/$profile.$osbase.$arch.$extension";
+        }
+        if (-r "$searchpath/$profile.$osbase.$extension") {
+            return "$searchpath/$profile.$osbase.$extension";
         }
     }
 
@@ -533,32 +540,48 @@ sub get_postinstall_file_name {
     my $os        = shift;
     my $arch      = shift;
     my $extension = "postinstall";
-    my $dotpos    = rindex($os, ".");
-    my $osbase    = substr($os, 0, $dotpos);
+    my $osbase;
 
     #handle the following ostypes: sles10.2, sles11.1, rhels5.3, rhels5.4, etc
 
     if (-x "$searchpath/$profile.$os.$arch.$extension") {
         return "$searchpath/$profile.$os.$arch.$extension";
     }
-    elsif (-x "$searchpath/$profile.$osbase.$arch.$extension") {
-        return "$searchpath/$profile.$osbase.$arch.$extension";
-    }
-    elsif (-x "$searchpath/$profile.$os.$extension") {
+    if (-x "$searchpath/$profile.$os.$extension") {
         return "$searchpath/$profile.$os.$extension";
     }
-    elsif (-x "$searchpath/$profile.$osbase.$extension") {
-        return "$searchpath/$profile.$osbase.$extension";
+    #check if version number has two digit number
+    #case sles12.5
+    if ($os =~ m/([a-zA-Z]+\d\d)/)
+    {
+        $osbase=$1;
+        if (-x "$searchpath/$profile.$osbase.$arch.$extension") {
+            return "$searchpath/$profile.$osbase.$arch.$extension";
+        }
+        if (-x "$searchpath/$profile.$osbase.$extension") {
+            return "$searchpath/$profile.$osbase.$extension";
+        }
     }
-    elsif (-x "$searchpath/$profile.$arch.$extension") {
+
+    #will take care if os=rhels7.5 or rhels75
+    if ($os =~ m/([a-zA-Z]+\d)/)
+    {
+        $osbase = $1;
+        if (-x "$searchpath/$profile.$osbase.$arch.$extension") {
+            return "$searchpath/$profile.$osbase.$arch.$extension";
+        }
+        if (-x "$searchpath/$profile.$osbase.$extension") {
+            return "$searchpath/$profile.$osbase.$extension";
+        }
+    }
+
+    if (-x "$searchpath/$profile.$arch.$extension") {
         return "$searchpath/$profile.$arch.$extension";
     }
-    elsif (-x "$searchpath/$profile.$extension") {
+    if (-x "$searchpath/$profile.$extension") {
         return "$searchpath/$profile.$extension";
     }
-    else {
-        return undef;
-    }
+    return undef;
 }
 
 
