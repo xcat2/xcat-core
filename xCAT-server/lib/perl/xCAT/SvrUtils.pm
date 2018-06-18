@@ -225,8 +225,6 @@ sub get_nodeset_state
 
     if (defined($boottype))
     {
-        #my $boottype = $ent->{netboot};
-
         #get nodeset state from corresponding files
         if ($boottype eq "pxe")
         {
@@ -529,36 +527,7 @@ sub get_postinstall_file_name {
     if (($searchpath) && ($searchpath =~ /xCAT::SvrUtils/)) {
         $searchpath = shift;
     }
-    my $profile   = shift;
-    my $os        = shift;
-    my $arch      = shift;
-    my $extension = "postinstall";
-    my $dotpos    = rindex($os, ".");
-    my $osbase    = substr($os, 0, $dotpos);
-
-    #handle the following ostypes: sles10.2, sles11.1, rhels5.3, rhels5.4, etc
-
-    if (-x "$searchpath/$profile.$os.$arch.$extension") {
-        return "$searchpath/$profile.$os.$arch.$extension";
-    }
-    elsif (-x "$searchpath/$profile.$osbase.$arch.$extension") {
-        return "$searchpath/$profile.$osbase.$arch.$extension";
-    }
-    elsif (-x "$searchpath/$profile.$os.$extension") {
-        return "$searchpath/$profile.$os.$extension";
-    }
-    elsif (-x "$searchpath/$profile.$osbase.$extension") {
-        return "$searchpath/$profile.$osbase.$extension";
-    }
-    elsif (-x "$searchpath/$profile.$arch.$extension") {
-        return "$searchpath/$profile.$arch.$extension";
-    }
-    elsif (-x "$searchpath/$profile.$extension") {
-        return "$searchpath/$profile.$extension";
-    }
-    else {
-        return undef;
-    }
+    return xCAT::SvrUtils::get_file_name($searchpath, "postinstall", @_);
 }
 
 
@@ -608,6 +577,7 @@ sub update_tables_with_templates
     my $arch         = shift;    #like ppc64, x86, x86_64
     my $ospkgdir     = shift;
     my $osdistroname = shift;
+    my $userdistname = shift;
     my %args         = @_;
 
     my $osname    = $osver;;     #like sles, rh, centos, windows
@@ -630,24 +600,18 @@ sub update_tables_with_templates
         }
     }
 
-    #for rhels5.1  genos=rhel5
+    # Set genos to hold the major version
     my $genos = $osver;
     $genos =~ s/\..*//;
     if ($genos =~ /rh.*s(\d*)/) {
-        $genos = "rhel$1";
+        $genos = "rhels$1";
+    } elsif ($genos =~ /sles(\d*)/) {
+        $genos = "sles$1";
     }
 
 
-    #print "osver=$osver, arch=$arch, osname=$osname, genos=$genos\n";
+    print "update_tables_with_templates() osver=$osver, arch=$arch, ospkgdir=$ospkgdir, osdistroname=$osdistroname, osname=$osname, genos=$genos userdistname=$userdistname\n";
     my $installroot = xCAT::TableUtils->getInstallDir();
-
-    #my $sitetab = xCAT::Table->new('site');
-    #if ($sitetab) {
-    #	(my $ref) = $sitetab->getAttribs({key => "installdir"}, "value");
-    #	if ($ref and $ref->{value}) {
-    #       $installroot = $ref->{value};
-    #	}
-    #}
     my @installdirs = xCAT::TableUtils->get_site_attribute("installdir");
     my $tmp         = $installdirs[0];
     if (defined($tmp)) {
@@ -670,8 +634,6 @@ sub update_tables_with_templates
         }
         $tmpf =~ /^([^\.]*)\..*$/;
         $tmpf = $1;
-
-        #print "$tmpf\n";
         $profiles{$tmpf} = 1;
     }
     @tmplfiles = glob($defpath . "/{compute,service}.*tmpl");
@@ -701,22 +663,20 @@ sub update_tables_with_templates
         }
     }
     foreach my $profile (keys %profiles) {
-
-        #print "profile=$profile\n";
         #get template file
         my $tmplfile = get_tmpl_file_name($cuspath, $profile, $osver, $arch, $genos);
         if (!$tmplfile) { $tmplfile = get_tmpl_file_name($defpath, $profile, $osver, $arch, $genos); }
         if (!$tmplfile) { next; }
 
         #get otherpkgs.pkglist file
-        my $otherpkgsfile = get_otherpkgs_pkglist_file_name($cuspath, $profile, $osver, $arch);
-        if (!$otherpkgsfile) { $otherpkgsfile = get_otherpkgs_pkglist_file_name($defpath, $profile, $osver, $arch); }
+        my $otherpkgsfile = get_otherpkgs_pkglist_file_name($cuspath, $profile, $osver, $arch, $genos);
+        if (!$otherpkgsfile) { $otherpkgsfile = get_otherpkgs_pkglist_file_name($defpath, $profile, $osver, $arch, $genos); }
 
         #get synclist file
         my $synclistfile = xCAT::SvrUtils->getsynclistfile(undef, $osver, $arch, $profile, "netboot");
 
         #get the pkglist file
-        my $pkglistfile = get_pkglist_file_name($cuspath, $profile, $osver, $arch);
+        my $pkglistfile = get_pkglist_file_name($cuspath, $profile, $osver, $arch, $genos);
         if (!$pkglistfile) { $pkglistfile = get_pkglist_file_name($defpath, $profile, $osver, $arch, $genos); }
 
         #now update the db
@@ -725,7 +685,6 @@ sub update_tables_with_templates
         }
 
         if ($osimagetab) {
-
             #check if the image is already in the table
             if ($osimagetab) {
                 my $found = 0;
@@ -738,10 +697,7 @@ sub update_tables_with_templates
                         }
                     }
                 }
-
-                #		if ($found) { next; }
-
-                my $imagename = $osver . "-" . $arch . "-install-" . $profile;
+                my $imagename = $userdistname . "-" . $arch . "-install-" . $profile;
 
                 #TODO: check if there happen to be a row that has the same imagename but with different contents
                 #now we can wirte the info into db
@@ -750,7 +706,7 @@ sub update_tables_with_templates
                     provmethod   => "install",
                     profile      => $profile,
                     osname       => $ostype,
-                    osvers       => $osver,
+                    osvers       => $genos,
                     osarch       => $arch,
                     synclists    => $synclistfile,
                     osdistroname => $osdistroname);
@@ -823,6 +779,7 @@ sub update_tables_with_mgt_image
     my $arch         = shift;    #like ppc64, x86, x86_64
     my $ospkgdir     = shift;
     my $osdistroname = shift;
+    my $userdistname = shift;
 
     my $osname    = $osver;;     #like sles, rh, centos, windows
     my $ostype    = "Linux";     #like Linux, Windows
@@ -851,12 +808,13 @@ sub update_tables_with_mgt_image
         return 0;
     }
 
-
-    #for rhels5.1  genos=rhel5
+    # Set genos to hold the major version
     my $genos = $osver;
     $genos =~ s/\..*//;
     if ($genos =~ /rh.*s(\d*)/) {
-        $genos = "rhel$1";
+        $genos = "rhels$1";
+    } elsif ($genos =~ /sles(\d*)/) {
+        $genos = "sles$1";
     }
 
     #if the osver does not match the osver of MN, return
@@ -866,6 +824,7 @@ sub update_tables_with_mgt_image
         return 0;
     }
 
+    print "update_tables_with_mgt_image() osver=$osver, arch=$arch, osname=$osname, genos=$genos\n";
     my $installroot = xCAT::TableUtils->getInstallDir();
     my @installdirs = xCAT::TableUtils->get_site_attribute("installdir");
     my $tmp         = $installdirs[0];
@@ -884,8 +843,6 @@ sub update_tables_with_mgt_image
         #get the profile name out of the file, TODO: this does not work if the profile name contains the '.'
         $tmpf =~ /^([^\.]*)\..*$/;
         $tmpf = $1;
-
-        #print "$tmpf\n";
         $profiles{$tmpf} = 1;
     }
     @tmplfiles = glob($defpath . "/{compute,service}.*tmpl");
@@ -903,25 +860,23 @@ sub update_tables_with_mgt_image
     #update the osimage and linuximage table
     my $osimagetab;
     my $linuximagetab;
-    my $imagename = $osver . "-" . $arch . "-stateful" . "-mgmtnode";
+    my $imagename = $userdistname . "-" . $arch . "-stateful" . "-mgmtnode";
     foreach my $profile (keys %profiles) {
-
-        #print "profile=$profile\n";
         #get template file
         my $tmplfile = get_tmpl_file_name($cuspath, $profile, $osver, $arch, $genos);
         if (!$tmplfile) { $tmplfile = get_tmpl_file_name($defpath, $profile, $osver, $arch, $genos); }
         if (!$tmplfile) { next; }
 
         #get otherpkgs.pkglist file
-        my $otherpkgsfile = get_otherpkgs_pkglist_file_name($cuspath, $profile, $osver, $arch);
-        if (!$otherpkgsfile) { $otherpkgsfile = get_otherpkgs_pkglist_file_name($defpath, $profile, $osver, $arch); }
+        my $otherpkgsfile = get_otherpkgs_pkglist_file_name($cuspath, $profile, $osver, $arch, $genos);
+        if (!$otherpkgsfile) { $otherpkgsfile = get_otherpkgs_pkglist_file_name($defpath, $profile, $osver, $arch, $genos); }
 
         #get synclist file
         my $synclistfile = xCAT::SvrUtils->getsynclistfile(undef, $osver, $arch, $profile, "netboot");
 
         #get the pkglist file
-        my $pkglistfile = get_pkglist_file_name($cuspath, $profile, $osver, $arch);
-        if (!$pkglistfile) { $pkglistfile = get_pkglist_file_name($defpath, $profile, $osver, $arch); }
+        my $pkglistfile = get_pkglist_file_name($cuspath, $profile, $osver, $arch, $genos);
+        if (!$pkglistfile) { $pkglistfile = get_pkglist_file_name($defpath, $profile, $osver, $arch, $genos); }
 
         #now update the db
         if (!$osimagetab) {
@@ -930,7 +885,6 @@ sub update_tables_with_mgt_image
 
 
         if ($osimagetab) {
-
             #check if the image is already in the table
             if ($osimagetab) {
                 my $found = 0;
@@ -944,9 +898,6 @@ sub update_tables_with_mgt_image
                     }
                 }
 
-                #               if ($found) { next; }
-
-
                 #TODO: check if there happen to be a row that has the same imagename but with different contents
                 #now we can wirte the info into db
                 my %key_col = (imagename => $imagename);
@@ -954,7 +905,7 @@ sub update_tables_with_mgt_image
                     provmethod   => "install",
                     profile      => $profile,
                     osname       => $ostype,
-                    osvers       => $osver,
+                    osvers       => $genos,
                     osarch       => $arch,
                     synclists    => $synclistfile,
                     osdistroname => $osdistroname);
@@ -1038,6 +989,7 @@ sub update_tables_with_diskless_image
     my $mode         = shift;
     my $ospkgdir     = shift;
     my $osdistroname = shift;
+    my $userdistname = shift;
 
     my $provm = "netboot";
     if ($mode) { $provm = $mode; }
@@ -1058,23 +1010,18 @@ sub update_tables_with_diskless_image
         }
     }
 
-    #for rhels5.1  genos=rhel5
+    # Set genos to hold the major version
     my $genos = $osver;
     $genos =~ s/\..*//;
     if ($genos =~ /rh.*s(\d*)/) {
-        $genos = "rhel$1";
+        $genos = "rhels$1";
+    } elsif ($genos =~ /sles(\d*)/) {
+        $genos = "sles$1";
     }
 
     #print "osver=$osver, arch=$arch, osname=$osname, genos=$genos, profile=$profile\n";
+    print "update_tables_with_diskless_image() osver=$osver, arch=$arch, osname=$osname, genos=$genos, profile=$profile\n";
     my $installroot = xCAT::TableUtils->getInstallDir();
-
-    #my $sitetab = xCAT::Table->new('site');
-    #if ($sitetab) {
-    #	(my $ref) = $sitetab->getAttribs({key => "installdir"}, "value");
-    #	if ($ref and $ref->{value}) {
-    #	    $installroot = $ref->{value};
-    #	}
-    #}
     my @installdirs = xCAT::TableUtils->get_site_attribute("installdir");
     my $tmp         = $installdirs[0];
     if (defined($tmp)) {
@@ -1109,29 +1056,25 @@ sub update_tables_with_diskless_image
         }
     }
     foreach my $profile (keys %profiles) {
-
         #get the pkglist file
-        my $pkglistfile = get_pkglist_file_name($cuspath, $profile, $osver, $arch);
-        if (!$pkglistfile) { $pkglistfile = get_pkglist_file_name($defpath, $profile, $osver, $arch); }
-
-        #print "pkglistfile=$pkglistfile\n";
+        my $pkglistfile = get_pkglist_file_name($cuspath, $profile, $osver, $arch, $genos);
+        if (!$pkglistfile) { $pkglistfile = get_pkglist_file_name($defpath, $profile, $osver, $arch, $genos); }
         if (!$pkglistfile) { next; }
 
         #get otherpkgs.pkglist file
-        my $otherpkgsfile = get_otherpkgs_pkglist_file_name($cuspath, $profile, $osver, $arch);
-        if (!$otherpkgsfile) { $otherpkgsfile = get_otherpkgs_pkglist_file_name($defpath, $profile, $osver, $arch); }
+        my $otherpkgsfile = get_otherpkgs_pkglist_file_name($cuspath, $profile, $osver, $arch, $genos);
+        if (!$otherpkgsfile) { $otherpkgsfile = get_otherpkgs_pkglist_file_name($defpath, $profile, $osver, $arch, $genos); }
 
         #get synclist file
         my $synclistfile = xCAT::SvrUtils->getsynclistfile(undef, $osver, $arch, $profile, "netboot");
 
         #get the exlist file
-        my $exlistfile = get_exlist_file_name($cuspath, $profile, $osver, $arch);
-        if (!$exlistfile) { $exlistfile = get_exlist_file_name($defpath, $profile, $osver, $arch); }
+        my $exlistfile = get_exlist_file_name($cuspath, $profile, $osver, $arch, $genos);
+        if (!$exlistfile) { $exlistfile = get_exlist_file_name($defpath, $profile, $osver, $arch, $genos); }
 
         #get postinstall script file name
-        my $postfile = get_postinstall_file_name($cuspath, $profile, $osver, $arch);
-        if (!$postfile) { $postfile = get_postinstall_file_name($defpath, $profile, $osver, $arch); }
-
+        my $postfile = get_postinstall_file_name($cuspath, $profile, $osver, $arch, $genos);
+        if (!$postfile) { $postfile = get_postinstall_file_name($defpath, $profile, $osver, $arch, $genos); }
 
         #now update the db
         if (!$osimagetab) {
@@ -1154,11 +1097,9 @@ sub update_tables_with_diskless_image
                 }
                 if ($found) {
                     print "The image is already in the db.\n";
-
-                    #                         next;
                 }
 
-                my $imagename = $osver . "-" . $arch . "-$provm-" . $profile;
+                my $imagename = $userdistname . "-" . $arch . "-$provm-" . $profile;
 
                 #TODO: check if there happen to be a row that has the same imagename but with different contents
                 #now we can wirte the info into db
@@ -1167,7 +1108,7 @@ sub update_tables_with_diskless_image
                     provmethod   => $provm,
                     profile      => $profile,
                     osname       => $ostype,
-                    osvers       => $osver,
+                    osvers       => $genos,
                     osarch       => $arch,
                     synclists    => $synclistfile,
                     osdistroname => $osdistroname);
@@ -1386,12 +1327,10 @@ sub subVars {
             foreach my $part (split('\$', $p)) {
                 if ($part eq '') { next; }
 
-                #$callback->({error=>["part is $part"],errorcode=>[1]});
                 # check if p is just the node name:
                 if ($part eq 'node') {
 
                     # it is so, just return the node.
-                    #$fdir .= "/$pre$node$suf";
                     push @fParts, $node;
                 } else {
 
@@ -1406,9 +1345,6 @@ sub subVars {
                     my $ent;
                     my $val;
                     if ($table eq 'site') {
-
-                        #$val = $tab->getAttribs( { key => "$col" }, 'value' );
-                        #$val = $val->{'value'};
                         my @vals = xCAT::TableUtils->get_site_attribute($col);
                         $val = $vals[0];
                     } else {
@@ -1416,7 +1352,6 @@ sub subVars {
                         $val = $ent->{$col};
                     }
                     unless ($val) {
-
                         # couldn't find the value!!
                         $val = "UNDEFINED"
                     }
@@ -1430,7 +1365,6 @@ sub subVars {
                 $fdir .= $pre . $val . $suf;
             }
         } else {
-
             # no substitution here
             $fdir .= "/$p";
         }
@@ -1445,11 +1379,9 @@ sub subVars {
                 $p =~ s/CMD=//;
                 my $cmd = $p;
 
-                #$callback->({info=>[$p]});
                 $p = `$p 2>&1`;
                 chomp($p);
 
-                #$callback->({info=>[$p]});
                 unless ($p) {
                     $p = "#CMD=$p did not return output#";
                 }
@@ -1497,7 +1429,6 @@ sub setupNFSTree {
             shift @entries;
             if (grep /\Q$nfsdirectory\E/, @entries) {
                 $callback->({ data => ["$nfsdirectory has been exported already!"] });
-
                 # nothing to do
             } else {
                 $cmd = "/usr/sbin/exportfs :$nfsdirectory";
@@ -1612,11 +1543,6 @@ sub sendmsg {
         $curptr = $curptr->{data}->[0];
         if ($descr) { $curptr->{desc} = [$descr]; }
     }
-
-    #        print $outfd freeze([$msg]);
-    #        print $outfd "\nENDOFFREEZE6sK4ci\n";
-    #        yield;
-    #        waitforack($outfd);
     $callback->($msg);
 }
 
@@ -1655,7 +1581,6 @@ sub build_deps()
         return undef;
     }
     foreach my $node (@$nodes) {
-
         # Delete the nodes without dependencies from the hash
         if (!defined($depset->{$node}[0])) {
             delete($depset->{$node});
@@ -1930,8 +1855,9 @@ sub update_osdistro_table
         $distname = $osver . "-" . $arch;
     }
 
-    $keyhash{osdistroname} = $distname;
+    print "update_osdistro_table() osver=$osver, arch=$arch, path=$path, distname=$distname\n";
 
+    $keyhash{osdistroname} = $distname;
     $updates{type} = $ostype;
     if ($arch) {
         $updates{arch} = $arch;
@@ -1941,7 +1867,6 @@ sub update_osdistro_table
     if ($osver) {
         ($updates{basename}, $updates{majorversion}, $updates{minorversion}) = &parseosver($osver);
     }
-
 
     my $tab = xCAT::Table->new('osdistro', -create => 1);
 

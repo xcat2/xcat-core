@@ -1974,6 +1974,8 @@ sub copycd
         $installroot = $site_ent;
     }
 
+    # user specified name
+    my $userdistname = undef;
     my $distname;
     my $arch;
     my $path;
@@ -1984,7 +1986,7 @@ sub copycd
 
     @ARGV = @{ $request->{arg} };
     GetOptions(
-        'n=s' => \$distname,
+        'n=s' => \$userdistname,
         'a=s' => \$arch,
         'p=s' => \$path,
         'm=s' => \$mntpath,
@@ -1992,19 +1994,19 @@ sub copycd
         'o'   => \$noosimage,
         'w'   => \$nonoverwrite,
     );
+
     unless ($mntpath)
     {
-
         #this plugin needs $mntpath...
         return;
     }
-    if ($distname
-        and $distname !~ /^centos/
-        and $distname !~ /^fedora/
-        and $distname !~ /^SL/
-        and $distname !~ /^ol/
-        and $distname !~ /^pkvm/
-        and $distname !~ /^rh/)
+    if ($userdistname
+        and $userdistname !~ /^centos/
+        and $userdistname !~ /^fedora/
+        and $userdistname !~ /^SL/
+        and $userdistname !~ /^ol/
+        and $userdistname !~ /^pkvm/
+        and $userdistname !~ /^rh/)
     {
 
         #If they say to call it something unidentifiable, give up?
@@ -2030,6 +2032,7 @@ sub copycd
         $darch = "x86";
     }
     close($dinfo);
+
     if ($xCAT::data::discinfo::distnames{$did})
     {
         unless ($distname)
@@ -2092,6 +2095,13 @@ sub copycd
             return;    #Do nothing, not ours..
         }
     }
+
+    unless ($userdistname) 
+    {
+        # If not userdefined, set to detected distname.
+        $userdistname = $distname;
+    }
+
     if ($darch)
     {
         unless ($arch)
@@ -2123,19 +2133,19 @@ sub copycd
         );
         return;
     }
-    print "INFO - detected distname=$distname, arch=$arch\n";
+    print "INFO - detected distname=$distname, arch=$arch, userdistname=$userdistname\n";
 
     %{$request} = ();    #clear request we've got it.
     my $disccopiedin = 0;
     my $osdistroname = $distname . "-" . $arch;
 
-    my $defaultpath = "$installroot/$distname/$arch";
+    my $defaultpath = "$installroot/$userdistname/$arch";
     unless ($path)
     {
         $path = $defaultpath;
     }
     if ($::XCATSITEVALS{osimagerequired}) {
-        my ($nohaveimages, $errstr) = xCAT::SvrUtils->update_tables_with_templates($distname, $arch, $path, $osdistroname, checkonly => 1);
+        my ($nohaveimages, $errstr) = xCAT::SvrUtils->update_tables_with_templates($distname, $arch, $path, $osdistroname, $userdistname, checkonly => 1);
         if ($nohaveimages) {
             $callback->({ error => "No Templates found to support $distname($arch)", errorcode => 2 });
             return;
@@ -2145,7 +2155,6 @@ sub copycd
         $callback->({ error => "$arch is unsupported by this system", errorcode => 2 });
         return;
     }
-
 
     #tranverse the directory structure of the os media and get the fingerprint
     my @filelist = ();
@@ -2194,8 +2203,6 @@ sub copycd
         }
     }
     $tabosdistro->close();
-
-
 
     $callback->({ data => "Copying media to $path" });
     my $omask = umask 0022;
@@ -2265,8 +2272,6 @@ sub copycd
         }
     }
 
-    #my $rc = system("cd $path; find . | nice -n 20 cpio -dump $installroot/$distname/$arch");
-    #my $rc = system("cd $path;rsync -a . $installroot/$distname/$arch/");
     chmod 0755, "$path";
 
     #append the fingerprint to the .fingerprint file to indicate that the os media has been copied in
@@ -2288,27 +2293,21 @@ sub copycd
     else
     {
         $callback->({ data => "Media copy operation successful" });
-        my @ret = xCAT::SvrUtils->update_osdistro_table($distname, $arch, $path, $osdistroname);
+        my @ret = xCAT::SvrUtils->update_osdistro_table($distname, $arch, $path, $osdistroname, $userdistname);
         if ($ret[0] != 0) {
             $callback->({ data => "Error when updating the osdistro tables: " . $ret[1] });
         }
 
         unless ($noosimage) {
-            my @ret = xCAT::SvrUtils->update_tables_with_templates($distname, $arch, $path, $osdistroname);
+            my @ret = xCAT::SvrUtils->update_tables_with_templates($distname, $arch, $path, $osdistroname, $userdistname);
             if ($ret[0] != 0) {
                 $callback->({ data => "Error when updating the osimage tables: " . $ret[1] });
             }
 
             #hiding the messages about this not being found, since it may be intentional
-
-            my @ret = xCAT::SvrUtils->update_tables_with_mgt_image($distname, $arch, $path, $osdistroname);
-
-            my @ret = xCAT::SvrUtils->update_tables_with_diskless_image($distname, $arch, undef, "netboot", $path, $osdistroname);
-
-            #if ($ret[0] != 0) {
-            #$callback->({data => "Error when updating the osimage tables for stateless: " . $ret[1]});
-            #}
-            my @ret=xCAT::SvrUtils->update_tables_with_diskless_image($distname, $arch, undef, "statelite",$path,$osdistroname);
+            my @ret = xCAT::SvrUtils->update_tables_with_mgt_image($distname, $arch, $path, $osdistroname, $userdistname);
+            my @ret = xCAT::SvrUtils->update_tables_with_diskless_image($distname, $arch, undef, "netboot", $path, $osdistroname, $userdistname);
+            my @ret = xCAT::SvrUtils->update_tables_with_diskless_image($distname, $arch, undef, "statelite",$path,$osdistroname, $userdistname);
         }
     }
 }

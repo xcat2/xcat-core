@@ -1559,29 +1559,22 @@ sub copycd
     my $installroot;
     my $arch;
     my $path;
+    my $userdistname = undef;
     my $mntpath      = undef;
     my $inspection   = undef;
     my $noosimage    = undef;
     my $nonoverwrite = undef;
 
     $installroot = "/install";
-
-    #my $sitetab = xCAT::Table->new('site');
-    #if ($sitetab)
-    #{
-    #(my $ref) = $sitetab->getAttribs({key => 'installdir'}, 'value');
-    #print Dumper($ref);
     my @entries = xCAT::TableUtils->get_site_attribute("installdir");
     my $t_entry = $entries[0];
     if (defined($t_entry)) {
         $installroot = $t_entry;
     }
 
-    #}
-
     @ARGV = @{ $request->{arg} };
     GetOptions(
-        'n=s' => \$distname,
+        'n=s' => \$userdistname,
         'a=s' => \$arch,
         'm=s' => \$mntpath,
         'i'   => \$inspection,
@@ -1604,9 +1597,8 @@ sub copycd
         $path =~ s,//*,/,g;
     }
 
-    if ($distname and $distname !~ /^sles|^suse/)
+    if ($userdistname and $userdistname !~ /^sles|^suse/)
     {
-
         #If they say to call it something other than SLES or SUSE, give up?
         return;
     }
@@ -1732,7 +1724,11 @@ sub copycd
         #failed to parse the disc info
         return;
     }
-
+    unless ($userdistname)
+    {
+        # if not userdefined, set to the detected distname
+        $userdistname = $distname;
+    }
     if ($darch and $darch =~ /i.86/)
     {
         $darch = "x86";
@@ -1768,21 +1764,21 @@ sub copycd
         $callback->(
             {
                 info =>
-"DISTNAME:$distname\n" . "ARCH:$arch\n" . "DISCNO:$discnumber\n"
+"DISTNAME:$distname\n" . "USERDISTNAME:$userdistname\n" . "ARCH:$arch\n" . "DISCNO:$discnumber\n"
             }
         );
         return;
     }
 
     %{$request} = ();    #clear request we've got it.
-    my $defaultpath = "$installroot/$distname/$arch";
+    my $defaultpath = "$installroot/$userdistname/$arch";
     unless ($path)
     {
         $path = $defaultpath;
     }
     my $osdistroname = $distname . "-" . $arch;
     if ($::XCATSITEVALS{osimagerequired}) {
-        my ($nohaveimages, $errstr) = xCAT::SvrUtils->update_tables_with_templates($distname, $arch, $path, $osdistroname, checkonly => 1);
+        my ($nohaveimages, $errstr) = xCAT::SvrUtils->update_tables_with_templates($userdistname, $arch, $path, $osdistroname, checkonly => 1);
         if ($nohaveimages) {
             $callback->({ error => "No Templates found to support $distname($arch)", errorcode => 2 });
             return;
@@ -1917,13 +1913,8 @@ sub copycd
             exit(1);
         }
     }
-
-    #  system(
-    #    "cd $path; find . | nice -n 20 cpio -dump $installroot/$distname/$arch/$discnumber/"
-    #    );
     chmod 0755, "$path";
     chmod 0755, "$ospkgpath";
-
 
     #append the fingerprint to the .fingerprint file to indicate that the os media has been copied in
     unless ($disccopiedin)
@@ -1966,9 +1957,9 @@ sub copycd
         if ($arch eq "x86") {
             $ycparch = "i386";
         }
-        system("mount -o loop $installroot/$distname/$arch/$discnumber/boot/$ycparch/root $tmnt");
+        system("mount -o loop $installroot/$userdistname/$arch/$discnumber/boot/$ycparch/root $tmnt");
         system("cd $tmnt;find . |cpio -dump $tdir");
-        system("umount $tmnt;rm $installroot/$distname/$arch/$discnumber/boot/$ycparch/root");
+        system("umount $tmnt;rm $installroot/$userdistname/$arch/$discnumber/boot/$ycparch/root");
         open($startupfile, "<", "$tdir/usr/share/YaST2/clients/inst_startup.ycp");
         my @ycpcontents = <$startupfile>;
         my @newcontents;
@@ -1991,7 +1982,7 @@ sub copycd
             print $startupfile $_;
         }
         close($startupfile);
-        system("cd $tdir;mkfs.cramfs . $installroot/$distname/$arch/$discnumber/boot/$ycparch/root");
+        system("cd $tdir;mkfs.cramfs . $installroot/$userdistname/$arch/$discnumber/boot/$ycparch/root");
         system("rm -rf $tmnt $tdir");
     }
 
@@ -2003,28 +1994,28 @@ sub copycd
     {
         $callback->({ data => "Media copy operation successful" });
 
-        my @ret = xCAT::SvrUtils->update_osdistro_table($distname, $arch, $path, $osdistroname);
+        my @ret = xCAT::SvrUtils->update_osdistro_table($distname, $arch, $path, $osdistroname, $userdistname);
         if ($ret[0] != 0) {
             $callback->({ data => "Error when updating the osdistro tables: " . $ret[1] });
         }
 
         #if --noosimage option is not specified, create the relevant osimage and linuximage entris
         unless ($noosimage) {
-            my @ret = xCAT::SvrUtils->update_tables_with_templates($distname, $arch, $path, $osdistroname);
+            my @ret = xCAT::SvrUtils->update_tables_with_templates($distname, $arch, $path, $osdistroname, $userdistname);
             if ($ret[0] != 0) {
                 $callback->({ data => "Error when updating the osimage tables: " . $ret[1] });
             }
 
-            my @ret = xCAT::SvrUtils->update_tables_with_mgt_image($distname, $arch, $path, $osdistroname);
+            my @ret = xCAT::SvrUtils->update_tables_with_mgt_image($distname, $arch, $path, $osdistroname, $userdistname);
             if ($ret[0] != 0) {
                 $callback->({ data => "Error when updating the osimage tables for management node " . $ret[1] });
             }
 
-            my @ret = xCAT::SvrUtils->update_tables_with_diskless_image($distname, $arch, undef, "netboot", $path, $osdistroname);
+            my @ret = xCAT::SvrUtils->update_tables_with_diskless_image($distname, $arch, undef, "netboot", $path, $osdistroname, $userdistname);
             if ($ret[0] != 0) {
                 $callback->({ data => "Error when updating the osimage tables for stateless: " . $ret[1] });
             }
-            my @ret=xCAT::SvrUtils->update_tables_with_diskless_image($distname, $arch, undef, "statelite",$path,$osdistroname);
+            my @ret=xCAT::SvrUtils->update_tables_with_diskless_image($distname, $arch, undef, "statelite",$path,$osdistroname, $userdistname);
             if ($ret[0] != 0) {
               $callback->({data => "Error when updating the osimage tables for statelite: " . $ret[1]});
             }

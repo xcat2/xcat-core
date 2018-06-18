@@ -182,10 +182,12 @@ sub copycd
     my $callback    = shift;
     my $doreq       = shift;
     my $distname    = "";
+    my $userdistname = undef;
     my $detdistname = "";
     my $installroot;
     my $arch;
     my $path;
+    my $mntpath = undef;
     $installroot = "/install";
     my $sitetab = xCAT::Table->new('site');
 
@@ -202,43 +204,41 @@ sub copycd
 
     @ARGV = @{ $request->{arg} };
     GetOptions(
-        'n=s' => \$distname,
+        'n=s' => \$userdistname,
         'a=s' => \$arch,
-        'p=s' => \$copypath,
-        'm=s' => \$path,
+        'p=s' => \$path,
+        'm=s' => \$mntpath,
         'i'   => \$inspection,
         'o'   => \$noosimage,
         'w'   => \$nonoverwrite,
     );
-    unless ($path)
+    unless ($mntpath)
     {
-
-        #this plugin needs $path...
+        #this plugin needs $mntpath...
         return;
     }
-    if ($distname
-        and $distname !~ /^debian/i
-        and $distname !~ /^ubuntu/i)
+    if ($userdistname
+        and $userdistname !~ /^debian/i
+        and $userdistname !~ /^ubuntu/i)
     {
-
         #If they say to call it something unidentifiable, give up?
         return;
     }
 
-    unless (-r $path . "/.disk/info")
+    unless (-r $mntpath . "/.disk/info")
     {
         #xCAT::MsgUtils->message("S","The CD doesn't look like a Debian CD, exiting...");
         return;
     }
 
-    if ($copypath || $nonoverwrite)
+    if ($path || $nonoverwrite)
     {
         $callback->({ info => ["copycds on Ubuntu/Debian does not support -p or -w option."] });
         return;
     }
 
     my $dinfo;
-    open($dinfo, $path . "/.disk/info");
+    open($dinfo, $mntpath . "/.disk/info");
     my $line = <$dinfo>;
     chomp($line);
     my @line2 = split(/ /, $line);
@@ -281,11 +281,16 @@ sub copycd
             $distname = "ubuntu" . $ver;
         }
         $detdistname = "ubuntu" . $ver;
-        $discno = `cat $path/README.diskdefines | grep 'DISKNUM ' | awk '{print \$3}'`;
+        $discno = `cat $mntpath/README.diskdefines | grep 'DISKNUM ' | awk '{print \$3}'`;
     }
     else
     {
         return;
+    }
+    unless ($userdistname)
+    {
+        # if not userdefined, set to the detected distname
+        $userdistname = $distname;
     }
 
     # So that I can use amd64 below
@@ -307,9 +312,8 @@ sub copycd
     {
         $darch = "x86_64";
     }
-
     if ($darch)
-    {
+    { 
         unless ($arch)
         {
             $arch = $darch;
@@ -330,31 +334,36 @@ sub copycd
         $callback->(
             {
                 info =>
-"DISTNAME:$distname\n" . "ARCH:$debarch\n" . "DISCNO:$discno\n"
+"DISTNAME:$distname\n" . "USERDISTNAME:$userdistname\n" . "ARCH:$debarch\n" . "DISCNO:$discno\n"
             }
         );
         return;
     }
     %{$request} = ();    #clear request we've got it.
+    my $defaultpath = "$installroot/$userdistname/$arch";
+    unless ($path)
+    {
+        $path = $defaultpath;
+    }
 
     $callback->(
-        { data => "Copying media to $installroot/$distname/$arch" });
+        { data => "Copying media to $defaultpath" });
     my $omask = umask 0022;
-    mkpath("$installroot/$distname/$arch");
-    mkpath("$installroot/$distname/$arch/install/netboot") if ($isnetinst);
+    mkpath("$defaultpath");
+    mkpath("$defaultpath/install/netboot") if ($isnetinst);
     umask $omask;
     my $rc;
     $SIG{INT} = $SIG{TERM} = sub {
         foreach (@cpiopid) {
             kill 2, $_;
         }
-        if ($path) {
+        if ($mntpath) {
             chdir("/");
-            system("umount $path");
+            system("umount $mntpath");
         }
     };
     my $kid;
-    chdir $path;
+    chdir $mntpath;
     my $numFiles = `find . -print | wc -l`;
     my $child = open($kid, "|-");
     unless (defined $child) {
@@ -370,7 +379,7 @@ sub copycd
         close($kid);
         $rc = $?;
     } else {
-        my $c = "nice -n 20 cpio -vdump $installroot/$distname/$arch";
+        my $c = "nice -n 20 cpio -vdump $defaultpath";
         my $k2 = open(PIPE, "$c 2>&1 |") ||
           $callback->({ error => "Media copy operation fork failure" });
         push @cpiopid, $k2;
@@ -386,30 +395,27 @@ sub copycd
         exit;
     }
 
-    #  system(
-    #    "cd $path; find . | nice -n 20 cpio -dump $installroot/$distname/$arch/"
-    #    );
-    chmod 0755, "$installroot/$distname/$arch";
+    chmod 0755, "$defaultpath";
 
     # Need to do this otherwise there will be warning about corrupt Packages file
     # when installing a system
 
     # Grabs the distribution codename
-    my @line = split(" ", `ls -lh $installroot/$distname/$arch/dists/ | grep dr`);
+    my @line = split(" ", `ls -lh $defaultpath/dists/ | grep dr`);
     my $dist = $line[ @line - 1 ];
 
     # touches the Packages file so that deb packaging works
-    system("touch $installroot/$distname/$arch/dists/$dist/restricted/binary-$debarch/Packages");
+    system("touch $defaultpath/dists/$dist/restricted/binary-$debarch/Packages");
 
     # removes the links unstable and testing, otherwise the repository does not work for debian
-    system("rm -f $installroot/$distname/$arch/dists/unstable");
-    system("rm -f $installroot/$distname/$arch/dists/testing");
+    system("rm -f $defaultpath/dists/unstable");
+    system("rm -f $defaultpath/dists/testing");
 
     # copies the netboot files for debian
     if ($isnetinst)
     {
-        system("cp install.*/initrd.gz $installroot/$distname/$arch/install/netboot/.");
-        system("cp install.*/vmlinuz $installroot/$distname/$arch/install/netboot/.");
+        system("cp install.*/initrd.gz $defaultpath/install/netboot/.");
+        system("cp install.*/vmlinuz $defaultpath/install/netboot/.");
     }
 
     if ($rc != 0)
@@ -419,19 +425,18 @@ sub copycd
     else
     {
         my $osdistoname = $distname . "-" . $arch;
-        my $temppath    = "$installroot/$distname/$arch";
-        my @ret = xCAT::SvrUtils->update_osdistro_table($distname, $arch, $temppath, $osdistroname);
+        my @ret = xCAT::SvrUtils->update_osdistro_table($distname, $arch, $path, $osdistroname, $userdistname);
         if ($ret[0] != 0) {
             $callback->({ data => "Error when updating the osdistro tables: " . $ret[1] });
         }
 
         $callback->({ data => "Media copy operation successful" });
         unless ($noosimage) {
-            my @ret = xCAT::SvrUtils->update_tables_with_templates($distname, $arch, $temppath, $osdistroname);
+            my @ret = xCAT::SvrUtils->update_tables_with_templates($distname, $arch, $path, $osdistroname, $userdistname);
             if ($ret[0] != 0) {
                 $callback->({ data => "Error when updating the osimage tables: " . $ret[1] });
             }
-            my @ret = xCAT::SvrUtils->update_tables_with_diskless_image($distname, $arch, undef, "netboot", $temppath, $osdistroname);
+            my @ret = xCAT::SvrUtils->update_tables_with_diskless_image($distname, $arch, undef, "netboot", $path, $osdistroname, $userdistname);
             if ($ret[0] != 0) {
                 $callback->({ data => "Error when updating the osimage tables for stateless: " . $ret[1] });
             }
