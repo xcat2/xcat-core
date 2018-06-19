@@ -452,6 +452,7 @@ sub get_file_name {
     #usally there're only 4 arguments passed for this function
     #the $genos is only used for the Redhat family
 
+
     #handle the following ostypes: sles10.2, sles11.1, rhels5.3, rhels5.4, etc
 
     if (-r "$searchpath/$profile.$os.$arch.$extension") {
@@ -467,9 +468,24 @@ sub get_file_name {
         return "$searchpath/$profile.$genos.$extension";
     }
 
-    my $osbase;
-    #check if version number has two digit number
-    #case sles12.5
+    my $dotpos = rindex($os, ".");
+    my $osbase = substr($os, 0, $dotpos);
+    # If the osimge name was specified with -n, the name might contain multiple "."
+    # Chop them off one at a time until filename match is found
+    while ($dotpos > 0) {
+        if (-r "$searchpath/$profile.$osbase.$arch.$extension") {
+            return "$searchpath/$profile.$osbase.$arch.$extension";
+        }
+        if (-r "$searchpath/$profile.$osbase.$extension") {
+            return "$searchpath/$profile.$osbase.$extension";
+        }
+        # Chop off "." from the end and try again
+        $dotpos = rindex($osbase, ".");
+        $osbase = substr($osbase, 0, $dotpos);
+    }
+
+    #if there are no '.', pick the two numbers follow by leading string, like sles11
+    #then pick one number follow by leading string, like centos7, rhels7
     if ($os =~ m/([a-zA-Z]+\d\d)/)
     {
         $osbase=$1;
@@ -481,8 +497,7 @@ sub get_file_name {
         }
     }
 
-    #will take care if os=rhels7.5 or rhels75
-    if ($os =~ m/([a-zA-Z]+\d)/) 
+    if ($os =~ m/([a-zA-Z]+\d)/)
     {
         $osbase = $1;
         if (-r "$searchpath/$profile.$osbase.$arch.$extension") {
@@ -497,12 +512,11 @@ sub get_file_name {
     if (-r "$searchpath/$profile.$arch.$extension") {
         return "$searchpath/$profile.$arch.$extension";
     }
-    elsif (-r "$searchpath/$profile.$extension") {
+    if (-r "$searchpath/$profile.$extension") {
         return "$searchpath/$profile.$extension";
     }
-    else {
-        return undef;
-    }
+
+    return undef;
 }
 
 sub get_tmpl_file_name {
@@ -540,18 +554,39 @@ sub get_postinstall_file_name {
     my $os        = shift;
     my $arch      = shift;
     my $extension = "postinstall";
-    my $osbase;
+    my $dotpos    = rindex($os, ".");
+    my $osbase    = substr($os, 0, $dotpos);
 
     #handle the following ostypes: sles10.2, sles11.1, rhels5.3, rhels5.4, etc
 
     if (-x "$searchpath/$profile.$os.$arch.$extension") {
         return "$searchpath/$profile.$os.$arch.$extension";
     }
+    if (-x "$searchpath/$profile.$osbase.$arch.$extension") {
+        return "$searchpath/$profile.$osbase.$arch.$extension";
+    }
     if (-x "$searchpath/$profile.$os.$extension") {
         return "$searchpath/$profile.$os.$extension";
     }
-    #check if version number has two digit number
-    #case sles12.5
+    if (-x "$searchpath/$profile.$osbase.$extension") {
+        return "$searchpath/$profile.$osbase.$extension";
+    }
+    # If the osimge name was specified with -n, the name might contain multiple "."
+    # Chop them off one at a time until filename match is found
+    while ($dotpos > 0) {
+        if (-x "$searchpath/$profile.$osbase.$arch.$extension") {
+            return "$searchpath/$profile.$osbase.$arch.$extension";
+        }
+        if (-x "$searchpath/$profile.$osbase.$extension") {
+            return "$searchpath/$profile.$osbase.$extension";
+        }
+        # Chop off "." from the end and try again
+        $dotpos = rindex($osbase, ".");
+        $osbase = substr($osbase, 0, $dotpos);
+    }
+
+    #if there are no '.', pick the two numbers follow by leading string, like sles11
+    #then pick one number follow by leading string, like centos7, rhels7
     if ($os =~ m/([a-zA-Z]+\d\d)/)
     {
         $osbase=$1;
@@ -563,7 +598,6 @@ sub get_postinstall_file_name {
         }
     }
 
-    #will take care if os=rhels7.5 or rhels75
     if ($os =~ m/([a-zA-Z]+\d)/)
     {
         $osbase = $1;
