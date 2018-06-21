@@ -1146,7 +1146,9 @@ sub check_daemon_attributes {
     my $node_num = `nodels 2>&1 | wc -l`;
     chomp($node_num);
     my $xcatmaxconnections = 64;
+    my $xcatmaxconnections_site = 64;
     my $xcatmaxbatchconnections = 50;
+    my $xcatmaxbatchconnections_site = 50;
 
     my @site_max_info = `lsdef -t site -i xcatmaxconnections,xcatmaxbatchconnections -c 2>&1`;
     foreach my $site_max (@site_max_info) {
