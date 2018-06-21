@@ -40,13 +40,19 @@ If you want to use the xCAT Keys, you can simple copy them into ``/etc/confluent
     cp /etc/xcat/cert/server-key.pem /etc/confluent/privkey.pem
     cp /etc/xcat/cert/server-cert.pem /etc/confluent/srvcert.pem 
 
+The user and password may alternatively be provided via environment variables: ::
+
+    CONFLUENT_USER=vhu
+    CONFLUENT_PASSPHRASE="mynewpassword"
+    export CONFLUENT_USER CONFLUENT_PASSPHRASE
 
 Start confetty, specify the server IP address:  ::
 
     confetty -s 127.0.0.1
 
+If you want to run a confluent command against another host, could set the CONFLUENT_HOST variable: ::
 
-
-TODO: Add text for exporting user/pass into environment
+    CONFLUENT_HOST=127.0.0.1
+    export CONFLUENT_HOST
 
  

@@ -2,33 +2,11 @@
 Getting Started 
 ===============
 
-For xCAT 2.9.1 and later, confluent is intended to be used in conjunction with xCAT. 
+Confluent is intended to be used in conjunction with xCAT. 
 The following documentation assumes that xCAT is already installed and configured on the management node.
 
-Download
-========
-
-confluent
----------
-
-rpms
-~~~~
-
-The latest confluent rpms are built and provided for your convenience:  `confluent rpms <http://xcat.org/files/confluent/confluent/rpms/>`_.  However, the rpms are not built on a regular release schedule.  To use the latest code base, consider building the rpms from :ref:`label_confluent_source`.
-
-The following example downloads the confluent tar package and creates a local repository on your management node::
-
-    mkdir ~/confluent
-    cd ~/confluent
-    wget https://path-to-confluent/confluent-X.X-repo.tbz2
-    tar jxvf confluent-X.X-repo.tbz2
-    cd confluent-X.X
-    ./mklocalrepo.sh 
-
-.. _label_confluent_source:
-
-source
-~~~~~~
+Download confluent
+==================
 
 To build from source, ensure your machine has the correct development packages to build rpms, then execute the following:
 
@@ -42,39 +20,33 @@ To build from source, ensure your machine has the correct development packages t
         cd confluent/confluent_client ; ./buildrpm ; cd -
 
 
-confluent-dep
--------------
-
-The latest confluent dependency packages are provided for your convenience: `confluent-deps <http://xcat.org/files/confluent/confluent-dep/>`_ 
-
-The following example describes the steps for **rhels7.1** on **ppc64le**::
-
-    mkdkir ~/confluent
-    cd ~/confluent
-    wget https://path/to/confluent-dep/rh7/ppc64le/confluent-dep-rh7-ppc64le.tar.bz2
-    tar -jxvf confluent-dep-rh7-ppc64le.tar.bz2
-    cd confluent-dep-rh7-ppc64le/
-    ./mklocalrepo.sh 
-
-.. note:: If the OS/architecture you are looking for is not provided under confluent-dep, send an email to the xcat-user mailing list: xcat-user@lists.sourceforge.net
-
-
 Install 
 =======
 
-*confluent and confluent-deps must be downloaded to the management node before installing*
+dependency
+----------
 
-xCAT 2.9.1 began shipping a new rpm ``xCAT-confluent``.  
+The following example describes the steps for **rhels7.5** on **ppc64le**::
 
-Installing ``xCAT-confluent`` via yum will pull in the confluent dependencies::
+    yum install libffi-devel.ppc64le
+    yum install openssl-devel
+    pip install crypto pyasn1 pycrypto eventlet pyparsing netifaces scrapy pysnmp paramiko pyghmi pyte
 
-    yum install xCAT-confluent
+
+confluent
+---------
+
+Installing ``xCAT-confluent`` via rpm::
+
+    rpm -ivh /root/rpmbuild/RPMS/noarch/confluent_server-*.noarch.rpm 
+    rpm -ivh /root/rpmbuild/RPMS/noarch/confluent_client-*.noarch.rpm 
 
 You may find it helpful to add the confluent paths into your system path::
 
     CONFLUENTROOT=/opt/confluent
     export PATH=$CONFLUENTROOT/bin:$PATH
     export MANPATH=$CONFLUENTROOT/share/man:$MANPATH
+
 
 Configuration
 =============
@@ -92,7 +64,8 @@ To stop confluent::
 
 If you want confluent daemon to start automatically at bootup, add confluent service to ``chkconfig``::
 
-    chkconfig --add confluent
+    chkconfig confluent on
+
 
 Replacing conserver with confluent
 ----------------------------------
@@ -110,11 +83,6 @@ Run ``makeconfluentcfg`` to create the confluent configuration files::
 Use ``rcons`` as before to start the console session.::
 
     rcons <singlenode>
-
-    # If using confluent, a timestamp will be shown on the 
-    # console title next to the node name
-    <singlenode> [15:05]
-    
 
 
 Web Browser access
@@ -136,19 +104,17 @@ It is **highly** recommended that you create a non-root user to access the sessi
 Rest Explorer
 =============
 
-TODO: some intro text
-
 Configure the httpd configuration for confluent-api by creating a ``confluent.conf`` file under ``/etc/httpd/conf.d/`` directory::
 
     The example uses server ip: 10.2.5.3 and port 4005
 
-    cat /etc/httpd/conf.d/confluent.conf
+    # cat /etc/httpd/conf.d/confluent.conf
     LoadModule proxy_http_module modules/mod_proxy_http.so
     <Location /confluent-api>
             ProxyPass http://10.2.5.3:4005
     </Location>
-   
-    #restart httpd  
+    
+    # restart httpd  
     service httpd restart
 
 Now point your browser to: ``http://<server ip>:<port>`` and log in with the non-root user and password created above. 
