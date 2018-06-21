@@ -1,16 +1,12 @@
 start:import_osimage_with_environments_in_yaml
 description:this case is to verify if osimage import could support environment variables.
 os:Linux
-label:xcat_install,xcat-inventory
+label:xcat_install,xcat_inventory,provision
 cmd:chdef -t node -o $$CN servicenode= monserver=$$MN nfsserver=$$MN tftpserver=$$MN  xcatmaster=$$MN
 check:rc==0
 
 cmd:makedns -n
 check:rc==0
-cmd:makeconservercf $$CN
-check:rc==0
-cmd:cat /etc/conserver.cf | grep $$CN
-check:output=~$$CN
 cmd:sleep 20
 cmd:if [[ "__GETNODEATTR($$CN,arch)__" = "ppc64" ]] && [[ "__GETNODEATTR($$CN,mgt)__" != "ipmi" ]]; then getmacs -D $$CN; fi
 check:rc==0
@@ -65,12 +61,14 @@ check:output=~64 bytes from $$CN
 cmd:rootimgdir=`lsdef -t osimage  __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute|grep rootimgdir|awk -F'=' '{print $2}'`; if [ -d $rootimgdir.regbak ]; then rm -rf $rootimgdir; mv $rootimgdir.regbak $rootimgdir; fi
 check:rc==0
 cmd:xdsh $$CN  "cat /var/log/xcat/xcat.log"
-cmd:xdsh $$CN  "cat /test.synclist"
+cmd:xdsh $$CN  "cat /tmp/synclist"
 check:rc==0
 cmd:xdsh $$CN "cat /tmp/test1.postinstall"
 check:rc==0
+check:output=~test postisntall
 cmd:xdsh $$CN "cat /tmp/test2.postinstall"
 check:rc==0
+check:output=~test postisntall
 cmd:xdsh $$CN "rpm -qa |grep -i conserver-xcat"
 check:rc==0
 cmd:xdsh $$CN "rpm -qa |grep -i perl-Net-Telnet"
