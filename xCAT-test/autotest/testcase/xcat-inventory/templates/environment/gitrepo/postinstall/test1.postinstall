@@ -48,5 +48,5 @@ fi
 #  [ -r $workdir/$profile.$ext ] && cat $workdir/$profile.$ext | grep -E '^[[:space:]]*#.*[[:space:]]\$Id' >> $installroot/etc/IMGVERSION
 #done
 echo "test postisntall" >> $installroot/tmp/test1.postinstall
-
+${GITREPO}/postinstall/test2.postinstall
 

@@ -10,7 +10,7 @@ osimage:
       comments: rhels7.5,test_environment_variables
     genimgoptions:
       permission: '755'
-      postinstall: /opt/xcat/share/xcat/netboot/rh/compute.rhels7.ppc64le.postinstall,{{GITREPO}}/postinstall/test1.postinstall,{{GITREPO}}/postinstall/test2.postinstall
+      postinstall: /opt/xcat/share/xcat/netboot/rh/compute.rhels7.ppc64le.postinstall,{{GITREPO}}/postinstall/test1.postinstall
       rootimgdir: /install/custom/test.environments.osimage
     imagetype: linux
     package_selection:
