@@ -335,7 +335,7 @@ __EOF__
            echo "GPGSIGN=$GPGSIGN specified, the repo will not be signed"
            echo "" >> conf/distributions
        else 
-           echo "SignWith: yes" >> conf/distributions
+           echo "SignWith: 5619700D" >> conf/distributions
            echo "" >> conf/distributions
        fi
     done
@@ -462,7 +462,7 @@ __EOF__
             echo "GPGSIGN=$GPGSIGN specified, the repo will not be signed"
             echo "" >> conf/distributions
         else
-            echo "SignWith: yes" >> conf/distributions
+            echo "SignWith: 5619700D" >> conf/distributions
             echo "" >> conf/distributions
         fi
 
