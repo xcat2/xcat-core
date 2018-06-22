@@ -78,3 +78,61 @@ check:rc==0
 cmd:xdsh $$CN "rpm -qa |grep -w dhcp"
 check:rc==0
 end
+
+start:export_osimage_with_environments
+description:this case is to verify if osimage export could support environment variables.
+os:Linux
+label:xcat_install,xcat_inventory
+cmd:lsdef -t osimage -o test.environments.osimage >/dev/null 2>&1;if [[ $? -eq 0 ]]; then lsdef -t osimage -o test.environments.osimage -z >/tmp/test.environments.osimage_image.stanza ;rmdef -t osimage -o test.environments.osimage;fi
+check:rc==0
+cmd:export GITREPO="/opt/xcat/share/xcat/tools/autotest/testcase/xcat-inventory/templates/environment/gitrepo";export SWDIR="/opt/xcat/share/xcat/tools/autotest/testcase/xcat-inventory/templates/environment/swdir";xcat-inventory import -f /opt/xcat/share/xcat/tools/autotest/testcase/xcat-inventory/templates/environment/test.environments.osimage.yaml
+check:output=~Importing object: test.environments.osimage
+check:output=~Inventory import successfully!
+check:rc==0
+cmd:lsdef -t osimage -o test.environments.osimage
+check:rc==0
+cmd:dir="/tmp/export";if [ -e "${dir}" ];then mv ${dir} ${dir}".bak"; fi; mkdir -p $dir
+cmd:xcat-inventory export  -t osimage -o test.environments.osimage -d /tmp/export
+check:rc==0
+check:output=~The osimage objects has been exported to directory /tmp/export
+cmd:ls -lFR /tmp/export
+cmd:grep "environvars" /tmp/export/test.environments.osimage/definition.json
+check:rc!=0
+cmd:grep "filestosync: {{GITREPO}}/syncfiles/synclist" /tmp/export/test.environments.osimage/definition.json
+check:rc==0
+cmd:grep "postinstall: /opt/xcat/share/xcat/netboot/rh/compute.rhels7.ppc64le.postinstall,{{GITREPO}}/postinstall/test1.postinstall" /tmp/export/test.environments.osimage/definition.json
+check:rc==0
+cmd:grep "otherpkgdir: {{SWDIR}}/otherpkgdir/" /tmp/export/test.environments.osimage/definition.json
+check:rc==0
+cmd:grep "otherpkglist: {{GITREPO}}/otherpkglist/test1.otherpkglist,{{GITREPO}}/otherpkglist/test2.otherpkglist" /tmp/export/test.environments.osimage/definition.json
+check:rc==0
+cmd:grep "pkgdir: /install/rhels7.5-alternate/ppc64le,{{SWDIR}}/pkgdir/" /tmp/export/test.environments.osimage/definition.json
+check:rc==0
+cmd:grep "pkglist: /opt/xcat/share/xcat/netboot/rh/compute.rhels7.ppc64le.pkglist,{{GITREPO}}/pkglist/test1.pkglist,{{GITREPO}}/pkglist/test2.pkglist" /tmp/export/test.environments.osimage/definition.json
+check:rc==0
+cmd:rm -rf /tmp/export/test.environments.osimage
+cmd:xcat-inventory export  -t osimage -o test.environments.osimage -d /tmp/export --format yaml
+check:rc==0
+check:output=~The osimage objects has been exported to directory /tmp/export
+cmd:ls -lFR /tmp/export
+cmd:grep "environvars" /tmp/export/test.environments.osimage/definition.yaml
+check:rc!=0
+cmd:grep "filestosync: {{GITREPO}}/syncfiles/synclist" /tmp/export/test.environments.osimage/definition.yaml
+check:rc==0
+cmd:grep "postinstall: /opt/xcat/share/xcat/netboot/rh/compute.rhels7.ppc64le.postinstall,{{GITREPO}}/postinstall/test1.postinstall" /tmp/export/test.environments.osimage/definition.yaml
+check:rc==0
+cmd:grep "otherpkgdir: {{SWDIR}}/otherpkgdir/" /tmp/export/test.environments.osimage/definition.yaml
+check:rc==0
+cmd:grep "otherpkglist: {{GITREPO}}/otherpkglist/test1.otherpkglist,{{GITREPO}}/otherpkglist/test2.otherpkglist" /tmp/export/test.environments.osimage/definition.yaml
+check:rc==0
+cmd:grep "pkgdir: /install/rhels7.5-alternate/ppc64le,{{SWDIR}}/pkgdir/" /tmp/export/test.environments.osimage/definition.yaml
+check:rc==0
+cmd:grep "pkglist: /opt/xcat/share/xcat/netboot/rh/compute.rhels7.ppc64le.pkglist,{{GITREPO}}/pkglist/test1.pkglist,{{GITREPO}}/pkglist/test2.pkglist" /tmp/export/test.environments.osimage/definition.yaml
+check:rc==0
+cmd:dir="/tmp/export"; rm -rf $dir; if [ -d ${dir}".bak" ];then mv ${dir}".bak" $dir; fi
+cmd: rmdef -t osimage -o test.environments.osimage
+check:rc==0
+cmd: if [ -e /tmp/test.environments.osimage.stanza ]; then cat /tmp/test.environments.osimage.stanza |mkdef -z;fi
+end
+
+
