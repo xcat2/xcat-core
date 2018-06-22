@@ -804,6 +804,46 @@ sub fork_fanout_dcp
         my @dcp_command;
         my $rsyncfile;
 
+        
+        my %envardict;
+        foreach my $varstr (split(',',$$target_properties{'envar'})){
+            if($varstr =~ m/(.*)=(.*)/){
+               my ($myvar,$myvalue)=($1,$2);
+               $envardict{$myvar}=$myvalue;
+            }
+        }
+
+        if(%envardict){
+            my $dest_srcdict=$$options{'destDir_srcFile'}{$user_target};
+            for my $dest (keys %{$dest_srcdict}){
+                my $newdest=$dest;
+                $newdest=xCAT::Utils->varsubinline($newdest,\%envardict);
+                for my $label(keys %{$$dest_srcdict{$dest}}){
+                    my $myref;
+                    if('ARRAY' eq ref($$dest_srcdict{$dest}{$label})){
+                        for my $path(@{$$dest_srcdict{$dest}{$label}}){
+                            $path=xCAT::Utils->varsubinline($path,\%envardict);
+                        }
+                    }elsif('HASH' eq ref($$dest_srcdict{$dest}{$label})){
+                        for my $path(keys(%{$$dest_srcdict{$dest}{$label}})){
+                            my $newpath=$path;
+                            $newpath=xCAT::Utils->varsubinline($newpath,\%envardict);
+                            if($newpath ne $path){
+                                $$dest_srcdict{$dest}{$label}{$newpath}=$$dest_srcdict{$dest}{$label}{$path};
+                                delete $$dest_srcdict{$dest}{$label}{$path};
+                            }
+                        }
+                    }
+                }
+                if($newdest ne $dest){
+                    $$dest_srcdict{$newdest}=$$dest_srcdict{$dest};
+                    delete $$dest_srcdict{$dest};
+                }
+
+            }
+        }
+
+        
         if (!$$target_properties{'localhost'})    # this is to a remote host
         {
             my $target_type = $$target_properties{'type'};
@@ -3293,6 +3333,13 @@ sub bld_resolve_nodes_hash
         $rsp->{info}->[0] = "Command: $cmd failed. Continuing...";
         xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
     }
+
+    
+    my $ostab = xCAT::Table->new('nodetype');
+    my %oents = %{ $ostab->getNodesAttribs(\@target_list, [qw(provmethod)]) };
+
+
+
     foreach my $target (@target_list)
     {
 
@@ -3306,12 +3353,27 @@ sub bld_resolve_nodes_hash
         if (($mname eq $target) || ($localhostname eq $target)) {
             $localhost = $target;
         }
+
+        my $envar=undef;
+        my $ent = $oents{$target}->[0];
+        if ($ent and $ent->{provmethod} and \
+               ($ent->{provmethod} ne 'install') and ($ent->{provmethod} ne 'netboot') and ($ent->{provmethod} ne 'statelite')) {
+
+            my $imagename = $ent->{provmethod};  
+            my $osimagetab = xCAT::Table->new('osimage', -create => 1);
+            (my $ref) = $osimagetab->getAttribs({ imagename => $imagename }, 'environvar');
+            if($ref){ 
+                $envar=$ref->{'environvar'};
+            }
+        }
+
         my %properties = (
             'hostname'   => $hostname,
             'ip-address' => $ip_address,
             'localhost'  => $localhost,
             'user'       => $user,
             'context'    => $context,
+            'envar'    => $envar,
             'unresolved' => $target
         );
 
@@ -4405,6 +4467,7 @@ sub parse_and_run_dcp
         $::XCATROOT = "/opt/xcat";
     }
 
+
     # parse the arguments
     Getopt::Long::Configure("posix_default");
     Getopt::Long::Configure("no_gnu_compat");
@@ -4914,6 +4977,15 @@ sub rsync_to_image
 
     my ($input_file, $image) = @_;
     my $rc = 0;
+ 
+    my %osimgenv;
+    if($ENV{'XCAT_OSIMAGE_ENV'}){
+        foreach my $myenv(split(',',$ENV{'XCAT_OSIMAGE_ENV'})){
+            if($myenv =~ /\s*(\S+)\s*=\s*(\S+)\s*/) {
+                $osimgenv{$1}=$2;
+            } 
+        }
+    }
     open(INPUTFILE, "< $input_file") || die "File $input_file does not exist\n";
     while (my $line = <INPUTFILE>)
     {
@@ -4922,6 +4994,8 @@ sub rsync_to_image
         {
             next;
         }
+
+        $line=xCAT::Utils->varsubinline($line,\%osimgenv); 
 
         # process no more lines, do not exec
         # do not execute postscripts when syncing images

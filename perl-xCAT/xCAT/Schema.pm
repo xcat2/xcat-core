@@ -768,7 +768,7 @@ passed as argument rather than by table value',
         },
     },
     osimage => {
-        cols => [qw(imagename groups profile imagetype description provmethod rootfstype osdistroname osupdatename cfmdir osname osvers osarch synclists postscripts postbootscripts serverrole isdeletable kitcomponents  comments disable)],
+        cols => [qw(imagename groups profile imagetype description provmethod rootfstype osdistroname osupdatename cfmdir osname osvers osarch synclists postscripts postbootscripts serverrole isdeletable kitcomponents environvar comments disable)],
         keys       => [qw(imagename)],
         tablespace => 'XCATTBS32K',
         table_desc => 'Basic information about an operating system image that can be used to deploy cluster nodes.',
@@ -795,6 +795,7 @@ passed as argument rather than by table value',
             serverrole => 'The role of the server created by this osimage.  Default roles: mgtnode, servicenode, compute, login, storage, utility.',
             isdeletable => 'A flag to indicate whether this image profile can be deleted.  This attribute is only used by PCM.',
             kitcomponents => 'List of Kit Component IDs assigned to this OS Image definition.',
+            environvar => 'Comma delimited environment variables for the osimage',
             comments => 'Any user-written notes.',
             disable  => "Set to 'yes' or '1' to comment out this row.",
         },
@@ -1178,6 +1179,8 @@ passed as argument rather than by table value',
 "              all of the nodes passed into the cmd and create the mypostscript file\n" .
 "              for each node, and put them in a directory of tftpdir(such as: /tftpboot)\n" .
 "              If no, it will not generate the mypostscript file in the tftpdir.\n\n" .
+" secureroot:  If set to 1, xCAT will use secure mode to transfer root password hash\n" .
+"              during the installation.  Default is 0.\n\n" .
 " setinstallnic:  Set the network configuration for installnic to be static.\n\n" .
 " sharedtftp:  Set to 0 or no, xCAT should not assume the directory\n" .
 "              in tftpdir is mounted on all on Service Nodes. Default is 1/yes.\n" .
@@ -3475,6 +3478,10 @@ push(@{ $defspec{node}->{'attrs'} }, @nodeattrs);
         only_if         => 'imagetype=NIM',
         tabentry        => 'nimimage.comments',
         access_tabentry => 'nimimage.imagename=attr:imagename',
+    },
+    { attr_name => 'environvar',
+        tabentry        => 'osimage.environvar',
+        access_tabentry => 'osimage.imagename=attr:imagename',
     },
 );
 

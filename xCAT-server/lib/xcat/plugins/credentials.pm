@@ -33,6 +33,7 @@ use IO::Socket::INET;
 use Time::HiRes qw(sleep);
 
 use xCAT::Utils;
+use xCAT::PasswordUtils;
 
 use xCAT::MsgUtils;
 use Getopt::Long;
@@ -316,6 +317,16 @@ sub process_request
             }
             $tfilename = "/etc/xcatdockerca/cert/dockerhost-cert.pem";
 
+        } elsif ($parm =~ /xcat_secure_pw:/) {
+            xCAT::MsgUtils->trace(0, 'I', "credentials: sending $parm to $client");
+            my @users=split(/:/,$parm);
+            if (defined($users[1]) and $users[1] eq 'root') {
+                my $pass = xCAT::PasswordUtils::crypt_system_password();
+                if ($pass) {
+                    push @{$rsp->{'data'}}, { content => [ $pass ], desc => [ $parm ] };
+                }
+            }
+            next;
         } else {
             xCAT::MsgUtils->trace(0, 'W', "credentials: Not supported type: $parm");
             next;

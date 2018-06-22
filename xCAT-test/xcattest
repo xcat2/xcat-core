@@ -182,8 +182,6 @@ if ($rst) {
     to_exit(1);
 }
 
-
-
 if ($xcatdebug) {
     print "----case to be run-----------------\n";
     print Dumper \@cases_to_be_run;
