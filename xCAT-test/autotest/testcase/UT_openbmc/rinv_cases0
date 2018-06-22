@@ -1,6 +1,7 @@
 start:rinv_record_firmware_level
 description: Record the firmware level for the start of each testcase
 hcp:openbmc
+label:cn_bmc_ready,hctrl_openbmc
 cmd: rinv $$CN firm
 check:rc==0
 end
@@ -8,6 +9,7 @@ end
 start:rinv_check_active_fw_count
 description: Ensure that there is only 2 active firmware, one for bmc and one for pnor
 hcp:openbmc
+label:cn_bmc_ready,hctrl_openbmc
 cmd: rinv $$CN firm | tee /tmp/xcattest.rinv_check_active_fw_count.output
 check:rc==0
 cmd: grep -i ibm /tmp/xcattest.rinv_check_active_fw_count.output | grep -i 'HOST Firmware Product' | grep -i 'Active)\*' | wc -l
@@ -23,6 +25,7 @@ end
 start:rinv_check_active_fw_count_verbose
 description: Ensure that there is only 2 active firmware, one for bmc and one for pnor (in verbose mode) (Issue #4236)
 hcp:openbmc
+label:cn_bmc_ready,hctrl_openbmc
 cmd: rinv $$CN firm -V | tee /tmp/xcattest.rinv_check_active_fw_count_verbose.output
 check:rc==0
 cmd: grep -i ibm /tmp/xcattest.rinv_check_active_fw_count_verbose.output| grep -i 'HOST Firmware Product' | grep -i 'Active)\*' | wc -l
