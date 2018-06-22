@@ -16,10 +16,10 @@ BEGIN
 use lib "$::XCATROOT/lib/perl";
 
 #--------------global attributes----------------
-my $prpgram_path = dirname(File::Spec->rel2abs(__FILE__));
+my $program_path = dirname(File::Spec->rel2abs(__FILE__));
 my $program_name = basename($0);
 
-my $rootdir                  = "$prpgram_path/../share/xcat/tools/autotest";
+my $rootdir                  = "$program_path/../share/xcat/tools/autotest";
 my $casedir                  = "$rootdir/testcase/";
 $casedir = $ENV{'XCATTEST_CASEDIR'} if exists $ENV{'XCATTEST_CASEDIR'};
 my $bundledir                = "$rootdir/bundle/";
@@ -100,6 +100,8 @@ To list the information about specific cases
 
 To list cases information that satisfy specific filter expression
     $program_name -l {caselist|caseinfo|casenum} -s \"filter_expression\"    
+For short, show the cases list can use below command
+    $program_name -l -s \"filter_expression\"
 To list information about cases in specific bundles and satisfy specific filter expression at same time
     $program_name -l {caselist|caseinfo|casenum} -b <bundle_list> -s \"filter_expression\"
 
@@ -114,7 +116,7 @@ To run test cases that satisfy specific filter expression
 
 Options:
     -h : Get $program_name usage information. 
-    -l : list specific information. The valid options are caselist,caseinfo,casenum,bundleinfo.
+    -l : list specific information. The valid options are caselist,caseinfo,casenum,bundleinfo. For list case information, caselist is default value.
     -f : specify the configuration file. If 'System' tag is used, only [System] section in the configuration file will be used. If 'System' is not used all other sections of the configuration file will be used, like [Table], [Object], etc.
     -c : Comma separated list of command names to test. 
     -t : Comma separated list of test case names to test.
@@ -122,9 +124,9 @@ Options:
     -r : Back up the original environment settings before running test, and restore them after running test.
     -q : Just record all the output of $program_name into log file under $resultdir, not print to STDOUT. Print to STDOUT by default. 
     -s : Filter case by label. The acceptable value looks like 'label1+label2-label3\|label4\|label5', 'label1+label2-label3' works as sub expression. 
-         '|' means union filter, it has higher priority, expression1|expression2 means the case either satisfies expression1 or satisfies expression2. 
-         '+' means the case need have specific label. low priority.
-         '-' means the case does not have specific label. low priority. 
+         '|' means union filter, it has lower priority, expression1|expression2 means the case either satisfies expression1 or satisfies expression2. 
+         '+' means the case need have specific label. higher priority.
+         '-' means the case does not have specific label. higher priority. 
 ";
 
 #==============================================================================================
@@ -142,7 +144,7 @@ if (
         "b=s" => \$bundlelist,
         "t=s" => \$caselist,
         "c=s" => \$cmdlist,
-        "l=s" => \$list,
+        "l:s" => \$list,
         "q"   => \$quiet,
         "s=s" => \$search_expression,
         "r"   => \$restore)
@@ -180,13 +182,15 @@ if ($rst) {
     to_exit(1);
 }
 
-
 if ($xcatdebug) {
     print "----case to be run-----------------\n";
     print Dumper \@cases_to_be_run;
 }
 
-if ($list) {
+if (defined $list) {
+
+    $list="caselist" if ($list eq "");
+
     if ($list eq "caselist") {
         if (@cases_to_be_run) {
 
@@ -194,6 +198,8 @@ if ($list) {
             foreach (@cases_to_be_run) {
                 log_this($running_log_fd, "$_");
             }
+        } elsif (!@cases_to_be_run && $search_expression){
+            log_this($running_log_fd, "There is no cases match search expression $search_expression"); 
         } else {
 
             #list the cases shipped by xcat test package
@@ -206,13 +212,17 @@ if ($list) {
             }
         }
     } elsif ($list eq "caseinfo") {
-        $rst = show_case_info(\@cases_to_be_run, \$error);
-        if ($rst) {
-            log_this($running_log_fd, "$error");
-            to_exit(1);
+        if (!@cases_to_be_run && $search_expression){
+            log_this($running_log_fd, "There is no cases match search expression $search_expression");
+        } else {
+            $rst = show_case_info(\@cases_to_be_run, \$error);
+            if ($rst) {
+                log_this($running_log_fd, "$error");
+                to_exit(1);
+            }
         }
     } elsif ($list eq "casenum") {
-        if (@cases_to_be_run) {
+        if (@cases_to_be_run || (!@cases_to_be_run && $search_expression)) {
 
             #list the case number indicated by option -b,-c,-t
             my $casenum = @cases_to_be_run;
@@ -622,7 +632,7 @@ sub check_option_validity {
 
     if ($list) {
         my @vaild_list_method = ();
-        if ($bundlelist || $caselist || $cmdlist) {
+        if ($bundlelist || $caselist || $cmdlist || $search_expression) {
             @vaild_list_method = ("caselist", "caseinfo", "casenum");
         } else {
             @vaild_list_method = ("caselist", "caseinfo", "casenum", "bundleinfo", "labelinfo");
@@ -2000,7 +2010,7 @@ sub filter_case_by_label {
     for (my $i = 0 ; $i <= $#label_order ; $i++) {
         foreach my $l (@{ $label_order[$i] }) {
             foreach my $c (@targetcases) {
-                push @{$rest_cases_to_be_run_ref}, $c unless (($case_label_map_ref->{$c}->{label} & $label_map{$l}) == 0);
+                push @{$rest_cases_to_be_run_ref}, $c  if (defined ($label_map{$l}) && (($case_label_map_ref->{$c}->{label} & $label_map{$l}) != 0));
             }
         }
     }
