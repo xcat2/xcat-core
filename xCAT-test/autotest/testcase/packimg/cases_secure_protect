@@ -1,0 +1,42 @@
+start:packimage_nosyncfiles
+os:Linux
+description: Test packimage with --nosyncfiles
+label: others,security
+cmd: myimage=$$OSIMAGE
+lsdef -t osimage -o $myimage -z > /tmp/packimage_nosyncfiles.osimage && \
+chdef -t osimage -o "$myimage" rootimgdir=/tmp/packimage_nosyncfiles/rootimgdir && \
+chdef -t osimage -o "$myimage" synclists=/tmp/packimage_nosyncfiles.sensitive.$$ && \
+touch /tmp/packimage_nosyncfiles.sensitive && \
+echo "/tmp/packimage_nosyncfiles.sensitive -> /etc/sensitive.xcattesting" > /tmp/packimage_nosyncfiles.sensitive.$$ && \
+genimage "$myimage" && \
+packimage "$myimage" --nosyncfiles
+if [ $? = 0 ]; then
+  test ! -e /tmp/packimage_nosyncfiles/rootimgdir/rootimg/etc/sensitive.xcattesting
+else
+  false
+fi
+check:rc==0
+cmd: test -e /tmp/packimage_nosyncfiles.osimage && cat /tmp/packimage_nosyncfiles.osimage | mkdef -t osimage $$OSIMAGE -f
+cmd: rm -rf /tmp/packimage_nosyncfiles*
+end
+
+start:packimage_secureroot
+os:Linux
+description: Test packimage with site.secureroot=1
+label: others,security
+cmd: chdef -t site secureroot=1
+cmd: myimage=$$OSIMAGE
+lsdef -t osimage $myimage -z > /tmp/packimage_secureroot.osimage && \
+chdef -t osimage -o "$myimage" rootimgdir=/tmp/packimage_secureroot/rootimgdir && \
+genimage "$myimage" && \
+packimage "$myimage" --nosyncfiles
+if [ $? = 0 ]; then
+  grep '^root\:\*\:' /tmp/packimage_secureroot/rootimgdir/rootimg/etc/shadow
+else
+  false
+fi
+check:rc==0
+cmd: test -e /tmp/packimage_secureroot.osimage && cat /tmp/packimage_secureroot.osimage | mkdef -t osimage $$OSIMAGE -f
+cmd: rm -rf /tmp/packimage_secureroot*
+cmd: chdef -t site secureroot=
+end
