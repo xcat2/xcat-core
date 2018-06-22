@@ -13,20 +13,20 @@ use File::Copy;
 use Data::Dumper;
 use Getopt::Long qw(:config no_ignore_case);
 
-my $help      = 0;    #command line attribute '-h', get usage information
-my $test      = 0;    #command line attribute '-T'
-my $hierarchy = 0;
-my $verbose   = 0;    #command line attribute '-V'
-my $noderange;        #command line attribute '-n'
-my $output = "stdout"; #used by probe_utils->send_msg("$output", "o", "xxxxxxxxxx"); print output to STDOUT
-my $rst    = 0;        #the exit code of current command
-my $terminal = 0;      #means get INT signal from STDIN
+my $help        = 0;        #command line attribute '-h', get usage information
+my $test        = 0;        #command line attribute '-T'
+my $hierarchy   = 0;
+my $verbose     = 0;        #command line attribute '-V'
+my $noderange;              #command line attribute '-n'
+my $output      = "stdout"; #used by probe_utils->send_msg("$output", "o", "xxxxxxxxxx"); print output to STDOUT
+my $rst         = 0;        #the exit code of current command
+my $terminal    = 0;        #means get INT signal from STDIN
 my $installnic;
 
-#save all output from commands running on SNs and MN
-# one example:
-# $summaryoutput{mn} = @mn_output_history
-# $summaryoutput{SN1} = @SN1_output_history
+# Save all output from commands running on SNs and MN
+# Example:
+#    $summaryoutput{mn} = @mn_output_history
+#    $summaryoutput{SN1} = @SN1_output_history
 my %summaryoutput;
 
 my $is_sn;
