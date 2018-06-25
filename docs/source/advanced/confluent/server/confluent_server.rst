@@ -92,13 +92,13 @@ Confluent-api and confluent-consoles are able to be accessed from the browser.
 It is **highly** recommended that you create a non-root user to access the sessions::
 
     Create the non-root user on the management node
-    # useradd -m vhu
+    # useradd -m xcat
 
     Create a non-root user in confetty
-    # /opt/confluent/bin/confetty create users/vhu
+    # /opt/confluent/bin/confetty create users/xcat
 
     Set the password for the non-root user
-    # /opt/confluent/bin/confetty set users/vhu password="mynewpassword"
+    # /opt/confluent/bin/confetty set users/xcat password="mynewpassword"
     password="********"
 
 Rest Explorer
