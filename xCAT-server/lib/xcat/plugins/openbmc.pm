@@ -61,6 +61,7 @@ $::UPLOAD_AND_ACTIVATE      = 0;
 $::UPLOAD_ACTIVATE_STREAM   = 0;
 $::RFLASH_STREAM_NO_HOST_REBOOT = 0;
 $::NO_ATTRIBUTES_RETURNED   = "No attributes returned from the BMC.";
+$::FAILED_UPLOAD_MSG        = "Failed to upload update file";
 
 $::UPLOAD_WAIT_ATTEMPT      = 6;
 $::UPLOAD_WAIT_INTERVAL     = 10;
@@ -1060,7 +1061,18 @@ rmdir \"/tmp/\$userid\" \n";
                     if ($node_info{$node}{rst} =~ /successful/) {
                         push @{ $rflash_result{success} }, $node;
                     } else {
-                        $node_info{$node}{rst} = "BMC is not ready" unless ($node_info{$node}{rst});
+                        # If there is no error in $node_info{$node}{rst} it is probably because fw file
+                        # upload is done in a forked process and data can not be saved in $node_info{$node}{rst}
+                        # In that case check the rflash log file for this node and extract error from there
+                        unless ($node_info{$node}{rst}) {
+                            my $rflash_log_file = xCAT::Utils->full_path($node.".log", $::XCAT_LOG_RFLASH_DIR);
+                            $node_info{$node}{rst} = "Firmware upload error"; # Generic default message
+                            # Extract the upload error from last line in log file 
+                            my $upload_error = `tail $rflash_log_file -n1 | grep "$::FAILED_UPLOAD_MSG"`;
+                            if ($upload_error) {
+                                $node_info{$node}{rst} = $upload_error;
+                            }
+                        }
                         push @{ $rflash_result{fail} }, "$node: $node_info{$node}{rst}";
                     }
                 }
@@ -4727,7 +4739,7 @@ sub rflash_upload {
                     print RFLASH_LOG_FILE_HANDLE "$upload_success_msg\n";
                     # Try to logoff, no need to check result, as there is nothing else to do if failure
                 } else {
-                    my $upload_fail_msg = "Failed to upload update file $file :" . $h->{message} . " - " . $h->{data}->{description};
+                    my $upload_fail_msg = $::FAILED_UPLOAD_MSG . " $file :" . $h->{message} . " - " . $h->{data}->{description};
                     xCAT::SvrUtils::sendmsg("$upload_fail_msg", $callback, $node);
                     print RFLASH_LOG_FILE_HANDLE "$upload_fail_msg\n";
                     close (RFLASH_LOG_FILE_HANDLE);
