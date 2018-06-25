@@ -1,4 +1,5 @@
 bash
+ifupdown
 nfs-common
 openssl
 isc-dhcp-client
@@ -8,8 +9,6 @@ openssh-server
 openssh-client
 wget
 vim
-ntp
-ntpdate
 rsync
 busybox-static
 gawk
