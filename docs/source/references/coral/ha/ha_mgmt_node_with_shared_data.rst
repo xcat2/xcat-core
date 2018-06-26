@@ -1,26 +1,19 @@
 .. _ha_mgmt_node_with_shared_data:
 
-Prerequisite
-============
 
-User has xCAT management node ``xcatmn1`` with ``postgresql`` database, and there are production data in this management node. The xCAT management IP is ``10.5.106.7`` on ``eth0``. It can be the primary MN. User prepare another node ``xcatmn2`` with IP ``10.5.106.5`` on ``eth0``. 
+HA Solution Overview
+====================
 
-Configure xCAT Primary Management Node
-======================================
+While a xCAT management node ``xcatmn1`` is running as a primary management node, another node - ``xcatmn2`` can be configured to act as primary management node in case ``xcatmn1`` becomes unavailable. The process is manual and requires disabling primary ``xcatmn1`` and activating backup ``xcatmn2``. Both nodes require access to shared storage described below. Use of Virtual IP is also requred.
 
-Export Cluster Data
-```````````````````
+An interactive sample script ``xcatha`` is availabe to guide through the steps of disabling and activation of xCAT management nodes. ``Dryrun`` option in that scrip allows viewing the actions without executing them.
 
-Use ``xcat-inventory`` to export the cluster data and save as ``xcatmn1.yaml``. This data file can be used to compare with that data from standby MN node ::
+Disable And Stop All Related Services on Primary xCAT Management Node
+`````````````````````````````````````````````````````````````````````
 
-    xcat-inventory export --format yaml -f /tmp/xcatmn1.yaml
+Before configuring Virtual IP and shared data, make sure to stop related services. Since primary management node may become unavailable at any time, all related services should be configured to not auto start at boot time.
 
-Disable And Stop All Related Services
-`````````````````````````````````````
-
-Before configure VIP and shared data, make sure stop related services. Since primary MN node may break down at any time, all related services should be configured disable from auto starting at boot time.
-
-Use ``xcatha.py -d`` interactive mode to disable and stop all related services: ::
+Use ``xcatha.py -d`` to disable and stop all related services: ::
 
     ./xcatha.py -d
     2018-06-22 03:43:51,600 - INFO - [xCAT] Shutting down services:
@@ -45,14 +38,14 @@ Use ``xcatha.py -d`` interactive mode to disable and stop all related services: 
     Continue? [[Y]es/[N]o/[D]ryrun]:
     Y
 
-Configure VIP
-`````````````
+Configure Virtual IP
+````````````````````
 
-The xCAT management IP should be configured as Virtual IP address, the Virtual IP address can be any unused ip address that all the compute nodes and service nodes could reach. The Virtual IP address should be non-persistent, it needs to be re-configured right after the management node is rebooted. This non-persistent Virtual IP address is designed to avoid ip address conflict when the crashed previous primary management is recovered with the Virtual IP address configured. Since the VIP is non-persistent, the network interface should have a persistent IP address. 
+Existing xCAT management node IP should be configured as Virtual IP address, the Virtual IP address should be non-persistent, it needs to be re-configured right after the management node is rebooted. This non-persistent Virtual IP address is designed to avoid ip address conflict when the original primary management node is recovered with this Virtual IP address configured. Since the Virtual IP is non-persistent, the network interface should have a persistent IP address. 
 
-#. Configure another IP for network interface as static IP, for example, ``10.5.106.70``:
+#. Configure another IP on primary management node for network interface as static IP, for example, ``10.5.106.70``:
 
-    #. Configure ``10.5.106.70`` as static ip::
+    #. Configure ``10.5.106.70`` as static IP::
 
         ip addr add 10.5.106.70/8 dev eth0
   
@@ -64,13 +57,13 @@ The xCAT management IP should be configured as Virtual IP address, the Virtual I
         IPADDR="10.5.106.70"
         ONBOOT="yes"
 
-    #. If want to take new static ip effect immediately, login ``xcatmn1`` using ``10.5.106.70``, and restart network service, then add original IP ``10.5.106.7`` as VIP ::
+    #. If want to take new static ip effect immediately, login ``xcatmn1`` using ``10.5.106.70``, and restart network service, then add original static IP on primary management node ``10.5.106.7`` as Virtual IP ::
 
         ssh 10.5.106.70 -l root
         service network restart
         ip addr add 10.5.106.7/8  brd + dev eth0 label eth0:0
 
-#. Add ``10.5.106.70`` into ``postgresql`` configuration file
+#. Add ``10.5.106.70`` into ``postgresql`` configuration file on primary management node
 
     #. Add ``10.5.106.70`` into ``/var/lib/pgsql/data/pg_hba.conf``::
 
@@ -80,7 +73,7 @@ The xCAT management IP should be configured as Virtual IP address, the Virtual I
 
         listen_addresses = 'localhost,10.5.106.7,10.5.106.70'
 
-#. Modify provision network entry ``mgtifname`` as ``eth0:0``::
+#. Modify provision network entry ``mgtifname`` as ``eth0:0`` on primary management node::
     
     tabedit networks
     "10_0_0_0-255_0_0_0","10.0.0.0","255.0.0.0","eth0:0","10.0.0.103",,"<xcatmaster>",,,,,,,,,,,"1500",, 
@@ -88,7 +81,7 @@ The xCAT management IP should be configured as Virtual IP address, the Virtual I
 Configure Shared Data
 `````````````````````
 
-The following xCAT directory structure should be on the shared data::
+The following xCAT directory structure should be accessible from both primary and backup xCAT management nodes::
 
     /etc/xcat
     /install
@@ -96,22 +89,44 @@ The following xCAT directory structure should be on the shared data::
     /var/lib/pgsql
     /tftpboot
 
-If some directories are not in shared data, make these directories in shared data, take ``/etc/xcat``, ``/var/lib/pgsql`` and ``/tftpboot`` as an example, ``/HA`` is original shared data directory: ::
+Synchronize ``/etc/hosts``
+``````````````````````````
 
-    cp -r /etc/xcat /HA/
-    cp -r /tftpboot /HA/
-    cp -r /var/lib/pgsql /HA/
-    mv /etc/xcat /etc/xcat.bak
-    mv /tftpboot /tftpboot.bak
-    mv /var/lib/pgsql /HA/
-    ln -s /HA/xcat /etc/xcat
-    ln -s /HA/tftpboot /tftpboot
-    ln -s /HA/pgsql /var/lib/pgsql
-    chown -R postgres:postgres pgsql
+Since the ``/etc/hosts`` is used by xCAT commands, the ``/etc/hosts`` should be synchronized between the primary management node and bakup management node.
 
-Activate Primary MN
-```````````````````
-Use ``xcatha.py -a`` to start all related services: ::
+Synchronize Clock
+`````````````````
+
+It is recommended that the clocks are synchrinized between the primary management node and bakup management node.
+
+Remove Virtual IP from primary xCAT Management Node
+```````````````````````````````````````````````````
+
+    ``ip addr del 10.5.106.7/8 dev eth0:0``
+
+Activate Backup xCAT Management Node to be Primary Management Node
+``````````````````````````````````````````````````````````````````
+# Configure Virtual IP
+
+# Add Virtual IP into ``/etc/hosts`` file ::
+
+    10.5.106.7 xcatmn1 xcatmn1.cluster.com
+
+# Install xCAT on backup xCAT management node ``xcatmn2``
+
+# Switch to ``PostgreSQL`` database
+
+# Add static management node network interface IP ``10.5.106.5`` into ``PostgreSQL`` configuration file
+
+        #. Add ``10.5.106.5`` into ``/var/lib/pgsql/data/pg_hba.conf``::
+
+            host    all          all        10.5.106.5/32      md5
+
+        #. Add ``10.5.106.5`` into ``listen_addresses`` variable in ``/var/lib/pgsql/data/postgresql.conf``::
+
+            listen_addresses = 'localhost,10.5.106.7,10.5.106.70,10.5.105.5'
+
+# Use ``xcatha.py -a`` to start all related services: ::
 
     ./xcatha.py -a
     [Admin] Verify VIP 10.5.106.7 is configured on this node
@@ -163,114 +178,12 @@ Use ``xcatha.py -a`` to start all related services: ::
     2018-06-24 22:13:19,353 - DEBUG - makeconservercf [Passed]
     2018-06-24 22:13:19,449 - DEBUG - systemctl start conserver [Passed]
 
-synchronize ``/etc/hosts``
-``````````````````````````
-
-Since the ``/etc/hosts`` is very important for xCAT commands, the ``/etc/hosts`` will be synchronized between the primary management node and standby management node. Here is an example of the crontab entries for synchronizing the /etc/hosts::
-
-    0 2 * * * /usr/bin/rsync -Lprogtz /etc/hosts xcatmn2:/etc/
-
-Verification
-````````````
-
-#. Run ``xcatprobe xcatmn`` to find no fatal error. 
-#. Provision an existed compute node like ``cn1`` successfully.
-
-Setup And Configure xCAT Standby Management Node
-================================================
-
-Setup Standby Management Node
-`````````````````````````````
-
-Install xCAT on ``xcatmn2`` refer to :ref:`Installation Guide for Red Hat Enterprise Linux <rhel_install_guide>` 
-
-Switch to ``PostgreSQL`` refer to :ref:`postgresql_reference_label`
-
-Configure Hostname
-``````````````````
-
-#. Add VIP into ``/etc/hosts`` file ::
-
-    10.5.106.7 xcatmn1 xcatmn1.cluster.com
-
-Synchronize Clock
-`````````````````
-
-Synchronize the clock the same with primary MN ``xcatmn1``, if ``xcatmn1`` use NTP server ``10.0.0.103``, add the following line in ``/etc/ntp.conf`` on ``xcatmn2``::
-
-    server 10.0.0.103
- 
-Manually synchronize clock::
-  
-    ntpdate -u 10.0.0.103
-
-Deactivate the Standby Management Node
-``````````````````````````````````````
-
-Run ``xcatha.py -d`` to deactivate the MN ``xcatmn2``
-
-Failover
-========
-There are two kinds of failover, planned failover and unplanned failover. In a planned failover, you can do necessary cleanup work on the previous primary management node before failover to the previous standby management node. In a unplanned failover, the previous management node probably is not functioning at all, you can simply shutdown the system.
-
-Planned failover: active xCAT MN xcatmn1 has problems, but OS is still accessible
-`````````````````````````````````````````````````````````````````````````````````
-
-Deactivate Primary MN
-'''''''''''''''''''''
-
-    #. Use ``xcatha.py -d`` to deactivate the primary MN
-    #. Remove VIP from primary MN ::
-
-        ip addr del 10.5.106.7/8 dev eth0:0
-
-Activate Standby MN
-'''''''''''''''''''
-
-    #. Configure VIP refer to `Configure VIP`_
-    #. Configure shared data refer to `Configure Shared Data`_
-    #. Add standby MN network interface IP ``10.5.106.5`` into ``PostgreSQL`` configuration file
-
-        #. Add ``10.5.106.5`` into ``/var/lib/pgsql/data/pg_hba.conf``::
-
-            host    all          all        10.5.106.5/32      md5
-
-        #. Add ``10.5.106.5`` into ``listen_addresses`` variable in ``/var/lib/pgsql/data/postgresql.conf``::
-
-            listen_addresses = 'localhost,10.5.106.7,10.5.106.70,10.5.105.5'
-
-    #. Use ``xcatha.py -a`` to activate the standby MN
-    #. Modify provision network entry ``mgtifname`` as ``eth0:0``::
+# Modify provision network entry ``mgtifname`` as ``eth0:0``::
 
         tabedit networks
         "10_0_0_0-255_0_0_0","10.0.0.0","255.0.0.0","eth0:0","10.0.0.103",,"<xcatmaster>",,,,,,,,,,,"1500",,
 
 
-Unplanned failover: active xCAT MN xcatmn1 is not accessible
-````````````````````````````````````````````````````````````
-
-Reboot this xCAT MN node ``xcatmn1``, after it boots:
-
-#. If we can access to its OS, we can execute a planned failover, the steps are the same with above `Planned failover: active xCAT MN xcatmn1 has problems, but OS is still accessible`_.
-
-#. If we cannot access to xcatmn1 OS
-
-    #. Activate Standby MN ``xcatmn2`` as `Activate Standby MN`_ 
-    #. Recommend recover ``xcatmn1``
-
-Verification on new active MN
-`````````````````````````````
-
-#. Check Data consistent
-
-    #. Use ``xcat-inventory`` to export ``xcatmn2`` cluster data::
-
-        xcat-inventory export --format yaml -f /tmp/xcatmn2.yaml
-
-    #. Make diff::
-
-        diff xcatmn1.yaml xcatmn2.yaml 
-
-#. Run ``xcatprobe xcatmn -i eth0:0`` to find no fatal error
-
-#. Provision an existed compute node like ``cn1`` successfully.
+Unplanned failover: primary xCAT management node is not accessible
+``````````````````````````````````````````````````````````````````
+If primary xCAT management node becomes not accessible before being deactivated and backup xCAT management node is activated, it is recommended that the primary node is disconnected from the network before being rebooted. This will ensure that when services are started on reboot, they do not interfere with the same services running on the backup xCAT management node.
