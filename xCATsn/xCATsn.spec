@@ -52,7 +52,7 @@ Requires: /etc/xinetd.d/tftp
 %endif
 
 %ifos linux
-Requires: goconserver
+#Requires: goconserver
 %endif
 
 #support mixed cluster
