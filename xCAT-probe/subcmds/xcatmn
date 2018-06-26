@@ -1143,7 +1143,7 @@ sub get_attribute_value  {
     if ($command_info =~ /$attr=(\d+)/) {
         $cmd_value = $1
     }
-    print_check_result("Checking $table table attribute... $attr=$cmd_value", 0, 0, \@error);
+    probe_utils->send_msg($outputtarget, "d", "Checking $table table attribute... $attr=$cmd_value") if ($verbose);
     return $cmd_value
 }
 
