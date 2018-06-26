@@ -2,7 +2,7 @@ start:rflash_option_c_without_specify_noderange
 description: basic usage check for option c. if without specify noderange for rflash command, should offer usage message
 os:Linux
 hcp:openbmc
-label:cn_bmc_ready,hctrl_openbmc
+label:mn_only,hctrl_openbmc
 cmd:rflash -c
 check:output=~Usage:
 cmd:rflash -c 1.tar
@@ -14,7 +14,7 @@ start:rflash_option_l_without_specify_noderange
 description: basic usage check for option l. if without specify noderange for rflash command, should offer usage message
 os:Linux
 hcp:openbmc
-label:cn_bmc_ready,hctrl_openbmc
+label:mn_only,hctrl_openbmc
 cmd:rflash -l
 check:output=~Usage:
 end
@@ -23,7 +23,7 @@ start:rflash_option_a_without_specify_noderange
 description: basic usage check for option a. if without specify noderange for rflash command, should offer usage message
 os:Linux
 hcp:openbmc
-label:cn_bmc_ready,hctrl_openbmc
+label:mn_only,hctrl_openbmc
 cmd:rflash -a
 check:output=~Usage:
 cmd:rflash -a 1.tar
@@ -38,7 +38,7 @@ start:rflash_option_u_without_specify_noderange
 description: basic usage check for option u. if without specify noderange for rflash command, should offer usage message
 os:Linux
 hcp:openbmc
-label:cn_bmc_ready,hctrl_openbmc
+label:mn_only,hctrl_openbmc
 cmd:rflash -u
 check:output=~Usage:
 cmd:rflash -u  1.tar
@@ -50,11 +50,11 @@ start:rflash_option_d_without_specify_noderange
 description: basic usage check for option d. if without specify noderange for rflash command, should offer usage message
 os:Linux
 hcp:openbmc
-label:cn_bmc_ready,hctrl_openbmc
+label:mn_only,hctrl_openbmc
 cmd:rflash -d
 check:output=~Usage:
 cmd:rflash -d /1234
-check:Usage:
+check:output=~Usage:
 cmd:rflash --delete 1234abc
 check:rc != 0
 check:output=~Error: (\[.*?\]: )?Invalid nodes and/or groups in noderange
@@ -502,7 +502,7 @@ start:rflash_usage
 description:checke the usage of rflash for openbmc
 os:Linux
 hcp:openbmc
-label:cn_bmc_ready,hctrl_openbmc
+label:mn_only,hctrl_openbmc
 cmd:rflash -h
 check:output =~Usage:
 check:output =~OpenPOWER OpenBMC specific:

@@ -72,7 +72,7 @@ end
 
 start:rsetboot_h
 description:get rsetboot help information
-label:cn_bmc_ready,hctrl_gen
+label:mn_only,hctrl_general
 cmd:rsetboot -h
 check:rc==0
 check:output=~Usage: rsetboot
@@ -80,7 +80,7 @@ end
 
 start:rsetboot_help
 description:get rsetboot help information using rsetboot help
-label:cn_bmc_ready,hctrl_gen
+label:mn_only,hctrl_general
 cmd:rsetboot -help
 check:rc==0
 check:output=~Usage: rsetboot
@@ -88,7 +88,7 @@ end
 
 start:rsetboot_v
 desription:get rsetboot version
-label:cn_bmc_ready,hctrl_gen
+label:mn_only,hctrl_general
 cmd:rsetboot -v
 check:rc==0
 check:output=~Version
@@ -96,7 +96,7 @@ end
 
 start:rsetboot_node_invalidnode
 desription:rsetboot using invalidenode
-label:cn_bmc_ready,hctrl_gen
+label:mn_only,hctrl_general
 cmd:rsetboot testnode boot
 check:rc!=0
 end

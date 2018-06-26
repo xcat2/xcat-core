@@ -2,7 +2,7 @@ start:rbeacon_null
 description: this case is to test rbeacon usage
 os:Linux
 hcp:openbmc
-label:cn_bmc_ready,hctrl_openbmc
+label:mn_only,hctrl_openbmc
 cmd:rbeacon
 check:rc==0
 check:output=~Usage
@@ -22,7 +22,7 @@ start:rbeacon_help
 description: this case is to test rbeacon -h and --help output 
 os:Linux
 hcp:openbmc
-label:cn_bmc_ready,hctrl_openbmc
+label:mn_only,hctrl_openbmc
 cmd:rbeacon -h
 check:rc==0
 check:output=~Usage
@@ -37,7 +37,7 @@ start:rbeacon_version
 description: this case is to test rbeacon -v and --version output
 os:Linux
 hcp:openbmc
-label:cn_bmc_ready,hctrl_openbmc
+label:mn_only,hctrl_openbmc
 cmd:rbeacon -v
 check:rc==0
 check:output=~Version

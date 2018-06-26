@@ -1,7 +1,6 @@
 start:rvitals_h
 description:get rvitals's usage
-Attribute: $$CN-The operation object of rvitals command
-label:cn_bmc_ready,hctrl_gen
+label:mn_only,hctrl_general
 cmd:rvitals -h 
 check:rc==0
 check:output=~Usage:
@@ -10,8 +9,7 @@ end
 
 start:rvitals_v
 description:get rvitals's version
-Attribute: $$CN-The operation object of rvitals command
-label:cn_bmc_ready,hctrl_gen
+label:mn_only,hctrl_general
 cmd:rvitals -v
 check:rc==0
 check:output=~Version
@@ -20,7 +18,7 @@ end
 start:rvitals_temp
 description:Retrieves temperatures
 Attribute: $$CN-The operation object of rvitals command
-label:cn_bmc_ready,hctrl_gen
+label:cn_bmc_ready,hctrl_general
 cmd:/opt/xcat/share/xcat/tools/autotest/testcase/rvitals/openbmctest.sh rvitals $$CN temp
 check:rc==0
 end
@@ -50,7 +48,7 @@ end
 start:rvitals_voltage
 description:Retrieves power supply and VRM voltage readings
 Attribute: $$CN-The operation object of rvitals command
-label:cn_bmc_ready,hctrl_gen
+label:cn_bmc_ready,hctrl_general
 cmd:/opt/xcat/share/xcat/tools/autotest/testcase/rvitals/openbmctest.sh rvitals $$CN voltage
 check:rc==0
 end
@@ -85,7 +83,7 @@ end
 start:rvitals_all
 description:Retrieves all status
 Attribute: $$CN-The operation object of rvitals command
-label:cn_bmc_ready,hctrl_gen
+label:cn_bmc_ready,hctrl_general
 cmd:/opt/xcat/share/xcat/tools/autotest/testcase/rvitals/openbmctest.sh rvitals $$CN all
 check:rc==0
 end
@@ -125,14 +123,14 @@ end
 
 start:rvitals_noderange_err
 description:using not defined node
-label:cn_bmc_ready,hctrl_gen
+label:mn_only,hctrl_general
 cmd:/opt/xcat/share/xcat/tools/autotest/testcase/rvitals/openbmctest.sh rvitals testnode 
 check:rc!=0
 end
 
 start:rvitals_errorcommand
 description:using wrong command
-label:cn_bmc_ready,hctrl_gen
+label:cn_bmc_ready,hctrl_general
 cmd:/opt/xcat/share/xcat/tools/autotest/testcase/rvitals/openbmctest.sh rvitals $$CN errorcommand
 check:rc!=0
 end

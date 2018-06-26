@@ -1,7 +1,7 @@
 start:rpower_off
 description:This case is to test off option could remote power off nodes 
 Attribute: $$CN-The operation object of rpower command
-label:cn_bmc_ready,hctrl_gen
+label:cn_bmc_ready,hctrl_general
 cmd:rpower $$CN on
 cmd:a=0;while ! `rpower $$CN stat|grep "Running\|on" >/dev/null`; do sleep 5;((a++));if [ $a -gt 11 ];then break;fi done
 check:ouptut=~Running|on
@@ -15,7 +15,7 @@ end
 start:rpower_stat
 description:This case is to test stat option could show the power status of nodes
 Attribute: $$CN-The operation object of rpower command
-label:cn_bmc_ready,hctrl_gen
+label:cn_bmc_ready,hctrl_general
 cmd:rpower $$CN on
 cmd:a=0;while ! `rpower $$CN stat|grep "Running\|on" >/dev/null`; do sleep 5;((a++));if [ $a -gt 5 ];then break;fi done
 cmd:rpower $$CN stat
@@ -37,7 +37,7 @@ end
 start:rpower_boot
 description:This case is to test boot option could power on the nodes if nodes in off state.  Or could  hard reset the nodes if they are on. 
 Attribute: $$CN-The operation object of rpower command
-label:cn_bmc_ready,hctrl_gen
+label:cn_bmc_ready,hctrl_general
 cmd:rpower $$CN off
 cmd:a=0;while ! `rpower $$CN stat|grep "Not Activated\|off" >/dev/null`; do sleep 5;((a++));if [ $a -gt 11 ];then break;fi done
 cmd:rpower $$CN stat
@@ -52,7 +52,7 @@ end
 start:rpower_status
 description:This case is to test status option could show the power status of nodes
 Attribute: $$CN-The operation object of rpower command
-label:cn_bmc_ready,hctrl_gen
+label:cn_bmc_ready,hctrl_general
 cmd:rpower $$CN off
 cmd:a=0;while ! `rpower $$CN status|grep "Not Activated\|off" >/dev/null`; do sleep 5;((a++));if [ $a -gt 11 ];then break;fi done
 cmd:rpower $$CN status
@@ -67,7 +67,7 @@ end
 start:rpower_state
 description:This case is to test state option could show the power status of nodes
 Attribute: $$CN-The operation object of rpower command
-label:cn_bmc_ready,hctrl_gen
+label:cn_bmc_ready,hctrl_general
 cmd:rpower $$CN off
 cmd:a=0;while ! `rpower $$CN state|grep "Not Activated\|off" >/dev/null`; do sleep 5;((a++));if [ $a -gt 11 ];then break;fi done
 cmd:rpower $$CN state
@@ -82,7 +82,7 @@ end
 start:rpower_on
 description:This case is to test on option could remote power on nodes
 Attribute: $$CN-The operation object of rpower command
-label:cn_bmc_ready,hctrl_gen
+label:cn_bmc_ready,hctrl_general
 cmd:rpower $$CN off
 cmd:a=0;while ! `rpower $$CN stat|grep "Not Activated\|off" >/dev/null`; do sleep 5;((a++));if [ $a -gt 11 ];then break;fi done
 cmd:rpower $$CN stat
@@ -97,7 +97,7 @@ end
 start:rpower_reset
 description:This case is to test reset option could hard reset nodes when nodes are in on state.
 Attribute: $$CN-The operation object of rpower command
-label:cn_bmc_ready,hctrl_gen
+label:cn_bmc_ready,hctrl_general
 cmd:stat=`rpower $$CN stat`;if ([[ $stat =~ on ]] || [[ $stat =~ Running ]]) ;then rpower $$CN reset;sleep 300;stat1=`rpower $$CN stat`;if ([[ $stat1 =~ on ]] || [[ $stat1 =~ Running ]]);then exit 0;else exit 1;fi;else rpower $$CN reset;sleep 300;stat1=`rpower $$CN stat`;if ([[ $stat1 =~ off ]] || [[ $stat1 =~ "Not Activated" ]]);then exit 0;else exit 1;fi;fi
 check:rc==0
 end
@@ -105,7 +105,7 @@ end
 start:rpower_noderange
 description:This case is to test rpower could process error usage and return help information.
 Attribute: $$CN-The operation object of rpower command
-label:cn_bmc_ready,hctrl_gen
+label:cn_bmc_ready,hctrl_general
 cmd:rpower $$CN
 check:rc!=0
 check:output=~Unsupported|Usage|Please enter an action
@@ -114,7 +114,7 @@ end
 start:rpower_noderange_nodeps
 description:This case is to test rpower could process error usage and return help information.
 Attribute: $$CN-The operation object of rpower command
-label:cn_bmc_ready,hctrl_gen
+label:cn_bmc_ready,hctrl_general
 cmd:rpower $$CN --nodeps
 check:rc!=0
 check:output=~Unsupported|Usage
@@ -123,7 +123,7 @@ end
 start:rpower_err_noderange
 description:This case is to test rpower could process error usage and return help information.
 Attribute:N/A 
-label:cn_bmc_ready,hctrl_gen
+label:mn_only,hctrl_general
 cmd:rpower testnode stat
 check:rc!=0
 check:output=~Error
