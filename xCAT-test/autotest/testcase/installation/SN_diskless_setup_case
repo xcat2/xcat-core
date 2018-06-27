@@ -1,6 +1,7 @@
 start:SN_diskless_setup_case
 description:this case is used to test diskless service node installation
 os:Linux
+label:sn_diskless,provision
 #stop:yes
 cmd:fdisk -l
 cmd:df -T
