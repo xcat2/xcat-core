@@ -1,5 +1,6 @@
 start:SN_setup_case
 os:Linux
+label:sn_diskful,provision
 #stop:yes
 cmd:fdisk -l
 cmd:df -T

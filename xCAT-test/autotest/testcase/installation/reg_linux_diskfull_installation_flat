@@ -1,5 +1,6 @@
 start:reg_linux_diskfull_installation_flat
 os:Linux
+label:provision,flat_cn_diskful
 #stop:yes
 cmd:fdisk -l
 cmd:df -T
