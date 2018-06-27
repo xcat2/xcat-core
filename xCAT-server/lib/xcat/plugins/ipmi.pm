@@ -50,6 +50,7 @@ my $xcatdebugmode = 0;
 
 my $IPMIXCAT  = "/opt/xcat/bin/ipmitool-xcat";
 my $NON_BLOCK = 1;
+my $BIG_DATA_MACHINE_MODELS = "8001-22C|9006-22C|5104-22C|8001-12C|9006-12C";
 use constant RFLASH_LOG_DIR => "/var/log/xcat/rflash";
 if (-d RFLASH_LOG_DIR) {
     chmod 0700, RFLASH_LOG_DIR;
@@ -1978,7 +1979,7 @@ sub do_firmware_update {
     # P9 Boston (9006-22C, 9006-12C, 5104-22C) or P8 Briggs (8001-22C) 
     # firmware update is done using pUpdate utility expected to be in the 
     # specified data directory along with the update files .bin for BMC or .pnor for Host
-    if ($output =~ /8001-22C|9006-22C|5104-22C|8001-12C|9006-12C/) {
+    if ($output =~ /$BIG_DATA_MACHINE_MODELS/) {
         # Verify valid data directory was specified
         if (defined $directory_name) {
             unless (File::Spec->file_name_is_absolute($directory_name)) {
@@ -2106,18 +2107,30 @@ sub do_firmware_update {
         }
 
         $exit_with_success_func->($sessdata->{node}, $callback, "Firmware updated, powering chassis on to populate FRU information...");
+    } else {
+
+        # The target machine is *NOT* IBM Power S822LC for Big Data (Supermicro)
+        # Only .hpm files is supported for such machine, no directory option is supported
+        if (defined $directory_name) {
+            my ($part1, $part2) = split(/Chassis Part Number   :/, $output);
+            my ($part3, $model)  = split(/\s+/, $part2); 
+            $exit_with_error_func->($sessdata->{node}, $callback, "Flashing of $model is not supported with pUpdate, supported Model Types: $BIG_DATA_MACHINE_MODELS");
+        }
     }
 
-    # If we get here, the target machine is *NOT* IBM Power S822LC for Big Data (Supermicro)
-    # Only .hpm files is supported for such machine, no directory option is supported
-    if (defined $directory_name) {
-        $exit_with_error_func->($sessdata->{node}, $callback, "Directory option is not supported for target machine: \n$output");
-    }
-    if (($hpm_data_hash{deviceID} ne $sessdata->{device_id}) ||
-        ($hpm_data_hash{productID} ne $sessdata->{prod_id}) ||
-        ($hpm_data_hash{manufactureID} ne $sessdata->{mfg_id})) {
-        $exit_with_error_func->($sessdata->{node}, $callback,
-            "The image file doesn't match target machine: \n$output");
+    # If we fall through here, it is *NOT* IBM Power S822LC for Big Data (Supermicro) and we expact some data in hpm_data_hash.
+    # Verify hpm_data_hash has some values
+    if ((defined $hpm_data_hash{deviceID}) ||
+        (defined $hpm_data_hash{productID}) ||
+        (defined $hpm_data_hash{manufactureID})) {
+
+        if (($hpm_data_hash{deviceID} ne $sessdata->{device_id}) ||
+            ($hpm_data_hash{productID} ne $sessdata->{prod_id}) ||
+            ($hpm_data_hash{manufactureID} ne $sessdata->{mfg_id})) {
+                 $exit_with_error_func->($sessdata->{node}, $callback, "The image file doesn't match target machine: \n$output");
+        }
+    } else {
+        $exit_with_error_func->($sessdata->{node}, $callback, "No data was extracted from .hpm update file");
     }
 
     # check for 8335-GTB Firmware above 1610A release.  If below, exit
