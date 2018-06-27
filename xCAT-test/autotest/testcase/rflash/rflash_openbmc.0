@@ -2,6 +2,7 @@ start:rflash_option_c_without_specify_noderange
 description: basic usage check for option c. if without specify noderange for rflash command, should offer usage message
 os:Linux
 hcp:openbmc
+label:mn_only,hctrl_openbmc
 cmd:rflash -c
 check:output=~Usage:
 cmd:rflash -c 1.tar
@@ -13,6 +14,7 @@ start:rflash_option_l_without_specify_noderange
 description: basic usage check for option l. if without specify noderange for rflash command, should offer usage message
 os:Linux
 hcp:openbmc
+label:mn_only,hctrl_openbmc
 cmd:rflash -l
 check:output=~Usage:
 end
@@ -21,6 +23,7 @@ start:rflash_option_a_without_specify_noderange
 description: basic usage check for option a. if without specify noderange for rflash command, should offer usage message
 os:Linux
 hcp:openbmc
+label:mn_only,hctrl_openbmc
 cmd:rflash -a
 check:output=~Usage:
 cmd:rflash -a 1.tar
@@ -35,6 +38,7 @@ start:rflash_option_u_without_specify_noderange
 description: basic usage check for option u. if without specify noderange for rflash command, should offer usage message
 os:Linux
 hcp:openbmc
+label:mn_only,hctrl_openbmc
 cmd:rflash -u
 check:output=~Usage:
 cmd:rflash -u  1.tar
@@ -46,10 +50,11 @@ start:rflash_option_d_without_specify_noderange
 description: basic usage check for option d. if without specify noderange for rflash command, should offer usage message
 os:Linux
 hcp:openbmc
+label:mn_only,hctrl_openbmc
 cmd:rflash -d
 check:output=~Usage:
 cmd:rflash -d /1234
-check:Usage:
+check:output=~Usage:
 cmd:rflash --delete 1234abc
 check:rc != 0
 check:output=~Error: (\[.*?\]: )?Invalid nodes and/or groups in noderange
@@ -59,6 +64,7 @@ start:rflash_without_option
 description: basic usage check, if without option, should throw out a error
 os:Linux
 hcp:openbmc
+label:cn_bmc_ready,hctrl_openbmc
 cmd:rflash $$CN 1.tar
 check:rc != 0
 check:output=~Error: (\[.*?\]: )?Invalid option specified when a file is provided:
@@ -68,6 +74,7 @@ start:rflash_unsupport_multiple_option_a_u
 description: basic usage check. If specify multiple options a+u, should throw out error message
 os:Linux
 hcp:openbmc
+label:cn_bmc_ready,hctrl_openbmc
 cmd:rflash $$CN -a 1.tz -u
 check:output=~Error: (\[.*?\]: )?Multiple options are not supported
 check:rc != 0
@@ -77,6 +84,7 @@ start:rflash_unsupport_multiple_option_a_c
 description: basic usage check. If specify multiple options a+c, should throw out error message
 os:Linux
 hcp:openbmc
+label:cn_bmc_ready,hctrl_openbmc
 cmd:rflash $$CN -a 1.tz -c
 check:output=~Error: (\[.*?\]: )?Multiple options are not supported
 check:rc != 0
@@ -86,6 +94,7 @@ start:rflash_unsupport_multiple_option_a_l
 description: basic usage check. If specify multiple options a+l, should throw out error message
 os:Linux
 hcp:openbmc
+label:cn_bmc_ready,hctrl_openbmc
 cmd:rflash $$CN -a 1.tz -l
 check:output=~Error: (\[.*?\]: )?Multiple options are not supported
 check:rc != 0
@@ -95,6 +104,7 @@ start:rflash_unsupport_multiple_option_a_d
 description: basic usage check. If specify multiple options a+d, should throw out error message
 os:Linux
 hcp:openbmc
+label:cn_bmc_ready,hctrl_openbmc
 cmd:rflash $$CN -a 1.tz -d
 check:output=~Error: (\[.*?\]: )?Multiple options are not supported
 check:rc != 0
@@ -104,6 +114,7 @@ start:rflash_unsupport_multiple_option_c_l
 description: basic usage check. If specify multiple options c+l, should throw out error message
 os:Linux
 hcp:openbmc
+label:cn_bmc_ready,hctrl_openbmc
 cmd:rflash $$CN -c 1.tz -l
 check:output=~Error: (\[.*?\]: )?Multiple options are not supported
 check:rc != 0
@@ -113,6 +124,7 @@ start:rflash_unsupport_multiple_option_c_u
 description: basic usage check. If specify multiple options c+u, should throw out error message
 os:Linux
 hcp:openbmc
+label:cn_bmc_ready,hctrl_openbmc
 cmd:rflash $$CN -c 1.tz -u
 check:output=~Error: (\[.*?\]: )?Multiple options are not supported
 check:rc != 0
@@ -122,6 +134,7 @@ start:rflash_unsupport_multiple_option_c_d
 description: basic usage check. If specify multiple options c+d, should throw out error message
 os:Linux
 hcp:openbmc
+label:cn_bmc_ready,hctrl_openbmc
 cmd:rflash $$CN -c 1.tz -d
 check:output=~Error: (\[.*?\]: )?Multiple options are not supported
 check:rc != 0
@@ -131,6 +144,7 @@ start:rflash_unsupport_multiple_option_l_d
 description: basic usage check. If specify multiple options l+d, should throw out error message
 os:Linux
 hcp:openbmc
+label:cn_bmc_ready,hctrl_openbmc
 cmd:rflash $$CN -l -d
 check:output=~Error: (\[.*?\]: )?Multiple options are not supported
 check:rc != 0
@@ -140,6 +154,7 @@ start:rflash_unsupport_multiple_option_l_u
 description: basic usage check. If specify multiple options l+u, should throw out error message
 os:Linux
 hcp:openbmc
+label:cn_bmc_ready,hctrl_openbmc
 cmd:rflash $$CN -l -u
 check:output=~Error: (\[.*?\]: )?Multiple options are not supported
 check:rc != 0
@@ -149,6 +164,7 @@ start:rflash_unsupport_multiple_option_u_d
 description: basic usage check. If specify multiple options u+d, should throw out error message
 os:Linux
 hcp:openbmc
+label:cn_bmc_ready,hctrl_openbmc
 cmd:rflash $$CN -u -d
 check:output=~Error: (\[.*?\]: )?Multiple options are not supported
 check:rc != 0
@@ -158,6 +174,7 @@ start:rflash_option_c_file_not_exist
 description: basic usage check for option c. if the file does not exist, should throw out error message
 os:Linux
 hcp:openbmc
+label:cn_bmc_ready,hctrl_openbmc
 cmd:rflash $$CN -c /tmp/abc123.tz
 check:output=~Error: (\[.*?\]: )?Invalid firmware specified with
 check:rc != 0
@@ -182,6 +199,7 @@ start:rflash_option_c_with_multiple_values
 description: basic usage check for option c. if there are multiple value assigned to c option,  should throw out error message
 os:Linux
 hcp:openbmc
+label:cn_bmc_ready,hctrl_openbmc
 cmd:rflash $$CN -c /tmp/abc123.tz /tmp/abc124.tz
 check:output=~Error: (\[.*?\]: )?Invalid firmware specified with
 check:rc != 0
@@ -200,6 +218,7 @@ start:rflash_option_c_against_node
 description:  Make sure the -c option against node works
 os:Linux
 hcp:openbmc
+label:cn_bmc_ready,hctrl_openbmc
 cmd:rflash $$CN -c |tee /tmp/rflash_option_c.output
 check:rc == 0
 cmd:grep -i ibm /tmp/rflash_option_c.output |grep -i 'HOST Firmware Product' | grep -i 'Active)\*' | wc -l
@@ -216,6 +235,7 @@ start:rflash_option_check_with_V_against_node
 description:  Make sure the --check option with V works
 os:Linux
 hcp:openbmc
+label:cn_bmc_ready,hctrl_openbmc
 cmd:rflash $$CN --check -V |tee /tmp/rflash_option_check_with_V.output
 check:rc == 0
 cmd:grep -i ibm /tmp/rflash_option_check_with_V.output |grep -i 'HOST Firmware Product' | grep -i 'Active)\*' | wc -l
@@ -233,6 +253,7 @@ start:rflash_option_l_with_value
 description: basic usage check for option l. if there is value for l option,  should throw out error message
 os:Linux
 hcp:openbmc
+label:cn_bmc_ready,hctrl_openbmc
 cmd:rflash $$CN -l /tmp/abc123.tz
 check:output=~Error: (\[.*?\]: )?Invalid option
 check:rc != 0
@@ -245,6 +266,7 @@ start:rflash_option_l
 description:  Make sure the -l option works
 os:Linux
 hcp:openbmc
+label:cn_bmc_ready,hctrl_openbmc
 cmd:rflash $$CN -l |tee /tmp/rflash_option_l.output
 check:rc == 0
 cmd:grep -i ' bmc ' /tmp/rflash_option_l.output | grep -i 'Active(\*)' | wc -l
@@ -262,6 +284,7 @@ start:rflash_option_u_file_not_exist
 description: basic usage check for option u. if the file does not exist, should throw out error message
 os:Linux
 hcp:openbmc
+label:cn_bmc_ready,hctrl_openbmc
 cmd:rflash $$CN -u /tmp/abc123.tz
 check:output=~Error: (\[.*?\]: )?Invalid firmware specified with
 check:output!~Attempting to
@@ -292,6 +315,7 @@ start:rflash_option_u_with_multiple_values
 description: basic usage check for option u. if there are multiple value assigned to u option,  should throw out error message
 os:Linux
 hcp:openbmc
+label:cn_bmc_ready,hctrl_openbmc
 cmd:rflash $$CN -u /tmp/abc123.tz /tmp/abc124.tz
 check:output=~Error: (\[.*?\]: )?Invalid firmware specified with
 check:output!~Attempting to
@@ -314,6 +338,7 @@ start:rflash_option_a_file_not_exist
 description: basic usage check for option a. if the file does not exist, should throw out error message
 os:Linux
 hcp:openbmc
+label:cn_bmc_ready,hctrl_openbmc
 cmd:rflash $$CN -a /tmp/abc123.tz
 check:output=~rror: Invalid firmware specified with
 check:output!~Attempting to 
@@ -344,6 +369,7 @@ start:rflash_option_a_with_multiple_values
 description: basic usage check for option a. if there are multiple value assigned to a option, should throw out error message
 os:Linux
 hcp:openbmc
+label:cn_bmc_ready,hctrl_openbmc
 cmd:rflash $$CN -a /tmp/abc123.tz /tmp/abc124.tz
 check:output=~Error: (\[.*?\]: )?Invalid firmware specified with
 check:output!~Attempting to
@@ -375,6 +401,7 @@ start:rflash_option_a_with_non_existent_id
 description: basic usage check for option a. if active a non-existent firmware ID, should throw out error message
 os:Linux
 hcp:openbmc
+label:cn_bmc_ready,hctrl_openbmc
 cmd:rflash $$CN -a 1234567
 check:output=~Error: (\[.*?\]: )?Invalid ID provided to activate
 check:rc != 0
@@ -387,6 +414,7 @@ start:rflash_option_delete_with_multiple_values
 description: basic usage check for option delete. if there are multiple value assigned to delete option, should throw out error message
 os:Linux
 hcp:openbmc
+label:cn_bmc_ready,hctrl_openbmc
 cmd:rflash $$CN --delete 1234567 2345678 
 check:output=~Error: (\[.*?\]: )?More than one firmware specified is not supported
 check:output!~Attempting to delete
@@ -405,6 +433,7 @@ start:rflash_option_delete_with_non_existent_id
 description: basic usage check for option --delete. if delete a non-existent firmware ID, should throw out error message
 os:Linux
 hcp:openbmc
+label:cn_bmc_ready,hctrl_openbmc
 cmd:rflash $$CN --delete 1234567
 check:output=~Error: (\[.*?\]: )?Invalid ID provided to delete
 check:rc != 0
@@ -417,6 +446,7 @@ start:rflash_option_d_with_multiple_values
 description: basic usage check for option d. if there are multiple value assigned to d option, should throw out error message
 os:Linux
 hcp:openbmc
+label:cn_bmc_ready,hctrl_openbmc
 cmd:rflash $$CN -d /123/   /234/
 check:output=~Error: (\[.*?\]: )?More than one
 check:output!~Attempting to 
@@ -436,6 +466,7 @@ start:rflash_option_d_with_non_existent_dir
 description: basic usage check for option -d. if try to oprate non-existent dir by d option, should throw out error message
 os:Linux
 hcp:openbmc
+label:cn_bmc_ready,hctrl_openbmc
 cmd:rm -rf /tmp/bogus123
 check:rc == 0
 cmd:rflash $$CN -d /tmp/bogus123 
@@ -471,6 +502,7 @@ start:rflash_usage
 description:checke the usage of rflash for openbmc
 os:Linux
 hcp:openbmc
+label:mn_only,hctrl_openbmc
 cmd:rflash -h
 check:output =~Usage:
 check:output =~OpenPOWER OpenBMC specific:
@@ -483,6 +515,7 @@ start:rflash_delete_no_active
 description:this case is to check if --delete is not allowed to be used for the active state firmware. This case is for issue 4770.
 os:Linux
 hcp:openbmc
+label:cn_bmc_ready,hctrl_openbmc
 cmd:activenum=`rflash $$CN -l |grep -w "Host\s*Active(\*)" |awk '{print $2}'`;rflash $$CN $activenum --delete
 check:rc != 0
 check:output =~$$CN\s*:\s*(\[.*?\]: )?Error: Deleting currently active firmware on powered on host is not supported 
