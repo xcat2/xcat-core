@@ -1,0 +1,20 @@
+# The nic name might change between the installation and 1st boot
+# Active all the nics with network link during system boot
+
+[ "$XCATDEBUGMODE" ] || export XCATDEBUGMODE="#TABLEBLANKOKAY:site:key=xcatdebugmode:value#"
+[ "$MASTER_IP" ] || export MASTER_IP="#ENV:MASTER_IP#"
+#INCLUDE:#ENV:XCATROOT#/share/xcat/install/scripts/scriptlib#
+
+for i in $(ls /etc/sysconfig/network-scripts/ifcfg-* | grep -v ifcfg-lo)
+do
+    nicname="${i##*-}"
+    if ethtool $nicname | grep -E -i -q "Link detected.*yes" >/dev/null 2>&1
+    then
+        case "$XCATDEBUGMODE" in
+	"1"|"2")
+            msgutil_r "$MASTER_IP" "info" "set NIC $nicname to be activated on system boot" "/var/log/xcat/xcat.log"
+            ;;
+	esac
+        sed -i 's/ONBOOT=no/ONBOOT=yes/' "$i" 
+    fi
+done
