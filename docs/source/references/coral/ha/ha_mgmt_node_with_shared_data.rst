@@ -6,7 +6,10 @@ HA Solution Overview
 
 While a xCAT management node ``xcatmn1`` is running as a primary management node, another node - ``xcatmn2`` can be configured to act as primary management node in case ``xcatmn1`` becomes unavailable. The process is manual and requires disabling primary ``xcatmn1`` and activating backup ``xcatmn2``. Both nodes require access to shared storage described below. Use of Virtual IP is also requred.
 
-An interactive sample script ``xcatha`` is availabe to guide through the steps of disabling and activation of xCAT management nodes. ``Dryrun`` option in that scrip allows viewing the actions without executing them.
+An interactive sample script `xcatha.py <https://github.com/xcat2/xcat-extensions/blob/master/HA/xcatha.py>`_ is availabe to guide through the steps of disabling and activation of xCAT management nodes. ``Dryrun`` option in that scrip allows viewing the actions without executing them.
+
+Configure and Activate Primary xCAT Management Node
+===================================================
 
 Disable And Stop All Related Services on Primary xCAT Management Node
 `````````````````````````````````````````````````````````````````````
@@ -81,7 +84,7 @@ Existing xCAT management node IP should be configured as Virtual IP address, the
 Configure Shared Data
 `````````````````````
 
-The following xCAT directory structure should be accessible from both primary and backup xCAT management nodes::
+The following xCAT directory structure should be accessible from primary xCAT management node::
 
     /etc/xcat
     /install
@@ -99,34 +102,10 @@ Synchronize Clock
 
 It is recommended that the clocks are synchrinized between the primary management node and bakup management node.
 
-Remove Virtual IP from primary xCAT Management Node
-```````````````````````````````````````````````````
+Activate Primary xCAT Management Node
+`````````````````````````````````````
 
-    ``ip addr del 10.5.106.7/8 dev eth0:0``
-
-Activate Backup xCAT Management Node to be Primary Management Node
-``````````````````````````````````````````````````````````````````
-# Configure Virtual IP
-
-# Add Virtual IP into ``/etc/hosts`` file ::
-
-    10.5.106.7 xcatmn1 xcatmn1.cluster.com
-
-# Install xCAT on backup xCAT management node ``xcatmn2``
-
-# Switch to ``PostgreSQL`` database
-
-# Add static management node network interface IP ``10.5.106.5`` into ``PostgreSQL`` configuration file
-
-        #. Add ``10.5.106.5`` into ``/var/lib/pgsql/data/pg_hba.conf``::
-
-            host    all          all        10.5.106.5/32      md5
-
-        #. Add ``10.5.106.5`` into ``listen_addresses`` variable in ``/var/lib/pgsql/data/postgresql.conf``::
-
-            listen_addresses = 'localhost,10.5.106.7,10.5.106.70,10.5.105.5'
-
-# Use ``xcatha.py -a`` to start all related services: ::
+Use ``xcatha.py`` interactive activate ``xcatmn1``::
 
     ./xcatha.py -a
     [Admin] Verify VIP 10.5.106.7 is configured on this node
@@ -178,11 +157,49 @@ Activate Backup xCAT Management Node to be Primary Management Node
     2018-06-24 22:13:19,353 - DEBUG - makeconservercf [Passed]
     2018-06-24 22:13:19,449 - DEBUG - systemctl start conserver [Passed]
 
-# Modify provision network entry ``mgtifname`` as ``eth0:0``::
+Activate Backup xCAT Management Node to be Primary Management Node
+==================================================================
 
-        tabedit networks
-        "10_0_0_0-255_0_0_0","10.0.0.0","255.0.0.0","eth0:0","10.0.0.103",,"<xcatmaster>",,,,,,,,,,,"1500",,
+#. Install xCAT on backup xCAT management node ``xcatmn2`` with local disk
 
+#. Switch to ``PostgreSQL`` database
+
+#. Disable and deactivate services using ``xcatha.py -d`` on both ``xcatmn2`` and ``xcatmn1`` 
+
+#. Remove Virtual IP from primary xCAT Management Node ``xcatmn1``::
+  
+    ip addr del 10.5.106.7/8 dev eth0:0
+
+#. Configure Virtual IP on ``xcatmn2``
+
+#. Add Virtual IP into ``/etc/hosts`` file ::
+
+    10.5.106.7 xcatmn1 xcatmn1.cluster.com
+
+#. Connect the following xCAT directories to shared data on ``xcatmn2``::
+
+    /etc/xcat
+    /install
+    ~/.xcat
+    /var/lib/pgsql
+    /tftpboot
+
+#. Add static management node network interface IP ``10.5.106.5`` into ``PostgreSQL`` configuration file
+
+    #. Add ``10.5.106.5`` into ``/var/lib/pgsql/data/pg_hba.conf``::
+
+        host    all          all        10.5.106.5/32      md5
+
+    #. Add ``10.5.106.5`` into ``listen_addresses`` variable in ``/var/lib/pgsql/data/postgresql.conf``::
+
+        listen_addresses = 'localhost,10.5.106.7,10.5.106.70,10.5.105.5'
+
+#. Use ``xcatha.py -a`` to start all related services on ``xcatmn2``
+
+#. Modify provision network entry ``mgtifname`` as ``eth0:0``::
+
+    tabedit networks
+    "10_0_0_0-255_0_0_0","10.0.0.0","255.0.0.0","eth0:0","10.0.0.103",,"<xcatmaster>",,,,,,,,,,,"1500",,
 
 Unplanned failover: primary xCAT management node is not accessible
 ``````````````````````````````````````````````````````````````````
