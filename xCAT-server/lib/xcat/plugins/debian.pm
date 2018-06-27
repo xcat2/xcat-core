@@ -806,7 +806,7 @@ sub mkinstall {
                 ) or (
                     $arch =~ /ppc64/i and (
                         (-r "$pkgdir/install/netboot/ubuntu-installer/$darch/vmlinux"
-                            and $kernpath = "$pkgdir/install/install/netboot/ubuntu-installer/$darch/vmlinux"
+                            and $kernpath = "$pkgdir/install/netboot/ubuntu-installer/$darch/vmlinux"
                             and -r "$pkgdir/install/netboot/ubuntu-installer/$darch/initrd.gz"
                             and $initrdpath = "$pkgdir/install/netboot/ubuntu-installer/$darch/initrd.gz"
                         ) or
