@@ -38,8 +38,8 @@ confluent
 
 Installing ``xCAT-confluent`` via rpm::
 
-    rpm -ivh /root/rpmbuild/RPMS/noarch/confluent_server-*.noarch.rpm 
-    rpm -ivh /root/rpmbuild/RPMS/noarch/confluent_client-*.noarch.rpm 
+    rpm -ivh /root/rpmbuild/RPMS/noarch/confluent_server-*.noarch.rpm --nodeps
+    rpm -ivh /root/rpmbuild/RPMS/noarch/confluent_client-*.noarch.rpm --nodeps
 
 You may find it helpful to add the confluent paths into your system path::
 
