@@ -76,7 +76,7 @@ if [ $? -ne 0 ]; then
 fi
 
 echo 'Protocol 2' >> /etc/ssh/sshd_config
-echo 'Port 2' >> /etc/ssh/sshd_config
+echo 'Port 22' >> /etc/ssh/sshd_config
 echo 'Port 3389' >> /etc/ssh/sshd_config
 /usr/sbin/sshd
 mkdir -p /etc/xcat
