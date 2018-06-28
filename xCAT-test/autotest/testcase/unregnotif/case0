@@ -1,5 +1,6 @@
 start:unregnotif_null
 description:unregnotif with no argument
+label:mn_only,db
 cmd:unregnotif
 check:output=~Usage
 end
@@ -7,6 +8,7 @@ end
 
 start:unregnotif_f
 description:unregnotif with a argument filename
+label:mn_only,db
 cmd:echo "hello" > test.pm
 check:rc==0
 cmd:regnotif test.pm nodelist -o a,d
@@ -24,6 +26,7 @@ end
 
 start:unregnotif_h
 description:unregnotif -h and -help
+label:mn_only,db
 cmd:unregnotif -h
 check:output=~Usage
 cmd:unregnotif -help
@@ -32,6 +35,7 @@ end
 
 start:unregnotif_v
 description:unregnotif -v and -version
+label:mn_only,db
 cmd:unregnotif -v
 check:output=~version|Version
 cmd:unregnotif -version

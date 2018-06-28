@@ -1,5 +1,6 @@
 start:nodech_noderange_table
 description:nodech testnode groups=all,rhels5.5 nodetype.os=rhels5.5 nodehm.mgt=hmc
+label:mn_only,db
 cmd:chdef -t node -o testnode groups=all,rhels5.4
 check:rc==0
 cmd:nodech testnode groups=all,rhels5.5 nodetype.os=rhels5.5 nodehm.mgt=hmc
@@ -14,6 +15,7 @@ end
 
 start:nodech_noderange_table_comma
 description:nodech testnode groups,=rhels5.5.Check nodech command with ,=.
+label:mn_only,db
 cmd:chdef -t node -o testnode groups=all
 check:rc==0
 cmd:nodech testnode groups,=rhels5.5
@@ -25,6 +27,7 @@ end
 
 
 start:nodech_noderange_table_arrow
+label:mn_only,db
 cmd:chdef -t node -o testnode groups=all,rhels5.5
 check:rc==0
 cmd:nodech testnode groups^=rhels5.5
@@ -37,6 +40,7 @@ end
 
 start:nodech_noderange_table_comma_arrow
 description:nodech testnode groups^=rhels5.5 groups,=rhels5.4 . Check nodech command with both ^= and ,=.
+label:mn_only,db
 cmd:chdef -t node -o testnode groups=all,rhels5.5
 check:rc==0
 cmd:nodech testnode groups^=rhels5.5 groups,=rhels5.4
@@ -48,6 +52,7 @@ end
 
 start:nodech_noderanage_table_at
 description:nodech testnode nodetype.os=@=helloworld.Check nodech command with =@=.
+label:mn_only,db
 cmd:chdef -t node -o testnode os=hello groups=all
 check:rc==0
 cmd:nodech testnode nodetype.os=@=helloworld
@@ -60,6 +65,7 @@ end
 
 start:nodech_noderange_table_include
 description:nodech groups=~rh4.123456789 groups=rhels5.5.The command nodech with =~.
+label:mn_only,db
 cmd:chdef -t node -o testnode groups=rh4.123456789
 check:rc==0
 cmd:nodech groups=~rh4.123456789 groups=rhels5.5
@@ -71,6 +77,7 @@ end
 
 start:nodech_noderange_table_uninclude
 description:nodech testnode1-testnode2 nodelist.groups\!~rhels5.5 nodelist.groups=rhels5.5,all.The command nodech with !~.
+label:mn_only,db
 cmd:chdef -t node -o testnode1 groups=rhels5.5,all
 check:rc==0
 cmd:chdef -t node -o testnode2 groups=rhels5.4,all
@@ -85,6 +92,7 @@ end
 
 start:nodech_noderange_table_equal
 description:nodech groups==rh4.123456789 groups=rhels5.5.The command nodech with ==.
+label:mn_only,db
 cmd:chdef -t node -o testnode groups=rh4.123456789
 check:rc==0
 cmd:nodech groups==rh4.123456789 groups=rhels5.5
@@ -97,6 +105,7 @@ end
 
 start:nodech_noderange_table_unequal
 description::nodech testnode1-testnode2 groups!=rhels5.5 groups=rhels5.5.The command nodech with !=.
+label:mn_only,db
 cmd:chdef -t node -o testnode1 groups=rhels5.5
 check:rc==0
 cmd:chdef -t node -o testnode2 groups=rhels5.4
@@ -110,6 +119,7 @@ end
 
 start:nodech_noderange_shortname_groups
 description:nodech testnode groups=rhels5.4.The nodech use shortname groups
+label:mn_only,db
 cmd:chdef -t node -o testnode groups=rhels5.5
 check:rc==0
 cmd:nodech testnode groups=rhels5.4
@@ -122,6 +132,7 @@ end
 
 start:nodech_noderange_shortname_tags
 description:nodech testnode tags=rhels5.4.The nodech use shortname tags
+label:mn_only,db
 cmd:chdef -t node -o testnode groups=rhels5.5
 check:rc==0
 cmd:nodech testnode tags=rhels5.4
@@ -134,6 +145,7 @@ end
 
 start:nodech_noderange_shortname_mgt
 description:nodech testnode mgt=hmc.The nodech use shortname mgt
+label:mn_only,db
 cmd:chdef -t node -o testnode mgt=blade  groups=all
 check:rc==0
 cmd:nodech testnode mgt=hmc
@@ -145,6 +157,7 @@ end
 
 start:nodech_delete
 description:nodech -d 
+label:mn_only,db
 cmd:chdef -t node -o testnode os=hello groups=all
 check:rc==0
 cmd:nodech -d testnode nodetype
@@ -156,6 +169,7 @@ end
 
 start:nodech_h
 description:nodech -h
+label:mn_only,db
 cmd:nodech -h
 check:output=~Usage
 cmd:nodech -?
@@ -166,6 +180,7 @@ end
 
 start:nodech_v
 description:nodech -v
+label:mn_only,db
 cmd:nodech -v
 check:output=~Version
 end
@@ -173,6 +188,7 @@ end
 
 start:nodech_d_error
 description:nodech --delete
+label:mn_only,db
 cmd:chdef -t node -o testnode os=hello groups=test
 check:rc==0
 cmd:nodech --delete
@@ -187,6 +203,7 @@ end
 
 start:nodech_error_node
 description: nodech error noderange,nodech testnode1 groups=all,rhels5.5 nodetype.os=rhels5.5 nodehm.mgt=hmc
+label:mn_only,db
 cmd:chdef -t node -o testnode groups=all,rhels5.4
 check:rc==0
 cmd:nodech testnode1 groups=all,rhels5.5 nodetype.os=rhels5.5 nodehm.mgt=hmc
@@ -198,6 +215,7 @@ end
 
 start:nodech_error_table
 description: nodech error table.
+label:mn_only,db
 cmd:chdef -t node -o testnode groups=all,rhels5.4
 check:rc==0
 cmd:nodech testnode groups=all,rhels5.5 nodetypes.os=rhels5.5 nodehm.mgt=hmc
