@@ -10,14 +10,12 @@ echo "post scripts" >/root/post.log
 #INCLUDE:#ENV:XCATROOT#/share/xcat/install/scripts/scriptlib#
 
 export PRINIC="#TABLEBLANKOKAY:noderes:THISNODE:primarynic#"
-if [ "$PRINIC" == "mac" ]
+if [ "$PRINIC" == "mac" ] || [ -z "$PRINIC" ]
 then
     export PRINIC='#GETPRINICMAC:THISNODE#'    
 fi
-if [ -z "$PRINIC" ]
+if [ -n "$PRINIC" ] && [[ "$(echo "$PRINIC" | grep -sqE ^[A-Fa-f0-9]+:[A-Fa-f0-9]+:[A-Fa-f0-9]+:[A-Fa-f0-9]+:[A-Fa-f0-9]+:[A-Fa-f0-9]+$ ;echo $?)" == "0" ]]
 then
-    export PRINIC=eth0
-elif [[ `echo "$PRINIC" | grep -sqE ^[A-Fa-f0-9]+:[A-Fa-f0-9]+:[A-Fa-f0-9]+:[A-Fa-f0-9]+:[A-Fa-f0-9]+:[A-Fa-f0-9]+$ ;echo $?` == "0" ]]; then
     export PRINIC="$(ip -o link | grep -i "$PRINIC" | awk '{print $2}' | sed 's/://')"
 fi
 IP="$(ip -4 -o a sh dev "$PRINIC" | awk '/inet/{print $4}' | head -n 1 | awk -F '/' '{print $1}')"
