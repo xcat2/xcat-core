@@ -1,5 +1,6 @@
 start:lsdef_null
 description: lsdef without any flag
+label:mn_only,db
 cmd:mkdef -t node -o testnodell groups=all
 check:rc==0
 cmd:lsdef
@@ -11,6 +12,7 @@ end
 
 start:lsdef_a
 description: lsdef -a and lsdef --all
+label:mn_only,db
 cmd:mkdef -t node -o testnode groups=all
 check:rc==0
 cmd:mkdef -t network -o testnetwork net=1.2.3.0 mask=255.255.255.0
@@ -35,6 +37,7 @@ end
 
 start:lsdef_t_o_l
 description: lsdef -o -l
+label:mn_only,db
 cmd:mkdef -t node -o testnode groups=all
 check:rc==0
 cmd:mkdef -t network -o testnetwork net=1.2.3.0 mask=255.255.255.0
@@ -56,6 +59,7 @@ end
 
 start:lsdef_t_o_l_z
 description: lsdef -l -z
+label:mn_only,db
 cmd:mkdef -t node -o testnode groups=all
 check:rc==0
 cmd:mkdef -t network -o testnetwork net=1.2.3.0 mask=255.255.255.0
@@ -76,6 +80,7 @@ end
 
 start:lsdef_t
 description: lsdef -t
+label:mn_only,db
 cmd:mkdef -t node -o testnode groups=all
 check:rc==0
 cmd:mkdef -t network -o testnetwork net=1.2.3.0 mask=255.255.255.0
@@ -90,6 +95,7 @@ end
 
 start:lsdef_t_i_o
 description: lsdef -i
+label:mn_only,db
 cmd:mkdef -t node -o testnode groups=all
 check:rc==0
 cmd:lsdef -t node -o testnode -i groups
@@ -107,6 +113,7 @@ cmd:rmdef -t network testnetwork
 end
 
 start:lsdef_t_w
+label:mn_only,db
 cmd:mkdef -t node -o testnode11,testnode21 cons=hmc groups=all
 check:rc==0
 cmd:mkdef -t node -o testnode31,testnode41 cons=ipmi groups=linux
@@ -137,6 +144,7 @@ end
 
 start:lsdef_s
 description: lsdef -s
+label:mn_only,db
 cmd:mkdef -t node -o testnode groups=all
 check:rc==0
 cmd:lsdef -s testnode
@@ -147,6 +155,7 @@ end
 
 start:lsdef_t_auditlog
 description:lsdef -t auditlog
+label:mn_only,db
 cmd:tabprune auditlog -a
 check:rc==0
 cmd:lsdef -t auditlog
@@ -156,6 +165,7 @@ end
 
 start:lsdef_t_eventlog
 description:lsdef -t eventlog
+label:mn_only,db
 cmd:tabprune eventlog -a
 check:rc==0
 cmd:lsdef -t eventlog
@@ -165,6 +175,7 @@ end
 
 start:lsdef_t_policy
 description:lsdef -t policy
+label:mn_only,db
 cmd:lsdef -t policy
 check:rc==0
 check:output=~1\s+\(policy\)
@@ -175,6 +186,7 @@ end
 
 start:lsdef_t_site
 description:lsdef -t site
+label:mn_only,db
 cmd:lsdef -t site
 check:rc==0
 check:output=~clustersite
@@ -185,6 +197,7 @@ end
 
 start:lsdef_t_err
 description:lsdef -t wrongtype -o
+label:mn_only,db
 cmd:lsdef -t wrongtype -o test
 check:rc!=0
 check:output=~Error
@@ -192,6 +205,7 @@ end
 
 start:lsdef_t_h_i
 description:lsdef -t node -h -i status
+label:mn_only,db
 cmd:lsdef -t node -h -i status
 check:rc==0
 check:output=~status
@@ -199,6 +213,7 @@ end
 
 start:lsdef_nics
 description:lsdef --nics
+label:mn_only,db
 cmd:mkdef -t node -o testnode1 groups=all mgt=ipmi nicips.eth0=1.1.1.1
 check:rc==0
 cmd:lsdef testnode1 --nics
@@ -211,8 +226,8 @@ check:output=~Could not find
 end
 
 start:lsdef_template
-os:linux
 description:check xCAT supported template
+label:mn_only,db
 cmd:lsdef --template
 check:rc==0
 check:output=~hmc\-template  \(node\)
@@ -224,8 +239,8 @@ check:output=~x86_64kvmguest\-template  \(node\)
 end
 
 start:lsdef_template_switch_template
-os:linux
 description:check xCAT supported template for switch template
+label:mn_only,db
 cmd:lsdef --template switch-template
 check:rc==0
 check:output=~Object name\: switch-template
@@ -241,7 +256,7 @@ check:output=~switchtype\=OPTIONAL\:The type of switch
 end
 
 start:lsdef_template_with_invalid_name
-os:linux
+label:mn_only,db
 description:lsdef --template with invalid template name
 cmd:result=`lsdef | grep  test_with_invalid_name`; if [[ $result =~ "test_with_invalid_name" ]]; then noderm test_with_invalid_name; fi
 cmd:lsdef --template "test_with_invalid_name"

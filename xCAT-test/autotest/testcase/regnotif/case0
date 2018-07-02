@@ -1,5 +1,6 @@
 start:regnotif_null
 description:regnotif with no argument
+label:mn_only,db
 cmd:regnotif
 check:rc==0
 check:output=~Usage
@@ -7,6 +8,7 @@ end
 
 start:regnotif_o
 description:regnotif with normal argument
+label:mn_only,db
 cmd:echo "hello,world" > test.pm
 check:rc==0
 cmd:regnotif test.pm nodelist -o a,d
@@ -18,9 +20,9 @@ cmd:unregnotif test.pm
 cmd:rm -f test.pm
 end
 
-
 start:regnotif_err
 description:regnotif with error arguments
+label:mn_only,db
 cmd:echo "hello,world" > test.pm
 check:rc==0
 cmd:regnotif test.pm  -o a,d
@@ -32,10 +34,9 @@ check:output=~Usage
 cmd:rm -f test.pm
 end
 
-
-
 start:regnotif_h
 description:regnotif -h and --help
+label:mn_only,db
 cmd:regnotif -h 
 check:rc==0
 check:output=~Usage
@@ -47,6 +48,7 @@ end
 
 start:regnotif_v
 description:regnotif -v and --version
+label:mn_only,db
 cmd:regnotif -v
 check:rc==0
 check:output=~Version|version

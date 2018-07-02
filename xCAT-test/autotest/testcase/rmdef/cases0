@@ -1,11 +1,13 @@
 start:rmdef_null
 description:rmdef without any flag
+label:mn_only,db
 cmd:rmdef
 check:output=~Usage
 end
 
 start:rmdef_t_o_node
 description:rmdef -t node -o
+label:mn_only,db
 cmd:mkdef -t node -o testnode,testnode1 groups=all,aix
 check:rc==0
 cmd:lsdef -t node testnode,testnode1
@@ -20,6 +22,7 @@ end
 
 start:rmdef_t_node
 description:rmdef -t node
+label:mn_only,db
 cmd:mkdef -t node -o testnode,testnode1 groups=all,aix
 check:rc==0
 cmd:lsdef -t node testnode,testnode1
@@ -34,6 +37,7 @@ end
 
 start:rmdef_node
 description:rmdef nodename
+label:mn_only,db
 cmd:mkdef -t node -o testnode,testnode1 groups=all,aix
 check:rc==0
 cmd:lsdef -t node testnode,testnode1
@@ -48,6 +52,7 @@ end
 
 start:rmdef_t_o_network
 description:rmdef -t network
+label:mn_only,db
 cmd:mkdef -t network -o testnet net=1.2.3.0 mask=255.0.0.0 gateway=1.2.3.1 
 check:rc==0
 cmd:lsdef -t network
@@ -60,6 +65,7 @@ end
 
 start:rmdef_group
 description:rmdef to remove static node group
+label:mn_only,db
 cmd:mkdef -t node -o testnode1-testnode2 mgt=hmc cons=hmc groups=all,systemp
 check:rc==0
 cmd:mkdef -t group -o testgrp members=testnode1,testnode2
@@ -81,6 +87,7 @@ end
 
 start:rmdef_dynamic_group
 description:rmdef to remove dynamic node group
+label:mn_only,db
 cmd:mkdef -t node -o testnode1-testnode2 mgt=hmc cons=hmc groups=all,systemp
 check:rc==0
 cmd:mkdef -t group -o dyngrp -d -w mgt==hmc -w cons==hmc -w groups==all,systemp
@@ -124,14 +131,15 @@ end
 
 start:rmdef_t_err
 description:rmdef -t wrongtype
+label:mn_only,db
 cmd:rmdef -t wrongtype -o testnode
 check:rc!=0
 check:output=~not a valid
 end
 
 start:rmdef_template
-os:linux
 description:try to delete a template, then error messages appear 
+label:mn_only,db
 cmd:result=`lsdef | grep  switch-template`; if [[ $result =~ "switch-template" ]]; then echo $result; noderm switch-template; fi
 cmd:rmdef switch-template
 check:rc==1

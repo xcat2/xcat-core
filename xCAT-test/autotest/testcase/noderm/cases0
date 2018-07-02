@@ -1,5 +1,6 @@
 start:noderm_noderange
 description:noderm testnode1,testnode2
+label:mn_only,db
 cmd:nodeadd testnode1,testnode2 groups=all
 check:rc==0
 cmd:lsdef -t node testnode1,testnode2
@@ -14,6 +15,7 @@ end
 
 start:noderm_h
 description:noderm -h
+label:mn_only,db
 cmd:noderm -h
 check:output=~Usage
 cmd:noderm --help
@@ -22,12 +24,14 @@ end
 
 start:noderm_null
 description:noderm
+label:mn_only,db
 cmd:noderm
 check:output=~Usage
 end
 
 start:noderm_err_node
 description:noderm err
+label:mn_only,db
 cmd:rmdef -t node testnode
 cmd:noderm testnode
 check:rc!=0

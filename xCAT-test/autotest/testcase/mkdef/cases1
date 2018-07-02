@@ -1,5 +1,6 @@
 start:mkdef_github_issue2582
 description:Verify github issue 2582
+label:mn_only,db
 cmd:mkdef -t group -o doubletrouble bmc='|\z|-imm|' mgt=ipmi
 check:rc==0
 cmd:mkdef mgt02 groups=doubletrouble
@@ -12,6 +13,7 @@ end
 
 start:mkdef_regex_bmc
 description:The second example in xCAT document Using Regular Expressions in the xCAT Tables
+label:mn_only,db
 cmd:chtab node=compute 'ipmi.bmc=/\z/-bmc/'
 check:rc==0
 cmd:mkdef com02 groups=compute mgt=ipmi
@@ -26,6 +28,7 @@ end
 
 start:mkdef_regex_ip
 description:The third example in xCAT document Using Regular Expressions in the xCAT Tables
+label:mn_only,db
 cmd:chtab node=compute 'hosts.ip=|node(\d+)|10.0.0.($1+0)|'
 check:rc==0
 cmd:mkdef node254 groups=compute
@@ -40,6 +43,7 @@ end
 
 start:mkdef_regex_kvm
 description:The fourth example in xCAT document Using Regular Expressions in the xCAT Tables
+label:mn_only,db
 cmd:chtab node=kvms 'vm.host=|\D+(\d+)\D+(\d+)\D+(\d+)\D+(\d+)|c($1)f($2)x($3)|' 'vm.storage=|\D+(\d+)\D+(\d+)\D+(\d+)\D+(\d+)|dir:///install/vms/vm($4+0)|' vm.memory=3072 vm.cpus=2 vm.nics=virbr2 vm.nicmodel=virtio
 check:rc==0
 cmd:mkdef -t node -o c01f02x03v04 groups=kvms mgt=kvm
@@ -64,6 +68,7 @@ end
 
 start:mkdef_regex_nicsip
 description:Verify the GitHub issue #3047.
+label:mn_only,db
 cmd:rmdef xcattest_tmp_node_sn[01-16]
 cmd:rmdef -t group -o xcattest_tmp_group_regex
 cmd:mkdef -t group -o xcattest_tmp_group_regex
