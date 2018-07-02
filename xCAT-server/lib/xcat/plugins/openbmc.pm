@@ -916,6 +916,7 @@ sub process_request {
     }
 
     my $check = parse_node_info($noderange);
+    return if ($check);
     my $rst = parse_command_status($command, \@exargs);
     return if ($rst);
 
@@ -1063,6 +1064,8 @@ rmdir \"/tmp/\$userid\" \n";
                         $node_info{$node}{rst} = "BMC is not ready" unless ($node_info{$node}{rst});
                         push @{ $rflash_result{fail} }, "$node: $node_info{$node}{rst}";
                     }
+                    # End of activation processing, release the lock
+                    xCAT::Utils->release_lock($node_info{$node}{rflash_lock}, 1);
                 }
                 xCAT::MsgUtils->message("I", { data => ["-------------------------------------------------------"], host => [1] }, $callback);
                 my $summary = "Firmware update complete: ";
@@ -1423,6 +1426,29 @@ sub parse_args {
                     return ([ 1, "Invalid option specified with $option_flag: $invalid_options" ]);
                 }
             }  
+        }
+        # All options parsed and validated. Now lock upload and activate processing, so that only one
+        # can continue in case multiples are issued for the same node
+        #
+        if ($option_flag =~ /^-d$|^-u$|^--upload$|^-a$|^--activate$/) {
+            foreach my $node (@$noderange) {
+                # Check if node is alrady locked
+                my $locked = xCAT::Utils->is_locked("rflash_$node", 1);
+                if ($locked) {
+                        return ([ 1, "Unable to rflash $node. Another process is aleady flashing this node." ]);
+                } else {
+                    # Lock each targeted node
+                    if ($verbose) {
+                        xCAT::SvrUtils::sendmsg("Attempting to lock $node for rflash", $callback);
+                    }
+                    my $lock = xCAT::Utils->acquire_lock("rflash_$node", 1);
+                    unless ($lock) {
+                        return ([ 1, "Unable to lock $node for rflash command" ]);
+                    }
+                    # Save lock handle in node_info hash so it can be released on completion
+                    $node_info{$node}{rflash_lock} = $lock;
+                }
+            }
         }
     } else {
         return ([ 1, "Command is not supported." ]);
@@ -2239,10 +2265,18 @@ sub parse_node_info {
             unless($node_info{$node}{bmc}) {
                 xCAT::SvrUtils::sendmsg("Error: Unable to get attribute bmc", $callback, $node);
                 $rst = 1;
+                if ($node_info{$node}{rflash_lock}) {
+                    # If we are holding a lock on the node, release the lock
+                    xCAT::Utils->release_lock($node_info{$node}{rflash_lock}, 1);
+                }
                 next;
             }
             unless($node_info{$node}{bmcip}) {
                 xCAT::SvrUtils::sendmsg("Error: Unable to resolved ip address for bmc: $node_info{$node}{bmc}", $callback, $node);
+                if ($node_info{$node}{rflash_lock}) {
+                    # If we are holding a lock on the node, release the lock
+                    xCAT::Utils->release_lock($node_info{$node}{rflash_lock}, 1);
+                }
                 delete $node_info{$node};
                 $rst = 1;
                 next;
@@ -2253,6 +2287,10 @@ sub parse_node_info {
                 $node_info{$node}{username} = $passwd_hash->{username};
             } else {
                 xCAT::SvrUtils::sendmsg("Error: Unable to get attribute username", $callback, $node);
+                if ($node_info{$node}{rflash_lock}) {
+                    # If we are holding a lock on the node, release the lock
+                    xCAT::Utils->release_lock($node_info{$node}{rflash_lock}, 1);
+                }
                 delete $node_info{$node};
                 $rst = 1;
                 next;
@@ -2264,6 +2302,10 @@ sub parse_node_info {
                 $node_info{$node}{password} = $passwd_hash->{password};
             } else {
                 xCAT::SvrUtils::sendmsg("Error: Unable to get attribute password", $callback, $node);
+                if ($node_info{$node}{rflash_lock}) {
+                    # If we are holding a lock on the node, release the lock
+                    xCAT::Utils->release_lock($node_info{$node}{rflash_lock}, 1);
+                }
                 delete $node_info{$node};
                 $rst = 1;
                 next;
@@ -2276,6 +2318,10 @@ sub parse_node_info {
         } else {
             xCAT::SvrUtils::sendmsg("Error: Unable to get information from openbmc table", $callback, $node);
             $rst = 1;
+            if ($node_info{$node}{rflash_lock}) {
+                # If we are holding a lock on the node, release the lock
+                xCAT::Utils->release_lock($node_info{$node}{rflash_lock}, 1);
+            }
             next;
         }
     }
@@ -4398,7 +4444,14 @@ sub rflash_response {
                 sleep(1)
             } elsif ($child == 0) {
                 $async->remove_all;
-                exit(rflash_upload($node, $callback))
+                my $RC=rflash_upload($node, $callback);
+                if ((!$::UPLOAD_AND_ACTIVATE) && (!$::UPLOAD_ACTIVATE_STREAM)) {
+                    # Regular upload is done - release lock
+                    # Lock is kept for "upload and activate" and "upload stream" processing to be
+                    #    released at the end of those steps
+                    xCAT::Utils->release_lock($node_info{$node}{rflash_lock}, 1);
+                }
+                exit($RC)
             } else {
                 $child_node_map{$child} = $node;
             }

@@ -2473,7 +2473,7 @@ sub acquire_lock {
     use Fcntl ":flock";
     my $tlock;
     $tlock->{path} = "/var/lock/xcat/" . $lock_name;
-    sysopen($tlock->{fd}, $tlock->{path}, POSIX::O_CREAT | POSIX::O_WRONLY) or return undef;
+    sysopen($tlock->{fd}, $tlock->{path}, POSIX::O_CREAT | POSIX::O_EXCL | POSIX::O_WRONLY) or return undef;
     unless ($tlock->{fd}) { return undef; }
     if ($nonblock_mode) {
         flock($tlock->{fd}, LOCK_EX | LOCK_NB) or return undef;
