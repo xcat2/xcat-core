@@ -151,6 +151,7 @@ ln -sf ../bin/xcatclient $RPM_BUILD_ROOT/%{prefix}/sbin/nodeset
 ln -sf ../bin/xcatclient $RPM_BUILD_ROOT/%{prefix}/sbin/setupiscsidev
 ln -sf ../bin/xcatclient $RPM_BUILD_ROOT/%{prefix}/sbin/makeconservercf
 ln -sf ../bin/xcatclient $RPM_BUILD_ROOT/%{prefix}/sbin/makegocons
+ln -sf ../bin/xcatclient $RPM_BUILD_ROOT/%{prefix}/sbin/makearpfile
 ln -sf ../bin/xcatclient $RPM_BUILD_ROOT/%{prefix}/bin/rbeacon
 ln -sf ../bin/xcatclient $RPM_BUILD_ROOT/%{prefix}/bin/rvitals
 ln -sf ../bin/xcatclient $RPM_BUILD_ROOT/%{prefix}/bin/nodestat
