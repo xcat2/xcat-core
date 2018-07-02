@@ -9,6 +9,7 @@ XCAT="$(getarg XCAT=)"
 XCATMASTER=$XCAT
 STATEMNT="$(getarg STATEMNT=)"
 rootlimit="$(getarg rootlimit=)"
+rootfsoption="$(getarg rootfsoption=)"
 xcatdebugmode="$(getarg xcatdebugmode=)"
 
 getarg nonodestatus
@@ -77,11 +78,9 @@ if [ -r /rootimg.sfs ]; then
 elif [ -r /rootimg.cpio.gz ] || [ -r /rootimg.cpio.xz ]; then
     logger $SYSLOGHOST -t $log_label -p local4.info "Setting up RAM-root tmpfs on downloaded rootimg.cpio.[gz/xz]..."
     echo Setting up RAM-root tmpfs.
-    if [ -z $rootlimit ];then
-        mount -t tmpfs -o mode=755 rootfs $NEWROOT
-    else
-        mount -t tmpfs -o mode=755,size=$rootlimit rootfs $NEWROOT
-    fi
+    # Mounting new root with mount options
+    mountopt=`mountopts $rootlimit $rootfsoption`
+    mount -t tmpfs -o $mountopt rootfs $NEWROOT
 
     cd $NEWROOT
     [ "$xcatdebugmode" > "0" ] && logger -t $log_label -p local4.debug "Extracting the root filesystem..."
@@ -105,11 +104,9 @@ elif [ -r /rootimg.cpio.gz ] || [ -r /rootimg.cpio.xz ]; then
 elif [ -r /rootimg.tar.gz ] || [ -r /rootimg.tar.xz ]; then
     logger $SYSLOGHOST -t $log_label -p local4.info "Setting up RAM-root tmpfs on downloaded rootimg.tar.[gz/xz]..."
     echo Setting up RAM-root tmpfs.
-    if [ -z $rootlimit ];then
-        mount -t tmpfs -o mode=755 rootfs $NEWROOT
-    else
-        mount -t tmpfs -o mode=755,size=$rootlimit rootfs $NEWROOT
-    fi
+    # Mounting new root with mount options
+    mountopt=`mountopts $rootlimit $rootfsoption`
+    mount -t tmpfs -o $mountopt rootfs $NEWROOT
 
     cd $NEWROOT
     [ "$xcatdebugmode" > "0" ] && logger -t $log_label -p local4.debug "Extracting the root filesystem..."
@@ -134,11 +131,9 @@ elif [ -r /rootimg-statelite.gz ]; then
     logger $SYSLOGHOST -t $log_label -p local4.info "$msg"
     echo "$msg"
  
-    if [ -z $rootlimit];then
-        mount -t tmpfs -o mode=755 rootfs $NEWROOT
-    else
-        mount -t tmpfs -o mode=755,size=$rootlimit rootfs $NEWROOT
-    fi
+    # Mounting new root with mount options
+    mountopt=`mountopts $rootlimit $rootfsoption`
+    mount -t tmpfs -o $mountopt rootfs $NEWROOT
 
     cd $NEWROOT
     msg="Extracting root filesystem..."
@@ -306,6 +301,29 @@ function getdevfrommac() {
             fi
         fi
     done
+}
+
+#############################################
+#
+# Mounting with mount options
+#  $1: root limit size
+#  $2: other mount options
+#
+#############################################
+function mountopts() {
+
+    rootlimit=$1
+    rootfsoption=$2
+    mountopt="mode=755"
+
+    if [ -n $rootlimit ]; then
+        mountopt=$mountopt",size=$rootlimit"
+    fi
+    if [ -n $rootfsoption ]; then
+        mountopt=$mountopt",$rootfsoption"
+    fi
+
+    echo $mountopt
 }
 
 
