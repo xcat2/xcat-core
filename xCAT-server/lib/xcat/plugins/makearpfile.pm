@@ -1,5 +1,5 @@
-# IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
-# The last module to deal with hardware discovery request, write information that which module can deal with this request or no module can deal with it at all
+# IBM(c) 2018 EPL license http://www.eclipse.org/legal/epl-v10.html
+# The file to genarate file for arp records which can be applied by arp directly 
 package xCAT_plugin::makearpfile;
 
 BEGIN
@@ -20,20 +20,30 @@ sub process_request {
     my $req   = shift;
     my $cb    = shift;
     my $doreq = shift;
-    my $file_rootdir = "/install/";
+    my $installdir = "/install";
+    my $arp_file_dir = "/arpinfo";
+    my $arp_file_name = "arpdata.csv";
     my @arpentries = ();
-    my @entries = xCAT::TableUtils->get_site_attribute("arpfileroot");
+    my @entries = xCAT::TableUtils->get_site_attribute("installdir");
     if (defined($entries[0])) {
-        $file_rootdir = $entries[0];
+        $installdir = $entries[0];
     }
-    if (! -d $file_rootdir . "/arpinfo/") {
-        mkdir($file_rootdir . "/arpinfo");
+    @entries = xCAT::TableUtils->get_site_attribute("arp_file_dir"); 
+    if (defined($entries[0])) {
+        $arp_file_dir = $entries[0];
     }
-    my $arpfilename = $file_rootdir ."/arpinfo/ibinfo.txt";
+    @entries = xCAT::TableUtils->get_site_attribute("arp_file_name"); 
+    if (defined($entries[0])) {
+        $arp_file_name = $entries[0];
+    }
+    if (! -d  "$installdir/$arp_file_dir") {
+        mkdir("$installdir/$arp_file_dir");
+    }
+    my $arpfilename = "$installdir/$arp_file_dir/$arp_file_name";
     my $nodelisttab = xCAT::Table->new('nodelist');
     if (!$nodelisttab) {
         my $rsp = {};
-        $rsp->{error}->[0] = "The discovery request can not be processed".$error_msg;
+        $rsp->{error}->[0] = "Can not open 'nodelist' table";
         $cb->($rsp);
         return;
     }
@@ -42,20 +52,18 @@ sub process_request {
         my $node = $_->{node};
         my $appstatus = $_->{appstatus};
         if (!defined($appstatus) or ($appstatus !~ /ib\d+=/)) {
-            my $rsp = {};
-            $rsp->{data} = ["$node: No \"appstatus\" attributes available"];
-            xCAT::MsgUtils->message("W", $rsp, $cb);
+            xCAT::MsgUtils->message("S", "xcat.makearpfile: $node: No \"appstatus\" attributes available");
             next;
         }
         my @ibinfo = split(/,/, $appstatus);
         foreach my $ib (@ibinfo) {
-            if ($ib =~ /(ib\d+)=([^;]+);([\d\.]+)/) {
-                my $arpentry = "? ($3) at $2 [infiniband] on $1";
+            if ($ib =~ m#(ib\d+)=([^/]+)/([\d\.]+)/([\d\.]+)#) {
+                my $arpentry = "$2,$3,$4,$node";
                 push @arpentries, $arpentry;
             }
         }
     }
-    print("write file===\n");
+    xCAT::MsgUtils->message("I", { data => ["Update arp information in file $arpfilename"] }, $cb);
     my $fd;
     open($fd, ">", $arpfilename);
     foreach (@arpentries) {
