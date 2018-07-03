@@ -84,7 +84,7 @@ elif [ -r /rootimg.cpio.gz ] || [ -r /rootimg.cpio.xz ]; then
     if [ -z $rootlimit ];then
         mount -t tmpfs -o $rootopts rootfs $NEWROOT
     else
-        mount -t tmpfs -o mode=755,size=$rootlimit rootfs $NEWROOT
+        mount -t tmpfs -o "$rootopts"size=$rootlimit rootfs $NEWROOT
     fi
 
     cd $NEWROOT
