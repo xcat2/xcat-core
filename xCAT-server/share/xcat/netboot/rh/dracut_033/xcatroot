@@ -78,13 +78,13 @@ elif [ -r /rootimg.cpio.gz ] || [ -r /rootimg.cpio.xz ]; then
     logger $SYSLOGHOST -t $log_label -p local4.info "Setting up RAM-root tmpfs on downloaded rootimg.cpio.[gz/xz]..."
     echo Setting up RAM-root tmpfs.
     rootopts="mode=755"
-    if [ -n $rflags ]; then
-        rootopts="$rootopts"",""$rflags"
+    if [ -n "$rflags" ]; then
+        rootopts="$rootopts","$rflags"
     fi
-    if [ -z $rootlimit ];then
+    if [ -z "$rootlimit" ];then
         mount -t tmpfs -o $rootopts rootfs $NEWROOT
     else
-        mount -t tmpfs -o "$rootopts"size=$rootlimit rootfs $NEWROOT
+        mount -t tmpfs -o "$rootopts",size=$rootlimit rootfs $NEWROOT
     fi
 
     cd $NEWROOT
