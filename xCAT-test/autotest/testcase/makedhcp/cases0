@@ -32,6 +32,20 @@ check:rc==0
 check:output=~Usage
 end
 
+start:makedhcp_n_linux
+description:Create a new dhcp configuration file with a network statement for each network the dhcp daemon should listen on
+os:Linux
+cmd:if [ -f "/etc/dhcp/dhcpd.conf" ];then mv -f /etc/dhcp/dhcpd.conf /etc/dhcp/dhcpd.conf.bak ; elif [ -f "/etc/dhcpd.conf" ]; then mv -f /etc/dhcpd.conf /etc/dhcpd.conf.bak; fi
+cmd:makedhcp -n
+check:rc==0
+cmd:ls /etc/dhcp/dhcpd.conf || ls /etc/dhcpd.conf
+check:rc==0
+cmd:ps -e | grep dhcpd
+check:rc==0
+check:output=~dhcpd
+cmd:if [ -f "/etc/dhcp/dhcpd.conf" ];then mv -f /etc/dhcp/dhcpd.conf /etc/dhcp/dhcpd.conf.bak ; elif [ -f "/etc/dhcpd.conf" ]; then mv -f /etc/dhcpd.conf /etc/dhcpd.conf.bak; fi
+end
+
 start:makedhcp_a_linux
 description:Define all nodes to the DHCP server. (Will only add nodes that can be reached, network-wise, by this DHCP server.) The dhcp daemon does not have to be restarted after this.
 os:Linux

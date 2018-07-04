@@ -1255,3 +1255,34 @@ cmd:file="/opt/xcat/share/xcat/install/rh/template"; rm -rf $file; if [ -d ${fil
 cmd:for file in /tmp/osimages/*.stanza; do cat $file|mkdef -z; done
 cmd:if [ -e /tmp/osimages.bak ]; then mv -f /tmp/osimages.bak /tmp/osimages; fi
 end
+
+start:export_import_osimages_by_dir_with_c
+description:This case is used to test xcat-inventory export and import  linux osimage definition witch -c option.
+label:others,xcat_inventory
+cmd:dir="/tmp/export";if [ -e "${dir}" ];then mv ${dir} ${dir}".bak"; fi; mkdir -p $dir
+cmd:imgdir='/tmp/export';for img in $(lsdef -t osimage -s|awk -F' ' '{print $1}'); do lsdef -t osimage -o $img -z > $imgdir/${img}.stanza;done
+check:rc==0
+cmd:for img in $(lsdef -t osimage -s|awk -F' ' '{print $1}');do rmdef -t osimage -o $img;done
+check:rc==0
+cmd:chdef -t osimage -o test_myimage1,test_myimage2,test_myimage3 imagetype=linux provmethod=install
+check:rc==0
+cmd:xcat-inventory export -t osimage -o test_myimage1,test_myimage2 -d /tmp/export
+check:rc==0
+check:output=~The osimage objects has been exported to directory /tmp/export
+cmd:ls -lFR /tmp/export
+cmd: xcat-inventory import -t osimage -d /tmp/export -c
+check:rc==0
+check:output=~Importing object: test_myimage1
+check:output=~Inventory import successfully!
+check:output=~The object test_myimage1 has been imported
+check:output=~Importing object: test_myimage2
+check:output=~Inventory import successfully!
+check:output=~The object test_myimage2 has been imported
+cmd:lsdef -t osimage -o test_myimage1,test_myimage2
+check:rc==0
+cmd:lsdef -t osimage -o test_myimage3
+check:rc!=0
+cmd:rmdef -t osimage -o test_myimage1,test_myimage2
+cmd:for file in /tmp/export/*.stanza; do cat $file|mkdef -z; done
+cmd:dir="/tmp/export"; rm -rf $dir; if [ -d ${dir}".bak" ];then mv ${dir}".bak" $dir; fi
+end
