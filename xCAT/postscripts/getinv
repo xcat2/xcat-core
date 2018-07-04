@@ -1,0 +1,46 @@
+#!/bin/bash
+
+if [ -z "$XCATDEST" ]; then
+    XCATDEST=$1
+fi
+
+if [ -z "$XCATDEST" ]; then
+    XCATDEST=$MASTER_IP:$XCATDPORT
+fi
+
+tmp_file=/tmp/invinfo.xml
+
+CPUCOUNT=`lscpu | grep "^CPU(s)" | awk -F':' '{print $2}' | sed 's/^[ \t]*//g'`
+CPUTYPE=`lscpu | grep "Model name" | awk -F':' '{print $2}' | sed 's/^[ \t]*//g'`
+MEMORY=`cat /proc/meminfo |grep MemTotal|awk '{printf "%.0fMB\n", $2/1024}'`
+DISKSIZE="$(grep -v name /proc/partitions |sort -g -k 1,2 |awk 'BEGIN{sep=""} /[^0-9]$/{printf("%s%s:%.0fGB", sep, $4, $3/1024^2) ; sep=","}')"
+
+echo "<xcatrequest>" > $tmp_file
+echo "<command>updatehwinv</command>" >> $tmp_file
+echo "<cpucount>$CPUCOUNT</cpucount>" >> $tmp_file
+echo "<cputype>$CPUTYPE</cputype>" >> $tmp_file
+echo "<memory>$MEMORY</memory>" >> $tmp_file
+echo "<disksize>$DISKSIZE</disksize>" >> $tmp_file
+echo "</xcatrequest>" >> $tmp_file
+
+xml_file=/tmp/hwinv.xml
+rm -f $xml_file
+
+while [ ! -f $xml_file ] || grep error $xml_file; do
+    if [ -f $xml_file ]; then
+        timer=60
+        while [ $timer -gt 0 ]; do
+            sleep 1
+            echo -en  "Retrying in $timer seconds  \r"
+            timer=$(($timer-1));
+        done
+    fi
+ 
+    if [ -f /etc/xcat/cert.pem -a -f /etc/xcat/certkey.pem ]; then
+        cat $tmp_file | openssl s_client -key /etc/xcat/certkey.pem -cert /etc/xcat/cert.pem -connect $XCATDEST -quiet 2> /dev/null > $xml_file
+    else
+        cat $tmp_file | openssl s_client -connect $XCATDEST -quiet 2> /dev/null > $xml_file
+    fi
+done
+
+rm $tmp_file
