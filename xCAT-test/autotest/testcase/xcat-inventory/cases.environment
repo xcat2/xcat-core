@@ -1,7 +1,7 @@
 start:import_osimage_with_environments_in_yaml
 description:this case is to verify if osimage import could support environment variables.
 os:Linux
-label:xcat_install,xcat_inventory,provision
+label:others,xcat_inventory,invoke_provison
 cmd:chdef -t node -o $$CN servicenode= monserver=$$MN nfsserver=$$MN tftpserver=$$MN  xcatmaster=$$MN
 check:rc==0
 
@@ -85,13 +85,15 @@ os:Linux
 label:others,xcat_inventory
 cmd:lsdef -t osimage -o test.environments.osimage >/dev/null 2>&1;if [[ $? -eq 0 ]]; then lsdef -t osimage -o test.environments.osimage -z >/tmp/test.environments.osimage_image.stanza ;rmdef -t osimage -o test.environments.osimage;fi
 check:rc==0
+cmd:dir="/tmp/export";if [ -e "${dir}" ];then mv ${dir} ${dir}".bak"; fi; mkdir -p $dir
 cmd:export GITREPO="/opt/xcat/share/xcat/tools/autotest/testcase/xcat-inventory/templates/environment/gitrepo";export SWDIR="/opt/xcat/share/xcat/tools/autotest/testcase/xcat-inventory/templates/environment/swdir";xcat-inventory import -f /opt/xcat/share/xcat/tools/autotest/testcase/xcat-inventory/templates/environment/test.environments.osimage.update.yaml
 check:output=~Importing object: test.environments.osimage
 check:output=~Inventory import successfully!
 check:rc==0
-cmd:lsdef -t osimage -o test.environments.osimage
+cmd:lsdef -t osimage -o test.environments.osimage -z >> /tmp/export/test.environments.osimage.yaml.stanza
 check:rc==0
-cmd:dir="/tmp/export";if [ -e "${dir}" ];then mv ${dir} ${dir}".bak"; fi; mkdir -p $dir
+cmd:diff -y /tmp/export/test.environments.osimage.yaml.stanza /opt/xcat/share/xcat/tools/autotest/testcase/xcat-inventory/templates/environment/test.environments.osimage.stanza
+check:rc==0
 cmd:xcat-inventory export  -t osimage -o test.environments.osimage -f /tmp/export/test.environments.osimage.yaml --format yaml
 check:rc==0
 check:output=~The inventory data has been dumped to /tmp/export/test.environments.osimage.yaml
@@ -103,7 +105,9 @@ cmd:export GITREPO="/opt/xcat/share/xcat/tools/autotest/testcase/xcat-inventory/
 check:output=~Importing object: test.environments.osimage
 check:output=~Inventory import successfully!
 check:rc==0
-cmd:lsdef -t osimage -o test.environments.osimage
+cmd:lsdef -t osimage -o test.environments.osimage -z >> /tmp/export/test.environments.osimage.json.stanza
+check:rc==0
+cmd:diff -y /tmp/export/test.environments.osimage.json.stanza /opt/xcat/share/xcat/tools/autotest/testcase/xcat-inventory/templates/environment/test.environments.osimage.stanza
 check:rc==0
 cmd:xcat-inventory export  -t osimage -o test.environments.osimage -f /tmp/export/test.environments.osimage.json
 check:rc==0
