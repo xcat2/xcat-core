@@ -1,4 +1,5 @@
 start:xdcp_nonroot_user
+label:cn_os_ready,parallel_cmds
 cmd:useradd -m xyzzy
 check:rc==0
 cmd:bash -c "( cd ~root && tar cf - .xcat .ssh ) | ( cd ~xyzzy && tar xf - )"
