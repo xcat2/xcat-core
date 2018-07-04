@@ -1,5 +1,6 @@
 start:makedhcp_n
 description:Create a new dhcp configuration file with a network statement for each network the dhcp daemon should listen on
+os:Linux
 label:mn_only,dhcp
 cmd:if [ -f "/etc/dhcp/dhcpd.conf" ];then mv -f /etc/dhcp/dhcpd.conf /etc/dhcp/dhcpd.conf.bak ; elif [ -f "/etc/dhcpd.conf" ]; then mv -f /etc/dhcpd.conf /etc/dhcpd.conf.bak; fi
 cmd:makedhcp -n
@@ -33,6 +34,7 @@ end
 
 start:makedhcp_a_linux
 description:Define all nodes to the DHCP server. (Will only add nodes that can be reached, network-wise, by this DHCP server.) The dhcp daemon does not have to be restarted after this.
+os:Linux
 label:mn_only,dhcp
 cmd:mkdef -t node -o testnode1 groups=compute mac=11:22:33:55:66:88 arch=ppc64
 cmd:chdef -t node -o testnode1 netboot=yaboot tftpserver=192.16.10.0 nfsserver=192.16.10.0 monserver=192.16.10.0 xcatmaster=192.16.10.0 installnic="mac" primarynic="mac"
@@ -51,6 +53,7 @@ cmd:if [ -f "/etc/dhcp/dhcpd.conf" ];then mv -f /etc/dhcp/dhcpd.conf /etc/dhcp/d
 end
 
 start:makedhcp_a_d_linux
+os:Linux
 label:mn_only,dhcp
 cmd:lsdef -t node -l -z > /tmp/all.nodes
 cmd:mkdef -t node -o testnode1 groups=compute mac=11:22:33:55:66:88 arch=ppc64
@@ -75,6 +78,7 @@ end
 
 start:makedhcp_d_linux
 description:Delete all node entries, added by xCAT, in the noderange from the DHCP server configuration.
+os:Linux
 label:mn_only,dhcp
 cmd:mkdef -t node -o testnode1 groups=compute mac=11:22:33:55:66:88 arch=ppc64
 cmd:chdef -t node -o testnode1 netboot=yaboot tftpserver=192.16.10.0 nfsserver=192.16.10.0 monserver=192.16.10.0 xcatmaster=192.16.10.0 installnic="mac" primarynic="mac"
@@ -98,6 +102,7 @@ end
 
 start:makedhcp_a
 os:Linux
+label:cn_os_ready,dhcp
 cmd:lsdef -l $$CN -z > /tmp/$$CN.stanza
 cmd:chdef -t node -o $$CN mac=11:22:33:44:55:66
 cmd:makedhcp -a
@@ -111,7 +116,8 @@ cmd:cat /tmp/$$CN.stanza | chdef -z
 end
 
 start:makedhcp_a_ubuntu
-os:Linux
+os:ubuntu
+label:cn_os_ready,dhcp
 cmd:lsdef -l $$CN -z > /tmp/$$CN.stanza
 cmd:chdef -t node -o $$CN mac=11:22:33:44:55:66
 cmd:makedhcp -a
@@ -125,6 +131,7 @@ end
 
 start:makedhcp_a_d
 os:Linux
+label:cn_os_ready,dhcp
 cmd:makedhcp -a -d
 check:rc==0
 cmd:service dhcpd restart
@@ -133,8 +140,10 @@ check:rc==0
 check:output!~$$CN
 cmd:makedhcp -a
 end
+
 start:makedhcp_a_d_ubuntu
-os:Linux
+os:ubuntu
+label:cn_os_ready,dhcp
 cmd:makedhcp -a -d
 check:rc==0
 cmd:service isc-dhcp-server restart
@@ -145,6 +154,7 @@ end
 
 start:makedhcp_d
 os:Linux
+label:cn_os_ready,dhcp
 cmd:makedhcp -d $$CN
 check:rc==0
 cmd:service dhcpd restart
@@ -155,6 +165,8 @@ end
 
 start:makedhcp_remote_network
 descriptiion:This case is to test when there is mgtifname='!remote!<nicname>', makedhcp could work correctly and create entrys in dhcp lease file.
+os:linux
+label:mn_only,dhcp
 cmd:mkdef -t network -o testnetwork net=100.100.100.0 mask=255.255.255.0 mgtifname='!remote!eth0' gateway=100.100.100.1
 check:rc==0
 cmd:lsdef -t network
