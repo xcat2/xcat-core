@@ -3,7 +3,7 @@ Select or Create an osimage Definition
 
 Before creating an image on xCAT, the distro media should be prepared ahead. That can be ISOs or DVDs.
 
-XCAT use 'copycds' command to create an image which will be available to install nodes. "copycds" will copy all contents of Distribution DVDs/ISOs or Service Pack DVDs/ISOs to a destination directory, and create several relevant osimage definitions by default.
+XCAT use 'copycds' command to create an image which will be available to install nodes. ``copycds`` will copy all contents of Distribution DVDs/ISOs or Service Pack DVDs/ISOs to a destination directory, and create several relevant osimage definitions by default.
 
 If using an ISO, copy it to (or NFS mount it on) the management node, and then run: ::
 
@@ -81,15 +81,16 @@ In this way, if you need to install some additional RPMs into your MN later, you
 
 **[Tips 2]**
 
-You can create/modify an osimage definition easily based on the default osimage definition. The general steps are:
+You can create/modify an osimage definition easily with any existing osimage definition, the command is ::
+    
+    mkdef -t osimage -o <new osimage> --template <existing osimage> [<attribute>=<value>, ...]
 
-* lsdef -t osimage -z <os>-<arch>-install-compute   >   <filename>.stanza
-* modify <filename>.stanza according to your requirements	
-* cat <filename>.stanza| mkdef -z 
+Except the specified attributes *<attribute>*, the attributes of *<new osimage>* will inherit the values of template osimage *<existing osimage>*.
 
-For example, if you need to change the osimage name to your favorite name, this command may be helpful: ::
+As an example, the following command creates a new osimage "myosimage.rh7.compute.netboot" based on the existing osimage "rhels7.4-ppc64le-netboot-compute" with some customized attributes ::
 
-    chdef -t osimage rhels6.2-x86_64-install-compute -n rhels6.2_myimage
+    mkdef -t osimage -o myosimage.rh7.compute.netboot --template rhels7.4-ppc64le-netboot-compute synclists=/tmp/synclist otherpkgdir=/install/custom/osimage/myosimage.rh7.compute.netboot/3rdpkgs/ otherpkglist=/install/custom/osimage/myosimage.rh7.compute.netboot/3rd.pkglist
+
 
 
 
