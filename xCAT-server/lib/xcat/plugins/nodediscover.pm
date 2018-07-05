@@ -456,9 +456,25 @@ sub process_request {
         $callback->({ error => ["The node [$node] should have a correct IP address which belongs to the management network."], errorcode => ["1"] });
         return;
     }
+
+    my $bmc_node = undef;
+    if (defined($request->{bmc_node}) and defined($request->{bmc_node}->[0])) {
+        $bmc_node = $request->{bmc_node}->[0];
+    }
+    
+    if (-x "/usr/bin/goconserver") {
+        xCAT::MsgUtils->message("S", "xcat.discovery.nodediscover: remove gocons session for $bmc_node");
+        require xCAT::Goconserver;
+        if (xCAT::Goconserver::is_goconserver_running()) {
+            my $api_url = "https://localhost:". xCAT::Goconserver::get_api_port();
+            xCAT::Goconserver::delete_nodes($api_url, {"$bmc_node" => 1}, 1, $callback);
+        }
+    } else {
+        xCAT::MsgUtils->message("S", "xcat.discovery.nodediscover: After discovery done, please use 'makeconservercf -C' to clean up undefined nodes from conserver");
+    }
+
     if (defined($request->{bmcinband})) {
-        if (defined($request->{bmc_node}) and defined($request->{bmc_node}->[0])) {
-            my $bmc_node = $request->{bmc_node}->[0];
+        if (defined($bmc_node)) {
             xCAT::MsgUtils->message("S", "xcat.discovery.nodediscover: Removing discovered BMC nodes definition: $bmc_node...");
             my $rmcmd = "rmdef $bmc_node";
             xCAT::Utils->runcmd($rmcmd, 0);
@@ -470,8 +486,7 @@ sub process_request {
             }
         }
     } else {
-        if (defined($request->{bmc_node}) and defined($request->{bmc_node}->[0])) {
-            my $bmc_node = $request->{bmc_node}->[0];
+        if (defined($bmc_node)) {
             if ($bmc_node =~ /\,/) {
                 xCAT::MsgUtils->message("W", "Multiple BMC nodes matched with no bmcinband specified, please remove manually");
             } else {
@@ -481,7 +496,7 @@ sub process_request {
             }
         }
     }
-
+    
 
     my $restartstring = "restart";
     if (scalar @forcenics > 0) {
