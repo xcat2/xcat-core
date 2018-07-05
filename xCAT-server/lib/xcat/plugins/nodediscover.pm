@@ -481,6 +481,15 @@ sub process_request {
             }
         }
     }
+    if (-x "/usr/bin/goconserver") {
+        xCAT::MsgUtils->message("S", "xcat.discovery.nodediscover: clean up undefined nodes from goconserver");
+        require xCAT::Goconserver;
+        if (xCAT::Goconserver::is_goconserver_running()) {
+            xCAT::Goconserver::cleanup_nodes(undef);
+        }
+    } else {
+        xCAT::MsgUtils->message("S", "xcat.discovery.nodediscover: After discovery done, please use 'makeconservercf -C' to clean up undefined nodes from conserver");
+    }
 
 
     my $restartstring = "restart";
