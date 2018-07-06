@@ -55,8 +55,6 @@ check:output=~xcatd service|xcatd.service
 check:output=~xcatd service is running|active \(running\)
 cmd:service xcatd stop
 check:rc==0
-check:output=~Stopping x(cat|CAT)d
-check:output=~[  OK  ]
 cmd:sleep 3
 cmd:service xcatd status
 check:output=~xcatd service|xcatd.service
