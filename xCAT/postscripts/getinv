@@ -28,6 +28,11 @@ rm -f $xml_file
 
 while [ ! -f $xml_file ] || grep error $xml_file; do
     if [ -f $xml_file ]; then
+        if grep "Permission denied for request" $xml_file; then
+            echo -en "Please run 'chtab priority=4.10 policy.commands=updatehwinv policy.rule=allow' to allow 'updatehwinv' command \r";
+            rm $tmp_file
+            exit 1
+        fi
         timer=60
         while [ $timer -gt 0 ]; do
             sleep 1
