@@ -173,27 +173,27 @@ check:rc==0
 end
 
 start:rpower_suspend_OpenpowerBmc
-hcp:openbmc
+hcp:openbmc,ipmi
 label:cn_bmc_ready,hctrl_openpower_ipmi,hctrl_openbmc
 cmd:rpower $$CN suspend
-check:output=~Error: (\[.*?\]: )?Unsupported command: rpower suspend
+check:output=~Error: (\[.*?\]: )?[Uu]nsupported command[:]* rpower suspend
 check:rc==1
 end
 
 
 start:rpower_wake_OpenpowerBmc
-hcp:openbmc
+hcp:openbmc,ipmi
 label:cn_bmc_ready,hctrl_openpower_ipmi,hctrl_openbmc
 cmd:rpower $$CN wake
-check:output=~Error: (\[.*?\]: )?Unsupported command: rpower wake
+check:output=~Error: (\[.*?\]: )?[Uu]nsupported command[:]* rpower wake
 check:rc==1
 end
 
 start:rpower_errorcommand_OpenpowerBmc
-hcp:openbmc
+hcp:openbmc,ipmi
 label:cn_bmc_ready,hctrl_openpower_ipmi,hctrl_openbmc
 cmd:rpower $$CN ddd
-check:output=~Error: (\[.*?\]: )?Unsupported command: rpower ddd 
+check:output=~Error: (\[.*?\]: )?[Uu]nsupported command[:]* rpower ddd
 check:rc==1
 end
 

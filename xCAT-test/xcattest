@@ -1052,15 +1052,21 @@ sub load_case {
                 $case_ref->[$i]->{arch} = $1;
 
                 if ($run_case_flag) {
-
+                    
                     #To judge whether need to skip the current case
-                    my $case_arch = $case_ref->[$i]->{arch};
-                    if ($case_arch =~ /ppc/i && $case_arch !~ /le|el/i) {
-                        $case_arch = "ppc";
-                    } elsif ($case_arch =~ /ppc/i && $case_arch =~ /le|el/i) {
-                        $case_arch = "ppc64le";
-                    } elsif ($case_arch =~ /x86/i) {
-                        $case_arch = "x86";
+
+                    my @vaild_archs_tmp = split(",", $case_ref->[$i]->{arch});
+                    my @vaild_archs=();
+                    foreach my $arch (@vaild_archs_tmp){                    
+                        my $tmp_str="";
+                        if ($arch =~ /ppc/i && $arch !~ /le|el/i) {
+                            $tmp_str = "ppc";
+                        } elsif ($arch =~ /ppc/i && $arch =~ /le|el/i) {
+                            $tmp_str = "ppc64le";
+                        } elsif ($arch =~ /x86/i) {
+                            $tmp_str = "x86";
+                        }
+                        push @vaild_archs, $tmp_str; 
                     }
 
                     my $env_arch = "";
@@ -1079,10 +1085,13 @@ sub load_case {
                     }
 
                     my $valid = 0;
-                    if ($case_arch eq $env_arch) {
-                        $valid = 1;
-                        if (grep (/$case_ref->[$i]->{name}/, @{ $invalidcases{"noruncases"} })) {
-                            delete_item_from_array($case_ref->[$i]->{name}, $invalidcases{"noruncases"});
+                    foreach my $arch (@vaild_archs){
+                        if ($arch eq $env_arch) {
+                            $valid = 1;
+                            if (grep (/$case_ref->[$i]->{name}/, @{ $invalidcases{"noruncases"} })) {
+                                delete_item_from_array($case_ref->[$i]->{name}, $invalidcases{"noruncases"});
+                            }
+                            last;
                         }
                     }
                     unless ($valid) {
@@ -1104,12 +1113,18 @@ sub load_case {
 
                     #To judge whether need to skip the current case
                     my $valid = 0;
-                    if (exists($config{var}{HCP}) && ($case_ref->[$i]->{hcp} =~ /$config{var}{HCP}/i)) {
-                        $valid = 1;
-                        if (grep (/$case_ref->[$i]->{name}/, @{ $invalidcases{"noruncases"} })) {
-                            delete_item_from_array($case_ref->[$i]->{name}, $invalidcases{"noruncases"});
+                    my @valid_hcps = split(",", $case_ref->[$i]->{hcp});
+
+                    foreach my $hcp (@valid_hcps){
+                        $hcp =~  s/^\s+|\s+$//g;
+                        if (exists($config{var}{HCP}) && ($hcp =~ /^$config{var}{HCP}$/i)) {
+                            $valid = 1;
+                            if (grep (/$case_ref->[$i]->{name}/, @{ $invalidcases{"noruncases"} })) {
+                                delete_item_from_array($case_ref->[$i]->{name}, $invalidcases{"noruncases"});
+                            }
+                            last;
                         }
-                    }
+                    } 
                     unless ($valid) {
                         if (exists($case_name_index_map_bak{ $case_ref->[$i]->{name} })) {
                             $$case_name_index_map_ref{ $case_ref->[$i]->{name} } = $case_name_index_map_bak{ $case_ref->[$i]->{name} };
