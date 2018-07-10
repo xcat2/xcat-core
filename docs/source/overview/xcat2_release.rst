@@ -1,6 +1,15 @@
 xCAT2 Release Information
 =========================
 
+
+From xCAT 2.14.2, xCAT will NOT update this document. For detailed release information,please refer to following link.
+
+https://github.com/xcat2/xcat-core/releases
+
+---------------------------------------------------------------------------------------------------------------------
+xCAT2 Release Information before xCAT 2.14.1
+
+
 The following table is a summary of the new operating system (OS), hardware, and features that are added to each xCAT release.   The OS and hardware listed in the table have been fully tested with xCAT.   For a more detailed list of new function, bug fixes, restrictions and known problems, refer to the individual release notes for a specific release. 
 
 * **RHEL** - Red Hat Enterprise Linux
