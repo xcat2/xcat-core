@@ -12,6 +12,7 @@ use strict;
 use warnings "all";
 use xCAT::Table;
 use xCAT::Utils;
+use xCAT::NodeRange;
 
 #-------------------------------------------------------
 
@@ -38,8 +39,16 @@ sub process_request {
 }
 
 sub update_hw_inv {
-    my $request = shift;
-    my $node     = $request->{'_xcat_clienthost'}->[0];
+    my $request    = shift;
+    my $tmp_node   = $request->{'_xcat_clienthost'}->[0];
+    my @valid_node = xCAT::NodeRange::noderange($tmp_node);
+
+    unless (@valid_node) {
+        xCAT::MsgUtils->message("S", "xcat.hwinv: Received invalid node $tmp_node hwinv info, ignore...");
+        return;
+    }
+
+    my $node = $valid_node[0];
 
     my @nodefs;
     my $basicdata;
