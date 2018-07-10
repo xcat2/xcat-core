@@ -492,7 +492,7 @@ my %usage = (
       renergy noderange [-V] { cappingstatus={on | enable | off | disable} | {cappingwatt|cappingvalue}=watt }
 
     OpenPOWER server specific :
-      renergy noderange [ powerusage | temperature]
+      renergy noderange { powerusage | temperature }
 ",
     "updatenode" =>
       "Usage:

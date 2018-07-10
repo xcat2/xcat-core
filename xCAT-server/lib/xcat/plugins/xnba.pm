@@ -105,11 +105,20 @@ sub setstate {
     my %machash         = %{ shift() };
     my %iscsihash       = %{ shift() };
     my $tftpdir         = shift;
-    my %linuximghash    = ();
     my $linuximghashref = shift;
-    if (ref $linuximghashref) { %linuximghash = %{$linuximghashref}; }
-    my $imgaddkcmdline = ($linuximghash{'boottarget'}) ? undef : $linuximghash{'addkcmdline'};
+
     my $kern = $bphash{$node}->[0];
+    my $imgaddkcmdline = $linuximghashref->{'addkcmdline'};
+    my $imgboottarget = $linuximghashref->{'boottarget'};
+
+    # get kernel and initrd from boottarget table
+    my $bttab;
+    my $btentry;
+    if ($imgboottarget) {
+        $bttab = xCAT::Table->new('boottarget');
+        $btentry = $bttab->getAttribs({ 'bprofile' => $imgboottarget }, 'kernel', 'initrd', 'kcmdline');
+    }
+
 
     unless ($::XNBA_addkcmdlinehandled->{$node}) { #Tag to let us know the plugin had a special syntax implemented for addkcmdline
         if ($kern->{addkcmdline} or ($imgaddkcmdline)) {
@@ -171,6 +180,18 @@ sub setstate {
 
         }
     }
+
+    #fill in kernel, intrd and kcmdline from boottarget table if not available
+    unless ($kern->{kernel}) {
+        $kern->{kernel} = $btentry->{kernel};
+    }
+    unless ($kern->{initrd}) {
+        $kern->{initrd} = $btentry->{initrd};
+    }
+    unless ($kern->{kcmdline}) {
+        $kern->{kcmdline} = $btentry->{kcmdline};
+    }
+
     my $elilokcmdline = $kern->{kcmdline}; #track it separate, since vars differ
     my $pxelinuxkcmdline = $kern->{kcmdline}; #track it separate, since vars differ
     if ($kern->{kcmdline} =~ /!myipfn!/) {

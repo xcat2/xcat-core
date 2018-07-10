@@ -844,14 +844,14 @@ sub do_udp_service {    # This function opens up a UDP port
                         #notify the client that its request is been processing
                         my $ret=xCAT::NetworkUtils->send_tcp_msg($clientip,3001,"processing");
                         if($ret){
-                            xCAT::MsgUtils->message("S", "INFO xcatd: fail to notify $clientip that its 'findme' request is been processing");
+                            xCAT::MsgUtils->message("S", "xcatd: fail to notify $clientip that its 'findme' request is been processing");
                         }
                     } elsif ($data =~ /^<xcat/) {    # xml format
                         store_fd({ data => $data, sockaddr => $clientip, sport => $sport }, $discoctl);
                         #notify the client that its request is been processing
                         my $ret=xCAT::NetworkUtils->send_tcp_msg($clientip,3001,"processing");
                         if($ret){
-                            xCAT::MsgUtils->message("S", "INFO xcatd: fail to notify $clientip that its 'findme' request is been processing");
+                            xCAT::MsgUtils->message("S", "xcatd: fail to notify $clientip that its 'findme' request is been processing");
                         }
 
                     } else {    # for *now*, we'll do a tiny YAML subset
@@ -1212,7 +1212,7 @@ unless ($cmdlog_svrpid) {
         if ($clientsock)           { close($clientsock); }
         if (-e $cmdlogservicefile) { unlink("$cmdlogservicefile"); }
         if ($cmdlogsvrlistener)    { close($cmdlogsvrlistener); }
-        xCAT::MsgUtils->message("S", "INFO xcatd: 'Command log writer' process $$ is terminated by USR2 signal");
+        xCAT::MsgUtils->message("S", "xcatd: 'Command log writer' process $$ is terminated by USR2 signal");
         exit(0);
     };
 
@@ -1222,7 +1222,7 @@ unless ($cmdlog_svrpid) {
         if ($clientsock)           { close($clientsock); }
         if (-e $cmdlogservicefile) { unlink("$cmdlogservicefile"); }
         if ($cmdlogsvrlistener)    { close($cmdlogsvrlistener); }
-        xCAT::MsgUtils->message("S", "INFO xcatd: 'Command log writer' process $$ is terminated by TERM or INT signal");
+        xCAT::MsgUtils->message("S", "xcatd: 'Command log writer' process $$ is terminated by TERM or INT signal");
         exit(0);
     };
 
@@ -1246,10 +1246,10 @@ unless ($cmdlog_svrpid) {
             $cmdlogfileswitch = 1;
         }
         if (!$trytime) {
-            xCAT::MsgUtils->message("S", "INFO xcatd: 'Command log writer' process $$ get HUP signal, reopen commands.log file failed, send TERM signal to kill itself");
+            xCAT::MsgUtils->message("S", "xcatd: 'Command log writer' process $$ get HUP signal, reopen commands.log file failed, send TERM signal to kill itself");
             kill 'INT', $$;
         } else {
-            xCAT::MsgUtils->message("S", "INFO xcatd: 'Command log writer' process $$ get HUP signal, reopen commands.log file");
+            xCAT::MsgUtils->message("S", "xcatd: 'Command log writer' process $$ get HUP signal, reopen commands.log file");
         }
     };
 
@@ -1260,7 +1260,7 @@ unless ($cmdlog_svrpid) {
         Listen    => 8192);
 
     if (not $cmdlogsvrlistener and open($cmdlogpidfile, "<", "$cmdlogservicefile")) {
-        xCAT::MsgUtils->message("S", "INFO xcatd: 'Command log writer' process $$ is trying to get port $cmdlog_port");
+        xCAT::MsgUtils->message("S", "xcatd: 'Command log writer' process $$ is trying to get port $cmdlog_port");
         my $pid = <$cmdlogpidfile>;
         if ($pid) {
             kill 'USR2', $pid;
@@ -1319,7 +1319,7 @@ unless ($cmdlog_svrpid) {
 
     if ($cmdlogfile)        { close($cmdlogfile); }
     if ($cmdlogsvrlistener) { close($cmdlogsvrlistener); }
-    xCAT::MsgUtils->message("S", "INFO xcatd: 'Command log writer' process $$ stop");
+    xCAT::MsgUtils->message("S", "xcatd: 'Command log writer' process $$ stop");
 }
 
 # ----used for command log end---------

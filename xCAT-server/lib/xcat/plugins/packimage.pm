@@ -99,6 +99,7 @@ sub process_request {
     my $imagename;
     my $dotorrent;
     my $provmethod;
+    my $envars;
     my $help;
     my $version;
     my $lock;  
@@ -153,7 +154,7 @@ sub process_request {
             $callback->({ error => ["The linuximage table cannot be opened."], errorcode => [1] });
             return 1;
         }
-        (my $ref) = $osimagetab->getAttribs({ imagename => $imagename }, 'osvers', 'osarch', 'profile', 'provmethod', 'synclists');
+        (my $ref) = $osimagetab->getAttribs({ imagename => $imagename }, 'osvers', 'osarch', 'profile', 'provmethod', 'synclists','environvar');
         unless ($ref) {
             $callback->({ error => ["Cannot find image \'$imagename\' from the osimage table."], errorcode => [1] });
             return 1;
@@ -169,6 +170,7 @@ sub process_request {
         $profile    = $ref->{'profile'};
         $syncfile   = $ref->{'synclists'};
         $provmethod = $ref->{'provmethod'};
+        $envars     = $ref->{'environvar'};
 
         unless ($osver and $arch and $profile and $provmethod) {
             $callback->({ error => ["osimage.osvers, osimage.osarch, osimage.profile and osimage.provmethod must be specified for the image $imagename in the database."], errorcode => [1] });
@@ -394,11 +396,15 @@ sub process_request {
     system("umount $rootimg_dir/proc");
     copybootscript($installroot, $rootimg_dir, $osver, $arch, $profile, $callback);
 
+
     my $pass = xCAT::PasswordUtils::crypt_system_password();
     if (!defined($pass)) {
         $pass = 'cluster';
     }
-
+    my @secure_root    = xCAT::TableUtils->get_site_attribute("secureroot");
+    if ($secure_root[0] == 1) {
+        $pass = '*';
+    }
     my $oldmask = umask(0077);
     my $shadow;
     open($shadow, "<", "$rootimg_dir/etc/shadow");
@@ -418,8 +424,12 @@ sub process_request {
         # sync fils configured in the synclist to the rootimage
         $syncfile = xCAT::SvrUtils->getsynclistfile(undef, $osver, $arch, $profile, "netboot", $imagename);
         if ( defined($syncfile) && -f $syncfile && -d $rootimg_dir) {
+            my $myenv='';
+            if($envars){
+                $myenv.=" XCAT_OSIMAGE_ENV=$envars";
+            }
             print "Syncing files from $syncfile to root image dir: $rootimg_dir\n";
-            system("$::XCATROOT/bin/xdcp -i $rootimg_dir -F $syncfile");
+            system("$myenv $::XCATROOT/bin/xdcp -i $rootimg_dir -F $syncfile");
         }
     } else {
         print "Bypass of syncfiles requested, will not sync files to root image directory.\n";

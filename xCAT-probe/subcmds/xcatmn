@@ -13,20 +13,20 @@ use File::Copy;
 use Data::Dumper;
 use Getopt::Long qw(:config no_ignore_case);
 
-my $help      = 0;    #command line attribute '-h', get usage information
-my $test      = 0;    #command line attribute '-T'
-my $hierarchy = 0;
-my $verbose   = 0;    #command line attribute '-V'
-my $noderange;        #command line attribute '-n'
-my $output = "stdout"; #used by probe_utils->send_msg("$output", "o", "xxxxxxxxxx"); print output to STDOUT
-my $rst    = 0;        #the exit code of current command
-my $terminal = 0;      #means get INT signal from STDIN
+my $help        = 0;        #command line attribute '-h', get usage information
+my $test        = 0;        #command line attribute '-T'
+my $hierarchy   = 0;
+my $verbose     = 0;        #command line attribute '-V'
+my $noderange;              #command line attribute '-n'
+my $output      = "stdout"; #used by probe_utils->send_msg("$output", "o", "xxxxxxxxxx"); print output to STDOUT
+my $rst         = 0;        #the exit code of current command
+my $terminal    = 0;        #means get INT signal from STDIN
 my $installnic;
 
-#save all output from commands running on SNs and MN
-# one example:
-# $summaryoutput{mn} = @mn_output_history
-# $summaryoutput{SN1} = @SN1_output_history
+# Save all output from commands running on SNs and MN
+# Example:
+#    $summaryoutput{mn} = @mn_output_history
+#    $summaryoutput{SN1} = @SN1_output_history
 my %summaryoutput;
 
 my $is_sn;
@@ -1134,12 +1134,26 @@ sub check_network_parameter {
     return ($rst, $rst_type);
 }
 
+sub get_attribute_value  {
+    my  $table = shift;
+    my  $attr = shift;
+
+    my $cmd_value = "";
+    my $command_info = `lsdef -t  $table -i $attr -c 2>&1`; 
+    if ($command_info =~ /$attr=(\d+)/) {
+        $cmd_value = $1
+    }
+    print_check_result("Checking $table table attribute... $attr=$cmd_value", 0, 0, \@error);
+    return $cmd_value
+}
+
+
 sub check_daemon_attributes {
     my $checkpoint_ref = shift;
     my $error_ref      = shift;
     my $rst            = 0;
     $rst_type          = "w";
-
+    my $node_limit     = 500;
     $$checkpoint_ref = "Checking xCAT daemon attributes configuration...";
     @$error_ref = ();
 
@@ -1147,27 +1161,20 @@ sub check_daemon_attributes {
     chomp($node_num);
     my $xcatmaxconnections = 64;
     my $xcatmaxbatchconnections = 50;
-
-    my @site_max_info = `lsdef -t site -i xcatmaxconnections,xcatmaxbatchconnections -c 2>&1`;
-    foreach my $site_max (@site_max_info) {
-        if ($site_max =~ /xcatmaxconnections=(\d+)/) {
-            $xcatmaxconnections_site = $1;
-        }
-        if ($site_max =~ /xcatmaxbatchconnections=(\d+)/) {
-            $xcatmaxbatchconnections_site = $1;
+    my $xcatmaxconnections_site = get_attribute_value("site","xcatmaxconnections");
+    my $xcatmaxbatchconnections_site = get_attribute_value("site","xcatmaxbatchconnections");
+    if ($xcatmaxconnections_site != "" and $xcatmaxbatchconnections_site != "") {
+        if ($xcatmaxbatchconnections_site > $xcatmaxconnections_site) {
+            push @$error_ref, "Error:  xcatmaxbatchconnections > xcatmaxconnections";
+            $rst = 1;
+            $rst_type = "f";
+        } elsif ($xcatmaxconnections_site < $xcatmaxconnections or 
+                 $xcatmaxbatchconnections_site < $xcatmaxbatchconnections and
+                 $node_num >= $node_limit) {
+            push @$error_ref, "Detected >= $node_limnit nodes, refer to xCAT documentation for xCAT daemon tuning recommendations.";
+            $rst = 1;
         }
     }
-
-    if ($xcatmaxconnections_site <= $xcatmaxbatchconnections_site) {
-        push @$error_ref, "Attribute xcatmaxbatchconnections must be less than xcatmaxconnections.";
-        $rst = 1;
-        $rst_type = "f";
-    } elsif ($xcatmaxconnections_site < $xcatmaxconnections or 
-             $xcatmaxbatchconnections_site < $xcatmaxbatchconnections and
-             $node_num >= 500) {
-        push @$error_ref, "Management nodes are more than 500, please tuning xCAT daemon attributes as document";
-        $rst = 1;
-    } 
     return ($rst, $rst_type);
 } 
 

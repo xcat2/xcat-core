@@ -912,7 +912,7 @@ sub process_request {
     if (ref $request->{arg}) {
         @ARGV = @{ $request->{arg} };
         GetOptions(
-            'f' => \$usefping
+            'f|useping' => \$usefping
         );
     }
 
@@ -1217,7 +1217,7 @@ sub usage
     my $retcode=shift;
     my $rsp = {};
     $rsp->{data}->[0] = "Usage:";
-    $rsp->{data}->[1] = "  nodestat [noderange] [-m|--usemon] [-p|powerstat] [-u|--updatedb]";
+    $rsp->{data}->[1] = "  nodestat [noderange] [-m|--usemon] [-p|powerstat] [-f|--usefping] [-u|--updatedb]";
     $rsp->{data}->[2] = "  nodestat [-h|--help|-v|--version]";
     if($retcode){
        $rsp->{errorcode}->[0]=$retcode;

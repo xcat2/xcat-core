@@ -4,7 +4,7 @@ B<nodestat> - display the running status of each node in a noderange
 
 =head1 B<Synopsis>
 
-B<nodestat> [I<noderange>] [B<-m>|B<--usemon>] [B<-p>|B<--powerstat>] [B<-f>] [B<-u>|B<--updatedb>]
+B<nodestat> [I<noderange>] [B<-m>|B<--usemon>] [B<-p>|B<--powerstat>] [B<-f>|B<--usefping>] [B<-u>|B<--updatedb>]
 
 B<nodestat> [B<-h>|B<--help>|B<-v>|B<--version>]
 
@@ -57,7 +57,7 @@ For the command specified by 'dcmd', no input is needed, the output can be a str
 
 =over 10
 
-=item B<-f>
+=item B<-f>|B<--usefping>
 
 Uses fping instead of nmap even if nmap is available.  If you seem to be having a problem with false negatives, fping can be more forgiving, but slower.
 

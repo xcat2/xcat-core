@@ -61,5 +61,18 @@ rm -rf $RPM_BUILD_ROOT
 - "Create xCAT probe package"
 
 %post
+if [ -e %{prefix}/probe/subcmds/bin/switchprobe ]; then
+    rm -rf %{prefix}/probe/subcmds/bin/switchprobe
+else
+    mkdir -p %{prefix}/probe/subcmds/bin/
+fi
+cd %{prefix}/probe/subcmds/bin/ 
+if [ -e %{prefix}/bin/xcatclient ]; then
+    ln -s %{prefix}/bin/xcatclient switchprobe
+fi
 
 %preun
+#remove the bin directory if not on upgrade
+if [ "$1" != "1" ]; then
+    rm -rf %{prefix}/probe/subcmds/bin/
+fi

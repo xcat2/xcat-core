@@ -272,7 +272,7 @@ sub send_back_comment{
 sub build_xcat_core{
     my @output;
     my @cmds = ("gpg --list-keys",
-                "sed -i '/SignWith: yes/d' $ENV{'PWD'}/build-ubunturepo");
+                "sed -i '/SignWith: /d' $ENV{'PWD'}/build-ubunturepo");
     foreach my $cmd (@cmds){
         print "[build_xcat_core] running $cmd\n";
         @output = runcmd("$cmd");

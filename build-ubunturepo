@@ -69,7 +69,7 @@ for i in $*; do
 done
 
 # Supported distributions
-dists="saucy trusty utopic xenial"
+dists="saucy trusty utopic xenial bionic"
 
 c_flag=            # xcat-core (trunk-delvel) path
 d_flag=            # xcat-dep (trunk) path
@@ -335,7 +335,7 @@ __EOF__
            echo "GPGSIGN=$GPGSIGN specified, the repo will not be signed"
            echo "" >> conf/distributions
        else 
-           echo "SignWith: yes" >> conf/distributions
+           echo "SignWith: 5619700D" >> conf/distributions
            echo "" >> conf/distributions
        fi
     done
@@ -462,7 +462,7 @@ __EOF__
             echo "GPGSIGN=$GPGSIGN specified, the repo will not be signed"
             echo "" >> conf/distributions
         else
-            echo "SignWith: yes" >> conf/distributions
+            echo "SignWith: 5619700D" >> conf/distributions
             echo "" >> conf/distributions
         fi
 

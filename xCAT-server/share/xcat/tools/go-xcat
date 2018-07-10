@@ -2,7 +2,7 @@
 #
 # go-xcat - Install xCAT automatically.
 #
-# Version 1.0.27
+# Version 1.0.28
 #
 # Copyright (C) 2016, 2017, 2018 International Business Machines
 # Eclipse Public License, Version 1.0 (EPL-1.0)
@@ -438,7 +438,12 @@ function check_package_version_deb()
 		do
 			if [[ "$1" = "${name[i]}" ]]
 			then
-				echo "${ver[i]}"
+				if [[ -n "${ver[i]}" ]]
+				then
+					echo "${ver[i]}"
+				else
+					echo "(not installed)"
+				fi
 				unset "name[${i}]" "ver[${i}]"
 				shift && continue 2
 			fi

@@ -1,5 +1,6 @@
 start:nodegrpch_v
 description:nodegrpch -v and --version
+label:mn_only,db
 cmd:nodegrpch -v 
 check:output=~Version
 cmd:nodegrpch --version
@@ -8,6 +9,7 @@ end
 
 start:nodegrpch_h
 description:nodegrpch -? and -h --help
+label:mn_only,db
 cmd:nodegrpch -h
 check:output=~Usage
 cmd:nodegrpch -?
@@ -19,6 +21,7 @@ end
 
 start:nodegrpch_groups
 description:nodegrpch rh4.1234567890 mgt=hmc
+label:mn_only,db
 cmd:chdef -t node -o testnode groups=rh4.1234567890 mgt=blade
 check:rc==0
 cmd:nodegrpch rh4.1234567890 mgt=hmc
@@ -32,6 +35,7 @@ end
 
 start:nodegrpch_err
 description:
+label:mn_only,db
 cmd:nodegrpch -c 
 check:rc!=0
 check:output=~Usage

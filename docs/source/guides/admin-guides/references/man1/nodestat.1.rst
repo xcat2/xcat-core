@@ -19,7 +19,7 @@ Name
 ****************
 
 
-\ **nodestat**\  [\ *noderange*\ ] [\ **-m | -**\ **-usemon**\ ] [\ **-p | -**\ **-powerstat**\ ] [\ **-f**\ ] [\ **-u | -**\ **-updatedb**\ ]
+\ **nodestat**\  [\ *noderange*\ ] [\ **-m | -**\ **-usemon**\ ] [\ **-p | -**\ **-powerstat**\ ] [\ **-f | -**\ **-usefping**\ ] [\ **-u | -**\ **-updatedb**\ ]
 
 \ **nodestat**\  [\ **-h | -**\ **-help | -v | -**\ **-version**\ ]
 
@@ -86,7 +86,7 @@ For the command specified by 'dcmd', no input is needed, the output can be a str
 
 
 
-\ **-f**\ 
+\ **-f | -**\ **-usefping**\
  
  Uses fping instead of nmap even if nmap is available.  If you seem to be having a problem with false negatives, fping can be more forgiving, but slower.
  
