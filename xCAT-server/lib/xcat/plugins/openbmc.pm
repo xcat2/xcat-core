@@ -62,6 +62,7 @@ $::UPLOAD_ACTIVATE_STREAM   = 0;
 $::RFLASH_STREAM_NO_HOST_REBOOT = 0;
 $::NO_ATTRIBUTES_RETURNED   = "No attributes returned from the BMC.";
 $::FAILED_UPLOAD_MSG        = "Failed to upload update file";
+$::FAILED_LOGIN_MSG         = "BMC did not respond. Validate BMC configuration and retry the command.";
 
 $::UPLOAD_WAIT_ATTEMPT      = 6;
 $::UPLOAD_WAIT_INTERVAL     = 10;
@@ -990,7 +991,8 @@ sub process_request {
 
     foreach my $node (keys %node_info) {
         if (!$valid_nodes{$node}) {
-            xCAT::SvrUtils::sendmsg([1, "BMC did not respond. Validate BMC configuration and retry the command."], $callback, $node);
+            xCAT::SvrUtils::sendmsg([1, $::FAILED_LOGIN_MSG], $callback, $node);
+            $node_info{$node}{rst} = $::FAILED_LOGIN_MSG;
             $wait_node_num--;
             next;
         }
