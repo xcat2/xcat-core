@@ -2111,26 +2111,24 @@ sub do_firmware_update {
 
         # The target machine is *NOT* IBM Power S822LC for Big Data (Supermicro)
         # Only .hpm files is supported for such machine, no directory option is supported
-        if (defined $directory_name) {
-            my ($part1, $part2) = split(/Chassis Part Number   :/, $output);
-            my ($part3, $model)  = split(/\s+/, $part2); 
+        if (defined $directory_name and $output =~ /Chassis Part Number\s*:\s*(\S*)/) {
+            my $model = $1;
             $exit_with_error_func->($sessdata->{node}, $callback, "Flashing of $model is not supported with pUpdate, supported Model Types: $BIG_DATA_MACHINE_MODELS");
         }
     }
 
     # If we fall through here, it is *NOT* IBM Power S822LC for Big Data (Supermicro) and we expact some data in hpm_data_hash.
     # Verify hpm_data_hash has some values
-    if ((defined $hpm_data_hash{deviceID}) ||
-        (defined $hpm_data_hash{productID}) ||
-        (defined $hpm_data_hash{manufactureID})) {
 
-        if (($hpm_data_hash{deviceID} ne $sessdata->{device_id}) ||
-            ($hpm_data_hash{productID} ne $sessdata->{prod_id}) ||
-            ($hpm_data_hash{manufactureID} ne $sessdata->{mfg_id})) {
-                 $exit_with_error_func->($sessdata->{node}, $callback, "The image file doesn't match target machine: \n$output");
-        }
-    } else {
-        $exit_with_error_func->($sessdata->{node}, $callback, "No data was extracted from .hpm update file");
+
+    if (!exists($hpm_data_hash{deviceID})
+        || !exists($hpm_data_hash{manufactureID})
+        || !exists($hpm_data_hash{productID})) {
+        $exit_with_error_func->($sessdata->{node}, $callback, "Extract data from .hpm update file failed, no deviceID, productID or manufactureID got");
+    } elsif (($hpm_data_hash{deviceID} ne $sessdata->{device_id}) ||
+             ($hpm_data_hash{productID} ne $sessdata->{prod_id}) ||
+             ($hpm_data_hash{manufactureID} ne $sessdata->{mfg_id})) {
+        $exit_with_error_func->($sessdata->{node}, $callback, "The image file doesn't match target machine: \n$output");
     }
 
     # check for 8335-GTB Firmware above 1610A release.  If below, exit
