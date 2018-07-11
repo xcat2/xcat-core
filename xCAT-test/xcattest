@@ -1404,20 +1404,12 @@ sub run_case {
                     my $rvalue = $2;
 
                     $rvalue = getfunc($rvalue);
-                     
-                    #modify for issue5382
-                    $rvalue =~ s/{/\\{/g;
-
                     if ((($op eq '=~') && ($lvalue !~ /$rvalue/))
                         || (($op eq '!~') && ($lvalue =~ /$rvalue/))
                         || (($op eq '==') && ($lvalue ne $rvalue))
                         || (($op eq '!=') && ($lvalue eq $rvalue))) {
                         $failflag = 1;
                     }
-
-                    #modify for issue5382
-                    $rvalue =~ s/\\\{/{/g;
-
                     if ($failflag) {
                         log_this($running_log_fd, "CHECK:output $op $rvalue\t[Failed]");
                         push(@caselog, "CHECK:output $op $rvalue\t[Failed]");
