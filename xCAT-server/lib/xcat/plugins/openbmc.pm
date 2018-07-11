@@ -1066,11 +1066,12 @@ rmdir \"/tmp/\$userid\" \n";
                         # In that case check the rflash log file for this node and extract error from there
                         unless ($node_info{$node}{rst}) {
                             my $rflash_log_file = xCAT::Utils->full_path($node.".log", $::XCAT_LOG_RFLASH_DIR);
-                            $node_info{$node}{rst} = "Firmware upload error"; # Generic default message
                             # Extract the upload error from last line in log file 
                             my $upload_error = `tail $rflash_log_file -n1 | grep "$::FAILED_UPLOAD_MSG"`;
                             if ($upload_error) {
                                 $node_info{$node}{rst} = $upload_error;
+                            } else {
+                                $node_info{$node}{rst} = "BMC is not ready";
                             }
                         }
                         push @{ $rflash_result{fail} }, "$node: $node_info{$node}{rst}";
