@@ -1064,7 +1064,7 @@ rmdir \"/tmp/\$userid\" \n";
                         push @{ $rflash_result{fail} }, "$node: $node_info{$node}{rst}";
                     }
                 }
-                xCAT::MsgUtils->message("I", { data => ["-------------------------------------------------------"] }, $callback);
+                xCAT::MsgUtils->message("I", { data => ["-------------------------------------------------------"], host => [1] }, $callback);
                 my $summary = "Firmware update complete: ";
                 my $total = keys %node_info;
                 my $success = 0;
@@ -1072,14 +1072,14 @@ rmdir \"/tmp/\$userid\" \n";
                 $success = @{ $rflash_result{success} } if (defined $rflash_result{success} and @{ $rflash_result{success} });
                 $fail = @{ $rflash_result{fail} } if (defined $rflash_result{fail} and @{ $rflash_result{fail} });
                 $summary .= "Total=$total Success=$success Failed=$fail";
-                xCAT::MsgUtils->message("I", { data => ["$summary"] }, $callback);
+                xCAT::MsgUtils->message("I", { data => ["$summary"], host => [1] }, $callback);
 
                 if ($rflash_result{fail}) {
                     foreach (@{ $rflash_result{fail} }) {
-                        xCAT::MsgUtils->message("I", { data => ["$_"] }, $callback);
+                        xCAT::MsgUtils->message("I", { data => ["$_"], host => [1] }, $callback);
                     }
                 }
-                xCAT::MsgUtils->message("I", { data => ["-------------------------------------------------------"] }, $callback);
+                xCAT::MsgUtils->message("I", { data => ["-------------------------------------------------------"], host => [1] }, $callback);
             }
             last;
         }
