@@ -90,6 +90,7 @@ my $client = IO::Socket::SSL->new(
     SSL_ca_file   => $homedir . "/.xcat/ca.pem",
     SSL_use_cert  => 1,
     %sslargs,
+    SSL_cipher_list => undef,
     SSL_verify_mode     => SSL_VERIFY_PEER,
     SSL_verifycn_scheme => "none",
 );

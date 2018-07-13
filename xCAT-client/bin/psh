@@ -75,6 +75,7 @@ else {
         SSL_use_cert        => 1,
         SSL_verify_mode     => SSL_VERIFY_PEER,
         SSL_verifycn_scheme => "none",
+        SSL_cipher_list => undef,
         %sslargs,
     );
     die "Connection failure: $!\n" unless ($client);
