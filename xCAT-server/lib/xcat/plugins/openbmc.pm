@@ -1011,7 +1011,9 @@ sub process_request {
 
             my $lock = xCAT::Utils->acquire_lock("rflash_$node", 1);
             unless ($lock) {
-                xCAT::SvrUtils::sendmsg([ 1, "Unable to rflash $node. Another process is aleady flashing this node." ], $callback, $node);
+                my $lock_msg = "Unable to rflash $node. Another process is already flashing this node.";
+                xCAT::SvrUtils::sendmsg([ 1, $lock_msg ], $callback, $node);
+                $node_info{$node}{rst} = $lock_msg;
                 $wait_node_num--;
                 next; 
             }
@@ -1083,21 +1085,6 @@ rmdir \"/tmp/\$userid\" \n";
                         push @{ $rflash_result{fail} }, "$node: $node_info{$node}{rst}";
                     }
                 }
-<<<<<<< HEAD
-                xCAT::MsgUtils->message("I", { data => ["-------------------------------------------------------"], host => [1] }, $callback);
-                my $summary = "Firmware update complete: ";
-                my $total = keys %node_info;
-                my $success = 0;
-                my $fail = 0;
-                $success = @{ $rflash_result{success} } if (defined $rflash_result{success} and @{ $rflash_result{success} });
-                $fail = @{ $rflash_result{fail} } if (defined $rflash_result{fail} and @{ $rflash_result{fail} });
-                $summary .= "Total=$total Success=$success Failed=$fail";
-                xCAT::MsgUtils->message("I", { data => ["$summary"], host => [1] }, $callback);
-
-                if ($rflash_result{fail}) {
-                    foreach (@{ $rflash_result{fail} }) {
-                        xCAT::MsgUtils->message("I", { data => ["$_"], host => [1] }, $callback);
-=======
                 my $total = keys %node_info;
                 # Display summary information but only if there were any nodes to process
                 if ($total > 0) {
