@@ -502,10 +502,7 @@ HANDLE_MAKENTP_A:
         }
     }
 
-
     return;
 }
 
-
 1;
-
