@@ -560,13 +560,13 @@ class OpenBMCFlashTask(ParallelNodesCommand):
                 failed_num += 1
                 failed_list.append('%s: %s' % (key, value))
 
-        self.callback.info('-' * 55)
-        self.callback.info('%s complete: Total=%d Success=%d Failed=%d' % \
+        self.callback.info_with_host('-' * 55)
+        self.callback.info_with_host('%s complete: Total=%d Success=%d Failed=%d' % \
                            ('Firmware update', self.nodes_num, success_num, failed_num))
 
         for i in failed_list:
-            self.callback.info(i)
-        self.callback.info('-' * 55)
+            self.callback.info_with_host(i)
+        self.callback.info_with_host('-' * 55)
 
     def post_activate_firm(self, task, activate_arg, **kw):
 
