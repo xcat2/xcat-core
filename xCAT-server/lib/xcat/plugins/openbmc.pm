@@ -67,6 +67,8 @@ $::UPLOAD_WAIT_INTERVAL     = 10;
 $::UPLOAD_WAIT_TOTALTIME    = int($::UPLOAD_WAIT_ATTEMPT*$::UPLOAD_WAIT_INTERVAL);
 
 $::RPOWER_CHECK_INTERVAL    = 2;
+$::RPOWER_CHECK_ON_INTERVAL = 12;
+$::RPOWER_ON_MAX_RETRY      = 5;
 $::RPOWER_MAX_RETRY         = 30;
 
 $::BMC_MAX_RETRY = 20;
@@ -308,6 +310,9 @@ my %status_info = (
     RPOWER_ON_RESPONSE => {
         process        => \&rpower_response,
     },
+    RPOWER_CHECK_ON_RESPONSE => {
+        process        => \&rpower_response,
+    },
     RPOWER_OFF_REQUEST  => {
         method         => "PUT",
         init_url       => "$openbmc_project_url/state/chassis0/attr/RequestedPowerTransition",
@@ -335,6 +340,10 @@ my %status_info = (
         process        => \&rpower_response,
     },
     RPOWER_CHECK_REQUEST  => {
+        method         => "GET",
+        init_url       => "$openbmc_project_url/state/enumerate",
+    },
+    RPOWER_CHECK_ON_REQUEST  => {
         method         => "GET",
         init_url       => "$openbmc_project_url/state/enumerate",
     },
@@ -2145,6 +2154,9 @@ sub parse_command_status {
                $next_status{RPOWER_CHECK_RESPONSE}{OFF} = "RPOWER_ON_REQUEST";
                $next_status{RPOWER_ON_REQUEST} = "RPOWER_ON_RESPONSE";
                $status_info{RPOWER_ON_RESPONSE}{argv} = "boot";
+               $next_status{RPOWER_ON_RESPONSE} = "RPOWER_CHECK_ON_REQUEST";
+               $next_status{RPOWER_CHECK_ON_REQUEST} = "RPOWER_CHECK_ON_RESPONSE";
+               $next_status{RPOWER_CHECK_ON_RESPONSE}{OFF} = "RPOWER_ON_REQUEST";
             }
         } 
     }
@@ -2271,6 +2283,7 @@ sub parse_node_info {
 
             $node_info{$node}{cur_status} = "LOGIN_REQUEST";
             $node_info{$node}{rpower_check_times} = $::RPOWER_MAX_RETRY;
+            $node_info{$node}{rpower_check_on_times} = $::RPOWER_ON_MAX_RETRY;
             $node_info{$node}{bmc_conn_check_times} = $::BMC_MAX_RETRY;
             $node_info{$node}{bmcstate_check_times} = $::BMC_MAX_RETRY;
         } else {
@@ -2596,11 +2609,16 @@ sub rpower_response {
 
     my $response_info = decode_json $response->content;
 
-
+    
     if ($node_info{$node}{cur_status} eq "RPOWER_ON_RESPONSE") {
         if ($response_info->{'message'} eq $::RESPONSE_OK) {
             if ($status_info{RPOWER_ON_RESPONSE}{argv}) {
-                xCAT::SvrUtils::sendmsg("$::POWER_STATE_RESET", $callback, $node);
+                if (defined($node_info{$node}{power_state_rest}) and ($node_info{$node}{power_state_rest} == 1)) {
+                    xCAT::SvrUtils::sendmsg("$::POWER_STATE_ON", $callback, $node);
+                } else {
+                    $node_info{$node}{power_state_rest} = 1;
+                    xCAT::SvrUtils::sendmsg("$::POWER_STATE_RESET", $callback, $node);
+                }
             } else {
                 if (defined($::OPENBMC_PWR) and ($::OPENBMC_PWR eq "YES")) {
                     xCAT::SvrUtils::sendmsg("$::STATUS_POWERING_ON", $callback, $node);
@@ -2639,7 +2657,7 @@ sub rpower_response {
     xCAT_monitoring::monitorctrl::setNodeStatusAttributes(\%new_status, 1) if (%new_status);
 
     my $all_status;
-    if ($node_info{$node}{cur_status} eq "RPOWER_STATUS_RESPONSE" or $node_info{$node}{cur_status} eq "RPOWER_CHECK_RESPONSE" or $node_info{$node}{cur_status} eq "RPOWER_BMC_STATUS_RESPONSE") {
+    if ($node_info{$node}{cur_status} eq "RPOWER_STATUS_RESPONSE" or $node_info{$node}{cur_status} eq "RPOWER_CHECK_RESPONSE" or $node_info{$node}{cur_status} eq "RPOWER_BMC_STATUS_RESPONSE" or $node_info{$node}{cur_status} eq "RPOWER_CHECK_ON_RESPONSE") {
         my $bmc_state = "";
         my $bmc_transition_state = "";
         my $chassis_state = "";
@@ -2777,6 +2795,29 @@ sub rpower_response {
                 return;
             } else {
                 $node_info{$node}{cur_status} = $next_status{ $node_info{$node}{cur_status} }{ON};
+            }
+        } elsif ($node_info{$node}{cur_status} eq "RPOWER_CHECK_ON_RESPONSE") {
+            if ($all_status eq "$::POWER_STATE_ON") {
+                $node_info{$node}{cur_status} = "";
+                $wait_node_num--;
+                return;
+            }else{
+                if ($node_info{$node}{rpower_check_on_times} > 0) {
+                    $node_info{$node}{rpower_check_on_times}--;
+                    if ($node_info{$node}{wait_on_start}) {
+                        $node_info{$node}{wait_on_end} = time();
+                    } else {
+                        $node_info{$node}{wait_on_start} = time();
+                    }
+                    retry_after($node, $next_status{ $node_info{$node}{cur_status} }{OFF}, $::RPOWER_CHECK_ON_INTERVAL);
+                    return;
+                } else {
+                    my $wait_time_X = $node_info{$node}{wait_on_end} - $node_info{$node}{wait_on_start};
+                    xCAT::SvrUtils::sendmsg([1, "Sent power-on command but state did not change to $::POWER_STATE_ON after waiting $wait_time_X seconds. (State=$all_status)."], $callback, $node);
+                    $node_info{$node}{cur_status} = "";
+                    $wait_node_num--;
+                    return;
+                }
             }
         } else {
             $node_info{$node}{cur_status} = $next_status{ $node_info{$node}{cur_status} };
