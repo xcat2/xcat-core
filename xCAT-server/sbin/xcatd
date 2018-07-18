@@ -3355,26 +3355,27 @@ sub cmdlog_collectlog() {
         $rsp = $tmprsp;
 
         # handle response
+        my $msgsource = "";
+        $msgsource = $rsp->{xcatdsource}->[0] if ($rsp->{xcatdsource});
+        #Only show response source when it is from different service node
+        $msgsource = "" if ($MYXCATSERVER eq $msgsource);
+
         # Handle errors
         if ($rsp->{error}) {
             if (ref($rsp->{error}) eq 'ARRAY') {
                 foreach my $text (@{ $rsp->{error} }) {
-                    if (defined($text)) {
-                        if ($rsp->{NoErrorPrefix}) {
-                            $rsp_log .= $text;
-                        } else {
-                            $rsp_log .= "Error: $text\n";
-                        }
-                    }
+                    my $desc = "$text";
+                    $desc = "[$msgsource]: $desc" if ($desc && $msgsource);
+                    $desc = "Error: $desc" unless ($rsp->{NoErrorPrefix});
+                    $rsp_log .= "$desc\n";
                 }
             }
             else {
                 if (defined($rsp->{error})) {
-                    if ($rsp->{NoErrorPrefix}) {
-                        $rsp_log .= $rsp->{error} . "\n";
-                    } else {
-                        $rsp_log .= "Error: " . $rsp->{error} . "\n";
-                    }
+                    my $desc = $rsp->{error};
+                    $desc = "[$msgsource]: $desc" if ($desc && $msgsource);
+                    $desc = "Error: $desc" unless ($rsp->{NoErrorPrefix});
+                    $rsp_log .= "$desc\n";
                 }
             }
         }
@@ -3382,22 +3383,18 @@ sub cmdlog_collectlog() {
         if ($rsp->{warning}) {
             if (ref($rsp->{warning}) eq 'ARRAY') {
                 foreach my $text (@{ $rsp->{warning} }) {
-                    if (defined($text)) {
-                        if ($rsp->{NoWarnPrefix}) {
-                            $rsp_log .= "$text\n";
-                        } else {
-                            $rsp_log .= "Warning: $text\n";
-                        }
-                    }
+                    my $desc = "$text";
+                    $desc = "[$msgsource]: $desc" if ($desc && $msgsource);
+                    $desc = "Warning: $desc" unless ($rsp->{NoWarnPrefix});
+                    $rsp_log .= "$desc\n";
                 }
             }
             else {
                 if (defined($rsp->{warning})) {
-                    if ($rsp->{NoWarnPrefix}) {
-                        $rsp_log .= $rsp->{warning} . "\n";
-                    } else {
-                        $rsp_log .= "Warning: " . $rsp->{warning} . "\n";
-                    }
+                    my $desc = $rsp->{warning};
+                    $desc = "[$msgsource]: $desc" if ($desc && $msgsource);
+                    $desc = "Warning: $desc" unless ($rsp->{NoWarnPrefix});
+                    $rsp_log .= "$desc\n";
                 }
             }
         }
@@ -3405,14 +3402,14 @@ sub cmdlog_collectlog() {
         if ($rsp->{info}) {
             if (ref($rsp->{info}) eq 'ARRAY') {
                 foreach my $text (@{ $rsp->{info} }) {
-                    if (defined($text)) {
-                        $rsp_log .= "$text\n";
-                    }
+                    my $desc = "$text";
+                    $desc = "[$msgsource]: $desc" if ($desc && $msgsource);
+                    $rsp_log .= "$desc\n";
                 }
             } else {
-                if (defined($rsp->{info})) {
-                    $rsp_log .= $rsp->{info} . "\n";
-                }
+                my $desc = $rsp->{info};
+                $desc = "[$msgsource]: $desc" if ($desc && $msgsource);
+                $rsp_log .= "$desc\n";
             }
         }
 
@@ -3445,19 +3442,30 @@ sub cmdlog_collectlog() {
                 } else {
                     $desc = $node->{name};
                 }
-                if ($node->{error}) {
-                    if (defined($node->{error}->[0])) {
-                        $desc .= ": Error: " . $node->{error}->[0];
-                        $errflg = 1;
+                if (($node->{error}) && defined($node->{error}->[0])) {
+                    if ($desc) {
+                        $desc = "$desc: [$msgsource]" if ($msgsource);
+                    } else {
+                        $desc = "[$msgsource]" if ($msgsource);
                     }
+                    $desc .= ": Error: " . $node->{error}->[0];
+                    $errflg = 1;
                 }
-                if ($node->{warning}) {
-                    if (defined($node->{warning}->[0])) {
-                        $desc .= ": Warning: " . $node->{warning}->[0];
-                        $errflg = 1;
+                if (($node->{warning}) && defined($node->{warning}->[0])){
+                    if ($desc) {
+                        $desc = "$desc: [$msgsource]" if ($msgsource);
+                    } else {
+                        $desc = "[$msgsource]" if ($msgsource);
                     }
+                    $desc .= ": Warning: " . $node->{warning}->[0];
+                    $errflg = 1;
                 }
                 if ($node->{data}) {
+                    if ($desc) {
+                        $desc = "$desc: [$msgsource]" if ($msgsource);
+                    } else {
+                        $desc = "[$msgsource]" if ($msgsource);
+                    }
                     if (ref(\($node->{data})) eq 'SCALAR') {
                         if (defined($node->{data})) {
                             $desc = $desc . ": " . $node->{data};
