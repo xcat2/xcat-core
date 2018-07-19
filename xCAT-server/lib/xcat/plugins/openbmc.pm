@@ -1071,6 +1071,7 @@ rmdir \"/tmp/\$userid\" \n";
                             # Extract the upload error from last line in log file 
                             my $upload_error = `tail $rflash_log_file -n1 | grep "$::FAILED_UPLOAD_MSG"`;
                             if ($upload_error) {
+                                chomp $upload_error;
                                 $node_info{$node}{rst} = $upload_error;
                             } else {
                                 $node_info{$node}{rst} = "BMC is not ready";
@@ -4677,7 +4678,7 @@ sub rflash_upload {
     my $curl_login_result = `$curl_login_cmd -s`;
     my $h;
     if (!$curl_login_result) {
-        my $curl_error = "Did not receive response from OpenBMC after running command '$curl_login_cmd'";
+        my $curl_error = "$::FAILED_UPLOAD_MSG. Did not receive response from OpenBMC after running command '$curl_login_cmd'";
         xCAT::SvrUtils::sendmsg([1, "$curl_error"], $callback, $node);
         print RFLASH_LOG_FILE_HANDLE "$curl_error\n";
         $node_info{$node}{rst} = "$curl_error"; 
@@ -4685,8 +4686,10 @@ sub rflash_upload {
     } 
     eval { $h = from_json($curl_login_result) }; # convert command output to hash
     if ($@) {
-        my $curl_error = "Received wrong format response for command '$curl_login_cmd': $curl_login_result";
+        my $curl_error = "$::FAILED_UPLOAD_MSG. Received wrong format response for command '$curl_login_cmd': $curl_login_result";
         xCAT::SvrUtils::sendmsg([1, "$curl_error"], $callback, $node);
+        # Before writing error to log, make it a single line
+        $curl_error =~ tr{\n}{ };
         print RFLASH_LOG_FILE_HANDLE "$curl_error\n";
         $node_info{$node}{rst} = "$curl_error";
         return 1;
@@ -4719,7 +4722,7 @@ sub rflash_upload {
                 }    
                 my $curl_upload_result = `$upload_cmd`;
                 if (!$curl_upload_result) {
-                    my $curl_error = "Did not receive response from OpenBMC after running command '$upload_cmd'";
+                    my $curl_error = "$::FAILED_UPLOAD_MSG. Did not receive response from OpenBMC after running command '$upload_cmd'";
                     xCAT::SvrUtils::sendmsg([1, "$curl_error"], $callback, $node);
                     print RFLASH_LOG_FILE_HANDLE "$curl_error\n";
                     $node_info{$node}{rst} = "$curl_error";
@@ -4727,8 +4730,10 @@ sub rflash_upload {
                 }
                 eval { $h = from_json($curl_upload_result) }; # convert command output to hash
                 if ($@) {
-                    my $curl_error = "Received wrong format response from command '$upload_cmd': $curl_upload_result";
+                    my $curl_error = "$::FAILED_UPLOAD_MSG. Received wrong format response from command '$upload_cmd': $curl_upload_result";
                     xCAT::SvrUtils::sendmsg([1, "$curl_error"], $callback, $node);
+                    # Before writing error to log, make it a single line
+                    $curl_error =~ tr{\n}{ };
                     print RFLASH_LOG_FILE_HANDLE "$curl_error\n";
                     $node_info{$node}{rst} = "$curl_error";
                     return 1;
