@@ -2657,6 +2657,7 @@ sub rpower_response {
     xCAT_monitoring::monitorctrl::setNodeStatusAttributes(\%new_status, 1) if (%new_status);
 
     my $all_status;
+    #get host $all_status for RPOWER_CHECK_ON_RESPONSE
     if ($node_info{$node}{cur_status} eq "RPOWER_STATUS_RESPONSE" or $node_info{$node}{cur_status} eq "RPOWER_CHECK_RESPONSE" or $node_info{$node}{cur_status} eq "RPOWER_BMC_STATUS_RESPONSE" or $node_info{$node}{cur_status} eq "RPOWER_CHECK_ON_RESPONSE") {
         my $bmc_state = "";
         my $bmc_transition_state = "";
@@ -2797,11 +2798,16 @@ sub rpower_response {
                 $node_info{$node}{cur_status} = $next_status{ $node_info{$node}{cur_status} }{ON};
             }
         } elsif ($node_info{$node}{cur_status} eq "RPOWER_CHECK_ON_RESPONSE") {
+            #RPOWER_CHECK_ON_REQUEST and RPOWER_CHECK_ON_RESPONSE are for rflash -d function
+            #in order to make sure host is reboot successfully
+            #if rpower reset host and host state is always off, retry to set RPOWER_CHECK_ON_REQUEST to run rpower on the host
+            #1. if host power state is on, do nothing, and return
             if ($all_status eq "$::POWER_STATE_ON") {
                 $node_info{$node}{cur_status} = "";
                 $wait_node_num--;
                 return;
             }else{
+                #2. if host state is always off, retry to set RPOWER_CHECK_ON_REQUEST to run rpower on the host
                 if ($node_info{$node}{rpower_check_on_times} > 0) {
                     $node_info{$node}{rpower_check_on_times}--;
                     if ($node_info{$node}{wait_on_start}) {
@@ -2809,9 +2815,11 @@ sub rpower_response {
                     } else {
                         $node_info{$node}{wait_on_start} = time();
                     }
+                    #retry to set RPOWER_CHECK_ON_REQUEST after wait for $::RPOWER_CHECK_ON_INTERVAL
                     retry_after($node, $next_status{ $node_info{$node}{cur_status} }{OFF}, $::RPOWER_CHECK_ON_INTERVAL);
                     return;
                 } else {
+                    #after retry 5 times, the host is still off, print error and return
                     my $wait_time_X = $node_info{$node}{wait_on_end} - $node_info{$node}{wait_on_start};
                     xCAT::SvrUtils::sendmsg([1, "Sent power-on command but state did not change to $::POWER_STATE_ON after waiting $wait_time_X seconds. (State=$all_status)."], $callback, $node);
                     $node_info{$node}{cur_status} = "";
