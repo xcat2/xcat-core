@@ -97,6 +97,10 @@ declare -a NTP_SERVERS=()
 while [ "$#" -gt "0" ]
 do
         case "$1" in
+	"--use-ntpd")
+		# Use traditional ntpd
+		USE_NTPD="yes"
+		;;
 	*)
 		NTP_SERVERS+=($1)
 		;;
@@ -125,8 +129,19 @@ fi
 unset MASTER
 unset NTPSERVERS
 
+check_executes chronyd || USE_NTPD="yes"
+
+if [ -n "${USE_NTPD}" ]
+then
+	# Call setupntp.traditional, and pass the parsed ntp servers
+	logger -t xcat -p local4.info "Will call setupntp.traditional"
+	export NTPSERVERS="$(IFS=','; echo "${NTP_SERVERS[*]:-pool.ntp.org}")"
+	exec "${0%/*}/setupntp.traditional"
+	exit 255
+fi
+
 check_exec_or_exit cp cat logger
-check_exec_or_exit systemctl timedatectl hwclock chronyd
+check_exec_or_exit systemctl timedatectl hwclock
 
 systemctl stop ntp.service 2>/dev/null
 systemctl disable ntp.service 2>/dev/null
