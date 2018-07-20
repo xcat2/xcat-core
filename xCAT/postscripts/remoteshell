@@ -60,7 +60,7 @@ then
         echo "MaxStartups 1024" >>/etc/ssh/sshd_config
  
     if [ "$SETUPFORPCM" = "1" ]; then
-        if [[ $OSVER == sles* ]];then
+        if [[ $OSVER == sle* ]];then
             sed -i '/PasswordAuthentication /'d /etc/ssh/sshd_config
             echo "PasswordAuthentication yes" >>/etc/ssh/sshd_config
         elif [[ $OSVER == ubuntu* ]];then

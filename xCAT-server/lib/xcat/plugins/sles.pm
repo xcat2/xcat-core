@@ -870,6 +870,8 @@ sub mkinstall
             $profile = $ent->{profile};
             if ($os =~ /sles.*/) {
                 $plat = "sles";
+            } elsif ($os =~ /sle.*/) {
+                $plat = "sle";
             } elsif ($os =~ /suse.*/) {
                 $plat = "suse";
             } else {
