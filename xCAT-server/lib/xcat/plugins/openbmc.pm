@@ -61,6 +61,8 @@ $::UPLOAD_AND_ACTIVATE      = 0;
 $::UPLOAD_ACTIVATE_STREAM   = 0;
 $::RFLASH_STREAM_NO_HOST_REBOOT = 0;
 $::NO_ATTRIBUTES_RETURNED   = "No attributes returned from the BMC.";
+$::FAILED_UPLOAD_MSG        = "Failed to upload update file";
+$::FAILED_LOGIN_MSG         = "BMC did not respond. Validate BMC configuration and retry the command.";
 
 $::UPLOAD_WAIT_ATTEMPT      = 6;
 $::UPLOAD_WAIT_INTERVAL     = 10;
@@ -998,7 +1000,8 @@ sub process_request {
 
     foreach my $node (keys %node_info) {
         if (!$valid_nodes{$node}) {
-            xCAT::SvrUtils::sendmsg([1, "BMC did not respond. Validate BMC configuration and retry the command."], $callback, $node);
+            xCAT::SvrUtils::sendmsg([1, $::FAILED_LOGIN_MSG], $callback, $node);
+            $node_info{$node}{rst} = $::FAILED_LOGIN_MSG;
             $wait_node_num--;
             next;
         }
@@ -1069,7 +1072,20 @@ rmdir \"/tmp/\$userid\" \n";
                     if ($node_info{$node}{rst} =~ /successful/) {
                         push @{ $rflash_result{success} }, $node;
                     } else {
-                        $node_info{$node}{rst} = "BMC is not ready" unless ($node_info{$node}{rst});
+                        # If there is no error in $node_info{$node}{rst} it is probably because fw file
+                        # upload is done in a forked process and data can not be saved in $node_info{$node}{rst}
+                        # In that case check the rflash log file for this node and extract error from there
+                        unless ($node_info{$node}{rst}) {
+                            my $rflash_log_file = xCAT::Utils->full_path($node.".log", $::XCAT_LOG_RFLASH_DIR);
+                            # Extract the upload error from last line in log file 
+                            my $upload_error = `tail $rflash_log_file -n1 | grep "$::FAILED_UPLOAD_MSG"`;
+                            if ($upload_error) {
+                                chomp $upload_error;
+                                $node_info{$node}{rst} = $upload_error;
+                            } else {
+                                $node_info{$node}{rst} = "BMC is not ready";
+                            }
+                        }
                         push @{ $rflash_result{fail} }, "$node: $node_info{$node}{rst}";
                     }
                 }
@@ -4711,7 +4727,7 @@ sub rflash_upload {
     my $curl_login_result = `$curl_login_cmd -s`;
     my $h;
     if (!$curl_login_result) {
-        my $curl_error = "Did not receive response from OpenBMC after running command '$curl_login_cmd'";
+        my $curl_error = "$::FAILED_UPLOAD_MSG. Did not receive response from OpenBMC after running command '$curl_login_cmd'";
         xCAT::SvrUtils::sendmsg([1, "$curl_error"], $callback, $node);
         print RFLASH_LOG_FILE_HANDLE "$curl_error\n";
         $node_info{$node}{rst} = "$curl_error"; 
@@ -4719,8 +4735,10 @@ sub rflash_upload {
     } 
     eval { $h = from_json($curl_login_result) }; # convert command output to hash
     if ($@) {
-        my $curl_error = "Received wrong format response for command '$curl_login_cmd': $curl_login_result";
+        my $curl_error = "$::FAILED_UPLOAD_MSG. Received wrong format response for command '$curl_login_cmd': $curl_login_result";
         xCAT::SvrUtils::sendmsg([1, "$curl_error"], $callback, $node);
+        # Before writing error to log, make it a single line
+        $curl_error =~ tr{\n}{ };
         print RFLASH_LOG_FILE_HANDLE "$curl_error\n";
         $node_info{$node}{rst} = "$curl_error";
         return 1;
@@ -4753,7 +4771,7 @@ sub rflash_upload {
                 }    
                 my $curl_upload_result = `$upload_cmd`;
                 if (!$curl_upload_result) {
-                    my $curl_error = "Did not receive response from OpenBMC after running command '$upload_cmd'";
+                    my $curl_error = "$::FAILED_UPLOAD_MSG. Did not receive response from OpenBMC after running command '$upload_cmd'";
                     xCAT::SvrUtils::sendmsg([1, "$curl_error"], $callback, $node);
                     print RFLASH_LOG_FILE_HANDLE "$curl_error\n";
                     $node_info{$node}{rst} = "$curl_error";
@@ -4761,8 +4779,10 @@ sub rflash_upload {
                 }
                 eval { $h = from_json($curl_upload_result) }; # convert command output to hash
                 if ($@) {
-                    my $curl_error = "Received wrong format response from command '$upload_cmd': $curl_upload_result";
+                    my $curl_error = "$::FAILED_UPLOAD_MSG. Received wrong format response from command '$upload_cmd': $curl_upload_result";
                     xCAT::SvrUtils::sendmsg([1, "$curl_error"], $callback, $node);
+                    # Before writing error to log, make it a single line
+                    $curl_error =~ tr{\n}{ };
                     print RFLASH_LOG_FILE_HANDLE "$curl_error\n";
                     $node_info{$node}{rst} = "$curl_error";
                     return 1;
@@ -4776,7 +4796,7 @@ sub rflash_upload {
                     print RFLASH_LOG_FILE_HANDLE "$upload_success_msg\n";
                     # Try to logoff, no need to check result, as there is nothing else to do if failure
                 } else {
-                    my $upload_fail_msg = "Failed to upload update file $file :" . $h->{message} . " - " . $h->{data}->{description};
+                    my $upload_fail_msg = $::FAILED_UPLOAD_MSG . " $file :" . $h->{message} . " - " . $h->{data}->{description};
                     xCAT::SvrUtils::sendmsg("$upload_fail_msg", $callback, $node);
                     print RFLASH_LOG_FILE_HANDLE "$upload_fail_msg\n";
                     close (RFLASH_LOG_FILE_HANDLE);
