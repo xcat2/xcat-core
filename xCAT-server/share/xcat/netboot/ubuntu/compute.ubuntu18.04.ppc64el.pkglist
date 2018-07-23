@@ -16,3 +16,4 @@ dnsutils
 tar
 gzip
 xz-utils
+cpio
