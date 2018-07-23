@@ -452,12 +452,6 @@ if ($::INITIALINSTALL || $::FORCE || $::UPDATEINSTALL || $::genCredentials)
     }
     else
     {
-        #since the xcatd service unit file is updated on xcat upgrade
-        #"systemctl daemon-reload" need to be run to update the service unit
-        if ($::UPDATEINSTALL) {
-            $xcmd="type systemctl >/dev/null 2>&1 && systemctl daemon-reload";
-            xCAT::Utils->runcmd("$xcmd", 0);
-        }
         #$xcmd = "/etc/init.d/xcatd restart";
         xCAT::Utils->restartservice("xcatd");
     }
@@ -1082,7 +1076,7 @@ sub initDB
     my $master;
     $master = xCAT::NetworkUtils->getipaddr($hname);
     if (!$master) {
-        xCAT::MsgUtils->message("E", "Hostname resolution for $hname failed, setting the site.master to NORESOLUTION for now, after the xCAT installation is finished, fix this hostname resolution problem, change the site.master to the correct value and then resart xcatd.");
+        xCAT::MsgUtils->message("E", "Hostname resolution for $hname failed, setting the site.master to NORESOLUTION for now, after the xCAT installation is finished, fix this hostname resolution problem, change the site.master to the correct value and then restart xcatd.");
         $master = "NORESOLUTION";
     }
 

@@ -56,6 +56,9 @@ check:output=~xcatd service is running|active \(running\)
 cmd:service xcatd stop
 check:rc==0
 cmd:sleep 3
+cmd:ps axjf |grep -v grep |grep "xcatd:" | wc -l
+check:rc==0
+check:output=~0
 cmd:service xcatd status
 check:output=~xcatd service|xcatd.service
 check:output=~xcatd service is not running|inactive \(dead\)

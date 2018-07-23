@@ -35,6 +35,7 @@ opt/xcat/xdsh
 opt/xcat/xdsh/Context
 opt/xcat/ws
 etc/init.d
+lib/systemd/system
 etc/xcat
 etc/apache2/conf-enabled
 etc/apache2/conf-available

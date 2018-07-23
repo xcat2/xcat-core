@@ -327,6 +327,8 @@ chmod 644 $RPM_BUILD_ROOT/%{prefix}/lib/shfunctions
 %else
 mkdir -p $RPM_BUILD_ROOT/etc/init.d
 cp etc/init.d/xcatd $RPM_BUILD_ROOT/etc/init.d
+mkdir -p $RPM_BUILD_ROOT/usr/lib/systemd/system
+cp etc/init.d/xcatd.service $RPM_BUILD_ROOT/usr/lib/systemd/system
 %endif
 #TODO: the next has to me moved to postscript, to detect /etc/xcat vs /etc/opt/xcat
 mkdir -p $RPM_BUILD_ROOT/etc/%httpconfigdir
@@ -394,6 +396,7 @@ rm -rf $RPM_BUILD_ROOT
 %if %fsm
 %else
 /etc/init.d/xcatd
+/usr/lib/systemd/system/xcatd.service
 #/etc/%httpconfigdir/conf.orig/xcat-ws.conf.apache24
 #/etc/%httpconfigdir/conf.orig/xcat-ws.conf.apache22
 /etc/apache2/conf.d/xcat-ws.conf
@@ -401,6 +404,9 @@ rm -rf $RPM_BUILD_ROOT
 %endif
 
 %changelog
+* Fri Jul 6 2018 - Bin Xu <bxuxa@cn.ibm.com>
+- Added systemd unit file
+
 * Tue Nov 20 2007 - Jarrod Johnson <jbjohnso@us.ibm.com>
 - Changes for relocatible rpm.
 
@@ -436,7 +442,10 @@ fi
 ln -sf $RPM_INSTALL_PREFIX0/sbin/xcatd /usr/sbin/xcatd
 
 if [ "$1" = "1" ]; then #Only if installing for the first time..
-   if [ -x /sbin/chkconfig ]; then
+   if [ -x /usr/lib/systemd/systemd ]; then
+       /usr/bin/systemctl daemon-reload
+       /usr/bin/systemctl enable xcatd.service
+   elif [ -x /sbin/chkconfig ]; then
        /sbin/chkconfig --add xcatd
    elif [ -x /usr/lib/lsb/install_initd ]; then
        /usr/lib/lsb/install_initd /etc/init.d/xcatd
@@ -446,6 +455,19 @@ if [ "$1" = "1" ]; then #Only if installing for the first time..
 fi
 
 if [ "$1" -gt "1" ]; then #only on upgrade...
+  if [ -x /usr/lib/systemd/systemd ]; then
+    if [ -f /run/systemd/generator.late/xcatd.service ]; then
+        # To cover the case upgrade from no xcatd systemd unit file (cannot enable by default for HA case)
+        ls /etc/rc.d/rc?.d/S??xcatd >/dev/null 2>&1
+        if [ "$?" = "0" ]; then
+           [ -x /sbin/chkconfig ] && /sbin/chkconfig --del xcatd
+           /usr/bin/systemctl daemon-reload
+           /usr/bin/systemctl enable xcatd.service
+        fi
+    else
+        /usr/bin/systemctl daemon-reload
+    fi
+  fi
   #migration issue for monitoring
   XCATROOT=$RPM_INSTALL_PREFIX0 $RPM_INSTALL_PREFIX0/sbin/chtab filename=monitorctrl.pm notification -d
 fi
@@ -486,7 +508,9 @@ if [ $1 == 0 ]; then  #This means only on -e
   		/etc/init.d/xcatd stop
   	fi
 
-  if [ -x /sbin/chkconfig ]; then
+  if [ -x /usr/lib/systemd/systemd ]; then
+       /usr/bin/systemctl disable xcatd.service
+  elif [ -x /sbin/chkconfig ]; then
       /sbin/chkconfig --del xcatd
   elif [ -x /usr/lib/lsb/remove_initd ]; then
       /usr/lib/lsb/remove_initd /etc/init.d/xcatd

@@ -20,15 +20,32 @@ set -e
 
 case "$1" in
     configure)
-	. /etc/profile.d/xcat.sh
-        update-rc.d xcatd defaults
-	if [ -f /tmp/xCAT-server_upgrade.tmp ]; then
-	    if [ -f "/proc/cmdline" ]; then   # prevent running it during install into chroot image
-		/etc/init.d/xcatd reload
-	    fi
-            rm /tmp/xCAT-server_upgrade.tmp
-	fi
-	ln -sf /opt/xcat/sbin/xcatd /usr/sbin/xcatd
+        . /etc/profile.d/xcat.sh
+        if [ -f /tmp/xCAT-server_upgrade.tmp ]; then
+          if [ -x /lib/systemd/systemd ]; then
+            if [ -f /run/systemd/generator.late/xcatd.service ]; then
+                # To cover the case upgrade from no xcatd systemd unit file (cannot enable by default for HA case)
+                ls /etc/rc?.d/S??xcatd >/dev/null 2>&1
+                if [ "$?" = "0" ]; then
+                   [ -x /usr/sbin/update-rc.d ] && /usr/sbin/update-rc.d xcatd remove
+                   /bin/systemctl daemon-reload
+                   /bin/systemctl enable xcatd.service
+                fi
+            else
+                /bin/systemctl daemon-reload
+            fi
+          fi
+          # No need to reload xcatd here as it will be covered by xCAT/xCATsn now
+          rm /tmp/xCAT-server_upgrade.tmp
+        else
+          if [ -x /lib/systemd/systemd ]; then
+            /bin/systemctl daemon-reload
+            /bin/systemctl enable xcatd.service
+          else
+            update-rc.d xcatd defaults
+          fi
+        fi
+        ln -sf /opt/xcat/sbin/xcatd /usr/sbin/xcatd
     ;;
 
     abort-upgrade|abort-remove|abort-deconfigure)
