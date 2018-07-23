@@ -1650,6 +1650,16 @@ EOMS
         push @filestoadd, $_;
     }
 
+    # Workaround for Ubuntu 18.04 busybox bug
+    # https://bugs.launchpad.net/ubuntu/+source/busybox/+bug/1753572
+    # On Ubuntun 18.04, will use GNU cpio instead of busybox cpio
+    if ("ubuntu18.04" eq $osver) {
+        foreach ("bin/cpio") {
+            getlibs($_);
+            push @filestoadd, $_;
+        }
+    }
+
     # Additional binaries needed for udev on s390x
     if ($arch eq "s390x") {
         foreach ("sbin/udevsettle", "sbin/udevtrigger", "sbin/udevd", "sbin/depmod") {
