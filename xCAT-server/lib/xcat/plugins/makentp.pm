@@ -234,6 +234,44 @@ sub process_request {
         send_msg(\%request, 0, "configuring service node: $nodename.");
     }
 
+    # get site.extntpservers for mn, for sn use mn as the server
+    my $ntp_servers;
+    my $ntp_master;
+    my $ntp_attrib;
+    if (xCAT::Utils->isMN()) {
+        $ntp_attrib = "extntpservers";
+    } else {
+        $ntp_attrib = "ntpservers";
+    }
+    my @entries     = xCAT::TableUtils->get_site_attribute($ntp_attrib);
+    my $ntp_servers = $entries[0];
+
+    if (!xCAT::Utils->isMN() && ((!$ntp_servers) ||
+        (($ntp_servers) && ($ntp_servers =~ /<xcatmaster>/)))) {
+        my $retdata = xCAT::ServiceNodeUtils->readSNInfo($nodename);
+        $ntp_servers = $retdata->{'master'};
+    }
+
+    # Handle chronyd here,
+    if (-f "/usr/sbin/chronyd") {
+        send_msg(\%request, 0, "Will configure chronyd instead.");
+
+        my $cmd = "/install/postscripts/setupntp " .
+            join(' ', split(',', $ntp_servers));
+        send_msg(\%request, 0, "Calling ... " . $cmd);
+
+        my $result = xCAT::Utils->runcmd($cmd, 0);
+        if ($::RUNCMD_RC != 0) {
+            send_msg(\%request, 1, "Error from command: $cmd\n    $result");
+            return 1;
+        }
+
+        send_msg(\%request, 0, "Daemon chronyd configured.");
+
+	# Cannot find a better way other than use goto statement :-/
+        goto HANDLE_MAKENTP_A;
+    }
+
     #check if ntp is installed or not
     if ($verbose) {
         send_msg(\%request, 0, " ...checking if nptd is installed.");
@@ -270,23 +308,6 @@ sub process_request {
                 return 1;
             }
         }
-    }
-
-    # get site.extntpservers for mn, for sn use mn as the server
-    my $ntp_servers;
-    my $ntp_master;
-    my $ntp_attrib;
-    if (xCAT::Utils->isMN()) {
-        $ntp_attrib = "extntpservers";
-    } else {
-        $ntp_attrib = "ntpservers";
-    }
-    my @entries     = xCAT::TableUtils->get_site_attribute($ntp_attrib);
-    my $ntp_servers = $entries[0];
-
-    if (!xCAT::Utils->isMN() && ((!$ntp_servers) || (($ntp_servers) && ($ntp_servers =~ /<xcatmaster>/)))) {
-        my $retdata = xCAT::ServiceNodeUtils->readSNInfo($nodename);
-        $ntp_servers = $retdata->{'master'};
     }
 
     if ($verbose) {
@@ -455,6 +476,8 @@ sub process_request {
     }
     xCAT::Utils->enableservice($ntp_service);
 
+HANDLE_MAKENTP_A:
+
     #now handle sn that has ntpserver=1 set in servicenode table.
     # this part is called by makentp -a.
     if ($req->{_all}->[0] == 1) {
@@ -479,10 +502,7 @@ sub process_request {
         }
     }
 
-
     return;
 }
 
-
 1;
-
