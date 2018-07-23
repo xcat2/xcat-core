@@ -4793,6 +4793,10 @@ sub rflash_upload {
                     unless ($::UPLOAD_AND_ACTIVATE or $::UPLOAD_ACTIVATE_STREAM) {
                         xCAT::SvrUtils::sendmsg("$upload_success_msg", $callback, $node);
                     }
+                    #Put a delay of 3 seconds to allow time for the BMC to untar the file we just uploaded
+                    if (defined($::UPLOAD_ACTIVATE_STREAM)){
+                        sleep 3;
+                    }
                     print RFLASH_LOG_FILE_HANDLE "$upload_success_msg\n";
                     # Try to logoff, no need to check result, as there is nothing else to do if failure
                 } else {
