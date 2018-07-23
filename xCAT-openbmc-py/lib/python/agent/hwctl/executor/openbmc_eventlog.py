@@ -87,7 +87,7 @@ class OpenBMCEventlogTask(ParallelNodesCommand):
                 # loop through eventlog_info_dict and collect LED ids to be resolved into a eventlog_ids_to_resolve array
                 for key in list(keys):
                     if "[LED]" in eventlog_info_dict[key]:
-                        if "Resolved: 0" in eventlog_info_dict[key]:
+                        if "Resolved: 0" or "Resolved: false" in eventlog_info_dict[key]:
                             eventlog_ids_to_resolve.append(key)
                         else:
                             if self.verbose:
@@ -96,7 +96,7 @@ class OpenBMCEventlogTask(ParallelNodesCommand):
                 # loop through list of ids and collect ids to resolve into a eventlog_ids_to_resolve array
                 for id_to_resolve in ids.split(','):
                     if id_to_resolve in eventlog_info_dict:
-                        if "Resolved: 0" in eventlog_info_dict[id_to_resolve]:
+                        if "Resolved: 0" or "Resolved: false" in eventlog_info_dict[id_to_resolve]:
                             eventlog_ids_to_resolve.append(id_to_resolve)
                         else:
                             if self.verbose:
