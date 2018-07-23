@@ -4773,7 +4773,7 @@ sub rflash_upload {
                     unless ($::UPLOAD_AND_ACTIVATE or $::UPLOAD_ACTIVATE_STREAM) {
                         xCAT::SvrUtils::sendmsg("$upload_success_msg", $callback, $node);
                     }
-                    #put a delay of 3 seconds to untar the file
+                    #Put a delay of 3 seconds to allow time for the BMC to untar the file we just uploaded
                     if (defined($::UPLOAD_ACTIVATE_STREAM)){
                         sleep 3;
                     }
