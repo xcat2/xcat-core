@@ -274,7 +274,7 @@ if [ $hassystemd -eq 1 ] ; then
         cat >/etc/systemd/system/xcatpostinit1.service <<'EOF'
 #INCLUDE:/install/postscripts/xcatpostinit1.service.yast2#
 EOF
-        cat >/opt/xcat/xcatpostinit1.service.yast2 <<'EOF'
+        cat >/opt/xcat/xcatpostinit1.service.sles <<'EOF'
 #INCLUDE:/install/postscripts/xcatpostinit1.service#
 EOF
     else
