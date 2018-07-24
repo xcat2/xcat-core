@@ -270,9 +270,18 @@ if [ $? -eq 0 ]; then
 fi
 
 if [ $hassystemd -eq 1 ] ; then
-    cat >/etc/systemd/system/xcatpostinit1.service <<'EOF'
+    if [[ $OSVER == sles12* ]]; then
+        cat >/etc/systemd/system/xcatpostinit1.service <<'EOF'
+#INCLUDE:/install/postscripts/xcatpostinit1.service.yast2#
+EOF
+        cat >/opt/xcat/xcatpostinit1.service.sles <<'EOF'
 #INCLUDE:/install/postscripts/xcatpostinit1.service#
 EOF
+    else
+        cat >/etc/systemd/system/xcatpostinit1.service <<'EOF'
+#INCLUDE:/install/postscripts/xcatpostinit1.service#
+EOF
+    fi
     if [ "$XCATDEBUGMODE" = "1" ] || [ "$XCATDEBUGMODE" = "2" ]; then
         msgutil_r "$MASTER_IP" "debug" "/etc/systemd/system/xcatpostinit1.service generated" "/var/log/xcat/xcat.log" "$log_label"
     fi
