@@ -120,6 +120,17 @@ if ! flock -n 8; then
     exit 1
 fi
 
+# for the git case, query the current branch and set REL (changing master to devel if necessary)
+function setbranch {
+    # Get the current branch name
+    REL=`git rev-parse --abbrev-ref HEAD`
+    if [ "$REL" = "master" ]; then
+        REL="devel"
+    fi
+    # Special handling when in a 'detached HEAD' state
+    [[ "$REL" = "HEAD" ]] && REL=`git describe --abbrev=0 HEAD` && REL=`echo $VER|cut -d. -f 1,2`
+}
+
 export HOME=/root
 
 WGET_CMD="wget"
@@ -163,10 +174,8 @@ then
         update_log=''
         # get the version
         git_flag=1
-        REL=`git rev-parse --abbrev-ref HEAD`
-        if [ "$REL" = "master" ]; then
-            REL="devel"
-        fi
+        setbranch
+
         if [ -z "$GITUP" ];then
             update_log=../coregitup
             echo "git pull > $update_log"
@@ -287,10 +296,7 @@ then
     else
         if [ "$REL" = "xcat-core" ];then
             git_flag=1
-            REL=`git rev-parse --abbrev-ref HEAD`
-            if [ "$REL" = "master" ]; then
-                REL="devel"
-            fi
+            setbranch
         fi
         package_dir_name=debs$REL
     fi

@@ -121,10 +121,13 @@ fi
 
 # for the git case, query the current branch and set REL (changing master to devel if necessary)
 function setbranch {
-    REL=`git name-rev --name-only HEAD`
+    # Get the current branch name
+    REL=`git rev-parse --abbrev-ref HEAD`
     if [ "$REL" = "master" ]; then
         REL="devel"
     fi
+    # Special handling when in a 'detached HEAD' state
+    [[ "$REL" = "HEAD" ]] && REL=`git describe --abbrev=0 HEAD` && REL=`echo $VER|cut -d. -f 1,2`
 }
 
 if [ "$REL" = "xcat-core" ]; then    # using git
@@ -155,15 +158,16 @@ else
 fi
 
 XCATCORE="xcat-core"        # core-snap is a sym link to xcat-core
-
-if [ "$GIT" = "1" ]; then    # using git - need to include REL in the path where we put the built rpms
-    #DESTDIR=../../$REL$EMBEDDIR/$XCATCORE
-        DESTDIR=$HOME/xcatbuild/$REL$EMBEDDIR/$XCATCORE
-else
-    #DESTDIR=../..$EMBEDDIR/$XCATCORE
-        DESTDIR=$HOME/xcatbuild/..$EMBEDDIR/$XCATCORE
-fi
 SRCD=core-snap-srpms
+if [ -z "$DEST" ]; then
+    DEST=$HOME
+fi
+if [ "$GIT" = "1" ]; then    # using git - need to include REL in the path where we put the built rpms
+    DESTDIR=$DEST/xcatbuild/$REL$EMBEDDIR/$XCATCORE
+else
+    DESTDIR=$DEST/xcatbuild/..$EMBEDDIR/$XCATCORE
+fi
+
 
 # currently aix builds ppc rpms, but someday it should build noarch
 if [ "$OSNAME" = "AIX" ]; then
