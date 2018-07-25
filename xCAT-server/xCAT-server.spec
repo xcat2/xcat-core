@@ -15,6 +15,7 @@ BuildRoot: /var/tmp/%{name}-%{version}-%{release}-root
 %ifnos linux
 AutoReqProv: no
 %endif
+%define debug_package %{nil}
 
 %define fsm %(if [ "$fsm" = "1" ];then echo 1; else echo 0; fi)
 
