@@ -404,9 +404,9 @@ if [ "$1" = "-r" ];then
         ip link show $str_nic_name | grep -i ',up'
         if [ $? -eq 0 ];then
             if [ "$str_os_type" = "debian" ];then
-                ifdown --force $str_nic_name
+                ip link set $str_nic_name down
             else
-                ifdown $str_nic_name
+                ip link set $str_nic_name down
             fi
         fi
 
@@ -641,7 +641,7 @@ elif [ "$1" = "-s" ];then
     fi
 
     if [ "$UPDATENODE" = "1" ] || grep "REBOOT=TRUE" /opt/xcat/xcatinfo >/dev/null 2>&1; then
-        ifdown $str_inst_nic;ifup $str_inst_nic
+        ip link set $str_inst_nic down;ip link set $str_inst_nic up
     fi 
     if [ $? -ne 0 ]; then
         log_error "ifup $str_inst_nic failed."
@@ -976,9 +976,9 @@ else
         if [ $bool_restart_flag -eq 1 ];then
             if [ "$str_nic_status" = "up" ];then
                 if [ "$str_os_type" = "debian" ];then
-                    ifdown --force $str_nic_name > /dev/null
+                    ip link set $str_nic_name down > /dev/null
                 else
-                    ifdown $str_nic_name > /dev/null
+                    ip link set $str_nic_name down > /dev/null
                 fi
             fi
             #delete all old ip address

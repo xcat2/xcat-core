@@ -17,8 +17,7 @@ tail="tail"
 dmesg="dmesg"
 grep="grep"
 lspci="lspci"
-ifup="ifup"
-ifdown="ifdown"
+ip_link_set="ip link set"
 nmcli="nmcli"
 dirname="dirname"
 ip="ip"
@@ -970,10 +969,10 @@ function create_bridge_interface {
          inattrs="$cfg"
 
     # bring up interface formally
-    lines=`$ifdown $ifname; $ifup $ifname`
+    lines=`$ip_link_set $ifname down; $ip_link_set $ifname up`
     rc=$?
     if [ $rc -ne 0 ]; then
-        log_warn "ifup $ifname failed with return code equals to $rc"
+        log_warn "$ip_link_set $ifname up failed with return code equals to $rc"
         echo "$lines" \
         | $sed -e 's/^/>> /g' \
         | log_lines info
@@ -1062,10 +1061,10 @@ function create_ethernet_interface {
         inattrs="$cfg"
 
     # bring up interface formally
-    true || lines=`$ifdown $ifname; $ifup $ifname`
+    true || lines=`$ip_link_set $ifname down; $ip_link_set $ifname down`
     rc=$?
     if [ $rc -ne 0 ]; then
-        log_warn "ifup $ifname failed with return code equals to $rc"
+        log_warn "$ip_link_set $ifname up failed with return code equals to $rc"
         echo "$lines" \
         | $sed -e 's/^/>> /g' \
         | log_lines info
@@ -1188,7 +1187,7 @@ function create_vlan_interface {
         inattrs="$cfg"
     if [ x$xcatnet != x ]; then
         # bring up interface formally
-        lines=`$ifdown $ifname.$vlanid; $ifup $ifname.$vlanid`
+        lines=`$ip_link_set $ifname.$vlanid down; $ip_link_set $ifname.$vlanid up`
         rc=$?
         if [ $rc -ne 0 ]; then
             log_warn "ifup $ifname.$vlanid failed with return code equals to $rc"
@@ -1486,10 +1485,10 @@ function create_bond_interface {
         xcatnet=$xcatnet \
         inattrs="$cfg"
     if [ x$xcatnet != x ]; then
-        lines=`$ifdown $ifname; $ifup $ifname 2>&1`
+        lines=`$ip_link_set $ifname down; $ip_link_set $ifname up 2>&1`
         rc=$?
         if [ $rc -ne 0 ]; then
-            log_warn "ifup $ifname failed with return code equals to $rc"
+            log_warn "$ip_link_set failed up with return code equals to $rc"
             echo "$lines" \
             | $sed -e 's/^/'$ifname' ifup out >> /g' \
             | log_lines info
