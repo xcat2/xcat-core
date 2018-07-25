@@ -47,7 +47,7 @@ fi
 . /etc/lsb-release
 
 # Check the necessary packages before starting the build
-declare -a packages=( "reprepro" "devscripts" "debhelper" "libsoap-lite-perl" "libdbi-perl" "quilt" )
+declare -a packages=( "reprepro" "devscripts" "debhelper" "libsoap-lite-perl" "libdbi-perl" "quilt" "git")
 
 for package in ${packages[@]}; do
     RC=`dpkg -l | grep $package >> /dev/null 2>&1; echo $?`
@@ -59,7 +59,7 @@ done
 
 # Process cmd line variable assignments, assigning each attr=val pair to a variable of same name
 for i in $*; do
-        echo $i | grep '='
+        echo $i | grep '=' -q
         if [ $? != 0 ];then
             continue
         fi
@@ -109,14 +109,19 @@ cd `dirname $0`
 curdir=`pwd`
 
 #define the dep source code path, core build target path and dep build target path
-local_core_repo_path="$curdir/../../xcat-core"
-local_dep_repo_path="$curdir/../../xcat-dep/xcat-dep"
+if [ -z "$DEST" ]; then
+    local_core_repo_path="$curdir/../../xcat-core"
+    local_dep_repo_path="$curdir/../../xcat-dep/xcat-dep"
+else
+    local_core_repo_path="$DEST/xcatbuild/xcat-core"
+    local_dep_repo_path="$DEST/xcatbuild/xcat-dep/xcat-dep"
+fi
 
 # Use flock to only one person build at the same time
 # Get a lock, so can not do 2 builds at once
 exec 8>/var/lock/xcatbld.lock
 if ! flock -n 8; then
-    echo "Can't get lock /var/lock/xcatbld.lock.  Someone else must be doing a build right now.  Exiting...."
+    echo "ERROR: Can't get lock /var/lock/xcatbld.lock.  Someone else must be doing a build right now.  Exiting...."
     exit 1
 fi
 
@@ -155,26 +160,20 @@ fi
 
 if [ "$c_flag" ]
 then
-    # 
-    # The format of the directory for Ubuntu builds needs to be "xcat-core/src/xcat-core" so 
-    # that the output build files are created under "xcat-core". 
-    # TODO: This should be fixed in the future....
-    #
-    if [ -z "$REL" ]; then
-        t=${curdir%/src/xcat-core}
-        REL=`basename $t`
-    fi
-    if [ "$REL" != "xcat-core" ]; then
-        echo "ERROR: REL='$REL'needs to be 'xcat-core'.  Ensure the path is 'xcat-core/src/xcat-core'"
-        exit 1
+    setbranch
+    package_dir_name=debs$REL
+    if [ -z "$DEST" ]; then
+        DESTDIR=../../$package_dir_name
+    else
+        DESTDIR=$DEST/xcatbuild/$package_dir_name
     fi
 
+    echo "#############################################################"
+    echo "Building xcat-core on branch \'$REL\' to $local_core_repo_path"
+    echo "#############################################################"
     if [ "$PROMOTE" != 1 ]; then
         code_change=0
         update_log=''
-        # get the version
-        git_flag=1
-        setbranch
 
         if [ -z "$GITUP" ];then
             update_log=../coregitup
@@ -195,12 +194,8 @@ then
         commit_id_long=`git rev-parse HEAD`
         commit_id="${commit_id_long:0:7}"
 
-        package_dir_name=debs$REL
-        #TODO: define the core path and tarball name
-        tarball_name="core-debs-snap.tar.bz2"
-
         if [ $code_change == 0 -a "$UP" != 1 -a "$BUILDALL" != 1 ]; then
-            echo "Nothing new detected"
+            echo "Nothing new detected.  Exiting...."
             exit 0
         fi
 
@@ -214,8 +209,8 @@ then
         xcat_release="snap$(date '+%Y%m%d%H%M')"
         pkg_version="${ver}-${xcat_release}"
 
-        if [ ! -d ../../$package_dir_name ];then
-            mkdir -p "../../$package_dir_name"
+        if [ ! -d "$DESTDIR" ];then
+            mkdir -p "$DESTDIR"
         fi
         packages="xCAT-client xCAT-genesis-scripts perl-xCAT xCAT-server xCAT xCATsn xCAT-test xCAT-buildkit xCAT-vlan xCAT-confluent xCAT-probe"
         target_archs=(amd64 ppc64el)
@@ -230,7 +225,7 @@ then
             for target_arch in $target_archs
             do
                 if grep -q $file $update_log || [ "$BUILDALL" == 1 -o "$file" = "perl-xCAT" ]; then
-                    rm -f ../../$package_dir_name/${file_low}_*.$target_arch.deb
+                    rm -f $DESTDIR/${file_low}_*.$target_arch.deb
                     cd $file
                     CURDIR=$(pwd)
                     dch -v $pkg_version -b -c debian/changelog $build_string
@@ -287,18 +282,12 @@ then
                     cd -
                     find $file -maxdepth 3 -type d -name "${file_low}*" | grep debian | xargs rm -rf
                     find $file -maxdepth 3 -type f -name "files" | grep debian | xargs rm -rf
-                    mv ${file_low}* ../../$package_dir_name/
+                    mv ${file_low}* $DESTDIR/
                 fi
             done
         done
 
-        find ../../$package_dir_name/* ! -name *.deb | xargs rm -f
-    else
-        if [ "$REL" = "xcat-core" ];then
-            git_flag=1
-            setbranch
-        fi
-        package_dir_name=debs$REL
+        find $DESTDIR/* ! -name *.deb | xargs rm -f
     fi
 
     if [ "$PROMOTE" = 1 ]; then
