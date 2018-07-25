@@ -171,8 +171,9 @@ sub process_request {
     # - osver
     # - arch
     # - profile
-    $callback->({ info => ["going to modify $rootimg_dir"] });
-
+    my $rsp;
+    push @{ $rsp->{data} }, "Modifying $rootimg_dir ...";
+    xCAT::MsgUtils->message("I", $rsp, $callback);
     #copy $installroot/postscripts into the image at /xcatpost
     if (-e "$rootimg_dir/xcatpost") {
         system("rm -rf $rootimg_dir/xcatpost");
@@ -532,7 +533,7 @@ sub process_request {
         system("umount $rootimg_dir/proc");
 
         #put the image name, uuid and timestamp into diskless image when it is packed.
-        $callback->({ data => ["add image info to xcatinfo file"] });
+        $verbose && $callback->({ data => ["add image info to xcatinfo file"] });
         `echo IMAGENAME="'$imagename'" > $rootimg_dir/opt/xcat/xcatinfo`;
 
         my $uuid = `uuidgen`;
@@ -547,7 +548,7 @@ sub process_request {
 
         my $temppath;
         my $oldmask;
-        $callback->({ data => ["$verb contents of $rootimg_dir"] });
+        $callback->({ data => ["$verb contents of $rootimg_dir ..."] });
         unlink("$destdir/rootimg-statelite.gz");
 
         my $compress = "gzip";
@@ -585,6 +586,7 @@ sub process_request {
         umask $oldmask;
 
         system("rm -f $xcat_packimg_tmpfile");
+        $callback->({ data => ["$verb contents of $rootimg_dir done."] });
     }
     chdir($oldpath);
 
@@ -624,7 +626,7 @@ sub liteMe {
         }
     }
 
-    $callback->({ info => ["done."] });
+    $callback->({ info => ["Modifying $rootimg_dir done."] });
 
     # end loop, synclist should now all be in place.
 }
