@@ -17,7 +17,8 @@ tail="tail"
 dmesg="dmesg"
 grep="grep"
 lspci="lspci"
-ip_link_set="ip link set"
+ifup="ifup"
+ifdown="ifdown"
 nmcli="nmcli"
 dirname="dirname"
 ip="ip"
@@ -26,6 +27,16 @@ brctl="brctl"
 uniq="uniq"
 xargs="xargs"
 modprobe="modprobe"
+
+#########################################################################
+# ifdown/ifup will not be executed in diskful provision postscripts stage 
+#########################################################################
+reboot_nic_bool=1
+if [ -z "$UPDATENODE" ] || [ $UPDATENODE -ne 1 ] ; then
+    if [ "$NODESETSTATE" = "install" ] && ! grep "REBOOT=TRUE" /opt/xcat/xcatinfo >/dev/null 2>&1; then
+        reboot_nic_bool=0
+    fi
+fi
 
 ######################################################
 #
@@ -884,7 +895,7 @@ function create_bridge_interface {
     local _pretype=""
     local _port=""  #pre nic
     local _mtu=""
-
+    rc=0
     # parser input arguments
     while [ -n "$1" ];
     do
@@ -969,10 +980,12 @@ function create_bridge_interface {
          inattrs="$cfg"
 
     # bring up interface formally
-    lines=`$ip_link_set $ifname down; $ip_link_set $ifname up`
-    rc=$?
+    if [ $reboot_nic_bool ]; then
+        lines=`$ifdown $ifname; $ifup $ifname`
+        rc=$?
+    fi
     if [ $rc -ne 0 ]; then
-        log_warn "$ip_link_set $ifname up failed with return code equals to $rc"
+        log_warn "ifup $ifname failed with return code equals to $rc"
         echo "$lines" \
         | $sed -e 's/^/>> /g' \
         | log_lines info
@@ -1061,10 +1074,12 @@ function create_ethernet_interface {
         inattrs="$cfg"
 
     # bring up interface formally
-    true || lines=`$ip_link_set $ifname down; $ip_link_set $ifname down`
-    rc=$?
+    if [ $reboot_nic_bool ]; then
+        lines=`$ifdown $ifname; $ifup $ifname`
+        rc=$?
+    fi
     if [ $rc -ne 0 ]; then
-        log_warn "$ip_link_set $ifname up failed with return code equals to $rc"
+        log_warn "ifup $ifname failed with return code equals to $rc"
         echo "$lines" \
         | $sed -e 's/^/>> /g' \
         | log_lines info
@@ -1187,8 +1202,10 @@ function create_vlan_interface {
         inattrs="$cfg"
     if [ x$xcatnet != x ]; then
         # bring up interface formally
-        lines=`$ip_link_set $ifname.$vlanid down; $ip_link_set $ifname.$vlanid up`
-        rc=$?
+        if [ $reboot_nic_bool ]; then
+            lines=`$ifdown $ifname.$vlanid; $ifup $ifname.$vlanid`
+            rc=$?
+        fi
         if [ $rc -ne 0 ]; then
             log_warn "ifup $ifname.$vlanid failed with return code equals to $rc"
             echo "$lines" \
@@ -1485,10 +1502,12 @@ function create_bond_interface {
         xcatnet=$xcatnet \
         inattrs="$cfg"
     if [ x$xcatnet != x ]; then
-        lines=`$ip_link_set $ifname down; $ip_link_set $ifname up 2>&1`
-        rc=$?
+        if [ $reboot_nic_bool ]; then
+            lines=`$ifdown $ifname; $ifup $ifname 2>&1`
+            rc=$?
+        fi
         if [ $rc -ne 0 ]; then
-            log_warn "$ip_link_set failed up with return code equals to $rc"
+            log_warn "ifup $ifname failed with return code equals to $rc"
             echo "$lines" \
             | $sed -e 's/^/'$ifname' ifup out >> /g' \
             | log_lines info
