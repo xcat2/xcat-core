@@ -425,7 +425,7 @@ if ($::INITIALINSTALL || $::FORCE || $::UPDATEINSTALL)
 # The systemd only has LANG and PATH as default environmental variables,
 # TERM is needed for KVM consoles(actually screen command needs TERM)
 # import the TERM into systemd
-if (-d "/usr/lib/systemd/system") {
+if (-x "/usr/lib/systemd/systemd" || -x "/lib/systemd/systemd") {
     my $term = $ENV{'TERM'};
     if (!$term) {
         $term = "vt100";
