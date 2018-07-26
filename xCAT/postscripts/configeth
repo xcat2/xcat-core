@@ -9,6 +9,15 @@ if [ "$(uname -s|tr 'A-Z' 'a-z')" = "linux" ];then
    . $str_dir_name/nicutils.sh
 fi
 error_code=0
+#########################################################################
+# ifdown/ifup will not be executed in diskful provision postscripts stage
+#########################################################################
+reboot_nic_bool=1
+if [ -z "$UPDATENODE" ] || [ $UPDATENODE -ne 1 ] ; then
+    if [ "$NODESETSTATE" = "install" ] && ! grep "REBOOT=TRUE" /opt/xcat/xcatinfo >/dev/null 2>&1; then
+        reboot_nic_bool=0
+    fi
+fi
 function configipv4(){
     str_if_name=$1
     str_v4ip=$2
@@ -978,7 +987,9 @@ else
                 if [ "$str_os_type" = "debian" ];then
                     ifdown --force $str_nic_name > /dev/null
                 else
-                    ifdown $str_nic_name > /dev/null
+                    if [ $reboot_nic_bool -eq 1 ]; then
+                        ifdown $str_nic_name > /dev/null
+                    fi
                 fi
             fi
             #delete all old ip address
@@ -1057,11 +1068,13 @@ else
                 error_code=1
             fi
         else
-            echo "bring up ip"
-            ifup $str_nic_name
-            if [ $? -ne 0 ]; then
-                log_error "ifup $str_nic_name failed."
-                error_code=1
+            if [ $reboot_nic_bool -eq 1 ]; then
+                echo "bring up ip"
+                ifup $str_nic_name
+                if [ $? -ne 0 ]; then
+                    log_error "ifup $str_nic_name failed."
+                    error_code=1
+                fi
             fi
         fi
     fi
