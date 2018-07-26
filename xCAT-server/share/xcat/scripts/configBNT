@@ -67,6 +67,13 @@ if ($::HELP)
     exit(0);
 }
 
+my $current_usr = getpwuid($>);
+if ($current_usr ne "root")
+{
+    print "Can't run this command for non-root user\n";
+    exit(1);
+}
+
 my $switchestab;
 my $switchhash;
 my $passwdtab;
