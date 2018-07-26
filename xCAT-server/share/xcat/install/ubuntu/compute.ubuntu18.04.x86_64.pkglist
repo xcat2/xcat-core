@@ -12,3 +12,4 @@ rsync
 busybox-static
 gawk
 dnsutils
+chrony
