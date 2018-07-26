@@ -987,7 +987,7 @@ else
                 if [ "$str_os_type" = "debian" ];then
                     ifdown --force $str_nic_name > /dev/null
                 else
-                    if [ $reboot_nic_bool ]; then
+                    if [ $reboot_nic_bool -eq 1 ]; then
                         ifdown $str_nic_name > /dev/null
                     fi
                 fi
@@ -1068,7 +1068,7 @@ else
                 error_code=1
             fi
         else
-            if [ $reboot_nic_bool ]; then
+            if [ $reboot_nic_bool -eq 1 ]; then
                 echo "bring up ip"
                 ifup $str_nic_name
                 if [ $? -ne 0 ]; then

@@ -980,7 +980,7 @@ function create_bridge_interface {
          inattrs="$cfg"
 
     # bring up interface formally
-    if [ $reboot_nic_bool ]; then
+    if [ $reboot_nic_bool -eq 1 ]; then
         lines=`$ifdown $ifname; $ifup $ifname`
         rc=$?
     fi
@@ -1074,7 +1074,7 @@ function create_ethernet_interface {
         inattrs="$cfg"
 
     # bring up interface formally
-    if [ $reboot_nic_bool ]; then
+    if [ $reboot_nic_bool -eq 1 ]; then
         lines=`$ifdown $ifname; $ifup $ifname`
         rc=$?
     fi
@@ -1202,7 +1202,7 @@ function create_vlan_interface {
         inattrs="$cfg"
     if [ x$xcatnet != x ]; then
         # bring up interface formally
-        if [ $reboot_nic_bool ]; then
+        if [ $reboot_nic_bool -eq 1 ]; then
             lines=`$ifdown $ifname.$vlanid; $ifup $ifname.$vlanid`
             rc=$?
         fi
@@ -1502,7 +1502,7 @@ function create_bond_interface {
         xcatnet=$xcatnet \
         inattrs="$cfg"
     if [ x$xcatnet != x ]; then
-        if [ $reboot_nic_bool ]; then
+        if [ $reboot_nic_bool -eq 1 ]; then
             lines=`$ifdown $ifname; $ifup $ifname 2>&1`
             rc=$?
         fi
