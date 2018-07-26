@@ -764,6 +764,8 @@ sub addnode
                         $hostname = $1 . "-hf" . $count;
                     }
                 }
+            } elsif (length($mac) == 23) {
+                $hardwaretype = 32;
             }
 
             #syslog("local4|err", "Setting $node ($hname|$ip) to " . $mac);
