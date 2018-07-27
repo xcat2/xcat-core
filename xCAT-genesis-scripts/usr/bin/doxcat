@@ -26,6 +26,7 @@ logger -s -t $log_label -p local4.info "Beginning doxcat process..."
 
 modprobe acpi_cpufreq 2>/dev/null		# on some machines this fails
 modprobe cpufreq_ondemand
+modprobe ib_ipoib
 if ls /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor &>/dev/null; then
     if grep -q ondemand /sys/devices/system/cpu/cpu*/cpufreq/scaling_available_governors; then 
         for gov in /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor; do
@@ -35,10 +36,14 @@ if ls /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor &>/dev/null; then
 fi
 if [ ! -z "$BOOTIF" ]; then
 	BOOTIF=`echo $BOOTIF|sed -e s/01-// -e s/-/:/g`
+	IBOOTIF=`echo $BOOTIF|sed -e s/^..//`
 	logger -s -t $log_label -p local4.info "Waiting for device with address $BOOTIF to appear.."
 	gripeiter=6000
 	while [ -z "$bootnic" ]; do 
 		bootnic=`ip link show|grep -B1 $BOOTIF|grep mtu|awk '{print $2}'|sed -e 's/:$//'`
+	        if [ -z "$bootnic" ]; then
+		    bootnic=`ip link show|grep -B1 infiniband|grep -B1 $IBOOTIF|grep mtu|awk '{print $2}'|sed -e 's/:$//'`
+                fi
 		sleep 0.1
 		if [ $gripeiter = 0 ]; then
 			logger -s -t $log_label -p local4.err "Unable to find boot device (Maybe the xCAT genesis kernel is missing the driver for your NIC?)"
