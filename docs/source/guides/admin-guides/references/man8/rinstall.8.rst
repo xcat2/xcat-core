@@ -19,9 +19,11 @@ Name
 ****************
 
 
-\ **rinstall**\  \ *noderange*\  [\ **boot**\  | \ **shell**\  | \ **runcmd=bmcsetup**\ ] [\ **runimage=**\ \ *task*\ ] [\ **-c | -**\ **-console**\ ] [\ **-V | -**\ **-verbose**\ ]
+\ **rinstall**\  \ *noderange*\  [\ **boot**\  | \ **shell**\  | \ **runcmd=bmcsetup**\ ] [\ **-c | -**\ **-console**\ ] [\ **-V | -**\ **-verbose**\ ]
 
-\ **rinstall**\  \ *noderange*\  [\ **osimage**\ =\ *imagename*\  | \ *imagename*\ ] [\ **-**\ **-ignorekernelchk**\ ] [\ **-c | -**\ **-console**\ ] [\ **-u | -**\ **-uefimode**\ ] [\ **-V | -**\ **-verbose**\ ]
+\ **rinstall**\  \ *noderange*\  \ **osimage**\ [=\ *imagename*\ ] [\ **-**\ **-ignorekernelchk**\ ] [\ **-c | -**\ **-console**\ ] [\ **-u | -**\ **-uefimode**\ ] [\ **-V | -**\ **-verbose**\ ]
+
+\ **rinstall**\  \ *noderange*\  \ **runimage=**\ \ *task*\ 
 
 \ **rinstall**\  [\ **-h | -**\ **-help | -v | -**\ **-version**\ ]
 
@@ -33,9 +35,9 @@ Name
 
 \ **rinstall**\  is a convenience command to begin OS provision on a noderange.
 
-If \ **osimage**\ =\ *imagename*\  | \ *imagename*\  is specified or nodetype.provmethod=\ **osimage**\  is set, provision the noderange with the osimage specified/configured.
+If \ **osimage**\ =\ *imagename*\  is specified or \ **osimage**\  is specified and nodetype.provmethod=\ **osimage**\  is set, provision the noderange with the osimage specified/configured.
 
-If \ **-c**\  is specified, it will then run rcons on the node. This is allowed only if one node in the noderange. If need consoles on multiple nodes, see winstall(8)|winstall.8.
+If \ **-c**\  is specified, it will then run \ **rcons**\  on the node. This is allowed only if one node is in the noderange. If consoles are needed on multiple nodes, see winstall(8)|winstall.8.
 
 
 ***************
@@ -50,9 +52,9 @@ If \ **-c**\  is specified, it will then run rcons on the node. This is allowed 
  
 
 
-\ *imagename*\  | \ **osimage=**\ \ *imagename*\ 
+\ **osimage**\ [=\ *imagename*\ ]
  
- Prepare server for installing a node using the specified os image. The os image is defined in the \ *osimage*\  table and \ *linuximage*\  table. If the \ *imagename*\  is omitted, the os image name will be obtained from \ *nodetype.provmethod*\  for the node.
+ Prepare server for installing a node using the specified OS image. The OS image is defined in the \ *osimage*\  table and \ *linuximage*\  table. If the \ *imagename*\  is omitted, the OS image name will be obtained from \ *nodetype.provmethod*\  for the node.
  
 
 
@@ -107,7 +109,7 @@ If \ **-c**\  is specified, it will then run rcons on the node. This is allowed 
 
 \ **-c | -**\ **-console**\ 
  
- Requests that rinstall runs rcons once the provision starts.  This will only work if there is only one node in the noderange. See winstall(8)|winstall.8 for starting consoles on multiple nodes.
+ Requests that \ **rinstall**\  runs \ **rcons**\  once the provision starts.  This will only work if there is only one node in the noderange. See winstall(8)|winstall.8 for starting consoles on multiple nodes.
  
 
 
