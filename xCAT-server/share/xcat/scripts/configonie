@@ -61,6 +61,13 @@ if ($::HELP)
     exit(0);
 }
 
+my $current_usr = getpwuid($>);
+if ($current_usr ne "root")
+{
+    print "Can't run this command for non-root user\n";
+    exit(1);
+}
+
 if ($::SWITCH) {
     my @filternodes = xCAT::NodeRange::noderange( $::SWITCH );
     if (nodesmissed) {
