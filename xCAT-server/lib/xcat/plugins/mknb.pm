@@ -189,6 +189,18 @@ sub process_request {
                 $initrd_file = "$tftpdir/xcat/genesis.fs.$arch.lzma";
             }
         }
+        if (not $done and -x "/usr/bin/xz") {    #let's reclaim some of that size...
+            $callback->({ data => ["Creating genesis.fs.$arch.lzma in $tftpdir/xcat"] });
+            system("cd $tempdir; find . | cpio -o -H newc | xz -C crc32 -9 > $tftpdir/xcat/genesis.fs.$arch.lzma");
+            $lzma_exit_value = $? >> 8;
+            if ($lzma_exit_value) {
+                $callback->({ data => ["Creating genesis.fs.$arch.lzma in $tftpdir/xcat failed, falling back to gzip"] });
+                unlink("$tftpdir/xcat/genesis.fs.$arch.lzma");
+            } else {
+                $done        = 1;
+                $initrd_file = "$tftpdir/xcat/genesis.fs.$arch.lzma";
+            }
+        }
 
         if (not $done) {
             $callback->({ data => ["Creating genesis.fs.$arch.gz in $tftpdir/xcat"] });
