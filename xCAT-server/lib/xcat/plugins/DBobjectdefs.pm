@@ -765,6 +765,15 @@ sub processArgs
                 #    then set noderange
                 if (($::command ne 'mkdef') && ($a =~ m/^\//))
                 {
+                    eval { /$a/ };
+                    if ($@)
+                    {
+                        print Dumper($@);
+                        my $rsp = {};
+                        $rsp->{data}->[0] = "Invalid regular expression $a, check the noderange syntax.";
+                        xCAT::MsgUtils->message("E", $rsp, $::callback);
+                        return 3;
+                    }
                     @::noderange = &noderange($a, 1); # Use the "verify" option to support regular expression
                 }
                 else
