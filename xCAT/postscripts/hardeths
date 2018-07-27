@@ -50,7 +50,7 @@ if [ -f /etc/os-release ] && (cat /etc/os-release |grep -i  '^NAME=[ "]*Cumulus 
     OSVER="cumulus"
 fi
 
-defgw=`ip route | grep default | awk '{print $3}'`
+defgw=`ip route | grep default | awk '{print $3}' | head -n1`
 if ( pmatch $OSVER "ubuntu*" ) || (pmatch $OSVER "cumulus")
 then
     echo `hostname` >/etc/hostname
