@@ -15,6 +15,7 @@ use strict;
 use Storable qw(dclone);
 use File::Basename;
 use File::Path;
+use File::Temp;
 use POSIX;
 require xCAT::Table;
 use Data::Dumper;
@@ -882,7 +883,7 @@ sub process_servicenodes_xdsh
         # build a tmp syncfile with
         # $::dshexecute -> $synfiledir . $::dshexecute
         # $::dshenvfile -> $synfiledir . $::dshenvfile
-        my $tmpsyncfile = POSIX::tmpnam . ".dsh";
+        my $tmpsyncfile = File::Temp::tmpnam . ".dsh";
 
         # if -E option
         my $envfile;
