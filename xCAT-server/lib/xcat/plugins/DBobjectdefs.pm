@@ -768,7 +768,6 @@ sub processArgs
                     eval { /$a/ };
                     if ($@)
                     {
-                        print Dumper($@);
                         my $rsp = {};
                         $rsp->{data}->[0] = "Invalid regular expression $a, check the noderange syntax.";
                         xCAT::MsgUtils->message("E", $rsp, $::callback);
