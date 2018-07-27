@@ -73,7 +73,9 @@ else
         sed -i "s/HOSTNAME.*/HOSTNAME=`hostname`/" /etc/sysconfig/network
     fi
     if [ ! -z "$defgw" ]; then
-        echo "GATEWAY=$defgw" >> /etc/sysconfig/network
+        grep -qw GATEWAY /etc/sysconfig/network && \
+            sed -i "s/^GATEWAY.*/GATEWAY=$defgw/" /etc/sysconfig/network || \
+            echo "GATEWAY=$defgw" >> /etc/sysconfig/network
     fi
 fi
 
