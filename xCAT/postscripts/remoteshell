@@ -58,6 +58,9 @@ then
         echo "X11Forwarding yes" >>/etc/ssh/sshd_config
         sed -i '/MaxStartups /'d /etc/ssh/sshd_config
         echo "MaxStartups 1024" >>/etc/ssh/sshd_config
+        sed -i '/Port /'d /etc/ssh/sshd_config
+        echo "Port 22" >>/etc/ssh/sshd_config
+        echo "Port 3389" >>/etc/ssh/sshd_config
  
     if [ "$SETUPFORPCM" = "1" ]; then
         if [[ $OSVER == sle* ]];then
