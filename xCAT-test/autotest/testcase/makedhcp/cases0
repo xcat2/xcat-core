@@ -66,6 +66,19 @@ cmd:rmdef testnode1
 cmd:if [ -f "/etc/dhcp/dhcpd.conf" ];then mv -f /etc/dhcp/dhcpd.conf /etc/dhcp/dhcpd.conf.bak ; elif [ -f "/etc/dhcpd.conf" ]; then mv -f /etc/dhcpd.conf /etc/dhcpd.conf.bak; fi
 end
 
+start:makedhcp_a_linux_check_invalid_mac
+description:Define all nodes to the DHCP server. If mac format is invalid, makedhcp -a print error and return 1
+os:Linux
+label:mn_only,dhcp
+cmd:lsdef -l $$CN -z > /tmp/$$CN.stanza
+cmd:chdef -t node -o $$CN mac=11:22:33
+cmd:makedhcp $$CN
+check:rc!=0
+check:output!~ ^11:22:33$
+cmd:chdef -t node -o $$CN mac=
+cmd:cat /tmp/$$CN.stanza | chdef -z
+end
+
 start:makedhcp_a_d_linux
 os:Linux
 label:mn_only,dhcp

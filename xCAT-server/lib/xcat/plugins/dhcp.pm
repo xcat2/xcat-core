@@ -587,6 +587,7 @@ sub addnode
         );
         return;
     }
+    
     my @macs = split(/\|/, $ent->{mac});
     my $mace;
     my $deflstaments = $lstatements;
@@ -603,6 +604,16 @@ sub addnode
             $hname = $node;
         }                                #Default to hostname equal to nodename
         unless ($mac) { next; }          #Skip corrupt format
+        if ($mac !~ /^[0-9a-fA-F]{2}(-[0-9a-fA-F]{2}){5}$|^[0-9a-fA-F]{2}(:[0-9a-fA-F]{2}){5}$/)
+        {
+            $callback->(
+                {
+                    error => ["Invalid mac address $mac for $node"],
+                    errorcode => [1]
+                }
+            );
+            next;
+        }
         my $ip = getipaddr($hname, OnlyV4 => 1);
         if ($hname eq '*NOIP*') {
             $hname = $node . "-noip" . $mac;
