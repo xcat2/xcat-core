@@ -10,8 +10,10 @@ cmd:xdsh $$CN "cd /; rm -rf /go-xcat"
 check:rc==0
 cmd:xdsh $$CN "cd /; scp -r $$MN:/opt/xcat/share/xcat/tools/go-xcat ./"
 check:rc==0
+cmd:xdsh $$CN "rm -rf /tmp/go-xcat.log"
 cmd:xdsh $$CN "cd /; ./go-xcat --xcat-core=http://xcat.org/files/xcat/repos/yum/$$BRANCH/core-snap/xCAT-core.repo -y install"
 check:rc==0
+cmd:xdsh $$CN "cat /tmp/go-xcat.log"
 cmd:xdsh $$CN "source /etc/profile.d/xcat.sh;lsxcatd -v"
 check:rc==0
 check:output=~Version $$BRANCH
@@ -43,8 +45,10 @@ cmd:if grep Ubuntu /etc/*release;then xdsh $$CN "scp -r $$MN:/etc/resolv.conf /e
 check:rc==0
 cmd:if grep Ubuntu /etc/*release;then xdsh $$CN "apt-get clean && apt-get update"; fi
 check:rc==0
+cmd:xdsh $$CN "rm -rf /tmp/go-xcat.log"
 cmd:if grep Ubuntu /etc/*release;then xdsh $$CN "cd /; ./go-xcat --xcat-core=http://xcat.org/files/xcat/repos/apt/$$BRANCH/core-snap/";else xdsh $$CN "cd /; ./go-xcat --xcat-core=http://xcat.org/files/xcat/repos/yum/$$BRANCH/core-snap/ -y install"; fi
 check:rc==0
+cmd:xdsh $$CN "cat /tmp/go-xcat.log"
 cmd:xdsh $$CN "source /etc/profile.d/xcat.sh;lsxcatd -v"
 check:rc==0
 check:output=~Version $$BRANCH
@@ -76,8 +80,10 @@ cmd:if grep Ubuntu /etc/*release;then xdsh $$CN "scp -r $$MN:/etc/resolv.conf /e
 check:rc==0
 cmd:if grep Ubuntu /etc/*release;then xdsh $$CN "apt-get clean && apt-get update"; fi
 check:rc==0
+cmd:xdsh $$CN "rm -rf /tmp/go-xcat.log"
 cmd:if grep Ubuntu /etc/*release;then xdsh $$CN "cd /; ./go-xcat --xcat-core=http://xcat.org/files/xcat/xcat-core/devel/Ubuntu/core-snap/core-debs-snap.tar.bz2";else xdsh $$CN "cd /; ./go-xcat --xcat-core=http://xcat.org/files/xcat/xcat-core/devel/Linux/core-snap/core-rpms-snap.tar.bz2 -y install"; fi
 check:rc==0
+cmd:xdsh $$CN "cat /tmp/go-xcat.log"
 cmd:xdsh $$CN "source /etc/profile.d/xcat.sh;lsxcatd -v"
 check:rc==0
 check:output=~Version 2.12
@@ -104,8 +110,10 @@ cmd:xdsh $$CN "cd /; rm -rf /go-xcat"
 check:rc==0
 cmd:xdsh $$CN "cd /; scp -r $$MN:/opt/xcat/share/xcat/tools/go-xcat ./"
 check:rc==0
+cmd:xdsh $$CN "rm -rf /tmp/go-xcat.log"
 cmd:dir="__GETNODEATTR($$CN,os)__"; if grep SUSE /etc/*release;then os=`echo $dir |cut -c 1-6` && xdsh $$CN "cd /; ./go-xcat --xcat-core=http://xcat.org/files/xcat/repos/yum/devel/core-snap/xCAT-core.repo --xcat-dep=http://xcat.org/files/xcat/repos/yum/xcat-dep/$os/__GETNODEATTR($$CN,arch)__/xCAT-dep.repo -y install" ; elif grep "Red Hat" /etc/*release;then os=`echo $dir |cut -c 1-2` && xdsh $$CN "cd /; ./go-xcat --xcat-core=http://xcat.org/files/xcat/repos/yum/devel/core-snap/xCAT-core.repo --xcat-dep=http://xcat.org/files/xcat/repos/yum/xcat-dep/$os`echo __GETNODEATTR($$CN,os)__ | cut -c6`/__GETNODEATTR($$CN,arch)__/xCAT-dep.repo -y install";fi
 check:rc==0
+cmd:xdsh $$CN "cat /tmp/go-xcat.log"
 cmd:xdsh $$CN "source /etc/profile.d/xcat.sh;lsxcatd -v"
 check:rc==0
 cmd:xdsh $$CN "service xcatd status"
@@ -138,7 +146,10 @@ cmd:if grep Ubuntu /etc/*release;then xdsh $$CN "scp -r $$MN:/etc/resolv.conf /e
 check:rc==0
 cmd:if grep Ubuntu /etc/*release;then xdsh $$CN "apt-get clean && apt-get update"; fi
 check:rc==0
+cmd:xdsh $$CN "rm -rf /tmp/go-xcat.log"
 cmd:if grep Ubuntu /etc/*release;then xdsh $$CN "cd /; ./go-xcat --xcat-core=http://xcat.org/files/xcat/repos/apt/devel/core-snap/ --xcat-dep=http://xcat.org/files/xcat/repos/apt/xcat-dep/ -y install"; else xdsh $$CN "cd /; ./go-xcat --xcat-core=http://xcat.org/files/xcat/repos/yum/devel/core-snap/ --xcat-dep=http://xcat.org/files/xcat/repos/yum/xcat-dep/ -y install"; fi
+check:rc==0
+cmd:xdsh $$CN "cat /tmp/go-xcat.log"
 cmd:xdsh $$CN "source /etc/profile.d/xcat.sh;lsxcatd -v"
 check:rc==0
 cmd:xdsh $$CN "service xcatd status"
@@ -170,8 +181,10 @@ cmd:if grep Ubuntu /etc/*release;then xdsh $$CN "scp -r $$MN:/etc/resolv.conf /e
 check:rc==0
 cmd:if grep Ubuntu /etc/*release;then xdsh $$CN "apt-get clean && apt-get update"; fi
 check:rc==0
+cmd:xdsh $$CN "rm -rf /tmp/go-xcat.log"
 cmd:dep=`ls /install/xcat-dep-*.tar.bz2`;if grep Ubuntu /etc/*release;then  xdsh $$CN "cd /; ./go-xcat --xcat-core=http://xcat.org/files/xcat/xcat-core/devel/Ubuntu/core-snap/core-debs-snap.tar.bz2 --xcat-dep=http://$$MN/$dep -y install"; else xdsh $$CN "cd /; ./go-xcat --xcat-core=http://xcat.org/files/xcat/xcat-core/devel/Linux/core-snap/core-rpms-snap.tar.bz2 --xcat-dep=http://$$MN/$dep -y install"; fi
 check:rc==0
+cmd:xdsh $$CN "cat /tmp/go-xcat.log"
 cmd:xdsh $$CN "source /etc/profile.d/xcat.sh;lsxcatd -v"
 check:rc==0
 cmd:xdsh $$CN "service xcatd status"

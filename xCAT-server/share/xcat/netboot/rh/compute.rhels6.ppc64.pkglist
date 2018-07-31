@@ -27,3 +27,4 @@ parted
 gzip
 tar
 xz
+ethtool

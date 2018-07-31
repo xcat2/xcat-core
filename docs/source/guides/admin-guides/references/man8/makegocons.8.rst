@@ -19,9 +19,9 @@ SYNOPSIS
 ********
 
 
-\ **makegocons**\  [\ **-V|-**\ **-verbose**\ ] [\ **-d|-**\ **-delete**\ ] [\ *noderange*\ ]
+\ **makegocons**\  [\ **-V|-**\ **-verbose**\ ] [\ **-d|-**\ **-delete**\ ] [\ **-q|-**\ **-query**\ ] [\ *noderange*\ ]
 
-\ **makeconservercf**\  [\ **-h|-**\ **-help|-v|-**\ **-version**\ ]
+\ **makegocons**\  [\ **-V|-**\ **-verbose**\ ] [\ **-C|-**\ **-cleanup**\ ]
 
 
 ***********
@@ -46,17 +46,18 @@ In the case of a hierarchical cluster (i.e. one with service nodes) \ **makegoco
 which nodes will have their consoles accessed from the management node and which from a service node
 (based on the nodehm.conserver attribute).
 
+To start goconserver on the specified service node, setup goconserver package on that service node, then set
+the \ **console**\  column of \ **servicenode**\  table to \ **2**\ .
+
+To support diskless service node, a new column \ **consoleenabled**\  has been added in \ **nodehm**\  table, it is used by \ **makegocons**\ 
+command to save the current console state for the node. After reinstalling the service node, the console storage file which maintain
+the console nodes by goconserver is lost, xCAT would register the console nodes into goconserver based on \ **consoleenabled**\  attribute
+when restarting xcatd service.
+
 For openbmc which uses ssh as the terminal session connection method, goconserver can help save the system
 resources as goconserver could handle the ssh connection within goroutine which is more light-weighted than the command process.
 
-\ **Note:**\  goconserver is an experimental feature, it will not be installed with xcat and will only support the systemd based systems.
-Download and setup the rpm or deb package manually. Release link:
-
-
-.. code-block:: perl
-
-  https://github.com/chenglch/goconserver/releases
-
+\ **Note:**\  goconserver only support the systemd based systems. It has been integrated with xCAT as a recommended package.
 
 
 *******
@@ -68,6 +69,18 @@ OPTIONS
 \ **-d|-**\ **-delete**\ 
  
  Delete rather than add or refresh the nodes specified as a noderange.
+ 
+
+
+\ **-C|-**\ **-cleanup**\ 
+ 
+ Remove the entries for the nodes whose definitions have been removed from xCAT db.
+ 
+
+
+\ **-q|-**\ **-query**\ 
+ 
+ List the console connection of the nodes. If noderange is not specified, all of the console nodes will be displayed.
  
 
 
@@ -137,6 +150,16 @@ EXAMPLES
  .. code-block:: perl
  
    makegocons -d node01
+ 
+ 
+
+
+4. To list console connection for node01.
+ 
+ 
+ .. code-block:: perl
+ 
+   makegocons -q node01
  
  
 

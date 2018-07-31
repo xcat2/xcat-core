@@ -388,6 +388,26 @@ sub getipaddr
 
 #-------------------------------------------------------------------------------
 
+=head3  clearcache
+    Workaround: Clear the IP address cache in case that the long running process
+    (discovery/install monitor) could work as normal when the node's IP address
+    is changed.
+    Globals:
+        cache: %::hostiphash
+    Error:
+        none
+    Example:
+        xCAT::NetworkUtils->clearcache();
+=cut
+
+#-------------------------------------------------------------------------------
+sub clearcache
+{
+    undef %::hostiphash;
+}
+
+#-------------------------------------------------------------------------------
+
 =head3  linklocaladdr
     Only for IPv6.               
     Takes a mac address, calculate the IPv6 link local address
@@ -2136,7 +2156,7 @@ sub isIpaddr
         return 0;
     }
 
-    if ($1 > 255 || $1 == 0 || $2 > 255 || $3 > 255 || $4 > 255)
+    if ($1 > 255 || $1 =~ /^0/ || $2 > 255 || $2 =~ /^0\d/ || $3 > 255 || $3 =~ /^0\d/ || $4 > 255 || $4 =~ /^0\d/)
     {
         return 0;
     }

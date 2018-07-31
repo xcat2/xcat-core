@@ -14,6 +14,7 @@ use Cwd;
 Getopt::Long::Configure("bundling");
 Getopt::Long::Configure("pass_through");
 
+my $xcatdebugmode = 0;
 my $processed = 0;
 my $callback;
 
@@ -75,6 +76,9 @@ sub process_request {
         $callback->({ error => "copycds needs at least one full path to ISO currently.", errorcode => [1] });
         return;
     }
+
+    if ($::XCATSITEVALS{xcatdebugmode}) { $xcatdebugmode = $::XCATSITEVALS{xcatdebugmode} }
+
     my $file;
     foreach (@args) {
         $identified = 0;
@@ -109,6 +113,29 @@ sub process_request {
                 $newreq->{arg} = [ "-f", $file, "-n", $distname ];
                 $doreq->($newreq, $callback);
 
+                return;
+            }
+            if (grep /$file: data/, @filestat) {
+                if ($xcatdebugmode) {
+                    $callback->({ info => "run copydata for data file = $file" });
+                }
+                my $newreq = dclone($request);
+                $newreq->{command} = ['copydata']; #Note the singular, it's different
+                $newreq->{arg} = [ "-f", $file ];
+                if ($inspection)
+                {
+                    push @{ $newreq->{arg} }, ("-i");
+                }
+                if ($nonoverwrite)
+                {
+                    push @{ $newreq->{arg} }, ("-w");
+                }
+                if ($noosimage)
+                {
+                    push @{ $newreq->{arg} }, ("-o");
+                }
+
+                $doreq->($newreq, $callback);
                 return;
             }
         }

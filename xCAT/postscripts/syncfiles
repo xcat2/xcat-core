@@ -14,13 +14,6 @@ if [ -d /.statelite ]; then
    exit 0
 fi
 
-if [ -f /etc/os-release ] && cat /etc/os-release |grep -i -e "^NAME=[ \"']*Cumulus Linux[ \"']*$" >/dev/null 2>&1 ; then
-   #TODO
-   echo "Cumulus OS is not supported yet, nothing to do..."
-   logger -t xcat -p local4.info "Cumulus OS is not supported yet, nothing to do..."
-   exit 0
-fi
-
 # do nothing when UPDATENODE=1 because it is done from the top down
 if [ -n "$UPDATENODE" ] && [ $UPDATENODE -eq 1 ]; then
    #echo "  Did not sync any files. Use updatenode -F to sync the files."
@@ -36,6 +29,11 @@ if [ -n "$NOSYNCFILES" ] && [ $NOSYNCFILES -eq 1 ]; then
    exit 0
 fi
 
+RCP=
+if [ ! -e "/usr/bin/rsync" ]; then
+   [ -e "/usr/bin/scp" ] && RCP="/usr/bin/scp" 
+fi
+
 logger -t xcat -p local4.info "Performing syncfiles postscript"
 
 osname=`uname`
@@ -47,9 +45,12 @@ quit="no"
 count=5
 returncode=0
 while [ $quit = "no" ]; do
-  if [ $osname = "Linux" ]
+  if cat /etc/os-release |grep -i cumulus >/dev/null 2>&1; then
+    RCP=$RCP $xcatpostdir/startsyncfiles
+    returncode=$?
+  elif [ $osname = "Linux" ]
   then
-    `$xcatpostdir/startsyncfiles.awk`
+    `$xcatpostdir/startsyncfiles.awk -v RCP=$RCP`
     returncode=$?
   elif [ $osname = "AIX" ]
   then

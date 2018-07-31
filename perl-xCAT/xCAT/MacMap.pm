@@ -356,7 +356,7 @@ sub dump_mac_info {
                 $ret{$switch}->{ErrorStr} = $self->{macinfo}->{$switch}->{ErrorStr};
 
                 # To show the error message that the username/password related error is for SNMP only
-                if ($ret{$switch}->{ErrorStr} =~ /user\s*name|password/i) {
+                if ($ret{$switch}->{ErrorStr} =~ /user\s*name|password$/i) {
                     $ret{$switch}->{ErrorStr} .= " through SNMP";
                 }
             } else {
@@ -510,7 +510,7 @@ sub refresh_table {
         # if we are doing switch discovery and the node is not a switch, skip
         # if we are NOT doing switch discovery, and the node is a switch, skip
         my $ntype = $typehash->{$entry->{node}}->[0]->{nodetype};
-        if ( (($discover_switch) and ( $ntype ne "switch"))
+        if ( (($discover_switch) and ($ntype ne "switch") and ($ntype ne "pdu") )
             or ( !($discover_switch) and ( $ntype eq "switch")) ){
             xCAT::MsgUtils->trace(0, "d", "refresh_table: skip node=$entry->{node} switch=$entry->{switch} discover_switch=$discover_switch nodetype=$ntype\n");
             next;
@@ -729,6 +729,11 @@ sub refresh_switch {
         my @res=xCAT::Utils->runcmd("ssh -o StrictHostKeyChecking=no -o PasswordAuthentication=no $switch 'bridge fdb show|grep -i -v permanent|tr A-Z a-z  2>/dev/null' 2>/dev/null",-1);
         if ($::RUNCMD_RC) {
             xCAT::MsgUtils->message("S", "Failed to get mac table with ssh to $switch, fall back to snmp! To obtain mac table with ssh, please make sure the passwordless root ssh to $switch is available");
+            if ($self->{collect_mac_info}) {
+                my $errmsg = "Failed to get MAC table from $switch. Make sure passwordless SSH to the switch is enabled.";
+                $self->{macinfo}->{$switch}->{ErrorStr} = $errmsg;
+                return;
+            }
         }else{
             foreach (@res){
                 if($_ =~ m/^([0-9a-z]{2}:[0-9a-z]{2}:[0-9a-z]{2}:[0-9a-z]{2}:[0-9a-z]{2}:[0-9a-z]{2}) dev swp([0-9]+) vlan ([0-9]+) .*/){

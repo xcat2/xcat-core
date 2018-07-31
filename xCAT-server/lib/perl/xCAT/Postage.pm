@@ -18,6 +18,7 @@ use xCAT::Template;
 use xCAT::SvrUtils;
 use xCAT::Zone;
 
+use Data::Dumper;
 use File::Basename;
 use Socket;
 use strict;
@@ -319,7 +320,7 @@ sub makescript {
 
     #%image_hash is used to store the attributes in linuximage and nimimage tabs
     my %image_hash;
-    getImage(\%image_hash);
+    getImage(\%image_hash); 
 
     # get postscript and postscript from postscripts and osimage tabs
     my $script_hash = xCAT::Postage::getScripts($nodes, \%image_hash);
@@ -512,6 +513,16 @@ sub makescript {
             $osimgname = $provmethod;
         }
 
+
+        if($image_hash{$osimgname}{'environvar'}){
+            my $myenvstr=$image_hash{$osimgname}{'environvar'};
+            foreach my $myenv(split(',',$myenvstr)){
+                if($myenv =~ /\s*(\S+)\s*=\s*(\S+)\s*/) {
+                    $ENV{$1}=$2;
+                } 
+            }
+        }
+
         my $osimage_vars;
         $osimage_vars = getImageitems_for_node($node, \%image_hash, $nodesetstate);
 
@@ -571,6 +582,13 @@ sub makescript {
         my $master_ip;
         if ($ipaddr) {
             $master_ip = "$ipaddr";
+        }
+
+        unless($master_ip){
+            my $rsp;
+            $rsp->{data}->[0] = "makescript failed: unable to resolve xcatmaster \"$master\" for $node";
+            xCAT::MsgUtils->message("SE", $rsp, $callback, 1);
+            return;
         }
 
         #ok, now do everything else..
@@ -1107,7 +1125,7 @@ sub getImage
     if ($^O =~ /^linux/i) {
         my $linuximagetab = xCAT::Table->new('linuximage', -create => 1);
 
-        my @et2 = $linuximagetab->getAllAttribs('imagename', 'pkglist', 'pkgdir', 'otherpkglist', 'otherpkgdir');
+        my @et2 = $linuximagetab->getAllAttribs('imagename', 'pkglist', 'pkgdir', 'otherpkglist', 'otherpkgdir','environvar');
         if (@et2) {
             foreach my $tmp_et2 (@et2) {
                 my $imagename = $tmp_et2->{imagename};
@@ -1115,6 +1133,7 @@ sub getImage
                 $image_hash->{$imagename}->{pkgdir}  = $tmp_et2->{pkgdir};
                 $image_hash->{$imagename}->{otherpkglist} = $tmp_et2->{otherpkglist};
                 $image_hash->{$imagename}->{otherpkgdir} = $tmp_et2->{otherpkgdir};
+                $image_hash->{$imagename}->{environvar} = $tmp_et2->{environvar};
             }
         }
     }
@@ -1181,6 +1200,11 @@ sub getImageitems_for_node
                     $result .=
                       "OTHERPKGDIR='" . $ref1->{'otherpkgdir'} . "'\n";
                     $result .= "export OTHERPKGDIR\n";
+                }
+            }
+            if ($ref1->{'environvar'}){
+                foreach my $myenvar(split(',',$ref1->{'environvar'})){
+                    $result .='export '.$myenvar."\n";
                 }
             }
         }
@@ -1806,6 +1830,8 @@ sub includefile
     my $file = shift;
     my $idir = shift;
     my @text = ();
+
+    $file=xCAT::Utils->varsubinline($file,\%ENV);
     unless ($file =~ /^\//)
     {
         $file = $idir . "/" . $file;
@@ -1941,7 +1967,7 @@ sub getScripts
     $script_hash{default_postboot} = $et->{'postbootscripts'};
 
 
-    my @et2 = $ostab->getAllAttribs('imagename', 'postscripts', 'postbootscripts', 'osvers', 'osarch', 'profile', 'provmethod', 'synclists', 'kitcomponents');
+    my @et2 = $ostab->getAllAttribs('imagename', 'postscripts', 'postbootscripts', 'osvers', 'osarch', 'profile', 'provmethod', 'synclists', 'kitcomponents','environvar');
     if (@et2) {
         foreach my $tmp_et2 (@et2) {
             my $imagename = $tmp_et2->{imagename};
@@ -1952,6 +1978,7 @@ sub getScripts
             $image_hash->{$imagename}->{profile}    = $tmp_et2->{profile};
             $image_hash->{$imagename}->{provmethod} = $tmp_et2->{provmethod};
             $image_hash->{$imagename}->{synclists}  = $tmp_et2->{synclists};
+            $image_hash->{$imagename}->{environvar}  = $tmp_et2->{environvar};
             $image_hash->{$imagename}->{kitcomponents} = $tmp_et2->{kitcomponents} if ($tmp_et2->{kitcomponents});
         }
     }

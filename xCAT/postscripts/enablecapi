@@ -1,0 +1,85 @@
+#!/bin/bash
+
+if [ "$(uname -s|tr 'A-Z' 'a-z')" = "linux" ];then
+   str_dir_name=`dirname $0`
+   . $str_dir_name/xcatlib.sh
+fi
+
+#---------------------------------------------------------------------------
+#=head1  enablecapi
+#=head2  enable CAPI and tunnel Atomics for compute nodes
+#        at least MOFED 4.3.1 has to be installed and only support on ConnectX5 
+#
+#        updatenode <node> enablecapi
+#
+#---------------------------------------------------------------------------
+
+function logerr {
+    echo "$@"
+    logger -t xcat -p local4.err $@
+}
+
+
+#check if mlnx ofed commands are installed
+COMMANDS="ofed_info mst mlxconfig"
+for CMD in ${COMMANDS}; do
+    RC=`command -v ${CMD} >> /dev/nul 2>&1; echo $?`
+    if [[ ${RC} != 0 ]]; then
+        ERRMSG="Command: ${CMD} is not found, unable to run the scripts"
+        logerr $ERRMSG
+        exit 1
+    fi
+done
+
+#mofed version at least 4.3-1
+version=`/usr/bin/ofed_info -n`
+majorversion=`echo $version | cut -d- -f1`
+minorversion=`echo $version | cut -d- -f2`
+if (( $(echo "$majorversion < 4.3" |bc -l) )); then
+   ERRMSG="Current MOFED version is $version and needs to be at least 4.3-1"
+   logerr $ERRMSG
+   exit 1
+fi
+if (( $(echo "$majorversion == 4.3" |bc -l) )); then
+   minor=`echo $minorversion | cut -d. -f1`
+   if (( $(echo "$minor < 1") )); then
+       ERRMSG="Current MOFED version is $version and needs to be at least 4.3-1"
+       logerr $ERRMSG
+       exit 1
+   fi 
+fi
+
+service mst restart >/dev/null 2>&1
+if [ "$?" != "0" ] ;then
+    ERRMSG "[Error] failed to start mst."
+    logerr $ERRMSG
+    exit 1
+fi
+
+reboot_flag=0
+
+for x in `ls /dev/mst/mt*`
+do
+    mlxconfig -y -d $x q | grep 'ConnectX5' >/dev/null 2>&1 
+    if [ $? == 0 ]; then
+        mlxconfig -y -d $x set ADVANCED_PCI_SETTINGS=true >/dev/null 2>&1
+        mlxconfig -y -d $x set IBM_CAPI_EN=true  >/dev/null 2>&1
+        mlxconfig -y -d $x set IBM_TUNNELED_ATOMIC_EN=true  >/dev/null 2>&1
+        mlxconfig -y -d $x set IBM_AS_NOTIFY_EN=true  >/dev/null 2>&1
+        echo "Apply new Configuration for $x:"
+        mlxconfig -y -d $x q | grep  'IBM'
+        reboot_flag=1
+    fi
+done
+
+if [[ $reboot_flag == 0 ]]; then
+    echo "Didn't find ConnectX5 Devices, will not apply the new configuration"
+else
+    echo "******************************************************"
+    echo "     New configuration applied"
+    echo "     Please reboot system to load new configurations"
+    echo "******************************************************"
+fi
+
+exit 0
+

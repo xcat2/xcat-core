@@ -1,0 +1,337 @@
+start:rspconfig_ipsrc
+description: To test "rspconfig <node> ipsrc",to get the IP source for OpenBMC 
+os:Linux
+hcp:openbmc
+label:cn_bmc_ready,hctrl_openbmc
+cmd:rspconfig $$CN ipsrc 
+check:output=~$$CN\s*:\s*BMC IP Source: Static|BMC IP Source: Dynamic 
+check:rc == 0
+cmd:rspconfig $$CN  hostname sshcfg
+check:output =~Error: (\[.*?\]: )?Configure sshcfg must be issued without other options.
+check:rc != 0
+end
+
+start:rspconfig_dump_list
+description: To test "rspconfig <node> dump -l" and "rspconfig <node> dump --list" 
+os:Linux
+hcp:openbmc
+label:cn_bmc_ready,hctrl_openbmc
+cmd:rspconfig $$CN dump -l  
+check:output =~$$CN:\s*No attributes returned from the BMC.|\s*\[\d+\]\s* Generated:
+check:rc == 0
+cmd:rspconfig $$CN dump --list 
+check:output =~$$CN:\s*No attributes returned from the BMC.|\s*\[\d+\]\s* Generated:
+check:rc == 0
+end
+
+start:rspconfig_dump_generate
+description: To test "rspconfig <node> dump -g" and "rspconfig <node> dump --generate" 
+os:Linux
+hcp:openbmc
+label:cn_bmc_ready,hctrl_openbmc
+cmd:rspconfig $$CN dump -l|tee /tmp/dumplistold
+check:output =~$$CN:\s*No attributes returned from the BMC.|\s*\[\d+\]\s* Generated:
+check:rc == 0 
+cmd:rspconfig $$CN dump -g|tee /tmp/dumpgenerate
+check:rc == 0
+check:output =~$$CN:\s*\[\d+\]\s* success
+cmd:sleep 300
+cmd:dumpnumber=`sed -r 's/.+\[(.+)\].+/\1/g' /tmp/dumpgenerate `; rspconfig $$CN dump -l|grep "\[$dumpnumber\] Generated"
+check:rc == 0
+cmd:dumpnumber=`cat /tmp/dumpgenerate |awk -F '[' '{ print $2 }' | awk -F ']' '{ print $1 }'`;rspconfig $$CN dump --clear $dumpnumber
+check:rc == 0
+check:output =~$$CN:\s*\[\d+\]\s* clear
+cmd:rspconfig $$CN dump -l|tee /tmp/dumplistnew
+cmd:diff /tmp/dumplistold /tmp/dumplistnew
+check:rc == 0
+cmd:rspconfig $$CN dump --generate|tee /tmp/dumpgenerate
+check:rc == 0
+check:output =~$$CN:\s*\[\d+\]\s* success
+cmd:sleep 300
+cmd:dumpnumber=`sed -r 's/.+\[(.+)\].+/\1/g' /tmp/dumpgenerate `; rspconfig $$CN dump -l|grep "\[$dumpnumber\] Generated"
+check:rc == 0
+cmd:dumpnumber=`cat /tmp/dumpgenerate |awk -F '[' '{ print $2 }' | awk -F ']' '{ print $1 }'`;rspconfig $$CN dump --clear $dumpnumber
+check:rc == 0
+check:output =~$$CN:\s*\[\d+\]\s* clear
+cmd:rspconfig $$CN dump -l|tee /tmp/dumplistnew
+cmd:diff /tmp/dumplistold /tmp/dumplistnew
+check:rc == 0
+cmd:rm -rf /tmp/dumplistold /tmp/dumplistnew /tmp/dumpgenerate
+end
+
+start:rspconfig_dump_clear
+description: To test "rspconfig <node> dump -c" and "rspconfig <node> dump --clear" 
+os:Linux
+hcp:openbmc
+label:cn_bmc_ready,hctrl_openbmc
+cmd:rspconfig $$CN dump -g |tee /tmp/dumpgenerate
+check:rc == 0
+check:output =~$$CN:\s*\[\d+\]\s* success
+cmd:sleep 300
+cmd:dumpnumber=`sed -r 's/.+\[(.+)\].+/\1/g' /tmp/dumpgenerate `; rspconfig $$CN dump -l|grep "\[$dumpnumber\] Generated"
+check:rc == 0
+cmd:dumpnumber=`sed -r 's/.+\[(.+)\].+/\1/g' /tmp/dumpgenerate`;rspconfig $$CN dump --clear $dumpnumber
+check:rc == 0
+check:output =~$$CN:\s*\[\d+\]\s* clear
+cmd:rspconfig $$CN dump -g 
+check:rc == 0
+check:output =~$$CN:\s*\[\d+\]\s* success
+cmd:rspconfig $$CN dump -g
+check:rc == 0
+check:output =~$$CN:\s*\[\d+\]\s* success
+cmd:sleep 300
+cmd:rspconfig $$CN dump -c all
+check:rc == 0
+check:output =~$$CN:\s*\[all\]\s* clear
+cmd:rspconfig $$CN dump -l
+check:output =~$$CN:\s*No attributes returned from the BMC.
+cmd:rspconfig $$CN dump -g
+check:rc == 0
+check:output =~$$CN:\s*\[\d+\]\s* success
+cmd:rspconfig $$CN dump -g
+check:rc == 0
+check:output =~$$CN:\s*\[\d+\]\s* success
+cmd:sleep 300
+cmd:rspconfig $$CN dump --clear all
+check:rc == 0
+check:output =~$$CN:\s*\[all\]\s* clear
+cmd:rspconfig $$CN dump -l
+check:output =~$$CN:\s*No attributes returned from the BMC.
+cmd:rm -rf /tmp/dumpgenerate
+end
+
+start:rspconfig_dump_download
+description: To test rspconfig <node> dump -d" and "rspconfig <node> dump --download"
+os:Linux
+hcp:openbmc
+label:cn_bmc_ready,hctrl_openbmc
+cmd:rspconfig $$CN dump -g |tee /tmp/dumpgenerate
+check:rc == 0
+check:output =~$$CN:\s*\[\d+\]\s* success
+cmd:sleep 300
+cmd:dumpnumber=`sed -r 's/.+\[(.+)\].+/\1/g' /tmp/dumpgenerate`;rspconfig $$CN dump -d $dumpnumber |tee /tmp/dumpdown
+check:rc == 0
+cmd:dumpnumber=`sed -r 's/.+\[(.+)\].+/\1/g' /tmp/dumpgenerate`;grep "Downloaded dump $dumpnumber to /var/log/xcat/dump/" /tmp/dumpdown
+check:rc == 0
+cmd:dumpnumber=`sed -r 's/.+\[(.+)\].+/\1/g' /tmp/dumpgenerate`;dumpsize=`rspconfig $$CN dump -l |grep "\[$dumpnumber\] Generated" |cut -d : -f 6`;ls -l /var/log/xcat/dump/*_$$CN_dump_$dumpnumber.tar.xz|grep $dumpsize
+check:rc == 0
+cmd:rspconfig $$CN dump -g |tee /tmp/dumpgenerate
+check:rc == 0
+check:output =~$$CN:\s*\[\d+\]\s* success
+cmd:sleep 300
+cmd:dumpnumber=`sed -r 's/.+\[(.+)\].+/\1/g' /tmp/dumpgenerate`;rspconfig $$CN dump --download $dumpnumber |tee /tmp/dumpdown
+check:rc == 0
+cmd:dumpnumber=`sed -r 's/.+\[(.+)\].+/\1/g' /tmp/dumpgenerate`;grep "Downloaded dump $dumpnumber to /var/log/xcat/dump/" /tmp/dumpdown
+check:rc == 0
+cmd:dumpnumber=`sed -r 's/.+\[(.+)\].+/\1/g' /tmp/dumpgenerate`;dumpsize=`rspconfig $$CN dump -l |grep "\[$dumpnumber\] Generated" |cut -d : -f 6`;ls -l /var/log/xcat/dump/*_$$CN_dump_$dumpnumber.tar.xz|grep $dumpsize
+check:rc == 0
+cmd:rspconfig $$CN dump -d all
+check:rc == 0
+check:output =~Downloading all dumps
+cmd:rspconfig $$CN dump --download all
+check:rc == 0
+check:output =~Downloading all dumps 
+cmd:rm -rf /tmp/dumpgenerate /tmp/dumpdown
+end
+
+start:rspconfig_dump_no_option
+description: To test "rspconfig <node> dump"
+os:Linux
+hcp:openbmc
+label:cn_bmc_ready,hctrl_openbmc
+cmd:rspconfig $$CN dump  
+check:rc == 0
+check:output =~$$CN:\s*Dump requested
+check:output =~$$CN:\s*Downloading dump
+cmd:rspconfig $$CN dump -l |tail -n 1 |tee /tmp/dumpgenerate
+check:rc == 0
+cmd:dumpnumber=`sed -r 's/.+\[(.+)\].+/\1/g' /tmp/dumpgenerate`;dumpsize=`grep "\[$dumpnumber\] Generated" /tmp/dumpgenerate |cut -d : -f 6`;ls -l /var/log/xcat/dump/*_$$CN_dump_$dumpnumber.tar.xz|grep $dumpsize
+check:rc == 0
+cmd:rm -rf /tmp/dumpgenerate
+end
+
+start:rspconfig_gard
+description: To test "rspconfig <node> gard -c" 
+os:Linux
+hcp:openbmc
+label:cn_bmc_ready,hctrl_openbmc
+cmd:rspconfig $$CN gard -c 
+check:output =~$$CN:\s*GARD cleared
+check:rc == 0
+cmd:rspconfig $$CN gard --clear
+check:output =~$$CN:\s*GARD cleared
+check:rc == 0
+end
+
+start:rspconfig_ntpserver
+description: To test "rspconfig <node> ntpservers" to show the ntp server of the node 
+os:Linux
+hcp:openbmc
+label:cn_bmc_ready,hctrl_openbmc
+cmd:rspconfig $$CN ntpservers 
+check:output =~$$CN:\s*BMC NTP Servers:\s*None|\s*\d+.\d+.\d+.\d+
+check:rc == 0
+end
+
+start:rspconfig_powerrestorepolicy
+description: To test "rspconfig <node> powerrestorepolicy" to show the policy 
+os:Linux
+hcp:openbmc
+label:cn_bmc_ready,hctrl_openbmc
+cmd:rspconfig $$CN powerrestorepolicy |tee /tmp/powerrestorepolicy 
+check:output =~$$CN:\s*BMC PowerRestorePolicy:\s*AlwaysOff|AlwaysOn|Restore
+check:rc == 0
+cmd:rspconfig $$CN powerrestorepolicy=always_on 
+check:output =~$$CN:\s*BMC Setting BMC PowerRestorePolicy...
+check:rc == 0
+cmd:rspconfig $$CN powerrestorepolicy
+check:rc == 0
+check:output =~$$CN:\s*BMC PowerRestorePolicy:\s*AlwaysOn
+cmd:rspconfig $$CN powerrestorepolicy=always_off
+check:output =~$$CN:\s*BMC Setting BMC PowerRestorePolicy...
+check:rc == 0
+cmd:rspconfig $$CN powerrestorepolicy
+check:rc == 0
+check:output =~$$CN:\s*BMC PowerRestorePolicy:\s*AlwaysOff
+cmd:rspconfig $$CN powerrestorepolicy=restore
+check:output =~$$CN:\s*BMC Setting BMC PowerRestorePolicy...
+check:rc == 0
+cmd:rspconfig $$CN powerrestorepolicy=abc
+check:output =~$$CN:\s*(\[.*?\]: )?Error: Invalid value '\S*' for 'powerrestorepolicy', Valid values: restore,always_on,always_off
+check:rc != 0
+cmd:rspconfig $$CN powerrestorepolicy
+check:rc == 0
+check:output =~$$CN:\s*BMC PowerRestorePolicy:\s*Restore
+cmd:policy=`cat /tmp/powerrestorepolicy | awk -F ":" '{print $3}'`;newpolicy=`echo $policy |tr 'A-Z' 'a-z'`;rspconfig $$CN powerrestorepolicy=$newpolicy
+check:rc == 0
+cmd:rm -rf /tmp/powerrestorepolicy 
+end
+
+start:rspconfig_powersupplyredundancy
+description: To test "rspconfig <node> powersupplyredundancy" to show the powersupplyredundancy state 
+os:Linux
+hcp:openbmc
+label:cn_bmc_ready,hctrl_openbmc
+cmd:rspconfig $$CN powersupplyredundancy |tee /tmp/powersupplyredundancy 
+check:output =~$$CN:\s*BMC PowerSupplyRedundancy:\s*Enabled|Disabled
+check:rc == 0
+cmd:rspconfig $$CN powersupplyredundancy=enabled
+check:output =~$$CN:\s*BMC Setting BMC PowerSupplyRedundancy...
+check:rc == 0
+cmd:rspconfig $$CN powersupplyredundancy
+check:rc == 0 
+check:output =~$$CN:\s*BMC PowerSupplyRedundancy:\s*Enabled
+cmd:rspconfig $$CN powersupplyredundancy=disabled
+check:output =~$$CN:\s*BMC Setting BMC PowerSupplyRedundancy...
+check:rc == 0
+cmd:rspconfig $$CN powersupplyredundancy 
+check:rc == 0
+check:output =~$$CN:\s*BMC PowerSupplyRedundancy:\s*Disabled 
+cmd:rspconfig $$CN powersupplyredundancy=abc
+check:output =~$$CN:\s*(\[.*?\]: )?Error: Invalid value \S* for 'powersupplyredundancy', Valid values: disabled,enabled
+check:rc != 0
+cmd:redundancy=`cat /tmp/powersupplyredundancy | awk -F ":" '{print $3}'`;newredundancy=`echo $redundancy |tr 'A-Z' 'a-z'`;rspconfig $$CN powersupplyredundancy=$newredundancy
+check:rc == 0
+cmd:rm -rf /tmp/powersupplyredundancy
+end
+
+start:rspconfig_timesyncmethod
+description: To test "rspconfig <node> timesyncmethod" to show the timesyncmethod 
+os:Linux
+hcp:openbmc
+label:cn_bmc_ready,hctrl_openbmc
+cmd:rspconfig $$CN timesyncmethod |tee /tmp/timesyncmethod
+check:output =~$$CN:\s*BMC TimeSyncMethod:\s*NTP|Manual
+check:rc == 0
+cmd:rspconfig $$CN  timesyncmethod=ntp
+check:output =~$$CN:\s*BMC Setting BMC TimeSyncMethod...
+check:rc == 0
+cmd:rspconfig $$CN timesyncmethod 
+check:rc == 0
+check:output =~$$CN:\s*BMC TimeSyncMethod:\s*NTP
+cmd:rspconfig $$CN  timesyncmethod=manual
+check:output =~$$CN:\s*BMC Setting BMC TimeSyncMethod...
+check:rc == 0
+cmd:rspconfig $$CN timesyncmethod
+check:rc == 0
+check:output =~$$CN:\s*BMC TimeSyncMethod:\s*Manual
+cmd:rspconfig $$CN  timesyncmethod=abc
+check:output =~$$CN:\s*(\[.*?\]: )?Error: Invalid value \S* for 'timesyncmethod', Valid values: ntp,manual
+check:rc != 0
+cmd:syncmethod=`cat /tmp/timesyncmethod | awk -F ":" '{print $3}'`;newsyncmethod=`echo $syncmethod |tr 'A-Z' 'a-z'`;rspconfig $$CN timesyncmethod=$newsyncmethod
+check:rc == 0
+cmd:rm -rf /tmp/timesyncmethod
+end
+
+start:rspconfig_bootmode
+description: To test "rspconfig <node> bootmode" to show and change bootmode 
+os:Linux
+hcp:openbmc
+label:cn_bmc_ready,hctrl_openbmc
+cmd:rspconfig $$CN bootmode|tee /tmp/bootmode
+check:output =~$$CN:\s*BMC BootMode:\s*Regular|Safe|Setup
+check:rc == 0
+cmd:rspconfig $$CN bootmode=regular 
+check:output =~$$CN:\s*BMC Setting BMC BootMode...
+check:rc == 0
+cmd:rspconfig $$CN bootmode
+check:rc == 0 
+check:output =~$$CN:\s*BMC BootMode:\s*Regular
+cmd:rspconfig $$CN bootmode=safe
+check:output =~$$CN:\s*BMC Setting BMC BootMode...
+check:rc == 0
+cmd:rspconfig $$CN bootmode
+check:rc == 0
+check:output =~$$CN:\s*BMC BootMode:\s*Safe
+cmd:rspconfig $$CN bootmode=setup
+check:output =~$$CN:\s*BMC Setting BMC BootMode...
+check:rc == 0
+cmd:rspconfig $$CN bootmode
+check:rc == 0
+check:output =~$$CN:\s*BMC BootMode:\s*Setup
+cmd:rspconfig $$CN bootmode=abc
+check:output =~$$CN:\s*(\[.*?\]: )?Error: Invalid value \S* for 'bootmode', Valid values: regular,safe,setup
+check:rc != 0
+cmd:mode=`cat /tmp/bootmode |awk -F ":" '{print $3}'`;newmode=`echo $mode |tr 'A-Z' 'a-z'`;rspconfig $$CN bootmode=$newmode
+check:rc == 0
+cmd:rm -rf /tmp/bootmode
+end
+
+start:rspconfig_autoreboot
+description: To test "rspconfig <node> autoreboot" to show and change autoreboot 
+os:Linux
+hcp:openbmc
+label:cn_bmc_ready,hctrl_openbmc
+cmd:rspconfig $$CN autoreboot|tee /tmp/autoreboot
+check:output =~$$CN:\s*BMC AutoReboot:\s*1|0
+check:rc == 0
+cmd:rspconfig $$CN autoreboot=1
+check:output =~$$CN:\s*BMC Setting BMC AutoReboot...
+check:rc == 0
+cmd:rspconfig $$CN autoreboot 
+check:rc == 0
+check:output =~$$CN:\s*BMC AutoReboot:\s*1
+cmd:rspconfig $$CN autoreboot=0
+check:output =~$$CN:\s*BMC Setting BMC AutoReboot...
+check:rc == 0
+cmd:rspconfig $$CN autoreboot
+check:rc == 0
+check:output =~$$CN:\s*BMC AutoReboot:\s*0
+cmd:rspconfig $$CN autoreboot=2
+check:output =~$$CN:\s*(\[.*?\]: )?Error: Invalid value \S* for 'autoreboot', Valid values: 0,1
+check:rc != 0
+cmd:autoreboot=`cat /tmp/autoreboot |awk -F ":" '{print $3}'`;newautoreboot=`echo $autoreboot |tr 'A-Z' 'a-z'`;rspconfig $$CN autoreboot=$newautoreboot
+check:rc == 0
+cmd:rm -rf /tmp/autoreboot
+end
+
+start:rspconfig_invalid
+description: To test "rspconfig <node> invalid_value"  should throw out error message
+os:Linux
+hcp:openbmc
+label:cn_bmc_ready,hctrl_openbmc
+cmd:rspconfig $$CN aaa
+check:output =~Error: (\[.*?\]: )?Unsupported command: rspconfig aaa
+check:rc != 0
+end
+

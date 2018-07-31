@@ -18,6 +18,8 @@ use Socket;
 use File::Path;
 use constant PERF_LOG => "/var/log/xcat/perf.log";
 
+my $host = "";
+my $isSN = xCAT::Utils->isServiceNode();
 $::NOK = -1;
 $::OK  = 0;
 
@@ -484,7 +486,8 @@ sub message
         if ($errstr)
         {
             print $stdouterrf
-              "Unable to log $rsp to syslog because of $errstr\n";
+              "Error: Unable to log to syslog: $errstr\n";
+            print "$rsp\n";
         }
     }
 
@@ -544,6 +547,106 @@ sub message
         }
     }
     return;
+}
+
+
+#-----------------------------------------------------------------------------
+
+=head3 error_message
+
+  A wrap function for message. If $callback is not defined, send the log to
+  syslog, otherwise, send error message to client. Print service host if runs
+  on service node.
+
+  Example:
+
+          xCAT::MsgUtils->error_message($msg, $callback);
+=cut
+
+#-----------------------------------------------------------------------------
+sub error_message
+{
+    shift;
+    my $msg = shift;
+    my $callback = shift;
+    my $rsp;
+    $rsp->{data}->[0] = $msg;
+    if (!defined($callback)) {
+        message(undef, "S", $rsp, undef);
+        return;
+    }
+    if ($isSN && !$host) {
+        my @hostinfo = xCAT::NetworkUtils->determinehostname();
+        $host = $hostinfo[-1];
+    }
+    $rsp->{host} = $host if $host;
+    message(undef, "E", $rsp, $callback);
+}
+
+#-----------------------------------------------------------------------------
+
+=head3 info_message
+
+  A wrap function for message. If $callback is not defined, send the log to
+  syslog, otherwise, send info message to client. Print service host if runs
+  on service node.
+
+  Example:
+
+          xCAT::MsgUtils->info_message($msg, $callback);
+=cut
+
+#-----------------------------------------------------------------------------
+sub info_message
+{
+    shift;
+    my $msg = shift;
+    my $callback = shift;
+    my $rsp;
+    $rsp->{data}->[0] = $msg;
+    if (!defined($callback)) {
+        message(undef, "S", $rsp, undef);
+        return;
+    }
+    if ($isSN && !$host) {
+        my @hostinfo = xCAT::NetworkUtils->determinehostname();
+        $host = $hostinfo[-1];
+    }
+    $rsp->{host} = $host if $host;
+    message(undef, "I", $rsp, $callback);
+}
+
+#-----------------------------------------------------------------------------
+
+=head3 warn_message
+
+  A wrap function for message. If $callback is not defined, send the log to
+  syslog, otherwise, send warning message to client. Print service host if runs
+  on service node.
+
+  Example:
+
+          xCAT::MsgUtils->warn_message($msg, $callback);
+=cut
+
+#-----------------------------------------------------------------------------
+sub warn_message
+{
+    shift;
+    my $msg = shift;
+    my $callback = shift;
+    my $rsp;
+    $rsp->{data}->[0] = $msg;
+    if (!defined($callback)) {
+        message(undef, "S", $rsp, undef);
+        return;
+    }
+    if ($isSN && !$host) {
+        my @hostinfo = xCAT::NetworkUtils->determinehostname();
+        $host = $hostinfo[-1];
+    }
+    $rsp->{host} = $host if $host;
+    message(undef, "W", $rsp, $callback);
 }
 
 #--------------------------------------------------------------------------------
@@ -794,34 +897,24 @@ sub trace() {
     if (($level eq "I") || ($level eq "i")) { $prefix = "INFO"; }
     if (($level eq "D") || ($level eq "d")) { $prefix = "DEBUG"; }
 
-    my @tmp           = xCAT::TableUtils->get_site_attribute("xcatdebugmode");
-    my $xcatdebugmode = $tmp[0];
+    return unless ($prefix); #unknown level, do nothing.
 
-    if (($level eq "E")
-        || ($level eq "e")
-        || ($level eq "I")
-        || ($level eq "i")
-        || ($level eq "W")
-        || ($level eq "w")) {
-        my $msg = $prefix . " " . $logcontent;
-        eval {
-            openlog("xcat", "nofatal,pid", "local4");
-            syslog("$prefix", $msg);
-            closelog();
-        };
+    if (($verbose == 0) && ($prefix eq "DEBUG")) {
+        my @tmp = xCAT::TableUtils->get_site_attribute("xcatdebugmode");
+        my $xcatdebugmode = $tmp[0];
+        return unless (($xcatdebugmode == 1) || ($xcatdebugmode == 2));
     }
 
-    if (($level eq "D")
-        || ($level eq "d")) {
-        if (($verbose == 1) || ($xcatdebugmode eq "1") || ($xcatdebugmode eq "2")) {
-            my $msg = $prefix . " " . $logcontent;
-            eval {
-                openlog("xcat", "nofatal,pid", "local4");
-                syslog("$prefix", $msg);
-                closelog();
-            }
-        }
+    eval {
+        openlog("xcat", "nofatal,pid", "local4");
+        syslog("$prefix", $logcontent);
+        closelog();
+    };
+    if ($@) {
+        print "Error: Unable to log to syslog: $@\n";
+        print "$prefix . $logcontent\n";
     }
+
 }
 
 #------------------------------------------------------------------

@@ -1,11 +1,12 @@
 start:testtest
+label:mn_only,db
 cmd:/opt/xcat/share/xcat/tools/autotest/testcase/xcatconfig/change_site_table_values
 check:rc==0
 end
 
 start:xcatconfig_null
 description:xcatconfig with no argument
-os:Linux
+label:mn_only
 cmd:xcatconfig
 check:output=~No parameters were supplied on the xcatconfig command. Run xcatconfig -h
 check:rc!=0
@@ -13,7 +14,7 @@ end
 
 start:xcatconfig_h
 description:xcatconfig -h and --help
-os:Linux
+label:mn_only
 cmd:xcatconfig -h
 check:rc==0
 check:output=~Usage
@@ -24,7 +25,7 @@ end
 
 start:xcatconfig_v
 description:xcatconfig -v and --version
-os:Linux
+label:mn_only
 cmd:xcatconfig -v
 check:rc==0
 check:output=~version|Version
@@ -35,7 +36,7 @@ end
 
 start:xcatconfig_k
 description:To regenerate root's ssh keys
-os:Linux
+label:mn_only
 #step1:backup /root/.ssh
 cmd:cp -rf /root/.ssh /root/sshbak
 check:rc==0
@@ -56,13 +57,12 @@ cmd:mv -f /root/sshbak/* /root/.ssh
 check:rc==0
 cmd:rm -rf /root/sshbak
 check:rc==0
-
 end
 
 
 start:xcatconfig_k_c
 description:To regenerate root's ssh keys and cretials
-os:Linux
+label:mn_only
 #step1:backup /root/.ssh
 cmd:cp -rf /root/.ssh /root/sshbak
 check:rc==0
@@ -93,21 +93,20 @@ end
 
 start:xcatconfig_c
 description:To regenerate cretials
-os:Linux
+label:mn_only
 #step1:backup: /etc/xcat/ca /etc/xcat/cert
 cmd:cp -r /etc/xcat/ca /etc/xcat/cabak;cp -r /etc/xcat/cert /etc/xcat/certbak
-
 #step2:run command and check the output
-cmd:xcatconfig  -c >/tmp/xcatconfig.test 2>&1
+cmd:xcatconfig  -c 2>&1 | tee /tmp/xcatconfig.test 
 check:rc==0
-cmd:if [[ `cat /tmp/xcatconfig.test |grep FAILED` ]] || [[ `cat /tmp/xcatconfig.test |grep error` ]] || [[ `cat /tmp/xcatconfig.test |grep "fail"` ]] || [[ `cat /tmp/xcatconfig.test |grep Error` ]];then exit 1;fi
+cmd:if [[ `cat /tmp/xcatconfig.test |grep -i fail` ]] || [[ `cat /tmp/xcatconfig.test |grep -i error` ]] ;then exit 1;else exit 0;fi
 check:rc==0
 cmd:if [[ `cat /tmp/xcatconfig.test |grep "Created xCAT certificate"` ]] && [[ `cat /tmp/xcatconfig.test |grep "Signature ok"` ]];then exit 0;else exit 1;fi
 check:rc==0
 #step3:make sure the  /etc/xcat/ca /etc/xcat/cert is rewrite
-cmd:diff /etc/xcat/ca /etc/xcat/cabak
+cmd:diff -y /etc/xcat/ca /etc/xcat/cabak
 check:rc!=0
-cmd:diff /etc/xcat/cert /etc/xcat/certbak
+cmd:diff -y /etc/xcat/cert /etc/xcat/certbak
 check:rc!=0
 #step4:restore test environment
 cmd:rm -rf /tmp/xcatconfig.test
@@ -118,7 +117,7 @@ end
 
 start:xcatconfig_s
 description:To regenerate node host ssh keys
-os:Linux
+label:mn_only
 #step1:backup: /etc/xcat/hostkeys  /install/postscripts/hostkeys
 cmd:cp -rf /etc/xcat/hostkeys /etc/xcat/hostkeysbak
 check:rc==0
@@ -148,7 +147,7 @@ end
 
 start:xcatconfig_s_c
 description:To regenerate node host ssh keys and credentials
-os:Linux
+label:mn_only
 #step1:backup: /etc/xcat/hostkeys  /install/postscripts/hostkeys
 cmd:cp -rf /etc/xcat/hostkeys /etc/xcat/hostkeysbak
 check:rc==0
@@ -182,7 +181,7 @@ end
 
 start:xcatconfig_d_V
 description:This -d option will reinitialize the basic xCAT database table setup
-os:Linux
+label:mn_only
 #step1:backup database and prepare test data
 cmd:dumpxCATdb -p /tmp/xcatconfigtest
 check:rc==0
@@ -211,8 +210,8 @@ end
 
 
 start:xcatconfig_i
-os:Linux
 description:Initial the xCAT installation in Management Node, only node host key regenerated, xcatd restart; xCAT credentials, database and the ssh key are not changed
+label:mn_only
 #step1:backup test environment and prepare test data
 #backup test environment, including database, /root/.ssh/, /etc/xcat/hostkey/, install/postscripts/hostkeys
 cmd:dumpxCATdb -p /tmp/xcatconfigtest
@@ -266,8 +265,8 @@ end
      
      
 start:xcatconfig_u
-os:Linux
 description:Update xCAT in Management Node, xcatd restart; database, xCAT credentials, node ssh key and root ssh key are not changed
+label:mn_only
 #step1:backup test environment and prepare test data
 #backup test environment, including database, /root/.ssh/, /etc/xcat/hostkey/, install/postscripts/hostkeys
 cmd:dumpxCATdb -p /tmp/xcatconfigtest
@@ -318,8 +317,9 @@ check:rc==0
 end
 
 start:xcatconfig_u_check_xcatsslversion_rhels_sles
-os:rhels,sles
 description:after xcatconfig -u the site.xcatsslversion will not be changed
+os:rhels,sles
+label:mn_only
 cmd:lsdef -t site -i xcatsslversion -c | grep '=TLSv1$'
 check:rc==0
 cmd:chtab key=xcatsslversion site.value=TLSv12
@@ -338,6 +338,7 @@ end
 start:xcatconfig_u_check_xcatsslversion_ubuntu
 description:after xcatconfig -u the site.xcatsslversion will not be changed
 os:ubuntu
+label:mn_only
 cmd:lsdef -t site -i xcatsslversion -c | grep '=TLSv1$'
 check:rc==0
 cmd:chtab key=xcatsslversion site.value=TLSv1_2

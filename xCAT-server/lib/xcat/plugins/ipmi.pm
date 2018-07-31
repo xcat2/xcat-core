@@ -50,6 +50,7 @@ my $xcatdebugmode = 0;
 
 my $IPMIXCAT  = "/opt/xcat/bin/ipmitool-xcat";
 my $NON_BLOCK = 1;
+my $BIG_DATA_MACHINE_MODELS = "8001-22C|9006-22C|5104-22C|8001-12C|9006-12C";
 use constant RFLASH_LOG_DIR => "/var/log/xcat/rflash";
 if (-d RFLASH_LOG_DIR) {
     chmod 0700, RFLASH_LOG_DIR;
@@ -1861,6 +1862,20 @@ sub do_firmware_update {
     $ret = get_ipmitool_version(\$ipmitool_ver);
     exit $ret if $ret < 0;
 
+    # Update node status to indicate firmware update started
+    my $set_fw_update_status_func = sub {
+        my ($node, $callback) = @_;
+        my $status = "updating firmware";
+        my $nodelist_table = xCAT::Table->new('nodelist');
+        if (!$nodelist_table) {
+            xCAT::MsgUtils->message("S", "Unable to open nodelist table, denying");
+        } else {
+            $nodelist_table->setNodeAttribs($node, { status => $status });
+            $nodelist_table->close();
+        }
+        return;
+    };
+
     my $exit_with_error_func = sub {
         my ($node, $callback, $message) = @_;
         my $status = "failed to update firmware";
@@ -1920,7 +1935,10 @@ sub do_firmware_update {
     if ($bmc_password) {
         $pre_cmd = $pre_cmd . " -P $bmc_password";
     }
-    
+
+    #Update node status
+    $set_fw_update_status_func->($sessdata->{node}, $callback);
+
     # check for 8335-GTB Model Type to adjust buffer size
     my $buffer_size = "30000";
     my $cmd = $pre_cmd . " fru print 3";
@@ -1978,7 +1996,7 @@ sub do_firmware_update {
     # P9 Boston (9006-22C, 9006-12C, 5104-22C) or P8 Briggs (8001-22C) 
     # firmware update is done using pUpdate utility expected to be in the 
     # specified data directory along with the update files .bin for BMC or .pnor for Host
-    if ($output =~ /8001-22C|9006-22C|5104-22C|9006-12C/) {
+    if ($output =~ /$BIG_DATA_MACHINE_MODELS/) {
         # Verify valid data directory was specified
         if (defined $directory_name) {
             unless (File::Spec->file_name_is_absolute($directory_name)) {
@@ -2016,7 +2034,7 @@ sub do_firmware_update {
         if (scalar(@pnor_files) > 1) {
             # Error if more than one .pnor file in data directory
             $exit_with_error_func->($sessdata->{node}, $callback,
-                "Multiple PNOR update files detected in data directory $pUpdate_directory.");
+                "Multiple Host update files detected in data directory $pUpdate_directory.");
         }
 
         if (scalar(@bmc_files) > 1) {
@@ -2040,6 +2058,7 @@ sub do_firmware_update {
             $exit_with_error_func->($sessdata->{node}, $callback,
                 "At least one update file (.bin or .pnor) needs to be in data directory $pUpdate_directory.");
         }
+
         # All checks are done, run pUpdate utility on each of the update files found in 
         # the specified data directory
         xCAT::SvrUtils::sendmsg("rflash started, Please wait...", $callback, $sessdata->{node});
@@ -2059,7 +2078,7 @@ sub do_firmware_update {
             "Timeout to check the bmc status");
         }
 
-        # step 2 update BMC file or PNOR file, or both
+        # step 2 update BMC file or Host file, or both
         if ($bmc_file) {
             # BMC file was found in data directory, run update with it
             my $pUpdate_bmc_cmd = "$pUpdate_directory/pUpdate -f $bmc_file -i lan -h $bmc_addr -u $bmc_userid -p $bmc_password >".$rflash_log_file." 2>&1";
@@ -2083,11 +2102,11 @@ sub do_firmware_update {
 
 
         if ($pnor_file) {
-            # PNOR file was found in data directory, run update with it
+            # Host file was found in data directory, run update with it
             my $pUpdate_pnor_cmd = "$pUpdate_directory/pUpdate -pnor $pnor_file -i lan -h $bmc_addr -u $bmc_userid -p $bmc_password >>".$rflash_log_file." 2>&1";
             if ($verbose) {
                 xCAT::SvrUtils::sendmsg([ 0,
-                    "rflashing PNOR, see the detail progress :\"tail -f $rflash_log_file\"" ],
+                    "rflashing Host, see the detail progress :\"tail -f $rflash_log_file\"" ],
                     $callback, $sessdata->{node});
             }
             my $output = xCAT::Utils->runcmd($pUpdate_pnor_cmd, -1);
@@ -2105,13 +2124,28 @@ sub do_firmware_update {
         }
 
         $exit_with_success_func->($sessdata->{node}, $callback, "Firmware updated, powering chassis on to populate FRU information...");
+    } else {
+
+        # The target machine is *NOT* IBM Power S822LC for Big Data (Supermicro)
+        # Only .hpm files is supported for such machine, no directory option is supported
+        if (defined $directory_name and $output =~ /Chassis Part Number\s*:\s*(\S*)/) {
+            my $model = $1;
+            $exit_with_error_func->($sessdata->{node}, $callback, "Flashing of $model is not supported with pUpdate, supported Model Types: $BIG_DATA_MACHINE_MODELS");
+        }
     }
 
-    if (($hpm_data_hash{deviceID} ne $sessdata->{device_id}) ||
-        ($hpm_data_hash{productID} ne $sessdata->{prod_id}) ||
-        ($hpm_data_hash{manufactureID} ne $sessdata->{mfg_id})) {
-        $exit_with_error_func->($sessdata->{node}, $callback,
-            "The image file doesn't match this machine");
+    # If we fall through here, it is *NOT* IBM Power S822LC for Big Data (Supermicro) and we expact some data in hpm_data_hash.
+    # Verify hpm_data_hash has some values
+
+
+    if (!exists($hpm_data_hash{deviceID})
+        || !exists($hpm_data_hash{manufactureID})
+        || !exists($hpm_data_hash{productID})) {
+        $exit_with_error_func->($sessdata->{node}, $callback, "Extract data from .hpm update file failed, no deviceID, productID or manufactureID got");
+    } elsif (($hpm_data_hash{deviceID} ne $sessdata->{device_id}) ||
+             ($hpm_data_hash{productID} ne $sessdata->{prod_id}) ||
+             ($hpm_data_hash{manufactureID} ne $sessdata->{mfg_id})) {
+        $exit_with_error_func->($sessdata->{node}, $callback, "The image file doesn't match target machine: \n$output");
     }
 
     # check for 8335-GTB Firmware above 1610A release.  If below, exit
@@ -2409,7 +2443,8 @@ sub rflash {
             } elsif ($opt !~ /.*\.hpm$/i && $opt !~ /^-V{1,4}$|^--buffersize=|^--retry=/) {
                 # An unexpected flag was passed, but it could be a directory name. Display error only if not -d option
                 unless ($directory_flag) {
-                    $callback->({ error => "The option $opt is not supported or invalid update file specified",
+                    my $node =  $sessdata->{node};
+                    $callback->({ data => "$node: Error: The option $opt is not supported or invalid update file specified",
                         errorcode => 1 });
                     return;
                 }
@@ -2427,9 +2462,9 @@ sub rflash {
                 my $c_id          = ${ $sessdata->{component_ids} }[$i];
                 my $version       = $firmware_version{$c_id};
                 my $format_string = $comp_string{$c_id};
-                my $format_ver    = sprintf("%3d.%02x %02X%02X%02X%02X",
-                    $version->[0], $version->[1], $version->[2],
-                    $version->[3], $version->[4], $version->[5]);
+                my $format_ver    = sprintf("%3d.%02x.%d",
+                    $version->[0], $version->[1],
+                    $version->[5]*0x1000000 +$version->[4]*0x10000+ $version->[3]*0x100+$version->[2]);
                 $msg = $msg . $sessdata->{node} . ": " .
 "Node firmware version for $format_string component: $format_ver";
                 if ($i != scalar(@{ $sessdata->{component_ids} }) - 1) {
@@ -2518,6 +2553,10 @@ sub do_rflash_process {
             my $cmd = "/usr/bin/tftp $bmcip -m binary -c put $recover_image ".basename($recover_image);
             my $output = xCAT::Utils->runcmd($cmd, -1);
             if ($::RUNCMD_RC != 0) {
+                if ($output =~ "timed out") {
+                    # Time out running tftp command. One possible reason is BMC not in "brick protection" mode
+                    $output .= " BMC might not be in 'Brick protection' state";
+                }
                 $callback->({ error => "Running tftp command \'$cmd\' failed. Error Code: $::RUNCMD_RC. Output: $output.",
                         errorcode => 1 });
                 exit(1);
@@ -2568,16 +2607,6 @@ sub start_rflash_processes {
     foreach (@donargs) {
         do_rflash_process($_->[0], $_->[1], $_->[2], $_->[3], $_->[4],
             $ipmitimeout, $ipmitrys, $command, -args => \@exargs);
-        $rflash_status->{$_->[0]}->{status} = "updating firmware";
-    }
-    if (!grep(/^(-c|--check)$/i, @exargs)) {
-        my $nodelist_table = xCAT::Table->new('nodelist');
-        if (!$nodelist_table) {
-            xCAT::MsgUtils->message("S", "Unable to open nodelist table, denying");
-        } else {
-            $nodelist_table->setNodesAttribs($rflash_status);
-            $nodelist_table->close();
-        }
     }
 
     # Wait for all processes to end
@@ -2849,7 +2878,8 @@ sub power_with_context {
         "off"     => 0,
         "softoff" => 5,
         "reset"   => 3,
-        "nmi"     => 4
+        "nmi"     => 4,
+        "cycle"   => 2,
     );
     if ($subcommand eq "on") {
         if ($sessdata->{powerstatus} eq "on") {
@@ -4696,7 +4726,7 @@ sub parseboard {
         my $macdata   = $boardinf{extra}->[6]->{value};
         my $macstring = "1";
         my $macprefix;
-        while ($macdata and $macstring !~ /00:00:00:00:00:00/ and not ref $global_sessdata->{currmacs}) {
+        while ($macdata and ref $macdata and $macstring !~ /00:00:00:00:00:00/ and not ref $global_sessdata->{currmacs}) {
             my @currmac = splice @$macdata, 0, 6;
             unless ((scalar @currmac) == 6) {
                 last;
@@ -8263,13 +8293,20 @@ sub preprocess_request {
         return;
     }
 
+    my $all_noderange = $realnoderange;
+
     if ($command eq "rpower") {
         my $subcmd = $exargs[0];
         if ($subcmd eq '') {
 
             #$callback->({data=>["Please enter an action (eg: boot,off,on, etc)",  $usage_string]});
             #Above statement will miss error code, so replaced by the below statement
-            $callback->({ errorcode => [1], data => [ "Please enter an action (eg: boot,off,on, etc)", $usage_string ] });
+            my $error_data = "";
+            foreach (@$all_noderange) {
+                $error_data .= "\n" if ($error_data);
+                $error_data .= "$_: Please enter an action (eg: boot,off,on, etc) when using mgt=ipmi.";
+            }
+            $callback->({ errorcode => [1], data => [ $error_data ] });
             $request = {};
             return 0;
         }
@@ -8283,13 +8320,23 @@ sub preprocess_request {
 
             #$callback->({data=>["Unsupported command: $command $subcmd", $usage_string]});
             #Above statement will miss error code, so replaced by the below statement
-            $callback->({ errorcode => [1], data => [ "Unsupported command: $command $subcmd", $usage_string ] });
+            my $error_data = "";
+            foreach (@$all_noderange) {
+                $error_data .= "\n" if ($error_data);
+                $error_data .= "$_: Error: Unsupported command: $command $subcmd when using mgt=ipmi.";
+            }
+            $callback->({ errorcode => [1], data => [ $error_data ] });
             $request = {};
             return;
         }
         if (($subcmd eq 'on' or $subcmd eq 'reset' or $subcmd eq 'boot') and $::XCATSITEVALS{syspowerinterval}) {
             unless ($::XCATSITEVALS{syspowermaxnodes}) {
-                $callback->({ errorcode => [1], error => ["IPMI plugin requires syspowermaxnodes be defined if syspowerinterval is defined"] });
+                my $error_data = "";
+                foreach (@$all_noderange) {
+                    $error_data .= "\n" if ($error_data);
+                    $error_data .= "$_: 'syspowermaxnodes` is required if 'syspowerinterval' is configured in the site table.";
+                }
+                $callback->({ errorcode => [1], error => [$error_data] });
                 $request = {};
                 return 0;
             }
@@ -8311,10 +8358,15 @@ sub preprocess_request {
         if ($realnoderange) {
             my $optset;
             my $option;
+            my $error_data = "";
             foreach (@exargs) {
                 if ($_ =~ /^(\w+)=(.*)/) {
                     if ($optset eq 0) {
-                        $callback->({ errorcode => [1], data => [ "Usage Error: Cannot display and change attributes on the same command."] });
+                        foreach (@$all_noderange) {
+                            $error_data .= "\n" if ($error_data);
+                            $error_data .= "$_: Usage Error: Cannot display and change attributes on the same command when using mgt=ipmi..";
+                        }
+                        $callback->({ errorcode => [1], data => [ $error_data] });
                         $request = {};
                         return;
                     }
@@ -8322,7 +8374,11 @@ sub preprocess_request {
                     $option = $1;
                 } else {
                     if ($optset eq 1) {
-                        $callback->({ errorcode => [1], data => [ "Usage Error: Cannot display and change attributes on the same command."] });
+                        foreach (@$all_noderange) {
+                            $error_data .= "\n" if ($error_data);
+                            $error_data .= "$_: Usage Error: Cannot display and change attributes on the same command when using mgt=ipmi.";
+                        }
+                        $callback->({ errorcode => [1], data => [ $error_data] });
                         $request = {};
                         return;
                     }
@@ -8330,7 +8386,11 @@ sub preprocess_request {
                     $optset = 0;
                 }
                 unless ($option =~ /^USERID$|^ip$|^netmask$|^gateway$|^vlan$|^userid$|^username$|^password$|^snmpdest|^thermprofile$|^alert$|^garp$|^community$|^backupgateway$/) {
-                    $callback->({ errorcode => [1], data => [ "Unsupported command: $command $_"] });
+                    foreach (@$all_noderange) {
+                        $error_data .= "\n" if ($error_data);
+                        $error_data .= "$_: Error: Unsupported command: $command $option when using mgt=ipmi.";
+                    }
+                    $callback->({ errorcode => [1], data => [ $error_data ] });
                     $request = {};
                     return;
                 }
@@ -8340,7 +8400,12 @@ sub preprocess_request {
         if ($exargs[0] eq "-t" and $#exargs == 0) {
             unshift @{ $request->{arg} }, 'all';
         } elsif ((grep /-t/, @exargs) and !(grep /(all|vpd)/, @exargs)) {
-            $callback->({ errorcode => [1], error => ["option '-t' can only work with 'all' or 'vpd'"] });
+            my $error_data = "";
+            foreach (@$all_noderange) {
+                $error_data .= "\n" if ($error_data);
+                $error_data .= "$_: option '-t' can only work with 'all' or 'vpd' when using mgt=ipmi.";
+            }
+            $callback->({ errorcode => [1], data => [ $error_data ] });
             $request = {};
             return 0;
         }
@@ -8747,16 +8812,16 @@ sub hpm_action_version {
         return -1;
     }
     my $version = $hpm_data_hash{1}{action_version};
-    my $ver = sprintf("%3d.%02x %02X%02X%02X%02X", $version->[0], $version->[1], $version->[2],
-        $version->[3], $version->[4], $version->[5]);
+    my $ver = sprintf("%3d.%02x.%d", $version->[0], $version->[1],
+        $version->[5]*0x1000000+$version->[4]*0x10000+$version->[3]*0x100+$version->[2]);
     $callback->({ data => "HPM firmware version for BOOT component:$ver" });
     $version = $hpm_data_hash{2}{action_version};
-    $ver = sprintf("%3d.%02x %02X%02X%02X%02X", $version->[0], $version->[1], $version->[2],
-        $version->[3], $version->[4], $version->[5]);
+    $ver = sprintf("%3d.%02x.%d", $version->[0], $version->[1],
+        $version->[5]*0x1000000+$version->[4]*0x10000+$version->[3]*0x100+$version->[2]);
     $callback->({ data => "HPM firmware version for APP  component:$ver" });
     $version = $hpm_data_hash{4}{action_version};
-    $ver = sprintf("%3d.%02x %02X%02X%02X%02X", $version->[0], $version->[1], $version->[2],
-        $version->[3], $version->[4], $version->[5]);
+    $ver = sprintf("%3d.%02x.%d", $version->[0], $version->[1],
+        $version->[5]*0x1000000+$version->[4]*0x10000+$version->[3]*0x100+$version->[2]);
     $callback->({ data => "HPM firmware version for BIOS component:$ver" });
 }
 
@@ -9004,7 +9069,7 @@ sub donode {
         on_bmc_connect(0, $sessiondata{$node});
         return 0;
     }
-    $sessiondata{$node}->{ipmisession} = xCAT::IPMI->new(bmc => $bmcip, userid => $user, password => $pass);
+    $sessiondata{$node}->{ipmisession} = xCAT::IPMI->new(bmc => $bmcip, userid => $user, password => $pass, node => $node);
     if ($sessiondata{$node}->{ipmisession}->{error}) {
         xCAT::SvrUtils::sendmsg([ 1, $sessiondata{$node}->{ipmisession}->{error} ], $callback, $node, %allerrornodes);
     } else {

@@ -193,6 +193,9 @@ sub new {
     foreach (keys %args) {    #store all passed parameters
         $self->{$_} = $args{$_};
     }
+    unless ($args{'node'}) {    #default to port 623 unless specified
+        $self->{'node'} = $args{'bmc'};
+    }
     unless ($args{'port'}) {    #default to port 623 unless specified
         $self->{'port'} = 623;
     }
@@ -482,7 +485,7 @@ sub subcmd {
         my $command_string = $command_info{$args{netfn}}->{$args{command}};
         my $data_values = join ", ", @{$args{data}};
         my $msg = sprintf ("[ipmi_debug] $self->{onlogon_args}->{command}:$self->{onlogon_args}->{subcommand}(@{$self->{onlogon_args}->{extraargs}}), raw_cmd: netfn(0x%02x=>%s), cmd(0x%02x=>%s), data=[%s]", $args{netfn}, $netfn_types{$args{netfn}}, $args{command}, $command_string, $data_values);
-        xCAT::SvrUtils::sendmsg([0, $msg], $self->{onlogon_args}->{outfunc});
+        xCAT::SvrUtils::sendmsg([0, $msg], $self->{onlogon_args}->{outfunc}, $self->{node});
     }
     my $seqincrement = 7;
     while ($tabooseq{ $self->{expectednetfn} }->{ $self->{expectedcmd} }->{ $self->{seqlun} } and $seqincrement) { #avoid using a seqlun formerly marked 'taboo', but don't advance by more than 7, just in case
@@ -679,9 +682,14 @@ sub handle_ipmi_packet {
             if ($rsp[5] & 0b10000000) {
                 $encrypted = 1;
             }
+
+#------------------------modified to support openbmc ipmi command----------------
             unless ($rsp[5] & 0b01000000) {
-                return 3; #we refuse to examine unauthenticated packets in this context
+                if ($self->{max_privilege} != 0) {
+                    return 3; #we refuse to examine unauthenticated packets in this context
+                }
             }
+
             splice(@rsp, 0, 4);    #ditch the rmcp header
             my @authcode = splice(@rsp, -12); #strip away authcode and remember it
             my @expectedcode = unpack("C*", hmac_sha1(pack("C*", @rsp), $self->{k1}));
@@ -763,10 +771,13 @@ sub got_rmcp_response {
         return 9;
     }
     $byte = shift @data;
-    unless ($byte >= 4) {
+
+    # add $byte == 0 to support openbmc ipmi command
+    unless ($byte >= 4 or $byte == 0) {
         $self->{onlogon}->("ERROR: Cannot acquire sufficient privilege", $self->{onlogon_args});
         return 9;
     }
+    $self->{max_privilege} = $byte if ($byte == 0);
     splice @data, 0, 5;
     $self->{pendingsessionid} = [ splice @data, 0, 4 ];
 

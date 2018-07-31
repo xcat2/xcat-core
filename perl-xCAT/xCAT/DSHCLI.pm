@@ -14,6 +14,7 @@ use File::Basename;
 use locale;
 use strict;
 use File::Path;
+use File::Temp;
 use POSIX;
 use Socket;
 use Getopt::Long;
@@ -22,6 +23,8 @@ use xCAT::MsgUtils;
 use xCAT::Utils;
 use xCAT::TableUtils;
 use xCAT::NodeRange;
+use xCAT::DSHCLI;
+use Data::Dumper;
 use lib '/opt/xcat/xdsh';
 our @dsh_available_contexts = ();
 our @dsh_valid_contexts     = ();
@@ -802,6 +805,46 @@ sub fork_fanout_dcp
         my @dcp_command;
         my $rsyncfile;
 
+        
+        my %envardict;
+        foreach my $varstr (split(',',$$target_properties{'envar'})){
+            if($varstr =~ m/(.*)=(.*)/){
+               my ($myvar,$myvalue)=($1,$2);
+               $envardict{$myvar}=$myvalue;
+            }
+        }
+
+        if(%envardict){
+            my $dest_srcdict=$$options{'destDir_srcFile'}{$user_target};
+            for my $dest (keys %{$dest_srcdict}){
+                my $newdest=$dest;
+                $newdest=xCAT::Utils->varsubinline($newdest,\%envardict);
+                for my $label(keys %{$$dest_srcdict{$dest}}){
+                    my $myref;
+                    if('ARRAY' eq ref($$dest_srcdict{$dest}{$label})){
+                        for my $path(@{$$dest_srcdict{$dest}{$label}}){
+                            $path=xCAT::Utils->varsubinline($path,\%envardict);
+                        }
+                    }elsif('HASH' eq ref($$dest_srcdict{$dest}{$label})){
+                        for my $path(keys(%{$$dest_srcdict{$dest}{$label}})){
+                            my $newpath=$path;
+                            $newpath=xCAT::Utils->varsubinline($newpath,\%envardict);
+                            if($newpath ne $path){
+                                $$dest_srcdict{$dest}{$label}{$newpath}=$$dest_srcdict{$dest}{$label}{$path};
+                                delete $$dest_srcdict{$dest}{$label}{$path};
+                            }
+                        }
+                    }
+                }
+                if($newdest ne $dest){
+                    $$dest_srcdict{$newdest}=$$dest_srcdict{$dest};
+                    delete $$dest_srcdict{$dest};
+                }
+
+            }
+        }
+
+        
         if (!$$target_properties{'localhost'})    # this is to a remote host
         {
             my $target_type = $$target_properties{'type'};
@@ -921,6 +964,7 @@ sub fork_fanout_dcp
         $rsp->{data}->[0] = " TRACE: Executing Command:@dcp_command";
         $dsh_trace
           && (xCAT::MsgUtils->message("I", $rsp, $::CALLBACK));
+
 
         my @process_info =
           xCAT::DSHCore->fork_output($user_target, @dcp_command);
@@ -1186,7 +1230,7 @@ sub fork_fanout_dsh
                 $rsp->{data}->[0] = "TRACE: Environment option specified";
                 $dsh_trace && (xCAT::MsgUtils->message("I", $rsp, $::CALLBACK));
                 my %env_rcp_config = ();
-                $tmp_env_file = POSIX::tmpnam . '.dsh';
+                $tmp_env_file = File::Temp::tmpnam . '.dsh';
                 $rsh_config{'command'} .= ". $tmp_env_file ; ";
 
                 $env_rcp_config{'src-file'}  = $$options{'environment'};
@@ -1237,7 +1281,7 @@ sub fork_fanout_dsh
                 $dsh_trace && (xCAT::MsgUtils->message("I", $rsp, $::CALLBACK));
 
                 my %exe_rcp_config = ();
-                $tmp_cmd_file = POSIX::tmpnam . ".dsh";
+                $tmp_cmd_file = File::Temp::tmpnam . ".dsh";
 
                 my ($exe_cmd, @args) = @{ $$options{'execute'} };
                 my $chmod_cmd = "";
@@ -1329,7 +1373,7 @@ sub fork_fanout_dsh
         #print "Command=@dsh_command\n";
 
         #@process_info = xCAT::DSHCore->fork_output($user_target, @dsh_command);
-        push(@commands, \@dsh_command);    #print Dumper(\@commands);
+        push(@commands, \@dsh_command);    
         @process_info = xCAT::DSHCore->fork_output_for_commands($user_target, @commands);
         if ($process_info[0] == -2)
         {
@@ -3290,6 +3334,13 @@ sub bld_resolve_nodes_hash
         $rsp->{info}->[0] = "Command: $cmd failed. Continuing...";
         xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
     }
+
+    
+    my $ostab = xCAT::Table->new('nodetype');
+    my %oents = %{ $ostab->getNodesAttribs(\@target_list, [qw(provmethod)]) };
+
+
+
     foreach my $target (@target_list)
     {
 
@@ -3303,12 +3354,27 @@ sub bld_resolve_nodes_hash
         if (($mname eq $target) || ($localhostname eq $target)) {
             $localhost = $target;
         }
+
+        my $envar=undef;
+        my $ent = $oents{$target}->[0];
+        if ($ent and $ent->{provmethod} and \
+               ($ent->{provmethod} ne 'install') and ($ent->{provmethod} ne 'netboot') and ($ent->{provmethod} ne 'statelite')) {
+
+            my $imagename = $ent->{provmethod};  
+            my $osimagetab = xCAT::Table->new('osimage', -create => 1);
+            (my $ref) = $osimagetab->getAttribs({ imagename => $imagename }, 'environvar');
+            if($ref){ 
+                $envar=$ref->{'environvar'};
+            }
+        }
+
         my %properties = (
             'hostname'   => $hostname,
             'ip-address' => $ip_address,
             'localhost'  => $localhost,
             'user'       => $user,
             'context'    => $context,
+            'envar'    => $envar,
             'unresolved' => $target
         );
 
@@ -4402,6 +4468,7 @@ sub parse_and_run_dcp
         $::XCATROOT = "/opt/xcat";
     }
 
+
     # parse the arguments
     Getopt::Long::Configure("posix_default");
     Getopt::Long::Configure("no_gnu_compat");
@@ -4531,15 +4598,6 @@ sub parse_and_run_dcp
         }
     }
 
-    # invalid to put the -F  with the -r flag
-    if ($options{'File'} && $options{'node-rcp'})
-    {
-        my $rsp = {};
-        $rsp->{error}->[0] =
-"If -F option is use, then -r is invalid. The command will always the rsync using ssh.";
-        xCAT::MsgUtils->message("E", $rsp, $::CALLBACK, 1);
-        return;
-    }
 
     # invalid to put the -s  without the -F flag
     if (!($options{'File'}) && $options{'rsyncSN'})
@@ -4566,22 +4624,31 @@ sub parse_and_run_dcp
             }
 
         }
-        elsif ($^O eq 'linux')
+        elsif (($^O eq 'linux') and !$options{'node-rcp'})
         {
             $options{'node-rcp'} = '/usr/bin/rsync';
         }
     }
-    my $remotecopycommand = $options{'node-rcp'};
-    if ($options{'node-rcp'}
-        && (!-f $options{'node-rcp'} || !-x $options{'node-rcp'}))
-    {
-        my $rsp = {};
-        $rsp->{error}->[0] =
-"Remote command: $remotecopycommand does not exist or is not executable.";
-        xCAT::MsgUtils->message("E", $rsp, $::CALLBACK, 1);
-        return;
-    }
 
+    my $remotecopycommand = $options{'node-rcp'};
+    if ($options{'node-rcp'}) {
+        if (!-f $options{'node-rcp'} || !-x $options{'node-rcp'})
+        {
+             my $rsp = {};
+             $rsp->{error}->[0] =
+                 "Remote command: $remotecopycommand does not exist or is not executable.";
+             xCAT::MsgUtils->message("E", $rsp, $::CALLBACK, 1);
+             return;
+        }
+    
+        if ($remotecopycommand !~ /\/(rcp|scp|rsync)$/){
+             my $rsp = {};
+             $rsp->{error}->[0] =
+                 "Remote command: $remotecopycommand is invalid, the support remote commands: scp,rcp,rsync.";
+             xCAT::MsgUtils->message("E", $rsp, $::CALLBACK, 1);
+             return;
+        }
+    }
     #
     # build list of nodes
     my @nodelist;
@@ -4673,6 +4740,7 @@ sub parse_and_run_dcp
         {
             $::SYNCSN = 1;
         }
+        
 
         # the parsing of the file will fill in an array of postscripts
         # need to be run if the associated file is updated
@@ -4726,6 +4794,7 @@ sub parse_and_run_dcp
             my $rsp = {};
             $rsp->{error}->[0] = "Error parsing the rsync file:$syncfile.";
             xCAT::MsgUtils->message("E", $rsp, $::CALLBACK, 1);
+            $::FAILED_NODES=scalar @nodelist;
             return;
         }
 
@@ -4909,6 +4978,15 @@ sub rsync_to_image
 
     my ($input_file, $image) = @_;
     my $rc = 0;
+ 
+    my %osimgenv;
+    if($ENV{'XCAT_OSIMAGE_ENV'}){
+        foreach my $myenv(split(',',$ENV{'XCAT_OSIMAGE_ENV'})){
+            if($myenv =~ /\s*(\S+)\s*=\s*(\S+)\s*/) {
+                $osimgenv{$1}=$2;
+            } 
+        }
+    }
     open(INPUTFILE, "< $input_file") || die "File $input_file does not exist\n";
     while (my $line = <INPUTFILE>)
     {
@@ -4917,6 +4995,8 @@ sub rsync_to_image
         {
             next;
         }
+
+        $line=xCAT::Utils->varsubinline($line,\%osimgenv); 
 
         # process no more lines, do not exec
         # do not execute postscripts when syncing images
@@ -5066,6 +5146,7 @@ sub parse_rsync_input_file_on_MN
     my $addmergescript  = 0;
     my $addappendscript = 0;
     open(INPUTFILE, "< $input_file") || die "File $input_file does not exist\n";
+
 
     while (my $line = <INPUTFILE>)
     {
@@ -5284,6 +5365,15 @@ sub parse_rsync_input_file_on_MN
     {
         $$options{'nodes'} = join ',', keys %{ $$options{'destDir_srcFile'} };
     }
+
+    my $remotecopycommand=$$options{'node-rcp'};
+    if($remotecopycommand !~ /\/rsync$/ and @::postscripts){
+        my $rsp = {};
+        $rsp->{error}->[0] ="key word 'EXECUTE' is unavailable when the remote copy command specified by '-r|--node-rcp' is $remotecopycommand. Does 'EXECUTEALWAYS' work for you?";
+        xCAT::MsgUtils->message("E", $rsp, $::CALLBACK, 1);         
+        return 1;
+    }
+
     return 0;
 }
 
@@ -5780,6 +5870,15 @@ sub parse_rsync_input_file_on_SN
     {
         $$options{'nodes'} = join ',', keys %{ $$options{'destDir_srcFile'} };
     }
+
+    my $remotecopycommand=$$options{'node-rcp'};
+    if($remotecopycommand !~ /\/rsync$/ and @::postscripts){
+        my $rsp = {};
+        $rsp->{error}->[0] ="key word 'EXECUTE' is unavailable when the remote copy command specified by '-r|--node-rcp' is $remotecopycommand. Does 'EXECUTEALWAYS' work for you?";
+        xCAT::MsgUtils->message("E", $rsp, $::CALLBACK, 1);         
+        return 1;
+    }
+
     return 0;
 }
 

@@ -10,6 +10,24 @@ use File::Basename;
 use File::Path;
 use Cwd qw(realpath);
 
+sub varsubinline{
+    my $line=shift;
+    my $refvardict=shift;
+
+    my @varsinline= $line =~ /\$\{?(\w+)\}?/g;
+    my @unresolvedvars;
+    foreach my $var(@varsinline){
+        if(exists $refvardict->{$var}){
+            $line=~ s/\$\{$var\}/$refvardict->{$var}/g;
+            $line=~ s/\$$var/$refvardict->{$var}/g;
+        }else{
+            push @unresolvedvars,$var;
+        }
+    }
+
+    return $line;
+}
+
 sub get_profile_def_filename {
     my $osver   = shift;
     my $profile = shift;
@@ -54,6 +72,8 @@ sub include_file
     my $file = shift;
     my $idir = shift;
     my @text = ();
+
+    $file=varsubinline($file,\%ENV);
     unless ($file =~ /^\//) {
         $file = $idir . "/" . $file;
     }
@@ -117,7 +137,6 @@ sub get_package_names {
                         $pkgtext =~ s/#INCLUDE:([^#^\n]+)#/include_file($1,$idir)/eg;
                     }
                 }
-
                 #print "\n\npkgtext=$pkgtext\n\n";
                 my @tmp = split(',', $pkgtext);
                 my $pass = 1;
@@ -169,7 +188,6 @@ sub get_package_names {
             }
         }
     }
-
     return %pkgnames;
 }
 

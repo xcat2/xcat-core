@@ -1,7 +1,8 @@
-Q/A list
-========
+Questions & Answers
+===================
 
 .. toctree::
    :maxdepth: 2
 
-   makehosts_qa.rst
+
+   makehosts.rst

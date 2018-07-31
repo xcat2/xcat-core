@@ -19,9 +19,16 @@ Name
 ****************
 
 
-\ **reventlog**\  \ *noderange*\  {\ *number-of-entries*\  [\ **-s**\ ]|\ **all [-s] | clear**\ }
+\ **reventlog**\  \ *noderange*\  [\ *number-of-entries*\  [\ **-s**\ ]|\ **all [-s] | clear**\ ]
 
 \ **reventlog**\  [\ **-h | -**\ **-help | -v | -**\ **-version**\ ]
+
+OpenPOWER OpenBMC specific :
+============================
+
+
+\ **reventlog**\  \ *noderange*\  [\ **resolved=**\ {\ *id-list*\ |\ **LED**\ }]
+
 
 
 *******************
@@ -64,6 +71,12 @@ logs are stored on each servers service processor.
  
 
 
+\ **resolved=**\ {\ *id-list*\ |\ **LED**\ }
+ 
+ Mark event log entries as resolved. Use comma separated list of entry ids to specify individual entries. Use \ **LED**\  to mark as resolved all event log entries that contribute to LED fault.
+ 
+
+
 \ **-h | -**\ **-help**\ 
  
  Print help.
@@ -83,7 +96,7 @@ logs are stored on each servers service processor.
 
 
 
-1.
+1. List last 5 event log entries from node4 and node5
  
  
  .. code-block:: perl
@@ -110,7 +123,7 @@ logs are stored on each servers service processor.
  
 
 
-2.
+2. Clear all event log entries from node4 and node5
  
  
  .. code-block:: perl
@@ -125,6 +138,27 @@ logs are stored on each servers service processor.
  
    node4: clear
    node5: clear
+ 
+ 
+
+
+3. Mark as resolved all event log entries from node4 that contribute to LED fault
+ 
+ 
+ .. code-block:: perl
+ 
+   reventlog node4 resolved=LED
+ 
+ 
+ Output is similar to:
+ 
+ 
+ .. code-block:: perl
+ 
+   Attempting to resolve the following log entries: LED...
+   node4: Resolved 51.
+   node4: Resolved 52.
+   node4: Resolved 58.
  
  
 

@@ -11,11 +11,28 @@ SYNOPSIS
 ********
 
 
+\ **rbeacon**\  [\ **-h | -**\ **-help | -v | -**\ **-version | -V | -**\ **-verbose**\ ]
+
+BMC (using IPMI):
+=================
+
+
 \ **rbeacon**\  \ *noderange*\  {\ **on | blink | off | stat**\ }
 
-\ **rbeacon**\  [\ **-h | -**\ **-help**\ ]
 
-\ **rbeacon**\  {\ **-v | -**\ **-version**\ }
+OpenPOWER BMC (using IPMI):
+===========================
+
+
+\ **rbeacon**\  \ *noderange*\  {\ **on | blink | off | stat**\ }
+
+
+OpenPOWER OpenBMC:
+==================
+
+
+\ **rbeacon**\  \ *noderange*\  {\ **on | off | stat**\ }
+
 
 
 ***********
@@ -23,7 +40,7 @@ DESCRIPTION
 ***********
 
 
-\ **rbeacon**\  Turns beacon (a light on the front of the physical server) on/off/blink or gives status of a node or noderange.
+\ **rbeacon**\  Turns beacon (a light on the front and/or rear of the physical server) on/off/blink or gives status of a node or noderange.
 
 
 ********

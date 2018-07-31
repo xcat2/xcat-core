@@ -1,0 +1,45 @@
+start:detect_dhcpd_work
+description:To test if xcatprobe detect_dhcpd works. This case must run in xcat mn
+cmd:if [ -d "/tmp/detect_dhcpd_work" ]; then mv /tmp/detect_dhcpd_work /tmp/detect_dhcpd_work.bak; fi; mkdir -p  /tmp/detect_dhcpd_work
+cmd:makedhcp -n
+check:rc == 0
+cmd:makedhcp $$CN
+check:rc == 0
+cmd:#!/bin/bash
+if [ -e "/etc/redhat-release" ]; then
+   rpm -qa |grep tcpdump
+   if [ "$?" != "0" ] ;then
+       yum install -y tcpdump
+   fi
+elif [ -e "/etc/SuSE-release" ]; then
+    rpm -qa |grep tcpdump
+    if [ "$?" != "0" ] ;then
+       zypper -n install tcpdump
+    fi
+elif [ -e "/etc/lsb-release" ]; then
+    dpkg -l|grep tcpdump
+    if [ "$?" != "0" ] ;then
+        apt-get install -y tcpdump
+    fi
+fi
+cmd:echo "$$CN" |tee /tmp/detect_dhcpd_work/cn
+cmd: #!/bin/bash
+cn=`cat /tmp/detect_dhcpd_work/cn`
+mac=""
+nic=""
+declare -a array=(`lsdef $cn -i mac -c|awk -F"=" '{print $2}'|sed 's/|/ /g'`)
+for i in "${array[@]}"
+do 
+    if ! echo $i|grep -q  NOIP
+    then 
+       mac=$i
+       break
+    fi
+done
+mn=`lsdef -t site -i master -c|awk -F"=" '{print $2}'`
+nic=`ip -4 -o a|grep $mn|awk -F" " '{print $2}'`
+xcatprobe -w detect_dhcpd -i $nic -m $mac
+check:output !~ There are 0 servers replied to dhcp discover
+check:output =~ Server:__GETTABLEVALUE(key,master,value,site)__ assign IP .+__GETNODEATTR($$CN,ip)__ 
+cmd:rm -rf /tmp/detect_dhcpd_work; if [ -d "/tmp/detect_dhcpd_work.bak" ]; then mv /tmp/detect_dhcpd_work.bak /tmp/detect_dhcpd_work;fi
+end

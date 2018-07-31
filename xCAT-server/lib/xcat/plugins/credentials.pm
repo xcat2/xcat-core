@@ -33,6 +33,7 @@ use IO::Socket::INET;
 use Time::HiRes qw(sleep);
 
 use xCAT::Utils;
+use xCAT::PasswordUtils;
 
 use xCAT::MsgUtils;
 use Getopt::Long;
@@ -86,9 +87,10 @@ sub process_request
 
     # do your processing here
     # return info
-
+    my $origclient = $client;
     if ($client) { ($client) = noderange($client) }
     unless ($client) {    #Not able to do host authentication, abort
+        xCAT::MsgUtils->trace(0, "E", "Received getcredentials from $origclient, which couldn't be correlated to a node (domain mismatch?)");
         return;
     }
     my $credcheck;
@@ -97,9 +99,11 @@ sub process_request
     } elsif ($request->{'callback_https_port'} and $request->{'callback_https_port'}->[0] and $request->{'callback_https_port'}->[0] < 1024) {
         $credcheck = [ 1, $request->{'callback_https_port'}->[0] ];
     } else {
+        xCAT::MsgUtils->trace(0, 'E', "Received malformed getcredentials requesting, ignore it.");
         return;
     }
     unless (ok_with_node($client, $credcheck)) {
+        xCAT::MsgUtils->trace(0, 'E', "The node ($client) is not ready, ignore it.");
         return;
     }
 
@@ -131,10 +135,10 @@ sub process_request
             my ($rootkeyparm, $zonename) = split(/:/, $parm);
             if ($zonename) {
                 $parm = $rootkeyparm;           # take the zone off
-`logger -t xcat -p local4.info "credentials: The node is asking for zone:$zonename sshkeys ."`;
+                xCAT::MsgUtils->trace(0, 'I', "credentials: The node ($client) is asking for sshkeys of zone: $zonename.");
                 $sshrootkeydir = xCAT::Zone->getzonekeydir($zonename);
                 if ($sshrootkeydir == 1) {      # error return
-`logger -t xcat -p local4.info "credentials: The node is asking for zone:$zonename sshkeys and the $zonename is not defined."`;
+                    xCAT::MsgUtils->trace(0, 'W', "credentials: The zone: $zonename is not defined.");
                 } else {
                     $foundkeys = 1;    # don't want to read the zone data twice
                 }
@@ -144,85 +148,85 @@ sub process_request
         if ($parm =~ /ssh_root_key/) {
             unless (-r "$sshrootkeydir/id_rsa") {
                 push @{ $rsp->{'error'} }, "Unable to read root's private ssh key";
-`logger -t xcat -p local4.info "credentials: Unable to read root's private ssh key"`;
+                xCAT::MsgUtils->trace(0, 'E', "credentials: Unable to read root's private ssh key");
                 next;
             }
-            `logger -t xcat -p local4.info "credentials: sending $parm"`;
+            xCAT::MsgUtils->trace(0, 'I', "credentials: sending $parm to $client");
             $tfilename = "$sshrootkeydir/id_rsa";
-`logger -t xcat -p local4.info "credentials: The  ssh root private key is in $tfilename."`;
+            xCAT::MsgUtils->trace(0, 'I', "credentials: The root's private ssh key is in $tfilename.");
 
         } elsif ($parm =~ /ssh_root_pub_key/) {
             unless (-r "$sshrootkeydir/id_rsa.pub") {
                 push @{ $rsp->{'error'} }, "Unable to read root's public ssh key";
-`logger -t xcat -p local4.info "credentials: Unable to read root's public ssh key"`;
+                xCAT::MsgUtils->trace(0, 'E', "credentials: Unable to read root's public ssh key");
                 next;
             }
-            `logger -t xcat -p local4.info "credentials: sending $parm"`;
+            xCAT::MsgUtils->trace(0, 'I', "credentials: sending $parm to $client");
             $tfilename = "$sshrootkeydir/id_rsa.pub";
-`logger -t xcat -p local4.info "credentials: The  ssh root public key is in $tfilename."`;
+            xCAT::MsgUtils->trace(0, 'I', "credentials: The root's public ssh key is in $tfilename.");
 
         } elsif ($parm =~ /xcat_server_cred/) {
             unless (-r "/etc/xcat/cert/server-cred.pem") {
                 push @{ $rsp->{'error'} }, "Unable to read xcat_server_cred";
-`logger -t xcat -p local4.info "credentials: Unable to read xcat_server_cred"`;
+                xCAT::MsgUtils->trace(0, 'E', "credentials: Unable to read xcat_server_cred");
                 next;
             }
-            `logger -t xcat -p local4.info "credentials: sending $parm"`;
+            xCAT::MsgUtils->trace(0, 'I', "credentials: sending $parm to $client");
             $tfilename = "/etc/xcat/cert/server-cred.pem";
 
         } elsif (($parm =~ /xcat_client_cred/) or ($parm =~ /xcat_root_cred/)) {
             unless (-r "$root/.xcat/client-cred.pem") {
                 push @{ $rsp->{'error'} }, "Unable to read xcat_client_cred or xcat_root_cred";
-`logger -t xcat -p local4.info "credentials: Unable to read xcat_client_cred or xcat_root_cred"`;
+                xCAT::MsgUtils->trace(0, 'E', "credentials: Unable to read xcat_client_cred or xcat_root_cred");
                 next;
             }
-            `logger -t xcat -p local4.info "credentials: sending $parm"`;
+            xCAT::MsgUtils->trace(0, 'I', "credentials: sending $parm to $client");
             $tfilename = "$root/.xcat/client-cred.pem";
 
         } elsif ($parm =~ /ssh_dsa_hostkey/) {
-            `logger -t xcat -p local4.info "credentials: sending $parm"`;
+            xCAT::MsgUtils->trace(0, 'I', "credentials: sending $parm to $client");
             if (-r "/etc/xcat/hostkeys/$client/ssh_host_dsa_key") {
                 $tfilename = "/etc/xcat/hostkeys/$client/ssh_host_dsa_key";
             } elsif (-r "/etc/xcat/hostkeys/ssh_host_dsa_key") {
                 $tfilename = "/etc/xcat/hostkeys/ssh_host_dsa_key";
             } else {
                 push @{ $rsp->{'error'} }, "Unable to read private DSA key from /etc/xcat/hostkeys";
-`logger -t xcat -p local4.info "credentials: Unable to read private DSA key"`;
+                xCAT::MsgUtils->trace(0, 'E', "credentials: Unable to read private DSA key");
                 next;
             }
         } elsif ($parm =~ /ssh_rsa_hostkey/) {
-            `logger -t xcat -p local4.info "credentials: sending $parm"`;
+            xCAT::MsgUtils->trace(0, 'I', "credentials: sending $parm to $client");
             if (-r "/etc/xcat/hostkeys/$client/ssh_host_rsa_key") {
                 $tfilename = "/etc/xcat/hostkeys/$client/ssh_host_rsa_key";
             } elsif (-r "/etc/xcat/hostkeys/ssh_host_rsa_key") {
                 $tfilename = "/etc/xcat/hostkeys/ssh_host_rsa_key";
             } else {
                 push @{ $rsp->{'error'} }, "Unable to read private RSA key from /etc/xcat/hostkeys";
-`logger -t xcat -p local4.info "credentials: Unable to read private RSA key"`;
+                xCAT::MsgUtils->trace(0, 'E', "credentials: Unable to read private RSA key");
                 next;
             }
         } elsif ($parm =~ /ssh_ecdsa_hostkey/) {
-            `logger -t xcat -p local4.info "credentials: sending $parm"`;
+            xCAT::MsgUtils->trace(0, 'I', "credentials: sending $parm to $client");
             if (-r "/etc/xcat/hostkeys/$client/ssh_host_ecdsa_key") {
                 $tfilename = "/etc/xcat/hostkeys/$client/ssh_host_ecdsa_key";
             } elsif (-r "/etc/xcat/hostkeys/ssh_host_ecdsa_key") {
                 $tfilename = "/etc/xcat/hostkeys/ssh_host_ecdsa_key";
             } else {
                 push @{ $rsp->{'error'} }, "Unable to read private ECDSA key from /etc/xcat/hostkeys";
-`logger -t xcat -p local4.info "credentials: Unable to read private ECDSA key"`;
+                xCAT::MsgUtils->trace(0, 'E', "credentials: Unable to read private ECDSA key");
                 next;
             }
         } elsif ($parm =~ /xcat_cfgloc/) {
-            `logger -t xcat -p local4.info "credentials: sending $parm"`;
+            xCAT::MsgUtils->trace(0, 'I', "credentials: sending $parm to $client");
             unless (-r "/etc/xcat/cfgloc") {
                 push @{ $rsp->{'error'} }, "Unable to read /etc/xcat/cfgloc ";
-`logger -t xcat -p local4.info "credentials: Unable to read /etc/xcat/cfgloc"`;
+                xCAT::MsgUtils->trace(0, 'E', "credentials: Unable to read /etc/xcat/cfgloc");
                 next;
             }
             $tfilename = "/etc/xcat/cfgloc";
 
         } elsif ($parm =~ /krb5_keytab/) {    #TODO: MUST RELAY TO MASTER
-            `logger -t xcat -p local4.info "credentials: sending $parm"`;
+            xCAT::MsgUtils->trace(0, 'I', "credentials: sending $parm to $client");
             my $princsuffix = $request->{'_xcat_clientfqdn'}->[0];
             $ENV{KRB5CCNAME} = "/tmp/xcat/krb5cc_xcat_$$";
             system('kinit -S kadmin/admin -k -t /etc/xcat/krb5_pass xcat/admin');
@@ -248,7 +252,7 @@ sub process_request
             unlink "/tmp/xcat/keytab.$$";
             next;
         } elsif ($parm =~ /x509cert/) {
-            `logger -t xcat -p local4.info "credentials: sending $parm"`;
+            xCAT::MsgUtils->trace(0, 'I', "credentials: sending $parm to $client");
             my $csr = $request->{'csr'}->[0];
             my $csrfile;
             my $oldumask = umask 0077;
@@ -289,7 +293,8 @@ sub process_request
                 chomp;
                 my ($type, $expiry, $revoke, $serial, $fname, $subject) = split /\t/;
                 if ($type eq 'V' and $subject =~ /CN=$client\z/) { #we already have a valid certificate, new request replaces it, revoke old
-                    print "The time of replacing is at hand for $client\n";
+                    #print "The time of replacing is at hand for $client\n";
+                    xCAT::MsgUtils->trace(0, 'I', "credentials: The time of replacing is at hand for $client");
                     system("openssl ca -config /etc/xcat/ca/openssl.cnf -revoke /etc/xcat/ca/certs/$serial.pem");
                 }
             }
@@ -304,15 +309,26 @@ sub process_request
             my $certcontents = join('', @certdata);
             push @{ $rsp->{'data'} }, { content => [$certcontents], desc => [$parm] };
         } elsif ($parm =~ /xcat_dockerhost_cert/) {
-            `logger -t xcat -p local4.info "credentials: sending $parm"`;
+            xCAT::MsgUtils->trace(0, 'I', "credentials: sending $parm to $client");
             unless (-r "/etc/xcatdockerca/cert/dockerhost-cert.pem") {
                 push @{ $rsp->{'error'} }, "Unable to read /etc/xcatdockerca/cert/dockerhost-cert.pem ";
-`logger -t xcat -p local4.info "credentials: Unable to read /etc/xcatdockerca/cert/dockerhost-cert.pem"`;
+                xCAT::MsgUtils->trace(0, 'E', "credentials: Unable to read /etc/xcatdockerca/cert/dockerhost-cert.pem");
                 next;
             }
             $tfilename = "/etc/xcatdockerca/cert/dockerhost-cert.pem";
 
+        } elsif ($parm =~ /xcat_secure_pw:/) {
+            xCAT::MsgUtils->trace(0, 'I', "credentials: sending $parm to $client");
+            my @users=split(/:/,$parm);
+            if (defined($users[1]) and $users[1] eq 'root') {
+                my $pass = xCAT::PasswordUtils::crypt_system_password();
+                if ($pass) {
+                    push @{$rsp->{'data'}}, { content => [ $pass ], desc => [ $parm ] };
+                }
+            }
+            next;
         } else {
+            xCAT::MsgUtils->trace(0, 'W', "credentials: Not supported type: $parm");
             next;
         }
 

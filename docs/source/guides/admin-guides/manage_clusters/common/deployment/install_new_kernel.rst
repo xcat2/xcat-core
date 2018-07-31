@@ -20,6 +20,7 @@ For example, kernel-3.10.0-229.ael7b.ppc64le.rpm means kernelver=3.10.0-229.ael7
         mkdir -p /install/kernels/3.10.0-229.ael7b.ppc64le
         cp /tmp/kernel-3.10.0-229.ael7b.ppc64le.rpm /install/kernels/3.10.0-229.ael7b.ppc64le
         createrepo /install/kernels/3.10.0-229.ael7b.ppc64le/
+        chdef -t osimage <imagename> -p pkgdir=/install/kernels/3.10.0-229.ael7b.ppc64le/
 
 Run genimage/packimage to update the image with the new kernel. 
 Note: If downgrading the kernel, you may need to first remove the rootimg directory. ::
@@ -44,7 +45,7 @@ The "4.6.ppc64le" is replaced with "4-ppc64le": ::
          cp /tmp/kernel-default-3.12.28-4.6.ppc64le.rpm /install/kernels/3.12.28-4-ppc64le/
          cp /tmp/kernel-default-base-3.12.28-4.6.ppc64le.rpm /install/kernels/3.12.28-4-ppc64le/ 
          cp /tmp/kernel-default-devel-3.12.28-4.6.ppc64le.rpm /install/kernels/3.12.28-4-ppc64le/
-
+         chdef -t osimage <imagename> -p pkgdir=/install/kernels/3.12.28-4-ppc64le/
 
 Run genimage/packimage to update the image with the new kernel. 
 Note: If downgrading the kernel, you may need to first remove the rootimg directory.

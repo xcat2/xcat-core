@@ -68,7 +68,7 @@ servicenode Attributes:
 
 \ **conserver**\ 
  
- Do we set up Conserver on this service node?  Valid values:1 or 0. If 1, configures and starts conserver daemon. If 0, it does not change the current state of the service.
+ Do we set up console service on this service node?  Valid values: 0, 1, or 2. If 0, it does not change the current state of the service. If 1, configures and starts conserver daemon. If 2, configures and starts goconserver daemon.
  
 
 

@@ -7,6 +7,42 @@ The following table is a summary of the new operating system (OS), hardware, and
 * **SLES** - Suse Linux Enterprise Server
 * **UBT** - Ubuntu
 
+xCAT 2.14.x
+-----------
+
++---------------------------------+---------------+-------------+----------------------------------+
+|xCAT                             |New OS         |New          |New Feature                       |
+|Version                          |               |Hardware     |                                  |
++=================================+===============+=============+==================================+
+|| xCAT 2.14.2 2018/7/13          |- ubuntu18.04  |             |                                  |
+||                                |               |             |                                  |
+| `2.14.2 Release Notes <https:// |               |             |                                  |
+| github.com/xcat2/xcat-core/wiki |               |             |                                  |
+| /XCAT_2.14.2_Release_Notes>`_   |               |             |                                  |
++---------------------------------+---------------+-------------+----------------------------------+
+|| xCAT 2.14.1                    |- RHV4.2 +     |             |- OpenBMC in python enhance:      |
+|| 2018/6/1                       |  RHEL7.5 + p8 |             |                                  |
+||                                |               |             |  rinv enhance,issue #5176        |
+| `2.14.1 Release Notes <https:// |               |             |                                  |
+| github.com/xcat2/xcat-core/wiki |               |             |- Cumulus Switch OS - syncfile    |
+| /XCAT_2.14.1_Release_Notes>`_   |               |             |                                  |
+|                                 |               |             |- Discover process enhance        |
+|                                 |               |             |                                  |
+|                                 |               |             |- xcatprobe `xcatmn` enhance      |
+|                                 |               |             |                                  |
+|                                 |               |             |- xcat-inventory enhance(beta)    |
+|                                 |               |             |                                  |
+|                                 |               |             |- goconserver v0.2.2              |
++---------------------------------+---------------+-------------+----------------------------------+
+|| xCAT 2.14                      |- RHEL 7.5     |             |- OpenBMC support in python:      |
+|| 2018/4/20                      |               |             |                                  |
+||                                |               |             |  rspconfig,reventlog             |
+| `2.14 Release Notes <https://   |               |             |                                  |
+| github.com/xcat2/xcat-core/wiki |               |             |- Performance Tuning doc update   |
+| /XCAT_2.14_Release_Notes>`_     |               |             |                                  |
++---------------------------------+---------------+-------------+----------------------------------+
+
+
 xCAT 2.13.x
 -----------
 
@@ -14,6 +50,39 @@ xCAT 2.13.x
 |xCAT                             |New OS         |New          |New Feature                       |
 |Version                          |               |Hardware     |                                  |
 +=================================+===============+=============+==================================+
+|| xCAT 2.13.11                   |               |             |- OpenBMC support in python:      |
+|| 2018/3/9                       |               |             |                                  |
+||                                |               |             |  rpower,rbeacon,rsetboot         |
+| `2.13.11 Release Notes <https://|               |             |  rinv,rvitals                    |
+| github.com/xcat2/xcat-core/wiki |               |             |                                  |
+| /XCAT_2.13.11_Release_Notes>`_  |               |             |- goconserver enhancement         |
+|                                 |               |             |                                  |
+|                                 |               |             |  makegocons -q, -C\|--cleanup    |
+|                                 |               |             |                                  |
++---------------------------------+---------------+-------------+----------------------------------+
+|| xCAT 2.13.10                   |               |             |- OpenBMC support:                |
+|| 2018/1/26                      |               |             |                                  |
+||                                |               |             |  rspconfig powersupplyredundancy,|
+| `2.13.10 Release Notes <https://|               |             |  powerrestorepolicy,bootmode     |
+| github.com/xcat2/xcat-core/wiki |               |             |  reventlog implementation        |
+| /XCAT_2.13.10_Release_Notes>`_  |               |             |                                  |
+|                                 |               |             |- goconserver enhancement         |
+|                                 |               |             |                                  |
+|                                 |               |             |  run goconserver on SN           |
+|                                 |               |             |                                  |
+|                                 |               |             |  redirect console log            |
++---------------------------------+---------------+-------------+----------------------------------+
+|| xCAT 2.13.9                    |               |             |- OpenBMC support:                |
+|| 2017/12/18                     |               |             |                                  |
+||                                |               |             |  rflash -a/-u enhance, add -d    |
+| `2.13.9 Release Notes <https:// |               |             |                                  |
+| github.com/xcat2/xcat-core/wiki |               |             |  reventlog implementation        |
+| /XCAT_2.13.9_Release_Notes>`_   |               |             |                                  |
+|                                 |               |             |  rspconfig dump,hostname,        |
+|                                 |               |             |  ntpserver,admin_passwd          |
+|                                 |               |             |                                  |
+|                                 |               |             |- goconserver for OpenBMC         |
++---------------------------------+---------------+-------------+----------------------------------+
 || xCAT 2.13.8                    |               |             |- OpenBMC support:                |
 || 2017/11/3                      |               |             |                                  |
 ||                                |               |             |  rflash/rpower run parallelly    |
@@ -26,7 +95,7 @@ xCAT 2.13.x
 +---------------------------------+---------------+-------------+----------------------------------+
 || xCAT 2.13.7                    |               |             |- OpenBMC support:                |
 || 2017/9/22                      |               |             |                                  |
-||                                |               |             |  rflash for OpenBMC and PNOR     |
+||                                |               |             |  rflash for OpenBMC and Host     |
 | `2.13.7 Release Notes <https:// |               |             |                                  |
 | github.com/xcat2/xcat-core/wiki |               |             |  reventlog to get/clear event log|
 | /XCAT_2.13.7_Release_Notes>`_   |               |             |                                  |

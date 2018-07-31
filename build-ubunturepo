@@ -69,7 +69,7 @@ for i in $*; do
 done
 
 # Supported distributions
-dists="saucy trusty utopic xenial"
+dists="saucy trusty utopic xenial bionic"
 
 c_flag=            # xcat-core (trunk-delvel) path
 d_flag=            # xcat-dep (trunk) path
@@ -183,8 +183,8 @@ then
         short_short_ver=`cat Version|cut -d. -f 1`
         build_time=`date`
         build_machine=`hostname`
-        commit_id=`git rev-parse --short HEAD`
         commit_id_long=`git rev-parse HEAD`
+        commit_id="${commit_id_long:0:7}"
 
         package_dir_name=debs$REL
         #TODO: define the core path and tarball name
@@ -213,7 +213,7 @@ then
         for file in $packages
         do
             file_low=`echo $file | tr '[A-Z]' '[a-z]'`
-            if [ "$file" = "xCAT" -o "$file" = "xCAT-genesis-scripts" ]; then
+            if [ "$file" = "xCAT" -o "$file" = "xCAT-genesis-scripts" -o "$file" = "xCATsn" ]; then
                 target_archs="amd64 ppc64el"
             else
                 target_archs="all"
@@ -250,7 +250,7 @@ then
                             # shipping bmcsetup and getipmi scripts as part of postscripts
                             files=("bmcsetup" "getipmi")
                             for f in "${files[@]}"; do
-                                 cp ${CURDIR}/../xCAT-genesis-scripts/bin/$f ${CURDIR}/postscripts/$f
+                                 cp ${CURDIR}/../xCAT-genesis-scripts/usr/bin/$f ${CURDIR}/postscripts/$f
                                  sed -i "s/xcat.genesis.$f/$f/g" ${CURDIR}/postscripts/$f
                             done
                         fi
@@ -335,7 +335,7 @@ __EOF__
            echo "GPGSIGN=$GPGSIGN specified, the repo will not be signed"
            echo "" >> conf/distributions
        else 
-           echo "SignWith: yes" >> conf/distributions
+           echo "SignWith: 5619700D" >> conf/distributions
            echo "" >> conf/distributions
        fi
     done
@@ -462,7 +462,7 @@ __EOF__
             echo "GPGSIGN=$GPGSIGN specified, the repo will not be signed"
             echo "" >> conf/distributions
         else
-            echo "SignWith: yes" >> conf/distributions
+            echo "SignWith: 5619700D" >> conf/distributions
             echo "" >> conf/distributions
         fi
 

@@ -18,9 +18,9 @@ use strict;
 sub usage {
     print "Usage:\n";
     print " To add or update rows for tables:
-   chtab [keycolname=keyvalue[,keycolname=keyvalue...]] [tablename.colname=newvalue] [tablename.colname=newvalue]...\n";
+   chtab keycolname=keyvalue[,keycolname=keyvalue...] tablename.colname=newvalue [tablename.colname=newvalue...]\n";
     print " To delete rows from tables:
-   chtab -d|--delete keycolname=keyvalue[,keycolname=keyvalue...] tablename [tablename]...\n";
+   chtab -d|--delete keycolname=keyvalue[,keycolname=keyvalue...] tablename [tablename...]\n";
     print " To display usage and other information:
    chtab [-h|--help|-v|--Version]\n\n";
     print "   -d|--delete  Delete the rows from a list of tables.
@@ -61,6 +61,12 @@ my $target = shift @ARGV;
 unless ($target) {
     usage;
     exit(1);
+}
+
+my $current_userid = getpwuid($>);
+if ($current_userid ne "root")
+{
+    print "WARNING: chtab bypasses xcatd and does not enforce xCAT policy tables. Consider using tabch instead.\n";
 }
 
 my %keyhash = ();

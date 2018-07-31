@@ -1,0 +1,77 @@
+start:updatenode_f_F_hierarchy
+description: verify the behavior of updatenode -f/-F in the hierarchy environment-- (1)the different kind of synclist entries including destination nodes (2)make sure the location of directory to hold the files/dirs to sync on SN is correct (3)check the result of updatenode -f/-F  
+
+#create environment files to hold variables accross the case
+cmd: MYENVFILE="/tmp/updatenode_f_F_hierarchy.envs"; rm -rf $MYENVFILE; echo "MYENVFILE=\"$MYENVFILE\"">> $MYENVFILE; chmod +x $MYENVFILE 
+#obtain and save the site.SNsyncfiledir
+cmd: source /tmp/updatenode_f_F_hierarchy.envs;echo $(lsdef -t site -o clustersite -i SNsyncfiledir|grep SNsyncfiledir||echo "SNsyncfiledir=/var/xcat/syncfiles")>>$MYENVFILE
+#create and save dir to hold intermidate files/dirs related to the case
+cmd: source /tmp/updatenode_f_F_hierarchy.envs;SYNCDIR='/tmp/updatenode_f_F_hierarchy.dir/';echo "SYNCDIR=\"$SYNCDIR\"">>$MYENVFILE; rm -rf $SYNCDIR; mkdir -p $SYNCDIR 
+#create and save synclist path
+cmd: source /tmp/updatenode_f_F_hierarchy.envs; SYNCLIST="$SYNCDIR/synclist";echo "SYNCLIST=\"$SYNCLIST\"">>$MYENVFILE
+
+#obtain the cn's osimage name, backup the osimage definition, save the osimage name and the path to the osimage stanza
+cmd: source /tmp/updatenode_f_F_hierarchy.envs; CNOSIMGSTANZA="$SYNCDIR/osimage.stanza";CNOSIMG=__GETNODEATTR($$CN,provmethod)__;lsdef -t osimage -o $CNOSIMG -z>$CNOSIMGSTANZA; echo "CNOSIMGSTANZA=\"$CNOSIMGSTANZA\"" >> $MYENVFILE; echo "CNOSIMG=\"$CNOSIMG\"">>$MYENVFILE
+#specify the synclists attribute for cn's osimage
+cmd: source /tmp/updatenode_f_F_hierarchy.envs; chdef -t osimage -o $CNOSIMG synclists=$SYNCLIST 
+check:rc==0
+
+#create the dirs+files to sync, append the sync list entries
+cmd: source /tmp/updatenode_f_F_hierarchy.envs; echo "$SYNCDIR/testdir1/ -> ($$CN) /tmp/" >>$SYNCLIST ; mkdir -p "$SYNCDIR/testdir1/"; echo "hellotest" > "$SYNCDIR/testdir1/testfile1"
+cmd: source /tmp/updatenode_f_F_hierarchy.envs; echo "$SYNCDIR/testdir2/* -> ($$CN) /tmp/" >>$SYNCLIST; mkdir -p "$SYNCDIR/testdir2/"; echo "hellotest" > "$SYNCDIR/testdir2/testfile2" 
+cmd: source /tmp/updatenode_f_F_hierarchy.envs; echo "$SYNCDIR/testdir3 -> ($$CN) /tmp/" >>$SYNCLIST; mkdir -p "$SYNCDIR/testdir3/"; echo "hellotest" > "$SYNCDIR/testdir3/testfile3" 
+cmd: source /tmp/updatenode_f_F_hierarchy.envs; echo "$SYNCDIR/testdir4/testfile4 -> ($$CN) /tmp/" >>$SYNCLIST; mkdir -p "$SYNCDIR/testdir4/"; echo "hellotest" > "$SYNCDIR/testdir4/testfile4" 
+cmd: source /tmp/updatenode_f_F_hierarchy.envs; echo "$SYNCDIR/testdir5/testfile5 -> /tmp/" >>$SYNCLIST; mkdir -p "$SYNCDIR/testdir5/"; echo "hellotest" > "$SYNCDIR/testdir5/testfile5" 
+cmd: source /tmp/updatenode_f_F_hierarchy.envs; echo "$SYNCDIR/testdir6/testfile6 -> ($$SN) /tmp/" >>$SYNCLIST; mkdir -p "$SYNCDIR/testdir6/"; echo "hellotest" > "$SYNCDIR/testdir6/testfile6" 
+
+#clear up the SNsyncfiledir directory on sn
+cmd: source /tmp/updatenode_f_F_hierarchy.envs;ssh $$SN "rm -rf $SNsyncfiledir/*"
+
+#run updatenode -f
+cmd: updatenode $$CN -f
+check:rc==0
+
+#verify the behavior of updatenode -f
+cmd: source /tmp/updatenode_f_F_hierarchy.envs; ssh $$SN "cat $SNsyncfiledir/$SYNCDIR/testdir1/testfile1|grep 'hellotest'"
+check:rc==0  
+cmd: source /tmp/updatenode_f_F_hierarchy.envs; ssh $$SN "cat $SNsyncfiledir/$SYNCDIR/testdir2/testfile2|grep 'hellotest'"
+check:rc==0  
+cmd: source /tmp/updatenode_f_F_hierarchy.envs; ssh $$SN "cat $SNsyncfiledir/$SYNCDIR/testdir3/testfile3|grep 'hellotest'"
+check:rc==0  
+cmd: source /tmp/updatenode_f_F_hierarchy.envs; ssh $$SN "cat $SNsyncfiledir/$SYNCDIR/testdir4/testfile4|grep 'hellotest'"
+check:rc==0  
+cmd: source /tmp/updatenode_f_F_hierarchy.envs; ssh $$SN "cat $SNsyncfiledir/$SYNCDIR/testdir5/testfile5|grep 'hellotest'"
+check:rc==0  
+
+#clean up existing files/dirs with the same name as the ones to sync
+cmd: source /tmp/updatenode_f_F_hierarchy.envs; ssh $$CN "rm -rf /tmp/test{dir,file}*"
+
+#run updatenode -F
+cmd: updatenode $$CN -F
+check:rc==0
+
+#verify the behavior of updatenode -F
+cmd: source /tmp/updatenode_f_F_hierarchy.envs; ssh $$CN "cat /tmp/testfile1|grep 'hellotest'"
+check:rc==0
+cmd: source /tmp/updatenode_f_F_hierarchy.envs; ssh $$CN "cat /tmp/testfile2|grep 'hellotest'"
+check:rc==0
+cmd: source /tmp/updatenode_f_F_hierarchy.envs; ssh $$CN "cat /tmp/testdir3/testfile3|grep 'hellotest'"
+check:rc==0
+cmd: source /tmp/updatenode_f_F_hierarchy.envs; ssh $$CN "cat /tmp/testfile4|grep 'hellotest'"
+check:rc==0
+cmd: source /tmp/updatenode_f_F_hierarchy.envs; ssh $$CN "cat /tmp/testfile5|grep 'hellotest'"
+check:rc==0
+cmd: source /tmp/updatenode_f_F_hierarchy.envs; ssh $$CN "cat /tmp/testfile6|grep 'hellotest'"
+check:rc!=0
+
+# restore the cn osimage definition
+cmd: source /tmp/updatenode_f_F_hierarchy.envs; cat $CNOSIMGSTANZA|chdef -z 
+check:rc==0
+
+#clean up the intermidate dirs/files generated in this case
+cmd: source /tmp/updatenode_f_F_hierarchy.envs; ssh $$SN "rm -rf $SNsyncfiledir/*"
+cmd: source /tmp/updatenode_f_F_hierarchy.envs; ssh $$CN "rm -rf /tmp/test{dir,file}*"
+cmd: source /tmp/updatenode_f_F_hierarchy.envs; rm -rf $SYNCDIR
+cmd: rm -rf /tmp/updatenode_f_F_hierarchy.envs
+
+end

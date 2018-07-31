@@ -8,6 +8,7 @@ opt/xcat/share/xcat/netboot
 opt/xcat/share/xcat/templates
 opt/xcat/share/xcat/ca
 opt/xcat/share/xcat/scripts
+opt/xcat/share/xcat/conf
 opt/xcat/share/xcat/tools
 opt/xcat/share/xcat/rollupdate
 opt/xcat/share/xcat/installp_bundles
@@ -34,6 +35,7 @@ opt/xcat/xdsh
 opt/xcat/xdsh/Context
 opt/xcat/ws
 etc/init.d
+lib/systemd/system
 etc/xcat
 etc/apache2/conf-enabled
 etc/apache2/conf-available

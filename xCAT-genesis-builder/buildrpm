@@ -130,15 +130,32 @@ if [ "$HOSTOS" = "mcp" ]; then
 # # and some files are in different directories
 elif [ $BUILDARCH = "ppc64" ]; then
         if [ "$HOSTOS" = "Pegas1.0" ]; then
-	    sed -i 's/ mkreiserfs//' $DRACUTMODDIR/install
-	    sed -i 's/ reiserfstune//' $DRACUTMODDIR/install
-	    sed -i 's/ vconfig//' $DRACUTMODDIR/install
-	    sed -i 's/ ntp-wait//' $DRACUTMODDIR/install
+           sed -i 's/ mkreiserfs//' $DRACUTMODDIR/install
+           sed -i 's/ reiserfstune//' $DRACUTMODDIR/install
+           sed -i 's/ vconfig//' $DRACUTMODDIR/install
         fi
         sed -i 's/ efibootmgr//' $DRACUTMODDIR/install
         sed -i 's/ dmidecode//' $DRACUTMODDIR/install
         sed -i 's/\/lib\/terminfo\/l\/linux/\/usr\/share\/terminfo\/l\/linux/g' $DRACUTMODDIR/install
         sed -i 's/\/lib\/terminfo\/v\/vt100/\/usr\/share\/terminfo\/v\/vt100/g' $DRACUTMODDIR/install
+fi
+
+libnss_pkgname=`find /usr/lib64/ -name libnss_dns-2*.so | xargs basename`
+sed -i "s/\/lib64\/libnss_dns-2.12.so/\/usr\/lib64\/$libnss_pkgname/g" $DRACUTMODDIR/install
+sed -i 's/\/lib64\/libnss_dns.so.2/\/usr\/lib64\/libnss_dns.so.2/' $DRACUTMODDIR/install
+
+# Based on cmdlist_check, makesure the commands are included in $DRACUTMODDIR/install
+if [ -e "${DRACUTMODDIR}/cmdlist_check" ]; then
+    miss_cmd=0
+    for cmd in `cat ${DRACUTMODDIR}/cmdlist_check`; do
+        if ! grep $cmd $DRACUTMODDIR/install; then
+            echo "ERROR: The required $cmd is not included in the install file to build the Genesis base package"
+            miss_cmd=1
+        fi
+    done
+    if [ "$miss_cmd" = 1 ]; then
+        exit 1
+    fi
 fi
 
 mkdir -p /tmp/xcatgenesis.$$/opt/xcat/share/xcat/netboot/genesis/$BUILDARCH/fs 

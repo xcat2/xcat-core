@@ -2,6 +2,7 @@ start:reg_linux_diskless_installation_flat_postscripts_failed
 description:This case is for postscripts failed the status will return failed during diskless installation.
 attribute:$$CN-The operation object of diskless installation.
 os:Linux
+label:others,postscripts,invoke_provison
 
 cmd:chdef -t node -o $$CN servicenode= monserver=$$MN nfsserver=$$MN tftpserver=$$MN  xcatmaster=$$MN
 check:rc==0
@@ -50,7 +51,7 @@ cmd:rinstall $$CN osimage=__GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-ne
 check:rc==0
 check:output=~Provision node\(s\)\: $$CN
 
-cmd:sleep 900
+cmd:sleep 300
 cmd:a=0;while ! `lsdef -l $$CN|grep status|grep failed >/dev/null`; do sleep 10;((a++));if [ $a -gt 60 ];then break;fi done
 
 cmd:ping $$CN -c 3

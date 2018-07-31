@@ -2,6 +2,7 @@ start:rflash_check
 description: Make sure the --check option works
 os:Linux
 hcp:openbmc
+label:cn_bmc_ready,hctrl_openbmc
 cmd:rflash $$CN --check
 check:rc==0
 check:output=~$$CN: BMC Firmware Product
@@ -12,61 +13,78 @@ start:rflash_invalid_activate
 description: Provide an invalid option for activte, file does not end in .tar
 os:Linux
 hcp:openbmc
+label:cn_bmc_ready,hctrl_openbmc
 cmd: rflash $$CN -a /tmp/abc123.tz
 check:rc==1
-check:output=~Error: Invalid option
+check:output=~Error: (\[.*?\]: )?Invalid firmware specified with -a
 end 
 
 start:rflash_invalid_activate_and_delete
-description: Cannot specify -a and -d at the same time
+description: Cannot specify -a and --delete at the same time
 os:Linux
 hcp:openbmc
-cmd: rflash $$CN -a 123 -d 123
+label:cn_bmc_ready,hctrl_openbmc
+cmd: rflash $$CN -a 123 --delete 123
 check:rc==1
-check:output=~Error: Multiple options are not supported
+check:output=~Error: (\[.*?\]: )?Multiple options are not supported
 end 
 
 start:rflash_invalid_id 
 description: Passing an invalid ID to activate
 os:Linux
 hcp:openbmc
+label:cn_bmc_ready,hctrl_openbmc
 cmd: rflash $$CN -a 123
 check:rc==1
-check:output=~Error: Invalid ID provided to activate
+check:output=~Error: (\[.*?\]: )?Invalid ID provided to activate
 end 
 
 start:rflash_invalid_multiple_id_3
 description: Code does not currently support multiple IDs to activate
 os:Linux
 hcp:openbmc
+label:cn_bmc_ready,hctrl_openbmc
 cmd: rflash $$CN -a 123 abc asdbas 
 check:rc==1
-check:output=~Error: More than one firmware specified is not supported
+check:output=~Error: (\[.*?\]: )?More than one firmware specified is not supported
 end 
 
 start:rflash_invalid_multiple_id_2
 description: Code does not currently support multiple IDs to activate
 os:Linux
 hcp:openbmc
+label:cn_bmc_ready,hctrl_openbmc
 cmd: rflash $$CN -a asdbas 123
 check:rc==1
-check:output=~Error: More than one firmware specified is not supported
+check:output=~Error: (\[.*?\]: )?More than one firmware specified is not supported
 end 
 
 start:rflash_invalid_node
 description: Activate a valid ID hash but forget to put in a node range 
 os:Linux
 hcp:openbmc
+label:cn_bmc_ready,hctrl_openbmc
 cmd: rflash -a 221d9020
 check:rc==1 
-check:output=~Error: Invalid nodes and/or groups in noderange: 221d9020
+check:output=~Error: (\[.*?\]: )?Invalid nodes and/or groups in noderange: 221d9020
 end
 
 start:rflash_invalid_delete_2
 description: Attempt to delete more than 1 ID from the FW
 os:Linux
 hcp:openbmc
-cmd: rflash $$CN -d 221d9020 221d9020
+label:cn_bmc_ready,hctrl_openbmc
+cmd: rflash $$CN --delete 221d9020 221d9020
 check:rc==1 
-check:output=~Error: More than one firmware specified is not supported
+check:output=~Error: (\[.*?\]: )?More than one firmware specified is not supported
+end
+
+start:rflash_delete_active_bmc
+description: Attempt to delete the active BMC firmware
+os:Linux
+hcp:openbmc
+label:cn_bmc_ready,hctrl_openbmc
+cmd: rflash $$CN -l | grep \* | grep BMC | awk '{print $2}' | xargs -i{} rflash $$CN --delete {}
+check:rc==1
+check:output=~$$CN: (\[.*?\]: )?Error: Deleting currently active BMC firmware is not supported
 end

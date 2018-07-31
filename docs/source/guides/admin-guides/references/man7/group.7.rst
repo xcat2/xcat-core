@@ -19,7 +19,7 @@ SYNOPSIS
 ********
 
 
-\ **group Attributes:**\   \ *addkcmdline*\ , \ *arch*\ , \ *authdomain*\ , \ *bmc*\ , \ *bmcpassword*\ , \ *bmcport*\ , \ *bmcusername*\ , \ *bmcvlantag*\ , \ *cfgmgr*\ , \ *cfgmgtroles*\ , \ *cfgserver*\ , \ *chain*\ , \ *chassis*\ , \ *cmdmapping*\ , \ *cons*\ , \ *conserver*\ , \ *consoleondemand*\ , \ *consport*\ , \ *cpucount*\ , \ *cputype*\ , \ *currchain*\ , \ *currstate*\ , \ *dhcpinterfaces*\ , \ *disksize*\ , \ *displayname*\ , \ *dockercpus*\ , \ *dockerflag*\ , \ *dockerhost*\ , \ *dockermemory*\ , \ *dockernics*\ , \ *domainadminpassword*\ , \ *domainadminuser*\ , \ *domaintype*\ , \ *getmac*\ , \ *groupname*\ , \ *grouptype*\ , \ *hcp*\ , \ *height*\ , \ *hostcluster*\ , \ *hostinterface*\ , \ *hostmanager*\ , \ *hostnames*\ , \ *hosttype*\ , \ *hwtype*\ , \ *id*\ , \ *initrd*\ , \ *installnic*\ , \ *interface*\ , \ *ip*\ , \ *iscsipassword*\ , \ *iscsiserver*\ , \ *iscsitarget*\ , \ *iscsiuserid*\ , \ *kcmdline*\ , \ *kernel*\ , \ *linkports*\ , \ *mac*\ , \ *machinetype*\ , \ *membergroups*\ , \ *members*\ , \ *memory*\ , \ *mgt*\ , \ *micbridge*\ , \ *michost*\ , \ *micid*\ , \ *miconboot*\ , \ *micpowermgt*\ , \ *micvlog*\ , \ *migrationdest*\ , \ *modelnum*\ , \ *monserver*\ , \ *mpa*\ , \ *mtm*\ , \ *nameservers*\ , \ *netboot*\ , \ *nfsdir*\ , \ *nfsserver*\ , \ *nicaliases*\ , \ *niccustomscripts*\ , \ *nicdevices*\ , \ *nicextraparams*\ , \ *nichostnameprefixes*\ , \ *nichostnamesuffixes*\ , \ *nicips*\ , \ *nicnetworks*\ , \ *nicsadapter*\ , \ *nictypes*\ , \ *nimserver*\ , \ *nodetype*\ , \ *ondiscover*\ , \ *os*\ , \ *osvolume*\ , \ *otherinterfaces*\ , \ *ou*\ , \ *outlet*\ , \ *parent*\ , \ *passwd.HMC*\ , \ *passwd.admin*\ , \ *passwd.celogin*\ , \ *passwd.general*\ , \ *passwd.hscroot*\ , \ *password*\ , \ *pdu*\ , \ *postbootscripts*\ , \ *postscripts*\ , \ *power*\ , \ *pprofile*\ , \ *prescripts-begin*\ , \ *prescripts-end*\ , \ *primarynic*\ , \ *productkey*\ , \ *profile*\ , \ *protocol*\ , \ *provmethod*\ , \ *rack*\ , \ *room*\ , \ *routenames*\ , \ *serial*\ , \ *serialflow*\ , \ *serialnum*\ , \ *serialport*\ , \ *serialspeed*\ , \ *servicenode*\ , \ *setupconserver*\ , \ *setupdhcp*\ , \ *setupftp*\ , \ *setupipforward*\ , \ *setupldap*\ , \ *setupnameserver*\ , \ *setupnfs*\ , \ *setupnim*\ , \ *setupntp*\ , \ *setupproxydhcp*\ , \ *setuptftp*\ , \ *sfp*\ , \ *side*\ , \ *slot*\ , \ *slotid*\ , \ *slots*\ , \ *snmpauth*\ , \ *snmppassword*\ , \ *snmpprivacy*\ , \ *snmpusername*\ , \ *snmpversion*\ , \ *storagcontroller*\ , \ *storagetype*\ , \ *supernode*\ , \ *supportedarchs*\ , \ *supportproxydhcp*\ , \ *switch*\ , \ *switchinterface*\ , \ *switchport*\ , \ *switchtype*\ , \ *switchvlan*\ , \ *syslog*\ , \ *termport*\ , \ *termserver*\ , \ *tftpdir*\ , \ *tftpserver*\ , \ *unit*\ , \ *urlpath*\ , \ *usercomment*\ , \ *userid*\ , \ *username*\ , \ *vmbeacon*\ , \ *vmbootorder*\ , \ *vmcfgstore*\ , \ *vmcluster*\ , \ *vmcpus*\ , \ *vmhost*\ , \ *vmmanager*\ , \ *vmmaster*\ , \ *vmmemory*\ , \ *vmnicnicmodel*\ , \ *vmnics*\ , \ *vmothersetting*\ , \ *vmphyslots*\ , \ *vmstorage*\ , \ *vmstoragecache*\ , \ *vmstorageformat*\ , \ *vmstoragemodel*\ , \ *vmtextconsole*\ , \ *vmvirtflags*\ , \ *vmvncport*\ , \ *webport*\ , \ *wherevals*\ , \ *xcatmaster*\ 
+\ **group Attributes:**\   \ *addkcmdline*\ , \ *arch*\ , \ *authdomain*\ , \ *authkey*\ , \ *authtype*\ , \ *bmc*\ , \ *bmcpassword*\ , \ *bmcport*\ , \ *bmcusername*\ , \ *bmcvlantag*\ , \ *cfgmgr*\ , \ *cfgmgtroles*\ , \ *cfgserver*\ , \ *chain*\ , \ *chassis*\ , \ *cmdmapping*\ , \ *community*\ , \ *cons*\ , \ *conserver*\ , \ *consoleenabled*\ , \ *consoleondemand*\ , \ *consport*\ , \ *cpucount*\ , \ *cputype*\ , \ *currchain*\ , \ *currstate*\ , \ *dhcpinterfaces*\ , \ *disksize*\ , \ *displayname*\ , \ *dockercpus*\ , \ *dockerflag*\ , \ *dockerhost*\ , \ *dockermemory*\ , \ *dockernics*\ , \ *domainadminpassword*\ , \ *domainadminuser*\ , \ *domaintype*\ , \ *getmac*\ , \ *groupname*\ , \ *grouptype*\ , \ *hcp*\ , \ *height*\ , \ *hostcluster*\ , \ *hostinterface*\ , \ *hostmanager*\ , \ *hostnames*\ , \ *hosttype*\ , \ *hwtype*\ , \ *id*\ , \ *initrd*\ , \ *installnic*\ , \ *interface*\ , \ *ip*\ , \ *iscsipassword*\ , \ *iscsiserver*\ , \ *iscsitarget*\ , \ *iscsiuserid*\ , \ *kcmdline*\ , \ *kernel*\ , \ *linkports*\ , \ *mac*\ , \ *membergroups*\ , \ *members*\ , \ *memory*\ , \ *mgt*\ , \ *micbridge*\ , \ *michost*\ , \ *micid*\ , \ *miconboot*\ , \ *micpowermgt*\ , \ *micvlog*\ , \ *migrationdest*\ , \ *monserver*\ , \ *mpa*\ , \ *mtm*\ , \ *nameservers*\ , \ *netboot*\ , \ *nfsdir*\ , \ *nfsserver*\ , \ *nicaliases*\ , \ *niccustomscripts*\ , \ *nicdevices*\ , \ *nicextraparams*\ , \ *nichostnameprefixes*\ , \ *nichostnamesuffixes*\ , \ *nicips*\ , \ *nicnetworks*\ , \ *nicsadapter*\ , \ *nictypes*\ , \ *nimserver*\ , \ *nodetype*\ , \ *ondiscover*\ , \ *os*\ , \ *osvolume*\ , \ *otherinterfaces*\ , \ *ou*\ , \ *outlet*\ , \ *parent*\ , \ *passwd.HMC*\ , \ *passwd.admin*\ , \ *passwd.celogin*\ , \ *passwd.general*\ , \ *passwd.hscroot*\ , \ *password*\ , \ *pdu*\ , \ *pdutype*\ , \ *postbootscripts*\ , \ *postscripts*\ , \ *power*\ , \ *pprofile*\ , \ *prescripts-begin*\ , \ *prescripts-end*\ , \ *primarynic*\ , \ *privkey*\ , \ *privtype*\ , \ *productkey*\ , \ *profile*\ , \ *protocol*\ , \ *provmethod*\ , \ *rack*\ , \ *room*\ , \ *routenames*\ , \ *seclevel*\ , \ *serial*\ , \ *serialflow*\ , \ *serialport*\ , \ *serialspeed*\ , \ *servicenode*\ , \ *setupconserver*\ , \ *setupdhcp*\ , \ *setupftp*\ , \ *setupipforward*\ , \ *setupldap*\ , \ *setupnameserver*\ , \ *setupnfs*\ , \ *setupnim*\ , \ *setupntp*\ , \ *setupproxydhcp*\ , \ *setuptftp*\ , \ *sfp*\ , \ *side*\ , \ *slot*\ , \ *slotid*\ , \ *slots*\ , \ *snmpauth*\ , \ *snmppassword*\ , \ *snmpprivacy*\ , \ *snmpuser*\ , \ *snmpusername*\ , \ *snmpversion*\ , \ *storagcontroller*\ , \ *storagetype*\ , \ *supernode*\ , \ *supportedarchs*\ , \ *supportproxydhcp*\ , \ *switch*\ , \ *switchinterface*\ , \ *switchport*\ , \ *switchtype*\ , \ *switchvlan*\ , \ *syslog*\ , \ *termport*\ , \ *termserver*\ , \ *tftpdir*\ , \ *tftpserver*\ , \ *unit*\ , \ *urlpath*\ , \ *usercomment*\ , \ *userid*\ , \ *username*\ , \ *vmbeacon*\ , \ *vmbootorder*\ , \ *vmcfgstore*\ , \ *vmcluster*\ , \ *vmcpus*\ , \ *vmhost*\ , \ *vmmanager*\ , \ *vmmaster*\ , \ *vmmemory*\ , \ *vmnicnicmodel*\ , \ *vmnics*\ , \ *vmothersetting*\ , \ *vmphyslots*\ , \ *vmstorage*\ , \ *vmstoragecache*\ , \ *vmstorageformat*\ , \ *vmstoragemodel*\ , \ *vmtextconsole*\ , \ *vmvirtflags*\ , \ *vmvncport*\ , \ *webport*\ , \ *wherevals*\ , \ *xcatmaster*\ 
 
 
 ***********
@@ -54,6 +54,18 @@ group Attributes:
 \ **authdomain**\  (domain.authdomain)
  
  If a node should participate in an AD domain or Kerberos realm distinct from domain indicated in site, this field can be used to specify that
+ 
+
+
+\ **authkey**\  (pdu.authkey)
+ 
+ The authentication passphrase for SNMPv3
+ 
+
+
+\ **authtype**\  (pdu.authtype)
+ 
+ The authentication protocol(MD5|SHA) to use for SNMPv3.
  
 
 
@@ -179,6 +191,12 @@ group Attributes:
  
 
 
+\ **community**\  (pdu.community)
+ 
+ The community string to use for SNMPv1/v2
+ 
+
+
 \ **cons**\  (nodehm.cons)
  
  The console method. If nodehm.serialport is set, this will default to the nodehm.mgt setting, otherwise it defaults to unused.  Valid values: cyclades, mrv, or the values valid for the mgt attribute.
@@ -188,6 +206,12 @@ group Attributes:
 \ **conserver**\  (nodehm.conserver)
  
  The hostname of the machine where the conserver daemon is running.  If not set, the default is the xCAT management node.
+ 
+
+
+\ **consoleenabled**\  (nodehm.consoleenabled)
+ 
+ A flag field to indicate whether the node is registered in the console server. If '1', console is enabled, if not set, console is not enabled.
  
 
 
@@ -457,12 +481,6 @@ group Attributes:
  
 
 
-\ **machinetype**\  (pdu.machinetype)
- 
- The pdu machine type
- 
-
-
 \ **membergroups**\  (nodegroup.membergroups)
  
  This attribute stores a comma-separated list of nodegroups that this nodegroup refers to. This attribute is only used by PCM.
@@ -526,12 +544,6 @@ group Attributes:
 \ **migrationdest**\  (vm.migrationdest)
  
  A noderange representing candidate destinations for migration (i.e. similar systems, same SAN, or other criteria that xCAT can use
- 
-
-
-\ **modelnum**\  (pdu.modelnum)
- 
- The pdu model number
  
 
 
@@ -673,8 +685,7 @@ group Attributes:
 
 \ **nicsadapter**\  (nics.nicsadapter)
  
- Comma-separated list of extra parameters that will be used for each NIC configuration.
-                     <nic1>!<param1=value1 param2=value2>,<nic2>!<param4=value4 param5=value5>, for example, enP3p3s0f1!mac=98:be:94:59:fa:cd linkstate=DOWN,enP3p3s0f2!mac=98:be:94:59:fa:ce candidatename=enP3p3s0f2/enx98be9459face
+ Comma-separated list of NIC information collected by getadapter. <nic1>!<param1=value1 param2=value2>,<nic2>!<param4=value4 param5=value5>, for example, enP3p3s0f1!mac=98:be:94:59:fa:cd linkstate=DOWN,enP3p3s0f2!mac=98:be:94:59:fa:ce candidatename=enP3p3s0f2/enx98be9459face
  
 
 
@@ -780,7 +791,7 @@ group Attributes:
  
 
 
-\ **password**\  (ppchcp.password, mpa.password, websrv.password, switches.sshpassword)
+\ **password**\  (ppchcp.password, mpa.password, websrv.password, pdu.password, switches.sshpassword)
  
  Password of the HMC or IVM.  If not filled in, xCAT will look in the passwd table for key=hmc or key=ivm.  If not in the passwd table, the default used is abc123 for HMCs and padmin for IVMs.
  
@@ -794,6 +805,10 @@ group Attributes:
  
  or
  
+ The remote login password
+ 
+ or
+ 
  The remote login password. It can be for ssh or telnet. If it is for telnet, set protocol to "telnet". If the sshusername is blank, the username, password and protocol will be retrieved from the passwd table with "switch" as the key.
  
 
@@ -801,6 +816,12 @@ group Attributes:
 \ **pdu**\  (pduoutlet.pdu)
  
  a comma-separated list of outlet number for each PDU, ex: pdu1:outlet1,pdu2:outlet1
+ 
+
+
+\ **pdutype**\  (pdu.pdutype)
+ 
+ The type of pdu
  
 
 
@@ -867,6 +888,18 @@ group Attributes:
  
 
 
+\ **privkey**\  (pdu.privkey)
+ 
+ The privacy passphrase to use for SNMPv3.
+ 
+
+
+\ **privtype**\  (pdu.privtype)
+ 
+ The privacy protocol(AES|DES) to use for SNMPv3.
+ 
+
+
 \ **productkey**\  (prodkey.key)
  
  The product key relevant to the aforementioned node/group and product combination
@@ -909,6 +942,12 @@ group Attributes:
  
 
 
+\ **seclevel**\  (pdu.seclevel)
+ 
+ The Security Level(noAuthNoPriv|authNoPriv|authPriv) to use for SNMPv3.
+ 
+
+
 \ **serial**\  (vpd.serial)
  
  The serial number of the node.
@@ -918,12 +957,6 @@ group Attributes:
 \ **serialflow**\  (nodehm.serialflow)
  
  The flow control value of the serial port for this node.  For SOL this is typically 'hard'.
- 
-
-
-\ **serialnum**\  (pdu.serialnum)
- 
- The pdu serial number
  
 
 
@@ -947,7 +980,7 @@ group Attributes:
 
 \ **setupconserver**\  (servicenode.conserver)
  
- Do we set up Conserver on this service node?  Valid values:1 or 0. If 1, configures and starts conserver daemon. If 0, it does not change the current state of the service.
+ Do we set up console service on this service node?  Valid values: 0, 1, or 2. If 0, it does not change the current state of the service. If 1, configures and starts conserver daemon. If 2, configures and starts goconserver daemon.
  
 
 
@@ -1067,13 +1100,23 @@ group Attributes:
  
 
 
+\ **snmpuser**\  (pdu.snmpuser)
+ 
+ The username to use for SNMPv3 communication, ignored for SNMPv1
+ 
+
+
 \ **snmpusername**\  (switches.username)
  
  The username to use for SNMPv3 communication, ignored for SNMPv1
  
 
 
-\ **snmpversion**\  (switches.snmpversion)
+\ **snmpversion**\  (pdu.snmpversion, switches.snmpversion)
+ 
+ The version to use to communicate with switch.  SNMPv1 is assumed by default.
+ 
+ or
  
  The version to use to communicate with switch.  SNMPv1 is assumed by default.
  
@@ -1195,7 +1238,7 @@ group Attributes:
  
 
 
-\ **username**\  (ppchcp.username, mpa.username, websrv.username, switches.sshusername)
+\ **username**\  (ppchcp.username, mpa.username, websrv.username, pdu.username, switches.sshusername)
  
  Userid of the HMC or IVM.  If not filled in, xCAT will look in the passwd table for key=hmc or key=ivm.  If not in the passwd table, the default used is hscroot for HMCs and padmin for IVMs.
  
@@ -1206,6 +1249,10 @@ group Attributes:
  or
  
  Userid to use to access the web service.
+ 
+ or
+ 
+ The remote login user name
  
  or
  

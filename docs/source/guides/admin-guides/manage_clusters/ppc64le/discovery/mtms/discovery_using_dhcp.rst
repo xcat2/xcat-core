@@ -85,6 +85,14 @@ The BMC IP address is obtained by the open range dhcp server and the plan is to 
 
        chdef cn01 chain="runcmd=bmcsetup"
 
+#. **[Optional]** More operation plan to do after hardware disocvery is done, ``ondiscover`` option can be used.
+
+   For example, configure console, copy SSH key for **OpenBMC**, then disable ``powersupplyredundancy`` ::
+
+       chdef cn01 -p chain="ondiscover=makegocons|rspconfig:sshcfg|rspconfig:powersupplyredundancy=disabled"
+
+   **Note**: ``|`` is used to split commands, and ``:`` is used to split command with its option.
+
 #. Set the target `osimage` into the chain table to automatically provision the operating system after the node discovery is complete. ::
 
        chdef cn01 -p chain="osimage=<osimage_name>"
@@ -99,9 +107,9 @@ The BMC IP address is obtained by the open range dhcp server and the plan is to 
 
 #. **[Optional]**  Monitor the node discovery process using rcons
 
-   Configure the conserver for the **predefined** node to watch the discovery process using ``rcons``::
+   Configure the goconserver for the **predefined** node to watch the discovery process using ``rcons``::
 
-       makeconservercf cn01
+       makegocons cn01
 
    In another terminal window, open the remote console: ::
 

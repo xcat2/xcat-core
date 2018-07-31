@@ -9,9 +9,7 @@ Example: ::
     node01: Tesla K80, 0322415075970, GPU-b4f79b83-c282-4409-a0e8-0da3e06a13c3
     ...
 
-
-
-**Note: The following commands are provided as convenience.**  *Always consult the nvidia-smi manpage for the latest supported functions.*
+.. warning:: The following commands are provided as convenience. Always consult the ``nvidia-smi`` manpage for the latest supported functions.
 
 Management
 ----------

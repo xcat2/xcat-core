@@ -1,6 +1,8 @@
 xCAT Genesis Base
 =================
 
+*Note*: Please rebuild ``xCAT-genesis-base`` with ``xCAT-genesis-builder`` version equal and newer than *2.13.10* before updating xCAT *2.13.10* and higher.
+
 xCAT ships a ``xCAT-genesis-base`` package as part of xcat-deps.  This is a light-weight diskless linux image based on Fedora (Fedora26, currently) that is used by xCAT to do hardware discovery.
 
 To support the Power9 hardware, changes are made to the kernel in the Red Hat Enterprise distribution that are not yet available in the Fedora kernels.  Without that support, running the scripts in xCAT discovery caused segmentation faults described in this issue: https://github.com/xcat2/xcat-core/issues/3870

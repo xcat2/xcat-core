@@ -58,7 +58,7 @@ A set of comma delimited object types.
 
 =item B<-C|--cleanup>
 
-Perform additional cleanup by running B<nodeset offline> and B<makeconservercf -d> on the objects specified in the I<noderange>.
+Perform additional cleanup by running B<nodeset offline>, B<makeconservercf -d> and B<makegocons --cleanup> on the objects specified in the I<noderange>.
 
 =item B<-V|--verbose>
 

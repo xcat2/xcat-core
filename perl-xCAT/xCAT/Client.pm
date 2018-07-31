@@ -1129,10 +1129,17 @@ sub handle_response {
         return;
     }
 
-    my $msgsource;
+    my $msgsource = "";
+    $msgsource = $rsp->{xcatdsource}->[0] if ($rsp->{xcatdsource});
+
+    # To determine if the INFO msg need to be added with source server name. For ERROR/WARN, it always is shown.
+    my $showsource = 0;
+    if ($rsp->{host}) {
+        $showsource = 1;
+    }
     if ($ENV{'XCATSHOWSVR'}) {
         unless ($rsp->{NoSvrPrefix}) { # some plugins could disable the prefix forcely by seting the flag in response.
-            $msgsource = $rsp->{xcatdsource}->[0] if ($rsp->{xcatdsource});
+            $showsource = 1;
         }
     }
 
@@ -1155,14 +1162,14 @@ sub handle_response {
         if (ref($rsp->{error}) eq 'ARRAY') {
             foreach my $text (@{ $rsp->{error} }) {
                 my $desc = "$text";
-                $desc = "[$msgsource]: $desc" if ($msgsource && $desc);
+                $desc = "[$msgsource]: $desc" if ($desc && $msgsource);
                 $desc = "Error: $desc" unless ($rsp->{NoErrorPrefix});
                 print STDERR "$desc\n";
             }
         }
         else {
             my $desc = $rsp->{error};
-            $desc = "[$msgsource]: $desc" if ($msgsource && $desc);
+            $desc = "[$msgsource]: $desc" if ($desc && $msgsource);
             $desc = "Error: $desc" unless ($rsp->{NoErrorPrefix});
             print STDERR "$desc\n";
         }
@@ -1173,31 +1180,30 @@ sub handle_response {
         if (ref($rsp->{warning}) eq 'ARRAY') {
             foreach my $text (@{ $rsp->{warning} }) {
                 my $desc = "$text";
-                $desc = "[$msgsource]: $desc" if ($msgsource && $desc);
+                $desc = "[$msgsource]: $desc" if ($desc && $msgsource);
                 $desc = "Warning: $desc" unless ($rsp->{NoWarnPrefix});
                 print STDERR "$desc\n";
             }
         }
         else {
             my $desc = $rsp->{warning};
-            $desc = "[$msgsource]: $desc" if ($msgsource && $desc);
+            $desc = "[$msgsource]: $desc" if ($desc && $msgsource);
             $desc = "Warning: $desc" unless ($rsp->{NoWarnPrefix});
             print STDERR "$desc\n";
         }
     }
     if ($rsp->{info}) {
-
         #print "printing info\n";
         if (ref($rsp->{info}) eq 'ARRAY') {
             foreach my $text (@{ $rsp->{info} }) {
                 my $desc = "$text";
-                $desc = "[$msgsource]: $desc" if ($msgsource && $desc);
+                $desc = "[$msgsource]: $desc" if ($showsource && $desc && $msgsource);
                 print "$desc\n";
             }
         }
         else {
             my $desc = $rsp->{info};
-            $desc = "[$msgsource]: $desc" if ($msgsource && $desc);
+            $desc = "[$msgsource]: $desc" if ($showsource && $desc && $msgsource);
             print "$desc\n";
         }
     }
@@ -1232,11 +1238,7 @@ sub handle_response {
             } else {
                 $desc = $node->{name};
             }
-            if ($desc) {
-                $desc = "$desc: [$msgsource]" if ($msgsource);
-            } else {
-                $desc = "[$msgsource]" if ($msgsource);
-            }
+
             if ($node->{errorcode}) {
                 if (ref($node->{errorcode}) eq 'ARRAY') {
                     foreach my $ecode (@{ $node->{errorcode} }) {
@@ -1248,14 +1250,29 @@ sub handle_response {
                 }    # assume it is a non-reference scalar
             }
             if ($node->{error}) {
+                if ($desc) {
+                    $desc = "$desc: [$msgsource]" if ($msgsource);
+                } else {
+                    $desc = "[$msgsource]" if ($msgsource);
+                }
                 $desc .= ": Error: " . $node->{error}->[0];
                 $errflg = 1;
             }
             if ($node->{warning}) {
+                if ($desc) {
+                    $desc = "$desc: [$msgsource]" if ($msgsource);
+                } else {
+                    $desc = "[$msgsource]" if ($msgsource);
+                }
                 $desc .= ": Warning: " . $node->{warning}->[0];
                 $errflg = 1;
             }
             if ($node->{data}) {
+                if ($desc) {
+                    $desc = "$desc: [$msgsource]" if ($showsource && $msgsource);
+                } else {
+                    $desc = "[$msgsource]" if ($showsource && $msgsource);
+                }
                 if (ref(\($node->{data})) eq 'SCALAR') {
                     $desc = $desc . ": " . $node->{data};
                 } elsif (ref($node->{data}) eq 'HASH') {
@@ -1320,7 +1337,7 @@ sub handle_response {
                 }
             }
             if ($desc) {
-                $desc = "[$msgsource]: $desc" if ($msgsource);
+                $desc = "[$msgsource]: $desc" if ($showsource && $msgsource);
                 print "$desc\n"; 
             }
         }

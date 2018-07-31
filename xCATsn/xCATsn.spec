@@ -56,6 +56,10 @@ Requires: conserver-xcat
 %endif
 %endif
 
+%ifos linux
+Requires: goconserver
+%endif
+
 #support mixed cluster
 %ifnarch s390x
 Requires: elilo-xcat xnba-undi

@@ -8,3 +8,4 @@ This section describes how to configure network adapters with persistent configu
 
    cfg_network_adapter.rst
    cfg_second_adapter.rst
+   cfg_routes.rst

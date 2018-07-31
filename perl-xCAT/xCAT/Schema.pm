@@ -594,7 +594,7 @@ passed as argument rather than by table value',
         },
     },
     nodehm => {
-        cols => [qw(node power mgt cons termserver termport conserver serialport serialspeed serialflow getmac cmdmapping consoleondemand comments disable)],
+        cols => [qw(node power mgt cons termserver termport conserver serialport serialspeed serialflow getmac cmdmapping consoleondemand consoleenabled comments disable)],
         keys       => [qw(node)],
         tablespace => 'XCATTBS16K',
         table_desc => "Settings that control how each node's hardware is managed.  Typically, an additional table that is specific to the hardware type of the node contains additional info.  E.g. the ipmi, mp, and ppc tables.",
@@ -612,6 +612,7 @@ passed as argument rather than by table value',
             getmac => 'The method to use to get MAC address of the node with the getmac command. If not set, the mgt attribute will be used.  Valid values: same as values for mgmt attribute.',
             cmdmapping => 'The fully qualified name of the file that stores the mapping between PCM hardware management commands and xCAT/third-party hardware management commands for a particular type of hardware device.  Only used by PCM.',
             consoleondemand => "This overrides the value from site.consoleondemand. Set to 'yes', 'no', '1' (equivalent to 'yes'), or '0' (equivalent to 'no'). If not set, the default is the value from site.consoleondemand.",
+            consoleenabled => "A flag field to indicate whether the node is registered in the console server. If '1', console is enabled, if not set, console is not enabled.",
             comments => 'Any user-written notes.',
             disable  => "Set to 'yes' or '1' to comment out this row.",
         },
@@ -624,7 +625,7 @@ passed as argument rather than by table value',
         descriptions => {
             node => 'The hostname of a node in the cluster.',
             groups => "A comma-delimited list of groups this node is a member of.  Group names are arbitrary, except all nodes should be part of the 'all' group. Internal group names are designated by using __<groupname>.  For example, __Unmanaged, could be the internal name for a group of nodes that is not managed by xCAT. Admins should avoid using the __ characters when defining their groups.",
-            status => 'The current status of this node.  This attribute will be set by xCAT software.  Valid values: defined, booting, netbooting, booted, discovering, configuring, installing, alive, standingby, powering-off, unreachable. If blank, defined is assumed. The possible status change sequences are: For installation: defined->[discovering]->[configuring]->[standingby]->installing->booting->booted->[alive],  For diskless deployment: defined->[discovering]->[configuring]->[standingby]->netbooting->booted->[alive],  For booting: [alive/unreachable]->booting->[alive],  For powering off: [alive]->powering-off->[unreachable], For monitoring: alive->unreachable. Discovering and configuring are for x Series discovery process. Alive and unreachable are set only when there is a monitoring plug-in start monitor the node status for xCAT. Note that the status values will not reflect the real node status if you change the state of the node from outside of xCAT (i.e. power off the node using HMC GUI).',
+            status => 'The current status of this node.  This attribute will be set by xCAT software.  Valid values: defined, booting, netbooting, booted, discovering, configuring, installing, alive, standingby, powering-off, unreachable. If blank, defined is assumed. The possible status change sequences are: For installation: defined->[discovering]->[configuring]->[standingby]->installing->booting->[postbooting]->booted->[alive],  For diskless deployment: defined->[discovering]->[configuring]->[standingby]->netbooting->[postbooting]->booted->[alive],  For booting: [alive/unreachable]->booting->[postbooting]->booted->[alive],  For powering off: [alive]->powering-off->[unreachable], For monitoring: alive->unreachable. Discovering and configuring are for x Series discovery process. Alive and unreachable are set only when there is a monitoring plug-in start monitor the node status for xCAT. Note that the status values will not reflect the real node status if you change the state of the node from outside of xCAT (i.e. power off the node using HMC GUI).',
             statustime => "The data and time when the status was updated.",
             appstatus => "A comma-delimited list of application status. For example: 'sshd=up,ftp=down,ll=down'",
             appstatustime => 'The date and time when appstatus was updated.',
@@ -694,17 +695,25 @@ passed as argument rather than by table value',
         },
     },
     pdu => {
-        cols => [qw(node nodetype outlet machinetype modelnum serialnum comments disable)],
+        cols => [qw(node nodetype pdutype outlet username password snmpversion community snmpuser authtype authkey privtype privkey seclevel comments disable)],
         keys         => [qw(node)],
         nodecol      => "node",
         table_desc   => 'Parameters to use when interrogating pdus',
         descriptions => {
             node => 'The hostname/address of the pdu to which the settings apply',
             nodetype => 'The node type should be pdu ',
+            pdutype => 'The type of pdu ',
             outlet => 'The pdu outlet count',
-            machinetype => 'The pdu machine type',
-            modelnum    => 'The pdu model number',
-            serialnum   => 'The pdu serial number',
+            username => 'The remote login user name',
+            password => 'The remote login password',
+            snmpversion => 'The version to use to communicate with switch.  SNMPv1 is assumed by default.',
+            community => 'The community string to use for SNMPv1/v2',
+            snmpuser => 'The username to use for SNMPv3 communication, ignored for SNMPv1',
+            authtype => 'The authentication protocol(MD5|SHA) to use for SNMPv3.',
+            authkey => 'The authentication passphrase for SNMPv3 ',
+            privtype => 'The privacy protocol(AES|DES) to use for SNMPv3.',
+            privkey => 'The privacy passphrase to use for SNMPv3.',
+            seclevel => 'The Security Level(noAuthNoPriv|authNoPriv|authPriv) to use for SNMPv3.',
             comments => 'Any user-written notes.',
             disable  => "Set to 'yes' or '1' to comment out this row.",
         },
@@ -759,7 +768,7 @@ passed as argument rather than by table value',
         },
     },
     osimage => {
-        cols => [qw(imagename groups profile imagetype description provmethod rootfstype osdistroname osupdatename cfmdir osname osvers osarch synclists postscripts postbootscripts serverrole isdeletable kitcomponents  comments disable)],
+        cols => [qw(imagename groups profile imagetype description provmethod rootfstype osdistroname osupdatename cfmdir osname osvers osarch synclists postscripts postbootscripts serverrole isdeletable kitcomponents environvar comments disable)],
         keys       => [qw(imagename)],
         tablespace => 'XCATTBS32K',
         table_desc => 'Basic information about an operating system image that can be used to deploy cluster nodes.',
@@ -786,6 +795,7 @@ passed as argument rather than by table value',
             serverrole => 'The role of the server created by this osimage.  Default roles: mgtnode, servicenode, compute, login, storage, utility.',
             isdeletable => 'A flag to indicate whether this image profile can be deleted.  This attribute is only used by PCM.',
             kitcomponents => 'List of Kit Component IDs assigned to this OS Image definition.',
+            environvar => 'Comma delimited environment variables for the osimage',
             comments => 'Any user-written notes.',
             disable  => "Set to 'yes' or '1' to comment out this row.",
         },
@@ -881,7 +891,7 @@ passed as argument rather than by table value',
             noderange => 'The Noderange that this rule applies to.  Default is "*" (all nodes). Not supported with the *def commands.',
             parameters => 'A regular expression that matches the command parameters (everything except the noderange) that this rule applies to.  Default is "*" (all parameters). Not supported with the *def commands.',
             time => 'Time ranges that this command may be executed in.  This is not supported.',
-            rule => 'Specifies how this rule should be applied.  Valid values are: allow, accept, trusted. Allow or accept  will allow the user to run the commands. Any other value will deny the user access to the commands. Trusted means that once this client has been authenticated via the certificate, all other information that is sent (e.g. the username) is believed without question.  This authorization should only be given to the xcatd on the management node at this time.',
+            rule => 'Specifies how this rule should be applied.  Valid values are: allow, trusted. Allow will allow the user to run the commands. Any other value will deny the user access to the commands. Trusted means that once this client has been authenticated via the certificate, all other information that is sent (e.g. the username) is believed without question.  This authorization should only be given to the xcatd on the management node at this time.',
             comments => 'Any user-written notes.',
             disable  => "Set to 'yes' or '1' to comment out this row.",
         },
@@ -954,7 +964,7 @@ passed as argument rather than by table value',
             dhcpserver => 'Do we set up DHCP on this service node? Not supported on AIX. Valid values:1 or 0. If 1, runs makedhcp -n. If 0, it does not change the current state of the service. ',
             tftpserver => 'Do we set up TFTP on this service node? Not supported on AIX. Valid values:1 or 0. If 1, configures and starts atftp. If 0, it does not change the current state of the service. ',
             nfsserver => 'Do we set up file services (HTTP,FTP,or NFS) on this service node? For AIX will only setup NFS, not HTTP or FTP. Valid values:1 or 0.If 0, it does not change the current state of the service. ',
-            conserver => 'Do we set up Conserver on this service node?  Valid values:1 or 0. If 1, configures and starts conserver daemon. If 0, it does not change the current state of the service.',
+            conserver => 'Do we set up console service on this service node?  Valid values: 0, 1, or 2. If 0, it does not change the current state of the service. If 1, configures and starts conserver daemon. If 2, configures and starts goconserver daemon. ',
             monserver => 'Is this a monitoring event collection point? Valid values: 1 or 0. If 0, it does not change the current state of the service.',
             ldapserver => 'Do we set up ldap caching proxy on this service node? Not supported on AIX.  Valid values:1 or 0. If 0, it does not change the current state of the service.',
             ntpserver => 'Not used. Use setupntp postscript to setup a ntp server on this service node? Valid values:1 or 0. If 0, it does not change the current state of the service.',
@@ -989,15 +999,15 @@ passed as argument rather than by table value',
 "DATABASE ATTRIBUTES\n" .
 " -----------------\n" .
 " auditnosyslog: If set to 1, then commands will only be written to the auditlog table.\n" .
-"                This attribute set to 1 and auditskipcmds=ALL means no logging of commands.\n" .
+"                If this attribute is set to 1 and auditskipcmds=ALL means no logging of commands.\n" .
 "                Default is to write to both the auditlog table and syslog.\n" .
 " auditskipcmds: List of commands and/or client types that will not be\n" .
 "                written to the auditlog table and syslog. See auditnosyslog.\n" .
 "                'ALL' means all cmds will be skipped. If attribute is null, all\n" .
-              "                commands will be written.\n" .
+"                commands will be written.\n" .
 "                clienttype:web would skip all commands from the web client\n" .
-              "                For example: tabdump,nodels,clienttype:web \n" .
-"                will not log tabdump,nodels and any web client commands.\n\n" .
+"                For example: tabdump,nodels,clienttype:web \n" .
+"                will not log tabdump, nodels or any web client commands.\n" .
 " databaseloc:    Directory where we create the db instance directory.\n" .
 "                 Default is /var/lib. Only DB2 is currently supported.\n" .
 "                 Do not use the directory in the site.installloc or\n" .
@@ -1049,6 +1059,7 @@ passed as argument rather than by table value',
 "              requests it does not know to these servers. Note that the DNS servers on the\n" .
 "              service nodes will ignore this value and always be configured to forward \n" .
 "              to the management node.\n\n" .
+" emptyzonesenable: (yes or no). This is to set empty-zones-enable value in named.conf options section. \n\n" .
 " master:  The hostname of the xCAT management node, as known by the nodes.\n\n" .
 " nameservers:  A comma delimited list of DNS servers that each node in the cluster should\n" .
 "               use. This value will end up in the nameserver settings of the\n" .
@@ -1143,6 +1154,7 @@ passed as argument rather than by table value',
 " defserialflow:  The default serial flow - currently only used by the mknb command.\n\n" .
 " defserialport:  The default serial port - currently only used by mknb.\n\n" .
 " defserialspeed:  The default serial speed - currently only used by mknb.\n\n" .
+" disablenodesetwarning:  Allow the legacy xCAT non-osimage style nodeset to execute.\n\n" .
 " genmacprefix:  When generating mac addresses automatically, use this manufacturing\n" .
 "                prefix (e.g. 00:11:aa)\n\n" .
 " genpasswords:  Automatically generate random passwords for BMCs when configuring\n" .
@@ -1167,6 +1179,8 @@ passed as argument rather than by table value',
 "              all of the nodes passed into the cmd and create the mypostscript file\n" .
 "              for each node, and put them in a directory of tftpdir(such as: /tftpboot)\n" .
 "              If no, it will not generate the mypostscript file in the tftpdir.\n\n" .
+" secureroot:  If set to 1, xCAT will use secure mode to transfer root password hash\n" .
+"              during the installation.  Default is 0.\n\n" .
 " setinstallnic:  Set the network configuration for installnic to be static.\n\n" .
 " sharedtftp:  Set to 0 or no, xCAT should not assume the directory\n" .
 "              in tftpdir is mounted on all on Service Nodes. Default is 1/yes.\n" .
@@ -1274,6 +1288,8 @@ passed as argument rather than by table value',
 " --------------------\n" .
 "XCAT DAEMON ATTRIBUTES\n" .
 " --------------------\n" .
+" tokenexpiredays: Number of days before REST API token will expire. The default is 1.\n" .
+"                  use 'never' if you want your token to never expire.\n" .
 " useflowcontrol:  (yes/1 or no/0). If yes, the postscript processing on each node\n" .
 "               contacts xcatd on the MN/SN using a lightweight UDP packet to wait\n" .
 "               until xcatd is ready to handle the requests associated with\n" .
@@ -1437,8 +1453,8 @@ passed as argument rather than by table value',
             audittime  => 'The timestamp for the audit entry.',
             userid     => 'The user running the command.',
             clientname => 'The client machine, where the command originated.',
-            clienttype => 'Type of command: cli,java,webui,other.',
-            command    => 'Command executed.',
+            clienttype => 'Type of command: cli, java, webui, other.',
+            command    => 'Command executed. See auditskipcmds site table attribute to control which commands get logged.',
             noderange  => 'The noderange on which the command was run.',
             args       => 'The command argument list.',
             status     => 'Allowed or Denied.',
@@ -1603,8 +1619,7 @@ zvmivp => {
                     <nic1>!<param1=value1 param2=value2>|<param3=value3>,<nic2>!<param4=value4 param5=value5>|<param6=value6>, for example, eth0!MTU=1500|MTU=1460,ib0!MTU=65520 CONNECTED_MODE=yes.
             The xCAT object definition commands support to use nicextraparams.<nicname> as the sub attributes.',
             nicdevices => 'Comma-separated list of NIC device per NIC, multiple ethernet devices can be bonded as bond device, these ethernet devices are separated by | . <nic1>!<dev1>|<dev3>,<nic2>!<dev2>, e.g. bond0!eth0|eth2,br0!bond0. The xCAT object definition commands support to use nicdevices.<nicname> as the sub attributes.',
-            nicsadapter => 'Comma-separated list of extra parameters that will be used for each NIC configuration.
-                    <nic1>!<param1=value1 param2=value2>,<nic2>!<param4=value4 param5=value5>, for example, enP3p3s0f1!mac=98:be:94:59:fa:cd linkstate=DOWN,enP3p3s0f2!mac=98:be:94:59:fa:ce candidatename=enP3p3s0f2/enx98be9459face',
+            nicsadapter => 'Comma-separated list of NIC information collected by getadapter. <nic1>!<param1=value1 param2=value2>,<nic2>!<param4=value4 param5=value5>, for example, enP3p3s0f1!mac=98:be:94:59:fa:cd linkstate=DOWN,enP3p3s0f2!mac=98:be:94:59:fa:ce candidatename=enP3p3s0f2/enx98be9459face',
             comments => 'Any user-written notes.',
             disable  => "Set to 'yes' or '1' to comment out this row.",
         },
@@ -1792,13 +1807,15 @@ zvmivp => {
         },
     },
     token => {
-        cols         => [qw(tokenid username expire comments disable)],
+        cols         => [qw(tokenid username expire created access comments disable)],
         keys         => [qw(tokenid)],
         table_desc   => 'The token of users for authentication.',
         descriptions => {
             tokenid  => 'It is a UUID as an unified identify for the user.',
             username => 'The user name.',
             expire   => 'The expire time for this token.',
+            created  => 'Creation time for this token.',
+            access   => 'Last access time for this token.',
             comments => 'Any user-provided notes.',
             disable  => "Set to 'yes' or '1' to comment out this row.",
         },
@@ -2173,6 +2190,10 @@ my @nodeattrs = (
     },
     { attr_name => 'consoleondemand',
         tabentry        => 'nodehm.consoleondemand',
+        access_tabentry => 'nodehm.node=attr:node',
+    },
+    { attr_name => 'consoleenabled',
+        tabentry        => 'nodehm.consoleenabled',
         access_tabentry => 'nodehm.node=attr:node',
     },
 ##################
@@ -2950,24 +2971,64 @@ my @nodeattrs = (
         tabentry        => 'pdu.nodetype',
         access_tabentry => 'pdu.node=attr:node',
     },
+    {   attr_name => 'pdutype',
+        only_if         => 'nodetype=pdu',
+        tabentry        => 'pdu.pdutype',
+        access_tabentry => 'pdu.node=attr:node',
+    },
     { attr_name => 'outlet',
         only_if         => 'nodetype=pdu',
         tabentry        => 'pdu.outlet',
         access_tabentry => 'pdu.node=attr:node',
     },
-    {   attr_name => 'machinetype',
+    {   attr_name => 'username',
         only_if         => 'nodetype=pdu',
-        tabentry        => 'pdu.machinetype',
+        tabentry        => 'pdu.username',
         access_tabentry => 'pdu.node=attr:node',
     },
-    { attr_name => 'modelnum',
+    { attr_name => 'password',
         only_if         => 'nodetype=pdu',
-        tabentry        => 'pdu.modelnum',
+        tabentry        => 'pdu.password',
         access_tabentry => 'pdu.node=attr:node',
     },
-    { attr_name => 'serialnum',
+    { attr_name => 'snmpversion',
         only_if         => 'nodetype=pdu',
-        tabentry        => 'pdu.serialnum',
+        tabentry        => 'pdu.snmpversion',
+        access_tabentry => 'pdu.node=attr:node',
+    },
+    { attr_name => 'community',
+        only_if         => 'nodetype=pdu',
+        tabentry        => 'pdu.community',
+        access_tabentry => 'pdu.node=attr:node',
+    },
+    { attr_name => 'snmpuser',
+        only_if         => 'nodetype=pdu',
+        tabentry        => 'pdu.snmpuser',
+        access_tabentry => 'pdu.node=attr:node',
+    },
+    { attr_name => 'authtype',
+        only_if         => 'nodetype=pdu',
+        tabentry        => 'pdu.authtype',
+        access_tabentry => 'pdu.node=attr:node',
+    },
+    { attr_name => 'authkey',
+        only_if         => 'nodetype=pdu',
+        tabentry        => 'pdu.authkey',
+        access_tabentry => 'pdu.node=attr:node',
+    },
+    { attr_name => 'privtype',
+        only_if         => 'nodetype=pdu',
+        tabentry        => 'pdu.privtype',
+        access_tabentry => 'pdu.node=attr:node',
+    },
+    { attr_name => 'privkey',
+        only_if         => 'nodetype=pdu',
+        tabentry        => 'pdu.privkey',
+        access_tabentry => 'pdu.node=attr:node',
+    },
+    { attr_name => 'seclevel',
+        only_if         => 'nodetype=pdu',
+        tabentry        => 'pdu.seclevel',
         access_tabentry => 'pdu.node=attr:node',
     },
 
@@ -3417,6 +3478,10 @@ push(@{ $defspec{node}->{'attrs'} }, @nodeattrs);
         only_if         => 'imagetype=NIM',
         tabentry        => 'nimimage.comments',
         access_tabentry => 'nimimage.imagename=attr:imagename',
+    },
+    { attr_name => 'environvar',
+        tabentry        => 'osimage.environvar',
+        access_tabentry => 'osimage.imagename=attr:imagename',
     },
 );
 
@@ -4196,22 +4261,7 @@ push(@{ $defspec{group}->{'attrs'} }, @nodeattrs);
         tabentry        => 'pdu.outlet',
         access_tabentry => 'pdu.node=attr:node',
     },
-    {   attr_name => 'machinetype',
-        only_if         => 'nodetype=pdu',
-        tabentry        => 'pdu.machinetype',
-        access_tabentry => 'pdu.node=attr:node',
-    },
-    { attr_name => 'modelnum',
-        only_if         => 'nodetype=pdu',
-        tabentry        => 'pdu.modelnum',
-        access_tabentry => 'pdu.node=attr:node',
-    },
-    { attr_name => 'serialnum',
-        only_if         => 'nodetype=pdu',
-        tabentry        => 'pdu.serialnum',
-        access_tabentry => 'pdu.node=attr:node',
-    },
-);
+  );
 
 
 

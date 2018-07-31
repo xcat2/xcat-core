@@ -61,6 +61,13 @@ if ($::HELP)
     exit(0);
 }
 
+my $current_usr = getpwuid($>);
+if ($current_usr ne "root")
+{
+    print "Can't run this command for non-root user\n";
+    exit(1);
+}
+
 if ($::SWITCH) {
     my @filternodes = xCAT::NodeRange::noderange( $::SWITCH );
     if (nodesmissed) {
@@ -137,9 +144,6 @@ sub config_ssh {
     my $nodehash = $nodetab->getNodesAttribs(\@nodes,['ip','otherinterfaces']);
 
     foreach my $switch (@nodes) {
-        #remove old host key from /root/.ssh/known_hosts
-        $cmd = `ssh-keygen -R $switch`;
-
         my $static_ip = $nodehash->{$switch}->[0]->{ip};
         my $discover_ip = $nodehash->{$switch}->[0]->{otherinterfaces};
         my $ssh_ip;
@@ -153,11 +157,15 @@ sub config_ssh {
             print "$switch is not reachable\n";
             next;
         }
+
+        #remove old host key from /root/.ssh/known_hosts
+        $cmd = `ssh-keygen -R $switch`;
+        $cmd = `ssh-keygen -R $ssh_ip`;
         
 
         my ($exp, $errstr) = cumulus_connect($ssh_ip, $userid, $password, $timeout);
         if (!defined $exp) {
-            print ("connect failed $errstr\n");
+            print ("Failed to connect to $ssh_ip, $errstr\n");
             next;
         }
 
@@ -197,6 +205,7 @@ sub config_ssh {
             $rc= xCAT::Utils->runcmd($cmd, 0); 
             if ($::RUNCMD_RC != 0) {
                 xCAT::MsgUtils->message("E","Failed to run updatenode, please check the switch");
+                print "Failed to run $cmd\n";
             }
             $cmd = "chdef $csw status=configured";
             $rc= xCAT::Utils->runcmd($cmd, 0);
@@ -282,6 +291,7 @@ sub install_license {
         $rc= xCAT::Utils->runcmd($cmd, 0);
         if ($::RUNCMD_RC != 0) {
             xCAT::MsgUtils->message("E","Failed to xscp $license_file to $switch");
+            print "$switch: Failed to run $cmd\n";
             next;
         }
 
@@ -289,6 +299,7 @@ sub install_license {
         $rc= xCAT::Utils->runcmd($cmd, 0);
         if ($::RUNCMD_RC != 0) {
             xCAT::MsgUtils->message("E","Failed to $cmd to $switch");
+            print "$switch: Failed to run $cmd\n";
             next;
         }
         #restart switchd and reload interface
@@ -316,6 +327,7 @@ sub config_snmp {
         $rc= xCAT::Utils->runcmd($cmd, 0);
         if ($::RUNCMD_RC != 0) {
             xCAT::MsgUtils->message("E","xdsh command to $switch failed");
+            print "$switch:  Failed to run $cmd\n";
             next;
         }
 
@@ -345,9 +357,10 @@ sub config_snmp {
         $rc= xCAT::Utils->runcmd($dshcmd, 0);
         if ($::RUNCMD_RC != 0) {
             xCAT::MsgUtils->message("E","Failed to update snmpd.conf for $switch");
+            print "$switch:  Failed to update snmpd.conf\n";
             next;
         }
-        print "Add username=$username, password=$password, privacy=$privacy, auth=$auth to snmp service for $switch \n";
+        print "$switch: snmp service is configured\n";
     }
 }
 
@@ -399,12 +412,13 @@ sub config_ntp {
         $rc= xCAT::Utils->runcmd($cmd, 0);
         if ($::RUNCMD_RC != 0) {
             xCAT::MsgUtils->message("E","xdsh command to $switch failed");
+            print "$switch: Failed to run $cmd\n";
             next;
         }
         $cmd = "xdsh $switch 'echo $timezone >/etc/timezone;dpkg-reconfigure --frontend noninteractive tzdata' ";
         $rc= xCAT::Utils->runcmd($cmd, 0);
         if ($::RUNCMD_RC != 0) {
-            print "Failed to update ntp timezone\n";
+            print "$switch: Failed to update ntp timezone\n";
             xCAT::MsgUtils->message("E","Failed to update ntp timezone for $switch");
         }
         #use ntpserver from network table if available
@@ -432,6 +446,7 @@ sub config_ntp {
         $rc= xCAT::Utils->runcmd($cmd, 0);
         if ($::RUNCMD_RC != 0) {
             xCAT::MsgUtils->message("E","Failed to update ntp for $switch");
+            print "$switch: Failed to configure ntp service\n";
             next;
         }
         push (@config_switches, $switch);
@@ -444,7 +459,7 @@ sub config_ntp {
         my $csw = join(",",@config_switches);
         $cmd = "chdef $csw status=ntp_configured";
         $rc= xCAT::Utils->runcmd($cmd, 0);
-        print "$csw: ntp configured\n";
+        print "$csw: NTP service is configured\n";
     }
 
     

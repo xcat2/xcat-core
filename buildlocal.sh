@@ -144,19 +144,19 @@ echo "This is an $OSNAME system"
 
    grep -i 'Red' /etc/*release*;
    if [ "$OSNAME" != "AIX" -a $? -eq 0 ]; then
-        cat >$CURDIR/build/xCAT-core.repo << EOF
-[xcat-2-core]
+        cat >$CURDIR/build/xcat-core.repo << EOF
+[xcat-core]
 name=xCAT 2 Core packages
 baseurl=file://$CURDIR/build
 enabled=1
 gpgcheck=0
 EOF
 
-  cp $CURDIR/build/xCAT-core.repo /etc/yum.repos.d/
+  cp $CURDIR/build/xcat-core.repo /etc/yum.repos.d/
   createrepo $CURDIR/build
   else
-     rm -f /etc/zypp/repos.d/xCAT-core.repo
-     zypper ar file://$CURDIR/build xCAT-core
+     rm -f /etc/zypp/repos.d/xcat-core.repo
+     zypper ar file://$CURDIR/build xcat-core
   fi
    
 fi

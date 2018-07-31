@@ -1,0 +1,21 @@
+2018-06-12 - OpenSSL Vulnerabilities
+====================================
+
+*Jun 12, 2018*, OpenSSL announced the following security advisories: https://www.openssl.org/news/secadv/20180612.txt
+
+
+Advisory CVEs
+-------------
+
+* CVE-2018-0732 - **Client DoS due to large DH parameter** (Severity: Low)
+
+Please see the security bulletin above for patch, upgrade, or suggested work around information.
+
+Action
+------
+
+xCAT uses OpenSSL for client-server communication but **does not** ship it.  
+
+It is highly recommended to keep your OpenSSL levels up-to-date with the indicated versions in the security bulletins to prevent any potential security threats. Obtain the updated software packages from your Operating system distribution channels. 
+
+

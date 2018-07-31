@@ -18,7 +18,7 @@ POST - Create a token.
 Acquire a token for user 'root'. :: 
 
 
-    #curl -X POST -k 'https://127.0.0.1/xcatws/tokens?userName=root&userPW=cluster&pretty=1' -H Content-Type:application/json --data '{"userName":"root","userPW":"cluster"}'
+    curl -X POST -k 'https://127.0.0.1/xcatws/tokens?userName=root&userPW=cluster&pretty=1' -H Content-Type:application/json --data '{"userName":"root","userPW":"cluster"}'
     {
        "token":{
           "id":"a6e89b59-2b23-429a-b3fe-d16807dd19eb",
@@ -52,7 +52,7 @@ Refer to the man page: :doc:`lsdef </guides/admin-guides/references/man1/lsdef.1
 Get all the node names from xCAT database. :: 
 
 
-    #curl -X GET -k 'https://127.0.0.1/xcatws/nodes?userName=root&userPW=cluster&pretty=1'
+    curl -X GET -k 'https://127.0.0.1/xcatws/nodes?userName=root&userPW=cluster&pretty=1'
     [
        "node1",
        "node2",
@@ -78,7 +78,7 @@ Refer to the man page: :doc:`lsdef </guides/admin-guides/references/man1/lsdef.1
 Get all the attributes for node 'node1'. :: 
 
 
-    #curl -X GET -k 'https://127.0.0.1/xcatws/nodes/node1?userName=root&userPW=cluster&pretty=1'
+    curl -X GET -k 'https://127.0.0.1/xcatws/nodes/node1?userName=root&userPW=cluster&pretty=1'
     {
        "node1":{
           "profile":"compute",
@@ -108,9 +108,7 @@ Refer to the man page: :doc:`chdef </guides/admin-guides/references/man1/chdef.1
 Change the attributes mgt=dfm and netboot=yaboot. :: 
 
 
-    #curl -X PUT -k 'https://127.0.0.1/xcatws/nodes/node1?userName=root&userPW=cluster&pretty=1' -H Content-Type:application/json --data '{"mgt":"dfm","netboot":"yaboot"}'
-
-
+    curl -X PUT -k 'https://127.0.0.1/xcatws/nodes/node1?userName=root&userPW=cluster&pretty=1' -H Content-Type:application/json --data '{"mgt":"dfm","netboot":"yaboot"}'
 POST - Create the node {noderange}.
 ```````````````````````````````````
 
@@ -118,7 +116,7 @@ Refer to the man page: :doc:`mkdef </guides/admin-guides/references/man1/mkdef.1
 
 **Parameters:**
 
-* Json format: An object which includes multiple 'att:value' pairs. DataBody: {attr1:v1,att2:v2,...}.
+* Json format: An object which includes multiple 'att:value' pairs. DataBody: {options:{opt1:v1,opt2:v2},attr1:v1,att2:v2,...}.
 
 **Returns:**
 
@@ -129,8 +127,7 @@ Refer to the man page: :doc:`mkdef </guides/admin-guides/references/man1/mkdef.1
 Create a node with attributes groups=all, mgt=dfm and netboot=yaboot :: 
 
 
-    #curl -X POST -k 'https://127.0.0.1/xcatws/nodes/node1?userName=root&userPW=cluster&pretty=1' -H Content-Type:application/json --data '{"groups":"all","mgt":"dfm","netboot":"yaboot"}'
-
+    curl -X POST -k 'https://127.0.0.1/xcatws/nodes/node1?userName=root&userPW=cluster&pretty=1' -H Content-Type:application/json --data '{"options":{"--template":"x86_64kvmguest-template"},'
 DELETE - Remove the node {noderange}.
 `````````````````````````````````````
 
@@ -144,8 +141,8 @@ Refer to the man page: :doc:`rmdef </guides/admin-guides/references/man1/rmdef.1
 
 Delete the node node1 :: 
 
-    #curl -X DELETE -k 'https://127.0.0.1/xcatws/nodes/node1?userName=root&userPW=cluster&pretty=1'
 
+    curl -X DELETE -k 'https://127.0.0.1/xcatws/nodes/node1?userName=root&userPW=cluster&pretty=1'
 [URI:/nodes/{noderange}/attrs/{attr1,attr2,attr3 ...}] - The attributes resource for the node {noderange}
 ---------------------------------------------------------------------------------------------------------
 
@@ -165,7 +162,7 @@ Refer to the man page: :doc:`lsdef </guides/admin-guides/references/man1/lsdef.1
 Get the attributes {groups,mgt,netboot} for node node1 :: 
 
 
-    #curl -X GET -k 'https://127.0.0.1/xcatws/nodes/node1/attrs/groups,mgt,netboot?userName=root&userPW=cluster&pretty=1'
+    curl -X GET -k 'https://127.0.0.1/xcatws/nodes/node1/attrs/groups,mgt,netboot?userName=root&userPW=cluster&pretty=1'
     {
        "node1":{
           "netboot":"xnba",
@@ -190,8 +187,8 @@ Refer to the man page: :doc:`makehosts </guides/admin-guides/references/man8/mak
 
 Create the mapping of ip and hostname record for node 'node1'. :: 
 
-    #curl -X POST -k 'https://127.0.0.1/xcatws/nodes/node1/host?userName=root&userPW=cluster&pretty=1'
 
+    curl -X POST -k 'https://127.0.0.1/xcatws/nodes/node1/host?userName=root&userPW=cluster&pretty=1'
 [URI:/nodes/{noderange}/dns] - The dns record resource for the node {noderange}
 -------------------------------------------------------------------------------
 
@@ -210,8 +207,8 @@ Refer to the man page: :doc:`makedns </guides/admin-guides/references/man8/maked
 
 Create the dns record for node 'node1'. :: 
 
-    #curl -X POST -k 'https://127.0.0.1/xcatws/nodes/node1/dns?userName=root&userPW=cluster&pretty=1'
 
+    curl -X POST -k 'https://127.0.0.1/xcatws/nodes/node1/dns?userName=root&userPW=cluster&pretty=1'
 DELETE - Remove the dns record for the node {noderange}.
 ````````````````````````````````````````````````````````
 
@@ -225,8 +222,8 @@ Refer to the man page: :doc:`makedns </guides/admin-guides/references/man8/maked
 
 Delete the dns record for node node1 :: 
 
-    #curl -X DELETE -k 'https://127.0.0.1/xcatws/nodes/node1/dns?userName=root&userPW=cluster&pretty=1'
 
+    curl -X DELETE -k 'https://127.0.0.1/xcatws/nodes/node1/dns?userName=root&userPW=cluster&pretty=1'
 [URI:/nodes/{noderange}/dhcp] - The dhcp record resource for the node {noderange}
 ---------------------------------------------------------------------------------
 
@@ -243,8 +240,8 @@ Refer to the man page: :doc:`makedhcp </guides/admin-guides/references/man8/make
 
 Create the dhcp record for node 'node1'. :: 
 
-    #curl -X POST -k 'https://127.0.0.1/xcatws/nodes/node1/dhcp?userName=root&userPW=cluster&pretty=1'
 
+    curl -X POST -k 'https://127.0.0.1/xcatws/nodes/node1/dhcp?userName=root&userPW=cluster&pretty=1'
 DELETE - Remove the dhcp record for the node {noderange}.
 `````````````````````````````````````````````````````````
 
@@ -258,8 +255,8 @@ Refer to the man page: :doc:`makedhcp </guides/admin-guides/references/man8/make
 
 Delete the dhcp record for node node1 :: 
 
-    #curl -X DELETE -k 'https://127.0.0.1/xcatws/nodes/node1/dhcp?userName=root&userPW=cluster&pretty=1'
 
+    curl -X DELETE -k 'https://127.0.0.1/xcatws/nodes/node1/dhcp?userName=root&userPW=cluster&pretty=1'
 [URI:/nodes/{noderange}/nodestat}] - The attributes resource for the node {noderange}
 -------------------------------------------------------------------------------------
 
@@ -277,12 +274,36 @@ Refer to the man page: :doc:`nodestat </guides/admin-guides/references/man1/node
 Get the running status for node node1 :: 
 
 
-    #curl -X GET -k 'https://127.0.0.1/xcatws/nodes/node1/nodestat?userName=root&userPW=cluster&pretty=1'
+    curl -X GET -k 'https://127.0.0.1/xcatws/nodes/node1/nodestat?userName=root&userPW=cluster&pretty=1'
     {
        "node1":{
           "nodestat":"noping"
        }
     }
+
+[URI:/nodes/{noderange}/nodels}] - Lists the nodes, noderange cannot start with /
+---------------------------------------------------------------------------------
+
+GET - Lists the nodes.
+``````````````````````
+
+Refer to the man page: :doc:`nodels </guides/admin-guides/references/man1/nodels.1>`
+
+**Returns:**
+
+* Json format: An array of node names.
+
+**Example:** 
+
+Get the node names from xCAT database. :: 
+
+
+    curl -X GET -k 'https://127.0.0.1/xcatws/nodes/node[1-3]/nodels?userName=root&userPW=cluster&pretty=1'
+    [
+       "node1",
+       "node2",
+       "node3",
+    ]
 
 [URI:/nodes/{noderange}/subnodes] - The sub-nodes resources for the node {noderange}
 ------------------------------------------------------------------------------------
@@ -301,7 +322,7 @@ Refer to the man page: :doc:`rscan </guides/admin-guides/references/man1/rscan.1
 Get all the children nodes for node 'node1'. :: 
 
 
-    #curl -X GET -k 'https://127.0.0.1/xcatws/nodes/node1/subnodes?userName=root&userPW=cluster&pretty=1'
+    curl -X GET -k 'https://127.0.0.1/xcatws/nodes/node1/subnodes?userName=root&userPW=cluster&pretty=1'
     {
        "cmm01node09":{
           "mpa":"ngpcmm01",
@@ -338,7 +359,7 @@ Refer to the man page: :doc:`rpower </guides/admin-guides/references/man1/rpower
 Get the power status. :: 
 
 
-    #curl -X GET -k 'https://127.0.0.1/xcatws/nodes/node1/power?userName=root&userPW=cluster&pretty=1'
+    curl -X GET -k 'https://127.0.0.1/xcatws/nodes/node1/power?userName=root&userPW=cluster&pretty=1'
     {
        "node1":{
           "power":"on"
@@ -362,8 +383,8 @@ Refer to the man page: :doc:`rpower </guides/admin-guides/references/man1/rpower
 
 Change the power status to on :: 
 
-    #curl -X PUT -k 'https://127.0.0.1/xcatws/nodes/node1/power?userName=root&userPW=cluster&pretty=1' -H Content-Type:application/json --data '{"action":"on"}'
 
+    curl -X PUT -k 'https://127.0.0.1/xcatws/nodes/node1/power?userName=root&userPW=cluster&pretty=1' -H Content-Type:application/json --data '{"action":"on"}'
 [URI:/nodes/{noderange}/energy] - The energy resource for the node {noderange}
 ------------------------------------------------------------------------------
 
@@ -380,8 +401,8 @@ Refer to the man page: :doc:`renergy </guides/admin-guides/references/man1/rener
 
 Get all the energy attributes. :: 
 
-    #curl -X GET -k 'https://127.0.0.1/xcatws/nodes/node1/energy?userName=root&userPW=cluster&pretty=1'
 
+    curl -X GET -k 'https://127.0.0.1/xcatws/nodes/node1/energy?userName=root&userPW=cluster&pretty=1'
     {
        "node1":{
           "cappingmin":"272.3 W",
@@ -407,8 +428,8 @@ Refer to the man page: :doc:`renergy </guides/admin-guides/references/man1/rener
 
 Turn on the cappingstatus to [on] :: 
 
-    #curl -X PUT -k 'https://127.0.0.1/xcatws/nodes/node1/energy?userName=root&userPW=cluster&pretty=1' -H Content-Type:application/json --data '{"cappingstatus":"on"}'
 
+    curl -X PUT -k 'https://127.0.0.1/xcatws/nodes/node1/energy?userName=root&userPW=cluster&pretty=1' -H Content-Type:application/json --data '{"cappingstatus":"on"}'
 [URI:/nodes/{noderange}/energy/{cappingmaxmin,cappingstatus,cappingvalue ...}] - The specific energy attributes resource for the node {noderange}
 -------------------------------------------------------------------------------------------------------------------------------------------------
 
@@ -426,7 +447,7 @@ Refer to the man page: :doc:`renergy </guides/admin-guides/references/man1/rener
 Get the energy attributes which are specified in the URI. :: 
 
 
-    #curl -X GET -k 'https://127.0.0.1/xcatws/nodes/node1/energy/cappingmaxmin,cappingstatus?userName=root&userPW=cluster&pretty=1'
+    curl -X GET -k 'https://127.0.0.1/xcatws/nodes/node1/energy/cappingmaxmin,cappingstatus?userName=root&userPW=cluster&pretty=1'
     {
        "node1":{
           "cappingmin":"272.3 W",
@@ -451,7 +472,7 @@ Refer to the man page: :doc:`rspconfig </guides/admin-guides/references/man1/rsp
 Get the snmp community for the service processor of node1. :: 
 
 
-    #curl -X GET -k 'https://127.0.0.1/xcatws/nodes/node1/sp/community?userName=root&userPW=cluster&pretty=1'
+    curl -X GET -k 'https://127.0.0.1/xcatws/nodes/node1/sp/community?userName=root&userPW=cluster&pretty=1'
     {
        "node1":{
           "SP SNMP Community":"public"
@@ -475,8 +496,8 @@ Refer to the man page: :doc:`rspconfig </guides/admin-guides/references/man1/rsp
 
 Set the snmp community to [mycommunity]. :: 
 
-    #curl -X PUT -k 'https://127.0.0.1/xcatws/nodes/node1/sp/community?userName=root&userPW=cluster&pretty=1' -H Content-Type:application/json --data '{"value":"mycommunity"}'
 
+    curl -X PUT -k 'https://127.0.0.1/xcatws/nodes/node1/sp/community?userName=root&userPW=cluster&pretty=1' -H Content-Type:application/json --data '{"value":"mycommunity"}'
 [URI:/nodes/{noderange}/nextboot] - The temporary bootorder resource in next boot for the node {noderange}
 ----------------------------------------------------------------------------------------------------------
 
@@ -494,7 +515,7 @@ Refer to the man page: :doc:`rsetboot </guides/admin-guides/references/man1/rset
 Get the bootorder for the next boot. (It's only valid after setting.) :: 
 
 
-    #curl -X GET -k 'https://127.0.0.1/xcatws/nodes/node1/nextboot?userName=root&userPW=cluster&pretty=1'
+    curl -X GET -k 'https://127.0.0.1/xcatws/nodes/node1/nextboot?userName=root&userPW=cluster&pretty=1'
     {
        "node1":{
           "nextboot":"Network"
@@ -518,8 +539,8 @@ Refer to the man page: :doc:`rsetboot </guides/admin-guides/references/man1/rset
 
 Set the bootorder for the next boot. :: 
 
-    #curl -X PUT -k 'https://127.0.0.1/xcatws/nodes/node1/nextboot?userName=root&userPW=cluster&pretty=1' -H Content-Type:application/json --data '{"order":"net"}'
 
+    curl -X PUT -k 'https://127.0.0.1/xcatws/nodes/node1/nextboot?userName=root&userPW=cluster&pretty=1' -H Content-Type:application/json --data '{"order":"net"}'
 [URI:/nodes/{noderange}/bootstate] - The boot state resource for node {noderange}.
 ----------------------------------------------------------------------------------
 
@@ -537,7 +558,7 @@ Refer to the man page: :doc:`nodeset </guides/admin-guides/references/man1/nimno
 Get the next boot state for the node1. :: 
 
 
-    #curl -X GET -k 'https://127.0.0.1/xcatws/nodes/node1/bootstate?userName=root&userPW=cluster&pretty=1'
+    curl -X GET -k 'https://127.0.0.1/xcatws/nodes/node1/bootstate?userName=root&userPW=cluster&pretty=1'
     {
        "node1":{
           "bootstat":"boot"
@@ -561,8 +582,8 @@ Refer to the man page: :doc:`nodeset </guides/admin-guides/references/man1/nimno
 
 Set the next boot state for the node1. :: 
 
-    #curl -X PUT -k 'https://127.0.0.1/xcatws/nodes/node1/bootstate?userName=root&userPW=cluster&pretty=1' -H Content-Type:application/json --data '{"osimage":"rhels6.4-x86_64-install-compute"}'
 
+    curl -X PUT -k 'https://127.0.0.1/xcatws/nodes/node1/bootstate?userName=root&userPW=cluster&pretty=1' -H Content-Type:application/json --data '{"osimage":"rhels6.4-x86_64-install-compute"}'
 [URI:/nodes/{noderange}/vitals] - The vitals resources for the node {noderange}
 -------------------------------------------------------------------------------
 
@@ -580,7 +601,7 @@ Refer to the man page: :doc:`rvitals </guides/admin-guides/references/man1/rvita
 Get all the vitails attributes for the node1. :: 
 
 
-    #curl -X GET -k 'https://127.0.0.1/xcatws/nodes/node1/vitals?userName=root&userPW=cluster&pretty=1'
+    curl -X GET -k 'https://127.0.0.1/xcatws/nodes/node1/vitals?userName=root&userPW=cluster&pretty=1'
     {
        "node1":{
           "SysBrd Fault":"0",
@@ -611,7 +632,7 @@ Refer to the man page: :doc:`rvitals </guides/admin-guides/references/man1/rvita
 Get the 'fanspeed' vitals attribute. :: 
 
 
-    #curl -X GET -k 'https://127.0.0.1/xcatws/nodes/node1/vitals/fanspeed?userName=root&userPW=cluster&pretty=1'
+    curl -X GET -k 'https://127.0.0.1/xcatws/nodes/node1/vitals/fanspeed?userName=root&userPW=cluster&pretty=1'
     {
        "node1":{
           "Fan 1A Tach":"3219 RPM",
@@ -642,7 +663,7 @@ Refer to the man page: :doc:`rinv </guides/admin-guides/references/man1/rinv.1>`
 Get all the inventory attributes for node1. :: 
 
 
-    #curl -X GET -k 'https://127.0.0.1/xcatws/nodes/node1/inventory?userName=root&userPW=cluster&pretty=1'
+    curl -X GET -k 'https://127.0.0.1/xcatws/nodes/node1/inventory?userName=root&userPW=cluster&pretty=1'
     {
        "node1":{
           "DIMM 21 ":"8GB PC3-12800 (1600 MT/s) ECC RDIMM",
@@ -673,7 +694,7 @@ Refer to the man page: :doc:`rinv </guides/admin-guides/references/man1/rinv.1>`
 Get the 'model' inventory attribute for node1. :: 
 
 
-    #curl -X GET -k 'https://127.0.0.1/xcatws/nodes/node1/inventory/model?userName=root&userPW=cluster&pretty=1'
+    curl -X GET -k 'https://127.0.0.1/xcatws/nodes/node1/inventory/model?userName=root&userPW=cluster&pretty=1'
     {
        "node1":{
           "System Description":"System x3650 M4",
@@ -698,7 +719,7 @@ Refer to the man page: :doc:`reventlog </guides/admin-guides/references/man1/rev
 Get all the eventlog for node1. :: 
 
 
-    #curl -X GET -k 'https://127.0.0.1/xcatws/nodes/node1/eventlog?userName=root&userPW=cluster&pretty=1'
+    curl -X GET -k 'https://127.0.0.1/xcatws/nodes/node1/eventlog?userName=root&userPW=cluster&pretty=1'
     {
        "node1":{
           "eventlog":[
@@ -721,7 +742,7 @@ Refer to the man page: :doc:`reventlog </guides/admin-guides/references/man1/rev
 Delete all the event log for node1. :: 
 
 
-    #curl -X DELETE -k 'https://127.0.0.1/xcatws/nodes/node1/eventlog?userName=root&userPW=cluster&pretty=1'
+    curl -X DELETE -k 'https://127.0.0.1/xcatws/nodes/node1/eventlog?userName=root&userPW=cluster&pretty=1'
     [
        {
           "eventlog":[
@@ -733,6 +754,29 @@ Delete all the event log for node1. ::
 
 [URI:/nodes/{noderange}/beacon] - The beacon resource for the node {noderange}
 ------------------------------------------------------------------------------
+
+GET - Get the beacon status for the node {noderange}.
+`````````````````````````````````````````````````````
+
+Refer to the man page: :doc:`rbeacon </guides/admin-guides/references/man1/rbeacon.1>`
+
+**Returns:**
+
+* Json format: An object which includes multiple '<name> : {att:value, attr:value ...}' pairs.
+
+**Example:** 
+
+Get beacon for node1. :: 
+
+
+    curl -X GET -k 'https://127.0.0.1/xcatws/nodes/node1/beacon?userName=root&userPW=cluster&pretty=1'
+    {
+       "node1":{
+          "beacon":[
+             "Front:Blink Rear:Blink"
+          ]
+       }
+    }
 
 PUT - Change the beacon status for the node {noderange}.
 ````````````````````````````````````````````````````````
@@ -752,14 +796,7 @@ Refer to the man page: :doc:`rbeacon </guides/admin-guides/references/man1/rbeac
 Turn on the beacon. :: 
 
 
-    #curl -X PUT -k 'https://127.0.0.1/xcatws/nodes/node1/beacon?userName=root&userPW=cluster&pretty=1' -H Content-Type:application/json --data '{"action":"on"}'
-    [
-       {
-          "name":"node1",
-          "beacon":"on"
-       }
-    ]
-
+    curl -X PUT -k 'https://127.0.0.1/xcatws/nodes/node1/beacon?userName=root&userPW=cluster&pretty=1' -H Content-Type:application/json --data '{"action":"on"}'
 [URI:/nodes/{noderange}/updating] - The updating resource for the node {noderange}
 ----------------------------------------------------------------------------------
 
@@ -777,7 +814,7 @@ Refer to the man page: :doc:`updatenode </guides/admin-guides/references/man1/up
 Initiate an updatenode process. :: 
 
 
-    #curl -X POST -k 'https://127.0.0.1/xcatws/nodes/node2/updating?userName=root&userPW=cluster&pretty=1'
+    curl -X POST -k 'https://127.0.0.1/xcatws/nodes/node2/updating?userName=root&userPW=cluster&pretty=1'
     [
        "There were no syncfiles defined to process. File synchronization has completed.",
        "Performing software maintenance operations. This could take a while, if there are packages to install.
@@ -803,7 +840,7 @@ Refer to the man page: :doc:`updatenode </guides/admin-guides/references/man1/up
 Initiate an file syncing process. :: 
 
 
-    #curl -X POST -k 'https://127.0.0.1/xcatws/nodes/node2/filesyncing?userName=root&userPW=cluster&pretty=1'
+    curl -X POST -k 'https://127.0.0.1/xcatws/nodes/node2/filesyncing?userName=root&userPW=cluster&pretty=1'
     [
        "There were no syncfiles defined to process. File synchronization has completed."
     ]
@@ -825,7 +862,7 @@ Refer to the man page: :doc:`updatenode </guides/admin-guides/references/man1/up
 Initiate an software maintenance process. :: 
 
 
-    #curl -X POST -k 'https://127.0.0.1/xcatws/nodes/node2/sw?userName=root&userPW=cluster&pretty=1'
+    curl -X POST -k 'https://127.0.0.1/xcatws/nodes/node2/sw?userName=root&userPW=cluster&pretty=1'
     {
        "node2":[
           " Wed Apr  3 09:05:42 CST 2013 Running postscript: ospkgs",
@@ -859,7 +896,7 @@ Refer to the man page: :doc:`updatenode </guides/admin-guides/references/man1/up
 Initiate an updatenode process. :: 
 
 
-    #curl -X POST -k 'https://127.0.0.1/xcatws/nodes/node2/postscript?userName=root&userPW=cluster&pretty=1' -H Content-Type:application/json --data '{"scripts":["syslog","remoteshell"]}'
+    curl -X POST -k 'https://127.0.0.1/xcatws/nodes/node2/postscript?userName=root&userPW=cluster&pretty=1' -H Content-Type:application/json --data '{"scripts":["syslog","remoteshell"]}'
     {
        "node2":[
           " Wed Apr  3 09:01:33 CST 2013 Running postscript: syslog",
@@ -895,7 +932,7 @@ Refer to the man page: :doc:`xdsh </guides/admin-guides/references/man1/xdsh.1>`
 Run the 'date' command on the node2. :: 
 
 
-    #curl -X POST -k 'https://127.0.0.1/xcatws/nodes/node2/nodeshell?userName=root&userPW=cluster&pretty=1' -H Content-Type:application/json --data '{"command":["date","ls"]}'
+    curl -X POST -k 'https://127.0.0.1/xcatws/nodes/node2/nodeshell?userName=root&userPW=cluster&pretty=1' -H Content-Type:application/json --data '{"command":["date","ls"]}'
     {
        "node2":[
           " Wed Apr  3 08:30:26 CST 2013",
@@ -925,7 +962,7 @@ Refer to the man page: :doc:`xdcp </guides/admin-guides/references/man1/xdcp.1>`
 Copy files /tmp/f1 and /tmp/f2 from xCAT MN to the node2:/tmp. :: 
 
 
-    #curl -X POST -k 'https://127.0.0.1/xcatws/nodes/node2/nodecopy?userName=root&userPW=cluster&pretty=1' -H Content-Type:application/json --data '{"src":["/tmp/f1","/tmp/f2"],"target":"/tmp"}'
+    curl -X POST -k 'https://127.0.0.1/xcatws/nodes/node2/nodecopy?userName=root&userPW=cluster&pretty=1' -H Content-Type:application/json --data '{"src":["/tmp/f1","/tmp/f2"],"target":"/tmp"}'
     no output for succeeded copy.
 
 [URI:/nodes/{noderange}/vm] - The virtualization node {noderange}.
@@ -953,20 +990,20 @@ Refer to the man page: :doc:`chvm </guides/admin-guides/references/man1/chvm.1>`
 
 Set memory to 3000MB. :: 
 
-    #curl -X PUT -k 'https://127.0.0.1/xcatws/nodes/node1/vm?userName=root&userPW=cluster&pretty=1' -H Content-Type:application/json --data '{"memorysize":"3000"}'
 
+    curl -X PUT -k 'https://127.0.0.1/xcatws/nodes/node1/vm?userName=root&userPW=cluster&pretty=1' -H Content-Type:application/json --data '{"memorysize":"3000"}'
 **Example2:** 
 
 Add a new 20G disk. :: 
 
-    #curl -X PUT -k 'https://127.0.0.1/xcatws/nodes/node1/vm?userName=root&userPW=cluster&pretty=1' -H Content-Type:application/json --data '{"adddisk":"20G"}'
 
+    curl -X PUT -k 'https://127.0.0.1/xcatws/nodes/node1/vm?userName=root&userPW=cluster&pretty=1' -H Content-Type:application/json --data '{"adddisk":"20G"}'
 **Example3:** 
 
 Purge the disk 'hdb'. :: 
 
-    #curl -X PUT -k 'https://127.0.0.1/xcatws/nodes/node1/vm?userName=root&userPW=cluster&pretty=1' -H Content-Type:application/json --data '{"purgedisk":"hdb"}'
 
+    curl -X PUT -k 'https://127.0.0.1/xcatws/nodes/node1/vm?userName=root&userPW=cluster&pretty=1' -H Content-Type:application/json --data '{"purgedisk":"hdb"}'
 POST - Create the vm node {noderange}.
 ``````````````````````````````````````
 
@@ -988,8 +1025,8 @@ Refer to the man page: :doc:`mkvm </guides/admin-guides/references/man1/mkvm.1>`
 
 Create the vm node1 with a 30G disk, 2048M memory and 2 cpus. :: 
 
-    #curl -X POST -k 'https://127.0.0.1/xcatws/nodes/node1/vm?userName=root&userPW=cluster&pretty=1' -H Content-Type:application/json --data '{"disksize":"30G","memorysize":"2048","cpucount":"2"}'
 
+    curl -X POST -k 'https://127.0.0.1/xcatws/nodes/node1/vm?userName=root&userPW=cluster&pretty=1' -H Content-Type:application/json --data '{"disksize":"30G","memorysize":"2048","cpucount":"2"}'
 DELETE - Remove the vm node {noderange}.
 ````````````````````````````````````````
 
@@ -1009,8 +1046,8 @@ Refer to the man page: :doc:`rmvm </guides/admin-guides/references/man1/rmvm.1>`
 
 Remove the vm node1 by force and purge the disk. :: 
 
-    #curl -X DELETE -k 'https://127.0.0.1/xcatws/nodes/node1/vm?userName=root&userPW=cluster&pretty=1' -H Content-Type:application/json --data '{"force":"yes","purge":"yes"}'
 
+    curl -X DELETE -k 'https://127.0.0.1/xcatws/nodes/node1/vm?userName=root&userPW=cluster&pretty=1' -H Content-Type:application/json --data '{"force":"yes","purge":"yes"}'
 [URI:/nodes/{noderange}/vmclone] - The clone resource for the virtual node {noderange}.
 ---------------------------------------------------------------------------------------
 
@@ -1038,7 +1075,7 @@ Refer to the man page: :doc:`clonevm </guides/admin-guides/references/man1/clone
 Create a clone master named "vmmaster" from the node1. :: 
 
 
-    #curl -X POST -k 'https://127.0.0.1/xcatws/nodes/node1/vmclone?userName=root&userPW=cluster&pretty=1' -H Content-Type:application/json --data '{"tomaster":"vmmaster","detach":"yes"}'
+    curl -X POST -k 'https://127.0.0.1/xcatws/nodes/node1/vmclone?userName=root&userPW=cluster&pretty=1' -H Content-Type:application/json --data '{"tomaster":"vmmaster","detach":"yes"}'
     {
        "node1":{
           "vmclone":"Cloning of node1.hda.qcow2 complete (clone uses 9633.19921875 for a disk size of 30720MB)"
@@ -1049,8 +1086,8 @@ Create a clone master named "vmmaster" from the node1. ::
 
 Clone the node1 from the clone master named "vmmaster". :: 
 
-    #curl -X POST -k 'https://127.0.0.1/xcatws/nodes/node1/vmclone?userName=root&userPW=cluster&pretty=1' -H Content-Type:application/json --data '{"frommaster":"vmmaster"}'
 
+    curl -X POST -k 'https://127.0.0.1/xcatws/nodes/node1/vmclone?userName=root&userPW=cluster&pretty=1' -H Content-Type:application/json --data '{"frommaster":"vmmaster"}'
 [URI:/nodes/{noderange}/vmmigrate] - The virtualization resource for migration.
 -------------------------------------------------------------------------------
 
@@ -1069,8 +1106,8 @@ Refer to the man page: :doc:`rmigrate </guides/admin-guides/references/man1/rmig
 
 Migrate node1 to target host host2. :: 
 
-    #curl -X POST -k 'https://127.0.0.1/xcatws/nodes/node1/vmmigrate?userName=root&userPW=cluster&pretty=1' -H Content-Type:application/json --data '{"target":"host2"}'
 
+    curl -X POST -k 'https://127.0.0.1/xcatws/nodes/node1/vmmigrate?userName=root&userPW=cluster&pretty=1' -H Content-Type:application/json --data '{"target":"host2"}'
 Osimage resources
 =================
 
@@ -1093,7 +1130,7 @@ Refer to the man page: :doc:`lsdef </guides/admin-guides/references/man1/lsdef.1
 Get all the osimage names. :: 
 
 
-    #curl -X GET -k 'https://127.0.0.1/xcatws/osimages?userName=root&userPW=cluster&pretty=1'
+    curl -X GET -k 'https://127.0.0.1/xcatws/osimages?userName=root&userPW=cluster&pretty=1'
     [
        "sles11.2-x86_64-install-compute",
        "sles11.2-x86_64-install-iscsi",
@@ -1118,14 +1155,14 @@ Refer to the man page: :doc:`copycds </guides/admin-guides/references/man8/copyc
 
 Create osimage resources based on the ISO specified :: 
 
-    #curl -X POST -k 'https://127.0.0.1/xcatws/osimages?userName=root&userPW=cluster&pretty=1' -H Content-Type:application/json --data '{"iso":"/iso/RHEL6.4-20130130.0-Server-ppc64-DVD1.iso"}'
 
+    curl -X POST -k 'https://127.0.0.1/xcatws/osimages?userName=root&userPW=cluster&pretty=1' -H Content-Type:application/json --data '{"iso":"/iso/RHEL6.4-20130130.0-Server-ppc64-DVD1.iso"}'
 **Example2:** 
 
 Create osimage resources based on an xCAT image or configuration file :: 
 
-    #curl -X POST -k 'https://127.0.0.1/xcatws/osimages?userName=root&userPW=cluster&pretty=1' -H Content-Type:application/json --data '{"file":"/tmp/sles11.2-x86_64-install-compute.tgz"}'
 
+    curl -X POST -k 'https://127.0.0.1/xcatws/osimages?userName=root&userPW=cluster&pretty=1' -H Content-Type:application/json --data '{"file":"/tmp/sles11.2-x86_64-install-compute.tgz"}'
 [URI:/osimages/{imgname}] - The osimage resource
 ------------------------------------------------
 
@@ -1145,7 +1182,7 @@ Refer to the man page: :doc:`lsdef </guides/admin-guides/references/man1/lsdef.1
 Get the attributes for the specified osimage. :: 
 
 
-    #curl -X GET -k 'https://127.0.0.1/xcatws/osimages/sles11.2-x86_64-install-compute?userName=root&userPW=cluster&pretty=1'
+    curl -X GET -k 'https://127.0.0.1/xcatws/osimages/sles11.2-x86_64-install-compute?userName=root&userPW=cluster&pretty=1'
     {
        "sles11.2-x86_64-install-compute":{
           "provmethod":"install",
@@ -1179,8 +1216,8 @@ Refer to the man page: :doc:`chdef </guides/admin-guides/references/man1/chdef.1
 
 Change the 'osvers' and 'osarch' attributes for the osiamge. :: 
 
-    #curl -X PUT -k 'https://127.0.0.1/xcatws/osimages/sles11.2-ppc64-install-compute/?userName=root&userPW=cluster&pretty=1' -H Content-Type:application/json --data '{"osvers":"sles11.3","osarch":"x86_64"}'
 
+    curl -X PUT -k 'https://127.0.0.1/xcatws/osimages/sles11.2-ppc64-install-compute/?userName=root&userPW=cluster&pretty=1' -H Content-Type:application/json --data '{"osvers":"sles11.3","osarch":"x86_64"}'
 POST - Create the osimage {imgname}.
 ````````````````````````````````````
 
@@ -1198,8 +1235,8 @@ Refer to the man page: :doc:`mkdef </guides/admin-guides/references/man1/mkdef.1
 
 Create a osimage obj with the specified parameters. :: 
 
-    #curl -X POST -k 'https://127.0.0.1/xcatws/osimages/sles11.3-ppc64-install-compute?userName=root&userPW=cluster&pretty=1' -H Content-Type:application/json --data '{"osvers":"sles11.3","osarch":"ppc64","osname":"Linux","provmethod":"install","profile":"compute"}'
 
+    curl -X POST -k 'https://127.0.0.1/xcatws/osimages/sles11.3-ppc64-install-compute?userName=root&userPW=cluster&pretty=1' -H Content-Type:application/json --data '{"osvers":"sles11.3","osarch":"ppc64","osname":"Linux","provmethod":"install","profile":"compute"}'
 DELETE - Remove the osimage {imgname}.
 ``````````````````````````````````````
 
@@ -1213,8 +1250,8 @@ Refer to the man page: :doc:`rmdef </guides/admin-guides/references/man1/rmdef.1
 
 Delete the specified osimage. :: 
 
-    #curl -X DELETE -k 'https://127.0.0.1/xcatws/osimages/sles11.3-ppc64-install-compute?userName=root&userPW=cluster&pretty=1'
 
+    curl -X DELETE -k 'https://127.0.0.1/xcatws/osimages/sles11.3-ppc64-install-compute?userName=root&userPW=cluster&pretty=1'
 [URI:/osimages/{imgname}/attrs/attr1,attr2,attr3 ...] - The attributes resource for the osimage {imgname}
 ---------------------------------------------------------------------------------------------------------
 
@@ -1233,7 +1270,8 @@ Refer to the man page: :doc:`lsdef </guides/admin-guides/references/man1/lsdef.1
 
 Get the specified attributes. :: 
 
-    #curl -X GET -k 'https://127.0.0.1/xcatws/osimages/sles11.2-ppc64-install-compute/attrs/imagetype,osarch,osname,provmethod?userName=root&userPW=cluster&pretty=1'
+
+    curl -X GET -k 'https://127.0.0.1/xcatws/osimages/sles11.2-ppc64-install-compute/attrs/imagetype,osarch,osname,provmethod?userName=root&userPW=cluster&pretty=1'
     {
        "sles11.2-ppc64-install-compute":{
           "provmethod":"install",
@@ -1263,20 +1301,20 @@ Refer to the man page: :doc:` </guides/admin-guides/references/>`
 
 Generates a stateless image based on the specified osimage :: 
 
-    #curl -X POST -k 'https://127.0.0.1/xcatws/osimages/sles11.2-x86_64-install-compute/instance?userName=root&userPW=cluster&pretty=1' -H Content-Type:application/json --data '{"action":"gen"}'
 
+    curl -X POST -k 'https://127.0.0.1/xcatws/osimages/sles11.2-x86_64-install-compute/instance?userName=root&userPW=cluster&pretty=1' -H Content-Type:application/json --data '{"action":"gen"}'
 **Example2:** 
 
 Packs the stateless image from the chroot file system based on the specified osimage :: 
 
-    #curl -X POST -k 'https://127.0.0.1/xcatws/osimages/sles11.2-x86_64-install-compute/instance?userName=root&userPW=cluster&pretty=1' -H Content-Type:application/json --data '{"action":"pack"}'
 
+    curl -X POST -k 'https://127.0.0.1/xcatws/osimages/sles11.2-x86_64-install-compute/instance?userName=root&userPW=cluster&pretty=1' -H Content-Type:application/json --data '{"action":"pack"}'
 **Example3:** 
 
 Exports an xCAT image based on the specified osimage :: 
 
-    #curl -X POST -k 'https://127.0.0.1/xcatws/osimages/sles11.2-x86_64-install-compute/instance?userName=root&userPW=cluster&pretty=1' -H Content-Type:application/json --data '{"action":"export"}'
 
+    curl -X POST -k 'https://127.0.0.1/xcatws/osimages/sles11.2-x86_64-install-compute/instance?userName=root&userPW=cluster&pretty=1' -H Content-Type:application/json --data '{"action":"export"}'
 DELETE - Delete the stateless or statelite image instance for the osimage {imgname} from the file system
 ````````````````````````````````````````````````````````````````````````````````````````````````````````
 
@@ -1290,8 +1328,8 @@ Refer to the man page: :doc:`rmimage </guides/admin-guides/references/man1/rmima
 
 Delete the stateless image for the specified osimage :: 
 
-    #curl -X DELETE -k 'https://127.0.0.1/xcatws/osimages/sles11.2-x86_64-install-compute/instance?userName=root&userPW=cluster&pretty=1'
 
+    curl -X DELETE -k 'https://127.0.0.1/xcatws/osimages/sles11.2-x86_64-install-compute/instance?userName=root&userPW=cluster&pretty=1'
 Network Resources
 =================
 
@@ -1318,7 +1356,7 @@ Refer to the man page: :doc:`lsdef </guides/admin-guides/references/man1/lsdef.1
 Get all the networks names from xCAT database. :: 
 
 
-    #curl -X GET -k 'https://127.0.0.1/xcatws/networks?userName=root&userPW=cluster&pretty=1'
+    curl -X GET -k 'https://127.0.0.1/xcatws/networks?userName=root&userPW=cluster&pretty=1'
     [
        "network1",
        "network2",
@@ -1342,8 +1380,8 @@ Refer to the man page: :doc:`makenetworks </guides/admin-guides/references/man8/
 
 Create the networks resources base on the network configuration on xCAT MN. :: 
 
-    #curl -X POST -k 'https://127.0.0.1/xcatws/networks?userName=root&userPW=cluster&pretty=1'
 
+    curl -X POST -k 'https://127.0.0.1/xcatws/networks?userName=root&userPW=cluster&pretty=1'
 [URI:/networks/{netname}] - The network resource
 ------------------------------------------------
 
@@ -1362,7 +1400,8 @@ Refer to the man page: :doc:`lsdef </guides/admin-guides/references/man1/lsdef.1
 
 Get all the attributes for network 'network1'. :: 
 
-    #curl -X GET -k 'https://127.0.0.1/xcatws/networks/network1?userName=root&userPW=cluster&pretty=1'
+
+    curl -X GET -k 'https://127.0.0.1/xcatws/networks/network1?userName=root&userPW=cluster&pretty=1'
     {
        "network1":{
           "gateway":"<xcatmaster>",
@@ -1391,8 +1430,8 @@ Refer to the man page: :doc:`chdef </guides/admin-guides/references/man1/chdef.1
 
 Change the attributes mgtifname=eth0 and net=10.1.0.0. :: 
 
-    #curl -X PUT -k 'https://127.0.0.1/xcatws/networks/network1?userName=root&userPW=cluster&pretty=1' -H Content-Type:application/json --data '{"mgtifname":"eth0","net":"10.1.0.0"}'
 
+    curl -X PUT -k 'https://127.0.0.1/xcatws/networks/network1?userName=root&userPW=cluster&pretty=1' -H Content-Type:application/json --data '{"mgtifname":"eth0","net":"10.1.0.0"}'
 POST - Create the network {netname}. DataBody: {attr1:v1,att2:v2...}.
 `````````````````````````````````````````````````````````````````````
 
@@ -1410,8 +1449,8 @@ Refer to the man page: :doc:`mkdef </guides/admin-guides/references/man1/mkdef.1
 
 Create a network with attributes gateway=10.1.0.1, mask=255.255.0.0  :: 
 
-    #curl -X POST -k 'https://127.0.0.1/xcatws/networks/network1?userName=root&userPW=cluster&pretty=1' -H Content-Type:application/json --data '{"gateway":"10.1.0.1","mask":"255.255.0.0"}'
 
+    curl -X POST -k 'https://127.0.0.1/xcatws/networks/network1?userName=root&userPW=cluster&pretty=1' -H Content-Type:application/json --data '{"gateway":"10.1.0.1","mask":"255.255.0.0"}'
 DELETE - Remove the network {netname}.
 ``````````````````````````````````````
 
@@ -1425,8 +1464,8 @@ Refer to the man page: :doc:`rmdef </guides/admin-guides/references/man1/rmdef.1
 
 Delete the network network1 :: 
 
-    #curl -X DELETE -k 'https://127.0.0.1/xcatws/networks/network1?userName=root&userPW=cluster&pretty=1'
 
+    curl -X DELETE -k 'https://127.0.0.1/xcatws/networks/network1?userName=root&userPW=cluster&pretty=1'
 [URI:/networks/{netname}/attrs/attr1,attr2,...] - The attributes resource for the network {netname}
 ---------------------------------------------------------------------------------------------------
 
@@ -1445,7 +1484,8 @@ Refer to the man page: :doc:`lsdef </guides/admin-guides/references/man1/lsdef.1
 
 Get the attributes {groups,mgt,netboot} for network network1 :: 
 
-    #curl -X GET -k 'https://127.0.0.1/xcatws/networks/network1/attrs/gateway,mask,mgtifname,net,tftpserver?userName=root&userPW=cluster&pretty=1'
+
+    curl -X GET -k 'https://127.0.0.1/xcatws/networks/network1/attrs/gateway,mask,mgtifname,net,tftpserver?userName=root&userPW=cluster&pretty=1'
     {
        "network1":{
           "gateway":"9.114.34.254",
@@ -1476,7 +1516,8 @@ Refer to the man page: :doc:`lsdef </guides/admin-guides/references/man1/lsdef.1
 
 Get all the policy objects. :: 
 
-    #curl -X GET -k 'https://127.0.0.1/xcatws/policy?userName=root&userPW=cluster&pretty=1'
+
+    curl -X GET -k 'https://127.0.0.1/xcatws/policy?userName=root&userPW=cluster&pretty=1'
     [
        "1",
        "1.2",
@@ -1504,7 +1545,8 @@ Refer to the man page: :doc:`lsdef </guides/admin-guides/references/man1/lsdef.1
 
 Get all the attribute for policy 1. :: 
 
-    #curl -X GET -k 'https://127.0.0.1/xcatws/policy/1?userName=root&userPW=cluster&pretty=1'
+
+    curl -X GET -k 'https://127.0.0.1/xcatws/policy/1?userName=root&userPW=cluster&pretty=1'
     {
        "1":{
           "name":"root",
@@ -1532,8 +1574,7 @@ Refer to the man page: :doc:`chdef </guides/admin-guides/references/man1/chdef.1
 Set the name attribute for policy 3. :: 
 
 
-    #curl -X PUT -k 'https://127.0.0.1/xcatws/policy/3?userName=root&userPW=cluster&pretty=1' -H Content-Type:application/json --data '{"name":"root"}'
-
+    curl -X PUT -k 'https://127.0.0.1/xcatws/policy/3?userName=root&userPW=cluster&pretty=1' -H Content-Type:application/json --data '{"name":"root"}'
 POST - Create the policy {policyname}. DataBody: {attr1:v1,att2:v2...}.
 ```````````````````````````````````````````````````````````````````````
 
@@ -1553,8 +1594,8 @@ Refer to the man page: :doc:`chdef </guides/admin-guides/references/man1/chdef.1
 
 Create a new policy 10. :: 
 
-    #curl -X POST -k 'https://127.0.0.1/xcatws/policy/10?userName=root&userPW=cluster&pretty=1' -H Content-Type:application/json --data '{"name":"root","commands":"rpower"}'
 
+    curl -X POST -k 'https://127.0.0.1/xcatws/policy/10?userName=root&userPW=cluster&pretty=1' -H Content-Type:application/json --data '{"name":"root","commands":"rpower"}'
 DELETE - Remove the policy {policy_priority}.
 `````````````````````````````````````````````
 
@@ -1570,8 +1611,8 @@ Refer to the man page: :doc:`rmdef </guides/admin-guides/references/man1/rmdef.1
 
 Delete the policy 10. :: 
 
-    #curl -X DELETE -k 'https://127.0.0.1/xcatws/policy/10?userName=root&userPW=cluster&pretty=1'
 
+    curl -X DELETE -k 'https://127.0.0.1/xcatws/policy/10?userName=root&userPW=cluster&pretty=1'
 [URI:/policy/{policyname}/attrs/{attr1,attr2,attr3,...}] - The attributes resource for the policy {policy_priority}
 -------------------------------------------------------------------------------------------------------------------
 
@@ -1592,7 +1633,8 @@ Refer to the man page: :doc:`lsdef </guides/admin-guides/references/man1/lsdef.1
 
 Get the name and rule attributes for policy 1. :: 
 
-    #curl -X GET -k 'https://127.0.0.1/xcatws/policy/1/attrs/name,rule?userName=root&userPW=cluster&pretty=1'
+
+    curl -X GET -k 'https://127.0.0.1/xcatws/policy/1/attrs/name,rule?userName=root&userPW=cluster&pretty=1'
     {
        "1":{
           "name":"root",
@@ -1625,7 +1667,8 @@ Refer to the man page: :doc:`lsdef </guides/admin-guides/references/man1/lsdef.1
 
 Get all the group names from xCAT database. :: 
 
-    #curl -X GET -k 'https://127.0.0.1/xcatws/groups?userName=root&userPW=cluster&pretty=1'
+
+    curl -X GET -k 'https://127.0.0.1/xcatws/groups?userName=root&userPW=cluster&pretty=1'
     [
        "__mgmtnode",
        "all",
@@ -1650,7 +1693,8 @@ Refer to the man page: :doc:`lsdef </guides/admin-guides/references/man1/lsdef.1
 
 Get all the attributes for group 'all'. :: 
 
-    #curl -X GET -k 'https://127.0.0.1/xcatws/groups/all?userName=root&userPW=cluster&pretty=1'
+
+    curl -X GET -k 'https://127.0.0.1/xcatws/groups/all?userName=root&userPW=cluster&pretty=1'
     {
        "all":{
           "members":"zxnode2,nodexxx,node1,node4"
@@ -1675,8 +1719,7 @@ Refer to the man page: :doc:`chdef </guides/admin-guides/references/man1/chdef.1
 Change the attributes mgt=dfm and netboot=yaboot. :: 
 
 
-    #curl -X PUT -k 'https://127.0.0.1/xcatws/groups/all?userName=root&userPW=cluster&pretty=1' -H Content-Type:application/json --data '{"mgt":"dfm","netboot":"yaboot"}'
-
+    curl -X PUT -k 'https://127.0.0.1/xcatws/groups/all?userName=root&userPW=cluster&pretty=1' -H Content-Type:application/json --data '{"mgt":"dfm","netboot":"yaboot"}'
 [URI:/groups/{groupname}/attrs/{attr1,attr2,attr3 ...}] - The attributes resource for the group {groupname}
 -----------------------------------------------------------------------------------------------------------
 
@@ -1694,7 +1737,7 @@ Refer to the man page: :doc:`lsdef </guides/admin-guides/references/man1/lsdef.1
 Get the attributes {mgt,netboot} for group all :: 
 
 
-    #curl -X GET -k 'https://127.0.0.1/xcatws/groups/all/attrs/mgt,netboot?userName=root&userPW=cluster&pretty=1'
+    curl -X GET -k 'https://127.0.0.1/xcatws/groups/all/attrs/mgt,netboot?userName=root&userPW=cluster&pretty=1'
     {
        "all":{
           "netboot":"yaboot",
@@ -1728,7 +1771,7 @@ Refer to the man page: :doc:`lsdef </guides/admin-guides/references/man1/lsdef.1
 Get all the global configuration :: 
 
 
-    #curl -X GET -k 'https://127.0.0.1/xcatws/globalconf?userName=root&userPW=cluster&pretty=1'
+    curl -X GET -k 'https://127.0.0.1/xcatws/globalconf?userName=root&userPW=cluster&pretty=1'
     {
        "clustersite":{
           "xcatconfdir":"/etc/xcat",
@@ -1755,7 +1798,8 @@ Refer to the man page: :doc:`lsdef </guides/admin-guides/references/man1/lsdef.1
 
 Get the 'master' and 'domain' configuration. :: 
 
-    #curl -X GET -k 'https://127.0.0.1/xcatws/globalconf/attrs/master,domain?userName=root&userPW=cluster&pretty=1'
+
+    curl -X GET -k 'https://127.0.0.1/xcatws/globalconf/attrs/master,domain?userName=root&userPW=cluster&pretty=1'
     {
        "clustersite":{
           "domain":"cluster.com",
@@ -1782,8 +1826,8 @@ Refer to the man page: :doc:`chdef </guides/admin-guides/references/man1/chdef.1
 
 Change/Add the domain attribute. :: 
 
-    #curl -X PUT -k 'https://127.0.0.1/xcatws/globalconf/attrs/domain?userName=root&userPW=cluster&pretty=1' -H Content-Type:application/json --data '{"domain":"cluster.com"}'
 
+    curl -X PUT -k 'https://127.0.0.1/xcatws/globalconf/attrs/domain?userName=root&userPW=cluster&pretty=1' -H Content-Type:application/json --data '{"domain":"cluster.com"}'
 DELETE - Remove the site attributes.
 ````````````````````````````````````
 
@@ -1799,8 +1843,8 @@ Refer to the man page: :doc:`chdef </guides/admin-guides/references/man1/chdef.1
 
 Remove the domain configure. :: 
 
-    #curl -X DELETE -k 'https://127.0.0.1/xcatws/globalconf/attrs/domain?userName=root&userPW=cluster&pretty=1'
 
+    curl -X DELETE -k 'https://127.0.0.1/xcatws/globalconf/attrs/domain?userName=root&userPW=cluster&pretty=1'
 Service Resources
 =================
 
@@ -1822,8 +1866,8 @@ Refer to the man page: :doc:`makedns </guides/admin-guides/references/man8/maked
 
 Initialize the dns service. :: 
 
-    #curl -X POST -k 'https://127.0.0.1/xcatws/services/dns?userName=root&userPW=cluster&pretty=1'
 
+    curl -X POST -k 'https://127.0.0.1/xcatws/services/dns?userName=root&userPW=cluster&pretty=1'
 [URI:/services/dhcp] - The dhcp service resource.
 -------------------------------------------------
 
@@ -1840,8 +1884,8 @@ Refer to the man page: :doc:`makedhcp </guides/admin-guides/references/man8/make
 
 Create the dhcpd.conf and restart the dhcpd. :: 
 
-    #curl -X POST -k 'https://127.0.0.1/xcatws/services/dhcp?userName=root&userPW=cluster&pretty=1'
 
+    curl -X POST -k 'https://127.0.0.1/xcatws/services/dhcp?userName=root&userPW=cluster&pretty=1'
 [URI:/services/host] - The hostname resource.
 ---------------------------------------------
 
@@ -1858,8 +1902,8 @@ Refer to the man page: :doc:`makehosts </guides/admin-guides/references/man8/mak
 
 Create the ip/hostname records for all the nodes to /etc/hosts. :: 
 
-    #curl -X POST -k 'https://127.0.0.1/xcatws/services/host?userName=root&userPW=cluster&pretty=1'
 
+    curl -X POST -k 'https://127.0.0.1/xcatws/services/host?userName=root&userPW=cluster&pretty=1'
 [URI:/services/slpnodes] - The nodes which support SLP in the xCAT cluster
 --------------------------------------------------------------------------
 
@@ -1876,7 +1920,8 @@ Refer to the man page: :doc:`lsslp </guides/admin-guides/references/man1/lsslp.1
 
 Get all the nodes which support slp in the network. :: 
 
-    #curl -X GET -k 'https://127.0.0.1/xcatws/services/slpnodes?userName=root&userPW=cluster&pretty=1'
+
+    curl -X GET -k 'https://127.0.0.1/xcatws/services/slpnodes?userName=root&userPW=cluster&pretty=1'
     {
        "ngpcmm01":{
           "mpa":"ngpcmm01",
@@ -1912,7 +1957,7 @@ Refer to the man page: :doc:`lsslp </guides/admin-guides/references/man1/lsslp.1
 Get all the CMM nodes which support slp in the network. :: 
 
 
-    #curl -X GET -k 'https://127.0.0.1/xcatws/services/slpnodes/CMM?userName=root&userPW=cluster&pretty=1'
+    curl -X GET -k 'https://127.0.0.1/xcatws/services/slpnodes/CMM?userName=root&userPW=cluster&pretty=1'
     {
        "ngpcmm01":{
           "mpa":"ngpcmm01",
@@ -1966,7 +2011,7 @@ GET - Get attributes of tables for a noderange.
 Get all the columns from table nodetype for node1 and node2. :: 
 
 
-    #curl -X GET -k 'https://127.0.0.1/xcatws/tables/nodetype/nodes/node1,node2?userName=root&userPW=cluster&pretty=1'
+    curl -X GET -k 'https://127.0.0.1/xcatws/tables/nodetype/nodes/node1,node2?userName=root&userPW=cluster&pretty=1'
     {
        "nodetype":[
           {
@@ -1991,7 +2036,7 @@ Get all the columns from table nodetype for node1 and node2. ::
 Get all the columns from tables nodetype and noderes for node1 and node2. :: 
 
 
-    #curl -X GET -k 'https://127.0.0.1/xcatws/tables/nodetype,noderes/nodes/node1,node2?userName=root&userPW=cluster&pretty=1'
+    curl -X GET -k 'https://127.0.0.1/xcatws/tables/nodetype,noderes/nodes/node1,node2?userName=root&userPW=cluster&pretty=1'
     {
        "noderes":[
           {
@@ -2040,8 +2085,8 @@ PUT - Change the node table attributes for {noderange}.
 
 Change the nodetype.arch and noderes.netboot attributes for nodes node1,node2. :: 
 
-    #curl -X PUT -k 'https://127.0.0.1/xcatws/tables/nodetype,noderes/nodes/node1,node2?userName=root&userPW=cluster&pretty=1' -H Content-Type:application/json --data '{"nodetype":{"arch":"x86_64"},"noderes":{"netboot":"xnba"}}'
 
+    curl -X PUT -k 'https://127.0.0.1/xcatws/tables/nodetype,noderes/nodes/node1,node2?userName=root&userPW=cluster&pretty=1' -H Content-Type:application/json --data '{"nodetype":{"arch":"x86_64"},"noderes":{"netboot":"xnba"}}'
 [URI:/tables/{tablelist}/nodes/nodes/{noderange}/{attrlist}] - The node table attributes resource
 -------------------------------------------------------------------------------------------------
 
@@ -2059,7 +2104,7 @@ GET - Get table attributes for a noderange.
 Get OS and ARCH attributes from nodetype table for node1 and node2. :: 
 
 
-    #curl -X GET -k 'https://127.0.0.1/xcatws/tables/nodetype/nodes/node1,node2/os,arch?userName=root&userPW=cluster&pretty=1'
+    curl -X GET -k 'https://127.0.0.1/xcatws/tables/nodetype/nodes/node1,node2/os,arch?userName=root&userPW=cluster&pretty=1'
     {
        "nodetype":[
           {
@@ -2092,7 +2137,7 @@ GET - Get all rows from non-node tables.
 Get all rows from networks table. :: 
 
 
-    #curl -X GET -k 'https://127.0.0.1/xcatws/tables/networks/rows?userName=root&userPW=cluster&pretty=1'
+    curl -X GET -k 'https://127.0.0.1/xcatws/tables/networks/rows?userName=root&userPW=cluster&pretty=1'
     {
        "networks":[
           {
@@ -2128,10 +2173,10 @@ GET - Get attributes for rows from non-node tables.
 
 **Example:** 
 
-Get row which net=192.168.1.0,mask=255.255.255.0 from networks table. :: 
+Get rows from networks table where net=192.168.1.0,mask=255.255.255.0. :: 
 
 
-    #curl -X GET -k 'https://127.0.0.1/xcatws/tables/networks/rows/net=192.168.1.0,mask=255.255.255.0?userName=root&userPW=cluster&pretty=1'
+    curl -X GET -k 'https://127.0.0.1/xcatws/tables/networks/rows/net=192.168.1.0,mask=255.255.255.0?userName=root&userPW=cluster&pretty=1'
     {
        "networks":[
           {
@@ -2161,8 +2206,8 @@ PUT - Change the non-node table attributes for the row that matches the {keys}.
 
 Create a route row in the routes table. :: 
 
-    #curl -X PUT -k 'https://127.0.0.1/xcatws/tables/routes/rows/routename=privnet?userName=root&userPW=cluster&pretty=1' -H Content-Type:application/json --data '{"net":"10.0.1.0","mask":"255.255.255.0","gateway":"10.0.1.254","ifname":"eth1"}'
 
+    curl -X PUT -k 'https://127.0.0.1/xcatws/tables/routes/rows/routename=privnet?userName=root&userPW=cluster&pretty=1' -H Content-Type:application/json --data '{"net":"10.0.1.0","mask":"255.255.255.0","gateway":"10.0.1.254","ifname":"eth1"}'
 DELETE - Delete rows from a non-node table that have the attribute values specified in {keys}.
 ``````````````````````````````````````````````````````````````````````````````````````````````
 
@@ -2172,10 +2217,10 @@ DELETE - Delete rows from a non-node table that have the attribute values specif
 
 **Example:** 
 
-Delete a route row which routename=privnet in the routes table. :: 
+Delete rows from routes table where routename=privnet. :: 
 
-    #curl -X DELETE -k 'https://127.0.0.1/xcatws/tables/routes/rows/routename=privnet?userName=root&userPW=cluster&pretty=1'
 
+    curl -X DELETE -k 'https://127.0.0.1/xcatws/tables/routes/rows/routename=privnet?userName=root&userPW=cluster&pretty=1'
 [URI:/tables/{tablelist}/rows/{keys}/{attrlist}] - The non-node table attributes resource
 -----------------------------------------------------------------------------------------
 
@@ -2190,10 +2235,10 @@ GET - Get specific attributes for rows from non-node tables.
 
 **Example:** 
 
-Get attributes mgtifname and tftpserver which net=192.168.1.0,mask=255.255.255.0 from networks table. :: 
+Get attributes mgtifname and tftpserver from networks table for each row where net=192.168.1.0,mask=255.255.255.0. :: 
 
 
-    #curl -X GET -k 'https://127.0.0.1/xcatws/tables/networks/rows/net=192.168.1.0,mask=255.255.255.0/mgtifname,tftpserver?userName=root&userPW=cluster&pretty=1'
+    curl -X GET -k 'https://127.0.0.1/xcatws/tables/networks/rows/net=192.168.1.0,mask=255.255.255.0/mgtifname,tftpserver?userName=root&userPW=cluster&pretty=1'
     {
        "networks":[
           {

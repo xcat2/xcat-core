@@ -1,0 +1,21 @@
+{
+    "osimage": {
+        "test_myimage2": {
+            "diskpartitionspec": "/tmp/test_myimage2/partitionfile",
+            "filestosync": "/tmp/test_myimage2/synclists",
+            "genimgoptions": {
+                "exlist": "/tmp/test_myimage2/exlist",
+                "postinstall": "/tmp/test_myimage2/postinstall"
+            },
+            "imagetype": "linux",
+            "package_selection": {
+                "otherpkglist": "/tmp/test_myimage2/otherpkglist",
+                "pkglist": "/opt/xcat/share/xcat/install/rh/compute.rhels7.pkglist"
+            },
+            "provision_mode": "install",
+            "template": "/opt/xcat/share/xcat/install/rh/compute.rhels7.tmpl"
+        }
+    },
+    "schema_version": "1.0"
+}
+#Version 2.14.1 (git commit ac941fd2501e8a581bfcc4c79b9301f6ec37ab93, built Mon May 21 06:15:46 EDT 2018)

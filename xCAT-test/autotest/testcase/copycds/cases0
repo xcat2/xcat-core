@@ -10,6 +10,13 @@ cmd:ls /install/__GETNODEATTR($$CN,os)__/__GETNODEATTR($$CN,arch)__
 check:rc==0
 end
 
+start:lskmodules_o
+cmd:lskmodules -o __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__
+check:rc==0
+check:output=~.ko(.xz):
+end
+
+
 start:copycds_n
 os:Linux
 #cmd:umount /mnt/xca

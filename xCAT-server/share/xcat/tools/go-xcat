@@ -2,18 +2,22 @@
 #
 # go-xcat - Install xCAT automatically.
 #
-# Version 1.0.21
+# Version 1.0.28
 #
-# Copyright (C) 2016 International Business Machines
+# Copyright (C) 2016, 2017, 2018 International Business Machines
 # Eclipse Public License, Version 1.0 (EPL-1.0)
 #     <http://www.eclipse.org/legal/epl-v10.html>
 #
 # 2016-06-16 GONG Jie <gongjie@linux.vnet.ibm.com>
-#     - created
+#     - Draft
 # 2016-06-20 GONG Jie <gongjie@linux.vnet.ibm.com>
-#     - released to the field
+#     - Released to the field
 # 2016-09-20 GONG Jie <gongjie@linux.vnet.ibm.com>
-#     - bug fix
+#     - Bug fix
+# 2018-03-28 GONG Jie <gongjie@linux.vnet.ibm.com>
+#     - Use curl when it is available. Otherwise fall back to use wget
+#     - Improved tarball file extension handling
+#     - Disable xCAT-core.repo and xCAT-dep.repo if they exist
 #
 
 function usage()
@@ -34,8 +38,11 @@ function usage()
 	                                repository
 	  --xcat-dep=[URL]              use a different URL or path for the xcat-dep
 	                                repository
-	  -x, --xcat-version=[VERSION]  specify the version of xCAT; cannot use with
-	                                --xcat-core
+	  -x, --xcat-version=[VERSION]  specify the version of xCAT; imply the subdirectory
+	                                of corresponding xCAT version under
+	                                  http://xcat.org/files/xcat/repos/yum/  or
+	                                  http://xcat.org/files/xcat/repos/apt/
+	                                cannot use with --xcat-core
 	  -y, --yes                     answer yes for all questions
 
 	Actions:
@@ -89,7 +96,7 @@ function verbose_usage()
 	  -h, --help                    display a simply version of help and exit
 	  --long-help                   display this help and exit
 	EOF
-	println 9
+	println 12
 	while read -r ; do echo "${REPLY}" ; done <<-EOF
 	  check                         check the version of the installed packages
 	                                of xCAT and packages in the repository
@@ -98,7 +105,7 @@ function verbose_usage()
 	while read -r ; do echo "${REPLY}" ; done <<-EOF
 	  smoke-test                    preform basic tests of the xCAT installation
 	EOF
-	println 11
+	println 10
 	while read -r ; do echo "${REPLY}" ; done <<-EOF
 	  ${script} --xcat-core=/path/to/xcat-core.repo install
 	  ${script} --xcat-core=/path/to/xcat-core install
@@ -431,7 +438,12 @@ function check_package_version_deb()
 		do
 			if [[ "$1" = "${name[i]}" ]]
 			then
-				echo "${ver[i]}"
+				if [[ -n "${ver[i]}" ]]
+				then
+					echo "${ver[i]}"
+				else
+					echo "(not installed)"
+				fi
 				unset "name[${i}]" "ver[${i}]"
 				shift && continue 2
 			fi
@@ -632,7 +644,112 @@ function get_package_list()
 	function_dispatch "${FUNCNAME}" "$@"
 }
 
-function download_file()
+function download_file_curl()
+{
+	local script="${0##*/}"
+	local version="$(version)"
+	local user_agent="${script}/${version} (${GO_XCAT_OS}; ${GO_XCAT_ARCH}; ${GO_XCAT_LINUX_DISTRO} ${GO_XCAT_LINUX_VERSION})"
+	type curl >/dev/null 2>&1 || return 255
+	local url="$1"
+	local local_file="$2"
+	local log_file="${TMP_DIR}/curl.log.${RANDOM}"
+	local -i rc=0
+	curl -A "${user_agent}" "${url}" -f -o "${local_file}" -S -s >"${log_file}" 2>&1
+	rc="$?"
+	if [[ "${rc}" -ne "0" ]]
+	then
+		while read -r ; do echo "${REPLY}" ; done <"${log_file}"
+		echo -n "${script}: \`curl' exited with an error: (exit code ${rc}, "
+		case "${rc}" in
+		1) echo -n "unsupported protocol" ;;
+		2) echo -n "failed to initialize" ;;
+		3) echo -n "URL malformed" ;;
+		4) echo -n "you probably need another build of libcurl!" ;;
+		5) echo -n "couldn't resolve proxy" ;;
+		6) echo -n "couldn't resolve host" ;;
+		7) echo -n "failed to connect to host" ;;
+		8) echo -n "weird server reply" ;;
+		9) echo -n "FTP access denied" ;;
+		10) echo -n "FTP accept failed" ;;
+		11) echo -n "FTP weird PASS reply" ;;
+		12) echo -n "During an active FTP session while waiting for the server to connect back to curl, the timeout expired." ;;
+		13) echo -n "FTP weird PASV reply" ;;
+		14) echo -n "FTP weird 227 format" ;;
+		15) echo -n "FTP can't get host" ;;
+		16) echo -n "HTTP/2 error" ;;
+		17) echo -n "FTP couldn't set binary" ;;
+		18) echo -n "Partial file" ;;
+		19) echo -n "FTP couldn't download/access the given file" ;;
+		21) echo -n "FTP quote error" ;;
+		22) echo -n "HTTP page not retrieved" ;;
+		23) echo -n "write error" ;;
+		25) echo -n "FTP couldn't STOR file" ;;
+		26) echo -n "read error" ;;
+		27) echo -n "out of memory" ;;
+		28) echo -n "operation timeout" ;;
+		30) echo -n "FTP PORT failed" ;;
+		31) echo -n "FTP  couldn't  use REST" ;;
+		33) echo -n "HTTP range error" ;;
+		34) echo -n "HTTP post error" ;;
+		35) echo -n "SSL connect error" ;;
+		36) echo -n "bad download resume" ;;
+		37) echo -n "FILE couldn't read file" ;;
+		38) echo -n "LDAP cannot bind" ;;
+		39) echo -n "LDAP search failed." ;;
+		41) echo -n "function not found" ;;
+		42) echo -n "aborted by callback" ;;
+		43) echo -n "internal error" ;;
+		45) echo -n "interface error" ;;
+		47) echo -n "too many redirects" ;;
+		48) echo -n "unknown option specified to libcurl" ;;
+		49) echo -n "malformed telnet option" ;;
+		51) echo -n "the peer's SSL certificate or SSH MD5 fingerprint was not OK" ;;
+		52) echo -n "the server didn't reply anything, which here is considered an error" ;;
+		53) echo -n "SSL crypto engine not found" ;;
+		54) echo -n "cannot set SSL crypto engine as default" ;;
+		55) echo -n "failed sending network data" ;;
+		56) echo -n "failure in receiving network data" ;;
+		58) echo -n "problem with the local certificate" ;;
+		59) echo -n "couldn't use specified SSL cipher" ;;
+		60) echo -n "peer certificate cannot be authenticated with known CA certificates" ;;
+		61) echo -n "unrecognized transfer encoding." ;;
+		62) echo -n "invalid LDAP URL" ;;
+		63) echo -n "maximum file size exceeded" ;;
+		64) echo -n "requested FTP SSL level failed" ;;
+		65) echo -n "sending the data requires a rewind that failed" ;;
+		66) echo -n "failed to initialise SSL Engine" ;;
+		67) echo -n "the user name, password, or similar was not accepted and curl failed to log in" ;;
+		68) echo -n "file not found on TFTP server" ;;
+		69) echo -n "permission problem on TFTP server" ;;
+		70) echo -n "out of disk space on TFTP server" ;;
+		71) echo -n "illegal TFTP operation" ;;
+		72) echo -n "unknown TFTP transfer ID" ;;
+		73) echo -n "file already exists (TFTP)" ;;
+		74) echo -n "no such user (TFTP)" ;;
+		75) echo -n "character conversion failed" ;;
+		76) echo -n "character conversion functions required" ;;
+		77) echo -n "problem with reading the SSL CA cert" ;;
+		78) echo -n "the resource referenced in the URL does not exist" ;;
+		79) echo -n "an unspecified error occurred during the SSH session" ;;
+		80) echo -n "failed to shut down the SSL connection" ;;
+		82) echo -n "could not load CRL file, missing or wrong format" ;;
+		83) echo -n "issuer check failed" ;;
+		84) echo -n "the FTP PRET command failed" ;;
+		85) echo -n "RTSP: mismatch of CSeq numbers" ;;
+		86) echo -n "RTSP: mismatch of Session Identifiers" ;;
+		87) echo -n "unable to parse FTP file list" ;;
+		88) echo -n "FTP chunk callback reported error" ;;
+		89) echo -n "no connection available, the session will be queued" ;;
+		90) echo -n "SSL public key does not matched pinned public key" ;;
+		*) echo -n "unknown error" ;;
+		esac
+		echo ")"
+		echo "  ... while downloading \`${url}'"
+	fi >&2
+	[[ "${rc}" -eq "0" ]]
+}
+
+function download_file_wget()
 {
 	local script="${0##*/}"
 	local version="$(version)"
@@ -663,6 +780,11 @@ function download_file()
 		echo "  ... while downloading \`${url}'"
 	fi >&2
 	[[ "${rc}" -eq "0" ]]
+}
+
+function download_file()
+{
+	function_dispatch "${FUNCNAME}" "$@"
 }
 
 #       $1      repo file
@@ -757,8 +879,8 @@ function extract_archive()
 	warn_if_bad "${ret}" "Failed to create directory \`${install_path}'" ||
 		return 1
 
-	case "${archive##*.}" in
-	"Z")
+	case "${archive##*/}" in
+	*".tar.Z")
 		check_executes uncompress tar grep || return 1
 		uncompress -c "${archive}" | tar -t -f - | grep -v "^${repo_id}/"
 		[[ "${PIPESTATUS[0]}" -eq 0 && "${PIPESTATUS[1]}" -eq 0 &&
@@ -767,7 +889,7 @@ function extract_archive()
 		rm -rf "${install_path}/${repo_id}"
 		uncompress -c "${archive}" | ( cd "${install_path}" && tar -x -f - )
 		;;
-	"tz"|"tgz"|"gz")
+	*".tz"|*".tgz"|*".tar.gz")
 		check_executes gzip tar grep || return 1
 		gzip -d -c "${archive}" | tar -t -f - | grep -v "^${repo_id}/"
 		[[ "${PIPESTATUS[0]}" -eq 0 && "${PIPESTATUS[1]}" -eq 0 &&
@@ -776,7 +898,7 @@ function extract_archive()
 		rm -rf "${install_path}/${repo_id}"
 		gzip -d -c "${archive}" | ( cd "${install_path}" && tar -x -f - )
 		;;
-	"tbz"|"tbz2"|"bz"|"bz2")
+	*".tbz"|*".tbz2"|*".tar.bz"|*".tar.bz2")
 		check_executes bzip2 tar grep || return 1
 		bzip2 -d -c "${archive}" | tar -t -f - | grep -v "^${repo_id}/"
 		[[ "${PIPESTATUS[0]}" -eq 0 && "${PIPESTATUS[1]}" -eq 0 &&
@@ -785,7 +907,7 @@ function extract_archive()
 		rm -rf "${install_path}/${repo_id}"
 		bzip2 -d -c "${archive}" | ( cd "${install_path}" && tar -x -f - )
 		;;
-	"txz"|"xz")
+	*".txz"|*".tar.xz")
 		check_executes xz tar grep || return 1
 		xz -d -c "${archive}" | tar -t -f - | grep -v "^${repo_id}/"
 		[[ "${PIPESTATUS[0]}" -eq 0 && "${PIPESTATUS[1]}" -eq 0 &&
@@ -794,7 +916,7 @@ function extract_archive()
 		rm -rf "${install_path}/${repo_id}"
 		xz -d -c "${archive}" | ( cd "${install_path}" && tar -x -f - )
 		;;
-	"tar")
+	*".tar")
 		check_executes tar grep || return 1
 		tar -t -f "${archive}" | grep -v "^${repo_id}/"
 		[[ "${PIPESTATUS[0]}" -eq 0 && "${PIPESTATUS[1]}" -eq 1 ]]
@@ -823,8 +945,8 @@ function add_repo_by_url_yum_or_zypper()
 	local install_path="${GO_XCAT_DEFAULT_INSTALL_PATH}"
 	case "${url%%://*}" in
 	"ftp"|"http"|"https")
-		case "${url##*.}" in
-		"repo"|"Z"|"bz"|"bz2"|"gz"|"tar"|"tbz"|"tbz2"|"tgz"|"tz"|"txz"|"xz")
+		case "${url##*/}" in
+		*".repo"|*".tar"|*".tar.Z"|*".tar.bz"|*".tar.bz2"|*".tar.gz"|*".tar.xz"|*".tbz"|*".tbz2"|*".tgz"|*".tz"|*".txz")
 			# an online repo or tarball
 			tmp="${TMP_DIR}/tmp_${url##*/}"
 			download_file "${url}" "${tmp}"
@@ -900,8 +1022,8 @@ function add_repo_by_url_apt()
 	warn_if_bad "$?" "unknown debian/ubuntu codename" || return 1
 	case "${url%%://*}" in
 	"ftp"|"http"|"https"|"ssh")
-		case "${url##*.}" in
-		"Z"|"bz"|"bz2"|"gz"|"tar"|"tbz"|"tbz2"|"tgz"|"tz"|"txz"|"xz")
+		case "${url##*/}" in
+		*".tar"|*".tar.Z"|*".tar.bz"|*".tar.bz2"|*".tar.gz"|*".tar.xz"|*".tbz"|*".tbz2"|*".tgz"|*".tz"|*".txz")
 			# an online tarball
 			tmp="${TMP_DIR}/tmp_${url##*/}"
 			download_file "${url}" "${tmp}"
@@ -953,9 +1075,17 @@ function remove_repo_yum()
 	type yum >/dev/null 2>&1 || return 255
 	local repo_id="$1"
 	# This deleting method is not good enough. Since there could be more
-	# than one repostory definitions in a single repo file.
+	# than one repository definitions in a single repo file.
 	# This is a quick and dirty method.
 	rm -f $(grep -l "^\[${repo_id}\]$" "/etc/yum.repos.d/"*".repo" 2>/dev/null)
+	case "${repo_id}" in
+	"xcat-core")
+		mv /etc/yum.repos.d/xCAT-core.repo{,.nouse} 2>/dev/null
+		;;
+	"xcat-dep")
+		mv /etc/yum.repos.d/xCAT-dep.repo{,.nouse} 2>/dev/null
+		;;
+	esac
 	yum clean metadata
 	:
 }
@@ -966,6 +1096,15 @@ function remove_repo_zypper()
 	type zypper >/dev/null 2>&1 || return 255
 	local repo_id="$1"
 	zypper removerepo "${repo_id}"
+	case "${repo_id}" in
+	"xcat-core")
+		mv /etc/zypp/repos.d/xCAT-core.repo{,.nouse} 2>/dev/null
+		;;
+	"xcat-dep")
+		mv /etc/zypp/repos.d/xCAT-dep.repo{,.nouse} 2>/dev/null
+		;;
+	esac
+	:
 }
 
 #       $1      repo id
@@ -997,10 +1136,10 @@ function add_xcat_core_repo_yum_or_zypper()
 	then
 		case "${ver}" in
 		"devel")
-			url="${GO_XCAT_DEFAULT_BASE_URL}/yum/devel/core-snap/xCAT-core.repo"
+			url="${GO_XCAT_DEFAULT_BASE_URL}/yum/devel/core-snap"
 			;;
 		*)
-			url="${GO_XCAT_DEFAULT_BASE_URL}/yum/${ver}/xcat-core/xCAT-core.repo"
+			url="${GO_XCAT_DEFAULT_BASE_URL}/yum/${ver}/xcat-core"
 			;;
 		esac
 	fi
@@ -1075,8 +1214,8 @@ function add_xcat_dep_repo_yum_or_zypper()
 	esac
 	case "${url%%://*}" in
 	"ftp"|"http"|"https")
-		case "${url##*.}" in
-		"Z"|"bz"|"bz2"|"gz"|"tar"|"tbz"|"tbz2"|"tgz"|"tz"|"txz"|"xz")
+		case "${url##*/}" in
+		*".tar"|*".tar.Z"|*".tar.bz"|*".tar.bz2"|*".tar.gz"|*".tar.xz"|*".tbz"|*".tbz2"|*".tgz"|*".tz"|*".txz")
 			# an online archive file
 			tmp="${TMP_DIR}/tmp_${url##*/}"
 			download_file "${url}" "${tmp}"
@@ -1679,8 +1818,8 @@ esac # case "${GO_XCAT_ACTION}" in
 
 exit 0
 
-# vim: set filetype=bash
-# vim: set noautoindent
-# vim: set tabstop=4 shiftwidth=4 softtabstop=4
+# vim: filetype=sh
+# vim: noautoindent
+# vim: tabstop=4 shiftwidth=4 softtabstop=4
 
 # End of file

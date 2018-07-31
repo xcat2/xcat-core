@@ -5,16 +5,24 @@ B<rbeacon> - Turns beacon on/off/blink or gives status of a node or noderange.
 
 =head1 SYNOPSIS
 
+B<rbeacon> [B<-h>|B<--help>|B<-v>|B<--version>|B<-V>|B<--verbose>]
+
+=head2 BMC (using IPMI):
+
 B<rbeacon> I<noderange> {B<on>|B<blink>|B<off>|B<stat>}
 
-B<rbeacon> [B<-h>|B<--help>]
+=head2 OpenPOWER BMC (using IPMI):
 
-B<rbeacon> {B<-v>|B<--version>}
+B<rbeacon> I<noderange> {B<on>|B<blink>|B<off>|B<stat>}
+
+=head2 OpenPOWER OpenBMC:
+
+B<rbeacon> I<noderange> {B<on>|B<off>|B<stat>}
 
 
 =head1 DESCRIPTION
 
-B<rbeacon> Turns beacon (a light on the front of the physical server) on/off/blink or gives status of a node or noderange.
+B<rbeacon> Turns beacon (a light on the front and/or rear of the physical server) on/off/blink or gives status of a node or noderange.
 
 =head1 EXAMPLES
 

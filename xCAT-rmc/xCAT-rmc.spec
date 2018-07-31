@@ -103,7 +103,7 @@ fi
 %ifos linux
   if [ -f "/proc/cmdline" ]; then   # prevent running it during install into chroot image
     if [ -f $RPM_INSTALL_PREFIX0/sbin/xcatd  ]; then
-      /etc/init.d/xcatd restart
+      XCATROOT=$RPM_INSTALL_PREFIX0 $RPM_INSTALL_PREFIX0/sbin/restartxcatd -r
     fi
   fi
 %else

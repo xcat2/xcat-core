@@ -19,7 +19,7 @@ SYNOPSIS
 ********
 
 
-\ **rspconfig**\  [\ **-h | -**\ **-help | -v | -**\ **-version**\ ]
+\ **rspconfig**\  [\ **-h | -**\ **-help | -v | -**\ **-version | -V | -**\ **-verbose**\ ]
 
 BMC/MPA specific:
 =================
@@ -47,9 +47,45 @@ OpenBMC specific:
 =================
 
 
-\ **rspconfig**\  \ *noderange*\  {\ **ipsrc | ip | netmask | gateway | hostname | vlan | sshcfg**\ }
+\ **rspconfig**\  \ *noderange*\  {\ **ipsrc | ip | netmask | gateway | vlan**\ }
 
-\ **rspconfig**\  \ *noderange*\  \ **dump**\  [\ **-l | -**\ **-list**\ ] [\ **-g | -**\ **-generate**\ ] [\ **-c | -**\ **-clear**\  {\ *id*\ |\ **all**\ }] [\ **-d | -**\ **-download**\  \ *id*\ ]
+\ **rspconfig**\  \ *noderange*\  \ **admin_passwd**\ ={\ *currentpasswd,newpasswd*\ }
+
+\ **rspconfig**\  \ *noderange*\  \ **autoreboot**\ 
+
+\ **rspconfig**\  \ *noderange*\  \ **autoreboot={0|1}**\ 
+
+\ **rspconfig**\  \ *noderange*\  \ **bootmode**\ 
+
+\ **rspconfig**\  \ *noderange*\  \ **bootmode={safe|regular|setup}**\ 
+
+\ **rspconfig**\  \ *noderange*\  \ **dump**\  [\ **-l | -**\ **-list**\ ] [\ **-g | -**\ **-generate**\ ] [\ **-c | -**\ **-clear**\  {\ *id*\  | \ **all**\ }] [\ **-d | -**\ **-download**\  {\ *id*\  | \ **all**\ }]
+
+\ **rspconfig**\  \ *noderange*\  \ **gard -c|-**\ **-clear**\ 
+
+\ **rspconfig**\  \ *noderange*\  \ **ip=dhcp**\ 
+
+\ **rspconfig**\  \ *noderange*\  \ **hostname**\ 
+
+\ **rspconfig**\  \ *noderange*\  \ **hostname**\ ={\* | \ *name*\ }
+
+\ **rspconfig**\  \ *noderange*\  \ **ntpservers**\ 
+
+\ **rspconfig**\  \ *noderange*\  \ **ntpservers**\ ={\ *ntpservers*\ }
+
+\ **rspconfig**\  \ *noderange*\  \ **powerrestorepolicy**\ 
+
+\ **rspconfig**\  \ *noderange*\  \ **powerrestorepolicy={always_on|restore|always_off}**\ 
+
+\ **rspconfig**\  \ *noderange*\  \ **powersupplyredundancy**\ 
+
+\ **rspconfig**\  \ *noderange*\  \ **powersupplyredundancy={disabled|enabled}**\ 
+
+\ **rspconfig**\  \ *noderange*\  \ **sshcfg**\ 
+
+\ **rspconfig**\  \ *noderange*\  \ **timesyncmethod**\ 
+
+\ **rspconfig**\  \ *noderange*\  \ **timesyncmethod={manual|ntp}**\ 
 
 
 MPA specific:
@@ -115,9 +151,9 @@ FSP/CEC specific:
 
 \ **rspconfig**\  \ *noderange*\  \ **admin_passwd**\ ={\ *currentpasswd,newpasswd*\ }
 
-\ **rspconfig**\  \ *noderange*\  \ **general_passwd**\ ={\ **currentpasswd,newpasswd**\ }
+\ **rspconfig**\  \ *noderange*\  \ **general_passwd**\ ={\ *currentpasswd,newpasswd*\ }
 
-\ **rspconfig**\  \ *noderange*\  \*\ **_passwd**\ ={\ **currentpasswd,newpasswd**\ }
+\ **rspconfig**\  \ *noderange*\  \*\ **_passwd**\ ={\ *currentpasswd,newpasswd*\ }
 
 \ **rspconfig**\  \ *noderange*\  {\ *hostname*\ }
 
@@ -178,9 +214,9 @@ FSP/CEC (using Direct FSP Management) Specific:
 
 \ **rspconfig**\  \ *noderange*\  \ **admin_passwd**\ ={\ *currentpasswd,newpasswd*\ }
 
-\ **rspconfig**\  \ *noderange*\  \ **general_passwd**\ ={\ **currentpasswd,newpasswd**\ }
+\ **rspconfig**\  \ *noderange*\  \ **general_passwd**\ ={\ *currentpasswd,newpasswd*\ }
 
-\ **rspconfig**\  \ *noderange*\  \*\ **_passwd**\ ={\ **currentpasswd,newpasswd**\ }
+\ **rspconfig**\  \ *noderange*\  \*\ **_passwd**\ ={\ *currentpasswd,newpasswd*\ }
 
 \ **rspconfig**\  \ *noderange*\  {\ **sysname**\ }
 
@@ -217,9 +253,9 @@ BPA/Frame (using Direct FSP Management) Specific:
 
 \ **rspconfig**\  \ *noderange*\  \ **admin_passwd**\ ={\ *currentpasswd,newpasswd*\ }
 
-\ **rspconfig**\  \ *noderange*\  \ **general_passwd**\ ={\ **currentpasswd,newpasswd**\ }
+\ **rspconfig**\  \ *noderange*\  \ **general_passwd**\ ={\ *currentpasswd,newpasswd*\ }
 
-\ **rspconfig**\  \ *noderange*\  \*\ **_passwd**\ ={\ **currentpasswd,newpasswd**\ }
+\ **rspconfig**\  \ *noderange*\  \*\ **_passwd**\ ={\ *currentpasswd,newpasswd*\ }
 
 \ **rspconfig**\  \ *noderange*\  {\ **frame**\ }
 
@@ -342,6 +378,12 @@ OPTIONS
  
 
 
+\ **gard -c|-**\ **-clear**\ 
+ 
+ Clear gard file. [OpenBMC]
+ 
+
+
 \ **garp**\ =\ *time*\ 
  
  Get or set Gratuitous ARP generation interval. The unit is number of 1/2 second.
@@ -432,9 +474,33 @@ OPTIONS
  
 
 
+\ **powerrestorepolicy**\ 
+ 
+ Display or control BMC Power Restore Policy attribute setting. [OpenBMC]
+ 
+
+
+\ **powersupplyredundancy**\ 
+ 
+ Display or control BMC Power Supply Redundancy attribute setting. [OpenBMC]
+ 
+
+
+\ **autoreboot**\ 
+ 
+ Display or control BMC Auto Reboot attribute setting. [OpenBMC]
+ 
+
+
+\ **bootmode**\ 
+ 
+ Display or control BMC Boot Mode attribute setting. [OpenBMC]
+ 
+
+
 \ **dump**\ 
  
- Manage OpenBMC system dumps. If no sub-option is provided, will generate, wait, and download the dump.
+ Generate/Manage BMC system dumps. If no sub-option is provided, will generate, wait, and download the dump. [OpenBMC]
  
  
  \ **-c**\  will clear a single specified dump, or use 'all' to clear all dumps on the BMC.
@@ -449,9 +515,15 @@ OPTIONS
  
  
  
- \ **-d**\  will download a single dump from the BMC to /var/log/xcat/dump on management or service node.
+ \ **-d**\  will download a single dump or all generated dumps from the BMC to /var/log/xcat/dump on management or service node.
  
  
+ 
+
+
+\ **timesyncmethod**\ 
+ 
+ Set the method for time synchronization on the BMC. [OpenBMC]
  
 
 
@@ -499,6 +571,12 @@ OPTIONS
 \ **ntpserver**\ 
  
  Get or set NTP server IP address or name.
+ 
+
+
+\ **ntpservers**\ 
+ 
+ Get or set NTP servers name. [OpenBMC]
  
 
 

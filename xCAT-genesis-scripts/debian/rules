@@ -33,8 +33,7 @@ install:
 	dh_installdirs $(installdir)
 	dh_install -X".svn"
 	dh_install ./etc/ $(installtodir)
-	dh_install ./bin/ $(installtodir)
-	dh_install ./sbin/ $(installtodir)
+	dh_install ./usr/ $(installtodir)
 	dh_compress
 	dh_installdeb
 	dh_gencontrol

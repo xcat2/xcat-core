@@ -1,205 +1,313 @@
 #!/bin/bash
-# IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
 #
-#---------------------------------------------------------------------------
-# setup NTP configuration on the compute nodes
+# setupchrony - Set up chrony
 #
-#---------------------------------------------------------------------------
+# Copyright (C) 2018 International Business Machines
+# Eclipse Public License, Version 1.0 (EPL-1.0)
+#     <http://www.eclipse.org/legal/epl-v10.html>
+#
+# 2018-07-11 GONG Jie <gongjie@linux.vnet.ibm.com>
+#     - Draft
+# 2018-07-13 GONG Jie <gongjie@linux.vnet.ibm.com>
+#     - Release to field
+#
 
-if [ "$(uname -s|tr 'A-Z' 'a-z')" = "linux" ];then
-   str_dir_name=`dirname $0`
-   . $str_dir_name/xcatlib.sh
-fi
+PATH="/usr/sbin:/usr/bin:/sbin:/bin"
+export PATH
 
-# if on the Management Node
-if [ -e /etc/xCATMN ]; then
-   logger -t xcat -p local4.info "setupntp: This postscript does not support running on the management node. Please run makentp command. exiting"
-   exit 0
-fi
-
-#for service node, the makentp -a command will call this postscript
-#so do not diable service node.
-
-exit_code=0;
-master=$MASTER
-setup=0
-conf_file="/etc/ntp.conf"
-conf_file_org="/etc/ntp.conf.org"
-conf_file_backup="/etc/ntp.conf.postbackup"
-
-# pmatch determines if 1st argument string is matched by 2nd argument pattern
-pmatch ()
+#
+# warn_if_bad           Put out warning message(s) if $1 has bad RC.
+#
+#       $1      0 (pass) or non-zero (fail).
+#       $2+     Remaining arguments printed only if the $1 is non-zero.
+#
+#       Incoming $1 is returned unless it is 0
+#
+function warn_if_bad()
 {
-  case $1 in
-    $2) return 0;;  # zero return code means string matched by pattern
-  esac
+	local -i rc="$1"
+	local script="${0##*/}"
 
-  return 1          # non-zero return code means string not matched by pattern
+	# Ignore if no problems
+	[ "${rc}" -eq "0" ] && return 0
+
+	# Broken
+	shift
+	logger -t xcat -p local4.info "${script}: $@" >/dev/null 2>&1
+	echo "${script}: $@" >&2
+	return "${rc}"
 }
 
-is_lsb_cumulus ()
+#
+# exit_if_bad           Put out error message(s) if $1 has bad RC.
+#
+#       $1      0 (pass) or non-zero (fail).
+#       $2+     Remaining arguments printed only if the $1 is non-zero.
+#
+#               Exits with 1 unless $1 is 0
+#
+function exit_if_bad()
 {
-  grep -qs Cumulus /etc/lsb-release
-  return $?
+	warn_if_bad "$@" || exit 1
+	return 0
 }
 
-logger -t xcat "Install: Setup NTP"
-# Use the ntpservers defined in the site table, if they exist. 
-# If the value of ntpservers is <xcatmaster> use the service node or
-# the management node as the ntp server.
-if [ $NTPSERVERS ]; then
-    if [ "$NODESETSTATE" = "statelite" ]; then
-        cp -a $conf_file $conf_file_org
-        echo  "" > $conf_file
-    else
-        if [ !  -f $conf_file_org ]; then
-            mv -f $conf_file $conf_file_org
-        else
-            mv -f $conf_file $conf_file_backup
-        fi
-    fi
-    if [ "$NTPSERVERS" = "&lt;xcatmaster&gt;" ] || [ "$NTPSERVERS" = "<xcatmaster>" ]; then
-        echo "server $master" >>$conf_file
-    else
-        for i in $(echo $NTPSERVERS | tr ',' ' ')
-        do
-            if ping $i -c 1 > /dev/null 2>&1 ; then
-         	echo "server $i" >>$conf_file
-        	master=$i
-                setup=1
-            fi
-        done 
-        if [ $setup -eq 0 ]; then
-	    echo "server $master" >$conf_file
-        fi
-    fi
-else
-	echo "server $master" >$conf_file
+#
+# check_executes        Check for executable(s)
+#
+#       Returns 0 if true.
+#       Returns 1 if not.
+#
+function check_executes()
+{
+	local cmd
+	local all_ok="yes"
+	for cmd in "$@"
+	do
+		if ! type "${cmd}" &>/dev/null
+		then
+			echo "Command \"${cmd}\" not found." >&2
+			all_ok="no"
+		fi
+	done
+	[ "${all_ok}" = "yes" ]
+}
+
+#
+# check_exec_or_exit    Check for required executables.
+#
+#       Exits (not returns) if commands listed on command line do not exist.
+#
+#       Returns 0 if true.
+#       Exits with 1 if not.
+#
+function check_exec_or_exit()
+{
+	check_executes "$@"
+	exit_if_bad "$?" "Above listed required command(s) not found."
+	return 0
+}
+
+[ "${UID}" -eq "0" ]
+exit_if_bad "$?" "Must be run by UID=0. Actual UID=${UID}."
+
+declare -a NTP_SERVERS=()
+
+# Handle command line arguments
+while [ "$#" -gt "0" ]
+do
+        case "$1" in
+	"--use-ntpd")
+		# Use traditional ntpd
+		USE_NTPD="yes"
+		;;
+	*)
+		NTP_SERVERS+=($1)
+		;;
+	esac
+	shift
+done
+
+if [ "${#NTP_SERVERS[@]}" -eq "0" ]
+then
+	# Handle xCAT passed environment variables
+	case "${NTPSERVERS}" in
+	"<xcatmaster>"|"&lt;xcatmaster&gt;"|"")
+		NTP_SERVERS=(${MASTER})
+		;;
+	*)
+		OLD_IFS="${IFS}"
+		IFS=","
+		NTP_SERVERS=(${NTPSERVERS})
+		IFS="${OLD_IFS}"
+		unset OLD_IFS
+		;;
+	esac
 fi
 
+# Unset xCAT passed environment variables
+unset MASTER
+unset NTPSERVERS
 
-OS_TYPE=`uname`
-if [ $OS_TYPE = Linux ]; then
-    # Set the timezone
-    if [ -n $TIMEZONE ]; then
-        echo $TIMEZONE > /etc/timezone
-        if type timedatectl > /dev/null; then
-            timedatectl set-timezone $(cat /etc/timezone)
-        fi
-    fi
+check_executes chronyd || USE_NTPD="yes"
 
-    mkdir -p /var/lib/ntp
-    chown ntp /var/lib/ntp
-    if ( pmatch $OSVER "sles*" ) || ( pmatch $OSVER "suse*" ) || [ -f /etc/SuSE-release ];then
-        echo "driftfile /var/lib/ntp/drift/ntp.drift" >>$conf_file
-    else 
-        echo "driftfile /var/lib/ntp/drift" >>$conf_file
-    fi 
-    echo "disable auth" >>$conf_file
-    echo "restrict 127.0.0.1" >>$conf_file
-
-    if ( pmatch $OSVER "Cumulus*" ) || is_lsb_cumulus; then
-        # Do not listen on Cumulus switch ports
-        echo "interface listen eth0" >>$conf_file
-    fi
-
-    # will not exit here, let all the ntp configuration finish
-    # ntpd will timeout if ntp service is not reachable
-    if ! ping $master -c 1 > /dev/null 2>&1 ; then
-        echo "Error: ntpserver $master is not reachable, will not setup NTP"
-        exit_code=1
-    fi
-
-    #ntpd/ntpdate/sntp conflict with ntpd, stop the service first
-    checkservicestatus ntpserver
-    if [ $? -eq 0 ];then
-         stopservice ntpserver
-    fi
-
-    msg='syncing the clock ...'
-    logger -t xcat $msg 
-    echo $msg
-    if ! timeout 120 ntpd -gq  > /dev/null 2>&1 ; then
-        if ! ntpdate -t5 $master > /dev/null 2>&1; then
-            msg='WARNING: NTP Sync Failed before timeout. ntp server will try to sync...'
-            logger -t xcat $msg
-            echo $msg
-        fi
-    fi
-
-    #setup the hardware clock
-    hwclock --systohc --utc
-
-    #setup the RTC is UTC format, which will be used by os
-    if ( pmatch $OSVER "sles*" ) || ( pmatch $OSVER "suse*" ) || [ -f /etc/SuSE-release ];then
-        grep -i -q "HWCLOCK" /etc/sysconfig/clock
-        if [ $? -eq 0 ];then
-            sed -i 's/.*HWCLOCK.*/HWCLOCK=\"-u\"/' /etc/sysconfig/clock
-        else
-            echo HWCLOCK=\"-u\" >> /etc/sysconfig/clock
-        fi
-    elif [ -f "/etc/debian_version" ];then
-        sed -i 's/.*UTC.*/UTC=\"yes\"/' /etc/default/rcS
-    else
-        if [ -f "/etc/sysconfig/clock" ];then
-           grep -i -q "utc" /etc/sysconfig/clock
-           if [ $? -eq 0 ];then
-              sed -i 's/.*UTC.*/UTC=\"yes\"/' /etc/sysconfig/clock
-           else
-              echo UTC=\"yes\" >> /etc/sysconfig/clock
-           fi
-        elif type -P timedatectl >/dev/null 2>&1 ;then
-           timedatectl set-local-rtc 0
-        fi
-    fi
-
-    #update the hardware clock automaticly
-    if [ -f "/etc/sysconfig/ntpd" ];then
-        grep -i -q "SYNC_HWCLOCK" /etc/sysconfig/ntpd
-        if [ $? -eq 0 ];then
-            sed -i 's/.*SYNC_HWCLOCK.*/SYNC_HWCLOCK=\"yes\"/' /etc/sysconfig/ntpd
-        else
-            echo "SYNC_HWCLOCK=\"yes\"" >> /etc/sysconfig/ntpd
-        fi
-    elif [ -f /etc/sysconfig/ntp ];then
-        grep -i -q "NTPD_FORCE_SYNC_ON_STARTUP" /etc/sysconfig/ntp
-        if [ $? -eq 0 ];then
-	    sed -i 's/NTPD_FORCE_SYNC_ON_STARTUP=\"no\"/NTPD_FORCE_SYNC_ON_STARTUP=\"yes\"/' /etc/sysconfig/ntp
-        fi
-        grep -i -q "NTPD_FORCE_SYNC_HWCLOCK_ON_STARTUP" /etc/sysconfig/ntp
-        if [ $? -eq 0 ];then
-	    sed -i 's/NTPD_FORCE_SYNC_HWCLOCK_ON_STARTUP=\"no\"/NTPD_FORCE_SYNC_HWCLOCK_ON_STARTUP=\"yes\"/' /etc/sysconfig/ntp
-        fi
-    else
-        cron_file="/etc/cron.daily/xcatsethwclock"
-        if [ ! -f "$cron_file" ];then
-            echo "#!/bin/sh" > $cron_file
-            echo "/sbin/hwclock --systohc --utc" >> $cron_file
-            chmod a+x $cron_file
-            #service cron restart
-            restartservice cron
-        fi
-    fi
-    startservice ntpserver
-
-    enableservice cron
-    enableservice ntpserver
-else
-# stop and start AIX ntp
-  echo "driftfile /etc/ntp.drift
-tracefile /etc/ntp.trace
-disable auth
-broadcastclient
-restrict 127.0.0.1" >>$conf_file
-
-    stopsrc -s xntpd 
-    logger -t xcat "ntpdate -t5 $master "
-    ntpdate -t5 $master 
-    if [ "$?" != "0" ]
-    then
-        echo "  ntpdate -t5 $master  failed "
-        logger -t xcat "ntpdate -t5 $master failed"
-    fi
-    /usr/sbin/chrctcp -S -a xntpd 
+if [ -n "${USE_NTPD}" ]
+then
+	# Call setupntp.traditional, and pass the parsed ntp servers
+	logger -t xcat -p local4.info "Will call setupntp.traditional"
+	export NTPSERVERS="$(IFS=','; echo "${NTP_SERVERS[*]:-pool.ntp.org}")"
+	exec "${0%/*}/setupntp.traditional"
+	exit 255
 fi
-exit $exit_code 
+
+check_exec_or_exit cp cat logger
+check_exec_or_exit systemctl timedatectl hwclock
+
+systemctl stop ntp.service 2>/dev/null
+systemctl disable ntp.service 2>/dev/null
+systemctl stop ntpd.service 2>/dev/null
+systemctl disable ntpd.service 2>/dev/null
+
+systemctl disable ntp-wait.service 2>/dev/null
+systemctl disable ntpdate.service 2>/dev/null
+
+# On Ubuntu 18.04
+systemctl stop chrony.service 2>/dev/null
+# On RHEL 7, 8
+systemctl stop chronyd.service 2>/dev/null
+
+# The system is configured to maintain the RTC in universal time.
+timedatectl set-local-rtc 0
+warn_if_bad "$?" "Failed to configure the system to maintain the RTC in universal time"
+
+# Synchronize and set the system clock once
+logger -t xcat -p local4.info "Syncing the clock ..."
+chronyd -f /dev/null -q "$(
+	if [ "${#NTP_SERVERS[@]}" -gt "0" ]
+	then
+		echo "server ${NTP_SERVERS[0]} iburst"
+	else
+		echo "pool pool.ntp.org iburst"
+	fi
+)" "pidfile /dev/null"
+
+rm -f /etc/adjtime
+# Set the hardware clock from the system clock
+hwclock --systohc --utc
+warn_if_bad "$?" "Failed to set the hardware clock"
+
+## On RHEL 8
+#CHRONY_USER="chrony"
+#CHRONY_GROUP="chrony"
+## On Ubuntu 18.04
+#CHRONY_USER="_chrony"
+#CHRONY_GROUP="_chrony"
+
+CHRONY_CONF="/etc/chrony.conf"
+KEY_FILE="/etc/chrony.keys"
+
+if [ -d "/etc/chrony" ]
+then
+	# Ubuntu 18.04 default
+	CHRONY_CONF="/etc/chrony/chrony.conf"
+	KEY_FILE="/etc/chrony/chrony.keys"
+fi
+
+# Take the best educated guess for the pathname of the chrony drift file
+DRIFT_FILE="$(
+	for file in /var/lib/chrony/drift /var/lib/chrony/chrony.drift
+	do
+		if [ -f "${file}" ]
+		then
+			echo "${file}"
+			exit
+		fi
+	done
+
+	if [ "chrony" = \
+		"$(rpm -qf /var/lib/chrony/drift --qf '%{name}' 2>/dev/null)" ]
+	then
+		echo /var/lib/chrony/drift
+		exit
+	fi
+
+	for file in /usr/share/chrony/chrony.conf \
+		/etc/chrony.conf /etc/chrony/chrony.conf \
+		$(grep -a -m 1 -o -P '/([^\x00]+/)*[^\x00]+\.conf' \
+			"$(type -p chronyd)" 2>/dev/null)
+	do
+		if [ -f "${file}" ]
+		then
+			while read -r key val blah
+			do
+				if [ "${key}" = "driftfile" -a -n "${val}" ]
+				then
+					echo "${val}"
+					exit
+				fi
+			done <"${file}"
+		fi
+	done
+
+	# The default value
+	echo /var/lib/chrony/drift
+)"
+
+LOG_DIR="/var/log/chrony"
+
+logger -t xcat -p local4.info "Install: Setup NTP - chrony"
+cp "${CHRONY_CONF}" "${CHRONY_CONF}.xcatsave"
+cat >"${CHRONY_CONF}" <<EOF
+# This chrony configuration file is generated by xCAT
+
+# Use public servers from the pool.ntp.org project.
+# Please consider joining the pool (http://www.pool.ntp.org/join.html).
+$(
+	if [ "${#NTP_SERVERS[@]}" -gt "0" ]
+	then
+		for n in "${NTP_SERVERS[@]}"
+		do
+			echo "server ${n} iburst"
+		done
+	else
+		echo "pool pool.ntp.org   iburst maxsources 4"
+		echo "pool 0.pool.ntp.org iburst maxsources 4"
+		echo "pool 1.pool.ntp.org iburst maxsources 4"
+		echo "pool 2.pool.ntp.org iburst maxsources 8"
+	fi
+)
+
+# Record the rate at which the system clock gains/losses time.
+driftfile ${DRIFT_FILE}
+
+# Allow the system clock to be stepped in the first three updates
+# if its offset is larger than 1 second.
+makestep 1.0 3
+
+# Enable kernel synchronization of the real-time clock (RTC).
+rtcsync
+
+# Enable hardware timestamping on all interfaces that support it.
+#hwtimestamp *
+
+# Increase the minimum number of selectable sources required to adjust
+# the system clock.
+#minsources 2
+
+# Allows access by any node (IPv4 or IPv6).
+allow
+
+# Serve time even if not synchronized to a time source.
+local stratum 10
+
+# Specify file containing keys for NTP authentication.
+keyfile ${KEY_FILE}
+
+# Get TAI-UTC offset and leap seconds from the system tz database.
+leapsectz right/UTC
+
+# Specify directory for log files.
+logdir ${LOG_DIR}
+
+# Select which information is logged.
+log measurements statistics tracking
+EOF
+exit_if_bad "$?" "Failed to create configuration file for chrony"
+
+systemctl reenable chrony.service 2>/dev/null ||
+	systemctl reenable chronyd.service 2>/dev/null
+exit_if_bad "$?" "Failed to enable chrony service"
+
+systemctl reload-or-restart chrony.service 2>/dev/null ||
+	systemctl reload-or-restart chronyd.service 2>/dev/null
+exit_if_bad "$?" "Failed to start chrony service"
+
+logger -t xcat -p local4.info "NTP setup accomplished!"
+
+exit 0
+
+# vim: filetype=sh
+# vim: noautoindent
+# vim: tabstop=4 shiftwidth=4 softtabstop=4
+
+# End of file

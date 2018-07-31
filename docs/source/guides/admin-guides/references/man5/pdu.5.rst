@@ -19,7 +19,7 @@ SYNOPSIS
 ********
 
 
-\ **pdu Attributes:**\   \ *node*\ , \ *nodetype*\ , \ *outlet*\ , \ *machinetype*\ , \ *modelnum*\ , \ *serialnum*\ , \ *comments*\ , \ *disable*\ 
+\ **pdu Attributes:**\   \ *node*\ , \ *nodetype*\ , \ *pdutype*\ , \ *outlet*\ , \ *username*\ , \ *password*\ , \ *snmpversion*\ , \ *community*\ , \ *snmpuser*\ , \ *authtype*\ , \ *authkey*\ , \ *privtype*\ , \ *privkey*\ , \ *seclevel*\ , \ *comments*\ , \ *disable*\ 
 
 
 ***********
@@ -48,27 +48,75 @@ pdu Attributes:
  
 
 
+\ **pdutype**\ 
+ 
+ The type of pdu
+ 
+
+
 \ **outlet**\ 
  
  The pdu outlet count
  
 
 
-\ **machinetype**\ 
+\ **username**\ 
  
- The pdu machine type
- 
-
-
-\ **modelnum**\ 
- 
- The pdu model number
+ The remote login user name
  
 
 
-\ **serialnum**\ 
+\ **password**\ 
  
- The pdu serial number
+ The remote login password
+ 
+
+
+\ **snmpversion**\ 
+ 
+ The version to use to communicate with switch.  SNMPv1 is assumed by default.
+ 
+
+
+\ **community**\ 
+ 
+ The community string to use for SNMPv1/v2
+ 
+
+
+\ **snmpuser**\ 
+ 
+ The username to use for SNMPv3 communication, ignored for SNMPv1
+ 
+
+
+\ **authtype**\ 
+ 
+ The authentication protocol(MD5|SHA) to use for SNMPv3.
+ 
+
+
+\ **authkey**\ 
+ 
+ The authentication passphrase for SNMPv3
+ 
+
+
+\ **privtype**\ 
+ 
+ The privacy protocol(AES|DES) to use for SNMPv3.
+ 
+
+
+\ **privkey**\ 
+ 
+ The privacy passphrase to use for SNMPv3.
+ 
+
+
+\ **seclevel**\ 
+ 
+ The Security Level(noAuthNoPriv|authNoPriv|authPriv) to use for SNMPv3.
  
 
 

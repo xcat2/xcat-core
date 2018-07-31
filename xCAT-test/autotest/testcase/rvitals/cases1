@@ -1,0 +1,6 @@
+start:rvitals_outputs_format_checking
+description: Check the output formats of rvitals
+label:cn_bmc_ready,hctrl_general
+cmd:rvitals $$CN | grep -v -E '^[^:]+:[^:]+:[^:]+$'
+check:rc==1
+end

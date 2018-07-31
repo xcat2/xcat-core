@@ -6,6 +6,7 @@ BEGIN {
 }
 use lib "$::XCATROOT/lib/perl";
 use strict;
+use File::Copy;
 use xCAT::Table;
 use xCAT::Utils;
 use xCAT::TableUtils;
@@ -17,12 +18,11 @@ use Data::Dumper;
 
 my $isSN;
 my $host;
-my $go_api_port = 12429;
-my $go_cons_port = 12430;
-my $bmc_cons_port = "2200";
 my $usage_string ="   makegocons [-V|--verbose] [-d|--delete] noderange
-    -h|--help        Display this usage statement.
-    -v|--version     Display the version number.";
+    -h|--help                   Display this usage statement.
+    -v|--version                Display the version number.
+    -C|--cleanup                Remove the entries for the nodes whose definitions have been removed from xCAT db.
+    -q|--query  [noderange]     Display the console connection status.";
 
 my $version_string = xCAT::Utils->Version();
 
@@ -56,8 +56,6 @@ sub preprocess_request {
 
     #$Getopt::Long::pass_through=1;
     if (!GetOptions(
-        'c|conserver' => \$::CONSERVER,
-        'l|local'     => \$::LOCAL,
         'h|help'      => \$::HELP,
         'D|debug'     => \$::DEBUG,
         'v|version'   => \$::VERSION,
@@ -75,19 +73,6 @@ sub preprocess_request {
         $request = {};
         return;
     }
-    if ($::LOCAL) {
-        if ($noderange && @$noderange > 0) {
-            $::callback->({ data => "Invalid option -l or --local when there are nodes specified." });
-            $request = {};
-            return;
-        }
-    }
-    if ($::CONSERVER && $::LOCAL) {
-        $::callback->({ data => "Can not specify -l or --local together with -c or --conserver." });
-        $request = {};
-        return;
-    }
-
 
     # get site master
     my $master = xCAT::TableUtils->get_site_Master();
@@ -103,13 +88,17 @@ sub preprocess_request {
         my $hmcache = $hmtab->getNodesAttribs($noderange, [ 'node', 'serialport', 'cons', 'conserver' ]);
         foreach my $node (@$noderange) {
             my $ent = $hmcache->{$node}->[0]; #$hmtab->getNodeAttribs($node,['node', 'serialport','cons', 'conserver']);
-            push @items, $ent;
+            if ($ent) {
+                push (@items, $ent);
+            } else {
+                my $rsp->{data}->[0] = $node .": ignore, cons attribute or serialport attribute is not specified.";
+                xCAT::MsgUtils->message("I", $rsp, $::callback);
+            }
         }
     } else {
         $allnodes = 1;
         @items = $hmtab->getAllNodeAttribs([ 'node', 'serialport', 'cons', 'conserver' ]);
     }
-
     my @nodes = ();
     foreach (@items) {
         if (((!defined($_->{cons})) || ($_->{cons} eq "")) and !defined($_->{serialport})) {
@@ -122,42 +111,14 @@ sub preprocess_request {
         push @nodes, $_->{node};
     }
 
-    #send all nodes to the MN
-    if (!$isSN && !$::CONSERVER) { #If -c flag is set, do not add the all nodes to the management node
-        if ($::VERBOSE) {
-            my $rsp;
-            $rsp->{data}->[0] = "Setting the nodes into goconserver on the management node";
-            xCAT::MsgUtils->message("I", $rsp, $::callback);
-        }
-        my $reqcopy = {%$request};
-        $reqcopy->{'_xcatdest'} = $master;
-        $reqcopy->{_xcatpreprocessed}->[0] = 1;
-        $reqcopy->{'_allnodes'} = $allnodes; # the original command comes with nodes or not
-        if ($allnodes == 1) { @nodes = (); }
-        $reqcopy->{node} = \@nodes;
-        push @requests, $reqcopy;
-        if ($::LOCAL) { return \@requests; }
-    }
-
     # send to conserver hosts
-    foreach my $cons (keys %cons_hash) {
-
-        #print "cons=$cons\n";
-        my $doit = 0;
-        if ($isSN) {
-            if (exists($iphash{$cons})) { $doit = 1; }
-        } else {
-            if (!exists($iphash{$cons}) || $::CONSERVER) { $doit = 1; }
-        }
-
-        if ($doit) {
-            my $reqcopy = {%$request};
-            $reqcopy->{'_xcatdest'} = $cons;
-            $reqcopy->{_xcatpreprocessed}->[0] = 1;
-            $reqcopy->{'_allnodes'} = [$allnodes]; # the original command comes with nodes or not
-            $reqcopy->{node} = $cons_hash{$cons}{nodes};
-            push @requests, $reqcopy;
-        }    #end if
+    foreach my $host (keys %cons_hash) {
+        my $reqcopy = {%$request};
+        $reqcopy->{'_xcatdest'} = $host;
+        $reqcopy->{_xcatpreprocessed}->[0] = 1;
+        $reqcopy->{'_allnodes'} = [$allnodes]; # the original command comes with nodes or not
+        $reqcopy->{node} = $cons_hash{$host}{nodes};
+        push @requests, $reqcopy;
     }    #end foreach
 
     if ($::DEBUG) {
@@ -179,183 +140,43 @@ sub process_request {
     }
 }
 
-sub get_cons_map {
-    my ($req, $iphashref) = @_;
-    my %cons_map;
-    my %iphash = %{$iphashref};
-    my $hmtab = xCAT::Table->new('nodehm');
-    my @cons_nodes;
-
-    if (($req->{node} and @{$req->{node}} > 0) or $req->{noderange}->[0]) {
-        # Note: do not consider terminal server currently
-        @cons_nodes = $hmtab->getNodesAttribs($req->{node}, [ 'node', 'cons', 'serialport', 'mgt', 'conserver', 'consoleondemand' ]);
-        # Adjust the data structure to make the result consistent with the getAllNodeAttribs() call we make if a noderange was not specified
-        my @tmpcons_nodes;
-        foreach my $ent (@cons_nodes)
-        {
-            foreach my $nodeent (keys %$ent)
-            {
-                push @tmpcons_nodes, $ent->{$nodeent}->[0];
-            }
-        }
-        @cons_nodes = @tmpcons_nodes
-
-    } else {
-        @cons_nodes = $hmtab->getAllNodeAttribs([ 'cons', 'serialport', 'mgt', 'conserver', 'consoleondemand' ]);
-    }
-    $hmtab->close();
-    my $rsp;
-
-    foreach (@cons_nodes) {
-        if ($_->{cons} or defined($_->{'serialport'})) {
-            unless ($_->{cons}) { $_->{cons} = $_->{mgt}; } #populate with fallback
-            if ($isSN && $_->{conserver} && exists($iphash{ $_->{conserver} }) || !$isSN) {
-                $cons_map{ $_->{node} } = $_; # also put the ref to the entry in a hash for quick look up
-            } else {
-                $rsp->{data}->[0] = $_->{node} .": ignore, the host for conserver could not be determined.";
-                xCAT::MsgUtils->message("I", $rsp, $::callback);
-            }
-        } else {
-            $rsp->{data}->[0] = $_->{node} .": ignore, cons attribute or serialport attribute is not specified.";
-            xCAT::MsgUtils->message("I", $rsp, $::callback);
-        }
-    }
-    return %cons_map;
-}
-
-sub gen_request_data {
-    my ($cons_map, $siteondemand) = @_;
-    my (@openbmc_nodes, $data);
-    while (my ($k, $v) = each %{$cons_map}) {
-        my $ondemand;
-        if ($siteondemand) {
-            $ondemand = \1;
-        } else {
-            $ondemand = \0;
-        }
-        my $cmd;
-        my $cmeth  = $v->{cons};
-        if ($cmeth eq "openbmc") {
-            push @openbmc_nodes, $k;
-        }  else {
-            $cmd = $::XCATROOT . "/share/xcat/cons/$cmeth"." ".$k;
-            if (!(!$isSN && $v->{conserver} && xCAT::NetworkUtils->thishostisnot($v->{conserver}))) {
-                my $env;
-                my $locerror = $isSN ? "PERL_BADLANG=0 " : '';
-                if (defined($ENV{'XCATSSLVER'})) {
-                    $env = "XCATSSLVER=$ENV{'XCATSSLVER'} ";
-                }
-                $cmd = $locerror.$env.$cmd;
-            }
-            $data->{$k}->{driver} = "cmd";
-            $data->{$k}->{params}->{cmd} = $cmd;
-            $data->{$k}->{name} = $k;
-        }
-        if (defined($v->{consoleondemand})) {
-            # consoleondemand attribute for node can be "1", "yes", "0" and "no"
-            if (($v->{consoleondemand} eq "1") || lc($v->{consoleondemand}) eq "yes") {
-                $ondemand = \1;
-            }
-            elsif (($v->{consoleondemand} eq "0") || lc($v->{consoleondemand}) eq "no") {
-                $ondemand = \0;
-            }
-        }
-        $data->{$k}->{ondemand} = $ondemand;
-    }
-    if (@openbmc_nodes) {
-        my $passwd_table = xCAT::Table->new('passwd');
-        my $passwd_hash = $passwd_table->getAttribs({ 'key' => 'openbmc' }, qw(username password));
-        $passwd_table->close();
-        my $openbmc_table = xCAT::Table->new('openbmc');
-        my $openbmc_hash = $openbmc_table->getNodesAttribs(\@openbmc_nodes, ['bmc','consport', 'username', 'password']);
-        $openbmc_table->close();
-        foreach my $node (@openbmc_nodes) {
-            if (defined($openbmc_hash->{$node}->[0])) {
-                if (!$openbmc_hash->{$node}->[0]->{'bmc'}) {
-                    xCAT::SvrUtils::sendmsg("Error: Unable to get attribute bmc", $::callback, $node);
-                    delete $data->{$node};
-                    next;
-                }
-                $data->{$node}->{params}->{host} = $openbmc_hash->{$node}->[0]->{'bmc'};
-                if ($openbmc_hash->{$node}->[0]->{'username'}) {
-                    $data->{$node}->{params}->{user} = $openbmc_hash->{$node}->[0]->{'username'};
-                } elsif ($passwd_hash and $passwd_hash->{username}) {
-                    $data->{$node}->{params}->{user} = $passwd_hash->{username};
-                } else {
-                    xCAT::SvrUtils::sendmsg("Error: Unable to get attribute username", $::callback, $node);
-                    delete $data->{$node};
-                    next;
-                }
-                if ($openbmc_hash->{$node}->[0]->{'password'}) {
-                    $data->{$node}->{params}->{password} = $openbmc_hash->{$node}->[0]->{'password'};
-                } elsif ($passwd_hash and $passwd_hash->{password}) {
-                    $data->{$node}->{params}->{password} = $passwd_hash->{password};
-                } else {
-                    xCAT::SvrUtils::sendmsg("Error: Unable to get attribute password", $::callback, $node);
-                    delete $data->{$node};
-                    next;
-                }
-                if ($openbmc_hash->{$node}->[0]->{'consport'}) {
-                    $data->{$node}->{params}->{consport} = $openbmc_hash->{$node}->[0]->{'consport'};
-                } else {
-                    $data->{$node}->{params}->{port} = $bmc_cons_port;
-                }
-                $data->{$node}->{name} = $node;
-                $data->{$node}->{driver} = "ssh";
-            }
-        }
-    }
-    return $data;
-}
-
-
 sub start_goconserver {
-    my $rsp;
+    my ($rsp, $running, $ready, $ret);
     unless (-x "/usr/bin/goconserver") {
-        $rsp->{data}->[0] = "goconserver is not installed.";
-        xCAT::MsgUtils->message("E", $rsp, $::callback);
+        xCAT::MsgUtils->error_message("goconserver is not installed.", $::callback);
         return 1;
     }
-    # As conserver is always installed, we check the existence of goconserver at first.
     # if goconserver is installed, check the status of conserver service.
-    my $cmd = "ps axf | grep -v grep | grep \/usr\/sbin\/conserver";
-    xCAT::Utils->runcmd($cmd, 0);
-    if ($::RUNCMD_RC == 0) {
-        $rsp->{data}->[0] = "conserver is started, please stop it at first.";
-        xCAT::MsgUtils->message("E", $rsp, $::callback);
+    if (xCAT::Goconserver::is_conserver_running()) {
+        xCAT::MsgUtils->error_message("conserver is started, please stop it at first.", $::callback);
         return 1;
     }
-    $cmd = "ps axf | grep -v grep | grep \/usr\/bin\/goconserver";
-    xCAT::Utils->runcmd($cmd, 0);
-    if ($::RUNCMD_RC != 0) {
-        my $config= "global:\n".
-                    "  host: 0.0.0.0\n".
-                    "  ssl_key_file: /etc/xcat/cert/server-key.pem\n".
-                    "  ssl_cert_file: /etc/xcat/cert/server-cert.pem\n".
-                    "  ssl_ca_cert_file: /etc/xcat/cert/ca.pem\n".
-                    "  logfile: /var/log/goconserver/server.log\n".
-                    "api:\n".
-                    "  port: $go_api_port\n".
-                    "console:\n".
-                    "  port: $go_cons_port\n";
-        my $file;
-        my $ret = open ($file, '>', '/etc/goconserver/server.conf');
-        if ($ret == 0) {
-            $rsp->{data}->[0] = "Could not open file /etc/goconserver/server.conf.";
-            xCAT::MsgUtils->message("E", $rsp, $::callback);
-            return 1;
-        }
-        print $file $config;
-        close $file;
-        my $cmd = "service goconserver start";
-        xCAT::Utils->runcmd($cmd, 0);
-        if ($::RUNCMD_RC != 0) {
-            $rsp->{data}->[0] = "Could not start goconserver service.";
-            xCAT::MsgUtils->message("E", $rsp, $::callback);
-            return 1;
-        }
-        sleep(3);
+    xCAT::Goconserver::switch_goconserver($::callback);
+    $running = xCAT::Goconserver::is_goconserver_running();
+    $ready = xCAT::Goconserver::is_xcat_conf_ready();
+    if ( $running && $ready ) {
+        # Already started by xcat
+        return 0;
     }
+    # user could customize the configuration, do not rewrite the configuration if this file has been
+    # generated by xcat
+    if (!$ready) {
+        $ret = xCAT::Goconserver::build_conf();
+        if ($ret) {
+            xCAT::MsgUtils->error_message("Failed to create configuration file for goconserver.", $::callback);
+            return 1;
+        }
+        if (!copy($::XCATROOT."/share/xcat/conf/goconslogrotate", "/etc/logrotate.d/goconserver")) {
+            xCAT::MsgUtils->warn_message("Failed to create logrotate configuration for goconserver.", $::callback);
+        }
+    }
+    $ret = xCAT::Goconserver::restart_service();
+    if ($ret) {
+        xCAT::MsgUtils->error_message("Failed to start goconserver service.", $::callback);
+        return 1;
+    }
+    xCAT::MsgUtils->info_message("Starting goconserver service ...", $::callback);
+    sleep(3);
     return 0;
 }
 
@@ -369,21 +190,34 @@ sub makegocons {
     }
     @ARGV = @exargs;
     $Getopt::Long::ignorecase = 0;
-    my $delmode;
+    my ($delmode, $querymode, $cleanupmode);
     GetOptions('d|delete' => \$delmode,
+        'q|query' => \$querymode,
+        'C|cleanup' => \$cleanupmode,
     );
 
     my $svboot = 0;
+    my $rsp;
     if (exists($req->{svboot})) {
         $svboot = 1;
     }
-    my %iphash   = ();
-    foreach (@$hostinfo) { $iphash{$_} = 1; }
-    my %cons_map = get_cons_map($req, \%iphash);
+    if ($cleanupmode) {
+        if (exists($req->{_allnodes}) && $req->{_allnodes}->[0] != 1) {
+            xCAT::MsgUtils->error_message("Can not specify noderange together with -C|--cleanup.", $::callback);
+            return 1;
+        }
+        return xCAT::Goconserver::cleanup_nodes($::callback);
+    }
+    my %cons_map = xCAT::Goconserver::get_cons_map($req);
     if (! %cons_map) {
-        xCAT::SvrUtils::sendmsg([ 1, "Could not get any console request entry" ], $::callback);
+        xCAT::MsgUtils->error_message("Could not get any console request entry.", $::callback);
         return 1;
     }
+    my $api_url = "https://$host:". xCAT::Goconserver::get_api_port();
+    if ($querymode) {
+        return xCAT::Goconserver::list_nodes($api_url, \%cons_map, $::callback)
+    }
+
     my $ret = start_goconserver();
     if ($ret != 0) {
         return 1;
@@ -397,23 +231,22 @@ sub makegocons {
         }
         elsif (lc($site_entry) ne "no") {
             # consoleondemand attribute is set, but it is not "yes" or "no"
-            xCAT::SvrUtils::sendmsg([ 1, "Unexpected value $site_entry for consoleondemand attribute in site table" ], $::callback);
+            xCAT::MsgUtils->error_message("Unexpected value $site_entry for consoleondemand attribute in site table.", $::callback);
         }
     }
     my (@nodes);
-    my $data = gen_request_data(\%cons_map, $siteondemand);
+    my $data = xCAT::Goconserver::gen_request_data(\%cons_map, $siteondemand, $::callback);
     if (! $data) {
-        xCAT::SvrUtils::sendmsg([ 1, "Could not generate the request data" ], $::callback);
+        xCAT::MsgUtils->error_message("Could not generate the request data.", $::callback);
         return 1;
     }
-    my $api_url = "https://$host:$go_api_port";
     $ret = xCAT::Goconserver::delete_nodes($api_url, $data, $delmode, $::callback);
     if ($delmode) {
         return $ret;
     }
     $ret = xCAT::Goconserver::create_nodes($api_url, $data, $::callback);
     if ($ret != 0) {
-        xCAT::SvrUtils::sendmsg([ 1, "Failed to create console entry in goconserver. "], $::callback);
+        xCAT::MsgUtils->error_message("Failed to create console entry in goconserver.", $::callback);
         return $ret;
     }
     return 0;

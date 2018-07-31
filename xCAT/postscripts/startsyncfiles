@@ -1,0 +1,48 @@
+#!/bin/bash
+log_label="xcat"
+#mkdir -p /etc/xcat
+#mkdir -p /etc/pki/tls
+#if [ ! -f /etc/xcat/privkey.pem ]; then
+#    echo "[ req ]
+#distinguished_name = nodedn
+
+#[ nodedn ]" > /etc/pki/tls/openssl.cnf
+#    logger -s -t $log_label -p local4.info "Generating private key..."
+#    openssl genrsa -out /etc/xcat/privkey.pem 1024 >& /dev/null
+#    logger -s -t $log_label -p local4.info "Done"
+#fi
+
+#PUBKEY=`openssl rsa -in /etc/xcat/privkey.pem -pubout 2> /dev/null|grep -v "PUBLIC KEY"`
+#PUBKEY=`echo $PUBKEY|sed -e 's/ //g'`
+#export PUBKEY
+
+
+
+REQUEST="<xcatrequest>"
+REQUEST=${REQUEST}"<command>syncfiles</command>"
+#REQUEST=${REQUEST}"<xcatpubkey>$PUBKEY</xcatpubkey>"
+#REQUEST=${REQUEST}"<sha512sig></sha512sig>"
+
+if [ -n "$RCP" ]; then
+    REQUEST=${REQUEST}"<arg>-r</arg>"
+    REQUEST=${REQUEST}"<arg>"${RCP}"</arg>"
+fi
+
+REQUEST=${REQUEST}"</xcatrequest>"
+RETCODE=0
+
+while read LINE;do
+    echo $LINE
+    if echo $LINE| grep '<serverdone>' >/dev/null 2>&1; then
+        rm -rf $RESPFILE
+        exit $RETCODE
+    fi
+    if echo $LINE|grep '<errorcode>' >/dev/null 2>&1; then
+        RET=${LINE#*>}
+        RET=${RET%<*}
+        [ "$RET" != "0" ] && RETCODE=1
+    fi
+done < <(openssl s_client -no_ssl3 $(openssl s_client -help 2>&1 | grep -m 1 -o -- -no_ssl2) -connect $MASTER_IP:$XCATDPORT -ign_eof -quiet <<<$REQUEST)
+
+rm -rf $RESPFILE
+exit $RETCODE

@@ -620,7 +620,7 @@ sub mods_in_rpm {
                 rmtree($tmp_path);
                 return; }
         } else {
-            if (system("cd $tmp_path; rpm2cpio $krpm | cpio -idum *.ko > /dev/null 2>&1 ; cd - > /dev/null 2>&1")) {
+            if (system("cd $tmp_path; rpm2cpio $krpm | cpio -idum  > /dev/null 2>&1 ; cd - > /dev/null 2>&1")) {
                 my $rsp;
                 push @{ $rsp->{data} }, "Unable to extract files from the rpm $krpm.";
                 xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
@@ -636,7 +636,7 @@ sub mods_in_rpm {
         return;
     }
 
-    my @ko_files = `find $tmp_path -name *.ko`;
+    my @ko_files = `find $tmp_path -regextype posix-egrep  -regex ".*/*\.ko(\.xz)?"`;
     foreach my $ko (@ko_files) {
         my %mod;
         chomp($ko);
@@ -650,7 +650,6 @@ sub mods_in_rpm {
         $mod{description} = $desc;
         push(@modlist, \%mod);
     }
-
     rmtree($tmp_path);
 
     return @modlist;

@@ -765,6 +765,14 @@ sub processArgs
                 #    then set noderange
                 if (($::command ne 'mkdef') && ($a =~ m/^\//))
                 {
+                    eval { /$a/ };
+                    if ($@)
+                    {
+                        my $rsp = {};
+                        $rsp->{data}->[0] = "Invalid regular expression $a, check the noderange syntax.";
+                        xCAT::MsgUtils->message("E", $rsp, $::callback);
+                        return 3;
+                    }
                     @::noderange = &noderange($a, 1); # Use the "verify" option to support regular expression
                 }
                 else
@@ -1554,6 +1562,7 @@ sub defmk
     } else {
         my $invalidobjname = ();
         my $invalidnodename = ();
+        my $nodewithdomain = ();
         foreach my $node (@::allobjnames) {
             my $myobjtype=$::opt_t;
             if(!$myobjtype and $::FILEATTRS{$node}{'objtype'}){
@@ -1563,9 +1572,21 @@ sub defmk
             unless(isobjnamevalid($node,$myobjtype)){
                $invalidobjname .= ",$node";
             }
-            if (($node =~ /[A-Z]/) && (((!$::opt_t) && (!$::FILEATTRS{$node}{'objtype'})) || ($::FILEATTRS{$node}{'objtype'} eq "node") || ($::opt_t eq "node"))) { 
-               $invalidnodename .= ",$node";
+            if (((!$::opt_t) && (!$::FILEATTRS{$node}{'objtype'})) || ($::FILEATTRS{$node}{'objtype'} eq "node") || ($::opt_t eq "node")) { 
+                if($node =~ /[A-Z]/){
+                    $invalidnodename .= ",$node";
+                }elsif($node =~ /\./){
+                    $nodewithdomain .= ",$node"; 
+                }
             }
+        }
+        if ($nodewithdomain) {
+            $nodewithdomain =~ s/,//;
+            my $rsp;
+            $rsp->{data}->[0] = "The object name \'$nodewithdomain\' is invalid, Cannot use '.' in node name.";
+            xCAT::MsgUtils->message("E", $rsp, $::callback);
+            $error = 1;
+            return 1;
         }
         if ($invalidobjname) {
             $invalidobjname =~ s/,//;
@@ -2361,7 +2382,8 @@ sub defch
             $objTypeListsHash{$objk}{$obj} = 1;
         }
     }
-
+    my $nodewithdomain;
+    my $invalidobjname = ();
     foreach my $obj (keys %::FINALATTRS)
     {
 
@@ -2384,7 +2406,17 @@ sub defch
             $error = 1;
             next;
         }
-
+        if ($obj =~ /\./ && $type eq "node")
+        {
+            $nodewithdomain .= ",$obj";
+            delete($::FINALATTRS{$obj});
+            next;
+        }
+        unless(isobjnamevalid($obj,$type)){
+            $invalidobjname .= ",$obj";
+            delete($::FINALATTRS{$obj});
+            next;
+        }
         if (defined($objTypeListsHash{$type}{$obj}) && ($objTypeListsHash{$type}{$obj} == 1))
         {
             $isDefined = 1;
@@ -2847,7 +2879,17 @@ sub defch
         }
 
     }    # end - for each object to update
-
+    my $rsp;
+    if ($nodewithdomain) {
+        $nodewithdomain =~ s/,//;
+        $rsp->{data}->[0] = "The object name \'$nodewithdomain\' is invalid, Cannot use '.' in node name.";
+        xCAT::MsgUtils->message("E", $rsp, $::callback);
+    }
+    if ($invalidobjname) {
+        $invalidobjname =~ s/,//;
+        $rsp->{data}->[0] = "The object name \'$invalidobjname\' is invalid, please refer to \"man xcatdb\" for the valid \"xCAT Object Name Format\"";
+        xCAT::MsgUtils->message("E", $rsp, $::callback);
+    }
     #
     #  write each object into the tables in the xCAT database
     #
@@ -4423,6 +4465,12 @@ sub defrm
                 command => ['makeconservercf'],
                 node => [@allnodes],
                 arg => ['-d'],}, $doreq, 0, 1);
+            if (-x "/usr/bin/goconserver") {
+                require xCAT::Goconserver;
+                if (xCAT::Goconserver::is_goconserver_running()) {
+                    xCAT::Goconserver::cleanup_nodes(undef);
+                }
+            }
         }
     }
 
@@ -4515,17 +4563,19 @@ sub defmk_usage
     $rsp->{data}->[3] = "      [-o object-names] [-z|--stanza ]";
     $rsp->{data}->[4] = "      [-d | --dynamic] [-w attr==val [-w attr=~val] ...]";
     $rsp->{data}->[5] = "      [-f | --force] [noderange] [attr=val [attr=val...]]";
-    $rsp->{data}->[6] = "\nThe following data object types are supported by xCAT.\n";
-    my $n = 6;
+    $rsp->{data}->[6] = "\nThe following data object types are supported by xCAT:\n";
+    my $n = 7;
+    my $dataobj;
 
     foreach my $t (sort(keys %{xCAT::Schema::defspec}))
     {
-        $rsp->{data}->[$n] = "$t";
-        $n++;
+        $dataobj = $dataobj . ' ' . $t;
     }
+    $rsp->{data}->[$n] = "$dataobj\n";
+    $n++;
     $rsp->{data}->[$n] = "\nUse the \'-h\' option together with the \'-t\' option to";
     $n++;
-    $rsp->{data}->[$n] = "get a list of valid attribute names for each object type.\n";
+    $rsp->{data}->[$n] = " get a list of valid attribute names for each object type.\n";
     xCAT::MsgUtils->message("I", $rsp, $::callback);
     return 0;
 }
@@ -4556,17 +4606,23 @@ sub defch_usage
     $rsp->{data}->[3] = "  chdef [-V | --verbose] [-t object-types] [-o object-names] [-d | --dynamic]";
     $rsp->{data}->[4] = "    [-z | --stanza] [-m | --minus] [-p | --plus]";
     $rsp->{data}->[5] = "    [-w attr==val [-w attr=~val] ... ] [noderange] [attr=val [attr=val...]]\n";
-    $rsp->{data}->[6] = "\nThe following data object types are supported by xCAT.\n";
+    $rsp->{data}->[6] = "\nThe following data object types are supported by xCAT:\n";
     my $n = 7;
+    my $dataobj;
 
     foreach my $t (sort(keys %{xCAT::Schema::defspec}))
     {
-        $rsp->{data}->[$n] = "$t";
-        $n++;
+        if ($dataobj) {
+            $dataobj = $dataobj . ',' . $t;
+        } else {
+            $dataobj = $t;
+        }
     }
+    $rsp->{data}->[$n] = "$dataobj\n";
+    $n++;
     $rsp->{data}->[$n] = "\nUse the \'-h\' option together with the \'-t\' option to";
     $n++;
-    $rsp->{data}->[$n] = "get a list of valid attribute names for each object type.\n";
+    $rsp->{data}->[$n] = " get a list of valid attribute names for each object type.\n";
     xCAT::MsgUtils->message("I", $rsp, $::callback);
     return 0;
 }
@@ -4598,17 +4654,19 @@ sub defls_usage
     $rsp->{data}->[4] = "  lsdef [-V | --verbose] [-t object-types] [-o object-names]";
     $rsp->{data}->[5] = "        [ -l | --long] [-s | --short] [-a | --all] [-z | --stanza ] [-S]";
     $rsp->{data}->[6] = "        [-i attr-list] [-w attr==val [-w attr=~val] ...] [noderange]\n";
-    $rsp->{data}->[7] = "\nThe following data object types are supported by xCAT.\n";
-    my $n = 6;
+    $rsp->{data}->[7] = "\nThe following data object types are supported by xCAT:\n";
+    my $n = 8;
+    my $dataobj;
 
     foreach my $t (sort(keys %{xCAT::Schema::defspec}))
     {
-        $rsp->{data}->[$n] = "$t";
-        $n++;
+        $dataobj = $dataobj . ' ' . $t;
     }
+    $rsp->{data}->[$n] = "$dataobj\n";
+    $n++;
     $rsp->{data}->[$n] = "\nUse the \'-h\' option together with the \'-t\' option to";
     $n++;
-    $rsp->{data}->[$n] = "get a list of valid attribute names for each object type.\n";
+    $rsp->{data}->[$n] = " get a list of valid attribute names for each object type.\n";
     xCAT::MsgUtils->message("I", $rsp, $::callback);
     return 0;
 }
@@ -4637,17 +4695,19 @@ sub defrm_usage
     $rsp->{data}->[1] = "  rmdef [-h | --help ] [-t object-types]\n";
     $rsp->{data}->[2] = "  rmdef [-V | --verbose] [-t object-types] [-a | --all] [-f | --force]";
     $rsp->{data}->[3] = "    [-o object-names] [-C | --cleanup] [noderange]\n";
-    $rsp->{data}->[4] = "\nThe following data object types are supported by xCAT.\n";
+    $rsp->{data}->[4] = "\nThe following data object types are supported by xCAT:\n";
     my $n = 5;
+    my $dataobj;
 
     foreach my $t (sort(keys %{xCAT::Schema::defspec}))
     {
-        $rsp->{data}->[$n] = "$t";
-        $n++;
+        $dataobj = $dataobj . ' ' . $t;
     }
+    $rsp->{data}->[$n] = "$dataobj\n";
+    $n++;
     $rsp->{data}->[$n] = "\nUse the \'-h\' option together with the \'-t\' option to";
     $n++;
-    $rsp->{data}->[$n] = "get a list of valid attribute names for each object type.\n";
+    $rsp->{data}->[$n] = " get a list of valid attribute names for each object type.\n";
     xCAT::MsgUtils->message("I", $rsp, $::callback);
     return 0;
 }
@@ -4702,12 +4762,20 @@ sub initialize_variables
 sub isobjnamevalid{
     my $objname=shift;
     my $objtype=shift;
+    my %options;
+    $options{keepmissing}=1;
+    $options{genericrange}=1;
     $objtype="node" unless(defined $objtype and ($objtype ne ""));
     if($objtype eq "node"){
         #the ip address as a valid node object name is a hack for p7IH support   
         if(($objname !~ /^[a-zA-Z0-9-_]+$/) and !xCAT::NetworkUtils->isIpaddr($objname)){
             return 0;
         }
+    } elsif ($objtype eq "group"){
+        my @tmpnodes=xCAT::NodeRange::noderange($objname,0,0,%options);
+        if(scalar(@tmpnodes)>1 || $tmpnodes[0] ne $objname ){
+           return 0;
+        }    
     }
     return 1;
 }

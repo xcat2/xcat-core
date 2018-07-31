@@ -1,20 +1,49 @@
 start:reventlog_null
+label:mn_only,hctrl_general
 cmd:reventlog
 check:rc==0
 check:output=~Usage
 end
+
 start:reventlog_all
+label:cn_bmc_ready,hctrl_general
 cmd:reventlog $$CN all
 check:rc==0
-check:output=~$$CN\s*:\s*.*\d\d/\d\d/\d\d\s*\S+
+check:output=~$$CN\s*:\s*.*\d\d/\d\d/\d\d\s*\S+|No attributes returned from the BMC
 end
+
 start:reventlog_clear
+label:cn_bmc_ready,hctrl_general
 cmd:reventlog $$CN clear
 check:rc==0
-check:output=~$$CN\s*:\s*clear|SEL cleared
+check:output=~$$CN\s*:\s*Logs cleared|SEL cleared
 end
+
 start:reventlog_numofentries
+label:cn_bmc_ready,hctrl_general
 cmd:reventlog $$CN 5
 check:rc==0
-check:output=~$$CN\s*:\s*.*\d\d/\d\d/\d\d\s*\S+|$$CN: no SEL entries|Entry 
+check:output=~$$CN\s*:\s*.*\d\d/\d\d/\d\d\s*\S+|$$CN: no SEL entries|Entry|No attributes returned from the BMC 
+end
+
+start:reventlog_s_openbmc
+description: For openbmc, reventlog has dropped option s
+os:Linux
+hcp:openbmc
+label:cn_bmc_ready,hctrl_openbmc
+cmd:reventlog $$CN 10 -s
+check:output=~The -s option is not supported for OpenBMC
+check:rc!=0
+cmd:reventlog $$CN 10 -s 1
+check:output=~The -s option is not supported for OpenBMC
+check:rc!=0
+cmd:reventlog $$CN -s all
+check:output=~The -s option is not supported for OpenBMC|Only one option is supported at the same time for reventlog
+check:rc!=0
+cmd:reventlog $$CN -s
+check:output=~Error: (\[.*?\]: )?Unsupported command
+check:rc!=0
+cmd:reventlog $$CN all aaa
+check:output=~Error: (\[.*?\]: )?Only one option is supported at the same time
+check:rc!=0
 end

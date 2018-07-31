@@ -125,8 +125,8 @@ if [ "$OSNAME" != "AIX" ]; then
 		fi
 	done
 
-	# Modify xCAT-dep.repo files to point to the correct place
-	echo "===> Modifying the xCAT-dep.repo files to point to the correct location..."
+	# Modify xcat-dep.repo files to point to the correct place
+	echo "===> Modifying the xcat-dep.repo files to point to the correct location..."
 	# 10/01/2015 - vkhu
 	# The URLs have been updated in GSA, this section is not needed at the moment
 	# 
@@ -138,7 +138,7 @@ if [ "$OSNAME" != "AIX" ]; then
 	#	oldurl="$YUMREPOURL2"
 	#fi
 	#
-	#sed -i -e "s|=$oldurl|=$newurl|g" `find . -name "xCAT-dep.repo" `
+	#sed -i -e "s|=$oldurl|=$newurl|g" `find . -name "xcat-dep.repo" `
 fi
 
 if [ "$OSNAME" == "AIX" ]; then

@@ -69,7 +69,7 @@ my $prompt;
 my $ignorekernelchk;
 my $noupdate;
 my $lock;
-
+my $envar;
 
 
 sub xdie {
@@ -85,7 +85,7 @@ sub majversion {
     my $version = shift;
     my $majorrel;
 
-    if ($osver =~ /^\D*(\d*)[.\d]*$/) {
+    if ($osver =~ /^\D*(\d*)[.\d]*.*$/) {
         $majorrel = $1;
     }
 
@@ -141,6 +141,9 @@ sub umount_chroot {
         #only remove the /dev in rootimg directory if it is not a mount point
         system("findmnt $rootimage_dir/dev/ >/dev/null 2>&1 || rm -rf $rootimage_dir/dev/*");
     }
+    
+    #rpm complains "Failed to initialize NSS library" when /dev/urandom does not exist,  leave /dev/urandom
+    use_devurandom();
 }
 
 #check whether a dir is NFS mounted
@@ -183,6 +186,7 @@ GetOptions(
     'onlyinitrd'        => \$onlyinitrd,
     'ignorekernelchk'   => \$ignorekernelchk,
     'noupdate'          => \$noupdate,
+    'env=s'             => \$envar,
 );
 
 if (@ARGV > 0) {
@@ -373,9 +377,13 @@ unless ($onlyinitrd) {
         exit 1;
     } 
 
+    my @envarlist=split(',',$envar);
+    foreach my $entry (@envarlist){
+        my ($key,$value)=split('=',$entry);
+        $ENV{xCAT::Utils->strim($key)}=xCAT::Utils->strim($value);
+    }
 
     mount_chroot($rootimg_dir);
-
     my %pkg_hash = imgutils::get_package_names($pkglist);
 
     my $index = 1;
@@ -782,6 +790,7 @@ if ($postinstall_filename) {
     $ENV{IMG_OTHERPKGLIST}=$otherpkglist if("" ne $otherpkglist);
     $ENV{IMG_OTHERPKGDIR}=$srcdir_otherpkgs if("" ne $srcdir_otherpkgs);
     $ENV{IMG_ROOTIMGDIR}=$rootimg_dir if("" ne $rootimg_dir);
+   
 
     foreach my $postinstall (split /,/, $postinstall_filename) {
         if (!-x $postinstall) {
@@ -1942,7 +1951,6 @@ sub generic_post { #This function is meant to leave the image in a state approxi
     print $cfgfile "tmpfs   /dev/shm tmpfs    defaults       0 0\n";
     print $cfgfile "proc    /proc    proc     defaults       0 0\n";
     print $cfgfile "sysfs   /sys     sysfs    defaults       0 0\n";
-
     if (!&using_systemd($osver)) {
         if ($tmplimit) {
             print $cfgfile "tmpfs   /tmp     tmpfs    defaults,size=$tmplimit       0 2\n";
@@ -2352,6 +2360,18 @@ sub use_devnull {
     }
     if (!-e "$rootimg_dir/dev/null") {
         system("mknod $rootimg_dir/dev/null c 1 3");
+    }
+}
+
+#in rhels7.5, the /dev/urandom does not exist in rootimg directory
+#which cause any rpm command fail with `error: Failed to initialize NSS library`
+#create urandom in genimage to avoid the error
+sub use_devurandom {
+    if (-e "$rootimg_dir/dev/urandom" and !-c "$rootimg_dir/dev/urandom") {
+        system("rm -f $rootimg_dir/dev/urandom");
+    }
+    if (!-e "$rootimg_dir/dev/urandom") {
+        system("mknod -m444 $rootimg_dir/dev/urandom c 1 9");
     }
 }
 

@@ -161,7 +161,7 @@ When the VM has been created and powered on, choose one of the following methods
 * Use **rcons/wcons** on xCAT management node to open text console: ::
 
    chdef vm1 cons=kvm
-   makeconservercf vm1
+   makegocons vm1
    rcons vm1
 
 * Connect to virtual machine through vnc console

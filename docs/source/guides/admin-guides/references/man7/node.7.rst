@@ -19,7 +19,7 @@ SYNOPSIS
 ********
 
 
-\ **node Attributes:**\   \ *addkcmdline*\ , \ *appstatus*\ , \ *appstatustime*\ , \ *arch*\ , \ *authdomain*\ , \ *bmc*\ , \ *bmcpassword*\ , \ *bmcport*\ , \ *bmcusername*\ , \ *bmcvlantag*\ , \ *cfgmgr*\ , \ *cfgmgtroles*\ , \ *cfgserver*\ , \ *chain*\ , \ *chassis*\ , \ *cmdmapping*\ , \ *cons*\ , \ *conserver*\ , \ *consoleondemand*\ , \ *consport*\ , \ *cpucount*\ , \ *cputype*\ , \ *currchain*\ , \ *currstate*\ , \ *dhcpinterfaces*\ , \ *disksize*\ , \ *displayname*\ , \ *dockercpus*\ , \ *dockerflag*\ , \ *dockerhost*\ , \ *dockermemory*\ , \ *dockernics*\ , \ *domainadminpassword*\ , \ *domainadminuser*\ , \ *domaintype*\ , \ *getmac*\ , \ *groups*\ , \ *hcp*\ , \ *height*\ , \ *hidden*\ , \ *hostcluster*\ , \ *hostinterface*\ , \ *hostmanager*\ , \ *hostnames*\ , \ *hosttype*\ , \ *hwtype*\ , \ *id*\ , \ *initrd*\ , \ *installnic*\ , \ *interface*\ , \ *ip*\ , \ *iscsipassword*\ , \ *iscsiserver*\ , \ *iscsitarget*\ , \ *iscsiuserid*\ , \ *kcmdline*\ , \ *kernel*\ , \ *linkports*\ , \ *mac*\ , \ *machinetype*\ , \ *memory*\ , \ *mgt*\ , \ *micbridge*\ , \ *michost*\ , \ *micid*\ , \ *miconboot*\ , \ *micpowermgt*\ , \ *micvlog*\ , \ *migrationdest*\ , \ *modelnum*\ , \ *monserver*\ , \ *mpa*\ , \ *mtm*\ , \ *nameservers*\ , \ *netboot*\ , \ *nfsdir*\ , \ *nfsserver*\ , \ *nicaliases*\ , \ *niccustomscripts*\ , \ *nicdevices*\ , \ *nicextraparams*\ , \ *nichostnameprefixes*\ , \ *nichostnamesuffixes*\ , \ *nicips*\ , \ *nicnetworks*\ , \ *nicsadapter*\ , \ *nictypes*\ , \ *nimserver*\ , \ *node*\ , \ *nodetype*\ , \ *ondiscover*\ , \ *os*\ , \ *osvolume*\ , \ *otherinterfaces*\ , \ *ou*\ , \ *outlet*\ , \ *parent*\ , \ *passwd.HMC*\ , \ *passwd.admin*\ , \ *passwd.celogin*\ , \ *passwd.general*\ , \ *passwd.hscroot*\ , \ *password*\ , \ *pdu*\ , \ *postbootscripts*\ , \ *postscripts*\ , \ *power*\ , \ *pprofile*\ , \ *prescripts-begin*\ , \ *prescripts-end*\ , \ *primarynic*\ , \ *primarysn*\ , \ *productkey*\ , \ *profile*\ , \ *protocol*\ , \ *provmethod*\ , \ *rack*\ , \ *room*\ , \ *routenames*\ , \ *serial*\ , \ *serialflow*\ , \ *serialnum*\ , \ *serialport*\ , \ *serialspeed*\ , \ *servicenode*\ , \ *setupconserver*\ , \ *setupdhcp*\ , \ *setupftp*\ , \ *setupipforward*\ , \ *setupldap*\ , \ *setupnameserver*\ , \ *setupnfs*\ , \ *setupnim*\ , \ *setupntp*\ , \ *setupproxydhcp*\ , \ *setuptftp*\ , \ *sfp*\ , \ *side*\ , \ *slot*\ , \ *slotid*\ , \ *slots*\ , \ *snmpauth*\ , \ *snmppassword*\ , \ *snmpprivacy*\ , \ *snmpusername*\ , \ *snmpversion*\ , \ *status*\ , \ *statustime*\ , \ *storagcontroller*\ , \ *storagetype*\ , \ *supernode*\ , \ *supportedarchs*\ , \ *supportproxydhcp*\ , \ *switch*\ , \ *switchinterface*\ , \ *switchport*\ , \ *switchtype*\ , \ *switchvlan*\ , \ *syslog*\ , \ *termport*\ , \ *termserver*\ , \ *tftpdir*\ , \ *tftpserver*\ , \ *unit*\ , \ *updatestatus*\ , \ *updatestatustime*\ , \ *urlpath*\ , \ *usercomment*\ , \ *userid*\ , \ *username*\ , \ *vmbeacon*\ , \ *vmbootorder*\ , \ *vmcfgstore*\ , \ *vmcluster*\ , \ *vmcpus*\ , \ *vmhost*\ , \ *vmmanager*\ , \ *vmmaster*\ , \ *vmmemory*\ , \ *vmnicnicmodel*\ , \ *vmnics*\ , \ *vmothersetting*\ , \ *vmphyslots*\ , \ *vmstorage*\ , \ *vmstoragecache*\ , \ *vmstorageformat*\ , \ *vmstoragemodel*\ , \ *vmtextconsole*\ , \ *vmvirtflags*\ , \ *vmvncport*\ , \ *webport*\ , \ *xcatmaster*\ , \ *zonename*\ 
+\ **node Attributes:**\   \ *addkcmdline*\ , \ *appstatus*\ , \ *appstatustime*\ , \ *arch*\ , \ *authdomain*\ , \ *authkey*\ , \ *authtype*\ , \ *bmc*\ , \ *bmcpassword*\ , \ *bmcport*\ , \ *bmcusername*\ , \ *bmcvlantag*\ , \ *cfgmgr*\ , \ *cfgmgtroles*\ , \ *cfgserver*\ , \ *chain*\ , \ *chassis*\ , \ *cmdmapping*\ , \ *community*\ , \ *cons*\ , \ *conserver*\ , \ *consoleenabled*\ , \ *consoleondemand*\ , \ *consport*\ , \ *cpucount*\ , \ *cputype*\ , \ *currchain*\ , \ *currstate*\ , \ *dhcpinterfaces*\ , \ *disksize*\ , \ *displayname*\ , \ *dockercpus*\ , \ *dockerflag*\ , \ *dockerhost*\ , \ *dockermemory*\ , \ *dockernics*\ , \ *domainadminpassword*\ , \ *domainadminuser*\ , \ *domaintype*\ , \ *getmac*\ , \ *groups*\ , \ *hcp*\ , \ *height*\ , \ *hidden*\ , \ *hostcluster*\ , \ *hostinterface*\ , \ *hostmanager*\ , \ *hostnames*\ , \ *hosttype*\ , \ *hwtype*\ , \ *id*\ , \ *initrd*\ , \ *installnic*\ , \ *interface*\ , \ *ip*\ , \ *iscsipassword*\ , \ *iscsiserver*\ , \ *iscsitarget*\ , \ *iscsiuserid*\ , \ *kcmdline*\ , \ *kernel*\ , \ *linkports*\ , \ *mac*\ , \ *memory*\ , \ *mgt*\ , \ *micbridge*\ , \ *michost*\ , \ *micid*\ , \ *miconboot*\ , \ *micpowermgt*\ , \ *micvlog*\ , \ *migrationdest*\ , \ *monserver*\ , \ *mpa*\ , \ *mtm*\ , \ *nameservers*\ , \ *netboot*\ , \ *nfsdir*\ , \ *nfsserver*\ , \ *nicaliases*\ , \ *niccustomscripts*\ , \ *nicdevices*\ , \ *nicextraparams*\ , \ *nichostnameprefixes*\ , \ *nichostnamesuffixes*\ , \ *nicips*\ , \ *nicnetworks*\ , \ *nicsadapter*\ , \ *nictypes*\ , \ *nimserver*\ , \ *node*\ , \ *nodetype*\ , \ *ondiscover*\ , \ *os*\ , \ *osvolume*\ , \ *otherinterfaces*\ , \ *ou*\ , \ *outlet*\ , \ *parent*\ , \ *passwd.HMC*\ , \ *passwd.admin*\ , \ *passwd.celogin*\ , \ *passwd.general*\ , \ *passwd.hscroot*\ , \ *password*\ , \ *pdu*\ , \ *pdutype*\ , \ *postbootscripts*\ , \ *postscripts*\ , \ *power*\ , \ *pprofile*\ , \ *prescripts-begin*\ , \ *prescripts-end*\ , \ *primarynic*\ , \ *primarysn*\ , \ *privkey*\ , \ *privtype*\ , \ *productkey*\ , \ *profile*\ , \ *protocol*\ , \ *provmethod*\ , \ *rack*\ , \ *room*\ , \ *routenames*\ , \ *seclevel*\ , \ *serial*\ , \ *serialflow*\ , \ *serialport*\ , \ *serialspeed*\ , \ *servicenode*\ , \ *setupconserver*\ , \ *setupdhcp*\ , \ *setupftp*\ , \ *setupipforward*\ , \ *setupldap*\ , \ *setupnameserver*\ , \ *setupnfs*\ , \ *setupnim*\ , \ *setupntp*\ , \ *setupproxydhcp*\ , \ *setuptftp*\ , \ *sfp*\ , \ *side*\ , \ *slot*\ , \ *slotid*\ , \ *slots*\ , \ *snmpauth*\ , \ *snmppassword*\ , \ *snmpprivacy*\ , \ *snmpuser*\ , \ *snmpusername*\ , \ *snmpversion*\ , \ *status*\ , \ *statustime*\ , \ *storagcontroller*\ , \ *storagetype*\ , \ *supernode*\ , \ *supportedarchs*\ , \ *supportproxydhcp*\ , \ *switch*\ , \ *switchinterface*\ , \ *switchport*\ , \ *switchtype*\ , \ *switchvlan*\ , \ *syslog*\ , \ *termport*\ , \ *termserver*\ , \ *tftpdir*\ , \ *tftpserver*\ , \ *unit*\ , \ *updatestatus*\ , \ *updatestatustime*\ , \ *urlpath*\ , \ *usercomment*\ , \ *userid*\ , \ *username*\ , \ *vmbeacon*\ , \ *vmbootorder*\ , \ *vmcfgstore*\ , \ *vmcluster*\ , \ *vmcpus*\ , \ *vmhost*\ , \ *vmmanager*\ , \ *vmmaster*\ , \ *vmmemory*\ , \ *vmnicnicmodel*\ , \ *vmnics*\ , \ *vmothersetting*\ , \ *vmphyslots*\ , \ *vmstorage*\ , \ *vmstoragecache*\ , \ *vmstorageformat*\ , \ *vmstoragemodel*\ , \ *vmtextconsole*\ , \ *vmvirtflags*\ , \ *vmvncport*\ , \ *webport*\ , \ *xcatmaster*\ , \ *zonename*\ 
 
 
 ***********
@@ -66,6 +66,18 @@ node Attributes:
 \ **authdomain**\  (domain.authdomain)
  
  If a node should participate in an AD domain or Kerberos realm distinct from domain indicated in site, this field can be used to specify that
+ 
+
+
+\ **authkey**\  (pdu.authkey)
+ 
+ The authentication passphrase for SNMPv3
+ 
+
+
+\ **authtype**\  (pdu.authtype)
+ 
+ The authentication protocol(MD5|SHA) to use for SNMPv3.
  
 
 
@@ -191,6 +203,12 @@ node Attributes:
  
 
 
+\ **community**\  (pdu.community)
+ 
+ The community string to use for SNMPv1/v2
+ 
+
+
 \ **cons**\  (nodehm.cons)
  
  The console method. If nodehm.serialport is set, this will default to the nodehm.mgt setting, otherwise it defaults to unused.  Valid values: cyclades, mrv, or the values valid for the mgt attribute.
@@ -200,6 +218,12 @@ node Attributes:
 \ **conserver**\  (nodehm.conserver)
  
  The hostname of the machine where the conserver daemon is running.  If not set, the default is the xCAT management node.
+ 
+
+
+\ **consoleenabled**\  (nodehm.consoleenabled)
+ 
+ A flag field to indicate whether the node is registered in the console server. If '1', console is enabled, if not set, console is not enabled.
  
 
 
@@ -469,12 +493,6 @@ node Attributes:
  
 
 
-\ **machinetype**\  (pdu.machinetype)
- 
- The pdu machine type
- 
-
-
 \ **memory**\  (hwinv.memory)
  
  The size of the memory for the node in MB.
@@ -526,12 +544,6 @@ node Attributes:
 \ **migrationdest**\  (vm.migrationdest)
  
  A noderange representing candidate destinations for migration (i.e. similar systems, same SAN, or other criteria that xCAT can use
- 
-
-
-\ **modelnum**\  (pdu.modelnum)
- 
- The pdu model number
  
 
 
@@ -673,8 +685,7 @@ node Attributes:
 
 \ **nicsadapter**\  (nics.nicsadapter)
  
- Comma-separated list of extra parameters that will be used for each NIC configuration.
-                     <nic1>!<param1=value1 param2=value2>,<nic2>!<param4=value4 param5=value5>, for example, enP3p3s0f1!mac=98:be:94:59:fa:cd linkstate=DOWN,enP3p3s0f2!mac=98:be:94:59:fa:ce candidatename=enP3p3s0f2/enx98be9459face
+ Comma-separated list of NIC information collected by getadapter. <nic1>!<param1=value1 param2=value2>,<nic2>!<param4=value4 param5=value5>, for example, enP3p3s0f1!mac=98:be:94:59:fa:cd linkstate=DOWN,enP3p3s0f2!mac=98:be:94:59:fa:ce candidatename=enP3p3s0f2/enx98be9459face
  
 
 
@@ -786,7 +797,7 @@ node Attributes:
  
 
 
-\ **password**\  (ppchcp.password, mpa.password, websrv.password, switches.sshpassword)
+\ **password**\  (ppchcp.password, mpa.password, websrv.password, pdu.password, switches.sshpassword)
  
  Password of the HMC or IVM.  If not filled in, xCAT will look in the passwd table for key=hmc or key=ivm.  If not in the passwd table, the default used is abc123 for HMCs and padmin for IVMs.
  
@@ -800,6 +811,10 @@ node Attributes:
  
  or
  
+ The remote login password
+ 
+ or
+ 
  The remote login password. It can be for ssh or telnet. If it is for telnet, set protocol to "telnet". If the sshusername is blank, the username, password and protocol will be retrieved from the passwd table with "switch" as the key.
  
 
@@ -807,6 +822,12 @@ node Attributes:
 \ **pdu**\  (pduoutlet.pdu)
  
  a comma-separated list of outlet number for each PDU, ex: pdu1:outlet1,pdu2:outlet1
+ 
+
+
+\ **pdutype**\  (pdu.pdutype)
+ 
+ The type of pdu
  
 
 
@@ -879,6 +900,18 @@ node Attributes:
  
 
 
+\ **privkey**\  (pdu.privkey)
+ 
+ The privacy passphrase to use for SNMPv3.
+ 
+
+
+\ **privtype**\  (pdu.privtype)
+ 
+ The privacy protocol(AES|DES) to use for SNMPv3.
+ 
+
+
 \ **productkey**\  (prodkey.key)
  
  The product key relevant to the aforementioned node/group and product combination
@@ -921,6 +954,12 @@ node Attributes:
  
 
 
+\ **seclevel**\  (pdu.seclevel)
+ 
+ The Security Level(noAuthNoPriv|authNoPriv|authPriv) to use for SNMPv3.
+ 
+
+
 \ **serial**\  (vpd.serial)
  
  The serial number of the node.
@@ -930,12 +969,6 @@ node Attributes:
 \ **serialflow**\  (nodehm.serialflow)
  
  The flow control value of the serial port for this node.  For SOL this is typically 'hard'.
- 
-
-
-\ **serialnum**\  (pdu.serialnum)
- 
- The pdu serial number
  
 
 
@@ -959,7 +992,7 @@ node Attributes:
 
 \ **setupconserver**\  (servicenode.conserver)
  
- Do we set up Conserver on this service node?  Valid values:1 or 0. If 1, configures and starts conserver daemon. If 0, it does not change the current state of the service.
+ Do we set up console service on this service node?  Valid values: 0, 1, or 2. If 0, it does not change the current state of the service. If 1, configures and starts conserver daemon. If 2, configures and starts goconserver daemon.
  
 
 
@@ -1079,13 +1112,23 @@ node Attributes:
  
 
 
+\ **snmpuser**\  (pdu.snmpuser)
+ 
+ The username to use for SNMPv3 communication, ignored for SNMPv1
+ 
+
+
 \ **snmpusername**\  (switches.username)
  
  The username to use for SNMPv3 communication, ignored for SNMPv1
  
 
 
-\ **snmpversion**\  (switches.snmpversion)
+\ **snmpversion**\  (pdu.snmpversion, switches.snmpversion)
+ 
+ The version to use to communicate with switch.  SNMPv1 is assumed by default.
+ 
+ or
  
  The version to use to communicate with switch.  SNMPv1 is assumed by default.
  
@@ -1093,7 +1136,7 @@ node Attributes:
 
 \ **status**\  (nodelist.status)
  
- The current status of this node.  This attribute will be set by xCAT software.  Valid values: defined, booting, netbooting, booted, discovering, configuring, installing, alive, standingby, powering-off, unreachable. If blank, defined is assumed. The possible status change sequences are: For installation: defined->[discovering]->[configuring]->[standingby]->installing->booting->booted->[alive],  For diskless deployment: defined->[discovering]->[configuring]->[standingby]->netbooting->booted->[alive],  For booting: [alive/unreachable]->booting->[alive],  For powering off: [alive]->powering-off->[unreachable], For monitoring: alive->unreachable. Discovering and configuring are for x Series discovery process. Alive and unreachable are set only when there is a monitoring plug-in start monitor the node status for xCAT. Note that the status values will not reflect the real node status if you change the state of the node from outside of xCAT (i.e. power off the node using HMC GUI).
+ The current status of this node.  This attribute will be set by xCAT software.  Valid values: defined, booting, netbooting, booted, discovering, configuring, installing, alive, standingby, powering-off, unreachable. If blank, defined is assumed. The possible status change sequences are: For installation: defined->[discovering]->[configuring]->[standingby]->installing->booting->[postbooting]->booted->[alive],  For diskless deployment: defined->[discovering]->[configuring]->[standingby]->netbooting->[postbooting]->booted->[alive],  For booting: [alive/unreachable]->booting->[postbooting]->booted->[alive],  For powering off: [alive]->powering-off->[unreachable], For monitoring: alive->unreachable. Discovering and configuring are for x Series discovery process. Alive and unreachable are set only when there is a monitoring plug-in start monitor the node status for xCAT. Note that the status values will not reflect the real node status if you change the state of the node from outside of xCAT (i.e. power off the node using HMC GUI).
  
 
 
@@ -1231,7 +1274,7 @@ node Attributes:
  
 
 
-\ **username**\  (ppchcp.username, mpa.username, websrv.username, switches.sshusername)
+\ **username**\  (ppchcp.username, mpa.username, websrv.username, pdu.username, switches.sshusername)
  
  Userid of the HMC or IVM.  If not filled in, xCAT will look in the passwd table for key=hmc or key=ivm.  If not in the passwd table, the default used is hscroot for HMCs and padmin for IVMs.
  
@@ -1242,6 +1285,10 @@ node Attributes:
  or
  
  Userid to use to access the web service.
+ 
+ or
+ 
+ The remote login user name
  
  or
  

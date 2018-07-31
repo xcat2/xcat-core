@@ -13,20 +13,20 @@ use File::Copy;
 use Data::Dumper;
 use Getopt::Long qw(:config no_ignore_case);
 
-my $help      = 0;    #command line attribute '-h', get usage information
-my $test      = 0;    #command line attribute '-T'
-my $hierarchy = 0;
-my $verbose   = 0;    #command line attribute '-V'
-my $noderange;        #command line attribute '-n'
-my $output = "stdout"; #used by probe_utils->send_msg("$output", "o", "xxxxxxxxxx"); print output to STDOUT
-my $rst    = 0;        #the exit code of current command
-my $terminal = 0;      #means get INT signal from STDIN
+my $help        = 0;        #command line attribute '-h', get usage information
+my $test        = 0;        #command line attribute '-T'
+my $hierarchy   = 0;
+my $verbose     = 0;        #command line attribute '-V'
+my $noderange;              #command line attribute '-n'
+my $output      = "stdout"; #used by probe_utils->send_msg("$output", "o", "xxxxxxxxxx"); print output to STDOUT
+my $rst         = 0;        #the exit code of current command
+my $terminal    = 0;        #means get INT signal from STDIN
 my $installnic;
 
-#save all output from commands running on SNs and MN
-# one example:
-# $summaryoutput{mn} = @mn_output_history
-# $summaryoutput{SN1} = @SN1_output_history
+# Save all output from commands running on SNs and MN
+# Example:
+#    $summaryoutput{mn} = @mn_output_history
+#    $summaryoutput{SN1} = @SN1_output_history
 my %summaryoutput;
 
 my $is_sn;
@@ -57,10 +57,12 @@ sub do_main_job {
     my $checkpoint;
     my $rc = 0;
     my $installnicip;
+    my $flag = "w";
 
-    #check if all xcat deamons are running
-    $rst        = check_all_xcat_deamons(\$checkpoint, \@error);
-    print_check_result($checkpoint, "f", $rst, \@error);
+    #check if all xcat daemons are running
+    ($rst, $flag) = check_all_xcat_daemons(\$checkpoint, \@error);
+    print_check_result($checkpoint, $flag, $rst, \@error);
+    $rst = 0 if ($flag == "w");
     return $rst if ($rst);
 
     #check if xcatd can receive request
@@ -119,6 +121,11 @@ sub do_main_job {
     print_check_result($checkpoint, "f", $rst, \@error);
     $rc |= $rst;
 
+    #check rsyslog service
+    $rst        = check_rsyslog_service(\$checkpoint, \@error);
+    print_check_result($checkpoint, "f", $rst, \@error);
+    $rc |= $rst;
+
     #Below are the 'warning` level check points
 
     #check if firewall is close
@@ -131,9 +138,28 @@ sub do_main_job {
     print_check_result($checkpoint, "w", $rst, \@error);
     $rc |= $rst;
 
+    #check linux ulimits configuration
+    ($rst, $flag) = check_ulimits(\$checkpoint, \@error);
+    print_check_result($checkpoint, $flag, $rst, \@error);
+    $rc |= $rst;
+
+    #check network parameter configuration
+    ($rst, $flag) = check_network_parameter(\$checkpoint, \@error);
+    print_check_result($checkpoint, $flag, $rst, \@error);
+    $rc |= $rst;
 
     #some sepecific check points in MN
     if (!$is_sn) {
+
+        #check xCAT daemon attributes configuration
+        ($rst, $flag) = check_daemon_attributes(\$checkpoint, \@error);
+        print_check_result($checkpoint, $flag, $rst, \@error);
+        $rc |= $rst;
+
+        #check if log can be recorded in log file
+        $rst        = check_log_record(\$checkpoint, \@error);
+        print_check_result($checkpoint, "w", $rst, \@error);
+        $rc |= $rst;
 
         #check if server ip is a static ip in MN
         $rst = check_server_ip_static($installnicip,\$checkpoint, \@error);
@@ -257,15 +283,16 @@ sub print_check_result {
 
 }
 
-sub check_all_xcat_deamons {
+sub check_all_xcat_daemons {
     my $checkpoint_ref =  shift;
     my $error_ref = shift;
     my $rst = 0;
+    my $rst_type = "f";
 
-    $$checkpoint_ref = "Checking all xCAT deamons are running...";
+    $$checkpoint_ref = "Checking all xCAT daemons are running...";
     @$error_ref = ();
 
-    my @deamon_list = ("SSL listener",
+    my @daemon_list = ("SSL listener",
         "DB Access",
         "UDP listener",
         "install monitor",
@@ -273,14 +300,28 @@ sub check_all_xcat_deamons {
         "Command log writer");
 
     my $output = `ps aux 2>&1|grep -v grep|grep xcatd`;
-    foreach my $deamon (@deamon_list) {
-        if ($output !~ /$deamon/) {
-            push @$error_ref, "Deamon '$deamon' isn't running";
+    foreach my $daemon (@daemon_list) {
+        my $counter = $output =~ s/$daemon/$daemon/g;
+        if ($counter > 1) {
+            if ($daemon == "SSL listener")  {
+                my $cur_pid = `cat /var/run/xcatd.pid`;
+                my @ssl_pids = `ps aux 2>&1|grep -v grep|grep "xcatd: $daemon"|awk -F' ' '{print \$2}'`; 
+                foreach my $ssl_pid (@ssl_pids) {
+                    next if ($cur_pid == $ssl_pid);
+                    my $child_pid = `ps --ppid $ssl_pid 2>&1 | grep "xcatd SSL:" | wc -l`;
+                    chomp($child_pid);
+                    $rst_type = "w" if ($child_pid);
+                }
+            }
+            push @$error_ref, "More Daemon '$daemon' is running";
+            $rst = 1;
+        } elsif ($counter == 0) {
+            push @$error_ref, "Daemon '$daemon' isn't running";
             $rst = 1;
         }
     }
 
-    return $rst;
+    return ($rst, $rst_type);
 }
 
 sub check_xcatd_receive_request {
@@ -699,6 +740,97 @@ sub check_tftp_service {
     return $rst;
 }
 
+sub check_rsyslog_service {
+    my $checkpoint_ref =  shift;
+    my $error_ref = shift;
+    my $rst       = 0;
+
+    $$checkpoint_ref = "Checking rsyslog service is configured...";
+    @$error_ref = ();
+
+    my $error;
+    if (!probe_utils->is_rsyslog_ready(\$error)) {
+        push @$error_ref, "$error";
+        $rst = 1;
+    }
+    return $rst;
+}
+
+sub check_log_record {
+    my $checkpoint_ref =  shift;
+    my $error_ref = shift;
+    my $rst   = 0;
+
+    my $log_file = "/var/log/xcat/cluster.log";
+    $$checkpoint_ref = "Checking xCAT log is stored in $log_file...";
+    @$error_ref = ();
+
+    unless (-e $log_file) {
+        my $os_ver = `cat /etc/*release* 2>&1`;
+        if ($os_ver =~ /suse/i and $os_ver =~ /VERSION=\"11.*\"/) {
+            return 2;
+        } else {
+            push @$error_ref, "No log file $log_file found";
+            return 1;
+        }
+    }
+
+    my @snlist = xCAT::ServiceNodeUtils->getAllSN();
+    my $service_nodes = join(",", @snlist);
+
+    my $start_time = time();
+    my $log_msg = "xcatprobe rsyslog checking $start_time";
+    my @valid_nodes;
+
+    `logger -p local4.info -t xcat $log_msg on MN 2>&1`;
+    if ($?) {
+        push @$error_ref, "Failed to run command 'logger' on MN"; 
+        $rst = 1;
+        return $rst;
+    }
+    sleep(5);
+
+    my @mn_grep_logs = `grep "$log_msg on MN" $log_file`;
+    unless (@mn_grep_logs) {
+        push @$error_ref, "Failed to store MN logs to $log_file";
+        $rst = 1;
+        return $rst;
+    }
+
+    my @invld_nodes = ();
+    my @output = `xdsh $service_nodes -s "logger -p local4.info -t xcat $log_msg on SN && echo OKAY" 2>&1`;
+
+    foreach my $line (@output) {
+        chomp($line);
+        if ($line =~ /(\w+): OKAY/) {
+            push @valid_nodes, $1;
+        } elsif ($line =~ /(\w+): ssh: connect to host .+ No route to host/) {
+            push @invld_nodes, $1;
+        }
+    }
+    sleep(5);
+
+    my @grep_logs = `grep "$log_msg on SN" $log_file | grep -v "Allowing" | grep -v "dispatch"`;
+    foreach my $grep_log (@grep_logs) {
+        if ($grep_log =~ /.+ \d+:\d+:\d+ (\w+) xcat:  $log_msg on SN/) {
+            push @checked_nodes, $1;
+        }
+    }
+
+    my %hash_pass = map{$_=>1} @checked_nodes;
+    my @error_nodes = grep {!$hash_pass{$_}} @valid_nodes;
+    if (@error_nodes) {
+        push @$error_ref, "Failed to store logs come from " . join(",", @error_nodes) . " to $log_file on MN";
+        $rst = 1;
+    }
+    if (@invld_nodes) {
+        push @$error_ref, "Failed to connect SN " . join(",", @invld_nodes);
+        $rst = 1;
+    }
+
+    return $rst;
+}
+
 sub check_ntp_service{
     my $checkpoint_ref =  shift;
     my $error_ref = shift;
@@ -816,7 +948,7 @@ sub check_dhcp_service {
             # on sn, just check dhcpd service whether running
             my $dhcpoutput = `ps aux 2>&1| grep dhcpd |grep -v grep`;
             if (!$dhcpoutput) {
-                push @$error_ref, "There isn't 'dhcpd' deamon in current server";
+                push @$error_ref, "There isn't 'dhcpd' daemon in current server";
                 $rst = 1;
             }
         } else {
@@ -941,6 +1073,111 @@ sub check_dhcp_leases {
     return $rst;
 }
 
+sub check_ulimits {
+    my $checkpoint_ref = shift;
+    my $error_ref      = shift;
+    my $rst            = 0;
+    my $rst_type       = "w";
+
+    $$checkpoint_ref = "Checking Linux ulimits configuration...";
+    @$error_ref = (); 
+
+    my $nofile_num = `sh -c 'ulimit -n' 2>&1`;
+    chomp($nofile_num);
+
+    my $process_id = `cat /var/run/xcatd.pid`;
+    chomp($process_id);
+    my $process_folder = "/proc/$process_id/fd/";
+
+    my $open_num = 0;
+    $open_num = `ls $process_folder | wc -l` if (-e $process_folder);
+    chomp($open_num);
+    return ($rst, $rst_type) unless($open_num);
+
+    my $percent = $open_num/$nofile_num;
+    unless ($percent < 0.8) {
+        push @$error_ref, "The number of open files is not enough for xcatd service, increase the limits for it according to xCAT document";
+        $rst = 1;
+        if ($percent >= 1) {
+            $rst_type = "f"; 
+        }
+    }
+    return ($rst, $rst_type);
+}
+
+sub check_network_parameter {
+    my $checkpoint_ref = shift;
+    my $error_ref      = shift;
+    my $rst            = 0;
+    my $rst_type       = "w";
+
+    $$checkpoint_ref = "Checking network kernel parameter configuration...";
+    @$error_ref = ();
+
+    my $net_set_file = "/etc/sysctl.conf";
+    my $net_gc_thresh = 512;
+    my $net_set_value = `sysctl -n net.ipv4.neigh.default.gc_thresh2`;
+    chomp($net_set_value);
+    $net_gc_thresh = $net_set_value if ($net_set_value);
+
+    my $arp_num = `arp -a | wc -l`;
+    chomp($arp_num);
+
+    my $percent = $arp_num/$net_gc_thresh;
+    unless ($percent < 0.8) {
+        push @$error_ref, "Most ARP has been used, please tuning network parameter as document";
+        $rst = 1;
+        if ($percent >= 1) {
+            $rst_type = "f";
+        }
+    }
+    return ($rst, $rst_type);
+}
+
+sub get_attribute_value  {
+    my  $table = shift;
+    my  $attr = shift;
+
+    my $cmd_value = "";
+    my $command_info = `lsdef -t  $table -i $attr -c 2>&1`; 
+    if ($command_info =~ /$attr=(\d+)/) {
+        $cmd_value = $1
+    }
+    print_check_result("Checking $table table attribute... $attr=$cmd_value", 0, 0, \@error);
+    return $cmd_value
+}
+
+
+sub check_daemon_attributes {
+    my $checkpoint_ref = shift;
+    my $error_ref      = shift;
+    my $rst            = 0;
+    $rst_type          = "w";
+    my $node_limit     = 500;
+    $$checkpoint_ref = "Checking xCAT daemon attributes configuration...";
+    @$error_ref = ();
+
+    my $node_num = `nodels 2>&1 | wc -l`;
+    chomp($node_num);
+    my $xcatmaxconnections = 64;
+    my $xcatmaxbatchconnections = 50;
+    my $xcatmaxconnections_site = get_attribute_value("site","xcatmaxconnections");
+    my $xcatmaxbatchconnections_site = get_attribute_value("site","xcatmaxbatchconnections");
+    if ($xcatmaxconnections_site != "" and $xcatmaxbatchconnections_site != "") {
+        if ($xcatmaxbatchconnections_site > $xcatmaxconnections_site) {
+            push @$error_ref, "Error:  xcatmaxbatchconnections > xcatmaxconnections";
+            $rst = 1;
+            $rst_type = "f";
+        } elsif ($xcatmaxconnections_site < $xcatmaxconnections or 
+                 $xcatmaxbatchconnections_site < $xcatmaxbatchconnections and
+                 $node_num >= $node_limit) {
+            push @$error_ref, "Detected >= $node_limnit nodes, refer to xCAT documentation for xCAT daemon tuning recommendations.";
+            $rst = 1;
+        }
+    }
+    return ($rst, $rst_type);
+} 
+
 sub returncmdoutput {
     my $rst       = shift;
     my $error_ref = shift;
@@ -1034,7 +1271,7 @@ while ($hierarchy_instance->read_reply(\%reply_cache)) {
 
                 #print ">>>$reply_cache{$servers}->[$_]<<<\n";
                 #For cases like below:
-                #c910f02c04p04: [ok]     :All xCAT deamons are running
+                #c910f02c04p04: [ok]     :All xCAT daemons are running
                 if ($reply_cache{$servers}->[$_] =~ /^(\w+)\s*:\s*(\[\w+\]\s*):\s*(.*)/) {
                     if ("$1" eq "$server") {
                         $logmsg = "$2: $3";

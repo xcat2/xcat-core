@@ -45,3 +45,4 @@ vsftpd
 wget
 xz
 rsyslog
+ethtool

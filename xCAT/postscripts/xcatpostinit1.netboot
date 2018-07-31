@@ -34,7 +34,7 @@ status)
 stop)
   echo -n "nothing to stop "
   logger -t xcat -p local4.info "nothing to stop"
-  grep nonodestatus /proc/cmdline 2>/dev/null || [ -n "$XCATSERVER" ] &&  /xcatpost/updateflag.awk $XCATSERVER 3002 "installstatus powering-off" 
+  grep nonodestatus /proc/cmdline 2>/dev/null || [ -n "$XCATSERVER" ] &&  /xcatpost/updateflag.awk $XCATSERVER 3002 "installstatus powering-off"
   ;;
 start)
         # Node is stateless by default
@@ -56,10 +56,12 @@ start)
         # Test for script existance
         if ! [ -x "$SCRIPT" ]; then
             msg "can't locate executable $SCRIPT"
+            grep nonodestatus /proc/cmdline 2>/dev/null || [ -n "$XCATSERVER" ] &&  /xcatpost/updateflag.awk $XCATSERVER 3002 "installstatus failed"
             exit -1
         fi
 
         # Run $SCRIPT according to node type
+        grep nonodestatus /proc/cmdline 2>/dev/null || [ -n "$XCATSERVER" ] &&  /xcatpost/updateflag.awk $XCATSERVER 3002 "installstatus postbooting"
         if [ $STATELITE -ne 0 ]; then
             logger -t xcat -p local4.info "Call $SCRIPT for statelite mode"
             "$SCRIPT" 4

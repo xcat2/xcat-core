@@ -7,8 +7,8 @@ RewriteCond %{HTTPS} !=on
 RewriteRule ^/?xcatws/(.*) https://%{SERVER_NAME}/xcatws/$1 [R,L]
 RewriteRule ^/?xcatwsv2/(.*) https://%{SERVER_NAME}/xcatwsv2/$1 [R,L]
 
-<Files (xcatws.cgi|zvmxcatws.cgi)>
+<FilesMatch "^(xcatws.cgi|zvmxcatws.cgi)$">
     Order allow,deny
     Allow from all
-</Files>
+</FilesMatch>
 

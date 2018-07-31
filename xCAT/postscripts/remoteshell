@@ -56,8 +56,6 @@ then
         #delete all occurance of the attribute and then add xCAT settings
         sed -i '/X11Forwarding /'d /etc/ssh/sshd_config
         echo "X11Forwarding yes" >>/etc/ssh/sshd_config
-        sed -i '/KeyRegenerationInterval /'d /etc/ssh/sshd_config
-        echo "KeyRegenerationInterval 0" >>/etc/ssh/sshd_config
         sed -i '/MaxStartups /'d /etc/ssh/sshd_config
         echo "MaxStartups 1024" >>/etc/ssh/sshd_config
  
@@ -461,6 +459,73 @@ then
      ssh-keygen -y -f /root/.ssh/id_rsa > /root/.ssh/id_rsa.pub
      logger -t xcat -p local4.err  remoteshell:transfer of the id_rsa.pub key failed. Had to generate a public key. 
     fi
+  fi
+fi
+
+# if secureroot is enabled then we get root password hash, not for updatenode
+if [ "x$SECUREROOT" = "x1" ] && [ "x$UPDATENODE" != "x1" ]; then
+  logger -t xcat -p local4.info "remoteshell: secure root is enabled"
+  if [ $useflowcontrol = "1" ]; then
+    logger -t xcat -p local4.info "remoteshell: sending xcatflowrequest $master 3001"
+    /$xcatpost/xcatflowrequest $master 3001
+    rc=$?
+    if [ $rc -ne 0 ]; then
+      logger -t xcat -p local4.info "remoteshell: error from xcatflowrequest (rc=$rc), will not use flow control"
+      useflowcontrol=0
+    fi
+  fi
+  getcredentials.awk xcat_secure_pw:root | grep -E -v '</{0,1}xcatresponse>|</{0,1}serverdone>'|sed -e 's/&lt;/</' -e 's/&gt;/>/' -e 's/&amp;/&/' -e 's/&quot/"/' -e "s/&apos;/'/" > /tmp/secure_root_hash
+
+  logger -t xcat -p local4.info "remoteshell: gathering password hash for root"
+  #check whether the message is an error or not
+  grep -E '<error>' /tmp/secure_root_hash > /dev/null
+  if [ $? -ne 0 ]; then
+	#The message contains the data we request
+    rootpwhash=`cat /tmp/secure_root_hash | grep -E '</{0,1}content>' | sed -n 's%.*<content>\(.*\)</content>.*%\1%p'`
+
+    MAX_RETRIES=10
+    RETRY=0
+    while [ -z "$rootpwhash" ]; do
+      if [ $useflowcontrol = "0" ]; then
+        let SLI=$RANDOM%10
+        let SLI=SLI+10
+        sleep $SLI
+      fi
+      RETRY=$(($RETRY+1))
+      if [ $RETRY -eq $MAX_RETRIES ]; then
+        ERR_MSG="Too many retries"
+        break
+      fi
+      if [ $useflowcontrol = "1" ]; then
+        #first contact daemon  xcatflowrequest <server> 3001
+        logger -t xcat -p local4.info "remoteshell: sending xcatflowrequest $master 3001"
+        /$xcatpost/xcatflowrequest $master 3001
+        rc=$?
+        if [ $rc -ne 0 ]; then
+          logger -t xcat -p local4.info "remoteshell: error from xcatflowrequest (rc=$rc), will not use flow control"
+          useflowcontrol=0
+        fi
+      fi
+      getcredentials.awk xcat_secure_pw:root | grep -E -v '</{0,1}xcatresponse>|</{0,1}serverdone>'|sed -e 's/&lt;/</' -e 's/&gt;/>/' -e 's/&amp;/&/' -e 's/&quot/"/' -e "s/&apos;/'/" > /tmp/secure_root_hash
+      grep -E '<error>' /tmp/secure_root_hash > /dev/null
+      if [ $? -ne 0 ]; then
+        rootpwhash=`cat /tmp/secure_root_hash | grep -E '</{0,1}content>' | sed -n 's%.*<content>\(.*\)</content>.*%\1%p'`
+      else
+        ERR_MSG=`sed -n 's%.*<error>\(.*\)</error>.*%\1%p' /tmp/secure_root_hash`
+        break
+      fi
+	done
+    if [ -n "$rootpwhash" ]; then
+      #updat shadow
+      usermod -p "$rootpwhash" root
+    fi
+  else
+	#This is an error message
+	ERR_MSG=`sed -n 's%.*<error>\(.*\)</error>.*%\1%p' /tmp/secure_root_hash`
+  fi
+  rm /tmp/secure_root_hash
+  if [ "x" != "x$ERR_MSG" ]; then
+    logger -t xcat -p local4.err "Failed to acquire secure root password: $ERR_MSG"
   fi
 fi
 

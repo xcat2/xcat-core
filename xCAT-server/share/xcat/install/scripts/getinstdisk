@@ -37,13 +37,19 @@ if [ -z "$install_disk" ]; then
 
     # Get all partitions and disks from /proc/partitions file
     if [ -z "$has_awk" ]; then
-        entries=$(cat /proc/partitions | sed 's/  */ /g' | cut -d " " -f5 | grep -v "name" | grep -e "[s|h|v]d.*$")
+        entries=$(cat /proc/partitions | sed 's/  */ /g' | cut -d " " -f5 | grep -v "name" | grep -E '^[s|h|v]d|nvme')
     else
-        entries=$(awk -F ' '  '{print $4}' /proc/partitions | grep -v "name" | grep -e "[s|h|v]d.*$")
+        entries=$(awk -F ' '  '{print $4}' /proc/partitions | grep -v "name" | grep -E '^[s|h|v]d|nvme')
     fi    
 
     # Classify entries by DEVTYPE
     for entry in $entries; do
+        DEVSIZE=$(udevadm info --attribute-walk --name=$entry|grep size| sed -e 's/[^"]*"//' -e 's/"//'|tail -n 1)
+        if [ -z "$DEVSIZE" -o $DEVSIZE -lt 262144 ]; then
+            # ignore small devices, that are likely remote media or similar
+            continue
+        fi
+
         if [ -z "$has_awk" ]; then
             dev_type=$(udevadm info --query=property --name=/dev/$entry | grep -i "DEVTYPE" | cut -d "=" -f2 | $utolcmd)
         else

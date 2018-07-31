@@ -4,7 +4,7 @@ B<rspconfig> - Configures nodes' service processors
 
 =head1 SYNOPSIS
 
-B<rspconfig> [B<-h>|B<--help>|B<-v>|B<--version>]
+B<rspconfig> [B<-h>|B<--help>|B<-v>|B<--version>|B<-V>|B<--verbose>]
 
 =head2 BMC/MPA specific:
 
@@ -24,9 +24,45 @@ B<rspconfig> I<noderange> B<garp>=I<time>
 
 =head2 OpenBMC specific:
 
-B<rspconfig> I<noderange> {B<ipsrc>|B<ip>|B<netmask>|B<gateway>|B<hostname>|B<vlan>|B<sshcfg>}
+B<rspconfig> I<noderange> {B<ipsrc>|B<ip>|B<netmask>|B<gateway>|B<vlan>}
 
-B<rspconfig> I<noderange> B<dump> [B<-l>|B<--list>] [B<-g>|B<--generate>] [B<-c>|B<--clear> {I<id>|B<all>}] [B<-d>|B<--download> I<id>]
+B<rspconfig> I<noderange> B<admin_passwd>={I<currentpasswd,newpasswd>}
+
+B<rspconfig> I<noderange> B<autoreboot>
+
+B<rspconfig> I<noderange> B<autoreboot={0|1}>
+
+B<rspconfig> I<noderange> B<bootmode>
+
+B<rspconfig> I<noderange> B<bootmode={safe|regular|setup}>
+
+B<rspconfig> I<noderange> B<dump> [B<-l>|B<--list>] [B<-g>|B<--generate>] [B<-c>|B<--clear> {I<id> | B<all>}] [B<-d>|B<--download> {I<id> | B<all>}]
+
+B<rspconfig> I<noderange> B<gard -c|--clear>
+
+B<rspconfig> I<noderange> B<ip=dhcp>
+
+B<rspconfig> I<noderange> B<hostname>
+
+B<rspconfig> I<noderange> B<hostname>={* | I<name>}
+
+B<rspconfig> I<noderange> B<ntpservers>
+
+B<rspconfig> I<noderange> B<ntpservers>={I<ntpservers>}
+
+B<rspconfig> I<noderange> B<powerrestorepolicy>
+
+B<rspconfig> I<noderange> B<powerrestorepolicy={always_on|restore|always_off}>
+
+B<rspconfig> I<noderange> B<powersupplyredundancy>
+
+B<rspconfig> I<noderange> B<powersupplyredundancy={disabled|enabled}>
+
+B<rspconfig> I<noderange> B<sshcfg>
+
+B<rspconfig> I<noderange> B<timesyncmethod>
+
+B<rspconfig> I<noderange> B<timesyncmethod={manual|ntp}>
 
 =head2 MPA specific:
 
@@ -86,9 +122,9 @@ B<rspconfig> I<noderange> B<HMC_passwd>={I<currentpasswd,newpasswd>}
 
 B<rspconfig> I<noderange> B<admin_passwd>={I<currentpasswd,newpasswd>}
 
-B<rspconfig> I<noderange> B<general_passwd>={B<currentpasswd,newpasswd>}
+B<rspconfig> I<noderange> B<general_passwd>={I<currentpasswd,newpasswd>}
 
-B<rspconfig> I<noderange> *B<_passwd>={B<currentpasswd,newpasswd>}
+B<rspconfig> I<noderange> *B<_passwd>={I<currentpasswd,newpasswd>}
 
 B<rspconfig> I<noderange> {I<hostname>}
 
@@ -141,9 +177,9 @@ B<rspconfig> I<noderange> B<HMC_passwd>={I<currentpasswd,newpasswd>}
 
 B<rspconfig> I<noderange> B<admin_passwd>={I<currentpasswd,newpasswd>}
 
-B<rspconfig> I<noderange> B<general_passwd>={B<currentpasswd,newpasswd>}
+B<rspconfig> I<noderange> B<general_passwd>={I<currentpasswd,newpasswd>}
 
-B<rspconfig> I<noderange> *B<_passwd>={B<currentpasswd,newpasswd>}
+B<rspconfig> I<noderange> *B<_passwd>={I<currentpasswd,newpasswd>}
 
 B<rspconfig> I<noderange> {B<sysname>}
 
@@ -177,9 +213,9 @@ B<rspconfig> I<noderange> B<HMC_passwd>={I<currentpasswd,newpasswd>}
 
 B<rspconfig> I<noderange> B<admin_passwd>={I<currentpasswd,newpasswd>}
 
-B<rspconfig> I<noderange> B<general_passwd>={B<currentpasswd,newpasswd>}
+B<rspconfig> I<noderange> B<general_passwd>={I<currentpasswd,newpasswd>}
 
-B<rspconfig> I<noderange> *B<_passwd>={B<currentpasswd,newpasswd>}
+B<rspconfig> I<noderange> *B<_passwd>={I<currentpasswd,newpasswd>}
 
 B<rspconfig> I<noderange> {B<frame>}
 
@@ -266,6 +302,10 @@ Change the passwords of the userids B<HMC>, B<admin> and B<general> for CEC/Fram
 
 The NTP update frequency (in minutes).
 
+=item B<gard -c|--clear>
+
+Clear gard file. [OpenBMC]
+
 =item B<garp>=I<time>
 
 Get or set Gratuitous ARP generation interval. The unit is number of 1/2 second.
@@ -326,9 +366,25 @@ Select whether each memory bank should be enabled or disabled. State changes tak
 
 The subnet mask.
 
+=item B<powerrestorepolicy>
+
+Display or control BMC Power Restore Policy attribute setting. [OpenBMC]
+
+=item B<powersupplyredundancy>
+
+Display or control BMC Power Supply Redundancy attribute setting. [OpenBMC]
+
+=item B<autoreboot>
+
+Display or control BMC Auto Reboot attribute setting. [OpenBMC]
+
+=item B<bootmode>
+
+Display or control BMC Boot Mode attribute setting. [OpenBMC]
+
 =item B<dump>
 
-Manage OpenBMC system dumps. If no sub-option is provided, will generate, wait, and download the dump.
+Generate/Manage BMC system dumps. If no sub-option is provided, will generate, wait, and download the dump. [OpenBMC]
 
 =over 4
 
@@ -342,9 +398,13 @@ B<-l> will list all the generated dumps on the BMC.
 B<-g> will generate a new dump on the BMC. Dump generation can take a few minutes. 
 
 =item
-B<-d> will download a single dump from the BMC to /var/log/xcat/dump on management or service node.
+B<-d> will download a single dump or all generated dumps from the BMC to /var/log/xcat/dump on management or service node.
 
 =back
+
+=item B<timesyncmethod>
+
+Set the method for time synchronization on the BMC. [OpenBMC]
 
 =item B<network>={[I<ip>],[I<host>],[I<gateway>],[I<netmask>]|*}
 
@@ -378,6 +438,10 @@ Enable or disable NTP (enable|disable).
 =item B<ntpserver>
 
 Get or set NTP server IP address or name.
+
+=item B<ntpservers>
+
+Get or set NTP servers name. [OpenBMC]
 
 =item B<pd1>={B<nonred>|B<redwoperf>|B<redwperf>}
 

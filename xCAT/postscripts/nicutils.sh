@@ -28,6 +28,16 @@ uniq="uniq"
 xargs="xargs"
 modprobe="modprobe"
 
+#########################################################################
+# ifdown/ifup will not be executed in diskful provision postscripts stage 
+#########################################################################
+reboot_nic_bool=1
+if [ -z "$UPDATENODE" ] || [ $UPDATENODE -ne 1 ] ; then
+    if [ "$NODESETSTATE" = "install" ] && ! grep "REBOOT=TRUE" /opt/xcat/xcatinfo >/dev/null 2>&1; then
+        reboot_nic_bool=0
+    fi
+fi
+
 ######################################################
 #
 # log lines
@@ -77,7 +87,7 @@ function log_lines {
 function log_error {
     local __msg="$*"
     $log_print_cmd $log_print_arg "[E]:Error: $__msg" 
-    return 0
+    return 1
 }
 
 ######################################################
@@ -885,7 +895,7 @@ function create_bridge_interface {
     local _pretype=""
     local _port=""  #pre nic
     local _mtu=""
-
+    rc=0
     # parser input arguments
     while [ -n "$1" ];
     do
@@ -970,8 +980,10 @@ function create_bridge_interface {
          inattrs="$cfg"
 
     # bring up interface formally
-    lines=`$ifdown $ifname; $ifup $ifname`
-    rc=$?
+    if [ $reboot_nic_bool -eq 1 ]; then
+        lines=`$ifdown $ifname; $ifup $ifname`
+        rc=$?
+    fi
     if [ $rc -ne 0 ]; then
         log_warn "ifup $ifname failed with return code equals to $rc"
         echo "$lines" \
@@ -1062,8 +1074,10 @@ function create_ethernet_interface {
         inattrs="$cfg"
 
     # bring up interface formally
-    true || lines=`$ifdown $ifname; $ifup $ifname`
-    rc=$?
+    if [ $reboot_nic_bool -eq 1 ]; then
+        lines=`$ifdown $ifname; $ifup $ifname`
+        rc=$?
+    fi
     if [ $rc -ne 0 ]; then
         log_warn "ifup $ifname failed with return code equals to $rc"
         echo "$lines" \
@@ -1188,8 +1202,10 @@ function create_vlan_interface {
         inattrs="$cfg"
     if [ x$xcatnet != x ]; then
         # bring up interface formally
-        lines=`$ifdown $ifname.$vlanid; $ifup $ifname.$vlanid`
-        rc=$?
+        if [ $reboot_nic_bool -eq 1 ]; then
+            lines=`$ifdown $ifname.$vlanid; $ifup $ifname.$vlanid`
+            rc=$?
+        fi
         if [ $rc -ne 0 ]; then
             log_warn "ifup $ifname.$vlanid failed with return code equals to $rc"
             echo "$lines" \
@@ -1486,8 +1502,10 @@ function create_bond_interface {
         xcatnet=$xcatnet \
         inattrs="$cfg"
     if [ x$xcatnet != x ]; then
-        lines=`$ifdown $ifname; $ifup $ifname 2>&1`
-        rc=$?
+        if [ $reboot_nic_bool -eq 1 ]; then
+            lines=`$ifdown $ifname; $ifup $ifname 2>&1`
+            rc=$?
+        fi
         if [ $rc -ne 0 ]; then
             log_warn "ifup $ifname failed with return code equals to $rc"
             echo "$lines" \

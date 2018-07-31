@@ -1,0 +1,15 @@
+bash
+ifupdown
+nfs-common
+openssl
+isc-dhcp-client
+libc-bin
+openssh-server
+openssh-client
+wget
+vim
+rsync
+busybox-static
+gawk
+dnsutils
+chrony

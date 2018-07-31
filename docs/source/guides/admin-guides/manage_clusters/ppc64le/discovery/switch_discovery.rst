@@ -54,9 +54,24 @@ After switches are defined, the server node can be predefined with the following
     chdef cn1 mgt=ipmi cons=ipmi ip=10.0.101.1 bmc=50.0.101.1 netboot=petitboot installnic=mac primarynic=mac
     chdef cn1 switch=switch1 switchport=0
 
+
+**[Optional]** If more configuration planed to be done on BMC, the following command is also needed. ::
+
+    chdef cn1 bmcvlantag=<vlanid>                 # tag VLAN ID for BMC
+    chdef cn1 bmcusername=<desired_username>
+    chdef cn1 bmcpassword=<desired_password>
+
 In order to do BMC configuration during the discovery process, set ``runcmd=bmcsetup``. ::
 
     chdef cn1 chain="runcmd=bmcsetup"
+
+**[Optional]** More operation plan to do after hardware disocvery is done, ``ondiscover`` option can be used.
+
+   For example, configure console, copy SSH key for **OpenBMC**, then disable ``powersupplyredundancy`` ::
+
+       chdef cn01 -p chain="ondiscover=makegocons|rspconfig:sshcfg|rspconfig:powersupplyredundancy=disabled"
+
+   **Note**: ``|`` is used to split commands, and ``:`` is used to split command with its option.
 
 Set the target `osimage` into the chain table to automatically provision the operating system after the node discovery is complete. ::
 

@@ -29,7 +29,7 @@ Vendor: IBM Corp.
 Summary: xCAT Genesis netboot image - Core content
 URL:	 https://xcat.org/
 Source1: xCAT-genesis-scripts.tar.bz2
-Requires: xCAT-genesis-base-%{tarch} >= 2:2.13.2
+Requires: xCAT-genesis-base-%{tarch} >= 2:2.13.10
 
 Buildroot: %{_localstatedir}/tmp/xCAT-genesis
 Packager: IBM Corp.
@@ -71,32 +71,32 @@ touch /etc/xcat/genesis-scripts-updated
 %Files
 %defattr(-,root,root)
 #%dir %attr(-,root,root) %{rpminstallroot}
-%{rpminstallroot}/bin/allowcred.awk
-%{rpminstallroot}/bin/bmcsetup
-%{rpminstallroot}/bin/raidcmd
-%{rpminstallroot}/bin/raidutils
-%{rpminstallroot}/bin/diskdiscover
-%{rpminstallroot}/bin/configraid
-%{rpminstallroot}/bin/dodiscovery
-%{rpminstallroot}/bin/dosysclone
-%{rpminstallroot}/bin/doxcat
-%{rpminstallroot}/bin/getadapter
-%{rpminstallroot}/bin/getcert
-%{rpminstallroot}/bin/getdestiny
-%{rpminstallroot}/bin/getipmi
-%{rpminstallroot}/bin/ifup
-%{rpminstallroot}/bin/minixcatd.awk
-%{rpminstallroot}/bin/nextdestiny
-%{rpminstallroot}/bin/remoteimmsetup
-%{rpminstallroot}/bin/udpcat.awk
-%{rpminstallroot}/bin/updateflag.awk
-%{rpminstallroot}/bin/pseries_platform
-%{rpminstallroot}/bin/update_flash
-%{rpminstallroot}/bin/update_flash_nv
-%{rpminstallroot}/bin/restart
+%{rpminstallroot}/usr/bin/allowcred.awk
+%{rpminstallroot}/usr/bin/bmcsetup
+%{rpminstallroot}/usr/bin/raidcmd
+%{rpminstallroot}/usr/bin/raidutils
+%{rpminstallroot}/usr/bin/diskdiscover
+%{rpminstallroot}/usr/bin/configraid
+%{rpminstallroot}/usr/bin/dodiscovery
+%{rpminstallroot}/usr/bin/dosysclone
+%{rpminstallroot}/usr/bin/doxcat
+%{rpminstallroot}/usr/bin/getadapter
+%{rpminstallroot}/usr/bin/getcert
+%{rpminstallroot}/usr/bin/getdestiny
+%{rpminstallroot}/usr/bin/getipmi
+%{rpminstallroot}/usr/bin/ifup
+%{rpminstallroot}/usr/bin/minixcatd.awk
+%{rpminstallroot}/usr/bin/nextdestiny
+%{rpminstallroot}/usr/bin/remoteimmsetup
+%{rpminstallroot}/usr/bin/udpcat.awk
+%{rpminstallroot}/usr/bin/updateflag.awk
+%{rpminstallroot}/usr/bin/pseries_platform
+%{rpminstallroot}/usr/bin/update_flash
+%{rpminstallroot}/usr/bin/update_flash_nv
+%{rpminstallroot}/usr/bin/restart
 %{rpminstallroot}/etc/init.d/functions
 %{rpminstallroot}/etc/udev/rules.d/99-imm.rules
 %{rpminstallroot}/etc/udev/rules.d/98-mlx.rules
-%{rpminstallroot}/sbin/setupimmnic
-%{rpminstallroot}/sbin/loadmlxeth
+%{rpminstallroot}/usr/sbin/setupimmnic
+%{rpminstallroot}/usr/sbin/loadmlxeth
 %exclude %{rpminstallroot}/debian/*

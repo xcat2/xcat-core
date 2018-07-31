@@ -185,6 +185,11 @@ sub setdestiny {
                 $state = $stents{$_}->[0]->{currstate};
                 $state =~ s/ .*//;
 
+                #skip the node if state=ondiscover
+                if ($state eq 'ondiscover') {
+                    next;
+                }
+
                 #get the osimagename if nodetype.provmethod has osimage specified
                 #use it for both sninit and genesis operating
                 if (($state eq 'install') || ($state eq 'netboot') || ($state eq 'statelite')) {
@@ -225,6 +230,25 @@ sub setdestiny {
             $bphash->{kernel} = $ient->{kernel};
             if ($ient->{initrd})   { $bphash->{initrd}   = $ient->{initrd} }
             if ($ient->{kcmdline}) { $bphash->{kcmdline} = $ient->{kcmdline} }
+        }
+    } elsif ($state =~ /ondiscover/) {
+        my $target;
+        if ($state =~ /=/) {
+            ($state, $target) = split '=', $state, 2;
+        }
+        if(!$target){
+            $callback->({ error => "invalid argument: \"$state\"", errorcode => [1] });
+            return;
+        }
+        my @cmds = split '\|', $target;
+        foreach my $tmpnode (@{ $req->{node} }) {
+            foreach my $cmd (@cmds) {
+                my $action;
+               ($cmd, $action) = split ':', $cmd;
+                my $runcmd = "$cmd $tmpnode $action";
+                xCAT::Utils->runcmd($runcmd, 0);
+                xCAT::MsgUtils->trace($verbose, "d", "run ondiscover command: $runcmd");
+            }
         }
     } elsif ($state =~ /^install[=\$]/ or $state eq 'install' or $state =~ /^netboot[=\$]/ or $state eq 'netboot' or $state eq "image" or $state eq "winshell" or $state =~ /^osimage/ or $state =~ /^statelite/) {
         my $target;
@@ -311,7 +335,7 @@ sub setdestiny {
                         return;
                     }
                 } else {
-                    $callback->({ errorcode => [1], error => "Cannot find the OS image $target on the osimage table.", errorabort => [1] });
+                    $callback->({ errorcode => [1], error => "Cannot find the OS image $target in the osimage table.", errorabort => [1] });
                     return;
                 }
 
@@ -392,7 +416,7 @@ sub setdestiny {
                                 }
                             } else {
                                 push(@{ $invalidosimghash->{$osimage}->{nodes} }, $tmpnode);
-                                $invalidosimghash->{$osimage}->{error}->[0] = "Cannot find the OS image $osimage on the osimage table";
+                                $invalidosimghash->{$osimage}->{error}->[0] = "Cannot find the OS image $osimage in the osimage table";
                                 next;
                             }
                         }
@@ -829,6 +853,11 @@ sub nextdestiny {
         }
         unless ($ref->{currchain}) {    #If no current chain, copy the default
             $ref->{currchain} = $ref->{chain};
+        } elsif ($ref->{currchain} !~ /[,;]/){
+            if ($ref->{currstate} and ($ref->{currchain} =~ /$ref->{currstate}/)) {
+                $ref->{currchain} = 'standby';
+                $callnodeset = 0;
+            }
         }
         my @chain = split /[,;]/, $ref->{currchain};
 
@@ -896,6 +925,16 @@ sub getdestiny {
     my %node_status = ();
     foreach $node (@$nodes) {
         unless ($chaintab) { #Without destiny, have the node wait with ssh hopefully open at least
+            my $stat = xCAT_monitoring::monitorctrl->getNodeStatusFromNodesetState("standby", "getdestiny");
+            if ($stat) {
+                if (exists($node_status{$stat})) {
+                    push @{ $node_status{$stat} }, $node;
+                } else { 
+                    $node_status{$stat} = [$node];
+                }
+                xCAT_monitoring::monitorctrl::setNodeStatusAttributes(\%node_status, 1);
+            }
+            
             $callback->({ node => [ { name => [$node], data => ['standby'], destiny => ['standby'] } ] });
             return;
         }
@@ -909,10 +948,10 @@ sub getdestiny {
                 #print "node=$node, stat=$stat\n";
                 if ($stat) {
                     if (exists($node_status{$stat})) {
-                        my $pa = $node_status{$stat};
-                        push(@$pa, $node);
+                        push @{ $node_status{$stat} }, $node;
+                    } else {
+                        $node_status{$stat} = [$node];
                     }
-                    else { $node_status{$stat} = [$node]; }
                 }
             }
 
@@ -960,10 +999,10 @@ sub getdestiny {
             #print  "node=$node, stat=$stat\n";
             if ($stat) {
                 if (exists($node_status{$stat})) {
-                    my $pa = $node_status{$stat};
-                    push(@$pa, $node);
+                    push @{ $node_status{$stat} }, $node;
+                } else {
+                    $node_status{$stat} = [$node];
                 }
-                else { $node_status{$stat} = [$node]; }
             }
         }
 

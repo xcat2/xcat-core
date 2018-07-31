@@ -4,7 +4,7 @@ Version: %{?version:%{version}}%{!?version:%(cat Version)}
 Release: %{?release:%{release}}%{!?release:%(cat Release)}
 Epoch: 1
 AutoReq: false
-Requires: ipmitool screen btrfs-progs lldpad rpm-build mstflint xfsprogs nc rpmdevtools libstdc++-devel pciutils bridge-utils ntp ntp-perl iprutils psmisc mdadm bind-utils dosfstools usbutils libusbx
+Requires: ipmitool screen btrfs-progs lldpad rpm-build mstflint xfsprogs nc rpmdevtools libstdc++-devel pciutils bridge-utils ntp ntp-perl iprutils psmisc mdadm bind-utils dosfstools usbutils libusbx bc
 Prefix: /opt/xcat
 AutoProv: false
 
@@ -33,7 +33,8 @@ rm -rf $RPM_BUILD_ROOT
 mkdir -p $RPM_BUILD_ROOT/%{prefix}/share/xcat/netboot/genesis/builder
 cd $RPM_BUILD_ROOT/%{prefix}/share/xcat/netboot/genesis/builder
 tar jxvf %{SOURCE1}
-chmod +x $RPM_BUILD_ROOT/%{prefix}/share/xcat/netboot/genesis/builder/buildrpm
+chmod 0755 $RPM_BUILD_ROOT/%{prefix}/share/xcat/netboot/genesis/builder/buildrpm
+chmod 0755 $RPM_BUILD_ROOT/%{prefix}/share/xcat/netboot/genesis/builder/debuild-xcat-genesis-base
 cd -
 
 

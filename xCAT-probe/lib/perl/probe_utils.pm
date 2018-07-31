@@ -179,6 +179,24 @@ sub is_static_ip {
     my $os  = get_os();
     my $rst = 0;
 
+    `which nmcli > /dev/null 2>&1`;
+    unless ($?) {
+        my $device_connection = `nmcli device show $nic 2>&1 | grep GENERAL.CONNECTION`;
+        my $net_name;
+        if ($device_connection =~ /GENERAL.CONNECTION:\s*(.+)/) {
+            $net_name = $1;
+        }
+        if ($net_name) {
+            my $ipv4_method = `nmcli con show "$net_name" 2>&1 | grep -E 'ipv4.method'`;
+            unless ($?) {
+                if ($ipv4_method =~ /manual/) {
+                    $rst = 1;
+                }
+                return $rst;
+            }
+        }
+    }
+
     if ($os =~ /redhat/) {
         my $output1 = `cat /etc/sysconfig/network-scripts/ifcfg-$nic 2>&1 |grep -i IPADDR`;
         my $output2 = `cat /etc/sysconfig/network-scripts/ifcfg-$nic 2>&1 |grep -i BOOTPROTO`;
@@ -549,6 +567,45 @@ sub is_ntp_ready{
     }
     $$errormsg_ref = "ntpd did not synchronize.";
     return 0;
+}
+
+#------------------------------------------
+
+=head3
+    Description:
+        Test if rsyslog service is ready to use in current operating system
+    Arguments:
+        errormsg_ref: if there is something wrong for ntp service, this attribute save the possible reason.
+    Returns:
+        1 : yes
+        0 : no
+=cut
+
+#------------------------------------------
+sub is_rsyslog_ready {
+    my $errormsg_ref = shift;
+    $errormsg_ref= shift if (($errormsg_ref) && ($errormsg_ref =~ /probe_utils/));
+
+    my $is_active = 1;
+    my $tmp = `pidof systemd`;
+    chomp($tmp);
+    if ($tmp) {
+        `systemctl is-active --quiet rsyslog 2>&1`;
+        if ($?) {
+            $is_active = 0;
+        }
+    } else {
+        my $output = `service rsyslog status 2>&1 | grep "Active: active (running)"`;
+        if (!$output) {
+            $is_active = 0;
+        }
+    }
+
+    if (!$is_active) {
+        $$errormsg_ref = "rsyslog service is not running! Please check on current node";
+        return 0;
+    }
+    return 1; 
 }
 
 #------------------------------------------

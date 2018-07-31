@@ -6,5 +6,5 @@ Advanced Operations
 
    rinv.rst
    rvitals.rst
-   rflash.rst 
+   rflash/index.rst
    rspconfig.rst

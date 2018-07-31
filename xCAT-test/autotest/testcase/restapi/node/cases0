@@ -1,242 +1,111 @@
-start:node_post
-description: node_post
-cmd:restapitest -m POST -r /nodes/node1 -d '{"groups":"all","mgt":"dfm","netboot":"yaboot"}'
+start:create_node_rest
+description: create a node with REST API
+cmd:restapitest -m POST -r /nodes/restnode -d '{"groups":"all","mgt":"dfm","netboot":"yaboot"}' -u $$username -p $$password
 check:rc==201
 end
 
-start:node_post2
-description: node_post2
-cmd:restapitest -m POST -r /nodes/node1 -d '{"groups":"all","mgt":"dfm","netboot":"yaboot"}'
-check:rc==403
-cmdcheck:restapitest -o '{"errorcode":"1"}' -O ==
+start:create_node_rest2
+description: create a node with REST API failure
+cmd:restapitest -m POST -r /nodes/restnode -d '{"groups":"all","mgt":"dfm","netboot":"yaboot"}' -u $$username -p $$password
+check:rc==147
+check:output=~"errorcode":"1"
 end
 
+start:get_nodes_rest
+description: get all nodes with REST API
+cmd:restapitest -m GET -r /nodes -u $$username -p $$password
+check:rc==200
+check:output=~"restnode"
+end
 
-start:node_put
-description: node_put
-cmd:restapitest -m PUT -r /nodes/node1 -d '{"mgt":"hmc","netboot":"xnba"}'
+start:get_node_rest
+description: get single node with REST API
+cmd:restapitest -m GET -r /nodes/restnode -u $$username -p $$password
+check:rc==200
+check:output=~"restnode"
+end
+
+start:node_delete_rest
+description: delete node with REST API
+cmd:restapitest -m DELETE -r /nodes/restnode -u $$username -p $$password
 check:rc==200
 end
 
-
-
-start:nodes_get
-description: nodes_get
-cmd:restapitest -m GET -r /nodes
+start:get_nodes_rest2
+description: get all nodes with REST API
+cmd:restapitest -m GET -r /nodes -u $$username -p $$password
 check:rc==200
-cmdcheck:restapitest -o '["node1"]' -O ==
+check:output!~"restnode"
 end
 
-start:node_get
-description: node_get
-cmd:restapitest -m GET -r /nodes/node1
-check:rc==200
-cmdcheck:restapitest -o '{"node1":{"netboot":"xnba"}}' -O ==
+start:get_node_rest2
+description: get single node with REST API
+cmd:restapitest -m GET -r /nodes/restnode -u $$username -p $$password
+check:rc==147
+check:output=~"errorcode":"1"
 end
 
-start:node_delete
-description: node_delete
-cmd:restapitest -m DELETE -r /nodes/node1
-check:rc==200
-end
-
-start:nodes_get2
-description: nodes_get2
-cmd:restapitest -m GET -r /nodes
-check:rc==200
-cmdcheck:restapitest -o '["node1"]' -O !=
-end
-
-start:node_get2
-description: node_get2
-cmd:restapitest -m GET -r /nodes/node1
-check:rc==403
-cmdcheck:restapitest -o '{"errorcode":"1"}' -O ==
-end
-
-start:node_post3_for_get_test
-description: node_post3_for_get_test
-cmd:restapitest -m POST -r /nodes/node1 -d '{"groups":"all","mgt":"dfm","netboot":"yaboot"}'
+start:create_node_token_rest
+description: create a node with REST API using authentication token
+cmd:restapitest -m POST -r /nodes/restnode -d '{"groups":"all","mgt":"dfm","netboot":"yaboot"}' -u $$username -p $$password -t
 check:rc==201
 end
 
-start:node_attr_get
-description: node_get2
-cmd:restapitest -m GET -r /nodes/node1/attrs/mgt,groups,netboot
-check:rc==200
-cmdcheck:restapitest -o '{"node1":{"netboot":"yaboot"}}' -O ==
-end
-
-start:node_makehosts
-description: node_makehosts
-cmd:restapitest -m POST -r /nodes/node1/host
+start:node_makehosts_rest
+description: makehosts for node with REST API
+cmd:restapitest -m POST -r /nodes/restnode/host -u $$username -p $$password
 check:rc==201
 end
 
-start:node_makedns
-description: node_makehosts
-cmd:restapitest -m POST -r /nodes/node1/dns
+start:node_makedns_rest
+description: makehosts for node with REST API
+cmd:restapitest -m POST -r /nodes/restnode/dns -u $$username -p $$password
 check:rc==201
 end
 
-
-start:node_delete_dns
-description: node_delete_dns
-cmd:restapitest -m DELETE -r /nodes/node1/dns
+start:node_delete_dns_rest
+description: delete dns for node with REST API
+cmd:restapitest -m DELETE -r /nodes/restnode/dns -u $$username -p $$password
 check:rc==200
 end
 
-start:node_put
-description: node_put
-cmd:restapitest -m PUT -r /nodes/node1 -d '{"mac":"00:1a:64:54:14:80"}'
+start:node_change_attr_rest
+description: change node attribute with REST API
+cmd:restapitest -m PUT -r /nodes/restnode -d '{"mac":"00:1a:64:54:14:80"}' -u $$username -p $$password
 check:rc==200
 end
 
-start:node_makedhcp
-description: node_makedhcp
-cmd:restapitest -m POST -r /nodes/node1/dhcp
+start:node_makedhcp_rest
+description: makedhcp for node with REST API
+cmd:restapitest -m POST -r /nodes/restnode/dhcp -u $$username -p $$password
 check:rc==201
 end
 
-start:node_delete_dhcp
+start:node_delete_dhcp_rest
 description: node_delete_dhcp
-cmd:restapitest -m DELETE -r /nodes/node1/dhcp
+cmd:restapitest -m DELETE -r /nodes/restnode/dhcp -u $$username -p $$password
 check:rc==200
 end
 
-start:node_state
-description: node_state
-cmd:restapitest -m GET -r /nodes/node1/nodestat
+start:node_state_rest
+description: get node state with REST API
+cmd:restapitest -m GET -r /nodes/$$CN/nodestat -u $$username -p $$password
 check:rc==200
-cmdcheck:restapitest -o '{"node1":{"nodestat":"ANY"}}' -O ==
+check:output=~"$$CN"
+check:output=~"nodestat"
 end
 
-
-#start:node_post4_for_scan_test
-#description: node_post4_for_scan_test
-#cmd:restapitest -m POST -r /nodes/e108m6hmc02 -d '{"groups":"all,hmc","mgt":"hmc","hwtype":"hmc","mtm":"7042CR4","serial":"1050FBB","nodetype":"ppc"}'
-#check:rc==201
-#end
-
-start:node_scan
-description: node_scan
-cmd:restapitest -m GET -r /nodes/__GETNODEATTR($$CN,hcp)__
+start:node_state_token_rest
+description: get node state with REST API using authentication token
+cmd:restapitest -m GET -r /nodes/$$CN/nodestat -u $$username -p $$password -t
 check:rc==200
-cmdcheck:restapitest -o '{"__GETNODEATTR($$CN,hcp)__":"ANY"}' -O ==
+check:output=~"$$CN"
+check:output=~"nodestat"
 end
 
-
-start:node_power_get
-description: node_power_get
-cmd:restapitest -m GET -r /nodes/$$CN/power
-check:rc==200
-cmdcheck:restapitest -o '{"$$CN":{"power":"ANY"}}' -O ==
+start:get_node_rest_error
+description: get single node with REST API with invalid user or password
+cmd:restapitest -m GET -r /nodes/restnode -u abc -p xyz
+check:rc==145
+check:output=~"error":"Authentication failure"
 end
-
-start:node_power_put
-description: node_power_reset
-cmd:restapitest -m PUT -r /nodes/$$CN/power -d '{"action":"reset"}'
-check:rc==200
-end
-
-#start:node_energy_put
-#description: node_energy_put
-#cmd:restapitest -m PUT -r /nodes/Vc68m5sn01/energy -d '{"cappingstatus":"on"}'
-#check:rc==200
-#end
-
-#start:node_energy_get
-#description: node_energy_get
-#cmd:restapitest -m GET -r /nodes/Vc68m5sn01/energy 
-#check:rc==200
-#cmdcheck:restapitest -o '{"Vc68m5sn01":{"cappingmin":"on"}}' -O ==
-#end
-
-#start:node_energy_get_attr
-#description: node_energy_get_attr
-#cmd:restapitest -m GET -r /nodes/Vc68m5sn01/energy/cappingmaxmin,cappingstatus 
-#check:rc==200
-#cmdcheck:restapitest -o '{"Vc68m5sn01":{"cappingmin":"ANY"}}' -O ==
-#end
-
-#start:node_get_attr
-#description: node_get_attr
-#cmd:restapitest -m GET -r /nodes/Vc68m5sn01/sp/community
-#check:rc==200
-#cmdcheck:restapitest -o '{"Vc68m5sn01":{"SP SNMP Community":"public"}}' -O ==
-#end
-
-#start:node_put_attr
-#description: node_put_attr
-#cmd:restapitest -m PUT -r /nodes/Vc68m5sn01/sp/community -d '{"value":"mycommunity"}''
-#check:rc==200
-#end
-
-#start:node_put_nextboot
-#description: node_put_nextboot
-#cmd:restapitest -m PUT -r /nodes/$$CN/nextboot -d '{"order":"net"}'
-#check:rc==201
-#end
-
-#start:node_get_nextboot
-#description: node_get_nextboot
-#cmd:restapitest -m GET -r /nodes/Vc68m5sn01/nextboot 
-#check:rc==200
-#cmdcheck:restapitest -o '{"Vc68m5sn01":{"nextboot":"net"}}' -O ==
-#end
-
-start:node_put_bootstate
-description: node_put_bootstate
-cmd:restapitest -m PUT -r /nodes/Vc68m5sn01/bootstate -d '{"osimage":"rhels6.4-x86_64-install-compute"}'
-check:rc==201
-end
-
-start:node_get_bootstate
-description: node_get_bootstate
-cmd:restapitest -m GET -r /nodes/$$CN/bootstate 
-check:rc==200
-cmdcheck:restapitest -o '{"$$CN":{"bootstat":"ANY"}}' -O ==
-end
-
-start:node_get_vitals
-description: node_get_vitals
-cmd:restapitest -m GET -r /nodes/Vc68m5sn01/vitals 
-check:rc==200
-cmdcheck:restapitest -o '{"Vc68m5sn01":{"SysBrd Fault":"0"}}' -O ==
-end
-
-start:node_get_vitals_attr
-description: node_get_vitals_attr
-cmd:restapitest -m GET -r /nodes/$$CN/vitals/all
-check:rc==200
-cmdcheck:restapitest -o '{"$$CN":{"System Temperature":"ANY"}}' -O ==
-end
-
-start:node_get_inventory
-description: node_get_inventory
-cmd:restapitest -m GET -r /nodes/Vc68m5sn01/inventory
-check:rc==200
-cmdcheck:restapitest -o '{"Vc68m5sn01":{"Power Supply 2 Board FRU Number":"94Y8105"}}' -O ==
-end
-
-start:node_get_inventory_attr
-description: node_get_inventory_attr
-cmd:restapitest -m GET -r /nodes/Vc68m5sn01/inventory/model
-check:rc==200
-cmdcheck:restapitest -o '{"Vc68m5sn01":{"System Description":"System x3650 M4"}}' -O ==
-end
-
-#start:node_get_eventlog
-#description: node_get_eventlog
-#cmd:restapitest -m GET -r /nodes/Vc68m5sn01/eventlog
-#check:rc==200
-#cmdcheck:restapitest -o '{"Vc68m5sn01":{"eventlog":"ANY"}}' -O ==
-#end
-
-start:node_post_nodecopy
-description: node_post_nodecopy
-cmd:restapitest -m POST -r /nodes/$$CN/nodecopy -d '{"src":["/etc/hosts","/etc/resolv.conf"],"target":"/tmp"}'
-check:rc==201
-end
-
-

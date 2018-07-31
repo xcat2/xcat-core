@@ -1,5 +1,5 @@
 #!/bin/sh
-log_label="xcat.dracut_033"
+log_label="xcat.deployment"
 
 NEWROOT=$3
 RWDIR=.statelite
@@ -10,8 +10,7 @@ XCATMASTER=$XCAT
 STATEMNT="$(getarg STATEMNT=)"
 rootlimit="$(getarg rootlimit=)"
 xcatdebugmode="$(getarg xcatdebugmode=)"
-
-[ "$xcatdebugmode" > "0" ] && logger -t $log_label -p local4.debug "in dracut, executing xcatroot..."
+rflags="$(getarg rootflags=)"
 getarg nonodestatus
 NODESTATUS=$?
 
@@ -21,10 +20,13 @@ if [ $? -ne 0 ]; then
     XCATIPORT="3002"
 fi
 
+[ "$xcatdebugmode" = "1" -o "$xcatdebugmode" = "2" ] && SYSLOGHOST="" || SYSLOGHOST="-n $MASTER"
+
+logger $SYSLOGHOST -t $log_label -p local4.info "Executing xcatroot to prepare for netbooting (dracut_33)..."
 [ "$xcatdebugmode" > "0" ] && logger -t $log_label -p local4.debug "MASTER=$MASTER XCATIPORT=$XCATIPORT NODESTATUS=$NODESTATUS"
 
 if [ "$NODESTATUS" != "0" ]; then
-[ "$xcatdebugmode" > "0" ] && logger -t $log_label -p local4.debug "Reporting installstatus=netbooting..."
+    logger $SYSLOGHOST -t $log_label -p local4.info "Sending request to $MASTER:$XCATIPORT for changing status to netbooting..."
     /tmp/updateflag $MASTER $XCATIPORT "installstatus netbooting"
 fi
 
@@ -36,6 +38,7 @@ uftpdelay="$(getarg uftpdelay=)"
 uftpport="$(getarg uftpport=)"
 if [ ! -z "$imgurl" ]; then
     if [ xhttp = x${imgurl%%:*} ]; then
+        logger $SYSLOGHOST -t $log_label -p local4.info "Downloading rootfs image from $imgurl..."
         NFS=0
         FILENAME=${imgurl##*/}
         [ "$xcatdebugmode" > "0" ] && logger -t xcat -p debug "TRYUFTP=$TRYUFTP"
@@ -103,8 +106,9 @@ if [ ! -z "$imgurl" ]; then
             [ "$xcatdebugmode" > "0" ] && logger -t $log_label -p local4.debug "Downloading $imgurl..."
             echo Getting $imgurl...
             if ! wget -nv $imgurl; then
-                [ "$xcatdebugmode" > "0" ] && logger -t $log_label -p local4.debug "Downloading $imgurl FAILED, retrying..."
+                logger $SYSLOGHOST -t $log_label -p local4.error "Downloading $imgurl FAILED, retrying..."
                 rm -f $FILENAME
+                echo Failed to get the image, waiting for next retrying...
                 sleep 27
             fi
         done
@@ -118,6 +122,7 @@ if [ ! -z "$imgurl" ]; then
         SERVER=${SERVER%%/*}
         SERVER=${SERVER%:}
         ROOTDIR=/${ROOTDIR#*/} 
+        [ "$xcatdebugmode" > "0" ] && logger -t $log_label -p local4.debug "SERVER=$SERVER ROOTDIR=$ROOTDIR"
     fi
 fi
 #echo 0 > /proc/sys/vm/zone_reclaim_mode #Avoid kernel bug
@@ -135,12 +140,16 @@ if [ -r /rootimg.sfs ]; then
     mount --move /ro $NEWROOT/ro
     mount --move /rw $NEWROOT/rw
 elif [ -r /rootimg.cpio.gz ] || [ -r /rootimg.cpio.xz ]; then
-    [ "$xcatdebugmode" > "0" ] && logger -t $log_label -p local4.debug "Downloaded rootimg.cpio.[gz/xz]...Setting up RAM-root tmpfs."
+    logger $SYSLOGHOST -t $log_label -p local4.info "Setting up RAM-root tmpfs on downloaded rootimg.cpio.[gz/xz]..."
     echo Setting up RAM-root tmpfs.
-    if [ -z $rootlimit ];then
-        mount -t tmpfs -o mode=755 rootfs $NEWROOT
+    rootopts="mode=755"
+    if [ -n "$rflags" ]; then
+        rootopts="$rootopts","$rflags"
+    fi
+    if [ -z "$rootlimit" ];then
+        mount -t tmpfs -o $rootopts rootfs $NEWROOT
     else
-        mount -t tmpfs -o mode=755,size=$rootlimit rootfs $NEWROOT
+        mount -t tmpfs -o "$rootopts",size=$rootlimit rootfs $NEWROOT
     fi
 
     cd $NEWROOT
@@ -163,7 +172,7 @@ elif [ -r /rootimg.cpio.gz ] || [ -r /rootimg.cpio.xz ]; then
     [ "$xcatdebugmode" > "0" ] && logger -t $log_label -p local4.debug "Done extracting the root filesystem..."
     echo "Done extracting the root filesystem..."
 elif [ -r /rootimg.tar.gz ] || [ -r /rootimg.tar.xz ]; then
-    [ "$xcatdebugmode" > "0" ] && logger -t $log_label -p local4.debug "Downloaded rootimg.tar.[gz/xz]...Setting up RAM-root tmpfs."
+    logger $SYSLOGHOST -t $log_label -p local4.info "Setting up RAM-root tmpfs on downloaded rootimg.tar.[gz/xz]..."
     echo Setting up RAM-root tmpfs.
     if [ -z $rootlimit ];then
         mount -t tmpfs -o mode=755 rootfs $NEWROOT
@@ -186,11 +195,13 @@ elif [ -r /rootimg.tar.gz ] || [ -r /rootimg.tar.xz ]; then
         fi
     fi
     $NEWROOT/etc/init.d/localdisk
-    [ "$xcatdebugmode" > "0" ] && logger -t $log_label -p local4.debug "Done extracting the root filesystem."
-    echo "Done extracting the root filesystem."
+    msg="Done extracting the root filesystem."
+    [ "$xcatdebugmode" > "0" ] && logger -t $log_label -p local4.debug "$msg"
+    echo "$msg"
 elif [ -r /rootimg-statelite.gz ]; then
-    [ "$xcatdebugmode" > "0" ] && logger -t $log_label -p local4.debug "Setting up RAM-root tmpfs for statelite mode."
-    echo Setting up RAM-root tmpfs for statelite mode.
+    msg="Setting up RAM-root tmpfs for statelite mode."
+    logger $SYSLOGHOST -t $log_label -p local4.info "$msg"
+    echo "$msg"
  
     if [ -z $rootlimit];then
         mount -t tmpfs -o mode=755 rootfs $NEWROOT
@@ -199,17 +210,22 @@ elif [ -r /rootimg-statelite.gz ]; then
     fi
 
     cd $NEWROOT
-    [ "$xcatdebugmode" > "0" ] && logger -t $log_label -p local4.debug "Extracting the root filesystem..."
-    echo "Extracting root filesystem..."
+    msg="Extracting root filesystem..."
+    [ "$xcatdebugmode" > "0" ] && logger -t $log_label -p local4.debug "$msg"
+    echo "$msg"
     if [ -x /bin/cpio ]; then
         gzip -cd /rootimg-statelite.gz |/bin/cpio -idum
     else
         gzip -cd /rootimg-statelite.gz |cpio -idum
     fi
-    [ "$xcatdebugmode" > "0" ] && logger -t $log_label -p local4.debug "Done extracting the root filesystem."
-    echo "Done extracting the root filesystem."
+    msg="Done extracting the root filesystem."
+    [ "$xcatdebugmode" > "0" ] && logger -t $log_label -p local4.debug "$msg"
+    echo "$msg"
     # then, the statelite staffs will be processed
-    echo Setting up Statelite 
+    msg="Setting up Statelite..."
+    [ "$xcatdebugmode" > "0" ] && logger -t $log_label -p local4.debug "$msg"
+    echo "$msg"
+
     modprobe nfs
     MAXTRIES=7
     ITER=0
@@ -259,8 +275,8 @@ elif [ -r /rootimg-statelite.gz ]; then
             if [ "$ITER" == "$MAXTRIES" ]; then
                 echo "You are dead, rpower $ME boot to play again."
                 echo "Possible problems:
-1.  $SNAPSHOTSERVER is not exporting $SNAPSHOTROOT ?
-2.  Is DNS set up? Maybe that's why I can't mount $SNAPSHOTSERVER."
+    1.  $SNAPSHOTSERVER is not exporting $SNAPSHOTROOT ?
+    2.  Is DNS set up? Maybe that's why I can't mount $SNAPSHOTSERVER."
                 /bin/sh
                 exit
             fi
@@ -314,8 +330,9 @@ elif [ -r /rootimg-statelite.gz ]; then
     mount -n --bind /sys $NEWROOT/sys
 
 else
-    [ "$xcatdebugmode" > "0" ] && logger -t $log_label -p local4.debug "Failed to download image, panic in 5..."
-    echo -n Failed to download image, panic in 5...
+    msg="Failed to download image, panic in 5..."
+    logger $SYSLOGHOST -t $log_label -p local4.error "$msg"
+    echo -n "$msg"
     for i in 4 3 2 1 0; do
         /bin/sleep 1
         [ "$xcatdebugmode" > "0" ] && logger -t $log_label -p local4.debug "$i..."
@@ -407,7 +424,7 @@ if [ -d "$NEWROOT/etc/sysconfig" -a ! -e "$NEWROOT/etc/sysconfig/selinux" ]; the
     echo "SELINUX=disabled" >> "$NEWROOT/etc/sysconfig/selinux"
 fi
 
-[ "$xcatdebugmode" > "0" ] && logger -t $log_label -p local4.debug "exiting xcatroot..."
+logger $SYSLOGHOST -t $log_label -p local4.info "Exiting xcatroot..."
 # inject new exit_if_exists
 echo 'settle_exit_if_exists="--exit-if-exists=/dev/root"; rm "$job"' > $hookdir/initqueue/xcat.sh
 # force udevsettle to break

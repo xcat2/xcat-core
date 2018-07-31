@@ -148,7 +148,9 @@ elif [ $USE_GOCONSERVER == "1" ]; then
     CONGO_ENV="CONGO_SSL_KEY=$HOME/.xcat/client-cred.pem \
                CONGO_SSL_CERT=$HOME/.xcat/client-cred.pem \
                CONGO_SSL_CA_CERT=$HOME/.xcat/ca.pem \
-               CONGO_PORT=12430"
+               CONGO_PORT=12430 \
+               CONGO_CLIENT_TYPE=xcat \
+               CONGO_SSL_INSECURE=true"
     if [ "$CONSERVER" == `hostname` ]; then
         host=`hostname -s`
         if [ $? -ne 0 ]; then

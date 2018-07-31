@@ -1,0 +1,36 @@
+#!/bin/bash
+#
+# Copyright (C) 2018 International Business Machines
+# Eclipse Public License, Version 1.0 (EPL-1.0)
+#     <http://www.eclipse.org/legal/epl-v10.html>
+#
+# 2018-03-21 GONG Jie <gongjie@linux.vnet.ibm.com>
+# 2018-04-24 Matt Ezell <ezellma@ornl.gov>
+#
+# This script is used for doing extra setup steps for NVIDIA POWER9 CUDA driver
+# on RHEL 7. Please refer document below for details.
+#
+# http://docs.nvidia.com/cuda/cuda-installation-guide-linux/index.html#power9-setup
+#
+
+umask 0022
+
+mkdir ${IMG_ROOTIMGDIR}/etc/systemd/system/nvidia-persistenced.service.d
+printf '[Service]\nPIDFile=/var/run/nvidia-persistenced/nvidia-persistenced.pid\n' > ${IMG_ROOTIMGDIR}/etc/systemd/system/nvidia-persistenced.service.d/pidfile.conf
+printf '[Service]\nRestart=always\n' > ${IMG_ROOTIMGDIR}/etc/systemd/system/nvidia-persistenced.service.d/restartalways.conf
+
+[ ! -z "${IMG_ROOTIMGDIR}" ] && CHROOTCMD="chroot ${IMG_ROOTIMGDIR}"
+$CHROOTCMD /bin/bash -c "systemctl enable nvidia-persistenced"
+
+if [ -f ${IMG_ROOTIMGDIR}/lib/udev/rules.d/40-redhat.rules ]
+then
+	sed -i /SUBSYSTEM==\"memory\"/d ${IMG_ROOTIMGDIR}/lib/udev/rules.d/40-redhat.rules
+fi
+
+echo 'options nvidia NVreg_EnableStreamMemOPs=1 NVreg_RegistryDwords="PeerMappingOverride=1"' >${IMG_ROOTIMGDIR}/usr/lib/modprobe.d/nvidia.conf
+
+if [ -z "${IMG_ROOTIMGDIR}" ] 
+then
+	kernel_version="$(for d in $(ls /lib/modules | sort -V) ; do : ; done && echo $d)"
+	mkinitrd -v -f "/boot/initramfs-${kernel_version}.img" "${kernel_version}"
+fi

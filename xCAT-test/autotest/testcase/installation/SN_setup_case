@@ -1,5 +1,6 @@
 start:SN_setup_case
 os:Linux
+label:sn_diskful,provision
 #stop:yes
 cmd:fdisk -l
 cmd:df -T
@@ -90,7 +91,7 @@ check:output=~/install on /install
 cmd:xdsh $$SN "mount"
 check:rc==0
 check:output=~/tftpboot on /tftpboot
-
+cmd:xdsh $$SN  "cat /var/log/xcat/xcat.log"
 cmd:if [[ "__GETNODEATTR($$SN,arch)__" =~ "x86_64" ]]; then if [[ "__GETNODEATTR($$SN,os)__" =~ "sles" ]];then xdsh $$SN "zypper -n install perl-Sys-Virt"; elif [[ "__GETNODEATTR($$SN,os)__" =~ "rh" ]];then xdsh $$SN "yum install -y perl-Sys-Virt";fi;fi
 check:rc==0
 cmd:makentp -a

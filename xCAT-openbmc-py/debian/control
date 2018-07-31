@@ -1,0 +1,12 @@
+Source: xcat-openbmc-py
+Section: admin
+Priority: extra
+Maintainer: xCAT <xcat-user@lists.sourceforge.net>
+Build-Depends: debhelper (>= 9)
+Standards-Version: 3.9.4
+Homepage: https://xcat.org/
+
+Package: xcat-openbmc-py
+Architecture: all
+Depends:
+Description: xcat openbmc python

@@ -524,8 +524,13 @@ function configure_nicdevice {
         nic_pair=`echo "$nics_pair" |sed -n "${num}p"`
         echo "configure nic and its device : $nic_pair"
 
+        #ignore bmc interfaces. They're allowed in the nics table to generate DNS/hostname records, but they
+        #can't be configured here (it's done in bmcsetup
+        if [ x"$nic_dev_type" = "xbmc" ]; then
+            log_info "$nic_dev is of type $nic_dev_type, ignoring"
+
         #configure standalone ethernet nic
-        if [ x"$nic_dev_type" = "xethernet" ]; then
+        elif [ x"$nic_dev_type" = "xethernet" ]; then
             xcatnet=`query_nicnetworks_net $nic_dev`            
             ipaddrs=`find_nic_ips $nic_dev`
             if [ -n "$ipaddrs" ]; then
@@ -627,7 +632,7 @@ if [ $boot_install_nic -eq 1 ];then
         echo "++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++"
         log_info "configure the install nic $installnic. "
         instnic_conf=1
-        configeth -s $installnic |log_lines info
+        configeth -s $installnic 
         if [ $? -ne 0 ]; then
             errorcode=1
         fi

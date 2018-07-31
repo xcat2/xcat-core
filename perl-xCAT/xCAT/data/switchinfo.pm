@@ -41,7 +41,10 @@ our %global_switch_type = (
     MELLAN => "Mellanox",
     Cumulus => "onie",
     cumulus => "onie",
-    Edgecore => "onie"
+    Edgecore => "onie",
+    sLEN => "irpdu",
+    sIBM => "irpdu",
+    coral => "crpdu"
 );
 
 

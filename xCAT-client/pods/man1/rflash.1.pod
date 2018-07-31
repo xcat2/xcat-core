@@ -4,13 +4,13 @@ B<rflash> - Performs Licensed Internal Code (LIC) update or firmware update on s
 
 =head1 B<Synopsis>
 
-B<rflash> [B<-h>|B<--help> | B<-v>|B<--version>]
+B<rflash> [B<-h>|B<--help> | B<-v>|B<--version> | B<-V>|B<--verbose>]
 
 =head2 PPC (with HMC) specific:
 
-B<rflash> I<noderange> B<-p> I<directory> [B<--activate> {B<concurrent>|B<disruptive>}] [B<-V>|B<--verbose>]
+B<rflash> I<noderange> B<-p> I<directory> [B<--activate> {B<concurrent>|B<disruptive>}]
 
-B<rflash> I<noderange> {B<--commit>|B<--recover>} [B<-V>|B<--verbose>]
+B<rflash> I<noderange> {B<--commit>|B<--recover>}
 
 =head2 PPC (without HMC, using Direct FSP Management) specific:
 
@@ -24,7 +24,7 @@ B<rflash> I<noderange> I<http_directory>
 
 =head2 OpenPOWER BMC specific (using IPMI):
 
-B<rflash> I<noderange> [I<hpm_file_path> | B<-d> I<data_directory>] [B<-c>|B<--check>] [B<--retry=>I<count>] [B<-V>]
+B<rflash> I<noderange> [I<hpm_file_path> | B<-d> I<data_directory>] [B<-c>|B<--check>] [B<--retry=>I<count>]
 
 B<rflash> I<noderange> B<--recover> I<bmc_file_path>
 
@@ -34,7 +34,9 @@ B<rflash> I<noderange> {[B<-c>|B<--check>] | [B<-l>|B<--list>]}
 
 B<rflash> I<noderange> I<tar_file_path> {[B<-c>|B<--check>] | [B<-a>|B<--activate>] | [B<-u>|B<--upload>]}
 
-B<rflash> I<noderange> I<image_id> {[B<-a>|B<--activate>] | [B<-d>|B<--delete>]}
+B<rflash> I<noderange> I<tar_file_directory> [B<-d>] [B<--no-host-reboot>]
+
+B<rflash> I<noderange> I<image_id> {[B<-a>|B<--activate>] | [B<--delete>]}
 
 =head1 B<Description>
 
@@ -101,23 +103,33 @@ The command will update firmware for OpenPOWER BMC when given an OpenPOWER node 
 
 B<-l|--list>:
 
-   The list option will list out available firmware on the BMC.  It provides an interface to display the ID of the various firmware levels.  
+The list option will list out available firmware on the BMC.  It provides an interface to display the ID of the various firmware levels.  
 
-   The (*) symbol indicates the active running firmware on the server.  
+The (*) symbol indicates the active running firmware on the server.  
 
-   The (+) symbol indicates the firmware that is pending and a reboot is required to set it to be the active running firmware level. 
+The (+) symbol indicates the firmware that is pending and a reboot is required to set it to be the active running firmware level. 
 
 B<-u|--upload>:
 
-   The upload option expects a .tar file as the input and will upload the file to the BMC.  Use the list option to view the result. 
+The upload option expects a .tar file as the input and will upload the file to the BMC.  Use the list option to view the result. 
 
 B<-a|--activate>: 
 
-   The activate option expects either a .tar file or an ID as the input.  If a .tar file is provided, it will upload and activate the firmware in a single step 
+The activate option expects either a .tar file or an ID as the input.  If a .tar file is provided, it will upload and activate the firmware in a single step 
 
 To apply the firmware level, a reboot is required to BMC and HOST. 
 
 B<Note:> When using B<rflash> in hierarchical environment, the .tar file must be accessible from Service Nodes.
+
+B<-d>:
+
+This option steamlines the update, activate, reboot BMC and reboot HOST procedure. It expects a directory containing both BMC and Host .tar files. When BMC and Host tar files are provided, the command will upload and activate firmware. After BMC becomes activate, it will reboot BMC. If BMC state is Ready, the command will reboot the HOST. If BMC state is NotReady, the command will exit. 
+
+B<Note:> When using B<--no-host-reboot>, it will not reboot the host after BMC is reboot. 
+
+B<--delete>:
+
+This delete option will delete update image from BMC. It expects an ID as the input.
 
 =head1 B<Options>
 
@@ -143,7 +155,7 @@ Specifies the directory where the raw data from rpm packages for each CEC/Frame 
 
 OpenPOWER BMC specific (using IPMI):
 
-Used for IBM Power S822LC for Big Data systems only. Specifies the directory where the B<pUpdate> utility and at least one of BMC or PNOR update files are located. The utility and update files can be downloaded from FixCentral. 
+Used for IBM Power S822LC for Big Data systems only. Specifies the directory where the B<pUpdate> utility and at least one of BMC or Host update files are located. The utility and update files can be downloaded from FixCentral. 
 
 =item B<--activate> {B<concurrent> | B<disruptive>}
 
@@ -161,7 +173,7 @@ Used to recover the flash image in the permanent side of the chip to the tempora
 
 OpenPOWER BMC specific (using IPMI):
 
-Used for IBM Power S822LC for Big Data systems only. Used to recover the BMC with a BMC image downloaded from FixCentral.
+Used for IBM Power S822LC for Big Data systems only. Used to recover the BMC with a BMC image downloaded from FixCentral. This option will only work if BMC is in "Brick protection" state.
 
 =item B<--retry=>I<count>
 
@@ -179,7 +191,7 @@ List currently uploaded update images. "(*)" indicates currently active image.
 
 Upload update image. Specified file must be in .tar format.
 
-=item B<-d|--delete>
+=item B<--delete>
 
 Delete update image from BMC
 
@@ -233,14 +245,14 @@ Print verbose message to rflash log file (/var/log/xcat/rflash/fs3.log) when upd
  rflash fs3 /firmware/8335_810.1543.20151021b_update.hpm -V
 
 =item 6.
-To update the firmware on IBM Power S822LC for Big Data machine specify the node name and the file path of the data directory containing pUpdate utility and BMC and/or PNOR update files:
+To update the firmware on IBM Power S822LC for Big Data machine specify the node name and the file path of the data directory containing pUpdate utility, both BMC and Host update files:
 
  rflash briggs01 -d /root/supermicro/OP825
 
 =item 7.
 To update the firmware on the OpenBMC machine, specify the firmare update file to upload and activate: 
 
-  rflash p9euh02 -a /tmp/witherspoon.pnor.squashfs.tar
+ rflash p9euh02 -a /tmp/witherspoon.pnor.squashfs.tar
 
 =back
 
