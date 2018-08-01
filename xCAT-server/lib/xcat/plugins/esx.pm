@@ -5009,6 +5009,10 @@ sub mkcommonboot {
             or -r "$installroot/$osver/$arch/install.tgz") {
             xCAT::SvrUtils::sendmsg([ 1, "Please run copycds first for $osver or create custom image in $custprofpath/" ], $output_handler);
         }
+        if (not -r "$tftpdir/xcat/esxboot-x64.efi" and -r "$installroot/$osver/$arch/efi/boot/bootx64.efi") {
+            copy("$installroot/$osver/$arch/efi/boot/bootx64.efi", "$tftpdir/xcat/esxboot-x64.efi");
+
+	}
 
         my @reqmods = qw/vmkboot.gz vmk.gz sys.vgz cim.vgz/; #Required modules for an image to be considered complete
         if (-r "$custprofpath/b.z") { #if someone hand extracts from imagedd, a different name scheme is used
@@ -5116,7 +5120,7 @@ sub mkcommonboot {
                 $append .= " ks=http://$ksserver/install/autoinst/$node";
                 esxi_kickstart_from_template(node => $node, os => $osver, arch => $arch, profile => $profile, tmpl_hash => \%tmpl_hash);
             }
-            if ($bootmode ne "install" and $serialconfig->{$node}) { #don't do it for install, installer croaks currently
+            if ($serialconfig->{$node}) {
                 my $comport = 1;
                 if (defined $serialconfig->{$node}->[0]->{serialport}) {
                     $comport = $serialconfig->{$node}->[0]->{serialport} + 1;
