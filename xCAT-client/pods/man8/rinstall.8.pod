@@ -4,7 +4,7 @@ B<rinstall> - Begin OS provision on a noderange
 
 =head1 B<Synopsis>
 
-B<rinstall> I<noderange> [B<boot> | B<shell> | B<runcmd=bmcsetup>] [B<-c>|B<--console>] [B<-V>|B<--verbose>]
+B<rinstall> I<noderange> [B<boot> | B<shell> | B<runcmd=>I<command>] [B<-c>|B<--console>] [B<-V>|B<--verbose>]
 
 B<rinstall> I<noderange> B<osimage>[=I<imagename>] [B<--ignorekernelchk>] [B<-c>|B<--console>] [B<-u>|B<--uefimode>] [B<-V>|B<--verbose>]
 
@@ -40,9 +40,9 @@ Skip the kernel version checking when injecting drivers from osimage.driverupdat
 
 If you would like to run a task after deployment, you can define that task with this attribute.    
 
-=item B<runcmd=bmcsetup>
+=item B<runcmd=>I<command>
 
-This instructs the node to boot to the xCAT nbfs environment and proceed to configure BMC for basic remote access.  This causes the IP, netmask, gateway, username, and password to be programmed according to the configuration table.
+This instructs the node to boot to the xCAT genesis environment and specified command to be executed.  This causes the IP, netmask, gateway, username, and password to be programmed according to the configuration in node object definition.
 
 =item B<shell>
 
@@ -90,6 +90,11 @@ Provision nodes 1 through 20 with the osimage rhels6.4-ppc64-netboot-compute.
 Provision node1 and start a console to monitor the process.
 
  rinstall node1 -c
+
+=item 4.
+Boot node1 into genesis environment and execute bmcsetup script.
+
+ rinstall node1 runcmd=bmcsetup
 
 =back 
 
