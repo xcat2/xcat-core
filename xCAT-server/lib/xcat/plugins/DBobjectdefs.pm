@@ -3929,7 +3929,7 @@ sub defls
                     my $rsp = {};
                     $rsp->{data}->[0] = "Invalid \'$obj\' name, check the object named \'$obj\' of type \'$type\' syntax.";
                     xCAT::MsgUtils->message("E", $rsp, $::callback);
-                    return 3;
+                    next;
                 }
 
                 if (!grep(/^$obj$/, @allobjoftype))
