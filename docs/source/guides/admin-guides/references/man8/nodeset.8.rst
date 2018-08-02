@@ -115,7 +115,7 @@ A user can supply their own scripts to be run on the mn or on the service node (
 
 \ **runcmd=**\ \ *command*\ 
  
- This instructs the node to boot to the xCAT genesis environment and specified command to be executed.  This causes the IP, netmask, gateway, username, and password to be programmed according to the configuration in node object definition.
+ This instructs the node to boot to the xCAT genesis environment and specified command to be executed.
  
 
 
@@ -198,7 +198,7 @@ root directory and the TFTP xCAT  subdirectory.   /tftpboot  and
  
 
 
-3. Boot node1 into genesis environment and execute bmcsetup script.
+3. Boot node1 into xCAT genesis environment and execute bmcsetup script. This causes the IP, netmask, gateway, username, and password to be programmed according to the configuration in node object definition.
  
  
  .. code-block:: perl

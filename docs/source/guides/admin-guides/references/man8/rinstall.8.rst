@@ -72,7 +72,7 @@ If \ **-c**\  is specified, it will then run \ **rcons**\  on the node. This is 
 
 \ **runcmd=**\ \ *command*\ 
  
- This instructs the node to boot to the xCAT genesis environment and specified command to be executed.  This causes the IP, netmask, gateway, username, and password to be programmed according to the configuration in node object definition.
+ This instructs the node to boot to the xCAT genesis environment and specified command to be executed.
  
 
 
@@ -150,7 +150,7 @@ If \ **-c**\  is specified, it will then run \ **rcons**\  on the node. This is 
  
 
 
-4. Boot node1 into genesis environment and execute bmcsetup script.
+4. Boot node1 into xCAT genesis environment and execute bmcsetup script. This causes the IP, netmask, gateway, username, and password to be programmed according to the configuration in node object definition.
  
  
  .. code-block:: perl

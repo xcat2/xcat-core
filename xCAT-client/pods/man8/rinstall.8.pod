@@ -42,7 +42,7 @@ If you would like to run a task after deployment, you can define that task with 
 
 =item B<runcmd=>I<command>
 
-This instructs the node to boot to the xCAT genesis environment and specified command to be executed.  This causes the IP, netmask, gateway, username, and password to be programmed according to the configuration in node object definition.
+This instructs the node to boot to the xCAT genesis environment and specified command to be executed.
 
 =item B<shell>
 
@@ -92,7 +92,7 @@ Provision node1 and start a console to monitor the process.
  rinstall node1 -c
 
 =item 4.
-Boot node1 into genesis environment and execute bmcsetup script.
+Boot node1 into xCAT genesis environment and execute bmcsetup script. This causes the IP, netmask, gateway, username, and password to be programmed according to the configuration in node object definition.
 
  rinstall node1 runcmd=bmcsetup
 
