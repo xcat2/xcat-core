@@ -3922,6 +3922,16 @@ sub defls
             # the object names are passed in through command line
             if ($::objectsfrom_args || $::opt_o || (($type eq 'node') && ($::opt_o || @::noderange)))
             {
+
+                eval { /$obj/ };
+                if ($@)
+                {
+                    my $rsp = {};
+                    $rsp->{data}->[0] = "Invalid \'$obj\' name, check the object named \'$obj\' of type \'$type\' syntax.";
+                    xCAT::MsgUtils->message("E", $rsp, $::callback);
+                    next;
+                }
+
                 if (!grep(/^$obj$/, @allobjoftype))
                 {
                     my $rsp;
