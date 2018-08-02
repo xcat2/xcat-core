@@ -181,8 +181,9 @@ sub preprocess_request {
     } elsif ($request->{command}->[0] eq 'mknetboot'
         or $request->{command}->[0] eq 'mkinstall') {
         return [$request];
-    }
-    xCAT::Common::usage_noderange($request, $callback);
+    } elsif ($request->{command}->[0] ne 'esxiready') {
+        xCAT::Common::usage_noderange($request, $callback);
+	}
 
     if ($request->{_xcatpreprocessed} and $request->{_xcatpreprocessed}->[0] == 1) { return [$request]; }
 

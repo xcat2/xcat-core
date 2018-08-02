@@ -48,20 +48,18 @@ done
 echo -e "<xcatrequest>\n<command>nextdestiny</command>\n</xcatrequest>" | /bin/openssl s_client -quiet -connect $xcatd:3001 2>&1 | tee /tmp/foo.log
 
 %firstboot --interpreter=busybox
-# enable SSH on next boot....
 chkconfig SSH on
-chkconfig ESXShell on
-esxcli system settings advanced set --int-value 0 --option /VMFS3/EnableBlockDelete
+/etc/init.d/SSH start
+#chkconfig ESXShell on
+#/etc/init.d/ESXShell start
 esxcli system settings advanced set --int-value 1 --option /UserVars/SuppressShellWarning
 esxcli network ip set -e y
 esxcli network firewall ruleset set -r DHCPv6 -e y
 esxcli network firewall ruleset set -r sshServer -e y
 esxcli network ip interface ipv6 set -i vmk0  -d y
-cat > /etc/init.d/xcatesxiready << EOF
-echo -e "<xcatrequest>\n<command>esxiready</command>\n</xcatrequest>" | /bin/openssl s_client -quiet -connect $xcatd:3001 2>&1 | tee /tmp/foo.log
-chkconfig --del xcatesxiready
-rm -rf /etc/init.d/xcatesxiready
-EOF
-chmod +x xcatesxiready
-chkconfig --add xcatesxiready
-reboot
+#The following (replacing $xcatd with your address) enables esxi install to trigger a vcenter join automatically.
+#uncomment the three lines and change $xcatd to your address for this functionality.
+#and chtab priority=3.1 policy.commands=esxiready policy.rule=allow
+#esxcli network firewall set -e 0
+#echo -e "<xcatrequest>\n<command>esxiready</command>\n</xcatrequest>" | /bin/openssl s_client -quiet -connect $xcatd:3001 2>&1 | tee /tmp/foo.log
+#esxcli network firewall set -e 1
