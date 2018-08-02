@@ -3926,7 +3926,6 @@ sub defls
                 eval { /$obj/ };
                 if ($@)
                 {
-                    print Dumper($@);
                     my $rsp = {};
                     $rsp->{data}->[0] = "Invalid \'$obj\' name, check the object named \'$obj\' of type \'$type\' syntax.";
                     xCAT::MsgUtils->message("E", $rsp, $::callback);
