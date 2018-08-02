@@ -133,7 +133,7 @@ fi
 if [ -d /sys/firmware/efi ]; then
 	sed -e 's!<device>XCATPARTITIONHOOK</device>!<device>'$instdisk'</device><partitions config:type="list"><partition><filesystem config:type="symbol">vfat</filesystem><mount>/boot/efi</mount><size>128mb</size></partition><partition><mount>swap</mount><size>auto</size></partition><partition><mount>/</mount><size>auto</size></partition></partitions>!' /tmp/profile/autoinst.xml > /tmp/profile/modified.xml
 else
-	sed -e 's!<device>XCATPARTITIONHOOK</device>!<device>'$instdisk'</device>!' /tmp/profile/autoinst.xml > /tmp/profile/modified.xml
+	sed -e 's!<device>XCATPARTITIONHOOK</device>!<device>'$instdisk'</device><partitions config:type="list"><partition><filesystem  config:type="symbol">xfs</filesystem><mount>/</mount><size>auto</size></partition><partition><mount>swap</mount><size>auto</size></partition></partitions>!' /tmp/profile/autoinst.xml > /tmp/profile/modified.xml
 fi
 #XCA_PARTITION_SCRIPT#
 #add the following part for replace the partition definition in /tmp/profile/autoinst.xml
