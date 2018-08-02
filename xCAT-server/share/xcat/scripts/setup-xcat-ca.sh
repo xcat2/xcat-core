@@ -28,6 +28,7 @@ else
 fi
 sed -e "s@##XCATCADIR##@$XCATCADIR@" $XCATROOT/share/xcat/ca/openssl.cnf.tmpl > $XCATCADIR/openssl.cnf
 cp $XCATROOT/share/xcat/ca/Makefile $XCATCADIR/
+touch $XCATCADIR/index.attr
 cd $XCATCADIR
 make init
 #openssl req -nodes -config openssl.cnf -days 7300 -x509 -newkey rsa:2048 -out ca-cert.pem -extensions v3_ca -outform PEM -subj /CN="$CNA"
