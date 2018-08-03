@@ -771,7 +771,6 @@ unless ($imagename) {
         $postinstall_filename = imgutils::get_profile_def_filename($osver, $profile, $arch, $pathtofiles, "postinstall");
     }
 }
-
 if ($postinstall_filename) {
 
     use_hackuname($arch, $kernelver);
@@ -792,14 +791,15 @@ if ($postinstall_filename) {
     $ENV{IMG_ROOTIMGDIR}=$rootimg_dir if("" ne $rootimg_dir);
    
 
-    foreach my $postinstall (split /,/, $postinstall_filename) {
+    foreach my $rawpostinstall (split /,/, $postinstall_filename) {
+        my ($postinstall,@args)=split(" ",$rawpostinstall) ;
         if (!-x $postinstall) {
             print "postinstall script $postinstall is not executable\n";
             unuse_hackuname();
             exit 1;
         }
 
-        my $rc = system($postinstall, $rootimg_dir, $osver, $arch, $profile);
+        my $rc = system($postinstall, $rootimg_dir, $osver, $arch, $profile,@args);
         if ($rc) {
             print "postinstall script $postinstall failed\n";
             unuse_hackuname();
