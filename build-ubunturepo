@@ -26,6 +26,7 @@
 #                            
 #               LOG=<filename> - provide an LOG file option to redirect some output into log file
 #
+#               PKGDIR=<build_pkg_dir> - Copy build core tarball to PKGDIR if defined
 # For the dependency packages 1. All the xcat dependency deb packages should be uploaded to
 #                                "pokgsa/projects/x/xcat/build/ubuntu/xcat-dep/debs/" on GSA
 #                             2. run ./build-ubunturepo -d
@@ -399,6 +400,16 @@ __EOF__
     tar -hjcf $tar_name xcat-core
     chgrp root $tar_name
     chmod g+w $tar_name
+
+    if [ "$PKGDIR" ]; then
+        mkdir -p $PKGDIR
+        cp $tar_name $PKGDIR
+        if [ $? != 0 ]; then
+            echo "Failed to copy $tar_name to $PKGDIR"
+        else
+            echo "Copied $tar_name to $PKGDIR"
+        fi
+    fi
 
     if [ ! -e core-snap ]; then
         ln -s xcat-core core-snap

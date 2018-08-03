@@ -30,7 +30,7 @@
 #        VERBOSE=1 - to see lots of verbose output
 #        LOG=<filename> - provide an LOG file option to redirect some output into log file
 #        RPMSIGN=0 or RPMSIGN=1 - Sign the RPMs using the keys on GSA, the default is to sign the rpms without RPMSIGN specified
-
+#        PKGDIR=<build_pkg_dir> - Copy build core tarball to PKGDIR if defined
 #
 # The following environment variables can be modified if you need
 #
@@ -568,6 +568,16 @@ else
 fi
 chgrp $SYSGRP $TARNAME
 chmod g+w $TARNAME
+
+if [ "$PKGDIR" ]; then
+    mkdir -p $PKGDIR
+    cp $TARNAME $PKGDIR
+    if [ $? != 0 ]; then
+        echo "Failed to copy $TARNAME to $PKGDIR"
+    else
+        echo "Copied $TARNAME to $PKGDIR"
+    fi
+fi
 
 # Decide whether to upload or not
 if [ -n "$UP" ] && [ "$UP" == 0 ]; then
