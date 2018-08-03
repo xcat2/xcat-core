@@ -11,6 +11,10 @@
         -p Profile (compute,service)
         -a Architecture (ppc64,x86_64,etc)
         -m Method (default cpio)
+        -s Compute MD5 checksum of image
+        -u Use uftp for copying image
+        -t uftp delay in seconds (default is 30)
+        -d uftp destination port
 
 =cut
 
@@ -32,6 +36,7 @@ use Cwd;
 use File::Temp;
 use File::Basename;
 use File::Path;
+use xCAT::DBobjUtils;
 
 #use xCAT::Utils qw(genpassword);
 use xCAT::Utils;
@@ -82,7 +87,7 @@ sub process_request {
         @ARGV = @{$args};
     }
     if (scalar(@ARGV) == 0) {
-        $callback->({ info => ["Usage:\n   packimage [-m| --method=cpio|tar] [-c| --compress=gzip|pigz|xz] [--nosyncfiles] <imagename>\n   packimage [-h| --help]\n   packimage [-v| --version]"] });
+        $callback->({ info => ["Usage:\n   packimage [-m| --method=cpio|tar] [-c| --compress=gzip|pigz|xz] <imagename>\n   packimage [-h| --help]\n   packimage [-v| --version]\n   packimage [-s| --sum]\n   packimage [-u| --uftp]\n   packimage [-t| --delay=<uftp delay in seconds>]\n   packimage [-d <uftp destination port>]"] });
         return 0;
     }
 
@@ -98,11 +103,19 @@ sub process_request {
     my $nosyncfiles;
     my $imagename;
     my $dotorrent;
+    my $domd5sum;
+    my $douftp;
+    my $uftpdelay;
+    my $default_uftpdelay=30;
+    my $uftpport;
+    my $addkcmdline;
     my $provmethod;
     my $envars;
     my $help;
     my $version;
     my $lock;  
+    my $newaddkcmdline;
+    my $linuximagetab;
  
     GetOptions(
         "profile|p=s" => \$profile,
@@ -111,6 +124,10 @@ sub process_request {
         "method|m=s"  => \$method,
         "compress|c=s"  => \$compress,
         "tracker=s"   => \$dotorrent,
+        "sum|s"       => \$domd5sum,
+        "uftp|u"      => \$douftp,
+        "port|d=s"    => \$uftpport,
+        "delay|t=s"   => \$uftpdelay,
         'nosyncfiles'      => \$nosyncfiles,
         "help|h"      => \$help,
         "version|v"   => \$version
@@ -125,7 +142,7 @@ sub process_request {
         return 0;
     }
     if ($help) {
-        $callback->({ info => ["Usage:\n   packimage [-m| --method=cpio|tar] [-c| --compress=gzip|pigz|xz] [--nosyncfiles] <imagename>\n   packimage [-h| --help]\n   packimage [-v| --version]"] });
+        $callback->({ info => ["Usage:\n   packimage [-m| --method=cpio|tar] [-c| --compress=gzip|pigz|xz] <imagename>\n   packimage [-h| --help]\n   packimage [-v| --version]\n   packimage [-s| --sum]\n   packimage [-u| --uftp]\n   packimage [-t| --delay=<uftp delay in seconds>]\n   packimage [-d <uftp destination port>]"] });
         return 0;
     }
 
@@ -149,7 +166,7 @@ sub process_request {
             $callback->({ error => ["The osimage table cannot be opened."], errorcode => [1] });
             return 1;
         }
-        my $linuximagetab = xCAT::Table->new('linuximage', -create => 1);
+        $linuximagetab = xCAT::Table->new('linuximage', -create => 1);
         unless ($linuximagetab) {
             $callback->({ error => ["The linuximage table cannot be opened."], errorcode => [1] });
             return 1;
@@ -159,7 +176,7 @@ sub process_request {
             $callback->({ error => ["Cannot find image \'$imagename\' from the osimage table."], errorcode => [1] });
             return 1;
         }
-        (my $ref1) = $linuximagetab->getAttribs({ imagename => $imagename }, 'exlist', 'rootimgdir');
+        (my $ref1) = $linuximagetab->getAttribs({ imagename => $imagename }, 'exlist', 'rootimgdir', 'addkcmdline');
         unless ($ref1) {
             $callback->({ error => ["Cannot find $imagename from the linuximage table."], errorcode => [1] });
             return 1;
@@ -182,8 +199,9 @@ sub process_request {
             return 1;
         }
 
-        $exlistloc = $ref1->{'exlist'};
-        $destdir   = $ref1->{'rootimgdir'};
+        $exlistloc   = $ref1->{'exlist'};
+        $destdir     = $ref1->{'rootimgdir'};
+        $addkcmdline = $ref1->{'addkcmdline'};
     } else {
         $provmethod = "netboot";
         unless ($osver) {
@@ -550,6 +568,92 @@ sub process_request {
         $callback->({ error => ["packimage failed while running: \n $excludestr"], errorcode => [1] }); 
         system("rm -rf $xcat_packimg_tmpfile");
         return 1;
+    }
+    $newaddkcmdline = $addkcmdline;
+    if ($domd5sum) { # if true, pass md5sum of root image as a boot parameter
+        my $md5 = Digest::MD5->new;
+        open(my $iorootimg, '<', "$destdir/rootimg.$suffix");
+        binmode($iorootimg);
+        $md5->addfile($iorootimg);
+        my $md5sum = $md5->hexdigest;
+        if ($addkcmdline =~ m/md5sum/) {
+            $newaddkcmdline =~ s/md5sum=\w{32}/md5sum=$md5sum/;
+        } else {
+            $newaddkcmdline = $newaddkcmdline . " md5sum=" . $md5sum;
+        }
+        $linuximagetab->setAttribs({imagename => $imagename}, {addkcmdline => $newaddkcmdline});
+    } else { # -s was not given, so remove any pre-existing md5sum since it will be invalid
+        if ($newaddkcmdline =~ m/md5sum/) {
+            $newaddkcmdline =~ s/ md5sum=\w{32}//;
+            $newaddkcmdline =~ s/^md5sum=\w{32} //;
+            $newaddkcmdline =~ s/^md5sum=\w{32}//;
+            $linuximagetab->setAttribs({imagename => $imagename}, {addkcmdline => $newaddkcmdline});
+        }
+    }
+
+    if ($douftp) { # if true, pass uftp=true as a boot parameter
+        if (!($newaddkcmdline =~ m/uftp=true/)) {
+            $newaddkcmdline = $newaddkcmdline . " uftp=true";
+            $linuximagetab->setAttribs({imagename => $imagename}, {addkcmdline => $newaddkcmdline});
+        }
+   } else { # -u was not given, so remove any pre-existing uftp boot parameters
+        if ($newaddkcmdline =~ m/uftp=true/) {
+            $newaddkcmdline =~ s/ uftp=true//;
+            $newaddkcmdline =~ s/^uftp=true //;
+            $newaddkcmdline =~ s/^uftp=true//;
+        }
+        if ($newaddkcmdline =~ m/uftpdelay=\d*/) {
+            $newaddkcmdline =~ s/ uftpdelay=\d*//;
+            $newaddkcmdline =~ s/^uftpdelay=\d* //;
+            $newaddkcmdline =~ s/^uftpdelay=\d*//;
+        }
+        if ($newaddkcmdline =~ m/uftpport=\d*/) {
+            $newaddkcmdline =~ s/ uftpport=\d*//;
+            $newaddkcmdline =~ s/^uftpport=\d* //;
+            $newaddkcmdline =~ s/^uftpport=\d*//;
+        }
+        $linuximagetab->setAttribs({imagename => $imagename}, {addkcmdline => $newaddkcmdline});
+    }
+
+    if (($uftpdelay) && ($douftp)) { # if true, pass uftpdelay as a boot parameter
+        if ($newaddkcmdline =~ m/uftpdelay/) { # if there is a pre-existing uftpdelay, replace
+            $newaddkcmdline =~ s/uftpdelay=\d*/uftpdelay=$uftpdelay/;
+        } else { # otherwise, add supplied value
+            $newaddkcmdline = $newaddkcmdline . " uftpdelay=$uftpdelay";
+        }
+        $linuximagetab->setAttribs({imagename => $imagename}, {addkcmdline => $newaddkcmdline});
+    } elsif ($douftp) { # no uftpdelay was given, so use the default of $default_uftpdelay
+        if ($newaddkcmdline =~ m/uftpdelay/) { # if there is a pre-existing uftpdelay, replace
+            $newaddkcmdline =~ s/uftpdelay=\d*/uftpdelay=$default_uftpdelay/;
+        } else { # otherwise, add default value
+            $newaddkcmdline = $newaddkcmdline . " uftpdelay=$default_uftpdelay";
+        }
+        $linuximagetab->setAttribs({imagename => $imagename}, {addkcmdline => $newaddkcmdline});
+    }
+
+    my $port_conflict;
+    if (($douftp) && ($uftpport)) {
+        $port_conflict = `lsdef -t osimage -i addkcmdline | grep $uftpport`;
+        if ($port_conflict) {
+            $callback->({ error => ["Warning: uftpport $uftpport is already in use by another image!"], errorcode => [0] });
+        }
+    } else {
+        while (($douftp) && !($uftpport)) { # no uftpport was given, so use a random one
+            $uftpport = 1025 + int(rand(64510));
+            $port_conflict = `lsdef -t osimage -i addkcmdline | grep $uftpport`;
+            if ($port_conflict) { # a conflict was found, so pick a different port
+                $uftpport = "";
+            }
+        }
+    }
+
+    if ($douftp) { # if true, pass uftpport as a boot parameter
+        if ($newaddkcmdline =~ m/uftpport/) { # if there is a pre-existing uftpport, replace
+            $newaddkcmdline =~ s/uftpport=\d*/uftpport=$uftpport/;
+        } else { # otherwise, add supplied value
+            $newaddkcmdline = $newaddkcmdline . " uftpport=$uftpport";
+        }
+        $linuximagetab->setAttribs({imagename => $imagename}, {addkcmdline => $newaddkcmdline});
     }
 
     if ($method =~ /cpio/) {

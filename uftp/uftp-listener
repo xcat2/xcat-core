@@ -1,0 +1,100 @@
+#!/bin/bash
+LOGDIR=/var/log/xcat/
+LOGFILE=uftp_listener.log
+mkdir -p $LOGDIR
+
+usage() {
+  echo "usage: uftp-listener [ -i interface ] [ -s sleep time ]"
+  exit 1
+}
+
+debug() {
+  [ "$DEBUG" ] && echo "$@"
+  echo "$@" >> $LOGDIR/$LOGFILE
+}
+
+start_copy() {
+  sleep $SLEEP
+  debug "copying $ROOTIMG"
+  debug "$UFTP -I $INTERFACE -R 950000 -p $UFTPPORT -D /rootimg.cpio.gz $ROOTIMG"
+  $UFTP -I $INTERFACE -R 950000 -p $UFTPPORT -D /rootimg.cpio.gz $ROOTIMG
+}
+
+while getopts ":i:s:hd" options
+do
+  case ${options} in
+    i ) INTERFACE=${OPTARG};;
+    s ) SLEEP=${OPTARG};;
+    d ) DEBUG=true;;
+    h ) usage
+        exit 1;;
+    * ) usage
+        exit 1;;
+  esac
+done
+
+# if INTERFACE is null, try to detect
+if [ -z "$INTERFACE" ]; then
+  MAN_NET=$(/opt/xcat/bin/lsdef -t network management | grep net | sed 's/.*=//')
+  INTERFACE=$(netstat -nr | grep $MAN_NET | awk '{print $8}')
+fi
+
+if [ -z "$INTERFACE" ]; then
+  debug "ERROR: detection of interface failed and none supplied with -i, aborting..."
+  exit 1
+fi
+
+ip link show $INTERFACE > /dev/null 2>&1
+RC=$?
+
+if [ "$RC" != 0 ]; then
+  debug "ERROR: invalid interface $INTERFACE"
+  exit 1
+fi
+
+# if no sleep time supplied, use the default of 30 seconds
+if [ -z "$SLEEP" ]; then
+  SLEEP=30
+fi
+
+UFTP=$(which uftp)
+if [ ! -x $UFTP ]; then
+  debug "ERROR: uftp binary not found, exiting!"
+  exit 1
+fi
+
+# make sure 1045/tcp is not already in use
+nc -i 500ms -l -p 1045 2>&1 | grep "Address already in use" > /dev/null
+RC=$?
+if [ "$RC" = 0 ]; then
+  debug "ERROR: 1045/tcp is already in use, sleeping 10 seconds and exiting"
+  sleep 10
+  exit 1
+fi
+
+debug "listening for transfer request on interface $INTERFACE 1045/tcp"
+declare -A copyjobs
+while true
+do
+  nc -l -p 1045 -k | while read LINE; do
+    VALIDATED=$(echo $LINE | grep -E "/install/.*/rootimg(\.sfs|\.cpio\.gz|\.cpio\.xz|\.tar.gz|\.tar\.xz|-statelite\.gz)")
+    if [ -n "$VALIDATED" ]; then
+      ROOTIMG=$(echo $VALIDATED | sed 's/.*GET //' | sed 's+ HTTP/1.1.*++')
+      if $(echo $ROOTIMG | grep uftpport > /dev/null); then
+        UFTPPORT=$(echo $ROOTIMG | sed 's+.*uftpport=++')
+        ROOTIMG=$(echo $ROOTIMG | sed 's+/uftpport=.*++')
+      else
+        UFTPPORT=1044
+      fi
+      if [ ! -f "$ROOTIMG" ]; then
+        debug "$ROOTIMG: file not found"
+      elif [ ! x${copyjobs[$ROOTIMG]} = x ] && jobs -lr | grep ${copyjobs[$ROOTIMG]} > /dev/null; then
+        : # if we get here, there is already a uftp copy job staged for this url, so do nothing
+        # debug "$ROOTIMG job detected"
+      else
+        start_copy $ROOTIMG &
+        copyjobs[$ROOTIMG]=$!
+      fi
+    fi
+  done
+done

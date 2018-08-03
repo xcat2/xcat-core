@@ -32,11 +32,76 @@ fi
 
 
 imgurl="$(getarg imgurl=)";
+MD5="$(getarg md5sum=)"
+TRYUFTP="$(getarg uftp=)"
+uftpdelay="$(getarg uftpdelay=)"
+uftpport="$(getarg uftpport=)"
 if [ ! -z "$imgurl" ]; then
     if [ xhttp = x${imgurl%%:*} ]; then
         logger $SYSLOGHOST -t $log_label -p local4.info "Downloading rootfs image from $imgurl..."
         NFS=0
         FILENAME=${imgurl##*/}
+        [ "$xcatdebugmode" > "0" ] && logger -t xcat -p debug "TRYUFTP=$TRYUFTP"
+        if [ "$TRYUFTP" = "true" ]; then
+            if [ ! -z "$uftpport" ]; then
+                uftpd -D / -q -p $uftpport
+                uftpd_rc=$?
+            else
+                uftpd -D / -q
+                uftpd_rc=$?
+            fi
+            if [ "$uftpd_rc" = 0 ]; then
+                [ "$xcatdebugmode" > "0" ] && logger -t xcat -p debug "started uftpd"
+                echo "started uftpd" 1>&2
+                # send a request to the uftp listener on management node
+                uftpurl=$(echo $imgurl | sed "s/80/1045/")
+                if [ ! -z "$uftpport" ]; then
+                    uftpurl=$(echo $uftpurl | sed "s+$+/uftpport=$uftpport+")
+                fi
+                [ "$xcatdebugmode" > "0" ] && logger -t xcat -p debug "sending uftp request to $uftpurl"
+                echo "sending uftp request to $uftpurl" 1>&2
+                wget -t 1 -T 1 -q $uftpurl
+                # uftpdelay should match the delay the listener is using,
+                # but use 30 if this was not defined
+                [ -z "uftpdelay" ] && uftpdelay=30
+                [ "$xcatdebugmode" > "0" ] && logger -t xcat -p debug "sleeping $uftpdelay seconds..."
+                echo "sleeping $uftpdelay seconds..." 1>&2
+                sleep $uftpdelay
+                timeout=90
+                # wait for transfer to complete, or time out
+                started=0
+                while [ "$timeout" -gt 0 ] && ! grep "File transfer complete" /tmp/uftpd.log; do
+                    if [ "$started" = 0 ] && grep "Name of file to receive" /tmp/uftpd.log; then
+                        [ "$xcatdebugmode" > "0" ] && logger -t xcat -p debug "uftp transfer started"
+                        echo "uftp transfer started" 1>&2
+                        started=1
+                    fi
+                    ((timeout-=1))
+                    sleep 1
+                done
+                if [ "$timeout" = 0 ]; then
+                    # we timed out, so remove any partial file and fall back
+                    [ "$xcatdebugmode" > "0" ] && logger -t xcat -p debug "uftp transfer timed out, falling back to wget..."
+                    echo "uftp transfer timed out, falling back to wget..." 1>&2
+                    rm -f $FILENAME
+                else
+                    [ "$xcatdebugmode" > "0" ] && logger -t xcat -p debug "uftp transfer complete"
+                    echo "uftp transfer complete" 1>&2
+                    # check md5sum if one was supplied
+                    if [ -z "$MD5" ]; then
+                        echo "no md5sum supplied, continuing..." 1>&2
+                        [ "$xcatdebugmode" > "0" ] && logger -t xcat -p debug "no md5sum supplied, continuing..."
+                    elif ! md5sum $FILENAME | grep $MD5; then
+                        [ "$xcatdebugmode" > "0" ] && logger -t xcat -p debug "md5sum check failed, trying wget..."
+                        echo "md5sum check failed, trying wget..." 1>&2
+                        rm -f $FILENAME
+                    else
+                        [ "$xcatdebugmode" > "0" ] && logger -t xcat -p debug "md5sum check succeeded, continuing..."
+                        echo "md5sum check succeeded, continuing..." 1>&2
+                    fi
+                fi
+            fi
+        fi
         while [ ! -r "$FILENAME" ]; do
             [ "$xcatdebugmode" > "0" ] && logger -t $log_label -p local4.debug "Downloading $imgurl..."
             echo Getting $imgurl...
