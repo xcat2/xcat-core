@@ -650,7 +650,12 @@ elif [ "$1" = "-s" ];then
     fi
 
     if [ "$UPDATENODE" = "1" ] || grep "REBOOT=TRUE" /opt/xcat/xcatinfo >/dev/null 2>&1; then
-        ifdown $str_inst_nic;ifup $str_inst_nic
+        if [ "$str_os_type" = "debian" ];then
+            ifdown --force $str_inst_nic
+        else
+            ifdown $str_inst_nic
+        fi
+        ifup $str_inst_nic
     fi 
     if [ $? -ne 0 ]; then
         log_error "ifup $str_inst_nic failed."
