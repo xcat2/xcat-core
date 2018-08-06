@@ -19,7 +19,7 @@ Name
 ****************
 
 
-\ **nodeset**\  \ *noderange*\  [\ **boot**\  | \ **stat**\  [\ **-a**\ ]| \ **offline**\  | \ **runcmd=bmcsetup**\  | \ **osimage**\ [=\ *imagename*\ ] | \ **shell**\  | \ **shutdown**\ ] [\ **-V | -**\ **-verbose**\ ]
+\ **nodeset**\  \ *noderange*\  [\ **boot**\  | \ **stat**\  [\ **-a**\ ]| \ **offline**\  | \ **runcmd=**\ \ *command*\  | \ **osimage**\ [=\ *imagename*\ ] | \ **shell**\  | \ **shutdown**\ ] [\ **-V | -**\ **-verbose**\ ]
 
 \ **nodeset**\  \ *noderange*\  \ **osimage**\ [=\ *imagename*\ ] [\ **-**\ **-noupdateinitrd**\ ] [\ **-**\ **-ignorekernelchk**\ ]
 
@@ -113,10 +113,9 @@ A user can supply their own scripts to be run on the mn or on the service node (
  
 
 
-\ **runcmd=bmcsetup**\ 
+\ **runcmd=**\ \ *command*\ 
  
- This instructs the node to boot to the xCAT nbfs environment and proceed to configure BMC
- for basic remote access.  This causes the IP, netmask, gateway, username, and password to be programmed according to the configuration table.
+ This instructs the node to boot to the xCAT genesis environment and specified command to be executed.
  
 
 
@@ -195,6 +194,16 @@ root directory and the TFTP xCAT  subdirectory.   /tftpboot  and
  .. code-block:: perl
  
    nodeset $node runimage=http://$MASTER/image.tgz
+ 
+ 
+
+
+3. Boot node1 into xCAT genesis environment and execute bmcsetup script. This causes the IP, netmask, gateway, username, and password to be programmed according to the configuration in node object definition.
+ 
+ 
+ .. code-block:: perl
+ 
+   rinstall node1 runcmd=bmcsetup
  
  
 

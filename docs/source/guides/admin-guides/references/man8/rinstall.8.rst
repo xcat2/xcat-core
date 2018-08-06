@@ -19,7 +19,7 @@ Name
 ****************
 
 
-\ **rinstall**\  \ *noderange*\  [\ **boot**\  | \ **shell**\  | \ **runcmd=bmcsetup**\ ] [\ **-c | -**\ **-console**\ ] [\ **-V | -**\ **-verbose**\ ]
+\ **rinstall**\  \ *noderange*\  [\ **boot**\  | \ **shell**\  | \ **runcmd=**\ \ *command*\ ] [\ **-c | -**\ **-console**\ ] [\ **-V | -**\ **-verbose**\ ]
 
 \ **rinstall**\  \ *noderange*\  \ **osimage**\ [=\ *imagename*\ ] [\ **-**\ **-ignorekernelchk**\ ] [\ **-c | -**\ **-console**\ ] [\ **-u | -**\ **-uefimode**\ ] [\ **-V | -**\ **-verbose**\ ]
 
@@ -70,9 +70,9 @@ If \ **-c**\  is specified, it will then run \ **rcons**\  on the node. This is 
  
 
 
-\ **runcmd=bmcsetup**\ 
+\ **runcmd=**\ \ *command*\ 
  
- This instructs the node to boot to the xCAT nbfs environment and proceed to configure BMC for basic remote access.  This causes the IP, netmask, gateway, username, and password to be programmed according to the configuration table.
+ This instructs the node to boot to the xCAT genesis environment and specified command to be executed.
  
 
 
@@ -146,6 +146,16 @@ If \ **-c**\  is specified, it will then run \ **rcons**\  on the node. This is 
  .. code-block:: perl
  
    rinstall node1 -c
+ 
+ 
+
+
+4. Boot node1 into xCAT genesis environment and execute bmcsetup script. This causes the IP, netmask, gateway, username, and password to be programmed according to the configuration in node object definition.
+ 
+ 
+ .. code-block:: perl
+ 
+   rinstall node1 runcmd=bmcsetup
  
  
 

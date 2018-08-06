@@ -113,7 +113,7 @@ sub rinstall {
            $OSIMAGE = $1; # osimage was specified
            xCAT::MsgUtils->message("I", $rsp, $callback);
         }
-        elsif ($state =~ /^boot$|^shell$|^osimage$|^runcmd=bmcsetup$|^runimage=/) {
+        elsif ($state =~ /^boot$|^shell$|^osimage$|^runcmd=|^runimage=/) {
            # the rest are valid actions, just pass to nodeset
            $STATES=$state;
         }
@@ -584,7 +584,7 @@ sub usage {
     my $callback = shift;
     my $rsp      = {};
     $rsp->{data}->[0] = "Usage:";
-    $rsp->{data}->[1] = "   $command <noderange> [boot | shell | runcmd=bmcsetup] [-c|--console] [-u|--uefimode] [-V|--verbose]";
+    $rsp->{data}->[1] = "   $command <noderange> [boot | shell | runcmd=<command>] [-c|--console] [-u|--uefimode] [-V|--verbose]";
     $rsp->{data}->[2] = "   $command <noderange> osimage[=<imagename>] [--ignorekernelchk] [-c|--console] [-u|--uefimode] [-V|--verbose]";
     $rsp->{data}->[3] = "   $command <noderange> runimage=<task>";
     $rsp->{data}->[4] = "   $command [-h|--help|-v|--version]";
