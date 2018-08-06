@@ -252,19 +252,19 @@ for dev in `ip link|grep -B1 ether|grep UP|awk '{print $2}'|sed -e s/://|grep -v
         	echo "	<firmdesc>$FIRMDESC</firmdesc>" >> /tmp/discopacket
         fi
         myswitch=`lldptool -n -i $dev -t -V sysName|grep -v 'System Name TLV'|sed -e 's/^	*//'`
-        if [ ! -z "$myswitch" -a "$myswitch" != "Agent instance for device not found" ]; then
+        if [[ ! -z "$myswitch" && ! "$myswitch" =~ "Agent instance for device not found" ]]; then
         	echo "	<switchname>$myswitch</switchname>" >> /tmp/discopacket
         fi
         for switchaddr in `lldptool -i $dev -n -t -V mngAddr|grep IP|sed -e 's/.*:.//'`; do
-        	if [ "$switchaddr" = "Agent instance for device not found" ]; then break; fi
+        	if [[ "$switchaddr" =~ "Agent instance for device not found" ]]; then break; fi
         	echo "	<switchaddr>$switchaddr</switchaddr>" >> /tmp/discopacket
         done
         myswitchdesc=`lldptool -n -i $dev -t -V sysDesc|grep -v 'System Description TLV'|sed -e 's/^	*//'`
-        if [ ! -z "$myswitchdesc" -a "$myswitchdesc" != "Agent instance for device not found" ]; then	
+        if [[ ! -z "$myswitchdesc" && ! "$myswitchdesc" =~ "Agent instance for device not found" ]]; then
         	echo "	<switchdesc>$myswitchdesc</switchdesc>" >> /tmp/discopacket
         fi
         myport=`lldptool -n -i $dev -t -V portDesc|grep -v 'Port Description TLV'|sed -e 's/^	*//'`
-        if [ ! -z "$myport" -a "$myswitchdesc" != "Agent instance for device not found" ]; then	
+        if [[ ! -z "$myport" && ! "$myport" =~ "Agent instance for device not found" ]]; then
         	echo "	<switchport>$myport</switchport>" >> /tmp/discopacket
         fi
         	

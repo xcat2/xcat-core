@@ -12,7 +12,7 @@ use xCAT::Utils;
 use xCAT::TableUtils;
 use Getopt::Long;
 use File::Spec;
-use POSIX qw(tmpnam);
+use File::Temp;
 
 my $packages_dir = ();
 my $activate     = ();
@@ -662,7 +662,7 @@ sub rflash {
     ########################
     # Now build a temporary file containing the stanzas to be run on the HMC
     ###################
-    my $tmp_file = tmpnam();    # the file handle of the stanza
+    my $tmp_file = File::Temp::tmpnam();    # the file handle of the stanza
     ##############################
     # Open the temp file
     ##########################

@@ -1862,6 +1862,20 @@ sub do_firmware_update {
     $ret = get_ipmitool_version(\$ipmitool_ver);
     exit $ret if $ret < 0;
 
+    # Update node status to indicate firmware update started
+    my $set_fw_update_status_func = sub {
+        my ($node, $callback) = @_;
+        my $status = "updating firmware";
+        my $nodelist_table = xCAT::Table->new('nodelist');
+        if (!$nodelist_table) {
+            xCAT::MsgUtils->message("S", "Unable to open nodelist table, denying");
+        } else {
+            $nodelist_table->setNodeAttribs($node, { status => $status });
+            $nodelist_table->close();
+        }
+        return;
+    };
+
     my $exit_with_error_func = sub {
         my ($node, $callback, $message) = @_;
         my $status = "failed to update firmware";
@@ -1921,7 +1935,10 @@ sub do_firmware_update {
     if ($bmc_password) {
         $pre_cmd = $pre_cmd . " -P $bmc_password";
     }
-    
+
+    #Update node status
+    $set_fw_update_status_func->($sessdata->{node}, $callback);
+
     # check for 8335-GTB Model Type to adjust buffer size
     my $buffer_size = "30000";
     my $cmd = $pre_cmd . " fru print 3";
@@ -2590,16 +2607,6 @@ sub start_rflash_processes {
     foreach (@donargs) {
         do_rflash_process($_->[0], $_->[1], $_->[2], $_->[3], $_->[4],
             $ipmitimeout, $ipmitrys, $command, -args => \@exargs);
-        $rflash_status->{$_->[0]}->{status} = "updating firmware";
-    }
-    if (!grep(/^(-c|--check)$/i, @exargs)) {
-        my $nodelist_table = xCAT::Table->new('nodelist');
-        if (!$nodelist_table) {
-            xCAT::MsgUtils->message("S", "Unable to open nodelist table, denying");
-        } else {
-            $nodelist_table->setNodesAttribs($rflash_status);
-            $nodelist_table->close();
-        }
     }
 
     # Wait for all processes to end

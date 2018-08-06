@@ -32,6 +32,7 @@
 #        GPGSIGN/RPMSIGN=0 or GPGSIGN/RPMSIGN=1 - Sign the RPMs using the keys on GSA, the default is to sign the rpms without GPGSIGN/RPMSIGN specified
 #        DEST=<directory> - provide a directory to contains the build result
 #
+#        BUILDDESTDIR=<build_tarball_dir> - Copy build core tarball to BUILDDESTDIR if defined
 #
 # The following environment variables can be modified if you need
 #
@@ -583,6 +584,17 @@ else
 fi
 chgrp $SYSGRP $TARNAME
 chmod g+w $TARNAME
+
+if [ "$BUILDDESTDIR" ]; then
+    rm -rf $BUILDDESTDIR
+    mkdir -p $BUILDDESTDIR
+    cp $TARNAME $BUILDDESTDIR
+    if [ $? != 0 ]; then
+        echo "Failed to copy $TARNAME to $BUILDDESTDIR"
+    else
+        echo "Copied $TARNAME to $BUILDDESTDIR"
+    fi
+fi
 
 # Decide whether to upload or not
 if [ -n "$UP" ] && [ "$UP" == 0 ]; then

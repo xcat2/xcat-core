@@ -214,7 +214,7 @@ else
     echo '    $primary{ } $bootable{ } method{ prep }' >> /tmp/partitionfile
     echo "    ." >> /tmp/partitionfile
 
-    #echo "100 50 100 ext4" >> /tmp/partitionfile
+    #echo "256 256 512 ext4" >> /tmp/partitionfile
     #echo '    $primary{ } $bootable{ } method{ format } format{ } use_filesystem{ } filesystem{ ext4 } mountpoint{ /boot }' >> /tmp/partitionfile
     #echo "    ." >> /tmp/partitionfile
 fi

@@ -48,6 +48,10 @@ start)
     if [ -r /opt/xcat/xcatinstallpost ]; then
       /opt/xcat/xcatinstallpost
     fi
+    if [ -f /opt/xcat/xcatpostinit1.service.sles ]; then
+        rm -rf /etc/systemd/system/xcatpostinit1.service
+        mv /opt/xcat/xcatpostinit1.service.sles /etc/systemd/system/xcatpostinit1.service
+    fi
   fi
 
   ;;

@@ -765,6 +765,14 @@ sub processArgs
                 #    then set noderange
                 if (($::command ne 'mkdef') && ($a =~ m/^\//))
                 {
+                    eval { /$a/ };
+                    if ($@)
+                    {
+                        my $rsp = {};
+                        $rsp->{data}->[0] = "Invalid regular expression $a, check the noderange syntax.";
+                        xCAT::MsgUtils->message("E", $rsp, $::callback);
+                        return 3;
+                    }
                     @::noderange = &noderange($a, 1); # Use the "verify" option to support regular expression
                 }
                 else
@@ -3914,6 +3922,16 @@ sub defls
             # the object names are passed in through command line
             if ($::objectsfrom_args || $::opt_o || (($type eq 'node') && ($::opt_o || @::noderange)))
             {
+
+                eval { /$obj/ };
+                if ($@)
+                {
+                    my $rsp = {};
+                    $rsp->{data}->[0] = "Invalid \'$obj\' name, check the object named \'$obj\' of type \'$type\' syntax.";
+                    xCAT::MsgUtils->message("E", $rsp, $::callback);
+                    next;
+                }
+
                 if (!grep(/^$obj$/, @allobjoftype))
                 {
                     my $rsp;

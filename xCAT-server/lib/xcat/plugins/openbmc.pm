@@ -2447,8 +2447,13 @@ sub deal_with_response {
             if ($node_info{$node}{cur_status} eq "RPOWER_RESET_RESPONSE" and defined $status_info{RPOWER_RESET_RESPONSE}{argv} and $status_info{RPOWER_RESET_RESPONSE}{argv} =~ /bmcreboot$/) { 
                 my $infomsg = "BMC $::POWER_STATE_REBOOT";
                 xCAT::SvrUtils::sendmsg($infomsg, $callback, $node);
-                $wait_node_num--;
-                return;    
+                if ($::UPLOAD_ACTIVATE_STREAM) {
+                    retry_after($node, "RPOWER_BMC_CHECK_REQUEST", 15);
+                    return;
+                }else{
+                    $wait_node_num--;
+                    return;
+                }    
             }
             $error = $::RESPONSE_SERVICE_TIMEOUT;
         } else {
@@ -4792,6 +4797,10 @@ sub rflash_upload {
                     my $upload_success_msg = "Firmware upload successful. Use -l option to list.";
                     unless ($::UPLOAD_AND_ACTIVATE or $::UPLOAD_ACTIVATE_STREAM) {
                         xCAT::SvrUtils::sendmsg("$upload_success_msg", $callback, $node);
+                    }
+                    #Put a delay of 3 seconds to allow time for the BMC to untar the file we just uploaded
+                    if (defined($::UPLOAD_ACTIVATE_STREAM)){
+                        sleep 3;
                     }
                     print RFLASH_LOG_FILE_HANDLE "$upload_success_msg\n";
                     # Try to logoff, no need to check result, as there is nothing else to do if failure

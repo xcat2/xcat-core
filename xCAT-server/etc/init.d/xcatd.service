@@ -1,0 +1,17 @@
+[Unit]
+Description=xCAT management service
+After=network.target syslog.service
+
+[Service]
+EnvironmentFile=-/etc/sysconfig/xcat
+Type=forking
+PIDFile=/var/run/xcatd.pid
+ExecStart=/etc/init.d/xcatd start
+ExecStop=/etc/init.d/xcatd stop
+LimitNOFILE=16000
+RemainAfterExit=no
+Restart=on-failure
+RestartSec=5s
+
+[Install]
+WantedBy=multi-user.target

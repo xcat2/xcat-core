@@ -14,6 +14,7 @@ use File::Basename;
 use locale;
 use strict;
 use File::Path;
+use File::Temp;
 use POSIX;
 use Socket;
 use Getopt::Long;
@@ -1229,7 +1230,7 @@ sub fork_fanout_dsh
                 $rsp->{data}->[0] = "TRACE: Environment option specified";
                 $dsh_trace && (xCAT::MsgUtils->message("I", $rsp, $::CALLBACK));
                 my %env_rcp_config = ();
-                $tmp_env_file = POSIX::tmpnam . '.dsh';
+                $tmp_env_file = File::Temp::tmpnam . '.dsh';
                 $rsh_config{'command'} .= ". $tmp_env_file ; ";
 
                 $env_rcp_config{'src-file'}  = $$options{'environment'};
@@ -1280,7 +1281,7 @@ sub fork_fanout_dsh
                 $dsh_trace && (xCAT::MsgUtils->message("I", $rsp, $::CALLBACK));
 
                 my %exe_rcp_config = ();
-                $tmp_cmd_file = POSIX::tmpnam . ".dsh";
+                $tmp_cmd_file = File::Temp::tmpnam . ".dsh";
 
                 my ($exe_cmd, @args) = @{ $$options{'execute'} };
                 my $chmod_cmd = "";

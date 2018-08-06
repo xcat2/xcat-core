@@ -151,7 +151,10 @@ systemctl disable ntpd.service 2>/dev/null
 systemctl disable ntp-wait.service 2>/dev/null
 systemctl disable ntpdate.service 2>/dev/null
 
-systemctl stop chronyd.service
+# On Ubuntu 18.04
+systemctl stop chrony.service 2>/dev/null
+# On RHEL 7, 8
+systemctl stop chronyd.service 2>/dev/null
 
 # The system is configured to maintain the RTC in universal time.
 timedatectl set-local-rtc 0
@@ -291,11 +294,13 @@ log measurements statistics tracking
 EOF
 exit_if_bad "$?" "Failed to create configuration file for chrony"
 
-systemctl reenable chronyd.service
-exit_if_bad "$?" "Failed to enable chronyd.service"
+systemctl reenable chrony.service 2>/dev/null ||
+	systemctl reenable chronyd.service 2>/dev/null
+exit_if_bad "$?" "Failed to enable chrony service"
 
-systemctl reload-or-restart chronyd.service
-exit_if_bad "$?" "Failed to start chronyd.service"
+systemctl reload-or-restart chrony.service 2>/dev/null ||
+	systemctl reload-or-restart chronyd.service 2>/dev/null
+exit_if_bad "$?" "Failed to start chrony service"
 
 logger -t xcat -p local4.info "NTP setup accomplished!"
 

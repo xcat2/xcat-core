@@ -258,7 +258,7 @@ replace_persistent_route()
                     echo "Persistent route \"$route\" has been added in $filename."
                 else 
                     # replace it
-                    sed -i -e "s/$routedest1.*/$route1/g" $filename
+                    sed -i -e "s/${routedest1}.*/$route1/g" $filename
                     echo "Persistent route \"$route\" has been replaced in $filename."
                 fi
             else
@@ -300,7 +300,9 @@ replace_persistent_route()
             if [ "$net" = "default" ]; then
                 filename="/etc/sysconfig/network"
                 route="GATEWAY=$gw"
-                routedest="$route"
+                route1=$route
+                routedest="GATEWAY="
+                routedest1=$routedest
             fi
             if [ -f $filename ]; then
                 egrep "^$routedest" $filename 2>&1 1>/dev/null
@@ -309,7 +311,7 @@ replace_persistent_route()
                     echo "Persistent route \"$route\" has been added in $filename."
                 else 
                     # replace it
-                    sed -i -e "s/$routedest1.*/$route1/g" $filename
+                    sed -i -e "s/${routedest1}.*/$route1/g" $filename
                     echo "Persistent route \"$route\" has been replaced in $filename."
                 fi
             else

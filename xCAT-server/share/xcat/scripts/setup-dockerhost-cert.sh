@@ -49,6 +49,7 @@ if [  -e $XCATDOCKERCADIR/index ]; then
   rm -f $XCATDOCKERCADIR/index*
 fi
 touch $XCATDOCKERCADIR/index
+touch $XCATDOCKERCADIR/index.attr
 
 echo "00" > $XCATDOCKERCADIR/serial
 
