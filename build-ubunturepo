@@ -26,6 +26,8 @@
 #                            
 #               LOG=<filename> - provide an LOG file option to redirect some output into log file
 #
+#               DEST=<directory> - provide a directory to contains the build result
+#
 #               BUILDDESTDIR=<build_tarball_dir> - Copy build core tarball to BUILDDESTDIR if defined
 # For the dependency packages 1. All the xcat dependency deb packages should be uploaded to
 #                                "pokgsa/projects/x/xcat/build/ubuntu/xcat-dep/debs/" on GSA
@@ -48,7 +50,7 @@ fi
 . /etc/lsb-release
 
 # Check the necessary packages before starting the build
-declare -a packages=( "reprepro" "devscripts" "debhelper" "libsoap-lite-perl" "libdbi-perl" "quilt" )
+declare -a packages=( "reprepro" "devscripts" "debhelper" "libsoap-lite-perl" "libdbi-perl" "quilt" "git")
 
 for package in ${packages[@]}; do
     RC=`dpkg -l | grep $package >> /dev/null 2>&1; echo $?`
@@ -60,7 +62,7 @@ done
 
 # Process cmd line variable assignments, assigning each attr=val pair to a variable of same name
 for i in $*; do
-        echo $i | grep '='
+        echo $i | grep '=' -q
         if [ $? != 0 ];then
             continue
         fi
@@ -109,17 +111,28 @@ old_pwd=`pwd`
 cd `dirname $0`
 curdir=`pwd`
 
-#define the dep source code path, core build target path and dep build target path
-local_core_repo_path="$curdir/../../xcat-core"
-local_dep_repo_path="$curdir/../../xcat-dep/xcat-dep"
-
 # Use flock to only one person build at the same time
 # Get a lock, so can not do 2 builds at once
 exec 8>/var/lock/xcatbld.lock
 if ! flock -n 8; then
-    echo "Can't get lock /var/lock/xcatbld.lock.  Someone else must be doing a build right now.  Exiting...."
+    echo "ERROR: Can't get lock /var/lock/xcatbld.lock.  Someone else must be doing a build right now.  Exiting...."
     exit 1
 fi
+
+# for the git case, query the current branch and set REL (changing master to devel if necessary)
+function setbranch {
+    # Get the current branch name
+    branch=`git rev-parse --abbrev-ref HEAD`
+    if [ "$branch" = "master" ]; then
+        REL="devel"
+    elif [ "$branch" = "HEAD" ]; then
+        # Special handling when in a 'detached HEAD' state
+        branch=`git describe --abbrev=0 HEAD`
+        [[ -n "$branch" ]] && REL=`echo $branch|cut -d. -f 1,2`
+    else
+        REL=$branch
+    fi
+}
 
 export HOME=/root
 
@@ -143,31 +156,31 @@ else
     done
 fi
 
+REL=xcat-core
 if [ "$c_flag" ]
 then
-    # 
-    # The format of the directory for Ubuntu builds needs to be "xcat-core/src/xcat-core" so 
-    # that the output build files are created under "xcat-core". 
-    # TODO: This should be fixed in the future....
-    #
-    if [ -z "$REL" ]; then
-        t=${curdir%/src/xcat-core}
-        REL=`basename $t`
+    setbranch
+    package_dir_name=debs$REL
+
+    #define the dep source code path, core build target path and dep build target path
+    if [ -z "$DEST" ]; then
+        local_core_repo_path="$curdir/../../xcat-core"
+        PKGDIR="../../$package_dir_name"
+    else
+        local_core_repo_path="$DEST/$package_dir_name/xcat-core"
+        PKGDIR="$DEST/$package_dir_name/$package_dir_name"
     fi
-    if [ "$REL" != "xcat-core" ]; then
-        echo "ERROR: REL='$REL'needs to be 'xcat-core'.  Ensure the path is 'xcat-core/src/xcat-core'"
-        exit 1
+    if [ ! -d "$PKGDIR" ];then
+        mkdir -p "$PKGDIR"
     fi
 
+    echo "#############################################################"
+    echo "Building xcat-core on branch ($REL) to $local_core_repo_path"
+    echo "#############################################################"
     if [ "$PROMOTE" != 1 ]; then
         code_change=0
         update_log=''
-        # get the version
-        git_flag=1
-        REL=`git rev-parse --abbrev-ref HEAD`
-        if [ "$REL" = "master" ]; then
-            REL="devel"
-        fi
+
         if [ -z "$GITUP" ];then
             update_log=../coregitup
             echo "git pull > $update_log"
@@ -187,12 +200,8 @@ then
         commit_id_long=`git rev-parse HEAD`
         commit_id="${commit_id_long:0:7}"
 
-        package_dir_name=debs$REL
-        #TODO: define the core path and tarball name
-        tarball_name="core-debs-snap.tar.bz2"
-
         if [ $code_change == 0 -a "$UP" != 1 -a "$BUILDALL" != 1 ]; then
-            echo "Nothing new detected"
+            echo "Nothing new detected.  Exiting...."
             exit 0
         fi
 
@@ -206,9 +215,6 @@ then
         xcat_release="snap$(date '+%Y%m%d%H%M')"
         pkg_version="${ver}-${xcat_release}"
 
-        if [ ! -d ../../$package_dir_name ];then
-            mkdir -p "../../$package_dir_name"
-        fi
         packages="xCAT-client xCAT-genesis-scripts perl-xCAT xCAT-server xCAT xCATsn xCAT-test xCAT-buildkit xCAT-vlan xCAT-confluent xCAT-probe"
         target_archs=(amd64 ppc64el)
         for file in $packages
@@ -222,7 +228,7 @@ then
             for target_arch in $target_archs
             do
                 if grep -q $file $update_log || [ "$BUILDALL" == 1 -o "$file" = "perl-xCAT" ]; then
-                    rm -f ../../$package_dir_name/${file_low}_*.$target_arch.deb
+                    rm -f $PKGDIR/${file_low}_*.$target_arch.deb
                     cd $file
                     CURDIR=$(pwd)
                     dch -v $pkg_version -b -c debian/changelog $build_string
@@ -279,21 +285,12 @@ then
                     cd -
                     find $file -maxdepth 3 -type d -name "${file_low}*" | grep debian | xargs rm -rf
                     find $file -maxdepth 3 -type f -name "files" | grep debian | xargs rm -rf
-                    mv ${file_low}* ../../$package_dir_name/
+                    mv ${file_low}* $PKGDIR/
                 fi
             done
         done
 
-        find ../../$package_dir_name/* ! -name *.deb | xargs rm -f
-    else
-        if [ "$REL" = "xcat-core" ];then
-            git_flag=1
-            REL=`git rev-parse --abbrev-ref HEAD`
-            if [ "$REL" = "master" ]; then
-                REL="devel"
-            fi
-        fi
-        package_dir_name=debs$REL
+        find $PKGDIR/* ! -name *.deb | xargs rm -f
     fi
 
     if [ "$PROMOTE" = 1 ]; then
@@ -333,7 +330,7 @@ Description: Repository automatically genereted conf
 __EOF__
 
        if [ "$GPGSIGN" = "0" ];then
-           echo "GPGSIGN=$GPGSIGN specified, the repo will not be signed"
+           #echo "GPGSIGN=$GPGSIGN specified, the repo will not be signed"
            echo "" >> conf/distributions
        else 
            echo "SignWith: 5619700D" >> conf/distributions
@@ -397,6 +394,7 @@ __EOF__
     chmod -R g+w xcat-core
 
     #build the tar ball
+    echo "Creating `pwd`/$tar_name ..."
     tar -hjcf $tar_name xcat-core
     chgrp root $tar_name
     chmod g+w $tar_name
@@ -432,6 +430,13 @@ then
     if [ ! -d $GSA ]; then
        echo "build-ubunturepo:  It appears that you do not have gsa installed to access the xcat-dep pkgs."
        exit 1;
+    fi
+
+    #define the dep source code path, core build target path and dep build target path
+    if [ -z "$DEST" ]; then
+        local_dep_repo_path="$curdir/../../xcat-dep/xcat-dep"
+    else
+        local_dep_repo_path="$DEST/xcat-dep/xcat-dep"
     fi
 
     # Sync from the GSA master copy of the dep rpms
