@@ -1,5 +1,6 @@
 start:reg_linux_statelite_installation_hierarchy_by_ramdisk
 os:Linux
+label:others,provision,statelite
 #stop:yes
 cmd:xdsh $$SN fdisk -l
 cmd:xdsh $$SN df -T
@@ -93,16 +94,6 @@ cmd:xdsh $$CN hostname
 check:rc==0
 check:output=~$$CN: $$CN
 cmd:xdsh $$CN  "cat /var/log/xcat/xcat.log"
-#add test for issue922
-#cmd:xdsh $$CN  "ls -l /bin/ping"
-#cmd:xdsh $$CN "ping -c 1 127.0.0.1"
-#check:rc==0
-#cmd:xdsh $$CN "useradd -m xcatuser"
-#check:rc==0
-#cmd:xdsh $$CN "su - xcatuser sh  -c \"ping -c 1 127.0.0.1\""
-#check:rc==0
-#cmd:xdsh $$CN "userdel xcatuser"
-#check:rc==0
 cmd:rootimgdir=`lsdef -t osimage  __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-statelite-compute|grep rootimgdir|awk -F'=' '{print $2}'`; if [ -d $rootimgdir.regbak ]; then rm -rf $rootimgdir; mv $rootimgdir.regbak $rootimgdir; fi
 check:rc==0
 end

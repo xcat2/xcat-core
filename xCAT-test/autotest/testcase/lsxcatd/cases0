@@ -1,11 +1,13 @@
 start:lsxcatd_null
 description:lsxcatd without any flag
+label:mn_only,xcatd
 cmd:lsxcatd
 check:output=~lsxcatd
 end
 
 start:lsxcatd_h
 description:lsxcatd -h
+label:mn_only,xcatd
 cmd:lsxcatd -h
 check:rc==0
 check:output=~lsxcatd
@@ -13,6 +15,7 @@ end
 
 start:lsxcatd_d
 description:lsxcatd -d
+label:mn_only,xcatd
 cmd:lsxcatd -d
 check:rc==0
 check:output=~(cfgloc|dbengine|dbinstance|dbname|dbloc)
@@ -20,6 +23,7 @@ end
 
 start:lsxcatd_a
 description:lsxcatd -a
+label:mn_only,xcatd
 cmd:lsxcatd -a
 check:rc==0
 check:output=~Version

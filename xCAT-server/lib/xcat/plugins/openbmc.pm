@@ -61,12 +61,16 @@ $::UPLOAD_AND_ACTIVATE      = 0;
 $::UPLOAD_ACTIVATE_STREAM   = 0;
 $::RFLASH_STREAM_NO_HOST_REBOOT = 0;
 $::NO_ATTRIBUTES_RETURNED   = "No attributes returned from the BMC.";
+$::FAILED_UPLOAD_MSG        = "Failed to upload update file";
+$::FAILED_LOGIN_MSG         = "BMC did not respond. Validate BMC configuration and retry the command.";
 
 $::UPLOAD_WAIT_ATTEMPT      = 6;
 $::UPLOAD_WAIT_INTERVAL     = 10;
 $::UPLOAD_WAIT_TOTALTIME    = int($::UPLOAD_WAIT_ATTEMPT*$::UPLOAD_WAIT_INTERVAL);
 
 $::RPOWER_CHECK_INTERVAL    = 2;
+$::RPOWER_CHECK_ON_INTERVAL = 12;
+$::RPOWER_ON_MAX_RETRY      = 5;
 $::RPOWER_MAX_RETRY         = 30;
 
 $::BMC_MAX_RETRY = 20;
@@ -308,6 +312,9 @@ my %status_info = (
     RPOWER_ON_RESPONSE => {
         process        => \&rpower_response,
     },
+    RPOWER_CHECK_ON_RESPONSE => {
+        process        => \&rpower_response,
+    },
     RPOWER_OFF_REQUEST  => {
         method         => "PUT",
         init_url       => "$openbmc_project_url/state/chassis0/attr/RequestedPowerTransition",
@@ -335,6 +342,10 @@ my %status_info = (
         process        => \&rpower_response,
     },
     RPOWER_CHECK_REQUEST  => {
+        method         => "GET",
+        init_url       => "$openbmc_project_url/state/enumerate",
+    },
+    RPOWER_CHECK_ON_REQUEST  => {
         method         => "GET",
         init_url       => "$openbmc_project_url/state/enumerate",
     },
@@ -803,6 +814,14 @@ sub preprocess_request {
         return;
     }
 
+    #pdu commands will be handled in the pdu plugin
+    if ($command eq "rpower") {
+        my $subcmd = $exargs[0];
+        if(($subcmd eq 'pduoff') || ($subcmd eq 'pduon') || ($subcmd eq 'pdustat') || ($subcmd eq 'pdureset')){
+            return;
+        }
+    }
+
     my $parse_result = parse_args($command, $extrargs, $noderange);
     if (ref($parse_result) eq 'ARRAY') {
         my $error_data;
@@ -981,7 +1000,8 @@ sub process_request {
 
     foreach my $node (keys %node_info) {
         if (!$valid_nodes{$node}) {
-            xCAT::SvrUtils::sendmsg([1, "BMC did not respond. Validate BMC configuration and retry the command."], $callback, $node);
+            xCAT::SvrUtils::sendmsg([1, $::FAILED_LOGIN_MSG], $callback, $node);
+            $node_info{$node}{rst} = $::FAILED_LOGIN_MSG;
             $wait_node_num--;
             next;
         }
@@ -1052,11 +1072,24 @@ rmdir \"/tmp/\$userid\" \n";
                     if ($node_info{$node}{rst} =~ /successful/) {
                         push @{ $rflash_result{success} }, $node;
                     } else {
-                        $node_info{$node}{rst} = "BMC is not ready" unless ($node_info{$node}{rst});
+                        # If there is no error in $node_info{$node}{rst} it is probably because fw file
+                        # upload is done in a forked process and data can not be saved in $node_info{$node}{rst}
+                        # In that case check the rflash log file for this node and extract error from there
+                        unless ($node_info{$node}{rst}) {
+                            my $rflash_log_file = xCAT::Utils->full_path($node.".log", $::XCAT_LOG_RFLASH_DIR);
+                            # Extract the upload error from last line in log file 
+                            my $upload_error = `tail $rflash_log_file -n1 | grep "$::FAILED_UPLOAD_MSG"`;
+                            if ($upload_error) {
+                                chomp $upload_error;
+                                $node_info{$node}{rst} = $upload_error;
+                            } else {
+                                $node_info{$node}{rst} = "BMC is not ready";
+                            }
+                        }
                         push @{ $rflash_result{fail} }, "$node: $node_info{$node}{rst}";
                     }
                 }
-                xCAT::MsgUtils->message("I", { data => ["-------------------------------------------------------"] }, $callback);
+                xCAT::MsgUtils->message("I", { data => ["-------------------------------------------------------"], host => [1] }, $callback);
                 my $summary = "Firmware update complete: ";
                 my $total = keys %node_info;
                 my $success = 0;
@@ -1064,14 +1097,14 @@ rmdir \"/tmp/\$userid\" \n";
                 $success = @{ $rflash_result{success} } if (defined $rflash_result{success} and @{ $rflash_result{success} });
                 $fail = @{ $rflash_result{fail} } if (defined $rflash_result{fail} and @{ $rflash_result{fail} });
                 $summary .= "Total=$total Success=$success Failed=$fail";
-                xCAT::MsgUtils->message("I", { data => ["$summary"] }, $callback);
+                xCAT::MsgUtils->message("I", { data => ["$summary"], host => [1] }, $callback);
 
                 if ($rflash_result{fail}) {
                     foreach (@{ $rflash_result{fail} }) {
-                        xCAT::MsgUtils->message("I", { data => ["$_"] }, $callback);
+                        xCAT::MsgUtils->message("I", { data => ["$_"], host => [1] }, $callback);
                     }
                 }
-                xCAT::MsgUtils->message("I", { data => ["-------------------------------------------------------"] }, $callback);
+                xCAT::MsgUtils->message("I", { data => ["-------------------------------------------------------"], host => [1] }, $callback);
             }
             last;
         }
@@ -1080,8 +1113,10 @@ rmdir \"/tmp/\$userid\" \n";
         }
 
         if (%child_node_map) {
+            my $pid_flag = 0;
             while ((my $cpid = waitpid(-1, WNOHANG)) > 0) {
                 if ($child_node_map{$cpid}) {
+                    $pid_flag = 1;
                     my $node = $child_node_map{$cpid};
                     my $rc = $? >> 8;
                     if ($rc != 0) {
@@ -1098,6 +1133,9 @@ rmdir \"/tmp/\$userid\" \n";
                     }
                     delete $child_node_map{$cpid};
                 }
+            }
+            unless ($pid_flag) {
+                select(undef, undef, undef, 0.01);
             }
         }
         my @del;
@@ -2132,6 +2170,9 @@ sub parse_command_status {
                $next_status{RPOWER_CHECK_RESPONSE}{OFF} = "RPOWER_ON_REQUEST";
                $next_status{RPOWER_ON_REQUEST} = "RPOWER_ON_RESPONSE";
                $status_info{RPOWER_ON_RESPONSE}{argv} = "boot";
+               $next_status{RPOWER_ON_RESPONSE} = "RPOWER_CHECK_ON_REQUEST";
+               $next_status{RPOWER_CHECK_ON_REQUEST} = "RPOWER_CHECK_ON_RESPONSE";
+               $next_status{RPOWER_CHECK_ON_RESPONSE}{OFF} = "RPOWER_ON_REQUEST";
             }
         } 
     }
@@ -2258,6 +2299,7 @@ sub parse_node_info {
 
             $node_info{$node}{cur_status} = "LOGIN_REQUEST";
             $node_info{$node}{rpower_check_times} = $::RPOWER_MAX_RETRY;
+            $node_info{$node}{rpower_check_on_times} = $::RPOWER_ON_MAX_RETRY;
             $node_info{$node}{bmc_conn_check_times} = $::BMC_MAX_RETRY;
             $node_info{$node}{bmcstate_check_times} = $::BMC_MAX_RETRY;
         } else {
@@ -2405,8 +2447,13 @@ sub deal_with_response {
             if ($node_info{$node}{cur_status} eq "RPOWER_RESET_RESPONSE" and defined $status_info{RPOWER_RESET_RESPONSE}{argv} and $status_info{RPOWER_RESET_RESPONSE}{argv} =~ /bmcreboot$/) { 
                 my $infomsg = "BMC $::POWER_STATE_REBOOT";
                 xCAT::SvrUtils::sendmsg($infomsg, $callback, $node);
-                $wait_node_num--;
-                return;    
+                if ($::UPLOAD_ACTIVATE_STREAM) {
+                    retry_after($node, "RPOWER_BMC_CHECK_REQUEST", 15);
+                    return;
+                }else{
+                    $wait_node_num--;
+                    return;
+                }    
             }
             $error = $::RESPONSE_SERVICE_TIMEOUT;
         } else {
@@ -2583,11 +2630,16 @@ sub rpower_response {
 
     my $response_info = decode_json $response->content;
 
-
+    
     if ($node_info{$node}{cur_status} eq "RPOWER_ON_RESPONSE") {
         if ($response_info->{'message'} eq $::RESPONSE_OK) {
             if ($status_info{RPOWER_ON_RESPONSE}{argv}) {
-                xCAT::SvrUtils::sendmsg("$::POWER_STATE_RESET", $callback, $node);
+                if (defined($node_info{$node}{power_state_rest}) and ($node_info{$node}{power_state_rest} == 1)) {
+                    xCAT::SvrUtils::sendmsg("$::POWER_STATE_ON", $callback, $node);
+                } else {
+                    $node_info{$node}{power_state_rest} = 1;
+                    xCAT::SvrUtils::sendmsg("$::POWER_STATE_RESET", $callback, $node);
+                }
             } else {
                 if (defined($::OPENBMC_PWR) and ($::OPENBMC_PWR eq "YES")) {
                     xCAT::SvrUtils::sendmsg("$::STATUS_POWERING_ON", $callback, $node);
@@ -2626,7 +2678,8 @@ sub rpower_response {
     xCAT_monitoring::monitorctrl::setNodeStatusAttributes(\%new_status, 1) if (%new_status);
 
     my $all_status;
-    if ($node_info{$node}{cur_status} eq "RPOWER_STATUS_RESPONSE" or $node_info{$node}{cur_status} eq "RPOWER_CHECK_RESPONSE" or $node_info{$node}{cur_status} eq "RPOWER_BMC_STATUS_RESPONSE") {
+    #get host $all_status for RPOWER_CHECK_ON_RESPONSE
+    if ($node_info{$node}{cur_status} eq "RPOWER_STATUS_RESPONSE" or $node_info{$node}{cur_status} eq "RPOWER_CHECK_RESPONSE" or $node_info{$node}{cur_status} eq "RPOWER_BMC_STATUS_RESPONSE" or $node_info{$node}{cur_status} eq "RPOWER_CHECK_ON_RESPONSE") {
         my $bmc_state = "";
         my $bmc_transition_state = "";
         my $chassis_state = "";
@@ -2764,6 +2817,36 @@ sub rpower_response {
                 return;
             } else {
                 $node_info{$node}{cur_status} = $next_status{ $node_info{$node}{cur_status} }{ON};
+            }
+        } elsif ($node_info{$node}{cur_status} eq "RPOWER_CHECK_ON_RESPONSE") {
+            #RPOWER_CHECK_ON_REQUEST and RPOWER_CHECK_ON_RESPONSE are for rflash -d function
+            #in order to make sure host is reboot successfully
+            #if rpower reset host and host state is always off, retry to set RPOWER_CHECK_ON_REQUEST to run rpower on the host
+            #1. if host power state is on, do nothing, and return
+            if ($all_status eq "$::POWER_STATE_ON") {
+                $node_info{$node}{cur_status} = "";
+                $wait_node_num--;
+                return;
+            }else{
+                #2. if host state is always off, retry to set RPOWER_CHECK_ON_REQUEST to run rpower on the host
+                if ($node_info{$node}{rpower_check_on_times} > 0) {
+                    $node_info{$node}{rpower_check_on_times}--;
+                    if ($node_info{$node}{wait_on_start}) {
+                        $node_info{$node}{wait_on_end} = time();
+                    } else {
+                        $node_info{$node}{wait_on_start} = time();
+                    }
+                    #retry to set RPOWER_CHECK_ON_REQUEST after wait for $::RPOWER_CHECK_ON_INTERVAL
+                    retry_after($node, $next_status{ $node_info{$node}{cur_status} }{OFF}, $::RPOWER_CHECK_ON_INTERVAL);
+                    return;
+                } else {
+                    #after retry 5 times, the host is still off, print error and return
+                    my $wait_time_X = $node_info{$node}{wait_on_end} - $node_info{$node}{wait_on_start};
+                    xCAT::SvrUtils::sendmsg([1, "Sent power-on command but state did not change to $::POWER_STATE_ON after waiting $wait_time_X seconds. (State=$all_status)."], $callback, $node);
+                    $node_info{$node}{cur_status} = "";
+                    $wait_node_num--;
+                    return;
+                }
             }
         } else {
             $node_info{$node}{cur_status} = $next_status{ $node_info{$node}{cur_status} };
@@ -4649,7 +4732,7 @@ sub rflash_upload {
     my $curl_login_result = `$curl_login_cmd -s`;
     my $h;
     if (!$curl_login_result) {
-        my $curl_error = "Did not receive response from OpenBMC after running command '$curl_login_cmd'";
+        my $curl_error = "$::FAILED_UPLOAD_MSG. Did not receive response from OpenBMC after running command '$curl_login_cmd'";
         xCAT::SvrUtils::sendmsg([1, "$curl_error"], $callback, $node);
         print RFLASH_LOG_FILE_HANDLE "$curl_error\n";
         $node_info{$node}{rst} = "$curl_error"; 
@@ -4657,8 +4740,10 @@ sub rflash_upload {
     } 
     eval { $h = from_json($curl_login_result) }; # convert command output to hash
     if ($@) {
-        my $curl_error = "Received wrong format response for command '$curl_login_cmd': $curl_login_result";
+        my $curl_error = "$::FAILED_UPLOAD_MSG. Received wrong format response for command '$curl_login_cmd': $curl_login_result";
         xCAT::SvrUtils::sendmsg([1, "$curl_error"], $callback, $node);
+        # Before writing error to log, make it a single line
+        $curl_error =~ tr{\n}{ };
         print RFLASH_LOG_FILE_HANDLE "$curl_error\n";
         $node_info{$node}{rst} = "$curl_error";
         return 1;
@@ -4691,7 +4776,7 @@ sub rflash_upload {
                 }    
                 my $curl_upload_result = `$upload_cmd`;
                 if (!$curl_upload_result) {
-                    my $curl_error = "Did not receive response from OpenBMC after running command '$upload_cmd'";
+                    my $curl_error = "$::FAILED_UPLOAD_MSG. Did not receive response from OpenBMC after running command '$upload_cmd'";
                     xCAT::SvrUtils::sendmsg([1, "$curl_error"], $callback, $node);
                     print RFLASH_LOG_FILE_HANDLE "$curl_error\n";
                     $node_info{$node}{rst} = "$curl_error";
@@ -4699,8 +4784,10 @@ sub rflash_upload {
                 }
                 eval { $h = from_json($curl_upload_result) }; # convert command output to hash
                 if ($@) {
-                    my $curl_error = "Received wrong format response from command '$upload_cmd': $curl_upload_result";
+                    my $curl_error = "$::FAILED_UPLOAD_MSG. Received wrong format response from command '$upload_cmd': $curl_upload_result";
                     xCAT::SvrUtils::sendmsg([1, "$curl_error"], $callback, $node);
+                    # Before writing error to log, make it a single line
+                    $curl_error =~ tr{\n}{ };
                     print RFLASH_LOG_FILE_HANDLE "$curl_error\n";
                     $node_info{$node}{rst} = "$curl_error";
                     return 1;
@@ -4711,10 +4798,14 @@ sub rflash_upload {
                     unless ($::UPLOAD_AND_ACTIVATE or $::UPLOAD_ACTIVATE_STREAM) {
                         xCAT::SvrUtils::sendmsg("$upload_success_msg", $callback, $node);
                     }
+                    #Put a delay of 3 seconds to allow time for the BMC to untar the file we just uploaded
+                    if (defined($::UPLOAD_ACTIVATE_STREAM)){
+                        sleep 3;
+                    }
                     print RFLASH_LOG_FILE_HANDLE "$upload_success_msg\n";
                     # Try to logoff, no need to check result, as there is nothing else to do if failure
                 } else {
-                    my $upload_fail_msg = "Failed to upload update file $file :" . $h->{message} . " - " . $h->{data}->{description};
+                    my $upload_fail_msg = $::FAILED_UPLOAD_MSG . " $file :" . $h->{message} . " - " . $h->{data}->{description};
                     xCAT::SvrUtils::sendmsg("$upload_fail_msg", $callback, $node);
                     print RFLASH_LOG_FILE_HANDLE "$upload_fail_msg\n";
                     close (RFLASH_LOG_FILE_HANDLE);

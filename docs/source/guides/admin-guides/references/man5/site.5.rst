@@ -295,6 +295,9 @@ site Attributes:
                 for each node, and put them in a directory of tftpdir(such as: /tftpboot)
                 If no, it will not generate the mypostscript file in the tftpdir.
   
+   secureroot:  If set to 1, xCAT will use secure mode to transfer root password hash
+                during the installation.  Default is 0.
+
    setinstallnic:  Set the network configuration for installnic to be static.
   
    sharedtftp:  Set to 0 or no, xCAT should not assume the directory

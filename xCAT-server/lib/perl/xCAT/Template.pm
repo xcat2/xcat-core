@@ -1489,6 +1489,7 @@ sub includefile
                             #2 means pattern list, pattern list starts with @,
          #3 means remove package list, packages to be removed start with -.
     my $text = "";
+    $file=xCAT::Utils->varsubinline($file,\%ENV);
     unless ($file =~ /^\//) {
         $file = $idir . "/" . $file;
     }
@@ -1598,6 +1599,7 @@ sub crydb
     };
     $kp = $get_query_map->($key);
     return undef if (!defined($kp));
+    return '*' if ($::XCATSITEVALS{secureroot} eq "1");
     return xCAT::PasswordUtils::crypt_system_password($table, $kp, \@fields);
 }
 

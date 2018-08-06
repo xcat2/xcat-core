@@ -23,7 +23,7 @@ SYNOPSIS
 
 \ **packimage  [-v| -**\ **-version]**\ 
 
-\ **packimage**\  [\ **-m | -**\ **-method**\  \ *cpio|tar*\ ] [\ **-c | -**\ **-compress**\  \ *gzip|pigz|xz*\ ]  \ *imagename*\ 
+\ **packimage**\  [\ **-m | -**\ **-method**\  \ *cpio|tar*\ ] [\ **-c | -**\ **-compress**\  \ *gzip|pigz|xz*\ ] [\ **--nosyncfiles**\ ] \ *imagename*\
 
 
 ***********
@@ -53,9 +53,11 @@ OPTIONS
 
 \ **-v**\           Command Version.
 
-\ **-m| -**\ **-method**\           Archive Method (cpio,tar,squashfs, default is tar)
+\ **-m| -**\ **-method**\           Archive Method (cpio,tar,squashfs, default is cpio)
 
 \ **-c| -**\ **-compress**\           Compress Method (pigz,gzip,xz, default is pigz/gzip)
+
+\ **--nosyncfiles**\           Bypass of syncfiles requested, will not sync files to root image directory
 
 
 ************
@@ -87,6 +89,14 @@ EXAMPLES
 .. code-block:: perl
 
   packimage -m tar -c pigz rhels7.1-x86_64-netboot-compute
+
+
+3. To pack the osimage 'rhels7.1-x86_64-netboot-compute' without syncing files:
+
+
+.. code-block:: perl
+
+  packimage --nosyncfiles rhels7.1-x86_64-netboot-compute
 
 
 

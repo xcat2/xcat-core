@@ -54,5 +54,5 @@ cmd: restapitest -m POST -r /networks/network_rest -d '{"gateway":"10.1.0.1","ma
 cmd: restapitest -m DELETE -r /tables/networks/rows/net=199.168.0.0 -u $$username -p $$password
 check:rc==200
 cmd: lsdef -t network network_rest
-check:output=~Error: Could not find an object named 'network_rest' of type 'network'.
+check:output=~Error: (\[.*?\]: )?Could not find an object named 'network_rest' of type 'network'.
 end

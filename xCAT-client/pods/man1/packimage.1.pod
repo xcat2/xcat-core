@@ -8,7 +8,7 @@ B<packimage [-h| --help]>
 
 B<packimage  [-v| --version]>
 
-B<packimage> [B<-m>|B<--method> I<cpio|tar>] [B<-c>|B<--compress> I<gzip|pigz|xz>]  I<imagename>
+B<packimage> [B<-m>|B<--method> I<cpio|tar>] [B<-c>|B<--compress> I<gzip|pigz|xz>] [B<--nosyncfiles>] I<imagename>
 
 =head1 DESCRIPTION
 
@@ -27,9 +27,11 @@ B<-h>          Display usage message.
 
 B<-v>          Command Version.
 
-B<-m| --method>          Archive Method (cpio,tar,squashfs, default is tar)
+B<-m| --method>          Archive Method (cpio,tar,squashfs, default is cpio)
 
 B<-c| --compress>          Compress Method (pigz,gzip,xz, default is pigz/gzip)
+
+B<--nosyncfiles>          Bypass of syncfiles requested, will not sync files to root image directory
 
 
 =head1 RETURN VALUE
@@ -47,6 +49,10 @@ B<-c| --compress>          Compress Method (pigz,gzip,xz, default is pigz/gzip)
 2. To pack the osimage 'rhels7.1-x86_64-netboot-compute' with "tar" to archive and "pigz" to compress:
 
  packimage -m tar -c pigz rhels7.1-x86_64-netboot-compute
+
+3. To pack the osimage 'rhels7.1-x86_64-netboot-compute' without syncing files:
+
+ packimage --nosyncfiles rhels7.1-x86_64-netboot-compute
 
 =head1 FILES
 

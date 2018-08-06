@@ -1,11 +1,13 @@
 start:mkdef_null
 description:mkdef without any flag
+label:mn_only,db
 cmd:mkdef
 check:output=~Usage
 end
 
 start:mkdef_node
 description:mkdef -t node
+label:mn_only,db
 cmd:mkdef -t node -o testnode,testnode1 groups=all,aix
 check:rc==0
 cmd:lsdef -i groups testnode
@@ -19,6 +21,7 @@ end
 
 start:mkdef_f
 description:mkdef -f
+label:mn_only,db
 cmd:mkdef -t node -o testnode groups=all,aix
 check:rc==0
 cmd:mkdef -f -t node -o testnode nodetype=lpar,osi groups=all
@@ -32,6 +35,7 @@ end
 
 start:mkdef_z
 description:mkdef -z
+label:mn_only,db
 cmd:mkdef -t node -o orignode mgt=fsp cons=hmc pprofile=orignode groups=lpar,all
 check:rc==0
 cmd:lsdef -l orignode -z > /tmp/orignode.stanza
@@ -51,6 +55,7 @@ end
 
 start:mkdef_group
 description: mkdef static node group
+label:mn_only,db
 cmd:mkdef -t node -o testnode1-testnode2 mgt=hmc cons=hmc groups=all,systemp
 check:rc==0
 cmd:mkdef -t node -o testnode3-testnode4 mgt=ipmi cons=ipmi groups=all,systemx
@@ -89,6 +94,7 @@ end
 
 start:mkdef_dynamic_group
 description:mkdef with dynamic node group
+label:mn_only,db
 cmd:mkdef -t node -o testnode1-testnode2 mgt=hmc cons=hmc groups=all,systemp
 check:rc==0
 cmd:mkdef -t node -o testnode3-testnode4 mgt=ipmi cons=ipmi groups=all,systemx
@@ -125,6 +131,7 @@ end
 
 start:mkdef_multiple_keys
 description:mkdef support for multiple keys in a table, such as ppcdirect
+label:mn_only,db
 cmd: mkdef -t node -o testfsp mgt=fsp cons=fsp groups=all,fsp nodetype=fsp passwd.HMC=abc123 passwd.general=abc123 passwd.admin=abc123
 check:rc==0
 cmd:lsdef testfsp
@@ -138,6 +145,7 @@ end
 
 start:mkdef_t_network
 description: mkdef -t network
+label:mn_only,db
 cmd:mkdef -t network -o testnetwork net=1.2.3.0 mask=255.255.255.0 gateway=1.2.3.1
 check:rc==0
 cmd:lsdef -t network
@@ -153,6 +161,7 @@ end
 
 start:mkdef_t_o_error
 description:mkdef -t wrongtype
+label:mn_only,db
 cmd:mkdef -t wrongtype -o testnode groups=all,aix
 check:rc!=0
 check:output=~not a valid
@@ -160,8 +169,8 @@ end
 
 
 start:mkdef_template_switch_template_without_attribute
-os:linux
 description:create a node with swtich template without any attributes
+label:mn_only,db
 cmd:result=`lsdef | grep  auto_test_node_1`; if [[ $result =~ "auto_test_node_1" ]]; then echo $result; noderm auto_test_node_1; fi
 cmd:mkdef -t node -o auto_test_node_1 --template switch-template
 check:rc==0
@@ -183,8 +192,8 @@ check:rc==0
 end
 
 start:mkdef_template_cec_template_without_remainder
-os:linux
 description:create a node with cec template once
+label:mn_only,db
 cmd:result=`lsdef | grep  auto_test_cec_node_1`; if [[ $result =~ "auto_test_cec_node_1" ]]; then echo $result; noderm auto_test_cec_node_1; fi
 cmd:mkdef -t node -o auto_test_cec_node_1 --template cec-template serial=test mtm=test hcp=test
 check:rc==0
@@ -206,21 +215,21 @@ check:rc==0
 end
 
 start:mkdef_template_invalid_template
-os:linux
 description:create a node with invalid template 
+label:mn_only,db
 cmd:result=`lsdef | grep  auto_test_node`; if [[ $result =~ "auto_test_node" ]]; then echo $result; noderm auto_test_node; fi
 cmd:result=`lsdef | grep  auto_test_invalid_template`; if [[ $result =~ "auto_test_invalid_template" ]]; then echo $result; noderm auto_test_invalid_template; fi
 cmd:lsdef --template auto_test_invalid_template
 check:rc==1
-check:output=~Error\: Could not find auto\_test\_invalid\_template in xCAT templates
+check:output=~Error\: (\[.*?\]: )?Could not find auto\_test\_invalid\_template in xCAT templates
 cmd:mkdef -t node -o auto_test_node --template auto_test_invalid_template
 check:rc==1
-check:output=~Error\: Could not find the template object named \'auto\_test\_invalid\_template\' of type \'node\'
+check:output=~Error\: (\[.*?\]: )?Could not find the template object named \'auto\_test\_invalid\_template\' of type \'node\'
 end
 
 start:mkdef_node_with_a_node_template
-os:linux
 description:create a node with a node template, using cec template to create node at beginning
+label:mn_only,db
 cmd:result=`lsdef | grep  auto_test_cec_node_1`; if [[ $result =~ "auto_test_cec_node_1" ]]; then echo $result; noderm auto_test_cec_node_1; fi
 cmd:result=`lsdef | grep  auto_test_cec_node_2`; if [[ $result =~ "auto_test_cec_node_2" ]]; then echo $result; noderm auto_test_cec_node_2; fi
 cmd:mkdef -t node -o auto_test_cec_node_1 --template cec-template serial=test mtm=test hcp=test groups=test_template
@@ -250,18 +259,18 @@ check:rc==0
 end
 
 start:mkdef_template_cec_template_step_by_step
-os:linux
 description:create a node with cec template step by step
+label:mn_only,db
 cmd:result=`lsdef | grep  auto_test_cec_node_1`; if [[ $result =~ "auto_test_cec_node_1" ]]; then echo $result; noderm auto_test_cec_node_1; fi
 cmd:mkdef -t node -o auto_test_cec_node_1 --template cec-template
 check:rc==1
-check:output=~Error\: The attribute \"serial\" must be specified!
+check:output=~Error\: (\[.*?\]: )?The attribute \"serial\" must be specified!
 cmd:mkdef -t node -o auto_test_cec_node_1 --template cec-template serial=test
 check:rc==1
-check:output=~Error\: The attribute \"mtm\" must be specified!
+check:output=~Error\: (\[.*?\]: )?The attribute \"mtm\" must be specified!
 cmd:mkdef -t node -o auto_test_cec_node_1 --template cec-template serial=test mtm=test
 check:rc==1
-check:output=~Error\: The attribute \"hcp\" must be specified!
+check:output=~Error\: (\[.*?\]: )?The attribute \"hcp\" must be specified!
 cmd:mkdef -t node -o auto_test_cec_node_1 --template cec-template serial=test mtm=test hcp=test
 check:rc==0
 check:output=~1 object definitions have been created or modified
@@ -282,8 +291,8 @@ check:rc==0
 end
 
 start:check_mkdef_node_with_template_priority
-os:linux
 description:create node named cec-template with cec template at beginning, the node is priority high than tempalate to create a new node
+label:mn_only,db
 cmd:result=`lsdef | grep  cec-template`; if [[ $result =~ "cec-template" ]]; then echo $result; noderm cec-template; fi
 cmd:result=`lsdef | grep  auto_test_cec_node`; if [[ $result =~ "auto_test_cec_node" ]]; then echo $result; noderm auto_test_cec_node; fi
 cmd:mkdef -t node -o cec-template --template cec-template serial=test mtm=test hcp=test groups=test_template_priority
@@ -294,8 +303,8 @@ check:rc==0
 check:output=~1 object definitions have been created or modified
 cmd:lsdef auto_test_cec_node
 check:output=~Object name\: auto\_test\_cec\_node
-check:output=~groups\=test\_template\_priority
-check:output!=groups\=cec\,all
+check:output!=groups\=test\_template\_priority
+check:output=~groups\=cec\,all
 check:output=~hwtype\=cec
 check:output=~mgt\=hmc
 check:output=~nodetype\=ppc
@@ -312,8 +321,8 @@ check:rc==0
 end
 
 start:mkdef_template_diskless_osimage_rootimgdir
-os:linux
 description:check rootimgdir warning message after make new osimage with mkdef --template
+label:cn_os_ready,db
 cmd:mkdef -t osimage -o test-osimage_with_template --template  __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute
 check:rc==0
 output=~1 object definitions have been created or modified
@@ -324,9 +333,10 @@ check:output=~__GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-comput
 cmd:rmdef -t osimage -o test-osimage_with_template
 check:rc==0
 end
+
 start:mkdef_rhels73
-os:linux
 description:create rhels7.3 osimage
+label:mn_only,db
 cmd:mkdef -t osimage -o rhels7.3-test-osimage --template  __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute
 check:rc==0
 output=~1 object definitions have been created or modified

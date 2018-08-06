@@ -53,13 +53,6 @@ if ($help) {
     exit 0;
 }
 
-if (!-d "$currdir/bin") {
-    mkpath("$currdir/bin/");
-}
-if (!-e "$currdir/bin/switchprobe") {
-    link("$::XCATROOT/bin/xcatclient", "$currdir/bin/switchprobe");
-}
-
 if ($test) {
     `$currdir/bin/switchprobe -h`;
     if ($?) {

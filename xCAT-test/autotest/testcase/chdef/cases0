@@ -1,11 +1,13 @@
 start:chdef_null
 description:chdef without any flag
+label:mn_only,db
 cmd:chdef
 check:output=~Usage
 end
 
 start:chdef_t_node
 description:chdef -t node
+label:mn_only,db
 cmd:mkdef -t node -o testnode groups=all
 check:rc==0
 cmd:chdef -t node -o testnode groups=aix
@@ -21,19 +23,20 @@ check:output=~groups=linux
 cmd:chdef -t node -o testnode postscripts="syslog,remoteshell,syncfiles"
 check:rc==0
 check:output!~Error
-check:output=~Warning: testnode: postscripts 'syslog' is already included
-check:output=~Warning: testnode: postscripts 'remoteshell' is already included
-check:output=~Warning: testnode: postscripts 'syncfiles' is already included
+check:output=~Warning: (\[.*?\]: )?testnode: postscripts 'syslog' is already included
+check:output=~Warning: (\[.*?\]: )?testnode: postscripts 'remoteshell' is already included
+check:output=~Warning: (\[.*?\]: )?testnode: postscripts 'syncfiles' is already included
 cmd:chdef -t node -o testnode postbootscripts=otherpkgs
 check:rc==0
 check:output!~Error
-check:output=~Warning: testnode: postbootscripts 'otherpkgs' is already included
+check:output=~Warning: (\[.*?\]: )?testnode: postbootscripts 'otherpkgs' is already included
 cmd:rmdef -t node testnode
 check:rc==0
 end
 
 start:chdef_t_network
 description:chdef -t network
+label:mn_only,db
 cmd:chdef -t network -o testnetwork net=111.222.33.0 mask=255.255.255.254
 check:rc==0
 cmd:lsdef -t network -l testnetwork
@@ -52,6 +55,7 @@ end
 
 start:chdef_p
 description:chdef -p -t node
+label:mn_only,db
 cmd:mkdef -t node -o testnode groups=all
 check:rc==0
 cmd:chdef -p -t node -o testnode groups=aix
@@ -63,6 +67,7 @@ end
 
 start:chdef_m
 description:chdef -m -t node
+label:mn_only,db
 cmd:mkdef -t node -o testnode groups=all,testgroup
 check:rc==0
 cmd:chdef -m -t node -o testnode groups=testgroup
@@ -74,6 +79,7 @@ end
 
 start:chdef_z
 description:chdef -z
+label:mn_only,db
 cmd:mkdef -t node -o testnode groups=all
 check:rc==0
 cmd:lsdef testnode -z > /tmp/testnode.stanza
@@ -91,6 +97,7 @@ end
 
 start:chdef_group
 description:chdef with node group
+label:mn_only,db
 cmd:mkdef -t node -o testnode1-testnode2 mgt=hmc cons=hmc groups=all,systemp
 check:rc==0
 cmd:mkdef -t node -o testnode3-testnode4 mgt=ipmi cons=ipmi groups=all,systemx
@@ -127,6 +134,7 @@ end
 
 
 start:chdef_group_p
+label:mn_only,db
 cmd:chdef abcnode1 -p groups=abc
 check:rc==0
 cmd:chdef abcnode2 -p groups=abcabc
@@ -144,6 +152,7 @@ end
 
 start:chdef_dynamic_group
 description:chdef with dynamic node group
+label:mn_only,db
 cmd:mkdef -t node -o testnode1-testnode2 mgt=hmc cons=hmc groups=all,systemp
 check:rc==0
 cmd:mkdef -t node -o testnode3-testnode4 mgt=hmc cons=ipmi groups=all,systemx
@@ -190,6 +199,7 @@ end
 
 start:chdef_multiple_keys
 description:mkdef support for multiple keys in a table, such as ppcdirect
+label:mn_only,db
 cmd: mkdef -t node -o testfsp mgt=fsp cons=fsp groups=all,fsp nodetype=fsp passwd.HMC=abc123 passwd.general=abc123 passwd.admin=abc123
 check:rc==0
 cmd:lsdef testfsp
@@ -210,6 +220,7 @@ end
 
 start:chdef_n
 description:chdef -n
+label:mn_only,db
 cmd:mkdef -t node -o testnode1 mgt=hmc cons=hmc groups=all,systemp
 check:rc==0
 cmd:chdef testnode1 -n testnode2
@@ -228,6 +239,7 @@ end
 
 start:chdef_t_o_error
 description:chdef -t wrongtype
+label:mn_only,db
 cmd:chdef -t wrongtype -o testnode groups=all,aix
 check:rc!=0
 check:output=~not a valid
@@ -235,8 +247,8 @@ end
 
 
 start:chdef_template
-os:linux
 description:try to change a template, a new node is created according to chdef. 
+label:mn_only,db
 cmd:result=`lsdef | grep  switch-template`; if [[ $result =~ "switch-template" ]]; then echo $result; noderm switch-template; fi
 cmd:chdef -t node -o switch-template groups=test
 check:output=~1 object definitions have been created or modified
@@ -249,8 +261,10 @@ check:rc==0
 cmd:noderm switch-template
 check:rc==0
 end
+
 start:chdef_site_check
 description:This case is use to check site table could be changed successfully
+label:mn_only,db
 cmd:var=`lsdef -t site clustersite -i dhcplease|grep 'dhcplease=' |awk -F= '{print $2}'`;echo $var>/tmp/sitevalue;chdef -t site clustersite dhcplease=300
 check:rc==0
 check:output=~1 object definitions have been created or modified.

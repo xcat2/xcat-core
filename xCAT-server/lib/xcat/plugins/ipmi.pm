@@ -50,6 +50,7 @@ my $xcatdebugmode = 0;
 
 my $IPMIXCAT  = "/opt/xcat/bin/ipmitool-xcat";
 my $NON_BLOCK = 1;
+my $BIG_DATA_MACHINE_MODELS = "8001-22C|9006-22C|5104-22C|8001-12C|9006-12C";
 use constant RFLASH_LOG_DIR => "/var/log/xcat/rflash";
 if (-d RFLASH_LOG_DIR) {
     chmod 0700, RFLASH_LOG_DIR;
@@ -1861,6 +1862,20 @@ sub do_firmware_update {
     $ret = get_ipmitool_version(\$ipmitool_ver);
     exit $ret if $ret < 0;
 
+    # Update node status to indicate firmware update started
+    my $set_fw_update_status_func = sub {
+        my ($node, $callback) = @_;
+        my $status = "updating firmware";
+        my $nodelist_table = xCAT::Table->new('nodelist');
+        if (!$nodelist_table) {
+            xCAT::MsgUtils->message("S", "Unable to open nodelist table, denying");
+        } else {
+            $nodelist_table->setNodeAttribs($node, { status => $status });
+            $nodelist_table->close();
+        }
+        return;
+    };
+
     my $exit_with_error_func = sub {
         my ($node, $callback, $message) = @_;
         my $status = "failed to update firmware";
@@ -1920,7 +1935,10 @@ sub do_firmware_update {
     if ($bmc_password) {
         $pre_cmd = $pre_cmd . " -P $bmc_password";
     }
-    
+
+    #Update node status
+    $set_fw_update_status_func->($sessdata->{node}, $callback);
+
     # check for 8335-GTB Model Type to adjust buffer size
     my $buffer_size = "30000";
     my $cmd = $pre_cmd . " fru print 3";
@@ -1978,7 +1996,7 @@ sub do_firmware_update {
     # P9 Boston (9006-22C, 9006-12C, 5104-22C) or P8 Briggs (8001-22C) 
     # firmware update is done using pUpdate utility expected to be in the 
     # specified data directory along with the update files .bin for BMC or .pnor for Host
-    if ($output =~ /8001-22C|9006-22C|5104-22C|9006-12C/) {
+    if ($output =~ /$BIG_DATA_MACHINE_MODELS/) {
         # Verify valid data directory was specified
         if (defined $directory_name) {
             unless (File::Spec->file_name_is_absolute($directory_name)) {
@@ -2040,6 +2058,7 @@ sub do_firmware_update {
             $exit_with_error_func->($sessdata->{node}, $callback,
                 "At least one update file (.bin or .pnor) needs to be in data directory $pUpdate_directory.");
         }
+
         # All checks are done, run pUpdate utility on each of the update files found in 
         # the specified data directory
         xCAT::SvrUtils::sendmsg("rflash started, Please wait...", $callback, $sessdata->{node});
@@ -2105,13 +2124,28 @@ sub do_firmware_update {
         }
 
         $exit_with_success_func->($sessdata->{node}, $callback, "Firmware updated, powering chassis on to populate FRU information...");
+    } else {
+
+        # The target machine is *NOT* IBM Power S822LC for Big Data (Supermicro)
+        # Only .hpm files is supported for such machine, no directory option is supported
+        if (defined $directory_name and $output =~ /Chassis Part Number\s*:\s*(\S*)/) {
+            my $model = $1;
+            $exit_with_error_func->($sessdata->{node}, $callback, "Flashing of $model is not supported with pUpdate, supported Model Types: $BIG_DATA_MACHINE_MODELS");
+        }
     }
 
-    if (($hpm_data_hash{deviceID} ne $sessdata->{device_id}) ||
-        ($hpm_data_hash{productID} ne $sessdata->{prod_id}) ||
-        ($hpm_data_hash{manufactureID} ne $sessdata->{mfg_id})) {
-        $exit_with_error_func->($sessdata->{node}, $callback,
-            "The image file doesn't match this machine");
+    # If we fall through here, it is *NOT* IBM Power S822LC for Big Data (Supermicro) and we expact some data in hpm_data_hash.
+    # Verify hpm_data_hash has some values
+
+
+    if (!exists($hpm_data_hash{deviceID})
+        || !exists($hpm_data_hash{manufactureID})
+        || !exists($hpm_data_hash{productID})) {
+        $exit_with_error_func->($sessdata->{node}, $callback, "Extract data from .hpm update file failed, no deviceID, productID or manufactureID got");
+    } elsif (($hpm_data_hash{deviceID} ne $sessdata->{device_id}) ||
+             ($hpm_data_hash{productID} ne $sessdata->{prod_id}) ||
+             ($hpm_data_hash{manufactureID} ne $sessdata->{mfg_id})) {
+        $exit_with_error_func->($sessdata->{node}, $callback, "The image file doesn't match target machine: \n$output");
     }
 
     # check for 8335-GTB Firmware above 1610A release.  If below, exit
@@ -2573,16 +2607,6 @@ sub start_rflash_processes {
     foreach (@donargs) {
         do_rflash_process($_->[0], $_->[1], $_->[2], $_->[3], $_->[4],
             $ipmitimeout, $ipmitrys, $command, -args => \@exargs);
-        $rflash_status->{$_->[0]}->{status} = "updating firmware";
-    }
-    if (!grep(/^(-c|--check)$/i, @exargs)) {
-        my $nodelist_table = xCAT::Table->new('nodelist');
-        if (!$nodelist_table) {
-            xCAT::MsgUtils->message("S", "Unable to open nodelist table, denying");
-        } else {
-            $nodelist_table->setNodesAttribs($rflash_status);
-            $nodelist_table->close();
-        }
     }
 
     # Wait for all processes to end

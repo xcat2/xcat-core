@@ -20,19 +20,6 @@ check:output=~Version
 end
 
 start:makenetworks_d
-os:AIX
-cmd:makenetworks -d > /tmp/mynetworksstanzas
-check:rc==0
-cmd:echo  "auto-testnetworks:\n objtype=network\n gateway=1.2.3.0\n mask=255.255.255.0\n net=1.2.3.1\n" >> /tmp/mynetworksstanzas 
-cmd:cat /tmp/mynetworksstanzas | chdef -z
-check:rc==0
-cmd:tabdump networks
-check:output=~("auto-testnetworks","1.2.3.1","255.255.255.0",,"1.2.3.0",,,,,,,,,,,,)
-cmd:chtab -d netname=auto-testnetworks networks
-cmd:rm -f /tmp/mynetworksstanzas
-end
-
-start:makenetworks_d
 os:Linux
 cmd:makenetworks -d > /tmp/mynetworksstanzas
 check:rc==0

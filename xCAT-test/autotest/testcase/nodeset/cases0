@@ -173,7 +173,7 @@ cmd:if [[ "__GETNODEATTR($$CN,arch)__" =~ "el" || "__GETNODEATTR($$CN,arch)__" =
 check:rc==0
 cmd:lsdef testnode1
 cmd:nodeset testnode1 osimage=__GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-install-compute
-check:output=~Warning: testnode1:.+might be invalid
+check:output=~Warning: (\[.*?\]: )?testnode1:.+might be invalid
 cmd:noderm testnode1
 end
 
@@ -349,7 +349,7 @@ description:This testcase is to very nodeset osimage errorcommand could give rig
 Attribute: $$CN-The operation object of nodeset command
 cmd:nodeset $$CN osimage= __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-install-compute
 check:rc==1
-check:output=~Error: Invalid argument:
+check:output=~Error: (\[.*?\]: )?Invalid argument:
 check:output=~Usage: nodeset <noderange>
 end
 
@@ -472,4 +472,22 @@ check:rc==0
 check:output=~$$CN:\s*install
 cmd:imagename=`cat /tmp/imagename`;osversion=`lsdef -t osimage -o $imagename |grep osvers|awk -F= '{print $2}'`;versionnum=`echo $osversion |sed 's:[a-zA-Z]::g'`;grep -w -A10 "$$CN" /var/lib/dhcpd/dhcpd.leases | grep "/install/$osversion/armel/cumulus-linux-$versionnum-bcm-armel.bin"
 check:rc==0
+end
+
+start:nodeset_secureroot
+os: rhels
+description: Test nodeset could generate right installation files when site.secureroot=1
+label: others,security
+cmd: chdef -t site secureroot=1
+cmd: myimage=__GETNODEATTR($$CN,provmethod)__; osimage=__GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-install-compute; cn=$$CN
+test -f /install/autoinst/$cn && mv -f /install/autoinst/$cn /install/autoinst/$cn.secureroot
+nodeset $cn osimage=$osimage
+myresult=$?
+chdef $cn provmethod=$myimage
+test $myresult -eq 0
+check:rc==0
+cmd: cat /install/autoinst/$$CN | grep '^rootpw --iscrypted \*' > /dev/null
+check:rc==0
+cmd: chdef -t site secureroot=
+cmd: test -f /install/autoinst/$$CN.secureroot && mv -f /install/autoinst/$$CN.secureroot /install/autoinst/$$CN
 end

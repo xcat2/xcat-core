@@ -88,9 +88,9 @@ if [ ! -x /usr/bin/wget ]; then
     sleep 36500d
 fi
 
-wget -l inf -N -r --waitretry=10 --random-wait --retry-connrefused  -e robots=off -nH --cut-dirs=2 --reject "index.html*" --no-parent -t 20 -T 60 http://$MASTER_IP$INSTALLDIR/postscripts/ -P /xcatpost
+wget -l inf -N -r --waitretry=10 --random-wait --retry-connrefused  -e robots=off -nH --cut-dirs=2 --reject "index.html*" --no-parent -t 20 -T 60 http://$MASTER_IP$INSTALLDIR/postscripts/ -P /xcatpost 2> /tmp/wget.log
 if [ "$?" != "0" ]; then
-    msgutil_r "$MASTER_IP" "error" "failed to download postscripts from http://$MASTER_IP$INSTALLDIR/postscripts/, halt ..." "/var/log/xcat/xcat.log" "$log_label"
+    msgutil_r "$MASTER_IP" "error" "failed to download postscripts from http://$MASTER_IP$INSTALLDIR/postscripts/,check /tmp/wget.log on the node,  halt ..." "/var/log/xcat/xcat.log" "$log_label"
     /tmp/updateflag $MASTER $XCATIPORT "installstatus failed"
     sleep 36500d
 fi
@@ -270,9 +270,18 @@ if [ $? -eq 0 ]; then
 fi
 
 if [ $hassystemd -eq 1 ] ; then
-    cat >/etc/systemd/system/xcatpostinit1.service <<'EOF'
+    if [[ $OSVER == sles12* ]]; then
+        cat >/etc/systemd/system/xcatpostinit1.service <<'EOF'
+#INCLUDE:/install/postscripts/xcatpostinit1.service.yast2#
+EOF
+        cat >/opt/xcat/xcatpostinit1.service.sles <<'EOF'
 #INCLUDE:/install/postscripts/xcatpostinit1.service#
 EOF
+    else
+        cat >/etc/systemd/system/xcatpostinit1.service <<'EOF'
+#INCLUDE:/install/postscripts/xcatpostinit1.service#
+EOF
+    fi
     if [ "$XCATDEBUGMODE" = "1" ] || [ "$XCATDEBUGMODE" = "2" ]; then
         msgutil_r "$MASTER_IP" "debug" "/etc/systemd/system/xcatpostinit1.service generated" "/var/log/xcat/xcat.log" "$log_label"
     fi

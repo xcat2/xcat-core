@@ -1,6 +1,7 @@
 start:rspconfig_record_firmware_level
 description: Record the firmware level for the start of each testcase
 hcp:openbmc
+label:cn_bmc_ready,hctrl_openbmc
 cmd: rinv $$CN firm
 check:rc==0
 end
@@ -9,6 +10,7 @@ start:rspconfig_get_all
 description: Check that we can get all the attributes from the BMC 
 os:Linux
 hcp:openbmc
+label:cn_bmc_ready,hctrl_openbmc
 cmd:rspconfig $$CN ip netmask gateway hostname vlan
 check:rc==0
 check:output=~$$CN: BMC IP:
@@ -21,23 +23,26 @@ end
 start:rspconfig_get_all_error
 description: Check the parsing code for rspconfig (error cases) 
 hcp: openbmc
+label:cn_bmc_ready,hctrl_openbmc
 cmd: rspconfig $$CN ip,netmask,gateway,hostname,vlan
 check:rc==1
-check:output=~Error: Unsupported command
+check:output=~Error: (\[.*?\]: )?Unsupported command
 end 
 
 start:rspconfig_get_set_error
 description: Check the parsing code for rspconfig (error cases) - Cannot get/set in same line
 hcp: openbmc
+label:cn_bmc_ready,hctrl_openbmc
 cmd: rspconfig $$CN ip netmask=255.0.0.0
 check:rc==1
-check:output=~Error: Can not set and query OpenBMC information at the same time
+check:output=~Error: (\[.*?\]: )?Can not set and query OpenBMC information at the same time
 end
 
 start:rspconfig_get_and_set_hostname
 description: Test setting and getting hostname on the BMC 
 os:Linux
 hcp:openbmc
+label:cn_bmc_ready,hctrl_openbmc
 # Save the hostname to a file.... 
 cmd:rspconfig $$CN hostname | tee /tmp/xcattest.rspconfig.hostname
 check:rc==0

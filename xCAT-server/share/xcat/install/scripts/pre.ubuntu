@@ -195,7 +195,7 @@ if [ -d /sys/firmware/efi ]; then
     echo "    ." >> /tmp/partitionfile
 else
     echo "ubuntu-boot ::" > /tmp/partitionfile
-    echo "100 50 100 ext3" >> /tmp/partitionfile
+    echo "256 256 512 ext3" >> /tmp/partitionfile
     echo '    $primary{ } $bootable{ } method{ format } format{ } use_filesystem{ } filesystem{ ext3 } mountpoint{ /boot }' >> /tmp/partitionfile
     echo "    ." >> /tmp/partitionfile
 fi

@@ -18,7 +18,6 @@ use xCAT::MsgUtils;
 use xCAT::SvrUtils;
 use xCAT::Yum;
 
-#use Data::Dumper;
 use Getopt::Long;
 Getopt::Long::Configure("bundling");
 Getopt::Long::Configure("pass_through");
@@ -958,12 +957,13 @@ sub mkinstall
                 if (!$osimagetab) {
                     $osimagetab = xCAT::Table->new('osimage', -create => 1);
                 }
-                (my $ref) = $osimagetab->getAttribs({ imagename => $imagename }, 'osvers', 'osarch', 'profile', 'provmethod', 'osupdatename');
+                (my $ref) = $osimagetab->getAttribs({ imagename => $imagename }, 'osvers', 'osarch', 'profile', 'provmethod', 'osupdatename','environvar');
                 if ($ref) {
                     $img_hash{$imagename}->{osver}      = $ref->{'osvers'};
                     $img_hash{$imagename}->{osarch}     = $ref->{'osarch'};
                     $img_hash{$imagename}->{profile}    = $ref->{'profile'};
                     $img_hash{$imagename}->{provmethod} = $ref->{'provmethod'};
+                    $img_hash{$imagename}->{environvar} = $ref->{'environvar'};
                     if (!$linuximagetab) {
                         $linuximagetab = xCAT::Table->new('linuximage', -create => 1);
                     }
@@ -1176,6 +1176,15 @@ sub mkinstall
         } else {
             $tmperr = "Unable to find template in /install/custom/install/$platform or $::XCATROOT/share/xcat/install/$platform (for $profile/$os/$arch combination)";
         }
+
+        if($img_hash{$imagename}->{environvar}){
+            foreach my $myenv(split(',',$img_hash{$imagename}->{'environvar'})){
+                if($myenv =~ /\s*(\S+)\s*=\s*(\S+)\s*/) {
+                    $ENV{$1}=$2;
+                }
+            }           
+        }
+
         if (-r "$tmplfile")
         {
             $tmperr =

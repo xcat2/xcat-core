@@ -1,15 +1,18 @@
 start:xdcp_h
+label:mn_only,parallel_cmds
 cmd:xdcp -h
 check:rc==0
 end
 
 start:xdcp_V
+label:mn_only,parallel_cmds
 cmd:xdcp -V
 check:rc==0
 check:output=~Version
 end
 
 start:xdcp_src_dst
+label:cn_os_ready,parallel_cmds
 cmd:xdsh $$CN rm -f /tmp/hosts
 cmd:xdcp $$CN /etc/hosts /tmp/hosts
 check:rc==0
@@ -24,6 +27,7 @@ cmd:rm -f /tmp/hosts
 end
 
 start:xdcp_P_src_dst 
+label:cn_os_ready,parallel_cmds
 cmd:xdcp $$CN -P /etc/inittab /tmp/
 check:rc==0
 cmd:xdsh $$CN cat /etc/inittab > /tmp/inittab1
@@ -35,6 +39,7 @@ end
 
 
 start:xdcp_RP
+label:cn_os_ready,parallel_cmds
 cmd:xdsh $$CN "mkdir -p /tmp/xdcp/test1"
 check:rc==0
 cmd:xdsh $$CN "echo "test1" > /tmp/xdcp/test1/test1.txt"
@@ -63,6 +68,7 @@ check:rc==0
 end
 
 start:xdcp_R
+label:cn_os_ready,parallel_cmds
 cmd:mkdir -p /tmp/xdcp/test1
 check:rc==0
 cmd:echo "test1" > /tmp/xdcp/test1/test1.txt
@@ -93,6 +99,7 @@ check:rc==0
 end
 
 start:xdcp_all_files_of_dir
+label:cn_os_ready,parallel_cmds
 cmd:mkdir -p /tmp/xdcp/
 check:rc==0
 cmd:echo "test1" > /tmp/xdcp/test1.txt
@@ -116,6 +123,7 @@ end
 
 
 start:xdcp_rsync
+label:cn_os_ready,parallel_cmds
 cmd:mkdir -p /tmp/xdcp/
 check:rc==0
 cmd:echo "test1" > /tmp/xdcp/test1.txt
@@ -139,6 +147,7 @@ end
 
 
 start:xdcp_rsyncfile_single_file
+label:cn_os_ready,parallel_cmds
 cmd:mkdir -p /tmp/xdcp/
 check:rc==0
 cmd:echo "test1" > /tmp/xdcp/test1.txt
@@ -159,6 +168,7 @@ end
 
 
 start:xdcp_rsyncfile_files
+label:cn_os_ready,parallel_cmds
 cmd:mkdir -p /tmp/xdcp/
 check:rc==0
 cmd:echo "test1" > /tmp/xdcp/test1.txt
@@ -184,6 +194,7 @@ end
 
 
 start:xdcp_rsyncfile_files_changename
+label:cn_os_ready,parallel_cmds
 cmd:mkdir -p /tmp/xdcp/
 check:rc==0
 cmd:echo "test1" > /tmp/xdcp/test1.txt

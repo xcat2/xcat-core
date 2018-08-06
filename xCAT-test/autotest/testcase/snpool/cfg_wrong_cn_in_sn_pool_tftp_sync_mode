@@ -147,7 +147,7 @@ cmd:chdef compute1 mac=
 check:rc==0
 cmd:nodeset compute1 osimage=__GETNODEATTR($$SN,os)__-__GETNODEATTR($$SN,arch)__-install-compute
 check:rc!=0
-check:output=~compute1: Error
+check:output=~compute1: (\[.*?\]: )?Error
 
 cmd:noderm compute1
 check:rc==0

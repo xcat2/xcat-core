@@ -1,6 +1,7 @@
 start:rsetboot_hd_statcheck
 description:set the boot device from hd
 Attribute: $$CN-The operation object of rsetboot command.
+label:cn_bmc_ready,hctrl_openbmc
 cmd:if [[ -f /tmp/rsetboot.stat ]];then mv -f /tmp/rsetboot.stat /tmp/rsetboot.stat.bak;fi; rsetboot $$CN state > /tmp/rsetboot.stat;
 check:rc==0
 cmd:rsetboot $$CN hd
@@ -18,6 +19,7 @@ end
 start:rsetboot_net_statcheck
 description:set the boot device from net
 Attribute: $$CN-The operation object of rsetboot command.
+label:cn_bmc_ready,hctrl_openbmc,hctrl_bmc_ipmi
 cmd:if [[ -f /tmp/rsetboot.stat ]];then mv -f /tmp/rsetboot.stat /tmp/rsetboot.stat.bak;fi; rsetboot $$CN state > /tmp/rsetboot.stat;
 check:rc==0
 cmd:rsetboot $$CN net
@@ -35,6 +37,7 @@ end
 start:rsetboot_cd_statcheck
 description:set the boot device from CD/DVD
 Attribute: $$CN-The operation object of rsetboot command.
+label:cn_bmc_ready,hctrl_openbmc,hctrl_bmc_ipmi
 cmd:if [[ -f /tmp/rsetboot.stat ]];then mv -f /tmp/rsetboot.stat /tmp/rsetboot.stat.bak;fi; rsetboot $$CN state > /tmp/rsetboot.stat;
 check:rc==0
 cmd:rsetboot $$CN cd
@@ -52,6 +55,7 @@ end
 start:rsetboot_default_statcheck
 description:set the boot device default
 Attribute: $$CN-The operation object of rsetboot command.
+label:cn_bmc_ready,hctrl_openbmc,hctrl_bmc_ipmi
 cmd:if [[ -f /tmp/rsetboot.stat ]];then mv -f /tmp/rsetboot.stat /tmp/rsetboot.stat.bak;fi; rsetboot $$CN state > /tmp/rsetboot.stat;
 check:rc==0
 cmd:rsetboot $$CN default
@@ -68,6 +72,7 @@ end
 
 start:rsetboot_h
 description:get rsetboot help information
+label:mn_only,hctrl_general
 cmd:rsetboot -h
 check:rc==0
 check:output=~Usage: rsetboot
@@ -75,6 +80,7 @@ end
 
 start:rsetboot_help
 description:get rsetboot help information using rsetboot help
+label:mn_only,hctrl_general
 cmd:rsetboot -help
 check:rc==0
 check:output=~Usage: rsetboot
@@ -82,12 +88,15 @@ end
 
 start:rsetboot_v
 desription:get rsetboot version
+label:mn_only,hctrl_general
 cmd:rsetboot -v
 check:rc==0
 check:output=~Version
 end
+
 start:rsetboot_node_invalidnode
 desription:rsetboot using invalidenode
+label:mn_only,hctrl_general
 cmd:rsetboot testnode boot
 check:rc!=0
 end
@@ -95,6 +104,7 @@ end
 start:rsetboot_noderange_net
 description:rsetboot noderange net
 Attribute: $$CN-The operation object of rsetboot command.
+label:cn_bmc_ready,hctrl_openbmc,hctrl_bmc_ipmi
 cmd:test=$(lsdef testnode);if [[ $? -eq 0 ]]; then lsdef -l testnode -z >/tmp/testnode.stanza ;rmdef testnode;fi
 check:rc==0
 cmd:chdef testnode groups=test mgt=__GETNODEATTR($$CN,mgt)__
@@ -103,10 +113,10 @@ cmd:if [[ -f /tmp/rsetboot.stat ]];then mv -f /tmp/rsetboot.stat /tmp/rsetboot.s
 check:rc==0
 cmd:rsetboot $$CN,testnode net
 check:output=~$$CN: Network
-check:output=~testnode: Error
+check:output=~testnode: (\[.*?\]: )?Error
 cmd:rsetboot $$CN,testnode stat
 check:output=~$$CN: Network
-check:output=~testnode: Error
+check:output=~testnode: (\[.*?\]: )?Error
 cmd:if [[ `grep CD /tmp/rsetboot.stat` ]];then rsetboot $$CN cd;elif [[ `grep  Network /tmp/rsetboot.stat` ]];then rsetboot $$CN  net;else  rsetboot $$CN hd;fi
 check:rc==0
 cmd:if [[ -f /tmp/rsetboot.stat.bak ]];then mv -f /tmp/rsetboot.stat.bak /tmp/rsetboot.stat;else rm -rf /tmp/rsetboot.stat;fi
@@ -118,14 +128,16 @@ end
 start:rsetboot_node_invalidaction
 description:rsetboot node using invalidaction
 Attribute: $$CN-The operation object of rsetboot command.
+label:cn_bmc_ready,hctrl_openbmc,hctrl_bmc_ipmi
 cmd:rsetboot $$CN dsdf
 check:rc!=0
-check:output=~Error: unsupported command|Unsupported command
+check:output=~Error: (\[.*?\]: )?unsupported command|Unsupported command
 end
 
 start:rsetboot_group_net
 description:rsetboot group node 
 Attribute: $$CN-The operation object of rsetboot command.
+label:cn_bmc_ready,hctrl_openbmc,hctrl_bmc_ipmi
 cmd:test=$(lsdef testnode);if [[ $? -eq 0 ]]; then lsdef -l testnode -z >/tmp/testnode.stanza ;rmdef testnode;fi
 check:rc==0
 cmd:if [[ -f /tmp/rsetboot.stat ]];then mv -f /tmp/rsetboot.stat /tmp/rsetboot.stat.bak;fi; rsetboot $$CN state > /tmp/rsetboot.stat;

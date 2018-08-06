@@ -1,5 +1,6 @@
 start:Full_installation_flat_docker
 os:Linux
+label:others,docker,invoke_provison
 cmd:copycds $$ISO
 check:rc==0
 cmd:makedns -n

@@ -437,6 +437,10 @@ sub process_request {
                 xCAT::SvrUtils::sendmsg(":Ignoring line $_ in /etc/hosts, address seems malformed.", $callback);
                 next;
             }
+            if ($addr =~ /(?:^|\.)0+(?=\d)/ and $addr !~ /^[abcdef0123456789:]+$/) {
+                xCAT::SvrUtils::sendmsg(":Ignoring line $_ in /etc/hosts, ip address octets can not contain leading zeroes.", $callback);
+                next;
+            }
             unless ($names =~ /^[a-z0-9\. \t\n-]+$/i) {
                 xCAT::SvrUtils::sendmsg(":Ignoring line $_ in /etc/hosts, names  $names contain invalid characters (valid characters include a through z, numbers and the '-', but not '_'", $callback);
                 next;

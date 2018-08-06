@@ -335,7 +335,7 @@ sub setdestiny {
                         return;
                     }
                 } else {
-                    $callback->({ errorcode => [1], error => "Cannot find the OS image $target on the osimage table.", errorabort => [1] });
+                    $callback->({ errorcode => [1], error => "Cannot find the OS image $target in the osimage table.", errorabort => [1] });
                     return;
                 }
 
@@ -416,7 +416,7 @@ sub setdestiny {
                                 }
                             } else {
                                 push(@{ $invalidosimghash->{$osimage}->{nodes} }, $tmpnode);
-                                $invalidosimghash->{$osimage}->{error}->[0] = "Cannot find the OS image $osimage on the osimage table";
+                                $invalidosimghash->{$osimage}->{error}->[0] = "Cannot find the OS image $osimage in the osimage table";
                                 next;
                             }
                         }

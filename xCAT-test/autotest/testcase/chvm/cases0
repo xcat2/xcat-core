@@ -4,8 +4,10 @@
 #check:rc!=0
 #check:output=~Usage
 #end
+
 start:chvm_p
 hcp:hmc
+label:others,virtualization
 cmd:mkdef -t node -o testnode mgt=hmc groups=all
 cmd:mkvm testnode -i $$MaxLparID -l $$CN
 check:rc==0
@@ -26,8 +28,10 @@ check:output=~__GETNODEATTR($$CN, pprofile)__
 cmd:rmvm testnode
 cmd:rm -f /tmp/autotest.profile
 end
+
 start:chvm_attr
 hcp:hmc
+label:others,virtualization
 cmd:mkdef -t node -o testnode mgt=hmc groups=all
 cmd:mkvm testnode -i $$MaxLparID -l $$CN
 check:rc==0
@@ -38,13 +42,25 @@ cmd:lsvm testnode
 check:output=~min_mem=1024
 cmd:rmvm testnode
 end
+
 start:chvm_node
+label:mn_only,virtualization
 cmd:chvm $$CN
 check:rc!=0
 check:output=~Usage
 end
+
 start:chvm_err_node
-cmd:chvm testnode
+label:mn_only,virtualization
+cmd:dir="/tmp/chvm_err_node";echo ${dir}".old";if [ -d "${dir}" ];then mv ${dir} ${dir}".old"; fi; mkdir -p $dir
+check:rc==0
+cmd:lsdef bogusnode > /dev/null 2>&1;if [[ $? -eq 0 ]]; then lsdef bogusnode -z >/tmp/chvm_err_node/bogusnode.stanza ;rmdef bogusnode;fi
+check:rc==0
+cmd:chvm bogusnode 
 check:rc!=0
-check:output=~Usage
+check:output=~Error: (\[.*?\]: )?Invalid nodes and/or groups in noderange
+cmd:if [[ -e /tmp/chvm_err_node/bogusnode.stanza ]]; then cat /tmp/chvm_err_node/bogusnode.stanza | mkdef -z;fi
+check:rc==0
+cmd:dir="/tmp/chvm_err_node"; rm -rf $dir; if [ -d ${dir}".old" ];then mv ${dir}".old" $dir; fi
+check:rc==0
 end

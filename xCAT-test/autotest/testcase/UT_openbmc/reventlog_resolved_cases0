@@ -2,51 +2,57 @@ start:reventlog_resolved_parse_error1
 description: Do not pass in any logs to clear
 os:Linux
 hcp:openbmc
+label:cn_bmc_ready,hctrl_openbmc
 cmd:reventlog $$CN resolved
 check:rc==1
-check:output=~Error: Usage error. Provide a comma separated
+check:output=~Error: (\[.*?\]: )?Usage error. Provide a comma separated
 end
 
 start:reventlog_resolved_parse_error2
 description: Do not pass in any logs to clear, include = sign
 os:Linux
 hcp:openbmc
+label:cn_bmc_ready,hctrl_openbmc
 cmd:reventlog $$CN resolved=
 check:rc==1
-check:output=~Error: Usage error. Provide a comma separated
+check:output=~Error: (\[.*?\]: )?Usage error. Provide a comma separated
 end
 
 start:reventlog_resolved_parse_error3
 description: forgot the = sign
 os:Linux
 hcp:openbmc
+label:cn_bmc_ready,hctrl_openbmc
 cmd:reventlog $$CN resolved 1,2,3
 check:rc==1
-check:output=~Error: Usage error. Provide a comma separated
+check:output=~Error: (\[.*?\]: )?Usage error. Provide a comma separated
 end
 
 start:reventlog_resolved_parse_error4
 description: Pass in a negative number
 os:Linux
 hcp:openbmc
+label:cn_bmc_ready,hctrl_openbmc
 cmd:reventlog $$CN resolved=-1
 check:rc==1
-check:output=~Error: Invalid ID=
+check:output=~Error: (\[.*?\]: )?Invalid ID=
 end
 
 start:reventlog_resolved_parse_error5
 description: Pass in a string
 os:Linux
 hcp:openbmc
+label:cn_bmc_ready,hctrl_openbmc
 cmd:reventlog $$CN resolved=abc
 check:rc==1
-check:output=~Error: Invalid ID=
+check:output=~Error: (\[.*?\]: )?Invalid ID=
 end
 
 start:reventlog_resolved_list
 description: Pass in a list of ids
 os:Linux
 hcp:openbmc
+label:cn_bmc_ready,hctrl_openbmc
 cmd:reventlog $$CN resolved=100,101
 check:rc==0
 check:output=~Attempting to resolve the following log entries: 100,101...
@@ -56,6 +62,7 @@ start:reventlog_resolved_LED
 description: Pass in a LED keyword
 os:Linux
 hcp:openbmc
+label:cn_bmc_ready,hctrl_openbmc
 cmd:reventlog $$CN resolved=Led
 check:rc==0
 check:output=~Attempting to resolve the following log entries: Led...

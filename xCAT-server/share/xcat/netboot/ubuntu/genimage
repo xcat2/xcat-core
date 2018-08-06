@@ -201,7 +201,7 @@ if ($netdriver) {
     if ($arch eq 'x86' or $arch eq 'x86_64') {
         @ndrivers = qw/tg3 bnx2 bnx2x e1000 e1000e igb mlx_en virtio_net/;
     } elsif ($arch eq 'ppc64el') {
-        @ndrivers = qw/bnx2 bnx2x e1000 e1000e igb mlx_en mlx4_en/;
+        @ndrivers = qw/bnx2 bnx2x e1000 e1000e igb mlx_en mlx4_en virtio_net/;
     } elsif ($arch eq 'ppc64') {
         @ndrivers = qw/e1000 e1000e igb ibmveth ehea/;
     } elsif ($arch eq 's390x') {
@@ -1501,9 +1501,9 @@ EOMS
     print $inifile "    ([ \"\$xcatdebugmode\" = \"1\" ] || [ \"\$xcatdebugmode\" = \"2\" ]) && logger -t xcat -p debug \"Extracting root filesystem:\"\n";
     print $inifile "    echo -n \"Extracting root filesystem:\"\n";
     print $inifile "    if [ -r /rootimg.tar.gz ]; then\n";
-    print $inifile "        /bin/tar --selinux --xattrs-include='*' -zxf /rootimg.tar.gz\n";
+    print $inifile "        /bin/tar --selinux --xattrs --xattrs-include='*' -zxf /rootimg.tar.gz\n";
     print $inifile "    elif [ -r /rootimg.tar.xz ]; then\n";
-    print $inifile "        /bin/tar --selinux --xattrs-include='*' -Jxf /rootimg.tar.xz\n";
+    print $inifile "        /bin/tar --selinux --xattrs --xattrs-include='*' -Jxf /rootimg.tar.xz\n";
     print $inifile "    fi\n";
     print $inifile "    ([ \"\$xcatdebugmode\" = \"1\" ] || [ \"\$xcatdebugmode\" = \"2\" ]) && logger -t xcat -p debug \"Done...\"\n";
     print $inifile "    echo Done\n";
@@ -1648,6 +1648,16 @@ EOMS
     foreach ("usr/bin/dig", "bin/busybox", "bin/bash", "sbin/mount.nfs", "usr/bin/rsync", "sbin/insmod", "sbin/udevd", "sbin/udevadm", "sbin/modprobe", "sbin/blkid", "sbin/depmod", "usr/bin/wget", "usr/bin/xz", "bin/gzip", "bin/tar") {
         getlibs($_);
         push @filestoadd, $_;
+    }
+
+    # Workaround for Ubuntu 18.04 busybox bug
+    # https://bugs.launchpad.net/ubuntu/+source/busybox/+bug/1753572
+    # On Ubuntun 18.04, will use GNU cpio instead of busybox cpio
+    if ("ubuntu18.04" eq $osver) {
+        foreach ("bin/cpio") {
+            getlibs($_);
+            push @filestoadd, $_;
+        }
     }
 
     # Additional binaries needed for udev on s390x
