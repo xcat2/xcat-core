@@ -92,7 +92,7 @@ if [ -z "$RPMSIGN" ] && [ -z "$GPGSIGN" ]; then
 elif [ -n "$GPGSIGN" ]; then # use GPGSIGN in first
     RPMSIGN=$GPGSIGN
 fi
-if [ -z "$RPMSIGN" -o "$RPMSIGN" != "0" ]; then
+if [ -z "$RPMSIGN" -o "$RPMSIGN" != "1" ]; then
     RPMSIGN=0
 fi
 if [ -z "$BUILDALL" ]; then
