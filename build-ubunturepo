@@ -28,7 +28,6 @@
 #
 #               DEST=<directory> - provide a directory to contains the build result
 #
-#               BUILDDESTDIR=<build_tarball_dir> - Copy build core tarball to BUILDDESTDIR if defined
 # For the dependency packages 1. All the xcat dependency deb packages should be uploaded to
 #                                "pokgsa/projects/x/xcat/build/ubuntu/xcat-dep/debs/" on GSA
 #                             2. run ./build-ubunturepo -d
@@ -399,14 +398,10 @@ __EOF__
     chgrp root $tar_name
     chmod g+w $tar_name
 
-    if [ "$BUILDDESTDIR" ]; then
-        rm -rf $BUILDDESTDIR
-        mkdir -p $BUILDDESTDIR
-        cp $tar_name $BUILDDESTDIR
+    if [ -n "$DEST" ]; then
+        ln -sf $(basename `pwd`)/$tar_name ../$tar_name
         if [ $? != 0 ]; then
-            echo "Failed to copy $tar_name to $BUILDDESTDIR"
-        else
-            echo "Copied $tar_name to $BUILDDESTDIR"
+            echo "ERROR: Failed to make symbol link $DEST/$tar_name"
         fi
     fi
 
