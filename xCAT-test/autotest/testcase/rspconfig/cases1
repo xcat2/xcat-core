@@ -2,6 +2,7 @@ start:rspconfig_ipsrc
 description: To test "rspconfig <node> ipsrc",to get the IP source for OpenBMC 
 os:Linux
 hcp:openbmc
+label:cn_bmc_ready,hctrl_openbmc
 cmd:rspconfig $$CN ipsrc 
 check:output=~$$CN\s*:\s*BMC IP Source: Static|BMC IP Source: Dynamic 
 check:rc == 0
@@ -14,6 +15,7 @@ start:rspconfig_dump_list
 description: To test "rspconfig <node> dump -l" and "rspconfig <node> dump --list" 
 os:Linux
 hcp:openbmc
+label:cn_bmc_ready,hctrl_openbmc
 cmd:rspconfig $$CN dump -l  
 check:output =~$$CN:\s*No attributes returned from the BMC.|\s*\[\d+\]\s* Generated:
 check:rc == 0
@@ -26,6 +28,7 @@ start:rspconfig_dump_generate
 description: To test "rspconfig <node> dump -g" and "rspconfig <node> dump --generate" 
 os:Linux
 hcp:openbmc
+label:cn_bmc_ready,hctrl_openbmc
 cmd:rspconfig $$CN dump -l|tee /tmp/dumplistold
 check:output =~$$CN:\s*No attributes returned from the BMC.|\s*\[\d+\]\s* Generated:
 check:rc == 0 
@@ -60,6 +63,7 @@ start:rspconfig_dump_clear
 description: To test "rspconfig <node> dump -c" and "rspconfig <node> dump --clear" 
 os:Linux
 hcp:openbmc
+label:cn_bmc_ready,hctrl_openbmc
 cmd:rspconfig $$CN dump -g |tee /tmp/dumpgenerate
 check:rc == 0
 check:output =~$$CN:\s*\[\d+\]\s* success
@@ -100,6 +104,7 @@ start:rspconfig_dump_download
 description: To test rspconfig <node> dump -d" and "rspconfig <node> dump --download"
 os:Linux
 hcp:openbmc
+label:cn_bmc_ready,hctrl_openbmc
 cmd:rspconfig $$CN dump -g |tee /tmp/dumpgenerate
 check:rc == 0
 check:output =~$$CN:\s*\[\d+\]\s* success
@@ -133,6 +138,7 @@ start:rspconfig_dump_no_option
 description: To test "rspconfig <node> dump"
 os:Linux
 hcp:openbmc
+label:cn_bmc_ready,hctrl_openbmc
 cmd:rspconfig $$CN dump  
 check:rc == 0
 check:output =~$$CN:\s*Dump requested
@@ -148,6 +154,7 @@ start:rspconfig_gard
 description: To test "rspconfig <node> gard -c" 
 os:Linux
 hcp:openbmc
+label:cn_bmc_ready,hctrl_openbmc
 cmd:rspconfig $$CN gard -c 
 check:output =~$$CN:\s*GARD cleared
 check:rc == 0
@@ -160,6 +167,7 @@ start:rspconfig_ntpserver
 description: To test "rspconfig <node> ntpservers" to show the ntp server of the node 
 os:Linux
 hcp:openbmc
+label:cn_bmc_ready,hctrl_openbmc
 cmd:rspconfig $$CN ntpservers 
 check:output =~$$CN:\s*BMC NTP Servers:\s*None|\s*\d+.\d+.\d+.\d+
 check:rc == 0
@@ -169,6 +177,7 @@ start:rspconfig_powerrestorepolicy
 description: To test "rspconfig <node> powerrestorepolicy" to show the policy 
 os:Linux
 hcp:openbmc
+label:cn_bmc_ready,hctrl_openbmc
 cmd:rspconfig $$CN powerrestorepolicy |tee /tmp/powerrestorepolicy 
 check:output =~$$CN:\s*BMC PowerRestorePolicy:\s*AlwaysOff|AlwaysOn|Restore
 check:rc == 0
@@ -202,6 +211,7 @@ start:rspconfig_powersupplyredundancy
 description: To test "rspconfig <node> powersupplyredundancy" to show the powersupplyredundancy state 
 os:Linux
 hcp:openbmc
+label:cn_bmc_ready,hctrl_openbmc
 cmd:rspconfig $$CN powersupplyredundancy |tee /tmp/powersupplyredundancy 
 check:output =~$$CN:\s*BMC PowerSupplyRedundancy:\s*Enabled|Disabled
 check:rc == 0
@@ -229,6 +239,7 @@ start:rspconfig_timesyncmethod
 description: To test "rspconfig <node> timesyncmethod" to show the timesyncmethod 
 os:Linux
 hcp:openbmc
+label:cn_bmc_ready,hctrl_openbmc
 cmd:rspconfig $$CN timesyncmethod |tee /tmp/timesyncmethod
 check:output =~$$CN:\s*BMC TimeSyncMethod:\s*NTP|Manual
 check:rc == 0
@@ -256,6 +267,7 @@ start:rspconfig_bootmode
 description: To test "rspconfig <node> bootmode" to show and change bootmode 
 os:Linux
 hcp:openbmc
+label:cn_bmc_ready,hctrl_openbmc
 cmd:rspconfig $$CN bootmode|tee /tmp/bootmode
 check:output =~$$CN:\s*BMC BootMode:\s*Regular|Safe|Setup
 check:rc == 0
@@ -289,6 +301,7 @@ start:rspconfig_autoreboot
 description: To test "rspconfig <node> autoreboot" to show and change autoreboot 
 os:Linux
 hcp:openbmc
+label:cn_bmc_ready,hctrl_openbmc
 cmd:rspconfig $$CN autoreboot|tee /tmp/autoreboot
 check:output =~$$CN:\s*BMC AutoReboot:\s*1|0
 check:rc == 0
@@ -316,6 +329,7 @@ start:rspconfig_invalid
 description: To test "rspconfig <node> invalid_value"  should throw out error message
 os:Linux
 hcp:openbmc
+label:cn_bmc_ready,hctrl_openbmc
 cmd:rspconfig $$CN aaa
 check:output =~Error: (\[.*?\]: )?Unsupported command: rspconfig aaa
 check:rc != 0

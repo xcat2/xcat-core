@@ -887,7 +887,7 @@ run_ps () {
  fi
 
  if [ -f \$1 ]; then 
-  echo \"\`date\` Running \$scriptype: \$1\"
+  echo \"Running \$scriptype: \$1\"
   msgutil_r \"\$MASTER_IP\" \"info\" "\"Running \$scriptype: \$1\"" \"\$logfile\" \"xcat.mypostscript\"
   if [ \"\$XCATDEBUGMODE\" = \"1\" ] || [ \"\$XCATDEBUGMODE\" = \"2\" ]; then
      local compt=\$(file \$1)

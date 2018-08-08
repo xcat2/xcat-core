@@ -136,6 +136,15 @@ Here is an example about how to store a MD5 encrypted password for root in ``pas
 
     tabch key=system passwd.username=root passwd.password=`openSSL passwd -1 <password>`
 
+During the provisioning, the root password will be set on the compute nodes. By default, xCAT stores the encrypted hash of password into installation files directly for better performance.
+
+For example, ``/etc/shadow`` in stateless image for stateless nodes or installation files ( ``/install/autoinst/<node>`` ) for stateful nodes.
+
+You can enable **secureroot** feature for more secure consideration. ::
+
+    chdef -t site secureroot=1
+
+Then, after the new ``packimage`` or ``nodeset`` command, the root password hash can only be acquired on-the-fly with strict security control.
 
 
 Nodes Inter-Access in The Cluster

@@ -16,7 +16,7 @@ multiple read-only instances of the console, plus console logging.
 
 If I<conserver-host> is specified, the conserver daemon on that host will be contacted, instead of on the local host.
 
-To exit the console session, enter:  <ctrl>e c .
+To exit the console session, enter: 'ctrl-e c .' (3 characters: ctrl-e, 'c' and '.').
 
 For confluent backed consoles, an extended outage of connectivity to the endpoint will result in an automated retry
 of a randomized interval between 2 to 4 minutes.  You can either close and reopen the console to force a quicker

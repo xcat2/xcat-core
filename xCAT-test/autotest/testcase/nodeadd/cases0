@@ -1,10 +1,12 @@
 start:nodeadd_null
 description:nodeadd without any flag
+label:mn_only,db
 cmd:nodeadd
 check:output=~Usage
 end
 
 start:nodeadd_noderange
+label:mn_only,db
 cmd:nodeadd testnode1-testnode2 groups="lpar,all" nodetype.nodetype="lpar,osi"
 check:rc==0
 cmd:lsdef -i groups,nodetype testnode1
@@ -21,6 +23,7 @@ cmd:rmdef -t node -o testnode1-testnode2
 end
 
 start:nodeadd_noderange_nodetype
+label:mn_only,db
 cmd:nodeadd testnode1-testnode2 groups=all,rhel5 nodetype.os=rhel5
 check:rc=0
 cmd:lsdef -i groups,os testnode1
@@ -36,16 +39,19 @@ cmd:rmdef -t node -o testnode1-testnode2
 end
 
 start:nodeadd_v
+label:mn_only,db
 cmd:nodeadd -v
 check:output=~Version
 end
 
 start:nodeadd_h
+label:mn_only,db
 cmd:nodeadd -h
 check:output=~Usage
 end
 
 start:nodeadd_err_symbol
+label:mn_only,db
 cmd:nodeadd testnode magt=unknown
 check:rc!=0
 check:output=~Error

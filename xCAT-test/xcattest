@@ -16,10 +16,12 @@ BEGIN
 use lib "$::XCATROOT/lib/perl";
 
 #--------------global attributes----------------
-my $prpgram_path             = dirname(File::Spec->rel2abs(__FILE__));
-my $program_name             = basename($0);
-my $rootdir                  = "$prpgram_path/../share/xcat/tools/autotest";
+my $program_path = dirname(File::Spec->rel2abs(__FILE__));
+my $program_name = basename($0);
+
+my $rootdir                  = "$program_path/../share/xcat/tools/autotest";
 my $casedir                  = "$rootdir/testcase/";
+$casedir = $ENV{'XCATTEST_CASEDIR'} if exists $ENV{'XCATTEST_CASEDIR'};
 my $bundledir                = "$rootdir/bundle/";
 my $resultdir                = "$rootdir/result/";
 my $rst                      = 0;
@@ -52,19 +54,31 @@ my $RUN   = 1;
 
 #----------global logs attributes---------------
 my $running_log_fd     = undef
-my $running_log_name = undef;
+my $running_log_name   = undef;
 my $failed_log_name      = undef;
 my $performance_log_name = undef;
+my $xcatdebug = 0;
+$xcatdebug = 1 if exists $ENV{'XCATTEST_DEBUG'};
 
 #--------------command line attrbutes--------------
-my $needhelp   = 0;
-my $configfile = undef;
-my $bundlelist = undef;
-my $caselist   = undef;
-my $cmdlist    = undef;
-my $list       = undef;
-my $restore    = 0;
-my $quiet      = 0;
+my $needhelp          = 0;
+my $configfile        = undef;
+my $bundlelist        = undef;
+my $caselist          = undef;
+my $cmdlist           = undef;
+my $list              = undef;
+my $restore           = 0;
+my $quiet             = 0;
+my $search_expression = undef;
+
+my %label_map;
+my %case_label_map;
+my @label_order = (["xcat_install"],
+    ["mn_only"],
+    [ "sn_diskful", "sn_diskless" ],
+    [ "flat_cn_diskful", "flat_cn_diskless", "hierarchy_cn_diskful", "hierarchy_cn_diskless" ],
+    [ "cn_bmc_ready", "cn_os_ready" ],
+    ["others"]);
 
 #-------------usage--------------------
 $::USAGE = "Usage:
@@ -75,6 +89,8 @@ To list the information about all cases shipped by xcat test package
     $program_name -l {caselist|caseinfo|casenum}
 To list the information about all bunldes shipped by xcat test package
     $program_name -l bundleinfo 
+To list the information about label
+    $program_name -l labelinfo
 To list the information about cases in specific bundles
     $program_name -l {caselist|caseinfo|casenum} -b <bundle_list>
 To list the information about cases related to specific commands
@@ -82,22 +98,35 @@ To list the information about cases related to specific commands
 To list the information about specific cases  
     $program_name -l {caselist|caseinfo|casenum} -t <case_list>
 
+To list cases information that satisfy specific filter expression
+    $program_name -l {caselist|caseinfo|casenum} -s \"filter_expression\"    
+For short, show the cases list can use below command
+    $program_name -l -s \"filter_expression\"
+To list information about cases in specific bundles and satisfy specific filter expression at same time
+    $program_name -l {caselist|caseinfo|casenum} -b <bundle_list> -s \"filter_expression\"
+
 To run test cases in specific bundles 
     $program_name [-f {configure_file|configure_file:System}] -b <bundle_list>  [-r] [-q]
 To run specific test cases 
     $program_name [-f {configure_file|configure_file:System}] -t <case_list>  [-r] [-q]
 To run all cases related to specific commands 
     $program_name [-f {configure_file|configure_file:System}] -c <command_list> [-r] [-q]
+To run test cases that satisfy specific filter expression
+    $program_name -s \"filter_expression\"
 
 Options:
     -h : Get $program_name usage information. 
-    -l : list specific information. The valid options are caselist,caseinfo,casenum,bundleinfo
+    -l : list specific information. The valid options are caselist,caseinfo,casenum,bundleinfo. For list case information, caselist is default value.
     -f : specify the configuration file. If 'System' tag is used, only [System] section in the configuration file will be used. If 'System' is not used all other sections of the configuration file will be used, like [Table], [Object], etc.
     -c : Comma separated list of command names to test. 
     -t : Comma separated list of test case names to test.
     -b : Comma separated list of bundle names to test. If a bundle name is specified without an absolute path, such like /<path/xxx.bundle, or ./xxx.bundle, bundles under $bundledir will be searched by default.
     -r : Back up the original environment settings before running test, and restore them after running test.
     -q : Just record all the output of $program_name into log file under $resultdir, not print to STDOUT. Print to STDOUT by default. 
+    -s : Filter case by label. The acceptable value looks like 'label1+label2-label3\|label4\|label5', 'label1+label2-label3' works as sub expression. 
+         '|' means union filter, it has lower priority, expression1|expression2 means the case either satisfies expression1 or satisfies expression2. 
+         '+' means the case need have specific label. higher priority.
+         '-' means the case does not have specific label. higher priority. 
 ";
 
 #==============================================================================================
@@ -115,14 +144,17 @@ if (
         "b=s" => \$bundlelist,
         "t=s" => \$caselist,
         "c=s" => \$cmdlist,
-        "l=s" => \$list,
+        "l:s" => \$list,
         "q"   => \$quiet,
+        "s=s" => \$search_expression,
         "r"   => \$restore)
   )
 {
     log_this($running_log_fd, "$::USAGE");
     to_exit(1);
 }
+
+#$list="caselist" unless($list);
 
 if ($needhelp) {
     log_this($running_log_fd, "$::USAGE");
@@ -136,23 +168,38 @@ if ($rst) {
     to_exit(1);
 }
 
+if($search_expression){
+    $rst = scan_existed_labels(\%case_label_map, \%label_map, \$error);
+    if($rst) {
+        log_this($running_log_fd, "$error");
+        to_exit(1);
+    }
+}
+
 $rst = calculate_cases_to_be_run(\@cases_to_be_run, \$error);
 if ($rst) {
     log_this($running_log_fd, "$error");
     to_exit(1);
 }
 
-#print "----case to be run-----------------\n";
-#print Dumper \@cases_to_be_run;
+if ($xcatdebug) {
+    print "----case to be run-----------------\n";
+    print Dumper \@cases_to_be_run;
+}
 
-if ($list) {
+if (defined $list) {
+
+    $list="caselist" if ($list eq "");
+
     if ($list eq "caselist") {
         if (@cases_to_be_run) {
 
-            #list the cases indicated by option -b,-c,-t
+            #list the cases indicated by option -b,-c,-t, -s
             foreach (@cases_to_be_run) {
                 log_this($running_log_fd, "$_");
             }
+        } elsif (!@cases_to_be_run && $search_expression){
+            log_this($running_log_fd, "There is no cases match search expression $search_expression"); 
         } else {
 
             #list the cases shipped by xcat test package
@@ -165,13 +212,17 @@ if ($list) {
             }
         }
     } elsif ($list eq "caseinfo") {
-        $rst = show_case_info(\@cases_to_be_run, \$error);
-        if ($rst) {
-            log_this($running_log_fd, "$error");
-            to_exit(1);
+        if (!@cases_to_be_run && $search_expression){
+            log_this($running_log_fd, "There is no cases match search expression $search_expression");
+        } else {
+            $rst = show_case_info(\@cases_to_be_run, \$error);
+            if ($rst) {
+                log_this($running_log_fd, "$error");
+                to_exit(1);
+            }
         }
     } elsif ($list eq "casenum") {
-        if (@cases_to_be_run) {
+        if (@cases_to_be_run || (!@cases_to_be_run && $search_expression)) {
 
             #list the case number indicated by option -b,-c,-t
             my $casenum = @cases_to_be_run;
@@ -182,6 +233,7 @@ if ($list) {
             $rst = load_case(\@cases_to_be_run, \@cases, \%case_name_index_map, \$error, $NORUN);
             if ($rst) {
                 log_this($running_log_fd, "$error");
+                to_exit(1);
             }
             my $casenum = @cases;
             log_this($running_log_fd, "$casenum");
@@ -194,12 +246,46 @@ if ($list) {
             log_this($running_log_fd, "$error");
             to_exit(1);
         }
+    } elsif ($list eq "labelinfo"){
+        $rst = scan_existed_labels(\%case_label_map, \%label_map, \$error);
+        my %label_conut;
+        my %case_label_str_map;
+        foreach my $case (keys %case_label_map){
+            if($case_label_map{$case}{label_str}){ 
+                $case_label_str_map{$case} = $case_label_map{$case}{label_str};
+                my @labels = split(",", $case_label_map{$case}{label_str});
+                foreach my $label (@labels){
+                    if(!exists $label_conut{$label}){
+                        $label_conut{$label}=1;
+                    }else{
+                        $label_conut{$label}+=1;
+                    }
+                }
+            }
+        }  
+
+        log_this($running_log_fd, "-------------------------------");
+        log_this($running_log_fd, "The labels of cases:");
+        log_this($running_log_fd, "-------------------------------");
+        print_table(\%case_label_str_map);
+        my $label_total_num=keys %label_conut;
+        log_this($running_log_fd, "\n-------------------------------");
+        log_this($running_log_fd, "There are $label_total_num different labels"); 
+        log_this($running_log_fd, "The number of cases of each label:");
+        log_this($running_log_fd, "-------------------------------");
+        print_table(\%label_conut);
+        log_this($running_log_fd, "-------------------------------");
+        my $total_case = keys %case_label_map;
+        my $case_with_label_num = keys %case_label_str_map;
+        log_this($running_log_fd, "There are $total_case cases totaly, there are $case_with_label_num cases with label.");
+        
     }
+
     to_exit(0);
 }
 
 unless (@cases_to_be_run) {
-    log_this($running_log_fd, "Please indicate the cases to run by option -b,-c,-t");
+    log_this($running_log_fd, "There is no case to run, Please indicate case by option -b,-c,-t,-s");
     to_exit(1);
 }
 
@@ -220,11 +306,12 @@ if (defined($configfile)) {
     }
 } else {
     $setup_env_by_config_file = 0;
+
     # Leverage environment variable to used in test case
     foreach (keys %ENV) {
         if (/^XCATTEST_/) {
-            my @envname=split("_",$_,2);
-            $config{var}{$envname[-1]} = $ENV{$_};
+            my @envname = split("_", $_, 2);
+            $config{var}{ $envname[-1] } = $ENV{$_};
         }
     }
 }
@@ -264,19 +351,21 @@ log_this($running_log_fd, "******************************");
 log_this($running_log_fd, "loading test cases");
 log_this($running_log_fd, "******************************");
 $rst = load_case(\@cases_to_be_run, \@cases, \%case_name_index_map, \$error, $RUN);
-if ($rst && $rst < 2 ) {
+if ($rst && $rst < 2) {
     log_this($running_log_fd, "$error");
     to_exit(1);
 }
 
-#print "=====Dumper loaded cases=======\n";
-#print Dumper \@cases;
-#print "=====Dumper case_name_index_map=======================\n";
-#print Dumper \%case_name_index_map;
-#print "=====Dumper cases to be run=====\n";
-#print Dumper \@cases_to_be_run;
+if ($xcatdebug) {
+    print "=====Dumper loaded cases=======\n";
+    print Dumper \@cases;
+    print "=====Dumper case_name_index_map=======================\n";
+    print Dumper \%case_name_index_map;
+    print "=====Dumper cases to be run=====\n";
+    print Dumper \@cases_to_be_run;
+}
 
-unless(@cases_to_be_run){
+unless (@cases_to_be_run) {
     to_exit(1);
 }
 
@@ -468,6 +557,17 @@ sub calculate_cases_to_be_run {
             close($fd);
         }
     }
+
+
+    if($search_expression){
+        my @rest_cases_to_be_run=();
+        $rst = filter_case_by_label($cases_to_be_run_ref,\%case_label_map,\@rest_cases_to_be_run, $error_ref);
+        if ($rst) {
+            return 1;
+        }
+
+        @$cases_to_be_run_ref=@rest_cases_to_be_run;        
+    }
     return 0;
 }
 
@@ -532,10 +632,10 @@ sub check_option_validity {
 
     if ($list) {
         my @vaild_list_method = ();
-        if ($bundlelist || $caselist || $cmdlist) {
+        if ($bundlelist || $caselist || $cmdlist || $search_expression) {
             @vaild_list_method = ("caselist", "caseinfo", "casenum");
         } else {
-            @vaild_list_method = ("caselist", "caseinfo", "casenum", "bundleinfo");
+            @vaild_list_method = ("caselist", "caseinfo", "casenum", "bundleinfo", "labelinfo");
         }
         if (!(grep { /^$list$/ } @vaild_list_method)) {
             $$error_ref = "Unsupport list method for option l";
@@ -827,6 +927,8 @@ sub load_case {
     my $case_num           = @{$cases_to_be_run_ref};
     $load_all_case_flag = 1 if ($case_num == 0);
 
+    @$case_ref = ();
+    %$case_name_index_map_ref=();
     my @files = ();
     get_files_recursive("$casedir", \@files);
 
@@ -847,11 +949,11 @@ sub load_case {
             return 1;
         }
         while ($line = <$fd>) {
-            if($newcmdstart){
-                $line =~ s/\s+$//g ;
-             }else{
-                $line =~ s/^\s+|#[^!].+|\s+$//g ;
-             }
+            if ($newcmdstart) {
+                $line =~ s/\s+$//g;
+            } else {
+                $line =~ s/^\s+|#[^!].+|\s+$//g;
+            }
 
             #skip blank and comment lines
             next if (length($line) == 0 || ($line =~ /^\s*#/));
@@ -860,16 +962,18 @@ sub load_case {
                 my $name = $1;
                 if ($load_all_case_flag) {
                     if (is_valid_case_name($name)) {
-                        $skip                              = 0;
-                        $j                                 = -1;
-                        $case_ref->[$i]                    = {};
-                        $case_ref->[$i]->{name}            = $name;
-                        $case_ref->[$i]->{filename}        = $file;
-                        if(exists($$case_name_index_map_ref{"$name"})){
-                            $case_name_index_map_bak{"$name"}=$$case_name_index_map_ref{"$name"};
+                        $skip                        = 0;
+                        $j                           = -1;
+                        $case_ref->[$i]              = {};
+                        $case_ref->[$i]->{name}      = $name;
+                        $case_ref->[$i]->{filename}  = $file;
+                        $case_ref->[$i]->{label}     = 0;
+                        $case_ref->[$i]->{label_str} = "";
+                        if (exists($$case_name_index_map_ref{"$name"})) {
+                            $case_name_index_map_bak{"$name"} = $$case_name_index_map_ref{"$name"};
                         }
                         $$case_name_index_map_ref{"$name"} = $i;
-                        $newcmdstart                       = 0;
+                        $newcmdstart = 0;
                     } else {
                         $skip = 1;
                         push @{ $invalidcases{"invalidcasename"} }, $name;
@@ -880,17 +984,19 @@ sub load_case {
                         next;
                     } else {
                         if (is_valid_case_name($name)) {
-                            $skip                              = 0;
-                            $j                                 = -1;
-                            $case_ref->[$i]                    = {};
-                            $case_ref->[$i]->{name}            = $name;
-                            $case_ref->[$i]->{filename}        = $file;
-                            if(exists($$case_name_index_map_ref{"$name"})){
-                                $case_name_index_map_bak{"$name"}=$$case_name_index_map_ref{"$name"};
+                            $skip                        = 0;
+                            $j                           = -1;
+                            $case_ref->[$i]              = {};
+                            $case_ref->[$i]->{name}      = $name;
+                            $case_ref->[$i]->{filename}  = $file;
+                            $case_ref->[$i]->{label}     = 0;
+                            $case_ref->[$i]->{label_str} = "";
+                            if (exists($$case_name_index_map_ref{"$name"})) {
+                                $case_name_index_map_bak{"$name"} = $$case_name_index_map_ref{"$name"};
                             }
                             $$case_name_index_map_ref{"$name"} = $i;
-                            $newcmdstart                       = 0;
-                            if(grep (/$case_ref->[$i]->{name}/,@{ $invalidcases{"noruncases"} })){
+                            $newcmdstart = 0;
+                            if (grep (/$case_ref->[$i]->{name}/, @{ $invalidcases{"noruncases"} })) {
                                 delete_item_from_array($case_ref->[$i]->{name}, $invalidcases{"noruncases"});
                             }
                         } else {
@@ -899,7 +1005,7 @@ sub load_case {
                         }
                     }
                 }
-            } elsif ($line =~ /^os\s*:\s*(\w[\w\,]+)/) {
+            } elsif ($line =~ /^os\s*:\s*(\w[\w\, ]+)/) {
                 next if $skip;
                 $case_ref->[$i]->{os} = $1;
 
@@ -921,92 +1027,110 @@ sub load_case {
                     foreach my $os (@newvalidoslist) {
                         if ($currentos =~ /$os/i) {
                             $valid = 1;
-                            if(grep (/$case_ref->[$i]->{name}/,@{ $invalidcases{"noruncases"} })){
+                            if (grep (/$case_ref->[$i]->{name}/, @{ $invalidcases{"noruncases"} })) {
                                 delete_item_from_array($case_ref->[$i]->{name}, $invalidcases{"noruncases"});
                             }
                             last;
                         }
                     }
                     unless ($valid) {
+
                         #$skip = 1;
-                        if(exists($case_name_index_map_bak{$case_ref->[$i]->{name}})){
-                            $$case_name_index_map_ref{$case_ref->[$i]->{name}}=$case_name_index_map_bak{$case_ref->[$i]->{name}};
-                        }else{
-                            delete $$case_name_index_map_ref{$case_ref->[$i]->{name}};
-                            if(! grep (/$case_ref->[$i]->{name}/,@{ $invalidcases{"noruncases"} })){
+                        if (exists($case_name_index_map_bak{ $case_ref->[$i]->{name} })) {
+                            $$case_name_index_map_ref{ $case_ref->[$i]->{name} } = $case_name_index_map_bak{ $case_ref->[$i]->{name} };
+                        } else {
+                            delete $$case_name_index_map_ref{ $case_ref->[$i]->{name} };
+                            if (!grep (/$case_ref->[$i]->{name}/, @{ $invalidcases{"noruncases"} })) {
                                 push @{ $invalidcases{"noruncases"} }, $case_ref->[$i]->{name};
                             }
                         }
                     }
                 }
                 $newcmdstart = 0;
-            } elsif ($line =~ /^arch\s*:\s*(\w[\w\,]+)/) {
+            } elsif ($line =~ /^arch\s*:\s*(\w[\w\, ]+)/) {
                 next if $skip;
                 $case_ref->[$i]->{arch} = $1;
 
                 if ($run_case_flag) {
+                    
                     #To judge whether need to skip the current case
-                    my $case_arch = $case_ref->[$i]->{arch};
-                    if($case_arch =~ /ppc/i && $case_arch !~ /le|el/i){
-                        $case_arch="ppc";
-                    }elsif($case_arch =~ /ppc/i && $case_arch =~ /le|el/i){
-                        $case_arch="ppc64le";
-                    }elsif($case_arch =~ /x86/i){
-                        $case_arch="x86";
+
+                    my @vaild_archs_tmp = split(",", $case_ref->[$i]->{arch});
+                    my @vaild_archs=();
+                    foreach my $arch (@vaild_archs_tmp){                    
+                        my $tmp_str="";
+                        if ($arch =~ /ppc/i && $arch !~ /le|el/i) {
+                            $tmp_str = "ppc";
+                        } elsif ($arch =~ /ppc/i && $arch =~ /le|el/i) {
+                            $tmp_str = "ppc64le";
+                        } elsif ($arch =~ /x86/i) {
+                            $tmp_str = "x86";
+                        }
+                        push @vaild_archs, $tmp_str; 
                     }
 
                     my $env_arch = "";
-                    if(exists($config{var}{ARCH})){
+                    if (exists($config{var}{ARCH})) {
                         $env_arch = $config{var}{ARCH};
-                    }else{
-                        $env_arch =`uname -m`;
+                    } else {
+                        $env_arch = `uname -m`;
                         chomp($env_arch);
                     }
-                    if($env_arch =~ /ppc/i && $env_arch !~ /le|el/i){
-                        $env_arch="ppc";
-                    }elsif($env_arch =~ /ppc/i && $env_arch =~ /le|el/i){
-                        $env_arch="ppc64le";
-                    }elsif($env_arch =~ /x86/i){
-                        $env_arch="x86";
+                    if ($env_arch =~ /ppc/i && $env_arch !~ /le|el/i) {
+                        $env_arch = "ppc";
+                    } elsif ($env_arch =~ /ppc/i && $env_arch =~ /le|el/i) {
+                        $env_arch = "ppc64le";
+                    } elsif ($env_arch =~ /x86/i) {
+                        $env_arch = "x86";
                     }
-                
-                    my $valid     = 0;
-                    if ($case_arch eq $env_arch) {
-                        $valid = 1;
-                        if(grep (/$case_ref->[$i]->{name}/,@{ $invalidcases{"noruncases"} })){
-                            delete_item_from_array($case_ref->[$i]->{name}, $invalidcases{"noruncases"});
+
+                    my $valid = 0;
+                    foreach my $arch (@vaild_archs){
+                        if ($arch eq $env_arch) {
+                            $valid = 1;
+                            if (grep (/$case_ref->[$i]->{name}/, @{ $invalidcases{"noruncases"} })) {
+                                delete_item_from_array($case_ref->[$i]->{name}, $invalidcases{"noruncases"});
+                            }
+                            last;
                         }
                     }
                     unless ($valid) {
-                        if(exists($case_name_index_map_bak{$case_ref->[$i]->{name}})){
-                            $$case_name_index_map_ref{$case_ref->[$i]->{name}}=$case_name_index_map_bak{$case_ref->[$i]->{name}};
-                        }else{
-                            delete $$case_name_index_map_ref{$case_ref->[$i]->{name}};
-                            if(! grep (/$case_ref->[$i]->{name}/,@{ $invalidcases{"noruncases"} })){
+                        if (exists($case_name_index_map_bak{ $case_ref->[$i]->{name} })) {
+                            $$case_name_index_map_ref{ $case_ref->[$i]->{name} } = $case_name_index_map_bak{ $case_ref->[$i]->{name} };
+                        } else {
+                            delete $$case_name_index_map_ref{ $case_ref->[$i]->{name} };
+                            if (!grep (/$case_ref->[$i]->{name}/, @{ $invalidcases{"noruncases"} })) {
                                 push @{ $invalidcases{"noruncases"} }, $case_ref->[$i]->{name};
                             }
                         }
                     }
                 }
                 $newcmdstart = 0;
-            } elsif ($line =~ /^hcp\s*:\s*(\w[\w\,]+)/) {
+            } elsif ($line =~ /^hcp\s*:\s*(\w[\w\, ]+)/) {
                 next if $skip;
                 $case_ref->[$i]->{hcp} = $1;
                 if ($run_case_flag) {
+
                     #To judge whether need to skip the current case
-                    my $valid     = 0;
-                    if (exists ($config{var}{HCP}) && ($case_ref->[$i]->{hcp} =~ /$config{var}{HCP}/i)) {
-                        $valid = 1;
-                        if(grep (/$case_ref->[$i]->{name}/,@{ $invalidcases{"noruncases"} })){
-                            delete_item_from_array($case_ref->[$i]->{name}, $invalidcases{"noruncases"});
+                    my $valid = 0;
+                    my @valid_hcps = split(",", $case_ref->[$i]->{hcp});
+
+                    foreach my $hcp (@valid_hcps){
+                        $hcp =~  s/^\s+|\s+$//g;
+                        if (exists($config{var}{HCP}) && ($hcp =~ /^$config{var}{HCP}$/i)) {
+                            $valid = 1;
+                            if (grep (/$case_ref->[$i]->{name}/, @{ $invalidcases{"noruncases"} })) {
+                                delete_item_from_array($case_ref->[$i]->{name}, $invalidcases{"noruncases"});
+                            }
+                            last;
                         }
-                    }
+                    } 
                     unless ($valid) {
-                        if(exists($case_name_index_map_bak{$case_ref->[$i]->{name}})){
-                            $$case_name_index_map_ref{$case_ref->[$i]->{name}}=$case_name_index_map_bak{$case_ref->[$i]->{name}};
-                        }else{
-                            delete $$case_name_index_map_ref{$case_ref->[$i]->{name}};
-                            if(! grep (/$case_ref->[$i]->{name}/,@{ $invalidcases{"noruncases"} })){
+                        if (exists($case_name_index_map_bak{ $case_ref->[$i]->{name} })) {
+                            $$case_name_index_map_ref{ $case_ref->[$i]->{name} } = $case_name_index_map_bak{ $case_ref->[$i]->{name} };
+                        } else {
+                            delete $$case_name_index_map_ref{ $case_ref->[$i]->{name} };
+                            if (!grep (/$case_ref->[$i]->{name}/, @{ $invalidcases{"noruncases"} })) {
                                 push @{ $invalidcases{"noruncases"} }, $case_ref->[$i]->{name};
                             }
                         }
@@ -1038,7 +1162,7 @@ sub load_case {
                 if ($run_case_flag) {
                     $case_ref->[$i]->{cmd}->[$j][$m] = getvar($1, \%config);
                     if ($case_ref->[$i]->{cmd}->[$j][$m] =~ /miss attribute (.+)/) {
-                        update_miss_attr($case_ref->[$i]->{cmd}->[$j][$m], $case_ref->[$i]->{name}, \@{$invalidcases{"missattr"}});
+                        update_miss_attr($case_ref->[$i]->{cmd}->[$j][$m], $case_ref->[$i]->{name}, \@{ $invalidcases{"missattr"} });
                     }
                 } else {
                     $case_ref->[$i]->{cmd}->[$j][$m] = $1;
@@ -1049,7 +1173,7 @@ sub load_case {
                 if ($run_case_flag) {
                     $case_ref->[$i]->{check}->[$j][$z] = getvar($1, \%config);
                     if ($case_ref->[$i]->{check}->[$j][$z] =~ /miss attribute/) {
-                        update_miss_attr($case_ref->[$i]->{check}->[$j][$z], $case_ref->[$i]->{name}, \@{$invalidcases{"missattr"}});
+                        update_miss_attr($case_ref->[$i]->{check}->[$j][$z], $case_ref->[$i]->{name}, \@{ $invalidcases{"missattr"} });
                     }
                 } else {
                     $case_ref->[$i]->{check}->[$j][$z] = $1;
@@ -1061,7 +1185,7 @@ sub load_case {
                 if ($run_case_flag) {
                     $case_ref->[$i]->{cmdcheck}->[$j][$z] = getvar($1, \%config);
                     if ($case_ref->[$i]->{cmdcheck}->[$j][$z] =~ /miss attribute/) {
-                         update_miss_attr($case_ref->[$i]->{cmdcheck}->[$j][$z],$case_ref->[$i]->{name}, \@{$invalidcases{"missattr"}});
+                        update_miss_attr($case_ref->[$i]->{cmdcheck}->[$j][$z], $case_ref->[$i]->{name}, \@{ $invalidcases{"missattr"} });
                     }
                 } else {
                     $case_ref->[$i]->{cmdcheck}->[$j][$z] = $1;
@@ -1092,7 +1216,8 @@ sub load_case {
 
     if ($run_case_flag) {
         if ($invalidcases{"missattr"}) {
-            log_this($running_log_fd, "Miss attribute:", @{$invalidcases{"missattr"}});
+            log_this($running_log_fd, "Miss attribute:", @{ $invalidcases{"missattr"} });
+
             #$$error_ref = "Miss attribute: " . join(",", @{ $invalidcases{"missattr"} });
             foreach my $line (@{ $invalidcases{"missattr"} }) {
                 my @name = split(" ", $line);
@@ -1103,7 +1228,7 @@ sub load_case {
             $caseerror = 2;
         }
 
-        if ($invalidcases{"noruncases"} && @{$invalidcases{"noruncases"}}) {
+        if ($invalidcases{"noruncases"} && @{ $invalidcases{"noruncases"} }) {
             log_this($running_log_fd, "Unsuitable current environment:", @{ $invalidcases{"noruncases"} });
             push @wrong_cases, @{ $invalidcases{"noruncases"} };
             $caseerror = 2;
@@ -1111,18 +1236,18 @@ sub load_case {
 
         # To filter unexisted cases
         my @unexisted_cases;
-        foreach my $case (@{$cases_to_be_run_ref}){
-            if(!(grep { /^$case$/ } @wrong_cases) && !defined ($$case_name_index_map_ref{$case})){
+        foreach my $case (@{$cases_to_be_run_ref}) {
+            if (!(grep { /^$case$/ } @wrong_cases) && !defined($$case_name_index_map_ref{$case})) {
                 push @unexisted_cases, $case;
             }
         }
-        if(@unexisted_cases){
+        if (@unexisted_cases) {
             log_this($running_log_fd, "Not existed:", @unexisted_cases);
-            push @wrong_cases, @unexisted_cases;                 
+            push @wrong_cases, @unexisted_cases;
             $caseerror = 2;
         }
 
-        if($caseerror) {
+        if ($caseerror) {
             my @new_cases_to_be_run = ();
             foreach my $c (@{$cases_to_be_run_ref}) {
                 if (!(grep { /^$c$/ } @wrong_cases)) {
@@ -1131,10 +1256,10 @@ sub load_case {
             }
             @{$cases_to_be_run_ref} = @new_cases_to_be_run;
         }
-        
-        if (@{$cases_to_be_run_ref}){
+
+        if (@{$cases_to_be_run_ref}) {
             log_this($running_log_fd, "To run:", @{$cases_to_be_run_ref});
-        }else{
+        } else {
             log_this($running_log_fd, "To run:", "There is no valid case to run");
         }
     }
@@ -1234,9 +1359,9 @@ sub run_case {
                 #to run single line command
 
                 log_this($running_log_fd, "RUN:$cmd->[0] [$runstartstr]");
-                $cmd->[0]    = getfunc($cmd->[0]);
-                @output = &runcmd($cmd->[0]);
-                $rc     = $::RUNCMD_RC;
+                $cmd->[0] = getfunc($cmd->[0]);
+                @output   = &runcmd($cmd->[0]);
+                $rc       = $::RUNCMD_RC;
                 push(@caselog, "RUN:$cmd->[0] [$runstartstr]");
             } else {
 
@@ -1333,7 +1458,7 @@ sub run_case {
                 if ($cmdcheck) {
                     &runcmd($cmdcheck);
                     $rc = $::RUNCMD_RC;
-                    if ($rc != 0 ) {
+                    if ($rc != 0) {
                         $failflag = 1;
                         log_this($running_log_fd, "CHECK:output $cmdcheck\t[Failed]");
                         push(@caselog, "CHECK:output $cmdcheck\t[Failed]");
@@ -1439,8 +1564,8 @@ sub setup_env_by_configure_file {
 }
 
 #--------------------------------------------------------
-# Fuction name: detect_current_env 
-# Description: detect some important attribute in current environment, such as os, arch, hcp... 
+# Fuction name: detect_current_env
+# Description: detect some important attribute in current environment, such as os, arch, hcp...
 # Atrributes:
 #          $config_ref (input attribute)
 #            The reference of global hash %config.
@@ -1449,7 +1574,7 @@ sub setup_env_by_configure_file {
 #               The reference of scalar to save the error message generated during running current function
 # Retrun code:  0 Success  1 Failed
 #--------------------------------------------------------
-sub detect_current_env{
+sub detect_current_env {
     my $config_ref = shift;
     my $error_ref  = shift;
 
@@ -1555,7 +1680,7 @@ sub runscript {
 
 #--------------------------------------------------------
 # Fuction name: getnodeattr
-# Description: get the value of node attribute form current environment
+# Description: get the value of node attribute from current environment
 # Atrributes:
 # Retrun code:
 #--------------------------------------------------------
@@ -1563,11 +1688,26 @@ sub getnodeattr {
     my $node   = shift;
     my $attr   = shift;
     my $maxtry = 40;
+    return getobjectattr('node', $node, $attr, $maxtry);
+}
+
+#--------------------------------------------------------
+# Fuction name: getobjectattr
+# Description: get the value of object attribute from current DB
+# Atrributes:
+# Retrun code:
+#--------------------------------------------------------
+sub getobjectattr {
+    my $objtype   = shift;
+    my $objname   = shift;
+    my $attr      = shift;
+    my $maxtry    = shift;
+    $maxtry = 1 unless defined($maxtry) and $maxtry > 0;
     foreach my $try (0 .. $maxtry) {
-        my @output = runcmd("lsdef -t node -o $node -i $attr");
+        my @output = runcmd("lsdef -t $objtype -o $objname -i $attr");
         if ($::RUNCMD_RC == 0) {
             foreach my $line (@output) {
-                if ($line =~ /$attr=(\w.+)/) {
+                if ($line =~ /$attr=(\S.+)/) {
                     return $1;
                 }
             }
@@ -1721,7 +1861,7 @@ sub getfunc
 {
     my $str = shift;
 
-    while ($str =~ /__(\w+)\(([\s\,\w\$]*)\)__/) {
+    while ($str =~ /__(\w+)\(([\s\,\w\$\-\.]*)\)__/) {
         my $func      = $1;
         my $parameter = $2;
         my $value     = undef;
@@ -1732,6 +1872,11 @@ sub getfunc
         @para = split /\s*,\s*/, $parameter;
         if ($func eq "GETNODEATTR") {
             $value = getnodeattr($para[0], $para[1]);
+            if ($value eq "Unknown") {
+                $value = '';
+            }
+        } elsif ($func eq "GETOBJECTATTR") {
+            $value = getobjectattr(@para);
             if ($value eq "Unknown") {
                 $value = '';
             }
@@ -1807,36 +1952,184 @@ sub print_table {
 }
 
 sub update_miss_attr {
-    my $org_str = shift;
-    my $case_name = shift;
-    my $miss_attr_arr_ref = shift;  
+    my $org_str           = shift;
+    my $case_name         = shift;
+    my $miss_attr_arr_ref = shift;
 
     my $insert_flag = 0;
-    my $index = 0;
-    foreach my $str (@{$miss_attr_arr_ref}){
-        my @words = split(" ", $str);
+    my $index       = 0;
+    foreach my $str (@{$miss_attr_arr_ref}) {
+        my @words     = split(" ", $str);
         my @org_words = split(" ", $org_str);
-        if($case_name eq "$words[0]"){
-           if(!(grep { /^$org_words[2]$/} @words)){
-               $miss_attr_arr_ref->[$index] .= " $org_words[2]"; 
-           }
-           $insert_flag = 1;
-           last;
+        if ($case_name eq "$words[0]") {
+            if (!(grep { /^$org_words[2]$/ } @words)) {
+                $miss_attr_arr_ref->[$index] .= " $org_words[2]";
+            }
+            $insert_flag = 1;
+            last;
         }
         ++$index;
     }
 
-    unless($insert_flag){
+    unless ($insert_flag) {
         push @{$miss_attr_arr_ref}, "$case_name $org_str";
     }
 }
-sub delete_item_from_array{
-    my $item = shift;
-    my $array_ref = shift; 
-      
-    my @tmp_arr=();
-    foreach (@$array_ref){
-        push @tmp_arr, $_ unless($_ eq $item);
+
+sub delete_item_from_array {
+    my $item      = shift;
+    my $array_ref = shift;
+
+    my @tmp_arr = ();
+    foreach (@$array_ref) {
+        push @tmp_arr, $_ unless ($_ eq $item);
     }
     @$array_ref = @tmp_arr;
+}
+
+sub filter_case_by_label {
+    my $cases_to_be_run_ref      = shift;
+    my $case_label_map_ref       = shift;
+    my $rest_cases_to_be_run_ref = shift;
+    my $error_ref                = shift;
+
+    my @filters = ();
+    my $rst = parse_filters(\@filters, $error_ref);
+    if($rst){
+        return 1;
+    }
+    #print Dumper \@filters;
+
+    my @targetcases = ();
+    foreach my $case (keys %{$case_label_map_ref}) {
+        if(@$cases_to_be_run_ref){
+            next unless(grep { /^$case$/ } @$cases_to_be_run_ref);
+        }
+        foreach my $f (@filters) {
+            my $hit = 1;
+            foreach my $c (@$f) {
+                if (($c > 0) and (($case_label_map_ref->{$case}->{label} & $c) == 0)) {
+                    $hit = 0;
+                    last;
+                } elsif (($c < 0) and (($case_label_map_ref->{$case}->{label} & ($c * -1)) != 0)) {
+                    $hit = 0;
+                    last;
+                }
+            }
+            push @targetcases, $case if ($hit and !(grep { /^$case$/ } @targetcases));
+        }
+    }
+
+    #print Dumper \@targetcases;
+
+    for (my $i = 0 ; $i <= $#label_order ; $i++) {
+        foreach my $l (@{ $label_order[$i] }) {
+            foreach my $c (@targetcases) {
+                push @{$rest_cases_to_be_run_ref}, $c  if (defined ($label_map{$l}) && (($case_label_map_ref->{$c}->{label} & $label_map{$l}) != 0));
+            }
+        }
+    }
+    return 0;
+}
+
+sub parse_filters{
+    my $filters_ref=shift;
+    my $error_ref=shift;
+
+    my $index   = 0;
+    my @undefined_labels;
+    my @exps = split('\|', $search_expression);
+    foreach my $e (@exps) {
+        $e =~ s/\+/ /g;
+        $e =~ s/\-/ -/g;
+        my @tags = split(' ', $e);
+        foreach my $t (@tags) {
+            if ($t =~ /^-(.+)/) {
+                my $tmpt = $1;
+                unless (grep { /^$tmpt$/ } keys(%label_map)) {
+                    push @undefined_labels, $tmpt;
+                    next;
+                }
+                push @{ $filters_ref->[$index] }, ($label_map{$tmpt} * -1);
+            } else {
+                unless (grep { /^$t$/ } keys(%label_map)) {
+                    push @undefined_labels, $t;
+                    next;
+                }
+                push @{ $filters_ref->[$index] }, $label_map{$t};
+            }
+        }
+        $index += 1;
+    }
+
+#    if (@undefined_labels) {
+#        $$error_ref = "Label \"" . join(",", @undefined_labels) . "\" are not exist. Existed labels are: " . join(" ", keys(%label_map));
+#        return 1;
+#    }
+    return 0;
+}
+
+sub scan_existed_labels {
+    my $case_label_map_ref = shift;
+    my $label_map_ref      = shift;
+    my $error_ref          = shift;
+
+    my $label_value = 1;
+    my @files       = ();
+    my @cmdfiles    = ();
+    get_files_recursive("$casedir", \@files);
+
+    foreach my $file (@files) {
+        my @output = runcmd("grep -E \"^start:|^hcp:|^os:|^arch:|^label:\" $file");
+        my $current_case_name = "";
+        foreach my $line (@output) {
+            $line =~ s/^\s+|#[^!].+|\s+$//g;
+
+            #skip blank and comment lines
+            next if (length($line) == 0 || ($line =~ /^\s*#/));
+
+            my @labels = ();
+            if ($line =~ /^start\s*:\s*(.*)/) {
+                $current_case_name                                     = $1;
+                $case_label_map_ref->{$current_case_name}->{label}     = 0;
+                $case_label_map_ref->{$current_case_name}->{label_str} = "";
+            } elsif ($line =~ /^os\s*:\s*(\w[\w\, ]+)/) {
+                my @oss = split(",", $1);
+                foreach my $os (@oss) {
+                    $os =~ s/^\s+|\s+$//g;
+                    push @labels, "os=$os";
+                }
+            } elsif ($line =~ /^arch\s*:\s*(\w[\w\, ]+)/) {
+                my @archs = split(",", $1);
+                foreach my $arch (@archs) {
+                    $arch =~ s/^\s+|\s+$//g;
+                    push @labels, "arch=$arch";
+                }
+            } elsif ($line =~ /^hcp\s*:\s*(\w[\w\, ]+)/) {
+                my @hcps = split(",", $1);
+                foreach my $hcp (@hcps) {
+                    $hcp =~ s/^\s+|\s+$//g;
+                    push @labels, "hcp=$hcp";
+                }
+            } elsif ($line =~ /^label\s*:\s*(.+)/) {
+                my @tmp = split(",", $1);
+                foreach my $l (@tmp){
+                   $l =~ s/^\s+|\s+$//g;
+                   push @labels, $l;
+                }
+            }
+
+            if($current_case_name){
+                foreach my $t (@labels) {
+                    unless (exists $label_map_ref->{$t}) {
+                        $label_map_ref->{$t} = $label_value;
+                        $label_value *= 2;
+                    }
+                    $case_label_map_ref->{$current_case_name}->{label} |= $label_map_ref->{$t};
+                    $case_label_map_ref->{$current_case_name}->{label_str} .= "$t,";
+                }
+            }
+        }
+    }
+    return 0;
 }

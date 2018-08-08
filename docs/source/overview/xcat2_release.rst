@@ -14,6 +14,12 @@ xCAT 2.14.x
 |xCAT                             |New OS         |New          |New Feature                       |
 |Version                          |               |Hardware     |                                  |
 +=================================+===============+=============+==================================+
+|| xCAT 2.14.2 2018/7/13          |- ubuntu18.04  |             |                                  |
+||                                |               |             |                                  |
+| `2.14.2 Release Notes <https:// |               |             |                                  |
+| github.com/xcat2/xcat-core/wiki |               |             |                                  |
+| /XCAT_2.14.2_Release_Notes>`_   |               |             |                                  |
++---------------------------------+---------------+-------------+----------------------------------+
 || xCAT 2.14.1                    |- RHV4.2 +     |             |- OpenBMC in python enhance:      |
 || 2018/6/1                       |  RHEL7.5 + p8 |             |                                  |
 ||                                |               |             |  rinv enhance,issue #5176        |

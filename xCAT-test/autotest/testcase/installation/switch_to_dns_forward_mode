@@ -1,7 +1,7 @@
 start:switch_to_dns_forward_mode
 description:The test case is used to switch the whole testing cluster to run in dns forward mode. This test case should run after service node deployment.
 os:Linux
-
+label:others,dns
 ##
 # Check if everything is fine
 ##

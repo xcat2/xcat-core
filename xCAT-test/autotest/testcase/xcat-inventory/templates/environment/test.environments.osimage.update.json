@@ -1,0 +1,50 @@
+{
+    "osimage": {
+        "test.environments.osimage": {
+            "basic_attributes": {
+                "arch": "ppc64le",
+                "distribution": "rhels7.5-alternate",
+                "osdistro": "rhels7.5-alternate-ppc64le",
+                "osname": "Linux"
+            },
+            "deprecated": {
+                "comments": "rhels7.5,test_environment_variables"
+            },
+            "filestosync": [
+                "{{GITREPO}}/syncfiles/synclist"
+            ],
+            "genimgoptions": {
+                "permission": "755",
+                "postinstall": [
+                    "/opt/xcat/share/xcat/netboot/rh/compute.rhels7.ppc64le.postinstall",
+                    "{{GITREPO}}/postinstall/test1.postinstall"
+                ],
+                "rootimgdir": "/install/custom/test.environments.osimage"
+            },
+            "imagetype": "linux",
+            "package_selection": {
+                "otherpkgdir": [
+                    "{{SWDIR}}/otherpkgdir/"
+                ],
+                "otherpkglist": [
+                    "{{GITREPO}}/otherpkglist/test1.otherpkglist",
+                    "{{GITREPO}}/otherpkglist/test2.otherpkglist",
+                    ""
+                ],
+                "pkgdir": [
+                    "/install/rhels7.5-alternate/ppc64le",
+                    "{{SWDIR}}/pkgdir/"
+                ],
+                "pkglist": [
+                    "/opt/xcat/share/xcat/netboot/rh/compute.rhels7.ppc64le.pkglist",
+                    "{{GITREPO}}/pkglist/test1.pkglist",
+                    "{{GITREPO}}/pkglist/test2.pkglist"
+                ]
+            },
+            "provision_mode": "netboot",
+            "role": "compute"
+        }
+    },
+    "schema_version": "1.0"
+}
+#Version 2.14.2 (git commit 09f0772835afdc0f962c9e7fe8cef862e9505ad7, built Tue Jun 19 01:58:56 EDT 2018)

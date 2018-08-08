@@ -1,6 +1,6 @@
 start:rvitals_h
 description:get rvitals's usage
-Attribute: $$CN-The operation object of rvitals command
+label:mn_only,hctrl_general
 cmd:rvitals -h 
 check:rc==0
 check:output=~Usage:
@@ -9,7 +9,7 @@ end
 
 start:rvitals_v
 description:get rvitals's version
-Attribute: $$CN-The operation object of rvitals command
+label:mn_only,hctrl_general
 cmd:rvitals -v
 check:rc==0
 check:output=~Version
@@ -18,6 +18,7 @@ end
 start:rvitals_temp
 description:Retrieves temperatures
 Attribute: $$CN-The operation object of rvitals command
+label:cn_bmc_ready,hctrl_general
 cmd:/opt/xcat/share/xcat/tools/autotest/testcase/rvitals/openbmctest.sh rvitals $$CN temp
 check:rc==0
 end
@@ -27,6 +28,7 @@ description:Retrieves disk temperatures
 Attribute: $$CN-The operation object of rvitals command
 arch:ppc64le
 hcp:ipmi
+label:cn_bmc_ready,hctrl_openpower_ipmi
 cmd:rvitals $$CN disktemp
 check:rc==0
 check:output=~Ambient Temp
@@ -37,6 +39,7 @@ description:Retrieves cpu  temperatures
 Attribute: $$CN-The operation object of rvitals command
 arch:ppc64le
 hcp:ipmi
+label:cn_bmc_ready,hctrl_openpower_ipmi
 cmd:rvitals $$CN cputemp
 check:rc==0
 check:output=~Ambient Temp
@@ -45,6 +48,7 @@ end
 start:rvitals_voltage
 description:Retrieves power supply and VRM voltage readings
 Attribute: $$CN-The operation object of rvitals command
+label:cn_bmc_ready,hctrl_general
 cmd:/opt/xcat/share/xcat/tools/autotest/testcase/rvitals/openbmctest.sh rvitals $$CN voltage
 check:rc==0
 end
@@ -52,6 +56,7 @@ end
 start:rvitals_power
 description:Retrieves power status
 Attribute: $$CN-The operation object of rvitals command
+label:cn_bmc_ready,hctrl_bmc_ipmi,hctrl_openpower_ipmi,hctrl_openbmc
 cmd:/opt/xcat/share/xcat/tools/autotest/testcase/rvitals/openbmctest.sh rvitals $$CN power
 check:rc==0
 end
@@ -59,6 +64,7 @@ end
 start:rvitals_state
 description:Retrieves the system state.
 Attribute: $$CN-The operation object of rvitals command
+label:cn_bmc_ready
 cmd:rvitals $$CN state
 check:rc==0
 check:output=~System State:
@@ -68,6 +74,7 @@ start:rvitals_lcds
 description:Retrieves LCDs status
 Attribute: $$CN-The operation object of rvitals command
 hcp:hmc,ivm,fsp,ipmi
+label:cn_bmc_ready,hctrl_fsp
 cmd:rvitals $$CN lcds
 check:rc==0
 check:output=~Current LCD
@@ -76,6 +83,7 @@ end
 start:rvitals_all
 description:Retrieves all status
 Attribute: $$CN-The operation object of rvitals command
+label:cn_bmc_ready,hctrl_general
 cmd:/opt/xcat/share/xcat/tools/autotest/testcase/rvitals/openbmctest.sh rvitals $$CN all
 check:rc==0
 end
@@ -83,6 +91,7 @@ end
 start:rvitals_leds
 description:Retrieves leds status
 Attribute: $$CN-The operation object of rvitals command
+label:cn_bmc_ready,hctrl_bmc_ipmi,hctrl_openpower_ipmi,hctrl_openbmc
 cmd:rvitals $$CN  leds
 check:rc==0
 check:output=~LED
@@ -91,28 +100,37 @@ end
 start:rvitals_fanspeed
 description:Retrieves fan speeds.
 Attribute: $$CN-The operation object of rvitals command
+label:cn_bmc_ready,hctrl_bmc_ipmi,hctrl_openpower_ipmi,hctrl_openbmc
 cmd:/opt/xcat/share/xcat/tools/autotest/testcase/rvitals/openbmctest.sh rvitals $$CN fanspeed
 check:rc==0
 end
+
 start:rvitals_wattage
 description:Retrieves wattage readings.
 Attribute: $$CN-The operation object of rvitals command
+label:cn_bmc_ready,hctrl_bmc_ipmi,hctrl_openpower_ipmi,hctrl_openbmc
 cmd:/opt/xcat/share/xcat/tools/autotest/testcase/rvitals/openbmctest.sh rvitals $$CN wattage
 check:rc==0
 end
+
 start:rvitals_altitude
 description:Retrieves altitude readings.
 Attribute: $$CN-The operation object of rvitals command
+label:cn_bmc_ready,hctrl_openbmc
 cmd:/opt/xcat/share/xcat/tools/autotest/testcase/rvitals/openbmctest.sh rvitals $$CN altitude
 check:rc==0
 end
+
 start:rvitals_noderange_err
 description:using not defined node
+label:mn_only,hctrl_general
 cmd:/opt/xcat/share/xcat/tools/autotest/testcase/rvitals/openbmctest.sh rvitals testnode 
 check:rc!=0
 end
+
 start:rvitals_errorcommand
 description:using wrong command
+label:cn_bmc_ready,hctrl_general
 cmd:/opt/xcat/share/xcat/tools/autotest/testcase/rvitals/openbmctest.sh rvitals $$CN errorcommand
 check:rc!=0
 end

@@ -13,7 +13,6 @@ function xcat_probe_copy {
     # xCAT-probe uses some functions shipped with xCAT,  copying for the following reasons:
     #     1. make xCAT-probe code be self-contained
     #     2. do not maintain two files for each script
-    #     3. symbolic link can't work during packaging
     RPMNAME=${1}
     if [ $RPMNAME = "xCAT-probe" ]; then
         mkdir -p ${RPMNAME}/lib/perl/xCAT/

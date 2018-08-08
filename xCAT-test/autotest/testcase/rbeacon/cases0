@@ -2,6 +2,7 @@ start:rbeacon_null
 description: this case is to test rbeacon usage
 os:Linux
 hcp:openbmc
+label:mn_only,hctrl_openbmc
 cmd:rbeacon
 check:rc==0
 check:output=~Usage
@@ -11,6 +12,7 @@ start:rbeacon_stat
 description: this case is to test rbeacon CN stat
 os:Linux
 hcp:openbmc
+label:cn_bmc_ready,hctrl_openbmc
 cmd:rbeacon $$CN stat
 check:rc==0
 check:output=~$$CN\s*:\s*Front:Off Rear:Off|Front:On Rear:On|Front:Off Rear:On|Front:On Rear:Off|Front:Blink Rear:Blink 
@@ -20,6 +22,7 @@ start:rbeacon_help
 description: this case is to test rbeacon -h and --help output 
 os:Linux
 hcp:openbmc
+label:mn_only,hctrl_openbmc
 cmd:rbeacon -h
 check:rc==0
 check:output=~Usage
@@ -34,6 +37,7 @@ start:rbeacon_version
 description: this case is to test rbeacon -v and --version output
 os:Linux
 hcp:openbmc
+label:mn_only,hctrl_openbmc
 cmd:rbeacon -v
 check:rc==0
 check:output=~Version
@@ -48,6 +52,7 @@ start:rbeacon_false
 description: this case is to test rbeacon could process false input 
 os:Linux
 hcp:openbmc
+label:cn_bmc_ready,hctrl_openbmc
 cmd:rbeacon $$CN abc
 check:rc!=0
 check:output=~$$CN\s*:\s*Error:\s*Only \'on\', \'off\' or \'stat\' is supported

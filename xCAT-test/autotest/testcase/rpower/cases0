@@ -1,6 +1,7 @@
 start:rpower_off
 description:This case is to test off option could remote power off nodes 
 Attribute: $$CN-The operation object of rpower command
+label:cn_bmc_ready,hctrl_general
 cmd:rpower $$CN on
 cmd:a=0;while ! `rpower $$CN stat|grep "Running\|on" >/dev/null`; do sleep 5;((a++));if [ $a -gt 11 ];then break;fi done
 check:ouptut=~Running|on
@@ -14,6 +15,7 @@ end
 start:rpower_stat
 description:This case is to test stat option could show the power status of nodes
 Attribute: $$CN-The operation object of rpower command
+label:cn_bmc_ready,hctrl_general
 cmd:rpower $$CN on
 cmd:a=0;while ! `rpower $$CN stat|grep "Running\|on" >/dev/null`; do sleep 5;((a++));if [ $a -gt 5 ];then break;fi done
 cmd:rpower $$CN stat
@@ -35,6 +37,7 @@ end
 start:rpower_boot
 description:This case is to test boot option could power on the nodes if nodes in off state.  Or could  hard reset the nodes if they are on. 
 Attribute: $$CN-The operation object of rpower command
+label:cn_bmc_ready,hctrl_general
 cmd:rpower $$CN off
 cmd:a=0;while ! `rpower $$CN stat|grep "Not Activated\|off" >/dev/null`; do sleep 5;((a++));if [ $a -gt 11 ];then break;fi done
 cmd:rpower $$CN stat
@@ -49,6 +52,7 @@ end
 start:rpower_status
 description:This case is to test status option could show the power status of nodes
 Attribute: $$CN-The operation object of rpower command
+label:cn_bmc_ready,hctrl_general
 cmd:rpower $$CN off
 cmd:a=0;while ! `rpower $$CN status|grep "Not Activated\|off" >/dev/null`; do sleep 5;((a++));if [ $a -gt 11 ];then break;fi done
 cmd:rpower $$CN status
@@ -63,6 +67,7 @@ end
 start:rpower_state
 description:This case is to test state option could show the power status of nodes
 Attribute: $$CN-The operation object of rpower command
+label:cn_bmc_ready,hctrl_general
 cmd:rpower $$CN off
 cmd:a=0;while ! `rpower $$CN state|grep "Not Activated\|off" >/dev/null`; do sleep 5;((a++));if [ $a -gt 11 ];then break;fi done
 cmd:rpower $$CN state
@@ -77,6 +82,7 @@ end
 start:rpower_on
 description:This case is to test on option could remote power on nodes
 Attribute: $$CN-The operation object of rpower command
+label:cn_bmc_ready,hctrl_general
 cmd:rpower $$CN off
 cmd:a=0;while ! `rpower $$CN stat|grep "Not Activated\|off" >/dev/null`; do sleep 5;((a++));if [ $a -gt 11 ];then break;fi done
 cmd:rpower $$CN stat
@@ -91,6 +97,7 @@ end
 start:rpower_reset
 description:This case is to test reset option could hard reset nodes when nodes are in on state.
 Attribute: $$CN-The operation object of rpower command
+label:cn_bmc_ready,hctrl_general
 cmd:stat=`rpower $$CN stat`;if ([[ $stat =~ on ]] || [[ $stat =~ Running ]]) ;then rpower $$CN reset;sleep 300;stat1=`rpower $$CN stat`;if ([[ $stat1 =~ on ]] || [[ $stat1 =~ Running ]]);then exit 0;else exit 1;fi;else rpower $$CN reset;sleep 300;stat1=`rpower $$CN stat`;if ([[ $stat1 =~ off ]] || [[ $stat1 =~ "Not Activated" ]]);then exit 0;else exit 1;fi;fi
 check:rc==0
 end
@@ -98,6 +105,7 @@ end
 start:rpower_noderange
 description:This case is to test rpower could process error usage and return help information.
 Attribute: $$CN-The operation object of rpower command
+label:cn_bmc_ready,hctrl_general
 cmd:rpower $$CN
 check:rc!=0
 check:output=~Unsupported|Usage|Please enter an action
@@ -106,6 +114,7 @@ end
 start:rpower_noderange_nodeps
 description:This case is to test rpower could process error usage and return help information.
 Attribute: $$CN-The operation object of rpower command
+label:cn_bmc_ready,hctrl_general
 cmd:rpower $$CN --nodeps
 check:rc!=0
 check:output=~Unsupported|Usage
@@ -114,6 +123,7 @@ end
 start:rpower_err_noderange
 description:This case is to test rpower could process error usage and return help information.
 Attribute:N/A 
+label:mn_only,hctrl_general
 cmd:rpower testnode stat
 check:rc!=0
 check:output=~Error
@@ -122,6 +132,7 @@ end
 start:rpower_softoff
 description:This case is to test softoff option could remote shutdown nodes 
 Attribute: $$CN-The operation object of rpower command
+label:cn_bmc_ready,hctrl_fsp,hctrl_openbmc
 cmd:rpower $$CN on
 cmd:a=0;while ! `rpower $$CN stat|grep "Running\|on" >/dev/null`; do sleep 5;((a++));if [ $a -gt 11 ];then break;fi done
 check:ouptut=~Running|on
@@ -135,6 +146,7 @@ end
 start:rpower_onstandby
 description:This case is to test onstandby option could bring server to standby state 
 Attribute: $$CN-The operation object of rpower command
+label:cn_bmc_ready,hctrl_fsp
 arch:ppc64
 cmd:rpower $$CN off
 check:rc==0
@@ -149,6 +161,7 @@ end
 start:rpower_wrongpasswd
 description:rpower ipmi and openbmc using wrong passwd  
 Attribute: $$CN-The operation object of rpower command
+label:cn_bmc_ready,hctrl_openpower_ipmi
 cmd:/opt/xcat/share/xcat/tools/autotest/testcase/rpower/rpower_wrongpasswd_test.sh  -pt $$CN  $$bmcpasswd $$bmcusername
 check:rc==0
 cmd:/opt/xcat/share/xcat/tools/autotest/testcase/rpower/rpower_wrongpasswd_test.sh  -c $$CN 
@@ -160,30 +173,34 @@ check:rc==0
 end
 
 start:rpower_suspend_OpenpowerBmc
-hcp:openbmc
+hcp:openbmc,ipmi
+label:cn_bmc_ready,hctrl_openpower_ipmi,hctrl_openbmc
 cmd:rpower $$CN suspend
-check:output=~Error: (\[.*?\]: )?Unsupported command: rpower suspend
+check:output=~Error: (\[.*?\]: )?[Uu]nsupported command[:]* rpower suspend
 check:rc==1
 end
 
 
 start:rpower_wake_OpenpowerBmc
-hcp:openbmc
+hcp:openbmc,ipmi
+label:cn_bmc_ready,hctrl_openpower_ipmi,hctrl_openbmc
 cmd:rpower $$CN wake
-check:output=~Error: (\[.*?\]: )?Unsupported command: rpower wake
+check:output=~Error: (\[.*?\]: )?[Uu]nsupported command[:]* rpower wake
 check:rc==1
 end
 
 start:rpower_errorcommand_OpenpowerBmc
-hcp:openbmc
+hcp:openbmc,ipmi
+label:cn_bmc_ready,hctrl_openpower_ipmi,hctrl_openbmc
 cmd:rpower $$CN ddd
-check:output=~Error: (\[.*?\]: )?Unsupported command: rpower ddd 
+check:output=~Error: (\[.*?\]: )?[Uu]nsupported command[:]* rpower ddd
 check:rc==1
 end
 
 start:rpower_bmcreboot_perl_python_output
 description:record the output for rpower bmcreboot and compare the output for perl and python version. 
 hcp:openbmc
+label:cn_bmc_ready,hctrl_openbmc
 cmd: /opt/xcat/share/xcat/tools/autotest/testcase/UT_openbmc/scripts/bmcreboot.sh $$CN /tmp/xcattest.rpower.bmcstate.perl.out PERL
 check:rc==0
 cmd: grep "Login to BMC failed: 500" /tmp/xcattest.rpower.bmcstate.perl.out | sort | uniq | wc -l

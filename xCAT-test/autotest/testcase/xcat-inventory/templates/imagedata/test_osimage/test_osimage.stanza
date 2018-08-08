@@ -1,0 +1,13 @@
+# <xCAT data object stanza file>
+
+test_osimage:
+    objtype=osimage
+    exlist=/tmp/imagedata/test_osimage/exlist
+    imagetype=linux
+    otherpkglist=/tmp/imagedata/test_osimage/otherpkglist
+    partitionfile=/tmp/imagedata/test_osimage/partitionfile
+    pkglist=/tmp/imagedata/test_osimage/pkglist
+    postinstall=/tmp/imagedata/test_osimage/postinstall
+    provmethod=install
+    synclists=/tmp/imagedata/test_osimage/synclists
+    template=/tmp/imagedata/test_osimage/template.tmpl
