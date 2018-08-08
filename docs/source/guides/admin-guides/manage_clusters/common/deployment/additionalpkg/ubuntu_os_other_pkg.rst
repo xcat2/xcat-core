@@ -34,6 +34,12 @@ Compute nodes can not access the internet
 
 If compute nodes cannot access the internet, there are two ways to install additional packages
 
-   * use apt proxy 
-   * use local mirror 
-
+   * Use local mirror
+      Please refer the Ubuntu document below for how to set up your own local Ubuntu mirror.
+      https://help.ubuntu.com/community/Rsyncmirror
+   * Use apt-proxy
+      Please refer the Ubuntu document below for how to setup a apt-proxy server.
+      https://help.ubuntu.com/community/AptProxy
+   * Setting up apt-get to use a http-proxy.
+      Please refer the Ubuntu document below for how to do set up it.
+      https://help.ubuntu.com/community/AptGet/Howto#Setting_up_apt-get_to_use_a_http-proxy
