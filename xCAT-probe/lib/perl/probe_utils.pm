@@ -206,7 +206,7 @@ sub is_static_ip {
         my $output2 = `cat /etc/sysconfig/network/ifcfg-$nic 2>&1 |grep -i BOOTPROTO`;
         $rst = 1 if (($output1 =~ /$ip/) && ($output2 =~ /static/i));
     } elsif ($os =~ /ubuntu/) {
-        my $output = `cat /etc/network/interfaces 2>&1|grep -E "iface\s+$nic"`;
+        my $output = `cat /etc/network/interfaces 2>&1|grep -E "iface\\s+$nic"`;
         $rst = 1 if ($output =~ /static/i);
     }
     return $rst;
