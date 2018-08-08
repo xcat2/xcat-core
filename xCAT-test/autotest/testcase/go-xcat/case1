@@ -7,7 +7,6 @@ check:rc!=0
 cmd:if xdsh $$CN "grep \"Red Hat\" /etc/*release >/dev/null"; then xdsh $$CN "yum install -y yum-utils bzip2"; fi
 check:rc==0
 cmd:if grep Ubuntu /etc/*release;then xdsh $$CN "apt-get install -y gpg"; fi
-check:rc==0
 cmd:xdsh $$CN "cd /; rm -rf /go-xcat"
 check:rc==0
 cmd:xdsh $$CN "cd /; scp -r $$MN:/opt/xcat/share/xcat/tools/go-xcat ./"
