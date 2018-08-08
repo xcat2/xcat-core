@@ -104,6 +104,9 @@ if [ "$c_flag" -a "$d_flag" ];then
     exit 2
 fi
 
+if [ -z "$BUILDALL" ]; then
+    BUILDALL=1
+fi
 
 # Find where this script is located to set some build variables
 old_pwd=`pwd`
