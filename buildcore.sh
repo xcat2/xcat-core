@@ -462,17 +462,20 @@ if [ "$OSNAME" != "AIX" ]; then
             echo '%_signature gpg' >> $MACROS
         fi
         if ! $GREP '%_gpg_name' $MACROS 2>/dev/null; then
-            echo '%_gpg_name xCAT Security Key' >> $MACROS
+            echo '%_gpg_name xCAT Automatic Signing Key' >> $MACROS
         fi
         echo "Signing RPMs..."
         build-utils/rpmsign.exp `find $DESTDIR -type f -name '*.rpm'` | grep -v -E '(already contains identical signature|was already signed|rpm --quiet --resign|WARNING: standard input reopened)'
         build-utils/rpmsign.exp $SRCDIR/*rpm | grep -v -E '(already contains identical signature|was already signed|rpm --quiet --resign|WARNING: standard input reopened)'
-        createrepo --checksum sha $DESTDIR            # specifying checksum so the repo will work on rhel5
-        createrepo --checksum sha $SRCDIR
+        # RHEL5 is archaic. Use the default hash algorithm to do the checksum.
+        # Which is SHA-256 on RHEL6.
+        createrepo $DESTDIR
+        createrepo $SRCDIR
         rm -f $SRCDIR/repodata/repomd.xml.asc
         rm -f $DESTDIR/repodata/repomd.xml.asc
-        gpg -a --detach-sign $DESTDIR/repodata/repomd.xml
-        gpg -a --detach-sign $SRCDIR/repodata/repomd.xml
+        # Use the xCAT Automatic Signing Key to do the signing
+        gpg -a --detach-sign --default-key 5619700D $DESTDIR/repodata/repomd.xml
+        gpg -a --detach-sign --default-key 5619700D $SRCDIR/repodata/repomd.xml
         if [ ! -f $DESTDIR/repodata/repomd.xml.key ]; then
             ${WGET_CMD} -q -P $DESTDIR/repodata $GSA/keys/repomd.xml.key
         fi
@@ -480,8 +483,8 @@ if [ "$OSNAME" != "AIX" ]; then
             ${WGET_CMD} -P $SRCDIR/repodata $GSA/keys/repomd.xml.key
         fi
     else
-        createrepo --checksum sha $DESTDIR
-        createrepo --checksum sha $SRCDIR
+        createrepo $DESTDIR
+        createrepo $SRCDIR
     fi
 fi
 
