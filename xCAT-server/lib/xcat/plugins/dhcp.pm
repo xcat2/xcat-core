@@ -63,7 +63,7 @@ my $checkdomain=0;
 
 # dhcp 4.x will use /etc/dhcp/dhcpd.conf as the config file
 my $dhcp6conffile;
-if ($^O ne 'aix' and -d "/etc/dhcp") {
+if ($^O ne 'aix' and not -e $dhcpconffile and -d "/etc/dhcp") {
     $dhcpconffile  = '/etc/dhcp/dhcpd.conf';
     $dhcp6conffile = '/etc/dhcp/dhcpd6.conf';
 }
