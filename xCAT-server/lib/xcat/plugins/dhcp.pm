@@ -1655,11 +1655,13 @@ sub process_request
     }
     else
     {
-        my @nsrnoutput = split /\n/, `/bin/netstat -rn`;
+        my @nsrnoutput = split /\n/, `ip -4 route`;
         splice @nsrnoutput, 0, 2;
         foreach (@nsrnoutput) {    #scan netstat
             my @parts = split /\s+/;
-            push @nrn, $parts[0] . ":" . $parts[7] . ":" . $parts[2] . ":" . $parts[3];
+	    my ($subnetip, $subnetcidr) = split('/', $parts[0]);
+	    $subnetcidr = xCAT::NetworkUtils::formatNetmask($subnetcidr, 1, 0);
+            push @nrn, $subnetip . ":" . $parts[2] . ":" . $subnetcidr . ":" . $parts[1];
         }
         my @ip6routes = `ip -6 route`;
         foreach (@ip6routes) {
@@ -1962,7 +1964,7 @@ sub process_request
         }
 
         #if ($activenics{$line[1]} and $line[3] !~ /G/)
-        if ($activenics{$netif} and $line[3] !~ /G/)
+        if ($activenics{$netif} and $line[3] !~ /via/)
         {
             addnet($line[0], $line[2]);
         }
