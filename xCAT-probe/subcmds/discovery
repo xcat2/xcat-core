@@ -520,7 +520,7 @@ sub do_pre_check {
 
 #------------------------------------------
 sub check_genesis_file {
-    my $msg = "Genesis files are avaliable";
+    my $msg = "Genesis files are available";
     my $rst = 0;
     my @warn_msg;
 

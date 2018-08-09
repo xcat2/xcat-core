@@ -319,7 +319,7 @@ sub process_request {
                     my $hosttag = gethosttag($node, $netn, @ifinfo[1], \%usednames);
                     unless ($hosttag) {
                         my $nettagname = $usednames_for_net{$netn};
-                        # For nics not in the install network, don't deal with them if not an avaliable hostname get 
+                        # For nics not in the install network, don't deal with them if not an available hostname get 
                         # In case another nic in install network get a hosttag other than nodename, need to compare the IP address they can convert to
                         if ($nettagname and (inet_aton($nettagname) eq inet_aton($node))) {
                             $hosttag = "$node-$ifinfo[1]";
