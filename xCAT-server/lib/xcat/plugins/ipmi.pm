@@ -936,7 +936,7 @@ sub setnetinfo {
             }
             @cmd = (0x01, $channel_number, 0x6, @mask);
         }
-    } elsif ($subcommand =~ m/gateway/) {
+    } elsif ($subcommand =~ m/gateway/ and $argument) {
         my $gw = inet_ntoa(inet_aton($argument));
         my @mask = split /\./, $gw;
         foreach (0 .. 3) {
