@@ -58,7 +58,7 @@ sleep "$RAND"
 if ! type openssl >/dev/null 2>&1
 then
     msgutil_r "$MASTER_IP" "error" "/usr/bin/openssl does not exist, halt ..." "/var/log/xcat/xcat.log" "$log_label"
-    /tmp/updateflag $MASTER $XCATIPORT "installstatus failed"
+    /tmp/updateflag "$MASTER" "$XCATIPORT" "installstatus failed"
     sleep infinity
 fi
 
