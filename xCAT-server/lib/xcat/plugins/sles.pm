@@ -1656,7 +1656,6 @@ sub copycd
 
         my $dirh;
         opendir($dirh, $mntpath);
-        my $discnumber;
         my $totaldiscnumber;
         while (my $pname = readdir($dirh))
         {
