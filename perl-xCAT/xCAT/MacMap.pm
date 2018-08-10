@@ -529,17 +529,14 @@ sub refresh_table {
             xCAT::MsgUtils->message("S", "xCAT Table error:" . $entry->{node} . "Has missing or invalid switch.switch and/or switch.port fields");
         }
     }
+
     my $children = 0;
     my $inputs   = new IO::Select;
     $SIG{CHLD} = sub { while (waitpid(-1, WNOHANG) > 0) { $children-- } };
-    foreach my $entry (@entries) {
-        if ($checked_pairs{ $entry->{switch} }) {
-            next;
-        }
+    foreach my $entry (keys $self->{switches}) {
         while ($children > 64) {
             $self->handle_output($inputs);
         }
-        $checked_pairs{ $entry->{switch} } = 1;
         pipe my $child, my $parent;
         $child->autoflush(1);
         $parent->autoflush(1);
@@ -550,7 +547,7 @@ sub refresh_table {
             $children--;
             close($child);
             close($parent);
-            xCAT::MsgUtils->message("S", "refresh_table: failed to fork refresh_switch process for $entry->{switch},skip...");
+            xCAT::MsgUtils->message("S", "refresh_table: failed to fork refresh_switch process for $entry,skip...");
             next;
         }
 
@@ -558,10 +555,10 @@ sub refresh_table {
             $SIG{CHLD} = 'DEFAULT';
             close($child);
             my $runstart = time;
-            $self->refresh_switch($parent, $community, $entry->{switch});
+            $self->refresh_switch($parent, $community, $entry);
             my $runstop = time;
             my $diffduration = $runstop - $runstart;
-            xCAT::MsgUtils->trace(0, ($diffduration > 10) ? "w" : "d", "refresh_switch $entry->{switch} ElapsedTime:$diffduration sec");
+            xCAT::MsgUtils->trace(0, ($diffduration > 10) ? "w" : "d", "refresh_switch $entry ElapsedTime:$diffduration sec");
             exit(0);
         }
         close($parent);
