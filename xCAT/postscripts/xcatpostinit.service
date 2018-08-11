@@ -4,8 +4,8 @@ After=network.target rsyslog.service
 
 [Service]
 Type=oneshot
-ExecStart=/etc/init.d/xcatpostinit start
-ExecStop=/etc/init.d/xcatpostinit stop
+ExecStart=/opt/xcat/xcatpostinit start
+ExecStop=/opt/xcat/xcatpostinit stop
 RemainAfterExit=yes
 
 [Install]
