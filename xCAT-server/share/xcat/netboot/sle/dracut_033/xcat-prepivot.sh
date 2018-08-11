@@ -134,15 +134,11 @@ function getdevfrommac() {
     done
 }
 
-for lf in /tmp/dhclient.*.lease; do
-    netif=${lf#*.}
-    netif=${netif%.*}
-    cp $lf  "$NEWROOT/var/lib/dhclient/dhclient-$netif.leases"
-done
-
-if [ -f $NEWROOT/etc/hostname ]; then 
-    echo `hostname -s` > $NEWROOT/etc/hostname
-fi
+bootif=$(ls /tmp/net.*.conf|sed -e s/.*net\.// -e s/\.conf//)
+cat <<EOF >  $NEWROOT/etc/sysconfig/network/ifcfg-$bootif
+BOOTPROTO='dhcp'
+STARTMODE='auto'
+EOF
 
 if [ ! -z "$ifname" ]; then
     MACX=${ifname#*:}
