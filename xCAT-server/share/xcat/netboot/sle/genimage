@@ -1948,6 +1948,9 @@ sub generic_post { # This function is meant to leave the image in a state approx
     if (-e "$rootimg_dir/etc/sysconfig/clock") {
         system("sed  -i 's!\\(HWCLOCK=\\).*!\\1\"--localtime\"!' $rootimg_dir/etc/sysconfig/clock");
     }
+    if (-e "$rootimg_dir/etc/sysconfig/network/dhcp") {
+        system("sed  -i 's!^DHCLIENT_SET_HOSTNAME=\\\"no\\\"!DHCLIENT_SET_HOSTNAME=\\\"yes\\\"!' $rootimg_dir/etc/sysconfig/network/dhcp");
+    }
 
     unlink("$rootimg_dir/dev/null");
     system("mknod $rootimg_dir/dev/null c 1 3");
