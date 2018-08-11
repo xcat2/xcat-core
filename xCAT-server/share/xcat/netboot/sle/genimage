@@ -2058,8 +2058,9 @@ sub generic_post { # This function is meant to leave the image in a state approx
         chmod(0755, "$rootimg_dir/etc/init.d/gettyset");
     }
 
-    copy("$installroot/postscripts/xcatpostinit", "$rootimg_dir/etc/init.d/xcatpostinit");
-    chmod(0755, "$rootimg_dir/etc/init.d/xcatpostinit");
+    system("mkdir -p $rootimg_dir/opt/xcat");
+    copy("$installroot/postscripts/xcatpostinit", "$rootimg_dir/opt/xcat/xcatpostinit");
+    chmod(0755, "$rootimg_dir/opt/xcat/xcatpostinit");
     copy("$installroot/postscripts/xcatpostinit.service", "$rootimg_dir/usr/lib/systemd/system/xcatpostinit.service");
 
     #
