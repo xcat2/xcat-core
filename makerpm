@@ -13,6 +13,7 @@ function xcat_probe_copy {
     # xCAT-probe uses some functions shipped with xCAT,  copying for the following reasons:
     #     1. make xCAT-probe code be self-contained
     #     2. do not maintain two files for each script
+    #     3. symbolic link can't work during packaging
     RPMNAME=${1}
     if [ $RPMNAME = "xCAT-probe" ]; then
         mkdir -p ${RPMNAME}/lib/perl/xCAT/
@@ -64,6 +65,8 @@ function makenoarch {
 
                 xcat_probe_copy ${RPMNAME}
 
+		sed -i "s/^Version: .*/Version: $XCATVER/" $RPMNAME/$RPMNAME.spec
+		sed -i "s/^Release: .*/Release: 1/" $RPMNAME/$RPMNAME.spec
 		tar --exclude .svn -czf $RPMROOT/SOURCES/$RPMNAME-$VER.tar.gz $RPMNAME
 		rm -f $RPMROOT/SRPMS/$RPMNAME-$VER*rpm $RPMROOT/RPMS/noarch/$RPMNAME-$VER*rpm
 		rpmbuild $QUIET -ta $RPMROOT/SOURCES/$RPMNAME-$VER.tar.gz --define "version $VER" $REL "$EASE"
@@ -89,6 +92,8 @@ function makexcat {
 	fi
 
 	RPMNAME="$1"
+	sed -i "s/^Version: .*/Version: $XCATVER/" $RPMNAME/$RPMNAME.spec
+	sed -i "s/^Release: .*/Release: 1/" $RPMNAME/$RPMNAME.spec
 
 	if [ "$OSNAME" = "AIX" ]; then
 		source=/opt/freeware/src/packages
@@ -223,6 +228,8 @@ function makegenesisscripts {
 	cd - >/dev/null
 	rm -f $RPMROOT/SRPMS/$RPMNAME-$ARCH-$VER*rpm $RPMROOT/RPMS/noarch/$RPMNAME-$ARCH-$VER*rpm
 	echo "Building $RPMROOT/RPMS/noarch/$RPMNAME-$ARCH-$VER-snap*.noarch.rpm $EMBEDTXT..."
+	sed -i "s/^Version: .*/Version: $XCATVER/" $DIR/$RPMNAME.spec
+	sed -i "s/^Release: .*/Release: 1/" $DIR/$RPMNAME.spec
 	rpmbuild $QUIET -ba $DIR/$RPMNAME.spec $TARGET --define "version $VER" $REL "$EASE"
 }
 
