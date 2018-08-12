@@ -30,7 +30,7 @@ By managing the inventory file under source control system, you can manage the x
     xcat-inventory export --format=yaml >/git/cluster/mycluster.yaml
     cd /git/cluster
     git diff
-    git add xcat-inventory export --format=yaml >/git/cluster/mycluster.yaml
+    git add /git/cluster/mycluster.yaml
     git commit /git/cluster/mycluster.yaml -m "$(date "+%Y_%m_%d_%H_%M_%S"): replaced bad nodes; turn on xcatdebugmode; blah-blah"
 
 6. ordinary cluster maintenance and operation, some issues are founded in current cluster, need to restore the current cluster configuration to commit no c95673 [1]_ ::
