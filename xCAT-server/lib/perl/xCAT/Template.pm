@@ -1593,6 +1593,7 @@ sub envvar
     if ($envvar =~ /^\$/) {
         $envvar =~ s/^\$//;
     }
+    if ($envvar eq 'XCATROOT') { return $::XCATROOT; }
 
     return ($ENV{$envvar});
 }
