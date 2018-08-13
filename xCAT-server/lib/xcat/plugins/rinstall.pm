@@ -365,6 +365,14 @@ sub rinstall {
                 xCAT::MsgUtils->message("E", $rsp, $callback);
                 return 1;
             }
+            if ($line =~ /Cannot wget/) {
+                # If nodeset returns error that runimage can not be downloaded by wget, 
+                # display the error from nodeset (if not alredy displayed by VERBOSE above), stop processing and return.
+                unless ($VERBOSE) {
+                    xCAT::MsgUtils->message("I", $rsp, $callback);
+                }
+                return 1;
+            }
             xCAT::MsgUtils->message("I", $rsp, $callback);
         }
 

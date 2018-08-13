@@ -603,7 +603,7 @@ sub setdestiny {
                     my $cmd = "wget --spider --timeout 3 --tries=1 $path";
                     my @output = xCAT::Utils->runcmd("$cmd", -1);
                     unless (grep /^Remote file exists/, @output) {
-                        $callback->({ error => ["Cannot get $path with wget. Could you confirm it's downloadable by wget?"], errorcode => [1], errorabort => [1]});
+                        $callback->({ error => ["Cannot wget $path. Verify it's downloadable."], errorcode => [1], errorabort => [1]});
                         return;
                     }
                 } else {
