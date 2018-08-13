@@ -51,6 +51,8 @@ my $xcatdebugmode = 0;
 my $IPMIXCAT  = "/opt/xcat/bin/ipmitool-xcat";
 my $NON_BLOCK = 1;
 my $BIG_DATA_MACHINE_MODELS = "8001-22C|9006-22C|5104-22C|8001-12C|9006-12C";
+my $PUPDATE_UPDATE_BMC=1;
+my $PUPDATE_UPDATE_PNOR=1;
 use constant RFLASH_LOG_DIR => "/var/log/xcat/rflash";
 if (-d RFLASH_LOG_DIR) {
     chmod 0700, RFLASH_LOG_DIR;
@@ -2058,7 +2060,7 @@ sub do_firmware_update {
             $exit_with_error_func->($sessdata->{node}, $callback,
                 "At least one update file (.bin or .pnor) needs to be in data directory $pUpdate_directory.");
         }
-
+        xCAT::MsgUtils->message("S", "The PUPDATE options: UPDATE_BMC=$PUPDATE_UPDATE_BMC and UPDATE_PNOR=$PUPDATE_UPDATE_PNOR");
         # All checks are done, run pUpdate utility on each of the update files found in 
         # the specified data directory
         xCAT::SvrUtils::sendmsg("rflash started, Please wait...", $callback, $sessdata->{node});
@@ -2079,7 +2081,7 @@ sub do_firmware_update {
         }
 
         # step 2 update BMC file or Host file, or both
-        if ($bmc_file) {
+        if ($bmc_file and $PUPDATE_UPDATE_BMC) {
             # BMC file was found in data directory, run update with it
             my $pUpdate_bmc_cmd = "$pUpdate_directory/pUpdate -f $bmc_file -i lan -h $bmc_addr -u $bmc_userid -p $bmc_password >".$rflash_log_file." 2>&1";
             if ($verbose) {
@@ -2101,7 +2103,7 @@ sub do_firmware_update {
         }
 
 
-        if ($pnor_file) {
+        if ($pnor_file and $PUPDATE_UPDATE_PNOR) {
             # Host file was found in data directory, run update with it
             my $pUpdate_pnor_cmd = "$pUpdate_directory/pUpdate -pnor $pnor_file -i lan -h $bmc_addr -u $bmc_userid -p $bmc_password >>".$rflash_log_file." 2>&1";
             if ($verbose) {
@@ -8835,7 +8837,26 @@ sub process_request {
     my $extrargs  = $request->{arg};
     my @exargs    = ($request->{arg});
     $::cwd = $request->{cwd}->[0];
-
+    my $env_xcat_pupdate_bmc = 0;
+    my $env_xcat_pupdate_pnor = 0;
+    my $env = $request->{environment};
+    if (ref($env) eq 'ARRAY') {
+        if (ref($env->[0]->{XCAT_PUPDATE_BMC}) eq 'ARRAY') {
+            $env_xcat_pupdate_bmc = 1;
+        }
+        if (ref($env->[0]->{XCAT_PUPDATE_PNOR}) eq 'ARRAY') {
+            $env_xcat_pupdate_pnor = 1;
+        }
+    }
+    # update PNOR only, when XCAT_PUPDATE_PNOR specified and XCAT_PUPDATE_BMC not specified
+    if ($env_xcat_pupdate_pnor and !$env_xcat_pupdate_bmc) {
+        $PUPDATE_UPDATE_BMC = 0;
+    }
+    # update BMC only, when XCAT_PUPDATE_BMC specified and XCAT_PUPDATE_PNOR not specified
+    if ($env_xcat_pupdate_bmc and !$env_xcat_pupdate_pnor) {
+        $PUPDATE_UPDATE_PNOR = 0;
+    }
+    # for both XCAT_PUPDATE_BMC and XCAT_PUPDATE_PNOR are specified or not specified, shall update both
     if (ref($extrargs)) {
         @exargs = @$extrargs;
     }
