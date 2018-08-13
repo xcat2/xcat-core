@@ -47,7 +47,7 @@ Requires: xCAT-genesis-scripts-ppc64  = 1:%{version}-%{release}
 Requires: rsync
 
 %ifos linux
-Requires: httpd nfs-utils nmap bind perl(CGI)
+Requires: httpd nfs-utils nmap bind
 # on RHEL7, need to specify it explicitly
 Requires: net-tools
 Requires: /usr/bin/killall
