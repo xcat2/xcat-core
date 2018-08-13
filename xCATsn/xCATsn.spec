@@ -36,7 +36,7 @@ Requires: /usr/sbin/dhcpd
 # On RHEL this pulls in openssh-server, on SLES it pulls in openssh
 Requires: /usr/bin/ssh
 %ifnarch s390x
-Requires: /etc/xinetd.d/tftp
+Requires: /usr/sbin/in.tftpd
 # Stty is only needed for rcons on ppc64 nodes, but for mixed clusters require it on both x and p
 %endif
 %endif

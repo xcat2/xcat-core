@@ -51,7 +51,7 @@ Requires: /usr/bin/killall
 Requires: /usr/sbin/dhcpd
 # On RHEL this pulls in openssh-server, on SLES it pulls in openssh
 Requires: /usr/bin/ssh
-Requires: /etc/xinetd.d/tftp
+Requires: /usr/sbin/in.tftpd
 
 
 
