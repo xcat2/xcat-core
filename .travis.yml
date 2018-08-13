@@ -1,12 +1,12 @@
 os: linux
 dist: trusty
 sudo: required
-before_install: 
-- sudo apt-get install -y git reprepro devscripts debhelper libsoap-lite-perl libdbi-perl quilt openssh-server dpkg looptools genometools software-properties-common
+before_install:
+- sudo apt-get install -y git reprepro devscripts debhelper libsoap-lite-perl libdbi-perl
+  quilt openssh-server dpkg looptools genometools software-properties-common
 - perl -v
 - echo "yes" | sudo cpan -f -i Capture::Tiny
-
-script: 
+script:
 - echo $TRAVIS_BUILD_ID
 - echo $TRAVIS_EVENT_TYPE
 - echo $TRAVIS_BUILD_NUMBER
@@ -20,9 +20,7 @@ script:
 - echo $TRAVIS_COMMIT_MESSAGE
 - echo $GITHUB_TOKEN
 - git log --pretty=format:"%s %b" -2
-
-#- perl travis.pl
 - if [ $TRAVIS_EVENT_TYPE == "pull_request" ]; then perl ./travis.pl;  fi
-
-
-
+env:
+  global:
+    secure: Da+Vy7nvRHEqQcfkuMp9RIESaEvConhgPsSj5FNOf4eClStvUiTdOESFBIezfHcLdjNYnWIUlwWLX6zbpWlg0JoVwt0vOYUUaRQMVsT6sfzBZRayFX3GYeaOAVUPeI+1uw8fH/1VaLQhgmFwA5uD1rlRMY0fzoOiTv7PZC/p7elCklT2BsiS7bFCFRqfSitm99bS6nsMUpxmzWTAkjVlXx5cVOIeS+ii3DwaaLAsLQphykIG6X6Y+JqgKUruQExc7YBil7ThDFpe4DnanBF10gSgUz7OaIeqO9RipIvQIC36125Th3URmSTpYMNBWCA3AM26ORJW6+7R4M9k2brQyzQ0I7hdOnLFNq0XSQGIPkwwMEJkskGUoN5lDII+xJ6vFF1IU/fpF5P5EPVVuCRNt6nc4plF1Q0yG/ZDcuzAChY701799WB9yD7NqO4c7IyT9FLRZy1SSxLdjT4004NlHgm24kO2CXZGgFq7CNOhoxzMQmlwNA76pANkn/mlcPYJ5RUDg6PX21RbGsyYIVvoVjlb4aioHOkvWZrvPZP47T3ayZmQSsSCWD1e+h8IgM5nM55LGD5k+2bdJ7t8e+f8+RtC3vDFxmWYPNpY/Ot8SLe8rebSecx6+E6rjOw4l3PylDqMkfV1CZdqaU3e373yGkqo5YkDexMhGKHmsK/081Q=
