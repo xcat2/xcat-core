@@ -73,6 +73,7 @@ $::RPOWER_CHECK_ON_INTERVAL = 12;
 $::RPOWER_ON_MAX_RETRY      = 5;
 $::RPOWER_MAX_RETRY         = 30;
 $::RPOWER_CHECK_ON_TIME     = 1;
+$::RPOWER_RESET_SLEEP_INTERVAL = 13;
 
 $::BMC_MAX_RETRY = 20;
 $::BMC_CHECK_INTERVAL = 15;
@@ -884,6 +885,10 @@ sub retry_check_times {
         }
         my $retry_msg = "Retry BMC state, wait for $wait_time seconds ...";
         xCAT::MsgUtils->message("I", { data => ["$node: $retry_msg"] }, $callback);
+        my $rflash_log_file = xCAT::Utils->full_path($node.".log", $::XCAT_LOG_RFLASH_DIR);
+        open (RFLASH_LOG_FILE_HANDLE, ">> $rflash_log_file");
+        print RFLASH_LOG_FILE_HANDLE "$retry_msg\n";
+        close(RFLASH_LOG_FILE_HANDLE);
         if ($response_status ne $::RESPONSE_SERVICE_UNAVAILABLE) {
             my $login_url = "$http_protocol://$node_info{$node}{bmc}/login";
             my $content = '[ "' . $node_info{$node}{username} .'", "' . $node_info{$node}{password} . '" ]';
@@ -2454,6 +2459,9 @@ sub deal_with_response {
                 my $infomsg = "BMC $::POWER_STATE_REBOOT";
                 xCAT::SvrUtils::sendmsg($infomsg, $callback, $node);
                 if ($::UPLOAD_ACTIVATE_STREAM) {
+                    my $timestamp = `date +"%Y%m%d%H%M%S"`;
+                    chomp($timestamp);
+                    print RFLASH_LOG_FILE_HANDLE "$timestamp===================Reboot BMC to apply new BMC===================\n";
                     print RFLASH_LOG_FILE_HANDLE "BMC $::POWER_STATE_REBOOT\n";
                     close (RFLASH_LOG_FILE_HANDLE);
                     retry_after($node, "RPOWER_BMC_CHECK_REQUEST", 15);
@@ -2671,10 +2679,13 @@ sub rpower_response {
                 $power_state = "$::POWER_STATE_POWERING_OFF";
             }
             if ($::UPLOAD_ACTIVATE_STREAM) {
-                print RFLASH_LOG_FILE_HANDLE "Power reset host ...\n";
+                my $timestamp = `date +"%Y%m%d%H%M%S"`;
+                chomp($timestamp);
+                print RFLASH_LOG_FILE_HANDLE "$timestamp===================Start reset host to apply new PNOR===================\n";
+                print RFLASH_LOG_FILE_HANDLE "$timestamp Power reset host ...\n";
                 print RFLASH_LOG_FILE_HANDLE "Power off host in reset: RPOWER_OFF_RESPONSE power_state $power_state\n";
-                print RFLASH_LOG_FILE_HANDLE "Wait for 13 seconds ...\n"; 
-                sleep(13);
+                print RFLASH_LOG_FILE_HANDLE "Wait for $::RPOWER_RESET_SLEEP_INTERVAL seconds ...\n"; 
+                sleep($::RPOWER_RESET_SLEEP_INTERVAL);
             }
             xCAT::SvrUtils::sendmsg("$power_state", $callback, $node) if (!$next_status{ $node_info{$node}{cur_status} });
             $new_status{$::STATUS_POWERING_OFF} = [$node];
@@ -2687,6 +2698,9 @@ sub rpower_response {
                 xCAT::SvrUtils::sendmsg("BMC $::POWER_STATE_REBOOT", $callback, $node);
                 if ($::UPLOAD_ACTIVATE_STREAM) {
                     print RFLASH_LOG_FILE_HANDLE "BMC $::POWER_STATE_REBOOT\n";
+                    my $timestamp = `date +"%Y%m%d%H%M%S"`;
+                    chomp($timestamp);
+                    print RFLASH_LOG_FILE_HANDLE "$timestamp===================Reboot BMC to apply new BMC===================\n";
                     retry_after($node, "RPOWER_BMC_CHECK_REQUEST", 15);
                     return;
                 }
@@ -2701,8 +2715,8 @@ sub rpower_response {
     #get host $all_status for RPOWER_CHECK_ON_RESPONSE
     if ($node_info{$node}{cur_status} eq "RPOWER_STATUS_RESPONSE" or $node_info{$node}{cur_status} eq "RPOWER_CHECK_RESPONSE" or $node_info{$node}{cur_status} eq "RPOWER_BMC_STATUS_RESPONSE" or $node_info{$node}{cur_status} eq "RPOWER_CHECK_ON_RESPONSE") {
         if ($::UPLOAD_ACTIVATE_STREAM and $node_info{$node}{cur_status} eq "RPOWER_CHECK_ON_RESPONSE" and $::RPOWER_CHECK_ON_TIME == 1 ) {
-            print RFLASH_LOG_FILE_HANDLE "After power on in reset, wait for 13 seconds ...\n";
-            sleep(13);
+            print RFLASH_LOG_FILE_HANDLE "After power on in reset, wait for $::RPOWER_RESET_SLEEP_INTERVAL seconds ...\n";
+            sleep($::RPOWER_RESET_SLEEP_INTERVAL);
             $::RPOWER_CHECK_ON_TIME = 0;
         }
         my $bmc_state = "";
@@ -2770,6 +2784,9 @@ sub rpower_response {
                 xCAT::SvrUtils::sendmsg("BMC $bmc_short_state", $callback, $node);
                 if ($::UPLOAD_ACTIVATE_STREAM) {
                     print RFLASH_LOG_FILE_HANDLE "BMC $bmc_short_state\n";
+                    my $timestamp = `date +"%Y%m%d%H%M%S"`;
+                    chomp($timestamp);
+                    print RFLASH_LOG_FILE_HANDLE "$timestamp===================Apply BMC is done===================\n"; 
                 }
 
         } else {
@@ -2866,6 +2883,9 @@ sub rpower_response {
             print RFLASH_LOG_FILE_HANDLE "Check power state in RPOWER_CHECK_ON_RESPONSE:all_status $all_status.\n";
             if ($all_status eq "$::POWER_STATE_ON") {
                 $node_info{$node}{cur_status} = "";
+                my $timestamp = `date +"%Y%m%d%H%M%S"`;
+                chomp($timestamp);
+                print RFLASH_LOG_FILE_HANDLE "$timestamp===================Apply PNOR and reset host are done===================\n";
                 $wait_node_num--;
                 return;
             }else{
@@ -4680,6 +4700,9 @@ sub rflash_response {
                     my $upload_success_msg = "Firmware upload successful. Attempting to activate firmware: $::UPLOAD_FILE_VERSION (ID: $update_id)";
                     xCAT::SvrUtils::sendmsg("$upload_success_msg", $callback, $node);
                     print RFLASH_LOG_FILE_HANDLE "$upload_success_msg\n";
+                    my $timestamp = `date +"%Y%m%d%H%M%S"`;
+                    chomp($timestamp);
+                    print RFLASH_LOG_FILE_HANDLE "$timestamp===================Start activate firmware: $::UPLOAD_FILE_VERSION (ID: $update_id)===================\n";
                 } elsif ($update_version eq $::UPLOAD_PNOR_VERSION) {
                     $found_pnor_match = 1;
                     if ($::UPLOAD_PNOR_HASH_ID && ($::UPLOAD_PNOR_HASH_ID ne $update_id)) {
@@ -4696,6 +4719,9 @@ sub rflash_response {
                     my $upload_success_msg = "Firmware upload successful. Attempting to activate firmware: $::UPLOAD_PNOR_VERSION (ID: $update_id)";
                     xCAT::SvrUtils::sendmsg("$upload_success_msg", $callback, $node);
                     print RFLASH_LOG_FILE_HANDLE "$upload_success_msg\n";
+                    my $timestamp = `date +"%Y%m%d%H%M%S"`;
+                    chomp($timestamp);
+                    print RFLASH_LOG_FILE_HANDLE "$timestamp===================Start activate firmware: $::UPLOAD_PNOR_VERSION (ID: $update_id)===================\n";
                 }
 
             }
