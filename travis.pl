@@ -503,6 +503,9 @@ sub run_fast_regression_test{
 
     my @caseslist = @output;
 
+    #This is a black list for CI test
+    #It is useful for debug or development
+    #please ignore during common work
     #my @filter_cases=("testtest");
     #array_filter(\@caseslist, \@filter_cases);
 
