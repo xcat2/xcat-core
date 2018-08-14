@@ -159,6 +159,14 @@ GO_XCAT_INSTALL_LIST=(perl-xcat xcat xcat-buildkit xcat-client
 	xcat-genesis-scripts-amd64 xcat-genesis-scripts-ppc64 xcat-server
 	conserver-xcat elilo-xcat grub2-xcat ipmitool-xcat syslinux-xcat
 	xcat-genesis-base-amd64 xcat-genesis-base-ppc64 xnba-undi)
+# The package list of all the packages should be installed
+GO_XCAT_UNINSTALL_LIST=("${GO_XCAT_INSTALL_LIST[@]}"
+	xCAT-SoftLayer xCAT-confluent xCAT-csm xCAT-openbmc-py xCAT-probe
+	xCAT-test xCAT-vlan xCATsn xCAT-UI-deps)
+# For Debian/Ubuntu, it will need a sight different package list
+type dpkg >/dev/null 2>&1 &&
+GO_XCAT_UNINSTALL_LIST=("${GO_XCAT_INSTALL_LIST[@]}"
+	xcat-confluent xcat-probe xcat-test xcat-vlan xcatsn) 
 
 PATH="/usr/sbin:/usr/bin:/sbin:/bin"
 export PATH
@@ -1450,6 +1458,52 @@ function install_packages()
 	function_dispatch "${FUNCNAME}" "$@"
 }
 
+function remove_package_dnf()
+{
+	type dnf >/dev/null 2>&1 || return 255
+	local -a yes=()
+	[[ "$1" = "-y" ]] && yes=("-y") && shift
+	dnf --nogpgcheck "${yes[@]}" remove "$@"
+}
+
+function remove_package_yum()
+{
+	type yum >/dev/null 2>&1 || return 255
+	local -a yes=()
+	[[ "$1" = "-y" ]] && yes=("-y") && shift
+	yum --nogpgcheck "${yes[@]}" remove "$@"
+}
+
+function remove_package_zypper()
+{
+	type zypper >/dev/null 2>&1 || return 255
+	local -a yes=()
+	local ret=""
+	[[ "$1" = "-y" ]] && yes=("-n") && shift
+	zypper --no-gpg-checks "${yes[@]}" remove --force-resolution "$@"
+	ret="$?"
+	case "${ret}" in
+	"104")
+		# ZYPPER_EXIT_INF_CAP_NOT_FOUND
+		ret="0"
+		;;
+	esac
+	return "${ret}"
+}
+
+function remove_package_apt()
+{
+	type apt-get >/dev/null 2>&1 || return 255
+	local -a yes=()
+	[[ "$1" = "-y" ]] && yes=("-y") && shift
+	apt-get --allow-unauthenticated remove "${yes[@]}" "$@"
+}
+
+function remove_package()
+{
+	function_dispatch "${FUNCNAME}" "$@"
+}
+
 #       $1      -y
 function install_xcat()
 {
@@ -1478,6 +1532,58 @@ function update_xcat()
 	warn_if_bad "$?" "xCAT is not installed."
 	exit_if_bad "$?" "In order to install xCAT, please rerun with \`${0##*/} install'."
 	install_packages "$@" "${install_list[@]}"
+}
+
+#       $1      -y
+function uninstall_xcat()
+{
+	remove_package "$@" "${GO_XCAT_UNINSTALL_LIST[@]}"
+}
+
+function kill_xcat()
+{
+	local f=""
+
+	for f in /var/run/xcat{d,/{main,udp,install,cmdlog}service}.pid
+	do
+		[[ -f "${f}" ]] && kill -TERM "$(<"${f}")"
+	done
+
+	sleep 1
+
+	for f in /var/run/xcat{d,/{main,udp,install,cmdlog}service}.pid
+	do
+		[[ -f "${f}" ]] && kill -KILL "$(<"${f}")"
+	done
+
+	return 0
+}
+
+# Remove all xCAT related directories and files
+function trash_xcat()
+{
+	rm -f  /etc/init.d/xcatpostinit1
+	rm -f  /etc/systemd/system/xcatpostinit1.service
+	rm -f  /etc/systemd/system/multi-user.target.wants/xcatd.service
+	rm -f  /etc/tftpmapfile4xcat.conf
+	rm -f  /etc/profile.d/xcat.{c,}sh
+	rm -rf /etc/xcat
+	rm -rf /etc/xcatdockerca
+	rm -f  /etc/apt/sources.list.d/xcat-{core,dep}.list
+	rm -f  /etc/yum.repos.d/xCAT-{core,dep}.repo{,.nouse}
+	rm -f  /etc/yum.repos.d/xcat-{core,dep}.repo
+	rm -f  /etc/zypp/repos.d/xCAT-{core,dep}.repo{,.nouse}
+	rm -f  /etc/zypp/repos.d/xcat-{core,dep}.repo
+	rm -rf /install/postscripts
+	rm -rf /opt/xcat
+	rm -rf /root/.xcat
+	rm -rf /root/xcat-dbback
+	rm -rf /tftpboot/xcat
+	rm -rf /var/lock/xcat
+	rm -rf /var/log/xcat
+	rm -rf /xcatpost
+
+	return 0
 }
 
 function list_xcat_packages()
@@ -1690,6 +1796,27 @@ function stop_progress_meters()
 	echo -n "...... "
 }
 
+#	$1	0 (pass) or non-zero (fail).
+function boo_boo_if_bad()
+{
+	local -i rc="$1"
+
+	# Ignore if no problems
+	[ "${rc}" -eq "0" ] && return 0
+
+	debug_logger <<-EOF
+
+	Boo-boo
+	=======
+
+	Something went wrong. :(
+
+	Please check log file \`${GO_XCAT_LOG}' for more details.
+	EOF
+
+	exit "${rc}"
+}
+
 #
 # |\/| _.o._   ._ .__  _ .__.._ _    _  _  _  _  |_  _ .__
 # |  |(_||| |  |_)|(_)(_||(_|| | |  (_|(_)(/__>  | |(/_|(/_ o
@@ -1754,7 +1881,7 @@ do
 done
 
 case "${GO_XCAT_ACTION}" in
-"check"|"install"|"update")
+"away"|"check"|"install"|"uninstall"|"update")
 	;;
 "smoke-test")
 	perform_smoke_tests
@@ -1768,7 +1895,7 @@ case "${GO_XCAT_ACTION}" in
 	warn_if_bad 1 "invalid action -- \`${GO_XCAT_ACTION}'"
 	exit_if_bad 1 "Try \`$0 --help' for more information"
 	;;
-esac
+esac # case "${GO_XCAT_ACTION}" in
 
 GO_XCAT_OS="$(check_os)"
 GO_XCAT_ARCH="$(check_arch)"
@@ -1817,6 +1944,41 @@ Bash Version:       ${BASH_VERSION}
 EOF
 printf "%-19s %s\n\n" "${0##*/} Version:" "$(version)" | debug_logger
 
+case "${GO_XCAT_ACTION}" in
+"away"|"uninstall")
+	# Remove xCAT
+	ask_to_continue "${GO_XCAT_YES[0]}" "xCAT is going to be ${GO_XCAT_ACTION/away/trash}ed."
+	debug_trace uninstall_xcat -y
+	boo_boo_if_bad "$?"
+
+	case "${GO_XCAT_ACTION}" in
+	"away")
+		# Do extra cleanup
+		debug_trace kill_xcat
+		debug_trace trash_xcat
+
+		debug_logger <<-EOF
+
+		xCAT has been completely removed!
+		EOF
+		;;
+	"uninstall")
+		debug_logger <<-EOF
+
+		xCAT has been uninstalled!
+		==========================
+
+		If you intend to install xCAT again, please follow the guideline on the
+		xcat.org website.
+
+		https://xcat.org/download.html
+		EOF
+		;;
+	esac
+	exit 0
+	;;
+esac # case "${GO_XCAT_ACTION}" in
+
 echo
 echo -n "Reading repositories "
 show_progress_meters
@@ -1852,28 +2014,7 @@ case "${GO_XCAT_ACTION}" in
 	;;
 "install"|"update")
 	GO_XCAT_INSTALLER="${GO_XCAT_ACTION}_xcat"
-	if [[ "${#GO_XCAT_YES[@]}" -eq "0" ]]
-	then
-		echo
-		echo "xCAT is going to be ${GO_XCAT_ACTION/%e/}ed."
-		while :
-		do
-			read -r -p "Continue? [y/n] "
-			echo "+> Continue? [y/n]          ... ${REPLY}" > >(debug_logger)
-			case "${REPLY}" in
-			"Y"*|"y"*)
-				break	
-				;;
-			"N"*|"n"*)
-				echo "Good-bye!"
-				exit 0
-				;;
-			*)
-				echo "Invalid response!"
-				;;
-			esac
-		done
-	fi
+	ask_to_continue "${GO_XCAT_YES[0]}" "xCAT is going to be ${GO_XCAT_ACTION/%e/}ed."
 	# Use `-y' here. Since the STDOUT is redirected.
 	# `yum' does not display the prompt message properly when
 	# working with redirected I/O.
@@ -1886,20 +2027,7 @@ case "${GO_XCAT_ACTION}" in
 		RET="$?"
 	fi
 
-	if [[ "${RET}" -ne "0" ]]
-	then
-		debug_logger <<-EOF
-
-		Boo-boo
-		=======
-
-		Something went wrong. :(
-
-		Please check log file \`${GO_XCAT_LOG}' for more details.
-		EOF
-
-		exit "${RET}"
-	fi
+	boo_boo_if_bad "${RET}"
 
 	case "${GO_XCAT_ACTION}" in
 	"install")
