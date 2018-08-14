@@ -50,6 +50,7 @@ function usage()
 	                                and xcat-dep packages from the repository
 	  update                        updates installed xcat-core packages to the
 	                                latest version from the repository
+	  uninstall                     removes xCAT from this system
 
 	Examples:
 	  ${script}
@@ -62,6 +63,7 @@ function usage()
 	          --xcat-dep=/path/to/xcat-dep.tar.bz2 install
 	  ${script} --xcat-core=http://xcat.org/path/to/xcat-core.tar.bz2 \\
 	          --xcat-dep=http://xcat.org/path/to/xcat-dep.tar.bz2 install
+	  ${script} uninstall
 
 	xCAT: http://xcat.org
 	Full documentation at: http://xcat-docs.readthedocs.io/en/stable
@@ -96,16 +98,18 @@ function verbose_usage()
 	  -h, --help                    display a simply version of help and exit
 	  --long-help                   display this help and exit
 	EOF
-	println 12
+	println 16
 	while read -r ; do echo "${REPLY}" ; done <<-EOF
 	  check                         check the version of the installed packages
 	                                of xCAT and packages in the repository
-	EOF
-	println 2
-	while read -r ; do echo "${REPLY}" ; done <<-EOF
 	  smoke-test                    preform basic tests of the xCAT installation
 	EOF
-	println 10
+	println 1
+	while read -r ; do echo "${REPLY}" ; done <<-EOF
+	  away                          removes xCAT from this system and cleans up
+	                                all the traces xCAT made
+	EOF
+	println 8
 	while read -r ; do echo "${REPLY}" ; done <<-EOF
 	  ${script} --xcat-core=/path/to/xcat-core.repo install
 	  ${script} --xcat-core=/path/to/xcat-core install
@@ -121,6 +125,15 @@ function verbose_usage()
 	          --xcat-dep=/path/to/xcat-dep.repo install
 	  ${script} --xcat-core=/path/to/xcat-core \\
 	          --xcat-dep=/path/to/xcat-dep install
+	EOF
+	println 4
+	while read -r ; do echo "${REPLY}" ; done <<-EOF
+	  ${script} check
+	  ${script} smoke-test
+	EOF
+	println 1
+	while read -r ; do echo "${REPLY}" ; done <<-EOF
+	  ${script} away
 	EOF
 	println 999999	# Print out all the rest of lines
 
