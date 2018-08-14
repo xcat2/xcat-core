@@ -2,7 +2,7 @@
 #
 # go-xcat - Install xCAT automatically.
 #
-# Version 1.0.29
+# Version 1.0.30
 #
 # Copyright (C) 2016, 2017, 2018 International Business Machines
 # Eclipse Public License, Version 1.0 (EPL-1.0)
@@ -18,6 +18,9 @@
 #     - Use curl when it is available. Otherwise fall back to use wget
 #     - Improved tarball file extension handling
 #     - Disable xCAT-core.repo and xCAT-dep.repo if they exist
+# 2018-09-28 GONG Jie <gongjie@linux.vnet.ibm.com>
+#     - Revised debug log
+#     - xCAT uninstallation
 #
 
 function usage()
