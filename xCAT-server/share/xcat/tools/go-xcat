@@ -1546,14 +1546,14 @@ function kill_xcat()
 
 	for f in /var/run/xcat{d,/{main,udp,install,cmdlog}service}.pid
 	do
-		[[ -f "${f}" ]] && kill -TERM "$(<"${f}")"
+		[[ -f "${f}" ]] && kill -TERM "$(<"${f}")" 2>/dev/null
 	done
 
 	sleep 1
 
 	for f in /var/run/xcat{d,/{main,udp,install,cmdlog}service}.pid
 	do
-		[[ -f "${f}" ]] && kill -KILL "$(<"${f}")"
+		[[ -f "${f}" ]] && kill -KILL "$(<"${f}")" 2>/dev/null
 	done
 
 	return 0
@@ -1712,7 +1712,7 @@ function test_case_001_xcatd()
 
 	for f in /var/run/xcat{d,/{main,udp,install,cmdlog}service}.pid
 	do
-		kill -0 "$(<"${f}")"
+		kill -0 "$(<"${f}")" 2>/dev/null
 		(( ret += $? ))
 	done
 
