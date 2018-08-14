@@ -1344,6 +1344,9 @@ sub stop_TFTP
     my $distro=xCAT::Utils->osver();
     # Check whether the tftp-hpa has been installed, the ubuntu tftpd-hpa configure file is under /etc/default
     unless (-x "/usr/sbin/in.tftpd" and (-e "/etc/xinetd.d/tftp" or -e "/etc/default/tftpd-hpa")) {
+        if (-e "/usr/lib/systemd/system/tftp.socket") {
+                return 0;
+        }
         xCAT::MsgUtils->message("S", "ERROR: The tftpd was not installed, enable the tftp failed.");
         return 1;
     }
@@ -1437,12 +1440,41 @@ sub enable_TFTP
     }
 
     my $distro = xCAT::Utils->osver();
-    if ($distro !~ /ubuntu.*/i && $distro !~ /debian.*/i) {
+    if ($distro !~ /ubuntu.*/i && $distro !~ /debian.*/i && -e "/etc/sysconfig/tftp") {
+        if (!open(FILE, "</etc/sysconfig/tftp")) {
+            xCAT::MsgUtils->message("S", "ERROR: Cannot open /etc/xinetd.d/tftp.");
+            return 1;
+        }
+        my @newconfig = ();
+        while (<FILE>) {
+            if (/^TFTP_DIRECTORY/) {
+                if (m!"$tftpdir"!) {
+                    @newconfig = ();
+                    last;
+                } else {
+                    s!=.*!="$tftpdir"!
+                }
+            }
+            push @newconfig, $_;
+        }
+        close(FILE);
+        if (@newconfig) {
+            my $newconf;
+            open($newconf, ">/etc/sysconfig/tftp");
+            foreach (@newconfig) {
+                print $newconf $_;
+            }
+            close($newconf);
+        }
+        system("systemctl enable tftp.socket");
+        system("systemctl start tftp.socket");
+        return 0;
+    }
+    if ($distro !~ /ubuntu.*/i && $distro !~ /debian.*/i && -e "/etc/xinet.d/tftp") {
         if (!open(FILE, "</etc/xinetd.d/tftp")) {
             xCAT::MsgUtils->message("S", "ERROR: Cannot open /etc/xinetd.d/tftp.");
             return 1;
         }
-
         # The location of tftp mapfile
         my $mapfile = "/etc/tftpmapfile4xcat.conf";
         my $recfg   = 0;
@@ -1459,7 +1491,6 @@ sub enable_TFTP
                 if ($cfg_args =~ /-s\s+([^\s]*)/) {
                     my $cfgdir = $1;
                     $cfgdir =~ s/\$//;
-                    $tftpdir =~ s/\$//;
 
                     # make sure the tftp dir should comes from the site.tftpdir
                     if ($cfgdir ne $tftpdir) {
