@@ -39,7 +39,7 @@ In these osimage definitions shown above
 
 **Note**: There are more things needed for **ubuntu ppc64le** osimages:
 
-For ubuntu ppc64le, the initrd.gz shipped with the ISO does not support network booting. In order to install ubuntu with xCAT, you need to follow the steps below to complete the osimage definition.
+For pre-18.04 version of Ubuntu for ppc64el, the initrd.gz shipped with the ISO does not support network booting. In order to install ubuntu with xCAT, you need to follow the steps below to complete the osimage definition.
 
 * Download mini.iso from
 

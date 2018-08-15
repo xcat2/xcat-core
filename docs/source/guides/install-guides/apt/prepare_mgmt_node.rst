@@ -19,18 +19,19 @@ xCAT uses the apt package manager on Ubuntu Linux distributions to install and r
 
 #. Copy the DVD iso file to ``/tmp`` on the Management Node: ::
 
-     # This example will use ubuntu-14.04.3-server-ppc64el.iso
+     # This example will use ubuntu-18.04-server-ppc64el.iso
+     cp /path/to/ubuntu-18.04-server-ppc64el.iso /tmp
 
-#. Mount the iso to ``/mnt/iso/ubuntu14`` on the Management Node.  ::
+#. Mount the iso to ``/mnt/iso/ubuntu`` on the Management Node. ::
 
-     mkdir -p /mnt/iso/ubuntu14
-     mount -o loop /tmp/ubuntu-14.04.3-server-ppc64el.iso /mnt/iso/ubuntu14
+     mkdir -p /mnt/iso/ubuntu
+     mount -o loop /tmp/ubuntu-18.04-server-ppc64el.iso /mnt/iso/ubuntu
 
-#. Create an apt repository file ``/etc/apt.repos.d/ubuntu14-dvd.repo`` that points to the locally mounted iso image from the above step.  The file contents should appear as the following: ::
+#. Create an apt repository file ``/etc/apt.repos.d/ubuntu18-dvd.repo`` that points to the locally mounted iso image from the above step.  The file contents should appear as the following: ::
 
-     [ubuntu-14-dvd-server]
-     name=UBUNTU 14 SERVER packages
-     baseurl=file:///mnt/iso/ubuntu14/Server
+     [ubuntu-dvd-server]
+     name=Ubuntu 18.04 Server packages
+     baseurl=file:///mnt/iso/ubuntu/Server
      enabled=1
      gpgcheck=1
 

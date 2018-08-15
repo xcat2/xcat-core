@@ -14,23 +14,23 @@ xCAT 2.14.x
 |xCAT                             |New OS         |New          |New Feature                       |
 |Version                          |               |Hardware     |                                  |
 +=================================+===============+=============+==================================+
-|| xCAT 2.14.2 2018/7/13          |- ubuntu18.04  |             |                                  |
+|| xCAT 2.14.2 2018/7/13          |- Ubuntu 18.04 |             |                                  |
 ||                                |               |             |                                  |
 | `2.14.2 Release Notes <https:// |               |             |                                  |
 | github.com/xcat2/xcat-core/wiki |               |             |                                  |
 | /XCAT_2.14.2_Release_Notes>`_   |               |             |                                  |
 +---------------------------------+---------------+-------------+----------------------------------+
-|| xCAT 2.14.1                    |- RHV4.2 +     |             |- OpenBMC in python enhance:      |
+|| xCAT 2.14.1                    |- RHV 4.2 +    |             |- OpenBMC in python enhancement:  |
 || 2018/6/1                       |  RHEL7.5 + p8 |             |                                  |
-||                                |               |             |  rinv enhance,issue #5176        |
+||                                |               |             |  rinv enhance, issue #5176       |
 | `2.14.1 Release Notes <https:// |               |             |                                  |
 | github.com/xcat2/xcat-core/wiki |               |             |- Cumulus Switch OS - syncfile    |
 | /XCAT_2.14.1_Release_Notes>`_   |               |             |                                  |
-|                                 |               |             |- Discover process enhance        |
+|                                 |               |             |- Discover process enhancement    |
 |                                 |               |             |                                  |
-|                                 |               |             |- xcatprobe `xcatmn` enhance      |
+|                                 |               |             |- xcatprobe `xcatmn` enhancement  |
 |                                 |               |             |                                  |
-|                                 |               |             |- xcat-inventory enhance(beta)    |
+|                                 |               |             |- xcat-inventory enhancement(beta)|
 |                                 |               |             |                                  |
 |                                 |               |             |- goconserver v0.2.2              |
 +---------------------------------+---------------+-------------+----------------------------------+
@@ -74,7 +74,7 @@ xCAT 2.13.x
 +---------------------------------+---------------+-------------+----------------------------------+
 || xCAT 2.13.9                    |               |             |- OpenBMC support:                |
 || 2017/12/18                     |               |             |                                  |
-||                                |               |             |  rflash -a/-u enhance, add -d    |
+||                                |               |             |  rflash -a/-u enhancement, add -d|
 | `2.13.9 Release Notes <https:// |               |             |                                  |
 | github.com/xcat2/xcat-core/wiki |               |             |  reventlog implementation        |
 | /XCAT_2.13.9_Release_Notes>`_   |               |             |                                  |
@@ -91,7 +91,8 @@ xCAT 2.13.x
 | /XCAT_2.13.8_Release_Notes>`_   |               |             |                                  |
 |                                 |               |             |- The document of MN HA           |
 |                                 |               |             |                                  |
-|                                 |               |             |- nodeset enhance for multi-nodes |
+|                                 |               |             |- nodeset enhancement for         |
+|                                 |               |             |  multi-nodes                     |
 +---------------------------------+---------------+-------------+----------------------------------+
 || xCAT 2.13.7                    |               |             |- OpenBMC support:                |
 || 2017/9/22                      |               |             |                                  |
@@ -99,7 +100,8 @@ xCAT 2.13.x
 | `2.13.7 Release Notes <https:// |               |             |                                  |
 | github.com/xcat2/xcat-core/wiki |               |             |  reventlog to get/clear event log|
 | /XCAT_2.13.7_Release_Notes>`_   |               |             |                                  |
-|                                 |               |             |- xcatprobe clusterstatus enhance |
+|                                 |               |             |- xcatprobe clusterstatus         |
+|                                 |               |             |  enhancement                     |
 |                                 |               |             |                                  |
 |                                 |               |             |- PDU support: discover, config   |
 |                                 |               |             |                                  |
