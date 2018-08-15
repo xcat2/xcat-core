@@ -264,13 +264,13 @@ label:mn_only,db
 cmd:result=`lsdef | grep  auto_test_cec_node_1`; if [[ $result =~ "auto_test_cec_node_1" ]]; then echo $result; noderm auto_test_cec_node_1; fi
 cmd:mkdef -t node -o auto_test_cec_node_1 --template cec-template
 check:rc==1
-check:output=~Error\: (\[.*?\]: )?The attribute \"serial\" must be specified!
+check:output=~Error\: (\[.*?\]: )?The attribute \".+\" must be specified!
 cmd:mkdef -t node -o auto_test_cec_node_1 --template cec-template serial=test
 check:rc==1
-check:output=~Error\: (\[.*?\]: )?The attribute \"mtm\" must be specified!
-cmd:mkdef -t node -o auto_test_cec_node_1 --template cec-template serial=test mtm=test
+check:output=~Error\: (\[.*?\]: )?The attribute \".+\" must be specified!
+cmd:mkdef -t node -o auto_test_cec_node_1 --template cec-template serial=test hcp=test  
 check:rc==1
-check:output=~Error\: (\[.*?\]: )?The attribute \"hcp\" must be specified!
+check:output=~Error\: (\[.*?\]: )?The attribute \".+\" must be specified!
 cmd:mkdef -t node -o auto_test_cec_node_1 --template cec-template serial=test mtm=test hcp=test
 check:rc==0
 check:output=~1 object definitions have been created or modified

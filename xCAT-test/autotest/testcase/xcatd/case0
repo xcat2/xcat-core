@@ -81,8 +81,9 @@ cmd:service xcatd status
 check:output=~xcatd service|xcatd.service
 check:output=~xcatd service is running|active \(running\)
 check:rc==0
-cmd:times=10; while [ $times -gt 0 ]; do service xcatd restart; if [ "$?" -ne "0" ]; then break; fi; ((times--)); done; if [ $times -gt 0 ]; then $?=1; fi
+cmd:service xcatd restart 
 check:rc==0
+cmd:sleep 10
 cmd:service xcatd status
 check:output=~xcatd service|xcatd.service
 check:output=~xcatd service is running|active \(running\)
