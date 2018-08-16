@@ -3417,6 +3417,12 @@ sub getAllNodeAttribs
     $self->{nodelist}->_build_cache([ 'node', 'groups' ]);
     $self->{_use_cache} = 1;
     $self->{nodelist}->{_use_cache} = 1;
+
+    my @hierarchy_attrs = ();
+    my $hierarchy_field = xCAT::TableUtils->get_site_attribute("hierarchicalattrs");
+    if ($hierarchy_field) {
+        @hierarchy_attrs = split(/,/, $hierarchy_field);
+    }
     while (my $data = $query->fetchrow_hashref())
     {
 
@@ -3437,12 +3443,13 @@ sub getAllNodeAttribs
             #}  end SF 3580
 
             #my $localhash = $self->getNodesAttribs(\@nodes,$attribq); #NOTE:  This is stupid, rebuilds the cache for every entry, FIXME
-            my %options;
-            my @hierarchy_attrs = ();
-            my $hierarchy_field = xCAT::TableUtils->get_site_attribute("hierarchicalattrs");
-            if ($hierarchy_field) {
-                @hierarchy_attrs = split(/,/, $hierarchy_field);
-            }
+
+            #my @hierarchy_attrs = ();
+            #my $hierarchy_field = xCAT::TableUtils->get_site_attribute("hierarchicalattrs");
+            #if ($hierarchy_field) {
+            #    @hierarchy_attrs = split(/,/, $hierarchy_field);
+            #}
+            my %options = ();
             $options{hierarchy_attrs} = \@hierarchy_attrs;
             foreach (@nodes)
             {
