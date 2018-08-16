@@ -533,7 +533,7 @@ sub refresh_table {
     my $children = 0;
     my $inputs   = new IO::Select;
     $SIG{CHLD} = sub { while (waitpid(-1, WNOHANG) > 0) { $children-- } };
-    foreach my $entry (keys $self->{switches}) {
+    foreach my $entry (keys %{$self->{switches}}) {
         while ($children > 64) {
             $self->handle_output($inputs);
         }
