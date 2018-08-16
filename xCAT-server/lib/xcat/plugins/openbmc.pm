@@ -734,6 +734,8 @@ my $event_mapping = "";
 #-------------------------------------------------------
 sub preprocess_request {
     my $request = shift;
+    $callback  = shift;
+
     if (defined $request->{_xcat_ignore_flag}->[0] and $request->{_xcat_ignore_flag}->[0] eq 'openbmc') {
         return [];#workaround the bug 3026, to ignore it for openbmc
     }
@@ -770,8 +772,17 @@ sub preprocess_request {
     }
     ##############################################
 
-    $callback  = shift;
     my $command   = $request->{command}->[0];
+    if ($request->{command}->[0] eq "getopenbmccons") {
+        my $nodes = $request->{node};
+        my $check = parse_node_info($nodes);
+        foreach my $node (keys %node_info) {
+            my $donargs = [ $node,$node_info{$node}{bmc},$node_info{$node}{username}, $node_info{$node}{password}];
+            getopenbmccons($donargs, $callback);
+        }
+        return;
+    }
+
     my ($rc, $msg) = xCAT::OPENBMC->run_cmd_in_perl($command, $request->{environment});
     if ($rc == 0) { $request = {}; return;}
     if ($rc < 0) {
@@ -930,21 +941,30 @@ sub process_request {
     my $rst = parse_command_status($command, \@exargs);
     return if ($rst);
 
+    if ($request->{command}->[0] eq "getopenbmccons") {
+        # This may not be run as "getopenbmccons" is handled in preprocess now
+        # Leave the code here in case some codes just call `process_request`
+        foreach my $node (keys %node_info) {
+            my $donargs = [ $node,$node_info{$node}{bmc},$node_info{$node}{username}, $node_info{$node}{password}];
+            getopenbmccons($donargs, $callback);
+        }
+        return;
+    }
+
     if ($::VERBOSE) {
         xCAT::SvrUtils::sendmsg("Running command in Perl", $callback);
     }
-    if ($request->{command}->[0] ne "getopenbmccons") {
-        $cookie_jar = HTTP::Cookies->new({});
-        $async = HTTP::Async->new(
-            slots => 500,
-            cookie_jar => $cookie_jar,
-            timeout => 60,
-            max_request_time => 60,
-            ssl_options => {
-                SSL_verify_mode => 0,
-            },
-        );    
-    }
+
+    $cookie_jar = HTTP::Cookies->new({});
+    $async = HTTP::Async->new(
+        slots => 500,
+        cookie_jar => $cookie_jar,
+        timeout => 60,
+        max_request_time => 60,
+        ssl_options => {
+            SSL_verify_mode => 0,
+        },
+    );
 
     my $login_url;
     my $handle_id;
@@ -953,14 +973,6 @@ sub process_request {
     $wait_node_num = @nodes_login;
     my $child_num;
     my %valid_nodes = ();
-
-    if ($request->{command}->[0] eq "getopenbmccons") {
-        foreach my $node (keys %node_info) {
-            my $donargs = [ $node,$node_info{$node}{bmc},$node_info{$node}{username}, $node_info{$node}{password}];
-            getopenbmccons($donargs, $callback);
-        }
-        return;
-    }
 
     my $max_child_num = 64;
     my $for_num = ($wait_node_num < $max_child_num) ? $wait_node_num : $max_child_num;
@@ -3035,19 +3047,19 @@ sub getopenbmccons {
     my $argr = shift;
 
     #$argr is [$node,$bmcip,$nodeuser,$nodepass];
-    my $callback = shift;
+    my $cb = shift;
 
     my $rsp;
-    my $node=$argr->[0];
-    my $output = "openbmc, getopenbmccoms";
-    xCAT::SvrUtils::sendmsg($output, $callback, $argr->[0], %allerrornodes);
+    #my $node=$argr->[0];
+    #my $output = "openbmc, getopenbmccons";
+    #xCAT::SvrUtils::sendmsg($output, $cb, $argr->[0], %allerrornodes);
 
     $rsp = { node => [ { name => [ $argr->[0] ] } ] };
     $rsp->{node}->[0]->{bmcip}->[0]    = $argr->[1];
     $rsp->{node}->[0]->{username}->[0]    = $argr->[2];
     $rsp->{node}->[0]->{passwd}->[0]  = $argr->[3];
-    $callback->($rsp);
-    return $rsp;
+    $cb->($rsp);
+    #return $rsp;
 }
 
 #-------------------------------------------------------

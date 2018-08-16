@@ -64,7 +64,7 @@ sub getans {
 my $cmdref = {
     command   => ["getopenbmccons"],
     arg       => ["text"],
-    noderange => [ $ARGV[0] ]
+    node => [ $ARGV[0] ]
 };
 acquire_lock();
 # avoid of congestion
