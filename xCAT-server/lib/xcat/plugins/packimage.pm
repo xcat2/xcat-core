@@ -423,13 +423,19 @@ sub process_request {
     if (not $nosyncfiles) {
         # sync fils configured in the synclist to the rootimage
         $syncfile = xCAT::SvrUtils->getsynclistfile(undef, $osver, $arch, $profile, "netboot", $imagename);
-        if ( defined($syncfile) && -f $syncfile && -d $rootimg_dir) {
+        if ( defined($syncfile) && -d $rootimg_dir) {
             my $myenv='';
             if($envars){
                 $myenv.=" XCAT_OSIMAGE_ENV=$envars";
             }
-            print "Syncing files from $syncfile to root image dir: $rootimg_dir\n";
-            system("$myenv $::XCATROOT/bin/xdcp -i $rootimg_dir -F $syncfile");
+            my @filelist = split ',', $syncfile;
+            foreach my $synclistfile (@filelist) {
+                if ( -f $synclistfile) {
+                    print "Syncing files from $synclistfile to root image dir: $rootimg_dir\n";
+                    my $cmd = "$myenv $::XCATROOT/bin/xdcp -i $rootimg_dir -F $synclistfile";
+                    xCAT::Utils->runcmd($cmd, 0, 1);
+                }
+            }
         }
     } else {
         print "Bypass of syncfiles requested, will not sync files to root image directory.\n";
