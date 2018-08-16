@@ -70,6 +70,7 @@ sub rinstall {
     my $OSIMAGE;
     my $STATES;
     my $ignorekernelchk;
+    my $noupdateinitrd;
     my $VERBOSE;
     my $HELP;
     my $VERSION;
@@ -135,6 +136,7 @@ sub rinstall {
         unless (
             GetOptions(
                 'ignorekernelchk' => \$ignorekernelchk,
+                'noupdateinitrd'  => \$noupdateinitrd,
                 'V|verbose'       => \$VERBOSE,
                 'h|help'          => \$HELP,
                 'v|version'       => \$VERSION,
@@ -256,7 +258,10 @@ sub rinstall {
         push @parameter, "osimage=$OSIMAGE";
 
         if ($ignorekernelchk) {
-            push @parameter, " --ignorekernelchk";
+            push @parameter, "--ignorekernelchk";
+        }
+        if ($noupdateinitrd) {
+            push @parameter, "--noupdateinitrd";
         }
     }
     elsif ($STATES) {
@@ -593,7 +598,7 @@ sub usage {
     my $rsp      = {};
     $rsp->{data}->[0] = "Usage:";
     $rsp->{data}->[1] = "   $command <noderange> [boot | shell | runcmd=<command>] [-c|--console] [-u|--uefimode] [-V|--verbose]";
-    $rsp->{data}->[2] = "   $command <noderange> osimage[=<imagename>] [--ignorekernelchk] [-c|--console] [-u|--uefimode] [-V|--verbose]";
+    $rsp->{data}->[2] = "   $command <noderange> osimage[=<imagename>] [--noupdateinitrd] [--ignorekernelchk] [-c|--console] [-u|--uefimode] [-V|--verbose]";
     $rsp->{data}->[3] = "   $command <noderange> runimage=<task>";
     $rsp->{data}->[4] = "   $command [-h|--help|-v|--version]";
     xCAT::MsgUtils->message("I", $rsp, $callback);

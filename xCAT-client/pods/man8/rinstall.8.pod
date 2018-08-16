@@ -6,7 +6,7 @@ B<rinstall> - Begin OS provision on a noderange
 
 B<rinstall> I<noderange> [B<boot> | B<shell> | B<runcmd=>I<command>] [B<-c>|B<--console>] [B<-V>|B<--verbose>]
 
-B<rinstall> I<noderange> B<osimage>[=I<imagename>] [B<--ignorekernelchk>] [B<-c>|B<--console>] [B<-u>|B<--uefimode>] [B<-V>|B<--verbose>]
+B<rinstall> I<noderange> B<osimage>[=I<imagename>] [B<--noupdateinitrd>][B<--ignorekernelchk>] [B<-c>|B<--console>] [B<-u>|B<--uefimode>] [B<-V>|B<--verbose>]
 
 B<rinstall> I<noderange> B<runimage=>I<task>
 
@@ -31,6 +31,9 @@ Instruct network boot loader to be skipped, generally meaning boot to hard disk
 =item B<osimage>[=I<imagename>]
 
 Prepare server for installing a node using the specified OS image. The OS image is defined in the I<osimage> table and I<linuximage> table. If the I<imagename> is omitted, the OS image name will be obtained from I<nodetype.provmethod> for the node.  
+
+=item B<--noupdateinitrd>
+Skip the rebuilding of initrd when the 'netdrivers', 'driverupdatesrc' or 'osupdatename' were set for injecting new drivers to initrd. But, the B<geninitrd> command should be run to rebuild the initrd for new drivers injecting. This is used to improve the performance of B<rinstall> command.
 
 =item B<--ignorekernelchk>
 
