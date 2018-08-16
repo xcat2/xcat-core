@@ -125,11 +125,7 @@ then
 	esac
 fi
 
-# Unset xCAT passed environment variables
-unset MASTER
-unset NTPSERVERS
-
-check_executes chronyd || USE_NTPD="yes"
+check_executes chronyd >/dev/null 2>&1 || USE_NTPD="yes"
 
 if [ -n "${USE_NTPD}" ]
 then
@@ -139,6 +135,10 @@ then
 	exec "${0%/*}/setupntp.traditional"
 	exit 255
 fi
+
+# Unset xCAT passed environment variables
+unset MASTER
+unset NTPSERVERS
 
 check_exec_or_exit cp cat logger
 check_exec_or_exit systemctl timedatectl hwclock
