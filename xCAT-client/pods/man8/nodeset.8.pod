@@ -63,7 +63,7 @@ Prepare server for installing a node using the specified os image. The os image 
 
 =item B<--noupdateinitrd>
 
-Skip the rebuilding of initrd when the 'netdrivers', 'drvierupdatesrc' or 'osupdatename' were set for injecting new drivers to initrd. But, the B<geninitrd> command
+Skip the rebuilding of initrd when the 'netdrivers', 'driverupdatesrc' or 'osupdatename' were set for injecting new drivers to initrd. But, the B<geninitrd> command
 should be run to rebuild the initrd for new drivers injecting. This is used to improve the performance of B<nodeset> command.
 
 =item B<--ignorekernelchk>
