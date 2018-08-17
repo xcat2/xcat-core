@@ -180,7 +180,7 @@ sub geninitrd {
     my $initrdpath;
     my $kernelpath;
     my $tftpdir = "/tftpboot";
-    my @entries = xCAT::TableUtils->get_site_attribute("$tftpdir");
+    my @entries = xCAT::TableUtils->get_site_attribute("tftpdir");
     my $t_entry = $entries[0];
     if (defined($t_entry)) {
         $tftpdir = $t_entry;
