@@ -18,7 +18,7 @@ B<chtab -d> I<keycolname=keyvalue>[,I<keycolname=keyvalue>,...] I<tablename> [I<
 
 The B<chtab> command adds, deletes or updates the attribute values in the specified table.column for the specified I<keyvalue>.  Normally, the given value will completely replace the current attribute value.  But if "+=" is used instead of "=", the specified value will be appended to the comma separated list of attributes, if it is not already there.
 
-The B<chtab> does not pass through xcatd, so it is not controlled by the policy mechanism. 
+The B<chtab> does not pass through xcatd, so it is not controlled by the policy mechanism.
 
 =head1 OPTIONS
 
@@ -35,10 +35,10 @@ B<-d>          Delete option.
 
 =over 2
 
-=item 0. 
+=item 0.
 The command completed successfully.
 
-=item 1. 
+=item 1.
 An error has occurred.
 
 =back
@@ -47,7 +47,7 @@ An error has occurred.
 
 =over 2
 
-=item 1. 
+=item 1.
 To add a node=node1 to the nodelist table with groups=all:
 
  chtab  node=node1 nodelist.groups=all
@@ -58,13 +58,13 @@ To add a keyword (tftpdir) and value (/tftpboot) to the site table:
  chtab  key=tftpdir site.value=/tftpboot
 
 
-=item 3. 
+=item 3.
 To add node1 to the  nodetype table with os=rhel5:
 
  chtab  node=node1 nodetype.os=rhel5
 
 
-=item 4. 
+=item 4.
 To change node1 in nodetype table setting os=sles:
 
  chtab  node=node1 nodetype.os=sles

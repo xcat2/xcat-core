@@ -76,7 +76,7 @@ if (isset($_GET["cmd"])) {
             $opts_array = array($opts);
         }
     }
-    
+
     // Time needed to update /etc/hosts
     if (strncasecmp($cmd, "makehosts", 9) == 0) {
         sleep(5);

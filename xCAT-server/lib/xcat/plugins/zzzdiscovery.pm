@@ -38,7 +38,7 @@ sub process_request {
             #notify the client that its request is been processing
             my $ret=xCAT::NetworkUtils->send_tcp_msg($client_ip,3001,"processed");
             if($ret){
-                xCAT::MsgUtils->message("S", "xcat.discovery.zzzdiscovery: Failed to notify $client_ip that its findme request has been processed"); 
+                xCAT::MsgUtils->message("S", "xcat.discovery.zzzdiscovery: Failed to notify $client_ip that its findme request has been processed");
             }
         }else{
             xCAT::MsgUtils->message("S", "xcat.discovery.zzzdiscovery: ($req->{_xcat_clientmac}->[0]) Successfully discovered the node using $req->{discoverymethod}->[0] discovery method.");

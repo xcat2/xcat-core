@@ -19,7 +19,7 @@ SYNOPSIS
 ********
 
 
-\ **tabedit**\  \ *table*\ 
+\ **tabedit**\  \ *table*\
 
 \ **tabedit**\  [\ **-?**\  | \ **-h**\  | \ **-**\ **-help**\ ]
 
@@ -43,10 +43,10 @@ OPTIONS
 
 
 
-\ **-?|-h|-**\ **-help**\ 
- 
+\ **-?|-h|-**\ **-help**\
+
  Display usage message.
- 
+
 
 
 
@@ -57,11 +57,11 @@ ENVIRONMENT VARIABLES
 
 
 TABEDITOR
- 
+
  The editor that should be used to edit the table, for example:  vi, vim, emacs, oocalc, pico, gnumeric, nano.
  If \ **TABEDITOR**\  is not set, the value from \ **EDITOR**\  will be used.  If \ **EDITOR**\  is not set, it will
  default to vi.
- 
+
 
 
 
@@ -87,13 +87,13 @@ EXAMPLES
 
 
 1. To edit the site table:
- 
- 
+
+
  .. code-block:: perl
- 
+
    tabedit site
- 
- 
+
+
 
 
 

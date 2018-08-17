@@ -40,7 +40,7 @@ there.  If "^=" is used, the specified value will be removed from the attribute'
 if it is there.  You can also use "^=" and ",=" in the same command to essentially replace one item
 in the list with another.  (See the Examples section.)
 
-Additionally, as in nodels, boolean expressions can be used to further limit the scope of nodech from 
+Additionally, as in nodels, boolean expressions can be used to further limit the scope of nodech from
 the given noderange.  The operators supported are the same as nodels (=~, !~, ==, and !=).
 
 With these operators in mind, the unambiguous assignment operator is '=@'.  If you need, for example, to set
@@ -58,22 +58,22 @@ OPTIONS
 
 
 
-\ **-d|-**\ **-delete**\ 
- 
+\ **-d|-**\ **-delete**\
+
  Delete the nodes' row in the specified tables.
- 
 
 
-\ **-v|-**\ **-version**\ 
- 
+
+\ **-v|-**\ **-version**\
+
  Command Version.
- 
 
 
-\ **-?|-h|-**\ **-help**\ 
- 
+
+\ **-?|-h|-**\ **-help**\
+
  Display usage message.
- 
+
 
 
 
@@ -99,53 +99,53 @@ EXAMPLES
 
 
 1. To update nodes in noderange  node1-node4 to be in only group all:
- 
- 
+
+
  .. code-block:: perl
- 
+
    nodech node1-node4 groups=all
- 
- 
+
+
 
 
 2. To put all nodes with nodepos.rack value of 2 into a group called rack2:
- 
- 
+
+
  .. code-block:: perl
- 
+
    nodech all nodepos.rack==2 groups,=rack2
- 
- 
+
+
 
 
 3. To add nodes in noderange  node1-node4 to the nodetype table with os=rhel5:
- 
- 
+
+
  .. code-block:: perl
- 
+
    nodech node1-node4 groups=all,rhel5 nodetype.os=rhel5
- 
- 
+
+
 
 
 4. To add node1-node4 to group1 in addition to the groups they are already in:
- 
- 
+
+
  .. code-block:: perl
- 
+
    nodech node1-node4 groups,=group1
- 
- 
+
+
 
 
 5. To put node1-node4 in group2, instead of group1:
- 
- 
+
+
  .. code-block:: perl
- 
+
    nodech node1-node4 groups^=group1 groups,=group2
- 
- 
+
+
 
 
 

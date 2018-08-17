@@ -3,18 +3,18 @@
 Using Prescript
 ---------------
 
-The prescript table will allow you to run scripts before the install process. This can be helpful for performing advanced actions such as manipulating system services or configurations before beginning to install a node, or to prepare application servers for the addition of new nodes. Check the man page for more information. 
+The prescript table will allow you to run scripts before the install process. This can be helpful for performing advanced actions such as manipulating system services or configurations before beginning to install a node, or to prepare application servers for the addition of new nodes. Check the man page for more information.
 
 ``man prescripts``
 
 The scripts will be run as root on the MASTER for the node. If there is a service node for the node, then the scripts will be run on the service node.
 
-Identify the scripts to be run for each node by adding entries to the prescripts table: :: 
+Identify the scripts to be run for each node by adding entries to the prescripts table: ::
 
    tabedit prescripts
-   Or: 
+   Or:
    chdef -t node -o <noderange> prescripts-begin=<beginscripts> prescripts-end=<endscripts>
-   Or: 
+   Or:
    chdef -t group -o <nodegroup> prescripts-begin=<beginscripts> prescripts-end=<endscripts>
 
    tabdump prescripts
@@ -22,19 +22,19 @@ Identify the scripts to be run for each node by adding entries to the prescripts
 
    begin or prescripts-begin - This attribute lists the scripts to be run at the beginning of the nodeset.
    end or prescripts-end - This attribute lists the scripts to be run at the end of the nodeset.
- 
+
 Format for naming prescripts
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 The general format for the prescripts-begin or prescripts-end attribute is: ::
 
-    [action1:]s1,s2...[|action2:s3,s4,s5...] 
+    [action1:]s1,s2...[|action2:s3,s4,s5...]
 
-    where: 
+    where:
 
-    - action1 and action2 are the nodeset actions ( 'install', 'netboot',etc) specified in the command . 
+    - action1 and action2 are the nodeset actions ( 'install', 'netboot',etc) specified in the command .
 
-    - s1 and s2 are the scripts to run for _action1_ in order. 
+    - s1 and s2 are the scripts to run for _action1_ in order.
 
     - s3, s4, and s5 are the scripts to run for action2.
 
@@ -42,7 +42,7 @@ If actions are omitted, the scripts apply to all actions.
 
 Examples:
 
-    * myscript1,myscript2 - run scripts for all supported commands 
+    * myscript1,myscript2 - run scripts for all supported commands
     * install:myscript1,myscript2|netboot:myscript3
 
 Run scripts 1,2 for nodeset(install), runs script3 for nodeset(netboot).
@@ -54,7 +54,7 @@ The following two environment variables will be passed to each script:
     * NODES - a comma separated list of node names on which to run the script
     * ACTION - current nodeset action.
 
-By default, the script will be invoked once for all nodes. However, if **'#xCAT setting:MAX_INSTANCE=number'** is specified in the script, the script will be invoked for each node in parallel, but no more than number of instances specified in **number** will be invoked at at a time. 
+By default, the script will be invoked once for all nodes. However, if **'#xCAT setting:MAX_INSTANCE=number'** is specified in the script, the script will be invoked for each node in parallel, but no more than number of instances specified in **number** will be invoked at at a time.
 
 Exit values for prescripts
 ~~~~~~~~~~~~~~~~~~~~~~~~~~

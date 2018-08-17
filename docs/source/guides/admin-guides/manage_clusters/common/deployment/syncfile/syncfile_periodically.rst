@@ -6,7 +6,7 @@ If the admins want to run the Syncing File action automatically or periodically,
 For example:
 
 Use the cron daemon to sync files in the **/install/custom/<inst_type>/<distro>/<profile>.<os>.synclist** to the nodegroup 'compute' every 10 minutes by the xdcp command by adding this to crontab. : ::
-      
+
        */10 * * * * root /opt/xcat/bin/xdcp compute -F /install/custom/<inst_type>/<distro>/<profile>.<distro>.synclist
 
 Use the cron daemon to sync files for the nodegroup 'compute' every 10 minutes by updatenode command. ::

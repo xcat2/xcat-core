@@ -21,7 +21,7 @@ where the /tmp/servicenodes contains a host per line: ::
       10.%.%.%
       node2.cluster.net
 
-**While not recommended**, if you wish to manually migrate your xCAT database, see the following documentation: 
+**While not recommended**, if you wish to manually migrate your xCAT database, see the following documentation:
 `Manually set up MySQL <https://sourceforge.net/p/xcat/wiki/Setting_Up_MySQL_as_the_xCAT_DB/#configure-mysql-manually>`_
 
 .. _grante_revoke_mysql_access_label:
@@ -36,7 +36,7 @@ Granting/Revoking access to the database for Service Node Clients
 * Granting access to the xCAT database.  Service Nodes are required for xCAT hierarchical support.  Compute nodes may also need access that depends on which application is going to run. (xcat201 is xcatadmin's password for following examples) ::
 
     MariaDB > GRANT ALL on xcatdb.* TO xcatadmin@<servicenode(s)> IDENTIFIED BY 'xcat201';
- 
+
   Use the wildcards to do a GRANT ALL to every ipaddress or nodename that need to access the database. ::
 
     MariaDB > GRANT ALL on xcatdb.* TO xcatadmin@'%.cluster.net' IDENTIFIED BY 'xcat201';
@@ -50,4 +50,4 @@ Granting/Revoking access to the database for Service Node Clients
 
    MariaDB > SELECT host, user FROM mysql.user;
 
-  
+

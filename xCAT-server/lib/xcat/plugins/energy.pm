@@ -4,7 +4,7 @@
 =head3  xCAT_plugin::energy
 
     This plugin module is used to handle the renergy command for:
-        FSP based Power 8 machine. 
+        FSP based Power 8 machine.
             1. mgt=fsp, mtm=(p8); 2. mgt=ipmi, arch=ppc64le;
 
 =cut
@@ -93,10 +93,10 @@ my %SET_ATTRS = (
         The request hash from preprocess_request or process_request
     RETURN
         First element: rc: 0 -success; 1 - fail
-        Second element: 
-            1. a string: a message for display; 
+        Second element:
+            1. a string: a message for display;
             2. a reference to a hash: {verbose}, {query_list} and {set_pair}.
-            
+
 =cut
 
 sub parse_args {
@@ -505,7 +505,7 @@ sub process_request {
     while (forward_data($callback, $sub_fds)) { }
 }
 
-=head3 send_rep 
+=head3 send_rep
 
     DESCRIPTION:
         Send date from forked child process to parent process.
@@ -523,7 +523,7 @@ sub send_rep {
     store_fd($resp, $parent_fd);
 }
 
-=head3 forward_data 
+=head3 forward_data
 
     DESCRIPTION:
         Receive data from forked child process and call the original $callback to forward data to xcat client
@@ -555,7 +555,7 @@ sub forward_data {
 }
 
 
-=head3 query_pum 
+=head3 query_pum
 
     DESCRIPTION:
         Query the attribute for instance of FipS_PUMService class
@@ -592,7 +592,7 @@ sub query_pum
     return ($ret, $pum, $namepath);
 }
 
-=head3 query_cec_drawer 
+=head3 query_cec_drawer
 
     DESCRIPTION:
         Query the attribute for instance of FipS_CECDrawer class
@@ -698,7 +698,7 @@ sub query_metric
 =head3 query_tmp
     DESCRIPTION:
         Require the input and output temperature
-=cut 
+=cut
 
 sub query_tmp
 {
@@ -708,7 +708,7 @@ sub query_tmp
 =head3 query_cpuspeed
     DESCRIPTION:
         Require the cpuspeed history
-=cut 
+=cut
 
 sub query_cpuspeed
 {
@@ -718,7 +718,7 @@ sub query_cpuspeed
 =head3 query_fanspeed
     DESCRIPTION:
         Require the fanspeed history
-=cut 
+=cut
 
 sub query_fanspeed
 {
@@ -728,7 +728,7 @@ sub query_fanspeed
 =head3 query_powermetric
     DESCRIPTION:
         Require the AC and DC power comsume history
-=cut 
+=cut
 
 sub query_powermetric
 {
@@ -761,15 +761,15 @@ sub query_powermetric
 
     DESCRIPTION:
         Handle the Query and Setting of Energy via CIM
-        
+
     ARGUMENTS:
         $request
         $callback
         $http_params - refer to the HTTP_PARAMS in xCAT::CIMUtils.pm
-        
+
     RETURN
         First element: rc: 0 -success; 1 - cim error; 10 - ip is not pingable; 11 - this ip is a standby fsp
-        
+
 =cut
 
 sub run_cim

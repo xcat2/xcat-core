@@ -77,9 +77,9 @@ sub process_request
 
 =head3  getOSdistroref
 
-  check whether the specified osdistro is referenced 
-  by any osimage. if yes, return the string of 
-  osimage names, return undef otherwise 
+  check whether the specified osdistro is referenced
+  by any osimage. if yes, return the string of
+  osimage names, return undef otherwise
 
 =cut
 
@@ -125,7 +125,7 @@ sub getOSdistroref
 
 =head3  rmosdistro
 
-  remove osdistro,including remove osdistro directory 
+  remove osdistro,including remove osdistro directory
   and entry in osdistro table
 
 =cut

@@ -10,7 +10,7 @@
 #include <unistd.h>
 #include <stdio.h>
 #include <string.h>
-int main(int argc, char* argv[]) { 
+int main(int argc, char* argv[]) {
 	int server;
 	struct addrinfo hints;
 	struct addrinfo *results,*cur;

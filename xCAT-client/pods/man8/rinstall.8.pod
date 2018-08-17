@@ -30,7 +30,7 @@ Instruct network boot loader to be skipped, generally meaning boot to hard disk
 
 =item B<osimage>[=I<imagename>]
 
-Prepare server for installing a node using the specified OS image. The OS image is defined in the I<osimage> table and I<linuximage> table. If the I<imagename> is omitted, the OS image name will be obtained from I<nodetype.provmethod> for the node.  
+Prepare server for installing a node using the specified OS image. The OS image is defined in the I<osimage> table and I<linuximage> table. If the I<imagename> is omitted, the OS image name will be obtained from I<nodetype.provmethod> for the node.
 
 =item B<--noupdateinitrd>
 Skip the rebuilding of initrd when the 'netdrivers', 'driverupdatesrc' or 'osupdatename' were set for injecting new drivers to initrd. But, the B<geninitrd> command should be run to rebuild the initrd for new drivers injecting. This is used to improve the performance of B<rinstall> command.
@@ -41,7 +41,7 @@ Skip the kernel version checking when injecting drivers from osimage.driverupdat
 
 =item B<runimage=>I<task>
 
-If you would like to run a task after deployment, you can define that task with this attribute.    
+If you would like to run a task after deployment, you can define that task with this attribute.
 
 =item B<runcmd=>I<command>
 
@@ -54,19 +54,19 @@ The node will also be able to be sshed into and have utilities such as wget, tft
 
 =item B<-h>|B<--help>
 
-Display usage message. 
+Display usage message.
 
 =item B<-v>|B<--version>
 
-Display version. 
+Display version.
 
 =item B<-u>|B<--uefimode>
 
-For BMC-based servers, to specify the next boot mode to be "UEFI Mode". 
+For BMC-based servers, to specify the next boot mode to be "UEFI Mode".
 
 =item B<-V>|B<--verbose>
 
-Verbose output. 
+Verbose output.
 
 =item B<-c>|B<--console>
 
@@ -99,7 +99,7 @@ Boot node1 into xCAT genesis environment and execute bmcsetup script. This cause
 
  rinstall node1 runcmd=bmcsetup
 
-=back 
+=back
 
 =head1 B<See> B<Also>
 

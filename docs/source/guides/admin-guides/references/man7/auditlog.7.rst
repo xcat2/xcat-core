@@ -19,7 +19,7 @@ SYNOPSIS
 ********
 
 
-\ **auditlog Attributes:**\   \ *args*\ , \ *audittime*\ , \ *clientname*\ , \ *clienttype*\ , \ *command*\ , \ *comments*\ , \ *disable*\ , \ *noderange*\ , \ *recid*\ , \ *status*\ , \ *userid*\ 
+\ **auditlog Attributes:**\   \ *args*\ , \ *audittime*\ , \ *clientname*\ , \ *clienttype*\ , \ *command*\ , \ *comments*\ , \ *disable*\ , \ *noderange*\ , \ *recid*\ , \ *status*\ , \ *userid*\
 
 
 ***********
@@ -40,69 +40,69 @@ auditlog Attributes:
 
 
 \ **args**\  (auditlog.args)
- 
+
  The command argument list.
- 
+
 
 
 \ **audittime**\  (auditlog.audittime)
- 
+
  The timestamp for the audit entry.
- 
+
 
 
 \ **clientname**\  (auditlog.clientname)
- 
+
  The client machine, where the command originated.
- 
+
 
 
 \ **clienttype**\  (auditlog.clienttype)
- 
+
  Type of command: cli, java, webui, other.
- 
+
 
 
 \ **command**\  (auditlog.command)
- 
+
  Command executed. See auditskipcmds site table attribute to control which commands get logged.
- 
+
 
 
 \ **comments**\  (auditlog.comments)
- 
+
  Any user-provided notes.
- 
+
 
 
 \ **disable**\  (auditlog.disable)
- 
+
  Do not use.  tabprune will not work if set to yes or 1
- 
+
 
 
 \ **noderange**\  (auditlog.noderange)
- 
+
  The noderange on which the command was run.
- 
+
 
 
 \ **recid**\  (auditlog.recid)
- 
+
  The record id.
- 
+
 
 
 \ **status**\  (auditlog.status)
- 
+
  Allowed or Denied.
- 
+
 
 
 \ **userid**\  (auditlog.userid)
- 
+
  The user running the command.
- 
+
 
 
 
@@ -111,5 +111,5 @@ SEE ALSO
 ********
 
 
-\ **mkdef(1)**\ , \ **chdef(1)**\ , \ **lsdef(1)**\ , \ **rmdef(1)**\ 
+\ **mkdef(1)**\ , \ **chdef(1)**\ , \ **lsdef(1)**\ , \ **rmdef(1)**\
 

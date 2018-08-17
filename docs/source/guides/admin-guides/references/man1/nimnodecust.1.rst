@@ -19,9 +19,9 @@ SYNOPSIS
 ********
 
 
-\ **nimnodecust [-h|-**\ **-help ]**\ 
+\ **nimnodecust [-h|-**\ **-help ]**\
 
-\ **nimnodecust [-V] -s**\  \ *lpp_source_name*\  [\ **-p**\  \ *packages*\ ] [\ **-b**\  \ *installp_bundles*\ ] \ *noderange [attr=val [attr=val ...]]*\ 
+\ **nimnodecust [-V] -s**\  \ *lpp_source_name*\  [\ **-p**\  \ *packages*\ ] [\ **-b**\  \ *installp_bundles*\ ] \ *noderange [attr=val [attr=val ...]]*\
 
 
 ***********
@@ -43,7 +43,7 @@ A bundle file contains a list of package names.  The RPMs must have a prefix of 
   # RPM
   R:expect-5.42.1-3.aix5.1.ppc.rpm
   R:ping-2.4b2_to-1.aix5.3.ppc.rpm
- 
+
   #installp
   I:openssh.base
   I:openssh.license
@@ -68,41 +68,41 @@ OPTIONS
 
 
 
-\ *attr=val [attr=val ...]*\ 
- 
+\ *attr=val [attr=val ...]*\
+
  Specifies one or more "attribute equals value" pairs, separated by spaces. Attr=val pairs must be specified last on the command line. These are used to specify
  additional values that can be passed to the underlying NIM commands, ("nim -o cust..."). See the NIM documentation for valid "nim" command line options.
- 
 
 
-\ **-b**\  \ *installp_bundle_names*\ 
- 
+
+\ **-b**\  \ *installp_bundle_names*\
+
  A comma separated list of NIM installp_bundle names.
- 
 
 
-\ **-h |-**\ **-help**\ 
- 
+
+\ **-h |-**\ **-help**\
+
  Display usage message.
- 
 
 
-\ **-p**\  \ *package_names*\ 
- 
+
+\ **-p**\  \ *package_names*\
+
  A comma-separated list of software packages to install.  Packages may be RPM or installp.
- 
 
 
-\ *noderange*\ 
- 
+
+\ *noderange*\
+
  A set of comma delimited node names and/or group names. See the "noderange" man page for details on additional supported formats.
- 
 
 
-\ **-V |-**\ **-verbose**\ 
- 
+
+\ **-V |-**\ **-verbose**\
+
  Verbose mode.
- 
+
 
 
 

@@ -71,7 +71,7 @@ sub setoid {
 #---------------------------------------------------------
 
 =head3  getsnmpsession
-   It gets an snmp session appropriate for a switch using the switches table 
+   It gets an snmp session appropriate for a switch using the switches table
    for guidance on the hows.
    Arguments: vlan=> $vid if needed for community string indexing (optional)
 =cut
@@ -181,7 +181,7 @@ sub getsnmpsession {
 
 #--------------------------------------------------------------
 
-=head3 get_vlan_ids    
+=head3 get_vlan_ids
 
   It gets the existing vlan IDs for the switch.
   Returns:  an array containing all the vlan ids for the switch
@@ -203,7 +203,7 @@ sub get_vlan_ids {
 
 #--------------------------------------------------------------
 
-=head3 get_vlanids_for_ports   
+=head3 get_vlanids_for_ports
     It returns a hash pointer that contains the vlan id for each given port.
 =cut
 
@@ -226,7 +226,7 @@ sub get_vlanids_for_ports {
 
 #--------------------------------------------------------------
 
-=head3 create_vlan   
+=head3 create_vlan
     Creates a new vlan on the switch
     Returns an array. (erorcode, errormsg). When errorcode=0, means no error.
 =cut
@@ -255,7 +255,7 @@ sub create_vlan {
 
 #--------------------------------------------------------------
 
-=head3 add_ports_to_vlan   
+=head3 add_ports_to_vlan
     Adds the given ports to the existing vlan
     Returns an array. (erorcode, errormsg). When errorcode=0, means no error.
 =cut
@@ -310,7 +310,7 @@ sub add_crossover_ports_to_vlan {
 
 #--------------------------------------------------------------
 
-=head3 remove_vlan   
+=head3 remove_vlan
     Remove a vlan from the switch
     Returns an array. (erorcode, errormsg). When errorcode=0, means no error.
 =cut
@@ -334,7 +334,7 @@ sub remove_vlan {
 
 #--------------------------------------------------------------
 
-=head3 remove_ports_from_vlan  
+=head3 remove_ports_from_vlan
     Remove ports from a vlan
     Returns an array. (erorcode, errormsg). When errorcode=0, means no error.
 =cut

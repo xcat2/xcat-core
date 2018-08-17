@@ -29,7 +29,7 @@ $::VERBOSE        = 0;
 
 sub handled_commands {
     return {
-        nodeset => 'nodehm:mgt=switch',    
+        nodeset => 'nodehm:mgt=switch',
         copydata => 'onie',
         rspconfig => 'switches:switchtype',
       }
@@ -112,7 +112,7 @@ sub process_request {
 
 }
 
-# build cumulus OS image 
+# build cumulus OS image
 sub copydata {
     my $request  = shift;
     my $callback = shift;
@@ -120,7 +120,7 @@ sub copydata {
     my $inspection   = undef;
     my $noosimage    = undef;
     my $nooverwrite = undef;
-    
+
     # get arguments
     my $args = $request->{arg};
     if ($args) {
@@ -238,7 +238,7 @@ sub copydata {
 }
 
 
-# run the nodeset to updatenode provmethod 
+# run the nodeset to updatenode provmethod
 sub nodeset {
     my $request  = shift;
     my $callback = shift;
@@ -246,7 +246,7 @@ sub nodeset {
 
     my $switches = $request->{'node'};
     my $args  = $request->{arg};
-    my $provmethod; 
+    my $provmethod;
     my $image_pkgdir;
 
     my $setosimg;
@@ -272,7 +272,7 @@ sub nodeset {
         if ($setosimg) {
             $provmethod = $setosimg;
         } else {
-            $provmethod = $nodehash->{$switch}->[0]->{provmethod}; 
+            $provmethod = $nodehash->{$switch}->[0]->{provmethod};
         }
         if ($::VERBOSE) {
             xCAT::MsgUtils->message("I", { data => ["$switch has provmethod=$provmethod"] }, $callback);
@@ -285,15 +285,15 @@ sub nodeset {
         my $osimghash = $osimagetab->getAttribs({ imagename => $provmethod },'osvers','osarch');
         unless($imagetab and $osimghash){
             xCAT::MsgUtils->message("E", { error => ["cannot find osimage \"$provmethod\" for $switch, please make sure the osimage specified in command line or node.provmethod exists!"], errorcode => ["1"] }, $callback);
-            next;            
+            next;
         }
 
 
         my %attribs=('provmethod' => $provmethod,'os'=>$osimghash->{'osvers'},'arch'=>$osimghash->{'osarch'} );
         $nodetab->setAttribs({ 'node' => $switch }, \%attribs);
         $image_pkgdir = $imagetab->{'pkgdir'};
-       
-        #validate the image pkgdir 
+
+        #validate the image pkgdir
         my $flag=0;
         if (-r $image_pkgdir) {
             my @filestat = `file $image_pkgdir`;

@@ -4,9 +4,9 @@
 
 #-------------------------------------------------------------------------------
 #=head1  install_puppet_client
-#=head2  This command installs the puppet client on a xCAT node. It is used as 
-# a postscript on Ubuntu only. 
-#    usage:  
+#=head2  This command installs the puppet client on a xCAT node. It is used as
+# a postscript on Ubuntu only.
+#    usage:
 #      1. use $PUPPETSERVER or $MASTER as the puppet server
 #            updatenode <noderange> -P "install_puppet_client"
 #      2. explicitly specify the puppet server
@@ -42,7 +42,7 @@ if [ "$os" == "Ubuntu" ]; then
     #check if the current node is also a puppet master
     ismaster=0
     if [ -f /etc/puppet/fileserver.conf ]; then
-	ismaster=1 
+	ismaster=1
     fi
 
     #clean the all the configuration files if it is not a master
@@ -50,43 +50,43 @@ if [ "$os" == "Ubuntu" ]; then
 	rm -Rf /etc/puppet/*
 	rm -Rf /var/lib/puppet/*
     fi
-       
+
     echo "Adding new repositories....."
     #get os release name
     urelease="precise" #default release name
     urelease=`cat /etc/lsb-release |grep DISTRIB_CODENAME |cut -d= -f2`
-    
+
     #add ubuntu repositories from the net.
-    #We use us mirror, what about for the customers of other contires? 
+    #We use us mirror, what about for the customers of other contires?
     echo "deb http://us.archive.ubuntu.com/ubuntu/ $urelease main" > /etc/apt/sources.list.d/os_remote.list
     echo "deb http://us.archive.ubuntu.com/ubuntu/ ${urelease}-updates main" >> /etc/apt/sources.list.d/os_remote.list
     echo "deb http://us.archive.ubuntu.com/ubuntu/ $urelease universe" >> /etc/apt/sources.list.d/os_remote.list
     echo "deb http://us.archive.ubuntu.com/ubuntu/ ${urelease}-updates universe" >> /etc/apt/sources.list.d/os_remote.list
-    
-    #add the puppet lab repositories 
+
+    #add the puppet lab repositories
     repname=puppetlabs-release-${urelease}.deb
     wget -N --waitretry=10 --random-wait -T 60  http://apt.puppetlabs.com/$repname   -P /tmp 2>> /tmp/wget.log
     rc=$?
     if [ $rc -eq 0 ] && [ -f /tmp/$repname ]; then
 	dpkg -i /tmp/$repname
 	apt-get update
-    else 
+    else
 	echo "Cannot download  http://apt.puppetlabs.com/$repname"
 	exit 1
     fi
-    rm /tmp/$repname 
-    
+    rm /tmp/$repname
+
     #refresh the repository
     apt-get -y update
 
     echo "Installing puppet client....."
     #install puppet client
     apt-get -y install puppet
-    
+
     #configure the puppet agent configuration files
     result=`dirname $0`
-    ${result}/config_puppet_client "$@" 
-    
+    ${result}/config_puppet_client "$@"
+
     #puppet agent -t --waitforcert 60&
 
 elif [ "$os" == "RedHat" ]; then

@@ -2,15 +2,15 @@
 # IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
 
 #-------------------------------------------------------------------------------
-#=head1  syslog 
+#=head1  syslog
 #=head2  syslog command that setsup the syslogd for MS, SV and nodes.
 #        On MS, it makes sure all the xCAT messages goes to /var/log/messages file,
-#               it enables syslogd receving logs from remote machies. 
+#               it enables syslogd receving logs from remote machies.
 #        On MS, it sends all the messages to MS,
-#               it enables syslogd receving logs from remote nodes. 
-#        On node,  it sends all the messages its master.  
-#        Input: none, it takes the following environment variables: 
-#           OSVER: possible values are sles10, fedora8, redhat5, aix etc.   
+#               it enables syslogd receving logs from remote nodes.
+#        On node,  it sends all the messages its master.
+#        Input: none, it takes the following environment variables:
+#           OSVER: possible values are sles10, fedora8, redhat5, aix etc.
 #=cut
 #-------------------------------------------------------------------------------
 if [ "$SYSLOG" = "ignore" ]; then
@@ -82,8 +82,8 @@ config_Rsyslog_C3()
   isReceiving=0
   isLocal=$1
 
-  if [ -f /etc/xCATMN ] ||  [ $isSN -eq 1 ] 
-  then 
+  if [ -f /etc/xCATMN ] ||  [ $isSN -eq 1 ]
+  then
     isReceiving=1
   fi
 
@@ -109,9 +109,9 @@ config_Rsyslog_C3()
   #enable to receive remote logging
   if [ $isReceiving -eq 1 ]; then
       #listen on the udp and tcp port to receive the remote logs
-      sed -i 's/^\#\(\s\)*\$ModLoad\(\s\)*imudp/\$ModLoad imudp/ 
-                     s/^\#\(\s\)*\$UDPServerRun/\$UDPServerRun/; 
-                     s/#\$ModLoad imtcp/\$ModLoad imtcp/; 
+      sed -i 's/^\#\(\s\)*\$ModLoad\(\s\)*imudp/\$ModLoad imudp/
+                     s/^\#\(\s\)*\$UDPServerRun/\$UDPServerRun/;
+                     s/#\$ModLoad imtcp/\$ModLoad imtcp/;
                      s/#\$InputTCPServerRun 514/\$InputTCPServerRun 514/' $2
   fi
 
@@ -124,15 +124,15 @@ config_Rsyslog_C3()
         chown syslog:adm /var/log/xcat
       fi
   else
-      sed -i 's/^\(\*\..*\)/\#\1/; 
+      sed -i 's/^\(\*\..*\)/\#\1/;
                      s/^\(news\|local7\|mail\|authpriv\|cron\|kern\)\./\#\1\./' $2
       echo "*.* @$master" >> $2
-  fi 
+  fi
   # Mark the end of xCAT section
   echo "# $xCATSettingsEND" >> $2
 }
 
-# This sets up rsyslog 8.x, different from the previous rsyslog versions.  
+# This sets up rsyslog 8.x, different from the previous rsyslog versions.
 # Instead of updating /etc/rsyslog.conf  for forwarding to a remote host,
 # You update /etc/rsyslog.d/remote.conf.  The /etc/sysconfig/rsyslog file does not exist.
 # This is only for Linux, since AIX does not use rsyslog.  It ships its own syslog in an lpp,
@@ -140,7 +140,7 @@ config_Rsyslog_C3()
 
 config_rsyslog_V8()
 {
-  
+
   goLocal=0;
   conf_file="/etc/rsyslog.conf"
   remoteconf="/etc/rsyslog.d/remote.conf"
@@ -154,7 +154,7 @@ config_rsyslog_V8()
   # compute nodes. Management Node is receiving from Service Nodes and possibly compute nodes.
   # They will all be put in /var/log/messages
   # For the service node, if site table svloglocal  is set then we will keep the logs on the servicenode
-  # and not forward to the Management Node. 
+  # and not forward to the Management Node.
 
   #now handling where the logs go, if goLocal=1 then log local, if not forward to MN
   if [ -f /etc/xCATMN ]; then
@@ -163,7 +163,7 @@ config_rsyslog_V8()
     # check to see if service node should forward of keep logs
     if [ $isSN -eq 1 ]; then
        if [ -n "$SVLOGLOCAL" ] && [ $SVLOGLOCAL -eq 1 ]; then
-         goLocal=1  
+         goLocal=1
        fi
     fi
   fi
@@ -211,16 +211,16 @@ config_rsyslog_V8()
     # Need to uncomment the lines $ModLoad imudp.so and $UDPServerRun 514,
     # to make the MN be able to receive syslog from remote hosts
     if [ -f "$remoteconf" ]; then
-        ##listen on tcp and udp port to enable receiving the xcat debug logs 
+        ##listen on tcp and udp port to enable receiving the xcat debug logs
         ##forwarded  via tcp/udp protocol
-        sed -i 's/#\$ModLoad imudp.so/\$ModLoad imudp.so/; 
-                       s/#\$UDPServerRun 514/\$UDPServerRun 514/; 
-                       s/#\$ModLoad imtcp.so/\$ModLoad imtcp.so/; 
+        sed -i 's/#\$ModLoad imudp.so/\$ModLoad imudp.so/;
+                       s/#\$UDPServerRun 514/\$UDPServerRun 514/;
+                       s/#\$ModLoad imtcp.so/\$ModLoad imtcp.so/;
                        s/#\$InputTCPServerRun <port>/\$InputTCPServerRun 514/' $remoteconf
     fi
 
 
-    ##listen on tcp and udp port to enable receiving the xcat debug logs 
+    ##listen on tcp and udp port to enable receiving the xcat debug logs
     ##forwarded  via tcp/udp protocol
     if [ -f "$conf_file" ]; then
         #rhels7.4 ships rsyslogd 8.24.0, which does not ship remote.conf
@@ -235,10 +235,10 @@ config_rsyslog_V8()
                 s/#module(load="imtcp")/module(load="imtcp")/;
                 s/#input(type="imtcp" port="514")/input(type="imtcp" port="514")/' $conf_file
     fi
-    
+
     if [ $isSN -eq 1 ] ; then
         [ -d "/etc/xcat/rsyslog.conf" ] && cp -a /etc/xcat/rsyslog.conf/* /etc/rsyslog.d/
-        if [ -d "/etc/xcat/logrotate.conf" ];then 
+        if [ -d "/etc/xcat/logrotate.conf" ];then
             mkdir -p "/etc/logrotate.d/"
             cp -a /etc/xcat/logrotate.conf/* /etc/logrotate.d/
         fi
@@ -254,10 +254,10 @@ config_rsyslog_V8()
     fi
 
     if [ $isSN -eq 1 ];then
-        ##listen on tcp and udp port to enable receiving the xcat debug logs 
+        ##listen on tcp and udp port to enable receiving the xcat debug logs
         ##forwarded  via tcp/udp protocol
         [ -f "$remoteconf" ] && sed -i '/#\$ModLoad \+imudp\|imtcp\|imudp.so\|imtcp.so/s/^#//;
-                       /#\$InputTCPServerRun\|UDPServerRun.*/s/^#//' $remoteconf 
+                       /#\$InputTCPServerRun\|UDPServerRun.*/s/^#//' $remoteconf
 
         [ -f "$conf_file" ] && sed -i '/#\$ModLoad \+imudp\|imtcp\|imudp.so\|imtcp.so/s/^#//;
                        /#\$InputTCPServerRun\|UDPServerRun.*/s/^#//' $conf_file
@@ -267,7 +267,7 @@ config_rsyslog_V8()
         [ -f "/etc/rsyslog.d/xcat-debug.conf" ] && rm -f "/etc/rsyslog.d/xcat-debug.conf" ;
 
         [ -f "/etc/logrotate.d/xcat" ] && rm -f "/etc/logrotate.d/xcat"
-        
+
     fi
 
 
@@ -285,7 +285,7 @@ config_rsyslog_V8()
 
 #echo "NTYPE=$NTYPE,OSVER=$OSVER,OSTYPE=$OSTYPE"
 
-if [ "$NTYPE" = service ]; then 
+if [ "$NTYPE" = service ]; then
   isSN=1
 fi
 
@@ -301,7 +301,7 @@ if [ -e "/sbin/rsyslogd" -o -e "/usr/sbin/rsyslogd" ]; then
     SYSLOGPROD=`rsyslogd -v | grep rsyslogd |awk {'print $1'}`
     SYSLOGVER=`rsyslogd -v | grep rsyslogd |awk {'print $2'}`
     if ( pmatch $SYSLOGPROD "*rsyslogd*" ) && ( pmatch $SYSLOGVER "8*" ); then
-      config_rsyslog_V8 
+      config_rsyslog_V8
       #keep a record
       logger -t xcat -p local4.info "Install: rsyslog version 8 setup"
       exit 0
@@ -322,7 +322,7 @@ if [ "$(uname -s)" = "Linux" ]; then
         sysconfig="/etc/default/rsyslog"
       fi
     fi
-  else 
+  else
     if ( pmatch $OSVER "sles*" ) || ( pmatch $OSVER "suse*" ) || [ -f /etc/SuSE-release ]; then
       #find out which syslog is used for SLES, syslog or syslog-ng
       result=`grep "^SYSLOG_DAEMON=" $sysconfig 2>&1`
@@ -331,7 +331,7 @@ if [ "$(uname -s)" = "Linux" ]; then
         ng=1
       fi
     fi
-  fi 
+  fi
 else
   sysconfig=  #AIX does not have this file
   isLinux=0;
@@ -342,8 +342,8 @@ fi
 
 
 
-#handle sysconfig file to make remote logging possible 
-if [ $isLinux -eq 1 ] && [ -e $sysconfig ]; then 
+#handle sysconfig file to make remote logging possible
+if [ $isLinux -eq 1 ] && [ -e $sysconfig ]; then
   if [ ! -f "$sysconfig.XCATORIG" ]; then
     cp -f $sysconfig $sysconfig.XCATORIG
   fi
@@ -355,16 +355,16 @@ if [ $isLinux -eq 1 ] && [ -e $sysconfig ]; then
       isC3=1
     fi
   fi
-  
+
   #no need to change anything for rsyslog version 3 for /etc/sysconf/rsyslog
-  if [ $isC3 -eq 0 ]; then 
+  if [ $isC3 -eq 0 ]; then
     if [ -f /etc/xCATMN ]; then
-      #on MN: make the syslogd be able to receive remote logs 
-      awk  '{if ($0 ~ /^SYSLOGD_OPTIONS=|^SYSLOGD_PARAMS=/) { 
+      #on MN: make the syslogd be able to receive remote logs
+      awk  '{if ($0 ~ /^SYSLOGD_OPTIONS=|^SYSLOGD_PARAMS=/) {
             if ($0 !~ /-r/) {sub(/-/, "-r -", $0)}
             if (($0 !~ /-m0/) && ($0 !~/-m 0/)) { sub(/-/, "-m 0 -", $0)}
             print $0}
-          else { print $0}}'  $sysconfig > $sysconfig.tmp 
+          else { print $0}}'  $sysconfig > $sysconfig.tmp
     else
       if [ $isSN -eq 1 ]; then
         #on SN: make the syslog be able to receive and forward remote logs
@@ -373,18 +373,18 @@ if [ $isLinux -eq 1 ] && [ -e $sysconfig ]; then
               if ($0 !~ /-h/) {sub(/-/, "-h -", $0)}
               if (($0 !~ /-m0/) && ($0 !~/-m 0/)) { sub(/-/, "-m 0 -", $0)}
               print $0}
-            else { print $0}}'  $sysconfig > $sysconfig.tmp 
+            else { print $0}}'  $sysconfig > $sysconfig.tmp
       else
-        ##turn off the time marker on all 
+        ##turn off the time marker on all
         awk '{if($0 ~ /^SYSLOGD_OPTIONS=|^SYSLOGD_PARAMS=/) {
               if (($0 !~ /-m0/) && ($0 !~/-m 0/)) { sub(/-/, "-m 0 -", $0)}
               print $0}
-            else {print $0}}' $sysconfig > $sysconfig.tmp 
+            else {print $0}}' $sysconfig > $sysconfig.tmp
       fi
     fi
-    mv -f $sysconfig.tmp $sysconfig   
+    mv -f $sysconfig.tmp $sysconfig
   fi
-fi  
+fi
 
 
 #syslog-ng has different way of enabling log forwarding
@@ -403,20 +403,20 @@ fi
 goLocal=0;
 if [ -f /etc/xCATMN ]; then
   goLocal=1
-else 
+else
   if [ $isSN -eq 1 ]; then
      if [ -n "$SVLOGLOCAL" ] && [ $SVLOGLOCAL -eq 1 ]; then
-       goLocal=1  
+       goLocal=1
      fi
   fi
 fi
 
-if [ $isC3 -eq 1 ]; then 
+if [ $isC3 -eq 1 ]; then
   config_Rsyslog_C3 $goLocal $conf_file
 else
   if [ $goLocal -eq 1 ]; then
     #making sure all the messages goes to /var/log/messages
-    touch  /var/log/messages 
+    touch  /var/log/messages
     if ( pmatch $OSVER "ubuntu*" ) || ( is_lsb_ubuntu ) || ( pmatch $OSVER "debian*" ); then
       chown --reference=/var/log /var/log/messages
       chown --reference=/var/log /var/log/xcat
@@ -437,13 +437,13 @@ else
       fi
     else
        #enable the settings that will log to local files in syslog-ng
-       sed -i '/destination messages/s/^#*//; 
-                      /destination(messages)/s/^#*//; 
-                      /destination warn/s/^#*//; 
+       sed -i '/destination messages/s/^#*//;
+                      /destination(messages)/s/^#*//;
+                      /destination warn/s/^#*//;
                       /destination(warn)/s/^#*//'  $conf_file
     fi
-    
-    #Ubuntu doesn't have sysconfig 
+
+    #Ubuntu doesn't have sysconfig
     # so configuring the MN to receive UDP connections here.
     if ( pmatch $OSVER "ubuntu*" ) || ( is_lsb_ubuntu ) || ( pmatch $OSVER "debian*" ); then
       egrep \('^\$UDPServerRun 514'\|'^\$ModLoad imudp'\) $conf_file > /dev/null 2>&1;
@@ -451,8 +451,8 @@ else
         echo "\$ModLoad imudp" >> $conf_file;
         echo "\$UDPServerRun 514" >> $conf_file;
       fi
-    fi 
-  else 
+    fi
+  else
     #now make the syslogd fowarding the messages to the the master
     if [ $ng -eq 1 ]; then
       if [ ! -f $conf_file.XCATORIG ]; then
@@ -465,16 +465,16 @@ else
       echo "# xCAT settings" >> $conf_file
       echo "destination loghost { udp(\"$master\"); };" >> $conf_file
       echo 'log { source(src); destination(loghost); };' >> $conf_file
- 
+
       # remove the settings that will log to local files
-      sed -i '/destination messages/s/^/#/; 
-                     /destination(messages)/s/^/#/; 
-                     /destination warn/s/^/#/; 
+      sed -i '/destination messages/s/^/#/;
+                     /destination(messages)/s/^/#/;
+                     /destination warn/s/^/#/;
                      /destination(warn)/s/^/#/;' $conf_file
-    else 
-      if [ -f $conf_file.XCATORIG ]; then 
-        rm -f $conf_file 
-      else 
+    else
+      if [ -f $conf_file.XCATORIG ]; then
+        rm -f $conf_file
+      else
         mv -f $conf_file $conf_file.XCATORIG
       fi
       echo "# xCAT settings" > $conf_file
@@ -486,7 +486,7 @@ else
           echo "*.* @$master" >> $conf_file
         else
           echo "*.* @$master" >> $conf_file
-        fi 
+        fi
       fi
     fi
   fi
@@ -499,7 +499,7 @@ if [ $isLinux -eq 0 ]; then
   if [ -n "$state" ] && [ "$state" = "active" ]; then
      stopsrc -s syslogd
   fi
-     
+
   #wait for syslogd to fully started
   RETRY_LIMIT=30          # number of 2 second retry intervals (60 second total)
   i=$RETRY_LIMIT
@@ -518,8 +518,8 @@ if [ $isLinux -eq 0 ]; then
       fi
   done
 else
-  #if [ $systemdEnabled -eq 1 ]; then 
-  #  systemctl restart $init.service 
+  #if [ $systemdEnabled -eq 1 ]; then
+  #  systemctl restart $init.service
   #else
   #  $init restart
   #fi

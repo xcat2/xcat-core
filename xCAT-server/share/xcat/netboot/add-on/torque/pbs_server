@@ -25,7 +25,7 @@ PBS_HOME=/var/spool/torque
 
 # let see how we were called
 case "$1" in
-	start) 
+	start)
 		echo -n "Starting PBS Server: "
 		if [ -r $PBS_HOME/server_priv/serverdb ]
 		then

@@ -8,7 +8,7 @@ Internet Repository
 
 **[xcat-core]**
 
-From the xCAT download page, find the build you want to install and add to ``/etc/apt/sources.list``. 
+From the xCAT download page, find the build you want to install and add to ``/etc/apt/sources.list``.
 
 To configure the xCAT development build, add the following line to ``/etc/apt/sources.list``: ::
 

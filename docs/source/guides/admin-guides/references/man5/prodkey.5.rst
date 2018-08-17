@@ -19,7 +19,7 @@ SYNOPSIS
 ********
 
 
-\ **prodkey Attributes:**\   \ *node*\ , \ *product*\ , \ *key*\ , \ *comments*\ , \ *disable*\ 
+\ **prodkey Attributes:**\   \ *node*\ , \ *product*\ , \ *key*\ , \ *comments*\ , \ *disable*\
 
 
 ***********
@@ -36,34 +36,34 @@ prodkey Attributes:
 
 
 
-\ **node**\ 
- 
+\ **node**\
+
  The node name or group name.
- 
 
 
-\ **product**\ 
- 
+
+\ **product**\
+
  A string to identify the product (for OSes, the osname would be used, i.e. wink28
- 
 
 
-\ **key**\ 
- 
+
+\ **key**\
+
  The product key relevant to the aforementioned node/group and product combination
- 
 
 
-\ **comments**\ 
- 
+
+\ **comments**\
+
  Any user-written notes.
- 
 
 
-\ **disable**\ 
- 
+
+\ **disable**\
+
  Set to 'yes' or '1' to comment out this row.
- 
+
 
 
 
@@ -72,5 +72,5 @@ SEE ALSO
 ********
 
 
-\ **nodels(1)**\ , \ **chtab(8)**\ , \ **tabdump(8)**\ , \ **tabedit(8)**\ 
+\ **nodels(1)**\ , \ **chtab(8)**\ , \ **tabdump(8)**\ , \ **tabedit(8)**\
 

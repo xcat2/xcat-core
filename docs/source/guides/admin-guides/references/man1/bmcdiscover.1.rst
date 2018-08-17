@@ -23,7 +23,7 @@ SYNOPSIS
 
 \ **bmcdiscover**\  [\ **-v | -**\ **-version**\ ]
 
-\ **bmcdiscover**\  [\ **-**\ **-sn**\  \ *SN_nodename*\ ] [\ **-s**\  \ *scan_method*\ ] [\ **-u**\  \ *bmc_user*\ ] [\ **-p**\  \ *bmc_passwd*\ ] [\ **-z**\ ] [\ **-w**\ ] \ **-**\ **-range**\  \ *ip_ranges*\ 
+\ **bmcdiscover**\  [\ **-**\ **-sn**\  \ *SN_nodename*\ ] [\ **-s**\  \ *scan_method*\ ] [\ **-u**\  \ *bmc_user*\ ] [\ **-p**\  \ *bmc_passwd*\ ] [\ **-z**\ ] [\ **-w**\ ] \ **-**\ **-range**\  \ *ip_ranges*\
 
 
 ***********
@@ -46,64 +46,64 @@ OPTIONS
 
 
 
-\ **-**\ **-range**\ 
- 
+\ **-**\ **-range**\
+
  Specify one or more IP ranges acceptable to nmap.  IP range can be hostnames, IP addresses, networks, etc.  A single IP address (10.1.2.3), several IPs with commas (10.1.2.3,10.1.2.10), Ip range with "-" (10.1.2.0-100) or an IP range (10.1.2.0/24) can be specified.  If the range is very large, the \ **bmcdiscover**\  command may take a long time to return.
- 
 
 
-\ **-**\ **-sn**\ 
- 
+
+\ **-**\ **-sn**\
+
  Specify one or more service nodes on which bmcdiscover will run. In hierarchical cluster, the MN may not be able to access the BMC of CN directly, but SN can. With this option, bmcdiscover will be dispatched to the specified SNs. Then, the nodename of the service node that 'bmcdiscover' is running on will be set to the 'servicenode' attribute of the discovered BMC node.
- 
 
 
-\ **-s**\ 
- 
+
+\ **-s**\
+
  Scan method  (The only supported scan method at this time is \ **nmap**\ )
- 
 
 
-\ **-z**\ 
- 
+
+\ **-z**\
+
  List the data returned in xCAT stanza format
- 
 
 
-\ **-w**\ 
- 
+
+\ **-w**\
+
  Write to the xCAT database.
- 
 
 
-\ **-i|-**\ **-bmcip**\ 
- 
+
+\ **-i|-**\ **-bmcip**\
+
  BMC IP address.
- 
 
 
-\ **-u|-**\ **-bmcuser**\ 
- 
+
+\ **-u|-**\ **-bmcuser**\
+
  BMC user name.
- 
 
 
-\ **-p|-**\ **-bmcpasswd**\ 
- 
+
+\ **-p|-**\ **-bmcpasswd**\
+
  BMC user password.
- 
 
 
-\ **-h|-**\ **-help**\ 
- 
+
+\ **-h|-**\ **-help**\
+
  Display usage message
- 
 
 
-\ **-v|-**\ **-version**\ 
- 
+
+\ **-v|-**\ **-version**\
+
  Display version information
- 
+
 
 
 

@@ -10,7 +10,7 @@ B<rpower> [B<-h>|B<--help>|B<-v>|B<--version>]
 
 =head2 BMC (using IPMI):
 
-B<rpower> I<noderange> [B<on>|B<off>|B<softoff>|B<reset>|B<boot>|B<cycle>|B<stat>|B<state>|B<status>|B<wake>|B<suspend> [B<-w> I<timeout>] [B<-o>] [B<-r>]] 
+B<rpower> I<noderange> [B<on>|B<off>|B<softoff>|B<reset>|B<boot>|B<cycle>|B<stat>|B<state>|B<status>|B<wake>|B<suspend> [B<-w> I<timeout>] [B<-o>] [B<-r>]]
 
 B<rpower> I<noderange> [B<pduon>|B<pduoff>|B<pdustat>|B<pdureset>]
 
@@ -60,7 +60,7 @@ B<rpower> I<noderange> [B<cycle>|B<softoff>]
 
 =head2 Lenovo High-Density Server specific:
 
-B<rpower> I<noderange> [B<on>|B<off>|B<reset>|B<boot>|B<reseat>] 
+B<rpower> I<noderange> [B<on>|B<off>|B<reset>|B<boot>|B<reseat>]
 
 =head2 zVM specific:
 

@@ -110,7 +110,7 @@ xCAT Port Usage Table
 
 * xcatlport
 
-  The port used by xcatd to record command log, you can customize it by edit site table, if you don't configure it, 3003 will be used by default. 
+  The port used by xcatd to record command log, you can customize it by edit site table, if you don't configure it, 3003 will be used by default.
 
 * echo-udp
 
@@ -126,9 +126,9 @@ xCAT Port Usage Table
 
 * domain-tcp
 
-  Used when Domain Name Services (DNS) traffic from the Non-trusted nodes and the firewall node to a DNS server is explicitly handled by the firewall. Some firewall applications can be configured to explicitly handle all DNS traffic. This for tcp DNS traffic. 
+  Used when Domain Name Services (DNS) traffic from the Non-trusted nodes and the firewall node to a DNS server is explicitly handled by the firewall. Some firewall applications can be configured to explicitly handle all DNS traffic. This for tcp DNS traffic.
 
-* domain-udp 
+* domain-udp
 
   Used when Domain Name Services (DNS) traffic from the Non-trusted nodes and the firewall node to a DNS server is explicitly handled by the firewall. Some firewall applications can be configured to explicitly handle all DNS traffic. This for udp DNS traffic.
 
@@ -174,9 +174,9 @@ xCAT Port Usage Table
 
 * sunrpc-udp
 
-  The portmapper service. Needed when installing a Non-trusted node through the firewall. Specifically required mount request that takes place during node install. 
+  The portmapper service. Needed when installing a Non-trusted node through the firewall. Specifically required mount request that takes place during node install.
 
-* shell 
+* shell
 
   Used when rsh/rcp is enabled for Standard (std) authentication protocol. Needed for xdsh operations when using rsh for remote commands.
 
@@ -219,7 +219,7 @@ xCAT Port Usage Table
 * rpc-mount
 
   Remote Procedure Call (RPM) used in conjunction with NFS mount request. See note 2. ssh-tcp Needed to use ssh. This service defines the protocol for tcp. This is required when installing or running updatenode through the firewall.
- 
+
 * mount-tcp
 
   Needed to use the AIX mount command. This service defines the protocol for tcp. Required when installing an Non-trusted node through the firewall. Needed when installp is issued on an Non-trusted node and the resource exists on the Trusted side. Needed to run updatenode command. See note 1.
@@ -277,7 +277,7 @@ Produces output similar to: ::
 
     100005 1 udp 37395 mountd 100005 2 udp 37395 mountd 100005 3 udp 37395 mountd 100005 1 tcp 34095 mountd 100005 2 tcp 34095 mountd 100005 3 tcp 34095 mountd
 
-Then :: 
+Then ::
 
     stopsrc -s rpc.mount
 

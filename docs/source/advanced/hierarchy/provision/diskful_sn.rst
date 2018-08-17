@@ -11,7 +11,7 @@ Any cluster using statelite compute nodes must use a stateful (diskful) Service 
 Configure ``otherpkgdir`` and ``otherpkglist`` for service node osimage
 -----------------------------------------------------------------------
 
- * Create a subdirectory ``xcat`` under a path specified by ``otherpkgdir`` attribute of the service node os image, selected during the :doc:`../define_service_nodes` step. 
+ * Create a subdirectory ``xcat`` under a path specified by ``otherpkgdir`` attribute of the service node os image, selected during the :doc:`../define_service_nodes` step.
 
    For example, for osimage *rhels7-x86_64-install-service* ::
 
@@ -114,17 +114,17 @@ Watch the installation progress using either wcons or rcons: ::
 Update Service Node Diskful Image
 ---------------------------------
 
-To update the xCAT software on the Service Node: 
+To update the xCAT software on the Service Node:
 
 #. Remove previous xcat-core, xcat-dep, and tar files in the NFS mounted ``/install/post/otherpkgs/`` directory: ::
-    
+
     rm /install/post/otherpkgs/<os>/<arch>/xcat/xcat-core
     rm /install/post/otherpkgs/<os>/<arch>/xcat/xcat-dep
     rm /install/post/otherpkgs/<os>/<arch>/xcat/<xcat-core.tar>
     rm /install/post/otherpkgs/<os>/<arch>/xcat/<xcat-dep.tar>
 
 #. Download the desired tar files from xcat.org on to the Management Node, and untar them in the same NFS mounted ``/install/post/otherpkgs/`` directory: ::
- 
+
     cd /install/post/otherpkgs/<os>/<arch>/xcat/
     tar jxvf <new-xcat-core.tar>
     tar jxvf <new-xcat-dep.tar>

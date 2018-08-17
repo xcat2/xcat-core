@@ -8,7 +8,7 @@ vmaccepteula
 rootpw --iscrypted #CRYPT:passwd:key=vmware,username=root:password#
 
 # clear all partitions.
-clearpart --alldrives --overwritevmfs 
+clearpart --alldrives --overwritevmfs
 # Choose the first disk (in channel/target/lun order) to install onto
 autopart --firstdisk --overwritevmfs
 
@@ -18,7 +18,7 @@ install url http://#TABLE:noderes:$NODE:nfsserver#/install/#TABLE:nodetype:$NODE
 
 # Set the network to DHCP on the first network adapter
 #network --bootproto=dhcp --device=vmnic0
-network --bootproto=dhcp 
+network --bootproto=dhcp
 
 # reboot automatically when we're done.
 reboot

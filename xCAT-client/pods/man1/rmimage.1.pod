@@ -7,7 +7,7 @@ B<rmimage> - Removes the Linux stateless or statelite image from the file system
 B<rmimage [-h | --help]>
 
 
-B<rmimage [-V | --verbose]> I<imagename> B<[--xcatdef]> 
+B<rmimage [-V | --verbose]> I<imagename> B<[--xcatdef]>
 
 =head1 DESCRIPTION
 
@@ -16,16 +16,16 @@ The install dir is setup by using "installdir" attribute set in the site table.
 
 If I<imagename> is specified, this command uses the information in the I<imagename>
 to calculate the image root directory; otherwise, this command uses the operating system name,
-architecture and profile name to calculate the image root directory. 
+architecture and profile name to calculate the image root directory.
 
 The osimage definition will not be removed from the xCAT tables by default,
 specifying the flag B<--xcatdef> will remove the osimage definition,
-or you can use rmdef -t osimage to remove the osimage definition. 
+or you can use rmdef -t osimage to remove the osimage definition.
 
 The statelite image files on the diskful service nodes will not be removed,
-remove the image files on the service nodes manually if necessary, 
+remove the image files on the service nodes manually if necessary,
 for example, use command "rsync -az --delete /install <sn>:/" to remove the image files on the service nodes,
-where the <sn> is the hostname of the service node. 
+where the <sn> is the hostname of the service node.
 
 =head1 Parameters
 

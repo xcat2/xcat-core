@@ -1,12 +1,12 @@
 
-   Red Hat Virtualization (formally known as RHEV or Red Hat Enterprise Virtualization) is a virtualization solution provided by Red Hat.  
+   Red Hat Virtualization (formally known as RHEV or Red Hat Enterprise Virtualization) is a virtualization solution provided by Red Hat.
 
-   At the time of this writing there is no RHEV-H prebuilt hypervisor image on Power LE.  The method for creating a Red Hat Hypervisor on Power LE is to first install RHEL and apply the KVM support on top with the provided RPMs. 
+   At the time of this writing there is no RHEV-H prebuilt hypervisor image on Power LE.  The method for creating a Red Hat Hypervisor on Power LE is to first install RHEL and apply the KVM support on top with the provided RPMs.
 
-   Obtain and download the RHEV RPM packages from the Red Hat download site.  
+   Obtain and download the RHEV RPM packages from the Red Hat download site.
 
        * Management-Agent-Power-7
-       * Power_Tools-7 
+       * Power_Tools-7
 
    In the following example, the RPMs are downloaded to ``/install/post/otherpkgs/rhels7.3/ppc64le/RHEV4/4.0-GA``
 
@@ -24,11 +24,11 @@
       chdef -t osimage rhels7.3-ppc64le-RHEV4-install-compute \
          otherpkgdir=/install/post/otherpkgs/rhels7.3/ppc64le/RHEV4/4.0-GA
 
-   * Create a new package list file ``/install/custom/rhels7.3/ppc64le/rhelv4.pkglist`` to include necessary packages provided from the OS. :: 
+   * Create a new package list file ``/install/custom/rhels7.3/ppc64le/rhelv4.pkglist`` to include necessary packages provided from the OS. ::
 
       #INCLUDE:/opt/xcat/share/xcat/install/rh/compute.rhels7.pkglist#
       libvirt
-      screen 
+      screen
       bridge-utils
 
    * Modify ``pkglist`` attribute to point to the package list file from the step above ::
@@ -38,9 +38,9 @@
 
    * Create a new package list file ``/install/custom/rhels7.3/ppc64le/rhev4.otherpkgs.pkglist`` to list required packages ::
 
-      qemu-kvm-rhev 
-      qemu-kvm-tools-rhev 
-      virt-manager-common 
+      qemu-kvm-rhev
+      qemu-kvm-tools-rhev
+      virt-manager-common
       virt-install
 
    * Modify ``otherpkglist`` attribute to point to the package list file from the step above ::

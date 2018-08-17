@@ -149,7 +149,7 @@ sub parse_args {
 #--------------------------------------------------------------------------------
 
 =head3   preprocess_request
-      Parse the arguments and display the usage or the version string. 
+      Parse the arguments and display the usage or the version string.
 
 =cut
 
@@ -204,7 +204,7 @@ sub preprocess_request {
 
 =head3   process_request
     Pasrse the arguments and call the correspondent functions
-    to do switch discovery. 
+    to do switch discovery.
 
 =cut
 

@@ -24,8 +24,8 @@ Advisory CVEs
 Action
 ------
 
-xCAT uses OpenSSL for client-server communication but **does not** ship it.  
+xCAT uses OpenSSL for client-server communication but **does not** ship it.
 
-It is highly recommended to keep your OpenSSL levels up-to-date with the indicated versions in the security bulletins to prevent any potential security threats. Obtain the updated software packages from your Operating system distribution channels. 
+It is highly recommended to keep your OpenSSL levels up-to-date with the indicated versions in the security bulletins to prevent any potential security threats. Obtain the updated software packages from your Operating system distribution channels.
 
 

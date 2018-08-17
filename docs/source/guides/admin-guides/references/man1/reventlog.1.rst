@@ -15,7 +15,7 @@ Name
 
 
 ****************
-\ **Synopsis**\ 
+\ **Synopsis**\
 ****************
 
 
@@ -32,7 +32,7 @@ OpenPOWER OpenBMC specific :
 
 
 *******************
-\ **Description**\ 
+\ **Description**\
 *******************
 
 
@@ -42,73 +42,73 @@ logs are stored on each servers service processor.
 
 
 ***************
-\ **Options**\ 
+\ **Options**\
 ***************
 
 
 
-\ *number-of-entries*\ 
- 
+\ *number-of-entries*\
+
  Retrieve the specified number of entries from the nodes' service processors.
- 
 
 
-\ **all**\ 
- 
+
+\ **all**\
+
  Retrieve all entries.
- 
 
 
-\ **-s**\ 
- 
+
+\ **-s**\
+
  To sort the entries from latest (always the last entry in event DB) to oldest (always the first entry in event DB). If \ **number-of-entries**\  specified, the latest \ **number-of-entries**\  events will be output in the order of latest to oldest.
- 
 
 
-\ **clear**\ 
- 
+
+\ **clear**\
+
  Clear event logs.
- 
+
 
 
 \ **resolved=**\ {\ *id-list*\ |\ **LED**\ }
- 
+
  Mark event log entries as resolved. Use comma separated list of entry ids to specify individual entries. Use \ **LED**\  to mark as resolved all event log entries that contribute to LED fault.
- 
 
 
-\ **-h | -**\ **-help**\ 
- 
+
+\ **-h | -**\ **-help**\
+
  Print help.
- 
 
 
-\ **-v | -**\ **-version**\ 
- 
+
+\ **-v | -**\ **-version**\
+
  Print version.
- 
+
 
 
 
 ****************
-\ **Examples**\ 
+\ **Examples**\
 ****************
 
 
 
 1. List last 5 event log entries from node4 and node5
- 
- 
+
+
  .. code-block:: perl
- 
+
    reventlog node4,node5 5
- 
- 
+
+
  Output is similar to:
- 
- 
+
+
  .. code-block:: perl
- 
+
    node4: SERVPROC I 09/06/00 15:23:33 Remote Login Successful User ID = USERID[00]
    node4: SERVPROC I 09/06/00 15:23:32 System spn1 started a RS485 connection with us[00]
    node4: SERVPROC I 09/06/00 15:22:35 RS485 connection to system spn1 has ended[00]
@@ -119,48 +119,48 @@ logs are stored on each servers service processor.
    node5: SERVPROC I 09/06/00 15:21:34 RS485 connection to system spn1 has ended[00]
    node5: SERVPROC I 09/06/00 15:21:30 Remote Login Successful User ID = USERID[00]
    node5: SERVPROC I 09/06/00 15:21:29 System spn1 started a RS485 connection with us[00]
- 
- 
+
+
 
 
 2. Clear all event log entries from node4 and node5
- 
- 
+
+
  .. code-block:: perl
- 
+
    reventlog node4,node5 clear
- 
- 
+
+
  Output is similar to:
- 
- 
+
+
  .. code-block:: perl
- 
+
    node4: clear
    node5: clear
- 
- 
+
+
 
 
 3. Mark as resolved all event log entries from node4 that contribute to LED fault
- 
- 
+
+
  .. code-block:: perl
- 
+
    reventlog node4 resolved=LED
- 
- 
+
+
  Output is similar to:
- 
- 
+
+
  .. code-block:: perl
- 
+
    Attempting to resolve the following log entries: LED...
    node4: Resolved 51.
    node4: Resolved 52.
    node4: Resolved 58.
- 
- 
+
+
 
 
 

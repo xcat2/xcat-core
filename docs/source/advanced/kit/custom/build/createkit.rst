@@ -6,15 +6,15 @@ Use the :doc:`buildkit </guides/admin-guides/references/man1/buildkit.1>` comman
     buildkit create <kitbasename> [-l|--kitloc <kit location>]
 
 
-Kit Directory 
+Kit Directory
 -------------
 
-The Kit directory location will be automatically  populated with additional subdirecotries and samples: 
+The Kit directory location will be automatically  populated with additional subdirecotries and samples:
 
 **buildkit.conf** -  The sample Kit build configuration file.
 
 **source_packages** - This directory stores the source packages for Kit Packages and Non-Native Packages.  The **buildkit** command will search these directories for source packages when building packages.  This directory stores:
-  
+
   * RPM spec and tarballs. (A sample spec file is provided.)
   * Source RPMs.
   * Pre-built RPMs (contained in a subdirectory of source_packages)
@@ -42,7 +42,7 @@ The Kit directory location will be automatically  populated with additional subd
 Kit Configuration File
 ----------------------
 
-The ``buildkit.conf`` file is a sample file that contains a description of all the supported attributes and indicates required or optional fields.  The user needs to modify this file for the software kit to be built. [#]_ 
+The ``buildkit.conf`` file is a sample file that contains a description of all the supported attributes and indicates required or optional fields.  The user needs to modify this file for the software kit to be built. [#]_
 
 **kit** --- This stanza defines general information for the Kit.  There must be exactly one kit stanza in a kit build file.  ::
 
@@ -71,12 +71,12 @@ The ``buildkit.conf`` file is a sample file that contains a description of all t
       osarch=x86_64
 
 minor version can be support following format: ::
-    
+
     osminorversion=2  <<-- minor version has to be exactly matched to 2
     osminorversion=>=2  <<-- minor version can be 2 or greater than 2
-    osminorversion=<=2  <<-- minor version can be 2 or less than 2 
+    osminorversion=<=2  <<-- minor version can be 2 or less than 2
     osminorversion=>2  <<-- minor version has to be greater than 2
-    osminorversion=<2  <<-- minor version has to be less than 2 
+    osminorversion=<2  <<-- minor version has to be less than 2
 
 **kitcomponent** --- This stanza defines one Kit Component. A kitcomponent definition is a way of specifying a subset of the product Kit that may be installed into an xCAT osimage.  A kitcomponent may or may not be dependent on other kitcomponents.If user want to build a component which supports multiple OSes, need to create one kitcomponent stanza for each OS.  ::
 
@@ -106,13 +106,13 @@ minor version can be support following format: ::
        serverroles=compute
        ospkgdeps=at,rsh-server,xinetd,sudo,libibverbs-32bit,libibverbs,insserv
        kitrepoid=sles11_x86_64
-       kitpkgdeps=ppe_rte_license  
+       kitpkgdeps=ppe_rte_license
 
 
-**kitpackage** --- This stanza defines Kit Package (ie. RPM). There can be zero or more kitpackage stanzas.  For multiple package supports,  need to 
+**kitpackage** --- This stanza defines Kit Package (ie. RPM). There can be zero or more kitpackage stanzas.  For multiple package supports,  need to
 
   #. Define one kitpackage section per supported OS.  or
-  #. Define one kitpacakge stanza which contains multiple kitrepoid lines. For the RPM packages, users need to responsible for creating an RPM spec file that can run on multiple OSes.  
+  #. Define one kitpacakge stanza which contains multiple kitrepoid lines. For the RPM packages, users need to responsible for creating an RPM spec file that can run on multiple OSes.
 
 ::
 
@@ -149,7 +149,7 @@ minor version can be support following format: ::
 Partial vs. Complete Kits
 -------------------------
 
-A **complete** software kits includes all the product software and is ready to be consumed as is.   A **partial** software kit is one that does not include all the product packages and requires the consumer to download the product software and complete the kit before it can be consumed.  
+A **complete** software kits includes all the product software and is ready to be consumed as is.   A **partial** software kit is one that does not include all the product packages and requires the consumer to download the product software and complete the kit before it can be consumed.
 
 To build partial kits, the ``isexternalpkg=yes`` needs to be set in the ``kitpackage`` stanza in the ``buildkit.conf`` file: ::
 

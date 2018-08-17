@@ -688,14 +688,14 @@ sub buildcreatestmt
 
 #--------------------------------------------------------------------------
 
-=head3   
+=head3
 
-    Description: get_datatype_string ( for mysql,sqlite,postgresql) 
+    Description: get_datatype_string ( for mysql,sqlite,postgresql)
 
     Arguments:
-                Table column,database,types 
+                Table column,database,types
     Returns:
-              the datatype for the column being defined 
+              the datatype for the column being defined
     Globals:
 
     Error:
@@ -734,14 +734,14 @@ sub get_datatype_string {
 
 #--------------------------------------------------------------------------
 
-=head3   
+=head3
 
-    Description: get_datatype_string_db2 ( for DB2) 
+    Description: get_datatype_string_db2 ( for DB2)
 
     Arguments:
-                Table column,database,types,tablename,table schema 
+                Table column,database,types,tablename,table schema
     Returns:
-              the datatype for the column being defined 
+              the datatype for the column being defined
     Globals:
 
     Error:
@@ -793,12 +793,12 @@ sub get_datatype_string_db2 {
 
 #--------------------------------------------------------------------------
 
-=head3   
+=head3
 
-    Description: get_xcatcfg 
+    Description: get_xcatcfg
 
     Arguments:
-              none 
+              none
     Returns:
               the database name from /etc/xcat/cfgloc or sqlite
     Globals:
@@ -1106,7 +1106,7 @@ sub new
                  Handles adding attributes
                  Handles removing attributes but does not really remove them
                  from the database.
-                 Handles adding keys  
+                 Handles adding keys
 
     Arguments: Hash containing Database and Table Handle and schema
 
@@ -1117,9 +1117,9 @@ sub new
     Error:
 
     Example: my $nodelisttab=xCAT::Table->new('nodelist');
-             $nodelisttab->updateschema(); 
+             $nodelisttab->updateschema();
 	     $nodelisttab->close();
- 
+
     Comments:
         none
 
@@ -1942,7 +1942,7 @@ sub setAttribs
     Description:
        This function sets the attributes for the rows selected by the where clause.
     Warning, because we support mulitiple databases (SQLite,MySQL and DB2) that
-    require different syntax.  Any code using this routine,  must call the 
+    require different syntax.  Any code using this routine,  must call the
     Utils->getDBName routine and code the where clause that is appropriate for
     each supported database.
 
@@ -2294,7 +2294,7 @@ sub setNodesAttribs {
 	        Attribute type array
     Returns:
 
-			two layer hash reference (->{nodename}->{attrib} 
+			two layer hash reference (->{nodename}->{attrib}
     Globals:
 
     Error:
@@ -2901,7 +2901,7 @@ sub getNodeAttribs_nosub_old
 
 =head3 getNodeAttribs_nosub_returnany
 
-    Description:  not used, kept for reference 
+    Description:  not used, kept for reference
 
     Arguments:
 
@@ -3244,17 +3244,17 @@ sub getAllEntries
 
     When using a general Where clause with SQL statement then
     because we support mulitiple databases (SQLite,MySQL and DB2) that
-    require different syntax.  Any code using this routine,  must call the 
+    require different syntax.  Any code using this routine,  must call the
     Utils->getDBName routine and code the where clause that is appropriate for
     each supported database.
 
     When the input is the array of attr<operator> val  strings, the routine will
-    build the correct Where clause for the database we are running. 
+    build the correct Where clause for the database we are running.
 
     Arguments:
        Database Handle
        Where clause
-       or 
+       or
        array of attr<operator>val strings to be build into a Where clause
     Returns:
         Array of attributes
@@ -3269,7 +3269,7 @@ sub getAllEntries
     returns  node and group attributes
     $nodelist->getAllAttribsWhere("groups like '%".$atom."%'",'ALL');
     returns  all attributes
-    
+
     Input of attr<operator>val strings
 
     $nodelist->getAllAttribsWhere(array of attr<operator>val,'node','group');
@@ -3358,7 +3358,7 @@ sub getAllAttribsWhere
                  Table handle
 	         Attribute list
                  optional hash return style
-                 ( changes the return hash structure format) 
+                 ( changes the return hash structure format)
     Returns:
                  Array of attribute values
     Globals:
@@ -3623,7 +3623,7 @@ sub getAllAttribs
         Build delete statement and'ing the elements of the hash
         DELETE FROM nodelist WHERE ("groups" = "compute1" AND "node" = "node1")
 
-        If called with no attributes, it will delete all entries in the table. 
+        If called with no attributes, it will delete all entries in the table.
           $table->delEntries();
           $table->commit;
     Comments:
@@ -4107,15 +4107,15 @@ sub getDescriptions {
 
 #--------------------------------------------------------------------------
 
-=head3  isAKey 
-    Description:  Checks to see if table field is a table key 
+=head3  isAKey
+    Description:  Checks to see if table field is a table key
 
     Arguments:
-               Table field 
-	       List of keys 
+               Table field
+	       List of keys
     Returns:
                1= is a key
-               0 = not a key 
+               0 = not a key
     Globals:
 
     Error:
@@ -4166,12 +4166,12 @@ sub getAutoIncrementColumns {
 
 #--------------------------------------------------------------------------
 
-=head3   
+=head3
 
-    Description: get_filelist 
+    Description: get_filelist
 
     Arguments:
-             directory,filelist,type 
+             directory,filelist,type
     Returns:
             The list of sql files to be processed which consists of all the
 			files with <name>.sql  and <name>_<databasename>.sql
@@ -4185,7 +4185,7 @@ sub getAutoIncrementColumns {
 	my @filelist =get_filelist($directory,$filelist,$type);
             where type = "sql" or "pm"
          Note either input a directory path in $directory of an array of
-          full path to filenames in $filelist.  See runsqlcmd for example. 
+          full path to filenames in $filelist.  See runsqlcmd for example.
 
 =cut
 
@@ -4261,15 +4261,15 @@ sub get_filelist
 
 #--------------------------------------------------------------------------
 
-=head3   
+=head3
 
-    Description: delimitcol 
+    Description: delimitcol
 
     Arguments:
-                attribute name 
+                attribute name
     Returns:
               The attribute(column)
-			  delimited appropriately for the runnning Database 
+			  delimited appropriately for the runnning Database
     Globals:
 
     Error:
@@ -4299,24 +4299,24 @@ sub delimitcol {
 
 #--------------------------------------------------------------------------
 
-=head3   
+=head3
 
-    Description: buildwhereclause 
+    Description: buildwhereclause
 
     Arguments:
                  Array of the following
                    attr<operator> val  where the operator can be the following:
-                == 
-                != 
-                =~ 
-                !~ 
-                 >   
-                 <   
-                 >=  
-                 <=  
+                ==
+                !=
+                =~
+                !~
+                 >
+                 <
+                 >=
+                 <=
 
     Returns:
-             Where clause with SQL appropriate for the running DB 
+             Where clause with SQL appropriate for the running DB
     Globals:
 
     Error:
@@ -4397,15 +4397,15 @@ sub buildWhereClause {
 =head3 writeAllEntries
 
     Description:  Read entire table and writes all entries to file
-                  This routine was written specifically for the tabdump 
+                  This routine was written specifically for the tabdump
                   command.
 
     Arguments:
-          filename or path 
+          filename or path
 
     Returns:
        0=good
-       1=bad 
+       1=bad
     Globals:
 
     Error:
@@ -4605,18 +4605,18 @@ sub output_table {
 
 =head3 getMAXMINEntries
 
-    Description: Select the rows in  the Table which has the MAX and the row with the 
+    Description: Select the rows in  the Table which has the MAX and the row with the
                  Min value for the input attribute.
-                 Currently only the auditlog and evenlog are setup to have such an attribute (recid). 
+                 Currently only the auditlog and evenlog are setup to have such an attribute (recid).
 
     Arguments:
            Table handle
            attribute name ( e.g. recid)
 
     Returns:
-        HASH 
+        HASH
             max=>  max value
-            min=>  min value 
+            min=>  min value
     Globals:
 
     Error:
@@ -4624,7 +4624,7 @@ sub output_table {
     Example:
 
 	 my $tabh = xCAT::Table->new($table);
-         my $recs=$tabh->getEntries("recid"); # returns row with recid max value in database 
+         my $recs=$tabh->getEntries("recid"); # returns row with recid max value in database
                                               # and the row with the min value.
 
     Comments:

@@ -5,7 +5,7 @@
   xCAT plugin package to handle getpartition command
   Generally, the getpartition command is called from the stateless
     node during the booting period to get the partition configureation
-    infomation to part the hard disk on the stateless node and to 
+    infomation to part the hard disk on the stateless node and to
     manage the local disk space for statelite and swap space.
 =cut
 
@@ -64,11 +64,11 @@ sub process_request
 
 #----------------------------------------------------------------------------
 
-=head3  
+=head3
 
     parseparition
-    
-        Description: Read the partition configuration file from 
+
+        Description: Read the partition configuration file from
           linuximage.partitionfile, parse the file and send back the partition
           parameters to the node.
         Arguments:

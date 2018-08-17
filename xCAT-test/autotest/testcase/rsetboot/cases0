@@ -15,7 +15,7 @@ check:rc==0
 cmd:if [[ -f /tmp/rsetboot.stat.bak ]];then mv -f /tmp/rsetboot.stat.bak /tmp/rsetboot.stat;else rm -rf /tmp/rsetboot.stat;fi
 check:rc==0
 end
- 
+
 start:rsetboot_net_statcheck
 description:set the boot device from net
 Attribute: $$CN-The operation object of rsetboot command.
@@ -135,7 +135,7 @@ check:output=~Error: (\[.*?\]: )?unsupported command|Unsupported command
 end
 
 start:rsetboot_group_net
-description:rsetboot group node 
+description:rsetboot group node
 Attribute: $$CN-The operation object of rsetboot command.
 label:cn_bmc_ready,hctrl_openbmc,hctrl_bmc_ipmi
 cmd:test=$(lsdef testnode);if [[ $? -eq 0 ]]; then lsdef -l testnode -z >/tmp/testnode.stanza ;rmdef testnode;fi

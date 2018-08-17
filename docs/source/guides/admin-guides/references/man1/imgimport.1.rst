@@ -19,7 +19,7 @@ SYNOPSIS
 ********
 
 
-\ **imgimport [-h|-**\ **-help]**\ 
+\ **imgimport [-h|-**\ **-help]**\
 
 \ **imgimport**\  \ *bundle_file_name*\  [\ **-p | -**\ **-postscripts**\  \ *nodelist*\ ] [\ **-f | -**\ **-profile**\  \ *new_profile*\ ] [\ **-v | -**\ **-verbose**\ ]
 
@@ -74,7 +74,7 @@ After this command, you can run the \ **nodeset**\  command and then start deplo
 For stateful:
   nodeset
 
-For stateless: 
+For stateless:
   genimage
   packimage
   nodeset
@@ -91,28 +91,28 @@ OPTIONS
 
 
 
-\ **-f|-**\ **-profile**\  \ *new_profile*\ 
- 
+\ **-f|-**\ **-profile**\  \ *new_profile*\
+
  Import the image with a new profile name.
- 
 
 
-\ **-h|-**\ **-help**\ 
- 
+
+\ **-h|-**\ **-help**\
+
  Display usage message.
- 
 
 
-\ **-p|-**\ **-postscripts**\  \ *nodelist*\ 
- 
+
+\ **-p|-**\ **-postscripts**\  \ *nodelist*\
+
  Import the postscripts. The postscripts contained in the image will be set in the postscripts table for \ *nodelist*\ .
- 
 
 
-\ **-v|-**\ **-verbose**\ 
- 
+
+\ **-v|-**\ **-verbose**\
+
  Verbose output.
- 
+
 
 
 

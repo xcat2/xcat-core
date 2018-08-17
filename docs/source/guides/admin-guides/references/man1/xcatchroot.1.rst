@@ -19,9 +19,9 @@ SYNOPSIS
 ********
 
 
-\ **xcatchroot -h**\ 
+\ **xcatchroot -h**\
 
-\ **xcatchroot [-V] -i**\  \ *osimage_name cmd_string*\ 
+\ **xcatchroot [-V] -i**\  \ *osimage_name cmd_string*\
 
 
 ***********
@@ -29,11 +29,11 @@ DESCRIPTION
 ***********
 
 
-For AIX diskless images this command will modify the AIX SPOT resource using 
+For AIX diskless images this command will modify the AIX SPOT resource using
 the chroot command.  You must include the name of an xCAT osimage
 definition and the command that you wish to have run in the spot.
 
-\ **WARNING:**\ 
+\ **WARNING:**\
 
 
 Be very careful when using this command!!!  Make sure you are
@@ -53,21 +53,21 @@ check operation on the spot.
   nim -Fo check <spot_name>
 
 
-The xcatchroot command will take care of any of the required setup so that 
+The xcatchroot command will take care of any of the required setup so that
 the command you provide will be able to run in the spot chroot environment.
 It will also mount the lpp_source resource listed in the osimage definition
 so that you can access additional software that you may wish to install.
 
-For example, assume that the location of the spot named in the xCAT osimage 
+For example, assume that the location of the spot named in the xCAT osimage
 definition is /install/nim/spot/614spot/usr. The associated root directory in
 this spot would be /install/nim/spot/614spot/usr/lpp/bos/inst_root.  The chroot
-is automatically done to this new root directory.  The spot location is 
+is automatically done to this new root directory.  The spot location is
 mounted on /.../inst_root/usr so that when your command is run in the chroot
 environment it is actually running commands from the spot usr location.
 
-Also, the location of the lpp_source resource specified in the osimage 
+Also, the location of the lpp_source resource specified in the osimage
 definition will be mounted to a subdirectory of the spot /.../inst_root
-directory.  For example, if the lpp_source location is 
+directory.  For example, if the lpp_source location is
 /install/nim/lpp_source/614lpp_lpp_source then that would be mounted over
 /install/nim/spot/614spot/usr/lpp/bos/inst_root/lpp_source.
 
@@ -76,7 +76,7 @@ of all commands and files assuming the /.../inst_root directory is you root
 directory.
 
 If you wish to install software from the lpp_source location you would
-provide a directory location of /lpp_source (or /lpp_source/installp/ppc 
+provide a directory location of /lpp_source (or /lpp_source/installp/ppc
 or /lpp_source/RPMS/ppc etc.) See the example below.
 
 Always run the NIM check operation after you are done updating your spot.
@@ -89,29 +89,29 @@ OPTIONS
 
 
 
-\ *cmd_string*\ 
- 
- The command you wish to have run in the chroot environment.  (Use a quoted 
+\ *cmd_string*\
+
+ The command you wish to have run in the chroot environment.  (Use a quoted
  string.)
- 
 
 
-\ **-h |-**\ **-help**\ 
- 
+
+\ **-h |-**\ **-help**\
+
  Display usage message.
- 
 
 
-\ **-i**\  \ *osimage_name*\ 
- 
+
+\ **-i**\  \ *osimage_name*\
+
  The name of the xCAT osimage definition.
- 
 
 
-\ **-V |-**\ **-verbose**\ 
- 
+
+\ **-V |-**\ **-verbose**\
+
  Verbose mode.
- 
+
 
 
 
@@ -135,7 +135,7 @@ EXAMPLES
 ********
 
 
-1) Set the root password to "cluster" in the spot so that when the diskless 
+1) Set the root password to "cluster" in the spot so that when the diskless
 node boots it will have a root password set.
 
 

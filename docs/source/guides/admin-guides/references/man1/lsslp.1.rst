@@ -19,9 +19,9 @@ SYNOPSIS
 ********
 
 
-\ **lsslp [-h| -**\ **-help]**\ 
+\ **lsslp [-h| -**\ **-help]**\
 
-\ **lsslp [-v| -**\ **-version]**\ 
+\ **lsslp [-v| -**\ **-version]**\
 
 \ **lsslp**\  [\ *noderange*\ ] [\ **-V**\ ] [\ **-i**\  \ *ip[,ip..]*\ ] \ **[-w] [-r|-x|-z] [-n] [-s CEC|FRAME|MM|IVM|RSA|HMC|CMM|IMM2|FSP]**\  [\ **-t**\  \ *tries*\ ] [\ **-I**\ ] [\ **-C**\  \ *counts*\ ] [\ **-T**\  \ *timeout*\ ] [\ **-**\ **-vpdtable**\ ]
 
@@ -176,7 +176,7 @@ Output is similar to:
          ip=192.168.200.125
          groups=hmc,all
          mgt=hmc
-         mac=00:1a:64:fb:7d:50        
+         mac=00:1a:64:fb:7d:50
          hidden=0
   192.168.200.244:
          objtype=node
@@ -251,7 +251,7 @@ Output is similar to:
      id=0
      mac=00:14:5E:F0:5C:FD
      otherinterfaces=50.0.0.5
- 
+
   bpa01:
      objtype=node
      nodetype=bpa
@@ -270,8 +270,8 @@ Output is similar to:
 
 .. code-block:: perl
 
-  lsslp -s CEC 
-  
+  lsslp -s CEC
+
   device  type-model  serial-number  side  ip-addresses  hostname
   FSP     9117-MMB    105EBEP        A-1   20.0.0.138    20.0.0.138
   FSP     9117-MMB    105EBEP        B-1   20.0.0.139    20.0.0.139
@@ -292,7 +292,7 @@ Output is similar to:
 .. code-block:: perl
 
   These nodes defined in database but can't be discovered: f17c00bpcb_b,f17c01bpcb_a,f17c01bpcb_b,f17c02bpcb_a,
- 
+
   device  type-model  serial-number  side  ip-addresses  hostname
   bpa     9458-100    BPCF017        A-0   40.17.0.1     f17c00bpca_a
   bpa     9458-100    BPCF017        B-0   40.17.0.2     f17c00bpcb_a
@@ -305,7 +305,7 @@ Output is similar to:
 
     lsslp CEC1-CEC3
  or lsslp CEC1,CEC2,CEC3
- 
+
    device  type-model  serial-number  side  ip-addresses     hostname
    FSP     9A01-100    0P1P336        A-0   192.168.200.34  192.168.200.34
    FSP     9A01-100    0P1P336        B-0   192.168.200.35  192.168.200.35

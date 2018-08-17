@@ -14,25 +14,25 @@ You can get the detail description of each object by ``man <object type>`` e.g. 
 
 * **node Object**
 
-  The **node** is the most important object in xCAT. Any physical server, virtual machine or SP (Service Processor for Hardware Control) can be defined as a node object. 
+  The **node** is the most important object in xCAT. Any physical server, virtual machine or SP (Service Processor for Hardware Control) can be defined as a node object.
 
   For example, I have a physical server which has the following attributes: ::
 
-    groups: all,x86_64 
+    groups: all,x86_64
         The groups that this node belongs to.
-    arch: x86_64 
+    arch: x86_64
         The architecture of the server is x86_64.
-    bmc: 10.4.14.254 
+    bmc: 10.4.14.254
         The IP of BMC which will be used for hardware control.
-    bmcusername: ADMIN 
+    bmcusername: ADMIN
         The username of bmc.
     bmcpassword: admin
         The password of bmc.
     mac: 6C:AE:8B:1B:E8:52
-        The mac address of the ethernet adapter that will be used to 
+        The mac address of the ethernet adapter that will be used to
         deploy OS for the node.
     mgt: ipmi
-        The management method which will be used to manage the node. 
+        The management method which will be used to manage the node.
         This node will use ipmi protocol.
     netboot: xnba
         The network bootloader that will be used to deploy OS for the node.
@@ -41,8 +41,8 @@ You can get the detail description of each object by ``man <object type>`` e.g. 
 
   I want to name the node to be **cn1** (Compute Node #1) in xCAT. Then I define this node in xCAT with following command: ::
 
-    $mkdef -t node cn1 groups=all,x86_64 arch=x86_64 bmc=10.4.14.254 
-                       bmcusername=ADMIN bmcpassword=admin mac=6C:AE:8B:1B:E8:52 
+    $mkdef -t node cn1 groups=all,x86_64 arch=x86_64 bmc=10.4.14.254
+                       bmcusername=ADMIN bmcpassword=admin mac=6C:AE:8B:1B:E8:52
                        mgt=ipmi netboot=xnba provmethod=rhels7.1-x86_64-install-compute
 
   After the define, I can use ``lsdef`` command to display the defined node: ::
@@ -131,19 +131,19 @@ You can get the detail description of each object by ``man <object type>`` e.g. 
 
   Display the detail attributes of one **osimage** named **rhels7.1-x86_64-install-compute**: ::
 
-    $ lsdef -t osimage rhels7.1-x86_64-install-compute  
-    Object name: rhels7.1-x86_64-install-compute        
-        imagetype=linux                                 
-        osarch=x86_64                                   
-        osdistroname=rhels7.1-x86_64                    
-        osname=Linux                                    
-        osvers=rhels7.1                                 
+    $ lsdef -t osimage rhels7.1-x86_64-install-compute
+    Object name: rhels7.1-x86_64-install-compute
+        imagetype=linux
+        osarch=x86_64
+        osdistroname=rhels7.1-x86_64
+        osname=Linux
+        osvers=rhels7.1
         otherpkgdir=/install/post/otherpkgs/rhels7.1/x86_64
-        pkgdir=/install/rhels7.1/x86_64                 
+        pkgdir=/install/rhels7.1/x86_64
         pkglist=/opt/xcat/share/xcat/install/rh/compute.rhels7.pkglist
-        profile=compute                                 
-        provmethod=install                              
-        synclists=/root/syncfiles.list                  
+        profile=compute
+        provmethod=install
+        synclists=/root/syncfiles.list
         template=/opt/xcat/share/xcat/install/rh/compute.rhels7.tmpl
 
   This **osimage** represents a **Linux** **rhels7.1** Operating System. The package repository is in **/install/rhels7.1/x86_64** and the packages which will be installed is listed in the file **/opt/xcat/share/xcat/install/rh/compute.rhels7.pkglist** ...
@@ -161,7 +161,7 @@ You can get the detail description of each object by ``man <object type>`` e.g. 
   * ``mkdef`` : create object definitions
   * ``chdef`` : modify object definitions
   * ``lsdef`` : list object definitions
-  * ``rmdef`` : remove object definitions 
+  * ``rmdef`` : remove object definitions
 
   To get the detail usage of the commands, refer to the man page. e.g. ``man mkdef``
 

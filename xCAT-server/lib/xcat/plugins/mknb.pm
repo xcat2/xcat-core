@@ -45,7 +45,7 @@ sub process_request {
     if (defined($t_entry)) {
         $xcatdport = $t_entry;
     }
-    
+
     @entries = xCAT::TableUtils->get_site_attribute("dhcpinterfaces");
     $t_entry = $entries[0];
     if (defined($t_entry)) {
@@ -69,13 +69,13 @@ sub process_request {
             foreach (split /[,\s]+/, $dhcpif) {
                 my ($nicname, $flag) = split /:/;
                 if ($flag and $flag =~ /noboot/i) {
-                    $nobootnics{$nicname} = 1; 
+                    $nobootnics{$nicname} = 1;
                 }
             }
         }
         my $nicips = xCAT::NetworkUtils->get_nic_ip();
         foreach (keys %$nicips) {
-            # To support tagged vlan, create entries in the hash for the 
+            # To support tagged vlan, create entries in the hash for the
             # interface name removing the physical interface ending:
             # 'enP1p12s0f0.2@enP1p12s0f0' => 'enP1p12s0f0.2'
             if ($_ =~ "@") {

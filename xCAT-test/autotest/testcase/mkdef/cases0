@@ -181,8 +181,8 @@ check:output=~Object name\: auto_test_node_1
 check:output=~groups=switch
 check:output=~nodetype=switch
 check:output=~postbootscripts\=otherpkgs
-check:output=~postscripts\=syslog\,remoteshell\,syncfiles 
-check:output=~usercomment\=the switch definition template  
+check:output=~postscripts\=syslog\,remoteshell\,syncfiles
+check:output=~usercomment\=the switch definition template
 check:output=~postscripts\=syslog\,remoteshell\,syncfiles
 check:output!=ip\=OPTIONAL\:the ip address of the switch
 check:output!=mac\=OPTIONAL\:the MAC address of the switch
@@ -215,7 +215,7 @@ check:rc==0
 end
 
 start:mkdef_template_invalid_template
-description:create a node with invalid template 
+description:create a node with invalid template
 label:mn_only,db
 cmd:result=`lsdef | grep  auto_test_node`; if [[ $result =~ "auto_test_node" ]]; then echo $result; noderm auto_test_node; fi
 cmd:result=`lsdef | grep  auto_test_invalid_template`; if [[ $result =~ "auto_test_invalid_template" ]]; then echo $result; noderm auto_test_invalid_template; fi
@@ -268,7 +268,7 @@ check:output=~Error\: (\[.*?\]: )?The attribute \".+\" must be specified!
 cmd:mkdef -t node -o auto_test_cec_node_1 --template cec-template serial=test
 check:rc==1
 check:output=~Error\: (\[.*?\]: )?The attribute \".+\" must be specified!
-cmd:mkdef -t node -o auto_test_cec_node_1 --template cec-template serial=test hcp=test  
+cmd:mkdef -t node -o auto_test_cec_node_1 --template cec-template serial=test hcp=test
 check:rc==1
 check:output=~Error\: (\[.*?\]: )?The attribute \".+\" must be specified!
 cmd:mkdef -t node -o auto_test_cec_node_1 --template cec-template serial=test mtm=test hcp=test

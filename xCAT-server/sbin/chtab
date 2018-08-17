@@ -25,7 +25,7 @@ sub usage {
    chtab [-h|--help|-v|--Version]\n\n";
     print "   -d|--delete  Delete the rows from a list of tables.
    -v|--version Display the version of this command.
-   -h|--help    Display this usage information. 
+   -h|--help    Display this usage information.
    keycolname=keyvalue   a column name-and-value pair that identifies the rows in a table to be changed.
    tablename.colname=newvalue    the new value for the specified row and column of the table.\n";
 }

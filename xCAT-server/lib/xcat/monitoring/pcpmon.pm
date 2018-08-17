@@ -1,4 +1,4 @@
-#!/usr/bin/env perl 
+#!/usr/bin/env perl
 # IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
 package xCAT_monitoring::pcpmon;
 
@@ -20,7 +20,7 @@ use warnings;
 
 #-------------------------------------------------------------------------------
 
-=head1  xCAT_monitoring:pcpmon  
+=head1  xCAT_monitoring:pcpmon
 =head2    Package Description
   xCAT monitoring plugin package to handle PCP monitoring.
 =cut
@@ -30,9 +30,9 @@ use warnings;
 #--------------------------------------------------------------------------------
 
 =head3    start
-      This function gets called by the monitorctrl module when xcatd starts and 
-      when monstart command is issued by the user. It starts the daemons and 
-      does necessary startup process for the PCP monitoring. 
+      This function gets called by the monitorctrl module when xcatd starts and
+      when monstart command is issued by the user. It starts the daemons and
+      does necessary startup process for the PCP monitoring.
        p_nodes -- a pointer to an arrays of nodes to be monitored. null means all.
        scope -- the action scope, it indicates the node type the action will take place.
                 0 means localhost only.
@@ -197,10 +197,10 @@ sub start
 #--------------------------------------------------------------
 
 =head3    config
-      This function configures the cluster for the given nodes. This function is called 
-      when moncfg command is issued or when xcatd starts on the service node. 
+      This function configures the cluster for the given nodes. This function is called
+      when moncfg command is issued or when xcatd starts on the service node.
        Returns: 1
-=cut 
+=cut
 
 #--------------------------------------------------------------
 sub config
@@ -212,10 +212,10 @@ sub config
 #--------------------------------------------------------------
 
 =head3    deconfig
-      	This function de-configures the cluster for the given nodes. This function is called 
-	when mondecfg command is issued by the user. 
+      	This function de-configures the cluster for the given nodes. This function is called
+	when mondecfg command is issued by the user.
       Returns: 1
-=cut 
+=cut
 
 #--------------------------------------------------------------
 sub deconfig
@@ -371,11 +371,11 @@ sub stop
 =head3    supportNodeStatusMon
     This function is called by the monitorctrl module to check
     if PCP can help monitoring and returning the node status.
-    
+
     Arguments:
         none
     Returns:
-         1  
+         1
 =cut
 
 #--------------------------------------------------------------------------------
@@ -392,8 +392,8 @@ sub supportNodeStatusMon {
 =head3   startNodeStatusMon
     This function is called by the monitorctrl module to tell
     PCP to start monitoring the node status and feed them back
-    to xCAT. PCP will start setting up the condition/response 
-    to monitor the node status changes.  
+    to xCAT. PCP will start setting up the condition/response
+    to monitor the node status changes.
 
     Arguments:
        None.
@@ -434,7 +434,7 @@ sub stopNodeStatusMon {
 
 =head3    getDiscription
       This function returns the detailed description of the plugin inluding the
-     valid values for its settings in the monsetting tabel. 
+     valid values for its settings in the monsetting tabel.
      Arguments:
         none
     Returns:
@@ -444,7 +444,7 @@ sub stopNodeStatusMon {
 #--------------------------------------------------------------------------------
 sub getDescription
 {
-    return "Description: This plugin will help interface the xCAT cluster with PCP monitoring software 
-       ping-interval:  the number of minutes between  the metric collection operation. 
+    return "Description: This plugin will help interface the xCAT cluster with PCP monitoring software
+       ping-interval:  the number of minutes between  the metric collection operation.
         The default value is 5 \n ";
 }

@@ -50,7 +50,7 @@ if [ ! -z "$imgurl" ]; then
 		ROOTDIR=$SERVER
 		SERVER=${SERVER%%/*}
 		SERVER=${SERVER%:}
-		ROOTDIR=/${ROOTDIR#*/} 
+		ROOTDIR=/${ROOTDIR#*/}
 	fi
 fi
 #echo 0 > /proc/sys/vm/zone_reclaim_mode #Avoid kernel bug
@@ -123,7 +123,7 @@ elif [ -r /rootimg.tar.gz ] || [ -r /rootimg.tar.xz ]; then
   echo Done
 elif [ -r /rootimg-statelite.gz ]; then
   echo Setting up RAM-root tmpfs for statelite mode.
- 
+
   if [ -z $rootlimit];then
     mount -t tmpfs -o mode=755 rootfs $NEWROOT
   else
@@ -139,7 +139,7 @@ elif [ -r /rootimg-statelite.gz ]; then
   fi
   echo Done
   # then, the statelite staffs will be processed
-  echo Setting up Statelite 
+  echo Setting up Statelite
   modprobe nfs
   MAXTRIES=7
   ITER=0
@@ -312,7 +312,7 @@ if [ -z $STATEMNT ]; then
 
   if [ ! -z "$MACX" ] && [ ! -z "$ETHX" ]; then
     if [ ! -e $NEWROOT/etc/sysconfig/network/ifcfg-$ETHX ]; then
-       [ "$xcatdebugmode" > "0" ] && logger -t xcat -p debug "creating $NEWROOT/etc/sysconfig/network-scripts/ifcfg-$ETHX" 
+       [ "$xcatdebugmode" > "0" ] && logger -t xcat -p debug "creating $NEWROOT/etc/sysconfig/network-scripts/ifcfg-$ETHX"
        touch $NEWROOT/etc/sysconfig/network/ifcfg-$ETHX
     fi
     [ "$xcatdebugmode" > "0" ] && logger -t xcat -p debug "writing $NEWROOT/etc/sysconfig/network-scripts/ifcfg-$ETHX: DEVICE=$ETHX;BOOTPROTO=dhcp;HWADDR=$MACX;ONBOOT=yes"

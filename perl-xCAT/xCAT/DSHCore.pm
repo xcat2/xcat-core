@@ -29,13 +29,13 @@ use xCAT::Utils;
 
         Returns:
         	$pid - process identifer for the forked process
-                
+
         Globals:
         	None
-    
+
         Error:
         	None
-    
+
         Example:
         	$pid = xCAT::DSHCore->fork_no_output('hostname1PID', @command_array);
 
@@ -94,13 +94,13 @@ sub fork_no_output
 
         Returns:
         	$pid - process identifer for the forked process
-                
+
         Globals:
         	None
-    
+
         Error:
         	None
-    
+
         Example:
         	$pid = xCAT::DSHCore->fork_no_output('hostname1PID', @command_array);
 
@@ -168,7 +168,7 @@ sub fork_output
         Forks a process for the given command array and returns the process
         ID for the forked process and references to all I/O pipes for STDOUT
         and STDERR. In the child process, it will invoke the xCAT::DSHCore->fork_no_output()
-        for the first command which is a no-output command and waitpid(). And then execute 
+        for the first command which is a no-output command and waitpid(). And then execute
         the left commands in the child process.
 
         Arguments:
@@ -177,13 +177,13 @@ sub fork_output
 
         Returns:
         	$pid - process identifer for the forked process
-                
+
         Globals:
         	None
-    
+
         Error:
         	None
-    
+
         Example:
         	$pid = xCAT::DSHCore->fork_output_for_commands('hostname1PID', @command_array);
 
@@ -274,13 +274,13 @@ sub fork_output_for_commands
         Returns:
         	1 if the EOF reached on $read_fh
         	undef otherwise
-                
+
         Globals:
         	None
-    
+
         Error:
         	None
-    
+
         Example:
 
         Comments:
@@ -479,13 +479,13 @@ sub pipe_handler
         Returns:
         	1 if the EOF reached on $read_fh
         	undef otherwise
-                
+
         Globals:
         	None
-    
+
         Error:
         	None
-    
+
         Example:
 
         Comments:
@@ -640,13 +640,13 @@ sub pipe_handler_buffer
         Returns:
         	@no_response - list of hostnames that did not respond
         	undef if fping is not installed
-                
+
         Globals:
         	None
-    
+
         Error:
         	None
-    
+
         Example:
         	@bad_hosts = xCAT::DSHCore->ping_hostnames(@host_list);
 

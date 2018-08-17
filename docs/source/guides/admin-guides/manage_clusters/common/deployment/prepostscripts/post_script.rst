@@ -8,7 +8,7 @@ xCAT automatically runs a few postscripts and postbootscripts that are delivered
 Types of scripts
 ~~~~~~~~~~~~~~~~
 
-There are two types of scripts in the postscripts table ( postscripts and postbootscripts). The types are based on when in the install process they will be executed. Run the following for more information:  
+There are two types of scripts in the postscripts table ( postscripts and postbootscripts). The types are based on when in the install process they will be executed. Run the following for more information:
 
     ``man postscripts``
 
@@ -17,14 +17,14 @@ There are two types of scripts in the postscripts table ( postscripts and postbo
            * **[RHEL]**
 
            Postscripts will be run before the reboot.
-           
+
            * **[SLES]**
 
            Postscripts will be run after the reboot but before the init.d process. For Linux diskless deployment, the postscripts will be run at the init.d time, and xCAT will automatically add the list of postscripts from the postbootscripts attribute to run after postscripts list.
 
 * **postbootscripts attribute** - list of postbootscripts that should be run on this Linux node at the init.d time after diskful installation reboot or diskless boot
-* **xCAT**, by default, for diskful installs only runs the postbootscripts on the install and not on reboot. In xCAT a site table attribute runbootscripts is available to change this default behavior. If set to yes, then the postbootscripts will be run on install and on reboot. 
- 
+* **xCAT**, by default, for diskful installs only runs the postbootscripts on the install and not on reboot. In xCAT a site table attribute runbootscripts is available to change this default behavior. If set to yes, then the postbootscripts will be run on install and on reboot.
+
 **xCAT automatically adds the postscripts from the xcatdefaults.postscripts attribute of the table to run first on the nodes after install or diskless boot.**
 
 Adding your own postscripts
@@ -35,7 +35,7 @@ To add your own script, place it in /install/postscripts on the management node.
 To check what scripts will be run on your node during installation: ::
 
        lsdef node1 | grep scripts
-       postbootscripts=otherpkgs 
+       postbootscripts=otherpkgs
        postscripts=syslog,remoteshell,syncfiles
 
 You can pass parameters to the postscripts. For example: ::
@@ -47,7 +47,7 @@ You can pass parameters to the postscripts. For example: ::
 p1 p2 are the parameters to script1.
 
 Postscripts could be placed in the subdirectories in /install/postscripts on management node, and specify "subdir/postscriptname" in the postscripts table to run the postscripts in the subdirectories. This feature could be used to categorize the postscripts for different purposes. Here is an example: ::
-     
+
        mkdir -p /install/postscripts/subdir1
        mkdir -p /install/postscripts/subdir2
        cp postscript1 /install/postscripts/subdir1/
@@ -69,7 +69,7 @@ We could write a script, say, /install/postscripts/nicbondscript, the nicbondscr
 
        [root@xcatmn ~]#
 
-Then :: 
+Then ::
 
        chdef <nodename> -p postbootscripts=nicbondscript
 
@@ -239,7 +239,7 @@ If the site table precreatemypostscripts attribute is set to 1 or yes, it will i
 
 If the precreatemyposcripts attribute is yes, and a database change is made or xCAT code is upgraded, then you should run a new nodeset or updatenode to regenerate the /tftpboot/mypostscript/mypostscript.<nodename>. file to pick up the latest database setting. The default for precreatemypostscripts is no/0.
 
-When you run nodeset or updatenode, it will search the **/install/postscripts/mypostscript.tmpl** first. If the **/install/postscripts/mypostscript.tmpl** exists, it will use that template to generate the mypostscript for each node. Otherwise, it will use **/opt/xcat/share/xcat/mypostscript/mypostscript.tmpl**. 
+When you run nodeset or updatenode, it will search the **/install/postscripts/mypostscript.tmpl** first. If the **/install/postscripts/mypostscript.tmpl** exists, it will use that template to generate the mypostscript for each node. Otherwise, it will use **/opt/xcat/share/xcat/mypostscript/mypostscript.tmpl**.
 
 
 Content of the template for mypostscript
@@ -247,7 +247,7 @@ Content of the template for mypostscript
 
 **The attributes that are defined in the shipped mypostscript.tmpl file** should not be removed. The xCAT default postscripts rely on that information to run successfully. **The following will explain the entries in the mypostscript.tmpl file**.
 
-The SITE_TABLE_ALL_ATTRIBS_EXPORT line in the file directs the code to export all attributes defined in the site table. 
+The SITE_TABLE_ALL_ATTRIBS_EXPORT line in the file directs the code to export all attributes defined in the site table.
 Note: the attributes are not always defined exactly as in the site table to avoid conflict with other table attributes of the same name. For example, the site table master attribute is named SITEMASTER in the generated mypostscript file. ::
 
         #SITE_TABLE_ALL_ATTRIBS_EXPORT#
@@ -257,7 +257,7 @@ The following line exports ENABLESSHBETWEENNODES by running the internal xCAT ro
        ENABLESSHBETWEENNODES=#Subroutine:xCAT::Template::enablesshbetweennodes:$NODE#
        export ENABLESSHBETWEENNODES
 
-**tabdump(<TABLENAME>)** is used to get all the information in the **<TABLENAME>** table :: 
+**tabdump(<TABLENAME>)** is used to get all the information in the **<TABLENAME>** table ::
 
       tabdump(networks)
 
@@ -446,7 +446,7 @@ Note: Type4 is not an open interface to add extensions to the templatel.
 
 **Type 5:** Get all the data from the specified table. The **<TABLENAME>** should not be a node table, like nodelist. This should be handles with TYPE 2 syntax to get specific attributes for the **$NODE**. tabdump would result in too much data for a nodetype table. Also the auditlog, eventlog should not be in tabdump for the same reason. site table should not be specified, it is already provided with the **#SITE_TABLE_ALL_ATTRIBS_EXPORT#** flag. It can be used to get the data from the two key tables (like switch). ::
 
-  The syntax is: 
+  The syntax is:
 
   tabdump(<TABLENAME>)
 
@@ -479,10 +479,10 @@ If you want to remove an attribute that you have added, you should remove all th
 Test the new template
 ''''''''''''''''''''''
 
-There are two quick ways to test the template. 
+There are two quick ways to test the template.
 
 #.
-If the node is up: :: 
+If the node is up: ::
 
    updatenode <nodename> -P syslog
 

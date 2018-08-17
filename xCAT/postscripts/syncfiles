@@ -2,7 +2,7 @@
 # IBM(c) 2009 EPL license http://www.eclipse.org/legal/epl-v10.html
 #####################################################
 #
-#   Initiate the xdcp from Mangement node to sync 
+#   Initiate the xdcp from Mangement node to sync
 #   files to this node
 #
 #####################################################
@@ -18,7 +18,7 @@ fi
 if [ -n "$UPDATENODE" ] && [ $UPDATENODE -eq 1 ]; then
    #echo "  Did not sync any files. Use updatenode -F to sync the files."
    logger -t xcat -p local4.err "$0: Did not sync any files. Use updatenode -F to sync the files."
-  
+
    exit 0
 fi
 
@@ -31,7 +31,7 @@ fi
 
 RCP=
 if [ ! -e "/usr/bin/rsync" ]; then
-   [ -e "/usr/bin/scp" ] && RCP="/usr/bin/scp" 
+   [ -e "/usr/bin/scp" ] && RCP="/usr/bin/scp"
 fi
 
 logger -t xcat -p local4.info "Performing syncfiles postscript"

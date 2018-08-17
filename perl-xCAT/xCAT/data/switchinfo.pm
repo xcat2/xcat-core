@@ -1,6 +1,6 @@
 # IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
 
-#This module includes some glocal table to look up the switch type via mac and vendor 
+#This module includes some glocal table to look up the switch type via mac and vendor
 
 package xCAT::data::switchinfo;
 

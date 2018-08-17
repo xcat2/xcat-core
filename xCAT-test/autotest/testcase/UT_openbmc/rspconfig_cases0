@@ -7,7 +7,7 @@ check:rc==0
 end
 
 start:rspconfig_get_all
-description: Check that we can get all the attributes from the BMC 
+description: Check that we can get all the attributes from the BMC
 os:Linux
 hcp:openbmc
 label:cn_bmc_ready,hctrl_openbmc
@@ -21,13 +21,13 @@ check:output=~$$CN: BMC VLAN ID:
 end
 
 start:rspconfig_get_all_error
-description: Check the parsing code for rspconfig (error cases) 
+description: Check the parsing code for rspconfig (error cases)
 hcp: openbmc
 label:cn_bmc_ready,hctrl_openbmc
 cmd: rspconfig $$CN ip,netmask,gateway,hostname,vlan
 check:rc==1
 check:output=~Error: (\[.*?\]: )?Unsupported command
-end 
+end
 
 start:rspconfig_get_set_error
 description: Check the parsing code for rspconfig (error cases) - Cannot get/set in same line
@@ -39,35 +39,35 @@ check:output=~Error: (\[.*?\]: )?Can not set and query OpenBMC information at th
 end
 
 start:rspconfig_get_and_set_hostname
-description: Test setting and getting hostname on the BMC 
+description: Test setting and getting hostname on the BMC
 os:Linux
 hcp:openbmc
 label:cn_bmc_ready,hctrl_openbmc
-# Save the hostname to a file.... 
+# Save the hostname to a file....
 cmd:rspconfig $$CN hostname | tee /tmp/xcattest.rspconfig.hostname
 check:rc==0
-check:output=~$$CN: BMC Hostname: 
+check:output=~$$CN: BMC Hostname:
 # Set to witherspoon first
-cmd:rspconfig $$CN hostname=witherspoon 
+cmd:rspconfig $$CN hostname=witherspoon
 check:rc==0
 check:output=~$$CN: BMC Setting Hostname...
 # Check that it's set to witherspoon
-cmd:rspconfig $$CN hostname 
+cmd:rspconfig $$CN hostname
 check:rc==0
 check:output=~$$CN: BMC Hostname: witherspoon
-# Set to <host>-UTset 
+# Set to <host>-UTset
 cmd:rspconfig $$CN hostname=$$CN-UTset
 check:rc==0
 check:output=~$$CN: BMC Setting Hostname...
-# Check that it's set 
-cmd:rspconfig $$CN hostname 
+# Check that it's set
+cmd:rspconfig $$CN hostname
 check:rc==0
 check:output=~$$CN: BMC Hostname: $$CN-UTset
-# Restore to saved version 
+# Restore to saved version
 cmd:grep BMC /tmp/xcattest.rspconfig.hostname  | cut -d' ' -f4 | xargs -i{} rspconfig $$CN hostname={}
 check:rc==0
 check:output=~$$CN: BMC Setting Hostname...
-cmd:rspconfig $$CN hostname 
+cmd:rspconfig $$CN hostname
 check:rc==0
 check:output=~$$CN: BMC Hostname:
 cmd:rm /tmp/xcattest.rspconfig.hostname

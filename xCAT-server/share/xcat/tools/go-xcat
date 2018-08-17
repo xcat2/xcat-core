@@ -72,7 +72,7 @@ function usage()
 # verbose_usage		This function be will be called when user run
 #			`go-xcat --long-help'.
 #			Including a bunch of secert usage.
-# 
+#
 function verbose_usage()
 (
 	local script="${0##*/}"
@@ -1800,16 +1800,16 @@ case "${GO_XCAT_ACTION}" in
 		# Only print out this message on install
 		while read -r ; do echo "${REPLY}" ; done <<-EOF
 
-		xCAT has been installed!  
+		xCAT has been installed!
 		========================
 
 		If this is the very first time xCAT has been installed, run the following
 		commands to set environment variables into your PATH:
 
-		For sh: 
+		For sh:
 		    source /etc/profile.d/xcat.sh
 
-		For csh: 
+		For csh:
 		    source /etc/profile.d/xcat.csh
 		EOF
 		;;

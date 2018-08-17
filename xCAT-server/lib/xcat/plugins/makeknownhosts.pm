@@ -2,10 +2,10 @@
 #-------------------------------------------------------
 
 =head1
-  xCAT plugin package to handle makeknownhosts 
+  xCAT plugin package to handle makeknownhosts
 
    Supported command:
-         makenownhosts-> makeknownhosts 
+         makenownhosts-> makeknownhosts
 
 =cut
 
@@ -43,7 +43,7 @@ sub handled_commands
 =head3  process_request
 
   Process the command
-  Get list of nodes and for each node, find all possible 
+  Get list of nodes and for each node, find all possible
   names and ipaddresses and add an entry into the users
   /.ssh knownhost file.
 
@@ -141,10 +141,10 @@ sub process_request
 
 #-------------------------------------------------------
 
-=head3  backup_known_hosts file 
+=head3  backup_known_hosts file
 
   Backs up the old known_hosts file in roots  .ssh directory,
-  if it exists. 
+  if it exists.
 
 =cut
 
@@ -189,9 +189,9 @@ sub backup_known_hosts_file
 
 #-------------------------------------------------------
 
-=head3  add_known_host 
+=head3  add_known_host
 
-  Adds entires to $ROOTHOME/.ssh/known_hosts file 
+  Adds entires to $ROOTHOME/.ssh/known_hosts file
 
 
 

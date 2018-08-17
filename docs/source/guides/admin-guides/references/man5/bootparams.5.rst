@@ -19,7 +19,7 @@ SYNOPSIS
 ********
 
 
-\ **bootparams Attributes:**\   \ *node*\ , \ *kernel*\ , \ *initrd*\ , \ *kcmdline*\ , \ *addkcmdline*\ , \ *dhcpstatements*\ , \ *adddhcpstatements*\ , \ *comments*\ , \ *disable*\ 
+\ **bootparams Attributes:**\   \ *node*\ , \ *kernel*\ , \ *initrd*\ , \ *kcmdline*\ , \ *addkcmdline*\ , \ *dhcpstatements*\ , \ *adddhcpstatements*\ , \ *comments*\ , \ *disable*\
 
 
 ***********
@@ -36,58 +36,58 @@ bootparams Attributes:
 
 
 
-\ **node**\ 
- 
+\ **node**\
+
  The node or group name
- 
 
 
-\ **kernel**\ 
- 
+
+\ **kernel**\
+
  The kernel that network boot actions should currently acquire and use.  Note this could be a chained boot loader such as memdisk or a non-linux boot loader
- 
 
 
-\ **initrd**\ 
- 
+
+\ **initrd**\
+
  The initial ramdisk image that network boot actions should use (could be a DOS floppy or hard drive image if using memdisk as kernel)
- 
 
 
-\ **kcmdline**\ 
- 
+
+\ **kcmdline**\
+
  Arguments to be passed to the kernel
- 
 
 
-\ **addkcmdline**\ 
- 
+
+\ **addkcmdline**\
+
  User specified kernel options for os provision process(no prefix) or the provisioned os(with prefix "R::"). The options should be delimited with spaces(" ")
- 
 
 
-\ **dhcpstatements**\ 
- 
+
+\ **dhcpstatements**\
+
  xCAT manipulated custom dhcp statements (not intended for user manipulation)
- 
 
 
-\ **adddhcpstatements**\ 
- 
+
+\ **adddhcpstatements**\
+
  Custom dhcp statements for administrator use (not implemneted yet)
- 
 
 
-\ **comments**\ 
- 
+
+\ **comments**\
+
  Any user-written notes.
- 
 
 
-\ **disable**\ 
- 
+
+\ **disable**\
+
  Set to 'yes' or '1' to comment out this row.
- 
+
 
 
 
@@ -96,5 +96,5 @@ SEE ALSO
 ********
 
 
-\ **nodels(1)**\ , \ **chtab(8)**\ , \ **tabdump(8)**\ , \ **tabedit(8)**\ 
+\ **nodels(1)**\ , \ **chtab(8)**\ , \ **tabdump(8)**\ , \ **tabedit(8)**\
 

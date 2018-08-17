@@ -247,12 +247,12 @@ check:output=~Object name\: switch-template
 check:output=~groups=switch
 check:output=~nodetype=switch
 check:output=~postbootscripts\=otherpkgs
-check:output=~postscripts\=syslog\,remoteshell\,syncfiles 
-check:output=~usercomment\=the switch definition template  
-check:output=~postscripts\=syslog\,remoteshell\,syncfiles 
+check:output=~postscripts\=syslog\,remoteshell\,syncfiles
+check:output=~usercomment\=the switch definition template
+check:output=~postscripts\=syslog\,remoteshell\,syncfiles
 check:output=~ip\=OPTIONAL\:the ip address of the switch
 check:output=~mac\=OPTIONAL\:the MAC address of the switch
-check:output=~switchtype\=OPTIONAL\:The type of switch 
+check:output=~switchtype\=OPTIONAL\:The type of switch
 end
 
 start:lsdef_template_with_invalid_name
@@ -262,4 +262,4 @@ cmd:result=`lsdef | grep  test_with_invalid_name`; if [[ $result =~ "test_with_i
 cmd:lsdef --template "test_with_invalid_name"
 check:rc==1
 check:output=~Error: (\[.*?\]: )?Could not find test_with_invalid_name in xCAT templates.
-end 
+end

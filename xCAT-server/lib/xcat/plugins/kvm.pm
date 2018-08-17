@@ -1791,15 +1791,15 @@ sub rmvm {
             my @driver = $disk->parentNode()->findnodes("driver");
             unless ($driver[0]) { next; }
             my $drivertype = $driver[0]->getAttribute("type");
-            if (($drivertype eq "raw") || ($disktype eq "block")) { 
+            if (($drivertype eq "raw") || ($disktype eq "block")) {
                 #For raw or block devices, do not remove, even if purge was specified. Log info message.
                 xCAT::MsgUtils->trace(0, "i", "Not purging raw or block storage device: $disk");
-                next; 
+                next;
             }
             my $file = $disk->getAttribute("file");
-            unless ($file) { 
+            unless ($file) {
                 xCAT::MsgUtils->trace(0, "w", "Not able to find 'file' attribute value for: $disk");
-                next; 
+                next;
             }
 
             # try to check the existence first, if cannot find, do nothing.
@@ -1927,11 +1927,11 @@ sub chvm {
         }
     }
 
-    # The function get_multiple_paths_by_url() is used to polulate useddisks hash, 
+    # The function get_multiple_paths_by_url() is used to polulate useddisks hash,
     # but it only returns disk volumes from kvm host.
     # cdrom is not returned by get_multiple_paths_by_url() but is defined as a disk device
     # in xml definition of the VM.
-    # We add cdrom entry to useddisks hash to make sure the device name used by cdrom is not 
+    # We add cdrom entry to useddisks hash to make sure the device name used by cdrom is not
     # selected for the new disk about to be added (chvm -a)
     my @cdrom_names = get_cdrom_device_names($vmxml);
     foreach my $cdrom_name (@cdrom_names) {
@@ -2625,24 +2625,24 @@ sub chvm {
 
 #######################################################################
 # get_disks_by_userspecs
-# Description: get the storage device info ( xml and source file ) of 
-#              the user specified disk devices 
-# Arguments:   
-#              $specs : ref to the user specified disk name list           
+# Description: get the storage device info ( xml and source file ) of
+#              the user specified disk devices
+# Arguments:
+#              $specs : ref to the user specified disk name list
 #              $xml   : the xml string of the domain
 #              $returnmoddedxml : switch on whether to prepend
 #              the domain xml with the user specified disk removed
-#              to the beginning of the return array  
+#              to the beginning of the return array
 # Return   :
-#              An array with the structure 
+#              An array with the structure
 #             [
-#              <domain xml>(optional: with the user specified disk removed, 
+#              <domain xml>(optional: with the user specified disk removed,
 #                           exist only if $returnmoddedxml specified),
 #              [<the disk device xml>, <the source file of the disk device>],
 #              [<the disk device xml>, <the source file of the disk device>],
 #              ...
 #             ]
-# Example  :   
+# Example  :
 #             1. my @disklist = get_disks_by_userspecs(\@diskname, $vmxml, 'returnmoddedxml');
 #                my $moddedxml = shift @disklist;
 #             2. my @disklist = get_disks_by_userspecs(\@diskname, $vmxml)
@@ -3184,7 +3184,7 @@ sub power {
                 };
                 if($@){
                     return (1, "Error: $@");
-                }               
+                }
                 $allnodestatus{$node} = $::STATUS_POWERING_OFF;
             }
             undef $dom;
@@ -3562,21 +3562,21 @@ sub lsvm {
                     my $state =  $domain_info->{"state"};
                     my $state_string;
                     given($state) {
-                        when ($state == &Sys::Virt::Domain::STATE_NOSTATE) 
+                        when ($state == &Sys::Virt::Domain::STATE_NOSTATE)
                             {$state_string = "The domain is active, but is not running / blocked (eg idle)";}
-                        when ($state == &Sys::Virt::Domain::STATE_RUNNING) 
+                        when ($state == &Sys::Virt::Domain::STATE_RUNNING)
                             {$state_string = "The domain is active and running";}
-                        when ($state == &Sys::Virt::Domain::STATE_BLOCKED) 
+                        when ($state == &Sys::Virt::Domain::STATE_BLOCKED)
                             {$state_string = "The domain is active, but execution is blocked";}
-                        when ($state == &Sys::Virt::Domain::STATE_PAUSED) 
+                        when ($state == &Sys::Virt::Domain::STATE_PAUSED)
                             {$state_string = "The domain is active, but execution has been paused";}
-                        when ($state == &Sys::Virt::Domain::STATE_SHUTDOWN) 
+                        when ($state == &Sys::Virt::Domain::STATE_SHUTDOWN)
                             {$state_string = "The domain is active, but in the shutdown phase";}
-                        when ($state == &Sys::Virt::Domain::STATE_SHUTOFF) 
+                        when ($state == &Sys::Virt::Domain::STATE_SHUTOFF)
                             {$state_string = "The domain is inactive, and shut down";}
-                        when ($state == &Sys::Virt::Domain::STATE_CRUSHED) 
+                        when ($state == &Sys::Virt::Domain::STATE_CRUSHED)
                             {$state_string = "The domain is inactive, and crashed";}
-                        when ($state == &Sys::Virt::Domain::STATE_PMSUSPENDED) 
+                        when ($state == &Sys::Virt::Domain::STATE_PMSUSPENDED)
                             {$state_string = "The domain is active, but in power management suspend state";}
                         default {$state_string = "Unknown"};
                     }
@@ -3614,7 +3614,7 @@ sub lsvm {
             push @vms, $_->get_name();
         }
     }
-    # Check if we were able to get any data 
+    # Check if we were able to get any data
     unless (@vms) {
         push @vms, "Could not get any information about specified object";
     }

@@ -5,7 +5,7 @@ check:rc==0
 cmd:mkdir -p /tmp/xcat_inventory_import_validation_passwd_bak
 check:rc==0
 
-cmd:/opt/xcat/share/xcat/tools/autotest/testcase/xcat-inventory/validatehelper "passwd" "autotest" "cryptmethod" "" "/tmp/xcat_inventory_import_validation_passwd" 
+cmd:/opt/xcat/share/xcat/tools/autotest/testcase/xcat-inventory/validatehelper "passwd" "autotest" "cryptmethod" "" "/tmp/xcat_inventory_import_validation_passwd"
 check:rc==0
 
 cmd:/opt/xcat/share/xcat/tools/autotest/testcase/xcat-inventory/validatehelper "passwd" "autotest" "cryptmethod" "md5" "/tmp/xcat_inventory_import_validation_passwd"

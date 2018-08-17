@@ -6,14 +6,14 @@
 
 #-----------------------------------------------------------------------------
 
-=head1   db2install 
+=head1   db2install
 
  This postscript installs and sets up db2 on a client machine, usually a Service Node
  or a login node. This script can only be used to automatically install an
- AIX 6.1 or 7.1,  or a Linux Redhat5 or Redhat6 Client. 
+ AIX 6.1 or 7.1,  or a Linux Redhat5 or Redhat6 Client.
  Note: the db2 code must be in a mountable directory  defined by the
  db2installloc attribute in the site table.
- The perl-DBD-DB2 code should have been installed during the xCAT install from 
+ The perl-DBD-DB2 code should have been installed during the xCAT install from
  the AIX or Linux xCAT deps package for AIX6.1 or 7.1 or Redhat5 or Redhat 6.
  More information can be obtained from the xCAT http://xcat.svn.sourceforge.net/viewvc/xcat/xcat-core/trunk/xCAT-client/share/doc/xCAT2SetupDB2.pdf.
  Needs  export MASTER=site.master
@@ -22,7 +22,7 @@
         export INSTALLDIR=site.installdir
         export XCATDPORT=site.xcatdport
         export NODE=<mynodename>
- 
+
 =cut
 
 #-----------------------------------------------------------------------------

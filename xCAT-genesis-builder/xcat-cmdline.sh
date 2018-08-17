@@ -64,4 +64,4 @@ if [[ ${ARCH} =~ ppc64 ]]; then
     sleep $waittime
 fi
 
-while :; do screen -dr doxcat || screen -S doxcat -L -ln doxcat; done 
+while :; do screen -dr doxcat || screen -S doxcat -L -ln doxcat; done

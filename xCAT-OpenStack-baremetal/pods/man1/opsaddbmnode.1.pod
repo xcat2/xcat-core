@@ -46,14 +46,14 @@ Please make sure the following xCAT tables are filled with correct information f
 
 =head1 Parameters
 
-I<noderage> is a comma separated node or node group names. 
+I<noderage> is a comma separated node or node group names.
 
 
 =head1 OPTIONS
 
 =over 10
 
-=item B<-s>    The node name of the OpenStack compute host that hosts the baremetal nodes. 
+=item B<-s>    The node name of the OpenStack compute host that hosts the baremetal nodes.
 
 =item B<-h|--help>     Display usage message.
 

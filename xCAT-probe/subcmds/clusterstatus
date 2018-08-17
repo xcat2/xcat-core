@@ -27,7 +27,7 @@ my $start_time;
 #-----------------------------
 # To store the node number of a specified type
 # May like this:
-# $type_nodesnum{pdu} = 2; 
+# $type_nodesnum{pdu} = 2;
 #                {switch} = 3;
 #                {node} = 10;
 #-----------------------------
@@ -54,7 +54,7 @@ my %state_node_number = ();
 #----------------------------
 # To store the node based current state
 # May like this:
-#  $node_info{node1}{state} = "install"; 
+#  $node_info{node1}{state} = "install";
 #  $node_info{node1}{type} = "node";
 #----------------------------
 my %node_info = ();
@@ -70,12 +70,12 @@ $::USAGE = "Usage:
     $program_name [-n noderange] [-V|--verbose] [-i|--interval <seconds>] [--timeout <seconds>]
 
 Description:
-    Use this command to get a summary of the cluster. 
+    Use this command to get a summary of the cluster.
 
 Options:
     -h : Get usage information of $program_name
     -n : Range of nodes to check. All node objects will be used if not specified.
-    -i : The interval for screen refreshing, unit is second(s), 5 seconds by default. 
+    -i : The interval for screen refreshing, unit is second(s), 5 seconds by default.
     -V : To print additional debug information.
     --timeout: The timout if not all nodes finish, unit is second(s), no timeout by default.
 ";
@@ -201,7 +201,7 @@ sub check_for_discovered_nodes {
 sub groupcount_nodes {
     my $na = "N/A";
     my $rc = 0;
-  
+
     probe_utils->send_msg("$output", "w", "Group count function is not yet implemented.");
     return $rc;
 }
@@ -326,7 +326,7 @@ sub check_nodes_attributes {
         } else {
             $type_nodesnum{$node_type} += 1;
         }
-        $state_node_hash{$node_type}{$node_info{$_}{state}}{$_} = 1;  
+        $state_node_hash{$node_type}{$node_info{$_}{state}}{$_} = 1;
     }
 }
 exit 0;

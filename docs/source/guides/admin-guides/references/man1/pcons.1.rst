@@ -11,12 +11,12 @@ SYNOPSIS
 ********
 
 
-\ **pcons**\  \ *noderange*\  \ *command*\ 
+\ **pcons**\  \ *noderange*\  \ *command*\
 
-\ **pcons**\ 
+\ **pcons**\
 [\ **-h | -**\ **-help**\ ]
 
-\ **pcons**\ 
+\ **pcons**\
 [\ **-v | -**\ **-version**\ ]
 
 

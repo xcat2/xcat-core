@@ -3,8 +3,8 @@
 #This script will invoke the config_chef_client directly.
 #If the chef-server and chef-client are installed successfully at first,
 #and then on the chef-server node configure the software for the chef-client nodes.
-#We can run 
-#  updatenode  <chef-client-nodes>  chef-client 
+#We can run
+#  updatenode  <chef-client-nodes>  chef-client
 #To configure the softare on the chef-client node.
 
 ./config_chef_client

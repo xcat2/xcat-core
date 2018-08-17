@@ -18,7 +18,7 @@ Clean Up xCAT Related Configuration
 
   Keeping xCAT nodes information in ``/etc/hosts`` is harmless,  but if you really want to remove them from ``/etc/hosts`` run:  ::
 
-    makehosts -d all  
+    makehosts -d all
 
 4. To clean up the node information from DNS (optional)
 
@@ -49,14 +49,14 @@ Remove xCAT Files
 1. Remove the xCAT RPMs
 
   There is no easy way to identify all xCAT packages. For packages shipped by xCAT, you can remove them by using the commands below.
-  
+
   [RHEL and SLES] ::
 
       yum remove '*xcat*'
       yum remove '*xCAT*'
 
-  [Ubuntu] ::	  
-  
+  [Ubuntu] ::	
+
       dpkg -l | awk '/xcat/ { print $2 }'
 
   To do an even more thorough cleanup, use links below to get a list of RPMs installed by xCAT. Some RPMs may not to be installed in a specific environment.
@@ -64,32 +64,32 @@ Remove xCAT Files
   * XCAT Core Packages List (xcat-core)	
 
     [RHEL and SLES] ::
-  
+
         http://xcat.org/files/xcat/repos/yum/<version>/xcat-core/
 
     [Ubuntu] ::	
-  
+
         http://xcat.org/files/xcat/repos/apt/<version>/xcat-core/pool/main
-	  
-  * XCAT Dependency Packages (xcat-dep) 
+	
+  * XCAT Dependency Packages (xcat-dep)
 
     [RHEL and SLES] ::
-  
+
         http://xcat.org/files/xcat/repos/yum/xcat-dep/<os>/<arch>
 
     [Ubuntu] ::	
-  
+
         http://xcat.org/files/xcat/repos/apt/xcat-dep/pool/main
 
 
-  When ``yum install xCAT`` is used to install xCAT, dependency RPMs provided by the Operating System will be installed. Keeping those rpms installed on the system is harmless. 
+  When ``yum install xCAT`` is used to install xCAT, dependency RPMs provided by the Operating System will be installed. Keeping those rpms installed on the system is harmless.
 
 
 2. Remove xCAT certificate file ::
 
     rm -rf /root/.xcat
 
-3. Remove xCAT data files 
+3. Remove xCAT data files
 
   By default, xCAT uses SQLite, remove SQLite data files under ``/etc/xcat/``. ::
 
@@ -108,7 +108,7 @@ Remove xCAT Files
     /etc/rsyslogd.d/xCAT-*
     /var/log/xcat	
     /opt/xcat/
-    /mnt/xcat  
+    /mnt/xcat
 
 Remove Databases
 ----------------

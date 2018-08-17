@@ -28,13 +28,13 @@ require xCAT::Table;
 
     Returns: Return hash table which indexes the node names
     by kitname (ref)
-    e.g., 
+    e.g.,
          { "kitname1" => ["node11","node12",...],
            "kitname2" => ["node21","node22",...]
            ...
          }
 
-    Examples: 
+    Examples:
         my @nodes = ("node11", "node12",...);
         my $result = xCAT::KitPluginUtils->get_kits_used_by_nodes(\@nodes);
 
@@ -89,20 +89,20 @@ sub get_kits_used_by_nodes {
 =head3  get_kits_used_by_osimages
 
     Get the kits used by a list of osimages. An osimage
-    uses a kit if one or more of the kit's components 
+    uses a kit if one or more of the kit's components
     are associated with the osimage.
 
     Arguments: list of osimage names (ref)
 
     Returns: Return hash table which indexes the osimage
     names by kitname (ref)
-    e.g., 
+    e.g.,
          { "kitname1" => ["osimage11","osimage12",...],
            "kitname2" => ["osimage21","osimage22",...]
            ...
          }
 
-    Examples: 
+    Examples:
       my @osimages = ("osimage11","osimage12", ...);
       my $result = xCAT::KitPluginUtils->get_kits_used_by_osimages(\@osimages);
 
@@ -176,15 +176,15 @@ sub get_kits_used_by_osimages {
 
     Arguments: list of image profile names (ref)
 
-    Returns: Return hash table which indexes the image 
+    Returns: Return hash table which indexes the image
     profile names by kitname (ref)
-    e.g., 
+    e.g.,
          { "kitname1" => ["imgprofile11","imgprofile12",...],
            "kitname2" => ["imgprofile21","imgprofile22",...]
            ...
          }
 
-    Examples: 
+    Examples:
       my @imgprofiles = ("imgprofile11","imgprofile12",...);
       my $result = xCAT::KitPluginUtils->get_kits_used_by_image_profiles(\@imgprofiles);
 

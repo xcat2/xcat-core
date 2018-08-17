@@ -36,13 +36,13 @@ $::LOGFILE = "rollupdate.log";
 
 #------------------------------------------------------------------------------
 
-=head1    rollupdate   
+=head1    rollupdate
 
 This program module file supports the cluster rolling update functions.
 
 Supported commands:
    rollupdate - Create scheduler job command files and submit the jobs
-   runrollupdate - Reboot the updategroup in response to request from scheduler 
+   runrollupdate - Reboot the updategroup in response to request from scheduler
                   job
 
 If adding to this file, please take a moment to ensure that:
@@ -1304,9 +1304,9 @@ sub check_policy {
                       <xcat_noderange>:/<pattern>/<replacement>/
                     OR
                       <xcat_noderange>:|<pattern>|<replacement>|
-        Returns: 
+        Returns:
         Globals:
-                hash:  $::XLATED{$node}=$xlated_name                
+                hash:  $::XLATED{$node}=$xlated_name
                 AND    $::XLATED{$xlated_name}=$node
                 to allow easy lookup in either direction
         Error:
@@ -1679,7 +1679,7 @@ sub get_bringuporder {
 
 =head3   get_mutex
 
-        Generate the list of LL mutual exclusion resources for this 
+        Generate the list of LL mutual exclusion resources for this
         update group
 
         Arguments:
@@ -2828,7 +2828,7 @@ sub change_LL_feature {
 
 =head3   remove_LL_updatefeature_only
 
-        Changes the LL feature for the node to remove only the updatefeature 
+        Changes the LL feature for the node to remove only the updatefeature
         Will NOT remove oldfeature or set newfeature
 
         Arguments:

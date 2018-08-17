@@ -136,7 +136,7 @@ sub process_request
 
 =head3  get_highest_version
 
-  Return the highest version and release for a list of 
+  Return the highest version and release for a list of
   kit, kitrepo, or kitcomponent names.
 
   Input: @entries: the arrary contains all the data
@@ -174,7 +174,7 @@ sub get_highest_version
 
   Compare the version and release between two kit/kitrepo/kitcomp
 
-  Input: $highest: the current highest version or release 
+  Input: $highest: the current highest version or release
          $entry: the new entry
          $key: the key name in entries hash.
          $version: compare version nums.
@@ -359,7 +359,7 @@ sub check_newinstall
 =head3 get local otherpkgdir
 
   otherpkgdir can be mixed http source and local dir
-  Split otherpkgdir 
+  Split otherpkgdir
   get local otherpkgdir
 
 =cut
@@ -1137,7 +1137,7 @@ sub read_kit_config
 
 #-------------------------------------------------------
 
-=head3 addkit 
+=head3 addkit
 
   Add Kits into xCAT
 
@@ -1918,7 +1918,7 @@ sub validate_os {
 
 =head3 addkitcomp
 
-  Assign Kit component to osimage 
+  Assign Kit component to osimage
 
 =cut
 
@@ -2472,7 +2472,7 @@ sub addkitcomp
 
 =head3 rmkitcomp
 
-  Remove Kit component from osimage 
+  Remove Kit component from osimage
 
 =cut
 
@@ -3396,7 +3396,7 @@ sub rmkitcomp
 
 #-------------------------------------------------------
 
-=head3  chkkitcomp 
+=head3  chkkitcomp
 
     Check if the kit components fits to osimage
 
@@ -4126,7 +4126,7 @@ sub ensure_kitname_attr_in_list {
 
 =head3  check_attr_names_exist
 
-        Check if list of DB attribute names exist in a table 
+        Check if list of DB attribute names exist in a table
         Arguments:  a table name
                     a list of attribute names to check (ref)
         Returns:
@@ -4165,7 +4165,7 @@ sub check_attr_names_exist {
 =head3  check_attr_values_exist
 
         Check if a list of DB attribute values exist
-        Arguments:  
+        Arguments:
                 table name
                 table attribute
                 table attribute desc (e.g. kit names), this string is added to error message
@@ -4860,7 +4860,7 @@ sub lskitdeployparam {
 =head3  get_kit_hash
 
         Returns a hash table containing kit entries indexed by kit name.
-        Arguments: 
+        Arguments:
             list of kit names (ref)
             list of kit attribute names (ref)
         Returns: hash table (ref)
@@ -4897,9 +4897,9 @@ sub get_kit_hash {
 
 =head3  get_kitrepo_hash
 
-        Returns a hash table containing lists of kit repository entries 
+        Returns a hash table containing lists of kit repository entries
         indexed by kit name.
-        Arguments: 
+        Arguments:
             list of kit names (ref)
             list of kit repo attribute names (ref)
         Returns: hash table (ref)
@@ -4936,13 +4936,13 @@ sub get_kitrepo_hash {
 
 =head3  get_kitcomp_hash
 
-        Returns a hash table containing lists of kit component entries 
+        Returns a hash table containing lists of kit component entries
         indexed by kit name.
-        Arguments: 
+        Arguments:
             list of kit names (ref)
             list of kit component attribute names (ref)
         Returns: hash table (ref)
-           { kitname1 => [{kitcomp11,...},{kitcomp12,...}], 
+           { kitname1 => [{kitcomp11,...},{kitcomp12,...}],
              kitname2 => [{kitcomp21,...},{kitcomp22,...}],
              ...
            }
@@ -5129,8 +5129,8 @@ sub get_compat_kitreponames {
 
         Returns a SQL 'where' statement which is used to filter the
         result of a kit, kit repository or kit component query.
-        
-        Arguments: 
+
+        Arguments:
              hash table
                  - each entry represents a filter
                  - each entry has a key <keyN>, and a list of values <valuesN>.
@@ -5168,7 +5168,7 @@ sub db_build_filter_stmt {
 
         Returns a list of table rows.  Each table row is a hash table.
 
-        Arguments: 
+        Arguments:
                table name
                attribute list
                where statement
@@ -5213,7 +5213,7 @@ sub db_get_table_rows {
 
         Returns a hash table containing table rows indexed by specified
         table attribute.
-        Arguments: 
+        Arguments:
                list of table rows (each row is a hash table)
                table attribute
         Returns: hash table (ref)
@@ -5247,7 +5247,7 @@ sub create_hash_from_table_rows {
 
 =head3  create_lskit_xml_response
 
-        Prepare a response that returns the kit, kit repository, and 
+        Prepare a response that returns the kit, kit repository, and
         kit component info in XML format.
 
         Arguments:
@@ -5456,7 +5456,7 @@ sub create_lskitcomp_C_xml_response {
 
 =head3  create_lskit_stanza_response
 
-        Prepare a response that returns the kit, kit repository, and 
+        Prepare a response that returns the kit, kit repository, and
         kit component info in stanza-like format.
 
         Arguments:

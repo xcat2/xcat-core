@@ -102,8 +102,8 @@ sub process_request {
     my $envars;
     my $help;
     my $version;
-    my $lock;  
- 
+    my $lock;
+
     GetOptions(
         "profile|p=s" => \$profile,
         "arch|a=s"    => \$arch,
@@ -207,7 +207,7 @@ sub process_request {
     }
     $rootimg_dir = "$destdir/rootimg";
 
-    
+
     my $retcode;
     ($retcode,$lock)=xCAT::Utils->acquire_lock_imageop($rootimg_dir);
     if($retcode){
@@ -502,8 +502,8 @@ sub process_request {
     }
 
     $suffix = $method.".".$suffix;
-    unlink glob("$destdir/rootimg.*");   
- 
+    unlink glob("$destdir/rootimg.*");
+
     if ($method =~ /cpio/) {
         if (!$excludestr) {
             $excludestr = "find . -xdev -print0 | cpio -H newc -o -0 | $compress -c - > ../rootimg.$suffix";
@@ -553,7 +553,7 @@ sub process_request {
         $callback->({ info => ["$outputmsg"] });
     }else{
         $callback->({ info => ["$outputmsg"] });
-        $callback->({ error => ["packimage failed while running: \n $excludestr"], errorcode => [1] }); 
+        $callback->({ error => ["packimage failed while running: \n $excludestr"], errorcode => [1] });
         system("rm -rf $xcat_packimg_tmpfile");
         return 1;
     }

@@ -36,14 +36,14 @@ our $ssh_version = xCAT::SSH->validate_ssh_version;
         Returns:
         	A command array for the ssh command with the appropriate
         	arguments as defined in the $config hash table
-               
+
         Globals:
         	$ssh_version
         	$SSH_CMD
-    
+
         Error:
         	None
-    
+
         Example:
         	xCAT::SSH->remote_shell_command($config_hash, '/usr/bin/ssh');
 
@@ -99,14 +99,14 @@ sub remote_shell_command {
         Returns:
         	A command array for the scp command with the appropriate
         	arguments as defined in the $config hash table
-                
+
         Globals:
         	$ssh_version
         	$SCP_CMD
-    
+
         Error:
         	None        	
-    
+
         Example:
         	xCAT::SSH->remote_copy_command($config_hash, '/usr/bin/scp');
 
@@ -147,7 +147,7 @@ sub remote_copy_command {
         {
             $scpfile = "/tmp/scp_$$config{'dest-host'}";
         }
-       
+
         open SCPCMDFILE, "> $scpfile"
           or die "Can not open file $scpfile";
         if ($$config{'dest-user'})
@@ -183,7 +183,7 @@ sub remote_copy_command {
                         "$exec_path -p -r $src_file_diff_dest $dest_user_host:$dest_dir/$diff_basename\n";
                 }
             }
-        }        
+        }
 
         close SCPCMDFILE;
         chmod 0755, $scpfile;
@@ -231,13 +231,13 @@ sub remote_copy_command {
         Returns:
         	The string 'OpenSSH' if OpenSSH is used
         	undef otherwise
-                
+
         Globals:
         	$SSH_CMD
-    
+
         Error:
         	None
-    
+
         Example:
         	$ssh_version = xCAT::SSH->validate_ssh_version;
 

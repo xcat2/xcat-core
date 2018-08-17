@@ -11,7 +11,7 @@ end
 
 start:bmcdiscover_help
 os:linux
-decription:show bmcdiscover help information 
+decription:show bmcdiscover help information
 cmd:bmcdiscover help
 check:rc==0
 check:output=~bmcdiscover \- Discover BMC \(Baseboard Management Controller\) using the specified scan method
@@ -31,7 +31,7 @@ end
 start:bmcdiscover_h
 os:Linux
 decription:help
-cmd:bmcdiscover -h 
+cmd:bmcdiscover -h
 check:rc==0
 check:output=~Usage
 end
@@ -64,7 +64,7 @@ start:bmcdiscover_range_w
 cmd:bmcdiscover --range  $$bmcrange -u $$bmcusername -p $$bmcpasswd -w
 check:rc==0
 check:output=~Writing node
-check:output=~$$bmcrange,.+,.+,$$bmcusername,$$bmcpasswd 
+check:output=~$$bmcrange,.+,.+,$$bmcusername,$$bmcpasswd
 end
 
 

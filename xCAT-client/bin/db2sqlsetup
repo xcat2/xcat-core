@@ -4,39 +4,39 @@
 
 #-----------------------------------------------------------------------------
 
-=head1   db2sqlsetup 
+=head1   db2sqlsetup
 
 
 
- This script is called after the installation of DB2 
+ This script is called after the installation of DB2
    on xCAT.  It will automate the setup of the DB2 to run
    xCAT on the IBM DB2 database on AIX and Linux.
-   On AIX ( AIX61J - AIX61 TL5(AIX 6.1.5.0)) or later and Linux. 
+   On AIX ( AIX61J - AIX61 TL5(AIX 6.1.5.0)) or later and Linux.
    As an option it will also setup the ODBC for C/C++ applications
    to be able to use the database.
    It will setup an xcatdb
-   database ,a db2instance id, name xcatdb ( same as database), 
+   database ,a db2instance id, name xcatdb ( same as database),
    and instance  password to be used in the /etc/xcat/cfgloc file
    to access the database.
-   It will interact for the password to assign to the xcatdb 
+   It will interact for the password to assign to the xcatdb
    for the Unix id and DB2 instance id,
-   unless the XCATDB2PW env var is set to the password for the instance id. 
+   unless the XCATDB2PW env var is set to the password for the instance id.
    For Client setup, it will interact for the hostname or ip address
    of the DB2 Server as known by the Service Node, unless the
    XCATDB2SERVER  environement variable is set.
-   See man db2setup for more information   
-   The script will assume the default install paths of /opt/IBM/db2 for AIX and 
-   /opt/ibm/db2 for Linux,  unless overridden with the XCATDB2INSPATH 
-   environment variable. 
+   See man db2setup for more information
+   The script will assume the default install paths of /opt/IBM/db2 for AIX and
+   /opt/ibm/db2 for Linux,  unless overridden with the XCATDB2INSPATH
+   environment variable.
    The script will assume /var/lib/db2 for the xcat db2 database directory
-   unless the 
+   unless the
    DATABASELOC environment variable is set or the site.databaseloc attribute is
    set.  The environment variable should match the
    databaseloc attribute in the site table, but the DATABASELOC environment
-   variable will take precedence. DATABASELOC points to the directory that 
+   variable will take precedence. DATABASELOC points to the directory that
    contains the db2 database directory,  so  if DATABASELOC=/db2database then
-   the actual location for the db2 database is /db2database/db2.    
-   
+   the actual location for the db2 database is /db2database/db2.
+
 =cut
 
 BEGIN
@@ -557,7 +557,7 @@ exit;
 
 #-----------------------------------------------------------------------------
 
-=head3    usage 
+=head3    usage
 	
 	Displays message for -h option
 
@@ -579,9 +579,9 @@ sub usage
 
 #-----------------------------------------------------------------------------
 
-=head3    startxcatd 
+=head3    startxcatd
 	
-  start the daemon 
+  start the daemon
 
 =cut
 
@@ -612,9 +612,9 @@ sub startxcatd
 
 #-----------------------------------------------------------------------------
 
-=head3    shutdownxcatd 
+=head3    shutdownxcatd
 	
-  shutdown the daemon 
+  shutdown the daemon
 
 =cut
 
@@ -643,9 +643,9 @@ sub shutdownxcatd
 
 #-----------------------------------------------------------------------------
 
-=head3    backupxcatdb 
+=head3    backupxcatdb
 	
-   Backup xCATdb 
+   Backup xCATdb
 
 =cut
 
@@ -695,9 +695,9 @@ sub backupxcatdb
 
 #-----------------------------------------------------------------------------
 
-=head3  mkdb2user 
+=head3  mkdb2user
 	
-         adds db2instance user and group and xcatdb instance id 
+         adds db2instance user and group and xcatdb instance id
 =cut
 
 #-----------------------------------------------------------------------------
@@ -867,11 +867,11 @@ sub mkdb2user
 
 #-----------------------------------------------------------------------------
 
-=head3   setupservices   
+=head3   setupservices
 
 	
-  add db2 xcatdb instance entries into /etc/services on Server or Client 
-  
+  add db2 xcatdb instance entries into /etc/services on Server or Client
+
 
 =cut
 
@@ -906,14 +906,14 @@ db2c_xcatdb     50001/tcp    # Port for server connection";
 
 #-----------------------------------------------------------------------------
 
-=head3   setupinstance   
+=head3   setupinstance
 
 	
- Create the db2 server or client instance 
+ Create the db2 server or client instance
  For server
- run <db2installpath>/instance/db2icrt -a server -p db2c_xcatdb -u xcatdb xcatdb 
+ run <db2installpath>/instance/db2icrt -a server -p db2c_xcatdb -u xcatdb xcatdb
  For Client
- run <db2installpath>/instance/db2icrt -s client xcatdb 
+ run <db2installpath>/instance/db2icrt -s client xcatdb
 
 
 =cut
@@ -1034,11 +1034,11 @@ sub setupinstance
 
 #-----------------------------------------------------------------------------
 
-=head3   rundb2cmd  
+=head3   rundb2cmd
 
 	
-  Run a commmand as the xcatdb instance id 
-  Input: command 
+  Run a commmand as the xcatdb instance id
+  Input: command
 
 =cut
 
@@ -1061,7 +1061,7 @@ sub rundb2cmd
 
 #-----------------------------------------------------------------------------
 
-=head3   setupdb2env  
+=head3   setupdb2env
 
 	
   Setup the db2 environment variables and libpaths
@@ -1143,10 +1143,10 @@ sub setupdb2env
 
 #-----------------------------------------------------------------------------
 
-=head3   db2start 
+=head3   db2start
 
 	
-    Start the db2 server 
+    Start the db2 server
 
 =cut
 
@@ -1188,10 +1188,10 @@ sub db2start
 
 #-----------------------------------------------------------------------------
 
-=head3   catalogServer 
+=head3   catalogServer
 
 	
-   Catalog the location of the db2 server on the Service Node 
+   Catalog the location of the db2 server on the Service Node
 
 =cut
 
@@ -1230,10 +1230,10 @@ sub catalogServer
 
 #-----------------------------------------------------------------------------
 
-=head3   updateDBM 
+=head3   updateDBM
 
 	
-   Setup configuration requirements for the DBM 
+   Setup configuration requirements for the DBM
 
 =cut
 
@@ -1259,10 +1259,10 @@ sub updateDBM
 
 #-----------------------------------------------------------------------------
 
-=head3   createxcatdb 
+=head3   createxcatdb
 
 	
-   Create the xcat database 
+   Create the xcat database
 
 =cut
 
@@ -1381,10 +1381,10 @@ sub createxcatdb
 
 #-----------------------------------------------------------------------------
 
-=head3   db2reboot 
+=head3   db2reboot
 
 	
-    Setup for db2 to start on reboot  
+    Setup for db2 to start on reboot
 
 =cut
 
@@ -1484,7 +1484,7 @@ ly restart on reboot.");
 
 #-----------------------------------------------------------------------------
 
-=head3   setupODBC 
+=head3   setupODBC
 	
          Will setup the ODBC.  C++ applications are running
 		 that need access to the DB2 database for example LoadLeveler.
@@ -1820,10 +1820,10 @@ sub setupODBC
 
 #-----------------------------------------------------------------------------
 
-=head3   createcfgloc 
+=head3   createcfgloc
 	
-		 Creates the cfgloc file 
-                 to run xCAT on DB2 
+		 Creates the cfgloc file
+                 to run xCAT on DB2
 
 =cut
 
@@ -1883,8 +1883,8 @@ sub createcfgloc
 
 #-----------------------------------------------------------------------------
 
-=head3   restorexcatdb 
-	   
+=head3   restorexcatdb
+	
 		Restores the database from ~/xcat-dbback and restarts the xcatd using
 	        DB2	
 	
@@ -1936,9 +1936,9 @@ sub restorexcatdb
 
 #-----------------------------------------------------------------------------
 
-=head3   updatecrontab 
-	   
-	    Sets up a crontab entry to reorg the database, once a week on Sunday 
+=head3   updatecrontab
+	
+	    Sets up a crontab entry to reorg the database, once a week on Sunday
                night midnight	
 	
 =cut
@@ -1961,7 +1961,7 @@ sub updatecrontab
 
 =head3    adddb2paths
 	
- Add paths to db2 commands to /etc/profile and ~.profile 
+ Add paths to db2 commands to /etc/profile and ~.profile
 
 =cut
 
@@ -2100,8 +2100,8 @@ qq~echo '# xCAT DB2 setup\nPATH=\$PATH:$db2paths\nexport PATH\n' >>$profname~;
 #-----------------------------------------------------------------------------
 
 =head3   remove
-	   
-		remove DB2 on management node or service node. if you want to remove it 
+	
+		remove DB2 on management node or service node. if you want to remove it
 		from service node, you should use -s and -r flag together.
              Note this function is not supported and the code has not been
              kept up to date
@@ -2508,11 +2508,11 @@ sub remove
 
 #-----------------------------------------------------------------------------
 
-=head3    updatepasswd 
+=head3    updatepasswd
 	
    if -S , then update the xcatdb instance password on the MN
       -C , then update the xcatdb instance password on the clients (SN)
-      if just -p , then update the xcatdb intance password on both  
+      if just -p , then update the xcatdb intance password on both
 
 =cut
 

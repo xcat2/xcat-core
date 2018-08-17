@@ -43,5 +43,5 @@ check:output=~$$CN: +
 cmd:cat /var/log/messages /var/log/xcat/computes.log 2>/dev/null |grep "trying to download postscripts"
 check:rc==0
 cmd:chtab key=xcatdebugmode site.value="0"
-cmd:chdef $$CN  -m  postscripts=setupntp 
+cmd:chdef $$CN  -m  postscripts=setupntp
 end

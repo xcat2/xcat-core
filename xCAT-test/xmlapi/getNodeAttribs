@@ -1,18 +1,18 @@
-# Reads the table input for the noderange and returns list of attributes 
+# Reads the table input for the noderange and returns list of attributes
 # requested
 <xcatrequest>
 <clienttype>PCM</clienttype>
 <command>getNodeAttribs</command>
 <table>tablename</table>
 <node>noderange</node>
-<attr>attribute1</attr> 
+<attr>attribute1</attr>
 <value>value1</value>
-<attr>attribute2</attr> 
+<attr>attribute2</attr>
 <value>value2</value>
 .
 .
 .
-<attr>attributeN</attr> 
+<attr>attributeN</attr>
 <value>valueN</value>
 </xcatrequest>
 <xcatresponse>

@@ -19,13 +19,13 @@ use Data::Dumper;
 
     A hash which includes all the parameters for accessing HTTP server. The valid parameter:
         ip:        The IP address of the HTTP server
-        user:      The user to access HTTP server. 
-        password:  The password for the user. 
+        user:      The user to access HTTP server.
+        password:  The password for the user.
         method:    The http method. (GET, PUT, POST, DELETE). Default is GET
         protocol:  The protocol which will be used to access HTTP server.  (http/https). Default is https
         format:    The format of payload. Default is xml
         payload:   The payload of http
-        
+
     Example:
         my %http_params = ( ip       => '192.168.1.1',
                             port     => '5989',
@@ -33,7 +33,7 @@ use Data::Dumper;
                             password => 'admin',
                             method   => 'POST',
                             protocol => 'https');
-        
+
 =cut
 
 =head1 enum_instance ()
@@ -50,7 +50,7 @@ use Data::Dumper;
             rc     - The return code. 0 - success. > 0 - fail.
             cim_rc - The return code from CIM server.
             msg    - Output message.
-            
+
         2 - Array of instances, each instance is a hash contains lots of properties.
 
         3 - The name path of instance
@@ -337,14 +337,14 @@ sub set_property
     Description:
         Generate a http request.
 
-    Arguments: 
+    Arguments:
         http_params: A reference to HTTP_PARAMS
         payload:     The payload for the http request. It can be null if the payload has been set in http_params.
 
     Return:
         A hash reference. The valid key includes:
             rc      - The return code. 0 - success. > 0 - fail.
-            msg     - Output message 
+            msg     - Output message
             request - The generated HTTP::Request object
 =cut
 
