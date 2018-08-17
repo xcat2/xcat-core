@@ -15,6 +15,7 @@ use lib "$::XCATROOT/lib/perl";
 
 use strict;
 use Getopt::Long;
+use Expect;
 use File::Path;
 use File::Basename;
 
@@ -30,6 +31,7 @@ sub handled_commands {
     return {
         nodeset => 'nodehm:mgt=switch',    
         copydata => 'onie',
+        rspconfig => 'switches:switchtype',
       }
 }
 
@@ -89,6 +91,11 @@ sub process_request {
     my $nodes   = $request->{node};
     my $command = $request->{command}->[0];
     my $args    = $request->{arg};
+    my @exargs    = ($request->{arg});
+    if (ref($args)) {
+        @exargs = @$args;
+    }
+
 
     if ($::XCATSITEVALS{xcatdebugmode} != 0) { $::VERBOSE = 1}
 
@@ -96,6 +103,11 @@ sub process_request {
         copydata($request, $callback);
     } elsif ($command eq "nodeset") {
         nodeset($request, $callback, $subreq);
+    } elsif ($command eq "rspconfig") {
+        my $subcmd = $exargs[0];
+        if ($subcmd eq 'sshcfg') {
+            process_sshcfg($nodes, $callback);
+        }
     }
 
 }
@@ -307,4 +319,103 @@ sub nodeset {
     }
     return;
 }
+
+
+sub process_sshcfg {
+    my $noderange = shift;
+    my $callback = shift;
+
+    my $password = "CumulusLinux!";
+    my $userid = "cumulus";
+    my $timeout = 30;
+    my $keyfile = "/root/.ssh/id_rsa.pub";
+    my $rootkey = `cat /root/.ssh/id_rsa.pub`;
+
+    foreach my $switch (@$noderange) {
+        my $ip = xCAT::NetworkUtils->getipaddr($switch);
+
+        #remove old host key from /root/.ssh/known_hosts
+        my $cmd = "ssh-keygen -R $switch";
+        xCAT::Utils->runcmd($cmd, 0);
+        $cmd = "ssh-keygen -R $ip";
+        xCAT::Utils->runcmd($cmd, 0);
+
+        my ($exp, $errstr) = cumulus_connect($ip, $userid, $password, $timeout);
+        if (!defined $exp) {
+            xCAT::MsgUtils->message("E", { data => ["Failed to connect to $switch"] }, $callback);
+            next;
+        }
+
+        my $ret;
+        my $err;
+
+        ($ret, $err) = cumulus_exec($exp, "mkdir -p /root/.ssh");
+        ($ret, $err) = cumulus_exec($exp, "chmod 700 /root/.ssh");
+        ($ret, $err) = cumulus_exec($exp, "echo \"$rootkey\" >/root/.ssh/authorized_keys");
+        ($ret, $err) = cumulus_exec($exp, "chmod 644 /root/.ssh/authorized_keys");
+        if (!defined $ret) {
+            xCAT::MsgUtils->message("E", { data => ["Failed to run command on $switch"] }, $callback);
+            next;
+        }
+        xCAT::MsgUtils->message("I", { data => ["$switch: SSH enabled"] }, $callback);
+    }
+}
+
+sub cumulus_connect {
+     my $server   = shift;
+     my $userid   = shift;
+     my $password = shift;
+     my $timeout  = shift;
+
+     my $ssh      = Expect->new;
+     my $command     = 'ssh';
+     my @parameters  = ($userid . "@" . $server);
+
+     $ssh->debug(0);
+     $ssh->log_stdout(0);    # suppress stdout output..
+     $ssh->slave->stty(qw(sane -echo));
+
+     unless ($ssh->spawn($command, @parameters))
+     {
+         my $err = $!;
+         $ssh->soft_close();
+         my $rsp;
+         return(undef, "unable to run command $command $err\n");
+     }
+
+     $ssh->expect($timeout,
+                   [ "-re", qr/WARNING: REMOTE HOST IDENTIFICATION HAS CHANGED/, sub {die "WARNING: REMOTE HOST IDENTIFICATION HAS CHANGED!\n"; } ],
+                   [ "-re", qr/\(yes\/no\)\?\s*$/, sub { $ssh->send("yes\n");  exp_continue; } ],
+                   [ "-re", qr/ password:/,        sub {$ssh->send("$password\n"); exp_continue; } ],
+                   [ "-re", qr/:~\$/,              sub { $ssh->send("sudo su\n"); exp_continue; } ],
+                   [ "-re", qr/ password for cumulus:/, sub { $ssh->send("$password\n"); exp_continue; } ],
+                   [ "-re", qr/.*\/home\/cumulus#/, sub { $ssh->clear_accum(); } ],
+                   [ timeout => sub { die "No login.\n"; } ]
+                  );
+     $ssh->clear_accum();
+     return ($ssh);
+}
+
+sub cumulus_exec {
+     my $exp = shift;
+     my $cmd = shift;
+     my $timeout    = shift;
+     my $prompt =  shift;
+
+     $timeout = 10 unless defined $timeout;
+     $prompt = qr/.*\/home\/cumulus#/ unless defined $prompt;
+
+
+     $exp->clear_accum();
+     $exp->send("$cmd\n");
+     my ($mpos, $merr, $mstr, $mbmatch, $mamatch) = $exp->expect(6,  "-re", $prompt);
+
+     if (defined $merr) {
+         return(undef,$merr);
+     }
+     return($mbmatch);
+}
+
+
+
 1;
