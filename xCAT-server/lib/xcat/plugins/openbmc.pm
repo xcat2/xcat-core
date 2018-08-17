@@ -1026,6 +1026,27 @@ sub process_request {
             }
         }
       
+        # All options parsed and validated. Now lock upload and activate processing, so that only one
+        # can continue in case multiples are issued for the same node
+        #
+        if (($next_status{LOGIN_RESPONSE} eq "RFLASH_FILE_UPLOAD_REQUEST") or 
+            ($next_status{LOGIN_RESPONSE} eq "RFLASH_UPDATE_ACTIVATE_REQUEST") or
+            ($next_status{LOGIN_RESPONSE} eq "RFLASH_UPDATE_HOST_ACTIVATE_REQUEST")) {
+
+            my $lock = xCAT::Utils->acquire_lock("rflash_$node", 1);
+            unless ($lock) {
+                my $lock_msg = "Unable to rflash $node. Another process is already flashing this node.";
+                xCAT::SvrUtils::sendmsg([ 1, $lock_msg ], $callback, $node);
+                $node_info{$node}{rst} = $lock_msg;
+                $wait_node_num--;
+                next; 
+            }
+            if ($::VERBOSE) {
+                xCAT::SvrUtils::sendmsg("Acquired the lock for upload and activate process", $callback, $node);
+            }
+            $node_info{$node}{rflash_lock} = $lock;
+        }
+
         $login_url = "$http_protocol://$node_info{$node}{bmc}/login";
         $content = '{ "data": [ "' . $node_info{$node}{username} .'", "' . $node_info{$node}{password} . '" ] }';
         if ($xcatdebugmode) {
@@ -1101,22 +1122,25 @@ rmdir \"/tmp/\$userid\" \n";
                         push @{ $rflash_result{fail} }, "$node: $node_info{$node}{rst}";
                     }
                 }
-                xCAT::MsgUtils->message("I", { data => ["-------------------------------------------------------"], host => [1] }, $callback);
-                my $summary = "Firmware update complete: ";
                 my $total = keys %node_info;
-                my $success = 0;
-                my $fail = 0;
-                $success = @{ $rflash_result{success} } if (defined $rflash_result{success} and @{ $rflash_result{success} });
-                $fail = @{ $rflash_result{fail} } if (defined $rflash_result{fail} and @{ $rflash_result{fail} });
-                $summary .= "Total=$total Success=$success Failed=$fail";
-                xCAT::MsgUtils->message("I", { data => ["$summary"], host => [1] }, $callback);
+                # Display summary information but only if there were any nodes to process
+                if ($total > 0) {
+                    xCAT::MsgUtils->message("I", { data => ["-------------------------------------------------------"], host => [1] }, $callback);
+                    my $summary = "Firmware update complete: ";
+                    my $success = 0;
+                    my $fail = 0;
+                    $success = @{ $rflash_result{success} } if (defined $rflash_result{success} and @{ $rflash_result{success} });
+                    $fail = @{ $rflash_result{fail} } if (defined $rflash_result{fail} and @{ $rflash_result{fail} });
+                    $summary .= "Total=$total Success=$success Failed=$fail";
+                    xCAT::MsgUtils->message("I", { data => ["$summary"], host => [1] }, $callback);
 
-                if ($rflash_result{fail}) {
-                    foreach (@{ $rflash_result{fail} }) {
-                        xCAT::MsgUtils->message("I", { data => ["$_"], host => [1] }, $callback);
+                    if ($rflash_result{fail}) {
+                        foreach (@{ $rflash_result{fail} }) {
+                            xCAT::MsgUtils->message("I", { data => ["$_"], host => [1] }, $callback);
+                        }
                     }
+                    xCAT::MsgUtils->message("I", { data => ["-------------------------------------------------------"], host => [1] }, $callback);
                 }
-                xCAT::MsgUtils->message("I", { data => ["-------------------------------------------------------"], host => [1] }, $callback);
             }
             last;
         }
@@ -2099,10 +2123,13 @@ sub parse_command_status {
                 }
             }
         }
-        if ($upload or $::UPLOAD_AND_ACTIVATE) {
-            xCAT::SvrUtils::sendmsg("Attempting to upload $::UPLOAD_FILE, please wait...", $callback);
-        } elsif ($::UPLOAD_ACTIVATE_STREAM) {
-            xCAT::SvrUtils::sendmsg("Attempting to upload $::UPLOAD_FILE and $::UPLOAD_PNOR, please wait...", $callback);
+        # Check if there are any valid nodes to work on. If none, do not issue these messages
+        if (keys %node_info > 0) {
+            if ($upload or $::UPLOAD_AND_ACTIVATE) {
+                xCAT::SvrUtils::sendmsg("Attempting to upload $::UPLOAD_FILE, please wait...", $callback);
+            } elsif ($::UPLOAD_ACTIVATE_STREAM) {
+                xCAT::SvrUtils::sendmsg("Attempting to upload $::UPLOAD_FILE and $::UPLOAD_PNOR, please wait...", $callback);
+            }
         }
         if ($check_version) {
             # Display firmware version on BMC
@@ -4480,7 +4507,7 @@ sub rflash_response {
                 sleep(1)
             } elsif ($child == 0) {
                 $async->remove_all;
-                exit(rflash_upload($node, $callback))
+                exit(rflash_upload($node, $callback));
             } else {
                 $child_node_map{$child} = $node;
             }
