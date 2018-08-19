@@ -2312,10 +2312,6 @@ sub setNodesAttribs {
 #--------------------------------------------------------------------------------
 sub getNodesAttribs {
     my $self = shift;
-    if ($dbworkerpid > 0) {
-        return dbc_call($self, 'getNodesAttribs', @_);
-    }
-    $self->trace_db(START_TYPE);
     my $nodelist = shift;
     unless ($nodelist) { $nodelist = []; } #common to be invoked with undef seemingly
     my %options = ();
@@ -2326,6 +2322,21 @@ sub getNodesAttribs {
     } else {
         @attribs = @_;
     }
+
+    if (!exists($options{hierarchy_attrs})) {
+        my @hierarchy_attrs = ();
+        my $hierarchy_field = xCAT::TableUtils->get_site_attribute("hierarchicalattrs");
+        if ($hierarchy_field) {
+            @hierarchy_attrs = split(/,/, $hierarchy_field);
+        }
+        $options{hierarchy_attrs} = \@hierarchy_attrs;
+    }
+
+    if ($dbworkerpid > 0) {
+        return dbc_call($self, 'getNodesAttribs', $nodelist, \@attribs, %options);
+    }
+
+    $self->trace_db(START_TYPE);
     my @realattribs = @attribs; #store off the requester attribute list, the cached columns may end up being a superset and we shouldn't return more than asked
       #it should also be the case that cache will be used if it already is in play even if below cache threshold.  This would be desired behavior
     if (scalar(@$nodelist) > $cachethreshold) {
@@ -2732,20 +2743,10 @@ sub transRegexAttrs
 sub getNodeAttribs
 {
     my $self = shift;
-    if ($dbworkerpid > 0) { #TODO: should this be moved outside of the DB worker entirely?  I'm thinking so, but I don't dare do so right now...
-         #the benefit would be the potentially computationally intensive substitution logic would be moved out and less time inside limited
-         #db worker scope
-        return dbc_call($self, 'getNodeAttribs', @_);
-    }
-    $self->trace_db(START_TYPE);
-
-    if (!defined($self->{dbh})) {
-        xCAT::MsgUtils->message("S", "xcatd: DBI is missing, Please check the db access process.");
-        return undef;
-    }
     my $node = shift;
-    my @attribs;
+
     my %options = ();
+    my @attribs;
     if (ref $_[0]) {
         @attribs = @{ shift() };
         %options = @_;
@@ -2760,6 +2761,17 @@ sub getNodeAttribs
             @hierarchy_attrs = split(/,/, $hierarchy_field);
         }
         $options{hierarchy_attrs} = \@hierarchy_attrs;
+    }
+    if ($dbworkerpid > 0) { #TODO: should this be moved outside of the DB worker entirely?  I'm thinking so, but I don't dare do so right now...
+         #the benefit would be the potentially computationally intensive substitution logic would be moved out and less time inside limited
+         #db worker scope
+        return dbc_call($self, 'getNodeAttribs', $node, \@attribs, %options);
+    }
+    $self->trace_db(START_TYPE);
+
+    if (!defined($self->{dbh})) {
+        xCAT::MsgUtils->message("S", "xcatd: DBI is missing, Please check the db access process.");
+        return undef;
     }
 
     my $datum;
