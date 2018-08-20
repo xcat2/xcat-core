@@ -4,7 +4,7 @@
 if [ -r /xcatpost/cudakey ]; then
     GPGKEY=`cat /xcatpost/cudakey`
 else
-    GPGKEY="-----BEGIN PGP PUBLIC KEY BLOCK-----                
+    GPGKEY="-----BEGIN PGP PUBLIC KEY BLOCK-----
 Version: GnuPG v2.0.9 (GNU/Linux)
 
 mQGiBFFoeGMRBACjjvkdqqBafo0msmm9251rB7ocN4Es4cCq6O/8eOVoPx8fFrAK

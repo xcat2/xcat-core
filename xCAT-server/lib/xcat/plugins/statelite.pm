@@ -171,8 +171,9 @@ sub process_request {
     # - osver
     # - arch
     # - profile
-    $callback->({ info => ["going to modify $rootimg_dir"] });
-
+    my $rsp;
+    push @{ $rsp->{data} }, "Modifying $rootimg_dir ...";
+    xCAT::MsgUtils->message("I", $rsp, $callback);
     #copy $installroot/postscripts into the image at /xcatpost
     if (-e "$rootimg_dir/xcatpost") {
         system("rm -rf $rootimg_dir/xcatpost");
@@ -232,10 +233,14 @@ sub process_request {
 
     #sync fils configured in the synclist to the rootimage
     $syncfile = xCAT::SvrUtils->getsynclistfile(undef, $osver, $arch, $profile, "netboot", $imagename);
-    if (defined($syncfile) && -f $syncfile
-        && -d $rootimg_dir) {
-        print "sync files from $syncfile to the $rootimg_dir\n";
-        `$::XCATROOT/bin/xdcp -i $rootimg_dir -F $syncfile`;
+    if (defined($syncfile) && -d $rootimg_dir) {
+        my @filelist = split ',', $syncfile;
+        foreach my $synclistfile (@filelist) {
+            if ( -f $synclistfile) {
+                print "sync files from $synclistfile to the $rootimg_dir\n";
+                `$::XCATROOT/bin/xdcp -i $rootimg_dir -F $synclistfile`;
+            }
+        }
     }
 
     # check if the file "litefile.save" exists or not
@@ -358,8 +363,8 @@ sub process_request {
     #delete useless rootimg/tmp/dracut.* files
     #fix copy many dracut.* files cost too much time in liteimg
     $verbose && $callback->({ info => ["removing \"$rootimg_dir/tmp/dracut.*\""] });
-    unlink glob "$rootimg_dir/tmp/dracut.*"; 
-        
+    unlink glob "$rootimg_dir/tmp/dracut.*";
+
     # recovery the files in litefile.save if necessary
     foreach my $line (keys %hashSaved) {
         my @oldentry = split(/\s+/, $line);
@@ -532,7 +537,7 @@ sub process_request {
         system("umount $rootimg_dir/proc");
 
         #put the image name, uuid and timestamp into diskless image when it is packed.
-        $callback->({ data => ["add image info to xcatinfo file"] });
+        $verbose && $callback->({ data => ["add image info to xcatinfo file"] });
         `echo IMAGENAME="'$imagename'" > $rootimg_dir/opt/xcat/xcatinfo`;
 
         my $uuid = `uuidgen`;
@@ -547,7 +552,7 @@ sub process_request {
 
         my $temppath;
         my $oldmask;
-        $callback->({ data => ["$verb contents of $rootimg_dir"] });
+        $callback->({ data => ["$verb contents of $rootimg_dir ..."] });
         unlink("$destdir/rootimg-statelite.gz");
 
         my $compress = "gzip";
@@ -585,6 +590,7 @@ sub process_request {
         umask $oldmask;
 
         system("rm -f $xcat_packimg_tmpfile");
+        $callback->({ data => ["$verb contents of $rootimg_dir done."] });
     }
     chdir($oldpath);
 
@@ -624,7 +630,7 @@ sub liteMe {
         }
     }
 
-    $callback->({ info => ["done."] });
+    $callback->({ info => ["Modifying $rootimg_dir done."] });
 
     # end loop, synclist should now all be in place.
 }
@@ -759,7 +765,7 @@ sub parseLiteFiles {
 
 
 =head3
-    recoverFiles 
+    recoverFiles
 =cut
 
 sub recoverFiles {

@@ -1,8 +1,14 @@
 start:xcatstanzafile_normal
 description:xcatstanzafile in normal format
 label:mn_only,db
-cmd:echo -e "default-node:\n	groups=all,compute\ntestnode:\n    objtype=node\n    xcatmaster=MS02.ppd.pok.com\n    nfsserver=IS227.ppd.pok.com" > testfile
+cmd:echo 'default-node:
+    groups=all,compute
+testnode:
+    objtype=node
+    xcatmaster=MS02.ppd.pok.com
+    nfsserver=IS227.ppd.pok.com' > testfile
 check:rc==0
+cmd:cat testfile
 cmd:cat testfile|chdef -z
 check:rc==0
 cmd:lsdef testnode
@@ -17,7 +23,12 @@ end
 start:xcatstanzafile_colon
 description:xcatstanzafile's header without colon
 label:mn_only,db
-cmd:echo -e "default-node:\n    groups=all,compute\ntestnode\n    objtype=node\n    xcatmaster=MS02.ppd.pok.com\n    nfsserver=IS227.ppd.pok.com" > testfile
+cmd:echo 'default-node:
+    groups=all,compute
+testnode
+    objtype=node
+    xcatmaster=MS02.ppd.pok.com
+    nfsserver=IS227.ppd.pok.com' > testfile
 check:rc==0
 cmd:cat testfile|chdef -z
 check:rc!=0
@@ -31,21 +42,36 @@ end
 start:xcatstanzafile_attribute
 description:xcatstanzafile with error attribute line
 label:mn_only,db
-cmd:echo -e "default-node:\n    groups=all,compute\ntestnode:\n    objtype=node\n    xcatmasterMS02.ppd.pok.com\n    nfsserver=IS227.ppd.pok.com" > testfile
+cmd:echo 'default-node:
+    groups=all,compute
+testnode:
+    objtype=node
+    xcatmasterMS02.ppd.pok.com
+    nfsserver=IS227.ppd.pok.com' > testfile
 check:rc==0
 cmd:cat testfile|chdef -z
 cmd:lsdef testnode
 check:output!~xcatmaster=MS02.ppd.pok.com
 cmd:rmdef -t node testnode
 cmd:rm -f testfile
-cmd:echo -e "default-node:\n    groups=all,compute\ntestnode:\n    objtype=node\n    xcatmaster=\n    nfsserver=IS227.ppd.pok.com" > testfile
+cmd:echo 'default-node:
+    groups=all,compute
+testnode:
+    objtype=node
+    xcatmaster=
+    nfsserver=IS227.ppd.pok.com' > testfile
 check:rc==0
 cmd:cat testfile|chdef -z
 cmd:lsdef testnode
 check:output!~xcatmaster=
 cmd:rmdef -t node testnode
 cmd:rm -f testfile
-cmd:echo -e "default-node:\n    groups=all,compute\ntestnode\n    objtype=node\n    =MS02.ppd.pok.com\n    nfsserver=IS227.ppd.pok.com" > testfile
+cmd:echo 'default-node:
+    groups=all,compute
+testnode:
+    objtype=node
+    =MS02.ppd.pok.com
+    nfsserver=IS227.ppd.pok.com' > testfile
 check:rc==0
 cmd:cat testfile|chdef -z
 cmd:lsdef testnode
@@ -57,7 +83,11 @@ end
 start:xcatstanzafile_objtype
 description:xcatstanzafile,a stanza without objtype definition
 label:mn_only,db
-cmd:echo -e "default-node:\n    groups=all,compute\ntestnode:\n    xcatmaster=MS02.ppd.pok.com\n    nfsserver=IS227.ppd.pok.com" > testfile
+cmd:echo 'default-node:
+    groups=all,compute
+testnode:
+    xcatmaster=MS02.ppd.pok.com
+    nfsserver=IS227.ppd.pok.com' > testfile
 check:rc==0
 cmd:cat testfile|mkdef -z
 check:rc!=0
@@ -69,7 +99,12 @@ end
 #start:xcatstanzafile_comment
 #description:xcatstanzafile,a stanza without objtype definition
 #label:mn_only,db
-#cmd:echo -ne "default-node:\n    groups=all,compute\ntestnode:\n    objtype=node\n    xcatmaster=MS02.ppd.pok.com\n    nfsserver=IS227.ppd.pok.com" > testfile
+#cmd:echo 'default-node:
+#    groups=all,compute
+#testnode:
+#    objtype=node
+#    xcatmaster= MS02.ppd.pok.com
+#    nfsserver=IS227.ppd.pok.com' > testfile
 #check:rc==0
 #cmd:echo '#abc' >> testfile
 #cmd:cat testfile|mkdef -z
@@ -82,7 +117,12 @@ end
 start:xcatstanzafile_tab
 description:xcatstanzafile,line with tab and space
 label:mn_only,db
-cmd:echo -e "default-node:\n    groups=all,compute\ntestnode:\n    objtype=node\n    xcatmaster	=	MS02.ppd.pok.com\n    nfsserver=IS227.ppd.pok.com" > testfile
+cmd:echo 'default-node:
+    groups=all,compute
+testnode:
+    objtype=node
+    xcatmaster  =   MS02.ppd.pok.com
+    nfsserver=IS227.ppd.pok.com' > testfile
 check:rc==0
 cmd:cat testfile|mkdef -z
 check:rc==0
@@ -93,12 +133,18 @@ end
 start:xcatstanzafile_multattr
 description:xcatstanzafile,line with multiple attribute
 label:mn_only,db
-cmd:echo -e "default-node:\n    groups=all,compute\ntestnode:\n    objtype=node\n    xcatmaster= MS02.ppd.pok.com	nfsserver=IS227.ppd.pok.com" > testfile
+cmd:echo 'default-node:
+    groups=all,compute
+testnode:
+    objtype=node
+    xcatmaster= MS02.ppd.pok.com
+    nfsserver=IS227.ppd.pok.com' > testfile
 check:rc==0
 cmd:cat testfile|mkdef -z
 check:rc==0
 cmd:lsdef testnode
-check:output=~\s*xcatmaster=MS02.ppd.pok.com\s*nfsserver=IS227.ppd.pok.com
+check:output=~\s*xcatmaster=MS02.ppd.pok.com
+check:output=~\s*nfsserver=IS227.ppd.pok.com
 cmd:rmdef -t node testnode
 cmd:rm -f testfile
 end
@@ -107,8 +153,14 @@ end
 start:xcatstanzafile_defaultvalue
 description:xcatstanzafile,If the header name is ``default-<object type>:'' the attribute values in the stanza are considered default values for subsequent definitions in the file that are the same object type.
 label:mn_only,db
-cmd:echo -e "default-node:\n    groups=all,compute\ntestnode:\n    objtype=node\n    xcatmaster= MS02.ppd.pok.com\n       nfsserver=IS227.ppd.pok.com" > testfile
+cmd:echo 'default-node:
+    groups=all,compute
+testnode:
+    objtype=node
+    xcatmaster= MS02.ppd.pok.com
+    nfsserver=IS227.ppd.pok.com' > testfile
 check:rc==0
+cmd:cat testfile
 cmd:cat testfile|mkdef -z
 check:rc==0
 cmd:lsdef testnode
@@ -120,7 +172,13 @@ end
 start:xcatstanzafile_specificvalue
 description:When a specific value for an attribute is provided in the stanza, it takes priority over any default value that had been set.
 label:mn_only,db
-cmd:bash -c 'echo -e "default-node:\n    groups=all,compute\ntestnode:\n    objtype=node\n    groups=all,rhels5.5\n	xcatmaster= MS02.ppd.pok.com\n       nfsserver=IS227.ppd.pok.com" > testfile'
+cmd:echo 'default-node:
+    groups=all,compute
+testnode:
+    objtype=node
+    groups=all,rhels5.5
+    xcatmaster= MS02.ppd.pok.com
+    nfsserver=IS227.ppd.pok.com' > testfile
 check:rc==0
 cmd:cat testfile|mkdef -z
 check:rc==0

@@ -9,7 +9,7 @@
 #include <signal.h>
 #include <syslog.h>
 
-// the chunk size for each alloc 
+// the chunk size for each alloc
 int chunknum = 200;
 int doreload = 0;
 int verbose = 0;
@@ -28,7 +28,7 @@ int nodenum = 0;
 void reload(int sig) {
     doreload = 1;
 }
-// the subroutine which is used to load configuration from 
+// the subroutine which is used to load configuration from
 // /var/lib/xcat/proxydhcp.cfg to *data
 void loadcfg () {
     nodenum = 0;
@@ -75,7 +75,7 @@ char *getwinpepath(char *node) {
     return NULL;
 }
 
-    
+
 int main(int argc, char *argv[]) {
     int i;
     for(i = 0; i < argc; i++)
@@ -151,11 +151,11 @@ int main(int argc, char *argv[]) {
         // use select to wait for the 4011 request packages coming
         fd_set fds;
         FD_ZERO(&fds);
-        FD_SET(serverfd, &fds); 
+        FD_SET(serverfd, &fds);
         struct timeval timeout;
         timeout.tv_sec = 30;
         timeout.tv_usec = 0;
-        
+
         int rc;
         if ((rc = select(serverfd+1,&fds,0,0, &timeout)) <= 0) {
             if (doreload) {
@@ -165,12 +165,12 @@ int main(int argc, char *argv[]) {
             if (verbose) {syslog(LOG_DEBUG, "reload /var/lib/xcat/proxydhcp.cfg\n");}
             continue;
         }
-        
+
         if (doreload) {
             loadcfg();
             if (verbose) {syslog(LOG_DEBUG, "reload /var/lib/xcat/proxydhcp.cfg\n");}
         }
-        
+
         pktsize = recvmsg(serverfd,&msg,0);
         if (pktsize < 320) {
             continue;
@@ -183,7 +183,7 @@ int main(int argc, char *argv[]) {
                 myip = ((struct in_pktinfo*)(CMSG_DATA(cmsgptr)))->ipi_addr.s_addr;
             }
         }
-        
+
         // get the ip of dhcp client
         clientip = 0;
         int i;
@@ -201,20 +201,20 @@ int main(int argc, char *argv[]) {
                 if (place) {
                     *place = '\0';
                 }
-                
+
                 winpepath = getwinpepath(host->h_name);
                 if (winpepath == NULL) {
                     winpepath = defaultwinpe;
                 }
                 if (verbose) {
                     sprintf(logmsg, "Received proxydhcp request from %s\n", host->h_name);
-                    syslog(LOG_DEBUG, logmsg); 
+                    syslog(LOG_DEBUG, logmsg);
                 }
             }
         } else {
             winpepath = defaultwinpe;
         }
-        
+
         // get the Vendor class identifier
         char *arch = NULL;
         unsigned char *p = clientpacket + 0xf0;
@@ -226,7 +226,7 @@ int main(int argc, char *argv[]) {
                 p += *(p+1) + 2;
             }
         }
-        
+
         char winboot[50]; // the bootload of winpe
         memset(winboot, 0, 50);
         if (0 == memcmp(arch, "00000", 5)) {  // bios boot mode
@@ -247,7 +247,7 @@ int main(int argc, char *argv[]) {
         strncpy(txtptr, winboot ,128); // keeping 128 in there just in case someone changes the string
         //strncpy(txtptr,"winboot/new/Boot/bootmgfw.efi",128); // keeping 128 in there just in case someone changes the string
         //strncpy(txtptr,"Boot/pxeboot.0",128); // keeping 128 in there just in case someone changes the string
-        clientpacket[0xf0]=0x35; //DHCP MSG type 
+        clientpacket[0xf0]=0x35; //DHCP MSG type
         clientpacket[0xf1]=0x1; // LEN of 1
         clientpacket[0xf2]=0x5; //DHCP ACK
         clientpacket[0xf3]=0x36; //DHCP server identifier
@@ -256,7 +256,7 @@ int main(int argc, char *argv[]) {
         clientpacket[0xf6] = (myip>>16)&0xff;
         clientpacket[0xf7] = (myip>>8)&0xff;
         clientpacket[0xf8] = (myip)&0xff;
-        
+
         char winBCD[50];
         strcpy(winBCD, winpepath);
         strcat(winBCD, "Boot/BCD");

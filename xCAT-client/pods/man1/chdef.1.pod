@@ -6,7 +6,7 @@ B<chdef> - Change xCAT data object definitions.
 
 B<chdef> [B<-h>|B<--help>] [B<-t> I<object-types>]
 
-B<chdef> [B<-t> I<object-types>] [B<-o> I<object-names>] [B<-n> I<new-name>] [I<node>] 
+B<chdef> [B<-t> I<object-types>] [B<-o> I<object-names>] [B<-n> I<new-name>] [I<node>]
 
 B<chdef> [B<-V>|B<--verbose>] [B<-t> I<object-types>] [B<-o> I<object-names>]
 [B<-d>|B<--dynamic>] [B<-p>|B<--plus>] [B<-m>|B<--minus>] [B<-z>|B<--stanza>]
@@ -64,7 +64,7 @@ A set of comma delimited object types.  Use the help option to get a list of val
 
 Verbose mode.
 
-=item B<-w> I<attr==val> B<-w> I<attr=~val> ... 
+=item B<-w> I<attr==val> B<-w> I<attr=~val> ...
 
 Use one or multiple -w flags to specify the selection string that can be used to select objects. The operators ==, !=, =~ and !~ are available. Use the help option to get a list of valid attributes for each object type.
 
@@ -164,13 +164,13 @@ To change the node hwtype, this command will change the value of ppc.nodetype.
 
 To change the policy table for policy number 7.0 for admin1
 
- chdef -t policy -o 7.0 name=admin1 rule=allow 
+ chdef -t policy -o 7.0 name=admin1 rule=allow
 
 =item 12.
 
 To change the node nic attributes
 
- chdef -t node -o cn1 nicips.eth0="1.1.1.1|1.2.1.1" nicnetworks.eth0="net1|net2" nictypes.eth0="Ethernet" 
+ chdef -t node -o cn1 nicips.eth0="1.1.1.1|1.2.1.1" nicnetworks.eth0="net1|net2" nictypes.eth0="Ethernet"
 
 
 =item 13.

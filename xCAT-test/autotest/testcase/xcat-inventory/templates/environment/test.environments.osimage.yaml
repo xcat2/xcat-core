@@ -2,8 +2,8 @@ osimage:
   test.environments.osimage:
     basic_attributes:
       arch: ppc64le
-      distribution: rhels7.5-alternate 
-      osdistro: rhels7.5-alternate-ppc64le 
+      distribution: rhels7.5
+      osdistro: rhels7.5-ppc64le
       osname: Linux
     filestosync: {{GITREPO}}/syncfiles/synclist
     deprecated:
@@ -16,7 +16,7 @@ osimage:
     package_selection:
       otherpkgdir: {{SWDIR}}/otherpkgdir/
       otherpkglist: {{GITREPO}}/otherpkglist/test1.otherpkglist,{{GITREPO}}/otherpkglist/test2.otherpkglist,
-      pkgdir: /install/rhels7.5-alternate/ppc64le,{{SWDIR}}/pkgdir/
+      pkgdir: /install/rhels7.5/ppc64le,{{SWDIR}}/pkgdir/
       pkglist: /opt/xcat/share/xcat/netboot/rh/compute.rhels7.ppc64le.pkglist,{{GITREPO}}/pkglist/test1.pkglist,{{GITREPO}}/pkglist/test2.pkglist
     provision_mode: netboot
     role: compute

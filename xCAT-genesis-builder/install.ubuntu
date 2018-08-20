@@ -9,7 +9,7 @@ dracut_install mount.nfs sshd vi reboot lspci parted screen mkfs mkfs.ext4 mkfs.
 dracut_install efibootmgr
 #dracut_install libvirtd /usr/share/libvirt/cpu_map.xml /usr/bin/qemu-img /usr/libexec/qemu-kvm
 dracut_install mkswap df brctl vconfig ifenslave ssh-keygen scp clear dhclient lldpad
-dracut_install lldptool 
+dracut_install lldptool
 dracut_install poweroff ntpq ntp-wait ntpd hwclock date /usr/share/terminfo/x/xterms /etc/nsswitch.conf /etc/services
 dracut_install /usr/sbin/rsyslogd /etc/protocols umount /usr/bin/dpkg /usr/bin/rpm /usr/lib/rpm/rpmrc
 if [ -n $version12 ];then
@@ -625,16 +625,16 @@ else
 dracut_install portmap
 fi
 dracut_install /sbin/rpc.statd /sbin/sm-notify /etc/netconfig /etc/host.conf /usr/sbin/rpc.idmapd
-dracut_install ps free find #debug 
-inst_dir /var/lib/nfs 
-inst_dir /var/lib/nfs/statd/sm 
+dracut_install ps free find #debug
+inst_dir /var/lib/nfs
+inst_dir /var/lib/nfs/statd/sm
 inst_dir /var/lib/nfs/statd/sm.bak
 inst_dir /var/lib/nfs/rpc_pipefs/nfs
 inst "/bin/bash" "/bin/sh"
 inst "/lib64/libnss_dns-2.12.so"
 inst "/lib/terminfo/l/linux" "/lib/terminfo/l/linux"
 inst "/lib/terminfo/v/vt100" "/lib/terminfo/v/vt100"
-inst_hook cmdline 10 "$moddir/xcat-cmdline.sh" 
+inst_hook cmdline 10 "$moddir/xcat-cmdline.sh"
 dracut_install /usr/lib/rsyslog/lmtcpclt.so
 #dracut_install /usr/lib/rsyslog/omtesting.so
 dracut_install /usr/lib/rsyslog/lmnetstrms.so

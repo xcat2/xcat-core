@@ -1,6 +1,6 @@
 # esx setup
 # example on how to set up ESX.  We setup ssh and also add a basic
-# VLAN configuration 
+# VLAN configuration
 
 
 if [ "$(uname -s|tr 'A-Z' 'a-z')" = "linux" ];then

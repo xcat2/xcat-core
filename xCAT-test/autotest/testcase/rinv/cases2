@@ -3,7 +3,7 @@ description:this case is to test mprom option for rinv on x86_64 servers.
 hcp:ipmi
 arch:x86_64
 label:cn_bmc_ready,hctrl_bmc_ipmi
-cmd:rinv $$CN mprom 
+cmd:rinv $$CN mprom
 check:rc==0
 check:output=~BMC Firmware:\s*\w+.\w+
 end
@@ -13,7 +13,7 @@ description:this case is to test guid option for rinv on x86_64 servers.
 hcp:ipmi
 arch:x86_64
 label:cn_bmc_ready,hctrl_bmc_ipmi
-cmd:rinv $$CN guid 
+cmd:rinv $$CN guid
 check:rc==0
 check:output=~UUID/GUID:\s*\w+-\w+-\w+-\w+-\w+
 end

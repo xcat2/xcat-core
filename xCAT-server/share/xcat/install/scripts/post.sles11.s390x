@@ -11,7 +11,7 @@ cat /etc/sysconfig/network/ifcfg-replace_device | grep -v "LLADDR" | grep -v "UN
 echo "LLADDR='replace_lladdr'" >> /tmp/ifcfg-replace_device
 echo "UNIQUE=''" >> /tmp/ifcfg-replace_device
 echo "NAME='OSA Express Network card (replace_nic_addr)'" >> /tmp/ifcfg-replace_device
-cat /tmp/ifcfg-replace_device > /etc/sysconfig/network/ifcfg-replace_device                    
+cat /tmp/ifcfg-replace_device > /etc/sysconfig/network/ifcfg-replace_device
 
 # Get node hostname
 HOSTNAME=$(hostname -s)
@@ -27,7 +27,7 @@ fi
 for t in $(seq 1 20)
 do
     GOTIT=0
-    
+
     # Loop through the master/service nodes
     for i in $MASTER_IPS
     do
@@ -35,14 +35,14 @@ do
         wget -l inf -N -r --waitretry=10 --random-wait --retry-connrefused  -e robots=off -nH --cut-dirs=2 --reject "index.html*" --no-parent -t 0 -T 60 http://$i$INSTALLDIR/postscripts/ -P /xcatpost
         if [ "$?" = "0" ]; then
             # Exit if openssl is not executable
-            if [ ! -x /usr/bin/openssl ]; then 
+            if [ ! -x /usr/bin/openssl ]; then
                         exit 1
             fi
-        
+
             # Get xcat server
             XCATSERVER=$i:3001
             export XCATSERVER
-            USEOPENSSLFORXCAT=1 
+            USEOPENSSLFORXCAT=1
             export USEOPENSSLFORXCAT
 
             # Move postscritps into /xcatpost
@@ -63,7 +63,7 @@ do
                     break
                 fi
 
-                # Sleep a couple of seconds before trying again            
+                # Sleep a couple of seconds before trying again
                 let SLI=$RANDOM%10+10
                 sleep $SLI
 
@@ -71,14 +71,14 @@ do
                 /xcatpost/getpostscript.awk |egrep '<data>'|sed -e 's/<[^>]*>//g'|egrep -v '^ *$'|sed -e 's/^ *//' > /tmp/mypostscript
                 MYCONT=`grep MASTER /tmp/mypostscript`
             done
-         
+
             # Make executable
             chmod 700 /tmp/mypostscript
             GOTIT=1
             break
         fi
     done
-    
+
     # If postscripts for this node are found
     if [ "$GOTIT" = "1" ]; then
         # Save the master/service node to /opt/xcat/xcatinfo file
@@ -108,8 +108,8 @@ run_ps () {
  logdir=\"/var/log/xcat\"
  mkdir -p \$logdir
  logfile=\"/var/log/xcat/xcat.log\"
- 
- if [ -f \$1 ]; then 
+
+ if [ -f \$1 ]; then
   echo \"Running postscript: \$@\" | tee -a \$logfile
   ./\$@ 2>&1 1> /tmp/tmp4xcatlog
   cat /tmp/tmp4xcatlog | tee -a \$logfile
@@ -123,7 +123,7 @@ run_ps () {
 echo "cd /xcatpost" >> /tmp/mypostscript
 echo "$TMP" >> /tmp/mypostscript
 TMP=`sed "/postbootscripts-start-here/,/postbootscripts-end-here/ s/\(.*\)/run_ps \1/;s/run_ps\s*#/#/;s/run_ps\s*$//" /tmp/mypostscript`
-echo "$TMP" > /tmp/mypostscript 
+echo "$TMP" > /tmp/mypostscript
 
 
 # Save post boot scripts to /tmp/mypostscript.post
@@ -142,7 +142,7 @@ ln -s /etc/init.d/xcatpostinit1 /etc/init.d/rc3.d/S84xcatpostinit1
 ln -s /etc/init.d/xcatpostinit1 /etc/init.d/rc4.d/S84xcatpostinit1
 ln -s /etc/init.d/xcatpostinit1 /etc/init.d/rc5.d/S84xcatpostinit1
 
-# Create post install 
+# Create post install
 mkdir -p /opt/xcat
 cat >/opt/xcat/xcatinstallpost << 'EOF'
 # Copy the contents of /install/postscripts/xcatinstallpost here
@@ -161,7 +161,7 @@ chmod 755 /opt/xcat/xcatinstallpost
 
 chkconfig --add xcatpostinit1
 
-#create the dskls post 
+#create the dskls post
 cat >/opt/xcat/xcatdsklspost << 'EOF'
 #INCLUDE:#TABLE:site:key=installdir:value#/postscripts/xcatdsklspost#
 EOF

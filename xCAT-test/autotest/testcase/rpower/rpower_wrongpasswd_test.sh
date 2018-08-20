@@ -39,7 +39,7 @@ function clear_env(){
     if [ -f $TMPFILE ];then
         Username=`cat $TMPFILE |awk -F "\""  '{print $4}'`;
         Passwd=`cat $TMPFILE |awk -F "\""  '{print $6}'`;
-        chtab key=$MGT passwd.password=$Passwd passwd.username=$Username;tabdump passwd; 
+        chtab key=$MGT passwd.password=$Passwd passwd.username=$Username;tabdump passwd;
         chdef $1 bmcpassword= bmcusername=;
         rm -rf $TMPFILE;
     else
@@ -51,9 +51,9 @@ function check_result(){
 output=$(rpower $1 stat  2>&1)
 echo output is $output
 value="";
-    if [[ `lsdef $1 |grep mgt ` =~ "ipmi" ]];then 
+    if [[ `lsdef $1 |grep mgt ` =~ "ipmi" ]];then
         value="Incorrect password provided";
-    else 
+    else
         value="Error: Invalid username or password";
     fi
         if [[ $output =~ $value ]];then
@@ -75,14 +75,14 @@ MGT=""
     else
         MGT="openbmc";
     fi
-echo mgt is $MGT 
+echo mgt is $MGT
 while [ "$#" -gt "0" ]
 do
         case $1 in
                 "-pt"|"--passwdtable" )
                 check_passwd_table
-                    if [[ $? -eq 0 ]];then  
-                        modify_passwd_table 
+                    if [[ $? -eq 0 ]];then
+                        modify_passwd_table
                         check_result $2
                             if [[ $? -eq 1 ]];then
                                 exit 1
@@ -103,7 +103,7 @@ do
                 "-apt"|"--addpasswdtable" )
                 check_passwd_table
                     if [[ $? -eq 0 ]];then
-                        `chtab -d key=ipmi passwd`;                        
+                        `chtab -d key=ipmi passwd`;
                             if [[ $? -eq 1 ]];then
                                 exit 1
                             fi
@@ -117,7 +117,7 @@ do
                         fi
                 ;;
                 "-c"|"--clear" )
-                clear_env $2 
+                clear_env $2
                 if [[ $? -eq 1 ]];then
                     exit 1
                 else

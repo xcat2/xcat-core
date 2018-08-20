@@ -39,7 +39,7 @@ sub handled_commands
 #-------------------------------------------------------
 
 =head3  preprocess_request
-  Check and setup for hierarchy 
+  Check and setup for hierarchy
 =cut
 
 #-------------------------------------------------------
@@ -448,7 +448,7 @@ sub parseprescripts
 #-------------------------------------------------------
 
 =head3  run_script_single_node
-   
+
 =cut
 
 #-------------------------------------------------------

@@ -108,6 +108,8 @@ sub handle_message {
             xCAT::SvrUtils::sendmsg([ 1, $msg->{data} ], $callback, $msg->{node});
         } elsif ($msg->{type} eq 'syslog'){
             xCAT::MsgUtils->message("S", $msg->{data});
+        } elsif ($msg->{type} eq 'info_with_host') {
+            xCAT::MsgUtils->message("I", { data => [$msg->{data}], host => [1] }, $callback);
         }
     } elsif ($data->{type} eq $DB_TYPE) {
         my $attribute = $data->{attribute};

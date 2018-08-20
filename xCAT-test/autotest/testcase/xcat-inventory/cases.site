@@ -51,7 +51,7 @@ cmd:mkdir -p /tmp/export_import_site_by_json
 check:rc==0
 cmd:ssh $$DSTMN 'mkdir -p /tmp/export_import_site_by_json_$$DSTMN/'
 check:rc==0
-cmd: lsdef -t site -o clustersite -z >/tmp/export_import_site_by_json/site.stanza 
+cmd: lsdef -t site -o clustersite -z >/tmp/export_import_site_by_json/site.stanza
 check:rc==0
 cmd:ssh $$DSTMN 'lsdef -t site -o clustersite -z >/tmp/export_import_site_by_json_$$DSTMN/site.stanza '
 check:rc==0
@@ -61,7 +61,7 @@ cmd:lsdef -t site -o clustersite -z|sort -t'=' -k1 |tee  /tmp/export_import_site
 check:rc==0
 cmd:xcat-inventory export --format=json -t site -o clustersite |tee /tmp/export_import_site_by_json/export_site_json.inv
 check:rc==0
-cmd:mnip=$(lsdef -t site -o clustersite -i master -c|awk -F'=' '{print $2}');sed -i "s/$mnip/$$DSTMN/g" /tmp/export_import_site_by_json/export_site_json.inv 
+cmd:mnip=$(lsdef -t site -o clustersite -i master -c|awk -F'=' '{print $2}');sed -i "s/$mnip/$$DSTMN/g" /tmp/export_import_site_by_json/export_site_json.inv
 check:rc==0
 cmd:cat /tmp/export_import_site_by_json/export_site_json.inv
 check:rc==0
@@ -192,10 +192,10 @@ echo '{
             "xcatsslversion": "TLSv1"
         }
     }
-}' > /tmp/xcat_inventory_try_to_export_all_type_is_site_default_format/site.org 
+}' > /tmp/xcat_inventory_try_to_export_all_type_is_site_default_format/site.org
 cmd:mnip=$(lsdef -t site -o clustersite -i master -c|awk -F'=' '{print $2}');sed -i "s/10.3.5.8/$mnip/g" /tmp/xcat_inventory_try_to_export_all_type_is_site_default_format/site.org
 check:rc==0
-cmd:xcat-inventory export -t site |tee /tmp/xcat_inventory_try_to_export_all_type_is_site_default_format/site.export 
+cmd:xcat-inventory export -t site |tee /tmp/xcat_inventory_try_to_export_all_type_is_site_default_format/site.export
 check:rc==0
 cmd:#!/bin/bash
 diff -y --ignore-blank-lines  --ignore-matching-lines="^#"  /tmp/xcat_inventory_try_to_export_all_type_is_site_default_format/site.org /tmp/xcat_inventory_try_to_export_all_type_is_site_default_format/site.export
@@ -308,10 +308,10 @@ echo '{
             "xcatsslversion": "TLSv1"
         }
     }
-}' > /tmp/xcat_inventory_try_to_export_all_type_is_site_json_format/site.org 
+}' > /tmp/xcat_inventory_try_to_export_all_type_is_site_json_format/site.org
 cmd:mnip=$(lsdef -t site -o clustersite -i master -c|awk -F'=' '{print $2}');sed -i "s/10.3.5.8/$mnip/g" /tmp/xcat_inventory_try_to_export_all_type_is_site_json_format/site.org
 check:rc==0
-cmd:xcat-inventory export --format=json -t site |tee /tmp/xcat_inventory_try_to_export_all_type_is_site_json_format/site.export 
+cmd:xcat-inventory export --format=json -t site |tee /tmp/xcat_inventory_try_to_export_all_type_is_site_json_format/site.export
 check:rc==0
 cmd:#!/bin/bash
 diff -y --ignore-blank-lines  --ignore-matching-lines="^#"  /tmp/xcat_inventory_try_to_export_all_type_is_site_json_format/site.org /tmp/xcat_inventory_try_to_export_all_type_is_site_json_format/site.export
@@ -420,10 +420,10 @@ site:
     xcatmaxbatchconnections: '64'
     xcatmaxconnections: '60'
     xcatsslciphers: 3DES
-    xcatsslversion: TLSv1" > /tmp/xcat_inventory_try_to_export_all_type_is_site_yaml_format/site.org 
+    xcatsslversion: TLSv1" > /tmp/xcat_inventory_try_to_export_all_type_is_site_yaml_format/site.org
 cmd:mnip=$(lsdef -t site -o clustersite -i master -c|awk -F'=' '{print $2}');sed -i "s/10.3.5.8/$mnip/g" /tmp/xcat_inventory_try_to_export_all_type_is_site_yaml_format/site.org
 check:rc==0
-cmd:xcat-inventory export --format=yaml -t site|sed -e '/^\s*$/d' |tee /tmp/xcat_inventory_try_to_export_all_type_is_site_yaml_format/site.export 
+cmd:xcat-inventory export --format=yaml -t site|sed -e '/^\s*$/d' |tee /tmp/xcat_inventory_try_to_export_all_type_is_site_yaml_format/site.export
 check:rc==0
 cmd:#!/bin/bash
 diff -y --ignore-blank-lines  --ignore-matching-lines="^#"  /tmp/xcat_inventory_try_to_export_all_type_is_site_yaml_format/site.org /tmp/xcat_inventory_try_to_export_all_type_is_site_yaml_format/site.export
@@ -831,7 +831,7 @@ echo "Object name: clustersite
     xcatmaxbatchconnections=64
     xcatmaxconnections=60
     xcatsslciphers=3DES
-    xcatsslversion=TLSv1"> /tmp/xcat_inventory_try_to_import_all_type_is_site_json_format/site.org 
+    xcatsslversion=TLSv1"> /tmp/xcat_inventory_try_to_import_all_type_is_site_json_format/site.org
 check:rc==0
 cmd:mnip=$(lsdef -t site -o clustersite -i master -c|awk -F'=' '{print $2}');sed -i "s/10.3.5.8/$mnip/g" /tmp/xcat_inventory_try_to_import_all_type_is_site_json_format/site.org
 check:rc==0
@@ -1197,7 +1197,7 @@ echo "Object name: clustersite
     xcatmaxbatchconnections=64
     xcatmaxconnections=60
     xcatsslciphers=3DES
-    xcatsslversion=TLSv1"> /tmp/xcat_inventory_try_to_import_all_type_is_site_yaml_format/site.org 
+    xcatsslversion=TLSv1"> /tmp/xcat_inventory_try_to_import_all_type_is_site_yaml_format/site.org
 check:rc==0
 cmd:mnip=$(lsdef -t site -o clustersite -i master -c|awk -F'=' '{print $2}');sed -i "s/10.3.5.8/$mnip/g" /tmp/xcat_inventory_try_to_import_all_type_is_site_yaml_format/site.org
 check:rc==0

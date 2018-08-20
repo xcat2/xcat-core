@@ -1,12 +1,12 @@
 #!/bin/sh
-# Make this the non-active xCAT management node, 
+# Make this the non-active xCAT management node,
 # i.e. standby management node.
 #
 # CHANGE HISTORY:
 #
 # NAME:        deactive-mn
 #
-# SYNTAX:       deactive-mn -i <nic> -v <virtual ip> 
+# SYNTAX:       deactive-mn -i <nic> -v <virtual ip>
 #
 # DESCRIPTION:  Make this node be the standby xCAT MN.
 #
@@ -24,7 +24,7 @@
 # -----------------------------------------------------------------------------
 # 2011-12-08   JDW     1.0     Original
 # 2013-06-06   xCAT    1.1     Updated version to ship with xCAT
-# 2017-10-12   xCAT    2.13.8  Enhance 
+# 2017-10-12   xCAT    2.13.8  Enhance
 SHAREDVG=sharedvg # For AIX, shared volumn group name
 DBDIR=/var/lib/pgsql # database directory
 SHAREDFS="/install /etc/xcat /root/.xcat /tftpboot" # Shared file systems
@@ -49,8 +49,8 @@ runcmd()
 {
     echo "Running command: $@"
     a=0
-    while true 
-    do 
+    while true
+    do
         if [ $a -eq 5 ]; then
             echo "$@ [Failed]"
             exit_code=1
@@ -61,9 +61,9 @@ runcmd()
         fi
         $@
         if [ $? -eq 0 ]; then
-            echo "$@ [Passed]" 
+            echo "$@ [Passed]"
             return 0
-        else 
+        else
            a=$[$a+1]
         fi
     done
@@ -117,7 +117,7 @@ then
 	runcmd "/usr/lpp/bos.sysmgt/nim/methods/m_backup_db $backupFile"
 
 	echo "Stopping NIM...."
-	runcmd "stopsrc -s nimesis" 
+	runcmd "stopsrc -s nimesis"
 fi
 
 echo "Stopping Console Server...."
@@ -214,7 +214,7 @@ fi
 # AIX only, Linux has the -l flag could hanldle everything
 if [ `uname` = "AIX" ]
 then
-    sleep 20 
+    sleep 20
     #  ....then kill nastily i.e. kill -9
     for fs in $SHAREDFS
     do
@@ -298,7 +298,7 @@ else # Linux
          echo "IP Aliase $NIC $VIP is removed.[Passed]"
     else
          echo "Fail to remove IP Aliase $NIC $VIP. [Failed]"
-    fi 
+    fi
 fi
 
 echo ""

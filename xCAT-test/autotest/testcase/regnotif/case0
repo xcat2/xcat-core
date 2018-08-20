@@ -37,7 +37,7 @@ end
 start:regnotif_h
 description:regnotif -h and --help
 label:mn_only,db
-cmd:regnotif -h 
+cmd:regnotif -h
 check:rc==0
 check:output=~Usage
 cmd:regnotif --help

@@ -349,7 +349,7 @@ sub prexcat2nim
                 1 - just print usage
 				2 - error
         Globals:
-                
+
         Error:
 
         Example:
@@ -874,7 +874,7 @@ sub x2n
 
 =head3   mkclientdef
 
-		Create a NIM client definition.        
+		Create a NIM client definition.
         Arguments:
         Returns:
                 0 - OK
@@ -1316,7 +1316,7 @@ sub rm_or_list_nim_object
 
         Arguments:
         Returns:
-                name  
+                name
                 undef - error
         Globals:
 
@@ -1434,13 +1434,13 @@ sub xcat2nim_usage
 #-------------------------------------------------------------------------------
 
 =head3 mkNIMnetwork
-		Create NIM network definitions corresponding to xCAT network 
+		Create NIM network definitions corresponding to xCAT network
 		definitions. This routine runs on the NIMprime and AIX SNs
 
     Arguments:
 
     Returns:
-        
+
 
     Comments:
 

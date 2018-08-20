@@ -43,12 +43,13 @@ if [ ! -e $XCATDOCKERCADIR/openssl.cnf ]; then
   echo -n "$XCATDOCKERCADIR/openssl.cnf not exist"
   exit 1
 fi
-sed -i "s@^dir.*=.*/etc/xcat/ca@dir = $XCATDOCKERCADIR@g" $XCATDOCKERCADIR/openssl.cnf 
+sed -i "s@^dir.*=.*/etc/xcat/ca@dir = $XCATDOCKERCADIR@g" $XCATDOCKERCADIR/openssl.cnf
 
 if [  -e $XCATDOCKERCADIR/index ]; then
   rm -f $XCATDOCKERCADIR/index*
 fi
 touch $XCATDOCKERCADIR/index
+touch $XCATDOCKERCADIR/index.attr
 
 echo "00" > $XCATDOCKERCADIR/serial
 

@@ -43,7 +43,7 @@ exit_if_bad "$?" "nodeset command error message checking failed"
 for node in tz001 tz005
 do
 	[ -f "/tftpboot/petitboot/${node}" ]
-	exit_if_bad "$?" "file not found /tftpboot/petitboot/${node}" 
+	exit_if_bad "$?" "file not found /tftpboot/petitboot/${node}"
 done
 
 nodeset tz001+4 offline

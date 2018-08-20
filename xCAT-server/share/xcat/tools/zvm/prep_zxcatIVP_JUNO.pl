@@ -241,7 +241,7 @@ sub buildDriverProgram{
         push( @driverText, "" );
         push( @driverText, "# User password defined to communicate with xCAT MN." );
         push( @driverText, "# From \'zvm_xcat_password\' in $locNovaConf." );
-        
+
         if ( -e $obfuscateProg ) {
             # assume password is obfuscated already and get it in the clear.
             $clearPW = `$obfuscateProg -u $novaConf{'DEFAULT'}{'zvm_xcat_password'}`;
@@ -740,7 +740,7 @@ sub showHelp{
     The default name of the driver program is composed of the following:
       '$driverPrefix', and
       IP address of the system where driver was prepared, and
-      (optionally) a hypen and the value specified on --Host operand, and 
+      (optionally) a hypen and the value specified on --Host operand, and
       '.sh'.
     For example:
       $driverPrefix"."9.123.345.91.sh
@@ -1137,7 +1137,7 @@ sub validateConfigs{
             print "Warning: In $locNovaConf, instance_name_template will not\n" .
                   "         create a usable name with the value: $novaConf{'DEFAULT'}{'instance_name_template'}\n";
         }
-        my $words; 
+        my $words;
         $words++ while $base_name =~ /\S+/g;
         if ( $words != 1 ) {
             print "Warning: In $locNovaConf, instance_name_template will not create\n" .

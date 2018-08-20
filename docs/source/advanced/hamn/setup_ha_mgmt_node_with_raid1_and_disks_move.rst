@@ -81,4 +81,4 @@ The failover procedure is simple and straightforward:
 
 #. Boot up the standby management node
 
-#. Verify the standby management node could now perform all the cluster management operations. 
+#. Verify the standby management node could now perform all the cluster management operations.

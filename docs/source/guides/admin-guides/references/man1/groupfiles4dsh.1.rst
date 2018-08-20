@@ -82,7 +82,7 @@ To use with dsh:
     export DSH_CONTEXT=DSH  ( default unless CSM is installed)
     export DSH_NODE_RSH=/bin/ssh   (default is rsh)
     export DSH_NODEGROUP_PATH= /tmp/nodegroupfiles
- 
+
     dsh  -N all  date   (where all is a group defined in xCAT)
     dsh -a date  (will look in all nodegroupfiles and build a list of all nodes)
 

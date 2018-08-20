@@ -275,7 +275,7 @@ sub process_request {
                             if (!$mac) {
                                 $mac_vlan="N/A";
                             } elsif ($vlanid) {
-                                $mac_vlan = "$mac($vlanid)"; 
+                                $mac_vlan = "$mac($vlanid)";
                             } else {
                                 $mac_vlan = $mac;
                             }
@@ -431,7 +431,7 @@ sub process_switch_config {
 #--------------------------------------------------------------------------------
 
 =head3    getSwitchType
-      It determins the swtich vendor and model for the given swith.      
+      It determins the swtich vendor and model for the given swith.
     Arguments:
         noderange-- an array ref to switches.
     Returns:

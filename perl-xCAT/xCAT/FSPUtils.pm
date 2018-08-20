@@ -32,16 +32,16 @@ use xCAT::MsgUtils qw(verbose_message);
 
 #-------------------------------------------------------------------------------
 
-=head3   getHcpAttribs 
+=head3   getHcpAttribs
  Description:
      Build 2 Hashes from ppc/vpd table
-     one hash is : CEC/Frame is the Key, FSPs/BPAs are the value. 
+     one hash is : CEC/Frame is the Key, FSPs/BPAs are the value.
      the other is: fsp/bpa is the key, the side is the value.
 
  Arguments:
      $request: this hash will be usded to store the ppc hash and vpd hash
      $tabs: the hash store the new tables for ppc and bpd.
-    Returns: 
+    Returns:
     Globals:
         none
     Error:
@@ -105,18 +105,18 @@ sub getHcpAttribs
 
 #-------------------------------------------------------------------------------
 
-=head3   getIPaddress 
- Description:    
+=head3   getIPaddress
+ Description:
         Used by DFM related functions. When getting the IPs for CECs' FSPs, or
         getting the IPs for Frames' BPAs. And the IPs order is A-0,A-1,B-0,B-1.
 	When getting the IP for one FSP or one BPA, if the $nodetocheck it one IP,
 	it will return the IP immediately; if not, it will get the IP of the FSP or BPA.
-                         
+
  Arguments:
-    $request: Because getIPaddress() is always used for one node after the process fork. Avoiding to 
+    $request: Because getIPaddress() is always used for one node after the process fork. Avoiding to
               access the DB for each node in the subprocess, we should collect the attributs before
 	      process fork, and put the attributes in the $request variable. For the getIpaddress().
-              The $request parameter should include the ppc hash which mapping the CEC->FSPs and 
+              The $request parameter should include the ppc hash which mapping the CEC->FSPs and
               Frames->BPAs, and vpd hash the fsp->side and the bpa->side.
     $type:    the type of the $nodetocheck
     $nodetocheck:  Node name,  only one node at a time.
@@ -248,11 +248,11 @@ sub getIPaddress
 
 =head3  fsp_api_action
     Description:
-        invoke the fsp_api to perform the functions 
+        invoke the fsp_api to perform the functions
 
     Arguments:
-        $node_name: 
-        $attrs: an attributes hash 
+        $node_name:
+        $attrs: an attributes hash
 	$action: the operations on the fsp, bpa or lpar
 	$tooltype: 0 for HMC, 1 for HNM
     Returns:
@@ -428,11 +428,11 @@ sub fsp_api_action {
 
 =head3  fsp_state_action
     Description:
-        invoke the fsp_api to perform the functions(all_lpars_state) 
+        invoke the fsp_api to perform the functions(all_lpars_state)
 
     Arguments:
-        $node_name: 
-        $attrs: an attributes hash 
+        $node_name:
+        $attrs: an attributes hash
 	$action: the operations on the fsp, bpa or lpar
 	$tooltype: 0 for HMC, 1 for HNM
     Returns:
@@ -522,11 +522,11 @@ sub fsp_state_action {
 
 =head3  fsp_api_create_partition
     Description:
-        invoke the fsp_api to perform the functions 
+        invoke the fsp_api to perform the functions
 
     Arguments:
-        $node_name: 
-        $attrs: an attributes hash 
+        $node_name:
+        $attrs: an attributes hash
 	$action: the operations on the fsp, bpa or lpar
 	$tooltype: 0 for HMC, 1 for HNM
     Returns:

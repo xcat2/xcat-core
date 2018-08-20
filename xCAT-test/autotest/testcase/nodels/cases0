@@ -50,7 +50,7 @@ description:Check the command nodels with =~.
 label:mn_only,db
 cmd:chdef -t node -o testnode groups=rh4.123456789
 check:rc==0
-cmd:nodels groups=~rh4.123456789 
+cmd:nodels groups=~rh4.123456789
 check:rc==0
 check:output=~testnode
 cmd:rmdef -t node testnode
@@ -64,7 +64,7 @@ cmd:chdef -t node -o testnode1 groups=rhels5.5,all
 check:rc==0
 cmd:chdef -t node -o testnode2 groups=rhels5.4,all
 check:rc==0
-cmd:nodels testnode1-testnode2 nodelist.groups\!~rhels5.5 
+cmd:nodels testnode1-testnode2 nodelist.groups\!~rhels5.5
 check:rc==0
 check:output=~testnode2
 cmd:rmdef -t node testnode1-testnode2
@@ -90,7 +90,7 @@ cmd:chdef -t node -o testnode1 groups=rhels5.5
 check:rc==0
 cmd:chdef -t node -o testnode2 groups=rhels5.4
 check:rc==0
-cmd:nodels testnode1-testnode2 groups!=rhels5.5 
+cmd:nodels testnode1-testnode2 groups!=rhels5.5
 check:rc==0
 check:output=~testnode2
 cmd:rmdef -t node testnode1-testnode2
@@ -113,7 +113,7 @@ end
 start:nodels_S
 description:nodels -S
 label:mn_only,db
-cmd:chdef -t node -o testnode hidden=1 groups=rhels5.5  
+cmd:chdef -t node -o testnode hidden=1 groups=rhels5.5
 check:rc==0
 cmd:nodels -S
 check:rc==0

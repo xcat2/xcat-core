@@ -37,7 +37,7 @@ Follow these steps to complete the kit build process for a partial kit.
   #. copy the partial kit to a working directory
   #. copy the product software packages to a convenient location or locations
   #. cd to the working directory
-  #. Build the complete kit tarfile 
+  #. Build the complete kit tarfile
 
 ::
 

@@ -58,7 +58,7 @@ os=rhels5.4
 
 #system varible for autotest
 [System]
-MN=rhmn      
+MN=rhmn
 SN=rhsn
 CN=lpar5            #It can be used in flat environment
 CNWITHSN=lpar6      #It can be used in hierarchy environment for cn

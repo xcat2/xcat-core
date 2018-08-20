@@ -1,7 +1,7 @@
 IPMI Firmware Update
 ====================
 
-The ``rflash`` command is provided to assist the system administrator in updating firmware. 
+The ``rflash`` command is provided to assist the system administrator in updating firmware.
 
 To check the current firmware version on the node's BMC and the HPM file: ::
 

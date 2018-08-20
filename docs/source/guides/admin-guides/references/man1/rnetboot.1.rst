@@ -46,41 +46,41 @@ OPTIONS
 *******
 
 
-\ **-s**\ 
+\ **-s**\
 
 Set the boot device order.  Accepted boot devices are hd and net.
 
-\ **-F**\ 
+\ **-F**\
 
 Force reboot the system no matter what state the node is.  By default, rnetboot will not reboot the node if node is in 'boot' state.
 
-\ **-f**\ 
+\ **-f**\
 
 Force immediate shutdown of the partition.
 
-\ **-m**\ 
+\ **-m**\
 
 Use one or multiple -m flags to specify the node attributes and the expected status for the node installation monitoring and automatic retry mechanism. The operators ==, !=, =~ and !~ are valid. This flag must be used with -t flag.
 
 Note: if the "val" fields includes spaces or any other characters that will be parsed by shell, the "attr<oper-ator>val" needs to be quoted. If the operator is "!~", the "attr<operator>val" needs to be quoted using single quote.
 
-\ **-r**\ 
+\ **-r**\
 
 specify the number of retries that the monitoring process will perform before declaring the failure. The default value is 3. Setting the retrycount to 0 means only monitoring the os installation progress and will not re-initiate the installation if the node status has not been changed to the expected value after timeout. This flag must be used with -m flag.
 
-\ **-t**\ 
+\ **-t**\
 
 Specify the timeout, in minutes, to wait for the expectedstatus specified by -m flag. This is a required flag if the -m flag is specified.
 
-\ **-V|-**\ **-verbose**\ 
+\ **-V|-**\ **-verbose**\
 
 Verbose output.
 
-\ **-h|-**\ **-help**\ 
+\ **-h|-**\ **-help**\
 
 Display usage message.
 
-\ **-v|-**\ **-version**\ 
+\ **-v|-**\ **-version**\
 
 Command Version.
 
@@ -104,15 +104,15 @@ EXAMPLES
 .. code-block:: perl
 
   rnetboot 1,3
- 
+
   rnetboot 14-56,70-203
- 
+
   rnetboot 1,3,14-56,70-203
- 
+
   rnetboot all,-129-256
- 
+
   rnetboot all -s hd,net
- 
+
   rnetboot all ipl=00c
 
 

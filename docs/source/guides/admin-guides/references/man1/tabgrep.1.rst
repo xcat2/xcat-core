@@ -19,7 +19,7 @@ SYNOPSIS
 ********
 
 
-\ **tabgrep**\  \ *nodename*\ 
+\ **tabgrep**\  \ *nodename*\
 
 \ **tabgrep**\  [\ **-?**\  | \ **-h**\  | \ **-**\ **-help**\ ]
 
@@ -40,10 +40,10 @@ OPTIONS
 
 
 
-\ **-?|-h|-**\ **-help**\ 
- 
+\ **-?|-h|-**\ **-help**\
+
  Display usage message.
- 
+
 
 
 
@@ -69,20 +69,20 @@ EXAMPLES
 
 
 1.
- 
+
  To display the tables that contain blade1:
- 
- 
+
+
  .. code-block:: perl
- 
+
    tabgrep blade1
- 
- 
+
+
  The output would be similar to:
- 
- 
+
+
  .. code-block:: perl
- 
+
        nodelist
        nodehm
        mp
@@ -91,8 +91,8 @@ EXAMPLES
        mac
        noderes
        nodetype
- 
- 
+
+
 
 
 

@@ -1,4 +1,4 @@
-2017 Notices 
+2017 Notices
 ============
 
 .. toctree::

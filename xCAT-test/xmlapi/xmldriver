@@ -20,7 +20,7 @@ my $bname = basename($0);
 
 #-----------------------------------------------------------------------------
 
-=head1 pcmdriver - test XMLapi to Table.pm ( via tabutils.pm) 
+=head1 pcmdriver - test XMLapi to Table.pm ( via tabutils.pm)
 
 
 =cut

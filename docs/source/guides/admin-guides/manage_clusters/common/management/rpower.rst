@@ -4,7 +4,7 @@
 rpower1
 -------
 
-Here is some common rpower information! 
+Here is some common rpower information!
 
 rpower2
 -------

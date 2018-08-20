@@ -4,7 +4,7 @@
 
 #-----------------------------------------------------------------------------
 
-=head1   runsqlcmd 
+=head1   runsqlcmd
 
 
 
@@ -175,7 +175,7 @@ exit 0;
 
 #-----------------------------------------------------------------------------
 
-=head3    usage 
+=head3    usage
 	
 	Displays message for -h option
 
@@ -197,11 +197,11 @@ sub usage
 
 #-----------------------------------------------------------------------------
 
-=head3   rundb2cmd  
+=head3   rundb2cmd
 
 	
-  Run a commmand as the xcatdb instance id 
-  Input: command 
+  Run a commmand as the xcatdb instance id
+  Input: command
 
 =cut
 
@@ -263,11 +263,11 @@ sub rundb2cmd
 
 #-----------------------------------------------------------------------------
 
-=head3   runmysqlcmd  
+=head3   runmysqlcmd
 
 	
-  Run a sql commmand  
-  Input: command 
+  Run a sql commmand
+  Input: command
 
 =cut
 
@@ -315,11 +315,11 @@ sub runmysqlcmd
 
 #-----------------------------------------------------------------------------
 
-=head3   runpgsqlcmd  
+=head3   runpgsqlcmd
 
 	
-  Run a sql commmand  
-  Input: command 
+  Run a sql commmand
+  Input: command
 
 =cut
 
@@ -365,11 +365,11 @@ sub runpgsqlcmd
 
 #-----------------------------------------------------------------------------
 
-=head3   runsqlitecmd  
+=head3   runsqlitecmd
 
 	
-  Run a sql commmand  
-  Input: command 
+  Run a sql commmand
+  Input: command
 
 =cut
 
@@ -384,11 +384,11 @@ sub runsqlitecmd
 
 #-----------------------------------------------------------------------------
 
-=head3   process_file_list  
+=head3   process_file_list
 
 	
-  Expands all wildcards in file list and builds an array 
-  Input: filelist 
+  Expands all wildcards in file list and builds an array
+  Input: filelist
 
 =cut
 

@@ -1,7 +1,7 @@
 OpenBMC Firmware Update
 =======================
 
-.. toctree:: 
+.. toctree::
    :maxdepth: 2
 
    manually.rst

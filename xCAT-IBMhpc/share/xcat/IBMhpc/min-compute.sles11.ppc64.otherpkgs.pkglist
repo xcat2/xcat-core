@@ -1,4 +1,4 @@
-# Sample otherpkgs pkglist for installing all IBM HPC products in a 
+# Sample otherpkgs pkglist for installing all IBM HPC products in a
 # SLES11 PPC64  minimal  diskless image
 
 #INCLUDE:/opt/xcat/share/xcat/IBMhpc/compilers/min-compilers.otherpkgs.pkglist#

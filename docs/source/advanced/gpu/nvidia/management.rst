@@ -1,7 +1,7 @@
 GPU Management and Monitoring
 =============================
 
-The ``nvidia-smi`` command provided by NVIDIA can be used to manage and monitor GPUs enabled Compute Nodes. In conjunction with the xCAT``xdsh`` command, you can easily manage and monitor the entire set of GPU enabled Compute Nodes remotely from the Management Node. 
+The ``nvidia-smi`` command provided by NVIDIA can be used to manage and monitor GPUs enabled Compute Nodes. In conjunction with the xCAT``xdsh`` command, you can easily manage and monitor the entire set of GPU enabled Compute Nodes remotely from the Management Node.
 
 Example: ::
 
@@ -14,7 +14,7 @@ Example: ::
 Management
 ----------
 
-Some useful ``nvidia-smi`` example commands for management.  
+Some useful ``nvidia-smi`` example commands for management.
 
 	
     * Set persistence mode, When persistence mode is enabled the NVIDIA driver remains loaded even when no active clients, DISABLED by default::
@@ -29,11 +29,11 @@ Some useful ``nvidia-smi`` example commands for management.
 
         nvidia-smi -i 0 -p 0/1
 
-    * Set MODE for compute applications, query with --query-gpu=compute_mode:: 
+    * Set MODE for compute applications, query with --query-gpu=compute_mode::
 
         nvidia-smi -i 0 -c 0/1/2/3
 
-    * Trigger reset of the GPU :: 
+    * Trigger reset of the GPU ::
 
         nvidia-smi -i 0 -r
 
@@ -48,7 +48,7 @@ Some useful ``nvidia-smi`` example commands for management.
 Monitoring
 ----------
 
-Some useful ``nvidia-smi`` example commands for monitoring.  
+Some useful ``nvidia-smi`` example commands for monitoring.
 
     * The number of NVIDIA GPUs in the system ::
 
@@ -75,7 +75,7 @@ Some useful ``nvidia-smi`` example commands for monitoring.
         nvidia-smi -i 0 --query-gpu=compute_mode --format=csv,noheader
 
     * Percent of time over the past sample period during which one or more kernels was executing on the GPU::
- 
+
         nvidia-smi -i 0 --query-gpu=utilization.gpu --format=csv,noheader
 
     * Total errors detected across entire chip. Sum of device_memory, register_file, l1_cache, l2_cache and texture_memory ::
@@ -86,14 +86,14 @@ Some useful ``nvidia-smi`` example commands for monitoring.
 
         nvidia-smi -i 0 --query-gpu=temperature.gpu --format=csv,noheader
 
-    * The ECC mode that the GPU is currently operating under:: 
+    * The ECC mode that the GPU is currently operating under::
 
         nvidia-smi -i 0 --query-gpu=ecc.mode.current --format=csv,noheader
 
     * The power management status::
 
         nvidia-smi -i 0 --query-gpu=power.management --format=csv,noheader
- 
+
     * The last measured power draw for the entire board, in watts::
 
         nvidia-smi -i 0 --query-gpu=power.draw --format=csv,noheader

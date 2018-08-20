@@ -1,27 +1,27 @@
 =head1 NAME
 
-B<xcatperftest> - Run xCAT command performance baseline testing on fake nodes. 
+B<xcatperftest> - Run xCAT command performance baseline testing on fake nodes.
 
 =head1 SYNOPSIS
 
-B<xcatperftest> [B<-?|-h>] 
+B<xcatperftest> [B<-?|-h>]
 
 [B<PERF_DRYRUN>=y] [B<PERF_NOCREATE>=y] B<xcatperftest> <total> [I<command-list-file>]
 
 
 =head1 DESCRIPTION
 
-The xcatperftest command runs commandes defined in a command list file and get their execution response time baseline for performance purpose. 
+The xcatperftest command runs commandes defined in a command list file and get their execution response time baseline for performance purpose.
 The xcatperftest command is part of the xCAT package xCAT-test, and you can run it standalone or leverage it to build up your automation test cases.
 
-Any commands could be defined in the command list file, however, it is recommended that the one-time initial configuration are well prepared prior to run xcatperftest command. 
+Any commands could be defined in the command list file, however, it is recommended that the one-time initial configuration are well prepared prior to run xcatperftest command.
 For example, the network object, osdistor and osimage image objects.
 
 Follow the below steps to run xcatperftest command:
 
 1, Install xCAT-test on a xCAT management nodes.
 
-2, Prepare a command list in which the commands are what you want to messure. 
+2, Prepare a command list in which the commands are what you want to messure.
 
 3, Prepare the initial configuration based on the command list to make sure all commands could be executed in techinal.
 
@@ -74,7 +74,7 @@ The command list file is in flat text format, the testing framework will parse t
   noderm #PERFGRP#
 
 
-B<Note>: Each line defines one command, and the commands dependency should be handled by the line order. 
+B<Note>: Each line defines one command, and the commands dependency should be handled by the line order.
 If you define a node range series line (started with #SERIES#) in this file, xcatperftest will run the command for each node range defined in series line.
 
 B<#SERIES#>       To define a node range series, and the series should be an comma split incremental number sequence.
@@ -90,33 +90,33 @@ B<#PERFGRP#>    It will be replaced with node group when this command line runs.
 The xcatperftest command supports be customized by some environment variables.
 
 
-B<FAKE_NODE_PREFIX> 
+B<FAKE_NODE_PREFIX>
 
 Optional, the prefix of the fake compute node name. By default, the value is 'fake'
 
-B<FAKE_NODE_GROUP> 
+B<FAKE_NODE_GROUP>
 
 # Optional, the group name of all the fake compute nodes. By default, the value is 'perftest'
 
-B<FAKE_NETWORK_PRO> 
+B<FAKE_NETWORK_PRO>
 
 Mandatory, the Provision network for all the fake compute nodes. By default, the value is '192.168'.
 It must be a string like 'A.B', and be matched with `tabdump networks`
 
-B<FAKE_NETWORK_BMC> 
+B<FAKE_NETWORK_BMC>
 
 Mandatory, the BMC network for all the fake compute nodes. By default, the value is '192.168'. Note:  It could not be the same subnet as 'FAKE_NETWORK_PRO'
-It must be a string like 'A.B' and no need to be defined in 'networks' table. 
+It must be a string like 'A.B' and no need to be defined in 'networks' table.
 
-B<PERF_NODETEMPL> 
+B<PERF_NODETEMPL>
 
 Optional, The node template name used for generating fake nodes. By default, it will be auto-detected according to the current arch.
 
-B<PERF_DRYRUN> 
+B<PERF_DRYRUN>
 
 Optional, Indicate no real commands will be executed if the environment variable is set.
 
-B<PERF_NOCREATE> 
+B<PERF_NOCREATE>
 
 Optional, Indicate no new fake nodes will be created if the environment variable is set.
 

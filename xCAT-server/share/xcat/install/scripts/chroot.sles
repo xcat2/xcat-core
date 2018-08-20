@@ -32,7 +32,7 @@ XCATDHOST="#XCATVAR:XCATMASTER#"
 (cat >/tmp/updateflag << 'EOF'
 #INCLUDE:#TABLE:site:key=installdir:value#/postscripts/updateflag.awk#
 EOF
-) >/tmp/updateflag 
+) >/tmp/updateflag
 
 chmod 755 /tmp/updateflag
 

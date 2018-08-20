@@ -62,7 +62,7 @@ if [ "\$1" = "install_monitor" ]; then
     cmd=""
     while [ "\$cmd" != "done" ]; do
         read cmd remainder
-    
+
         if [ "\$cmd" == "ready" ]; then
             echo "installmonitor"
         fi
@@ -73,13 +73,13 @@ fi
 
 #
 #  If the script was called with the "installstatus" argument, stdin and stdout are
-#  connected to an xCAT daemon on the master.  
+#  connected to an xCAT daemon on the master.
 #  Write the "installstatus xx" request to the daemon to update thenode installation status.
 if [ "\$1" = "installstatus" ]; then
     cmd=""
     while [ "\$cmd" != "done" ]; do
         read cmd remainder
-    
+
         if [ "\$cmd" == "ready" ]; then
             echo "installstatus \$2"
         fi
@@ -195,7 +195,7 @@ if [ -d /sys/firmware/efi ]; then
     echo "    ." >> /tmp/partitionfile
 else
     echo "ubuntu-boot ::" > /tmp/partitionfile
-    echo "100 50 100 ext3" >> /tmp/partitionfile
+    echo "256 256 512 ext3" >> /tmp/partitionfile
     echo '    $primary{ } $bootable{ } method{ format } format{ } use_filesystem{ } filesystem{ ext3 } mountpoint{ /boot }' >> /tmp/partitionfile
     echo "    ." >> /tmp/partitionfile
 fi

@@ -1,4 +1,4 @@
-#!/bin/sh 
+#!/bin/sh
 # pmatch determines if 1st argument string is matched by 2nd argument pattern
 
 pmatch ()
@@ -50,7 +50,7 @@ if [ -f /etc/os-release ] && (cat /etc/os-release |grep -i  '^NAME=[ "]*Cumulus 
     OSVER="cumulus"
 fi
 
-defgw=`ip route | grep default | awk '{print $3}'`
+defgw=`ip route | grep default | awk '{print $3}' | head -n1`
 if ( pmatch $OSVER "ubuntu*" ) || (pmatch $OSVER "cumulus")
 then
     echo `hostname` >/etc/hostname
@@ -73,7 +73,9 @@ else
         sed -i "s/HOSTNAME.*/HOSTNAME=`hostname`/" /etc/sysconfig/network
     fi
     if [ ! -z "$defgw" ]; then
-        echo "GATEWAY=$defgw" >> /etc/sysconfig/network
+        grep -qw GATEWAY /etc/sysconfig/network && \
+            sed -i "s/^GATEWAY.*/GATEWAY=$defgw/" /etc/sysconfig/network || \
+            echo "GATEWAY=$defgw" >> /etc/sysconfig/network
     fi
 fi
 
@@ -106,7 +108,7 @@ for nic in `ip link |grep "BROADCAST" |awk '{print $2}'   | sed s/://`; do
             broadcast_line=""
         fi
 
-        
+
         if [ ! -z "$defgw" ]; then
             gateway_line="gateway $defgw"
         else
@@ -165,7 +167,7 @@ EOF
         then
             sed -i '/NETMASK=/d' $NICFILE
         fi
-        echo NETMASK=$NETMASK >> $NICFILE    
+        echo NETMASK=$NETMASK >> $NICFILE
     fi
 
     #for netboot/statelite case, restart the network interface. For diskful installation, it is not necessary because the restart of the network  will happen at the first boot.

@@ -9,9 +9,9 @@ It is recommended that lldp protocol in the switches is enabled to collect the s
 
 xCAT will use the ethernet switches during node discovery to find out which switch port a particular MAC address is communicating over. This allows xCAT to match a random booting node with the proper node name in the database. To set up a switch, give it an IP address on its management port and enable basic **SNMP** functionality. (Typically, the **SNMP** agent in the switches is disabled by default.) The easiest method is to configure the switches to give the **SNMP** version 1 community string called "public" read access. This will allow xCAT to communicate to the switches without further customization. (xCAT will get the list of switches from the **switch** table.) If you want to use **SNMP** version 3 (e.g. for better security), see the example below. With **SNMP** V3 you also have to set the user/password and AuthProto (default is **md5**) in the switches table.
 
-If for some reason you can't configure **SNMP** on your switches, you can use sequential discovery or the more manual method of entering the nodes' MACs into the database. 
+If for some reason you can't configure **SNMP** on your switches, you can use sequential discovery or the more manual method of entering the nodes' MACs into the database.
 
-**SNMP** V3 Configuration example:   
+**SNMP** V3 Configuration example:
 
 xCAT supports many switch types, such as **BNT** and **Cisco**. Here is an example of configuring **SNMP V3** on the **Cisco** switch 3750/3650:
 
@@ -62,14 +62,14 @@ Switch Management
 
 When managing Ethernet switches, the admin often logs into the switches one by one using SSH or Telnet and runs the switch commands. However, it becomes time consuming when there are a lot of switches in a cluster. In a very large cluster, the switches are often identical and the configurations are identical. It helps to configure and monitor them in parallel from a single command.
 
-For managing Mellanox IB switches and  Qlogic IB switches, see :doc:`Mellanox IB switches and Qlogic IB switches </advanced/networks/infiniband/index>` 
+For managing Mellanox IB switches and  Qlogic IB switches, see :doc:`Mellanox IB switches and Qlogic IB switches </advanced/networks/infiniband/index>`
 
 xCAT will not do a lot of switch management functions. Instead, it will configure the switch so that the admin can run remote command such as ``xdsh`` for it. Thus, the admin can use the ``xdsh`` to run proprietary switch commands remotely from the xCAT mn to enable **VLAN**, **bonding**, **SNMP** and others.
 
 Running Remote Commands in Parallel
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-You can use xdsh to run parallel commands on Ethernet switches. The following shows how to configure xCAT to run xdsh on the switches: 
+You can use xdsh to run parallel commands on Ethernet switches. The following shows how to configure xCAT to run xdsh on the switches:
 
 .. note:: For this to work, configure the switch to allow **ssh** or **telnet**. The procedure varies from switch to switch, consult the reference guides for your switch to find out how to do this.
 
@@ -82,7 +82,7 @@ Set the ssh or telnet username an d password. ::
        chdef bntc125 username=admin \
                      password=password \
                      protocol=ssh
-       or 
+       or
        chdef bntc125 username=admin \
                      password=password \
                      protocol=telnet
@@ -101,8 +101,8 @@ Set the ssh or telnet username an d password. ::
 
 Also note that --devicetype is used here. xCAT supports the following switch types out of the box: ::
 
-             * BNT 
-             * Cisco 
+             * BNT
+             * Cisco
              * Juniper
              * Mellanox (for IB and Ethernet switches)
 
@@ -121,7 +121,7 @@ Here is what result will look like: ::
        bntc125: end
        bntc125: show vlan
        bntc125: VLAN                Name                Status            Ports
-       bntc125:  ----  --------------------------------  ------  ------------------------ 
+       bntc125:  ----  --------------------------------  ------  ------------------------
        bntc125:  1     Default VLAN                      ena     45-XGE4
        bntc125:  3     VLAN 3                            dis     empty
        bntc125:  101   xcatpriv101                       ena     24-44

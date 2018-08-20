@@ -1,24 +1,41 @@
 #!/bin/bash
 #this script will be invoked by ZTP(zero touch provision) process in the onie switch
 #this script finish the discovery and configuration after the switch is pluged in the cluster and powered on
-
 function error() {
   echo -e "\e[0;33mERROR: The Zero Touch Provisioning script failed while running the command $BASH_COMMAND at line $BASH_LINENO.\e[0m" >&2
   exit 1
 }
- 
+
 # Log all output from this script
 exec >/var/log/autoprovision 2>&1
- 
+
 #trap error ERR
- 
+
 #Add Debian Repositories
 #since in most cases, the switch has no internet access, skip this step
 #echo "deb http://http.us.debian.org/debian jessie main" >> /etc/apt/sources.list
 #echo "deb http://security.debian.org/ jessie/updates main" >> /etc/apt/sources.list
 
+# $1 - The name of the network interface
+function get_last_lease()
+{
+    local ifname="$1"
+    local lease=""
+    while read -r
+    do
+        if [[ $REPLY =~ ^lease ]]
+        then
+            lease="$REPLY"$'\n'
+        else
+            lease+="$REPLY"$'\n'
+        fi
+    done <"/var/lib/dhcp/dhclient.${ifname}.leases" 2>/dev/null
+    echo "${lease}"
+}
+
 #get ip address for server node
-server_ip=`grep cumulus-provision-url /var/lib/dhcp/dhclient.eth0.leases | tail -1 | awk -F/ '{print $3}'`
+server_ip="$(grep 'cumulus-provision-url' < <(get_last_lease eth0) | awk -F/ '{print $3}')"
+hashostname="$(grep 'host-name' < <(get_last_lease eth0))"
 
 #download /install/postscripts from MN
 max_retries=5
@@ -30,7 +47,7 @@ while [ 0 -eq 0 ]; do
     if [ -e "/xcatpost" ]; then
         rm -rf "/xcatpost"
     fi
-    
+
     export LANG=C; wget -l inf -nH -N -r --waitretry=10 --random-wait -e robots=off -T 60 -nH --cut-dirs=2 --reject "index.html*" --no-parent http://$server_ip/install/postscripts/ -P /xcatpost 2> /tmp/wget.log
     rc=$?
     if [ $rc -eq 0 ]; then
@@ -72,37 +89,45 @@ chmod -R +x `find /xcatpost/ -maxdepth 1 -print | grep -E -v '^(/xcatpost/|/xcat
 cd /xcatpost
 rc=0
 
-./documulusdiscovery
-rc=$?
-if [ "$rc" != "0" ];then
-    ztp -R 
-    exit 1
-fi
-
-logger -s -t "xcat.cumulusztp" -p local4.info "switch discovered!"
-
-#restart mgt interface to apply the specified IP address
-ifdown eth0;ifup eth0
-
-retry=0
-while true; do
-    #check whether the network access between MN/CN and the node is ready
-    ping $server_ip -c 1 >/dev/null && break
-    retry=$[ $retry + 1 ]
-    if [ $retry -eq 90 ];then
-       #timeout, complain and exit
-       logger -s -t "xcat.cumulusztp" -p local4.err " the network between the node and $server_ip is not ready, please check[retry=$retry]..." "/var/log/xcat/xcat.log"
-       ztp -R
-       exit 1
+#if 'host-name' appears in dhcp lease, it means that the node definition and dhcp lease
+#have been created on MN, no need to invoke discovery process
+if [ -n "$hashostname"  ]; then
+    echo "My definition and dhcp lease exist, skip discovery and begin configuring..."
+    logger -s -t "xcat.cumulusztp" -p local4.info "My definition and dhcp lease exist, skip discovery and begin configuring..."
+else
+    ./documulusdiscovery
+    rc=$?
+    if [ "$rc" != "0" ];then
+        ztp -R
+        exit 1
     fi
 
-    #sleep sometime before the next scan
-    sleep 2
-done
+    logger -s -t "xcat.cumulusztp" -p local4.info "switch discovered!"
 
+    #restart mgt interface to apply the specified IP address
+    ifdown eth0;ifup eth0
+
+    retry=0
+    while true; do
+        #check whether the network access between MN/CN and the node is ready
+        ping $server_ip -c 1 >/dev/null && break
+        retry=$[ $retry + 1 ]
+        if [ $retry -eq 90 ];then
+           #timeout, complain and exit
+           logger -s -t "xcat.cumulusztp" -p local4.err " the network between the node and $server_ip is not ready, please check[retry=$retry]..." "/var/log/xcat/xcat.log"
+           ztp -R
+           exit 1
+        fi
+
+        #sleep sometime before the next scan
+        sleep 2
+    done
+fi
+
+echo "installstatus configuring" | socat STDIN TCP:$server_ip:3002,sourceport=301,reuseaddr,retry=5
 #push root ssh keys, config passwordless
 mkdir -p /root/.ssh
-mv _ssh/authorized_keys /root/.ssh/authorized_keys 
+mv _ssh/authorized_keys /root/.ssh/authorized_keys
 
 #install license, if needed
 /usr/cumulus/bin/cl-license > /dev/null 2>&1
@@ -119,7 +144,7 @@ if [ "$rc" != "0" ];then
 fi
 
 #obtain myposctscript from MN
-./getmypostscript.cumulus $server_ip:3001 
+./getmypostscript.cumulus $server_ip:3001
 rc=$?
 if [ "$rc" != "0" ]; then
    logger -s -t "xcat.cumulusztp" -p local4.info "failed to get mypostscript"

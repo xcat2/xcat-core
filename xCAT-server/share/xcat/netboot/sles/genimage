@@ -1191,7 +1191,7 @@ MAGENTA="\033[35m"
 BROWN="\033[33m"
 NORMAL=\$RESET
 
-# This function is used to mount files/directories from the .statelite directory 
+# This function is used to mount files/directories from the .statelite directory
 #  over the root directory.
 # This function stolen from redhat
 shell() {
@@ -1234,10 +1234,10 @@ echo '
 echo '
                             _________     ________________
                      ___  __\\_   ___ \\   /  _  \\__    ___/
-                     \\  \\/  /    \\  \\/  /  /_\\  \\|    |   
-                      >    <\\     \\____/    |    \\    |   
-                     /__/\\_ \\\\______  /\\____|__  /____|   
-                           \\/       \\/         \\/         
+                     \\  \\/  /    \\  \\/  /  /_\\  \\|    |
+                      >    <\\     \\____/    |    \\    |
+                     /__/\\_ \\\\______  /\\____|__  /____|
+                           \\/       \\/         \\/
 '
         echo -e "\$RESET"
 }
@@ -1442,7 +1442,7 @@ if [ "\$STATELITE" = "1" ]; then
             if [ "\$ITER" = "\$MAXTRIES" ]; then
                 echo "You're dead. rpower \$ME boot to play again."
                 echo "Possible problems:
-1.  This initrd wan't created for the statelite node? 
+1.  This initrd wan't created for the statelite node?
 2.  IS DNS set up? Maybe that's why I can't mount \${SERVER}.
 3.  The nfs modules aren't set right in this initial ramdisk?"
                 shell
@@ -1529,7 +1529,7 @@ fi
             echo -e "\${RED}Hmmm... Can't mount \$SNAPSHOTSERVER:\$SNAPSHOTROOT. \${NORMAL} \$XCATMNTOPTS"
             RS=`expr \$RANDOM % 20`
             echo -e "Trying again in \$RS seconds"
-            sleep \$RS 
+            sleep \$RS
         done
 
         # create directory which is named after my node name
@@ -1548,7 +1548,7 @@ fi
             echo "Trying again in \$RS seconds..."
             sleep \$RS
         done
-    
+
         # mount persistent to server:/rootpath/nodename
         ITER=0
         while ! mount \$SNAPSHOTSERVER:/\$SNAPSHOTROOT/\$ME  \$NEWROOT/\$RWDIR/persistent -o nolock,\$XCATMNTOPTS; do
@@ -1574,7 +1574,7 @@ fi
         mkdir -p \$NEWROOT/\$RWDIR/tmpfs/var/lib/dhcpcd
     fi
     cp -fp /var/lib/dhcpcd/dhcpcd-\$IFACE.info \${NEWROOT}/\${RWDIR}/tmpfs/var/lib/dhcpcd/dhcpcd-\$IFACE.info
-    
+
     [ -e /etc/ntp.conf ] && mkdir -p \$NEWROOT/\$RWDIR/tmpfs/etc && cp /etc/ntp.conf \$NEWROOT/\$RWDIR/tmpfs/etc/
 
     [ -e /etc/resolv.conf ] && mkdir -p \$NEWROOT/\$RWDIR/tmpfs/etc && cp /etc/resolv.conf \$NEWROOT/\$RWDIR/tmpfs/etc/
@@ -1586,7 +1586,7 @@ fi
     do
         echo "\$NEWROOT/etc/init.d/statelite does not exist in image!"
         shell
-    done 
+    done
 
     # try to configure the local disk
     \$NEWROOT/etc/init.d/localdisk
@@ -1605,7 +1605,7 @@ EOMS
     print $inifile <<EOMS;
     # give the debug shell just before we go if specified!
     grep '\(shell\)' /proc/cmdline > /dev/null && shell
-    
+
     echo 0x100 > /proc/sys/kernel/real-root-dev
     export keep_old_ip=yes
     export fastboot=yes
@@ -1614,7 +1614,7 @@ EOMS
     mount -n --bind /dev /sysroot/dev
     umount /sys
     umount /proc
-    
+
     # sles use the standard utility to chroot
     if ! exec /usr/bin/chroot \$NEWROOT /sbin/init
     then

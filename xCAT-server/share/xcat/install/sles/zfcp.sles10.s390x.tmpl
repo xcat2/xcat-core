@@ -11,8 +11,8 @@
     </mouse>
     <signature-handling/>
   </general>
-  
-  
+
+
   <!-- Groups to create on Linux -->
   <groups config:type="list">
     <group>
@@ -195,8 +195,8 @@
       <userlist></userlist>
     </group>
   </groups>
-  
-  
+
+
   <!-- Contents of /etc/hosts -->
   <host>
     <hosts config:type="list">
@@ -214,21 +214,21 @@
       </hosts_entry>
     </hosts>
   </host>
-    
+
 
   <iscsi-client>
     <initiatorname></initiatorname>
     <targets config:type="list"/>
     <version>1.0</version>
   </iscsi-client>
-  
+
 
   <!-- Language setup (english) -->
   <language>
     <language>en_US</language>
     <languages></languages>
   </language>
-  
+
 
   <!-- Networking setup (DHCP) -->
   <networking>
@@ -273,8 +273,8 @@
       </routes>
     </routing>
   </networking>
-  
-  
+
+
   <nis>
     <nis_broadcast config:type="boolean">false</nis_broadcast>
     <nis_broken_server config:type="boolean">false</nis_broken_server>
@@ -288,11 +288,11 @@
     <start_autofs config:type="boolean">false</start_autofs>
     <start_nis config:type="boolean">false</start_nis>
   </nis>
-  
-  
+
+
   <!-- File system partitioning -->
   <partitioning config:type="list">
-  
+
     <!-- Root partition and swap space -->
     <drive>
       <device>replace_root_device</device>
@@ -323,7 +323,7 @@
     </drive>
   </partitioning>
 
-  
+
   <proxy>
     <enabled config:type="boolean">false</enabled>
     <ftp_proxy></ftp_proxy>
@@ -333,8 +333,8 @@
     <proxy_password></proxy_password>
     <proxy_user></proxy_user>
   </proxy>
-  
-  
+
+
   <report>
     <errors>
       <log config:type="boolean">true</log>
@@ -357,13 +357,13 @@
       <timeout config:type="integer">0</timeout>
     </yesno_messages>
   </report>
-  
-  
+
+
   <runlevel>
     <default>5</default>
   </runlevel>
-  
-  
+
+
   <!-- Software to install on Linux -->
   <software>
     <patterns config:type="list">
@@ -373,15 +373,15 @@
       replace_software_packages
     </packages>
   </software>
-  
-  
+
+
   <!-- Time zone -->
   <timezone>
     <hwclock>UTC</hwclock>
     <timezone>US/Eastern</timezone>
   </timezone>
-  
-  
+
+
   <user_defaults>
     <expire></expire>
     <group>100</group>
@@ -391,8 +391,8 @@
     <shell>/bin/bash</shell>
     <skel>/etc/skel</skel>
   </user_defaults>
-  
-  
+
+
   <!-- Users on Linux -->
   <users config:type="list">
     <user>
@@ -698,13 +698,13 @@
       <username>sshd</username>
     </user>
   </users>
-  
-  
+
+
   <zfcp>
     replace_zfcp
   </zfcp>
-  
-  
+
+
   <!-- Scripts (post-script) -->
   <configure>
     <scripts>

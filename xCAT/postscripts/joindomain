@@ -6,8 +6,8 @@ HOSTPRINC=`hostname`
 #generate a random 32 character password
 MYPASS=$(tr -dc A-Za-z0-9 </dev/urandom|head -c 32)
 
-if [ "$OSVER" = "rhels6" ]; then 
-    #enable kerberos 
+if [ "$OSVER" = "rhels6" ]; then
+    #enable kerberos
     authconfig --update --krb5realm=$UPDNSDOMAIN --enablekrb5kdcdns --enablekrb5
     #change password
     (echo $TEMPHOSTPASS;echo $MYPASS;echo $MYPASS)|kpasswd $HOSTPRINC

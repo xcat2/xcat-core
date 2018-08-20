@@ -6,7 +6,7 @@ The xCAT management node plays an important role in the cluster, if the manageme
 The goal of the HAMN (High Availability Management Node) configuration is, when the primary xCAT management node fails, the standby management node can take over the role of the management node, either through automatic failover or through manual procedure performed by the administrator, and thus avoid long periods of time during which your cluster does not have active cluster management function available.
 
 
-The following pages describes ways to configure the xCAT Management Node for High Availability. 
+The following pages describes ways to configure the xCAT Management Node for High Availability.
 
 .. toctree::
    :maxdepth: 2

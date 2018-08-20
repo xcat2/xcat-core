@@ -85,7 +85,7 @@ $PLUGIN_KITNAME = "<<<buildkit_WILL_INSERT_kitname_HERE>>>";
 =head1
 
     Node Management Kit Plugin
-    This plugin contains commands to run custom actions 
+    This plugin contains commands to run custom actions
     during node management operations.
 
 =cut
@@ -197,7 +197,7 @@ sub process_request {
 
 =head3  kitnodeadd
 
-    This command is called when one or more nodes are added 
+    This command is called when one or more nodes are added
     to the cluster.
 
     Command-line interface:
@@ -248,7 +248,7 @@ sub kitnodeadd {
 
 =head3  kitnoderemove
 
-    This command is called when one or more nodes are 
+    This command is called when one or more nodes are
     removed from the cluster.
 
     Command-line interface:
@@ -299,7 +299,7 @@ sub kitnoderemove {
 
 =head3  kitnodeupdate
 
-    This command is called when the configuration of one 
+    This command is called when the configuration of one
     or more nodes are updated.
 
     Command-line interface:
@@ -351,7 +351,7 @@ sub kitnodeupdate {
 =head3  kitnoderefresh
 
     This command is called to refresh node-related configuration
-    files. 
+    files.
 
     Command-line interface:
          kitnoderefresh <noderange>

@@ -156,7 +156,7 @@ cmd:rmdef -t node testnode
 end
 
 start:nodech_delete
-description:nodech -d 
+description:nodech -d
 label:mn_only,db
 cmd:chdef -t node -o testnode os=hello groups=all
 check:rc==0

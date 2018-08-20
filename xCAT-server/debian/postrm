@@ -22,12 +22,8 @@ set -e
 case "$1" in
     purge|upgrade|failed-upgrade|abort-install|abort-upgrade|disappear)
     ;;
-    
+
     remove)
-       if [ -f "/proc/cmdline" ]; then   # prevent running it during install into chroot image
-             /etc/init.d/xcatd stop
-       fi
-       update-rc.d xcatd disable
        rm -f /usr/sbin/xcatd  #remove the symbolic
 
        rm -f /etc/apache2/conf-enabled/xcat-ws.conf

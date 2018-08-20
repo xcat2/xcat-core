@@ -5,18 +5,18 @@
 
 usage()
 {
-   cat << EOF 
+   cat << EOF
    Usage ibm-csm-master options:
-   
+
    Modifies the csm configuration files (if /etc/ibm/csm/ is empty), then executes the local
    post scripts to reflect the change.
 
    OPTIONS
-     -h            Displays this message 
+     -h            Displays this message
      -c <group>    Sets the xCAT group for the compute nodes (default: compute)
      -a <group>    Sets the xCAT group for the aggregator nodes (default: aggregator)
      -u <group>    Sets the xCAT group for the utility nodes (default: utility)
-   
+
 EOF
 }
 
@@ -64,4 +64,4 @@ systemctl restart ${aggregator_daemon}
 # Run the post scripts on the other nodes.
 updatenode ${utility_nodes} -P ibm-csm-utility
 #updatenode ${aggregator_nodes} -P ibm-csm-aggregator
-updatenode  ${compute_nodes} -P ibm-csm-compute 
+updatenode  ${compute_nodes} -P ibm-csm-compute

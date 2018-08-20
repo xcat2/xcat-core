@@ -1,0 +1,205 @@
+#!/bin/bash
+# IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
+#
+#---------------------------------------------------------------------------
+# setup NTP configuration on the compute nodes
+#
+#---------------------------------------------------------------------------
+
+if [ "$(uname -s|tr 'A-Z' 'a-z')" = "linux" ];then
+   str_dir_name=`dirname $0`
+   . $str_dir_name/xcatlib.sh
+fi
+
+# if on the Management Node
+if [ -e /etc/xCATMN ]; then
+   logger -t xcat -p local4.info "setupntp: This postscript does not support running on the management node. Please run makentp command. exiting"
+   exit 0
+fi
+
+#for service node, the makentp -a command will call this postscript
+#so do not diable service node.
+
+exit_code=0;
+master=$MASTER
+setup=0
+conf_file="/etc/ntp.conf"
+conf_file_org="/etc/ntp.conf.org"
+conf_file_backup="/etc/ntp.conf.postbackup"
+
+# pmatch determines if 1st argument string is matched by 2nd argument pattern
+pmatch ()
+{
+  case $1 in
+    $2) return 0;;  # zero return code means string matched by pattern
+  esac
+
+  return 1          # non-zero return code means string not matched by pattern
+}
+
+is_lsb_cumulus ()
+{
+  grep -qs Cumulus /etc/lsb-release
+  return $?
+}
+
+logger -t xcat "Install: Setup NTP"
+# Use the ntpservers defined in the site table, if they exist.
+# If the value of ntpservers is <xcatmaster> use the service node or
+# the management node as the ntp server.
+if [ $NTPSERVERS ]; then
+    if [ "$NODESETSTATE" = "statelite" ]; then
+        cp -a $conf_file $conf_file_org
+        echo  "" > $conf_file
+    else
+        if [ !  -f $conf_file_org ]; then
+            mv -f $conf_file $conf_file_org
+        else
+            mv -f $conf_file $conf_file_backup
+        fi
+    fi
+    if [ "$NTPSERVERS" = "&lt;xcatmaster&gt;" ] || [ "$NTPSERVERS" = "<xcatmaster>" ]; then
+        echo "server $master" >>$conf_file
+    else
+        for i in $(echo $NTPSERVERS | tr ',' ' ')
+        do
+            if ping $i -c 1 > /dev/null 2>&1 ; then
+         	echo "server $i" >>$conf_file
+        	master=$i
+                setup=1
+            fi
+        done
+        if [ $setup -eq 0 ]; then
+	    echo "server $master" >$conf_file
+        fi
+    fi
+else
+	echo "server $master" >$conf_file
+fi
+
+
+OS_TYPE=`uname`
+if [ $OS_TYPE = Linux ]; then
+    # Set the timezone
+    if [ -n $TIMEZONE ]; then
+        echo $TIMEZONE > /etc/timezone
+        if type timedatectl > /dev/null; then
+            timedatectl set-timezone $(cat /etc/timezone)
+        fi
+    fi
+
+    mkdir -p /var/lib/ntp
+    chown ntp /var/lib/ntp
+    if ( pmatch $OSVER "sles*" ) || ( pmatch $OSVER "suse*" ) || [ -f /etc/SuSE-release ];then
+        echo "driftfile /var/lib/ntp/drift/ntp.drift" >>$conf_file
+    else
+        echo "driftfile /var/lib/ntp/drift" >>$conf_file
+    fi
+    echo "disable auth" >>$conf_file
+    echo "restrict 127.0.0.1" >>$conf_file
+
+    if ( pmatch $OSVER "Cumulus*" ) || is_lsb_cumulus; then
+        # Do not listen on Cumulus switch ports
+        echo "interface listen eth0" >>$conf_file
+    fi
+
+    # will not exit here, let all the ntp configuration finish
+    # ntpd will timeout if ntp service is not reachable
+    if ! ping $master -c 1 > /dev/null 2>&1 ; then
+        echo "Error: ntpserver $master is not reachable, will not setup NTP"
+        exit_code=1
+    fi
+
+    #ntpd/ntpdate/sntp conflict with ntpd, stop the service first
+    checkservicestatus ntpserver
+    if [ $? -eq 0 ];then
+         stopservice ntpserver
+    fi
+
+    msg='syncing the clock ...'
+    logger -t xcat $msg
+    echo $msg
+    if ! timeout 120 ntpd -gq  > /dev/null 2>&1 ; then
+        if ! ntpdate -t5 $master > /dev/null 2>&1; then
+            msg='WARNING: NTP Sync Failed before timeout. ntp server will try to sync...'
+            logger -t xcat $msg
+            echo $msg
+        fi
+    fi
+
+    #setup the hardware clock
+    hwclock --systohc --utc
+
+    #setup the RTC is UTC format, which will be used by os
+    if ( pmatch $OSVER "sles*" ) || ( pmatch $OSVER "suse*" ) || [ -f /etc/SuSE-release ];then
+        grep -i -q "HWCLOCK" /etc/sysconfig/clock
+        if [ $? -eq 0 ];then
+            sed -i 's/.*HWCLOCK.*/HWCLOCK=\"-u\"/' /etc/sysconfig/clock
+        else
+            echo HWCLOCK=\"-u\" >> /etc/sysconfig/clock
+        fi
+    elif [ -f "/etc/debian_version" ];then
+        sed -i 's/.*UTC.*/UTC=\"yes\"/' /etc/default/rcS
+    else
+        if [ -f "/etc/sysconfig/clock" ];then
+           grep -i -q "utc" /etc/sysconfig/clock
+           if [ $? -eq 0 ];then
+              sed -i 's/.*UTC.*/UTC=\"yes\"/' /etc/sysconfig/clock
+           else
+              echo UTC=\"yes\" >> /etc/sysconfig/clock
+           fi
+        elif type -P timedatectl >/dev/null 2>&1 ;then
+           timedatectl set-local-rtc 0
+        fi
+    fi
+
+    #update the hardware clock automaticly
+    if [ -f "/etc/sysconfig/ntpd" ];then
+        grep -i -q "SYNC_HWCLOCK" /etc/sysconfig/ntpd
+        if [ $? -eq 0 ];then
+            sed -i 's/.*SYNC_HWCLOCK.*/SYNC_HWCLOCK=\"yes\"/' /etc/sysconfig/ntpd
+        else
+            echo "SYNC_HWCLOCK=\"yes\"" >> /etc/sysconfig/ntpd
+        fi
+    elif [ -f /etc/sysconfig/ntp ];then
+        grep -i -q "NTPD_FORCE_SYNC_ON_STARTUP" /etc/sysconfig/ntp
+        if [ $? -eq 0 ];then
+	    sed -i 's/NTPD_FORCE_SYNC_ON_STARTUP=\"no\"/NTPD_FORCE_SYNC_ON_STARTUP=\"yes\"/' /etc/sysconfig/ntp
+        fi
+        grep -i -q "NTPD_FORCE_SYNC_HWCLOCK_ON_STARTUP" /etc/sysconfig/ntp
+        if [ $? -eq 0 ];then
+	    sed -i 's/NTPD_FORCE_SYNC_HWCLOCK_ON_STARTUP=\"no\"/NTPD_FORCE_SYNC_HWCLOCK_ON_STARTUP=\"yes\"/' /etc/sysconfig/ntp
+        fi
+    else
+        cron_file="/etc/cron.daily/xcatsethwclock"
+        if [ ! -f "$cron_file" ];then
+            echo "#!/bin/sh" > $cron_file
+            echo "/sbin/hwclock --systohc --utc" >> $cron_file
+            chmod a+x $cron_file
+            #service cron restart
+            restartservice cron
+        fi
+    fi
+    startservice ntpserver
+
+    enableservice cron
+    enableservice ntpserver
+else
+# stop and start AIX ntp
+  echo "driftfile /etc/ntp.drift
+tracefile /etc/ntp.trace
+disable auth
+broadcastclient
+restrict 127.0.0.1" >>$conf_file
+
+    stopsrc -s xntpd
+    logger -t xcat "ntpdate -t5 $master "
+    ntpdate -t5 $master
+    if [ "$?" != "0" ]
+    then
+        echo "  ntpdate -t5 $master  failed "
+        logger -t xcat "ntpdate -t5 $master failed"
+    fi
+    /usr/sbin/chrctcp -S -a xntpd
+fi
+exit $exit_code

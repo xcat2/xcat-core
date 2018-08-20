@@ -195,7 +195,8 @@ sub process_request {
         }
         $postinstall_filename = $ref_linuximage_tab->{'postinstall'};
         if ($postinstall_filename ne "") {
-            foreach my $file (split ',', $postinstall_filename) {
+            foreach my $rawfile (split ',', $postinstall_filename) {
+                my ($file,@args)=split(" ",$rawfile);
                 if (!-r $file) {
                     $callback->({ error => ["The postinstall_filename specified \'$file\' does not exist!"], errorcode => [1] });
                     return 1;
@@ -325,7 +326,7 @@ sub process_request {
     if ($pkglist)          { $cmd .= " --pkglist $pkglist"; }
     if ($srcdir_otherpkgs) { $cmd .= " --otherpkgdir \"$srcdir_otherpkgs\""; }
     if ($otherpkglist)     { $cmd .= " --otherpkglist $otherpkglist"; }
-    if ($postinstall_filename) { $cmd .= " --postinstall $postinstall_filename"; }
+    if ($postinstall_filename) { $cmd .= " --postinstall \"$postinstall_filename\""; }
     if ($destdir) { $cmd .= " --rootimgdir $destdir"; }
     if ($tempfile) {
         if (!$dryrun) { $cmd .= " --tempfile $tempfile"; }

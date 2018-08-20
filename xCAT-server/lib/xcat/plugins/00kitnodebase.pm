@@ -14,18 +14,18 @@ require xCAT::ProfiledNodeUtils;
 =head1
 
     xCAT plugin, which is also the default kit plugin.
-    These commands are called by node management commands, 
+    These commands are called by node management commands,
     should not be called directly by external.
 
     The kit plugin framework is creating a common framework for kits' extension. The major feature of this framework is to update kits' related configuration files/services automatically while add/remove/update nodes.
-    
+
     According to design, if a kit wants have such a auto configure feature, it should create a xCAT plugin which implement commands "kitcmd_nodemgmt_add", "kitcmd_nodemgmt_remove"..., just like plugin "00kitnodebase".
 
     For example, we create a kit for LSF, and want to update LSF's configuration file automatically updated while add/remove/update xCAT nodes, then we should create a xCAT plugin. This plugin will update LSF's configuration file and may also reconfigure/restart LSF service while these change happens.
 
     If we have multi kits, and all these kits have such a plugin, then all these plugins will be called while we add/remove/update xCAT nodes. To configure these kits in one go by auto.
 
-    This plugin is a kit plugin, just for configure nodes' related configurations automatically. So that we do not need to run these make* commands manually after creating them.    
+    This plugin is a kit plugin, just for configure nodes' related configurations automatically. So that we do not need to run these make* commands manually after creating them.
 
     About kit plugin naming:  naming this plugin starts with "00" is a way for specifying plugin calling orders, we want to call the default kit plugin in front of other kit plugins.
 

@@ -4,7 +4,7 @@ B<pushinitrd> - queries your SoftLayer account and gets attributes for each serv
 
 =head1 SYNOPSIS
 
-B<pushinitrd> [B<-v>|B<--verbose>]  [B<-w> I<waittime>] [I<noderange>]  
+B<pushinitrd> [B<-v>|B<--verbose>]  [B<-w> I<waittime>] [I<noderange>]
 
 B<pushinitrd> [B<-?> | B<-h> | B<--help>]
 

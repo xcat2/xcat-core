@@ -90,10 +90,10 @@ my %command_info = (
         1 => "Get Device ID",
         2 => "Cold Reset",
         55 => "Get System GUID",
-        64  => "Set Channel Access", 
+        64  => "Set Channel Access",
         76 => "Set User Payload Access",
         10 => "Get Command Support",
-    },	 
+    },	
     4 => {
         18 => "Set PEF Configuration Parameters",
         19 => "Get PEF Configuration Parameters",
@@ -110,7 +110,7 @@ my %command_info = (
         1 => "Set LAN Configuration Parameters",
         2 => "Get LAN Configuration Parameters",
         33 => "Set SOL Configuration Parameters",
-        34 => "Get SOL Configuration Parameters",         
+        34 => "Get SOL Configuration Parameters",
     },
     10 => {
         35 => "Get SDR",

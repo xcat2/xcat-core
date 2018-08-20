@@ -1,4 +1,4 @@
-start:lslite_i 
+start:lslite_i
 description:lslite -i
 os:Linux
 cmd:copycds $$ISO

@@ -51,6 +51,8 @@ my $xcatdebugmode = 0;
 my $IPMIXCAT  = "/opt/xcat/bin/ipmitool-xcat";
 my $NON_BLOCK = 1;
 my $BIG_DATA_MACHINE_MODELS = "8001-22C|9006-22C|5104-22C|8001-12C|9006-12C";
+my $PUPDATE_UPDATE_BMC=1;
+my $PUPDATE_UPDATE_PNOR=1;
 use constant RFLASH_LOG_DIR => "/var/log/xcat/rflash";
 if (-d RFLASH_LOG_DIR) {
     chmod 0700, RFLASH_LOG_DIR;
@@ -936,7 +938,7 @@ sub setnetinfo {
             }
             @cmd = (0x01, $channel_number, 0x6, @mask);
         }
-    } elsif ($subcommand =~ m/gateway/) {
+    } elsif ($subcommand =~ m/gateway/ and $argument) {
         my $gw = inet_ntoa(inet_aton($argument));
         my @mask = split /\./, $gw;
         foreach (0 .. 3) {
@@ -1728,7 +1730,7 @@ sub calc_ipmitool_version {
 #        verbose:  verbose output
 #        use_rc:   Some machines, like IBM Power S822LC for Big Data (Supermicro), do not return
 #                  a "00" ready string from calling ipmi raw command. Instead they return RC=0. This
-#                  flag if 1, tells the check_bmc_status_with_ipmitool() to check the RC 
+#                  flag if 1, tells the check_bmc_status_with_ipmitool() to check the RC
 #                  instead of "00" string. If set to 0, the "00" ready string is checked.
 #    Returns:
 #        1 when bmc is up
@@ -1862,6 +1864,20 @@ sub do_firmware_update {
     $ret = get_ipmitool_version(\$ipmitool_ver);
     exit $ret if $ret < 0;
 
+    # Update node status to indicate firmware update started
+    my $set_fw_update_status_func = sub {
+        my ($node, $callback) = @_;
+        my $status = "updating firmware";
+        my $nodelist_table = xCAT::Table->new('nodelist');
+        if (!$nodelist_table) {
+            xCAT::MsgUtils->message("S", "Unable to open nodelist table, denying");
+        } else {
+            $nodelist_table->setNodeAttribs($node, { status => $status });
+            $nodelist_table->close();
+        }
+        return;
+    };
+
     my $exit_with_error_func = sub {
         my ($node, $callback, $message) = @_;
         my $status = "failed to update firmware";
@@ -1921,7 +1937,10 @@ sub do_firmware_update {
     if ($bmc_password) {
         $pre_cmd = $pre_cmd . " -P $bmc_password";
     }
-    
+
+    #Update node status
+    $set_fw_update_status_func->($sessdata->{node}, $callback);
+
     # check for 8335-GTB Model Type to adjust buffer size
     my $buffer_size = "30000";
     my $cmd = $pre_cmd . " fru print 3";
@@ -1940,7 +1959,7 @@ sub do_firmware_update {
         use Getopt::Long;
         GetOptions('d:s' => \$directory_name);
     }
-    
+
     # check verbose, buffersize, and retry options
     for my $opt (@{$sessdata->{'extraargs'}}) {
         if ($opt =~ /-V{1,4}/) {
@@ -1975,9 +1994,9 @@ sub do_firmware_update {
         }
     }
 
-    # For IBM Power S822LC for Big Data (Supermicro) machines such as 
-    # P9 Boston (9006-22C, 9006-12C, 5104-22C) or P8 Briggs (8001-22C) 
-    # firmware update is done using pUpdate utility expected to be in the 
+    # For IBM Power S822LC for Big Data (Supermicro) machines such as
+    # P9 Boston (9006-22C, 9006-12C, 5104-22C) or P8 Briggs (8001-22C)
+    # firmware update is done using pUpdate utility expected to be in the
     # specified data directory along with the update files .bin for BMC or .pnor for Host
     if ($output =~ /$BIG_DATA_MACHINE_MODELS/) {
         # Verify valid data directory was specified
@@ -2041,8 +2060,8 @@ sub do_firmware_update {
             $exit_with_error_func->($sessdata->{node}, $callback,
                 "At least one update file (.bin or .pnor) needs to be in data directory $pUpdate_directory.");
         }
-
-        # All checks are done, run pUpdate utility on each of the update files found in 
+        xCAT::MsgUtils->message("S", "The PUPDATE options: UPDATE_BMC=$PUPDATE_UPDATE_BMC and UPDATE_PNOR=$PUPDATE_UPDATE_PNOR");
+        # All checks are done, run pUpdate utility on each of the update files found in
         # the specified data directory
         xCAT::SvrUtils::sendmsg("rflash started, Please wait...", $callback, $sessdata->{node});
 
@@ -2062,7 +2081,7 @@ sub do_firmware_update {
         }
 
         # step 2 update BMC file or Host file, or both
-        if ($bmc_file) {
+        if ($bmc_file and $PUPDATE_UPDATE_BMC) {
             # BMC file was found in data directory, run update with it
             my $pUpdate_bmc_cmd = "$pUpdate_directory/pUpdate -f $bmc_file -i lan -h $bmc_addr -u $bmc_userid -p $bmc_password >".$rflash_log_file." 2>&1";
             if ($verbose) {
@@ -2076,7 +2095,7 @@ sub do_firmware_update {
                     "Error running command $pUpdate_bmc_cmd");
             }
             # Wait for BMC to reboot before continuing to next step.
-            # Since this is a IBM Power S822LC for Big Data (Supermicro) machine, use RC to check if ready 
+            # Since this is a IBM Power S822LC for Big Data (Supermicro) machine, use RC to check if ready
             unless (check_bmc_status_with_ipmitool($pre_cmd, 5, 60, 10, $sessdata, $verbose, 1)) {
                 $exit_with_error_func->($sessdata->{node}, $callback,
                 "Timeout to check the bmc status");
@@ -2084,7 +2103,7 @@ sub do_firmware_update {
         }
 
 
-        if ($pnor_file) {
+        if ($pnor_file and $PUPDATE_UPDATE_PNOR) {
             # Host file was found in data directory, run update with it
             my $pUpdate_pnor_cmd = "$pUpdate_directory/pUpdate -pnor $pnor_file -i lan -h $bmc_addr -u $bmc_userid -p $bmc_password >>".$rflash_log_file." 2>&1";
             if ($verbose) {
@@ -2203,8 +2222,8 @@ sub do_firmware_update {
     }
 
     if ($is_firestone and $firestone_update_version and
-        (($firestone_update_version eq "820" and $htm_update_version eq "810") or 
-         ($firestone_update_version eq "810" and $htm_update_version eq "820")) 
+        (($firestone_update_version eq "820" and $htm_update_version eq "810") or
+         ($firestone_update_version eq "810" and $htm_update_version eq "820"))
        ) {
         xCAT::SvrUtils::sendmsg("rflash started, Please wait...", $callback, $sessdata->{node}, %allerrornodes);
         $retry = 0; # No retry support for 3 step update process
@@ -2252,9 +2271,9 @@ RETRY_UPGRADE:
     # step 4 upgrade firmware
     # For firestone machines if updating from 810 to 820 version or from 820 to 810,
     # extra steps are needed. Hanled in "if" block, "else" block is normal update in a single step.
-    if ($is_firestone and 
-        (($firestone_update_version eq "820" and $htm_update_version eq "810") or 
-         ($firestone_update_version eq "810" and $htm_update_version eq "820")) 
+    if ($is_firestone and
+        (($firestone_update_version eq "820" and $htm_update_version eq "810") or
+         ($firestone_update_version eq "810" and $htm_update_version eq "820"))
        ) {
 
         # Step 4.1
@@ -2341,7 +2360,7 @@ RETRY_UPGRADE:
         }
 
         $output = xCAT::Utils->runcmd($cmd, -1);
-        # if upgrade command failed and we exausted number of retries 
+        # if upgrade command failed and we exausted number of retries
         # report an error, exit to the caller and leave node in powered off state
         # otherwise report an error, power on the node  and try upgrade again
         if ($::RUNCMD_RC != 0) {
@@ -2359,8 +2378,8 @@ RETRY_UPGRADE:
                 # Error upgrading, set a flag to attempt a retry
                 xCAT::SvrUtils::sendmsg("Running attempt $retry of ipmitool command $cmd failed with rc=$::RUNCMD_RC and the following error messages:\n$output\nSee the $rflash_log_file for details.", $callback, $sessdata->{node}, %allerrornodes);
                 $failed_upgrade = 1;
-            
-            } 
+
+            }
         }
     }
 
@@ -2394,14 +2413,14 @@ RETRY_UPGRADE:
             $retry--;   # decrement number of retries left
             # Yes, it is a goto statement here. Ugly, but removes the need to restructure
             # the above block of code.
-            goto RETRY_UPGRADE; 
+            goto RETRY_UPGRADE;
         }
         else {
             # After 10 min of waiting node has not rebooted. Give up retrying.
             $exit_with_error_func->($sessdata->{node}, $callback,
                 "Giving up waiting for the node to reboot. No further retries will be attempted.");
         }
-        
+
     }
     else {
         $exit_with_success_func->($sessdata->{node}, $callback,
@@ -2590,16 +2609,6 @@ sub start_rflash_processes {
     foreach (@donargs) {
         do_rflash_process($_->[0], $_->[1], $_->[2], $_->[3], $_->[4],
             $ipmitimeout, $ipmitrys, $command, -args => \@exargs);
-        $rflash_status->{$_->[0]}->{status} = "updating firmware";
-    }
-    if (!grep(/^(-c|--check)$/i, @exargs)) {
-        my $nodelist_table = xCAT::Table->new('nodelist');
-        if (!$nodelist_table) {
-            xCAT::MsgUtils->message("S", "Unable to open nodelist table, denying");
-        } else {
-            $nodelist_table->setNodesAttribs($rflash_status);
-            $nodelist_table->close();
-        }
     }
 
     # Wait for all processes to end
@@ -2739,7 +2748,7 @@ sub reseat_node {
         my $nodepass = $authdata->{$fpc}->{password};
         $sessdata->{slotnumber} = $mpent->{id};
 	if (exists $fpcsessions{$mpent->{mpa}}) {
-            $sessdata->{fpcipmisession} = $fpcsessions{$mpent->{mpa}}; 
+            $sessdata->{fpcipmisession} = $fpcsessions{$mpent->{mpa}};
 	    until ($sessdata->{fpcipmisession}->{logged}) {
                 $sessdata->{fpcipmisession}->waitforrsp(timeout=>1);
             }
@@ -3896,7 +3905,7 @@ sub initfru_zero {
         if ($_->{encoding} == 3) {
             $fru->value($_->{value});
         } else {
-            next; 
+            next;
 
             #print Dumper($_);
             #print $_->{encoding};
@@ -3920,11 +3929,11 @@ sub initfru_zero {
                 }
                 my $fru_id = $sdr->sensor_number;
                 if (defined($fruids_hash{$fru_id})) {
-                    $sessdata->{sdr_info_for_openpower}->{$fru_id} = $sdr; 
+                    $sessdata->{sdr_info_for_openpower}->{$fru_id} = $sdr;
                 }
             }
             $sessdata->{currfruid} = shift @{$sessdata->{frus_for_openpower}};
-            $sessdata->{currfrusdr} = $sessdata->{sdr_info_for_openpower}->{$sessdata->{currfruid}}; 
+            $sessdata->{currfrusdr} = $sessdata->{sdr_info_for_openpower}->{$sessdata->{currfruid}};
             $sessdata->{ipmisession}->subcmd(netfn => 0xa, command => 0x10, data => [ $sessdata->{currfruid} ], callback => \&process_currfruid, callback_args => $sessdata);
             return;
         }
@@ -4247,12 +4256,12 @@ sub add_fruhash {
     if ($sessdata->{skipotherfru}) {
         if (scalar @{$sessdata->{frus_for_openpower}}) {
             $sessdata->{currfruid} = shift @{$sessdata->{frus_for_openpower}};
-            $sessdata->{currfrusdr} = $sessdata->{sdr_info_for_openpower}->{$sessdata->{currfruid}}; 
+            $sessdata->{currfrusdr} = $sessdata->{sdr_info_for_openpower}->{$sessdata->{currfruid}};
             $sessdata->{ipmisession}->subcmd(netfn => 0xa, command => 0x10, data => [ $sessdata->{currfruid} ], callback => \&process_currfruid, callback_args => $sessdata);
             return;
         }
         fru_initted($sessdata);
-        return; 
+        return;
     }
 
     if (scalar @{ $sessdata->{dimmfru} }) {
@@ -8828,7 +8837,26 @@ sub process_request {
     my $extrargs  = $request->{arg};
     my @exargs    = ($request->{arg});
     $::cwd = $request->{cwd}->[0];
-
+    my $env_xcat_pupdate_bmc = 0;
+    my $env_xcat_pupdate_pnor = 0;
+    my $env = $request->{environment};
+    if (ref($env) eq 'ARRAY') {
+        if (ref($env->[0]->{XCAT_PUPDATE_BMC}) eq 'ARRAY') {
+            $env_xcat_pupdate_bmc = 1;
+        }
+        if (ref($env->[0]->{XCAT_PUPDATE_PNOR}) eq 'ARRAY') {
+            $env_xcat_pupdate_pnor = 1;
+        }
+    }
+    # update PNOR only, when XCAT_PUPDATE_PNOR specified and XCAT_PUPDATE_BMC not specified
+    if ($env_xcat_pupdate_pnor and !$env_xcat_pupdate_bmc) {
+        $PUPDATE_UPDATE_BMC = 0;
+    }
+    # update BMC only, when XCAT_PUPDATE_BMC specified and XCAT_PUPDATE_PNOR not specified
+    if ($env_xcat_pupdate_bmc and !$env_xcat_pupdate_pnor) {
+        $PUPDATE_UPDATE_PNOR = 0;
+    }
+    # for both XCAT_PUPDATE_BMC and XCAT_PUPDATE_PNOR are specified or not specified, shall update both
     if (ref($extrargs)) {
         @exargs = @$extrargs;
     }

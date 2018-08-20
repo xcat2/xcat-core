@@ -765,6 +765,14 @@ sub processArgs
                 #    then set noderange
                 if (($::command ne 'mkdef') && ($a =~ m/^\//))
                 {
+                    eval { /$a/ };
+                    if ($@)
+                    {
+                        my $rsp = {};
+                        $rsp->{data}->[0] = "Invalid regular expression $a, check the noderange syntax.";
+                        xCAT::MsgUtils->message("E", $rsp, $::callback);
+                        return 3;
+                    }
                     @::noderange = &noderange($a, 1); # Use the "verify" option to support regular expression
                 }
                 else
@@ -1564,11 +1572,11 @@ sub defmk
             unless(isobjnamevalid($node,$myobjtype)){
                $invalidobjname .= ",$node";
             }
-            if (((!$::opt_t) && (!$::FILEATTRS{$node}{'objtype'})) || ($::FILEATTRS{$node}{'objtype'} eq "node") || ($::opt_t eq "node")) { 
+            if (((!$::opt_t) && (!$::FILEATTRS{$node}{'objtype'})) || ($::FILEATTRS{$node}{'objtype'} eq "node") || ($::opt_t eq "node")) {
                 if($node =~ /[A-Z]/){
                     $invalidnodename .= ",$node";
                 }elsif($node =~ /\./){
-                    $nodewithdomain .= ",$node"; 
+                    $nodewithdomain .= ",$node";
                 }
             }
         }
@@ -2439,10 +2447,10 @@ sub defch
                 # the netname already exists
                 if ($isDefined)
                 {
-                    # when net is empty, chdef command should add net value, $::FINALATTRS{$obj}{net} should have value 
-                    if ((!$nethash{$o}{net}) && (!$::FINALATTRS{$obj}{net}))                
+                    # when net is empty, chdef command should add net value, $::FINALATTRS{$obj}{net} should have value
+                    if ((!$nethash{$o}{net}) && (!$::FINALATTRS{$obj}{net}))
                     {
-                        $isInvalid=1; 
+                        $isInvalid=1;
                         my $rsp;
                         $rsp->{data}->[0] = "Attribute \'net\' is not specified for network entry \'$obj\', skipping.";
                         xCAT::MsgUtils->message("E", $rsp, $::callback);
@@ -2460,10 +2468,10 @@ sub defch
                          last;
                      }
                 }
-                # the netname does not exist 
+                # the netname does not exist
                 else {
                      # there is a network definition already contains the same net and mask, it is duplicate
-                     if (($nethash{$o}{net} eq $::FINALATTRS{$obj}{net}) && ($nethash{$o}{mask} eq $::FINALATTRS{$obj}{mask})) 
+                     if (($nethash{$o}{net} eq $::FINALATTRS{$obj}{net}) && ($nethash{$o}{mask} eq $::FINALATTRS{$obj}{mask}))
                      {
                          $isInvalid=1;
                          my $rsp;
@@ -2472,7 +2480,7 @@ sub defch
                          $error = 1;
                          last;
                      }
- 
+
                 }
 
             }
@@ -3914,6 +3922,16 @@ sub defls
             # the object names are passed in through command line
             if ($::objectsfrom_args || $::opt_o || (($type eq 'node') && ($::opt_o || @::noderange)))
             {
+
+                eval { /$obj/ };
+                if ($@)
+                {
+                    my $rsp = {};
+                    $rsp->{data}->[0] = "Invalid \'$obj\' name, check the object named \'$obj\' of type \'$type\' syntax.";
+                    xCAT::MsgUtils->message("E", $rsp, $::callback);
+                    next;
+                }
+
                 if (!grep(/^$obj$/, @allobjoftype))
                 {
                     my $rsp;
@@ -4436,7 +4454,7 @@ sub defrm
                     push @allnodes, $single_object;
                 }
             }
-            # If cleaning up (issuing nodeset offline) for more than cleanup_msg_trigger node, 
+            # If cleaning up (issuing nodeset offline) for more than cleanup_msg_trigger node,
             # issue info message
             if (@allnodes > $cleanup_msg_trigger) {
                my $rsp;
@@ -4745,7 +4763,7 @@ sub initialize_variables
 #isobjnamevalid:
 #description: check whether the object name is valid
 #argument:
-#          $objname: the object name string 
+#          $objname: the object name string
 #          $objtype: the object type string
 #return:
 #          1: valid
@@ -4759,7 +4777,7 @@ sub isobjnamevalid{
     $options{genericrange}=1;
     $objtype="node" unless(defined $objtype and ($objtype ne ""));
     if($objtype eq "node"){
-        #the ip address as a valid node object name is a hack for p7IH support   
+        #the ip address as a valid node object name is a hack for p7IH support
         if(($objname !~ /^[a-zA-Z0-9-_]+$/) and !xCAT::NetworkUtils->isIpaddr($objname)){
             return 0;
         }
@@ -4767,7 +4785,7 @@ sub isobjnamevalid{
         my @tmpnodes=xCAT::NodeRange::noderange($objname,0,0,%options);
         if(scalar(@tmpnodes)>1 || $tmpnodes[0] ne $objname ){
            return 0;
-        }    
+        }
     }
     return 1;
 }

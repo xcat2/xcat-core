@@ -25,20 +25,20 @@ use File::Basename;
             $self->{verbose}:scalar, Offer verbose information, used for handling feature logic
             $self->{load_type}:scalar, $::MONITOR or $::REPLAY, used for distinguishing monitor and replay.
         private attributes:
-            $self->{log_open_info}: reference of a hash, used to save the log file operating information. 
+            $self->{log_open_info}: reference of a hash, used to save the log file operating information.
             $self->{current_ref_year}: scalar, the year information of current time. such as 2016. Used for log time parsing
             $self->{current_ref_time}:  scalar, the epoch format of current time, such as 1472437250. Used for log time parsing
 
-            $self->{debug}: Scalar, offer debug information, used for hanlde code logic, used by developer to debug function running 
+            $self->{debug}: Scalar, offer debug information, used for hanlde code logic, used by developer to debug function running
             $self->{debuglogpath}: Scalar, the path of debug log files
             $self->{debuglogfd}: File descriptor of debug log files
 
             The structure of "log_open_info" hash is:
-            $self->{log_open_info}->{<logfileshortname>}{openfd}  : The file descriptor of sepecific openning log file       
+            $self->{log_open_info}->{<logfileshortname>}{openfd}  : The file descriptor of sepecific openning log file
             $self->{log_open_info}->{<logfileshortname>}{rotate_file_list} : Array, all rotate file about related log file
-            $self->{log_open_info}->{<logfileshortname>}{openning_file_index} : scalar, the index of openning file in rotate_file_list 
+            $self->{log_open_info}->{<logfileshortname>}{openning_file_index} : scalar, the index of openning file in rotate_file_list
             $self->{log_open_info}->{<logfileshortname>}{next_read_point} : scalar, the read point of one log file, used by 'seek' function
-            $self->{log_open_info}->{<logfileshortname>}{filetype} : scalar, the type of current log file, $::LOGTYPE_RSYSLOG or $::LOGTYPE_HTTP 
+            $self->{log_open_info}->{<logfileshortname>}{filetype} : scalar, the type of current log file, $::LOGTYPE_RSYSLOG or $::LOGTYPE_HTTP
             $self->{log_open_info}->{<logfileshortname>}{next_start_time} : scalar, the next read time
 
     Returns:
@@ -116,7 +116,7 @@ sub obtain_candidate_mn_hostname_in_log {
         A hash which save all candidate log file information
         $candidate_log{<label>}{file}
         $candidate_log{<label>}{type}
-        <label> : The short name of log file 
+        <label> : The short name of log file
         file:  The log file name, including full path
         type: The valid types are $::LOGTYPE_HTTP and $::LOGTYPE_RSYSLOG, refer to 'probe_global_constant' for more information.
 =cut
@@ -166,9 +166,9 @@ sub obtain_log_file_list {
         Public function. Obtian logs which belong to a specific second from candidate log files.
     Arguments:
         the_time_to_load:(input attribute) the specific second.
-        valid_one_second_log_set_ref: (output attribute) the space which save the vaild logs. A array of reference of hash. 
+        valid_one_second_log_set_ref: (output attribute) the space which save the vaild logs. A array of reference of hash.
                                       Refer to fucnction "obtain_log_content" for the hash structure of one log.
-        
+
     Returns:
         1: success
         0: failed
@@ -452,10 +452,10 @@ sub obtain_valid_log_start_point {
 
 =head3
     Description:
-        Convert one line original log which comes from log file to a hash. 
+        Convert one line original log which comes from log file to a hash.
 
     Arguments:
-        log_type     :(input attribute) valid log type are $::LOGTYPE_RSYSLOG and $::LOGTYPE_HTTP 
+        log_type     :(input attribute) valid log type are $::LOGTYPE_RSYSLOG and $::LOGTYPE_HTTP
         original_log :(input attribute) one line log in real log file
 
     Returns:
@@ -465,7 +465,7 @@ sub obtain_valid_log_start_point {
         %log_content
         $log_content{time}   : the timestamp of log, the format is epoch_seconds
         $log_content{sender} : the sender of log
-        $log_content{label}  : the label of log, such as $::LOGLABEL_DHCPD, $::LOGLABEL_TFTP.... refer to "probe_global_constant" for all kinds vaild labels 
+        $log_content{label}  : the label of log, such as $::LOGLABEL_DHCPD, $::LOGLABEL_TFTP.... refer to "probe_global_constant" for all kinds vaild labels
         $log_content{msg}    : the main message of log
 =cut
 
@@ -508,7 +508,7 @@ sub obtain_log_content {
             }
         } else {
             my $timestamp = join(" ", @split_line[ 0 .. 2 ]);
-            $log_content{time_record} = $split_line[2]; 
+            $log_content{time_record} = $split_line[2];
             $log_content{time} = $self->convert_to_epoch_seconds($timestamp);
             if (!xCAT::NetworkUtils->isIpaddr($split_line[3])) {
                 my @sender_tmp = split(/\./, $split_line[3]);
@@ -707,9 +707,9 @@ sub destory {
 
 =head3
     Description:
-        Private function. Used for log debug information to disk. 
+        Private function. Used for log debug information to disk.
     Arguments:
-        $msg : The massage which will be logged into log file. 
+        $msg : The massage which will be logged into log file.
     Returns:
         NULL
 =cut

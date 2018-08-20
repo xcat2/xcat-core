@@ -13,9 +13,9 @@ POST - Create a token.
 
 * An array of all the global configuration list.
 
-**Example:** 
+**Example:**
 
-Acquire a token for user 'root'. :: 
+Acquire a token for user 'root'. ::
 
 
     curl -X POST -k 'https://127.0.0.1/xcatws/tokens?userName=root&userPW=cluster&pretty=1' -H Content-Type:application/json --data '{"userName":"root","userPW":"cluster"}'
@@ -47,9 +47,9 @@ Refer to the man page: :doc:`lsdef </guides/admin-guides/references/man1/lsdef.1
 
 * Json format: An array of node names.
 
-**Example:** 
+**Example:**
 
-Get all the node names from xCAT database. :: 
+Get all the node names from xCAT database. ::
 
 
     curl -X GET -k 'https://127.0.0.1/xcatws/nodes?userName=root&userPW=cluster&pretty=1'
@@ -73,9 +73,9 @@ Refer to the man page: :doc:`lsdef </guides/admin-guides/references/man1/lsdef.1
 
 * Json format: An object which includes multiple '<name> : {att:value, attr:value ...}' pairs.
 
-**Example:** 
+**Example:**
 
-Get all the attributes for node 'node1'. :: 
+Get all the attributes for node 'node1'. ::
 
 
     curl -X GET -k 'https://127.0.0.1/xcatws/nodes/node1?userName=root&userPW=cluster&pretty=1'
@@ -103,9 +103,9 @@ Refer to the man page: :doc:`chdef </guides/admin-guides/references/man1/chdef.1
 
 * No output when execution is successful. Otherwise output the error information in the Standard Error Format: {error:[msg1,msg2...],errocode:errornum}.
 
-**Example:** 
+**Example:**
 
-Change the attributes mgt=dfm and netboot=yaboot. :: 
+Change the attributes mgt=dfm and netboot=yaboot. ::
 
 
     curl -X PUT -k 'https://127.0.0.1/xcatws/nodes/node1?userName=root&userPW=cluster&pretty=1' -H Content-Type:application/json --data '{"mgt":"dfm","netboot":"yaboot"}'
@@ -122,9 +122,9 @@ Refer to the man page: :doc:`mkdef </guides/admin-guides/references/man1/mkdef.1
 
 * No output when execution is successful. Otherwise output the error information in the Standard Error Format: {error:[msg1,msg2...],errocode:errornum}.
 
-**Example:** 
+**Example:**
 
-Create a node with attributes groups=all, mgt=dfm and netboot=yaboot :: 
+Create a node with attributes groups=all, mgt=dfm and netboot=yaboot ::
 
 
     curl -X POST -k 'https://127.0.0.1/xcatws/nodes/node1?userName=root&userPW=cluster&pretty=1' -H Content-Type:application/json --data '{"options":{"--template":"x86_64kvmguest-template"},'
@@ -137,9 +137,9 @@ Refer to the man page: :doc:`rmdef </guides/admin-guides/references/man1/rmdef.1
 
 * No output when execution is successful. Otherwise output the error information in the Standard Error Format: {error:[msg1,msg2...],errocode:errornum}.
 
-**Example:** 
+**Example:**
 
-Delete the node node1 :: 
+Delete the node node1 ::
 
 
     curl -X DELETE -k 'https://127.0.0.1/xcatws/nodes/node1?userName=root&userPW=cluster&pretty=1'
@@ -157,9 +157,9 @@ Refer to the man page: :doc:`lsdef </guides/admin-guides/references/man1/lsdef.1
 
 * Json format: An object which includes multiple '<name> : {att:value, attr:value ...}' pairs.
 
-**Example:** 
+**Example:**
 
-Get the attributes {groups,mgt,netboot} for node node1 :: 
+Get the attributes {groups,mgt,netboot} for node node1 ::
 
 
     curl -X GET -k 'https://127.0.0.1/xcatws/nodes/node1/attrs/groups,mgt,netboot?userName=root&userPW=cluster&pretty=1'
@@ -183,9 +183,9 @@ Refer to the man page: :doc:`makehosts </guides/admin-guides/references/man8/mak
 
 * No output when execution is successful. Otherwise output the error information in the Standard Error Format: {error:[msg1,msg2...],errocode:errornum}.
 
-**Example:** 
+**Example:**
 
-Create the mapping of ip and hostname record for node 'node1'. :: 
+Create the mapping of ip and hostname record for node 'node1'. ::
 
 
     curl -X POST -k 'https://127.0.0.1/xcatws/nodes/node1/host?userName=root&userPW=cluster&pretty=1'
@@ -203,9 +203,9 @@ Refer to the man page: :doc:`makedns </guides/admin-guides/references/man8/maked
 
 * No output when execution is successful. Otherwise output the error information in the Standard Error Format: {error:[msg1,msg2...],errocode:errornum}.
 
-**Example:** 
+**Example:**
 
-Create the dns record for node 'node1'. :: 
+Create the dns record for node 'node1'. ::
 
 
     curl -X POST -k 'https://127.0.0.1/xcatws/nodes/node1/dns?userName=root&userPW=cluster&pretty=1'
@@ -218,9 +218,9 @@ Refer to the man page: :doc:`makedns </guides/admin-guides/references/man8/maked
 
 * No output when execution is successful. Otherwise output the error information in the Standard Error Format: {error:[msg1,msg2...],errocode:errornum}.
 
-**Example:** 
+**Example:**
 
-Delete the dns record for node node1 :: 
+Delete the dns record for node node1 ::
 
 
     curl -X DELETE -k 'https://127.0.0.1/xcatws/nodes/node1/dns?userName=root&userPW=cluster&pretty=1'
@@ -236,9 +236,9 @@ Refer to the man page: :doc:`makedhcp </guides/admin-guides/references/man8/make
 
 * No output when execution is successful. Otherwise output the error information in the Standard Error Format: {error:[msg1,msg2...],errocode:errornum}.
 
-**Example:** 
+**Example:**
 
-Create the dhcp record for node 'node1'. :: 
+Create the dhcp record for node 'node1'. ::
 
 
     curl -X POST -k 'https://127.0.0.1/xcatws/nodes/node1/dhcp?userName=root&userPW=cluster&pretty=1'
@@ -251,9 +251,9 @@ Refer to the man page: :doc:`makedhcp </guides/admin-guides/references/man8/make
 
 * No output when execution is successful. Otherwise output the error information in the Standard Error Format: {error:[msg1,msg2...],errocode:errornum}.
 
-**Example:** 
+**Example:**
 
-Delete the dhcp record for node node1 :: 
+Delete the dhcp record for node node1 ::
 
 
     curl -X DELETE -k 'https://127.0.0.1/xcatws/nodes/node1/dhcp?userName=root&userPW=cluster&pretty=1'
@@ -269,9 +269,9 @@ Refer to the man page: :doc:`nodestat </guides/admin-guides/references/man1/node
 
 * An object which includes multiple entries like: <nodename> : { nodestat : <node state> }
 
-**Example:** 
+**Example:**
 
-Get the running status for node node1 :: 
+Get the running status for node node1 ::
 
 
     curl -X GET -k 'https://127.0.0.1/xcatws/nodes/node1/nodestat?userName=root&userPW=cluster&pretty=1'
@@ -293,9 +293,9 @@ Refer to the man page: :doc:`nodels </guides/admin-guides/references/man1/nodels
 
 * Json format: An array of node names.
 
-**Example:** 
+**Example:**
 
-Get the node names from xCAT database. :: 
+Get the node names from xCAT database. ::
 
 
     curl -X GET -k 'https://127.0.0.1/xcatws/nodes/node[1-3]/nodels?userName=root&userPW=cluster&pretty=1'
@@ -317,9 +317,9 @@ Refer to the man page: :doc:`rscan </guides/admin-guides/references/man1/rscan.1
 
 * Json format: An object which includes multiple '<name> : {att:value, attr:value ...}' pairs.
 
-**Example:** 
+**Example:**
 
-Get all the children nodes for node 'node1'. :: 
+Get all the children nodes for node 'node1'. ::
 
 
     curl -X GET -k 'https://127.0.0.1/xcatws/nodes/node1/subnodes?userName=root&userPW=cluster&pretty=1'
@@ -354,9 +354,9 @@ Refer to the man page: :doc:`rpower </guides/admin-guides/references/man1/rpower
 
 * An object which includes multiple entries like: <nodename> : { power : <powerstate> }
 
-**Example:** 
+**Example:**
 
-Get the power status. :: 
+Get the power status. ::
 
 
     curl -X GET -k 'https://127.0.0.1/xcatws/nodes/node1/power?userName=root&userPW=cluster&pretty=1'
@@ -379,9 +379,9 @@ Refer to the man page: :doc:`rpower </guides/admin-guides/references/man1/rpower
 
 * No output when execution is successful. Otherwise output the error information in the Standard Error Format: {error:[msg1,msg2...],errocode:errornum}.
 
-**Example:** 
+**Example:**
 
-Change the power status to on :: 
+Change the power status to on ::
 
 
     curl -X PUT -k 'https://127.0.0.1/xcatws/nodes/node1/power?userName=root&userPW=cluster&pretty=1' -H Content-Type:application/json --data '{"action":"on"}'
@@ -397,9 +397,9 @@ Refer to the man page: :doc:`renergy </guides/admin-guides/references/man1/rener
 
 * Json format: An object which includes multiple '<name> : {att:value, attr:value ...}' pairs.
 
-**Example:** 
+**Example:**
 
-Get all the energy attributes. :: 
+Get all the energy attributes. ::
 
 
     curl -X GET -k 'https://127.0.0.1/xcatws/nodes/node1/energy?userName=root&userPW=cluster&pretty=1'
@@ -424,9 +424,9 @@ Refer to the man page: :doc:`renergy </guides/admin-guides/references/man1/rener
 
 * No output when execution is successful. Otherwise output the error information in the Standard Error Format: {error:[msg1,msg2...],errocode:errornum}.
 
-**Example:** 
+**Example:**
 
-Turn on the cappingstatus to [on] :: 
+Turn on the cappingstatus to [on] ::
 
 
     curl -X PUT -k 'https://127.0.0.1/xcatws/nodes/node1/energy?userName=root&userPW=cluster&pretty=1' -H Content-Type:application/json --data '{"cappingstatus":"on"}'
@@ -442,9 +442,9 @@ Refer to the man page: :doc:`renergy </guides/admin-guides/references/man1/rener
 
 * Json format: An object which includes multiple '<name> : {att:value, attr:value ...}' pairs.
 
-**Example:** 
+**Example:**
 
-Get the energy attributes which are specified in the URI. :: 
+Get the energy attributes which are specified in the URI. ::
 
 
     curl -X GET -k 'https://127.0.0.1/xcatws/nodes/node1/energy/cappingmaxmin,cappingstatus?userName=root&userPW=cluster&pretty=1'
@@ -467,9 +467,9 @@ Refer to the man page: :doc:`rspconfig </guides/admin-guides/references/man1/rsp
 
 * Json format: An object which includes multiple '<name> : {att:value, attr:value ...}' pairs.
 
-**Example:** 
+**Example:**
 
-Get the snmp community for the service processor of node1. :: 
+Get the snmp community for the service processor of node1. ::
 
 
     curl -X GET -k 'https://127.0.0.1/xcatws/nodes/node1/sp/community?userName=root&userPW=cluster&pretty=1'
@@ -479,7 +479,7 @@ Get the snmp community for the service processor of node1. ::
        }
     }
 
-PUT - Change the specific attributes for the service processor resource. 
+PUT - Change the specific attributes for the service processor resource.
 `````````````````````````````````````````````````````````````````````````
 
 Refer to the man page: :doc:`rspconfig </guides/admin-guides/references/man1/rspconfig.1>`
@@ -492,9 +492,9 @@ Refer to the man page: :doc:`rspconfig </guides/admin-guides/references/man1/rsp
 
 * No output when execution is successful. Otherwise output the error information in the Standard Error Format: {error:[msg1,msg2...],errocode:errornum}.
 
-**Example:** 
+**Example:**
 
-Set the snmp community to [mycommunity]. :: 
+Set the snmp community to [mycommunity]. ::
 
 
     curl -X PUT -k 'https://127.0.0.1/xcatws/nodes/node1/sp/community?userName=root&userPW=cluster&pretty=1' -H Content-Type:application/json --data '{"value":"mycommunity"}'
@@ -510,9 +510,9 @@ Refer to the man page: :doc:`rsetboot </guides/admin-guides/references/man1/rset
 
 * Json format: An object which includes multiple '<name> : {att:value, attr:value ...}' pairs.
 
-**Example:** 
+**Example:**
 
-Get the bootorder for the next boot. (It's only valid after setting.) :: 
+Get the bootorder for the next boot. (It's only valid after setting.) ::
 
 
     curl -X GET -k 'https://127.0.0.1/xcatws/nodes/node1/nextboot?userName=root&userPW=cluster&pretty=1'
@@ -522,7 +522,7 @@ Get the bootorder for the next boot. (It's only valid after setting.) ::
        }
     }
 
-PUT - Change the next boot order. 
+PUT - Change the next boot order.
 ``````````````````````````````````
 
 Refer to the man page: :doc:`rsetboot </guides/admin-guides/references/man1/rsetboot.1>`
@@ -535,9 +535,9 @@ Refer to the man page: :doc:`rsetboot </guides/admin-guides/references/man1/rset
 
 * No output when execution is successful. Otherwise output the error information in the Standard Error Format: {error:[msg1,msg2...],errocode:errornum}.
 
-**Example:** 
+**Example:**
 
-Set the bootorder for the next boot. :: 
+Set the bootorder for the next boot. ::
 
 
     curl -X PUT -k 'https://127.0.0.1/xcatws/nodes/node1/nextboot?userName=root&userPW=cluster&pretty=1' -H Content-Type:application/json --data '{"order":"net"}'
@@ -553,9 +553,9 @@ Refer to the man page: :doc:`nodeset </guides/admin-guides/references/man1/nimno
 
 * Json format: An object which includes multiple '<name> : {att:value, attr:value ...}' pairs.
 
-**Example:** 
+**Example:**
 
-Get the next boot state for the node1. :: 
+Get the next boot state for the node1. ::
 
 
     curl -X GET -k 'https://127.0.0.1/xcatws/nodes/node1/bootstate?userName=root&userPW=cluster&pretty=1'
@@ -578,9 +578,9 @@ Refer to the man page: :doc:`nodeset </guides/admin-guides/references/man1/nimno
 
 * No output when execution is successful. Otherwise output the error information in the Standard Error Format: {error:[msg1,msg2...],errocode:errornum}.
 
-**Example:** 
+**Example:**
 
-Set the next boot state for the node1. :: 
+Set the next boot state for the node1. ::
 
 
     curl -X PUT -k 'https://127.0.0.1/xcatws/nodes/node1/bootstate?userName=root&userPW=cluster&pretty=1' -H Content-Type:application/json --data '{"osimage":"rhels6.4-x86_64-install-compute"}'
@@ -596,9 +596,9 @@ Refer to the man page: :doc:`rvitals </guides/admin-guides/references/man1/rvita
 
 * Json format: An object which includes multiple '<name> : {att:value, attr:value ...}' pairs.
 
-**Example:** 
+**Example:**
 
-Get all the vitails attributes for the node1. :: 
+Get all the vitails attributes for the node1. ::
 
 
     curl -X GET -k 'https://127.0.0.1/xcatws/nodes/node1/vitals?userName=root&userPW=cluster&pretty=1'
@@ -627,9 +627,9 @@ Refer to the man page: :doc:`rvitals </guides/admin-guides/references/man1/rvita
 
 * Json format: An object which includes multiple '<name> : {att:value, attr:value ...}' pairs.
 
-**Example:** 
+**Example:**
 
-Get the 'fanspeed' vitals attribute. :: 
+Get the 'fanspeed' vitals attribute. ::
 
 
     curl -X GET -k 'https://127.0.0.1/xcatws/nodes/node1/vitals/fanspeed?userName=root&userPW=cluster&pretty=1'
@@ -658,9 +658,9 @@ Refer to the man page: :doc:`rinv </guides/admin-guides/references/man1/rinv.1>`
 
 * Json format: An object which includes multiple '<name> : {att:value, attr:value ...}' pairs.
 
-**Example:** 
+**Example:**
 
-Get all the inventory attributes for node1. :: 
+Get all the inventory attributes for node1. ::
 
 
     curl -X GET -k 'https://127.0.0.1/xcatws/nodes/node1/inventory?userName=root&userPW=cluster&pretty=1'
@@ -689,9 +689,9 @@ Refer to the man page: :doc:`rinv </guides/admin-guides/references/man1/rinv.1>`
 
 * Json format: An object which includes multiple '<name> : {att:value, attr:value ...}' pairs.
 
-**Example:** 
+**Example:**
 
-Get the 'model' inventory attribute for node1. :: 
+Get the 'model' inventory attribute for node1. ::
 
 
     curl -X GET -k 'https://127.0.0.1/xcatws/nodes/node1/inventory/model?userName=root&userPW=cluster&pretty=1'
@@ -714,9 +714,9 @@ Refer to the man page: :doc:`reventlog </guides/admin-guides/references/man1/rev
 
 * Json format: An object which includes multiple '<name> : {att:value, attr:value ...}' pairs.
 
-**Example:** 
+**Example:**
 
-Get all the eventlog for node1. :: 
+Get all the eventlog for node1. ::
 
 
     curl -X GET -k 'https://127.0.0.1/xcatws/nodes/node1/eventlog?userName=root&userPW=cluster&pretty=1'
@@ -737,9 +737,9 @@ Refer to the man page: :doc:`reventlog </guides/admin-guides/references/man1/rev
 
 * No output when execution is successful. Otherwise output the error information in the Standard Error Format: {error:[msg1,msg2...],errocode:errornum}.
 
-**Example:** 
+**Example:**
 
-Delete all the event log for node1. :: 
+Delete all the event log for node1. ::
 
 
     curl -X DELETE -k 'https://127.0.0.1/xcatws/nodes/node1/eventlog?userName=root&userPW=cluster&pretty=1'
@@ -764,9 +764,9 @@ Refer to the man page: :doc:`rbeacon </guides/admin-guides/references/man1/rbeac
 
 * Json format: An object which includes multiple '<name> : {att:value, attr:value ...}' pairs.
 
-**Example:** 
+**Example:**
 
-Get beacon for node1. :: 
+Get beacon for node1. ::
 
 
     curl -X GET -k 'https://127.0.0.1/xcatws/nodes/node1/beacon?userName=root&userPW=cluster&pretty=1'
@@ -791,9 +791,9 @@ Refer to the man page: :doc:`rbeacon </guides/admin-guides/references/man1/rbeac
 
 * No output when execution is successful. Otherwise output the error information in the Standard Error Format: {error:[msg1,msg2...],errocode:errornum}.
 
-**Example:** 
+**Example:**
 
-Turn on the beacon. :: 
+Turn on the beacon. ::
 
 
     curl -X PUT -k 'https://127.0.0.1/xcatws/nodes/node1/beacon?userName=root&userPW=cluster&pretty=1' -H Content-Type:application/json --data '{"action":"on"}'
@@ -809,9 +809,9 @@ Refer to the man page: :doc:`updatenode </guides/admin-guides/references/man1/up
 
 * An array of messages for performing the node updating.
 
-**Example:** 
+**Example:**
 
-Initiate an updatenode process. :: 
+Initiate an updatenode process. ::
 
 
     curl -X POST -k 'https://127.0.0.1/xcatws/nodes/node2/updating?userName=root&userPW=cluster&pretty=1'
@@ -835,9 +835,9 @@ Refer to the man page: :doc:`updatenode </guides/admin-guides/references/man1/up
 
 * An array of messages for performing the file syncing for the node.
 
-**Example:** 
+**Example:**
 
-Initiate an file syncing process. :: 
+Initiate an file syncing process. ::
 
 
     curl -X POST -k 'https://127.0.0.1/xcatws/nodes/node2/filesyncing?userName=root&userPW=cluster&pretty=1'
@@ -857,9 +857,9 @@ Refer to the man page: :doc:`updatenode </guides/admin-guides/references/man1/up
 
 * Json format: An object which includes multiple '<name> : {att:value, attr:value ...}' pairs.
 
-**Example:** 
+**Example:**
 
-Initiate an software maintenance process. :: 
+Initiate an software maintenance process. ::
 
 
     curl -X POST -k 'https://127.0.0.1/xcatws/nodes/node2/sw?userName=root&userPW=cluster&pretty=1'
@@ -891,9 +891,9 @@ Refer to the man page: :doc:`updatenode </guides/admin-guides/references/man1/up
 
 * Json format: An object which includes multiple '<name> : {att:value, attr:value ...}' pairs.
 
-**Example:** 
+**Example:**
 
-Initiate an updatenode process. :: 
+Initiate an updatenode process. ::
 
 
     curl -X POST -k 'https://127.0.0.1/xcatws/nodes/node2/postscript?userName=root&userPW=cluster&pretty=1' -H Content-Type:application/json --data '{"scripts":["syslog","remoteshell"]}'
@@ -927,9 +927,9 @@ Refer to the man page: :doc:`xdsh </guides/admin-guides/references/man1/xdsh.1>`
 
 * Json format: An object which includes multiple '<name> : {att:value, attr:value ...}' pairs.
 
-**Example:** 
+**Example:**
 
-Run the 'date' command on the node2. :: 
+Run the 'date' command on the node2. ::
 
 
     curl -X POST -k 'https://127.0.0.1/xcatws/nodes/node2/nodeshell?userName=root&userPW=cluster&pretty=1' -H Content-Type:application/json --data '{"command":["date","ls"]}'
@@ -957,9 +957,9 @@ Refer to the man page: :doc:`xdcp </guides/admin-guides/references/man1/xdcp.1>`
 
 * No output when execution is successful. Otherwise output the error information in the Standard Error Format: {error:[msg1,msg2...],errocode:errornum}.
 
-**Example:** 
+**Example:**
 
-Copy files /tmp/f1 and /tmp/f2 from xCAT MN to the node2:/tmp. :: 
+Copy files /tmp/f1 and /tmp/f2 from xCAT MN to the node2:/tmp. ::
 
 
     curl -X POST -k 'https://127.0.0.1/xcatws/nodes/node2/nodecopy?userName=root&userPW=cluster&pretty=1' -H Content-Type:application/json --data '{"src":["/tmp/f1","/tmp/f2"],"target":"/tmp"}'
@@ -977,7 +977,7 @@ Refer to the man page: :doc:`chvm </guides/admin-guides/references/man1/chvm.1>`
 
 **Parameters:**
 
-* Json format: An object which includes multiple 'att:value' pairs. DataBody: 
+* Json format: An object which includes multiple 'att:value' pairs. DataBody:
     Set memory size - {"memorysize":"sizeofmemory(MB)"}
     Add new disk - {"adddisk":"sizeofdisk1(GB),sizeofdisk2(GB)"}
     Purge disk - {"purgedisk":"scsi_id1,scsi_id2"}
@@ -986,21 +986,21 @@ Refer to the man page: :doc:`chvm </guides/admin-guides/references/man1/chvm.1>`
 
 * No output when execution is successful. Otherwise output the error information in the Standard Error Format: {error:[msg1,msg2...],errocode:errornum}.
 
-**Example1:** 
+**Example1:**
 
-Set memory to 3000MB. :: 
+Set memory to 3000MB. ::
 
 
     curl -X PUT -k 'https://127.0.0.1/xcatws/nodes/node1/vm?userName=root&userPW=cluster&pretty=1' -H Content-Type:application/json --data '{"memorysize":"3000"}'
-**Example2:** 
+**Example2:**
 
-Add a new 20G disk. :: 
+Add a new 20G disk. ::
 
 
     curl -X PUT -k 'https://127.0.0.1/xcatws/nodes/node1/vm?userName=root&userPW=cluster&pretty=1' -H Content-Type:application/json --data '{"adddisk":"20G"}'
-**Example3:** 
+**Example3:**
 
-Purge the disk 'hdb'. :: 
+Purge the disk 'hdb'. ::
 
 
     curl -X PUT -k 'https://127.0.0.1/xcatws/nodes/node1/vm?userName=root&userPW=cluster&pretty=1' -H Content-Type:application/json --data '{"purgedisk":"hdb"}'
@@ -1011,7 +1011,7 @@ Refer to the man page: :doc:`mkvm </guides/admin-guides/references/man1/mkvm.1>`
 
 **Parameters:**
 
-* Json format: An object which includes multiple 'att:value' pairs. DataBody: 
+* Json format: An object which includes multiple 'att:value' pairs. DataBody:
     Set CPU count - {"cpucount":"numberofcpu"}
     Set memory size - {"memorysize":"sizeofmemory(MB)"}
     Set disk size - {"disksize":"sizeofdisk"}
@@ -1021,9 +1021,9 @@ Refer to the man page: :doc:`mkvm </guides/admin-guides/references/man1/mkvm.1>`
 
 * No output when execution is successful. Otherwise output the error information in the Standard Error Format: {error:[msg1,msg2...],errocode:errornum}.
 
-**Example:** 
+**Example:**
 
-Create the vm node1 with a 30G disk, 2048M memory and 2 cpus. :: 
+Create the vm node1 with a 30G disk, 2048M memory and 2 cpus. ::
 
 
     curl -X POST -k 'https://127.0.0.1/xcatws/nodes/node1/vm?userName=root&userPW=cluster&pretty=1' -H Content-Type:application/json --data '{"disksize":"30G","memorysize":"2048","cpucount":"2"}'
@@ -1034,7 +1034,7 @@ Refer to the man page: :doc:`rmvm </guides/admin-guides/references/man1/rmvm.1>`
 
 **Parameters:**
 
-* Json format: An object which includes multiple 'att:value' pairs. DataBody: 
+* Json format: An object which includes multiple 'att:value' pairs. DataBody:
     Purge disk - {"purge":"yes"}
     Do it by force - {"force":"yes"}
 
@@ -1042,9 +1042,9 @@ Refer to the man page: :doc:`rmvm </guides/admin-guides/references/man1/rmvm.1>`
 
 * No output when execution is successful. Otherwise output the error information in the Standard Error Format: {error:[msg1,msg2...],errocode:errornum}.
 
-**Example:** 
+**Example:**
 
-Remove the vm node1 by force and purge the disk. :: 
+Remove the vm node1 by force and purge the disk. ::
 
 
     curl -X DELETE -k 'https://127.0.0.1/xcatws/nodes/node1/vm?userName=root&userPW=cluster&pretty=1' -H Content-Type:application/json --data '{"force":"yes","purge":"yes"}'
@@ -1060,7 +1060,7 @@ Refer to the man page: :doc:`clonevm </guides/admin-guides/references/man1/clone
 
 **Parameters:**
 
-* Json format: An object which includes multiple 'att:value' pairs. DataBody: 
+* Json format: An object which includes multiple 'att:value' pairs. DataBody:
     Clone a master named "mastername" - {"tomaster":"mastername"}
     Clone a node from master "mastername" - {"frommaster":"mastername"}
     Use Detach mode - {"detach":"yes"}
@@ -1070,9 +1070,9 @@ Refer to the man page: :doc:`clonevm </guides/admin-guides/references/man1/clone
 
 * The messages of creating Clone target.
 
-**Example1:** 
+**Example1:**
 
-Create a clone master named "vmmaster" from the node1. :: 
+Create a clone master named "vmmaster" from the node1. ::
 
 
     curl -X POST -k 'https://127.0.0.1/xcatws/nodes/node1/vmclone?userName=root&userPW=cluster&pretty=1' -H Content-Type:application/json --data '{"tomaster":"vmmaster","detach":"yes"}'
@@ -1082,9 +1082,9 @@ Create a clone master named "vmmaster" from the node1. ::
        }
     }
 
-**Example2:** 
+**Example2:**
 
-Clone the node1 from the clone master named "vmmaster". :: 
+Clone the node1 from the clone master named "vmmaster". ::
 
 
     curl -X POST -k 'https://127.0.0.1/xcatws/nodes/node1/vmclone?userName=root&userPW=cluster&pretty=1' -H Content-Type:application/json --data '{"frommaster":"vmmaster"}'
@@ -1102,9 +1102,9 @@ Refer to the man page: :doc:`rmigrate </guides/admin-guides/references/man1/rmig
 
 * Json format: An object which includes multiple 'att:value' pairs. DataBody: {"target":"targethost"}.
 
-**Example:** 
+**Example:**
 
-Migrate node1 to target host host2. :: 
+Migrate node1 to target host host2. ::
 
 
     curl -X POST -k 'https://127.0.0.1/xcatws/nodes/node1/vmmigrate?userName=root&userPW=cluster&pretty=1' -H Content-Type:application/json --data '{"target":"host2"}'
@@ -1125,9 +1125,9 @@ Refer to the man page: :doc:`lsdef </guides/admin-guides/references/man1/lsdef.1
 
 * Json format: An array of osimage names.
 
-**Example:** 
+**Example:**
 
-Get all the osimage names. :: 
+Get all the osimage names. ::
 
 
     curl -X GET -k 'https://127.0.0.1/xcatws/osimages?userName=root&userPW=cluster&pretty=1'
@@ -1151,15 +1151,15 @@ Refer to the man page: :doc:`copycds </guides/admin-guides/references/man8/copyc
 
 * No output when execution is successful. Otherwise output the error information in the Standard Error Format: {error:[msg1,msg2...],errocode:errornum}.
 
-**Example1:** 
+**Example1:**
 
-Create osimage resources based on the ISO specified :: 
+Create osimage resources based on the ISO specified ::
 
 
     curl -X POST -k 'https://127.0.0.1/xcatws/osimages?userName=root&userPW=cluster&pretty=1' -H Content-Type:application/json --data '{"iso":"/iso/RHEL6.4-20130130.0-Server-ppc64-DVD1.iso"}'
-**Example2:** 
+**Example2:**
 
-Create osimage resources based on an xCAT image or configuration file :: 
+Create osimage resources based on an xCAT image or configuration file ::
 
 
     curl -X POST -k 'https://127.0.0.1/xcatws/osimages?userName=root&userPW=cluster&pretty=1' -H Content-Type:application/json --data '{"file":"/tmp/sles11.2-x86_64-install-compute.tgz"}'
@@ -1177,9 +1177,9 @@ Refer to the man page: :doc:`lsdef </guides/admin-guides/references/man1/lsdef.1
 
 * Json format: An object which includes multiple '<name> : {att:value, attr:value ...}' pairs.
 
-**Example:** 
+**Example:**
 
-Get the attributes for the specified osimage. :: 
+Get the attributes for the specified osimage. ::
 
 
     curl -X GET -k 'https://127.0.0.1/xcatws/osimages/sles11.2-x86_64-install-compute?userName=root&userPW=cluster&pretty=1'
@@ -1212,9 +1212,9 @@ Refer to the man page: :doc:`chdef </guides/admin-guides/references/man1/chdef.1
 
 * No output when execution is successful. Otherwise output the error information in the Standard Error Format: {error:[msg1,msg2...],errocode:errornum}.
 
-**Example:** 
+**Example:**
 
-Change the 'osvers' and 'osarch' attributes for the osiamge. :: 
+Change the 'osvers' and 'osarch' attributes for the osiamge. ::
 
 
     curl -X PUT -k 'https://127.0.0.1/xcatws/osimages/sles11.2-ppc64-install-compute/?userName=root&userPW=cluster&pretty=1' -H Content-Type:application/json --data '{"osvers":"sles11.3","osarch":"x86_64"}'
@@ -1231,9 +1231,9 @@ Refer to the man page: :doc:`mkdef </guides/admin-guides/references/man1/mkdef.1
 
 * No output when execution is successful. Otherwise output the error information in the Standard Error Format: {error:[msg1,msg2...],errocode:errornum}.
 
-**Example:** 
+**Example:**
 
-Create a osimage obj with the specified parameters. :: 
+Create a osimage obj with the specified parameters. ::
 
 
     curl -X POST -k 'https://127.0.0.1/xcatws/osimages/sles11.3-ppc64-install-compute?userName=root&userPW=cluster&pretty=1' -H Content-Type:application/json --data '{"osvers":"sles11.3","osarch":"ppc64","osname":"Linux","provmethod":"install","profile":"compute"}'
@@ -1246,9 +1246,9 @@ Refer to the man page: :doc:`rmdef </guides/admin-guides/references/man1/rmdef.1
 
 * No output when execution is successful. Otherwise output the error information in the Standard Error Format: {error:[msg1,msg2...],errocode:errornum}.
 
-**Example:** 
+**Example:**
 
-Delete the specified osimage. :: 
+Delete the specified osimage. ::
 
 
     curl -X DELETE -k 'https://127.0.0.1/xcatws/osimages/sles11.3-ppc64-install-compute?userName=root&userPW=cluster&pretty=1'
@@ -1266,9 +1266,9 @@ Refer to the man page: :doc:`lsdef </guides/admin-guides/references/man1/lsdef.1
 
 * Json format: An array of attr:value pairs for the specified osimage.
 
-**Example:** 
+**Example:**
 
-Get the specified attributes. :: 
+Get the specified attributes. ::
 
 
     curl -X GET -k 'https://127.0.0.1/xcatws/osimages/sles11.2-ppc64-install-compute/attrs/imagetype,osarch,osname,provmethod?userName=root&userPW=cluster&pretty=1'
@@ -1297,21 +1297,21 @@ Refer to the man page: :doc:` </guides/admin-guides/references/>`
 
 * No output when execution is successful. Otherwise output the error information in the Standard Error Format: {error:[msg1,msg2...],errocode:errornum}.
 
-**Example1:** 
+**Example1:**
 
-Generates a stateless image based on the specified osimage :: 
+Generates a stateless image based on the specified osimage ::
 
 
     curl -X POST -k 'https://127.0.0.1/xcatws/osimages/sles11.2-x86_64-install-compute/instance?userName=root&userPW=cluster&pretty=1' -H Content-Type:application/json --data '{"action":"gen"}'
-**Example2:** 
+**Example2:**
 
-Packs the stateless image from the chroot file system based on the specified osimage :: 
+Packs the stateless image from the chroot file system based on the specified osimage ::
 
 
     curl -X POST -k 'https://127.0.0.1/xcatws/osimages/sles11.2-x86_64-install-compute/instance?userName=root&userPW=cluster&pretty=1' -H Content-Type:application/json --data '{"action":"pack"}'
-**Example3:** 
+**Example3:**
 
-Exports an xCAT image based on the specified osimage :: 
+Exports an xCAT image based on the specified osimage ::
 
 
     curl -X POST -k 'https://127.0.0.1/xcatws/osimages/sles11.2-x86_64-install-compute/instance?userName=root&userPW=cluster&pretty=1' -H Content-Type:application/json --data '{"action":"export"}'
@@ -1324,9 +1324,9 @@ Refer to the man page: :doc:`rmimage </guides/admin-guides/references/man1/rmima
 
 * No output when execution is successful. Otherwise output the error information in the Standard Error Format: {error:[msg1,msg2...],errocode:errornum}.
 
-**Example:** 
+**Example:**
 
-Delete the stateless image for the specified osimage :: 
+Delete the stateless image for the specified osimage ::
 
 
     curl -X DELETE -k 'https://127.0.0.1/xcatws/osimages/sles11.2-x86_64-install-compute/instance?userName=root&userPW=cluster&pretty=1'
@@ -1351,9 +1351,9 @@ Refer to the man page: :doc:`lsdef </guides/admin-guides/references/man1/lsdef.1
 
 * Json format: An array of networks names.
 
-**Example:** 
+**Example:**
 
-Get all the networks names from xCAT database. :: 
+Get all the networks names from xCAT database. ::
 
 
     curl -X GET -k 'https://127.0.0.1/xcatws/networks?userName=root&userPW=cluster&pretty=1'
@@ -1376,9 +1376,9 @@ Refer to the man page: :doc:`makenetworks </guides/admin-guides/references/man8/
 
 * No output when execution is successful. Otherwise output the error information in the Standard Error Format: {error:[msg1,msg2...],errocode:errornum}.
 
-**Example:** 
+**Example:**
 
-Create the networks resources base on the network configuration on xCAT MN. :: 
+Create the networks resources base on the network configuration on xCAT MN. ::
 
 
     curl -X POST -k 'https://127.0.0.1/xcatws/networks?userName=root&userPW=cluster&pretty=1'
@@ -1396,9 +1396,9 @@ Refer to the man page: :doc:`lsdef </guides/admin-guides/references/man1/lsdef.1
 
 * Json format: An object which includes multiple '<name> : {att:value, attr:value ...}' pairs.
 
-**Example:** 
+**Example:**
 
-Get all the attributes for network 'network1'. :: 
+Get all the attributes for network 'network1'. ::
 
 
     curl -X GET -k 'https://127.0.0.1/xcatws/networks/network1?userName=root&userPW=cluster&pretty=1'
@@ -1426,9 +1426,9 @@ Refer to the man page: :doc:`chdef </guides/admin-guides/references/man1/chdef.1
 
 * No output when execution is successful. Otherwise output the error information in the Standard Error Format: {error:[msg1,msg2...],errocode:errornum}.
 
-**Example:** 
+**Example:**
 
-Change the attributes mgtifname=eth0 and net=10.1.0.0. :: 
+Change the attributes mgtifname=eth0 and net=10.1.0.0. ::
 
 
     curl -X PUT -k 'https://127.0.0.1/xcatws/networks/network1?userName=root&userPW=cluster&pretty=1' -H Content-Type:application/json --data '{"mgtifname":"eth0","net":"10.1.0.0"}'
@@ -1445,9 +1445,9 @@ Refer to the man page: :doc:`mkdef </guides/admin-guides/references/man1/mkdef.1
 
 * No output when execution is successful. Otherwise output the error information in the Standard Error Format: {error:[msg1,msg2...],errocode:errornum}.
 
-**Example:** 
+**Example:**
 
-Create a network with attributes gateway=10.1.0.1, mask=255.255.0.0  :: 
+Create a network with attributes gateway=10.1.0.1, mask=255.255.0.0  ::
 
 
     curl -X POST -k 'https://127.0.0.1/xcatws/networks/network1?userName=root&userPW=cluster&pretty=1' -H Content-Type:application/json --data '{"gateway":"10.1.0.1","mask":"255.255.0.0"}'
@@ -1460,9 +1460,9 @@ Refer to the man page: :doc:`rmdef </guides/admin-guides/references/man1/rmdef.1
 
 * No output when execution is successful. Otherwise output the error information in the Standard Error Format: {error:[msg1,msg2...],errocode:errornum}.
 
-**Example:** 
+**Example:**
 
-Delete the network network1 :: 
+Delete the network network1 ::
 
 
     curl -X DELETE -k 'https://127.0.0.1/xcatws/networks/network1?userName=root&userPW=cluster&pretty=1'
@@ -1480,9 +1480,9 @@ Refer to the man page: :doc:`lsdef </guides/admin-guides/references/man1/lsdef.1
 
 * Json format: An object which includes multiple '<name> : {att:value, attr:value ...}' pairs.
 
-**Example:** 
+**Example:**
 
-Get the attributes {groups,mgt,netboot} for network network1 :: 
+Get the attributes {groups,mgt,netboot} for network network1 ::
 
 
     curl -X GET -k 'https://127.0.0.1/xcatws/networks/network1/attrs/gateway,mask,mgtifname,net,tftpserver?userName=root&userPW=cluster&pretty=1'
@@ -1512,9 +1512,9 @@ Refer to the man page: :doc:`lsdef </guides/admin-guides/references/man1/lsdef.1
 
 * Json format: An object which includes multiple '<name> : {att:value, attr:value ...}' pairs.
 
-**Example:** 
+**Example:**
 
-Get all the policy objects. :: 
+Get all the policy objects. ::
 
 
     curl -X GET -k 'https://127.0.0.1/xcatws/policy?userName=root&userPW=cluster&pretty=1'
@@ -1541,9 +1541,9 @@ Refer to the man page: :doc:`lsdef </guides/admin-guides/references/man1/lsdef.1
 
 * Json format: An object which includes multiple '<name> : {att:value, attr:value ...}' pairs.
 
-**Example:** 
+**Example:**
 
-Get all the attribute for policy 1. :: 
+Get all the attribute for policy 1. ::
 
 
     curl -X GET -k 'https://127.0.0.1/xcatws/policy/1?userName=root&userPW=cluster&pretty=1'
@@ -1569,9 +1569,9 @@ Refer to the man page: :doc:`chdef </guides/admin-guides/references/man1/chdef.1
 
 * No output when execution is successful. Otherwise output the error information in the Standard Error Format: {error:[msg1,msg2...],errocode:errornum}.
 
-**Example:** 
+**Example:**
 
-Set the name attribute for policy 3. :: 
+Set the name attribute for policy 3. ::
 
 
     curl -X PUT -k 'https://127.0.0.1/xcatws/policy/3?userName=root&userPW=cluster&pretty=1' -H Content-Type:application/json --data '{"name":"root"}'
@@ -1590,9 +1590,9 @@ Refer to the man page: :doc:`chdef </guides/admin-guides/references/man1/chdef.1
 
 * No output when execution is successful. Otherwise output the error information in the Standard Error Format: {error:[msg1,msg2...],errocode:errornum}.
 
-**Example:** 
+**Example:**
 
-Create a new policy 10. :: 
+Create a new policy 10. ::
 
 
     curl -X POST -k 'https://127.0.0.1/xcatws/policy/10?userName=root&userPW=cluster&pretty=1' -H Content-Type:application/json --data '{"name":"root","commands":"rpower"}'
@@ -1607,9 +1607,9 @@ Refer to the man page: :doc:`rmdef </guides/admin-guides/references/man1/rmdef.1
 
 * No output when execution is successful. Otherwise output the error information in the Standard Error Format: {error:[msg1,msg2...],errocode:errornum}.
 
-**Example:** 
+**Example:**
 
-Delete the policy 10. :: 
+Delete the policy 10. ::
 
 
     curl -X DELETE -k 'https://127.0.0.1/xcatws/policy/10?userName=root&userPW=cluster&pretty=1'
@@ -1629,9 +1629,9 @@ Refer to the man page: :doc:`lsdef </guides/admin-guides/references/man1/lsdef.1
 
 * Json format: An object which includes multiple '<name> : {att:value, attr:value ...}' pairs.
 
-**Example:** 
+**Example:**
 
-Get the name and rule attributes for policy 1. :: 
+Get the name and rule attributes for policy 1. ::
 
 
     curl -X GET -k 'https://127.0.0.1/xcatws/policy/1/attrs/name,rule?userName=root&userPW=cluster&pretty=1'
@@ -1663,9 +1663,9 @@ Refer to the man page: :doc:`lsdef </guides/admin-guides/references/man1/lsdef.1
 
 * Json format: An array of group names.
 
-**Example:** 
+**Example:**
 
-Get all the group names from xCAT database. :: 
+Get all the group names from xCAT database. ::
 
 
     curl -X GET -k 'https://127.0.0.1/xcatws/groups?userName=root&userPW=cluster&pretty=1'
@@ -1689,9 +1689,9 @@ Refer to the man page: :doc:`lsdef </guides/admin-guides/references/man1/lsdef.1
 
 * Json format: An object which includes multiple '<name> : {att:value, attr:value ...}' pairs.
 
-**Example:** 
+**Example:**
 
-Get all the attributes for group 'all'. :: 
+Get all the attributes for group 'all'. ::
 
 
     curl -X GET -k 'https://127.0.0.1/xcatws/groups/all?userName=root&userPW=cluster&pretty=1'
@@ -1714,9 +1714,9 @@ Refer to the man page: :doc:`chdef </guides/admin-guides/references/man1/chdef.1
 
 * No output when execution is successful. Otherwise output the error information in the Standard Error Format: {error:[msg1,msg2...],errocode:errornum}.
 
-**Example:** 
+**Example:**
 
-Change the attributes mgt=dfm and netboot=yaboot. :: 
+Change the attributes mgt=dfm and netboot=yaboot. ::
 
 
     curl -X PUT -k 'https://127.0.0.1/xcatws/groups/all?userName=root&userPW=cluster&pretty=1' -H Content-Type:application/json --data '{"mgt":"dfm","netboot":"yaboot"}'
@@ -1732,9 +1732,9 @@ Refer to the man page: :doc:`lsdef </guides/admin-guides/references/man1/lsdef.1
 
 * Json format: An object which includes multiple '<name> : {att:value, attr:value ...}' pairs.
 
-**Example:** 
+**Example:**
 
-Get the attributes {mgt,netboot} for group all :: 
+Get the attributes {mgt,netboot} for group all ::
 
 
     curl -X GET -k 'https://127.0.0.1/xcatws/groups/all/attrs/mgt,netboot?userName=root&userPW=cluster&pretty=1'
@@ -1766,9 +1766,9 @@ Refer to the man page: :doc:`lsdef </guides/admin-guides/references/man1/lsdef.1
 
 * Json format: An object which includes multiple '<name> : {att:value, attr:value ...}' pairs.
 
-**Example:** 
+**Example:**
 
-Get all the global configuration :: 
+Get all the global configuration ::
 
 
     curl -X GET -k 'https://127.0.0.1/xcatws/globalconf?userName=root&userPW=cluster&pretty=1'
@@ -1794,9 +1794,9 @@ Refer to the man page: :doc:`lsdef </guides/admin-guides/references/man1/lsdef.1
 
 * Json format: An object which includes multiple '<name> : {att:value, attr:value ...}' pairs.
 
-**Example:** 
+**Example:**
 
-Get the 'master' and 'domain' configuration. :: 
+Get the 'master' and 'domain' configuration. ::
 
 
     curl -X GET -k 'https://127.0.0.1/xcatws/globalconf/attrs/master,domain?userName=root&userPW=cluster&pretty=1'
@@ -1822,9 +1822,9 @@ Refer to the man page: :doc:`chdef </guides/admin-guides/references/man1/chdef.1
 
 * No output when execution is successful. Otherwise output the error information in the Standard Error Format: {error:[msg1,msg2...],errocode:errornum}.
 
-**Example:** 
+**Example:**
 
-Change/Add the domain attribute. :: 
+Change/Add the domain attribute. ::
 
 
     curl -X PUT -k 'https://127.0.0.1/xcatws/globalconf/attrs/domain?userName=root&userPW=cluster&pretty=1' -H Content-Type:application/json --data '{"domain":"cluster.com"}'
@@ -1839,9 +1839,9 @@ Refer to the man page: :doc:`chdef </guides/admin-guides/references/man1/chdef.1
 
 * No output when execution is successful. Otherwise output the error information in the Standard Error Format: {error:[msg1,msg2...],errocode:errornum}.
 
-**Example:** 
+**Example:**
 
-Remove the domain configure. :: 
+Remove the domain configure. ::
 
 
     curl -X DELETE -k 'https://127.0.0.1/xcatws/globalconf/attrs/domain?userName=root&userPW=cluster&pretty=1'
@@ -1862,9 +1862,9 @@ Refer to the man page: :doc:`makedns </guides/admin-guides/references/man8/maked
 
 * No output when execution is successful. Otherwise output the error information in the Standard Error Format: {error:[msg1,msg2...],errocode:errornum}.
 
-**Example:** 
+**Example:**
 
-Initialize the dns service. :: 
+Initialize the dns service. ::
 
 
     curl -X POST -k 'https://127.0.0.1/xcatws/services/dns?userName=root&userPW=cluster&pretty=1'
@@ -1880,9 +1880,9 @@ Refer to the man page: :doc:`makedhcp </guides/admin-guides/references/man8/make
 
 * No output when execution is successful. Otherwise output the error information in the Standard Error Format: {error:[msg1,msg2...],errocode:errornum}.
 
-**Example:** 
+**Example:**
 
-Create the dhcpd.conf and restart the dhcpd. :: 
+Create the dhcpd.conf and restart the dhcpd. ::
 
 
     curl -X POST -k 'https://127.0.0.1/xcatws/services/dhcp?userName=root&userPW=cluster&pretty=1'
@@ -1898,9 +1898,9 @@ Refer to the man page: :doc:`makehosts </guides/admin-guides/references/man8/mak
 
 * No output when execution is successful. Otherwise output the error information in the Standard Error Format: {error:[msg1,msg2...],errocode:errornum}.
 
-**Example:** 
+**Example:**
 
-Create the ip/hostname records for all the nodes to /etc/hosts. :: 
+Create the ip/hostname records for all the nodes to /etc/hosts. ::
 
 
     curl -X POST -k 'https://127.0.0.1/xcatws/services/host?userName=root&userPW=cluster&pretty=1'
@@ -1916,9 +1916,9 @@ Refer to the man page: :doc:`lsslp </guides/admin-guides/references/man1/lsslp.1
 
 * Json format: An object which includes multiple '<name> : {att:value, attr:value ...}' pairs.
 
-**Example:** 
+**Example:**
 
-Get all the nodes which support slp in the network. :: 
+Get all the nodes which support slp in the network. ::
 
 
     curl -X GET -k 'https://127.0.0.1/xcatws/services/slpnodes?userName=root&userPW=cluster&pretty=1'
@@ -1952,9 +1952,9 @@ Refer to the man page: :doc:`lsslp </guides/admin-guides/references/man1/lsslp.1
 
 * Json format: An object which includes multiple '<name> : {att:value, attr:value ...}' pairs.
 
-**Example:** 
+**Example:**
 
-Get all the CMM nodes which support slp in the network. :: 
+Get all the CMM nodes which support slp in the network. ::
 
 
     curl -X GET -k 'https://127.0.0.1/xcatws/services/slpnodes/CMM?userName=root&userPW=cluster&pretty=1'
@@ -2006,9 +2006,9 @@ GET - Get attributes of tables for a noderange.
 
 * An object containing each table.  Within each table object is an array of node objects containing the attributes.
 
-**Example1:** 
+**Example1:**
 
-Get all the columns from table nodetype for node1 and node2. :: 
+Get all the columns from table nodetype for node1 and node2. ::
 
 
     curl -X GET -k 'https://127.0.0.1/xcatws/tables/nodetype/nodes/node1,node2?userName=root&userPW=cluster&pretty=1'
@@ -2031,9 +2031,9 @@ Get all the columns from table nodetype for node1 and node2. ::
        ]
     }
 
-**Example2:** 
+**Example2:**
 
-Get all the columns from tables nodetype and noderes for node1 and node2. :: 
+Get all the columns from tables nodetype and noderes for node1 and node2. ::
 
 
     curl -X GET -k 'https://127.0.0.1/xcatws/tables/nodetype,noderes/nodes/node1,node2?userName=root&userPW=cluster&pretty=1'
@@ -2081,9 +2081,9 @@ PUT - Change the node table attributes for {noderange}.
 
 * No output when execution is successful. Otherwise output the error information in the Standard Error Format: {error:[msg1,msg2...],errocode:errornum}.
 
-**Example:** 
+**Example:**
 
-Change the nodetype.arch and noderes.netboot attributes for nodes node1,node2. :: 
+Change the nodetype.arch and noderes.netboot attributes for nodes node1,node2. ::
 
 
     curl -X PUT -k 'https://127.0.0.1/xcatws/tables/nodetype,noderes/nodes/node1,node2?userName=root&userPW=cluster&pretty=1' -H Content-Type:application/json --data '{"nodetype":{"arch":"x86_64"},"noderes":{"netboot":"xnba"}}'
@@ -2099,9 +2099,9 @@ GET - Get table attributes for a noderange.
 
 * An object containing each table.  Within each table object is an array of node objects containing the attributes.
 
-**Example:** 
+**Example:**
 
-Get OS and ARCH attributes from nodetype table for node1 and node2. :: 
+Get OS and ARCH attributes from nodetype table for node1 and node2. ::
 
 
     curl -X GET -k 'https://127.0.0.1/xcatws/tables/nodetype/nodes/node1,node2/os,arch?userName=root&userPW=cluster&pretty=1'
@@ -2132,9 +2132,9 @@ GET - Get all rows from non-node tables.
 
 * An object containing each table.  Within each table object is an array of row objects containing the attributes.
 
-**Example:** 
+**Example:**
 
-Get all rows from networks table. :: 
+Get all rows from networks table. ::
 
 
     curl -X GET -k 'https://127.0.0.1/xcatws/tables/networks/rows?userName=root&userPW=cluster&pretty=1'
@@ -2171,9 +2171,9 @@ GET - Get attributes for rows from non-node tables.
 
 * An object containing each table.  Within each table object is an array of row objects containing the attributes.
 
-**Example:** 
+**Example:**
 
-Get rows from networks table where net=192.168.1.0,mask=255.255.255.0. :: 
+Get rows from networks table where net=192.168.1.0,mask=255.255.255.0. ::
 
 
     curl -X GET -k 'https://127.0.0.1/xcatws/tables/networks/rows/net=192.168.1.0,mask=255.255.255.0?userName=root&userPW=cluster&pretty=1'
@@ -2202,9 +2202,9 @@ PUT - Change the non-node table attributes for the row that matches the {keys}.
 
 * No output when execution is successful. Otherwise output the error information in the Standard Error Format: {error:[msg1,msg2...],errocode:errornum}.
 
-**Example:** 
+**Example:**
 
-Create a route row in the routes table. :: 
+Create a route row in the routes table. ::
 
 
     curl -X PUT -k 'https://127.0.0.1/xcatws/tables/routes/rows/routename=privnet?userName=root&userPW=cluster&pretty=1' -H Content-Type:application/json --data '{"net":"10.0.1.0","mask":"255.255.255.0","gateway":"10.0.1.254","ifname":"eth1"}'
@@ -2215,9 +2215,9 @@ DELETE - Delete rows from a non-node table that have the attribute values specif
 
 * No output when execution is successful. Otherwise output the error information in the Standard Error Format: {error:[msg1,msg2...],errocode:errornum}.
 
-**Example:** 
+**Example:**
 
-Delete rows from routes table where routename=privnet. :: 
+Delete rows from routes table where routename=privnet. ::
 
 
     curl -X DELETE -k 'https://127.0.0.1/xcatws/tables/routes/rows/routename=privnet?userName=root&userPW=cluster&pretty=1'
@@ -2233,9 +2233,9 @@ GET - Get specific attributes for rows from non-node tables.
 
 * An object containing each table.  Within each table object is an array of row objects containing the attributes.
 
-**Example:** 
+**Example:**
 
-Get attributes mgtifname and tftpserver from networks table for each row where net=192.168.1.0,mask=255.255.255.0. :: 
+Get attributes mgtifname and tftpserver from networks table for each row where net=192.168.1.0,mask=255.255.255.0. ::
 
 
     curl -X GET -k 'https://127.0.0.1/xcatws/tables/networks/rows/net=192.168.1.0,mask=255.255.255.0/mgtifname,tftpserver?userName=root&userPW=cluster&pretty=1'

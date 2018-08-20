@@ -22,10 +22,10 @@ use strict;
 
 #-----------------------------------------------------------------------------
 
-=head3 getcloudinfo 
+=head3 getcloudinfo
 
-   This function will be invoked by Postage.pm.  
-   get the chef cookbook repository for each cloud from the clouds table, and 
+   This function will be invoked by Postage.pm.
+   get the chef cookbook repository for each cloud from the clouds table, and
    then get all the node --> cloud from the cloud table. The two type information
    will be stored in the %info
 
@@ -34,13 +34,13 @@ use strict;
 
     Arguments:
          none
-    Returns: 
+    Returns:
            \%info
-                        
+
     Error:
         none
     Example:
-         
+
     Comments:
         none
 
@@ -94,10 +94,10 @@ sub getcloudinfo
 
 #-----------------------------------------------------------------------------
 
-=head3 getcloudres 
+=head3 getcloudres
 
-   This function will be invoked by Postage.pm. And it's only for one chef-server. 
-   1. get the chef cookbook repository for the clouds on one chef-server. 
+   This function will be invoked by Postage.pm. And it's only for one chef-server.
+   1. get the chef cookbook repository for the clouds on one chef-server.
    All the clouds's repositoryies on one chef-server should be the same one.
    2. get the cloud list for one chef-server
    3. get the cloud name for each node on the same chef-server
@@ -106,13 +106,13 @@ sub getcloudinfo
     Arguments:
          $cloudinfo_hash -- This is from the getcloudinfo function.
          $clients -- an array which stores different cloud nodes(chef-client)
-    Returns: 
+    Returns:
           $cloudres -- a string including cloud information
-                        
+
     Error:
         none
     Example:
-         
+
     Comments:
         none
 

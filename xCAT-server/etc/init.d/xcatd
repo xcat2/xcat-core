@@ -6,8 +6,8 @@
 
 ### BEGIN INIT INFO
 # Provides: xcatd
-# Required-Start: $network $syslog 
-# Required-Stop: 
+# Required-Start: $network $syslog
+# Required-Stop:
 # Should-Start: mysql
 # Default-Start: 3 4 5
 # Default-stop: 0 1 2 6
@@ -86,7 +86,7 @@ reload)
   if [ -r /etc/profile.d/xcat.sh ]; then
        . /etc/profile.d/xcat.sh
   fi
-  export XCATRELOAD=yes 
+  export XCATRELOAD=yes
   xcatd -p /var/run/xcatd.pid && $LOG_SUCCESS || $LOG_FAILURE
   ;;
 status)
@@ -135,8 +135,8 @@ start)
     exit
   fi
   echo -n "Starting xcatd "
-  #/var/run/ is a symlink on /run and that's just a tmpfs mount created on boot on ubuntu. 
-  #if there is not this directory, create first 
+  #/var/run/ is a symlink on /run and that's just a tmpfs mount created on boot on ubuntu.
+  #if there is not this directory, create first
   if [ ! -d /var/run/xcat ];then
     mkdir -p /var/run/xcat
   fi

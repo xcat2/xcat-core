@@ -29,7 +29,7 @@ DESCRIPTION
 
 The \ **restartxcatd**\  command restarts the xCAT daemon (xcatd).
 
-\ **Linux Specific**\ 
+\ **Linux Specific**\
 
 
 It will perform the xcatd \ *fast restart*\ . The xcatd \ *fast restart*\  is a specific restart which has two advantages compares to the \ *stop*\  and then \ *start*\ .
@@ -40,7 +40,7 @@ It does the same thing as 'service xcatd restart' on NON-systemd enabled Operati
 
 It's recommended to use \ **restartxcatd**\  command to restart xcatd on systemd enable system like rh7 and sles12 instead of 'service xcatd restart' or 'systemctl restart xcatd'.
 
-\ **AIX Specific**\ 
+\ **AIX Specific**\
 
 
 It runs 'stopsrc -s xcatd' to stop xcatd first if xcatd is active, then runs 'startsrc -s xcatd' to start xcatd.

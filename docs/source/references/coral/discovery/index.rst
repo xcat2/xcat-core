@@ -9,5 +9,5 @@ Discovery
    mid_sw/index.rst
    servicenode/index.rst
    edge_sw/index.rst
-   compute/index.rst 
-   
+   compute/index.rst
+

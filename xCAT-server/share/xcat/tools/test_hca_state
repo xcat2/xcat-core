@@ -12,10 +12,10 @@
 #
 #   The following (Red Hat) rpms include the version of pciutils (aka
 #   lspci) that can read gen3 correctly.
-#       
+#
 #       pciutils-3.1.10-2.el6.x86_64.rpm 
 #       pciutils-libs-3.1.10-2.el6.x86_64.rpm
-#       
+#
 #   This may impact the "PCI:" speed test performed by this script.
 #
 
@@ -47,12 +47,12 @@ Usage: $PROGNAME NODERANGE [FILTER] | xcoll
 EOF
 
     cat <<'EOF'
-Purpose:  
+Purpose:
 
     This tool provides a quick and easily repeatable method of
     validating key InfiniBand adapter (HCA) and node based InfiniBand
-    settings across an entire cluster.  
-    
+    settings across an entire cluster.
+
     Having consistent OFED settings, and even HCA firmware, can be very
     important for a properly functioning InfiniBand fabric.  This tool
     can help you confirm that your nodes are using the settings you
@@ -85,7 +85,7 @@ Example output:
         rate: 10 Gb/sec (4X)
         symbol_error: 0
         port_rcv_errors: 0
-    
+
       IPoIB
         recv_queue_size: 8192
         send_queue_size: 8192
@@ -101,10 +101,10 @@ Example output:
 
     #
     # This example uses a FILTER on the word 'firmware'.  In this case, we've
-    # upgraded the firmware across rack11 and rack12.  
+    # upgraded the firmware across rack11 and rack12.
     #
     #   - On rack11, we've also restarted the IB stack (/etc/init.d/openibd
-    #     restart) to activate the new firmware.  
+    #     restart) to activate the new firmware.
     #
     #   - Rack 12 has also been updated, as we can see from the 'Firmware
     #     installed' line, but it's nodes are still running with their prior
@@ -116,7 +116,7 @@ Example output:
     ====================================
       Firmware installed: 2.30.3200
       Firmware active:    2.30.3200
-    
+
     ====================================
     rack12
     ====================================
@@ -150,7 +150,7 @@ if [ -z $THINGY ]; then
     THINGY="."
 fi
 
-xdsh $NR -t3 ' 
+xdsh $NR -t3 '
 
 echo -n "OFED Version: " ; ofed_info | head -n 1
 if [ ! -d /sys/class/infiniband ]; then
@@ -216,7 +216,7 @@ else
   do
     echo    "    $IFACE:"
     echo -n "      Mode: " ; cat /sys/class/net/ib0/mode
-    echo -n "      MTU:  " ; cat /sys/class/net/ib0/mtu 
+    echo -n "      MTU:  " ; cat /sys/class/net/ib0/mtu
     echo -n "      Mode: " ; cat /sys/class/net/ib0/operstate
   done
 fi

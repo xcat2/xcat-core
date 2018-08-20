@@ -6,8 +6,8 @@ iprconfig="iprconfig"
 
 ########################################
 #
-#  iprconfig show-config 
-# 
+#  iprconfig show-config
+#
 ########################################
 function cmd_show_config {
     local lines=""

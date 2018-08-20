@@ -21,41 +21,41 @@ system p nodes.
 
 =head1 OPTIONS
 
-B<-s>          
+B<-s>
 
 Set the boot device order.  Accepted boot devices are hd and net.
 
-B<-F>          
+B<-F>
 
 Force reboot the system no matter what state the node is.  By default, rnetboot will not reboot the node if node is in 'boot' state.
 
-B<-f>          
+B<-f>
 
 Force immediate shutdown of the partition.
 
-B<-m>          
+B<-m>
 
 Use one or multiple -m flags to specify the node attributes and the expected status for the node installation monitoring and automatic retry mechanism. The operators ==, !=, =~ and !~ are valid. This flag must be used with -t flag.
 
 Note: if the "val" fields includes spaces or any other characters that will be parsed by shell, the "attr<oper-ator>val" needs to be quoted. If the operator is "!~", the "attr<operator>val" needs to be quoted using single quote.
 
-B<-r>          
+B<-r>
 
 specify the number of retries that the monitoring process will perform before declaring the failure. The default value is 3. Setting the retrycount to 0 means only monitoring the os installation progress and will not re-initiate the installation if the node status has not been changed to the expected value after timeout. This flag must be used with -m flag.
 
-B<-t>          
+B<-t>
 
 Specify the timeout, in minutes, to wait for the expectedstatus specified by -m flag. This is a required flag if the -m flag is specified.
 
-B<-V|--verbose>          
+B<-V|--verbose>
 
 Verbose output.
 
-B<-h|--help>          
+B<-h|--help>
 
 Display usage message.
 
-B<-v|--version>          
+B<-v|--version>
 
 Command Version.
 
@@ -80,7 +80,7 @@ Command Version.
  rnetboot all -s hd,net
 
  rnetboot all ipl=00c
- 
+
 
 =head1 SEE ALSO
 

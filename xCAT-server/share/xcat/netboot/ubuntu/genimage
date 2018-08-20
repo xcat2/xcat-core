@@ -201,7 +201,7 @@ if ($netdriver) {
     if ($arch eq 'x86' or $arch eq 'x86_64') {
         @ndrivers = qw/tg3 bnx2 bnx2x e1000 e1000e igb mlx_en virtio_net/;
     } elsif ($arch eq 'ppc64el') {
-        @ndrivers = qw/bnx2 bnx2x e1000 e1000e igb mlx_en mlx4_en/;
+        @ndrivers = qw/bnx2 bnx2x e1000 e1000e igb mlx_en mlx4_en virtio_net/;
     } elsif ($arch eq 'ppc64') {
         @ndrivers = qw/e1000 e1000e igb ibmveth ehea/;
     } elsif ($arch eq 's390x') {
@@ -648,7 +648,7 @@ if ($postinstall_filename) {
 
     #delete the osimage attributes from environment variable
     delete @ENV{qw(IMG_ARCH IMG_NAME IMG_OSVER IMG_KERNELVERSION IMG_PROFILE IMG_PKGLIST IMG_PKGDIR IMG_OTHERPKGLIST IMG_OTHERPKGDIR IMG_ROOTIMGDIR)};
-  
+
 }
 
 # Default to the first kernel found in the install image if nothing specified explicitly.
@@ -1036,7 +1036,7 @@ MAGENTA="\033[35m"
 BROWN="\033[33m"
 NORMAL=\$RESET
 
-# This function is used to mount files/directories from the .statelite directory 
+# This function is used to mount files/directories from the .statelite directory
 #  over the root directory.
 # This function is stolen from redhat
 shell() {
@@ -1079,10 +1079,10 @@ echo '
 echo '
                             _________     ________________
                      ___  __\\_   ___ \\   /  _  \\__    ___/
-                     \\  \\/  /    \\  \\/  /  /_\\  \\|    |   
-                      >    <\\     \\____/    |    \\    |   
-                     /__/\\_ \\\\______  /\\____|__  /____|   
-                           \\/       \\/         \\/         
+                     \\  \\/  /    \\  \\/  /  /_\\  \\|    |
+                      >    <\\     \\____/    |    \\    |
+                     /__/\\_ \\\\______  /\\____|__  /____|
+                           \\/       \\/         \\/
 '
     echo -e "\$RESET"
 }
@@ -1193,8 +1193,8 @@ for i in `cat /proc/cmdline`; do
         VALUE=`echo \$i |awk -F= '{print \$2}'`
         xcatdebugmode=\$VALUE
     fi
-    
-    #if "nonodestatus" specified,do not update the nodestatus 
+
+    #if "nonodestatus" specified,do not update the nodestatus
     if [ "\$i" = 'nonodestatus' ]; then
        NODESTATUS='n'
     fi
@@ -1276,7 +1276,7 @@ for i in `cat /proc/cmdline`; do
             SERVER=`echo \$VALUE|awk -F/ '{print \$3}'`
             ROOTDIR=`echo \$VALUE|awk -F/ '{for(i=4;i<=NF;i++) printf "/%s",\$i}'`
         fi
-    # for NFS root 
+    # for NFS root
     elif [ "\$KEY" = 'NFSROOT' ]; then
         NFSROOT=1
         VALUE=`echo \$i |awk -F= '{print \$2}'`
@@ -1361,7 +1361,7 @@ EOMS
         fi
 
     fi
-    # now we need to mount the rest of the system. 
+    # now we need to mount the rest of the system.
     if [ ! -e "\$NEWROOT/\$RWDIR" ]; then
         echo ""
         echo -e "\${RED}Hmmm... this NFS root directories doesn't have a /\$RWDIR directory for me to mount a rw filesystem. You'd better to create it... \${NORMAL}"
@@ -1650,6 +1650,16 @@ EOMS
         push @filestoadd, $_;
     }
 
+    # Workaround for Ubuntu 18.04 busybox bug
+    # https://bugs.launchpad.net/ubuntu/+source/busybox/+bug/1753572
+    # On Ubuntun 18.04, will use GNU cpio instead of busybox cpio
+    if ("ubuntu18.04" eq $osver) {
+        foreach ("bin/cpio") {
+            getlibs($_);
+            push @filestoadd, $_;
+        }
+    }
+
     # Additional binaries needed for udev on s390x
     if ($arch eq "s390x") {
         foreach ("sbin/udevsettle", "sbin/udevtrigger", "sbin/udevd", "sbin/depmod") {
@@ -1657,7 +1667,7 @@ EOMS
             push @filestoadd, $_;
         }
     }
-    
+
 
     if ($arch =~ /x86_64/) {
         push @filestoadd, "lib64/libnss_dns.so.2";

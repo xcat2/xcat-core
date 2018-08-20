@@ -665,7 +665,7 @@ sub process_request {
         nodes  --- a pointer to an array of nodes
         states -- a pointer to a hash table. This hash will be filled by this
              function. The key is the nodeset status and the value is a pointer
-             to an array of nodes. 
+             to an array of nodes.
     Returns:
        (return code, error message)
 =cut

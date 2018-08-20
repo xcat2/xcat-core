@@ -8,12 +8,12 @@ To remove ``xcatdb`` completely from the PostgreSQL database:
       mkdir -p ~/xcat-dbback
       dumpxCATdb -p ~/xcat-dbback
 
-#. Stop the ``xcatd`` daemon on the management node.  
+#. Stop the ``xcatd`` daemon on the management node.
    **Note:** If you are using *xCAT Hierarchy (service nodes)* and removing ``xcatdb`` from postgres, hierarchy will no longer work. You will need to configure another database which supports remote database access to continue using the hierarchy feature. ::
 
       service xcatd stop
 
-#. Remove the ``xatdb`` from PostgreSQL: :: 
+#. Remove the ``xatdb`` from PostgreSQL: ::
 
       su - postgres
 
@@ -31,7 +31,7 @@ To remove ``xcatdb`` completely from the PostgreSQL database:
       rm -rf *
 
 #. Move, or remove, the  ``/etc/xcat/cfglog`` file as it points xCAT to PostgreSQL.  (without this file, xCAT defaults to SQLite): ::
-   
+
       mv /etc/xcat/cfgloc /etc/xcat/cfglog.postgres
 
 #. Restore the PostgreSQL database into SQLite: ::
@@ -40,5 +40,5 @@ To remove ``xcatdb`` completely from the PostgreSQL database:
 
 #. Restart ``xcatd``: ::
 
-      service xcatd start 
+      service xcatd start
 

@@ -481,7 +481,7 @@ sub backup_env {
 }
 
 #--------------------------------------------------------
-# Fuction name: deletearray 
+# Fuction name: deletearray
 # Description:
 # Atrributes:
 # Retrun code:

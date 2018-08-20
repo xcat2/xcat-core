@@ -27,7 +27,7 @@ cat /tmp/certreq.xml |while read line; do
         echo $line >> /tmp/certreq.xml.new
 done
 mv /tmp/certreq.xml.new /tmp/certreq.xml
-rm /tmp/certreq.b64sig /tmp/certreq.sha512 
+rm /tmp/certreq.b64sig /tmp/certreq.sha512
 cat /tmp/certreq.xml | openssl s_client -connect $XCATDEST -quiet 2> /dev/null > /tmp/certresp.xml
 if grep 'BEGIN CERTIFICATE' /tmp/certresp.xml > /dev/null; then
 	awk '/BEGIN CERTIFICATE/,/END CERTIFICATE/' < /tmp/certresp.xml > /etc/xcat/cert.pem

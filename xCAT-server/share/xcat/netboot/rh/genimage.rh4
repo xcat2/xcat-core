@@ -536,7 +536,7 @@ PATH=$PATH:/bin:/usr/bin:/usr/sbin:/sbin
 
 touch /etc/fstab
 
-# This function is used to mount files/directories from the .statelite directory 
+# This function is used to mount files/directories from the .statelite directory
 #  over the root directory.
 # This function stolen from redhat
 shell() {
@@ -579,10 +579,10 @@ echo '
 echo '
                             _________     ________________
                      ___  __\\_   ___ \\   /  _  \\__    ___/
-                     \\  \\/  /    \\  \\/  /  /_\\  \\|    |   
-                      >    <\\     \\____/    |    \\    |   
-                     /__/\\_ \\\\______  /\\____|__  /____|   
-                           \\/       \\/         \\/         
+                     \\  \\/  /    \\  \\/  /  /_\\  \\|    |
+                      >    <\\     \\____/    |    \\    |
+                     /__/\\_ \\\\______  /\\____|__  /____|
+                           \\/       \\/         \\/
 '
         echo -e "\$RESET"
 }
@@ -632,7 +632,7 @@ EOS1
 grep '\(debug\)' /proc/cmdline > /dev/null && export DEBUG=1
 mkdir /var/lib/dhcp -p
 mkdir /var/run -p
-dhclient $prinic 
+dhclient $prinic
 sleep 5
 ifconfig | grep inet
 IUP=\$?
@@ -671,7 +671,7 @@ for i in `cat /proc/cmdline`; do
         SERVER=`echo \$VALUE|awk -F/ '{print \$3}'`
         ROOTDIR=`echo \$VALUE|awk -F/ '{for(i=4;i<=NF;i++) printf "/%s",\$i}'`
       fi
-   # for NFS root 
+   # for NFS root
    elif [ "\$KEY" == 'NFSROOT' ]; then
 	NFSROOT=1
 	VALUE=`echo \$i |awk -F= '{print \$2}'`
@@ -713,7 +713,7 @@ if [ "\$NFSROOT" = "1" ]; then
 1.  This initrd wasn't created for statelite node?  rerun genimage with the -m statelite flag, then rerun 'nodeset \$ME statelite'
 2.  Is DNS set up?  Maybe that's why I can't mount \${SERVER}.
 3.  The nfs modules aren't set right in this initfs?"
-    
+
 			shell
 			exit
 		fi
@@ -744,11 +744,11 @@ if [ "\$NFSROOT" = "1" ]; then
 	grep '\\(shell\\)' /proc/cmdline >/dev/null && shell
 
     # backup the current dhclient.leases to /var/lib/dhcp/
-    
+
 
 	mount -t tmpfs rw  -o mode=$permission \$NEWROOT/\$RWDIR
 	mkdir -p \$NEWROOT/\$RWDIR/tmpfs
-    
+
 	# mount the SNAPSHOT directory here for persistent use.
 	if [ ! -z \$SNAPSHOTSERVER ]
 	then
@@ -784,13 +784,13 @@ if [ "\$NFSROOT" = "1" ]; then
 	then
 		mkdir -p \$NEWROOT/\$RWDIR/tmpfs/var/lib/dhcp
 	fi
-	[ -e /etc/ntp.conf ] && mkdir -p \$NEWROOT/\$RWDIR/tmpfs/etc && cp /etc/ntp.conf \$NEWROOT/\$RWDIR/tmpfs/etc/ 
+	[ -e /etc/ntp.conf ] && mkdir -p \$NEWROOT/\$RWDIR/tmpfs/etc && cp /etc/ntp.conf \$NEWROOT/\$RWDIR/tmpfs/etc/
 
 	
-	[ -e /etc/ntp/step-kickers ] && mkdir -p \$NEWROOT/\$RWDIR/tmpfs/etc/ntp && cp /etc/ntp/step-kickers \$NEWROOT/\$RWDIR/tmpfs/etc/ntp 
+	[ -e /etc/ntp/step-kickers ] && mkdir -p \$NEWROOT/\$RWDIR/tmpfs/etc/ntp && cp /etc/ntp/step-kickers \$NEWROOT/\$RWDIR/tmpfs/etc/ntp
 
 	
-	[ -e /etc/resolv.conf ] && mkdir -p \$NEWROOT/\$RWDIR/tmpfs/etc && cp /etc/resolv.conf \$NEWROOT/\$RWDIR/tmpfs/etc/ 
+	[ -e /etc/resolv.conf ] && mkdir -p \$NEWROOT/\$RWDIR/tmpfs/etc && cp /etc/resolv.conf \$NEWROOT/\$RWDIR/tmpfs/etc/
 
 	# now that everything is mounted, lets do this
 	# hmmm, apparently I'm checking this twice... so I'd better
@@ -802,7 +802,7 @@ if [ "\$NFSROOT" = "1" ]; then
 
 	# do all the mounts:
 	\$NEWROOT/etc/init.d/statelite	
-    
+
     cp -a /var/lib/dhcp/dhclient.leases \${NEWROOT}/\${RWDIR}/tmpfs/var/lib/dhcp/dhclient-$prinic.leases
 
 	# give the debug shell just before we go if specified!

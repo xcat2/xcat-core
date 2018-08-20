@@ -1,13 +1,13 @@
 IBM XL Compilers
 ================
 
-IBM provides XL compilers with advanced optimizing on IBM Power Systems running Linux. 
+IBM provides XL compilers with advanced optimizing on IBM Power Systems running Linux.
 For more information, http://www-03.ibm.com/software/products/en/xlcpp-linux
 
 Partial Kits
 ------------
 
-The IBM XL compilers are dependencies for some of the HPC software products and is **not** available in xCAT Software Kit format.  
+The IBM XL compilers are dependencies for some of the HPC software products and is **not** available in xCAT Software Kit format.
 
 To assist customers in creating a software kit for the IBM XL compilers, xCAT provides partial kits at: https://xcat.org/files/kits/hpckits/
 
@@ -46,7 +46,7 @@ To use software kits that require compiler kit components, a compiler software k
         xlsmp.lib-3.1.0.8-151013.ppc64.rpm
         xlsmp.msg.rte-3.1.0.8-151013.ppc64.rpm
         xlsmp.rte-3.1.0.8-151013.ppc64.rpm
-  
+
 #. Obtain the corresponding compiler partial kit from https://xcat.org/files/kits/hpckits/. [#]_
 
    **xlc-12.1.0.8-151013-ppc64.NEED_PRODUCT_PKGS.tar.bz2** is downloaded to ``/tmp/kits``: ::
@@ -56,11 +56,11 @@ To use software kits that require compiler kit components, a compiler software k
 
 #. Complete the partial kit by running the ``buildkit addpkgs`` command: ::
 
-       buildkit addpkgs xlc-12.1.0.8-151013-ppc64.NEED_PRODUCT_PKGS.tar.bz2 \ 
+       buildkit addpkgs xlc-12.1.0.8-151013-ppc64.NEED_PRODUCT_PKGS.tar.bz2 \
           --pkgdir /tmp/kits/xlc-12.1.0.8
 
    Sample output: ::
- 
+
        Extracting tar file /tmp/kits/xlc-12.1.0.8-151013-ppc64.NEED_PRODUCT_PKGS.tar.bz2. Please wait.
        Spawning worker 0 with 5 pkgs
        Spawning worker 1 with 5 pkgs
@@ -73,7 +73,7 @@ To use software kits that require compiler kit components, a compiler software k
        Generating sqlite DBs
        Sqlite DBs complete
        Creating tar file /tmp/kits/xlc-12.1.0.8-151013-ppc64.tar.bz2.
-       Kit tar file /tmp/kits/xlc-12.1.0.8-151013-ppc64.tar.bz2 successfully built. 
+       Kit tar file /tmp/kits/xlc-12.1.0.8-151013-ppc64.tar.bz2 successfully built.
 
 
 

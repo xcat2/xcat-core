@@ -305,7 +305,7 @@ sub check_all_xcat_daemons {
         if ($counter > 1) {
             if ($daemon == "SSL listener")  {
                 my $cur_pid = `cat /var/run/xcatd.pid`;
-                my @ssl_pids = `ps aux 2>&1|grep -v grep|grep "xcatd: $daemon"|awk -F' ' '{print \$2}'`; 
+                my @ssl_pids = `ps aux 2>&1|grep -v grep|grep "xcatd: $daemon"|awk -F' ' '{print \$2}'`;
                 foreach my $ssl_pid (@ssl_pids) {
                     next if ($cur_pid == $ssl_pid);
                     my $child_pid = `ps --ppid $ssl_pid 2>&1 | grep "xcatd SSL:" | wc -l`;
@@ -579,7 +579,7 @@ sub check_disk {
     }
     $disk_str=~s/;$/]/g;
     $$checkpoint_ref = "Checking minimum disk space for xCAT $disk_str...";
- 
+
     my $msg = "";
     my %mountpointinfo;
     foreach my $dir (keys %dir_expectedspace_list) {
@@ -639,7 +639,7 @@ sub check_firewall {
     my $checkpoint_ref =  shift;
     my $error_ref = shift;
     my $rst       = 0;
-   
+
     $$checkpoint_ref = "Checking firewall is disabled...";
     @$error_ref = ();
 
@@ -665,13 +665,13 @@ sub check_http_service {
         push @$error_ref, "HTTP check need 'wget' tool, please install 'wget' tool and try again";
     } else {
         {
-            my $installdir = `lsdef -t site -i installdir -c 2>&1 | awk -F'=' '{print \$2}'`; 
+            my $installdir = `lsdef -t site -i installdir -c 2>&1 | awk -F'=' '{print \$2}'`;
             chomp($installdir);
             unless($installdir){
                 push @$error_ref, "HTTP work path(installdir) isn't configured in 'sit' table";
                 last;
             }
-            
+
             unless(-d "$installdir"){
                 push @$error_ref, "There isn't '$installdir' directory on current server";
                 last;
@@ -682,7 +682,7 @@ sub check_http_service {
                 push @$error_ref, "$errormsg";
                 last;
             }
-            
+
             $rst = 0;
         }
     }
@@ -784,7 +784,7 @@ sub check_log_record {
 
     `logger -p local4.info -t xcat $log_msg on MN 2>&1`;
     if ($?) {
-        push @$error_ref, "Failed to run command 'logger' on MN"; 
+        push @$error_ref, "Failed to run command 'logger' on MN";
         $rst = 1;
         return $rst;
     }
@@ -838,7 +838,7 @@ sub check_ntp_service{
 
     $$checkpoint_ref = "Checking NTP service is configured...";
     @$error_ref = ();
-  
+
     `which ntpq > /dev/null 2>&1`;
     if($?){
         push @$error_ref, "ntp service check need 'ntpq' tool, please install 'ntpq' toll and try again";
@@ -850,8 +850,8 @@ sub check_ntp_service{
             $rst = 1;
         }
     }
- 
-    return $rst; 
+
+    return $rst;
 }
 
 sub check_dns_service {
@@ -931,7 +931,7 @@ sub check_dhcp_service {
     my $checkpoint_ref =  shift;
     my $error_ref = shift;
     my $rst = 0;
-    
+
     $$checkpoint_ref = "Checking DHCP service is configured...";
     @$error_ref = ();
 
@@ -1080,7 +1080,7 @@ sub check_ulimits {
     my $rst_type       = "w";
 
     $$checkpoint_ref = "Checking Linux ulimits configuration...";
-    @$error_ref = (); 
+    @$error_ref = ();
 
     my $nofile_num = `sh -c 'ulimit -n' 2>&1`;
     chomp($nofile_num);
@@ -1099,7 +1099,7 @@ sub check_ulimits {
         push @$error_ref, "The number of open files is not enough for xcatd service, increase the limits for it according to xCAT document";
         $rst = 1;
         if ($percent >= 1) {
-            $rst_type = "f"; 
+            $rst_type = "f";
         }
     }
     return ($rst, $rst_type);
@@ -1139,7 +1139,7 @@ sub get_attribute_value  {
     my  $attr = shift;
 
     my $cmd_value = "";
-    my $command_info = `lsdef -t  $table -i $attr -c 2>&1`; 
+    my $command_info = `lsdef -t  $table -i $attr -c 2>&1`;
     if ($command_info =~ /$attr=(\d+)/) {
         $cmd_value = $1
     }
@@ -1168,7 +1168,7 @@ sub check_daemon_attributes {
             push @$error_ref, "Error:  xcatmaxbatchconnections > xcatmaxconnections";
             $rst = 1;
             $rst_type = "f";
-        } elsif ($xcatmaxconnections_site < $xcatmaxconnections or 
+        } elsif ($xcatmaxconnections_site < $xcatmaxconnections or
                  $xcatmaxbatchconnections_site < $xcatmaxbatchconnections and
                  $node_num >= $node_limit) {
             push @$error_ref, "Detected >= $node_limnit nodes, refer to xCAT documentation for xCAT daemon tuning recommendations.";
@@ -1176,7 +1176,7 @@ sub check_daemon_attributes {
         }
     }
     return ($rst, $rst_type);
-} 
+}
 
 sub returncmdoutput {
     my $rst       = shift;
@@ -1283,7 +1283,7 @@ while ($hierarchy_instance->read_reply(\%reply_cache)) {
                 } elsif ($reply_cache{$servers}->[$_] =~ /^(\w+)\s*:\s*(ssh:.+)/){
                     if("$1" eq "$server") {
                         $logmsg = "$2";
-                        $msg    = "[failed] :[$server]: $2"; 
+                        $msg    = "[failed] :[$server]: $2";
                     }
 
                     #For cases like below:
