@@ -33,7 +33,7 @@ sub split_node_array {
     my $capacity = shift;
 
     if ($max_sub < 2) {return [$source];}
- 
+
     my @dest = ();
     my $total = $#{$source} + 1;
     my $n_sub = int ($total / $capacity);
@@ -83,7 +83,7 @@ sub split_node_array {
 
 =head3 get_parallel_scope
 
-    Convert a request object to an array of multiple requests according to the 
+    Convert a request object to an array of multiple requests according to the
     splitted node range.
 
     Arguments:
@@ -112,7 +112,7 @@ sub get_parallel_scope {
     # Just return the origin one if node range is not big enough.
     if ($#{$subsets} < 1) { return [$req]; }
 
-    my @requests = (); 
+    my @requests = ();
     foreach (@$subsets) {
         my $reqcopy = {%$req};
         $reqcopy->{node} = $_;
@@ -125,7 +125,7 @@ sub get_parallel_scope {
 
 =head3 get_broadcast_scope_with_parallel
 
-    Convert a request object to an array of multiple requests according to the 
+    Convert a request object to an array of multiple requests according to the
     splitted node range. Also it replicates the requests to all required service
     nodes or management node.
 
@@ -186,9 +186,9 @@ sub get_broadcast_scope_with_parallel {
 
 =head3 get_broadcast_disjoint_scope_with_parallel
 
-    Convert a request object to an array of multiple requests according to the 
+    Convert a request object to an array of multiple requests according to the
     splitted node range. Also it replicates the requests to all required service
-    nodes or management node, but the request to a service node will only contains 
+    nodes or management node, but the request to a service node will only contains
     the node range it manages.
 
     Arguments:

@@ -21,9 +21,9 @@ SYNOPSIS
 
 \ **addkit**\  [\ **-? | -h | -**\ **-help**\ ] [\ **-v | -**\ **-version**\ ]
 
-\ **addkit**\  [\ **-i | -**\ **-inspection**\ ] \ *kitlist*\ 
+\ **addkit**\  [\ **-i | -**\ **-inspection**\ ] \ *kitlist*\
 
-\ **addkit**\  [\ **-V | -**\ **-verbose**\ ] [\ **-p | -**\ **-path**\  \ *path*\ ] \ *kitlist*\ 
+\ **addkit**\  [\ **-V | -**\ **-verbose**\ ] [\ **-p | -**\ **-path**\  \ *path*\ ] \ *kitlist*\
 
 
 ***********
@@ -43,40 +43,40 @@ OPTIONS
 
 
 
-\ **-h|-**\ **-help**\ 
- 
+\ **-h|-**\ **-help**\
+
  Display usage message.
- 
 
 
-\ **-V|-**\ **-verbose**\ 
- 
+
+\ **-V|-**\ **-verbose**\
+
  Verbose mode.
- 
 
 
-\ **-v|-**\ **-version**\ 
- 
+
+\ **-v|-**\ **-version**\
+
  Command version.
- 
 
 
-\ **-i|-**\ **-inspection**\ 
- 
+
+\ **-i|-**\ **-inspection**\
+
  Show the summary of the given kits
- 
 
 
-\ **-p|-**\ **-path**\  \ *path*\ 
- 
+
+\ **-p|-**\ **-path**\  \ *path*\
+
  The destination directory to which the contents of the kit tarfiles and/or kit deploy directories will be copied.  When this option is not specified, the default destination directory will be formed from the installdir site attribute with ./kits subdirectory.
- 
 
 
-\ *kitlist*\ 
- 
+
+\ *kitlist*\
+
  A comma delimited list of kit_tarball_files or kit_deploy_directories to be added to the xCAT environment. Each entry can be an absolute or relative path.  See xCAT documentation for more information on building kits.
- 
+
 
 
 

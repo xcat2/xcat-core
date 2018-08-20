@@ -93,7 +93,7 @@ EXAMPLES
 .. code-block:: perl
 
   chtab key=skiptables site.value="hosts,passwd"
- 
+
   dumpxCATdb  -p /tmp/db
 
 
@@ -103,7 +103,7 @@ EXAMPLES
 .. code-block:: perl
 
   export XCAT_SKIPTABLES="hosts,passwd"
- 
+
   dumpxCATdb  -p /tmp/db
 
 

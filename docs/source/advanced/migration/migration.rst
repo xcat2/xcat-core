@@ -12,24 +12,24 @@ Backup Old xCAT Management Node
 
 Backup xCAT management node data to backup server:
 
-1.1 Backup xCAT important files and directories: 
+1.1 Backup xCAT important files and directories:
 
-    #. Get ``installdir`` from ``site`` table, backup ``installdir`` directory, 
+    #. Get ``installdir`` from ``site`` table, backup ``installdir`` directory,
        in this case, back up ``install`` directory: ::
-       
+
         lsdef -t site  clustersite -i installdir
             Object name: clustersite
             installdir=/install
-    
-    #. Backup these two xCAT directories: :: 
+
+    #. Backup these two xCAT directories: ::
 
         ~/.xcat
         /etc/xcat
 
-       .. note:: Backing up ``~/.xcat`` is for all users who have xCAT client certs. 
+       .. note:: Backing up ``~/.xcat`` is for all users who have xCAT client certs.
 
     #. If there are customized files and directories for ``otherpkgdir``, ``pkgdir``, ``pkglist`` or ``template`` in some `osimage` definitions, backup these files and directories. for example: ::
-        
+
         lsdef -t osimage customized_rhels7.4-x86_64-install-compute -i otherpkgdir,pkgdir,pkglist,template
             Object name: customized_rhels7.4-x86_64-install-compute
                 otherpkgdir=/<customized_dir>/post/otherpkgs/rhels7.4/x86_64
@@ -87,10 +87,10 @@ Backup xCAT management node data to backup server:
 
     /etc/ntp.conf
 
-1.11 Backup database configure files (optional): 
+1.11 Backup database configure files (optional):
 
     * **[PostgreSQL]** ::
-      
+
       /var/lib/pgsql/data/pg_hba.conf
       /var/lib/pgsql/data/postgresql.conf
 
@@ -140,17 +140,17 @@ Restore xCAT management node
 2.1 Power off old xCAT management server before configuring new xCAT management server
 
 2.2 Configure new xCAT management server using the same ip and hostname as old xCAT management server. Configure the same additional network for hardware management network if needed, for example, bmc network or hmc network. xCAT management server setup refer to :doc:`Prepare the Management Node <../../guides/install-guides/yum/prepare_mgmt_node>`
-    
+
 2.3 Overwrite files/directories methioned in above 1.2, 1.3, 1.4 from backup server to new xCAT management server
 
 2.4 Download xcat-core and xcat-dep tar ball, then install xCAT in new xCAT management server, refer to :doc:`install xCAT <../../guides/install-guides/yum/install>`
 
-2.5 Use ``rpm -qa|grep -i xCAT`` to list all xCAT RPMs in new xCAT management node, compare these RPMs base name with those in ``xcat_rpm_names`` from above 1.15. If some RPMs are missing, use ``yum install <rpm_package_basename>`` to install missing RPMs. 
+2.5 Use ``rpm -qa|grep -i xCAT`` to list all xCAT RPMs in new xCAT management node, compare these RPMs base name with those in ``xcat_rpm_names`` from above 1.15. If some RPMs are missing, use ``yum install <rpm_package_basename>`` to install missing RPMs.
 
 2.6 If use ``MySQL``/``MariaDB``/``PostgreSQL``, migrate xCAT to use ``MySQL/MariaDB/PostgreSQL`` refer to :doc:`Configure a Database <../hierarchy/databases/index>`
 
 2.7 To restore the xCAT database
-  
+
     a. Restore xCAT database from the ``/dbbackup/db`` directory without ``auditlog`` and ``eventlog``, enter: ::
 
         restorexCATdb -p /dbbackup/db
@@ -160,7 +160,7 @@ Restore xCAT management node
         restorexCATdb -a -p /dbbackup/db
 
     c. (optinal) Overwrite files in above 1.11, restart ``PostgreSQL``: ::
-     
+
         service postgresql restart
 
 2.8 Overwrite remaining files/directories methioned in above 1.1, 1.5, 1.6, 1.7, 1.8, 1.9, 1.10, 1.12; If needed, check if files exist based on above 1.13 and 1.16.

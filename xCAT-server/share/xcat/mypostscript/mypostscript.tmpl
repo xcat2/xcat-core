@@ -12,8 +12,8 @@ export ENABLESSHBETWEENNODES
 ZONENAME=$ZONENAME
 export ZONENAME
 
-## tabdump(<TABLENAME>) is used to get all the information 
-## in the <TABLENAME> table 
+## tabdump(<TABLENAME>) is used to get all the information
+## in the <TABLENAME> table
 ## The <TABLENAME> should only be non-"node key" table
 ## and two keys table, such as networks, passwd.
 ## <TABLENAME> should not be site, auditlog or eventlog.
@@ -31,7 +31,7 @@ export IPADDR
 
 # get GROUP list
 GROUP=#TABLE:nodelist:$NODE:groups#
-export GROUP 
+export GROUP
 
 ## This is the syntax to get the value of one attribute from the
 ## <tablename> and its key is $NODE.
@@ -96,11 +96,11 @@ export MACMAC
 MACADDRESS=$MACADDRESS
 export MACADDRESS
 
-## vlan related items. vlan may not be configured. 
+## vlan related items. vlan may not be configured.
 #VLAN_VARS_EXPORT#
 
 
-## get monitoring server and other configuration data for monitoring setup on nodes. This may not be configured. 
+## get monitoring server and other configuration data for monitoring setup on nodes. This may not be configured.
 #MONITORING_VARS_EXPORT#
 
 
@@ -153,19 +153,19 @@ SWITCHNAME=#TABLE:switches:$NODE:switch#
 export SWITCHNAME
 
 SNMPVERSION=#TABLE:switches:$NODE:snmpversion#
-export SNMPVERSION 
+export SNMPVERSION
 
 SNMPUSER=#TABLE:switches:$NODE:username#
-export SNMPUSER 
+export SNMPUSER
 
 SNMPPASSWD=#TABLE:switches:$NODE:password#
-export SNMPPASSWD 
+export SNMPPASSWD
 
 SNMPPRIV=#TABLE:switches:$NODE:privacy#
-export SNMPPRIV 
+export SNMPPRIV
 
 SNMPAUTH=#TABLE:switches:$NODE:auth#
-export SNMPAUTH 
+export SNMPAUTH
 
 #CFGMGTINFO_EXPORT#
 
@@ -173,18 +173,18 @@ export SNMPAUTH
 
 
 ##
-##The line postscripts-start-here must not be deleted. 
+##The line postscripts-start-here must not be deleted.
 # postscripts-start-here
 
 #INCLUDE_POSTSCRIPTS_LIST#
 
-##The line postscripts-end-here must not be deleted. 
+##The line postscripts-end-here must not be deleted.
 # postscripts-end-here
 
-## The line postbootscripts-start-here must not be deleted. 
+## The line postbootscripts-start-here must not be deleted.
 # postbootscripts-start-here
 
 #INCLUDE_POSTBOOTSCRIPTS_LIST#
 
-## The line postbootscripts-end-here must not be deleted. 
+## The line postbootscripts-end-here must not be deleted.
 # postbootscripts-end-here

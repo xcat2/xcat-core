@@ -14,15 +14,15 @@ check:rc==0
 cmd:rm -rf /tmp/imagedata/test_osimage/test_osimage.stanza
 cmd:lsdef -t osimage -o test_osimage
 check:rc==0
-cmd:xcat-inventory export -t osimage -o test_osimage -d /tmp/imagedata/export 
-check:output=~The osimage objects has been exported to directory /tmp/imagedata/export 
+cmd:xcat-inventory export -t osimage -o test_osimage -d /tmp/imagedata/export
+check:output=~The osimage objects has been exported to directory /tmp/imagedata/export
 cmd:ls -lFR /tmp/imagedata/export
 cmd:diff -r /tmp/imagedata/test_osimage /tmp/imagedata/export/test_osimage/tmp/imagedata/test_osimage/
 check:output=~Only in /tmp/imagedata/test_osimage: file7
-cmd:diff -y /etc/hosts /tmp/imagedata/export/test_osimage/etc/hosts 
+cmd:diff -y /etc/hosts /tmp/imagedata/export/test_osimage/etc/hosts
 check:rc==0
 cmd:ls -l /tmp/imagedata/export/test_osimage/tmp/imagedata/test_osimage/file7
-check:rc!=0 
+check:rc!=0
 cmd: rmdef -t osimage -o  test_osimage
 check:rc==0
 cmd:rm -rf /tmp/imagedata/test_osimage
@@ -33,7 +33,7 @@ check:output=~Inventory import successfully!
 check:output=~The object test_osimage has been imported
 cmd:lsdef -t osimage -o test_osimage
 check:rc==0
-cmd:diff -r /tmp/imagedata/export/test_osimage/tmp/imagedata/test_osimage/ /tmp/imagedata/test_osimage 
+cmd:diff -r /tmp/imagedata/export/test_osimage/tmp/imagedata/test_osimage/ /tmp/imagedata/test_osimage
 check:rc==0
 cmd: rmdef -t osimage -o  test_osimage
 check:rc==0

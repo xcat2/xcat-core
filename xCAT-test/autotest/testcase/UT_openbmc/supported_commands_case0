@@ -5,7 +5,7 @@ hcp:openbmc
 label:cn_bmc_ready,hctrl_openbmc
 cmd:rpower $$CN state
 check:rc==0
-check:output=~$$CN: 
+check:output=~$$CN:
 cmd: rpower $$CN bmcstate
 check:rc==0
 check:output=~$$CN: BMC
@@ -35,7 +35,7 @@ check:output=~$$CN: CPU
 cmd: rinv $$CN dimm
 check:rc==0
 check:output=~$$CN: DIMM
-end 
+end
 
 start:supported_cmds_rvitals
 description: Make sure that the rvitals command works...
@@ -68,7 +68,7 @@ check:output=~$$CN: Rear
 cmd: rvitals $$CN all
 check:rc==0
 check:output=~$$CN: Ambient:
-end 
+end
 
 start:supported_cmds_rbeacon
 description: Make sure the rbeacon command works ...
@@ -77,7 +77,7 @@ hcp:openbmc
 label:cn_bmc_ready,hctrl_openbmc
 cmd:rbeacon $$CN on
 check:rc==0
-check:output=~$$CN: on 
+check:output=~$$CN: on
 cmd: rbeacon $$CN off
 check:rc==0
 check:output=~$$CN: off

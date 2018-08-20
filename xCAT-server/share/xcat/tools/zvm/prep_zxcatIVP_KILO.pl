@@ -621,7 +621,7 @@ sub scanInitScript{
     if ( $verbose ) {
         print "Scanning $filename for '$property' variable.\n";
     }
-    
+
     # verify the file exists
     if ( !-e "/etc/init.d/$filename" ) {
         print "Info: /etc/init.d/$filename does not exist.\n";
@@ -735,7 +735,7 @@ sub scanNova{
 sub showHelp{
     print "$0 prepares and builds a z/VM xCAT IVP driver program
     using the information from the configuration files in the
-    compute node.  
+    compute node.
 
     The default name of the driver program is composed of the following:
       '$driverPrefix', and
@@ -1138,7 +1138,7 @@ sub validateConfigs{
             print "Warning: In $locNovaConf, instance_name_template will not\n" .
                   "         create a usable name with the value: $novaConf{'DEFAULT'}{'instance_name_template'}\n";
         }
-        my $words; 
+        my $words;
         $words++ while $base_name =~ /\S+/g;
         if ( $words != 1 ) {
             print "Warning: In $locNovaConf, instance_name_template will not create\n" .

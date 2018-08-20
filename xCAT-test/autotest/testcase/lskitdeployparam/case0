@@ -24,9 +24,9 @@ end
 
 start:lskitdeployparam_no_param
 os:Linux
-cmd:lskitdeployparam 
+cmd:lskitdeployparam
 check:rc==1
-check:output=~Error  
+check:output=~Error
 check:output=~ Usage
 end
 
@@ -44,7 +44,7 @@ check:rc==0
 cmd:addkit /opt/xcat/share/xcat/tools/autotest/testcase/lskit/mykits/mykits-1.0-1.tar.bz2
 check:rc==0
 check:output=~Kit mykits-1.0-1 was successfully added
-cmd:lskit -K basename mykits-1.0-1 
+cmd:lskit -K basename mykits-1.0-1
 check:rc==0
 check:output=~basename
 cmd:lskitdeployparam -k mykits-1.0-1

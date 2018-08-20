@@ -9,7 +9,7 @@ B<restartxcatd> [[B<-h>|B<--help>] | [B<-v>|B<--version>] | [B<-r>|B<--reload>]]
 
 =head1 DESCRIPTION
 
-The B<restartxcatd> command restarts the xCAT daemon (xcatd). 
+The B<restartxcatd> command restarts the xCAT daemon (xcatd).
 
 B<Linux Specific>
 
@@ -34,7 +34,7 @@ It runs 'stopsrc -s xcatd' to stop xcatd first if xcatd is active, then runs 'st
 If the xcatd subsystem was not created, B<restartxcatd> will create it automatically.
 
 =back
- 
+
 =head1 OPTIONS
 
 

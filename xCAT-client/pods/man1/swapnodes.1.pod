@@ -1,6 +1,6 @@
 =head1 NAME
 
-B<swapnodes> - swap the location info in the db (all the attributes in the ppc table and the nodepos table) between 2 nodes. If swapping within a cec, it will assign the IO adapters that were assigned to the defective node to the available node. 
+B<swapnodes> - swap the location info in the db (all the attributes in the ppc table and the nodepos table) between 2 nodes. If swapping within a cec, it will assign the IO adapters that were assigned to the defective node to the available node.
 
 =head1 SYNOPSIS
 
@@ -10,10 +10,10 @@ B<swapnodes> B<-c> I<current_node> B<-f> I<fip_node> [B<-o>]
 
 =head1 DESCRIPTION
 
-This command is only for Power 775 using Direct FSP Management, and used in Power 775 Availability Plus. 
+This command is only for Power 775 using Direct FSP Management, and used in Power 775 Availability Plus.
 
 The B<swapnodes> command will keep the B<current_node> name in the xCAT table, and use the I<fip_node>'s hardware resource. Besides that, the IO adapters will be assigned to the new hardware resource if they are in the same CEC. So the swapnodes command will do 2 things:
-  
+
 1. Swap the location info in the db between 2 nodes:
 
 All the ppc table attributes (including hcp, id, parent, supernode and so on).
@@ -68,7 +68,7 @@ To swap the service node attributes and IO assignments between sn1 and compute2 
 =item 2.
 To swap the service node attributes and IO assignments between sn1 and compute2 which are NOT in the same cec, all the attributes in the ppc table and nodepos table of the two node will be swapped. After the swapping, the sn1 will use the compute2's hardware resource.
 
- swapnodes -c sn1 -f compute2 
+ swapnodes -c sn1 -f compute2
 
 =item 3.
 Only to move the service node (sn1) definition to the compute node (compute2)'s hardware resource, and not move the compute2 definition to the sn1. After the swapping, the sn1 will use the compute2's hardware resource, and the compute2 definition is not changed.

@@ -1,10 +1,10 @@
-bash 
+bash
 dracut-network
 nfs-utils
 openssl
-dhclient 
-kernel 
-openssh-server 
+dhclient
+kernel
+openssh-server
 openssh-clients
 wget
 vim-minimal

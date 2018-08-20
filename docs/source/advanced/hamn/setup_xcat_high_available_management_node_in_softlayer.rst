@@ -1,6 +1,6 @@
 .. _setup_xcat_high_available_management_node_with_nfs:
 
-Setup xCAT HA Mgmt with NFS pacemaker and corosync 
+Setup xCAT HA Mgmt with NFS pacemaker and corosync
 ====================================================================================
 
 In this doc, we will configure a xCAT HA cluster using ``pacemaker`` and ``corosync`` based on NFS server. ``pacemaker`` and ``corosync`` only support ``x86_64`` systems, more information about ``pacemaker`` and ``corosync`` refer to doc :ref:`setup_ha_mgmt_node_with_drbd_pacemaker_corosync`.
@@ -24,19 +24,19 @@ The DB is SQLlite. There is no service node in this example.
 Prepare NFS server
 --------------------
 
-In NFS server 10.2.2.44, execute commands to export fs; If you want to use another non-root user to manage xCAT, such as hpcpeadmin. 
+In NFS server 10.2.2.44, execute commands to export fs; If you want to use another non-root user to manage xCAT, such as hpcpeadmin.
 You should create a directory for ``/home/hpcpeadmin``; Execute commands in NFS server c902f02x44. ::
 
     # service nfs start
-    # mkdir ~/.xcat 
+    # mkdir ~/.xcat
     # mkdir -p /etc/xcat
     # mkdir -p /disk1/install/
     # mkdir -p /disk1/hpcpeadmin
     # mkdir -p /disk1/install/xcat
 
-    # vi /etc/exports 
-    /disk1/install *(rw,no_root_squash,sync,no_subtree_check) 
-    /etc/xcat *(rw,no_root_squash,sync,no_subtree_check) 
+    # vi /etc/exports
+    /disk1/install *(rw,no_root_squash,sync,no_subtree_check)
+    /etc/xcat *(rw,no_root_squash,sync,no_subtree_check)
     /root/.xcat *(rw,no_root_squash,sync,no_subtree_check)
     /root/.ssh *(rw,no_root_squash,sync,no_subtree_check)
     /disk1/hpcpeadmin *(rw,no_root_squash,sync,no_subtree_check)
@@ -75,12 +75,12 @@ Execute steps on xCAT MN rhmn1
 
    Mount share nfs from 10.2.2.44: ::
 
-    # mkdir -p /install 
+    # mkdir -p /install
     # mkdir -p /etc/xcat
     # mkdir -p /home/hpcpeadmin
     # mount 10.2.2.44:/disk1/install /install
     # mount 10.2.2.44:/etc/xcat /etc/xcat
-    # mkdir -p /root/.xcat 
+    # mkdir -p /root/.xcat
     # mount 10.2.2.44:/root/.xcat /root/.xcat
     # mount 10.2.2.44:/root/.ssh /root/.ssh
     # mount 10.2.2.44:/disk1/hpcpeadmin /home/hpcpeadmin
@@ -113,16 +113,16 @@ Execute steps on xCAT MN rhmn1
 
    Download xcat-core tar ball and xcat-dep tar ball from github, and untar them: ::
 
-    # mkdir /install/xcat 
-    # mv xcat-core-2.8.4.tar.bz2 /install/xcat/ 
+    # mkdir /install/xcat
+    # mv xcat-core-2.8.4.tar.bz2 /install/xcat/
     # mv xcat-dep-201404250449.tar.bz2 /install/xcat/
-    # cd /install/xcat 
+    # cd /install/xcat
     # tar -jxvf xcat-core-2.8.4.tar.bz2
     # tar -jxvf xcat-dep-201404250449.tar.bz2
     # cd xcat-core
     # ./mklocalrepo.sh
     # cd ../xcat-dep/rh6/x86_64/
-    # ./mklocalrepo.sh 
+    # ./mklocalrepo.sh
     # yum clean metadata
     # yum install xCAT
     # source /etc/profile.d/xcat.sh
@@ -232,7 +232,7 @@ Install corosync and pacemaker on both rhmn2 and rhmn1
     enabled=1
     gpgcheck=0
 
-#. Install ``corosync`` and ``pacemaker``, then generate ssh key: 
+#. Install ``corosync`` and ``pacemaker``, then generate ssh key:
 
    Install ``corosync`` and ``pacemaker``: ::
 
@@ -333,15 +333,15 @@ Be aware that you need to apply ALL the configuration at once. You cannot pick a
 
     Check that both rhmn2 and chetha are standby state now: ::
 
-     rhmn1 ~]# crm status 
-     Last updated: Wed Aug 13 22:57:58 2014 
-     Last change: Wed Aug 13 22:40:31 2014 via cibadmin on rhmn1 
-     Stack: classic openais (with plugin) 
-     Current DC: rhmn2 - partition with quorum 
-     Version: 1.1.8-7.el6-394e906 
-     2 Nodes configured, 2 expected votes 
-     14 Resources configured. 
-     Node rhmn1: standby 
+     rhmn1 ~]# crm status
+     Last updated: Wed Aug 13 22:57:58 2014
+     Last change: Wed Aug 13 22:40:31 2014 via cibadmin on rhmn1
+     Stack: classic openais (with plugin)
+     Current DC: rhmn2 - partition with quorum
+     Version: 1.1.8-7.el6-394e906
+     2 Nodes configured, 2 expected votes
+     14 Resources configured.
+     Node rhmn1: standby
      Node rhmn2: standby
 
     Execute ``crm configure edit`` to add all configure at once: ::
@@ -481,29 +481,29 @@ Verify auto fail over
 #. Let rhmn1 standby and rhmn2 online, xcat will run on rhmn2: ::
 
      rhmn2 /]# crm node online rhmn2
-     rhmn2 /]# crm node standby rhmn1 
-     rhmn2 /]# crm status 
-     Last updated: Mon Aug 4 23:19:33 2014 
-     Last change: Mon Aug 4 23:19:40 2014 via crm_attribute on rhmn2 
-     Stack: classic openais (with plugin) 
-     Current DC: rhmn1 - partition with quorum 
-     Version: 1.1.8-7.el6-394e906 
-     2 Nodes configured, 2 expected votes 
-     12 Resources configured. 
+     rhmn2 /]# crm node standby rhmn1
+     rhmn2 /]# crm status
+     Last updated: Mon Aug 4 23:19:33 2014
+     Last change: Mon Aug 4 23:19:40 2014 via crm_attribute on rhmn2
+     Stack: classic openais (with plugin)
+     Current DC: rhmn1 - partition with quorum
+     Version: 1.1.8-7.el6-394e906
+     2 Nodes configured, 2 expected votes
+     12 Resources configured.
 
-     Node rhmn1: standby 
-     Online: [ rhmn2 ] 
+     Node rhmn1: standby
+     Online: [ rhmn2 ]
 
-     Resource Group: XCAT_GROUP 
-     xCATmnVIP (ocf::heartbeat:IPaddr2): Started rhmn2 
-     INSTALLFS (ocf::heartbeat:Filesystem): Started rhmn2 
-     ETCXCATFS (ocf::heartbeat:Filesystem): Started rhmn2 
-     ROOTXCATFS (ocf::heartbeat:Filesystem): Started rhmn2 
-     NFSlock_xCAT (lsb:nfslock): Started rhmn2 
-     xCAT (lsb:xcatd): Started rhmn2 
-     Clone Set: clone_named [named] 
-     Started: [ rhmn2 ] 
-     Stopped: [ named:1 ] 
+     Resource Group: XCAT_GROUP
+     xCATmnVIP (ocf::heartbeat:IPaddr2): Started rhmn2
+     INSTALLFS (ocf::heartbeat:Filesystem): Started rhmn2
+     ETCXCATFS (ocf::heartbeat:Filesystem): Started rhmn2
+     ROOTXCATFS (ocf::heartbeat:Filesystem): Started rhmn2
+     NFSlock_xCAT (lsb:nfslock): Started rhmn2
+     xCAT (lsb:xcatd): Started rhmn2
+     Clone Set: clone_named [named]
+     Started: [ rhmn2 ]
+     Stopped: [ named:1 ]
 
      rhmn2 /]#lsxcatd -v
      Version 2.8.4 (git commit 7306ca8abf1c6d8c68d3fc3addc901c1bcb6b7b3, built Mon Apr 21 20:48:59 EDT 2014)

@@ -8,7 +8,7 @@ B<buildkit> [B<-?>|B<-h>|B<--help>] [B<-v>|B<--version>]
 
 To build a new Kit
 
-B<buildkit> [B<-V>|B<--verbose]> I<subcommand> [I<kit_name>] [I<repo_name> | B<all>] [B<-l>|B<--kitloc> I<kit_location>] 
+B<buildkit> [B<-V>|B<--verbose]> I<subcommand> [I<kit_name>] [I<repo_name> | B<all>] [B<-l>|B<--kitloc> I<kit_location>]
 
 To add packages to an existing Kit.
 
@@ -33,11 +33,11 @@ For example, to create a new kit named "prodkit" in the directory /home/mykits/ 
 =item 1.
 
 If no location is provided then the command will create a subdirectory called "prodkit" in the current directory "/home/mykits" and the new kit files will be created there.
- 
+
 B<cd /home/mykits>
 
-B<buildkit create prodkit> 
-  
+B<buildkit create prodkit>
+
 or
 
 =item 2.
@@ -47,16 +47,16 @@ If a location is provided then the Kit files will be created there. Note that th
 B<buidkit create prodkit -l /home/mykits/prodkit>
 
 =back
-	 
+	
 In both cases the /home/mykits/prodkit directory is created and the inital files for the kit are created in that directory.
-	  
+	
 The following example illustrates the basic process for building a new Kit. In this example we are building a Kit named "mytstkit".
 
 =over 4
 
 =item 1.
 
-Change to the directory where you wish to create the Kit. 
+Change to the directory where you wish to create the Kit.
 
 =item 2.
 
@@ -98,7 +98,7 @@ B<buildkit listrepo>
 
 For each repo name listed, build the repository.  Note that if you need to build repositories for OS distributions, versions, or architectures that do not match the current system, you may need to copy your kit template directory to an appropriate server to build that repository, and then copy the results back to your main build server.  For example, to build a repo named "rhels6.3" you would run the following command.
 
-B<buildkit buildrepo rhels6.3> 
+B<buildkit buildrepo rhels6.3>
 
 or, you can build all of the repos at one time if there are no OS or architecture dependencies for kitcomponent package builds or kitpackage builds:
 
@@ -156,9 +156,9 @@ Creates a new kit build directory structure for kit I<kit_basename> using the lo
 
 =item  B<chkconfig>
 
-Reads the buildkit.conf file, verifies that the file syntax is correct and that all specified files exist. 
+Reads the buildkit.conf file, verifies that the file syntax is correct and that all specified files exist.
 
-=item  B<listrepo> 
+=item  B<listrepo>
 
 Reads the buildkit.conf file, lists all Kit package repositories listed in the file, and reports the build status for each repository.
 
@@ -170,11 +170,11 @@ Reads the buildkit.conf file, and builds the specified Kit package repository.  
 
 Reads the buildkit.conf file, and deletes all the package files and package meta data files from the <kit_location>/build/kit_repodir/I<repo_name> directory.  If B<all> is specified, all kit repository files are deleted.
 
-=item  B<buildtar> 
+=item  B<buildtar>
 
 Reads the buildkit.conf file, validates that all kit repositories have been built, and builds the Kit tar file <kit_location>/I<kitname>.tar.bz2.
 
-=item  B<cleantar> 
+=item  B<cleantar>
 
 Reads the <kit_location>/buildkit.conf file and I<deletes> the following:
 
@@ -188,7 +188,7 @@ Reads the <kit_location>/buildkit.conf file and I<deletes> the following:
 
 - <kit_location>/tmp
 
-- <kit_location>/debbuild 
+- <kit_location>/debbuild
 
 =back
 
@@ -198,7 +198,7 @@ Caution:  Make sure you back up any tar files you would like to keep before runn
 
 Equivalent to running B<buildkit cleanrepo all> and B<buildkit cleantar>.
 
-=item  B<addpkgs> 
+=item  B<addpkgs>
 
 I<kit_tarfile> {B<-p> | B<--pkgdir> I<package_directory_list>} [B<-k> | B<--kitversion> I<version>] [B<-r> | B<--kitrelease> I<release>]
 

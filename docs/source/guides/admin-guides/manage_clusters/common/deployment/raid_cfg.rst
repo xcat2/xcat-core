@@ -14,7 +14,7 @@ xCAT provides a partition script `raid1_rh.sh <https://raw.githubusercontent.com
 
 In most scenarios, the sample partitioning script is sufficient to create a basic RAID1 across two disks and is provided as a sample to build upon.
 
-1. Obtain the partition script: :: 
+1. Obtain the partition script: ::
 
      mkdir -p /install/custom/partition/
      wget https://raw.githubusercontent.com/xcat2/xcat-extensions/master/partition/raid1_rh.sh \
@@ -22,13 +22,13 @@ In most scenarios, the sample partitioning script is sufficient to create a basi
 
 2. Associate the partition script to the osimage: ::
 
-     chdef -t osimage -o rhels7.3-ppc64le-install-compute \ 
+     chdef -t osimage -o rhels7.3-ppc64le-install-compute \
            partitionfile="s:/install/custom/partition/raid1_rh.sh"
 
 3. Provision the node: ::
 
      rinstall cn1 osimage=rhels7.3-ppc64le-install-compute
- 
+
 After the diskful nodes are up and running, you can check the RAID1 settings with the following process:
 
 ``mount`` command shows the ``/dev/mdx`` devices are mounted to various file systems, the ``/dev/mdx`` indicates that the RAID is being used on this node. ::
@@ -37,7 +37,7 @@ After the diskful nodes are up and running, you can check the RAID1 settings wit
      ...
      /dev/md1 on / type xfs (rw,relatime,attr2,inode64,noquota)
      /dev/md0 on /boot type xfs (rw,relatime,attr2,inode64,noquota)
-     /dev/md2 on /var type xfs (rw,relatime,attr2,inode64,noquota)     
+     /dev/md2 on /var type xfs (rw,relatime,attr2,inode64,noquota)
 
 The file ``/proc/mdstat`` includes the RAID devices status on the system, here is an example of ``/proc/mdstat`` in the non-multipath environment: ::
 
@@ -47,20 +47,20 @@ The file ``/proc/mdstat`` includes the RAID devices status on the system, here i
            1047552 blocks super 1.2 [2/2] [UU]
              resync=DELAYED
            bitmap: 1/1 pages [64KB], 65536KB chunk
-     
+
      md3 : active raid1 sdk3[0] sdj3[1]
            1047552 blocks super 1.2 [2/2] [UU]
              resync=DELAYED
-     
+
      md0 : active raid1 sdk5[0] sdj5[1]
            524224 blocks super 1.0 [2/2] [UU]
            bitmap: 0/1 pages [0KB], 65536KB chunk
-     
+
      md1 : active raid1 sdk6[0] sdj6[1]
            973998080 blocks super 1.2 [2/2] [UU]
            [==>..................]  resync = 12.8% (125356224/973998080) finish=138.1min speed=102389K/sec
            bitmap: 1/1 pages [64KB], 65536KB chunk
-     
+
      unused devices: <none>
 
 On the system with multipath configuration, the ``/proc/mdstat`` looks like: ::
@@ -90,7 +90,7 @@ Deploy Diskful Nodes with RAID1 Setup on SLES
 
 xCAT provides one sample autoyast template files with the RAID1 settings ``/opt/xcat/share/xcat/install/sles/service.raid1.sles11.tmpl``. You can customize the template file and put it under ``/install/custom/install/<platform>/`` if the default one does not match your requirements.
 
-Here is the RAID1 partitioning section in service.raid1.sles11.tmpl: :: 
+Here is the RAID1 partitioning section in service.raid1.sles11.tmpl: ::
 
      <partitioning config:type="list">
         <drive>

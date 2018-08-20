@@ -3,7 +3,7 @@
 #
 # CHANGE HISTORY:
 #
-# NAME:        active-mn 
+# NAME:        active-mn
 #
 # SYNTAX:       active-mn -i <nic> -v <virtual ip> [-m <netmask>]
 #
@@ -25,7 +25,7 @@
 # -----------------------------------------------------------------------------
 # 2011-12-08   JDW     1.0     Original
 # 2013-06-06   xCAT    1.1     Updated version to ship with xCAT
-# 2017-10-17   xCAT    2.13.8  Enhance 
+# 2017-10-17   xCAT    2.13.8  Enhance
 SHAREDVG=sharedvg # For AIX, shared volumn group name
 DBDIR=/var/lib/pgsql # database directory
 SHAREDFS="/install /etc/xcat /root/.xcat" # Shared file systems
@@ -37,12 +37,12 @@ USEMOUNT=yes # mounted  filesystems in the file /etc/fstab
 CHANGEHOSTNAME=yes # set the hostname to the virtual ip address hostname
 RESTARTDNS=yes # if yes, will execute "makedns -n"
 exit_code=0
-xcatdb=postgresql # support postgrel,DB2,mysql 
+xcatdb=postgresql # support postgrel,DB2,mysql
 
 usage()
 {
 	cat << EOF
-Usage: $PROGNAME -i <nic> -v <virtual ip> [-m <netmask>] 
+Usage: $PROGNAME -i <nic> -v <virtual ip> [-m <netmask>]
 
 EOF
 }
@@ -122,7 +122,7 @@ fi
 
 # Changing IP addresses/aliases for the active mn
 
-# Use ping to check if Virtual IP is already up and running on another mn 
+# Use ping to check if Virtual IP is already up and running on another mn
 # Important to avoid configuring virtual ip on both Primary and Standby concurrently
 
 ping -c 1 -w 10 $VIP 2>&1 1>/dev/null
@@ -140,7 +140,7 @@ else # Linux
     runcmd "ifconfig $NIC $VIP netmask $MASK"
 fi
 
-# Optional, Set hostname to virtual ip hostname 
+# Optional, Set hostname to virtual ip hostname
 if [ $CHANGEHOSTNAME = "yes" ]
 then
     if [ `uname` = "AIX" ]
@@ -174,11 +174,11 @@ if [ `uname` = "Linux" ]; then
     if [ -s /etc/xcat/cfgloc ]
     then
         xcatcfg=`cat /etc/xcat/cfgloc|cut -f 1 -d : 2>/dev/null`
-    else  
-        # SQLsite 
+    else
+        # SQLsite
         xcatcfg=`XCATBYPASS=1 /opt/xcat/bin/lsxcatd -d | cut -f 2 -d "=" 2>/dev/null`
-        # filter Error message from lsxcatd 
-        echo "$xcatcfg" | grep "Error" && xcatcfg="" 
+        # filter Error message from lsxcatd
+        echo "$xcatcfg" | grep "Error" && xcatcfg=""
     fi
     if [ -n "$xcatcfg" ]; then
         current_db=$xcatcfg
@@ -197,7 +197,7 @@ if [ `uname` = "Linux" ]; then
         fi
     else
         echo "Error: can not get current DB. [Failed]"
-        clear_env $NIC 
+        clear_env $NIC
         exit 1
     fi
 fi
@@ -250,12 +250,12 @@ else # Linux
             fi
         else
             echo "Error: service $xcatdb start [Failed], exit...."
-            clear_env $NIC 
+            clear_env $NIC
             exit 1
         fi
     fi
 fi
-    
+
 echo "Starting xCAT...."
 if [ `uname` = "AIX" ]
 then

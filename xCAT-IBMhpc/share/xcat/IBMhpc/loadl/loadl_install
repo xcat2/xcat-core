@@ -1,4 +1,4 @@
-#!/bin/sh  
+#!/bin/sh
 
 #
 # Sample script to accept license and install LoadLeveler resmgr package
@@ -13,19 +13,19 @@
 #    Change the owner of these directories (modify "loadl_admin" and
 #           "loadl_group" if not using loadl:loadl)
 #    If run from genimage, copy in /etc/LoadL.cfg from MN into image
-#    
+#
 
 
 OS=`uname`
 INSTALL_DIR='/install'
 LOADL_DIR=$loadldir
 
-#### 
+####
 #  Linux Note:  This script only installs the LoadL_resmgr_full rpm
 #  To also install the LoadL_scheduler rpm, remove the "-c resmgr"
 #  option from the line below
 #  Also, change the bin path below to the correct directory
-#### 
+####
 linux_loadl_license_script="/opt/ibmll/LoadL/sbin/install_ll -c resmgr"
 #linux_loadl_license_script="/opt/ibmll/LoadL/sbin/install_ll"
 linux_loadl_bin=/opt/ibmll/LoadL/resmgr/full/bin
@@ -116,16 +116,16 @@ fi
 
 # Create LoadLeveler Directories:
 # For stateless nodes, these directories need to be created in the image
-# since they will be in memory only, and will be lost on node reboot. 
-# You may choose to modify this approach and use a more 
-# persistent location. 
-# For statelite, make sure the directory is writable;  
-# this will also be a memory-only copy of the files unless you set 
-# the directory "persistent" in the statelite table.  
+# since they will be in memory only, and will be lost on node reboot.
+# You may choose to modify this approach and use a more
+# persistent location.
+# For statelite, make sure the directory is writable;
+# this will also be a memory-only copy of the files unless you set
+# the directory "persistent" in the statelite table.
 if [ $NODESETSTATE != "genimage" ]; then
    # running as a postscript in a full-disk install or AIX diskless install
    installroot=""
-fi  
+fi
 mkdir -p $installroot$logdir/execute
 mkdir -p $installroot$logdir/spool
 mkdir -p $installroot$logdir/log
@@ -146,7 +146,7 @@ chown -R $loadl_admin:$loadl_group $installroot$logdir/
 #fi
 
 
-# UNCOMMENT to  Start loadleveler during postscripts 
+# UNCOMMENT to  Start loadleveler during postscripts
 #if [ $NODESETSTATE != "genimage" ]; then
 #   /usr/lpp/LoadL/resmgr/full/bin/llrctl start
 #fi

@@ -13,12 +13,12 @@ Ironic is a project in Openstack, it will replace the nova-baremetal in juno rel
 without change any code in Openstack. Ironic xCAT driver takes the advantage of xcat and openstack, we can use it to deploy the baremetal machine very easily.
 
 Before using this driver, we must setup the openstack environment at least for two nodes( ironic conductor and neutron network node can't setup on the same node)
-Ironic conductor and the baremetal node( waiting for deploy) must in the same vlan 
+Ironic conductor and the baremetal node( waiting for deploy) must in the same vlan
 
-Add the follows in the ironic egg-info entry_points.txt file (ironic.drivers section) 
+Add the follows in the ironic egg-info entry_points.txt file (ironic.drivers section)
 
 pxe_xcat = ironic.drivers.xcat:XCATBaremetalDriver
- 
+
 When the openstack with ironic is ready, just execute command in the ironic_xcat directory as follows:
 
 $ python setup.py install
@@ -29,10 +29,10 @@ Initialize the xcat environment according  to http://sourceforge.net/p/xcat/wiki
 Using xCAT baremetal driver need config site table and run copycds to generate image. The node definition is not requirement.
 
 Ironic use neutron as the network service.
-Check the openvswitch config on the network node ,make sure brbm bridge connect to the baremetal node. 
+Check the openvswitch config on the network node ,make sure brbm bridge connect to the baremetal node.
 
 ==================================================================================
-Some Example to use the xCAT baremetal driver. 
+Some Example to use the xCAT baremetal driver.
 
 $touch /tmp/rhelhpc6.5-x86_64-install-compute.qcow2;glance image-create --name rhelhpc6.5-x86_64-install-compute --public --disk-format qcow2 --container-format bare --property xcat_image_name='rhels6.4-x86_64-install-compute' < /tmp/rhelhpc6.5-x86_64-install-compute.qcow2
 --name rhelhpc6.5-x86_64-install-compute is the image name in xcat. You can use lsdef -t osimage on the ironic-conductor node which xcat is installed.

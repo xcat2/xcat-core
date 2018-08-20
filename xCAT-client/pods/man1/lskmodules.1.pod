@@ -12,7 +12,7 @@ B<lskmodules> [B<-?> | B<-h> | B<--help> | B<-v> | B<--version>]
 
 =head1 DESCRIPTION
 
-The B<lskmodules> command finds the kernel driver module files (*.ko) in the specified input locations, runs the modinfo command against each file, and returns the driver name and description.  If -x is specified, the output is returned with XML tags.  
+The B<lskmodules> command finds the kernel driver module files (*.ko) in the specified input locations, runs the modinfo command against each file, and returns the driver name and description.  If -x is specified, the output is returned with XML tags.
 
 Input to the command can specify any number or combination of the input options.
 
@@ -54,7 +54,7 @@ This option is intended for use by other programs.  The XML will not be displaye
 
 =item B<-V|--verbose>
 
-Display additional progress and error messages. 
+Display additional progress and error messages.
 
 =item B<-v|--version>
 

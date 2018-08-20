@@ -1,34 +1,34 @@
 #!/bin/sh
-# 
-# If NVMe firmware file is located here: 
+#
+# If NVMe firmware file is located here:
 # /install/MN12MN12.img
 #
-# Call the script as follows to update firmware for device /dev/nvme0: 
+# Call the script as follows to update firmware for device /dev/nvme0:
 #    updatenode <noderange> -P "update_nvme_firmware /install/MN12MN12.img [/dev/nvme0]"
 #
 function usage() {
     echo "Usage: $0 </path_to/NVME.img> [nvme device]"
 }
-if [[ -z ${1} ]]; then 
-   echo "Error: you must provide the path of the NVMe Firmware file" 
+if [[ -z ${1} ]]; then
+   echo "Error: you must provide the path of the NVMe Firmware file"
    usage
    exit 1
 fi
 NVME_FILE_PATH=${1}
-if ! which nvme > /dev/null; then 
+if ! which nvme > /dev/null; then
     echo "Error: nvme utility not found, install 'nvme-cli' package and retry"
     exit 1
 fi
 if [[ -z ${2} ]]; then
-    if ! ls /dev/nvme* 2>1 >/dev/null; then 
+    if ! ls /dev/nvme* 2>1 >/dev/null; then
         echo "INFO: No NVMe device find, nothing to do"
         exit 0
-    else 
+    else
         TARGET_DEV=`ls /dev/nvme* | egrep "nvme[0-9]*$"`
     fi
 else
     TARGET_DEV=${2}
-    if ! ls $TARGET_DEV 2>1 >/dev/null; then 
+    if ! ls $TARGET_DEV 2>1 >/dev/null; then
         echo "Error: Could not find NVMe device: $TARGET_DEV"
         exit 1
     fi
@@ -40,11 +40,11 @@ NVME_FIRM_FILE=`basename ${NVME_FILE_PATH}`
 TARGET_FIRM_FILE="${WORKING_DIR}/${NVME_FIRM_FILE}"
 
 echo "==> NVMe Firmware File PATH: ${NVME_FILE_PATH}"
-echo "==> NVMe Firmware File: ${NVME_FIRM_FILE}" 
+echo "==> NVMe Firmware File: ${NVME_FIRM_FILE}"
 
-if [[ -e ${TARGET_FIRM_FILE} ]]; then 
+if [[ -e ${TARGET_FIRM_FILE} ]]; then
    rm -f ${TARGET_FIRM_FILE}
-fi 
+fi
 
 echo "==> Retrieving file from http://${MASTER}/${NVME_FILE_PATH}"
 wget -q http://${MASTER}/${NVME_FILE_PATH} -O ${TARGET_FIRM_FILE}

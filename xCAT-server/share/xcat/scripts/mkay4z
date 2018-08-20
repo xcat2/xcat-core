@@ -10,7 +10,7 @@
 
     Usage: 		mkay4z
     Example: 	# ./mkay4z
-    
+
 =cut
 
 #-------------------------------------------------------
@@ -244,7 +244,7 @@ END
 
         # Show configuration
         print <<END;
-#  |   Address   |   Type   
+#  |   Address   |   Type
 ----------------------------
 END
         foreach my $addr (sort keys %dasd) {
@@ -295,7 +295,7 @@ CONFIGURING PARTITIONS...
 Select a device from the list below to create a new partition.
 END
 print <<END;
-#  |   Device   |   Address   |   Type   
+#  |   Device   |   Address   |   Type
 ---------------------------------------------
 END
 
@@ -394,7 +394,7 @@ CONFIGURING LVM PARTITIONS...
 Select an LVM group from the list below to create an LVM volume.
 END
     print <<END;
-#  |   LVM group   |   Devices   
+#  |   LVM group   |   Devices
 ---------------------------------
 END
 
@@ -481,7 +481,7 @@ END
 
                     # Show configuration
                     print <<END;
-Group      |   Volume   |    Mount   |   Size   
+Group      |   Volume   |    Mount   |   Size
 ---------------------------------------------
 END
 
@@ -621,7 +621,7 @@ exit();
     Arguments	: String
     Returns		: Trimmed string
     Example		: my $str = trim($str);
-    
+
 =cut
 
 #-------------------------------------------------------
@@ -647,7 +647,7 @@ sub trim {
     Arguments	: Dasd and partition hash
     Returns		: <dasd> section
     Example		: my $section = createDasd($dasd_ref, $partition_ref);
-    
+
 =cut
 
 #-------------------------------------------------------
@@ -816,7 +816,7 @@ END
     Arguments	: Interfaces hash
     Returns		: <interfaces> section
     Example		: my $section = createInterfaces($interfaces_ref);
-    
+
 =cut
 
 #-------------------------------------------------------
@@ -890,7 +890,7 @@ END
     Arguments	: Dasds and partition hash
     Returns		: <partitions> section
     Example		: my $section = createPartitions($dasd_ref, $partition_ref);
-    
+
 =cut
 
 #-------------------------------------------------------
@@ -1039,7 +1039,7 @@ END
     Arguments	: Hosts to be created
     Returns		: <hosts> section
     Example		: my $section = createHosts($hosts);
-    
+
 =cut
 
 #-------------------------------------------------------
@@ -1080,7 +1080,7 @@ END
     Arguments	: DNS
     Returns		: <dns> section
     Example		: my $section = createDns($dns);
-    
+
 =cut
 
 #-------------------------------------------------------
@@ -1122,7 +1122,7 @@ END
     Arguments	: Dasd hash
     Returns		: <modules> section
     Example		: my $section = createDasdModules($dasd_ref);
-    
+
 =cut
 
 #-------------------------------------------------------
@@ -1161,7 +1161,7 @@ END
     Arguments	: Interfaces hash
     Returns		: <modules> section
     Example		: my $section = createNicModules(%interfaces);
-    
+
 =cut
 
 #-------------------------------------------------------
@@ -1205,7 +1205,7 @@ END
     Arguments	: Software list
     Returns		: <software> section
     Example		: my $section = createSoftware($dns);
-    
+
 =cut
 
 #-------------------------------------------------------
@@ -1245,7 +1245,7 @@ END
     Arguments	: Interfaces hash
     Returns		: <routes> section
     Example		: my $section = createRoutes($route);
-    
+
 =cut
 
 #-------------------------------------------------------
@@ -1304,7 +1304,7 @@ END
     Arguments	: Interfaces hash
     Returns		: <scripts> section
     Example		: my $section = createScripts(%interfaces);
-    
+
 =cut
 
 #-------------------------------------------------------
@@ -1360,7 +1360,7 @@ END
     Arguments	: Question
     Returns		: Answer
     Example		: my $answer = ask("What day is today?");
-    
+
 =cut
 
 #-------------------------------------------------------
@@ -1380,7 +1380,7 @@ sub ask {
     Arguments	: String and size
     Returns		: Padded string
     Example		: my $str = pad($str, 12);
-    
+
 =cut
 
 #-------------------------------------------------------
@@ -1402,7 +1402,7 @@ sub pad {
     Arguments	: Nothing
     Returns		: SLES 11 autoyast template
     Example		: my $tmpl = genSles11Tmpl();
-    
+
 =cut
 
 #-------------------------------------------------------
@@ -1412,14 +1412,14 @@ sub genSles11Tmpl {
 <!DOCTYPE profile>
 <profile xmlns="http://www.suse.com/1.0/yast2ns" xmlns:config="http://www.suse.com/1.0/configns">
 
-  <!-- The dasd attached to the virtual server -->  
+  <!-- The dasd attached to the virtual server -->
   <dasd>
     <devices config:type="list">
-      insert_devices     
+      insert_devices
     </devices>
   </dasd>
-  
-  
+
+
   <general>
     <mode>
       <confirm config:type="boolean">false</confirm>
@@ -1429,8 +1429,8 @@ sub genSles11Tmpl {
     </mouse>
     <signature-handling/>
   </general>
-  
-  
+
+
   <!-- Groups to create on Linux -->
   <groups config:type="list">
     <group>
@@ -1613,29 +1613,29 @@ sub genSles11Tmpl {
       <userlist></userlist>
     </group>
   </groups>
-  
-  
+
+
   <!-- Contents of /etc/hosts -->
   <host>
     <hosts config:type="list">
       insert_hosts
     </hosts>
   </host>
-    
+
 
   <iscsi-client>
     <initiatorname></initiatorname>
     <targets config:type="list"/>
     <version>1.0</version>
   </iscsi-client>
-  
+
 
   <!-- Language setup (english) -->
   <language>
     <language>en_US</language>
     <languages></languages>
   </language>
-  
+
 
   <!-- Networking setup -->
   <networking>
@@ -1664,8 +1664,8 @@ sub genSles11Tmpl {
       </routes>
     </routing>
   </networking>
-  
-  
+
+
   <nis>
     <nis_broadcast config:type="boolean">false</nis_broadcast>
     <nis_broken_server config:type="boolean">false</nis_broken_server>
@@ -1679,14 +1679,14 @@ sub genSles11Tmpl {
     <start_autofs config:type="boolean">false</start_autofs>
     <start_nis config:type="boolean">false</start_nis>
   </nis>
-  
-  
+
+
   <!-- File system partitioning -->
   <partitioning config:type="list">
     insert_partitioning_drives
   </partitioning>
-    
-  
+
+
   <proxy>
     <enabled config:type="boolean">false</enabled>
     <ftp_proxy></ftp_proxy>
@@ -1696,8 +1696,8 @@ sub genSles11Tmpl {
     <proxy_password></proxy_password>
     <proxy_user></proxy_user>
   </proxy>
-  
-  
+
+
   <report>
     <errors>
       <log config:type="boolean">true</log>
@@ -1720,13 +1720,13 @@ sub genSles11Tmpl {
       <timeout config:type="integer">0</timeout>
     </yesno_messages>
   </report>
-  
-  
+
+
   <runlevel>
     <default>5</default>
   </runlevel>
-  
-  
+
+
   <!-- Software to install on Linux -->
   <software>
     <patterns config:type="list">
@@ -1736,15 +1736,15 @@ sub genSles11Tmpl {
       replace_software_packages
     </packages>
   </software>
-  
-  
+
+
   <!-- Time zone -->
   <timezone>
     <hwclock>UTC</hwclock>
     <timezone>US/Eastern</timezone>
   </timezone>
-  
-  
+
+
   <user_defaults>
     <expire></expire>
     <group>100</group>
@@ -2065,13 +2065,13 @@ AUTOYASTEND
       <username>sshd</username>
     </user>
   </users>
-  
-  
+
+
   <zfcp>
     <devices config:type="list"/>
   </zfcp>
-  
-  
+
+
   <!-- Scripts (post-script) -->
   <configure>
     <scripts>
@@ -2090,7 +2090,7 @@ AUTOYASTEND
     Arguments	: Nothing
     Returns		: SLES 10 autoyast template
     Example		: my $tmpl = genSles10Tmpl();
-    
+
 =cut
 
 #-------------------------------------------------------
@@ -2100,14 +2100,14 @@ sub genSles10Tmpl {
 <!DOCTYPE profile>
 <profile xmlns="http://www.suse.com/1.0/yast2ns" xmlns:config="http://www.suse.com/1.0/configns">
 
-  <!-- The dasd attached to the virtual server -->  
+  <!-- The dasd attached to the virtual server -->
   <dasd>
     <devices config:type="list">
-      insert_devices     
+      insert_devices
     </devices>
   </dasd>
-  
-  
+
+
   <general>
     <mode>
       <confirm config:type="boolean">false</confirm>
@@ -2117,8 +2117,8 @@ sub genSles10Tmpl {
     </mouse>
     <signature-handling/>
   </general>
-  
-  
+
+
   <!-- Groups to create on Linux -->
   <groups config:type="list">
     <group>
@@ -2301,29 +2301,29 @@ sub genSles10Tmpl {
       <userlist></userlist>
     </group>
   </groups>
-  
-  
+
+
   <!-- Contents of /etc/hosts -->
   <host>
     <hosts config:type="list">
       insert_hosts
     </hosts>
   </host>
-    
+
 
   <iscsi-client>
     <initiatorname></initiatorname>
     <targets config:type="list"/>
     <version>1.0</version>
   </iscsi-client>
-  
+
 
   <!-- Language setup (english) -->
   <language>
     <language>en_US</language>
     <languages></languages>
   </language>
-  
+
 
   <!-- Networking setup -->
   <networking>
@@ -2352,8 +2352,8 @@ sub genSles10Tmpl {
       </routes>
     </routing>
   </networking>
-  
-  
+
+
   <nis>
     <nis_broadcast config:type="boolean">false</nis_broadcast>
     <nis_broken_server config:type="boolean">false</nis_broken_server>
@@ -2367,14 +2367,14 @@ sub genSles10Tmpl {
     <start_autofs config:type="boolean">false</start_autofs>
     <start_nis config:type="boolean">false</start_nis>
   </nis>
-  
-  
+
+
   <!-- File system partitioning -->
   <partitioning config:type="list">
     insert_partitioning_drives
   </partitioning>
-    
-  
+
+
   <proxy>
     <enabled config:type="boolean">false</enabled>
     <ftp_proxy></ftp_proxy>
@@ -2384,8 +2384,8 @@ sub genSles10Tmpl {
     <proxy_password></proxy_password>
     <proxy_user></proxy_user>
   </proxy>
-  
-  
+
+
   <report>
     <errors>
       <log config:type="boolean">true</log>
@@ -2408,13 +2408,13 @@ sub genSles10Tmpl {
       <timeout config:type="integer">0</timeout>
     </yesno_messages>
   </report>
-  
-  
+
+
   <runlevel>
     <default>5</default>
   </runlevel>
-  
-  
+
+
   <!-- Software to install on Linux -->
   <software>
     <patterns config:type="list">
@@ -2424,15 +2424,15 @@ sub genSles10Tmpl {
       replace_software_packages
     </packages>
   </software>
-  
-  
+
+
   <!-- Time zone -->
   <timezone>
     <hwclock>UTC</hwclock>
     <timezone>US/Eastern</timezone>
   </timezone>
-  
-  
+
+
   <user_defaults>
     <expire></expire>
     <group>100</group>
@@ -2752,13 +2752,13 @@ AUTOYASTEND
       <username>sshd</username>
     </user>
   </users>
-  
-  
+
+
   <zfcp>
     <devices config:type="list"/>
   </zfcp>
-  
-  
+
+
   <!-- Scripts (post-script) -->
   <configure>
     <scripts>

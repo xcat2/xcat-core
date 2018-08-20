@@ -1,4 +1,4 @@
-#!/bin/sh 
+#!/bin/sh
 # pmatch determines if 1st argument string is matched by 2nd argument pattern
 
 pmatch ()
@@ -108,7 +108,7 @@ for nic in `ip link |grep "BROADCAST" |awk '{print $2}'   | sed s/://`; do
             broadcast_line=""
         fi
 
-        
+
         if [ ! -z "$defgw" ]; then
             gateway_line="gateway $defgw"
         else
@@ -167,7 +167,7 @@ EOF
         then
             sed -i '/NETMASK=/d' $NICFILE
         fi
-        echo NETMASK=$NETMASK >> $NICFILE    
+        echo NETMASK=$NETMASK >> $NICFILE
     fi
 
     #for netboot/statelite case, restart the network interface. For diskful installation, it is not necessary because the restart of the network  will happen at the first boot.

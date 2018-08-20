@@ -19,7 +19,7 @@ SYNOPSIS
 ********
 
 
-\ **zone Attributes:**\   \ *defaultzone*\ , \ *sshbetweennodes*\ , \ *sshkeydir*\ , \ *usercomment*\ , \ *zonename*\ 
+\ **zone Attributes:**\   \ *defaultzone*\ , \ *sshbetweennodes*\ , \ *sshkeydir*\ , \ *usercomment*\ , \ *zonename*\
 
 
 ***********
@@ -40,33 +40,33 @@ zone Attributes:
 
 
 \ **defaultzone**\  (zone.defaultzone)
- 
+
  If nodes are not assigned to any other zone, they will default to this zone. If value is set to yes or 1.
- 
+
 
 
 \ **sshbetweennodes**\  (zone.sshbetweennodes)
- 
+
  Indicates whether passwordless ssh will be setup between the nodes of this zone. Values are yes/1 or no/0. Default is yes.
- 
+
 
 
 \ **sshkeydir**\  (zone.sshkeydir)
- 
+
  Directory containing the shared root ssh RSA keys.
- 
+
 
 
 \ **usercomment**\  (zone.comments)
- 
+
  Any user-provided notes.
- 
+
 
 
 \ **zonename**\  (zone.zonename)
- 
+
  The name of the zone.
- 
+
 
 
 
@@ -75,5 +75,5 @@ SEE ALSO
 ********
 
 
-\ **mkdef(1)**\ , \ **chdef(1)**\ , \ **lsdef(1)**\ , \ **rmdef(1)**\ 
+\ **mkdef(1)**\ , \ **chdef(1)**\ , \ **lsdef(1)**\ , \ **rmdef(1)**\
 

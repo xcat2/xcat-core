@@ -119,9 +119,9 @@ foreach (@extSchema) {
 
 =head3  updateTables
 
-     It is called by xcatd to generate the user-defined tables 
-  if they do not exist, it also updates the tables if there is 
-  a schema change. 
+     It is called by xcatd to generate the user-defined tables
+  if they do not exist, it also updates the tables if there is
+  a schema change.
 
 
 =cut
@@ -141,14 +141,14 @@ sub updateTables
 
 #--------------------------------------------------------------------------
 
-=head3   
+=head3
     Note this is a copy of the one in Table.pm but we cannot use any of the
     xCAT perl libraries in this routine,since the function was done in the
     Begin block.
-    Description: get_filelist 
+    Description: get_filelist
 
     Arguments:
-             directory,filelist,type 
+             directory,filelist,type
     Returns:
             The list of sql files to be processed which consists of all the
 			files with <name>.sql  and <name>_<databasename>.sql
@@ -228,15 +228,15 @@ sub get_filelist
 
 #--------------------------------------------------------------------------
 
-=head3   
+=head3
 
     Note this is a copy of the one in Table.pm but we cannot use any of the
     xCAT perl libraries in this routine,since the function was done in the
 
-    Description: get_xcatcfg 
+    Description: get_xcatcfg
 
     Arguments:
-              none 
+              none
     Returns:
               the database name from /etc/xcat/cfgloc or sqlite
     Globals:

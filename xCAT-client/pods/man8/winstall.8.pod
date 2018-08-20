@@ -15,7 +15,7 @@ B<winstall> [B<-h>|B<--help>|B<-v>|B<--version>]
 B<winstall> is a convenience command to begin OS provision on a noderange.
 
 If B<osimage>=I<imagename> | I<imagename> is specified or nodetype.provmethod=B<osimage> is set, provision the noderange with the osimage specified/configured.
- 
+
 It  will then run B<wcons> on the noderange.
 
 =head1 B<Options>
@@ -28,7 +28,7 @@ Instruct network boot loader to be skipped, generally meaning boot to hard disk
 
 =item I<imagename> | B<osimage=>I<imagename>
 
-Prepare server for installing a node using the specified os image. The os image is defined in the I<osimage> table and I<linuximage> table. If the I<imagename> is omitted, the os image name will be obtained from I<nodetype.provmethod> for the node.  
+Prepare server for installing a node using the specified os image. The os image is defined in the I<osimage> table and I<linuximage> table. If the I<imagename> is omitted, the os image name will be obtained from I<nodetype.provmethod> for the node.
 
 =item B<--ignorekernelchk>
 
@@ -36,7 +36,7 @@ Skip the kernel version checking when injecting drivers from osimage.driverupdat
 
 =item B<runimage=>I<task>
 
-If you would like to run a task after deployment, you can define that task with this attribute.    
+If you would like to run a task after deployment, you can define that task with this attribute.
 
 =item B<runcmd=bmcsetup>
 
@@ -49,19 +49,19 @@ The node will also be able to be sshed into and have utilities such as wget, tft
 
 =item B<-h>|B<--help>
 
-Display usage message. 
+Display usage message.
 
 =item B<-v>|B<--version>
 
-Display version. 
+Display version.
 
 =item B<-u>|B<--uefimode>
 
-For BMC-based servers, to specify the next boot mode to be "UEFI Mode". 
+For BMC-based servers, to specify the next boot mode to be "UEFI Mode".
 
 =item B<-V>|B<--verbose>
 
-Verbose output. 
+Verbose output.
 
 =back
 
@@ -80,7 +80,7 @@ Provision nodes 1 through 20 with the osimage rhels6.4-ppc64-netboot-compute.
 
  winstall node1-node20 osimage=rhels6.4-ppc64-netboot-compute
 
-=back 
+=back
 
 =head1 B<See> B<Also>
 

@@ -7,16 +7,16 @@
 =head1   confignimsh
 
 	This sample customization script can be used to automatically configure
-	the NIM nimsh (NIM service handler).  It will also configure NIMSH to 
+	the NIM nimsh (NIM service handler).  It will also configure NIMSH to
 	use OpenSSL in the NIM environment.
 
-	It assumes that the openssl software has already been installed on the 
+	It assumes that the openssl software has already been installed on the
 	node.
 
-	This script also assumes that you have run "nimconfig -c" on the NIM 
-	master for the nodes.  
+	This script also assumes that you have run "nimconfig -c" on the NIM
+	master for the nodes.
 
-	This script should only be run on AIX standalone (diskfull) cluster compute 
+	This script should only be run on AIX standalone (diskfull) cluster compute
 	nodes. It should NOT be run on the xCAT management node, service nodes or
 	diskless nodes.
 

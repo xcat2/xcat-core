@@ -44,7 +44,7 @@ sub handled_commands {
       }
 }
 
-=head3 findme 
+=head3 findme
     Handle the request form node to map and define the request to a node
 =cut
 
@@ -418,7 +418,7 @@ sub findme {
     xCAT::MsgUtils->message("S", "Sequential Discovery: Done");
 }
 
-=head3 displayver 
+=head3 displayver
     Display the version information
 =cut
 
@@ -432,7 +432,7 @@ sub displayver {
     xCAT::MsgUtils->message("I", $rsp, $callback);
 }
 
-=head3 nodediscoverstart 
+=head3 nodediscoverstart
  Initiate the sequencial discovery process
 =cut
 
@@ -451,9 +451,9 @@ sub nodediscoverstart {
         }
 
         my $usageinfo = "nodediscoverstart: Start a discovery process: Sequential, Profile or z/VM.
-Usage: 
+Usage:
     Common:
-        nodediscoverstart [-h|--help|-v|--version|-V|--verbose] 
+        nodediscoverstart [-h|--help|-v|--version|-V|--verbose]
     Sequential Discovery:
         nodediscoverstart noderange=<noderange> [hostiprange=<hostiprange>] [bmciprange=<bmciprange>] [groups=<groups>] [rack=<rack>] [chassis=<chassis>] [height=<height>] [unit=<unit>] [osimage=<osimagename>] [-n|--dns] [-s|--skipbmcsetup] [-V|--verbose]
     Profile Discovery:
@@ -696,7 +696,7 @@ Usage:
 }
 
 
-=head3 nodediscoverstop 
+=head3 nodediscoverstop
  Stop the sequencial discovery process
 =cut
 
@@ -716,7 +716,7 @@ sub nodediscoverstop {
         }
 
         my $usageinfo = "nodediscoverstop: Stop the running discovery: Profile, Sequential and z/VM.
-Usage: 
+Usage:
     Common:
         nodediscoverstop [-h|--help|-v|--version]
     z/VM discovery:
@@ -809,7 +809,7 @@ Usage:
     $sitetab->commit();
 }
 
-=head3 nodediscoverls 
+=head3 nodediscoverls
  Display the discovered nodes.  This supports sequential and z/VM and partially Profile discovery.
 =cut
 
@@ -829,10 +829,10 @@ sub nodediscoverls {
 
         my $usageinfo = "nodediscoverls: list the discovered nodes.
 Usage:
-    Common: 
+    Common:
     nodediscoverls
-    nodediscoverls [-h|--help|-v|--version] 
-    nodediscoverls [-t seq|profile|switch|blade|manual|mtms|undef|zvm|all] [-l] 
+    nodediscoverls [-h|--help|-v|--version]
+    nodediscoverls [-t seq|profile|switch|blade|manual|mtms|undef|zvm|all] [-l]
     nodediscoverls [-u uuid] [-l]
     z/VM:
         nodediscoverls [-t zvm][-z|--zvmhost <noderange>] [-l]";
@@ -900,7 +900,7 @@ Usage:
         # zvmdiscovery handles request specific to z/VM.
         return;
     }
-    
+
     my $DBname = xCAT::Utils->get_DBName;    # support for DB2
     # Go through discoverydata table and display the discovery entries
     my $distab = xCAT::Table->new('discoverydata');
@@ -972,7 +972,7 @@ Usage:
 }
 
 
-=head3 nodediscoverstatus 
+=head3 nodediscoverstatus
  Display the discovery status
 =cut
 
@@ -1072,7 +1072,7 @@ sub nodediscoverdef {
         }
 
         my $usageinfo = "nodediscoverdef: Define the undefined discovery request, or clean the discovery entries in the discoverydata table (Which can be displayed by nodediscoverls command).
-Usage: 
+Usage:
     Common:
     nodediscoverdef -u uuid -n node
     nodediscoverdef -r -u uuid
@@ -1125,7 +1125,7 @@ Usage:
             my @hosts = split( /,/, $zvmHost );
             foreach $zvmHost ( @hosts ) {
                 if ( !$zvmHost ) {
-                    # Tolerate zvmhost value beginning with a comma.  
+                    # Tolerate zvmhost value beginning with a comma.
                     # It is wrong but not worth an error message.
                     next;
                 }
@@ -1134,7 +1134,7 @@ Usage:
         } else {
             push( @inputZvmHosts, $zvmHost );
         }
-    } 
+    }
 
          # open the discoverydata table for the subsequent using
     my $distab = xCAT::Table->new("discoverydata");
@@ -1361,7 +1361,7 @@ sub process_request {
     }
 }
 
-=head3 getfreenodes 
+=head3 getfreenodes
  Get the free nodes base on the user specified noderange and defined nodes
  arg1 - the noderange
  arg2 - "all': return all the free nodes; otherwise just return one.
@@ -1417,7 +1417,7 @@ sub getfreenodes () {
 
 =head3 getpredefips
  Get the ips which have been predefined to host or bmc
- arg1 - a refenrece to the array of nodes 
+ arg1 - a refenrece to the array of nodes
  arg2 - type: host, bmc
 
  return: hash {ip} = node
@@ -1503,7 +1503,7 @@ sub getpredefips {
     return \%predefips;
 }
 
-=head3 getfreeips 
+=head3 getfreeips
  Get the free ips base on the user specified ip range
  arg1 - the ip range. Two format are suported: 192.168.1.1-192.168.2.50; 192.168.[1-2].[10-100]
  arg2 - all the free nodes
@@ -1650,7 +1650,7 @@ sub getfreeips {
     }
 }
 
-=head3 getbmcip_otherinterfaces 
+=head3 getbmcip_otherinterfaces
  Parse the value in the hosts.otherinterfaces
  arg1 - node
  arg2 - bmc name

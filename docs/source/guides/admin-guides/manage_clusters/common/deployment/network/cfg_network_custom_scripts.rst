@@ -26,5 +26,5 @@ If using customized script to configure NIC, ``niccustomscripts`` for the specif
 
   #. Use ``xdsh cn1 "ip addr show eth1"`` to check the NIC
 
-  #. Check ``ifcfg-eth1`` under ``/etc/sysconfig/network-scripts/`` 
+  #. Check ``ifcfg-eth1`` under ``/etc/sysconfig/network-scripts/``
 

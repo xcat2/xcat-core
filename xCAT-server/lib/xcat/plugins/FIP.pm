@@ -481,7 +481,7 @@ sub swapnodes
 
 #----------------------------------------------------------------------------
 
-=head3  swapnodes_usage 
+=head3  swapnodes_usage
 
         Arguments:
         Returns:

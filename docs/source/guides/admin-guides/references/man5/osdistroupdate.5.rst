@@ -19,7 +19,7 @@ SYNOPSIS
 ********
 
 
-\ **osdistroupdate Attributes:**\   \ *osupdatename*\ , \ *osdistroname*\ , \ *dirpath*\ , \ *downloadtime*\ , \ *comments*\ , \ *disable*\ 
+\ **osdistroupdate Attributes:**\   \ *osupdatename*\ , \ *osdistroname*\ , \ *dirpath*\ , \ *downloadtime*\ , \ *comments*\ , \ *disable*\
 
 
 ***********
@@ -36,40 +36,40 @@ osdistroupdate Attributes:
 
 
 
-\ **osupdatename**\ 
- 
+\ **osupdatename**\
+
  Name of OS update. (e.g. rhn-update1)
- 
 
 
-\ **osdistroname**\ 
- 
+
+\ **osdistroname**\
+
  The OS distro name to update. (e.g. rhels)
- 
 
 
-\ **dirpath**\ 
- 
+
+\ **dirpath**\
+
  Path to where OS distro update is stored. (e.g. /install/osdistroupdates/rhels6.2-x86_64-20120716-update)
- 
 
 
-\ **downloadtime**\ 
- 
+
+\ **downloadtime**\
+
  The timestamp when OS distro update was downloaded..
- 
 
 
-\ **comments**\ 
- 
+
+\ **comments**\
+
  Any user-written notes.
- 
 
 
-\ **disable**\ 
- 
+
+\ **disable**\
+
  Set to 'yes' or '1' to comment out this row.
- 
+
 
 
 
@@ -78,5 +78,5 @@ SEE ALSO
 ********
 
 
-\ **nodels(1)**\ , \ **chtab(8)**\ , \ **tabdump(8)**\ , \ **tabedit(8)**\ 
+\ **nodels(1)**\ , \ **chtab(8)**\ , \ **tabdump(8)**\ , \ **tabedit(8)**\
 

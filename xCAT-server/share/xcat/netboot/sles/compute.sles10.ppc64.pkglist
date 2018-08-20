@@ -1,8 +1,8 @@
 aaa_base
-bash 
+bash
 nfs-utils
 openssl
-dhcpcd 
+dhcpcd
 kernel-ppc64
 openssh
 procps

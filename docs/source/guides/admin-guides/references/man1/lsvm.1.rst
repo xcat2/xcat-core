@@ -19,35 +19,35 @@ SYNOPSIS
 ********
 
 
-\ **lsvm**\  [\ **-h**\ | \ **-**\ **-help]**\ 
+\ **lsvm**\  [\ **-h**\ | \ **-**\ **-help]**\
 
 \ **lsvm**\  [\ **-v**\ | \ **-**\ **-version**\ ]
 
-\ **lsvm**\  [\ **-V**\ | \ **-**\ **-verbose**\ ] \ *noderange*\ 
+\ **lsvm**\  [\ **-V**\ | \ **-**\ **-verbose**\ ] \ *noderange*\
 
-\ **lsvm**\  [\ **-a**\ | \ **-**\ **-all**\ ] \ *noderange*\ 
+\ **lsvm**\  [\ **-a**\ | \ **-**\ **-all**\ ] \ *noderange*\
 
 For PPC (using Direct FSP Management):
 ======================================
 
 
-\ **lsvm**\  [\ **-l**\ | \ **-**\ **-long**\ ] \ **-**\ **-p775**\  \ *noderange*\ 
+\ **lsvm**\  [\ **-l**\ | \ **-**\ **-long**\ ] \ **-**\ **-p775**\  \ *noderange*\
 
-\ **lsvm**\  \ *noderange*\ 
+\ **lsvm**\  \ *noderange*\
 
 
 For KVM and VMware
 ==================
 
 
-\ **lsvm**\  \ *noderange*\ 
+\ **lsvm**\  \ *noderange*\
 
 
 For zVM:
 ========
 
 
-\ **lsvm**\  \ *noderange*\ 
+\ **lsvm**\  \ *noderange*\
 
 
 
@@ -70,12 +70,12 @@ The pump mode value has the valid options:
   1 - Node Pump Mode
   2 - Chip Pump Mode
 
-The Memory Interleaving Mode has 3 valid options: 
+The Memory Interleaving Mode has 3 valid options:
   0 - not Applicable
   1 - interleaved
   2 - non-interleaved
 
-More information about this part, refer to the section Using the \*vm commands to define partitions in xCAT DFM  in the doc below. 
+More information about this part, refer to the section Using the \*vm commands to define partitions in xCAT DFM  in the doc below.
   XCAT_Power_775_Hardware_Management
 
 
@@ -101,27 +101,27 @@ OPTIONS
 *******
 
 
-\ **-h**\ 
+\ **-h**\
 
 Display usage message.
 
-\ **-v**\ 
+\ **-v**\
 
 Command version.
 
-\ **-V**\ 
+\ **-V**\
 
 Verbose output.
 
-\ **-a**\ 
+\ **-a**\
 
 List all the profiles for one partition
 
-\ **-**\ **-p775**\ 
+\ **-**\ **-p775**\
 
 Specify the operation is for Power 775 machines.
 
-\ **-l**\ 
+\ **-l**\
 
 Show lparnames for lpars. It shall work with option \ **-**\ **-p775**\ .
 

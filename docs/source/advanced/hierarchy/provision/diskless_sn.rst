@@ -67,7 +67,7 @@ When you run ``copycds``, xCAT will only create a Service Node stateful osimage 
 
   If you would like to change any of these files, copy them to a custom
   directory. This can be any directory you choose, but we recommend that you
-  keep it /install somewhere. A good location is something like ``/install/custom/netboot/<osimage>``. 
+  keep it /install somewhere. A good location is something like ``/install/custom/netboot/<osimage>``.
 
   ::
 
@@ -172,8 +172,8 @@ When you run ``copycds``, xCAT will only create a Service Node stateful osimage 
   If you installed your management node directly from the online
   repository, you will need to download the ``xcat-core`` and ``xcat-dep`` tarballs
 
-  - From http://xcat.org/download.html, download the ``xcat-core`` and ``xcat-dep`` tarball files.  
-    Copy these into a subdirectory in the ``otherpkgdir`` directory. 
+  - From http://xcat.org/download.html, download the ``xcat-core`` and ``xcat-dep`` tarball files.
+    Copy these into a subdirectory in the ``otherpkgdir`` directory.
 
     ::
 
@@ -184,9 +184,9 @@ When you run ``copycds``, xCAT will only create a Service Node stateful osimage 
       cd /install/post/otherpkgs/rhels7.3/ppc64le
       mkdir xcat
       cd xcat
-      
+
       # copy the <xcat-core> and <xcat-deb> tarballs here
-      
+
       # extract the tarballs
       tar -jxvf <xcat-core>.tar.bz2
       tar -jxvf <xcat-dep>.tar.bz2

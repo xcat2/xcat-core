@@ -17,7 +17,7 @@ There are 3 ways to complete this operation.
 
     # mkdef cn1 groups=all nicips.eth1="11.1.89.7|12.1.89.7" nicnetworks.eth1="net11|net12" nictypes.eth1="Ethernet"
     1 object definitions have been created or modified.
-    
+
     # chdef cn1 nicips.eth2="13.1.89.7|14.1.89.7" nicnetworks.eth2="net13|net14" nictypes.eth2="Ethernet"
     1 object definitions have been created or modified.
 
@@ -45,9 +45,9 @@ There are 3 ways to complete this operation.
 
 3. Using ``tabedit`` to edit the ``nics`` database table directly
 
-   The ``tabedit`` command opens the specified xCAT database table in a vi like editor and allows the user to edit any text and write the changes back to the database table. 
+   The ``tabedit`` command opens the specified xCAT database table in a vi like editor and allows the user to edit any text and write the changes back to the database table.
 
-   *WARNING:* Using the ``tabedit`` command is not the recommended method because it is tedious and error prone. 
+   *WARNING:* Using the ``tabedit`` command is not the recommended method because it is tedious and error prone.
 
    After changing the content of the ``nics`` table, here is the result from ``tabdump nics`` ::
 
@@ -84,8 +84,8 @@ Option "-s" writes the install nic's information into configuration file for per
 Add network object into the networks table
 ------------------------------------------
 
-The ``nicnetworks`` attribute only defines the nic that uses the IP address.  
-Other information about the network should be defined in the ``networks`` table.  
+The ``nicnetworks`` attribute only defines the nic that uses the IP address.
+Other information about the network should be defined in the ``networks`` table.
 
 Use the ``tabedit`` command to add/modify the networks in the``networks`` table ::
 
@@ -100,7 +100,7 @@ Use the ``tabedit`` command to add/modify the networks in the``networks`` table 
 Option -r to remove the undefined NICS
 --------------------------------------
 
-If the compute node's nics were configured by ``confignics`` and the nics configuration changed in the nics table, user the ``confignics -r`` to remove the undefined nic.  
+If the compute node's nics were configured by ``confignics`` and the nics configuration changed in the nics table, user the ``confignics -r`` to remove the undefined nic.
 
 For example, if on a compute node the ``eth0``, ``eth1``, and ``eth2`` nics were configured: ::
 
@@ -112,7 +112,7 @@ For example, if on a compute node the ``eth0``, ``eth1``, and ``eth2`` nics were
     eth2      Link encap:Ethernet  HWaddr 00:14:5e:d9:6c:e8
     ...
 
-Delete the eth2 definition in nics table using the ``chdef`` command. 
+Delete the eth2 definition in nics table using the ``chdef`` command.
 Then run the following to remove the undefined ``eth2`` nic on the compute node: ::
 
     updatenode <noderange> -P "confignics -r"

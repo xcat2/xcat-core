@@ -39,65 +39,65 @@ OPTIONS
 
 
 
-\ **-a|-**\ **-all**\ 
- 
+\ **-a|-**\ **-all**\
+
  Clear the whole xCAT database. A backup of the xCAT definitions should be saved before using this option as the xCAT daemons will no longer work once cleared.
- 
+
  To restore:
- 
- 
+
+
  1. \ **export XCATBYPASS=1**\  and run the \ **restorexCATdb**\  command.
-  
+
   or
-  
- 
- 
+
+
+
  2. Run \ **xcatconfig -d**\  which initializes the database the same as when xCAT was installed.
- 
- 
- 
 
 
-\ **-f|-**\ **-force**\ 
- 
+
+
+
+\ **-f|-**\ **-force**\
+
  Use this with the \ **-**\ **-all**\  option as an extra indicator that ALL definitions are to be removed.
- 
 
 
-\ **-h|-**\ **-help**\ 
- 
+
+\ **-h|-**\ **-help**\
+
  Display a usage message.
- 
 
 
-\ *noderange*\ 
- 
+
+\ *noderange*\
+
  A set of comma delimited node names and/or group names. See the "noderange" man page for details on supported formats.
- 
 
 
-\ **-o**\  \ *object-names*\ 
- 
+
+\ **-o**\  \ *object-names*\
+
  A set of comma delimited object names.
- 
 
 
-\ **-t**\  \ *object-types*\ 
- 
+
+\ **-t**\  \ *object-types*\
+
  A set of comma delimited object types.
- 
 
 
-\ **-C|-**\ **-cleanup**\ 
- 
+
+\ **-C|-**\ **-cleanup**\
+
  Perform additional cleanup by running \ **nodeset offline**\ , \ **makeconservercf -d**\  and \ **makegocons -**\ **-cleanup**\  on the objects specified in the \ *noderange*\ .
- 
 
 
-\ **-V|-**\ **-verbose**\ 
- 
+
+\ **-V|-**\ **-verbose**\
+
  Verbose mode.
- 
+
 
 
 
@@ -118,35 +118,35 @@ EXAMPLES
 
 
 1. To remove a range of node definitions.
- 
- 
+
+
  .. code-block:: perl
- 
+
    rmdef -t node node1-node4
- 
- 
+
+
 
 
 2. To remove all node definitions for the nodes contained in the group bpcnodes.
- 
- 
+
+
  .. code-block:: perl
- 
+
    rmdef -t node -o bpcnodes
- 
- 
+
+
 
 
 3. To remove the group called bpcnodes.
- 
- 
+
+
  .. code-block:: perl
- 
+
    rmdef -t group -o bpcnodes
- 
- 
+
+
  (This will also update the values of the "groups" attribute of the member nodes.)
- 
+
 
 
 

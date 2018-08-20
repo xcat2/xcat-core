@@ -58,7 +58,7 @@ $::USAGE = "Usage:
 
 To get help:
     $program_name -h
-    
+
 To just test the process of bmc discovery
     $program_name  --discovery_target_node <node_name> --bmc_dynamic_ip_range <ip_range> --bmc_discovery_only
 
@@ -74,7 +74,7 @@ Options:
     discovery_mode: The mode of discovery. Valid mode are mtms or switch. Used with option 'osimage'. Can not be used with 'bmc_discovery_only' at the same time.
     osimage: The image used to deploy on target node. Used with option 'discovery_mode'. Can not be used with option 'bmc_discovery_only' at the same time.
     bmc_discovery_only: Just test bmc discovery process, not test node discovery process. Can not be used with option 'osimage' or 'discovery_mode' at the same time.
-    
+
 Notes:
     Up to now, only support one discovery_target_node.
     When preparing discovery_target_node, below atrributes are required for each test scenario.
@@ -109,7 +109,7 @@ if ($needhelp)
 unless(defined $discovery_target_node and defined $bmc_dynamic_ip_range){
     print "[ERROR] options 'discovery_target_node' and 'bmc_dynamic_ip_range' are required.\n\n$::USAGE";
     to_exit(1);
-} 
+}
 
 if($bmc_discovery_only){
     if($discovery_mode or $osimage){
@@ -288,7 +288,7 @@ sub check_test_case_self_conf {
         }else{
              push @$error_ref, "The ip $discovery_target_node_info{bmc} corresponds to $bmcinfo{mtm}|$bmcinfo{serial}, not to expected $discovery_target_node_info{mtm}|$discovery_target_node_info{serial}";
         }
-    
+
         unless(defined $bmc_target_mac){
             push @$error_ref, "Failed to calculate bmc's mac";
         }
@@ -630,7 +630,7 @@ sub node_discovery {
         }
     }
 
-    print "Waiting for node $discovery_prodefine_node_name_in_automation be discoveried\n"; 
+    print "Waiting for node $discovery_prodefine_node_name_in_automation be discoveried\n";
 
     #suppose discovery process should get MAC address for predined node in 10 minuts
     my $find_me_succ = 0;
@@ -809,7 +809,7 @@ sub parse_dynamic_ip_range {
 
 }
 #--------------------------------------------------------
-# Fuction name: calculate_bmc_info 
+# Fuction name: calculate_bmc_info
 # Description:
 # Atrributes:
 # Retrun code:

@@ -11,3 +11,4 @@ The information in this document should be viewed as example data only. Many of 
    linux_os_tuning.rst
    xcatd_tuning.rst
    database_tuning.rst
+   httpd_tuning.rst

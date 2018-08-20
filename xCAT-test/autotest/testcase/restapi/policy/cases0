@@ -1,6 +1,6 @@
 start:get_policy_all
 description: get_policy_all
-cmd:restapitest -m GET -r /policy 
+cmd:restapitest -m GET -r /policy
 check:rc==200
 cmdcheck:restapitest -o '["1"]' -O ==
 end

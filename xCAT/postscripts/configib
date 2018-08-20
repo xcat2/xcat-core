@@ -1,4 +1,4 @@
-#!/bin/bash 
+#!/bin/bash
 # IBM(c) 2013 EPL license http://www.eclipse.org/legal/epl-v10.html
 # Internal script used by confignics only
 # xCAT post script for configuring ib adapters.
@@ -7,7 +7,7 @@
 # NIC_IBNICS=ib0,ib1
 # NIC_IBAPORTS=1 (or 2)
 # OSVER=sles11.1
-# NICNODE=dxm360m4n04 
+# NICNODE=dxm360m4n04
 # NICIPS='eth0!10.1.34.242,ib1!15.0.1.242,ib2!15.0.2.242'
 # NICHOSTNAMESUFFIXES='eth1!-eth1,ib1!-ib1,ib2!-ib2'
 # NICTYPES='eth1!ethernet,ib1!infiniband,ib2!infiniband'
@@ -60,7 +60,7 @@ convert_netmask_to_cidr() {
     IFS=$OLDIFS
     echo $cidrnum
 }
- 
+
 
 
 #if $NIC_IBNICS is not defined, all ib nics' configuration files will be deleted.
@@ -71,7 +71,7 @@ fi
 
 #find correct IB driver
 PLTFRM=`uname`
-if [[ $OSVER == rhels5*  || "$OSVER" == rhels6* || "$OSVER" == ubuntu14* ]] 
+if [[ $OSVER == rhels5*  || "$OSVER" == rhels6* || "$OSVER" == ubuntu14* ]]
 then
     ib_driver="rdma"
     #/sbin/service $ib_driver status
@@ -89,7 +89,7 @@ then
             logger -p local4.info -t xcat "Not found the driver dameon: rdma or openibd"
             exit
         fi
-    fi   
+    fi
 else
     ib_driver="openibd"
 fi
@@ -102,7 +102,7 @@ then
     then
         md5f1=$(md5sum /etc/rdma/rdma.conf |cut -d' ' -f1)
         TMP1=`sed "s/SDP_LOAD=yes/SDP_LOAD=no/g" /etc/rdma/rdma.conf`
-	echo "$TMP1" > /etc/rdma/rdma.conf 
+	echo "$TMP1" > /etc/rdma/rdma.conf
         md5f2=$(md5sum /etc/rdma/rdma.conf |cut -d' ' -f1)
         if [ "$md5f2" != "$md5f1" ]; then
             restart_ib_driver=1
@@ -135,7 +135,7 @@ then
     #/sbin/chkconfig --level 2345 $ib_driver on > /dev/null 2>&1
     enableservice $ib_driver > /dev/null 2>&1
     #/sbin/service $ib_driver restart
-    #restartservice $ib_driver 
+    #restartservice $ib_driver
     sysctl -p > /dev/null 2>&1
 fi
 
@@ -149,7 +149,7 @@ then
     then
         OS_name="suse"
     elif [ -f /etc/os-release ] && cat /etc/os-release |grep NAME|grep Ubuntu>/dev/null
-	then 
+	then
         OS_name="ubuntu"
     else
         echo "Unsupported to config IB on this OS!"
@@ -157,7 +157,7 @@ then
         exit
     fi
 	
-    if [ $OS_name != 'ubuntu' ]; then  
+    if [ $OS_name != 'ubuntu' ]; then
         if [ $OS_name == 'suse' ]
         then
             dir="/etc/sysconfig/network"
@@ -172,20 +172,20 @@ then
             rm -f $dir/ifcfg-$nic 2>&1 1>/dev/null
         done
 
-        else  
+        else
             interfaces="/etc/network/interfaces"
 
             for tmp  in `sed -n "/auto ib/=" ${interfaces}`
-            do 
+            do
                 startline=`sed -n "/auto ib/=" ${interfaces}|  head -n 1`
                 endline=`sed -n "$startline,/^auto/p" ${interfaces} |wc -l`
-    
+
                 if sed -n "$startline,/^auto/p" ${interfaces} |sed '$!d' |grep "auto" >/dev/null;then
                     endline=`expr $startline + $endline - 2`
                 else
                     endline=`expr $startline + $endline - 1`
                 fi
-    
+
                 ((startline--))
                 temp=`sed -n ${startline}p ${interfaces}`
                 while [[ $temp =~ ^# ]]
@@ -194,7 +194,7 @@ then
                     temp=`sed -n ${startline}p ${interfaces}`
                 done
     		    ((startline++))
-    
+
                 temp=`sed -n ${endline}p ${interfaces}`
                 while [[ $temp =~ ^# ]]
                 do
@@ -210,7 +210,7 @@ else
     num=0
     while [ $num -lt $loop_number ]
     do
-	 if [ "$portnum" == "2" ]; then 
+	 if [ "$portnum" == "2" ]; then
              num0=`expr $num \* 2`
              num1=`expr $num0 + 1`
              `rmdev -d -l ib$num0 >/dev/null 2>&1`
@@ -228,8 +228,8 @@ else
              num=`expr $num + 1`
 	 fi
     done
-    
-    `rmdev -dl icm >/dev/null 2>&1`  
+
+    `rmdev -dl icm >/dev/null 2>&1`
 
     #restart the managers
     mkdev -c management -s infiniband -t icm
@@ -240,8 +240,8 @@ fi
 
 goodnics=""
 for nic in `echo "$NIC_IBNICS" | tr "," "\n"`
-do 
-    #Get nic ips 
+do
+    #Get nic ips
     nicips=""
     for tmp in `echo "$NICIPS" | tr "," "\n"`
     do
@@ -253,7 +253,7 @@ do
         fi
     done
    # echo "nic=$nic, nicip=$nicip"
-    
+
    #get nic networks name
    nicnets=""
    for tmp in `echo "$NICNETWORKS" | tr "," "\n"`
@@ -266,12 +266,12 @@ do
        fi
    done
    #echo "nic=$nic, nicnet=$nicnet"
-   
+
    if [ -z "$nicnets" ]; then
        echo "No network defined for $nic"
        logger -p local4.info -t xcat "No network defined for $nic"
        continue
-   fi   
+   fi
 
    unset array_nic_params
    unset array_extra_param_names
@@ -310,22 +310,22 @@ do
                            break;
                        fi
                    ;;
-                  net)  
+                  net)
                       net=`echo "$tmp" | awk -F"=" '{print $2}'`
                   ;;
-                  mask) 
+                  mask)
                        netmask=`echo "$tmp" | awk -F"=" '{print $2}'`
                        # remove the prefix "/" from ipv6 mask
                        if echo $netmask | grep "/" 2>&1 1>/dev/null
                        then
                            netmask=`echo $netmask | awk -F'/' '{print $2}'`
                        fi
-                  ;; 
-                  gateway) 
+                  ;;
+                  gateway)
                        gateway=`echo "$tmp" | awk -F"=" '{print $2}'`
                        found=1
                   ;;
-                 esac 
+                 esac
                  if [ $found -eq 1 ]; then
                     break;
                  fi
@@ -360,12 +360,12 @@ do
 	   if [ ${#array_nic_params[@]} -gt 0 ]; then
 		   str_extra_params=${array_nic_params[$ipindex-1]}
 		   parse_nic_extra_params "$str_extra_params"
-	   fi 
+	   fi
 
        if [ $PLTFRM == "Linux" ]
        then
            # Issue openibd for Linux at boot time
-       
+
            if [ -f /etc/sysctl.conf ]
            then
                TMP1=`sed "/net.ipv4.conf.$nic.arp_filter=1/d" /etc/sysctl.conf`
@@ -385,10 +385,10 @@ do
                    echo "net.ipv4.conf.$nic.arp_ignore=1" >> /etc/sysctl.conf
                fi
            fi
-           
+
            if [ $OS_name == 'suse' ]
            then
-               # First ip address 
+               # First ip address
                if [ $ipindex -eq 1 ]
                then
                    # Write the info to the ifcfg file
@@ -452,7 +452,7 @@ IPADDR_$ipindex=$nicip" >> $dir/ifcfg-$nic
                 fi # end if [ $ipindex -eq 1 ]
             elif [ $OS_name == 'redhat' ]
             then
-               # First ip address 
+               # First ip address
                if [ $ipindex -eq 1 ]
                then
                    # Write the info to the ifcfg file
@@ -544,7 +544,7 @@ IPADDR=$nicip" > $dir/ifcfg-$nic:$ipindex
                 fi # end not the first ip address
             elif [ $OS_name == 'ubuntu' ]
             then
-                # First ip address 
+                # First ip address
                 if [ $ipindex -eq 1 ]; then
                     # ipv6
                     if echo $nicip | grep : 2>&1 1>/dev/null
@@ -558,7 +558,7 @@ netmask $netmask" >> /etc/network/interfaces
                             echo "gateway $gateway" >> /etc/network/interfaces
                         fi
                     # ipv4		
-                    else  
+                    else
                         # Write the info to the ifcfg file
                         echo "auto $nic
 iface $nic inet static
@@ -569,7 +569,7 @@ netmask $netmask" >> /etc/network/interfaces
                         #    echo "gateway $gateway" >> /etc/network/interfaces
                         #fi
                     fi
-                else   # Not the first ip address 
+                else   # Not the first ip address
                     # ipv6
                     if echo $nicip | grep : 2>&1 1>/dev/null
                     then
@@ -620,14 +620,14 @@ netmask $netmask" >> /etc/network/interfaces
                logger -p local4.info -t xcat "$mltnum is not available."
                continue
            fi
-       
+
            #Check whether the ml0 is available
            lsdev -C | grep $nic 2>&1 >/dev/null
            if [ $? -ne 0 ]
            then
                cfgmgr 2>&1 >/dev/null
            fi
-       
+
            chdev -l $nic -a state=detach 2>&1
            chdev -l $nic -a netaddr=$nicip -a netmask=$netmask -a state=up 2>&1
            else #assume it is ib*
@@ -644,10 +644,10 @@ netmask $netmask" >> /etc/network/interfaces
                #        fi
                #    fi
                # fi
-       
+
                #Configure the IB interfaces.  Customize the port num.
                num=${nic##ib}   #this assumes that all the nics starts with 'ib'
-               if [ "$portnum" == "1" ]; then 
+               if [ "$portnum" == "1" ]; then
                    iba_num=$num
                    ib_adapter="iba$iba_num"
                    port=1
@@ -684,23 +684,23 @@ then
             restartservice $ib_driver
     fi
     for nic in `echo "$goodnics" | tr "," "\n"|sort -u`
-    do     
+    do
         sleep 5
         if [[ "$OSVER" == rhels6* ]]
         then
             ip link set dev $nic up
-        else 
+        else
             if [[ "$OSVER" == ubuntu14* ]]
             then
                 interfaces="/etc/network/interfaces"
                 for tmp in `cat $interfaces |grep "auto ib" |sort -u|awk '{print $2}'`
-                do 
+                do
                     ifdown $tmp  > /dev/null 2>&1
                     sleep 2
                     ifup   $tmp > /dev/null 2>&1
                 done
-            else 
-                ifup $nic > /dev/null 2>&1   
+            else
+                ifup $nic > /dev/null 2>&1
             fi
         fi
     done

@@ -19,7 +19,7 @@ SYNOPSIS
 ********
 
 
-\ **zone Attributes:**\   \ *zonename*\ , \ *sshkeydir*\ , \ *sshbetweennodes*\ , \ *defaultzone*\ , \ *comments*\ , \ *disable*\ 
+\ **zone Attributes:**\   \ *zonename*\ , \ *sshkeydir*\ , \ *sshbetweennodes*\ , \ *defaultzone*\ , \ *comments*\ , \ *disable*\
 
 
 ***********
@@ -36,40 +36,40 @@ zone Attributes:
 
 
 
-\ **zonename**\ 
- 
+\ **zonename**\
+
  The name of the zone.
- 
 
 
-\ **sshkeydir**\ 
- 
+
+\ **sshkeydir**\
+
  Directory containing the shared root ssh RSA keys.
- 
 
 
-\ **sshbetweennodes**\ 
- 
+
+\ **sshbetweennodes**\
+
  Indicates whether passwordless ssh will be setup between the nodes of this zone. Values are yes/1 or no/0. Default is yes.
- 
 
 
-\ **defaultzone**\ 
- 
+
+\ **defaultzone**\
+
  If nodes are not assigned to any other zone, they will default to this zone. If value is set to yes or 1.
- 
 
 
-\ **comments**\ 
- 
+
+\ **comments**\
+
  Any user-provided notes.
- 
 
 
-\ **disable**\ 
- 
+
+\ **disable**\
+
  Set to 'yes' or '1' to comment out this row.
- 
+
 
 
 
@@ -78,5 +78,5 @@ SEE ALSO
 ********
 
 
-\ **nodels(1)**\ , \ **chtab(8)**\ , \ **tabdump(8)**\ , \ **tabedit(8)**\ 
+\ **nodels(1)**\ , \ **chtab(8)**\ , \ **tabdump(8)**\ , \ **tabedit(8)**\
 

@@ -49,7 +49,7 @@ which nodes will have their consoles accessed from the management node and which
 To start goconserver on the specified service node, setup goconserver package on that service node, then set
 the \ **console**\  column of \ **servicenode**\  table to \ **2**\ .
 
-To support diskless service node, a new column \ **consoleenabled**\  has been added in \ **nodehm**\  table, it is used by \ **makegocons**\ 
+To support diskless service node, a new column \ **consoleenabled**\  has been added in \ **nodehm**\  table, it is used by \ **makegocons**\
 command to save the current console state for the node. After reinstalling the service node, the console storage file which maintain
 the console nodes by goconserver is lost, xCAT would register the console nodes into goconserver based on \ **consoleenabled**\  attribute
 when restarting xcatd service.
@@ -66,40 +66,40 @@ OPTIONS
 
 
 
-\ **-d|-**\ **-delete**\ 
- 
+\ **-d|-**\ **-delete**\
+
  Delete rather than add or refresh the nodes specified as a noderange.
- 
 
 
-\ **-C|-**\ **-cleanup**\ 
- 
+
+\ **-C|-**\ **-cleanup**\
+
  Remove the entries for the nodes whose definitions have been removed from xCAT db.
- 
 
 
-\ **-q|-**\ **-query**\ 
- 
+
+\ **-q|-**\ **-query**\
+
  List the console connection of the nodes. If noderange is not specified, all of the console nodes will be displayed.
- 
 
 
-\ **-v|-**\ **-version**\ 
- 
+
+\ **-v|-**\ **-version**\
+
  Display version.
- 
 
 
-\ **-V|-**\ **-verbose**\ 
- 
+
+\ **-V|-**\ **-verbose**\
+
  Verbose mode.
- 
 
 
-\ **-h|-**\ **-help**\ 
- 
+
+\ **-h|-**\ **-help**\
+
  Display usage message.
- 
+
 
 
 
@@ -125,43 +125,43 @@ EXAMPLES
 
 
 1. To create goconserver configuration for all the nodes.
- 
- 
+
+
  .. code-block:: perl
- 
+
    makegocons
- 
- 
+
+
 
 
 2. To create goconserver configuration for nodes node01-node10.
- 
- 
+
+
  .. code-block:: perl
- 
+
    makegocons node01-node10
- 
- 
+
+
 
 
 3. To remove goconserver configuration for node01.
- 
- 
+
+
  .. code-block:: perl
- 
+
    makegocons -d node01
- 
- 
+
+
 
 
 4. To list console connection for node01.
- 
- 
+
+
  .. code-block:: perl
- 
+
    makegocons -q node01
- 
- 
+
+
 
 
 

@@ -103,7 +103,7 @@ sub preprocess_request {
         my @requests = ();
         foreach (split (/,/, $sns)) {
             my $reqcopy = {%$request};
-            $reqcopy->{'_xcatdest'} = $_;   
+            $reqcopy->{'_xcatdest'} = $_;
             $reqcopy->{'sn'} = $_;
             $reqcopy->{'dhcpservers'} = \@dhcpservers;
             $reqcopy->{_xcatpreprocessed}->[0] = 1;
@@ -281,9 +281,9 @@ sub bmcdiscovery_processargs {
     }
 
     ############################################
-    # Option -U and -P for bmc user and password 
+    # Option -U and -P for bmc user and password
     #
-    # Get the default bmc account from passwd table, 
+    # Get the default bmc account from passwd table,
     # this is only done for the discovery process
     ############################################
     ($bmc_user, $bmc_pass, $openbmc_user, $openbmc_pass) = bmcaccount_from_passwd();
@@ -311,7 +311,7 @@ sub bmcdiscovery_processargs {
     ######################################
     if (defined($::opt_R))
     {
-        # Option -c should not be used with -r 
+        # Option -c should not be used with -r
         if (defined($::opt_C)) {
             my $msg = "The 'check' and 'range' option cannot be used together.";
             my $rsp = {};
@@ -609,10 +609,10 @@ sub scan_process {
     my $mac_list;
     if (xCAT::Utils->version_cmp($nmap_version, "5.10") < 0) {
         $ip_list  = `echo -e "$ip_info_list" | grep \"appears to be up\" |cut -d ' ' -f2 |tr -s '\n' ' '`;
-        $mac_list = `echo -e "$ip_info_list" | grep -A1 up | grep "MAC Address" | cut -d ' ' -f3 | tr -s '\n' ' '`;  
+        $mac_list = `echo -e "$ip_info_list" | grep -A1 up | grep "MAC Address" | cut -d ' ' -f3 | tr -s '\n' ' '`;
     } else {
         $ip_list  = `echo -e "$ip_info_list" | grep -B1 up | grep "Nmap scan report" |cut -d ' ' -f5 | tr -s '\n' ' '`;
-        $mac_list = `echo -e "$ip_info_list" | grep -A1 up | grep "MAC Address" | cut -d ' ' -f3 | tr -s '\n' ' '`; 
+        $mac_list = `echo -e "$ip_info_list" | grep -A1 up | grep "MAC Address" | cut -d ' ' -f3 | tr -s '\n' ' '`;
     }
 
     my $live_ip  = split_comma_delim_str($ip_list);
@@ -691,7 +691,7 @@ sub scan_process {
                 my $bmcpassword;
                 $bmcusername = "-U $bmc_user" if ($bmc_user);
                 $bmcpassword = "-P $bmc_pass" if ($bmc_pass);
-                
+
                 my @mc_cmds = ("/opt/xcat/bin/ipmitool-xcat -I lanplus -H ${$live_ip}[$i] -P $openbmc_pass mc info -N 1 -R 1",
                               "/opt/xcat/bin/ipmitool-xcat -I lanplus -H ${$live_ip}[$i] $bmcusername $bmcpassword mc info -N 1 -R 1");
                 my $mc_info;
@@ -706,7 +706,7 @@ sub scan_process {
                         if ($1 eq $::P9_WITHERSPOON_MFG_ID and $2 eq $::P9_WITHERSPOON_PRODUCT_ID) {
                             bmcdiscovery_openbmc(${$live_ip}[$i], $opz, $opw, $request_command,$parent_fd);
                             $is_openbmc = 1;
-                            last; 
+                            last;
                         }
                     }
                 }
@@ -752,7 +752,7 @@ sub scan_process {
 =head3  format_stanza
       list the stanza format for node
     Arguments:
-      bmc ip 
+      bmc ip
     Returns:
       lists as stanza format for nodes
 =cut
@@ -813,10 +813,10 @@ sub write_to_xcatdb {
     my $request_command = shift;
     my $ret;
 
-    $ret = xCAT::Utils->runxcmd({ command => ['chdef'], 
-                                  arg => [ '-t', 'node', '-o', $node, "bmc=$bmcip", "cons=$mgt_type", 
-                                           "mgt=$mgt_type", "mtm=$bmcmtm", "serial=$bmcserial", 
-                                           "bmcusername=$bmcuser", "bmcpassword=$bmcpass", "nodetype=$nodetype", 
+    $ret = xCAT::Utils->runxcmd({ command => ['chdef'],
+                                  arg => [ '-t', 'node', '-o', $node, "bmc=$bmcip", "cons=$mgt_type",
+                                           "mgt=$mgt_type", "mtm=$bmcmtm", "serial=$bmcserial",
+                                           "bmcusername=$bmcuser", "bmcpassword=$bmcpass", "nodetype=$nodetype",
                                            "servicenode=$sn", "conserver=$conserver",
                                            "hwtype=$hwtype", "groups=all" ] },
                                   $request_command, -1, 1);
@@ -1103,7 +1103,7 @@ sub bmcdiscovery_ipmi {
             }
 
             $mtm = '' if ($mtm =~ /^0+$/);
-            $serial = '' if ($serial =~ /^0+$/); 
+            $serial = '' if ($serial =~ /^0+$/);
 
             unless (($mtm or $serial) or $ipmac{$ip}) {
                 xCAT::MsgUtils->message("W", { data => ["BMC Type/Model and/or Serial and MAC Address is unavailable for $ip"] }, $::CALLBACK);
@@ -1189,7 +1189,7 @@ sub bmcdiscovery_openbmc{
     my $url = "$http_protocol://$ip/$login_endpoint";
     my $login_request = HTTP::Request->new( 'POST', $url, $header, $data );
     my $login_response = $brower->request($login_request);
-    
+
     if ($login_response->is_success) {
         # attempt to find the system serial/model
         $url = "$http_protocol://$ip/$openbmc_project_url/$system_endpoint";
@@ -1212,16 +1212,16 @@ sub bmcdiscovery_openbmc{
         if (defined($response->{data})) {
             if (defined($response->{data}->{Model}) and defined($response->{data}->{SerialNumber})) {
                 $mtm = $response->{data}->{Model};
-                $serial = $response->{data}->{SerialNumber}; 
+                $serial = $response->{data}->{SerialNumber};
             }
- 
-        } else { 
+
+        } else {
             xCAT::MsgUtils->message("E", { data => ["Unable to connect to REST server at $ip"] }, $::CALLBACK);
             return;
         }
 
         # delete space before and after
-        $mtm =~ s/^\s+|\s+$|\.+//g; 
+        $mtm =~ s/^\s+|\s+$|\.+//g;
         $serial =~ s/^\s+|\s+$|\.+//g;
 
         $mtm = '' if ($mtm =~ /^0+$/);

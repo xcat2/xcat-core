@@ -30,7 +30,7 @@ use xCAT::DBobjUtils;
 
 #-------------------------------------------------------------------------------
 
-=head1  xCAT_monitoring:rmcmon  
+=head1  xCAT_monitoring:rmcmon
 =head2    Package Description
   xCAT monitoring plugin package to handle RMC monitoring.
 =cut
@@ -41,7 +41,7 @@ use xCAT::DBobjUtils;
 
 =head3    start
       This function gets called by the monitorctrl module
-      when xcatd starts and when monstart command is issued by the user. 
+      when xcatd starts and when monstart command is issued by the user.
       It starts the daemons and does necessary startup process for the RMC monitoring.
       It also queries the RMC for its currently monitored
       nodes which will, in tern, compared with the nodes
@@ -51,12 +51,12 @@ use xCAT::DBobjUtils;
       in the xCAT cluster.
        p_nodes -- a pointer to an arrays of nodes to be monitored. null means all.
        scope -- the action scope, it indicates the node type the action will take place.
-                0 means localhost only. 
-                2 means both localhost and nodes, 
+                0 means localhost only.
+                2 means both localhost and nodes,
        callback -- the callback pointer for error and status displaying. It can be null.
     Returns:
-      (return code, message) 
-      if the callback is set, use callback to display the status and error. 
+      (return code, message)
+      if the callback is set, use callback to display the status and error.
 =cut
 
 #--------------------------------------------------------------------------------
@@ -225,17 +225,17 @@ sub start {
 #--------------------------------------------------------------------------------
 
 =head3    stop
-      This function gets called when monstop command is issued by the user. 
+      This function gets called when monstop command is issued by the user.
       It stops the monitoring on all nodes, stops the RMC daemons.
     Arguments:
        p_nodes -- a pointer to an arrays of nodes to be stopped for monitoring. null means all.
        scope -- the action scope, it indicates the node type the action will take place.
-                0 means localhost only. 
-                2 means both monservers and nodes, 
+                0 means localhost only.
+                2 means both monservers and nodes,
        callback -- the callback pointer for error and status displaying. It can be null.
     Returns:
-      (return code, message) 
-      if the callback is set, use callback to display the status and error. 
+      (return code, message)
+      if the callback is set, use callback to display the status and error.
 =cut
 
 #--------------------------------------------------------------------------------
@@ -350,15 +350,15 @@ sub stop {
 #--------------------------------------------------------------------------------
 
 =head3    config
-      This function configures the cluster for the given nodes.  
+      This function configures the cluster for the given nodes.
       This function is called when moncfg command is issued or when xcatd starts
       on the service node. It will configure the cluster to include the given nodes within
-      the monitoring doamin. 
+      the monitoring doamin.
     Arguments:
        p_nodes -- a pointer to an arrays of nodes to be added for monitoring. none means all.
        scope -- the action scope, it indicates the node type the action will take place.
-                0 means localhost only. 
-                2 means localhost and nodes, 
+                0 means localhost only.
+                2 means localhost and nodes,
        callback -- the callback pointer for error and status displaying. It can be null.
     Returns:
        (error code, error message)
@@ -485,14 +485,14 @@ sub config {
 #--------------------------------------------------------------------------------
 
 =head3    deconfig
-      This function de-configures the cluster for the given nodes.  
-      This function is called when mondecfg command is issued by the user. 
+      This function de-configures the cluster for the given nodes.
+      This function is called when mondecfg command is issued by the user.
       It should remove the given nodes from the product for monitoring.
     Arguments:
        p_nodes -- a pointer to an arrays of nodes to be removed for monitoring. none means all.
        scope -- the action scope, it indicates the node type the action will take place.
-                0 means local host only. 
-                2 means both local host and nodes, 
+                0 means local host only.
+                2 means both local host and nodes,
        callback -- the callback pointer for error and status displaying. It can be null.
     Returns:
        (error code, error message)
@@ -563,11 +563,11 @@ sub deconfig {
 =head3    supportNodeStatusMon
     This function is called by the monitorctrl module to check
     if RMC can help monitoring and returning the node status.
-    
+
     Arguments:
         none
     Returns:
-         1  
+         1
 =cut
 
 #--------------------------------------------------------------------------------
@@ -584,14 +584,14 @@ sub supportNodeStatusMon {
 =head3   startNodeStatusMon
     This function is called by the monitorctrl module to tell
     RMC to start monitoring the node status and feed them back
-    to xCAT. RMC will start setting up the condition/response 
-    to monitor the node status changes.  
+    to xCAT. RMC will start setting up the condition/response
+    to monitor the node status changes.
 
     Arguments:
        p_nodes -- a pointer to an arrays of nodes for monitoring. none means all.
        scope -- the action scope, it indicates the node type the action will take place.
-                0 means local host only. 
-                2 means both local host and nodes, 
+                0 means local host only.
+                2 means both local host and nodes,
        callback -- the callback pointer for error and status displaying. It can be null.
     Returns:
        (error code, error message)
@@ -708,7 +708,7 @@ sub startNodeStatusMon {
 
     Arguments:
         $oldstatus a pointer to a hash table that has the current node status
-        $node  the name of the service node to run RMC command from. If null, get from local host. 
+        $node  the name of the service node to run RMC command from. If null, get from local host.
     Returns:
         (return code, message)
 =cut
@@ -791,8 +791,8 @@ sub saveRMCNodeStatusToxCAT {
     Arguments:
        p_nodes -- a pointer to an arrays of nodes for monitoring. none means all.
        scope -- the action scope, it indicates the node type the action will take place.
-                0 means local host only. 
-                2 means both local host and nodes, 
+                0 means local host only.
+                2 means both local host and nodes,
        callback -- the callback pointer for error and status displaying. It can be null.
     Returns:
         (return code, message)
@@ -924,10 +924,10 @@ sub getLocalNodeID {
 #--------------------------------------------------------------------------------
 
 =head3    getNodeInfo
-      This function gets the nodeid, node ip addresses for the given node 
+      This function gets the nodeid, node ip addresses for the given node
     Arguments:
        node
-       flag --- if 0 means normal nodes, if 1 means HMC.  
+       flag --- if 0 means normal nodes, if 1 means HMC.
     Returns:
        (nodeid, nodeip) if error, nodeid=-1 and nodeip is the error message
 =cut
@@ -972,10 +972,10 @@ sub getNodeInfo
 #--------------------------------------------------------------------------------
 
 =head3    reportError
-      This function writes the error message to the callback, otherwise to syslog. 
+      This function writes the error message to the callback, otherwise to syslog.
     Arguments:
        error
-       callback 
+       callback
     Returns:
        none
 =cut
@@ -997,13 +997,13 @@ sub reportError
 
 =head3    addNodes
       This function adds the nodes into the RMC cluster, it does not check the OSI type and
-      if the node has already defined. 
+      if the node has already defined.
     Arguments:
-       nodes --an array of nodes to be added. 
+       nodes --an array of nodes to be added.
        master -- the monitoring master of the node.
        scope -- the action scope, it indicates the node type the action will take place.
-                0 means localhost only. 
-                2 means localhost and nodes, 
+                0 means localhost only.
+                2 means localhost and nodes,
        callback -- the callback pointer for error and status displaying. It can be null.
        flag  -- 0 means normal node. 1 means HMC.
     Returns:
@@ -1243,11 +1243,11 @@ sub addNodes {
 =head3    removeNodes
       This function removes the nodes from the RMC cluster.
     Arguments:
-      nodes --a pointer to a array of node names to be removed. 
+      nodes --a pointer to a array of node names to be removed.
       master -- the master of the nodes.
        scope -- the action scope, it indicates the node type the action will take place.
-                0 means localhost only. 
-                2 means localhost and nodes, 
+                0 means localhost only.
+                2 means localhost and nodes,
        callback -- the callback pointer for error and status displaying. It can be null.
        flag  -- 0 means normal node. 1 means HMC.
     Returns:
@@ -1410,7 +1410,7 @@ sub removeNodes {
 #--------------------------------------------------------------------------------
 
 =head3    processSettingChanges
-      This function gets called when the setting for this monitoring plugin 
+      This function gets called when the setting for this monitoring plugin
       has been changed in the monsetting table.
     Arguments:
        none.
@@ -1427,7 +1427,7 @@ sub processSettingChanges {
 
 =head3    getDiscription
       This function returns the detailed description of the plugin inluding the
-     valid values for its settings in the monsetting tabel. 
+     valid values for its settings in the monsetting tabel.
      Arguments:
         none
     Returns:
@@ -1438,31 +1438,31 @@ sub processSettingChanges {
 sub getDescription {
     return
       "  Description:
-    rmcmon uses IBM's Resource Monitoring and Control (RMC) component 
-    of Reliable Scalable Cluster Technology (RSCT) to monitor the 
-    xCAT cluster. RMC has built-in resources such as CPU, memory, 
-    process, network, file system etc for monitoring. RMC can also be 
-    used to provide node liveness status monitoring and performance monitoring for xCAT. 
-    RMC is good for threadhold monitoring. xCAT automatically sets up the 
+    rmcmon uses IBM's Resource Monitoring and Control (RMC) component
+    of Reliable Scalable Cluster Technology (RSCT) to monitor the
+    xCAT cluster. RMC has built-in resources such as CPU, memory,
+    process, network, file system etc for monitoring. RMC can also be
+    used to provide node liveness status monitoring and performance monitoring for xCAT.
+    RMC is good for threadhold monitoring. xCAT automatically sets up the
     monitoring domain for RMC during node deployment time. And if performance
     monitoring is enabled, xCAT monitoring will collect and consolidate performance
-    data based on montype&rmetrics setting, and then store to RRD database. 
+    data based on montype&rmetrics setting, and then store to RRD database.
   Settings:
-    rfanout -- indicating the fanout number for configuring or deconfiguring 
+    rfanout -- indicating the fanout number for configuring or deconfiguring
         remote nodes.
     nodeusebatch -- use RMC event batching function when doing node status monitoring.
-    montype -- indicating type of performance monitoring, the value could be 
+    montype -- indicating type of performance monitoring, the value could be
                \"event\" : event monitoring (default),
 	       \"perf\" : performance monitoring,
                \"event,perf\" or \"perf,event\" : both.
-    rmetrics -- defines resource class,resouce names, attributes and sample interval for 
-                performance monitoring. 
+    rmetrics -- defines resource class,resouce names, attributes and sample interval for
+                performance monitoring.
 		Syntax of key: rmetrics_resource class For example: rmetrics_IBM.Processor
 		Syntax of value: [resource names]attribute names:sample interval
 		The unit of sample interval is minute.
 		For example:
 		  [proc0,proc1]PctTimeIdle,PctTimeWait,PctTimeKernel,PctTimeUser:5
-				  
+				
 ";
 }
 
@@ -1470,10 +1470,10 @@ sub getDescription {
 
 =head3    getNodeConfData
       This function gets a list of configuration data that is needed by setting up
-    node monitoring.  These data-value pairs will be used as environmental variables 
+    node monitoring.  These data-value pairs will be used as environmental variables
     on the given node.
     Arguments:
-        pointet to a arry of nodes 
+        pointet to a arry of nodes
     Returns:
         pointer to a 2-level hash. For format will as following:
         {
@@ -1529,7 +1529,7 @@ sub getNodeConfData {
 
 =head3    getPostscripts
       This function returns the postscripts needed for the nodes and for the servicd
-      nodes. 
+      nodes.
      Arguments:
         none
     Returns:
@@ -1735,15 +1735,15 @@ sub showeventlog
 #--------------------------------------------------------------------------------
 
 =head3    show
-      This function configures the cluster for the given nodes.  
+      This function configures the cluster for the given nodes.
       This function is called when moncfg command is issued or when xcatd starts
       on the service node. It will configure the cluster to include the given nodes within
-      the monitoring doamin. 
+      the monitoring doamin.
     Arguments:
        p_nodes -- a pointer to an arrays of nodes to be added for monitoring. none means all.
        scope -- the action scope, it indicates the node type the action will take place.
-                0 means localhost only. 
-                2 means localhost and nodes, 
+                0 means localhost only.
+                2 means localhost and nodes,
        callback -- the callback pointer for error and status displaying. It can be null.
     Returns:
        (error code, error message)

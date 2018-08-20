@@ -1,7 +1,7 @@
 #!/usr/bin/env perl
 ## IBM(c) 2015 EPL license http://www.eclipse.org/legal/epl-v10.html
 #
-# This plugin is used to handle the z/VM discovery. 
+# This plugin is used to handle the z/VM discovery.
 # z/VM discovery will discover the z/VM virtual machines running
 # on a specified z/VM host and define them to xCAT DB.
 # In addition, it will optionally define the systems to OpenStack.
@@ -33,7 +33,7 @@ my $request_command;
 my $ZHCP_BIN = '/opt/zhcp/bin';
 
 # Hash of host name resolution commands to be issued in a virtual OS.
-my @hostnameCmds = ( 'hostname --fqdn', 
+my @hostnameCmds = ( 'hostname --fqdn',
                      'hostname --long',
                      'hostname',
                    );
@@ -446,7 +446,7 @@ sub changeNode {
     my $nodeName = shift;
     my $changeType = shift;
     my $newNode = shift;
-    
+
     my $rc = 0;           # Assume everything works
     my $retStrRef;
 
@@ -510,7 +510,7 @@ sub changeNode {
 =head3   createNode
 
     Description : Find an available xCAT nodename and create a node
-                  for the virtual machine and indicate it is a 
+                  for the virtual machine and indicate it is a
                   discovered node.  Also, do a MAKEHOSTS so xCAT MN
                   can access it by the node name.
     Arguments   : Callback handle
@@ -524,7 +524,7 @@ sub changeNode {
                       can check for already known node names.
     Returns     : Node name if created or empty string if an error occurred.
                   Current numeric value
-    Example     : ( $node, $numeric ) = createNode($callback, $discoverable{$activeSystem}{'hostname'}, 
+    Example     : ( $node, $numeric ) = createNode($callback, $discoverable{$activeSystem}{'hostname'},
                                         $args{'nodenameformat'}, $numeric, $retstr_gen, \%xcatNodes);
 
 =cut
@@ -552,7 +552,7 @@ sub createNode {
         if ( $nameFormat =~ /#NNN/ ) {
             # Old Style xCAT template e.g. node#NNN -> node001
             $templateType = 1;
-            
+
             # Deconstruct the name format template into its component parts.
             my @fmtParts = split ( '#NNN', $nameFormat );
             $prefix = $fmtParts[0];
@@ -611,7 +611,7 @@ sub createNode {
             if ( $::RUNCMD_RC == 0 ) {
                 # Node created.  All done.
                 $xcatNodesRef->{$nodeName} = 1;
-                
+
                 # Update the zvm table for the node to indicate that it is a discovered system.
                 my %zvmProps = ( "discovered" => "1" );
                 my $zvmTab = xCAT::Table->new('zvm');
@@ -635,15 +635,15 @@ sub createNode {
                     $nodeName = '';
                     last;
                 } else {
-                    # Assume xCAT daemon is unavailable.  Give it 15 seconds to come back 
+                    # Assume xCAT daemon is unavailable.  Give it 15 seconds to come back
                     # before next attempt.
                     sleep(15);
                 }
-            } 
+            }
         }
 
         # Did not find an available node name on this pass.
-        # Wipe out the nodename in case we exit the loop.  Also, ensure a numeric 
+        # Wipe out the nodename in case we exit the loop.  Also, ensure a numeric
         # is used next time around.
         $nodeName = '';
         if ( $numeric eq '' ){
@@ -674,7 +674,7 @@ FINISH_createNode:
 
 =head3   findme
 
-    Description : Handle the request form node to map and 
+    Description : Handle the request form node to map and
                   define the request to a node.
     Arguments   : request handle
                   callback
@@ -682,7 +682,7 @@ FINISH_createNode:
     Returns     : 0 - No error
                   non-zero - Error detected.
     Example     : findme( $request, $callback, $request_command );
-    
+
 =cut
 
 #-------------------------------------------------------
@@ -696,7 +696,7 @@ sub findme {
     my $ZVMdiscover = getSiteVal("__ZVMDiscover");
     unless ( $ZVMdiscover ) {
         if ( $SEQdiscover or $PCMdiscover ) {
-            # profile or sequential discovery is running, then just return 
+            # profile or sequential discovery is running, then just return
             # to make the other discovery handle it
             return;
         }
@@ -776,7 +776,7 @@ FINISH_getOpenStackTemplate:
                   discovery from the site table variable.
     Arguments   : Callback handle
                   z/VM host node
-    Returns     : Timestamp for the run that was specified or 
+    Returns     : Timestamp for the run that was specified or
                     empty string if a run was not found.
     Example     : $ts = getRunningDiscTimestamp( 'zvm1' );
 
@@ -933,7 +933,7 @@ sub nodediscoverls {
             my @hosts = split( /,/, $origArgs{'zvmHost'} );
             foreach my $host ( @hosts ) {
                 if ( !$host ) {
-                    # Tolerate zvmhost value beginning with a comma.  
+                    # Tolerate zvmhost value beginning with a comma.
                     # It is wrong but not worth an error message.
                     next;
                 }
@@ -1076,7 +1076,7 @@ FINISH_nodediscoverls:
                   arguments for nodediscoverstart
     Returns     : None.
     Example     : nodediscoverstart( $callback, $args );
-    
+
 =cut
 
 #-------------------------------------------------------
@@ -1108,7 +1108,7 @@ sub nodediscoverstart {
     }
 
     $origArgs{'verbose'} = 0;     # Assume we are not doing verbose
-    my ($help, $ver); 
+    my ($help, $ver);
     if (!GetOptions(
         'h|help' => \$help,
         'V|verbose' => \$origArgs{'verbose'},
@@ -1117,7 +1117,7 @@ sub nodediscoverstart {
         # We don't need another
         return;
     }
-    
+
     if ( $help | $ver ) {
         # Sequential discovery will have handled these options.
         return;
@@ -1259,7 +1259,7 @@ sub nodediscoverstart {
         }
 
         # Invoke the OpenStack plugin to validate OpenStack related variables.
-        if (( $name eq 'openstackoperands' ) and 
+        if (( $name eq 'openstackoperands' ) and
             (( $origArgs{'defineto'} eq 'both' ) || ( $origArgs{'defineto'} eq 'openstackonly' )) &&
              defined( $origArgs{$name} )) {
             $origArgs{$name} =~ s/^\'+|\'+$//g;
@@ -1390,7 +1390,7 @@ FINISH_NODEDISCOVERSTART:
                   arguments for nodediscoverstatus
     Returns     : None.
     Example     : nodediscoverstatus( $callback, $args );
-    
+
 =cut
 
 #-------------------------------------------------------
@@ -1434,7 +1434,7 @@ sub nodediscoverstatus {
             my @hosts = split( /,/, $zvmHost );
             foreach $zvmHost ( @hosts ) {
                 if ( !$zvmHost ) {
-                    # Tolerate zvmhost value beginning with a comma.  
+                    # Tolerate zvmhost value beginning with a comma.
                     # It is wrong but not worth an error message.
                     next;
                 }
@@ -1443,7 +1443,7 @@ sub nodediscoverstatus {
         } else {
             push( @inputZvmHosts, $zvmHost );
         }
-    } 
+    }
     my %inputZvmHostsHash = map { $_ => 1 } @inputZvmHosts;
 
     # Get the list of z/VM hosts.
@@ -1469,7 +1469,7 @@ sub nodediscoverstatus {
             # Not an expected format, Drop it when we push out the new saved parameters.
             push @{$rsp->{data}}, "__ZVMDiscover property in the xCAT site table is corrupted.  It has been cleared so that all z/VM discovery stops.  You may restart z/VM discovery.";
             xCAT::MsgUtils->message( "E", $rsp, $callback, 1 );
-            
+
             # Remove the site.__ZVMDiscover property
             # We don't need a lock because we are whipping out the value and not trying to keep it around.
             my $siteTab = xCAT::Table->new( "site", -autocommit=>1 );
@@ -1538,7 +1538,7 @@ FINISH_NODEDISCOVERSTATUS:
                   $auto option (not used by z/VM)
     Returns     : None.
     Example     : nodediscoverstop( $callback, $args, $auto );
-    
+
 =cut
 
 #-------------------------------------------------------
@@ -1581,7 +1581,7 @@ sub nodediscoverstop {
             my @hosts = split( /,/, $zvmHost );
             foreach $zvmHost ( @hosts ) {
                 if ( !$zvmHost ) {
-                    # Tolerate zvmhost value beginning with a comma.  
+                    # Tolerate zvmhost value beginning with a comma.
                     # It is wrong but not worth an error message.
                     next;
                 }
@@ -1623,7 +1623,7 @@ sub nodediscoverstop {
             # Not an expected format, Drop it when we push out the new saved parameters.
             push @{$rsp->{data}}, "__ZVMDiscover property in the xCAT site table is corrupted.  It has been cleared so that all z/VM discovery stops.  You may restart z/VM discovery.";
             xCAT::MsgUtils->message( "E", $rsp, $callback, 1 );
-            
+
             # Remove the site.__ZVMDiscover property
             my $siteTab = xCAT::Table->new( "site", -autocommit=>1 );
             $siteTab->delEntries({key => '__ZVMDiscover'});
@@ -1658,7 +1658,7 @@ FINISH_NODEDISCOVERSTOP:
 
     Description : Get return of runxcmd and convert it into strings.
     Arguments   : The return reference of runxcmd
-    Returns     : [$outstr, $errstr], A reference of list, placing 
+    Returns     : [$outstr, $errstr], A reference of list, placing
                   standard output and standard error message.
     Example     : my $retStrRef = parse_runxcmd_ret($retRef);
 
@@ -1697,7 +1697,7 @@ sub parse_runxcmd_ret {
                   Command that is requested
     Returns     : None
     Example     : process_request( $request, $callback, $request_command );
-    
+
 =cut
 
 #-------------------------------------------------------
@@ -1738,7 +1738,7 @@ sub process_request {
                   z/VM host node name
     Returns     : None.
     Example     : $rc = removeHostInfo( $callback, $zvmHost );
-    
+
 =cut
 
 #-------------------------------------------------------
@@ -1828,11 +1828,11 @@ FINISH_removeHostInfo:
                   z/VM host node name
                   ZHCP
                   Start time of the discovery
-                  Hash of arguments specified on the nodediscoverstart 
+                  Hash of arguments specified on the nodediscoverstart
                     command and their values
     Returns     : None
     Example     : startDiscovery( $callback, $zvmHost, $hcp, $startTime, \%args );
-    
+
 =cut
 
 #-------------------------------------------------------
@@ -1862,16 +1862,16 @@ sub startDiscovery{
         xCAT::MsgUtils->message( "E", $rsp, $callback );
         goto FINISH_startDiscovery;
     }
-    
+
     my %keyhash;
     $keyhash{'method'} = 'zvm';
     $keyhash{'otherdata'} = "zvmhost." . $zvmHost;
     $disTab->delEntries( \%keyhash );
     $disTab->commit();
-    
+
     # Handle 'openstackonly' discovery or get the template for 'both' discovery.
     if ( $args{'defineto'} eq 'openstackonly' ) {
-        # Verify that OpenStack has a valid template to use when it is called 
+        # Verify that OpenStack has a valid template to use when it is called
         # to handle the node.
         my ( $osTemplate, $osNumeric ) = getOpenStackTemplate( $callback, $zvmHost );
         if ( $osTemplate eq '' ) {
@@ -1891,7 +1891,7 @@ sub startDiscovery{
             # An error was detected in the template and message produced leave now.
             goto FINISH_startDiscovery;
         }
-        
+
         $startOpenStack = 1;
     }
 
@@ -1925,7 +1925,7 @@ sub startDiscovery{
                               "the zhcp server $hcp for an smcli Image_Status_Query " .
                               "request.  SMAPI servers may be unavailable.  " .
                               "Received response: $out";
-            
+
         xCAT::MsgUtils->message("E", $rsp, $callback);
         goto FINISH_startDiscovery;
     }
@@ -1933,9 +1933,9 @@ sub startDiscovery{
     # Build the hash of running systems.
     my @runningSystems = split( "\n", lc( $out ) );
 
-    # Create a hash of discoverable systems by starting with the 
+    # Create a hash of discoverable systems by starting with the
     # list of running systems and removing any systems in the
-    # list of non-discoverable (known to be z/VM servers or 
+    # list of non-discoverable (known to be z/VM servers or
     # non-Linux systems).
     my @nonDiscoverable = (
         'auditor',  'autolog1', 'autolog2', 'avsvm',
@@ -2033,7 +2033,7 @@ sub startDiscovery{
         my $nodeHCP;
         if ( $nodeRef->{'hcp'} && $nodeRef->{'userid'} ) {
             $nodeHCP = lc( $nodeRef->{'hcp'} );
-            if ((( defined $longName) && ( $longName eq $nodeHCP )) || 
+            if ((( defined $longName) && ( $longName eq $nodeHCP )) ||
                 (( defined $shortName) && ( $shortName eq $nodeHCP ))) {
                 push @knownUserids, lc( $nodeRef->{'userid'} );
             }
@@ -2055,7 +2055,7 @@ sub startDiscovery{
     my $numSystems = scalar( keys %discoverable );
     xCAT::MsgUtils->message( "S", "Discovery for $zvmHost found $numSystems virtual machines." );
 
-    # Perform a set of potentially long running functions.  We do this one 
+    # Perform a set of potentially long running functions.  We do this one
     # server at a time so that we can stop if we are told to do so.
     # Loop through the list performing the following:
     #   - See if discovery has been stopped early.
@@ -2196,11 +2196,11 @@ FINISH_startDiscovery:
     Description : Stop z/VM discovery for a particular z/VM host.
     Arguments   : Callback handle
                   z/VM host node name
-                  Array of arguments specified on nodediscoverstop or 
+                  Array of arguments specified on nodediscoverstop or
                     an empty array if this is an internal call.
     Returns     : None.
     Example     : stopDiscovery( $callback, $zvmHost, \@args );
-    
+
 =cut
 
 #-------------------------------------------------------
@@ -2247,12 +2247,12 @@ sub stopDiscovery{
     if ( @disData ) {
         push @{$rsp->{data}}, sprintf("    %-20s%-8s", 'NODE', 'z/VM USERID');
         foreach ( @disData ) {
-             push @{$rsp->{data}}, sprintf("    %-20s%-8s", $_->{'node'}, $discoveredNodes{$_->{'node'}} ); 
+             push @{$rsp->{data}}, sprintf("    %-20s%-8s", $_->{'node'}, $discoveredNodes{$_->{'node'}} );
         }
     }
 
     removeHostInfo( $callback, $zvmHost );
-    
+
     xCAT::MsgUtils->message( "I", $rsp, $callback );
     xCAT::MsgUtils->message( "I", "z/VM discovery stopped for z/VM host: $zvmHost" );
 
@@ -2275,7 +2275,7 @@ sub stopDiscovery{
     Returns     : None.
     Example     : updateDiscoverydata( $callback, 'add', $verbose, $zvmHost,
                                        $activeSystem, \%discoverable ):
-    
+
 =cut
 
 #-------------------------------------------------------

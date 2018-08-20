@@ -5,7 +5,7 @@ BEGIN {
     xcatdhost = ARGV[1]
     xcatdport = ARGV[2]
     flag = ARGV[3]
-    
+
     if (!flag) flag = "next"
 
     ns = "/inet/tcp/0/" xcatdhost "/" xcatdport
@@ -20,7 +20,7 @@ BEGIN {
             close(ns)
             system("sleep 10")
             loop = loop + 1
-        }   
+        }
 
         if($0 == "ready")
             print flag |& ns

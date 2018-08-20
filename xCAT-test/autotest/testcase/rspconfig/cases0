@@ -69,7 +69,7 @@ check:rc==0
 end
 
 start:rspconfig_set_ip
-description:To test change openbmc ip separately by rspconfig. should not support and throw out error message 
+description:To test change openbmc ip separately by rspconfig. should not support and throw out error message
 Attribute: $$CN-The operation object of rspconfig command
 os:Linux
 hcp:openbmc
@@ -105,7 +105,7 @@ check:rc!=0
 end
 
 start:rspconfig_set_netmask
-description:To test change openbmc netmask separately by rspconfig. should not support and throw out error message 
+description:To test change openbmc netmask separately by rspconfig. should not support and throw out error message
 Attribute: $$CN-The operation object of rspconfig command
 os:Linux
 hcp:openbmc
@@ -129,7 +129,7 @@ cmd:rspconfig $$CN netmask= ip=__GETNODEATTR($$CN,bmc)__ gateway=0.0.0.0
 check:output=~Error: (\[.*?\]: )?Invalid parameter for option netmask
 check:rc!=0
 end
- 
+
 start:rspconfig_set_gateway
 description:To test change openbmc gateway by rspconfig. should not support and throw out error message
 Attribute: $$CN-The operation object of rspconfig command
@@ -157,10 +157,10 @@ start:rspconfig_set_all
 description:rspconfig change openbmc ip/netmask/gateway/vlan
 Attribute: $$CN-The operation object of rspconfig command
 label:cn_bmc_ready,hctrl_openbmc
-cmd:/opt/xcat/share/xcat/tools/autotest/testcase/rspconfig/rspconfig.sh -a  $$CN 
+cmd:/opt/xcat/share/xcat/tools/autotest/testcase/rspconfig/rspconfig.sh -a  $$CN
 check:rc==0
 end
- 
+
 start:rspconfig_gateway_invalid
 despcription:rspconfig could not change openbmc gatway using invalid gateway
 Attribute: $$CN-The operation object of rspconfig command
@@ -231,7 +231,7 @@ end
 start:rspconfig_list_ip
 despcription:rspconfig list bmc ip
 label:cn_bmc_ready,hctrl_bmc_ipmi,hctrl_openbmc
-cmd:rspconfig $$CN ip 
+cmd:rspconfig $$CN ip
 check:rc==0
 check:output=~__GETNODEATTR($$CN,bmc)__
 end
@@ -251,7 +251,7 @@ hcp:openbmc
 description:rspconfig list openbmc netmask
 Attribute: $$CN-The operation object of rspconfig command
 label:cn_bmc_ready,hctrl_bmc_ipmi,hctrl_openbmc
-cmd:rspconfig $$CN netmask 
+cmd:rspconfig $$CN netmask
 check:rc==0
 check:output=~$$CN: BMC Netmask:
 end
@@ -266,7 +266,7 @@ check:output=~$$CN: BMC VLAN ID:
 end
 
 start:rspconfig_list_all
-description:rspconfig list openbmc ip gateway netmask vlan 
+description:rspconfig list openbmc ip gateway netmask vlan
 Attribute: $$CN-The operation object of rspconfig command
 label:cn_bmc_ready,hctrl_bmc_ipmi,hctrl_openbmc
 cmd: rspconfig $$CN ip gateway netmask vlan
@@ -283,7 +283,7 @@ description:when bmc=<ip>, rspconfig <node> hostname=* should throw out error
 os:Linux
 hcp:openbmc
 label:cn_bmc_ready,hctrl_openbmc
-#in automation environment, bmc is ip by default. 
+#in automation environment, bmc is ip by default.
 cmd:lsdef $$CN -i bmc -c
 check:rc == 0
 cmd:rspconfig $$CN hostname=*
@@ -294,7 +294,7 @@ end
 
 
 start:rspconfig_set_hostname_equal_star_with_bmc_is_hostname
-description:when bmc=<bmc_hostname>, rspconfig <node> hostname=* should set bmc_hostname into bmc 
+description:when bmc=<bmc_hostname>, rspconfig <node> hostname=* should set bmc_hostname into bmc
 os:Linux
 hcp:openbmc
 label:cn_bmc_ready,hctrl_openbmc
@@ -328,7 +328,7 @@ check:rc == 0
 end
 
 start:rspconfig_get_hostname
-description:To test get bmc hostname by rspconfig. 
+description:To test get bmc hostname by rspconfig.
 os:Linux
 hcp:openbmc
 label:cn_bmc_ready,hctrl_openbmc
@@ -336,7 +336,7 @@ cmd:mkdir -p /tmp/rspconfig_get_hostname
 check:rc == 0
 cmd:rspconfig $$CN sshcfg
 check:rc == 0
-cmd:ssh __GETNODEATTR($$CN,bmc)__ "hostname" | tee /tmp/rspconfig_get_hostname/working_hostname 
+cmd:ssh __GETNODEATTR($$CN,bmc)__ "hostname" | tee /tmp/rspconfig_get_hostname/working_hostname
 check:rc == 0
 cmd:cat  /tmp/rspconfig_get_hostname/working_hostname
 check:rc == 0
@@ -378,7 +378,7 @@ cmd:rspconfig $$CN sshcfg
 check:rc == 0
 cmd:ssh __GETNODEATTR($$CN,bmc)__ "hostname" | tee /tmp/rspconfig_set_hostname/working_hostname
 check:rc == 0
-cmd:a=$(cat /tmp/rspconfig_set_hostname/working_hostname); rspconfig $$CN hostname=test_$a |tee /tmp/rspconfig_set_hostname/rspconfig_output 
+cmd:a=$(cat /tmp/rspconfig_set_hostname/working_hostname); rspconfig $$CN hostname=test_$a |tee /tmp/rspconfig_set_hostname/rspconfig_output
 check:rc == 0
 cmd:grep -i '$$CN: BMC hostname:' /tmp/rspconfig_set_hostname/rspconfig_output|awk -F':' '{print $3}'  |sed s/\\s//g |tee /tmp/rspconfig_set_hostname/rspconfig_get_hostname
 check:rc == 0
@@ -393,7 +393,7 @@ check:rc == 0
 cmd:rm -rf /tmp/rspconfig_set_hostname
 check:rc == 0
 end
- 
+
 start:rspconfig_set_admin_passwd_with_error_input
 description: To test "rspconfig <node> admin_passwd=xxx,yyy". If the format of "xxx,yyy" is wrong, should throw out error message
 os:Linux

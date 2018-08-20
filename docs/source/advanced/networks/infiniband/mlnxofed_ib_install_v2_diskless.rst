@@ -1,7 +1,7 @@
 Diskless Installation
 =====================
 
-#. Prepare dependency packages in the pkglist 
+#. Prepare dependency packages in the pkglist
 
    In order for the Mellanox installation script to execute successfully, certain dependency packages are required to be installed on the compute node.  xCAT provides sample package list files to help resolve these dependencies.  The samples are located at ``/opt/xcat/share/xcat/ib/netboot/<os>/``.
 
@@ -11,36 +11,36 @@ Diskless Installation
 
 #. Configure the ``mlnxofed_ib_install`` script to install the MNLX_OFED drivers
 
-   Edit the ``postinstall`` script on the osimage to invoke the ``mlnxofed_ib_install`` install script.  
+   Edit the ``postinstall`` script on the osimage to invoke the ``mlnxofed_ib_install`` install script.
 
-       For example, take ``rhels7.2-ppc64le-netboot-compute``: 
+       For example, take ``rhels7.2-ppc64le-netboot-compute``:
 
-           #. Find the path to the ``postinstall`` script: :: 
-    
+           #. Find the path to the ``postinstall`` script: ::
+
                   # lsdef -t osimage -o rhels7.2-ppc64le-netboot-compute -i postinstall
                   Object name: rhels7.2-ppc64le-netboot-compute
                       postinstall=/opt/xcat/share/xcat/netboot/rh/compute.rhels7.ppc64le.postinstall
 
            #. Edit the ``/opt/xcat/share/xcat/netboot/rh/compute.rhels7.ppc64le.postinstall`` and add the following: ::
-    
+
                   /install/postscripts/mlnxofed_ib_install \
                      -p /install/<path-to>/<MLNX_OFED_LINUX.iso> -i $1 -n genimage
-    
+
               .. note:: The ``$1`` is a argument that is passed to the the postinstall script at runtime.
 
-   .. tip:: **Kernel Mismatch** 
-      
-            The Mellanox OFED ISO is built against a series of specific kernel version. If the version of the linux kernel being used does not match any of the pre-built kernels, pass ``--add-kernel-support --without-32bit --without-fw-update --force`` to the Mellanox installation script to build the kernel modules based on the kernel you are using.  Example: :: 
+   .. tip:: **Kernel Mismatch**
+
+            The Mellanox OFED ISO is built against a series of specific kernel version. If the version of the linux kernel being used does not match any of the pre-built kernels, pass ``--add-kernel-support --without-32bit --without-fw-update --force`` to the Mellanox installation script to build the kernel modules based on the kernel you are using.  Example: ::
 
                  /install/postscripts/mlnxofed_ib_install \
                  -p /install/<path-to>/<MLNX_OFED_LINUX.iso> -m --add-kernel-support --without-32bit --without-fw-update --force -end- \
                  -i $1 -n genimage
 
-    
-#. Generate the diskless image 
+
+#. Generate the diskless image
 
    Use the ``genimage`` command to generate the diskless image from the osimage definition ::
-        
+
 	genimage <osimage>
 
    Use the ``packimage`` command to pack the diskless image for deployment ::
@@ -50,7 +50,7 @@ Diskless Installation
 #. Provision the node ::
 
      rinstall <node> osimage=rhels7.2-ppc64le-netboot-compute
-   
+
 #. Verification
 
    * Check the status of ``openibd`` service
@@ -60,8 +60,8 @@ Diskless Installation
          service openibd status
 
      systemd: ::
-    
-         systemctl status openibd.service 
+
+         systemctl status openibd.service
 
    * Verify that the Mellanox IB drivers are located at: ``/lib/modules/<kernel_version>/extra/``
 

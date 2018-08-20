@@ -31,5 +31,5 @@ while ($timecnt < 120) {
     $timecnt++;
 }
 
-print ">>>Leave $program_name\n"; 
+print ">>>Leave $program_name\n";
 exit 0;

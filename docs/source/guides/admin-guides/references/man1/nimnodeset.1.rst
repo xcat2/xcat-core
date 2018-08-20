@@ -19,9 +19,9 @@ SYNOPSIS
 ********
 
 
-\ **nimnodeset [-h|-**\ **-help ]**\ 
+\ **nimnodeset [-h|-**\ **-help ]**\
 
-\ **nimnodeset [-V|-**\ **-verbose] [-f|-**\ **-force] [-i**\  \ *osimage_name*\ ] [\ **-l**\  \ *location*\ ] [\ **-p|-**\ **-primarySN**\ ] [\ **-b | -**\ **-backupSN**\ ] \ *noderange [attr=val [attr=val ...]]*\ 
+\ **nimnodeset [-V|-**\ **-verbose] [-f|-**\ **-force] [-i**\  \ *osimage_name*\ ] [\ **-l**\  \ *location*\ ] [\ **-p|-**\ **-primarySN**\ ] [\ **-b | -**\ **-backupSN**\ ] \ *noderange [attr=val [attr=val ...]]*\
 
 
 ***********
@@ -73,59 +73,59 @@ OPTIONS
 
 
 
-\ *attr=val [attr=val ...]*\ 
- 
+\ *attr=val [attr=val ...]*\
+
  Specifies one or more "attribute equals value" pairs, separated by spaces. Attr=
  val pairs must be specified last on the command line. These are used to specify additional values that can be passed to the underlying NIM commands, ("nim -o bos_inst ...").  See the NIM documentation for valid "nim" command line options. Note that you may specify multiple "script" and "installp_bundle" values by using a comma separated list. (ex. "script=ascript,bscript").
- 
 
 
-\ **-b|-**\ **-backupSN**\ 
- 
+
+\ **-b|-**\ **-backupSN**\
+
  When using backup service nodes only update the backup.  The default is to update both the primary and backup service nodes
- 
 
 
-\ **-f |-**\ **-force**\ 
- 
+
+\ **-f |-**\ **-force**\
+
  Use the force option to reinitialize the NIM machines.
- 
 
 
-\ **-h |-**\ **-help**\ 
- 
+
+\ **-h |-**\ **-help**\
+
  Display usage message.
- 
 
 
-\ **-i**\  \ *image_name*\ 
- 
+
+\ **-i**\  \ *image_name*\
+
  The name of an existing xCAT osimage definition.
- 
 
 
-\ **-l|-**\ **-location**\ 
- 
+
+\ **-l|-**\ **-location**\
+
  The directory location to use when creating new NIM resolv_conf resources. The default location is /install/nim.
- 
 
 
-\ **-p|-**\ **-primarySN**\ 
- 
+
+\ **-p|-**\ **-primarySN**\
+
  When using backup service nodes only update the primary.  The default is to update both the primary and backup service nodes.
- 
 
 
-\ *noderange*\ 
- 
+
+\ *noderange*\
+
  A set of comma delimited node names and/or group names. See the "noderange" man page for details on additional supported formats.
- 
 
 
-\ **-V |-**\ **-verbose**\ 
- 
+
+\ **-V |-**\ **-verbose**\
+
  Verbose mode.
- 
+
 
 
 

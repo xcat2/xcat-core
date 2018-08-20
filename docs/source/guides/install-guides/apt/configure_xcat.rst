@@ -8,14 +8,14 @@ Internet Repository
 
 **[xcat-core]**
 
-From the xCAT download page, find the build you want to install and add to ``/etc/apt/sources.list``. 
+From the xCAT download page, find the build you want to install and add to ``/etc/apt/sources.list``.
 
 To configure the xCAT development build, add the following line to ``/etc/apt/sources.list``: ::
 
   [For x86_64 servers]
-  deb [arch=amd64] http://xcat.org/files/xcat/repos/apt/devel/core-snap trusty main
+  deb [arch=amd64] http://xcat.org/files/xcat/repos/apt/devel/core-snap bionic main
   [For ppc64el servers]
-  deb [arch=ppc64el] http://xcat.org/files/xcat/repos/apt/devel/core-snap trusty main
+  deb [arch=ppc64el] http://xcat.org/files/xcat/repos/apt/devel/core-snap bionic main
 
 
 **[xcat-dep]**
@@ -23,9 +23,9 @@ To configure the xCAT development build, add the following line to ``/etc/apt/so
 To configure the xCAT deps online repository, add the following line to ``/etc/apt/sources.list``: ::
 
   [For x86_64 servers]
-  deb [arch=amd64] http://xcat.org/files/xcat/repos/apt/xcat-dep trusty main
+  deb [arch=amd64] http://xcat.org/files/xcat/repos/apt/latest/xcat-dep bionic main
   [For ppc64el servers]
-  deb [arch=ppc64el] http://xcat.org/files/xcat/repos/apt/xcat-dep trusty main
+  deb [arch=ppc64el] http://xcat.org/files/xcat/repos/apt/latest/xcat-dep bionic main
 
 
 If using internet repositories, continue to the next step to install xCAT.

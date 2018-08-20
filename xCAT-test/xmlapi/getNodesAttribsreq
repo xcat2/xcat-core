@@ -3,6 +3,6 @@
 <command>getNodesAttribs</command>
 <table>nodelist</table>
 <noderange>blade01-blade02</noderange>
-<attr>groups</attr> 
-<attr>status</attr> 
+<attr>groups</attr>
+<attr>status</attr>
 </xcatrequest>

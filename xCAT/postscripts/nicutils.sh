@@ -29,7 +29,7 @@ xargs="xargs"
 modprobe="modprobe"
 
 #########################################################################
-# ifdown/ifup will not be executed in diskful provision postscripts stage 
+# ifdown/ifup will not be executed in diskful provision postscripts stage
 #########################################################################
 reboot_nic_bool=1
 if [ -z "$UPDATENODE" ] || [ $UPDATENODE -ne 1 ] ; then
@@ -43,7 +43,7 @@ fi
 # log lines
 #
 # input : info or warn or error or status
-# 
+#
 # output : multiple lines of string
 #
 ######################################################
@@ -86,7 +86,7 @@ function log_lines {
 ######################################################
 function log_error {
     local __msg="$*"
-    $log_print_cmd $log_print_arg "[E]:Error: $__msg" 
+    $log_print_cmd $log_print_arg "[E]:Error: $__msg"
     return 1
 }
 
@@ -102,7 +102,7 @@ function log_error {
 ######################################################
 function log_warn {
     local __msg="$*"
-    $log_print_cmd $log_print_arg "[W]: $__msg" 
+    $log_print_cmd $log_print_arg "[W]: $__msg"
     return 0
 }
 
@@ -118,7 +118,7 @@ function log_warn {
 ######################################################
 function log_info {
     local __msg="$*"
-    $log_print_cmd $log_print_arg "[I]: $__msg" 
+    $log_print_cmd $log_print_arg "[I]: $__msg"
     return 0
 }
 
@@ -134,7 +134,7 @@ function log_info {
 __my_log_status=
 function log_status {
     local __msg="$*"
-    $log_print_cmd $log_print_arg "[S]: $__msg" 
+    $log_print_cmd $log_print_arg "[S]: $__msg"
 
     # call my_log_status hook to triger more processing for status messages.
     if [ -n "$__my_log_status" ]; then
@@ -145,7 +145,7 @@ function log_status {
 
 ####################################################
 #
-# print output 
+# print output
 #
 ###################################################
 function log_print_default {
@@ -174,7 +174,7 @@ function set_log_print {
 
 #####################################################
 #
-# uniq line in cfg files 
+# uniq line in cfg files
 #
 # input : -t"str_for_FS" -k"num"
 #
@@ -267,13 +267,13 @@ function load_kmod {
 
 
 #################################################################
-# 
+#
 # query nicextraparams from nics table
 # example: nicextraparams.eth0="MTU=9000 something=yes"
 # input: nic, here is eth0
 # output: set value for globe ${array_extra_param_names}
 #         and ${array_extra_param_values}
-#         example: 
+#         example:
 #         array_extra_param_names[0]="MTU"
 #         array_extra_param_values[0]="9000"
 #         array_extra_param_names[1]="something"
@@ -284,7 +284,7 @@ function query_extra_params {
 
     nic=$1
     if [ -z "$nic" ]; then
-        return 
+        return
     fi
     get_nic_extra_params $nic "$NICEXTRAPARAMS"
     j=0
@@ -352,7 +352,7 @@ function query_nicnetworks_nic {
 
 #############################################################
 #
-# query netname from networks table 
+# query netname from networks table
 #
 # input : nic
 #
@@ -423,7 +423,7 @@ function get_mac {
 #
 # wait for nic state
 #
-# input : <nic> <expect_state> <try_count> <sleep_time> 
+# input : <nic> <expect_state> <try_count> <sleep_time>
 #
 ####################################################################
 function wait_for_ifstate {
@@ -456,12 +456,12 @@ function wait_for_ifstate {
 # create ifcfg-* files
 #
 # input : ifname=<ifname> nwdir="cfg_file_dir" xcatnet=<xcatnet> _ipaddr=<ip> _netmask=<mask> inattrs=<attrs>
-#        
-# return : 0 success 
+#
+# return : 0 success
 #
 #################################################################
 function create_persistent_ifcfg {
-    log_info "create_persistent_ifcfg $@" 
+    log_info "create_persistent_ifcfg $@"
 
     local nwdir="/etc/sysconfig/network-scripts"
 
@@ -556,7 +556,7 @@ function create_persistent_ifcfg {
             attrs=${attrs}${attrs:+,}"HWADDR=$mac"
         fi
     fi
-    
+
     #add extra params
     i=0
     while [ $i -lt ${#array_extra_param_names[@]} ]
@@ -580,7 +580,7 @@ function create_persistent_ifcfg {
 
     # log for debug
     echo "['ifcfg-${ifname}']" >&2
-    cat $fcfg | $sed -e 's/^/ >> /g' | log_lines info 
+    cat $fcfg | $sed -e 's/^/ >> /g' | log_lines info
     return $rc
 }
 
@@ -593,7 +593,7 @@ function create_persistent_ifcfg {
 #
 ###############################################################################
 function expand_ports {
-    log_info "expand_ports $@" 
+    log_info "expand_ports $@"
 
     local i
     local ports=`echo "$1" | $sed -e 's/,/ /g'`
@@ -637,7 +637,7 @@ function expand_ports {
 #
 #########################################################################
 function migrate_ip {
-    log_info "migrate_ip $@" 
+    log_info "migrate_ip $@"
 
     local ifname=""
     local sports=""
@@ -709,7 +709,7 @@ function add_br() {
          log_info "ovs-vsctl add-br $BNAME"
          ovs-vsctl add-br $BNAME
      elif [[ $BRIDGE == "bridge" ]]; then
-         log_info "brctl addbr $BNAME" 
+         log_info "brctl addbr $BNAME"
          brctl addbr $BNAME
          log_info "brctl stp $BNAME on"
          brctl stp $BNAME on
@@ -756,13 +756,13 @@ function add_if() {
          log_info "ovs-vsctl add-br $BNAME"
          ovs-vsctl add-br $BNAME
 
-        log_info "ovs-vsctl add-port $BNAME $PORT" 
+        log_info "ovs-vsctl add-port $BNAME $PORT"
         ovs-vsctl add-port $BNAME $PORT
     elif [[ $BRIDGE == "bridge" ]]; then
-        log_info "brctl addif $BNAME $PORT" 
+        log_info "brctl addif $BNAME $PORT"
         brctl addif $BNAME $PORT
     fi
-    
+
 
 }
 
@@ -774,8 +774,8 @@ function add_if() {
 #
 ###############################################################################
 function create_raw_vlan_for_br {
-  
-    log_info "create_raw_vlan_interface $@" 
+
+    log_info "create_raw_vlan_interface $@"
     local lines=""
 
     local ifname=""
@@ -788,7 +788,7 @@ function create_raw_vlan_for_br {
         key=`echo "$1" | $cut -s -d= -f1`
         if [ "$key" = "ifname" ] || \
            [ "$key" = "_mtu" ] || \
-           [ "$key" = "_bridge" ]; then 
+           [ "$key" = "_bridge" ]; then
             eval "$1"
         fi
         shift
@@ -832,7 +832,7 @@ function create_raw_vlan_for_br {
 ###############################################################################
 function create_raw_bond_for_br {
 
-    log_info "create_raw_bond_interface $@" 
+    log_info "create_raw_bond_interface $@"
     local lines=""
     local ifname=""
     local _mtu=""
@@ -885,7 +885,7 @@ function create_raw_bond_for_br {
 ###############################################################################
 function create_bridge_interface {
 
-    log_info "create_bridge_interface $@" 
+    log_info "create_bridge_interface $@"
     local lines=""
     local ifname="" #current bridge
     local xcatnet=""
@@ -916,7 +916,7 @@ function create_bridge_interface {
     # let's query "nicnetworks" table about its target "xcatnet"
     if [ -n "$ifname" -a -z "$xcatnet" -a -z "$_ipaddr" ]; then
         xcatnet=`query_nicnetworks_net $ifname`
-        log_info "Pickup xcatnet, \"$xcatnet\", from NICNETWORKS for interface \"$ifname\"." 
+        log_info "Pickup xcatnet, \"$xcatnet\", from NICNETWORKS for interface \"$ifname\"."
     fi
 
     # Query mtu value from "networks" table
@@ -927,7 +927,7 @@ function create_bridge_interface {
         fi
     fi
 
-    if [ x$_pretype == "xethernet" ]; then 
+    if [ x$_pretype == "xethernet" ]; then
         create_raw_ethernet_for_br \
             ifname=$_port \
             _bridge=$ifname \
@@ -937,14 +937,14 @@ function create_bridge_interface {
             ifname=$_port \
             _bridge=$ifname \
             _mtu=$_mtu
-            
+
     elif [ x$_pretype == "xbond" ]; then
         create_raw_bond_for_br \
             ifname=$_port \
             _bridge=$ifname \
             _mtu=$_mtu \
-            _bonding_opts="mode=802.3ad miimon=100" 
-    fi  
+            _bonding_opts="mode=802.3ad miimon=100"
+    fi
 
     add_br $ifname $_brtype
     add_if $ifname $_port $_brtype
@@ -952,7 +952,7 @@ function create_bridge_interface {
     [ -n "$_mtu" ] && $ip link set $ifname mtu $_mtu
 
     # log for debug
-   
+
     migrate_ip ifname=$ifname sports="$_port"
 
     # define and bring up bridge interface, if required.
@@ -965,10 +965,10 @@ function create_bridge_interface {
     fi
 
     if [ x$_brtype == x"bridge" ]; then
-    
+
         cfg="${cfg}${cfg:+,}TYPE=Bridge"
     elif [ x$_brtype == x"bridge_ovs" ]; then
-    
+
         cfg="${cfg}${cfg:+,}TYPE=OVSBridge"
 
     fi
@@ -1026,12 +1026,12 @@ function create_ethernet_interface {
         shift
     done
     if [ -z "$ifname" -a -z "$mport" ]; then
-        log_error "No valid \"ifname\" or \"mport\". Abort!" 
+        log_error "No valid \"ifname\" or \"mport\". Abort!"
         return 1
 
     # if caller only knows the real "mport", assume it is the defined "ifname".
     elif [ -z "$ifname" ]; then
-        log_info "Assume defined nic is the member nic \"$mport\"." 
+        log_info "Assume defined nic is the member nic \"$mport\"."
         ifname=$mport
     fi
     # let's query "nicnetworks" table about its target "xcatnet"
@@ -1041,7 +1041,7 @@ function create_ethernet_interface {
 
     # Verify if there could be valid ipaddr/netmask
     if [ -z "$xcatnet" -a -z "$_ipaddr" ]; then
-        log_error "No valid \"xcatnet\" or explicite \"_ipaddr/_netmask\". Abort!" 
+        log_error "No valid \"xcatnet\" or explicite \"_ipaddr/_netmask\". Abort!"
         return 1
     fi
 
@@ -1090,7 +1090,7 @@ function create_ethernet_interface {
 
 ###############################################################################
 #
-# create vlan 
+# create vlan
 #
 # input : ifname=<ifname> slave_ports=<ports> xcatnet=<xcatnetwork> _ipaddr=<ip> _netmask=<netmask> _mtu=<mtu> _bridge=<bridge_name> vlanid=<vlanid>
 # return : 0 success
@@ -1135,7 +1135,7 @@ function create_vlan_interface {
     # let's query "nicnetworks" table about its target "xcatnet"
     if [ -n "$ifname" -a -z "$xcatnet" -a -z "$_ipaddr" -a -n "$vlanid" ]; then
         xcatnet=`query_nicnetworks_net $ifname.$vlanid`
-        log_info "Pickup xcatnet, \"$xcatnet\", from NICNETWORKS for interface \"$ifname\"." 
+        log_info "Pickup xcatnet, \"$xcatnet\", from NICNETWORKS for interface \"$ifname\"."
     fi
 
     # Query mtu value from "networks" table
@@ -1169,7 +1169,7 @@ function create_vlan_interface {
         return 1
     fi
 
-    # setup interface 
+    # setup interface
     [ -n "$_mtu" ] && $ip link set $ifname.$vlanid mtu $_mtu
     $ip link set $ifname.$vlanid up
     log_info "$ip link set $ifname.$vlanid up"
@@ -1187,11 +1187,11 @@ function create_vlan_interface {
     # generate vlan interface definition
     cfg=""
     cfg="${cfg}${cfg:+,}ONBOOT=yes"
-    
+
     if grep -q -i "release 6" /etc/redhat-release ; then
        cfg="${cfg}${cfg:+,}NM_CONTROLLED=no"
     fi
-    
+
     cfg="${cfg}${cfg:+,}USERCTL=no"
     cfg="${cfg}${cfg:+,}VLAN=yes"
     [ -n "$_mtu" ] && \
@@ -1226,7 +1226,7 @@ function create_vlan_interface {
 ###############################################################################
 function create_raw_ethernet_for_br {
 
-    log_info "create_raw_eth_interface_for_br $@" 
+    log_info "create_raw_eth_interface_for_br $@"
 
     local lines=""
     local ifname=""
@@ -1268,11 +1268,11 @@ function create_raw_ethernet_for_br {
 # https://www.kernel.org/doc/Documentation/networking/bonding.txt
 # https://access.redhat.com/documentation/en-US/Red_Hat_Enterprise_Linux/7/html/Networking_Guide/sec-Using_Channel_Bonding.html
 #
-# input : ifname=<nic> xcatnet=<xcatnetwork> _ipaddr=<ip> _netmask=<netmask> _bonding_opts=<bonding_opts> _mtu=<mtu> slave_ports=<port1,port2> 
+# input : ifname=<nic> xcatnet=<xcatnetwork> _ipaddr=<ip> _netmask=<netmask> _bonding_opts=<bonding_opts> _mtu=<mtu> slave_ports=<port1,port2>
 #
 ############################################################################################################################
 function create_bond_interface {
-    log_info "create_bond_interface $@" 
+    log_info "create_bond_interface $@"
 
     local lines=""
     local ifname=""
@@ -1314,10 +1314,10 @@ function create_bond_interface {
         slave_type="Infiniband"
         _bonding_opts="mode=1 miimon=100 fail_over_mac=1"
     fi
-    # let's query "nicnetworks" table about its target "xcatnet" 
+    # let's query "nicnetworks" table about its target "xcatnet"
     if [ -n "$ifname" -a -z "$xcatnet" -a -z "$_ipaddr" ]; then
         xcatnet=`query_nicnetworks_net $ifname`
-        log_info "Pickup xcatnet, \"$xcatnet\", from NICNETWORKS for interface \"$ifname\"." 
+        log_info "Pickup xcatnet, \"$xcatnet\", from NICNETWORKS for interface \"$ifname\"."
     fi
 
     local cnt
@@ -1327,7 +1327,7 @@ function create_bond_interface {
         _bonding_opts=`echo "$_bonding_opts" | $sed -e 's/,/ /g'`
     fi
 
-    # Query mtu value from "networks" table   
+    # Query mtu value from "networks" table
     if [ -z "$_mtu" ]; then
         _mtu=`get_network_attr $xcatnet mtu`
         if [ $? -ne 0 ]; then
@@ -1349,7 +1349,7 @@ function create_bond_interface {
         if [ $cnt -eq 0 -a ! -f /proc/net/bonding/$ifname ]; then
             # load the bonding module if not loaded.
             load_kmod module=bonding retry=10 interval=0.5
-    
+
             # create required bond device
             ((i=0))
             while ! grep -sq "\b$ifname\b" /sys/class/net/bonding_masters;
@@ -1360,7 +1360,7 @@ function create_bond_interface {
                 [ $i -ge 10 ] && break
             done
             if [ $i -ge 10 -o ! -f /proc/net/bonding/$ifname ]; then
-                log_error "stage 0: Fail to create bond device \"$ifname\"" 
+                log_error "stage 0: Fail to create bond device \"$ifname\""
                 break
             fi
 
@@ -1370,7 +1370,7 @@ function create_bond_interface {
             # 1.1) bring down bond interface before setup its attributes
             $ip link set $ifname down
             log_info "$ip link set $ifname down"
-            $ip link show $ifname | $sed -e 's/^/[bond.down] >> /g' | log_lines info 
+            $ip link show $ifname | $sed -e 's/^/[bond.down] >> /g' | log_lines info
 
             # 1.2) remove current slaves first
             local saved_slaves=$(</sys/class/net/$ifname/bonding/slaves)
@@ -1380,12 +1380,12 @@ function create_bond_interface {
             done
             lines=`$(</sys/class/net/$ifname/bonding/slaves)`
             if [ -n "$lines" ]; then
-                log_warn "stage 1: Cannot clean up bond slaves before setting up its attributes." 
+                log_warn "stage 1: Cannot clean up bond slaves before setting up its attributes."
                 echo "$lines" \
                 | $sed -e 's/[failed.slaves] >> /g' \
-                | log_lines info 
+                | log_lines info
             fi
-    
+
             # 1.3) apply bond options
             local option
             for option in $_bonding_opts
@@ -1395,19 +1395,19 @@ function create_bond_interface {
                 echo "$val" >/sys/class/net/$ifname/bonding/$key
                 rc=$?
                 if [ $rc -ne 0 ]; then
-                    log_warn "stage 1: Fail to set bonding option \"$key\" to \"$val\" in device \"$ifname\"" 
+                    log_warn "stage 1: Fail to set bonding option \"$key\" to \"$val\" in device \"$ifname\""
                     cat /sys/class/net/$ifname/bonding/$key \
                     | $sed -e 's/^/[bond.'$key'] >>/g' \
-                    | log_lines info 
+                    | log_lines info
                 fi
             done
-    
+
             # 1.4) restore saved bond slaves
             for ifslave in $saved_slaves
             do
                 echo "+$ifslave" >/sys/class/net/$ifname/bonding/slaves
             done
-            log_info "[bond.slavesAft] >> $(</sys/class/net/$ifname/bonding/slaves)" 
+            log_info "[bond.slavesAft] >> $(</sys/class/net/$ifname/bonding/slaves)"
 
         # Stage 2:
         # add slave ports
@@ -1421,18 +1421,18 @@ function create_bond_interface {
                     # the slave interface will be brought up implicitely after bonded to master.
                     $ip link set $ifslave down
                     log_info "$ip link set $ifslave down"
-    
+
                     # log for debug
                     $ip link show $ifslave | $sed -e 's/^/[slave]: >> /g' \
                     | log_lines info >&2
-        
+
                     echo "+$ifslave" >/sys/class/net/$ifname/bonding/slaves
                 fi
 
                 # define and bring up slave interfaces.
                 cfg=""
                 cfg="${cfg}${cfg:+,}ONBOOT=yes"
-                
+
                 if grep -q -i "release 6" /etc/redhat-release ; then
                     cfg="${cfg}${cfg:+,}NM_CONTROLLED=no"
                 fi
@@ -1449,7 +1449,7 @@ function create_bond_interface {
                     inattrs="$cfg"
             done
             # log for debug
-            log_info "[bond.slavesNew] >> $(</sys/class/net/$ifname/bonding/slaves)" 
+            log_info "[bond.slavesNew] >> $(</sys/class/net/$ifname/bonding/slaves)"
 
             # 2.2) apply other bond interface options on the fly
             [ -n "$_mtu" ] && $ip link set $ifname mtu $_mtu
@@ -1463,10 +1463,10 @@ function create_bond_interface {
             wait_for_ifstate $ifname UP 200 1
             rc=$?
             # log for debug
-            $ip link show $ifname | $sed -e 's/^/[ip.link] >> /g' | log_lines info 
+            $ip link show $ifname | $sed -e 's/^/[ip.link] >> /g' | log_lines info
 
             if [ $rc -ne 0 ]; then
-                log_warn "stage 3: Fail to bring up bond interface \"$ifname\"" 
+                log_warn "stage 3: Fail to bring up bond interface \"$ifname\""
                 break
             fi
         fi
@@ -1475,7 +1475,7 @@ function create_bond_interface {
     done
     test $cnt -eq 4
     rc=$?
-    
+
     # migrate slave ports ip and route to bond master
     #[ $_g_migrate_ip -eq 1 ] && \
     #migrate_ip ifname=$ifname sports="$slave_ports"
@@ -1484,11 +1484,11 @@ function create_bond_interface {
     # DHCLIENTARGS is optional, but default to have.
     cfg=""
     cfg="${cfg}${cfg:+,}ONBOOT=yes"
-                
+
     if grep -q -i "release 6" /etc/redhat-release ; then
         cfg="${cfg}${cfg:+,}NM_CONTROLLED=no"
     fi
-    
+
     cfg="${cfg}${cfg:+,}USERCTL=no"
     cfg="${cfg}${cfg:+,}TYPE=Bond"
     cfg="${cfg}${cfg:+,}BONDING_MASTER=yes"
@@ -1529,7 +1529,7 @@ function create_bond_interface {
 #
 # base64 encoded, decode first
 #
-# input : string 
+# input : string
 #
 ############################################################################
 function decode_arguments {

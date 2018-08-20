@@ -12,10 +12,10 @@
 if [ -f "/proc/cmdline" ]; then   # prevent running it during install into chroot image
     #Now configure the pupper server
     /xcatpost/config_puppet_server "$@"
-    
+
         #restart puppet master
     service puppetmaster stop
-    kill $(ps auxww | grep puppet | grep master | grep -v grep | awk '{print $2}') 
+    kill $(ps auxww | grep puppet | grep master | grep -v grep | awk '{print $2}')
     service puppetmaster start
 fi
 

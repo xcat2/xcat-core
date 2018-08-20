@@ -6,7 +6,7 @@ cmd:mkdef -t node -o compute1 groups=compute ip=10.0.0.199 mac=4a:c8:f7:de:d0:09
 check:rc==0
 cmd:chdef -t node -o compute1 servicenode=$$SN,$$CN xcatmaster=
 check:rc==0
-cmd:makehosts compute1 
+cmd:makehosts compute1
 check:rc==0
 cmd:cat /etc/hosts
 check:output=~compute1
@@ -41,7 +41,7 @@ check:output=~http://$$MN|http://$$MASTERIP|http://${next-server}
 cmd:if [[ "__GETNODEATTR($$CN,arch)__" =~ "ppc64le" ]]; then xdsh $$SN  cat /tftpboot/petitboot/compute1;else echo "http://$$SN";fi
 check:output=~http://$$SN|http://__GETNODEATTR($$SN,ip)__|http://${next-server}
 cmd:if [[ "__GETNODEATTR($$CN,arch)__" =~ "ppc64le" ]]; then xdsh $$CN cat /tftpboot/petitboot/compute1;else echo "http://$$CN";fi
-check:output=~http://$$CN|http://__GETNODEATTR($$CN,ip)__|http://${next-server} 
+check:output=~http://$$CN|http://__GETNODEATTR($$CN,ip)__|http://${next-server}
 
 cmd:noderm compute1
 check:rc==0

@@ -80,7 +80,7 @@ language = None
 # Adding a pattern or a file on this list will still make file available in the documentation,
 # but will eliminate the warning message "document isn't included in any toctree"
 # However, some files that generate such warning contain labels being referred to from other files,
-# if put on the exclude_patters list, such labels are not visible. The commented out files in the 
+# if put on the exclude_patters list, such labels are not visible. The commented out files in the
 # exclude_patters list below, are such files. They generate a warning, but contain reference labels.
 exclude_patterns = ['guides/install-guides/common_sections.rst',
                     '**manage_clusters/common/deployment/*.rst',
