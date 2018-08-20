@@ -1,20 +1,26 @@
 Quickstart
 ==========
 
-To enable ``goconserver``, execute the following steps:
+To enable ``goconserver``
 
-#. Install the ``goconserver`` RPM: ::
+#. For switching from ``conserver``, shall stop it first
 
-      yum install goconserver
+   #. stop ``conserver``
 
+       systemctl stop conserver.service
 
-#. If upgrading xCAT running ``conserver``, stop it first: ::
+   #. (Optional) for service nodes:
 
-      systemctl stop conserver.service
+       chdef -t group -o service setupconserver=2
 
+       xdsh service 'systemctl stop conserver.service'
 
-#. Start ``goconserver`` and create the console configuration files with a single command ::
+#. To start and configure ``goconserver``
 
-      makegocons
+       makegocons
 
    The new console logs will start logging to ``/var/log/consoles/<node>.log``
+
+#. To check the console status of nodes, use:
+
+       makegocons -q
