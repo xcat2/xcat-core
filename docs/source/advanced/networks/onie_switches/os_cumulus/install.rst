@@ -86,7 +86,7 @@ To ease in the management of the switch, xCAT provides a script to help configur
 
 Execute the following to sync the xCAT keys to the switch: ::
 
-    /opt/xcat/share/xcat/scripts/configonie --switches frame01sw1 --ssh
+    rspconfig frame01sw1 sshcfg 
 
 Validate the ssh keys are correctly configured by running a ``xdsh`` command: ::
 
