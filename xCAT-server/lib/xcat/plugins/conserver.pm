@@ -209,6 +209,9 @@ sub process_request {
                 my $rsp->{data}->[0] = "goconserver is being used as the console service, did you mean: makegocons <noderange>? If not, stop goconserver and retry.";
                 xCAT::MsgUtils->message("E", $rsp, $cb);
                 return;
+            } else {
+                my $rsp->{data}->[0] = "makeconservercf is deprecrated as well as conserver, go to makegocons for more information about enabling goconserver.";
+                xCAT::MsgUtils->message("W", $rsp, $cb);
             }
             xCAT::Goconserver::switch_conserver($cb);
         }
