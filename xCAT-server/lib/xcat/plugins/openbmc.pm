@@ -2461,7 +2461,7 @@ sub deal_with_response {
                 if ($::UPLOAD_ACTIVATE_STREAM) {
                     my $timestamp = `date +"%Y%m%d%H%M%S"`;
                     chomp($timestamp);
-                    print RFLASH_LOG_FILE_HANDLE "$timestamp===================Reboot BMC to apply new BMC===================\n";
+                    print RFLASH_LOG_FILE_HANDLE "$timestamp ===================Rebooting BMC to apply new BMC firmware===================\n";
                     print RFLASH_LOG_FILE_HANDLE "BMC $::POWER_STATE_REBOOT\n";
                     close (RFLASH_LOG_FILE_HANDLE);
                     retry_after($node, "RPOWER_BMC_CHECK_REQUEST", 15);
@@ -2681,7 +2681,7 @@ sub rpower_response {
             if ($::UPLOAD_ACTIVATE_STREAM) {
                 my $timestamp = `date +"%Y%m%d%H%M%S"`;
                 chomp($timestamp);
-                print RFLASH_LOG_FILE_HANDLE "$timestamp===================Start reset host to apply new PNOR===================\n";
+                print RFLASH_LOG_FILE_HANDLE "$timestamp ===================Start reset host to apply new PNOR===================\n";
                 print RFLASH_LOG_FILE_HANDLE "$timestamp Power reset host ...\n";
                 print RFLASH_LOG_FILE_HANDLE "Power off host in reset: RPOWER_OFF_RESPONSE power_state $power_state\n";
                 print RFLASH_LOG_FILE_HANDLE "Wait for $::RPOWER_RESET_SLEEP_INTERVAL seconds ...\n"; 
@@ -2700,7 +2700,7 @@ sub rpower_response {
                     print RFLASH_LOG_FILE_HANDLE "BMC $::POWER_STATE_REBOOT\n";
                     my $timestamp = `date +"%Y%m%d%H%M%S"`;
                     chomp($timestamp);
-                    print RFLASH_LOG_FILE_HANDLE "$timestamp===================Reboot BMC to apply new BMC===================\n";
+                    print RFLASH_LOG_FILE_HANDLE "$timestamp ===================Reboot BMC to apply new BMC===================\n";
                     retry_after($node, "RPOWER_BMC_CHECK_REQUEST", 15);
                     return;
                 }
@@ -2786,7 +2786,7 @@ sub rpower_response {
                     print RFLASH_LOG_FILE_HANDLE "BMC $bmc_short_state\n";
                     my $timestamp = `date +"%Y%m%d%H%M%S"`;
                     chomp($timestamp);
-                    print RFLASH_LOG_FILE_HANDLE "$timestamp===================Apply BMC is done===================\n"; 
+                    print RFLASH_LOG_FILE_HANDLE "$timestamp ===================Finished applying BMC firmware===================\n"; 
                 }
 
         } else {
@@ -2885,7 +2885,7 @@ sub rpower_response {
                 $node_info{$node}{cur_status} = "";
                 my $timestamp = `date +"%Y%m%d%H%M%S"`;
                 chomp($timestamp);
-                print RFLASH_LOG_FILE_HANDLE "$timestamp===================Apply PNOR and reset host are done===================\n";
+                print RFLASH_LOG_FILE_HANDLE "$timestamp ===================Finished applying Host firmware and resetting Host===================\n";
                 $wait_node_num--;
                 return;
             }else{
@@ -2898,7 +2898,7 @@ sub rpower_response {
                         $node_info{$node}{wait_on_start} = time();
                     }
                     #retry to set RPOWER_CHECK_ON_REQUEST after wait for $::RPOWER_CHECK_ON_INTERVAL
-                    print RFLASH_LOG_FILE_HANDLE "retry to set RPOWER_CHECK_ON_REQUEST after wait for $::RPOWER_CHECK_ON_INTERVAL\n";
+                    print RFLASH_LOG_FILE_HANDLE "Retrying to set RPOWER_CHECK_ON_REQUEST after waiting for $::RPOWER_CHECK_ON_INTERVAL seconds.\n";
                     retry_after($node, $next_status{ $node_info{$node}{cur_status} }{OFF}, $::RPOWER_CHECK_ON_INTERVAL);
                     return;
                 } else {
@@ -4615,8 +4615,8 @@ sub rflash_response {
                     push @{ $rsp->{data} },$flash_success_msg;
                     # Activation state of active and priority of 0 indicates the activation has been completed
                     if ( $length == $version_num ) { 
-                        xCAT::MsgUtils->message("I", $rsp, $callback) if ($rsp); 
-                        print RFLASH_LOG_FILE_HANDLE "$flash_success_msg\n";
+                        xCAT::MsgUtils->message("I", $rsp, $callback) if ($rsp);
+                        print RFLASH_LOG_FILE_HANDLE "$flash_success_msg\n"; 
                         $node_info{$node}{rst} = "$flash_success_msg";
                         if (!$::UPLOAD_ACTIVATE_STREAM) {
                             $wait_node_num--;
@@ -4702,7 +4702,7 @@ sub rflash_response {
                     print RFLASH_LOG_FILE_HANDLE "$upload_success_msg\n";
                     my $timestamp = `date +"%Y%m%d%H%M%S"`;
                     chomp($timestamp);
-                    print RFLASH_LOG_FILE_HANDLE "$timestamp===================Start activate firmware: $::UPLOAD_FILE_VERSION (ID: $update_id)===================\n";
+                    print RFLASH_LOG_FILE_HANDLE "$timestamp ===================$upload_success_msg===================\n";
                 } elsif ($update_version eq $::UPLOAD_PNOR_VERSION) {
                     $found_pnor_match = 1;
                     if ($::UPLOAD_PNOR_HASH_ID && ($::UPLOAD_PNOR_HASH_ID ne $update_id)) {
@@ -4721,7 +4721,7 @@ sub rflash_response {
                     print RFLASH_LOG_FILE_HANDLE "$upload_success_msg\n";
                     my $timestamp = `date +"%Y%m%d%H%M%S"`;
                     chomp($timestamp);
-                    print RFLASH_LOG_FILE_HANDLE "$timestamp===================Start activate firmware: $::UPLOAD_PNOR_VERSION (ID: $update_id)===================\n";
+                    print RFLASH_LOG_FILE_HANDLE "$timestamp ===================$upload_success_msg===================\n";
                 }
 
             }
