@@ -19,7 +19,7 @@ SYNOPSIS
 ********
 
 
-\ **mp Attributes:**\   \ *node*\ , \ *mpa*\ , \ *id*\ , \ *nodetype*\ , \ *comments*\ , \ *disable*\ 
+\ **mp Attributes:**\   \ *node*\ , \ *mpa*\ , \ *id*\ , \ *nodetype*\ , \ *comments*\ , \ *disable*\
 
 
 ***********
@@ -36,40 +36,40 @@ mp Attributes:
 
 
 
-\ **node**\ 
- 
+\ **node**\
+
  The blade node name or group name.
- 
 
 
-\ **mpa**\ 
- 
+
+\ **mpa**\
+
  The management module used to control this blade.
- 
 
 
-\ **id**\ 
- 
+
+\ **id**\
+
  The slot number of this blade in the BladeCenter chassis.
- 
 
 
-\ **nodetype**\ 
- 
+
+\ **nodetype**\
+
  The hardware type for mp node. Valid values: mm,cmm, blade.
- 
 
 
-\ **comments**\ 
- 
+
+\ **comments**\
+
  Any user-written notes.
- 
 
 
-\ **disable**\ 
- 
+
+\ **disable**\
+
  Set to 'yes' or '1' to comment out this row.
- 
+
 
 
 
@@ -78,5 +78,5 @@ SEE ALSO
 ********
 
 
-\ **nodels(1)**\ , \ **chtab(8)**\ , \ **tabdump(8)**\ , \ **tabedit(8)**\ 
+\ **nodels(1)**\ , \ **chtab(8)**\ , \ **tabdump(8)**\ , \ **tabedit(8)**\
 

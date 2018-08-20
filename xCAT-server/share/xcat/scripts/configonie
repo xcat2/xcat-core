@@ -39,8 +39,8 @@ my @filternodes;
 if (
     !GetOptions(
                 'h|help'     => \$::HELP,
-                'switches=s' => \$::SWITCH,  
-                'port=s'     => \$::PORT,  
+                'switches=s' => \$::SWITCH,
+                'port=s'     => \$::PORT,
                 'vlan=s'     => \$::VLAN,
                 'snmp'       => \$::SNMP,
                 'ssh'        => \$::SSH,
@@ -139,7 +139,7 @@ sub config_ssh {
     if ($nettab) {
         @nets = $nettab->getAllAttribs('net','mask');
     }
-    
+
     my $nodetab = xCAT::Table->new('hosts');
     my $nodehash = $nodetab->getNodesAttribs(\@nodes,['ip','otherinterfaces']);
 
@@ -161,7 +161,7 @@ sub config_ssh {
         #remove old host key from /root/.ssh/known_hosts
         $cmd = `ssh-keygen -R $switch`;
         $cmd = `ssh-keygen -R $ssh_ip`;
-        
+
 
         my ($exp, $errstr) = cumulus_connect($ssh_ip, $userid, $password, $timeout);
         if (!defined $exp) {
@@ -202,7 +202,7 @@ sub config_ssh {
         print "ssh configured for $csw\n";
         if ($::ALL) {
             $cmd = "updatenode $csw -P hardeths,syslog,enablesnmp,configinterface";
-            $rc= xCAT::Utils->runcmd($cmd, 0); 
+            $rc= xCAT::Utils->runcmd($cmd, 0);
             if ($::RUNCMD_RC != 0) {
                 xCAT::MsgUtils->message("E","Failed to run updatenode, please check the switch");
                 print "Failed to run $cmd\n";
@@ -315,7 +315,7 @@ sub install_license {
 }
 
 
-#get snmp attributes from switches tabele and setup secure SNMP v3 
+#get snmp attributes from switches tabele and setup secure SNMP v3
 sub config_snmp {
 
     my $switchestab =  xCAT::Table->new('switches');
@@ -339,7 +339,7 @@ sub config_snmp {
         if (defined $privacy) {
             $privpwd = $password;
         }
-        
+
         my $libconf = "/var/lib/snmp/snmpd.conf";
         my $etcconf = "/etc/snmp/snmpd.conf";
 
@@ -439,7 +439,7 @@ sub config_ntp {
         foreach my $server (@servers) {
             `echo "server $server iburst" >> $file`;
         }
-   
+
         $cmd = "xdcp $switch $file";
         $rc= xCAT::Utils->runcmd($cmd, 0);
         $cmd = "xdsh $switch 'cp /etc/ntp.conf /etc/ntp.conf.orig;cp $file /etc/ntp.conf;rm -fr $file;systemctl restart ntp;systemctl enable ntp' ";
@@ -462,7 +462,7 @@ sub config_ntp {
         print "$csw: NTP service is configured\n";
     }
 
-    
+
 }
 
 #---------------------------------------------------------
@@ -477,14 +477,14 @@ sub config_ntp {
 sub usage
 {
     print "Usage:
-    configonie -h│--help 
-    configonie --switches switchnames --ssh 
-    configonie --switches switchnames --license filename  
+    configonie -h│--help
+    configonie --switches switchnames --ssh
+    configonie --switches switchnames --license filename
     configonie --switches switchnames --snmp
-    configonie --switches switchnames --ntp 
+    configonie --switches switchnames --ntp
 
     To setup ssh passwordless, change ip to static, enable snmp configuration and configure basic interface :
-        configonie --switches switchnames --all 
+        configonie --switches switchnames --all
     \n";
 }
 

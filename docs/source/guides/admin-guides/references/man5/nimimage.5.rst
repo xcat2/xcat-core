@@ -19,7 +19,7 @@ SYNOPSIS
 ********
 
 
-\ **nimimage Attributes:**\   \ *imagename*\ , \ *nimtype*\ , \ *lpp_source*\ , \ *spot*\ , \ *root*\ , \ *dump*\ , \ *paging*\ , \ *resolv_conf*\ , \ *tmp*\ , \ *home*\ , \ *shared_home*\ , \ *res_group*\ , \ *nimmethod*\ , \ *script*\ , \ *bosinst_data*\ , \ *installp_bundle*\ , \ *mksysb*\ , \ *fb_script*\ , \ *shared_root*\ , \ *otherpkgs*\ , \ *image_data*\ , \ *configdump*\ , \ *comments*\ , \ *disable*\ 
+\ **nimimage Attributes:**\   \ *imagename*\ , \ *nimtype*\ , \ *lpp_source*\ , \ *spot*\ , \ *root*\ , \ *dump*\ , \ *paging*\ , \ *resolv_conf*\ , \ *tmp*\ , \ *home*\ , \ *shared_home*\ , \ *res_group*\ , \ *nimmethod*\ , \ *script*\ , \ *bosinst_data*\ , \ *installp_bundle*\ , \ *mksysb*\ , \ *fb_script*\ , \ *shared_root*\ , \ *otherpkgs*\ , \ *image_data*\ , \ *configdump*\ , \ *comments*\ , \ *disable*\
 
 
 ***********
@@ -36,148 +36,148 @@ nimimage Attributes:
 
 
 
-\ **imagename**\ 
- 
+\ **imagename**\
+
  User provided name of this xCAT OS image definition.
- 
 
 
-\ **nimtype**\ 
- 
+
+\ **nimtype**\
+
  The NIM client type- standalone, diskless, or dataless.
- 
 
 
-\ **lpp_source**\ 
- 
+
+\ **lpp_source**\
+
  The name of the NIM lpp_source resource.
- 
 
 
-\ **spot**\ 
- 
+
+\ **spot**\
+
  The name of the NIM SPOT resource.
- 
 
 
-\ **root**\ 
- 
+
+\ **root**\
+
  The name of the NIM root resource.
- 
 
 
-\ **dump**\ 
- 
+
+\ **dump**\
+
  The name of the NIM dump resource.
- 
 
 
-\ **paging**\ 
- 
+
+\ **paging**\
+
  The name of the NIM paging resource.
- 
 
 
-\ **resolv_conf**\ 
- 
+
+\ **resolv_conf**\
+
  The name of the NIM resolv_conf resource.
- 
 
 
-\ **tmp**\ 
- 
+
+\ **tmp**\
+
  The name of the NIM tmp resource.
- 
 
 
-\ **home**\ 
- 
+
+\ **home**\
+
  The name of the NIM home resource.
- 
 
 
-\ **shared_home**\ 
- 
+
+\ **shared_home**\
+
  The name of the NIM shared_home resource.
- 
 
 
-\ **res_group**\ 
- 
+
+\ **res_group**\
+
  The name of a NIM resource group.
- 
 
 
-\ **nimmethod**\ 
- 
+
+\ **nimmethod**\
+
  The NIM install method to use, (ex. rte, mksysb).
- 
 
 
-\ **script**\ 
- 
+
+\ **script**\
+
  The name of a NIM script resource.
- 
 
 
-\ **bosinst_data**\ 
- 
+
+\ **bosinst_data**\
+
  The name of a NIM bosinst_data resource.
- 
 
 
-\ **installp_bundle**\ 
- 
+
+\ **installp_bundle**\
+
  One or more comma separated NIM installp_bundle resources.
- 
 
 
-\ **mksysb**\ 
- 
+
+\ **mksysb**\
+
  The name of a NIM mksysb resource.
- 
 
 
-\ **fb_script**\ 
- 
+
+\ **fb_script**\
+
  The name of a NIM fb_script resource.
- 
 
 
-\ **shared_root**\ 
- 
+
+\ **shared_root**\
+
  A shared_root resource represents a directory that can be used as a / (root) directory by one or more diskless clients.
- 
 
 
-\ **otherpkgs**\ 
- 
+
+\ **otherpkgs**\
+
  One or more comma separated installp or rpm packages.  The rpm packages must have a prefix of 'R:', (ex. R:foo.rpm)
- 
 
 
-\ **image_data**\ 
- 
+
+\ **image_data**\
+
  The name of a NIM image_data resource.
- 
 
 
-\ **configdump**\ 
- 
+
+\ **configdump**\
+
  Specifies the type of system dump to be collected. The values are selective, full, and none.  The default is selective.
- 
 
 
-\ **comments**\ 
- 
+
+\ **comments**\
+
  Any user-provided notes.
- 
 
 
-\ **disable**\ 
- 
+
+\ **disable**\
+
  Set to 'yes' or '1' to comment out this row.
- 
+
 
 
 
@@ -186,5 +186,5 @@ SEE ALSO
 ********
 
 
-\ **nodels(1)**\ , \ **chtab(8)**\ , \ **tabdump(8)**\ , \ **tabedit(8)**\ 
+\ **nodels(1)**\ , \ **chtab(8)**\ , \ **tabdump(8)**\ , \ **tabedit(8)**\
 

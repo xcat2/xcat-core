@@ -52,7 +52,7 @@ sub handled_commands
 
 =head3  preprocess_request
 
-  Check and setup for hierarchy 
+  Check and setup for hierarchy
 
 =cut
 
@@ -279,9 +279,9 @@ sub preprocess_request
 
 #-------------------------------------------------------
 
-=head3 parse_xdcp_cmd 
+=head3 parse_xdcp_cmd
   Check to see if full path on file(s) input to the command
-  If not add currentpath to the file in the argument 
+  If not add currentpath to the file in the argument
   Check to see if on a servicenode, if so then add the SNsynfiledir
   to the path
 =cut
@@ -436,9 +436,9 @@ sub parse_xdcp_cmd
 
 #-------------------------------------------------------
 
-=head3 parse_xdsh_cmd 
+=head3 parse_xdsh_cmd
   Check to see if full path on file(s) input to the command
-  If not add currentpath to the file in the argument 
+  If not add currentpath to the file in the argument
 =cut
 
 #-------------------------------------------------------
@@ -580,8 +580,8 @@ sub parse_xdsh_cmd
 #-------------------------------------------------------
 
 =head3  process_servicenodes_xdcp
-  Build the xdcp command to send to the service nodes first 
-  Return an array of servicenodes that do not have errors 
+  Build the xdcp command to send to the service nodes first
+  Return an array of servicenodes that do not have errors
   Returns error code:
   if  = 0,  good return continue to process the
 	  nodes.
@@ -821,13 +821,13 @@ sub process_servicenodes_xdcp
 #-------------------------------------------------------
 
 =head3  process_servicenodes_xdsh
-  Build the xdsh command to sync the -e file or the -E file 
+  Build the xdsh command to sync the -e file or the -E file
   to the servicenodes.
-  The executable (-e) or the environment file (-E) 
+  The executable (-e) or the environment file (-E)
   must be copied into /var/xcat/syncfiles (SNsyncfiledir attribute), and then
   the command modified so that the xdsh running on the SN will use the file
   from /var/xcat/syncfiles (default) for the compute nodes.
-  Return an array of servicenodes that do not have errors 
+  Return an array of servicenodes that do not have errors
   Returns error code:
   if  = 0,  good return continue to process the
 	  nodes.
@@ -984,8 +984,8 @@ sub process_servicenodes_xdsh
 
 =head3  process_nodes
 
-  Build the  request to send to the nodes, serviced by SN 
-  Return the request 
+  Build the  request to send to the nodes, serviced by SN
+  Return the request
 
 =cut
 

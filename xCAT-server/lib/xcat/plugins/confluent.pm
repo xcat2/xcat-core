@@ -20,7 +20,7 @@ my $usage_string =
   "  makeconfluentcfg [-d|--delete] noderange
   makeconfluentcf [-l|--local]
   makeconfluentcf [-c|--confluent]
-  makeconfluentcf 
+  makeconfluentcf
   makeconfluentcf -h|--help
   makeconfluentcf -v|--version
     -c|--confluent   Configure confluent only on the host.

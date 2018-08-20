@@ -41,6 +41,6 @@ Define PDU Objects
 
 #. Verify the SNMP command responds against the PDU: ::
 
-    snmpwalk -v1 -cpublic -mALL f5pdu3 system 
+    snmpwalk -v1 -cpublic -mALL f5pdu3 system
 
 

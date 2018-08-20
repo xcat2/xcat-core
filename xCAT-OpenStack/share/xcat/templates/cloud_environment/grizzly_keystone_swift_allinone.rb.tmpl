@@ -2,7 +2,7 @@
 # IBM(c) 2013 EPL license http://www.eclipse.org/legal/epl-v10.html
 #
 #
-# When using this template, you should change the proxy-cidr and object-cidr 
+# When using this template, you should change the proxy-cidr and object-cidr
 # according to your actual network environment!!!!!!!!
 #
 
@@ -33,7 +33,7 @@ override_attributes(
   "openstack" => {
     "developer_mode" => true,
     "db"=>{
-       "bind_interface"=>"#TABLE:clouds:name=$CLOUD:mgtinterface#", 
+       "bind_interface"=>"#TABLE:clouds:name=$CLOUD:mgtinterface#",
         "compute"=>{
            "host"=>"#TABLE:clouds:name=$CLOUD:hostip#"
         },
@@ -61,7 +61,7 @@ override_attributes(
         "bind_interface"=>"#TABLE:clouds:name=$CLOUD:mgtinterface#"
      },
     "identity"=>{
-        "bind_interface"=>"#TABLE:clouds:name=$CLOUD:mgtinterface#", 
+        "bind_interface"=>"#TABLE:clouds:name=$CLOUD:mgtinterface#",
         "db"=>{
             "username"=>"keystone",
             "password"=> "keystone"
@@ -112,7 +112,7 @@ override_attributes(
           "bind_interface"=>"#TABLE:clouds:name=$CLOUD:mgtinterface#"
        },
        "registry"=>{
-          "bind_interface"=>"#TABLE:clouds:name=$CLOUD:mgtinterface#" 
+          "bind_interface"=>"#TABLE:clouds:name=$CLOUD:mgtinterface#"
        },
        "image_upload" => false,
        "upload_images" => ["cirros"],
@@ -169,10 +169,10 @@ override_attributes(
        "config" => {
            "ram_allocation_ratio" => 5.0
        },
-       "libvirt" => { 
-           "bind_interface"=>"#TABLE:clouds:name=$CLOUD:mgtinterface#",  
-           "virt_type" => "#TABLE:clouds:name=$CLOUD:virttype#" 
-       }    
+       "libvirt" => {
+           "bind_interface"=>"#TABLE:clouds:name=$CLOUD:mgtinterface#",
+           "virt_type" => "#TABLE:clouds:name=$CLOUD:virttype#"
+       }
     }
   }
   )

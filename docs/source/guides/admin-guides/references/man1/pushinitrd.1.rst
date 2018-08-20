@@ -49,24 +49,24 @@ OPTIONS
 
 
 
-\ **-w**\  \ *waittime*\ 
- 
+\ **-w**\  \ *waittime*\
+
  The number of seconds the initrd should wait before trying to communicate over the network.
  The default is 75.  This translates into the netwait kernel parameter and is usually needed
  in a SoftLayer environment because it can take a while for a NIC to be active after changing state.
- 
 
 
-\ **-?|-h|-**\ **-help**\ 
- 
+
+\ **-?|-h|-**\ **-help**\
+
  Display usage message.
- 
 
 
-\ **-v|-**\ **-version**\ 
- 
+
+\ **-v|-**\ **-version**\
+
  Command Version.
- 
+
 
 
 
@@ -87,15 +87,15 @@ EXAMPLES
 
 
 1.
- 
+
  Configure nodes for net installing in a SoftLayer environment:
- 
- 
+
+
  .. code-block:: perl
- 
+
    pushinitrd <noderange>
- 
- 
+
+
 
 
 

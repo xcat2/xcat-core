@@ -337,7 +337,7 @@ sub mknetboot
         else {
             # This is deprecated mode to define node's provmethod, not supported now.
             xCAT::MsgUtils->report_node_error($callback, $node, "OS image name must be specified in nodetype.provmethod");
-            next; 
+            next;
 
             $osver      = $ent->{os};
             $arch       = $ent->{arch};
@@ -362,7 +362,7 @@ sub mknetboot
                     $rootfstype = $ref1->{'rootfstype'};
                 }
             } else {
-                xCAT::MsgUtils->report_node_error($callback, $node, 
+                xCAT::MsgUtils->report_node_error($callback, $node,
                     qq{Cannot find the linux image called "$osver-$arch-$imgname-$profile", maybe you need to use the "nodeset <nr> osimage=<osimage name>" command to set the boot state}
                     );
                 next;
@@ -401,7 +401,7 @@ sub mknetboot
                     }
                 }
             } else {
-                xCAT::MsgUtils->report_node_error($callback, $node, 
+                xCAT::MsgUtils->report_node_error($callback, $node,
                     qq{Cannot find the linux image called "$osver-$arch-$imgname-$profile", maybe you need to use the "nodeset <nr> osimage=<osimage name>" command to set the boot state}
                     );
                 next;
@@ -417,19 +417,19 @@ sub mknetboot
 
         $platform = xCAT_plugin::anaconda::getplatform($osver);
         my $compressedrootimg=xCAT::SvrUtils->searchcompressedrootimg("$rootimgdir");
-        
-      
+
+
         # statelite images are not packed.
         if ($statelite) {
             unless (-r "$rootimgdir/kernel") {
-                xCAT::MsgUtils->report_node_error($callback, $node, 
+                xCAT::MsgUtils->report_node_error($callback, $node,
                     qq{Did you run "genimage" before running "liteimg"? kernel cannot be found at $rootimgdir/kernel on $myname}
                     );
                 next;
             }
             if (!-r "$rootimgdir/initrd-statelite.gz") {
                 if (!-r "$rootimgdir/initrd.gz") {
-                    xCAT::MsgUtils->report_node_error($callback, $node, 
+                    xCAT::MsgUtils->report_node_error($callback, $node,
                         qq{Did you run "genimage" before running "liteimg"? initrd.gz or initrd-statelite.gz cannot be found at $rootimgdir/initrd.gz on $myname}
                         );
                     next;
@@ -439,21 +439,21 @@ sub mknetboot
                 }
             }
             if ($rootfstype eq "ramdisk" and !-r "$rootimgdir/rootimg-statelite.gz") {
-                xCAT::MsgUtils->report_node_error($callback, $node, 
+                xCAT::MsgUtils->report_node_error($callback, $node,
                     qq{No packed image for platform $osver, architecture $arch and profile $profile, please run "liteimg" to create it.}
                     );
                 next;
             }
         } else {
             unless (-r "$rootimgdir/kernel") {
-                xCAT::MsgUtils->report_node_error($callback, $node, 
+                xCAT::MsgUtils->report_node_error($callback, $node,
                     qq{Did you run "genimage" before running "packimage"? kernel cannot be found at $rootimgdir/kernel on $myname}
                     );
                 next;
             }
             if (!-r "$rootimgdir/initrd-stateless.gz") {
                 if (!-r "$rootimgdir/initrd.gz") {
-                    xCAT::MsgUtils->report_node_error($callback, $node, 
+                    xCAT::MsgUtils->report_node_error($callback, $node,
                         qq{Did you run "genimage" before running "packimage"? kernel cannot be found at $rootimgdir/kernel on $myname}
                         );
                     next;
@@ -462,7 +462,7 @@ sub mknetboot
                 }
             }
             unless ( -f -r "$rootimgdir/$compressedrootimg") {
-                xCAT::MsgUtils->report_node_error($callback, $node, 
+                xCAT::MsgUtils->report_node_error($callback, $node,
                     "No packed image for platform $osver, architecture $arch, and profile $profile found at $rootimgdir/rootimg.gz or $rootimgdir/rootimg.sfs on $myname, please run packimage (e.g.  packimage -o $osver -p $profile -a $arch"
                     );
                 next;
@@ -560,7 +560,7 @@ sub mknetboot
             xCAT::MsgUtils->report_node_error($callback, $node, "Unable to determine or reasonably guess the image server for $node");
             next;
         }
- 
+
         my $imgsrvip;
         unless($imgsrv eq '!myipfn!' or xCAT::NetworkUtils->validate_ip($imgsrv)==0){
             # if imgsrv is hostname, convert it to ip address
@@ -1066,7 +1066,7 @@ sub mkinstall
         else {
             # Not support the depreate mode now.
             xCAT::MsgUtils->report_node_error($callback, $node, "OS image name must be specified in nodetype.provmethod");
-            next; 
+            next;
 
             $os       = $ent->{os};
             $arch     = $ent->{arch};
@@ -1149,7 +1149,7 @@ sub mkinstall
         }
 
         unless (-r "$tmplfile") {
-            xCAT::MsgUtils->report_node_error($callback, $node, 
+            xCAT::MsgUtils->report_node_error($callback, $node,
                 "No $platform kickstart template exists for " . $profile . " in directory $installroot/custom/install/$platform or $::XCATROOT/share/xcat/install/$platform"
                 );
             next;
@@ -1169,7 +1169,7 @@ sub mkinstall
                 if($myenv =~ /\s*(\S+)\s*=\s*(\S+)\s*/) {
                     $ENV{$1}=$2;
                 }
-            }           
+            }
         }
 
         if (-r "$tmplfile")
@@ -1803,7 +1803,7 @@ sub mksysclone
         my $kernpath;
         my $initrdpath;
         my $ramdisk_size = 200000;
-	 
+	
         if (
             -r "$tftpdir/xcat/genesis.kernel.$arch"
             and $kernpath = "$tftpdir/xcat/genesis.kernel.$arch"
@@ -2056,8 +2056,8 @@ sub copycd
             my @rhel_version = split / /, $desc;
             if (scalar @rhel_version > 5) {
                 $distname = "rhels" . $rhel_version[-1] . "-" . lc($rhel_version[4]);
-            } 
-            else { 
+            }
+            else {
                 $distname = "rhels" . $rhel_version[-1];
             }
             open($dinfo, $mntpath . "/.treeinfo");

@@ -21,9 +21,9 @@ Burn new firmware on each ibaX: ::
 
 	mstflint -d 0002:01:00.0 -i <image location> b
 
-.. note:: If this is a PureFlex MezzanineP adapter, you must select the correct image for each ibaX device. 
+.. note:: If this is a PureFlex MezzanineP adapter, you must select the correct image for each ibaX device.
 
-          The difference in the firmware image at the end of the file name: 
+          The difference in the firmware image at the end of the file name:
             * _0.bin (iba0/iba2)
             * _1.bin (iba1/iba3)
 
@@ -96,7 +96,7 @@ Save the changes made for new IB image: ::
 	configuration write
 
 Activate the new IB image (reboot switch): ::
-      
+
 	reload
 
 

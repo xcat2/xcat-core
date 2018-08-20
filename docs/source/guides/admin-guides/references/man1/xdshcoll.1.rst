@@ -7,7 +7,7 @@ xdshcoll.1
 
 
 ************
-\ **NAME**\ 
+\ **NAME**\
 ************
 
 
@@ -15,19 +15,19 @@ xdshcoll.1
 
 
 ****************
-\ **SYNOPSIS**\ 
+\ **SYNOPSIS**\
 ****************
 
 
-\ **xdshcoll**\ 
+\ **xdshcoll**\
 
 
 *******************
-\ **DESCRIPTION**\ 
+\ **DESCRIPTION**\
 *******************
 
 
-The  \ **xdshcoll**\  command formats and consolidates output from the \ **xdsh,sinv**\  command. The \ **xdshcoll**\ 
+The  \ **xdshcoll**\  command formats and consolidates output from the \ **xdsh,sinv**\  command. The \ **xdshcoll**\
 command takes, as input, lines in the following format:
 
 host_name: line of output from remote command
@@ -47,7 +47,7 @@ is identical:
   lines from xdsh for node1 with hostnames stripped off
   .
   .
- 
+
   ====================================
   node2
   ====================================
@@ -56,7 +56,7 @@ is identical:
   lines from xdsh for node2 with hostnames stripped off
   .
   .
- 
+
   ====================================
   node3, node4
   ====================================
@@ -69,25 +69,25 @@ is identical:
 
 
 ****************
-\ **EXAMPLES**\ 
+\ **EXAMPLES**\
 ****************
 
 
 
 1. To  display the results of a command issued on several nodes, in
 the format used in the Description, enter:
- 
- 
+
+
  .. code-block:: perl
- 
+
    xdsh node1,node2,node3 cat /etc/passwd> | B<xdshcoll
- 
- 
+
+
 
 
 
 ****************
-\ **SEE ALSO**\ 
+\ **SEE ALSO**\
 ****************
 
 

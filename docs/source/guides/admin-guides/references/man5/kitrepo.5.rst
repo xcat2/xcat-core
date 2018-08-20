@@ -19,7 +19,7 @@ SYNOPSIS
 ********
 
 
-\ **kitrepo Attributes:**\   \ *kitreponame*\ , \ *kitname*\ , \ *osbasename*\ , \ *osmajorversion*\ , \ *osminorversion*\ , \ *osarch*\ , \ *compat_osbasenames*\ , \ *kitrepodir*\ , \ *comments*\ , \ *disable*\ 
+\ **kitrepo Attributes:**\   \ *kitreponame*\ , \ *kitname*\ , \ *osbasename*\ , \ *osmajorversion*\ , \ *osminorversion*\ , \ *osarch*\ , \ *compat_osbasenames*\ , \ *kitrepodir*\ , \ *comments*\ , \ *disable*\
 
 
 ***********
@@ -36,64 +36,64 @@ kitrepo Attributes:
 
 
 
-\ **kitreponame**\ 
- 
+\ **kitreponame**\
+
  The unique generated kit repo package name, when kit is added to the cluster.
- 
 
 
-\ **kitname**\ 
- 
+
+\ **kitname**\
+
  The Kit name which this Kit Package Repository belongs to.
- 
 
 
-\ **osbasename**\ 
- 
+
+\ **osbasename**\
+
  The OS distro name which this repository is based on.
- 
 
 
-\ **osmajorversion**\ 
- 
+
+\ **osmajorversion**\
+
  The OS distro major version which this repository is based on.
- 
 
 
-\ **osminorversion**\ 
- 
+
+\ **osminorversion**\
+
  The OS distro minor version which this repository is based on. If this attribute is not set, it means that this repo applies to all minor versions.
- 
 
 
-\ **osarch**\ 
- 
+
+\ **osarch**\
+
  The OS distro arch which this repository is based on.
- 
 
 
-\ **compat_osbasenames**\ 
- 
+
+\ **compat_osbasenames**\
+
  List of compatible OS base names.
- 
 
 
-\ **kitrepodir**\ 
- 
+
+\ **kitrepodir**\
+
  The path to Kit Repository directory on the Mgt Node.
- 
 
 
-\ **comments**\ 
- 
+
+\ **comments**\
+
  Any user-written notes.
- 
 
 
-\ **disable**\ 
- 
+
+\ **disable**\
+
  Set to 'yes' or '1' to comment out this row.
- 
+
 
 
 
@@ -102,5 +102,5 @@ SEE ALSO
 ********
 
 
-\ **nodels(1)**\ , \ **chtab(8)**\ , \ **tabdump(8)**\ , \ **tabedit(8)**\ 
+\ **nodels(1)**\ , \ **chtab(8)**\ , \ **tabdump(8)**\ , \ **tabedit(8)**\
 

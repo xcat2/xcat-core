@@ -21,9 +21,9 @@ my $help = 0;
 my $nodestanza;
 $::USAGE = "Usage:
     $program_name -h
-    $program_name -n <node_range> -s 
-    $program_name -n <node_range> -d 
-    $program_name -n <node_range> -i 
+    $program_name -n <node_range> -s
+    $program_name -n <node_range> -d
+    $program_name -n <node_range> -i
     $program_name -n <node_range> -c
     $program_name -n <node_range> -g
 Description:
@@ -33,9 +33,9 @@ Options:
     -n : The range of node
     -i : Run genesis runimage
     -d : Run genesis runcmd
-    -s : Run genesis nodeshell mode 
+    -s : Run genesis nodeshell mode
     -c : Clear genesis test environment
-    -g : Check genesis file 
+    -g : Check genesis file
 ";
 ##################################
 # main process
@@ -79,12 +79,12 @@ if ($check_genesis_file) {
 my $master=`lsdef -t site -i master -c  2>&1 | awk -F'=' '{print \$2}'`;
 if (!$master) { $master=hostname(); }
 chomp($master);
-print "master is $master\n"; 
+print "master is $master\n";
 $nodestanza="/tmp/$noderange.stanza";
 if (!(-e $nodestanza)) {
     `lsdef $noderange -z > $nodestanza`;
     `chdef $noderange xcatmaster= `;
-} 
+}
 ####################################
 ####nodesetshell test for genesis
 ####################################
@@ -313,12 +313,12 @@ sub clearenv {
     }
     if (-e "$nodestanza") {
     `cat $nodestanza | chdef -z`;
-    unlink("$nodestanza"); 
-    } 
+    unlink("$nodestanza");
+    }
     return 0;
 }
 ####################################
-#get os 
+#get os
 ###################################
 sub get_os {
     my $os     = "unknown";
@@ -344,8 +344,8 @@ sub get_arch {
      } elsif (($arch =~ /x86/i)&&($os =~ /ubuntu/i)) {
          if ($check_genesis_file) {
              $arch = "amd64";
-         } 
-     } 
+         }
+     }
     return $arch;
 }
 #######################################

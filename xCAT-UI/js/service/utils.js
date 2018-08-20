@@ -1,6 +1,6 @@
 /**
  * Get nodes currently shown in datatable
- * 
+ *
  * @param tableId
  *            Datatable ID
  * @return String of nodes shown
@@ -8,10 +8,10 @@
 function getNodesShown(tableId) {
     // String of nodes shown
     var shownNodes = '';
-    
+
     // Get rows of shown nodes
     var nodes = $('#' + tableId + ' tbody tr');
-                
+
     // Go through each row
     var cols;
     for (var i = 0; i < nodes.length; i++) {
@@ -19,7 +19,7 @@ function getNodesShown(tableId) {
         cols = nodes.eq(i).find('td');
         shownNodes += cols.eq(1).text() + ',';
     }
-    
+
     // Remove last comma
     shownNodes = shownNodes.substring(0, shownNodes.length-1);
     return shownNodes;
@@ -27,17 +27,17 @@ function getNodesShown(tableId) {
 
 /**
  * Find the row index containing a column with a given string
- * 
+ *
  * @param str String to search for
  * @param table Table to check
  * @param col Column to find string under
  * @return The row index containing the search string
  */
-function findRow(str, table, col){    
+function findRow(str, table, col){
     // Get datatable
     var dTable = $(table).dataTable();
     var rows = dTable.fnGetData();
-    
+
     // Loop through each row
     for (var i in rows) {
         // If the column contains the search string
@@ -45,13 +45,13 @@ function findRow(str, table, col){
             return parseInt(i);
         }
     }
-    
+
     return -1;
 }
 
 /**
  * Select all checkboxes in the datatable
- * 
+ *
  * @param event Event on element
  * @param obj Object triggering event
  */
@@ -63,13 +63,13 @@ function selectAll(event, obj) {
     } else {
         checkboxes.attr('checked', false);
     }
-    
+
     event.stopPropagation();
 }
 
 /**
  * Get node attributes from HTTP request data
- * 
+ *
  * @param propNames Hash table of property names
  * @param keys Property keys
  * @param data Data from HTTP request
@@ -120,7 +120,7 @@ function getAttrs(keys, propNames, data) {
 
 /**
  * Create a tool tip for comments
- * 
+ *
  * @param comment Comments to be placed in a tool tip
  * @return Tool tip
  */
@@ -137,7 +137,7 @@ function createCommentsToolTip(comment) {
         'border': '0px',
         'display': 'block'
     });
-    
+
     // Create links to save and cancel changes
     var lnkStyle = {
         'color': '#58ACFA',
@@ -146,17 +146,17 @@ function createCommentsToolTip(comment) {
         'padding': '5px',
         'float': 'right'
     };
-    
+
     var saveLnk = $('<a>Save</a>').css(lnkStyle).hide();
     var cancelLnk = $('<a>Cancel</a>').css(lnkStyle).hide();
     var infoSpan = $('<span>Click to edit</span>').css(lnkStyle);
-    
+
     // Save changes onclick
     saveLnk.bind('click', function(){
         // Get node and comment
         var node = $(this).parent().parent().find('img').attr('id').replace('Tip', '');
         var comments = $(this).parent().find('textarea').val();
-        
+
         // Save comment
         $.ajax( {
             url : 'lib/srv_cmd.php',
@@ -167,45 +167,45 @@ function createCommentsToolTip(comment) {
                 args : '-t;node;-o;' + node + ';usercomment=' + comments,
                 msg : 'out=manageTab;tgt=' + node
             },
-            
+
             success: showChdefOutput
         });
-        
+
         // Hide cancel and save links
         $(this).hide();
         cancelLnk.hide();
     });
-        
+
     // Cancel changes onclick
     cancelLnk.bind('click', function(){
         // Get original comment and put it back
         var orignComments = $(this).parent().find('textarea').text();
         $(this).parent().find('textarea').val(orignComments);
-        
+
         // Hide cancel and save links
         $(this).hide();
         saveLnk.hide();
         infoSpan.show();
     });
-    
+
     // Show save link when comment is edited
     txtArea.bind('click', function(){
         saveLnk.show();
         cancelLnk.show();
         infoSpan.hide();
     });
-        
+
     toolTip.append(txtArea);
     toolTip.append(cancelLnk);
     toolTip.append(saveLnk);
     toolTip.append(infoSpan);
-    
+
     return toolTip;
 }
 
 /**
  * Open a dialog and show given message
- * 
+ *
  * @param type Type of dialog, i.e. warn or info
  * @param msg Message to show
  */
@@ -220,7 +220,7 @@ function prompt(type, msg) {
         'margin': '5px',
         'vertical-align': 'middle'
     });
-    
+
     // Append icon
     var icon;
     var dialog = $('<div></div>');
@@ -229,10 +229,10 @@ function prompt(type, msg) {
     } else {
         icon = $('<span class="ui-icon ui-icon-info"></span>').css(style);
     }
-    
+
     dialog.append(icon);
     dialog.append(msg);
-        
+
     // Open dialog
     dialog.dialog({
         title: type,
@@ -242,7 +242,7 @@ function prompt(type, msg) {
         },
         width: 400,
         buttons: {
-            "Ok": function(){ 
+            "Ok": function(){
                 $(this).dialog("close");
             }
         }
@@ -251,7 +251,7 @@ function prompt(type, msg) {
 
 /**
  * Get nodes that are checked in a given datatable
- * 
+ *
  * @param dTableId The datatable ID
  * @return Nodes that were checked
  */
@@ -262,10 +262,10 @@ function getNodesChecked(dTableId) {
     var nodes = $('#' + dTableId + ' input[type=checkbox]:checked');
     for (var i in nodes) {
         var tgtNode = nodes.eq(i).attr('name');
-        
+
         if (tgtNode){
             tgts += tgtNode;
-            
+
             // Add a comma at the end
             if (i < nodes.length - 1) {
                 tgts += ',';
@@ -278,7 +278,7 @@ function getNodesChecked(dTableId) {
 
 /**
  * Show chdef output
- * 
+ *
  * @param data Data returned from HTTP request
  */
 function showChdefOutput(data) {
@@ -287,7 +287,7 @@ function showChdefOutput(data) {
     var args = data.msg.split(';');
     var tabID = args[0].replace('out=', '');
     var tgt = args[1].replace('tgt=', '');
-    
+
     // Find info bar on nodes tab, if any
     var info = $('#' + tabID).find('.ui-state-highlight');
     if (!info.length) {
@@ -295,19 +295,19 @@ function showChdefOutput(data) {
         info = createInfoBar('');
         $('#' + tabID).append(info);
     }
-        
+
     // Go through output and append to paragraph
     var prg = $('<p></p>');
     for (var i in out) {
         prg.append(tgt + ': ' + out[i] + '<br>');
     }
-    
+
     info.append(prg);
 }
 
 /**
  * Get an attribute of a given node
- * 
+ *
  * @param node The node
  * @param attrName The attribute
  * @return The attribute of the node
@@ -318,7 +318,7 @@ function getUserNodeAttr(node, attrName) {
 
     // Search for the column containing the attribute
     var attrCol = null;
-    
+
     var cols = row.parents('.dataTables_scroll').find('.dataTables_scrollHead thead tr:eq(0) th');
     // Loop through each column
     for (var i in cols) {
@@ -328,7 +328,7 @@ function getUserNodeAttr(node, attrName) {
             break;
         }
     }
-    
+
     // If the column containing the attribute is found
     if (attrCol) {
         // Get the attribute column index

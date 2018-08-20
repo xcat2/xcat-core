@@ -1,5 +1,5 @@
 [Unit]
-Description=xcat service on compute node, the framework to run postbootscript during OS provision 
+Description=xcat service on compute node, the framework to run postbootscript during OS provision
 After=network.target rsyslog.service YaST2-Firstboot.service
 
 [Service]

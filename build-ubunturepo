@@ -8,7 +8,7 @@
 # Getting Started:
 #  - Clone the xcat-core git repository under a directory named "xcat-core/src"
 #  - make sure reprepro is installed on the build machine
-#  - Run this script from the local git repository you just created.  
+#  - Run this script from the local git repository you just created.
 #       ./build-ubunturepo -c BUILDALL=1
 
 # Usage:  attr=value attr=value ... ./build-ubunturepo { -c | -d }
@@ -22,8 +22,8 @@
 #                           When you are ready to release this build, use PROMOTE=1 without PREGA
 #               BUILDALL=1 - build all rpms, whether they changed or not.  Should be used for snap builds that are in
 #                            prep for a release.
-#               GPGSIGN=0 -  Do not sign the repo in the end of the build. The repo will be signed by default 
-#                            
+#               GPGSIGN=0 -  Do not sign the repo in the end of the build. The repo will be signed by default
+#
 #               LOG=<filename> - provide an LOG file option to redirect some output into log file
 #
 #               DEST=<directory> - provide a directory to contains the build result
@@ -334,7 +334,7 @@ __EOF__
        if [ "$GPGSIGN" = "0" ];then
            #echo "GPGSIGN=$GPGSIGN specified, the repo will not be signed"
            echo "" >> conf/distributions
-       else 
+       else
            echo "SignWith: 5619700D" >> conf/distributions
            echo "" >> conf/distributions
        fi
@@ -375,7 +375,7 @@ __EOF__
     chmod 775 mklocalrepo.sh
 
     #
-    # Add a buildinfo file into the tar.bz2 file to track information about the build 
+    # Add a buildinfo file into the tar.bz2 file to track information about the build
     #
     BUILDINFO=$local_core_repo_path/buildinfo
     echo "VERSION=$ver" > $BUILDINFO
@@ -541,7 +541,7 @@ __EOF__
     APT_DIR="${FRS}/xcat"
     APT_REPO_DIR="${APT_DIR}/repos/apt/devel"
 
-    # Decide whether to upload the xcat-dep package or NOT (default is to NOT upload xcat-dep 
+    # Decide whether to upload the xcat-dep package or NOT (default is to NOT upload xcat-dep
     if [ "$UP" != "1" ]; then
         echo "Upload not specified, Done! (rerun with UP=1, to upload)"
         cd $old_pwd

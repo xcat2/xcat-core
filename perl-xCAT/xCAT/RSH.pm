@@ -34,13 +34,13 @@ if ($^O eq 'linux') {
         Returns:
         	A command array for the rsh command with the appropriate
         	arguments as defined in the $config hash table
-               
+
         Globals:
         	$RSH_CMD
-    
+
         Error:
         	None
-    
+
         Example:
         	xCAT::RSH->remote_shell_command($config_hash, '/usr/bin/rsh');
 
@@ -92,13 +92,13 @@ sub remote_shell_command {
         Returns:
         	A command array for the rcp command with the appropriate
         	arguments as defined in the $config hash table
-                
+
         Globals:
         	$RCP_CMD
-    
+
         Error:
         	None        	
-    
+
         Example:
         	xCAT::RSH->remote_copy_command($config_hash, '/usr/bin/rcp');
 

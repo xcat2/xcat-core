@@ -12,8 +12,8 @@ Using ``psql``, connect to the xcat database: ::
 list the xCAT tables: ::
 
       xcatdb=> \dt
- 
-show the entries in the nodelist table: :: 
+
+show the entries in the nodelist table: ::
 
       xcatdb=> select * from nodelist;
 
@@ -29,7 +29,7 @@ Show the SQL create statement for a table: ::
 
       /usr/bin/pg_dump_xcatdb -U xcatadm -t <table_name>
 
-      # example, for prescripts table: 
+      # example, for prescripts table:
       /usr/bin/pg_dump xcatdb -U xcatadm -t prescripts
 
 List all databases in postgres: ::

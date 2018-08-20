@@ -69,7 +69,7 @@ sub handled_commands
 #-------------------------------------------------------
 
 =head3  preprocess_request
-  Check and setup for hierarchy 
+  Check and setup for hierarchy
 =cut
 
 #-------------------------------------------------------
@@ -121,7 +121,7 @@ sub preprocess_request
       callback -- a callback pointer to return the response to.
     Returns:
         0 - for success. The output is returned through the callback pointer.
-        1 -  for error. The error messages are returns through the 
+        1 -  for error. The error messages are returns through the
 							callback pointer.
 =cut
 
@@ -170,9 +170,9 @@ sub process_request
 
 =head3   preprocess_updatenode
         This function checks for the syntax of the updatenode command
-     		and distributes the command to the right server. 
+     		and distributes the command to the right server.
     Arguments:
-      request - the request. 
+      request - the request.
       callback - the pointer to the callback function.
 	  subreq - the sub request
     Returns:
@@ -439,9 +439,9 @@ sub preprocess_updatenode
         $rsp->{data}->[0] = "-r|--node-rcp option is valid when option -f or -F is specified";
         $rsp->{errorcode}->[0] = 1;
         $callback->($rsp);
-        return;        
+        return;
     }
-    
+
 
     # -f must not be with any other flag, this updates service nodes syncfiles
     if ($SNFILESYNC && ($SWMAINTENANCE || $RERUNPS || defined($RERUNPS) || $SECURITY || $FILESYNC))
@@ -673,11 +673,11 @@ sub preprocess_updatenode
     {
         $request->{SNFileSyncing}->[0] = "yes";
     }
-   
+
     if ($RCP){
         $request->{rcp}->[0]=$RCP;
     }
-   
+
     # If -F  or -f then,  call CFMUtils  to check if any PCM CFM data is to be
     # built for the node.   This will also create the synclists attribute in
     # the osimage for each node in the noderange
@@ -873,11 +873,11 @@ sub preprocess_updatenode
 
 #-------------------------------------------------------------------------------
 
-=head3  update_SN_security 
+=head3  update_SN_security
 
-    process updatenode -k command 
+    process updatenode -k command
     determine all the service nodes that must be processed from the
-    input noderange and then update the ssh keys and credentials 
+    input noderange and then update the ssh keys and credentials
 
 =cut
 
@@ -977,9 +977,9 @@ sub update_SN_security
 
 #-------------------------------------------------------------------------------
 
-=head3  security_update_sshkeys 
+=head3  security_update_sshkeys
 
-    process updatenode -k command 
+    process updatenode -k command
     the ssh keys on  the service nodes  and nodes
     by calling xdsh -K
 
@@ -1080,14 +1080,14 @@ sub security_update_sshkeys
 #--------------------------------------------------------------------------------
 
 =head3   updatenode
-        This function implements the updatenode command. 
+        This function implements the updatenode command.
     Arguments:
-      request - the request.        
+      request - the request.
       callback - the pointer to the callback function.
 	  subreq - the sub request
     Returns:
         0 - for success. The output is returned through the callback pointer.
-        1 - for error. The error messages are returned through the 
+        1 - for error. The error messages are returned through the
 				callback pointer.
 =cut
 
@@ -1526,7 +1526,7 @@ sub updatenode
 
 #-------------------------------------------------------------------------------
 
-=head3  updatenoderunps  - run postscripts or the updatenode -P option 
+=head3  updatenoderunps  - run postscripts or the updatenode -P option
 
     Arguments: request
     Returns:
@@ -1930,7 +1930,7 @@ sub updatenodesyncfiles
         and then outputs the remaining user info
 
     Arguments: output,callback
-    Globals @::SUCCESSFULLNODES,  @::FAILEDNODE  
+    Globals @::SUCCESSFULLNODES,  @::FAILEDNODE
     $::REPORTSTATUS  if "Y" then imediately return status in $::CALLERCALLBACK (PCM)
 
 =cut
@@ -2214,7 +2214,7 @@ sub updatenodesoftware
 =head3  getdata  - This is the local callback that handles the response from
         the xdsh streaming calls when running postscripts(-P) and software updates (-S)
         $::TYPECALL = P  from postscripts runs or S from Software updates
-        $::CALLERCALLBACK  = saved callback from calling routine  
+        $::CALLERCALLBACK  = saved callback from calling routine
         $::REPORTSTATUS, if Y,  return the good/bad status right away from this
                          routine  to the $::CALLERCALLBACK ( PCM)
 
@@ -2444,7 +2444,7 @@ sub updatenodestat
 			- node update information
 
     Example
-	 my ($rc, $imagedef, $updateinfo) = &doAIXcopy($callback, \%attrvals, 
+	 my ($rc, $imagedef, $updateinfo) = &doAIXcopy($callback, \%attrvals,
 			$nodes, $subreq);
 
     Comments:
@@ -2886,7 +2886,7 @@ qq~$::XCATROOT/bin/prsync -o "rlHpEAogDz" $srcdir $snkey:$dir 2>/dev/null~;
 
 =head3   updateAIXsoftware
 
-    Update the software on an xCAT AIX cluster node. 
+    Update the software on an xCAT AIX cluster node.
 
     Arguments:
 
@@ -2895,7 +2895,7 @@ qq~$::XCATROOT/bin/prsync -o "rlHpEAogDz" $srcdir $snkey:$dir 2>/dev/null~;
       1 - error
 
 	Example
-		if (&updateAIXsoftware($callback, \%attrres, $imgdefs, $updates, $nodes, $subreq)!= 0) 
+		if (&updateAIXsoftware($callback, \%attrres, $imgdefs, $updates, $nodes, $subreq)!= 0)
 
     Comments:
 
@@ -3284,10 +3284,10 @@ sub updateAIXsoftware
 =head3   updateOS
 
 	Description	: Update the node operating system
-    Arguments	: 
+    Arguments	:
     Returns		: Nothing
     Example		: updateOS($callback, $nodes, $os);
-    
+
 =cut
 
 #-------------------------------------------------------
@@ -3498,7 +3498,7 @@ sub updateOS
 #-------------------------------------------------------------------------------
 
 =head3   updatenodeappstat
-    This subroutine is used to handle the messages reported by 
+    This subroutine is used to handle the messages reported by
     HPCbootstatus postscript. Update appstatus node attribute.
 
     Arguments:

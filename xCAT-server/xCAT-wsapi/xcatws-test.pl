@@ -12,7 +12,7 @@ require HTTP::Request;
 # set the usage message
 my $usage_string = "Usage:
     restapi -u url -m GET|PUT|POST|DELETE [-f html|json|xml] [-V]
-      -u The url of the action. .e.g to get the power status of node \'nodename\' https://httpserver/xcatws/nodes/nodename/power 
+      -u The url of the action. .e.g to get the power status of node \'nodename\' https://httpserver/xcatws/nodes/nodename/power
       -m The method of the request
       -h The hostname of the xCAT web server
       -o Target object

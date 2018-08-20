@@ -19,7 +19,7 @@ SYNOPSIS
 ********
 
 
-\ **deps Attributes:**\   \ *node*\ , \ *nodedep*\ , \ *msdelay*\ , \ *cmd*\ , \ *comments*\ , \ *disable*\ 
+\ **deps Attributes:**\   \ *node*\ , \ *nodedep*\ , \ *msdelay*\ , \ *cmd*\ , \ *comments*\ , \ *disable*\
 
 
 ***********
@@ -36,40 +36,40 @@ deps Attributes:
 
 
 
-\ **node**\ 
- 
+\ **node**\
+
  The node name or group name.
- 
 
 
-\ **nodedep**\ 
- 
+
+\ **nodedep**\
+
  Comma-separated list of nodes or node groups it is dependent on.
- 
 
 
-\ **msdelay**\ 
- 
+
+\ **msdelay**\
+
  How long to wait between operating on the dependent nodes and the primary nodes.
- 
 
 
-\ **cmd**\ 
- 
+
+\ **cmd**\
+
  Comma-separated list of which operation this dependency applies to.
- 
 
 
-\ **comments**\ 
- 
+
+\ **comments**\
+
  Any user-written notes.
- 
 
 
-\ **disable**\ 
- 
+
+\ **disable**\
+
  Set to 'yes' or '1' to comment out this row.
- 
+
 
 
 
@@ -78,5 +78,5 @@ SEE ALSO
 ********
 
 
-\ **nodels(1)**\ , \ **chtab(8)**\ , \ **tabdump(8)**\ , \ **tabedit(8)**\ 
+\ **nodels(1)**\ , \ **chtab(8)**\ , \ **tabdump(8)**\ , \ **tabedit(8)**\
 

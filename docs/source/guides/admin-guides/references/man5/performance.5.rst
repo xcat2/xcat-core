@@ -19,7 +19,7 @@ SYNOPSIS
 ********
 
 
-\ **performance Attributes:**\   \ *timestamp*\ , \ *node*\ , \ *attrname*\ , \ *attrvalue*\ , \ *comments*\ , \ *disable*\ 
+\ **performance Attributes:**\   \ *timestamp*\ , \ *node*\ , \ *attrname*\ , \ *attrvalue*\ , \ *comments*\ , \ *disable*\
 
 
 ***********
@@ -36,40 +36,40 @@ performance Attributes:
 
 
 
-\ **timestamp**\ 
- 
+\ **timestamp**\
+
  The time at which the metric was captured.
- 
 
 
-\ **node**\ 
- 
+
+\ **node**\
+
  The node name.
- 
 
 
-\ **attrname**\ 
- 
+
+\ **attrname**\
+
  The metric name.
- 
 
 
-\ **attrvalue**\ 
- 
+
+\ **attrvalue**\
+
  The metric value.
- 
 
 
-\ **comments**\ 
- 
+
+\ **comments**\
+
  Any user-provided notes.
- 
 
 
-\ **disable**\ 
- 
+
+\ **disable**\
+
  Set to 'yes' or '1' to comment out this row.
- 
+
 
 
 
@@ -78,5 +78,5 @@ SEE ALSO
 ********
 
 
-\ **nodels(1)**\ , \ **chtab(8)**\ , \ **tabdump(8)**\ , \ **tabedit(8)**\ 
+\ **nodels(1)**\ , \ **chtab(8)**\ , \ **tabdump(8)**\ , \ **tabedit(8)**\
 

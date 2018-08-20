@@ -19,7 +19,7 @@ SYNOPSIS
 ********
 
 
-\ **gettab**\  [\ **-H**\  | \ **-**\ **-with-fieldname**\ ] \ *key=value,...  table.attribute ...*\ 
+\ **gettab**\  [\ **-H**\  | \ **-**\ **-with-fieldname**\ ] \ *key=value,...  table.attribute ...*\
 
 \ **gettab**\  [\ **-?**\  | \ **-h**\  | \ **-**\ **-help**\ ]
 
@@ -41,17 +41,17 @@ OPTIONS
 
 
 
-\ **-H|-**\ **-with-fieldname**\ 
- 
+\ **-H|-**\ **-with-fieldname**\
+
  Always display table.attribute name next to result.  By default, this is done only if more than
  one table.attribute is requested.
- 
 
 
-\ **-?|-h|-**\ **-help**\ 
- 
+
+\ **-?|-h|-**\ **-help**\
+
  Display usage message.
- 
+
 
 
 
@@ -77,39 +77,39 @@ EXAMPLES
 
 
 1. To display setting for \ **master**\  (management node) in the site table:
- 
- 
+
+
  .. code-block:: perl
- 
+
    gettab -H key=master site.value
- 
- 
+
+
  The output would be similar to:
- 
- 
+
+
  .. code-block:: perl
- 
+
    site.value: mgmtnode.cluster.com
- 
- 
+
+
 
 
 2. To display the first node or group name that has \ **mgt**\  set to \ **blade**\  in the nodehm table:
- 
- 
+
+
  .. code-block:: perl
- 
+
    gettab mgt=blade nodehm.node
- 
- 
+
+
  The output would be similar to:
- 
- 
+
+
  .. code-block:: perl
- 
+
    blades
- 
- 
+
+
 
 
 

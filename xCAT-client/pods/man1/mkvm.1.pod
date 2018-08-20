@@ -42,7 +42,7 @@ B<mkvm> I<noderange> [I<source_virtual_machine>] [B<pool=> I<disk_pool>]
 
 =head2 For PPC (with HMC) specific:
 
-The first form of B<mkvm> command creates new partition(s) with the same profile/resources as the partition specified by I<singlenode>. The -i and I<noderange> specify the starting numeric partition number and the I<noderange> for the newly created partitions, respectively. The LHEA port numbers and the HCA index numbers will be automatically increased if they are defined in the source partition. 
+The first form of B<mkvm> command creates new partition(s) with the same profile/resources as the partition specified by I<singlenode>. The -i and I<noderange> specify the starting numeric partition number and the I<noderange> for the newly created partitions, respectively. The LHEA port numbers and the HCA index numbers will be automatically increased if they are defined in the source partition.
 
 The second form of this command duplicates all the partitions from the source specified by I<profile> to the destination specified by I<destcec>. The source and destination CECs can be managed by different HMCs.
 
@@ -58,7 +58,7 @@ If no option is specified, a partition using the parameters specified with attri
 
 =head2 For KVM and VMware:
 
-The B<mkvm> command creates new virtual machine(s) with the I<disksize> size of hard disk, I<memsize> size of memory and I<cpucount> number of cpu. 
+The B<mkvm> command creates new virtual machine(s) with the I<disksize> size of hard disk, I<memsize> size of memory and I<cpucount> number of cpu.
 
 =head2 For zVM:
 
@@ -70,11 +70,11 @@ The second form of this creates a new virtual machine with the same profile/reso
 
 =over 10
 
-=item B<-h|--help>       
+=item B<-h|--help>
 
 Display usage message.
 
-=item B<-c>              
+=item B<-c>
 
 The cec (fsp) name for the destination.
 
@@ -82,13 +82,13 @@ The cec (fsp) name for the destination.
 
 The cpu count which will be created for the kvm/vmware virtual machine.
 
-=item B<--full>          
+=item B<--full>
 
 Request to create a new full system partition for each CEC.
 
 =item B<vmcpus=> I<value> B<vmmemory=> I<value> B<vmphyslots=> I<value> B<vmothersetting=> I<value> B<vmnics=> I<value> B<vmstorage=> I<value> [B<--vios>]
 
-To specify the parameters which are used to create a partition. The I<vmcpus>, I<vmmemory> are necessary, and the value specified with this command have a more high priority. If the value of any of the three options is not specified, the corresponding value specified for the node object will be used. If any of the three attributes is neither specified with this command nor specified with the node object, error information will be returned. To reference to L<lsvm(1)|lsvm.1> for more information about 'drc_index' for I<vmphyslots>.  
+To specify the parameters which are used to create a partition. The I<vmcpus>, I<vmmemory> are necessary, and the value specified with this command have a more high priority. If the value of any of the three options is not specified, the corresponding value specified for the node object will be used. If any of the three attributes is neither specified with this command nor specified with the node object, error information will be returned. To reference to L<lsvm(1)|lsvm.1> for more information about 'drc_index' for I<vmphyslots>.
 
 The option I<vios> is used to specify the partition that will be created is a VIOS partition. If specified, the value for I<vmstorage> shall be number which indicate the number of vSCSI server adapter will be created, and if no value specified for I<vmphyslots>, all the physical slot of the power machine will be asigned to VIOS partition. If not specified, it shall be in form of I<vios_name:server_slotid> to specify the vios and the virtual slot id of the vSCSI server adapter that will be connected from the Logical partition.
 
@@ -96,11 +96,11 @@ The option I<vios> is used to specify the partition that will be created is a VI
 
 If the storage already exists, remove it before creating a new virtual machine.
 
-=item B<-i>              
+=item B<-i>
 
-Starting numeric id of the newly created partitions. 
+Starting numeric id of the newly created partitions.
 
-=item B<-l>              
+=item B<-l>
 
 The partition name of the source.
 
@@ -108,7 +108,7 @@ The partition name of the source.
 
 The memory size which will be used for the new created kvm/vmware virtual machine. Unit is Megabyte.
 
-=item B<-p>             
+=item B<-p>
 
 The file that contains the profiles for the source partitions.
 
@@ -116,11 +116,11 @@ The file that contains the profiles for the source partitions.
 
 The size of storage which will be created for the kvm/vmware virtual machine.
 
-=item B<-v|--version>    
+=item B<-v|--version>
 
 Command Version.
 
-=item B<-V|--verbose>    
+=item B<-V|--verbose>
 
 Verbose output.
 
@@ -198,7 +198,7 @@ Output is similar to:
 5. To create a new zVM virtual machine (gpok3) based on a directory entry:
 
  mkvm gpok3 /tmp/dirEntry.txt
- 
+
 Output is similar to:
 
  gpok3: Creating user directory entry for LNX3... Done
@@ -242,11 +242,11 @@ First, define a node object:
  mkdef -t node -o lpar1 mgt=fsp cons=fsp nodetype=ppc,osi id=1 hcp=cec parent=cec hwtype=lpar groups=lpar,all
 
 Then, create the partition on the specified cec.
- 
+
  mkvm lpar1 --full
 
 The output is similar to:
- 
+
  lpar1: Done
 
 To query the resources allocated to node 'lpar1'
@@ -274,7 +274,7 @@ The output is similar to:
   lpar1: 256.
 
 
-Note: The 'parent' attribute for node 'lpar1' is the object name of physical power machine that the full partition will be created on. 
+Note: The 'parent' attribute for node 'lpar1' is the object name of physical power machine that the full partition will be created on.
 
 9. To create a partition using some of the resources on normal power machine.
 
@@ -285,7 +285,7 @@ After a node object is defined, the resources that will be used for the partitio
  chdef lpar1 vmcpus=1/4/16 vmmemory=1G/4G/32G vmphyslots=0x21010201,0x21010200 vmothersetting=bsr:128,hugepage:2
 
 Then, create the partion on the specified cec.
- 
+
  mkvm lpar1
 
 Option 2:
@@ -295,7 +295,7 @@ Option 2:
 The outout is similar to:
 
  lpar1: Done
- 
+
 Note: The 'vmplyslots' specify the drc index of the physical slot device. Every drc index shall be delimited with ','. The 'vmothersetting' specify two kinds of resource, bsr(Barrier Synchronization Register) specified the num of BSR arrays, hugepage(Huge Page Memory) specified the num of huge pages.
 
 To query the resources allocated to node 'lpar1'

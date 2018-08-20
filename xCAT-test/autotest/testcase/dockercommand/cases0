@@ -14,7 +14,7 @@ check:ouptut=~success
 cmd:rpower $$DOCKERCN state
 check:rc==0
 check:output=~running
-cmd:rpower $$DOCKERCN stop 
+cmd:rpower $$DOCKERCN stop
 check:rc==0
 cmd:rpower $$DOCKERCN state
 check:output=~exited
@@ -41,7 +41,7 @@ check:rc==0
 check:output=~success
 cmd:rpower  $$DOCKERCN state
 check:rc==0
-check:output=~running 
+check:output=~running
 cmd:rmdocker $$DOCKERCN -f
 check:rc==0
 cmd:makehosts -d $$DOCKERCN
@@ -172,15 +172,15 @@ check:rc==0
 check:output=~Usage: mkdocker
 end
 start:mkdocker_command
-description:create docker instance image should be ubuntu and command should be bash here 
+description:create docker instance image should be ubuntu and command should be bash here
 cmd:chdef $$DOCKERCN  dockerhost=$$DOCKERHOST:2375 dockercpus=1 ip=$$DOCKERCONIP dockermemory=4096 groups=docker,all mgt=docker
 check:rc==0
 cmd:makehosts $$DOCKERCN
-check:rc==0 
+check:rc==0
 cmd:mkdocker  $$DOCKERCN image=$$DOCKERIMAGE command=$$DOCKERCOMMAND dockerflag="{\"AttachStdin\":true,\"AttachStdout\":true,\"AttachStderr\":true,\"OpenStdin\":true,\"Tty\":true}"
 check:rc==0
 check:output=~$$DOCKERCN: success
-cmd:lsdocker $$DOCKERCN 
+cmd:lsdocker $$DOCKERCN
 check:rc==0
 check:output=~$$DOCKERIMAGE
 check:output=~$$DOCKERCOMMAND
@@ -204,12 +204,12 @@ check:rc==0
 end
 start:rmdocker_h
 description:output usage for rmdocker
-cmd:rmdocker -h 
+cmd:rmdocker -h
 check:rc==0
 check:output=~Usage: rmdocker <noderage>
 end
 start:rmdocker_command
-description:remove docker instance 
+description:remove docker instance
 cmd:chdef $$DOCKERCN  dockerhost=$$DOCKERHOST:2375 dockercpus=1 ip=$$DOCKERCONIP dockermemory=4096 groups=docker,all mgt=docker
 check:rc==0
 cmd:makehosts $$DOCKERCN
@@ -230,7 +230,7 @@ cmd:rmdef $$DOCKERCN
 check:rc==0
 end
 start:rmdocker_f_command
-description:force to remove docker instance 
+description:force to remove docker instance
 cmd:chdef $$DOCKERCN  dockerhost=$$DOCKERHOST:2375 dockercpus=1 ip=$$DOCKERCONIP dockermemory=4096 groups=docker,all mgt=docker
 check:rc==0
 cmd:makehosts $$DOCKERCN

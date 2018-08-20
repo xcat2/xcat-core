@@ -26,7 +26,7 @@ while [ $WAITING -gt 0 ]; do
     for pidfile in /var/run/dhclient.*.pid; do
 	NIC=`echo $pidfile|awk -F. '{print $2}'`
 	dhclient -r -1 -cf /etc/dhclient.conf -pf $pidfile $NIC
-	ip -4 addr flush dev $NIC 
+	ip -4 addr flush dev $NIC
 	dhclient -cf /etc/dhclient.conf -nw -pf $pidfile $NIC
     done
     for pidfile in /var/run/dhclient6.*.pid; do
@@ -36,13 +36,13 @@ while [ $WAITING -gt 0 ]; do
 	ip -6 addr flush dev $NIC  scope site
 	dhclient -6 -pf $pidfile -nw -lf /var/lib/dhclient/dhclient6.leases $NIC
     done
-    
+
     echo -en "Waiting 10 seconds for DHCP changes to take effect          \r"
     for i in 9 8 7 6 5 4 3 2 1; do
        sleep 1
        echo -en "Waiting $i seconds for DHCP changes to take effect    \r"
     done
-    
+
     # restart rsyslog after dhclient
     kill -9 `cat /var/run/syslogd.pid`
     sleep 3
@@ -72,7 +72,7 @@ while [ $WAITING -gt 0 ]; do
         fi
     fi
 done
-        
+
 echo "Done waiting                                                                                                                              ";
 #/etc/init.d/S11stunnel #redo stunnel config
 #exec /etc/init.d/S99xcat.sh

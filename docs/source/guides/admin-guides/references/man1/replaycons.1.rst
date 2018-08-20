@@ -43,28 +43,28 @@ OPTIONS
 
 
 
-\ *bps*\ 
- 
+\ *bps*\
+
  The display rate to use to play back the console output.  Default is 19200.
- 
 
 
-\ *tail_amount*\ 
- 
+
+\ *tail_amount*\
+
  The place in the console log file to start play back, specified as the # of lines from the end.
- 
 
 
-\ **-v|-**\ **-version**\ 
- 
+
+\ **-v|-**\ **-version**\
+
  Command Version.
- 
 
 
-\ **-h|-**\ **-help**\ 
- 
+
+\ **-h|-**\ **-help**\
+
  Display usage message.
- 
+
 
 
 
@@ -90,15 +90,15 @@ EXAMPLES
 
 
 1.
- 
+
  To replay the console for node1 at the default rate, starting 2000 lines from the end:
- 
- 
+
+
  .. code-block:: perl
- 
+
    replaycons 19200 2000
- 
- 
+
+
 
 
 

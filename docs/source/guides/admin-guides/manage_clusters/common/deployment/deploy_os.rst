@@ -1,7 +1,7 @@
 Initialize the Compute for Deployment
 =====================================
 
-XCAT use '**nodeset**' command to associate a specific image to a node which will be installed with this image. :: 
+XCAT use '**nodeset**' command to associate a specific image to a node which will be installed with this image. ::
 
     nodeset <nodename> osimage=<osimage>
 

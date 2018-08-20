@@ -1,4 +1,4 @@
-Introduction 
+Introduction
 ============
 
 Contents
@@ -6,10 +6,10 @@ Contents
 
 A Software Kit is a tar file that contains the following:
 
-**Kit Configuration File** --- A file describing the contents of this kit and contains following information 
+**Kit Configuration File** --- A file describing the contents of this kit and contains following information
 
   * Kit name, version, description, supported OS distributions, license information, and deployment parameters
-  * Kit repository information including name, supported OS distributions, and supported architectures 
+  * Kit repository information including name, supported OS distributions, and supported architectures
   * Kit component information including name, version, description, server roles, scripts, and other data
 
 **Kit Repositories** --- A directory for each operating system version this kit is supported in. Each directory contains all of the product software packages required for that environment along with repository metadata.
@@ -42,14 +42,14 @@ Once the kit components are added to xCAT osimage definitions, administrators ca
 #. ``genimage`` command to create a diskless OS image installing the kit components for diskless OS provisioning
 #. ``updatenode`` command to install the kit components on existing deployed nodes
 
-The ``kitcomponent`` metadata defines the kit packages as dependency packages and the OS package manager (``yum``, ``zypper``, ``apt-get``) automatically installes the required packages during the xCAT ``otherpkgs`` install process. 
+The ``kitcomponent`` metadata defines the kit packages as dependency packages and the OS package manager (``yum``, ``zypper``, ``apt-get``) automatically installes the required packages during the xCAT ``otherpkgs`` install process.
 
 Kit Framework
 -------------
 
-With time, the implementation of the xCAT Software Kit support may change.  
+With time, the implementation of the xCAT Software Kit support may change.
 
-In order to process a kit successfully, the kit must be compatible with the level of xCAT code that was used to build the kit.  The xCAT kit commands and software kits contain the framework version and compatible supported versions. 
+In order to process a kit successfully, the kit must be compatible with the level of xCAT code that was used to build the kit.  The xCAT kit commands and software kits contain the framework version and compatible supported versions.
 
 To view the framework version, use the ``-v | --version`` option on :doc:`addkit </guides/admin-guides/references/man1/addkit.1>`  ::
 
@@ -59,7 +59,7 @@ To view the framework version, use the ``-v | --version`` option on :doc:`addkit
             compatible_frameworks = 0,1,2
 
 
-If the commands in the xCAT installation is not compatible with the Software Kit obtained, update xCAT to a more recent release. 
+If the commands in the xCAT installation is not compatible with the Software Kit obtained, update xCAT to a more recent release.
 
 
-.. [#] PCM is IBM Platform Cluster Manager 
+.. [#] PCM is IBM Platform Cluster Manager

@@ -10,11 +10,16 @@ end
 
 start:makedns_d_node
 description:makedns -d noderange
-label:mn_only,dns
+label:mn_only,dns,wait_fix
 cmd:chtab netname=testnetwork networks.net=100.100.100.0 networks.mask=255.255.255.0 networks.mgtifname=eth0 networks.gateway=100.100.100.254
 check:rc==0
 cmd:chdef -t node -o dnstestnode groups=all  ip=100.100.100.1
 check:rc==0
+cmd:hostname
+cmd:cat /etc/hosts
+cmd:ip a
+cmd:lsdef -l
+cmd:tabdump networks
 cmd:makedns -n
 check:rc==0
 cmd:makedns dnstestnode
@@ -37,13 +42,17 @@ end
 
 start:makedns_node
 description:makedns noderange
-label:mn_only,dns
+label:mn_only,dns,wait_fix
 cmd:chtab netname=testnetwork networks.net=100.100.100.0 networks.mask=255.255.255.0 networks.mgtifname=eth0 networks.gateway=100.100.100.254
 check:rc==0
 cmd:chdef -t node -o dnstestnode groups=all  ip=100.100.100.1
 check:rc==0
+cmd:lsdef -l  dnstestnode
+cmd:cat /etc/hosts
 cmd:makedns -n
 check:rc==0
+cmd:cat /etc/hosts
+cmd:ps aux|grep name
 cmd:makedns dnstestnode
 check:rc==0
 cmd:nslookup dnstestnode $$MN
@@ -65,7 +74,7 @@ end
 start:makedns_ubuntu_n
 description:makedns -n
 os:ubuntu
-label:mn_only,dns
+label:mn_only,dns,wait_fix
 cmd:chtab netname=testnetwork networks.net=100.100.100.0 networks.mask=255.255.255.0 networks.mgtifname=eth0 networks.gateway=100.100.100.254
 check:rc==0
 cmd:cp /etc/hosts  /etc/hosts.testbak
@@ -74,10 +83,10 @@ cmd:echo "100.100.100.1  dnstestnode" >> /etc/hosts
 check:rc==0
 cmd:makedns -n
 check:rc==0
-cmd:cat /etc/bind/named.conf 
+cmd:cat /etc/bind/named.conf
 check:rc==0
 check:output~=zone "100.100.100.IN-ADDR.ARPA."
-cmd:nslookup dnstestnode $$MN 
+cmd:nslookup dnstestnode $$MN
 check:output~=Server:             $$MN
 check:output!~(server can't find dnstestnode)
 cmd:rm -f /etc/hosts
@@ -88,7 +97,7 @@ cmd:chtab -d netname=testnetwork networks
 check:rc==0
 cmd:makedns -n
 check:rc==0
-cmd:cat /etc/bind/named.conf 
+cmd:cat /etc/bind/named.conf
 check:rc==0
 check:output!~zone "100.100.100.IN-ADDR.ARPA."
 cmd:nslookup dnstestnode $$MN
@@ -132,17 +141,17 @@ end
 
 start:makedns
 description:makedns
-label:mn_only,dns
+label:mn_only,dns,wait_fix
 cmd:chtab netname=testnetwork networks.net=100.100.100.0 networks.mask=255.255.255.0 networks.mgtifname=eth0 networks.gateway=100.100.100.254
 check:rc==0
 cmd:makedns -n
 check:rc==0
-cmd:cat /etc/named.conf 
+cmd:if [ -f "/etc/named.conf" ]; then a="/etc/named.conf"; elif [ -f "/etc/bind/named.conf" ]; then a="/etc/bind/named.conf";fi; cat $a
 check:rc==0
 check:output~=zone "100.100.100.IN-ADDR.ARPA."
 cmd:rm -f /tmp/makedns_named_conf.org /tmp/makedns_named_conf.new
 check:rc==0
-cmd:cat /etc/named.conf  > /tmp/makedns_named_conf.org
+cmd:if [ -f "/etc/named.conf" ]; then a="/etc/named.conf"; elif [ -f "/etc/bind/named.conf" ]; then a="/etc/bind/named.conf";fi; cat $a >/tmp/makedns_named_conf.org
 check:rc==0
 cmd:cp /etc/hosts  /etc/hosts.testbak
 check:rc==0
@@ -153,9 +162,9 @@ check:rc==0
 cmd:nslookup dnstestnode $$MN
 check:output~=Server:             $$MN
 check:output!~(server can't find dnstestnode)
-cmd:cat /etc/named.conf  > /tmp/makedns_named_conf.old
+cmd:if [ -f "/etc/named.conf" ]; then a="/etc/named.conf"; elif [ -f "/etc/bind/named.conf" ]; then a="/etc/bind/named.conf";fi; cat $a > /tmp/makedns_named_conf.new
 check:rc==0
-cmd:diff /tmp/makedns_named_conf.org   /tmp/makedns_named_conf.old
+cmd:diff /tmp/makedns_named_conf.org   /tmp/makedns_named_conf.new
 check:rc==0
 check:output~=
 cmd:rm -f /tmp/makedns_named_conf.org /tmp/makedns_named_conf.new
@@ -168,7 +177,7 @@ cmd:chtab -d netname=testnetwork networks
 check:rc==0
 cmd:makedns -n
 check:rc==0
-cmd:cat /etc/named.conf 
+cmd:if [ -f "/etc/named.conf" ]; then a="/etc/named.conf"; elif [ -f "/etc/bind/named.conf" ]; then a="/etc/bind/named.conf";fi; cat $a
 check:rc==0
 check:output!~zone "100.100.100.IN-ADDR.ARPA."
 cmd:nslookup dnstestnode $$MN
@@ -512,7 +521,7 @@ check:rc==0
 cmd:xdsh $$SN "service xcatd restart"
 check:rc==0
 cmd:xdsh $$SN "service xcatd status"
-check:output~=running 
+check:output~=running
 end
 
 start:makedns_when_nameserver_on_mn_down
@@ -567,7 +576,7 @@ check:rc==0
 cmd:xdsh $$SN "service xcatd restart"
 check:rc==0
 cmd:xdsh $$SN "service xcatd status"
-check:output~=running  
+check:output~=running
 end
 
 
@@ -737,7 +746,7 @@ description:when nameserver's conf file on mn was changed, nameserver's conf fil
 label:cn_os_ready,dns,
 cmd:makedns -n
 check:rc==0
-cmd:cat /etc/named.conf 
+cmd:cat /etc/named.conf
 check:rc==0
 check:output!~zone "100.100.100.IN-ADDR.ARPA."
 cmd:xdsh $$SN "cat /etc/named.conf"
@@ -747,7 +756,7 @@ cmd:chtab netname=testnetwork networks.net=100.100.100.0 networks.mask=255.255.2
 check:rc==0
 cmd:makedns -n
 check:rc==0
-cmd:cat /etc/named.conf 
+cmd:cat /etc/named.conf
 check:rc==0
 check:output~=zone "100.100.100.IN-ADDR.ARPA."
 cmd:xdsh $$SN "cat /etc/named.conf"
@@ -762,7 +771,7 @@ cmd:chtab -d netname=testnetwork networks
 check:rc==0
 cmd:makedns -n
 check:rc==0
-cmd:cat /etc/named.conf 
+cmd:cat /etc/named.conf
 check:rc==0
 check:output!~zone "100.100.100.IN-ADDR.ARPA."
 cmd:xdsh $$SN "cat /etc/named.conf"
@@ -834,7 +843,7 @@ end
 
 start:makedns_n_noderange
 description:to verify makedns -n noderange works as design. add case for bug #2572. Test case bug number is #2826.
-label:mn_only,dns
+label:mn_only,dns,wait_fix
 cmd:chtab netname=testnetwork networks.net=100.100.100.0 networks.mask=255.255.255.0 networks.mgtifname=eth0 networks.gateway=100.100.100.254
 check:rc==0
 cmd:chdef -t node -o dnstestnode[1-10] groups=dnsnode  ip="|dnstestnode(\d+)|100.100.100.(\$1+0)|"
@@ -843,6 +852,11 @@ cmd:cp -f /etc/hosts  /etc/hosts.testbak
 check:rc==0
 cmd:for i in {1..10}; do echo "100.100.100.$i  dnstestnode$i" >> /etc/hosts; done
 check:rc==0
+cmd:hostname
+cmd:cat /etc/hosts
+cmd:ip a
+cmd:lsdef -l
+cmd:tabdump networks
 cmd:makedns -n dnstestnode[1-10]
 check:rc==0
 cmd:nslookup dnstestnode5 $$MN
@@ -858,7 +872,7 @@ check:rc==0
 cmd:nslookup dnstestnode5 $$MN
 check:output~=Server:             $$MN
 check:output!~(server can't find dnstestnode)
-cmd:makedns -d dnsnode 
+cmd:makedns -d dnsnode
 check:rc==0
 cmd:nslookup dnstestnode5 $$MN
 check:output~=Server:             $$MN

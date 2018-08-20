@@ -3,7 +3,7 @@ Features
 
 #. Discover the hardware servers
 
-   * Manually define 
+   * Manually define
    * MTMS-based discovery
    * Switch-based discovery
    * Sequential-based discovery

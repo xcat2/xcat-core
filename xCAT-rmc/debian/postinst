@@ -35,7 +35,7 @@ case "$1" in
 	   needCopyFiles=1;
          fi
       fi
-    
+
       if [ $needCopyFiles -eq 1 ]; then
          echo "Copying files to /install/postscripts directory..."
          mkdir -p /install/postscripts
@@ -43,18 +43,18 @@ case "$1" in
          mkdir -p /install/postscripts/rmcmon/scripts
          cp /opt/xcat/sbin/rmcmon/configrmcnode /install/postscripts
          chmod 755 /install/postscripts/configrmcnode
-    
-         FILES_TO_COPY=`cat /opt/xcat/sbin/rmcmon/scripts_to_node|tr '\n' ' '` 
+
+         FILES_TO_COPY=`cat /opt/xcat/sbin/rmcmon/scripts_to_node|tr '\n' ' '`
          for file in $FILES_TO_COPY
          do
 	    #echo "file=$file"
 	    cp /opt/xcat/sbin/rmcmon/$file /install/postscripts/rmcmon/scripts
          done
          chmod 755 /install/postscripts/rmcmon/scripts/*
-    
+
          cp -r /opt/xcat/lib/perl/xCAT_monitoring/rmc/resources/node/* /install/postscripts/rmcmon/resources/node
-      fi  
-    
+      fi
+
 
       if [[ `uname -s` = "Linux" ]] ; then
          if [ -f "/proc/cmdline" ]; then   # prevent running it during install into chroot image
@@ -70,7 +70,7 @@ case "$1" in
              echo "Do not restartxcatd in not running system"
            else
              XCATROOT=/opt/xcat /opt/xcat/sbin/restartxcatd -r
-           fi     
+           fi
          fi
       fi
       exit 0

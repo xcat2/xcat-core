@@ -17,17 +17,17 @@ B<cfgve> B<-t tpl -m> I<manager> B<-o> I<object> [B<-r>]
 
 =head1 DESCRIPTION
 
-The B<cfgve> command can be used to configure a virtual environment for 
+The B<cfgve> command can be used to configure a virtual environment for
 'Storage Domain', 'Network' and 'Template' objects.
 
-The mandatory parameter B<-m> I<manager> is used to specify the address of the 
+The mandatory parameter B<-m> I<manager> is used to specify the address of the
 manager of virtual environment. xCAT needs it to access the RHEV manager.
 
-The mandatory parameter B<-t> I<type> is used to specify the type of the target 
+The mandatory parameter B<-t> I<type> is used to specify the type of the target
 object.
 
-Basically, B<cfgve> command supports five types of object: B<dc>, B<cl>, 
-B<sd>, B<nw> and B<tpl>. 
+Basically, B<cfgve> command supports five types of object: B<dc>, B<cl>,
+B<sd>, B<nw> and B<tpl>.
 
 =over 3
 
@@ -35,7 +35,7 @@ B<dc> - The B<create> and B<remove> operations are supported.
 
 B<cl> - The B<create> and B<remove> operations are supported.
 
-B<sd>  - The B<create>, B<attach>, B<detach>, B<activate>, 
+B<sd>  - The B<create>, B<attach>, B<detach>, B<activate>,
 B<deactivate> and B<remove> operations are supported.
 
 B<nw>  - The B<create>, B<attach>, B<detach> and B<remove> operations are supported.
@@ -60,35 +60,35 @@ To detach the target object.
 =item B<-c>
 To create the target object.
 
-For creating of B<Storage Domain>, the target storage domain will be created 
+For creating of B<Storage Domain>, the target storage domain will be created
 first, then attached to data center and activated.
 
-The parameters that used to create the storage domain are gotten 
+The parameters that used to create the storage domain are gotten
 from 'virtsd' table. The detail parameters in the virtsd table:
 
 =over 3
 
 B<virtsd.node> - The name of the storage domain.
 
-B<virtsd.sdtype> - The type of storage domain. Valid value: data, iso, export. 
+B<virtsd.sdtype> - The type of storage domain. Valid value: data, iso, export.
 Default value is 'data'.
 
 B<virtsd.stype> - The storage type. "nfs" or "localfs".
 
-B<virtsd.location> - The location of the storage. 
-B<nfs>: Format: [nfsserver:nfspath]. 
-The NFS export directory must be configured for read write access and must 
+B<virtsd.location> - The location of the storage.
+B<nfs>: Format: [nfsserver:nfspath].
+The NFS export directory must be configured for read write access and must
 be owned by vdsm:kvm.
 B<localfs>: "/data/images/rhev" is set by default.
 
-B<virtsd.host> - A host must be specified for a storage domain as SPM 
-(Storage Pool Manager) when initialize the storage domain. The role of SPM 
-may be migrated to other host by rhev-m during the running of the datacenter 
-(For example, when the current SPM encountered issue or going to maintenance 
+B<virtsd.host> - A host must be specified for a storage domain as SPM
+(Storage Pool Manager) when initialize the storage domain. The role of SPM
+may be migrated to other host by rhev-m during the running of the datacenter
+(For example, when the current SPM encountered issue or going to maintenance
 status.
 
-B<virtsd.datacenter> - The storage will be attached to. 'Default' data center 
-is the default value. 
+B<virtsd.datacenter> - The storage will be attached to. 'Default' data center
+is the default value.
 
 =back
 
@@ -96,7 +96,7 @@ is the default value.
 
 The name of data center.
 
-Specify the 'Data Center' that will be used for the object to be attached to. 
+Specify the 'Data Center' that will be used for the object to be attached to.
 It is used by <nw> type.
 
 =item B<-f>
@@ -120,11 +120,11 @@ Supported type: nfs; localfs.
 
 Specify the cluster for the network to attach to.
 
-=item B<-m> I<manager> 
+=item B<-m> I<manager>
 
-Specify the manager of the virtual environment. 
+Specify the manager of the virtual environment.
 
-For RHEV, the FQDN (Fully Qualified Domain Name) of the rhev manager have 
+For RHEV, the FQDN (Fully Qualified Domain Name) of the rhev manager have
 to be specified.
 
 =item B<-n> I<vlan ID>

@@ -2,7 +2,7 @@ bash
 nfs-utils
 openssl
 glibc.ppc64
-dhclient 
+dhclient
 kernel.ppc64
 busybox-anaconda
 openssh-server

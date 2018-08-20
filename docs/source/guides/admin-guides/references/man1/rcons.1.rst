@@ -15,7 +15,7 @@ Name
 
 
 ****************
-\ **Synopsis**\ 
+\ **Synopsis**\
 ****************
 
 
@@ -25,7 +25,7 @@ Name
 
 
 *******************
-\ **Description**\ 
+\ **Description**\
 *******************
 
 
@@ -39,41 +39,41 @@ To exit the console session, enter: 'ctrl-e c .' (3 characters: ctrl-e, 'c' and 
 
 
 ***************
-\ **Options**\ 
+\ **Options**\
 ***************
 
 
 
-\ **-f**\ 
- 
+\ **-f**\
+
  If another console for this node is already open in read-write mode, force that console into read-only (spy) mode, and
  open this console in read-write mode.  If -f is not specified, this console will be put in spy mode if another console
  is already open in read-write mode. The -f flag can not be used with the -s flag.
- 
 
 
-\ **-s**\ 
- 
- Open the console in read-only (spy) mode, in this mode all the escape sequences work, but all other keyboard input is 
+
+\ **-s**\
+
+ Open the console in read-only (spy) mode, in this mode all the escape sequences work, but all other keyboard input is
  discarded. The -s flag can not be used with the -f flag.
- 
 
 
-\ **-h | -**\ **-help**\ 
- 
+
+\ **-h | -**\ **-help**\
+
  Print help.
- 
 
 
-\ **-v | -**\ **-version**\ 
- 
+
+\ **-v | -**\ **-version**\
+
  Print version.
- 
+
 
 
 
 *************
-\ **Files**\ 
+\ **Files**\
 *************
 
 
@@ -84,7 +84,7 @@ method.
 
 
 ****************
-\ **Examples**\ 
+\ **Examples**\
 ****************
 
 
@@ -96,7 +96,7 @@ method.
 
 
 ************************
-\ **See**\  \ **Also**\ 
+\ **See**\  \ **Also**\
 ************************
 
 

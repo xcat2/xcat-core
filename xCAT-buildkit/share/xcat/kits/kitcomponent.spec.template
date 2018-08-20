@@ -31,7 +31,7 @@ rm -rf $RPM_BUILD_ROOT
 
 %pre
 <<<INSERT_kitcomponent_preinstall_script_HERE>>>
-   
+
 
 <<<INSERT_kitcomponent_preupgrade_script_HERE>>>
 

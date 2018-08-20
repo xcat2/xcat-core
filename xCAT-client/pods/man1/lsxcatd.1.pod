@@ -24,15 +24,15 @@ Display usage message.
 
 =item B<-d|--database>
 
-Displays information about the current database being used by xCAT. 
+Displays information about the current database being used by xCAT.
 
 =item B<-t|--nodetype>
 
-Displays whether the node is a Management Node or a Service Node. 
+Displays whether the node is a Management Node or a Service Node.
 
 =item B<-a|--all>
 
-Displays all information about the daemon supported by the command. 
+Displays all information about the daemon supported by the command.
 
 =back
 
@@ -50,7 +50,7 @@ Displays all information about the daemon supported by the command.
 
 To display information about the current database:
 
- lsxcatd -d 
+ lsxcatd -d
 
 Output is similar to:
 
@@ -64,9 +64,9 @@ Output is similar to:
 
 To display all information:
 
- lsxcatd -a 
+ lsxcatd -a
 
-Output is similar to: 
+Output is similar to:
 
  Version 2.8.5 (git commit 0d4888af5a7a96ed521cb0e32e2c918a9d13d7cc, built Tue Jul 29 02:22:47 EDT 2014)
  This is a Management Node

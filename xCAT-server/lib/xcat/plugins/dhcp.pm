@@ -532,7 +532,7 @@ sub addnode
                 my $node_server = undef;
                 if ($nrent->{xcatmaster}) {
                     $node_server = $nrent->{xcatmaster};
-                } 
+                }
                 unless ($node_server) {
                     my @nxtsrvd = xCAT::NetworkUtils->my_ip_facing($node);
                     unless ($nxtsrvd[0]) { $nxtsrv = $nxtsrvd[1]; }
@@ -587,7 +587,7 @@ sub addnode
         );
         return;
     }
-    
+
     my @macs = split(/\|/, $ent->{mac});
     my $mace;
     my $deflstaments = $lstatements;
@@ -717,7 +717,7 @@ sub addnode
                             $lstatements = 'if substring (option vendor-class-identifier,0,11) = \"onie_vendor\" { option www-server = \"http://' . $nxtsrv . $mypkgdir . '\";}' . $lstatements;
                             $validpkgdir = 1;
                             last;
-                        } 
+                        }
                      }
                      unless ($validpkgdir) {
                         $callback->({ warning => ["osimage $provmethod pkgdir doesn't exists"]});
@@ -728,7 +728,7 @@ sub addnode
              } else {
                 $callback->({ warning => ["provmethod is not defined for $node"]});
              }
-         
+
         } elsif ($nrent and $nrent->{netboot} and $nrent->{netboot} eq 'nimol') {
             $lstatements = 'supersede server.filename=\"/vios/nodes/' . $node . '\";' . $lstatements;
         }
@@ -1289,7 +1289,7 @@ sub preprocess_request
         $req->{'node'} = \@nodes;
         $req->{_xcatpreprocessed}->[0] = 1;
         @requests = ({%$req}); #Start with a straight copy to reflect local instance
-        
+
         # if not localonly - get list of service nodes and create requests
         unless ($localonly || $hasHierarchy == 0) {
 
@@ -1666,7 +1666,7 @@ sub process_request
 
             #TODO: filter out multicast?  Don't know if multicast groups *can* appear in ip -6 route...
             #ignore link-local, global-local, junk, and routed networks
-            if (/^default/ or /^fe80::\/64/ or /^2002::\/64/ or /^unreachable/ or /^[^ ]+ via/) { 
+            if (/^default/ or /^fe80::\/64/ or /^2002::\/64/ or /^unreachable/ or /^[^ ]+ via/) {
                 next;
             }
             my @parts = split /\s+/;
@@ -1972,7 +1972,7 @@ sub process_request
          $callback->({ error => [ "above error fail to generate new dhcp configuration file, restore dhcp configuration file $dhcpconffile" ], errorcode => [1] });
          my $backupfile = $dhcpconffile.".xcatbak";
          rename("$backupfile", $dhcpconffile);
-         xCAT::MsgUtils->trace($verbose_on_off, "d", "dhcp: Restore dhcp configuration file to  $dhcpconffile"); 
+         xCAT::MsgUtils->trace($verbose_on_off, "d", "dhcp: Restore dhcp configuration file to  $dhcpconffile");
          exit 1;
     }
     foreach (@nrn6) {    #do the ipv6 networks
@@ -2340,7 +2340,7 @@ sub addnet6
             push @netent, "    option domain-search  $domainstring;\n";
         }
     }
-    
+
 
     my $nameservers = $netcfgs{$net}->{nameservers};
     if ($nameservers and $nameservers =~ /:/) {
@@ -2569,7 +2569,7 @@ sub addnet
                 );
             }
             if ($ent and $ent->{mtu})
-            {   
+            {
                 $mtu = $ent->{mtu};
             }
         }

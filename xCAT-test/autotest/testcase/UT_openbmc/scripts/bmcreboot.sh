@@ -55,7 +55,7 @@ while [[ $counter -le $ITERATIONS ]]; do
        if [[ $ready_cnd > 2 ]]; then
            echo "Leaving loop...."
            break
-       fi 
+       fi
    fi
 done
 

@@ -233,10 +233,14 @@ sub process_request {
 
     #sync fils configured in the synclist to the rootimage
     $syncfile = xCAT::SvrUtils->getsynclistfile(undef, $osver, $arch, $profile, "netboot", $imagename);
-    if (defined($syncfile) && -f $syncfile
-        && -d $rootimg_dir) {
-        print "sync files from $syncfile to the $rootimg_dir\n";
-        `$::XCATROOT/bin/xdcp -i $rootimg_dir -F $syncfile`;
+    if (defined($syncfile) && -d $rootimg_dir) {
+        my @filelist = split ',', $syncfile;
+        foreach my $synclistfile (@filelist) {
+            if ( -f $synclistfile) {
+                print "sync files from $synclistfile to the $rootimg_dir\n";
+                `$::XCATROOT/bin/xdcp -i $rootimg_dir -F $synclistfile`;
+            }
+        }
     }
 
     # check if the file "litefile.save" exists or not
@@ -359,8 +363,8 @@ sub process_request {
     #delete useless rootimg/tmp/dracut.* files
     #fix copy many dracut.* files cost too much time in liteimg
     $verbose && $callback->({ info => ["removing \"$rootimg_dir/tmp/dracut.*\""] });
-    unlink glob "$rootimg_dir/tmp/dracut.*"; 
-        
+    unlink glob "$rootimg_dir/tmp/dracut.*";
+
     # recovery the files in litefile.save if necessary
     foreach my $line (keys %hashSaved) {
         my @oldentry = split(/\s+/, $line);
@@ -761,7 +765,7 @@ sub parseLiteFiles {
 
 
 =head3
-    recoverFiles 
+    recoverFiles
 =cut
 
 sub recoverFiles {

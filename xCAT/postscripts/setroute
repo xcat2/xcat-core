@@ -3,11 +3,11 @@
 
 #-------------------------------------------------------------------------------
 #=head1  setroute [add]
-#        [add] - The operation to manipulate the route entry. It is optional. 
+#        [add] - The operation to manipulate the route entry. It is optional.
 #            The default is 'replace' if ignoring it.
-#        
-#=head2  setrout command replaces/adds the routes to the node according to 
-#        what is specified in the xCAT tables. 
+#
+#=head2  setrout command replaces/adds the routes to the node according to
+#        what is specified in the xCAT tables.
 #        The route name for the node is defined in noderes.routenames.
 #        The route itself is defined in the routes table.
 #=cut
@@ -36,8 +36,8 @@ do
         if [ -z "$gw" ]; then
             echo "Error: Failed to configure route $rn as gateway is not configured."
             exit_code=1
-            continue  
-        fi 
+            continue
+        fi
         # remove the suffix /64 from ipv6 net
         if echo $net | grep "/" 2>&1 1>/dev/null
         then

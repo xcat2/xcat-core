@@ -27,7 +27,7 @@ patch -p0 < xcataixpost.patch
 cd /opt/xcat/bin
 ln -s xcatclient configcec
 
-Then follow the steps on PowerVM Steps.odt to deploy partitions. 
+Then follow the steps on PowerVM Steps.odt to deploy partitions.
 Note: After configuring VIOS before configuring LPAR, run "patch -p0 < xcataixpost.patch" again.
 
 

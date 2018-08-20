@@ -8,7 +8,7 @@ cmd:if grep Ubuntu /etc/*release;then if [ ! -e /install/__GETNODEATTR($$CN,os)_
 cmd:nodeset $$CN osimage=__GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-install-compute
 check:rc==0
 cmd:grep '\$1\$' /install/autoinst/$$CN
-check:rc==0 
+check:rc==0
 cmd:oldcryptmethod=`cat /tmp/tmpcryptmethod |sed 's/\"//g'`;chtab key=system passwd.cryptmethod=$oldcryptmethod
 check:rc==0
 cmd:nodeset $$CN osimage=__GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-install-compute
@@ -226,7 +226,7 @@ cmd:gettab key=system passwd.password > /tmp/tmppassword
 check:rc==0
 cmd:chtab key=system passwd.username=root passwd.password=`openssl passwd -1 abc123`
 check:rc==0
-cmd:gettab key=system passwd.password > /tmp/tmpcryptedpasswd 
+cmd:gettab key=system passwd.password > /tmp/tmpcryptedpasswd
 check:rc==0
 cmd:if grep Ubuntu /etc/*release;then if [ ! -e /install/__GETNODEATTR($$CN,os)__/__GETNODEATTR($$CN,arch)__/install/netboot/initrd.gz ]; then copycds $$ISO;mkdir -p /install/__GETNODEATTR($$CN,os)__/__GETNODEATTR($$CN,arch)__/install/netboot/;touch /install/__GETNODEATTR($$CN,os)__/__GETNODEATTR($$CN,arch)__/install/netboot/initrd.gz;fi;fi
 cmd:nodeset $$CN osimage=__GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-install-compute

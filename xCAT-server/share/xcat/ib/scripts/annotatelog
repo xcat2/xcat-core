@@ -694,7 +694,7 @@ SOUT
 #--------------------------------------------------------------------------------
 
 =head3  outputEntries
-        Output logs sorted by one method 
+        Output logs sorted by one method
         Notes:
 =cut
 
@@ -837,17 +837,17 @@ Usage: annotatelog -f log_file [-s start_time] [-e end_time]
                  Must be xCAT consolidated log got from Qlogic HSM or ESM.
         -s start_time
                  Specifies the start time for analysis, where the start_time
-                 variable has the format ddmmyyhh:mm:ss (day, month, year, 
+                 variable has the format ddmmyyhh:mm:ss (day, month, year,
                  hour, minute, and second), 00:00:00 is valid.
         -e end_time
-                 Specifies the end time for analysis, where the end_time 
-                 variable has the format ddmmyyhh:mm:ss (day, month, year, 
+                 Specifies the end time for analysis, where the end_time
+                 variable has the format ddmmyyhh:mm:ss (day, month, year,
                  hour, minute, and second), 00:00:00 is valid.
         -l link_file
                  Specifies a link file fullpath name, which concatenates all
                  '/var/opt/iba/analysis/baseline/fabric*links' files from all fabric management nodes.
         -g guid_file
-                 Specifies a guid file fullpath name, which has a list of 
+                 Specifies a guid file fullpath name, which has a list of
                  GUIDs as obtained from the "getGuids" script.
         -E       Annotate with node ERRLOG_ON and ERRLOG_OFF information. This
                  can help determine if a disappearance was caused by a node
@@ -994,7 +994,7 @@ sub getGUIDs
 #--------------------------------------------------------------------------------
 
 =head3  getHCALinks
-        Get links between HCA and Switch and links between Switch and Swtich 
+        Get links between HCA and Switch and links between Switch and Swtich
         Notes:
 Arguments:
         $hcalfile - A link file fullpath name, which concatenates all '/var/opt/iba/analysis/baseline/fabric*links' files from all fabric management nodes.

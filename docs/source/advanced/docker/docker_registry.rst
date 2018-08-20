@@ -36,7 +36,7 @@ Create Configuration File
 '''''''''''''''''''''''''
 
 Define configuration file ``docker-registry`` under ``/docker-registry/`` folder as below. ::
-  
+
     #!/bin/bash
 
     docker_command=$1
@@ -84,7 +84,7 @@ Start registry service: ::
 Method 2: Managing Docker Registry with Compose
 ```````````````````````````````````````````````
 
-Docker Compose it is a tool for defining and running Docker applications. It could help setting up registry. 
+Docker Compose it is a tool for defining and running Docker applications. It could help setting up registry.
 
 Install Docker Compose
 ''''''''''''''''''''''
@@ -147,10 +147,10 @@ List Available Images in Registry
 `````````````````````````````````````
 ::
 
-    curl -k https://domainname:5000/v2/_catalog 
+    curl -k https://domainname:5000/v2/_catalog
 
 Pull Images from Registry
-`````````````````````````  
+`````````````````````````
 Just use the "tag" image name, which includes the domain name, port, and image name. ::
 
     docker pull domainname:5000/imagename

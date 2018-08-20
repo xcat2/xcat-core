@@ -1,4 +1,4 @@
-#!/bin/bash 
+#!/bin/bash
 
 str_dir_name=`dirname $0`
 . $str_dir_name/xcatlib.sh
@@ -47,7 +47,7 @@ if [ -f "/etc/debian_version" ];then
     debianpreconf
     #delete the gateway from all configuration files
     sed -i "s/.*gateway.*//" /etc/network/interfaces.d/*
-    
+
     str_conf_file="/etc/network/interfaces.d/$str_nic_name"
     echo "  gateway $str_gateway --" >> $str_conf_file
 elif [ -f "/etc/SuSE-release" ];then

@@ -12,7 +12,7 @@ rmitab shdaemon > /dev/null 2>&1
 
 #to disable topasrec, which runs as a cron job, need remove the following entry from /etc/inittab:
 #xmdaily:2:once:/usr/bin/topasrec -L -s 300 -R 1 -r 6 -o /etc/perf/daily/ -ypersistent=1 2>&1 >/dev/null #Start local binary recording
-rmitab xmdaily > /dev/null 2>&1 
+rmitab xmdaily > /dev/null 2>&1
 
 #to disable PM data collection, which is really topasout, run:
 #55 23 * * * /var/perf/pm/bin/pmcfg  >/dev/null 2>&1     #Enable PM Data Collection
@@ -46,7 +46,7 @@ rmitab gsa_updmn > /dev/null 2>&1
 #artex:2:wait:/usr/sbin/artexset -c -R /etc/security/artex/config/master_profile.xml > /dev/console 2>&1
 rmitab artex > /dev/null 2>&1
 
-#this is HACMP function . . . 
+#this is HACMP function . . .
 #clcomd:23456789:once:/usr/bin/startsrc -s clcomd
 rmitab clcomd > /dev/null 2>&1
 
@@ -67,11 +67,11 @@ rmitab pconsole > /dev/null 2>&1
 #rcnetwlm:23456789:wait:/etc/rc.netwlm start> /dev/console 2>&1 # Start netwlm
 rmitab rcnetwlm > /dev/null 2>&1
 
-#to disable cimservices, need to comment cimservices and platform agent: 
+#to disable cimservices, need to comment cimservices and platform agent:
 #cimservices:2:once:/usr/bin/startsrc -s cimsys >/dev/null 2>&1
 #platform_agent:2:once:/usr/bin/startsrc -s platform_agent >/dev/null 2>&1
-rmitab cimservices > /dev/null 2>&1 
-rmitab platform_agent > /dev/null 2>&1 
+rmitab cimservices > /dev/null 2>&1
+rmitab platform_agent > /dev/null 2>&1
 
 #we WILL want to add in RMC (RSCT) monitoring at some point
 #ctrmc:2:once:/usr/bin/startsrc -s ctrmc > /dev/console 2>&1
@@ -97,7 +97,7 @@ then
     grep -q "^start /usr/lib/sendmail" /etc/rc.tcpip
     if [[ $? -eq 0 ]] then
 	cat /etc/rc.tcpip | sed 's/^start \/usr\/lib\/sendmail/#start \/usr\/lib\/sendmail/' > /tmp/rc.tcpip.tmpfile.$$
-	cp  -p /etc/rc.tcpip /etc/rc.tcpip.prev 
+	cp  -p /etc/rc.tcpip /etc/rc.tcpip.prev
 	mv  /tmp/rc.tcpip.tmpfile.$$  /etc/rc.tcpip
     fi
     stopsrc -s sendmail > /dev/null 2>&1
@@ -141,7 +141,7 @@ if [[ ! -f /var/spool/cron/crontabs/root.before.clean_jitter ]] then
 
     egrep -v "bin\/pmcfg|bin\/stcron|bin\/dumpctr|ras\/dumpcheck|bin\/errclear" /var/spool/cron/crontabs/root > /var/spool/cron/crontabs/root.after.clean_jitter
 
-    cp /var/spool/cron/crontabs/root.after.clean_jitter /var/spool/cron/crontabs/root 
+    cp /var/spool/cron/crontabs/root.after.clean_jitter /var/spool/cron/crontabs/root
 fi
 
 #for i in $(ps -efk | egrep "\/usr\/sbin\/cron|topasrec" | grep -v grep | awk ' { print $2} ') ; do
@@ -178,7 +178,7 @@ sleep 1
 grep -q cosched3 /etc/poe.priority 2> /dev/null
 if [[ $? -ne 0 ]] then
     echo '*  cosched1    18    100    97    10' >> /etc/poe.priority
-    echo '*  cosched2    13    100    99.5  10' >> /etc/poe.priority 
+    echo '*  cosched2    13    100    99.5  10' >> /etc/poe.priority
     echo '*  cosched3    13    100    99     3' >> /etc/poe.priority
     echo '*  cosched4    18    100    97     1' >> /etc/poe.priority
     chmod 644 /etc/poe.priority

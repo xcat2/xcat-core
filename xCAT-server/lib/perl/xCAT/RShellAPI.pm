@@ -69,7 +69,7 @@ sub remote_shell_command {
         run_remote_shell_api
 
         This routine tried ssh then telnet to logon to a node and
-        run a sequence of commands. 
+        run a sequence of commands.
         Arguments:
         	$node - node name
         	$user - user login name

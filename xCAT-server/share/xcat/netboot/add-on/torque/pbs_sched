@@ -23,7 +23,7 @@ fi
 
 # let see how we were called
 case "$1" in
-	start) 
+	start)
 		echo -n "Starting PBS Scheduler: "
 		daemon $PBS_PREFIX/sbin/pbs_sched
 		echo

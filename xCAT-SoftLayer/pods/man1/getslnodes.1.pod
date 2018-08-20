@@ -4,7 +4,7 @@ B<getslnodes> - queries your SoftLayer account and gets attributes for each serv
 
 =head1 SYNOPSIS
 
-B<getslnodes> [B<-v>|B<--verbose>] [I<hostname-match>]  
+B<getslnodes> [B<-v>|B<--verbose>] [I<hostname-match>]
 
 B<getslnodes> [B<-?> | B<-h> | B<--help>]
 
@@ -15,7 +15,7 @@ server.  The attributes can be piped to 'mkdef -z' to define the nodes
 in the xCAT DB so that xCAT can manage them.
 
 Before using this command, you must download and install the SoftLayer API perl module.
-For example: 
+For example:
 
    cd /usr/local/lib
    git clone https://github.com/softlayer/softlayer-api-perl-client.git

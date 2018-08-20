@@ -22,7 +22,7 @@ set -e
 case "$1" in
     purge|upgrade|failed-upgrade|abort-install|abort-upgrade|disappear)
     ;;
-    
+
     remove)
        rm -f /usr/sbin/xcatd  #remove the symbolic
 

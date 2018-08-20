@@ -19,7 +19,7 @@ SYNOPSIS
 ********
 
 
-\ **rmvlan**\  \ *vlanid*\ 
+\ **rmvlan**\  \ *vlanid*\
 
 \ **rmvlan**\  [\ **-h | -**\ **-help**\ ]
 
@@ -76,19 +76,19 @@ EXAMPLES
 
 
 1.
- 
+
  To remove vlan 3
- 
- 
+
+
  .. code-block:: perl
- 
+
     rmvlan 3
- 
- 
+
+
  If the nodes are KVM guest then the do the following after the vlan is removed:
    rpower node1,node2 off
    rmvm node1,node2
- 
+
 
 
 

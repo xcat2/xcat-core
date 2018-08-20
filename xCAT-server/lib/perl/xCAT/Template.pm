@@ -1116,7 +1116,7 @@ d-i mirror/http/proxy string\n";
     if (scalar @mirrors) {
         my $index = 0;
         foreach (@mirrors) {
-            $line .= " 
+            $line .= "
 d-i apt-setup/local$index/repository string deb $_\n
 d-i apt-setup/local$index/comment string online mirror $index\n";
             $index = $index + 1;
