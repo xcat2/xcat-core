@@ -20,7 +20,7 @@ detect_syslog() {
     [ -n "$syslogtype" ]
 }
 
-#the initqueue.sh shipped does not support --online option and 
+#the initqueue.sh shipped does not support --online option and
 #there are some problem when processing --onetime option
 #implement a patched initqueue function here, named initqueue_enhanced
 initqueue_enhanced() {
@@ -52,34 +52,34 @@ initqueue_enhanced() {
         esac
         shift
     done
-    
-    local job=    
+
+    local job=
     if [ -z "$unique" ]; then
         job="${name}$$"
     else
         job="${name:-$1}"
         job=${job##*/}
     fi
-    
-    local exe= 
+
+    local exe=
     exe=$1
     shift
-    
+
     [ -x "$exe" ] || exe=$(command -v $exe)
     if [ -z "$exe" ] ; then
         echo "Invalid command"
         return 1
     fi
-    
+
     {
         [ -n "$env" ] && echo "$env"
         echo "$exe $@"
         [ -n "$onetime" ] && echo "[ -e $hookdir/initqueue${qname}/${job}.sh ] && rm -f -- $hookdir/initqueue${qname}/${job}.sh"
     } > "/tmp/$$-${job}.sh"
-    
+
     mv -f "/tmp/$$-${job}.sh" "$hookdir/initqueue${qname}/${job}.sh"
     [ -z "$qname" ] && >> $hookdir/initqueue/work
-    
+
     return 0
 }
 
@@ -91,7 +91,7 @@ fi
 if [ -e "/sbin/${syslogtype}-start" ]; then
     #printf 'ACTION=="online", SUBSYSTEM=="net", RUN+="/sbin/initqueue --onetime /sbin/'${syslogtype}'-start $env{INTERFACE}"\n' > /etc/udev/rules.d/70-syslog.rules
     #printf 'ATTR{operstate}!="down", SUBSYSTEM=="net", RUN+="/sbin/initqueue --onetime /sbin/'${syslogtype}'-start $env{INTERFACE}"\n' > /etc/udev/rules.d/70-syslog.rules
-    initqueue_enhanced --online --onetime /sbin/${syslogtype}-start     
+    initqueue_enhanced --online --onetime /sbin/${syslogtype}-start
 else
     warn "syslog-genrules: Could not find binary to start syslog of type \"$syslogtype\". Syslog will not be started."
 fi

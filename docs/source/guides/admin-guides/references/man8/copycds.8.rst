@@ -44,40 +44,40 @@ OPTIONS
 
 
 
-\ **-n|-**\ **-name|-**\ **-osver**\ =\ *distroname*\ 
- 
+\ **-n|-**\ **-name|-**\ **-osver**\ =\ *distroname*\
+
  The linux distro name and version that the ISO/DVD contains.  Examples:  rhels6.3, sles11.2, fedora9.  Note the 's' in rhels6.3 which denotes the Server version of RHEL, which is typically used.
- 
 
 
-\ **-a|-**\ **-arch**\ =\ *architecture*\ 
- 
+
+\ **-a|-**\ **-arch**\ =\ *architecture*\
+
  The architecture of the linux distro on the ISO/DVD.  Examples: x86, x86_64, ppc64, s390x.
- 
 
 
-\ **-p|-**\ **-path**\ =\ *ospkgpath*\ 
- 
+
+\ **-p|-**\ **-path**\ =\ *ospkgpath*\
+
  The destination directory to which the contents of ISO/DVD will be copied. When this option is not specified, the default destination directory will be formed from the \ **installdir**\  site table attribute and the distro name and architecture, for example: /install/rhel6.3/x86_64. This option is only supported for distributions of sles, redhat and windows.
- 
 
 
-\ **-i|-**\ **-inspection**\ 
- 
+
+\ **-i|-**\ **-inspection**\
+
  Check whether xCAT can recognize the DVDs/ISOs in the argument list, but do not copy the disc. Displays the os distribution name, architecture and disc no of each recognized DVD/ISO. This option is only supported for distributions of sles, redhat and windows.
- 
 
 
-\ **-o|-**\ **-noosimage**\ 
- 
+
+\ **-o|-**\ **-noosimage**\
+
  Do not create the default osimages based on the osdistro copied in. By default, \ **copycds**\  will create a set of osimages based on the osdistro.
- 
 
 
-\ **-w|-**\ **-nonoverwrite**\ 
- 
+
+\ **-w|-**\ **-nonoverwrite**\
+
  Complain and exit if the os disc has already been copied in. By default, \ **copycds**\  will overwrite the os disc already copied in.
- 
+
 
 
 
@@ -98,74 +98,74 @@ EXAMPLES
 
 
 1. To copy the RPMs from a set of ISOs that represent the DVDs of a distro:
- 
- 
+
+
  .. code-block:: perl
- 
+
    copycds dvd1.iso dvd2.iso
- 
- 
+
+
 
 
 2. To copy the RPMs from a physical DVD to /depot/kits/3 directory:
- 
- 
+
+
  .. code-block:: perl
- 
+
    copycds -p /depot/kits/3 /dev/dvd
- 
- 
+
+
 
 
 3. To copy the RPMs from a DVD ISO of a very recently released distro:
- 
- 
+
+
  .. code-block:: perl
- 
+
    copycds -n rhels6.4 -a x86_64 dvd.iso
- 
- 
+
+
 
 
 4. To check whether a DVD ISO can be recognized by xCAT and display the recognized disc info:
- 
- 
+
+
  .. code-block:: perl
- 
+
    copycds -i /media/RHEL/6.2/RHEL6.2-20111117.0-Server-ppc64-DVD1.iso
- 
- 
+
+
  Output will be similar to:
- 
- 
+
+
  .. code-block:: perl
- 
+
     OS Image:/media/RHEL/6.2/RHEL6.2-20111117.0-Server-ppc64-DVD1.iso
     DISTNAME:rhels6.2
     ARCH:ppc64
     DISCNO:1
- 
- 
+
+
  For the attributes that are not recognized, the value will be blank.
- 
+
 
 
 5. To copy the packages from a supplemental DVD ISO file:
- 
- 
+
+
  .. code-block:: perl
- 
+
    copycds /isodir/RHEL6.5/RHEL6.5-Supplementary-20131114.2-Server-ppc64-DVD1.iso -n rhels6.5-supp
- 
- 
+
+
  Also, remember to add the new directory to your osimage definition:
- 
- 
+
+
  .. code-block:: perl
- 
+
    chdef -t osimage myosimage -p pkgdir=/install/rhels6.5-supp/ppc64
- 
- 
+
+
 
 
 

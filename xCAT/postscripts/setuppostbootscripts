@@ -2,12 +2,12 @@
 # IBM(c) 2012 EPL license http://www.eclipse.org/legal/epl-v10.html
 
 #-------------------------------------------------------------------------------
-#=head1  setuppostbootscripts 
+#=head1  setuppostbootscripts
 #=head2  This command setup the node so that when the node reboots,
-#        the postbootscripts will be run or not depending on the   
-#        site.runbootscripts setting. 
+#        the postbootscripts will be run or not depending on the
+#        site.runbootscripts setting.
 #        If site.runbootscripts is 'yes', then the scripts defined by
-#        postscripts.postbootscripts will be run when the node reboots. 
+#        postscripts.postbootscripts will be run when the node reboots.
 #=cut
 #-------------------------------------------------------------------------------
 
@@ -29,7 +29,7 @@ if [ "$RUNBOOTSCRIPTS" = "yes" ] || [ "$RUNBOOTSCRIPTS" = "YES" ]; then
        RUNBOOTSCRIPTS=yes
 else
        RUNBOOTSCRIPTS=no
-fi 
+fi
 #  check to see if current setting is already in the file, if so nothing to do
 if [ -f $infofile ]; then
     value=`grep "RUNBOOTSCRIPTS=$RUNBOOTSCRIPTS" $infofile`
@@ -44,7 +44,7 @@ rsync /xcatpost/xcatinstallpost /opt/xcat/xcatinstallpost
 rsync /xcatpost/xcatpostinit1 /etc/init.d/xcatpostinit1
 chmod 755 /etc/init.d/xcatpostinit1
 
-if [ ! -f "/etc/rc.d/rc3.d/S84xcatpostinit1" ]; then 
+if [ ! -f "/etc/rc.d/rc3.d/S84xcatpostinit1" ]; then
     ln -s /etc/init.d/xcatpostinit1 /etc/rc.d/rc3.d/S84xcatpostinit1
 fi
 if [ ! -f "/etc/rc.d/rc4.d/S84xcatpostinit1" ]; then
@@ -64,19 +64,19 @@ else
     value=`grep XCATSERVER $infofile`
     if [[ -n $value ]]; then
         sed -i "s/^XCATSERVER=.*$/XCATSERVER=$MASTER/" $infofile
-    else 
+    else
         echo "XCATSERVER=$MASTER" >> $infofile
     fi
     value=`grep REBOOT $infofile`
     if [[ -n $value ]]; then
         sed -i "s/^REBOOT=.*$/REBOOT=TRUE/" $infofile
-    else 
+    else
         echo REBOOT=TRUE >> $infofile
     fi
     value=`grep RUNBOOTSCRIPTS $infofile`
     if [[ -n $value ]]; then
         sed -i "s/^RUNBOOTSCRIPTS=.*$/RUNBOOTSCRIPTS=$RUNBOOTSCRIPTS/" $infofile
-    else 
+    else
         echo "RUNBOOTSCRIPTS=$RUNBOOTSCRIPTS" >> $infofile
     fi
 fi

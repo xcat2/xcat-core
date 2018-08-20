@@ -1,15 +1,15 @@
 =head1 NAME
- 
-B<xCATWorld> - Sample client program for xCAT.  
- 
+
+B<xCATWorld> - Sample client program for xCAT.
+
 =head1 SYNOPSIS
- 
+
 B<xCATWorld> I<noderange>
 
 =head1 DESCRIPTION
 
-The xCATWorld program gives you a sample client program that interfaces to the /opt/xcat/lib/perl/xCAT_plugin/xCATWorld.pm plugin.  
-For debugging purposes we have an Environment Variable XCATBYPASS.  If export XCATBYPASS=yes, the client will call the plugin without going through the xcat daemon, xcatd. 
+The xCATWorld program gives you a sample client program that interfaces to the /opt/xcat/lib/perl/xCAT_plugin/xCATWorld.pm plugin.
+For debugging purposes we have an Environment Variable XCATBYPASS.  If export XCATBYPASS=yes, the client will call the plugin without going through the xcat daemon, xcatd.
 
 =head1 OPTIONS
 
@@ -19,12 +19,12 @@ For debugging purposes we have an Environment Variable XCATBYPASS.  If export XC
 
 =head1 EXAMPLES
 
-1.To run , enter: 
+1.To run , enter:
 
  xCATWorld nodegrp1
 
 =head1 FILES
- 
+
 /opt/xcat/bin/xCATWorld
 
 
@@ -33,4 +33,4 @@ For debugging purposes we have an Environment Variable XCATBYPASS.  If export XC
 This command is part of the xCAT software product.
 
 
- 
+

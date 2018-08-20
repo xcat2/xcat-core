@@ -38,7 +38,7 @@ my @filternodes;
 if (
     !GetOptions(
                 'h|help'     => \$::HELP,
-                'switches=s' => \$::SWITCH,  
+                'switches=s' => \$::SWITCH,
                 'config'     => \$::CONFIG,
                 'ip'         => \$::IP,
                 'name'       => \$::NAME,
@@ -154,7 +154,7 @@ sub config_ip {
             next;
         }
 
-        # Validate if this IP is reachable 
+        # Validate if this IP is reachable
         my $p = Net::Ping->new();
         if (!$p->ping($dip)) {
             print "$dip is not reachable, will not change IP address\n";
@@ -170,7 +170,7 @@ sub config_ip {
             $rc= xCAT::Utils->runcmd($cmd, 0);
             next;
         }
- 
+
         my $static_ip= $nodehash->{$switch}->[0]->{ip};
 
         # don't need to set if ip addresses are same
@@ -248,7 +248,7 @@ sub config_ip {
         $cmd = "makehosts $csw";
         $rc= xCAT::Utils->runcmd($cmd, 0);
     }
- 
+
      if (@discover_switches) {
         my $dsw = join(",",@discover_switches);
         # remove discover switch from xCATdb and /etc/hosts
@@ -311,7 +311,7 @@ sub config_snmp {
 
     my $switchtab = xCAT::Table->new('switches');
     my $switchhash = $switchtab->getNodesAttribs(\@nodes,['snmpversion','sshusername','sshpassword','username','password','auth','privacy']);
-    foreach my $switch (@nodes) 
+    foreach my $switch (@nodes)
     {
         #enable snmp function on the switch
         $cmd=`rspconfig $switch snmpcfg=enable`;
@@ -324,14 +324,14 @@ sub config_snmp {
         $snmp_version = $switchhash->{$switch}->[0]->{snmpversion};
         $snmp_passwd = $switchhash->{$switch}->[0]->{password};
 
-        #config snmpv1 with community string defined in the switches table 
+        #config snmpv1 with community string defined in the switches table
         unless ($snmp_version =~ /3/) {
             if ($snmp_passwd) {
                 $cmd=`rspconfig $switch community=$snmp_passwd`;
                 print "config snmp community string $snmp_passwd\n";
                 next;
-            }    
-        }        
+            }
+        }
 
         #config snmpv3 defined in the switches table
         $snmp_user = $switchhash->{$switch}->[0]->{username};
@@ -434,12 +434,12 @@ sub config_vlan {
             &usage;
             exit(1);
        }
-       if ($mode =~ /hybrid/) 
+       if ($mode =~ /hybrid/)
        {
            if (!$access_vlan) {
-               print "NOTE: Hybrid mode will change access VLAN back to 1\n"; 
+               print "NOTE: Hybrid mode will change access VLAN back to 1\n";
                print "If other than 1, run the command again with access VLAN number: \n";
-               print "    configMellanox --switches switchnames --port port --accessvlan vlan1 --allowvlan vlan2 --mode mode\n"; 
+               print "    configMellanox --switches switchnames --port port --accessvlan vlan1 --allowvlan vlan2 --mode mode\n";
                $access_vlan = 1;
            }
        }
@@ -514,22 +514,22 @@ sub config_vlan {
 sub usage
 {
     print "Usage:
-    configMellanox -h│--help 
+    configMellanox -h│--help
     configMellanox --switches switchnames --ip
     configMellanox --switches switchnames --name
-    configMellanox --switches switchnames --snmp 
-    
+    configMellanox --switches switchnames --snmp
+
     To set the IP address, hostname, config snmp and run rspconfig command:
         configMellanox --switches switchnames --all
 
-    To run rspconfig command: 
-        configMellanox --switches switchnames --config  
+    To run rspconfig command:
+        configMellanox --switches switchnames --config
 
     To configure VLAN on a specified port (Mellanox Ethernet switch ONLY):
         configMellanox --switches switchnames --port port --accessvlan vlan1 --allowvlan vlan2 --mode mode
 
             The following mode are supported for switchport:
-                * access        Only untagged ingress Ethernet packets are allowed 
+                * access        Only untagged ingress Ethernet packets are allowed
                 * trunk         Only tagged ingress Ethernet packets are allowed
                 * hybrid        Both tagged and untagged ingress Ethernet packets are allowed
                 * access-dcb    Only untagged ingress Ethernet packets are allowed. Egress packets will be priority tagged

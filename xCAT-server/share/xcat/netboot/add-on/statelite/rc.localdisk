@@ -102,7 +102,7 @@ doconfigure () {
             exit 1
         fi
 
-        # To recreate the disk label when clear=yes, this action is used to resolve the issue 
+        # To recreate the disk label when clear=yes, this action is used to resolve the issue
         # that the disk has been formatted by AIX
         if [ x$clear != x ]; then
             `parted -s $dev mklabel msdos`
@@ -122,7 +122,7 @@ doconfigure () {
             msg=`echo $PLINE | grep 'unrecognised disk label'`
             if [ x"$msg" != x ]; then
                 devname=`echo $PLINE | awk -F' ' '{print $2}' | sed -e "s/://g"`
-            
+
                 if [ x$devname = x"$dev" ]; then
                     #create the label
                     `parted -s $dev mklabel msdos`
@@ -132,12 +132,12 @@ doconfigure () {
         done <  $PARTLOG
 
         `parted -lsm > $PARTLOG`
-        
+
         partinfo=`parted -lsm`
         # Verbose message
         echo "Original partition list" >>$LOG
         echo $partinfo >>$LOG
-        
+
         getpart=0
         while read PLINE
         do
@@ -161,7 +161,7 @@ doconfigure () {
                     partnum=`expr $partnum + 1`
                 fi
             fi
-        done < $PARTLOG 
+        done < $PARTLOG
 
         if [ $getpart -eq 0 ]; then
             echo "Error: Cannot get partition information for $dev" >>$LOG
@@ -319,7 +319,7 @@ do
                 fi
             elif [ x$key = x"enablepart" ]; then
                 enablepart=$value
-            fi 
+            fi
         fi
     fi
 done <  $PARTFILE
@@ -392,7 +392,7 @@ do
                 touch ${MNTDIR}${FPATH}
                 echo "touch ${MNTDIR}${FPATH}" >>$LOG
                 needsync=0
-            fi 
+            fi
             if [ ! -f ${MNTDIR}${LOCAL}${FPATH} ]; then
                 touch ${MNTDIR}${LOCAL}${FPATH}
                 echo "touch ${MNTDIR}${LOCAL}${FPATH}" >>$LOG

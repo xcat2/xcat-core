@@ -3,7 +3,7 @@ Parallel Environment Developer Edition (PE DE)
 
 xCAT software kits for PE DE for Linux is available on: [#]_
 
-   * PE DE 1.2.0.1 and newer (SystemX) 
+   * PE DE 1.2.0.1 and newer (SystemX)
    * PE DE 1.2.0.3 and newer (SystemP)
 
 

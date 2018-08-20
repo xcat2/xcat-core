@@ -1,7 +1,7 @@
 start:rvitals_h
 description:get rvitals's usage
 label:mn_only,hctrl_general
-cmd:rvitals -h 
+cmd:rvitals -h
 check:rc==0
 check:output=~Usage:
 check:output=~rvitals
@@ -124,7 +124,7 @@ end
 start:rvitals_noderange_err
 description:using not defined node
 label:mn_only,hctrl_general
-cmd:/opt/xcat/share/xcat/tools/autotest/testcase/rvitals/openbmctest.sh rvitals testnode 
+cmd:/opt/xcat/share/xcat/tools/autotest/testcase/rvitals/openbmctest.sh rvitals testnode
 check:rc!=0
 end
 

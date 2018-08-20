@@ -21,11 +21,11 @@ use strict;
 
 #-------------------------------------------------------------------------------
 
-=head3   Version 
+=head3   Version
     Arguments:
         Optional 'short' string to request only the version;
     Returns:
-       xcat Version number 
+       xcat Version number
     Globals:
         none
     Error:

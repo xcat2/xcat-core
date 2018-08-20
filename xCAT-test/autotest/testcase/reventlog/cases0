@@ -23,7 +23,7 @@ start:reventlog_numofentries
 label:cn_bmc_ready,hctrl_general
 cmd:reventlog $$CN 5
 check:rc==0
-check:output=~$$CN\s*:\s*.*\d\d/\d\d/\d\d\s*\S+|$$CN: no SEL entries|Entry|No attributes returned from the BMC 
+check:output=~$$CN\s*:\s*.*\d\d/\d\d/\d\d\s*\S+|$$CN: no SEL entries|Entry|No attributes returned from the BMC
 end
 
 start:reventlog_s_openbmc

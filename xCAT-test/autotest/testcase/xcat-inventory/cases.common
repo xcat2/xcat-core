@@ -40,13 +40,13 @@ end
 start:xcat_inventory_export_option_t_invalid_type
 description:This case is used to test xcat-inventory export subcommand to handle invalid type for option t
 cmd:xcat-inventory export -t aaa
-check:output=~Invalid object type 
+check:output=~Invalid object type
 check:output!~Traceback (most recent call last):
 check:rc!=0
 end
 
 start:xcat_inventory_export_option_format_invalid_type
-description:This case is used to test xcat-inventory export subcommand to handle invalid type for option format 
+description:This case is used to test xcat-inventory export subcommand to handle invalid type for option format
 cmd:xcat-inventory export --format aaa
 check:output=~Invalid exporting format: aaa
 check:output!~Traceback (most recent call last):
@@ -124,7 +124,7 @@ check:rc==0
 cmd:cat /tmp/xcat_inventory_import_option_f_invalid_file/invaild_json
 check:rc==0
 cmd:xcat-inventory import -f /tmp/xcat_inventory_import_option_f_invalid_file/invaild_json
-check:output =~ Error: failed to load file 
+check:output =~ Error: failed to load file
 check:output !~Traceback
 check:rc!=0
 #To handle a invalid yaml file
@@ -140,7 +140,7 @@ check:rc==0
 cmd:cat /tmp/xcat_inventory_import_option_f_invalid_file/invaild_yaml
 check:rc==0
 cmd:xcat-inventory import -f /tmp/xcat_inventory_import_option_f_invalid_file/invaild_yaml
-check:output =~ Error: 
+check:output =~ Error:
 check:output !~Traceback
 check:rc!=0
 cmd:rm -rf /tmp/xcat_inventory_import_option_f_invalid_file

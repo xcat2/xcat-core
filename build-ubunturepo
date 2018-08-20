@@ -8,7 +8,7 @@
 # Getting Started:
 #  - Clone the xcat-core git repository under a directory named "xcat-core/src"
 #  - make sure reprepro is installed on the build machine
-#  - Run this script from the local git repository you just created.  
+#  - Run this script from the local git repository you just created.
 #       ./build-ubunturepo -c BUILDALL=1
 
 # Usage:  attr=value attr=value ... ./build-ubunturepo { -c | -d }
@@ -22,13 +22,12 @@
 #                           When you are ready to release this build, use PROMOTE=1 without PREGA
 #               BUILDALL=1 - build all rpms, whether they changed or not.  Should be used for snap builds that are in
 #                            prep for a release.
-#               GPGSIGN=0 -  Do not sign the repo in the end of the build. The repo will be signed by default 
-#                            
+#               GPGSIGN=0 -  Do not sign the repo in the end of the build. The repo will be signed by default
+#
 #               LOG=<filename> - provide an LOG file option to redirect some output into log file
 #
 #               DEST=<directory> - provide a directory to contains the build result
 #
-#               BUILDDESTDIR=<build_tarball_dir> - Copy build core tarball to BUILDDESTDIR if defined
 # For the dependency packages 1. All the xcat dependency deb packages should be uploaded to
 #                                "pokgsa/projects/x/xcat/build/ubuntu/xcat-dep/debs/" on GSA
 #                             2. run ./build-ubunturepo -d
@@ -105,6 +104,9 @@ if [ "$c_flag" -a "$d_flag" ];then
     exit 2
 fi
 
+if [ -z "$BUILDALL" ]; then
+    BUILDALL=1
+fi
 
 # Find where this script is located to set some build variables
 old_pwd=`pwd`
@@ -332,7 +334,7 @@ __EOF__
        if [ "$GPGSIGN" = "0" ];then
            #echo "GPGSIGN=$GPGSIGN specified, the repo will not be signed"
            echo "" >> conf/distributions
-       else 
+       else
            echo "SignWith: 5619700D" >> conf/distributions
            echo "" >> conf/distributions
        fi
@@ -373,7 +375,7 @@ __EOF__
     chmod 775 mklocalrepo.sh
 
     #
-    # Add a buildinfo file into the tar.bz2 file to track information about the build 
+    # Add a buildinfo file into the tar.bz2 file to track information about the build
     #
     BUILDINFO=$local_core_repo_path/buildinfo
     echo "VERSION=$ver" > $BUILDINFO
@@ -399,14 +401,10 @@ __EOF__
     chgrp root $tar_name
     chmod g+w $tar_name
 
-    if [ "$BUILDDESTDIR" ]; then
-        rm -rf $BUILDDESTDIR
-        mkdir -p $BUILDDESTDIR
-        cp $tar_name $BUILDDESTDIR
+    if [ -n "$DEST" ]; then
+        ln -sf $(basename `pwd`)/$tar_name ../$tar_name
         if [ $? != 0 ]; then
-            echo "Failed to copy $tar_name to $BUILDDESTDIR"
-        else
-            echo "Copied $tar_name to $BUILDDESTDIR"
+            echo "ERROR: Failed to make symbol link $DEST/$tar_name"
         fi
     fi
 
@@ -543,7 +541,7 @@ __EOF__
     APT_DIR="${FRS}/xcat"
     APT_REPO_DIR="${APT_DIR}/repos/apt/devel"
 
-    # Decide whether to upload the xcat-dep package or NOT (default is to NOT upload xcat-dep 
+    # Decide whether to upload the xcat-dep package or NOT (default is to NOT upload xcat-dep
     if [ "$UP" != "1" ]; then
         echo "Upload not specified, Done! (rerun with UP=1, to upload)"
         cd $old_pwd

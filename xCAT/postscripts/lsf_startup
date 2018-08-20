@@ -1,4 +1,4 @@
-#!/bin/bash 
+#!/bin/bash
 #README################################################################
 # (1)lsf_startup should be ran after lsf is installed, so it should be ran after install_lsf script
 # (2)lsf_startup use the same install.config file with install_lsf, install.config should be in the same directory with install_lsf and lsf_startup scripts.
@@ -44,9 +44,9 @@ for item in $ALL_LSF_NODES
 do
    if [[ x${item} == x$NODE ]]
    then
-      
+
       $LSF_TOP/$LSF_VERSION/install/hostsetup --top="$LSF_TOP" --boot="y"
-     
+
    fi
 done
 
@@ -59,9 +59,9 @@ for lsfnode in $ALL_LSF_NODES
 do
     if [[ x${lsfnode} == x$NODE ]]
     then
-        if [[ -f /root/.bash_profile ]] 
+        if [[ -f /root/.bash_profile ]]
         then
-            if ! grep -q -i "#Added by lsf_startup" /root/.bash_profile ; then 
+            if ! grep -q -i "#Added by lsf_startup" /root/.bash_profile ; then
                 echo "#Added by lsf_startup." >> /root/.bash_profile
                 echo ". $LSF_TOP/conf/profile.lsf" >> /root/.bash_profile
             fi
@@ -70,7 +70,7 @@ do
                 echo "#Added by lsf_startup." >> /root/.profile
                 echo ". $LSF_TOP/conf/profile.lsf" >> /root/.profile
             fi
-            
+
         fi
     fi
 done

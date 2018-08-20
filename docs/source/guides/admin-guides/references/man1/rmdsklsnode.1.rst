@@ -19,9 +19,9 @@ SYNOPSIS
 ********
 
 
-\ **rmdsklsnode [-h | -**\ **-help ]**\ 
+\ **rmdsklsnode [-h | -**\ **-help ]**\
 
-\ **rmdsklsnode [-V|-**\ **-verbose] [-f|-**\ **-force] [-r|-**\ **-remdef] [-i**\  \ *image_name*\ ] \ **[-p|-**\ **-primarySN] [-b|-**\ **-backupSN]**\  \ *noderange*\ 
+\ **rmdsklsnode [-V|-**\ **-verbose] [-f|-**\ **-force] [-r|-**\ **-remdef] [-i**\  \ *image_name*\ ] \ **[-p|-**\ **-primarySN] [-b|-**\ **-backupSN]**\  \ *noderange*\
 
 
 ***********
@@ -37,7 +37,7 @@ If you are using xCAT service nodes the \ **rmdsklsnode**\  command will automat
 
 If the node you are trying to remove is currently running the \ **rmdsklsnode**\  command will not remove the definitions.  You can use the "-f" option to shut down the node and remove the definition.
 
-\ **Removing alternate NIM client definitions**\ 
+\ **Removing alternate NIM client definitions**\
 
 If you used the "-n" option when you created the NIM client definitions with the \ **mkdsklsnode**\  command then the NIM client machine names would be a combination of the xCAT node name and the osimage name used to initialize the NIM machine. To remove these definitions, you must provide the name of the osimage that was used using the "-i" option.
 
@@ -52,52 +52,52 @@ OPTIONS
 
 
 
-\ **-f |-**\ **-force**\ 
- 
+\ **-f |-**\ **-force**\
+
  Use the force option to stop and remove running nodes. This handles the situation where a NIM machine definition indicates that a node is still running even though it is not.
- 
 
 
-\ **-b |-**\ **-backupSN**\ 
- 
+
+\ **-b |-**\ **-backupSN**\
+
  When using backup service nodes only update the backup.  The default is to update both the primary and backup service nodes.
- 
 
 
-\ **-h |-**\ **-help**\ 
- 
+
+\ **-h |-**\ **-help**\
+
  Display usage message.
- 
 
 
-\ **-i**\  \ *image_name*\ 
- 
+
+\ **-i**\  \ *image_name*\
+
  The name of an xCAT image definition.
- 
 
 
-\ *noderange*\ 
- 
+
+\ *noderange*\
+
  A set of comma delimited node names and/or group names. See the "noderange" man page for details on additional supported formats.
- 
 
 
-\ **-p|-**\ **-primarySN**\ 
- 
+
+\ **-p|-**\ **-primarySN**\
+
  When using backup service nodes only update the primary.  The default is to update both the primary and backup service nodes.
- 
 
 
-\ **-r|-**\ **-remdef**\ 
- 
+
+\ **-r|-**\ **-remdef**\
+
  Use this option to reset, deallocate, and remove NIM client definitions.  This option will not attempt to shut down running nodes. This option should be used when remove alternate NIM client definitions that were created using \ **mkdsklsnode -n**\ .
- 
 
 
-\ **-V |-**\ **-verbose**\ 
- 
+
+\ **-V |-**\ **-verbose**\
+
  Verbose mode.
- 
+
 
 
 

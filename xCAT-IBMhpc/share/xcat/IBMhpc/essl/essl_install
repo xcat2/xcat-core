@@ -1,6 +1,6 @@
-#!/bin/sh 
+#!/bin/sh
 
-# 
+#
 # Sample script to accept licenses and install ESSL and PESSL packages
 # For AIX:
 #    TBD
@@ -22,7 +22,7 @@ fi
 if [ $OS != "AIX" ]; then
     if [ $NODESETSTATE == "install" ] || [ $NODESETSTATE == "boot" ]; then
     #  Being run from a stateful install postscript
-    #  Copy rpms directly from the xCAT management node and install        
+    #  Copy rpms directly from the xCAT management node and install
         mkdir -p /tmp/essl
         rm -f -R /tmp/essl/*
         cd /tmp/essl
@@ -62,6 +62,6 @@ if [ $OS != "AIX" ]; then
         fi
         rm -rf $installroot/$tmpdir
     fi
-fi  
+fi
 
 

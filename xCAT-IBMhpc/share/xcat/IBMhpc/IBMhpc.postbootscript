@@ -22,7 +22,7 @@ $ps_dir/compilers_license
 # Run script to install PE and accept license
 $ps_dir/pe_install-1200
 
-# Run script to accept LoadLeveler license, install product rpms, 
+# Run script to accept LoadLeveler license, install product rpms,
 # and do some config
 $ps_dir/loadl_install-5103
 

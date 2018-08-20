@@ -1,21 +1,21 @@
 =head1 NAME
 
-B<cfm2xcat> - Migrates the CFM setup in CSM to the xdcp rsync setup in xCAT. 
+B<cfm2xcat> - Migrates the CFM setup in CSM to the xdcp rsync setup in xCAT.
 
 =head1 B<SYNOPSIS>
 
 B<cfm2xcat> [B<-i> I<path of the CFM distribution files generated>] [B<-o> I<path of the xdcp rsync files generated from the CFM distribution files>]
 
-B<cfm2xcat> [B<-h>] 
+B<cfm2xcat> [B<-h>]
 
 
 =head1 B<DESCRIPTION>
 
-Copy the cfm2xcat command to the CSM Management Server.  Run the command, indicating where you want your files saved with the -i and -o flags. They can be in the same directory.   
+Copy the cfm2xcat command to the CSM Management Server.  Run the command, indicating where you want your files saved with the -i and -o flags. They can be in the same directory.
 
 The cfm2xcat command will run cfmupdatenode -a, saving the generated CFM distribution files in the directory indicates with (-i). From those distribution files, it will generate xdcp rsync input files (-F option on xdcp) in the directory indicated by ( -o).
 
-Check the rsync files generated.  There will be a file generated (rsyncfiles)  from the input -o option on the command, and the same file with a (.nr) extension generated for each different noderange that will used to sync files based on your CFM setup in CSM. The rsyncfiles will contain the rsync file list.   The rsyncfiles.nr will contain the noderange. If multiple noderanges then the file name (rsyncfiles)  will be appended with a number. 
+Check the rsync files generated.  There will be a file generated (rsyncfiles)  from the input -o option on the command, and the same file with a (.nr) extension generated for each different noderange that will used to sync files based on your CFM setup in CSM. The rsyncfiles will contain the rsync file list.   The rsyncfiles.nr will contain the noderange. If multiple noderanges then the file name (rsyncfiles)  will be appended with a number.
 
 =head1 OPTIONS
 

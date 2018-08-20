@@ -2,7 +2,7 @@
 #-------------------------------------------------------
 
 =head1
-  xCAT plugin package to handle sinv 
+  xCAT plugin package to handle sinv
 
    Supported command:
          sinv - software/firmware inventory program
@@ -132,9 +132,9 @@ sub process_request
 
 #-------------------------------------------------------
 
-=head3  sinv 
+=head3  sinv
 
-   Parses Builds and runs the sinv 
+   Parses Builds and runs the sinv
 
 
 =cut

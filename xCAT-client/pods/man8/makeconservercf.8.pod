@@ -24,7 +24,7 @@ and related tables (e.g. mp, ipmi, ppc).  Normally, B<makeconservercf> will writ
 file.  If a I<noderange> is specified, it will write only those nodes to the file.  In either case, if a node
 does not have nodehm.cons set, it will not be written to the file.
 
-If B<-d> is specified, B<makeconservercf> will remove specified nodes from /etc/conserver.cf file. If I<noderange> is not specified, all xCAT nodes will be removed from /etc/conserver.cf file. 
+If B<-d> is specified, B<makeconservercf> will remove specified nodes from /etc/conserver.cf file. If I<noderange> is not specified, all xCAT nodes will be removed from /etc/conserver.cf file.
 
 If B<-C|--cleanup> is specified, B<makeconservercf> will remove console configuration entries from /etc/conserver.cf for the nodes whose definitions have been removed from xCATdb. B<Don't> specify any noderange.
 
@@ -59,7 +59,7 @@ run it on all service nodes, if there are any.
 =item B<-t|--trust> I<hosts>
 
 Add additional trusted hosts into /etc/conserver.cf. The I<hosts> are comma separated list of
-ip addresses or host names. 
+ip addresses or host names.
 
 =item B<-v|--version>
 
@@ -80,10 +80,10 @@ Display usage message.
 
 =over 2
 
-=item 0. 
+=item 0.
 The command completed successfully.
 
-=item 1. 
+=item 1.
 An error has occurred.
 
 =back

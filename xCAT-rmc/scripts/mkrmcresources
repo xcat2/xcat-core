@@ -6,15 +6,15 @@
 =head1  mkrmcresources
 =head2 mkrmcresources is used to predefine RMC conditions, responses, associations,
          sensors (and can be extended to support any RSCT resource
-         class). 
+         class).
          To use the command, create perl modules in a directory. Each resource
-         should have its own perl  module (so that it is easy to update a 
-         resource without interfering with other resources), 
+         should have its own perl  module (so that it is easy to update a
+         resource without interfering with other resources),
          and should be named <Resource Name>.pm.
          After the resource perl modules are installed, they will be created
-         by the next execution of the this command. 
+         by the next execution of the this command.
          This command should be called by the post install scripts
-         of packaging files, script run after install or from the command line.   
+         of packaging files, script run after install or from the command line.
 =cut
 
 #-------------------------------------------------------------------------------
@@ -127,7 +127,7 @@ sub isHMC
 =head3    runcmd
     Run the given cmd and return the output in an array (already chopped).  Alternatively,
     if this function is used in a scalar context, the output is joined into a single string
-    with the newlines separating the lines.  
+    with the newlines separating the lines.
     Arguments:
         command, exitcode and reference to output
     Returns:
@@ -144,7 +144,7 @@ sub isHMC
                 exit code.
         number > 0:    Display error msg and exit with the given code
     Example:
-        my $outref =  runcmd($cmd, -2, 1);     
+        my $outref =  runcmd($cmd, -2, 1);
     Comments:
         If refoutput is true, then the output will be returned as a reference to
         an array for efficiency.
@@ -231,7 +231,7 @@ sub runcmd
          my $outref =runrmccmd('lsrsrc-api', "-i -D ':|:'", $where);
     Comments:
         When $nodelist_ref is not null, break it up into smaller slices
-		and run RMC commands seperately for each slice. 
+		and run RMC commands seperately for each slice.
 		Otherwise just run RMC commands with the arguments passed in.
 =cut
 
@@ -303,7 +303,7 @@ sub runrmccmd
 #--------------------------------------------------------------------------------
 
 =head3    queryResources
-        Queries all resources of a given class or classes. Places 
+        Queries all resources of a given class or classes. Places
         results into a global hash for each resource class.
         Arguments: a list of RSCT resource classes
         Globals: %::EXISTS::{$resource}
@@ -484,7 +484,7 @@ sub compareResources
 =head3    removeQuotes
         removes starting and ending quotes that are in the output of lsrsrc
         Arguments: string
-        Returns: string with no leading or trailing quotes    
+        Returns: string with no leading or trailing quotes
 =cut
 
 #--------------------------------------------------------------------------------
@@ -499,7 +499,7 @@ sub removeQuotes
 #--------------------------------------------------------------------------------
 
 =head3    createResources
-        Calls mkrsrc-api on all resources in the %::CREATE hash   
+        Calls mkrsrc-api on all resources in the %::CREATE hash
         Globals: %::CREATE
 =cut
 
@@ -663,7 +663,7 @@ sub changeResources
 #--------------------------------------------------------------------------------
 
 =head3    writeAllFiles
-        creates all files for the given resources classes     
+        creates all files for the given resources classes
         Arguments: a array ref of class names,  basedir
 =cut
 
@@ -686,7 +686,7 @@ sub writeAllFiles
 #--------------------------------------------------------------------------------
 
 =head3    writeFile
-        creates a file with the resource info in 
+        creates a file with the resource info in
        $basedir/<class>
         Arguments: class::resource_name, basedir
 =cut
@@ -793,7 +793,7 @@ sub writeFile
 #--------------------------------------------------------------------------------
 sub usage
 {
-    print "Usage: 
+    print "Usage:
      mkrmcresources [--install|--mkfile classname::rsrcname|--mkall] \
                     [-V|--verbose] directory\n\
      mkrmcresources -h|--help\n\

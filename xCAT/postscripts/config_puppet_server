@@ -22,26 +22,26 @@ else
     xcatroot="/opt/xcat"
 fi
 
-#use site.puppetserver or site.master as the puppet server certname 
-if [ -n "$PUPPETSERVER" ]; then 
+#use site.puppetserver or site.master as the puppet server certname
+if [ -n "$PUPPETSERVER" ]; then
     node=$PUPPETSERVER
-else 
-    tmp=`XCATBYPASS=Y $xcatroot/bin/lsdef -t site clustersite  2>&1 |grep "puppetserver="` 
+else
+    tmp=`XCATBYPASS=Y $xcatroot/bin/lsdef -t site clustersite  2>&1 |grep "puppetserver="`
     if [ $? -eq 0 ]; then
 	node=`echo $tmp|cut -d= -f2`
     fi
-fi    
+fi
 if [ -z "$node" ]; then
-    if [ -n "$SITEMASTER" ]; then 
+    if [ -n "$SITEMASTER" ]; then
 	node=$SITEMASTER
-    else 
+    else
 	tmp=`XCATBYPASS=Y $xcatroot/bin/lsdef -t site clustersite  2>&1 |grep "master="`
 	if [ $? -eq 0 ]; then
 	    node=`echo $tmp|cut -d= -f2`
 	fi
     fi
 fi
-if [ -z "$node" ]; then    
+if [ -z "$node" ]; then
     if [ -n "$NODE" ]; then
 	node=$NODE
     else
@@ -76,7 +76,7 @@ fi
 sed -i "/\[main\]/ a\
     certname = $node" $confname
 sed -i "/\[main\]/ a\
-    server = $node" $confname    
+    server = $node" $confname
 
 #create a site manifest site.pp on the master:
 cat > /etc/puppet/manifests/site.pp << EOT

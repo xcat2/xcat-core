@@ -4,7 +4,7 @@ B<nodediscoverls> -  List the discovered nodes
 
 =head1 SYNOPSIS
 
-B<nodediscoverls> [B<-t seq>|B<profile>|B<switch>|B<blade>|B<manual>|B<undef>|B<all>] [B<-l>] 
+B<nodediscoverls> [B<-t seq>|B<profile>|B<switch>|B<blade>|B<manual>|B<undef>|B<all>] [B<-l>]
 
 B<nodediscoverls> [B<-u> I<uuid>] [B<-l>]
 

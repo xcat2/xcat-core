@@ -37,8 +37,8 @@ key --skip
 #/boot really significant for this sort of setup nowadays?
 part None --fstype "PPC PReP Boot" --size 8
 part /boot --size 50 --fstype ext3
-part swap --size 1024  
-part / --size 1 --grow --fstype ext3 
+part swap --size 1024
+part / --size 1 --grow --fstype ext3
 #XCAT_PARTITION_END#
 
 #RAID 0 /scr for performance
@@ -122,7 +122,7 @@ skipx
 #
 # perl -e 'print crypt("blah","Xa") . "\n";'p
 # openssl passwd -apr1 -salt xxxxxxxx password
-# 
+#
 # where "blah" is your root password.
 #
 #rootpw --iscrypted XaLGAVe1C41x2
@@ -130,7 +130,7 @@ skipx
 rootpw --iscrypted #CRYPT:passwd:key=system,username=root:password#
 
 #
-# NIS setup: auth --enablenis --nisdomain sensenet 
+# NIS setup: auth --enablenis --nisdomain sensenet
 # --nisserver neptune --useshadow --enablemd5
 #
 # OR

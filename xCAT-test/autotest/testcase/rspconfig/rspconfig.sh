@@ -19,7 +19,7 @@ Options:
  	-lv|--list vlan               To test rspconfig could list bmc's vlan
 	-a|--all                      To test rspconfig could change bmc's ip,gateway,netmask,vlan
 	-la|--list all                To test rspconfig could list bmc's ip,gateway,netmask,vlan
-	-c|--clear                    To clear test environment 
+	-c|--clear                    To clear test environment
 Examples:
 	${script} -i noderange nodeip=node's ip
 	${script} -n noderange netmask
@@ -105,7 +105,7 @@ function check_result()
 	a=0; while true;
 	do [ $a -eq 20 ] && return 1;
 		output=`rspconfig $1 $2 |awk -F: '{print $3}'`;
-		if [[ $(echo $output|tr '.' '+'|bc) -eq $(echo $3|tr '.' '+'|bc)  ]];then 
+		if [[ $(echo $output|tr '.' '+'|bc) -eq $(echo $3|tr '.' '+'|bc)  ]];then
         		return 0 ;
      		else
         		a=$[$a+1];
@@ -117,7 +117,7 @@ function check_result()
 function clear_env()
 {
 	echo "Start to clear test environment.";
-	if [[ -f /tmp/BMCIP ]];then 
+	if [[ -f /tmp/BMCIP ]];then
         	originip=$(cat /tmp/BMCIP);
         	rspconfig $2 ip=$originip
         	if [[ $? -eq 0 ]];then
@@ -134,7 +134,7 @@ function clear_env()
       			return 1;
        		else
             		echo "Node's bmc ip really setted to originip successfully.";
-                        return 0; 
+                        return 0;
        		fi
     	fi
         return 1;
@@ -143,9 +143,9 @@ function change_nonip
 {
 	echo "Prepare to change node's bmc $4.";
 	echo "Start to check node's bmc $4 valid or not.";
-	if [[ $4 =~ "gateway" ]]||[[ $4 =~ "netmask" ]];then 
+	if [[ $4 =~ "gateway" ]]||[[ $4 =~ "netmask" ]];then
         	test_ip $1;
-		if [[ $? -ne 0 ]];then 
+		if [[ $? -ne 0 ]];then
 			echo "Node's bmc $4 is invalid";
 			return 1;
 		fi
@@ -208,7 +208,7 @@ function change_all
 
 		else
 			echo "------------------Bmc vlan disabled so could not change vlan id using rspconfig.--------------------"
-			rspconfig $1 ip=$BMCIP netmask=$BMCNETMASK gateway=$BMCGGATEWAY 
+			rspconfig $1 ip=$BMCIP netmask=$BMCNETMASK gateway=$BMCGGATEWAY
 				if [[ $? -eq 0 ]];then
 		               		echo "Run rspconfig $1 ip=$BMCIP netmask=$BMCNETMASK gateway=$BMCGGATEWAY and return value is 0.";
 		       		else
@@ -222,7 +222,7 @@ function change_all
                 		rc2=$?;
                 		check_result $1 gateway $BMCGGATEWAY
                 		rc3=$?;
-				if [[ $rc1 -eq 0 ]] && [[ $rc2 -eq 0 ]] && [[ $rc3 -eq 0 ]];then 
+				if [[ $rc1 -eq 0 ]] && [[ $rc2 -eq 0 ]] && [[ $rc3 -eq 0 ]];then
 					echo "Node's bmc IP/netmask/gateway really setted successfully."
 					return 0;
 				else
@@ -253,14 +253,14 @@ do
 			BMCNETMASK=`rspconfig  $2 netmask |awk -F":" '{print $3}'`
 		else
 			echo "Run rspconfig $2 ip and return value is 1. "
-			exit 1; 
+			exit 1;
 		fi
 		change_ip $BMCIP $2 $BMCNETMASK $3
 		if [[ $? -eq 1 ]];then
 			echo "--------------------Result for test rspconfig change node's bmc ip failed.--------------------"
 			exit 1
 		else
-			echo "--------------------Restult for test rspconfig change node's bmc ip successfully.-------------------" 
+			echo "--------------------Restult for test rspconfig change node's bmc ip successfully.-------------------"
 			exit 0
 		fi
 		;;
@@ -270,7 +270,7 @@ do
 		rspconfig $2 ip
 		if [[ $? -eq 0 ]];then
 			BMCIP=`rspconfig $2 ip |awk -F":" '{print $3}'`
-				if [[ $BMCIP =~ "$BMCIP_LSDEF" ]];then 
+				if [[ $BMCIP =~ "$BMCIP_LSDEF" ]];then
 					echo "-----------------Result for test rspconfig list node's bmc ip successfully.-----------------"
 					exit 0;
 				else
@@ -304,7 +304,7 @@ do
 		"-lg"|"--list gateway" )
 		output=`rspconfig $2 gateway`
 		if [[ $? -eq 0 ]];then
-			if [[ $output =~ "$2: BMC Gateway:" ]];then 
+			if [[ $output =~ "$2: BMC Gateway:" ]];then
 				echo "--------------------Result for test rspconfig list node's bmc gateway  successfully.-----------------"
 				exit 0;
 			else
@@ -335,7 +335,7 @@ do
 		fi
 		;;
 		"-ln"|"--list netmask" )
-		output=`rspconfig $2 netmask` 
+		output=`rspconfig $2 netmask`
 		if [[ $? -eq 0 ]];then
 			if [[ $output =~ "$2: BMC Netmask:" ]];then
 				echo "-------------------Result for test rspconfig list node's bmc Netmask successfully.-----------------"
@@ -397,7 +397,7 @@ do
 		BMCIP=`rspconfig $2 ip |awk -F":" '{print $3}'`
 		output=`rspconfig $2 ip gateway netmask vlan`
 		if [[ $? -eq 0 ]];then
-			if [[ $output =~ "$2: BMC VLAN ID" ]]&&[[ $output =~ "BMC Netmask:" ]]&&[[ $output =~ "BMC Gateway:" ]]&&[[ $BMCIP =~ "$BMCIP_LSDEF" ]];then 
+			if [[ $output =~ "$2: BMC VLAN ID" ]]&&[[ $output =~ "BMC Netmask:" ]]&&[[ $output =~ "BMC Gateway:" ]]&&[[ $BMCIP =~ "$BMCIP_LSDEF" ]];then
 				echo "------------------Result for rspconfig list node's  BMC IP/netmask/gateway/vlan succssfully.-----------------"
 				exit 0
 			else

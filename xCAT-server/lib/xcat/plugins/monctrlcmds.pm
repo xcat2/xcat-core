@@ -61,7 +61,7 @@ sub handled_commands {
 
 =head3  preprocess_request
 
-  Check and setup for hierarchy 
+  Check and setup for hierarchy
 
 =cut
 
@@ -300,9 +300,9 @@ sub process_request {
       callback - the pointer to the callback function.
       args - The format of the args is:
         [-h|--help|-v|--version] or
-        name [noderange] [-r|--remote]        
+        name [noderange] [-r|--remote]
         where
-          name is the monitoring plug-in name. For example: rmcmon. 
+          name is the monitoring plug-in name. For example: rmcmon.
               The specified plug-in will be invoked for monitoring the xCAT cluster.
           noderange a range of nodes to be monitored. Default is all.
           -r|--remote indicates that both monservers and the nodes need to be called to start
@@ -457,7 +457,7 @@ sub preprocess_monstart
 
 =head3   monstart
         This function calls moniutoring control to start the monitoring and node
-    status monitoring for the given plug-in module. 
+    status monitoring for the given plug-in module.
     Arguments:
       request -- pointer to a hash with keys are command, module and nodestatmon.
       callback - the pointer to the callback function.
@@ -519,7 +519,7 @@ sub monstart {
         name [noderange] [-r|--remote]
         name
         where
-          name is the monitoring plug-in name. For example: rmcmon. 
+          name is the monitoring plug-in name. For example: rmcmon.
               The specified plug-in will be stopped for monitoring the xCAT cluster.
           noderange a range of nodes. Default is all.
           -r|--remote indicates that both monservers and the nodes need to be called to stop
@@ -668,7 +668,7 @@ sub preprocess_monstop
 
 =head3   monstop
         This function calls moniutoring control to stop the monitoring and node
-    status monitoring for the given plug-in module. 
+    status monitoring for the given plug-in module.
     Arguments:
       request -- pointer to a hash with keys are command, module and nodestatmon.
       callback - the pointer to the callback function.
@@ -725,12 +725,12 @@ sub monstop {
 #--------------------------------------------------------------------------------
 
 =head3   monls
-        This function list the monitoring plug-in module names, status and description. 
+        This function list the monitoring plug-in module names, status and description.
     Arguments:
       callback - the pointer to the callback function.
       args - The format of the args is:
         [-h|--help|-v|--version] or
-        [name] [-a|all] [-d|--description]         
+        [name] [-a|all] [-d|--description]
     Returns:
         0 for success. The output is returned through the callback pointer.
         1. for unsuccess. The error messages are returns through the callback pointer.
@@ -893,7 +893,7 @@ sub monls {
 
 =head3   getModuleDescription
         This function gets description, postscripts and other info from the
-     the given monitoring plug_in and stored it in the given hash. 
+     the given monitoring plug_in and stored it in the given hash.
     Arguments:
     Returns:
         0 for success.
@@ -942,20 +942,20 @@ sub getModuleDescription {
 =head3   monadd
         This function adds the given module name into the monitoring table and
      sets the postsctipts in the postsctipts table. It also sets the given
-     settings into the monsetting table. 
+     settings into the monsetting table.
     Arguments:
       request -- a hash table which contains the command name and the arguments.
       callback - the pointer to the callback function.
       args - The format of the args is:
         [-h|--help|-v|--version] or
-        name [-n|--nodestatmon] [-s|--settings ...]        
+        name [-n|--nodestatmon] [-s|--settings ...]
         where
-          name is the monitoring plug-in name. For example: rmcmon. 
-              The specified plug-in will be registered and invoked 
+          name is the monitoring plug-in name. For example: rmcmon.
+              The specified plug-in will be registered and invoked
               for monitoring the xCAT cluster.
           -n|--nodestatmon  indicates that this plug-in will be used for feeding the node liveness
-              status to the xCAT nodelist table.  If not specified, the plug-in will not be used 
-              for feeding node status to xCAT. 
+              status to the xCAT nodelist table.  If not specified, the plug-in will not be used
+              for feeding node status to xCAT.
           -s|--settings settings are used by the plug-in to customize it behavor.
     Returns:
         0 for success. The output is returned through the callback pointer.
@@ -1187,9 +1187,9 @@ sub monadd {
         [-h|--help|-v|--version] or
         name
         where
-          name is the monitoring plug-in name. For example: rmcmon. 
-              The specified plug-in will be stopped for monitoring the xCAT 
-              cluster if it is running and then removed from the monitoring table. 
+          name is the monitoring plug-in name. For example: rmcmon.
+              The specified plug-in will be stopped for monitoring the xCAT
+              cluster if it is running and then removed from the monitoring table.
     Returns:
         0 for success.
         1 for unsuccess. The error messages are returns through the callback pointer.
@@ -1372,9 +1372,9 @@ sub monrm {
       callback - the pointer to the callback function.
       args - The format of the args is:
         [-h|--help|-v|--version] or
-        name [noderange] [-r|--remote]        
+        name [noderange] [-r|--remote]
         where
-          name is the monitoring plug-in name. For example: rmcmon. 
+          name is the monitoring plug-in name. For example: rmcmon.
               The specified plug-in will be invoked for configuring the cluster to monitor the nodes.
           noderange a range of nodes to be configured for. Default is all.
           -r|--remote indicates that both monservers and the nodes need to configured.
@@ -1517,8 +1517,8 @@ sub preprocess_moncfg
 #--------------------------------------------------------------------------------
 
 =head3   moncfg
-      This function configures the cluster for the given nodes. It includes configuring 
-      and setting up the 3rd party monitoring software for monitoring the given nodes.  
+      This function configures the cluster for the given nodes. It includes configuring
+      and setting up the 3rd party monitoring software for monitoring the given nodes.
     Arguments:
       request -- a hash table which contains the command name and the arguments.
        callback -- the callback pointer for error and status displaying. It can be null.
@@ -1576,9 +1576,9 @@ sub moncfg
       callback - the pointer to the callback function.
       args - The format of the args is:
         [-h|--help|-v|--version] or
-        name [noderange] [-r|--remote]        
+        name [noderange] [-r|--remote]
         where
-          name is the monitoring plug-in name. For example: rmcmon. 
+          name is the monitoring plug-in name. For example: rmcmon.
               The specified plug-in will be invoked for deconfiguring the cluster to monitor the nodes.
           noderange a range of nodes to be deconfigured for. Default is all.
           -r|--remote indicates that both monservers and the nodes need to be deconfigured.
@@ -1721,17 +1721,17 @@ sub preprocess_mondecfg
 #--------------------------------------------------------------------------------
 
 =head3   mondecfg
-      This function deconfigures the cluster for the given nodes. It includes deconfiguring 
-      and clearning up the 3rd party monitoring software for monitoring the given nodes.  
+      This function deconfigures the cluster for the given nodes. It includes deconfiguring
+      and clearning up the 3rd party monitoring software for monitoring the given nodes.
     Arguments:
        names -- a pointer to an  array of monitoring plug-in names. If non is specified,
          all the plug-ins registered in the monitoring table will be notified.
-       p_nodes -- a pointer to an arrays of nodes to be removed from the monitoring domain. 
+       p_nodes -- a pointer to an arrays of nodes to be removed from the monitoring domain.
                   none means all.
        scope -- the action scope, it indicates the node type the action will take place.
-                0 means localhost only. 
-                1 means monserver only, 
-                2 means both monservers and nodes, 
+                0 means localhost only.
+                1 means monserver only,
+                2 means both monservers and nodes,
        callback -- the callback pointer for error and status displaying. It can be null.
     Returns:
         0 for success. The output is returned through the callback pointer.
@@ -1785,7 +1785,7 @@ sub mondecfg
       callback - the pointer to the callback function.
       args - The format of the args is:
         [-h|--help|-v|--version] or
-        name [noderange] [-s] [-t time] [-a attributes] [-w attr<operator>val [-w attr<operator>val] ...] [-o pe]        
+        name [noderange] [-s] [-t time] [-a attributes] [-w attr<operator>val [-w attr<operator>val] ...] [-o pe]
         where
           name is the monitoring plug-in name. For example: rmcmon. Only for rmcmon currently.
           noderange a range of nodes to be showed for. If omitted, the data for all the nodes will be displayed.
@@ -1973,7 +1973,7 @@ sub preprocess_monshow
 #--------------------------------------------------------------------------------
 
 =head3   monshow
-      This function configures the cluster performance for the given nodes.  
+      This function configures the cluster performance for the given nodes.
     Arguments:
       request -- a hash table which contains the command name and the arguments.
       callback -- the callback pointer for error and status displaying. It can be null.

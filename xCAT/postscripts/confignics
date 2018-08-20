@@ -1,4 +1,4 @@
-#!/bin/bash 
+#!/bin/bash
 # IBM(c) 2014 EPL license http://www.eclipse.org/legal/epl-v10.html
 
 #-------------------------------------------------------------------------------
@@ -19,7 +19,7 @@ if [ "$(uname -s|tr 'A-Z' 'a-z')" = "linux" ];then
    . $str_dir_name/xcatlib.sh
 fi
 error_code=0
-#the nics' information contain: 
+#the nics' information contain:
 #1. ip address
 #2. nic network
 #3. nic type
@@ -48,7 +48,7 @@ function splitconfig(){
         fi
         key=`echo "$token" | cut -d"$D" -f 1`
         str_temp_value=`echo "$token" | cut -d"$D" -f 2`
-        
+
         str_temp=$(hashget hash_defined_nics $key)
         if [ -n "$str_temp" ];then
            str_temp=$str_temp",${str_temp_value}"
@@ -100,7 +100,7 @@ function findnetwork(){
         fi
         num_i=$((num_i+1))
     done
-    
+
     echo "Error: Can not find the corresponding network defination for ip address: $str_ip ."
     error_code=1
 }
@@ -201,7 +201,7 @@ if [ "$str_temp" = "mac" ];then
             fi
         done
     else
-       str_inst_nic=`ip -o link | grep -i "$MACADDRESS" | awk '{print $2;}' | sed s/://` 
+       str_inst_nic=`ip -o link | grep -i "$MACADDRESS" | awk '{print $2;}' | sed s/://`
     fi
 elif [ `echo $str_temp | grep -E "e(n|th|m)[0-9a-zA-Z]+"` ];then
     str_inst_nic=$str_temp
@@ -264,11 +264,11 @@ if [ $bool_remove -eq 1 ];then
         if [ -n "$str_temp" ];then
             continue
         fi
-        
+
         if [ "$str_temp_nic" = "$str_inst_nic" ];then
             continue
         fi
-        
+
         #ignore the vlan interface
         echo $str_temp_nic | grep "\."
         if [ $? -eq 0 ];then
@@ -305,7 +305,7 @@ do
             # don't run customized script for installnic if not specify the -s
             continue
         fi
-        logger -t xcat -p local4.info "confignics: processing custom scripts: ${array_temp[1]} for interface $key" 
+        logger -t xcat -p local4.info "confignics: processing custom scripts: ${array_temp[1]} for interface $key"
         echo "confignics on $NODE: processing custom scripts: ${array_temp[1]} for interface $key"
         ${array_temp[1]}
     else

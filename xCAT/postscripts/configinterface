@@ -71,6 +71,6 @@ fi
 if [ $UPDATED -eq 1 ]; then
     systemctl enable switchd
     systemctl start switchd
-    ifreload -a 
+    ifreload -a
 fi
 

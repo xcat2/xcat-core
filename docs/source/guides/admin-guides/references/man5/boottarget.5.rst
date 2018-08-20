@@ -19,7 +19,7 @@ SYNOPSIS
 ********
 
 
-\ **boottarget Attributes:**\   \ *bprofile*\ , \ *kernel*\ , \ *initrd*\ , \ *kcmdline*\ , \ *comments*\ , \ *disable*\ 
+\ **boottarget Attributes:**\   \ *bprofile*\ , \ *kernel*\ , \ *initrd*\ , \ *kcmdline*\ , \ *comments*\ , \ *disable*\
 
 
 ***********
@@ -36,40 +36,40 @@ boottarget Attributes:
 
 
 
-\ **bprofile**\ 
- 
+\ **bprofile**\
+
  All nodes with a nodetype.profile value equal to this value and nodetype.os set to "boottarget", will use the associated kernel, initrd, and kcmdline.
- 
 
 
-\ **kernel**\ 
- 
+
+\ **kernel**\
+
  The kernel that network boot actions should currently acquire and use.  Note this could be a chained boot loader such as memdisk or a non-linux boot loader
- 
 
 
-\ **initrd**\ 
- 
+
+\ **initrd**\
+
  The initial ramdisk image that network boot actions should use (could be a DOS floppy or hard drive image if using memdisk as kernel)
- 
 
 
-\ **kcmdline**\ 
- 
+
+\ **kcmdline**\
+
  Arguments to be passed to the kernel
- 
 
 
-\ **comments**\ 
- 
+
+\ **comments**\
+
  Any user-written notes.
- 
 
 
-\ **disable**\ 
- 
+
+\ **disable**\
+
  Set to 'yes' or '1' to comment out this row.
- 
+
 
 
 
@@ -78,5 +78,5 @@ SEE ALSO
 ********
 
 
-\ **nodels(1)**\ , \ **chtab(8)**\ , \ **tabdump(8)**\ , \ **tabedit(8)**\ 
+\ **nodels(1)**\ , \ **chtab(8)**\ , \ **tabdump(8)**\ , \ **tabedit(8)**\
 

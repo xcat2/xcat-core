@@ -32,8 +32,6 @@
 #        GPGSIGN/RPMSIGN=0 or GPGSIGN/RPMSIGN=1 - Sign the RPMs using the keys on GSA, the default is to sign the rpms without GPGSIGN/RPMSIGN specified
 #        DEST=<directory> - provide a directory to contains the build result
 #
-#        BUILDDESTDIR=<build_tarball_dir> - Copy build core tarball to BUILDDESTDIR if defined
-#
 # The following environment variables can be modified if you need
 #
 
@@ -92,7 +90,7 @@ if [ -z "$RPMSIGN" ] && [ -z "$GPGSIGN" ]; then
 elif [ -n "$GPGSIGN" ]; then # use GPGSIGN in first
     RPMSIGN=$GPGSIGN
 fi
-if [ -z "$RPMSIGN" -o "$RPMSIGN" != "0" ]; then
+if [ -z "$RPMSIGN" -o "$RPMSIGN" != "1" ]; then
     RPMSIGN=0
 fi
 if [ -z "$BUILDALL" ]; then
@@ -464,17 +462,20 @@ if [ "$OSNAME" != "AIX" ]; then
             echo '%_signature gpg' >> $MACROS
         fi
         if ! $GREP '%_gpg_name' $MACROS 2>/dev/null; then
-            echo '%_gpg_name xCAT Security Key' >> $MACROS
+            echo '%_gpg_name xCAT Automatic Signing Key' >> $MACROS
         fi
         echo "Signing RPMs..."
         build-utils/rpmsign.exp `find $DESTDIR -type f -name '*.rpm'` | grep -v -E '(already contains identical signature|was already signed|rpm --quiet --resign|WARNING: standard input reopened)'
         build-utils/rpmsign.exp $SRCDIR/*rpm | grep -v -E '(already contains identical signature|was already signed|rpm --quiet --resign|WARNING: standard input reopened)'
-        createrepo --checksum sha $DESTDIR            # specifying checksum so the repo will work on rhel5
-        createrepo --checksum sha $SRCDIR
+        # RHEL5 is archaic. Use the default hash algorithm to do the checksum.
+        # Which is SHA-256 on RHEL6.
+        createrepo $DESTDIR
+        createrepo $SRCDIR
         rm -f $SRCDIR/repodata/repomd.xml.asc
         rm -f $DESTDIR/repodata/repomd.xml.asc
-        gpg -a --detach-sign $DESTDIR/repodata/repomd.xml
-        gpg -a --detach-sign $SRCDIR/repodata/repomd.xml
+        # Use the xCAT Automatic Signing Key to do the signing
+        gpg -a --detach-sign --default-key 5619700D $DESTDIR/repodata/repomd.xml
+        gpg -a --detach-sign --default-key 5619700D $SRCDIR/repodata/repomd.xml
         if [ ! -f $DESTDIR/repodata/repomd.xml.key ]; then
             ${WGET_CMD} -q -P $DESTDIR/repodata $GSA/keys/repomd.xml.key
         fi
@@ -482,8 +483,8 @@ if [ "$OSNAME" != "AIX" ]; then
             ${WGET_CMD} -P $SRCDIR/repodata $GSA/keys/repomd.xml.key
         fi
     else
-        createrepo --checksum sha $DESTDIR
-        createrepo --checksum sha $SRCDIR
+        createrepo $DESTDIR
+        createrepo $SRCDIR
     fi
 fi
 
@@ -585,14 +586,10 @@ fi
 chgrp $SYSGRP $TARNAME
 chmod g+w $TARNAME
 
-if [ "$BUILDDESTDIR" ]; then
-    rm -rf $BUILDDESTDIR
-    mkdir -p $BUILDDESTDIR
-    cp $TARNAME $BUILDDESTDIR
+if [ -n "$DEST" ]; then
+    ln -sf $(basename `pwd`)/$TARNAME ../$TARNAME
     if [ $? != 0 ]; then
-        echo "Failed to copy $TARNAME to $BUILDDESTDIR"
-    else
-        echo "Copied $TARNAME to $BUILDDESTDIR"
+        echo "ERROR: Failed to make symbol link $DEST/$TARNAME"
     fi
 fi
 

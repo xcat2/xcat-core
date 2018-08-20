@@ -59,11 +59,11 @@ Cleanup the current pxe/tftp boot configuration files for the nodes requested
 
 =item B<osimage>|B<osimage=>I<imagename>
 
-Prepare server for installing a node using the specified os image. The os image is defined in the I<osimage> table and I<linuximage> table. If the <imagename> is omitted, the os image name will be obtained from I<nodetype.provmethod> for the node.  
+Prepare server for installing a node using the specified os image. The os image is defined in the I<osimage> table and I<linuximage> table. If the <imagename> is omitted, the os image name will be obtained from I<nodetype.provmethod> for the node.
 
 =item B<--noupdateinitrd>
 
-Skip the rebuilding of initrd when the 'netdrivers', 'drvierupdatesrc' or 'osupdatename' were set for injecting new drivers to initrd. But, the B<geninitrd> command
+Skip the rebuilding of initrd when the 'netdrivers', 'driverupdatesrc' or 'osupdatename' were set for injecting new drivers to initrd. But, the B<geninitrd> command
 should be run to rebuild the initrd for new drivers injecting. This is used to improve the performance of B<nodeset> command.
 
 =item B<--ignorekernelchk>
@@ -72,7 +72,7 @@ Skip the kernel version checking when injecting drivers from osimage.driverupdat
 
 =item B<runimage>=I<task>
 
-If you would like to run a task after deployment, you can define that task with this attribute.    
+If you would like to run a task after deployment, you can define that task with this attribute.
 
 =item B<stat>
 

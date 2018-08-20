@@ -1,17 +1,17 @@
 #!/bin/sh
 # IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
 
-# This script, ("mountinstall"), is a sample xCAT post script for 
+# This script, ("mountinstall"), is a sample xCAT post script for
 #	mounting /install from managment node to xCAT chef-server
-#	nodes.  
+#	nodes.
 #
-#	Make sure your script is executable and that is is in the 
+#	Make sure your script is executable and that is is in the
 #	/install/postscripts directory on the xCAT management node.
 #
-#	You must add the script name to the list of scripts that 
+#	You must add the script name to the list of scripts that
 #	must be run at install time,  or use it with updatenode.
 #
-# 	To use this script you should make sure it gets run before the 
+# 	To use this script you should make sure it gets run before the
 #	"loadchefdata" script or any other scipts that may need to use
 #       scripts in the /install directory.
 #	

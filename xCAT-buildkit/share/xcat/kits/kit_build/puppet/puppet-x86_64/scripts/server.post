@@ -8,8 +8,8 @@
 #        It is used as a postbootscript for puppet kit.
 #=cut
 #-------------------------------------------------------------------------------
-if [ "$NODESETSTATE" = "install" ]; then     
-    #prevent getting called during full install bootup  
+if [ "$NODESETSTATE" = "install" ]; then
+    #prevent getting called during full install bootup
     #because the function will be called in the rpm %post section instead
     exit 0
 else
@@ -18,7 +18,7 @@ else
 	
     #restart puppet master
     service puppetmaster stop
-    kill $(ps auxww | grep puppet | grep master | grep -v grep | awk '{print $2}') 
+    kill $(ps auxww | grep puppet | grep master | grep -v grep | awk '{print $2}')
     service puppetmaster start
 fi
 

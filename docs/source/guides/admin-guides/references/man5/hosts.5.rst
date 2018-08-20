@@ -19,7 +19,7 @@ SYNOPSIS
 ********
 
 
-\ **hosts Attributes:**\   \ *node*\ , \ *ip*\ , \ *hostnames*\ , \ *otherinterfaces*\ , \ *comments*\ , \ *disable*\ 
+\ **hosts Attributes:**\   \ *node*\ , \ *ip*\ , \ *hostnames*\ , \ *otherinterfaces*\ , \ *comments*\ , \ *disable*\
 
 
 ***********
@@ -36,40 +36,40 @@ hosts Attributes:
 
 
 
-\ **node**\ 
- 
+\ **node**\
+
  The node name or group name.
- 
 
 
-\ **ip**\ 
- 
+
+\ **ip**\
+
  The IP address of the node. This is only used in makehosts.  The rest of xCAT uses system name resolution to resolve node names to IP addresses.
- 
 
 
-\ **hostnames**\ 
- 
+
+\ **hostnames**\
+
  Hostname aliases added to /etc/hosts for this node. Comma or blank separated list.
- 
 
 
-\ **otherinterfaces**\ 
- 
+
+\ **otherinterfaces**\
+
  Other IP addresses to add for this node.  Format: -<ext>:<ip>,<intfhostname>:<ip>,...
- 
 
 
-\ **comments**\ 
- 
+
+\ **comments**\
+
  Any user-written notes.
- 
 
 
-\ **disable**\ 
- 
+
+\ **disable**\
+
  Set to 'yes' or '1' to comment out this row.
- 
+
 
 
 
@@ -78,5 +78,5 @@ SEE ALSO
 ********
 
 
-\ **nodels(1)**\ , \ **chtab(8)**\ , \ **tabdump(8)**\ , \ **tabedit(8)**\ 
+\ **nodels(1)**\ , \ **chtab(8)**\ , \ **tabdump(8)**\ , \ **tabedit(8)**\
 

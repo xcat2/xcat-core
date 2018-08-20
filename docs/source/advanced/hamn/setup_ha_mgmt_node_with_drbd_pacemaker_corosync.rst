@@ -1651,7 +1651,7 @@ which should result in the following output: ::
       x3550m4n01 x3550m4n02
      Pacemaker Nodes:
       x3550m4n01 x3550m4n02
-     
+
      Resources:
       Resource: ip_xCAT (class=ocf provider=heartbeat type=IPaddr2)
        Attributes: ip=10.1.0.1 iflabel=xCAT cidr_netmask=22 nic=eno2
@@ -1714,10 +1714,10 @@ which should result in the following output: ::
         Operations: start interval=0s timeout=1m (symlinks_xCAT-start-timeout-1m)
                     stop interval=0s timeout=1m (symlinks_xCAT-stop-timeout-1m)
                     monitor interval=31s on-fail=ignore (symlinks_xCAT-monitor-interval-31s)
-     
+
      Stonith Devices:
      Fencing Levels:
-     
+
      Location Constraints:
      Ordering Constraints:
        promote ms_drbd_xCAT then start grp_xCAT (kind:Mandatory) (id:order-ms_drbd_xCAT-grp_xCAT-mandatory)
@@ -1756,7 +1756,7 @@ which should result in the following output: ::
        gmetad with grp_xCAT (score:INFINITY) (id:colocation-gmetad-grp_xCAT-INFINITY)
        icinga with grp_xCAT (score:INFINITY) (id:colocation-icinga-grp_xCAT-INFINITY)
        ip_xCAT with grp_xCAT (score:INFINITY) (id:colocation-ip_xCAT-grp_xCAT-INFINITY)
-     
+
      Cluster Properties:
       cluster-infrastructure: corosync
       cluster-name: ucl_cluster
@@ -1780,12 +1780,12 @@ And the resulting output should be the following: ::
      Version: 1.1.12-a14efad
      2 Nodes configured
      17 Resources configured
-     
-     
+
+
      Online: [ x3550m4n01 x3550m4n02 ]
-     
+
      Full list of resources:
-     
+
       ip_xCAT        (ocf::heartbeat:IPaddr2):       Started x3550m4n01
       NFS_xCAT       (ocf::heartbeat:nfsserver):     Started x3550m4n01
       apache_xCAT    (ocf::heartbeat:apache):        Started x3550m4n01
@@ -1802,7 +1802,7 @@ And the resulting output should be the following: ::
       Resource Group: grp_xCAT
           fs_xCAT    (ocf::heartbeat:Filesystem):    Started x3550m4n01
           symlinks_xCAT      (ocf::tummy:drbdlinks): Started x3550m4n01
-     
+
      PCSD Status:
        x3550m4n01: Online
        x3550m4n02: Online
@@ -1818,7 +1818,7 @@ Further from this, the following changes needed to be made for nfs in el7 ::
      Description=RPC Pipe File System
      DefaultDependencies=no
      Conflicts=umount.target
-     
+
      [Mount]
      What=sunrpc
      Where=/var/lib/nfs_local/rpc_pipefs
@@ -1849,9 +1849,9 @@ Further from this, the following changes needed to be made for nfs in el7 ::
      -After=var-lib-nfs-rpc_pipefs.mount
      +Requires=var-lib-nfs_local-rpc_pipefs.mount
      +After=var-lib-nfs_local-rpc_pipefs.mount
-     
+
       ConditionPathExists=/etc/krb5.keytab
-     
+
 
      --- /usr/lib/systemd/system/nfs-secure.service	2015-01-23 16:30:26.000000000 +0000
      +++ /etc/systemd/system/nfs-secure.service	2015-10-13 01:39:36.000000000 +0100
@@ -1863,9 +1863,9 @@ Further from this, the following changes needed to be made for nfs in el7 ::
      -After=var-lib-nfs-rpc_pipefs.mount
      +Requires=var-lib-nfs_local-rpc_pipefs.mount
      +After=var-lib-nfs_local-rpc_pipefs.mount
-     
+
       ConditionPathExists=/etc/krb5.keytab
-     
+
 
      --- /usr/lib/systemd/system/nfs-secure-server.service	2015-01-23 16:30:26.000000000 +0000
      +++ /etc/systemd/system/nfs-secure-server.service	2015-10-13 01:39:36.000000000 +0100
@@ -1878,7 +1878,7 @@ Further from this, the following changes needed to be made for nfs in el7 ::
      +After=var-lib-nfs_local-rpc_pipefs.mount
       PartOf=nfs-server.service
       PartOf=nfs-utils.service
-     
+
 
      --- /usr/lib/systemd/system/nfs-blkmap.service	2015-01-23 16:30:26.000000000 +0000
      +++ /etc/systemd/system/nfs-blkmap.service	2015-10-13 01:39:36.000000000 +0100
@@ -1890,7 +1890,7 @@ Further from this, the following changes needed to be made for nfs in el7 ::
      -Requires=var-lib-nfs-rpc_pipefs.mount
      +After=var-lib-nfs_local-rpc_pipefs.mount
      +Requires=var-lib-nfs_local-rpc_pipefs.mount
-     
+
       Requisite=nfs-blkmap.target
       After=nfs-blkmap.target
 

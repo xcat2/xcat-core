@@ -281,7 +281,7 @@ sub usage()
     print
       "Usage: healthCheck { [-n node_list] [-M]}
                     {[-p min_clock_speed] [-i method] [-m min_memory]
-                    [-l min_freelp] [ -H [--speed speed --ignore interface_list --width width]]} 
+                    [-l min_freelp] [ -H [--speed speed --ignore interface_list --width width]]}
                     [ -h ]
 
         -M          Check status for all the Managed Nodes that are defined on this MS.
@@ -290,7 +290,7 @@ sub usage()
         -p min_clock_speed
                     Specifies the minimal processor clock speed in MHz for processor monitor.
         -i method
-                    Specifies the method to do Infiniband interface status check, the supported 
+                    Specifies the method to do Infiniband interface status check, the supported
                     check methods are LL and RSCT.
         -m min_memory
                     Specifies the minimal total memory in MB.
@@ -300,7 +300,7 @@ sub usage()
         --speed speed
                     Specifies the physical port speed in G bps, it should be used with -H flag.
         --ignore interface_list
-                    Specifies a comma-separated list of interface name to ignore from HCA status check, 
+                    Specifies a comma-separated list of interface name to ignore from HCA status check,
                     such as ib0,ib1. It should be used with -H flag.
         --width width
                     Specifies the physical port width, such as 4X or 12X. It should be used with -H flag.

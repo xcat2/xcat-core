@@ -28,10 +28,10 @@ xcatprobe -l
 xcatprobe [-V] <subcommand>  <attrbute_to_subcommand>
 
 Options:
-    -h : get usage information of $program_name 
+    -h : get usage information of $program_name
     -l : list all valid sub commands
     -V : print verbose information of $program_name
-    -w : show each line completely. By default long lines are truncated. 
+    -w : show each line completely. By default long lines are truncated.
 ";
 
 #-----------------------------------

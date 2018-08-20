@@ -8,7 +8,7 @@ if [ -z "$fwmaj" ]; then
     exit 1
 fi
 mkdir -p /tmp/xcat
-if [ ! -f /tmp/xcat/$rvid_server.remotekvm.jar ]; then 
+if [ ! -f /tmp/xcat/$rvid_server.remotekvm.jar ]; then
     wget --no-check-certificate -O /tmp/xcat/$rvid_server.remotekvm.jar http://$rvid_server/private/remotekvm.jar >& /dev/null
 fi
 if [ $fwpref == 'BPET' ]; then
@@ -18,7 +18,7 @@ if [ $fwpref == 'BPET' ]; then
         echo "Unable to securely support $rvid_fwrev in an adequately secure manner, please upgrade to BPET46C or better"
         exit 1
         java -jar /tmp/xcat/$rvid_server.remotekvm.jar $rvid_server -rbs $rvid_authtoken -ba $rvid_ba -port $rvid_port >& /dev/null
-    else 
+    else
         echo "Unknown method for firmware $rvid_fwrev, ensure it is at least BPET42R";
     fi
 else

@@ -1,6 +1,6 @@
 =head1 NAME
 
-B<db2sqlsetup> - Sets up the IBM DB2 for xCAT to use.  
+B<db2sqlsetup> - Sets up the IBM DB2 for xCAT to use.
 
 =head1 SYNOPSIS
 
@@ -13,26 +13,26 @@ B<db2sqlsetup> [B<-i>|B<--init>] {B<-S> | B<-C>} [B<-o>|B<--setupODBC>] [B<-V>|B
 
 B<db2sqlsetup> [B<-i>|B<--init>] {B<-S>} [B<-N>|B<--nostart>] [B<-o>|B<--setupODBC>] [B<-V>|B<--verbose>]
 
-B<db2sqlsetup> [B<-o>|B<--setupODBC>] {B<-S> | B<-C>} [B<-V>|B<--verbose>] 
+B<db2sqlsetup> [B<-o>|B<--setupODBC>] {B<-S> | B<-C>} [B<-V>|B<--verbose>]
 
 B<db2sqlsetup> [B<-p>|B<--passwd>] [B<-S> | B<-C>]
 
 =head1 DESCRIPTION
 
 B<db2sqlsetup> - Sets up the IBM DB2 database for xCAT to use. The db2sqlsetup script is run on the Management Node, after the DB2 Server code has been installed, to setup the DB2 Server (-S).
-The xcatd daemon will be stopped during migration on the MN.  No xCAT commands should be run during the init process, because we will be migrating the xCAT database to DB2 and restarting the xcatd daemon. 
+The xcatd daemon will be stopped during migration on the MN.  No xCAT commands should be run during the init process, because we will be migrating the xCAT database to DB2 and restarting the xcatd daemon.
 
-The db2sqlsetup script must be  run on each Service Node, after the DB2 Client code has been installed, to setup the DB2 Client (-C). There are two postscripts that are provided ( db2install and odbcsetup) that will automatically setup you Service Node  as a DB2 client. 
+The db2sqlsetup script must be  run on each Service Node, after the DB2 Client code has been installed, to setup the DB2 Client (-C). There are two postscripts that are provided ( db2install and odbcsetup) that will automatically setup you Service Node  as a DB2 client.
 
 For full information on the setup of DB2,  see Setting_Up_DB2_as_the_xCAT_DB.
 
 When running of db2sqlsetup on the MN:
 One password must be supplied for the setup,  a password for the xcatdb unix id which will be used as the DB2 instance id and database name.  The password will be prompted for interactively or can be input with the XCATDB2PW  environment variable.
 The script will create the xcat database instance (xcatdb) in the /var/lib/db2 directory unless overridden by setting the site.databaseloc attribute.  This attribute should not be set to the directory that is defined in the installloc attribute and it is recommended that the databaseloc be a new filesystem dedicated to the DB2 database, especially in very large clusters.
- 
-When running db2sqlseutp on the SN: 
-Not only will the password for the DB2 instance Id be prompted for and must match the one on the Management Node;  but also the hostname or ip address of the Management Node as known by the Service Node must be supplied , unless the XCATDB2SERVER environment variable is set.  
-You can automatically install and setup of DB2 on the SN using the db2install and odbcsetup postscripts and not need to manually run the command.  See the full documentation. 
+
+When running db2sqlseutp on the SN:
+Not only will the password for the DB2 instance Id be prompted for and must match the one on the Management Node;  but also the hostname or ip address of the Management Node as known by the Service Node must be supplied , unless the XCATDB2SERVER environment variable is set.
+You can automatically install and setup of DB2 on the SN using the db2install and odbcsetup postscripts and not need to manually run the command.  See the full documentation.
 
 Note: On AIX , root must be running ksh and on Linux,  bash shell.
 
@@ -54,11 +54,11 @@ Displays verbose messages.
 
 =item B<-i|--init>
 
-The init option is used to setup an installed DB2 database on AIX or Linux (p-Series) so that xCAT can use the database. This must be combined with either the -S or -C flag to indicate whether we are setting up the Server or the Client. With the -S flag, it involves creating the xcatdb database, the xcatdb instance id, allowing access to the xcatdb database by the Management Node. It also backs up the current xCAT database and restores it into the newly setup xcatdb DB2 database.  It creates the /etc/xcat/cfgloc file to point the xcatd daemon to the DB2 database and restarts the xcatd daemon using the database. 
+The init option is used to setup an installed DB2 database on AIX or Linux (p-Series) so that xCAT can use the database. This must be combined with either the -S or -C flag to indicate whether we are setting up the Server or the Client. With the -S flag, it involves creating the xcatdb database, the xcatdb instance id, allowing access to the xcatdb database by the Management Node. It also backs up the current xCAT database and restores it into the newly setup xcatdb DB2 database.  It creates the /etc/xcat/cfgloc file to point the xcatd daemon to the DB2 database and restarts the xcatd daemon using the database.
 
 =item B<-p|--passwd>
 
-The password change option is to change the database access password for the DB2 xcatdb database. If -S is input then it will only change the password on the DB2 Server (MN).  If -C is input it will only change on the DB2 clients (SN).  If neither -S or -C are input with this flag, then it will change both the DB2 Server and Clients. When changing the password the xcatd daemon will be stopped and restarted.  Any other tools accessing the database should also be stopped before changing and restarted after changing. 
+The password change option is to change the database access password for the DB2 xcatdb database. If -S is input then it will only change the password on the DB2 Server (MN).  If -C is input it will only change on the DB2 clients (SN).  If neither -S or -C are input with this flag, then it will change both the DB2 Server and Clients. When changing the password the xcatd daemon will be stopped and restarted.  Any other tools accessing the database should also be stopped before changing and restarted after changing.
 
 =item B<-S|-C>
 
@@ -67,7 +67,7 @@ This options says whether to setup the Server (-S) on the Management Node, or th
 
 =item B<-N|--nostart>
 
-This option with the -S flag will create the database, but will not backup and restore xCAT tables into the database. It will create the cfgloc file such that the next start of xcatd will try and contact the database.  This can be used to setup the xCAT DB2 database during or before install. 
+This option with the -S flag will create the database, but will not backup and restore xCAT tables into the database. It will create the cfgloc file such that the next start of xcatd will try and contact the database.  This can be used to setup the xCAT DB2 database during or before install.
 
 
 =item B<-o|--setupODBC>

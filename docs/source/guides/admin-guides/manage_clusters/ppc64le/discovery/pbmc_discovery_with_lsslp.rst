@@ -8,7 +8,7 @@ The following command can be used to discovery FSP/BMC within an IP range and wr
   lsslp -s PBMC -u --range 50.0.100.1-100 -z > ./pbmc.stanza
 
 You need to modify the node definition in stanza file before using them, the stanza file will be like this::
- 
+
   # cat pbmc.stanza
   cn1:
       objtype=node
@@ -21,7 +21,7 @@ You need to modify the node definition in stanza file before using them, the sta
       hidden=0
 
 Then, define it into xCATdb::
-  
+
   # cat pbmc.stanza | mkdef -z
   1 object definitions have been created or modified.
 

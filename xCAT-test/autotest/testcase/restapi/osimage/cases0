@@ -84,7 +84,7 @@ end
 
 start:delete_images
 description: delete_images
-cmd:restapitest -m DELETE -r /osimages/rhels6.5-x86_64-statelite-service/instance 
+cmd:restapitest -m DELETE -r /osimages/rhels6.5-x86_64-statelite-service/instance
 check:rc==200
 end
 

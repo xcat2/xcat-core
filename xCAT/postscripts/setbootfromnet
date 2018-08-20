@@ -5,7 +5,7 @@
 #
 #-----------------------------------------------------------------------------
 #
-#setbootfromnet 
+#setbootfromnet
 #
 #   This sets up the node to boot from network, if the GATEWAY is set,
 #   the bootlist will be set with the client ip, server ip and gateway information,
@@ -59,7 +59,7 @@ else
    msg="$0: The environment variable NODE is null, pls check.\n"
    echo $msg
    logger -t xcat -p local4.err "$msg"
-   exit 1 
+   exit 1
 fi
 
 if [[ $RET -ne 0 ]] || [[ $NRET -ne 0 ]]; then

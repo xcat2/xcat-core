@@ -46,7 +46,7 @@ For a cluster, several networks are necessary to enable the cluster management a
 
 From the system management perspective, the **Management network** and **Service network** are necessary to perform the hardware control and OS deployment.
 
-**xCAT Network Planning for a New Cluster:** 
+**xCAT Network Planning for a New Cluster:**
 
 .. toctree::
    :maxdepth: 2

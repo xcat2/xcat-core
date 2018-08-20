@@ -90,7 +90,7 @@ sub buildDriverProgram{
     # Erase any existing driver program.
     if ( -e $driver and ! -z $driver ) {
         # Make certain the file is one of our driver files.
-        my $found = `grep 'Function: z/VM xCAT IVP driver program' $driver`; 
+        my $found = `grep 'Function: z/VM xCAT IVP driver program' $driver`;
         if ( ! $found ) {
             print "$driver is not a z/VM xCAT IVP driver program\n";
             print "File will not be changed.\n";
@@ -132,7 +132,7 @@ sub buildDriverProgram{
         push( @driverText, "" );
         push( @driverText, "# IP address or hostname of the compute node that is accessing this xCAT MN." );
         push( @driverText, "# From \'my_ip\' in $locNovaConf." );
-        push( @driverText, "export zxcatIVP_cNAddress=\"$novaConf{'DEFAULT'}{'my_ip'}\"" ); 
+        push( @driverText, "export zxcatIVP_cNAddress=\"$novaConf{'DEFAULT'}{'my_ip'}\"" );
     } else {
         print "Info: 'my_ip' property is missing from section 'DEFAULT'\n" .
                   "      in $locNovaConf.  A default value of '$localIpAddress'\n" .
@@ -168,7 +168,7 @@ sub buildDriverProgram{
         push( @driverText, "# Node of host being managed.  If blank, IVP will search for the host node." );
         push( @driverText, "# From \'zvm_host\' in $locNovaConf." );
         push( @driverText, "export zxcatIVP_hostNode=\"$novaConf{'DEFAULT'}{'zvm_host'}\"" );
-        
+
     }
     if ( exists $novaConf{'DEFAULT'}{'zvm_xcat_master'} ) {
         push( @driverText, "" );
@@ -220,7 +220,7 @@ sub buildDriverProgram{
     push( @driverText, "" );
     push( @driverText, "# Expected space available in the xCAT MN image repository" );
     push( @driverText, "# From \'xcat_free_space_threshold\' in $locNovaConf." );
-    push( @driverText, "export zxcatIVP_expectedReposSpace=\"$novaConf{'DEFAULT'}{'xcat_free_space_threshold'}G\"" );                
+    push( @driverText, "export zxcatIVP_expectedReposSpace=\"$novaConf{'DEFAULT'}{'xcat_free_space_threshold'}G\"" );
 
     push( @driverText, "" );
     push( @driverText, "############## End of Nova Config Properties" );
@@ -247,10 +247,10 @@ sub buildDriverProgram{
         push( @driverText, "# From \'xcat_mgt_mask\' in $locNeutronZvmPluginIni." );
         push( @driverText, "export zxcatIVP_mgtNetmask=\"$neutronZvmPluginIni{'agent'}{'xcat_mgt_mask'}\"" );
     }
-    if ( exists $ml2ConfIni{'ml2_type_flat'}{'flat_networks'} or 
+    if ( exists $ml2ConfIni{'ml2_type_flat'}{'flat_networks'} or
          exists $ml2ConfIni{'ml2_type_vlan'}{'network_vlan_ranges'} ) {
         my $list = '';
-        if ( exists $ml2ConfIni{'ml2_type_flat'}{'flat_networks'} and 
+        if ( exists $ml2ConfIni{'ml2_type_flat'}{'flat_networks'} and
              $ml2ConfIni{'ml2_type_flat'}{'flat_networks'} ne '*' ) {
             $list = $ml2ConfIni{'ml2_type_flat'}{'flat_networks'};
         }
@@ -308,7 +308,7 @@ sub buildDriverProgram{
     push( @driverText, "# logged in the xCAT MN syslog, 0: do not log, 1: log to syslog." );
     push( @driverText, "export zxcatIVP_syslogErrors=1" );
     push( @driverText, "" );
-    push( @driverText, "perl $driverLocation$ivp" ); 
+    push( @driverText, "perl $driverLocation$ivp" );
 
     # Write the array to the driver file.
     foreach (@driverText) {
@@ -333,7 +333,7 @@ sub buildDriverProgram{
     Returns     : 0 - No error
                   non-zero - Error detected.
     Example     : $rc = hashFile( $file, \%novaConf, 1 );
-    
+
 =cut
 
 #-------------------------------------------------------
@@ -382,14 +382,14 @@ sub hashFile{
                 if ( !$caseSensitive ) {
                     $parts[0] = lc( $parts[0] );
                 }
-                
+
                 if ( exists $parts[1] ) {
                     chomp( $parts[1] );
                     $parts[1] =~ s/^\s+|\s+$//g;       # trim both ends of the string
                 } else {
                     $parts[1] = '';
                 }
-                
+
                 $$hash{$section}{$parts[0]} = $parts[1];
                 #print "$section $parts[0]" . ": " . $parts[1]. "\n";
                 #print $parts[0] . ": " . $$hash{$section}{$parts[0]}. "\n";
@@ -400,7 +400,7 @@ sub hashFile{
         # Read the file and remove comment lines and sequence columns (72-80)
         $out = `grep -v ^\$ $file| cut -c1-71`;
         $out =~ s{/\*.*?\*/}{}gs;
-        
+
         my @lines = split( "\n", $out );
         foreach my $line ( @lines ) {
             # Weed out blank lines
@@ -442,7 +442,7 @@ sub hashFile{
     Returns     : 0 - No error
                   non-zero - Error detected.
     Example     : $rc = scanCinder();
-    
+
 =cut
 
 #-------------------------------------------------------
@@ -554,7 +554,7 @@ sub showHelp{
 
 =head3   validateConfigs
 
-    Description : Compare and validate the configuration 
+    Description : Compare and validate the configuration
                   values obtained by the scans.
     Arguments   : None.
     Returns     : 0 - No error
@@ -610,7 +610,7 @@ sub validateConfigs{
 
     my @requiredNeutronConfOpts = (
         'DEFAULT','base_mac',
-        'DEFAULT','core_plugin', 
+        'DEFAULT','core_plugin',
         );
     for ( my $i = 0; $i < $#requiredNeutronConfOpts; $i = $i + 2 ) {
         my $section = $requiredNeutronConfOpts[$i];
@@ -657,11 +657,11 @@ sub validateConfigs{
     if ( keys %cinderConf ) {
         if ( exists $dmssicmoCopy{'openstack_system_role'} and uc( $dmssicmoCopy{'openstack_system_role'} ) eq "COMPUTE" ) {
             print "Info: CMO appliance system role is a compute server.\n      Cinder will not be validated.\n";
-        } elsif ( !exists $cinderConf{'DEFAULT'}{'san_ip'} and 
-                !exists $cinderConf{'DEFAULT'}{'san_private_key'} and 
-                !exists $cinderConf{'DEFAULT'}{'storwize_svc_connection_protocol'} and 
-                !exists $cinderConf{'DEFAULT'}{'storwize_svc_volpool_name'} and 
-                !exists $cinderConf{'DEFAULT'}{'storwize_svc_vol_iogrp'} and 
+        } elsif ( !exists $cinderConf{'DEFAULT'}{'san_ip'} and
+                !exists $cinderConf{'DEFAULT'}{'san_private_key'} and
+                !exists $cinderConf{'DEFAULT'}{'storwize_svc_connection_protocol'} and
+                !exists $cinderConf{'DEFAULT'}{'storwize_svc_volpool_name'} and
+                !exists $cinderConf{'DEFAULT'}{'storwize_svc_vol_iogrp'} and
                 !exists $cinderConf{'DEFAULT'}{'volume_driver'} ) {
                print "Info: z/VM specific Cinder keys are not defined in $locCinderConf.\n" .
                     "      Cinder support for creation of persistent disks for z/VM\n" .
@@ -733,7 +733,7 @@ sub validateConfigs{
         if ( !exists $novaConf{$section}{$option} ) {
             print "Info: \'$option\' is missing from section \'$section\'\n" .
                 "      in $locNovaConf.\n";
-            if ( $optionalNovaConfOpts{$key} ne '' ) { 
+            if ( $optionalNovaConfOpts{$key} ne '' ) {
                 print "      " . $optionalNovaConfOpts{$key} . "\n";
             }
             if ( exists $defaultNovaConfOpts{$key} ) {
@@ -808,7 +808,7 @@ sub validateConfigs{
                   "      in $locNeutronZvmPluginIni.\n";
             if ( $optionalNeutronZvmPluginIniOpts{$key} ne '' ) {
                 print "      " . $optionalNeutronZvmPluginIniOpts{$key} . "\n";
-            } 
+            }
             if ( exists $defaultNeutronZvmPluginIniOpts{$key} ) {
                 $neutronZvmPluginIni{$section}{$option} = $defaultNeutronZvmPluginIniOpts{$key};
             }
@@ -825,11 +825,11 @@ sub validateConfigs{
     } else {
         if ( $novaConf{'DEFAULT'}{'zvm_xcat_username'} ne $neutronZvmPluginIni{'agent'}{'zvm_xcat_username'} ) {
             print "Warning: xCAT user names mismatch; review 'zvm_xcat_username':\n" .
-                  "         \'$novaConf{'DEFAULT'}{'zvm_xcat_username'}\' in $locNovaConf.\n" . 
+                  "         \'$novaConf{'DEFAULT'}{'zvm_xcat_username'}\' in $locNovaConf.\n" .
                   "         \'$neutronZvmPluginIni{'agent'}{'zvm_xcat_username'}\' in\n" .
                   "         $locNeutronZvmPluginIni.\n";
         }
-    } 
+    }
 
     # Verify xCAT user passwords are the same.
     if ( !exists $novaConf{'DEFAULT'}{'zvm_xcat_password'} ) {
@@ -842,7 +842,7 @@ sub validateConfigs{
         if ( $novaConf{'DEFAULT'}{'zvm_xcat_password'} ne $neutronZvmPluginIni{'agent'}{'zvm_xcat_password'} ) {
             print "Warning: xCAT user passwords are not the same:\n" .
                   "         Please review 'zvm_xcat_password' in $locNovaConf and\n" .
-                  "         $locNeutronZvmPluginIni.\n"; 
+                  "         $locNeutronZvmPluginIni.\n";
         }
     }
 
@@ -856,18 +856,18 @@ sub validateConfigs{
     } else {
         if ( $novaConf{'DEFAULT'}{'zvm_xcat_server'} ne $neutronZvmPluginIni{'agent'}{'zvm_xcat_server'} ) {
             print "Warning: xCAT server addresses mismatch; review 'zvm_xcat_server':\n" .
-                  "        \'$novaConf{'DEFAULT'}{'zvm_xcat_server'}\' in $locNovaConf.\n" . 
+                  "        \'$novaConf{'DEFAULT'}{'zvm_xcat_server'}\' in $locNovaConf.\n" .
                   "        \'$neutronZvmPluginIni{'agent'}{'zvm_xcat_server'}\' in $locNeutronZvmPluginIni.\n";
         }
     }
 
     # Verify host and zvm_host properties are the same.
-    if ( exists $novaConf{'DEFAULT'}{'host'} and 
+    if ( exists $novaConf{'DEFAULT'}{'host'} and
          exists $neutronZvmPluginIni{'agent'}{'zvm_host'} ) {
         if ( $novaConf{'DEFAULT'}{'host'} ne $neutronZvmPluginIni{'agent'}{'zvm_host'} ) {
             print "Warning: 'host' property in section 'DEFAULT' in $locNovaConf\n" .
                   "      does not specify the same value as 'zvm_host' property in section\n" .
-                  "      'agent' in $locNeutronZvmPluginIni.\n"; 
+                  "      'agent' in $locNeutronZvmPluginIni.\n";
         }
     }
 
@@ -887,7 +887,7 @@ sub validateConfigs{
 
     # Verify the compute_driver is for z/VM
     if ( exists $novaConf{'DEFAULT'}{'compute_driver'} ) {
-        if ( $novaConf{'DEFAULT'}{'compute_driver'} ne "nova.virt.zvm.ZVMDriver" and 
+        if ( $novaConf{'DEFAULT'}{'compute_driver'} ne "nova.virt.zvm.ZVMDriver" and
              $novaConf{'DEFAULT'}{'compute_driver'} ne "zvm.ZVMDriver") {
             print "Warning: In $locNovaConf, compute_driver does not contain the\n" .
                   "         expected value of \'zvm.ZVMDriver\' and instead contains:\n" .
@@ -1020,7 +1020,7 @@ $localIpAddress = inet_ntoa((gethostbyname(hostname))[4]);
 
 if ( defined( $scan ) ) {
     if ( $verbose ) {
-      print "Operand --scan: $scan\n"; 
+      print "Operand --scan: $scan\n";
     }
     if ( 'all cinder neutron nova' !~ $scan ) {
         print "--scan operand($scan) is not all, cinder, neutron or nova\n";
@@ -1046,7 +1046,7 @@ if ( -e $locVersionFileCMO ) {
 
 if ( defined( $driver ) ) {	
     if ( $verbose ) {
-      print "Operand --driver: $driver\n"; 
+      print "Operand --driver: $driver\n";
     }
 
     if ( -d $driver ) {

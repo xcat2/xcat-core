@@ -13,7 +13,7 @@ rsyslog_config() {
     shift
     local filters=$*
     local filter=
-    local confline=  
+    local confline=
 
     cat $syslog_template
 
@@ -21,7 +21,7 @@ rsyslog_config() {
 #        echo "${filter} @${server}"
 #    done
 
-    
+
     if [ -n "$filters" ];then
         confline="${filters}";
     else
@@ -47,5 +47,5 @@ rsyslog_config() {
 template=/etc/templates/rsyslog.conf
 if [ -n "$server" ]; then
     rsyslog_config "$server" "$template" "$filters" > $conf
-    rsyslogd -i /var/run/syslogd.pid 
+    rsyslogd -i /var/run/syslogd.pid
 fi

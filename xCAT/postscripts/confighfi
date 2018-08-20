@@ -6,7 +6,7 @@
 # This scripts works for both diskfull installs, diskless boots on AIX or Linux.
 # Input:
 #   IP address: Each hfi interface should be assigned its hostname and IP address.
-#               hostname should be resolable from either /etc/hosts or name 
+#               hostname should be resolable from either /etc/hosts or name
 #               resolution, with format: <nodename>-hfx
 #   netmask: Netmask is hardcoded in this script.  You have to manually modify it
 #            if it doesn't meet your requirement.
@@ -16,8 +16,8 @@ NETMASK=255.0.0.0
 
 RETURNVAL=0
 
-# bond-mld binary is shipped seperately, admin should adjust the following PATH 
-# to where bond-mld binary is. 
+# bond-mld binary is shipped seperately, admin should adjust the following PATH
+# to where bond-mld binary is.
 PATH=$PATH:/usr/local/sbin/
 export PATH
 
@@ -88,7 +88,7 @@ ONBOOT=yes
         rmmod bonding
     fi
 
-    modprobe bonding mode=multi-link miimon=100 xmit_hash_policy=layer3+4 
+    modprobe bonding mode=multi-link miimon=100 xmit_hash_policy=layer3+4
 
     CLIENT_IP=`ping -c 3 $name-bond0 -I bond0 2>/dev/null | grep "data" | sed 's/.* (\([0-9.]*\)).*/\1/' | uniq 2>&1`
     if [ -n "$CLIENT_IP" ]
@@ -180,7 +180,7 @@ else
 
         chdev -l ml0 -a state=detach
 
-        # Reconfig ml0 since HFx are configured after ml0 is available 
+        # Reconfig ml0 since HFx are configured after ml0 is available
         rmdev -l mlt0
         mkdev -l mlt0
 

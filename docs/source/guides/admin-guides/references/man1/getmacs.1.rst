@@ -72,63 +72,63 @@ OPTIONS
 *******
 
 
-\ **-**\ **-arp**\ 
+\ **-**\ **-arp**\
 
 Read MAC address with ARP protocol.
 
-\ **-C**\ 
+\ **-C**\
 
 Specify the IP address of the partition for ping test. The default is to read from xCAT database if no \ **-C**\  specified.
 
-\ **-d**\ 
+\ **-d**\
 
 Display MAC only. The default is to write the first valid adapter MAC to the xCAT database.
 
-\ **-D**\ 
+\ **-D**\
 
 Perform discovery for mac address.  By default, it will run ping test to test the connection between adapter and xCAT management node. Use '--noping' can skip the ping test to save time. Be aware that in this way, the lpars will be reset.
 
-\ **-f**\ 
+\ **-f**\
 
 Force immediate shutdown of the partition. This flag must be used with -D flag.
 
-\ **-F**\ 
+\ **-F**\
 
 Specify filters to select the correct adapter.  Acceptable filters are Type, MAC_Address, Phys_Port_Loc, Adapter, Port_Group, Phys_Port, Logical_Port, VLan, VSwitch, Curr_Conn_Speed.
 
-\ **-G**\ 
+\ **-G**\
 
 Gateway IP address of the partition.  The default is to read from xCAT database if no \ **-G**\  specified.
 
-\ **-h**\ 
+\ **-h**\
 
 Display usage message.
 
-\ **-M**\ 
+\ **-M**\
 
 Return multiple MAC addresses for the same adapter or port, if available from the hardware.  For some network adapters (e.g. HFI) the MAC can change when there are some recoverable internal errors.  In this case, the hardware can return several MACs that the adapter can potentially have, so that xCAT can put all of them in DHCP.  This allows successful booting, even after a MAC change, but on Linux at this time, it can also cause duplicate IP addresses, so it is currently not recommended on Linux.  By default (without this flag), only a single MAC address is returned for each adapter.
 
-\ **-**\ **-noping**\ 
+\ **-**\ **-noping**\
 
 Only can be used with '-D' to display all the available adapters with mac address but do NOT run ping test.
 
-\ **-o**\ 
+\ **-o**\
 
 Read MAC address when the lpar is in openfirmware state.  This option mush be used with [\ **-D**\ ] option to perform ping test. Before use \ **-o**\ , the lpar must be in openfirmware state.
 
-\ **-S**\ 
+\ **-S**\
 
 The IP address of the machine to ping.  The default is to read from xCAT database if no \ **-S**\  specified.
 
-\ **-v**\ 
+\ **-v**\
 
 Command Version.
 
-\ **-V**\ 
+\ **-V**\
 
 Verbose output.
 
-\ **-i**\ 
+\ **-i**\
 
 Specify the interface whose mac address will be collected and written into mac table. If 4 mac addresses are returned by option '-d', they all are the mac addresses of the blade. The N can start from 0(map to the eth0 of the blade) to 3. If 5 mac addresses are returned, the 1st mac address must be the mac address of the blade's FSP, so the N will start from 1(map to the eth0 of the blade) to 4.
 

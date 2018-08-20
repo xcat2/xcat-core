@@ -12,9 +12,9 @@ The following example sets the xCAT properties for compute node ``cn1`` to creat
 Add/update networks into the xCAT DB
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Add/update additional networks ``net11`` and ``net13`` into ``networks`` table::    
+Add/update additional networks ``net11`` and ``net13`` into ``networks`` table::
 
-    chdef -t network net11 net=11.1.89.0 mask=255.255.255.0 
+    chdef -t network net11 net=11.1.89.0 mask=255.255.255.0
     chdef -t network net13 net=13.1.89.0 mask=255.255.255.0
 
 **Note:** MTU can be customized as ``mtu`` in ``networks`` table for specified network.

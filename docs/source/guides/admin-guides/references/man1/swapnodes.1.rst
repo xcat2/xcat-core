@@ -53,28 +53,28 @@ OPTIONS
 
 
 
-\ **-h|-**\ **-help**\ 
- 
+\ **-h|-**\ **-help**\
+
  Display usage message.
- 
 
 
-\ **-c**\ 
- 
+
+\ **-c**\
+
  \ *current_node*\  -- the defective non-compute node.
- 
 
 
-\ **-f**\ 
- 
+
+\ **-f**\
+
  \ *fip_node*\  -- a compute node which will be swapped as the non-compute node.
- 
 
 
-\ **-o**\ 
- 
+
+\ **-o**\
+
  one way. Only move the \ *current_node*\  definition to the \ *fip_node*\ 's hardware resource, and not move the fip_node definition to the \ *current_node*\ . And then the \ *current_node*\  will use the \ *fip_node*\ 's hardware resource, and the \ *fip_node*\  definition is not changed. if the two nodes are in the same CEC, the I/O adapter from the original \ *current_node*\  will be assigned to the \ *fip_node*\ .
- 
+
 
 
 
@@ -95,33 +95,33 @@ EXAMPLES
 
 
 1. To swap the service node attributes and IO assignments between sn1 and compute2 which are in the same cec, all the attributes in the ppc table and nodepos table of the two node will be swapped, and the I/O adapters from the defective node (the original sn1) will be assigned to the available node (the original compute2). After the swapping, the sn1 will use the compute2's hardware resource and the I/O adapters from the original sn1.
- 
- 
+
+
  .. code-block:: perl
- 
+
    swapnodes -c sn1 -f compute2
- 
- 
+
+
 
 
 2. To swap the service node attributes and IO assignments between sn1 and compute2 which are NOT in the same cec, all the attributes in the ppc table and nodepos table of the two node will be swapped. After the swapping, the sn1 will use the compute2's hardware resource.
- 
- 
+
+
  .. code-block:: perl
- 
+
    swapnodes -c sn1 -f compute2
- 
- 
+
+
 
 
 3. Only to move the service node (sn1) definition to the compute node (compute2)'s hardware resource, and not move the compute2 definition to the sn1. After the swapping, the sn1 will use the compute2's hardware resource, and the compute2 definition is not changed.
- 
- 
+
+
  .. code-block:: perl
- 
+
    swapnodes -c sn1 -f compute2 -o
- 
- 
+
+
 
 
 

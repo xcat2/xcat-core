@@ -57,13 +57,13 @@ Attach standard streams to a tty, including stdin if it is not closed.
 
 =item B<ExposedPorts>
 
-An object mapping ports to an empty object in the form of: 
+An object mapping ports to an empty object in the form of:
 
  "ExposedPorts": { "<port>/\<tcp|udp>: {}" }
 
 =item B<HostConfig: {"Binds"}>
 
-A list of volume bindings for this docker instance, the form will be: 
+A list of volume bindings for this docker instance, the form will be:
 
  "HostConfig": {"Binds":["<dir_on_dockerhost>:<dir_in_instance>"]}
 

@@ -161,7 +161,7 @@ sub clroptionvars
     Arguments:
         mac: If requesting a UUIDv1, the mac to use to base it upon
     Returns:
-        string representation of a UUDv4, 
+        string representation of a UUDv4,
             for example: f16196d1-7534-41c1-a0ae-a9633b030583
             for example: f16196d1-7534-41c1-a0ae-a9633b030583
 
@@ -556,11 +556,11 @@ sub isLinux
 
 #-------------------------------------------------------------------------------
 
-=head3   Version 
+=head3   Version
     Arguments:
         Optional 'short' string to request only the version;
     Returns:
-       xcat Version number 
+       xcat Version number
     Globals:
         none
     Error:
@@ -575,7 +575,7 @@ sub isLinux
 sub Version
 {
     my $version = shift;
-    
+
     #force reload the xCAT::Version in case the perl-xcat is upgraded but xcatd is not restarted
     if($INC{'xCAT/Version.pm'}){
         delete $INC{'xCAT/Version.pm'};
@@ -792,13 +792,13 @@ sub list_nodes_in_nodegroups
 #-----------------------------------------------------------------------
 
 =head3
- isMemberofGroup 
+ isMemberofGroup
 
 	Arguments:  node,group
 
 	Returns:
 	   1 = is  a member
-           0 = not a member 
+           0 = not a member
 
 	Globals:
 		none
@@ -1012,7 +1012,7 @@ sub runcmd3 { #a proper runcmd that indpendently returns stdout, stderr, pid and
    is joined into a single string with the newlines separating the lines.
 
    Arguments:
-     command, exitcode, reference to output, streaming mode 
+     command, exitcode, reference to output, streaming mode
    Returns:
 	   see below
    Globals:
@@ -1191,7 +1191,7 @@ sub runcmd
 	   refoutput - type of output to build
          Not set - array
           1 -  reference to an array
-          2 -  returns the response hash as received from the plugin.   
+          2 -  returns the response hash as received from the plugin.
 
 
    Returns:
@@ -1215,16 +1215,16 @@ sub runcmd
    Example:
       return output as reference to an array
 		my $outref = xCAT::Utils->runxcmd($cmd,$sub_req, -2, 1);
-      
+
       return response hash from plugin .  Will not display error msg for any
-      exit_code setting. 
+      exit_code setting.
 		my $outref = xCAT::Utils->runxcmd($cmd,$sub_req, -1, 2);
 
    Comments:
 		   If refoutput is 1, then the output will be returned as a
 		   reference to an array for efficiency.
 
-		   If refoutput is 2, then the response hash will be returned  
+		   If refoutput is 2, then the response hash will be returned
          as output.  runxcmd will not parse the request structure, nor
          will it display the error message despite the exit_code setting.
          The caller will need to display the error.
@@ -1235,9 +1235,9 @@ sub runcmd
 		   in the arg array.
 
          The caller to the runxcmd is responsible for filename expansion, that
-         would have been done if the command was run on the command line.  
-         For example,  the xdcp node1 /tmp/testfile*  /tmp command needs to 
-         have the /tmp/testfile* argument expanded before call xdcp with 
+         would have been done if the command was run on the command line.
+         For example,  the xdcp node1 /tmp/testfile*  /tmp command needs to
+         have the /tmp/testfile* argument expanded before call xdcp with
          runxcmd.   The easy way to do this is to use the perl glob function.
               @files=glob "/tmp/testfile*";
 
@@ -1505,7 +1505,7 @@ sub runxcmd_output
 =head3    runxcmd_output2
 
  Internal subroutine for runxcmd to capture the output
-	from the xCAT daemon subrequest call. Returns the response hash 
+	from the xCAT daemon subrequest call. Returns the response hash
 =cut
 
 #-------------------------------------------------------------------------------
@@ -1650,8 +1650,8 @@ sub isServiceNode
     Arguments:
         none
     Returns:
-        1 - localHost is Management Node 
-        0 - localHost is not a Management Node 
+        1 - localHost is Management Node
+        0 - localHost is not a Management Node
     Globals:
         none
     Error:
@@ -1744,15 +1744,15 @@ sub update_xCATSN
 
 #-----------------------------------------------------------------------------
 
-=head3 isSN 
- 
+=head3 isSN
+
 	Determines if the input node name is a service node
-	Reads the servicenode table. nodename must be service node name as 
+	Reads the servicenode table. nodename must be service node name as
 	known by the Management node.
 
-    returns 1 if input host is a service node 
+    returns 1 if input host is a service node
     Arguments:
-       hostname 
+       hostname
     Returns:
         1 - is  Service Node
         0 - is not a Service Node
@@ -1798,19 +1798,19 @@ sub isSN
 #-------------------------------------------------------------------------------
 
 =head3    isMounted
-    Checks if the input directory is already mounted 
+    Checks if the input directory is already mounted
     Arguments:
-       directory 
+       directory
     Returns:
-        1 - directory is mounted 
-        0 - directory is not mounted 
+        1 - directory is mounted
+        0 - directory is not mounted
     Globals:
         none
     Error:
         -1 error
     Example:
          if (xCAT::Utils->isMounted($directory)) { blah; }
-    Comments: 
+    Comments:
         none
 =cut
 
@@ -1852,17 +1852,17 @@ sub isMounted
 
 #-------------------------------------------------------------------------------
 
-=head3   runxcatd 
-    Stops or starts xcatd  
+=head3   runxcatd
+    Stops or starts xcatd
     Arguments:
         xcatstart - start the daemon,  restart if already running
         xcatstop - stop the daemon
     Returns:
-        0 = not error, 1 = error 
+        0 = not error, 1 = error
     Globals:
         none
     Error:
-	   
+	
     Example:
         my $rc = xCAT::runxcatd("xcatstart") ; ( starts xcatd)
         my $rc = xCAT::runxcatd("xcatstop") ; ( stops xcatd)
@@ -1930,11 +1930,11 @@ sub runxcatd
 
 =head3   get_image_name
        get a name for the install image on AIX and Linux, to be used
-       by xdsh and sinv for the nodename 
+       by xdsh and sinv for the nodename
     Arguments:
         path to image.
     Returns:
-       imagename 
+       imagename
 
 =cut
 
@@ -1965,8 +1965,8 @@ sub get_image_name
 #-------------------------------------------------------------------------------
 
 =head3   StartService
-	Supports AIX only, use startservice for Linux 
-	Used by the service node plugin (AAsn.pm) to start requested services. 
+	Supports AIX only, use startservice for Linux
+	Used by the service node plugin (AAsn.pm) to start requested services.
     Checks to see if the input service is already started. If it is started
 	it stops and  starts the service. Otherwise
 	it just starts the service.
@@ -2215,7 +2215,7 @@ sub CheckVersion
 #-------------------------------------------------------------------------------
 
 =head3  osver
-        Returns the os and version of the System you are running on 
+        Returns the os and version of the System you are running on
     Arguments:
         $type: which type of os infor you want.  Supported values are:
                all,os,version,release
@@ -2542,7 +2542,7 @@ sub is_locked
 #----------------------------------------------------------------------------
 
 =head3  parse_selection_string
-        Parse the selection string and 
+        Parse the selection string and
         write the parsed result into %wherehash
 
         Arguments:
@@ -2610,7 +2610,7 @@ sub parse_selection_string()
 #----------------------------------------------------------------------------
 
 =head3  selection_string_match
-        Check whether a node matches the selection string 
+        Check whether a node matches the selection string
         defined in hash %wherehash
 
         Arguments:
@@ -2676,17 +2676,17 @@ sub selection_string_match()
 
 #-------------------------------------------------------------------------------
 
-=head3 check_deployment_monitoring_settings 
+=head3 check_deployment_monitoring_settings
        Check the deployment retry monitoring settings.
     Arguments:
       $request: request hash
-      $mstring: The monitoring setting string 
-               specified with the -m flag for rpower or rnetboot 
+      $mstring: The monitoring setting string
+               specified with the -m flag for rpower or rnetboot
     Returns:
         0 - ok
         1 - failed
     Globals:
-        none 
+        none
     Example:
          my $rc=xCAT::Utils->check_deployment_monitoring_settings($opt(m))
     Comments:
@@ -2979,7 +2979,7 @@ sub monitor_installation()
 
 #-------------------------------------------------------------------------------
 
-=head3   get_unique_members 
+=head3   get_unique_members
     Description:
         Return an array which have unique members
 
@@ -3080,12 +3080,12 @@ sub updateEtcHosts
 
 #-------------------------------------------------------------------------------
 
-=head3   getDBName 
+=head3   getDBName
     Description:
-        Returns the current database (SQLITE,DB2,MYSQL,PG) 
+        Returns the current database (SQLITE,DB2,MYSQL,PG)
 
     Arguments:
-        None 
+        None
     Returns:
         Return string.
     Globals:
@@ -3165,12 +3165,12 @@ sub full_path
 #-------------------------------------------------------------------------------
 
 =head3    isStateful
-    returns 1 if localHost is a Stateful install 
+    returns 1 if localHost is a Stateful install
     Arguments:
         none
     Returns:
-        1 - localHost is Stateful 
-        0 - localHost is not Stateful 
+        1 - localHost is Stateful
+        0 - localHost is not Stateful
     Globals:
         none
     Error:
@@ -3212,19 +3212,19 @@ sub isStateful
 
 #-----------------------------------------------------------------------------
 
-=head3    setupAIXconserver 
+=head3    setupAIXconserver
 	
-    Set AIX conserver 
+    Set AIX conserver
 
 =cut
 
 #-------------------------------------------------------------------------------
 
-=head3  setupAIXconserver 
+=head3  setupAIXconserver
     Description:
         Set AIX conserver
     Arguments:
-        $verbose: 
+        $verbose:
     Returns:
         Return result of the operation
     Globals:
@@ -3336,8 +3336,8 @@ sub setupAIXconserver
 
 =head3    isSELINUX
     Returns:
-       returns 0 if SELINUX is  enabled 
-       returns 1 if SELINUX is not enabled 
+       returns 0 if SELINUX is  enabled
+       returns 1 if SELINUX is not enabled
     Globals:
         none
     Error:
@@ -3345,7 +3345,7 @@ sub setupAIXconserver
     Example:
          if (xCAT::Utils->isSELINUX()) { blah; }
     Comments:
-       This is tested on Redhat,  may need more for SLES 
+       This is tested on Redhat,  may need more for SLES
 =cut
 
 #-------------------------------------------------------------------------------
@@ -3368,10 +3368,10 @@ sub isSELINUX
 
 #-------------------------------------------------------------------------------
 
-=head3   noderangecontainsMN 
+=head3   noderangecontainsMN
     Returns:
-       returns nothing, if ManagementNode is not the input noderange 
-       returns name of MN,  if Management Node is in the input noderange 
+       returns nothing, if ManagementNode is not the input noderange
+       returns name of MN,  if Management Node is in the input noderange
     Globals:
         none
     Error:
@@ -3394,7 +3394,7 @@ sub noderangecontainsMn
     # name
     my @mnames;   # management node names in the database, members of __mgmtnode
     my $tab = xCAT::Table->new('nodelist');
-    
+
     my @nodelist = $tab->getAllAttribsWhere("node in ("."\'".join("\',\'", @noderange)."\'".") and groups like '%__mgmtnode%'",'node');
     return map {$_->{node}} @nodelist;            # if no MN in the noderange, return nothing
 }
@@ -3463,7 +3463,7 @@ my %MTM_P6P7 = (
 
 #-----------------------------------------------------------------------------
 
-=head3   isP6P7 
+=head3   isP6P7
 	
     Check whether a MTM is a P6 or P7 machine
     Parameter: MTM of Power machine
@@ -3684,8 +3684,8 @@ sub filter_nodes {
 
 #-------------------------------------------------------------------------------
 
-=head3   filter_nostatusupdate() 
-     
+=head3   filter_nostatusupdate()
+
     filter out the nodes which support provision status feedback from the status-nodes hash
     Returns:
        returns the filtered status-nodes hash
@@ -3930,16 +3930,16 @@ sub time2string
 }
 #--------------------------------------------------------------------------------
 
-=head3  specialservicemgr 
+=head3  specialservicemgr
     some special services cannot be processed in sysVinit, upstart and systemd framework, should be process here...
     Arguments:
-      service name: 
+      service name:
       action:        start/stop/restart/status/enable/disable
-      outputoption:  
+      outputoption:
                      1:        return a hashref with the keys:"retcode","retmsg"
                      otherwise: return retcode only
     Returns:
-      
+
                      a hashref if $outputoption is 1,the hash structure is:
                                  {"retcode"=>(status code, 0 for running/active,1 for stopped/inactive,2 for failed)
                                   "retmsg" =>(status string, running/active/stopped/inactive/failed)
@@ -3948,7 +3948,7 @@ sub time2string
 
                      retcode:   127 if the service specified is not processed
                                 the exit code of the service operation if the service specified is processed
-    
+
     Globals:
         none
     Error:
@@ -4023,21 +4023,21 @@ sub specialservicemgr {
 
 #--------------------------------------------------------------------------------
 
-=head3   servicemap 
-    returns the name of service unit(for systemd) or service daemon(for SYSVinit). 
+=head3   servicemap
+    returns the name of service unit(for systemd) or service daemon(for SYSVinit).
     Arguments:
       $svcname: the name of the service
       $svcmgrtype: the service manager type:
                    0: SYSVinit
                    1: systemd
-                   2: upstart  
+                   2: upstart
     Returns:
       the name of service unit or service daemon
       undef on fail
     Globals:
         none
     Error:
-      None 
+      None
     Example:
          my $svc = xCAT::Utils->servicemap($svcname,1);
     Comments:
@@ -4142,7 +4142,7 @@ sub servicemap {
 
 #--------------------------------------------------------------------------------
 
-=head3  startservice  
+=head3  startservice
     start a service
     Arguments:
       service name
@@ -4217,7 +4217,7 @@ sub startservice {
 
 #--------------------------------------------------------------------------------
 
-=head3  stopservice  
+=head3  stopservice
     stop a service
     Arguments:
       service name
@@ -4289,7 +4289,7 @@ sub stopservice {
 
 #--------------------------------------------------------------------------------
 
-=head3  restartservice  
+=head3  restartservice
     restart a service
     Arguments:
       service name
@@ -4357,8 +4357,8 @@ sub restartservice {
 
 #--------------------------------------------------------------------------------
 
-=head3   checkservicestatus 
-    returns theservice status. 
+=head3   checkservicestatus
+    returns theservice status.
     Arguments:
       $svcname: the name of the service
       $outputoption[optional]:
@@ -4376,7 +4376,7 @@ sub restartservice {
     Globals:
         none
     Error:
-      None 
+      None
     Example:
          my $ret = xCAT::Utils-checkservicestatus($svcname,1);
          my $retcode = xCAT::Utils-checkservicestatus($svcname);
@@ -4475,7 +4475,7 @@ sub checkservicestatus {
 
 #--------------------------------------------------------------------------------
 
-=head3  enableservice 
+=head3  enableservice
    enable a service to start it on the system bootup
     Arguments:
       service name
@@ -4551,7 +4551,7 @@ sub enableservice {
 
 #--------------------------------------------------------------------------------
 
-=head3  disableservice  
+=head3  disableservice
     disable a service to prevent it from starting on system bootup
     Arguments:
       service name

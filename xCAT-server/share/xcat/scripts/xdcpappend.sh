@@ -2,7 +2,7 @@
 # This script is used by the xdcp APPEND: function to perform the
 # append operation on the nodes.
 #First parm is nodesyncfiledir,  then after that are the lines for the
-#APPEND clause  put in the format   
+#APPEND clause  put in the format
 #appendfile1:orgfile1 appendfile2:orgfile2.....
 #
 nodesyncfiledir=$1
@@ -20,12 +20,12 @@ for i in $*; do
   appendfile="$nodesyncfiledirappend$appendfilebase"
   # get the file to append to
   orgfile=`echo "$i"|cut -d ':' -f 2`
-  # get the directory to backup the original file to append 
+  # get the directory to backup the original file to append
   orgfiledir=`dirname $orgfile`
   filebackupdir="$nodesyncfiledirorg$orgfiledir"
   filebackup="$nodesyncfiledirorg$orgfile"
   # now do the work
-  mkdir -p $filebackupdir 
+  mkdir -p $filebackupdir
   # if there does not exist an original backup, make one
   if [ ! -f "$filebackup" ]; then
     cp -p $orgfile $filebackup

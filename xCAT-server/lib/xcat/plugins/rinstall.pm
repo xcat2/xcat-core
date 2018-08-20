@@ -70,6 +70,7 @@ sub rinstall {
     my $OSIMAGE;
     my $STATES;
     my $ignorekernelchk;
+    my $noupdateinitrd;
     my $VERBOSE;
     my $HELP;
     my $VERSION;
@@ -135,6 +136,7 @@ sub rinstall {
         unless (
             GetOptions(
                 'ignorekernelchk' => \$ignorekernelchk,
+                'noupdateinitrd'  => \$noupdateinitrd,
                 'V|verbose'       => \$VERBOSE,
                 'h|help'          => \$HELP,
                 'v|version'       => \$VERSION,
@@ -256,7 +258,10 @@ sub rinstall {
         push @parameter, "osimage=$OSIMAGE";
 
         if ($ignorekernelchk) {
-            push @parameter, " --ignorekernelchk";
+            push @parameter, "--ignorekernelchk";
+        }
+        if ($noupdateinitrd) {
+            push @parameter, "--noupdateinitrd";
         }
     }
     elsif ($STATES) {
@@ -365,6 +370,14 @@ sub rinstall {
                 xCAT::MsgUtils->message("E", $rsp, $callback);
                 return 1;
             }
+            if ($line =~ /Cannot wget/) {
+                # If nodeset returns error that runimage can not be downloaded by wget,
+                # display the error from nodeset (if not alredy displayed by VERBOSE above), stop processing and return.
+                unless ($VERBOSE) {
+                    xCAT::MsgUtils->message("I", $rsp, $callback);
+                }
+                return 1;
+            }
             xCAT::MsgUtils->message("I", $rsp, $callback);
         }
 
@@ -372,7 +385,7 @@ sub rinstall {
             delete $nodes{$node};
         }
 
-        if (0+@failurenodes > 0) { 
+        if (0+@failurenodes > 0) {
             $rsp->{error}->[0] = "Failed to run 'nodeset' against the following nodes: @failurenodes";
             $rsp->{errorcode}->[0] = 1;
             xCAT::MsgUtils->message("E", $rsp, $callback);
@@ -438,7 +451,7 @@ sub rinstall {
                         push @failurenodes, $node;
                     }
                 }
-                if (0+@failurenodes > 0) { 
+                if (0+@failurenodes > 0) {
                     $rsp->{error}->[0] = "Failed to run 'rnetboot' against the following nodes: @failurenodes";
                     $rsp->{errorcode}->[0] = 1;
                     xCAT::MsgUtils->message("E", $rsp, $callback);
@@ -463,9 +476,9 @@ sub rinstall {
                         arg     => \@rsetbootarg
                     );
 
-                #TODO: When OPENBMC support is finished, this line should be removed     
+                #TODO: When OPENBMC support is finished, this line should be removed
                 if($hmkey =~ /^openbmc$/){
-                    $req{environment}{XCAT_OPENBMC_DEVEL}= "YES";    
+                    $req{environment}{XCAT_OPENBMC_DEVEL}= "YES";
                 }
 
                 my $res =
@@ -505,7 +518,7 @@ sub rinstall {
                         }
                     }
                     my $rsp = {};
-                    if (0+@failurenodes > 0) { 
+                    if (0+@failurenodes > 0) {
                         $rsp->{error}->[0] = "Failed to run 'rsetboot' against the following nodes: @failurenodes";
                         $rsp->{errorcode}->[0] = 1;
                         xCAT::MsgUtils->message("E", $rsp, $callback);
@@ -525,7 +538,7 @@ sub rinstall {
                     node    => \@nodes,
                     arg     => \@rpowerarg
             );
-              
+
             my $res =
               xCAT::Utils->runxcmd(
                 \%req,
@@ -559,7 +572,7 @@ sub rinstall {
                     }
                 }
                 my $rsp = {};
-                if (0+@failurenodes > 0) { 
+                if (0+@failurenodes > 0) {
                     $rsp->{error}->[0] = "Failed to run 'rpower' against the following nodes: @failurenodes";
                     $rsp->{errorcode}->[0] = 1;
                     xCAT::MsgUtils->message("E", $rsp, $callback);
@@ -573,7 +586,7 @@ sub rinstall {
 
 #-------------------------------------------------------
 
-=head3  Usage 
+=head3  Usage
 
 
 =cut
@@ -585,7 +598,7 @@ sub usage {
     my $rsp      = {};
     $rsp->{data}->[0] = "Usage:";
     $rsp->{data}->[1] = "   $command <noderange> [boot | shell | runcmd=<command>] [-c|--console] [-u|--uefimode] [-V|--verbose]";
-    $rsp->{data}->[2] = "   $command <noderange> osimage[=<imagename>] [--ignorekernelchk] [-c|--console] [-u|--uefimode] [-V|--verbose]";
+    $rsp->{data}->[2] = "   $command <noderange> osimage[=<imagename>] [--noupdateinitrd] [--ignorekernelchk] [-c|--console] [-u|--uefimode] [-V|--verbose]";
     $rsp->{data}->[3] = "   $command <noderange> runimage=<task>";
     $rsp->{data}->[4] = "   $command [-h|--help|-v|--version]";
     xCAT::MsgUtils->message("I", $rsp, $callback);

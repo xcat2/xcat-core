@@ -21,7 +21,7 @@ You can use ``xcatprobe -l`` to list all valid subcommands, output will be as be
    image.rst
    osdeploy.rst
    discovery.rst
-   switch-macmap.rst 
+   switch-macmap.rst
    nodecheck.rst
    osimagecheck.rst
 

@@ -43,9 +43,9 @@ When the B<snmove> command is run it modifies the xCAT database to
 switch the primary server to the backup server.
 
 It will also check the other services that are being used for the
-node (tftpserver, monserver, nfsserver, conserver), and if they were set 
+node (tftpserver, monserver, nfsserver, conserver), and if they were set
 to the original service node they will be changed to point to the backup
-service node. 
+service node.
 
 By default the command will modify the nodes so that they will be able to be managed by the backup service node.
 
@@ -55,12 +55,12 @@ You can also have postscripts executed on the nodes by using the -P option if ne
 
 The xCAT B<snmove> command may also be used to synchronize statelite persistent files from the primary service node to the backup service node without actually moving the nodes to the backup servers.
 
-If you run the command with the "-l" option it will attempt to use rsync to update the statelite persistent directory on the backup service node. This will only be done if the server specified in the "statelite" table is the primary service node. 
+If you run the command with the "-l" option it will attempt to use rsync to update the statelite persistent directory on the backup service node. This will only be done if the server specified in the "statelite" table is the primary service node.
 
 When the B<snmove> command is executed the new service node must be running but
 the original service node may be down.
 
-Note: On a Linux cluster, for NFS statelite nodes that do not use external NFS server, if the original service node is down, the nodes it manages will be down too. You must run nodeset command and then reboot the nodes after running snmove. For stateless nodes and RAMDisk statelite nodes, the nodes will be up even if the original service node is down. However, make sure to run nodeset command if you decide to reboot the nodes later.   
+Note: On a Linux cluster, for NFS statelite nodes that do not use external NFS server, if the original service node is down, the nodes it manages will be down too. You must run nodeset command and then reboot the nodes after running snmove. For stateless nodes and RAMDisk statelite nodes, the nodes will be up even if the original service node is down. However, make sure to run nodeset command if you decide to reboot the nodes later.
 
 =head1 OPTIONS
 
@@ -68,7 +68,7 @@ Note: On a Linux cluster, for NFS statelite nodes that do not use external NFS s
 
 =item B<-d|--dest>
 
-Specifies the hostname of the new destination service node as known by (facing) the management node. 
+Specifies the hostname of the new destination service node as known by (facing) the management node.
 
 =item B<-D|--destn>
 
@@ -88,7 +88,7 @@ Use this option to ONLY synchronize any AIX statelite files from the primary ser
 
 =item B<-P|--postscripts>
 
-Specifies a list of extra postscripts to be run on the nodes after the nodes are moved over to the new service node. If B<all> is specified, all the postscripts defined in the postscripts table will be run for the nodes. The specified postscripts must be stored under /install/postscripts directory. 
+Specifies a list of extra postscripts to be run on the nodes after the nodes are moved over to the new service node. If B<all> is specified, all the postscripts defined in the postscripts table will be run for the nodes. The specified postscripts must be stored under /install/postscripts directory.
 
 =item B<-s|--source>
 

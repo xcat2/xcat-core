@@ -12,7 +12,7 @@
 
 # let see how we were called
 case "$1" in
-	start) 
+	start)
 		echo "Starting autoGPFS: "
 
 		lastexit=2

@@ -7,7 +7,7 @@ xdsh.1
 
 
 ************
-\ **NAME**\ 
+\ **NAME**\
 ************
 
 
@@ -15,19 +15,19 @@ xdsh.1
 
 
 ****************
-\ **SYNOPSIS**\ 
+\ **SYNOPSIS**\
 ****************
 
 
 \ **xdsh**\  \ *noderange*\  [\ **-B**\  | \ **-**\ **-bypass**\ ]  [\ **-**\ **-devicetype**\  \ *type_of_device*\ ] [\ **-e**\ ] [\ **-E**\  \ *environment_file*\ ]  [\ **-f**\  \ *fanout*\ ]
 [\ **-L**\ ]  [\ **-l**\   \ *userID*\ ] [\ **-m**\ ] [\ **-o**\  \ *node_options*\ ] [\ **-Q**\ ] [\ **-r**\  \ *node_remote_shell*\ ] [\ **-s**\ ] [\ **-S**\  {\ **csh | ksh**\ }] [\ **-t**\  \ *timeout*\ ]
-[\ **-T**\ ] [\ **-v**\ ] [\ **-X**\  \ *env_list*\ ] [\ **-z**\ ] [\ **-**\ **-sudo**\ ] \ *command_list*\ 
+[\ **-T**\ ] [\ **-v**\ ] [\ **-X**\  \ *env_list*\ ] [\ **-z**\ ] [\ **-**\ **-sudo**\ ] \ *command_list*\
 
 \ **xdsh**\  \ *noderange*\   [\ **-K**\ ]
 
-\ **xdsh**\  \ *noderange*\   [\ **-K**\ ] [\ **-l**\   \ *userID*\ ] \ **-**\ **-devicetype**\  \ *type_of_device*\ 
+\ **xdsh**\  \ *noderange*\   [\ **-K**\ ] [\ **-l**\   \ *userID*\ ] \ **-**\ **-devicetype**\  \ *type_of_device*\
 
-\ **xdsh**\  [\ **-i**\  \ *image path | nim image name*\ ] \ *command_list*\ 
+\ **xdsh**\  [\ **-i**\  \ *image path | nim image name*\ ] \ *command_list*\
 
 \ **xdsh**\  \ *noderange*\   [\ **-c**\ ]
 
@@ -35,7 +35,7 @@ xdsh.1
 
 
 *******************
-\ **DESCRIPTION**\ 
+\ **DESCRIPTION**\
 *******************
 
 
@@ -43,7 +43,7 @@ The \ **xdsh**\  command runs commands in parallel on remote nodes and/or the Ma
 remote shell command for each target specified, and returns the output
 from all targets,
 formatted so that command results  from  all  nodes  can  be  managed.
-If the command is to be executed  on the Management Node, it does not use a remote shell command, but uses the local OS copy or shell command. The Management Node must be defined in the xCAT database. The best way to do this is to use the xcatconfig -m option. 
+If the command is to be executed  on the Management Node, it does not use a remote shell command, but uses the local OS copy or shell command. The Management Node must be defined in the xCAT database. The best way to do this is to use the xcatconfig -m option.
 The \ **xdsh**\  command is an xCAT Distributed Shell Utility.
 
 \ **COMMAND**\  \ **SPECIFICATION**\ :
@@ -116,7 +116,7 @@ The file should be executable and contain one environment variable per line.
 \ **COMMAND**\  \ **EXECUTION**\ :
 
 The  maximum  number  of concurrent remote shell command processes (the
-fanout) can be specified with the \ **-f**\  flag or with the \ **DSH_FANOUT**\ 
+fanout) can be specified with the \ **-f**\  flag or with the \ **DSH_FANOUT**\
 environment variable. The fanout is only restricted by the number of remote
 shell commands that can be run in parallel. You can experiment with the
 \ **DSH_FANOUT**\   value on your management server to see if higher values are
@@ -177,240 +177,240 @@ the commands executing on the remote targets.
 Signal  19  (CONT),  Signal  17 (STOP), and Signal 18 (TSTP) default to
 \ **xdsh**\ ; the \ **xdsh**\  command responds normally to these signals, but the
 signals  do  not have an effect on remotely executing commands. Other
-signals are caught by \ **xdsh**\  and have their default effects on the \ **xdsh**\ 
+signals are caught by \ **xdsh**\  and have their default effects on the \ **xdsh**\
 command; all current child processes, through propagation to remotely
 running commands, are terminated (SIGTERM).
 
 
 ***************
-\ **OPTIONS**\ 
+\ **OPTIONS**\
 ***************
 
 
 
-\ **-B | -**\ **-bypass**\ 
- 
+\ **-B | -**\ **-bypass**\
+
  Runs in bypass mode, use if the xcatd daemon is hung.
- 
 
 
-\ **-c | -**\ **-cleanup**\ 
- 
+
+\ **-c | -**\ **-cleanup**\
+
  This flag will have xdsh remove all files from the subdirectories of the
- the directory on the servicenodes, where xdcp stages the copy to the 
+ the directory on the servicenodes, where xdcp stages the copy to the
  compute nodes as defined in the site table SNsyncfiledir and nodesyncfiledir
  attribute, when the target is a service node.
- 
- It can also be used to remove the nodesyncfiledir directory on the compute 
+
+ It can also be used to remove the nodesyncfiledir directory on the compute
  nodes, which keeps the backup copies of files for the xdcp APPEND function
  support, if a compute node is the target.
- 
 
 
-\ **-e | -**\ **-execute**\ 
- 
+
+\ **-e | -**\ **-execute**\
+
  Indicates  that \ *command_list*\  specifies a local script
  filename and arguments to be executed on  the  remote  targets.
  The  script  file  is copied to the remote targets and then
  remotely   executed   with   the   given   arguments.   The
  \ **DSH_NODE_RCP**\   environment variables specify the remote copy
  command to use to copy the script file to node targets.
- 
 
 
-\ **-E | -**\ **-environment**\  \ *environment_file*\ 
- 
+
+\ **-E | -**\ **-environment**\  \ *environment_file*\
+
  Specifies that the  \ *environment_file*\   contains  environment
  variable definitions to export to the target before
  executing the  \ *command_list*\ .
- 
 
 
-\ **-**\ **-devicetype**\  \ *type_of_device*\ 
- 
+
+\ **-**\ **-devicetype**\  \ *type_of_device*\
+
  Specify a user-defined device type that references the location
  of relevant device configuration file. The devicetype value must
  correspond to a valid device configuration file.
  xCAT ships some default configuration files
- for Ethernet switches and and IB switches under 
+ for Ethernet switches and and IB switches under
  \ */opt/xcat/share/xcat/devicetype*\  directory. If you want to overwrite
- any of the configuration files, copy them to \ */var/opt/xcat/*\ 
- directory and cutomize. 
+ any of the configuration files, copy them to \ */var/opt/xcat/*\
+ directory and cutomize.
  For example, \ *base/IBSwitch/Qlogic/config*\  is the configuration
  file location if devicetype is specified as IBSwitch::Qlogic.
- xCAT will first search config file using \ */var/opt/xcat/*\  as the base. 
- If not found, it will search for it using  
+ xCAT will first search config file using \ */var/opt/xcat/*\  as the base.
+ If not found, it will search for it using
  \ */opt/xcat/share/xcat/devicetype/*\  as the base.
- 
 
 
-\ **-f | -**\ **-fanout**\  \ *fanout_value*\ 
- 
+
+\ **-f | -**\ **-fanout**\  \ *fanout_value*\
+
  Specifies a fanout value for the maximum number of  concurrently  executing  remote shell processes. Serial execution can be specified by indicating a fanout value of \ **1**\ . If  \ **-f**\  is not specified, a default fanout value of \ **64**\  is used.
- 
 
 
-\ **-h | -**\ **-help**\ 
- 
+
+\ **-h | -**\ **-help**\
+
  Displays usage information.
- 
 
 
-\ **-i | -**\ **-rootimg**\  \ *install image*\ 
- 
+
+\ **-i | -**\ **-rootimg**\  \ *install image*\
+
  For Linux, Specifies the path to the install image on the local node.
- For AIX, specifies the name of the osimage on the local node. Run lsnim 
+ For AIX, specifies the name of the osimage on the local node. Run lsnim
  for valid names.
  xdsh will chroot (xcatchroot for AIX) to this path and run the xdsh command against the
- install image.  No other xdsh flags, environment variables apply with 
- this input.  A noderange is not accepted. Only runs on the local host, 
+ install image.  No other xdsh flags, environment variables apply with
+ this input.  A noderange is not accepted. Only runs on the local host,
  normally the Management Node. The command you run must not prompt for input, the prompt will not be returned to you, and it will appear that \ **xdsh**\  hangs.
- 
-
-
-\ **-K | -**\ **-ssh-setup**\ 
 
 
 
-\ **-K | -**\ **-ssh-setup**\   \ **-l | -**\ **-user**\  \ *user_ID*\  \ **-**\ **-devicetype**\  \ *type_of_device*\ 
- 
+\ **-K | -**\ **-ssh-setup**\
+
+
+
+\ **-K | -**\ **-ssh-setup**\   \ **-l | -**\ **-user**\  \ *user_ID*\  \ **-**\ **-devicetype**\  \ *type_of_device*\
+
  Set up the SSH keys for the user running the command to the specified node list.
  The userid must have the same uid, gid and password as the userid on the node
  where the keys will be setup.
- 
+
  If the current user is root,  roots public ssh keys will be put in the
  authorized_keys\* files under roots .ssh directory on the node(s).
  If the current user is non-root, the user must be in the policy table and have credential to run the xdsh command.
  The non-root users public ssh keys and root's public ssh keys will be put in
  the authorized_keys\* files under the non-root users .ssh directory on the node(s).
  Other device types, such as IB switch, are also supported.  The
- device should be defined as a node and nodetype should be defined 
+ device should be defined as a node and nodetype should be defined
  as switch before connecting.
  The \ **xdsh -K**\  command must be run from the Management Node.
- 
 
 
-\ **-l | -**\ **-user**\  \ *user_ID*\ 
- 
+
+\ **-l | -**\ **-user**\  \ *user_ID*\
+
  Specifies a remote user name to use for remote command execution.
- 
 
 
-\ **-L | -**\ **-no-locale**\ 
- 
+
+\ **-L | -**\ **-no-locale**\
+
  Specifies to not export the locale definitions of the local
  host to the remote targets. Local host  locale  definitions
  are exported by default to each remote target.
- 
 
 
-\ **-m | -**\ **-monitor**\ 
- 
+
+\ **-m | -**\ **-monitor**\
+
  Monitors  remote  shell execution by displaying status
  messages during execution on each target.
- 
 
 
-\ **-o | -**\ **-node-options**\  \ *node_options*\ 
- 
+
+\ **-o | -**\ **-node-options**\  \ *node_options*\
+
  Specifies options to pass to the remote shell  command  for
  node  targets.  The options must be specified within double
  quotation marks ("") to distinguish them from \ **xdsh**\  options.
- 
 
 
-\ **-q | -**\ **-show-config**\ 
- 
+
+\ **-q | -**\ **-show-config**\
+
  Displays the current environment settings for all DSH
  Utilities commands. This includes the values of all environment
  variables  and  settings  for  all  currently installed and
  valid contexts. Each setting is prefixed with  \ *context*\ :  to
  identify the source context of the setting.
- 
 
 
-\ **-Q | -**\ **-silent**\ 
- 
+
+\ **-Q | -**\ **-silent**\
+
  Specifies silent mode. No target output is written to standard output or  standard  error.  Monitoring  messages are written to standard output.
- 
 
 
-\ **-r | -**\ **-node-rsh**\  \ *node_remote_shell*\ 
- 
+
+\ **-r | -**\ **-node-rsh**\  \ *node_remote_shell*\
+
  Specifies the path of the remote shell command used
  for remote command execution on node targets.
- 
 
 
-\ **-s | -**\ **-stream**\ 
- 
+
+\ **-s | -**\ **-stream**\
+
  Specifies that output is returned as it  becomes  available
- from  each  target, instead of waiting for the \ *command_list*\ 
+ from  each  target, instead of waiting for the \ *command_list*\
  to be completed on a target before returning output.
- 
+
 
 
 \ **-S | -**\ **-syntax**\  {\ **csh | ksh**\ }
- 
+
  Specifies the shell syntax to be used on the remote target.
  If not specified, the \ **ksh**\  syntax is used.
- 
 
 
-\ **-**\ **-sudo**\ 
- 
+
+\ **-**\ **-sudo**\
+
  Adding the \ **-**\ **-sudo**\  flag to the xdsh command will have xdsh run sudo before
  running the command.  This is particular useful when using the \ **-e**\  option.
  This is required when you input \ **-l**\  with a non-root user id and want that id
- to be able to run as root on the node.  The non-root userid will must be 
+ to be able to run as root on the node.  The non-root userid will must be
  previously defined as an xCAT user, see process for defining non-root ids in
- xCAT and setting up for using xdsh.  The userid sudo setup will have 
+ xCAT and setting up for using xdsh.  The userid sudo setup will have
  to be done by the admin on the node.  This includes, allowing all commands that
  you would like to run with xdsh by using visudo to edit the /etc/sudoers file.
- You must disabl ssh tty requirements by commenting out or removing this line in the /etc/sudoes file "#Defaults    requiretty". 
+ You must disabl ssh tty requirements by commenting out or removing this line in the /etc/sudoes file "#Defaults    requiretty".
  See the document Granting_Users_xCAT_privileges for sudo setup requirements.
  This is not supported in a hierarical cluster, that is the nodes are serviced by servicenodes.
- 
 
 
-\ **-t | -**\ **-timeout**\  \ *timeout*\ 
- 
+
+\ **-t | -**\ **-timeout**\  \ *timeout*\
+
  Specifies the time, in seconds, to wait for output from any
  currently executing remote targets. If no output is
- available  from  any  target in the specified \ *timeout*\ , \ **xdsh**\ 
+ available  from  any  target in the specified \ *timeout*\ , \ **xdsh**\
  displays an error and terminates execution for the remote
  targets  that  failed to respond. If \ *timeout*\  is not specified,
  \ **xdsh**\  waits indefinitely to continue processing output  from
- all  remote  targets. The exception is the \ **-K**\  flag which defaults 
+ all  remote  targets. The exception is the \ **-K**\  flag which defaults
  to 10 seconds.
- 
 
 
-\ **-T | -**\ **-trace**\ 
- 
+
+\ **-T | -**\ **-trace**\
+
  Enables trace mode. The \ **xdsh**\  command prints diagnostic
  messages to standard output during execution to each target.
- 
 
 
-\ **-v | -**\ **-verify**\ 
- 
+
+\ **-v | -**\ **-verify**\
+
  Verifies each target before executing any  remote  commands
  on  the target. If a target is not responding, execution of
  remote commands for the target is canceled. When  specified
  with the \ **-i**\  flag, the user is prompted to retry the
  verification request.
- 
 
 
-\ **-V | -**\ **-version**\ 
- 
+
+\ **-V | -**\ **-version**\
+
  Displays the \ **xdsh**\  command version information.
- 
 
 
-\ **-X**\  \ *env_list*\ 
- 
+
+\ **-X**\  \ *env_list*\
+
  Ignore \ **xdsh**\  environment variables. This option can take  an
  argument  which  is  a  comma separated list of environment
  variable names that should \ **NOT**\  be ignored. If there  is  no
@@ -419,16 +419,16 @@ running commands, are terminated (SIGTERM).
  This option is useful when running \ **xdsh**\  from within other
  scripts when you don't want the user's environment affecting
  the behavior of xdsh.
- 
 
 
-\ **-z | -**\ **-exit-status**\ 
- 
+
+\ **-z | -**\ **-exit-status**\
+
  Displays the exit status for  the  last  remotely  executed
  non-asynchronous  command  on  each  target. If the command
  issued on the remote node is run  in  the  background,  the
  exit status is not displayed.
- 
+
  Exit  values  for  each remote shell execution are displayed in
  messages from the \ **xdsh**\  command, if the remote  shell  exit  values  are
  non-zero.  A non-zero return code from a remote shell indicates that
@@ -436,7 +436,7 @@ running commands, are terminated (SIGTERM).
  unrelated  to  the  exit  code  of the remotely issued command. If a
  remote shell encounters an error, execution of the remote command on
  that target is bypassed.
- 
+
  The  \ **xdsh**\   command  exit  code  is \ **0**\  if the command executed without
  errors and all remote shell commands finished with exit codes of  \ **0**\ .
  If  internal  \ **xdsh**\   errors occur or the remote shell commands do not
@@ -445,101 +445,101 @@ running commands, are terminated (SIGTERM).
  an unsuccessful remote command execution.  If  the  remotely  issued
  command  is  run  in  the  background, the exit code of the remotely
  issued command is \ **0**\ .
- 
+
 
 
 
 *************************************
-\ **Environment**\  \ **Variables**\ 
+\ **Environment**\  \ **Variables**\
 *************************************
 
 
 
-\ **DEVICETYPE**\ 
- 
+\ **DEVICETYPE**\
+
  Specify a user-defined device type.  See \ **-**\ **-devicetype**\  flag.
- 
 
 
-\ **DSH_ENVIRONMENT**\ 
- 
+
+\ **DSH_ENVIRONMENT**\
+
  Specifies a file that contains environment variable
  definitions to export to the target before executing  the  remote
  command. This variable is overridden by the \ **-E**\  flag.
- 
 
 
-\ **DSH_FANOUT**\ 
- 
+
+\ **DSH_FANOUT**\
+
  Specifies  the fanout value. This variable is overridden by
  the \ **-f**\  flag.
- 
 
 
-\ **DSH_NODE_OPTS**\ 
- 
+
+\ **DSH_NODE_OPTS**\
+
  Specifies the options to use for the remote  shell  command
  with  node targets only. This variable is overridden by the
  \ **-o**\  flag.
- 
 
 
-\ **DSH_NODE_RCP**\ 
- 
+
+\ **DSH_NODE_RCP**\
+
  Specifies the full path of the remote copy command  to  use
  to  copy  local scripts and local environment configuration
  files to node targets.
- 
 
 
-\ **DSH_NODE_RSH**\ 
- 
+
+\ **DSH_NODE_RSH**\
+
  Specifies the full path of the  remote  shell  to  use  for
  remote  command execution on node targets. This variable is
  overridden by the \ **-r**\  flag.
- 
 
 
-\ **DSH_PATH**\ 
- 
+
+\ **DSH_PATH**\
+
  Sets the command path to use on the targets. If \ **DSH_PATH**\  is
  not set, the default path defined in  the  profile  of  the
  remote \ *user_ID*\  is used.
- 
 
 
-\ **DSH_REMOTE_PASSWORD**\ 
- 
+
+\ **DSH_REMOTE_PASSWORD**\
+
  If \ **DSH_REMOTE_PASSWORD**\  is set to the password of the
  userid (usually root) that will ssh to the node, then when
  you use the \ **-K**\  flag, you will not be prompted for a password.
- 
 
 
-\ **DSH_SYNTAX**\ 
- 
+
+\ **DSH_SYNTAX**\
+
  Specifies the shell syntax to use on remote targets; \ **ksh**\  or
  \ **csh**\ . If not specified, the  \ **ksh**\   syntax is assumed.  This
  variable is overridden by the \ **-S**\  flag.
- 
 
 
-\ **DSH_TIMEOUT**\ 
- 
+
+\ **DSH_TIMEOUT**\
+
  Specifies the time, in seconds, to wait for output from
  each remote target. This variable is overridden by the \ **-t**\  flag.
- 
 
 
-\ **DSH_VERIFY**\ 
- 
+
+\ **DSH_VERIFY**\
+
  Verifies each target before executing any remote commands on the target. If a target is not responding, execution of remote commands for the target is canceled. This variable is overridden by the \ **-v**\  flag.
- 
+
 
 
 
 **********************************
-\ **Compatibility with AIX dsh**\ 
+\ **Compatibility with AIX dsh**\
 **********************************
 
 
@@ -550,7 +550,7 @@ xCAT database that can be used by \ **dsh**\ . See \ **man groupfiles4dsh**\ .
 
 
 ****************
-\ **SECURITY**\ 
+\ **SECURITY**\
 ****************
 
 
@@ -568,7 +568,7 @@ userdefined.
 
 
 *******************
-\ **EXIT STATUS**\ 
+\ **EXIT STATUS**\
 *******************
 
 
@@ -576,178 +576,178 @@ The \ **xdsh**\  command exit code is 0 if the command executed without errors a
 
 
 ****************
-\ **EXAMPLES**\ 
+\ **EXAMPLES**\
 ****************
 
 
 
 1. To set up the SSH keys for root on node1, run as root:
- 
- 
+
+
  .. code-block:: perl
- 
+
    xdsh node1 -K
- 
- 
+
+
 
 
 2. To run the \ **ps -ef**\  command on node targets \ **node1**\  and \ **node2**\ , enter:
- 
- 
+
+
  .. code-block:: perl
- 
+
    xdsh node1,node2 "ps -ef"
- 
- 
+
+
 
 
 3. To run the \ **ps**\  command on node targets \ **node1**\  and run the remote command with the -v and -t flag, enter:
- 
- 
+
+
  .. code-block:: perl
- 
+
    xdsh node1,node2  -o "-v -t" ps
- 
- 
 
 
-4. To execute the commands contained in \ **myfile**\  in the \ **XCAT**\ 
+
+
+4. To execute the commands contained in \ **myfile**\  in the \ **XCAT**\
 context on several node targets, with a fanout of \ **1**\ , enter:
- 
- 
+
+
  .. code-block:: perl
- 
+
    xdsh node1,node2 -f 1 -e myfile
- 
- 
+
+
 
 
 5. To run the ps command on node1 and ignore all the dsh
 environment variable except the DSH_NODE_OPTS, enter:
- 
- 
+
+
  .. code-block:: perl
- 
+
    xdsh node1 -X `DSH_NODE_OPTS' ps
- 
- 
 
 
-6. To run on Linux, the xdsh command "rpm -qa | grep xCAT" 
+
+
+6. To run on Linux, the xdsh command "rpm -qa | grep xCAT"
 on the service node fedora9 diskless image, enter:
- 
- 
+
+
  .. code-block:: perl
- 
+
    xdsh -i /install/netboot/fedora9/x86_64/service/rootimg "rpm -qa | grep xCAT"
- 
- 
+
+
 
 
 7. To run on AIX, the xdsh command "lslpp -l | grep bos" on the NIM 611dskls spot, enter:
- 
- 
+
+
  .. code-block:: perl
- 
+
    xdsh -i 611dskls "/usr/bin/lslpp -l | grep bos"
- 
- 
+
+
 
 
 8. To cleanup the servicenode directory that stages the copy of files to the nodes, enter:
- 
- 
+
+
  .. code-block:: perl
- 
+
    xdsh servicenoderange -c
- 
- 
+
+
 
 
 9.
- 
- To define the QLogic IB switch as a node and to set up the SSH keys for IB switch 
+
+ To define the QLogic IB switch as a node and to set up the SSH keys for IB switch
  \ **qswitch**\  with device configuration file
  \ **/var/opt/xcat/IBSwitch/Qlogic/config**\  and user name \ **username**\ , enter
- 
- 
+
+
  .. code-block:: perl
- 
+
    chdef -t node -o qswitch groups=all nodetype=switch
-  
+
    xdsh qswitch -K -l username --devicetype IBSwitch::Qlogic
- 
- 
+
+
 
 
 10. To define the Management Node  in the database so you can use \ **xdsh**\ , enter
- 
- 
+
+
  .. code-block:: perl
- 
+
    xcatconfig -m
- 
- 
 
 
-11. To define the Mellanox switch as a node and run a command to show the ssh keys. 
+
+
+11. To define the Mellanox switch as a node and run a command to show the ssh keys.
 \ **mswitch**\  with and user name \ **username**\ , enter
- 
- 
+
+
  .. code-block:: perl
- 
+
    chdef -t node -o mswitch groups=all nodetype=switch
-  
+
    xdsh mswitch -l admin --devicetype IBSwitch::Mellanox  'enable;configure terminal;show ssh server host-keys'
- 
- 
+
+
 
 
 12.
- 
+
  To define a BNT Ethernet switch as a node and run a command to create a new vlan with vlan id 3 on the switch.
- 
- 
+
+
  .. code-block:: perl
- 
+
    chdef myswitch groups=all
-  
+
    tabch switch=myswitch switches.sshusername=admin switches.sshpassword=passw0rd switches.protocol=[ssh|telnet]
- 
- 
+
+
  where \ *admin*\  and \ *passw0rd*\  are the SSH user name and password for the switch.
- 
+
  If it is for Telnet, add \ *tn:*\  in front of the user name: \ *tn:admin*\ .
- 
- 
+
+
  .. code-block:: perl
- 
+
    dsh myswitch --devicetype EthSwitch::BNT 'enable;configure terminal;vlan 3;end;show vlan'
- 
- 
+
+
 
 
 13.
- 
+
  To run \ **xdsh**\  with the non-root userid "user1" that has been setup as an xCAT userid and with sudo on node1 and node2 to run as root, do the following, see xCAT doc on Granting_Users_xCAT_privileges:
- 
- 
+
+
  .. code-block:: perl
- 
+
    xdsh node1,node2 --sudo -l user1 "cat /etc/passwd"
- 
- 
+
+
 
 
 
 *************
-\ **Files**\ 
+\ **Files**\
 *************
 
 
 
 ****************
-\ **SEE ALSO**\ 
+\ **SEE ALSO**\
 ****************
 
 
