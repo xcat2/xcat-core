@@ -36,7 +36,6 @@ Diskless Installation
                  -p /install/<path-to>/<MLNX_OFED_LINUX.iso> -m --add-kernel-support --without-32bit --without-fw-update --force -end- \
                  -i $1 -n genimage
 
-
 #. Generate the diskless image
 
    Use the ``genimage`` command to generate the diskless image from the osimage definition ::
