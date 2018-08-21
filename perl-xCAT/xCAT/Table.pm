@@ -2359,12 +2359,12 @@ sub getNodesAttribs {
         $self->{nodelist}->{_use_cache} = 1;
     }
     my $rethash;
-    my @hierarchy_attrs = ();
-    my $hierarchy_field = xCAT::TableUtils->get_site_attribute("hierarchicalattrs");
-    if ($hierarchy_field) {
-        @hierarchy_attrs = split(/,/, $hierarchy_field);
-    }
-    $options{hierarchy_attrs} = \@hierarchy_attrs;
+    #my @hierarchy_attrs = ();
+    #my $hierarchy_field = xCAT::TableUtils->get_site_attribute("hierarchicalattrs");
+    #if ($hierarchy_field) {
+    #    @hierarchy_attrs = split(/,/, $hierarchy_field);
+    #}
+    #$options{hierarchy_attrs} = \@hierarchy_attrs;
     foreach (@$nodelist) {
         my @nodeentries = $self->getNodeAttribs($_, \@realattribs, %options);
         $rethash->{$_} = \@nodeentries;    #$self->getNodeAttribs($_,\@attribs);
