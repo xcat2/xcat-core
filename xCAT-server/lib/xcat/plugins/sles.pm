@@ -1632,7 +1632,6 @@ sub copycd
     {
         my $dinfo;
         open($dinfo, $mntpath . "/content");
-        my $darch;
         while (<$dinfo>)
         {
             if (m/^DEFAULTBASE\s+(\S+)/)
