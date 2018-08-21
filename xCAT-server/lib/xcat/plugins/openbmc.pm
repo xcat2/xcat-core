@@ -4646,10 +4646,10 @@ sub rflash_response {
                     $version_num ++;
                     my $flash_success_msg = "$node: $firm_msg activation successful.";
                     push @{ $rsp->{data} },$flash_success_msg;
+                    print RFLASH_LOG_FILE_HANDLE "$flash_success_msg\n";
                     # Activation state of active and priority of 0 indicates the activation has been completed
                     if ( $length == $version_num ) {
                         xCAT::MsgUtils->message("I", $rsp, $callback) if ($rsp);
-                        print RFLASH_LOG_FILE_HANDLE "$flash_success_msg\n";
                         $node_info{$node}{rst} = "$flash_success_msg";
                         if (!$::UPLOAD_ACTIVATE_STREAM) {
                             $wait_node_num--;

@@ -174,6 +174,7 @@ sub submit_request {
 
         # Load plugins from either specified or default dir
         require xCAT::Table;
+        populate_site_hash();
         my %cmd_handlers;
         my @plugins_dirs = split('\:', $ENV{XCATBYPASS});
         if (-d $plugins_dirs[0]) {
@@ -191,8 +192,6 @@ sub submit_request {
             $plugins_dir = $::XCATROOT . '/lib/perl/xCAT_plugin';
             scan_plugins();
         }
-
-        populate_site_hash();
 
         #  don't do XML transformation -- assume request is well-formed
         #  my $xmlreq=XMLout($request,RootName=>xcatrequest,NoAttr=>1,KeyAttr=>[]);

@@ -14,8 +14,14 @@ xCAT 2.14.x
 |xCAT                             |New OS         |New          |New Feature                       |
 |Version                          |               |Hardware     |                                  |
 +=================================+===============+=============+==================================+
-|| xCAT 2.14.2 2018/7/13          |- Ubuntu 18.04 |             |                                  |
+|| xCAT 2.14.3 2018/8/24          |- SLES12.3     |             |- OpenBMC rflash enhancement      |
 ||                                |               |             |                                  |
+| `2.14.3 Release Notes <https:// |               |             |- xcat-inventory 0.1.5            |
+| github.com/xcat2/xcat-core/wiki |               |             |                                  |
+| /XCAT_2.14.3_Release_Notes>`_   |               |             |- goconserver v0.3.1              |
++---------------------------------+---------------+-------------+----------------------------------+
+|| xCAT 2.14.2 2018/7/13          |- Ubuntu 18.04 |             |                                  |
+||                                |- RHEL6.10     |             |                                  |
 | `2.14.2 Release Notes <https:// |               |             |                                  |
 | github.com/xcat2/xcat-core/wiki |               |             |                                  |
 | /XCAT_2.14.2_Release_Notes>`_   |               |             |                                  |

@@ -420,9 +420,12 @@ sub process_switch_config {
                     xCAT::MellanoxIB::setConfig($nodes, $callback, $subreq, $subcommand, $argument);
                 }
             } else {
-                my $rsp = {};
-                $rsp->{error}->[0] = "The following '$t' switches are unsuppored:\n@$nodes";
-                $callback->($rsp);
+                #onie switch will processed in the onie plug in
+                unless ($t =~ /onie/i) {
+                    my $rsp = {};
+                    $rsp->{error}->[0] = "The following '$t' switches are not supported:\n@$nodes";
+                    $callback->($rsp);
+                }
             }
         }
     }

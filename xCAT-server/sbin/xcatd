@@ -970,6 +970,10 @@ if (defined $pid_init) {
         %cmd_handlers = %{ fd_retrieve($readpipe) };
     } else {
         $$progname = "xcatd: plugin initialization";
+        if (xCAT::Utils->isServiceNode()) {
+            # Cache the site hash to accelerate the speed of init_plugins on SN
+            populate_site_hash();
+        }
         scan_plugins($writepipe);
         exit(0);
     }
