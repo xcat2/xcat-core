@@ -40,7 +40,7 @@ adding a new zone or changing an existing zone to be the default zone.
 
 Remove the assigned group named B<zonename> from all nodes assigned to the zone being removed.
 
-=item B<-V>|B<--Verbose>
+=item B<-V>|B<--verbose>
 
 Verbose mode.
 

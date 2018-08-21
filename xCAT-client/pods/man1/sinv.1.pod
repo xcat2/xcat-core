@@ -182,7 +182,7 @@ Displays usage information.
 
 Displays xCAT release version.
 
-=item B<-V>|B<--Verbose>
+=item B<-V>|B<--verbose>
 
 Verbose mode.
 
