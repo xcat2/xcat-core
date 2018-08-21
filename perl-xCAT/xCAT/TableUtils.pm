@@ -1261,27 +1261,28 @@ sub getAppStatus
   get_site_attribute
 
 	Arguments:
-
+                $attribute -- the attribute you want to get
+                $dvalue    -- Optional, the default string value if the attribute does not exist
 	Returns:
 	    The value of the attribute requested from the site table
-	Globals:
-		none
-	Error:
-		undef
-	Example:
-	   @attr=xCAT::TableUtils->get_site_attribute($attribute);
-	Comments:
-		none
+        Globals:
+                %::XCATSITEVALS
+        Error:
+                undef
+        Example:
+           @attr=xCAT::TableUtils->get_site_attribute($attribute);
+        Comments:
+                none
 
 =cut
 
 #------------------------------------------------------------------------
 sub get_site_attribute
 {
-    my ($class, $attr) = @_;
+    my ($class, $attr, $dvalue) = @_;
 
     my $values;
-    if (defined($::XCATSITEVALS{$attr})) {
+    if (%::XCATSITEVALS) {
         $values = ($::XCATSITEVALS{$attr});
     } else {
         my $sitetab = xCAT::Table->new('site');
@@ -1300,7 +1301,8 @@ sub get_site_attribute
 
         }
     }
-    return $values;
+    return $values if ( defined $values);
+    return $dvalue;
 }
 
 
