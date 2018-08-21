@@ -107,6 +107,8 @@ sub process_request {
         my $subcmd = $exargs[0];
         if ($subcmd eq 'sshcfg') {
             process_sshcfg($nodes, $callback);
+        } else {
+            xCAT::MsgUtils->message("I", { data => ["The rspconfig command $subcmd is not supported"] }, $callback);
         }
     }
 
