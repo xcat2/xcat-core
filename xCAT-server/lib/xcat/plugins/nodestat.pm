@@ -721,7 +721,14 @@ sub process_request_nmap {
                     if ($1 eq "3001" and defined($chainhash{$currnode}->[0]->{currstate}) and $chainhash{$currnode}->[0]->{currstate} =~ /^install/) {
                         $installquerypossible = 1; #It is possible to actually query node
                     } elsif ($1 ne "3001") {
+                        if ($1 == 3389 and $states{'sshd'}) {
+                            continue;
+                        }
                         $states{ $portservices{$1} } = 1;
+                        if ($1 == 22 and $states{'rdp'}) {
+                            delete $states{'rdp'};
+                            continue;
+                        }
                     }
                 }
             }
