@@ -101,7 +101,7 @@ sub process_request {
 
 sub relay_response {
     my $resp = shift;
-    return unless ($resp); 
+    return unless ($resp);
 
     $callback->($resp);
     if ($resp and ($resp->{errorcode} and $resp->{errorcode}->[0]) or ($resp->{error} and $resp->{error}->[0])) {
@@ -148,7 +148,7 @@ sub setdestiny {
 
     if (@{ $req->{node} } == 0) {
         xCAT::MsgUtils->trace($verbose, "d", "destiny->setdestiny: no nodes left to process, we are done");
-        return; 
+        return;
     }
     my @nodes = @{ $req->{node} };
     my $bptab = xCAT::Table->new('bootparams', -create => 1);
@@ -261,7 +261,7 @@ sub setdestiny {
                 $callback->({ error => "invalid argument: \"$rawstate\"", errorcode => [1] });
                 return;
             }
- 
+
             if ($target =~ /:/) {
                 ($target, $action) = split ':', $target, 2;
             }
@@ -309,7 +309,7 @@ sub setdestiny {
                     my $nodearch = $2;
                     foreach (@{ $req->{node} }) {
                         if ($archentries->{$_}->[0]->{supportedarchs} and $archentries->{$_}->[0]->{supportedarchs} !~ /(^|,)$nodearch(\z|,)/) {
-                            xCAT::MsgUtils->report_node_error($callback, $_, 
+                            xCAT::MsgUtils->report_node_error($callback, $_,
                                 "Requested architecture " . $nodearch . " is not one of the architectures supported by $_  (per nodetype.supportedarchs, it supports " . $archentries->{$_}->[0]->{supportedarchs} . ")"
                                 );
                             $failurenodes{$_} = 1;
@@ -346,7 +346,7 @@ sub setdestiny {
                         return;
                     }
                 } else {
-                    $callback->({ errorcode => [1], error => "Cannot find the OS image $target on the osimage table.", errorabort => [1] });
+                    $callback->({ errorcode => [1], error => "Cannot find the OS image $target in the osimage table.", errorabort => [1] });
                     return;
                 }
 
@@ -427,7 +427,7 @@ sub setdestiny {
                                 }
                             } else {
                                 push(@{ $invalidosimghash->{$osimage}->{nodes} }, $tmpnode);
-                                $invalidosimghash->{$osimage}->{error}->[0] = "Cannot find the OS image $osimage on the osimage table";
+                                $invalidosimghash->{$osimage}->{error}->[0] = "Cannot find the OS image $osimage in the osimage table";
                                 next;
                             }
                         }
@@ -560,7 +560,7 @@ sub setdestiny {
                 }
                 if ($ntent and $ntent->{arch}) {
                     $nstates{$_} .= "-" . $ntent->{arch};
-                } else { 
+                } else {
                     xCAT::MsgUtils->report_node_error($callback, $_, "nodetype.arch not defined for $_.");
                     $failurenodes{$_} = 1;
                     next;
@@ -614,7 +614,7 @@ sub setdestiny {
                     my $cmd = "wget --spider --timeout 3 --tries=1 $path";
                     my @output = xCAT::Utils->runcmd("$cmd", -1);
                     unless (grep /^Remote file exists/, @output) {
-                        $callback->({ error => ["Cannot get $path with wget. Could you confirm it's downloadable by wget?"], errorcode => [1], errorabort => [1]});
+                        $callback->({ error => ["Cannot wget $path. Verify it's downloadable."], errorcode => [1], errorabort => [1]});
                         return;
                     }
                 } else {
@@ -659,15 +659,15 @@ sub setdestiny {
             if ($ent and $ent->{xcatmaster}) {
                 $master = $ent->{xcatmaster};
             }
-    
+
             #if node.xcatmaster not specified, take the ip address facing the node
             unless($master){
                 my @nxtsrvd = xCAT::NetworkUtils->my_ip_facing($_);
-                unless ($nxtsrvd[0]) { 
-                    $master = $nxtsrvd[1];                 
+                unless ($nxtsrvd[0]) {
+                    $master = $nxtsrvd[1];
                 }
             }
-            
+
             #the site.master takes the last precedence
             unless($master){
                 if (defined($master_entry)) {
@@ -940,12 +940,12 @@ sub getdestiny {
             if ($stat) {
                 if (exists($node_status{$stat})) {
                     push @{ $node_status{$stat} }, $node;
-                } else { 
+                } else {
                     $node_status{$stat} = [$node];
                 }
                 xCAT_monitoring::monitorctrl::setNodeStatusAttributes(\%node_status, 1);
             }
-            
+
             $callback->({ node => [ { name => [$node], data => ['standby'], destiny => ['standby'] } ] });
             return;
         }

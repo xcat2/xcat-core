@@ -2,10 +2,10 @@
 #-------------------------------------------------------
 
 =head1
-  xCAT plugin package to handle pdu 
+  xCAT plugin package to handle pdu
 
    Supported command:
-        rpower 
+        rpower
         rinv
         rvitals
 
@@ -72,8 +72,8 @@ sub handled_commands
 sub pdu_usage
 {
     my ($callback, $command) = @_;
-    my $usagemsg = 
-    "Usage: 
+    my $usagemsg =
+    "Usage:
      The following commands support both type of PDUs :
         pdudiscover [<noderange>|--range ipranges] [-r|-x|-z] [-w] [-V|--verbose] [--setup]
         rpower pdunodes [off|on|stat|reset]
@@ -81,7 +81,7 @@ sub pdu_usage
         rvitals   pdunodes
 
      The following commands support IR PDU with pdutype=irpdu :
-        rpower computenodes [pduoff|pduon|pdustat|pdustatus|pdureset] 
+        rpower computenodes [pduoff|pduon|pdustat|pdustatus|pdureset]
         rspconfig irpdunode [hostname=<NAME>|ip=<IP>|gateway=<GATEWAY>|mask=<MASK>]
 
      The following commands support CR PDU with pdutype=crpdu :
@@ -90,7 +90,7 @@ sub pdu_usage
         rspconfig pdunodes snmpcfg
         rspconfig pdunode [hostname=<NAME>|ip=<IP>|mask=<MASK>]
         \n";
-                    
+
     if ($callback)
     {
         my $rsp = {};
@@ -197,13 +197,13 @@ sub process_request
             #there are 2 cases will enter this block
             #one is if node's mgt is pdu
             #another is if node has pdu attribute but mgt isn't pdu
-            #if the node has pdu attribute but mgt isn't pdu, 
-            #should do nothing for this node, let other plugin to hanle this node 
+            #if the node has pdu attribute but mgt isn't pdu,
+            #should do nothing for this node, let other plugin to hanle this node
             #-------------------------------------------
             my @allpdunodes=();
             my $nodehm = xCAT::Table->new('nodehm');
             my $nodehmhash = $nodehm->getNodesAttribs($noderange, ['mgt']);
-            foreach my $node (@$noderange) { 
+            foreach my $node (@$noderange) {
                 if($nodehmhash->{$node}->[0]->{mgt} eq 'pdu'){
                     push @allpdunodes, $node;
                 }
@@ -246,7 +246,7 @@ sub process_request
 
 #-------------------------------------------------------
 
-=head3  fill_outletcount 
+=head3  fill_outletcount
 
   Get outlet count for IR PDU.
 
@@ -274,7 +274,7 @@ sub fill_outletCount {
 
 #-------------------------------------------------------
 
-=head3  powerpdu 
+=head3  powerpdu
 
     Process power command (stat/off/on) for pdu/pdus
 
@@ -322,10 +322,10 @@ sub powerpdu {
         for (my $outlet =1; $outlet <= $count; $outlet++)
         {
             outletpower($session, $outlet, $value);
-            if ($session->{ErrorStr}) { 
+            if ($session->{ErrorStr}) {
                 $callback->({ errorcode => [1],error => "Failed to get outlet status for $node"});
             } else {
-                my $output = " outlet $outlet is $statstr"; 
+                my $output = " outlet $outlet is $statstr";
                 xCAT::SvrUtils::sendmsg($output, $callback, $node, %allerrornodes);
             }
         }
@@ -334,10 +334,10 @@ sub powerpdu {
 
 #-------------------------------------------------------
 
-=head3  powerpduoutlet 
+=head3  powerpduoutlet
 
     Process power command (pdustat/pduoff/pduon) for compute nodes,
-    the pdu attribute needs to be set 
+    the pdu attribute needs to be set
 
 =cut
 
@@ -399,12 +399,12 @@ sub powerpduoutlet {
                 outletpower($session, $outlet, $value);
             } else {
                 $callback->({ error => "$subcmd is not support"});
-            } 
-    
-            if ($session->{ErrorStr}) { 
+            }
+
+            if ($session->{ErrorStr}) {
                 $callback->({ errorcode => [1],error => "$node: $pdu outlet $outlet has error = $session->{ErrorStr}"});
             } else {
-                $output = "$pdu operational state for outlet $outlet is $statstr"; 
+                $output = "$pdu operational state for outlet $outlet is $statstr";
                 xCAT::SvrUtils::sendmsg($output, $callback, $node, %allerrornodes);
             }
         }
@@ -413,7 +413,7 @@ sub powerpduoutlet {
 
 #-------------------------------------------------------
 
-=head3  outletpower 
+=head3  outletpower
 
     Process power command for one pdu outlet,
 
@@ -437,7 +437,7 @@ sub outletpower {
 
 #-------------------------------------------------------
 
-=head3  powerstat 
+=head3  powerstat
 
     Process command to query status of pdu
 
@@ -473,11 +473,11 @@ sub powerstat {
                         }
                     }
                     if ($seclevel eq "authNoPriv") {
-                        $snmpcmd = "snmpwalk -v3 -u $snmpuser -a $authtype -A $authkey -l $seclevel"; 
+                        $snmpcmd = "snmpwalk -v3 -u $snmpuser -a $authtype -A $authkey -l $seclevel";
                     } elsif ($seclevel eq "authPriv") {
-                        $snmpcmd = "snmpwalk -v3 -u $snmpuser -a $authtype -A $authkey -l $seclevel -x $privtype -X $privkey"; 
+                        $snmpcmd = "snmpwalk -v3 -u $snmpuser -a $authtype -A $authkey -l $seclevel -x $privtype -X $privkey";
                     } else {   #default to notAuthNoPriv
-                        $snmpcmd = "snmpwalk -v3 -u $snmpuser -l $seclevel"; 
+                        $snmpcmd = "snmpwalk -v3 -u $snmpuser -l $seclevel";
                     }
                 } else {
                     xCAT::SvrUtils::sendmsg("ERROR: No snmpuser or Security level defined for snmpV3 configuration", $callback,$pdu);
@@ -486,10 +486,10 @@ sub powerstat {
                     xCAT::SvrUtils::sendmsg("    then run 'rspconfig $pdu snmpcfg' command ", $callback,$pdu);
                     next;
                 }
-            } else { 
+            } else {
                 # use default value
                 $snmpcmd = "snmpwalk -v3 -u admin -a MD5 -A password1 -l authPriv -x DES -X password2";
-            } 
+            }
             for (my $relay = 1; $relay <= 3; $relay++) {
                 relaystat($pdu, $relay, $snmpcmd, $callback);
             }
@@ -515,11 +515,11 @@ sub powerstat {
 
 #-------------------------------------------------------
 
-=head3  outletstat 
+=head3  outletstat
 
     Process command to query status of one pdu outlet
     ibmPduOutletState defined from mib file
-         off(0) 
+         off(0)
          on(1)
          cycling(2)
          delaySwitch10(3)
@@ -532,7 +532,7 @@ sub powerstat {
 sub outletstat {
     my $session = shift;
     my $outlet = shift;
- 
+
     my $oid = ".1.3.6.1.4.1.2.6.223.8.2.2.1.11";
     my $output;
     my $statstr;
@@ -561,9 +561,9 @@ sub outletstat {
 
 #-------------------------------------------------------
 
-=head3  connectTopdu 
+=head3  connectTopdu
 
-   connect pdu via snmp session 
+   connect pdu via snmp session
 
 =cut
 
@@ -623,10 +623,10 @@ sub connectTopdu {
 
 #-------------------------------------------------------
 
-=head3  process_netcfg 
-   
+=head3  process_netcfg
+
     Config hostname of PDU
-    Config ip/netmask of PDU via PduManager command 
+    Config ip/netmask of PDU via PduManager command
       PduManager is a tool for CoralPdu to manager the PDU.
       * /dev/shm/bin/PduManager -h
           '-i' set PDU system IP
@@ -672,7 +672,7 @@ sub process_netcfg {
     my $discover_ip = $nodehash->{$pdu}->[0]->{otherinterfaces};
 
     unless ($pduhash->{$pdu}->[0]->{pdutype} eq "crpdu") {
-        netcfg_for_irpdu($pdu, $static_ip, $discover_ip, $request, $subreq, $callback); 
+        netcfg_for_irpdu($pdu, $static_ip, $discover_ip, $request, $subreq, $callback);
         return;
     }
 
@@ -722,7 +722,7 @@ sub process_netcfg {
                 xCAT::SvrUtils::sendmsg("Failed to run $dshcmd, error=$err", $callback);
                 return;
             }
-        } 
+        }
         xCAT::SvrUtils::sendmsg("$dshcmd ran successfully", $callback);
         xCAT::Utils->runxcmd({ command => ['chdef'], arg => ['-t','node','-o',$pdu,"ip=$ip","otherinterfaces="] }, $subreq, 0, 1);
         xCAT::Utils->runxcmd({ command => ['makehosts'], node => [$pdu] },  $subreq, 0, 1);
@@ -734,16 +734,16 @@ sub process_netcfg {
 
 #-------------------------------------------------------
 
-=head3  process_sshcfg 
-   
-    Config passwordless for coralpdu 
+=head3  process_sshcfg
 
-    example:  rspconfig coralpdu sshcfg 
+    Config passwordless for coralpdu
+
+    example:  rspconfig coralpdu sshcfg
 
 =cut
 
 #-------------------------------------------------------
-sub process_sshcfg { 
+sub process_sshcfg {
     my $noderange = shift;
     my $subcmd = shift;
     my $callback = shift;
@@ -796,7 +796,7 @@ sub process_sshcfg {
 
 #-------------------------------------------------------
 
-=head3  session_connect 
+=head3  session_connect
 
   open a expect session and connect to CR PDU.
 
@@ -859,7 +859,7 @@ sub session_connect {
 
 #-------------------------------------------------------
 
-=head3  session_exec 
+=head3  session_exec
 
   execute command to CR PDU.
 
@@ -889,9 +889,9 @@ sub session_exec {
 #-----------------------------------------------------------------
 
 =head3  process_pdudiscover
-   
+
     Discover the pdu for a given range of DHCP ip address
-    it will call switchdiscover command with -s snmp --pdu options 
+    it will call switchdiscover command with -s snmp --pdu options
 
     example: pdudiscover --range iprange -w
 
@@ -932,12 +932,12 @@ sub process_pdudiscover {
 
 #-------------------------------------------------------
 
-=head3  showMFR 
+=head3  showMFR
 
-    show MFR information of PDU via PduManager command 
+    show MFR information of PDU via PduManager command
       PduManager is a tool for CoralPdu to manager the PDU.
       * /dev/shm/bin/PduManager -h
-          '-m' show MFR info 
+          '-m' show MFR info
 
     example:  rinv coralpdu
 
@@ -1039,15 +1039,15 @@ sub rinv_for_irpdu
 
 #-------------------------------------------------------
 
-=head3  showMonitorData 
+=head3  showMonitorData
 
-    Show realtime monitor data(input voltage, current, power) 
-        of PDU via PduManager command 
+    Show realtime monitor data(input voltage, current, power)
+        of PDU via PduManager command
     PduManager is a tool for CoralPdu to manager the PDU.
       * /dev/shm/bin/PduManager -h
-          '-d' show realtime monitor data(input voltage, current, power) 
+          '-d' show realtime monitor data(input voltage, current, power)
 
-    example:  rvitals coralpdu 
+    example:  rvitals coralpdu
 
 =cut
 
@@ -1148,7 +1148,7 @@ sub rvitals_for_irpdu
 
 #-------------------------------------------------------
 
-=head3  relaystat 
+=head3  relaystat
 
   process individual relay stat for CR PDU.
   The OID for 3 relay:
@@ -1167,9 +1167,9 @@ sub relaystat {
 
     my $relayoid = $relay + 12;
 
-    #default pdu snmpv3, won't show up for snmpv1 
+    #default pdu snmpv3, won't show up for snmpv1
     my $cmd = "$snmpcmd $pdu 1.3.6.1.4.1.2.6.262.15.2.$relayoid";
-        
+
     my $result = xCAT::Utils->runcmd($cmd, 0);
     my ($msg,$stat) = split /: /, $result;
     if ($stat eq "1" ) {
@@ -1185,7 +1185,7 @@ sub relaystat {
 
 #-------------------------------------------------------
 
-=head3  process_powerrelay 
+=head3  process_powerrelay
 
   process relay action for CR PDU.
 
@@ -1230,7 +1230,7 @@ sub process_powerrelay {
 
 #-------------------------------------------------------
 
-=head3  process_relay 
+=head3  process_relay
 
   process relay action for CR PDU.
 
@@ -1262,7 +1262,7 @@ sub process_relay {
     my $ret;
     my $err;
     my $statestr;
-    
+
 
     for (my $i = 0; $i < $relay_count; $i++) {
         my $relay = $relay_num;
@@ -1285,7 +1285,7 @@ sub process_relay {
 
 #-------------------------------------------------------
 
-=head3  realy_action 
+=head3  realy_action
 
   process individual relay action for CR PDU.
 
@@ -1310,7 +1310,7 @@ sub relay_action {
 
 #-------------------------------------------------------
 
-=head3  process_snmpcfg 
+=head3  process_snmpcfg
 
   config snmp and snmpv3 for CR PDU.
 
@@ -1446,9 +1446,9 @@ sub netcfg_for_irpdu {
 
     my $timeout = 10;
     my $send_change = "N";
-  
+
     my $login_ip;
-   
+
     # somehow, only system command works for checking if irpdu is pingable
     # Net::Ping Module and xCAT::NetworkUtils::isPingable both are not working
     if (system("ping -c 2 $static_ip") == 0 ) {
@@ -1459,7 +1459,7 @@ sub netcfg_for_irpdu {
         xCAT::SvrUtils::sendmsg(" is not reachable", $callback,$pdu);
         return;
     }
-    
+
     foreach my $cmd (@exargs) {
         my ($key, $value) = split(/=/, $cmd);
         if ($key =~ /hostname/) {
@@ -1547,7 +1547,7 @@ sub netcfg_for_irpdu {
         ],
     );
 
-    if (defined($result[1])) 
+    if (defined($result[1]))
     {
         my $errmsg = $result[1];
         $mypdu->soft_close();

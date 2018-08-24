@@ -4,7 +4,7 @@ B<nodeset> - set the boot state for a noderange
 
 =head1 B<Synopsis>
 
-B<nodeset> I<noderange> [B<boot> | B<stat> [B<-a>]| B<offline> | B<runcmd=bmcsetup> | B<osimage>[=I<imagename>] | B<shell> | B<shutdown>] [B<-V>|B<--verbose>]
+B<nodeset> I<noderange> [B<boot> | B<stat> [B<-a>]| B<offline> | B<runcmd=>I<command> | B<osimage>[=I<imagename>] | B<shell> | B<shutdown>] [B<-V>|B<--verbose>]
 
 B<nodeset> I<noderange> B<osimage>[=I<imagename>] [B<--noupdateinitrd>] [B<--ignorekernelchk>]
 
@@ -61,11 +61,11 @@ Cleanup the current pxe/tftp boot configuration files for the nodes requested
 
 =item B<osimage>|B<osimage=>I<imagename>
 
-Prepare server for installing a node using the specified os image. The os image is defined in the I<osimage> table and I<linuximage> table. If the <imagename> is omitted, the os image name will be obtained from I<nodetype.provmethod> for the node.  
+Prepare server for installing a node using the specified os image. The os image is defined in the I<osimage> table and I<linuximage> table. If the <imagename> is omitted, the os image name will be obtained from I<nodetype.provmethod> for the node.
 
 =item B<--noupdateinitrd>
 
-Skip the rebuilding of initrd when the 'netdrivers', 'drvierupdatesrc' or 'osupdatename' were set for injecting new drivers to initrd. But, the B<geninitrd> command
+Skip the rebuilding of initrd when the 'netdrivers', 'driverupdatesrc' or 'osupdatename' were set for injecting new drivers to initrd. But, the B<geninitrd> command
 should be run to rebuild the initrd for new drivers injecting. This is used to improve the performance of B<nodeset> command.
 
 =item B<--ignorekernelchk>
@@ -74,16 +74,15 @@ Skip the kernel version checking when injecting drivers from osimage.driverupdat
 
 =item B<runimage>=I<task>
 
-If you would like to run a task after deployment, you can define that task with this attribute.    
+If you would like to run a task after deployment, you can define that task with this attribute.
 
 =item B<stat>
 
 Display the current boot loader config file description for the nodes requested. When B<disjointdhcps> is set, using B<-a> to display them on all available service nodes.
 
-=item B<runcmd=bmcsetup>
+=item B<runcmd=>I<command>
 
-This instructs the node to boot to the xCAT nbfs environment and proceed to configure BMC
-for basic remote access.  This causes the IP, netmask, gateway, username, and password to be programmed according to the configuration table.
+This instructs the node to boot to the xCAT genesis environment and specified command to be executed.
 
 =item B<shell>
 
@@ -139,6 +138,11 @@ To setup to install mycomputeimage on the compute node group.
 To run http://$master/image.tgz  after deployment:
 
  nodeset $node runimage=http://$MASTER/image.tgz
+
+=item 3.
+Boot node1 into xCAT genesis environment and execute bmcsetup script. This causes the IP, netmask, gateway, username, and password to be programmed according to the configuration in node object definition.
+
+ rinstall node1 runcmd=bmcsetup
 
 =back
 

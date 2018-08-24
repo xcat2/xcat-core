@@ -101,7 +101,7 @@ Output is similar to:
  node4: Resolved 52.
  node4: Resolved 58.
 
-=back 
+=back
 
 =head1 SEE ALSO
 

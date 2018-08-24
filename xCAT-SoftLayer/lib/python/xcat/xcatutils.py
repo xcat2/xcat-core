@@ -10,8 +10,8 @@ class xCatError(Exception):
     def __str__(self):
         return repr(self.value)
 
-def isMounted(mountPoint): 
-    if os.path.ismount(mountPoint): 
+def isMounted(mountPoint):
+    if os.path.ismount(mountPoint):
         return True
     else:
         return False
@@ -33,21 +33,21 @@ def isRhel():
     myDistro = platform.linux_distribution()
     if "Red Hat Enterprise Linux Server" or "CentOS" in myDistro:
        return True
-    else: 
+    else:
        return False
 
-def isSles(): 
+def isSles():
     myDistro = platform.linux_distribution()
     if "SUSE Linux Enterprise Server" in myDistro:
        return True
-    else: 
+    else:
        return False
 
 def isUbuntu():
     myDistro = platform.linux_distribution()
     if "Ubuntu" in myDistro:
        return True
-    else: 
+    else:
        return False
 
 def getUserInput(question):
@@ -55,31 +55,31 @@ def getUserInput(question):
     return response
 
 def filterInstalledPackages(pkglist=[]):
-    fulllist = "" 
+    fulllist = ""
 
     if isRhel():
         # using YUM
-        import yum 
+        import yum
         yb = yum.YumBase()
 
         for x in pkglist:
             if not yb.rpmdb.searchNevra(name='%s' %(x)):
-                fulllist += "%s " %(x) 
-   
+                fulllist += "%s " %(x)
+
     return fulllist
- 
+
 def installPackages(pkglist=[]):
     fulllist = filterInstalledPackages(pkglist)
 
     if isRhel():
-        if fulllist.strip() != "": 
+        if fulllist.strip() != "":
             cmd = "yum -y install %s" %(fulllist)
             out,err = xcatutils.run_command(cmd)
 
-    elif isSles(): 
+    elif isSles():
         print "Using zyppr..."
     elif isUbuntu():
         print "Using apt-get..."
     else:
-        print "Error!" 
+        print "Error!"
 

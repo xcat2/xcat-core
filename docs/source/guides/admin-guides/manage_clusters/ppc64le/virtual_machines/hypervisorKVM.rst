@@ -30,12 +30,12 @@ Provision Hypervisor
 
         chdef kvmhost1 -p postscripts="xHRM bridgeprereq eth0:br0"
 
-   **Note**: The network bridge name you use should not be the virtual bridges (vbrX) created by libvirt installation  [1]_. 
+   **Note**: The network bridge name you use should not be the virtual bridges (vbrX) created by libvirt installation  [1]_.
 
 
 #. Customize the hypervisor node definition to mount the shared kvm storage directory on management node **(optional)**
 
-   If the shared kvm storage directory on the management node has been exported, it can be mounted on PowerKVM hypervisor for virtual machines hosting. 
+   If the shared kvm storage directory on the management node has been exported, it can be mounted on PowerKVM hypervisor for virtual machines hosting.
 
    An easy way to do this is to create another postscript named "mountvms" which creates a directory **/install/vms** on hypervisor and then mounts **/install/vms** from the management node, the content of "mountvms" can be: ::
 
@@ -56,10 +56,10 @@ Provision Hypervisor
     rpower kvmhost1 boot
 
 
-Create network bridge on hypervisor 
+Create network bridge on hypervisor
 ------------------------------------
 
-To launch VMs, a network bridge must be created on the KVM hypervisor. 
+To launch VMs, a network bridge must be created on the KVM hypervisor.
 
 If the hypervisor is provisioned successfully according to the steps described above, a network bridge will be created and attached to a physical interface. This can be checked by running ``brctl show`` on the hypervisor to show the network bridge information, please make sure a network bridge has been created and configured according to the parameters passed to postscript "xHRM" ::
 

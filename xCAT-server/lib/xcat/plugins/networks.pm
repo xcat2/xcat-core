@@ -120,7 +120,7 @@ sub process_request
 #----------------------------------------------------------------------------
 
 =head3  donets
-			Get network information and display or create xCAT network defs 
+			Get network information and display or create xCAT network defs
 
         Returns:
             0 - OK
@@ -358,7 +358,7 @@ sub donets
                         if ($foundmatch) {
                             next;
                         }
-                        
+
                         # add new network def
                         $nettab->setAttribs({ 'net' => $net, 'mask' => $netmask }, { 'netname' => $netname, 'gateway' => $gateway, 'mgtifname' => $i });
                     }
@@ -543,7 +543,7 @@ sub donets
                     push @{ $rsp->{data} }, "    mgtifname=$mgtifname";
                     if ($mtu)
                     {
-                        push @{ $rsp->{data} }, "    mtu=$mtu";                      
+                        push @{ $rsp->{data} }, "    mtu=$mtu";
                     }
                 } else {
                     # if this net entry exists, go to next line in networks table

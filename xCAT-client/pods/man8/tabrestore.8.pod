@@ -35,7 +35,7 @@ Display version.
 
 =item B<-a|--addrows>
 
-Add rows from the CSV file to the table instead of replacing the table with the CSV file.  
+Add rows from the CSV file to the table instead of replacing the table with the CSV file.
 
 =back
 

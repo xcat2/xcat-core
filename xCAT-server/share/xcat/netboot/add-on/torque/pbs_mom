@@ -28,7 +28,7 @@ fi
 
 # let see how we were called
 case "$1" in
-	start) 
+	start)
 		if [ -r /etc/security/access.conf.BOOT ]
 		then
 			cp -f /etc/security/access.conf.BOOT /etc/security/access.conf

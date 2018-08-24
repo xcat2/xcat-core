@@ -1,0 +1,34 @@
+#!/bin/bash
+
+#4 implicit arguments passed by genimage
+rootimg_dir=$1
+osver=$2
+arch=$3
+profile=$4
+
+#user-specified arguments in "postinstall" attribute
+#the name of the service to inject
+servicename=$5
+#the full path of the service unit file to inject on management node(non-chroot)
+servicefile=$6
+
+echo servicename=$servicename
+echo servicefile=$servicefile
+
+#append the suffix ".service" to service name if not specified
+echo "$servicename" |grep -q -e "\.service$" || servicename=$servicename.service
+
+if [ -e "$rootimg_dir/usr/lib/systemd/" ]; then
+            #if systemd is the service management framework for the diskless image
+            #enable the xcatpostinit1.service
+            destfile="$rootimg_dir/etc/systemd/system/$servicename"
+            if [ -e "$rootimg_dir/etc/systemd/system/$servicename" ]; then
+                rm -rf $destfile
+            fi
+            cp -f $servicefile $destfile
+            rm -rf "$rootimg_dir/etc/systemd/system/multi-user.target.wants/$servicename"
+            oldpwd=$(pwd)
+            cd $rootimg_dir/etc/systemd/system/multi-user.target.wants/
+            ln -s ../$servicename "$rootimg_dir/etc/systemd/system/multi-user.target.wants/$servicename"
+            cd $oldpwd
+fi

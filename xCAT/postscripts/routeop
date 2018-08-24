@@ -2,9 +2,9 @@
 # IBM(c) 2011EPL license http://www.eclipse.org/legal/epl-v10.html
 
 #-------------------------------------------------------------------------------
-#=head1  routeop  
+#=head1  routeop
 #=head2  routeop is called by makeroutes command and setuproutes postscript to
-#        setup a route on a node.    
+#        setup a route on a node.
 #        The syntax is:
 #          routeop add/delete net mask gateway ifname   #NOTE: the add/delete will be
 #                 obsoleted, using 'replace' is recommended.
@@ -159,9 +159,9 @@ route_exists()
                     tmp1=`echo $x|cut -d',' -f1`
                     gw1=`echo $x|cut -d',' -f2`
 
-                    n1=`echo $net |cut -d'.' -f1`           
-                    n2=`echo $net |cut -d'.' -f2`           
-                    n3=`echo $net |cut -d'.' -f3`           
+                    n1=`echo $net |cut -d'.' -f1`
+                    n2=`echo $net |cut -d'.' -f2`
+                    n3=`echo $net |cut -d'.' -f3`
                     n4=`echo $net |cut -d'.' -f4`
 
                     netnum="$(( ($n1 << 24) + ($n2 << 16) + ($n3 << 8) + $n4 ))"
@@ -171,7 +171,7 @@ route_exists()
                         bits="$(( $bits - 1 ))"
                         netnum="$(( $netnum >> 1 ))"
                     done
-                
+
                     tmp2="$net/$bits";
                     #echo "$tmp2=$tmp2"
                     if [ "$tmp1" = "$tmp2" ] && [ "$gw" = "$gw1" ]; then
@@ -182,12 +182,12 @@ route_exists()
                 done
         fi
     fi
-    
+
     echo $ret
 }
 
-# handle the route replace operation that adding the setting to configuration file 
-replace_persistent_route() 
+# handle the route replace operation that adding the setting to configuration file
+replace_persistent_route()
 {
     net=$1;
     mask=$2;
@@ -217,7 +217,7 @@ replace_persistent_route()
         routedest="$net/$mask"
         routedest1="$net\/$mask"
     fi
-    
+
     case $OS_name in
         sles)
             filename="/etc/sysconfig/network/routes";
@@ -256,9 +256,9 @@ replace_persistent_route()
                 if [ $? -ne 0 ]; then #route does not exist
                     echo $route >> $filename
                     echo "Persistent route \"$route\" has been added in $filename."
-                else 
+                else
                     # replace it
-                    sed -i -e "s/$routedest1.*/$route1/g" $filename
+                    sed -i -e "s/${routedest1}.*/$route1/g" $filename
                     echo "Persistent route \"$route\" has been replaced in $filename."
                 fi
             else
@@ -273,7 +273,7 @@ replace_persistent_route()
                 echo "Error: the device name is necessary to configure static route."
                 return 1
             fi
-            
+
             if echo $net | grep : 2>&1 1>/dev/null
             then
                 # ipv6
@@ -300,16 +300,18 @@ replace_persistent_route()
             if [ "$net" = "default" ]; then
                 filename="/etc/sysconfig/network"
                 route="GATEWAY=$gw"
-                routedest="$route"
+                route1=$route
+                routedest="GATEWAY="
+                routedest1=$routedest
             fi
             if [ -f $filename ]; then
                 egrep "^$routedest" $filename 2>&1 1>/dev/null
                 if [ $? -ne 0 ]; then #route does not exist
                     echo $route >> $filename
                     echo "Persistent route \"$route\" has been added in $filename."
-                else 
+                else
                     # replace it
-                    sed -i -e "s/$routedest1.*/$route1/g" $filename
+                    sed -i -e "s/${routedest1}.*/$route1/g" $filename
                     echo "Persistent route \"$route\" has been replaced in $filename."
                 fi
             else
@@ -317,7 +319,7 @@ replace_persistent_route()
                 echo "Persistent route \"$route\" has been added in $filename."
             fi
         ;;
-        
+
         debian)
             debianpreconf
             matchstr=""
@@ -344,7 +346,7 @@ replace_persistent_route()
             setflag=0
             tempfile="/etc/network/interfaces.d/tmp"
             >$tempfile
-            
+
             while read LINE
             do
                 # replace the existed setting
@@ -375,15 +377,15 @@ replace_persistent_route()
             mv -f $tempfile $filename
             echo "Persistent route \"$cmd\" is added in $filename.;    "
         ;;
-        
+
     esac
     else #AIX
     echo "Adding persistent route on AIX is not supported yet."
     fi
 }
 
-# handle the route add operation that adding the setting to configuration file 
-add_persistent_route() 
+# handle the route add operation that adding the setting to configuration file
+add_persistent_route()
 {
     net=$1;
     mask=$2;
@@ -413,7 +415,7 @@ add_persistent_route()
         if [ "$OS_name" = "redhat" -o "$OS_name" = "debain" ]; then
             echo "Warning: replace operation only supports to add persistent route for sles by now."
             return
-        fi  
+        fi
     fi
 
     case $OS_name in
@@ -471,7 +473,7 @@ add_persistent_route()
                     sed -i -e s/"$xcat_config_end"/"$route1\n$xcat_config_end"/g $filename
                 fi
                 echo "Persistent route \"$route\" added in $filename."
-            else 
+            else
                 echo "Persistent route \"$route\" already exists in $filename."
             fi
         else
@@ -567,7 +569,7 @@ add_persistent_route()
                             echo "  up route add -net $net netmask $mask gw $gw" >> $tempfile
                             echo "  down route del -net $net netmask $mask gw $gw" >> $tempfile
             fi
-                    fi 
+                    fi
                 fi
                 mv -f $tempfile $filename
                 echo "Persistent route \"$matchstr\" added in $filename."
@@ -609,7 +611,7 @@ add_persistent_route()
                     sed -i -e s/"$xcat_config_end"/"$route1\n$xcat_config_end"/g $filename
                 fi
                 echo "Persistent route \"$route\" added in $filename."
-            else 
+            else
                 echo "Persistent route \"$route\" already exists in $filename."
             fi
         else
@@ -626,7 +628,7 @@ add_persistent_route()
     fi
 }
 
-rm_persistent_route() 
+rm_persistent_route()
 {
     net=$1;
     mask=$2;
@@ -770,7 +772,7 @@ rm_persistent_route()
     echo "Removing persistent route on AIX is not supported yet."
     fi
 }
-   
+
 
 
 if [ "$op" = "add" ]; then
@@ -785,8 +787,8 @@ if [ "$op" = "add" ]; then
         else
                     cmd="ip -6 route add $net/$mask via $gw"
         fi
-            else 
-                # AIX TODO 
+            else
+                # AIX TODO
                 cmd="ip -6 route add $net/$mask via $gw"
             fi
         else
@@ -796,7 +798,7 @@ if [ "$op" = "add" ]; then
         else
                     cmd="route add -net $net netmask $mask gw $gw"
         fi
-            else 
+            else
                 cmd="route add -net $net -netmask $mask $gw"
             fi
         fi
@@ -818,8 +820,8 @@ if [ "$op" = "add" ]; then
         else
             echo "The temporary route ($net $mask $gw) already exists."
         fi
-    fi  
-  
+    fi
+
     #add persistent route
     add_persistent_route $net $mask $gw $ifname
 elif [ "$op" = "delete" ]; then
@@ -834,7 +836,7 @@ elif [ "$op" = "delete" ]; then
         else
                     cmd="ip -6 route delete $net/$mask via $gw"
         fi
-            else 
+            else
                 # AIX TODO
                 cmd="ip -6 route delete $net/$mask via $gw"
             fi
@@ -845,7 +847,7 @@ elif [ "$op" = "delete" ]; then
         else
                     cmd="route delete -net $net netmask $mask gw $gw"
         fi
-            else 
+            else
                 cmd="route delete -net $net -netmask $mask $gw"
             fi
         fi
@@ -860,14 +862,14 @@ elif [ "$op" = "delete" ]; then
     else
         echo "The temporary route ($net $mask $gw) does not exist."
     fi
-    
+
     #remove the persistent route
     rm_persistent_route $net $mask $gw $ifname
 elif [ "$op" = "replace" ]; then
     if [ $nummask -ne 1 ]; then
         mask=$(v4mask2prefix $mask)
     fi
-    
+
     if echo $net | grep : 2>&1 1>/dev/null
     then # ipv6
         if [ "$(uname -s)" = "Linux" ]; then
@@ -902,7 +904,7 @@ elif [ "$op" = "replace" ]; then
             fi
         fi
     fi
-    
+
     echo "Adding temporary route: $cmd;    "
     result=`$cmd 2>&1`
     code=$?
@@ -911,14 +913,14 @@ elif [ "$op" = "replace" ]; then
         echo "Error: $cmd [error code=$code, result=$result]"
         exit 1;
     fi
-    
+
     #replace the persistent route
-    # the $cmd param is used for Ubuntu since it needs to run the specific cmd to enable 
+    # the $cmd param is used for Ubuntu since it needs to run the specific cmd to enable
     # the route during the up of the device
     replace_persistent_route $net $mask $gw $ifname
     if [ $? -ne 0 ]; then
         exit 1
-    fi 
+    fi
 fi
 
 exit 0

@@ -102,8 +102,8 @@ sub process_request {
     my $envars;
     my $help;
     my $version;
-    my $lock;  
- 
+    my $lock;
+
     GetOptions(
         "profile|p=s" => \$profile,
         "arch|a=s"    => \$arch,
@@ -212,7 +212,7 @@ sub process_request {
     }
     $rootimg_dir = "$destdir/rootimg";
 
-    
+
     my $retcode;
     ($retcode,$lock)=xCAT::Utils->acquire_lock_imageop($rootimg_dir);
     if($retcode){
@@ -428,13 +428,19 @@ sub process_request {
     if (not $nosyncfiles) {
         # sync fils configured in the synclist to the rootimage
         $syncfile = xCAT::SvrUtils->getsynclistfile(undef, $osver, $arch, $profile, "netboot", $imagename);
-        if ( defined($syncfile) && -f $syncfile && -d $rootimg_dir) {
+        if ( defined($syncfile) && -d $rootimg_dir) {
             my $myenv='';
             if($envars){
                 $myenv.=" XCAT_OSIMAGE_ENV=$envars";
             }
-            print "Syncing files from $syncfile to root image dir: $rootimg_dir\n";
-            system("$myenv $::XCATROOT/bin/xdcp -i $rootimg_dir -F $syncfile");
+            my @filelist = split ',', $syncfile;
+            foreach my $synclistfile (@filelist) {
+                if ( -f $synclistfile) {
+                    print "Syncing files from $synclistfile to root image dir: $rootimg_dir\n";
+                    my $cmd = "$myenv $::XCATROOT/bin/xdcp -i $rootimg_dir -F $synclistfile";
+                    xCAT::Utils->runcmd($cmd, 0, 1);
+                }
+            }
         }
     } else {
         print "Bypass of syncfiles requested, will not sync files to root image directory.\n";
@@ -501,8 +507,8 @@ sub process_request {
     }
 
     $suffix = $method.".".$suffix;
-    unlink glob("$destdir/rootimg.*");   
- 
+    unlink glob("$destdir/rootimg.*");
+
     if ($method =~ /cpio/) {
         if (!$excludestr) {
             $excludestr = "find . -xdev -print0 | cpio -H newc -o -0 | $compress -c - > ../rootimg.$suffix";
@@ -552,7 +558,7 @@ sub process_request {
         $callback->({ info => ["$outputmsg"] });
     }else{
         $callback->({ info => ["$outputmsg"] });
-        $callback->({ error => ["packimage failed while running: \n $excludestr"], errorcode => [1] }); 
+        $callback->({ error => ["packimage failed while running: \n $excludestr"], errorcode => [1] });
         system("rm -rf $xcat_packimg_tmpfile");
         return 1;
     }

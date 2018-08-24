@@ -65,7 +65,7 @@ Output is similar to:
  |__mycn12
  |__mycn13
  ......
-        
+
 =item 2.
 
 To display the tree of service node hierarchy for service node "mysn01".

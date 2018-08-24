@@ -9,7 +9,7 @@ You can run ``tabdump`` command to get all the xCAT database tables. Or run ``ta
 
     $ tabdump
     $ tabdump site
-    $ tabdump -d site 
+    $ tabdump -d site
     $ man site
 
 For a complete reference, see the man page for xcatdb: ``man xcatdb``.
@@ -22,7 +22,7 @@ For a complete reference, see the man page for xcatdb: ``man xcatdb``.
 
 * **policy table**
 
-  Controls who has authority to run specific xCAT operations. It is the Access Control List (ACL) in xCAT. 
+  Controls who has authority to run specific xCAT operations. It is the Access Control List (ACL) in xCAT.
 
 * **passwd table**
 
@@ -34,7 +34,7 @@ For a complete reference, see the man page for xcatdb: ``man xcatdb``.
 
   You can manipulate the networks through ``*def command`` against the **network object**. ::
 
-    $ lsdef -t network 
+    $ lsdef -t network
 
 * **...**
 
@@ -66,5 +66,5 @@ xCAT offers 5 commands to manipulate the database tables:
 
 .. toctree::
    :maxdepth: 2
-          
-   regexp_db.rst 
+
+   regexp_db.rst

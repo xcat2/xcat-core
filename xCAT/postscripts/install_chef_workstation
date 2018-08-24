@@ -1,4 +1,4 @@
-#!/bin/bash 
+#!/bin/bash
 # IBM(c) 2013 EPL license http://www.eclipse.org/legal/epl-v10.html
 #####################################################
 #=head1  install_chef_client
@@ -89,7 +89,7 @@ if [ $os == "ubuntu" ]; then
     #urelease="precise" #default release name
     urelease=`cat /etc/lsb-release |grep DISTRIB_CODENAME |cut -d= -f2`
 
-    
+
     hostname=`hostname -f`
     ##hostname="10.1.0.82"
 
@@ -103,16 +103,16 @@ deb http://us.archive.ubuntu.com/ubuntu/ ${urelease}-updates universe\n
 
     # download the chef-server deb packages
     #wget https://opscode-omnitruck-release.s3.amazonaws.com/ubuntu/12.04/x86_64/chef-server_11.0.6-1.ubuntu.12.04_amd64.deb
-    rm -rf /tmp/chef.deb 
+    rm -rf /tmp/chef.deb
     wget -N --waitretry=10 --random-wait -T 60  $chefurl   -O /tmp/chef.deb
     rc=$?
     if [ $rc -eq 0 ] && [ -f /tmp/chef.deb ]; then
         # install it
         dpkg -i /tmp/chef.deb
-    else 
+    else
         echo "Cannot download $chefurl"
         exit 1
-    fi   
+    fi
 
     apt-get -y update
 

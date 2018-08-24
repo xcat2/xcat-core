@@ -2,15 +2,15 @@
 
 ###########################################################################
 #
-# The configCECs script is written in ksh, and used to create a full  
-# system partition for each CECs Managed by the HMC. It will use ssh to 
-# login the HMC with the hscroot userid in order to rename the CECs based 
-# on a certain pattern specified through command line and create full 
-# partition for all the CECs. 
+# The configCECs script is written in ksh, and used to create a full
+# system partition for each CECs Managed by the HMC. It will use ssh to
+# login the HMC with the hscroot userid in order to rename the CECs based
+# on a certain pattern specified through command line and create full
+# partition for all the CECs.
 # Command Syntax:
-#      configCECs -H hmc_list [-c cec_format] [-l lpar_format] [-p profile_format] 
+#      configCECs -H hmc_list [-c cec_format] [-l lpar_format] [-p profile_format]
 #                   [--frame_pad_len len_number] [--node_pad_len len_number]
-#                   [--cage_pad_len len_number] 
+#                   [--cage_pad_len len_number]
 #                   [--allocate_type always_all | always_list | conditional]
 #                   [--exclude_hw ]
 #                   [-h]
@@ -33,15 +33,15 @@
 #                   Specifies the number of digits used for the cage numbers, it will be zero filled if
 #                   needed. The default value is no padding.
 #        --allocate_type
-#                   Specifies the allocation method that is used to allocate resources to full system 
+#                   Specifies the allocation method that is used to allocate resources to full system
 #                   partition. The supported allocation methods are always_all, always_list and conditional.
 #                   The default method is always_all. always_all indicates to always use the 'all resources'
 #                   LPAR flag; always_list indicates to always explicitly list the devices in the LPAR; and
 #                   conditional indicates to use the 'all resources' LPAR flag if not --exclude_hw is found,
-#                   otherwise use an explicit list for the hardware. 
+#                   otherwise use an explicit list for the hardware.
 #        --exclude_hw
-#                   Specifies a comma-separated list of hardware names or 'device id's that do not need to 
-#                   assign. The supported hardware names are RIO and 10G, RIO indicates Galaxy 1 HCA used 
+#                   Specifies a comma-separated list of hardware names or 'device id's that do not need to
+#                   assign. The supported hardware names are RIO and 10G, RIO indicates Galaxy 1 HCA used
 #                   for RIO connection in IH nodes; 10G indicates 2-port 10G integrated adapter in IH nodes.
 #                   It can only be used with --allocate_type is always_list or conditional.
 #        -h         Display usage information.
@@ -78,9 +78,9 @@ HAVE_PROCESSED_CAGE=""
 ###########################################################################
 usage()
 {
-echo "Usage: configCECs -H hmc_list [-c cec_format] [-l lpar_format] [-p profile_format] 
+echo "Usage: configCECs -H hmc_list [-c cec_format] [-l lpar_format] [-p profile_format]
                    [--frame_pad_len len_number] [--node_pad_len len_number]
-                   [--cage_pad_len len_number] 
+                   [--cage_pad_len len_number]
                    [--allocate_type always_all | always_list | conditional]
                    [--exclude_hw ]
                    [-h]
@@ -103,15 +103,15 @@ echo "Usage: configCECs -H hmc_list [-c cec_format] [-l lpar_format] [-p profile
                    Specifies the number of digits used for the cage numbers, it will be zero filled if
                    needed. The default value is no padding.
         --allocate_type
-                   Specifies the allocation method that is used to allocate resources to full system 
+                   Specifies the allocation method that is used to allocate resources to full system
                    partition. The supported allocation methods are always_all, always_list and conditional.
                    The default method is always_all. always_all indicates to always use the 'all resources'
                    LPAR flag; always_list indicates to always explicitly list the devices in the LPAR; and
                    conditional indicates to use the 'all resources' LPAR flag if not --exclude_hw is found,
-                   otherwise use an explicit list for the hardware. 
+                   otherwise use an explicit list for the hardware.
         --exclude_hw
-                   Specifies a comma-separated list of hardware names or 'device id's that do not need to 
-                   assign. The supported hardware names are RIO and 10G, RIO indicates Galaxy 1 HCA used 
+                   Specifies a comma-separated list of hardware names or 'device id's that do not need to
+                   assign. The supported hardware names are RIO and 10G, RIO indicates Galaxy 1 HCA used
                    for RIO connection in IH nodes; 10G indicates 2-port 10G integrated adapter in IH nodes.
                    It can only be used with --allocate_type is always_list or conditional.
         -h         Display usage information."
@@ -292,7 +292,7 @@ for i in $args; do
         shift;
         CECFORMAT=$1;
         shift;;
-    -l) 
+    -l)
         shift;
         LPARFORMAT=$1;
         shift;;
@@ -569,7 +569,7 @@ for HMC in $HMC_LIST; do
                         #                                                 #
                         # If the current CEC name needs to be changed then#
                         # build the 'chsyscfg' command and append it to   #
-                        # the file. 
+                        # the file.
                         #                                                 #
                         ###################################################
                         if [[ "$CEC_NAME" == "$CEC_NEW_NAME" ]]; then

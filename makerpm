@@ -24,7 +24,7 @@ function xcat_probe_copy {
    fi
 }
 
-function xcat_probe_cleanup { 
+function xcat_probe_cleanup {
    RPMNAME=${1}
    if [ $RPMNAME = "xCAT-probe" ]; then
        rm -rf ${RPMNAME}/lib/perl/xCAT/
@@ -45,22 +45,22 @@ function makenoarch {
 	else	# linux
 		echo "Building $RPMROOT/RPMS/noarch/$RPMNAME-$VER-snap*.noarch.rpm $EMBEDTXT..."
 		# TODO: should fix this up, this is a hack for the new build machine
-		if [ $RPMNAME = "xCAT-UI" ]; then 
+		if [ $RPMNAME = "xCAT-UI" ]; then
 			# Only if the old compiler.jar file does not exist.....
-			if [ ! -e /xcat2/build/tools/compiler.jar ]; then 
+			if [ ! -e /xcat2/build/tools/compiler.jar ]; then
 				# look for the dynamic location of the compiler.jar file
 				DIRNAME=`dirname $(readlink -f $0)`
 				COMPILER_JAR=`echo "${DIRNAME%%linux_rpm/*}tools/compiler.jar"`
-				if [ -f $COMPILER_JAR ]; then 
+				if [ -f $COMPILER_JAR ]; then
 					sed -i "s#/xcat2/build/tools/compiler.jar#${COMPILER_JAR}#g" xCAT-UI/xCAT-UI.spec
-				else 
+				else
 					# In c910, if using the old buildxcat scripts...
 					COMPILER_JAR=`echo "${DIRNAME%%old/*}xcat2/tools/compiler.jar"`
-					if [ -f $COMPILER_JAR ]; then 
+					if [ -f $COMPILER_JAR ]; then
 						sed -i "s#/xcat2/build/tools/compiler.jar#${COMPILER_JAR}#g" xCAT-UI/xCAT-UI.spec
 					fi
 				fi
-			fi 
+			fi
 		fi
 
                 xcat_probe_copy ${RPMNAME}
@@ -150,7 +150,7 @@ function makexcat {
 			cp xcat.conf.apach24 $RPMROOT/SOURCES
 			cp xCATSN $RPMROOT/SOURCES
                         cp -a ../xCAT/etc/rsyslog.d $RPMROOT/
-                        cp -a ../xCAT/etc/logrotate.d $RPMROOT/ 
+                        cp -a ../xCAT/etc/logrotate.d $RPMROOT/
 			cd - >/dev/null
 		elif [ "$RPMNAME" = "xCAT-buildkit" ]; then
 			ARCH="noarch"
@@ -180,7 +180,7 @@ function makexcat {
 function makeironic {
 	RPMNAME="$1"
 	ARCH="$2"
-	cd `dirname $0`/$RPMNAME    
+	cd `dirname $0`/$RPMNAME
 	cp -rf ironic_baremetal /tmp/
 	cd /tmp/ironic_baremetal
 	git init
@@ -295,7 +295,7 @@ elif [ "$1" = "xCAT-genesis-scripts" ]; then
 	exportEmbed $3
 	makegenesisscripts $1 $2
 elif [ "$1" = "xCAT-OpenStack-ironic" ]; then
-	makeironic $1 $2    
+	makeironic $1 $2
 else	# must be one of the noarch rpms
 	exportEmbed $2
 	makenoarch $1

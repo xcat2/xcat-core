@@ -1,38 +1,38 @@
-#!/bin/sh 
+#!/bin/sh
 #
 #
 # Sample script to customize options for PE
 # For AIX:
 #    TBD
 # For Linux:
-#    - Create a smaller PNSD log file in /tmp 
+#    - Create a smaller PNSD log file in /tmp
 #    - Configure poe.limits file
 #    - Generate and store checkpoint key
 #    - BSR support configuration
 
 OS=`uname`
 
-# On AIX, need to correctly configure LAPI kernel extensions on a 
+# On AIX, need to correctly configure LAPI kernel extensions on a
 # diskless node boot
 # (added for PE 1.2 and newer releases)
 if [ "$OS" == "AIX" ]; then
   if [ "$NODESETSTATE" = "netboot" -o \
        "$NODESETSTATE" = "statelite" -o \
        "$NODESETSTATE" = "diskless" -o \
-       "$NODESETSTATE" = "dataless" ]; then 
+       "$NODESETSTATE" = "dataless" ]; then
        # Unconfigure any existing LAPI kernel extension
        if [ -x /etc/methods/ucfgzcmem ] ; then
-           /etc/methods/ucfgzcmem 
+           /etc/methods/ucfgzcmem
        fi
        # Configure the LAPI kernel extension at the latest level
        if [ -x /etc/methods/cfgzcmem ] ; then
-           /etc/methods/cfgzcmem 
+           /etc/methods/cfgzcmem
        fi
   fi
 fi
 
 # Configure the PNSD.cfg to use a smaller log so it doesn't use so much memory
-# for a stateless image.  Normally, pnsd creates this file if it does not 
+# for a stateless image.  Normally, pnsd creates this file if it does not
 # exist, but it will not fill it in if it does exist.
 if [ ! -f $installroot/etc/PNSD.cfg ]; then
     echo "log_file = /tmp/serverlog" > $installroot/etc/PNSD.cfg
@@ -116,7 +116,7 @@ if [ "$OS" == "AIX" ]; then
     /usr/sbin/trustchk -ry ALL >/dev/null 2>&1
 fi
 
-# BSR configuration, uncomment the following lines to enable BSR configuration on Power Linux cluter.  
+# BSR configuration, uncomment the following lines to enable BSR configuration on Power Linux cluter.
 #if [ "$OS" != "AIX" ]; then
 #    if [ $NODESETSTATE == "install" ] || [ $NODESETSTATE == "boot" ]; then
 #        groupadd bsr

@@ -13,7 +13,7 @@ check:rc==0
 cmd:xdsh $$CN "chown -R xyzzy ~xyzzy/.ssh"
 check:rc==0
 cmd:su -c "xdcp $$CN /etc/sysctl.conf /tmp/sysctl.conf" - xyzzy
-check:rc==0 
+check:rc==0
 cmd:xdsh $$CN "stat -c '%U' /tmp/sysctl.conf"
 check:output=~xyzzy
 cmd:xdsh $$CN "userdel xyzzy"

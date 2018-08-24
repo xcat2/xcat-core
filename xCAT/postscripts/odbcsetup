@@ -6,12 +6,12 @@
 
 #-----------------------------------------------------------------------------
 
-=head1   odbcsetup 
+=head1   odbcsetup
 
- This postscript sets up the odbc for the database running on the Client 
+ This postscript sets up the odbc for the database running on the Client
  machine usually the Service Node.
  The xCAT service node client and the DB client should have already been
- installed on the node, before this postscript is run. 
+ installed on the node, before this postscript is run.
 =cut
 
 #-----------------------------------------------------------------------------

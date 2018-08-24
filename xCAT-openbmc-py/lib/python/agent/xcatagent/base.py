@@ -15,13 +15,13 @@ class BaseManager(object):
         try:
             __import__(module_name)
         except ImportError as err:
-            raise ImportError(err) 
+            raise ImportError(err)
 
         class_name = MODULE_MAP[name]
         return utils.class_func(module_name, class_name)
 
     def process_nodes_worker(self, name, classname, nodes, nodeinfo, command, args):
-        
+
         module_name = 'xcatagent.%s' % name
         obj_func = utils.class_func(module_name, classname)
 

@@ -58,7 +58,7 @@ cmd:if [[ "__GETNODEATTR($$SN,os)__" =~ "rh" ]]; then path="rh";elif [[ "__GETNO
 check:rc==0
 
 
-cmd:path="/install/netboot/__GETNODEATTR($$SN,os)__/__GETNODEATTR($$SN,arch)__/service"; if [ -d "$path" ]; then mv $path $path."org"; fi; mkdir -p $path 
+cmd:path="/install/netboot/__GETNODEATTR($$SN,os)__/__GETNODEATTR($$SN,arch)__/service"; if [ -d "$path" ]; then mv $path $path."org"; fi; mkdir -p $path
 check:rc==0
 cmd:chdef -t osimage __GETNODEATTR($$SN,os)__-__GETNODEATTR($$SN,arch)__-netboot-service rootimgdir=/install/netboot/__GETNODEATTR($$SN,os)__/__GETNODEATTR($$SN,arch)__/service
 check:rc==0
@@ -73,7 +73,7 @@ check:rc==0
 cmd:if [ ! -d /tmp/mountoutput ]; then mkdir -p /tmp/mountoutput; fi
 cmd:mount |sort > /tmp/mountoutput/file.org
 
-cmd:genimage __GETNODEATTR($$SN,os)__-__GETNODEATTR($$SN,arch)__-netboot-service 
+cmd:genimage __GETNODEATTR($$SN,os)__-__GETNODEATTR($$SN,arch)__-netboot-service
 check:rc==0
 
 cmd:mount |sort > /tmp/mountoutput/file.new
@@ -81,7 +81,7 @@ cmd:diff -y /tmp/mountoutput/file.org /tmp/mountoutput/file.new
 check:rc==0
 cmd:rm -rf /tmp/mountoutput
 
-cmd:packimage __GETNODEATTR($$SN,os)__-__GETNODEATTR($$SN,arch)__-netboot-service 
+cmd:packimage __GETNODEATTR($$SN,os)__-__GETNODEATTR($$SN,arch)__-netboot-service
 check:rc==0
 
 cmd:rinstall $$SN osimage=__GETNODEATTR($$SN,os)__-__GETNODEATTR($$SN,arch)__-netboot-service

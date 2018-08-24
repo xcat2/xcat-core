@@ -1,12 +1,12 @@
 os: linux
 dist: trusty
 sudo: required
-before_install: 
+before_install:
 - sudo apt-get install -y git reprepro devscripts debhelper libsoap-lite-perl libdbi-perl quilt openssh-server dpkg looptools genometools software-properties-common
 - perl -v
 - echo "yes" | sudo cpan -f -i Capture::Tiny
 
-script: 
+script:
 - echo $TRAVIS_BUILD_ID
 - echo $TRAVIS_EVENT_TYPE
 - echo $TRAVIS_BUILD_NUMBER

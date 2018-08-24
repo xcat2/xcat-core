@@ -27,21 +27,21 @@ PPC (with HMC) specific:
 ========================
 
 
-\ **rmhwconn**\  [\ **-V**\ | \ **-**\ **-verbose**\ ] \ *noderange*\ 
+\ **rmhwconn**\  [\ **-V**\ | \ **-**\ **-verbose**\ ] \ *noderange*\
 
 
 PPC (without HMC, using FSPAPI) specific:
 =========================================
 
 
-\ **rmhwconn**\  \ *noderange*\  \ **-T**\  \ *tooltype*\ 
+\ **rmhwconn**\  \ *noderange*\  \ **-T**\  \ *tooltype*\
 
 
 PPC (use HMC as SFP) specific:
 ==============================
 
 
-\ **rmhwconn**\  \ **-s**\ 
+\ **rmhwconn**\  \ **-s**\
 
 
 
@@ -71,22 +71,22 @@ OPTIONS
 
 
 
-\ **-h|-**\ **-help**\ 
- 
+\ **-h|-**\ **-help**\
+
  Display usage message.
- 
 
 
-\ **-V|-**\ **-verbose**\ 
- 
+
+\ **-V|-**\ **-verbose**\
+
  Verbose output.
- 
 
 
-\ **-T**\ 
- 
+
+\ **-T**\
+
  The tooltype is used to communicate to the CEC/Frame. The value could be \ **lpar**\  or \ **fnm**\ . The tooltype value \ **lpar**\  is for xCAT and \ **fnm**\  is for CNM.
- 
+
 
 
 
@@ -107,39 +107,39 @@ EXAMPLES
 
 
 1.
- 
+
  To disconnect all CEC nodes in node group cec from their HMC nodes:
- 
- 
+
+
  .. code-block:: perl
- 
+
    rmhwconn cec
- 
- 
+
+
 
 
 2.
- 
+
  To remove the connection for Frame node frame1:
- 
- 
+
+
  .. code-block:: perl
- 
+
    rmhwconn frame1
- 
- 
+
+
 
 
 3.
- 
+
  To disconnect all CEC nodes in node group cec from their related hardware serveri, using lpar tooltype:
- 
- 
+
+
  .. code-block:: perl
- 
+
    rmhwconn cec -T lpar
- 
- 
+
+
 
 
 

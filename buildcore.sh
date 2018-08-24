@@ -29,8 +29,8 @@
 #        EMBED=<embedded-environment> - the environment for which a minimal version of xcat should be built, e.g. zvm or flex
 #        VERBOSE=1 - to see lots of verbose output
 #        LOG=<filename> - provide an LOG file option to redirect some output into log file
-#        RPMSIGN=0 or RPMSIGN=1 - Sign the RPMs using the keys on GSA, the default is to sign the rpms without RPMSIGN specified
-
+#        GPGSIGN/RPMSIGN=0 or GPGSIGN/RPMSIGN=1 - Sign the RPMs using the keys on GSA, the default is to sign the rpms without GPGSIGN/RPMSIGN specified
+#        DEST=<directory> - provide a directory to contains the build result
 #
 # The following environment variables can be modified if you need
 #
@@ -51,22 +51,8 @@ YUMREPOURL="http://${SERVER}/${FILES_PATH}/xcat/repos/yum"
 if [ "$1" = "-h"  ] || [ "$1" = "-help"  ] || [ "$1" = "--help"  ]; then
     echo "Usage:"
     echo "      ./buildcore.sh [-h | --help]"
-    echo "      ./buildcore.sh [UP=1] [RPMSIGN=1] [EMBED=<embedded-environment>] [COMMITID=<id>] [GITPULL=0]"
+    echo "      ./buildcore.sh [UP=1] [GPGSIGN=1] [EMBED=<embedded-environment>] [COMMITID=<id>] [GITPULL=0]"
     exit 0
-fi
-
-# For users to build from source code, simply run ./buildcore.sh
-#  1. Do not sign RPM by default
-#  2. Build all packages by default
-#  3. Do not upload to sourcefore by default
-if [ -z "$RPMSIGN" ]; then
-    RPMSIGN=0
-fi
-if [ -z "$BUILDALL" ]; then
-    BUILDALL=1
-fi
-if [ -z "$UP" ]; then
-    UP=0
 fi
 
 # These are the rpms that should be built for each kind of xcat build
@@ -96,6 +82,26 @@ if [ "$VERBOSE" = "1" -o "$VERBOSE" = "yes" ]; then
     VERBOSEMODE=1
 fi
 
+# For users to build from source code, simply run ./buildcore.sh
+#  1. Do not sign RPM by default
+#  2. Build all packages by default
+#  3. Do not upload to sourcefore by default
+
+if [ -z "$RPMSIGN" ] && [ -z "$GPGSIGN" ]; then
+    RPMSIGN=0
+elif [ -n "$GPGSIGN" ]; then # use GPGSIGN in first
+    RPMSIGN=$GPGSIGN
+fi
+if [ -z "$RPMSIGN" -o "$RPMSIGN" != "1" ]; then
+    RPMSIGN=0
+fi
+if [ -z "$BUILDALL" ]; then
+    BUILDALL=1
+fi
+if [ -z "$UP" ]; then
+    UP=0
+fi
+
 # Find where this script is located to set some build variables
 cd `dirname $0`
 # strip the /src/xcat-core from the end of the dir to get the next dir up and use as the release
@@ -123,9 +129,16 @@ fi
 
 # for the git case, query the current branch and set REL (changing master to devel if necessary)
 function setbranch {
-    REL=`git name-rev --name-only HEAD`
-    if [ "$REL" = "master" ]; then
+    # Get the current branch name
+    branch=`git rev-parse --abbrev-ref HEAD`
+    if [ "$branch" = "master" ]; then
         REL="devel"
+    elif [ "$branch" = "HEAD" ]; then
+        # Special handling when in a 'detached HEAD' state
+        branch=`git describe --abbrev=0 HEAD`
+        [[ -n "$branch" ]] && REL=`echo $branch|cut -d. -f 1,2`
+    else
+        REL=$branch
     fi
 }
 
@@ -159,15 +172,16 @@ else
 fi
 
 XCATCORE="xcat-core"        # core-snap is a sym link to xcat-core
+SRCD=core-snap-srpms
 
 if [ "$GIT" = "1" ]; then    # using git - need to include REL in the path where we put the built rpms
     #DESTDIR=../../$REL$EMBEDDIR/$XCATCORE
-        DESTDIR=$HOME/xcatbuild/$REL$EMBEDDIR/$XCATCORE
+    [ -z "$DEST" ] && DESTDIR=$HOME/xcatbuild/$REL$EMBEDDIR/$XCATCORE \
+                   || DESTDIR=$DEST/$REL$EMBEDDIR/$XCATCORE
 else
-    #DESTDIR=../..$EMBEDDIR/$XCATCORE
-        DESTDIR=$HOME/xcatbuild/..$EMBEDDIR/$XCATCORE
+    [ -z "$DEST" ] && DESTDIR=$HOME/xcatbuild/..$EMBEDDIR/$XCATCORE \
+                   || DESTDIR=$DEST/xcatbuild/..$EMBEDDIR/$XCATCORE
 fi
-SRCD=core-snap-srpms
 
 # currently aix builds ppc rpms, but someday it should build noarch
 if [ "$OSNAME" = "AIX" ]; then
@@ -437,7 +451,7 @@ fi
 
 # get gpg keys in place
 if [ "$OSNAME" != "AIX" ]; then
-    if [ -z "$RPMSIGN" -o "$RPMSIGN" == "1" ]; then
+    if [ "$RPMSIGN" == "1" ]; then
         mkdir -p $HOME/.gnupg
         for i in pubring.gpg secring.gpg trustdb.gpg; do
             if [ ! -f $HOME/.gnupg/$i ] ||
@@ -453,17 +467,20 @@ if [ "$OSNAME" != "AIX" ]; then
             echo '%_signature gpg' >> $MACROS
         fi
         if ! $GREP '%_gpg_name' $MACROS 2>/dev/null; then
-            echo '%_gpg_name xCAT Security Key' >> $MACROS
+            echo '%_gpg_name xCAT Automatic Signing Key' >> $MACROS
         fi
         echo "Signing RPMs..."
         build-utils/rpmsign.exp `find $DESTDIR -type f -name '*.rpm'` | grep -v -E '(already contains identical signature|was already signed|rpm --quiet --resign|WARNING: standard input reopened)'
         build-utils/rpmsign.exp $SRCDIR/*rpm | grep -v -E '(already contains identical signature|was already signed|rpm --quiet --resign|WARNING: standard input reopened)'
-        createrepo --checksum sha $DESTDIR            # specifying checksum so the repo will work on rhel5
-        createrepo --checksum sha $SRCDIR
+        # RHEL5 is archaic. Use the default hash algorithm to do the checksum.
+        # Which is SHA-256 on RHEL6.
+        createrepo $DESTDIR
+        createrepo $SRCDIR
         rm -f $SRCDIR/repodata/repomd.xml.asc
         rm -f $DESTDIR/repodata/repomd.xml.asc
-        gpg -a --detach-sign $DESTDIR/repodata/repomd.xml
-        gpg -a --detach-sign $SRCDIR/repodata/repomd.xml
+        # Use the xCAT Automatic Signing Key to do the signing
+        gpg -a --detach-sign --default-key 5619700D $DESTDIR/repodata/repomd.xml
+        gpg -a --detach-sign --default-key 5619700D $SRCDIR/repodata/repomd.xml
         if [ ! -f $DESTDIR/repodata/repomd.xml.key ]; then
             ${WGET_CMD} -q -P $DESTDIR/repodata $GSA/keys/repomd.xml.key
         fi
@@ -471,8 +488,8 @@ if [ "$OSNAME" != "AIX" ]; then
             ${WGET_CMD} -P $SRCDIR/repodata $GSA/keys/repomd.xml.key
         fi
     else
-        createrepo --checksum sha $DESTDIR
-        createrepo --checksum sha $SRCDIR
+        createrepo $DESTDIR
+        createrepo $SRCDIR
     fi
 fi
 
@@ -573,6 +590,13 @@ else
 fi
 chgrp $SYSGRP $TARNAME
 chmod g+w $TARNAME
+
+if [ -n "$DEST" ]; then
+    ln -sf $(basename `pwd`)/$TARNAME ../$TARNAME
+    if [ $? != 0 ]; then
+        echo "ERROR: Failed to make symbol link $DEST/$TARNAME"
+    fi
+fi
 
 # Decide whether to upload or not
 if [ -n "$UP" ] && [ "$UP" == 0 ]; then

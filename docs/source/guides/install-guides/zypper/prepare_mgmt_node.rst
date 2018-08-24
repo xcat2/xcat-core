@@ -20,7 +20,7 @@ xCAT uses the zypper package manager on SLES Linux distributions to install and 
 #. Copy the DVD iso file to ``/tmp`` on the Management Node: ::
 
      # This example will use SLE-12-Server-DVD-ppc64le-GM-DVD1.iso
-   
+
 #. Mount the iso to ``/mnt/iso/sles12`` on the Management Node.  ::
 
      mkdir -p /mnt/iso/sles12
@@ -44,12 +44,12 @@ By setting properties on the Management Node before installing the xCAT software
 
    #. To set the hostname of *xcatmn.cluster.com*: ::
 
-       hostname xcatmn.cluster.com 
+       hostname xcatmn.cluster.com
 
    #. Add the hostname to the ``/etc/hostname`` in order to persist the hostname on reboot.
 
-   
-   #. Reboot the server and verify the hostname by running the following commands: 
+
+   #. Reboot the server and verify the hostname by running the following commands:
 
         * ``hostname``
         * ``hostname -d`` - should display the domain

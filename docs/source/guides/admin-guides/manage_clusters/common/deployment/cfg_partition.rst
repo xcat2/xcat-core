@@ -3,16 +3,16 @@
 By default, xCAT will install the operating system on the first disk and with default partitions layout in the node. However, you may choose to customize the disk partitioning during the install process and define a specific disk layout. You can do this in one of two ways: '**partition definition file**' or '**partition definition script**'.
 
 **Notes**
-.. note:: ``partition definition file`` can be used for RedHat, SLES, and Ubuntu.  Because disk configuraiton for Ubuntu is different from RedHat, there may be some special sections required for Ubuntu. 
+.. note:: ``partition definition file`` can be used for RedHat, SLES, and Ubuntu.  Because disk configuraiton for Ubuntu is different from RedHat, there may be some special sections required for Ubuntu.
 
-.. warning:: ``partition  definition script`` has only been tested on RedHat and Ubuntu, use at your own risk for SLES. 
+.. warning:: ``partition  definition script`` has only been tested on RedHat and Ubuntu, use at your own risk for SLES.
 
 .. END_Overview
 
 
 .. BEGIN_partition_definition_file_Overview
 
-You could create a customized osimage partition file, say /install/custom/my-partitions, that contains the disk partitioning definition, then associate the partition file with osimage, the nodeset command will insert the contents of this file directly into the generated autoinst configuration file that will be used by the OS installer. 
+You could create a customized osimage partition file, say /install/custom/my-partitions, that contains the disk partitioning definition, then associate the partition file with osimage, the nodeset command will insert the contents of this file directly into the generated autoinst configuration file that will be used by the OS installer.
 
 .. END_partition_definition_file_Overview
 
@@ -108,7 +108,7 @@ Here is partition definition file example for SLES standard partition in X86_64 
             </partition>
         </partitions>
     </drive>
-	   
+	
 .. END_partition_definition_file_example_SLES_Standard_Partitions_for_X86_64
 
 .. BEGIN_partition_definition_file_example_SLES_LVM_for_ppc64
@@ -223,7 +223,7 @@ The following is an example of a partition definition file for a SLES LVM Partit
 	  <type config:type="symbol">CT_LVM</type>
 	  <use>all</use>
 	</drive>
-	   
+	
 .. END_partition_definition_file_example_SLES_LVM_for_ppc64
 
 .. BEGIN_partition_definition_file_example_SLES_Standard_partition_for_ppc64
@@ -286,7 +286,7 @@ Here is partition definition file example for SLES standard partition in ppc64 m
 
 .. BEGIN_partition_definition_file_example_SLES_RAID1
 
-To partition definition file example for SLES RAID1 refer to `Configure RAID before Deploy OS <http://xcat-docs.readthedocs.org/en/latest/guides/admin-guides/manage_clusters/ppc64le/diskful/customize_image/raid_cfg.html>`_ 
+To partition definition file example for SLES RAID1 refer to `Configure RAID before Deploy OS <http://xcat-docs.readthedocs.org/en/latest/guides/admin-guides/manage_clusters/ppc64le/diskful/customize_image/raid_cfg.html>`_
 
 .. END_partition_definition_file_example_SLES_RAID1
 
@@ -357,14 +357,14 @@ Run the following commands to associate the partition with the osimage: ::
 
 - For RedHat, when nodeset runs and generates the /install/autoinst file for a node, it will replace the #XCAT_PARTITION_START#...#XCAT_PARTITION_END# directives from your osimage template with the contents of your custom partitionfile.
 
-- For Ubuntu, when nodeset runs and generates the /install/autoinst file for a node, it will generate a script to write the partition configuration to /tmp/partitionfile, this script will replace the #XCA_PARTMAN_RECIPE_SCRIPT# directive in /install/autoinst/<node>.pre. 
+- For Ubuntu, when nodeset runs and generates the /install/autoinst file for a node, it will generate a script to write the partition configuration to /tmp/partitionfile, this script will replace the #XCA_PARTMAN_RECIPE_SCRIPT# directive in /install/autoinst/<node>.pre.
 
 .. END_partition_definition_file_Associate_partition_file_with_osimage_common
 
 
 .. BEGIN_Partition_Definition_Script_overview
 
-Create a shell script that will be run on the node during the install process to dynamically create the disk partitioning definition. This script will be run during the OS installer %pre script on RedHat or preseed/early_command on Unbuntu execution and must write the correct partitioning definition into the file /tmp/partitionfile on the node 
+Create a shell script that will be run on the node during the install process to dynamically create the disk partitioning definition. This script will be run during the OS installer %pre script on RedHat or preseed/early_command on Unbuntu execution and must write the correct partitioning definition into the file /tmp/partitionfile on the node
 
 .. END_Partition_Definition_Script_overview
 
@@ -466,7 +466,7 @@ If not specified, the default value will be used.
     nodeset <nodename> osimage=<osimage>
 
 - the 'd:' preceding the filename tells nodeset that this is a partition disk file.
-- For Ubuntu, when nodeset runs and generates the /install/autoinst file for a node, it will generate a script to write the content of the partition disk file to /tmp/install_disk, this context to run the script will replace the #XCA_PARTMAN_DISK_SCRIPT# directive in /install/autoinst/<node>.pre. 
+- For Ubuntu, when nodeset runs and generates the /install/autoinst file for a node, it will generate a script to write the content of the partition disk file to /tmp/install_disk, this context to run the script will replace the #XCA_PARTMAN_DISK_SCRIPT# directive in /install/autoinst/<node>.pre.
 
 .. END_Partition_Disk_File_ubuntu_only
 
@@ -474,23 +474,23 @@ If not specified, the default value will be used.
 
 The disk script contains a script to generate a partitioning disk file named "/tmp/install_disk". for example: ::
 
-    rm /tmp/devs-with-boot 2>/dev/null || true; 
-    for d in $(list-devices partition); do 
-        mkdir -p /tmp/mymount; 
-        rc=0; 
-        mount $d /tmp/mymount || rc=$?; 
-        if [[ $rc -eq 0 ]]; then 
-            [[ -d /tmp/mymount/boot ]] && echo $d >>/tmp/devs-with-boot; 
-            umount /tmp/mymount; 
-        fi 
-    done; 
-    if [[ -e /tmp/devs-with-boot ]]; then 
-        head -n1 /tmp/devs-with-boot | egrep  -o '\S+[^0-9]' > /tmp/install_disk; 
-        rm /tmp/devs-with-boot 2>/dev/null || true; 
-    else 
-        DEV=`ls /dev/disk/by-path/* -l | egrep -o '/dev.*[s|h|v]d[^0-9]$' | sort -t : -k 1 -k 2 -k 3 -k 4 -k 5 -k 6 -k 7 -k 8 -g | head -n1 | egrep -o '[s|h|v]d.*$'`; 
-        if [[ "$DEV" == "" ]]; then DEV="sda"; fi; 
-        echo "/dev/$DEV" > /tmp/install_disk; 
+    rm /tmp/devs-with-boot 2>/dev/null || true;
+    for d in $(list-devices partition); do
+        mkdir -p /tmp/mymount;
+        rc=0;
+        mount $d /tmp/mymount || rc=$?;
+        if [[ $rc -eq 0 ]]; then
+            [[ -d /tmp/mymount/boot ]] && echo $d >>/tmp/devs-with-boot;
+            umount /tmp/mymount;
+        fi
+    done;
+    if [[ -e /tmp/devs-with-boot ]]; then
+        head -n1 /tmp/devs-with-boot | egrep  -o '\S+[^0-9]' > /tmp/install_disk;
+        rm /tmp/devs-with-boot 2>/dev/null || true;
+    else
+        DEV=`ls /dev/disk/by-path/* -l | egrep -o '/dev.*[s|h|v]d[^0-9]$' | sort -t : -k 1 -k 2 -k 3 -k 4 -k 5 -k 6 -k 7 -k 8 -g | head -n1 | egrep -o '[s|h|v]d.*$'`;
+        if [[ "$DEV" == "" ]]; then DEV="sda"; fi;
+        echo "/dev/$DEV" > /tmp/install_disk;
     fi;
 
 If not specified, the default value will be used.
@@ -501,7 +501,7 @@ If not specified, the default value will be used.
     nodeset <nodename> osimage=<osimage>
 
 - the 's:' prefix tells nodeset that is a script, the 's:d:' preceding the filename tells nodeset that this is a script to generate the partition disk file.
-- For Ubuntu, when nodeset runs and generates the /install/autoinst file for a node, this context to run the script will replace the #XCA_PARTMAN_DISK_SCRIPT# directive in /install/autoinst/<node>.pre. 
+- For Ubuntu, when nodeset runs and generates the /install/autoinst file for a node, this context to run the script will replace the #XCA_PARTMAN_DISK_SCRIPT# directive in /install/autoinst/<node>.pre.
 
 .. END_Partition_Disk_Script_ubuntu_only
 

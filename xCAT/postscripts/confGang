@@ -28,7 +28,7 @@ MASTER=$ms_ip
 #echo "I will replace now....
 gmond_conf="/etc/ganglia/gmond.conf"
 gmond_conf_old="/etc/gmond.conf"
- 
+
     if [ $OS == "AIX" ]; then
       echo "into AIX loop"
       logger -t xcat  -p local4.info  "into AIX loop"
@@ -48,7 +48,7 @@ gmond_conf_old="/etc/gmond.conf"
            echo "# xCAT gmond settings done sh" >> $gmond_conf_old
          fi
        fi
-    fi   
+    fi
 
 
     if [ $OS == "AIX" ]; then
@@ -93,7 +93,7 @@ gmond_conf_old="/etc/gmond.conf"
          fi
        fi
      fi
- 
+
 
  if [ $OS != "AIX" ]; then
        echo "not AIX"
@@ -110,11 +110,11 @@ gmond_conf_old="/etc/gmond.conf"
            sed -i 's/mcast_join/#/g' $gmond_conf_old
            sed -i 's/bind/#/g' $gmond_conf_old
            echo "# xCAT gmond settings done sh_old" >> $gmond_conf_old
-         fi 
+         fi
     fi
 fi
 
-     if [ ! -f  $gmond_conf ]; then 
+     if [ ! -f  $gmond_conf ]; then
        #  echo "file not found"
           logger -t xcat  -p local4.warning "gmond configuration file not found"
      fi
@@ -124,4 +124,4 @@ fi
           logger -t xcat -p local4.warning "gmond configuration file not found"
      fi
 
-exit 0 
+exit 0

@@ -11,7 +11,7 @@
 
 # let see how we were called
 case "$1" in
-	start) 
+	start)
 		chkconfig --list pbs_mom 2>&1 | grep :on >/dev/null 2>&1
 		test "$?" = "0" && /etc/rc.d/init.d/pbs_mom start
 		chkconfig --list pbs_sched 2>&1 | grep :on >/dev/null 2>&1

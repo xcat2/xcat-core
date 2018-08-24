@@ -1130,7 +1130,7 @@ sub hexDecode {
 
 =head3   logTest
 
-    Description : Log the start and result of a test.  
+    Description : Log the start and result of a test.
                   Failures are added to syslog and printed as script output.
     Arguments   : Status of the test:
                       bypassed: Bypassed a test (STDOUT, optionally SYSLOGged)
@@ -1331,7 +1331,7 @@ sub setOverrides{
     # Don't specify the same option on both the command line and in the environment variable.
     if ( defined $glob_moreCmdOps ) {
         $glob_moreCmdOps =~ hexDecode( $glob_moreCmdOps );
-        ($rc, $unrecognizedOps) = GetOptionsFromString( 
+        ($rc, $unrecognizedOps) = GetOptionsFromString(
             $glob_moreCmdOps,
             'bypassMsg=s'               => \$cmdOp_bypassMsg,
             'cNAddress=s'               => \$cmdOp_cNAddress,

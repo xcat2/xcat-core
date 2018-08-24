@@ -1,7 +1,7 @@
 start:nodegrpch_v
 description:nodegrpch -v and --version
 label:mn_only,db
-cmd:nodegrpch -v 
+cmd:nodegrpch -v
 check:output=~Version
 cmd:nodegrpch --version
 check:output=~Version
@@ -36,7 +36,7 @@ end
 start:nodegrpch_err
 description:
 label:mn_only,db
-cmd:nodegrpch -c 
+cmd:nodegrpch -c
 check:rc!=0
 check:output=~Usage
 end

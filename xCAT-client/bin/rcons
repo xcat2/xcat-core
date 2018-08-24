@@ -4,7 +4,7 @@
 
 # To handle cases like running this via sudo, get the home dir properly
 os=`uname`
-if [ "$os" == "Linux" ]; then 
+if [ "$os" == "Linux" ]; then
     HOME=`getent passwd $(whoami)|cut -d: -f 6`
     export HOME
 fi
@@ -59,7 +59,7 @@ for parameter in $@; do
 done
 
 # xCAT 2.9.1 allows for an option to use confluent as a rcons replacement and only use
-# confluent if this keyword is defined in the site table.  This allows for confluent to 
+# confluent if this keyword is defined in the site table.  This allows for confluent to
 # be installed on the xCAT management node and switch between conserver & confluent
 USE_CONFLUENT=0
 # If conluent is not enable, check the service status of goconserver.
@@ -91,7 +91,7 @@ fi
 if [ $USE_CONFLUENT == "1" ] && ([ -x "/opt/confluent/bin/confetty" ] || [ -x "/usr/bin/confetty" ] || [ -x "/usr/local/bin/confetty" ]); then
     # use confluent, make sure conserver is not also running
     CONSERVER_RC=`pidof conserver >> /dev/null; echo $?`
-    if [[ ${CONSERVER_RC} == 0 ]]; then 
+    if [[ ${CONSERVER_RC} == 0 ]]; then
         echo "Error: consoleservice is set to 'confluent' but conserver is running.  Stop conserver, run makeconfluentcfg, and retry..."
         exit 1
     fi
@@ -113,8 +113,8 @@ if [ $USE_CONFLUENT == "1" ] && ([ -x "/opt/confluent/bin/confetty" ] || [ -x "/
 		CONSERVER=$(getent hosts $CONSERVER|awk '{print $1}')
 	fi
         declare -a ipaddrs=`ip -o a | awk {'print $4'} | cut -d/ -f1 | grep -v : | tr '\n' ' '`
-        for IP in ${ipaddrs[*]}; do 
-            if [[ "${CONSERVER}" == "${IP}" ]]; then 
+        for IP in ${ipaddrs[*]}; do
+            if [[ "${CONSERVER}" == "${IP}" ]]; then
                 # conserver is the same node, do not connect using -s
                 CONSERVER=""
                 break
@@ -179,9 +179,9 @@ elif [ $USE_GOCONSERVER == "1" ]; then
 elif [ -f "/usr/bin/console" ] || [ -f "/bin/console" ]; then
     # use conserver
     # make sure confluent is not also running, only if confluent is installed
-    if [[ -f "/etc/init.d/confluent" ]]; then 
+    if [[ -f "/etc/init.d/confluent" ]]; then
         CONFLUENT_RC=`service confluent status >& /dev/null; echo $?`
-        if [[ ${CONFLUENT_RC} == 0 ]]; then 
+        if [[ ${CONFLUENT_RC} == 0 ]]; then
             echo "Error: consoleservice is set to 'conserver' but confluent is running.  Stop confluent, run makeconservercf, and retry..."
             exit 1
         fi
@@ -190,7 +190,7 @@ elif [ -f "/usr/bin/console" ] || [ -f "/bin/console" ]; then
     if [ -z "$CONSERVER" ]; then
         CONSERVER=`nodels $1 nodehm.conserver 2>/dev/null | awk -F: '{print $2}' | tr -d ' '`
     fi
-    
+
     if [ -z "$CONSERVER" ]; then
 	CONSERVER=$XCATHOST
     fi
@@ -236,19 +236,19 @@ EOF
         sed -i 's/sslauthority/sslcacertificatefile/1' $HOME/.consolerc
     fi
     exec console $FORCE -M $CONSERVER $1
-else 
+else
     if [[ "$FORCE" == "-s" ]]; then
 	echo "Read-only mode is not supported, please run rcons without -s option."
 	exit 1
     fi
     #deal with consoles directly
-    output=`nodels $1 nodehm.conserver nodehm.cons nodehm.mgt 2>&1` 
+    output=`nodels $1 nodehm.conserver nodehm.cons nodehm.mgt 2>&1`
     if [ $? -ne 0 ]; then
 	echo "$output"
 	exit 1
-    fi 
+    fi
 
-    if [ -z "$CONSERVER" ]; then  
+    if [ -z "$CONSERVER" ]; then
 	CONSERVER=`echo "$output"|grep nodehm.conserver|cut -d: -f3|tr -d ' \n'`
     fi
     CONS=`echo "$output" |grep /nodehm.cons$/|cut -d: -f3 | tr -d ' \n'`
@@ -259,7 +259,7 @@ else
 	echo "Error: nodehm.mgt or nodehm.cons for node $1 not setup."
 	exit 1;
     fi
-    
+
     #check if conserver is local host
     result=`ping -c1 $CONSERVER 2>&1`
     if [ $? -eq 0 ]; then
@@ -277,7 +277,7 @@ else
         if [ $? -eq 0 ]; then
            CONSERVER=""
         fi
-    else 
+    else
 	echo "Error: conserver $CONSERVER is not reachable."
         exit 1;
     fi
@@ -286,7 +286,7 @@ else
     # check if others are using the console
     if [[ -n $CONSERVER ]]; then
         ssh $CONSERVER ps -ef |grep $1 |grep -v grep |grep "$XCATROOT/share/xcat/cons" > /dev/null
-    else 
+    else
         ps -ef |grep $1 |grep -v grep |grep "$XCATROOT/share/xcat/cons" > /dev/null
     fi
     if [ $? -eq 0 ]; then

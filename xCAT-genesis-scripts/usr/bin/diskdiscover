@@ -5,12 +5,12 @@
 # This script is to discover disk devices.
 #
 # Input parameter : <PCI_ID> or nothing
-# 
+#
 # Output : disk and RAID arrys information
 #
 #  Examples:
 #  1. When PCI_ID value is 1014:034a, execute "diskdiscover 1014:034a", the output format is as following:
-#   
+#
 #       --------------------------------------------------------------------------
 #       PCI_ID     PCI_SLOT_NAME  Resource_Path  Device  Description   Status
 #       ------     -------------  -------------  ------  -----------   ----------------
@@ -64,7 +64,7 @@ function usagesc {
     echo "Usage: diskdiscover <PCI_ID>"
     echo "       If input parameter is <PCI_ID>, return devices and RAID arrays info by PCI_ID."
     echo "       If there is no value for <PCI_ID>, return all af/jbod disks and RAID arrays info."
-                       
+
 }
 
 ########################################
@@ -74,7 +74,7 @@ function usagesc {
 # if input parameter is PCI_ID:
 #     Get devices and RAID arrays info by PCI_ID
 # if there is no input parameter for PCI_ID :
-#     Get all af disks and jbod disks info 
+#     Get all af disks and jbod disks info
 #     Get all RAID arrays info
 #
 ##########################################

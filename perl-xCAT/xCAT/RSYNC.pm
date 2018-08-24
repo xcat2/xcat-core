@@ -37,18 +37,18 @@ if ($^O eq 'linux')
         	$class - Calling module name (discarded)
         	$config - Reference to copy command configuration hash table
         	$exec_path - Path to rsync executable
-        	$localhost - 1 indicates we are running on the Management Node 
+        	$localhost - 1 indicates we are running on the Management Node
 
         Returns:
         	A command array for the rsync command with the appropriate
         	arguments as defined in the $config hash table
-                
+
         Globals:
         	None
-    
+
         Error:
         	None        	
-    
+
         Example:
         	xCAT::RSYNC->remote_copy_command($config_hash, '/usr/bin/rsync');
 

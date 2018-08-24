@@ -34,8 +34,8 @@ is already open in read-write mode. The -f flag can not be used with the -s flag
 
 =item B<-s>
 
-Open the console in read-only (spy) mode, in this mode all the escape sequences work, but all other keyboard input is 
-discarded. The -s flag can not be used with the -f flag. 
+Open the console in read-only (spy) mode, in this mode all the escape sequences work, but all other keyboard input is
+discarded. The -s flag can not be used with the -f flag.
 
 =item B<-h>|B<--help>
 

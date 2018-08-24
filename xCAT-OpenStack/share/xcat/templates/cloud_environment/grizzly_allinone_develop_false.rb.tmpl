@@ -19,7 +19,7 @@ override_attributes(
         "key_path"=>"/etc/chef/encrypted_data_bag_secret"
     },
     "db"=>{
-       "bind_interface"=>"#TABLE:clouds:name=$CLOUD:mgtinterface#", 
+       "bind_interface"=>"#TABLE:clouds:name=$CLOUD:mgtinterface#",
         "compute"=>{
            "host"=>"#TABLE:clouds:name=$CLOUD:hostip#"
         },
@@ -47,7 +47,7 @@ override_attributes(
         "bind_interface"=>"#TABLE:clouds:name=$CLOUD:mgtinterface#"
      },
     "identity"=>{
-        "bind_interface"=>"#TABLE:clouds:name=$CLOUD:mgtinterface#", 
+        "bind_interface"=>"#TABLE:clouds:name=$CLOUD:mgtinterface#",
         "db"=>{
             "username"=>"keystone",
             "password"=> "keystone"
@@ -98,7 +98,7 @@ override_attributes(
           "bind_interface"=>"#TABLE:clouds:name=$CLOUD:mgtinterface#"
        },
        "registry"=>{
-          "bind_interface"=>"#TABLE:clouds:name=$CLOUD:mgtinterface#" 
+          "bind_interface"=>"#TABLE:clouds:name=$CLOUD:mgtinterface#"
        },
        "image_upload" => false,
        "upload_images" => ["cirros"],
@@ -155,10 +155,10 @@ override_attributes(
        "config" => {
            "ram_allocation_ratio" => 5.0
        },
-       "libvirt" => { 
-           "bind_interface"=>"#TABLE:clouds:name=$CLOUD:mgtinterface#",  
-           "virt_type" => "#TABLE:clouds:name=$CLOUD:virttype#" 
-       }    
+       "libvirt" => {
+           "bind_interface"=>"#TABLE:clouds:name=$CLOUD:mgtinterface#",
+           "virt_type" => "#TABLE:clouds:name=$CLOUD:virttype#"
+       }
     }
   }
   )

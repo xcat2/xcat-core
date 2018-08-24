@@ -10,7 +10,7 @@ B<nimnodecust [-V] -s> I<lpp_source_name> [B<-p> I<packages>] [B<-b> I<installp_
 
 =head1 DESCRIPTION
 
-This xCAT command can be used to customize AIX/NIM standalone machines. 
+This xCAT command can be used to customize AIX/NIM standalone machines.
 
 The software packages that you wish to install on the nodes must be copied to the appropriate directory locations in the NIM lpp_source resource provided by the "-s" option.  For example, if the location of your lpp_source resource is "/install/nim/lpp_source/61lpp/" then you would copy RPM packages to "/install/nim/lpp_source/61lpp/RPMS/ppc" and you would copy your installp packages to "/install/nim/lpp_source/61lpp/installp/ppc". Typically you would want to copy the packages to the same lpp_source that was used to install the node.  You can find the location for an lpp_source with the AIX lsnim command. (Ex. "lsnim -l <lpp_source_name>")
 
@@ -26,7 +26,7 @@ A bundle file contains a list of package names.  The RPMs must have a prefix of 
  I:openssh.base
  I:openssh.license
 
-To create a NIM installp_bundle definition you can use the "nim -o define" operation.  For example, to create a definition called "mypackages" for a bundle file located at "/install/nim/mypkgs.bnd" you could issue the following command. 
+To create a NIM installp_bundle definition you can use the "nim -o define" operation.  For example, to create a definition called "mypackages" for a bundle file located at "/install/nim/mypkgs.bnd" you could issue the following command.
 
  nim -o define -t installp_bundle -a server=master -a location=/install/nim/mypkgs.bnd mypackages
 
@@ -41,7 +41,7 @@ The xCAT nimnodecust command will automatically handle the distribution of the p
 =item I<attr=val [attr=val ...]>
 
 Specifies one or more "attribute equals value" pairs, separated by spaces. Attr=val pairs must be specified last on the command line. These are used to specify
-additional values that can be passed to the underlying NIM commands, ("nim -o cust..."). See the NIM documentation for valid "nim" command line options. 
+additional values that can be passed to the underlying NIM commands, ("nim -o cust..."). See the NIM documentation for valid "nim" command line options.
 
 =item B<-b> I<installp_bundle_names>
 
@@ -79,7 +79,7 @@ An error has occurred.
 
 =head1 EXAMPLES
 
-1) Install the installp package "openssh.base.server" on an xCAT node named "node01".  Assume that the package has been copied to the NIM lpp_source resource called "61lppsource".  
+1) Install the installp package "openssh.base.server" on an xCAT node named "node01".  Assume that the package has been copied to the NIM lpp_source resource called "61lppsource".
 
  nimnodecust -s 61lppsource -p openssh.base.server node01
 

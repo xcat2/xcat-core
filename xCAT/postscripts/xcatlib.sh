@@ -208,7 +208,7 @@ function v6expand(){
         str_temp=$str_temp":0"
         num_index=$((num_index+1))
     done
-    
+
     str_v6address=`echo $str_v6address | sed "s/::/:$str_temp:/" | sed 's/^:/0:/' | sed 's/:$/:0/'`
     echo "$str_v6address"
 }
@@ -276,13 +276,13 @@ function v6calcnet(){
 function servicemap {
    local svcname=$1
    local svcmgrtype=$2
-   local svclistname=   
+   local svclistname=
 
-   # if there are more than 1 possible service names for a service among 
-   # different os distributions and os releases, the service should be 
-   # specified with structure 
+   # if there are more than 1 possible service names for a service among
+   # different os distributions and os releases, the service should be
+   # specified with structure
    # INIT_(general service name) = "list of possible service names"
-   #  
+   #
    INIT_dhcp="dhcp3-server dhcpd isc-dhcp-server";
 
    INIT_nfs="nfsserver nfs-server nfs nfs-kernel-server";
@@ -290,7 +290,7 @@ function servicemap {
    INIT_named="named bind9";
 
    INIT_syslog="syslog syslogd rsyslog";
- 
+
    INIT_firewall="iptables firewalld ufw";
 
    INIT_http="apache2 httpd";
@@ -313,7 +313,7 @@ function servicemap {
    elif [ "$svcmgrtype" = "1"  ];then
       #for systemd
       #retdefault=$svcname.service
-      #ubuntu 16.04 replace upstart with systemd, 
+      #ubuntu 16.04 replace upstart with systemd,
       #all the service unit files are placed under /lib/systemd/system/ on ubuntu
       #all the service unit files are placed under /usr/lib/systemd/system/ on redhat and sles
       #path should be delimited with space
@@ -333,9 +333,9 @@ function servicemap {
        echo ""
        return
    fi
- 
+
    svclistname=INIT_$svcvar
-   local svclist=$(eval echo \$$svclistname)      
+   local svclist=$(eval echo \$$svclistname)
 
    if [ -z "$svclist" ];then
       svclist="$retdefault"
@@ -350,13 +350,13 @@ function servicemap {
            fi
        done
    done
-  
+
    echo ""
 }
 
 #some special services cannot be processed in sysVinit, upstart and systemd framework, should be process here...
 #Notice:
-# return value: 
+# return value:
 # 127 :         if the service $svcname cannot be processed in this function
 # otherwise:    the return value of the service action
 
@@ -385,7 +385,7 @@ function specialservicemgr {
               service SuSEfirewall2_setup status
               ;;
               *)
-              return 127 
+              return 127
               ;;
          esac
          return $?
@@ -399,7 +399,7 @@ function startservice {
    local svcname=$1
 
    local retval
-   specialservicemgr "$svcname" start 
+   specialservicemgr "$svcname" start
    retval=$?
    if [ "$retval" != "127"  ]; then
       return $retval
@@ -410,7 +410,7 @@ function startservice {
    local svcunit=`servicemap $svcname 1`
    local svcjob=`servicemap $svcname 2`
    local svcd=`servicemap $svcname 0`
-  
+
    if [ -n "$svcunit"  ];then
       cmd="systemctl start $svcunit"
    elif [ -n "$svcjob"  ];then
@@ -422,16 +422,16 @@ function startservice {
    if [ -z "$cmd"  ];then
       return 127
    fi
-   
+
    #for the linux distributions with systemd support
    #In the chrooted env, the system management commands(start/stop/restart) will be ignored and the return code is 0
-   #need to return the proper code in the chrooted scenario 
+   #need to return the proper code in the chrooted scenario
    local retmsg
    retmsg=`$cmd 2>&1`
    retval=$?
    [ "$retval" = "0" ] && (echo "$retmsg" | grep -i "Running in chroot,\s*ignoring request.*" >/dev/null 2>&1)   && retval=1
 
-   return $retval   
+   return $retval
 }
 
 
@@ -440,7 +440,7 @@ function stopservice {
    local svcname=$1
 
    local retval
-   specialservicemgr "$svcname" stop 
+   specialservicemgr "$svcname" stop
    retval=$?
    if [ "$retval" != "127"  ]; then
       return $retval
@@ -450,7 +450,7 @@ function stopservice {
    local svcunit=`servicemap $svcname 1`
    local svcjob=`servicemap $svcname 2`
    local svcd=`servicemap $svcname 0`
-  
+
    if [ -n "$svcunit"  ];then
       cmd="systemctl stop $svcunit"
    elif [ -n "$svcjob"  ];then
@@ -458,12 +458,12 @@ function stopservice {
       if [ "$?" = "0" ] ; then
          return 0
       else
-         cmd="initctl stop $svcjob"       
+         cmd="initctl stop $svcjob"
       fi
    elif [ -n "$svcd"  ];then
       cmd="service $svcd stop"
    fi
-    
+
    echo $cmd
 
    if [ -z "$cmd"  ];then
@@ -486,7 +486,7 @@ function restartservice {
    local svcname=$1
 
    local retval
-   specialservicemgr "$svcname" restart 
+   specialservicemgr "$svcname" restart
    retval=$?
    if [ "$retval" != "127"  ]; then
       return $retval
@@ -497,16 +497,16 @@ function restartservice {
    local svcunit=`servicemap $svcname 1`
    local svcjob=`servicemap $svcname 2`
    local svcd=`servicemap $svcname 0`
-  
+
    if [ -n "$svcunit"  ];then
       cmd="systemctl restart $svcunit"
    elif [ -n "$svcjob"  ];then
       initctl status $svcjob | grep stop
-      if [ "$?" = "0" ];then 
+      if [ "$?" = "0" ];then
          cmd="initctl start $svcjob"
       else
          cmd="initctl restart $svcjob"
-      fi 
+      fi
    elif [ -n "$svcd"  ];then
       cmd="service $svcd restart"
    fi
@@ -514,7 +514,7 @@ function restartservice {
    if [ -z "$cmd"  ];then
       return 127
    fi
-   
+
    #for the linux distributions with systemd support
    #In the chrooted env, the system management commands(start/stop/restart) will be ignored and the return code is 0
    #need to return the proper code in the chrooted scenario
@@ -531,7 +531,7 @@ function checkservicestatus {
    local svcname=$1
 
    local retval
-   specialservicemgr "$svcname" status 
+   specialservicemgr "$svcname" status
    retval=$?
    if [ "$retval" != "127"  ]; then
       return $retval
@@ -541,9 +541,9 @@ function checkservicestatus {
    local svcunit=`servicemap $svcname 1`
    local svcjob=`servicemap $svcname 2`
    local svcd=`servicemap $svcname 0`
- 
-   local output= 
-   local retcode=3  
+
+   local output=
+   local retcode=3
 
    if [ -n "$svcunit"  ];then
       output=$(systemctl show --property=ActiveState $svcunit|awk -F '=' '{print $2}')
@@ -558,13 +558,13 @@ function checkservicestatus {
       output=$(initctl status $svcjob)
       if echo $output|grep -i "waiting";then
          retcode=2
-      elif echo $output|grep -i "running";then 
+      elif echo $output|grep -i "running";then
          retcode=0
-      fi 
+      fi
    elif [ -n "$svcd"  ];then
       output=$(service $svcd status)
       retcode=$?
-      echo $output 
+      echo $output
 #      if echo $output|grep -E -i "(stopped|not running)";then
 #         retcode=1
 #      elif echo $output|grep -E -i "running";then
@@ -573,16 +573,16 @@ function checkservicestatus {
    else
       retcode=127
    fi
-#echo $svcunit-----$svcd   
+#echo $svcunit-----$svcd
    return $retcode
-    
+
 }
 
 function enableservice {
    local svcname=$1
 
    local retval
-   specialservicemgr "$svcname" enable 
+   specialservicemgr "$svcname" enable
    retval=$?
    if [ "$retval" != "127"  ]; then
       return $retval
@@ -593,7 +593,7 @@ function enableservice {
    local svcunit=`servicemap $svcname 1`
    local svcjob=`servicemap $svcname 2`
    local svcd=`servicemap $svcname 0`
-  
+
    if [ -n "$svcunit"  ];then
       cmd="systemctl enable  $svcunit"
    elif [ -n "$svcjob"  ];then
@@ -606,7 +606,7 @@ function enableservice {
         command -v update-rc.d >/dev/null 2>&1
         if [ $? -eq 0 ];then
            cmd="update-rc.d $svcd defaults"
-        fi  
+        fi
      fi
    fi
 
@@ -622,7 +622,7 @@ function disableservice {
    local svcname=$1
 
    local retval
-   specialservicemgr "$svcname" disable 
+   specialservicemgr "$svcname" disable
    retval=$?
    if [ "$retval" != "127"  ]; then
       return $retval
@@ -632,7 +632,7 @@ function disableservice {
    local svcunit=`servicemap $svcname 1`
    local svcjob=`servicemap $svcname 2`
    local svcd=`servicemap $svcname 0`
-  
+
    if [ -n "$svcunit"  ];then
       cmd="systemctl disable  $svcunit"
    elif [ -n "$svcjob"  ];then
@@ -645,7 +645,7 @@ function disableservice {
         command -v update-rc.d >/dev/null 2>&1
         if [ $? -eq 0 ];then
            cmd="update-rc.d -f $svcd remove"
-        fi  
+        fi
      fi
    fi
 
@@ -660,10 +660,10 @@ declare -a array_nic_params
 declare -a array_extra_param_names
 declare -a array_extra_param_values
 
-# This function parse the NICEXTRAPARAMS into an array. 
+# This function parse the NICEXTRAPARAMS into an array.
 # Each arry element contains all the extra params for an ip
 # For example:
-#    
+#
 #    NICEXTRAPARAMS="eth0!MTU=1500 sonething=x|MTU=1460,ib0!MTU=65520 CONNECTED_MODE=yes"
 #    get_nic_extra_params $eth0 $NICEXTRAPARAMS
 #  After the function is called:
@@ -714,13 +714,13 @@ function get_nic_extra_params() {
 #     MTU=65520 something=yes
 # After the function is called:
 #     array_extra_param_names[0]="MTU"
-#     array_extra_param_values[0]="65520" 
+#     array_extra_param_values[0]="65520"
 #     array_extra_param_names[1]="something"
-#     array_extra_param_values[0]="yes" 
-#     
+#     array_extra_param_values[0]="yes"
+#
 function parse_nic_extra_params() {
     str_extra=$1
-   
+
     unset array_extra_param_names
     unset array_extra_param_values
 
@@ -741,10 +741,10 @@ function parse_nic_extra_params() {
 #####################################################################
 #msgutil_r    : process messages from xcat postscripts
 #description  : for a specified message, call this function to echo,
-#               append to specified log file and log it remotely       
+#               append to specified log file and log it remotely
 #args         :
-#               logserver: the hostname or ip addr of log server               
-#               msgtype:   the type of the message, 
+#               logserver: the hostname or ip addr of log server
+#               msgtype:   the type of the message,
 #                          valid values(debug,info,warning,err)
 #               msgstr:    the string of the message  to process
 #               logfile:   the path of the file to append the log
@@ -764,7 +764,7 @@ function msgutil_r {
    fi
 
    if [ -n "$logserver" ];then
-       #In Ubuntu, there is a bug in some logger version that "-n" is ignored. The workaround is to specify the 
+       #In Ubuntu, there is a bug in some logger version that "-n" is ignored. The workaround is to specify the
        #"-u <some dummy file>"  option together with "-n"  option.
        #So far as we know, this bug exists in logger 2.20 shipped in ubuntu 14.04.4 and
        #has been fixed in logger 2.25 shipped in ubuntu 15.04. Since "-u" option won't break anything,
@@ -811,13 +811,13 @@ function msgutil_r {
 
 #####################################################################
 #msgutil      : process messages from xcat postscripts
-#description  : for a specified message, call this function to 
-#               echo,append to the specified file and log it        
-#args         : 
-#               msgtype:  the type of the message, 
+#description  : for a specified message, call this function to
+#               echo,append to the specified file and log it
+#args         :
+#               msgtype:  the type of the message,
 #                         valid values(debug,info,warning,err)
 #               msgstr:   the string of the message  to process
-#               logfile:  the path of the file to append the log 
+#               logfile:  the path of the file to append the log
 ####################################################################
 function msgutil {
    msgutil_r "" "$@"

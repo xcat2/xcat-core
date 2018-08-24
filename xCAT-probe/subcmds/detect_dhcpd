@@ -19,7 +19,7 @@ my $test         = 0;
 my $dumpfile     = "/tmp/dhcpdumpfile.log";
 my $nic;
 
-$::USAGE = "Usage: 
+$::USAGE = "Usage:
     $program_name  -i interface [-m macaddress] [-d duration] [-V]
 
 Description:
@@ -29,7 +29,7 @@ Options:
     -i interface:  Required. The interface facing the target network.
     -m macaddress: The mac that will be used to detect dhcp server. Use the real mac of the node that will be netboot. If not specified, the mac specified by -i will be used.
     -d duration:   The time to wait to detect the dhcp messages. The default value is 10s.
-    -V verbose:    Print additional debug information. 
+    -V verbose:    Print additional debug information.
 ";
 
 #---------------------------

@@ -141,27 +141,27 @@ sub list_all_node_groups
 
 #--------------------------------------------------------------------------------
 
-=head3   bldnonrootSSHFiles 	 
-	  	 
-	            Builds authorized_keyfiles for the non-root id 	 
-	            It must not only contain the public keys for the non-root id 	 
-	                    but also the public keys for root 	 
-	  	 
-	         Arguments: 	 
-	               from_userid -current id running xdsh from the command line 	 
-	         Returns: 	 
-	  	 
-	         Globals: 	 
-	               $::CALLBACK 	 
-	         Error: 	 
-	  	 
-	         Example: 	 
-	                 xCAT::TableUtils->bldnonrootSSHFiles; 	 
-	  	 
-	         Comments: 	 
-	                 none 	 
-	  	 
-=cut 	 
+=head3   bldnonrootSSHFiles 	
+	  	
+	            Builds authorized_keyfiles for the non-root id 	
+	            It must not only contain the public keys for the non-root id 	
+	                    but also the public keys for root 	
+	  	
+	         Arguments: 	
+	               from_userid -current id running xdsh from the command line 	
+	         Returns: 	
+	  	
+	         Globals: 	
+	               $::CALLBACK 	
+	         Error: 	
+	  	
+	         Example: 	
+	                 xCAT::TableUtils->bldnonrootSSHFiles; 	
+	  	
+	         Comments: 	
+	                 none 	
+	  	
+=cut 	
 
 #--------------------------------------------------------------------------------
 
@@ -187,7 +187,7 @@ sub bldnonrootSSHFiles
         if (!(-e "$home/.ssh/id_rsa.pub"))
         {
             $rsp->{data}->[0] = "$home/.ssh/id_rsa.pub does not exist!";
-            xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);            
+            xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
             return 1;
         }
     }
@@ -213,7 +213,7 @@ sub bldnonrootSSHFiles
         if(!(-e "$home/.ssh/authorized_keys")){
             $rsp->{data}->[0] = "$home/.ssh/authorized_keys does not exist, make sure you have setup the ssh-keys on this service node.\n";
             xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
-            return (1);   
+            return (1);
         }
         $cmd = " cp $home/.ssh/authorized_keys $home/.ssh/tmp/authorized_keys";
     }
@@ -264,7 +264,7 @@ sub bldnonrootSSHFiles
 
 =head3   setupSSH
 
-        Generates if needed and Transfers the ssh keys 
+        Generates if needed and Transfers the ssh keys
 		fOr a userid to setup ssh to the input nodes.
 
         Arguments:
@@ -274,7 +274,7 @@ sub bldnonrootSSHFiles
 
         Env Variables: $DSH_FROM_USERID,  $DSH_TO_USERID, $DSH_REMOTE_PASSWORD
           the ssh keys are transferred from the $DSH_FROM_USERID to the $DSH_TO_USERID
-          on the node(s).  The DSH_REMOTE_PASSWORD and the DSH_FROM_USERID 
+          on the node(s).  The DSH_REMOTE_PASSWORD and the DSH_FROM_USERID
                must be obtained by
 		         the calling script or from the xdsh client
 
@@ -388,7 +388,7 @@ sub setupSSH
 
 
     unless(open(FILE, ">$home/.ssh/copy.sh"))
-    { 
+    {
         $rsp->{data}->[0] ="cannot create file $home/.ssh/copy.sh, please make sure the directory \"$home/.ssh\" exists and ssh keys have been setup on this node!\n";
         xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
         return 1;
@@ -535,10 +535,10 @@ rmdir \"/tmp/$to_userid\" \n";
 
 #--------------------------------------------------------------------------------
 
-=head3  sendkeysNOzones 
+=head3  sendkeysNOzones
 
-        Transfers the ssh keys 
-		for the root id on the nodes no zones 
+        Transfers the ssh keys
+		for the root id on the nodes no zones
           key from ~/.ssh   site.sshbetweennodes honored
 
 
@@ -549,7 +549,7 @@ rmdir \"/tmp/$to_userid\" \n";
 
         Env Variables: $DSH_FROM_USERID,  $DSH_TO_USERID, $DSH_REMOTE_PASSWORD
           the ssh keys are transferred from the $DSH_FROM_USERID to the $DSH_TO_USERID
-          on the node(s).  The DSH_REMOTE_PASSWORD and the DSH_FROM_USERID 
+          on the node(s).  The DSH_REMOTE_PASSWORD and the DSH_FROM_USERID
                must be obtained by
 		         the calling script or from the xdsh client
 
@@ -616,13 +616,13 @@ sub sendkeysNOzones
 
 #--------------------------------------------------------------------------------
 
-=head3  sendkeysTOzones 
+=head3  sendkeysTOzones
 
-        Transfers the ssh keys 
+        Transfers the ssh keys
 		for the root id on the nodes using the zone table.
        If in a zone, then root ssh keys for the node will be taken from the zones ssh keys not ~/.ssh
        zones are only supported on nodes that are not a service node.
-       Also for the call to  RemoteShellExp,  we must group the nodes that are in the same zone 
+       Also for the call to  RemoteShellExp,  we must group the nodes that are in the same zone
 
 
         Arguments:
@@ -632,7 +632,7 @@ sub sendkeysNOzones
 
         Env Variables: $DSH_FROM_USERID,  $DSH_TO_USERID, $DSH_REMOTE_PASSWORD
           the ssh keys are transferred from the $DSH_FROM_USERID to the $DSH_TO_USERID
-          on the node(s).  The DSH_REMOTE_PASSWORD and the DSH_FROM_USERID 
+          on the node(s).  The DSH_REMOTE_PASSWORD and the DSH_FROM_USERID
                must be obtained by
 		         the calling script or from the xdsh client
 
@@ -778,7 +778,7 @@ sub sendkeysTOzones
 
 =head3    cpSSHFiles
 
-           Builds authorized_keyfiles for root 
+           Builds authorized_keyfiles for root
 
         Arguments:
                install directory path
@@ -932,7 +932,7 @@ sub GetNodeOSARCH
 #-------------------------------------------------------------------------------
 
 =head3   logEventsToDatabase
-       Logs the given events info to the xCAT's 'eventlog' database 
+       Logs the given events info to the xCAT's 'eventlog' database
     Arguments:
         arrayref -- A pointer to an array. Each element is a hash that contains an events.
         The hash should contain the at least one of the following keys:
@@ -946,9 +946,9 @@ sub GetNodeOSARCH
           id -- The location or the resource name where the event occurred.
           severity -- The severity of the event. Valid values are: informational, warning, critical.
           message -- The full description of the event.
-	  rawdata -- The data that associated with the event.         
+	  rawdata -- The data that associated with the event.
   Returns:
-       (ret code, error message) 
+       (ret code, error message)
   Example:
     my  @a=();
     my $event={
@@ -1021,11 +1021,11 @@ sub logEventsToDatabase
 #-------------------------------------------------------------------------------
 
 =head3   logEventsToTealDatabase
-       Logs the given events info to the TEAL's 'x_tealeventlog' database 
+       Logs the given events info to the TEAL's 'x_tealeventlog' database
     Arguments:
         arrayref -- A pointer to an array. Each element is a hash that contains an events.
   Returns:
-       (ret code, error message) 
+       (ret code, error message)
 
 =cut
 
@@ -1145,7 +1145,7 @@ sub setAppStatus
         $status
     Returns:
         none
-        
+
     Globals:
         none
     Error:
@@ -1261,27 +1261,28 @@ sub getAppStatus
   get_site_attribute
 
 	Arguments:
-
+                $attribute -- the attribute you want to get
+                $dvalue    -- Optional, the default string value if the attribute does not exist
 	Returns:
 	    The value of the attribute requested from the site table
-	Globals:
-		none
-	Error:
-		undef
-	Example:
-	   @attr=xCAT::TableUtils->get_site_attribute($attribute);
-	Comments:
-		none
+        Globals:
+                %::XCATSITEVALS
+        Error:
+                undef
+        Example:
+           @attr=xCAT::TableUtils->get_site_attribute($attribute);
+        Comments:
+                none
 
 =cut
 
 #------------------------------------------------------------------------
 sub get_site_attribute
 {
-    my ($class, $attr) = @_;
+    my ($class, $attr, $dvalue) = @_;
 
     my $values;
-    if (defined($::XCATSITEVALS{$attr})) {
+    if (%::XCATSITEVALS) {
         $values = ($::XCATSITEVALS{$attr});
     } else {
         my $sitetab = xCAT::Table->new('site');
@@ -1300,7 +1301,8 @@ sub get_site_attribute
 
         }
     }
-    return $values;
+    return $values if ( defined $values);
+    return $dvalue;
 }
 
 
@@ -1533,17 +1535,17 @@ sub get_site_Master
 
 #-------------------------------------------------------------------------------
 
-=head3 checkCredFiles 
+=head3 checkCredFiles
         Checks the various credential files on the Management Node to
 		make sure the permission are correct for using and transferring
 		to the nodes and service nodes.
 		Also removes /install/postscripts/etc/xcat/cfgloc if found
     Arguments:
-      $callback 
+      $callback
     Returns:
         0 - ok
     Globals:
-        none 
+        none
     Error:
          warnings of possible missing files  and directories
     Example:
@@ -1755,15 +1757,15 @@ sub checkCredFiles
 
 #-------------------------------------------------------------------------------
 
-=head3  enableSSH 
+=head3  enableSSH
     Description:
         Reads the site.sshbetweennodes attribute and determines
-        if the input node should be enabled to ssh between nodes 
+        if the input node should be enabled to ssh between nodes
     Arguments:
-        $node 
+        $node
     Returns:
        1 = enable ssh
-       0 = do not enable ssh 
+       0 = do not enable ssh
     Globals:
         none
     Error:
@@ -1837,23 +1839,23 @@ sub enablessh
 
 #-------------------------------------------------------------------------------
 
-=head3  enableSSH 
+=head3  enableSSH
     Description:
         The function is same as enablessh() above. Before using this function,
         the $sn_hash for noderange, and $groups_hash for site.sshbetweennodes should be
         got.  This is performance improvement.
     Arguments:
         $node  --  node name
-        $sn_hash -- if the node is one sn, key is the node name, and value is 1. 
+        $sn_hash -- if the node is one sn, key is the node name, and value is 1.
                     if the node is not a sn, the key isn't in this hash
         $groups_hash -- there are two keys:
                      1.  Each group in the value of site.sshbetweennodes could be the key
-                     2.  Each node in the groups from the value of site.sshbetweennodes , if the 
+                     2.  Each node in the groups from the value of site.sshbetweennodes , if the
                          value isn't ALLGROUPS or NOGROUPS.
-          
+
     Returns:
        1 = enable ssh
-       0 = do not enable ssh 
+       0 = do not enable ssh
     Globals:
         none
     Error:
@@ -1923,7 +1925,7 @@ sub enableSSH
 
 
 =head3 getrootimage
-    Get the directory of root image for a node; 
+    Get the directory of root image for a node;
     Note: This subroutine only works for diskless node
 
     Arguments:
@@ -1977,13 +1979,13 @@ sub getrootimage()
 
 
 =head3 getimagenames
-    Get an array of osimagenames that correspond to the input node array; 
+    Get an array of osimagenames that correspond to the input node array;
 
     Arguments:
-     Array of nodes 
+     Array of nodes
     Returns:
-      array of all the osimage names that are the provmethod for the nodes 
-      undef - no osimage names 
+      array of all the osimage names that are the provmethod for the nodes
+      undef - no osimage names
     Globals:
         none
     Error:
@@ -2034,9 +2036,9 @@ sub getimagenames()
 
     Arguments:
       node
-      tabhd: the handler of 'nodelist' table, 
+      tabhd: the handler of 'nodelist' table,
       groups: the groups attribute need to be merged.
-              Can be an array or string. 
+              Can be an array or string.
     Globals:
         none
     Error:
@@ -2081,9 +2083,9 @@ sub updatenodegroups {
 
     Arguments:
       node
-      tabhd: the handler of 'nodelist' table, 
+      tabhd: the handler of 'nodelist' table,
       groups: the groups that need to be removed.
-              Can be an array or string. 
+              Can be an array or string.
     Globals:
         none
     Error:

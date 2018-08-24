@@ -280,7 +280,7 @@ Set or get frame number.  If no framenumber and * specified, framenumber for the
 
 =item B<cec_off_policy>={B<poweroff>|B<stayon>}
 
-Set or get cec off policy after lpars are powered off.  If no cec_off_policy value specified, the cec_off_policy for the nodes will be displayed. the cec_off_policy has two values: B<poweroff> and B<stayon>. B<poweroff> means Power off when last partition powers off. B<stayon> means Stay running after last partition powers off. If cec_off_policy value is specified, the cec off policy will be set for that cec.  
+Set or get cec off policy after lpars are powered off.  If no cec_off_policy value specified, the cec_off_policy for the nodes will be displayed. the cec_off_policy has two values: B<poweroff> and B<stayon>. B<poweroff> means Power off when last partition powers off. B<stayon> means Stay running after last partition powers off. If cec_off_policy value is specified, the cec off policy will be set for that cec.
 
 =item B<HMC_passwd>={I<currentpasswd,newpasswd>}
 
@@ -320,7 +320,7 @@ Display the CEC/BPA system names.
 
 =item B<BSR>
 
-Get Barrier Synchronization Register (BSR) allocation for a CEC. 
+Get Barrier Synchronization Register (BSR) allocation for a CEC.
 
 =item B<huge_page>
 
@@ -328,7 +328,7 @@ Query huge page information or request NUM of huge pages for CEC. If no value sp
 
 =item B<setup_failover>={B<enable> | B<disable>}
 
-Enable or disable the service processor failover function of a CEC or display status of this function. 
+Enable or disable the service processor failover function of a CEC or display status of this function.
 
 =item B<force_failover>
 
@@ -344,7 +344,7 @@ Select the policy for I/O Adapter Enlarged Capacity. This option controls the si
 
 =item B<hostname>
 
-Get or set hostname on the service processor.   
+Get or set hostname on the service processor.
 
 =item B<vlan>
 
@@ -388,14 +388,14 @@ Generate/Manage BMC system dumps. If no sub-option is provided, will generate, w
 
 =over 4
 
-=item 
+=item
 B<-c> will clear a single specified dump, or use 'all' to clear all dumps on the BMC.
 
-=item 
-B<-l> will list all the generated dumps on the BMC. 
+=item
+B<-l> will list all the generated dumps on the BMC.
 
-=item 
-B<-g> will generate a new dump on the BMC. Dump generation can take a few minutes. 
+=item
+B<-g> will generate a new dump on the BMC. Dump generation can take a few minutes.
 
 =item
 B<-d> will download a single dump or all generated dumps from the BMC to /var/log/xcat/dump on management or service node.
@@ -418,7 +418,7 @@ For MPA only. Connecting to the IP of MPA from the hosts.otherinterfaces to set 
 
 =item B<network>={I<nic>,{[I<ip>],[I<host>],[I<gateway>],[I<netmask>]}|*}
 
-Not only for FSP/BPA but also for IMM. Get or set the FSP/BPA/IMM network parameters. If '*' is specified, all parameters are read from the xCAT database. 
+Not only for FSP/BPA but also for IMM. Get or set the FSP/BPA/IMM network parameters. If '*' is specified, all parameters are read from the xCAT database.
 If the value of I<ip> is '0.0.0.0', this I<nic> will be configured as a DHCP client. Otherwise this I<nic> will be configured with a static IP.
 
 Note that IPs of FSP/BPAs will be updated with this option, user needs to put the new IPs to /etc/hosts manually or with xCAT command makehosts. For more details, see the man page of makehosts.
@@ -501,7 +501,7 @@ Query or set sysname for CEC or Frame. If no value specified, means to query sys
 
 =item B<pending_power_on_side>={B<temp|perm>}
 
-List or set pending power on side for CEC or Frame. If no pending_power_on_side value specified, the pending power on side for the CECs or frames will be displayed. If specified, the pending_power_on_side value will be set to CEC's FSPs or Frame's BPAs. The value 'temp' means T-side or temporary side. The value 'perm' means P-side or permanent side. 
+List or set pending power on side for CEC or Frame. If no pending_power_on_side value specified, the pending power on side for the CECs or frames will be displayed. If specified, the pending_power_on_side value will be set to CEC's FSPs or Frame's BPAs. The value 'temp' means T-side or temporary side. The value 'perm' means P-side or permanent side.
 
 =item B<time>=I<hh:mm:ss>
 
@@ -515,7 +515,7 @@ Set the blade or MPA textid. When using '*', the textid used is the node name sp
 
 Change the password of the userid B<USERID> for CMM in Flex system cluster. The option I<updateBMC> can be used to specify whether updating the password of BMCs that connected to the specified CMM. The value is 'y' by default which means whenever updating the password of CMM, the password of BMCs will be also updated. Note that there will be several seconds needed before this command complete.
 
-If value "*" is specified for USERID and the object node is I<Flex System X node>, the password used to access the BMC of the System X node through IPMI will be updated as the same password of the userid B<USERID> of the CMM in the same cluster.  
+If value "*" is specified for USERID and the object node is I<Flex System X node>, the password used to access the BMC of the System X node through IPMI will be updated as the same password of the userid B<USERID> of the CMM in the same cluster.
 
 =item B<--resetnet>
 
@@ -543,7 +543,7 @@ Display the version number.
 =item 1.
 To setup new ssh keys on the Management Module mm:
 
- rspconfig mm snmpcfg=enable sshcfg=enable  
+ rspconfig mm snmpcfg=enable sshcfg=enable
 
 =item 2.
 To turn on SNMP alerts for node5:
@@ -666,7 +666,7 @@ Output is similar to:
  fsp01: Success to set IP address,hostname,gateway,netmask
 
 =item 13.
-To configure eth0 on fsp01 to get dynamic IP address from DHCP server: 
+To configure eth0 on fsp01 to get dynamic IP address from DHCP server:
 
  rspconfig fsp01 network=eth0,0.0.0.0
 
@@ -842,12 +842,12 @@ To force service processor failover for cec01:
  cec01: 192.168.2.1: sp=primary,ipadd=192.168.2.1,alt_ipadd=unavailable,state=LINE UP
  cec01: 192.168.1.2: sp=secondary,ipadd=192.168.1.2,alt_ipadd=unavailable,state=LINE UP
  cec01: 192.168.2.2: LINE DOWN
- 
+
  rspconfig cec01 force_failover
 
  cec01: Success.
- 
- lshwconn> cec01                
+
+ lshwconn> cec01
 
  cec01: 192.168.1.1: sp=secondary,ipadd=192.168.1.1,alt_ipadd=unavailable,state=LINE UP
  cec01: 192.168.2.1: LINE DOWN

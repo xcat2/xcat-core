@@ -174,6 +174,7 @@ sub submit_request {
 
         # Load plugins from either specified or default dir
         require xCAT::Table;
+        populate_site_hash();
         my %cmd_handlers;
         my @plugins_dirs = split('\:', $ENV{XCATBYPASS});
         if (-d $plugins_dirs[0]) {
@@ -191,8 +192,6 @@ sub submit_request {
             $plugins_dir = $::XCATROOT . '/lib/perl/xCAT_plugin';
             scan_plugins();
         }
-
-        populate_site_hash();
 
         #  don't do XML transformation -- assume request is well-formed
         #  my $xmlreq=XMLout($request,RootName=>xcatrequest,NoAttr=>1,KeyAttr=>[]);
@@ -268,7 +267,7 @@ sub submit_request {
     } else {
         print "warning: the client certificates under $homedir/.xcat/ are not setup correctly, please run '/opt/xcat/share/xcat/scripts/setup-local-client.sh"." $ENV{'USER'}' as 'root' to generate the client certificates; otherwise, the SSL connection between xcat client and xcatd will be setup without certificate verification and open to Man-In-The-Middle attacks.\n";
         #Using the default of SSL_verify_mode of SSL_VERIFY_NONE for client is deprecated!
-        #need to specify SSL_verify_mode => SSL_VERIFY_NONE explicitly 
+        #need to specify SSL_verify_mode => SSL_VERIFY_NONE explicitly
         $client = IO::Socket::SSL->start_SSL($pclient,
             SSL_verify_mode => SSL_VERIFY_NONE,
 	    SSL_cipher_list => undef,
@@ -1340,7 +1339,7 @@ sub handle_response {
             }
             if ($desc) {
                 $desc = "[$msgsource]: $desc" if ($showsource && $msgsource);
-                print "$desc\n"; 
+                print "$desc\n";
             }
         }
     }

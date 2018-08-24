@@ -10,11 +10,11 @@ The documentation project is written in restructured text (.rst) using Sphinx an
 
 * Using pip, install or update sphinx (See: http://pip.readthedocs.org/)
    ```
-    pip install sphinx  
+    pip install sphinx
    ```
    or
    ```
-    pip install sphinx --upgrade 
+    pip install sphinx --upgrade
    ```
 
 * Using pip, install ReadTheDocs theme

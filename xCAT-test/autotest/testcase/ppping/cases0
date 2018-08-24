@@ -16,7 +16,7 @@ start:ppping_node
 description:ppping node
 Attribute: $$CN-The operation object of ppping command
 cmd:ping -c 3 $$CN > /dev/null 2>&1;if [[ $? -eq 1 ]]; then output=`ppping $$CN`;if [[ $? -eq 1 ]]&&[[ $output =~ "noping" ]];then exit 0;else exit 1;fi;else output=`ppping $$CN`; if [[ $? -eq 0 ]]&&[[ $output =~ "pinged all nodes successfully" ]];then exit 0;else exit 1;fi;fi
-check:rc==0 
+check:rc==0
 end
 
 start:ppping_V_node

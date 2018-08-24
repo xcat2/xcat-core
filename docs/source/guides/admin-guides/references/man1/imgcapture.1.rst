@@ -58,80 +58,80 @@ OPTIONS
 
 
 
-\ **-t | -**\ **-type**\ 
- 
+\ **-t | -**\ **-type**\
+
  Specify the osimage type you want to capture, two types are supported: diskless and sysclone.
- 
 
 
-\ **-p|-**\ **-profile**\  \ *profile*\ 
- 
+
+\ **-p|-**\ **-profile**\  \ *profile*\
+
  Assign \ *profile*\  as the profile of the image to be created.
- 
 
 
-\ **-o|-**\ **-osimage**\  \ *osimage*\ 
- 
+
+\ **-o|-**\ **-osimage**\  \ *osimage*\
+
  The osimage name.
- 
 
 
-\ **-i**\  \ *nodebootif*\ 
- 
+
+\ **-i**\  \ *nodebootif*\
+
  The network interface the diskless node will boot over (e.g. eth0), which is used by the \ **genimage**\  command to generate initial ramdisks.
- 
 
 
-\ **-n**\  \ *nodenetdrivers*\ 
- 
+
+\ **-n**\  \ *nodenetdrivers*\
+
  The driver modules needed for the network interface, which is used by the \ **genimage**\  command to generate initial ramdisks.
- 
+
  By default, the \ **genimage**\  command can provide drivers for the following network interfaces:
- 
+
  For x86 or x86_64 platform:
- 
- 
+
+
  .. code-block:: perl
- 
+
       tg3 bnx2 bnx2x e1000 e1000e igb m1x_en
- 
- 
+
+
  For ppc64 platform:
- 
- 
+
+
  .. code-block:: perl
- 
+
       e1000 e1000e igb ibmveth ehea
- 
- 
+
+
  For S390x:
- 
- 
+
+
  .. code-block:: perl
- 
+
       qdio ccwgroup
- 
- 
+
+
  If the network interface is not in the above list, you'd better specify the driver modules with this option.
- 
 
 
-\ **-h|-**\ **-help**\ 
- 
+
+\ **-h|-**\ **-help**\
+
  Display the usage message.
- 
 
 
-\ **-v|-**\ **-version**\ 
- 
+
+\ **-v|-**\ **-version**\
+
  Display the version.
- 
 
 
-\ **-V|-**\ **-verbose**\ 
- 
+
+\ **-V|-**\ **-verbose**\
+
  Verbose output.
- 
+
 
 
 

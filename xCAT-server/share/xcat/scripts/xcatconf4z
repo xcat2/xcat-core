@@ -6,7 +6,7 @@
 # Default-Start: 2 3 5
 # Default-stop: 0 1 4 6
 # Required-Start: $syslog
-# Should-Start: 
+# Should-Start:
 # Required-Stop:
 # Short-Description: A basic active engine used to initialize and configure vm.
 # Description: Reads class x files from the reader and acts based on the type of file.
@@ -35,7 +35,7 @@ function getOsVersion {
   #        "rhel62" or "sles11sp2"
   # @Code:
   release=`cat /etc/*release`
-  
+
   if echo $release | grep -i "SUSE Linux Enterprise Server" > /dev/null ; then
     os='sles'
     version=`echo "$release" | grep "VERSION =" | sed \
@@ -44,7 +44,7 @@ function getOsVersion {
       -e 's/.//' \
       -e 's/[^0-9]*([0-9]+).*/$1/'`
     os=$os$version;
-    
+
     # Append service level
     level=`echo "$release" | grep "LEVEL =" | sed \
       -e 's/^.*LEVEL =//' \
@@ -52,7 +52,7 @@ function getOsVersion {
       -e 's/.//' \
       -e 's/[^0-9]*([0-9]+).*/$1/'`
     os=$os'sp'$level
-    
+
   elif version=`echo $release | grep -i "Red Hat Enterprise Linux Server"`; then
     os='rhel'
     version=`echo $version | sed \
@@ -107,16 +107,16 @@ function pullReader {
   # @Code:
   local funcName="pullReader"
   /sbin/modprobe vmcp
-   
+
   # Online reader
   rc= onlineDevice "000c"
   if (( rc != 0 )); then
       return $rc
   fi
-  
+
   # Grab the spool Id, class file name, and file type
   eval records=($(/usr/sbin/vmur li | tail -n +2 | cut -c 1-72 | awk '{print $1":"$2":"$3":"$10":"$11"\n"}' ))
-  
+
   # Process each spool file that is class "x"
   for record in "${records[@]}"
   do
@@ -127,28 +127,28 @@ function pullReader {
     class=$3
     filename=$4
     type=$5
-        
+
     if [[ $class != "X" ]]; then
       # Spool file is not of the class required for processing by this script.
       continue
     fi
-    
+
     if [[ $authorizedSenders != "*" ]]; then
       if [[ " $authorizedSenders " != *" $originid "* ]]; then
         # Originator is not authorized to send configuration files.
         continue
       fi
     fi
-    
+
     if [[ -n $type ]]; then
       file="$filename.$type"
     else
       file=$filename
     fi
-    
+
     # Receive the spool file
     echo "Downloading record $spoolid: $file"
-    
+
     if [[ $type == "txt" ]]; then
       # Receiving text
       rc=$(/usr/sbin/vmur re -f $spoolid $file)
@@ -178,7 +178,7 @@ function pullReader {
       # Receive block
       rc=$(/usr/sbin/vmur re $spoolid $file)
     fi
-    
+
     if (( rc != 0 )); then
       echo "xcatconf4z funcName (Error) Failed to download record $spoolid"
     fi
@@ -198,7 +198,7 @@ function setupIso {
   # @Code:
   local funcName="setupIso"
   iso="/var/opt/xcat/transport.iso"
-  
+
   # If there are files in the transport directory then create an ISO system.
   if [ "$(ls -A .)" ]; then
     /usr/bin/mkisofs -l -V 'config-2' -o $iso $transportdir
@@ -206,8 +206,8 @@ function setupIso {
       /bin/bash /tmp/znetconfig.sh
     fi
   fi
-  
-  # If the ISO filesystem exists then create loop back device pointing 
+
+  # If the ISO filesystem exists then create loop back device pointing
   # to the ISO9660 image
   if [[ -e $iso ]]; then
     nextLoopDev=`/sbin/losetup -f`
@@ -215,7 +215,7 @@ function setupIso {
       /sbin/losetup $nextLoopDev $iso
     fi
   fi
-  
+
   # Execute init script (if one exists)
   if [[ -e ${transportdir}/init.sh ]]; then
     chmod 755 ${transportdir}/init.sh
@@ -236,13 +236,13 @@ function setupDisk {
   # @Code:
   diskFile=$1
   local funcName="setupDisk"
-  
+
   # Read the file and verify we want to handle it
   if ! grep -q "# xCAT Init" "$diskFile"; then
     # File is not one that we handle.  Leave it alone.
     return
   fi
-  
+
   # Read the file now that we know it is our file
   oldIFS=$IFS
   IFS=$'\n'
@@ -258,10 +258,10 @@ function setupDisk {
     eval $newKey=$value
   done
   IFS=$oldIFS
-  
+
   # Remove the disk file after we have read it
   rm $diskFile
-  
+
   ##########################################################################
   # Handle creating a file system node
   # Disk file input parameters:
@@ -271,12 +271,12 @@ function setupDisk {
   ##########################################################################
   if [[ $xcat_action == "createfilesysnode" ]]; then
     echo "Creating a file system node, source: $xcat_srcFile, target: $xcat_tgtFile"
-    
+
     if [[ ! -n $xcat_srcFile ]]; then
       echo "xcatconf4z $funcName (Error) Source file for creating a file system node was not specified"
       return
     fi
-    
+
     if [[ ! -n $xcat_tgtFile ]]; then
       echo "xcatconf4z $funcName (Error) Target file for creating a file system node was not specified"
       return
@@ -285,22 +285,22 @@ function setupDisk {
       echo "xcatconf4z $funcName (Error) Target file for creating a file system node already exists"
       return
     fi
-    
+
     out=`/usr/bin/stat --printf=%n ${xcat_srcFile}`
     if (( $? != 0 )); then
       echo "xcatconf4z $funcName (Error) Unable to stat the source file: $xcat_srcFile"
       return
     fi
-    
+
     configFile='/etc/udev/rules.d/56-zfcp.rules'
     tgtNode=$(echo ${xcat_tgtFile} | sed -e 's/^\/dev\///')
     wwpn_lun=$(echo ${xcat_srcFile} | sed -e 's/^\/dev.*-zfcp-//')
     wwpn=$(echo ${wwpn_lun} | sed -e 's/:0x.*//')
     lun=$(echo ${wwpn_lun} | sed -e 's/^0x.*://')
-    
+
     echo "KERNEL==\"sd*\", SYSFS{wwpn}==\"${wwpn}\", SYSFS{fcp_lun}==\"${lun}\", SYMLINK+=\"${tgtNode}%n\"" >> ${configFile}
     udevadm trigger --sysname-match=sd*
-  
+
   ##########################################################################
   # Handle removing a file system node
   # Disk file input parameters:
@@ -313,13 +313,13 @@ function setupDisk {
       echo "xcatconf4z $funcName (Error) Target file for creating a file system node was not specified"
       return
     fi
-    
+
     configFile='/etc/udev/rules.d/56-zfcp.rules'
     tgtNode=$(echo ${xcat_tgtFile} | sed -e 's/^\/dev\///')
 
     sed -i -e /SYMLINK+=\"${tgtNode}%n\"/d ${configFile}
     udevadm trigger --sysname-match=sd*
-  
+
   ##########################################################################
   # Handle adding a SCSI volume
   # Disk file input parameters:
@@ -330,38 +330,38 @@ function setupDisk {
   ##########################################################################
   elif [[ $xcat_action == "addScsiVolume" ]]; then
     echo "Adding a SCSI Volume, FCP addr: $xcat_fcpAddr, WWPN: $xcat_wwpn, LUN: $xcat_lun"
-    
+
     # Validate the input
     if [[ ! -n $xcat_fcpAddr ]]; then
       echo "xcatconf4z $funcName (Error) FCP address was not specified"
       return
     fi
     xcat_fcpAddr=`echo $xcat_fcpAddr | tr '[A-Z]' '[a-z]'`
-    
+
     if [[ ! -n $xcat_wwpn ]]; then
       echo "xcatconf4z $funcName (Error) WWPN was not specified"
       return
     fi
     xcat_wwpn=`echo $xcat_wwpn | tr '[A-Z]' '[a-z]'`
-    
+
     if [[ ! -n $xcat_lun ]]; then
       echo "xcatconf4z $funcName (Error) LUN was not specified"
       return
     fi
     xcat_lun=`echo $xcat_lun | tr '[A-Z]' '[a-z]'`
-    
+
     # Online the device
     rc= onlineDevice $xcat_fcpAddr
     if (( rc != 0 )); then
       return
     fi
-    
+
     # Set WWPN and LUN in sysfs
     if [[ -e /sys/bus/ccw/drivers/zfcp/0.0.$xcat_fcpAddr/port_add ]]; then
       echo 0x$xcat_wwpn > /sys/bus/ccw/drivers/zfcp/0.0.$xcat_fcpAddr/port_add
     fi
     echo 0x$xcat_lun > /sys/bus/ccw/drivers/zfcp/0.0.$xcat_fcpAddr/0x$xcat_wwpn/unit_add
-    
+
     # Set WWPN and LUN in configuration files
     #   RHEL: /etc/zfcp.conf
     #   SLES 10: /etc/sysconfig/hardware/hwcfg-zfcp-bus-ccw-*
@@ -373,10 +373,10 @@ function setupDisk {
     elif [[ $os == sles11* ]]; then
       /sbin/zfcp_host_configure 0.0.$xcat_fcpAddr 1
       /sbin/zfcp_disk_configure 0.0.$xcat_fcpAddr $xcat_wwpn $xcat_lun 1
-      
-      # Configure zFCP device to be persistent                
+
+      # Configure zFCP device to be persistent
       touch /etc/udev/rules.d/51-zfcp-0.0.$xcat_fcpAddr.rules
-      
+
       # Check if the file already contains the zFCP channel
       out=`cat "/etc/udev/rules.d/51-zfcp-0.0.$xcat_fcpAddr.rules" | egrep -i "ccw/0.0.$xcat_fcpAddr]online"`
       if [[ ! $out ]]; then
@@ -387,17 +387,17 @@ function setupDisk {
         echo "ACTION==\"add\", ENV{COLLECT_0.0.$xcat_fcpAddr}==\"0\", ATTR{[ccw/0.0.$xcat_fcpAddr]online}=\"1\"" \
           | tee -a /etc/udev/rules.d/51-zfcp-0.0.$xcat_fcpAddr.rules
       fi
-      
+
       echo "ACTION==\"add\", KERNEL==\"rport-*\", ATTR{port_name}==\"0x$xcat_wwpn\", SUBSYSTEMS==\"ccw\", KERNELS==\"0.0.$xcat_fcpAddr\", ATTR{[ccw/0.0.$xcat_fcpAddr]0x$xcat_wwpn/unit_add}=\"0x$xcat_lun\"" \
         | tee -a /etc/udev/rules.d/51-zfcp-0.0.$device.rules
     elif [[ $os == rhel* ]]; then
       echo "0.0.$xcat_fcpAddr 0x$xcat_wwpn 0x$xcat_lun" >> /etc/zfcp.conf
-      
+
       if [[ $os == rhel6* ]]; then
         echo "add" > /sys/bus/ccw/devices/0.0.$xcat_fcpAddr/uevent
       fi
     fi
-    
+
     # Settle the file system so when we are done the device is fully available
     if [[ $(which udevadm 2> /dev/null) != '' ]]; then
         udevadm settle
@@ -421,7 +421,7 @@ function setupDisk {
     if [[ ! -e "/dev/disk/by-path/ccw-0.0.${xcat_fcpAddr}-zfcp-0x${xcat_wwpn}:0x${xcat_lun}" ]]; then
       echo "/dev/disk/by-path/ccw-0.0.${xcat_fcpAddr}-zfcp-0x${xcat_wwpn}:0x${xcat_lun} did not appear in $maxTime seconds, continuing."
     fi
-    
+
   ##########################################################################
   # Handle removing a SCSI volume
   # Disk file input parameters:
@@ -432,32 +432,32 @@ function setupDisk {
   ##########################################################################
   elif [[ $xcat_action == "removeScsiVolume" ]]; then
     echo "Removing a SCSI Volume, FCP addr: $xcat_fcpAddr, WWPN: $xcat_wwpn, LUN: $xcat_lun"
-    
+
     # Validate the input
     if [[ ! -n $xcat_fcpAddr ]]; then
       echo "xcatconf4z $funcName (Error) FCP address was not specified"
       return
     fi
     xcat_fcpAddr=`echo $xcat_fcpAddr | tr '[A-Z]' '[a-z]'`
-    
+
     if [[ ! -n $xcat_wwpn ]]; then
       echo "xcatconf4z $funcName (Error) WWPN was not specified"
       return
     fi
     xcat_wwpn=`echo $xcat_wwpn | tr '[A-Z]' '[a-z]'`
-    
+
     if [[ ! -n $xcat_lun ]]; then
       echo "xcatconf4z $funcName (Error) LUN was not specified"
       return
     fi
     xcat_lun=`echo $xcat_lun | tr '[A-Z]' '[a-z]'`
-    
+
     # Delete the SCSI device
     scsiDevice=`lszfcp -l 0x$xcat_lun | grep 0x$xcat_lun | cut -d " " -f2`
     if [[ -n $scsiDevice ]]; then
       echo 1 > "/sys/bus/scsi/devices/$scsiDevice/delete"
     fi
-    
+
     # Delete WWPN and LUN from sysfs
     if [[ -e /sys/bus/ccw/drivers/zfcp/0.0.$xcat_fcpAddr/0x$xcat_wwpn/unit_remove ]]; then
       if [[ $(which udevadm 2> /dev/null) != '' ]]; then
@@ -467,7 +467,7 @@ function setupDisk {
       fi
       echo 0x$xcat_lun > /sys/bus/ccw/drivers/zfcp/0.0.$xcat_fcpAddr/0x$xcat_wwpn/unit_remove
     fi
-    
+
     # Delete WWPN and LUN from configuration files
     #   RHEL: /etc/zfcp.conf
     #   SLES 10: /etc/sysconfig/hardware/hwcfg-zfcp-bus-ccw-*
@@ -525,7 +525,7 @@ function setupDisk {
       rm -rf $xcat_mntdir
     fi
     mkdir -p $xcat_mntdir
-    
+
     cp /etc/fstab /etc/fstab.bak
     out=`cat "/etc/fstab" | egrep -i "ccw-0.0.$xcat_vaddr"`
     if [[  $out ]]; then
@@ -541,9 +541,9 @@ function setupDisk {
     else
       echo "The disk $xcat_vaddr has been mounted to $xcat_mntdir in format $xcat_filesys successfully"
     fi
- 
+
     fi
-  
+
   return
 }
 
@@ -587,24 +587,24 @@ function injectFiles {
 ############################################################################
 # Main Code Section
 ############################################################################
-case "$1" in  
+case "$1" in
   start)
     echo "xcatconf4z is starting"
     transportdir="/var/opt/xcat/transport"
     rm -Rf $transportdir
     /bin/mkdir -p $transportdir
     cd $transportdir
-    
+
     # Get Linux version
     getOsVersion
-    
+
     if [[ -n "$authorizedSenders" ]]; then
       pullReader
       echo "xcatconf4z has successfully processed the reader files."
     else
       echo "xcatconf4z is disabled from accepting configuration reader files."
     fi
-      
+
     setupIso
   ;;
 
@@ -615,12 +615,12 @@ case "$1" in
       echo "xcatconf4z is disabled from accepting configuration reader files."
     fi
   ;;
-  
+
   version)
     echo "xcatconf4z version:" $version
   ;;
-  
-  stop|restart|reload|force-reload)  
-    # Do nothing  
-  ;;  
-esac  
+
+  stop|restart|reload|force-reload)
+    # Do nothing
+  ;;
+esac

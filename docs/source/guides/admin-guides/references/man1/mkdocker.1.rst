@@ -40,79 +40,79 @@ OPTIONS
 
 
 
-\ **image**\ 
- 
+\ **image**\
+
  The docker image name that the instance will use.
- 
 
 
-\ **command**\ 
- 
+
+\ **command**\
+
  The command that the instance will run based on the \ **image**\  specified. The \ **image**\  option must be specified in order to use this option.
- 
 
 
-\ **dockerflag**\ 
- 
+
+\ **dockerflag**\
+
  A JSON string which will be used as parameters to create a docker. Reference https://docs.docker.com/engine/reference/api/docker_remote_api_v1.22/ for more information about which parameters can be specified.
- 
+
  Some useful flags are:
- 
- 
- \ **AttachStdin**\ =\ **true | false**\ 
-  
+
+
+ \ **AttachStdin**\ =\ **true | false**\
+
   Whether attaches to stdin.
-  
- 
- 
- \ **AttachStdout**\ =\ **true | false**\ 
-  
+
+
+
+ \ **AttachStdout**\ =\ **true | false**\
+
   Whether attaches to stdout.
-  
- 
- 
- \ **AttachStderr**\ =\ **true | false**\ 
-  
+
+
+
+ \ **AttachStderr**\ =\ **true | false**\
+
   Whether attaches to stderr.
-  
- 
- 
- \ **OpenStdin**\ =\ **true | false**\ 
-  
+
+
+
+ \ **OpenStdin**\ =\ **true | false**\
+
   Whether opens stdin.
-  
- 
- 
- \ **Tty**\ =\ **true | false**\ 
-  
+
+
+
+ \ **Tty**\ =\ **true | false**\
+
   Attach standard streams to a tty, including stdin if it is not closed.
-  
- 
- 
- \ **ExposedPorts**\ 
-  
+
+
+
+ \ **ExposedPorts**\
+
   An object mapping ports to an empty object in the form of:
-  
-  
+
+
   .. code-block:: perl
-  
+
     "ExposedPorts": { "<port>/\<tcp|udp>: {}" }
-  
-  
- 
- 
- \ **HostConfig: {"Binds"}**\ 
-  
+
+
+
+
+ \ **HostConfig: {"Binds"}**\
+
   A list of volume bindings for this docker instance, the form will be:
-  
-  
+
+
   .. code-block:: perl
-  
+
     "HostConfig": {"Binds":["<dir_on_dockerhost>:<dir_in_instance>"]}
-  
-  
- 
- 
+
+
+
+
 
 
 

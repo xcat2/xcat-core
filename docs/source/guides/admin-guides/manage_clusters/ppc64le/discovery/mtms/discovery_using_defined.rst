@@ -1,7 +1,7 @@
-Set static BMC IP using different IP address (recommended) 
+Set static BMC IP using different IP address (recommended)
 ==========================================================
 
-The following example outlines the MTMS based hardware discovery for a single IPMI-based compute node.  
+The following example outlines the MTMS based hardware discovery for a single IPMI-based compute node.
 
 +------------------------------+------------+
 | Compute Node Information     | Value      |
@@ -27,7 +27,7 @@ The BMC IP address is obtained by the open range dhcp server and the plan in thi
 
 #. Detect the BMCs and add the node definitions into xCAT.
 
-   Use the :doc:`bmcdiscover </guides/admin-guides/references/man1/bmcdiscover.1>` command to discover the BMCs responding over an IP range and write the output into the xCAT database.  This discovered BMC node is used to control the physical server during hardware discovery and will be deleted after the correct server node object is matched to a pre-defined node.  You **must** use the ``-w`` option to write the output into the xCAT database. 
+   Use the :doc:`bmcdiscover </guides/admin-guides/references/man1/bmcdiscover.1>` command to discover the BMCs responding over an IP range and write the output into the xCAT database.  This discovered BMC node is used to control the physical server during hardware discovery and will be deleted after the correct server node object is matched to a pre-defined node.  You **must** use the ``-w`` option to write the output into the xCAT database.
 
    To discover the BMC with an IP address range of 50.0.100.1-100: ::
 
@@ -61,7 +61,7 @@ The BMC IP address is obtained by the open range dhcp server and the plan in thi
         serial=10112CA
 
 
-#. Edit the ``predefined.stanzas`` file and change the discovered nodes to the intended ``hostname`` and ``IP address``. 
+#. Edit the ``predefined.stanzas`` file and change the discovered nodes to the intended ``hostname`` and ``IP address``.
 
     #. Edit the ``predefined.stanzas`` file: ::
 
@@ -91,11 +91,11 @@ The BMC IP address is obtained by the open range dhcp server and the plan in thi
           mgt=ipmi
           mtm=8247-22L
           serial=10112CA
-          ip=10.0.101.1 
+          ip=10.0.101.1
 
 #. Define the compute nodes into xCAT: ::
 
-       cat predefined.stanzas | mkdef -z 
+       cat predefined.stanzas | mkdef -z
 
 #. Set the chain table to run the ``bmcsetup`` script, this will set the BMC IP to static. ::
 
@@ -113,9 +113,9 @@ The BMC IP address is obtained by the open range dhcp server and the plan in thi
 
        chdef cn01 -p chain="osimage=<osimage_name>"
 
-#. Change the BMC IP address 
+#. Change the BMC IP address
 
-   Set the BMC IP address to a different value for the **predefined** compute node definitions.  
+   Set the BMC IP address to a different value for the **predefined** compute node definitions.
 
    To change the dhcp obtained IP address of 50.0.100.1 to a static IP address of 50.0.101.1, run the following command: ::
 
@@ -133,7 +133,7 @@ The BMC IP address is obtained by the open range dhcp server and the plan in thi
 
 #. Refresh the DNS configuration for the new hosts: ::
 
-       makedns -n 
+       makedns -n
 
 #. **[Optional]**  Monitor the node discovery process using rcons
 
@@ -150,4 +150,4 @@ The BMC IP address is obtained by the open range dhcp server and the plan in thi
        rsetboot node-8247-22l-10112ca net
        rpower node-8247-22l-10112ca on
 
-#. The discovery process will network boot the machine into the diskless xCAT genesis kernel and perform the discovery process. When the discovery process is complete, doing ``lsdef`` on the compute nodes should show discovered attributes for the machine.  The important ``mac`` information should be discovered, which is necessary for xCAT to perform OS provisioning. 
+#. The discovery process will network boot the machine into the diskless xCAT genesis kernel and perform the discovery process. When the discovery process is complete, doing ``lsdef`` on the compute nodes should show discovered attributes for the machine.  The important ``mac`` information should be discovered, which is necessary for xCAT to perform OS provisioning.

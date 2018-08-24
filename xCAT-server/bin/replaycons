@@ -18,11 +18,11 @@ use Getopt::Long;
 my $usage_string =
   "Usage:
   replaycons node [bps] [tail]
-  replaycons -h|--help 
+  replaycons -h|--help
   replaycons -v|--version
-    bps          Specifies the display rate. 
+    bps          Specifies the display rate.
                  The default is 19200.
-    tail         Specifies the number of bytes to be displayed. 
+    tail         Specifies the number of bytes to be displayed.
                  The default displays all.
     -h|--help    Display this usage statement.
     -v|--version Display the version number.";

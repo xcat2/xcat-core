@@ -7,7 +7,7 @@ If you are an experienced xCAT user and plan to contribute to the xCAT code regu
 
 * Additional information can be found in our :ref:`maintainers guide <xcat-maintainer-guide-label>` below:
 
-.. _xcat-maintainer-guide-label: 
+.. _xcat-maintainer-guide-label:
 
 Maintainers Guide
 -----------------

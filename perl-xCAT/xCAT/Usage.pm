@@ -8,7 +8,7 @@ use xCAT::Utils;
 
 =head1  xCAT::Usage
 =head2    Package Description
-  xCAT usage module. Some commands such as rpower have different implementations 
+  xCAT usage module. Some commands such as rpower have different implementations
   for different hardware. This module holds the usage string for these kind
   of commands so that the usage can be referenced from different modules.
 =cut
@@ -24,7 +24,7 @@ my %usage = (
        rnetboot <noderange> [ipl= address]",
     "rpower" => "",
     "rpower.common" =>
-    "Usage: 
+    "Usage:
     Common:
        rpower <noderange> [--nodeps] [on|onstandby|off|suspend|reset|stat|state|boot] [-V|--verbose] [-m table.colum==expectedstatus][-m table.colum==expectedstatus...] [-r <retrycount>] [-t <timeout>]
        rpower [-h|--help|-v|--version]
@@ -74,7 +74,7 @@ my %usage = (
 ",
     "rbeacon" =>"",
     "rbeacon.common" =>
-      "Usage: 
+      "Usage:
     Common:
        rbeacon [-h|--help|-v|--version|-V|--verbose]
     ",
@@ -87,7 +87,7 @@ my %usage = (
     "rbeacon.openbmc" =>
     "OpenPOWER (OpenBMC) specific:
        rbeacon [on|off|stat]
-    ",    
+    ",
     "rvitals" => "",
     "rvitals.common" =>
       "Usage:
@@ -123,7 +123,7 @@ my %usage = (
        reventlog [-h|--help|-v|--version]",
     "rinv" => "",
     "rinv.common" =>
-      "Usage: 
+      "Usage:
     Common:
        rinv <noderange> [all|model|serial] [-V|--verbose]
        rinv [-h|--help|-v|--version]
@@ -132,12 +132,12 @@ my %usage = (
     "BMC/MPA specific:
        rinv <noderange> [model|serial|asset|vpd|deviceid|guid|firm|dimm|mprom|all]
     OpenPOWER (IPMI) server specific:
-       rinv <noderange> [model|serial|deviceid|uuid|guid|vpd|mprom|firm|all] 
+       rinv <noderange> [model|serial|deviceid|uuid|guid|vpd|mprom|firm|all]
     ",
     "rinv.openbmc" =>
     "OpenPOWER (OpenBMC) server specific:
        rinv <noderange> [model][serial][firm][cpu][dimm][all] [-V|--verbose]
-    ", 
+    ",
     "rinv.end" =>
     "PPC specific(with HMC):
        rinv <noderange> [all|bus|config|serial|model|firm]
@@ -160,7 +160,7 @@ my %usage = (
 "Usage: rsetboot <noderange> [net|hd|cd|floppy|def|stat] [-u] [-p]
        rsetboot [-h|--help|-v|--version]",
     "rbootseq" =>
-      "Usage: 
+      "Usage:
        Common:
            rbootseq [-h|--help|-v|--version|-V|--verbose]
        Blade specific:
@@ -172,7 +172,7 @@ my %usage = (
        rscan [-h|--help|-v|--version]",
     "rspconfig" => "",
     "rspconfig.common" =>
-      "Usage: 
+      "Usage:
    Common:
        rspconfig [-h|--help|-v|--version|-V|--verbose]
    ",
@@ -215,7 +215,7 @@ my %usage = (
        rspconfig <singlenode> [frame=number]
        rspconfig <singlenode> [USERID=passwd] [updateBMC=<y|n>]
        rspconfig <noderange>  [sshcfg=<enable|disable>|
-           snmpcfg=<enable|disable>|                             
+           snmpcfg=<enable|disable>|
            pd1=<nonred|redwoperf|redwperf>|
            pd2=<nonred|redwoperf|redwperf>|
            network=<*|[ip],[host],[gateway],[netmask]>|
@@ -276,11 +276,11 @@ my %usage = (
       "Usage:
         rspreset <noderange>",
     "getmacs" =>
-      "Usage: 
+      "Usage:
    Common:
        getmacs [-h|--help|-v|--version]
    PPC specific:
-       getmacs <noderange> [-F filter] 
+       getmacs <noderange> [-F filter]
        getmacs <noderange> [-M]
        getmacs <noderange> [-V| --verbose] [-f] [-d] [--arp] | [-D {[-o] [-S server] [-G gateway] [-C client] | [--noping]}]
    blade specific:
@@ -328,7 +328,7 @@ my %usage = (
    Common:
        chvm [-h|--help|-v|--version]
    PPC (with HMC) specific:
-       chvm <noderange> [-p profile][-V|--verbose] 
+       chvm <noderange> [-p profile][-V|--verbose]
        chvm <noderange> <attr>=<val> [<attr>=<val>...]
    PPC (using Direct FSP Management) specific:
        chvm <noderange> --p775 [-p <profile>]
@@ -373,7 +373,7 @@ my %usage = (
        chvm noderange [--setipl ipl_target load_parms parms]
        chvm noderange [--setpassword password]",
     "rmvm" =>
-      "Usage: rmvm <noderange> [--service][-V|--verbose] 
+      "Usage: rmvm <noderange> [--service][-V|--verbose]
        rmvm [-h|--help|-v|--version],
        rmvm [-p] [-f]
        PPC (using Direct FSP Management) specific:
@@ -402,7 +402,7 @@ my %usage = (
        makentp [-a|--all] [-V|--verbose]",
     "rflash" => "",
     "rflash.common" =>
-    "Usage: 
+    "Usage:
     Common:
         rflash [ -h|--help|-v|--version|-V|--verbose]
     ",
@@ -411,7 +411,7 @@ my %usage = (
     Lenovo Dense Enclosure Manager specific:
         rflash <noderange> http://<server>/path/to/update.rom
     PPC (with HMC) specific:
-	rflash <noderange> -p <rpm_directory> [--activate {concurrent | disruptive}] 
+	rflash <noderange> -p <rpm_directory> [--activate {concurrent | disruptive}]
 	rflash <noderange> {--commit | --recover}
     PPC (using Direct FSP Management) specific:
 	rflash <noderange> -p <rpm_directory> [--activate {disruptive|deferred}] [-d <data_directory>]
@@ -430,42 +430,42 @@ my %usage = (
     "mkhwconn" =>
       "Usage:
     mkhwconn [-h|--help]
-    
+
     PPC (with HMC) specific:
     mkhwconn noderange -t [--bind] [-V|--verbose]
     mkhwconn noderange -p single_hmc [-P HMC passwd] [-V|--verbose]
-    
+
     PPC (using Direct FSP Management) specific:
     mkhwconn noderange -t [-T tooltype] [--port port_value]
     mkhwconn noderange -s [hmcnode] [-P HMC passwd] [-V|--verbose]",
     "rmhwconn" =>
       "Usage:
     rmhwconn [-h|--help]
-    
+
     PPC (with HMC) specific:
     rmhwconn noderange [-V|--verbose]
-    
+
     PPC (using Direct FSP Management) specific:
     rmhwconn noderange [-T tooltype]
     rmhwconn noderange -s",
     "lshwconn" =>
       "Usage:
     lshwconn [-h|--help]
-    
+
     PPC (with HMC) specific:
     lshwconn noderange [-V|--verbose]
-    
+
     PPC (using Direct FSP Management) specific:
     lshwconn noderange [-T tooltype]
     lshwconn noderange -s",
     "renergy" =>
       "Usage:
-    renergy [-h | --help] 
-    renergy [-v | --version] 
+    renergy [-h | --help]
+    renergy [-v | --version]
 
     Power 6 server specific :
       renergy noderange [-V] { all | { [savingstatus] [cappingstatus] [cappingmaxmin] [cappingvalue] [cappingsoftmin] [averageAC] [averageDC] [ambienttemp] [exhausttemp] [CPUspeed] } }
-      renergy noderange [-V] { {savingstatus}={on | off} | {cappingstatus}={on | off} | {cappingwatt}=watt | {cappingperc}=percentage } 
+      renergy noderange [-V] { {savingstatus}={on | off} | {cappingstatus}={on | off} | {cappingwatt}=watt | {cappingperc}=percentage }
 
     Power 7 server specific :
       renergy noderange [-V] { all | { [savingstatus] [dsavingstatus] [cappingstatus] [cappingmaxmin] [cappingvalue] [cappingsoftmin] [averageAC] [averageDC] [ambienttemp] [exhausttemp] [CPUspeed] [syssbpower] [sysIPLtime] [fsavingstatus] [ffoMin] [ffoVmin] [ffoTurbo] [ffoNorm] [ffovalue] } }
@@ -481,15 +481,15 @@ my %usage = (
       For a blade server nodes:
         renergy noderange [-V] { all | [averageDC] [capability] [cappingvalue] [CPUspeed] [maxCPUspeed] [savingstatus] [dsavingstatus] }
         renergy noderange [-V] { savingstatus={on | off} | dsavingstatus={on-norm | on-maxp | off} }
- 
+
     Flex specific :
       For Flex Management Modules:
         renergy noderange [-V] { all | [powerstatus] [powerpolicy] [powermodule] [avaiablepower] [reservedpower] [remainpower] [inusedpower] [availableDC] [averageAC] [thermaloutput] [ambienttemp] [mmtemp] }
- 
+
       For Flex node (power and x86):
         renergy noderange [-V] { all | [averageDC] [capability] [cappingvalue] [cappingmaxmin] [cappingmax] [cappingmin] [cappingGmin] [CPUspeed] [maxCPUspeed] [savingstatus] [dsavingstatus] }
         renergy noderange [-V] { cappingstatus={on | off} | cappingwatt=watt | cappingperc=percentage | savingstatus={on | off} | dsavingstatus={on-norm | on-maxp | off} }
- 
+
     iDataPlex specific :
       renergy noderange [-V] [ { cappingmaxmin | cappingmax | cappingmin } ] [cappingstatus] [cappingvalue] [relhistogram]
       renergy noderange [-V] { cappingstatus={on | enable | off | disable} | {cappingwatt|cappingvalue}=watt }
@@ -504,7 +504,7 @@ my %usage = (
     updatenode <noderange> [-V|--verbose] [-k|--security] [-s|--sn] [-t <timeout>]
     or
     updatenode <noderange> [-V|--verbose] [-F|--sync | -f|--snsync] [-r|--node-rcp <node_remote_copy>] [-l|--user[username]] [--fanout=[fanout value]] [-S|--sw] [-t <timeout>]
-        [-P|--scripts [script1,script2,...]] [-s|--sn] 
+        [-P|--scripts [script1,script2,...]] [-s|--sn]
         [-A|--updateallsw] [-c|--cmdlineonly] [-d alt_source_dir]
         [attr=val [attr=val...]]
     or
@@ -513,19 +513,19 @@ my %usage = (
 Options:
     <noderange> A list of nodes or groups.
 
-    [-k|--security] Update the security keys and certificates for the 
+    [-k|--security] Update the security keys and certificates for the
         target nodes.
 
     [-F|--sync] Perform File Syncing.
 
-    [--fanout]  Allows you to assign the fanout value for the command. 
+    [--fanout]  Allows you to assign the fanout value for the command.
         See xdsh/xdcp fanout parameter in the man page.
 
-    [-f|--snsync] Performs File Syncing to the service nodes that service 
+    [-f|--snsync] Performs File Syncing to the service nodes that service
         the nodes in the noderange.
- 
+
     [-r|--node-rcp] Specifies  the  full  path of the remote copy command used for sync files to node targets, such as /usr/bin/rsync and /usr/bin/scp
-   
+
     [-g|--genmypost] Will generate a new mypostscript file for the
         the nodes in the noderange, if site precreatemypostscripts is 1 or YES.
 
@@ -534,10 +534,10 @@ Options:
 
     [-S|--sw] Perform Software Maintenance.
 
-    [-P|--scripts] Execute postscripts listed in the postscripts table or 
+    [-P|--scripts] Execute postscripts listed in the postscripts table or
         parameters.
 
-    [-c|--cmdlineonly] Only use AIX software maintenance information 
+    [-c|--cmdlineonly] Only use AIX software maintenance information
         provided on the command line. (AIX only)
 
     [-s|--sn] Set the server information stored on the nodes.
@@ -545,17 +545,17 @@ Options:
     [-t|--timeout] Time out in seconds to allow the command to run. Default is no timeout,
         except for updatenode -k which has a 10 second default timeout.
 
-    [-A|--updateallsw] Install or update all software contained in the source 
+    [-A|--updateallsw] Install or update all software contained in the source
         directory. (AIX only)
 
     [-d <alt_source_dir>] Used to indicate a source directory other than
-        the standard lpp_source directory specified in the xCAT osimage 
+        the standard lpp_source directory specified in the xCAT osimage
         definition.  (AIX only)
 
-    [script1,script2,...] A comma separated list of postscript names. 
+    [script1,script2,...] A comma separated list of postscript names.
         If omitted, all the post scripts defined for the nodes will be run.
 
-    [attr=val [attr=val...]]  Specifies one or more 'attribute equals value' 
+    [attr=val [attr=val...]]  Specifies one or more 'attribute equals value'
         pairs, separated by spaces. (AIX only)",
     "lsflexnode" =>
       "Usage:
@@ -609,7 +609,7 @@ Options:
 );
 
 # Rebuild full command usage from its components
-$usage{"rspconfig"} = $usage{"rspconfig.common"} . 
+$usage{"rspconfig"} = $usage{"rspconfig.common"} .
                       $usage{"rspconfig.begin"} .
                       $usage{"rspconfig.openbmc"} .
                       "   " .
@@ -618,7 +618,7 @@ $usage{"rspconfig"} = $usage{"rspconfig.common"} .
 $usage{"rspconfig.openbmc"} = $usage{"rspconfig.common"} .
                       $usage{"rspconfig.openbmc"};
 
-$usage{"rinv"} = $usage{"rinv.common"} . 
+$usage{"rinv"} = $usage{"rinv.common"} .
                       $usage{"rinv.begin"} .
                       $usage{"rinv.openbmc"} .
                       $usage{"rinv.end"};
@@ -633,7 +633,7 @@ $usage{"rbeacon"} = $usage{"rbeacon.common"} .
 $usage{"rbeacon.openbmc"} = $usage{"rbeacon.common"} .
                       $usage{"rbeacon.openbmc"};
 
-$usage{"rvitals"} = $usage{"rvitals.common"} . 
+$usage{"rvitals"} = $usage{"rvitals.common"} .
                       $usage{"rvitals.begin"} .
                       $usage{"rvitals.openbmc"} .
                       $usage{"rvitals.end"};
@@ -641,7 +641,7 @@ $usage{"rvitals"} = $usage{"rvitals.common"} .
 $usage{"rvitals.openbmc"} = $usage{"rvitals.common"} .
                       $usage{"rvitals.openbmc"};
 
-$usage{"rflash"} = $usage{"rflash.common"} . 
+$usage{"rflash"} = $usage{"rflash.common"} .
                       $usage{"rflash.begin"} .
                       $usage{"rflash.openbmc"} .
                       "   " .
@@ -650,7 +650,7 @@ $usage{"rflash"} = $usage{"rflash.common"} .
 $usage{"rflash.openbmc"} = $usage{"rflash.common"} .
                       $usage{"rflash.openbmc"};
 
-$usage{"rpower"} = $usage{"rpower.common"} . 
+$usage{"rpower"} = $usage{"rpower.common"} .
                       $usage{"rpower.begin"} .
                       $usage{"rpower.openbmc"} .
                       $usage{"rpower.end"};
@@ -731,7 +731,7 @@ sub getVersion {
 
 =head3   parseCommand
       This function parses the given command to see if the usage or version string
-      need to be returned. 
+      need to be returned.
     Arguments:
         command
         arguments
@@ -784,14 +784,14 @@ sub parseCommand {
 #-------------------------------------------------------------------------------
 
 sub validateArgs {
-    my $command=shift; 
+    my $command=shift;
     if ($command =~ /xCAT::Usage/) { $command = shift; }
-  
-    my $count=0; 
+
+    my $count=0;
     my @extrargs=@_;
     if($command =~ m/^(nodeset|rinstall|winstall)$/ ){
-        #suppose that argument like "-p foo" have been processed and 
-        #filtered by GetOpt subroutine 
+        #suppose that argument like "-p foo" have been processed and
+        #filtered by GetOpt subroutine
         #fortunately the commands in this branch does not have such options
         foreach(@extrargs){
             if($_ and $_ !~ m/^-[-]?\S+/){
@@ -803,5 +803,5 @@ sub validateArgs {
         }
     }
 
-    return [0]; 
+    return [0];
 }

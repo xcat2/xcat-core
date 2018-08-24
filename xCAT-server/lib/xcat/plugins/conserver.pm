@@ -119,7 +119,7 @@ sub preprocess_request {
         }
         return xCAT::Scope->get_broadcast_scope_with_parallel($request, \@sns);
     }
-   
+
     # get site master
     my $master = xCAT::TableUtils->get_site_Master();
     if (!$master) { $master = hostname(); }
@@ -209,6 +209,9 @@ sub process_request {
                 my $rsp->{data}->[0] = "goconserver is being used as the console service, did you mean: makegocons <noderange>? If not, stop goconserver and retry.";
                 xCAT::MsgUtils->message("E", $rsp, $cb);
                 return;
+            } else {
+                my $rsp->{data}->[0] = "makeconservercf is deprecrated as well as conserver, go to makegocons for more information about enabling goconserver.";
+                xCAT::MsgUtils->message("W", $rsp, $cb);
             }
             xCAT::Goconserver::switch_conserver($cb);
         }
@@ -442,7 +445,7 @@ sub makeconservercf {
         } else{
             $rsp->{data}->[0] = "Remove console entry for the nodes:".join(',', @$rmnodes);
         }
-        xCAT::MsgUtils->message("I", $rsp, $cb); 
+        xCAT::MsgUtils->message("I", $rsp, $cb);
     } else {    #no nodes specified, do em all up
         zapcfg(\@filecontent);    # strip all xCAT configured nodes from config
 
@@ -661,7 +664,7 @@ sub delete_undefined_nodes_entry {
             my $node = $1;
             unless (exists($allnodeshash->{$node})) {
                 $skip  = 1;
-                $skipnext = 1; 
+                $skipnext = 1;
                 push @rmnodes, $node;
                 print __LINE__."===== push node: $node==\n";
             }

@@ -19,7 +19,7 @@ SYNOPSIS
 ********
 
 
-\ **xcatsetup**\  [\ **-s|-**\ **-stanzas**\  \ *stanza-list*\ ] [\ **-**\ **-yesreallydeletenodes**\ ] \ *cluster-config-file*\ 
+\ **xcatsetup**\  [\ **-s|-**\ **-stanzas**\  \ *stanza-list*\ ] [\ **-**\ **-yesreallydeletenodes**\ ] \ *cluster-config-file*\
 
 \ **xcatsetup**\  [\ **-?**\  | \ **-h**\  | \ **-**\ **-help**\  | \ **-v**\  | \ **-**\ **-version**\ ]
 
@@ -36,51 +36,51 @@ the hardware that is connected to the service and cluster networks.  The typical
 
 
 1.
- 
+
  Install the xCAT software on the management node
- 
+
 
 
 2.
- 
+
  Create the cluster config file and run xcatsetup
- 
+
 
 
 3.
- 
+
  Put hardware control passwords in the ppchcp or ppcdirect database table
- 
+
 
 
 4.
- 
+
  Run makenetworks and makedhcp
- 
+
 
 
 5.
- 
+
  Run the discovery commands (lsslp, mkhwconn, rspconfig) as described in the System P Hardware Management cookbook.
- 
+
 
 
 6.
- 
+
  Configure and start services using makehosts, makedns, mkconserver.cf, etc.
- 
+
 
 
 7.
- 
+
  Create the images that should be installed or booted on the nodes
- 
+
 
 
 8.
- 
+
  Run nodeset and rpower/rnetboot to boot up the nodes.
- 
+
 
 
 The \ **xcatsetup**\  command is intended as a quick way to fill out the database for a cluster that has very regular
@@ -140,16 +140,16 @@ This sample configuration file is for a 2 building block cluster.
     # ISR network topology.  For example, one of the following: 128D, 64D, 32D, 16D, 8D, 4D, 2D, 1D
     topology = 32D
     # The nameservers in site table will be set with the value of master automatically.
- 
+
    xcat-service-lan:
      # IP range used for DHCP. If you set the entry, the networks table will be filled
      # automatically with this range and the dhcp interface will be set in the site table.
      dhcp-dynamic-range = 50.0.0.0-50.0.0.200
- 
+
    xcat-hmcs:
     hostname-range = hmc1-hmc2
     starting-ip = 10.200.1.1
- 
+
    xcat-frames:
     # these are the connections to the frames
     hostname-range = frame[1-6]
@@ -166,12 +166,12 @@ This sample configuration file is for a 2 building block cluster.
     # bpa-b-1-starting-ip = 10.231.2.1
     # This assumes you have 2 service LANs:  a primary service LAN 40.x.y.z/255.0.0.0 that all of the port 0's
     # are connected to, and a backup service LAN 41.x.y.z/255.0.0.0 that all of the port 1's are connected to.
-    # "x" is the frame number and "z" is the bpa/fsp id (1 for the first BPA/FSP in the Frame/CEC, 2 for the 
+    # "x" is the frame number and "z" is the bpa/fsp id (1 for the first BPA/FSP in the Frame/CEC, 2 for the
     # second BPA/FSP in the Frame/CEC). For BPAs "y" is always be 0 and for FSPs "y" is the cec id.
     vlan-1 = 40
     vlan-2 = 41
- 
- 
+
+
    xcat-cecs:
     # These are the connections to the CECs.  Either form of hostname is supported.
     #hostname-range = cec01-cec64
@@ -189,12 +189,12 @@ This sample configuration file is for a 2 building block cluster.
     #fsp-b-0-starting-ip = 10.230.4.1
     #fsp-a-1-starting-ip = 10.231.3.1
     #fsp-b-1-starting-ip = 10.231.4.1
- 
- 
+
+
    xcat-building-blocks:
     num-frames-per-bb = 3
     num-cecs-per-bb = 32
- 
+
    xcat-lpars:
     num-lpars-per-cec = 8
     # If you set these, then do not set the corresponding attributes in the other node stanzas below.
@@ -205,7 +205,7 @@ This sample configuration file is for a 2 building block cluster.
     aliases = -hf0
     # ml0 is for aix.  For linux, use bond0 instead.
     otherinterfaces = -hf1:11.1.1.1,-hf2:12.1.1.1,-hf3:13.1.1.1,-ml0:14.1.1.1
- 
+
    xcat-service-nodes:
     num-service-nodes-per-bb = 2
     # which cecs within the bldg block that the SNs are located in
@@ -216,7 +216,7 @@ This sample configuration file is for a 2 building block cluster.
     # this value is the same format as the hosts.otherinterfaces attribute except
     # the IP addresses are starting IP addresses
     #otherinterfaces = -hf0:10.10.1.1,-hf1:10.11.1.1,-hf2:10.12.1.1,-hf3:10.13.1.1,-ml0:10.14.1.1
- 
+
    xcat-storage-nodes:
     num-storage-nodes-per-bb = 3
     # which cecs within the bldg block that the storage nodes are located in
@@ -225,7 +225,7 @@ This sample configuration file is for a 2 building block cluster.
     #starting-ip = 10.20.1.1
     #aliases = -hf0
     #otherinterfaces = -hf1:10.21.1.1,-hf2:10.22.1.1,-hf3:10.23.1.1,-ml0:10.24.1.1
- 
+
    xcat-compute-nodes:
     #hostname-range = n001-n502
     #starting-ip = 10.30.1.1
@@ -312,16 +312,16 @@ VPD data or supernode numbers at this time.
 
    xcat-site:
     use-direct-fsp-control = 1
- 
+
    xcat-frames:
     hostname-range = frame[1-2]
- 
+
    xcat-cecs:
     #hostname-range = cec[01-24]
     hostname-range = f[1-2]c[01-12]
     num-cecs-per-frame = 12
- 
- 
+
+
    xcat-lpars:
      hostname-range = f[1-2]c[01-12]p[01,05,09,13,17,21,25,29]
 
@@ -335,154 +335,154 @@ The following lists which database attributes are filled in as a result of each 
 in the stanza, some attributes might not be filled in.
 
 
-\ **xcat-site**\ 
- 
+\ **xcat-site**\
+
  site table:  domain, nameservers, topology
- 
 
 
-\ **xcat-hmcs**\ 
- 
+
+\ **xcat-hmcs**\
+
  site table:  ea_primary_hmc, ea_backup_hmc
- 
+
  nodelist table:  node, groups (all HMCs (hmc) ), hidden
- 
+
  hosts table:  node, ip
- 
+
  ppc table:  node, comments
- 
+
  nodetype table:  node, nodetype
- 
 
 
-\ **xcat-frames**\ 
- 
+
+\ **xcat-frames**\
+
  nodelist table:  node, groups (all frames (frame) ), hidden
- 
+
  ppc table: node, id, hcp, nodetype, sfp
- 
+
  nodetype table: node, nodetype
- 
+
  nodehm table: node, mgt
- 
+
  vpd table: node, serial, mtm, side
- 
 
 
-\ **xcat-bpas**\ 
- 
+
+\ **xcat-bpas**\
+
  nodelist table: node, groups (bpa,all) , hidden
- 
+
  ppc table: node, id, hcp, nodetype, parent
- 
+
  nodetype table:  node, nodetype
- 
+
  nodehm table:  node, mgt
- 
+
  vpd table:  node, serial, mtm, side
- 
 
 
-\ **xcat-cecs**\ 
- 
+
+\ **xcat-cecs**\
+
  nodelist table:  node, groups (all CECs (cec), all CECs in a frame (<frame>cec) ), hidden
- 
+
  ppc table:  node, supernode, hcp, id, parent
- 
+
  nodetype table:  node, nodetype
- 
+
  nodehm table:  node, mgt
- 
+
  nodegroup table:  groupname, grouptype, members, wherevals (all nodes in a CEC (<cec>nodes) )
- 
+
  nodepos:  rack, u
- 
 
 
-\ **xcat-fsps**\ 
- 
+
+\ **xcat-fsps**\
+
  nodelist table: node, groups (fsp,all), hidden
- 
+
  ppc table: node, id, hcp, nodetype, parent
- 
+
  nodetype table: node, nodetype
- 
+
  nodehm table: node, mgt
- 
+
  vpd table: node, serial, mtm, side
- 
 
 
-\ **xcat-building-blocks**\ 
- 
+
+\ **xcat-building-blocks**\
+
  site table: sharedtftp, sshbetweennodes(service)
- 
+
  ppc table:  node, parent (for frame)
- 
 
 
-\ **xcat-service-nodes**\ 
- 
+
+\ **xcat-service-nodes**\
+
  nodelist table:  node, groups (all service nodes (service), all service nodes in a BB (bb<num>service) )
- 
+
  hosts table:  node, ip, hostnames, otherinterfaces
- 
+
  ppc table:  node, id, hcp, parent
- 
+
  nodetype table:  node, nodetype, arch
- 
+
  nodehm table:  node, mgt, cons
- 
+
  noderes table:  netboot
- 
+
  servicenode table:  node, nameserver, dhcpserver, tftpserver, nfsserver, conserver, monserver, ftpserver, nimserver, ipforward
- 
+
  nodegroup table:  groupname, grouptype, members, wherevals (all nodes under a service node (<servicenode>nodes) )
- 
+
  nodepos:  rack, u
- 
 
 
-\ **xcat-storage-nodes**\ 
- 
+
+\ **xcat-storage-nodes**\
+
  nodelist table:  node, groups (all storage nodes (storage), all storage nodes in a BB (bb<num>storage) )
- 
+
  hosts table:  node, ip, hostnames, otherinterfaces
- 
+
  ppc table:  node, id, hcp, parent
- 
+
  nodetype table:  node, nodetype, arch
- 
+
  nodehm table:  node, mgt, cons
- 
+
  noderes table:  netboot, xcatmaster, servicenode
- 
+
  nodepos:  rack, u
- 
 
 
-\ **xcat-compute-nodes**\ 
- 
+
+\ **xcat-compute-nodes**\
+
  nodelist table:  node, groups (all compute nodes (compute) )
- 
+
  hosts table:  node, ip, hostnames, otherinterfaces
- 
+
  ppc table:  node, id, hcp, parent
- 
+
  nodetype table:  node, nodetype, arch
- 
+
  nodehm table:  node, mgt, cons
- 
+
  noderes table:  netboot, xcatmaster, servicenode
- 
+
  nodepos:  rack, u
- 
 
 
-\ **ll-config**\ 
- 
+
+\ **ll-config**\
+
  postscripts: postscripts
- 
+
 
 
 
@@ -493,36 +493,36 @@ OPTIONS
 
 
 
-\ **-s|-**\ **-stanzas**\  \ *stanza-list*\ 
- 
+\ **-s|-**\ **-stanzas**\  \ *stanza-list*\
+
  A comma-separated list of stanza names that \ **xcatsetup**\  should process in the configuration file.  If not specified, it will process
  all the stanzas that start with 'xcat' and some other stanzas that give xCAT hints about how to set up the HPC products.
- 
+
  This option should only be specified if you have already run \ **xcatsetup**\  earlier with the stanzas that occur before this in the
  configuration file.  Otherwise, objects will be created that refer back to other objects that do not exist in the database.
- 
 
 
-\ **-v|-**\ **-version**\ 
- 
+
+\ **-v|-**\ **-version**\
+
  Command Version.
- 
 
 
-\ **-?|-h|-**\ **-help**\ 
- 
+
+\ **-?|-h|-**\ **-help**\
+
  Display usage message.
- 
 
 
-\ **-**\ **-yesreallydeletenodes**\ 
- 
+
+\ **-**\ **-yesreallydeletenodes**\
+
  Delete the nodes represented in the cluster config file, instead of creating them.  This is useful if your first attempt with the cluster
  config file wasn't quite right and you want to start over.  But use this option with extreme caution, because it will potentially delete
  a lot of nodes.  If the only thing you have done so far in your database is add nodes by running \ **xcatsetup**\ , then it is safe to use this
  option to start over.  If you have made other changes to your database, you should first back it up using dumpxCATdb(1)|dumpxCATdb.1 before
  using this option.
- 
+
 
 
 
@@ -549,45 +549,45 @@ EXAMPLES
 
 1. Use the sample config.txt file at the beginning of this man page to create all the objects/nodes for a
 2 building block cluster.
- 
- 
+
+
  .. code-block:: perl
- 
+
    xcatsetup config.txt
- 
- 
+
+
  The output:
- 
- 
+
+
  .. code-block:: perl
- 
+
    Defining site attributes...
    Defining HMCs...
    Defining frames...
    Defining CECs...
    Defining building blocks...
    Defining LPAR nodes...
- 
- 
+
+
 
 
 2. Use the simpler config file shown earlier in this man page to create just the frame and cec objects:
- 
- 
+
+
  .. code-block:: perl
- 
+
    xcatsetup config-simple.txt
- 
- 
+
+
  The output:
- 
- 
+
+
  .. code-block:: perl
- 
+
    Defining frames...
    Defining CECs...
- 
- 
+
+
 
 
 

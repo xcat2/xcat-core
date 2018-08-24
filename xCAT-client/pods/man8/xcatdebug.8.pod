@@ -14,7 +14,7 @@ xCAT offers two trace facilities to debug the xCAT:
 
 B<Subroutine calling trace>
 
-Display the calling trace for subroutine when it is called. 
+Display the calling trace for subroutine when it is called.
 
 The trace message includes: The name of the called subroutine; The arguments which passed to the called subroutine; The calling stack of the subroutine. By default, the trace will be enabled to all the subroutines in the xcatd and plugin modules. The target subroutine can be configured by configuration file or through xcatdebug command line.
 
@@ -72,7 +72,7 @@ The B<commented trace log> can be added in xcatd and plugin modules. But followi
 
 =item B<-f>
 
-Enable or disable the B<subroutine calling trace>. 
+Enable or disable the B<subroutine calling trace>.
 
 For B<enable>, if ignoring the B<-c> flag, all the subroutines in the xcatd and plugin modules will be enabled.
 
@@ -100,7 +100,7 @@ B<subroutine list>: a string like  B<SUBROUTINE_DEFINITION>|B<SUBROUTINE_DEFINIT
 
 Enable or disable the B<commented trace log>.
 
-Note: The xcatd will be restarted for the performing of B<-d> 
+Note: The xcatd will be restarted for the performing of B<-d>
 
 =back
 

@@ -30,7 +30,7 @@ in effect for these blades until set differently.
 For PPC (using Direct FSP Management) specific:
 
 B<rbootseq> sets the ethernet (net) or hfi device as the first boot device for the specified PPC LPARs.
-The B<rbootseq> command requires that the ethernet or hfi mac address is stored in the mac table, and that the network information is correct in the networks table. 
+The B<rbootseq> command requires that the ethernet or hfi mac address is stored in the mac table, and that the network information is correct in the networks table.
 
 =head1 OPTIONS
 

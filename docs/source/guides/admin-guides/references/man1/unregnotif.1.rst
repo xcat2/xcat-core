@@ -19,11 +19,11 @@ SYNOPSIS
 ********
 
 
-\ **unregnotif [-h| -**\ **-help]**\ 
+\ **unregnotif [-h| -**\ **-help]**\
 
-\ **unregnotif [-v| -**\ **-version]**\ 
+\ **unregnotif [-v| -**\ **-version]**\
 
-\ **unregnotif**\  \ *filename*\ 
+\ **unregnotif**\  \ *filename*\
 
 
 ***********

@@ -6,19 +6,19 @@
 #	aixvgsetup
 #
 #   This sample script may be used to setup up disk mirroring on an
-#	AIX diskfull node. 
+#	AIX diskfull node.
 #
 #	It assumes that rootvg is currently on hdisk0 and that the mirror will
-#	be stored on hdisk1.  You can change the disk names to suit your 
+#	be stored on hdisk1.  You can change the disk names to suit your
 #	environment.
 #
-#	Add this script as a postscript to be run during the initial installation 
-#	of an AIX diskfull (standalone) installation. 
+#	Add this script as a postscript to be run during the initial installation
+#	of an AIX diskfull (standalone) installation.
 #---------------------------------------------------------------------------
 
 # extend the root volume group with the new disk(s)
 cmd="/usr/sbin/extendvg -f rootvg hdisk1"
-result=`$cmd 2>/dev/null` 
+result=`$cmd 2>/dev/null`
 rc=$?
 if [ $rc -ne 0 ]; then
 	logger -t xcat -p local4.err  "Could not run $cmd, error = $rc"
@@ -47,7 +47,7 @@ if [ $rc -ne 0 ]; then
 fi
 
 # set the bootlist
-cmd="/usr/bin/bootlist -m normal hdisk0 hdisk1" 
+cmd="/usr/bin/bootlist -m normal hdisk0 hdisk1"
 result=`$cmd 2>/dev/null`
 rc=$?
 if [ $rc -ne 0 ]; then

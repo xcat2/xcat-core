@@ -54,7 +54,7 @@ The configuration procedure will be quite different based on the shared data mec
     /install
     ~/.xcat
     /<dbdirectory>
-    /tftpboot 
+    /tftpboot
 
 
 .. note:: * For MySQL, the database directory is ``/var/lib/mysql``
@@ -100,7 +100,7 @@ Setup xCAT on the Primary Management Node
 
    Add the two management nodes into policy table: ::
 
-    tabdump policy  
+    tabdump policy
     "1.2","rhmn1",,,,,,"trusted",,
     "1.3","rhmn2",,,,,,"trusted",,
     "1.4","rhmn",,,,,,"trusted",,
@@ -109,7 +109,7 @@ Setup xCAT on the Primary Management Node
 
     chdef -t site databaseloc=/dbdirectory
 
-#. Install and configure database. Refer to the doc [**doto:** choosing_the_Database] to configure the database on the xCAT management node. For PostgreSql, add primary and standby IP addresses access to database, use ``pgsqlsetup -i -a 9.114.47.103 -a 9.114.47.104`` to migrate an existing xCAT database from SQLite to PostgreSQL.  
+#. Install and configure database. Refer to the doc [**doto:** choosing_the_Database] to configure the database on the xCAT management node. For PostgreSql, add primary and standby IP addresses access to database, use ``pgsqlsetup -i -a 9.114.47.103 -a 9.114.47.104`` to migrate an existing xCAT database from SQLite to PostgreSQL.
 
    Verify xcat is running on correct database by running: ::
 
@@ -135,7 +135,7 @@ Setup xCAT on the Primary Management Node
 #. Stop the xcatd daemon and some related network services from starting on reboot: ::
 
     service xcatd stop
-    chkconfig --level 345 xcatd off  
+    chkconfig --level 345 xcatd off
     service conserver off
     chkconfig --level 2345 conserver off
     service dhcpd stop
@@ -148,8 +148,8 @@ Setup xCAT on the Primary Management Node
 
 #. (Optional) If DFM is being used for hardware control capabilities, install DFM package, setup xCAT to communicate directly to the System P server's service processor.::
 
-    xCAT-dfm RPM 
-    ISNM-hdwr_svr RPM  
+    xCAT-dfm RPM
+    ISNM-hdwr_svr RPM
 
 #. If there is any node that is already managed by the Management Node,change the noderes table tftpserver & xcatmaster & nfsserver attributes to the Virtual ip
 
@@ -160,7 +160,7 @@ Setup xCAT on the Primary Management Node
 Setup xCAT on the Standby Management Node
 =========================================
 
-#. Make sure the standby management node is NOT using the shared data. 
+#. Make sure the standby management node is NOT using the shared data.
 
 #. Add the alias ip address ``9.114.47.97`` into the ``/etc/resolv.conf`` as the nameserver. Change the hostname resolution order to be using ``/etc/hosts`` before using name server. Change "hosts: files dns" in /etc/nsswitch.conf.
 
@@ -174,8 +174,8 @@ Setup xCAT on the Standby Management Node
 
 #. (Optional) DFM only, Install DFM package: ::
 
-    xCAT-dfm RPM 
-    ISNM-hdwr_svr RPM 
+    xCAT-dfm RPM
+    ISNM-hdwr_svr RPM
 
 #. Setup hostname resolution between the primary management node and standby management node. Make sure the primary management node can resolve the hostname of the standby management node, and vice versa.
 
@@ -190,7 +190,7 @@ Setup xCAT on the Standby Management Node
 #. Stop the xcatd daemon and related network services from starting on reboot: ::
 
     service xcatd stop
-    chkconfig --level 345 xcatd off  
+    chkconfig --level 345 xcatd off
     service conserver off
     chkconfig --level 2345 conserver off
     service dhcpd stop
@@ -458,7 +458,7 @@ The operating system is installed on the internal disks.
 
 #. Connect the shared disk to both management nodes
 
-   To verify the shared disks are connected correctly, run the sginfo command on both management nodes and look for the same serial number in the output. Be aware that the sginfo command may not be installed by default on Linux, the sginfo command is shipped with package sg3_utils, you can manually install the package sg3_utils on both management nodes. 
+   To verify the shared disks are connected correctly, run the sginfo command on both management nodes and look for the same serial number in the output. Be aware that the sginfo command may not be installed by default on Linux, the sginfo command is shipped with package sg3_utils, you can manually install the package sg3_utils on both management nodes.
 
    Once the sginfo command is installed, run sginfo -l command on both management nodes to list all the known SCSI disks, for example, enter: ::
 
@@ -473,9 +473,9 @@ The operating system is installed on the internal disks.
     /dev/sg3 [=/dev/sdd  scsi0 ch=0 id=4 lun=0]
     /dev/sg4 [=/dev/sde  scsi0 ch=0 id=5 lun=0]
 
-   Use the ``sginfo -s <device_name>`` to identify disks with the same serial number on both management nodes, for example: 
+   Use the ``sginfo -s <device_name>`` to identify disks with the same serial number on both management nodes, for example:
 
-   On the primary management node: :: 
+   On the primary management node: ::
 
     [root@rhmn1 ~]# sginfo -s /dev/sdb
     Serial Number '1T23043224      '
@@ -487,7 +487,7 @@ The operating system is installed on the internal disks.
     [root@rhmn2~]# sginfo -s /dev/sdb
     Serial Number '1T23043224      '
 
-   We can see that the ``/dev/sdb`` is a shared disk on both management nodes. In some cases, as with mirrored disks and when there is no matching of serial numbers between the two management nodes, multiple disks on a single server can have the same serial number, In these cases, format the disks, mount them on both management nodes, and then touch files on the disks to determine if they are shared between the management nodes. 
+   We can see that the ``/dev/sdb`` is a shared disk on both management nodes. In some cases, as with mirrored disks and when there is no matching of serial numbers between the two management nodes, multiple disks on a single server can have the same serial number, In these cases, format the disks, mount them on both management nodes, and then touch files on the disks to determine if they are shared between the management nodes.
 
 #. Create partitions on shared disks
 
@@ -495,7 +495,7 @@ The operating system is installed on the internal disks.
 
     fdisk /dev/sdc
 
-   Verify the partitions are created by running ``fdisk -l``. 
+   Verify the partitions are created by running ``fdisk -l``.
 
 #. Create file systems on shared disks
 
@@ -507,9 +507,9 @@ The operating system is installed on the internal disks.
     mkfs.ext3 -v /dev/sdc4
     mkfs.ext3 -v /dev/sdc5
 
-   If you place entries for the disk in ``/etc/fstab``, which is not required, ensure that the entries do not have the system automatically mount the disk. 
+   If you place entries for the disk in ``/etc/fstab``, which is not required, ensure that the entries do not have the system automatically mount the disk.
 
-   .. note::  Since the file systems will not be mounted automatically during system reboot this must be manually done and xCAT should be started **after** the filesystem is mounted. 
+   .. note::  Since the file systems will not be mounted automatically during system reboot this must be manually done and xCAT should be started **after** the filesystem is mounted.
 
 #. Verify the file systems on the primary management node.
 
@@ -525,7 +525,7 @@ The operating system is installed on the internal disks.
 
      umount /etc/xcat
      umount /install
-     umount ~/.xcat 
+     umount ~/.xcat
      umount /<dbdirectory>
      umount /tftpboot
 
@@ -539,9 +539,9 @@ The operating system is installed on the internal disks.
      mount /dev/sdc4 /<dbdirectory>
      mount /dev/sdc5/tftpboot
 
-   You may get errors "mount: you must specify the filesystem type" or "mount: special device /dev/sdb1 does not exist" when trying to mount the file systems on the standby management node, this is caused by the missing devices files on the standby management node, run ``fidsk /dev/sdx`` and simply select "w write table to disk and exit" in the fdisk menu, then retry the mount. 
+   You may get errors "mount: you must specify the filesystem type" or "mount: special device /dev/sdb1 does not exist" when trying to mount the file systems on the standby management node, this is caused by the missing devices files on the standby management node, run ``fidsk /dev/sdx`` and simply select "w write table to disk and exit" in the fdisk menu, then retry the mount.
 
-   After that, umount the file system on the standby management node: :: 
+   After that, umount the file system on the standby management node: ::
 
     umount /etc/xcat
     umount /install

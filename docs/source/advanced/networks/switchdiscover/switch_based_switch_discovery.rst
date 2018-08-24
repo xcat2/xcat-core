@@ -1,12 +1,12 @@
 Switch-based Switch Discovery
 =============================
 
-Currently, xCAT supports switch based hardware discovery, the servers are identified through the switches and switch ports they are directly connected to.  A similar method can be used to discover switches using switch-based discovery within the user defined dynamic IP range. 
+Currently, xCAT supports switch based hardware discovery, the servers are identified through the switches and switch ports they are directly connected to.  A similar method can be used to discover switches using switch-based discovery within the user defined dynamic IP range.
 
 Pre-requirement
 ~~~~~~~~~~~~~~~
 
-In order to do switch-based switch discovery, the admin 
+In order to do switch-based switch discovery, the admin
 
 1.  Needs to manually setup and configure core-switch, SNMP v3 needs to be enabled in order for xCAT access to it. **username** and **userpassword** attributes are for the remote login. It can be for **ssh** or **telnet**. If it is for **telnet**, set protocol to “telnet”. If the **username** is blank, the **username** and **password** will be retrieved from the passwd table with “switch” as the key. SNMP attributes will used for SNMPv3 communication.  **nodetype** has to be set to "switch" to differentiate between switch-based node discovery or switch-based switch discovery. Refer to switches table attributes.  Example of core-switch definition:  ::
 
@@ -71,10 +71,10 @@ For the switch-based switch discovery, we add **–setup** flag:  ::
 
 if **--setup** flag is specified, the command will perform following steps:
 
-1.  Use snmp or nmap scan methods to find all switches in the dynamic IP ranges specified by --range, the available switches will be stored in switch hash table with hostname, switchtype, vendor info and mac address.  
+1.  Use snmp or nmap scan methods to find all switches in the dynamic IP ranges specified by --range, the available switches will be stored in switch hash table with hostname, switchtype, vendor info and mac address.
 
 
-2.  Based on mac address for each switch defined in the hash table, call **find_mac** subroutine.   The **find_mac** subroutine will go thought the switch and switch ports and find matched mac address.    
+2.  Based on mac address for each switch defined in the hash table, call **find_mac** subroutine.   The **find_mac** subroutine will go thought the switch and switch ports and find matched mac address.
 
 * If discovered switch didn't find any predefined switch matches, it will log the message ``NO predefined switch matched``.
 * If discovered switch matched with one of pre-defined switch, it will update the predefined switch with ::
@@ -87,7 +87,7 @@ if **--setup** flag is specified, the command will perform following steps:
 
 3.  After switches are matched, the command will call config files to set up static IP address, hostname and enable the snmpv3.  Currently, BNT and Mellanox switches are supported.  The two config files are located in the **/opt/xcat/share/xcat/scripts/config.BNT** and **/opt/xcat/share/xcat/scripts/config.Mellanox**.  the log message ``the switch type is not support for config`` is displayed if switchtype is something other than BNT or Mellanox.
 
-4.  After discovery process, the predefined node attribute in the xCATdb will be updated. 
+4.  After discovery process, the predefined node attribute in the xCATdb will be updated.
 
 ::
 
@@ -119,9 +119,9 @@ if **--setup** flag is specified, the command will perform following steps:
 Configure switches
 ~~~~~~~~~~~~~~~~~~
 
-The **switchdiscover** command with ``--setup`` flag will set up switches with static IP address, change the hostname from predefine switches and enable snmpv3 configuration.  For other switches configuration, refer to :doc:`/advanced/networks/ethernet_switches/ethernet_switches` and :doc:`/advanced/networks/infiniband/switch_configuration`. 
+The **switchdiscover** command with ``--setup`` flag will set up switches with static IP address, change the hostname from predefine switches and enable snmpv3 configuration.  For other switches configuration, refer to :doc:`/advanced/networks/ethernet_switches/ethernet_switches` and :doc:`/advanced/networks/infiniband/switch_configuration`.
 
-These two config files are located in the **/opt/xcat/share/xcat/scripts** directory.  The **switchdiscover** process will call the config files with ``--all`` option.  User can call these scripts to setup one of options manually. 
+These two config files are located in the **/opt/xcat/share/xcat/scripts** directory.  The **switchdiscover** process will call the config files with ``--all`` option.  User can call these scripts to setup one of options manually.
 
 1.  **configBNT** is for configure BNT switches.  ::
 
@@ -142,7 +142,7 @@ These two config files are located in the **/opt/xcat/share/xcat/scripts** direc
        * set logging destination to xCAT MN
 
     ::
- 
+
       ./configMellanox --help
       Usage:
           configMellonax [-?│-h│--help]
@@ -155,7 +155,7 @@ These two config files are located in the **/opt/xcat/share/xcat/scripts** direc
 Switch Status
 ~~~~~~~~~~~~~
 
-During the switch-based switch discovery process, there are four states displayed.  User may only see **switch_configured** status on node definition if discovery process successfully finished.  
+During the switch-based switch discovery process, there are four states displayed.  User may only see **switch_configured** status on node definition if discovery process successfully finished.
 
 **Matched** --- Discovered switch is matched to predefine switch, **otherinterfaces** attribute is updated to dhcp IP address, and mac address, **switch type** and **usercomment** also updated with vendor information for the predefined switch.
 

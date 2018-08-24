@@ -6,27 +6,27 @@
 
 #-----------------------------------------------------------------------------
 
-=head1   servicenode 
+=head1   servicenode
 
  On AIX and Linux :
- This updates the service node with files necessary to access the 
+ This updates the service node with files necessary to access the
  database on the MasterNode and restarts the xcat daemon
- If uses multiple environment variables setup  by postage.pm from 
+ If uses multiple environment variables setup  by postage.pm from
  the site table.
  For Linux:
    It calls xcatserver and xcatclient script to get the ssh keys, ssl
-   redentials and cfgloc file and transfer from the MN to the SN 
-   to be able to access the 
+   redentials and cfgloc file and transfer from the MN to the SN
+   to be able to access the
    database,  setup ssh keys on the nodes and have daemon to daemon
    commmunication between the SN and MN and have the SN access the DB.
  For AIX:
-   The same function in xcatserver and xcatclient is in this script for 
+   The same function in xcatserver and xcatclient is in this script for
    AIX and thus it does not call xcatserver and xcatclient.
-   We get the ssh keys, ssl 
-   credentials and cfgloc file for the SN to be able to access the 
+   We get the ssh keys, ssl
+   credentials and cfgloc file for the SN to be able to access the
    database,  setup ssh keys on the nodes and have daemon to daemon
    commmunication between the SN and MN and have the SN access the DB.
- 
+
 
 =cut
 

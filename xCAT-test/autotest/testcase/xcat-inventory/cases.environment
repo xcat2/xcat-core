@@ -21,17 +21,16 @@ check:rc==0
 
 cmd:rootimgdir=`lsdef -t osimage __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute|grep rootimgdir|awk -F'=' '{print $2}'`; if [ -d $rootimgdir ]; then mv $rootimgdir $rootimgdir.regbak -f;fi
 check:rc==0
-cmd:export GITREPO="/opt/xcat/share/xcat/tools/autotest/testcase/xcat-inventory/templates/environment/gitrepo";export SWDIR="/opt/xcat/share/xcat/tools/autotest/testcase/xcat-inventory/templates/environment/swdir";xcat-inventory import -f /opt/xcat/share/xcat/tools/autotest/testcase/xcat-inventory/templates/environment/test.environments.osimage.yaml
+cmd:xcat-inventory import -f /opt/xcat/share/xcat/tools/autotest/testcase/xcat-inventory/templates/environment/test.environments.osimage.yaml -e GITREPO=/opt/xcat/share/xcat/tools/autotest/testcase/xcat-inventory/templates/environment/gitrepo -e SWDIR=/opt/xcat/share/xcat/tools/autotest/testcase/xcat-inventory/templates/environment/swdir
 check:output=~Importing object: test.environments.osimage
 check:output=~Inventory import successfully!
 check:rc==0
 cmd:lsdef -t osimage -o test.environments.osimage
 check:rc==0
-cmd:genimage test.environments.osimage 
+cmd:genimage test.environments.osimage
 check:rc==0
-cmd:packimage test.environments.osimage 
+cmd:packimage test.environments.osimage
 check:rc==0
-
 cmd:rinstall $$CN osimage=test.environments.osimage
 check:rc==0
 check:output=~Provision node\(s\)\: $$CN
@@ -73,7 +72,7 @@ cmd:xdsh $$CN "rpm -qa |grep -i conserver-xcat"
 check:rc==0
 cmd:xdsh $$CN "rpm -qa |grep -i perl-Net-Telnet"
 check:rc==0
-cmd:xdsh $$CN "rpm -qa |grep -i tftp" 
+cmd:xdsh $$CN "rpm -qa |grep -i tftp"
 check:rc==0
 cmd:xdsh $$CN "rpm -qa |grep -w dhcp"
 check:rc==0
@@ -86,7 +85,7 @@ label:others,xcat_inventory
 cmd:lsdef -t osimage -o test.environments.osimage >/dev/null 2>&1;if [[ $? -eq 0 ]]; then lsdef -t osimage -o test.environments.osimage -z >/tmp/test.environments.osimage_image.stanza ;rmdef -t osimage -o test.environments.osimage;fi
 check:rc==0
 cmd:dir="/tmp/export";if [ -e "${dir}" ];then mv ${dir} ${dir}".bak"; fi; mkdir -p $dir
-cmd:export GITREPO="/opt/xcat/share/xcat/tools/autotest/testcase/xcat-inventory/templates/environment/gitrepo";export SWDIR="/opt/xcat/share/xcat/tools/autotest/testcase/xcat-inventory/templates/environment/swdir";xcat-inventory import -f /opt/xcat/share/xcat/tools/autotest/testcase/xcat-inventory/templates/environment/test.environments.osimage.update.yaml
+cmd:xcat-inventory import -f /opt/xcat/share/xcat/tools/autotest/testcase/xcat-inventory/templates/environment/test.environments.osimage.update.yaml -e GITREPO=/opt/xcat/share/xcat/tools/autotest/testcase/xcat-inventory/templates/environment/gitrepo -e SWDIR=/opt/xcat/share/xcat/tools/autotest/testcase/xcat-inventory/templates/environment/swdir
 check:output=~Importing object: test.environments.osimage
 check:output=~Inventory import successfully!
 check:rc==0
@@ -101,7 +100,7 @@ cmd:diff -y  /opt/xcat/share/xcat/tools/autotest/testcase/xcat-inventory/templat
 check:rc==0
 cmd:rmdef -t osimage -o test.environments.osimage
 check:rc==0
-cmd:export GITREPO="/opt/xcat/share/xcat/tools/autotest/testcase/xcat-inventory/templates/environment/gitrepo";export SWDIR="/opt/xcat/share/xcat/tools/autotest/testcase/xcat-inventory/templates/environment/swdir";xcat-inventory import -f /opt/xcat/share/xcat/tools/autotest/testcase/xcat-inventory/templates/environment/test.environments.osimage.update.json
+cmd:xcat-inventory import -f /opt/xcat/share/xcat/tools/autotest/testcase/xcat-inventory/templates/environment/test.environments.osimage.update.json -e GITREPO=/opt/xcat/share/xcat/tools/autotest/testcase/xcat-inventory/templates/environment/gitrepo -e SWDIR=/opt/xcat/share/xcat/tools/autotest/testcase/xcat-inventory/templates/environment/swdir
 check:output=~Importing object: test.environments.osimage
 check:output=~Inventory import successfully!
 check:rc==0

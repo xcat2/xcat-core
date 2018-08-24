@@ -52,9 +52,9 @@ Override the check for shared resources when removing an xCAT osimage.
 
 Remove NIM resources from the xCAT management node only.
 
-=item B<-s> I<servicenoderange>    
+=item B<-s> I<servicenoderange>
 
-Remove the NIM resources on these xCAT service nodes only.  Do not remove the NIM resources from the xCAT management node. 
+Remove the NIM resources on these xCAT service nodes only.  Do not remove the NIM resources from the xCAT management node.
 
 =item I<osimage_name>
 
@@ -64,7 +64,7 @@ The name of the xCAT osimage definition.
 
 Verbose mode. This option will display the underlying NIM commands that are being called.
 
-=item B<-x|--xcatdef>   
+=item B<-x|--xcatdef>
 
 Remove the xCAT osimage definition.
 
@@ -88,7 +88,7 @@ An error has occurred.
 
  rmnimimage 61image
 
-The "nim -o remove" operation will be used to remove the NIM resource definitions on the management node as well as any service nodes where the resource has been replicated.   This NIM operation does not completely remove all files and directories associated with the NIM resources. 
+The "nim -o remove" operation will be used to remove the NIM resource definitions on the management node as well as any service nodes where the resource has been replicated.   This NIM operation does not completely remove all files and directories associated with the NIM resources.
 
 2) Remove all the NIM resources specified by the xCAT "61rte" osimage definition.  Delete ALL files and directories associated with the NIM resources. This will also remove the lpp_source resource.
 

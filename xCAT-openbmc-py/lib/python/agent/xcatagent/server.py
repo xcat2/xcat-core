@@ -44,6 +44,10 @@ class XCATMessager(utils.Messager):
         d = {'type': MSG_TYPE, 'msg': {'type': 'syslog', 'data': msg}}
         self._send(d)
 
+    def info_with_host(self, msg):
+        d = {'type': MSG_TYPE, 'msg': {'type': 'info_with_host', 'data': msg}}
+        self._send(d)
+
     def update_node_attributes(self, attribute, node, data):
         d = {'type': DB_TYPE, 'attribute': {'name': attribute, 'method': 'set', 'type': 'node', 'node': node, 'value': data}}
         self._send(d)

@@ -49,9 +49,11 @@ description: psh -i interface CN 'uptime' in linux
 os:Linux
 cmd:cp /etc/hosts /etc/hostsBK
 check:rc==0
-cmd:interface=`xdsh $$CN  'ifconfig' | sed -n 1p | awk -F : '{print $2}' | awk -F ' ' '{print $1}'`;sed -i "/$$CN/s/$/ $$CN-$interface/g" '/etc/hosts';psh -i $interface $$CN 'uptime'
+cmd:grep $$CN /etc/hosts
+cmd:interface=`xdsh $$CN 'ip route' | awk '/default/ { for (i = 1; i <= NF; ++i) if ("dev" == $i) { print $(i + 1) ; exit } }'`; echo "interface=$interface"; sed -i "/$$CN/s/$/ $$CN-$interface/g" '/etc/hosts';psh -i $interface $$CN 'uptime'
 check:output=~$$CN
 check:rc==0
+cmd:grep $$CN /etc/hosts
 cmd:rm -rf /etc/hosts
 cmd:cp /etc/hostsBK /etc/hosts
 check:rc==0

@@ -44,7 +44,7 @@ sub process_request {
     my $imagename;
     my $imagedir;
     my $lock;
-    
+
     if (!xCAT::Utils->isLinux()) {
         $callback->({ error => ["The rmimage command is only supported on Linux."], errorcode => [1] });
         return;
@@ -178,7 +178,7 @@ sub process_request {
         $callback->({ error => ["Image directory $imagedir does not exist"], errorcode => [1] });
         return;
     }
-    
+
 
     my $retcode;
     ($retcode,$lock)=xCAT::Utils->acquire_lock_imageop("$imagedir/rootimg");
@@ -197,10 +197,10 @@ sub process_request {
     }
 
     my @filestoremove = ("$imagedir/kernel", "$imagedir/initrd-stateless.gz", "$imagedir/initrd-statelite.gz");
-    my @rootimgtars=glob "$imagedir/rootimg.*"; 
+    my @rootimgtars=glob "$imagedir/rootimg.*";
     push @filestoremove,@rootimgtars;
-    #unmount all the mount points under rootimg directory 
-    #to avoid removing the directory/files on management node by mistake  
+    #unmount all the mount points under rootimg directory
+    #to avoid removing the directory/files on management node by mistake
     $realimagedir=realpath("$imagedir/rootimg");
     my @mntptlist;
     my $FILEHD=undef;

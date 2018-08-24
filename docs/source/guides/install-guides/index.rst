@@ -9,4 +9,4 @@ Install Guides
    yum/index.rst
    zypper/index.rst
    apt/index.rst
-   maintenance/index.rst 
+   maintenance/index.rst

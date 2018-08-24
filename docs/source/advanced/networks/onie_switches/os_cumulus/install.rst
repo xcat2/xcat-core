@@ -10,18 +10,18 @@ xCAT provides support for detecting and installing the Cumulus Linux OS into ONI
 
 #. Create a pre-defined switch definition for the ONIE switch using the ``onieswitch`` template.
 
-   The mac address of the switch management port is required for xCAT to configure the DHCP information and send over the OS to install on the switch. 
+   The mac address of the switch management port is required for xCAT to configure the DHCP information and send over the OS to install on the switch.
 
-   **Small Clusters** 
+   **Small Clusters**
 
    If you know the mac address of the management port on the switch, create the pre-defined switch definition providing the mac address. ::
 
        mkdef frame01sw1 --template onieswitch arch=armv71 \
            ip=192.168.1.1 mac="aa:bb:cc:dd:ee:ff"
 
-   **Large Clusters** 
+   **Large Clusters**
 
-   xCAT's :doc:`switchdiscover </guides/admin-guides/references/man1/switchdiscover.1>` command can be used to discover the mac address and fill in the predefined switch definitions based on the switch/switchport mapping.  
+   xCAT's :doc:`switchdiscover </guides/admin-guides/references/man1/switchdiscover.1>` command can be used to discover the mac address and fill in the predefined switch definitions based on the switch/switchport mapping.
 
 
     #. Define all the switch objects providing the switch/switchport mapping: ::
@@ -34,8 +34,8 @@ xCAT provides support for detecting and installing the Cumulus Linux OS into ONI
              ip=192.168.3.1 switch=coresw1 switchport=3
          mkdef frame04sw1 --template onieswitch arch=armv71 \
              ip=192.168.4.1 switch=coresw1 switchport=4
-         ... 
-  
+         ...
+
     #. Leverage ``switchdiscover`` over the DHCP range to automatically detect the MAC address and write them into the predefined switches above. ::
 
          switchdiscover --range <IP range>
@@ -43,9 +43,9 @@ xCAT provides support for detecting and installing the Cumulus Linux OS into ONI
 
 #. Run the ``nodeset`` command to set the ``provmethod`` attribute of the target switch(es) to the Cumulus Linux install image and prepare the DHCP/BOOTP lease information for the switch:  ::
 
-    # nodeset frame01sw1 osimage=cumulus3.5.2-armel 
+    # nodeset frame01sw1 osimage=cumulus3.5.2-armel
     # lsdef frame01sw1
-    Object name: frame01sw1 
+    Object name: frame01sw1
     arch=armv7l
     groups=switch,edge_switch
     ip=172.21.208.03
@@ -82,11 +82,11 @@ Configure xCAT Remote Commands
 
 After Cumulus Linux OS is installed, a default user ``cumulus`` will be created with default password: ``CumulusLinux!``.
 
-To ease in the management of the switch, xCAT provides a script to help configure password-less ssh as the ``root`` user.  This script sends over the xCAT ssh keys so that the xCAT remote commands (``xdsh``, ``xdcp``, etc) can be run against the ONIE switches.  
+To ease in the management of the switch, xCAT provides a script to help configure password-less ssh as the ``root`` user.  This script sends over the xCAT ssh keys so that the xCAT remote commands (``xdsh``, ``xdcp``, etc) can be run against the ONIE switches.
 
 Execute the following to sync the xCAT keys to the switch: ::
 
-    /opt/xcat/share/xcat/scripts/configonie --switches frame01sw1 --ssh 
+    rspconfig frame01sw1 sshcfg 
 
 Validate the ssh keys are correctly configured by running a ``xdsh`` command: ::
 
@@ -98,7 +98,7 @@ Validate the ssh keys are correctly configured by running a ``xdsh`` command: ::
 Activate the License
 --------------------
 
-After Cumulus Linux OS is installed onto the ONIE switch, only the serial port console and the management ethernet port is enabled.  To activate the rest of the switch ports, the license file needs to be installed onto the switch. 
+After Cumulus Linux OS is installed onto the ONIE switch, only the serial port console and the management ethernet port is enabled.  To activate the rest of the switch ports, the license file needs to be installed onto the switch.
 
 #. Copy the license file to the switch: ::
 
@@ -159,6 +159,6 @@ To verify the SNMPv3 configuration, run ``xcatprobe switch_macmap`` command, wil
     ...........................more output.....................
 
 
- 
+
 
 

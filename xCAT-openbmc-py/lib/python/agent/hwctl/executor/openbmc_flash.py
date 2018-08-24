@@ -35,7 +35,7 @@ class OpenBMCFlashTask(ParallelNodesCommand):
         elif not checkv:
             self.callback.info('%s: %s' % (node, msg))
         elif self.verbose:
-            self.callback.info('%s: %s' % (node, msg)) 
+            self.callback.info('%s: %s' % (node, msg))
 
         if update_rc:
             self.activate_result.update({node: msg})
@@ -59,7 +59,7 @@ class OpenBMCFlashTask(ParallelNodesCommand):
             error = 'Cannot access %s. Check the management ' \
                      'node and/or service nodes.' % target_file
             self.callback.error(error)
-            raise Exception('Invalid firmware file %s' % target_file) 
+            raise Exception('Invalid firmware file %s' % target_file)
 
     def validate_activate_firm(self, task, activate_arg, **kw):
 
@@ -99,7 +99,7 @@ class OpenBMCFlashTask(ParallelNodesCommand):
 
         if activate_arg.endswith('.tar'):
             version = self._get_firmware_version(self.firmware_file)
-            self.firmware.update(version) 
+            self.firmware.update(version)
             self.callback.info('Attempting to upload %s, please wait...' % self.firmware_file)
         else:
             self.callback.info('Attempting to activate ID=%s, please wait..' % activate_arg)
@@ -185,7 +185,7 @@ class OpenBMCFlashTask(ParallelNodesCommand):
             for i in version_list:
                 msg = 'Could not find ID for firmware %s to '\
                       'activate, waiting %d seconds and retry...' \
-                       % (i, 10) 
+                       % (i, 10)
                 self._msg_process(node, msg, update_rc=True, checkv=True)
             gevent.sleep ( 10 )
 
@@ -196,9 +196,9 @@ class OpenBMCFlashTask(ParallelNodesCommand):
             self._msg_process(node, msg, msg_type='E')
 
         if error:
-            msg = ' '.join(error) 
+            msg = ' '.join(error)
             self.activate_result.update({node: msg})
-            return [] 
+            return []
 
     def _check_id_status(self, obmc, check_ids, node, only_act=True):
 
@@ -207,7 +207,7 @@ class OpenBMCFlashTask(ParallelNodesCommand):
         process_status = {}
         for i in range(80):
             try:
-                has_functional, firm_obj_dict = obmc.list_firmware() 
+                has_functional, firm_obj_dict = obmc.list_firmware()
             except (SelfServerException, SelfClientException) as e:
                 return self._msg_process(node, e.message, msg_type='E', update_rc=True)
 
@@ -241,7 +241,7 @@ class OpenBMCFlashTask(ParallelNodesCommand):
             msg = 'After %d seconds check the firmware id %s current status is "%s"' \
                   % (80*15, process_status[i], i)
             error.append(msg)
-            self._msg_process(node, msg, msg_type='E') 
+            self._msg_process(node, msg, msg_type='E')
 
         if error:
             msg = ' '.join(error)
@@ -259,8 +259,8 @@ class OpenBMCFlashTask(ParallelNodesCommand):
         if error:
             msg = ' '.join(error)
             self.activate_result.update({node: msg})
-            return 
-        
+            return
+
         self.activate_result.update({node: 'SUCCESS'})
 
     def _reboot_to_effect(self, obmc, no_host_reboot, node):
@@ -281,7 +281,7 @@ class OpenBMCFlashTask(ParallelNodesCommand):
         gevent.sleep( 10 )
 
         bmc_state = None
-        for i in range(20): 
+        for i in range(20):
             try:
                 obmc.login()
                 state = obmc.get_bmc_state()
@@ -301,7 +301,7 @@ class OpenBMCFlashTask(ParallelNodesCommand):
             return self._msg_process(node, error, msg_type='E', update_rc=True)
 
         self._msg_process(node, 'BMC %s' % bmc_state, update_rc=True)
-        
+
         if no_host_reboot:
             self.activate_result.update({node: 'SUCCESS'})
             return
@@ -331,7 +331,7 @@ class OpenBMCFlashTask(ParallelNodesCommand):
             self.callback.update_node_attributes('status', node, 'powering-on')
 
             self._msg_process(node, 'reset')
-            self.activate_result.update({node: 'SUCCESS'}) 
+            self.activate_result.update({node: 'SUCCESS'})
         except (SelfServerException, SelfClientException) as e:
             self._msg_process(node, e.message, update_rc=True)
 
@@ -348,7 +348,7 @@ class OpenBMCFlashTask(ParallelNodesCommand):
 
         firmware_version = ''
         if self.firmware_file:
-            firmware_version = self.firmware.keys()[0] 
+            firmware_version = self.firmware.keys()[0]
             try:
                 obmc.upload_firmware(self.firmware_file)
             except (SelfServerException, SelfClientException) as e:
@@ -427,7 +427,7 @@ class OpenBMCFlashTask(ParallelNodesCommand):
         try:
             obmc.delete_firmware(delete_id)
         except SelfServerException as e:
-            error = e.message 
+            error = e.message
         except SelfClientException as e:
             if e.code == 404:
                 error = 'Invalid ID provided to delete. ' \
@@ -452,7 +452,7 @@ class OpenBMCFlashTask(ParallelNodesCommand):
             return self._msg_process(node, e.message, msg_type='E', update_rc=True)
 
         try:
-            for key, value in self.firmware.items(): 
+            for key, value in self.firmware.items():
                 obmc.upload_firmware(value['file'])
         except (SelfServerException, SelfClientException) as e:
             return self._msg_process(node, e.message, msg_type='E', update_rc=True)
@@ -474,7 +474,7 @@ class OpenBMCFlashTask(ParallelNodesCommand):
                 else:
                     error = e.message
             if error:
-                return self._msg_process(node, error, msg_type='E', update_rc=True) 
+                return self._msg_process(node, error, msg_type='E', update_rc=True)
 
         for key in self.firmware:
             msg = 'rflash %s started, please wait...' % key
@@ -560,13 +560,13 @@ class OpenBMCFlashTask(ParallelNodesCommand):
                 failed_num += 1
                 failed_list.append('%s: %s' % (key, value))
 
-        self.callback.info('-' * 55)
-        self.callback.info('%s complete: Total=%d Success=%d Failed=%d' % \
+        self.callback.info_with_host('-' * 55)
+        self.callback.info_with_host('%s complete: Total=%d Success=%d Failed=%d' % \
                            ('Firmware update', self.nodes_num, success_num, failed_num))
 
         for i in failed_list:
-            self.callback.info(i)
-        self.callback.info('-' * 55)
+            self.callback.info_with_host(i)
+        self.callback.info_with_host('-' * 55)
 
     def post_activate_firm(self, task, activate_arg, **kw):
 

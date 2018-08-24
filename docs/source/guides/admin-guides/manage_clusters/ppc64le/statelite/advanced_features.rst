@@ -39,8 +39,8 @@ In order to describe the hierarchy scenarios we can use , ``P`` to denote parent
 +--------------+-----------------------------------------------------+-------------------------------------------------+
 | P:tmpfs      | "ALL","/root/testblank/",,,                         | Both parent and child are mounted to tmpfs      |
 | C:persistent | "ALL","/root/testblank/testpersfile","persistent",, | on the booted node following their respective   |
-|              |                                                     | options. Only the parent is mounted to the local| 
-|              |                                                     | file                                            | 
+|              |                                                     | options. Only the parent is mounted to the local|
+|              |                                                     | file                                            |
 +--------------+-----------------------------------------------------+-------------------------------------------------+
 | P:persistent | "ALL","/root/testblank/","persistent",,             | Not permitted now. But plan to support it.      |
 | C:tmpfs      | "ALL","/root/testblank/tempfschild",,,              |                                                 |
@@ -84,7 +84,7 @@ In order to describe the hierarchy scenarios we can use , ``P`` to denote parent
 | P:link       | "ALL","/root/testlink/","link",,                    | Both parent and child are created in tmpfs      |
 | C:link,ro    | "ALL","/root/testlink/testlinkro","link,ro",,       | on the booted node, there's only one symbolic   |
 |              |                                                     | link of the parent is created in the local      |
-|              |                                                     | file system.                                    | 
+|              |                                                     | file system.                                    |
 +--------------+-----------------------------------------------------+-------------------------------------------------+
 | P:link       | "ALL","/root/testlink/","link",,                    | Both parent and child are created in tmpfs      |
 | C:link,con   | "ALL","/root/testlink/testlinkconchild","link,con",,| on the booted node, there's only one symbolic   |
@@ -103,7 +103,7 @@ In order to describe the hierarchy scenarios we can use , ``P`` to denote parent
 +--------------+-----------------------------------------------------+-------------------------------------------------+
 | P:link       |                                                     | NOT Permitted                                   |
 | C:persistent |                                                     |                                                 |
-+--------------+-----------------------------------------------------+-------------------------------------------------+ 
++--------------+-----------------------------------------------------+-------------------------------------------------+
 
 litetree table
 --------------
@@ -136,7 +136,7 @@ Our example is as follows: ::
 
 The two directories ``/statelite/$node`` on the node's $noderes.nfsserver and the ``/gpfs/dallas`` on the node cnfs contain root tree structures that are sparsely populated with files that we want to place in those nodes. If files are not found in the first directory, it goes to the next directory. If none of the files can be found in the litetree hierarchy, then they are searched for in ``/.default`` on the local image.
 
-Installing a new Kernel in the statelite image 
+Installing a new Kernel in the statelite image
 ----------------------------------------------
 
 Obtain you new kernel and kernel modules on the MN, for example here we have a new SLES kernel.
