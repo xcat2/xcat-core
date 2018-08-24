@@ -447,6 +447,10 @@ sub preprocess_request {
         return;
     }
 
+    my $inittime = 0;
+    if (exists($req->{inittime})) { $inittime = $req->{inittime}->[0]; }
+    if (!$inittime) { $inittime = 0; }
+
     #Assume shared tftp directory for boring people, but for cool people, help sync up tftpdirectory contents when
     #they specify no sharedtftp in site table
     my @entries = xCAT::TableUtils->get_site_attribute("sharedtftp");
@@ -470,9 +474,6 @@ sub preprocess_request {
         }
 
         $req->{'_disparatetftp'} = [1];
-        if ($req->{inittime}->[0]) {
-            return [$req];
-        }
         if (@CN > 0) {    # if compute nodes broadcast to all servicenodes
 
             my @sn = xCAT::ServiceNodeUtils->getSNList();
@@ -490,10 +491,23 @@ sub preprocess_request {
             xCAT::MsgUtils->trace(0, "d", "xnba: disjointdhcps=$mynodeonly");
 
             if ($mynodeonly == 0 || $ALLFLAG) { # broadcast to all service nodes
+                if ($inittime) {
+                    $req->{_xcatpreprocessed}->[0] = 1;
+                    return [$req];
+                }
                 return xCAT::Scope->get_broadcast_scope_with_parallel($req, \@sn);
             }
 
             my $sn_hash = xCAT::ServiceNodeUtils->getSNformattedhash(\@CN, "xcat", "MN");
+            if ($inittime) {
+                foreach my $sn ( keys %$sn_hash ) {
+                    unless (xCAT::NetworkUtils->thishostisnot($sn)) {
+                        $req->{node} = $sn_hash->{$sn};
+                        $req->{_xcatpreprocessed}->[0] = 1;
+                        return [$req];
+                    }
+                }
+            }
             my @dhcpsvrs = ();
             my $ntab = xCAT::Table->new('networks');
             if ($ntab) {
@@ -504,6 +518,10 @@ sub preprocess_request {
             }
             return xCAT::Scope->get_broadcast_disjoint_scope_with_parallel($req, $sn_hash, \@dhcpsvrs);
         }
+    } elsif ($inittime) {
+        # no need to run it parallel when service node booting
+        $req->{_xcatpreprocessed}->[0] = 1;
+        return [$req];
     }
     # Do not dispatch to service nodes if non-sharedtftp or the node range contains only SNs.
     return xCAT::Scope->get_parallel_scope($req);
@@ -599,8 +617,14 @@ sub process_request {
         @nodes = keys %preparednodes;
     }
 
-    my $str_node = join(" ", @nodes);
-    xCAT::MsgUtils->trace(0, "d", "xnba: nodes are $str_node") if ($str_node);
+    my $str_node = '';
+    my $total = $#nodes;
+    if ($total > 20) {
+        $str_node = join(" ", @nodes[0..19]) . " ...";
+    } else {
+        $str_node = join(" ", @nodes);
+    }
+    xCAT::MsgUtils->trace(0, "d", "xnba: [total=$total] nodes are $str_node");
 
     # Return directly if no nodes in the same network, need to report error on console if its managed nodes are not handled.
     unless (@nodes) {
