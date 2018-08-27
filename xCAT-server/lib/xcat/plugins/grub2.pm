@@ -442,6 +442,8 @@ sub preprocess_request {
         return;
     }
 
+    # inittime flag in request will only be set in AAsn.pm (it is only used when xcatd starting on service node)
+    # There is special requirement to not run in parallel on one SN to avoid DB CPU 100% when all service nodes booting in the same time.
     my $inittime = 0;
     if (exists($req->{inittime})) { $inittime = $req->{inittime}->[0]; }
     if (!$inittime) { $inittime = 0; }
@@ -473,11 +475,14 @@ sub preprocess_request {
         $req->{'_disparatetftp'} = [1];
         if (@CN > 0) {    # if compute nodes only, then broadcast to servic enodes
 
+            # 1, Non-hierarchy, run on locally with parallel
             my @sn = xCAT::ServiceNodeUtils->getSNList();
             unless ( @sn > 0 ) {
-                return xCAT::Scope->get_parallel_scope($req)
+                return if (xCAT::Utils->isServiceNode()); # in case the wrong configuration
+                return xCAT::Scope->get_parallel_scope($req);
             }
 
+            # To check site table to see if disjoint mode
             my $mynodeonly  = 0;
             my @entries = xCAT::TableUtils->get_site_attribute("disjointdhcps");
             my $t_entry = $entries[0];
@@ -487,7 +492,9 @@ sub preprocess_request {
             $req->{'_disjointmode'} = [$mynodeonly];
             xCAT::MsgUtils->trace(0, "d", "grub2: disjointdhcps=$mynodeonly");
 
-            if ($mynodeonly == 0 || $ALLFLAG) { # broadcast to all service nodes
+            # 2, Non-disjoint mode, broadcast to all service nodes,
+            #    but for SN init time (AAsn.pm), only run locally without parallel.
+            if ($mynodeonly == 0 || $ALLFLAG) {
                 if ($inittime) {
                     $req->{_xcatpreprocessed}->[0] = 1;
                     return [$req];
@@ -495,6 +502,9 @@ sub preprocess_request {
                 return xCAT::Scope->get_broadcast_scope_with_parallel($req, \@sn);
             }
 
+            # 3, Disjoint mode, run on local for owned CNs only and
+            # dispatch to parent SNs of the requesting nodes and `dhcpserver` which serving dynamic range in `networks` table.
+            #    but for SN init time (AAsn.pm), only run locally without parallel.
             my $sn_hash = xCAT::ServiceNodeUtils->getSNformattedhash(\@CN, "xcat", "MN");
             if ($inittime) {
                 foreach my $sn ( keys %$sn_hash ) {
@@ -516,9 +526,8 @@ sub preprocess_request {
             return xCAT::Scope->get_broadcast_disjoint_scope_with_parallel($req, $sn_hash, \@dhcpsvrs);
         }
     } elsif ($inittime) {
-        # no need to run it parallel when service node booting
-        $req->{_xcatpreprocessed}->[0] = 1;
-        return [$req];
+        # Shared TFTP, no need to run on service node booting (AAsn.pm)
+        return;
     }
     # Do not dispatch to service nodes if non-sharedtftp or the node range contains only SNs.
     return xCAT::Scope->get_parallel_scope($req);
@@ -622,7 +631,7 @@ sub process_request {
     } else {
         $str_node = join(" ", @nodes);
     }
-    xCAT::MsgUtils->trace(0, "d", "grub2: [total=$total] nodes are $str_node");
+    xCAT::MsgUtils->trace($verbose_on_off, "d", "grub2: [total=$total] nodes are $str_node");
 
     # Return directly if no nodes in the same network, need to report error on console if its managed nodes are not handled.
     unless (@nodes) {
