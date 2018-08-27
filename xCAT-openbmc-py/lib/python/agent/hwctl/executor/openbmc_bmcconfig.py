@@ -334,6 +334,9 @@ rmdir \"/tmp/$userid\" \n")
         if not nic:
             return self.callback.error('Can not get facing NIC for %s' % bmcip, node)
 
+        if (netinfo[nic]['ipsrc'] == 'DHCP'):
+            return self.callback.error('BMC IP source is DHCP, could not set NTPServers', node)
+
         try:
             obmc.set_ntp_servers(nic, servers)
             self.callback.info('%s: BMC Setting NTPServers...' % node)
