@@ -3532,6 +3532,11 @@ sub rspconfig_response {
                 if (defined($content{Address}) and $content{Address}) {
                     if ($content{Address} eq $node_info{$node}{bmcip} and $node_info{$node}{cur_status} eq "RSPCONFIG_GET_NIC_RESPONSE") {
                         $status_info{RSPCONFIG_SET_NTPSERVERS_REQUEST}{init_url} =~ s/#NIC#/$nic/g;
+                        if (defined($content{Origin}) and $content{Origin} =~ /DHCP$/) {
+                            xCAT::SvrUtils::sendmsg([1, "BMC IP source is DHCP, could not set NTPServers"], $callback, $node);
+                            $wait_node_num--;
+                            return;
+                        }
                         if ($next_status{"RSPCONFIG_GET_NIC_RESPONSE"}) {
                             $node_info{$node}{cur_status} = $next_status{"RSPCONFIG_GET_NIC_RESPONSE"};
                             gen_send_request($node);

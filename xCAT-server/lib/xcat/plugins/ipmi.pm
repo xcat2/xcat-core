@@ -8241,7 +8241,7 @@ sub loadsdrcache {
     }
     eval {
         $r = retrieve_fd($fh);
-    }
+    };
     if($@){
         xCAT::MsgUtils->message("S", "loadsdrcache: Fatal error while retrieving data from $file, $@");
         return 1;
