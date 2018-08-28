@@ -201,7 +201,7 @@ if ($netdriver) {
     if ($arch eq 'x86' or $arch eq 'x86_64') {
         @ndrivers = qw/tg3 bnx2 bnx2x e1000 e1000e igb mlx_en virtio_net/;
     } elsif ($arch eq 'ppc64el') {
-        @ndrivers = qw/bnx2 bnx2x e1000 e1000e igb mlx_en mlx4_en virtio_net/;
+        @ndrivers = qw/bnx2 bnx2x e1000 e1000e igb ibmveth ehea mlx_en mlx4_en virtio_net/;
     } elsif ($arch eq 'ppc64') {
         @ndrivers = qw/e1000 e1000e igb ibmveth ehea/;
     } elsif ($arch eq 's390x') {
@@ -1653,7 +1653,7 @@ EOMS
     # Workaround for Ubuntu 18.04 busybox bug
     # https://bugs.launchpad.net/ubuntu/+source/busybox/+bug/1753572
     # On Ubuntun 18.04, will use GNU cpio instead of busybox cpio
-    if ("ubuntu18.04" eq $osver) {
+    if ($osver = ~ /^18.04/) {
         foreach ("bin/cpio") {
             getlibs($_);
             push @filestoadd, $_;
