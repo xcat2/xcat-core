@@ -59,7 +59,7 @@ Used with the (--defaultzone) flag to override the current default zone.
 
 Used with the (-a) flag to create the group zonename for all nodes in the input noderange.
 
-=item B<-V>|B<--Verbose>
+=item B<-V>|B<--verbose>
 
 Verbose mode.
 

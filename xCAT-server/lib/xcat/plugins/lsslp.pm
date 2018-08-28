@@ -283,7 +283,7 @@ sub parse_args {
     # Process command-line flags
     #############################################
     if (!GetOptions(\%opt,
-            qw(h|help V|Verbose v|version i=s x z w r s=s e=s t=s m c n C=s T=s I u range=s flexdiscover updatehosts vpdtable))) {
+            qw(h|help V|verbose v|version i=s x z w r s=s e=s t=s m c n C=s T=s I u range=s flexdiscover updatehosts vpdtable))) {
         return (usage());
     }
 

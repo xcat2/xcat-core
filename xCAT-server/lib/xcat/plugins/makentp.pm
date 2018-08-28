@@ -129,7 +129,7 @@ sub parse_args {
 
     # Process command-line flags
     if (!GetOptions(\%opt,
-            qw(h|help V|Verbose v|version a|all))) {
+            qw(h|help V|verbose v|version a|all))) {
         return (usage());
     }
 

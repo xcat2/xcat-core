@@ -647,7 +647,7 @@ sub parse_args {
     # Process command-line flags
     #############################################
     if (!GetOptions(\%opt,
-            qw(h|help V|Verbose v|version))) {
+            qw(h|help V|verbose v|version))) {
         return (usage());
     }
 
