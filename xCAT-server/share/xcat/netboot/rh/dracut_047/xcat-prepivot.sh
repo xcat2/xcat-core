@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 NEWROOT=/sysroot
 SERVER=${SERVER%%/*}
 SERVER=${SERVER%:}

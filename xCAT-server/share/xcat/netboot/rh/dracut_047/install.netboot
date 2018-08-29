@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 echo $drivers
 dracut_install curl tar cpio gzip modprobe touch echo cut wc xz
 dracut_install grep ifconfig hostname awk egrep grep dirname expr
