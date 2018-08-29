@@ -679,6 +679,8 @@ if (-e "$rootimg_dir/boot/vmlinux-$kernelver") {
     cp("$rootimg_dir/boot/vmlinuz-$kernelver", "$destdir/kernel");
 } elsif (-e "$rootimg_dir/boot/image-$kernelver") {
     cp("$rootimg_dir/boot/image-$kernelver", "$destdir/kernel");
+} elsif (-e "$rootimg_dir/lib/modules/$kernelver/vmlinuz") {
+    cp("$rootimg_dir/lib/modules/$kernelver/vmlinuz", "$destdir/kernel");
 } else {
     xdie("couldn't find the kernel file matched $kernelver in $rootimg_dir/boot");
 }
