@@ -1,4 +1,5 @@
 #!/bin/bash
+set -x
 NEWROOT=/sysroot
 SERVER=${SERVER%%/*}
 SERVER=${SERVER%:}

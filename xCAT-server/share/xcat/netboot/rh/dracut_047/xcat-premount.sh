@@ -1,4 +1,5 @@
 #!/bin/bash
+set -x
 #script to update nodelist.nodestatus during provision
 
 XCAT="$(getarg XCAT=)"

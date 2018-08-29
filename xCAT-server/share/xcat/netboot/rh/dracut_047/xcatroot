@@ -1,4 +1,5 @@
 #!/bin/bash
+set -x
 log_label="xcat.deployment"
 
 NEWROOT=$3
