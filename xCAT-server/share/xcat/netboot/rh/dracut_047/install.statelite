@@ -1,6 +1,6 @@
 #!/bin/bash
 echo $drivers
-dracut_install curl dracut_install cpio gzip modprobe wc touch echo cut
+dracut_install curl cpio gzip modprobe wc touch echo cut
 dracut_install grep ifconfig hostname awk egrep grep dirname expr
 dracut_install parted mke2fs bc mkswap swapon chmod
 dracut_install ethtool
