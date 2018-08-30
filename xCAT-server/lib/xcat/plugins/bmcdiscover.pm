@@ -540,6 +540,35 @@ sub check_auth_process {
     }
 }
 
+sub buildup_mtms_hash {
+    xCAT::MsgUtils->trace(0, "I", "Establish hash for vpd table with key=mtm*serial, value=node");
+    my %nodehash = ();
+    if (my $vpdtab = xCAT::Table->new("vpd")) {
+        my @entries = $vpdtab->getAllAttribs(qw/node serial mtm/);
+        foreach (@entries) {
+            unless ($_->{mtm} and $_->{serial}) { next; }
+            my $mtms = lc($_->{mtm}) . "*" . lc($_->{serial});
+            $nodehash{$_->{node}} = $mtms; 
+        }
+    }
+    foreach my $tab (qw/ipmi openbmc/) {
+        my $tabfd = xCAT::Table->new($tab);
+        my $entries = $tabfd->getAllAttribs(qw/node bmc/);
+        foreach (@entries) {
+            unless($_->{bmc}) { next; }
+            my $node = $_->{node};
+            if (exists($nodehash{$node})) {
+                my $mtmsip = $nodehash{$node}."-".$_->{bmc};
+                $nodehash{$node} = $mtmsip;
+            }
+        }
+    }
+    foreach my $node (keys %nodehash) {
+        my $mtmsip = $nodehash{$node};
+        push @{ $::VPDHASH{$mtmsip} }, $node;
+    }
+}
+
 #----------------------------------------------------------------------------
 
 =head3   scan_process
@@ -619,6 +648,7 @@ sub scan_process {
     my $live_mac = split_comma_delim_str($mac_list);
     my %pipe_map;
     if (scalar(@{$live_ip}) > 0) {
+        
         xCAT::MsgUtils->trace(0, "I", "$log_label Scaned live IPs " . scalar(@{$live_ip}) . " with mac " . scalar(@{$live_mac}));
         foreach (@{$live_ip}) {
             my $new_mac = lc(shift @{$live_mac});
