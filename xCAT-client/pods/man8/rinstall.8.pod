@@ -33,6 +33,7 @@ Instruct network boot loader to be skipped, generally meaning boot to hard disk
 Prepare server for installing a node using the specified OS image. The OS image is defined in the I<osimage> table and I<linuximage> table. If the I<imagename> is omitted, the OS image name will be obtained from I<nodetype.provmethod> for the node.
 
 =item B<--noupdateinitrd>
+
 Skip the rebuilding of initrd when the 'netdrivers', 'driverupdatesrc' or 'osupdatename' were set for injecting new drivers to initrd. But, the B<geninitrd> command should be run to rebuild the initrd for new drivers injecting. This is used to improve the performance of B<rinstall> command.
 
 =item B<--ignorekernelchk>

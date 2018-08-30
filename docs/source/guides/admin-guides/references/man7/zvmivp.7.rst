@@ -19,7 +19,7 @@ SYNOPSIS
 ********
 
 
-\ **zvmivp Attributes:**\   \ **\
+\ **zvmivp Attributes:**\   \ **\ 
 
 
 ***********
@@ -45,5 +45,5 @@ SEE ALSO
 ********
 
 
-\ **mkdef(1)**\ , \ **chdef(1)**\ , \ **lsdef(1)**\ , \ **rmdef(1)**\
+\ **mkdef(1)**\ , \ **chdef(1)**\ , \ **lsdef(1)**\ , \ **rmdef(1)**\ 
 

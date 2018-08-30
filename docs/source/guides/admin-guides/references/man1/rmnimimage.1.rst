@@ -19,9 +19,9 @@ SYNOPSIS
 ********
 
 
-\ **rmnimimage [-h|-**\ **-help]**\
+\ **rmnimimage [-h|-**\ **-help]**\ 
 
-\ **rmnimimage [-V|-**\ **-verbose] [-f|-**\ **-force] [-d|-**\ **-delete] [-x|-**\ **-xcatdef] [-M|-**\ **-managementnode] [-s**\  \ *servicenoderange*\ ] \ *osimage_name*\
+\ **rmnimimage [-V|-**\ **-verbose] [-f|-**\ **-force] [-d|-**\ **-delete] [-x|-**\ **-xcatdef] [-M|-**\ **-managementnode] [-s**\  \ *servicenoderange*\ ] \ *osimage_name*\ 
 
 
 ***********
@@ -31,7 +31,7 @@ DESCRIPTION
 
 Use this xCAT command to remove the AIX resources specified in an xCAT osimage definition.
 
-To list the contents of the xCAT osimage definition use the xCAT \ **lsdef**\  command ("lsdef -t osimage -l -o <osimage_name>"). \ **Before running the rmnimimage command you should be absolutely certain that you really want to remove the NIM resources specified in the xCAT osimage definition!**\
+To list the contents of the xCAT osimage definition use the xCAT \ **lsdef**\  command ("lsdef -t osimage -l -o <osimage_name>"). \ **Before running the rmnimimage command you should be absolutely certain that you really want to remove the NIM resources specified in the xCAT osimage definition!**\ 
 
 The default behavior of this command is to remove all the NIM resources, except the lpp_source, on the xCAT management node in addition to the resources that were replicated on any xCAT service nodes.
 
@@ -58,52 +58,52 @@ OPTIONS
 
 
 
-\ **-h |-**\ **-help**\
-
+\ **-h |-**\ **-help**\ 
+ 
  Display usage message.
+ 
 
 
-
-\ **-d|-**\ **-delete**\
-
+\ **-d|-**\ **-delete**\ 
+ 
  Delete any files or directories that were left after the "nim -o remove" command was run. This option will also remove the lpp_source resouce and all files contained in the lpp_source directories. When this command completes all definitions and files will be completely erased so use with caution!
+ 
 
 
-
-\ **-f|-**\ **-force**\
-
+\ **-f|-**\ **-force**\ 
+ 
  Override the check for shared resources when removing an xCAT osimage.
+ 
 
 
-
-\ **-M|-**\ **-managementnode**\
-
+\ **-M|-**\ **-managementnode**\ 
+ 
  Remove NIM resources from the xCAT management node only.
+ 
 
 
-
-\ **-s**\  \ *servicenoderange*\
-
+\ **-s**\  \ *servicenoderange*\ 
+ 
  Remove the NIM resources on these xCAT service nodes only.  Do not remove the NIM resources from the xCAT management node.
+ 
 
 
-
-\ *osimage_name*\
-
+\ *osimage_name*\ 
+ 
  The name of the xCAT osimage definition.
+ 
 
 
-
-\ **-V|-**\ **-verbose**\
-
+\ **-V|-**\ **-verbose**\ 
+ 
  Verbose mode. This option will display the underlying NIM commands that are being called.
+ 
 
 
-
-\ **-x|-**\ **-xcatdef**\
-
+\ **-x|-**\ **-xcatdef**\ 
+ 
  Remove the xCAT osimage definition.
-
+ 
 
 
 

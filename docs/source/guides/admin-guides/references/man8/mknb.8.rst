@@ -19,7 +19,7 @@ SYNOPSIS
 ********
 
 
-\ **mknb**\  \ *arch*\
+\ **mknb**\  \ *arch*\ 
 
 
 ***********
@@ -43,10 +43,10 @@ OPTIONS
 
 
 
-\ *arch*\
-
+\ *arch*\ 
+ 
  The hardware architecture for which to build the boot image.
-
+ 
 
 
 
@@ -56,11 +56,11 @@ RETURN VALUE
 
 
 
-0.  The command completed successfully.
+0. The command completed successfully.
 
 
 
-1.  An error has occurred.
+1. An error has occurred.
 
 
 

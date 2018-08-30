@@ -19,7 +19,7 @@ SYNOPSIS
 ********
 
 
-\ **taskstate Attributes:**\   \ *node*\ , \ *command*\ , \ *state*\ , \ *pid*\ , \ *reserve*\ , \ *disable*\
+\ **taskstate Attributes:**\   \ *node*\ , \ *command*\ , \ *state*\ , \ *pid*\ , \ *reserve*\ , \ *disable*\ 
 
 
 ***********
@@ -36,40 +36,40 @@ taskstate Attributes:
 
 
 
-\ **node**\
-
+\ **node**\ 
+ 
  The node name.
+ 
 
 
-
-\ **command**\
-
+\ **command**\ 
+ 
  Current command is running
+ 
 
 
-
-\ **state**\
-
+\ **state**\ 
+ 
  The task state(callback, running) for the node.
+ 
 
 
-
-\ **pid**\
-
+\ **pid**\ 
+ 
  The process id of the request process.
+ 
 
 
-
-\ **reserve**\
-
+\ **reserve**\ 
+ 
  used to lock the node
+ 
 
 
-
-\ **disable**\
-
+\ **disable**\ 
+ 
  Set to 'yes' or '1' to comment out this row.
-
+ 
 
 
 
@@ -78,5 +78,5 @@ SEE ALSO
 ********
 
 
-\ **nodels(1)**\ , \ **chtab(8)**\ , \ **tabdump(8)**\ , \ **tabedit(8)**\
+\ **nodels(1)**\ , \ **chtab(8)**\ , \ **tabdump(8)**\ , \ **tabedit(8)**\ 
 

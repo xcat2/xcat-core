@@ -38,28 +38,28 @@ OPTIONS
 
 
 
-\ **-h|-**\ **-help**\
-
+\ **-h|-**\ **-help**\ 
+ 
  Display usage message.
+ 
 
 
-
-\ **-V|-**\ **-verbose**\
-
+\ **-V|-**\ **-verbose**\ 
+ 
  Verbose mode.
+ 
 
 
-
-\ **-i**\  \ *imagename*\
-
+\ **-i**\  \ *imagename*\ 
+ 
  The name of an existing xCAT osimage definition.
+ 
 
 
-
-\ *noderange*\
-
+\ *noderange*\ 
+ 
  A set of comma delimited node names and/or group names. See the "noderange" man page for details on additional supported formats.
-
+ 
 
 
 
@@ -80,61 +80,61 @@ EXAMPLES
 
 
 1.
-
+ 
  To list the statelite information for an xCAT node named "node01".
-
-
+ 
+ 
  .. code-block:: perl
-
+ 
    lslite node01
-
-
+ 
+ 
  Output is similar to:
-
-
+ 
+ 
  .. code-block:: perl
-
+ 
    >>>Node: node01
-
+  
    Osimage: 61img
-
+  
    Persistent directory (statelite table):
           xcatmn1:/statelite
-
+  
    Litefiles (litefile table):
           tmpfs,rw      /etc/adjtime
           tmpfs,rw      /etc/lvm/.cache
           tmpfs,rw      /etc/mtab
           ........
-
+  
    Litetree path (litetree table):
           1,MN:/etc
           2,server1:/etc
-
-
+ 
+ 
 
 
 2.
-
+ 
  To list the statelite information for an xCAT osimage named "osimage01".
-
-
+ 
+ 
  .. code-block:: perl
-
+ 
    lslite -i osimage01
-
-
+ 
+ 
  Output is similar to:
-
-
+ 
+ 
  .. code-block:: perl
-
+ 
           tmpfs,rw      /etc/adjtime
           tmpfs,rw      /etc/lvm/.cache
           tmpfs,rw      /etc/mtab
           ........
-
-
+ 
+ 
 
 
 

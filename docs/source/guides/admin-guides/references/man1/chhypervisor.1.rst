@@ -19,7 +19,7 @@ SYNOPSIS
 ********
 
 
-\ **RHEV specific :**\
+\ **RHEV specific :**\ 
 
 
 \ **chhypervisor**\  \ *noderange*\  [\ **-a**\ ]
@@ -32,7 +32,7 @@ SYNOPSIS
 
 \ **chhypervisor**\  \ *noderange*\  [\ **-d**\ ]
 
-\ **zVM specific :**\
+\ **zVM specific :**\ 
 
 
 \ **chhypervisor**\  \ *noderange*\  [\ **-**\ **-adddisk2pool**\  \ *function*\  \ *region*\  \ *volume*\  \ *group*\ ]
@@ -102,51 +102,51 @@ RHEV specific :
 
 
 \ **-a**\  Approve the host that to be added to cluster.
-
+ 
  Before approve, the status of the host must be 'pending_approval'.
-
+ 
 
 
 \ **-n**\  Configure the network interfaces for the host.
-
+ 
  Note: This operation only can be run when host is in 'maintenance mode'.
  Use \ **-d**\  to switch the host to 'maintenance' mode.
-
+ 
  The interfaces which configured in hypervisor.interface will be added
  to the network of RHEV.
-
+ 
  The format of hypervisor.interface is multiple [network:interfacename:
  protocol:IP:netmask:gateway] sections separated with '|'. For example:
  [rhevm2:eth0:static:10.1.0.236:255.255.255.0:0.0.0.0].
-
-
+ 
+ 
  \ **network**\  - The logic network which has been created by 'cfgve -t nw'
  or the default management network 'rhevm'.
-
+ 
  \ **interfacename**\  - Physical network name: 'eth0','eth1'...
-
+ 
  \ **protocol**\  - To identify which boot protocol to use for the interface: dhcp
  or static.
-
+ 
  \ **IP**\  - The IP address for the interface.
-
+ 
  \ **netmask**\  - The network mask for the interface.
-
+ 
  \ **gateway**\  - The gateay for the interface. This field only can be set when
  the interface is added to 'rhevm' network.
-
+ 
 
 
 \ **-p**\  Configure the power management for the host.
-
+ 
  The power management must be configured for the rhev-h host to make the
  rhev-m to monitor the power status of the host, so that when certain host
  failed to function, rhev-m will fail over certain role like SPM to other active host.
-
+ 
  For rack mounted server, the bmc IP and user:password need to be set for the
  power management (These parameters are gotten from ipmi table). rhev-m uses the
  ipmi protocol to get the power status of the host.
-
+ 
 
 
 \ **-e**\  To activate the host.
@@ -167,84 +167,84 @@ zVM specific :
 
 
 
-\ **-**\ **-adddisk2pool**\  \ *function*\  \ *region*\  \ *volume*\  \ *group*\
-
+\ **-**\ **-adddisk2pool**\  \ *function*\  \ *region*\  \ *volume*\  \ *group*\ 
+ 
  Add a disk to a disk pool defined in the EXTENT CONTROL. Function type can be
  either: (4) Define region as full volume and add to group OR (5) Add existing
  region to group. If the volume already exists in the EXTENT CONTROL, use
  function 5. If the volume does not exist in the EXTENT CONTROL, but is attached
  to SYSTEM, use function 4.
+ 
 
 
-
-\ **-**\ **-addscsi**\  \ *device_number*\  \ *device_path*\  \ *option*\  \ *persist*\
-
+\ **-**\ **-addscsi**\  \ *device_number*\  \ *device_path*\  \ *option*\  \ *persist*\ 
+ 
  Dynamically add a SCSI disk to a running z/VM system.
+ 
 
 
-
-\ **-**\ **-addvlan**\  \ *name*\  \ *owner*\  \ *type*\  \ *transport*\
-
+\ **-**\ **-addvlan**\  \ *name*\  \ *owner*\  \ *type*\  \ *transport*\ 
+ 
  Create a virtual network LAN.
+ 
 
 
-
-\ **-**\ **-addvswitch**\  \ *name*\  \ *osa_dev_addr*\  \ *osa_exp_adapter*\  \ *controller*\  \ *connect (0, 1, or 2)*\  \ *memory_queue*\  \ *router*\  \ *transport*\  \ *vlan_id*\  \ *port_type*\  \ *update*\  \ *gvrp*\  \ *native_vlan*\
-
+\ **-**\ **-addvswitch**\  \ *name*\  \ *osa_dev_addr*\  \ *osa_exp_adapter*\  \ *controller*\  \ *connect (0, 1, or 2)*\  \ *memory_queue*\  \ *router*\  \ *transport*\  \ *vlan_id*\  \ *port_type*\  \ *update*\  \ *gvrp*\  \ *native_vlan*\ 
+ 
  Create a virtual switch.
+ 
 
 
-
-\ **-**\ **-addzfcp2pool**\  \ *pool*\  \ *status*\  \ *wwpn*\  \ *lun*\  \ *size*\  \ *owner*\
-
+\ **-**\ **-addzfcp2pool**\  \ *pool*\  \ *status*\  \ *wwpn*\  \ *lun*\  \ *size*\  \ *owner*\ 
+ 
  Add a zFCP device to a device pool defined in xCAT. The device must have been
  carved up in the storage controller and configured with a WWPN/LUN before it
  can be added to the xCAT storage pool. z/VM does not have the ability to
  communicate directly with the storage controller to carve up disks dynamically.
+ 
 
 
-
-\ **-**\ **-removediskfrompool**\  \ *function*\  \ *region*\  \ *group*\
-
+\ **-**\ **-removediskfrompool**\  \ *function*\  \ *region*\  \ *group*\ 
+ 
  Remove a disk from a disk pool defined in the EXTENT CONTROL. Function type can
  be either: (1) Remove region, (2) Remove region from group, (3) Remove region
  from all groups, OR (7) Remove entire group .
+ 
 
 
-
-\ **-**\ **-removescsi**\  \ *device_number*\  \ *persist (YES or NO)*\
-
+\ **-**\ **-removescsi**\  \ *device_number*\  \ *persist (YES or NO)*\ 
+ 
  Delete a real SCSI disk.
+ 
 
 
-
-\ **-**\ **-removevlan**\  \ *name*\  \ *owner*\
-
+\ **-**\ **-removevlan**\  \ *name*\  \ *owner*\ 
+ 
  Delete a virtual network LAN.
+ 
 
 
-
-\ **-**\ **-removevswitch**\  \ *name*\
-
+\ **-**\ **-removevswitch**\  \ *name*\ 
+ 
  Delete a virtual switch.
+ 
 
 
-
-\ **-**\ **-removezfcpfrompool**\  \ *pool*\  \ *lun*\
-
+\ **-**\ **-removezfcpfrompool**\  \ *pool*\  \ *lun*\ 
+ 
  Remove a zFCP device from a device pool defined in xCAT.
+ 
 
 
-
-\ **-**\ **-smcli**\  \ *function*\  \ *arguments*\
-
+\ **-**\ **-smcli**\  \ *function*\  \ *arguments*\ 
+ 
  Execute a SMAPI function. A list of APIs supported can be found by using the
  help flag, e.g. chhypervisor pokdev61 --smcli -h. Specific arguments associated
  with a SMAPI function can be found by using the help flag for the function,
  e.g. chhypervisor pokdev61 --smcli Image_Query_DM -h. Only z/VM 6.2 and older
  SMAPI functions are supported at this time. Additional SMAPI functions will be
  added in subsequent zHCP versions.
-
+ 
 
 
 
@@ -270,53 +270,53 @@ RHEV specific :
 
 
 1. To approve the host 'host1', enter:
-
-
+ 
+ 
  .. code-block:: perl
-
+ 
    chhypervisor host1 -a
-
-
+ 
+ 
 
 
 2. To configure the network interface for the host 'host1', enter:
-
-
+ 
+ 
  .. code-block:: perl
-
+ 
    chhypervisor host1 -n
-
-
+ 
+ 
 
 
 3. To configure the power management for the host 'host1', enter:
-
-
+ 
+ 
  .. code-block:: perl
-
+ 
    chhypervisor host1 -p
-
-
+ 
+ 
 
 
 4. To activate the host 'host1', enter:
-
-
+ 
+ 
  .. code-block:: perl
-
+ 
    chhypervisor host1 -e
-
-
+ 
+ 
 
 
 5. To deactivate the host 'host1', enter:
-
-
+ 
+ 
  .. code-block:: perl
-
+ 
    chhypervisor host1 -d
-
-
+ 
+ 
 
 
 
@@ -326,53 +326,53 @@ zVM specific :
 
 
 1. To add a disk to a disk pool defined in the EXTENT CONTROL, enter:
-
-
+ 
+ 
  .. code-block:: perl
-
+ 
    chhypervisor pokdev61 --adddisk2pool 4 DM1234 DM1234 POOL1
-
-
+ 
+ 
 
 
 2. To add a zFCP device to a device pool defined in xCAT, enter:
-
-
+ 
+ 
  .. code-block:: perl
-
+ 
    chhypervisor pokdev61 --addzfcp2pool zfcp1 free 500501234567C890 4012345600000000 8G
-
-
+ 
+ 
 
 
 3. To remove a region from a group in the EXTENT CONTROL, enter:
-
-
+ 
+ 
  .. code-block:: perl
-
+ 
    chhypervisor pokdev61 --removediskfrompool 2 DM1234 POOL1
-
-
+ 
+ 
 
 
 4. To remove a zFCP device from a device pool defined in xCAT, enter:
-
-
+ 
+ 
  .. code-block:: perl
-
+ 
    chhypervisor pokdev61 --removezfcpfrompool zfcp1 4012345600000000 500501234567C890
-
-
+ 
+ 
 
 
 5. To execute a SMAPI function (Image_Query_DM), enter:
-
-
+ 
+ 
  .. code-block:: perl
-
+ 
    chhypervisor pokdev61 --smcli Image_Query_DM -T LNX3
-
-
+ 
+ 
 
 
 

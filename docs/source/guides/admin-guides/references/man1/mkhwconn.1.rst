@@ -77,53 +77,53 @@ OPTIONS
 
 
 
-\ **-h|-**\ **-help**\
-
+\ **-h|-**\ **-help**\ 
+ 
  Display usage message.
+ 
 
 
-
-\ **-t**\
-
+\ **-t**\ 
+ 
  Read connection information from xCAT DB (ppc and ppcdirect tables).  Use this option if you need to connect multiple CECs/Frames
  to multiple HMCs in a single command.
+ 
 
 
-
-\ **-p**\
-
+\ **-p**\ 
+ 
  The HMC node name. Only one HMC nodes can be specified by this flag. To setup connection for multiple HMC nodes, use flag \ **-t**\ .
+ 
 
 
-
-\ **-P**\
-
+\ **-P**\ 
+ 
  The password of HMC based CEC/Frame login user(Default user name is 'HMC'). This flag is optional.
+ 
 
 
-
-\ **-T**\
-
+\ **-T**\ 
+ 
  The tooltype is used to communicate to the CEC/Frame. The value could be \ **lpar**\  or \ **fnm**\ . The tooltype value \ **lpar**\  is for xCAT and \ **fnm**\  is for CNM. The default value is "\ **lpar**\ ".
+ 
 
 
-
-\ **-**\ **-port**\
-
+\ **-**\ **-port**\ 
+ 
  The port value specifies which special side will be used to create the connection to the CEC/Frame. The value could only be specified as "\ **0**\ " or "\ **1**\ " and the default value is "\ **0,1**\ ". If the user wants to use all ports to create the connection, he should not specify this value. If the port value is specified as "\ **0**\ ", in the vpd table, the side column should be \ **A-0**\  and \ **B-0**\ ; If the port value is specified as "\ **1**\ ", the side column should be \ **A-1**\  and \ **B-1**\ . When making hardware connection between CEC/Frame and HMC, the value is used to specify the fsp/bpa port of the cec/frame and will be organized in order of "\ **A-0,A-1,B-0,B-1**\ ". If any side does not exist, the side would simply be ignored. Generally, only one port of a fsp/bap can be connected while another port be used as backup.
+ 
 
 
-
-\ **-s**\
-
+\ **-s**\ 
+ 
  The flag -s is used to make the connection between the frame and its Service Focal Point(HMC). -s flag is not supposed to work with other functional flags.
+ 
 
 
-
-\ **-V|-**\ **-verbose**\
-
+\ **-V|-**\ **-verbose**\ 
+ 
  Verbose output.
-
+ 
 
 
 
@@ -144,63 +144,63 @@ EXAMPLES
 
 
 1.
-
+ 
  To setup the connection for all CEC nodes in node group cec to HMC node, according to the definition in xCAT DB:
-
-
+ 
+ 
  .. code-block:: perl
-
+ 
    mkhwconn cec -t
-
-
+ 
+ 
 
 
 2.
-
+ 
  To setup the connection for Frame nodes in node group frame to HMC node hmc1, with password 'abc123':
-
-
+ 
+ 
  .. code-block:: perl
-
+ 
    mkhwconn frame -p hmc1 -P abc123
-
-
+ 
+ 
 
 
 3.
-
+ 
  To setup the connections for all CEC nodes in node group cec to hardware server, and the tooltype value is lpar:
-
-
+ 
+ 
  .. code-block:: perl
-
+ 
    mkhwconn cec -t -T lpar
-
-
+ 
+ 
 
 
 4.
-
+ 
  To setup the connections for all cecs nodes in node group cec to hardware server, and the tooltype value is lpar, and the port value is 1:
-
-
+ 
+ 
  .. code-block:: perl
-
+ 
    mkhwconn cec -t -T lpar --port 1
-
-
+ 
+ 
 
 
 5.
-
+ 
  To setup the connection between the frame and it's SFP node. This command will also set the connections between the CECs within this frame and their SFP node. User need to define HMC_name in the database in advance, but no need to set the sfp attribute for these node, xCAT will set the HMC_name as ppc.sfp for these nodes. The CECs within this frame should have the same sfp attribute as the frame.
-
-
+ 
+ 
  .. code-block:: perl
-
+ 
    mkhwconn cec -s HMC_name -P HMC_passwd
-
-
+ 
+ 
 
 
 

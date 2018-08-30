@@ -47,16 +47,16 @@ OPTIONS
 
 
 
-\ **-v|-**\ **-version**\
-
+\ **-v|-**\ **-version**\ 
+ 
  Command Version.
+ 
 
 
-
-\ **-?|-h|-**\ **-help**\
-
+\ **-?|-h|-**\ **-help**\ 
+ 
  Display usage message.
-
+ 
 
 
 
@@ -66,11 +66,11 @@ RETURN VALUE
 
 
 
-0.  The command completed successfully.
+0. The command completed successfully.
 
 
 
-1.  An error has occurred.
+1. An error has occurred.
 
 
 
@@ -82,23 +82,23 @@ EXAMPLES
 
 
 1. To add nodes in noderange  node1-node4 with group all:
-
-
+ 
+ 
  .. code-block:: perl
-
+ 
    nodeadd node1-node4 groups=all
-
-
+ 
+ 
 
 
 2. To add nodes in noderange  node1-node4 to the nodetype table with os=rhel5:
-
-
+ 
+ 
  .. code-block:: perl
-
+ 
    nodeadd node1-node4 groups=all,rhel5 nodetype.os=rhel5
-
-
+ 
+ 
 
 
 

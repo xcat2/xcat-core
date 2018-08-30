@@ -19,35 +19,35 @@ SYNOPSIS
 ********
 
 
-\ **lsvm**\  [\ **-h**\ | \ **-**\ **-help]**\
+\ **lsvm**\  [\ **-h**\ | \ **-**\ **-help]**\ 
 
 \ **lsvm**\  [\ **-v**\ | \ **-**\ **-version**\ ]
 
-\ **lsvm**\  [\ **-V**\ | \ **-**\ **-verbose**\ ] \ *noderange*\
+\ **lsvm**\  [\ **-V**\ | \ **-**\ **-verbose**\ ] \ *noderange*\ 
 
-\ **lsvm**\  [\ **-a**\ | \ **-**\ **-all**\ ] \ *noderange*\
+\ **lsvm**\  [\ **-a**\ | \ **-**\ **-all**\ ] \ *noderange*\ 
 
 For PPC (using Direct FSP Management):
 ======================================
 
 
-\ **lsvm**\  [\ **-l**\ | \ **-**\ **-long**\ ] \ **-**\ **-p775**\  \ *noderange*\
+\ **lsvm**\  [\ **-l**\ | \ **-**\ **-long**\ ] \ **-**\ **-p775**\  \ *noderange*\ 
 
-\ **lsvm**\  \ *noderange*\
+\ **lsvm**\  \ *noderange*\ 
 
 
 For KVM and VMware
 ==================
 
 
-\ **lsvm**\  \ *noderange*\
+\ **lsvm**\  \ *noderange*\ 
 
 
 For zVM:
 ========
 
 
-\ **lsvm**\  \ *noderange*\
+\ **lsvm**\  \ *noderange*\ 
 
 
 
@@ -101,27 +101,27 @@ OPTIONS
 *******
 
 
-\ **-h**\
+\ **-h**\ 
 
 Display usage message.
 
-\ **-v**\
+\ **-v**\ 
 
 Command version.
 
-\ **-V**\
+\ **-V**\ 
 
 Verbose output.
 
-\ **-a**\
+\ **-a**\ 
 
 List all the profiles for one partition
 
-\ **-**\ **-p775**\
+\ **-**\ **-p775**\ 
 
 Specify the operation is for Power 775 machines.
 
-\ **-l**\
+\ **-l**\ 
 
 Show lparnames for lpars. It shall work with option \ **-**\ **-p775**\ .
 

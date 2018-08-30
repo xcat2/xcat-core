@@ -19,7 +19,7 @@ SYNOPSIS
 ********
 
 
-\ **virtsd Attributes:**\   \ *node*\ , \ *sdtype*\ , \ *stype*\ , \ *location*\ , \ *host*\ , \ *cluster*\ , \ *datacenter*\ , \ *comments*\ , \ *disable*\
+\ **virtsd Attributes:**\   \ *node*\ , \ *sdtype*\ , \ *stype*\ , \ *location*\ , \ *host*\ , \ *cluster*\ , \ *datacenter*\ , \ *comments*\ , \ *disable*\ 
 
 
 ***********
@@ -36,53 +36,53 @@ virtsd Attributes:
 
 
 
-\ **node**\
-
+\ **node**\ 
+ 
  The name of the storage domain
+ 
 
 
-
-\ **sdtype**\
-
+\ **sdtype**\ 
+ 
  The type of storage domain. Valid values: data, iso, export
+ 
 
 
-
-\ **stype**\
-
+\ **stype**\ 
+ 
  The type of storge. Valid values: nfs, fcp, iscsi, localfs
+ 
 
 
-
-\ **location**\
-
+\ **location**\ 
+ 
  The path of the storage
+ 
 
 
-
-\ **host**\
-
+\ **host**\ 
+ 
  For rhev, a hypervisor host needs to be specified to manage the storage domain as SPM (Storage Pool Manager). But the SPM role will be failed over to another host when this host down.
+ 
 
 
-
-\ **cluster**\
-
+\ **cluster**\ 
+ 
  A cluster of hosts
+ 
 
 
-
-\ **datacenter**\
-
+\ **datacenter**\ 
+ 
  A collection for all host, vm that will shared the same storages, networks.
+ 
+
+
+\ **comments**\ 
 
 
 
-\ **comments**\
-
-
-
-\ **disable**\
+\ **disable**\ 
 
 
 
@@ -92,5 +92,5 @@ SEE ALSO
 ********
 
 
-\ **nodels(1)**\ , \ **chtab(8)**\ , \ **tabdump(8)**\ , \ **tabedit(8)**\
+\ **nodels(1)**\ , \ **chtab(8)**\ , \ **tabdump(8)**\ , \ **tabedit(8)**\ 
 

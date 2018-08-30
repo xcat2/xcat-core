@@ -46,29 +46,29 @@ OPTIONS
 
 
 
-\ *noderange*\
-
+\ *noderange*\ 
+ 
  A set of comma delimited node names and/or group names.
  See the \ *noderange*\  man page for details on supported formats.
+ 
 
 
-
-\ **-d|-**\ **-delete**\
-
+\ **-d|-**\ **-delete**\ 
+ 
  Only removes the entries for the nodes from the known_hosts file.
+ 
 
 
-
-\ **-r|-**\ **-remove**\
-
+\ **-r|-**\ **-remove**\ 
+ 
  Synonymous to \ **-d|-**\ **-delete**\ .
+ 
 
 
-
-\ **-V|-**\ **-verbose**\
-
+\ **-V|-**\ **-verbose**\ 
+ 
  Verbose mode.
-
+ 
 
 
 
@@ -79,32 +79,32 @@ EXAMPLES
 
 
 1. To build the known_hosts entry for the nodes in the compute group
-
-
+ 
+ 
  .. code-block:: perl
-
+ 
    makeknownhosts compute
-
-
+ 
+ 
 
 
 2. To build the known_hosts entry for the nodes in the lpars and service groups
-
-
+ 
+ 
  .. code-block:: perl
-
+ 
    makeknownhosts lpars,service
-
-
+ 
+ 
 
 
 3. To remove the known_hosts entry for node02
-
-
+ 
+ 
  .. code-block:: perl
-
+ 
    makeknownhosts node02 -d
-
-
+ 
+ 
 
 

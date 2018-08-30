@@ -19,7 +19,7 @@ SYNOPSIS
 ********
 
 
-\ **xCATWorld**\  \ *noderange*\
+\ **xCATWorld**\  \ *noderange*\ 
 
 
 ***********

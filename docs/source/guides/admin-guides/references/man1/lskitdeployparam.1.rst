@@ -44,25 +44,25 @@ OPTIONS
 
 
 
-\ **-k|-**\ **-kitname**\  \ *kit_names*\
-
+\ **-k|-**\ **-kitname**\  \ *kit_names*\ 
+ 
  Where \ *kit_names*\  is a comma-delimited list of kit names. The \ **lskitdeployparam**\  command will only display the deployment parameters for the kits with the matching names.
+ 
 
 
-
-\ **-c|-**\ **-compname**\  \ *comp_names*\
-
+\ **-c|-**\ **-compname**\  \ *comp_names*\ 
+ 
  Where \ *comp_names*\  is a comma-delimited list of kit component names. The \ **lskitdeployparam**\  command will only display the deployment parameters for the kit components with the matching names.
+ 
 
 
-
-\ **-x|-**\ **-xml|-**\ **-XML**\
-
+\ **-x|-**\ **-xml|-**\ **-XML**\ 
+ 
  Return the output with XML tags.  The data is returned as:
-
-
+ 
+ 
  .. code-block:: perl
-
+ 
     <data>
       <kitdeployparam>
         <name>KIT_KIT1_PARAM1</name>
@@ -76,26 +76,26 @@ OPTIONS
       </kitdeployparam>
     </data>
     ...
+ 
+ 
 
 
-
-
-\ **-V|-**\ **-verbose**\
-
+\ **-V|-**\ **-verbose**\ 
+ 
  Display additional progress and error messages.
+ 
 
 
-
-\ **-v|-**\ **-version**\
-
+\ **-v|-**\ **-version**\ 
+ 
  Command Version.
+ 
 
 
-
-\ **-?|-h|-**\ **-help**\
-
+\ **-?|-h|-**\ **-help**\ 
+ 
  Display usage message.
-
+ 
 
 
 
@@ -121,27 +121,27 @@ EXAMPLES
 
 
 1.
-
+ 
  To list kit deployment parameters for kit "kit-test1-1.0-Linux", enter:
-
-
+ 
+ 
  .. code-block:: perl
-
+ 
     lskitdeployparam -k kit-test1-1.0-Linux
-
-
+ 
+ 
 
 
 2.
-
+ 
  To list kit deployment parameters for kit component "comp-server-1.0-1-rhels-6-x86_64", enter:
-
-
+ 
+ 
  .. code-block:: perl
-
+ 
     lskitdeployparam -c comp-server-1.0-1-rhels-6-x86_64
-
-
+ 
+ 
 
 
 

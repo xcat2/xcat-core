@@ -7,7 +7,7 @@ xcoll.1
 
 
 ************
-\ **NAME**\
+\ **NAME**\ 
 ************
 
 
@@ -15,7 +15,7 @@ xcoll.1
 
 
 ****************
-\ **SYNOPSIS**\
+\ **SYNOPSIS**\ 
 ****************
 
 
@@ -23,11 +23,11 @@ xcoll.1
 
 
 *******************
-\ **DESCRIPTION**\
+\ **DESCRIPTION**\ 
 *******************
 
 
-The  \ **xcoll**\  command formats and consolidates output from the \ **psh,rinv**\  command. The \ **xcoll**\
+The  \ **xcoll**\  command formats and consolidates output from the \ **psh,rinv**\  command. The \ **xcoll**\ 
 command takes, as input, lines in the following format:
 
 groupname: line of output from remote command, will use group name, if defined
@@ -47,7 +47,7 @@ is identical:
   lines from psh for node1 with hostnames stripped off
   .
   .
-
+ 
   ====================================
   node2 or nodegroup name
   ====================================
@@ -56,7 +56,7 @@ is identical:
   lines from psh for node2 with hostnames stripped off
   .
   .
-
+ 
   ====================================
   node3, node4 or nodegroup name
   ====================================
@@ -69,44 +69,44 @@ is identical:
 
 
 ***************
-\ **OPTIONS**\
+\ **OPTIONS**\ 
 ***************
 
 
 
-\ **-c**\
-
+\ **-c**\ 
+ 
  Display a total nodecount for each set of output.
+ 
 
 
-
-\ **-n**\
-
+\ **-n**\ 
+ 
  Display output as nodenames instead of groupnames.
-
+ 
 
 
 
 ****************
-\ **EXAMPLES**\
+\ **EXAMPLES**\ 
 ****************
 
 
 
 1. To  display the results of a command issued on several nodes, in
 the format used in the Description, enter:
-
-
+ 
+ 
  .. code-block:: perl
-
+ 
    psh node1,node2,node3 cat /etc/passwd | xcoll
-
-
+ 
+ 
 
 
 
 ****************
-\ **SEE ALSO**\
+\ **SEE ALSO**\ 
 ****************
 
 

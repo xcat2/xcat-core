@@ -19,9 +19,9 @@ SYNOPSIS
 ********
 
 
-\ **regnotif [-h| -**\ **-help]**\
+\ **regnotif [-h| -**\ **-help]**\ 
 
-\ **regnotif  [-v| -**\ **-version]**\
+\ **regnotif  [-v| -**\ **-version]**\ 
 
 \ **regnotif**\  \ *filename tablename[,tablename]...*\  [\ **-o | -**\ **-operation**\  \ *actions*\ ]
 

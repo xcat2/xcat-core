@@ -15,7 +15,7 @@ Name
 
 
 ****************
-\ **Synopsis**\
+\ **Synopsis**\ 
 ****************
 
 
@@ -25,7 +25,7 @@ Name
 
 
 *******************
-\ **Description**\
+\ **Description**\ 
 *******************
 
 
@@ -81,144 +81,144 @@ For the command specified by 'dcmd', no input is needed, the output can be a str
 
 
 ***************
-\ **Options**\
+\ **Options**\ 
 ***************
 
 
 
-\ **-f | -**\ **-usefping**\
-
+\ **-f | -**\ **-usefping**\ 
+ 
  Uses fping instead of nmap even if nmap is available.  If you seem to be having a problem with false negatives, fping can be more forgiving, but slower.
+ 
 
 
-
-\ **-m | -**\ **-usemon**\
-
+\ **-m | -**\ **-usemon**\ 
+ 
  Uses the settings from the \ **monsetting**\  table to determine a list of applications that need to get status for.
+ 
 
 
-
-\ **-p | -**\ **-powerstat**\
-
+\ **-p | -**\ **-powerstat**\ 
+ 
  Gets the power status for the nodes that are 'noping'.
+ 
 
 
-
-\ **-u | -**\ **-updatedb**\
-
+\ **-u | -**\ **-updatedb**\ 
+ 
  Updates the status and appstatus columns of the nodelist table with the returned running status from the given nodes.
+ 
 
 
-
-\ **-v | -**\ **-version**\
-
+\ **-v | -**\ **-version**\ 
+ 
  Print version.
+ 
 
 
-
-\ **-h | -**\ **-help**\
-
+\ **-h | -**\ **-help**\ 
+ 
  Print help.
-
+ 
 
 
 
 ****************
-\ **Examples**\
+\ **Examples**\ 
 ****************
 
 
 
 1.
-
-
+ 
+ 
  .. code-block:: perl
-
+ 
    nodestat compute
-
-
+ 
+ 
  Output is similar to:
-
-
+ 
+ 
  .. code-block:: perl
-
+ 
    node1   sshd
    node2   sshd
    node3   ping
    node4   pbs
    node5   noping
-
-
+ 
+ 
 
 
 2.
-
-
+ 
+ 
  .. code-block:: perl
-
+ 
    nodestat compute -p
-
-
+ 
+ 
  Output is similar to:
-
-
+ 
+ 
  .. code-block:: perl
-
+ 
    node1   sshd
    node2   sshd
    node3   ping
    node4   pbs
    node5   noping(Shutting down)
-
-
+ 
+ 
 
 
 3.
-
-
+ 
+ 
  .. code-block:: perl
-
+ 
    nodestat compute -u
-
-
+ 
+ 
  Output is similar to:
-
-
+ 
+ 
  .. code-block:: perl
-
+ 
    node1   sshd
    node2   sshd
    node3   ping
    node4   netboot
    node5   noping
-
-
+ 
+ 
 
 
 4.
-
-
+ 
+ 
  .. code-block:: perl
-
+ 
    nodestat compute -m
-
-
+ 
+ 
  Output is similar to:
-
-
+ 
+ 
  .. code-block:: perl
-
+ 
    node1   ping,sshd,ll,gpfs=ok
    node2   ping,sshd,ll,gpfs=not ok,someapp=something is wrong
    node3   netboot
    node4   noping
-
-
+ 
+ 
 
 
 
 ************************
-\ **See**\  \ **Also**\
+\ **See**\  \ **Also**\ 
 ************************
 
 

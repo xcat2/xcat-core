@@ -47,7 +47,7 @@ For example:
 .. code-block:: perl
 
  	makenetworks -d > mynetstanzas
-
+ 
  	cat mynetstanzas | mkdef -z
 
 
@@ -88,11 +88,11 @@ RETURN VALUE
 
 
 
-0.  The command completed successfully.
+0. The command completed successfully.
 
 
 
-1.  An error has occurred.
+1. An error has occurred.
 
 
 
@@ -104,31 +104,31 @@ EXAMPLES
 
 
 1. Gather cluster network information and create xCAT network definitions.
-
-
+ 
+ 
  .. code-block:: perl
-
+ 
   	makenetworks
-
-
+ 
+ 
 
 
 2. Display cluster network information but do not write the network definitions to the xCAT database.
-
-
+ 
+ 
  .. code-block:: perl
-
+ 
   	makenetworks -d
-
-
+ 
+ 
  The output would be one or more stanzas of information similar to the following. The line that ends with a colon is the value of the "netname" attribute and is the name of the network object to use with the lsdef, mkdef, chdef and rmdef commands.
-
+ 
  9_114_37_0-255_255_255_0:
      objtype=network
      gateway=9.114.37.254
      mask=255.255.255.0
      net=9.114.37.0
-
+ 
 
 
 

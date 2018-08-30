@@ -19,9 +19,9 @@ SYNOPSIS
 ********
 
 
-\ **xcatchroot -h**\
+\ **xcatchroot -h**\ 
 
-\ **xcatchroot [-V] -i**\  \ *osimage_name cmd_string*\
+\ **xcatchroot [-V] -i**\  \ *osimage_name cmd_string*\ 
 
 
 ***********
@@ -33,7 +33,7 @@ For AIX diskless images this command will modify the AIX SPOT resource using
 the chroot command.  You must include the name of an xCAT osimage
 definition and the command that you wish to have run in the spot.
 
-\ **WARNING:**\
+\ **WARNING:**\ 
 
 
 Be very careful when using this command!!!  Make sure you are
@@ -89,29 +89,29 @@ OPTIONS
 
 
 
-\ *cmd_string*\
-
+\ *cmd_string*\ 
+ 
  The command you wish to have run in the chroot environment.  (Use a quoted
  string.)
+ 
 
 
-
-\ **-h |-**\ **-help**\
-
+\ **-h |-**\ **-help**\ 
+ 
  Display usage message.
+ 
 
 
-
-\ **-i**\  \ *osimage_name*\
-
+\ **-i**\  \ *osimage_name*\ 
+ 
  The name of the xCAT osimage definition.
+ 
 
 
-
-\ **-V |-**\ **-verbose**\
-
+\ **-V |-**\ **-verbose**\ 
+ 
  Verbose mode.
-
+ 
 
 
 

@@ -21,7 +21,7 @@ SYNOPSIS
 
 \ **nodechmac**\  [\ **-h**\  | \ **-**\ **-help**\  | \ **-v**\  | \ **-**\ **-version**\ ]
 
-\ **nodechmac**\  \ *node-name*\  \ **mac=**\ \ *mac-address*\
+\ **nodechmac**\  \ *node-name*\  \ **mac=**\ \ *mac-address*\ 
 
 
 ***********
@@ -39,19 +39,19 @@ OPTIONS
 *******
 
 
-\ **-h|-**\ **-help**\
+\ **-h|-**\ **-help**\ 
 
 Display usage message.
 
-\ **-v|-**\ **-version**\
+\ **-v|-**\ **-version**\ 
 
 Command Version.
 
-\ *node-name*\
+\ *node-name*\ 
 
 Specifies the name of the node you want to update, where <node-name> is the node that is updated.
 
-\ **mac=**\ \ *mac-address*\
+\ **mac=**\ \ *mac-address*\ 
 
 Sets the new MAC address for the NIC used by the provisioning node, where <mac-address> is the NICs new MAC address.
 

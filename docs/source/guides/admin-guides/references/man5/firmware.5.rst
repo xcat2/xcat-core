@@ -19,7 +19,7 @@ SYNOPSIS
 ********
 
 
-\ **firmware Attributes:**\   \ *node*\ , \ *cfgfile*\ , \ *comments*\ , \ *disable*\
+\ **firmware Attributes:**\   \ *node*\ , \ *cfgfile*\ , \ *comments*\ , \ *disable*\ 
 
 
 ***********
@@ -36,28 +36,28 @@ firmware Attributes:
 
 
 
-\ **node**\
-
+\ **node**\ 
+ 
  The node id.
+ 
 
 
-
-\ **cfgfile**\
-
+\ **cfgfile**\ 
+ 
  The file to use.
+ 
 
 
-
-\ **comments**\
-
+\ **comments**\ 
+ 
  Any user-written notes.
+ 
 
 
-
-\ **disable**\
-
+\ **disable**\ 
+ 
  Set to 'yes' or '1' to comment out this row.
-
+ 
 
 
 
@@ -66,5 +66,5 @@ SEE ALSO
 ********
 
 
-\ **nodels(1)**\ , \ **chtab(8)**\ , \ **tabdump(8)**\ , \ **tabedit(8)**\
+\ **nodels(1)**\ , \ **chtab(8)**\ , \ **tabdump(8)**\ , \ **tabedit(8)**\ 
 
