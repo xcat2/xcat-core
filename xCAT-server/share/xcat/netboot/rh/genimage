@@ -679,6 +679,8 @@ if (-e "$rootimg_dir/boot/vmlinux-$kernelver") {
     cp("$rootimg_dir/boot/vmlinuz-$kernelver", "$destdir/kernel");
 } elsif (-e "$rootimg_dir/boot/image-$kernelver") {
     cp("$rootimg_dir/boot/image-$kernelver", "$destdir/kernel");
+} elsif (-e "$rootimg_dir/lib/modules/$kernelver/vmlinuz") {
+    cp("$rootimg_dir/lib/modules/$kernelver/vmlinuz", "$destdir/kernel");
 } else {
     xdie("couldn't find the kernel file matched $kernelver in $rootimg_dir/boot");
 }
@@ -747,7 +749,9 @@ if ((-d "$rootimg_dir/usr/share/dracut") or (-d "$rootimg_dir/usr/lib/dracut")) 
     $dracutver = `rpm --root $rootimg_dir -qi dracut | grep Version | awk -F' ' '{print \$3}'`;
     chomp($dracutver);
     if ($dracutver =~ /^\d\d\d$/) {
-        if ($dracutver >= "033") {
+        if ($dracutver >= "047") {
+            $dracutdir = "dracut_047";
+        } elsif ($dracutver >= "033") {
             $dracutdir = "dracut_033";
         } else {
             $dracutdir = "dracut";    # The default directory
@@ -1012,7 +1016,7 @@ sub mkinitrd_dracut {
         chmod($perm & 07777, $dracutmoduledir . "98syslog/" . "parse-syslog-opts.sh");
     }
 
-    my $dracutmpath = $dracutmoduledir . "97xcat/";
+    my $dracutmpath = $dracutmoduledir . "98xcat/";
     mkpath($dracutmpath);
 
     my $perm = (stat("$fullpath/$dracutdir/check"))[2];
@@ -1059,14 +1063,13 @@ sub mkinitrd_dracut {
 
         #update etc/dracut.conf
         open($DRACUTCONF, '>', "$rootimg_dir/etc/dracut.conf");
-        my $dracutmodulelist = "xcat nfs base network kernel-modules syslog ";
+        my $dracutmodulelist = "xcat nfs base network kernel-modules syslog";
 
-        if (-d glob($dracutmoduledir . "[0-9]*systemd")) {
-            $dracutmodulelist .= " systemd ";
-        }
-
-        if (-d glob($dracutmoduledir . "[0-9]*fadump")) {
-            $dracutmodulelist .= " fadump ";
+        foreach (qw/systemd systemd-initrd dracut-systemd fadump/) {
+            my ($dir) = glob($dracutmoduledir . "[0-9]*" . $_);
+            if (-d $dir) {
+                $dracutmodulelist .= " $_";
+            }
         }
 
         print $DRACUTCONF qq{dracutmodules+="$dracutmodulelist"\n};
@@ -1101,15 +1104,13 @@ sub mkinitrd_dracut {
         $perm = (stat("$fullpath/$dracutdir/installkernel"))[2];
         chmod($perm & 07777, "$dracutmpath/installkernel");
 
-        my $dracutmodulelist = " xcat nfs base network kernel-modules syslog ";
+        my $dracutmodulelist = "xcat nfs base network kernel-modules syslog";
 
-
-        if (-d glob($dracutmoduledir . "[0-9]*systemd")) {
-            $dracutmodulelist .= " systemd ";
-        }
-
-        if (-d glob($dracutmoduledir . "[0-9]*fadump")) {
-            $dracutmodulelist .= " fadump ";
+        foreach (qw/systemd systemd-initrd dracut-systemd fadump/) {
+            my ($dir) = glob($dracutmoduledir . "[0-9]*" . $_);
+            if (-d $dir) {
+                $dracutmodulelist .= " $_";
+            }
         }
 
         # update etc/dracut.conf
