@@ -1204,7 +1204,9 @@ sub getImageitems_for_node
             }
             if ($ref1->{'environvar'}){
                 foreach my $myenvar(split(',',$ref1->{'environvar'})){
-                    $result .='export '.$myenvar."\n";
+                    $result .=$myenvar."\n";
+                    my ($varname,$value)=split('=',$myenvar);
+                    $result .='export '.$varname."\n";
                 }
             }
         }
