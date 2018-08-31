@@ -51,7 +51,7 @@ my $openbmc_pass;
 my $done_num = 0;
 $::P9_WITHERSPOON_MFG_ID     = "42817";
 $::P9_WITHERSPOON_PRODUCT_ID = "16975";
-
+%::VPDHASH = ();
 my %node_in_list = ();
 
 #-------------------------------------------------------
@@ -551,21 +551,39 @@ sub buildup_mtms_hash {
             $nodehash{$_->{node}} = $mtms; 
         }
     }
+    my @nodes = keys %nodehash;
     foreach my $tab (qw/ipmi openbmc/) {
         my $tabfd = xCAT::Table->new($tab);
-        my $entries = $tabfd->getAllAttribs(qw/node bmc/);
-        foreach (@entries) {
-            unless($_->{bmc}) { next; }
-            my $node = $_->{node};
+        my $entries = $tabfd->getNodesAttribs(\@nodes,qw/bmc/);
+        foreach my $node (@nodes) {
+            my $bmc = $entries->{$node}->[0]->{bmc};
+            unless($bmc) { next; }
             if (exists($nodehash{$node})) {
-                my $mtmsip = $nodehash{$node}."-".$_->{bmc};
+                my $mtmsip = $nodehash{$node}."-".$bmc;
                 $nodehash{$node} = $mtmsip;
             }
         }
     }
+    my @tmp_bmc_nodes = ();
     foreach my $node (keys %nodehash) {
         my $mtmsip = $nodehash{$node};
-        push @{ $::VPDHASH{$mtmsip} }, $node;
+        if (exists($::VPDHASH{$mtmsip})) {
+            my $tmp_node = $::VPDHASH{$mtmsip};
+            if ($tmp_node =~ /node-.+/) {
+                push @tmp_bmc_nodes, $tmp_node;
+            } elsif ($node =~ /node-.+/) {
+                $::VPDHASH{$mtmsip} = $node;
+                push @tmp_bmc_nodes, $node;
+            } else {
+                xCAT::MsgUtils->message("W", { data => ["Node $node and $tmp_node have the same mtms-ip keys: $mtmsip"] }, $::CALLBACK);
+            }
+            next;
+        }
+        $::VPDHASH{$mtmsip} = $node;
+    }
+    if ($#tmp_bmc_nodes > 0) {
+        my $useless_nodes = join(',', @tmp_bmc_nodes);
+        xCAT::MsgUtils->message("W", { data => ["The nodes: $useless_nodes have normal nodes defined, please remove them"] }, $::CALLBACK);
     }
 }
 
@@ -698,7 +716,7 @@ sub scan_process {
                 }
             }
         };
-
+        buildup_mtms_hash();
         for (my $i = 0 ; $i < scalar(@{$live_ip}) ; $i++) {
 
             # fork a sub process to handle the communication with service processor
@@ -1153,6 +1171,12 @@ sub bmcdiscovery_ipmi {
             }
             $node_data .= ",mp,bmc";
             if ($mtm and $serial) {
+                my $mtmsip = lc($mtm)."*".lc($serial)."-".$ip;
+                if (exists($::VPDHASH{$mtmsip})) {
+                    my $pre_node = $::VPDHASH{$mtmsip};
+                    xCAT::MsgUtils->message("I", { data => ["Match node $pre_node with bmc ip address: $ip"] }, $::CALLBACK);
+                    return;
+                }
                 $mtms_node = "node-$mtm-$serial";
                 $mtms_node =~ s/(.*)/\L$1/g;
                 $mtms_node =~ s/[\s:\._]/-/g;
@@ -1276,6 +1300,12 @@ sub bmcdiscovery_openbmc{
         }
         $node_data .= ",mp,bmc";
         if ($mtm and $serial) {
+            my $mtmsip = lc($mtm)."*".lc($serial)."-".$ip;
+            if (exists($::VPDHASH{$mtmsip})) {
+                my $pre_node = $::VPDHASH{$mtmsip};
+                xCAT::MsgUtils->message("I", { data => ["Match node $pre_node with bmc ip address: $ip"] }, $::CALLBACK);
+                return;
+            }
             $mtms_node = "node-$mtm-$serial";
             $mtms_node =~ s/(.*)/\L$1/g;
             $mtms_node =~ s/[\s:\._]/-/g;
