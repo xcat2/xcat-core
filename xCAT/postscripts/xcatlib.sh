@@ -1,6 +1,6 @@
 function hashencode(){
-        local str_map="$1"
-         echo `echo $str_map | sed 's/\./xDOTx/g' | sed 's/:/xCOLONx/g' | sed 's/,/:xCOMMAx/g'`
+    local str_map="$1"
+    echo `echo $str_map | sed 's/\./xDOTx/g' | sed 's/:/xCOLONx/g' | sed 's/,/:xCOMMAx/g' | sed 's/-/xHYPHENx/g'`
 }
 
 function hashset(){
