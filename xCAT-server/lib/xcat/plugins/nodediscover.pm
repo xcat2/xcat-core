@@ -414,6 +414,17 @@ sub process_request {
         # search the management nic and record the switch informaiton
         foreach my $nic (@{ $request->{nic} }) {
             if (defined($nic->{'hwaddr'}) && $nic->{'hwaddr'}->[0] =~ /$firstmac/i) {
+                if (defined($nic->{'switchname'}) && defined($nic->{'switchport'})) {
+                    # update the switch table
+                    my $switchtab = xCAT::Table->new('switch');
+                    if ($switchtab) {
+                        $switchtab->setNodeAttribs($node, { switch => $nic->{'switchname'}->[0], port => $nic->{'switchport'}->[0] });
+                        $switchtab->close();
+                    }
+
+                }
+                next;
+                # Don't create switch definition in nodelist, hosts, switches table
                 if (defined($nic->{'switchname'}) && defined($nic->{'switchaddr'})) {
 
                     # update the switch to switches table
