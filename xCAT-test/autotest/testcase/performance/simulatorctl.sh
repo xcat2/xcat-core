@@ -31,6 +31,7 @@ OPENBMC_SIMULATOR_URL='https://github.com/xuweibj/openbmc_simulator'
 PERF_SIM_TESTING_CWD='/tmp/perf'
 PERF_SIM_RESULT_DIR='/opt/xcat/share/xcat/tools/autotest/result'
 PERF_SIM_CASE_DIR='/opt/xcat/share/xcat/tools/autotest/testcase/performance'
+EPEL_RH7_REPO_PKG='https://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm'
 
 arch=`arch`
 driver="$2"
@@ -48,6 +49,7 @@ setup_docker()
         return
     fi
 
+    yum install -y $EPEL_RH7_REPO_PKG
     if [[ $arch =~ 'ppc64' ]]; then
         # The URL is from OpenPOWER Linux Community
         echo "[docker] name=Docker baseurl=$OPEN_POWER_TOOLS_URL enabled=1 gpgcheck=0" | \
