@@ -59,7 +59,7 @@ rm -rf $RPM_BUILD_ROOT
 %{prefix}
 
 %changelog
-* Thu, 30 Aug 2018 - GONG Jie <gongjie@linux.vnet.ibm.com>
+* Thu Aug 30 2018 - GONG Jie <gongjie@linux.vnet.ibm.com>
 - Add /usr/sbin/tcpdump as requirement
 * Fri Jul 1 2016 - huweihua <huweihua@cn.ibm.com>
 - "Create xCAT probe package"
