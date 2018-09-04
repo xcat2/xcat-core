@@ -16,6 +16,7 @@ Source2: license.tar.gz
 Source3: xCATSN
 Source5: templates.tar.gz
 Source6: xcat.conf.apach24
+Source7: xcat.conf.apach24.sles
 Provides: xCATsn = %{version}
 Requires: xCAT-server xCAT-client perl-DBD-SQLite xCAT-genesis-scripts-x86_64 xCAT-probe >= 2.12.2 
 
@@ -74,6 +75,7 @@ Requires: syslinux
 # PCM does not need or ship syslinux-xcat
 Requires: syslinux-xcat
 %endif
+%define is_rh 0%{?el6:1}%{?el7:1}
 
 %description
 xCATsn is a service node management package intended for at-scale management,
@@ -104,7 +106,12 @@ cp %{SOURCE1} $RPM_BUILD_ROOT/etc/apache2/conf.d/xcat.conf
 cp %{SOURCE1} $RPM_BUILD_ROOT/etc/httpd/conf.d/xcat.conf
 cp %{SOURCE3} $RPM_BUILD_ROOT/etc/xCATSN
 cp %{SOURCE1} $RPM_BUILD_ROOT/etc/xcat/conf.orig/xcat.conf.apach22
+%if %is_rh
 cp %{SOURCE6} $RPM_BUILD_ROOT/etc/xcat/conf.orig/xcat.conf.apach24
+%else
+cp %{SOURCE7} $RPM_BUILD_ROOT/etc/xcat/conf.orig/xcat.conf.apach24
+%endif
+
 cp -a  etc/rsyslog.d/* $RPM_BUILD_ROOT/etc/xcat/rsyslog.conf/
 cp -a  etc/logrotate.d/* $RPM_BUILD_ROOT/etc/xcat/logrotate.conf/
 

@@ -14,6 +14,7 @@ Source1: xcat.conf
 Source2: postscripts.tar.gz
 Source3: templates.tar.gz
 Source5: xCATMN
+%define is_rh 0%{?el6:1}%{?el7:1}
 
 %ifos linux
 Source4: prescripts.tar.gz
@@ -22,6 +23,7 @@ Source8: etc.tar.gz
 %endif
 
 Source7: xcat.conf.apach24
+Source9: xcat.conf.apach24.sles
 
 Provides: xCAT = %{version}
 Conflicts: xCATsn
@@ -173,6 +175,11 @@ mkdir -p postscripts/hostkeys
 cd -
 cp %{SOURCE1} $RPM_BUILD_ROOT/etc/httpd/conf.d/xcat.conf
 cp %{SOURCE1} $RPM_BUILD_ROOT/etc/apache2/conf.d/xcat.conf
+%if %is_rh
+cp %{SOURCE7} $RPM_BUILD_ROOT/etc/%httpconfigdir/conf.orig/xcat.conf.apach24
+%else
+cp %{SOURCE9} $RPM_BUILD_ROOT/etc/%httpconfigdir/conf.orig/xcat.conf.apach24
+%endif
 cp %{SOURCE7} $RPM_BUILD_ROOT/etc/%httpconfigdir/conf.orig/xcat.conf.apach24
 cp %{SOURCE1} $RPM_BUILD_ROOT/etc/%httpconfigdir/conf.orig/xcat.conf.apach22
 cp %{SOURCE5} $RPM_BUILD_ROOT/etc/xCATMN
@@ -184,6 +191,7 @@ cp LICENSE.html $RPM_BUILD_ROOT/%{prefix}/share/doc/packages/xCAT
 %post
 %ifos linux
 #Apply the correct httpd/apache configuration file according to the httpd/apache version
+%if %is_rh
 if [ -n "$(httpd -v 2>&1 |grep -e '^Server version\s*:.*\/2.4')" ]
 then
    rm -rf /etc/httpd/conf.d/xcat.conf
