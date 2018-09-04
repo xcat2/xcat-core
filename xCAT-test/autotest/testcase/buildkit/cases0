@@ -2,12 +2,12 @@ start:buildkit_v
 os:Linux
 cmd:buildkit -v
 check:rc==0
-check:output=~xcat-buildkit
+check:output=~x[cC][aA][tT]-buildkit
 check:output=~kitframework
 check:output=~compatible_frameworks
 cmd:buildkit --version
 check:rc==0
-check:output=~xcat-buildkit
+check:output=~x[cC][aA][tT]-buildkit
 check:output=~kitframework
 check:output=~compatible_frameworks
 end
