@@ -1,0 +1,43 @@
+#
+# This configuration file allows a diskfull install to access the install images
+# via http.  It also allows the xCAT documentation to be accessed via
+# http://localhost/xcat-doc/
+# Updates to xCAT/xcat.conf should also be made to xCATsn/xcat.conf
+#
+LoadModule headers_module       /usr/lib64/apache2-prefork/mod_headers.so
+AliasMatch ^/install/(.*)$ "/install/$1"
+AliasMatch ^/tftpboot/(.*)$ "/tftpboot/$1"
+
+<Directory "/tftpboot">
+    AllowOverride None
+    Require all granted
+    Options +Indexes +FollowSymLinks
+    Header always append  X-Frame-Options SAMEORIGIN
+    Header always append X-XSS-Protection "1; mode=block"
+    Header always append X-Content-Type-Options nosniff
+    Header always append Content-Security-Policy "script-src 'self' 'unsafe-eval'"
+    Header always append X-Permitted-Cross-Domain-Policies none
+</Directory>
+<Directory "/install">
+    AllowOverride None
+    Require all granted
+    Options +Indexes +FollowSymLinks
+    Header always append  X-Frame-Options SAMEORIGIN
+    Header always append X-XSS-Protection "1; mode=block"
+    Header always append X-Content-Type-Options nosniff
+    Header always append Content-Security-Policy "script-src 'self' 'unsafe-eval'"
+    Header always append X-Permitted-Cross-Domain-Policies none
+</Directory>
+
+Alias /xcat-doc "/opt/xcat/share/doc"
+<Directory "/opt/xcat/share/doc">
+ AllowOverride None
+ Require all granted
+    Options +Indexes +FollowSymLinks
+    Header always append  X-Frame-Options SAMEORIGIN
+    Header always append X-XSS-Protection "1; mode=block"
+    Header always append X-Content-Type-Options nosniff
+    Header always append Content-Security-Policy "script-src 'self' 'unsafe-eval'"
+    Header always append X-Permitted-Cross-Domain-Policies none
+</Directory>
+ServerTokens Prod
