@@ -191,7 +191,6 @@ cp LICENSE.html $RPM_BUILD_ROOT/%{prefix}/share/doc/packages/xCAT
 %post
 %ifos linux
 #Apply the correct httpd/apache configuration file according to the httpd/apache version
-%if %is_rh
 if [ -n "$(httpd -v 2>&1 |grep -e '^Server version\s*:.*\/2.4')" ]
 then
    rm -rf /etc/httpd/conf.d/xcat.conf
