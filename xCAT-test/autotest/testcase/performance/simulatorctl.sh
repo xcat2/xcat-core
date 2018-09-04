@@ -25,6 +25,7 @@ if [ -z $PERF_SIM_NIC ]; then
   PERF_SIM_NIC='eth1'
 fi
 
+arch=`arch`
 #IBM_POWER_TOOLS_URL='http://public.dhe.ibm.com/software/server/POWER/Linux/yum/OSS/RHEL/7/ppc64le'
 OPEN_POWER_TOOLS_URL='http://ftp.unicamp.br/pub/ppc64el/rhel/7/docker-ppc64el'
 OPENBMC_SIMULATOR_URL='https://github.com/xuweibj/openbmc_simulator'
@@ -32,8 +33,8 @@ PERF_SIM_TESTING_CWD='/tmp/perf'
 PERF_SIM_RESULT_DIR='/opt/xcat/share/xcat/tools/autotest/result'
 PERF_SIM_CASE_DIR='/opt/xcat/share/xcat/tools/autotest/testcase/performance'
 EPEL_RH7_REPO_PKG='https://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm'
+CONDA_TOOLS_URL="https://repo.continuum.io/miniconda/Miniconda2-latest-Linux-$arch.sh"
 
-arch=`arch`
 driver="$2"
 if [ "$driver" != "docker" ] && [ "$driver" != "openbmc" ]; then
     echo "Error: not supported simulator type '$driver'."
@@ -109,6 +110,13 @@ clean_docker()
     brctl show
 }
 
+setup_conda()
+{
+    which yum &>/dev/null && yum install -y bzip2 || apt install -y bzip2
+    mkdir -p $PERF_SIM_TESTING_CWD && cd $PERF_SIM_TESTING_CWD && curl -o setupconda.sh $CONDA_TOOLS_URL
+    bash $PERF_SIM_TESTING_CWD/setupconda.sh -b -u -p $PERF_SIM_TESTING_CWD/conda
+}
+
 setup_openbmc()
 {
     ip addr flush dev $PERF_SIM_NIC
@@ -121,8 +129,15 @@ setup_openbmc()
         return
     fi
 
+    # install and run simulate on conda environment
+    setup_conda
+    . $PERF_SIM_TESTING_CWD/conda/etc/profile.d/conda.sh
+    conda create -n perf python=2.7 -y
+    conda activate perf
+    conda install greenlet -y
+
     which yum &>/dev/null && yum install -y git || apt install -y git
-    mkdir -p $PERF_SIM_TESTING_CWD && cd $PERF_SIM_TESTING_CWD && git clone $OPENBMC_SIMULATOR_URL
+    mkdir -p $PERF_SIM_TESTING_CWD && cd $PERF_SIM_TESTING_CWD && rm -rf $PERF_SIM_TESTING_CWD/openbmc_simulator && git clone $OPENBMC_SIMULATOR_URL
     chmod +x $PERF_SIM_TESTING_CWD/openbmc_simulator/simulator
     run_openbmc
 }
