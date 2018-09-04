@@ -1583,7 +1583,7 @@ do
 		verbose_usage
 		exit 0
 		;;
-	"--xcat-core")
+	"-x"|"--xcat-core")
 		shift
 		GO_XCAT_CORE_URL="$1"
 		;;
@@ -1603,10 +1603,6 @@ do
 		;;
 	"--xcat-version="*)
 		GO_XCAT_VERSION="${1##--xcat-version=}"
-		;;
-	"-x")
-		shift
-		GO_XCAT_VERSION="$1"
 		;;
 	"-y"|"--yes")
 		GO_XCAT_YES=("-y")
