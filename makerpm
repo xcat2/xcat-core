@@ -141,6 +141,7 @@ function makexcat {
 			tar --exclude .svn -czf $RPMROOT/SOURCES/etc.tar.gz etc
 			cp xcat.conf $RPMROOT/SOURCES
 			cp xcat.conf.apach24 $RPMROOT/SOURCES
+			cp xcat.conf.apach24.sles $RPMROOT/SOURCES
 			cp xCATMN $RPMROOT/SOURCES
 			cd - >/dev/null
 		elif [ "$RPMNAME" = "xCATsn" ]; then
@@ -148,6 +149,7 @@ function makexcat {
 			tar --exclude .svn -czf $RPMROOT/SOURCES/license.tar.gz LICENSE.html
 			cp xcat.conf $RPMROOT/SOURCES
 			cp xcat.conf.apach24 $RPMROOT/SOURCES
+			cp xcat.conf.apach24.sles $RPMROOT/SOURCES
 			cp xCATSN $RPMROOT/SOURCES
                         cp -a ../xCAT/etc/rsyslog.d $RPMROOT/
                         cp -a ../xCAT/etc/logrotate.d $RPMROOT/
