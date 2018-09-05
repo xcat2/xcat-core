@@ -1174,7 +1174,7 @@ sub bmcdiscovery_ipmi {
                 my $mtmsip = lc($mtm)."*".lc($serial)."-".$ip;
                 if (exists($::VPDHASH{$mtmsip})) {
                     my $pre_node = $::VPDHASH{$mtmsip};
-                    xCAT::MsgUtils->message("I", { data => ["Match node $pre_node with bmc ip address: $ip"] }, $::CALLBACK);
+                    xCAT::MsgUtils->message("I", { data => ["Found match node $pre_node with bmc ip address: $ip, rsetboot/rpower $pre_node to continue hardware discovery."] }, $::CALLBACK);
                     return;
                 }
                 $mtms_node = "node-$mtm-$serial";
@@ -1303,7 +1303,7 @@ sub bmcdiscovery_openbmc{
             my $mtmsip = lc($mtm)."*".lc($serial)."-".$ip;
             if (exists($::VPDHASH{$mtmsip})) {
                 my $pre_node = $::VPDHASH{$mtmsip};
-                xCAT::MsgUtils->message("I", { data => ["Match node $pre_node with bmc ip address: $ip"] }, $::CALLBACK);
+                xCAT::MsgUtils->message("I", { data => ["Found match node $pre_node with bmc ip address: $ip, rsetboot/rpower $pre_node to continue hardware discovery."] }, $::CALLBACK);
                 return;
             }
             $mtms_node = "node-$mtm-$serial";
