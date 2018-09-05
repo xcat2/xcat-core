@@ -3,7 +3,7 @@ Enable the HTTPS service for REST API
 
 To improve the security between the REST API client and server, enabling the HTTPS service on the xCAT MN is recommended. And the REST API client should use the 'https' to access web server instead of the 'http'.
 
-* **[RHEL6/7 (x86_64/ppc64) and RHEL5 (x86_64)]** ::
+* **[RHEL6/7/8 (x86_64/ppc64/ppc64le) and RHEL5 (x86_64)]** ::
 
     yum install mod_ssl
     service httpd restart
@@ -36,6 +36,8 @@ To improve the security between the REST API client and server, enabling the HTT
 
     sudo apache2ctl -t -D DUMP_MODULES | grep ssl
     apt-get install libjson-perl
+
+.. note:: If use of HTTP service is needed, edit `/etc/httpd/conf.d/xcat-ws.conf` for RHEL or `/etc/apache2/conf.d/xcat-ws.conf` for others and change `RewriteEngine On` to `RewriteEngine Off`, then restart httpd or apache.
 
 Enable the Certificate of HTTPs Server (Optional)
 =================================================
