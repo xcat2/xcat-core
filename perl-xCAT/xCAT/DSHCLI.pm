@@ -5502,9 +5502,10 @@ sub build_append_rsync
            /tmp/mypasswd -> /etc/passwd
            /tmp/mygroup -> /etc/group
            /tmp/myshadow -> /etc/shadow
+           /tmp/mygshadow -> /etc/gshadow
 
-          Merges the information from the files in mypasswd, mygroup,
-          myshadow into /etc/passwd, /etc/group , /etc/shadow on the nodes.
+          Merges the information from the files in mypasswd, mygroup,mygshadow,
+          myshadow into /etc/passwd, /etc/group , /etc/gshadow, /etc/shadow on the nodes.
           These are the only files supported from MERGE and only on Linux
         Returns:
           Files do not exist, rsync errors.
@@ -6155,8 +6156,9 @@ sub bld_and_run_append
 
         Runs xdsh with input to call /opt/xcat/share/xcat/scripts/xdcpmerge.sh
         which will perform the merge function on the node.
-        Input is the nodesyncfiledir mergefile1:orgfile mergefile2:orgfile2....]        Note: MERGE is only support on Linux and for /etc/passwd,/etc/shadow,
-              and /etc/group
+        Input is the nodesyncfiledir mergefile1:orgfile mergefile2:orgfile2....]        
+        Note: MERGE is only support on Linux and for /etc/passwd,/etc/shadow,
+              /etc/gshadow, and /etc/group
 =cut
 
 #-------------------------------------------------------------------------------
@@ -6189,9 +6191,10 @@ sub bld_and_run_merge
             my $filetomerge = $2;    # file to merge right of arrow
             if (($filetomerge ne "/etc/passwd")
                 && ($filetomerge ne "/etc/group")
+                && ($filetomerge ne "/etc/gshadow")
                 && ($filetomerge ne "/etc/shadow")) {
                 my $rsp = {};
-                $rsp->{error}->[0] = "$filetomerge is not either /etc/passwd, /etc/group or /etc/shadow. Those are the only supported files for MERGE";
+                $rsp->{error}->[0] = "$filetomerge is not either /etc/passwd, /etc/group, /etc/gshadow or /etc/shadow. Those are the only supported files for MERGE";
                 xCAT::MsgUtils->message("E", $rsp, $::CALLBACK, 1);
                 return 1;
 
