@@ -33,13 +33,9 @@ check:rc==0
 cmd:xdsh $$CN "apt-get -y install software-properties-common"
 check:rc==0
 cmd:xdsh $$CN 'lsb_r=`lsb_release -sc`;add-apt-repository "deb http://ports.ubuntu.com/ubuntu-ports $lsb_r main"'
-check:rc==0
 cmd:xdsh $$CN 'lsb_r=`lsb_release -sc`;add-apt-repository "deb http://ports.ubuntu.com/ubuntu-ports ${lsb_r}-updates main"'
-check:rc==0
 cmd:xdsh $$CN 'lsb_r=`lsb_release -sc`;add-apt-repository "deb http://ports.ubuntu.com/ubuntu-ports ${lsb_r} universe"'
-check:rc==0
 cmd:xdsh $$CN 'lsb_r=`lsb_release -sc`;add-apt-repository "deb http://ports.ubuntu.com/ubuntu-ports ${lsb_r}-updates universe"'
-check:rc==0
 cmd:xdsh $$CN "sed -i '/install/d' /etc/apt/sources.list"
 check:rc==0
 cmd:xdsh $$CN "sed -i '/security.ubuntu.com/d' /etc/apt/sources.list"
