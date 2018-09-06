@@ -146,5 +146,5 @@ You should see some output that includes your list of nodes.
 
 If errors returned, check ``/var/log/httpd/ssl_error_log`` on xCAT MN.
 
-.. note:: If passwords need to be changed in the future, make sure to update the xCAT passwd table. xCAT REST API uses passwords stored in that table to authenticate users.
+.. note:: When passwords are changed, make sure to update the xCAT ``passwd`` table.  The REST API service uses passwords stored there to authenticate users.
 
