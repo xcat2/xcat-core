@@ -1,9 +1,9 @@
-Enable the HTTPS service for REST API
+Enable the HTTPS protocol for REST API
 =====================================
 
-To improve the security between the REST API client and server, enabling the HTTPS service on the xCAT MN is recommended. And the REST API client should use the 'https' to access web server instead of the 'http'.
+To improve the security between the REST API clients and server, enabling the secure transfer protocol (https) is the default configuration.
 
-* **[RHEL6/7 (x86_64/ppc64) and RHEL5 (x86_64)]** ::
+* **[RHEL6/7/8 (x86_64/ppc64/ppc64le) and RHEL5 (x86_64)]** ::
 
     yum install mod_ssl
     service httpd restart
@@ -37,6 +37,8 @@ To improve the security between the REST API client and server, enabling the HTT
     sudo apache2ctl -t -D DUMP_MODULES | grep ssl
     apt-get install libjson-perl
 
+.. note:: If use of non-secure HTTP protocol is required, edit ``/etc/httpd/conf.d/xcat-ws.conf`` for RHEL or ``/etc/apache2/conf.d/xcat-ws.conf`` for others and change ``RewriteEngine On`` to ``RewriteEngine Off``, then restart httpd or apache.
+
 Enable the Certificate of HTTPs Server (Optional)
 =================================================
 
@@ -46,7 +48,7 @@ The certificate for xcatd has already been generated when installing xCAT, it ca
 
 Typically the hostname of the xCAT MN is initially set to the NIC which faces to the cluster (usually an internal/private NIC). If you want to enable the REST API for public client, set the hostname of xCAT MN to one of the public NIC.
 
-To change the hostname, edit /etc/sysconfig/network (RHEL) or /etc/HOSTNAME (SLES) and run:  ::
+To change the hostname, edit ``/etc/sysconfig/network`` (RHEL) or ``/etc/HOSTNAME`` (SLES) and run:  ::
 
     hostname <newFQDN>
 
@@ -54,7 +56,7 @@ After changing the hostname, run the xcat command ``xcatconfig`` to generate a n
 
     xcatconfig -c
 
-``Notes:`` If you had previously generated a certificate for non-root userids to use xCAT, you must regenerate them using: /opt/xcat/share/xcat/scripts/setup-local-client.sh <username>
+.. note:: If you had previously generated a certificate for non-root userids to use xCAT, you must regenerate them using ``/opt/xcat/share/xcat/scripts/setup-local-client.sh <username>``
 
 The steps to configure the certificate for https server: ::
 
@@ -77,17 +79,7 @@ When accessing the REST API, the certificate CA must be specified and the FQDN o
 
     curl -X GET --cacert /root/ca-cert.pem 'https://<FQDN of xCAT MN>/xcatws/nodes?userName=root&userPW=<root-pw>'
 
-Extend the Timeout of Web Server
-================================
-
-Some operations like 'create osimage' (copycds) need a long time (longer than 3 minutes sometimes) to complete. It would fail with a ``timeout error`` (504 Gateway Time-out) if the timeout setting in the web server is not extended: ::
-
-    For [RHEL]
-        Edit "/etc/httpd/conf/httpd.conf" and change existing or add new entry: "Timeout 600"
-        service httpd restart
-    For [SLES]
-        Edit "/etc/apache2/httpd.conf" and change existing or add new entry: "Timeout 600"
-        service apache2 restart
+.. attention:: Some operations like 'create osimage' (i.e.  copycds) may require a longer time to complete  and may result in a "504 Gateway Timeout" error. To avoid this, modify the ``httpd.conf`` file and extend the timeout to a larger value: ``Timeout: 600``
 
 Set Up an Account for Web Service Access
 ========================================
@@ -96,9 +88,9 @@ User needs a username and password to access the REST API. When the REST API req
 
 The account with key of **xcat** will be used for the REST API authentication. The username and password should be passed in as the attirbutes of URL:
 
-* userName: Pass the username of the account
-* userPW:   Pass the password of the account (xCAT 2.10)
-* password: Pass the password of the account (xCAT earlier than 2.10)
+:userName: Pass the username of the account
+:userPW: Pass the password of the account (xCAT 2.10)
+:password: Pass the password of the account (xCAT earlier than 2.10)
 
 You can use the root userid for your API calls, but we recommend you create a new userid (for example wsuser) for the API calls and give it the specific privileges you want it to have.
 
@@ -123,7 +115,7 @@ Create new user and setup the password and policy rules. ::
     # add user to policy table
     mkdef -t policy 6 name=<wsuser> rule=allow
 
-``Note:`` in the tabch command above you can put the salted password (from /etc/shadow) in the xCAT passwd table instead of the clear text password, if you prefer.
+.. note:: Using the ``tabch`` command, you can use the salted password from ``/etc/shadow`` into the xCAT password table instead of a clear text password.
 
 Identical user with the same name and uid need to be created on each compute node. ::
 
@@ -152,7 +144,7 @@ or if you did not set up the certificate: ::
 
 You should see some output that includes your list of nodes.
 
-If errors returned, check `/var/log/httpd/ssl_error_log` on xCAT MN.
+If errors returned, check ``/var/log/httpd/ssl_error_log`` on xCAT MN.
 
-``Note:`` if passwords need to be changed in the future, make sure to update the xCAT passwd table. xCAT REST API uses passwords stored in that table to authenticate users.
+.. note:: When passwords are changed, make sure to update the xCAT ``passwd`` table.  The REST API service uses passwords stored there to authenticate users.
 
