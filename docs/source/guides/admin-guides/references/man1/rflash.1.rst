@@ -15,7 +15,7 @@ Name
 
 
 ****************
-\ **Synopsis**\
+\ **Synopsis**\ 
 ****************
 
 
@@ -43,7 +43,7 @@ NeXtScale FPC specific:
 =======================
 
 
-\ **rflash**\  \ *noderange*\  \ *http_directory*\
+\ **rflash**\  \ *noderange*\  \ *http_directory*\ 
 
 
 OpenPOWER BMC specific (using IPMI):
@@ -52,7 +52,7 @@ OpenPOWER BMC specific (using IPMI):
 
 \ **rflash**\  \ *noderange*\  [\ *hpm_file_path*\  | \ **-d**\  \ *data_directory*\ ] [\ **-c | -**\ **-check**\ ] [\ **-**\ **-retry=**\ \ *count*\ ]
 
-\ **rflash**\  \ *noderange*\  \ **-**\ **-recover**\  \ *bmc_file_path*\
+\ **rflash**\  \ *noderange*\  \ **-**\ **-recover**\  \ *bmc_file_path*\ 
 
 
 OpenPOWER OpenBMC specific :
@@ -70,7 +70,7 @@ OpenPOWER OpenBMC specific :
 
 
 *******************
-\ **Description**\
+\ **Description**\ 
 *******************
 
 
@@ -181,110 +181,110 @@ This delete option will delete update image from BMC. It expects an ID as the in
 
 
 ***************
-\ **Options**\
+\ **Options**\ 
 ***************
 
 
 
-\ **-h|-**\ **-help**\
-
+\ **-h|-**\ **-help**\ 
+ 
  Writes the command's usage statement to standard output.
+ 
 
 
-
-\ **-c|-**\ **-check**\
-
+\ **-c|-**\ **-check**\ 
+ 
  Check the firmware version of BMC and an update file.
+ 
 
 
-
-\ **-p**\  \ *directory*\
-
+\ **-p**\  \ *directory*\ 
+ 
  Specifies the directory where the packages are located.
+ 
 
 
-
-\ **-d**\  \ *data_directory*\
-
+\ **-d**\  \ *data_directory*\ 
+ 
  PPC (without HMC, using Direct FSP Management) specific:
-
+ 
  Specifies the directory where the raw data from rpm packages for each CEC/Frame are located. The default directory is /tmp. The option is only used in Direct FSP/BPA Management.
-
+ 
  OpenPOWER BMC specific (using IPMI):
-
+ 
  Used for IBM Power S822LC for Big Data systems only. Specifies the directory where the \ **pUpdate**\  utility and at least one of BMC or Host update files are located. The utility and update files can be downloaded from FixCentral.
-
+ 
 
 
 \ **-**\ **-activate**\  {\ **concurrent**\  | \ **disruptive**\ }
-
+ 
  Must be specified to activate the new Licensed Internal Code.  The "disruptive" option will cause the target systems to be recycled.  Without this flag, LIC updates will be installed only, not activated.
+ 
 
 
-
-\ **-**\ **-commit**\
-
+\ **-**\ **-commit**\ 
+ 
  Used to commit the flash image in the temporary side of the chip to the permanent side for both managed systems and power subsystems.
+ 
 
 
-
-\ **-**\ **-recover**\
-
+\ **-**\ **-recover**\ 
+ 
  PPC (with HMC) and PPC (without HMC, using Direct FSP Management) specific:
-
+ 
  Used to recover the flash image in the permanent side of the chip to the temporary side for both managed systems and power subsystems.
-
+ 
  OpenPOWER BMC specific (using IPMI):
-
+ 
  Used for IBM Power S822LC for Big Data systems only. Used to recover the BMC with a BMC image downloaded from FixCentral. This option will only work if BMC is in "Brick protection" state.
+ 
 
 
-
-\ **-**\ **-retry=**\ \ *count*\
-
+\ **-**\ **-retry=**\ \ *count*\ 
+ 
  Specify number of times to retry the update if failure is detected. Default value is 2. Value of 0 can be used to indicate no retries.
+ 
 
 
-
-\ **-a|-**\ **-activate**\
-
+\ **-a|-**\ **-activate**\ 
+ 
  Activate update image. Image id or update file must be specified.
+ 
 
 
-
-\ **-l|-**\ **-list**\
-
+\ **-l|-**\ **-list**\ 
+ 
  List currently uploaded update images. "(\*)" indicates currently active image.
+ 
 
 
-
-\ **-u|-**\ **-upload**\
-
+\ **-u|-**\ **-upload**\ 
+ 
  Upload update image. Specified file must be in .tar format.
+ 
 
 
-
-\ **-**\ **-delete**\
-
+\ **-**\ **-delete**\ 
+ 
  Delete update image from BMC
+ 
 
 
-
-\ **-v|-**\ **-version**\
-
+\ **-v|-**\ **-version**\ 
+ 
  Displays the command's version.
+ 
 
 
-
-\ **-V|-**\ **-verbose**\
-
+\ **-V|-**\ **-verbose**\ 
+ 
  Verbose output.
-
+ 
 
 
 
 *******************
-\ **Exit Status**\
+\ **Exit Status**\ 
 *******************
 
 
@@ -294,96 +294,96 @@ This delete option will delete update image from BMC. It expects an ID as the in
 
 
 ****************
-\ **Examples**\
+\ **Examples**\ 
 ****************
 
 
 
 1. To update  only the  power subsystem attached to a single HMC-attached pSeries CEC(cec_name), and recycle the power  subsystem  and  all attached managed systems when the update is complete, and the Microcode update package and associated XML file are in /tmp/fw, enter:
-
-
+ 
+ 
  .. code-block:: perl
-
+ 
    rflash cec_name -p /tmp/fw --activate disruptive
-
-
+ 
+ 
 
 
 2. To update  only the  power subsystem attached to a single HMC-attached pSeries node, and recycle the power  subsystem  and  all attached managed systems when the update is complete, and the Microcode update package and associated XML file are in /tmp/fw, enter:
-
-
+ 
+ 
  .. code-block:: perl
-
+ 
    rflash bpa_name -p /tmp/fw --activate disruptive
-
-
+ 
+ 
 
 
 3. To commit a firmware update to permanent flash for both managed system and the related power subsystems, enter:
-
-
+ 
+ 
  .. code-block:: perl
-
+ 
    rflash cec_name --commit
-
-
+ 
+ 
 
 
 4. To update the firmware on a NeXtScale FPC specify the FPC node name and the HTTP location of the file including the xCAT MN IP address and the directory on the xCAT MN containing the firmware as follows:
-
-
+ 
+ 
  .. code-block:: perl
-
+ 
    rflash fpc01 http://10.1.147.169/install/firmware/fhet17a/ibm_fw_fpc_fhet17a-2.02_anyos_noarch.rom
-
-
+ 
+ 
 
 
 5. To update the firmware on OpenPOWER machine specify the node name and the file path of the HPM firmware file as follows:
-
-
+ 
+ 
  .. code-block:: perl
-
+ 
    rflash fs3 /firmware/8335_810.1543.20151021b_update.hpm
-
-
+ 
+ 
  Print verbose message to rflash log file (/var/log/xcat/rflash/fs3.log) when updading firmware:
-
-
+ 
+ 
  .. code-block:: perl
-
+ 
    rflash fs3 /firmware/8335_810.1543.20151021b_update.hpm -V
-
-
+ 
+ 
 
 
 6. To update the firmware on IBM Power S822LC for Big Data machine specify the node name and the file path of the data directory containing pUpdate utility, both BMC and Host update files:
-
-
+ 
+ 
  .. code-block:: perl
-
+ 
    rflash briggs01 -d /root/supermicro/OP825
-
-
+ 
+ 
 
 
 7. To update the firmware on the OpenBMC machine, specify the firmare update file to upload and activate:
-
-
+ 
+ 
  .. code-block:: perl
-
+ 
    rflash p9euh02 -a /tmp/witherspoon.pnor.squashfs.tar
-
-
+ 
+ 
 
 
 
 ****************
-\ **Location**\
+\ **Location**\ 
 ****************
 
 
-\ **/opt/xcat/bin/rflash**\
+\ **/opt/xcat/bin/rflash**\ 
 
 
 *****

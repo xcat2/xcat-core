@@ -50,46 +50,46 @@ OPTIONS
 
 
 
-\ **-h|-**\ **-help**\
-
+\ **-h|-**\ **-help**\ 
+ 
  Display usage message.
+ 
 
 
-
-\ **-b**\  \ *master_to_base_vms_upon*\
-
+\ **-b**\  \ *master_to_base_vms_upon*\ 
+ 
  The master to base the clones upon
+ 
 
 
-
-\ **-t**\  \ *master_to_be_made*\
-
+\ **-t**\  \ *master_to_be_made*\ 
+ 
  The target master to copy a single VM's state to
+ 
 
 
-
-\ **-d|-**\ **-detached**\
-
+\ **-d|-**\ **-detached**\ 
+ 
  Explicitly request that the noderange be untethered from any masters.
+ 
 
 
-
-\ **-f|-**\ **-force**\
-
+\ **-f|-**\ **-force**\ 
+ 
  Force cloning of a powered on VM.  Implies \ **-d**\  if the VM is on.
+ 
 
 
-
-\ **-v|-**\ **-version**\
-
+\ **-v|-**\ **-version**\ 
+ 
  Command Version.
+ 
 
 
-
-\ **-V|-**\ **-verbose**\
-
+\ **-V|-**\ **-verbose**\ 
+ 
  Verbose output.
-
+ 
 
 
 
@@ -110,23 +110,23 @@ EXAMPLES
 
 
 1. Creating a master named \ *appserver*\  from a node called \ *vm1*\ :
-
-
+ 
+ 
  .. code-block:: perl
-
+ 
    clonevm vm1 -t appserver
-
-
+ 
+ 
 
 
 2. Cleating 30 VMs from a master named \ *appserver*\ :
-
-
+ 
+ 
  .. code-block:: perl
-
+ 
    clonevm vm1-vm30 -b appserver
-
-
+ 
+ 
 
 
 

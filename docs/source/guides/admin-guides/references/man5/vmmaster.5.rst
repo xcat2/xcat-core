@@ -19,7 +19,7 @@ SYNOPSIS
 ********
 
 
-\ **vmmaster Attributes:**\   \ *name*\ , \ *os*\ , \ *arch*\ , \ *profile*\ , \ *storage*\ , \ *storagemodel*\ , \ *nics*\ , \ *vintage*\ , \ *originator*\ , \ *virttype*\ , \ *specializeparameters*\ , \ *comments*\ , \ *disable*\
+\ **vmmaster Attributes:**\   \ *name*\ , \ *os*\ , \ *arch*\ , \ *profile*\ , \ *storage*\ , \ *storagemodel*\ , \ *nics*\ , \ *vintage*\ , \ *originator*\ , \ *virttype*\ , \ *specializeparameters*\ , \ *comments*\ , \ *disable*\ 
 
 
 ***********
@@ -36,77 +36,77 @@ vmmaster Attributes:
 
 
 
-\ **name**\
-
+\ **name**\ 
+ 
  The name of a master
+ 
 
 
-
-\ **os**\
-
+\ **os**\ 
+ 
  The value of nodetype.os at the time the master was captured
+ 
 
 
-
-\ **arch**\
-
+\ **arch**\ 
+ 
  The value of nodetype.arch at the time of capture
+ 
 
 
-
-\ **profile**\
-
+\ **profile**\ 
+ 
  The value of nodetype.profile at time of capture
+ 
 
 
-
-\ **storage**\
-
+\ **storage**\ 
+ 
  The storage location of bulk master information
+ 
 
 
-
-\ **storagemodel**\
-
+\ **storagemodel**\ 
+ 
  The default storage style to use when modifying a vm cloned from this master
+ 
 
 
-
-\ **nics**\
-
+\ **nics**\ 
+ 
  The nic configuration and relationship to vlans/bonds/etc
+ 
 
 
-
-\ **vintage**\
-
+\ **vintage**\ 
+ 
  When this image was created
+ 
 
 
-
-\ **originator**\
-
+\ **originator**\ 
+ 
  The user who created the image
+ 
 
 
-
-\ **virttype**\
-
+\ **virttype**\ 
+ 
  The type of virtualization this image pertains to (e.g. vmware, kvm, etc)
+ 
 
 
-
-\ **specializeparameters**\
-
+\ **specializeparameters**\ 
+ 
  Implementation specific arguments, currently only "autoLogonCount=<number" for ESXi clonevme
+ 
+
+
+\ **comments**\ 
 
 
 
-\ **comments**\
-
-
-
-\ **disable**\
+\ **disable**\ 
 
 
 
@@ -116,5 +116,5 @@ SEE ALSO
 ********
 
 
-\ **nodels(1)**\ , \ **chtab(8)**\ , \ **tabdump(8)**\ , \ **tabedit(8)**\
+\ **nodels(1)**\ , \ **chtab(8)**\ , \ **tabdump(8)**\ , \ **tabedit(8)**\ 
 

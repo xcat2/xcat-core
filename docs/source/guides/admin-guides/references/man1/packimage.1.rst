@@ -19,11 +19,11 @@ SYNOPSIS
 ********
 
 
-\ **packimage [-h| -**\ **-help]**\
+\ **packimage [-h| -**\ **-help]**\ 
 
-\ **packimage  [-v| -**\ **-version]**\
+\ **packimage  [-v| -**\ **-version]**\ 
 
-\ **packimage**\  [\ **-m | -**\ **-method**\  \ *cpio|tar*\ ] [\ **-c | -**\ **-compress**\  \ *gzip|pigz|xz*\ ] [\ **--nosyncfiles**\ ] \ *imagename*\
+\ **packimage**\  [\ **-m | -**\ **-method**\  \ *cpio|tar*\ ] [\ **-c | -**\ **-compress**\  \ *gzip|pigz|xz*\ ] [\ **-**\ **-nosyncfiles**\ ] \ *imagename*\ 
 
 
 ***********
@@ -57,7 +57,7 @@ OPTIONS
 
 \ **-c| -**\ **-compress**\           Compress Method (pigz,gzip,xz, default is pigz/gzip)
 
-\ **--nosyncfiles**\           Bypass of syncfiles requested, will not sync files to root image directory
+\ **-**\ **-nosyncfiles**\           Bypass of syncfiles requested, will not sync files to root image directory
 
 
 ************

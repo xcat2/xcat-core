@@ -19,11 +19,11 @@ SYNOPSIS
 ********
 
 
-\ **liteimg [-h| -**\ **-help]**\
+\ **liteimg [-h| -**\ **-help]**\ 
 
-\ **liteimg  [-v| -**\ **-version]**\
+\ **liteimg  [-v| -**\ **-version]**\ 
 
-\ **liteimg**\  \ *imagename*\
+\ **liteimg**\  \ *imagename*\ 
 
 
 ***********
@@ -36,24 +36,24 @@ It creates 2 levels of indirection so that files can be modified while in
 their image state as well as during runtime. For example, a file like
 <$imgroot>/etc/ntp.conf will have the following operations done to it:
 
-\ *    mkdir -p $imgroot/.default/etc*\
+\ *    mkdir -p $imgroot/.default/etc*\ 
 
-\ *    mkdir -p $imgroot/.statelite/tmpfs/etc*\
+\ *    mkdir -p $imgroot/.statelite/tmpfs/etc*\ 
 
-\ *    mv $imgroot/etc/ntp.conf $imgroot/.default/etc*\
+\ *    mv $imgroot/etc/ntp.conf $imgroot/.default/etc*\ 
 
-\ *    cd $imgroot/.statelite/tmpfs/etc*\
+\ *    cd $imgroot/.statelite/tmpfs/etc*\ 
 
-\ *    ln -sf ../../../.default/etc/ntp.conf .*\
+\ *    ln -sf ../../../.default/etc/ntp.conf .*\ 
 
-\ *    cd $imgroot/etc*\
+\ *    cd $imgroot/etc*\ 
 
-\ *    ln -sf ../.statelite/tmpfs/etc/ntp.conf .*\
+\ *    ln -sf ../.statelite/tmpfs/etc/ntp.conf .*\ 
 
 When finished, the original file will reside in
 \ *$imgroot/.default/etc/ntp.conf*\ . \ *$imgroot/etc/ntp.conf*\  will link to
 \ *$imgroot/.statelite/tmpfs/etc/ntp.conf*\  which will in turn link to
-\ *$imgroot/.default/etc/ntp.conf*\
+\ *$imgroot/.default/etc/ntp.conf*\ 
 
 Note: If you make any changes to your litefile table after running liteimg then you will need to rerun liteimg again.
 

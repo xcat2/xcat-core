@@ -39,31 +39,31 @@ OPTIONS
 *******
 
 
-\ **-h|-**\ **-help**\
+\ **-h|-**\ **-help**\ 
 
 Display usage message.
 
-\ **-v|-**\ **-version**\
+\ **-v|-**\ **-version**\ 
 
 Command Version.
 
-\ **file=**\  \ *nodeinfo-filename*\
+\ **file=**\  \ *nodeinfo-filename*\ 
 
 Specifies the node information file, where <nodeinfo-filename> is the full path and file name of the node information file.
 
-\ **imageprofile=**\  \ *image-profile*\
+\ **imageprofile=**\  \ *image-profile*\ 
 
 Sets the new image profile name used by the node, where <image-profile> is the new image profile.  An image profile defines the provisioning method, OS information, kit information, and provisioning parameters for a node. If the "__ImageProfile_imgprofile" group already exists in the nodehm table, then "imgprofile" is used as the image profile name.
 
-\ **networkprofile=**\  \ *network-profile*\
+\ **networkprofile=**\  \ *network-profile*\ 
 
 Sets the new network profile name used by the node, where <network-profile> is the new network profile. A network profile defines the network, NIC, and routes for a node. If the "__NetworkProfile_netprofile" group already exists in the nodehm table, then "netprofile" is used as the network profile name.
 
-\ **hardwareprofile=**\  \ *hardware-profile*\
+\ **hardwareprofile=**\  \ *hardware-profile*\ 
 
 Sets the new hardware profile name used by the node, where <hardware-profile> is the new hardware management profile used by the node. If a "__HardwareProfile_hwprofile" group exists, then "hwprofile" is the hardware profile name. A hardware profile defines hardware management related information for imported nodes, including: IPMI, HMC, CEC, CMM.
 
-\ **hostnameformat=**\  \ *host-name-format*\
+\ **hostnameformat=**\  \ *host-name-format*\ 
 
 Sets the node name format for all nodes discovered, where <node-name-format> is a supported format. The two types of formats supported are prefix#NNNappendix and prefix#RRand#NNappendix, where wildcard #NNN and #NN are replaced by a system generated number that is based on the provisioning order. Wildcard #RR represents the rack number and stays constant.
 
@@ -71,7 +71,7 @@ For example, if the node name format is compute-#NN, the node name is generated 
 
 For example, if the node name format is compute-#RR-#NN and the rack number is 2, the node name is generated as: compute-02-00, compute-02-01, ..., compute-02-99. If node name format is node-#NN-in-#RR and rack number is 1, the node name is generated as: node-00-in-01, node-01-in-01, ... , node-99-in-01
 
-\ **groups=**\  \ *node-groups*\
+\ **groups=**\  \ *node-groups*\ 
 
 Sets the node groups that the imported node belongs to, where <node-group> is a comma-separated list of node groups.
 
@@ -107,7 +107,7 @@ To import nodes using a profile, follow the following steps:
    "__NetworkProfile_default_mn","static","static",,,,
    "__NetworkProfile_default_cn","static",,,,,
    "__ImageProfile_rhels6.2-x86_64-install-compute","static","static",,,,
-
+ 
    # lsdef -t group __NetworkProfile_default_cn
    Object name: __NetworkProfile_default_cn
        grouptype=static
@@ -132,7 +132,7 @@ To import nodes using a profile, follow the following steps:
       mac=b8:ac:6f:37:59:24
       ip=192.168.1.20
       chassis=chassis01
-
+ 
    # This entry defines a rack server.
    __hostname__:
       mac=b8:ac:6f:37:59:25
@@ -140,9 +140,9 @@ To import nodes using a profile, follow the following steps:
       rack=rack01
       height=1
       unit=2
-
+ 
    # hostinfo end.
-
+ 
    Another example of a node information file, a PureFlex X/P node defined:
    # hostinfo begin
    # To define a PureFlex P/X node, chassis and slot id must be specified.
@@ -152,28 +152,28 @@ To import nodes using a profile, follow the following steps:
       chassis=cmm01
       slotid=1
    # hostinfo end.
-
+ 
    Example of a node information file, a switch auto discovery node defined:
    # hostinfo begin
    # This entry defines a blade.
    __hostname__:
       switches=eth0!switch1!1,eth0!switch2!1!eth1
-
+ 
    Example of a node information file that specifies a CEC-based rack-mounted Power node that uses direct FSP management:
    # Node information file begins
    # This entry defines a Power rack-mount node.
    __hostname__:
       mac=b8:ac:6f:37:59:28
       cec=mycec
-
+ 
    __hostname__:
       mac=b8:ac:6f:37:59:28
       cec=mycec
       lparid=2
    # Node information file ends.
-
+ 
    Example of a node information file that specifies a PowerKVM Guest node that uses KVM management:
-
+ 
    # Node information file begins
    # This entry defines a PowerKVM Guest node.
    # Make sure the node 'vm01' is already created on Hypervisor

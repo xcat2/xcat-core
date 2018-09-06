@@ -19,7 +19,7 @@ SYNOPSIS
 ********
 
 
-\ **litetree Attributes:**\   \ *priority*\ , \ *image*\ , \ *directory*\ , \ *mntopts*\ , \ *comments*\ , \ *disable*\
+\ **litetree Attributes:**\   \ *priority*\ , \ *image*\ , \ *directory*\ , \ *mntopts*\ , \ *comments*\ , \ *disable*\ 
 
 
 ***********
@@ -36,40 +36,40 @@ litetree Attributes:
 
 
 
-\ **priority**\
-
+\ **priority**\ 
+ 
  This number controls what order the directories are searched.  Directories are searched from smallest priority number to largest.
+ 
 
 
-
-\ **image**\
-
+\ **image**\ 
+ 
  The name of the image (as specified in the osimage table) that will use this directory. You can also specify an image group name that is listed in the osimage.groups attribute of some osimages. 'ALL' means use this row for all images.
+ 
 
 
-
-\ **directory**\
-
+\ **directory**\ 
+ 
  The location (hostname:path) of a directory that contains files specified in the litefile table.  Variables are allowed.  E.g: $noderes.nfsserver://xcatmasternode/install/$node/#CMD=uname-r#/
+ 
 
 
-
-\ **mntopts**\
-
+\ **mntopts**\ 
+ 
  A comma-separated list of options to use when mounting the litetree directory.  (Ex. 'soft') The default is to do a 'hard' mount.
+ 
 
 
-
-\ **comments**\
-
+\ **comments**\ 
+ 
  Any user-written notes.
+ 
 
 
-
-\ **disable**\
-
+\ **disable**\ 
+ 
  Set to 'yes' or '1' to comment out this row.
-
+ 
 
 
 
@@ -78,5 +78,5 @@ SEE ALSO
 ********
 
 
-\ **nodels(1)**\ , \ **chtab(8)**\ , \ **tabdump(8)**\ , \ **tabedit(8)**\
+\ **nodels(1)**\ , \ **chtab(8)**\ , \ **tabdump(8)**\ , \ **tabedit(8)**\ 
 

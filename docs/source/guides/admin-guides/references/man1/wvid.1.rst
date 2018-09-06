@@ -7,7 +7,7 @@ wvid.1
 
 
 ************
-\ **Name**\
+\ **Name**\ 
 ************
 
 
@@ -15,15 +15,15 @@ wvid - windowed remote video console for nodes
 
 
 ****************
-\ **Synopsis**\
+\ **Synopsis**\ 
 ****************
 
 
-\ **wvid**\  \ *noderange*\
+\ **wvid**\  \ *noderange*\ 
 
 
 *******************
-\ **Description**\
+\ **Description**\ 
 *******************
 
 
@@ -35,7 +35,7 @@ The \ **nodehm.cons**\  attribute of the node determines the method used to open
 
 
 ***************
-\ **Options**\
+\ **Options**\ 
 ***************
 
 
@@ -43,26 +43,26 @@ No options are supported at this time.
 
 
 ****************
-\ **Examples**\
+\ **Examples**\ 
 ****************
 
 
 
 1.
-
+ 
  To open video consoles for the 1st 2 nodes:
-
-
+ 
+ 
  .. code-block:: perl
-
+ 
    wvid node1,node2
-
-
+ 
+ 
 
 
 
 ****************
-\ **See Also**\
+\ **See Also**\ 
 ****************
 
 

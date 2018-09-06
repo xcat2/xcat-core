@@ -19,7 +19,7 @@ SYNOPSIS
 ********
 
 
-\ **xcatsnap**\
+\ **xcatsnap**\ 
 
 \ **xcatsnap**\  [\ **-h | -**\ **-help**\ ]
 
@@ -46,28 +46,28 @@ OPTIONS
 
 
 
-\ **-h|-**\ **-help**\
-
+\ **-h|-**\ **-help**\ 
+ 
  Displays the usage message.
+ 
 
 
-
-\ **-v|-**\ **-version**\
-
+\ **-v|-**\ **-version**\ 
+ 
  Displays the release version of the code.
+ 
 
 
-
-\ **-B|-**\ **-bypass**\
-
+\ **-B|-**\ **-bypass**\ 
+ 
  Runs in bypass mode, use if the xcatd daemon is hung.
+ 
 
 
-
-\ **-d|-**\ **-dir**\
-
+\ **-d|-**\ **-dir**\ 
+ 
  The directory to put the snap information.  Default is /tmp/xcatsnap.
-
+ 
 
 
 
@@ -84,22 +84,22 @@ EXAMPLES
 
 
 1. Run the xcatsnap routine in bypass mode and put info in /tmp/mydir :
-
-
+ 
+ 
  .. code-block:: perl
-
+ 
    xcatsnap -B -d /tmp/mydir
+ 
+ 
 
 
-
-
-2.  To run the xcatsnap routine and use default directory /tmp/xcatsnap :
-
-
+2. To run the xcatsnap routine and use default directory /tmp/xcatsnap :
+ 
+ 
  .. code-block:: perl
-
+ 
    xcatsnap
-
-
+ 
+ 
 
 

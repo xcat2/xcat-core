@@ -21,7 +21,7 @@ SYNOPSIS
 
 \ **chkkitcomp**\  [\ **-? | -h | -**\ **-help**\ ] [\ **-v | -**\ **-version**\ ]
 
-\ **chkkitcomp**\  [\ **-V | -**\ **-verbose**\ ] \ **-i**\  \ *osimage*\   \ *kitcompname_list*\
+\ **chkkitcomp**\  [\ **-V | -**\ **-verbose**\ ] \ **-i**\  \ *osimage*\   \ *kitcompname_list*\ 
 
 
 ***********
@@ -42,34 +42,34 @@ OPTIONS
 
 
 
-\ **-h|-**\ **-help**\
-
+\ **-h|-**\ **-help**\ 
+ 
  Display usage message.
+ 
 
 
-
-\ **-V|-**\ **-verbose**\
-
+\ **-V|-**\ **-verbose**\ 
+ 
  Verbose mode.
+ 
 
 
-
-\ **-v|-**\ **-version**\
-
+\ **-v|-**\ **-version**\ 
+ 
  Command version.
+ 
 
 
-
-\ **-i**\  \ *osimage*\
-
+\ **-i**\  \ *osimage*\ 
+ 
  The name of the osimage to check against.
+ 
 
 
-
-\ *kitcompname_list*\
-
+\ *kitcompname_list*\ 
+ 
  A comma-delimited list of valid full kit component names or kit component basenames that are to be checked against the osimage.
-
+ 
 
 
 

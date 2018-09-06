@@ -55,16 +55,16 @@ OPTIONS
 
 
 
-\ **-v|-**\ **-version**\
-
+\ **-v|-**\ **-version**\ 
+ 
  Command Version.
+ 
 
 
-
-\ **-?|-h|-**\ **-help**\
-
+\ **-?|-h|-**\ **-help**\ 
+ 
  Display usage message.
-
+ 
 
 
 
@@ -90,15 +90,15 @@ EXAMPLES
 
 
 1.
-
+ 
  To declare all members of ipmi group to have nodehm.mgt be ipmi
-
-
+ 
+ 
  .. code-block:: perl
-
+ 
    nodegrpch ipmi nodehm.mgt=ipmi
-
-
+ 
+ 
 
 
 
