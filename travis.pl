@@ -489,41 +489,42 @@ sub run_fast_regression_test{
     print Dumper \@output;
 
 
-    $cmd = "sudo bash -c '. /etc/profile.d/xcat.sh && xcattest -s \"mn_only-wait_fix\" -l'";
-    my  @caseslist = runcmd("$cmd");
-    if($::RUNCMD_RC){
-         print RED "[run_fast_regression_test] $cmd ....[Failed]\n";
-         print "[run_fast_regression_test] error dumper:\n";
-         print Dumper \@caseslist;
-         return 1;
-    }else{
-         print "[run_fast_regression_test] $cmd .....:\n";
-         print Dumper \@caseslist;
-    }
-
-    #This is a black list for CI test
-    #It is useful for debug or development
-    #please ignore during common work
-#    {
-#        sub array_filter {
-#            my $src_array_ref    = shift;
-#            my $filter_array_ref = shift;
-#
-#            my @left_array;
-#            foreach my $item (@{$src_array_ref}) {
-#                my $hit = 0;
-#                foreach my $f (@{$filter_array_ref}) {
-#                    $hit = 1 if ($f eq $item);
-#                }
-#                push @left_array, $item unless ($hit);
-#            }
-#            @$src_array_ref = @left_array;
-#        }
-#
-#        #my @filter_cases=("testtest");
-#        #array_filter(\@caseslist, \@filter_cases);
+#    $cmd = "sudo bash -c '. /etc/profile.d/xcat.sh && xcattest -s \"mn_only-wait_fix\" -l'";
+#    my  @caseslist = runcmd("$cmd");
+#    if($::RUNCMD_RC){
+#         print RED "[run_fast_regression_test] $cmd ....[Failed]\n";
+#         print "[run_fast_regression_test] error dumper:\n";
+#         print Dumper \@caseslist;
+#         return 1;
+#    }else{
+#         print "[run_fast_regression_test] $cmd .....:\n";
+#         print Dumper \@caseslist;
 #    }
+#
+#    #This is a black list for CI test
+#    #It is useful for debug or development
+#    #please ignore during common work
+##    {
+##        sub array_filter {
+##            my $src_array_ref    = shift;
+##            my $filter_array_ref = shift;
+##
+##            my @left_array;
+##            foreach my $item (@{$src_array_ref}) {
+##                my $hit = 0;
+##                foreach my $f (@{$filter_array_ref}) {
+##                    $hit = 1 if ($f eq $item);
+##                }
+##                push @left_array, $item unless ($hit);
+##            }
+##            @$src_array_ref = @left_array;
+##        }
+##
+##        #my @filter_cases=("testtest");
+##        #array_filter(\@caseslist, \@filter_cases);
+##    }
 
+    my @caseslist = runcmd("sudo bash -c '. /etc/profile.d/xcat.sh && xcattest -l caselist -b MN_basic.bundle'");
     my $casenum = @caseslist;
     my $x = 0;
     my @failcase;
