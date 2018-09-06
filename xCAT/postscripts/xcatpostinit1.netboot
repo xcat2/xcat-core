@@ -21,7 +21,8 @@ fi
 
 XCATSERVER=$(grep --only-matching "\<XCAT=[^ ]*\>" /proc/cmdline |cut -d= -f2 |cut -d: -f1 2>/dev/null)
 
-logger -t xcat -p local4.info "$0: action is $1"
+LOGGER_TAG=xcat.xcatpostinit1
+logger -t $LOGGER_TAG -p local4.info "$0: action is $1"
 case $1 in
 restart)
   $0 stop
@@ -29,11 +30,11 @@ restart)
   ;;
 status)
   echo -n "xcatpostinit runs only at boot, runs additional post scripts"
-  logger -t xcat -p local4.info "xcatpostinit runs only at boot, runs additional post scripts"
+  logger -t $LOGGER_TAG -p local4.info "xcatpostinit runs only at boot, runs additional post scripts"
   ;;
 stop)
   echo -n "nothing to stop "
-  logger -t xcat -p local4.info "nothing to stop"
+  logger -t $LOGGER_TAG -p local4.info "nothing to stop"
   grep nonodestatus /proc/cmdline 2>/dev/null || [ -n "$XCATSERVER" ] &&  /xcatpost/updateflag.awk $XCATSERVER 3002 "installstatus powering-off"
   ;;
 start)
@@ -53,9 +54,9 @@ start)
             fi
         fi
 
-        # Test for script existance
+        # Test for $SCRIPT existance
         if ! [ -x "$SCRIPT" ]; then
-            msg "can't locate executable $SCRIPT"
+            logger -t $LOGGER_TAG -p local4.info "Unable to locate script $SCRIPT."
             grep nonodestatus /proc/cmdline 2>/dev/null || [ -n "$XCATSERVER" ] &&  /xcatpost/updateflag.awk $XCATSERVER 3002 "installstatus failed"
             exit -1
         fi
@@ -63,10 +64,10 @@ start)
         # Run $SCRIPT according to node type
         grep nonodestatus /proc/cmdline 2>/dev/null || [ -n "$XCATSERVER" ] &&  /xcatpost/updateflag.awk $XCATSERVER 3002 "installstatus postbooting"
         if [ $STATELITE -ne 0 ]; then
-            logger -t xcat -p local4.info "Call $SCRIPT for statelite mode"
+            logger -t $LOGGER_TAG -p local4.info "Call $SCRIPT for statelite mode"
             "$SCRIPT" 4
         else
-            logger -t xcat -p local4.info  "Call $SCRIPT for stateless mode"
+            logger -t $LOGGER_TAG -p local4.info  "Call $SCRIPT for stateless mode"
             "$SCRIPT"
         fi
   ;;
