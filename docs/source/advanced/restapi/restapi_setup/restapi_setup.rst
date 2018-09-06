@@ -37,7 +37,7 @@ To improve the security between the REST API clients and server, enabling the se
     sudo apache2ctl -t -D DUMP_MODULES | grep ssl
     apt-get install libjson-perl
 
-.. note:: If use of non-secure HTTP protocol is required, edit ``/etc/httpd/conf.d/xcat-ws.conf`` for RHEL or ``/etc/apache2/conf.d/xcat-ws.conf`` for others and change `RewriteEngine On` to `RewriteEngine Off`, then restart httpd or apache.
+.. note:: If use of non-secure HTTP protocol is required, edit ``/etc/httpd/conf.d/xcat-ws.conf`` for RHEL or ``/etc/apache2/conf.d/xcat-ws.conf`` for others and change ``RewriteEngine On`` to ``RewriteEngine Off``, then restart httpd or apache.
 
 Enable the Certificate of HTTPs Server (Optional)
 =================================================
@@ -88,9 +88,9 @@ User needs a username and password to access the REST API. When the REST API req
 
 The account with key of **xcat** will be used for the REST API authentication. The username and password should be passed in as the attirbutes of URL:
 
-* userName: Pass the username of the account
-* userPW:   Pass the password of the account (xCAT 2.10)
-* password: Pass the password of the account (xCAT earlier than 2.10)
+:userName: Pass the username of the account
+:userPW: Pass the password of the account (xCAT 2.10)
+:password: Pass the password of the account (xCAT earlier than 2.10)
 
 You can use the root userid for your API calls, but we recommend you create a new userid (for example wsuser) for the API calls and give it the specific privileges you want it to have.
 
@@ -115,7 +115,7 @@ Create new user and setup the password and policy rules. ::
     # add user to policy table
     mkdef -t policy 6 name=<wsuser> rule=allow
 
-``Note:`` in the tabch command above you can put the salted password (from /etc/shadow) in the xCAT passwd table instead of the clear text password, if you prefer.
+.. note:: Using the ``tabch`` command, you can use the salted password from ``/etc/shadow`` into the xCAT password table instead of a clear text password.
 
 Identical user with the same name and uid need to be created on each compute node. ::
 
@@ -144,7 +144,7 @@ or if you did not set up the certificate: ::
 
 You should see some output that includes your list of nodes.
 
-If errors returned, check `/var/log/httpd/ssl_error_log` on xCAT MN.
+If errors returned, check ``/var/log/httpd/ssl_error_log`` on xCAT MN.
 
 .. note:: If passwords need to be changed in the future, make sure to update the xCAT passwd table. xCAT REST API uses passwords stored in that table to authenticate users.
 
