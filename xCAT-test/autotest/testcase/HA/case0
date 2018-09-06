@@ -29,7 +29,8 @@ cmd:if [[ -f /install/postscripts/check_node_state ]] ;then mv -f /install/posts
 cmd:cp -f /opt/xcat/share/xcat/tools/autotest/testcase/HA/cfghamn /install/postscripts/
 cmd:cp -f /opt/xcat/share/xcat/tools/autotest/testcase/HA/check_node_state /install/postscripts/
 cmd:if [[ -f /install/postscripts/xcatha.py ]] ;then mv -f /install/postscripts/xcatha.py /install/postscripts/xcatha.py.bak;fi;
-cmd:if [[ ! -f /install/postscripts/xcatha.py ]] ;then wget $$HASCIPRTURL -P /install/postscripts/; fi;
+cmd:wget -O - $$HASCIPRTURL > /install/postscripts/xcatha.py
+check:rc==0
 cmd:ls /install/postscripts/xcatha.py
 check:rc==0
 cmd:genimage __GETNODEATTR($$PRIMARYMN,os)__-__GETNODEATTR($$PRIMARYMN,arch)__-netboot-compute
@@ -111,8 +112,9 @@ cmd:xdsh $$PRIMARYMN "chmod 755 /xcatpost/check_node_state"
 cmd:xdsh $$PRIMARYMN "/xcatpost/check_node_state $$HACN"
 cmd:xdsh $$PRIMARYMN "lsdef $$HACN -i status"
 check:output=~booted
+cmd:xdsh $$PRIMARYMN "xdsh $$HACN date"
 check:rc==0
-
+ 
 #deactivate the first HA node
 cmd:updatenode $$PRIMARYMN -P "cfghamn -l $$MN:/install/autotestHA -i $$VIP -x d"
 check:rc==0
