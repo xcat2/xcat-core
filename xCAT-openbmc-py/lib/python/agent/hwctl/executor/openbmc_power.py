@@ -109,12 +109,15 @@ class OpenBMCPowerTask(ParallelNodesCommand):
                     off_flag = False
                     start_timeStamp = int(time.time())
                     for i in range (0, 30):
-                        states = obmc.list_power_states()
-                        status = obmc.get_host_state(states)
-                        if openbmc.RPOWER_STATES.get(status) == 'off':
-                            off_flag = True
-                            break
                         gevent.sleep( 2 )
+                        try:
+                            states = obmc.list_power_states()
+                            status = obmc.get_host_state(states)
+                            if openbmc.RPOWER_STATES.get(status) == 'off':
+                                off_flag = True
+                                break
+                        except SelfServerException as e:
+                            continue
 
                     end_timeStamp = int(time.time())
 
@@ -123,10 +126,18 @@ class OpenBMCPowerTask(ParallelNodesCommand):
                                  'to off after waiting %s seconds. (State= %s).' % (end_timeStamp - start_timeStamp, status)
                         raise SelfServerException(error)
 
-                ret = obmc.set_power_state('on')
-                self.callback.update_node_attributes('status', node, POWER_STATE_DB['on'])
+                for i in range(0, 2):
+                    try:
+                        ret = obmc.set_power_state('on')
+                        self.callback.update_node_attributes('status', node, POWER_STATE_DB['on'])
+                        self.callback.info('%s: %s'  % (node, 'reset'))
+                        return
+                    except SelfServerException as e:
+                        self.callback.syslog('%s: %s' % (node, e.message))
+                        gevent.sleep( 1 )
+                        continue
 
-                self.callback.info('%s: %s'  % (node, 'reset'))
+                self.callback.error(e.message, node)
 
         except (SelfServerException, SelfClientException) as e:
             self.callback.error(e.message, node)
