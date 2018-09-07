@@ -1741,7 +1741,9 @@ sub get_files_recursive
         next if ($direntry eq '..');
         my $target = "$dir/$direntry";
         if (-d $target) {
-            get_files_recursive($target, $files_path_ref);
+            unless ($target =~ /xcat-inventory\/templates/){
+                get_files_recursive($target, $files_path_ref);
+            }
         } else {
             push(@{$files_path_ref}, glob("$target\n"));
         }
