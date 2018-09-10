@@ -1744,7 +1744,9 @@ sub copycd
         open($dinfo, $mntpath . "/media.1/media");
         my $dsc = <$dinfo>;
         if ($dsc =~ /x86_64/) {
-            $darch = "x86_64";
+            $darch = "x86_64";        
+        } elsif ($dsc =~ /ppc64le/) {
+            $darch = "ppc64le" ;
         }
         if ($dsc =~ /Installer/ and $dsc =~ /SLE-15/) {
             $discnumber = 1;
