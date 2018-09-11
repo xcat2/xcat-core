@@ -12,8 +12,6 @@ lang en_US
 
 %include /tmp/repos
 
-#INSTALL_SOURCES#
-
 #device ethernet e100
 keyboard "us"
 
@@ -25,8 +23,7 @@ zerombr
 #
 # Wipe out the disk
 #
-# Clear partitioning via partitition file
-#clearpart --all --initlabel
+clearpart --all --initlabel
 #clearpart --linux
 
 #
@@ -34,7 +31,7 @@ zerombr
 #
 
 #XCAT_PARTITION_START#
-#Use script based partition table creation
+# xCAT based partitioning
 %include /tmp/partitionfile
 
 #No RAID
@@ -168,5 +165,6 @@ cat >> /var/log/xcat/xcat.log << "EOF"
 EOF
 echo "Running Kickstart Post-Installation script..."
 #INCLUDE:#ENV:XCATROOT#/share/xcat/install/scripts/post.xcat#
+#INCLUDE:#ENV:XCATROOT#/share/xcat/install/scripts/post.rhels7#
 } &>>/var/log/xcat/xcat.log
 %end

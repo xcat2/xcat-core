@@ -31,7 +31,7 @@ clearpart --all --initlabel
 #
 
 #XCAT_PARTITION_START#
-#Use script based partition table creation
+# xCAT based partitioning
 %include /tmp/partitionfile
 
 #No RAID
@@ -77,7 +77,12 @@ clearpart --all --initlabel
 # --useLilo
 # --md5pass <crypted MD5 password for GRUB>
 #
-bootloader
+#The bootloader config here is commented out
+#For user customized partition file or partition script,
+#the bootloader configuration should be specified in the user customized partition file/script
+#For the xCAT default partition scheme, the bootloader configuration is in /tmp/partitionfile
+#which is generated in %pre section
+##KICKSTARTBOOTLOADER#
 
 #
 # install or upgrade
@@ -160,5 +165,6 @@ cat >> /var/log/xcat/xcat.log << "EOF"
 EOF
 echo "Running Kickstart Post-Installation script..."
 #INCLUDE:#ENV:XCATROOT#/share/xcat/install/scripts/post.xcat#
+#INCLUDE:#ENV:XCATROOT#/share/xcat/install/scripts/post.rhels7#
 } &>>/var/log/xcat/xcat.log
 %end
