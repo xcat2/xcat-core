@@ -1260,8 +1260,9 @@ sub setup_TFTP
             my $plugins_dir = $::XCATROOT . '/lib/perl/xCAT_plugin';
             foreach my $modname (keys %netmethods)
             {
-                $cmdref->{node} = $netmethods{$modname};
-                $doreq->($cmdref, \&xCAT::Client::handle_response);
+                my $reqcopy = {%$cmdref};
+                $reqcopy->{node} = $netmethods{$modname};
+                $doreq->($reqcopy, \&xCAT::Client::handle_response);
             }
 
         }
