@@ -330,17 +330,15 @@ sub subvars {
                     my $pkgdirpath=$pkgdir;
                     if ( -d "$pkgdirpath") {
                         opendir(DIR,$pkgdirpath);
-                        my @subpkgdir=readdir DIR;
+                        my @subpkgdir=grep(!/\.\.?$|^media.1$/, readdir DIR);
                         foreach my $subdir (@subpkgdir){
-                            if($subdir !~ /media.1/){
-                                if($subdir =~ /^Module-/){
-                                    $product_name="sle-".lc($subdir);
-                                }elsif($subdir =~ /^Product-"/){
-                                    $subdir=~s/Product-//;
-                                    $product_name=$subdir;
-                                }
-                                $source .="<listentry><media_url>http://XCATNEXTSERVERHOOK$pkgdirpath</media_url><product>$product_name</product><product_dir>/$subdir</product_dir></listentry>";
-                            } 
+                            if($subdir =~ /^Module-/){
+                                $product_name="sle-".lc($subdir);
+                            }elsif($subdir =~ /^Product-"/){
+                                $subdir=~s/Product-//;
+                                $product_name=$subdir;
+                            }
+                            $source .="<listentry><media_url>http://XCATNEXTSERVERHOOK$pkgdirpath</media_url><product>$product_name</product><product_dir>/$subdir</product_dir></listentry>";
                         }
                     }
                 }
