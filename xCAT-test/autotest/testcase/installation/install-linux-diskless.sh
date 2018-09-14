@@ -145,8 +145,14 @@ copycds "${ISO_FILE}"
 
 chdef -t node -o "${COMPUTE_NODE}" postscripts=setupntp
 
+genimage "${DISTRO}-${ARCH}-netboot-compute"
+exit_if_bad "$?" "genimage failed"
+
+packimage "${DISTRO}-${ARCH}-netboot-compute"
+exit_if_bad "$?" "packimage failed"
+
 # Use the xCAT default generated osimage definition
-rinstall "${COMPUTE_NODE}" "osimage=${DISTRO}-${ARCH}-install-compute"
+rinstall "${COMPUTE_NODE}" "osimage=${DISTRO}-${ARCH}-netboot-compute"
 exit_if_bad "$?" "rinstall failed"
 
 # Wait for the node status change to `booted'
