@@ -1985,6 +1985,14 @@ show_progress_meters
 ERR_MSG="$(
 {
 	echo
+
+	case "${GO_XCAT_ACTION}" in
+	"check")
+		debug_trace update_repo
+		exit "$?"
+		;;
+	esac
+
 	if debug_trace add_xcat_core_repo -y \
 		"${GO_XCAT_CORE_URL}" "${GO_XCAT_VERSION}"
 	then
