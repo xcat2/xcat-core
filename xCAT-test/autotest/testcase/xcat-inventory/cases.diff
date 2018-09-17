@@ -65,7 +65,21 @@ description:This case is used to test xcat-inventory diff files
 label:others,xcat_inventory
 cmd:xcat-inventory diff --files /opt/xcat/share/xcat/tools/autotest/testcase/xcat-inventory/templates/diff/xcat-inventory_diff_file1.json /opt/xcat/share/xcat/tools/autotest/testcase/xcat-inventory/templates/diff/xcat-inventory_diff_file2.json > /tmp/xcat_inventory_diff_files.result
 check:rc==0
-cmd:diff /tmp/xcat_inventory_diff_files.result /opt/xcat/share/xcat/tools/autotest/testcase/xcat-inventory/templates/diff/diff_files.result
+cmd:sh /opt/xcat/share/xcat/tools/autotest/testcase/xcat-inventory/templates/diff/change_name.sh /opt/xcat/share/xcat/tools/autotest/testcase/xcat-inventory/templates/diff/xcat-inventory_diff_file1.json /opt/xcat/share/xcat/tools/autotest/testcase/xcat-inventory/templates/diff/xcat-inventory_diff_file2.json /tmp/tmp_diff.result
+check:rc==0
+cmd:diff /tmp/xcat_inventory_diff_files.result /tmp/tmp_diff.result
+check:output=
+check:rc==0
+end
+
+start:xcat_inventory_diff_files_filename
+description:This case is used to test xcat-inventory diff files filename
+label:others,xcat_inventory
+cmd:xcat-inventory diff --files /opt/xcat/share/xcat/tools/autotest/testcase/xcat-inventory/templates/diff/xcat-inventory_diff_file1.json /opt/xcat/share/xcat/tools/autotest/testcase/xcat-inventory/templates/diff/xcat-inventory_diff_file2.json --filename xcat_inventory_diff_files_filename.test > /tmp/xcat_inventory_diff_files_filename.result
+check:rc==0
+cmd:sh /opt/xcat/share/xcat/tools/autotest/testcase/xcat-inventory/templates/diff/change_name.sh xcat_inventory_diff_files_filename.test xcat_inventory_diff_files_filename.test /tmp/tmp_diff.result
+check:rc==0
+cmd:diff /tmp/xcat_inventory_diff_files_filename.result /tmp/tmp_diff.result
 check:output=
 check:rc==0
 end

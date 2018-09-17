@@ -2,8 +2,8 @@
 ====================BEGIN=====================
 
 
---- /opt/xcat/share/xcat/tools/autotest/testcase/xcat-inventory/templates/diff/xcat-inventory_diff_file1.json
-+++ /opt/xcat/share/xcat/tools/autotest/testcase/xcat-inventory/templates/diff/xcat-inventory_diff_file2.json
+--- #FILE1#
++++ #FILE2#
 {
     "node": {
         "node1": {
