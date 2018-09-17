@@ -30,7 +30,7 @@ Provision Hypervisor
 
         chdef kvmhost1 -p postscripts="xHRM bridgeprereq eth0:br0"
 
-   **Note**: The network bridge name you use should not be the virtual bridges (vbrX) created by libvirt installation  [1]_.
+.. note:: The network bridge name you use should not be the virtual bridges (vbrX) created by libvirt installation  [1]_.
 
 
 #. Customize the hypervisor node definition to mount the shared kvm storage directory on management node **(optional)**
@@ -52,8 +52,7 @@ Provision Hypervisor
 
 #. Provision the hypervisor node with the osimage ::
 
-    nodeset kvmhost1 osimage=<osimage_name>
-    rpower kvmhost1 boot
+     rinstall kvmhost1 osimage=<osimage_name>
 
 
 Create network bridge on hypervisor

@@ -27,6 +27,7 @@
    * Create a new package list file ``/install/custom/rhels7.3/ppc64le/rhelv4.pkglist`` to include necessary packages provided from the OS. ::
 
       #INCLUDE:/opt/xcat/share/xcat/install/rh/compute.rhels7.pkglist#
+      yum
       libvirt
       screen
       bridge-utils
