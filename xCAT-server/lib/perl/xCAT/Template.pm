@@ -332,7 +332,7 @@ sub subvars {
                             my $product_name;
                             if($subdir =~ /^Module-/){
                                 $product_name="sle-".lc($subdir);
-                            }elsif($subdir =~ /^Product-"/){
+                            }elsif($subdir =~ /^Product-/){
                                 $subdir=~s/Product-//;
                                 $product_name=$subdir;
                             }
