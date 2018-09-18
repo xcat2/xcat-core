@@ -937,7 +937,11 @@ sub mkinstall
         # trim the "/" in /install/sles11.3/x86_64/
         $pkgdir =~ s/\/$//;
         if ($pkgdir =~ /^($installroot\/$os\/$arch)$/) {
-            $srcdirs[0] = "$pkgdir/1";
+            if ( -d "$pkgdir/2") {
+                $srcdirs[0] = "$pkgdir/1,$pkgdir/2";
+            }else{
+                $srcdirs[0] = "$pkgdir/1";
+            }
             $tmppkgdir = join(",", @srcdirs);
         }
 

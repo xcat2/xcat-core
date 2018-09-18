@@ -289,7 +289,6 @@ sub subvars {
             my $source;
             my $source_in_pre;
             my $writerepo;
-            my $product_name;
             my $c = 0;
             foreach my $pkgdir (@pkgdirs) {
                 if ($platform =~ /^(rh|SL|centos|fedora)$/) {
@@ -325,20 +324,21 @@ sub subvars {
                <name>SuSE-Linux-pkg$c</name> <!-- available since openSUSE 11.1/SLES11 (bnc#433981) -->
              </listentry>";
                     $source_in_pre .= "<listentry><media_url>http://'\$nextserver'$pkgdir</media_url><product>SuSE-Linux-pkg$c</product><product_dir>/</product_dir><ask_on_error config:type=\"boolean\">false</ask_on_error><name>SuSE-Linux-pkg$c</name></listentry>";
-                } elsif ($platform =~ /^sle15/) {
-                    $pkgdir =~ s/1$/2/;
-                    my $pkgdirpath=$pkgdir;
-                    if ( -d "$pkgdirpath") {
-                        opendir(DIR,$pkgdirpath);
+                } elsif ($platform =~ /^sle15*/) {
+                    if ( -d "$pkgdir") {
+                        opendir(DIR,$pkgdir);
                         my @subpkgdir=grep(!/\.\.?$|^media.1$/, readdir DIR);
                         foreach my $subdir (@subpkgdir){
+                            my $product_name;
                             if($subdir =~ /^Module-/){
                                 $product_name="sle-".lc($subdir);
                             }elsif($subdir =~ /^Product-"/){
                                 $subdir=~s/Product-//;
                                 $product_name=$subdir;
                             }
-                            $source .="<listentry><media_url>http://XCATNEXTSERVERHOOK$pkgdirpath</media_url><product>$product_name</product><product_dir>/$subdir</product_dir></listentry>";
+                            if (defined($product_name) ){
+                                $source .="<listentry><media_url>http://XCATNEXTSERVERHOOK$pkgdir</media_url><product>$product_name</product><product_dir>/$subdir</product_dir></listentry>";
+                            } 
                         }
                     }
                 }
