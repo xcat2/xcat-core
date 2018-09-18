@@ -256,7 +256,7 @@ do
     # (4) for other os, we just keep it here.
     # For other pkg paths, we just keep it here.
     if [ $dir == $default_pkgdir ] || [ $dir == "$default_pkgdir/" ]; then
-        if ( pmatch "$OSVER" "sles*" ); then
+        if ( pmatch "$OSVER" "sle*" ); then
             OSPKGDIR="$OSPKGDIR/1"
             ospkgdir="$ospkgdir/1"
         elif ( pmatch "$OSVER" "SL5*" ); then
@@ -265,7 +265,32 @@ do
         fi
     fi
     array_set_element os_path $index $ospkgdir
-
+    if [ $dir == $default_pkgdir ] || [ $dir == "$default_pkgdir/" ]; then
+        ospkgdir=$(echo $ospkgdir|sed 's/\/1$/\/2/')
+        if ( pmatch "$OSVER" "sle15*" ); then
+            if [ $ARCH == "x86_64" ]; then
+                for arg in "Product-SLES" "Module-Desktop-Applications" "Module-Live-Patching" \
+                           "Module-Web-Scripting" "Module-Basesystem" "Module-Development-Tools" "Module-Public-Cloud" \
+                           "Product-HA" "Product-SLES_SAP" "Module-CAP-Tools" "Module-HPC" "Module-SAP-Applications" \
+                           "Product-HPC" "Product-WE" "Module-Containers" "Module-Legacy" "Module-Server-Applications" "Product-SLED"
+                do
+                    ospkgdir_ok="$ospkgdir/$arg"
+                    index=$(expr $index + 1)
+                    array_set_element os_path $index $ospkgdir_ok
+                done
+            elif [ $ARCH == "ppc64le" ]; then
+                for arg in "Product-SLES" "Module-Desktop-Applications" "Module-Live-Patching" \
+                           "Module-Web-Scripting" "Module-Basesystem" "Module-Development-Tools" "Module-Public-Cloud" \
+                           "Product-HA" "Product-SLES_SAP" "Module-SAP-Applications" \
+                           "Module-Containers" "Module-Legacy" "Module-Server-Applications"
+                do
+                    ospkgdir_ok="$ospkgdir/$arg"
+                    index=$(expr $index + 1)
+                    array_set_element os_path $index $ospkgdir_ok
+                done
+            fi
+        fi
+    fi 
     if ( pmatch "$OSVER" "rhel*" ); then
         #default_pkgdir="$INSTALLDIR/$OSVER/$ARCH"
         if [ $dir == $default_pkgdir ] || [ $dir == "$default_pkgdir/" ]; then
@@ -531,7 +556,7 @@ if ( pmatch "$OSVER" "sles10*" ); then
 	    fi
 	fi
     fi
-elif ( pmatch "$OSVER" "sles*" ); then
+elif ( pmatch "$OSVER" "sle*" ); then
     #check if zypper is installed
     result=`rpm -q zypper`
     if [ $? -ne 0 ]; then
