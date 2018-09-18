@@ -102,8 +102,9 @@ sub do_main_job {
     $rc |= $rst;
 
     #check tftp service
-    $rst = check_tftp_service($installnicip, \$checkpoint, \@error);
-    print_check_result($checkpoint, "f", $rst, \@error);
+    ($rst, $flag) = check_tftp_service($installnicip, \$checkpoint, \@error);
+    print_check_result($checkpoint, $flag, $rst, \@error);
+    $rst = 0 if ($flag == "w");
     $rc |= $rst;
 
     #check DNS service
@@ -696,6 +697,7 @@ sub check_tftp_service {
     my $checkpoint_ref =  shift;
     my $error_ref = shift;
     my $rst       = 1;
+    my $flag      = 'f';
 
     $$checkpoint_ref = "Checking TFTP service is configured...";
     @$error_ref = ();
@@ -727,17 +729,24 @@ sub check_tftp_service {
                     last;
                 }
                 unless(probe_utils->is_tftp_ready("$serverip", $tftpdir)) {
-                    push @$error_ref, "TFTP service isn't ready on $serverip";
+                    push @$error_ref, "TFTP service isn't ready on $serverip, stop tftp service and start it by restarting xcatd";
                     last;
                 }
                 $rst = 0;
+            }
+            if ($rst == 0) {
+                my $tftp_ps = `ps aux 2>&1| grep tftp | grep xcat |grep -v grep`;
+                if (!$tftp_ps) {
+                    push @$error_ref, "TFTP service based on xCAT is not running";
+                    $flag = 'w';
+                }
             }
         }
     } else {
         $rst = 2;
     }
 
-    return $rst;
+    return ($rst, $flag);
 }
 
 sub check_rsyslog_service {
