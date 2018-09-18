@@ -330,14 +330,16 @@ sub subvars {
                         my @subpkgdir=grep(!/\.\.?$|^media.1$/, readdir DIR);
                         foreach my $subdir (@subpkgdir){
                             my $product_name;
+                            my $product_dir;
+                            $product_dir=$subdir;
                             if($subdir =~ /^Module-/){
                                 $product_name="sle-".lc($subdir);
                             }elsif($subdir =~ /^Product-/){
                                 $subdir=~s/Product-//;
                                 $product_name=$subdir;
                             }
-                            if (defined($product_name) ){
-                                $source .="<listentry><media_url>http://XCATNEXTSERVERHOOK$pkgdir</media_url><product>$product_name</product><product_dir>/$subdir</product_dir></listentry>";
+                            if (defined($product_name) && defined($product_dir)){
+                                $source .="<listentry><media_url>http://XCATNEXTSERVERHOOK$pkgdir</media_url><product>$product_name</product><product_dir>/$product_dir</product_dir></listentry>";
                             } 
                         }
                     }
