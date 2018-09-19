@@ -19,7 +19,7 @@ The path_of_src_file* should be the full path of the source file on the Manageme
 
 The path_of_dst_file* should be the full path of the destination file on target node. Please make sure path_of_dst_file* is not a existing directory on target node, otherwise, the file sync with ``updatenode -r /usr/bin/scp`` or ``xdcp -r /usr/bin/scp`` will fail.
 
-The path_of_dst_directory should be the full path of the destination directory. Please make sure *eth_of_dst_directory is not a existing file on target node, otherwise, the file sync with ``updatenode -r /usr/bin/scp`` or ``xdcp -r /usr/bin/scp`` will fail.
+The path_of_dst_directory should be the full path of the destination directory. Please make sure path_of_dst_directory is not a existing file on target node, otherwise, the file sync with ``updatenode -r /usr/bin/scp`` or ``xdcp -r /usr/bin/scp`` will fail.
 
 Since the synclist file is for common purpose, the target node need not be configured in it.
 
