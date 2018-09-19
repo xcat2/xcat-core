@@ -818,7 +818,7 @@ EOF`
         if [ $R -ne 0 ]; then
               RETURNVAL=$R 
         fi
-        logger -p local4.info -t xcat "$result"
+        echo "$result" | logger -p local4.info -t xcat
         if [ $VERBOSE  ]; then
           echo "$result"
         fi
@@ -832,7 +832,7 @@ EOF`
         if [ $R -ne 0 ]; then
               RETURNVAL=$R 
         fi
-        logger -p local4.info -t xcat "$result"
+        echo "$result" | logger -p local4.info -t xcat
         if [ $VERBOSE  ]; then
           echo "$result"
         fi
@@ -846,7 +846,7 @@ EOF`
         if [ $R -ne 0 ]; then
               RETURNVAL=$R 
         fi
-	logger -p local4.info -t xcat "$result"
+        echo "$result" | logger -p local4.info -t xcat
         if [ $VERBOSE  ]; then
 	  echo "$result"
         fi
@@ -867,7 +867,7 @@ EOF`
             if [ $R -ne 0 ]; then
               RETURNVAL=$R 
             fi
-            logger -p local4.info -t xcat "$result"
+            echo "$result" | logger -p local4.info -t xcat
             if [ $VERBOSE  ]; then
               echo "$result"
             fi
@@ -880,7 +880,7 @@ EOF`
             if [ $R -ne 0 ]; then
               RETURNVAL=$R 
             fi
-            logger -p local4.info -t xcat "$result"
+            echo "$result" | logger -p local4.info -t xcat
             if [ $VERBOSE  ]; then
               echo "$result"
             fi
@@ -894,7 +894,7 @@ EOF`
             if [ $R -ne 0 ]; then
               RETURNVAL=$R 
             fi
-            logger -p local4.info -t xcat "$result"
+            echo "$result" | logger -p local4.info -t xcat
             if [ $VERBOSE  ]; then
               echo "$result"
             fi
@@ -910,7 +910,7 @@ EOF`
         if [ $R -ne 0 ]; then
               RETURNVAL=$R 
         fi
-        logger -p local4.info -t xcat "$result"
+        echo "$result" | logger -p local4.info -t xcat
         if [ $VERBOSE  ]; then
           echo "$result"
         fi
@@ -928,7 +928,7 @@ EOF`
             if [ $R -ne 0 ]; then
               RETURNVAL=$R 
             fi
-	    logger -p local4.info -t xcat "$result"
+            echo "$result" | logger -p local4.info -t xcat
             if [ $VERBOSE  ]; then
               echo "$result"
             fi
@@ -941,7 +941,7 @@ EOF`
             if [ $R -ne 0 ]; then
               RETURNVAL=$R 
 	    fi
-            logger -p local4.info -t xcat "$result"
+            echo "$result" | logger -p local4.info -t xcat
             if [ $VERBOSE  ]; then
               echo "$result"
 	    fi
@@ -961,7 +961,7 @@ EOF`
             if [ $R -ne 0 ]; then
               RETURNVAL=$R 
 	    fi
-	    logger -p local4.info -t xcat "$result"
+        echo "$result" | logger -p local4.info -t xcat
             if [ $VERBOSE  ]; then
              echo "$result"
 	    fi
@@ -998,7 +998,7 @@ EOF`
         if [ $R -ne 0 ]; then
               RETURNVAL=$R 
 	fi
-        logger -p local4.info -t xcat "$result"
+        echo "$result" | logger -p local4.info -t xcat
         if [ $VERBOSE  ]; then
           echo "$result"
 	fi
@@ -1022,7 +1022,7 @@ EOF`
             if [ $R -ne 0 ]; then
               RETURNVAL=$R 
 	    fi
-            logger -p local4.info -t xcat "$result"
+            echo "$result" | logger -p local4.info -t xcat
             if [ $VERBOSE  ]; then
               echo "$result"
 	    fi
@@ -1035,7 +1035,7 @@ EOF`
             if [ $R -ne 0 ]; then
               RETURNVAL=$R 
 	    fi
-            logger -p local4.info -t xcat "$result"
+            echo "$result" | logger -p local4.info -t xcat
             if [ $VERBOSE  ]; then
               echo "$result"
 	    fi
@@ -1049,7 +1049,7 @@ EOF`
             if [ $R -ne 0 ]; then
               RETURNVAL=$R 
 	    fi
-            logger -p local4.info  -t xcat "$result"
+            echo "$result" | logger -p local4.info -t xcat
             if [ $VERBOSE  ]; then
               echo "$result"
 	    fi
@@ -1065,7 +1065,7 @@ EOF`
         if [ $R -ne 0 ]; then
               RETURNVAL=$R 
 	fi
-        logger -p local4.info -t xcat "$result"
+        echo "$result" | logger -p local4.info -t xcat
         if [ $VERBOSE  ]; then
           echo "$result"
 	fi
