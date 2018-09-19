@@ -57,6 +57,8 @@ The following repositories should be configured on your Management Node.
 Install xCAT-openbmc-py on SN from MN
 -------------------------------------
 
+.. attention:: Instructions below assume Service node has access to the Internet. If not, a local EPEL repository would need to be configured on the Management node, similar to the RHEL Extras repository.
+
 #. Copy ``Packages`` directory containing ``gevent`` and ``greenlet`` rpms from ``/install/repos/fc28/ppc64le`` to the directory pointed to by ``otherpkgdir`` attribute of the osimage. ::
 
     # Display the directory of otherpkgdir
