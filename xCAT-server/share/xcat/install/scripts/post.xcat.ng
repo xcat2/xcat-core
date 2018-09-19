@@ -58,7 +58,7 @@ sleep "$RAND"
 if ! type openssl >/dev/null 2>&1
 then
     msgutil_r "$MASTER_IP" "error" "/usr/bin/openssl does not exist, halt ..." "/var/log/xcat/xcat.log" "$log_label"
-    /tmp/updateflag $MASTER $XCATIPORT "installstatus failed"
+    /tmp/updateflag "$MASTER" "$XCATIPORT" "installstatus failed"
     sleep infinity
 fi
 
@@ -119,11 +119,11 @@ function download_recursive()
             [ "$?" -ne "0" ] && return 1
             ;;
         *)
-            curl --retry 20 --max-time 60 "${url}/${f}" -o "${dest_dir}/${f}"
+            curl --fail --retry 20 --max-time 60 "${url}/${f}" -o "${dest_dir}/${f}"
             [ "$?" -ne "0" ] && return 1
             ;;
         esac
-    done < <(curl --retry 20 --max-time 60 "${url}/" | grep -o '<a href="\([^"]*\)">\1</a>' | cut -d '"' -f 2)
+    done < <(curl --fail --retry 20 --max-time 60 "${url}/" | grep -o '<a href="\([^"]*\)">\1</a>' | cut -d '"' -f 2)
     return 0
 }
 
@@ -143,7 +143,7 @@ export NODE="#TABLE:nodelist:THISNODE:node#"
 
 msgutil_r "$MASTER_IP" "info" "trying to get mypostscript from $MASTER_IP..." "/var/log/xcat/xcat.log" "$log_label"
 
-curl --retry 20 --max-time 60 "http://$MASTER_IP$TFTPDIR/mypostscripts/mypostscript.$NODE" -o "/xcatpost/mypostscript.$NODE" 2> /tmp/download.log
+curl --fail --retry 20 --max-time 60 "http://$MASTER_IP$TFTPDIR/mypostscripts/mypostscript.$NODE" -o "/xcatpost/mypostscript.$NODE" 2> /tmp/download.log
 if [ "$?" = "0" ]
 then
     case "$XCATDEBUGMODE" in
@@ -324,7 +324,7 @@ case "$XCATDEBUGMODE" in
     ;;
 esac
 
-ln -s /etc/systemd/system/xcatpostinit1.service /etc/systemd/system/multi-user.target.wants/xcatpostinit1.service 
+ln -s /etc/systemd/system/xcatpostinit1.service /etc/systemd/system/multi-user.target.wants/xcatpostinit1.service
 
 case "$XCATDEBUGMODE" in
 "1"|"2")
@@ -371,7 +371,7 @@ else
     esac
 fi
 
-# Create the dskls post 
+# Create the dskls post
 cat >/opt/xcat/xcatdsklspost <<'EOF'
 #INCLUDE:#TABLE:site:key=installdir:value#/postscripts/xcatdsklspost#
 EOF

@@ -81,8 +81,9 @@ cmd:service xcatd status
 check:output=~xcatd service|xcatd.service
 check:output=~xcatd service is running|active \(running\)
 check:rc==0
-cmd:times=10; while [ $times -gt 0 ]; do service xcatd restart; if [ "$?" -ne "0" ]; then break; fi; ((times--)); done; if [ $times -gt 0 ]; then $?=1; fi
+cmd:service xcatd restart
 check:rc==0
+cmd:sleep 10
 cmd:service xcatd status
 check:output=~xcatd service|xcatd.service
 check:output=~xcatd service is running|active \(running\)
@@ -119,7 +120,7 @@ check:output=~xcatd service is running|active \(running\)
 end
 
 start:disable_root_permission_in_policy_table
-description:disable root permission, only with XCATBYPASS=YES, the command works 
+description:disable root permission, only with XCATBYPASS=YES, the command works
 label:mn_only,xcatd
 cmd:service xcatd status
 check:rc==0
@@ -139,7 +140,7 @@ end
 
 
 start:assign_certain_command_permission
-description:assign root permission to certain command, only this command works 
+description:assign root permission to certain command, only this command works
 label:mn_only,xcatd
 cmd:service xcatd status
 check:rc==0
@@ -152,7 +153,7 @@ check:rc==0
 cmd:chtab name=root policy.commands=lsdef policy.rule=allow
 check:rc==0
 cmd:lsdef
-check:rc==0 
+check:rc==0
 cmd:tabdump policy
 check:output=~Error: (\[.*?\]: )?Permission denied for request
 cmd:chtab name=root policy.commands= policy.rule=allow

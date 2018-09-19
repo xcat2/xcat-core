@@ -2,10 +2,10 @@
 #-------------------------------------------------------
 
 =head1
-  xCAT plugin package to handle mkzone,chzone,Input rmzone commands 
+  xCAT plugin package to handle mkzone,chzone,Input rmzone commands
 
    Supported command:
-         mkzone,chzone,rmzone - manage xcat cluster zones 
+         mkzone,chzone,rmzone - manage xcat cluster zones
 
 =cut
 
@@ -127,7 +127,7 @@ sub process_request
             'K|genkeys'               => \$options{'gensshkeys'},
             's|sshbetweennodes=s'     => \$options{'sshbetweennodes'},
             'v|version'               => \$options{'version'},
-            'V|Verbose'               => \$options{'verbose'},
+            'V|verbose'               => \$options{'verbose'},
         )
       )
     {
@@ -287,10 +287,10 @@ sub process_request
 
 #-------------------------------------------------------
 
-=head3   
+=head3
 
-   Parses and runs  mkzone 
-   Input 
+   Parses and runs  mkzone
+   Input
      request
      callback
      Input  arguments from the GetOpts
@@ -370,10 +370,10 @@ sub mkzone
 
 #-------------------------------------------------------
 
-=head3   
+=head3
 
-   Parses and runs chzone 
-   Input 
+   Parses and runs chzone
+   Input
      request
      callback
      Input  arguments from the GetOpts
@@ -489,14 +489,14 @@ sub chzone
 
 #-------------------------------------------------------
 
-=head3   
+=head3
 
-   Parses and runs rmzone 
-   Input 
+   Parses and runs rmzone
+   Input
      request
      callback
      Input  arguments from the GetOpts
-      
+
 
 =cut
 
@@ -676,9 +676,9 @@ sub usage
 
 #-------------------------------------------------------
 
-=head3   
+=head3
 
-   generate the ssh keys and store them in /etc/xcat/sshkeys/<zonename>/.ssh 
+   generate the ssh keys and store them in /etc/xcat/sshkeys/<zonename>/.ssh
 
 
 =cut
@@ -721,10 +721,10 @@ sub gensshkeys
 
 #-------------------------------------------------------
 
-=head3   
+=head3
     addtozonetable
-    Add the new zone to the zone table, check if already there and 
-    error - use either chzone or -f to override default 
+    Add the new zone to the zone table, check if already there and
+    error - use either chzone or -f to override default
 
 
 
@@ -810,7 +810,7 @@ sub addtozonetable
 
 #-------------------------------------------------------
 
-=head3   
+=head3
     updatezonetable
     change either the sshbetweennodes or defaultzone  attribute
     or generate new keys ( -k -K)
@@ -894,10 +894,10 @@ sub updatezonetable
 
 #-------------------------------------------------------
 
-=head3   
-    addnodestozone 
-    Add the new zonename attribute to any nodes in the noderange ( if a noderange specified) 
-    Add zonename group to nodes in the noderange if -g flag. 
+=head3
+    addnodestozone
+    Add the new zonename attribute to any nodes in the noderange ( if a noderange specified)
+    Add zonename group to nodes in the noderange if -g flag.
 
 
 
@@ -948,12 +948,12 @@ sub addnodestozone
 
 #-------------------------------------------------------
 
-=head3   
-    rmnodesfromzone 
+=head3
+    rmnodesfromzone
     removes the zonename from all nodes with their zonename the input zone or
     the noderange supplied on the -r flag
-    if -g, removes zonename group from all nodes defined with their zonename the input zone. 
-    Note if $ALL is input it removes all nodes from the zone, 
+    if -g, removes zonename group from all nodes defined with their zonename the input zone.
+    Note if $ALL is input it removes all nodes from the zone,
      otherwise  $request->{noderange} points to the noderange
 
 

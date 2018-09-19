@@ -44,8 +44,8 @@ renergy.1
 
 \ **renergy**\  \ *noderange*\  \ **[-V] {savingstatus={on | off} | dsavingstatus={on-norm | on-maxp | off} | fsavingstatus={on | off} | ffovalue=MHZ }**\ 
 
-\ *NOTE:*\  The setting operation for \ **Power 8**\  server is only supported 
-for the server which is running in PowerVM mode. Do NOT run the setting 
+\ *NOTE:*\  The setting operation for \ **Power 8**\  server is only supported
+for the server which is running in PowerVM mode. Do NOT run the setting
 for the server which is running in OPAL mode.
 
 \ **BladeCenter specific :**\ 
@@ -97,28 +97,28 @@ for the server which is running in OPAL mode.
 
 
 This \ **renergy**\  command can be used to manage the energy consumption of
-IBM servers which support IBM EnergyScale technology. Through this command, 
-user can query and set the power saving and power capping status, and also can 
-query the average consumed energy, the ambient and exhaust temperature, 
+IBM servers which support IBM EnergyScale technology. Through this command,
+user can query and set the power saving and power capping status, and also can
+query the average consumed energy, the ambient and exhaust temperature,
 the processor frequency for a server.
 
 \ **renergy**\  command supports IBM POWER6, POWER7 and POWER8 rack-mounted servers,
-BladeCenter management modules, blade servers, and iDataPlex servers. 
+BladeCenter management modules, blade servers, and iDataPlex servers.
 For \ *Power6*\  and \ *Power7*\  rack-mounted servers, the following specific hardware types are supported:
 \ *8203-E4A*\ , \ *8204-E8A*\ , \ *9125-F2A*\ , \ *8233-E8B*\ , \ *8236-E8C*\ .
 For \ *Power8*\  server, there's no hardware type restriction.
 
-The parameter \ *noderange*\  needs to be specified for the \ **renergy**\  command to 
-get the target servers. The \ *noderange*\  should be a list of CEC node names, blade 
+The parameter \ *noderange*\  needs to be specified for the \ **renergy**\  command to
+get the target servers. The \ *noderange*\  should be a list of CEC node names, blade
 management module node names or blade server node names. Lpar name
 is not acceptable here.
 
-\ **renergy**\  command can accept multiple of energy attributes to query or one of energy 
-attribute to set. If only the attribute name is specified, without the '=', \ **renergy**\  
-gets and displays the current value. Otherwise, if specifying the attribute with '=' like 
+\ **renergy**\  command can accept multiple of energy attributes to query or one of energy
+attribute to set. If only the attribute name is specified, without the '=', \ **renergy**\ 
+gets and displays the current value. Otherwise, if specifying the attribute with '=' like
 'savingstatus=on', \ **renergy**\  will set the attribute savingstatus to value 'on'.
 
-The attributes listed in the \ **SYNOPSIS**\  section are which ones can be handled by 
+The attributes listed in the \ **SYNOPSIS**\  section are which ones can be handled by
 \ **renergy**\  command. But for each specific type of server, there are some attributes that
 are not supported. If user specifies an attribute which is not supported by a specific
 server, the return value of this attribute will be 'na'.
@@ -177,7 +177,7 @@ cappingperc,fsavingstatus,ffovalue
 \ **Non of Above**\ 
 
 
-For the machine type which is not in the above list, the following 
+For the machine type which is not in the above list, the following
 attributes can be tried but not guaranteed:
 
 \ **Query**\ : savingstatus,dsavingstatus,cappingstatus,cappingmin,
@@ -188,7 +188,7 @@ ambienttemp,exhausttemp,CPUspeed,syssbpower,sysIPLtime
 cappingperc
 
 Note:
-For system P CEC nodes, each query operation for attribute CPUspeed, averageAC 
+For system P CEC nodes, each query operation for attribute CPUspeed, averageAC
 or averageDC needs about 30 seconds to complete. The query for others attributes
 will get response immediately.
 
@@ -198,15 +198,15 @@ will get response immediately.
 *********************
 
 
-For the \ *Power6*\  and \ *Power7*\  nodes, the \ **renergy**\  command depends 
-on the Energy Management Plugin \ **xCAT-pEnergy**\  to 
-communicate with server.  \ **xCAT-pEnergy**\  can be downloaded from the IBM web site: 
+For the \ *Power6*\  and \ *Power7*\  nodes, the \ **renergy**\  command depends
+on the Energy Management Plugin \ **xCAT-pEnergy**\  to
+communicate with server.  \ **xCAT-pEnergy**\  can be downloaded from the IBM web site:
 http://www.ibm.com/support/fixcentral/. (Other Software -> EM)
 
 NOTE: \ *Power8*\  nodes don't need this specific energy management package.
 
-For iDataPlex nodes, the \ **renergy**\  command depends 
-on the Energy Management Plugin \ **xCAT-xEnergy**\  to 
+For iDataPlex nodes, the \ **renergy**\  command depends
+on the Energy Management Plugin \ **xCAT-xEnergy**\  to
 communicate with server.  This plugin must be requested from IBM.
 
 (The support for BladeCenter energy management is built into base xCAT,
@@ -239,7 +239,7 @@ so no additional plugins are needed for BladeCenter.)
 
 \ **all**\ 
  
- Query all energy attributes which supported by the specific 
+ Query all energy attributes which supported by the specific
  type of hardware.
  
  For \ *Power8*\  machines, will not display the attributes
@@ -283,12 +283,12 @@ so no additional plugins are needed for BladeCenter.)
  
  Query the average power consumed (Input). (Unit is watt)
  
- Note: For 9125-F2A,9125-F2C server, the value of attribute 
+ Note: For 9125-F2A,9125-F2C server, the value of attribute
  averageAC is the aggregate for all of the servers in a rack.
  
- Note: For Blade Center, the value of attribute 
+ Note: For Blade Center, the value of attribute
  averageAC is the total AC power being consumed by all modules
- in the chassis. It also includes power consumed by the Chassis 
+ in the chassis. It also includes power consumed by the Chassis
  Cooling Devices for BCH chassis.
  
 
@@ -317,19 +317,19 @@ so no additional plugins are needed for BladeCenter.)
  
  staticPowerManagement: the module with the static worst case power values.
  
- fixedPowermanagement: the module with the static power values but ability 
+ fixedPowermanagement: the module with the static power values but ability
  to throttle.
  
- dynamicPowerManagement: the module with power meter capability, measurement 
+ dynamicPowerManagement: the module with power meter capability, measurement
  enabled, but capping disabled.
  
- dynamicPowerMeasurement1: the module with power meter capability, measurement 
+ dynamicPowerMeasurement1: the module with power meter capability, measurement
  enabled, phase 1 only
  
- dynamicPowerMeasurement2: the module with power meter capability, measurement 
+ dynamicPowerMeasurement2: the module with power meter capability, measurement
  enabled, phase 2 or higher
  
- dynamicPowerMeasurementWithPowerCapping: the module with power meter capability, 
+ dynamicPowerMeasurementWithPowerCapping: the module with power meter capability,
  both measurement and capping enabled, phase 2 or higher
  
 
@@ -360,31 +360,31 @@ so no additional plugins are needed for BladeCenter.)
 
 \ **cappingperc**\ =\ **percentage**\ 
  
- Set the power capping value base on the percentage of 
- the max-min of capping value which getting from 
- \ *cappingmaxmim*\  attribute. The valid value must be 
+ Set the power capping value base on the percentage of
+ the max-min of capping value which getting from
+ \ *cappingmaxmim*\  attribute. The valid value must be
  from 0 to 100.
  
 
 
 \ **cappingsoftmin**\ 
  
- Query the minimum value that can be assigned to power 
+ Query the minimum value that can be assigned to power
  capping without guaranteed enforceability. (Unit is watt)
  
 
 
 \ **cappingstatus**\ 
  
- Query the power capping status. The result should be 'on' 
+ Query the power capping status. The result should be 'on'
  or 'off'.
  
 
 
 \ **cappingstatus**\ ={\ **on**\  | \ **off**\ }
  
- Set the power capping status. The value must be 'on' 
- or 'off'. This is the switch to turn on or turn off the 
+ Set the power capping status. The value must be 'on'
+ or 'off'. This is the switch to turn on or turn off the
  power capping function.
  
 
@@ -399,10 +399,10 @@ so no additional plugins are needed for BladeCenter.)
  
  Set the power capping value base on the watt unit.
  
- If the 'watt' >  maximum of \ *cappingmaxmin*\  or 'watt' 
- < \ *cappingsoftmin*\ , the setting operation 
- will be failed. If the 'watt' > \ *cappingsoftmin*\  and 
- 'watt' < minimum of \ *cappingmaxmin*\ , the value can NOT be 
+ If the 'watt' >  maximum of \ *cappingmaxmin*\  or 'watt'
+ < \ *cappingsoftmin*\ , the setting operation
+ will be failed. If the 'watt' > \ *cappingsoftmin*\  and
+ 'watt' < minimum of \ *cappingmaxmin*\ , the value can NOT be
  guaranteed.
  
 
@@ -421,30 +421,30 @@ so no additional plugins are needed for BladeCenter.)
 
 \ **dsavingstatus**\ 
  
- Query the dynamic power saving status. The result should 
+ Query the dynamic power saving status. The result should
  be 'on-norm', 'on-maxp'  or 'off'.
  
- If turning on the dynamic power saving, the processor 
- frequency and voltage will be dropped dynamically based on 
+ If turning on the dynamic power saving, the processor
+ frequency and voltage will be dropped dynamically based on
  the core utilization. It supports two modes for turn on state:
  
- \ *on-norm*\  - means normal, the processor frequency cannot 
+ \ *on-norm*\  - means normal, the processor frequency cannot
  exceed the nominal value;
  
- \ *on-maxp*\  - means maximum performance, the processor 
+ \ *on-maxp*\  - means maximum performance, the processor
  frequency can exceed the nominal value.
  
 
 
 \ **dsavingstatus**\ ={\ **on-norm**\  | \ **on-maxp**\  | \ **off**\ }
  
- Set the dynamic power saving. The value must be 'on-norm', 
+ Set the dynamic power saving. The value must be 'on-norm',
  'on-maxp' or 'off'.
  
- The dsavingstatus setting operation needs about 2 minutes 
+ The dsavingstatus setting operation needs about 2 minutes
  to take effect. (The used time depends on the hardware type)
  
- The \ **dsavingstatus**\  only can be turned on when the 
+ The \ **dsavingstatus**\  only can be turned on when the
  \ **savingstatus**\  is in turn off status.
  
 
@@ -465,7 +465,7 @@ so no additional plugins are needed for BladeCenter.)
  
  Query the fan speed for all the fans which installed in this node. (Unit is RPM - Rotations Per Minute))
  
- If there are multiple fans for a node, multiple lines will be output. And a fan name in bracket will be 
+ If there are multiple fans for a node, multiple lines will be output. And a fan name in bracket will be
  appended after \ **fanspped**\  attribute name.
  
 
@@ -478,7 +478,7 @@ so no additional plugins are needed for BladeCenter.)
 
 \ **ffoMin**\ 
  
- Query the minimum cpu frequency which can be set for FFO. (Fixed 
+ Query the minimum cpu frequency which can be set for FFO. (Fixed
  Frequency Override)
  
 
@@ -497,9 +497,9 @@ so no additional plugins are needed for BladeCenter.)
 
 \ **ffoVmin**\ 
  
- Query the minimum cpu frequency which can be set for dropping down 
- the voltage to save power. That means when you drop the cpu 
- frequency from the ffoVmin to ffoVmin, the voltage won't change, 
+ Query the minimum cpu frequency which can be set for dropping down
+ the voltage to save power. That means when you drop the cpu
+ frequency from the ffoVmin to ffoVmin, the voltage won't change,
  then there's no obvious power to be saved.
  
 
@@ -512,16 +512,16 @@ so no additional plugins are needed for BladeCenter.)
 
 \ **ffovalue**\ =\ **MHZ**\ 
  
- Set the current value of FFO. The valid value of ffovalue should 
+ Set the current value of FFO. The valid value of ffovalue should
  be between the ffoMin and ffoNorm.
  
- Note1: Due to the limitation of firmware, the frequency in the range 
- 3501 MHz - 3807 MHz can NOT be set to ffovalue. This range may be 
+ Note1: Due to the limitation of firmware, the frequency in the range
+ 3501 MHz - 3807 MHz can NOT be set to ffovalue. This range may be
  changed in future.
  
- Note2: The setting will take effect only when the fsavingstatus is in 
- 'on' status. But you need to set the ffovalue to a valid value before 
- enabling the fsavingstatus. (It's a limitation of the initial firmware 
+ Note2: The setting will take effect only when the fsavingstatus is in
+ 'on' status. But you need to set the ffovalue to a valid value before
+ enabling the fsavingstatus. (It's a limitation of the initial firmware
  and will be fixed in future.)
  
  The ffovalue setting operation needs about 1 minute to take effect.
@@ -530,7 +530,7 @@ so no additional plugins are needed for BladeCenter.)
 
 \ **fsavingstatus**\ 
  
- Query the status of FFO. The result should be 'on' or 'off'. 
+ Query the status of FFO. The result should be 'on' or 'off'.
  'on' - enable; 'off' - disable.
  
 
@@ -539,7 +539,7 @@ so no additional plugins are needed for BladeCenter.)
  
  Set the status of FFO. The value must be 'on' or 'off'.
  
- 'on' - enable. It will take effect only when the \ **ffovalue**\  
+ 'on' - enable. It will take effect only when the \ **ffovalue**\ 
  has been set to a valid value.
  
  'off' -disable. It will take effect immediately.
@@ -556,17 +556,17 @@ so no additional plugins are needed for BladeCenter.)
 
 \ **mmtemp**\ 
  
- Query the current temperature of management module. 
+ Query the current temperature of management module.
  (Unit is centigrade)
  
 
 
 \ **pd1status | powerstatus**\ 
  
- Query the status of power domain 1 for blade management 
+ Query the status of power domain 1 for blade management
  module node.
  
- Note: for the attribute without the leading 'pd1' which 
+ Note: for the attribute without the leading 'pd1' which
  means there's only one power doamin in the chassis.
  
 
@@ -615,7 +615,7 @@ so no additional plugins are needed for BladeCenter.)
 
 \ **pd2status**\ 
  
- Query the status of power domain 2 for blade management 
+ Query the status of power domain 2 for blade management
  module node.
  
 
@@ -670,7 +670,7 @@ so no additional plugins are needed for BladeCenter.)
 
 \ **savingstatus**\ 
  
- Query the static power saving status. The result should be 
+ Query the static power saving status. The result should be
  'on' or 'off'. 'on' - enable; 'off' - disable.
  
 
@@ -679,34 +679,34 @@ so no additional plugins are needed for BladeCenter.)
  
  Set the static power saving. The value must be 'on' or 'off'.
  
- If turning on the static power saving, the processor frequency 
+ If turning on the static power saving, the processor frequency
  and voltage will be dropped to a fixed value to save energy.
  
- The savingstatus setting operation needs about 2 minutes to 
+ The savingstatus setting operation needs about 2 minutes to
  take effect. (The used time depends on the hardware type)
  
- The \ **savingstatus**\  only can be turned on when the 
+ The \ **savingstatus**\  only can be turned on when the
  \ **dsavingstatus**\  is in turn off status.
  
 
 
 \ **sysIPLtime**\ 
  
- Query the time used from FSP standby to OS standby. 
+ Query the time used from FSP standby to OS standby.
  (Unit is Second)
  
 
 
 \ **syssbpower**\ 
  
- Query the system power consumed prior to power on. 
+ Query the system power consumed prior to power on.
  (Unit is Watt)
  
 
 
 \ **thermaloutput**\ 
  
- Query the thermal output (load) in BTUs per hour for the blade 
+ Query the thermal output (load) in BTUs per hour for the blade
  center chassis.
  
 
@@ -719,7 +719,7 @@ so no additional plugins are needed for BladeCenter.)
 
 \ **temperature**\ 
  
- Query the temperature from DCMI (Data Center Manageability Interface) Temperature sensor. 
+ Query the temperature from DCMI (Data Center Manageability Interface) Temperature sensor.
  Currently, only CPU temperature and baseboard temperature sensor available for OpenPOWER servers.
  
 
@@ -896,7 +896,7 @@ so no additional plugins are needed for BladeCenter.)
  
 
 
-6. Query the attributes savingstatus, cappingstatus 
+6. Query the attributes savingstatus, cappingstatus
 and CPUspeed for server CEC1.
  
  
@@ -930,13 +930,13 @@ and CPUspeed for server CEC1.
  
  .. code-block:: perl
  
-      CEC1: Set savingstatus succeeded.         
+      CEC1: Set savingstatus succeeded.
       CEC1: This setting may need some minutes to take effect.
  
  
 
 
-8. Set the power capping value base on the percentage of the 
+8. Set the power capping value base on the percentage of the
 max-min capping value. Here, set it to 50%.
  
  
@@ -945,8 +945,8 @@ max-min capping value. Here, set it to 50%.
    renergy CEC1 cappingperc=50
  
  
- If the maximum capping value of the CEC1 is 850w, and the 
- minimum capping value of the CEC1 is 782w, the Power Capping 
+ If the maximum capping value of the CEC1 is 850w, and the
+ minimum capping value of the CEC1 is 782w, the Power Capping
  value will be set as ((850-782)\*50% + 782) = 816w.
  
  The output of the setting operation:

@@ -48,7 +48,7 @@ exit 0;
 =head3    runcmd
     Run the given cmd and return the output in an array (already chopped).  Alternatively,
     if this function is used in a scalar context, the output is joined into a single string
-    with the newlines separating the lines.  
+    with the newlines separating the lines.
     Arguments:
         command, exitcode and reference to output
     Returns:
@@ -65,7 +65,7 @@ exit 0;
                 exit code.
         number > 0:    Display error msg and exit with the given code
     Example:
-        my $outref =  runcmd($cmd, -2, 1);     
+        my $outref =  runcmd($cmd, -2, 1);
     Comments:
         If refoutput is true, then the output will be returned as a reference to
         an array for efficiency.

@@ -1,0 +1,12 @@
+#!/bin/bash
+a=0;
+HAMN=$1
+while ! $(lsdef -l $HAMN|grep status|grep booted >/dev/null)
+do 
+    sleep 20
+    ((a++))
+    echo "Retry ..."
+    if [ $a -gt 300 ];then 
+        break
+    fi 
+done

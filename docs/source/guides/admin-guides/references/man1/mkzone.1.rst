@@ -31,7 +31,7 @@ mkzone.1
 
 The \ **mkzone**\  command is designed to divide the xCAT cluster into multiple zones. The nodes in each zone will share common root ssh keys. This allows the nodes in a zone to be able to as root ssh to each other without password, but cannot do the same to any node in another zone. All zones share a common xCAT Management Node and database including the site table, which defines the attributes of the entire cluster.
 The mkzone command is only supported on Linux ( No AIX support).
-The nodes are not updated with the new root ssh keys by mkzone.  You must run updatenode -k  or xdsh -K to the nodes to update the root ssh keys to the new generated zone keys. This will also sync any service nodes with the zone keys, if you have a hierarchical cluster.   
+The nodes are not updated with the new root ssh keys by mkzone.  You must run updatenode -k  or xdsh -K to the nodes to update the root ssh keys to the new generated zone keys. This will also sync any service nodes with the zone keys, if you have a hierarchical cluster.
 Note: if any zones in the zone table, there must be one and only one defaultzone. Otherwise, errors will occur.
 
 
@@ -65,7 +65,7 @@ Note: if any zones in the zone table, there must be one and only one defaultzone
  if --defaultzone is input, then it will set the zone defaultzone attribute to yes; otherwise it will set to no.
  if --defaultzone is input and another zone is currently the default,
  then the -f flag must be used to force a change to the new defaultzone.
- If -f flag is not use an error will be returned and no change made. 
+ If -f flag is not use an error will be returned and no change made.
  Note: if any zones in the zone table, there must be one and only one defaultzone. Otherwise, errors will occur.
  
 
@@ -97,7 +97,7 @@ Note: if any zones in the zone table, there must be one and only one defaultzone
  
 
 
-\ **-V | -**\ **-Verbose**\ 
+\ **-V | -**\ **-verbose**\ 
  
  Verbose mode.
  

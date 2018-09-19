@@ -21,7 +21,7 @@ Name
 
 \ **rinstall**\  \ *noderange*\  [\ **boot**\  | \ **shell**\  | \ **runcmd=**\ \ *command*\ ] [\ **-c | -**\ **-console**\ ] [\ **-V | -**\ **-verbose**\ ]
 
-\ **rinstall**\  \ *noderange*\  \ **osimage**\ [=\ *imagename*\ ] [\ **-**\ **-ignorekernelchk**\ ] [\ **-c | -**\ **-console**\ ] [\ **-u | -**\ **-uefimode**\ ] [\ **-V | -**\ **-verbose**\ ]
+\ **rinstall**\  \ *noderange*\  \ **osimage**\ [=\ *imagename*\ ] [\ **-**\ **-noupdateinitrd**\ ][\ **-**\ **-ignorekernelchk**\ ] [\ **-c | -**\ **-console**\ ] [\ **-u | -**\ **-uefimode**\ ] [\ **-V | -**\ **-verbose**\ ]
 
 \ **rinstall**\  \ *noderange*\  \ **runimage=**\ \ *task*\ 
 
@@ -55,6 +55,12 @@ If \ **-c**\  is specified, it will then run \ **rcons**\  on the node. This is 
 \ **osimage**\ [=\ *imagename*\ ]
  
  Prepare server for installing a node using the specified OS image. The OS image is defined in the \ *osimage*\  table and \ *linuximage*\  table. If the \ *imagename*\  is omitted, the OS image name will be obtained from \ *nodetype.provmethod*\  for the node.
+ 
+
+
+\ **-**\ **-noupdateinitrd**\ 
+ 
+ Skip the rebuilding of initrd when the 'netdrivers', 'driverupdatesrc' or 'osupdatename' were set for injecting new drivers to initrd. But, the \ **geninitrd**\  command should be run to rebuild the initrd for new drivers injecting. This is used to improve the performance of \ **rinstall**\  command.
  
 
 

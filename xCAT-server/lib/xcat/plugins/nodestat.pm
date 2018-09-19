@@ -111,7 +111,7 @@ sub getstat {
 
 =head3  preprocess_request
 
-  Check and setup for hierarchy 
+  Check and setup for hierarchy
 
 =cut
 
@@ -1233,7 +1233,7 @@ sub usage
     Arguments:
        none.
     Returns:
-       a hash that has settings from the monsetting table for node status and 
+       a hash that has settings from the monsetting table for node status and
        app status monitoring. For example:
        (  'APPS'=>[ll,gpfs],
           'll' =>
@@ -1296,15 +1296,15 @@ sub getStatusMonsettings {
     Arguments:
        nodelist--- an array of nodes
     Returns:
-       a hash pointer that has the node status and appstatus. The format is: 
+       a hash pointer that has the node status and appstatus. The format is:
           { node1=> {
                      status=>'active',appstatus=>'sshd=up,ll=up,gpfs=down'
-                   } , 
+                   } ,
             node2=> {
                      status=>'active',appstatus=>'sshd=up,ll=down,gpfs=down'
-                   } 
+                   }
            }
-           
+
 =cut
 
 #--------------------------------------------------------------------------------

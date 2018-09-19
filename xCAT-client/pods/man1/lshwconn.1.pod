@@ -18,7 +18,7 @@ B<lshwconn> I<noderange> B<-T> I<tooltype>
 
 =head1 DESCRIPTION
 
-This command is used to display the connection status for CEC and Frame node. 
+This command is used to display the connection status for CEC and Frame node.
 
 =head1 OPTIONS
 

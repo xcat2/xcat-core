@@ -66,7 +66,7 @@ sub process_request
       )
     {
         xCAT::MsgUtils->message("S", "Received syncfiles from $client, with invalid options @ARGV");
-        return;    
+        return;
     }
 
     if ($options{'node-rcp'}){
@@ -125,7 +125,7 @@ sub syncfiles {
         # call the xdcp plugin to handle the syncfile operation
         my $args = [ "-F", "$synclistfile"];
         if($::RCP){
-            push @$args,"-r"; 
+            push @$args,"-r";
             push @$args, "$::RCP";
         }
         my $env = ["DSH_RSYNC_FILE=$synclistfile"];

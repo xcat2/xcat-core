@@ -81,7 +81,7 @@ Command Protocol can be used. See man \ **xdsh**\  for more details.
 \ **-p | -**\ **-tp**\  \ *template path*\ 
  
  This is the path to the template file. The template contains the output
- of \ **xdsh**\  or \ **rinv**\  command, that has been run against a "seed" node, a node 
+ of \ **xdsh**\  or \ **rinv**\  command, that has been run against a "seed" node, a node
  that contains the configuration that you would like all nodes in your noderange to match.
  
  The admin can create the template by running the \ **xdsh**\  or \ **rinv**\  command on
@@ -90,8 +90,8 @@ Command Protocol can be used. See man \ **xdsh**\  for more details.
  
  \ **Note:**\  The admin can also edit the template to remove any lines that they do not want checked.
  
- An alternative method is to use the [\ **-s**\  \ *seed node*\ ] parameter, 
- which will automatically build the template for you from the 
+ An alternative method is to use the [\ **-s**\  \ *seed node*\ ] parameter,
+ which will automatically build the template for you from the
  seed node named.
  
  If a a seed node is not provided, then command will automatically use the first node in the noderange as
@@ -103,15 +103,15 @@ Command Protocol can be used. See man \ **xdsh**\  for more details.
  
  This count is the number of templates that the command will use
  to check for nodes matches.  If the template in the template path does not
- match a node, the \ **sinv**\  will check additional templates up 
+ match a node, the \ **sinv**\  will check additional templates up
  to the template count.
  
- For each node, it will compare the node against each template to see if 
- there is a match.  
+ For each node, it will compare the node against each template to see if
+ there is a match.
  If there is no match, and we are not over the template count,
- then a new template will be created from the node output. 
+ then a new template will be created from the node output.
  This will result in having all nodes that match a given template reported in
- their group at the end of the run in the output file. 
+ their group at the end of the run in the output file.
  If no template count is specified, 0 is the default, and all nodes will
  be compared against the first template.
  
@@ -133,7 +133,7 @@ Command Protocol can be used. See man \ **xdsh**\  for more details.
  This flag suppresses the reporting of the nodes matching the first
  template. In very large systems, you may not want to show the nodes that
  have the correct configuration, since the list could contain thousands of nodes.
- This allows you to only report the nodes that do not match the required 
+ This allows you to only report the nodes that do not match the required
  configuration.
  
 
@@ -141,15 +141,15 @@ Command Protocol can be used. See man \ **xdsh**\  for more details.
 \ **-e | -**\ **-exactmatch**\ 
  
  This requires the check of node output against template to be an exact match.
- If this flag is not set, \ **sinv**\  checks to see if the return from the 
- \ **xdsh**\  or \ **rinv**\  command to the nodes contain a match for each line in the input 
+ If this flag is not set, \ **sinv**\  checks to see if the return from the
+ \ **xdsh**\  or \ **rinv**\  command to the nodes contain a match for each line in the input
  template (except for xdshcoll header and comments). If not in exactmatch mode,
  there can be more lines in the \ **xdsh**\  or \ **rinv**\  return from the nodes.
  
- For example, if running a "rpm -qa | grep xCAT" command, without exactmatch 
+ For example, if running a "rpm -qa | grep xCAT" command, without exactmatch
  set, if the node contains more xCAT rpms that listed in the template,
  it would be considered a match, as long as all rpms listed in the template
- were on the node. With exactmatch set, the output must be identical 
+ were on the node. With exactmatch set, the output must be identical
  to the template.
  
 
@@ -180,7 +180,7 @@ Command Protocol can be used. See man \ **xdsh**\  for more details.
 
 \ **-c | -**\ **-command**\ 
  
- The \ **xdsh**\  or \ **rinv**\  command that will be run. The command should be enclosed in 
+ The \ **xdsh**\  or \ **rinv**\  command that will be run. The command should be enclosed in
  double quotes to insure correct shell interpretation. This parameter must only contain, the node range or the image path (Linux) or spot name for AIX. It cannot be used to set additional input flags to \ **xdsh**\  or \ **rinv**\  (for example \ **-s**\ ,\ **-T**\ ,\ **-e**\ ).  See examples below.
  
  \ **Note:**\  do not add the \ **| xdshcoll**\  to the command,
@@ -190,7 +190,7 @@ Command Protocol can be used. See man \ **xdsh**\  for more details.
 
 \ **-f | -**\ **-file**\ 
  
- The file containing the \ **xdsh**\  or \ **rinv**\  command that will be run. 
+ The file containing the \ **xdsh**\  or \ **rinv**\  command that will be run.
  This should be the fully qualified name of the file.
  
  \ **Note:**\  do not add the \ **| xdshcoll**\  to the command in the file,
@@ -224,7 +224,7 @@ Command Protocol can be used. See man \ **xdsh**\  for more details.
  
 
 
-\ **-V | -**\ **-Verbose**\ 
+\ **-V | -**\ **-verbose**\ 
  
  Verbose mode.
  

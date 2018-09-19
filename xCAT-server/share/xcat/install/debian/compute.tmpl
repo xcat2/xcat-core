@@ -32,7 +32,7 @@ d-i mirror/http/proxy string
 # Suite to use for loading installer components (optional).
 #d-i mirror/udeb/suite string testing
 #d-i mirror/suite string feisty
- 
+
 
 ### Partitioning
 # This creates a small /boot partition, suitable
@@ -68,7 +68,7 @@ d-i partman/confirm boolean true
 d-i partman/confirm_nooverwrite boolean true
 
 
-### Account setup 
+### Account setup
 
 d-i passwd/root-login boolean true
 d-i passwd/make-user boolean false
@@ -120,7 +120,7 @@ xserver-xorg xserver-xorg/config/monitor/mode-list \
 
 d-i preseed/early_command string wget http://#TABLE:noderes:$NODE:nfsserver#/install/autoinst/#TABLE:nodelist:THISNODE:node#.pre; \
      chmod u+x #TABLE:nodelist:THISNODE:node#.pre; \
-     ./#TABLE:nodelist:THISNODE:node#.pre 
+     ./#TABLE:nodelist:THISNODE:node#.pre
 
 d-i preseed/late_command string wget http://#TABLE:noderes:$NODE:nfsserver#/install/autoinst/#TABLE:nodelist:THISNODE:node#.post; \
      chmod u+x #TABLE:nodelist:THISNODE:node#.post; \

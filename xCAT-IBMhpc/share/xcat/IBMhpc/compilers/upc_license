@@ -1,6 +1,6 @@
 #!/bin/sh
 
-# 
+#
 # Sample script to accept licenses for the IBM upc compilers
 # For AIX:
 #    do nothing, license accepted with installp -Y flag
@@ -27,6 +27,6 @@ if [ $OS != "AIX" ]; then
            echo 1 | chroot $installroot /$upc_script
        fi
     fi
-fi  
+fi
 
 

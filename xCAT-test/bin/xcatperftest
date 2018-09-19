@@ -9,7 +9,7 @@
 #     generate n*250 fake nodes based on a predefined template (/opt/xcat/share/xcat/templates/objects/node/),
 #     and then run the performance testing on a batch of xCAT commands.
 #
-#     Note: It is availabe for the commands which require management node only. 
+#     Note: It is availabe for the commands which require management node only.
 #
 # Syntax:
 #       $prog <total> [command-list-file]
@@ -110,13 +110,13 @@ if [ "$PERF_RUN_WITH_ENV" = "1" ];then
   FAKE_NODE_TOTAL=`nodels|wc -l`
 fi
 
-# Optional, the prefix of the fake compute node name. 
+# Optional, the prefix of the fake compute node name.
 # By default, it is 'fake' but it could be changed when you set environment variable `FAKE_NODE_PREFIX`
 if [ -z $FAKE_NODE_PREFIX ]; then
   FAKE_NODE_PREFIX='fake'
 fi
 
-# Optional, the group name of all the fake compute nodes. 
+# Optional, the group name of all the fake compute nodes.
 # By default, it is 'perftest' but it could be changed when you set environment variable `FAKE_NODE_GROUP`
 if [ -z $FAKE_NODE_GROUP ]; then
   FAKE_NODE_GROUP='perftest'
@@ -250,7 +250,7 @@ getOSimage()
   # The OS image name used in nodeset to replace the MACRO Variable `#OSIMAGE#`.
   # By default, it could be detectd automatically according to the arch
   if [ -z $PERF_OSIMAGE ]; then
-    
+
     # covert it to an array
     osimage_array=($(lsdef -t osimage 2>/dev/null| grep `arch`|grep 'install'|awk '/compute/ {print $1}'))
     index=`expr $RANDOM % ${#osimage_array[@]} 2>/dev/null`
@@ -287,7 +287,7 @@ runTest()
   if [[ $cmd =~ '#STANZ#' ]]; then
     #mkdef -z
     execCmd "${cmd/\#STANZ\#/$PERFORMANCE_STANZ}" "$FAKE_NODE_TOTAL"
-  
+
   elif [[ $cmd =~ '#NODES#' ]]; then
     #noderange operation
     if [ -z "$2" ]; then
@@ -295,7 +295,7 @@ runTest()
       execCmd "${cmd/\#NODES\#/$FAKE_NODE_GROUP}" "$FAKE_NODE_TOTAL"
     else
       # run the command for each number in SERIES
-      for num in $2   
+      for num in $2
       do
         isNumber $num || continue
         if [[ $num -le $FAKE_NODE_TOTAL ]]; then

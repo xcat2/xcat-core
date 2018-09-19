@@ -76,7 +76,7 @@ do
             MYCONT=`grep MASTER /xcatpost/mypostscript`
          done
 
-            
+
          chmod 700 /xcatpost/mypostscript
 			GOTIT=1
 			break
@@ -127,8 +127,8 @@ run_ps () {
  if [ -z \"\$scriptype\" ]; then
   scriptype=\"postscript\"
  fi
- 
- if [ -f \$1 ]; then 
+
+ if [ -f \$1 ]; then
   echo "\"\`date\` Running \$scriptype: \$1\"" | tee -a \$logfile
   #./\$@ 2>&1 1> /tmp/tmp4xcatlog
   #cat /tmp/tmp4xcatlog | tee -a \$logfile
@@ -142,7 +142,7 @@ run_ps () {
 " > /xcatpost/mypostscript
 echo "$TMP" >> /xcatpost/mypostscript
 TMP=`sed "/postbootscripts-start-here/,/postbootscripts-end-here/ s/\(.*\)/run_ps postbootscript \1/;s/run_ps postbootscript\s*#/#/;s/run_ps postbootscript\s*$//" /xcatpost/mypostscript`
-echo "$TMP" > /xcatpost/mypostscript 
+echo "$TMP" > /xcatpost/mypostscript
 
 
 
@@ -150,7 +150,7 @@ TMP=`sed "/postscripts-start-here/,/postscripts-end-here/ d" /xcatpost/mypostscr
 echo "$TMP" > /xcatpost/mypostscript.post
 chmod 755 /xcatpost/mypostscript.post
 
-#create the post init 
+#create the post init
 cat >/etc/init.d/xcatpostinit1 << 'EOF'
 #INCLUDE:#TABLE:site:key=installdir:value#/postscripts/xcatpostinit1#
 EOF
@@ -171,7 +171,7 @@ chmod 755 /opt/xcat/xcatinstallpost
 
 chkconfig --add xcatpostinit1
 
-#create the dskls post 
+#create the dskls post
 cat >/opt/xcat/xcatdsklspost << 'EOF'
 #INCLUDE:#TABLE:site:key=installdir:value#/postscripts/xcatdsklspost#
 EOF

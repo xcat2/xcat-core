@@ -29,7 +29,7 @@ DESCRIPTION
 ***********
 
 
-\ **makehosts**\  updates the /etc/hosts file based on information stored in the 
+\ **makehosts**\  updates the /etc/hosts file based on information stored in the
 xCAT database object definitions.
 
 The main three bits of information needed are: node hostname, node ip and network domain name.

@@ -227,7 +227,7 @@ sub get_latest_version_deb
 
 =head3    find_latest_pkg
 
-          Find the latest rpm package give the rpm name and a list of 
+          Find the latest rpm package give the rpm name and a list of
                  possible package locations.
 
         Arguments:
@@ -325,7 +325,7 @@ sub find_latest_pkg
 
 =head3    find_latest_pkg_deb
 
-          Find the latest deb package give the deb name and a list of 
+          Find the latest deb package give the deb name and a list of
                  possible package locations.
 
         Arguments:
@@ -432,7 +432,7 @@ sub find_latest_pkg_deb
         Example:
 
         Comments:
-                The return value is generated with the Require query 
+                The return value is generated with the Require query
 
 =cut
 
@@ -733,7 +733,7 @@ sub CheckVersion
 #-------------------------------------------------------------------------------
 
 =head3  osver
-        Returns the os and version of the System you are running on 
+        Returns the os and version of the System you are running on
     Arguments:
       none
     Returns:
@@ -898,7 +898,7 @@ sub release_lock {
 
 #-------------------------------------------------------------------------------
 
-=head3   get_unique_members 
+=head3   get_unique_members
     Description:
         Return an array which have unique members
 

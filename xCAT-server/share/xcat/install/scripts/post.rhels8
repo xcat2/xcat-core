@@ -15,6 +15,9 @@ do
             msgutil_r "$MASTER_IP" "info" "set NIC $nicname to be activated on system boot" "/var/log/xcat/xcat.log"
             ;;
 	esac
-        sed -i 's/ONBOOT=no/ONBOOT=yes/' "$i" 
+        sed -i 's/ONBOOT=no/ONBOOT=yes/' "$i"
     fi
 done
+
+# Dirty hack for RHEL8 Alpha
+chkconfig network on

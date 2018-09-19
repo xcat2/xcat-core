@@ -16,7 +16,7 @@ For Driver Update Disk
 .. include:: ../../../common/deployment/driver_update_disk.rst
      :start-after: BEGIN_locate_driver_for_DUD
      :end-before: END_locate_driver_for_DUD
-	 
+	
 For Driver RPM Packages
 ```````````````````````
 
@@ -33,14 +33,14 @@ For Driver Update Disk
 .. include:: ../../../common/deployment/driver_update_disk.rst
      :start-after: BEGIN_inject_into_initrd__for_diskful_for_DUD
      :end-before: END_inject_into_initrd__for_diskful_for_DUD
-	 
+	
 For Driver RPM Packages
 ```````````````````````
 
 .. include:: ../../../common/deployment/driver_update_disk.rst
      :start-after: BEGIN__inject_into_initrd__for_diskful_for_RPM
      :end-before: END_inject_into_initrd__for_diskful_for_RPM
-	 
+	
 Notes
 -----
 
@@ -48,4 +48,4 @@ Notes
      :start-after: BEGIN_node
      :end-before: END_node
 
-	 
+	

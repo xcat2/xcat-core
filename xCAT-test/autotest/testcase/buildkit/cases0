@@ -2,12 +2,12 @@ start:buildkit_v
 os:Linux
 cmd:buildkit -v
 check:rc==0
-check:output=~xcat-buildkit
+check:output=~x[cC][aA][tT]-buildkit
 check:output=~kitframework
 check:output=~compatible_frameworks
 cmd:buildkit --version
 check:rc==0
-check:output=~xcat-buildkit
+check:output=~x[cC][aA][tT]-buildkit
 check:output=~kitframework
 check:output=~compatible_frameworks
 end
@@ -223,7 +223,7 @@ cmd:cd /opt/xcat/share/xcat/tools/autotest/testcase/buildkit/prodkit;reponame=`c
 check:rc==0
 check:output=~been removed
 check:output!~error
-cmd:ls /opt/xcat/share/xcat/tools/autotest/testcase/buildkit/prodkit/build/kit_repodir|grep ubuntu 
+cmd:ls /opt/xcat/share/xcat/tools/autotest/testcase/buildkit/prodkit/build/kit_repodir|grep ubuntu
 check:output!~ubuntu
 cmd:cd -;rm -rf /opt/xcat/share/xcat/tools/autotest/testcase/buildkit/prodkit
 end

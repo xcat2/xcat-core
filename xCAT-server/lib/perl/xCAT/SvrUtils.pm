@@ -23,12 +23,12 @@ our @EXPORT_OK = qw/sendmsg/;
 
 
 =head3   getNodesetStates
-       get current nodeset stat for the given nodes 
+       get current nodeset stat for the given nodes
     Arguments:
         nodes -- a pointer to an array of nodes
-        hashref -- A pointer to a hash that contains the nodeset status.  
+        hashref -- A pointer to a hash that contains the nodeset status.
     Returns:
-       (ret code, error message) 
+       (ret code, error message)
 
 =cut
 
@@ -174,7 +174,7 @@ sub getNodesetStates
     Arguments:
         nodes -- node name.
     Returns:
-       nodesetstate 
+       nodesetstate
 
 =cut
 
@@ -649,7 +649,7 @@ sub get_imgcapture_exlist_file_name {
 	ospkgdir
 	osdistroname
     Returns:
-        an array (retcode, errmsg). The first one is the return code. If 0, it means succesful. 
+        an array (retcode, errmsg). The first one is the return code. If 0, it means succesful.
 
 =cut
 
@@ -1079,7 +1079,7 @@ sub update_tables_with_mgt_image
         mode
         ospkgdir
     Returns:
-        an array (retcode, errmsg). The first one is the return code. If 0, it means succesful. 
+        an array (retcode, errmsg). The first one is the return code. If 0, it means succesful.
 
 =cut
 
@@ -1684,7 +1684,7 @@ sub sendmsg {
     Arguments:
         nodes: The nodes list in an array reference
     Returns:
-        depset: dependencies hash reference 
+        depset: dependencies hash reference
     Globals:
         none
     Error:
@@ -1908,7 +1908,7 @@ sub handle_deps()
 
 #-------------------------------------------------------------------------------
 
-=head3   parseosver 
+=head3   parseosver
     parse osver to osdistribution base name,majorversion,minorversion
     Returns:
        list (osdistribution base name, majorversion,minorversion)
@@ -1940,13 +1940,13 @@ sub parseosver
 
 =head3 update_osdistro_table
        This function is called after copycds. It will update the osdistro table with
-       given osver and arch 
+       given osver and arch
     Arguments:
         osver
         arch
         ospkgdir
     Returns:
-        an array (retcode, errmsg). The first one is the return code. If 0, it means succesful. 
+        an array (retcode, errmsg). The first one is the return code. If 0, it means succesful.
 
 =cut
 
@@ -2042,7 +2042,7 @@ sub update_osdistro_table
 
 =head3 getpostbootscripts
     Get the  the postbootscript list for the Linux nodes as defined in
-    the osimage table postbootscripts attribute 
+    the osimage table postbootscripts attribute
 
     Arguments:
       $nodes - array of nodes
@@ -2187,7 +2187,7 @@ sub getplatform {
 #        on fail:    undef
 #--------------------------------------------------------------------------------------------------------
 sub searchcompressedrootimg{
-    my $rootimgdir = shift;   
+    my $rootimgdir = shift;
     if (($rootimgdir) && ($rootimgdir =~ /xCAT::SvrUtils/)) {
         $rootimgdir = shift;
     }

@@ -2,11 +2,11 @@
 <!DOCTYPE profile>
 <profile xmlns="http://www.suse.com/1.0/yast2ns" xmlns:config="http://www.suse.com/1.0/configns">
 
-  <!-- The dasd attached to the virtual server -->  
+  <!-- The dasd attached to the virtual server -->
   <dasd>
     <devices config:type="list">
 
-      <!-- Dasd attached at 0100 --> 
+      <!-- Dasd attached at 0100 -->
       <listentry>
         <bus>None</bus>
         <bus_hwcfg>none</bus_hwcfg>
@@ -46,8 +46,8 @@
       </listentry>
     </devices>
   </dasd>
-  
-  
+
+
   <general>
     <mode>
       <confirm config:type="boolean">false</confirm>
@@ -57,8 +57,8 @@
     </mouse>
     <signature-handling/>
   </general>
-  
-  
+
+
   <!-- Groups to create on Linux -->
   <groups config:type="list">
     <group>
@@ -241,8 +241,8 @@
       <userlist></userlist>
     </group>
   </groups>
-  
-  
+
+
   <!-- Contents of /etc/hosts -->
   <host>
     <hosts config:type="list">
@@ -260,21 +260,21 @@
       </hosts_entry>
     </hosts>
   </host>
-    
+
 
   <iscsi-client>
     <initiatorname></initiatorname>
     <targets config:type="list"/>
     <version>1.0</version>
   </iscsi-client>
-  
+
 
   <!-- Language setup (english) -->
   <language>
     <language>en_US</language>
     <languages></languages>
   </language>
-  
+
 
   <!-- Networking setup (DHCP) -->
   <networking>
@@ -334,8 +334,8 @@
       </routes>
     </routing>
   </networking>
-  
-  
+
+
   <nis>
     <nis_broadcast config:type="boolean">false</nis_broadcast>
     <nis_broken_server config:type="boolean">false</nis_broken_server>
@@ -349,11 +349,11 @@
     <start_autofs config:type="boolean">false</start_autofs>
     <start_nis config:type="boolean">false</start_nis>
   </nis>
-  
-  
+
+
   <!-- File system partitioning -->
   <partitioning config:type="list">
-  
+
     <!-- Root partition -->
     <drive>
       <device>/dev/dasda</device>
@@ -384,8 +384,8 @@
       <use>all</use>
     </drive>
   </partitioning>
-    
-  
+
+
   <proxy>
     <enabled config:type="boolean">false</enabled>
     <ftp_proxy></ftp_proxy>
@@ -395,8 +395,8 @@
     <proxy_password></proxy_password>
     <proxy_user></proxy_user>
   </proxy>
-  
-  
+
+
   <report>
     <errors>
       <log config:type="boolean">true</log>
@@ -419,13 +419,13 @@
       <timeout config:type="integer">0</timeout>
     </yesno_messages>
   </report>
-  
-  
+
+
   <runlevel>
     <default>5</default>
   </runlevel>
-  
-  
+
+
   <!-- Software to install on Linux -->
   <software>
     <patterns config:type="list">
@@ -435,15 +435,15 @@
       replace_software_packages
     </packages>
   </software>
-  
-  
+
+
   <!-- Time zone -->
   <timezone>
     <hwclock>UTC</hwclock>
     <timezone>US/Eastern</timezone>
   </timezone>
-  
-  
+
+
   <user_defaults>
     <expire></expire>
     <group>100</group>
@@ -453,8 +453,8 @@
     <shell>/bin/bash</shell>
     <skel>/etc/skel</skel>
   </user_defaults>
-  
-  
+
+
   <!-- Users on Linux -->
   <users config:type="list">
     <user>
@@ -760,13 +760,13 @@
       <username>sshd</username>
     </user>
   </users>
-  
-  
+
+
   <zfcp>
     <devices config:type="list"/>
   </zfcp>
-  
-  
+
+
   <!-- Scripts (post-script) -->
   <configure>
     <scripts>

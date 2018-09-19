@@ -43,7 +43,7 @@ sub handled_commands
 =head3  preprocess_request
 
   Check and setup for hierarchy , if your command must run
-  on service nodes. Otherwise preprocess_request not necessary   
+  on service nodes. Otherwise preprocess_request not necessary
 
 =cut
 
@@ -120,7 +120,7 @@ sub process_request
         !GetOptions(
             'h|help'    => \$options{'help'},
             'v|version' => \$options{'version'},
-            'V|Verbose' => \$options{'verbose'}
+            'V|verbose' => \$options{'verbose'}
         )
       )
     {

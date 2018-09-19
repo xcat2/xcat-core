@@ -1,7 +1,7 @@
-bash 
+bash
 nfs-utils
 openssl
-dhcpcd 
+dhcpcd
 kernel-smp
 openssh
 procps

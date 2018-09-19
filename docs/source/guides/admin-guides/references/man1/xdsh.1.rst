@@ -43,7 +43,7 @@ The \ **xdsh**\  command runs commands in parallel on remote nodes and/or the Ma
 remote shell command for each target specified, and returns the output
 from all targets,
 formatted so that command results  from  all  nodes  can  be  managed.
-If the command is to be executed  on the Management Node, it does not use a remote shell command, but uses the local OS copy or shell command. The Management Node must be defined in the xCAT database. The best way to do this is to use the xcatconfig -m option. 
+If the command is to be executed  on the Management Node, it does not use a remote shell command, but uses the local OS copy or shell command. The Management Node must be defined in the xCAT database. The best way to do this is to use the xcatconfig -m option.
 The \ **xdsh**\  command is an xCAT Distributed Shell Utility.
 
 \ **COMMAND**\  \ **SPECIFICATION**\ :
@@ -197,11 +197,11 @@ running commands, are terminated (SIGTERM).
 \ **-c | -**\ **-cleanup**\ 
  
  This flag will have xdsh remove all files from the subdirectories of the
- the directory on the servicenodes, where xdcp stages the copy to the 
+ the directory on the servicenodes, where xdcp stages the copy to the
  compute nodes as defined in the site table SNsyncfiledir and nodesyncfiledir
  attribute, when the target is a service node.
  
- It can also be used to remove the nodesyncfiledir directory on the compute 
+ It can also be used to remove the nodesyncfiledir directory on the compute
  nodes, which keeps the backup copies of files for the xdcp APPEND function
  support, if a compute node is the target.
  
@@ -232,14 +232,14 @@ running commands, are terminated (SIGTERM).
  of relevant device configuration file. The devicetype value must
  correspond to a valid device configuration file.
  xCAT ships some default configuration files
- for Ethernet switches and and IB switches under 
+ for Ethernet switches and and IB switches under
  \ */opt/xcat/share/xcat/devicetype*\  directory. If you want to overwrite
  any of the configuration files, copy them to \ */var/opt/xcat/*\ 
- directory and cutomize. 
+ directory and cutomize.
  For example, \ *base/IBSwitch/Qlogic/config*\  is the configuration
  file location if devicetype is specified as IBSwitch::Qlogic.
- xCAT will first search config file using \ */var/opt/xcat/*\  as the base. 
- If not found, it will search for it using  
+ xCAT will first search config file using \ */var/opt/xcat/*\  as the base.
+ If not found, it will search for it using
  \ */opt/xcat/share/xcat/devicetype/*\  as the base.
  
 
@@ -259,11 +259,11 @@ running commands, are terminated (SIGTERM).
 \ **-i | -**\ **-rootimg**\  \ *install image*\ 
  
  For Linux, Specifies the path to the install image on the local node.
- For AIX, specifies the name of the osimage on the local node. Run lsnim 
+ For AIX, specifies the name of the osimage on the local node. Run lsnim
  for valid names.
  xdsh will chroot (xcatchroot for AIX) to this path and run the xdsh command against the
- install image.  No other xdsh flags, environment variables apply with 
- this input.  A noderange is not accepted. Only runs on the local host, 
+ install image.  No other xdsh flags, environment variables apply with
+ this input.  A noderange is not accepted. Only runs on the local host,
  normally the Management Node. The command you run must not prompt for input, the prompt will not be returned to you, and it will appear that \ **xdsh**\  hangs.
  
 
@@ -284,7 +284,7 @@ running commands, are terminated (SIGTERM).
  The non-root users public ssh keys and root's public ssh keys will be put in
  the authorized_keys\* files under the non-root users .ssh directory on the node(s).
  Other device types, such as IB switch, are also supported.  The
- device should be defined as a node and nodetype should be defined 
+ device should be defined as a node and nodetype should be defined
  as switch before connecting.
  The \ **xdsh -K**\  command must be run from the Management Node.
  
@@ -362,12 +362,12 @@ running commands, are terminated (SIGTERM).
  Adding the \ **-**\ **-sudo**\  flag to the xdsh command will have xdsh run sudo before
  running the command.  This is particular useful when using the \ **-e**\  option.
  This is required when you input \ **-l**\  with a non-root user id and want that id
- to be able to run as root on the node.  The non-root userid will must be 
+ to be able to run as root on the node.  The non-root userid will must be
  previously defined as an xCAT user, see process for defining non-root ids in
- xCAT and setting up for using xdsh.  The userid sudo setup will have 
+ xCAT and setting up for using xdsh.  The userid sudo setup will have
  to be done by the admin on the node.  This includes, allowing all commands that
  you would like to run with xdsh by using visudo to edit the /etc/sudoers file.
- You must disabl ssh tty requirements by commenting out or removing this line in the /etc/sudoes file "#Defaults    requiretty". 
+ You must disabl ssh tty requirements by commenting out or removing this line in the /etc/sudoes file "#Defaults    requiretty".
  See the document Granting_Users_xCAT_privileges for sudo setup requirements.
  This is not supported in a hierarical cluster, that is the nodes are serviced by servicenodes.
  
@@ -381,7 +381,7 @@ running commands, are terminated (SIGTERM).
  displays an error and terminates execution for the remote
  targets  that  failed to respond. If \ *timeout*\  is not specified,
  \ **xdsh**\  waits indefinitely to continue processing output  from
- all  remote  targets. The exception is the \ **-K**\  flag which defaults 
+ all  remote  targets. The exception is the \ **-K**\  flag which defaults
  to 10 seconds.
  
 
@@ -633,7 +633,7 @@ environment variable except the DSH_NODE_OPTS, enter:
  
 
 
-6. To run on Linux, the xdsh command "rpm -qa | grep xCAT" 
+6. To run on Linux, the xdsh command "rpm -qa | grep xCAT"
 on the service node fedora9 diskless image, enter:
  
  
@@ -666,7 +666,7 @@ on the service node fedora9 diskless image, enter:
 
 9.
  
- To define the QLogic IB switch as a node and to set up the SSH keys for IB switch 
+ To define the QLogic IB switch as a node and to set up the SSH keys for IB switch
  \ **qswitch**\  with device configuration file
  \ **/var/opt/xcat/IBSwitch/Qlogic/config**\  and user name \ **username**\ , enter
  
@@ -690,7 +690,7 @@ on the service node fedora9 diskless image, enter:
  
 
 
-11. To define the Mellanox switch as a node and run a command to show the ssh keys. 
+11. To define the Mellanox switch as a node and run a command to show the ssh keys.
 \ **mswitch**\  with and user name \ **username**\ , enter
  
  

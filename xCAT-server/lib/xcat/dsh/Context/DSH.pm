@@ -24,13 +24,13 @@ our $nodegroup_path = $ENV{'DSH_NODEGROUP_PATH'};
         Returns:
         	A reference to a hash table with the configured
         	default properties for the DSH context
-                
+
         Globals:
         	None
-    
+
         Error:
         	None
-    
+
         Example:
         	$default_properties = DSH->config_defaults;
 
@@ -84,13 +84,13 @@ sub context_defaults {
         Returns:
         	A reference to a hash table of user-configured properties for
         	the DSH context.
-                
+
         Globals:
         	None
-    
+
         Error:
         	None
-    
+
         Example:
         	$properties = DSH->config_properties
 
@@ -152,13 +152,13 @@ sub context_properties {
 
         Returns:
         	An array of node group names
-                
+
         Globals:
         	$nodegroup_path
-    
+
         Error:
         	None
-    
+
         Example:
         	@nodegroups = DSH->all_nodegroups;
 
@@ -193,13 +193,13 @@ sub all_nodegroups {
 
         Returns:
         	An array of node group members
-                
+
         Globals:
         	$nodegroup_path
-    
+
         Error:
         	None
-    
+
         Example:
         	$members = DSH->nodegroup_members('MyGroup1');
 
@@ -247,13 +247,13 @@ sub nodegroup_members {
 
         Returns:
         	An array of node names
-                
+
         Globals:
         	$nodegroup_path
-    
+
         Error:
         	None
-    
+
         Example:
         	@nodes = DSH->all_nodes;
 
@@ -339,13 +339,13 @@ sub all_nodes {
 
         Returns:
         	A reference to an array of target names
-                
+
         Globals:
         	None
-    
+
         Error:
         	None
-    
+
         Example:
         	DSH->read_target_file('/tmp/target_file');
 
@@ -394,13 +394,13 @@ sub read_target_file {
 
         Returns:
         	None
-                
+
         Globals:
         	None
-    
+
         Error:
         	None
-    
+
         Example:
         	DSH->read_target_file('/tmp/target_file');
 

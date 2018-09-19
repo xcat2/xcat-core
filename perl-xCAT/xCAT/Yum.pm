@@ -16,7 +16,7 @@ sub localize_yumrepo {
     my $pkgdir = shift;
     $distname=shift;
     $arch=shift;
-    
+
     mkpath("$distrepopfx/$pkgdir");
     open($yumrepofile, ">", "$distrepopfx/$pkgdir/local-repository.tmpl");
     my %options = (

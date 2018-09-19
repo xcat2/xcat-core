@@ -17,8 +17,8 @@ renderfarms, online gaming infrastructure, and whatever tomorrows next buzzword 
 
 You've reached xCAT documentation site, The main page product page is http://xcat.org
 
-**xCAT** is an open source project hosted on `GitHub <https://github.com/xcat2/xcat-core/>`_. 
-Go to GitHub to view the source, open issues, ask questions, and participate in the project. 
+**xCAT** is an open source project hosted on `GitHub <https://github.com/xcat2/xcat-core/>`_.
+Go to GitHub to view the source, open issues, ask questions, and participate in the project.
 
 Enjoy!
 

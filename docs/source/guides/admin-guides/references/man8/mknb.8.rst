@@ -29,7 +29,7 @@ DESCRIPTION
 
 The \ **mknb**\  command is run by xCAT automatically when xCAT is installed on the management node.
 It creates a network boot root image (used for node discovery, BMC programming, and flashing)
-for the same architecture that the management node is.  So you normally do not need to run the 
+for the same architecture that the management node is.  So you normally do not need to run the
 \ **mknb**\  command yourself.
 
 If you make custom changes to the network boot root image, you will need to run \ **mknb**\  again to regenerate the diskless image to include your changes.  If you have an xCAT Hierarchical Cluster with Service Nodes having local /tftpboot directories (site.sharedtftp=0), you will need to copy the generated root image to each Service Node.
@@ -56,11 +56,11 @@ RETURN VALUE
 
 
 
-0.  The command completed successfully.
+0. The command completed successfully.
 
 
 
-1.  An error has occurred.
+1. An error has occurred.
 
 
 

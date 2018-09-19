@@ -3,7 +3,7 @@ from __future__ import print_function
 
 import yaml
 import json
-import os 
+import os
 import re
 import sys
 import shutil
@@ -69,15 +69,15 @@ def GetAttrInFile(fpath,objtype,objname,attrpath):
 def compattr(exptattr,rawattr):
     if isinstance(exptattr,list) and re.match(r'^\[.*\]$',rawattr):
         rawattr=eval(rawattr)
-    if isinstance(rawattr,str): 
+    if isinstance(rawattr,str):
         if rawattr in exptattr:
             return 0
         else:
             return 1
     else:
         return cmp(exptattr,rawattr)
-     
-        
+
+
 
 def runCommand(cmd, env=None):
     """ Run one command only, when you don't want to bother setting up
@@ -98,8 +98,8 @@ def runCommand(cmd, env=None):
         print('Command %s failed with return code %d : %s' % (cmd , p.returncode, err))
     print(out)
     print(err)
-    return p.returncode 
-  
+    return p.returncode
+
 
 def UpdateAttrInFile(fpath,fformat,objtype,objname,attrpath,value):
     f=open(fpath,'r')
@@ -127,7 +127,7 @@ def UpdateAttrInFile(fpath,fformat,objtype,objname,attrpath,value):
         if isinstance(origobjdict,list) and  isinstance(newvalue,str):
             newvalue=[newvalue]
         Util_setdictval(objdict,myattrpath,newvalue)
-    f=open(fpath,'w') 
+    f=open(fpath,'w')
     if fformat  == "yaml":
         print(yaml.dump(objdict,default_flow_style=False),file=f)
     elif fformat  == "json":
@@ -137,7 +137,7 @@ def UpdateAttrInFile(fpath,fformat,objtype,objname,attrpath,value):
 def removeobj(objtype,objname):
     print("removing existing \""+objtype+"\" type object \""+objname+"\" from xCAT\n")
     if str(objtype) in ('node','osimage','network','site','route','zone','policy'):
-        runCommand("rmdef -t "+objtype+" -o "+objname) 
+        runCommand("rmdef -t "+objtype+" -o "+objname)
     elif str(objtype) in ('passwd'):
         runCommand("tabch -d key="+objname+" passwd")
 
@@ -148,7 +148,7 @@ def Usage():
 if len(sys.argv) < 6:
     Usage()
     exit(1)
-   
+
 
 objtype=str(sys.argv[1])
 objname=str(sys.argv[2])
@@ -186,7 +186,7 @@ runCommand("cat "+yamldef)
 print("===============================================================================\n")
 
 
-print("import the inventory file "+yamldef+"\n") 
+print("import the inventory file "+yamldef+"\n")
 rc=runCommand("xcat-inventory import -t "+objtype+" -o "+objname+" -f "+yamldef)
 if rc !=0:
     print("failed to import the inventory file "+yamldef)
@@ -196,7 +196,7 @@ else:
     print("export the \""+objtype+"\" type object \""+objname+"\" just imported\n")
     rc=runCommand("xcat-inventory export -t "+objtype+" -o "+objname+" --format=yaml 1>"+yamldefout)
     if rc!=0:
-        print("failed to export the \""+objtype+"\" type object \""+objname+"\"\n") 
+        print("failed to export the \""+objtype+"\" type object \""+objname+"\"\n")
         rcyaml=1
     else:
         print("==============the exported inventory file "+yamldefout+"======================\n")
@@ -208,7 +208,7 @@ else:
                 rcyaml=1
         else:
             if compattr(myattrvalue,attrvalue) != 0 :
-                rcyaml=1           
+                rcyaml=1
 
 if rcyaml == 0:
     print("yaml validation passed\n")
@@ -223,7 +223,7 @@ runCommand("cat "+jsondef)
 print("===============================================================================\n")
 
 
-print("import the inventory file "+jsondef+"\n") 
+print("import the inventory file "+jsondef+"\n")
 rc=runCommand("xcat-inventory import -t "+objtype+" -o "+objname+" -f "+jsondef)
 print("rc="+str(rc))
 if rc !=0:
@@ -234,7 +234,7 @@ else:
     print("export the \""+objtype+"\" type object \""+objname+"\" just imported\n")
     rc=runCommand("xcat-inventory export -t "+objtype+" -o "+objname+" --format=json 1>"+jsondefout)
     if rc!=0:
-        print("failed to export the \""+objtype+"\" type object \""+objname+"\"\n") 
+        print("failed to export the \""+objtype+"\" type object \""+objname+"\"\n")
         rcjson=1
     else:
         print("==============the exported inventory file "+jsondefout+"======================\n")
@@ -246,7 +246,7 @@ else:
                 rcjson=1
         else:
             if compattr(myattrvalue,attrvalue) != 0 :
-                rcjson=1           
+                rcjson=1
 
 if rcjson ==0:
     print("json validation passed\n")

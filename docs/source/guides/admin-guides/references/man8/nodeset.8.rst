@@ -90,7 +90,7 @@ A user can supply their own scripts to be run on the mn or on the service node (
 
 \ **-**\ **-noupdateinitrd**\ 
  
- Skip the rebuilding of initrd when the 'netdrivers', 'drvierupdatesrc' or 'osupdatename' were set for injecting new drivers to initrd. But, the \ **geninitrd**\  command
+ Skip the rebuilding of initrd when the 'netdrivers', 'driverupdatesrc' or 'osupdatename' were set for injecting new drivers to initrd. But, the \ **geninitrd**\  command
  should be run to rebuild the initrd for new drivers injecting. This is used to improve the performance of \ **nodeset**\  command.
  
 

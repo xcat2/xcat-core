@@ -93,7 +93,7 @@ EXAMPLES
  
 
 
-2.  To run the xcatsnap routine and use default directory /tmp/xcatsnap :
+2. To run the xcatsnap routine and use default directory /tmp/xcatsnap :
  
  
  .. code-block:: perl

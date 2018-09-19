@@ -39,7 +39,7 @@ DESCRIPTION
 ***********
 
 
-The \ **makedhcp**\  command creates and updates the DHCP configuration on the management node and service nodes. 
+The \ **makedhcp**\  command creates and updates the DHCP configuration on the management node and service nodes.
 The \ **makedhcp**\  command is supported for both Linux and AIX clusters.
 
 
@@ -153,7 +153,7 @@ RETURN VALUE
 
 
 
-1.  An error has occurred.
+1. An error has occurred.
 
 
 
@@ -201,7 +201,7 @@ EXAMPLES
  
  .. code-block:: perl
  
-   # makedhcp -q node01 
+   # makedhcp -q node01
    node01: ip-address = 91.214.34.156, hardware-address = 00:00:c9:c6:6c:42
  
  

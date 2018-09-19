@@ -3,27 +3,27 @@ SW407037 - bmcsetup does not successfully configure the IP (Sev1)
 
 * **Issue:** `SW407037 <https://w3.rchland.ibm.com/projects/bestquest/?defect=SW407037>`_
 * **Reported:** 1742C (ibm-v1.99.10-113-g65edf7d-r8-0-g713d86d)
-* **Fixed:** Fixed in xCAT after 11/07/17 `#4242 <https://github.com/xcat2/xcat-core/issues/4242>`_ 
+* **Fixed:** Fixed in xCAT after 11/07/17 `#4242 <https://github.com/xcat2/xcat-core/issues/4242>`_
 
-**Issue:** 
+**Issue:**
 
-OpenBMC firmware has problems with ipmi inband support of the ``access on`` comamnd and the work around is to use the ``raw 0x06 0x40`` instead.  In early Sept, we switched to using ``access on`` because the implementation looked like it was working, since then we have found some issues with it and recommendation is to revert back to the raw command. 
+OpenBMC firmware has problems with ipmi inband support of the ``access on`` comamnd and the work around is to use the ``raw 0x06 0x40`` instead.  In early Sept, we switched to using ``access on`` because the implementation looked like it was working, since then we have found some issues with it and recommendation is to revert back to the raw command.
 
 See related issues describing potential problems:
 * https://github.com/openbmc/openbmc/issues/2493
 * https://github.com/openbmc/openbmc/issues/2492
 
-This problem is very severe because if the network is not configured correctly, the access to the BMC is lost. 
+This problem is very severe because if the network is not configured correctly, the access to the BMC is lost.
 
 **Work-around**
 
-Use one of the following work arounds: 
+Use one of the following work arounds:
 
 #.  Install a version of xCAT built after November, 07, 2017 which includes the fix. (**Recommended**)
 
 #.  Manually patch bmcsetup using changes in PR: https://github.com/xcat2/xcat-core/pull/4247, then run ``mknb ppc64``
 
-#.  Patch the system with provided patch: 
+#.  Patch the system with provided patch:
 
     #. Download patch file: https://github.com/xcat2/xcat-core/files/1451181/bmcsetup.4242.patch.txt
 
@@ -32,7 +32,7 @@ Use one of the following work arounds:
     #. ``cd /opt/xcat/share/xcat/netboot/genesis/ppc64/fs/usr/bin``
 
     #. ``patch -p0 < /tmp/bmcsetup.4242.patch.txt``
- 
+
     #. ``mknb ppc64``
 
 

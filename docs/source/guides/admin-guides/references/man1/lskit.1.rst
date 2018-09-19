@@ -215,7 +215,7 @@ EXAMPLES
  .. code-block:: perl
  
     Extracting the kit.conf file from /myhome/mykits/pperte-1.3.0.2-0-x86_64.tar.bz2. Please wait.
-    
+  
           kitframework=2
           compatible_kitframeworks=0,1,2
  

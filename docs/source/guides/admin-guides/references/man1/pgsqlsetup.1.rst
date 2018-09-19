@@ -33,7 +33,7 @@ DESCRIPTION
 ***********
 
 
-\ **pgsqlsetup**\  - Sets up the PostgreSQL database for xCAT to use. The pgsqlsetup script is run on the Management Node as root after the PostgreSQL code has been installed. The xcatd daemon will be stopped during migration.  No xCAT commands should be run during the init process, because we will be migrating the xCAT database to PostgreSQL and restarting the xcatd daemon as well as the PostgreSQL daemon. For full information on all the steps that will be done reference 
+\ **pgsqlsetup**\  - Sets up the PostgreSQL database for xCAT to use. The pgsqlsetup script is run on the Management Node as root after the PostgreSQL code has been installed. The xcatd daemon will be stopped during migration.  No xCAT commands should be run during the init process, because we will be migrating the xCAT database to PostgreSQL and restarting the xcatd daemon as well as the PostgreSQL daemon. For full information on all the steps that will be done reference
 One password must be supplied for the setup,  a password for the xcatadm unix id and the same password for the xcatadm database id.  The password will be prompted for interactively or you can set the XCATPGPW environment variable to the password and then there will be no prompt.
 
 
@@ -63,7 +63,7 @@ OPTIONS
 
 \ **-i|-**\ **-init**\ 
  
- The init option is used to setup an installed PostgreSQL database so that xCAT can use the database.  This involves creating the xcat database, the xcat admin id, allowing access to the xcatdb database by the Management Node. It customizes the postgresql.conf configuration file, adds the management server to the pg_hba.conf and starts the PostgreSQL server.  It also backs up the current xCAT database and restores it into the newly setup xcatdb PostgreSQL database.  It creates the /etc/xcat/cfgloc file to point the xcatd daemon to the PostgreSQL database and restarts the xcatd daemon using the database. 
+ The init option is used to setup an installed PostgreSQL database so that xCAT can use the database.  This involves creating the xcat database, the xcat admin id, allowing access to the xcatdb database by the Management Node. It customizes the postgresql.conf configuration file, adds the management server to the pg_hba.conf and starts the PostgreSQL server.  It also backs up the current xCAT database and restores it into the newly setup xcatdb PostgreSQL database.  It creates the /etc/xcat/cfgloc file to point the xcatd daemon to the PostgreSQL database and restarts the xcatd daemon using the database.
  On AIX, it additionally setup the xcatadm unix id and the postgres id and group. For AIX, you should be using the PostgreSQL rpms available from the xCAT website. For Linux, you should use the PostgreSQL rpms shipped with the OS. You can chose the -o option, to run after the init.
  To add additional nodes to access the PostgreSQL server, setup on the Management Node, use the -a option.
  
@@ -131,7 +131,7 @@ EXAMPLES
  
 
 
-2.  To setup the ODBC for PostgreSQL xcatdb database access :
+2. To setup the ODBC for PostgreSQL xcatdb database access :
  
  
  .. code-block:: perl

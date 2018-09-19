@@ -18,7 +18,7 @@ do
        TMP=`sed -e '/enabled/d' /etc/yum.repos.d/CentOS-Base.repo | sed -e '/^gpgkey/i enabled=0'`
        echo "$TMP" > /etc/yum.repos.d/CentOS-Base.repo
    fi
-   
+
 done
 
 exit 0

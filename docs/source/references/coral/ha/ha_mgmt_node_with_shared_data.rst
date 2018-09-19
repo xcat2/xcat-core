@@ -44,14 +44,14 @@ Use ``xcatha.py -d`` to disable and stop all related services: ::
 Configure Virtual IP
 ````````````````````
 
-Existing xCAT management node IP should be configured as Virtual IP address, the Virtual IP address should be non-persistent, it needs to be re-configured right after the management node is rebooted. This non-persistent Virtual IP address is designed to avoid ip address conflict when the original primary management node is recovered with this Virtual IP address configured. Since the Virtual IP is non-persistent, the network interface should have a persistent IP address. 
+Existing xCAT management node IP should be configured as Virtual IP address, the Virtual IP address should be non-persistent, it needs to be re-configured right after the management node is rebooted. This non-persistent Virtual IP address is designed to avoid ip address conflict when the original primary management node is recovered with this Virtual IP address configured. Since the Virtual IP is non-persistent, the network interface should have a persistent IP address.
 
 #. Configure another IP on primary management node for network interface as static IP, for example, ``10.5.106.70``:
 
     #. Configure ``10.5.106.70`` as static IP::
 
         ip addr add 10.5.106.70/8 dev eth0
-  
+
     #. Edit ``ifcfg-eth0`` file as::
 
         DEVICE="eth0"
@@ -70,16 +70,16 @@ Existing xCAT management node IP should be configured as Virtual IP address, the
 
     #. Add ``10.5.106.70`` into ``/var/lib/pgsql/data/pg_hba.conf``::
 
-        host    all          all        10.5.106.7/32      md5 
+        host    all          all        10.5.106.7/32      md5
 
-    #. Add ``10.5.106.70`` into ``listen_addresses`` variable in ``/var/lib/pgsql/data/postgresql.conf``:: 
+    #. Add ``10.5.106.70`` into ``listen_addresses`` variable in ``/var/lib/pgsql/data/postgresql.conf``::
 
         listen_addresses = 'localhost,10.5.106.7,10.5.106.70'
 
 #. Modify provision network entry ``mgtifname`` as ``eth0:0`` on primary management node::
-    
+
     tabedit networks
-    "10_0_0_0-255_0_0_0","10.0.0.0","255.0.0.0","eth0:0","10.0.0.103",,"<xcatmaster>",,,,,,,,,,,"1500",, 
+    "10_0_0_0-255_0_0_0","10.0.0.0","255.0.0.0","eth0:0","10.0.0.103",,"<xcatmaster>",,,,,,,,,,,"1500",,
 
 Configure Shared Data
 `````````````````````
@@ -164,10 +164,10 @@ Activate Backup xCAT Management Node to be Primary Management Node
 
 #. Switch to ``PostgreSQL`` database
 
-#. Disable and deactivate services using ``xcatha.py -d`` on both ``xcatmn2`` and ``xcatmn1`` 
+#. Disable and deactivate services using ``xcatha.py -d`` on both ``xcatmn2`` and ``xcatmn1``
 
 #. Remove Virtual IP from primary xCAT Management Node ``xcatmn1``::
-  
+
     ip addr del 10.5.106.7/8 dev eth0:0
 
 #. Configure Virtual IP on ``xcatmn2``

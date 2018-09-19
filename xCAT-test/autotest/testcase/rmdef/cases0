@@ -53,7 +53,7 @@ end
 start:rmdef_t_o_network
 description:rmdef -t network
 label:mn_only,db
-cmd:mkdef -t network -o testnet net=1.2.3.0 mask=255.0.0.0 gateway=1.2.3.1 
+cmd:mkdef -t network -o testnet net=1.2.3.0 mask=255.0.0.0 gateway=1.2.3.1
 check:rc==0
 cmd:lsdef -t network
 check:output=~testnet
@@ -138,7 +138,7 @@ check:output=~not a valid
 end
 
 start:rmdef_template
-description:try to delete a template, then error messages appear 
+description:try to delete a template, then error messages appear
 label:mn_only,db
 cmd:result=`lsdef | grep  switch-template`; if [[ $result =~ "switch-template" ]]; then echo $result; noderm switch-template; fi
 cmd:rmdef switch-template

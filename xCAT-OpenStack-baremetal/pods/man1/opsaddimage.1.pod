@@ -4,7 +4,7 @@ B<opsaddimage> - It adds or removes nodes for the vlan.
 
 =head1 SYNOPSIS
 
-B<opsaddimage> I<image1,image2,...> B<-n> I<new_name1,new_name2,...> [B<-c> I<controller>] [B<-V>|B<--verbose>] 
+B<opsaddimage> I<image1,image2,...> B<-n> I<new_name1,new_name2,...> [B<-c> I<controller>] [B<-V>|B<--verbose>]
 
 B<opsaddimage> [B<-h>|B<--help>]
 
@@ -12,22 +12,22 @@ B<opsaddimage> [B<-v>|B<--version>]
 
 =head1 DESCRIPTION
 
-The B<opsaddimage> command adds a list of xCAT images into the OpenStack cloud. 
+The B<opsaddimage> command adds a list of xCAT images into the OpenStack cloud.
 
-Under the cover, it creates a fake image and registers the fake image into OpenStack with command B<glance image-create>. It sets the property in the image to indicate that this is an xCAT image and also stores the original xCAT image name in the property for further reference. 
+Under the cover, it creates a fake image and registers the fake image into OpenStack with command B<glance image-create>. It sets the property in the image to indicate that this is an xCAT image and also stores the original xCAT image name in the property for further reference.
 
-The xCAT image names can be listed using B<lsdef -t osimage> command.      
+The xCAT image names can be listed using B<lsdef -t osimage> command.
 
 =head1 Parameters
 
-I<image1,image1...> a comma separated xCAT images names. 
+I<image1,image1...> a comma separated xCAT images names.
 
 
 =head1 OPTIONS
 
 =over 10
 
-=item B<-n>    a comma separated new image names in the OpenStack. If omitted, the default is the original xCAT image nanme.  
+=item B<-n>    a comma separated new image names in the OpenStack. If omitted, the default is the original xCAT image nanme.
 
 =item B<-c>  the node name of the OpenStack controller. This node must be an xCAT managed node.
 

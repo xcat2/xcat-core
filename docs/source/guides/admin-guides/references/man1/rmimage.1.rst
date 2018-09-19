@@ -41,7 +41,7 @@ specifying the flag \ **-**\ **-xcatdef**\  will remove the osimage definition,
 or you can use rmdef -t osimage to remove the osimage definition.
 
 The statelite image files on the diskful service nodes will not be removed,
-remove the image files on the service nodes manually if necessary, 
+remove the image files on the service nodes manually if necessary,
 for example, use command "rsync -az --delete /install <sn>:/" to remove the image files on the service nodes,
 where the <sn> is the hostname of the service node.
 

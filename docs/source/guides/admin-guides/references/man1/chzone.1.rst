@@ -31,7 +31,7 @@ chzone.1
 
 The \ **chzone**\  command is designed to change the definition of a zone previous defined in the cluster.
 The chzone command is only supported on Linux ( No AIX support).
-The nodes are not updated with the new root ssh keys by chzone. You must run updatenode -k  or xdsh -K to the nodes to update the root ssh keys to the new generated zone keys. This will also sync any service nodes with the zone keys, if you have a hierarchical cluster.   
+The nodes are not updated with the new root ssh keys by chzone. You must run updatenode -k  or xdsh -K to the nodes to update the root ssh keys to the new generated zone keys. This will also sync any service nodes with the zone keys, if you have a hierarchical cluster.
 Note: if any zones in the zone table, there must be one and only one defaultzone. Otherwise, errors will occur.
 
 
@@ -71,7 +71,7 @@ Note: if any zones in the zone table, there must be one and only one defaultzone
  if \ **-**\ **-defaultzone**\  is input, then it will set the zone defaultzone attribute to yes.
  if \ **-**\ **-defaultzone**\  is input and another zone is currently the default,
  then the \ **-f**\  flag must be used to force a change to the new defaultzone.
- If \ **-f**\  flag is not use an error will be returned and no change made. 
+ If \ **-f**\  flag is not use an error will be returned and no change made.
  Note: if any zones in the zone table, there must be one and only one defaultzone. Otherwise, errors will occur.
  
 
@@ -111,7 +111,7 @@ Note: if any zones in the zone table, there must be one and only one defaultzone
  
 
 
-\ **-V | -**\ **-Verbose**\ 
+\ **-V | -**\ **-verbose**\ 
  
  Verbose mode.
  

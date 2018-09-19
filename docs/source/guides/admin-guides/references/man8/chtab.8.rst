@@ -58,11 +58,11 @@ RETURN VALUE
 
 
 
-0.  The command completed successfully.
+0. The command completed successfully.
 
 
 
-1.  An error has occurred.
+1. An error has occurred.
 
 
 
@@ -73,7 +73,7 @@ EXAMPLES
 
 
 
-1.  To add a node=node1 to the nodelist table with groups=all:
+1. To add a node=node1 to the nodelist table with groups=all:
  
  
  .. code-block:: perl
@@ -93,7 +93,7 @@ EXAMPLES
  
 
 
-3.  To add node1 to the  nodetype table with os=rhel5:
+3. To add node1 to the  nodetype table with os=rhel5:
  
  
  .. code-block:: perl
@@ -103,7 +103,7 @@ EXAMPLES
  
 
 
-4.  To change node1 in nodetype table setting os=sles:
+4. To change node1 in nodetype table setting os=sles:
  
  
  .. code-block:: perl

@@ -11,7 +11,7 @@ cmd:grep 'FOO BAR BAZ QUX' /tmp/updatenode.blah.out
 check:rc==0
 cmd:rm -f /install/postscripts/blah /tmp/updatenode.blah.out
 check:rc==0
-end 
+end
 
 start:updatenode_scripts_timeout
 cmd:mkdir -p /install/postscripts
@@ -32,4 +32,4 @@ cmd:grep 'SIGINT' /tmp/updatenode.blah.err
 check:rc==0
 cmd:rm -f /install/postscripts/blah /tmp/updatenode.blah.out /tmp/updatenode.blah.err
 check:rc==0
-end 
+end

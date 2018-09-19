@@ -74,7 +74,7 @@ After this command, you can run the \ **nodeset**\  command and then start deplo
 For stateful:
   nodeset
 
-For stateless: 
+For stateless:
   genimage
   packimage
   nodeset

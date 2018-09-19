@@ -1,7 +1,7 @@
 xCAT2 Release Information
 =========================
 
-The following table is a summary of the new operating system (OS), hardware, and features that are added to each xCAT release.   The OS and hardware listed in the table have been fully tested with xCAT.   For a more detailed list of new function, bug fixes, restrictions and known problems, refer to the individual release notes for a specific release. 
+The following table is a summary of the new operating system (OS), hardware, and features that are added to each xCAT release.   The OS and hardware listed in the table have been fully tested with xCAT.   For a more detailed list of new function, bug fixes, restrictions and known problems, refer to the individual release notes for a specific release.
 
 * **RHEL** - Red Hat Enterprise Linux
 * **SLES** - Suse Linux Enterprise Server
@@ -14,23 +14,29 @@ xCAT 2.14.x
 |xCAT                             |New OS         |New          |New Feature                       |
 |Version                          |               |Hardware     |                                  |
 +=================================+===============+=============+==================================+
-|| xCAT 2.14.2 2018/7/13          |- ubuntu18.04  |             |                                  |
+|| xCAT 2.14.3 2018/8/24          |- SLES12.3     |             |- OpenBMC rflash enhancement      |
 ||                                |               |             |                                  |
+| `2.14.3 Release Notes <https:// |               |             |- xcat-inventory 0.1.5            |
+| github.com/xcat2/xcat-core/wiki |               |             |                                  |
+| /XCAT_2.14.3_Release_Notes>`_   |               |             |- goconserver v0.3.1              |
++---------------------------------+---------------+-------------+----------------------------------+
+|| xCAT 2.14.2 2018/7/13          |- Ubuntu 18.04 |             |                                  |
+||                                |- RHEL6.10     |             |                                  |
 | `2.14.2 Release Notes <https:// |               |             |                                  |
 | github.com/xcat2/xcat-core/wiki |               |             |                                  |
 | /XCAT_2.14.2_Release_Notes>`_   |               |             |                                  |
 +---------------------------------+---------------+-------------+----------------------------------+
-|| xCAT 2.14.1                    |- RHV4.2 +     |             |- OpenBMC in python enhance:      |
+|| xCAT 2.14.1                    |- RHV 4.2 +    |             |- OpenBMC in python enhancement:  |
 || 2018/6/1                       |  RHEL7.5 + p8 |             |                                  |
-||                                |               |             |  rinv enhance,issue #5176        |
+||                                |               |             |  rinv enhance, issue #5176       |
 | `2.14.1 Release Notes <https:// |               |             |                                  |
 | github.com/xcat2/xcat-core/wiki |               |             |- Cumulus Switch OS - syncfile    |
 | /XCAT_2.14.1_Release_Notes>`_   |               |             |                                  |
-|                                 |               |             |- Discover process enhance        |
+|                                 |               |             |- Discover process enhancement    |
 |                                 |               |             |                                  |
-|                                 |               |             |- xcatprobe `xcatmn` enhance      |
+|                                 |               |             |- xcatprobe `xcatmn` enhancement  |
 |                                 |               |             |                                  |
-|                                 |               |             |- xcat-inventory enhance(beta)    |
+|                                 |               |             |- xcat-inventory enhancement(beta)|
 |                                 |               |             |                                  |
 |                                 |               |             |- goconserver v0.2.2              |
 +---------------------------------+---------------+-------------+----------------------------------+
@@ -74,7 +80,7 @@ xCAT 2.13.x
 +---------------------------------+---------------+-------------+----------------------------------+
 || xCAT 2.13.9                    |               |             |- OpenBMC support:                |
 || 2017/12/18                     |               |             |                                  |
-||                                |               |             |  rflash -a/-u enhance, add -d    |
+||                                |               |             |  rflash -a/-u enhancement, add -d|
 | `2.13.9 Release Notes <https:// |               |             |                                  |
 | github.com/xcat2/xcat-core/wiki |               |             |  reventlog implementation        |
 | /XCAT_2.13.9_Release_Notes>`_   |               |             |                                  |
@@ -91,7 +97,8 @@ xCAT 2.13.x
 | /XCAT_2.13.8_Release_Notes>`_   |               |             |                                  |
 |                                 |               |             |- The document of MN HA           |
 |                                 |               |             |                                  |
-|                                 |               |             |- nodeset enhance for multi-nodes |
+|                                 |               |             |- nodeset enhancement for         |
+|                                 |               |             |  multi-nodes                     |
 +---------------------------------+---------------+-------------+----------------------------------+
 || xCAT 2.13.7                    |               |             |- OpenBMC support:                |
 || 2017/9/22                      |               |             |                                  |
@@ -99,7 +106,8 @@ xCAT 2.13.x
 | `2.13.7 Release Notes <https:// |               |             |                                  |
 | github.com/xcat2/xcat-core/wiki |               |             |  reventlog to get/clear event log|
 | /XCAT_2.13.7_Release_Notes>`_   |               |             |                                  |
-|                                 |               |             |- xcatprobe clusterstatus enhance |
+|                                 |               |             |- xcatprobe clusterstatus         |
+|                                 |               |             |  enhancement                     |
 |                                 |               |             |                                  |
 |                                 |               |             |- PDU support: discover, config   |
 |                                 |               |             |                                  |
@@ -113,14 +121,14 @@ xCAT 2.13.x
 | /XCAT_2.13.6_Release_Notes>`_   |               |             |  /delete/check                   |
 |                                 |               |             |                                  |
 |                                 |               |             |  rspconfig retrieve OpenBMC ip/  |
-|                                 |               |             |  netmask/gateway information     | 
+|                                 |               |             |  netmask/gateway information     |
 |                                 |               |             |- nodeset performance enhancement |
 |                                 |               |             |  (Phase 3)                       |
 |                                 |               |             |                                  |
 |                                 |               |             |  Dispatch request to the         |
-|                                 |               |             |  specified service nodes with    | 
+|                                 |               |             |  specified service nodes with    |
 |                                 |               |             |  'disjointdhcps'                 |
-|                                 |               |             |                                  |  
+|                                 |               |             |                                  |
 |                                 |               |             |  Enhance the output of nodeset   |
 |                                 |               |             |  in hierarchical cluster         |
 |                                 |               |             |                                  |
@@ -153,7 +161,7 @@ xCAT 2.13.x
 |                                 |               |             |  tool xcat-test                  |
 |                                 |               |             |- Service node pool support for   |
 |                                 |               |             |  rhels7 ppc64le diskless         |
-|                                 |               |             |- Mellanox cumulus switch ZTP     | 
+|                                 |               |             |- Mellanox cumulus switch ZTP     |
 |                                 |               |             |  based discovery and             |
 |                                 |               |             |  auto-configuration              |
 |                                 |               |             |- Performance enhancements        |
@@ -360,9 +368,9 @@ xCAT 2.9.x
 |                                 |               |             |                                  |
 +---------------------------------+---------------+-------------+----------------------------------+
 
-.. [#] xCAT 2.9.1 onwards provides support for Kernel-based Virtual Machines (KVM) and requires an operating system that ships the ``perl-Sys-Virt`` package.  
+.. [#] xCAT 2.9.1 onwards provides support for Kernel-based Virtual Machines (KVM) and requires an operating system that ships the ``perl-Sys-Virt`` package.
 
-xCAT 2.8.x 
+xCAT 2.8.x
 ----------
 
 +---------------------------------+---------------+-------------+----------------------------------+

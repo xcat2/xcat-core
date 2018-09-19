@@ -48,7 +48,7 @@ my $async;
 
 #-------------------------------------------------------
 
-=head3  The hash variable to store node related http request id 
+=head3  The hash variable to store node related http request id
 
  The structure is like this
  %http_session_variable = (
@@ -70,7 +70,7 @@ my %http_session_variable = ();
      $node => {
          image=>$nodetype.provmethod,
          cmd=>$nodetype.provmethod,
-         ip=>$host.ip,    
+         ip=>$host.ip,
          nics=>$vm.vmnics,
          mac=>$mac.mac,
          cpu=>$vm.cpus
@@ -239,7 +239,7 @@ my %command_states = (
 
 #-------------------------------------------------------
 
-=head3 http_state_code_info 
+=head3 http_state_code_info
   The function to deal with http response code
   Input:
         $state_code: the http response code
@@ -250,7 +250,7 @@ my %command_states = (
   Usage example:
         http_state_code_info('304', "INIT_TO_WAIT_FOR_START_DONE") -> "Already started"
         http_state_code_info('304', "INIT_TO_WAIT_FOR_STOP_DONE") -> "Already stopped"
-=cut  
+=cut
 
 #-------------------------------------------------------
 
@@ -349,14 +349,14 @@ sub change_node_state {
   The state_machine_engine to deal with http response
   Input:
         $id: The http session id when adding HTTP request into HTTP::Async object
-        $data: The http response 
+        $data: The http response
   Return:
         If there are any errors or msg, they will be outputed directly.
         Else, nothing returned.
   Usage example:
         default_state_engine($id, HTTP Response data);
 
-=cut  
+=cut
 
 #-------------------------------------------------------
 
@@ -494,11 +494,11 @@ sub default_state_engine {
   Input:
         $array: The string array whose entires may have spaces
   Return:
-        A string that join the entries in input $array with space, 
+        A string that join the entries in input $array with space,
         for entries have spaces, they will be put in "'"
   Usage example:
 
-=cut  
+=cut
 
 #-------------------------------------------------------
 
@@ -530,7 +530,7 @@ sub deal_with_space_in_array_entry {
         docker_info_string in the format: $id $image $command $created $status $names;
   Usage example:
 
-=cut  
+=cut
 
 #-------------------------------------------------------
 
@@ -580,7 +580,7 @@ sub parse_docker_list_info {
         The number of response have received
   Usage example:
 
-=cut  
+=cut
 
 #-------------------------------------------------------
 
@@ -647,7 +647,7 @@ sub parse_args {
     # Process command-line flags
     #############################################
     if (!GetOptions(\%opt,
-            qw(h|help V|Verbose v|version))) {
+            qw(h|help V|verbose v|version))) {
         return (usage());
     }
 

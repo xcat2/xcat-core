@@ -44,7 +44,7 @@ DUMP_URLS = {
         "field" : [],
     },
     "download"  : "download/dump/#ID#",
-    "list"      : "/dump/enumerate", 
+    "list"      : "/dump/enumerate",
 }
 
 GARD_CLEAR_URL = "/org/open_power/control/gard/action/Reset"
@@ -55,7 +55,7 @@ INVENTORY_URLS = {
     "serial"    : "/inventory/system",
     "cpu"       : "/inventory/system/chassis/motherboard/enumerate",
     "dimm"      : "/inventory/system/chassis/motherboard/enumerate",
-}    
+}
 
 LEDS_URL = "/led/physical/enumerate"
 
@@ -345,7 +345,7 @@ class OpenBMCRest(object):
                 e.message = "Login to BMC failed: Can't connect to {0} {1}.".format(e.host_and_port, e.detail_msg)
             else:
                 e.message = 'BMC did not respond. ' \
-                            'Validate BMC configuration and retry the command.'
+                            'Validate BMC configuration and retry the command. ' + e.detail_msg
             self._print_error_log(e.message, cmd)
             raise
         except ValueError:
@@ -408,7 +408,7 @@ class OpenBMCRest(object):
             self._print_error_log(error, cmd=cmd)
             raise SelfClientException(error, code)
 
-        self._print_record_log(data['message'], cmd=cmd) 
+        self._print_record_log(data['message'], cmd=cmd)
 
         return True
 
@@ -480,7 +480,7 @@ class OpenBMCRest(object):
 
     def set_boot_state(self, state):
 
-        payload = { "data": BOOTSOURCE_URLS['field'] + BOOTSOURCE_SET_STATE[state] } 
+        payload = { "data": BOOTSOURCE_URLS['field'] + BOOTSOURCE_SET_STATE[state] }
         self.request('PUT', BOOTSOURCE_URLS['set']['path'], payload=payload, cmd='set_boot_state')
 
     def set_one_time_boot_state(self, state):
@@ -508,7 +508,7 @@ class OpenBMCRest(object):
 
     def get_beacon_info(self):
 
-        beacon_data = self.request('GET', LEDS_URL, cmd='get_beacon_info') 
+        beacon_data = self.request('GET', LEDS_URL, cmd='get_beacon_info')
         try:
             beacon_dict = {}
             for key, value in beacon_data.items():
@@ -546,7 +546,7 @@ class OpenBMCRest(object):
                     label = k.split('/')[-1]
                     value = v['value']
                     sensor_dict[label] = ['%s: %s' % (label, value)]
-                    
+
             return sensor_dict
         except KeyError:
             error = 'Received wrong format response: %s' % sensor_data
@@ -626,7 +626,7 @@ class OpenBMCRest(object):
             fw = OpenBMCImage(key, swinfo)
             if func_list:
                 fw.functional = key in func_list
-            
+
             fw_dict[str(fw)]=fw
 
         return bool(func_list), fw_dict
@@ -634,8 +634,8 @@ class OpenBMCRest(object):
     def upload_firmware(self, upload_file):
 
         headers = {'Content-Type': 'application/octet-stream'}
-        path = HTTP_PROTOCOL + self.bmcip + '/upload/image/' 
-        self.upload('PUT', path, upload_file, headers=headers, cmd='upload_firmware') 
+        path = HTTP_PROTOCOL + self.bmcip + '/upload/image/'
+        self.upload('PUT', path, upload_file, headers=headers, cmd='upload_firmware')
 
     def set_priority(self, firm_id):
 
@@ -801,7 +801,7 @@ class OpenBMCRest(object):
         if clear_arg == 'all':
             payload = { "data": DUMP_URLS['clear_all']['field'] }
             self.request('POST', DUMP_URLS['clear_all']['path'], payload=payload, cmd='clear_dump_all')
-        else: 
+        else:
             path = DUMP_URLS['clear']['path'].replace('#ID#', clear_arg)
             payload = { "data": DUMP_URLS['clear']['field'] }
             self.request('POST', path, payload=payload, cmd='clear_dump')
@@ -829,7 +829,7 @@ class OpenBMCRest(object):
             return dump_dict
         except KeyError:
             error = 'Received wrong format response: %s' % dump_data
-            raise SelfServerException(error) 
+            raise SelfServerException(error)
 
     def download_dump(self, download_id, file_path):
 
@@ -926,12 +926,12 @@ class OpenBMCRest(object):
                         tmp_ntpservers = ''.join(info["NTPServers"])
                         if tmp_ntpservers:
                             ntpservers = tmp_ntpservers
-                        utils.update2Ddict(netinfo, nicid, "ntpservers", ntpservers)            
+                        utils.update2Ddict(netinfo, nicid, "ntpservers", ntpservers)
             return netinfo
         except KeyError:
             error = 'Received wrong format response: %s' % data
             raise SelfServerException(error)
-        
+
 
     def set_ipdhcp(self):
         payload = { "data": [] }

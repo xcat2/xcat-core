@@ -27,7 +27,7 @@ DESCRIPTION
 ***********
 
 
-The xCATWorld program gives you a sample client program that interfaces to the /opt/xcat/lib/perl/xCAT_plugin/xCATWorld.pm plugin.  
+The xCATWorld program gives you a sample client program that interfaces to the /opt/xcat/lib/perl/xCAT_plugin/xCATWorld.pm plugin.
 For debugging purposes we have an Environment Variable XCATBYPASS.  If export XCATBYPASS=yes, the client will call the plugin without going through the xcat daemon, xcatd.
 
 

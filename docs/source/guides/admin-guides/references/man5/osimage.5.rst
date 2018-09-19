@@ -19,7 +19,7 @@ SYNOPSIS
 ********
 
 
-\ **osimage Attributes:**\   \ *imagename*\ , \ *groups*\ , \ *profile*\ , \ *imagetype*\ , \ *description*\ , \ *provmethod*\ , \ *rootfstype*\ , \ *osdistroname*\ , \ *osupdatename*\ , \ *cfmdir*\ , \ *osname*\ , \ *osvers*\ , \ *osarch*\ , \ *synclists*\ , \ *postscripts*\ , \ *postbootscripts*\ , \ *serverrole*\ , \ *isdeletable*\ , \ *kitcomponents*\ , \ *comments*\ , \ *disable*\ 
+\ **osimage Attributes:**\   \ *imagename*\ , \ *groups*\ , \ *profile*\ , \ *imagetype*\ , \ *description*\ , \ *provmethod*\ , \ *rootfstype*\ , \ *osdistroname*\ , \ *osupdatename*\ , \ *cfmdir*\ , \ *osname*\ , \ *osvers*\ , \ *osarch*\ , \ *synclists*\ , \ *postscripts*\ , \ *postbootscripts*\ , \ *serverrole*\ , \ *isdeletable*\ , \ *kitcomponents*\ , \ *environvar*\ , \ *comments*\ , \ *disable*\ 
 
 
 ***********
@@ -147,6 +147,12 @@ osimage Attributes:
 \ **kitcomponents**\ 
  
  List of Kit Component IDs assigned to this OS Image definition.
+ 
+
+
+\ **environvar**\ 
+ 
+ Comma delimited environment variables for the osimage
  
 
 

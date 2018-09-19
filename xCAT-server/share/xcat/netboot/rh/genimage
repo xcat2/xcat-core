@@ -122,7 +122,7 @@ sub umount_chroot {
         print "\n\n\n\nWARNING: /proc and /sys may still be mounted in the rootimgdir\n\n\n\n";
         return 1;
     }
-    
+
     #unmount all the mount points under rootimg directory
     #to avoid removing the direcoty/files on managemment node by mistake
     my @mntptlist;
@@ -136,12 +136,12 @@ sub umount_chroot {
     foreach my $mntpt (@mntptlist){
         system("umount -l $mntpt >/dev/null 2>&1")
     }
-    
+
     if (majversion($osver) > 6) {
         #only remove the /dev in rootimg directory if it is not a mount point
         system("findmnt $rootimage_dir/dev/ >/dev/null 2>&1 || rm -rf $rootimage_dir/dev/*");
     }
-    
+
     #rpm complains "Failed to initialize NSS library" when /dev/urandom does not exist,  leave /dev/urandom
     use_devurandom();
 }
@@ -375,7 +375,7 @@ unless ($onlyinitrd) {
     if($retcode){
         print "$lock";
         exit 1;
-    } 
+    }
 
     my @envarlist=split(',',$envar);
     foreach my $entry (@envarlist){
@@ -504,7 +504,7 @@ unless ($onlyinitrd) {
                     $repohash{$pass}{$index} = 1;
                     $index++;
                 }
-                
+
                 print $yumconfig "[otherpkgs$index]\nname=otherpkgs$index\nbaseurl=file://$srcdir_otherpkgs_local/$_\ngpgpcheck=0\n\n";
                 $repohash{$pass}{$index} = 1;
                 $index++;
@@ -679,6 +679,8 @@ if (-e "$rootimg_dir/boot/vmlinux-$kernelver") {
     cp("$rootimg_dir/boot/vmlinuz-$kernelver", "$destdir/kernel");
 } elsif (-e "$rootimg_dir/boot/image-$kernelver") {
     cp("$rootimg_dir/boot/image-$kernelver", "$destdir/kernel");
+} elsif (-e "$rootimg_dir/lib/modules/$kernelver/vmlinuz") {
+    cp("$rootimg_dir/lib/modules/$kernelver/vmlinuz", "$destdir/kernel");
 } else {
     xdie("couldn't find the kernel file matched $kernelver in $rootimg_dir/boot");
 }
@@ -747,7 +749,9 @@ if ((-d "$rootimg_dir/usr/share/dracut") or (-d "$rootimg_dir/usr/lib/dracut")) 
     $dracutver = `rpm --root $rootimg_dir -qi dracut | grep Version | awk -F' ' '{print \$3}'`;
     chomp($dracutver);
     if ($dracutver =~ /^\d\d\d$/) {
-        if ($dracutver >= "033") {
+        if ($dracutver >= "047") {
+            $dracutdir = "dracut_047";
+        } elsif ($dracutver >= "033") {
             $dracutdir = "dracut_033";
         } else {
             $dracutdir = "dracut";    # The default directory
@@ -771,7 +775,6 @@ unless ($imagename) {
         $postinstall_filename = imgutils::get_profile_def_filename($osver, $profile, $arch, $pathtofiles, "postinstall");
     }
 }
-
 if ($postinstall_filename) {
 
     use_hackuname($arch, $kernelver);
@@ -779,7 +782,7 @@ if ($postinstall_filename) {
     $updates{'postinstall'} = $postinstall_filename if ($tempfile);
 
     #export some osimage attributes as the environment variables
-    #to postinstall script 
+    #to postinstall script
     $ENV{IMG_NAME}=$imagename if("" ne $imagename);
     $ENV{IMG_ARCH}=$arch if("" ne $arch);
     $ENV{IMG_OSVER}=$osver if("" ne $osver);
@@ -790,16 +793,17 @@ if ($postinstall_filename) {
     $ENV{IMG_OTHERPKGLIST}=$otherpkglist if("" ne $otherpkglist);
     $ENV{IMG_OTHERPKGDIR}=$srcdir_otherpkgs if("" ne $srcdir_otherpkgs);
     $ENV{IMG_ROOTIMGDIR}=$rootimg_dir if("" ne $rootimg_dir);
-   
 
-    foreach my $postinstall (split /,/, $postinstall_filename) {
+
+    foreach my $rawpostinstall (split /,/, $postinstall_filename) {
+        my ($postinstall,@args)=split(" ",$rawpostinstall) ;
         if (!-x $postinstall) {
             print "postinstall script $postinstall is not executable\n";
             unuse_hackuname();
             exit 1;
         }
 
-        my $rc = system($postinstall, $rootimg_dir, $osver, $arch, $profile);
+        my $rc = system($postinstall, $rootimg_dir, $osver, $arch, $profile,@args);
         if ($rc) {
             print "postinstall script $postinstall failed\n";
             unuse_hackuname();
@@ -1012,7 +1016,7 @@ sub mkinitrd_dracut {
         chmod($perm & 07777, $dracutmoduledir . "98syslog/" . "parse-syslog-opts.sh");
     }
 
-    my $dracutmpath = $dracutmoduledir . "97xcat/";
+    my $dracutmpath = $dracutmoduledir . "98xcat/";
     mkpath($dracutmpath);
 
     my $perm = (stat("$fullpath/$dracutdir/check"))[2];
@@ -1059,14 +1063,13 @@ sub mkinitrd_dracut {
 
         #update etc/dracut.conf
         open($DRACUTCONF, '>', "$rootimg_dir/etc/dracut.conf");
-        my $dracutmodulelist = "xcat nfs base network kernel-modules syslog ";
+        my $dracutmodulelist = "xcat nfs base network kernel-modules syslog";
 
-        if (-d glob($dracutmoduledir . "[0-9]*systemd")) {
-            $dracutmodulelist .= " systemd ";
-        }
-
-        if (-d glob($dracutmoduledir . "[0-9]*fadump")) {
-            $dracutmodulelist .= " fadump ";
+        foreach (qw/systemd systemd-initrd dracut-systemd fadump/) {
+            my ($dir) = glob($dracutmoduledir . "[0-9]*" . $_);
+            if (-d $dir) {
+                $dracutmodulelist .= " $_";
+            }
         }
 
         print $DRACUTCONF qq{dracutmodules+="$dracutmodulelist"\n};
@@ -1101,15 +1104,13 @@ sub mkinitrd_dracut {
         $perm = (stat("$fullpath/$dracutdir/installkernel"))[2];
         chmod($perm & 07777, "$dracutmpath/installkernel");
 
-        my $dracutmodulelist = " xcat nfs base network kernel-modules syslog ";
- 
-        
-        if (-d glob($dracutmoduledir . "[0-9]*systemd")) {
-            $dracutmodulelist .= " systemd ";
-        }
+        my $dracutmodulelist = "xcat nfs base network kernel-modules syslog";
 
-        if (-d glob($dracutmoduledir . "[0-9]*fadump")) {
-            $dracutmodulelist .= " fadump ";
+        foreach (qw/systemd systemd-initrd dracut-systemd fadump/) {
+            my ($dir) = glob($dracutmoduledir . "[0-9]*" . $_);
+            if (-d $dir) {
+                $dracutmodulelist .= " $_";
+            }
         }
 
         # update etc/dracut.conf
@@ -1228,7 +1229,7 @@ MAGENTA="\033[35m"
 BROWN="\033[33m"
 NORMAL=\$RESET
 
-# This function is used to mount files/directories from the .statelite directory 
+# This function is used to mount files/directories from the .statelite directory
 #  over the root directory.
 # This function is stolen from redhat
 shell() {
@@ -1271,10 +1272,10 @@ echo '
 echo '
                             _________     ________________
                      ___  __\\_   ___ \\   /  _  \\__    ___/
-                     \\  \\/  /    \\  \\/  /  /_\\  \\|    |   
-                      >    <\\     \\____/    |    \\    |   
-                     /__/\\_ \\\\______  /\\____|__  /____|   
-                           \\/       \\/         \\/         
+                     \\  \\/  /    \\  \\/  /  /_\\  \\|    |
+                      >    <\\     \\____/    |    \\    |
+                     /__/\\_ \\\\______  /\\____|__  /____|
+                           \\/       \\/         \\/
 '
         echo -e "\$RESET"
 }
@@ -1384,7 +1385,7 @@ for i in `cat /proc/cmdline`; do
         # format: XCAT=xcatmaster:3001
         XCATIPORT=\$VALUE
     fi
-    #if "nonodestatus" specified,do not update the nodestatus 
+    #if "nonodestatus" specified,do not update the nodestatus
     if [ \$i == 'nonodestatus' ]; then
        NODESTATUS='n'
     fi
@@ -1450,7 +1451,7 @@ for i in `cat /proc/cmdline`; do
         SERVER=`echo \$VALUE|awk -F/ '{print \$3}'`
         ROOTDIR=`echo \$VALUE|awk -F/ '{for(i=4;i<=NF;i++) printf "/%s",\$i}'`
       fi
-   # for NFS root 
+   # for NFS root
    elif [ "\$KEY" == 'NFSROOT' ]; then
 	NFSROOT=1
 	VALUE=`echo \$i |awk -F= '{print \$2}'`
@@ -1545,7 +1546,7 @@ EOMS
         fi
 
     fi
-    # now we need to mount the rest of the system. 
+    # now we need to mount the rest of the system.
     if [ ! -e "\$NEWROOT/\$RWDIR" ]; then
         echo ""
         echo -e "\${RED}Hmmm... this NFS root directories doesn't have a /\$RWDIR directory for me to mount a rw filesystem. You'd better to create it... \${NORMAL}"
@@ -1760,24 +1761,24 @@ EOMS
 
     print $inifile <<EOMS;
 #!/bin/sh
-if [ \$# -eq 3 ]; then                                                           
-   echo \$3 > /tmp/ncarg                                                         
-   nc  \$1 \$2 -w 60 -e /tmp/updateflag                                           
-else                                                                            
-   retrytimes=0                                                                 
-   cmd=""                                                                       
-   while [ "\$cmd" != "done" ]; do                                               
-         retrytimes=`expr \$retrytimes + 1`                                      
-         if [ \$retrytimes -eq 60 ]; then                                        
-            break;                                                              
-         fi                                                                     
-         read -t 60 cmd                                                         
-         if [ "\$cmd" == "ready" ]; then                                         
-             head -n 1 /tmp/ncarg                                               
-             rm -rf /tmp/ncarg                                                  
-         fi                                                                     
-   done                                                                         
-                                                                                
+if [ \$# -eq 3 ]; then
+   echo \$3 > /tmp/ncarg
+   nc  \$1 \$2 -w 60 -e /tmp/updateflag
+else
+   retrytimes=0
+   cmd=""
+   while [ "\$cmd" != "done" ]; do
+         retrytimes=`expr \$retrytimes + 1`
+         if [ \$retrytimes -eq 60 ]; then
+            break;
+         fi
+         read -t 60 cmd
+         if [ "\$cmd" == "ready" ]; then
+             head -n 1 /tmp/ncarg
+             rm -rf /tmp/ncarg
+         fi
+   done
+
 fi
 EOMS
     close($inifile);
@@ -2046,7 +2047,7 @@ sub generic_post { #This function is meant to leave the image in a state approxi
             chmod(0755, "$rootimg_dir/etc/init.d/gettyset");
             system("cd $rootimg_dir/etc/rc3.d; ln -sf ../init.d/gettyset S60gettyset");
         }
-     
+
         if(-e "$rootimg_dir/etc/systemd/system/multi-user.target.wants/xcatpostinit1.service"){
             unlink("$rootimg_dir/etc/systemd/system/multi-user.target.wants/xcatpostinit1.service");
         }
@@ -2056,7 +2057,7 @@ sub generic_post { #This function is meant to leave the image in a state approxi
 
         if (!-d "$rootimg_dir/opt/xcat/") {
             mkdir "$rootimg_dir/opt/xcat/";
-        }          
+        }
 
         if(-e "$rootimg_dir/usr/lib/systemd/"){
             #if systemd is the service management framework for the diskless image
@@ -2400,9 +2401,9 @@ KERNELVER=$kernelver
 case "\$1" in
 "-m")
     if [ -z "\$ARCH" ]; then
-      ARCH=\"\$(dpkg --print-architecture 2>/dev/null || rpm -q kernel-\$(\"\$0\" -r) --qf '%{arch}' 2>/dev/null)\" 
+      ARCH=\"\$(dpkg --print-architecture 2>/dev/null || rpm -q kernel-\$(\"\$0\" -r) --qf '%{arch}' 2>/dev/null)\"
     fi
-    case "\$ARCH" in 
+    case "\$ARCH" in
         "amd64") ARCH="x86_64" ;;
         "ppc64el") ARCH="ppc64le" ;;
         esac

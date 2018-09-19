@@ -36,9 +36,9 @@ This program module file is a set of utilities to support xCAT post scripts.
 #----------------------------------------------------------------------------
 #----------------------------------------------------------------------------
 
-=head3  create_mypostscript_or_not 
+=head3  create_mypostscript_or_not
 
-        
+
      checks the site table precreatemypostscripts attribute.
      if 1, then
         creates all the /tftpboot/mypostscripts/mypostscript.<nodename> for
@@ -117,10 +117,10 @@ sub create_mypostscript_or_not {
 
 #-----------------------------------------------------------------------------
 
-=head3 makescript 
- 
-	create the  mypostscript file for each node in the noderange, according to 
-   the template file  mypostscript.tmpl. The template file is 
+=head3 makescript
+
+	create the  mypostscript file for each node in the noderange, according to
+   the template file  mypostscript.tmpl. The template file is
    /opt/xcat/share/xcat/templates/mypostscript/mypostscript.tmpl by default.
    user also can copy it to /install/postscripts/, and customize it there.
    The mypostscript.tmpl is for all the images.
@@ -138,20 +138,20 @@ sub create_mypostscript_or_not {
     Returns:
     Globals:
         %::GLOBAL_TAB_HASH: in subvars_for_mypostscript(),
-          it will read mypostscript.tmpl and 
+          it will read mypostscript.tmpl and
            see what db attrs will be needed.
            The  %::GLOBAL_TAB_HASH will store all
            the db attrs needed. And the format of value setting looks like:
            $::GLOBAL_TAB_HASH{$tabname}{$key}{$attrib} = $value;
-           %::GLOBAL_SN_HASH: getservicenode() will 
-           get all the nodes in the servicenode table. And the 
+           %::GLOBAL_SN_HASH: getservicenode() will
+           get all the nodes in the servicenode table. And the
            result will store in the %::GLOBAL_SN_HASH. The format:
            $::GLOBAL_SN_HASH{$servicenod1} = 1;
-                        
+
     Error:
         none
     Example:
-         
+
     Comments:
         none
 
@@ -320,7 +320,7 @@ sub makescript {
 
     #%image_hash is used to store the attributes in linuximage and nimimage tabs
     my %image_hash;
-    getImage(\%image_hash); 
+    getImage(\%image_hash);
 
     # get postscript and postscript from postscripts and osimage tabs
     my $script_hash = xCAT::Postage::getScripts($nodes, \%image_hash);
@@ -519,7 +519,7 @@ sub makescript {
             foreach my $myenv(split(',',$myenvstr)){
                 if($myenv =~ /\s*(\S+)\s*=\s*(\S+)\s*/) {
                     $ENV{$1}=$2;
-                } 
+                }
             }
         }
 
@@ -695,11 +695,11 @@ sub makescript {
 
 #----------------------------------------------------------------------------
 
-=head3  addexports 
+=head3  addexports
 
-        
+
    As we change the default mypostscript.tmpl, this routine will update
-   and existing customized template with the information 
+   and existing customized template with the information
      addexports($tmpl, $callback);
 
 
@@ -961,25 +961,25 @@ sub getsshbetweennodes
 
 #-------------------------------------------------------------------------------
 
-=head3  enableSSHbetweennodes 
+=head3  enableSSHbetweennodes
     Description:
-        The function is same as Template::enablesshbetweennodes() above. 
+        The function is same as Template::enablesshbetweennodes() above.
         The performance of template::enablesshbetweennodes() is bad is scaling environment.
-        We plan to use ""ENABLESSHBETWEENNODES=$""ENABLESSHBETWEENNODES" instead of  the 
+        We plan to use ""ENABLESSHBETWEENNODES=$""ENABLESSHBETWEENNODES" instead of  the
         syntax "ENABLESSHBETWEENNODES=#Subroutine:xCAT::Template::enablesshbetweennodes:$NODE# " in mypostscript.tmpl.
         To compatible to the old mypostscript.tmpl, so the  Template::enablesshbetweennodes() is left there.
     Arguments:
         $node  --  node name
-        $sn_hash -- if the node is one sn, key is the node name, and value is 1. 
+        $sn_hash -- if the node is one sn, key is the node name, and value is 1.
                     if the node is not a sn, the key isn't in this hash
         $groups_hash -- there are two keys:
                      1.  Each group in the value of site.sshbetweennodes could be the key
-                     2.  Each node in the groups from the value of site.sshbetweennodes , if the 
+                     2.  Each node in the groups from the value of site.sshbetweennodes , if the
                          value isn't ALLGROUPS or NOGROUPS.
-          
+
     Returns:
        1 = enable ssh
-       0 = do not enable ssh 
+       0 = do not enable ssh
     Globals:
         none
     Error:
@@ -1013,7 +1013,7 @@ sub enableSSHbetweennodes
 
 #-------------------------------------------------------------------------------
 
-=head3  enableSSHbetweennodeszones 
+=head3  enableSSHbetweennodeszones
     Description:  return how to fill in the ENABLESSHBETWEENNODES  export in the mypostscript file
                   based on the setting in the zone table sshbetweennodes attribute
     Arguments:
@@ -1021,7 +1021,7 @@ sub enableSSHbetweennodes
      $callback
     Returns:
        1 = enable ssh
-       0 = do not enable ssh 
+       0 = do not enable ssh
     Globals:
         none
     Error:
@@ -1204,7 +1204,9 @@ sub getImageitems_for_node
             }
             if ($ref1->{'environvar'}){
                 foreach my $myenvar(split(',',$ref1->{'environvar'})){
-                    $result .='export '.$myenvar."\n";
+                    $result .=$myenvar."\n";
+                    my ($varname,$value)=split('=',$myenvar);
+                    $result .='export '.$varname."\n";
                 }
             }
         }
@@ -1483,7 +1485,7 @@ sub getDisklessNet()
 #---------------------------------------------------
 =head3 get_nics_nicips
 
-    Description: If nicips contain regular expression, 
+    Description: If nicips contain regular expression,
                  transform the regular expression attribute to the target ip,
                  then generate new nicips with target ip.
     Arguments:
@@ -1515,7 +1517,7 @@ sub get_nics_nicips
                 ($nicname, $nicip) = split('!', $_);
             } else {
                 ($nicname, $nicip) = split(':', $_);
-            }                                                                 
+            }
             if (!$nicip) {
                 next;
             }
@@ -1523,7 +1525,7 @@ sub get_nics_nicips
             #for example: eth0!|\D+(\d+)\D+|10.80.1.($1*2+103)|
             #Does not support: there is regular expression in multple nicips
             if ($nicip =~ /^\|\S*\|$/) {
-                #transform the regular expression attribute to the target ip 
+                #transform the regular expression attribute to the target ip
                 $nicip = xCAT::Table::transRegexAttrs($node, $nicip);
             }
             #generate new nicips
@@ -1533,7 +1535,7 @@ sub get_nics_nicips
                 $new_nicips=$nicname."!".$nicip;
             }
        }
-      
+
     }
     return $new_nicips;
 }
@@ -1703,7 +1705,7 @@ sub dump_all_attribs_in_tabs
                         # Updated on 2017-03-22 for issue 2634 Quotes in tables' comment field break mypostscript
                         # The original line is : $values .= "comments=$t";
                         # In order to fix issue 2634, change this line to : $values .= "comments=";
-                        # To keep the free-style of comments and avoid the issues caused by special characters in 
+                        # To keep the free-style of comments and avoid the issues caused by special characters in
                         # the comments, the value of comments will not be appending to network related environment
                         # variables in mypostscript
                         $values .= "comments=";

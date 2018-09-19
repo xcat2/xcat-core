@@ -32,11 +32,11 @@ DESCRIPTION
 
 
 The nodegrpch command is similar to the nodech command, but ensures that the parameters are
-declared at the group level rather than the node specific level, and clears conflicting node 
-specific overrides of the specified groups.   Using table.column=value will do a 
-verbatim assignment.  If ",=" is used instead of "=", the specified value will be prepended to the 
-attribute's comma separated list, if it is not already there.  If "^=" is used, the specified 
-value will be removed from the attribute's comma separated list, if it is there.  You can also 
+declared at the group level rather than the node specific level, and clears conflicting node
+specific overrides of the specified groups.   Using table.column=value will do a
+verbatim assignment.  If ",=" is used instead of "=", the specified value will be prepended to the
+attribute's comma separated list, if it is not already there.  If "^=" is used, the specified
+value will be removed from the attribute's comma separated list, if it is there.  You can also
 use "^=" and ",=" in the same command to essentially replace one item
 in the list with another.  (See the Examples section.)
 

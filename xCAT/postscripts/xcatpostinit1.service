@@ -1,5 +1,5 @@
 [Unit]
-Description=xcat service on compute node, the framework to run postbootscript and update node status 
+Description=xcat service on compute node, the framework to run postbootscript and update node status
 After=network.target rsyslog.service
 
 [Service]

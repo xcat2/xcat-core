@@ -31,7 +31,7 @@ DESCRIPTION
 ***********
 
 
-This command modifies the statelite image by creating a series of links. 
+This command modifies the statelite image by creating a series of links.
 It creates 2 levels of indirection so that files can be modified while in
 their image state as well as during runtime. For example, a file like
 <$imgroot>/etc/ntp.conf will have the following operations done to it:

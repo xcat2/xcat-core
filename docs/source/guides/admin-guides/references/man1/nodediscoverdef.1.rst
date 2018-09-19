@@ -11,8 +11,8 @@ NAME
 ****
 
 
-\ **nodediscoverdef**\  - Define the undefined discovery request to a predefined xCAT node, 
-or clean up the discovery entries from the discoverydata table 
+\ **nodediscoverdef**\  - Define the undefined discovery request to a predefined xCAT node,
+or clean up the discovery entries from the discoverydata table
 (which can be displayed by nodediscoverls command)
 
 
@@ -40,7 +40,7 @@ xCAT node. The discovery entry can be displayed by \ **nodediscoverls**\  comman
 
 The options \ **-u**\  and \ **-n**\  have to be used together to define a discovery request to a node.
 
-The \ **nodediscoverdef**\  command also can be used to clean up the discovery entries from the 
+The \ **nodediscoverdef**\  command also can be used to clean up the discovery entries from the
 discoverydata table.
 
 The option \ **-r**\  is used to remove discovery entries. If working with \ **-u**\ , the specific entry

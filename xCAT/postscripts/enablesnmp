@@ -17,7 +17,7 @@ fi
 [ -f ${snmp_conf}.orig ] || cp $snmp_conf ${snmp_conf}.orig
 
 #get snmp attribute
-#NOTE: the length of SNMP Password has to be min=8 
+#NOTE: the length of SNMP Password has to be min=8
 xCATSettingsSTART="xCAT settings START"
 xCATSettingsEND="xCAT settings END"
 xCATSettingsOID="xCAT customized"
@@ -30,7 +30,7 @@ snmpauth=$SNMPAUTH
 snmpc=$SNMPC
 community="public"
 
-#Get cumulus orig conf file 
+#Get cumulus orig conf file
 grep "$xCATSettingsOID" $snmp_conf 2>&1 1> /dev/null
 if [ $? -eq 0 ]; then
     cp ${snmp_conf}.cumulus $snmp_conf
@@ -79,7 +79,7 @@ elif [ -n "$snmppwd" ]; then
     community=$snmppwd
 elif [ -n "$snmpc" ]; then
     community=$snmpc
-fi 
+fi
 
 echo "rocommunity $community default" >> $snmp_conf
 echo "rocommunity $community default -V systemonly" >> $snmp_conf

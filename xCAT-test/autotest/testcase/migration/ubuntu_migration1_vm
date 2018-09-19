@@ -31,21 +31,17 @@ cmd:xdsh $$CN "echo \"nameserver 9.0.2.1\" >> /etc/resolv.conf"
 check:rc==0
 cmd:xdsh $$CN "apt-get -y install software-properties-common"
 check:rc==0
-cmd:xdsh $$CN 'lsb_r=`lsb_release -sc`;add-apt-repository "deb http://archive.ubuntu.com/ubuntu $lsb_r main"' 
-check:rc==0
+cmd:xdsh $$CN 'lsb_r=`lsb_release -sc`;add-apt-repository "deb http://archive.ubuntu.com/ubuntu $lsb_r main"'
 cmd:xdsh $$CN 'lsb_r=`lsb_release -sc`;add-apt-repository "deb http://archive.ubuntu.com/ubuntu ${lsb_r}-updates main"'
-check:rc==0
 cmd:xdsh $$CN 'lsb_r=`lsb_release -sc`;add-apt-repository "deb http://archive.ubuntu.com/ubuntu ${lsb_r} universe"'
-check:rc==0
 cmd:xdsh $$CN 'lsb_r=`lsb_release -sc`;add-apt-repository "deb http://archive.ubuntu.com/ubuntu ${lsb_r}-updates universe"'
-check:rc==0
 cmd:xdsh $$CN "sed -i '/install/d' /etc/apt/sources.list"
 check:rc==0
 cmd:xdsh $$CN "sed -i '/security.ubuntu.com/d' /etc/apt/sources.list"
 check:rc==0
 cmd:xdsh $$CN "wget -O - http://xcat.org/files/xcat/repos/apt/apt.key | apt-key add -"
 check:rc==0
-cmd:xdsh $$CN "apt-get clean all" 
+cmd:xdsh $$CN "apt-get clean all"
 check:rc==0
 cmd:xdsh $$CN "apt-get update"
 check:rc==0

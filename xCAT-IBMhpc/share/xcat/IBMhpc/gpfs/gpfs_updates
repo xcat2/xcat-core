@@ -1,19 +1,19 @@
 #!/bin/sh
 
-# 
-# Sample script to install and configure GPFS 
+#
+# Sample script to install and configure GPFS
 # For AIX:
-#    Assumes the GPFS filesets and updates were installed using 
+#    Assumes the GPFS filesets and updates were installed using
 #    xCAT bundle files or some other mechanism. This script does not
 #    install additional software.
 #    It will do the following:
-#      - create /var/mmfs/etc/nsddevices that simply returns 0 
+#      - create /var/mmfs/etc/nsddevices that simply returns 0
 #      - add GPFS paths to profile
 # For Linux:
 #    Assumes the base GPFS rpms were installed with the xCAT 'otherpkgs'
 #    postscript (stateful install) or with the otherpkgs processing of
 #    genimage (stateless/statelite install).  This script will install any
-#    gpfs update rpms that exist on the xCAT management node in the 
+#    gpfs update rpms that exist on the xCAT management node in the
 #    /install/post/otherpkgs/gpfs_updates directory.
 #    This is necessary because the GPFS updates can ONLY be installed
 #    after the base rpms have been installed, and the update rpms cannot
@@ -37,7 +37,7 @@ UPDATES_DIR='post/otherpkgs/gpfs_updates'
 if [ $OS != "AIX" ]; then
     if [ $NODESETSTATE == "install" ] || [ $NODESETSTATE == "boot" ]; then
     #  Being run from a stateful install postscript
-    #  Copy rpms directly from the xCAT management node and install        
+    #  Copy rpms directly from the xCAT management node and install
         mkdir -p /tmp/gpfs_updates
         rm -f -R /tmp/gpfs_updates/*
         cd /tmp/gpfs_updates
@@ -66,9 +66,9 @@ if [ $OS != "AIX" ]; then
         fi
       fi
     fi
-fi  
+fi
 
-## Create an empty nsddevices script for GPFS 
+## Create an empty nsddevices script for GPFS
 ## This assumes that the node is NOT an NSD server
 #if [ $OS == "AIX" ]; then
 #    # Create the script on the node
@@ -95,7 +95,7 @@ if [ $OS == "AIX" ]; then
     # add to /etc/profile
     if ! grep 'mmfs' $installroot/etc/profile > /dev/null 2>&1; then
         echo 'export PATH=$PATH:/usr/lpp/mmfs/bin' >> $installroot/etc/profile
-    fi 
+    fi
 else  # assume Linux
     gpfsprofile=/etc/profile.d/gpfs
     if [ $NODESETSTATE == "genimage" ]; then

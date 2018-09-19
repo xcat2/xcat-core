@@ -25,7 +25,7 @@ use xCAT::MsgUtils;
 
 =head3 initCFMdir
     Initialize CFM directories and files. The default layout under cfmdir is:
-    . 
+    .
     |-- etc
     | |-- group.merge -> /etc/group.merge
     | |-- hosts -> /etc/hosts
@@ -42,7 +42,7 @@ use xCAT::MsgUtils;
       0 - initialize successfully
       1 - initialize failed
     Globals:
-      none 
+      none
     Error:
       none
     Example:
@@ -59,7 +59,7 @@ sub initCFMdir
     my @sysfiles = ("/etc/hosts");
 
     # the /etc/passwd, shadow, group files will be merged
-    my @userfiles = ("/etc/passwd", "/etc/shadow", "/etc/group");
+    my @userfiles = ("/etc/passwd", "/etc/shadow", "/etc/gshadow", "/etc/group");
 
     # create the cfmdir
     if (!-d $cfmdir)
@@ -113,10 +113,10 @@ sub initCFMdir
 #-----------------------------------------------------------------------------
 
 =head3 updateUserInfo
-    Update the /etc/passwd, shadow, group merge files under specified CFM directory
+    Update the /etc/passwd, shadow, gshadow, group merge files under specified CFM directory
 
     Arguments:
-      $cfmdir - CFM directory for osimage      
+      $cfmdir - CFM directory for osimage
     Returns:
       0 - update successfully
       1 - update failed
@@ -133,7 +133,7 @@ sub initCFMdir
 sub updateUserInfo {
     my ($class, $cfmdir) = @_;
 
-    my @userfiles = ("/etc/passwd", "/etc/shadow", "/etc/group");
+    my @userfiles = ("/etc/passwd", "/etc/shadow", "/etc/gshadow", "/etc/group");
 
     my @osfiles = glob("$cfmdir/*.OS");
     if (!@osfiles)
@@ -141,7 +141,7 @@ sub updateUserInfo {
         if ($::VERBOSE)
         {
             my $rsp = {};
-            $rsp->{data}->[0] = "Skiping the update of the /etc/passwd, shadow, group merge files under the CFM directory.";
+            $rsp->{data}->[0] = "Skiping the update of the /etc/passwd, shadow, gshadow, group merge files under the CFM directory.";
             xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
         }
         return 0;
@@ -153,7 +153,7 @@ sub updateUserInfo {
         my @newrecords = ();
         my $backup     = basename($file) . ".OS";
 
-        # get the records from /etc/passwd, shadow, group file and backup files(.OS files)
+        # get the records from /etc/passwd, shadow, gshadow, group file and backup files(.OS files)
         # and all the files from /install/osimages/$imgname/cfmdir directory
         foreach my $userinfo ($file, "$cfmdir/$backup")
         {
@@ -173,7 +173,7 @@ sub updateUserInfo {
             }
             close($fp);
 
-            # check the records from /etc/passwd, shadow, group file or backup
+            # check the records from /etc/passwd, shadow, gshadow, group file or backup
             if ($userinfo =~ /^\/etc/)
             {
                 @newrecords = @records;
@@ -287,7 +287,7 @@ sub setCFMSynclistFile {
 #-----------------------------------------------------------------------------
 
 =head3 updateCFMSynclistFile
-    Update the synclist file(/install/osimages/<imagename>/synclist.cfm) for CFM function. 
+    Update the synclist file(/install/osimages/<imagename>/synclist.cfm) for CFM function.
     It will recursively scan the files under cfmdir directory and then add them to CFM synclist file.
     Note:
     The files with suffix ".append" will be appended to the dest file(records in "APPEND:" section).
@@ -309,6 +309,7 @@ sub setCFMSynclistFile {
 	MERGE:
 	<cfmdir>/etc/group.merge -> /etc/group
 	<cfmdir>/etc/shadow.merge -> /etc/shadow
+	<cfmdir>/etc/gshadow.merge -> /etc/gshadow
 	<cfmdir>/etc/passwd.merge -> /etc/passwd
 
     Arguments:
@@ -358,13 +359,13 @@ sub updateCFMSynclistFile {
                 mkpath dirname($cfmsynclist);
             }
 
-            # update /etc/passwd, shadow, group merge files
+            # update /etc/passwd, shadow, gshadow, group merge files
             my $ret = xCAT::CFMUtils->updateUserInfo($cfmdir);
             if ($ret != 0)
             {
                 my $rsp = {};
                 $rsp->{error}->[0] =
-                  "Update /etc/passwd, shadow, group merge files failed.";
+                  "Update /etc/passwd, shadow, gshadow, group merge files failed.";
                 xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
                 return 1;
             }
@@ -418,10 +419,10 @@ sub updateCFMSynclistFile {
             }
             foreach my $file (@mergefiles)
             {
-                my @userfiles = ("/etc/passwd", "/etc/shadow", "/etc/group");
+                my @userfiles = ("/etc/passwd", "/etc/shadow", "/etc/gshadow", "/etc/group");
                 my $dest = substr($file, length($cfmdir), length($file) - length(".merge") - length($cfmdir));
 
-                # only /etc/passwd, /etc/shadow, /etc/groups merging is supported
+                # only /etc/passwd, /etc/shadow, /etc/gshadow, /etc/groups merging is supported
                 if (grep(/$dest/, @userfiles)) {
                     print $fp "$file -> $dest\n";
                 }
@@ -778,8 +779,8 @@ sub getPkgsDiff {
 
 #-----------------------------------------------------------------------------
 
-=head3 getIncludefiles 
-    Get the #INCLUDE files from the given file 
+=head3 getIncludefiles
+    Get the #INCLUDE files from the given file
 
     Arguments:
       $file - the given file
@@ -825,7 +826,7 @@ sub getIncludefiles {
 #-----------------------------------------------------------------------------
 
 =head3 trim
-    Strip left and right whitspaces for a string 
+    Strip left and right whitspaces for a string
 
     Arguments:
       $string

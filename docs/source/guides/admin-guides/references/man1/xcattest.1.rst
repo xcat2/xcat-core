@@ -121,7 +121,7 @@ The xCAT-test test cases are in flat text format, the testing framework will par
    start:case name
    #optional, description of the test case
    description: what the test case is for?
-   #optional, environment requirements 
+   #optional, environment requirements
    os:AIX/Linux
    #optional, environment requirements
    arch:ppc/x86

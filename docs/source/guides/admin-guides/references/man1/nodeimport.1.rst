@@ -107,7 +107,7 @@ To import nodes using a profile, follow the following steps:
    "__NetworkProfile_default_mn","static","static",,,,
    "__NetworkProfile_default_cn","static",,,,,
    "__ImageProfile_rhels6.2-x86_64-install-compute","static","static",,,,
-    
+ 
    # lsdef -t group __NetworkProfile_default_cn
    Object name: __NetworkProfile_default_cn
        grouptype=static
@@ -125,7 +125,7 @@ To import nodes using a profile, follow the following steps:
 
 .. code-block:: perl
 
-   Example of a node information file, a blade and a rack server defined: 
+   Example of a node information file, a blade and a rack server defined:
    # hostinfo begin
    # This entry defines a blade.
    __hostname__:
@@ -153,7 +153,7 @@ To import nodes using a profile, follow the following steps:
       slotid=1
    # hostinfo end.
  
-   Example of a node information file, a switch auto discovery node defined: 
+   Example of a node information file, a switch auto discovery node defined:
    # hostinfo begin
    # This entry defines a blade.
    __hostname__:
@@ -165,15 +165,15 @@ To import nodes using a profile, follow the following steps:
    __hostname__:
       mac=b8:ac:6f:37:59:28
       cec=mycec
-   
+ 
    __hostname__:
       mac=b8:ac:6f:37:59:28
       cec=mycec
       lparid=2
    # Node information file ends.
-   
+ 
    Example of a node information file that specifies a PowerKVM Guest node that uses KVM management:
-   
+ 
    # Node information file begins
    # This entry defines a PowerKVM Guest node.
    # Make sure the node 'vm01' is already created on Hypervisor

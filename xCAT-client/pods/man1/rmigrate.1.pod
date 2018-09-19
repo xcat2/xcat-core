@@ -12,7 +12,7 @@ B<rmigrate> I<noderange> [B<destination=>I<target_host>] [B<action=>I<action>] [
 
 =head1 B<Description>
 
-B<rmigrate> requests that a guest VM to be moved from the current hypervisor to another.  It will request a live migration if possible.  The vmstorage directory should be shared between the source and destination hypervisors. 
+B<rmigrate> requests that a guest VM to be moved from the current hypervisor to another.  It will request a live migration if possible.  The vmstorage directory should be shared between the source and destination hypervisors.
 
 Note: Make sure SELINUX is disabled and firewall is turned off on source and destination hypervisors.
 

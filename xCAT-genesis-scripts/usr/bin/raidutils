@@ -40,7 +40,7 @@ str_dir_name=`dirname $0`
 #
 #  input: pci_id
 #
-#  output: pci locations 
+#  output: pci locations
 #
 ################################################################
 function get_pciloc_by_id {
@@ -67,7 +67,7 @@ function get_pciloc_by_id {
 #
 # input: slocs, for example, 0:0:0:0 0:0:1:0
 #
-# output: <sloc>=<device_name> ... 
+# output: <sloc>=<device_name> ...
 #         <sloc>=<device_name>
 #
 ######################################################
@@ -93,7 +93,7 @@ function convert_sloc_to_sg {
 #
 #  Through PCI/SCSI device to find PCI/SCSI location
 #
-#  input: device names, 
+#  input: device names,
 #         sg0 ...sgn
 #
 #  output: <dev>=<sloc>... <dev>=<sloc>
@@ -170,7 +170,7 @@ function get_raid_create_devices_by_pciloc {
 # return list of ioas on target pciloc with order of Primary --> Secondary --> Others
 #
 # input: pci locations
-# 
+#
 # output: sorted raid adapters location list
 #
 #########################################################################################
@@ -255,7 +255,7 @@ function cut_sloc_from_iprconfig_line {
 #
 # input: pci locations
 #
-# output:  descriptions and status from "iprconfig -c show-config" 
+# output:  descriptions and status from "iprconfig -c show-config"
 #
 ###################################################################
 function find_desc_status_sg {
@@ -274,7 +274,7 @@ function find_desc_status_sg {
         echo $slocs
     done
     return 0
-    
+
 }
 
 #######################################################
@@ -325,7 +325,7 @@ function get_ipr_arrays_by_pciloc {
     local lines=$(cmd_show_arrays)
     local slocs=`for pciloc in $pcilocs
     do
-        echo "$lines" 
+        echo "$lines"
     done `
     [ -n "$slocs" ] && echo "$slocs"
     return 0
@@ -333,7 +333,7 @@ function get_ipr_arrays_by_pciloc {
 
 #####################################################################
 #
-# get all af and jbod disks 
+# get all af and jbod disks
 #
 # input: no
 #
@@ -423,7 +423,7 @@ function get_PCI_ID {
 #
 # output: 0  exist
 #         1  not
-# 
+#
 ##########################################
 function sloc_exist {
     local __sloc="$1"
@@ -488,7 +488,7 @@ function cut_pciloc_from_iprconfig_line {
 # input : array name
 #
 # output : member sloc list
-#          "member_sloc1 member_sloc2 ...." 
+#          "member_sloc1 member_sloc2 ...."
 #
 #############################################
 function get_ipr_array_members {
@@ -645,7 +645,7 @@ function delete_disks_belong_array_from_slocs {
 #
 #         left: member disks , iprconfig_args
 #
-# output : 
+# output :
 #
 ################################################################################
 function create_ipr_array {

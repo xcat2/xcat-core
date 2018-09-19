@@ -44,11 +44,11 @@ OPTIONS
  
  The switches which the user want to discover.
  If the user specify the noderange, switchdiscover will just
- return the switches in the node range. Which means it will 
+ return the switches in the node range. Which means it will
  help to add the new switches to the xCAT database without
- modifying the existed definitions. But the switches' name 
- specified in noderange should be defined in database in advance. 
- The ips of the switches will be defined in /etc/hosts file. 
+ modifying the existed definitions. But the switches' name
+ specified in noderange should be defined in database in advance.
+ The ips of the switches will be defined in /etc/hosts file.
  This command will fill the switch attributes for the switches defined.
  
 
@@ -77,7 +77,7 @@ OPTIONS
 
 \ **-s**\ 
  
- It is a comma separated list of methods for switch discovery. 
+ It is a comma separated list of methods for switch discovery.
  The possible switch scan methods are: lldp, nmap or snmp. The default is nmap.
  
 

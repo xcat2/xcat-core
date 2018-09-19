@@ -236,9 +236,9 @@ sub process_request {
             $nrtab->setNodeAttribs($node, { netboot => 'petitboot' });
         } elsif ($request->{arch}->[0] =~ /ppc/ and $currboot !~ /yaboot/) {
             $nrtab->setNodeAttribs($node, { netboot => 'yaboot' });
-        } elsif($request->{arch}->[0] =~ /armv7l/ and $currboot !~ /onie/) { 
+        } elsif($request->{arch}->[0] =~ /armv7l/ and $currboot !~ /onie/) {
             #for onie switch, the netboot should be "onie"
-            $nrtab->setNodeAttribs($node, { netboot => 'onie' });  
+            $nrtab->setNodeAttribs($node, { netboot => 'onie' });
         }
     }
 
@@ -254,14 +254,14 @@ sub process_request {
                     $switchtype=$xCAT::data::switchinfo::global_switch_type{$1};
                 }
             }
-             
+
             if($switchtype){
                 $switchestab->setNodeAttribs($node,{ switchtype => $switchtype });
             }
             $switchestab->close();
         }
     }
-  
+
 
     my $macstring = "";
     if (defined($request->{mac})) {
@@ -319,7 +319,7 @@ sub process_request {
                     my $hosttag = gethosttag($node, $netn, @ifinfo[1], \%usednames);
                     unless ($hosttag) {
                         my $nettagname = $usednames_for_net{$netn};
-                        # For nics not in the install network, don't deal with them if not an avaliable hostname get 
+                        # For nics not in the install network, don't deal with them if not an available hostname get
                         # In case another nic in install network get a hosttag other than nodename, need to compare the IP address they can convert to
                         if ($nettagname and (inet_aton($nettagname) eq inet_aton($node))) {
                             $hosttag = "$node-$ifinfo[1]";
@@ -414,6 +414,17 @@ sub process_request {
         # search the management nic and record the switch informaiton
         foreach my $nic (@{ $request->{nic} }) {
             if (defined($nic->{'hwaddr'}) && $nic->{'hwaddr'}->[0] =~ /$firstmac/i) {
+                if (defined($nic->{'switchname'}) && defined($nic->{'switchport'})) {
+                    # update the switch table
+                    my $switchtab = xCAT::Table->new('switch');
+                    if ($switchtab) {
+                        $switchtab->setNodeAttribs($node, { switch => $nic->{'switchname'}->[0], port => $nic->{'switchport'}->[0] });
+                        $switchtab->close();
+                    }
+
+                }
+                next;
+                # Don't create switch definition in nodelist, hosts, switches table
                 if (defined($nic->{'switchname'}) && defined($nic->{'switchaddr'})) {
 
                     # update the switch to switches table
@@ -461,7 +472,7 @@ sub process_request {
     if (defined($request->{bmc_node}) and defined($request->{bmc_node}->[0])) {
         $bmc_node = $request->{bmc_node}->[0];
     }
-    
+
     if (-x "/usr/bin/goconserver") {
         xCAT::MsgUtils->message("S", "xcat.discovery.nodediscover: remove gocons session for $bmc_node");
         require xCAT::Goconserver;
@@ -496,7 +507,7 @@ sub process_request {
             }
         }
     }
-    
+
 
     my $restartstring = "restart";
     if (scalar @forcenics > 0) {
@@ -510,7 +521,7 @@ sub process_request {
         Timeout  => '1',
         Proto    => 'tcp'
     );
-    unless ($sock) { xCAT::MsgUtils->message("S", "xcat.discovery.nodediscover: Failed to notify $clientip that it's actually $node. $node has not been discovered."); return; }
+    unless ($sock) { xCAT::MsgUtils->message("S", "xcat.discovery.nodediscover: Failed to notify $clientip that it's actually $node. $node has not been discovered: $!"); return; }
     print $sock $restartstring;
     close($sock);
 

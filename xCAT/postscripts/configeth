@@ -1,4 +1,4 @@
-#!/bin/bash  
+#!/bin/bash
 # IBM(c) 2014 EPL license http://www.eclipse.org/legal/epl-v10.html
 # Internal script used by confignics only.
 # It configs the Ethernet adpaters on the node
@@ -31,7 +31,7 @@ function configipv4(){
     if [ "$str_extra_params" != "$str_default_token" ]; then
 		parse_nic_extra_params "$str_extra_params"
     fi	
-    
+
     if [ "$str_os_type" = "sles" ];then
         str_conf_file="/etc/sysconfig/network/ifcfg-${str_if_name}"
         if [ $num_v4num -eq 0 ];then
@@ -45,7 +45,7 @@ function configipv4(){
             echo "_nm_name=static-0" >> $str_conf_file
             if [ "$str_nic_mtu" != "$str_default_token" ]; then
                 echo "MTU=${str_nic_mtu}" >> $str_conf_file
-            fi  
+            fi
 			#add extra params
 			i=0
 			while [ $i -lt ${#array_extra_param_names[@]} ]
@@ -93,7 +93,7 @@ function configipv4(){
         echo "  netmask ${str_v4mask}" >> $str_conf_file
         echo "  network ${str_v4net}" >> $str_conf_file
         if [ "$str_nic_mtu" != "$str_default_token" ]; then
-            echo "  mtu ${str_nic_mtu}" >> $str_conf_file    
+            echo "  mtu ${str_nic_mtu}" >> $str_conf_file
         fi
 		#add extra params
 		i=0
@@ -184,7 +184,7 @@ configipv6(){
             if [ $? -ne 0 ];then
                 echo "default $str_v6gateway - -" >> /etc/sysconfig/network/routes
             fi
-        fi 
+        fi
 
         #add extra params
 		i=0
@@ -310,7 +310,7 @@ function add_ip_temporary(){
             fi
             ip addr add ${str_ip}/${str_mask} dev $str_temp_name
         #ipv4
-        else 
+        else
             str_label=''
             ip addr show dev $str_temp_name | grep inet | grep "global" | grep -v ':' | grep "${str_temp_name}"
             if [ $? -eq 0 ];then
@@ -409,7 +409,7 @@ if [ "$1" = "-r" ];then
         log_info "configeth on $NODE run command: chdev -l $str_nic_name -a netaddr='' -a netmask='' -a netaddr6='' -a prefixlen='' -a state=down"
         chdev -l $str_nic_name -a netaddr='' -a netmask='' -a netaddr6='' -a prefixlen='' -a state=down
     else
-        #shut down the nic if it is on 
+        #shut down the nic if it is on
         ip link show $str_nic_name | grep -i ',up'
         if [ $? -eq 0 ];then
             if [ "$str_os_type" = "debian" ];then
@@ -445,7 +445,7 @@ elif [ "$1" = "-s" ];then
             str_inst_mask=`grep subnet-mask $str_lease_file | tail -n 1 | awk '{print $3}' | sed 's/;$//'`
             str_inst_gateway=`grep routers $str_lease_file | tail -n 1 | awk '{print $3}' | sed 's/;$//'`
         else
-            if [ -n "$MACADDRESS" ];then       
+            if [ -n "$MACADDRESS" ];then
                 str_inst_mac=$MACADDRESS
                 inst_nic=`ip -o link |grep -i ${str_inst_mac} |awk '{print $2}'|sed 's/://g'`
                 if [ ! -z "${inst_nic}" ];then
@@ -509,7 +509,7 @@ elif [ "$1" = "-s" ];then
     if [ -n "$IPADDR" ];then
         str_inst_ip=$IPADDR
     fi
-    
+
     if [ -n "$MACADDRESS" ];then
         str_inst_mac=$MACADDRESS
     else
@@ -541,7 +541,7 @@ elif [ "$1" = "-s" ];then
 	if [ ${#array_nic_params[@]} -gt 0 ]; then
 		str_extra_params=${array_nic_params[0]}
 		parse_nic_extra_params "$str_extra_params"
-	fi 
+	fi
 
     # cofniguring the interface
 
@@ -656,7 +656,7 @@ elif [ "$1" = "-s" ];then
             ifdown $str_inst_nic
         fi
         ifup $str_inst_nic
-    fi 
+    fi
     if [ $? -ne 0 ]; then
         log_error "ifup $str_inst_nic failed."
         error_code=1
@@ -747,7 +747,7 @@ while [ $num_index -lt ${#array_nic_ips[*]} ];do
         continue
     fi
 
-    #find out the network definition 
+    #find out the network definition
     str_line=${array_nic_network_config[$num_index]}
     if [ ! $str_line ];then
         logger -t xcat -p local4.err "configeth: Network object $str_netname is not defined."
@@ -761,8 +761,8 @@ while [ $num_index -lt ${#array_nic_ips[*]} ];do
     str_subnet=`echo $str_line | awk -F'net=' '{print $2}' | awk -F'|' '{print $1}'`
     str_netmask=`echo $str_line | awk -F'mask=' '{print $2}' | awk -F'|' '{print $1}' | sed 's:^/::'`
     str_gateway=`echo $str_line | awk -F'gateway=' '{print $2}' | awk -F'|' '{print $1}'`
-    str_mtu=`echo $str_line | awk -F'mtu=' '{print $2}' | awk -F'|' '{print $1}'`   
- 
+    str_mtu=`echo $str_line | awk -F'mtu=' '{print $2}' | awk -F'|' '{print $1}'`
+
     if [ ! $str_subnet -o ! $str_netmask ];then
         logger -t xcat -p local4.err "configeth: subnet or netmask is not defined in network object $str_netname."
         log_error "configeth on $NODE: subnet or netmask is not defined in network object $str_netname."
@@ -837,7 +837,7 @@ if [ "$str_os_type" = "aix" ];then
             echo "configeth on $NODE: delete undefined ipv6 address $str_old_ip"
         fi
     fi
-    
+
     #check the ipv4 alias
     str_history=`lsattr -El $str_nic_name | grep alias4 | awk '{print $2}' | grep '\.'`
     if [ $? -eq 0 ];then
@@ -853,7 +853,7 @@ if [ "$str_os_type" = "aix" ];then
                 hashset hash_new_config $str_old_ip "old"
             else
                 chdev -l $str_nic_name -a delalias4=$str_temp
-                
+
             fi
         done
     fi
@@ -891,7 +891,7 @@ if [ "$str_os_type" = "aix" ];then
             add_ip_temporary $str_new_ip $str_nic_name
         fi
     done
-    
+
     #change the nic status to up
     chdev -l $str_nic_name -a state=up
     if [ $? -ne 0 ]; then

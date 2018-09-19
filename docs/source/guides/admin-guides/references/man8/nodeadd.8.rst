@@ -66,11 +66,11 @@ RETURN VALUE
 
 
 
-0.  The command completed successfully.
+0. The command completed successfully.
 
 
 
-1.  An error has occurred.
+1. An error has occurred.
 
 
 

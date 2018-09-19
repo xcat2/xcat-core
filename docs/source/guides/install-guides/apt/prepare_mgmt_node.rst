@@ -19,18 +19,19 @@ xCAT uses the apt package manager on Ubuntu Linux distributions to install and r
 
 #. Copy the DVD iso file to ``/tmp`` on the Management Node: ::
 
-     # This example will use ubuntu-14.04.3-server-ppc64el.iso
+     # This example will use ubuntu-18.04-server-ppc64el.iso
+     cp /path/to/ubuntu-18.04-server-ppc64el.iso /tmp
 
-#. Mount the iso to ``/mnt/iso/ubuntu14`` on the Management Node.  ::
+#. Mount the iso to ``/mnt/iso/ubuntu`` on the Management Node. ::
 
-     mkdir -p /mnt/iso/ubuntu14
-     mount -o loop /tmp/ubuntu-14.04.3-server-ppc64el.iso /mnt/iso/ubuntu14
+     mkdir -p /mnt/iso/ubuntu
+     mount -o loop /tmp/ubuntu-18.04-server-ppc64el.iso /mnt/iso/ubuntu
 
-#. Create an apt repository file ``/etc/apt.repos.d/ubuntu14-dvd.repo`` that points to the locally mounted iso image from the above step.  The file contents should appear as the following: ::
+#. Create an apt repository file ``/etc/apt.repos.d/ubuntu18-dvd.repo`` that points to the locally mounted iso image from the above step.  The file contents should appear as the following: ::
 
-     [ubuntu-14-dvd-server]
-     name=UBUNTU 14 SERVER packages
-     baseurl=file:///mnt/iso/ubuntu14/Server
+     [ubuntu-dvd-server]
+     name=Ubuntu 18.04 Server packages
+     baseurl=file:///mnt/iso/ubuntu/Server
      enabled=1
      gpgcheck=1
 
@@ -44,10 +45,10 @@ By setting properties on the Management Node before installing the xCAT software
 
    #. To set the hostname of *xcatmn.cluster.com*: ::
 
-       hostname xcatmn.cluster.com 
+       hostname xcatmn.cluster.com
 
-   #. Add the hostname to the ``/etc/hostname`` and ``/etc/hosts`` to persist the hostname on reboot. 
-   
+   #. Add the hostname to the ``/etc/hostname`` and ``/etc/hosts`` to persist the hostname on reboot.
+
    #. Reboot or run ``service hostname restart`` to allow the hostname to take effect and verify the hostname command returns correctly:
 
         * ``hostname``
@@ -55,4 +56,4 @@ By setting properties on the Management Node before installing the xCAT software
 
 #. Reduce the risk of the Management Node IP address being lost by setting the interface IP to **STATIC** in the ``/etc/network/interfaces`` configuration file.
 
-#. Configure any domain search strings and nameservers using the ``resolvconf`` command. 
+#. Configure any domain search strings and nameservers using the ``resolvconf`` command.

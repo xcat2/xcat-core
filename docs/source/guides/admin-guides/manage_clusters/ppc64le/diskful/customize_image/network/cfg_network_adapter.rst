@@ -13,8 +13,8 @@ If configuring VLAN, BOND, or BRIDGES, ``nicdevices`` in ``nics`` table must be 
 
 The following scenarios are examples to configure Ethernet adapters/BOND/VLAN/Bridge.
 
-    #. Configure Ethernet adapters: 
-   
+    #. Configure Ethernet adapters:
+
         * Scenario 1: :doc:`Configure Ethernet Network Interface <../../../../common/deployment/network/cfg_network_ethernet_nic>`
           To configure Ethernet install NIC or other Ethernet network adapters as static
 
@@ -28,7 +28,7 @@ The following scenarios are examples to configure Ethernet adapters/BOND/VLAN/Br
         * Scenario 4: :doc:`Configure VLAN Based on Bond Adapters <../../../../common/deployment/network/cfg_network_bond_vlan>`
 
     #. Configure Bridge **[RHEL]**:
- 
+
         * Scenario 5: :doc:`Configure Bridge Based On Ethernet NIC <../../../../common/deployment/network/cfg_network_bridge>`
         * Scenario 6: :doc:`Configure Bridge Based on Bond Adapters <../../../../common/deployment/network/cfg_network_bond_bridge>`
         * Scenario 7: :doc:`Configure Bridge Based on VLAN <../../../../common/deployment/network/cfg_network_vlan_bridge>`
@@ -36,7 +36,7 @@ The following scenarios are examples to configure Ethernet adapters/BOND/VLAN/Br
         * Scenario 8: :doc:`Configure Bridge Based on VLAN,VLAN use BOND adapter <../../../../common/deployment/network/cfg_network_bond_vlan_bridge>`
 
     #. Advanced topics:
-    
+
         * :doc:`Use Customized Scripts To Configure NIC <../../../../common/deployment/network/cfg_network_custom_scripts>`
         * :doc:`Use Extra Parameters In NIC Configuration File <../../../../common/deployment/network/cfg_network_extra_param>`
         * :doc:`Configure Aliases <../../../../common/deployment/network/cfg_network_aliases>`

@@ -22,17 +22,17 @@ When creating a mksysb image definition you must specify either the "-n" or the 
 
 B<Adding software and configuration files to the osimage.>
 
-When creating a diskless osimage definition you also have the option of automatically updating the NIM SPOT resource.  You can have additional software installed or you can have configuration files added or updated.  To have software installed you must provide either the names of NIM installp_bundle resources or fileset names on the command line using the "attr=val" option. You may also supply the installp flags, RPM flags, emgr flags to use when installing the software. 
+When creating a diskless osimage definition you also have the option of automatically updating the NIM SPOT resource.  You can have additional software installed or you can have configuration files added or updated.  To have software installed you must provide either the names of NIM installp_bundle resources or fileset names on the command line using the "attr=val" option. You may also supply the installp flags, RPM flags, emgr flags to use when installing the software.
 
 To have configuration files updated you must provide the full path name of a "synclists" file which contains the list of actual files to update.  The xCAT osimage definition that is created will contain the installp_bundle, otherpkgs, and synclists files that are provided on the command line.
 
 B<Updating an existing xCAT osimage>
 
-If you wish to update an existing diskless image after it has already been created you can use the "-u" (update) option.  In this case the xCAT osimage definition will not be updated. 
+If you wish to update an existing diskless image after it has already been created you can use the "-u" (update) option.  In this case the xCAT osimage definition will not be updated.
 
-There are two ways to use the update feature.  
+There are two ways to use the update feature.
 
-You can update the osimage definition and run the B<mknimimage> command with no "installp_bundle", "otherpkgs", or "synclists" command line values. The information for updating the SPOT will come from the osimage definition only.  This has the advantage of keeping a record of any changes that were made to the SPOT. 
+You can update the osimage definition and run the B<mknimimage> command with no "installp_bundle", "otherpkgs", or "synclists" command line values. The information for updating the SPOT will come from the osimage definition only.  This has the advantage of keeping a record of any changes that were made to the SPOT.
 
 Or, you could do a more ad hoc update by providing one or more of the "installp_bundle", "otherpkgs", or "synclists" values on the command line. If any of these values are provided the B<mknimimage> command will use those values only. The osimage definition will not be used or updated.
 
@@ -75,7 +75,7 @@ To remove specific NIM resource definitions use the AIX B<nim> command. ("nim -o
 
 =item I<attr=val [attr=val ...]>
 
-Specifies one or more "attribute equals value" pairs, separated by spaces. Attr=val pairs must be specified last on the command line. 
+Specifies one or more "attribute equals value" pairs, separated by spaces. Attr=val pairs must be specified last on the command line.
 
 Currently supported attributes:
 
@@ -114,11 +114,11 @@ The name of a NIM mksysb resource.
 One or more comma separated installp, emgr, or rpm packages.  The packages must
 have prefixes of 'I:', 'E:', or 'R:', respectively. (ex. R:foo.rpm)
 
-=item B<paging> 
+=item B<paging>
 
 The name of the NIM paging resource.
 
-=item B<resolv_conf> 
+=item B<resolv_conf>
 
 The name of the NIM resolv_conf resource.
 
@@ -157,7 +157,7 @@ The alternate flags to be passed along to the AIX installp command. (The default
 =item B<rpm_flags>
 
 The alternate flags to be passed along to the AIX rpm command. (The default for
-rpm_flags is "-Uvh ".) The mknimimage command will check each rpm to see if 
+rpm_flags is "-Uvh ".) The mknimimage command will check each rpm to see if
 it is installed.  It will not be reinstalled unless you specify the appropriate
 rpm option, such as '--replacepkgs'.
 
@@ -167,11 +167,11 @@ The alternate flags to be passed along to the AIX emgr command. (There is no def
 
 =item B<dumpsize>
 
-The maximum size for a single dump image the dump resource will accept. Space is not allocated until a client starts to dump. The default size is 50GB. The dump resource should be large enough to hold the expected AIX dump and snap data. 
+The maximum size for a single dump image the dump resource will accept. Space is not allocated until a client starts to dump. The default size is 50GB. The dump resource should be large enough to hold the expected AIX dump and snap data.
 
 =item B<max_dumps>
 
-The maximum number of archived dumps for an individual client. The default is one. 
+The maximum number of archived dumps for an individual client. The default is one.
 
 =item B<snapcollect>
 
@@ -239,7 +239,7 @@ Use this option to specify that a NIM "shared_root" resource be created for the 
 
 =item B<-s> I<image_source>
 
-The source of software to use when creating the new NIM lpp_source resource. This could be a source directory or a previously defined NIM lpp_source resource name. 
+The source of software to use when creating the new NIM lpp_source resource. This could be a source directory or a previously defined NIM lpp_source resource name.
 
 =item B<-t nimtype>
 
@@ -319,13 +319,13 @@ Note:  If you also wish to have the original lpp_source copied and defined use t
 
  mknimimage -t diskless -s 61cosi_lpp_source 611cosi tmp=mytmp home=myhome
 
-10) Create a diskless image and update it with additional software using rpm flags and configuration files. 
+10) Create a diskless image and update it with additional software using rpm flags and configuration files.
 
  mknimimage -t diskless -s 61cosi_lpp_source 61dskls otherpkgs=I:fset1,R:foo.rpm,E:IZ38930TL0.120304.epkg.Z synclists=/install/mysyncfile rpm_flags="-i --nodeps"
 
 The xCAT osimage definition created by this command will include the "otherpkgs" and "synclists" values.  The NIM SPOT resource associated with this osimage will be updated with the additional software using rpm flags "-i --nodeps" and configuration files.
 
-11) Update an existing diskless image (AIX/NIM SPOT) using the information saved in the xCAT "61dskls" osimage definition. Also specify verbose messages.  
+11) Update an existing diskless image (AIX/NIM SPOT) using the information saved in the xCAT "61dskls" osimage definition. Also specify verbose messages.
 
  mknimimage -V -u 61dskls
 
@@ -335,7 +335,7 @@ The xCAT osimage definition created by this command will include the "otherpkgs"
 
 Note that when "installp_bundle", "otherpkgs", or "synclists" values are specified with the "-u" option then the xCAT osimage definition is not used or updated.
 
-13) Update an existing image to support NFSv4. Also specify verbose messages.  
+13) Update an existing image to support NFSv4. Also specify verbose messages.
 
  mknimimage -V -u 61dskls nfs_vers=4
 

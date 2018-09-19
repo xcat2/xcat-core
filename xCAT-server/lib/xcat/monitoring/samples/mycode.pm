@@ -22,7 +22,7 @@ package xCAT_monitoring::mycode;
     Returns:
       0
     Comment:
-       To test, 
+       To test,
         1. copy this file to /opt/xcat/lib/perl/xCAT_monitoring directory.
         2. run regnotif /opt/xcat/lib/perl/xCAT_monitoring/mycode.pm nodelist -o a,u,d
         3. Then change the nodelist table (add node, remove node, or change status column).

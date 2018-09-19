@@ -1,7 +1,7 @@
 Using System Clone to Deploy Diskful Node
 =========================================
 
-When we want to deploy large numbers of nodes which have the same configuration, the simplest way is to clone. This means the user can customize and tweak one node's configuration according to his needs. They can verify it's proper operation, then make this node as template. They can capture an osimage from this template node, and deploy the rest of the nodes with this osimage quickly. xCat (2.8.2 and above) provides this feature which we call Sysclone to help you handle this scenario. 
+When we want to deploy large numbers of nodes which have the same configuration, the simplest way is to clone. This means the user can customize and tweak one node's configuration according to his needs. They can verify it's proper operation, then make this node as template. They can capture an osimage from this template node, and deploy the rest of the nodes with this osimage quickly. xCat (2.8.2 and above) provides this feature which we call Sysclone to help you handle this scenario.
 
 List of Supported Arch and OS
 -----------------------------
@@ -35,7 +35,7 @@ List of Supported Arch and OS
 Using Sysclone to Install Nodes
 -------------------------------
 
-This document describes how to install and configure a template node (called golden client), capture an image from this template node, then using this image to deploy other nodes (called target nodes) quickly. 
+This document describes how to install and configure a template node (called golden client), capture an image from this template node, then using this image to deploy other nodes (called target nodes) quickly.
 
 Prepare the xCAT Management Node for Support Sysclone
 `````````````````````````````````````````````````````
@@ -65,10 +65,10 @@ To support Sysclone, we need to install some extra rpms on management node and t
     Compilation failed in require at /usr/sbin/si_mkrsyncd_conf line 28.
     BEGIN failed--compilation aborted at /usr/sbin/si_mkrsyncd_conf line 28.
 
-3. Copy the xcat-dep-XXX.tar.bz2 file to directory ``/install/post/otherpkgs/<os>/<arch>/xcat/`` of the management node according your golden client's OS version and system architecture, then decompress it: 
+3. Copy the xcat-dep-XXX.tar.bz2 file to directory ``/install/post/otherpkgs/<os>/<arch>/xcat/`` of the management node according your golden client's OS version and system architecture, then decompress it:
 
 * **[CentOS6.3 and x86_64]**::
-    
+
     mkdir -p /install/post/otherpkgs/CentOS6.3/x86_64/xcat
     cp xcat-dep-*.tar.bz2  /install/post/otherpkgs/CentOS6.3/x86_64/xcat
     cd /install/post/otherpkgs/CentOS6.3/x86_64/xcat
@@ -82,7 +82,7 @@ To support Sysclone, we need to install some extra rpms on management node and t
     tar jxvf xcat-dep-*.tar.bz2
 
 * **[RHEL6.4 and ppc64]**::
-    
+
     mkdir -p /install/post/otherpkgs/rhels6.4/ppc64/xcat
     cp xcat-dep-*.tar.bz2  /install/post/otherpkgs/rhels6.4/ppc64/xcat
     cd /install/post/otherpkgs/rhels6.4/ppc64/xcat
@@ -95,7 +95,7 @@ The Golden Client acts as a regular node for xCAT, it just has some extra rpms t
 
 For information of how to install a regular node, refer to section :ref:`Diskful Installation <diskful_installation>`
 
-To support clone, add 'otherpkglist' and 'otherpkgdir' attributes to the image definition which will be used to deploy golden client, then deploy golden client as normal. Once deployed, the golden client will have extra rpms to support cloning. If you have deployed your golden client already, use **updatenode** command to push these extra rpms to golden client. CentOS shares the same pkglist file with RHEL. For example: 
+To support clone, add 'otherpkglist' and 'otherpkgdir' attributes to the image definition which will be used to deploy golden client, then deploy golden client as normal. Once deployed, the golden client will have extra rpms to support cloning. If you have deployed your golden client already, use **updatenode** command to push these extra rpms to golden client. CentOS shares the same pkglist file with RHEL. For example:
 
 * **[RH6.4 and x86_64]**::
 
@@ -110,7 +110,7 @@ To support clone, add 'otherpkglist' and 'otherpkgdir' attributes to the image d
     updatenode <golden-cilent> -S
 
 * **[SLES11.3 and x86_64]**::
- 
+
     chdef -t osimage -o <osimage-name> otherpkglist=/opt/xcat/share/xcat/install/sles/sysclone.sles11.x86_64.otherpkgs.pkglist
     chdef -t osimage -o <osimage-name> -p otherpkgdir=/install/post/otherpkgs/SLES11.3/x86_64
     updatenode <golden-cilent> -S
@@ -126,7 +126,7 @@ To support clone, add 'otherpkglist' and 'otherpkgdir' attributes to the image d
 Capture Image from Golden Client
 ````````````````````````````````
 
-On Management node, use xCAT command **imgcapture** to capture an image from the golden-client.:: 
+On Management node, use xCAT command **imgcapture** to capture an image from the golden-client.::
 
     imgcapture <golden-client> -t sysclone -o <mycomputeimage>
 
@@ -212,7 +212,7 @@ If you install systemimager RPMs on CentOS 6.5 node using **yum**, you may exper
 * **On golden client**::
 
     [root@CentOS6.5 node]# cd /<savepath>
-    [root@CentOS6.5 node]# rpm -ivh perl-AppConfig-1.52-4.noarch.rpm 
+    [root@CentOS6.5 node]# rpm -ivh perl-AppConfig-1.52-4.noarch.rpm
     [root@CentOS6.5 node]# rpm -ivh systemconfigurator-2.2.11-1.noarch.rpm
     [root@CentOS6.5 node]# rpm -ivh systemimager-common-4.3.0-0.1.noarch.rpm
     [root@CentOS6.5 node]# rpm -ivh systemimager-client-4.3.0-0.1.noarch.rpm
@@ -220,4 +220,4 @@ If you install systemimager RPMs on CentOS 6.5 node using **yum**, you may exper
 Kernel panic at times when install target node with rhels7.0 in Power 7 server
 ``````````````````````````````````````````````````````````````````````````````
 
-When you clone rhels7.0 image to target node which is Power 7 server lpar, you may hit Kernel panic problem at times after boot loader grub2 download kernel and initrd. This is an known issue but without a resolution. For now, we recommend you try again. 
+When you clone rhels7.0 image to target node which is Power 7 server lpar, you may hit Kernel panic problem at times after boot loader grub2 download kernel and initrd. This is an known issue but without a resolution. For now, we recommend you try again.

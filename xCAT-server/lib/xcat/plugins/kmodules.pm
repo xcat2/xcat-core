@@ -34,7 +34,7 @@ use warnings;
 
 #------------------------------------------------------------------------------
 
-=head1    kmodules   
+=head1    kmodules
 
 This program module file performs kernel module functions
 
@@ -173,7 +173,7 @@ sub lskmodules_usage {
 
 =head3   processArgs
 
-        Process the command line 
+        Process the command line
 
         Arguments:
 
@@ -660,7 +660,7 @@ sub mods_in_rpm {
 
 =head3  mods_in_img
 
-        return hash of module names/descriptions found in 
+        return hash of module names/descriptions found in
            driver update image
 
         Arguments:

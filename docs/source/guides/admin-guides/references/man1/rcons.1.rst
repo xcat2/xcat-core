@@ -54,7 +54,7 @@ To exit the console session, enter: 'ctrl-e c .' (3 characters: ctrl-e, 'c' and 
 
 \ **-s**\ 
  
- Open the console in read-only (spy) mode, in this mode all the escape sequences work, but all other keyboard input is 
+ Open the console in read-only (spy) mode, in this mode all the escape sequences work, but all other keyboard input is
  discarded. The -s flag can not be used with the -f flag.
  
 

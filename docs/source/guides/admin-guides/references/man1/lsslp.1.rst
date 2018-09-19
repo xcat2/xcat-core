@@ -176,7 +176,7 @@ Output is similar to:
          ip=192.168.200.125
          groups=hmc,all
          mgt=hmc
-         mac=00:1a:64:fb:7d:50        
+         mac=00:1a:64:fb:7d:50
          hidden=0
   192.168.200.244:
          objtype=node
@@ -270,8 +270,8 @@ Output is similar to:
 
 .. code-block:: perl
 
-  lsslp -s CEC 
-  
+  lsslp -s CEC
+ 
   device  type-model  serial-number  side  ip-addresses  hostname
   FSP     9117-MMB    105EBEP        A-1   20.0.0.138    20.0.0.138
   FSP     9117-MMB    105EBEP        B-1   20.0.0.139    20.0.0.139

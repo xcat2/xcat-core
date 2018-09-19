@@ -203,10 +203,7 @@ For diskless deployment, the script need to add to the postinstall script of the
 
     cat >>/install/custom/netboot/rh/cudafull.rhels7.ppc64le.postinstall <<-EOF
 
-    cp /install/postscripts/cuda_power9_setup \$installroot/tmp/cuda_power9_setup
-    chroot \$installroot /tmp/cuda_power9_setup
-
-    rm -f \$installroot/tmp/cuda_power9_setup
+    /install/postscripts/cuda_power9_setup
     EOF
 
     chdef -t osimage rhels7.5-ppc64le-netboot-cudafull postinstall=/install/custom/netboot/rh/cudafull.rhels7.ppc64le.postinstall

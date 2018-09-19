@@ -128,7 +128,7 @@ vm Attributes:
 
 \ **virtflags**\ 
  
- General flags used by the virtualization method.  
+ General flags used by the virtualization method.
            For example, in Xen it could, among other things, specify paravirtualized setup, or direct kernel boot.  For a hypervisor/dom0 entry, it is the virtualization method (i.e. "xen").  For KVM, the following flag=value pairs are recognized:
              imageformat=[raw|fullraw|qcow2]
                  raw is a generic sparse file that allocates storage on demand
@@ -136,7 +136,7 @@ vm Attributes:
                  qcow2 is a sparse, copy-on-write capable format implemented at the virtualization layer rather than the filesystem level
              clonemethod=[qemu-img|reflink]
                  qemu-img allows use of qcow2 to generate virtualization layer copy-on-write
-                 reflink uses a generic filesystem facility to clone the files on your behalf, but requires filesystem support such as btrfs 
+                 reflink uses a generic filesystem facility to clone the files on your behalf, but requires filesystem support such as btrfs
              placement_affinity=[migratable|user_migratable|pinned]
  
 

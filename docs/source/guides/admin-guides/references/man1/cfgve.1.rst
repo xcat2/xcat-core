@@ -35,16 +35,16 @@ DESCRIPTION
 ***********
 
 
-The \ **cfgve**\  command can be used to configure a virtual environment for 
+The \ **cfgve**\  command can be used to configure a virtual environment for
 'Storage Domain', 'Network' and 'Template' objects.
 
-The mandatory parameter \ **-m**\  \ *manager*\  is used to specify the address of the 
+The mandatory parameter \ **-m**\  \ *manager*\  is used to specify the address of the
 manager of virtual environment. xCAT needs it to access the RHEV manager.
 
-The mandatory parameter \ **-t**\  \ *type*\  is used to specify the type of the target 
+The mandatory parameter \ **-t**\  \ *type*\  is used to specify the type of the target
 object.
 
-Basically, \ **cfgve**\  command supports five types of object: \ **dc**\ , \ **cl**\ , 
+Basically, \ **cfgve**\  command supports five types of object: \ **dc**\ , \ **cl**\ ,
 \ **sd**\ , \ **nw**\  and \ **tpl**\ .
 
 
@@ -52,7 +52,7 @@ Basically, \ **cfgve**\  command supports five types of object: \ **dc**\ , \ **
 
 \ **cl**\  - The \ **create**\  and \ **remove**\  operations are supported.
 
-\ **sd**\   - The \ **create**\ , \ **attach**\ , \ **detach**\ , \ **activate**\ , 
+\ **sd**\   - The \ **create**\ , \ **attach**\ , \ **detach**\ , \ **activate**\ ,
 \ **deactivate**\  and \ **remove**\  operations are supported.
 
 \ **nw**\   - The \ **create**\ , \ **attach**\ , \ **detach**\  and \ **remove**\  operations are supported.
@@ -78,33 +78,33 @@ OPTIONS
 
 \ **-c**\  To create the target object.
  
- For creating of \ **Storage Domain**\ , the target storage domain will be created 
+ For creating of \ **Storage Domain**\ , the target storage domain will be created
  first, then attached to data center and activated.
  
- The parameters that used to create the storage domain are gotten 
+ The parameters that used to create the storage domain are gotten
  from 'virtsd' table. The detail parameters in the virtsd table:
  
  
  \ **virtsd.node**\  - The name of the storage domain.
  
- \ **virtsd.sdtype**\  - The type of storage domain. Valid value: data, iso, export. 
+ \ **virtsd.sdtype**\  - The type of storage domain. Valid value: data, iso, export.
  Default value is 'data'.
  
  \ **virtsd.stype**\  - The storage type. "nfs" or "localfs".
  
- \ **virtsd.location**\  - The location of the storage. 
- \ **nfs**\ : Format: [nfsserver:nfspath]. 
- The NFS export directory must be configured for read write access and must 
+ \ **virtsd.location**\  - The location of the storage.
+ \ **nfs**\ : Format: [nfsserver:nfspath].
+ The NFS export directory must be configured for read write access and must
  be owned by vdsm:kvm.
  \ **localfs**\ : "/data/images/rhev" is set by default.
  
- \ **virtsd.host**\  - A host must be specified for a storage domain as SPM 
- (Storage Pool Manager) when initialize the storage domain. The role of SPM 
- may be migrated to other host by rhev-m during the running of the datacenter 
- (For example, when the current SPM encountered issue or going to maintenance 
+ \ **virtsd.host**\  - A host must be specified for a storage domain as SPM
+ (Storage Pool Manager) when initialize the storage domain. The role of SPM
+ may be migrated to other host by rhev-m during the running of the datacenter
+ (For example, when the current SPM encountered issue or going to maintenance
  status.
  
- \ **virtsd.datacenter**\  - The storage will be attached to. 'Default' data center 
+ \ **virtsd.datacenter**\  - The storage will be attached to. 'Default' data center
  is the default value.
  
 
@@ -113,7 +113,7 @@ OPTIONS
  
  The name of data center.
  
- Specify the 'Data Center' that will be used for the object to be attached to. 
+ Specify the 'Data Center' that will be used for the object to be attached to.
  It is used by <nw> type.
  
 
@@ -150,7 +150,7 @@ OPTIONS
  
  Specify the manager of the virtual environment.
  
- For RHEV, the FQDN (Fully Qualified Domain Name) of the rhev manager have 
+ For RHEV, the FQDN (Fully Qualified Domain Name) of the rhev manager have
  to be specified.
  
 

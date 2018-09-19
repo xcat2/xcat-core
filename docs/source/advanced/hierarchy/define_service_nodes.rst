@@ -3,7 +3,7 @@ Define Service Nodes
 
 This next part shows how to configure a xCAT Hierarchy and provision xCAT service nodes from an existing xCAT cluster.
 
-*The document assumes that the compute nodes that are part of your cluster have already been defined into the xCAT database and you have successfully provisioned the compute nodes using xCAT* 
+*The document assumes that the compute nodes that are part of your cluster have already been defined into the xCAT database and you have successfully provisioned the compute nodes using xCAT*
 
 
 The following table illustrates the cluster being used in this example:
@@ -33,8 +33,8 @@ The following table illustrates the cluster being used in this example:
 
        chdef -t site hierarchicalattrs="postscripts"
 
-#. Select the compute nodes that will become service nodes 
-     
+#. Select the compute nodes that will become service nodes
+
         The first node in each rack, ``r1n01`` and ``r2n01``, is selected to become the xCAT service nodes and manage the compute nodes in that rack
 
 
@@ -53,7 +53,7 @@ The following table illustrates the cluster being used in this example:
 
         chdef -t group -o service setupnfs=1 \
                                   setupdhcp=1 \
-                                  setuptftp=1 \ 
+                                  setuptftp=1 \
                                   setupnameserver=1 \
                                   setupconserver=2
 
@@ -63,26 +63,26 @@ The following table illustrates the cluster being used in this example:
       * For clusters with subnetted management networks, you might want to set ``setupupforward=1``
       * For the ``setupconserver`` attribute, if ``conserver`` is used, set to ``1``, if ``goconserver`` is used, set to ``2``
 
-#. Add additional postscripts for Service Nodes (optional) 
+#. Add additional postscripts for Service Nodes (optional)
 
    By default, xCAT will execute the ``servicenode`` postscript when installed or diskless booted.  This postscript will set up the necessary credentials and installs the xCAT software on the Service Nodes.  If you have additional postscripts that you want to execute on the service nodes, copy to ``/install/postscripts`` and run the following: ::
 
         chdef -t group -o service -p postscripts=<mypostscript>
 
-#. Assigning Compute Nodes to their Service Nodes 
+#. Assigning Compute Nodes to their Service Nodes
 
-   The node attributes ``servicenode`` and ``xcatmaster``, define which Service node will serve the particular compute node. 
-   
+   The node attributes ``servicenode`` and ``xcatmaster``, define which Service node will serve the particular compute node.
+
    * ``servicenode`` - defines which Service Node the **Management Node** should send commands to (e.g ``xdsh``) and should be set to the hostname or IP address of the service node that the management node can contact it by.
    * ``xcatmaster`` - defines which Service Node the **Compute Node** should boot from and should be set to the hostname or IP address of the service node that the compute node can contact it by.
 
    You must set both ``servicenode`` and ``xcatmaster`` regardless of whether or not you are using service node pools, for most scenarios, the value will be identical. ::
 
-        chdef -t group -o rack1 servicenode=r1n01 xcatmaster=r1n01 
+        chdef -t group -o rack1 servicenode=r1n01 xcatmaster=r1n01
         chdef -t group -o rack2 servicenode=r2n01 xcatmaster=r2n01
 
 #. Set the conserver and monserver attributes
- 
+
    Set which service node should run the conserver (console) and monserver (monitoring) daemon for the nodes in the group. The most typical setup is to have the service node also ad as it's conserver and monserver. ::
 
         chdef -t group -o rack1 conserver=r1n01 monserver=r1n01
@@ -101,7 +101,7 @@ The following table illustrates the cluster being used in this example:
 
          chdef -t site clustersite sharedtftp=0
          chdef -t site clustersite installloc=
-         rsync -auv --exclude 'autoinst' /install r1n01:/ 
-         rsync -auv --exclude 'autoinst' /install r2n01:/ 
-         rsync -auv --exclude 'autoinst' /tftpboot r1n01:/ 
-         rsync -auv --exclude 'autoinst' /tftpboot r2n01:/ 
+         rsync -auv --exclude 'autoinst' /install r1n01:/
+         rsync -auv --exclude 'autoinst' /install r2n01:/
+         rsync -auv --exclude 'autoinst' /tftpboot r1n01:/
+         rsync -auv --exclude 'autoinst' /tftpboot r2n01:/

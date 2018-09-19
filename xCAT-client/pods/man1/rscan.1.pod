@@ -19,7 +19,7 @@ For the management module of blade, if the blade server is a Flex system P node,
 
 For the KVM host, all the KVM guests on the specified KVM host will be scanned.
 
-Note: The first line of the output always contains information about the hardware control point. When using the rscan command to generate output for HMC or IVM hardware control points, it provides the FSPs and BPAs as part of the output. The only exception is the rscan -u flag which provides updates made hardware control point in the xCAT database. 
+Note: The first line of the output always contains information about the hardware control point. When using the rscan command to generate output for HMC or IVM hardware control points, it provides the FSPs and BPAs as part of the output. The only exception is the rscan -u flag which provides updates made hardware control point in the xCAT database.
 
 =head1 OPTIONS
 
@@ -31,11 +31,11 @@ B<-v|--version>          Command Version.
 
 B<-V|--verbose>          Verbose output.
 
-B<-u>          Updates and then prints out node definitions in the xCAT database for CEC/BPA. It updates the existing nodes that contain the same mtms and serial number for nodes managed by the specified hardware control point. This primarily works with CEC/FSP and frame/BPA nodes when the node name is not the same as the managed system name on hardware control point (HMC), This flag will update the BPA/FSP node name definitions to be listed as the managed system name in the xCAT database.  
+B<-u>          Updates and then prints out node definitions in the xCAT database for CEC/BPA. It updates the existing nodes that contain the same mtms and serial number for nodes managed by the specified hardware control point. This primarily works with CEC/FSP and frame/BPA nodes when the node name is not the same as the managed system name on hardware control point (HMC), This flag will update the BPA/FSP node name definitions to be listed as the managed system name in the xCAT database.
 
 For the Flex system manager, both the blade server and fsp object of xCAT will be updated if the mpa and slot id are matched to the object which has been defined in the xCAT database.
 
-For KVM host, the information of the KVM guests which have been defined in xCAT database will be updated. 
+For KVM host, the information of the KVM guests which have been defined in xCAT database will be updated.
 
 Note: only the matched object will be updated.
 
@@ -43,7 +43,7 @@ B<-n>          For KVM host, the information of the KVM guests, which are not de
 
 B<-w>          Writes output to xCAT database.
 
-For KVM host, updates the information of the KVM guests which have been defined in xCAT database with the same node name and KVM host, creates the definition of the KVM guests which do not exist in xCAT database , and notifies user about the conflicting KVM guests that the name exist in xCAT database but the kvm host is different. 
+For KVM host, updates the information of the KVM guests which have been defined in xCAT database with the same node name and KVM host, creates the definition of the KVM guests which do not exist in xCAT database , and notifies user about the conflicting KVM guests that the name exist in xCAT database but the kvm host is different.
 
 B<-x>          XML format.
 

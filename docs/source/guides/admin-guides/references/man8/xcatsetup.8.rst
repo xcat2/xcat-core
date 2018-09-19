@@ -166,7 +166,7 @@ This sample configuration file is for a 2 building block cluster.
     # bpa-b-1-starting-ip = 10.231.2.1
     # This assumes you have 2 service LANs:  a primary service LAN 40.x.y.z/255.0.0.0 that all of the port 0's
     # are connected to, and a backup service LAN 41.x.y.z/255.0.0.0 that all of the port 1's are connected to.
-    # "x" is the frame number and "z" is the bpa/fsp id (1 for the first BPA/FSP in the Frame/CEC, 2 for the 
+    # "x" is the frame number and "z" is the bpa/fsp id (1 for the first BPA/FSP in the Frame/CEC, 2 for the
     # second BPA/FSP in the Frame/CEC). For BPAs "y" is always be 0 and for FSPs "y" is the cec id.
     vlan-1 = 40
     vlan-2 = 41
@@ -532,11 +532,11 @@ RETURN VALUE
 
 
 
-0.   The command completed successfully.
+0. The command completed successfully.
 
 
 
-1.   An error has occurred.
+1. An error has occurred.
 
 
 

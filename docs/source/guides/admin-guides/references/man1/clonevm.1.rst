@@ -27,19 +27,19 @@ DESCRIPTION
 ***********
 
 
-Command to promote a VM's current configuration and storage to a master as well as 
+Command to promote a VM's current configuration and storage to a master as well as
 performing the converse operation of creating VMs based on a master.
 
-By default, attempting to create a master from a running VM will produce an error. 
+By default, attempting to create a master from a running VM will produce an error.
 The \ **-**\ **-force**\  argument will request that a master be made of the VM anyway.
 
-Also, by default a VM that is used to create a master will be rebased as a thin 
+Also, by default a VM that is used to create a master will be rebased as a thin
 clone of that master. If the \ **-**\ **-force**\  argument is used to create a master of a powered
-on vm, this will not be done.  Additionally, the \ **-**\ **-detached**\  option can be used to 
-explicitly request that a clone not be tethered to a master image, allowing the 
+on vm, this will not be done.  Additionally, the \ **-**\ **-detached**\  option can be used to
+explicitly request that a clone not be tethered to a master image, allowing the
 clones to not be tied to the health of a master, at the cost of additional storage.
 
-When promoting a VM's current state to master, all related virtual disks will be 
+When promoting a VM's current state to master, all related virtual disks will be
 copied and merged with any prerequisite images.  A master will not be tethered to
 other masters.
 

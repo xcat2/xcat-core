@@ -70,12 +70,12 @@ The pump mode value has the valid options:
   1 - Node Pump Mode
   2 - Chip Pump Mode
 
-The Memory Interleaving Mode has 3 valid options: 
+The Memory Interleaving Mode has 3 valid options:
   0 - not Applicable
   1 - interleaved
   2 - non-interleaved
 
-More information about this part, refer to the section Using the \*vm commands to define partitions in xCAT DFM  in the doc below. 
+More information about this part, refer to the section Using the \*vm commands to define partitions in xCAT DFM  in the doc below.
   XCAT_Power_775_Hardware_Management
 
 

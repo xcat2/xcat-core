@@ -37,7 +37,7 @@ DESCRIPTION
 ***********
 
 
-The runsqlcmd routine,  runs the sql statements contained in the \*.sql files as input to the command against the current running xCAT database. Only DB2,MySQL and PostgreSQL databases are supported.  SQLite is not supported.  
+The runsqlcmd routine,  runs the sql statements contained in the \*.sql files as input to the command against the current running xCAT database. Only DB2,MySQL and PostgreSQL databases are supported.  SQLite is not supported.
 If no directory or filelist is provided,  the default /opt/xcat/lib/perl/xCAT_schema directory is used.
 If the directory is input with the -d flag,  that directory will be used.
 If a comma separated list of files is input with the -f flag, those files will be used.

@@ -183,7 +183,7 @@ sub myxCATname
 
 	returns 1 if the hostname is the node I am running on
 
-	Gets all the interfcaes defined on this node and sees if 
+	Gets all the interfcaes defined on this node and sees if
 		any of them match the IP of the hostname passed in
 
     Arguments:
@@ -610,7 +610,7 @@ sub restore_request
 
 =head3   taghash
 
-		Add a non-numeric tag to any hash keys that are numeric.  
+		Add a non-numeric tag to any hash keys that are numeric.
 
 		Arguments:
         Returns:
@@ -665,11 +665,11 @@ sub taghash
 
     Comments:
 		Based on "os" attr of node definition. If attr is not set,
-        defaults to OS of current system.   
+        defaults to OS of current system.
 
 	Example:
-    	my ($rc, $AIXnodes, $Linuxnodes) 
-					= xCAT::InstUtils->getOSnodes(\@noderange) 
+    	my ($rc, $AIXnodes, $Linuxnodes)
+					= xCAT::InstUtils->getOSnodes(\@noderange)
 
 =cut
 
@@ -713,7 +713,7 @@ sub getOSnodes
 
 =head3   get_server_nodes
 
-   		Determines the server node names as known by a lists of nodes. 
+   		Determines the server node names as known by a lists of nodes.
 
     Arguments:
                 $nodes: A list of node names.

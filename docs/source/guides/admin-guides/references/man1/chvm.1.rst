@@ -360,7 +360,7 @@ KVM specific:
 
 \ **-**\ **-membind numanodeset**\ 
  
- It is possible to restrict a guest to allocate memory from the specified set of NUMA nodes \ *numanodeset*\ . 
+ It is possible to restrict a guest to allocate memory from the specified set of NUMA nodes \ *numanodeset*\ .
  If the guest vCPUs are also pinned to a set of cores located on that same set of NUMA nodes, memory
  access is local and improves memory access performance.
  
@@ -368,7 +368,7 @@ KVM specific:
 
 \ **-**\ **-devpassthru pcidevice1,pcidevice2...**\ 
  
- The PCI passthrough gives a guest VM direct access to I/O devices \ *pcidevice1,pcidevice2...*\ . 
+ The PCI passthrough gives a guest VM direct access to I/O devices \ *pcidevice1,pcidevice2...*\ .
  The PCI devices are assigned to a virtual machine, and the virtual machine can use this I/O exclusively.
  The devices list are a list of comma separated PCI device names delimited with comma, the PCI device names can be obtained by running \ **virsh nodedev-list**\  on the host.
  
@@ -442,12 +442,12 @@ zVM specific:
 
 \ **-**\ **-addzfcp**\  \ *pool*\  \ *device_address*\  \ *loaddev*\  \ *size*\  \ *tag*\  \ *wwpn*\  \ *lun*\ 
  
- Add a zFCP device to a device pool defined in xCAT. The device must have been 
- carved up in the storage controller and configured with a WWPN/LUN before it can 
- be added to the xCAT storage pool. z/VM does not have the ability to communicate 
- directly with the storage controller to carve up disks dynamically. xCAT will 
- find the a zFCP device in the specified pool that meets the size required, if 
- the WWPN and LUN are not given. The device address can be automatically assigned 
+ Add a zFCP device to a device pool defined in xCAT. The device must have been
+ carved up in the storage controller and configured with a WWPN/LUN before it can
+ be added to the xCAT storage pool. z/VM does not have the ability to communicate
+ directly with the storage controller to carve up disks dynamically. xCAT will
+ find the a zFCP device in the specified pool that meets the size required, if
+ the WWPN and LUN are not given. The device address can be automatically assigned
  by specifying 'auto'. The WWPN/LUN can be set as the LOADDEV in the directory
  entry if (1) is specified as the 'loaddev'.
  

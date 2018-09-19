@@ -42,7 +42,7 @@ my $program_name = basename("$0");
 $::USAGE = "Usage:
     $program_name -h
     $program_name -n <node_range> -m <discovery_type> -c
-    $program_name -n <node_range> -m <discovery_type> [-t <max_waiting_time>] [-V] [--noprecheck] 
+    $program_name -n <node_range> -m <discovery_type> [-t <max_waiting_time>] [-V] [--noprecheck]
     $program_name -n <node_range> -m <discovery_type> -r <roll_back_duration> [-V] [--noprecheck]
 
 Description:
@@ -200,7 +200,7 @@ sub check_pre_defined_node {
             $nodecheckrst{$currentnode}{$1} = $2;
         }
     }
-    
+
     if ($rst) {
         my $errornode  = join(",", @errornodes);
         probe_utils->send_msg("stdout", "f", "[$errornode] : Could not find node definition");
@@ -220,7 +220,7 @@ sub check_pre_defined_node {
     if (@bmcnodes) {
         my $bmcnode = join(",", @bmcnodes);
         probe_utils->send_msg("stdout", "f", "[$bmcnode] : bmc node(s)");
-        $rst = 1; 
+        $rst = 1;
     }
 
     if (@nochain) {
@@ -229,7 +229,7 @@ sub check_pre_defined_node {
         $rst = 1;
     }
 
-    # if discover type is mtms, check whether mtms is only for per-define node and bmc node 
+    # if discover type is mtms, check whether mtms is only for per-define node and bmc node
     @errornodes = ();
     if ($discovery_type eq "mtms") {
 
@@ -257,7 +257,7 @@ sub check_pre_defined_node {
         my @error_mtms_bmc;
         foreach my $node (keys %nodecheckrst) {
 
-            # check pre-define node whether has mtm and serial 
+            # check pre-define node whether has mtm and serial
             # if nodetype is mp and hwtye is bmc, the node is bmc node, do not check whether exists mtms
             if (!(exists($nodecheckrst{$node}{"mtm"}) && exists($nodecheckrst{$node}{"serial"}))) {
                 next if (($nodecheckrst{$node}{"nodetype"} eq "mp") and ($nodecheckrst{$node}{"hwtype"} eq "bmc"));
@@ -354,7 +354,7 @@ sub check_pre_defined_node {
                 if (!(exists($nodecheckrst{$node}{"switch"})) or $nodecheckrst{$node}{"switch"} !~ /^\w/) {
                     push @error_attribute, "switch";
                 } elsif ($error_switch =~ $nodecheckrst{$node}{"switch"}) {
-                    my $error_switch = $nodecheckrst{$node}{"switch"}; 
+                    my $error_switch = $nodecheckrst{$node}{"switch"};
                     push @{$error_switch_hash{$error_switch}}, $node;
                     next;
                 }
@@ -390,7 +390,7 @@ sub check_pre_defined_node {
                     $errorhash{$keystring} = $node;
                 }
             }
-        } 
+        }
 
         foreach my $key (keys %errorhash) {
             probe_utils->send_msg("stdout", "f", "[$errorhash{$key}] : $key");
@@ -408,7 +408,7 @@ sub check_pre_defined_node {
             $rst = 1;
         }
     }
-                  
+
     return $rst;
 }
 
@@ -463,7 +463,7 @@ sub do_pre_check {
                 }
             }
         }
-        
+
         if (@errors) {
             probe_utils->send_msg("stdout", "f", $msg);
             probe_utils->send_msg("stdout", "d", "$_") foreach (@errors);
@@ -520,7 +520,7 @@ sub do_pre_check {
 
 #------------------------------------------
 sub check_genesis_file {
-    my $msg = "Genesis files are avaliable";
+    my $msg = "Genesis files are available";
     my $rst = 0;
     my @warn_msg;
 
@@ -532,7 +532,7 @@ sub check_genesis_file {
     } elsif ($os =~ "ubuntu") {
         my $genesis_output = `dpkg -l | grep -iE "ii\\s+xcat-genesis"`;
         unless (($genesis_output =~ /base/ and $genesis_output =~ /ppc64/) and
-            ($genesis_output =~ /scripts/ and $genesis_output =~ /ppc64/) and 
+            ($genesis_output =~ /scripts/ and $genesis_output =~ /ppc64/) and
             ($genesis_output =~ /base/ and $genesis_output =~ /amd64/) and
             ($genesis_output =~ /scripts/ and $genesis_output =~ /amd64/)) {
             probe_utils->send_msg("stdout", "f", $msg);
@@ -569,7 +569,7 @@ sub check_genesis_file {
     my @tmp_info = split(",", $dhcpinterface);
     foreach (@tmp_info) {
         if ($_ =~ /(.+):noboot/) {
-            my $noboot_nic = $1; 
+            my $noboot_nic = $1;
             my $ip_string = `ip -4 -o a |awk -F' ' '/$noboot_nic/ {print \$4}'`;
             if ($ip_string) {
                 my ($noboot_ip, $noboot_netmask) = split('\/', $ip_string);
@@ -646,9 +646,9 @@ sub check_genesis_file {
                         push @errors, "kernel cannot be downloaded from $kernel_path.";
                         $rst = 1;
                     }
-                }  
+                }
             }
-        } 
+        }
     }
 
     { # check genesis files for x86_64 arch
@@ -760,13 +760,13 @@ sub check_genesis_file {
                                             $genesis_update_flag_x = 1;
                                         }
                                     }
- 
+
                                 }
                             }
                         }
                     }
                 }
-            } 
+            }
         }
     }
 
@@ -957,7 +957,7 @@ sub get_node_ip {
             $nodeipcheck{$node}{"ip"} = $ip_net;
         } elsif ($nodeipcheck{$node}{"ip"} and !$ip_net) {
             $nodeipcheck{$node}{"error"} = "Unknown host $node, please run 'makehosts' and 'makedns'";
-        } 
+        }
         if ($ip_net and !$isonmynet) {
             $nodeipcheck{$node}{"error"} = "IP for $node is not on any network this server attached.";
         } elsif (!$isonmynet) {
@@ -1150,9 +1150,9 @@ sub do_monitor {
     Arguments:
         start_time_of_replay: the start time point of scaning log
         end_time_of_replay: the end time point of scaning log
-   
+
     Returns:
-        0: success 
+        0: success
         1: failed
 =cut
 
@@ -1187,7 +1187,7 @@ sub do_replay {
         my $rst = $log_parse->obtain_one_second_logs($start_time_of_replay, \@valid_one_second_log_set);
         if ($rst) {
             probe_utils->send_msg("stdout", "d", "Failed to obtain logs from log files");
-            $rc = 1; 
+            $rc = 1;
             last;
         }
 
@@ -1214,14 +1214,14 @@ sub do_replay {
 
 =head3
     Description:
-        Initailize a very important hash "%node_state" which will save the state information of every node 
+        Initailize a very important hash "%node_state" which will save the state information of every node
     Arguments:
         noderange: (input attribute) The range of node
-        node_state_ref: (output attribute) the reference of hash "%node_state" 
+        node_state_ref: (output attribute) the reference of hash "%node_state"
             The strucuture of  hash "%node_state" are :
-                $node_state{<identify>}{statehistory}  Array.  save the latest loop discovery states 
-                $node_state{<identify>}{allstatehistory}   Array. save the history states before the latest loop discovery. Used in debug mode.  
-                $node_state{<identify>}{log}           Array. save all related logs of mac. Used in debug mode. 
+                $node_state{<identify>}{statehistory}  Array.  save the latest loop discovery states
+                $node_state{<identify>}{allstatehistory}   Array. save the history states before the latest loop discovery. Used in debug mode.
+                $node_state{<identify>}{log}           Array. save all related logs of mac. Used in debug mode.
                 $node_state{<identify>}{id}            Scalar. the node related withe the mac.
                 $node_state{<identify>}{type}          Scalar.  the flag of if the node have finished the discovery
     Returns:
@@ -1244,10 +1244,10 @@ sub init_node_state {
 
 =head3
     Description:
-        Dispatch log to related handler 
+        Dispatch log to related handler
     Arguments:
         log_ref: (input attribute) the reference of hash which save one line log comes from computes.log.
-        candidate_mn_hostname_in_log_ref: (input attribute) The reference of array which save the candidate host name of MN 
+        candidate_mn_hostname_in_log_ref: (input attribute) The reference of array which save the candidate host name of MN
         node_state_ref: (output attribute), the reference of hash "%node_state". refer to function "init_node_state" for the structure of "%node_state"
     Returns:
         NULL
@@ -1280,8 +1280,8 @@ sub dispatch_log_to_handler {
     Description:
         Handle one line DHCP log
     Arguments:
-        log_ref: (input attribute) the reference of hash which save one line dhcp log. 
-        node_state_ref: (output attribute), the reference of hash "%node_state". refer to function "init_node_state" for the structure of "%node_state" 
+        log_ref: (input attribute) the reference of hash which save one line dhcp log.
+        node_state_ref: (output attribute), the reference of hash "%node_state". refer to function "init_node_state" for the structure of "%node_state"
     Returns:
         NULL
 =cut
@@ -1290,7 +1290,7 @@ sub dispatch_log_to_handler {
 sub handle_dhcp_msg {
     my $log_ref        = shift;
     my $node_state_ref = shift;
-    
+
     if ($log_ref->{msg} =~ /DHCPDISCOVER\s+from\s+(\w\w:\w\w:\w\w:\w\w:\w\w:\w\w).+via\s+([^:]+)(.*)/i) {
         my $mac = $1;
         my $nic = $2;
@@ -1309,7 +1309,7 @@ sub handle_dhcp_msg {
         my $record = "Sent DHCPOFFER on $ip back to $mac via $nic";
 
         probe_utils->send_msg("stdout", "d", "[$mac] $log_ref->{time_record} $record") if ($monitor);
-        push(@{ $node_state_ref->{$mac}{log} }, $log_ref->{msg}) if ($debug); 
+        push(@{ $node_state_ref->{$mac}{log} }, $log_ref->{msg}) if ($debug);
     } elsif ($log_ref->{msg} =~ /DHCPREQUEST\s+for\s+(.+)\s+[\(\)0-9\.]*\s*from\s+(\w\w:\w\w:\w\w:\w\w:\w\w:\w\w).+via\s+(.+)/) {
         my $ip  = $1;
         my $mac = $2;
@@ -1368,7 +1368,7 @@ sub handle_dhcp_msg {
 #------------------------------------------
 sub handle_tftp_msg {
     my $log_ref        = shift;
-    my $node_state_ref = shift; 
+    my $node_state_ref = shift;
 
     if ($log_ref->{msg} =~ /RRQ\s+from\s+(.+)\s+filename\s+(.+)/i) {
         my $ip     = $1;
@@ -1486,7 +1486,7 @@ sub handle_compute_msg {
     my $log_ref        = shift;
     my $node_state_ref = shift;
     my $ip             = $log_ref->{sender};
-    my $mac            = $ipmacmap{$ip}; 
+    my $mac            = $ipmacmap{$ip};
 
     if (exists $node_state_ref->{$mac}) {
         probe_utils->send_msg("stdout", "d", "[$mac] $log_ref->{time_record} ($ip) $log_ref->{msg}") if ($monitor);
@@ -1527,7 +1527,7 @@ sub handle_compute_msg {
     Arguments:
         node_state_ref: (input/output attribute), the reference of hash "%node_state". refer to function "init_node_state" for the structure of "%node_state"
         node : (input attribute) The node name
-        newstate : (input attribute) The new state of node 
+        newstate : (input attribute) The new state of node
     Returns:
         NULL
 =cut
@@ -1662,7 +1662,7 @@ sub conclusion_report {
         my $failed_node_num = @failed_node;
         my $failed_nodes = join(",", @failed_node);
         probe_utils->send_msg("stdout", "", "Discovered $success_node_num node(s) successfully, $failed_node_num node(s) failed.");
-        
+
         foreach my $type (keys %success_node_other_type) {
             my $other_nodes = join(",", @{ $success_node_other_type{$type} });
             probe_utils->send_msg("stdout", "", "Discovered [$other_nodes] successfully, but discovery type is $type");
@@ -1675,7 +1675,7 @@ sub conclusion_report {
             probe_utils->send_msg("stdout", "", "Unmatched MAC(s):");
         }
         foreach my $mac (keys %failed_mac) {
-            probe_utils->send_msg("stdout", "f", "[$mac] : stop at stage '$::STATE_DISCOVER_DESC{$failed_mac{$mac}{stop_point}}'"); 
+            probe_utils->send_msg("stdout", "f", "[$mac] : stop at stage '$::STATE_DISCOVER_DESC{$failed_mac{$mac}{stop_point}}'");
         }
     } else {
         probe_utils->send_msg("stdout", "o", "All nodes matched successfully");

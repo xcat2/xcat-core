@@ -18,7 +18,7 @@ These VLAN functions are supported for stand-alone nodes as well as virtual mach
 Install the package
 -------------------
 
-Install the ``xCAT-vlan`` package using the package manager on the OS. 
+Install the ``xCAT-vlan`` package using the package manager on the OS.
 
 [RHEL] ::
 
@@ -220,7 +220,7 @@ To make the vlan more secure, the root guard and the bpdu guard are enabled for 
 Limitation
 ----------
 
-Current xCAT-vlan package does not work on the following os distributions. More work will be done in the future releases. 
+Current xCAT-vlan package does not work on the following os distributions. More work will be done in the future releases.
 
 * ubuntu
 * rhel7 and later

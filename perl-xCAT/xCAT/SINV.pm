@@ -3,11 +3,11 @@
 
 #------------------------------------------------------------------------------
 
-=head1    SINV 
+=head1    SINV
 
 =head2    Package Description
 
-This program module file supplies a set of utility programs for  
+This program module file supplies a set of utility programs for
 the sinv command.
 
 
@@ -44,8 +44,8 @@ my @errresult;
 
 #------------------------------------------------------------------------------
 
-=head3   usage  			    	 
-  Display usage message 
+=head3   usage  			    	
+  Display usage message
 
 =cut
 
@@ -77,8 +77,8 @@ sub usage
 
 #------------------------------------------------------------------------------
 
-=head3   parse_and_run_sinv  			    	 
-   Checks input arguments and runs sinv from the plugin 
+=head3   parse_and_run_sinv  			    	
+   Checks input arguments and runs sinv from the plugin
 
 =cut
 
@@ -118,7 +118,7 @@ sub parse_and_run_sinv
             'c|cmd=s'                 => \$options{'sinv_cmd'},
             'f|file=s'                => \$options{'sinv_cmd_file'},
             'v|version'               => \$options{'version'},
-            'V|Verbose'               => \$options{'verbose'},
+            'V|verbose'               => \$options{'verbose'},
         )
       )
     {
@@ -593,20 +593,20 @@ sub parse_and_run_sinv
 =head3   buildreport (note originally written only for xdsh but
 		 now supports rinv also)
 
-  This routine will take the input template and compare against 
-  the output of the dsh command and build a report of the differences. 
+  This routine will take the input template and compare against
+  the output of the dsh command and build a report of the differences.
   Read a nodes worth of data from the dsh command
   Call compareoutput- compares the dsh to the template
   Get the template and nodename returned from compareoutput and build hash
   Call writereport to take the hash and write the report to the output file
   Cleanup
-  Input (report file, file containing dsh run,template file,template count 
+  Input (report file, file containing dsh run,template file,template count
          whether to remove the generated templates, original dsh node list,
 		 ignorefirsttemplate,exactmatch)
 
   If exactmatch is chosen, a diff is done against the template and the output.
-  If not exactmatch, then each record (line) in the template must be 
-  checked against the node's output to determine, if it exists. 
+  If not exactmatch, then each record (line) in the template must be
+  checked against the node's output to determine, if it exists.
 
 =cut
 
@@ -805,7 +805,7 @@ sub buildreport
 
 #------------------------------------------------------------------------------
 
-=head3   compareoutput  			    	 
+=head3   compareoutput  			    	
  The purpose of this routine is to build sets of nodes
    that have the same configuration.  We will build up
    to template_cnt sets.  If more nodes are not part of these
@@ -973,7 +973,7 @@ sub compareoutput
 
 #------------------------------------------------------------------------------
 
-=head3   diffoutput  			    	 
+=head3   diffoutput  			    	
  The purpose of this routine is to build sets of nodes
    that have the same configuration.  We will build up
    to template_cnt sets.  If more nodes are not part of these
@@ -1152,9 +1152,9 @@ sub diffoutput
 
 #------------------------------------------------------------------------------
 
-=head3   writereport  			    	 
+=head3   writereport  			    	
 
- The purpose of this routine is to write the report to the output file 
+ The purpose of this routine is to write the report to the output file
 
 =cut
 
@@ -1313,9 +1313,9 @@ sub writereport
 
 #------------------------------------------------------------------------------
 
-=head3   xdshoutput  			    	 
+=head3   xdshoutput  			    	
 
- Check xdsh output  - get output from command and pipe to xdshcoll 
+ Check xdsh output  - get output from command and pipe to xdshcoll
 
 =cut
 
@@ -1370,7 +1370,7 @@ sub xdshoutput
 
 #------------------------------------------------------------------------------
 
-=head3   rinvoutput  			    	 
+=head3   rinvoutput  			    	
 
  Check rinv output  - get output from command
 
@@ -1449,11 +1449,11 @@ sub rinvoutput
 
 #------------------------------------------------------------------------------
 
-=head3   storeresults 			    	 
+=head3   storeresults 			    	
 
   Runs command output through xdshcoll and stores in /tmp/<tempfile>
  store results in $tempfile or $templatepath ( for seed node) based on
- $processflag = seednode 
+ $processflag = seednode
 =cut
 
 #------------------------------------------------------------------------------

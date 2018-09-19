@@ -324,10 +324,28 @@ sub subvars {
                <name>SuSE-Linux-pkg$c</name> <!-- available since openSUSE 11.1/SLES11 (bnc#433981) -->
              </listentry>";
                     $source_in_pre .= "<listentry><media_url>http://'\$nextserver'$pkgdir</media_url><product>SuSE-Linux-pkg$c</product><product_dir>/</product_dir><ask_on_error config:type=\"boolean\">false</ask_on_error><name>SuSE-Linux-pkg$c</name></listentry>";
+                } elsif ($platform =~ /^sle15*/) {
+                    if ( -d "$pkgdir") {
+                        opendir(DIR,$pkgdir);
+                        my @subpkgdir=grep(!/\.\.?$|^media.1$/, readdir DIR);
+                        foreach my $subdir (@subpkgdir){
+                            my $product_name;
+                            my $product_dir;
+                            $product_dir=$subdir;
+                            if($subdir =~ /^Module-/){
+                                $product_name="sle-".lc($subdir);
+                            }elsif($subdir =~ /^Product-/){
+                                $subdir=~s/Product-//;
+                                $product_name=$subdir;
+                            }
+                            if (defined($product_name) && defined($product_dir)){
+                                $source .="<listentry><media_url>http://XCATNEXTSERVERHOOK$pkgdir</media_url><product>$product_name</product><product_dir>/$product_dir</product_dir></listentry>";
+                            } 
+                        }
+                    }
                 }
                 $c++;
             }
-
             $inc =~ s/#INSTALL_SOURCES#/$source/g;
             $inc =~ s/#INSTALL_SOURCES_IN_PRE#/$source_in_pre/g;
             if (("ubuntu" eq $platform) || ("debian" eq $platform)) {
@@ -1116,7 +1134,7 @@ d-i mirror/http/proxy string\n";
     if (scalar @mirrors) {
         my $index = 0;
         foreach (@mirrors) {
-            $line .= " 
+            $line .= "
 d-i apt-setup/local$index/repository string deb $_\n
 d-i apt-setup/local$index/comment string online mirror $index\n";
             $index = $index + 1;

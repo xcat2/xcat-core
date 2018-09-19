@@ -21,6 +21,8 @@ BuildArch: noarch
 Requires: /usr/bin/nslookup
 Requires: /usr/bin/tftp
 Requires: /usr/bin/wget
+# Tool detect_dhcpd requires tcpdump
+Requires: /usr/sbin/tcpdump
 %endif
 
 %description
@@ -57,6 +59,8 @@ rm -rf $RPM_BUILD_ROOT
 %{prefix}
 
 %changelog
+* Thu Aug 30 2018 - GONG Jie <gongjie@linux.vnet.ibm.com>
+- Add /usr/sbin/tcpdump as requirement
 * Fri Jul 1 2016 - huweihua <huweihua@cn.ibm.com>
 - "Create xCAT probe package"
 
@@ -66,7 +70,7 @@ if [ -e %{prefix}/probe/subcmds/bin/switchprobe ]; then
 else
     mkdir -p %{prefix}/probe/subcmds/bin/
 fi
-cd %{prefix}/probe/subcmds/bin/ 
+cd %{prefix}/probe/subcmds/bin/
 if [ -e %{prefix}/bin/xcatclient ]; then
     ln -s %{prefix}/bin/xcatclient switchprobe
 fi

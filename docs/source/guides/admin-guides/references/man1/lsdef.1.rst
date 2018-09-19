@@ -21,12 +21,12 @@ SYNOPSIS
 
 \ **lsdef**\  [\ **-h | -**\ **-help**\ ] [\ **-t**\  \ *object-types*\ ] [\ **-i**\  \ *attr-list*\ ]
 
-\ **lsdef**\  [\ **-V | -**\ **-verbose**\ ] [\ **-l | -**\ **-long**\ ] [\ **-s | -**\ **-short**\ ] [\ **-a | -**\ **-all**\ ] [\ **-S**\ ] 
+\ **lsdef**\  [\ **-V | -**\ **-verbose**\ ] [\ **-l | -**\ **-long**\ ] [\ **-s | -**\ **-short**\ ] [\ **-a | -**\ **-all**\ ] [\ **-S**\ ]
 [\ **-t**\  \ *object-types*\ ] [\ **-o**\  \ *object-names*\ ] [\ **-z | -**\ **-stanza**\ ] [\ **-i**\  \ *attr-list*\ ]
 [\ **-c | -**\ **-compress**\ ] [\ **-**\ **-osimage**\ ] [\ **-**\ **-nics**\ ] [[\ **-w**\  \ *attr*\ ==\ *val*\ ]
 [\ **-w**\  \ *attr*\ =~\ *val*\ ] ...] [\ *noderange*\ ]
 
-\ **lsdef**\  [\ **-l | -**\ **-long**\ ] [\ **-a | -**\ **-all**\ ] [\ **-t**\  \ *object-types*\ ] [\ **-z | -**\ **-stanza**\ ] 
+\ **lsdef**\  [\ **-l | -**\ **-long**\ ] [\ **-a | -**\ **-all**\ ] [\ **-t**\  \ *object-types*\ ] [\ **-z | -**\ **-stanza**\ ]
 [\ **-i**\  \ *attr-list*\ ] [\ **-**\ **-template**\  [\ *template-object-name*\ ]]
 
 
@@ -56,7 +56,7 @@ OPTIONS
 \ **-c|-**\ **-compress**\ 
  
  Display information in compressed mode, each output line has format "<object name>: <data>".
- The output can be passed to command xcoll or xdshbak for formatted output. 
+ The output can be passed to command xcoll or xdshbak for formatted output.
  The -c flag must be used with -i flag.
  
 

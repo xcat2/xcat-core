@@ -45,9 +45,9 @@ EXAMPLES
  
  .. code-block:: perl
  
-   service xcatd start 
+   service xcatd start
   
-   service xcatd stop 
+   service xcatd stop
   
    service xcatd restart
  

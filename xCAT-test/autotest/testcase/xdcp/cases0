@@ -26,7 +26,7 @@ cmd:xdsh $$CN rm -f /tmp/hosts
 cmd:rm -f /tmp/hosts
 end
 
-start:xdcp_P_src_dst 
+start:xdcp_P_src_dst
 label:cn_os_ready,parallel_cmds
 cmd:xdcp $$CN -P /etc/inittab /tmp/
 check:rc==0
@@ -112,7 +112,7 @@ cmd:xdsh $$CN "ls -l /tmp"
 check:output=~test1.txt
 check:output=~test2.txt
 cmd:xdsh $$CN "ls -l /tmp/test1.txt"
-check:output=~test1 
+check:output=~test1
 cmd:xdsh $$CN "ls -l /tmp/test2.txt"
 check:output=~test2
 cmd:xdsh $$CN "rm -rf /tmp/test1.txt  /tmp/test2.txt"
@@ -136,7 +136,7 @@ cmd:xdsh $$CN "ls -l /tmp"
 check:output=~test1.txt
 check:output=~test2.txt
 cmd:xdsh $$CN "ls -l /tmp/test1.txt"
-check:output=~test1 
+check:output=~test1
 cmd:xdsh $$CN "ls -l /tmp/test2.txt"
 check:output=~test2
 cmd:xdsh $$CN "rm -rf /tmp/test1.txt  /tmp/test2.txt"
@@ -159,7 +159,7 @@ check:rc==0
 cmd:xdsh $$CN "ls -l /tmp"
 check:output=~test1.txt
 cmd:xdsh $$CN "ls -l /tmp/test1.txt"
-check:output=~test1 
+check:output=~test1
 cmd:xdsh $$CN "rm -rf /tmp/test1.txt"
 check:rc==0
 cmd:rm -rf /tmp/xdcp /tmp/myrsync
@@ -183,9 +183,9 @@ cmd:xdsh $$CN "ls -l /tmp"
 check:output=~test1.txt
 check:output=~test2.txt
 cmd:xdsh $$CN "ls -l /tmp/test1.txt"
-check:output=~test1 
+check:output=~test1
 cmd:xdsh $$CN "ls -l /tmp/test2.txt"
-check:output=~test2 
+check:output=~test2
 cmd:xdsh $$CN "rm -rf /tmp/test1.txt /tmp/test2.txt"
 check:rc==0
 cmd:rm -rf /tmp/xdcp /tmp/myrsync
@@ -211,9 +211,9 @@ cmd:xdsh $$CN "ls -l /tmp"
 check:output=~testx.txt
 check:output=~testy.txt
 cmd:xdsh $$CN "cat /tmp/testx.txt"
-check:output=~test1 
+check:output=~test1
 cmd:xdsh $$CN "cat /tmp/testy.txt"
-check:output=~test2 
+check:output=~test2
 cmd:xdsh $$CN "rm -rf /tmp/testx.txt /tmp/testy.txt"
 check:rc==0
 cmd:rm -rf /tmp/xdcp /tmp/myrsync

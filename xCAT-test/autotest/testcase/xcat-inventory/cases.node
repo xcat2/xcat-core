@@ -621,7 +621,7 @@ end
 
 
 start:export_import_nodes_delimited_with_comma_by_yaml
-description:This case is used to test xcat-inventory export and import the definition of nodes delimited with comma by yaml between 2 exact same MNs.Before running this case, make sure these two MNs have been installed same exactly, and the current MN can connect the other MN by ssh without password. This case also can be run in one MN, this is, export from currnet node then import back to currnet node, in this case, just need to set $$DSTMN=<currnet node ip> 
+description:This case is used to test xcat-inventory export and import the definition of nodes delimited with comma by yaml between 2 exact same MNs.Before running this case, make sure these two MNs have been installed same exactly, and the current MN can connect the other MN by ssh without password. This case also can be run in one MN, this is, export from currnet node then import back to currnet node, in this case, just need to set $$DSTMN=<currnet node ip>
 Attribute: $$DSTMN - the ip of MN which is used to run import operation.
 cmd:mkdir -p /tmp/export_import_nodes_delimited_with_comma_by_yaml
 check:rc==0
@@ -672,7 +672,7 @@ check:rc==0
 end
 
 start:export_import_nodes_delimited_with_comma_by_json
-description:This case is used to test xcat-inventory export and import the definition of nodes delimited with comma by json between 2 exact same MNs.Before running this case, make sure these two MNs have been installed same exactly, and the current MN can connect the other MN by ssh without password. This case also can be run in one MN, this is, export from currnet node then import back to currnet node, in this case, just need to set $$DSTMN=<currnet node ip> 
+description:This case is used to test xcat-inventory export and import the definition of nodes delimited with comma by json between 2 exact same MNs.Before running this case, make sure these two MNs have been installed same exactly, and the current MN can connect the other MN by ssh without password. This case also can be run in one MN, this is, export from currnet node then import back to currnet node, in this case, just need to set $$DSTMN=<currnet node ip>
 Attribute: $$DSTMN - the ip of MN which is used to run import operation.
 cmd:mkdir -p /tmp/export_import_nodes_delimited_with_comma_by_json
 check:rc==0
@@ -892,7 +892,7 @@ check:rc==0
 end
 
 start:xcat_inventory_try_to_import_all_type_is_node_yaml_format
-description:This case is used to test xcat-inventory import all definition which type is node from a yaml file. 
+description:This case is used to test xcat-inventory import all definition which type is node from a yaml file.
 cmd:mkdir -p /tmp/xcat_inventory_try_to_import_all_type_is_node_yaml_format
 check:rc==0
 cmd:for i in 1 2 3; do lsdef bogusnode$i > /dev/null 2>&1;if [[ $? -eq 0 ]]; then lsdef bogusnode$i -z >> /tmp/xcat_inventory_try_to_import_all_type_is_node_yaml_format/bogusnode.stanza ;rmdef bogusnode$i;fi;done
@@ -1216,7 +1216,7 @@ end
 
 
 start:xcat_inventory_try_to_import_all_type_is_node_json_format
-description:This case is used to test xcat-inventory import all definition which type is node from a yaml file. 
+description:This case is used to test xcat-inventory import all definition which type is node from a yaml file.
 cmd:mkdir -p /tmp/xcat_inventory_try_to_import_all_type_is_node_json_format
 check:rc==0
 cmd:for i in 1 2 3; do lsdef bogusnode$i > /dev/null 2>&1;if [[ $? -eq 0 ]]; then lsdef bogusnode$i -z >> /tmp/xcat_inventory_try_to_import_all_type_is_node_json_format/bogusnode.stanza ;rmdef bogusnode$i;fi;done
@@ -1822,7 +1822,7 @@ check:rc==0
 cmd:sed -i 's/"42:d6:0a:03:05:08"/"42:d6:0a:03:05:09"/g' /tmp/export_single_node_then_modify_json_then_import/bogusnode_json.inv
 check:rc==0
 cmd:sed -i 's/ "grub2"/ "petitboot"/g' /tmp/export_single_node_then_modify_json_then_import/bogusnode_json.inv
-check:rc==0 
+check:rc==0
 cmd:a=('setuptftp' 'setupnameserver' 'setupdhcp' 'setupntp' 'setupldap' 'setupproxydhcp' 'setupipforward' 'setupconserver' 'setupnfs');for i in ${a[@]};do sed -i "s/\"$i\": \"1\"/\"$i\": \"0\"/g" /tmp/export_single_node_then_modify_json_then_import/bogusnode_json.inv; done
 check:rc==0
 cmd:scp /tmp/export_single_node_then_modify_json_then_import/bogusnode_json.inv $$DSTMN:/tmp/export_single_node_then_modify_json_then_import_$$DSTMN/

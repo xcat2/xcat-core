@@ -20,7 +20,7 @@ use File::Copy;
 
 #-----------------------------------------------------------------------------
 
-=head1   updateSNimage 
+=head1   updateSNimage
 
    This routine updates the service node diskless install image with
    the extra files it needs to support running the postgresql and xcatd
@@ -244,9 +244,9 @@ exit $rc;
 
 #-----------------------------------------------------------------------------
 
-=head2   getarg 
+=head2   getarg
 
-  parses input 
+  parses input
 
 =cut
 
@@ -307,9 +307,9 @@ sub getarg
 
 #-----------------------------------------------------------------------------
 
-=head2   usage 
+=head2   usage
 
-  displays usages message 
+  displays usages message
 
 =cut
 
@@ -331,9 +331,9 @@ sub usage
 
 #-----------------------------------------------------------------------------
 
-=head2   create_fstab 
+=head2   create_fstab
 
- Saves old fstab and creates a new one, if not already done 
+ Saves old fstab and creates a new one, if not already done
 
 =cut
 

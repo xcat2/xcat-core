@@ -30,10 +30,10 @@ rmzone.1
 
 
 The \ **rmzone**\  command is designed to remove a previously defined zone from the cluster.
-It will remove the zone entry in the zone table.  It will remove the zone from the zonename attributes on the nodes that were assigned to the zone. Optionally, it will remove the zonename group from the nodes that were assigned to the zone. 
-It will also remove the root ssh keys that were created for that zone on the Management Node. 
+It will remove the zone entry in the zone table.  It will remove the zone from the zonename attributes on the nodes that were assigned to the zone. Optionally, it will remove the zonename group from the nodes that were assigned to the zone.
+It will also remove the root ssh keys that were created for that zone on the Management Node.
 The rmzone command is only supported on Linux ( No AIX support).
-The nodes are not automatically updated with new root ssh keys by rmzone.  You must run updatenode -k  or xdsh -K to the nodes to update the root ssh keys. The nodes new ssh key will be assigned from the defaultzone in the zone table, or if  no entries in the zone table,  the keys will come from /root/.ssh.   
+The nodes are not automatically updated with new root ssh keys by rmzone.  You must run updatenode -k  or xdsh -K to the nodes to update the root ssh keys. The nodes new ssh key will be assigned from the defaultzone in the zone table, or if  no entries in the zone table,  the keys will come from /root/.ssh.
 Note: if any zones in the zone table, there must be one and only one defaultzone. Otherwise, errors will occur.
 
 
@@ -68,7 +68,7 @@ Note: if any zones in the zone table, there must be one and only one defaultzone
  
 
 
-\ **-V | -**\ **-Verbose**\ 
+\ **-V | -**\ **-verbose**\ 
  
  Verbose mode.
  

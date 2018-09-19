@@ -543,7 +543,7 @@ OPTIONS
 
 \ **network**\ ={\ *nic*\ ,{[\ *ip*\ ],[\ *host*\ ],[\ *gateway*\ ],[\ *netmask*\ ]}|\*}
  
- Not only for FSP/BPA but also for IMM. Get or set the FSP/BPA/IMM network parameters. If '\*' is specified, all parameters are read from the xCAT database. 
+ Not only for FSP/BPA but also for IMM. Get or set the FSP/BPA/IMM network parameters. If '\*' is specified, all parameters are read from the xCAT database.
  If the value of \ *ip*\  is '0.0.0.0', this \ *nic*\  will be configured as a DHCP client. Otherwise this \ *nic*\  will be configured with a static IP.
  
  Note that IPs of FSP/BPAs will be updated with this option, user needs to put the new IPs to /etc/hosts manually or with xCAT command makehosts. For more details, see the man page of makehosts.
@@ -1235,12 +1235,12 @@ EXAMPLES
    cec01: 192.168.2.1: sp=primary,ipadd=192.168.2.1,alt_ipadd=unavailable,state=LINE UP
    cec01: 192.168.1.2: sp=secondary,ipadd=192.168.1.2,alt_ipadd=unavailable,state=LINE UP
    cec01: 192.168.2.2: LINE DOWN
-   
+  
    rspconfig cec01 force_failover
   
    cec01: Success.
-   
-   lshwconn> cec01                
+  
+   lshwconn> cec01
   
    cec01: 192.168.1.1: sp=secondary,ipadd=192.168.1.1,alt_ipadd=unavailable,state=LINE UP
    cec01: 192.168.2.1: LINE DOWN

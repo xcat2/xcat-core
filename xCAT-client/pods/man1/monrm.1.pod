@@ -17,7 +17,7 @@ This command is used to unregister a monitoring plug-in module from the I<monito
 
 =head1 PARAMETERS
 
-I<name> is the name of the monitoring plug-in module in the I<monitoring> table.  Use I<monls> command to list all the monitoring plug-in modules that can be used. 
+I<name> is the name of the monitoring plug-in module in the I<monitoring> table.  Use I<monls> command to list all the monitoring plug-in modules that can be used.
 
 =head1 OPTIONS
 

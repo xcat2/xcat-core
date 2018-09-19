@@ -58,24 +58,24 @@ Update the ca and credentials for the service nodes.
 
 
 
-The default behavior when no options are input to updatenode will be to run  
+The default behavior when no options are input to updatenode will be to run
 the following options \ **-S**\ , \ **-P**\  and \ **-F**\  options in this order.
-If you wish to limit updatenode to specific 
+If you wish to limit updatenode to specific
 actions you can use combinations of the \ **-S**\ , \ **-P**\ , and \ **-F**\  flags.
 
 For example, If you just want to synchronize configuration file you could
-specify the \ **-F**\  flag.   If you want to synchronize files and update 
-software you would specify the \ **-F**\  and \ **-S**\  flags. See the descriptions 
+specify the \ **-F**\  flag.   If you want to synchronize files and update
+software you would specify the \ **-F**\  and \ **-S**\  flags. See the descriptions
 of these flags and examples below.
 
 The flag \ **-k**\  (\ **-**\ **-security**\ ) can NOT be used together with \ **-S**\ , \ **-P**\ , and \ **-F**\  flags.
 
 The flag \ **-f**\  (\ **-**\ **-snsync**\ ) can NOT be used together with \ **-S**\ , \ **-P**\ , and \ **-F**\  flags.
 
-Note: In a large cluster environment the updating of nodes in an ad hoc 
-manner can quickly get out of hand, leaving the system administrator with 
-a very confusing environment to deal with. The updatenode command is 
-designed to encourage users to handle cluster updates in a manner that 
+Note: In a large cluster environment the updating of nodes in an ad hoc
+manner can quickly get out of hand, leaving the system administrator with
+a very confusing environment to deal with. The updatenode command is
+designed to encourage users to handle cluster updates in a manner that
 is recorded and easily repeatable.
 
 To distribute and synchronize files
@@ -97,7 +97,7 @@ The basic process for distributing and synchronizing nodes is:
 
 
 
-Files may be distributed and synchronized for both diskless and 
+Files may be distributed and synchronized for both diskless and
 diskful nodes.  Syncing files to NFS-based statelite nodes is not supported.
 
 More information on using the  synchronization file function is in the following doc: Using_Updatenode.
@@ -106,9 +106,9 @@ Create the synclist file
 ------------------------
 
 
-The synclist file contains the configuration entries that specify 
-where the files should be synced to. In the synclist file, each 
-line is an entry which describes the location of the source files 
+The synclist file contains the configuration entries that specify
+where the files should be synced to. In the synclist file, each
+line is an entry which describes the location of the source files
 and the destination location for the files on the target node.
 
 For more information on creating your synclist files and where to put them, read:
@@ -145,7 +145,7 @@ To install/update the packages, run:
 
 \ **For Linux systems:**\ 
 
-It this is equivalent to running the 
+It this is equivalent to running the
 following command:
 
 
@@ -154,9 +154,9 @@ following command:
   updatenode noderange -P ospkgs,otherpkgs
 
 
-It will update all the rpms specified in the .pkglist file and .otherpkgs.pkglist 
-file. ospkgs postscript will normally remove all the existing rpm 
-repositories before adding server:/install/<os>/<arch/ as the new repository. 
+It will update all the rpms specified in the .pkglist file and .otherpkgs.pkglist
+file. ospkgs postscript will normally remove all the existing rpm
+repositories before adding server:/install/<os>/<arch/ as the new repository.
 To preserve the existing repositories, you can run the following command instead:
 
 
@@ -187,24 +187,24 @@ To run postscripts
 ==================
 
 
-The scripts must be copied to the /install/postscripts 
-directory on the xCAT management node. (Make sure they are 
+The scripts must be copied to the /install/postscripts
+directory on the xCAT management node. (Make sure they are
 executable and world readable.)
 
-To run scripts on a node you must either specify them on the 
-command line or you must add them to the "postscripts" attribute 
+To run scripts on a node you must either specify them on the
+command line or you must add them to the "postscripts" attribute
 for the node.
 
-To set the postscripts attribute of the node (or group) 
-definition you can use the xCAT chdef command. Set the value to 
-be a comma separated list of the scripts that you want to be 
-executed on the nodes. The order of the scripts in the list 
-determines the order in which they will be run.  You can use the 
+To set the postscripts attribute of the node (or group)
+definition you can use the xCAT chdef command. Set the value to
+be a comma separated list of the scripts that you want to be
+executed on the nodes. The order of the scripts in the list
+determines the order in which they will be run.  You can use the
 lsdef command to check the postscript order.
 
 Scripts can  be run on both diskless and diskful nodes.
 
-To run all the customization scripts that have been designated 
+To run all the customization scripts that have been designated
 for the nodes, (in the "postscripts and postbootscripts" attributes), type:
 
 
@@ -234,9 +234,9 @@ where p1 p2 are the parameters for script1.
 The flag '-P' can be omitted when only scripts names  are
 specified.
 
-Note: script1,script2 may or may not be designated as scripts to 
-automatically run on the node. However, if you want script1 and 
-script2 to get invoked next time the nodes are deployed then make sure 
+Note: script1,script2 may or may not be designated as scripts to
+automatically run on the node. However, if you want script1 and
+script2 to get invoked next time the nodes are deployed then make sure
 to add them to the "postscripts/postbootscripts" attribute in the database for the nodes.
 
 
@@ -291,7 +291,7 @@ the ssl connections between the xCAT client and xcatd on the service node,
 and the xcatd's between service node and management node. The files in the
 directories /etc/xcat/cert/ and ~/.xcat/ will be updated.
 
-Since the certificates have the validity time, the ntp service is recommended 
+Since the certificates have the validity time, the ntp service is recommended
 to be set up between management node and service node.
 
 Simply running following command to update the security keys:
@@ -314,18 +314,18 @@ PARAMETERS
  
  A set of comma delimited xCAT node names
  and/or group names. See the xCAT "noderange"
- man page for details on additional supported 
+ man page for details on additional supported
  formats.
  
 
 
 \ *script1,script2...*\ 
  
- A comma-separated list of script names. 
- The scripts must be executable and copied 
+ A comma-separated list of script names.
+ The scripts must be executable and copied
  to the /install/postscripts directory.
  Each script can take zero or more parameters.
- If parameters are specified, the whole list needs to be quoted by double quotes. 
+ If parameters are specified, the whole list needs to be quoted by double quotes.
  For example:
  
  
@@ -340,7 +340,7 @@ PARAMETERS
  
  Specifies one or more "attribute equals value" pairs, separated by spaces.
  Attr=val pairs must be specified last on the command line.  The currently
- supported attributes are: "installp_bundle", "otherpkgs", "installp_flags", 
+ supported attributes are: "installp_bundle", "otherpkgs", "installp_flags",
  "emgr_flags" and "rpm_flags".  These attributes are only valid for AIX software
  maintenance support.
  
@@ -383,7 +383,7 @@ OPTIONS
  
  Specifies that file synchronization should be
  performed on the nodes.  rsync/scp and ssh must
- be installed and configured on the nodes. 
+ be installed and configured on the nodes.
  The function is not supported for NFS-based statelite installations.
  For NFS-based statelite installations to sync files, you should use the
  read-only option for files/directories listed in
@@ -418,11 +418,11 @@ OPTIONS
  
  Notice: The synclist for "-r /usr/bin/scp" has some differences with "-r /usr/bin/rsync":
  
- 1) the ``EXECUTE`` clause is not supported in "-r /usr/bin/scp"
+ 1) the \`\`EXECUTE\`\` clause is not supported in "-r /usr/bin/scp"
  
- 2) if the destination directory specified in synclist is an existing file on target node, "updatenode -r /usr/bin/scp" will fail with ``scp: <destination directory>: Not a directory``
+ 2) if the destination directory specified in synclist is an existing file on target node, "updatenode -r /usr/bin/scp" will fail with \`\`scp: <destination directory>: Not a directory\`\`
  
- 3) if the destination file specified in synclist is an existing directory on target node, "updatenode -r /usr/bin/scp" will fail with ``scp: <destination file>: Is a directory``
+ 3) if the destination file specified in synclist is an existing directory on target node, "updatenode -r /usr/bin/scp" will fail with \`\`scp: <destination file>: Is a directory\`\`
  
 
 
@@ -449,18 +449,18 @@ OPTIONS
 
 \ **-l | -**\ **-user**\  \ *user_ID*\ 
  
- Specifies a non-root user name to use for remote command execution. This option is only available when running postscripts (-P) for 
- AIX and Linux and updating software (-S) for Linux only. 
- The non-root userid  must be previously defined as an xCAT user. 
+ Specifies a non-root user name to use for remote command execution. This option is only available when running postscripts (-P) for
+ AIX and Linux and updating software (-S) for Linux only.
+ The non-root userid  must be previously defined as an xCAT user.
  The userid sudo setup will have to be done by the admin on the node.
- This is not supported in a hierarchical cluster, that is the node is serviced by a service node. 
+ This is not supported in a hierarchical cluster, that is the node is serviced by a service node.
  See the document Granting_Users_xCAT_privileges for required xcat/sudo setup.
  
 
 
 \ **-P|-**\ **-scripts**\ 
  
- Specifies that postscripts and postbootscripts should be run on the nodes. 
+ Specifies that postscripts and postbootscripts should be run on the nodes.
  updatenode -P syncfiles is not supported.  The syncfiles postscript can only
  be run during install.  You should use updatenode <noderange> -F instead.
  
@@ -528,10 +528,10 @@ EXAMPLES
    updatenode compute
  
  
- The command will: run any scripts listed in the nodes "postscripts and postbootscripts" 
- attribute, install or update any software indicated in the 
- /install/custom/install/<ostype>/profile.otherpkgs.pkglist (refer to the 
- \ **To install or update software part**\ ), synchronize any files indicated by 
+ The command will: run any scripts listed in the nodes "postscripts and postbootscripts"
+ attribute, install or update any software indicated in the
+ /install/custom/install/<ostype>/profile.otherpkgs.pkglist (refer to the
+ \ **To install or update software part**\ ), synchronize any files indicated by
  the synclist files specified in the osimage "synclists" attribute.
  
 
@@ -586,7 +586,7 @@ EXAMPLES
    updatenode clstrn01 -P "script1 p1 p2,script2"
  
  
- Since flag '-P' can be omitted when only script names are specified, 
+ Since flag '-P' can be omitted when only script names are specified,
  the following command is equivalent:
  
  
@@ -599,9 +599,9 @@ EXAMPLES
  
 
 
-6. To synchronize the files on the node "clstrn01":  Prepare the synclist file. 
-For AIX, set the full path of synclist in the osimage table synclists 
-attribute. For Linux, put the synclist file into the location: 
+6. To synchronize the files on the node "clstrn01":  Prepare the synclist file.
+For AIX, set the full path of synclist in the osimage table synclists
+attribute. For Linux, put the synclist file into the location:
 /install/custom/<inst_type>/<distro>/<profile>.<os>.<arch>.synclist
 Then:
  
@@ -613,8 +613,8 @@ Then:
  
 
 
-7. To perform the software update on the Linux node "clstrn01":  Copy the extra 
-rpm into the /install/post/otherpkgs/<os>/<arch>/\* and add the rpm names into 
+7. To perform the software update on the Linux node "clstrn01":  Copy the extra
+rpm into the /install/post/otherpkgs/<os>/<arch>/\* and add the rpm names into
 the /install/custom/install/<ostype>/profile.otherpkgs.pkglist .  Then:
  
  
@@ -634,13 +634,13 @@ the /install/custom/install/<ostype>/profile.otherpkgs.pkglist .  Then:
    updatenode xcatn11 -V -S
  
  
- Note: The xCAT "xcatn11" node definition points to an xCAT osimage definition 
+ Note: The xCAT "xcatn11" node definition points to an xCAT osimage definition
  which contains the "installp_bundle" and "otherpkgs" attributes as well as
  the name of the NIM lpp_source resource.
  
 
 
-9. To update the AIX node "xcatn11" by installing the "bos.cpr" fileset using 
+9. To update the AIX node "xcatn11" by installing the "bos.cpr" fileset using
 the "-agQXY" installp flags.  Also display the output of the installp command.
  
  

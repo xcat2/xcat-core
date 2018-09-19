@@ -60,10 +60,10 @@ Keywords to use:
 .. code-block:: perl
 
      apps -- a list of comma separated application names whose status will be queried. For how to get the status of each app, look for app name in the key field in a different row.
-     port -- the application daemon port number, if not specified, use internal list, then /etc/services. 
+     port -- the application daemon port number, if not specified, use internal list, then /etc/services.
      group -- the name of a node group that needs to get the application status from. If not specified, assume all the nodes in the nodelist table. To specify more than one groups, use group=a,group=b format.
      cmd -- the command that will be run locally on mn or sn.
-     lcmd -- the command that will be run the mn only. 
+     lcmd -- the command that will be run the mn only.
      dcmd -- the command that will be run distributed on the nodes using xdsh <nodes> ....
 
 
@@ -86,7 +86,7 @@ For the command specified by 'dcmd', no input is needed, the output can be a str
 
 
 
-\ **-f | -**\ **-usefping**\
+\ **-f | -**\ **-usefping**\ 
  
  Uses fping instead of nmap even if nmap is available.  If you seem to be having a problem with false negatives, fping can be more forgiving, but slower.
  

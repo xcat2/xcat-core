@@ -62,7 +62,7 @@ When the \ **snmove**\  command is run it modifies the xCAT database to
 switch the primary server to the backup server.
 
 It will also check the other services that are being used for the
-node (tftpserver, monserver, nfsserver, conserver), and if they were set 
+node (tftpserver, monserver, nfsserver, conserver), and if they were set
 to the original service node they will be changed to point to the backup
 service node.
 

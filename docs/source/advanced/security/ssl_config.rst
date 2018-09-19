@@ -3,7 +3,7 @@ OpenSSL Configuration
 
 xCAT does not ship OpenSSL RPMS nor does it statically link to any OpenSSL libraries.  Communication between the xCAT client and daemon utilizes OpenSSL and the administrator can configure SSL_version and SSL_cipher that should be used by xCAT daemons.
 
-The configuration is stored in the xCAT site table using the ``site.xcatsslversion`` and ``site.xcatsslciphers`` variables. 
+The configuration is stored in the xCAT site table using the ``site.xcatsslversion`` and ``site.xcatsslciphers`` variables.
 
 Configuration
 -------------
@@ -14,7 +14,7 @@ By default, xCAT ships with ``TLSv1`` configured.  The current highest SSL versi
 
     chtab key=xcatsslversion site.value=TLSv12
 
-* For ubuntu 14.x and higher: :: 
+* For ubuntu 14.x and higher: ::
 
     chtab key=xcatsslversion site.value=TLSv1_2
 
@@ -40,13 +40,13 @@ If any mistakes have been made and communiation is lost to xCAT, use ``XCATBYPAS
 Validation
 ----------
 
-Use the ``openssl`` command to validate the SSL configuration is valid and expected. 
+Use the ``openssl`` command to validate the SSL configuration is valid and expected.
 
-* To check whether TLSv1 is supported by xcatd: :: 
+* To check whether TLSv1 is supported by xcatd: ::
 
     openssl s_client -connect 127.0.0.1:3001 -tls1
 
-* To check if SSLv3 is disabled on ``xcatd``: :: 
+* To check if SSLv3 is disabled on ``xcatd``: ::
 
     openssl s_client -connect localhost:3001 -ssl3
 

@@ -213,7 +213,7 @@ OPTIONS
  \ **rpm_flags**\ 
   
   The alternate flags to be passed along to the AIX rpm command. (The default for
-  rpm_flags is "-Uvh ".) The mknimimage command will check each rpm to see if 
+  rpm_flags is "-Uvh ".) The mknimimage command will check each rpm to see if
   it is installed.  It will not be reinstalled unless you specify the appropriate
   rpm option, such as '--replacepkgs'.
   

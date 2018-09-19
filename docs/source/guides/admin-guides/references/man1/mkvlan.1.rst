@@ -192,12 +192,12 @@ The following is an example of the switches table
  .. code-block:: perl
  
     chtab key=usexhrm site.vlaue=1
-   
+  
     mkdef node1 arch=x86_64 groups=kvm,all installnic=mac primarynic=mac mgt=kvm netboot=pxe nfsserver=10.1.0.204 os=rhels6 profile=compute provmethod=install serialport=0 serialspeed=115200 vmcpus=1 vmhost=x3650n01 vmmemory=512 vmnics=br0 vmstorage=nfs://10.1.0.203/vms
   
     mkdef node2 arch=x86_64 groups=kvm,all installnic=mac primarynic=mac mgt=kvm netboot=pxe nfsserver=10.1.0.204 os=rhels6 profile=compute provmethod=install serialport=0 serialspeed=115200 vmcpus=1 vmhost=x3650n01 vmmemory=512 vmnics=br0 vmstorage=nfs://10.1.0.203/vms
   
-    mkvlan -n node1,node2 
+    mkvlan -n node1,node2
   
     mkvm node1,node2 -s 20G
   

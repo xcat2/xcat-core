@@ -27,16 +27,16 @@ DESCRIPTION
 ***********
 
 
-The \ **lsve**\  command can be used to list a virtual environment for 
+The \ **lsve**\  command can be used to list a virtual environment for
 'Data Center', 'Cluster', 'Storage Domain', 'Network' and 'Template' objects.
 
-The mandatory parameter \ **-m**\  \ *manager*\  is used to specify the address of the 
+The mandatory parameter \ **-m**\  \ *manager*\  is used to specify the address of the
 manager of virtual environment. xCAT needs it to access the RHEV manager.
 
-The mandatory parameter \ **-t**\  \ *type*\  is used to specify the type of the target 
+The mandatory parameter \ **-t**\  \ *type*\  is used to specify the type of the target
 object.
 
-Basically, \ **lsve**\  command supports three types of object: \ **dc**\ , \ **cl**\ , \ **sd**\ , \ **nw**\  
+Basically, \ **lsve**\  command supports three types of object: \ **dc**\ , \ **cl**\ , \ **sd**\ , \ **nw**\ 
 and \ **tpl**\ .
 
 The parameter \ **-o object**\  is used to specify which object to list. If no \ **-o**\  is specified,

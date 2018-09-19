@@ -688,14 +688,14 @@ sub buildcreatestmt
 
 #--------------------------------------------------------------------------
 
-=head3   
+=head3
 
-    Description: get_datatype_string ( for mysql,sqlite,postgresql) 
+    Description: get_datatype_string ( for mysql,sqlite,postgresql)
 
     Arguments:
-                Table column,database,types 
+                Table column,database,types
     Returns:
-              the datatype for the column being defined 
+              the datatype for the column being defined
     Globals:
 
     Error:
@@ -734,14 +734,14 @@ sub get_datatype_string {
 
 #--------------------------------------------------------------------------
 
-=head3   
+=head3
 
-    Description: get_datatype_string_db2 ( for DB2) 
+    Description: get_datatype_string_db2 ( for DB2)
 
     Arguments:
-                Table column,database,types,tablename,table schema 
+                Table column,database,types,tablename,table schema
     Returns:
-              the datatype for the column being defined 
+              the datatype for the column being defined
     Globals:
 
     Error:
@@ -793,12 +793,12 @@ sub get_datatype_string_db2 {
 
 #--------------------------------------------------------------------------
 
-=head3   
+=head3
 
-    Description: get_xcatcfg 
+    Description: get_xcatcfg
 
     Arguments:
-              none 
+              none
     Returns:
               the database name from /etc/xcat/cfgloc or sqlite
     Globals:
@@ -1106,7 +1106,7 @@ sub new
                  Handles adding attributes
                  Handles removing attributes but does not really remove them
                  from the database.
-                 Handles adding keys  
+                 Handles adding keys
 
     Arguments: Hash containing Database and Table Handle and schema
 
@@ -1117,9 +1117,9 @@ sub new
     Error:
 
     Example: my $nodelisttab=xCAT::Table->new('nodelist');
-             $nodelisttab->updateschema(); 
+             $nodelisttab->updateschema();
 	     $nodelisttab->close();
- 
+
     Comments:
         none
 
@@ -1942,7 +1942,7 @@ sub setAttribs
     Description:
        This function sets the attributes for the rows selected by the where clause.
     Warning, because we support mulitiple databases (SQLite,MySQL and DB2) that
-    require different syntax.  Any code using this routine,  must call the 
+    require different syntax.  Any code using this routine,  must call the
     Utils->getDBName routine and code the where clause that is appropriate for
     each supported database.
 
@@ -2294,7 +2294,7 @@ sub setNodesAttribs {
 	        Attribute type array
     Returns:
 
-			two layer hash reference (->{nodename}->{attrib} 
+			two layer hash reference (->{nodename}->{attrib}
     Globals:
 
     Error:
@@ -2312,10 +2312,6 @@ sub setNodesAttribs {
 #--------------------------------------------------------------------------------
 sub getNodesAttribs {
     my $self = shift;
-    if ($dbworkerpid > 0) {
-        return dbc_call($self, 'getNodesAttribs', @_);
-    }
-    $self->trace_db(START_TYPE);
     my $nodelist = shift;
     unless ($nodelist) { $nodelist = []; } #common to be invoked with undef seemingly
     my %options = ();
@@ -2326,6 +2322,21 @@ sub getNodesAttribs {
     } else {
         @attribs = @_;
     }
+
+    if (!exists($options{hierarchy_attrs})) {
+        my @hierarchy_attrs = ();
+        my $hierarchy_field = xCAT::TableUtils->get_site_attribute("hierarchicalattrs");
+        if ($hierarchy_field) {
+            @hierarchy_attrs = split(/,/, $hierarchy_field);
+        }
+        $options{hierarchy_attrs} = \@hierarchy_attrs;
+    }
+
+    if ($dbworkerpid > 0) {
+        return dbc_call($self, 'getNodesAttribs', $nodelist, \@attribs, %options);
+    }
+
+    $self->trace_db(START_TYPE);
     my @realattribs = @attribs; #store off the requester attribute list, the cached columns may end up being a superset and we shouldn't return more than asked
       #it should also be the case that cache will be used if it already is in play even if below cache threshold.  This would be desired behavior
     if (scalar(@$nodelist) > $cachethreshold) {
@@ -2348,12 +2359,12 @@ sub getNodesAttribs {
         $self->{nodelist}->{_use_cache} = 1;
     }
     my $rethash;
-    my @hierarchy_attrs = ();
-    my $hierarchy_field = xCAT::TableUtils->get_site_attribute("hierarchicalattrs");
-    if ($hierarchy_field) {
-        @hierarchy_attrs = split(/,/, $hierarchy_field);
-    }
-    $options{hierarchy_attrs} = \@hierarchy_attrs;
+    #my @hierarchy_attrs = ();
+    #my $hierarchy_field = xCAT::TableUtils->get_site_attribute("hierarchicalattrs");
+    #if ($hierarchy_field) {
+    #    @hierarchy_attrs = split(/,/, $hierarchy_field);
+    #}
+    #$options{hierarchy_attrs} = \@hierarchy_attrs;
     foreach (@$nodelist) {
         my @nodeentries = $self->getNodeAttribs($_, \@realattribs, %options);
         $rethash->{$_} = \@nodeentries;    #$self->getNodeAttribs($_,\@attribs);
@@ -2732,20 +2743,10 @@ sub transRegexAttrs
 sub getNodeAttribs
 {
     my $self = shift;
-    if ($dbworkerpid > 0) { #TODO: should this be moved outside of the DB worker entirely?  I'm thinking so, but I don't dare do so right now...
-         #the benefit would be the potentially computationally intensive substitution logic would be moved out and less time inside limited
-         #db worker scope
-        return dbc_call($self, 'getNodeAttribs', @_);
-    }
-    $self->trace_db(START_TYPE);
-
-    if (!defined($self->{dbh})) {
-        xCAT::MsgUtils->message("S", "xcatd: DBI is missing, Please check the db access process.");
-        return undef;
-    }
     my $node = shift;
-    my @attribs;
+
     my %options = ();
+    my @attribs;
     if (ref $_[0]) {
         @attribs = @{ shift() };
         %options = @_;
@@ -2760,6 +2761,17 @@ sub getNodeAttribs
             @hierarchy_attrs = split(/,/, $hierarchy_field);
         }
         $options{hierarchy_attrs} = \@hierarchy_attrs;
+    }
+    if ($dbworkerpid > 0) { #TODO: should this be moved outside of the DB worker entirely?  I'm thinking so, but I don't dare do so right now...
+         #the benefit would be the potentially computationally intensive substitution logic would be moved out and less time inside limited
+         #db worker scope
+        return dbc_call($self, 'getNodeAttribs', $node, \@attribs, %options);
+    }
+    $self->trace_db(START_TYPE);
+
+    if (!defined($self->{dbh})) {
+        xCAT::MsgUtils->message("S", "xcatd: DBI is missing, Please check the db access process.");
+        return undef;
     }
 
     my $datum;
@@ -2901,7 +2913,7 @@ sub getNodeAttribs_nosub_old
 
 =head3 getNodeAttribs_nosub_returnany
 
-    Description:  not used, kept for reference 
+    Description:  not used, kept for reference
 
     Arguments:
 
@@ -3244,17 +3256,17 @@ sub getAllEntries
 
     When using a general Where clause with SQL statement then
     because we support mulitiple databases (SQLite,MySQL and DB2) that
-    require different syntax.  Any code using this routine,  must call the 
+    require different syntax.  Any code using this routine,  must call the
     Utils->getDBName routine and code the where clause that is appropriate for
     each supported database.
 
     When the input is the array of attr<operator> val  strings, the routine will
-    build the correct Where clause for the database we are running. 
+    build the correct Where clause for the database we are running.
 
     Arguments:
        Database Handle
        Where clause
-       or 
+       or
        array of attr<operator>val strings to be build into a Where clause
     Returns:
         Array of attributes
@@ -3269,7 +3281,7 @@ sub getAllEntries
     returns  node and group attributes
     $nodelist->getAllAttribsWhere("groups like '%".$atom."%'",'ALL');
     returns  all attributes
-    
+
     Input of attr<operator>val strings
 
     $nodelist->getAllAttribsWhere(array of attr<operator>val,'node','group');
@@ -3358,7 +3370,7 @@ sub getAllAttribsWhere
                  Table handle
 	         Attribute list
                  optional hash return style
-                 ( changes the return hash structure format) 
+                 ( changes the return hash structure format)
     Returns:
                  Array of attribute values
     Globals:
@@ -3417,6 +3429,12 @@ sub getAllNodeAttribs
     $self->{nodelist}->_build_cache([ 'node', 'groups' ]);
     $self->{_use_cache} = 1;
     $self->{nodelist}->{_use_cache} = 1;
+
+    my @hierarchy_attrs = ();
+    my $hierarchy_field = xCAT::TableUtils->get_site_attribute("hierarchicalattrs");
+    if ($hierarchy_field) {
+        @hierarchy_attrs = split(/,/, $hierarchy_field);
+    }
     while (my $data = $query->fetchrow_hashref())
     {
 
@@ -3437,12 +3455,13 @@ sub getAllNodeAttribs
             #}  end SF 3580
 
             #my $localhash = $self->getNodesAttribs(\@nodes,$attribq); #NOTE:  This is stupid, rebuilds the cache for every entry, FIXME
-            my %options;
-            my @hierarchy_attrs = ();
-            my $hierarchy_field = xCAT::TableUtils->get_site_attribute("hierarchicalattrs");
-            if ($hierarchy_field) {
-                @hierarchy_attrs = split(/,/, $hierarchy_field);
-            }
+
+            #my @hierarchy_attrs = ();
+            #my $hierarchy_field = xCAT::TableUtils->get_site_attribute("hierarchicalattrs");
+            #if ($hierarchy_field) {
+            #    @hierarchy_attrs = split(/,/, $hierarchy_field);
+            #}
+            my %options = ();
             $options{hierarchy_attrs} = \@hierarchy_attrs;
             foreach (@nodes)
             {
@@ -3616,7 +3635,7 @@ sub getAllAttribs
         Build delete statement and'ing the elements of the hash
         DELETE FROM nodelist WHERE ("groups" = "compute1" AND "node" = "node1")
 
-        If called with no attributes, it will delete all entries in the table. 
+        If called with no attributes, it will delete all entries in the table.
           $table->delEntries();
           $table->commit;
     Comments:
@@ -4100,15 +4119,15 @@ sub getDescriptions {
 
 #--------------------------------------------------------------------------
 
-=head3  isAKey 
-    Description:  Checks to see if table field is a table key 
+=head3  isAKey
+    Description:  Checks to see if table field is a table key
 
     Arguments:
-               Table field 
-	       List of keys 
+               Table field
+	       List of keys
     Returns:
                1= is a key
-               0 = not a key 
+               0 = not a key
     Globals:
 
     Error:
@@ -4159,12 +4178,12 @@ sub getAutoIncrementColumns {
 
 #--------------------------------------------------------------------------
 
-=head3   
+=head3
 
-    Description: get_filelist 
+    Description: get_filelist
 
     Arguments:
-             directory,filelist,type 
+             directory,filelist,type
     Returns:
             The list of sql files to be processed which consists of all the
 			files with <name>.sql  and <name>_<databasename>.sql
@@ -4178,7 +4197,7 @@ sub getAutoIncrementColumns {
 	my @filelist =get_filelist($directory,$filelist,$type);
             where type = "sql" or "pm"
          Note either input a directory path in $directory of an array of
-          full path to filenames in $filelist.  See runsqlcmd for example. 
+          full path to filenames in $filelist.  See runsqlcmd for example.
 
 =cut
 
@@ -4254,15 +4273,15 @@ sub get_filelist
 
 #--------------------------------------------------------------------------
 
-=head3   
+=head3
 
-    Description: delimitcol 
+    Description: delimitcol
 
     Arguments:
-                attribute name 
+                attribute name
     Returns:
               The attribute(column)
-			  delimited appropriately for the runnning Database 
+			  delimited appropriately for the runnning Database
     Globals:
 
     Error:
@@ -4292,24 +4311,24 @@ sub delimitcol {
 
 #--------------------------------------------------------------------------
 
-=head3   
+=head3
 
-    Description: buildwhereclause 
+    Description: buildwhereclause
 
     Arguments:
                  Array of the following
                    attr<operator> val  where the operator can be the following:
-                == 
-                != 
-                =~ 
-                !~ 
-                 >   
-                 <   
-                 >=  
-                 <=  
+                ==
+                !=
+                =~
+                !~
+                 >
+                 <
+                 >=
+                 <=
 
     Returns:
-             Where clause with SQL appropriate for the running DB 
+             Where clause with SQL appropriate for the running DB
     Globals:
 
     Error:
@@ -4390,15 +4409,15 @@ sub buildWhereClause {
 =head3 writeAllEntries
 
     Description:  Read entire table and writes all entries to file
-                  This routine was written specifically for the tabdump 
+                  This routine was written specifically for the tabdump
                   command.
 
     Arguments:
-          filename or path 
+          filename or path
 
     Returns:
        0=good
-       1=bad 
+       1=bad
     Globals:
 
     Error:
@@ -4598,18 +4617,18 @@ sub output_table {
 
 =head3 getMAXMINEntries
 
-    Description: Select the rows in  the Table which has the MAX and the row with the 
+    Description: Select the rows in  the Table which has the MAX and the row with the
                  Min value for the input attribute.
-                 Currently only the auditlog and evenlog are setup to have such an attribute (recid). 
+                 Currently only the auditlog and evenlog are setup to have such an attribute (recid).
 
     Arguments:
            Table handle
            attribute name ( e.g. recid)
 
     Returns:
-        HASH 
+        HASH
             max=>  max value
-            min=>  min value 
+            min=>  min value
     Globals:
 
     Error:
@@ -4617,7 +4636,7 @@ sub output_table {
     Example:
 
 	 my $tabh = xCAT::Table->new($table);
-         my $recs=$tabh->getEntries("recid"); # returns row with recid max value in database 
+         my $recs=$tabh->getEntries("recid"); # returns row with recid max value in database
                                               # and the row with the min value.
 
     Comments:

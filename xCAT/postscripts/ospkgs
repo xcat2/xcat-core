@@ -1,25 +1,25 @@
-#!/bin/bash  
+#!/bin/bash
 # IBM(c) 2010 EPL license http://www.eclipse.org/legal/epl-v10.html
 #-------------------------------------------------------------------------------
 #=head1  ospkgs
-#=head2  Used on Linux only. It installs/updates the rpms thta are from OS distro. 
+#=head2  Used on Linux only. It installs/updates the rpms thta are from OS distro.
 #        The environment variable OSPKGS contains the rpms to be installed/updated.
 #        On MN, You need to:
 #        1. update the rpms under /install/os/arch/... directory where 'os' and 'arch'
 #           can be found in the nodetype table.
-#        2. put new package names to /install/custom/netboot(install)/platform or 
+#        2. put new package names to /install/custom/netboot(install)/platform or
 #           /opt/xcat/share/xcat/netboot(install)/platform
 #           directory. The file name is one of the following:
-#              profile.os.arch.pkglist  
-#              profile.os.pkglist   
-#              profile.arch.pkglist  
+#              profile.os.arch.pkglist
+#              profile.os.pkglist
+#              profile.arch.pkglist
 #              profile.pkglist
 #  You can run the following commands to install/update the rpms from os distro.
-#       updatenode noderange ospkgs 
+#       updatenode noderange ospkgs
 #       updatenode noderange -S    (this one intslls/updates rpms from os distro as well as otherpkgs)
 #       updatenode noderange -P "ospkgs --keeprepo"  (this one will preserve the original repositories when installing/updating the rpms. )
-#    
-#   
+#
+#
 #=cut
 #-------------------------------------------------------------------------------
 
@@ -179,9 +179,9 @@ fi
 #if [ -z "$UPDATENODE" ] || [ $UPDATENODE -ne 1 ]; then
 #    echo "  Did not install any extra rpms."
 #    exit 0
-#fi 
+#fi
 
-if [ -z "$OSPKGS" ]; then 
+if [ -z "$OSPKGS" ]; then
    echo "$0: no extra rpms to install"
    exit 0
 fi
@@ -208,21 +208,21 @@ if [ -z "$INSTALLDIR" ]; then
     INSTALLDIR="/install"
 fi
 
-#check if /install is mounted on the server, we may need to add code to conver NFSSERVER to ip 
+#check if /install is mounted on the server, we may need to add code to conver NFSSERVER to ip
 mounted=0;
 result=`mount |grep " $INSTALLDIR " |grep $NFSSERVER`
 if [ $? -eq 0 ]; then
     NFSSERVER="/install"
-    mounted=1 
+    mounted=1
 fi
 
 if [ -z "$OSPKGDIR" ]; then
     OSPKGDIR="$INSTALLDIR/$OSVER/$ARCH"
 fi
 
-if [ "$KERNELDIR" != "" ]; then 
+if [ "$KERNELDIR" != "" ]; then
     OSPKGDIR="$OSPKGDIR,$KERNELDIR"
-fi 
+fi
 
 OIFS=$IFS
 IFS=$','
@@ -230,25 +230,25 @@ if ( pmatch "$OSVER" "ubuntu*" ); then
     IFS=$(printf ',')
 fi
 
-array_ospkgdirs=($OSPKGDIR)   
+array_ospkgdirs=($OSPKGDIR)
 
-#initialize the array "os_path" with all the valid repository paths 
+#initialize the array "os_path" with all the valid repository paths
 #under the directories specified in "OSPKGDIR"
 
 array_empty os_path
 index=0
-for dir in  ${array_ospkgdirs[@]}  
+for dir in  ${array_ospkgdirs[@]}
 do
-     
+
     default_pkgdir="$INSTALLDIR/$OSVER/$ARCH"
-    OSPKGDIR="$OSPKGDIR" 
+    OSPKGDIR="$OSPKGDIR"
     if [ $mounted -eq 0 ]; then
-        #OSPKGDIR="$OSPKGDIR" 
+        #OSPKGDIR="$OSPKGDIR"
         ospkgdir="$NFSSERVER$dir"
-    else 
+    else
         ospkgdir="$dir"
     fi
-    
+
     # for the os base pkg dir(default_pkgdir) , there are some special cases.
     # (1)for rhels6, there is one repodata in the os base dir; so keep it here, and handle the other cases below
     # (2)for sles, we should specified the baseurl should be ./install/sles11/ppc64/1
@@ -256,7 +256,7 @@ do
     # (4) for other os, we just keep it here.
     # For other pkg paths, we just keep it here.
     if [ $dir == $default_pkgdir ] || [ $dir == "$default_pkgdir/" ]; then
-        if ( pmatch "$OSVER" "sles*" ); then
+        if ( pmatch "$OSVER" "sle*" ); then
             OSPKGDIR="$OSPKGDIR/1"
             ospkgdir="$ospkgdir/1"
         elif ( pmatch "$OSVER" "SL5*" ); then
@@ -265,37 +265,62 @@ do
         fi
     fi
     array_set_element os_path $index $ospkgdir
-     
+    if [ $dir == $default_pkgdir ] || [ $dir == "$default_pkgdir/" ]; then
+        ospkgdir=$(echo $ospkgdir|sed 's/\/1$/\/2/')
+        if ( pmatch "$OSVER" "sle15*" ); then
+            if [ $ARCH == "x86_64" ]; then
+                for arg in "Product-SLES" "Module-Desktop-Applications" "Module-Live-Patching" \
+                           "Module-Web-Scripting" "Module-Basesystem" "Module-Development-Tools" "Module-Public-Cloud" \
+                           "Product-HA" "Product-SLES_SAP" "Module-CAP-Tools" "Module-HPC" "Module-SAP-Applications" \
+                           "Product-HPC" "Product-WE" "Module-Containers" "Module-Legacy" "Module-Server-Applications" "Product-SLED"
+                do
+                    ospkgdir_ok="$ospkgdir/$arg"
+                    index=$(expr $index + 1)
+                    array_set_element os_path $index $ospkgdir_ok
+                done
+            elif [ $ARCH == "ppc64le" ]; then
+                for arg in "Product-SLES" "Module-Desktop-Applications" "Module-Live-Patching" \
+                           "Module-Web-Scripting" "Module-Basesystem" "Module-Development-Tools" "Module-Public-Cloud" \
+                           "Product-HA" "Product-SLES_SAP" "Module-SAP-Applications" \
+                           "Module-Containers" "Module-Legacy" "Module-Server-Applications"
+                do
+                    ospkgdir_ok="$ospkgdir/$arg"
+                    index=$(expr $index + 1)
+                    array_set_element os_path $index $ospkgdir_ok
+                done
+            fi
+        fi
+    fi 
     if ( pmatch "$OSVER" "rhel*" ); then
         #default_pkgdir="$INSTALLDIR/$OSVER/$ARCH"
         if [ $dir == $default_pkgdir ] || [ $dir == "$default_pkgdir/" ]; then
-      
+
             if ( pmatch "$OSVER" "rhels6*" ); then
                if [ $ARCH == "ppc64" ]; then
                    ospkgdir_ok="$ospkgdir/Server"
-                   index=$(expr $index + 1)          
+                   index=$(expr $index + 1)
                    array_set_element os_path $index $ospkgdir_ok
-               fi               
+               fi
 
                if [ $ARCH == "x86_64" ]; then
-                    for arg in "Server" "ScalableFileSystem" "HighAvailability" "ResilientStorage" "LoadBalancer" 
+                    for arg in "Server" "ScalableFileSystem" "HighAvailability" "ResilientStorage" "LoadBalancer"
                     do
                         ospkgdir_ok="$ospkgdir/$arg"
-                        index=$(expr $index + 1)          
+                        index=$(expr $index + 1)
                         array_set_element os_path $index $ospkgdir_ok
                     done
-                fi               
+                fi
 
             elif ( pmatch "$OSVER" "rhels5*" ); then
                  # for rhels5, the repodata is in ./Server, ./Cluster, ./CusterStorage, not in ./
                  ospkgdir_ok="$ospkgdir/Server"
                  array_set_element os_path $index $ospkgdir_ok
-           
+
                  if [ $ARCH == "x86_64" ]; then
                      for arg in "Cluster" "ClusterStorage"
                      do
                          ospkgdir_ok="$ospkgdir/$arg"
-                         index=$(expr $index + 1)          
+                         index=$(expr $index + 1)
                          array_set_element os_path $index $ospkgdir_ok
                      done
                  fi   # x86_64
@@ -303,20 +328,20 @@ do
          fi  # eq default_pkgdir
       fi    # match rhel*
 
-      index=$(expr $index + 1)          
-        
-done    
+      index=$(expr $index + 1)
+
+done
 
 IFS=$OIFS
- 
 
 
-#if [ "$SDKDIR" != "" ]; then 
+
+#if [ "$SDKDIR" != "" ]; then
 #    if [ $mounted -eq 0 ]; then
 #        SDKDIR="$NFSSERVER/$SDKDIR"
 #    fi
 #fi
-    
+
 #if [ $mounted -eq 0 ]; then
 #    OSPKGDIR_NO_PREFIX=${OSPKGDIR#$INSTALLDIR}
 
@@ -332,7 +357,7 @@ logger -t xcat -p local4.info "OSPKGS=$OSPKGS"
 if [ $debug -ne 0 ]; then
     echo NFSSERVER=$NFSSERVER
     echo OSPKGDIR=$OSPKGDIR
-    echo OSPKGS = $OSPKGS 
+    echo OSPKGS = $OSPKGS
 fi
 
 pkgs=''  #packages
@@ -348,7 +373,7 @@ if ( pmatch "$OSVER" "ubuntu*" ); then
 fi
 pkgarray=($OSPKGS)
 
-#parse the pkglist file, categorize the pkglist entries according to 
+#parse the pkglist file, categorize the pkglist entries according to
 #the type(package/group/patterns) and action(install/remove)
 for x in ${pkgarray[@]};
 do
@@ -360,13 +385,13 @@ do
     x=`echo $x |sed 's/^ *//;s/ *$//'`
     #echo "x=$x"
     pos=`expr index  "$x" -`
-    if [ $pos -eq 1 ]; then 
+    if [ $pos -eq 1 ]; then
        remove=1
        x=${x#-}
     fi
 
     pos=`expr index  "$x" @`
-    if [ $pos -eq 1 ]; then 
+    if [ $pos -eq 1 ]; then
         #remove leading @
         tmp=${x#@}
         #remove leading and trailing spaces
@@ -376,7 +401,7 @@ do
         if [ $pos -gt 0  ]; then
            tmp="\"$tmp\""
         fi
-        
+
         #categorize the groups according to the action(install/remove)
         if [ $remove -eq 0 ]; then
     	   groups="$groups $tmp"
@@ -385,7 +410,7 @@ do
         fi
     else
         if ( pmatch  "$x" "cuda*" ); then
-            cudapkgs="$cudapkgs $x" 
+            cudapkgs="$cudapkgs $x"
         else
             #categorize the packages according to the action(install/remove)
             if [ $remove -eq 0 ]; then
@@ -410,7 +435,7 @@ if [ $debug -ne 0 ]; then
 fi
 
 #perform the software maintenance with the available package management tools, the process:
-#1.make sure the necessary package management tool is available 
+#1.make sure the necessary package management tool is available
 #2.enable all the available repositories and refresh the relevant metadata
 #3.upgrade all the existing packages
 #4.install specified package groups if any
@@ -420,7 +445,7 @@ fi
 if ( pmatch "$OSVER" "sles10*" ); then
     #check if rug is installed
     result=`rpm -q rug`
-    if [ $? -ne 0 ]; then 
+    if [ $? -ne 0 ]; then
 	echo "Please install rug on $NODE."
 	exit 1
     fi
@@ -446,18 +471,18 @@ if ( pmatch "$OSVER" "sles10*" ); then
         path="dir://$OSPKGDIR"
     fi
     result=`rug sa $path $OSVER`
-    if [ $? -ne 0 ]; then 
+    if [ $? -ne 0 ]; then
 	logger -t xcat -p local4.info "ospkgs: rug sa $path $OSVER\n    $result"
 	echo "ospkgs: rug sa $path $OSVER"
 	echo "    $result"
     fi
     result=`rug sub $OSVER`
-    if [ $? -ne 0 ]; then 
+    if [ $? -ne 0 ]; then
 	logger -t xcat -p local4.info "ospkgs: rug sub $OSVER\n    $result"
 	echo "ospkgs: rug sub $OSVER"
 	echo "    $result"
     fi
-    result=`rug refresh 2>&1` 
+    result=`rug refresh 2>&1`
     if [ $debug -ne 0 ]; then
 	echo "rug refresh"
 	echo $result
@@ -531,10 +556,10 @@ if ( pmatch "$OSVER" "sles10*" ); then
 	    fi
 	fi
     fi
-elif ( pmatch "$OSVER" "sles*" ); then
+elif ( pmatch "$OSVER" "sle*" ); then
     #check if zypper is installed
     result=`rpm -q zypper`
-    if [ $? -ne 0 ]; then 
+    if [ $? -ne 0 ]; then
 	echo "Please install zypper on $NODE."
 	exit 1
     fi
@@ -555,8 +580,8 @@ elif ( pmatch "$OSVER" "sles*" ); then
 
     SUM=$(array_get_size os_path)
     i=0
-   
-    if [ $SUM -eq 0 ]; then 
+
+    if [ $SUM -eq 0 ]; then
 
         if [ $mounted -eq 0 ]; then
 	    path="http://$OSPKGDIR"
@@ -564,15 +589,15 @@ elif ( pmatch "$OSVER" "sles*" ); then
             path="file://$OSPKGDIR"
         fi
         result=`zypper ar $path xCAT-$OSVER 2>&1`
-        if [ $? -ne 0 ]; then 
-	    if ( ! pmatch "$result" "*exists*" ); then 
+        if [ $? -ne 0 ]; then
+	    if ( ! pmatch "$result" "*exists*" ); then
 	        logger -t xcat -p local4.info "ospkgs: zypper ar $path xCAT-$OSVER\n    $result"
 	        echo "ospkgs: zypper ar $path xCAT-OSVER"
 	        echo "    $result"
 	    fi
         fi
-    else 
-        while [ $i -lt $SUM ]; do 
+    else
+        while [ $i -lt $SUM ]; do
             OSPKGDIR=$(array_get_element os_path $i)
             if [ $mounted -eq 0 ]; then
                 path="http://$OSPKGDIR"
@@ -580,15 +605,15 @@ elif ( pmatch "$OSVER" "sles*" ); then
                 path="file://$OSPKGDIR"
             fi
             result=`zypper ar $path xCAT-$OSVER-"path$i"  2>&1`
-            if [ $? -ne 0 ]; then 
-	        if ( ! pmatch "$result" "*exists*" ); then 
+            if [ $? -ne 0 ]; then
+	        if ( ! pmatch "$result" "*exists*" ); then
 	            logger -t xcat -p local4.info "ospkgs: zypper ar $path xCAT-$OSVER-path$i\n    $result"
 	            echo "ospkgs: zypper ar $path xCAT-$OSVER-path$i"
 	            echo "    $result"
 	        fi
             fi
-           
-            i=$((i+1)) 
+
+            i=$((i+1))
         done
     fi
 
@@ -617,7 +642,7 @@ elif ( pmatch "$OSVER" "sles*" ); then
         IFS=$OIFS
     fi
 
-    result=`zypper --non-interactive --no-gpg-checks refresh 2>&1` 
+    result=`zypper --non-interactive --no-gpg-checks refresh 2>&1`
     if [ $debug -ne 0 ]; then
 	echo "zypper --non-interactive refresh"
 	echo $result
@@ -675,7 +700,7 @@ elif ( pmatch "$OSVER" "sles*" ); then
     fi
 
 
-    
+
     #remove  patterns if any
     if [ -n "$groups_d" ]; then
 	cmd="$ENVLIST zypper remove -y  -t pattern $groups_d"
@@ -730,7 +755,7 @@ elif ( pmatch "$OSVER" "ubuntu*" ); then
         # check whether the os package path in primary apt source (/etc/apt/sources.list) or not
         # if the os package path does not exist in /etc/apt/sources.list,
         # create apt source file in /etc/apt/sources.list.d
-        
+
         # replace space with "===" to avoid the string split issue
         OSPKGDIR=`echo $OSPKGDIR | sed 's/\ /===/g'`
 
@@ -779,8 +804,8 @@ elif ( pmatch "$OSVER" "ubuntu*" ); then
                    RETURNVAL=$R
                 fi
 	fi
-  
-        #remove package group is not supported in ubuntu, 
+
+        #remove package group is not supported in ubuntu,
         #cause there is no  rpm-like "groups" supported by dpkg/apt
 
 	# install packages
@@ -794,7 +819,7 @@ elif ( pmatch "$OSVER" "ubuntu*" ); then
                 fi
 	fi
         if [ -n "$cudapkgs" ]; then
-                
+
                 command="$ENVLIST apt-get -q -y --force-yes install --no-install-recommends $cudapkgs"
                 echo "=== $command"
                 # the nvidia-346 postinstall script will trigger the building of nvidia driver, it will use the ARCH environment parameter, unset the ARCH env variable will resolve this issue
@@ -820,10 +845,10 @@ elif ( pmatch "$OSVER" "ubuntu*" ); then
                    RETURNVAL=$R
                 fi
 	fi
-else 
+else
     #check if yum is installed
     result=`rpm -q yum`
-    if [ $? -ne 0 ]; then 
+    if [ $? -ne 0 ]; then
 	echo "Please install yum on $NODE."
 	exit 1;
     fi
@@ -836,15 +861,15 @@ else
         fi
         rm /etc/yum.repos.d/$OSVER-path*.repo >/dev/null 2>&1
         result=`rm /etc/yum.repos.d/xCAT-$OSVER-path*.repo 2>&1`
-        result=`rm /etc/yum.repos.d/xCAT-otherpkgs*.repo 2>&1` 
+        result=`rm /etc/yum.repos.d/xCAT-otherpkgs*.repo 2>&1`
     fi
 
     result=`yum clean all`
 
     SUM=$(array_get_size os_path)
     i=0
-   
-    while [ $i -lt $SUM ]; do 
+
+    while [ $i -lt $SUM ]; do
            REPOFILE="/etc/yum.repos.d/xCAT-$OSVER-path$i.repo"
            OSPKGDIR=$(array_get_element os_path $i)
 
@@ -859,9 +884,9 @@ else
 	       echo "enabled=1" >> $REPOFILE
 	       echo "gpgcheck=0" >> $REPOFILE
            fi
-           i=$((i+1)) 
-     done  
- 
+           i=$((i+1))
+     done
+
     #import the release key?
     #my $key = "$installDIR/$os/$arch/RPM-GPG-KEY-redhat-release";
     #my $tmp = "/tmp/RPM-GPG-KEY-redhat-release";
@@ -921,7 +946,7 @@ else
 	    fi
 	fi
     fi
-    
+
     #install cuda package if any
     if [ -n "$cudapkgs" ]; then
         cmd="$ENVLIST yum -y install $cudapkgs"

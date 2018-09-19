@@ -1,6 +1,6 @@
 =head1 NAME
 
-B<groupfiles4dsh> - Builds a directory of files for each defined nodegroup in xCAT. 
+B<groupfiles4dsh> - Builds a directory of files for each defined nodegroup in xCAT.
 
 =head1 SYNOPSIS
 
@@ -49,7 +49,7 @@ To use with dsh:
    export DSH_NODEGROUP_PATH= /tmp/nodegroupfiles
 
    dsh  -N all  date   (where all is a group defined in xCAT)
-   dsh -a date  (will look in all nodegroupfiles and build a list of all nodes) 
+   dsh -a date  (will look in all nodegroupfiles and build a list of all nodes)
 
 =head1 FILES
 

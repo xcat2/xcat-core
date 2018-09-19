@@ -337,7 +337,7 @@ Example of \ **xCAT Node Name Format**\  node/group names:
 
 8.
  
- Generates  a  list of nodes which have the value hmc in the nodehm.cons 
+ Generates  a  list of nodes which have the value hmc in the nodehm.cons
  attribute.
  
  

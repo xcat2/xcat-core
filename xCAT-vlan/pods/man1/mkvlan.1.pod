@@ -12,7 +12,7 @@ B<mkvlan> [B<-v>|B<--version>]
 
 =head1 DESCRIPTION
 
-The B<mkvlan> command takes a list of nodes and move them to a private vlan. 
+The B<mkvlan> command takes a list of nodes and move them to a private vlan.
 
 This command will configure the switch to create a new tagged vlan on the given nic. The primary nic will be used if the nic is not specified.  The new vlan ID is given by the command.  However, if it is omitted, xCAT will automatically generate the new vlan ID by querying all the switches involved and finding out the smallest common number that is not used by any existing vlans.  The subnet and the netmask for the vlan will be derived from the value of "vlannets" and "vlanmasks" from the I<site> table if -t and -m are not specified. The following are the default site table entires:
 
@@ -23,9 +23,9 @@ The vlan network will be entered in the I<networks> table. The nodes will be add
 
 v<vlanid>nY  where Y is the node number. For example, the hostname for node 5 on vlan 10 is v10n5.
 
-The I<switch.vlan> will be updated with the new vlan id for the node for standaline nodes. For KVM guests, the I<vm.nics> identifies which vlan this node belongs to. For example: vl3 means this node is in vlan 3. 
+The I<switch.vlan> will be updated with the new vlan id for the node for standaline nodes. For KVM guests, the I<vm.nics> identifies which vlan this node belongs to. For example: vl3 means this node is in vlan 3.
 
-If there are more than one switches involved in the vlan, the ports that connect to the switches need to entered in I<switches.linkports> with the following format: 
+If there are more than one switches involved in the vlan, the ports that connect to the switches need to entered in I<switches.linkports> with the following format:
 
     <port numner>:switch,<port number>:switch....
 
@@ -33,26 +33,26 @@ For example:
 
     "42:switch1,43:switch2"
 
-This command will automatically configure the cross-over ports if the given nodes are on different switches. 
+This command will automatically configure the cross-over ports if the given nodes are on different switches.
 
-For added security, the root guard and bpdu guard will be enabled for the ports in this vlan. However, the guards will not be disabled if the ports are removed from the vlan using chvlan or rmvlan commands. To disable them, you need to use the switch command line interface. Refer to the switch command line interface manual to see how to disable the root guard and bpdu guard for a port. 
+For added security, the root guard and bpdu guard will be enabled for the ports in this vlan. However, the guards will not be disabled if the ports are removed from the vlan using chvlan or rmvlan commands. To disable them, you need to use the switch command line interface. Refer to the switch command line interface manual to see how to disable the root guard and bpdu guard for a port.
 
 =head1 PARAMETERS
 
-I<vlanid> is a unique vlan number. If it is omitted, xCAT will automatically generate the new vlan ID by querying all the switches involved and finding out the smallest common number that is not used by any existing vlans. Use B<lsvlan> to find out the existing vlan ids used by xCAT. 
+I<vlanid> is a unique vlan number. If it is omitted, xCAT will automatically generate the new vlan ID by querying all the switches involved and finding out the smallest common number that is not used by any existing vlans. Use B<lsvlan> to find out the existing vlan ids used by xCAT.
 
 
 =head1 OPTIONS
 
 =over 10
 
-=item B<-n|--nodes>     The nodes or groups to be included in the vlan. It can be stand alone nodes or KVM guests. It takes the noderange format. Check the man page for noderange for details. 
+=item B<-n|--nodes>     The nodes or groups to be included in the vlan. It can be stand alone nodes or KVM guests. It takes the noderange format. Check the man page for noderange for details.
 
 =item B<-t|--net>       The subnet for the vlan.
 
 =item B<-m|--mask>      The netmask for the vlan
 
-=item B<-p|--prefix>    The prefix the the new hostnames for the nodes in the vlan. 
+=item B<-p|--prefix>    The prefix the the new hostnames for the nodes in the vlan.
 
 =item B<-i|--interface> The interface name where the vlan will be tagged on. If omitted, the xCAT management network will be assumed. For FVM, this is the interface name on the host.
 
@@ -84,7 +84,7 @@ To start, the xCAT switches and switches table needs to be filled with switch an
 Note that the interface value for the management (primary) network can be empty, the word "primary" or "primary:ethx". For other networks, the interface attribute must be specified.
 
 
-The following is an example of the switches table 
+The following is an example of the switches table
 
 #switch,snmpversion,username,password,privacy,auth,linkports,sshusername,sshpassword,switchtype,comments,disable
 "switch1","3","username","passw0rd",,"sha","48:switch2",,,,,
@@ -117,20 +117,20 @@ To make a private vlan for node1, node2 with given subnet and netmask.
 =item 4.
 
 To make a private vlan for KVM guests node1 and node2
-  
+
   chtab key=usexhrm site.vlaue=1
- 
+
   mkdef node1 arch=x86_64 groups=kvm,all installnic=mac primarynic=mac mgt=kvm netboot=pxe nfsserver=10.1.0.204 os=rhels6 profile=compute provmethod=install serialport=0 serialspeed=115200 vmcpus=1 vmhost=x3650n01 vmmemory=512 vmnics=br0 vmstorage=nfs://10.1.0.203/vms
 
   mkdef node2 arch=x86_64 groups=kvm,all installnic=mac primarynic=mac mgt=kvm netboot=pxe nfsserver=10.1.0.204 os=rhels6 profile=compute provmethod=install serialport=0 serialspeed=115200 vmcpus=1 vmhost=x3650n01 vmmemory=512 vmnics=br0 vmstorage=nfs://10.1.0.203/vms
 
-  mkvlan -n node1,node2 
+  mkvlan -n node1,node2
 
   mkvm node1,node2 -s 20G
 
   rpower node1,node2 on
 
-  rinstall node1,node2    
+  rinstall node1,node2
 
 =back
 

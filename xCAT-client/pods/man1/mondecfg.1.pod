@@ -15,7 +15,7 @@ B<mondecfg> I<name> I<[noderange]> B<[-r|--remote]>
 
 =head1 DESCRIPTION
 
-This command is used to deconfigure a 3rd party monitoring software from monitoring the xCAT cluster. The operation is performed on the management node and the service nodes of the given nodes. The operation will also be performed on the nodes if the I<-r> option is specified. The deconfiguration operation will remove the nodes from the 3rd party software's monitoring domain. 
+This command is used to deconfigure a 3rd party monitoring software from monitoring the xCAT cluster. The operation is performed on the management node and the service nodes of the given nodes. The operation will also be performed on the nodes if the I<-r> option is specified. The deconfiguration operation will remove the nodes from the 3rd party software's monitoring domain.
 
 
 =head1 PARAMETERS

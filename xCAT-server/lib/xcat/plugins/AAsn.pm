@@ -20,11 +20,11 @@ use Getopt::Long;
 =head1  AAsn
 
  This is the Service Node Plugin, although it does perform a few functions on
- the Management Node.   
+ the Management Node.
  It reads the servicenode table for the service node it is running on,
  and run the appropriate
- setup routine for each service that is designated to be setup in the 
- servicenode table for this service node. Some functions are only done for 
+ setup routine for each service that is designated to be setup in the
+ servicenode table for this service node. Some functions are only done for
  Linux.
  A few functions are done not based on the servicenode table. For example:
 
@@ -34,7 +34,7 @@ use Getopt::Long;
       if site.installloc not set
           creates /install if needed
           sets up nfs
-          exports /install 
+          exports /install
 
 #-------------------------------------------------------
 
@@ -226,12 +226,12 @@ sub process_request
     if site.installloc attribute set
           If the installdir directory is exported, unexport it
 	      mount the installdir directory from the installloc location
-    if site.installoc not set and we are on a Stateful install 
-          If installdir mounted, unmount it 
+    if site.installoc not set and we are on a Stateful install
+          If installdir mounted, unmount it
           If installdir directory not created,  create it
           setup NFS
           export the installdir directory
-          
+
 
 =cut
 
@@ -593,9 +593,9 @@ sub setup_GOCONS
 
 #-----------------------------------------------------------------------------
 
-=head3 setup_DHCP 
+=head3 setup_DHCP
 
-    Sets up DHCP services  
+    Sets up DHCP services
     If on the Management node, just check if running and if not start it.
     On Service nodes do full setup based on site.disjointdhcps setting
 =cut
@@ -871,9 +871,9 @@ sub setup_DNS
 
 #-----------------------------------------------------------------------------
 
-=head3 setup_LDAP 
+=head3 setup_LDAP
 
-    Sets up LDAP  
+    Sets up LDAP
 
 =cut
 
@@ -899,9 +899,9 @@ sub setup_LDAP
 
 #-----------------------------------------------------------------------------
 
-=head3 setup_NFS 
+=head3 setup_NFS
 
-    Sets up NFS services on Service Node for AIX and Linux   
+    Sets up NFS services on Service Node for AIX and Linux
 
 =cut
 
@@ -960,9 +960,9 @@ sub setup_NTP
 
 #-----------------------------------------------------------------------------
 
-=head3 start_NTP 
+=head3 start_NTP
 
-    Starts daemon 
+    Starts daemon
 
 =cut
 
@@ -989,9 +989,9 @@ sub start_NTP
 
 #-----------------------------------------------------------------------------
 
-=head3 backup_NTPconf 
+=head3 backup_NTPconf
 
-   backup configuration 
+   backup configuration
 
 =cut
 
@@ -1026,9 +1026,9 @@ sub backup_NTPconf
 
 #-----------------------------------------------------------------------------
 
-=head3 setup_SSH 
+=head3 setup_SSH
 
-    Sets up SSH default configuration for root  
+    Sets up SSH default configuration for root
 	Turns strict host checking off
 
 
@@ -1098,9 +1098,9 @@ sub setup_SSH
 
 #-----------------------------------------------------------------------------
 
-=head3 setup_TFTP 
+=head3 setup_TFTP
 
-    Sets up TFTP services  
+    Sets up TFTP services
 
 =cut
 
@@ -1260,8 +1260,9 @@ sub setup_TFTP
             my $plugins_dir = $::XCATROOT . '/lib/perl/xCAT_plugin';
             foreach my $modname (keys %netmethods)
             {
-                $cmdref->{node} = $netmethods{$modname};
-                $doreq->($cmdref, \&xCAT::Client::handle_response);
+                my $reqcopy = {%$cmdref};
+                $reqcopy->{node} = $netmethods{$modname};
+                $doreq->($reqcopy, \&xCAT::Client::handle_response);
             }
 
         }
@@ -1299,7 +1300,7 @@ sub setup_TFTP
 
 =head3 setup_HTTP
 
-    Sets up HTTP services on Service Node for Linux   
+    Sets up HTTP services on Service Node for Linux
 
 =cut
 

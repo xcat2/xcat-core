@@ -1,4 +1,4 @@
-#!/bin/bash 
+#!/bin/bash
 #-------------------------------------------------------------------------------
 #  confignetwork
 #      Configure Ethernet nic/bond/vlan/bridge/ on the nodes
@@ -14,14 +14,14 @@
 #
 ############################################################################
 
-# load library 
+# load library
 str_os_type=`uname -s`
 if [ x"$str_os_type" = "xLinux" ];then
     str_dir_name="${0%/*}"
     . $str_dir_name/xcatlib.sh
     . $str_dir_name/nicutils.sh
 else
-    log_error "Does NOT support non-Linux Operating System." 
+    log_error "Does NOT support non-Linux Operating System."
     exit 1
 fi
 
@@ -59,7 +59,7 @@ function get_nic_cfg_file_content {
     cfg_dev=$1
     cfg_file=''
     if [ $is_redhat -eq 1 ] || [ $is_sles -eq 1 ]; then
-         cfg_file="$nwdir/ifcfg-${cfg_dev}" 
+         cfg_file="$nwdir/ifcfg-${cfg_dev}"
     elif [ $is_debian -eq 1 ]; then
          cfg_file="$nwdir/${cfg_dev}"
     fi
@@ -182,7 +182,7 @@ function find_nic_type {
     if [ ! "$1" ];then
         return
     fi
-    nic=$1 
+    nic=$1
     echo $(hashget "nictypes" $nic)
 }
 
@@ -304,7 +304,7 @@ function sort_nics_device_order {
     num=1
     alone_nics=`echo "$all_nics_list"|awk '{if(0<NF&&NF<2) print $0}'`
     nics_list=`echo "$all_nics_list"|awk '{if(NF>1) print $0}'`
- 
+
     #find stand alone nic
     num1=1
     max1=`echo "$alone_nics"|wc -l`
@@ -323,7 +323,7 @@ function sort_nics_device_order {
             #if alone nic configure nicips, it is valid
             if [ -n "$alonenicips" ] && [ -n "$alonenictype" ] && [ -n "$alonenicnetwork" ]; then
                 #if alone nic is ib type, append all ib nics in ib_slots
-                if [ x"$alonenictype" = "xinfiniband" ]; then
+                if [ x"$alonenictype" = "xinfiniband" ] || [ x"$alonenictype" = "xOmnipath" ]; then
                     if [ -z $ib_slots ]; then
                         ib_slots=$alonenic
                     else
@@ -332,7 +332,7 @@ function sort_nics_device_order {
                 elif [ x"$alonenictype" = "xvlan" ] || [ x"$alonenictype" = "xbond" ]; then
                     echo "Error: should configure nicdevices for $alonenic."
                     errorcode=1
-                     
+
                 else
                     echo $alonenic
                 fi
@@ -352,10 +352,10 @@ function sort_nics_device_order {
     #get all ib nics, format is ib0,ib1,...
     if [ -n "$ib_slots" ]; then
         echo "$ib_slots"
-    fi   
- 
+    fi
+
     if [ -n "$nics_list" ]; then
-      if [ $is_redhat -eq 1 ]; then  
+      if [ $is_redhat -eq 1 ]; then
         num=1
         max=`echo "$nics_list"|wc -l`
         ((max+=1))
@@ -389,7 +389,7 @@ function sort_nics_device_order {
             #valid nic_dev and base_nic_dev pair as  bond-ethernet or vlan-ethernet or bridge-ethernet
             if [ x"$base_nic_type" = "xethernet" ]&& \
                [ x"$nic_dev_type" = "xbond" -o x"$nic_dev_type" = "xvlan" -o x"$nic_dev_type" = "xbridge" -o x"$nic_dev_type" = "xbridge_ovs" ]; then
-            
+
                 if [ x"$eth_slot" = x ]; then
                     eth_slot=$num
                 else
@@ -444,7 +444,7 @@ function sort_nics_device_order {
             echo "$nics_list" |sed -n "${i}p"
         done`
     fi
-    echo "$new_order_list" 
+    echo "$new_order_list"
 }
 
 #####################################################################################
@@ -457,7 +457,7 @@ function sort_nics_device_order {
 ###################################################################################
 function configure_nicdevice {
     nics_pair=$*
-    #configure nic and its device pair one by one   
+    #configure nic and its device pair one by one
     num=1
     max=`echo "$nics_pair"|wc -l`
     base_temp_nic=""
@@ -514,7 +514,7 @@ function configure_nicdevice {
             else
                 base_temp_nic=$base_nic_dev
             fi
-        
+
             base_nic_type=`find_nic_type "$base_temp_nic" | $utolcmd`
         fi
         #if there is ib nics
@@ -531,7 +531,7 @@ function configure_nicdevice {
 
         #configure standalone ethernet nic
         elif [ x"$nic_dev_type" = "xethernet" ]; then
-            xcatnet=`query_nicnetworks_net $nic_dev`            
+            xcatnet=`query_nicnetworks_net $nic_dev`
             ipaddrs=`find_nic_ips $nic_dev`
             if [ -n "$ipaddrs" ]; then
                 log_info "configure $nic_dev"
@@ -549,7 +549,7 @@ function configure_nicdevice {
             if [ $noip -eq $max ]; then
                 log_error "There is no any ip configured for any nic. Check nicips in nics table first."
                 errorcode=1
-            fi 
+            fi
 
         #configure bridge
         #linux bridge type is bridge
@@ -561,7 +561,7 @@ function configure_nicdevice {
             else
                create_bridge_interface ifname=$nic_dev _brtype=$nic_dev_type _port=$base_nic_dev _pretype=$base_nic_type
             fi
-        #configure vlan 
+        #configure vlan
         elif [ x"$nic_dev_type" = "xvlan" ]; then
             if echo "$nic_dev" | grep -sq ".*\.[0-9]\+"; then
                 vlanid=`echo "$nic_dev" | $cut -s -d. -f2-`
@@ -572,10 +572,10 @@ function configure_nicdevice {
             fi
             create_vlan_interface ifname=$vlanname vlanid=$vlanid
 
-        #configure bond 
+        #configure bond
         elif [ x"$nic_dev_type" = "xbond" ]; then
-            create_bond_interface ifname=$nic_dev slave_ports=$base_nic_for_bond slave_type=$base_nic_type 
-        elif [ x"$nic_dev_type" = "xinfiniband" ]; then
+            create_bond_interface ifname=$nic_dev slave_ports=$base_nic_for_bond slave_type=$base_nic_type
+        elif [ x"$nic_dev_type" = "xinfiniband" ] || [ x"$nic_dev_type" = "xOmnipath" ]; then
             log_info "Call configib for IB nics: $nic_dev, ports: $num_iba_ports"
             log_info "NIC_IBNICS=$nic_dev NIC_IBAPORTS=$num_iba_ports configib"
             NIC_IBNICS=$nic_dev NIC_IBAPORTS=$num_iba_ports configib
@@ -586,7 +586,7 @@ function configure_nicdevice {
         else
             log_error "Check the NIC data in the 'nics' table."
             errorcode=1
-        fi 
+        fi
 
         ((num+=1))
     done
@@ -609,7 +609,7 @@ function enable_network_service {
         startservice network
     else
         log_info "NetworkManager is inactive."
-    fi 
+    fi
 
 }
 
@@ -632,7 +632,7 @@ if [ $boot_install_nic -eq 1 ];then
         echo "++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++"
         log_info "configure the install nic $installnic. "
         instnic_conf=1
-        configeth -s $installnic 
+        configeth -s $installnic
         if [ $? -ne 0 ]; then
             errorcode=1
         fi
@@ -670,7 +670,7 @@ parser_nic_attribute "$NICCUSTOMSCRIPTS" "niccustomscripts"
 new_nicdevice=`find_nic_and_device_list $str_all_nics|sort -g -k1 -g -k2|uniq`
 if [ -z "$new_nicdevice" ]; then
     log_info "There is no other nic device to configure."
-    exit $errorcode  
+    exit $errorcode
 fi
 
 #sort nics device pair based on nicdevice type
@@ -691,7 +691,7 @@ fi
 
 #delete invalid nics device pair based on Error
 valid_sorted_nicdevice_list=`echo "$sorted_nicdevice_list" | sed '/Error/d' | sed '/unused/d'`
-if [ -n "$valid_sorted_nicdevice_list" ]; then 
+if [ -n "$valid_sorted_nicdevice_list" ]; then
     log_info "All valid nics and device list:"
     echo "$valid_sorted_nicdevice_list" |log_lines info
 fi

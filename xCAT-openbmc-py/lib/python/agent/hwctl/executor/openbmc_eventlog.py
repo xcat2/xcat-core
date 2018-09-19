@@ -31,7 +31,7 @@ class OpenBMCEventlogTask(ParallelNodesCommand):
             # All records to display
             number_to_display = 0
 
-        obmc = openbmc.OpenBMCRest(name=node, nodeinfo=kw['nodeinfo'], messager=self.callback, debugmode=self.debugmode, verbose=self.verbose) 
+        obmc = openbmc.OpenBMCRest(name=node, nodeinfo=kw['nodeinfo'], messager=self.callback, debugmode=self.debugmode, verbose=self.verbose)
         eventlog_info = []
         try:
             obmc.login()
@@ -56,7 +56,7 @@ class OpenBMCEventlogTask(ParallelNodesCommand):
     def clear_all_ev_records(self, **kw):
 
         node = kw['node']
-        obmc = openbmc.OpenBMCRest(name=node, nodeinfo=kw['nodeinfo'], messager=self.callback, debugmode=self.debugmode, verbose=self.verbose) 
+        obmc = openbmc.OpenBMCRest(name=node, nodeinfo=kw['nodeinfo'], messager=self.callback, debugmode=self.debugmode, verbose=self.verbose)
         try:
             obmc.login()
             obmc.clear_all_eventlog_records()
@@ -102,11 +102,11 @@ class OpenBMCEventlogTask(ParallelNodesCommand):
                             if self.verbose:
                                 self.callback.info('%s: Not resolving already resolved eventlog ID %s'  % (node, id_to_resolve))
                     else:
-                        self.callback.info('%s: Invalid ID: %s'  % (node, id_to_resolve))
+                        self.callback.error('Invalid ID: %s'  % (id_to_resolve), node)
 
             if len(eventlog_ids_to_resolve) == 0:
                 # At the end and there are no entries to resolve
-                self.callback.info('%s: No event log entries needed to be resolved'  % node)
+                self.callback.error('No event log entries needed to be resolved', node)
             else:
                 # Resolve entries that were collected into the eventlog_ids_to_resolve array
                 obmc.resolve_event_log_entries(eventlog_ids_to_resolve)

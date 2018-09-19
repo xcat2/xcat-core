@@ -29,10 +29,10 @@ DESCRIPTION
 ***********
 
 
-The xcatperftest command runs commandes defined in a command list file and get their execution response time baseline for performance purpose. 
+The xcatperftest command runs commandes defined in a command list file and get their execution response time baseline for performance purpose.
 The xcatperftest command is part of the xCAT package xCAT-test, and you can run it standalone or leverage it to build up your automation test cases.
 
-Any commands could be defined in the command list file, however, it is recommended that the one-time initial configuration are well prepared prior to run xcatperftest command. 
+Any commands could be defined in the command list file, however, it is recommended that the one-time initial configuration are well prepared prior to run xcatperftest command.
 For example, the network object, osdistor and osimage image objects.
 
 Follow the below steps to run xcatperftest command:
@@ -109,7 +109,7 @@ The command list file is in flat text format, the testing framework will parse t
    noderm #PERFGRP#
 
 
-\ **Note**\ : Each line defines one command, and the commands dependency should be handled by the line order. 
+\ **Note**\ : Each line defines one command, and the commands dependency should be handled by the line order.
 If you define a node range series line (started with #SERIES#) in this file, xcatperftest will run the command for each node range defined in series line.
 
 \ **#SERIES#**\        To define a node range series, and the series should be an comma split incremental number sequence.

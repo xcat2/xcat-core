@@ -62,7 +62,7 @@ RETURN VALUE
 ************
 
 
-Zero:                    
+Zero:
   The command completed successfully.
 
 Nonzero:

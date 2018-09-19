@@ -38,10 +38,10 @@ xdcp.1
 The \ **xdcp**\  command concurrently copies files  to  or  from  remote  target
 nodes. The command issues a remote copy command for each node or device specified. When files are  pulled  from a target,  they  are  placed  into  the  target_path with the name of the
 remote node or device appended to  the  copied  source_file  name.  The
-/usr/bin/rcp command is the model for syntax and security. 
+/usr/bin/rcp command is the model for syntax and security.
 If using hierarchy, then xdcp runs on the service node that is servicing the compute node. The file will first be copied to the path defined in the site table, SNsyncfiledir attribute, or the default path /var/xcat/syncfiles on the service node, if the attribute is not defined. The -P flag will not automatically copy
 the files from the compute node to the Management node, hierarchically.  There
-is a two step process, see \ **-P**\  flag.  
+is a two step process, see \ **-P**\  flag.
 If the Management Node is target node, it must be defined in the xCAT database with nodetype=mn. When the \ **xdcp**\  command runs the Management Node as the target, it does not use remote commands but uses the local OS copy (\ **cp**\ ) command.
 
 \ **REMOTE**\  \ **USER**\ :
@@ -106,7 +106,7 @@ standard output or standard error is displayed.
  the directory to copy the source_file files to on the target.
  If the -P flag is specified, the target_path is the local host location
  for the copied files.  The remote file directory structure is recreated
- under target_path and  the  remote  target  name  is  appended 
+ under target_path and  the  remote  target  name  is  appended
  to  the   copied source_file name in the target_path directory.
  Note: the targetpath directory must exist.
  
@@ -122,14 +122,14 @@ standard output or standard error is displayed.
  
  Specifies a fanout value for the maximum number of  concur-
  rently  executing  remote shell processes. Serial execution
- can be specified by indicating a fanout value of \ **1**\ .  
+ can be specified by indicating a fanout value of \ **1**\ .
  If \ **-f**\  is not specified, a default fanout value of \ **64**\  is used.
  
 
 
 \ **-F | -**\ **-File**\  \ *rsync input file*\ 
  
- Specifies the path to the file that will be used to  
+ Specifies the path to the file that will be used to
  build the \ **rsync**\  command.
  The format of the input file is as follows, each line contains:
  
@@ -173,7 +173,7 @@ standard output or standard error is displayed.
  
  \ **Running postscripts after files are sync'd to the nodes**\ :
  
- After you define the files to rsync, you can add an \ **EXECUTE:**\  clause in the synclist file. The \ **EXECUTE:**\  clause will list all the postscripts that you would like to run after the files are sync'd to the node. 
+ After you define the files to rsync, you can add an \ **EXECUTE:**\  clause in the synclist file. The \ **EXECUTE:**\  clause will list all the postscripts that you would like to run after the files are sync'd to the node.
  The postscript file must be of the form \ **filename.post**\ , where the <filename>
  is the <filename> is the from <filename>, reside in the same
  directory as \ **filename**\ , and be executable.
@@ -206,7 +206,7 @@ standard output or standard error is displayed.
    /tmp/myscript
  
  
- If /tmp/file2 and /tmp/file3  update /tmp/file2 and /tmp/filex on the node, then the postscripts /tmp/file2.post and /tmp/file3.post are automatically run on 
+ If /tmp/file2 and /tmp/file3  update /tmp/file2 and /tmp/filex on the node, then the postscripts /tmp/file2.post and /tmp/file3.post are automatically run on
  the node. /tmp/myscript will always be run on the node.
  
  Another option is the \ **APPEND:**\  clause in the synclist file. The \ **APPEND:**\  clause is used to append the contents of the input file to an existing file on the node.  The file to append \ **must**\  already exist on the node and not be part of the synclist that contains the \ **APPEND:**\  clause.
@@ -298,7 +298,7 @@ standard output or standard error is displayed.
  appended to the directory. Only one file per invocation of the
  xdcp pull command can be pulled from the specified  targets.
  Hierarchy is not automatically support yet.   You must first pull
- the file to the Service Node and then pull the file to the Management 
+ the file to the Service Node and then pull the file to the Management
  node.
  
 
@@ -343,7 +343,7 @@ standard output or standard error is displayed.
  
  Specifies the time, in seconds, to wait for output from any
  currently executing remote targets. If no output is
- available  from  any  target in the specified \ *timeout*\ , 
+ available  from  any  target in the specified \ *timeout*\ ,
  \ **xdsh**\  displays an error and terminates execution for the remote
  targets  that  failed to respond. If \ *timeout*\  is not specified,
  \ **xdsh**\  waits indefinitely to continue processing output  from
@@ -563,7 +563,7 @@ in the cluster, enter:
  
 
 
-6. To copy all the files in /tmp/testdir and it's subdirectories 
+6. To copy all the files in /tmp/testdir and it's subdirectories
 from the local host to node1 in the cluster, enter:
  
  

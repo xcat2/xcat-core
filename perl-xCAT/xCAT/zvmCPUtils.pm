@@ -921,7 +921,7 @@ sub smapiFlashCopy {
                         "" means that the current class is to be used
                         anything else is the class to set on the punched file
     Returns     : Operation results ("Done" or "Failed" with additional info)
-    Example     : my $response = xCAT::zvmCPUtils->punch2Reader( $user, $hcp, $userId, $srcFile, 
+    Example     : my $response = xCAT::zvmCPUtils->punch2Reader( $user, $hcp, $userId, $srcFile,
                                                                  $tgtFile, $options, $spoolClass );
 
 =cut
