@@ -376,7 +376,7 @@ sub is_tftp_ready {
     rename("./tftptestt.tmp", "./tftptestt.tmp.old") if (-e "./tftptestt.tmp");
 
     system("touch /$test_dir/tftptestt.tmp");
-    my $output = `tftp $mnip  -c get /tftptest/tftptestt.tmp 2>&1`;
+    my $output = `tftp -4 -v $mnip -c get /tftptest/tftptestt.tmp 2>&1`;
     if ((!$?) && (-e "./tftptestt.tmp")) {
         unlink("./tftptestt.tmp");
         rename("./tftptestt.tmp.old", "./tftptestt.tmp") if (-e "./tftptestt.tmp.old");

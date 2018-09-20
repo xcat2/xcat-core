@@ -728,18 +728,18 @@ sub check_tftp_service {
                     push @$error_ref, "There isn't '$tftpdir' directory on current server";
                     last;
                 }
-                unless(probe_utils->is_tftp_ready("$serverip", $tftpdir)) {
-                    push @$error_ref, "TFTP service isn't ready on $serverip, stop tftp service and start it by restarting xcatd";
-                    last;
-                }
-                $rst = 0;
-            }
-            if ($rst == 0) {
                 my $tftp_ps = `ps aux 2>&1| grep tftp | grep xcat |grep -v grep`;
                 if (!$tftp_ps) {
                     push @$error_ref, "TFTP service based on xCAT is not running";
                     $flag = 'w';
                 }
+                unless(probe_utils->is_tftp_ready("$serverip", $tftpdir)) {
+                    push @$error_ref, "TFTP service isn't ready on $serverip, stop tftp service and start it by restarting xcatd";
+                    $flag = 'f';
+                    last;
+                }
+                last if ($flag eq 'w');
+                $rst = 0;
             }
         }
     } else {
