@@ -347,7 +347,12 @@ execCmd()
   fi
 
   start=`date +%s%3N`
-  eval "$1" > /dev/null 2>&1
+
+  #using timeout to avoid some commands hang
+  timeout 3600 bash <<EOT
+$1 > /dev/null 2>&1
+EOT
+
   retval=$?
   end=`date +%s%3N`
   delta=$(printf "%.2f" `echo "scale=2;$(($end-$start))/1000"|bc`)
