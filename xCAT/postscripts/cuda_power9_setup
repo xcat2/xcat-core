@@ -27,7 +27,7 @@ then
 	sed -i /SUBSYSTEM==\"memory\"/d ${IMG_ROOTIMGDIR}/lib/udev/rules.d/40-redhat.rules
 fi
 
-echo 'options nvidia NVreg_EnableStreamMemOPs=1 NVreg_RegistryDwords="PeerMappingOverride=1"' >${IMG_ROOTIMGDIR}/usr/lib/modprobe.d/nvidia.conf
+echo 'options nvidia NVreg_EnableStreamMemOPs=1 NVreg_RegistryDwords="PeerMappingOverride=1"' >>${IMG_ROOTIMGDIR}/usr/lib/modprobe.d/nvidia.conf
 
 if [ -z "${IMG_ROOTIMGDIR}" ]
 then
