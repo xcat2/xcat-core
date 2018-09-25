@@ -1,7 +1,7 @@
 Using RPM (recommended)
 =======================
 
-.. note:: Supported only on RHEL 7.5 for Power 9 LE
+.. note:: Supported only on RHEL 7.5 for POWER9
 
 .. note:: In a herarchical environment ``xCAT-openbmc-py`` must be installed on both Management and Service nodes. On Service node ``xCAT-openbmc-py`` can be installed directly by following instructions in **Install xCAT-openbmc-py on MN**, or ``xCAT-openbmc-py`` can be installed on Service node from Management node by following instructions in **Install xCAT-openbmc-py on SN from MN**
 
@@ -13,7 +13,7 @@ The following repositories should be configured on your Management Node.
    * RHEL 7.5 OS repository
    * RHEL 7.5 Extras repository
    * RHEL 7 EPEL repository (https://fedoraproject.org/wiki/EPEL)
-   * Fedora28 reposotory (for ``gevent`` and ``greenlet``)
+   * Fedora28 repository (for ``gevent`` and ``greenlet``)
 
 #. Configure RHEL 7.5 OS repository 
 
