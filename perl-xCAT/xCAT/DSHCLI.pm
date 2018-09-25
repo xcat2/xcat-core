@@ -3419,7 +3419,7 @@ sub verify_targets
     foreach my $user_target (keys(%$resolved_targets))
     {
 
-        my $hostname = $$resolved_targets{$user_target}{'hostname'};
+        my $host = $$resolved_targets{$user_target}{'hostname'};
         #use hostname in case the host is ip address
         my $hostname = xCAT::NetworkUtils->gethostname($host);
         push @ping_list, $hostname;
