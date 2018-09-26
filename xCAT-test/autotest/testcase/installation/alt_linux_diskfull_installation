@@ -1,0 +1,8 @@
+start:alt_linux_diskfull_installation
+description:deploy diskfull a compute node with linux distro different from the manage node.
+os:Linux
+label:flat_cn_diskful,provision
+#stop:yes
+cmd:/opt/xcat/share/xcat/tools/autotest/testcase/installation/install-linux-diskfull.sh --compute-node $$CN --iso-file $$ISO_ALT
+check:rc==0
+end
