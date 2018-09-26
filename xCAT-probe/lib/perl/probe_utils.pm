@@ -369,20 +369,22 @@ sub is_tftp_ready {
     my $mnip = shift;
     $mnip = shift if (($mnip) && ($mnip =~ /probe_utils/));
     my $tftpdir = shift;
+    my $test_dir = $tftpdir . "/tftptest/";
+    system("mkdir -p $test_dir");
 
-    rename("/$tftpdir/tftptestt.tmp", "/$tftpdir/tftptestt.tmp.old") if (-e "/$tftpdir/tftptestt.tmp");
+    rename("/$test_dir/tftptestt.tmp", "/$test_dir/tftptestt.tmp.old") if (-e "/$test_dir/tftptestt.tmp");
     rename("./tftptestt.tmp", "./tftptestt.tmp.old") if (-e "./tftptestt.tmp");
 
-    system("touch /$tftpdir/tftptestt.tmp");
-    my $output = `tftp -4 -v $mnip  -c get tftptestt.tmp`;
+    system("touch /$test_dir/tftptestt.tmp");
+    my $output = `tftp -4 -v $mnip -c get /tftptest/tftptestt.tmp 2>&1`;
     if ((!$?) && (-e "./tftptestt.tmp")) {
         unlink("./tftptestt.tmp");
         rename("./tftptestt.tmp.old", "./tftptestt.tmp") if (-e "./tftptestt.tmp.old");
-        rename("/$tftpdir/tftptestt.tmp.old", "/$tftpdir/tftptestt.tmp") if (-e "/$tftpdir/tftptestt.tmp.old");
+        rename("/$test_dir/tftptestt.tmp.old", "/$test_dir/tftptestt.tmp") if (-e "/$test_dir/tftptestt.tmp.old");
         return 1;
     } else {
         rename("./tftptestt.tmp.old", "./tftptestt.tmp") if (-e "./tftptestt.tmp.old");
-        rename("/$tftpdir/tftptestt.tmp.old", "/$tftpdir/tftptestt.tmp") if (-e "/$tftpdir/tftptestt.tmp.old");
+        rename("/$test_dir/tftptestt.tmp.old", "/$test_dir/tftptestt.tmp") if (-e "/$test_dir/tftptestt.tmp.old");
         return 0;
     }
 }
