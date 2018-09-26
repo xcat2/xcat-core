@@ -19,7 +19,7 @@ SYNOPSIS
 ********
 
 
-\ **iscsi Attributes:**\   \ *node*\ , \ *server*\ , \ *target*\ , \ *lun*\ , \ *iname*\ , \ *file*\ , \ *userid*\ , \ *passwd*\ , \ *kernel*\ , \ *kcmdline*\ , \ *initrd*\ , \ *comments*\ , \ *disable*\
+\ **iscsi Attributes:**\   \ *node*\ , \ *server*\ , \ *target*\ , \ *lun*\ , \ *iname*\ , \ *file*\ , \ *userid*\ , \ *passwd*\ , \ *kernel*\ , \ *kcmdline*\ , \ *initrd*\ , \ *comments*\ , \ *disable*\ 
 
 
 ***********
@@ -36,82 +36,82 @@ iscsi Attributes:
 
 
 
-\ **node**\
-
+\ **node**\ 
+ 
  The node name or group name.
+ 
 
 
-
-\ **server**\
-
+\ **server**\ 
+ 
  The server containing the iscsi boot device for this node.
+ 
 
 
-
-\ **target**\
-
+\ **target**\ 
+ 
  The iscsi disk used for the boot device for this node.  Filled in by xCAT.
+ 
 
 
-
-\ **lun**\
-
+\ **lun**\ 
+ 
  LUN of boot device.  Per RFC-4173, this is presumed to be 0 if unset.  tgtd often requires this to be 1
+ 
 
 
-
-\ **iname**\
-
+\ **iname**\ 
+ 
  Initiator name.  Currently unused.
+ 
 
 
-
-\ **file**\
-
+\ **file**\ 
+ 
  The path on the server of the OS image the node should boot from.
+ 
 
 
-
-\ **userid**\
-
+\ **userid**\ 
+ 
  The userid of the iscsi server containing the boot device for this node.
+ 
 
 
-
-\ **passwd**\
-
+\ **passwd**\ 
+ 
  The password for the iscsi server containing the boot device for this node.
+ 
 
 
-
-\ **kernel**\
-
+\ **kernel**\ 
+ 
  The path of the linux kernel to boot from.
+ 
 
 
-
-\ **kcmdline**\
-
+\ **kcmdline**\ 
+ 
  The kernel command line to use with iSCSI for this node.
+ 
 
 
-
-\ **initrd**\
-
+\ **initrd**\ 
+ 
  The initial ramdisk to use when network booting this node.
+ 
 
 
-
-\ **comments**\
-
+\ **comments**\ 
+ 
  Any user-written notes.
+ 
 
 
-
-\ **disable**\
-
+\ **disable**\ 
+ 
  Set to 'yes' or '1' to comment out this row.
-
+ 
 
 
 
@@ -120,5 +120,5 @@ SEE ALSO
 ********
 
 
-\ **nodels(1)**\ , \ **chtab(8)**\ , \ **tabdump(8)**\ , \ **tabedit(8)**\
+\ **nodels(1)**\ , \ **chtab(8)**\ , \ **tabdump(8)**\ , \ **tabedit(8)**\ 
 

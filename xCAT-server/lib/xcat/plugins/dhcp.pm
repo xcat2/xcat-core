@@ -538,19 +538,19 @@ sub addnode
                     unless ($nxtsrvd[0]) { $nxtsrv = $nxtsrvd[1]; }
                     elsif ($nxtsrvd[0] == 1) { $callback->({ error => [ $nxtsrvd[1] ] }); }
                     else {
-                        $callback->({ error => ["Unable to determine the tftpserver for $node"], errorcode => [1] });
+                        $callback->({ error => ["Unable to determine the tftpserver for $node, verify \"xcatmaster\" is set correctly"], errorcode => [1] });
                         return;
                     }
                 } else {
                     my $tmp_server = inet_aton($node_server);
                     unless ($tmp_server) {
-                        $callback->({ error => ["Unable to resolve the tftpserver for $node"], errorcode => [1] });
+                        $callback->({ error => ["Unable to resolve the tftpserver for $node, verify \"xcatmaster\" is set correctly"], errorcode => [1] });
                         return;
                     }
                     $nxtsrv = inet_ntoa($tmp_server);
                 }
                 unless ($nxtsrv) {
-                    $callback->({ error => ["Unable to determine the tftpserver for $node"], errorcode => [1] });
+                    $callback->({ error => ["Unable to determine the tftpserver for $node, verify \"xcatmaster\" is set correctly"], errorcode => [1] });
                     return;
                 }
                 $guess_next_server = 0;

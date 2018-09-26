@@ -19,13 +19,13 @@ SYNOPSIS
 ********
 
 
-\ **monls [-h| -**\ **-help]**\
+\ **monls [-h| -**\ **-help]**\ 
 
-\ **monls  [-v| -**\ **-version]**\
+\ **monls  [-v| -**\ **-version]**\ 
 
-\ **monls**\  \ *name*\  \ **[-d|-**\ **-description]**\
+\ **monls**\  \ *name*\  \ **[-d|-**\ **-description]**\ 
 
-\ **monls [-a|-**\ **-all] [-d|-**\ **-description]**\
+\ **monls [-a|-**\ **-all] [-d|-**\ **-description]**\ 
 
 
 ***********

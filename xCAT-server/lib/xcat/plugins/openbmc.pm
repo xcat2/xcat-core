@@ -1224,12 +1224,6 @@ sub parse_args {
         return ([ 1, "Error parsing arguments." ]);
     }
 
-    # If command includes '-V', it must be the last one prarmeter. Or print error message.
-    if ($verbose) {
-        my $option = $$extrargs[-1];
-        return ([ 1, "Error parsing arguments." ]) if ($option !~ /V|verbose/);
-    }
-
     if (scalar(@ARGV) >= 2 and ($command =~ /rpower|rinv|rvitals/)) {
         return ([ 1, "Only one option is supported at the same time for $command" ]);
     } elsif (scalar(@ARGV) >= 2 and $command eq "reventlog") {
@@ -1514,9 +1508,11 @@ sub parse_command_status {
 
     return if ($command eq "getopenbmccons");
 
-    if ($$subcommands[-1] and $$subcommands[-1] =~ /V|verbose/) {
-        $::VERBOSE = 1;
-        pop(@$subcommands);
+    for (my $i = $#{ $subcommands }; $i >= 0; $i--) {
+        if (${ $subcommands }[$i] =~ /^-V$|^--verbose$/) {
+            $::VERBOSE = 1;
+            splice(@{ $subcommands }, $i, 1);
+        }
     }
 
     $next_status{LOGIN_REQUEST} = "LOGIN_RESPONSE";
@@ -3532,6 +3528,11 @@ sub rspconfig_response {
                 if (defined($content{Address}) and $content{Address}) {
                     if ($content{Address} eq $node_info{$node}{bmcip} and $node_info{$node}{cur_status} eq "RSPCONFIG_GET_NIC_RESPONSE") {
                         $status_info{RSPCONFIG_SET_NTPSERVERS_REQUEST}{init_url} =~ s/#NIC#/$nic/g;
+                        if (defined($content{Origin}) and $content{Origin} =~ /DHCP$/) {
+                            xCAT::SvrUtils::sendmsg([1, "BMC IP source is DHCP, could not set NTPServers"], $callback, $node);
+                            $wait_node_num--;
+                            return;
+                        }
                         if ($next_status{"RSPCONFIG_GET_NIC_RESPONSE"}) {
                             $node_info{$node}{cur_status} = $next_status{"RSPCONFIG_GET_NIC_RESPONSE"};
                             gen_send_request($node);

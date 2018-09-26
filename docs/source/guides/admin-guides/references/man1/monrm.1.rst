@@ -19,11 +19,11 @@ SYNOPSIS
 ********
 
 
-\ **monrm [-h| -**\ **-help]**\
+\ **monrm [-h| -**\ **-help]**\ 
 
-\ **monrm [-v| -**\ **-version]**\
+\ **monrm [-v| -**\ **-version]**\ 
 
-\ **monrm**\  \ *name*\
+\ **monrm**\  \ *name*\ 
 
 
 ***********

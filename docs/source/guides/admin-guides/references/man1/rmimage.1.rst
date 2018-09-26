@@ -19,9 +19,9 @@ SYNOPSIS
 ********
 
 
-\ **rmimage [-h | -**\ **-help]**\
+\ **rmimage [-h | -**\ **-help]**\ 
 
-\ **rmimage [-V | -**\ **-verbose]**\  \ *imagename*\  \ **[-**\ **-xcatdef]**\
+\ **rmimage [-V | -**\ **-verbose]**\  \ *imagename*\  \ **[-**\ **-xcatdef]**\ 
 
 
 ***********
@@ -32,7 +32,7 @@ DESCRIPTION
 Removes the Linux stateless or statelite image from the file system.
 The install dir is setup by using "installdir" attribute set in the site table.
 
-If \ *imagename*\  is specified, this command uses the information in the \ *imagename*\
+If \ *imagename*\  is specified, this command uses the information in the \ *imagename*\ 
 to calculate the image root directory; otherwise, this command uses the operating system name,
 architecture and profile name to calculate the image root directory.
 

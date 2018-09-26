@@ -38,7 +38,7 @@ PPC (using Direct FSP Management) specific:
 
 \ **chvm**\  \ *noderange*\  \ **-**\ **-p775**\  [\ **-p**\  \ *profile*\ ]
 
-\ **chvm**\  \ *noderange*\  \ **-**\ **-p775**\  \ **-i id**\  [\ **-m**\  \ *memory_interleaving*\ ] \ **-r**\  \ *partition_rule*\
+\ **chvm**\  \ *noderange*\  \ **-**\ **-p775**\  \ **-i id**\  [\ **-m**\  \ *memory_interleaving*\ ] \ **-r**\  \ *partition_rule*\ 
 
 \ **chvm**\  \ *noderange*\  [\ **lparname**\ ={ \* | \ *name*\ }]
 
@@ -180,16 +180,16 @@ Common:
 
 
 
-\ **-h**\
-
+\ **-h**\ 
+ 
  Display usage message.
+ 
 
 
-
-\ **-v**\
-
+\ **-v**\ 
+ 
  Command Version.
-
+ 
 
 
 
@@ -198,22 +198,22 @@ PPC (with HMC) specific:
 
 
 
-\ **-p**\  \ *profile*\
-
+\ **-p**\  \ *profile*\ 
+ 
  Name of an existing partition profile.
+ 
 
 
-
-\ *attr*\ =\ *val*\
-
+\ *attr*\ =\ *val*\ 
+ 
  Specifies one or more "attribute equals value" pairs, separated by spaces.
+ 
 
 
-
-\ **-V**\
-
+\ **-V**\ 
+ 
  Verbose output.
-
+ 
 
 
 
@@ -222,80 +222,80 @@ PPC (using Direct FSP Management) specific:
 
 
 
-\ **-**\ **-p775**\
-
+\ **-**\ **-p775**\ 
+ 
  Specify the operation is for Power 775 machines.
+ 
 
 
-
-\ **-i**\
-
+\ **-i**\ 
+ 
  Starting numeric id of the newly created partitions. For Power 775 using Direct FSP Management, the id value only could be \ **1**\ , \ **5**\ , \ **9**\ , \ **13**\ , \ **17**\ , \ **21**\ , \ **25**\  and \ **29**\ . Shall work with option \ **-**\ **-p775**\ .
+ 
 
 
-
-\ **-m**\
-
+\ **-m**\ 
+ 
  memory interleaving. The setting value only could be \ **1**\  or \ **2**\ . \ **2**\  means \ **non-interleaved**\  mode (also 2MC mode), the memory cannot be shared across the processors in an octant. \ **1**\  means \ **interleaved**\  mode (also 8MC mode) , the memory can be shared. The default value is \ **1**\ . Shall work with option \ **-**\ **-p775**\ .
+ 
 
 
-
-\ **-r**\
-
+\ **-r**\ 
+ 
  partition rule. Shall work with option \ **-**\ **-p775**\ .
-
+ 
  If all the octants configuration value are same in one CEC,  it will be  " \ **-r**\   \ **0-7**\ :\ *value*\ " .
-
+ 
  If the octants use the different configuration value in one cec, it will be "\ **-r**\  \ **0**\ :\ *value1*\ ,\ **1**\ :\ *value2*\ ,...\ **7**\ :\ *value7*\ ", or "\ **-r**\  \ **0**\ :\ *value1*\ ,\ **1-7**\ :\ *value2*\ " and so on.
-
+ 
  The octants configuration value for one Octant could be  \ **1**\ , \ **2**\ , \ **3**\ , \ **4**\ , \ **5**\ . The meanings of the octants configuration value  are as following:
-
-
+ 
+ 
  .. code-block:: perl
-
+ 
    1 -- 1 partition with all cpus and memory of the octant
    2 -- 2 partitions with a 50/50 split of cpus and memory
    3 -- 3 partitions with a 25/25/50 split of cpus and memory
    4 -- 4 partitions with a 25/25/25/25 split of cpus and memory
    5 -- 2 partitions with a 25/75 split of cpus and memory
+ 
+ 
 
 
-
-
-\ **-p**\  \ *profile*\
-
+\ **-p**\  \ *profile*\ 
+ 
  Name of I/O slots assignment profile. Shall work with option \ **-**\ **-p775**\ .
-
+ 
 
 
 \ **lparname**\ ={\ **\\* | name**\ }
-
+ 
  Set LPAR name for the specified lpars. If '\*' specified, it means to get names from xCAT database and then set them for the specified lpars. If a string is specified, it only supports single node and the string will be set for the specified lpar. The user can use lsvm to check the lparnames for lpars.
+ 
 
 
-
-\ **vmcpus=value**\  \ **vmmemory=value**\  \ **add_physlots=value**\  \ **vmothersetting=value**\
-
+\ **vmcpus=value**\  \ **vmmemory=value**\  \ **add_physlots=value**\  \ **vmothersetting=value**\ 
+ 
  To specify the parameters that will be modified.
-
+ 
 
 
 \ **add_vmnics=value**\  \ **add_vmstorage=value**\  [\ **-**\ **-vios**\ ]
-
+ 
  To create new virtual adapter for the specified node.
+ 
 
 
-
-\ **del_physlots=drc_index1,drc_index2...**\
-
+\ **del_physlots=drc_index1,drc_index2...**\ 
+ 
  To delete physical slots which are specified by the \ *drc_index1,drc_index2...*\ .
+ 
 
 
-
-\ **del_vadapter=slotid**\
-
+\ **del_vadapter=slotid**\ 
+ 
  To delete a virtual adapter specified by the \ *slotid*\ .
-
+ 
 
 
 
@@ -304,40 +304,40 @@ VMware/KVM specific:
 
 
 
-\ **-a**\  \ *size*\
-
+\ **-a**\  \ *size*\ 
+ 
  Add a new Hard disk with size defaulting to GB.  Multiple can be added with comma separated values.
+ 
 
 
-
-\ **-**\ **-cpus**\  \ *count*\
-
+\ **-**\ **-cpus**\  \ *count*\ 
+ 
  Set the number of CPUs.
+ 
 
 
-
-\ **-d**\  \ *disk*\
-
+\ **-d**\  \ *disk*\ 
+ 
  Deregister the Hard disk but leave the backing files.  Multiple can be done with comma separated values.  The disks are specified by SCSI id.
+ 
 
 
-
-\ **-**\ **-mem**\  \ *memory*\
-
+\ **-**\ **-mem**\  \ *memory*\ 
+ 
  Set the memory, defaults to MB.
+ 
 
 
-
-\ **-p**\  \ *disk*\
-
+\ **-p**\  \ *disk*\ 
+ 
  Purge the Hard disk.  Deregisters and deletes the files.  Multiple can be done with comma separated values.  The disks are specified by SCSI id.
+ 
 
 
-
-\ **-**\ **-resize**\  \ *disk*\ =\ *size*\
-
+\ **-**\ **-resize**\  \ *disk*\ =\ *size*\ 
+ 
  Change the size of the Hard disk.  The disk in \ *qcow2*\  format can not be set to less than its current size. The disk in \ *raw*\  format can be resized smaller, use caution. Multiple disks can be resized by using comma separated \ *disk*\ \ **=**\ \ *size*\  pairs.  The disks are specified by SCSI id.  Size defaults to GB.
-
+ 
 
 
 
@@ -346,38 +346,38 @@ KVM specific:
 
 
 
-\ **-**\ **-cpupin hostcpuset**\
-
+\ **-**\ **-cpupin hostcpuset**\ 
+ 
  To pin guest domain virtual CPUs to physical host CPUs specified with \ *hostcpuset*\ .
  \ *hostcpuset*\  is a list of physical CPU numbers. Its syntax is a comma separated list and a special
  markup using '-' and '^' (ex. '0-4', '0-3,^2') can also be allowed. The '-' denotes the range and
  the '^' denotes exclusive.
-
+ 
  Note: The expression is sequentially evaluated, so "0-15,^8" is identical to "9-14,0-7,15" but not
  identical to "^8,0-15".
+ 
 
 
-
-\ **-**\ **-membind numanodeset**\
-
+\ **-**\ **-membind numanodeset**\ 
+ 
  It is possible to restrict a guest to allocate memory from the specified set of NUMA nodes \ *numanodeset*\ .
  If the guest vCPUs are also pinned to a set of cores located on that same set of NUMA nodes, memory
  access is local and improves memory access performance.
+ 
 
 
-
-\ **-**\ **-devpassthru pcidevice1,pcidevice2...**\
-
+\ **-**\ **-devpassthru pcidevice1,pcidevice2...**\ 
+ 
  The PCI passthrough gives a guest VM direct access to I/O devices \ *pcidevice1,pcidevice2...*\ .
  The PCI devices are assigned to a virtual machine, and the virtual machine can use this I/O exclusively.
  The devices list are a list of comma separated PCI device names delimited with comma, the PCI device names can be obtained by running \ **virsh nodedev-list**\  on the host.
+ 
 
 
-
-\ **-**\ **-devdetach pcidevice1,pcidevice2...**\
-
+\ **-**\ **-devdetach pcidevice1,pcidevice2...**\ 
+ 
  To detaching the PCI devices which are attached to VM guest via PCI passthrough from the VM guest. The devices list are a list of comma separated PCI device names delimited with comma, the PCI device names can be obtained by running \ **virsh nodedev-list**\  on the host.
-
+ 
 
 
 
@@ -386,62 +386,62 @@ zVM specific:
 
 
 
-\ **-**\ **-add3390**\  \ *disk_pool*\  \ *device_address*\  \ *size*\  \ *mode*\  \ *read_password*\  \ *write_password*\  \ *multi_password*\
-
+\ **-**\ **-add3390**\  \ *disk_pool*\  \ *device_address*\  \ *size*\  \ *mode*\  \ *read_password*\  \ *write_password*\  \ *multi_password*\ 
+ 
  Adds a 3390 (ECKD) disk to a virtual machine's directory entry. The device address can be automatically assigned by specifying 'auto'. The size of the disk can be specified in GB, MB, or the number of cylinders.
+ 
 
 
-
-\ **-**\ **-add3390active**\  \ *device_address*\  \ *mode*\
-
+\ **-**\ **-add3390active**\  \ *device_address*\  \ *mode*\ 
+ 
  Adds a 3390 (ECKD) disk that is defined in a virtual machine's directory entry to that virtual server's active configuration.
+ 
 
 
-
-\ **-**\ **-add9336**\  \ *disk_pool*\  \ *device_address*\  \ *size*\  \ *mode*\  \ *read_password*\  \ *write_password*\  \ *multi_password*\
-
+\ **-**\ **-add9336**\  \ *disk_pool*\  \ *device_address*\  \ *size*\  \ *mode*\  \ *read_password*\  \ *write_password*\  \ *multi_password*\ 
+ 
  Adds a 9336 (FBA) disk to a virtual machine's directory entry. The device address can be automatically assigned by specifying 'auto'. The size of the disk can be specified in GB, MB, or the number of blocks.
+ 
 
 
-
-\ **-**\ **-adddisk2pool**\  \ *function*\  \ *region*\  \ *volume*\  \ *group*\
-
+\ **-**\ **-adddisk2pool**\  \ *function*\  \ *region*\  \ *volume*\  \ *group*\ 
+ 
  Add a disk to a disk pool defined in the EXTENT CONTROL. Function type can be either: (4) Define region as full volume and add to group OR (5) Add existing region to group.  The disk has to already be attached to SYSTEM.
+ 
 
 
-
-\ **-**\ **-addnic**\  \ *device_address*\  \ *type*\  \ *device_count*\
-
+\ **-**\ **-addnic**\  \ *device_address*\  \ *type*\  \ *device_count*\ 
+ 
  Adds a network adapter to a virtual machine's directory entry (case sensitive).
+ 
 
 
-
-\ **-**\ **-addpagespool**\  \ *volume_addr*\  \ *volume_label*\  \ *volume_use*\  \ *system_config_name*\  \ *system_config_type*\  \ *parm_disk_owner*\  \ *parm_disk_number*\  \ *parm_disk_password*\
-
+\ **-**\ **-addpagespool**\  \ *volume_addr*\  \ *volume_label*\  \ *volume_use*\  \ *system_config_name*\  \ *system_config_type*\  \ *parm_disk_owner*\  \ *parm_disk_number*\  \ *parm_disk_password*\ 
+ 
  Add a full volume page or spool disk to the virtual machine.
+ 
 
 
-
-\ **-**\ **-addprocessor**\  \ *device_address*\
-
+\ **-**\ **-addprocessor**\  \ *device_address*\ 
+ 
  Adds a virtual processor to a virtual machine's directory entry.
+ 
 
 
-
-\ **-**\ **-addprocessoractive**\  \ *device_address*\  \ *type*\
-
+\ **-**\ **-addprocessoractive**\  \ *device_address*\  \ *type*\ 
+ 
  Adds a virtual processor to a virtual machine's active configuration (case sensitive).
+ 
 
 
-
-\ **-**\ **-addvdisk**\  \ *device_address*\  \ *size*\
-
+\ **-**\ **-addvdisk**\  \ *device_address*\  \ *size*\ 
+ 
  Adds a v-disk to a virtual machine's directory entry.
+ 
 
 
-
-\ **-**\ **-addzfcp**\  \ *pool*\  \ *device_address*\  \ *loaddev*\  \ *size*\  \ *tag*\  \ *wwpn*\  \ *lun*\
-
+\ **-**\ **-addzfcp**\  \ *pool*\  \ *device_address*\  \ *loaddev*\  \ *size*\  \ *tag*\  \ *wwpn*\  \ *lun*\ 
+ 
  Add a zFCP device to a device pool defined in xCAT. The device must have been
  carved up in the storage controller and configured with a WWPN/LUN before it can
  be added to the xCAT storage pool. z/VM does not have the ability to communicate
@@ -450,121 +450,121 @@ zVM specific:
  the WWPN and LUN are not given. The device address can be automatically assigned
  by specifying 'auto'. The WWPN/LUN can be set as the LOADDEV in the directory
  entry if (1) is specified as the 'loaddev'.
+ 
 
 
-
-\ **-**\ **-connectnic2guestlan**\  \ *device_address*\  \ *lan*\  \ *owner*\
-
+\ **-**\ **-connectnic2guestlan**\  \ *device_address*\  \ *lan*\  \ *owner*\ 
+ 
  Connects a given network adapter to a GuestLAN.
+ 
 
 
-
-\ **-**\ **-connectnic2vswitch**\  \ *device_address*\  \ *vswitch*\
-
+\ **-**\ **-connectnic2vswitch**\  \ *device_address*\  \ *vswitch*\ 
+ 
  Connects a given network adapter to a VSwitch.
+ 
 
 
-
-\ **-**\ **-copydisk**\  \ *target_address*\  \ *source_node*\  \ *source_address*\
-
+\ **-**\ **-copydisk**\  \ *target_address*\  \ *source_node*\  \ *source_address*\ 
+ 
  Copy a disk attached to a given virtual server.
+ 
 
 
-
-\ **-**\ **-dedicatedevice**\  \ *virtual_device*\  \ *real_device*\  \ *mode*\
-
+\ **-**\ **-dedicatedevice**\  \ *virtual_device*\  \ *real_device*\  \ *mode*\ 
+ 
  Adds a dedicated device to a virtual machine's directory entry.
+ 
 
 
-
-\ **-**\ **-deleteipl**\
-
+\ **-**\ **-deleteipl**\ 
+ 
  Deletes the IPL statement from the virtual machine's directory entry.
+ 
 
 
-
-\ **-**\ **-disconnectnic**\  \ *device_address*\
-
+\ **-**\ **-disconnectnic**\  \ *device_address*\ 
+ 
  Disconnects a given network adapter.
+ 
 
 
-
-\ **-**\ **-formatdisk**\  \ *disk_address*\  \ *multi_password*\
-
+\ **-**\ **-formatdisk**\  \ *disk_address*\  \ *multi_password*\ 
+ 
  Formats a disk attached to a given virtual server (only ECKD disks supported). The disk should not be linked to any other virtual server. This command is best used after add3390().
+ 
 
 
-
-\ **-**\ **-grantvswitch**\  \ *vswitch*\
-
+\ **-**\ **-grantvswitch**\  \ *vswitch*\ 
+ 
  Grant vSwitch access for given virtual machine.
+ 
 
 
-
-\ **-**\ **-purgerdr**\
-
+\ **-**\ **-purgerdr**\ 
+ 
  Purge the reader belonging to the virtual machine
+ 
 
 
-
-\ **-**\ **-removedisk**\  \ *device_address*\
-
+\ **-**\ **-removedisk**\  \ *device_address*\ 
+ 
  Removes a minidisk from a virtual machine's directory entry.
+ 
 
 
-
-\ **-**\ **-removenic**\  \ *device_address*\
-
+\ **-**\ **-removenic**\  \ *device_address*\ 
+ 
  Removes a network adapter from a virtual machine's directory entry.
+ 
 
 
-
-\ **-**\ **-removeprocessor**\  \ *device_address*\
-
+\ **-**\ **-removeprocessor**\  \ *device_address*\ 
+ 
  Removes a processor from an active virtual machine's configuration.
+ 
 
 
-
-\ **-**\ **-removeloaddev**\  \ *wwpn*\  \ *lun*\
-
+\ **-**\ **-removeloaddev**\  \ *wwpn*\  \ *lun*\ 
+ 
  Removes the LOADDEV statement from a virtual machines's directory entry.
+ 
 
 
-
-\ **-**\ **-removezfcp**\  \ *device_address*\  \ *wwpn*\  \ *lun*\
-
+\ **-**\ **-removezfcp**\  \ *device_address*\  \ *wwpn*\  \ *lun*\ 
+ 
  Removes a given SCSI/FCP device belonging to the virtual machine.
+ 
 
 
-
-\ **-**\ **-replacevs**\  \ *directory_entry*\
-
+\ **-**\ **-replacevs**\  \ *directory_entry*\ 
+ 
  Replaces a virtual machine's directory entry. The directory entry can be echoed into stdin or a text file.
+ 
 
 
-
-\ **-**\ **-setipl**\  \ *ipl_target*\  \ *load_parms*\  \ *parms*\
-
+\ **-**\ **-setipl**\  \ *ipl_target*\  \ *load_parms*\  \ *parms*\ 
+ 
  Sets the IPL statement for a given virtual machine.
+ 
 
 
-
-\ **-**\ **-setpassword**\  \ *password*\
-
+\ **-**\ **-setpassword**\  \ *password*\ 
+ 
  Sets the password for a given virtual machine.
+ 
 
 
-
-\ **-**\ **-setloaddev**\  \ *wwpn*\  \ *lun*\
-
+\ **-**\ **-setloaddev**\  \ *wwpn*\  \ *lun*\ 
+ 
  Sets the LOADDEV statement in the virtual machine's directory entry.
+ 
 
 
-
-\ **-**\ **-undedicatedevice**\  \ *device_address*\
-
+\ **-**\ **-undedicatedevice**\  \ *device_address*\ 
+ 
  Delete a dedicated device from a virtual machine's active configuration and directory entry.
-
+ 
 
 
 

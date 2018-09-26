@@ -19,7 +19,7 @@ SYNOPSIS
 ********
 
 
-\ **osdistro Attributes:**\   \ *osdistroname*\ , \ *basename*\ , \ *majorversion*\ , \ *minorversion*\ , \ *arch*\ , \ *type*\ , \ *dirpaths*\ , \ *comments*\ , \ *disable*\
+\ **osdistro Attributes:**\   \ *osdistroname*\ , \ *basename*\ , \ *majorversion*\ , \ *minorversion*\ , \ *arch*\ , \ *type*\ , \ *dirpaths*\ , \ *comments*\ , \ *disable*\ 
 
 
 ***********
@@ -36,58 +36,58 @@ osdistro Attributes:
 
 
 
-\ **osdistroname**\
-
+\ **osdistroname**\ 
+ 
  Unique name (e.g. rhels6.2-x86_64)
+ 
 
 
-
-\ **basename**\
-
+\ **basename**\ 
+ 
  The OS base name (e.g. rhels)
+ 
 
 
-
-\ **majorversion**\
-
+\ **majorversion**\ 
+ 
  The OS distro major version.(e.g. 6)
+ 
 
 
-
-\ **minorversion**\
-
+\ **minorversion**\ 
+ 
  The OS distro minor version. (e.g. 2)
+ 
 
 
-
-\ **arch**\
-
+\ **arch**\ 
+ 
  The OS distro arch (e.g. x86_64)
+ 
 
 
-
-\ **type**\
-
+\ **type**\ 
+ 
  Linux or AIX
+ 
 
 
-
-\ **dirpaths**\
-
+\ **dirpaths**\ 
+ 
  Directory paths where OS distro is store. There could be multiple paths if OS distro has more than one ISO image. (e.g. /install/rhels6.2/x86_64,...)
+ 
 
 
-
-\ **comments**\
-
+\ **comments**\ 
+ 
  Any user-written notes.
+ 
 
 
-
-\ **disable**\
-
+\ **disable**\ 
+ 
  Set to 'yes' or '1' to comment out this row.
-
+ 
 
 
 
@@ -96,5 +96,5 @@ SEE ALSO
 ********
 
 
-\ **nodels(1)**\ , \ **chtab(8)**\ , \ **tabdump(8)**\ , \ **tabedit(8)**\
+\ **nodels(1)**\ , \ **chtab(8)**\ , \ **tabdump(8)**\ , \ **tabedit(8)**\ 
 

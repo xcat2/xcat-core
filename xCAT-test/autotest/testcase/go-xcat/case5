@@ -1,0 +1,18 @@
+start:go_xcat_without_repoquery
+description:test go_xcat when command repoquery is not found. This case is for bug 1641.
+os:rhels
+label:others,go_xcat
+cmd:if xdsh $$CN "yum -h";then xdsh $$CN  "yum remove -y *xCAT*";fi
+cmd:xdsh $$CN "mv -f /usr/bin/repoquery /usr/bin/repoquery.bak"
+cmd:xdsh $$CN "cd /; rm -rf /go-xcat"
+check:rc==0
+cmd:xdsh $$CN "cd /; scp -r $$MN:/opt/xcat/share/xcat/tools/go-xcat ./"
+check:rc==0
+cmd:xdsh $$CN "cd /; ./go-xcat --xcat-version=devel update -y"
+check:rc!=0
+check:output=~Command "repoquery" not found
+check:output=~go-xcat: Install the `yum-utils' package and rerun
+check:output=~go-xcat: Failed to get package list from repository `xcat-core'
+cmd:xdsh $$CN "mv -f /usr/bin/repoquery.bak /usr/bin/repoquery"
+end
+

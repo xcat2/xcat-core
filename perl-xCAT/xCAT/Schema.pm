@@ -1308,7 +1308,7 @@ passed as argument rather than by table value',
 " xcatdport:  The port used by the xcatd daemon for client/server communication.\n\n" .
 " xcatiport:  The port used by xcatd to receive install status updates from nodes.\n\n" .
 " xcatlport:  The port used by xcatd command log writer process to collect command output.\n\n" .
-" xcatsslversion:  The ssl version by xcatd. Default is SSLv3.\n\n" .
+" xcatsslversion:  The ssl version by xcatd. Default is TLSv1.\n\n" .
 " xcatsslciphers:  The ssl cipher by xcatd. Default is 3DES.\n\n",
             value => 'The value of the attribute specified in the "key" column.',
             comments => 'Any user-written notes.',

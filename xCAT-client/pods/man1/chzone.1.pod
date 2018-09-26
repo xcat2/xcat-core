@@ -71,7 +71,7 @@ Used with the B<--defaultzone> flag to override the current default zone.
 
 Used with the B<-a> or B<-r> flag to add or remove the group zonename for all nodes in the input noderange.
 
-=item B<-V>|B<--Verbose>
+=item B<-V>|B<--verbose>
 
 Verbose mode.
 

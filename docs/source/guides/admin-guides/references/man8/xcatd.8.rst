@@ -19,7 +19,7 @@ SYNOPSIS
 ********
 
 
-\ **xcatd**\
+\ **xcatd**\ 
 
 
 ***********
@@ -41,33 +41,33 @@ EXAMPLES
 
 
 1. To start/stop/restart  xcatd on Linux, enter:
-
-
+ 
+ 
  .. code-block:: perl
-
+ 
    service xcatd start
-
+  
    service xcatd stop
-
+  
    service xcatd restart
-
-
+ 
+ 
 
 
 2. To start/stop/restart  xcatd on AIX, enter:
-
-
+ 
+ 
  .. code-block:: perl
-
+ 
    restartxcatd
-
+  
      or
-
+  
    startsrc -s xcatd
-
+  
    stopsrc -s xcatd
-
-
+ 
+ 
 
 
 

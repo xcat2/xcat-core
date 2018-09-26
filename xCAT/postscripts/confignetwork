@@ -323,7 +323,7 @@ function sort_nics_device_order {
             #if alone nic configure nicips, it is valid
             if [ -n "$alonenicips" ] && [ -n "$alonenictype" ] && [ -n "$alonenicnetwork" ]; then
                 #if alone nic is ib type, append all ib nics in ib_slots
-                if [ x"$alonenictype" = "xinfiniband" ]; then
+                if [ x"$alonenictype" = "xinfiniband" ] || [ x"$alonenictype" = "xOmnipath" ]; then
                     if [ -z $ib_slots ]; then
                         ib_slots=$alonenic
                     else
@@ -575,7 +575,7 @@ function configure_nicdevice {
         #configure bond
         elif [ x"$nic_dev_type" = "xbond" ]; then
             create_bond_interface ifname=$nic_dev slave_ports=$base_nic_for_bond slave_type=$base_nic_type
-        elif [ x"$nic_dev_type" = "xinfiniband" ]; then
+        elif [ x"$nic_dev_type" = "xinfiniband" ] || [ x"$nic_dev_type" = "xOmnipath" ]; then
             log_info "Call configib for IB nics: $nic_dev, ports: $num_iba_ports"
             log_info "NIC_IBNICS=$nic_dev NIC_IBAPORTS=$num_iba_ports configib"
             NIC_IBNICS=$nic_dev NIC_IBAPORTS=$num_iba_ports configib

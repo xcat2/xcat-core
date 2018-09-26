@@ -31,7 +31,7 @@ DESCRIPTION
 
 Generate the initrd for the osimage: \ **imagename**\  which is an xCAT object of \ *osimage*\  type.
 
-\ **Diskful Osimage**\
+\ **Diskful Osimage**\ 
 
 
 If the \ **imagename**\  is a stateful one (The provmethod attribute for the osimage is 'install'),
@@ -57,7 +57,7 @@ to get all the rpm packages and then search the drivers from the rpm packages.
 
 Refer to the doc: Using_Linux_Driver_Update_Disk
 
-\ **Stateless Osimage**\
+\ **Stateless Osimage**\ 
 
 
 If the \ **imagename**\  is a stateless one (The provmethod attribute for the osimage is 'netboot'),
@@ -82,10 +82,10 @@ Parameters
 \ *imagename*\  specifies the name of an os image definition to be used. The specification for the image is stored in the \ *osimage*\  table and \ *linuximage*\  table.
 
 
-\ **-**\ **-ignorekernelchk**\
-
+\ **-**\ **-ignorekernelchk**\ 
+ 
  Skip the kernel version checking when injecting drivers from osimage.driverupdatesrc. That means all drivers from osimage.driverupdatesrc will be injected to initrd for the specific target kernel.
-
+ 
 
 
 
@@ -106,13 +106,13 @@ EXAMPLES
 
 
 1 To generate initrd for the osimage \ **myimagename**\ :
-
-
+ 
+ 
  .. code-block:: perl
-
+ 
     geninitrd myimagename
-
-
+ 
+ 
 
 
 

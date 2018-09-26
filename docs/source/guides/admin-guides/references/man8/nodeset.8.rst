@@ -15,7 +15,7 @@ Name
 
 
 ****************
-\ **Synopsis**\
+\ **Synopsis**\ 
 ****************
 
 
@@ -23,13 +23,13 @@ Name
 
 \ **nodeset**\  \ *noderange*\  \ **osimage**\ [=\ *imagename*\ ] [\ **-**\ **-noupdateinitrd**\ ] [\ **-**\ **-ignorekernelchk**\ ]
 
-\ **nodeset**\  \ *noderange*\  \ **runimage=**\ \ *task*\
+\ **nodeset**\  \ *noderange*\  \ **runimage=**\ \ *task*\ 
 
 \ **nodeset**\  [\ **-h | -**\ **-help | -v | -**\ **-version**\ ]
 
 
 *******************
-\ **Description**\
+\ **Description**\ 
 *******************
 
 
@@ -65,94 +65,94 @@ A user can supply their own scripts to be run on the mn or on the service node (
 
 
 ***************
-\ **Options**\
+\ **Options**\ 
 ***************
 
 
 
-\ **boot**\
-
+\ **boot**\ 
+ 
  Instruct network boot loader to be skipped, generally meaning boot to hard disk
+ 
 
 
-
-\ **offline**\
-
+\ **offline**\ 
+ 
  Cleanup the current pxe/tftp boot configuration files for the nodes requested
+ 
 
 
-
-\ **osimage | osimage=**\ \ *imagename*\
-
+\ **osimage | osimage=**\ \ *imagename*\ 
+ 
  Prepare server for installing a node using the specified os image. The os image is defined in the \ *osimage*\  table and \ *linuximage*\  table. If the <imagename> is omitted, the os image name will be obtained from \ *nodetype.provmethod*\  for the node.
+ 
 
 
-
-\ **-**\ **-noupdateinitrd**\
-
+\ **-**\ **-noupdateinitrd**\ 
+ 
  Skip the rebuilding of initrd when the 'netdrivers', 'driverupdatesrc' or 'osupdatename' were set for injecting new drivers to initrd. But, the \ **geninitrd**\  command
  should be run to rebuild the initrd for new drivers injecting. This is used to improve the performance of \ **nodeset**\  command.
+ 
 
 
-
-\ **-**\ **-ignorekernelchk**\
-
+\ **-**\ **-ignorekernelchk**\ 
+ 
  Skip the kernel version checking when injecting drivers from osimage.driverupdatesrc. That means all drivers from osimage.driverupdatesrc will be injected to initrd for the specific target kernel.
+ 
 
 
-
-\ **runimage**\ =\ *task*\
-
+\ **runimage**\ =\ *task*\ 
+ 
  If you would like to run a task after deployment, you can define that task with this attribute.
+ 
 
 
-
-\ **stat**\
-
+\ **stat**\ 
+ 
  Display the current boot loader config file description for the nodes requested. When \ **disjointdhcps**\  is set, using \ **-a**\  to display them on all available service nodes.
+ 
 
 
-
-\ **runcmd=**\ \ *command*\
-
+\ **runcmd=**\ \ *command*\ 
+ 
  This instructs the node to boot to the xCAT genesis environment and specified command to be executed.
+ 
 
 
-
-\ **shell**\
-
+\ **shell**\ 
+ 
  This instructs the node to boot to the xCAT genesis environment, and present a shell prompt on console.
  The node will also be able to be sshed into and have utilities such as wget, tftp, scp, nfs, and cifs.  It will have storage drivers available for many common systems.
+ 
 
 
-
-\ **shutdown**\
-
+\ **shutdown**\ 
+ 
  To make the node to get into power off status. This status only can be used after \ **runcmd**\  and \ **runimage**\  to power off the node after the performing of operations.
+ 
 
 
-
-\ **-V | -**\ **-verbose**\
-
+\ **-V | -**\ **-verbose**\ 
+ 
  Verbose mode.
+ 
 
 
-
-\ **-h | -**\ **-help**\
-
+\ **-h | -**\ **-help**\ 
+ 
  Print help.
+ 
 
 
-
-\ **-v | -**\ **-version**\
-
+\ **-v | -**\ **-version**\ 
+ 
  Print version.
-
+ 
 
 
 
 *************
-\ **Files**\
+\ **Files**\ 
 *************
 
 
@@ -173,44 +173,44 @@ root directory and the TFTP xCAT  subdirectory.   /tftpboot  and
 
 
 ****************
-\ **Examples**\
+\ **Examples**\ 
 ****************
 
 
 
 1. To setup to install mycomputeimage on the compute node group.
-
-
+ 
+ 
  .. code-block:: perl
-
+ 
    nodeset compute osimage=mycomputeimage
-
-
+ 
+ 
 
 
 2. To run http://$master/image.tgz  after deployment:
-
-
+ 
+ 
  .. code-block:: perl
-
+ 
    nodeset $node runimage=http://$MASTER/image.tgz
-
-
+ 
+ 
 
 
 3. Boot node1 into xCAT genesis environment and execute bmcsetup script. This causes the IP, netmask, gateway, username, and password to be programmed according to the configuration in node object definition.
-
-
+ 
+ 
  .. code-block:: perl
-
+ 
    rinstall node1 runcmd=bmcsetup
-
-
+ 
+ 
 
 
 
 ************************
-\ **See**\  \ **Also**\
+\ **See**\  \ **Also**\ 
 ************************
 
 

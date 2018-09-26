@@ -21,7 +21,7 @@ SYNOPSIS
 
 \ **rmkitcomp**\  [\ **-? | -h | -**\ **-help**\ ] [\ **-v | -**\ **-version**\ ]
 
-\ **rmkitcomp**\  [\ **-V | -**\ **-verbose**\ ] [\ **-u | -**\ **-uninstall**\ ] [\ **-f | -**\ **-force**\ ] [\ **-**\ **-noscripts**\ ] \ **-i**\  \ *osimage*\   \ *kitcompname_list*\
+\ **rmkitcomp**\  [\ **-V | -**\ **-verbose**\ ] [\ **-u | -**\ **-uninstall**\ ] [\ **-f | -**\ **-force**\ ] [\ **-**\ **-noscripts**\ ] \ **-i**\  \ *osimage*\   \ *kitcompname_list*\ 
 
 
 ***********
@@ -40,52 +40,52 @@ OPTIONS
 
 
 
-\ **-u|-**\ **-uninstall**\
-
+\ **-u|-**\ **-uninstall**\ 
+ 
  All the kit component meta rpms and package rpms in otherpkglist will be uninstalled during genimage for stateless image and updatenode for stateful nodes.
+ 
 
 
-
-\ **-h|-**\ **-help**\
-
+\ **-h|-**\ **-help**\ 
+ 
  Display usage message.
+ 
 
 
-
-\ **-V|-**\ **-verbose**\
-
+\ **-V|-**\ **-verbose**\ 
+ 
  Verbose mode.
+ 
 
 
-
-\ **-v|-**\ **-version**\
-
+\ **-v|-**\ **-version**\ 
+ 
  Command version.
+ 
 
 
-
-\ **-f|-**\ **-force**\
-
+\ **-f|-**\ **-force**\ 
+ 
  Remove this kit component from osimage no matter it is a dependency of other kit components.
+ 
 
 
-
-\ **-**\ **-noscripts**\
-
+\ **-**\ **-noscripts**\ 
+ 
  Do not remove kitcomponent's postbootscripts from osimage
+ 
 
 
-
-\ **-i**\  \ *osimage*\
-
+\ **-i**\  \ *osimage*\ 
+ 
  osimage name that include this kit component.
+ 
 
 
-
-\ *kitcompname_list*\
-
+\ *kitcompname_list*\ 
+ 
  A comma-delimited list of valid full kit component names or kit component basenames that are to be removed from the osimage. If a basename is specified, all kitcomponents matching that basename will be removed from the osimage.
-
+ 
 
 
 

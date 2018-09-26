@@ -19,7 +19,7 @@ SYNOPSIS
 ********
 
 
-\ **monsetting Attributes:**\   \ *name*\ , \ *key*\ , \ *value*\ , \ *comments*\ , \ *disable*\
+\ **monsetting Attributes:**\   \ *name*\ , \ *key*\ , \ *value*\ , \ *comments*\ , \ *disable*\ 
 
 
 ***********
@@ -36,34 +36,34 @@ monsetting Attributes:
 
 
 
-\ **name**\
-
+\ **name**\ 
+ 
  The name of the monitoring plug-in module.  The plug-in must be put in /lib/perl/xCAT_monitoring/.  See the man page for monstart for details.
+ 
 
 
-
-\ **key**\
-
+\ **key**\ 
+ 
  Specifies the name of the attribute. The valid values are specified by each monitoring plug-in. Use "monls name -d" to get a list of valid keys.
+ 
 
 
-
-\ **value**\
-
+\ **value**\ 
+ 
  Specifies the value of the attribute.
+ 
 
 
-
-\ **comments**\
-
+\ **comments**\ 
+ 
  Any user-written notes.
+ 
 
 
-
-\ **disable**\
-
+\ **disable**\ 
+ 
  Set to 'yes' or '1' to comment out this row.
-
+ 
 
 
 
@@ -72,5 +72,5 @@ SEE ALSO
 ********
 
 
-\ **nodels(1)**\ , \ **chtab(8)**\ , \ **tabdump(8)**\ , \ **tabedit(8)**\
+\ **nodels(1)**\ , \ **chtab(8)**\ , \ **tabdump(8)**\ , \ **tabedit(8)**\ 
 

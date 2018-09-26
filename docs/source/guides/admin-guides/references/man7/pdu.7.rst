@@ -19,7 +19,7 @@ SYNOPSIS
 ********
 
 
-\ **pdu Attributes:**\   \ *node*\ , \ *nodetype*\ , \ *outlet*\
+\ **pdu Attributes:**\   \ *node*\ , \ *nodetype*\ , \ *outlet*\ 
 
 
 ***********
@@ -40,21 +40,21 @@ pdu Attributes:
 
 
 \ **node**\  (pdu.node)
-
+ 
  The hostname/address of the pdu to which the settings apply
-
+ 
 
 
 \ **nodetype**\  (pdu.nodetype)
-
+ 
  The node type should be pdu
-
+ 
 
 
 \ **outlet**\  (pdu.outlet)
-
+ 
  The pdu outlet count
-
+ 
 
 
 
@@ -63,5 +63,5 @@ SEE ALSO
 ********
 
 
-\ **mkdef(1)**\ , \ **chdef(1)**\ , \ **lsdef(1)**\ , \ **rmdef(1)**\
+\ **mkdef(1)**\ , \ **chdef(1)**\ , \ **lsdef(1)**\ , \ **rmdef(1)**\ 
 

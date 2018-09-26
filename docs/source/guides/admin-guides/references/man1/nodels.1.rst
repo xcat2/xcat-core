@@ -38,49 +38,49 @@ are specified after the noderange in the form:  \ *table.column*\  .  A few shor
 also be used as aliases to common attributes:
 
 
-\ **groups**\
-
+\ **groups**\ 
+ 
  nodelist.groups
+ 
 
 
-
-\ **tags**\
-
+\ **tags**\ 
+ 
  nodelist.groups
+ 
 
 
-
-\ **mgt**\
-
+\ **mgt**\ 
+ 
  nodehm.mgt
-
+ 
 
 
 nodels can also select based on table value criteria. The following operators are available:
 
 
-\ **==**\
-
+\ **==**\ 
+ 
  Select nodes where the table.column value is exactly a certain value.
+ 
 
 
-
-\ **!=**\
-
+\ **!=**\ 
+ 
  Select nodes where the table.column value is not a given specific value.
+ 
 
 
-
-\ **=~**\
-
+\ **=~**\ 
+ 
  Select nodes where the table.column value matches a given regular expression.
+ 
 
 
-
-\ **!~**\
-
+\ **!~**\ 
+ 
  Select nodes where the table.column value does not match a given regular expression.
-
+ 
 
 
 The \ **nodels**\  command with a specific node and one or more table.attribute parameters is a good substitute
@@ -95,34 +95,34 @@ OPTIONS
 
 
 
-\ **-v|-**\ **-version**\
-
+\ **-v|-**\ **-version**\ 
+ 
  Command Version.
+ 
 
 
-
-\ **-H|-**\ **-with-fieldname**\
-
+\ **-H|-**\ **-with-fieldname**\ 
+ 
  Force display of table name and column name context for each result
+ 
 
 
-
-\ **-b|-**\ **-blame**\
-
+\ **-b|-**\ **-blame**\ 
+ 
  For values inherited from groups, display which groups provided the inheritance
+ 
 
 
-
-\ **-S**\
-
+\ **-S**\ 
+ 
  List all the hidden nodes (FSP/BPA nodes) with other ones.
+ 
 
 
-
-\ **-?|-h|-**\ **-help**\
-
+\ **-?|-h|-**\ **-help**\ 
+ 
  Display usage message.
-
+ 
 
 
 
@@ -143,153 +143,153 @@ EXAMPLES
 
 
 1.
-
+ 
  To list all defined nodes, enter:
-
-
+ 
+ 
  .. code-block:: perl
-
+ 
    nodels
-
-
+ 
+ 
  Output is similar to:
-
-
+ 
+ 
  .. code-block:: perl
-
+ 
      node1
      node2
      node3
-
-
+ 
+ 
 
 
 2.
-
+ 
  To list all defined attributes in a table for a node or noderange, enter:
-
-
+ 
+ 
  .. code-block:: perl
-
+ 
    nodels rra001a noderes
-
-
+ 
+ 
  Output is similar to:
-
-
+ 
+ 
  .. code-block:: perl
-
+ 
      rra001a: noderes.primarynic: eth0
      rra001a: noderes.xcatmaster: rra000
      rra001a: noderes.installnic: eth0
      rra001a: noderes.netboot: pxe
      rra001a: noderes.servicenode: rra000
      rra001a: noderes.node: rra001a
-
-
+ 
+ 
 
 
 3.
-
+ 
  To list nodes in node group ppc, enter:
-
-
+ 
+ 
  .. code-block:: perl
-
+ 
    nodels ppc
-
-
+ 
+ 
  Output is similar to:
-
-
+ 
+ 
  .. code-block:: perl
-
+ 
      ppcnode1
      ppcnode2
      ppcnode3
-
-
+ 
+ 
 
 
 4.
-
+ 
  To list the groups each node is part of:
-
-
+ 
+ 
  .. code-block:: perl
-
+ 
    nodels all groups
-
-
+ 
+ 
  Output is similar to:
-
-
+ 
+ 
  .. code-block:: perl
-
+ 
      node1: groups: all
      node2: groups: all,storage
      node3: groups: all,blade
-
-
+ 
+ 
 
 
 5.
-
+ 
  To list the groups each node is part of:
-
-
+ 
+ 
  .. code-block:: perl
-
+ 
    nodels all nodehm.power
-
-
+ 
+ 
  Output is similar to:
-
-
+ 
+ 
  .. code-block:: perl
-
+ 
      node1: nodehm.power: blade
      node2: nodehm.power: ipmi
      node3: nodehm.power: ipmi
-
-
+ 
+ 
 
 
 6.
-
+ 
  To list the out-of-band mgt method for blade1:
-
-
+ 
+ 
  .. code-block:: perl
-
+ 
    nodels blade1 nodehm.mgt
-
-
+ 
+ 
  Output is similar to:
-
-
+ 
+ 
  .. code-block:: perl
-
+ 
      blade1: blade
-
-
+ 
+ 
 
 
 7.
-
+ 
  Listing blades managed through an AMM named 'amm1'
-
-
+ 
+ 
  .. code-block:: perl
-
+ 
    nodels all mp.mpa==amm1
-
-
+ 
+ 
  Output is similar to:
-
-
+ 
+ 
  .. code-block:: perl
-
+ 
      blade1
      blade10
      blade11
@@ -303,25 +303,25 @@ EXAMPLES
      blade7
      blade8
      blade9
-
-
+ 
+ 
 
 
 8.
-
+ 
  Listing the switch.switch value for nodes in the second rack:
-
-
+ 
+ 
  .. code-block:: perl
-
+ 
    nodels all nodepos.rack==2 switch.switch
-
-
+ 
+ 
  Output is similar to:
-
-
+ 
+ 
  .. code-block:: perl
-
+ 
      n41: switch.switch: switch2
      n42: switch.switch: switch2
      n43: switch.switch: switch2
@@ -335,25 +335,25 @@ EXAMPLES
      n58: switch.switch: switch2
      n59: switch.switch: switch2
      n60: switch.switch: switch2
-
-
+ 
+ 
 
 
 9.
-
+ 
  Listing the blade slot number for anything managed through a device with a name beginning with amm:
-
-
+ 
+ 
  .. code-block:: perl
-
+ 
    nodels all mp.mpa=~/^amm.*/ mp.id
-
-
+ 
+ 
  Output looks like:
-
-
+ 
+ 
  .. code-block:: perl
-
+ 
      blade1: mp.id: 1
      blade10: mp.id: 10
      blade11: mp.id: 11
@@ -367,21 +367,21 @@ EXAMPLES
      blade7: mp.id: 7
      blade8: mp.id: 8
      blade9: mp.id: 9
-
-
+ 
+ 
 
 
 10.
-
+ 
  To list the hidden nodes that can't be seen with other flags.
  The hidden nodes are FSP/BPAs.
-
-
+ 
+ 
  .. code-block:: perl
-
+ 
    lsdef -S
-
-
+ 
+ 
 
 
 

@@ -8239,7 +8239,13 @@ sub loadsdrcache {
     if (!open($fh, "<$file")) {
         return (1);
     }
-    $r = retrieve_fd($fh);
+    eval {
+        $r = retrieve_fd($fh);
+    };
+    if($@){
+        xCAT::MsgUtils->message("S", "loadsdrcache: Fatal error while retrieving data from $file, $@");
+        return 1;
+    }
     unless ($r) { close($fh); return 1; }
     unless ($r->{xcat_sdrcacheversion} and $r->{xcat_sdrcacheversion} == $cache_version) { close($fh); return 1; } #version mismatch
 

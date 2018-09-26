@@ -118,7 +118,7 @@ sub parse_and_run_sinv
             'c|cmd=s'                 => \$options{'sinv_cmd'},
             'f|file=s'                => \$options{'sinv_cmd_file'},
             'v|version'               => \$options{'version'},
-            'V|Verbose'               => \$options{'verbose'},
+            'V|verbose'               => \$options{'verbose'},
         )
       )
     {

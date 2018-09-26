@@ -345,7 +345,7 @@ class OpenBMCRest(object):
                 e.message = "Login to BMC failed: Can't connect to {0} {1}.".format(e.host_and_port, e.detail_msg)
             else:
                 e.message = 'BMC did not respond. ' \
-                            'Validate BMC configuration and retry the command.'
+                            'Validate BMC configuration and retry the command. ' + e.detail_msg
             self._print_error_log(e.message, cmd)
             raise
         except ValueError:

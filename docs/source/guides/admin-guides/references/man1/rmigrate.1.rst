@@ -15,11 +15,11 @@ Name
 
 
 ****************
-\ **Synopsis**\
+\ **Synopsis**\ 
 ****************
 
 
-\ **rmigrate**\  \ *noderange*\  \ *target_host*\
+\ **rmigrate**\  \ *noderange*\  \ *target_host*\ 
 
 For zVM:
 ========
@@ -30,7 +30,7 @@ For zVM:
 
 
 *******************
-\ **Description**\
+\ **Description**\ 
 *******************
 
 
@@ -83,7 +83,7 @@ zVM specific:
 
 
 *************
-\ **Files**\
+\ **Files**\ 
 *************
 
 
@@ -93,7 +93,7 @@ This is used to determine the current host to migrate from.
 
 
 ****************
-\ **Examples**\
+\ **Examples**\ 
 ****************
 
 

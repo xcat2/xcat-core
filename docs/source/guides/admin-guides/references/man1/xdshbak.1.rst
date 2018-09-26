@@ -15,7 +15,7 @@ NAME
 
 
 ****************
-\ **SYNOPSIS**\
+\ **SYNOPSIS**\ 
 ****************
 
 
@@ -27,7 +27,7 @@ DESCRIPTION
 ***********
 
 
-The  \ **xdshbak**\   command formats output from the \ **xdsh**\  command. The \ **xdshbak**\
+The  \ **xdshbak**\   command formats output from the \ **xdsh**\  command. The \ **xdshbak**\ 
 command takes, as input, lines in the following format:
 
 
@@ -73,7 +73,7 @@ When output is displayed from more than one node in collapsed form, the
 host  names are displayed alphabetically. When output is not collapsed,
 output is displayed sorted alphabetically by host name.
 
-If the \ **-q**\  quiet flag is not set then  \ **xdshbak**\
+If the \ **-q**\  quiet flag is not set then  \ **xdshbak**\ 
 command writes "." for each 1000 lines of output processed (to show progress),
 since it won't display the output until it has processed all of it.
 
@@ -112,87 +112,87 @@ OPTIONS
 
 
 
-\ **-b**\
-
+\ **-b**\ 
+ 
  Strip the host prefix from the beginning of the lines. This only
  works with the \ **-x**\  option.
+ 
 
 
-
-\ **-c**\
-
+\ **-c**\ 
+ 
  If the output from multiple nodes is identical it will be collapsed
  and displayed only once.
+ 
 
 
-
-\ **-x**\
-
+\ **-x**\ 
+ 
  Omit the extra header lines that xdshbak normally displays for
  each node.  This provides
  more  compact  output,  but  xdshbak still sorts the output by
  node name for easier viewing.
  This option should not be used with \ **-c**\ .
+ 
 
 
-
-\ **-h**\
-
+\ **-h**\ 
+ 
  Displays usage information.
+ 
 
 
-
-\ **-q**\
-
+\ **-q**\ 
+ 
  Quiet mode, do not display "." for each 1000 lines of output.
-
+ 
 
 
 
 ****************
-\ **EXAMPLES**\
+\ **EXAMPLES**\ 
 ****************
 
 
 
 1. To  display the results of a command issued on several nodes, in
 the format used in the Description, enter:
-
-
+ 
+ 
  .. code-block:: perl
-
+ 
    xdsh node1,node2,node3 cat /etc/passwd | xdshbak
-
-
+ 
+ 
 
 
 2.
-
+ 
  To display the results of a command issued on several nodes with
  identical output displayed only once, enter:
-
-
+ 
+ 
  .. code-block:: perl
-
+ 
    xdsh host1,host2,host3 pwd | xdshbak -c
-
-
+ 
+ 
 
 
 3. To display the results of a command issued on several nodes with
 compact output and be sorted alphabetically by host name, enter:
-
-
+ 
+ 
  .. code-block:: perl
-
+ 
    xdsh host1,host2,host3 date | xdshbak -x
-
-
+ 
+ 
 
 
 
 ****************
-\ **SEE ALSO**\
+\ **SEE ALSO**\ 
 ****************
 
 
