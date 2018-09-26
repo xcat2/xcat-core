@@ -82,13 +82,11 @@ To make a new zone2 using defaults and make it the default zone enter:
  mkzone> zone2 --defaultzone -f
 
 =item 3.
-
 To make a new zone2A using the ssh id_rsa private key in /root/.ssh:
 
  mkzone zone2A -k /root/.ssh
 
 =item 4.
-
 To make a new zone3 and assign the noderange compute3 to the zone  enter:
 
  mkzone zone3 -a compute3
@@ -99,7 +97,6 @@ To make a new zone4 and assign the noderange compute4 to the zone and add zone4 
  mkzone zone4 -a compute4 -g
 
 =item 6.
-
 To make a new zone5 and assign the noderange compute5 to the zone and add zone5 as a group to each node but not allow passwordless ssh between the nodes  enter:
 
  mkzone zone5 -a compute5 -g -s no

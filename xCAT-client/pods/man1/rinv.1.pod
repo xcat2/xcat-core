@@ -258,7 +258,6 @@ Output is similar to:
  </SYSTEM>
 
 =item 3.
-
 To retrieve 'config' information from the HMC-managed LPAR node3, enter:
 
  rinv node3 config
@@ -270,7 +269,6 @@ Output is similar to:
  node5: Total Memory (MB): 1024
 
 =item 4.
-
 To retrieve information about a VMware node vm1, enter:
 
  rinv vm1
@@ -287,7 +285,6 @@ Output is similar to:
 B<zVM specific :>
 
 =item 5.
-
 To list the defined network names available for a given node:
 
  rinv pokdev61 --getnetworknames
@@ -304,7 +301,6 @@ Output is similar to:
  pokdev61: VSWITCH SYSTEM VSW3
 
 =item 6.
-
 To list the configuration for a given network:
 
  rinv pokdev61 --getnetwork GLAN1
@@ -317,7 +313,6 @@ Output is similar to:
  pokdev61:   Isolation Status: OFF
 
 =item 7.
-
 To list the disk pool names available:
 
  rinv pokdev61 --diskpoolnames
@@ -329,7 +324,6 @@ Output is similar to:
  pokdev61: POOL3
 
 =item 8.
-
 List the configuration for a given disk pool:
 
  rinv pokdev61 --diskpool POOL1 free
@@ -342,7 +336,6 @@ Output is similar to:
 
 
 =item 9.
-
 List the known zFCP pool names.
 
  rinv pokdev61 --zfcppoolnames
@@ -354,7 +347,6 @@ Output is similar to:
  pokdev61: zfcp3
 
 =item 10.
-
 List the SCSI/FCP devices contained in a given zFCP pool:
 
  rinv pokdev61 --zfcppool zfcp1
