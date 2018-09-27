@@ -1,6 +1,7 @@
 start:export_import_single_ppc_by_json
 description:This case is used to test xcat-inventory export and import one ppc definition by json between 2 exact same MNs. This case can cover hmc,lpar. Before running this case, make sure these two MNs have been installed same exactly, and the current MN can connect the other MN by ssh without password. This case also can be run in one MN, this is, export from currnet node then import back to currnet node, in this case, just need to set $$DSTMN=<currnet node ip>
 Attribute: $$DSTMN - the ip of MN which is used to run import operation.
+label:others,xcat_inventory
 cmd:mkdir -p /tmp/export_import_single_ppc_by_json
 check:rc==0
 cmd:ssh $$DSTMN 'mkdir -p /tmp/export_import_single_ppc_by_json_$$DSTMN/'
@@ -53,6 +54,7 @@ end
 start:export_import_single_ppc_by_yaml
 description:This case is used to test xcat-inventory export and import one ppc definition by yaml between 2 exact same MNs. This case can  cover hmc,lpar. Before running this case, make sure these two MNs have been installed same exactly, and the current MN can connect the other MN by ssh without password. This case also can run in one MN, this is, export from currnet node then import back to currnet node, in this case, just need to set $$DSTMN=<currnet node ip>
 Attribute: $$DSTMN - the ip of MN which is used to run import operation.
+label:others,xcat_inventory
 cmd:mkdir -p /tmp/export_import_single_ppc_by_yaml
 check:rc==0
 cmd:ssh $$DSTMN 'mkdir -p /tmp/export_import_single_ppc_by_yaml_$$DSTMN/'
@@ -105,6 +107,7 @@ end
 start:export_import_single_kvm_by_json
 description:This case is used to test xcat-inventory export and import one kvm definition by json between 2 exact same MNs. Before running this case, make sure these two MNs have been installed same exactly, and the current MN can connect the other MN by ssh without password. This case also can be run in one MN, this is, export from currnet node then import back to currnet node, in this case, just need to set $$DSTMN=<currnet node ip>
 Attribute: $$DSTMN - the ip of MN which is used to run import operation.
+label:others,xcat_inventory
 cmd:mkdir -p /tmp/export_import_single_kvm_by_json
 check:rc==0
 cmd:ssh $$DSTMN 'mkdir -p /tmp/export_import_single_kvm_by_json_$$DSTMN/'
@@ -158,6 +161,7 @@ end
 start:export_import_single_kvm_by_yaml
 description:This case is used to test xcat-inventory export and import one kvm definition by yaml between 2 exact same MNs. Before running this case, make sure these two MNs have been installed same exactly, and the current MN can connect the other MN by ssh without password. This case also can be run in one MN, this is, export from currnet node then import back to currnet node, in this case, just need to set $$DSTMN=<currnet node ip>
 Attribute: $$DSTMN - the ip of MN which is used to run import operation.
+label:others,xcat_inventory
 cmd:mkdir -p /tmp/export_import_single_kvm_by_yaml
 check:rc==0
 cmd:ssh $$DSTMN 'mkdir -p /tmp/export_import_single_kvm_by_yaml_$$DSTMN/'
@@ -211,6 +215,7 @@ end
 start:export_import_single_pdu_by_json
 description:This case is used to test xcat-inventory export and import one pdu definition by json between 2 exact same MNs. Before running this case, make sure these two MNs have been installed same exactly, and the current MN can connect the other MN by ssh without password. This case also can be run in one MN, this is, export from currnet node then import back to currnet node, in this case, just need to set $$DSTMN=<currnet node ip>
 Attribute: $$DSTMN - the ip of MN which is used to run import operation.
+label:others,xcat_inventory
 cmd:mkdir -p /tmp/export_import_single_pdu_by_json
 check:rc==0
 cmd:ssh $$DSTMN 'mkdir -p /tmp/export_import_single_pdu_by_json_$$DSTMN/'
@@ -263,6 +268,7 @@ end
 start:export_import_single_pdu_by_yaml
 description:This case is used to test xcat-inventory export and import one pdu definition by yaml between 2 exact same MNs. Before running this case, make sure these two MNs have been installed same exactly, and the current MN can connect the other MN by ssh without password. This case also can be run in one MN, this is, export from currnet node then import back to currnet node, in this case, just need to set $$DSTMN=<currnet node ip>
 Attribute: $$DSTMN - the ip of MN which is used to run import operation.
+label:others,xcat_inventory
 cmd:mkdir -p /tmp/export_import_single_pdu_by_yaml
 check:rc==0
 cmd:ssh $$DSTMN 'mkdir -p /tmp/export_import_single_pdu_by_yaml_$$DSTMN/'
@@ -315,6 +321,7 @@ end
 start:export_import_single_boston_by_yaml
 description:This case is used to test xcat-inventory export and import one boston node definition by yaml between 2 exact same MNs. This case can also cover p8 physical node, x86 physical node. Before running this case, make sure these two MNs have been installed same exactly, and the current MN can connect the other MN by ssh without password. This case also can be run in one MN, this is, export from currnet node then import back to currnet node, in this case, just need to set $$DSTMN=<currnet node ip>
 Attribute: $$DSTMN - the ip of MN which is used to run import operation.
+label:others,xcat_inventory
 cmd:mkdir -p /tmp/export_import_single_boston_by_yaml
 check:rc==0
 cmd:ssh $$DSTMN 'mkdir -p /tmp/export_import_single_boston_by_yaml_$$DSTMN/'
@@ -366,6 +373,7 @@ end
 start:export_import_single_boston_by_json
 description:This case is used to test xcat-inventory export and import one boston node definition by json between 2 exact same MNs. This case can also cover p8 physical node, x86 physical node. Before running this case, make sure these two MNs have been installed same exactly, and the current MN can connect the other MN by ssh without password. This case also can be run in one MN, this is, export from currnet node then import back to currnet node, in this case, just need to set $$DSTMN=<currnet node ip>
 Attribute: $$DSTMN - the ip of MN which is used to run import operation.
+label:others,xcat_inventory
 cmd:mkdir -p /tmp/export_import_single_boston_by_json
 check:rc==0
 cmd:ssh $$DSTMN 'mkdir -p /tmp/export_import_single_boston_by_json_$$DSTMN/'
@@ -417,6 +425,7 @@ end
 start:export_import_single_witherspoon_by_yaml
 description:This case is used to test xcat-inventory export and import one witherspoon node definition by yaml between 2 exact same MNs. Before running this case, make sure these two MNs have been installed same exactly, and the current MN can connect the other MN by ssh without password. This case also can be run in one MN, this is, export from currnet node then import back to currnet node, in this case, just need to set $$DSTMN=<currnet node ip>
 Attribute: $$DSTMN - the ip of MN which is used to run import operation.
+label:others,xcat_inventory
 cmd:mkdir -p /tmp/export_import_single_witherspoon_by_yaml
 check:rc==0
 cmd:ssh $$DSTMN 'mkdir -p /tmp/export_import_single_witherspoon_by_yaml_$$DSTMN/'
@@ -468,6 +477,7 @@ end
 start:export_import_single_witherspoon_by_json
 description:This case is used to test xcat-inventory export and import one witherspoon node definition by json between 2 exact same MNs. Before running this case, make sure these two MNs have been installed same exactly, and the current MN can connect the other MN by ssh without password. This case also can be run in one MN, this is, export from currnet node then import back to currnet node, in this case, just need to set $$DSTMN=<currnet node ip>
 Attribute: $$DSTMN - the ip of MN which is used to run import operation.
+label:others,xcat_inventory
 cmd:mkdir -p /tmp/export_import_single_witherspoon_by_json
 check:rc==0
 cmd:ssh $$DSTMN 'mkdir -p /tmp/export_import_single_witherspoon_by_json_$$DSTMN/'
@@ -520,6 +530,7 @@ end
 start:export_import_single_switch_by_json
 description:This case is used to test xcat-inventory export and import one switch node definition by json between 2 exact same MNs. Before running this case, make sure these two MNs have been installed same exactly, and the current MN can connect the other MN by ssh without password. This case also can be run in one MN, this is, export from currnet node then import back to currnet node, in this case, just need to set $$DSTMN=<currnet node ip>
 Attribute: $$DSTMN - the ip of MN which is used to run import operation.
+label:others,xcat_inventory
 cmd:mkdir -p /tmp/export_import_single_switch_by_json
 check:rc==0
 cmd:ssh $$DSTMN 'mkdir -p /tmp/export_import_single_switch_by_json_$$DSTMN/'
@@ -571,6 +582,7 @@ end
 start:export_import_single_switch_by_yaml
 description:This case is used to test xcat-inventory export and import one switch node definition by yaml between 2 exact same MNs. Before running this case, make sure these two MNs have been installed same exactly, and the current MN can connect the other MN by ssh without password. This case also can be run in one MN, this is, export from currnet node then import back to currnet node, in this case, just need to set $$DSTMN=<currnet node ip>
 Attribute: $$DSTMN - the ip of MN which is used to run import operation.
+label:others,xcat_inventory
 cmd:mkdir -p /tmp/export_import_single_switch_by_yaml
 check:rc==0
 cmd:ssh $$DSTMN 'mkdir -p /tmp/export_import_single_switch_by_yaml_$$DSTMN/'
@@ -623,6 +635,7 @@ end
 start:export_import_nodes_delimited_with_comma_by_yaml
 description:This case is used to test xcat-inventory export and import the definition of nodes delimited with comma by yaml between 2 exact same MNs.Before running this case, make sure these two MNs have been installed same exactly, and the current MN can connect the other MN by ssh without password. This case also can be run in one MN, this is, export from currnet node then import back to currnet node, in this case, just need to set $$DSTMN=<currnet node ip>
 Attribute: $$DSTMN - the ip of MN which is used to run import operation.
+label:others,xcat_inventory
 cmd:mkdir -p /tmp/export_import_nodes_delimited_with_comma_by_yaml
 check:rc==0
 cmd:ssh $$DSTMN 'mkdir -p /tmp/export_import_nodes_delimited_with_comma_by_yaml_$$DSTMN/'
@@ -674,6 +687,7 @@ end
 start:export_import_nodes_delimited_with_comma_by_json
 description:This case is used to test xcat-inventory export and import the definition of nodes delimited with comma by json between 2 exact same MNs.Before running this case, make sure these two MNs have been installed same exactly, and the current MN can connect the other MN by ssh without password. This case also can be run in one MN, this is, export from currnet node then import back to currnet node, in this case, just need to set $$DSTMN=<currnet node ip>
 Attribute: $$DSTMN - the ip of MN which is used to run import operation.
+label:others,xcat_inventory
 cmd:mkdir -p /tmp/export_import_nodes_delimited_with_comma_by_json
 check:rc==0
 cmd:ssh $$DSTMN 'mkdir -p /tmp/export_import_nodes_delimited_with_comma_by_json_$$DSTMN/'
@@ -725,6 +739,7 @@ end
 
 start:xcat_inventory_try_to_export_nonexisted_node
 description:This case is used to test xcat-inventory export a nonexisted node
+label:others,xcat_inventory
 cmd:mkdir -p /tmp/xcat_inventory_try_to_export_nonexisted_node
 check:rc==0
 cmd:lsdef bogusnode > /dev/null 2>&1;if [[ $? -eq 0 ]]; then lsdef bogusnode -z >/tmp/xcat_inventory_try_to_export_nonexisted_node/bogusnode.stanza ;rmdef bogusnode;fi
@@ -743,6 +758,7 @@ end
 
 start:xcat_inventory_try_to_import_nonexisted_node
 description:This case is used to test xcat-inventory import a nonexisted node
+label:others,xcat_inventory
 cmd:mkdir -p /tmp/xcat_inventory_try_to_import_nonexisted_node
 check:rc==0
 cmd:lsdef bogusnode > /dev/null 2>&1;if [[ $? -eq 0 ]]; then lsdef bogusnode -z >/tmp/xcat_inventory_try_to_import_nonexisted_node/bogusnode.stanza ;rmdef bogusnode;fi
@@ -768,6 +784,7 @@ check:rc==0
 end
 
 start:xcat_inventory_try_to_export_all_type_is_node_default_format
+label:others,xcat_inventory
 description:This case is used to test xcat-inventory export all definition which type is node by default format. I.e, do not specify the format of export.
 cmd:mkdir -p /tmp/xcat_inventory_try_to_export_all_type_is_node_default_format
 check:rc==0
@@ -810,6 +827,7 @@ end
 
 
 start:xcat_inventory_try_to_export_all_type_is_node_yaml_format
+label:others,xcat_inventory
 description:This case is used to test xcat-inventory export all definition which type is node by yaml format.
 cmd:mkdir -p /tmp/xcat_inventory_try_to_export_all_type_is_node_yaml_format
 check:rc==0
@@ -852,6 +870,7 @@ end
 
 
 start:xcat_inventory_try_to_export_all_type_is_node_json_format
+label:others,xcat_inventory
 description:This case is used to test xcat-inventory export all definition which type is node by json format.
 cmd:mkdir -p /tmp/xcat_inventory_try_to_export_all_type_is_node_json_format
 check:rc==0
@@ -892,6 +911,7 @@ check:rc==0
 end
 
 start:xcat_inventory_try_to_import_all_type_is_node_yaml_format
+label:others,xcat_inventory
 description:This case is used to test xcat-inventory import all definition which type is node from a yaml file.
 cmd:mkdir -p /tmp/xcat_inventory_try_to_import_all_type_is_node_yaml_format
 check:rc==0
@@ -1216,6 +1236,7 @@ end
 
 
 start:xcat_inventory_try_to_import_all_type_is_node_json_format
+label:others,xcat_inventory
 description:This case is used to test xcat-inventory import all definition which type is node from a yaml file.
 cmd:mkdir -p /tmp/xcat_inventory_try_to_import_all_type_is_node_json_format
 check:rc==0
@@ -1618,6 +1639,7 @@ check:rc==0
 end
 
 start:export_more_nodes_import_part_nodes_json
+label:others,xcat_inventory
 description:This case is used to test xcat-inventory import all definition which type is node from a yaml file.
 cmd:mkdir -p /tmp/export_more_nodes_import_part_nodes_json
 check:rc==0
@@ -1660,6 +1682,7 @@ check:rc==0
 end
 
 start:export_more_nodes_import_part_nodes_yaml
+label:others,xcat_inventory
 description:This case is used to test xcat-inventory import all definition which type is node from a yaml file.
 cmd:mkdir -p /tmp/export_more_nodes_import_part_nodes_yaml
 check:rc==0
@@ -1702,6 +1725,7 @@ check:rc==0
 end
 
 start:export_single_node_then_modify_yaml_then_import
+label:others,xcat_inventory
 description:This case is used to test xcat-inventory import a node , then modify the export yaml file, then import the yaml file
 Attribute: $$DSTMN - the ip of MN which is used to run import operation.
 cmd:mkdir -p /tmp/export_single_node_then_modify_yaml_then_import
@@ -1782,6 +1806,7 @@ end
 start:export_single_node_then_modify_json_then_import
 description:This case is used to test xcat-inventory import a node , then modify the export json file, then import the json file
 Attribute: $$DSTMN - the ip of MN which is used to run import operation.
+label:others,xcat_inventory
 cmd:mkdir -p /tmp/export_single_node_then_modify_json_then_import
 check:rc==0
 cmd:ssh $$DSTMN 'mkdir -p /tmp/export_single_node_then_modify_json_then_import_$$DSTMN/'
@@ -1856,6 +1881,7 @@ check:rc==0
 end
 
 start:export_import_single_group_json
+label:others,xcat_inventory
 description:This case is used to test xcat-inventory export and import the definition of group
 cmd:mkdir -p /tmp/export_import_single_group_json
 check:rc==0
@@ -1918,6 +1944,7 @@ check:rc==0
 end
 
 start:export_import_single_group_yaml
+label:others,xcat_inventory
 description:This case is used to test xcat-inventory export and import the definition of group
 cmd:mkdir -p /tmp/export_import_single_group_yaml
 check:rc==0
@@ -1980,6 +2007,7 @@ check:rc==0
 end
 
 start:import_validation_node_obj_type
+label:others,xcat_inventory
 description:This case is used to test node validation function of xcat-inventory import yaml and json file. To test "obj_type" attribute
 cmd:mkdir -p /tmp/import_validation_node_obj_type_bak
 check:rc==0
@@ -2004,6 +2032,7 @@ check:rc==0
 end
 
 start:import_validation_node_obj_info_groups
+label:others,xcat_inventory
 description:This case is used to test node validation function of xcat-inventory import yaml and json file. To test "obj_info.groups" attribute
 cmd:mkdir -p /tmp/import_validation_node_obj_info_groups_bak
 check:rc==0
@@ -2024,6 +2053,7 @@ check:rc==0
 end
 
 start:import_validation_node_device_type
+label:others,xcat_inventory
 description:This case is used to test node validation function of xcat-inventory import yaml and json file. To test "device_type" attribute
 cmd:mkdir -p /tmp/import_validation_node_device_type_bak
 check:rc==0
@@ -2054,6 +2084,7 @@ check:rc==0
 end
 
 start:import_validation_node_device_info_arch
+label:others,xcat_inventory
 description:This case is used to test node validation function of xcat-inventory import yaml and json file. To test "device_info.arch" attribute
 cmd:mkdir -p /tmp/import_validation_node_device_info_arch_bak
 check:rc==0
@@ -2084,6 +2115,7 @@ check:rc==0
 end
 
 start:import_validation_node_security_info_snmp_securitylevel
+label:others,xcat_inventory
 description:This case is used to test node validation function of xcat-inventory import yaml and json file. To test "security_info.snmp.securitylevel" attribute
 cmd:mkdir -p /tmp/import_validation_node_security_info_snmp_securitylevel_bak
 check:rc==0
@@ -2112,6 +2144,7 @@ check:rc==0
 end
 
 start:import_validation_node_security_info_snmp_authprotocol
+label:others,xcat_inventory
 description:This case is used to test node validation function of xcat-inventory import yaml and json file. To test "security_info.snmp.authprotocol" attribute
 cmd:mkdir -p /tmp/import_validation_node_security_info_snmp_authprotocol_bak
 check:rc==0
@@ -2143,6 +2176,7 @@ end
 
 
 start:import_validation_node_security_info_snmp_privacyprotocol
+label:others,xcat_inventory
 description:This case is used to test node validation function of xcat-inventory import yaml and json file. To test "security_info.snmp.privacyprotocol" attribute
 cmd:mkdir -p /tmp/import_validation_node_security_info_snmp_privacyprotocol_bak
 check:rc==0
@@ -2172,6 +2206,7 @@ end
 
 
 start:import_validation_node_security_info_remotecontrol_remoteprotocol
+label:others,xcat_inventory
 descrremoteprotocoltion:This case is used to test node validation function of xcat-inventory import yaml and json file. To test "security_info.remotecontrol.remoteprotocol" attribute
 cmd:mkdir -p /tmp/import_validation_node_security_info_remotecontrol_remoteprotocol_bak
 check:rc==0
@@ -2198,6 +2233,7 @@ check:rc==0
 end
 
 start:import_validation_node_network_info_primarynic_ip
+label:others,xcat_inventory
 description:This case is used to test node validation function of xcat-inventory import yaml and json file. To test "network_info.primarynic.ip" attribute
 cmd:mkdir -p /tmp/import_validation_node_network_info_primarynic_ip_bak
 check:rc==0
@@ -2224,6 +2260,7 @@ check:rc==0
 end
 
 start:import_validation_node_network_info_primarynic_mac
+label:others,xcat_inventory
 descrmaction:This case is used to test node validation function of xcat-inventory import yaml and json file. To test "network_info.primarynic.mac" attribute
 cmd:mkdir -p /tmp/import_validation_node_network_info_primarynic_mac_bak
 check:rc==0
@@ -2248,6 +2285,7 @@ check:rc==0
 end
 
 start:import_validation_node_nics_network_info_nics_ips
+label:others,xcat_inventory
 descrnics_network_info_nics_ipstion:This case is used to test node validation function of xcat-inventory import yaml and json file. To test "network_info.nics.ips" attribute
 cmd:mkdir -p /tmp/import_validation_node_nics_network_info_nics_ips_bak
 check:rc==0
@@ -2275,6 +2313,7 @@ end
 
 
 start:import_validation_node_network_info_primarynic_switchport
+label:others,xcat_inventory
 descrswitchporttion:This case is used to test node validation function of xcat-inventory import yaml and json file. To test "network_info.primarynic.switchport" attribute
 cmd:mkdir -p /tmp/import_validation_node_network_info_primarynic_switchport_bak
 check:rc==0
@@ -2298,6 +2337,7 @@ end
 
 
 start:import_validation_node_engines_hardware_mgt_engine_engine_type
+label:others,xcat_inventory
 descrengine_typetion:This case is used to test node validation function of xcat-inventory import yaml and json file. To test "engines.hardware_mgt_engine.engine_type" attribute
 cmd:mkdir -p /tmp/import_validation_node_engines_hardware_mgt_engine_engine_type_bak
 check:rc==0
@@ -2342,6 +2382,7 @@ end
 
 
 start:import_validation_node_engines_netboot_engine_engine_type
+label:others,xcat_inventory
 descrengine_typetion:This case is used to test node validation function of xcat-inventory import yaml and json file. To test "engines.netboot_engine.engine_type" attribute
 cmd:mkdir -p /tmp/import_validation_node_engines_netboot_engine_engine_type_bak
 check:rc==0
@@ -2375,6 +2416,7 @@ end
 
 
 start:import_validation_node_role
+label:others,xcat_inventory
 descrroletion:This case is used to test node validation function of xcat-inventory import yaml and json file. To test "role" attribute
 cmd:mkdir -p /tmp/import_validation_node_role_bak
 check:rc==0
@@ -2401,6 +2443,7 @@ check:rc==0
 end
 
 start:import_validation_node_role_info_setuptftp
+label:others,xcat_inventory
 descrsetuptftption:This case is used to test node validation function of xcat-inventory import yaml and json file. To test "role_info.setuptftp" attribute
 cmd:mkdir -p /tmp/import_validation_node_role_info_setuptftp_bak
 check:rc==0
@@ -2427,6 +2470,7 @@ check:rc==0
 end
 
 start:import_validation_node_role_info_setupnameserver
+label:others,xcat_inventory
 descrsetupnameservertion:This case is used to test node validation function of xcat-inventory import yaml and json file. To test "role_info.setupnameserver" attribute
 cmd:mkdir -p /tmp/import_validation_node_role_info_setupnameserver_bak
 check:rc==0
@@ -2455,6 +2499,7 @@ end
 
 
 start:import_validation_node_role_info_setupdhcp
+label:others,xcat_inventory
 descrsetupdhcption:This case is used to test node validation function of xcat-inventory import yaml and json file. To test "role_info.setupdhcp" attribute
 cmd:mkdir -p /tmp/import_validation_node_role_info_setupdhcp_bak
 check:rc==0
@@ -2480,6 +2525,7 @@ cmd:rm -rf /tmp/import_validation_node_role_info_setupdhcp_bak
 end
 
 start:import_validation_node_role_info_setupntp
+label:others,xcat_inventory
 descrsetupntption:This case is used to test node validation function of xcat-inventory import yaml and json file. To test "role_info.setupntp" attribute
 cmd:mkdir -p /tmp/import_validation_node_role_info_setupntp_bak
 check:rc==0
@@ -2505,6 +2551,7 @@ cmd:rm -rf /tmp/import_validation_node_role_info_setupntp_bak
 end
 
 start:import_validation_node_role_info_setupldap
+label:others,xcat_inventory
 descrsetupldaption:This case is used to test node validation function of xcat-inventory import yaml and json file. To test "role_info.setupldap" attribute
 cmd:mkdir -p /tmp/import_validation_node_role_info_setupldap_bak
 check:rc==0
@@ -2530,6 +2577,7 @@ cmd:rm -rf /tmp/import_validation_node_role_info_setupldap_bak
 end
 
 start:import_validation_node_role_info_setupproxydhcp
+label:others,xcat_inventory
 descrsetupproxydhcption:This case is used to test node validation function of xcat-inventory import yaml and json file. To test "role_info.setupproxydhcp" attribute
 cmd:mkdir -p /tmp/import_validation_node_role_info_setupproxydhcp_bak
 check:rc==0
@@ -2555,6 +2603,7 @@ cmd:rm -rf /tmp/import_validation_node_role_info_setupproxydhcp_bak
 end
 
 start:import_validation_node_role_info_setupipforward
+label:others,xcat_inventory
 descrsetupipforwardtion:This case is used to test node validation function of xcat-inventory import yaml and json file. To test "role_info.setupipforward" attribute
 cmd:mkdir -p /tmp/import_validation_node_role_info_setupipforward_bak
 check:rc==0
@@ -2580,6 +2629,7 @@ cmd:rm -rf /tmp/import_validation_node_role_info_setupipforward_bak
 end
 
 start:import_validation_node_role_info_setupconserver
+label:others,xcat_inventory
 descrsetupnfstion:This case is used to test node validation function of xcat-inventory import yaml and json file. To test "role_info.setupconserver" attribute
 cmd:mkdir -p /tmp/import_validation_node_role_info_setupconserver_bak
 check:rc==0
@@ -2609,6 +2659,7 @@ end
 
 
 start:import_validation_node_role_info_setupnfs
+label:others,xcat_inventory
 descrsetupconservertion:This case is used to test node validation function of xcat-inventory import yaml and json file. To test "role_info.setupnfs" attribute
 cmd:mkdir -p /tmp/import_validation_node_role_info_setupnfs_bak
 check:rc==0

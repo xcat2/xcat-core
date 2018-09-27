@@ -1,5 +1,6 @@
 start:xcat_inventory_option_h
 description:This case is used to test xcat-inventory usage information
+label:others,xcat_inventory
 cmd:xcat-inventory -h
 check:ouptut=~usage: xcat-inventory
 check:ouptut!~usage: xcat-inventory export
@@ -24,6 +25,7 @@ end
 
 start:xcat_inventory_option_V
 description:This case is used to test xcat-inventory option V which used to get version information
+label:others,xcat_inventory
 cmd:xcat-inventory -V
 check:ouptut=~\d\.\d
 check:rc==0
@@ -31,6 +33,7 @@ end
 
 start:xcat_inventory_invalid_subcmd
 description:This case is used to test xcat-inventory export subcommand to handle invalid subcommand. The vaild subcommand are export and import.
+label:others,xcat_inventory
 cmd:xcat-inventory aaa
 check:output=~ Error: not a valid subcommand to run
 check:output=~ usage:
@@ -39,6 +42,7 @@ end
 
 start:xcat_inventory_export_option_t_invalid_type
 description:This case is used to test xcat-inventory export subcommand to handle invalid type for option t
+label:others,xcat_inventory
 cmd:xcat-inventory export -t aaa
 check:output=~Invalid object type
 check:output!~Traceback (most recent call last):
@@ -47,6 +51,7 @@ end
 
 start:xcat_inventory_export_option_format_invalid_type
 description:This case is used to test xcat-inventory export subcommand to handle invalid type for option format
+label:others,xcat_inventory
 cmd:xcat-inventory export --format aaa
 check:output=~Invalid exporting format: aaa
 check:output!~Traceback (most recent call last):
@@ -55,6 +60,7 @@ end
 
 start:xcat_inventory_export_option_f
 description:This case is used to test xcat-inventory export subcommand to handle option f
+label:others,xcat_inventory
 cmd:dir="/tmp/xcat_inventory_export_option_f";echo ${dir}".old";if [ -d "${dir}" ];then mv ${dir} ${dir}".old"; fi; mkdir -p $dir
 check:rc==0
 cmd:lsdef bogusnode > /dev/null 2>&1;if [[ $? -eq 0 ]]; then lsdef bogusnode -z >/tmp/xcat_inventory_export_option_f/bogusnode.stanza ;rmdef bogusnode;fi
@@ -99,6 +105,7 @@ end
 
 start:xcat_inventory_import_option_f_invalid_file
 description:This case is used to test xcat-inventory import subcommand to handle invalid file for option f
+label:others,xcat_inventory
 cmd:mkdir -p /tmp/xcat_inventory_import_option_f_invalid_file
 check:rc==0
 #to handle a non-existed file
@@ -150,6 +157,7 @@ end
 
 start:xcat_inventory_import_option_t_invalid_type
 description:This case is used to test xcat-inventory import subcommand to handle invalid type for option t
+label:others,xcat_inventory
 cmd:xcat-inventory import -t aaa
 check:output=~Invalid object type
 check:output!~Traceback (most recent call last):
@@ -159,6 +167,7 @@ end
 
 start:xcat_inventory_import_miss_option
 description:This case is used to test xcat-inventory import subcommand to handle missing -t or -o option
+label:others,xcat_inventory
 cmd:mkdir -p /tmp/export_import_nodes_delimited_with_comma_by_json
 check:rc==0
 cmd:#!/usr/bin/bash
