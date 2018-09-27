@@ -1,5 +1,6 @@
 start:xcat_inventory_import_validation_passwd
 description:This case is used to test passwd validation function of xcat-inventory import yaml and json file. To test "cryptmethod" attribute
+label:others,xcat_inventory
 cmd:tabdump -w 'key==autotest' passwd |grep autotest > /dev/null 2>&1;if [[ $? -eq 0 ]]; then xcat-inventory export -t passwd -o autotest >/tmp/xcat_inventory_import_validation_passwd_bak/autotest ;tabch -d 'key==autotest' passwd;fi
 check:rc==0
 cmd:mkdir -p /tmp/xcat_inventory_import_validation_passwd_bak

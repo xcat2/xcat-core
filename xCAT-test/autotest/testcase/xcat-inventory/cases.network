@@ -1,5 +1,6 @@
 start:xcat_inventory_import_validation_network
 description:This case is used to test network validation function of xcat-inventory import yaml and json file. To test "net" "mask" "dynamicrange" and "staticrange" attributes
+label:others,xcat_inventory
 cmd:lsdef -t network -o autotestnet > /dev/null 2>&1;if [[ $? -eq 0 ]]; then lsdef -t network -o autotestnet -z >/tmp/xcat_inventory_import_validation_network_bak/autotestnet.stanza ;rmdef -t network -o autotestnet;fi
 check:rc==0
 cmd:mkdir -p /tmp/xcat_inventory_import_validation_network_bak

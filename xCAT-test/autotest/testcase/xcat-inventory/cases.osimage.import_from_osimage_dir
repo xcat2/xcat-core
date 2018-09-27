@@ -1,5 +1,6 @@
 start:export_import_an_osimage_directory
 description: import an osimage diretory with `xcat-inventroy import -d <osimage directory>`
+label:others,xcat_inventory
 #backup any existing test_myimage
 cmd:mkdir -p /tmp/export_import_an_osimage_directory/backup
 check:rc==0
@@ -38,6 +39,7 @@ end
 
 start:export_import_multiple_osimages_from_osimage_directory
 description: import multiple osimage diretories  with `xcat-inventroy import -d <osimage directory>`
+label:others,xcat_inventory
 #backup any existing test_myimage,test_myimage2
 cmd:mkdir -p /tmp/export_import_multiple_osimages_from_osimage_directory/backup
 check:rc==0
@@ -91,6 +93,7 @@ end
 
 start:export_import_specified_from_osimage_directory
 description: import specified osimage from osimage diretory with `xcat-inventroy import -d <osimage directory> -t osimage -o`
+label:others,xcat_inventory
 #backup any existing test_myimage
 cmd:mkdir -p /tmp/export_import_specified_from_osimage_directory/backup
 check:rc==0

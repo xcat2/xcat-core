@@ -1,6 +1,7 @@
 start:export_import_site_by_yaml
 description:This case is used to test xcat-inventory export and import site table by yaml between 2 excat same MNs. Before running this case, make sure these two MNs have been installed same excatly, and the current MN can connect the other MN by ssh without password.This case also can be run in one MN, this is, export from currnet node then import back to currnet node, in this case, just need to set $$DSTMN=<currnet node ip>
 Attribute: $$DSTMN - the ip of MN which is used to run import operation.
+label:others,xcat_inventory
 cmd:mkdir -p /tmp/export_import_site_by_yaml
 check:rc==0
 cmd:ssh $$DSTMN 'mkdir -p /tmp/export_import_site_by_yaml_$$DSTMN/'
@@ -47,6 +48,7 @@ end
 start:export_import_site_by_json
 description:This case is used to test xcat-inventory export and import site table by json between 2 excat same MNs. Before running this case, make sure these two MNs have been installed same excatly, and the current MN can connect the other MN by ssh without password.This case also can be run in one MN, this is, export from currnet node then import back to currnet node, in this case, just need to set $$DSTMN=<currnet node ip>
 Attribute: $$DSTMN - the ip of MN which is used to run import operation.
+label:others,xcat_inventory
 cmd:mkdir -p /tmp/export_import_site_by_json
 check:rc==0
 cmd:ssh $$DSTMN 'mkdir -p /tmp/export_import_site_by_json_$$DSTMN/'
@@ -91,6 +93,7 @@ end
 
 
 start:xcat_inventory_try_to_export_all_type_is_site_default_format
+label:others,xcat_inventory
 description:This case is used to test xcat-inventory export all definition which type is site to default file. I.e. json file
 cmd:mkdir -p /tmp/xcat_inventory_try_to_export_all_type_is_site_default_format
 check:rc==0
@@ -207,6 +210,7 @@ check:rc==0
 end
 
 start:xcat_inventory_try_to_export_all_type_is_site_json_format
+label:others,xcat_inventory
 description:This case is used to test xcat-inventory export all definition which type is site to default file. I.e. json file
 cmd:mkdir -p /tmp/xcat_inventory_try_to_export_all_type_is_site_json_format
 check:rc==0
@@ -323,6 +327,7 @@ check:rc==0
 end
 
 start:xcat_inventory_try_to_export_all_type_is_site_yaml_format
+label:others,xcat_inventory
 description:This case is used to test xcat-inventory export all definition which type is site to default file. I.e. json file
 cmd:mkdir -p /tmp/xcat_inventory_try_to_export_all_type_is_site_yaml_format
 check:rc==0
@@ -436,6 +441,7 @@ end
 
 
 start:xcat_inventory_try_to_import_all_type_is_site_json_format
+label:others,xcat_inventory
 description:This case is used to test xcat-inventory impport all definition which type is site from json file.
 cmd:mkdir -p /tmp/xcat_inventory_try_to_import_all_type_is_site_json_format
 check:rc==0
@@ -866,6 +872,7 @@ check:rc==0
 end
 
 start:xcat_inventory_try_to_import_all_type_is_site_yaml_format
+label:others,xcat_inventory
 description:This case is used to test xcat-inventory impport all definition which type is site from json file.
 cmd:mkdir -p /tmp/xcat_inventory_try_to_import_all_type_is_site_yaml_format
 check:rc==0
@@ -1235,6 +1242,7 @@ end
 start:export_site_table_then_modify_yaml_then_import
 This case is used to test xcat-inventory import a site , then modify the export yaml file, then import the yaml file
 Attribute: $$DSTMN - the ip of MN which is used to run import operation.
+label:others,xcat_inventory
 cmd:mkdir -p /tmp/export_site_table_then_modify_yaml_then_import
 check:rc==0
 cmd:ssh $$DSTMN 'mkdir -p /tmp/export_site_table_then_modify_yaml_then_import_$$DSTMN/'
@@ -1298,6 +1306,7 @@ end
 start:export_site_table_then_modify_json_then_import
 This case is used to test xcat-inventory import a site , then modify the export json file, then import the json file
 Attribute: $$DSTMN - the ip of MN which is used to run import operation.
+label:others,xcat_inventory
 cmd:mkdir -p /tmp/export_site_table_then_modify_json_then_import
 check:rc==0
 cmd:ssh $$DSTMN 'mkdir -p /tmp/export_site_table_then_modify_json_then_import_$$DSTMN/'

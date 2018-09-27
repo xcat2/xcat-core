@@ -1,6 +1,6 @@
 start: xcat_inventory_import_validation_site
 description: verify the validation mechanisom while importing site object
-
+label:others,xcat_inventory
 cmd: rm -rf /tmp/xcat_inventory_import_validation_site
 cmd: mkdir -p /tmp/xcat_inventory_import_validation_site
 cmd: mkdir -p /tmp/xcat_inventory_import_validation_site/trash/

@@ -1,6 +1,6 @@
 start: xcat_inventory_import_validation_osimage
 description: verify the validation mechanisom while importing osimage object
-
+label:others,xcat_inventory
 cmd: rm -rf /tmp/xcat_inventory_import_validation_osimage
 cmd: mkdir -p /tmp/xcat_inventory_import_validation_osimage
 cmd: mkdir -p /tmp/xcat_inventory_import_validation_osimage/trash/
