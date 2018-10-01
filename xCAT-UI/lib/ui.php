@@ -72,7 +72,7 @@ function login() {
         <div id="login-form">
             <table>
                 <tr><td colspan=5></td></tr>
-                <tr><td align=right><img src="images/logo.png" width="50" height="35"></img></td><td colspan=4 style="font-size: 18px;">eXtreme Cloud Administration Toolkit</td></tr>
+                <tr><td align=right><img src="images/logo.png" width="50" height="35"></img></td><td colspan=4 style="font-size: 18px;">Extreme Cluster/Cloud Administration Toolkit</td></tr>
                 <tr><td colspan=5></td></tr>
                 <tr><td></td><td><label for=username>User name:</label></td><td colspan=2><input type=text name=username></td><td></td></tr>
                 <tr><td></td><td><label for=password>Password:</label></td><td colspan=2><input type=password name=password></td><td></td></tr>

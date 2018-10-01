@@ -31,7 +31,7 @@ Requires: httpd
 %endif
 
 %description
-Provides a browser-based interface for xCAT (Extreme Cloud Administration Toolkit).
+Provides a browser-based interface for xCAT (Extreme Cluster/Cloud Administration Toolkit).
 
 %prep
 %setup -q -n xCAT-UI
