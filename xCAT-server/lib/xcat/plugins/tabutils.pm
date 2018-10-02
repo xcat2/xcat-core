@@ -1749,14 +1749,17 @@ sub nodech
                                     my $cent = $tabhdl->getNodeAttribs($entity, [$key]);
                                     if ($cent) { $curval = $cent->{$key}; }
                                 }
-                                if ($curval) {
-                                    my @vals = split(/,/, $curval);
-                                    if (grep /^$val$/, @vals) { #only bother if there
-                                        @vals = grep(!/^$val$/, @vals);
-                                        my $newval = join(',', @vals);
-                                        $uhsh{$key} = $newval;
-                                    }
-                                }  #else, what they asked for is the case alredy
+                                foreach my $subval (split/,/, $val) {
+                                    if ($curval) {
+                                        my @vals = split(/,/, $curval);
+                                        if (grep /^$subval$/, @vals) { #only bother if there
+                                            @vals = grep(!/^$subval$/, @vals);
+                                            my $newval = join(',', @vals);
+                                            $uhsh{$key} = $newval;
+                                            $curval = $newval;
+                                        }
+                                    }  #else, what they asked for is the case alredy
+                                }
                             }
                         }    # end of while @valoppairs
                     }    # end of foreach column specified for this table
