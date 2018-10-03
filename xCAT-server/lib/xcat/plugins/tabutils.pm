@@ -1730,11 +1730,14 @@ sub nodech
                                     if ($cent) { $curval = $cent->{$key}; }
                                 }
                                 if ($curval) {
-                                    my @vals = split(/,/, $curval);
-                                    unless (grep /^$val$/, @vals) {
-                                        unshift @vals, $val;
-                                        my $newval = join(',', @vals);
-                                        $uhsh{$key} = $newval;
+                                    foreach my $subval (split /,/, $val) {
+                                        my @vals = split(/,/, $curval);
+                                        unless (grep /^$subval$/, @vals) {
+                                            unshift @vals, $subval;
+                                            my $newval = join(',', @vals);
+                                            $uhsh{$key} = $newval;
+                                            $curval = $newval;
+                                        }
                                     }
                                 } else {
                                     $uhsh{$key} = $val;
