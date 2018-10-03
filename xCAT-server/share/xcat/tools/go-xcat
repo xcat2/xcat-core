@@ -63,7 +63,7 @@ function usage()
 	  ${script} --xcat-core=http://xcat.org/path/to/xcat-core.tar.bz2 \\
 	          --xcat-dep=http://xcat.org/path/to/xcat-dep.tar.bz2 install
 
-	xCAT (Extreme Cluster/Cloud Administration Toolkit): <http://xcat.org/>
+	xCAT: <http://xcat.org/>
 	Full documentation at: <http://xcat-docs.readthedocs.io/en/stable/>
 	EOF
 }

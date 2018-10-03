@@ -9,4 +9,4 @@ Package: xcat-ui
 Architecture: all
 Depends: ${perl:Depends}, python (>= 2.3), apache2, libapache2-mod-php
 Description: Provides a browser-based interface for xCAT
- Provides a browser-based interface for xCAT (Extreme Cluster/Cloud Administration Toolkit).
+ Provides a browser-based interface for xCAT.

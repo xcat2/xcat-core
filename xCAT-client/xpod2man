@@ -149,11 +149,11 @@ sub writesummarypage {
     print FILE <<'EOS1';
 =head1 NAME
 
-B<xcat> - Extreme Cluster/Cloud Administration Toolkit.
+B<xcat> - Extreme Cloud Administration Toolkit.
 
 =head1 DESCRIPTION
 
-Extreme Cluster/Cloud Administration Toolkit (xCAT). xCAT is a scalable distributed computing management
+Extreme Cloud Administration Toolkit (xCAT). xCAT is a scalable distributed computing management
 and provisioning tool that provides a unified interface for hardware control, discovery, and
 OS diskful/diskfree deployment.
 

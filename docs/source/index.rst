@@ -1,7 +1,7 @@
-Extreme Cluster/Cloud Administration Toolkit
-============================================
+Extreme Cloud Administration Toolkit
+====================================
 
-xCAT stands for E\ **x**\ treme **C**\ loud/\ **C**\ luster **A**\ dministration **T**\ oolkit.
+xCAT stands for E\ **x**\ treme **C**\ loud **A**\ dministration **T**\ oolkit.
 
 xCAT offers complete management of clouds, clusters, HPC, grids, datacenters,
 renderfarms, online gaming infrastructure, and whatever tomorrows next buzzword may be.
