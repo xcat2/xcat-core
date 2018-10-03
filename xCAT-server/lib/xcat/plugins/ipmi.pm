@@ -8399,6 +8399,16 @@ sub preprocess_request {
                     $option = $_;
                     $optset = 0;
                 }
+                if ($option eq '') {
+                    my $error_data = "";
+                    foreach (@$all_noderange) {
+                        $error_data .= "\n" if ($error_data);
+                        $error_data .= "$_: options are required when using mgt=ipmi, see -h or the man page";
+                    }
+                    $callback->({ errorcode => [1], data => [ $error_data ] });
+                    $request = {};
+                    return 0;
+                }
                 unless ($option =~ /^USERID$|^ip$|^netmask$|^gateway$|^vlan$|^userid$|^username$|^password$|^snmpdest|^thermprofile$|^alert$|^garp$|^community$|^backupgateway$/) {
                     foreach (@$all_noderange) {
                         $error_data .= "\n" if ($error_data);
