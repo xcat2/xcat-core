@@ -8,5 +8,5 @@ Standards-Version: 3.9.4
 Package: xcat-probe
 Architecture: all
 Depends: ${perl:Depends}
-Recommends: wget, dnsutils, tftp-hpa, tcpdump
+Recommends: wget, dnsutils, tftp-hpa, tcpdump, tree
 Description: Provides a toolkit to probe possible issues in xCAT

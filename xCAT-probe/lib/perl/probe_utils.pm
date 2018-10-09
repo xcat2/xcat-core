@@ -524,8 +524,29 @@ sub parse_node_range {
 
 #------------------------------------------
 sub is_ntp_ready{
+    my $check_cmd = shift;
+    $check_cmd = shift if (($check_cmd) && ($check_cmd =~ /probe_utils/));
     my $errormsg_ref = shift;
-    $errormsg_ref= shift if (($errormsg_ref) && ($errormsg_ref =~ /probe_utils/));
+
+    if ($check_cmd eq "chronyc") {
+        my $chronycoutput = 'chronyc tracking 2>&1';
+        if ($?) {
+            if ($chronycoutput =~ /Cannot talk to daemon/) {
+                $$errormsg_ref = "chronyd service is not running! Please setup ntp in current node";
+                return 0;
+            }
+            $$errormsg_ref = "command 'chronyc tracking' failed, could not get status of ntp service";
+            return 0;
+        }
+        if ($chronycoutput =~ /Leap status     : (.+)/) {
+            my $status = $1;
+            if ($status eq "Not synchronised") {
+                $$errormsg_ref = "chronyd did not synchronize.";
+                return 0;
+            }
+        }
+        return 1;
+    }
 
     my $cmd = 'ntpq -c "rv 0"';
     $| = 1;
