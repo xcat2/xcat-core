@@ -205,14 +205,6 @@ prsync_h
 prsync_v
 prsync_dir_node
 prsync_file_node
-switchdiscover_range_default
-switchdiscover_h
-switchdiscover_range_s
-switchdiscover_range_default_w
-switchdiscover_range_r
-switchdiscover_range_x
-switchdiscover_range_z
-switchdiscover_range_z_V
 xcatd_start
 xcatd_stop
 xcatd_restart
