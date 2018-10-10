@@ -154,6 +154,7 @@ check:rc==0
 cmd:rinv $$CN all
 check:rc==1
 check:output=~$$CN: (\[.*?\]: )?Error:.+Invalid username or password|Error: (\[.*?\]: )?ERROR: Incorrect password provided
+cmd:chdef $$CN bmcpassword=
 cmd:cat /tmp/testnode.stanza | chdef -z;rm -rf /tmp/testnode.stanza
 check:rc==0
 end
