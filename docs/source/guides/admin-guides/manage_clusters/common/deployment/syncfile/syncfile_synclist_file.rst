@@ -15,11 +15,11 @@ The basic entry format looks like following: ::
        path_of_src_file1 -> path_of_dst_directory
        path_of_src_file1 path_of_src_file2 ... -> path_of_dst_directory
 
-The path_of_src_file* should be the full path of the source file on the Management Node.
+The ``path_of_src_file*`` should be the full path of the source file on the Management Node.
 
-The path_of_dst_file* should be the full path of the destination file on target node. Please make sure path_of_dst_file* is not a existing directory on target node, otherwise, the file sync with ``updatenode -r /usr/bin/scp`` or ``xdcp -r /usr/bin/scp`` will fail.
+The ``path_of_dst_file*`` should be the full path of the destination file on target node. Make sure ``path_of_dst_file*`` is not a existing directory on target node, otherwise, the file sync with ``updatenode -r /usr/bin/scp`` or ``xdcp -r /usr/bin/scp`` will fail.
 
-The path_of_dst_directory should be the full path of the destination directory. Please make sure *eth_of_dst_directory is not a existing file on target node, otherwise, the file sync with ``updatenode -r /usr/bin/scp`` or ``xdcp -r /usr/bin/scp`` will fail.
+The ``path_of_dst_directory`` should be the full path of the destination directory. Make ``sure path_of_dst_directory`` is not a existing file on target node, otherwise, the file sync with ``updatenode -r /usr/bin/scp`` or ``xdcp -r /usr/bin/scp`` will fail.
 
 Since the synclist file is for common purpose, the target node need not be configured in it.
 
@@ -37,7 +37,7 @@ sync file **/etc/file4** to the file **/etc/tmp/file5** on the node( different f
 
       /etc/file4 -> /etc/tmp/file5
 
-sync the multiple files **/etc/file1**, **/etc/file2**, **/etc/file3**, ... to the directory **/tmp/etc** (**/tmp/etc** must be a directory when multiple files are synced at one time). If the directory does not exist,**xdcp** will create it. ::
+sync the multiple files **/etc/file1**, **/etc/file2**, **/etc/file3**, ... to the directory **/tmp/etc** (**/tmp/etc** must be a directory when multiple files are synced at one time). If the directory does not exist, **xdcp** will create it. ::
 
       /etc/file1 /etc/file2 /etc/file3 -> /tmp/etc
 
@@ -116,7 +116,8 @@ Advanced synclist file features
 
 After you define the files to rsync in the syncfile, you can add an **EXECUTEALWAYS** clause in the syncfile. The **EXECUTEALWAYS** clause will list all the postscripts you would always like to run after the files are sync'd, whether or not any file is actually updated. The files in this list must be added to the list of files to rsync, if hierarchical.
 
-For example, your rsyncfile may look like this. **Note: the path to the file to EXECUTE, is the location of the *.post file on the MN**. ::
+For example, your rsyncfile may look like this. 
+.. note:: the path to the file to EXECUTE, is the location of the *.post file on the MN**. ::
 
 
        /tmp/share/file2  -> /tmp/file2
@@ -160,7 +161,7 @@ When you use the **APPEND** clause, the file (left) of the arrow is appended to 
 
 The script creates a backup of the original file on the node in the directory defined by the site table nodesyncfiledir attribute, which is **/var/xcat/node/syncfiles** by default. To update the original file when using the function, you need to rsync a new original file to the node, removed the old original from the **/var/xcat/node/syncfiles/org** directory. If you want to cleanup all the files for the append function on the node, you can use the ``xdsh -c`` flag. See man page for ``xdsh``.
 
-Note:no order of execution may be assumed by the order that the **EXECUTE,EXECUTEALWAYS and APPEND** clause fall in the synclist file.
+.. note:: no order of execution may be assumed by the order that the **EXECUTE,EXECUTEALWAYS and APPEND** clause fall in the synclist file.
 
 You can add an **MERGE** clause to your syncfile. This is only supported on Linux.
 
@@ -184,9 +185,9 @@ For example, your synclist file may look like this ::
        /etc/mydir/mergeshadow -> /etc/shadow
        /etc/mydir/mergegroup -> /etc/group
 
-When you use the **MERGE** clause, the file (left) of the arrow is merged into the file right of the arrow. It will replace any common userid's found in those files and add new userids. The /opt/xcat/share/xcat/scripts/xdcpmerge.sh is used to accomplish this.
+When you use the **MERGE** clause, the file (left) of the arrow is merged into the file right of the arrow. It will replace any common userid's found in those files and add new userids. The **/opt/xcat/share/xcat/scripts/xdcpmerge.sh** is used to accomplish this.
 
-Note: no order of execution may be assumed by the order that the **EXECUTE,EXECUTEALWAYS,APPEND and MERGE** clause fall in the synclist file.
+.. note:: no order of execution may be assumed by the order that the **EXECUTE,EXECUTEALWAYS,APPEND and MERGE** clause fall in the synclist file.
 
 .. _the_localtion_of_synclist_file_for_updatenode_label:
 
