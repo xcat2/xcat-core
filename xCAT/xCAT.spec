@@ -180,7 +180,6 @@ cp %{SOURCE7} $RPM_BUILD_ROOT/etc/%httpconfigdir/conf.orig/xcat.conf.apach24
 %else
 cp %{SOURCE9} $RPM_BUILD_ROOT/etc/%httpconfigdir/conf.orig/xcat.conf.apach24
 %endif
-cp %{SOURCE7} $RPM_BUILD_ROOT/etc/%httpconfigdir/conf.orig/xcat.conf.apach24
 cp %{SOURCE1} $RPM_BUILD_ROOT/etc/%httpconfigdir/conf.orig/xcat.conf.apach22
 cp %{SOURCE5} $RPM_BUILD_ROOT/etc/xCATMN
 
