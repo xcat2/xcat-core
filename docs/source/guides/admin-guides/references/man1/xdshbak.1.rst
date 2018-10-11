@@ -166,10 +166,8 @@ the format used in the Description, enter:
  
 
 
-2.
- 
- To display the results of a command issued on several nodes with
- identical output displayed only once, enter:
+2. To display the results of a command issued on several nodes with
+identical output displayed only once, enter:
  
  
  .. code-block:: perl

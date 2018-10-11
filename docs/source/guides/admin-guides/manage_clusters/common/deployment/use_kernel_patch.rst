@@ -21,4 +21,4 @@ The RPM names below are only examples, substitute your specific level and archit
         genitrd rhels7.3-ppc64le-install-compute --ignorekernelchk
         nodeset <CN> osimage=rhels7.3-ppc64le-install-compute --noupdateinitrd
 
-#. Boot CN from net normallly.
+#. Boot CN from net normally.

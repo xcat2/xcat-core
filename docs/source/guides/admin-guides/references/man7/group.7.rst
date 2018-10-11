@@ -331,7 +331,7 @@ group Attributes:
 
 \ **grouptype**\  (nodegroup.grouptype)
  
- The only current valid value is dynamic.  We will be looking at having the object def commands working with static group definitions in the nodelist table.
+ Static or Dynamic. A static group is defined to contain a specific set of cluster nodes. A dynamic node group is one that has its members determined by specifying a selection criteria for node attributes.
  
 
 

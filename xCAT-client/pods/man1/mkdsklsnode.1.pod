@@ -176,7 +176,6 @@ Initialize diskless node "clstrn29" using the xCAT osimage called "61dskls".  Al
  mkdsklsnode -i 61dskls clstrn29 psize=128 sparse_paging=yes
 
 =item 4.
-
 Initialize an xCAT node called "node02" as an AIX diskless node.  Create a new NIM machine definition name with the osimage as an extension to the xCAT node name.
 
  mkdsklsnode -n -i 61spot node02

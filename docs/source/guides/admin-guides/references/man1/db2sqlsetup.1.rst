@@ -175,9 +175,7 @@ EXAMPLES
  
 
 
-5.
- 
- To setup the DB2 database but not start xcat running with it:
+5. To setup the DB2 database but not start xcat running with it:
  
  
  .. code-block:: perl
