@@ -9,7 +9,6 @@
 
 use strict;
 
-#use lib '.';
 use Pod::Man;
 use Pod::Html;
 
@@ -21,10 +20,6 @@ if (system("mkdir -p $cachedir")) { die "Error: could not create $cachedir.\n"; 
 
 my @pods = getPodList($poddir);
 
-#foreach (@pods) { print "$_\n"; } exit;
-
-# Build the man page for each pod.
-#mkdir($mandir) or die "Error: could not create $mandir.\n";
 print "Converting PODs to man pages...\n";
 foreach my $podfile (@pods) {
     my $manfile = $podfile;
@@ -39,8 +34,6 @@ foreach my $podfile (@pods) {
 
 my @dummyPods = createDummyPods($poddir, \@pods);
 
-# Build the html page for each pod.
-#mkdir($htmldir) or die "Error: could not create $htmldir.\n";
 print "Converting PODs to HTML pages...\n";
 
 # have to clear the cache, because old entries can cause a problem
@@ -53,7 +46,6 @@ foreach my $podfile (@pods) {
     $hdir =~ s|/[^/]*$||;                 # get rid of the basename part
     if (system("mkdir -p $hdir")) { die "Error: could not create $hdir.\n"; }
 
-    #print "$podfile, $htmlfile, $poddir, $htmldir\n";
     convertpod2html($podfile, $htmlfile, $poddir, $htmldir);
 }
 
@@ -72,16 +64,12 @@ sub createDummyPods {
     my ($poddir, $pods) = @_;
     my $cmd = "grep -r -E 'L<.+\\([57]\\)\\|.+\\.[57]>' " . $poddir;
 
-    #print "Running cmd: ", $cmd, "\n";
     my @lines = `$cmd`;
     if ($?) { print "Did not find any section 5 man page, creating dummy pods...\n"; print join('', @lines); }
 
-    #my @lines;
-    #system($cmd);
     my @dummyPods;
     foreach my $l (@lines) {
 
-        #print "$l\n";
         my @matches = $l =~ /L<([^\(]+)\(([57])\)\|\1\.[57]>/g; # get all the matches in the line
           # The above line should create the array with every other entry being the man page name
           # and every other entry is the section # (5 or 7)
