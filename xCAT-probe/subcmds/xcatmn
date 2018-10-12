@@ -579,13 +579,29 @@ sub check_directory {
                             $flag = "w" if (!$rst);
                             $rst = 1;
                         } else {
-                            my $diffout = `bash -c 'diff <(tree -i --noreport $sitetable_ref->{$dir}) <(tree -i --noreport $tmpdir) | wc -l'`;
-                            if ($diffout > 4) {
-                                push @$error_ref, "$dir '$sitetable_ref->{$dir}' is not the same with MN's, may be error";
+                            my $dir_list_file = "/tmp/$dir" . "_list";
+                            my $mnt_list_file = $tmpdir . "_list";
+                            my $error; 
+                            if (probe_utils->list_files_to_file($sitetable_ref->{$dir}, $dir_list_file, \$error)) {
+                                push @$error_ref, "$error";
                                 $flag = "w" if (!$rst);
                                 $rst = 1;
+                            } elsif (probe_utils->list_files_to_file($tmpdir, $mnt_list_file, \$error)) {
+                                push @$error_ref, "$error";
+                                $flag = "w" if (!$rst);
+                                $rst = 1;
+                            } else {
+                                `sed -i "s|^$tmpdir|$sitetable_ref->{$dir}|g" $mnt_list_file`;
+                                my $diffout = `diff $dir_list_file $mnt_list_file`;
+                                if ($diffout) {
+                                    push @$error_ref, "$dir '$sitetable_ref->{$dir}' is not the same with MN's, may be error";
+                                    $flag = "w" if (!$rst);
+                                    $rst = 1;
+                                }
                             }
                             `umount $tmpdir`;
+                            unlink($dir_list_file) if (-e "$dir_list_file");
+                            unlink($mnt_list_file) if (-e "$mnt_list_file");
                             rmdir($tmpdir);
                         }
                     }
@@ -1194,7 +1210,7 @@ sub get_attribute_value  {
     if ($command_info =~ /$attr=(\d+)/) {
         $cmd_value = $1
     }
-    print_check_result("Checking $table table attribute... $attr=$cmd_value", 0, 0, \@error);
+    probe_utils->send_msg("$output", "i", "Checking $table table attribute... $attr=$cmd_value") if($verbose);
     return $cmd_value
 }
 

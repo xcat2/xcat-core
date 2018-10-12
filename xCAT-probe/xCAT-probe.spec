@@ -21,7 +21,6 @@ BuildArch: noarch
 Requires: /usr/bin/nslookup
 Requires: /usr/bin/tftp
 Requires: /usr/bin/wget
-Requires: /usr/bin/tree
 # Tool detect_dhcpd requires tcpdump
 Requires: /usr/sbin/tcpdump
 %endif
