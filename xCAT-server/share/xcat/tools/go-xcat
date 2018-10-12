@@ -1595,6 +1595,10 @@ function trash_xcat()
 	rm -rf /var/lock/xcat
 	rm -rf /var/log/xcat
 	rm -rf /xcatpost
+	# For goconserver
+	rm -rf /etc/goconserver
+	rm -rf /var/lib/goconserver
+	rm -rf /var/log/goconserver
 
 	return 0
 }
