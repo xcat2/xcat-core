@@ -177,8 +177,7 @@ sub process_request {
     my $lzma_exit_value = 1;
     if ($invisibletouch) {
         my $done = 0;
-        my @chars = ("A".."Z", "a".."z", "0".."9");
-        my $suffix = $chars[rand @chars] for 1..24;
+        my $suffix = xCAT::Utils::genpassword(24);
         if (-x "/usr/bin/lzma") {    #let's reclaim some of that size...
             $callback->({ data => ["Creating genesis.fs.$arch.lzma in $tftpdir/xcat"] });
             system("cd $tempdir; find . | cpio -o -H newc | lzma -C crc32 -9 > $tftpdir/xcat/genesis.fs.$arch.lzma.$suffix");
