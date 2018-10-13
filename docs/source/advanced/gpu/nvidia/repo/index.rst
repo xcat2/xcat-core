@@ -10,5 +10,4 @@ Download the toolkit and prepare the software repository on the xCAT Management 
 
    rhels.rst
    ubuntu.rst
-   nvml.rst
 
