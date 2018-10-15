@@ -56,15 +56,15 @@ Remove xCAT Files
 
   [RHEL] ::
 
-      yum remove conserver-xcat elilo-xcat grub2-xcat ipmitool-xcat perl-xCAT syslinux-xcat xCAT xCAT-SoftLayer xCAT-buildkit xCAT-client xCAT-confluent xCAT-csm xCAT-genesis-base-ppc64 xCAT-genesis-base-x86_64 xCAT-genesis-scripts-ppc64 xCAT-genesis-scripts-x86_64 xCAT-openbmc-py xCAT-probe xCAT-server xnba-undi yaboot-xcat
+      yum remove conserver-xcat elilo-xcat goconserver grub2-xcat ipmitool-xcat perl-xCAT syslinux-xcat xCAT xCAT-SoftLayer xCAT-buildkit xCAT-client xCAT-confluent xCAT-csm xCAT-genesis-base-ppc64 xCAT-genesis-base-x86_64 xCAT-genesis-scripts-ppc64 xCAT-genesis-scripts-x86_64 xCAT-openbmc-py xCAT-probe xCAT-server xnba-undi yaboot-xcat
 
   [SLES] ::
 
-      zypper remove conserver-xcat elilo-xcat grub2-xcat ipmitool-xcat perl-xCAT syslinux-xcat xCAT xCAT-SoftLayer xCAT-buildkit xCAT-client xCAT-confluent xCAT-csm xCAT-genesis-base-ppc64 xCAT-genesis-base-x86_64 xCAT-genesis-scripts-ppc64 xCAT-genesis-scripts-x86_64 xCAT-openbmc-py xCAT-probe xCAT-server xnba-undi yaboot-xcat
+      zypper remove conserver-xcat elilo-xcat goconserver grub2-xcat ipmitool-xcat perl-xCAT syslinux-xcat xCAT xCAT-SoftLayer xCAT-buildkit xCAT-client xCAT-confluent xCAT-csm xCAT-genesis-base-ppc64 xCAT-genesis-base-x86_64 xCAT-genesis-scripts-ppc64 xCAT-genesis-scripts-x86_64 xCAT-openbmc-py xCAT-probe xCAT-server xnba-undi yaboot-xcat
 
   [Ubuntu] ::	
 
-      apt-get remove conserver-xcat elilo-xcat grub2-xcat ipmitool-xcat perl-xcat syslinux-xcat xcat xcat-buildkit xcat-client xcat-confluent xcat-genesis-base-amd64 xcat-genesis-base-ppc64 xcat-genesis-scripts-amd64 xcat-genesis-scripts-ppc64 xcat-probe xcat-server xcat-test xcat-vlan xcatsn xnba-undi
+      apt-get remove conserver-xcat elilo-xcat goconserver grub2-xcat ipmitool-xcat perl-xcat syslinux-xcat xcat xcat-buildkit xcat-client xcat-confluent xcat-genesis-base-amd64 xcat-genesis-base-ppc64 xcat-genesis-scripts-amd64 xcat-genesis-scripts-ppc64 xcat-probe xcat-server xcat-test xcat-vlan xcatsn xnba-undi
 
   To do an even more thorough cleanup, use links below to get a list of RPMs installed by xCAT. Some RPMs may not to be installed in a specific environment.
 
