@@ -163,7 +163,7 @@ Command Protocol can be used. See man \ **xdsh**\  for more details.
  for Ethernet switches and IB switches under
  \ */opt/xcat/share/xcat/devicetype*\  directory. If you want to overwrite
  any of the configuration files, copy them to \ */var/opt/xcat/*\ 
- directory and cutomize.
+ directory and customize.
  For example, \ *base/IBSwitch/Qlogic/config*\  is the configuration
  file location if devicetype is specified as IBSwitch::Qlogic.
  xCAT will first search config file using \ */var/opt/xcat/*\  as the base.
@@ -329,9 +329,7 @@ using the exact match option, generating no additional templates, enter:
  
 
 
-8.
- 
- To execute \ **sinv**\  on the AIX NIM 611dskls spot and compare /etc/hosts to compute1 node, run the following:
+8. To execute \ **sinv**\  on the AIX NIM 611dskls spot and compare /etc/hosts to compute1 node, run the following:
  
  
  .. code-block:: perl
@@ -343,9 +341,7 @@ using the exact match option, generating no additional templates, enter:
  
 
 
-9.
- 
- To execute \ **sinv**\  on the device mswitch2 and compare to mswitch1
+9. To execute \ **sinv**\  on the device mswitch2 and compare to mswitch1
  
  
  .. code-block:: perl
@@ -367,5 +363,5 @@ Location of the sinv command.
 ****************
 
 
-L <xdsh(1)|xdsh.1>, noderange(3)|noderange.3
+xdsh(1)|xdsh.1, noderange(3)|noderange.3
 

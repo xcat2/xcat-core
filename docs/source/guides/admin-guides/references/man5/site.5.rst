@@ -457,7 +457,7 @@ site Attributes:
   
    xcatlport:  The port used by xcatd command log writer process to collect command output.
   
-   xcatsslversion:  The ssl version by xcatd. Default is SSLv3.
+   xcatsslversion:  The ssl version by xcatd. Default is TLSv1.
   
    xcatsslciphers:  The ssl cipher by xcatd. Default is 3DES.
  

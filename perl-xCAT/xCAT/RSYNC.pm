@@ -151,7 +151,7 @@ sub remote_copy_command
           or die "Can not open file $rsyncfile";
         my $dest_dir_list = join ' ', keys %{ $$config{'destDir_srcFile'} };
         my $dest_user_host = $$config{'dest-host'};
-        if ($$config{'dest-user'})
+        if (getpwnam($$config{'dest-user'}))
         {
             $dest_user_host =
               "$$config{'dest-user'}@" . "$$config{'dest-host'}";

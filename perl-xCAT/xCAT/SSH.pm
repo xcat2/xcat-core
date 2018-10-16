@@ -150,7 +150,7 @@ sub remote_copy_command {
 
         open SCPCMDFILE, "> $scpfile"
           or die "Can not open file $scpfile";
-        if ($$config{'dest-user'})
+        if (getpwnam($$config{'dest-user'}))
         {
             $dest_user_host =
               "$$config{'dest-user'}@" . "$$config{'dest-host'}";

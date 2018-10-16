@@ -29,7 +29,7 @@ DESCRIPTION
 ***********
 
 
-The \ **nodechmac**\  command changes the MAC address for provisioned node’s network interface.
+The \ **nodechmac**\  command changes the MAC address for provisioned node's network interface.
 
 You can use this command to keep an existing node configuration. For example, if an existing node has hardware problems, the replacement node can use the old configurations. By using the nodechmac command, the node name and network settings of the old node can be used by the new node.
 

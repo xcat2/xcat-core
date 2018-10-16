@@ -3441,7 +3441,7 @@ sub verify_targets
             {
                 my $rsp = {};
                 $rsp->{error}->[0] =
-"$user_target is not responding. No command will be issued to this host.";
+"$user_target is not responding, make sure it is a node object and is defined in xCATdb. No command will be issued to this host.";
                 xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
 
                 # report error status  --nodestatus

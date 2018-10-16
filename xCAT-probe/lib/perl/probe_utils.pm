@@ -375,16 +375,18 @@ sub is_tftp_ready {
     rename("/$test_dir/tftptestt.tmp", "/$test_dir/tftptestt.tmp.old") if (-e "/$test_dir/tftptestt.tmp");
     rename("./tftptestt.tmp", "./tftptestt.tmp.old") if (-e "./tftptestt.tmp");
 
-    system("touch /$test_dir/tftptestt.tmp");
+    system("date > /$test_dir/tftptestt.tmp");
     my $output = `tftp -4 -v $mnip -c get /tftptest/tftptestt.tmp 2>&1`;
-    if ((!$?) && (-e "./tftptestt.tmp")) {
+    if ((!$?) && (-s "./tftptestt.tmp")) {
         unlink("./tftptestt.tmp");
         rename("./tftptestt.tmp.old", "./tftptestt.tmp") if (-e "./tftptestt.tmp.old");
         rename("/$test_dir/tftptestt.tmp.old", "/$test_dir/tftptestt.tmp") if (-e "/$test_dir/tftptestt.tmp.old");
+        system("rm -rf $test_dir");
         return 1;
     } else {
         rename("./tftptestt.tmp.old", "./tftptestt.tmp") if (-e "./tftptestt.tmp.old");
         rename("/$test_dir/tftptestt.tmp.old", "/$test_dir/tftptestt.tmp") if (-e "/$test_dir/tftptestt.tmp.old");
+        system("rm -rf $test_dir");
         return 0;
     }
 }
@@ -514,6 +516,42 @@ sub parse_node_range {
 
 =head3
     Description:
+        Test if chrony service is ready to use in current operating system
+    Arguments:
+        errormsg_ref: (output attribute) if there is something wrong for chrony service, this attribute save the possible reason.
+    Returns:
+        1 : yes
+        0 : no
+=cut
+
+#------------------------------------------
+sub is_chrony_ready {
+    my $errormsg_ref = shift;
+    $errormsg_ref = shift if (($errormsg_ref) && ($errormsg_ref =~ /probe_utils/));
+
+    my $chronycoutput = `chronyc tracking 2>&1`;
+    if ($?) {
+        if ($chronycoutput =~ /Cannot talk to daemon/) {
+            $$errormsg_ref = "chronyd service is not running! Please setup ntp in current node";
+            return 0;
+        }
+        $$errormsg_ref = "command 'chronyc tracking' failed, could not get status of ntp service";
+        return 0;
+    }
+    if ($chronycoutput =~ /Leap status     : (.+)/) {
+        my $status = $1;
+        if ($status eq "Not synchronised") {
+            $$errormsg_ref = "chronyd did not synchronize.";
+            return 0;
+        }
+    }
+    return 1;
+}
+
+#------------------------------------------
+
+=head3
+    Description:
         Test if ntp service is ready to use in current operating system
     Arguments:
         errormsg_ref: (output attribute) if there is something wrong for ntp service, this attribute save the possible reason.
@@ -525,7 +563,7 @@ sub parse_node_range {
 #------------------------------------------
 sub is_ntp_ready{
     my $errormsg_ref = shift;
-    $errormsg_ref= shift if (($errormsg_ref) && ($errormsg_ref =~ /probe_utils/));
+    $errormsg_ref = shift if (($errormsg_ref) && ($errormsg_ref =~ /probe_utils/));
 
     my $cmd = 'ntpq -c "rv 0"';
     $| = 1;
@@ -655,6 +693,72 @@ sub convert_second_to_time {
     $result = join(":", @time_result);
 
     return $result;
+}
+
+#------------------------------------------
+
+=head3
+    Description:
+        Call get_files_recursive to get all files under given dir,
+        and save to target file
+    Arguments:
+        dir: the dir want to get files
+        target_file: the file to save files list
+        
+=cut
+
+#------------------------------------------
+sub list_files_to_file {
+    my $src_dir        = shift;
+    $src_dir           = shift if (($src_dir) && ($src_dir =~ /probe_utils/));
+    my $target_file    = shift;
+    my $errormsg_ref   = shift;
+
+    my @files = ();
+    get_files_recursive("$src_dir", \@files);
+    my $all_file = join("\n", @files);
+
+    if (!open f,"> $target_file") {
+        $$errormsg_ref = "Can not open file $target_file to save files list"; 
+        return 1;
+    }
+    print f $all_file;
+    close f;
+
+    return 0;
+}
+
+#------------------------------------------
+
+=head3
+    Description:
+        Get all files under the given dir
+    Arguments:
+        dir: the dir want to get files
+        files_path_ref: list of all files
+=cut
+
+#------------------------------------------
+sub get_files_recursive {
+    my $dir            = shift;
+    my $files_path_ref = shift;
+
+    my $fd = undef;
+    opendir($fd, $dir);
+    for (; ;)
+    {
+        my $direntry = readdir($fd);
+        last unless (defined($direntry));
+        next if ($direntry =~ m/^\.\w*/);
+        next if ($direntry eq '..');
+        my $target = "$dir/$direntry";
+        if (-d $target) {
+            get_files_recursive($target, $files_path_ref);
+        } else {
+            push(@{$files_path_ref}, glob("$target\n"));
+        }
+    }
+    closedir($fd);
 }
 
 #------------------------------------------

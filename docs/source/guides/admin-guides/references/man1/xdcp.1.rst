@@ -47,7 +47,7 @@ If the Management Node is target node, it must be defined in the xCAT database w
 \ **REMOTE**\  \ **USER**\ :
 
 A  user_ID  can  be specified for the remote copy command.  Remote user
-specification is identical for the xdcp and xdsh commands.  See  the  xdsh
+specification is identical for the \ **xdcp**\  and \ **xdsh**\  commands.  See  the  \ **xdsh**\ 
 command for more information.
 
 \ **REMOTE**\  \ **COMMAND**\  \ **COPY**\ :
@@ -234,7 +234,7 @@ standard output or standard error is displayed.
  
  When you use the append script,  the file  (left) of the arrow is appended to the file right of the arrow.  In this example, /etc/myappenddir/appendfile is appended to /etc/mysetup/setup file, which must already exist on the node. The /opt/xcat/share/xcat/scripts/xdcpappend.sh is used to accomplish this.
  
- Another option is the \ **MERGE:**\  clause in the synclist file. The \ **MERGE:**\  clause is used to append the contents of the input file to /etc/passwd, /etc/group, or /etc/shadow on a Linux node.  It is only supported for those files and only on Linux. You must not use both the APPEND and MERGE funcion for these three files. The processing could end up not creating the file you desire. The MERGE function is the preferred method, becuase APPEND only adds to the file.  MERGE will add to the file but also insure there are no duplicate entries.
+ Another option is the \ **MERGE:**\  clause in the synclist file. The \ **MERGE:**\  clause is used to append the contents of the input file to /etc/passwd, /etc/group, or /etc/shadow on a Linux node.  It is only supported for those files and only on Linux. You must not use both the APPEND and MERGE funcion for these three files. The processing could end up not creating the file you desire. The MERGE function is the preferred method, because APPEND only adds to the file.  MERGE will add to the file but also insure there are no duplicate entries.
  
  For example, your rsynclist file may look like this:
   /tmp/share/file2  ->  /tmp/file2
@@ -605,9 +605,7 @@ from the local host to node1 in the cluster, enter:
  
 
 
-9.
- 
- To rsync all the files in /home/mikev to the  compute nodes:
+9. To rsync all the files in /home/mikev to the  compute nodes:
  
  Create a rsync file /tmp/myrsync, with this line:
  

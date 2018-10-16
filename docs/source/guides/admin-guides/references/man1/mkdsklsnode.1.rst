@@ -247,9 +247,7 @@ EXAMPLES
  
 
 
-4.
- 
- Initialize an xCAT node called "node02" as an AIX diskless node.  Create a new NIM machine definition name with the osimage as an extension to the xCAT node name.
+4. Initialize an xCAT node called "node02" as an AIX diskless node.  Create a new NIM machine definition name with the osimage as an extension to the xCAT node name.
  
  
  .. code-block:: perl

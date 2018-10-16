@@ -1,117 +1,132 @@
 Using RPM (recommended)
 =======================
 
-**Support is only for RHEL 7.5 for Power LE (Power 9)**
+.. note:: Supported only on RHEL 7.5 for POWER9
 
-If you want to install ``xCAT-openbmc-py`` on SN manually, please accoring **install xCAT-openbmc-py on MN** part. But if you hope xCAT could install it automatically, please config as **Install xCAT-openbmc-py on SN** part.
+.. note:: In a herarchical environment ``xCAT-openbmc-py`` must be installed on both Management and Service nodes. On Service node ``xCAT-openbmc-py`` can be installed directly by following instructions in **Install xCAT-openbmc-py on MN**, or ``xCAT-openbmc-py`` can be installed on Service node from Management node by following instructions in **Install xCAT-openbmc-py on SN from MN**
 
 Install xCAT-openbmc-py on MN
 -----------------------------
 
-The following repositories should be configured on your Management Node (and Service Nodes).
+The following repositories should be configured on your Management Node.
 
-   * RHEL 7.5 OS Repository
-   * RHEL 7.5 Extras Repository
-   * RHEL 7 EPEL Repo (https://fedoraproject.org/wiki/EPEL)
-   * Fedora28 Repo (for ``gevent``, ``greenlet``)
+   * RHEL 7.5 OS repository
+   * RHEL 7.5 Extras repository
+   * RHEL 7 EPEL repository (https://fedoraproject.org/wiki/EPEL)
+   * Fedora28 repository (for ``gevent`` and ``greenlet``)
 
-#. Configure the MN/SN to the RHEL 7.5 OS Repo
+#. Configure RHEL 7.5 OS repository 
 
-#. Configure the MN/SN to the RHEL 7.5 Extras Repo
+#. Configure RHEL 7.5 Extras repository
 
-#. Configure the MN/SN to the EPEL Repo  (https://fedoraproject.org/wiki/EPEL) ::
+#. Configure EPEL repository ::
 
     yum install https://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm
 
-#. Create a local Fedora28 Repo and Configure the MN/SN to the FC28 Repo
+#. Create a local Fedora28 repository and configure the MN to the FC28 Repo
 
-   Here's  an example to configure the Fedora 28 repo at ``/install/repos/fc28``
+   Here's an example to configure the Fedora 28 repository at ``/install/repos/fc28``
 
-   #. Make the target repo directory on the MN: ::
+   #. Make the target repository directory on the MN: ::
 
         mkdir -p /install/repos/fc28/ppc64le/Packages
 
-   #. Download the rpms from the Internet: ::
+   #. Download the rpms: ::
 
         cd /install/repos/fc28/ppc64le/Packages
         wget https://www.rpmfind.net/linux/fedora-secondary/releases/28/Everything/ppc64le/os/Packages/p/python2-gevent-1.2.2-2.fc28.ppc64le.rpm
         wget https://www.rpmfind.net/linux/fedora-secondary/releases/28/Everything/ppc64le/os/Packages/p/python2-greenlet-0.4.13-2.fc28.ppc64le.rpm
 
-    #. Create a yum repo in that directory: ::
+   #. Create a repository in that directory: ::
 
         cd /install/repos/fc28/ppc64le/
         createrepo .
 
-#. Install ``xCAT-openbmc-py`` using ``yum``: ::
+   #. Create a repo file ``/etc/yum.repos.d/fc28.repo`` and set its contents: ::
+
+        [fc28]
+        name=Fedora28 yum repository for gevent and greenlet
+        baseurl=file:///install/repos/fc28/ppc64le/
+        enabled=1
+        gpgcheck=0
+        
+#. Install ``xCAT-openbmc-py`` : ::
 
       yum install xCAT-openbmc-py
 
-   **Note**: The install will fail if the dependencies cannot be met.
+Install xCAT-openbmc-py on SN from MN
+-------------------------------------
 
-Install xCAT-openbmc-py on SN
------------------------------
+.. attention:: Instructions below assume Service node has access to the Internet. If not, a local EPEL repository would need to be configured on the Management node, similar to the RHEL Extras repository.
 
-For all types of SN installation, need to create repo for ``gevent`` and ``greenlet`` and config ``otherpkglist`` of osimage on MN
+#. Copy ``Packages`` directory containing ``gevent`` and ``greenlet`` rpms from ``/install/repos/fc28/ppc64le`` to the directory pointed to by ``otherpkgdir`` attribute of the osimage. ::
 
-#. Create the repo at ``otherpkgdir`` path as the example above, could run ``lsdef -t osimage <os>-<arch>-<install|netboot>-service`` to get the path ::
+    # Display the directory of otherpkgdir
+    lsdef -t osimage rhels7.5-ppc64le-install-service -i otherpkgdir -c
 
-    # lsdef -t osimage rhels7.5-ppc64le-install-service | grep otherpkgdir
-    otherpkgdir=/install/post/otherpkgs/rhels7.5/ppc64le
+    # Create Packages directory
+    mkdir /install/post/otherpkgs/rhels7.5-alternate/ppc64le/xcat/Packages
 
-#. Configure ``otherpkglist`` of the current osimage ::
+    # Copy rpms
+    cp /install/repos/fc28/ppc64le/Packages/*.rpm /install/post/otherpkgs/rhels7.5-alternate/ppc64le/xcat/Packages
 
-    # lsdef -t osimage rhels7.5-ppc64le-install-service | grep otherpkglist
-    otherpkglist=/opt/xcat/share/xcat/install/rh/service.rhels7.ppc64le.otherpkgs.pkglist
+    
 
-    # cat /opt/xcat/share/xcat/install/rh/service.rhels7.ppc64le.otherpkgs.pkglist
+#. Configure ``otherpkglist`` attribute of the osimage ::
+
+    chdef -t osimage rhels7.5-ppc64le-install-service otherpkglist=/opt/xcat/share/xcat/install/rh/service.rhels7.ppc64le.otherpkgs.pkglist
+
+#. Add the following entries to the contents of ``/opt/xcat/share/xcat/install/rh/service.rhels7.ppc64le.otherpkgs.pkglist`` ::
+
     ...
     xcat/Packages/python2-gevent
     xcat/Packages/python2-greenlet
     xcat/xcat-core/xCAT-openbmc-py
 
-Install on diskful SN by updatenode
-```````````````````````````````````
+#. Choose one of the 3 methods below to complete the installation
 
-If you have installed SN without ``xCAT-openbmc-py package``, could run updatenode to install it.
+Install on diskful SN using updatenode
+``````````````````````````````````````
 
-#. Sync epel repo and key file ::
+If SN was installed without ``xCAT-openbmc-py`` package, ``updatenode`` can be used to install that package.
 
-    # rsync -v /etc/yum.repos.d/epel.repo root@10.3.17.17:/etc/yum.repos.d/
-    # rsync -v /etc/pki/rpm-gpg/RPM-GPG-KEY-EPEL-7 root@10.3.17.17:/etc/pki/rpm-gpg/
+#. Sync EPEL repository and key file ::
+
+    rsync -v /etc/yum.repos.d/epel.repo root@<SN>:/etc/yum.repos.d/
+    rsync -v /etc/pki/rpm-gpg/RPM-GPG-KEY-EPEL-7 root@<SN>:/etc/pki/rpm-gpg/
 
 #. Update packages on SN ::
 
-    # updatenode service -S
+    updatenode <SN> -S
 
-Install on diskful SN
-`````````````````````
+Install on diskful SN using rinstall
+````````````````````````````````````
 
-#. Configure ``synclists`` of osimage ::
+#. Configure ``synclists`` attribute of osimage ::
 
-    # lsdef -t osimage rhels7.5-ppc64le-install-service | grep synclists
-    synclists=/install/custom/netboot/compute.synclist
+    chdef -t osimage rhels7.5-ppc64le-install-service synclists=/install/custom/netboot/compute.synclist
 
-    # cat /install/custom/netboot/compute.synclist
+#. Add the following to the contents of ``/install/custom/netboot/compute.synclist`` ::
+
     ...
     /etc/yum.repos.d/epel.repo -> /etc/yum.repos.d/epel.repo
     /etc/pki/rpm-gpg/RPM-GPG-KEY-EPEL-7 -> /etc/pki/rpm-gpg/RPM-GPG-KEY-EPEL-7
 
 #. Install SN ::
 
-    # rinstall service osimage=rhels7.5-ppc64le-install-service
+    rinstall <SN> osimage=rhels7.5-ppc64le-install-service
 
-Install on diskless SN
-``````````````````````
+Install on diskless SN using rinstall
+`````````````````````````````````````
 
-#. Add epel online repo https://dl.fedoraproject.org/pub/epel/7/ppc64le  to ``pkgdir`` ::
+#. Add EPEL online repository https://dl.fedoraproject.org/pub/epel/7/ppc64le to ``pkgdir`` attribute of osimage::
 
-    # lsdef -t osimage -o rhels7.5-ppc64le-netboot-service | grep pkgdir
-    pkgdir=/install/rhels7.5/ppc64le,https://dl.fedoraproject.org/pub/epel/7/ppc64le
+    chdef -t osimage -o rhels7.5-ppc64le-netboot-service -p pkgdir=https://dl.fedoraproject.org/pub/epel/7/ppc64le
 
-#. Install SN ::
+#. Install diskless SN ::
 
-    # genimage rhels7.5-ppc64le-netboot-service
-    # packimage rhels7.5-ppc64le-netboot-service
-    # rinstall service osimage=rhels7.5-ppc64le-netboot-service
+    genimage rhels7.5-ppc64le-netboot-service
+    packimage rhels7.5-ppc64le-netboot-service
+    rinstall <SN> osimage=rhels7.5-ppc64le-netboot-service
 
 

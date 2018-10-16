@@ -384,9 +384,7 @@ Calling \ **rinv**\  for VMware will display the UUID/GUID, number of CPUs, amou
  
 
 
-3.
- 
- To retrieve 'config' information from the HMC-managed LPAR node3, enter:
+3. To retrieve 'config' information from the HMC-managed LPAR node3, enter:
  
  
  .. code-block:: perl
@@ -406,9 +404,7 @@ Calling \ **rinv**\  for VMware will display the UUID/GUID, number of CPUs, amou
  
 
 
-4.
- 
- To retrieve information about a VMware node vm1, enter:
+4. To retrieve information about a VMware node vm1, enter:
  
  
  .. code-block:: perl
@@ -433,9 +429,7 @@ Calling \ **rinv**\  for VMware will display the UUID/GUID, number of CPUs, amou
  
 
 
-5.
- 
- To list the defined network names available for a given node:
+5. To list the defined network names available for a given node:
  
  
  .. code-block:: perl
@@ -460,9 +454,7 @@ Calling \ **rinv**\  for VMware will display the UUID/GUID, number of CPUs, amou
  
 
 
-6.
- 
- To list the configuration for a given network:
+6. To list the configuration for a given network:
  
  
  .. code-block:: perl
@@ -483,9 +475,7 @@ Calling \ **rinv**\  for VMware will display the UUID/GUID, number of CPUs, amou
  
 
 
-7.
- 
- To list the disk pool names available:
+7. To list the disk pool names available:
  
  
  .. code-block:: perl
@@ -505,9 +495,7 @@ Calling \ **rinv**\  for VMware will display the UUID/GUID, number of CPUs, amou
  
 
 
-8.
- 
- List the configuration for a given disk pool:
+8. List the configuration for a given disk pool:
  
  
  .. code-block:: perl
@@ -527,9 +515,7 @@ Calling \ **rinv**\  for VMware will display the UUID/GUID, number of CPUs, amou
  
 
 
-9.
- 
- List the known zFCP pool names.
+9. List the known zFCP pool names.
  
  
  .. code-block:: perl
@@ -549,9 +535,7 @@ Calling \ **rinv**\  for VMware will display the UUID/GUID, number of CPUs, amou
  
 
 
-10.
- 
- List the SCSI/FCP devices contained in a given zFCP pool:
+10. List the SCSI/FCP devices contained in a given zFCP pool:
  
  
  .. code-block:: perl

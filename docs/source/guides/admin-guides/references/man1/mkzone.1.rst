@@ -132,9 +132,7 @@ Note: if any zones in the zone table, there must be one and only one defaultzone
  
 
 
-3.
- 
- To make a new zone2A using the ssh id_rsa private key in /root/.ssh:
+3. To make a new zone2A using the ssh id_rsa private key in /root/.ssh:
  
  
  .. code-block:: perl
@@ -144,9 +142,7 @@ Note: if any zones in the zone table, there must be one and only one defaultzone
  
 
 
-4.
- 
- To make a new zone3 and assign the noderange compute3 to the zone  enter:
+4. To make a new zone3 and assign the noderange compute3 to the zone  enter:
  
  
  .. code-block:: perl
@@ -166,9 +162,7 @@ Note: if any zones in the zone table, there must be one and only one defaultzone
  
 
 
-6.
- 
- To make a new zone5 and assign the noderange compute5 to the zone and add zone5 as a group to each node but not allow passwordless ssh between the nodes  enter:
+6. To make a new zone5 and assign the noderange compute5 to the zone and add zone5 as a group to each node but not allow passwordless ssh between the nodes  enter:
  
  
  .. code-block:: perl

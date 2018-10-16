@@ -91,9 +91,7 @@ Note: if any zones in the zone table, there must be one and only one defaultzone
  
 
 
-2.
- 
- To remove zone2 from the zone table, the zone2 zonename attribute, and the zone2 group assigned to all nodes that were in zone2, enter:
+2. To remove zone2 from the zone table, the zone2 zonename attribute, and the zone2 group assigned to all nodes that were in zone2, enter:
  
  
  .. code-block:: perl
@@ -103,9 +101,7 @@ Note: if any zones in the zone table, there must be one and only one defaultzone
  
 
 
-3.
- 
- To remove zone3 from the zone table, all the node zone attributes and  override the fact it is the defaultzone,  enter:
+3. To remove zone3 from the zone table, all the node zone attributes and  override the fact it is the defaultzone,  enter:
  
  
  .. code-block:: perl
@@ -127,5 +123,5 @@ Location of the rmzone command.
 ****************
 
 
-L <mkzone(1)|mkzone.1>,L <chzone(1)|chzone.1>,L <xdsh(1)|xdsh.1>, updatenode(1)|updatenode.1
+mkzone(1)|mkzone.1, chzone(1)|chzone.1, xdsh(1)|xdsh.1, updatenode(1)|updatenode.1
 

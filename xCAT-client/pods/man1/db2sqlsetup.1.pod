@@ -116,7 +116,6 @@ To setup the ODBC for  DB2 xcatdb database access, on the SN :
  db2sqlsetup -o -C
 
 =item 5.
-
 To setup the DB2 database but not start xcat running with it:
 
  db2sqlsetup -i -S -N

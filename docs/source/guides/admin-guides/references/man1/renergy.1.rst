@@ -832,9 +832,7 @@ so no additional plugins are needed for BladeCenter.)
  
 
 
-4
- 
- Query all the attirbutes for management module node MM1. (For chassis)
+4 Query all the attributes for management module node MM1. (For chassis)
  
  
  .. code-block:: perl

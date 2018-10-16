@@ -1,5 +1,5 @@
 Enable the HTTPS protocol for REST API
-=====================================
+======================================
 
 To improve the security between the REST API clients and server, enabling the secure transfer protocol (https) is the default configuration.
 
