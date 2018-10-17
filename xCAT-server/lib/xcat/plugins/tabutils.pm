@@ -2297,6 +2297,7 @@ sub tabch {
                 my %rsp;
                 $rsp{data}->[0] = "Incorrect argument \"$_\".\n";
                 $rsp{data}->[1] = "Check man tabch or tabch -h\n";
+                $rsp{errorcode}->[0] = 1;
                 $callback->(\%rsp);
                 return 1;
             }
@@ -2318,14 +2319,23 @@ sub tabch {
             my %rsp;
             $rsp{data}->[0] = "Missing table name.\n";
             $rsp{data}->[1] = "Check man tabch or tabch -h\n";
+            $rsp{errorcode}->[0] = 1;
             $callback->(\%rsp);
             return 1;
         }
+
         for (@tables_to_del)
         {
-            $tables{$_} = xCAT::Table->new($_, -create => 1, -autocommit => 0);
-            $tables{$_}->delEntries(\%keyhash);
-            $tables{$_}->commit;
+            my $tab = xCAT::Table->new($_, -create => 1, -autocommit => 0);
+            unless ($tab) {
+            my %rsp;
+                $rsp{data}->[0] = "Table $_ does not exist.";
+                $rsp{errorcode}->[0] = 1;
+                $callback->(\%rsp);
+                next;
+            }
+            $tab->delEntries(\%keyhash);
+            $tab->commit;
         }
     }
     else {
@@ -2347,6 +2357,7 @@ sub tabch {
                 } else {
                     my %rsp;
                     $rsp{data}->[0] = "Table $table does not exist.\n";
+                    $rsp{errorcode}->[0] = 1;
                     $callback->(\%rsp);
                     return 1;
 
@@ -2386,7 +2397,7 @@ sub tabch {
             }
             unless (grep /$column/, @{ $xCAT::Schema::tabspec{$table}->{cols} }) {
                 $callback->({ error => "$table.$column not a valid table.column description", errorcode => [1] });
-                return;
+                return 1;
             }
             $tableupdates{$table}{$column} = $value;
         }
