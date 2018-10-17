@@ -216,8 +216,12 @@ EOF
             fi
 	else
             if (pmatch $OSVER "rhel7*") || (pmatch $OSVER "rhels7*");then
-               /bin/mount -o vers=3 $KDIP:$KDPATH $MOUNTPATH
-               #/bin/mount -o nolock $KDIP:$KDPATH $MOUNTPATH
+               nfsvers=$(/usr/sbin/rpcinfo -p $KDIP|grep -w nfs|awk '{print $2}'|head -1)
+               if [ -n "$nfsvers" ]; then
+                   /bin/mount -o vers=$nfsvers $KDIP:$KDPATH $MOUNTPATH
+               else
+                   /bin/mount -o nolock $KDIP:$KDPATH $MOUNTPATH
+               fi
                [ -d $MOUNTPATH/var/crash ] || mkdir -p $MOUNTPATH/var/crash
 
                #The initramfs used in kdump does not need "root", however, the initramfs refused to continue
