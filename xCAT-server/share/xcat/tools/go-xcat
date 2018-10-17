@@ -352,7 +352,7 @@ function debug_log_setup()
 		printf " %q" "${script}" "${BASH_ARGV[@]}"
 		echo
 		echo
-	} > >(debug_logger debug)
+	} | debug_logger debug
 }
 
 function debug_log_cleanup()
@@ -371,7 +371,7 @@ function debug_log_cleanup()
 			echo "         ':::::."
 			echo "           '::"
 			echo "             '"
-		} > >(debug_logger debug)
+		} | debug_logger debug
 		[[ "${rc}" -eq "0" ]] && rm -f "${GO_XCAT_LOG}"
 	fi
 }
@@ -404,13 +404,14 @@ function debug_trace()
 		printf " %q" "$@"
 		echo
 		echo "'========"
-	} > >(debug_logger debug)
+	} | debug_logger debug
 
-	"$@" > >(debug_logger) 2>&1
-	rc="$?"
+	# BUG - The command "$@" will be run in a subshell
+	"$@" 2>&1 | debug_logger
+	rc="${PIPESTATUS[0]}"
 
-	printf ".========\n'-> %-24s ... returned with %s\n" "${1}" "${rc}" \
-		> >(debug_logger debug)
+	printf ".========\n'-> %-24s ... returned with %s\n" "${1}" "${rc}" |
+		debug_logger debug
 
 	return "${rc}"
 }
@@ -1553,12 +1554,12 @@ function ask_to_continue()
 
 	echo
 	echo "${prompt}"
-	echo > >(debug_logger debug)
-	echo ".-> ${prompt}" > >(debug_logger debug)
+	echo | debug_logger debug
+	echo ".-> ${prompt}" | debug_logger debug
 	while :
 	do
 		read -r -p "Continue? [y/n] "
-		echo "'-> Continue? [y/n]          ... ${REPLY}" > >(debug_logger debug)
+		echo "'-> Continue? [y/n]          ... ${REPLY}" | debug_logger debug
 		case "${REPLY}" in
 		"Y"*|"y"*)
 			break
@@ -1814,7 +1815,7 @@ debug_logger debug <<EOF
 Host Name:          ${HOSTNAME%%.*}
 Bash Version:       ${BASH_VERSION}
 EOF
-printf "%-19s %s\n\n" "${0##*/} Version:" "$(version)" > >(debug_logger >/dev/null)
+printf "%-19s %s\n\n" "${0##*/} Version:" "$(version)" | debug_logger
 
 echo
 echo -n "Reading repositories "
