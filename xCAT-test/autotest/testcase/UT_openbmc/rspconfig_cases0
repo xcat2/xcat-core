@@ -50,7 +50,7 @@ check:output=~$$CN: BMC Hostname:
 # Set to witherspoon first
 cmd:rspconfig $$CN hostname=witherspoon
 check:rc==0
-check:output=~$$CN: BMC Setting Hostname...
+check:output=~$$CN: BMC Setting BMC Hostname...
 # Check that it's set to witherspoon
 cmd:rspconfig $$CN hostname
 check:rc==0
@@ -58,7 +58,7 @@ check:output=~$$CN: BMC Hostname: witherspoon
 # Set to <host>-UTset
 cmd:rspconfig $$CN hostname=$$CN-UTset
 check:rc==0
-check:output=~$$CN: BMC Setting Hostname...
+check:output=~$$CN: BMC Setting BMC Hostname...
 # Check that it's set
 cmd:rspconfig $$CN hostname
 check:rc==0
@@ -66,7 +66,7 @@ check:output=~$$CN: BMC Hostname: $$CN-UTset
 # Restore to saved version
 cmd:grep BMC /tmp/xcattest.rspconfig.hostname  | cut -d' ' -f4 | xargs -i{} rspconfig $$CN hostname={}
 check:rc==0
-check:output=~$$CN: BMC Setting Hostname...
+check:output=~$$CN: BMC Setting BMC Hostname...
 cmd:rspconfig $$CN hostname
 check:rc==0
 check:output=~$$CN: BMC Hostname:

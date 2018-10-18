@@ -4,7 +4,7 @@ os:Linux
 hcp:openbmc
 label:cn_bmc_ready,hctrl_openbmc
 cmd:rspconfig $$CN ipsrc
-check:output=~$$CN\s*:\s*BMC IP Source: Static|BMC IP Source: Dynamic
+check:output=~$$CN\s*:\s*BMC IP Source: Static|BMC IP Source: DHCP 
 check:rc == 0
 cmd:rspconfig $$CN  hostname sshcfg
 check:output =~Error: (\[.*?\]: )?Configure sshcfg must be issued without other options.
