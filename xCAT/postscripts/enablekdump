@@ -229,11 +229,13 @@ EOF
                            break
                        fi
                    done
-               fi
-               if [ $nfsver -ne 0 ]; then
-                   /bin/mount -o vers=$nfsver $KDIP:$KDPATH $MOUNTPATH
+                   if [ $nfsver -ne 0 ]; then
+                       /bin/mount -o vers=$nfsver $KDIP:$KDPATH $MOUNTPATH
+                   else
+                       /bin/mount -o nolock $KDIP:$KDPATH $MOUNTPATH
+                   fi
                else
-                   /bin/mount -o nolock $KDIP:$KDPATH $MOUNTPATH
+                   /bin/echo "nfs server is not available"
                fi
                [ -d $MOUNTPATH/var/crash ] || mkdir -p $MOUNTPATH/var/crash
 
