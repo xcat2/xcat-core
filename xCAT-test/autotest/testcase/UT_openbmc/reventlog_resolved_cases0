@@ -25,7 +25,7 @@ hcp:openbmc
 label:cn_bmc_ready,hctrl_openbmc
 cmd:reventlog $$CN resolved 1,2,3
 check:rc==1
-check:output=~Error: (\[.*?\]: )?Usage error. Provide a comma separated
+check:output=~Error: (\[.*?\]: )?Only one option is supported at the same time for reventlog
 end
 
 start:reventlog_resolved_parse_error4
@@ -35,7 +35,7 @@ hcp:openbmc
 label:cn_bmc_ready,hctrl_openbmc
 cmd:reventlog $$CN resolved=-1
 check:rc==1
-check:output=~Error: (\[.*?\]: )?Invalid ID=
+check:output=~Error: (\[.*?\]: )?Invalid ID:
 end
 
 start:reventlog_resolved_parse_error5
@@ -45,7 +45,7 @@ hcp:openbmc
 label:cn_bmc_ready,hctrl_openbmc
 cmd:reventlog $$CN resolved=abc
 check:rc==1
-check:output=~Error: (\[.*?\]: )?Invalid ID=
+check:output=~Error: (\[.*?\]: )?Invalid ID:
 end
 
 start:reventlog_resolved_list
@@ -54,7 +54,7 @@ os:Linux
 hcp:openbmc
 label:cn_bmc_ready,hctrl_openbmc
 cmd:reventlog $$CN resolved=100,101
-check:rc==0
+check:rc==1
 check:output=~Attempting to resolve the following log entries: 100,101...
 end
 
@@ -64,6 +64,6 @@ os:Linux
 hcp:openbmc
 label:cn_bmc_ready,hctrl_openbmc
 cmd:reventlog $$CN resolved=Led
-check:rc==0
+check:rc==1
 check:output=~Attempting to resolve the following log entries: Led...
 end
