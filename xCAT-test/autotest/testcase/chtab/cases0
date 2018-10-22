@@ -62,6 +62,18 @@ check:output=~Usage
 end
 
 
+start:chtab_nonexist_table
+description:chtab with nonexisting table name
+label:mn_only,db
+cmd:tabch -d key=abc123 nonexist_table1 nonexist_table2
+check:rc!=0
+check:output=~Table nonexist_table1 does not exist
+check:output=~Table nonexist_table2 does not exist
+cmd:tabch key=abc123 nonexist_table1.comments="mg"
+check:rc!=0
+check:output=~Table nonexist_table1 does not exist
+end
+
 start:chtab_err_table
 description:chtab with error table
 label:mn_only,db
