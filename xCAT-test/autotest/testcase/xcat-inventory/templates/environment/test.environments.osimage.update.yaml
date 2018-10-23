@@ -6,7 +6,9 @@ osimage:
       osdistro: rhels7.5-alternate-ppc64le
       osname: Linux
     deprecated:
-      comments: rhels7.5,test_environment_variables
+      comments:
+      - rhels7.5
+      - test_environment_variables
     filestosync:
     - '{{GITREPO}}/syncfiles/synclist'
     genimgoptions:
@@ -14,7 +16,7 @@ osimage:
       postinstall:
       - /opt/xcat/share/xcat/netboot/rh/compute.rhels7.ppc64le.postinstall
       - '{{GITREPO}}/postinstall/test1.postinstall'
-      rootimgdir: /install/custom/test.environments.osimage
+      rootimgdir: /install/custom/{{OBJNAME}}
     imagetype: linux
     package_selection:
       otherpkgdir:

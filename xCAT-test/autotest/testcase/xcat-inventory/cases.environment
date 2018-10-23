@@ -22,7 +22,6 @@ check:rc==0
 cmd:rootimgdir=`lsdef -t osimage __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute|grep rootimgdir|awk -F'=' '{print $2}'`; if [ -d $rootimgdir ]; then mv $rootimgdir $rootimgdir.regbak -f;fi
 check:rc==0
 cmd:xcat-inventory import -f /opt/xcat/share/xcat/tools/autotest/testcase/xcat-inventory/templates/environment/test.environments.osimage.yaml -e GITREPO=/opt/xcat/share/xcat/tools/autotest/testcase/xcat-inventory/templates/environment/gitrepo -e SWDIR=/opt/xcat/share/xcat/tools/autotest/testcase/xcat-inventory/templates/environment/swdir
-check:output=~Importing object: test.environments.osimage
 check:output=~Inventory import successfully!
 check:rc==0
 cmd:lsdef -t osimage -o test.environments.osimage
@@ -86,7 +85,6 @@ cmd:lsdef -t osimage -o test.environments.osimage >/dev/null 2>&1;if [[ $? -eq 0
 check:rc==0
 cmd:dir="/tmp/export";if [ -e "${dir}" ];then mv ${dir} ${dir}".bak"; fi; mkdir -p $dir
 cmd:xcat-inventory import -f /opt/xcat/share/xcat/tools/autotest/testcase/xcat-inventory/templates/environment/test.environments.osimage.update.yaml -e GITREPO=/opt/xcat/share/xcat/tools/autotest/testcase/xcat-inventory/templates/environment/gitrepo -e SWDIR=/opt/xcat/share/xcat/tools/autotest/testcase/xcat-inventory/templates/environment/swdir
-check:output=~Importing object: test.environments.osimage
 check:output=~Inventory import successfully!
 check:rc==0
 cmd:lsdef -t osimage -o test.environments.osimage -z >> /tmp/export/test.environments.osimage.yaml.stanza
@@ -101,14 +99,13 @@ check:rc==0
 cmd:rmdef -t osimage -o test.environments.osimage
 check:rc==0
 cmd:xcat-inventory import -f /opt/xcat/share/xcat/tools/autotest/testcase/xcat-inventory/templates/environment/test.environments.osimage.update.json -e GITREPO=/opt/xcat/share/xcat/tools/autotest/testcase/xcat-inventory/templates/environment/gitrepo -e SWDIR=/opt/xcat/share/xcat/tools/autotest/testcase/xcat-inventory/templates/environment/swdir
-check:output=~Importing object: test.environments.osimage
 check:output=~Inventory import successfully!
 check:rc==0
 cmd:lsdef -t osimage -o test.environments.osimage -z >> /tmp/export/test.environments.osimage.json.stanza
 check:rc==0
 cmd:diff -y /tmp/export/test.environments.osimage.json.stanza /opt/xcat/share/xcat/tools/autotest/testcase/xcat-inventory/templates/environment/test.environments.osimage.stanza
 check:rc==0
-cmd:xcat-inventory export  -t osimage -o test.environments.osimage -f /tmp/export/test.environments.osimage.json
+cmd:xcat-inventory export  -t osimage -o test.environments.osimage -f /tmp/export/test.environments.osimage.json --format json
 check:rc==0
 cmd:diff -y  /opt/xcat/share/xcat/tools/autotest/testcase/xcat-inventory/templates/environment/test.environments.osimage.update.json /tmp/export/test.environments.osimage.json --ignore-blank-lines  -I "^#"
 check:rc==0

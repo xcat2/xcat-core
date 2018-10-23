@@ -2,7 +2,7 @@
 
 test.environments.osimage:
     objtype=osimage
-    environvar=GITREPO=/opt/xcat/share/xcat/tools/autotest/testcase/xcat-inventory/templates/environment/gitrepo,SWDIR=/opt/xcat/share/xcat/tools/autotest/testcase/xcat-inventory/templates/environment/swdir
+    environvar=GITREPO=/opt/xcat/share/xcat/tools/autotest/testcase/xcat-inventory/templates/environment/gitrepo,OBJNAME=test.environments.osimage,SWDIR=/opt/xcat/share/xcat/tools/autotest/testcase/xcat-inventory/templates/environment/swdir
     imagetype=linux
     osarch=ppc64le
     osdistroname=rhels7.5-alternate-ppc64le
