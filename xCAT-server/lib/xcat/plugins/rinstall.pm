@@ -257,12 +257,6 @@ sub rinstall {
 
         push @parameter, "osimage=$OSIMAGE";
 
-        if ($ignorekernelchk) {
-            push @parameter, "--ignorekernelchk";
-        }
-        if ($noupdateinitrd) {
-            push @parameter, "--noupdateinitrd";
-        }
     }
     elsif ($STATES) {
         push @parameter, "$STATES";
@@ -318,6 +312,18 @@ sub rinstall {
         #only provision the normal nodes
         @nodes = @validnodes;
         push @parameter, "osimage";
+
+    }
+
+    if ( grep( /osimage/, @parameter ) ) {
+        # Task is osimage, check --ignorekernelchk and --noupdateinitrd flags and set if needed
+
+        if ($ignorekernelchk) {
+            push @parameter, "--ignorekernelchk";
+        }
+        if ($noupdateinitrd) {
+            push @parameter, "--noupdateinitrd";
+        }
     }
 
     if (scalar(@nodes) == 0) {
@@ -406,7 +412,7 @@ sub rinstall {
         $::RUNCMD_RC = 0;
         my @nodes = @{ $hmhash{$hmkey} };
         unless ($hmkey =~ /^(ipmi|blade|hmc|ivm|fsp|kvm|esx|rhevm|openbmc)$/)  {
-            $rsp->{error}->[0] = "@nodes: rinstall only support nodehm.mgt type 'ipmi', 'blade', 'hmc', 'ivm', 'fsp', 'kvm', 'esx', 'rhevm'.";
+            $rsp->{error}->[0] = "@nodes: rinstall only support nodehm.mgt type 'ipmi', 'blade', 'hmc', 'ivm', 'fsp', 'kvm', 'esx', 'rhevm', 'openbmc'.";
             $rsp->{errorcode}->[0] = 1;
             xCAT::MsgUtils->message("E", $rsp, $callback);
             next;
@@ -598,7 +604,7 @@ sub usage {
     my $rsp      = {};
     $rsp->{data}->[0] = "Usage:";
     $rsp->{data}->[1] = "   $command <noderange> [boot | shell | runcmd=<command>] [-c|--console] [-u|--uefimode] [-V|--verbose]";
-    $rsp->{data}->[2] = "   $command <noderange> osimage[=<imagename>] [--noupdateinitrd] [--ignorekernelchk] [-c|--console] [-u|--uefimode] [-V|--verbose]";
+    $rsp->{data}->[2] = "   $command <noderange> [osimage[=<imagename>]] [--noupdateinitrd] [--ignorekernelchk] [-c|--console] [-u|--uefimode] [-V|--verbose]";
     $rsp->{data}->[3] = "   $command <noderange> runimage=<task>";
     $rsp->{data}->[4] = "   $command [-h|--help|-v|--version]";
     xCAT::MsgUtils->message("I", $rsp, $callback);
