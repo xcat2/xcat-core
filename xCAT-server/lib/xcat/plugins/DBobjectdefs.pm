@@ -4155,6 +4155,8 @@ sub defls
 
     # Display the definition of objects
     if (defined($rsp_info->{data}) && scalar(@{ $rsp_info->{data} }) > 0) {
+        my $nodenum = $numobjects;
+        push(@{ $rsp_info->{data} }, "$nodenum object definitions have been listed.");
         xCAT::MsgUtils->message("I", $rsp_info, $::callback);
     }
 

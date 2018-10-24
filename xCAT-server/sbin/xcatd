@@ -30,6 +30,8 @@ my $udpctl;
 my $pid_UDP;
 my $pid_MON;
 
+my $numofnodes=0;
+
 # ----used for command log start---------
 my $cmdlog_svrpid;
 
@@ -2165,6 +2167,7 @@ sub plugin_command {
             }
         }
     }
+
 }
 
 my $dispatch_parentfd;
@@ -2660,6 +2663,18 @@ sub send_response {
                 my $rsp = $response->{xcatresponse};
                 if ( (ref($rsp) eq 'ARRAY') && scalar(@$rsp) > 0 ) {
                     foreach (@$rsp) {
+                        if ($_->{data}->[0]) {
+                            if ( ($_->{data}->[0]) =~ /object definitions have been/ ) {
+                                my $str = $_->{data}->[0];
+                                ($numofnodes) = $str =~ /(\d+)/;
+                            }
+                        }
+                        if ($_->{info}) {
+                            if ( ($_->{info}->[-1]) =~ /object definitions have been/ ) {
+                                my $str = $_->{info}->[-1];
+                                ($numofnodes) = $str =~ /(\d+)/;
+                            }
+                        }
                         $_->{xcatdsource}->[0] = $MYXCATSERVER unless ($_->{xcatdsource});
                     }
                 }
@@ -2803,6 +2818,12 @@ sub service_connection {
             if ($enable_perf) {
                 xCAT::MsgUtils->perf_log_process('immediate', $req);
             }
+
+             if (exists($req->{noderange}) && defined($req->{noderange}->[0])) {
+                my @nnodes = xCAT::NodeRange::noderange($req->{noderange}->[0]);
+                $numofnodes = (scalar(@nnodes));
+            }
+
             # ----used for command log start----------
             $cmdlog_starttime = time();
             my ($sec, $min, $hour, $mday, $mon, $year) = localtime($cmdlog_starttime);
@@ -3018,6 +3039,7 @@ sub service_connection {
     }
 
     # ----used for command log start-------
+    $cmdlog_alllog .= "[NumberNodes] $numofnodes \n";
     my $reqhandletime = sprintf("%.3f", time()-$cmdlog_starttime);
     $cmdlog_alllog .= "[ElapsedTime] $reqhandletime s\n";
     cmdlog_submitlog();
