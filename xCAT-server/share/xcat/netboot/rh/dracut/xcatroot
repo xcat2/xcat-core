@@ -2,7 +2,7 @@
 NEWROOT=$3
 RWDIR=.statelite
 XCATMASTER=$XCAT
-
+log_label="xcat.deployment"
 . /lib/dracut-lib.sh
 rootlimit="$(getarg rootlimit=)"
 
@@ -20,7 +20,7 @@ xcatdebugmode="$(getarg xcatdebugmode=)"
 
 [ "$xcatdebugmode" > "0" ] && logger -t xcat -p debug "running xcatroot...."
 [ "$xcatdebugmode" > "0" ] && logger -t xcat -p debug "MASTER=$MASTER XCATIPORT=$XCATIPORT"
-
+logger -t $log_label -p local4.info "=============deployment starting===================="
 if [ "$NODESTATUS" != "0" ]; then
     [ "$xcatdebugmode" > "0" ] && logger -t xcat -p debug "nodestatus: netbooting,reporting..."
     /tmp/updateflag $MASTER $XCATIPORT "installstatus netbooting"

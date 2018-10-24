@@ -39,6 +39,7 @@ chmod 0755 /tmp/updateflag
 
 cd /tmp
 log_label="xcat.deployment"
+msgutil_r "$MASTER_IP" "info" "=============deployment starting====================" "/var/log/xcat/xcat.log" "$log_label"
 msgutil_r "$MASTER_IP" "info" "Executing post.xcat to prepare for firstbooting ..." "/var/log/xcat/xcat.log" "$log_label"
 
 RAND=$(perl -e 'print int(rand(50)). "\n"')
@@ -196,9 +197,9 @@ run_ps () {
     if [ -z \"\$scriptype\" ]; then
         scriptype=\"postscript\"
     fi
-
+    log_label=\"xcat.deployment.\"\$scriptype
     if [ -f \$1 ]; then
-        msgutil_r \"\$MASTER_IP\" \"info\" "\"Running \$scriptype: \$1\"" \"\$logfile\" \"xcat.mypostscript\"
+        msgutil_r \"\$MASTER_IP\" \"info\" "\"\$scriptype start..: \$1\"" \"\$logfile\" \"\$log_label\"
         if [ \"\$XCATDEBUGMODE\" = \"1\" ] || [ \"\$XCATDEBUGMODE\" = \"2\" ]; then
             local compt=\$(file \$1)
             local reg=\"shell script\"
@@ -217,9 +218,9 @@ run_ps () {
         if [ \"\$ret_local\" -ne \"0\" ]; then
             return_value=\$ret_local
         fi
-        msgutil_r \"\$MASTER_IP\" \"info\" "\"\$scriptype \$1 return with \$ret_local\"" \"\$logfile\" \"xcat.mypostscript\"
+        msgutil_r \"\$MASTER_IP\" \"info\" "\"\$scriptype end...: \$1 return with \$ret_local\"" \"\$logfile\" \"\$log_label\"
     else
-        msgutil_r \"\$MASTER_IP\" \"error\" "\"\$scriptype \$1 does NOT exist.\"" \"\$logfile\" \"xcat.mypostscript\"
+        msgutil_r \"\$MASTER_IP\" \"error\" "\"\$scriptype \$1 does NOT exist.\"" \"\$logfile\" \"\$log_label\"
         return_value=-1
     fi
 
