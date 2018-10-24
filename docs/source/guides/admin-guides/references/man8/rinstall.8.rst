@@ -21,7 +21,7 @@ Name
 
 \ **rinstall**\  \ *noderange*\  [\ **boot**\  | \ **shell**\  | \ **runcmd=**\ \ *command*\ ] [\ **-c | -**\ **-console**\ ] [\ **-V | -**\ **-verbose**\ ]
 
-\ **rinstall**\  \ *noderange*\  \ **osimage**\ [=\ *imagename*\ ] [\ **-**\ **-noupdateinitrd**\ ][\ **-**\ **-ignorekernelchk**\ ] [\ **-c | -**\ **-console**\ ] [\ **-u | -**\ **-uefimode**\ ] [\ **-V | -**\ **-verbose**\ ]
+\ **rinstall**\  \ *noderange*\  [\ **osimage**\ [=\ *imagename*\ ]] [\ **-**\ **-noupdateinitrd**\ ][\ **-**\ **-ignorekernelchk**\ ] [\ **-c | -**\ **-console**\ ] [\ **-u | -**\ **-uefimode**\ ] [\ **-V | -**\ **-verbose**\ ]
 
 \ **rinstall**\  \ *noderange*\  \ **runimage=**\ \ *task*\ 
 
@@ -35,9 +35,9 @@ Name
 
 \ **rinstall**\  is a convenience command to begin OS provision on a noderange.
 
-If \ **osimage**\ =\ *imagename*\  is specified or \ **osimage**\  is specified and nodetype.provmethod=\ **osimage**\  is set, provision the noderange with the osimage specified/configured.
+If \ **osimage**\ =\ *imagename*\  is specified or \ **osimage**\  is specified and nodetype.provmethod=\ *osimage*\  is set, provision the noderange with the osimage specified/configured. If no task specified, default is \ **osimage**\ .
 
-If \ **-c**\  is specified, it will then run \ **rcons**\  on the node. This is allowed only if one node is in the noderange. If consoles are needed on multiple nodes, see winstall(8)|winstall.8.
+If \ **-c**\  is specified, \ **rinstall**\  will run \ **rcons**\  on the node. This is allowed only if one node is in the noderange. If consoles are needed on multiple nodes, see winstall(8)|winstall.8.
 
 
 ***************

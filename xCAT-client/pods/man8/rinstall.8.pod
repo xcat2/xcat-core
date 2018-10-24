@@ -6,7 +6,7 @@ B<rinstall> - Begin OS provision on a noderange
 
 B<rinstall> I<noderange> [B<boot> | B<shell> | B<runcmd=>I<command>] [B<-c>|B<--console>] [B<-V>|B<--verbose>]
 
-B<rinstall> I<noderange> B<osimage>[=I<imagename>] [B<--noupdateinitrd>][B<--ignorekernelchk>] [B<-c>|B<--console>] [B<-u>|B<--uefimode>] [B<-V>|B<--verbose>]
+B<rinstall> I<noderange> [B<osimage>[=I<imagename>]] [B<--noupdateinitrd>][B<--ignorekernelchk>] [B<-c>|B<--console>] [B<-u>|B<--uefimode>] [B<-V>|B<--verbose>]
 
 B<rinstall> I<noderange> B<runimage=>I<task>
 
@@ -16,9 +16,9 @@ B<rinstall> [B<-h>|B<--help>|B<-v>|B<--version>]
 
 B<rinstall> is a convenience command to begin OS provision on a noderange.
 
-If B<osimage>=I<imagename> is specified or B<osimage> is specified and nodetype.provmethod=B<osimage> is set, provision the noderange with the osimage specified/configured.
+If B<osimage>=I<imagename> is specified or B<osimage> is specified and nodetype.provmethod=I<osimage> is set, provision the noderange with the osimage specified/configured. If no task specified, default is B<osimage>.
 
-If B<-c> is specified, it will then run B<rcons> on the node. This is allowed only if one node is in the noderange. If consoles are needed on multiple nodes, see L<winstall(8)|winstall.8>.
+If B<-c> is specified, B<rinstall> will run B<rcons> on the node. This is allowed only if one node is in the noderange. If consoles are needed on multiple nodes, see L<winstall(8)|winstall.8>.
 
 =head1 B<Options>
 
