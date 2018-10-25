@@ -51,6 +51,8 @@ function usage()
 	  update                        updates installed xcat-core packages to the
 	                                latest version from the repository
 	  uninstall                     removes xCAT from this system
+	  completely uninstall          removes xCAT from this system and cleans up
+	                                all the traces xCAT made
 
 	Examples:
 	  ${script}
@@ -64,8 +66,9 @@ function usage()
 	  ${script} --xcat-core=http://xcat.org/path/to/xcat-core.tar.bz2 \\
 	          --xcat-dep=http://xcat.org/path/to/xcat-dep.tar.bz2 install
 	  ${script} uninstall
+	  ${script} completely uninstall
 
-	xCAT: http://xcat.org
+	xCAT: http://xcat.org/
 	Full documentation at: http://xcat-docs.readthedocs.io/en/stable
 	EOF
 }
@@ -104,12 +107,7 @@ function verbose_usage()
 	                                of xCAT and packages in the repository
 	  smoke-test                    preform basic tests of the xCAT installation
 	EOF
-	println 1
-	while read -r ; do echo "${REPLY}" ; done <<-EOF
-	  away                          removes xCAT from this system and cleans up
-	                                all the traces xCAT made
-	EOF
-	println 8
+	println 11
 	while read -r ; do echo "${REPLY}" ; done <<-EOF
 	  ${script} --xcat-core=/path/to/xcat-core.repo install
 	  ${script} --xcat-core=/path/to/xcat-core install
@@ -130,10 +128,6 @@ function verbose_usage()
 	while read -r ; do echo "${REPLY}" ; done <<-EOF
 	  ${script} check
 	  ${script} smoke-test
-	EOF
-	println 1
-	while read -r ; do echo "${REPLY}" ; done <<-EOF
-	  ${script} away
 	EOF
 	println 999999	# Print out all the rest of lines
 
@@ -1892,6 +1886,11 @@ do
 		warn_if_bad "$?" "redundancy action -- \`$1'"
 		exit_if_bad "$?" "Try \`$0 --help' for more information"
 		GO_XCAT_ACTION="$1"
+		if [ "$1 $2" == "completely uninstall" ]
+		then
+			shift
+			GO_XCAT_ACTION="away"
+		fi
 		;;
 	esac
 	shift
@@ -1976,7 +1975,7 @@ case "${GO_XCAT_ACTION}" in
 
 		debug_logger <<-EOF
 
-		xCAT has been completely removed!
+		xCAT has been completely uninstalled!
 		EOF
 		;;
 	"uninstall")
