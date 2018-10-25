@@ -45,7 +45,7 @@ end
 
 start:rspconfig_sshcfg
 hcp:hmc
-label:cn_bmc_ready,hctrl_hmc,hctrl_openbmc
+label:cn_bmc_ready,hctrl_hmc
 cmd:rspconfig __GETNODEATTR($$CN,hcp)__ sshcfg
 check:rc==0
 check:output=~__GETNODEATTR($$CN,hcp)__: \w+
@@ -302,27 +302,41 @@ cmd:mkdir -p /tmp/rspconfig_set_hostname_equal_star_with_bmc_is_hostname
 check:rc == 0
 cmd:lsdef $$CN -z > /tmp/rspconfig_set_hostname_equal_star_with_bmc_is_hostname/$$CN.stanza
 check:rc == 0
-cmd:chdef -t node -o bogus_bmc_hostname groups=bmc ip=__GETNODEATTR($$CN,bmc)__
+cmd:rspconfig $$CN sshcfg
 check:rc == 0
-cmd:lsdef bogus_bmc_hostname
+cmd:ssh __GETNODEATTR($$CN,bmc)__ "hostname" | tee /tmp/rspconfig_set_hostname_equal_star_with_bmc_is_hostname/bmc_old_name
+cmd:chdef -t node -o bogus-bmc-hostname groups=bmc ip=__GETNODEATTR($$CN,bmc)__
 check:rc == 0
-cmd:makehosts bogus_bmc_hostname
+cmd:lsdef bogus-bmc-hostname
 check:rc == 0
-cmd:chdef $$CN bmc=bogus_bmc_hostname
+cmd:makehosts bogus-bmc-hostname
+check:rc == 0
+cmd:makedns bogus-bmc-hostname
+check:rc == 0
+cmd:chdef $$CN bmc=bogus-bmc-hostname
 check:rc == 0
 cmd:lsdef $$CN -i bmc -c
 check:rc == 0
 cmd:rspconfig $$CN hostname=*
 check:rc == 0
-check:output =~$$CN: BMC Hostname: bogus_bmc_hostname
-cmd:makehosts -d bogus_bmc_hostname
+check:output =~$$CN: BMC Hostname: bogus-bmc-hostname
+cmd:ssh __GETNODEATTR(bogus-bmc-hostname,ip)__ "hostname" | tee /tmp/rspconfig_set_hostname_equal_star_with_bmc_is_hostname/bmc_new_name
 check:rc == 0
-cmd:rmdef bogus_bmc_hostname
+cmd:echo "bogus-bmc-hostname" > /tmp/rspconfig_set_hostname_equal_star_with_bmc_is_hostname/bmc_set_name
+cmd:diff -y /tmp/rspconfig_set_hostname_equal_star_with_bmc_is_hostname/bmc_set_name /tmp/rspconfig_set_hostname_equal_star_with_bmc_is_hostname/bmc_new_name
+check:rc == 0
+cmd:makedns -d bogus-bmc-hostname
+check:rc == 0
+cmd:makehosts -d bogus-bmc-hostname
+check:rc == 0
+cmd:rmdef bogus-bmc-hostname
 check:rc == 0
 cmd:rmdef $$CN
 check:rc == 0
 cmd:cat /tmp/rspconfig_set_hostname_equal_star_with_bmc_is_hostname/$$CN.stanza |mkdef -z
 check:rc == 0
+cmd:ip=$(cat /tmp/rspconfig_set_hostname_equal_star_with_bmc_is_hostname/bmc_old_name);ssh  __GETNODEATTR($$CN,bmc)__ "hostname=bogus-bmc-hostname"
+cmd:ssh __GETNODEATTR($$CN,bmc)__ "hostname"
 cmd:rm -rf /tmp/rspconfig_set_hostname_equal_star_with_bmc_is_hostname
 check:rc == 0
 end

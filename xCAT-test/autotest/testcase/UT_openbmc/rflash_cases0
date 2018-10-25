@@ -85,6 +85,6 @@ os:Linux
 hcp:openbmc
 label:cn_bmc_ready,hctrl_openbmc
 cmd: rflash $$CN -l | grep \* | grep BMC | awk '{print $2}' | xargs -i{} rflash $$CN --delete {}
-check:rc==1
+check:rc!=0
 check:output=~$$CN: (\[.*?\]: )?Error: Deleting currently active BMC firmware is not supported
 end
