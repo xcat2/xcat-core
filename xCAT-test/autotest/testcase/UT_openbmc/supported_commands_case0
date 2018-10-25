@@ -62,9 +62,9 @@ check:rc==0
 check:output=~$$CN: Total Power:
 cmd: rvitals $$CN leds
 check:rc==0
-check:output=~$$CN: Front
-check:output=~$$CN: Front Fans
-check:output=~$$CN: Rear
+check:output=~$$CN: LEDs Front
+check:output=~$$CN: LEDs Fan 
+check:output=~$$CN: LEDs Rear 
 cmd: rvitals $$CN all
 check:rc==0
 check:output=~$$CN: Ambient:
