@@ -1889,11 +1889,12 @@ do
 		warn_if_bad "$?" "redundancy action -- \`$1'"
 		exit_if_bad "$?" "Try \`$0 --help' for more information"
 		GO_XCAT_ACTION="$1"
-		if [ "$1 $2" == "completely uninstall" ]
-		then
+		case "$1 $2" in
+		"completely uninstall")
 			shift
 			GO_XCAT_ACTION="away"
-		fi
+			;;
+		esac
 		;;
 	esac
 	shift
