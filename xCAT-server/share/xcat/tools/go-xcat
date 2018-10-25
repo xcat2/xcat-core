@@ -1704,7 +1704,6 @@ function test_case_000_version()
 	local ver=""
 	local -i ret=0
 
-	list_xcat_packages
 
 	while read -r
 	do
@@ -1713,6 +1712,15 @@ function test_case_000_version()
 		[[ "${ver}" = "${REPLY%%-*}" ]]
 		(( ret += $? ))
 	done < <(check_package_version "${GO_XCAT_CORE_PACKAGE_LIST[@]}")
+
+	if [[ -n "${ver}" ]]
+	then
+		list_xcat_packages
+	else
+		# xCAT is not installed at all
+		warn_if_bad 1 "xCAT is not installed at all."
+		ret=1
+	fi
 
 	return "${ret}"
 }
@@ -1726,7 +1734,11 @@ function test_case_001_xcatd()
 
 	for f in /var/run/xcat{d,/{main,udp,install,cmdlog}service}.pid
 	do
+		[ -f "${f}" ]
+		warn_if_bad "$?" "${f}: no such file" || continue
+
 		kill -0 "$(<"${f}")" 2>/dev/null
+		warn_if_bad "$?" "Process with an ID $(<${f}) is not running"
 		(( ret += $? ))
 	done
 
@@ -1737,11 +1749,15 @@ function test_case_001_xcatd()
 # Check if command lsdef can be run
 function test_case_002_lsdef()
 {
+	[ -f "/etc/profile.d/xcat.sh" ]
+	warn_if_bad "$?" "/etc/profile.d/xcat.sh: no such file" || return 1
+
 	(source /etc/profile.d/xcat.sh && lsdef)
+	warn_if_bad "$?" "lsdef exited with exit code $?"
 }
 
-# Perform basic smoke tests
-function perform_smoke_tests()
+# Perform basic smoke testing
+function smoke_testing()
 {
 	local test_case=""
 	local -i ret=0
@@ -1749,16 +1765,11 @@ function perform_smoke_tests()
 	for test_case in $(compgen -A function "test_case_")
 	do
 		debug_trace "${test_case}"
-		ret="$?"
-
-		if [[ "${ret}" -ne "0" ]]
-		then
-			return "${ret}"
-		fi
+		warn_if_bad "$?" "Something went wrong. :'(" || return 1
 	done
 
 	echo
-	echo "It seems everything went well. :)"
+	echo "It seems everything went well. :-)"
 	return 0
 }
 
@@ -1894,6 +1905,10 @@ do
 			shift
 			GO_XCAT_ACTION="away"
 			;;
+		"smoke test")
+			shift
+			GO_XCAT_ACTION="smoke-test"
+			;;
 		esac
 		;;
 	esac
@@ -1904,7 +1919,7 @@ case "${GO_XCAT_ACTION}" in
 "away"|"check"|"install"|"uninstall"|"update")
 	;;
 "smoke-test")
-	perform_smoke_tests
+	smoke_testing
 	exit "$?"
 	;;
 "")
@@ -2051,7 +2066,7 @@ case "${GO_XCAT_ACTION}" in
 	if [[ "${RET}" -eq "0" ]]
 	then
 		# xCAT has been installed and so far so good
-		perform_smoke_tests >/dev/null 2>&1
+		smoke_testing >/dev/null 2>&1
 		RET="$?"
 	fi
 
