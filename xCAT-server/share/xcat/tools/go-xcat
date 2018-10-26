@@ -1121,7 +1121,7 @@ function add_repo_by_url_yum_or_zypper()
 		name=${repo_id}
 		baseurl=file://${url%/}
 		enabled=1
-		gpgcheck=1
+		gpgcheck=0
 		gpgkey=file://${url%/}/repodata/repomd.xml.key
 		EOF
 		add_repo_by_file "${tmp}" "${repo_id}"
