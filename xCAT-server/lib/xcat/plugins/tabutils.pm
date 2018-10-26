@@ -2212,7 +2212,7 @@ sub nodels
         }
     }
     my $rsp_info;
-    $rsp_info->{data}->[0] = "$nodenum object definitions have been listed.\n";
+    $rsp_info->{numofnodes}->[0] = $nodenum;
     $callback->($rsp_info);
 
     return 0;

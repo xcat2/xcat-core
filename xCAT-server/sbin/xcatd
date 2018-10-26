@@ -2663,19 +2663,10 @@ sub send_response {
                 my $rsp = $response->{xcatresponse};
                 if ( (ref($rsp) eq 'ARRAY') && scalar(@$rsp) > 0 ) {
                     foreach (@$rsp) {
-                        if ($_->{data}->[0]) {
-                            if ( ($_->{data}->[0]) =~ /object definitions have been/ ) {
-                                my $str = $_->{data}->[0];
-                                ($numofnodes) = $str =~ /(\d+)/;
-                            }
-                        }
-                        if ($_->{info}) {
-                            if ( ($_->{info}->[-1]) =~ /object definitions have been/ ) {
-                                my $str = $_->{info}->[-1];
-                                ($numofnodes) = $str =~ /(\d+)/;
-                            }
-                        }
                         $_->{xcatdsource}->[0] = $MYXCATSERVER unless ($_->{xcatdsource});
+                        if ($_->{numofnodes}) {
+                            $numofnodes = $_->{numofnodes}->[0];
+                        }
                     }
                 }
             }

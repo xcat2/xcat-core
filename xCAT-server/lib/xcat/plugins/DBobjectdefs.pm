@@ -2080,6 +2080,7 @@ sub defmk
         $rsp->{data}->[0] = "$nodenum object definitions have been created or modified.";
         if ($nodenum > 0) {
             # Some objects were created, report as success
+            $rsp->{numofnodes}->[0] = $nodenum;
             xCAT::MsgUtils->message("I", $rsp, $::callback);
         }
         else {
@@ -2962,6 +2963,7 @@ sub defch
 
             if ($nodenum) {
                 $rsp->{data}->[0] = "$nodenum object definitions have been created or modified.";
+                $rsp->{numofnodes}->[0] = $nodenum;
             } else {
                 $rsp->{data}->[0] = "No object definitions have been created or modified.";
             }
@@ -4155,8 +4157,7 @@ sub defls
 
     # Display the definition of objects
     if (defined($rsp_info->{data}) && scalar(@{ $rsp_info->{data} }) > 0) {
-        my $nodenum = $numobjects;
-        push(@{ $rsp_info->{data} }, "$nodenum object definitions have been listed.");
+        $rsp_info->{numofnodes}->[0] = $numobjects;
         xCAT::MsgUtils->message("I", $rsp_info, $::callback);
     }
 
@@ -4524,6 +4525,7 @@ sub defrm
                 my $rsp;
                 my $nodenum = scalar(keys %objhash);
                 $rsp->{data}->[0] = "$nodenum object definitions have been removed.";
+                $rsp->{numofnodes}->[0] = $nodenum;
                 xCAT::MsgUtils->message("I", $rsp, $::callback);
             }
 
