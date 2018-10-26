@@ -2,7 +2,7 @@
 #
 # go-xcat - Install xCAT automatically.
 #
-# Version 1.0.30
+# Version 1.0.32
 #
 # Copyright (C) 2016, 2017, 2018 International Business Machines
 # Eclipse Public License, Version 1.0 (EPL-1.0)
@@ -1868,7 +1868,7 @@ do
 		verbose_usage
 		exit 0
 		;;
-	"-x"|"--xcat-core")
+	"--xcat-core")
 		shift
 		GO_XCAT_CORE_URL="$1"
 		;;
@@ -1882,7 +1882,7 @@ do
 	"--xcat-dep="*)
 		GO_XCAT_DEP_URL="${1##--xcat-dep=}"
 		;;
-	"--xcat-version")
+	"-x"|"--xcat-version")
 		shift
 		GO_XCAT_VERSION="$1"
 		;;
