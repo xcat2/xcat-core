@@ -112,11 +112,16 @@ local function remove_directory_deep(directory)
 
     -- print(directory)
 
-    num_dirs, num_files = remove_directory(directory, 0, '')
+    local info = assert(posix.stat(directory))
+    if info.type == 'directory' then
+        num_dirs, num_files = remove_directory(directory, 0, '')
 
-    -- printf('\ndropped %d directories, %d files\n', num_dirs, num_files)
+        -- printf('\ndropped %d directories, %d files\n', num_dirs, num_files)
 
-    posix.rmdir(directory)
+        posix.rmdir(directory)
+    else
+        posix.unlink(directory)
+    end
 end
 
 remove_directory_deep("/opt/xcat/share/xcat/netboot/genesis/%{tarch}/fs/bin")
