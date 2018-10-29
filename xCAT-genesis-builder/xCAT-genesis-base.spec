@@ -89,7 +89,7 @@ local function remove_directory(directory, level, prefix)
                 posix.unlink(full_name)
             end
 
-             -- printf('%s%s%s%s\n', prefix, prefix2, name, link)
+            -- printf('%s%s%s%s\n', prefix, prefix2, name, link)
 
             if info.type == 'directory' then
                 local indent = is_tail and tail_leaf_indent or leaf_indent
@@ -132,13 +132,13 @@ remove_directory_deep("/opt/xcat/share/xcat/netboot/genesis/%{tarch}/fs/var/run"
 
 %post
 if [ "$1" == "2" ]; then #only on upgrade, as on install it's probably not going to work...
-	if [ -f "/proc/cmdline" ]; then   # prevent running it during install into chroot image
-   		. /etc/profile.d/xcat.sh
-   		#mknb %{tarch}
+    if [ -f "/proc/cmdline" ]; then   # prevent running it during install into chroot image
+        . /etc/profile.d/xcat.sh
+        #mknb %{tarch}
         echo "If you are installing/updating xCAT-genesis-base separately, not as part of installing/updating all of xCAT, run 'mknb <arch>' manually"
         mkdir -p /etc/xcat
         touch /etc/xcat/genesis-base-updated
-   	fi
+    fi
 fi
 
 %Files
