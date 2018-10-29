@@ -1882,6 +1882,8 @@ sub nodels
     my $VERSION;
     my $HELP;
 
+    my $nodenum;
+
     my $nodels_usage = sub
     {
         my $exitcode = shift @_;
@@ -2154,6 +2156,7 @@ sub nodels
             }
         }
         $callback->($rsp);
+        $nodenum = scalar (@$nodes);
     }
     else
     {
@@ -2205,8 +2208,12 @@ sub nodels
 
                 #}
             }
+            $nodenum = scalar (@nodes);
         }
     }
+    my $rsp_info;
+    $rsp_info->{numofnodes}->[0] = $nodenum;
+    $callback->($rsp_info);
 
     return 0;
 }
@@ -2328,7 +2335,7 @@ sub tabch {
         {
             my $tab = xCAT::Table->new($_, -create => 1, -autocommit => 0);
             unless ($tab) {
-            my %rsp;
+                my %rsp;
                 $rsp{data}->[0] = "Table $_ does not exist.";
                 $rsp{errorcode}->[0] = 1;
                 $callback->(\%rsp);
