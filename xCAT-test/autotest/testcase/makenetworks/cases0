@@ -1,4 +1,5 @@
 start:makenetworks_h
+label:ci_test
 description:help
 cmd:makenetworks -h
 check:rc==0
@@ -6,6 +7,7 @@ check:output=~Usage
 end
 
 start:makenetworks_help
+label:ci_test
 description:help
 cmd:makedhcp --help
 check:rc==0
@@ -13,6 +15,7 @@ check:output=~Usage
 end
 
 start:makenetworks_v
+label:ci_test
 description:version
 cmd:makenetworks -v
 check:rc==0
@@ -35,6 +38,7 @@ end
 
 start:makenetworks_d_V
 description:display,verbose
+label:ci_test
 cmd:makenetworks
 check:rc==0
 cmd:makenetworks -d -V

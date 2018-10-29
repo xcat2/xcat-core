@@ -6,6 +6,7 @@ check:output=~noping|sshd|install|snmp|pbs
 end
 
 start:nodestat_err_node
+label:ci_test
 cmd:nodestat testnode
 check:rc!=0
 check:output=~Error
