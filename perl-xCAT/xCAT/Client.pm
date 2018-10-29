@@ -232,7 +232,8 @@ sub submit_request {
         $pclient = IO::Socket::INET6->new(
             %connargs,
         );
-    } else {
+    }
+    unless ($pclient) {
         $pclient = IO::Socket::INET->new(
             PeerAddr => $xcathost,
             Timeout  => 15,
