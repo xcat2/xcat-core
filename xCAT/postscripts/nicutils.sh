@@ -27,7 +27,11 @@ brctl="brctl"
 uniq="uniq"
 xargs="xargs"
 modprobe="modprobe"
-
+if [ -n "$LOGLABEL" ]; then
+    log_label=$LOGLABEL
+else
+    log_label="xcat"
+fi
 #########################################################################
 # ifdown/ifup will not be executed in diskful provision postscripts stage
 #########################################################################
@@ -87,6 +91,7 @@ function log_lines {
 function log_error {
     local __msg="$*"
     $log_print_cmd $log_print_arg "[E]:Error: $__msg"
+    logger -t $log_label -p local4.err "$__msg"
     return 1
 }
 
@@ -103,6 +108,7 @@ function log_error {
 function log_warn {
     local __msg="$*"
     $log_print_cmd $log_print_arg "[W]: $__msg"
+    logger -t $log_label -p local4.info "$__msg"
     return 0
 }
 
@@ -119,6 +125,7 @@ function log_warn {
 function log_info {
     local __msg="$*"
     $log_print_cmd $log_print_arg "[I]: $__msg"
+    logger -t $log_label -p local4.info "$__msg"
     return 0
 }
 

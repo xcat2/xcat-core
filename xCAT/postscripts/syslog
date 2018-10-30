@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/bash 
 # IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
 
 #-------------------------------------------------------------------------------
@@ -13,6 +13,12 @@
 #           OSVER: possible values are sles10, fedora8, redhat5, aix etc.
 #=cut
 #-------------------------------------------------------------------------------
+if [ -n "$LOGLABEL" ]; then
+    log_label=$LOGLABEL
+else
+    log_label="xcat"
+fi
+
 if [ "$SYSLOG" = "ignore" ]; then
     echo "The value of syslog is '$SYSLOG'."
     exit 0
@@ -303,7 +309,7 @@ if [ -e "/sbin/rsyslogd" -o -e "/usr/sbin/rsyslogd" ]; then
     if ( pmatch $SYSLOGPROD "*rsyslogd*" ) && ( pmatch $SYSLOGVER "8*" ); then
       config_rsyslog_V8
       #keep a record
-      logger -t xcat -p local4.info "Install: rsyslog version 8 setup"
+      logger -t $log_label -p local4.info "Install: rsyslog version 8 setup"
       exit 0
     fi
 fi
@@ -527,5 +533,5 @@ else
 fi
 
 #keep a record
-logger -t xcat -p local4.info "Install: syslog setup"
+logger -t $log_label -p local4.info "Install: syslog setup"
 exit 0

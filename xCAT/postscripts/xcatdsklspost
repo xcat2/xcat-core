@@ -893,6 +893,7 @@ run_ps () {
  else
      log_label=\"xcat.updatenode.\"\$scriptype
  fi
+ export LOGLABEL=\$log_label
  if [ -f \$1 ]; then
   echo \"\$scriptype start..: \$1\"
   msgutil_r \"\$MASTER_IP\" \"info\" "\"\$scriptype start..: \$1\"" \"\$logfile\" \"\$log_label\"
@@ -993,7 +994,6 @@ fi
 
 #tell user it is done when this is called by updatenode command
 if [ "$MODE" = "1" ] || [ "$MODE" = "2" ] || [ "$MODE" = "5" ]; then
-  echolog "info" "returned from postscript"
   echolog "info" "=============updatenode ending===================="
 fi
 

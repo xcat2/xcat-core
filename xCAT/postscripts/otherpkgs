@@ -24,11 +24,16 @@
 
 #enable debug
 #set -x
+if [ -n "$LOGLABEL" ]; then
+    log_label=$LOGLABEL
+else
+    log_label="xcat"
+fi
 
 if [ -f /etc/os-release ] && cat /etc/os-release |grep -i -e "^NAME=[ \"']*Cumulus Linux[ \"']*$" >/dev/null 2>&1 ; then
    #TODO
    echo "Cumulus OS is not supported yet, nothing to do..."
-   logger -t xcat -p local4.info "Cumulus OS is not supported yet, nothing to do..."
+   logger -t $log_label -p local4.info "Cumulus OS is not supported yet, nothing to do..."
    exit 0
 fi
 
@@ -210,10 +215,10 @@ apt_get_update_if_repos_changed()
 RETURNVAL=0
 
 if [ "$(uname -s)" = "AIX" ]; then
-      logger -p local4.info -t xcat "otherpkgs not support on AIX, exiting "
+      logger -p local4.info -t $log_label "otherpkgs not support on AIX, exiting "
       exit 0
   else
-      logger -p local4.info -t xcat "Running otherpkgs "
+      logger -p local4.info -t $log_label "Running otherpkgs "
 fi
 if [ -z "$UPDATENODE" ] || [ $UPDATENODE -ne 1 ]; then
   if [ "$NODESETSTATE" = "netboot" -o \
@@ -385,11 +390,11 @@ fi
 if [ $VERBOSE  ]; then
   echo NFSSERVER=$NFSSERVER
 fi
-logger -p local4.info -t xcat "NFSSERVER=$NFSSERVER"
+logger -p local4.info -t $log_label "NFSSERVER=$NFSSERVER"
 if [ $VERBOSE  ]; then
   echo OTHERPKGDIR=$OTHERPKGDIR
 fi
-logger -p local4.info -t xcat "OTHERPKGDIR=$OTHERPKGDIR"
+logger -p local4.info -t $log_label "OTHERPKGDIR=$OTHERPKGDIR"
 
 #if [ -x "/sbin/dhcpcd" ]; then
 #    dhcpcd -n $PRIMARYNIC
@@ -461,7 +466,7 @@ if ( ! ( pmatch "$OSVER" "sles10*" ) && [ $haszypper -eq 1 ] ); then
         result=`zypper ar $path xCAT-$OSVER 2>&1`
         if [ $? -ne 0 ]; then
 	    if ( ! pmatch "$result" "*exists*" ); then
-	        logger -t xcat -p local4.info "ospkgs: zypper ar $path xCAT-$OSVER\n    $result"
+	        logger -t $log_label -p local4.info "ospkgs: zypper ar $path xCAT-$OSVER\n    $result"
                 if [ $VERBOSE  ]; then
 	          echo "ospkgs: zypper ar $path xCAT-$OSVER"
 	          echo "    $result"
@@ -479,7 +484,7 @@ if ( ! ( pmatch "$OSVER" "sles10*" ) && [ $haszypper -eq 1 ] ); then
             result=`zypper ar $path xCAT-$OSVER-"path$i"  2>&1`
             if [ $? -ne 0 ]; then
 	        if ( ! pmatch "$result" "*exists*" ); then
-	            logger -t xcat -p local4.info "ospkgs: zypper ar $path xCAT-$OSVER-path$i\n    $result"
+	            logger -t $log_label -p local4.info "ospkgs: zypper ar $path xCAT-$OSVER-path$i\n    $result"
                   if [ $VERBOSE  ]; then
 	            echo "ospkgs: zypper ar $path xCAT-$OSVER-path$i"
 	            echo "    $result"
@@ -507,7 +512,7 @@ if ( ! ( pmatch "$OSVER" "sles10*" ) && [ $haszypper -eq 1 ] ); then
             result=`zypper ar $sdk_src xCAT-$OSVER-$bname 2>&1`
             if [ $? -ne 0 ]; then
                 if ( ! pmatch "$result" "*exists*" ); then
-                    logger -t xcat -p local4.info "otherpkgs: zypper ar $sdk_src xCAT-$OSVER-bname\n    $result"
+                    logger -t $log_label -p local4.info "otherpkgs: zypper ar $sdk_src xCAT-$OSVER-bname\n    $result"
                     if [ $VERBOSE ]; then
                         echo "otherpkgs: zypper ar $sdk_src xCAT-$OSVER-bname"
                         echo "    $result"
@@ -818,7 +823,7 @@ EOF`
         if [ $R -ne 0 ]; then
               RETURNVAL=$R
         fi
-        logger -p local4.info -t xcat "$result"
+        logger -p local4.info -t $log_label "$result"
         if [ $VERBOSE  ]; then
           echo "$result"
         fi
@@ -832,7 +837,7 @@ EOF`
         if [ $R -ne 0 ]; then
               RETURNVAL=$R
         fi
-        logger -p local4.info -t xcat "$result"
+        logger -p local4.info -t $log_label "$result"
         if [ $VERBOSE  ]; then
           echo "$result"
         fi
@@ -846,7 +851,7 @@ EOF`
         if [ $R -ne 0 ]; then
               RETURNVAL=$R
         fi
-	logger -p local4.info -t xcat "$result"
+	logger -p local4.info -t $log_label "$result"
         if [ $VERBOSE  ]; then
 	  echo "$result"
         fi
@@ -867,7 +872,7 @@ EOF`
             if [ $R -ne 0 ]; then
               RETURNVAL=$R
             fi
-            logger -p local4.info -t xcat "$result"
+            logger -p local4.info -t $log_label "$result"
             if [ $VERBOSE  ]; then
               echo "$result"
             fi
@@ -880,7 +885,7 @@ EOF`
             if [ $R -ne 0 ]; then
               RETURNVAL=$R
             fi
-            logger -p local4.info -t xcat "$result"
+            logger -p local4.info -t $log_label "$result"
             if [ $VERBOSE  ]; then
               echo "$result"
             fi
@@ -894,7 +899,7 @@ EOF`
             if [ $R -ne 0 ]; then
               RETURNVAL=$R
             fi
-            logger -p local4.info -t xcat "$result"
+            logger -p local4.info -t $log_label "$result"
             if [ $VERBOSE  ]; then
               echo "$result"
             fi
@@ -910,7 +915,7 @@ EOF`
         if [ $R -ne 0 ]; then
               RETURNVAL=$R
         fi
-        logger -p local4.info -t xcat "$result"
+        logger -p local4.info -t $log_label "$result"
         if [ $VERBOSE  ]; then
           echo "$result"
         fi
@@ -927,8 +932,9 @@ EOF`
             R=$?
             if [ $R -ne 0 ]; then
               RETURNVAL=$R
+              logger -p local4.err -t $log_label "$envlist yum -y install $repo_pkgs failed."
             fi
-	    logger -p local4.info -t xcat "$result"
+	    logger -p local4.info -t $log_label "$repo_pkgs installed."
             if [ $VERBOSE  ]; then
               echo "$result"
             fi
@@ -940,8 +946,9 @@ EOF`
             R=$?
             if [ $R -ne 0 ]; then
               RETURNVAL=$R
+              logger -p local4.err -t $log_label "$envlist zypper install -y $repo_pkgs 2>&1 failed."
 	    fi
-            logger -p local4.info -t xcat "$result"
+            logger -p local4.info -t $log_label "$repo_pkgs installed."
             if [ $VERBOSE  ]; then
               echo "$result"
 	    fi
@@ -960,8 +967,9 @@ EOF`
             R=$?
             if [ $R -ne 0 ]; then
               RETURNVAL=$R
+              logger -p local4.err -t $log_label "install $repo_pkgs failed."
 	    fi
-	    logger -p local4.info -t xcat "$result"
+	    logger -p local4.info -t $log_label "$repo_pkgs installed."
             if [ $VERBOSE  ]; then
              echo "$result"
 	    fi
@@ -971,7 +979,7 @@ EOF`
     #Handle the rest with rpm
     if [ "$plain_pkgs" != "" -a -n "$OTHERPKGDIR" ]; then
         echo "Warning: the packages $plain_pkgs could not be found in the yum/apt repository, falling back to rpm/dpkg command. If you want your packages to be installed with yum/apt, verify yum/apt is installed and createrepo/dpkg-scanpackages has been run."
-        logger -p local4.info -t xcat "Warning: the packages $plain_pkgs could not be found in the yum/apt repository, falling back to rpm/dpkg command. If you want your packages to be installed with yum/apt, verify yum/apt is installed and createrepo/dpkg-scanpackages has been run."
+        logger -p local4.info -t $log_label "Warning: the packages $plain_pkgs could not be found in the yum/apt repository, falling back to rpm/dpkg command. If you want your packages to be installed with yum/apt, verify yum/apt is installed and createrepo/dpkg-scanpackages has been run."
         if [ $mounted -eq 0 ]; then
 	    dir_no_ftproot=${OTHERPKGDIR#*$INSTALLDIR/}
             mkdir -p /xcatpost/$dir_no_ftproot
@@ -998,7 +1006,7 @@ EOF`
         if [ $R -ne 0 ]; then
               RETURNVAL=$R
 	fi
-        logger -p local4.info -t xcat "$result"
+        logger -p local4.info -t $log_label "$plain_pkgs installed."
         if [ $VERBOSE  ]; then
           echo "$result"
 	fi
@@ -1022,7 +1030,7 @@ EOF`
             if [ $R -ne 0 ]; then
               RETURNVAL=$R
 	    fi
-            logger -p local4.info -t xcat "$result"
+            logger -p local4.info -t $log_label "$repo_pkgs_postremove removed."
             if [ $VERBOSE  ]; then
               echo "$result"
 	    fi
@@ -1035,7 +1043,7 @@ EOF`
             if [ $R -ne 0 ]; then
               RETURNVAL=$R
 	    fi
-            logger -p local4.info -t xcat "$result"
+            logger -p local4.info -t $log_label "$repo_pkgs_postremove removed."
             if [ $VERBOSE  ]; then
               echo "$result"
 	    fi
@@ -1049,7 +1057,7 @@ EOF`
             if [ $R -ne 0 ]; then
               RETURNVAL=$R
 	    fi
-            logger -p local4.info  -t xcat "$result"
+            logger -p local4.info  -t $log_label "$repo_pkgs_postremove removed."
             if [ $VERBOSE  ]; then
               echo "$result"
 	    fi
@@ -1065,7 +1073,7 @@ EOF`
         if [ $R -ne 0 ]; then
               RETURNVAL=$R
 	fi
-        logger -p local4.info -t xcat "$result"
+        logger -p local4.info -t $log_label "$plain_pkgs_postremove removed."
         if [ $VERBOSE  ]; then
           echo "$result"
 	fi
