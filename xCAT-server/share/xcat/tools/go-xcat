@@ -1986,7 +1986,6 @@ case "${GO_XCAT_ACTION}" in
 	# Remove xCAT
 	ask_to_continue "${GO_XCAT_YES[0]}" "xCAT is going to be ${GO_XCAT_ACTION/away/trash}ed."
 	debug_trace uninstall_xcat -y
-	boo_boo_if_bad "$?"
 
 	case "${GO_XCAT_ACTION}" in
 	"away")
@@ -2000,6 +1999,9 @@ case "${GO_XCAT_ACTION}" in
 		EOF
 		;;
 	"uninstall")
+		# Check the return value of `debug_trace uninstall_xcat -y'
+		boo_boo_if_bad "$?"
+
 		debug_logger <<-EOF
 
 		xCAT has been uninstalled!
