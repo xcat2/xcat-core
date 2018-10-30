@@ -198,6 +198,7 @@ run_ps () {
         scriptype=\"postscript\"
     fi
     log_label=\"xcat.deployment.\"\$scriptype
+    export LOGLABEL=\$log_label
     if [ -f \$1 ]; then
         msgutil_r \"\$MASTER_IP\" \"info\" "\"\$scriptype start..: \$1\"" \"\$logfile\" \"\$log_label\"
         if [ \"\$XCATDEBUGMODE\" = \"1\" ] || [ \"\$XCATDEBUGMODE\" = \"2\" ]; then
@@ -207,7 +208,7 @@ run_ps () {
                 bash -x ./\$@ 2>&1
                 ret_local=\$?
             else
-                ./\$@ 2>&1 | logger -t xcat -p debug
+                ./\$@ 2>&1 | logger -t \$log_label -p debug
                 ret_local=\${PIPESTATUS[0]}
             fi
         else
