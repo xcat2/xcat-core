@@ -216,7 +216,7 @@ ARGNUM=$#;
 if [ -z $1 ]; then
   NODE_DEPLOYMENT=1
   log_label="xcat.deployment"
-  echolog "info" "=============depoyment starting===================="
+  echolog "info" "=============deployment starting===================="
 else
   NODE_DEPLOYMENT=0
   log_label="xcat.updatenode"
