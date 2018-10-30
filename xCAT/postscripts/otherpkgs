@@ -934,7 +934,7 @@ EOF`
               RETURNVAL=$R
               logger -p local4.err -t $log_label "$envlist yum -y install $repo_pkgs failed."
             fi
-	    logger -p local4.info -t $log_label "$result"
+	    logger -p local4.info -t $log_label "$repo_pkgs installed."
             if [ $VERBOSE  ]; then
               echo "$result"
             fi
@@ -946,8 +946,9 @@ EOF`
             R=$?
             if [ $R -ne 0 ]; then
               RETURNVAL=$R
+              logger -p local4.err -t $log_label "$envlist zypper install -y $repo_pkgs 2>&1 failed."
 	    fi
-            logger -p local4.info -t $log_label "$result"
+            logger -p local4.info -t $log_label "$repo_pkgs installed."
             if [ $VERBOSE  ]; then
               echo "$result"
 	    fi
@@ -966,8 +967,9 @@ EOF`
             R=$?
             if [ $R -ne 0 ]; then
               RETURNVAL=$R
+              logger -p local4.err -t $log_label "install $repo_pkgs failed."
 	    fi
-	    logger -p local4.info -t $log_label "$result"
+	    logger -p local4.info -t $log_label "$repo_pkgs installed."
             if [ $VERBOSE  ]; then
              echo "$result"
 	    fi
@@ -1004,7 +1006,7 @@ EOF`
         if [ $R -ne 0 ]; then
               RETURNVAL=$R
 	fi
-        logger -p local4.info -t $log_label "$result"
+        logger -p local4.info -t $log_label "$plain_pkgs installed."
         if [ $VERBOSE  ]; then
           echo "$result"
 	fi
@@ -1028,7 +1030,7 @@ EOF`
             if [ $R -ne 0 ]; then
               RETURNVAL=$R
 	    fi
-            logger -p local4.info -t $log_label "$result"
+            logger -p local4.info -t $log_label "$repo_pkgs_postremove removed."
             if [ $VERBOSE  ]; then
               echo "$result"
 	    fi
@@ -1041,7 +1043,7 @@ EOF`
             if [ $R -ne 0 ]; then
               RETURNVAL=$R
 	    fi
-            logger -p local4.info -t $log_label "$result"
+            logger -p local4.info -t $log_label "$repo_pkgs_postremove removed."
             if [ $VERBOSE  ]; then
               echo "$result"
 	    fi
@@ -1055,7 +1057,7 @@ EOF`
             if [ $R -ne 0 ]; then
               RETURNVAL=$R
 	    fi
-            logger -p local4.info  -t $log_label "$result"
+            logger -p local4.info  -t $log_label "$repo_pkgs_postremove removed."
             if [ $VERBOSE  ]; then
               echo "$result"
 	    fi
@@ -1071,7 +1073,7 @@ EOF`
         if [ $R -ne 0 ]; then
               RETURNVAL=$R
 	fi
-        logger -p local4.info -t $log_label "$result"
+        logger -p local4.info -t $log_label "$plain_pkgs_postremove removed."
         if [ $VERBOSE  ]; then
           echo "$result"
 	fi
