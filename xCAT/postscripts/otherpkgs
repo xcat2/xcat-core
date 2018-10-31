@@ -232,7 +232,7 @@ if [ -z "$UPDATENODE" ] || [ $UPDATENODE -ne 1 ]; then
 fi
 
 if [ -z "$OTHERPKGS_INDEX" ]; then
-  echo "$0: no extra rpms to install"
+  echo "$(basename $0): no extra rpms to install"
   exit 0
 fi
 
