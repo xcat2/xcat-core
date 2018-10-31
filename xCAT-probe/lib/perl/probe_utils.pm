@@ -286,10 +286,20 @@ sub is_firewall_open {
 sub is_http_ready {
     my $mnip = shift;
     $mnip = shift if (($mnip) && ($mnip =~ /probe_utils/));
+    my $httpport = shift;
     my $installdir = shift;
     my $errormsg_ref = shift;
 
-    my $http      = "http://$mnip/$installdir/postscripts/syslog";
+    my $http_status = `netstat -tunlp | grep -e "httpd" -e "apache" | grep "LISTEN" 2>&1`;
+    if (!$http_status) {
+        $$errormsg_ref = "No HTTP listening status get by command 'netstat'";
+        return 0;
+    } elsif ($http_status !~ /\S*\s+\S*\s+\S*\s+\S*$httpport\s+.+/) {
+        $$errormsg_ref = "The port defined in 'site' table HTTP is not listening";
+        return 0;
+    }
+
+    my $http      = "http://$mnip:$httpport/$installdir/postscripts/syslog";
     my %httperror = (
     "400" => "The request $http could not be understood by the server due to malformed syntax",
     "401" => "The request requires user authentication.",
