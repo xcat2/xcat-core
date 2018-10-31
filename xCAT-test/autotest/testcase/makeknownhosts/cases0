@@ -1,4 +1,5 @@
 start:makeknownhosts_h
+label:ci_test
 cmd:makeknownhosts -h
 check:output=~Usage
 cmd:makeknownhosts --help

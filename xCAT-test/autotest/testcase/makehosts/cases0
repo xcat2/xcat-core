@@ -1,5 +1,5 @@
 start:makehosts_h
-label:mn_only,dns
+label:mn_only,ci_test,dns
 description:makehosts -h
 cmd:makehosts -h
 check:rc==0
@@ -7,7 +7,7 @@ check:output=~Usage
 end
 
 start:makehosts_help
-label:mn_only,dns
+label:mn_only,ci_test,dns
 description:makehosts --help
 cmd:makehosts --help
 check:rc==0
@@ -16,7 +16,7 @@ end
 
 start:makehosts_null
 description:makehosts
-label:mn_only,dns
+label:mn_only,ci_test,dns
 cmd:cp -f /etc/hosts /etc/hosts.xcatbakautotest
 cmd:chtab node=nouse_compute hosts.ip="|node(\d+)|1.2.3.(\$1+0)|" hosts.hostnames="|(.*)|(\$1).cluster.net|"
 check:rc==0
@@ -88,7 +88,7 @@ cmd:rm -f /tmp/1 /tmp/2
 end
 
 start:makehosts_n
-label:mn_only,dns
+label:mn_only,ci_test,dns
 cmd:cp -f /etc/hosts /etc/hosts.xcatbakautotest
 cmd:chtab node=nouse_compute hosts.ip="|node(\d+)|1.2.3.(\$1+0)|" hosts.hostnames="|(.*)|(\$1).cluster.net|"
 check:rc==0
@@ -113,7 +113,7 @@ cmd:rm -rf /tmp/hosts
 end
 
 start:makehosts_n_noderange
-label:mn_only,dns
+label:mn_only,ci_test,dns
 cmd:cp -f /etc/hosts /etc/hosts.xcatbakautotest
 cmd:chtab node=compute hosts.ip="|node(\d+)|1.2.3.(\$1+0)|" hosts.hostnames="|(.*)|(\$1).cluster.net|"
 check:rc==0
