@@ -72,7 +72,7 @@ end
 local function remove_directory(directory, level, prefix)
     local num_dirs = 0
     local num_files = 0
-    if posix.access(directory,"rw") then
+    if posix.access(directory, "rw") then
     local files = posix.dir(directory)
     local last_file_index = table.getn(files)
     table.sort(files)
@@ -112,15 +112,17 @@ local function remove_directory_deep(directory)
 
     -- print(directory)
 
-    local info = assert(posix.stat(directory))
-    if info.type == 'directory' then
-        num_dirs, num_files = remove_directory(directory, 0, '')
+    if posix.access(directory, "rw") then
+        local info = assert(posix.stat(directory))
+        if info.type == 'directory' then
+            num_dirs, num_files = remove_directory(directory, 0, '')
 
-        -- printf('\ndropped %d directories, %d files\n', num_dirs, num_files)
+            -- printf('\ndropped %d directories, %d files\n', num_dirs, num_files)
 
-        posix.rmdir(directory)
-    else
-        posix.unlink(directory)
+            posix.rmdir(directory)
+        else
+            posix.unlink(directory)
+        end
     end
 end
 
