@@ -994,6 +994,7 @@ fi
 
 #tell user it is done when this is called by updatenode command
 if [ "$MODE" = "1" ] || [ "$MODE" = "2" ] || [ "$MODE" = "5" ]; then
+  echo "returned from postscript"
   echolog "info" "=============updatenode ending===================="
 fi
 
