@@ -1,6 +1,6 @@
 start:tabprune_h
 description:tabprune -h
-label:mn_only,ci_test,db
+label:mn_only,db
 cmd:tabprune -h
 check:rc==0
 check:output=~Usage
@@ -8,7 +8,7 @@ end
 
 start:tabprune_v
 description:tabprune -v
-label:mn_only,ci_test,db
+label:mn_only,db
 cmd:tabprune -v
 check:rc==0
 check:output=~Version
@@ -16,7 +16,7 @@ end
 
 start:tabprune_a_eventlog
 description:tabprune eventlog -a
-label:mn_only,ci_test,db
+label:mn_only,db
 cmd:tabprune eventlog -a
 check:rc==0
 check:output!~not a valid xCAT object type
@@ -24,7 +24,7 @@ end
 
 start:tabprune_V_a_eventlog
 description:tabprune eventlog -V -a > /tmp/eventlog.csv
-label:mn_only,ci_test,db
+label:mn_only,db
 cmd:tabprune eventlog -V -a > /tmp/eventlog.csv
 check:rc==0
 cmd:ls /tmp/eventlog.csv
@@ -35,7 +35,7 @@ end
 
 start:tabprune_p_auditlog
 description:to remove 50% of the auditlog table,if the original number is odd number,the final result is 1;or else the final number is 0;
-label:mn_only,ci_test,db
+label:mn_only,db
 #cmd:n1=`lsdef -t auditlog|wc -l`;tabprune auditlog -p 50;n2=`lsdef -t auditlog|wc -l`;echo $((n1-($n2-2)*2))
 cmd:n1=`lsdef -t auditlog|wc -l`;tabprune auditlog -p 50;n2=`lsdef -t auditlog|wc -l`;echo $($n2<n1)
 check:rc=0
@@ -44,7 +44,7 @@ end
 
 start:tabprune_i_auditlog
 description:remove the records whose recid is less than the input recid number
-label:mn_only,ci_test,db
+label:mn_only,db
 cmd:chtab key=auditskipcmds site.value=
 check:rc=0
 cmd:lsdef -t site
@@ -61,7 +61,7 @@ end
 
 start:tabprune_V_n_auditlog
 description:remove 3 records from the auditlog table and display the remove records
-label:mn_only,ci_test,db
+label:mn_only,db
 cmd:chtab key=auditskipcmds site.value=
 check:rc=0
 cmd:lsdef -t site

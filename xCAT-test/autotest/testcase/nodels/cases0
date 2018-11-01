@@ -1,6 +1,6 @@
 start:nodels_null
 description:nodels | grep testnode
-label:mn_only,ci_test,db
+label:mn_only,db
 cmd:chdef -t node -o testnode groups="all,aix"
 check:rc==0
 cmd:nodels | grep testnode
@@ -12,7 +12,7 @@ end
 
 start:nodels_noderange_shortname_groups
 description:The nodels use shortname groups
-label:mn_only,ci_test,db
+label:mn_only,db
 cmd:chdef -t node -o testnode groups=rhels5.5
 check:rc==0
 cmd:nodels testnode groups
@@ -24,7 +24,7 @@ end
 
 start:nodels_noderange_shortname_tags
 description:The nodels use shortname tags
-label:mn_only,ci_test,db
+label:mn_only,db
 cmd:chdef -t node -o testnode groups=rhels5.5
 check:rc==0
 cmd:nodels testnode tags
@@ -36,7 +36,7 @@ end
 
 start:nodels_noderange_shortname_mgt
 description:The nodels use shortname mgt
-label:mn_only,ci_test,db
+label:mn_only,db
 cmd:chdef -t node -o testnode mgt=blade groups=all
 check:rc==0
 cmd:nodels testnode mgt
@@ -47,7 +47,7 @@ end
 
 start:nodels_table_include
 description:Check the command nodels with =~.
-label:mn_only,ci_test,db
+label:mn_only,db
 cmd:chdef -t node -o testnode groups=rh4.123456789
 check:rc==0
 cmd:nodels groups=~rh4.123456789
@@ -59,7 +59,7 @@ end
 
 start:nodels_noderange_table_uninclude
 description:Check the command nodels with !~.
-label:mn_only,ci_test,db
+label:mn_only,db
 cmd:chdef -t node -o testnode1 groups=rhels5.5,all
 check:rc==0
 cmd:chdef -t node -o testnode2 groups=rhels5.4,all
@@ -73,7 +73,7 @@ end
 
 start:nodels_noderange_table_equal
 description:Check the command nodels with ==.
-label:mn_only,ci_test,db
+label:mn_only,db
 cmd:chdef -t node -o testnode groups=rh4.123456789
 check:rc==0
 cmd:nodels groups==rh4.123456789
@@ -85,7 +85,7 @@ end
 
 start:nodels_noderange_table_unequal
 description:Check the command nodels with !=.
-label:mn_only,ci_test,db
+label:mn_only,db
 cmd:chdef -t node -o testnode1 groups=rhels5.5
 check:rc==0
 cmd:chdef -t node -o testnode2 groups=rhels5.4
@@ -98,7 +98,7 @@ end
 
 start:nodels_b
 description:nodels -b and nodels --blame
-label:mn_only,ci_test,db
+label:mn_only,db
 cmd:chdef -t node -o testnode groups=rhels5.5
 check:rc==0
 cmd:nodels testnode -b groups
@@ -112,7 +112,7 @@ end
 
 start:nodels_S
 description:nodels -S
-label:mn_only,ci_test,db
+label:mn_only,db
 cmd:chdef -t node -o testnode hidden=1 groups=rhels5.5
 check:rc==0
 cmd:nodels -S
@@ -124,7 +124,7 @@ end
 
 start:nodels_H
 description:nodels -H all groups mgt | grep testnode
-label:mn_only,ci_test,db
+label:mn_only,db
 cmd:chdef -t node -o testnode groups="all,aix" mgt="hmc"
 check:rc==0
 cmd:nodels -H all groups mgt | grep testnode
@@ -136,7 +136,7 @@ end
 
 start:nodels_noderange
 description:nodels testnode
-label:mn_only,ci_test,db
+label:mn_only,db
 cmd:chdef -t node -o testnode groups="all,aix"
 check:rc==0
 cmd:nodels testnode
@@ -148,7 +148,7 @@ end
 
 start:nodels_noderange_table
 description:nodels testnode nodelist
-label:mn_only,ci_test,db
+label:mn_only,db
 cmd:chdef -t node -o testnode groups=all
 check:rc==0
 cmd:nodels testnode nodelist
@@ -160,7 +160,7 @@ end
 
 start:nodels_tablevalue
 description:nodels rh4.1234567890
-label:mn_only,ci_test,db
+label:mn_only,db
 cmd:chdef -t node -o testnode groups=rh4.1234567890
 check:rc==0
 cmd:nodels rh4.1234567890
@@ -172,7 +172,7 @@ end
 
 start:nodels_tablevalue_tablecolumn
 description:nodels rh4.1234567890 mgt
-label:mn_only,ci_test,db
+label:mn_only,db
 cmd:chdef -t node -o testnode groups=rh4.1234567890 mgt=hmc
 check:rc==0
 cmd:nodels rh4.1234567890 mgt
@@ -193,7 +193,7 @@ end
 
 start:nodels_noderange_tablecolumn
 description:nodels testnode nodehm.mgt
-label:mn_only,ci_test,db
+label:mn_only,db
 cmd:chdef -t node -o testnode mgt=hmc groups=all
 check:rc==0
 cmd:nodels testnode nodehm.mgt
@@ -207,7 +207,7 @@ end
 
 start:nodels_h
 description:nodels -h and nodels -? and nodels --help
-label:mn_only,ci_test,db
+label:mn_only,db
 cmd:nodels -h
 check:output=~Usage
 cmd:nodels -?
@@ -218,7 +218,7 @@ end
 
 
 start:nodels_v
-label:mn_only,ci_test,db
+label:mn_only,db
 cmd:nodels -v
 check:output=~Version
 cmd:nodels --version
@@ -227,14 +227,14 @@ end
 
 
 start:nodels_err_symbol
-label:mn_only,ci_test,db
+label:mn_only,db
 cmd:nodels -H all unknown
 check:rc!=0
 check:output=~Error
 end
 
 start:nodels_err_noderange
-label:mn_only,ci_test,db
+label:mn_only,db
 cmd:nodels douniwan
 check:rc!=0
 check:output=~Error

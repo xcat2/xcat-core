@@ -1,5 +1,6 @@
 start:ppping_h
 description:get ppping help information
+label:others,parallel_cmds
 cmd:ppping -h
 check:rc==0
 check:output=~Usage
@@ -7,6 +8,7 @@ end
 
 start:ppping_v
 description:Display verbose output
+label:others,parallel_cmds
 cmd:ppping -v
 check:rc==0
 check:output=~Version
@@ -14,6 +16,7 @@ end
 
 start:ppping_node
 description:ppping node
+label:others,parallel_cmds
 Attribute: $$CN-The operation object of ppping command
 cmd:ping -c 3 $$CN > /dev/null 2>&1;if [[ $? -eq 1 ]]; then output=`ppping $$CN`;if [[ $? -eq 1 ]]&&[[ $output =~ "noping" ]];then exit 0;else exit 1;fi;else output=`ppping $$CN`; if [[ $? -eq 0 ]]&&[[ $output =~ "pinged all nodes successfully" ]];then exit 0;else exit 1;fi;fi
 check:rc==0
@@ -21,6 +24,7 @@ end
 
 start:ppping_V_node
 description:Display verbose output of ppping node.
+label:others,parallel_cmds
 Attribute: $$CN-The operation object of ppping command
 cmd:ping -c 3 $$CN > /dev/null 2>&1;if [[ $? -eq 1 ]]; then output=`ppping -V $$CN`;if [[ $? -eq 1 ]]&&[[ $output =~ "$$CN: noping" ]];then exit 0;else exit 1;fi;else output=`ppping -V $$CN`; if [[ $? -eq 0 ]]&&[[ $output =~ "$$CN: $$CN: ping" ]];then exit 0;else exit 1;fi;fi
 check:rc==0
@@ -28,6 +32,7 @@ end
 
 start:ppping_q_node
 description:Display minimum output of ppping node.
+label:others,parallel_cmds
 Attribute: $$CN-The operation object of ppping command
 cmd:ping -c 3 $$CN > /dev/null 2>&1;if [[ $? -eq 1 ]]; then output=`ppping -q $$CN`;if [[ $? -eq 1 ]]&&[[ $output =~ "$$CN: noping" ]];then exit 0;else exit 1;fi;else output=`ppping -q $$CN`; if [[ $? -eq 0 ]]&&[[ $output =~ "" ]];then exit 0;else exit 1;fi;fi
 check:rc==0
@@ -35,6 +40,7 @@ end
 
 start:ppping_d_node
 description:Print debug information of ppping node.
+label:others,parallel_cmds
 Attribute: $$CN-The operation object of ppping command
 cmd:ping -c 3 $$CN > /dev/null 2>&1;if [[ $? -eq 1 ]]; then output=`ppping -d $$CN`;if [[ $? -eq 1 ]]&&[[ $output =~ "start" ]]&&[[ $output =~ "stop" ]];then exit 0;else exit 1;fi;else output=`ppping -d $$CN`; if [[ $? -eq 0 ]]&&[[ $output =~ "start" ]]&&[[ $output =~ "stop" ]];then exit 0;else exit 1;fi;fi
 check:rc==0
@@ -42,6 +48,7 @@ end
 
 start:ppping_i_node
 description:A comma separated list of network interface names that should be pinged instead of the interface represented by the nodename/hostname
+label:others,parallel_cmds
 Attribute: $$CN-The operation object of ppping command
 cmd:cp /etc/hosts  /etc/hosts.bak
 check:rc==0
@@ -59,6 +66,7 @@ end
 
 start:ppping_nodes
 description:test the connectivity between nodes in the noderange using ping
+label:others,parallel_cmds
 Attribute: $$CN,$$SN-The operation object of ppping command
 cmd:ping -c 3 $$CN > /dev/null 2>&1;rc1=$?;ping -c 3 $$SN > /dev/null 2>&1;rc2=$?;if [[ $rc1 -eq 1 ]]&&[[ $rc2 -eq 1 ]];then output=`ppping  $$CN,$$SN`;if [[ $? -eq 1 ]]&&[[ $output =~ "$$CN: noping" ]]&&[[ $output =~ "$$SN: noping" ]];then exit 0;else exit 1;fi;elif [[ $rc1 -eq 0 ]]&&[[ $rc2 -eq 1 ]]; then output=`ppping $$CN,$$SN`; if [[ $? -eq 0 ]]&&[[ $output =~ "$$SN: noping" ]]&&[[ "$$CN: $$SN: noping" ]];then exit 0;else exit 1;fi;elif [[ $rc1 -eq 1 ]]&&[[ $rc2 -eq 0 ]]; then output=`ppping $$CN,$$SN`; if [[ $? -eq 0 ]]&&[[ $output =~ "$$CN: noping" ]]&&[[ "$$SN: $$CN: noping" ]];then exit 0;else  exit 1;fi;else output=`ppping $$CN,$$SN`; if [[ $? -eq 0 ]]&&[[ $output =~ "$$CN: pinged all nodes successfully" ]]&&[[ "$$SN: pinged all nodes successfully" ]];then exit 0;else  exit 1;fi;fi
 check:rc==0
@@ -66,6 +74,7 @@ end
 
 start:ppping_V_nodes
 description:test the connectivity between nodes in the noderange using ping and print verbose output.
+label:others,parallel_cmds
 Attribute: $$CN,$$SN-The operation object of ppping command
 cmd:ping -c 3 $$CN > /dev/null 2>&1;rc1=$?;ping -c 3 $$SN > /dev/null 2>&1;rc2=$?;if [[ $rc1 -eq 1 ]]&&[[ $rc2 -eq 1 ]];then output=`ppping -V $$CN,$$SN`;if [[ $? -eq 1 ]]&&[[ $output =~ "$$CN: noping" ]]&&[[ $output =~ "$$SN: noping" ]];then exit 0;else exit 1;fi;elif [[ $rc1 -eq 0 ]]&&[[ $rc2 -eq 1 ]]; then output=`ppping -V $$CN,$$SN`; if [[ $? -eq 0 ]]&&[[ $output =~ "$$SN: noping" ]]&&[[ $output =~  "$$CN: $$SN: noping" ]]&&[[ $output =~ "$$CN: $$CN: ping" ]];then exit 0;else exit 1;fi;elif [[ $rc1 -eq 1 ]]&&[[ $rc2 -eq 0 ]]; then output=`ppping -V $$CN,$$SN`; if [[ $? -eq 0 ]]&&[[ $output =~ "$$CN: noping" ]]&&[[ $output =~ "$$SN: $$CN: noping" ]];then exit 0;else  exit 1;fi;else output=`ppping -V $$CN,$$SN`; if [[ $? -eq 0 ]]&&[[ $output =~ "$$SN: $$CN: ping" ]]&&[[ $output =~ "$$SN: $$SN: ping" ]]&&[[ $output =~ "$$CN: $$SN: ping" ]]&&[[ $output =~ "$$CN: $$CN: ping" ]];then exit 0;else  exit 1;fi;fi
 check:rc==0
@@ -75,6 +84,7 @@ end
 
 start:ppping_V_s_nodes
 description:test the connectivity between nodes in the noderange using ping and print Ping serially instead of in parallel information.
+label:others,parallel_cmds
 Attribute: $$CN,$$SN-The operation object of ppping command
 cmd:ping -c 3 $$CN > /dev/null 2>&1;rc1=$?;ping -c 3 $$SN > /dev/null 2>&1;rc2=$?;if [[ $rc1 -eq 1 ]]&&[[ $rc2 -eq 1 ]];then output=`ppping -V -s $$CN,$$SN`;if [[ $? -eq 1 ]]&&[[ $output =~ "$$CN: noping" ]]&&[[ $output =~ "$$SN: noping" ]];then exit 0;else exit 1;fi;elif [[ $rc1 -eq 0 ]]&&[[ $rc2 -eq 1 ]]; then output=`ppping -V -s $$CN,$$SN`; if [[ $? -eq 0 ]]&&[[ $output =~ "$$SN: noping" ]]&&[[ $output =~  "$$CN: $$SN: noping" ]]&&[[ $output =~ "$$CN: $$CN: ping" ]];then exit 0;else exit 1;fi;elif [[ $rc1 -eq 1 ]]&&[[ $rc2 -eq 0 ]]; then output=`ppping -V -s $$CN,$$SN`; if [[ $? -eq 0 ]]&&[[ $output =~ "$$CN: noping" ]]&&[[ $output =~ "$$SN: $$CN: noping" ]];then exit 0;else  exit 1;fi;else output=`ppping -V -s $$CN,$$SN`; if [[ $? -eq 0 ]]&&[[ $output =~ "$$SN: $$CN: ping" ]]&&[[ $output =~ "$$SN: $$SN: ping" ]]&&[[ $output =~ "$$CN: $$SN: ping" ]]&&[[ $output =~ "$$CN: $$CN: ping" ]];then exit 0;else  exit 1;fi;fi
 check:rc==0

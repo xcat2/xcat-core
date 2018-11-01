@@ -1,6 +1,6 @@
 start:xcatsnap_null
 description:xcatsnap with no argument
-label:mn_only,ci_test
+label:mn_only
 cmd:xcatsnap
 check:rc==0
 check:output=~Send .* to IBM Support
@@ -9,7 +9,7 @@ end
 
 start:xcatsnap_b_d
 description:xcatsnap -B -d
-label:mn_only,ci_test
+label:mn_only
 cmd:xcatsnap -B -d /tmp/testdir
 check:rc==0
 check:output=~Send .* to IBM Support
@@ -20,7 +20,7 @@ end
 
 start:xcatsnap_h
 description:xcatsnap -h and --help
-label:mn_only,ci_test
+label:mn_only
 cmd:xcatsnap -h
 check:output=~Usage
 cmd:xcatsnap --help

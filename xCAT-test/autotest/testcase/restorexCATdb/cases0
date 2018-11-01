@@ -1,12 +1,12 @@
 start:restorexCAT_h
-label:mn_only,ci_test,db
+label:mn_only,db
 cmd:restorexCATdb -h
 check:rc==0
 check:output=~restorexCATdb
 end
 
 start:restorexCATdb_v
-label:mn_only,ci_test,db
+label:mn_only,db
 cmd:restorexCATdb -v
 check:rc==0
 check:output=~Version
@@ -14,7 +14,7 @@ end
 
 start:restorexcatdb_p
 description:restore the xcat database from the /tmp/db
-label:mn_only,ci_test,db
+label:mn_only,db
 cmd:chtab key=skiptables site.value=""
 check:rc==0
 cmd:dumpxCATdb -p /tmp/db1
@@ -36,7 +36,7 @@ cmd:rm -rf /tmp/db1 /tmp/db2 /tmp/db.1 /tmp/db.2
 end
 
 start:restorexCATdb_p_V
-label:mn_only,ci_test,db
+label:mn_only,db
 cmd:chtab key=skiptables site.value=""
 check:rc==0
 cmd:dumpxCATdb -a -p /tmp/db
@@ -51,7 +51,7 @@ cmd:rm -rf /tmp/db
 end
 
 start:restorexCATdb_a_p_V
-label:mn_only,ci_test,db
+label:mn_only,db
 cmd:chtab key=skiptables site.value=""
 check:rc==0
 cmd:dumpxCATdb -a -p /tmp/db
@@ -65,7 +65,7 @@ cmd:rm -rf /tmp/db
 end
 
 start:restorexCATdb_wrongpath
-label:mn_only,ci_test,db
+label:mn_only,db
 cmd:restorexCATdb -p /tmp/testpath
 check:rc!=0
 end

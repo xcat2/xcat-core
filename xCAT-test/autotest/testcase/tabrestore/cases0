@@ -1,13 +1,13 @@
 start:tabrestore_null
 description:tabrestore without any flag
-label:mn_only,ci_test,db
+label:mn_only,db
 cmd:tabrestore
 check:rc!=0
 check:output=~Usage
 end
 
 start:tabrestore_table
-label:mn_only,ci_test,db
+label:mn_only,db
 cmd:tabdump site > /tmp/site.csv
 check:rc==0
 cmd:chtab key=db2installloc site.value=/test
@@ -22,14 +22,14 @@ cmd:rm -f /tmp/site.csv /tmp/site1.csv
 end
 
 start:tabrestore_h
-label:mn_only,ci_test,db
+label:mn_only,db
 cmd:tabrestore -h
 check:output=~Usage
 end
 
 start:tabrestore_err
 description:tabrestore wrong.csv
-label:mn_only,ci_test,db
+label:mn_only,db
 cmd:tabrestore wrong.csv
 check:rc!=0
 check:output=~Error

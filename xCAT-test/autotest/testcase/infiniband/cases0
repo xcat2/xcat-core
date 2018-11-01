@@ -1,17 +1,20 @@
 start:rhel_infiniband_diskless_install
 description:Integration test of RHEL 7 and MLNX OFED for diskless installation. Following variables need to be set in the test configuration file, ISO, CN, MLNX, DKMS. Read comments in rhel-infiniband-diskless-install.sh for details.
+label:others,IB
 cmd:RHEL_ISO="$$ISO" LINUX_DISTRO="GETNODEATTR($$CN, os)" COMPUTE_NODE="$$CN" MLNX_ISO="$$MLNX" DKMS_RPM="$$DKMS" /opt/xcat/share/xcat/tools/autotest/testcase/infiniband/rhel-infiniband-diskless-install.sh
 check:rc==0
 end
 
 start:rhel_infiniband_diskfull_install
 description:Integration test of RHEL 7 and MLNX OFED for diskfull installation. Following variables need to be set in the test configuration file, ISO, CN, MLNX, DKMS. Read comments in rhel-infiniband-diskfull-install.sh for details.
+label:others,IB
 cmd:RHEL_ISO="$$ISO" LINUX_DISTRO="GETNODEATTR($$CN, os)" COMPUTE_NODE="$$CN" MLNX_ISO="$$MLNX" DKMS_RPM="$$DKMS" /opt/xcat/share/xcat/tools/autotest/testcase/infiniband/rhel-infiniband-diskfull-install.sh
 check:rc==0
 end
 
 start:confignetwork_ib_ipoib
 description: this case is to test confignetwork could configure the first infiniband interface, ib0, successfully with updatenode.
+label:others,IB
 cmd:lsdef $$CN;if [ $? -eq 0 ]; then lsdef -l $$CN -z >/tmp/CN.standa ;fi
 check:rc==0
 cmd:xdsh $$CN "mkdir -p /tmp/backupnet/"

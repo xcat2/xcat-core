@@ -1,5 +1,6 @@
 start: confignetwork_s_installnic_diskful
 description: this case is to test confignetwork -s could configure installnic successfully in diskful provision.
+label:others,network,invoke_provision
 cmd:if ping -c 1 $$SN > /dev/null;then rpower $$SN off > /dev/null;fi
 cmd:chdef -t node -o $$CN servicenode= monserver=$$MN nfsserver=$$MN tftpserver=$$MN  xcatmaster=$$MN
 check:rc==0
@@ -41,6 +42,7 @@ end
 
 start:confignetwork_s_installnic_diskless
 description: this case is to test confignetwork -s could configure installnic successfully in diskless provision.
+label:others,network,invoke_provision
 cmd:chdef -t node -o $$CN servicenode= monserver=$$MN nfsserver=$$MN tftpserver=$$MN  xcatmaster=$$MN
 check:rc==0
 cmd:chdef -t node -o $$CN postbootscripts="confignetwork -s"
@@ -89,6 +91,7 @@ end
 
 start: confignetwork_secondarynic_diskless
 description: this case is to test confignetwork -s could config installnic and secondarynic at the same time successfully in diskless provision.
+label:others,network,invoke_provision
 cmd:chdef -t node -o $$CN servicenode= monserver=$$MN nfsserver=$$MN tftpserver=$$MN  xcatmaster=$$MN
 check:rc==0
 cmd:mkdef -t network -o 100_1_0_0-255_255_0_0 net=100.1.0.0 mask=255.255.0.0 mgtifname=$$SECONDNIC
@@ -149,6 +152,7 @@ end
 
 start:confignetwork_s_installnic_secondarynic_updatenode
 description: this case is to test confignetwork -s could configure installnic and secondarynic successfully with updatenode.
+label:others,network,invoke_provision
 cmd:lsdef $$CN;if [ $? -eq 0 ]; then lsdef -l $$CN -z >/tmp/CN.standa ;fi
 check:rc==0
 cmd:xdsh $$CN "rm -rf /tmp/backupnet/"
@@ -180,6 +184,7 @@ end
 
 start:confignetwork_secondarynic_updatenode
 description: this case is to test confignetwork could configure secondarynic successfully with updatenode.
+label:others,network,invoke_provision
 cmd:lsdef $$CN;if [ $? -eq 0 ]; then lsdef -l $$CN -z >/tmp/CN.standa ;fi
 check:rc==0
 cmd:xdsh $$CN "rm -rf /tmp/backupnet/"
@@ -209,6 +214,7 @@ end
 
 start: confignetwork_secondarynic_nicaliases_updatenode
 description: this case is to test confignetwork could config secondarynic nicaliases successfully with updatenode.
+label:others,network,invoke_provision
 cmd:lsdef $$CN;if [ $? -eq 0 ]; then lsdef -l $$CN -z >/tmp/CN.standa ;fi
 check:rc==0
 cmd:xdsh $$CN "rm -rf /tmp/backupnet/"
@@ -251,6 +257,7 @@ end
 
 start:confignetwork_secondarynic_nicextraparams_updatenode
 description: this case is to test confignetwork could configure secondarynic nicextraparams successfully with updatenode.
+label:others,network,invoke_provision
 cmd:lsdef $$CN;if [ $? -eq 0 ]; then lsdef -l $$CN -z >/tmp/CN.standa ;fi
 check:rc==0
 cmd:xdsh $$CN "rm -rf /tmp/backupnet/"
@@ -294,6 +301,7 @@ end
 
 start:confignetwork_secondarynic_nicnetworks_updatenode_false
 description: this case is to test confignetwork could return error message when there is no not enough attributes when configing secondarynic with updatenode.
+label:others,network,invoke_provision
 cmd:lsdef $$CN;if [ $? -eq 0 ]; then lsdef -l $$CN -z >/tmp/CN.standa ;fi
 check:rc==0
 cmd:mkdef -t network -o 11_1_0_0-255_255_0_0 net=11.1.0.0 mask=255.255.0.0 mgtifname=$$SECONDNIC
@@ -310,6 +318,7 @@ end
 
 start:confignetwork_secondarynic_nicips_updatenode_false
 description: this case is to test confignetwork could return error message when there is no not enough attributes when configing secondarynic with updatenode.
+label:others,network,invoke_provision
 cmd:lsdef $$CN;if [ $? -eq 0 ]; then lsdef -l $$CN -z >/tmp/CN.standa ;fi
 check:rc==0
 cmd:mkdef -t network -o 11_1_0_0-255_255_0_0 net=11.1.0.0 mask=255.255.0.0 mgtifname=$$SECONDNIC
@@ -326,6 +335,7 @@ end
 
 start:confignetwork_secondarynic_nictype_updatenode_false
 description: this case is to test confignetwork could return error message when there is no not enough attributes when configing secondarynic with updatenode.
+label:others,network,invoke_provision
 cmd:lsdef $$CN;if [ $? -eq 0 ]; then lsdef -l $$CN -z >/tmp/CN.standa ;fi
 check:rc==0
 cmd:mkdef -t network -o 11_1_0_0-255_255_0_0 net=11.1.0.0 mask=255.255.0.0 mgtifname=$$SECONDNIC
@@ -343,6 +353,7 @@ end
 
 start:confignetwork_disable_set_to_yes
 description: this case is to test if confignetwork could work correctly when disable is set to yes in nics table
+label:others,network,invoke_provision
 cmd:lsdef $$CN;if [ $? -eq 0 ]; then lsdef -l $$CN -z >/tmp/CN.standa ;fi
 check:rc==0
 cmd:mkdef -t network -o 11_1_0_0-255_255_0_0 net=100.1.0.0 mask=255.255.0.0 mgtifname=$$SECONDNIC
@@ -363,6 +374,7 @@ end
 
 start:confignetwork_disable_set_to_1
 description: this case is to test if confignetwork could work correctly when disable is set to 1 in nics table
+label:others,network,invoke_provision
 cmd:lsdef $$CN;if [ $? -eq 0 ]; then lsdef -l $$CN -z >/tmp/CN.standa ;fi
 check:rc==0
 cmd:mkdef -t network -o 11_1_0_0-255_255_0_0 net=100.1.0.0 mask=255.255.0.0 mgtifname=$$SECONDNIC
@@ -383,6 +395,7 @@ end
 
 start:confignetwork_niccustomscripts
 description: this case is to test confignetwork could config secondarynic and envoke scripts to execute.
+label:others,network,invoke_provision
 cmd:lsdef $$CN;if [ $? -eq 0 ]; then lsdef -l $$CN -z >/tmp/CN.standa ;fi
 check:rc==0
 cmd:echo "echo hello > /tmp/confignetwork_niccustomscript" > /tmp/script1
@@ -410,6 +423,7 @@ end
 
 start:confignetwork_secondarynic_thirdnic_multiplevalue_updatenode
 description:this case is to verify if confignetwork could config serveral nics' multiple value at the same time.
+label:others,network,invoke_provision
 cmd:lsdef $$CN;if [ $? -eq 0 ]; then lsdef -l $$CN -z >/tmp/CN.standa ;fi
 check:rc==0
 cmd:xdsh $$CN "rm -rf /tmp/backupnet/"
@@ -469,6 +483,7 @@ end
 
 start:confignetwork_vlan_eth0
 description: this case is to verify if confignetwork could config vlan for CN.When CN has Ethernet nic eth0, user wants to confgure 2 vlans, Configure vlan eth0.6 60.5.106.9 and eth0.7 70.5.106.9 based on ethernet nic eth0
+label:others,network,invoke_provision
 cmd:lsdef $$CN;if [ $? -eq 0 ]; then lsdef -l $$CN -z >/tmp/CN.standa ;fi
 check:rc==0
 cmd:xdsh $$CN "rm -rf /tmp/backupnet/"
@@ -520,6 +535,7 @@ end
 
 start:confignetwork_vlan_false
 description:this case is to verify if confignetwork could process the false value when vlan nicdevice is not correctly set
+label:others,network,invoke_provision
 cmd:lsdef $$CN;if [ $? -eq 0 ]; then lsdef -l $$CN -z >/tmp/CN.standa ;fi
 check:rc==0
 cmd:xdsh $$CN "rm -rf /tmp/backupnet/"
@@ -564,6 +580,7 @@ end
 
 start:confignetwork_bond_eth2_eth3
 description: this case is to verify if confignetwork could config bond for CN.CN has 2 Ethernet nics, eth2 and eth3, user configures bond bond0 using ethernet nic eth2 and eth3.
+label:others,network,invoke_provision
 cmd:lsdef $$CN;if [ $? -eq 0 ]; then lsdef -l $$CN -z >/tmp/CN.standa ;fi
 check:rc==0
 cmd:xdsh $$CN "rm -rf /tmp/backupnet/"
@@ -618,6 +635,7 @@ end
 
 start:confignetwork_bond_false
 description: this case is to verify if confignetwork could process when bond is not correctly set.
+label:others,network,invoke_provision
 cmd:lsdef $$CN;if [ $? -eq 0 ]; then lsdef -l $$CN -z >/tmp/CN.standa ;fi
 check:rc==0
 cmd:xdsh $$CN "rm -rf /tmp/backupnet/"
@@ -666,6 +684,7 @@ end
 
 start:confignetwork_vlan_bond
 description: this case is to verify if confignetwork could config bond for CN.CN has 2 Ethernet nic eth2 and eth3, user wants to bond them to bond0, then make 2 vlan bond0.2 and bond0.3 for data network.
+label:others,network,invoke_provision
 cmd:lsdef $$CN;if [ $? -eq 0 ]; then lsdef -l $$CN -z >/tmp/CN.standa ;fi
 check:rc==0
 cmd:xdsh $$CN "rm -rf /tmp/backupnet/"
@@ -731,6 +750,7 @@ end
 
 start:confignetwork_2eth_bridge_br0
 description:this case is to verify if confignetwork could config bridge for CN.CN has 2 Ethernet nics eth2 and eth3, user want to configure bond bond0 using eth2 and eth3, creates bridge br0 based on bond0.
+label:others,network,invoke_provision
 cmd:lsdef $$CN;if [ $? -eq 0 ]; then lsdef -l $$CN -z >/tmp/CN.standa ;fi
 check:rc==0
 cmd:xdsh $$CN "rm -rf /tmp/backupnet/"
@@ -785,6 +805,7 @@ end
 
 start:confignetwork_2eth_bridge_br22_br33
 description:this case is to verify if confignetwork could config bridge for CN.CN has 2 Ethernet nics eth2 and eth3, user wants to bond them as bond0, then make vlan bond0.2 and bond0.3, using bond0.2 create bridge br22,using bond0.3 create bridge br33. Use confignetwork to configure bond bond0, create vlan bond0.2 and bond0.3, create bridge br22 and br33.
+label:others,network,invoke_provision
 cmd:lsdef $$CN;if [ $? -eq 0 ]; then lsdef -l $$CN -z >/tmp/CN.standa ;fi
 check:rc==0
 cmd:xdsh $$CN "rm -rf /tmp/backupnet/"
@@ -851,6 +872,7 @@ end
 
 start:confignetwork_installnic_2eth_bridge_br22_br33
 description:this case is to test if confignetwork could config installnic and 2 bridges at the same time
+label:others,network,invoke_provision
 cmd:lsdef $$CN;if [ $? -eq 0 ]; then lsdef -l $$CN -z >/tmp/CN.standa ;fi
 check:rc==0
 cmd:xdsh $$CN "rm -rf /tmp/backupnet/"
@@ -920,6 +942,7 @@ end
 
 start:confignetwork__bridge_false
 description:this case is to test if confignetwork could process false value when the bridge is not correctly set.
+label:others,network,invoke_provision
 cmd:lsdef $$CN;if [ $? -eq 0 ]; then lsdef -l $$CN -z >/tmp/CN.standa ;fi
 check:rc==0
 cmd:xdsh $$CN "rm -rf /tmp/backupnet/"
@@ -952,6 +975,7 @@ end
 
 start:confignetwork_static_installnic
 description:Reconfigure installnic without dhclient lease file
+label:others,network,invoke_provision
 cmd:lsdef $$CN -z && lsdef -l $$CN -z >/tmp/CN.stanza
 check:rc==0
 cmd:xdsh $$CN "mkdir -p /tmp/backupnet"

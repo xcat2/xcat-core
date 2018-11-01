@@ -1,4 +1,5 @@
 start:makentp_v
+
 descriptiop:makentp -v
 cmd:makentp -v
 check:rc==0
@@ -6,6 +7,7 @@ check:output=~Version
 end
 
 start:makentp_h
+
 descriptiop:makentp -h
 cmd:makentp -h
 check:rc==0
@@ -13,6 +15,7 @@ check:output=~Usage: makentp
 end
 
 start:makentp_extntpserver_null
+
 descriptiop:test makentp with default value. extntpserver is set to blank
 cmd:lsdef -t site -o clustersite -i extntpservers -c >/tmp/extntpserver
 check:rc==0
@@ -28,6 +31,7 @@ check:output=~checking if nptd is installed
 check:output=~backing up the ntp configuration file /etc/ntp.conf
 check:output=~stopping ntpserver
 check:output=~starting ntpserver
+
 check:output=~enabling ntpserver
 cmd:extntpserver=`cat /tmp/ntpserver | awk -F = '{print \$2}'`;chtab key=extntpservers site.value=$extntpserver
 check:rc==0
@@ -37,6 +41,7 @@ check:rc==0
 end
 
 start:makentp_extntpserver_value
+
 descriptiop:test makentp with extntpserver is set to a specific value
 cmd:lsdef -t site -o clustersite -i extntpservers -c >/tmp/extntpserver
 check:rc==0
@@ -57,6 +62,7 @@ check:output=~backing up the ntp configuration file /etc/ntp.conf
 check:output=~ntp servers are: $$extntpserversip
 check:output=~stopping ntpserver
 check:output=~starting ntpserver
+
 check:output=~enabling ntpserver
 cmd:date
 check:output=~$$DATE
@@ -69,6 +75,7 @@ cmd:rm -rf /tmp/extntpserver
 end
 
 start:updatenode_computenode_P_setupntp
+
 descriptiop:using updatenode -P to setup ntp on compute node
 cmd:xdsh $$CN date -s 20000101
 check:rc==0
@@ -102,7 +109,9 @@ end
 
 
 start:makentp_initialize
+
 descriptiop:start ntp service on management node and synchronize time with external ntp server
+
 cmd:chtab key=extntpservers site.value="$$extntpserversip"
 check:rc==0
 cmd:makentp -V
@@ -113,6 +122,7 @@ check:output=~backing up the ntp configuration file /etc/ntp.conf
 check:output=~ntp servers are: $$extntpserversip
 check:output=~stopping ntpserver
 check:output=~starting ntpserver
+
 check:output=~enabling ntpserver
 cmd:if [[ "__GETNODEATTR($$CN,os)__" =~ "ubuntu" ]] || [[ "__GETNODEATTR($$CN,os)__" = "sles11.4" ]];then service ntp status;else service ntpd status; fi
 check:rc==0

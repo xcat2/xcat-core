@@ -1,6 +1,7 @@
 start:sles_migration1
 os:Linux
 description:update xCAT from $$MIGRATION1_VERSION to latest version, these two global parameter defined in config file
+label:others,migration,invoke_provision
 cmd:if ping -c 1 $$SN > /dev/null;then rpower $$SN off > /dev/null;echo "poweroffsn">/tmp/poweroffsn;fi
 check:rc==0
 cmd:if [[ "__GETNODEATTR($$SN,groups)__" =~ "service" ]];then chdef $$SN -m groups=service;echo "servicelabel" >/tmp/servicelabel;fi
@@ -110,6 +111,7 @@ end
 start:sles_migration2
 os:Linux
 description:update xCAT from $$MIGRATION22VERSION to latest version, these two global parameter defined in config file
+label:others,migration,invoke_provision
 
 cmd:if ping -c 1 $$SN > /dev/null;then rpower $$SN off > /dev/null;echo "poweroffsn">/tmp/poweroffsn;fi
 check:rc==0

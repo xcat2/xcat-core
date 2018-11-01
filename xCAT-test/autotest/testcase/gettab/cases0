@@ -1,5 +1,5 @@
 start:gettab_key_table
-label:mn_only,ci_test,db
+label:mn_only,db
 cmd:gettab key=xcatdport site.value
 check:rc==0
 check:output==3001
@@ -8,7 +8,7 @@ end
 
 start:gettab_H
 description:gettab -H and --with-fieldname
-label:mn_only,ci_test,db
+label:mn_only,db
 cmd:gettab -H key=master site.value
 check:rc==0
 check:output=~site.value:
@@ -19,7 +19,7 @@ end
 
 start:gettab_err
 description:gettab with error symble ,error key ,error attr.
-label:mn_only,ci_test,db
+label:mn_only,db
 cmd:gettab -c
 check:rc!=0
 check:output=~Usage
@@ -33,7 +33,7 @@ end
 
 start:gettab_h
 description:gettab -h and -? and --help
-label:mn_only,ci_test,db
+label:mn_only,db
 cmd:gettab -h
 check:output=~Usage
 cmd:gettab -?

@@ -1,6 +1,6 @@
 start:noderange_individual_node
 description: noderange individual node
-label:mn_only,ci_test,db
+label:mn_only,db
 cmd:mkdef -t node -o testnode01 -f groups=all
 cmd:nodels testnode01
 check:rc==0
@@ -10,7 +10,7 @@ end
 
 start:noderange_individual_grp
 description: noderange individual group
-label:mn_only,ci_test,db
+label:mn_only,db
 cmd:mkdef -t node -o testnode01,testnode02 groups=nrtestgrp
 cmd:nodels nrtestgrp
 check:rc==0
@@ -22,7 +22,7 @@ end
 
 start:noderange_node01-node10
 description: noderange node01-node10
-label:mn_only,ci_test,db
+label:mn_only,db
 cmd:mkdef -t node -o nrtestnode01-nrtestnode10 groups=all
 check:rc==0
 cmd:nodels nrtestnode01-nrtestnode10
@@ -36,7 +36,7 @@ end
 
 start:noderange_node_01-10
 description: noderange node[01-10]
-label:mn_only,ci_test,db
+label:mn_only,db
 cmd:mkdef -t node -o nrtestnode[01-10] groups=all
 check:rc==0
 cmd:nodels nrtestnode[01-10]
@@ -50,7 +50,7 @@ end
 
 start:noderange_node01_10
 description: noderange node[01:10]
-label:mn_only,ci_test,db
+label:mn_only,db
 cmd:mkdef -t node -o nrtestnode[01:10] groups=all
 check:rc==0
 cmd:nodels nrtestnode[01:10]
@@ -64,7 +64,7 @@ end
 
 start:noderange_f1-f2_n1-n3
 description: noderange f[1-2]n[1-3]
-label:mn_only,ci_test,db
+label:mn_only,db
 cmd:mkdef -t node -o f[1-2]n[1-3] groups=all
 check:rc==0
 cmd:nodels f[1-2]n[1-3]
@@ -81,7 +81,7 @@ end
 
 start:noderange_group1-group3
 description: noderange group1-group3
-label:mn_only,ci_test,db
+label:mn_only,db
 cmd:mkdef -t node -o testnode01 groups=nrtestgrp1
 cmd:mkdef -t node -o testnode02 groups=nrtestgrp2
 cmd:mkdef -t node -o testnode03 groups=nrtestgrp3
@@ -96,7 +96,7 @@ end
 
 #start:noderange_node001-node200
 #description: noderange node001-node200
-#label:mn_only,ci_test,db
+#label:mn_only,db
 #cmd:mkdef -t node -o nrtestnode001-nrtestnode200 groups=all
 #check:rc==0
 #cmd:nodels nrtestnode001-nrtestnode200
@@ -111,7 +111,7 @@ end
 
 start:noderange_node10_plus_3
 description: noderange node10+3
-label:mn_only,ci_test,db
+label:mn_only,db
 cmd:mkdef -t node -o nrtestnode10+3 groups=all
 check:rc==0
 cmd:nodels nrtestnode10+3
@@ -126,7 +126,7 @@ end
 
 start:noderange_10-20
 description: noderange 10-20
-label:mn_only,ci_test,db
+label:mn_only,db
 cmd:mkdef -t node -o 10-20 groups=all
 check:rc==0
 cmd:nodels 10-20
@@ -142,21 +142,21 @@ end
 
 start:noderange_XCAT_NODE_PREFIX
 description: noderange XCAT_NODE_PREFIX
-label:mn_only,ci_test,db
+label:mn_only,db
 cmd: XCAT_NODE_PREFIX=abc XCATBYPASS=1 nodels 10-20
 check:output=~abc10,abc11,abc12,abc13,abc14,abc15,abc16,abc17,abc18,abc19,abc20
 end
 
 start:noderange_XCAT_NODE_SUFFIX
 description: noderange XCAT_NODE_SUFFIX
-label:mn_only,ci_test,db
+label:mn_only,db
 cmd: XCAT_NODE_PREFIX=abc XCAT_NODE_SUFFIX=def XCATBYPASS=1 nodels 10-20
 check:output=~abc10def,abc11def,abc12def,abc13def,abc14def,abc15def,abc16def,abc17def,abc18def,abc19def,abc20def
 end
 
 start:noderange_slash_urtestnode_dot_star
 description: noderange /nrtestnode.*
-label:mn_only,ci_test,db
+label:mn_only,db
 cmd:mkdef -t node -o nrtestnode1-nrtestnode3 groups=all
 check:rc==0
 cmd:nodels /nrtestnode.*
@@ -170,7 +170,7 @@ end
 
 start:noderange_dir_tmp-nodelistfile
 description: noderange ^/tmp/nodelistfile
-label:mn_only,ci_test,db
+label:mn_only,db
 #cmd:echo #testnode1 > /tmp/nodelist
 cmd:mkdef -t node -o nrnode1,nrnode2 groups=all
 cmd:echo nrnode1 > /tmp/nodelist
@@ -185,7 +185,7 @@ end
 
 start:noderange_exclusion
 description: noderange exnode1-exnode5,-exnode3,-exnode4
-label:mn_only,ci_test,db
+label:mn_only,db
 cmd:mkdef -t node -o exnode1-exnode5 groups=all
 check:rc==0
 cmd:nodels exnode1-exnode5,-exnode3,-exnode4
@@ -201,7 +201,7 @@ end
 
 start:noderange_group_intersection
 description: noderange group1@group2
-label:mn_only,ci_test,db
+label:mn_only,db
 cmd:mkdef -t node -o nrtestnode1-nrtestnode3 groups=group1
 check:rc==0
 cmd:chdef -t node -o nrtestnode1 -p groups=group2
