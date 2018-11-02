@@ -2,14 +2,14 @@
     "osimage": {
         "test.environments.osimage": {
             "basic_attributes": {
-                "arch": "ppc64le",
-                "distribution": "rhels7.5-alternate",
-                "osdistro": "rhels7.5-alternate-ppc64le",
+                "arch": "OSARCH",
+                "distribution": "OSVERS",
+                "osdistro": "OSARCH-OSVERS",
                 "osname": "Linux"
             },
             "deprecated": {
                 "comments": [
-                    "rhels7.5",
+                    "OSMAJOR",
                     "test_environment_variables"
                 ]
             },
@@ -19,7 +19,7 @@
             "genimgoptions": {
                 "permission": "755",
                 "postinstall": [
-                    "/opt/xcat/share/xcat/netboot/rh/compute.rhels7.ppc64le.postinstall",
+                    "POSTINSTALL",
                     "{{GITREPO}}/postinstall/test1.postinstall"
                 ],
                 "rootimgdir": "/install/custom/{{OBJNAME}}"
@@ -35,11 +35,11 @@
                     ""
                 ],
                 "pkgdir": [
-                    "/install/rhels7.5-alternate/ppc64le",
+                    "PKGDIR",
                     "{{SWDIR}}/pkgdir/"
                 ],
                 "pkglist": [
-                    "/opt/xcat/share/xcat/netboot/rh/compute.rhels7.ppc64le.pkglist",
+                    "PKGLIST",
                     "{{GITREPO}}/pkglist/test1.pkglist",
                     "{{GITREPO}}/pkglist/test2.pkglist"
                 ]
