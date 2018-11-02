@@ -1336,7 +1336,7 @@ sub mknetboot
             }
 
 
-
+            $kcmdline .=" HTTPPORT=$httpport ";
 
             # add support for subVars in the value of "statemnt"
             my $statemnt = "";
@@ -1394,6 +1394,7 @@ sub mknetboot
             $kcmdline .= "XCAT=$xcatmaster:$xcatdport ";
         }
 
+        
         # if site.nodestatus='n', add "nonodestatus" to kcmdline to inform the node not to update nodestatus during provision
         if (($nodestatus eq "n") or ($nodestatus eq "N") or ($nodestatus eq "0")) {
             $kcmdline .= " nonodestatus ";
