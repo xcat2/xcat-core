@@ -859,11 +859,17 @@ sub mkinstall {
                 $instserver = '!myipfn!';
             }
 
+            my $httpport="80";
+            my @hports=xCAT::TableUtils->get_site_attribute("httpport");
+            if ($hports[0]){
+                $httpport=$hports[0];
+            }
+
             if ($ent and $ent->{nfsserver}) {
                 $instserver = $ent->{nfsserver};
             }
 
-            my $kcmdline = "nofb utf8 auto url=http://" . $instserver . "/install/autoinst/" . $node;
+            my $kcmdline = "nofb utf8 auto url=http://" . $instserver . ":$httpport/install/autoinst/" . $node;
 
             $kcmdline .= " xcatd=" . $instserver;
             $kcmdline .= " mirror/http/hostname=" . $instserver;
@@ -927,7 +933,7 @@ sub mkinstall {
 
             #from 12.10, the live install changed, so add the live-installer
             if (-r "$pkgdir/install/filesystem.squashfs") {
-                $kcmdline .= " live-installer/net-image=http://${instserver}${pkgdir}/install/filesystem.squashfs";
+                $kcmdline .= " live-installer/net-image=http://${instserver}:$httpport${pkgdir}/install/filesystem.squashfs";
             }
 
             xCAT::MsgUtils->trace($verbose_on_off, "d", "debian->mkinstall: kcmdline=$kcmdline kernal=$rtftppath/vmlinuz initrd=$rtftppath/initrd.img");
@@ -1326,7 +1332,7 @@ sub mknetboot
                     $kcmdline = "NFSROOT=$nfssrv:$nfsdir STATEMNT=";
                 }
             } else {
-                $kcmdline = "imgurl=http://$imgsrv/$rootimgdir/rootimg-statelite.gz STATEMNT=";
+                $kcmdline = "imgurl=http://$imgsrv:$httpport/$rootimgdir/rootimg-statelite.gz STATEMNT=";
             }
 
 
@@ -1384,7 +1390,7 @@ sub mknetboot
         else
         {
             $kcmdline =
-              "imgurl=http://$imgsrv/$rootimgdir/$compressedrootimg ";
+              "imgurl=http://$imgsrv:$httpport/$rootimgdir/$compressedrootimg ";
             $kcmdline .= "XCAT=$xcatmaster:$xcatdport ";
         }
 
