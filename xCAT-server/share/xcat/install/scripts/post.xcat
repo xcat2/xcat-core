@@ -79,6 +79,13 @@ else
     echo "INSTALLDIR=$INSTALLDIR" >> /opt/xcat/xcatinfo
 fi
 
+grep 'HTTPPORT' /opt/xcat/xcatinfo > /dev/null 2>&1
+if [ $? -eq 0 ]; then
+    sed -i "s/HTTPPORT=.*/HTTPPORT=$HTTPPORT/" /opt/xcat/xcatinfo
+else
+    echo "HTTPPORT=$HTTPPORT" >> /opt/xcat/xcatinfo
+fi
+
 if [ "$XCATDEBUGMODE" = "1" ] || [ "$XCATDEBUGMODE" = "2" ]; then
     msgutil_r "$MASTER_IP" "debug" "/opt/xcat/xcatinfo generated" "/var/log/xcat/xcat.log" "$log_label"
 fi

@@ -696,6 +696,13 @@ if [ -n "$new_ms" ]; then
     else
       echo "XCATSERVER=$new_ms" >> /opt/xcat/xcatinfo
     fi
+
+    grep 'HTTPPORT' /opt/xcat/xcatinfo > /dev/null  2>&1
+    if [ $? -eq 0 ]; then
+      sed -i "s/HTTPPORT=.*/HTTPPORT=$HTTPPORT/" /opt/xcat/xcatinfo
+    else
+      echo "HTTPPORT=$HTTPPORT" >> /opt/xcat/xcatinfo
+    fi
 fi
 
 #save the USEFLOWCONTROL into the xcatinfo file
