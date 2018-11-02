@@ -1,20 +1,20 @@
 osimage:
   test.environments.osimage:
     basic_attributes:
-      arch: OSARCH 
-      distribution: OSMAJOR 
-      osdistro: OSVERS-OSARCH 
+      arch: OSARCH
+      distribution: OSMAJOR
+      osdistro: OSVERS-OSARCH
       osname: Linux
     filestosync: 
     - {{GITREPO}}/syncfiles/synclist
     deprecated:
       comments: 
-      - OSMAJOR 
+      - OSMAJOR
       - test_environment_variables
     genimgoptions:
       permission: '755'
       postinstall: 
-      - POSTINSTALL 
+      - POSTINSTALL
       - {{GITREPO}}/postinstall/test1.postinstall
       rootimgdir: /install/custom/{{OBJNAME}} 
     imagetype: linux
@@ -24,10 +24,10 @@ osimage:
       - {{GITREPO}}/otherpkglist/test1.otherpkglist
       - {{GITREPO}}/otherpkglist/test2.otherpkglist,
       pkgdir: 
-      - PKGDIR 
+      - PKGDIR
       - {{SWDIR}}/pkgdir/
       pkglist: 
-      - PKGLIST 
+      - PKGLIST
       - {{GITREPO}}/pkglist/test1.pkglist
       - {{GITREPO}}/pkglist/test2.pkglist
     provision_mode: netboot
