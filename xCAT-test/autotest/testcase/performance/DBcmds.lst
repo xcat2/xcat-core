@@ -23,5 +23,5 @@ lsdef -t group $FAKE_NODE_GROUP -i ip,mac
 # 4, For node* commands, it should be similar with lsdef -t node
 nodels #NODES#
 nodels #NODES# groups
-nodels all nodepos.rack==2 switch.switch
+nodels #NODES# noderes.netboot==pxe switch.switch
 

@@ -161,6 +161,11 @@ if [ -z $PERF_NODETEMPL ]; then
 fi
 
 # Optional, The NIC used by simulator.
+if [ -z $PERF_RUN_TIMEOUT ]; then
+  PERF_RUN_TIMEOUT=3600
+fi
+
+# Optional, The NIC used by simulator.
 if [ -z $PERF_SIM_NIC ]; then
   PERF_SIM_NIC='eth1'
 fi
@@ -300,7 +305,6 @@ runTest()
 {
 
   cmd=$1
-  #showcmd=$1
   [ -z "$osimage" ] || cmd="${cmd/\#OSIMAGE\#/$osimage}"
   if [[ $cmd =~ '#STANZ#' ]]; then
     #mkdef -z
@@ -313,12 +317,18 @@ runTest()
       execCmd "${cmd/\#NODES\#/$FAKE_NODE_GROUP}" "$FAKE_NODE_TOTAL"
     else
       # run the command for each number in SERIES
+      lastnum=0
       for num in $2
       do
         isNumber $num || continue
+        showcmd=$1
         if [[ $num -le $FAKE_NODE_TOTAL ]]; then
-          #execCmd "${cmd/\#NODES\#/$(nodeRange $num)}" "$num" "$showcmd"
-          execCmd "${cmd/\#NODES\#/$(nodeRange $num)}" "$num"
+          execCmd "${cmd/\#NODES\#/$(nodeRange $num)}" "$num" "${showcmd/NODES/$num}"
+          lastnum=$num
+        elif [ "$PERF_RUN_WITH_ENV" = "1" ]; then
+          num=$FAKE_NODE_TOTAL
+          [[ $num -gt $lastnum ]] && execCmd "${cmd/\#NODES\#/}" "$num" "${showcmd/NODES/$num}"
+          break
         fi
       done
     fi
@@ -341,7 +351,7 @@ printResult()
 
   if [ -z $4 ]; then
     # RESULT; CMD; TIME; FULL COMMAND
-    echo "=====> $result$PERF_CSV_CHAR $desc$PERF_CSV_CHAR $2$PERF_CSV_CHAR \"$1\""
+    echo "=====> $result$PERF_CSV_CHAR $desc$PERF_CSV_CHAR $2"
     echo "$result$PERF_CSV_CHAR $desc$PERF_CSV_CHAR $2$PERF_CSV_CHAR \"$1\"" >> $PERFORMANCE_REPORT
   else
     nodepersec='-'
@@ -350,7 +360,7 @@ printResult()
        nodepersec=$(printf "%.2f" `echo "scale=2;$4/$2"|bc`)
     fi
     # RESULT; CMD; TIME; NODES; NODES/SEC; FULL COMMAND
-    echo "=====> $result$PERF_CSV_CHAR $desc$PERF_CSV_CHAR $2$PERF_CSV_CHAR $4$PERF_CSV_CHAR $nodepersec$PERF_CSV_CHAR \"$1\""
+    echo "=====> $result$PERF_CSV_CHAR $desc$PERF_CSV_CHAR $2$PERF_CSV_CHAR $4$PERF_CSV_CHAR $nodepersec"
     echo "$result$PERF_CSV_CHAR $desc$PERF_CSV_CHAR $2$PERF_CSV_CHAR $4$PERF_CSV_CHAR $nodepersec$PERF_CSV_CHAR \"$1\"">> $PERFORMANCE_REPORT
   fi
 }
@@ -369,7 +379,7 @@ execCmd()
   start=`date +%s%3N`
 
   #using timeout to avoid some commands hang
-  timeout 3600 bash <<EOT
+  timeout $PERF_RUN_TIMEOUT bash <<EOT
 $1 > /dev/null 2>&1
 EOT
 
@@ -378,9 +388,9 @@ EOT
   delta=$(printf "%.2f" `echo "scale=2;$(($end-$start))/1000"|bc`)
 
   if [ -z $noderange ]; then
-    printResult "$showcmd" "$delta" "$retval"
+    printResult "$1" "$delta" "$retval"
   else
-    printResult "$showcmd" "$delta" "$retval" "$noderange"
+    printResult "$1" "$delta" "$retval" "$noderange"
   fi
 }
 
