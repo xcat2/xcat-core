@@ -38,7 +38,6 @@ cmd:if [ ! -d /kdumpdir ]; then mkdir -p /kdumpdir && chmod 777 /kdumpdir; fi
 cmd:if [ ! -f /etc/exports ] ;then touch /etc/exports;else cp /etc/exports /etc/exports.bak;fi
 cmd:cat /etc/exports|grep kdumpdir; if [ "$?" -ne "0" ]; then echo "/kdumpdir *(rw,no_root_squash,sync,no_subtree_check)" >> /etc/exports; fi
 cmd:cd /etc; export exports;cd -;service nfs restart
-label:others,kdump,invoke_provision
 cmd:chdef -t osimage __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute dump=nfs://$$MN/kdumpdir
 check:rc==0
 
@@ -73,7 +72,6 @@ check:output=~\d\d:\d\d:\d\d
 cmd:xdsh $$CN "echo 'echo 1 > /proc/sys/kernel/sysrq; echo c > /proc/sysrq-trigger' > /tmp/kdump.trigger"
 cmd:xdsh $$CN "chmod 755 /tmp/kdump.trigger"
 cmd:xdsh $$CN "service atd start"
-label:others,kdump,invoke_provision
 cmd:xdsh $$CN "at now +1 minutes <<< /tmp/kdump.trigger"
 cmd:sleep 300
 
