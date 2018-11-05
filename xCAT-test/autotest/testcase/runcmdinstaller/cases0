@@ -1,11 +1,13 @@
 start:runcmdinstaller_h
-descriptiop:runcmdinstaller -h
+description:runcmdinstaller -h
+label:others,postscripts
 cmd:runcmdinstaller -h
 check:rc==0
 check:output=~runcmdinstaller <node> <commands>
 end
 start:runcmdinstaller_command
-descriptiop:runcmdinstaller
+description:runcmdinstaller
+label:others,postscripts
 cmd:chtab key=xcatdebugmode site.value="2"
 check:rc==0
 cmd:rinstall $$CN osimage=__GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-install-compute

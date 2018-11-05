@@ -48,7 +48,7 @@ check:rc==0
 end
 
 start:rspconfig_network
-
+label:others,hctrl_fsp
 cmd:rspconfig $$CN network=*
 check:rc==0
 check:output=~OK

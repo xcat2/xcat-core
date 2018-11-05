@@ -1,5 +1,6 @@
 start:lsdef_pdu_object
-degscription:list pdu object and it's attribute
+description:list pdu object and it's attribute
+label:others
 cmd:lsdef -h
 check:output=~pdu
 cmd:mkdef $$PDU mgt=pdu nodetype=pdu groups=pdu

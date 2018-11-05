@@ -118,6 +118,7 @@ end
 
 start:rpower_pause_docker
 decription:pause all processes in the instance
+label:others,docker
 cmd:chdef $$DOCKERCN  dockerhost=$$DOCKERHOST:2375 dockercpus=1 ip=$$DOCKERCONIP dockermemory=4096 groups=docker,all mgt=docker
 check:rc==0
 cmd:makehosts $$DOCKERCN
