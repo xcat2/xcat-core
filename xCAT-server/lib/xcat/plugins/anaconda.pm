@@ -653,7 +653,7 @@ sub mknetboot
 
             $kcmdline .= "XCAT=$xcatmasterip:$xcatdport ";
    
-            $kcmdline .= "HTTPPORT=$httpport ";
+            $kcmdline .= "XCATHTTPPORT=$httpport ";
 
             if ($rootfstype ne "ramdisk") {
 

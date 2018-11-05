@@ -1336,7 +1336,7 @@ sub mknetboot
             }
 
 
-            $kcmdline .=" HTTPPORT=$httpport ";
+            $kcmdline .=" XCATHTTPPORT=$httpport ";
 
             # add support for subVars in the value of "statemnt"
             my $statemnt = "";

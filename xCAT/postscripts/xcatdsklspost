@@ -376,13 +376,24 @@ if [ "$MODE" = "4" ]; then # for statelite mode
                 echo "XCATSERVER=$XCATSERVER" >> /opt/xcat/xcatinfo
             fi
             break
+        elif [ "$KEY" =  "XCATHTTPPORT" ]; then
+            HTTPPORT=`echo $i | awk -F= '{print $2}'`
+            grep 'HTTPPORT' /opt/xcat/xcatinfo > /dev/null  2>&1
+            if [ $? -eq 0 ]; then
+                sed -i "s/HTTPPORT=.*/HTTPPORT=$HTTPPORT/" /opt/xcat/xcatinfo
+            else
+                echo "HTTPPORT=$HTTPPORT" >> /opt/xcat/xcatinfo
+            fi
+            break
+            
         fi
     done
 
     if [ -f /opt/xcat/xcatinfo ]; then
         SIP=`grep 'XCATSERVER' /opt/xcat/xcatinfo |cut -d= -f2`
+        HTTPPORT=`grep 'HTTPPORT' /opt/xcat/xcatinfo |cut -d= -f2`
         if [ -n "$SIP" ]; then
-            download_postscripts $SIP
+            download_postscripts $SIP:${HTTPPORT}
             if [ $? -eq 0 ]; then
                 downloaded=1
             fi
@@ -469,7 +480,7 @@ else # for common mode  MODE=1,2,3,5 (updatenode,moncfg,node deployment)
                  TMP=`echo $i | awk -F= '{print $2}'`
                  SIP=`echo $TMP | cut -d: -f1`
 
-             elif [ "$KEY" = "HTTPPORT" ];then
+             elif [ "$KEY" = "XCATHTTPPORT" ];then
                  HTTPPORT=$(echo $i | awk -F= '{print $1}')   
                  [ -z "$HTTPPORT" ] && HTTPPORT="80"
              fi

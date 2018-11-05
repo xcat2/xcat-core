@@ -515,7 +515,7 @@ sub mknetboot
               "imgurl=$httpmethod://$imgsrv:$httpport/$rootimgdir/$compressedrootimg ";
         }
         $kcmdline .= "XCAT=$xcatmaster:$xcatdport quiet ";
-        $kcmdline .= " HTTPPORT=$httpport ";
+        $kcmdline .= " XCATHTTPPORT=$httpport ";
 
         #if site.nodestatus="n", append "nonodestatus" to kcmdline
         #to inform the statelite/stateless node not to update the nodestatus during provision
