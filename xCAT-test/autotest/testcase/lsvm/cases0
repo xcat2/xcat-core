@@ -1,6 +1,6 @@
 #comment out for developper will not fix it
 #start:lsvm_null
-label:others,hcp_hmc
+#label:others,hcp_hmc
 #cmd:lsvm
 #check:rc!=0
 #check:output=~Usage
