@@ -226,11 +226,11 @@ parsehttpserver ()
    fi
 
    if [ "$option" = "server" ];then
-       return $server
+       echo "$server"
    fi 
 
    if [ "$option" = "port" ];then
-       return $port
+       echo "$port"
    fi
 }
 
@@ -251,13 +251,13 @@ else
       if [ $ARGNUM -gt 1 ]; then
         if [ $2 = "-m" ]; then
           P_SVR=$3
-          P_SIP=parsehttpserver "$P_SVR" 'server'
-          HTTPPORT=parsehttpserver "$P_SVR" 'port' 
+          P_SIP=$(parsehttpserver "$P_SVR" 'server')
+          HTTPPORT=$(parsehttpserver "$P_SVR" 'port') 
         else
           if [ $2 = "-M" ]; then
             P_SVR=$3
-            P_SIP=parsehttpserver "$P_SVR" 'server'
-            HTTPPORT=parsehttpserver "$P_SVR" 'port' 
+            P_SIP=$(parsehttpserver "$P_SVR" 'server')
+            HTTPPORT=$(parsehttpserver "$P_SVR" 'port') 
             new_ms=$P_SIP    # -M means we will update xcatinfo file XCATSERVER
           fi
         fi
@@ -434,8 +434,9 @@ else # for common mode  MODE=1,2,3,5 (updatenode,moncfg,node deployment)
     # also update the XCATSERVER in the /etc/xcat/xcatinfo file with this
     # address
     if [ -n "$P_SIP" ]; then   # passed in with updatenode on -M/-m
-        SIP="${P_SIP}:${HTTPPORT}"
-        download_postscripts $SIP
+        #SIP="${P_SIP}:${HTTPPORT}"
+        SIP=${P_SIP}
+        download_postscripts ${P_SIP}:${HTTPPORT}
         if [ $? -eq 0 ]; then
             downloaded=1
         fi
