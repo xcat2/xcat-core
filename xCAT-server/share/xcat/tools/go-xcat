@@ -934,6 +934,31 @@ function add_repo_by_file_yum()
 		cp "${tmp}" "/etc/yum.repos.d/${repo_id}.repo"
 }
 
+# Dirty workaround on SLES11 SP4
+# For SLES11, set gpgcheck=0
+#
+#       $1      repo file
+function github_issue_5503_workaround2()
+{
+	[[ "${GO_XCAT_LINUX_DISTRO}" = "sles" ]] || return 0
+	[[ "${GO_XCAT_LINUX_VERSION}" =~ ^11(\.[0-4]){0,1}$ ]] || return 0
+	local repo_file="$1"
+	local tmp="${TMP_DIR}/tmp_repo_file_${repo_id}.repo.$$"
+	cp "${repo_file}" "${tmp}"
+	exit_if_bad "$?" "Copy file failed \`${repo_file}' -> \`${tmp}'"
+	while read -r
+	do
+		case "${REPLY}" in
+		"gpgcheck=1")
+			echo "gpgcheck=0"
+			;;
+		*)
+			echo "${REPLY}"
+			;;
+		esac
+	done <"${tmp}" >"${repo_file}"
+}
+
 #       $1      repo file
 #       $2      repo id
 function add_repo_by_file_zypper()
@@ -954,6 +979,8 @@ function add_repo_by_file_zypper()
 		echo "[${repo_id}]"
 		grep -v '^\[' "${repo_file}"
 	} >"${tmp}"
+	# For SLES11, set gpgcheck=0
+	github_issue_5503_workaround2 "${tmp}"
 	remove_repo_zypper "${repo_id}" &&
 		zypper addrepo "${tmp}" >/dev/null 2>&1
 }
@@ -1085,7 +1112,7 @@ function add_repo_by_url_yum_or_zypper()
 			name=${repo_id}
 			baseurl=${url%/}
 			enabled=1
-			gpgcheck=0
+			gpgcheck=1
 			gpgkey=${url%/}/repodata/repomd.xml.key
 			EOF
 			add_repo_by_file "${tmp}" "${repo_id}"
@@ -1121,9 +1148,17 @@ function add_repo_by_url_yum_or_zypper()
 		name=${repo_id}
 		baseurl=file://${url%/}
 		enabled=1
-		gpgcheck=0
-		gpgkey=file://${url%/}/repodata/repomd.xml.key
 		EOF
+		if [ -f "${url%/}/repodata/repomd.xml.asc" ]
+		then
+			echo "gpgcheck=1" >>"${tmp}"
+		else
+			echo "gpgcheck=0" >>"${tmp}"
+		fi
+		if [ -f "${url%/}/repodata/repomd.xml.key" ]
+		then
+			echo "gpgkey=file://${url%/}/repodata/repomd.xml.key" >>"${tmp}"
+		fi
 		add_repo_by_file "${tmp}" "${repo_id}"
 		return "$?"
 	fi
