@@ -1,6 +1,6 @@
 start:encrypted_passwd_md5_diskfull
 description: this case is to test when  cryptmethod=md5 in passwd table, the password is encryped with the md5 method. When compute node is diskfull provisioned, users can login node with correct password. This case should be run when node is correctly defined.
-label:others
+label:others,security
 cmd:gettab key=system passwd.cryptmethod > /tmp/tmpcryptmethod
 check:rc==0
 cmd:chtab key=system passwd.cryptmethod=md5
@@ -19,7 +19,7 @@ end
 
 start:encrypted_passwd_md5_diskless
 description: this case is to test when  cryptmethod=md5 in passwd table, the password is encryped with the md5 method. When compute node is diskless provisioned, users can login node with correct password. This case should be run when node is correctly defined.
-label:others
+label:others,security
 cmd:gettab key=system passwd.cryptmethod > /tmp/tmpcryptmethod
 check:rc==0
 cmd:chtab key=system passwd.cryptmethod=md5
@@ -75,7 +75,7 @@ end
 
 start:encrypted_passwd_sha256_diskfull
 description: this case is to test when  cryptmethod=sha256 in passwd table, the password is encryped with the sha256 method. When compute node is diskfull provisioned, users can login node with correct password. This case should be run when node is correctly defined.
-label:others
+label:others,security
 cmd:gettab key=system passwd.cryptmethod > /tmp/tmpcryptmethod
 check:rc==0
 cmd:chtab key=system passwd.cryptmethod=sha256
@@ -94,7 +94,7 @@ end
 
 start:encrypted_passwd_sha256_diskless
 description: this case is to test when  cryptmethod=sha256 in passwd table, the password is encryped with the sha256 method. When compute node is diskless provisioned, users can login node with correct password. This case should be run when node is correctly defined.
-label:others
+label:others,security
 cmd:gettab key=system passwd.cryptmethod > /tmp/tmpcryptmethod
 check:rc==0
 cmd:chtab key=system passwd.cryptmethod=sha256
@@ -150,7 +150,7 @@ end
 
 start:encrypted_passwd_sha512_diskfull
 description: this case is to test when  cryptmethod=sha512 in passwd table, the password is encryped with the sha512 method. When compute node is diskfull provisioned, users can login node with correct password. This case should be run when node is correctly defined.
-label:others
+label:others,security
 cmd:gettab key=system passwd.cryptmethod > /tmp/tmpcryptmethod
 check:rc==0
 cmd:chtab key=system passwd.cryptmethod=sha512
@@ -169,7 +169,7 @@ end
 
 start:encrypted_passwd_sha512_diskless
 description: this case is to test when  cryptmethod=sha512 in passwd table, the password is encryped with the sha512 method. When compute node is diskless provisioned, users can login node with correct password. This case should be run when node is correctly defined.
-label:others
+label:others,security
 cmd:gettab key=system passwd.cryptmethod > /tmp/tmpcryptmethod
 check:rc==0
 cmd:chtab key=system passwd.cryptmethod=sha512
@@ -226,7 +226,7 @@ end
 
 start:encrypted_passwd_openssl_diskfull
 description: this case is to test when password is encrypted with openssl, the password is encryped in password table. When compute node is diskfull provisioned, users can login node with correct password. This case should be run when node is correctly defined.
-label:others
+label:others,security
 cmd:gettab key=system passwd.cryptmethod > /tmp/tmpcryptmethod
 check:rc==0
 cmd:gettab key=system passwd.password > /tmp/tmppassword
@@ -252,7 +252,7 @@ end
 
 start:encrypted_passwd_openssl_diskless
 description: this case is to test when password is encrypted with openssl, the password is encryped in password table. When compute node is diskless provisioned, users can login node with correct password. This case should be run when node is correctly defined.
-label:others
+label:others,security
 cmd:gettab key=system passwd.cryptmethod > /tmp/tmpcryptmethod
 check:rc==0
 cmd:gettab key=system passwd.password > /tmp/tmppassword

@@ -188,7 +188,7 @@ end
 start:packimage_m_tar_c_pigz
 os:Linux
 description:test packimage -m tar -c pigz
-label:others,packaging
+label:others,packaging,invoke_provision
 #cmd:copycds $$ISO
 cmd:ls /install/netboot/__GETNODEATTR($$CN,os)__/__GETNODEATTR($$CN,arch)__/compute/rootimg;if [ $? -eq 0 ];then mv -f /install/netboot/__GETNODEATTR($$CN,os)__/__GETNODEATTR($$CN,arch)__/compute/rootimg /rootimg.bak;fi
 cmd:ls /install/netboot/__GETNODEATTR($$CN,os)__/__GETNODEATTR($$CN,arch)__/compute/rootimg.tar.gz;if [ $? -eq 0 ];then mv -f /install/netboot/__GETNODEATTR($$CN,os)__/__GETNODEATTR($$CN,arch)__/compute/rootimg.tar.gz /rootimg.tar.gz.bak;fi
@@ -243,7 +243,7 @@ end
 start:packimage_m_tar_c_gzip
 os:Linux
 description:test packimage -m tar -c gzip
-label:others,packaging
+label:others,packaging,invoke_provision
 #cmd:copycds $$ISO
 cmd:ls /install/netboot/__GETNODEATTR($$CN,os)__/__GETNODEATTR($$CN,arch)__/compute/rootimg;if [ $? -eq 0 ];then mv -f /install/netboot/__GETNODEATTR($$CN,os)__/__GETNODEATTR($$CN,arch)__/compute/rootimg /rootimg.bak;fi
 cmd:ls /install/netboot/__GETNODEATTR($$CN,os)__/__GETNODEATTR($$CN,arch)__/compute/rootimg.tar.gz;if [ $? -eq 0 ];then mv -f /install/netboot/__GETNODEATTR($$CN,os)__/__GETNODEATTR($$CN,arch)__/compute/rootimg.tar.gz /rootimg.tar.gz.bak;fi
@@ -294,7 +294,7 @@ end
 start:packimage_m_tar_c_xz
 os:Linux
 description:test packimage -m tar -c xz
-label:others,packaging
+label:others,packaging,invoke_provision
 #cmd:copycds $$ISO
 cmd:ls /install/netboot/__GETNODEATTR($$CN,os)__/__GETNODEATTR($$CN,arch)__/compute/rootimg;if [ $? -eq 0 ];then mv -f /install/netboot/__GETNODEATTR($$CN,os)__/__GETNODEATTR($$CN,arch)__/compute/rootimg /rootimg.bak;fi
 cmd:ls /install/netboot/__GETNODEATTR($$CN,os)__/__GETNODEATTR($$CN,arch)__/compute/rootimg.tar.xz;if [ $? -eq 0 ];then mv -f /install/netboot/__GETNODEATTR($$CN,os)__/__GETNODEATTR($$CN,arch)__/compute/rootimg.tar.xz /rootimg.tar.xz.bak;fi

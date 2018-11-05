@@ -1,4 +1,5 @@
 start:makeknownhosts_h
+label:others,hosts
 cmd:makeknownhosts -h
 check:output=~Usage
 cmd:makeknownhosts --help
@@ -7,7 +8,7 @@ end
 
 start:makeknownhosts_node
 description:Make a known_hosts file under $ROOTHOME/.ssh for input noderange
-label:others
+label:others,hosts
 cmd:makeknownhosts $$CN -r
 cmd:makeknownhosts $$CN
 check:rc==0
@@ -19,7 +20,7 @@ end
 
 start:makeknownhosts_node_r
 description:remove known node in $ROOTHOME/.ssh
-label:others
+label:others,hosts
 cmd:makeknownhosts $$CN
 cmd:cat  ~/.ssh/known_hosts|grep $$CN
 check:output=~$$CN
@@ -32,7 +33,7 @@ end
 
 start:makeknownhosts_node_d
 description:delete known node entry from $ROOTHOME/.ssh
-label:others
+label:others,hosts
 cmd:makeknownhosts $$CN
 cmd:cat ~/.ssh/known_hosts|grep $$CN
 check:output=~$$CN
@@ -47,7 +48,7 @@ end
 
 start:makeknownhosts_node_v
 description:verbose
-label:others
+label:others,hosts
 cmd:makeknownhosts $$CN -V
 check:rc==0
 check:output=~$$CN
