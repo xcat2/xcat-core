@@ -1,6 +1,6 @@
 start:makenetworks_h
 description:help
-label:others,network
+label:others,ci_test,network
 cmd:makenetworks -h
 check:rc==0
 check:output=~Usage
@@ -8,7 +8,7 @@ end
 
 start:makenetworks_help
 description:help
-label:others,network
+label:others,ci_test,network
 cmd:makedhcp --help
 check:rc==0
 check:output=~Usage
@@ -16,7 +16,7 @@ end
 
 start:makenetworks_v
 description:version
-label:others,network
+label:others,ci_test,network
 cmd:makenetworks -v
 check:rc==0
 check:output=~Version
@@ -25,7 +25,7 @@ end
 start:makenetworks_d
 os:Linux
 description:makenetworks_d
-label:others,network
+label:others,ci_test,network
 cmd:makenetworks -d > /tmp/mynetworksstanzas
 check:rc==0
 cmd:echo -ne "auto-testnetworks:\n objtype=network\n gateway=1.2.3.0\n mask=255.255.255.0\n net=1.2.3.1\n" >> /tmp/mynetworksstanzas
