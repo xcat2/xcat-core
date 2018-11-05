@@ -210,6 +210,30 @@ pmatch ()
 
   return 1          # non-zero return code means string not matched by pattern
 }
+
+#parse the http server "<ip/hostname>:<port>"
+#usgae: parsehttpserver(<http server string>,<what to return? 'server' or 'port'>)
+parsehttpserver ()
+{
+   rawserver=$1 
+   option=$2
+   server=$(echo "$rawserver"|cut -d: -f1 -s 2>/dev/null)
+   port="80"
+   if [ -z "$server"  ];then
+       server=$rawserver
+   else
+       port=$(echo "$rawserver"|cut -d: -f2 -s 2>/dev/null)
+   fi
+
+   if [ "$option" = "server" ];then
+       return $server
+   fi 
+
+   if [ "$option" = "port" ];then
+       return $port
+   fi
+}
+
 # Main
 # parse the arguments
 ARGNUM=$#;
@@ -226,10 +250,14 @@ else
       MODE=$1
       if [ $ARGNUM -gt 1 ]; then
         if [ $2 = "-m" ]; then
-          P_SIP=$3
+          P_SVR=$3
+          P_SIP=parsehttpserver "$P_SVR" 'server'
+          HTTPPORT=parsehttpserver "$P_SVR" 'port' 
         else
           if [ $2 = "-M" ]; then
-            P_SIP=$3
+            P_SVR=$3
+            P_SIP=parsehttpserver "$P_SVR" 'server'
+            HTTPPORT=parsehttpserver "$P_SVR" 'port' 
             new_ms=$P_SIP    # -M means we will update xcatinfo file XCATSERVER
           fi
         fi
@@ -348,13 +376,24 @@ if [ "$MODE" = "4" ]; then # for statelite mode
                 echo "XCATSERVER=$XCATSERVER" >> /opt/xcat/xcatinfo
             fi
             break
+        elif [ "$KEY" =  "XCATHTTPPORT" ]; then
+            HTTPPORT=`echo $i | awk -F= '{print $2}'`
+            grep 'HTTPPORT' /opt/xcat/xcatinfo > /dev/null  2>&1
+            if [ $? -eq 0 ]; then
+                sed -i "s/HTTPPORT=.*/HTTPPORT=$HTTPPORT/" /opt/xcat/xcatinfo
+            else
+                echo "HTTPPORT=$HTTPPORT" >> /opt/xcat/xcatinfo
+            fi
+            break
+            
         fi
     done
 
     if [ -f /opt/xcat/xcatinfo ]; then
         SIP=`grep 'XCATSERVER' /opt/xcat/xcatinfo |cut -d= -f2`
+        HTTPPORT=`grep 'HTTPPORT' /opt/xcat/xcatinfo |cut -d= -f2`
         if [ -n "$SIP" ]; then
-            download_postscripts $SIP
+            download_postscripts $SIP:${HTTPPORT}
             if [ $? -eq 0 ]; then
                 downloaded=1
             fi
@@ -395,7 +434,7 @@ else # for common mode  MODE=1,2,3,5 (updatenode,moncfg,node deployment)
     # also update the XCATSERVER in the /etc/xcat/xcatinfo file with this
     # address
     if [ -n "$P_SIP" ]; then   # passed in with updatenode on -M/-m
-        SIP=$P_SIP
+        SIP="${P_SIP}:${HTTPPORT}"
         download_postscripts $SIP
         if [ $? -eq 0 ]; then
             downloaded=1
@@ -420,8 +459,10 @@ else # for common mode  MODE=1,2,3,5 (updatenode,moncfg,node deployment)
         # if not updatenode, then look in xcatinfo for the xcatmaster
         if [ -f /opt/xcat/xcatinfo ]; then
             SIP=`grep 'XCATSERVER' /opt/xcat/xcatinfo |cut -d= -f2`
+            HTTPPORT=`grep 'HTTPPORT' /opt/xcat/xcatinfo |cut -d= -f2`
+            [ -z "$HTTPPORT" ] && HTTPPORT="80" 
             if [ -n "$SIP" ]; then
-                download_postscripts $SIP
+                download_postscripts ${SIP}:${HTTPPORT}
                 if [ $? -eq 0 ]; then
                   downloaded=1
                 fi
@@ -438,15 +479,20 @@ else # for common mode  MODE=1,2,3,5 (updatenode,moncfg,node deployment)
              if [ "$KEY" =  "XCAT" ]; then
                  TMP=`echo $i | awk -F= '{print $2}'`
                  SIP=`echo $TMP | cut -d: -f1`
-                 if [ -n "$SIP" ]; then
-                     download_postscripts $SIP
-                     if [ $? -eq 0 ]; then
-                         downloaded=1
-                         break
-                     fi
-                 fi
-            fi
-          done
+
+             elif [ "$KEY" = "XCATHTTPPORT" ];then
+                 HTTPPORT=$(echo $i | awk -F= '{print $1}')   
+                 [ -z "$HTTPPORT" ] && HTTPPORT="80"
+             fi
+         done
+
+         if [ -n "$SIP" ]; then
+             download_postscripts "${SIP}:${HTTPPORT}"
+             if [ $? -eq 0 ]; then
+                 downloaded=1
+                 break
+             fi
+         fi
     fi
 
     # download poscripts has not worked yet
@@ -549,11 +595,11 @@ echolog "info" "trying to get mypostscript from $SIP..."
 max_retries=2
 # try short hostname first
 if [ -n "$node_short" ]; then
-    download_mypostscript $SIP $node_short $max_retries $TFTPDIR
+    download_mypostscript "${SIP}:${HTTPPORT}" $node_short $max_retries $TFTPDIR
     if [ $? -ne 0 ]; then
         # try long hostname
         if [ "$node" != "$node_short" ]; then
-          download_mypostscript $SIP $node $postfix $max_retries $TFTPDIR
+          download_mypostscript "${SIP}:${HTTPPORT}" $node $postfix $max_retries $TFTPDIR
         fi
     fi
 fi
@@ -660,6 +706,13 @@ if [ -n "$new_ms" ]; then
       sed -i "s/XCATSERVER=.*/XCATSERVER=$new_ms/" /opt/xcat/xcatinfo
     else
       echo "XCATSERVER=$new_ms" >> /opt/xcat/xcatinfo
+    fi
+
+    grep 'HTTPPORT' /opt/xcat/xcatinfo > /dev/null  2>&1
+    if [ $? -eq 0 ]; then
+      sed -i "s/HTTPPORT=.*/HTTPPORT=$HTTPPORT/" /opt/xcat/xcatinfo
+    else
+      echo "HTTPPORT=$HTTPPORT" >> /opt/xcat/xcatinfo
     fi
 fi
 
