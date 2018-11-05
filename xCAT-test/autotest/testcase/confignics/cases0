@@ -1,5 +1,6 @@
 start:confignics_config_one_port_single_value
 description:confignics
+label:others,network,confignics,updatenode
 cmd:lsdef $$CN;if [ $? -eq 0 ]; then lsdef -l $$CN -z >/tmp/CN.standa ;fi
 check:rc==0
 cmd:mkdef -t network -o 100_1_0_0-255_255_0_0 net=100.1.0.0 mask=255.255.0.0 mgtifname=$$SECONDNIC mtu=1501
@@ -19,6 +20,7 @@ end
 
 start:confignics_config_multiple_ports_single_value
 description:confignics
+label:others,network,confignics,updatenode
 cmd:lsdef $$CN;if [ $? -eq 0 ]; then lsdef -l $$CN -z >/tmp/CN.standa ;fi
 check:rc==0
 cmd:mkdef -t network -o 100_1_0_0-255_255_0_0 net=100.1.0.0 mask=255.255.0.0 mgtifname=$$SECONDNIC mtu=1501
@@ -49,6 +51,7 @@ end
 
 start:confignics_config_multiple_ports_multiple_value
 description:confignics
+label:others,network,confignics,updatenode
 cmd:lsdef $$CN;if [ $? -eq 0 ]; then lsdef -l $$CN -z >/tmp/CN.standa ;fi
 check:rc==0
 cmd:mkdef -t network -o 11_1_0_0-255_255_0_0 net=11.1.0.0 mask=255.255.0.0 mgtifname=$$SECONDNIC  mtu=1501
@@ -93,6 +96,7 @@ end
 
 start:confignics_config_multiple_port_withnichostnamesuffixes_multiple_value
 description:confignics
+label:others,network,confignics,updatenode
 cmd:lsdef $$CN;if [ $? -eq 0 ]; then lsdef -l $$CN -z >/tmp/CN.standa ;fi
 check:rc==0
 cmd:mkdef -t network -o 11_1_0_0-255_255_0_0 net=11.1.0.0 mask=255.255.0.0 mgtifname=$$SECONDNIC  mtu=1501
@@ -147,6 +151,7 @@ end
 
 start:confignics_config_multiple_port_withnicaliases_multiple_value
 description:confignics
+label:others,network,confignics,updatenode
 cmd:lsdef $$CN;if [ $? -eq 0 ]; then lsdef -l $$CN -z >/tmp/CN.standa ;fi
 check:rc==0
 cmd:mkdef -t network -o 11_1_0_0-255_255_0_0 net=11.1.0.0 mask=255.255.0.0 mgtifname=$$SECONDNIC
@@ -200,6 +205,7 @@ end
 
 start:confignics_disable_set_to_yes
 description:confignics
+label:others,network,confignics,updatenode
 cmd:lsdef $$CN;if [ $? -eq 0 ]; then lsdef -l $$CN -z >/tmp/CN.standa ;fi
 check:rc==0
 cmd:xdsh $$CN ifdown $$SECONDNIC
@@ -222,6 +228,7 @@ end
 
 start:confignics_disable_set_to_1
 description:confignics
+label:others,network,confignics,updatenode
 cmd:lsdef $$CN;if [ $? -eq 0 ]; then lsdef -l $$CN -z >/tmp/CN.standa ;fi
 check:rc==0
 cmd:xdsh $$CN ifdown $$SECONDNIC
@@ -244,6 +251,7 @@ end
 
 start:confignics_s
 description:confignics_s
+label:others,network,confignics,updatenode
 cmd:tabdump networks > /opt/xcat/share/xcat/tools/autotest/testcase/confignics/networks.csv
 check:rc==0
 cmd:/opt/xcat/share/xcat/tools/autotest/testcase/confignics/mtu_set_clean S 1496
@@ -268,6 +276,7 @@ check:rc==0
 end
 start:chdef_nicips
 description:nicip could be set to null
+label:others,network,confignics,updatenode
 Attribute: $$CN-The operation object of chdef command
 cmd:lsdef $$CN;if [ $? -eq 0 ]; then lsdef -l $$CN -z >/tmp/CN.standa ;fi
 check:rc==0

@@ -1,6 +1,7 @@
 start:imagexport_imagename_destination
 os:Linux
 description:imgexport __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-statelite-compute foo.tgz
+label:others,packaging
 cmd:copycds $$ISO
 cmd:mkdef -t osimage -o __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-statelite-compute -u profile=compute provmethod=statelite osvers=__GETNODEATTR($$CN,os)__
 check:rc==0
@@ -25,6 +26,7 @@ end
 start:imgexport_imagename_destination_p_e
 os:Linux
 description:imgexport __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-statelite-compute foo.tgz -p $$CN -e /install/postscripts/testscript1
+label:others,packaging
 cmd:copycds $$ISO
 cmd:mkdef -t osimage -o __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-statelite-compute -u profile=compute provmethod=statelite osvers=__GETNODEATTR($$CN,os)__
 check:rc==0
@@ -54,6 +56,7 @@ end
 start:imgexport_h
 os:Linux
 description:
+label:others
 cmd:imgexport -h
 check:output=~Usage|usage
 cmd:imgexport --help
@@ -63,6 +66,7 @@ end
 
 start:imgexport_v
 os:Linux
+label:others
 cmd:imgexport -v
 check:output=~version|Version
 cmd:imgexport --version

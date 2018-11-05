@@ -1,4 +1,5 @@
 start:sysclone
+label:others,invoke_provision,sysclone
 cmd:makedns -n
 check:rc==0
 cmd:makedhcp -n

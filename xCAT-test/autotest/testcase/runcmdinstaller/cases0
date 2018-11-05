@@ -20,6 +20,7 @@ cmd:chtab key=xcatdebugmode site.value="0"
 end
 start:get_xcat_postscripts_loginfo
 description:get xcat post scripts loginfo
+label:others,postscripts
 cmd:chtab key=xcatdebugmode site.value="1"
 check:rc==0
 cmd:rinstall $$CN osimage=__GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-install-compute
@@ -34,6 +35,7 @@ cmd:chtab key=xcatdebugmode site.value="0"
 end
 start:updatenode_postscripts_loginfo
 description:get updatenode postsripts log info
+label:others,postscripts
 cmd:chtab key=xcatdebugmode site.value="1"
 check:rc==0
 cmd:chdef $$CN -p  postscripts=setupntp

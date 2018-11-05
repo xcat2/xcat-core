@@ -1,5 +1,6 @@
 start:get_networks
 description: get_networks
+label:others,restapi
 cmd:restapitest -m GET -r /networks
 check:rc==200
 cmdcheck:restapitest -o '["network1"]' -O ==
@@ -7,12 +8,14 @@ end
 
 start:post_networks
 description: post_networks
+label:others,restapi
 cmd:restapitest -m POST -r /networks
 check:rc==201
 end
 
 start:get_networks_attr_for_post
 description: get_networks_attr_for_post
+label:others,restapi
 cmd:restapitest -m GET -r /networks/network1
 check:rc==200
 cmdcheck:restapitest -o '{"network1":{"net":"10.1.0.0"}}' -O ==
@@ -20,12 +23,14 @@ end
 
 start:post_networks_attr
 description: post_networks_attr
+label:others,restapi
 cmd:restapitest -m GET -r /networks/network1 -d '{"gateway":"10.1.0.1","mask":"255.255.0.0"}'
 check:rc==201
 end
 
 start:get_networks_all_attr
 description: get_networks_all_attr
+label:others,restapi
 cmd:restapitest -m GET -r /networks/network1
 check:rc==200
 cmdcheck:restapitest -o '{"network1":{"net":"10.1.0.0"}}' -O ==
@@ -33,6 +38,7 @@ end
 
 start:get_networks_attr
 description: get_networks_attr
+label:others,restapi
 cmd:restapitest -m GET -r /networks/network1/attrs/net,mask
 check:rc==200
 cmdcheck:restapitest -o '{"network1":{"net":"10.1.0.0"}}' -O ==
@@ -40,12 +46,14 @@ end
 
 start:put_networks_attr
 description: put_networks_attr
+label:others,restapi
 cmd:restapitest -m PUT -r /networks/network1 -d '{"mgtifname":"eth0","net":"10.1.0.0"}'
 check:rc==200
 end
 
 start:get_networks_attr_for_put
 description: get_networks_attr_for_put
+label:others,restapi
 cmd:restapitest -m GET -r /networks/network1
 check:rc==200
 cmdcheck:restapitest -o '{"network1":{"net":"10.1.0.0"}}' -O ==
@@ -53,12 +61,14 @@ end
 
 start:delete_networks_attr_for_put
 description: delete_networks_attr_for_put
+label:others,restapi
 cmd:restapitest -m DELETE -r /networks/network1
 check:rc==200
 end
 
 start:get_networks_for_delete
 description: get_networks_for_delete
+label:others,restapi
 cmd:restapitest -m GET -r /networks
 check:rc==200
 cmdcheck:restapitest -o '["network1"]' -O !=

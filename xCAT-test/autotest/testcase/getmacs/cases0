@@ -1,4 +1,5 @@
 start:getmacs_noderange
+label:others
 cmd:tabdump mac > /tmp/mac.csv
 cmd:chtab -d node=$$CN mac
 cmd:getmacs $$CN
@@ -10,6 +11,7 @@ cmd:tabrestore /tmp/mac.csv
 cmd:rm /tmp/mac.csv
 end
 start:getmacs_d
+label:others
 cmd:tabdump mac > /tmp/mac.csv
 cmd:chtab -d node=$$CN mac
 cmd:getmacs $$CN -d
@@ -21,6 +23,7 @@ cmd:tabrestore /tmp/mac.csv
 cmd:rm /tmp/mac.csv
 end
 start:getmacs_f_D
+label:others
 cmd:tabdump mac > /tmp/mac.csv
 cmd:chtab -d node=$$CN mac
 cmd:getmacs $$CN -f -D

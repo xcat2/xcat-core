@@ -1,6 +1,7 @@
 start:reg_set_xcatdebugmode_off_rhels_diskful_flat
 os:linux
 description:site.xcatdebugmode value is 0, the following logs will be shown and ssh is not supported.
+label:flat_cn_diskful,invoke_provison,xcatdebugmode
 cmd:if ping -c 1 $$SN > /dev/null;then rpower $$SN off > /dev/null;fi
 cmd:chdef -t node -o $$CN servicenode= monserver=$$MN nfsserver=$$MN tftpserver=$$MN  xcatmaster=$$MN
 check:rc==0
@@ -57,6 +58,7 @@ end
 start:reg_set_xcatdebugmode_value_one_rhels_diskful_flat
 os:linux
 description:site.xcatdebugmode value is 1, the following logs will be shown and ssh is not supported.
+label:flat_cn_diskful,invoke_provison,xcatdebugmode
 cmd:echo " " > /var/log/xcat/computes.log
 check:rc==0
 
@@ -144,6 +146,7 @@ end
 start:reg_set_xcatdebugmode_value_two_rhels_diskful_flat
 os:linux
 description:site.xcatdebugmode value is 2, , the following logs will be shown and ssh is supported.
+label:flat_cn_diskful,invoke_provison,xcatdebugmode
 cmd:echo " " > /var/log/xcat/computes.log
 check:rc==0
 
@@ -231,6 +234,7 @@ end
 start:set_xcatdebugmode_off_rhels_diskful_flat_p8_le
 os:Linux
 description:site.xcatdebugmode value is 0, the following logs will be shown and ssh is not supported.
+label:flat_cn_diskful,invoke_provison,xcatdebugmode
 
 cmd:chtab key=xcatdebugmode site.value="0"
 check:rc==0
@@ -283,6 +287,7 @@ end
 start:set_xcatdebugmode_value_one_rhels_diskful_flat_p8_le
 os:Linux
 description:site.xcatdebugmode value is 1, the following logs will be shown and ssh is not supported.
+label:flat_cn_diskful,invoke_provison,xcatdebugmode
 cmd:echo " " > /var/log/xcat/computes.log
 check:rc==0
 
@@ -372,6 +377,7 @@ end
 start:set_xcatdebugmode_value_two_rhels_diskful_flat_p8_le
 os:Linux
 description:site.xcatdebugmode value is 2, the following logs will be shown and ssh is supported.
+label:flat_cn_diskful,invoke_provison,xcatdebugmode
 cmd:echo " " > /var/log/xcat/computes.log
 check:rc==0
 

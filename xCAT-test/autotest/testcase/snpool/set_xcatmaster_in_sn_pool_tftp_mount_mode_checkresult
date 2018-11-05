@@ -1,5 +1,6 @@
 start:set_xcatmaster_in_sn_pool_tftp_mount_mode_checkresult
 description: this case is to check the configuration files after nodeset for case set_xcatmaster_in_sn_pool_tftp_mount_mode
+label:others,invoke_provision,sn_pool
 
 #create a test compute node, set it's xcatmaster as SN, set it's service node as SN and CN
 cmd:mkdef -t node -o compute1 groups=compute ip=10.0.0.199 mac=4a:c8:f7:de:d0:09 profile=compute os=__GETNODEATTR($$CN,os)__ arch=__GETNODEATTR($$CN,arch)__  netboot=__GETNODEATTR($$CN,netboot)__

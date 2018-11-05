@@ -1,5 +1,6 @@
 start:go_xcat_online_repo_case1
 description:test go_xcat with the option --xcat-core=http://xcat.org/path/to/xcat-core.repo install. This case is only for rh and suse
+label:others,go-xcat
 os:Linux
 cmd:if xdsh $$CN "zypper -h"; then  xdsh $$CN "zypper remove -y *xCAT*"; elif xdsh $$CN "yum -h";then xdsh $$CN  "yum remove -y *xCAT*"; elif xdsh $$CN "apt-get -h";then xdsh $$CN "apt-get purge perl-xcat xcat-client xcat-server xcat -y"; else echo "Sorry,this is not supported os"; fi
 cmd:if grep Ubuntu /etc/*release;then xdsh $$CN "dpkg -l |grep -i perl-xcat";else xdsh $$CN "rpm -qa |grep -i perl-xcat";fi
@@ -30,6 +31,7 @@ end
 
 start:go_xcat_online_repo_case2
 description:test go_xcat with the option --xcat-core=http://xcat.org/path/to/xcat-core install
+label:others,go-xcat
 os:Linux
 cmd:if xdsh $$CN "zypper -h"; then  xdsh $$CN "zypper remove -y *xCAT*"; elif xdsh $$CN "yum -h";then xdsh $$CN  "yum remove -y *xCAT*"; elif xdsh $$CN "apt-get -h";then xdsh $$CN "apt-get purge perl-xcat xcat-client xcat-server xcat -y"; else echo "Sorry,this is not supported os"; fi
 cmd:if grep Ubuntu /etc/*release;then xdsh $$CN "dpkg -l |grep -i perl-xcat";else xdsh $$CN "rpm -qa |grep -i perl-xcat";fi
@@ -65,6 +67,7 @@ end
 
 start:go_xcat_online_repo_case3
 description:test go_xcat with the option --xcat-core=http://xcat.org/path/to/xcat-core.tar.bz2 install
+label:others,go-xcat
 os:Linux
 cmd:if xdsh $$CN "zypper -h"; then  xdsh $$CN "zypper remove -y *xCAT*"; elif xdsh $$CN "yum -h";then xdsh $$CN  "yum remove -y *xCAT*"; elif xdsh $$CN "apt-get -h";then xdsh $$CN "apt-get purge perl-xcat xcat-client xcat-server xcat -y"; else echo "Sorry,this is not supported os"; fi
 cmd:if grep Ubuntu /etc/*release;then xdsh $$CN "dpkg -l |grep -i perl-xcat";else xdsh $$CN "rpm -qa |grep -i perl-xcat";fi
@@ -100,6 +103,7 @@ end
 
 start:go_xcat_online_repo_case4
 description:test go_xcat with the option --xcat-core=http://xcat.org/path/to/xcat-core.repo --xcat-dep=http://xcat.org/path/to/xcat-dep.repo install. This is for rh and suse.
+label:others,go-xcat
 os:Linux
 cmd:if xdsh $$CN "zypper -h"; then  xdsh $$CN "zypper remove -y *xCAT*"; elif xdsh $$CN "yum -h";then xdsh $$CN  "yum remove -y *xCAT*"; elif xdsh $$CN "apt-get -h";then xdsh $$CN "apt-get purge perl-xcat xcat-client xcat-server xcat -y"; else echo "Sorry,this is not supported os"; fi
 cmd:if grep Ubuntu /etc/*release;then xdsh $$CN "dpkg -l |grep -i perl-xcat";else xdsh $$CN "rpm -qa |grep -i perl-xcat";fi
@@ -130,6 +134,7 @@ end
 
 start:go_xcat_online_repo_case5
 description:test go_xcat with the option --xcat-core=http://xcat.org/path/to/xcat-core --xcat-dep=http://xcat.org/path/to/xcat-dep install
+label:others,go-xcat
 os:Linux
 cmd:if xdsh $$CN "zypper -h"; then  xdsh $$CN "zypper remove -y *xCAT*"; elif xdsh $$CN "yum -h";then xdsh $$CN  "yum remove -y *xCAT*"; elif xdsh $$CN "apt-get -h";then xdsh $$CN "apt-get purge perl-xcat xcat-client xcat-server xcat -y"; else echo "Sorry,this is not supported os"; fi
 cmd:if grep Ubuntu /etc/*release;then xdsh $$CN "dpkg -l |grep -i perl-xcat";else xdsh $$CN "rpm -qa |grep -i perl-xcat";fi
@@ -164,6 +169,7 @@ end
 
 start:go_xcat_online_repo_case6
 description:test go_xcat with the option --xcat-core=http://xcat.org/path/to/xcat-core.tar.bz2 --xcat-dep=http://xcat.org/path/to/xcat-dep.tar.bz2 install
+label:others,go-xcat
 os:Linux
 cmd:if xdsh $$CN "zypper -h"; then  xdsh $$CN "zypper remove -y *xCAT*"; elif xdsh $$CN "yum -h";then xdsh $$CN  "yum remove -y *xCAT*"; elif xdsh $$CN "apt-get -h";then xdsh $$CN "apt-get purge perl-xcat xcat-client xcat-server xcat xcat-buildkit xcat-genesis-scripts  xcat-genesis-base-amd64 xcat-genesis-base-ppc64 -y"; else echo "Sorry,this is not supported os"; fi
 cmd:if grep Ubuntu /etc/*release;then xdsh $$CN "dpkg -l |grep -i perl-xcat";else xdsh $$CN "rpm -qa |grep -i perl-xcat";fi

@@ -1,4 +1,5 @@
 start:addkitcomp_v
+label:others,KIT
 os:Linux
 cmd:addkitcomp -v
 check:rc==0
@@ -13,6 +14,7 @@ check:output=~compatible_frameworks
 end
 
 start:addkitcomp_h
+label:others,KIT
 os:Linux
 cmd:addkitcomp -h
 check:rc==0
@@ -23,6 +25,7 @@ check:output=~ Usage
 end
 
 start:addkitcomp_i
+label:others,KIT
 os:Linux
 cmd:rm -rf /opt/xcat/share/xcat/tools/autotest/testcase/addkitcomp/mykits
 cmd:cd /opt/xcat/share/xcat/tools/autotest/testcase/addkitcomp;buildkit create mykits
@@ -54,6 +57,7 @@ check:rc==0
 end
 
 start:addkitcomp_f
+label:others,KIT
 os:Linux
 cmd:rm -rf /opt/xcat/share/xcat/tools/autotest/testcase/addkitcomp/mykits
 cmd:cd /opt/xcat/share/xcat/tools/autotest/testcase/addkitcomp;buildkit create mykits
@@ -84,6 +88,7 @@ check:rc==0
 end
 
 start:addkitcomp_a
+label:others,KIT
 os:Linux
 cmd:rm -rf /opt/xcat/share/xcat/tools/autotest/testcase/addkitcomp/$$KITDATA
 cmd:mkdir -p /opt/xcat/share/xcat/tools/autotest/testcase/addkitcomp/$$KITDATA
@@ -126,6 +131,7 @@ check:rc==0
 end
 
 start:addkitcomp_noscripts
+label:others,KIT
 os:Linux
 cmd:rm -rf /opt/xcat/share/xcat/tools/autotest/testcase/addkitcomp/$$KITDATA
 cmd:mkdir -p /opt/xcat/share/xcat/tools/autotest/testcase/addkitcomp/$$KITDATA

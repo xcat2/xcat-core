@@ -1,5 +1,6 @@
 start:inventory_node_rest
 description: get OpenBMC node inventory with REST API
+label:others,restapi
 hcp:openbmc
 cmd:restapitest -m GET -r /nodes/$$CN/inventory -u $$username -p $$password
 check:rc==200
@@ -8,6 +9,7 @@ end
 
 start:inventory_node_rest2
 description: get IPMI node inventory with REST API
+label:others,restapi
 hcp:ipmi
 cmd:restapitest -m GET -r /nodes/$$CN/inventory -u $$username -p $$password
 check:rc==200
@@ -16,6 +18,7 @@ end
 
 start:vitals_node_rest
 description: get OpenBMC node vitals with REST API
+label:others,restapi
 hcp:openbmc
 cmd:restapitest -m GET -r /nodes/$$CN/vitals -u $$username -p $$password
 check:rc==200
@@ -24,6 +27,7 @@ end
 
 start:vitals_node_rest2
 description: get IPMI node vitals with REST API
+label:others,restapi
 hcp:ipmi
 cmd:restapitest -m GET -r /nodes/$$CN/vitals -u $$username -p $$password
 check:rc==200
@@ -32,6 +36,7 @@ end
 
 start:eventlog_node_rest
 description: get OpenBMC node inventory with REST API
+label:others,restapi
 hcp:openbmc
 cmd:restapitest -m GET -r /nodes/$$CN/eventlog -u $$username -p $$password
 check:rc==200
@@ -40,6 +45,7 @@ end
 
 start:eventlog_node_rest2
 description: get IPMI node eventlog with REST API
+label:others,restapi
 hcp:ipmi
 cmd:restapitest -m GET -r /nodes/$$CN/eventlog -u $$username -p $$password
 check:rc==200
@@ -48,6 +54,7 @@ end
 
 start:beacon_node_rest
 description: get OpenBMC node beacon with REST API
+label:others,restapi
 hcp:openbmc
 cmd:restapitest -m GET -r /nodes/$$CN/beacon -u $$username -p $$password
 check:rc==200
@@ -57,6 +64,7 @@ end
 
 start:beacon_set_node_rest
 description: set OpenBMC node beacon with REST API
+label:others,restapi
 hcp:openbmc
 cmd:restapitest -m PUT -r /nodes/$$CN/beacon -d '{"action":"on"}' -u $$username -p $$password
 check:rc==200
@@ -64,6 +72,7 @@ end
 
 start:beacon_set_node_rest2
 description: set IPMI node beacon with REST API
+label:others,restapi
 hcp:ipmi
 cmd:restapitest -m PUT -r /nodes/$$CN/beacon -d '{"action":"on"}' -u $$username -p $$password
 check:rc==200

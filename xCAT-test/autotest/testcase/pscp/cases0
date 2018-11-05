@@ -1,10 +1,12 @@
 start:pscp_h
+label:others,parallel_cmds
 cmd:pscp -h
 check:rc==0
 check:output=~Usage
 end
 
 start:pscp_v
+label:others,parallel_cmds
 cmd:pscp -v
 check:rc==0
 check:output=~Version
@@ -12,6 +14,7 @@ end
 
 #copy single file
 start:pscp_node
+label:others,parallel_cmds
 cmd:echo "test" > /tmp/pscp.tmp
 check:rc==0
 cmd:pscp /tmp/pscp.tmp $$CN:/tmp/
@@ -31,6 +34,7 @@ end
 
 #copy a directory
 start:pscp_r_node
+label:others,parallel_cmds
 cmd: mkdir -p /tmp/pscp
 check:rc==0
 cmd:echo "test" > /tmp/pscp/pscp.tmp
@@ -55,6 +59,7 @@ end
 
 
 start:pscp_i_node
+label:others,parallel_cmds
 cmd:cp /etc/hosts  /etc/hosts.bak
 check:rc==0
 cmd:a=`cat /etc/hosts |grep ' $$CN.'|awk '{print $1}'`;b=`cat /etc/resolv.conf |grep search|awk '{print $2}'`;echo "$a $$CN-eth0.$b $$CN-eth0" >> /etc/hosts
