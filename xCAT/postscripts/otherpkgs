@@ -221,11 +221,11 @@ if [ $argnum -eq 1 ]; then
         repoonly=1
     else
         echo "$(basename $0): option $args is not supported"
-        exit 0
+        exit 1
     fi
-else
-    echo "$(basename $0): option $args is not supported"
-    exit 0
+elif [ $argnum -gt 1 ]; then
+    echo "$(basename $0): only option \"--repoonly\"is supported"
+    exit 1
 fi
 if [ "$(uname -s)" = "AIX" ]; then
       logger -p local4.info -t $log_label "otherpkgs not support on AIX, exiting "
