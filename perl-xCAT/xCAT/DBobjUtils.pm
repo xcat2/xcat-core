@@ -92,19 +92,20 @@ sub getObjectsOfType
         }
 
         # if this is type "group" we need to check the nodelist table
-        my @nodeGroupList = ();
         if ($type eq 'group') {
             my $table         = "nodelist";
+            my %ext_groups = ();
             my @TableRowArray = xCAT::DBobjUtils->getDBtable($table);
-            foreach (@TableRowArray) {
-                my @tmplist = split(',', $_->{'groups'});
-                push(@nodeGroupList, @tmplist);
-            }
-            foreach my $n (@nodeGroupList) {
-                if (!grep(/^$n$/, @objlist)) {
-                    push(@objlist, $n);
+            foreach my $r (@TableRowArray) {
+                my @tmplist = split(',', $r->{'groups'});
+                foreach (@tmplist) {
+                    $ext_groups{$_} = 1 unless exists($ext_groups{$_}) ;
                 }
             }
+            foreach (@objlist) {
+                $ext_groups{$_} = 1 unless exists($ext_groups{$_}) ;
+            }
+            @objlist = sort keys %ext_groups;
         }
 
         @{ $::saveObjList{$type} } = @objlist;
