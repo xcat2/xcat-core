@@ -213,7 +213,20 @@ apt_get_update_if_repos_changed()
 #do nothing for diskless deployment case because it is done in the image already
 
 RETURNVAL=0
-
+repoonly=0
+argnum=$#
+args=$@
+if [ $argnum -eq 1 ]; then
+    if ( pmatch "$args" "--repoonly" ); then
+        repoonly=1
+    else
+        echo "$(basename $0): option $args is not supported"
+        exit 0
+    fi
+else
+    echo "$(basename $0): option $args is not supported"
+    exit 0
+fi
 if [ "$(uname -s)" = "AIX" ]; then
       logger -p local4.info -t $log_label "otherpkgs not support on AIX, exiting "
       exit 0
@@ -231,7 +244,12 @@ if [ -z "$UPDATENODE" ] || [ $UPDATENODE -ne 1 ]; then
   fi
 fi
 
-if [ -z "$OTHERPKGS_INDEX" ]; then
+if ! pmatch $OSVER "rhel*" && [ "$repoonly" -eq 1 ]; then
+    echo "$0: the option \"repoonly\" only support rhel right now"
+    exit 0
+fi
+
+if [ -z "$OTHERPKGS_INDEX" ] && [ "$repoonly" -ne 1 ]; then
   echo "$(basename $0): no extra rpms to install"
   exit 0
 fi
@@ -813,6 +831,11 @@ EOF`
          fi
     fi
 
+    if [ "$repoonly" -eq 1 ]; then
+        echo "otherpkgs: "repoonly set, so ignore pkg installation ...""
+        op_index=$((op_index+1))
+        continue
+    fi
     #now update all the existing rpms
     if [ $hasyum -eq 1 ]; then
         if [ $VERBOSE  ]; then
