@@ -8,7 +8,7 @@ export XCATIPORT=#TABLE:site:key=xcatiport:value#
 export INSTALLDIR=#TABLE:site:key=installdir:value#
 export TFTPDIR=#TABLE:site:key=tftpdir:value#
 export XCATDEBUGMODE="#TABLEBLANKOKAY:site:key=xcatdebugmode:value#"
-export HTTPPORT="#TABLE:site:key=httpport:value#"
+export HTTPPORT="#TABLEBLANKOKAY:site:key=httpport:value#"
 
 #INCLUDE:#ENV:XCATROOT#/share/xcat/install/scripts/scriptlib#
 

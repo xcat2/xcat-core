@@ -34,7 +34,7 @@ export MASTER_IP="#XCATVAR:XCATMASTER#"
 export MASTER_IPS="#XCATVAR:XCATMASTER#"
 export MASTER="#XCATVAR:XCATMASTER#"
 export INSTALLDIR=#TABLE:site:key=installdir:value#
-export HTTPPORT=#TABLE:site:key=httpport:value#
+export HTTPPORT=#TABLEBLANKOKAY:site:key=httpport:value#
 if [ -z "$INSTALLDIR" ]; then
     INSTALLDIR="/install"
 fi
