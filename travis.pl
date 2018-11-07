@@ -114,7 +114,7 @@ sub check_pr_format{
         unless ($pr_url_resp) {
             print "[check_pr_format] After $retries retries, not able to get response from $pr_url \n";
             # Failed after trying a few times, return error
-            return 1;
+            return $counter;
         }
         my $pr_content = decode_json($pr_url_resp);
         my $pr_title = $pr_content->{title};
@@ -617,9 +617,13 @@ print Dumper \@disk;
 $last_func_start = timelocal(localtime());
 print GREEN "\n------ Checking Pull Request Format ------\n";
 $rst  = check_pr_format();
+my $redo_check_pr = 0;
 if($rst){
-    print RED "Check of pull request format failed\n";
-    exit $rst;
+     if($rst <= $retries) {
+        print RED "Check of pull request format failed\n";
+        exit $rst;
+    }
+    $redo_check_pr = 1;
 }
 mark_time("check_pr_format");
 
@@ -659,5 +663,15 @@ if($rst){
     exit $rst;
 }
 mark_time("run_fast_regression_test");
+
+if ($redo_check_pr) {
+    print GREEN "\n------ Checking Pull Request Format ------\n";
+    $rst  = check_pr_format();
+    if($rst){
+        print RED "Check of pull request format failed\n";
+        exit $rst;
+    }
+    mark_time("check_pr_format");
+}
 
 exit 0;
