@@ -139,6 +139,12 @@ sub subvars {
     }
     $ENV{INSTALLDIR} = $installroot;
 
+    $httpport = xCAT::TableUtils->get_site_attribute("httpport");
+    if (!defined($httpport)) {
+        $httpport = "80";
+    }
+    $ENV{HTTPPORT} = $httpport;
+
 
     #replace the env with the right value so that correct include files can be found
     $inc =~ s/#ENV:([^#]+)#/envvar($1)/eg;
@@ -282,6 +288,7 @@ sub subvars {
             $inc =~ s/#INCLUDE:([^#^\n]+)#/includefile($1, 0, 0)/eg;
         }
 
+
         #support multiple paths of osimage in rh/sles diskfull installation
         my @pkgdirs;
         if (defined($media_dir)) {
@@ -309,7 +316,7 @@ sub subvars {
                         open($repofd,"<","$distrepofile");
                         $repo_in_post = <$repofd>;
                         close($repofd);
-                        $repo_in_post =~ s#baseurl=#baseurl=http://$master/#g;
+                        $repo_in_post =~ s#baseurl=#baseurl=http://$master:$httpport/#g;
                         $writerepo .= "\ncat >/etc/yum.repos.d/local-repository-$c.repo << 'EOF'\n";
                         $writerepo .="$repo_in_post\n";
                         $writerepo .="EOF\n";
