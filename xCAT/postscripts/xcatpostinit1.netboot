@@ -22,7 +22,7 @@ fi
 if [ -n "$LOGLABEL" ]; then
     log_label=$LOGLABEL
 else
-    log_label="xcat"
+    log_label="xcat.deployment"
 fi
 
 XCATSERVER=$(grep --only-matching "\<XCAT=[^ ]*\>" /proc/cmdline |cut -d= -f2 |cut -d: -f1 2>/dev/null)
