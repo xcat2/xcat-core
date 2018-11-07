@@ -482,7 +482,7 @@ else # for common mode  MODE=1,2,3,5 (updatenode,moncfg,node deployment)
                  SIP=`echo $TMP | cut -d: -f1`
 
              elif [ "$KEY" = "XCATHTTPPORT" ];then
-                 HTTPPORT=$(echo $i | awk -F= '{print $1}')   
+                 HTTPPORT=$(echo $i | awk -F= '{print $2}')   
                  [ -z "$HTTPPORT" ] && HTTPPORT="80"
              fi
          done

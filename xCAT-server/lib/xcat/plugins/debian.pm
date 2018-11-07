@@ -1336,8 +1336,6 @@ sub mknetboot
             }
 
 
-            $kcmdline .=" XCATHTTPPORT=$httpport ";
-
             # add support for subVars in the value of "statemnt"
             my $statemnt = "";
             if (exists($stateHash->{$node})) {
@@ -1401,6 +1399,7 @@ sub mknetboot
         }
 
 
+        $kcmdline .=" XCATHTTPPORT=$httpport ";
         if (($::XCATSITEVALS{xcatdebugmode} eq "1") or ($::XCATSITEVALS{xcatdebugmode} eq "2")) {
 
             my ($host, $ipaddr) = xCAT::NetworkUtils->gethostnameandip($xcatmaster);

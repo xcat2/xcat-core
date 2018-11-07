@@ -652,8 +652,7 @@ sub mknetboot
             $kcmdline .= $statemnt . " ";
 
             $kcmdline .= "XCAT=$xcatmasterip:$xcatdport ";
-   
-            $kcmdline .= "XCATHTTPPORT=$httpport ";
+  
 
             if ($rootfstype ne "ramdisk") {
 
@@ -694,6 +693,8 @@ sub mknetboot
         if (($nodestatus eq "n") or ($nodestatus eq "N") or ($nodestatus eq "0")) {
             $kcmdline .= " nonodestatus ";
         }
+
+        $kcmdline .= "XCATHTTPPORT=$httpport ";
 
         if (($::XCATSITEVALS{xcatdebugmode} eq "1") or ($::XCATSITEVALS{xcatdebugmode} eq "2")) {
             #for use in postscript and postbootscript in xcatdsklspost in the rootimg
