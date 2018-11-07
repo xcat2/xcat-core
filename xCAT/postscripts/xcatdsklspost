@@ -236,15 +236,13 @@ parsehttpserver ()
 
 # Main
 # parse the arguments
+log_label="xcat.updatenode"
 ARGNUM=$#;
 if [ -z $1 ]; then
   NODE_DEPLOYMENT=1
   log_label="xcat.deployment"
-  echolog "info" "=============deployment starting===================="
 else
   NODE_DEPLOYMENT=0
-  log_label="xcat.updatenode"
-  echolog "info" "=============updatenode starting===================="
   case $1 in
     1|2|5)
       MODE=$1
@@ -299,8 +297,15 @@ else
         fi
       fi
       ;;
-    3|4|6) MODE=$1;;
+    4)
+      MODE=$1
+      log_label="xcat.deployment"
+      ;;
+    3|6) MODE=$1;;
   esac
+fi
+if [ $NODE_DEPLOYMENT -ne 1 ] && [ $MODE -ne 4 ] ; then
+  echolog "info" "=============updatenode starting===================="
 fi
 # set the default path for the xcatpost directory
 xcatpost="/xcatpost"
