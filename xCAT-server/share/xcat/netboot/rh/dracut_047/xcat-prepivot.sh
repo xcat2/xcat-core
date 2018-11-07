@@ -128,9 +128,10 @@ if [ ! -z $SNAPSHOTSERVER ]; then
 fi
 
 # TODO: handle the dhclient/resolv.conf/ntp, etc
-logger $SYSLOGHOST -t $log_label -p local4.info "Get to enable localdisk"
-echo "Get to enable localdisk"
+logger $SYSLOGHOST -t $log_label -p local4.info "Enabling localdisk ..."
+echo "Enable localdisk ..."
 $NEWROOT/etc/init.d/localdisk
+logger $SYSLOGHOST -t $log_label -p local4.info "Preparing mount points ..."
 $NEWROOT/etc/init.d/statelite
 READONLY=yes
 export READONLY

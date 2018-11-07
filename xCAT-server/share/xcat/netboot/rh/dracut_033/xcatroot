@@ -168,6 +168,7 @@ elif [ -r /rootimg-statelite.gz ]; then
         echo ""
         echo "The /$RWDIR directory doesn't exist in the rootimg... "
         echo ""
+        logger $SYSLOGHOST -t $log_label -p local4.err "The /$RWDIR directory doesn't exist in the rootimg..."
         /bin/sh
     fi
 
@@ -175,6 +176,7 @@ elif [ -r /rootimg-statelite.gz ]; then
         echo ""
         echo "$NEWROOT/etc/init.d/statelite doesn't exist... "
         echo ""
+        logger $SYSLOGHOST -t $log_label -p local4.err "$NEWROOT/etc/init.d/statelite doesn't exist... " 
         /bin/sh
     fi
 
@@ -208,10 +210,12 @@ elif [ -r /rootimg-statelite.gz ]; then
         while ! mount $SNAPSHOTSERVER:/$SNAPSHOTROOT $NEWROOT/$RWDIR/persistent -o $MNT_OPTIONS; do
             ITER=$(( ITER + 1 ))
             if [ "$ITER" == "$MAXTRIES" ]; then
-                echo "You are dead, rpower $ME boot to play again."
-                echo "Possible problems:
+                msg="You are dead, rpower $ME boot to play again.
+                     Possible problems:
     1.  $SNAPSHOTSERVER is not exporting $SNAPSHOTROOT ?
     2.  Is DNS set up? Maybe that's why I can't mount $SNAPSHOTSERVER."
+                echo "$msg"
+                logger $SYSLOGHOST -t $log_label -p local4.err "$msg"
                 /bin/sh
                 exit
             fi
@@ -227,8 +231,10 @@ elif [ -r /rootimg-statelite.gz ]; then
         while ! umount -l $NEWROOT/$RWDIR/persistent; do
             ITER=$(( ITER + 1 ))
             if [ "$ITER" == "$MAXTRIES" ]; then
-                echo "Your are dead, rpower $ME boot to play again."
-                echo "Cannot umount $NEWROOT/$RWDIR/persistent."
+                msg="Your are dead, rpower $ME boot to play again.
+                     Cannot umount $NEWROOT/$RWDIR/persistent."
+                echo "$msg"
+                logger $SYSLOGHOST -t $log_label -p local4.err "$msg"
                 /bin/sh
                 exit
             fi
@@ -242,8 +248,10 @@ elif [ -r /rootimg-statelite.gz ]; then
         while ! mount $SNAPSHOTSERVER:/$SNAPSHOTROOT/$ME  $NEWROOT/$RWDIR/persistent -o $MNT_OPTIONS; do
             ITER=$(( ITER + 1 ))
             if [ "$ITER" == "$MAXTRIES" ]; then
-                echo "Your are dead, rpower $ME boot to play again."
-                echo "Possible problems: cannot mount to $SNAPSHOTSERVER:/$SNAPSHOTROOT/$ME."
+                msg="Your are dead, rpower $ME boot to play again.
+                     Possible problems: cannot mount to $SNAPSHOTSERVER:/$SNAPSHOTROOT/$ME."
+                echo "$msg"
+                logger $SYSLOGHOST -t $log_label -p local4.err "$msg"
                 /bin/sh
                 exit
             fi
@@ -253,7 +261,9 @@ elif [ -r /rootimg-statelite.gz ]; then
         done
     fi
 
+    logger $SYSLOGHOST -t $log_label -p local4.info "Enabling localdisk ..."
     $NEWROOT/etc/init.d/localdisk
+    logger $SYSLOGHOST -t $log_label -p local4.info "Preparing mount points ..."
     $NEWROOT/etc/init.d/statelite
     fastboot=yes
     export fastboot
