@@ -2797,20 +2797,21 @@ sub getNodeAttribs
     unless (scalar keys %{ $data[0] }) {
         return undef;
     }
-    my $attrib;
-    foreach $datum (@data) {
-        foreach $attrib (@attribs)
-        {
-            unless (defined $datum->{$attrib}) {
-
-                #skip undefined values, save time
-                next;
-            }
-            my $retval;
-            if (defined($retval = transRegexAttrs($node, $datum->{$attrib}))) {
-                $datum->{$attrib} = $retval;
-            } else {
-                delete $datum->{$attrib};
+    if (!exists($options{keep_raw})){
+        my $attrib;
+        foreach $datum (@data) {
+            foreach $attrib (@attribs) {
+                unless (defined $datum->{$attrib}) {
+                    #skip undefined values, save time
+                    next;
+                }
+                my $retval;
+                if (defined($retval = transRegexAttrs($node, $datum->{$attrib}))) {
+                    $datum->{$attrib} = $retval;
+                }
+                else {
+                    delete $datum->{$attrib};
+                }
             }
         }
     }
@@ -2983,6 +2984,9 @@ sub getNodeAttribs_nosub_returnany
         $nodekey = $xCAT::Schema::tabspec{ $self->{tabname} }->{nodecol}
     }
     @results = $self->getAttribs({ $nodekey => $node }, @attribs);
+
+    # return the DB without any rendering, this is for fetch attributes of group
+    return @results if (exists($options{keep_raw}));
 
     my %attribsToDo;
     for (@attribs) {

@@ -143,7 +143,6 @@ sub getobjattrs
     my $class    = shift;
     my $ref_hash = shift;
     my @attrs;
-
     # The $attrs is an optional argument
     if (ref $_[0]) {
         @attrs = @{ shift() };
@@ -165,35 +164,18 @@ sub getobjattrs
     # go through each object type and look up all the info for each object
     foreach my $objtype (keys %objtypelist) {
 
-        # only do node type for now
-        if ($objtype eq 'node') {
-
+        # only do node and nodegroup type for now
+        if ($objtype eq 'node' || $objtype eq 'group') {
             # find the list of tables and corresponding attrs
             # - for this object type
-            # get the object type decription from Schema.pm
-            my $datatype = $xCAT::Schema::defspec{$objtype};
-            foreach my $this_attr (@{ $datatype->{'attrs'} }) {
-                my $attr = $this_attr->{attr_name};
-                if (scalar(@attrs) > 0) {    # Only query specific attributes
-                    if (!grep(/^$attr$/, @attrs)) {
-                        next;                # This attribute is not needed
-                    }
-                }
-
-                # table_attr is the attr that actually appears in the
-                #  table which could possibly be different then the attr
-                #  used in the node def
-                # ex. 'nodetype.arch'
-                my ($lookup_table, $table_attr) = split('\.', $this_attr->{tabentry});
-                if (!grep(/^$table_attr$/, @{ $tableattrs{$lookup_table} })) {
-                    push @{ $tableattrs{$lookup_table} }, $table_attr;
-                }
-            }
+            # get the object type description from Schema.pm
+            my %tableattrs = xCAT::DBobjUtils->gettbldesc($objtype, \@attrs);
+            my @objlist = @{ $objtypelist{$objtype} };
 
             # foreach table look up the list of attrs for this
             # list of object names
             foreach my $table (keys %tableattrs) {
-
+                next if ($table eq 'nodegroup'); #getNodesAttribs cannot handle this table now
                 # open the table
                 # with autocommit => 0, it does not work on Ubuntu running mysql
                 my $thistable = xCAT::Table->new($table, -create => 1, -autocommit => 1);
@@ -204,9 +186,14 @@ sub getobjattrs
                     next;
                 }
 
-                my @objlist = @{ $objtypelist{$objtype} };
-
-                my $rec = $thistable->getNodesAttribs(\@objlist, @{ $tableattrs{$table} });
+                my $rec;
+                if ($objtype eq 'node') {
+                    $rec = $thistable->getNodesAttribs(\@objlist, @{$tableattrs{$table}});
+                } else {
+                    my %options = ();
+                    $options{keep_raw} = 1;
+                    $rec = $thistable->getNodesAttribs(\@objlist, \@{$tableattrs{$table}}, %options);
+                }
 
                 # fill in %tabhash with any values that are set
                 foreach my $n (@objlist) {
@@ -229,6 +216,62 @@ sub getobjattrs
         }
     }
     return %tabhash;
+}
+
+#----------------------------------------------------------------------------
+
+=head3   gettbldesc
+
+        Get required table and columns from the Schema for specified definition type.
+
+                $objtype: definition type
+                $attrs_ref: only get the specific attributes,
+                            this can be useful especially for performance considerations
+        Arguments:
+        Returns:
+                undef - error
+                hash ref - $tblattrshash{tablename} = [col1, col2]
+        Globals:
+        Error:
+        Example:
+
+                To get the table attributes for object type
+                ex.
+
+                xCAT::DBobjUtils->gettbldesc('node', @attr);
+
+        Comments:
+
+=cut
+
+#-----------------------------------------------------------------------------
+sub gettbldesc {
+    my ($class, $objtype) = @_;
+    my @attrs;
+    # The $attrs is an optional argument
+    if (ref $_[0]) {
+        @attrs = @{ shift() };
+    }
+    my %tableattrs = ();
+    my $datatype = $xCAT::Schema::defspec{$objtype};
+    foreach my $this_attr (@{ $datatype->{'attrs'} }) {
+        my $attr = $this_attr->{attr_name};
+        if (scalar(@attrs) > 0) {    # Only query specific attributes
+            if (!grep(/^$attr$/, @attrs)) {
+                next;                # This attribute is not needed
+            }
+        }
+
+        # table_attr is the attr that actually appears in the
+        #  table which could possibly be different then the attr
+        #  used in the node def
+        # ex. 'nodetype.arch'
+        my ($lookup_table, $table_attr) = split('\.', $this_attr->{tabentry});
+        if (!grep(/^$table_attr$/, @{ $tableattrs{$lookup_table} })) {
+            push @{ $tableattrs{$lookup_table} }, $table_attr;
+        }
+    }
+    return %tableattrs;
 }
 
 #----------------------------------------------------------------------------
@@ -264,13 +307,14 @@ sub getobjattrs
 sub getobjdefs
 {
     my ($class, $hash_ref, $verbose, $attrs_ref, $chname_ref) = @_;
-    my %objhash;
+
     my %typehash = %$hash_ref;
-    my %tabhash;
-    my @attrs;
+    my @attrs;     # required attributes
     if (ref($attrs_ref)) {
         @attrs = @$attrs_ref;
     }
+    my %objhash;   # fetched result will be stored in this hash
+    my %tabhash;   # used to cache the some result for node/group
 
     @::foundTableList = ();
 
@@ -284,40 +328,7 @@ sub getobjdefs
         return %objhash;
     }
 
-    # see if we need to get any objects of type 'node'
-    my $getnodes = 0;
-    foreach my $objname (keys %typehash) {
-        if ($typehash{$objname} eq 'node') {
-            $getnodes = 1;
-        }
-    }
-
-    # if so then get node info from tables now
-    #   still may need to look up values in some tables using
-    #   other keys - also need to figure out what tables to take
-    #   values from when using 'only_if' - see below
-    # - but this saves lots of time
-    if ($getnodes) {
-        if (scalar(@attrs) > 0) {    # Only get specific attributes of the node
-                                     # find the onlyif key for the attributes
-          REDO: my $datatype = $xCAT::Schema::defspec{'node'};
-            foreach my $this_attr (@{ $datatype->{'attrs'} }) {
-                my $attr = $this_attr->{attr_name};
-                if (exists($this_attr->{only_if})) {
-                    my ($onlyif_key, $onlyif_value) = split('\=', $this_attr->{only_if});
-                    if (!grep (/^$onlyif_key$/, @attrs)) {
-                        push @attrs, $onlyif_key;
-                        goto REDO;
-                    }
-                }
-            }
-            %tabhash = xCAT::DBobjUtils->getobjattrs(\%typehash, \@attrs);
-        } else {
-            %tabhash = xCAT::DBobjUtils->getobjattrs(\%typehash);
-        }
-    }
-
-    # Classify the nodes with type
+    # Classify the objects with type, for example, {'node' => ['cn1', 'cn2']}
     my %type_obj = ();
     foreach my $objname (keys %typehash) {
         push @{ $type_obj{ $typehash{$objname} } }, $objname;
@@ -423,10 +434,38 @@ sub getobjdefs
             # get the object type decription from Schema.pm
             my $datatype = $xCAT::Schema::defspec{$objtype};
 
+            # if so then get objects info from tables now
+            #   still may need to look up values in some tables using
+            #   other keys - also need to figure out what tables to take
+            #   values from when using 'only_if' - see below
+            # - but this saves lots of time
+            if ($objtype eq 'node' or $objtype eq 'group') {
+                if (scalar(@attrs) > 0) {
+                    # Only get specific attributes of the object
+                    # find the onlyif key for the attributes
+                    REDO:
+                    foreach my $this_attr (@{$datatype->{'attrs'}}) {
+                        my $attr = $this_attr->{attr_name};
+                        if (exists($this_attr->{only_if})) {
+                            my ($onlyif_key, $onlyif_value) = split('\=', $this_attr->{only_if});
+                            if (!grep (/^$onlyif_key$/, @attrs)) {
+                                push @attrs, $onlyif_key;
+                                goto REDO;
+                            }
+                        }
+                    }
+                    %tabhash = xCAT::DBobjUtils->getobjattrs(\%typehash, \@attrs);
+                }
+                else {
+                    %tabhash = xCAT::DBobjUtils->getobjattrs(\%typehash);
+                }
+            }
+
             # get the key to look for, for this object type
             my $objkey = $datatype->{'objkey'};
             # go through the list of valid attrs
             foreach my $this_attr (@{ $datatype->{'attrs'} }) {
+
                 my $ent;
                 my $attr = $this_attr->{attr_name};
 
@@ -436,7 +475,7 @@ sub getobjdefs
                 }
 
                 # skip the attributes that does not needed for node type
-                if ($getnodes) {
+                if ($objtype eq 'node') {
                     if (scalar(@attrs) > 0 && !grep(/^$attr$/, @attrs)) {
                         next;
                     }
@@ -450,33 +489,33 @@ sub getobjdefs
                 #  ex. noderes.nfsdir
                 my ($tab, $tabattr) = split('\.', $this_attr->{tabentry});
 
-                foreach my $objname (sort @{ $type_obj{$objtype} }) {
+                my $check_attr = undef;
+                my $check_value = undef;
+                if (exists $this_attr->{only_if}) {
+                    ($check_attr, $check_value) = split('\=', $this_attr->{only_if});
+                }
 
+                foreach my $objname (sort @{ $type_obj{$objtype} }) {
                     # get table lookup info from Schema.pm
                     #  !!!! some tables depend on the value of certain attrs
                     #   we need to look up attrs in the correct order or we will
                     #   not be able to determine what tables to look
                     #   in for some attrs.
-                    if (exists($this_attr->{only_if})) {
-                        my ($check_attr, $check_value) = split('\=', $this_attr->{only_if});
-
+                    if (defined($check_attr) && defined($check_value)) {
                         # if the object value is not the value we need
                         #   to match then try the next only_if value
                         next if (!($objhash{$objname}{$check_attr} =~ /\b$check_value\b/));
                     }
 
-
                     $objhash{$objname}{'objtype'} = $objtype;
-                    my %tabentry = ();
 
+                    my %tabentry = ();
                     # def commands need to support multiple keys in one table
                     # the subroutine parse_access_tabentry is used for supporting multiple keys
-                    my $rc = xCAT::DBobjUtils->parse_access_tabentry($objname,
-                        $this_attr->{access_tabentry}, \%tabentry);
+                    my $rc = xCAT::DBobjUtils->parse_access_tabentry($objname, $this_attr->{access_tabentry}, \%tabentry);
                     if ($rc != 0) {
                         my $rsp;
-                        $rsp->{data}->[0] =
-"access_tabentry \'$this_attr->{access_tabentry}\' is not valid.";
+                        $rsp->{data}->[0] = "access_tabentry \'$this_attr->{access_tabentry}\' is not valid.";
                         xCAT::MsgUtils->message("E", $rsp, $::callback);
                         next;
                     }
@@ -491,7 +530,8 @@ sub getobjdefs
                         # The %tabhash is for performance considerations
                         my $tabspec = $xCAT::Schema::tabspec{$lookup_table};
                         my $nodecol = $tabspec->{'nodecol'} if defined($tabspec->{'nodecol'});
-                        if (($lookup_attr eq 'node' && $objtype eq 'node') || (defined($nodecol) && $objtype eq 'node' && $lookup_table ne 'ppcdirect')) {
+                        if (($lookup_attr eq 'node' && ($objtype eq 'node' || $objtype eq 'group')) ||
+                            (defined($nodecol) && ($objtype eq 'node' || $objtype eq 'group') && $lookup_table ne 'ppcdirect')) {
                             if (defined($tabhash{$lookup_table}{$objname}{$tabattr})) {
                                 if ($verbose == 1) {
                                     $objhash{$objname}{$attr} = "$tabhash{$lookup_table}{$objname}{$tabattr}\t(Table:$lookup_table - Key:$lookup_attr - Column:$tabattr)";
@@ -510,7 +550,6 @@ sub getobjdefs
                             $notsearched = 1;
                         }
                     }
-
                     # Not in tabhash,
                     # Need to lookup the table
                     if ($intabhash == 0 && $notsearched == 1) {
@@ -581,7 +620,8 @@ sub getDBtable
 
     # save this table info - in case this subr gets called multiple times
     # --nocache flag specifies not to use cahe
-    if (grep(/^$table$/, @::foundTableList) && !$::opt_nc) {
+    #if (grep(/^$table$/, @::foundTableList) && !$::opt_nc) {
+    if (exists $::TableHash{$table} && !$::opt_nc) {
 
         # already have this
         @rows = @{ $::TableHash{$table} };
@@ -601,7 +641,7 @@ sub getDBtable
 
         #  keep track of the fact that we checked this table
         #   - even if it's empty!
-        push(@::foundTableList, $thistable->{tabname});
+        #push(@::foundTableList, $thistable->{tabname});
 
         @{ $::TableHash{$table} } = @rows;
 
