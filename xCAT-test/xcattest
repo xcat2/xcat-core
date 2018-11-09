@@ -71,7 +71,7 @@ my $restore           = 0;
 my $quiet             = 0;
 my $search_expression = undef;
 
-my %label_map;
+my @total_label_set=();
 my %case_label_map;
 my @label_order = (["xcat_install"],
     ["mn_only"],
@@ -169,10 +169,16 @@ if ($rst) {
 }
 
 if($search_expression){
-    $rst = scan_existed_labels(\%case_label_map, \%label_map, \$error);
+    $rst = scan_existed_labels(\%case_label_map, \@total_label_set, \$error);
     if($rst) {
         log_this($running_log_fd, "$error");
         to_exit(1);
+    }
+    if($xcatdebug){
+        print "------The total labels are:---------\n";
+        print Dumper \@total_label_set;
+        print "------The case and its labels:-------\n";
+        print Dumper \%case_label_map
     }
 }
 
@@ -247,19 +253,22 @@ if (defined $list) {
             to_exit(1);
         }
     } elsif ($list eq "labelinfo"){
-        $rst = scan_existed_labels(\%case_label_map, \%label_map, \$error);
+        $rst = scan_existed_labels(\%case_label_map, \@total_label_set, \$error);
+        if($xcatdebug){
+            print "------The total labels are:---------\n";
+            print Dumper \@total_label_set;
+            print "------The case and its labels:-------\n";
+            print Dumper \%case_label_map
+        }
         my %label_conut;
         my %case_label_str_map;
         foreach my $case (keys %case_label_map){
-            if($case_label_map{$case}{label_str}){
-                $case_label_str_map{$case} = $case_label_map{$case}{label_str};
-                my @labels = split(",", $case_label_map{$case}{label_str});
-                foreach my $label (@labels){
-                    if(!exists $label_conut{$label}){
-                        $label_conut{$label}=1;
-                    }else{
-                        $label_conut{$label}+=1;
-                    }
+            $case_label_str_map{$case} = join (",", @{$case_label_map{$case}{labels}});
+            foreach my $label (@{$case_label_map{$case}{labels}}){
+                if(!exists $label_conut{$label}){
+                    $label_conut{$label}=1;
+                }else{
+                    $label_conut{$label}+=1;
                 }
             }
         }
@@ -268,7 +277,7 @@ if (defined $list) {
         log_this($running_log_fd, "The labels of cases:");
         log_this($running_log_fd, "-------------------------------");
         print_table(\%case_label_str_map);
-        my $label_total_num=keys %label_conut;
+        my $label_total_num=@total_label_set;
         log_this($running_log_fd, "\n-------------------------------");
         log_this($running_log_fd, "There are $label_total_num different labels");
         log_this($running_log_fd, "The number of cases of each label:");
@@ -276,9 +285,20 @@ if (defined $list) {
         print_table(\%label_conut);
         log_this($running_log_fd, "-------------------------------");
         my $total_case = keys %case_label_map;
-        my $case_with_label_num = keys %case_label_str_map;
-        log_this($running_log_fd, "There are $total_case cases totaly, there are $case_with_label_num cases with label.");
-
+        my @cases_without_manual_labels=();
+        foreach my $case ( keys %case_label_map){
+            if(! exists ($case_label_map{$case}{manual_labels})){
+                push @cases_without_manual_labels, $case;
+            } 
+        }
+        my $case_without_manual_label_num = @cases_without_manual_labels;
+        log_this($running_log_fd, "There are $total_case cases totaly, there are $case_without_manual_label_num cases without manual label.");
+        log_this($running_log_fd, "-------------------------------");
+        log_this($running_log_fd, "The cases without manual label are:");
+        log_this($running_log_fd, "-------------------------------");
+        foreach my $case (sort @cases_without_manual_labels){
+            print "$case\n";
+        }
     }
 
     to_exit(0);
@@ -1914,7 +1934,7 @@ sub gettablevalue
 sub print_table {
     my $msg_ref = shift;
 
-    my $desiredwidth = 120;
+    my $desiredwidth = 160;
     my $screenwidth  = (`tput cols` + 0);
     my $finallen = ($screenwidth > $desiredwidth ? $desiredwidth : $screenwidth);
 
@@ -1995,85 +2015,51 @@ sub filter_case_by_label {
     my $rest_cases_to_be_run_ref = shift;
     my $error_ref                = shift;
 
-    my @filters = ();
-    my $rst = parse_filters(\@filters, $error_ref);
-    if($rst){
-        return 1;
-    }
-    #print Dumper \@filters;
-
     my @targetcases = ();
     foreach my $case (keys %{$case_label_map_ref}) {
         if(@$cases_to_be_run_ref){
-            next unless(grep { /^$case$/ } @$cases_to_be_run_ref);
+            next unless(inarray($cases_to_be_run_ref, $case));
         }
-        foreach my $f (@filters) {
-            my $hit = 1;
-            foreach my $c (@$f) {
-                if (($c > 0) and (($case_label_map_ref->{$case}->{label} & $c) == 0)) {
-                    $hit = 0;
-                    last;
-                } elsif (($c < 0) and (($case_label_map_ref->{$case}->{label} & ($c * -1)) != 0)) {
-                    $hit = 0;
-                    last;
+        my $match_filter=0;
+        my @exps = split('\|', $search_expression);
+        foreach my $e (@exps) {
+            $e =~ s/\+/ /g;
+            $e =~ s/\-/ -/g;
+            my $match_sub_filter = 1;
+            my @tags = split(' ', $e);
+            foreach my $t (@tags) {
+                if ($t =~ /^-(.+)/) {
+                    $match_sub_filter = 0 if (inarray ($case_label_map_ref->{$case}->{labels}, $1));     
+                }else{
+                    $match_sub_filter = 0 unless (inarray ($case_label_map_ref->{$case}->{labels}, $t));
                 }
+                last unless ($match_sub_filter);
             }
-            push @targetcases, $case if ($hit and !(grep { /^$case$/ } @targetcases));
-        }
-    }
 
+            if ($match_sub_filter){
+                $match_filter =1;
+                last;
+            }
+        }
+        push  @targetcases, $case if ($match_filter);
+    }
     #print Dumper \@targetcases;
 
+    #order cases which matches filters by Vertical Dimension Labels
     for (my $i = 0 ; $i <= $#label_order ; $i++) {
         foreach my $l (@{ $label_order[$i] }) {
             foreach my $c (@targetcases) {
-                push @{$rest_cases_to_be_run_ref}, $c  if (defined ($label_map{$l}) && (($case_label_map_ref->{$c}->{label} & $label_map{$l}) != 0));
+                push @{$rest_cases_to_be_run_ref}, $c if (inarray($case_label_map_ref->{$c}->{labels}, $l));
             }
         }
     }
     return 0;
 }
 
-sub parse_filters{
-    my $filters_ref=shift;
-    my $error_ref=shift;
-
-    my $index   = 0;
-    my @undefined_labels;
-    my @exps = split('\|', $search_expression);
-    foreach my $e (@exps) {
-        $e =~ s/\+/ /g;
-        $e =~ s/\-/ -/g;
-        my @tags = split(' ', $e);
-        foreach my $t (@tags) {
-            if ($t =~ /^-(.+)/) {
-                my $tmpt = $1;
-                unless (grep { /^$tmpt$/ } keys(%label_map)) {
-                    push @undefined_labels, $tmpt;
-                    next;
-                }
-                push @{ $filters_ref->[$index] }, ($label_map{$tmpt} * -1);
-            } else {
-                unless (grep { /^$t$/ } keys(%label_map)) {
-                    push @undefined_labels, $t;
-                    next;
-                }
-                push @{ $filters_ref->[$index] }, $label_map{$t};
-            }
-        }
-        $index += 1;
-    }
-
-#    if (@undefined_labels) {
-#        $$error_ref = "Label \"" . join(",", @undefined_labels) . "\" are not exist. Existed labels are: " . join(" ", keys(%label_map));
-#        return 1;
-#    }
-    return 0;
-}
 
 sub scan_existed_labels {
     my $case_label_map_ref = shift;
-    my $label_map_ref      = shift;
+    my $total_label_set_ref = shift;
     my $error_ref          = shift;
 
     my $label_value = 1;
@@ -2084,6 +2070,8 @@ sub scan_existed_labels {
     foreach my $file (@files) {
         my @output = runcmd("grep -E \"^start:|^hcp:|^os:|^arch:|^label:\" $file");
         my $current_case_name = "";
+        my $cmd_cases_belong_to = calculate_case_belong_to_which_cmd($file); 
+        #print "cmd_cases_belong_to = $cmd_cases_belong_to\n";
         foreach my $line (@output) {
             $line =~ s/^\s+|#[^!].+|\s+$//g;
 
@@ -2093,45 +2081,84 @@ sub scan_existed_labels {
             my @labels = ();
             if ($line =~ /^start\s*:\s*(.*)/) {
                 $current_case_name                                     = $1;
-                $case_label_map_ref->{$current_case_name}->{label}     = 0;
-                $case_label_map_ref->{$current_case_name}->{label_str} = "";
+                if ($cmd_cases_belong_to){
+                    $case_label_map_ref->{$current_case_name}->{labels} = [$cmd_cases_belong_to];
+                    push @$total_label_set_ref, $cmd_cases_belong_to unless(inarray($total_label_set_ref, $cmd_cases_belong_to));
+                }else{
+                    $case_label_map_ref->{$current_case_name}->{labels} = [];
+                }
             } elsif ($line =~ /^os\s*:\s*(\w[\w\, ]+)/) {
                 my @oss = split(",", $1);
                 foreach my $os (@oss) {
                     $os =~ s/^\s+|\s+$//g;
-                    push @labels, "os=$os";
+                    my $label_str = lc("os=$os");
+                    push @{$case_label_map_ref->{$current_case_name}->{labels}}, $label_str unless(inarray($case_label_map_ref->{$current_case_name}->{labels}, $label_str));
+                    push @$total_label_set_ref, $label_str unless(inarray($total_label_set_ref, $label_str)); 
                 }
+
             } elsif ($line =~ /^arch\s*:\s*(\w[\w\, ]+)/) {
                 my @archs = split(",", $1);
                 foreach my $arch (@archs) {
                     $arch =~ s/^\s+|\s+$//g;
-                    push @labels, "arch=$arch";
+                    my $label_str = lc("arch=$arch");
+                    push @{$case_label_map_ref->{$current_case_name}->{labels}}, $label_str unless(inarray($case_label_map_ref->{$current_case_name}->{labels}, $label_str));
+                    push @$total_label_set_ref, $label_str unless(inarray($total_label_set_ref, $label_str));
                 }
             } elsif ($line =~ /^hcp\s*:\s*(\w[\w\, ]+)/) {
                 my @hcps = split(",", $1);
                 foreach my $hcp (@hcps) {
                     $hcp =~ s/^\s+|\s+$//g;
-                    push @labels, "hcp=$hcp";
+                    my $label_str = lc("hcp=$hcp");
+                    push @{$case_label_map_ref->{$current_case_name}->{labels}}, $label_str unless(inarray($case_label_map_ref->{$current_case_name}->{labels}, $label_str));
+                    push @$total_label_set_ref, $label_str unless(inarray($total_label_set_ref, $label_str));
+
                 }
             } elsif ($line =~ /^label\s*:\s*(.+)/) {
                 my @tmp = split(",", $1);
-                foreach my $l (@tmp){
-                   $l =~ s/^\s+|\s+$//g;
-                   push @labels, $l;
-                }
-            }
-
-            if($current_case_name){
-                foreach my $t (@labels) {
-                    unless (exists $label_map_ref->{$t}) {
-                        $label_map_ref->{$t} = $label_value;
-                        $label_value *= 2;
-                    }
-                    $case_label_map_ref->{$current_case_name}->{label} |= $label_map_ref->{$t};
-                    $case_label_map_ref->{$current_case_name}->{label_str} .= "$t,";
+                foreach my $label_str (@tmp){
+                    $label_str =~ s/^\s+|\s+$//g;
+                    push @{$case_label_map_ref->{$current_case_name}->{labels}}, $label_str unless(inarray($case_label_map_ref->{$current_case_name}->{labels}, $label_str));
+                    push @{$case_label_map_ref->{$current_case_name}->{manual_labels}},$label_str unless(inarray($case_label_map_ref->{$current_case_name}->{manual_labels}, $label_str));
+                    push @$total_label_set_ref, $label_str unless(inarray($total_label_set_ref, $label_str)); 
                 }
             }
         }
+        
     }
     return 0;
+}
+
+sub calculate_case_belong_to_which_cmd {
+    my $file_path = shift;
+    my $command   = undef;
+
+    if ($file_path =~ "\/autotest\/testcase") {
+        my @path_str = split("/", $file_path);
+        #print Dumper \@path_str;
+        my $index = 0;
+        foreach my $str (@path_str) {
+            if ($str =~ "autotest") {
+                $index += 1;
+                last;
+            }
+            $index += 1;
+        }
+        #print "index=$index\n";
+        $command = lc($path_str[ $index + 1 ]);
+    }
+    return $command;
+}
+
+sub inarray{
+    my $array = shift;
+    my $element = shift;
+    my $hit = 0;
+
+    foreach my $e (@$array){
+        if (lc("$e") eq lc("$element")){
+            $hit = 1;
+            last;
+        }
+    }
+    return $hit;
 }
