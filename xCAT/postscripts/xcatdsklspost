@@ -380,7 +380,6 @@ if [ "$MODE" = "4" ]; then # for statelite mode
             else
                 echo "XCATSERVER=$XCATSERVER" >> /opt/xcat/xcatinfo
             fi
-            break
         elif [ "$KEY" =  "XCATHTTPPORT" ]; then
             HTTPPORT=`echo $i | awk -F= '{print $2}'`
             grep 'HTTPPORT' /opt/xcat/xcatinfo > /dev/null  2>&1
@@ -389,8 +388,6 @@ if [ "$MODE" = "4" ]; then # for statelite mode
             else
                 echo "HTTPPORT=$HTTPPORT" >> /opt/xcat/xcatinfo
             fi
-            break
-            
         fi
     done
 
