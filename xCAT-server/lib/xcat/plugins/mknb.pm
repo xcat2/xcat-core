@@ -253,6 +253,10 @@ sub process_request {
             copy("/usr/lib/syslinux/pxelinux.0", "$tftpdir/pxelinux.0");
         } elsif (-r "/usr/share/syslinux/pxelinux.0") {
             copy("/usr/share/syslinux/pxelinux.0", "$tftpdir/pxelinux.0");
+        } elsif ("/usr/lib/PXELINUX/pxelinux.0") {
+            copy("/usr/lib/PXELINUX/pxelinux.0", "$tftpdir/pxelinux.0");
+        } else {
+            copy("/opt/xcat/share/xcat/netboot/syslinux/pxelinux.0", "$tftpdir/pxelinux.0");
         }
         if (-r "$tftpdir/pxelinux.0") {
             chmod(0644, "$tftpdir/pxelinux.0");
