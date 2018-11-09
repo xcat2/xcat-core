@@ -21,8 +21,13 @@ check:rc==0
 
 cmd:rootimgdir=`lsdef -t osimage __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute|grep rootimgdir|awk -F'=' '{print $2}'`; if [ -d $rootimgdir ]; then mv $rootimgdir $rootimgdir.regbak -f;fi
 check:rc==0
+cmd:osarch=$(lsdef -t osimage __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute|grep osarch|awk -F'=' '{print $2}');sed -i "s/OSARCH/$osarch/g" /opt/xcat/share/xcat/tools/autotest/testcase/xcat-inventory/templates/environment/test.environments.osimage.yaml
+cmd:osvers=$(lsdef -t osimage __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute|grep osvers|awk -F'=' '{print $2}');sed -i "s/OSVERS/$osvers/g" /opt/xcat/share/xcat/tools/autotest/testcase/xcat-inventory/templates/environment/test.environments.osimage.yaml
+cmd:pkgdir=$(lsdef -t osimage __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute|grep -w pkgdir|awk -F'=' '{print $2}');sed -i "s!PKGDIR!$pkgdir!g" /opt/xcat/share/xcat/tools/autotest/testcase/xcat-inventory/templates/environment/test.environments.osimage.yaml
+cmd:pkglist=$(lsdef -t osimage __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute|grep -w pkglist|awk -F'=' '{print $2}');sed -i "s!PKGLIST!$pkglist!g" /opt/xcat/share/xcat/tools/autotest/testcase/xcat-inventory/templates/environment/test.environments.osimage.yaml
+cmd:postinstall=$(lsdef -t osimage __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute|grep -w postinstall|awk -F'=' '{print $2}');sed -i "s!POSTINSTALL!$postinstall!g" /opt/xcat/share/xcat/tools/autotest/testcase/xcat-inventory/templates/environment/test.environments.osimage.yaml
+cmd:osmajor=$(lsdef -t osimage __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute|grep osvers|awk -F'=' '{print $2}');sed -i "s/OSMAJOR/$osmajor/g" /opt/xcat/share/xcat/tools/autotest/testcase/xcat-inventory/templates/environment/test.environments.osimage.yaml
 cmd:xcat-inventory import -f /opt/xcat/share/xcat/tools/autotest/testcase/xcat-inventory/templates/environment/test.environments.osimage.yaml -e GITREPO=/opt/xcat/share/xcat/tools/autotest/testcase/xcat-inventory/templates/environment/gitrepo -e SWDIR=/opt/xcat/share/xcat/tools/autotest/testcase/xcat-inventory/templates/environment/swdir
-check:output=~Importing object: test.environments.osimage
 check:output=~Inventory import successfully!
 check:rc==0
 cmd:lsdef -t osimage -o test.environments.osimage
@@ -85,12 +90,23 @@ label:others,xcat_inventory
 cmd:lsdef -t osimage -o test.environments.osimage >/dev/null 2>&1;if [[ $? -eq 0 ]]; then lsdef -t osimage -o test.environments.osimage -z >/tmp/test.environments.osimage_image.stanza ;rmdef -t osimage -o test.environments.osimage;fi
 check:rc==0
 cmd:dir="/tmp/export";if [ -e "${dir}" ];then mv ${dir} ${dir}".bak"; fi; mkdir -p $dir
+cmd:osarch=$(lsdef -t osimage __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute|grep osarch|awk -F'=' '{print $2}');sed -i "s/OSARCH/$osarch/g" /opt/xcat/share/xcat/tools/autotest/testcase/xcat-inventory/templates/environment/test.environments.osimage.update.yaml
+cmd:osvers=$(lsdef -t osimage __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute|grep osvers|awk -F'=' '{print $2}');sed -i "s/OSVERS/$osvers/g" /opt/xcat/share/xcat/tools/autotest/testcase/xcat-inventory/templates/environment/test.environments.osimage.update.yaml
+cmd:pkgdir=$(lsdef -t osimage __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute|grep -w pkgdir|awk -F'=' '{print $2}');sed -i "s!PKGDIR!$pkgdir!g" /opt/xcat/share/xcat/tools/autotest/testcase/xcat-inventory/templates/environment/test.environments.osimage.update.yaml
+cmd:pkglist=$(lsdef -t osimage __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute|grep -w pkglist|awk -F'=' '{print $2}');sed -i "s!PKGLIST!$pkglist!g" /opt/xcat/share/xcat/tools/autotest/testcase/xcat-inventory/templates/environment/test.environments.osimage.update.yaml
+cmd:postinstall=$(lsdef -t osimage __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute|grep -w postinstall|awk -F'=' '{print $2}');sed -i "s!POSTINSTALL!$postinstall!g" /opt/xcat/share/xcat/tools/autotest/testcase/xcat-inventory/templates/environment/test.environments.osimage.update.yaml
+cmd:osmajor=$(lsdef -t osimage __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute|grep osvers|awk -F'=' '{print $2}');sed -i "s/OSMAJOR/$osmajor/g" /opt/xcat/share/xcat/tools/autotest/testcase/xcat-inventory/templates/environment/test.environments.osimage.update.yaml
 cmd:xcat-inventory import -f /opt/xcat/share/xcat/tools/autotest/testcase/xcat-inventory/templates/environment/test.environments.osimage.update.yaml -e GITREPO=/opt/xcat/share/xcat/tools/autotest/testcase/xcat-inventory/templates/environment/gitrepo -e SWDIR=/opt/xcat/share/xcat/tools/autotest/testcase/xcat-inventory/templates/environment/swdir
-check:output=~Importing object: test.environments.osimage
 check:output=~Inventory import successfully!
 check:rc==0
 cmd:lsdef -t osimage -o test.environments.osimage -z >> /tmp/export/test.environments.osimage.yaml.stanza
 check:rc==0
+cmd:osarch=$(lsdef -t osimage __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute|grep osarch|awk -F'=' '{print $2}');sed -i "s/OSARCH/$osarch/g" /opt/xcat/share/xcat/tools/autotest/testcase/xcat-inventory/templates/environment/test.environments.osimage.stanza
+cmd:osvers=$(lsdef -t osimage __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute|grep osvers|awk -F'=' '{print $2}');sed -i "s/OSVERS/$osvers/g" /opt/xcat/share/xcat/tools/autotest/testcase/xcat-inventory/templates/environment/test.environments.osimage.stanza
+cmd:pkgdir=$(lsdef -t osimage __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute|grep -w pkgdir|awk -F'=' '{print $2}');sed -i "s!PKGDIR!$pkgdir!g" /opt/xcat/share/xcat/tools/autotest/testcase/xcat-inventory/templates/environment/test.environments.osimage.stanza
+cmd:pkglist=$(lsdef -t osimage __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute|grep -w pkglist|awk -F'=' '{print $2}');sed -i "s!PKGLIST!$pkglist!g" /opt/xcat/share/xcat/tools/autotest/testcase/xcat-inventory/templates/environment/test.environments.osimage.stanza
+cmd:postinstall=$(lsdef -t osimage __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute|grep -w postinstall|awk -F'=' '{print $2}');sed -i "s!POSTINSTALL!$postinstall!g" /opt/xcat/share/xcat/tools/autotest/testcase/xcat-inventory/templates/environment/test.environments.osimage.stanza
+cmd:osmajor=$(lsdef -t osimage __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute|grep osvers|awk -F'=' '{print $2}');sed -i "s/OSMAJOR/$osmajor/g" /opt/xcat/share/xcat/tools/autotest/testcase/xcat-inventory/templates/environment/test.environments.osimage.stanza
 cmd:diff -y /tmp/export/test.environments.osimage.yaml.stanza /opt/xcat/share/xcat/tools/autotest/testcase/xcat-inventory/templates/environment/test.environments.osimage.stanza
 check:rc==0
 cmd:xcat-inventory export  -t osimage -o test.environments.osimage -f /tmp/export/test.environments.osimage.yaml --format yaml
@@ -100,8 +116,13 @@ cmd:diff -y  /opt/xcat/share/xcat/tools/autotest/testcase/xcat-inventory/templat
 check:rc==0
 cmd:rmdef -t osimage -o test.environments.osimage
 check:rc==0
+cmd:osarch=$(lsdef -t osimage __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute|grep osarch|awk -F'=' '{print $2}');sed -i "s/OSARCH/$osarch/g" /opt/xcat/share/xcat/tools/autotest/testcase/xcat-inventory/templates/environment/test.environments.osimage.update.json
+cmd:osvers=$(lsdef -t osimage __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute|grep osvers|awk -F'=' '{print $2}');sed -i "s/OSVERS/$osvers/g" /opt/xcat/share/xcat/tools/autotest/testcase/xcat-inventory/templates/environment/test.environments.osimage.update.json
+cmd:pkgdir=$(lsdef -t osimage __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute|grep -w pkgdir|awk -F'=' '{print $2}');sed -i "s!PKGDIR!$pkgdir!g" /opt/xcat/share/xcat/tools/autotest/testcase/xcat-inventory/templates/environment/test.environments.osimage.update.json
+cmd:pkglist=$(lsdef -t osimage __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute|grep -w pkglist|awk -F'=' '{print $2}');sed -i "s!PKGLIST!$pkglist!g" /opt/xcat/share/xcat/tools/autotest/testcase/xcat-inventory/templates/environment/test.environments.osimage.update.json
+cmd:postinstall=$(lsdef -t osimage __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute|grep -w postinstall|awk -F'=' '{print $2}');sed -i "s!POSTINSTALL!$postinstall!g" /opt/xcat/share/xcat/tools/autotest/testcase/xcat-inventory/templates/environment/test.environments.osimage.update.json
+cmd:osmajor=$(lsdef -t osimage __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute|grep osvers|awk -F'=' '{print $2}');sed -i "s/OSMAJOR/$osmajor/g" /opt/xcat/share/xcat/tools/autotest/testcase/xcat-inventory/templates/environment/test.environments.osimage.update.json
 cmd:xcat-inventory import -f /opt/xcat/share/xcat/tools/autotest/testcase/xcat-inventory/templates/environment/test.environments.osimage.update.json -e GITREPO=/opt/xcat/share/xcat/tools/autotest/testcase/xcat-inventory/templates/environment/gitrepo -e SWDIR=/opt/xcat/share/xcat/tools/autotest/testcase/xcat-inventory/templates/environment/swdir
-check:output=~Importing object: test.environments.osimage
 check:output=~Inventory import successfully!
 check:rc==0
 cmd:lsdef -t osimage -o test.environments.osimage -z >> /tmp/export/test.environments.osimage.json.stanza

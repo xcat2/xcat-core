@@ -2,20 +2,20 @@
 
 test.environments.osimage:
     objtype=osimage
-    environvar=GITREPO=/opt/xcat/share/xcat/tools/autotest/testcase/xcat-inventory/templates/environment/gitrepo,SWDIR=/opt/xcat/share/xcat/tools/autotest/testcase/xcat-inventory/templates/environment/swdir
+    environvar=GITREPO=/opt/xcat/share/xcat/tools/autotest/testcase/xcat-inventory/templates/environment/gitrepo,OBJNAME=test.environments.osimage,SWDIR=/opt/xcat/share/xcat/tools/autotest/testcase/xcat-inventory/templates/environment/swdir
     imagetype=linux
-    osarch=ppc64le
-    osdistroname=rhels7.5-alternate-ppc64le
+    osarch=OSARCH
+    osdistroname=OSVERS-OSARCH
     osname=Linux
-    osvers=rhels7.5-alternate
+    osvers=OSVERS
     otherpkgdir=/opt/xcat/share/xcat/tools/autotest/testcase/xcat-inventory/templates/environment/swdir/otherpkgdir/
     otherpkglist=/opt/xcat/share/xcat/tools/autotest/testcase/xcat-inventory/templates/environment/gitrepo/otherpkglist/test1.otherpkglist,/opt/xcat/share/xcat/tools/autotest/testcase/xcat-inventory/templates/environment/gitrepo/otherpkglist/test2.otherpkglist,
     permission=755
-    pkgdir=/install/rhels7.5-alternate/ppc64le,/opt/xcat/share/xcat/tools/autotest/testcase/xcat-inventory/templates/environment/swdir/pkgdir/
-    pkglist=/opt/xcat/share/xcat/netboot/rh/compute.rhels7.ppc64le.pkglist,/opt/xcat/share/xcat/tools/autotest/testcase/xcat-inventory/templates/environment/gitrepo/pkglist/test1.pkglist,/opt/xcat/share/xcat/tools/autotest/testcase/xcat-inventory/templates/environment/gitrepo/pkglist/test2.pkglist
-    postinstall=/opt/xcat/share/xcat/netboot/rh/compute.rhels7.ppc64le.postinstall,/opt/xcat/share/xcat/tools/autotest/testcase/xcat-inventory/templates/environment/gitrepo/postinstall/test1.postinstall
+    pkgdir=PKGDIR,/opt/xcat/share/xcat/tools/autotest/testcase/xcat-inventory/templates/environment/swdir/pkgdir/
+    pkglist=PKGLIST,/opt/xcat/share/xcat/tools/autotest/testcase/xcat-inventory/templates/environment/gitrepo/pkglist/test1.pkglist,/opt/xcat/share/xcat/tools/autotest/testcase/xcat-inventory/templates/environment/gitrepo/pkglist/test2.pkglist
+    postinstall=POSTINSTALL,/opt/xcat/share/xcat/tools/autotest/testcase/xcat-inventory/templates/environment/gitrepo/postinstall/test1.postinstall
     profile=compute
     provmethod=netboot
     rootimgdir=/install/custom/test.environments.osimage
     synclists=/opt/xcat/share/xcat/tools/autotest/testcase/xcat-inventory/templates/environment/gitrepo/syncfiles/synclist
-    usercomment=rhels7.5,test_environment_variables
+    usercomment=OSMAJOR,test_environment_variables
