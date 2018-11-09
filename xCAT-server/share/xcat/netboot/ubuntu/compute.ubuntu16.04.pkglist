@@ -6,7 +6,6 @@ linux-image-generic-lts-xenial
 openssh-server
 openssh-client
 wget
-vim
 ntp
 rsyslog
 rsync
