@@ -347,7 +347,7 @@ end
 start:nodeset_errorcommand
 description:This testcase is to very nodeset osimage errorcommand could give right output
 Attribute: $$CN-The operation object of nodeset command
-cmd:nodeset $$CN osimage= __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-install-compute
+cmd:nodeset $$CN osimage=__GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-install-compute
 check:rc==1
 check:output=~Error: (\[.*?\]: )?Invalid argument:
 check:output=~Usage: nodeset <noderange>
