@@ -28,7 +28,7 @@ cmd: scp $$DSTMN:/tmp/export_import_single_osimage_by_yaml_$$DSTMN/dst_bogus_ima
 check:rc==0
 cmd: cat /tmp/export_import_single_osimage_by_yaml/dst_bogus_image.stanza
 check:rc==0
-cmd:diff -y /tmp/export_import_single_osimage_by_yaml/src_bogus_osimage.stanza /tmp/export_import_single_osimage_by_yaml/dst_bogus_image.stanza
+cmd:diff -y /tmp/export_import_single_osimage_by_yaml/src_bogus_osimage.stanza /tmp/export_import_single_osimage_by_yaml/dst_bogus_image.stanza -I "environvar"
 check:rc==0
 cmd:ssh  $$DSTMN 'rmdef -t osimage -o bogus_image'
 check:rc==0
@@ -72,7 +72,7 @@ cmd: scp $$DSTMN:/tmp/export_import_single_osimage_by_json_$$DSTMN/dst_bogus_ima
 check:rc==0
 cmd: cat /tmp/export_import_single_osimage_by_json/dst_bogus_image.stanza
 check:rc==0
-cmd:diff -y /tmp/export_import_single_osimage_by_json/src_bogus_osimage.stanza /tmp/export_import_single_osimage_by_json/dst_bogus_image.stanza
+cmd:diff -y /tmp/export_import_single_osimage_by_json/src_bogus_osimage.stanza /tmp/export_import_single_osimage_by_json/dst_bogus_image.stanza -I "environvar"
 check:rc==0
 cmd:ssh  $$DSTMN 'rmdef -t osimage -o bogus_image'
 check:rc==0
@@ -99,27 +99,27 @@ cmd:chdef -t osimage -o bogus_image addkcmdline=addkcmdline boottarget=boottarge
 check:rc==0
 cmd:xcat-inventory export -t osimage |tee /tmp/xcat_inventory_try_to_export_all_type_is_osimage_default_format/export.file
 check:rc==0
-cmd:grep ' "osimage": {' /tmp/xcat_inventory_try_to_export_all_type_is_osimage_default_format/export.file
+cmd:grep "osimage:"  /tmp/xcat_inventory_try_to_export_all_type_is_osimage_default_format/export.file
 check:rc==0
-cmd:grep '"bogus_image": {' /tmp/xcat_inventory_try_to_export_all_type_is_osimage_default_format/export.file
+cmd:grep "bogus_image:" /tmp/xcat_inventory_try_to_export_all_type_is_osimage_default_format/export.file
 check:rc==0
-cmd: grep '"node": {' /tmp/xcat_inventory_try_to_export_all_type_is_osimage_default_format/export.file
+cmd: grep -w "node:"  /tmp/xcat_inventory_try_to_export_all_type_is_osimage_default_format/export.file
 check:rc!=0
-cmd: grep '"obj_type": "node",' /tmp/xcat_inventory_try_to_export_all_type_is_osimage_default_format/export.file
+cmd: grep "obj_type: node" /tmp/xcat_inventory_try_to_export_all_type_is_osimage_default_format/export.file
 check:rc!=0
-cmd: grep '"policy": {'' /tmp/xcat_inventory_try_to_export_all_type_is_osimage_default_format/export.file
+cmd: grep "policy:"  /tmp/xcat_inventory_try_to_export_all_type_is_osimage_default_format/export.file
 check:rc!=0
-cmd: grep '"passwd": {' /tmp/xcat_inventory_try_to_export_all_type_is_osimage_default_format/export.file
+cmd: grep "passwd:" /tmp/xcat_inventory_try_to_export_all_type_is_osimage_default_format/export.file
 check:rc!=0
-cmd: grep '"network": {' /tmp/xcat_inventory_try_to_export_all_type_is_osimage_default_format/export.file
+cmd: grep "network:" /tmp/xcat_inventory_try_to_export_all_type_is_osimage_default_format/export.file
 check:rc!=0
-cmd: grep '"route": {' /tmp/xcat_inventory_try_to_export_all_type_is_osimage_default_format/export.file
+cmd: grep "route:" /tmp/xcat_inventory_try_to_export_all_type_is_osimage_default_format/export.file
 check:rc!=0
-cmd: grep '"site": {' /tmp/xcat_inventory_try_to_export_all_type_is_osimage_default_format/export.file
+cmd: grep "site:" /tmp/xcat_inventory_try_to_export_all_type_is_osimage_default_format/export.file
 check:rc!=0
 cmd:lsdef -t osimage |tee  /tmp/xcat_inventory_try_to_export_all_type_is_osimage_default_format/osimage_in_xcat_db
 check:rc==0
-cmd: a=0;for i in `awk -F' ' '{print $1}' /tmp/xcat_inventory_try_to_export_all_type_is_osimage_default_format/osimage_in_xcat_db`; do if grep -E "\"$i\": {" /tmp/xcat_inventory_try_to_export_all_type_is_osimage_default_format/export.file > /dev/null; then ((a++));fi; done; do=$(cat /tmp/xcat_inventory_try_to_export_all_type_is_osimage_default_format/osimage_in_xcat_db|wc -l);if [[ $do -eq $a ]]; then exit 0; else exit 1;fi
+cmd: a=0;for i in `awk -F' ' '{print $1}' /tmp/xcat_inventory_try_to_export_all_type_is_osimage_default_format/osimage_in_xcat_db`; do if grep -E "$i:" /tmp/xcat_inventory_try_to_export_all_type_is_osimage_default_format/export.file > /dev/null; then ((a++));fi; done; do=$(cat /tmp/xcat_inventory_try_to_export_all_type_is_osimage_default_format/osimage_in_xcat_db|wc -l);if [[ $do -eq $a ]]; then exit 0; else exit 1;fi
 check:rc==0
 cmd: rmdef -t osimage -o  bogus_image
 check:rc==0
@@ -437,7 +437,7 @@ cmd:xcat-inventory import -f /tmp/xcat_inventory_try_to_import_all_type_is_osima
 check:rc==0
 cmd:lsdef -t osimage -l|sort > /tmp/xcat_inventory_try_to_import_all_type_is_osimage_yaml_format/import_osimage
 check:rc==0
-cmd:diff -y /tmp/xcat_inventory_try_to_import_all_type_is_osimage_yaml_format/target_osimage_sort /tmp/xcat_inventory_try_to_import_all_type_is_osimage_yaml_format/import_osimage
+cmd:diff -y /tmp/xcat_inventory_try_to_import_all_type_is_osimage_yaml_format/target_osimage_sort /tmp/xcat_inventory_try_to_import_all_type_is_osimage_yaml_format/import_osimage -I "environvar=OBJNAME=bogus_image"
 check:rc==0
 cmd:lsdef -t node -l > /tmp/xcat_inventory_try_to_import_all_type_is_osimage_yaml_format/after_nodes_db
 check:rc==0
@@ -768,7 +768,7 @@ cmd:xcat-inventory import -f /tmp/xcat_inventory_try_to_import_all_type_is_osima
 check:rc==0
 cmd:lsdef -t osimage -l|sort > /tmp/xcat_inventory_try_to_import_all_type_is_osimage_json_format/import_osimage
 check:rc==0
-cmd:diff -y /tmp/xcat_inventory_try_to_import_all_type_is_osimage_json_format/target_osimage_sort /tmp/xcat_inventory_try_to_import_all_type_is_osimage_json_format/import_osimage
+cmd:diff -y /tmp/xcat_inventory_try_to_import_all_type_is_osimage_json_format/target_osimage_sort /tmp/xcat_inventory_try_to_import_all_type_is_osimage_json_format/import_osimage -I "environvar=OBJNAME=bogus_image"
 check:rc==0
 cmd:lsdef -t node -l > /tmp/xcat_inventory_try_to_import_all_type_is_osimage_json_format/after_nodes_db
 check:rc==0
@@ -851,7 +851,7 @@ cmd: scp $$DSTMN:/tmp/export_single_osimage_then_modify_json_then_import_$$DSTMN
 check:rc==0
 cmd: cat /tmp/export_single_osimage_then_modify_json_then_import/dst_bogus_image.stanza
 check:rc==0
-cmd:diff -y /tmp/export_single_osimage_then_modify_json_then_import/src_bogus_osimage.stanza /tmp/export_single_osimage_then_modify_json_then_import/dst_bogus_image.stanza
+cmd:diff -y /tmp/export_single_osimage_then_modify_json_then_import/src_bogus_osimage.stanza /tmp/export_single_osimage_then_modify_json_then_import/dst_bogus_image.stanza -I "environvar=OBJNAME=bogus_image"
 check:rc==0
 cmd:ssh  $$DSTMN 'rmdef -t osimage -o bogus_image'
 check:rc==0
@@ -908,7 +908,7 @@ cmd: scp $$DSTMN:/tmp/export_single_osimage_then_modify_yaml_then_import_$$DSTMN
 check:rc==0
 cmd: cat /tmp/export_single_osimage_then_modify_yaml_then_import/dst_bogus_image.stanza
 check:rc==0
-cmd:diff -y /tmp/export_single_osimage_then_modify_yaml_then_import/src_bogus_osimage.stanza /tmp/export_single_osimage_then_modify_yaml_then_import/dst_bogus_image.stanza
+cmd:diff -y /tmp/export_single_osimage_then_modify_yaml_then_import/src_bogus_osimage.stanza /tmp/export_single_osimage_then_modify_yaml_then_import/dst_bogus_image.stanza -I "environvar=OBJNAME=bogus_image"
 check:rc==0
 cmd:ssh  $$DSTMN 'rmdef -t osimage -o bogus_image'
 check:rc==0
@@ -1208,12 +1208,8 @@ check:rc==0
 cmd:rm -rf /tmp/otherpkglist /tmp/synclists /tmp/postinstall /tmp/exlist /tmp/pkglist /tmp/template /tmp/partitionfile
 cmd:xcat-inventory import -t osimage -d /opt/inventory/site
 check:rc==0
-check:output=~Importing object: test_myimage1
 check:output=~Inventory import successfully!
-check:output=~The object test_myimage1 has been imported
-check:output=~Importing object: test_myimage2
 check:output=~Inventory import successfully!
-check:output=~The object test_myimage2 has been imported
 cmd:lsdef -t osimage -o test_myimage1,test_myimage2
 check:rc==0
 cmd:otherpkglist=`lsdef -t osimage -o test_myimage1 |grep otherpkglist|awk -F= '{print $2}'`;diff -y $otherpkglist /opt/inventory/site/osimage/test_myimage1$otherpkglist
@@ -1248,7 +1244,6 @@ cmd: rmdef -t osimage -o  test_myimage1,test_myimage2
 check:rc==0
 cmd: if [ -e /tmp/test_myimage1.stanza ]; then cat /tmp/test_myimage1.stanza |mkdef -z;fi
 cmd: if [ -e /tmp/test_myimage2.stanza ]; then cat /tmp/test_myimage2.stanza |mkdef -z;fi
-cmd:dir="/opt/inventory/site/osimage"; rm -rf $dir; if [ -d ${dir}".bak" ];then mv ${dir}".bak" $dir; fi
 cmd:dir="/opt/inventory/site/osimage"; rm -rf $dir; if [ -d ${dir}".bak" ];then mv ${dir}".bak" $dir; fi
 cmd:file="/tmp/otherpkglist"; rm -rf $file; if [ -d ${file}".bak" ];then mv ${file}".bak" $file; fi
 cmd:file="/tmp/synclists"; rm -rf $file; if [ -d ${file}".bak" ];then mv ${file}".bak" $file; fi
@@ -1285,10 +1280,8 @@ check:output=~The osimage objects has been exported to directory /tmp/export
 cmd:ls -lFR /tmp/export
 cmd: xcat-inventory import -t osimage -d /tmp/export -c
 check:rc==0
-check:output=~Importing object: test_myimage1
 check:output=~Inventory import successfully!
 check:output=~The object test_myimage1 has been imported
-check:output=~Importing object: test_myimage2
 check:output=~Inventory import successfully!
 check:output=~The object test_myimage2 has been imported
 cmd:lsdef -t osimage -o test_myimage1,test_myimage2

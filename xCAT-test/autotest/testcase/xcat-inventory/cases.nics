@@ -9,11 +9,11 @@ check:rc==0
 cmd:xcat-inventory export  -t node -o testnodes -f /tmp/export/nics.yaml --format yaml
 check:rc==0
 check:output=~The inventory data has been dumped to /tmp/export/nics.yaml 
-cmd:diff -y  /opt/xcat/share/xcat/tools/autotest/testcase/xcat-inventory/templates/nics.yaml /tmp/export/nics.yaml --ignore-blank-lines  -I "^#"
+cmd:#! /bin/bash diff -y  /opt/xcat/share/xcat/tools/autotest/testcase/xcat-inventory/templates/nics.yaml /tmp/export/nics.yaml --ignore-blank-lines  -I "^#" -I "schema_version"
 check:rc==0
 cmd:xcat-inventory export  -t node -o testnodes -f /tmp/export/nics.json --format json 
 check:rc==0
-cmd:diff -y  /opt/xcat/share/xcat/tools/autotest/testcase/xcat-inventory/templates/nics.json /tmp/export/nics.json --ignore-blank-lines  -I "^#"
+cmd:#! /bin/bash diff -y  /opt/xcat/share/xcat/tools/autotest/testcase/xcat-inventory/templates/nics.json /tmp/export/nics.json --ignore-blank-lines  -I "^#" -I "schema_version"
 check:rc==0
 cmd:tabch -d node="testnodes" nics
 check:rc==0
