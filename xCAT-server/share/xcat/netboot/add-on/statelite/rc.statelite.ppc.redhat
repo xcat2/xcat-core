@@ -128,7 +128,7 @@ GetSyncInfo () {
 xCATCmd () {
 # $1 is the xCAT server
 # $2 is the command
-	echo "<xcatrequest>\n<command>${2}</command>\n</xcatrequest>" | /usr/sbin/chroot ${MNTDIR} /usr/bin/openssl s_client -quiet -no_ssl3 $(/usr/sbin/chroot ${MNTDIR} /usr/bin/openssl s_client -help 2>&1 | grep -m 1 -o -- -no_ssl2) -connect ${1} -rand /bin/nice 2>/dev/null
+	echo "<xcatrequest>\n<command>${2}</command>\n</xcatrequest>" | /usr/sbin/chroot ${MNTDIR} /usr/bin/openssl s_client -quiet -no_ssl3 -connect ${1} -rand /bin/nice 2>/dev/null
 
 }
 
