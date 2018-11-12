@@ -803,15 +803,15 @@ check:rc==0
 #To test if "xcat-inventory export -t node" works correctly
 cmd:xcat-inventory export -t node  |tee /tmp/xcat_inventory_try_to_export_all_type_is_node_default_format/export_all_node
 check:rc==0
-cmd: grep " \"xcatdefaults\": " /tmp/xcat_inventory_try_to_export_all_type_is_node_default_format/export_all_node > /dev/null 2>&1; if [[ $? -eq 0 ]]; then exit 0; else exit 1;fi
+cmd: grep "xcatdefaults:" /tmp/xcat_inventory_try_to_export_all_type_is_node_default_format/export_all_node > /dev/null 2>&1; if [[ $? -eq 0 ]]; then exit 0; else exit 1;fi
 check:rc==0
-cmd: grep " \"service\": " /tmp/xcat_inventory_try_to_export_all_type_is_node_default_format/export_all_node > /dev/null 2>&1; if [[ $? -eq 0 ]]; then exit 0; else exit 1;fi
+cmd: grep "service:" /tmp/xcat_inventory_try_to_export_all_type_is_node_default_format/export_all_node > /dev/null 2>&1; if [[ $? -eq 0 ]]; then exit 0; else exit 1;fi
 check:rc==0
-cmd:dn=$(cat /tmp/xcat_inventory_try_to_export_all_type_is_node_default_format/node_in_xcat_db|wc -l);dg=$(cat /tmp/xcat_inventory_try_to_export_all_type_is_node_default_format/group_in_xcat_db |wc -l);((da=$dn+$dg+2));echo "dn=$dn dg=$dg da=$da";ia=$(grep " \"obj_type\": " /tmp/xcat_inventory_try_to_export_all_type_is_node_default_format/export_all_node|wc -l);echo "ia=$ia"; if [[ $da -eq $ia ]];then exit 0; else exit 1;fi
+cmd:dn=$(cat /tmp/xcat_inventory_try_to_export_all_type_is_node_default_format/node_in_xcat_db|wc -l);dg=$(cat /tmp/xcat_inventory_try_to_export_all_type_is_node_default_format/group_in_xcat_db |wc -l);((da=$dn+$dg+2));echo "dn=$dn dg=$dg da=$da";ia=$(grep "obj_type:" /tmp/xcat_inventory_try_to_export_all_type_is_node_default_format/export_all_node|wc -l);echo "ia=$ia"; if [[ $da -eq $ia ]];then exit 0; else exit 1;fi
 check:rc==0
-cmd:a=0;for i in `awk -F':' '{print $1}' /tmp/xcat_inventory_try_to_export_all_type_is_node_default_format/group_in_xcat_db`; do  grep -E " \"$i\": " /tmp/xcat_inventory_try_to_export_all_type_is_node_default_format/export_all_node; if [[ $? -eq 0 ]]; then ((a++));fi;done;dg=$(cat /tmp/xcat_inventory_try_to_export_all_type_is_node_default_format/group_in_xcat_db|wc -l);if [[ $a -eq $dg ]]; then exit 0; else exit 1;fi
+cmd:a=0;for i in `awk -F':' '{print $1}' /tmp/xcat_inventory_try_to_export_all_type_is_node_default_format/group_in_xcat_db`; do  grep -E "$i:" /tmp/xcat_inventory_try_to_export_all_type_is_node_default_format/export_all_node; if [[ $? -eq 0 ]]; then ((a++));fi;done;dg=$(cat /tmp/xcat_inventory_try_to_export_all_type_is_node_default_format/group_in_xcat_db|wc -l);if [[ $a -eq $dg ]]; then exit 0; else exit 1;fi
 check:rc==0
-cmd:a=0;for i in `awk -F' ' '{print $1}' /tmp/xcat_inventory_try_to_export_all_type_is_node_default_format/node_in_xcat_db`;do  grep -E " \"$i\": " /tmp/xcat_inventory_try_to_export_all_type_is_node_default_format/export_all_node; if [[ $? -eq 0 ]]; then ((a++));fi;done;dn=$(cat /tmp/xcat_inventory_try_to_export_all_type_is_node_default_format/node_in_xcat_db |wc -l); if [[ $dn -eq $a ]]; then exit 0; else exit 1;fi
+cmd:a=0;for i in `awk -F' ' '{print $1}' /tmp/xcat_inventory_try_to_export_all_type_is_node_default_format/node_in_xcat_db`;do  grep -E "$i:" /tmp/xcat_inventory_try_to_export_all_type_is_node_default_format/export_all_node; if [[ $? -eq 0 ]]; then ((a++));fi;done;dn=$(cat /tmp/xcat_inventory_try_to_export_all_type_is_node_default_format/node_in_xcat_db |wc -l); if [[ $dn -eq $a ]]; then exit 0; else exit 1;fi
 check:rc==0
 cmd:rmdef bogusnode[1-3]
 check:rc==0
@@ -846,7 +846,7 @@ check:rc==0
 #To test if "xcat-inventory export --format=yaml -t node  |tee /tmp/xcat_inventory_try_to_export_all_type_is_node_yaml_format/export_all_node
 cmd:xcat-inventory export --format=yaml  -t node  |tee /tmp/xcat_inventory_try_to_export_all_type_is_node_yaml_format/export_all_node
 check:rc==0
-cmd: grep " xcatdefaults:" /tmp/xcat_inventory_try_to_export_all_type_is_node_yaml_format/export_all_node > /dev/null 2>&1; if [[ $? -eq 0 ]]; then exit 0; else exit 1;fi
+cmd: grep "xcatdefaults:" /tmp/xcat_inventory_try_to_export_all_type_is_node_yaml_format/export_all_node > /dev/null 2>&1; if [[ $? -eq 0 ]]; then exit 0; else exit 1;fi
 check:rc==0
 cmd: grep " service:" /tmp/xcat_inventory_try_to_export_all_type_is_node_yaml_format/export_all_node > /dev/null 2>&1; if [[ $? -eq 0 ]]; then exit 0; else exit 1;fi
 check:rc==0
@@ -888,9 +888,9 @@ cmd:lsdef -t group -i grouptype  -c|grep "grouptype=static" |tee /tmp/xcat_inven
 check:rc==0
 cmd:xcat-inventory export  --format=json -t node  |tee /tmp/xcat_inventory_try_to_export_all_type_is_node_json_format/export_all_node
 check:rc==0
-cmd: grep " \"xcatdefaults\": " /tmp/xcat_inventory_try_to_export_all_type_is_node_json_format/export_all_node > /dev/null 2>&1; if [[ $? -eq 0 ]]; then exit 0; else exit 1;fi
+cmd: grep "xcatdefaults:" /tmp/xcat_inventory_try_to_export_all_type_is_node_json_format/export_all_node > /dev/null 2>&1; if [[ $? -eq 0 ]]; then exit 0; else exit 1;fi
 check:rc==0
-cmd: grep " \"service\": " /tmp/xcat_inventory_try_to_export_all_type_is_node_json_format/export_all_node > /dev/null 2>&1; if [[ $? -eq 0 ]]; then exit 0; else exit 1;fi
+cmd: grep "service:" /tmp/xcat_inventory_try_to_export_all_type_is_node_json_format/export_all_node > /dev/null 2>&1; if [[ $? -eq 0 ]]; then exit 0; else exit 1;fi
 check:rc==0
 cmd:dn=$(cat /tmp/xcat_inventory_try_to_export_all_type_is_node_json_format/node_in_xcat_db|wc -l);dg=$(cat /tmp/xcat_inventory_try_to_export_all_type_is_node_json_format/group_in_xcat_db |wc -l);((da=$dn+$dg+2));ia=$(grep " \"obj_type\": " /tmp/xcat_inventory_try_to_export_all_type_is_node_json_format/export_all_node|wc -l); if [[ $da -eq $ia ]];then exit 0; else exit 1;fi
 check:rc==0
