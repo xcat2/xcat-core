@@ -107,7 +107,7 @@ function v4prefix2mask(){
     local num_index=1
     local str_temp=''
     local str_mask=''
-
+    [ ! $a ] && a=0
     while [[ $num_index -le 4 ]]
     do
         if [ $a -ge 8 ];then
