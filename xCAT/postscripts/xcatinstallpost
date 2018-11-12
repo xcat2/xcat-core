@@ -24,8 +24,8 @@ SLI=$(awk 'BEGIN{srand(); printf("%d\n",rand()*10)}')
 sleep $SLI
 
 XCATINFOFILE=/opt/xcat/xcatinfo
-MACADDR=`grep MACADDRESS= /xcatpost/mypostscript.post |awk -F = '{print $2}'|sed s/\'//g`
-INSTALLNIC=`ip -o link|grep -i $MACADDR|awk  '{print $2}'|sed s/://`
+MACADDR=`grep MACADDRESS= /xcatpost/mypostscript.post | awk -F = '{ print $2 }'| sed "s/\'//g"`
+INSTALLNIC=`ip -o link | grep -i "$MACADDR" | awk '{ print $2 }' | sed "s/://"`
 
 
 # the network between the node and MASTER might be not well configured and activated when running the PBS sometimes
