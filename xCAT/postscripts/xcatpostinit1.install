@@ -37,11 +37,11 @@ start)
   fi
   # if the xcatdsklspost file exists and this is a reboot - run xcatdsklspost with a mode of 6
   if [ "$REBOOT" = "TRUE" -a -r /opt/xcat/xcatdsklspost ] && [[ "$RUNBOOTSCRIPTS" =~ ^(1|yes|y)$ ]]; then
-      [ "$NODESTATUS" != "n" ] &&  /xcatpost/updateflag.awk $XCATSERVER 3002 "installstatus postbooting"
-      # xcatdsklspost will set the status to 'booted' or 'failed'
-      /opt/xcat/xcatdsklspost 6
+    [ "$NODESTATUS" != "n" ] &&  /xcatpost/updateflag.awk $XCATSERVER 3002 "installstatus postbooting"
+    # xcatdsklspost will set the status to 'booted' or 'failed'
+    /opt/xcat/xcatdsklspost 6
   elif [ "$REBOOT" = "TRUE" ] && [[ "$NODESTATUS" =~  ^(1|yes|y)$ ]]; then
-      /xcatpost/updateflag.awk $XCATSERVER 3002 "installstatus booted"
+    /xcatpost/updateflag.awk $XCATSERVER 3002 "installstatus booted"
   else
     [ "$NODESTATUS" != "n" ] &&  /xcatpost/updateflag.awk $XCATSERVER 3002 "installstatus postbooting"
     # run /opt/xcat/xcatinstallpost, it will set the status to 'booted' or 'failed'
@@ -49,8 +49,8 @@ start)
       /opt/xcat/xcatinstallpost
     fi
     if [ -f /opt/xcat/xcatpostinit1.service.sles ]; then
-        rm -rf /etc/systemd/system/xcatpostinit1.service
-        mv /opt/xcat/xcatpostinit1.service.sles /etc/systemd/system/xcatpostinit1.service
+      rm -rf /etc/systemd/system/xcatpostinit1.service
+      mv /opt/xcat/xcatpostinit1.service.sles /etc/systemd/system/xcatpostinit1.service
     fi
   fi
 
