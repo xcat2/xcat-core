@@ -11,13 +11,14 @@ xcat_intf="/etc/network/interfaces.d/xCAT.intf"
 
 if [ -f /xcatpost/mypostscript ]; then
     MASTER=`grep '^MASTER_IP=' /xcatpost/mypostscript |cut -d= -f2|sed s/\'//g`
-else
-    MASTER=$(cat /var/lib/dhcp/dhclient.eth0.leases|sed -n 's/.*cumulus-provision-url.*http:\/\+\([^\/]\+\)\/.*/\1/p'|tail -1)
 fi
 
 if [ -z "$MASTER" ]; then
-    echo "xCAT Master unset! Cannot download interface description"
-    exit 2
+    MASTER=$(cat /var/lib/dhcp/dhclient.eth0.leases|sed -n 's/.*cumulus-provision-url.*http:\/\+\([^\/]\+\)\/.*/\1/p'|tail -1)
+    if [ -z "$MASTER" ]; then
+        echo "xCAT Master unset! Cannot download interface description"
+        exit 2
+    fi
 fi
 
 #Validate if this IP is reachable
@@ -29,7 +30,7 @@ fi
 
 ORIGFILE=/tmp/xCAT.intf.orig
 TMPINT=/tmp/xCAT.intf
-rm $TMPINT 2>/dev/null
+rm -f $TMPINT 2>/dev/null
 UPDATED=0
 DOWNLOADED=0
 
@@ -38,8 +39,9 @@ for name in $NODE ${GROUP//,/ } default; do
     if [ -f $TMPINT ]; then
         DOWNLOADED=1
         if ! diff $TMPINT $xcat_intf > /dev/null; then
+            rm -f $ORIGFILE
             cp $xcat_intf $ORIGFILE
-            mv $TMPINT $xcat_intf
+            mv -f $TMPINT $xcat_intf
             UPDATED=1
             echo "New interface file downloaded, keep old one to $ORIGFILE";
         fi
