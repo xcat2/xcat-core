@@ -1206,7 +1206,7 @@ sub initDB
         $chtabcmds .= "$::XCATROOT/sbin/chtab key=cleanupxcatpost site.value=no;";
         $chtabcmds .= "$::XCATROOT/sbin/chtab key=dhcplease site.value=43200;";
         $chtabcmds .= "$::XCATROOT/sbin/chtab key=auditnosyslog site.value=0;";
-        $chtabcmds .= "$::XCATROOT/sbin/chtab key=xcatsslversion site.value=TLSv1;";
+        $chtabcmds .= "$::XCATROOT/sbin/chtab key=xcatsslversion site.value=TLSv1_2;";
         $chtabcmds .= "$::XCATROOT/sbin/chtab key=auditskipcmds site.value=ALL;";
 
         #$chtabcmds .= "$::XCATROOT/sbin/chtab key=useflowcontrol site.value=yes;"; # need to fix 4031
@@ -1478,8 +1478,8 @@ sub initDB
         xCAT::Utils->runcmd("$cmds", -1);
         if ($::RUNCMD_RC != 0) {
 
-            # if site.xcatsslversion was not set, then set the default value TLSv1
-            $cmds = "$::XCATROOT/sbin/chtab key=xcatsslversion site.value=TLSv1;";
+            # if site.xcatsslversion was not set, then set the default value TLSv1_2
+            $cmds = "$::XCATROOT/sbin/chtab key=xcatsslversion site.value=TLSv1_2;";
             xCAT::Utils->runcmd("$cmds", 0);
             if ($::RUNCMD_RC != 0) {
                 xCAT::MsgUtils->message('E', "Could not add default value for site.xcatsslversion.");
