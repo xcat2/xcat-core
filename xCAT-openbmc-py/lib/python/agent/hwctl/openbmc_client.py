@@ -903,6 +903,8 @@ class OpenBMCRest(object):
                     if 'LinkLocal' in v["Origin"] or v["Address"].startswith("169.254"):
                         msg = "Found LinkLocal address %s for interface %s, Ignoring..." % (v["Address"], dev)
                         self._print_record_log(msg, 'get_netinfo')
+                        # Save Zero Conf information
+                        netinfo["zeroconf"] = v["Address"]
                         continue
                     nicid = dev.split('/')[-1]
                     if nicid not in netinfo:
