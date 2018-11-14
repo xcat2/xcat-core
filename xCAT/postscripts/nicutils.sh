@@ -573,18 +573,16 @@ function create_persistent_ifcfg {
         attrs=${attrs}${attrs:+,}"${name}=${value}"
         i=$((i+1))
     done
-
     # record manual and auto attributes first
     # since input attributes might overwrite them.
     #
-    # record input attributes later. They will overwrite
+    # record extra attributes later. They will overwrite
     # previous generated attributes if duplicate.
     [ -f $fcfg ] && mv -f $fcfg `dirname $fcfg`/.`basename $fcfg`.bak
-    echo "$attrs,$inattrs" \ | $sed -e 's/,/\n/g' | grep -v "^$" \
+    echo "$inattrs,$attrs" \ | $sed -e 's/,/\n/g' | grep -v "^$" \
     | $sed -e 's/=/="/' -e 's/ *$/"/' \
     | uniq_per_key -t'=' -k1 >$fcfg
     local rc=$?
-
     # log for debug
     echo "['ifcfg-${ifname}']" >&2
     cat $fcfg | $sed -e 's/^/ >> /g' | log_lines info

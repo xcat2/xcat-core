@@ -733,7 +733,7 @@ function parse_nic_extra_params() {
 	do
 		token2="${params_temp[$k]}"
 		array_extra_param_names[$k]=`echo "$token2" | cut -d'=' -f 1`
-		array_extra_param_values[$k]=`echo "$token2" | cut -d'=' -f 2`	
+		array_extra_param_values[$k]=`echo "$token2" | cut -d'=' -f 2-`	
 		k=$((k+1))
 	done
 }
