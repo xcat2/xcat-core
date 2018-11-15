@@ -8,18 +8,23 @@
 # The -d flag was implemented when the call to the routine was moved
 # from the postscript table into the servicenode postscript.
 #
+if [ -n "$LOGLABEL" ]; then
+    log_label=$LOGLABEL
+else
+    log_label="xcat"
+fi
 if [ ! $1 ]; then
-   logger -t xcat -p local4.err "xcatclient call without -d, doing nothing."
+   logger -t $log_label -p local4.err "xcatclient call without -d, doing nothing."
    exit 0
 fi
 if [ $1 != "-d" ]; then
-   logger -t xcat  -p local4.err "xcatclient call without -d, doing nothing."
+   logger -t $log_label  -p local4.err "xcatclient call without -d, doing nothing."
    exit 0
 fi
-logger -t xcat -p local4.info "xcatclient call with -d. getting credentials and cfgloc "
+logger -t $log_label -p local4.info "xcatclient call with -d. getting credentials and cfgloc "
 
 if [ ! -x /usr/bin/openssl ]; then #Unless we have openssl stup
-   logger -t xcat -p local4.err "$0: /usr/bin/openssl is not executable"
+   logger -t $log_label -p local4.err "$0: /usr/bin/openssl is not executable"
    exit -1
 fi
 USEOPENSSLFORXCAT=1 #Declare 2.3 style SSL
@@ -44,7 +49,7 @@ export USEOPENSSLFORXCAT
      done
    else
      ERR_MSG=`sed -n 's%.*<error>\(.*\)</error>.*%\1%p' /tmp/xcat_client_cred`
-     logger -t xcat -p local4.err xcat_client_cred Error: $ERR_MSG
+     logger -t $log_label -p local4.err xcat_client_cred Error: $ERR_MSG
      RETURNVAL=-1
    fi
    rm /tmp/xcat_client_cred

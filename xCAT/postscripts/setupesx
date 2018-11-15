@@ -2,13 +2,17 @@
 # example on how to set up ESX.  We setup ssh and also add a basic
 # VLAN configuration
 
-
+if [ -n "$LOGLABEL" ]; then
+    log_label=$LOGLABEL
+else
+    log_label="xcat"
+fi
 if [ "$(uname -s|tr 'A-Z' 'a-z')" = "linux" ];then
    str_dir_name=`dirname $0`
    . $str_dir_name/xcatlib.sh
 fi
 
-logger -t xcat -p local4.info setupesx
+logger -t $log_label -p local4.info setupesx
 # Enable SSH access to root and exchange keys
 
 sed -e 's/PermitRootLogin no/PermitRootLogin yes/' /etc/ssh/sshd_config > /etc/ssh/sshd_config.new
@@ -18,7 +22,7 @@ restartservice ssh
 
 if [ -r /etc/ssh/sshd_config ]
 then
-        logger -t xcat -p local4.info "Install: setup /etc/ssh/sshd_config"
+        logger -t $log_label -p local4.info "Install: setup /etc/ssh/sshd_config"
         cp /etc/ssh/sshd_config /etc/ssh/sshd_config.ORIG
         sed -i 's/^X11Forwarding .*$/X11Forwarding yes/' /etc/ssh/sshd_config
         sed -i 's/^KeyRegenerationInterval .*$/KeyRegenerationInterval 0/' /etc/ssh/sshd_config
@@ -34,7 +38,7 @@ fi
 
 if [ -d /xcatpost/_ssh ]
 then
-        logger -t xcat -p local4.info "Install: setup root .ssh"
+        logger -t $log_label -p local4.info "Install: setup root .ssh"
         cd /xcatpost/_ssh
         mkdir -p /root/.ssh
         cp -f * /root/.ssh
@@ -66,7 +70,7 @@ esxcfg-firewall -e ntpClient
 esxcfg-firewall -o 123,udp,out,ntpServer
 esxcfg-firewall -o 514,udp,out,syslog
 esxcfg-firewall -l
-logger -t xcat -p local4.info "Install: restart syslog"
+logger -t $log_label -p local4.info "Install: restart syslog"
 #service syslog restart
 restartservice syslog
 

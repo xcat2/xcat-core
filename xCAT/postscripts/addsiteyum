@@ -1,7 +1,12 @@
 #!/bin/bash
+if [ -n "$LOGLABEL" ]; then
+    log_label=$LOGLABEL
+else
+    log_label="xcat"
+fi
 cd `dirname $0`
 if [ ! -d repos/$OSVER/$ARCH ];  then
-   logger -t xcat -p local4.err "addsiteyum: repos/$OSVER/$ARCH is not a directory"
+   logger -t $log_label -p local4.err "addsiteyum: repos/$OSVER/$ARCH is not a directory"
    exit -1;
 fi
 for i in repos/$OSVER/$ARCH/*
