@@ -280,7 +280,8 @@
             },
             "obj_info": {
                 "description": "usercomment",
-                "groups": "bogusgroup"
+                "groups": "bogusgroup",
+                "grouptype": "static"
             },
             "obj_type": "node",
             "position_info": {
