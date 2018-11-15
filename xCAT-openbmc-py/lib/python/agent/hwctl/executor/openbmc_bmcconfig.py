@@ -473,7 +473,7 @@ rmdir \"/tmp/$userid\" \n")
 
         origin_type   = netinfo[origin_nic]['ipsrc']
         origin_ip_obj = netinfo[origin_nic]['ipobj']
-        zeroconf      = netinfo['zeroconf']
+        zeroconf      = netinfo[origin_nic]['zeroconf']
 
         if vlan:
             pre_nic = nic.split('_')[0]
@@ -486,9 +486,9 @@ rmdir \"/tmp/$userid\" \n")
             nic = pre_nic + '_' + vlan
 
         try:
-            obmc.set_netinfo(nic, ip, prefix, gateway)
             # Display Zero Config information in case IP setting fails or set IP is not accessible
-            self.callback.info('Setting BMC IP configuration... Zero Config IP: %s' % zeroconf)
+            self.callback.info('%s: Setting BMC IP configuration... Zero Config IP: %s' % (node, zeroconf))
+            obmc.set_netinfo(nic, ip, prefix, gateway)
             sleep( 5 )
             nic_netinfo = obmc.get_nic_netinfo(nic)
         except (SelfServerException, SelfClientException) as e:
