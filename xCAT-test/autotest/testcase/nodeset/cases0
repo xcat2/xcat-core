@@ -1,5 +1,6 @@
 start:nodeset_stat
 os:Linux
+label:others
 cmd:nodeset $$CN stat
 check:rc==0
 check:output=~$$CN:\s+[discover|boot|reboot|install|netboot|shell|standby]
@@ -10,6 +11,7 @@ end
 
 start:nodeset_noderange
 os:Linux
+label:others
 cmd:nodeset $$CN test
 check:rc!=0
 check:output=~Error
@@ -17,6 +19,7 @@ end
 
 start:nodeset_check_yaboot_no
 os:rhels
+label:others
 cmd:mkdef -t node -o testnode1 arch=ppc64 cons=hmc groups=lpar hcp=hmc1 hwtype=lpar  id=1 ip=10.1.1.200 mac=e6:d4:d2:3a:ad:06 mgt=hmc monserver=10.1.1.1 nameservers=10.1.1.1 nodetype=ppc,osi parent=fsp1 pprofile=testnode1 profile=compute tftpserver=10.1.1.1 xcatmaster=10.1.1.1
 check:rc==0
 cmd:chdef testnode1 os=rhels7.5 netboot=yaboot
@@ -33,6 +36,7 @@ end
 
 start:nodeset_check_yaboot_yes
 os:rhels
+label:others
 cmd:mkdef -t node -o testnode1 arch=ppc64 cons=hmc groups=lpar hcp=hmc1 hwtype=lpar  id=1 ip=10.1.1.200 mac=e6:d4:d2:3a:ad:06 mgt=hmc monserver=10.1.1.1 nameservers=10.1.1.1 nodetype=ppc,osi parent=fsp1 pprofile=testnode1 profile=compute tftpserver=10.1.1.1 xcatmaster=10.1.1.1
 check:rc==0
 cmd:chdef testnode1 os=rhels5.5 netboot=yaboot
@@ -49,6 +53,7 @@ end
 
 start:nodeset_check_grub2_yes
 os:rhels
+label:others
 cmd:mkdef -t node -o testnode1 arch=ppc64 cons=hmc groups=lpar hcp=hmc1 hwtype=lpar  id=1 ip=10.1.1.200 mac=e6:d4:d2:3a:ad:06 mgt=hmc monserver=10.1.1.1 nameservers=10.1.1.1 nodetype=ppc,osi parent=fsp1 pprofile=testnode1 profile=compute tftpserver=10.1.1.1 xcatmaster=10.1.1.1
 check:rc==0
 cmd:chdef testnode1 os=rhels7.5 netboot=grub2
@@ -64,6 +69,7 @@ end
 
 start:nodeset_check_grub2_no
 os:rhels
+label:others
 cmd:mkdef -t node -o testnode1 arch=ppc64 cons=hmc groups=lpar hcp=hmc1 hwtype=lpar  id=1 ip=10.1.1.200 mac=e6:d4:d2:3a:ad:06 mgt=hmc monserver=10.1.1.1 nameservers=10.1.1.1 nodetype=ppc,osi parent=fsp1 pprofile=testnode1 profile=compute tftpserver=10.1.1.1 xcatmaster=10.1.1.1
 check:rc==0
 cmd:chdef testnode1 os=rhels6.8 netboot=grub2
@@ -80,6 +86,7 @@ end
 
 start:nodeset_check_grub2_ubuntu
 os:ubuntu
+label:others
 cmd:mkdef -t node -o testnode1 arch=x86_64 cons=kvm groups=kvm ip=10.1.1.200 mac=e6:d4:d2:3a:ad:06 mgt=kvm monserver=10.1.1.1 nameservers=10.1.1.1 profile=compute tftpserver=10.1.1.1 xcatmaster=10.1.1.1
 check:rc==0
 cmd:chdef testnode1 os=ubuntu14.04.5 netboot=grub2
@@ -96,6 +103,7 @@ end
 
 start:nodeset_check_grub2_sles11
 os:sles
+label:others
 cmd:mkdef -t node -o testnode1 arch=ppc64 cons=hmc groups=lpar hcp=hmc1 hwtype=lpar  id=1 ip=10.1.1.200 mac=e6:d4:d2:3a:ad:06 mgt=hmc monserver=10.1.1.1 nameservers=10.1.1.1 nodetype=ppc,osi parent=fsp1 pprofile=testnode1 profile=compute tftpserver=10.1.1.1 xcatmaster=10.1.1.1
 check:rc==0
 cmd:chdef testnode1 os=sles11.4 netboot=grub2
@@ -111,6 +119,7 @@ end
 
 start:nodeset_check_yaboot_sles11
 os:sles
+label:others
 cmd:mkdef -t node -o testnode1 arch=ppc64 cons=hmc groups=lpar hcp=hmc1 hwtype=lpar  id=1 ip=10.1.1.200 mac=e6:d4:d2:3a:ad:06 mgt=hmc monserver=10.1.1.1 nameservers=10.1.1.1 nodetype=ppc,osi parent=fsp1 pprofile=testnode1 profile=compute tftpserver=10.1.1.1 xcatmaster=10.1.1.1
 check:rc==0
 cmd:chdef testnode1 os=sles11.4 netboot=yaboot
@@ -126,6 +135,7 @@ end
 
 start:nodeset_check_grub2_sles12
 os:sles
+label:others
 cmd:mkdef -t node -o testnode1 arch=ppc64el cons=kvm groups=kvm ip=10.1.1.200 mac=e6:d4:d2:3a:ad:06 mgt=kvm monserver=10.1.1.1 nameservers=10.1.1.1 1 profile=compute tftpserver=10.1.1.1 xcatmaster=10.1.1.1
 check:rc==0
 cmd:chdef testnode1 os=sles12 netboot=grub2
@@ -141,6 +151,7 @@ end
 
 start:nodeset_check_yaboot_sles12
 os:sles
+label:others
 cmd:mkdef -t node -o testnode1 arch=ppc64el cons=kvm groups=kvm ip=10.1.1.200 mac=e6:d4:d2:3a:ad:06 mgt=kvm monserver=10.1.1.1 nameservers=10.1.1.1 1 profile=compute tftpserver=10.1.1.1 xcatmaster=10.1.1.1
 check:rc==0
 cmd:chdef testnode1 os=sles12 netboot=yaboot
@@ -156,6 +167,7 @@ end
 
 start:nodeset_check_petitboot
 os:rhels
+label:others
 cmd:mkdef -t node -o testnode1 arch=ppc64el cons=ipmi groups=pbmc mgt=ipmi ip=10.1.1.200 mac=e6:d4:d2:3a:ad:06  monserver=10.1.1.1 nameservers=10.1.1.1 nodetype=ppc,osi profile=compute tftpserver=10.1.1.1 xcatmaster=10.1.1.1
 check:rc==0
 cmd:chdef testnode1 os=rhels7.5 netboot=petitboot
@@ -169,6 +181,7 @@ cmd:noderm testnode1
 end
 
 start:nodeset_check_warninginfo
+label:others
 cmd:if [[ "__GETNODEATTR($$CN,arch)__" =~ "el" || "__GETNODEATTR($$CN,arch)__" =~ "le" ]]; then bootloader=xnba; else bootloader=petitboot; fi; mkdef -t node -o testnode1 arch=ppc64el cons=ipmi groups=pbmc mgt=ipmi ip=10.1.1.200 mac=e6:d4:d2:3a:ad:06  monserver=10.1.1.1 nameservers=10.1.1.1 nodetype=ppc,osi profile=compute tftpserver=10.1.1.1 xcatmaster=10.1.1.1 netboot=$bootloader
 check:rc==0
 cmd:lsdef testnode1
@@ -179,6 +192,7 @@ end
 
 start:nodeset_xnba
 description: Verify when xnba is used for OS loader, whether the configuration files under /tftpboot can be generated corrently
+label:others
 cmd:rmdef testnode1
 cmd:rm -f /tftpboot/xcat/xnba/nodes/testnode1 /tftpboot/xcat/xnba/nodes/testnode1.elilo
 cmd:mkdef -t node -o testnode1 arch=x86_64 cons=kvm groups=kvm ip=10.1.1.200 mac=e6:d4:d2:3a:ad:06 mgt=kvm profile=compute os=rhels6.99
@@ -220,6 +234,7 @@ end
 
 start:nodeset_grub2
 description: Verify when grub2 is used for OS loader, whether the configuration files under /tftpboot can be generated corrently
+label:others
 cmd:rmdef testnode1
 cmd:rm -f /tftpboot/boot/grub2/{testnode1,grub.cfg-{01-e6-d4-d2-3a-ad-06,0[aA]0101[cC]8}}
 cmd:mkdef -t node -o testnode1 arch=ppc64 cons=hmc groups=lpar ip=10.1.1.200 mac=e6:d4:d2:3a:ad:06 mgt=hmc profile=compute os=rhels7.99
@@ -264,6 +279,7 @@ end
 
 start:nodeset_petitboot
 description: Verify when petitboot is used for OS loader, whether the configuration files under /tftpboot can be generated corrently
+label:others
 cmd:rmdef testnode1
 cmd:rm -f /tftpboot/petitboot/testnode1
 cmd:mkdef -t node -o testnode1 arch=ppc64le cons=bmc groups=ipmi ip=10.1.1.200 mac=e6:d4:d2:3a:ad:06 mgt=ipmi profile=compute os=rhels7.99
@@ -305,6 +321,7 @@ end
 
 start:nodeset_yaboot
 description: Verify when yaboot is used for OS loader, whether the configuration files under /tftpboot can be generated corrently
+label:others
 cmd:rmdef testnode1
 cmd:rm -f /tftpboot/yaboot.conf-e6-d4-d2-3a-ad-06
 cmd:mkdef -t node -o testnode1 arch=ppc64 cons=hmc groups=lpar ip=10.1.1.200 mac=e6:d4:d2:3a:ad:06 mgt=hmc profile=compute os=rhels6.99
@@ -346,6 +363,7 @@ end
 
 start:nodeset_errorcommand
 description:This testcase is to very nodeset osimage errorcommand could give right output
+label:others
 Attribute: $$CN-The operation object of nodeset command
 cmd:nodeset $$CN osimage= __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-install-compute
 check:rc==1
@@ -355,6 +373,7 @@ end
 
 start:nodeset_disjointdhcps_petitboot
 description: Verify the disjointdhcps feature when petitboot is used for OS loader.
+label:others
 cmd:rmdef testnode1
 cmd:rm -f /tftpboot/petitboot/testnode1
 cmd:mkdef -t node -o testnode1 arch=ppc64le cons=bmc groups=ipmi ip=10.1.1.200 mac=e6:d4:d2:3a:ad:06 mgt=ipmi profile=compute os=rhels7.99
@@ -454,6 +473,7 @@ end
 start:nodeset_switch_osimage
 description: This case is to verify if xcat supports nodeset <switch> osimage command for cumulus switch. This case is for bug 5126.
 os:Linux
+label:others
 cmd:copycds $$CUMULUSOS |tee /tmp/cumulusimage
 check:rc==0
 cmd:grep "The image" /tmp/cumulusimage |sed -r 's/.*\image(.*)\is.*/\1/' |tee /tmp/imagename

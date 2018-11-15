@@ -1,19 +1,22 @@
 start:makentp_v
-descriptiop:makentp -v
+description:makentp -v
+label:others,ntp
 cmd:makentp -v
 check:rc==0
 check:output=~Version
 end
 
 start:makentp_h
-descriptiop:makentp -h
+description:makentp -h
+label:others,ntp
 cmd:makentp -h
 check:rc==0
 check:output=~Usage: makentp
 end
 
 start:makentp_extntpserver_null
-descriptiop:test makentp with default value. extntpserver is set to blank
+description:test makentp with default value. extntpserver is set to blank
+label:others,ntp
 cmd:lsdef -t site -o clustersite -i extntpservers -c >/tmp/extntpserver
 check:rc==0
 cmd:chtab key=extntpservers site.value=""
@@ -37,7 +40,8 @@ check:rc==0
 end
 
 start:makentp_extntpserver_value
-descriptiop:test makentp with extntpserver is set to a specific value
+description:test makentp with extntpserver is set to a specific value
+label:others,ntp
 cmd:lsdef -t site -o clustersite -i extntpservers -c >/tmp/extntpserver
 check:rc==0
 cmd:chtab key=extntpservers site.value="$$extntpserversip"
@@ -69,7 +73,8 @@ cmd:rm -rf /tmp/extntpserver
 end
 
 start:updatenode_computenode_P_setupntp
-descriptiop:using updatenode -P to setup ntp on compute node
+description:using updatenode -P to setup ntp on compute node
+label:others,ntp
 cmd:xdsh $$CN date -s 20000101
 check:rc==0
 cmd:if [[ "__GETNODEATTR($$CN,os)__" =~ "rhel" ]];then xdsh $$CN clock -w;else xdsh $$CN hwclock -w ; fi
@@ -102,7 +107,8 @@ end
 
 
 start:makentp_initialize
-descriptiop:start ntp service on management node and synchronize time with external ntp server
+description:start ntp service on management node and synchronize time with external ntp server
+label:others,ntp
 cmd:chtab key=extntpservers site.value="$$extntpserversip"
 check:rc==0
 cmd:makentp -V

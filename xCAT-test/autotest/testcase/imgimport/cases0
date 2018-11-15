@@ -1,6 +1,7 @@
 start:imgimport_h
 os:Linux
 description:imgimport -h and --help
+label:others
 cmd:imgimport -h
 check:output=~usage|Usage
 cmd:imgimport --help
@@ -11,6 +12,7 @@ end
 start:imgimport_v
 os:Linux
 description:imgimport -v and --version
+label:others
 cmd:imgimport -v
 check:output=~version|Version
 cmd:imgimport --version
@@ -21,6 +23,7 @@ end
 start:imgimport_bundlefile
 os:Linux
 description:imgimport foo.tgz
+label:others,packaging
 cmd:copycds $$ISO
 cmd:genimage __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-statelite-compute
 check:rc==0
@@ -45,6 +48,7 @@ end
 start:imgimport_bundlefile_p
 os:Linux
 description:imgimport foo.tgz -p $$CN
+label:others,packaging
 cmd:copycds $$ISO
 cmd:genimage __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-statelite-compute
 check:rc==0
@@ -69,6 +73,7 @@ end
 start:imgimport_bundlefile_f
 os:Linux
 description:imgimport foo.tgz -f compute_test
+label:others,packaging
 cmd:copycds $$ISO
 cmd:genimage __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-statelite-compute
 check:rc==0

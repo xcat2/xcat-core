@@ -1,5 +1,6 @@
 #only support redhat and postgresql
 start:setup_2_new_HA_MN
+label:others,HA
 os:Linux
 #back up
 cmd:lsdef -z $$PRIMARYMN > /tmp/node.stanza
@@ -149,6 +150,7 @@ cmd:if [[ -f /install/postscripts/check_node_state.bak ]] ;then mv -f /install/p
 end
 
 start:configure_exist_xCAT_MN_to_HA_MN
+label:others,HA
 os:Linux
 #back up
 cmd:lsdef -z $$PRIMARYMN > /tmp/node.stanza

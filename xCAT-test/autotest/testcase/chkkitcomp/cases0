@@ -1,4 +1,5 @@
 start:chkkitcomp_v
+label:others,KIT
 cmd:chkkitcomp -v
 check:rc==0
 check:output~=Version
@@ -7,6 +8,7 @@ check:output~=compatible_frameworks
 end
 
 start:chkkitcomp_h
+label:others,KIT
 cmd:addkit -h
 check:rc==0
 check:output~=Usage
@@ -14,6 +16,7 @@ check:outpur!~error
 end
 
 start:chkkitcomp_V
+label:others,KIT
 os:Linux
 cmd:rm -rf /opt/xcat/share/xcat/tools/autotest/testcase/chkkitcomp/mykits
 cmd:cd /opt/xcat/share/xcat/tools/autotest/testcase/chkkitcomp;buildkit create mykits

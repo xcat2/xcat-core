@@ -1,5 +1,6 @@
 start:del_ospkg
-descreption:del ospkg
+description:del ospkg
+label:others,postscripts,updatenode
 cmd:copycds $$ISO
 check:rc==0
 cmd:perl /opt/xcat/share/xcat/tools/autotest/testcase/pkg/pkgtest.pl -s -g $$osimage -t pkglist -v __GETNODEATTR($$CN,os)__
@@ -25,7 +26,8 @@ check:rc==0
 end
 
 start:add_ospkg_updatenode
-descreption:add ospkg
+description:add ospkg
+label:others,postscripts,updatenode
 cmd:copycds $$ISO
 check:rc==0
 cmd:perl /opt/xcat/share/xcat/tools/autotest/testcase/pkg/pkgtest.pl -s -g $$osimage -t pkglist -v  __GETNODEATTR($$CN,os)__
@@ -45,7 +47,8 @@ check:rc==0
 end
 
 start:add_includeospkg_updatenode
-descreption:add include ospkg list
+description:add include ospkg list
+label:others,postscripts,updatenode
 cmd:copycds $$ISO
 check:rc==0
 cmd:perl /opt/xcat/share/xcat/tools/autotest/testcase/pkg/pkgtest.pl -i -g $$osimage -t pkglist -v __GETNODEATTR($$CN,os)__
@@ -65,7 +68,8 @@ check:rc==0
 end
 
 start:add_other_pkg
-descreption:add other pkg
+description:add other pkg
+label:others,postscripts,updatenode
 cmd:copycds $$ISO
 check:rc==0
 cmd:perl /opt/xcat/share/xcat/tools/autotest/testcase/pkg/pkgtest.pl -s -o -g $$osimage -t otherpkgdir -v __GETNODEATTR($$CN,os)__
@@ -84,7 +88,8 @@ check:rc==0
 end
 
 start:del_other_pkg
-descreption:del other pkg
+description:del other pkg
+label:others,postscripts,updatenode
 cmd:copycds $$ISO
 check:rc==0
 cmd:perl /opt/xcat/share/xcat/tools/autotest/testcase/pkg/pkgtest.pl -s -o -g $$osimage -t otherpkgdir -v __GETNODEATTR($$CN,os)__
@@ -112,7 +117,8 @@ check:rc==0
 end
 
 start:add_other_pkg_include
-descreption:add other pkg include other list
+description:add other pkg include other list
+label:others,postscripts,updatenode
 cmd:copycds $$ISO
 check:rc==0
 cmd:perl /opt/xcat/share/xcat/tools/autotest/testcase/pkg/pkgtest.pl -i -o -g $$osimage -t otherpkgdir  -v __GETNODEATTR($$CN,os)__

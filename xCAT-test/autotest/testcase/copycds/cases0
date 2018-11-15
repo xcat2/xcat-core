@@ -1,5 +1,6 @@
 start:copycds_iso
 os:Linux
+label:others
 cmd:rm -rf /install/__GETNODEATTR($$CN,os)__
 #cmd:umount /mnt/xcat
 cmd:copycds $$ISO
@@ -11,6 +12,7 @@ check:rc==0
 end
 
 start:lskmodules_o
+label:others
 cmd:lskmodules -o __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__
 check:rc==0
 check:output=~.ko(.xz):
@@ -19,6 +21,7 @@ end
 
 start:copycds_n
 os:Linux
+label:others
 #cmd:umount /mnt/xca
 cmd:rm -rf /install/__GETNODEATTR($$CN,os)__
 cmd:copycds -n __GETNODEATTR($$CN,os)__ $$ISO
@@ -33,6 +36,7 @@ end
 
 start:copycds_a
 os:Linux
+label:others
 #cmd:umount /mnt/xcat
 cmd:copycds -a __GETNODEATTR($$CN,arch)__ $$ISO
 check:rc==0
@@ -44,6 +48,7 @@ end
 
 start:copycds_n_a
 os:Linux
+label:others
 #cmd:umount /mnt/xcat
 cmd:copycds -n __GETNODEATTR($$CN,os)__ -a __GETNODEATTR($$CN,arch)__ $$ISO
 check:rc==0
@@ -55,6 +60,7 @@ end
 
 start:copycds_a_err
 os:Linux
+label:others
 #cmd:umount /mnt/xcat
 cmd:copycds  -a 386 $$ISO
 check:output=~Error
@@ -62,6 +68,7 @@ end
 
 start:copycds_n_err
 os:Linux
+label:others
 #cmd:umount /mnt/xcat
 cmd:copycds  -n aix $$ISO
 check:rc!=0
@@ -70,6 +77,7 @@ end
 
 start:copycds_p
 os:Linux
+label:others
 #cmd:umount /mnt/xcat
 cmd:mkdir -p /install/tmp
 cmd:copycds -p /install/tmp $$ISO
@@ -84,6 +92,7 @@ end
 
 start:copycds_path
 os:Linux
+label:others
 #cmd:umount /mnt/xcat
 cmd:mkdir -p /install/tmp
 cmd:copycds --path /install/tmp $$ISO
@@ -99,6 +108,7 @@ end
 
 start:copycds_i
 os:Linux
+label:others
 cmd:copycds -i $$ISO
 check:rc==0
 check:output=~OS Image:$$ISO
@@ -109,6 +119,7 @@ end
 
 start:copycds_inspection
 os:Linux
+label:others
 cmd:copycds --inspection $$ISO
 check:rc==0
 check:output=~OS Image:$$ISO
@@ -119,6 +130,7 @@ end
 
 start:copycds_o
 os:Linux
+label:others
 cmd:copycds -o $$ISO
 check:rc==0
 check:output=~Copying media to /install/__GETNODEATTR($$CN,os)__/__GETNODEATTR($$CN,arch)__
@@ -129,6 +141,7 @@ end
 
 start:copycds_noosimage
 os:Linux
+label:others
 cmd:copycds --noosimage $$ISO
 check:rc==0
 check:output=~Copying media to /install/__GETNODEATTR($$CN,os)__/__GETNODEATTR($$CN,arch)__
@@ -139,6 +152,7 @@ end
 
 start:copycds_w
 os:Linux
+label:others
 cmd:copycds $$ISO
 check:rc==0
 cmd:copycds -w $$ISO
@@ -149,6 +163,7 @@ end
 
 start:copycds_w2
 os:Linux
+label:others
 cmd:rm -rf /install/__GETNODEATTR($$CN,os)__
 check:rc==0
 cmd:copycds -w $$ISO
@@ -159,6 +174,7 @@ end
 
 start:copycds_nonoverwrite
 os:Linux
+label:others
 cmd:copycds $$ISO
 check:rc==0
 cmd:copycds --nonoverwrite $$ISO
@@ -168,6 +184,7 @@ end
 
 start:copycds_nonoverwrite2
 os:Linux
+label:others
 cmd:rm -rf /install/__GETNODEATTR($$CN,os)__
 check:rc==0
 cmd:copycds --nonoverwrite $$ISO
@@ -178,6 +195,7 @@ end
 
 start:copycds_p_newdir
 os:Linux
+label:others
 cmd:if [ -e /install/newdir ];then mv  /install/newdir /install/newdirbak; fi
 cmd:copycds $$ISO -p /install/newdir
 check:rc==0
@@ -191,6 +209,7 @@ end
 
 start:copycds_p_noninstalldir
 os:Linux
+label:others
 cmd:if [ -e /noninstalldir ];then mv /noninstalldir /noninstaldirbak; fi
 cmd:copycds $$ISO -p /noninstalldir
 check:rc==0
