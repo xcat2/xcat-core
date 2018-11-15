@@ -1,19 +1,19 @@
 #comment out for developper will not fix it
 #start:lsvm_null
-#label:others,hcp_hmc
+#label:others,hctrl_hmc
 #cmd:lsvm
 #check:rc!=0
 #check:output=~Usage
 #end
 start:lsvm_node
-label:others,hcp_hmc
+label:others,hctrl_hmc
 hcp:hmc,ivm
 cmd:lsvm $$CN
 check:rc==0
 check:output=~name=$$CN
 end
 start:lsvm_err_node
-label:others,hcp_hmc
+label:others,hctrl_hmc
 cmd:lsvm testnode
 check:rc!=0
 check:output=~Error
