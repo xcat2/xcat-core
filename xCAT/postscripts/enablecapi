@@ -5,6 +5,12 @@ if [ "$(uname -s|tr 'A-Z' 'a-z')" = "linux" ];then
    . $str_dir_name/xcatlib.sh
 fi
 
+if [ -n "$LOGLABEL" ]; then
+    log_label=$LOGLABEL
+else
+    log_label="xcat"
+fi
+
 #---------------------------------------------------------------------------
 #=head1  enablecapi
 #=head2  enable CAPI and tunnel Atomics for compute nodes
@@ -16,7 +22,7 @@ fi
 
 function logerr {
     echo "$@"
-    logger -t xcat -p local4.err $@
+    logger -t $log_label -p local4.err $@
 }
 
 

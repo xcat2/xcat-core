@@ -33,7 +33,10 @@ use xCAT::Utils;
 use xCAT::MsgUtils;
 
 # MAIN
-
+my $log_label=$ENV{'LOGLABEL'};
+if (!$log_label) {
+    $log_label="xcat"
+}
 my $rc = 0;
 my $cmd;
 
@@ -54,7 +57,7 @@ my $dbname = xCAT::Utils->get_DBName;
 if ($dbname eq "DB2")
 {
     $msg = "odbcsetup:Setting up ODBC for DB2";
-    `logger -t xcat -p local4.info $msg`;
+    `logger -t $log_label -p local4.info $msg`;
     &setupdb2odbc;
 
 }
@@ -63,19 +66,19 @@ else
     if ($dbname eq "MYSQL")
     {
         $msg = "odbcsetup:Setting up ODBC for MYSQL";
-        `logger -t xcat -p local4.info $msg`;
+        `logger -t $log_label -p local4.info $msg`;
         &setupmysqlodbc;
     }
     else {
         if ($dbname eq "PG")
         {
             $msg = "odbcsetup:Setting up ODBC for PostgreSQL";
-            `logger -t xcat -p local4.info $msg`;
+            `logger -t $log_label -p local4.info $msg`;
             &setupPGodbc;
         } else {
             $msg =
 "odbcsetup:cfgloc file does not contain MySQL, DB2 or PG,  will not setup ODBC.";
-            `logger -t xcat -p local4.err  $msg`;
+            `logger -t $log_label -p local4.err  $msg`;
             exit 1;
         }
     }
@@ -114,12 +117,12 @@ sub setupdb2odbc
         $cmd = "$::XCATROOT/bin/db2sqlsetup -o -C";
     }
     $msg = "odbcsetup: Running Client ODBC setup. \"$cmd\"\n";
-    `logger -t xcat -p local4.info $msg`;
+    `logger -t $log_label -p local4.info $msg`;
 
     $rc = &runcmd($cmd);
 
     $msg = "odbcsetup: Client ODBC setup finished.\n";
-    `logger -t xcat -p local4.info  $msg`;
+    `logger -t $log_label -p local4.info  $msg`;
 
     return $rc;
 
@@ -137,12 +140,12 @@ sub setupmysqlodbc
     my $cmd;
     $cmd = "$::XCATROOT/bin/mysqlsetup -o";
     $msg = "odbcsetup: Running Client ODBC setup. \"$cmd\"\n";
-    `logger -t xcat -p local4.info $msg`;
+    `logger -t $log_label -p local4.info $msg`;
 
     $rc = &runcmd($cmd);
 
     $msg = "odbcsetup: Client ODBC setup finished.\n";
-    `logger -t xcat -p local4.info $msg`;
+    `logger -t $log_label -p local4.info $msg`;
 
     return $rc;
 
@@ -161,12 +164,12 @@ sub setupPGodbc
     my $cmd;
     $cmd = "$::XCATROOT/bin/pgsqlsetup -o";
     $msg = "odbcsetup: Running Client ODBC setup. \"$cmd\"\n";
-    `logger -t xcat -p local4.info $msg`;
+    `logger -t $log_label -p local4.info $msg`;
 
     $rc = &runcmd($cmd);
 
     $msg = "odbcsetup: Client ODBC setup finished.\n";
-    `logger -t xcat -p local4.info $msg`;
+    `logger -t $log_label -p local4.info $msg`;
 
     return $rc;
 
@@ -194,7 +197,7 @@ sub runcmd
         {
             my $msg = "odbcsetup:\"$cmd\" returned rc=$rc \"$::outref\"\n";
             print $msg;
-            `logger -t xcat -p local4.err $msg`;
+            `logger -t $log_label -p local4.err $msg`;
             return 1;
         }
     }

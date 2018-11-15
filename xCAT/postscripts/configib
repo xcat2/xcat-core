@@ -23,6 +23,12 @@ if [ "$(uname -s|tr 'A-Z' 'a-z')" = "linux" ];then
    . $str_dir_name/xcatlib.sh
 fi
 
+if [ -n "$LOGLABEL" ]; then
+    log_label=$LOGLABEL
+else
+    log_label="xcat"
+fi
+
 #This is the number of ports for each ib adpator.
 portnum=1
 if [ -n "$NIC_IBAPORTS" ]; then
@@ -86,7 +92,7 @@ then
         if [ $? -ne 0 ]
         then
             echo "Not found the driver dameon: rdma or openibd"
-            logger -p local4.info -t xcat "Not found the driver dameon: rdma or openibd"
+            logger -p local4.info -t $log_label "Not found the driver dameon: rdma or openibd"
             exit
         fi
     fi
@@ -153,7 +159,7 @@ then
         OS_name="ubuntu"
     else
         echo "Unsupported to config IB on this OS!"
-        logger -p local4.info -t xcat "Unsupported to config IB on this OS!"
+        logger -p local4.info -t $log_label "Unsupported to config IB on this OS!"
         exit
     fi
 	
@@ -269,7 +275,7 @@ do
 
    if [ -z "$nicnets" ]; then
        echo "No network defined for $nic"
-       logger -p local4.info -t xcat "No network defined for $nic"
+       logger -p local4.info -t $log_label "No network defined for $nic"
        continue
    fi
 
@@ -342,7 +348,7 @@ do
        # Setup goodnics list
        if [ "$found" == "0" ]; then
            echo "Cannot find network $nicnet for $nic"
-           logger -p local4.info -t xcat "Cannot find network $nicnet for $nic"
+           logger -p local4.info -t $log_label "Cannot find network $nicnet for $nic"
            continue
        else
            if [ -z "$goodnics" ]; then
@@ -605,7 +611,7 @@ netmask $netmask" >> /etc/network/interfaces
 
            else
                 echo "Unsupported operating system"
-                logger -p local4.err -t xcat "Unsupported operating system"
+                logger -p local4.err -t $log_label "Unsupported operating system"
             fi
 
        elif [ $PLTFRM == "AIX" ]; then
@@ -617,7 +623,7 @@ netmask $netmask" >> /etc/network/interfaces
            if [ $? -ne 0 ]
            then
                echo "$mltnum is not available."
-               logger -p local4.info -t xcat "$mltnum is not available."
+               logger -p local4.info -t $log_label "$mltnum is not available."
                continue
            fi
 
@@ -680,7 +686,7 @@ then
     #/sbin/service $ib_driver restart
     if [ "$restart_ib_driver" = "1" ]; then
             echo "restart $ib_driver service"
-            logger -p local4.info -t xcat "restart $ib_driver service"
+            logger -p local4.info -t $log_label "restart $ib_driver service"
             restartservice $ib_driver
     fi
     for nic in `echo "$goodnics" | tr "," "\n"|sort -u`

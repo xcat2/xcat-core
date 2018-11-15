@@ -33,7 +33,11 @@ if [ "$(uname -s|tr 'A-Z' 'a-z')" = "linux" ];then
        . /xcatpost/xcatlib.sh
    fi
 fi
-
+if [ -n "$LOGLABEL" ]; then
+    log_label=$LOGLABEL
+else
+    log_label="xcat"
+fi
 op=$1
 
 net=$2
@@ -806,7 +810,7 @@ if [ "$op" = "add" ]; then
         result=`$cmd 2>&1`
         code=$?
         if [ $code -ne 0 ]; then
-            logger -t xcat -p local4.err "$cmd\nerror code=$code, result=$result."
+            logger -t $log_label -p local4.err "$cmd\nerror code=$code, result=$result."
             echo "  error code=$code, result=$result."
             if [ -f "/etc/debian_version" ];then
                 exit 1;
@@ -856,7 +860,7 @@ elif [ "$op" = "delete" ]; then
         result=`$cmd 2>&1`
         code=$?
         if [ $code -ne 0 ]; then
-            logger -t xcat  -p local4.err "$cmd\nerror code=$code, result=$result."
+            logger -t $log_label  -p local4.err "$cmd\nerror code=$code, result=$result."
             echo "  error code=$code, result=$result."
         fi
     else
@@ -909,7 +913,7 @@ elif [ "$op" = "replace" ]; then
     result=`$cmd 2>&1`
     code=$?
     if [ $code -ne 0 ]; then
-        logger -t xcat -p local4.err "Error: $cmd [error code=$code, result=$result]"
+        logger -t $log_label -p local4.err "Error: $cmd [error code=$code, result=$result]"
         echo "Error: $cmd [error code=$code, result=$result]"
         exit 1;
     fi
