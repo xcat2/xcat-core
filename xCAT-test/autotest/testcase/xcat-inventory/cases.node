@@ -2009,7 +2009,7 @@ end
 start:import_validation_node_obj_type
 label:others,xcat_inventory
 description:This case is used to test node validation function of xcat-inventory import yaml and json file. To test "obj_type" attribute
-cmd:mkdir -p /tmp/import_validation_node_obj_type_bak
+cmd:dir="/tmp/import_validation_node_obj_type_bak";if [ -e "${dir}" ];then mv ${dir} ${dir}".bak"; fi; mkdir -p $dir
 check:rc==0
 cmd:lsdef bogusnode > /dev/null 2>&1;if [[ $? -eq 0 ]]; then lsdef bogusnode -z >/tmp/import_validation_node_obj_type_bak/bogusnode.stanza ;rmdef bogusnode;fi
 check:rc==0
@@ -2027,14 +2027,14 @@ cmd:if [[ -e /tmp/import_validation_node_obj_type_bak/bogusnode.stanza ]]; then 
 check:rc==0
 cmd:if [[ -e /tmp/import_validation_node_obj_type_bak/bogusgroup.stanza ]]; then cat /tmp/import_validation_node_obj_type_bak/bogusgroup.stanza |mkdef -z -f;fi
 check:rc==0
-cmd:rm -rf /tmp/import_validation_node_obj_type_bak
+cmd:dir="/tmp/import_validation_node_obj_type_bak"; rm -rf $dir; if [ -d ${dir}".bak" ];then mv ${dir}".bak" $dir; fi
 check:rc==0
 end
 
 start:import_validation_node_obj_info_groups
 label:others,xcat_inventory
 description:This case is used to test node validation function of xcat-inventory import yaml and json file. To test "obj_info.groups" attribute
-cmd:mkdir -p /tmp/import_validation_node_obj_info_groups_bak
+cmd:dir="/tmp/import_validation_node_obj_info_groups_bak";if [ -e "${dir}" ];then mv ${dir} ${dir}".bak"; fi; mkdir -p $dir
 check:rc==0
 cmd:lsdef bogusnode > /dev/null 2>&1;if [[ $? -eq 0 ]]; then lsdef bogusnode -z >/tmp/import_validation_node_obj_info_groups_bak/bogusnode.stanza ;rmdef bogusnode;fi
 check:rc==0
@@ -2048,14 +2048,14 @@ cmd:if [[ -e /tmp/import_validation_node_obj_info_groups_bak/bogusnode.stanza ]]
 check:rc==0
 cmd:if [[ -e /tmp/import_validation_node_obj_info_groups_bak/bogusgroup.stanza ]]; then cat /tmp/import_validation_node_obj_info_groups_bak/bogusgroup.stanza |mkdef -z -f;fi
 check:rc==0
-cmd:rm -rf /tmp/import_validation_node_obj_info_groups_bak
+cmd:dir="/tmp/import_validation_node_obj_info_groups_bak"; rm -rf $dir; if [ -d ${dir}".bak" ];then mv ${dir}".bak" $dir; fi
 check:rc==0
 end
 
 start:import_validation_node_device_type
 label:others,xcat_inventory
 description:This case is used to test node validation function of xcat-inventory import yaml and json file. To test "device_type" attribute
-cmd:mkdir -p /tmp/import_validation_node_device_type_bak
+cmd:dir="/tmp/import_validation_node_device_type_bak";if [ -e "${dir}" ];then mv ${dir} ${dir}".bak"; fi; mkdir -p $dir
 check:rc==0
 cmd:lsdef bogusnode > /dev/null 2>&1;if [[ $? -eq 0 ]]; then lsdef bogusnode -z >/tmp/import_validation_node_device_type_bak/bogusnode.stanza ;rmdef bogusnode;fi
 check:rc==0
@@ -2066,27 +2066,27 @@ check:rc!=0
 cmd:/opt/xcat/share/xcat/tools/autotest/testcase/xcat-inventory/validatehelper "node" "bogusnode" "device_type" "aaa" "import_validation_node_device_type"
 check:rc!=0
 cmd:/opt/xcat/share/xcat/tools/autotest/testcase/xcat-inventory/validatehelper "node" "bogusnode" "device_type" "switch" "import_validation_node_device_type"
-check:rc==0
+check:rc!=0
 cmd:/opt/xcat/share/xcat/tools/autotest/testcase/xcat-inventory/validatehelper "node" "bogusnode" "device_type" "pdu" "import_validation_node_device_type"
-check:rc==0
+check:rc!=0
 cmd:/opt/xcat/share/xcat/tools/autotest/testcase/xcat-inventory/validatehelper "node" "bogusnode" "device_type" "rack" "import_validation_node_device_type"
-check:rc==0
+check:rc!=0
 cmd:/opt/xcat/share/xcat/tools/autotest/testcase/xcat-inventory/validatehelper "node" "bogusnode" "device_type" "hmc"  "import_validation_node_device_type"
-check:rc==0
+check:rc!=0
 cmd:/opt/xcat/share/xcat/tools/autotest/testcase/xcat-inventory/validatehelper "node" "bogusnode" "device_type" "server"  "import_validation_node_device_type"
 check:rc==0
 cmd:if [[ -e /tmp/import_validation_node_device_type_bak/bogusnode.stanza ]]; then cat /tmp/import_validation_node_device_type_bak/bogusnode.stanza | mkdef -z;fi
 check:rc==0
 cmd:if [[ -e /tmp/import_validation_node_device_type_bak/bogusgroup.stanza ]]; then cat /tmp/import_validation_node_device_type_bak/bogusgroup.stanza |mkdef -z -f;fi
 check:rc==0
-cmd:rm -rf /tmp/import_validation_node_device_type_bak
+cmd:dir="/tmp/import_validation_node_device_type_bak"; rm -rf $dir; if [ -d ${dir}".bak" ];then mv ${dir}".bak" $dir; fi
 check:rc==0
 end
 
 start:import_validation_node_device_info_arch
 label:others,xcat_inventory
 description:This case is used to test node validation function of xcat-inventory import yaml and json file. To test "device_info.arch" attribute
-cmd:mkdir -p /tmp/import_validation_node_device_info_arch_bak
+cmd:dir="/tmp/import_validation_node_device_info_arch_bak";if [ -e "${dir}" ];then mv ${dir} ${dir}".bak"; fi; mkdir -p $dir
 check:rc==0
 cmd:lsdef bogusnode > /dev/null 2>&1;if [[ $? -eq 0 ]]; then lsdef bogusnode -z >/tmp/import_validation_node_device_info_arch_bak/bogusnode.stanza ;rmdef bogusnode;fi
 check:rc==0
@@ -2110,14 +2110,14 @@ cmd:if [[ -e /tmp/import_validation_node_device_info_arch_bak/bogusnode.stanza ]
 check:rc==0
 cmd:if [[ -e /tmp/import_validation_node_device_info_arch_bak/bogusgroup.stanza ]]; then cat /tmp/import_validation_node_device_info_arch_bak/bogusgroup.stanza |mkdef -z -f;fi
 check:rc==0
-cmd:rm -rf /tmp/import_validation_node_device_info_arch_bak
+cmd:dir="/tmp/import_validation_node_device_info_arch_bak"; rm -rf $dir; if [ -d ${dir}".bak" ];then mv ${dir}".bak" $dir; fi
 check:rc==0
 end
 
 start:import_validation_node_security_info_snmp_securitylevel
 label:others,xcat_inventory
 description:This case is used to test node validation function of xcat-inventory import yaml and json file. To test "security_info.snmp.securitylevel" attribute
-cmd:mkdir -p /tmp/import_validation_node_security_info_snmp_securitylevel_bak
+cmd:dir="/tmp/import_validation_node_security_info_snmp_securitylevel_bak";if [ -e "${dir}" ];then mv ${dir} ${dir}".bak"; fi; mkdir -p $dir
 check:rc==0
 cmd:lsdef boguspdu > /dev/null 2>&1;if [[ $? -eq 0 ]]; then lsdef boguspdu -z >/tmp/import_validation_node_security_info_snmp_securitylevel_bak/boguspdu.stanza ;rmdef boguspdu;fi
 check:rc==0
@@ -2139,14 +2139,14 @@ cmd:if [[ -e /tmp/import_validation_node_security_info_snmp_securitylevel_bak/bo
 check:rc==0
 cmd:if [[ -e /tmp/import_validation_node_security_info_snmp_securitylevel_bak/bogusgroup.stanza ]]; then cat /tmp/import_validation_node_security_info_snmp_securitylevel_bak/bogusgroup.stanza |mkdef -z -f;fi
 check:rc==0
-cmd:rm -rf /tmp/import_validation_node_security_info_snmp_securitylevel_bak
+cmd:dir="/tmp/import_validation_node_security_info_snmp_securitylevel_bak"; rm -rf $dir; if [ -d ${dir}".bak" ];then mv ${dir}".bak" $dir; fi
 check:rc==0
 end
 
 start:import_validation_node_security_info_snmp_authprotocol
 label:others,xcat_inventory
 description:This case is used to test node validation function of xcat-inventory import yaml and json file. To test "security_info.snmp.authprotocol" attribute
-cmd:mkdir -p /tmp/import_validation_node_security_info_snmp_authprotocol_bak
+cmd:dir="/tmp/import_validation_node_security_info_snmp_authprotocol_bak";if [ -e "${dir}" ];then mv ${dir} ${dir}".bak"; fi; mkdir -p $dir
 check:rc==0
 cmd:lsdef boguspdu > /dev/null 2>&1;if [[ $? -eq 0 ]]; then lsdef boguspdu -z >/tmp/import_validation_node_security_info_snmp_authprotocol_bak/boguspdu.stanza ;rmdef boguspdu;fi
 check:rc==0
@@ -2170,7 +2170,7 @@ cmd:if [[ -e /tmp/import_validation_node_security_info_snmp_authprotocol_bak/bog
 check:rc==0
 cmd:if [[ -e /tmp/import_validation_node_security_info_snmp_authprotocol_bak/bogusgroup.stanza ]]; then cat /tmp/import_validation_node_security_info_snmp_authprotocol_bak/bogusgroup.stanza |mkdef -z -f;fi
 check:rc==0
-cmd:rm -rf /tmp/import_validation_node_security_info_snmp_authprotocol_bak
+cmd:dir="/tmp/import_validation_node_security_info_snmp_authprotocol_bak"; rm -rf $dir; if [ -d ${dir}".bak" ];then mv ${dir}".bak" $dir; fi
 check:rc==0
 end
 
@@ -2178,7 +2178,7 @@ end
 start:import_validation_node_security_info_snmp_privacyprotocol
 label:others,xcat_inventory
 description:This case is used to test node validation function of xcat-inventory import yaml and json file. To test "security_info.snmp.privacyprotocol" attribute
-cmd:mkdir -p /tmp/import_validation_node_security_info_snmp_privacyprotocol_bak
+cmd:dir="/tmp/import_validation_node_security_info_snmp_privacyprotocol_bak";if [ -e "${dir}" ];then mv ${dir} ${dir}".bak"; fi; mkdir -p $dir
 check:rc==0
 cmd:lsdef bogusswitch > /dev/null 2>&1;if [[ $? -eq 0 ]]; then lsdef bogusswitch -z >/tmp/import_validation_node_security_info_snmp_privacyprotocol_bak/bogusswitch.stanza ;rmdef bogusswitch;fi
 check:rc==0
@@ -2200,7 +2200,7 @@ cmd:if [[ -e /tmp/import_validation_node_security_info_snmp_privacyprotocol_bak/
 check:rc==0
 cmd:if [[ -e /tmp/import_validation_node_security_info_snmp_privacyprotocol_bak/bogusgroup.stanza ]]; then cat /tmp/import_validation_node_security_info_snmp_privacyprotocol_bak/bogusgroup.stanza |mkdef -z -f;fi
 check:rc==0
-cmd:rm -rf /tmp/import_validation_node_security_info_snmp_privacyprotocol_bak
+cmd:dir="/tmp/import_validation_node_security_info_snmp_privacyprotocol_bak"; rm -rf $dir; if [ -d ${dir}".bak" ];then mv ${dir}".bak" $dir; fi
 check:rc==0
 end
 
@@ -2208,7 +2208,7 @@ end
 start:import_validation_node_security_info_remotecontrol_remoteprotocol
 label:others,xcat_inventory
 descrremoteprotocoltion:This case is used to test node validation function of xcat-inventory import yaml and json file. To test "security_info.remotecontrol.remoteprotocol" attribute
-cmd:mkdir -p /tmp/import_validation_node_security_info_remotecontrol_remoteprotocol_bak
+cmd:dir="/tmp/import_validation_node_security_info_remotecontrol_remoteprotocol_bak";if [ -e "${dir}" ];then mv ${dir} ${dir}".bak"; fi; mkdir -p $dir
 check:rc==0
 cmd:lsdef bogusswitch > /dev/null 2>&1;if [[ $? -eq 0 ]]; then lsdef bogusswitch -z >/tmp/import_validation_node_security_info_remotecontrol_remoteprotocol_bak/bogusswitch.stanza ;rmdef bogusswitch;fi
 check:rc==0
@@ -2228,14 +2228,14 @@ cmd:if [[ -e /tmp/import_validation_node_security_info_remotecontrol_remoteproto
 check:rc==0
 cmd:if [[ -e /tmp/import_validation_node_security_info_remotecontrol_remoteprotocol_bak/bogusgroup.stanza ]]; then cat /tmp/import_validation_node_security_info_remotecontrol_remoteprotocol_bak/bogusgroup.stanza |mkdef -z -f;fi
 check:rc==0
-cmd:rm -rf /tmp/import_validation_node_security_info_remotecontrol_remoteprotocol_bak
+cmd:dir="/tmp/import_validation_node_security_info_remotecontrol_remoteprotocol_bak"; rm -rf $dir; if [ -d ${dir}".bak" ];then mv ${dir}".bak" $dir; fi
 check:rc==0
 end
 
 start:import_validation_node_network_info_primarynic_ip
 label:others,xcat_inventory
 description:This case is used to test node validation function of xcat-inventory import yaml and json file. To test "network_info.primarynic.ip" attribute
-cmd:mkdir -p /tmp/import_validation_node_network_info_primarynic_ip_bak
+cmd:dir="/tmp/import_validation_node_network_info_primarynic_ip_bak";if [ -e "${dir}" ];then mv ${dir} ${dir}".bak"; fi; mkdir -p $dir
 check:rc==0
 cmd:lsdef bogusnode > /dev/null 2>&1;if [[ $? -eq 0 ]]; then lsdef bogusnode -z >/tmp/import_validation_node_network_info_primarynic_ip_bak/bogusnode.stanza ;rmdef bogusnode;fi
 check:rc==0
@@ -2255,14 +2255,14 @@ cmd:if [[ -e /tmp/import_validation_node_network_info_primarynic_ip_bak/bogusnod
 check:rc==0
 cmd:if [[ -e /tmp/import_validation_node_network_info_primarynic_ip_bak/bogusgroup.stanza ]]; then cat /tmp/import_validation_node_network_info_primarynic_ip_bak/bogusgroup.stanza |mkdef -z -f;fi
 check:rc==0
-cmd:rm -rf /tmp/import_validation_node_network_info_primarynic_ip_bak
+cmd:dir="/tmp/import_validation_node_network_info_primarynic_ip_bak"; rm -rf $dir; if [ -d ${dir}".bak" ];then mv ${dir}".bak" $dir; fi
 check:rc==0
 end
 
 start:import_validation_node_network_info_primarynic_mac
 label:others,xcat_inventory
 descrmaction:This case is used to test node validation function of xcat-inventory import yaml and json file. To test "network_info.primarynic.mac" attribute
-cmd:mkdir -p /tmp/import_validation_node_network_info_primarynic_mac_bak
+cmd:dir="/tmp/import_validation_node_network_info_primarynic_mac_bak";if [ -e "${dir}" ];then mv ${dir} ${dir}".bak"; fi; mkdir -p $dir
 check:rc==0
 cmd:lsdef bogusnode > /dev/null 2>&1;if [[ $? -eq 0 ]]; then lsdef bogusnode -z >/tmp/import_validation_node_network_info_primarynic_mac_bak/bogusnode.stanza ;rmdef bogusnode;fi
 check:rc==0
@@ -2280,14 +2280,14 @@ cmd:if [[ -e /tmp/import_validation_node_network_info_primarynic_mac_bak/bogusno
 check:rc==0
 cmd:if [[ -e /tmp/import_validation_node_network_info_primarynic_mac_bak/bogusgroup.stanza ]]; then cat /tmp/import_validation_node_network_info_primarynic_mac_bak/bogusgroup.stanza |mkdef -z -f;fi
 check:rc==0
-cmd:rm -rf /tmp/import_validation_node_network_info_primarynic_mac_bak
+cmd:dir="/tmp/import_validation_node_network_info_primarynic_mac_bak"; rm -rf $dir; if [ -d ${dir}".bak" ];then mv ${dir}".bak" $dir; fi
 check:rc==0
 end
 
 start:import_validation_node_nics_network_info_nics_ips
 label:others,xcat_inventory
 descrnics_network_info_nics_ipstion:This case is used to test node validation function of xcat-inventory import yaml and json file. To test "network_info.nics.ips" attribute
-cmd:mkdir -p /tmp/import_validation_node_nics_network_info_nics_ips_bak
+cmd:dir="/tmp/import_validation_node_nics_network_info_nics_ips_bak";if [ -e "${dir}" ];then mv ${dir} ${dir}".bak"; fi; mkdir -p $dir
 check:rc==0
 cmd:lsdef bogusnode > /dev/null 2>&1;if [[ $? -eq 0 ]]; then lsdef bogusnode -z >/tmp/import_validation_node_nics_network_info_nics_ips_bak/bogusnode.stanza ;rmdef bogusnode;fi
 check:rc==0
@@ -2307,7 +2307,7 @@ cmd:if [[ -e /tmp/import_validation_node_nics_network_info_nics_ips_bak/bogusnod
 check:rc==0
 cmd:if [[ -e /tmp/import_validation_node_nics_network_info_nics_ips_bak/bogusgroup.stanza ]]; then cat /tmp/import_validation_node_nics_network_info_nics_ips_bak/bogusgroup.stanza |mkdef -z -f;fi
 check:rc==0
-cmd:rm -rf /tmp/import_validation_node_nics_network_info_nics_ips_bak
+cmd:dir="/tmp/import_validation_node_nics_network_info_nics_ips_bak"; rm -rf $dir; if [ -d ${dir}".bak" ];then mv ${dir}".bak" $dir; fi
 check:rc==0
 end
 
@@ -2315,7 +2315,7 @@ end
 start:import_validation_node_network_info_primarynic_switchport
 label:others,xcat_inventory
 descrswitchporttion:This case is used to test node validation function of xcat-inventory import yaml and json file. To test "network_info.primarynic.switchport" attribute
-cmd:mkdir -p /tmp/import_validation_node_network_info_primarynic_switchport_bak
+cmd:dir="/tmp/import_validation_node_network_info_primarynic_switchport_bak";if [ -e "${dir}" ];then mv ${dir} ${dir}".bak"; fi; mkdir -p $dir
 check:rc==0
 cmd:lsdef bogusnode > /dev/null 2>&1;if [[ $? -eq 0 ]]; then lsdef bogusnode -z >/tmp/import_validation_node_network_info_primarynic_switchport_bak/bogusnode.stanza ;rmdef bogusnode;fi
 check:rc==0
@@ -2331,7 +2331,7 @@ cmd:if [[ -e /tmp/import_validation_node_network_info_primarynic_switchport_bak/
 check:rc==0
 cmd:if [[ -e /tmp/import_validation_node_network_info_primarynic_switchport_bak/bogusgroup.stanza ]]; then cat /tmp/import_validation_node_network_info_primarynic_switchport_bak/bogusgroup.stanza |mkdef -z -f;fi
 check:rc==0
-cmd:rm -rf /tmp/import_validation_node_network_info_primarynic_switchport_bak
+cmd:dir="/tmp/import_validation_node_network_info_primarynic_switchport_bak"; rm -rf $dir; if [ -d ${dir}".bak" ];then mv ${dir}".bak" $dir; fi
 check:rc==0
 end
 
@@ -2339,7 +2339,7 @@ end
 start:import_validation_node_engines_hardware_mgt_engine_engine_type
 label:others,xcat_inventory
 descrengine_typetion:This case is used to test node validation function of xcat-inventory import yaml and json file. To test "engines.hardware_mgt_engine.engine_type" attribute
-cmd:mkdir -p /tmp/import_validation_node_engines_hardware_mgt_engine_engine_type_bak
+cmd:dir="/tmp/import_validation_node_engines_hardware_mgt_engine_engine_type_bak";if [ -e "${dir}" ];then mv ${dir} ${dir}".bak"; fi; mkdir -p $dir
 check:rc==0
 cmd:lsdef bogusnode > /dev/null 2>&1;if [[ $? -eq 0 ]]; then lsdef bogusnode -z >/tmp/import_validation_node_engines_hardware_mgt_engine_engine_type_bak/bogusnode.stanza ;rmdef bogusnode;fi
 check:rc==0
@@ -2375,7 +2375,7 @@ cmd:if [[ -e /tmp/import_validation_node_engines_hardware_mgt_engine_engine_type
 check:rc==0
 cmd:if [[ -e /tmp/import_validation_node_engines_hardware_mgt_engine_engine_type_bak/bogusgroup.stanza ]]; then cat /tmp/import_validation_node_engines_hardware_mgt_engine_engine_type_bak/bogusgroup.stanza |mkdef -z -f;fi
 check:rc==0
-cmd:rm -rf /tmp/import_validation_node_engines_hardware_mgt_engine_engine_type_bak
+cmd:dir="/tmp/import_validation_node_engines_hardware_mgt_engine_engine_type_bak"; rm -rf $dir; if [ -d ${dir}".bak" ];then mv ${dir}".bak" $dir; fi
 check:rc==0
 end
 
@@ -2384,7 +2384,7 @@ end
 start:import_validation_node_engines_netboot_engine_engine_type
 label:others,xcat_inventory
 descrengine_typetion:This case is used to test node validation function of xcat-inventory import yaml and json file. To test "engines.netboot_engine.engine_type" attribute
-cmd:mkdir -p /tmp/import_validation_node_engines_netboot_engine_engine_type_bak
+cmd:dir="/tmp/import_validation_node_engines_netboot_engine_engine_type_bak";if [ -e "${dir}" ];then mv ${dir} ${dir}".bak"; fi; mkdir -p $dir
 check:rc==0
 cmd:lsdef bogusnode > /dev/null 2>&1;if [[ $? -eq 0 ]]; then lsdef bogusnode -z >/tmp/import_validation_node_engines_netboot_engine_engine_type_bak/bogusnode.stanza ;rmdef bogusnode;fi
 check:rc==0
@@ -2410,7 +2410,7 @@ cmd:if [[ -e /tmp/import_validation_node_engines_netboot_engine_engine_type_bak/
 check:rc==0
 cmd:if [[ -e /tmp/import_validation_node_engines_netboot_engine_engine_type_bak/bogusgroup.stanza ]]; then cat /tmp/import_validation_node_engines_netboot_engine_engine_type_bak/bogusgroup.stanza |mkdef -z -f;fi
 check:rc==0
-cmd:rm -rf /tmp/import_validation_node_engines_netboot_engine_engine_type_bak
+cmd:dir="/tmp/import_validation_node_engines_netboot_engine_engine_type_bak"; rm -rf $dir; if [ -d ${dir}".bak" ];then mv ${dir}".bak" $dir; fi
 check:rc==0
 end
 
@@ -2418,14 +2418,14 @@ end
 start:import_validation_node_role
 label:others,xcat_inventory
 descrroletion:This case is used to test node validation function of xcat-inventory import yaml and json file. To test "role" attribute
-cmd:mkdir -p /tmp/import_validation_node_role_bak
+cmd:dir="/tmp/import_validation_node_role_bak";if [ -e "${dir}" ];then mv ${dir} ${dir}".bak"; fi; mkdir -p $dir
 check:rc==0
 cmd:lsdef bogusnode > /dev/null 2>&1;if [[ $? -eq 0 ]]; then lsdef bogusnode -z >/tmp/import_validation_node_role_bak/bogusnode.stanza ;rmdef bogusnode;fi
 check:rc==0
 cmd:lsdef -t group bogusgroup  > /dev/null 2>&1;if [[ $? -eq 0 ]]; then lsdef -t group bogusgroup -z > /tmp/import_validation_node_role_bak/bogusgroup.stanza; rmdef -t group bogusgroup;fi
 check:rc==0
 cmd:/opt/xcat/share/xcat/tools/autotest/testcase/xcat-inventory/validatehelper "node" "bogusnode" "role" "compute" "/tmp/import_validation_node_role"
-check:rc==0
+check:rc!=0
 cmd:/opt/xcat/share/xcat/tools/autotest/testcase/xcat-inventory/validatehelper "node" "bogusnode" "role" "service" "/tmp/import_validation_node_role"
 check:rc==0
 cmd:/opt/xcat/share/xcat/tools/autotest/testcase/xcat-inventory/validatehelper "node" "bogusnode" "role" "" "/tmp/import_validation_node_role"
@@ -2438,14 +2438,14 @@ cmd:if [[ -e /tmp/import_validation_node_role_bak/bogusnode.stanza ]]; then cat 
 check:rc==0
 cmd:if [[ -e /tmp/import_validation_node_role_bak/bogusgroup.stanza ]]; then cat /tmp/import_validation_node_role_bak/bogusgroup.stanza |mkdef -z -f;fi
 check:rc==0
-cmd:rm -rf /tmp/import_validation_node_role_bak
+cmd:dir="/tmp/import_validation_node_role_bak"; rm -rf $dir; if [ -d ${dir}".bak" ];then mv ${dir}".bak" $dir; fi
 check:rc==0
 end
 
 start:import_validation_node_role_info_setuptftp
 label:others,xcat_inventory
 descrsetuptftption:This case is used to test node validation function of xcat-inventory import yaml and json file. To test "role_info.setuptftp" attribute
-cmd:mkdir -p /tmp/import_validation_node_role_info_setuptftp_bak
+cmd:dir="/tmp/import_validation_node_role_info_setuptftp_bak";if [ -e "${dir}" ];then mv ${dir} ${dir}".bak"; fi; mkdir -p $dir
 check:rc==0
 cmd:lsdef bogusnode > /dev/null 2>&1;if [[ $? -eq 0 ]]; then lsdef bogusnode -z >/tmp/import_validation_node_role_info_setuptftp_bak/bogusnode.stanza ;rmdef bogusnode;fi
 check:rc==0
@@ -2465,14 +2465,14 @@ cmd:if [[ -e /tmp/import_validation_node_role_info_setuptftp_bak/bogusnode.stanz
 check:rc==0
 cmd:if [[ -e /tmp/import_validation_node_role_info_setuptftp_bak/bogusgroup.stanza ]]; then cat /tmp/import_validation_node_role_info_setuptftp_bak/bogusgroup.stanza |mkdef -z -f;fi
 check:rc==0
-cmd:rm -rf /tmp/import_validation_node_role_info_setuptftp_bak
+cmd:dir="/tmp/import_validation_node_role_info_setuptftp_bak"; rm -rf $dir; if [ -d ${dir}".bak" ];then mv ${dir}".bak" $dir; fi
 check:rc==0
 end
 
 start:import_validation_node_role_info_setupnameserver
 label:others,xcat_inventory
 descrsetupnameservertion:This case is used to test node validation function of xcat-inventory import yaml and json file. To test "role_info.setupnameserver" attribute
-cmd:mkdir -p /tmp/import_validation_node_role_info_setupnameserver_bak
+cmd:dir="/tmp/import_validation_node_role_info_setupnameserver_bak";if [ -e "${dir}" ];then mv ${dir} ${dir}".bak"; fi; mkdir -p $dir
 check:rc==0
 cmd:lsdef bogusnode > /dev/null 2>&1;if [[ $? -eq 0 ]]; then lsdef bogusnode -z >/tmp/import_validation_node_role_info_setupnameserver_bak/bogusnode.stanza ;rmdef bogusnode;fi
 check:rc==0
@@ -2494,14 +2494,14 @@ cmd:if [[ -e /tmp/import_validation_node_role_info_setupnameserver_bak/bogusnode
 check:rc==0
 cmd:if [[ -e /tmp/import_validation_node_role_info_setupnameserver_bak/bogusgroup.stanza ]]; then cat /tmp/import_validation_node_role_info_setupnameserver_bak/bogusgroup.stanza |mkdef -z -f;fi
 check:rc==0
-cmd:rm -rf /tmp/import_validation_node_role_info_setupnameserver_bak
+cmd:dir="/tmp/import_validation_node_role_info_setupnameserver_bak"; rm -rf $dir; if [ -d ${dir}".bak" ];then mv ${dir}".bak" $dir; fi
 end
 
 
 start:import_validation_node_role_info_setupdhcp
 label:others,xcat_inventory
 descrsetupdhcption:This case is used to test node validation function of xcat-inventory import yaml and json file. To test "role_info.setupdhcp" attribute
-cmd:mkdir -p /tmp/import_validation_node_role_info_setupdhcp_bak
+cmd:dir="/tmp/import_validation_node_role_info_setupdhcp_bak";if [ -e "${dir}" ];then mv ${dir} ${dir}".bak"; fi; mkdir -p $dir
 check:rc==0
 cmd:lsdef bogusnode > /dev/null 2>&1;if [[ $? -eq 0 ]]; then lsdef bogusnode -z >/tmp/import_validation_node_role_info_setupdhcp_bak/bogusnode.stanza ;rmdef bogusnode;fi
 check:rc==0
@@ -2521,13 +2521,13 @@ cmd:if [[ -e /tmp/import_validation_node_role_info_setupdhcp_bak/bogusnode.stanz
 check:rc==0
 cmd:if [[ -e /tmp/import_validation_node_role_info_setupdhcp_bak/bogusgroup.stanza ]]; then cat /tmp/import_validation_node_role_info_setupdhcp_bak/bogusgroup.stanza |mkdef -z -f;fi
 check:rc==0
-cmd:rm -rf /tmp/import_validation_node_role_info_setupdhcp_bak
+cmd:dir="/tmp/import_validation_node_role_info_setupdhcp_bak"; rm -rf $dir; if [ -d ${dir}".bak" ];then mv ${dir}".bak" $dir; fi
 end
 
 start:import_validation_node_role_info_setupntp
 label:others,xcat_inventory
 descrsetupntption:This case is used to test node validation function of xcat-inventory import yaml and json file. To test "role_info.setupntp" attribute
-cmd:mkdir -p /tmp/import_validation_node_role_info_setupntp_bak
+cmd:dir="/tmp/import_validation_node_role_info_setupntp_bak";if [ -e "${dir}" ];then mv ${dir} ${dir}".bak"; fi; mkdir -p $dir
 check:rc==0
 cmd:lsdef bogusnode > /dev/null 2>&1;if [[ $? -eq 0 ]]; then lsdef bogusnode -z >/tmp/import_validation_node_role_info_setupntp_bak/bogusnode.stanza ;rmdef bogusnode;fi
 check:rc==0
@@ -2547,13 +2547,13 @@ cmd:if [[ -e /tmp/import_validation_node_role_info_setupntp_bak/bogusnode.stanza
 check:rc==0
 cmd:if [[ -e /tmp/import_validation_node_role_info_setupntp_bak/bogusgroup.stanza ]]; then cat /tmp/import_validation_node_role_info_setupntp_bak/bogusgroup.stanza |mkdef -z -f;fi
 check:rc==0
-cmd:rm -rf /tmp/import_validation_node_role_info_setupntp_bak
+cmd:dir="/tmp/import_validation_node_role_info_setupntp_bak"; rm -rf $dir; if [ -d ${dir}".bak" ];then mv ${dir}".bak" $dir; fi
 end
 
 start:import_validation_node_role_info_setupldap
 label:others,xcat_inventory
 descrsetupldaption:This case is used to test node validation function of xcat-inventory import yaml and json file. To test "role_info.setupldap" attribute
-cmd:mkdir -p /tmp/import_validation_node_role_info_setupldap_bak
+cmd:dir="/tmp/import_validation_node_role_info_setupldap_bak";if [ -e "${dir}" ];then mv ${dir} ${dir}".bak"; fi; mkdir -p $dir
 check:rc==0
 cmd:lsdef bogusnode > /dev/null 2>&1;if [[ $? -eq 0 ]]; then lsdef bogusnode -z >/tmp/import_validation_node_role_info_setupldap_bak/bogusnode.stanza ;rmdef bogusnode;fi
 check:rc==0
@@ -2573,13 +2573,13 @@ cmd:if [[ -e /tmp/import_validation_node_role_info_setupldap_bak/bogusnode.stanz
 check:rc==0
 cmd:if [[ -e /tmp/import_validation_node_role_info_setupldap_bak/bogusgroup.stanza ]]; then cat /tmp/import_validation_node_role_info_setupldap_bak/bogusgroup.stanza |mkdef -z -f;fi
 check:rc==0
-cmd:rm -rf /tmp/import_validation_node_role_info_setupldap_bak
+cmd:dir="/tmp/import_validation_node_role_info_setupldap_bak"; rm -rf $dir; if [ -d ${dir}".bak" ];then mv ${dir}".bak" $dir; fi
 end
 
 start:import_validation_node_role_info_setupproxydhcp
 label:others,xcat_inventory
 descrsetupproxydhcption:This case is used to test node validation function of xcat-inventory import yaml and json file. To test "role_info.setupproxydhcp" attribute
-cmd:mkdir -p /tmp/import_validation_node_role_info_setupproxydhcp_bak
+cmd:dir="/tmp/import_validation_node_role_info_setupproxydhcp_bak";if [ -e "${dir}" ];then mv ${dir} ${dir}".bak"; fi; mkdir -p $dir
 check:rc==0
 cmd:lsdef bogusnode > /dev/null 2>&1;if [[ $? -eq 0 ]]; then lsdef bogusnode -z >/tmp/import_validation_node_role_info_setupproxydhcp_bak/bogusnode.stanza ;rmdef bogusnode;fi
 check:rc==0
@@ -2599,13 +2599,13 @@ cmd:if [[ -e /tmp/import_validation_node_role_info_setupproxydhcp_bak/bogusnode.
 check:rc==0
 cmd:if [[ -e /tmp/import_validation_node_role_info_setupproxydhcp_bak/bogusgroup.stanza ]]; then cat /tmp/import_validation_node_role_info_setupproxydhcp_bak/bogusgroup.stanza |mkdef -z -f;fi
 check:rc==0
-cmd:rm -rf /tmp/import_validation_node_role_info_setupproxydhcp_bak
+cmd:dir="/tmp/import_validation_node_role_info_setupproxydhcp_bak"; rm -rf $dir; if [ -d ${dir}".bak" ];then mv ${dir}".bak" $dir; fi
 end
 
 start:import_validation_node_role_info_setupipforward
 label:others,xcat_inventory
 descrsetupipforwardtion:This case is used to test node validation function of xcat-inventory import yaml and json file. To test "role_info.setupipforward" attribute
-cmd:mkdir -p /tmp/import_validation_node_role_info_setupipforward_bak
+cmd:dir="/tmp/import_validation_node_role_info_setupipforward_bak";if [ -e "${dir}" ];then mv ${dir} ${dir}".bak"; fi; mkdir -p $dir
 check:rc==0
 cmd:lsdef bogusnode > /dev/null 2>&1;if [[ $? -eq 0 ]]; then lsdef bogusnode -z >/tmp/import_validation_node_role_info_setupipforward_bak/bogusnode.stanza ;rmdef bogusnode;fi
 check:rc==0
@@ -2625,13 +2625,13 @@ cmd:if [[ -e /tmp/import_validation_node_role_info_setupipforward_bak/bogusnode.
 check:rc==0
 cmd:if [[ -e /tmp/import_validation_node_role_info_setupipforward_bak/bogusgroup.stanza ]]; then cat /tmp/import_validation_node_role_info_setupipforward_bak/bogusgroup.stanza |mkdef -z -f;fi
 check:rc==0
-cmd:rm -rf /tmp/import_validation_node_role_info_setupipforward_bak
+cmd:dir="/tmp/import_validation_node_role_info_setupipforward_bak"; rm -rf $dir; if [ -d ${dir}".bak" ];then mv ${dir}".bak" $dir; fi
 end
 
 start:import_validation_node_role_info_setupconserver
 label:others,xcat_inventory
 descrsetupnfstion:This case is used to test node validation function of xcat-inventory import yaml and json file. To test "role_info.setupconserver" attribute
-cmd:mkdir -p /tmp/import_validation_node_role_info_setupconserver_bak
+cmd:dir="/tmp/import_validation_node_role_info_setupconserver_bak";if [ -e "${dir}" ];then mv ${dir} ${dir}".bak"; fi; mkdir -p $dir
 check:rc==0
 cmd:lsdef bogusnode > /dev/null 2>&1;if [[ $? -eq 0 ]]; then lsdef bogusnode -z >/tmp/import_validation_node_role_info_setupconserver_bak/bogusnode.stanza ;rmdef bogusnode;fi
 check:rc==0
@@ -2653,7 +2653,7 @@ cmd:if [[ -e /tmp/import_validation_node_role_info_setupconserver_bak/bogusnode.
 check:rc==0
 cmd:if [[ -e /tmp/import_validation_node_role_info_setupconserver_bak/bogusgroup.stanza ]]; then cat /tmp/import_validation_node_role_info_setupconserver_bak/bogusgroup.stanza |mkdef -z -f;fi
 check:rc==0
-cmd:rm -rf /tmp/import_validation_node_role_info_setupconserver_bak
+cmd:dir="/tmp/import_validation_node_role_info_setupconserver_bak"; rm -rf $dir; if [ -d ${dir}".bak" ];then mv ${dir}".bak" $dir; fi
 end
 
 
@@ -2661,7 +2661,7 @@ end
 start:import_validation_node_role_info_setupnfs
 label:others,xcat_inventory
 descrsetupconservertion:This case is used to test node validation function of xcat-inventory import yaml and json file. To test "role_info.setupnfs" attribute
-cmd:mkdir -p /tmp/import_validation_node_role_info_setupnfs_bak
+cmd:dir="/tmp/import_validation_node_role_info_setupnfs_bak";if [ -e "${dir}" ];then mv ${dir} ${dir}".bak"; fi; mkdir -p $dir
 check:rc==0
 cmd:lsdef bogusnode > /dev/null 2>&1;if [[ $? -eq 0 ]]; then lsdef bogusnode -z >/tmp/import_validation_node_role_info_setupnfs_bak/bogusnode.stanza ;rmdef bogusnode;fi
 check:rc==0
@@ -2681,6 +2681,6 @@ cmd:if [[ -e /tmp/import_validation_node_role_info_setupnfs_bak/bogusnode.stanza
 check:rc==0
 cmd:if [[ -e /tmp/import_validation_node_role_info_setupnfs_bak/bogusgroup.stanza ]]; then cat /tmp/import_validation_node_role_info_setupnfs_bak/bogusgroup.stanza |mkdef -z -f;fi
 check:rc==0
-cmd:rm -rf /tmp/import_validation_node_role_info_setupnfs_bak
+cmd:dir="/tmp/import_validation_node_role_info_setupnfs_bak"; rm -rf $dir; if [ -d ${dir}".bak" ];then mv ${dir}".bak" $dir; fi
 end
 
