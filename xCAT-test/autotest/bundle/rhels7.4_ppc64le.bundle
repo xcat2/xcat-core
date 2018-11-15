@@ -357,10 +357,6 @@ rmimage_diskless
 updatenode_diskful_syncfiles_failing
 xdcp_nonroot_user
 xdsh_permission_denied
-packimage_m_cpio_c_gzip
-packimage_m_cpio_c_xz
-packimage_m_tar_c_gzip
-packimage_m_tar_c_xz
 packimage_m_invalid_archive_method
 packimage_m_invalid_compress_method
 confignetwork_vlan_false
@@ -368,6 +364,12 @@ confignetwork__bridge_false
 nodeset_shell
 nodeset_cmdline
 nodeset_runimg
+packimage_m_cpio_c_gzip
+packimage_m_cpio_c_xz
+packimage_m_tar_c_gzip
+packimage_m_tar_c_xz
+runcmdinstaller_command
+get_xcat_postscripts_loginfo
 reg_linux_statelite_installation_flat
 SN_setup_case
 reg_linux_diskfull_installation_hierarchy
