@@ -64,14 +64,10 @@ if [ "$VERBOSE" = "1" -o "$VERBOSE" = "yes" ]; then
 fi
 
 # this is needed only when we are transitioning the yum over to frs
-# YUMREPOURL1="http://xcat.org/yum"
-# YUMREPOURL2="http://xcat.org/files/yum"
 if [ "$FRSYUM" != 0 ]; then
 	YUMDIR="$FRS/repos"
-	# YUMREPOURL="$YUMREPOURL2"
 else
 	YUMDIR=htdocs
-	# YUMREPOURL="$YUMREPOURL1"
 fi
 
 cd `dirname $0`
@@ -133,18 +129,6 @@ if [ "$OSNAME" != "AIX" ]; then
 
 	# Modify xcat-dep.repo files to point to the correct place
 	echo "===> Modifying the xcat-dep.repo files to point to the correct location..."
-	# 10/01/2015 - vkhu
-	# The URLs have been updated in GSA, this section is not needed at the moment
-	#
-	#if [ "$FRSYUM" != 0 ]; then
-	#	newurl="$YUMREPOURL2"
-	#	oldurl="$YUMREPOURL1"
-	#else
-	#	newurl="$YUMREPOURL1"
-	#	oldurl="$YUMREPOURL2"
-	#fi
-	#
-	#sed -i -e "s|=$oldurl|=$newurl|g" `find . -name "xcat-dep.repo" `
 fi
 
 if [ "$OSNAME" == "AIX" ]; then
