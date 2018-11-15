@@ -25,7 +25,7 @@ end
 start:makenetworks_d
 os:Linux
 description:makenetworks_d
-label:others,ci_test,network
+label:others,network
 cmd:makenetworks -d > /tmp/mynetworksstanzas
 check:rc==0
 cmd:echo -ne "auto-testnetworks:\n objtype=network\n gateway=1.2.3.0\n mask=255.255.255.0\n net=1.2.3.1\n" >> /tmp/mynetworksstanzas
@@ -40,7 +40,7 @@ end
 
 start:makenetworks_d_V
 description:display,verbose
-label:others,network
+label:others,ci_test,network
 cmd:makenetworks
 check:rc==0
 cmd:makenetworks -d -V
