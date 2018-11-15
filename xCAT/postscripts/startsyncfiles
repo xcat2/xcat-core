@@ -42,7 +42,7 @@ while read LINE;do
         RET=${RET%<*}
         [ "$RET" != "0" ] && RETCODE=1
     fi
-done < <(openssl s_client -tls1 -connect $MASTER_IP:$XCATDPORT -ign_eof -quiet <<<$REQUEST)
+done < <(openssl s_client -no_ssl3 -no_ssl2 -connect $MASTER_IP:$XCATDPORT -ign_eof -quiet <<<$REQUEST)
 
 rm -rf $RESPFILE
 exit $RETCODE
