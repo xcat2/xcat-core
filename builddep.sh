@@ -49,6 +49,12 @@ if [ ! -d $GSA ]; then
 	exit 1
 fi
 
+REQPKG="rpm-sign"
+if [ `rpm -q $REQPKG >> /dev/null; echo $?` != 0 ]; then
+	echo "ERROR: $REQPKG is required to successfully create the xcat-deps package. Install and rerun."
+	exit 1
+fi
+
 # set grep to quiet by default
 GREP="grep -q"
 if [ "$VERBOSE" = "1" -o "$VERBOSE" = "yes" ]; then
