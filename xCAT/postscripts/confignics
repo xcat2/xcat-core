@@ -81,6 +81,10 @@ function findnetwork(){
         eval str_temp=\$NETWORKS_LINE$num_i
         str_net=`echo $str_temp | awk -F'net=' '{print $2}' | awk -F'|' '{print $1}'`
         str_mask=`echo $str_temp | awk -F'mask=' '{print $2}' | awk -F'|' '{print $1}' | sed 's:^/::'`
+        if [ ! $str_mask ]; then
+            num_i=$((num_i+1))
+            continue
+        fi
         echo $str_net | grep ':' > /dev/null
         if [ $? -ne 0 ];then
             if [ $flag_v6 -eq 0 ];then
@@ -107,8 +111,7 @@ function findnetwork(){
         fi
         num_i=$((num_i+1))
     done
-
-    echo "Error: Can not find the corresponding network defination for ip address: $str_ip ."
+    echo "Error: Can not find the corresponding network defination for ip address: $str_ip . Check networks table netname/net/mask."
     error_code=1
 }
 
@@ -339,7 +342,6 @@ do
             error_code=1
             continue
         fi
-
         str_network=$(checknetwork ${array_temp[0]})
         echo "$str_network" | grep -i 'error' > /dev/null
         if [ $? -eq 0 ];then
@@ -347,7 +349,6 @@ do
             echo "confignics on $NODE: $str_network"
             continue
         fi
-
         if [ "$str_nic_type" = "ethernet" ];then
              logger -t $log_label -p local4.info "confignics: call 'configeth $key ${array_temp[0]} $str_network'"
              echo "confignics on $NODE: call 'configeth $key ${array_temp[0]} $str_network'"
