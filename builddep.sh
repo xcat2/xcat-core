@@ -19,6 +19,14 @@
 #                       of the FRS area.
 #       VERBOSE=1     - Set to 1 to see more VERBOSE output
 
+# This script should only be run on RPM based machines 
+# This test is not foolproof, but at least tries to detect
+if [ `/bin/rpm -q -f /bin/rpm >/dev/null 2>&1; echo $?` != 0 ]; then
+	echo "ERROR: This script should only be executed on a RPM based Operation System."
+	exit 1
+fi
+
+exit 0    
 # you can change this if you need to
 USER=xcat
 TARGET_MACHINE=xcat.org
