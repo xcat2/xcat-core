@@ -26,7 +26,6 @@ if [ `/bin/rpm -q -f /bin/rpm >/dev/null 2>&1; echo $?` != 0 ]; then
 	exit 1
 fi
 
-exit 0    
 # you can change this if you need to
 USER=xcat
 TARGET_MACHINE=xcat.org
@@ -57,11 +56,15 @@ if [ ! -d $GSA ]; then
 	exit 1
 fi
 
-REQPKG="rpm-sign"
-if [ `rpm -q $REQPKG >> /dev/null; echo $?` != 0 ]; then
-	echo "ERROR: $REQPKG is required to successfully create the xcat-deps package. Install and rerun."
-	exit 1
-fi
+REQPKG=("rpm-sign" "createrepo")
+for pkg in ${REQPKG[*]}; do
+	if [ `rpm -q $pkg >> /dev/null; echo $?` != 0 ]; then
+		echo "ERROR: $pkg is required to successfully create the xcat-deps package. Install and rerun."
+		exit 1
+	else
+		echo "Checking for package=$pkg ..."
+	fi
+done
 
 # set grep to quiet by default
 GREP="grep -q"
