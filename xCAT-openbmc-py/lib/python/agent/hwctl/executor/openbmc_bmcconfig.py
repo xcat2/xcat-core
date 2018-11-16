@@ -379,7 +379,7 @@ rmdir \"/tmp/$userid\" \n")
         except (SelfServerException, SelfClientException) as e:
             self.callback.error(e.message, node)
 
-        self.callback.warn("%s: Make sure to update 'bmcpassword' node attribute or 'passwd' table with the new BMC password." % node)
+        self.callback.info("%s: BMC password changed. Update 'bmcpasswd' for the node or the 'passwd' table with the new password." % node)
 
     def _set_apis_values(self, key, value, **kw):
         node = kw['node']
@@ -487,7 +487,7 @@ rmdir \"/tmp/$userid\" \n")
 
         try:
             # Display Zero Config information in case IP setting fails or set IP is not accessible
-            self.callback.info('%s: Setting BMC IP configuration... Zero Config IP: %s' % (node, zeroconf))
+            self.callback.info('%s: Setting BMC IP configuration... [Zero Config IP: %s]' % (node, zeroconf))
             obmc.set_netinfo(nic, ip, prefix, gateway)
             sleep( 5 )
             nic_netinfo = obmc.get_nic_netinfo(nic)
@@ -506,7 +506,7 @@ rmdir \"/tmp/$userid\" \n")
                 set_success = True
 
         if not set_success:
-            return self.callback.error('Setting BMC IP configuration failed. Zero Config IP: %s' % zeroconf, node)
+            return self.callback.error('Setting BMC IP configuration failed. [Zero Config IP: %s]' % zeroconf, node)
 
         try:
             if origin_type == 'DHCP':
