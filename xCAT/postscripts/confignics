@@ -111,7 +111,7 @@ function findnetwork(){
         fi
         num_i=$((num_i+1))
     done
-    echo "Error: Can not find the corresponding network defination for ip address: $str_ip . Check networks table netname/net/mask."
+    echo "Error: Can not find a valid network defination for ip address: $str_ip , make sure netname,net and mask are correct in networks table."
     error_code=1
 }
 
