@@ -24,3 +24,13 @@ Developers
 
 Developers and prospective contributors are encouraged to read the `Developers Guide <http://xcat-docs.readthedocs.io/en/latest/developers/>`_
 In particular the `GitHub <http://xcat-docs.readthedocs.io/en/latest/developers/github/>`_ related subsection.
+
+<!-- Global site tag (gtag.js) - Google Analytics -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=UA-129336035-1"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'UA-129336035-1');
+</script>
