@@ -1708,7 +1708,6 @@ sub process_request
     else
     {
         my @nsrnoutput = split /\n/, `ip -4 route`;
-        splice @nsrnoutput, 0, 2;
         foreach (@nsrnoutput) {    #scan netstat
             my @parts = split /\s+/;
 	    my ($subnetip, $subnetcidr) = split('/', $parts[0]);
