@@ -15,7 +15,7 @@ check:output =~ 8898
 check:rc==0
 cmd:if [[ "__GETNODEATTR($$CN,arch)__" = "ppc64le" ]]; then arch=ppc64; else arch=__GETNODEATTR($$CN,arch)__;fi; mknb $arch 
 check:rc==0
-cmd:/opt/xcat/share/xcat/tools/autotest/testcase/httpport/check_wget_files.sh /tftpboot/pxelinux.cfg/p/
+cmd:/opt/xcat/share/xcat/tools/autotest/testcase/httpport/check_wget_files.sh /tftpboot/pxelinux.cfg/p/ 8898
 check:rc==0
 cmd:/opt/xcat/share/xcat/tools/autotest/testcase/httpport/change_http_port.sh 8898 80
 cmd:netstat -nlp|grep  -E "apache2|httpd"
