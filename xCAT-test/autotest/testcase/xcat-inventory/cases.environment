@@ -112,7 +112,7 @@ check:rc==0
 cmd:xcat-inventory export  -t osimage -o test.environments.osimage -f /tmp/export/test.environments.osimage.yaml --format yaml
 check:rc==0
 check:output=~The inventory data has been dumped to /tmp/export/test.environments.osimage.yaml
-cmd:diff -y  /opt/xcat/share/xcat/tools/autotest/testcase/xcat-inventory/templates/environment/test.environments.osimage.update.yaml /tmp/export/test.environments.osimage.yaml --ignore-blank-lines  -I "^#"
+cmd:#! /bin/bash diff -y  /opt/xcat/share/xcat/tools/autotest/testcase/xcat-inventory/templates/environment/test.environments.osimage.update.yaml /tmp/export/test.environments.osimage.yaml --ignore-blank-lines  -I "^#" -I "schema_version" 
 check:rc==0
 cmd:rmdef -t osimage -o test.environments.osimage
 check:rc==0
@@ -131,7 +131,7 @@ cmd:diff -y /tmp/export/test.environments.osimage.json.stanza /opt/xcat/share/xc
 check:rc==0
 cmd:xcat-inventory export  -t osimage -o test.environments.osimage -f /tmp/export/test.environments.osimage.json
 check:rc==0
-cmd:diff -y  /opt/xcat/share/xcat/tools/autotest/testcase/xcat-inventory/templates/environment/test.environments.osimage.update.json /tmp/export/test.environments.osimage.json --ignore-blank-lines  -I "^#"
+cmd:#! /bin/bash diff -y  /opt/xcat/share/xcat/tools/autotest/testcase/xcat-inventory/templates/environment/test.environments.osimage.update.json /tmp/export/test.environments.osimage.json --ignore-blank-lines  -I "^#" -I "schema_version" 
 check:rc==0
 cmd:dir="/tmp/export"; rm -rf $dir; if [ -d ${dir}".bak" ];then mv ${dir}".bak" $dir; fi
 cmd: rmdef -t osimage -o test.environments.osimage
