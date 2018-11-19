@@ -1,0 +1,29 @@
+start:http_port_change
+description:Add test cases for bug fix 2629, change http port and then generate genesis (mknb). 
+label:others
+cmd:netstat -nlp|grep  -E "apache2|httpd"
+check:output =~ 80
+cmd:lsdef -t site  -i httpport -c |awk -F"=" '{print $2}'
+cmd:/opt/xcat/share/xcat/tools/autotest/testcase/httpport/change_http_port.sh 80 8898
+cmd:netstat -nlp|grep  -E "apache2|httpd"
+check:output =~ 8898
+check:rc==0
+cmd:chdef -t site httpport=8898
+check:rc==0
+cmd:lsdef -t site  -i httpport -c
+check:output =~ 8898
+check:rc==0
+cmd:if [[ "__GETNODEATTR($$CN,arch)__" = "ppc64le" ]]; then arch=ppc64; else arch=__GETNODEATTR($$CN,arch)__;fi; mknb $arch 
+check:rc==0
+cmd:/opt/xcat/share/xcat/tools/autotest/testcase/httpport/check_wget_files.sh /tftpboot/pxelinux.cfg/p/
+check:rc==0
+cmd:/opt/xcat/share/xcat/tools/autotest/testcase/httpport/change_http_port.sh 8898 80
+cmd:netstat -nlp|grep  -E "apache2|httpd"
+check:output =~ 80 
+check:rc==0
+cmd:chdef -t site httpport=80
+check:rc==0
+cmd:lsdef -t site  -i httpport -c
+check:output =~ 80 
+check:rc==0
+end
