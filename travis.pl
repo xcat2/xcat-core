@@ -318,7 +318,6 @@ sub build_xcat_core{
 # Return code:
 #--------------------------------------------------------
 sub install_xcat{
-
     my @cmds = ("cd ./../../xcat-core && sudo ./mklocalrepo.sh",
                "sudo chmod 777 /etc/apt/sources.list",
                "sudo echo \"deb [arch=amd64] http://xcat.org/files/xcat/repos/apt/devel/xcat-dep trusty main\" >> /etc/apt/sources.list",
@@ -339,7 +338,8 @@ sub install_xcat{
         }
     }
 
-    my $cmd = "sudo apt-get install xcat --force-yes";
+    my $cmd = "sudo apt-get install xcat --all";
+    #my $cmd = "sudo apt-get install xcat --allow-unauthenticated --allow-remove-essential --allow-change-held-packages --allow-downgrades";
     @output = runcmd("$cmd");
     #print ">>>>>Dumper the output of '$cmd'\n";
     #print Dumper \@output;
