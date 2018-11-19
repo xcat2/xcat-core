@@ -9,7 +9,7 @@ fi
 port=`awk -F' ' '/^[Ll]isten / {print $2}' $config`
 echo "The original httpd port is $port in $config"
 
-echo "start to change httpd listen port to 8898"
+echo "start to change httpd listen port to $2"
 sed -i  "s/^Listen $1/Listen $2/g" $config
 if [ -f "/etc/apache2/sites-enabled/000-default.conf" ]; then
     sed -i "s/VirtualHost \*:$1/VirtualHost \*:$2/g" /etc/apache2/sites-enabled/000-default.conf
