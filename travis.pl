@@ -339,7 +339,7 @@ sub install_xcat{
         }
     }
 
-    my $cmd = "sudo apt-get install xcat --force-yes";
+    my $cmd = "sudo apt-get install --allow-unauthenticated --allow-remove-essential --allow-change-held-packages --allow-downgrades xcat";
     @output = runcmd("$cmd");
     #print ">>>>>Dumper the output of '$cmd'\n";
     #print Dumper \@output;
