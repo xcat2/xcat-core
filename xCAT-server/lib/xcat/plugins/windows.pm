@@ -822,13 +822,13 @@ sub copycd
     if ($::XCATSITEVALS{osimagerequired}) {
         my ($nohaveimages, $errstr) = xCAT::SvrUtils->update_tables_with_templates($distname, $arch, $path, $osdistroname, checkonly => 1);
         if ($nohaveimages) {
-            $callback->({ error => "No Templates found to support $distname($arch)", errorcode => 2 });
+            $callback->({ error => ["No Templates found to support $distname($arch)"], errorcode => [2] });
             return;
         }
     }
 
     $callback->(
-        { data => "Copying media to $path" });
+        { data => ["Copying media to $path"] });
     my $omask = umask 0022;
     if (-l $path)
     {
@@ -852,7 +852,7 @@ sub copycd
     my $numFiles = `find . -print | wc -l`;
     my $child = open($kid, "|-");
     unless (defined $child) {
-        $callback->({ error => "Media copy operation fork failure" });
+        $callback->({ error => ["Media copy operation fork failure"] });
         return;
     }
     if ($child) {
@@ -866,7 +866,7 @@ sub copycd
     } else {
         my $c = "nice -n 20 cpio -vdump $path";
         my $k2 = open(PIPE, "$c 2>&1 |") ||
-          $callback->({ error => "Media copy operation fork failure" });
+          $callback->({ error => ["Media copy operation fork failure"] });
         push @cpiopid, $k2;
         my $copied = 0;
         my ($percent, $fout);
@@ -874,7 +874,7 @@ sub copycd
             next if /^cpio:/;
             $percent = $copied / $numFiles;
             $fout = sprintf "%0.2f%%", $percent * 100;
-            $callback->({ sinfo => "$fout" });
+            $callback->({ sinfo => ["$fout"] });
             ++$copied;
         }
         exit;
@@ -905,20 +905,20 @@ sub copycd
 
     if ($rc != 0)
     {
-        $callback->({ error => "Media copy operation failed, status $rc" });
+        $callback->({ error => ["Media copy operation failed, status $rc"] });
     }
     else
     {
-        $callback->({ data => "Media copy operation successful" });
+        $callback->({ data => ["Media copy operation successful"] });
         my @ret = xCAT::SvrUtils->update_osdistro_table($distname, $arch, $path, $osdistroname);
         if ($ret[0] != 0) {
-            $callback->({ data => "Error when updating the osdistro tables: " . $ret[1] });
+            $callback->({ data => ["Error when updating the osdistro tables: " . $ret[1]] });
         }
 
         unless ($noosimage) {
             my @ret = xCAT::SvrUtils->update_tables_with_templates($distname, $arch, $path, $osdistroname);
             if ($ret[0] != 0) {
-                $callback->({ data => "Error when updating the osimage tables: " . $ret[1] });
+                $callback->({ data => ["Error when updating the osimage tables: " . $ret[1]] });
             }
         }
     }

@@ -507,7 +507,7 @@ sub process_request {
     }
     unless (@rnodes) {
         if ($usage{ $::YABOOT_request->{command}->[0] }) {
-            $::YABOOT_callback->({ data => $usage{ $::YABOOT_request->{command}->[0] } });
+            $::YABOOT_callback->({ data => [$usage{ $::YABOOT_request->{command}->[0] }] });
         }
         return;
     }

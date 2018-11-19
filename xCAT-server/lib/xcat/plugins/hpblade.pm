@@ -328,14 +328,14 @@ sub preprocess_request {
 
     my $usage_string = xCAT::Usage->parseCommand($command, @exargs);
     if ($usage_string) {
-        $callback->({ data => $usage_string });
+        $callback->({ data => [$usage_string] });
         $request = {};
         return;
     }
 
     if (!$noderange) {
         $usage_string = xCAT::Usage->getUsage($command);
-        $callback->({ data => $usage_string });
+        $callback->({ data => [$usage_string] });
         $request = {};
         return;
     }
@@ -343,7 +343,7 @@ sub preprocess_request {
     # require SOAP::Lite for hpoa.pm so we can do it dynamically
     my $soapsupport = eval { require SOAP::Lite; };
     unless ($soapsupport) {    #Still no SOAP::Lite module
-        $callback->({ error => "SOAP::Lite perl module missing.  Install perl-SOAP-Lite before running HP blade commands.", errorcode => [42] });
+        $callback->({ error => ["SOAP::Lite perl module missing.  Install perl-SOAP-Lite before running HP blade commands."], errorcode => [42] });
         return [];
     }
     require xCAT::hpoa;
@@ -631,7 +631,7 @@ sub process_request {
     # require SOAP::Lite for hpoa.pm so we can do it dynamically
     my $soapsupport = eval { require SOAP::Lite; };
     unless ($soapsupport) {    #Still no SOAP::Lite module
-        $callback->({ error => "SOAP::Lite perl module missing.  Install perl-SOAP-Lite before running HP blade commands.", errorcode => [42] });
+        $callback->({ error => ["SOAP::Lite perl module missing.  Install perl-SOAP-Lite before running HP blade commands."], errorcode => [42] });
         return [];
     }
     require xCAT::hpoa;
@@ -661,7 +661,7 @@ sub process_request {
             if (!defined($level)) {
                 my $dep = build_depend($noderange, \@exargs);
                 if (ref($dep) ne 'ARRAY') {
-                    $callback->({ data => [$dep], errorcode => 1 });
+                    $callback->({ data => [$dep], errorcode => [1] });
                     return;
                 }
                 if (scalar(%{ @$dep[0] })) {

@@ -157,7 +157,7 @@ sub copydata {
     my $filename = basename($file);
     my $output = `$file`;
     if ($inspection) {
-        $callback->({ data => "file output: $output" });
+        $callback->({ data => ["file output: $output"] });
         return;
     }
     foreach my $line (split /[\r\n]+/, $output) {
@@ -183,16 +183,16 @@ sub copydata {
 
     #check if file exists
     if ( (-e "$defaultpath/$filename") && ($nooverwrite)){
-        $callback->({ data => "$defaultpath/$filename is already exists, will not overwrite" });
+        $callback->({ data => ["$defaultpath/$filename is already exists, will not overwrite"] });
     } else {
-        $callback->({ data => "Copying media to $defaultpath" });
+        $callback->({ data => ["Copying media to $defaultpath"] });
         mkpath ("$defaultpath");
         system("cp $file $defaultpath");
-        $callback->({ data => "Media copy operation successful" });
+        $callback->({ data => ["Media copy operation successful"] });
     }
 
     if ($noosimage) {
-        $callback->({ data => "Option noosimage is specified, will not create osimage definition" });
+        $callback->({ data => ["Option noosimage is specified, will not create osimage definition"] });
         return;
     }
 
@@ -211,7 +211,7 @@ sub copydata {
     my $imgdir = $litab->getAttribs({ 'imagename' => $imagename }, 'pkgdir');
 
     if ($::VERBOSE) {
-        $callback->({ data => "creating image $imagename with osarch=$arch, osvers=$distname" });
+        $callback->({ data => ["creating image $imagename with osarch=$arch, osvers=$distname"] });
     }
 
     my %values;
@@ -227,7 +227,7 @@ sub copydata {
     # set a default package list
     $litab->setAttribs({ 'imagename' => $imagename }, { 'pkgdir' => $pkgdir });
     if ($::VERBOSE) {
-        $callback->({ data => "setting pkgdir=$pkgdir for image $imagename" });
+        $callback->({ data => ["setting pkgdir=$pkgdir for image $imagename"] });
     }
 
     #Need to update osdistro table?

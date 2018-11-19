@@ -101,21 +101,21 @@ sub process_request {
     my $tftpdir = xCAT::TableUtils->getTftpDir();
     my $arch    = $request->{arg}->[0];
     if (!$arch) {
-        $callback->({ error => "Need to specify architecture (x86, x86_64 or ppc64)" }, { errorcode => [1] });
+        $callback->({ error => ["Need to specify architecture (x86, x86_64 or ppc64)"] }, { errorcode => [1] });
         return;
     } elsif ($arch eq "ppc64le" or $arch eq "ppc64el") {
-        $callback->({ data => "The arch:$arch is not supported at present, use \"ppc64\" instead" });
+        $callback->({ data => ["The arch:$arch is not supported at present, use \"ppc64\" instead"] });
         $arch = 'ppc64';
         $request->{arg}->[0] = $arch;
     }
 
     unless (-d "$::XCATROOT/share/xcat/netboot/$arch" or -d "$::XCATROOT/share/xcat/netboot/genesis/$arch") {
-        $callback->({ error => "Unable to find directory $::XCATROOT/share/xcat/netboot/$arch or $::XCATROOT/share/xcat/netboot/genesis/$arch", errorcode => [1] });
+        $callback->({ error => ["Unable to find directory $::XCATROOT/share/xcat/netboot/$arch or $::XCATROOT/share/xcat/netboot/genesis/$arch"], errorcode => [1] });
         return;
     }
     my $configfileonly = $request->{arg}->[1];
     if ($configfileonly and $configfileonly ne "-c" and $configfileonly ne "--configfileonly") {
-        $callback->({ error => "The option $configfileonly is not supported", errorcode => [1] });
+        $callback->({ error => ["The option $configfileonly is not supported"], errorcode => [1] });
         return;
     } elsif ($configfileonly) {
         goto CREAT_CONF_FILE;

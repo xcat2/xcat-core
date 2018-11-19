@@ -1699,8 +1699,8 @@ sub get_ipmitool_version {
     my $cmd         = "$IPMIXCAT -V";
     my $output      = xCAT::Utils->runcmd($cmd, -1);
     if ($::RUNCMD_RC != 0) {
-        $callback->({ error => "Running ipmitool command failed. Error Code: $::RUNCMD_RC",
-                errorcode => 1 });
+        $callback->({ error => ["Running ipmitool command failed. Error Code: $::RUNCMD_RC"],
+                errorcode => [1] });
         return -1;
     }
     $$version_ptr = (split(/ /, $output))[2];
@@ -1889,7 +1889,7 @@ sub do_firmware_update {
             $nodelist_table->close();
         }
         xCAT::MsgUtils->message("S", $node.": ".$message);
-        $callback->({ error => "$node: $message", errorcode => 1 });
+        $callback->({ error => ["$node: $message"], errorcode => [1] });
         exit -1;
     };
 
@@ -1904,16 +1904,16 @@ sub do_firmware_update {
             $nodelist_table->close();
         }
         xCAT::MsgUtils->message("S", $node.": ".$message);
-        $callback->({ data => "$node: $message" });
+        $callback->({ data => ["$node: $message"] });
         exit 0;
     };
 
 
     # only 1.8.15 or above support hpm update for firestone machines.
     if (calc_ipmitool_version($ipmitool_ver) < calc_ipmitool_version("1.8.15")) {
-        $callback->({ error => "IPMITool $ipmitool_ver do not support firmware update for " .
-                  "firestone machines, please setup IPMITool 1.8.15 or above.",
-                errorcode => 1 });
+        $callback->({ error => ["IPMITool $ipmitool_ver do not support firmware update for " .
+                  "firestone machines, please setup IPMITool 1.8.15 or above."],
+                errorcode => [1] });
         exit -1;
     }
 
@@ -2446,8 +2446,8 @@ sub rflash {
                 # An unexpected flag was passed, but it could be a directory name. Display error only if not -d option
                 unless ($directory_flag) {
                     my $node =  $sessdata->{node};
-                    $callback->({ data => "$node: Error: The option $opt is not supported or invalid update file specified",
-                        errorcode => 1 });
+                    $callback->({ data => ["$node: Error: The option $opt is not supported or invalid update file specified"],
+                        errorcode => [1] });
                     return;
                 }
             }
@@ -2473,7 +2473,7 @@ sub rflash {
                     $msg = $msg . "\n";
                 }
             }
-            $callback->({ data => $msg });
+            $callback->({ data => [$msg] });
             return;
         }
         return do_firmware_update($sessdata);
@@ -2547,8 +2547,8 @@ sub do_rflash_process {
                 $recover_image = xCAT::Utils->full_path($recover_image, $::cwd);
             }
             unless(-x "/usr/bin/tftp") {
-                $callback->({ error => "Could not find executable file /usr/bin/tftp, please setup tftp client.",
-                        errorcode => 1 });
+                $callback->({ error => ["Could not find executable file /usr/bin/tftp, please setup tftp client."],
+                        errorcode => [1]});
                 exit(1);
             }
             my $bmcip     = $_[0];
@@ -2559,17 +2559,17 @@ sub do_rflash_process {
                     # Time out running tftp command. One possible reason is BMC not in "brick protection" mode
                     $output .= " BMC might not be in 'Brick protection' state";
                 }
-                $callback->({ error => "Running tftp command \'$cmd\' failed. Error Code: $::RUNCMD_RC. Output: $output.",
-                        errorcode => 1 });
+                $callback->({ error => ["Running tftp command \'$cmd\' failed. Error Code: $::RUNCMD_RC. Output: $output."],
+                        errorcode => [1] });
                 exit(1);
             }
             # Sometimes tftp command retrun error message but without nonzero error code
             if($output) {
-                $callback->({ error => "Running tftp command \'$cmd\' failed. Output: $output",
-                        errorcode => 1 });
+                $callback->({ error => ["Running tftp command \'$cmd\' failed. Output: $output"],
+                        errorcode => [1] });
                 exit(1);
             }
-            $callback->({ data => "$node: Successfully updated recovery image. BMC is restarting and will not be reachable for 5-10 minutes."});
+            $callback->({ data => ["$node: Successfully updated recovery image. BMC is restarting and will not be reachable for 5-10 minutes."]});
             exit(0);
         }
         donode($node, @_);
@@ -8296,7 +8296,7 @@ sub preprocess_request {
 
     my $usage_string = xCAT::Usage->parseCommand($command, @exargs);
     if ($usage_string) {
-        $callback->({ data => $usage_string });
+        $callback->({ data => [$usage_string] });
         $request = {};
         return;
     }
@@ -8420,7 +8420,7 @@ sub preprocess_request {
     }
     if (!$realnoderange) {
         $usage_string = xCAT::Usage->getUsage($command);
-        $callback->({ data => $usage_string });
+        $callback->({ data => [$usage_string] });
         $request = {};
         return;
     }
@@ -8627,7 +8627,7 @@ sub scan {
         }
     }
 
-    $callback->({ data => \@displaymsg });
+    $callback->({ data => [\@displaymsg] });
 
     unless ($update || $write) {
         return;
@@ -8638,7 +8638,7 @@ sub scan {
     my $mictab = xCAT::Table->new('mic');
     my $nhmtab = xCAT::Table->new('nodehm');
     if (!$nltab || !$mictab || !$nhmtab) {
-        $callback->({ error => ["Open database table failed."], errorcode => 1 });
+        $callback->({ error => ["Open database table failed."], errorcode => [1] });
         return;
     }
 
@@ -8715,8 +8715,8 @@ sub hpm_data_parse {
             }
         }
         if ($size != 0) {
-            $callback->({ error => "Parse hpm file error.",
-                    errorcode => 1 });
+            $callback->({ error => ["Parse hpm file error."],
+                    errorcode => [1] });
             return -1;
         }
         return 0;
@@ -8731,13 +8731,13 @@ sub hpm_data_parse {
         $hpm_file_name = xCAT::Utils->full_path($hpm_file_name, $::cwd);
     }
     unless (-f $hpm_file_name) {
-        $callback->({ error => "File $hpm_file_name can not be found.",
-                errorcode => 1 });
+        $callback->({ error => ["File $hpm_file_name can not be found."],
+                errorcode => [1] });
         return -1;
     }
     unless (open($hpm_filefd, "<", $hpm_file_name)) {
-        $callback->({ error => "Open file $hpm_file_name failed.",
-                errorcode => 1 });
+        $callback->({ error => ["Open file $hpm_file_name failed."],
+                errorcode => [1] });
         return -1;
     }
     binmode($hpm_filefd);
@@ -8799,14 +8799,14 @@ sub hpm_data_parse {
 
     # We suppose component 2 and component 4 must exists in the HPM file
     if (!exists($hpm_data_hash{2}) || !exists($hpm_data_hash{4})) {
-        $callback->({ error => "Parse hpm file error, component 2 and component 4 do not exist",
-                errorcode => 1 });
+        $callback->({ error => ["Parse hpm file error, component 2 and component 4 do not exist"],
+                errorcode => [1] });
         return -1;
     }
     if (!exists($hpm_data_hash{deviceID}) || !exists($hpm_data_hash{manufactureID})
         || !exists($hpm_data_hash{productID})) {
-        $callback->({ error => "Parse hpm file error",
-                errorcode => 1 });
+        $callback->({ error => ["Parse hpm file error"],
+                errorcode => [1] });
         return -1;
     }
 
@@ -8822,15 +8822,15 @@ sub hpm_action_version {
     my $version = $hpm_data_hash{1}{action_version};
     my $ver = sprintf("%3d.%02x.%d", $version->[0], $version->[1],
         $version->[5]*0x1000000+$version->[4]*0x10000+$version->[3]*0x100+$version->[2]);
-    $callback->({ data => "HPM firmware version for BOOT component:$ver" });
+    $callback->({ data => ["HPM firmware version for BOOT component:$ver"] });
     $version = $hpm_data_hash{2}{action_version};
     $ver = sprintf("%3d.%02x.%d", $version->[0], $version->[1],
         $version->[5]*0x1000000+$version->[4]*0x10000+$version->[3]*0x100+$version->[2]);
-    $callback->({ data => "HPM firmware version for APP  component:$ver" });
+    $callback->({ data => ["HPM firmware version for APP  component:$ver"] });
     $version = $hpm_data_hash{4}{action_version};
     $ver = sprintf("%3d.%02x.%d", $version->[0], $version->[1],
         $version->[5]*0x1000000+$version->[4]*0x10000+$version->[3]*0x100+$version->[2]);
-    $callback->({ data => "HPM firmware version for BIOS component:$ver" });
+    $callback->({ data => ["HPM firmware version for BIOS component:$ver"] });
 }
 
 
@@ -8946,22 +8946,22 @@ sub process_request {
     if ($request->{command}->[0] eq "rflash") {
         my %args_hash;
         if (!defined($extrargs)) {
-            $callback->({ error => "No option or hpm file is provided.",
-                    errorcode => 1 });
+            $callback->({ error => ["No option or hpm file is provided."],
+                    errorcode => [1] });
             return;
         }
         foreach my $opt (@$extrargs) {
             if ($opt =~ /^(-c|--check)$/i) {
                 if (exists($args_hash{check})) {
-                    $callback->({ error => "Error command: Multiple opption $opt is given.",
-                            errorcode => 1 });
+                    $callback->({ error => ["Error command: Multiple opption $opt is given."],
+                            errorcode => [1] });
                     return;
                 }
                 $args_hash{check} = 1;
             } elsif ($opt =~ /.*\.hpm$/i) {
                 if (exists($args_hash{hpm})) {
-                    $callback->({ error => "Error command: Multiple hpm file is given.",
-                            errorcode => 1 });
+                    $callback->({ error => ["Error command: Multiple hpm file is given."],
+                            errorcode => [1] });
                     return;
                 }
                 $args_hash{hpm} = $opt;

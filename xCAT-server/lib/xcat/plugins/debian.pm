@@ -330,7 +330,7 @@ sub copycd
         $callback->(
             {
                 info =>
-"DISTNAME:$distname\n" . "ARCH:$debarch\n" . "DISCNO:$discno\n"
+["DISTNAME:$distname\n" . "ARCH:$debarch\n" . "DISCNO:$discno\n"]
             }
         );
         return;
@@ -338,7 +338,7 @@ sub copycd
     %{$request} = ();    #clear request we've got it.
 
     $callback->(
-        { data => "Copying media to $installroot/$distname/$arch" });
+        { data => ["Copying media to $installroot/$distname/$arch"] });
     my $omask = umask 0022;
     mkpath("$installroot/$distname/$arch");
     mkpath("$installroot/$distname/$arch/install/netboot") if ($isnetinst);
@@ -358,7 +358,7 @@ sub copycd
     my $numFiles = `find . -print | wc -l`;
     my $child = open($kid, "|-");
     unless (defined $child) {
-        $callback->({ error => "Media copy operation fork failure" });
+        $callback->({ error => ["Media copy operation fork failure"] });
         return;
     }
     if ($child) {
@@ -372,7 +372,7 @@ sub copycd
     } else {
         my $c = "nice -n 20 cpio -vdump $installroot/$distname/$arch";
         my $k2 = open(PIPE, "$c 2>&1 |") ||
-          $callback->({ error => "Media copy operation fork failure" });
+          $callback->({ error => ["Media copy operation fork failure"] });
         push @cpiopid, $k2;
         my $copied = 0;
         my ($percent, $fout);
@@ -380,7 +380,7 @@ sub copycd
             next if /^cpio:/;
             $percent = $copied / $numFiles;
             $fout = sprintf "%0.2f%%", $percent * 100;
-            $callback->({ sinfo => "$fout" });
+            $callback->({ sinfo => ["$fout"] });
             ++$copied;
         }
         exit;
@@ -414,7 +414,7 @@ sub copycd
 
     if ($rc != 0)
     {
-        $callback->({ error => "Media copy operation failed, status $rc" });
+        $callback->({ error => ["Media copy operation failed, status $rc"] });
     }
     else
     {
@@ -422,18 +422,18 @@ sub copycd
         my $temppath    = "$installroot/$distname/$arch";
         my @ret = xCAT::SvrUtils->update_osdistro_table($distname, $arch, $temppath, $osdistroname);
         if ($ret[0] != 0) {
-            $callback->({ data => "Error when updating the osdistro tables: " . $ret[1] });
+            $callback->({ data => ["Error when updating the osdistro tables: " . $ret[1]] });
         }
 
-        $callback->({ data => "Media copy operation successful" });
+        $callback->({ data => ["Media copy operation successful"] });
         unless ($noosimage) {
             my @ret = xCAT::SvrUtils->update_tables_with_templates($distname, $arch, $temppath, $osdistroname);
             if ($ret[0] != 0) {
-                $callback->({ data => "Error when updating the osimage tables: " . $ret[1] });
+                $callback->({ data => ["Error when updating the osimage tables: " . $ret[1]] });
             }
             my @ret = xCAT::SvrUtils->update_tables_with_diskless_image($distname, $arch, undef, "netboot", $temppath, $osdistroname);
             if ($ret[0] != 0) {
-                $callback->({ data => "Error when updating the osimage tables for stateless: " . $ret[1] });
+                $callback->({ data => ["Error when updating the osimage tables for stateless: " . $ret[1]] });
             }
         }
     }

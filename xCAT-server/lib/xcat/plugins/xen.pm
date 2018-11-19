@@ -608,14 +608,14 @@ sub preprocess_request {
 
     my $usage_string = xCAT::Usage->parseCommand($command, @exargs);
     if ($usage_string) {
-        $callback->({ data => $usage_string });
+        $callback->({ data => [$usage_string] });
         $request = {};
         return;
     }
 
     if (!$noderange) {
         $usage_string = xCAT::Usage->getUsage($command);
-        $callback->({ data => $usage_string });
+        $callback->({ data => [$usage_string] });
         $request = {};
         return;
     }
@@ -685,7 +685,7 @@ sub process_request {
     my $request        = shift;
     my $callback       = shift;
     unless ($libvirtsupport) {    #Still no Sys::Virt module
-        $callback->({ error => "Sys::Virt perl module missing, unable to fulfill Xen plugin requirements", errorcode => [42] });
+        $callback->({ error => ["Sys::Virt perl module missing, unable to fulfill Xen plugin requirements"], errorcode => [42] });
         return [];
     }
     require Sys::Virt::Domain;
@@ -759,7 +759,7 @@ sub process_request {
         };
 
         if ($@) {
-            $callback->({ error => $@, errorcode => [1] });
+            $callback->({ error => [$@], errorcode => [1] });
         }
         return;
     }
@@ -795,15 +795,15 @@ sub process_request {
     if (keys %orphans) {
         if ($command eq "rpower" and (grep /^on$/, @exargs or grep /^boot$/, @exargs)) {
             unless (adopt(\%orphans, \%hyphash)) {
-                $callback->({ error => "Can't find " . join(",", keys %orphans), errorcode => [1] });
+                $callback->({ error => ["Can't find " . join(",", keys %orphans)], errorcode => [1] });
                 return 1;
             }
 
         } elsif ($command eq "rmigrate") {
-            $callback->({ error => "Can't find " . join(",", keys %orphans), errorcode => [1] });
+            $callback->({ error => ["Can't find " . join(",", keys %orphans)], errorcode => [1] });
             return;
         } else {
-            $callback->({ error => "Can't find " . join(",", keys %orphans), errorcode => [1] });
+            $callback->({ error => ["Can't find " . join(",", keys %orphans)], errorcode => [1] });
             return;
         }
     }
@@ -874,7 +874,7 @@ sub process_request {
                             $newnodestatus{$newstat} = $nsh->{$_};
                         }
                     } else {
-                        $callback->({ data => $msg });
+                        $callback->({ data => [$msg] });
                     }
                 }
             }

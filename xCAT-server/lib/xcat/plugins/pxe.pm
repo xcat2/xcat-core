@@ -418,7 +418,7 @@ sub process_request {
 
     unless (@rnodes) {
         if ($usage{ $::PXE_request->{command}->[0] }) {
-            $::PXE_callback->({ data => $usage{ $::PXE_request->{command}->[0] } });
+            $::PXE_callback->({ data => [$usage{ $::PXE_request->{command}->[0] }] });
         }
         return;
     }

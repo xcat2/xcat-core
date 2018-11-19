@@ -2116,7 +2116,7 @@ sub copycd
         {
             $callback->(
                 {
-                    error => "Requested distribution architecture $arch, but media is $darch"
+                    error => ["Requested distribution architecture $arch, but media is $darch"]
                 }
             );
             return;
@@ -2132,7 +2132,7 @@ sub copycd
         }
         $callback->(
             {
-                info => "$retinfo"
+                info => ["$retinfo"]
             }
         );
         return;
@@ -2151,12 +2151,12 @@ sub copycd
     if ($::XCATSITEVALS{osimagerequired}) {
         my ($nohaveimages, $errstr) = xCAT::SvrUtils->update_tables_with_templates($distname, $arch, $path, $osdistroname, checkonly => 1);
         if ($nohaveimages) {
-            $callback->({ error => "No Templates found to support $distname($arch)", errorcode => 2 });
+            $callback->({ error => ["No Templates found to support $distname($arch)"], errorcode => [2] });
             return;
         }
     }
     if ($::XCATSITEVALS{onlysupportarchs} and $::XCATSITEVALS{onlysupportarchs} ne $arch) {
-        $callback->({ error => "$arch is unsupported by this system", errorcode => 2 });
+        $callback->({ error => ["$arch is unsupported by this system"], errorcode => [2] });
         return;
     }
 
@@ -2211,7 +2211,7 @@ sub copycd
 
 
 
-    $callback->({ data => "Copying media to $path" });
+    $callback->({ data => ["Copying media to $path"] });
     my $omask = umask 0022;
     if (-l $path)
     {
@@ -2238,7 +2238,7 @@ sub copycd
     my $child = open($KID, "|-");
     unless (defined $child)
     {
-        $callback->({ error => "Media copy operation fork failure" });
+        $callback->({ error => ["Media copy operation fork failure"] });
         return;
     }
     if ($child)
@@ -2297,20 +2297,20 @@ sub copycd
 
     if ($rc != 0)
     {
-        $callback->({ error => "Media copy operation failed, status $rc" });
+        $callback->({ error => ["Media copy operation failed, status $rc"] });
     }
     else
     {
-        $callback->({ data => "Media copy operation successful" });
+        $callback->({ data => ["Media copy operation successful"] });
         my @ret = xCAT::SvrUtils->update_osdistro_table($distname, $arch, $path, $osdistroname);
         if ($ret[0] != 0) {
-            $callback->({ data => "Error when updating the osdistro tables: " . $ret[1] });
+            $callback->({ data => ["Error when updating the osdistro tables: " . $ret[1]] });
         }
 
         unless ($noosimage) {
             my @ret = xCAT::SvrUtils->update_tables_with_templates($distname, $arch, $path, $osdistroname);
             if ($ret[0] != 0) {
-                $callback->({ data => "Error when updating the osimage tables: " . $ret[1] });
+                $callback->({ data => ["Error when updating the osimage tables: " . $ret[1]] });
             }
 
             #hiding the messages about this not being found, since it may be intentional

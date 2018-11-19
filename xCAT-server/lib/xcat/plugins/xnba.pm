@@ -576,7 +576,7 @@ sub process_request {
     }
     unless (@rnodes) {
         if ($usage{ $::XNBA_request->{command}->[0] }) {
-            $::XNBA_callback->({ data => $usage{ $::XNBA_request->{command}->[0] } });
+            $::XNBA_callback->({ data => [$usage{ $::XNBA_request->{command}->[0] }] });
         }
         return;
     }

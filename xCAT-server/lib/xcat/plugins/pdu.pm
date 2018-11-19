@@ -215,7 +215,7 @@ sub process_request
                     return powerpdu(\@allpdunodes, $subcmd, $callback);
                 } else {
                     my $pdunode = join (",", @allpdunodes);
-                    $callback->({ errorcode => [1],error => "The option $subcmd is not support for pdu node(s) $pdunode."});
+                    $callback->({ errorcode => [1],error => ["The option $subcmd is not support for pdu node(s) $pdunode."]});
                     &pdu_usage($callback, $command);
                 }
             }
@@ -229,13 +229,13 @@ sub process_request
         }elsif ($subcmd =~ /ip|gateway|netmask|hostname/) {
             process_netcfg($request, $subreq, $subcmd, $callback);
         } else {
-            $callback->({ errorcode => [1],error => "The input $command $subcmd is not support for pdu"});
+            $callback->({ errorcode => [1],error => ["The input $command $subcmd is not support for pdu"]});
             &pdu_usage($callback, $command);
         }
     }elsif($command eq "pdudiscover") {
         process_pdudiscover($request, $subreq, $callback);
     }elsif($command eq "nodeset") {
-        $callback->({ errorcode => [1],error => "The input $command is not support for pdu"});
+        $callback->({ errorcode => [1],error => ["The input $command is not support for pdu"]});
         &pdu_usage($callback, $command);
     }else{
         #reserve for other new command in future
@@ -298,7 +298,7 @@ sub powerpdu {
 
         my $session = connectTopdu($node,$callback);
         if (!$session) {
-            $callback->({ errorcode => [1],error => "Couldn't connect to $node"});
+            $callback->({ errorcode => [1],error => ["Couldn't connect to $node"]});
             next;
         }
         my $count = $pduhash->{$node}->[0]->{outlet};
@@ -323,7 +323,7 @@ sub powerpdu {
         {
             outletpower($session, $outlet, $value);
             if ($session->{ErrorStr}) {
-                $callback->({ errorcode => [1],error => "Failed to get outlet status for $node"});
+                $callback->({ errorcode => [1],error => ["Failed to get outlet status for $node"]});
             } else {
                 my $output = " outlet $outlet is $statstr";
                 xCAT::SvrUtils::sendmsg($output, $callback, $node, %allerrornodes);
@@ -358,7 +358,7 @@ sub powerpduoutlet {
     foreach my $node (@$noderange) {
         # the pdu attribute needs to be set
         if(! $nodepdu->{$node}->[0]->{pdu}){
-            $callback->({ error => "$node: without pdu attribute"});
+            $callback->({ error => ["$node: without pdu attribute"]});
             next;
         }
 
@@ -366,12 +366,12 @@ sub powerpduoutlet {
         foreach my $pdu_outlet (@pdus) {
             my ($pdu, $outlet) = split /:/, $pdu_outlet;
             if ($pduhash->{$pdu}->[0]->{pdutype} eq 'crpdu') {
-                $callback->({ error => "$node: This command doesn't supports CONSTELLATION PDU with pdutype=crpdu for $pdu"});
+                $callback->({ error => ["$node: This command doesn't supports CONSTELLATION PDU with pdutype=crpdu for $pdu"]});
                 next;
             }
             my $session = connectTopdu($pdu,$callback);
             if (!$session) {
-                $callback->({ errorcode => [1],error => "$node: Couldn't connect to $pdu"});
+                $callback->({ errorcode => [1],error => ["$node: Couldn't connect to $pdu"]});
                 next;
             }
             my $count = $pduhash->{$pdu}->[0]->{outlet};
@@ -379,7 +379,7 @@ sub powerpduoutlet {
                 $count = fill_outletCount($session, $pdu, $callback);
             }
             if ($outlet > $count ) {
-                $callback->({ error => "$node: $pdu outlet number $outlet is invalid"});
+                $callback->({ error => ["$node: $pdu outlet number $outlet is invalid"]});
                 next;
             }
             my $cmd;
@@ -398,11 +398,11 @@ sub powerpduoutlet {
                 $statstr = "reset";
                 outletpower($session, $outlet, $value);
             } else {
-                $callback->({ error => "$subcmd is not support"});
+                $callback->({ error => ["$subcmd is not support"]});
             }
 
             if ($session->{ErrorStr}) {
-                $callback->({ errorcode => [1],error => "$node: $pdu outlet $outlet has error = $session->{ErrorStr}"});
+                $callback->({ errorcode => [1],error => ["$node: $pdu outlet $outlet has error = $session->{ErrorStr}"]});
             } else {
                 $output = "$pdu operational state for outlet $outlet is $statstr";
                 xCAT::SvrUtils::sendmsg($output, $callback, $node, %allerrornodes);
@@ -498,7 +498,7 @@ sub powerstat {
         }
         my $session = connectTopdu($pdu,$callback);
         if (!$session) {
-            $callback->({ errorcode => [1],error => "Couldn't connect to $pdu"});
+            $callback->({ errorcode => [1],error => ["Couldn't connect to $pdu"]});
             next;
         }
         my $count = $pduhash->{$pdu}->[0]->{outlet};
@@ -907,7 +907,7 @@ sub process_pdudiscover {
     if (!GetOptions( \%opt,
                     qw(h|help V|verbose x z w r range=s setup))) {
         my $usage_string = xCAT::Usage->getUsage($request->{command}->[0]);
-        $callback->({ data => $usage_string });
+        $callback->({ data => [$usage_string] });
         return;
 
     }
@@ -986,7 +986,7 @@ sub rinv_for_irpdu
 
     my $session = connectTopdu($pdu,$callback);
     if (!$session) {
-        $callback->({ errorcode => [1],error => "Couldn't connect to $pdu"});
+        $callback->({ errorcode => [1],error => ["Couldn't connect to $pdu"]});
         next;
     }
     #ibmPduSoftwareVersion
@@ -1055,7 +1055,7 @@ sub showMonitorData {
         unless ($pduhash->{$pdu}->[0]->{pdutype} eq "crpdu") {
             my $session = connectTopdu($pdu,$callback);
             if (!$session) {
-                $callback->({ errorcode => [1],error => "Couldn't connect to $pdu"});
+                $callback->({ errorcode => [1],error => ["Couldn't connect to $pdu"]});
                 next;
             }
             my $count = $pduhash->{$pdu}->[0]->{outlet};

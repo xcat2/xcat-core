@@ -65,7 +65,7 @@ sub process_request {
         'w|nonoverwrite' => \$nonoverwrite,
     );
     if ($help) {
-        $callback->({ info => "copycds [{-p|--path}=path] [{-n|--name|--osver}=distroname] [{-a|--arch}=architecture] [-i|--inspection] [{-o|--noosimage}] [{-w|--nonoverwrite}] 1st.iso [2nd.iso ...]." });
+        $callback->({ info => ["copycds [{-p|--path}=path] [{-n|--name|--osver}=distroname] [{-a|--arch}=architecture] [-i|--inspection] [{-o|--noosimage}] [{-w|--nonoverwrite}] 1st.iso [2nd.iso ...]."] });
         return;
     }
     if ($arch and $arch =~ /i.86/) {
@@ -73,7 +73,7 @@ sub process_request {
     }
     my @args = @ARGV;    #copy ARGV
     unless ($#args >= 0) {
-        $callback->({ error => "copycds needs at least one full path to ISO currently.", errorcode => [1] });
+        $callback->({ error => ["copycds needs at least one full path to ISO currently."], errorcode => [1] });
         return;
     }
 
@@ -117,7 +117,7 @@ sub process_request {
             }
             if (grep /$file: data/, @filestat) {
                 if ($xcatdebugmode) {
-                    $callback->({ info => "run copydata for data file = $file" });
+                    $callback->({ info => ["run copydata for data file = $file"] });
                 }
                 my $newreq = dclone($request);
                 $newreq->{command} = ['copydata']; #Note the singular, it's different
@@ -146,7 +146,7 @@ sub process_request {
         elsif (-r $file and -f $file)    # Assume ISO file
         { $mntopts .= " -o ro,loop"; }
         else {
-            $callback->({ error => "The management server was unable to find/read $file. Ensure that file exists on the server at the specified location.", errorcode => [1] });
+            $callback->({ error => ["The management server was unable to find/read $file. Ensure that file exists on the server at the specified location."], errorcode => [1] });
             return;
         }
 
@@ -160,7 +160,7 @@ sub process_request {
 
 
         if (system("mount $mntopts '$file' $mntpath")) {
-            eval { $callback->({ error => "copycds was unable to mount $file to $mntpath.", errorcode => [1] }) };
+            eval { $callback->({ error => ["copycds was unable to mount $file to $mntpath."], errorcode => [1] }) };
             chdir("/");
             system("umount  $mntpath");
             return;
@@ -177,7 +177,7 @@ sub process_request {
                     $path=Cwd::realpath($path);
                 }
                 unless((substr($path,0,length("/install/")) eq "/install/") or ($path eq "/install")){
-                    $callback->({ warning => "copycds: the specified path \"$path\" is not a subdirectory under /install. Make sure this path is configured for httpd/apache, otherwise, the provisioning with this iso will fail!" });
+                    $callback->({ warning => ["copycds: the specified path \"$path\" is not a subdirectory under /install. Make sure this path is configured for httpd/apache, otherwise, the provisioning with this iso will fail!"] });
                 }
                 push @{ $newreq->{arg} }, ("-p", $path);
             }
@@ -189,12 +189,12 @@ sub process_request {
             if ($inspection)
             {
                 push @{ $newreq->{arg} }, ("-i");
-                $callback->({ info => "OS Image:" . $_ });
+                $callback->({ info => ["OS Image:" . $_] });
             }
 
             if ($distname) {
                 if ($inspection) {
-                    $callback->({ warning => "copycds: option --inspection specified, argument specified with option --name is ignored" });
+                    $callback->({ warning => ["copycds: option --inspection specified, argument specified with option --name is ignored"] });
                 }
                 else {
                     push @{ $newreq->{arg} }, ("-n", $distname);
@@ -202,7 +202,7 @@ sub process_request {
             }
             if ($arch) {
                 if ($inspection) {
-                    $callback->({ warning => "copycds: option --inspection specified, argument specified with option --arch is ignored" });
+                    $callback->({ warning => ["copycds: option --inspection specified, argument specified with option --arch is ignored"] });
                 }
                 else {
                     push @{ $newreq->{arg} }, ("-a", $arch);

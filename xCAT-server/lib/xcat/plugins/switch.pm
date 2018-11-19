@@ -48,13 +48,13 @@ sub preprocess_request {
         }
         my $usage_string = xCAT::Usage->parseCommand($command, @exargs);
         if ($usage_string) {
-            $callback->({ data => $usage_string });
+            $callback->({ data => [$usage_string] });
             $request = {};
             return;
         }
         if (!$noderange) {
             $usage_string = xCAT::Usage->getUsage($command);
-            $callback->({ data => $usage_string });
+            $callback->({ data => [$usage_string] });
             $request = {};
             return;
         }
@@ -116,15 +116,15 @@ sub preprocess_request {
         my $check   = undef;
         my $help    = undef;
         unless (GetOptions('h|help' => \$help, 'V|verbose' => \$verbose, 'c|check' => \$check)) {
-            $callback->({ error => ["Parse args failed"], errorcode => 1 });
+            $callback->({ error => ["Parse args failed"], errorcode => [1] });
             return;
         }
         if (@ARGV) {
-            $callback->({ error => [ "Option @ARGV not supported.\n" . xCAT::Usage->getUsage($command) ], errorcode => 1 });
+            $callback->({ error => [ "Option @ARGV not supported.\n" . xCAT::Usage->getUsage($command) ], errorcode => [1] });
             return;
         }
         if (defined($help)) {
-            $callback->({ data => xCAT::Usage->getUsage($command) });
+            $callback->({ data => [xCAT::Usage->getUsage($command)] });
             return;
         }
         if (defined($verbose)) {
@@ -138,12 +138,12 @@ sub preprocess_request {
         if ($switchestab) {
             $swhash = $switchestab->getAllNodeAttribs(['switch'], 1);
             if (!defined($swhash)) {
-                $callback->({ error => ["Get attributes from table 'switches' failed"], errorcode => 1 });
+                $callback->({ error => ["Get attributes from table 'switches' failed"], errorcode => [1] });
                 return;
             }
         }
         else {
-            $callback->({ error => ["Open table 'switches' failed"], errorcode => 1 });
+            $callback->({ error => ["Open table 'switches' failed"], errorcode => [1] });
             return;
         }
         if (defined($noderange)) {
@@ -152,12 +152,12 @@ sub preprocess_request {
             if ($nodetypetab) {
                 $nthash = $nodetypetab->getNodesAttribs($noderange, ['nodetype']);
                 if (!defined($nthash)) {
-                    $callback->({ error => ["Get attributes from table 'nodetype' failed"], errorcode => 1 });
+                    $callback->({ error => ["Get attributes from table 'nodetype' failed"], errorcode => [1] });
                     return;
                 }
             }
             else {
-                $callback->({ error => ["Open table 'nodetype' failed"], errorcode => 1 });
+                $callback->({ error => ["Open table 'nodetype' failed"], errorcode => [1] });
                 return;
             }
             my @switchnode = ();
@@ -175,10 +175,10 @@ sub preprocess_request {
                 }
             }
             if (@errornode) {
-                $callback->({ error => [ "The nodetype is not 'switch' for nodes: " . join(",", @errornode) ], errorcode => 1 });
+                $callback->({ error => [ "The nodetype is not 'switch' for nodes: " . join(",", @errornode) ], errorcode => [1] });
             }
             if (@errswnode) {
-                $callback->({ error => [ "No switch configuration info find for " . join(",", @errswnode) ], errorcode => 1 });
+                $callback->({ error => [ "No switch configuration info find for " . join(",", @errswnode) ], errorcode => [1] });
             }
             if (@switchnode) {
                 @{ $request->{node} } = @switchnode;
@@ -188,7 +188,7 @@ sub preprocess_request {
         }
         else {
             if (!scalar(keys %$swhash)) {
-                $callback->({ error => ["No switch configuration info get from 'switches' table"], errorcode => 1 });
+                $callback->({ error => ["No switch configuration info get from 'switches' table"], errorcode => [1] });
                 return;
             }
         }
@@ -208,7 +208,7 @@ sub process_request {
     if ($req->{command}->[0] eq 'findmac') {
         $mac = $req->{arg}->[0];
         $node = $macmap->find_mac($mac, 0);
-        $cb->({ node => [ { name => $node, data => $mac } ] });
+        $cb->({ node => [ { name => $node, data => [$mac] } ] });
         return;
     } elsif ($req->{command}->[0] eq 'rspconfig') {
         return process_switch_config($req, $cb, $doreq);
@@ -234,13 +234,13 @@ sub process_request {
             my %failed_switches = ();
             my $header = sprintf($format, "Switch", "Port(MTU)", "MAC address(VLAN)", "Node");
             if (!defined($req->{opt}->{check}) and $port_name_length) {
-                $cb->({ data => $header });
-                $cb->({ data => "--------------------------------------------------------------------------------------" })
+                $cb->({ data => [$header] });
+                $cb->({ data => ["--------------------------------------------------------------------------------------"] })
             }
             foreach my $switch (keys %$macinfo) {
                 if (defined($macinfo->{$switch}->{ErrorStr})) {
                     if (defined($req->{opt}->{check})) {
-                        $cb->({ node => [ { name => $switch, error => [ $macinfo->{$switch}->{ErrorStr} ], errorcode => 1 } ] });
+                        $cb->({ node => [ { name => $switch, error => [ $macinfo->{$switch}->{ErrorStr} ], errorcode => [1] } ] });
                     }
                     else {
                         $failed_switches{$switch} = "$macinfo->{$switch}->{ErrorStr}";
@@ -285,7 +285,7 @@ sub process_request {
                                 $port_mtu = "$port($mtu)";
                             }
                             my $data = sprintf($format, $switch, $port_mtu, $mac_vlan, $node);
-                            $cb->({ data => $data });
+                            $cb->({ data => [$data] });
                             $ind++;
 
                             #$cb->({node=>[{name=>$switch,data=>$data}]});
@@ -294,10 +294,10 @@ sub process_request {
                 }
             }
             if (!defined($req->{opt}->{check}) and $port_name_length) {
-                $cb->({ data => "--------------------------------------------------------------------------------------" })
+                $cb->({ data => ["--------------------------------------------------------------------------------------"] })
             }
             foreach (keys %failed_switches) {
-                $cb->({ node => [ { name => $_, error => [ $failed_switches{$_} ], errorcode => 1 } ] });
+                $cb->({ node => [ { name => $_, error => [ $failed_switches{$_} ], errorcode => [1] } ] });
             }
         }
         return;

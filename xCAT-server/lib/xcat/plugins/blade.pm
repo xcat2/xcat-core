@@ -4158,7 +4158,7 @@ sub preprocess_request {
     my $usage_string = xCAT::Usage->parseCommand($command, @exargs);
     if ($usage_string) {
         if ($command !~ /renergy|rspconfig/) {
-            $callback->({ data => $usage_string });
+            $callback->({ data => [$usage_string] });
         }
         $request = {};
         return;
@@ -4169,7 +4169,7 @@ sub preprocess_request {
         my (@mpnodes, @nohandle);
         xCAT::Utils->filter_nodes($request, \@mpnodes, undef, undef, \@nohandle);
         if (@nohandle) {
-            $callback->({ data => "Cannot figure out plugin for nodes:@nohandle" });
+            $callback->({ data => ["Cannot figure out plugin for nodes:@nohandle"] });
         }
         if (@mpnodes) {
             $noderange = \@mpnodes;
@@ -4188,7 +4188,7 @@ sub preprocess_request {
                 }
                 $usage_string = ":Error arguments\n";
                 $usage_string .= xCAT::Usage->getUsage($command);
-                $callback->({ data => $usage_string });
+                $callback->({ data => [$usage_string] });
                 $request = {};
                 return;
             }
@@ -4200,14 +4200,14 @@ sub preprocess_request {
         if (!@exargs) {
             $usage_string = "Missing arguments\n";
             $usage_string .= xCAT::Usage->getUsage($command);
-            $callback->({ data => $usage_string });
+            $callback->({ data => [$usage_string] });
             $request = {};
             return;
         }
         my (@mpnodes, @nohandle);
         xCAT::Utils->filter_nodes($request, \@mpnodes, undef, undef, \@nohandle);
         if (@nohandle) {
-            $callback->({ data => "Error: Cannot figure out plugin for nodes:@nohandle" });
+            $callback->({ data => ["Error: Cannot figure out plugin for nodes:@nohandle"] });
         }
         if (@mpnodes) {
             $noderange = \@mpnodes;
@@ -4222,7 +4222,7 @@ sub preprocess_request {
         my (@mpnodes, @nohandle);
         xCAT::Utils->filter_nodes($request, \@mpnodes, undef, undef, \@nohandle);
         if (@nohandle) {
-            $callback->({ data => "Cannot figure out plugin for nodes:@nohandle" });
+            $callback->({ data => ["Cannot figure out plugin for nodes:@nohandle"] });
         }
         if (@mpnodes) {
             $noderange = \@mpnodes;
@@ -4417,7 +4417,7 @@ sub process_request {
             if (!defined($level)) {
                 my $dep = build_depend($noderange, \@exargs);
                 if (ref($dep) ne 'ARRAY') {
-                    $callback->({ data => [$dep], errorcode => 1 });
+                    $callback->({ data => [$dep], errorcode => [1] });
                     return;
                 }
                 if (scalar(%{ @$dep[0] })) {
@@ -4432,7 +4432,7 @@ sub process_request {
     if ($command eq "rspconfig" and grep(/^textid=[^*]/, @exargs)) {
         if (@$noderange > 1) {
             $callback->({ error => ["Single node required when changing textid"],
-                    errorcode => 1 });
+                    errorcode => [1] });
             return;
         }
     }

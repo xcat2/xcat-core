@@ -313,7 +313,7 @@ sub process_request {
 
     unless (@rnodes) {
         if ($usage{ $::VSMPPXE_request->{command}->[0] }) {
-            $::VSMPPXE_callback->({ data => $usage{ $::VSMPPXE_request->{command}->[0] } });
+            $::VSMPPXE_callback->({ data => [$usage{ $::VSMPPXE_request->{command}->[0] }] });
         }
         return;
     }

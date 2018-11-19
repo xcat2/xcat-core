@@ -459,7 +459,7 @@ sub mknetboot
                     $kcmdline = "NFSROOT=$nfssrv:$nfsdir STATEMNT=";
                 }
             } else {
-                $kcmdline = "imgurl=$httpmethod://$imgsrv:$httpport/$rootimgdir/rootimg-statelite.gz STATEMNT=";
+                $kcmdline = "imgurl=$httpmethod://$imgsrv/$rootimgdir/rootimg-statelite.gz STATEMNT=";
             }
 
             # add support for subVars in the value of "statemnt"
@@ -512,10 +512,9 @@ sub mknetboot
         else
         {
             $kcmdline =
-              "imgurl=$httpmethod://$imgsrv:$httpport/$rootimgdir/$compressedrootimg ";
+              "imgurl=$httpmethod://$imgsrv/$rootimgdir/$compressedrootimg ";
         }
         $kcmdline .= "XCAT=$xcatmaster:$xcatdport quiet ";
-        $kcmdline .= " XCATHTTPPORT=$httpport ";
 
         #if site.nodestatus="n", append "nonodestatus" to kcmdline
         #to inform the statelite/stateless node not to update the nodestatus during provision
@@ -1820,7 +1819,7 @@ sub copycd
     if ($::XCATSITEVALS{osimagerequired}) {
         my ($nohaveimages, $errstr) = xCAT::SvrUtils->update_tables_with_templates($distname, $arch, $path, $osdistroname, checkonly => 1);
         if ($nohaveimages) {
-            $callback->({ error => "No Templates found to support $distname($arch)", errorcode => 2 });
+            $callback->({ error => ["No Templates found to support $distname($arch)"], errorcode => [2] });
             return;
         }
     }
@@ -1889,7 +1888,7 @@ sub copycd
     umask $omask;
 
     $callback->(
-        { data => "Copying media to $ospkgpath" });
+        { data => ["Copying media to $ospkgpath"] });
 
     my $rc;
 
@@ -1917,7 +1916,7 @@ sub copycd
     my $numFiles = scalar(@sortedfilelist);
     my $child = open($kid, "|-");
     unless (defined $child) {
-        $callback->({ error => "Media copy operation fork failure" });
+        $callback->({ error => ["Media copy operation fork failure"] });
         return;
     }
     if ($child) {
@@ -1939,7 +1938,7 @@ sub copycd
             next if /^cpio:/;
             $percent = $copied / $numFiles;
             $fout = sprintf "%0.2f%%", $percent * 100;
-            $callback->({ sinfo => "$fout" });
+            $callback->({ sinfo => ["$fout"] });
             ++$copied;
         }
         if ($copied == $numFiles)
@@ -2033,36 +2032,36 @@ sub copycd
 
     if ($rc != 0)
     {
-        $callback->({ error => "Media copy operation failed, status $rc" });
+        $callback->({ error => ["Media copy operation failed, status $rc"] });
     }
     else
     {
-        $callback->({ data => "Media copy operation successful" });
+        $callback->({ data => ["Media copy operation successful"] });
 
         my @ret = xCAT::SvrUtils->update_osdistro_table($distname, $arch, $path, $osdistroname);
         if ($ret[0] != 0) {
-            $callback->({ data => "Error when updating the osdistro tables: " . $ret[1] });
+            $callback->({ data => ["Error when updating the osdistro tables: " . $ret[1]] });
         }
 
         #if --noosimage option is not specified, create the relevant osimage and linuximage entris
         unless ($noosimage) {
             my @ret = xCAT::SvrUtils->update_tables_with_templates($distname, $arch, $path, $osdistroname);
             if ($ret[0] != 0) {
-                $callback->({ data => "Error when updating the osimage tables: " . $ret[1] });
+                $callback->({ data => ["Error when updating the osimage tables: " . $ret[1]] });
             }
 
             my @ret = xCAT::SvrUtils->update_tables_with_mgt_image($distname, $arch, $path, $osdistroname);
             if ($ret[0] != 0) {
-                $callback->({ data => "Error when updating the osimage tables for management node " . $ret[1] });
+                $callback->({ data => ["Error when updating the osimage tables for management node " . $ret[1]] });
             }
 
             my @ret = xCAT::SvrUtils->update_tables_with_diskless_image($distname, $arch, undef, "netboot", $path, $osdistroname);
             if ($ret[0] != 0) {
-                $callback->({ data => "Error when updating the osimage tables for stateless: " . $ret[1] });
+                $callback->({ data => ["Error when updating the osimage tables for stateless: " . $ret[1]] });
             }
             my @ret=xCAT::SvrUtils->update_tables_with_diskless_image($distname, $arch, undef, "statelite",$path,$osdistroname);
             if ($ret[0] != 0) {
-              $callback->({data => "Error when updating the osimage tables for statelite: " . $ret[1]});
+              $callback->({data => ["Error when updating the osimage tables for statelite: " . $ret[1]]});
             }
 
         }
