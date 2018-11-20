@@ -1559,6 +1559,26 @@ function remove_package()
 }
 
 #       $1      -y
+function purge_package_apt()
+{
+	type apt-get >/dev/null 2>&1 || return 255
+	local -a yes=()
+	[[ "$1" = "-y" ]] && yes=("-y") && shift
+	apt-get --allow-unauthenticated purge "${yes[@]}" "$@"
+}
+
+function purge_package_others()
+{
+	remove_package "$@"
+}
+
+#       $1      -y
+function purge_package()
+{
+	function_dispatch "${FUNCNAME}" "$@"
+}
+
+#       $1      -y
 function install_xcat()
 {
 	install_packages "$@" "${GO_XCAT_INSTALL_LIST[@]}"
@@ -1593,6 +1613,7 @@ function uninstall_xcat()
 {
 	remove_package "$@" "${GO_XCAT_UNINSTALL_LIST[@]}"
 }
+
 
 function kill_xcat()
 {
@@ -1640,6 +1661,16 @@ function trash_xcat()
 	rm -rf /etc/goconserver
 	rm -rf /var/lib/goconserver
 	rm -rf /var/log/goconserver
+
+	return 0
+}
+
+function uninstall_xcat_completely()
+{
+	purge_package -y "${GO_XCAT_UNINSTALL_LIST[@]}"
+
+	kill_xcat
+	trash_xcat
 
 	return 0
 }
@@ -2021,13 +2052,10 @@ case "${GO_XCAT_ACTION}" in
 "away"|"uninstall")
 	# Remove xCAT
 	ask_to_continue "${GO_XCAT_YES[0]}" "xCAT is going to be ${GO_XCAT_ACTION/away/trash}ed."
-	debug_trace uninstall_xcat -y
 
 	case "${GO_XCAT_ACTION}" in
 	"away")
-		# Do extra cleanup
-		debug_trace kill_xcat
-		debug_trace trash_xcat
+		debug_trace uninstall_xcat_completely
 
 		debug_logger <<-EOF
 
@@ -2035,7 +2063,7 @@ case "${GO_XCAT_ACTION}" in
 		EOF
 		;;
 	"uninstall")
-		# Check the return value of `debug_trace uninstall_xcat -y'
+		debug_trace uninstall_xcat -y
 		boo_boo_if_bad "$?"
 
 		debug_logger <<-EOF
