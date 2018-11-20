@@ -271,19 +271,19 @@ sub send_back_comment{
 #--------------------------------------------------------
 sub build_xcat_core{
     my @output;
-    my @cmds = ("gpg --list-keys",
-                "sed -i '/SignWith: /d' $ENV{'PWD'}/build-ubunturepo");
-    foreach my $cmd (@cmds){
-        print "[build_xcat_core] running $cmd\n";
-        @output = runcmd("$cmd");
-        if($::RUNCMD_RC){
-            print "[build_xcat_core] $cmd ....[Failed]\n";
-            send_back_comment("> **BUILD ERROR** : $cmd failed. Please click ``Details`` label in ``Merge pull request`` box for detailed information");
-            return 1;
-        }
-    }
+    #my @cmds = ("gpg --list-keys",
+    #            "sed -i '/SignWith: /d' $ENV{'PWD'}/build-ubunturepo");
+    #foreach my $cmd (@cmds){
+    #    print "[build_xcat_core] running $cmd\n";
+    #    @output = runcmd("$cmd");
+    #    if($::RUNCMD_RC){
+    #        print "[build_xcat_core] $cmd ....[Failed]\n";
+    #        send_back_comment("> **BUILD ERROR** : $cmd failed. Please click ``Details`` label in ``Merge pull request`` box for detailed information");
+    #        return 1;
+    #    }
+    #}
 
-    my $cmd = "sudo ./build-ubunturepo -c UP=0 BUILDALL=1";
+    my $cmd = "sudo ./build-ubunturepo -c UP=0 BUILDALL=1 GPGSIGN=0";
     @output = runcmd("$cmd");
     print ">>>>>Dumper the output of '$cmd'\n";
     print Dumper \@output;
@@ -321,8 +321,8 @@ sub install_xcat{
 
     my @cmds = ("cd ./../../xcat-core && sudo ./mklocalrepo.sh",
                "sudo chmod 777 /etc/apt/sources.list",
-               "sudo echo \"deb [arch=amd64] http://xcat.org/files/xcat/repos/apt/devel/xcat-dep trusty main\" >> /etc/apt/sources.list",
-               "sudo echo \"deb [arch=ppc64el] http://xcat.org/files/xcat/repos/apt/devel/xcat-dep trusty main\" >> /etc/apt/sources.list",
+               "sudo echo \"deb [arch=amd64] http://xcat.org/files/xcat/repos/apt/devel/xcat-dep xenial main\" >> /etc/apt/sources.list",
+               "sudo echo \"deb [arch=ppc64el] http://xcat.org/files/xcat/repos/apt/2.14/xcat-dep xenial main\" >> /etc/apt/sources.list",
                "sudo wget -q -O - \"http://xcat.org/files/xcat/repos/apt/apt.key\" | sudo apt-key add -",
                "sudo apt-get -qq update");
     my @output;
