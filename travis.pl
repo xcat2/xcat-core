@@ -488,7 +488,6 @@ sub run_fast_regression_test{
     @output = runcmd("cat $conf_file");
     print Dumper \@output;
 
-
 #    $cmd = "sudo bash -c '. /etc/profile.d/xcat.sh && xcattest -s \"mn_only-wait_fix\" -l'";
 #    my  @caseslist = runcmd("$cmd");
 #    if($::RUNCMD_RC){
@@ -612,6 +611,13 @@ print Dumper \@perl_vserion;
 my @disk = runcmd("df -h");
 print "Disk information:\n";
 print Dumper \@disk;
+
+runcmd("sudo ip link set docker0 up");
+my @ipinfo = runcmd("ip addr");
+print "Networking information:\n";
+print Dumper \@ipinfo;
+my @hostinfo = runcmd("cat /etc/hosts");
+print Dumper \@hostinfo;
 
 #Start to check the format of pull request
 $last_func_start = timelocal(localtime());
