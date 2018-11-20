@@ -1,5 +1,5 @@
 os: linux
-dist: trusty
+dist: xenial
 sudo: required
 before_install:
 - sudo apt-get install -y git reprepro devscripts debhelper libsoap-lite-perl libdbi-perl quilt openssh-server dpkg looptools genometools software-properties-common
