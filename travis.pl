@@ -321,8 +321,8 @@ sub install_xcat{
 
     my @cmds = ("cd ./../../xcat-core && sudo ./mklocalrepo.sh",
                "sudo chmod 777 /etc/apt/sources.list",
-               "sudo echo \"deb [arch=amd64] http://xcat.org/files/xcat/repos/apt/devel/xcat-dep xenial main\" >> /etc/apt/sources.list",
-               "sudo echo \"deb [arch=ppc64el] http://xcat.org/files/xcat/repos/apt/devel/xcat-dep xenial main\" >> /etc/apt/sources.list",
+               "sudo echo \"deb [arch=amd64] http://xcat.org/files/xcat/repos/apt/devel/xcat-dep trusty main\" >> /etc/apt/sources.list",
+               "sudo echo \"deb [arch=ppc64el] http://xcat.org/files/xcat/repos/apt/devel/xcat-dep trusty main\" >> /etc/apt/sources.list",
                "sudo wget -q -O - \"http://xcat.org/files/xcat/repos/apt/apt.key\" | sudo apt-key add -",
                "sudo apt-get -qq update");
     my @output;
@@ -339,7 +339,7 @@ sub install_xcat{
         }
     }
 
-    my $cmd = "sudo apt-get install xcat --force-yes";
+    my $cmd = "sudo apt-get install xcat --allow-remove-essential --allow-unauthenticated";
     @output = runcmd("$cmd");
     #print ">>>>>Dumper the output of '$cmd'\n";
     #print Dumper \@output;
@@ -448,7 +448,7 @@ sub check_syntax{
 # Return code:
 #--------------------------------------------------------
 sub run_fast_regression_test{
-    my $cmd = "sudo apt-get install xcat-test --force-yes";
+    my $cmd = "sudo apt-get install xcat-test --allow-remove-essential --allow-unauthenticated";
     my @output = runcmd("$cmd");
     if($::RUNCMD_RC){
          print RED "[run_fast_regression_test] $cmd ....[Failed]\n";
