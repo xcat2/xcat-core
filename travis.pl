@@ -339,7 +339,7 @@ sub install_xcat{
         }
     }
 
-    my $cmd = "sudo apt-get install xcat --allow-remove-essential --allow-unauthenticated";
+    my $cmd = "sudo apt-get install -y --allow-remove-essential --allow-unauthenticated perl-xcat xcat xcat-buildkit xcat-client xcat-genesis-scripts-amd64 xcat-genesis-scripts-ppc64 xcat-server conserver-xcat elilo-xcat grub2-xcat ipmitool-xcat syslinux-xcat xcat-genesis-base-amd64 xcat-genesis-base-ppc64 xnba-undi 2>&1";
     @output = runcmd("$cmd");
     #print ">>>>>Dumper the output of '$cmd'\n";
     #print Dumper \@output;
