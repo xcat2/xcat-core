@@ -1782,7 +1782,13 @@ function test_case_000_version()
 	local ver=""
 	local -i ret=0
 
-	list_xcat_packages >/dev/null || return 1
+	# Call function list_xcat_packages to fill up global array
+	# GO_XCAT_CORE_PACKAGE_LIST
+	# And the output will be logged into the debug log.
+	#
+	# Missing command `repoquery' may cause list_xcat_packages fail,
+	# in that case, just skip this test.
+	list_xcat_packages
 
 	while read -r
 	do
@@ -1792,6 +1798,7 @@ function test_case_000_version()
 		(( ret += $? ))
 	done < <(check_package_version "${GO_XCAT_CORE_PACKAGE_LIST[@]}")
 
+	[ "${ret}" -ne "0" ] && echo
 	warn_if_bad "${ret}" "xCAT packages version mismatch"
 
 	return "${ret}"
@@ -2135,6 +2142,8 @@ case "${GO_XCAT_ACTION}" in
 		# xCAT has been installed and so far so good
 		smoke_testing >/dev/null 2>&1
 		RET="$?"
+		[ "${RET}" -ne "0" ] && echo
+		warn_if_bad "${RET}" "xCAT smoke testing failed."
 	fi
 
 	boo_boo_if_bad "${RET}"
