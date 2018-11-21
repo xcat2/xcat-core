@@ -5,7 +5,7 @@ label:mn_only,ci_test,dhcp
 cmd:if [ -f "/etc/dhcp/dhcpd.conf" ];then mv -f /etc/dhcp/dhcpd.conf /etc/dhcp/dhcpd.conf.bak ; elif [ -f "/etc/dhcpd.conf" ]; then mv -f /etc/dhcpd.conf /etc/dhcpd.conf.bak; fi
 cmd:makedhcp -n
 check:rc==0
-cmd:ls /etc/dhcp/dhcpd.conf || ls /etc/dhcpd.conf
+cmd:cat $(ls /etc/dhcp/dhcpd.conf || ls /etc/dhcpd.conf)
 check:rc==0
 cmd:sleep 20
 cmd:ps -e | grep dhcpd
