@@ -9,7 +9,6 @@ use xCAT::MsgUtils;
 use xCAT::FSPpower;
 
 use xCAT::GlobalDef;
-use xCAT_monitoring::monitorctrl;
 
 ##########################################################################
 # Parse the command line for options and operands
@@ -301,6 +300,7 @@ sub powercmd_boot {
         }
     }
 
+    require xCAT_monitoring::monitorctrl;
     xCAT_monitoring::monitorctrl::setNodeStatusAttributes(\%newnodestatus, 1);
     return (\@output);
 }
@@ -423,6 +423,7 @@ sub powercmd {
             }
         }
     }
+    require xCAT_monitoring::monitorctrl;
     xCAT_monitoring::monitorctrl::setNodeStatusAttributes(\%newnodestatus, 1);
     return (\@result);
 }
