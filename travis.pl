@@ -612,12 +612,16 @@ my @disk = runcmd("df -h");
 print "Disk information:\n";
 print Dumper \@disk;
 
-runcmd("sudo ip link set docker0 up");
+# Hacking the netmask. Not sure if we need to recover it after finish xcattest
+# Note: Here has an assumption from Travis VM: only 1 UP Ethernet interface available (CHANGEME if it not as is)
+my @intfinfo = runcmd("ip -o link |grep 'link/ether'|grep 'state UP' |awk -F ':' '{print \$2}'|head -1");
+foreach my $nic (@intfinfo) {
+    print "Hacking the netmask length to 16 if it is 32: $nic\n";
+    runcmd("ip -4 addr show $nic|grep 'inet'|grep -q '/32' && sudo ip addr add \$(hostname -I|awk '{print \$1}')/16 dev $nic");
+}
 my @ipinfo = runcmd("ip addr");
 print "Networking information:\n";
 print Dumper \@ipinfo;
-my @hostinfo = runcmd("cat /etc/hosts");
-print Dumper \@hostinfo;
 
 #Start to check the format of pull request
 $last_func_start = timelocal(localtime());
