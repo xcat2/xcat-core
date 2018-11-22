@@ -4,7 +4,7 @@
             "basic_attributes": {
                 "arch": "OSARCH",
                 "distribution": "OSVERS",
-                "osdistro": "OSARCH-OSVERS",
+                "osdistro": "OSVERS-OSARCH",
                 "osname": "Linux"
             },
             "deprecated": {
