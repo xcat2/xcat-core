@@ -1044,7 +1044,7 @@ function extract_archive()
 		gzip -d -c "${archive}" | tar -t -f - | grep -v "^${repo_id}/"
 		[[ "${PIPESTATUS[0]}" -eq 0 && "${PIPESTATUS[1]}" -eq 0 &&
 			"${PIPESTATUS[2]}" -eq 1 ]]
-		exit_if_bad "$?" "${archive}: bad gzipped tarball"
+		exit_if_bad "$?" "${archive}: bad gzipped tarball" || return 1
 		rm -rf "${install_path}/${repo_id}"
 		gzip -d -c "${archive}" | ( cd "${install_path}" && tar -x -f - )
 		;;
