@@ -60,7 +60,7 @@ class OpenBMCInventoryTask(ParallelNodesCommand):
                 continue
 
             firm_info.append('%s Firmware Product: %s (%s)%s' %
-                              (firm_obj_dict[key].purpose,
+                              (firm_obj_dict[key].purpose.upper(),
                                firm_obj_dict[key].version,
                                firm_obj_dict[key].active,
                                flag))
@@ -70,7 +70,7 @@ class OpenBMCInventoryTask(ParallelNodesCommand):
                 for extended in extendeds:
                     firm_info.append('%s Firmware Product: ' \
                                      '-- additional info: %s' % \
-                                      (firm_obj_dict[key].purpose, extended))
+                                      (firm_obj_dict[key].purpose.upper(), extended))
 
         return firm_info
 
