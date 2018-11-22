@@ -1614,7 +1614,6 @@ function uninstall_xcat()
 	remove_package "$@" "${GO_XCAT_UNINSTALL_LIST[@]}"
 }
 
-
 function kill_xcat()
 {
 	local f=""
