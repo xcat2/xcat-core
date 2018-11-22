@@ -27,7 +27,7 @@ check:rc==0
 check:output=~$$CN: SYSTEM SerialNumber
 cmd: rinv $$CN firm
 check:rc==0
-check:output=~$$CN: Host Firmware
+check:output=~$$CN: HOST Firmware
 check:output=~$$CN: BMC Firmware
 cmd: rinv $$CN cpu
 check:rc==0
@@ -53,13 +53,13 @@ check:rc==0
 check:output=~$$CN: Ps0 Input Voltage:
 cmd: rvitals $$CN wattage
 check:rc==0
-check:output=~$$CN: Total Power:
+check:output=~$$CN: Ps0 Input Power:
 cmd: rvitals $$CN fanspeed
 check:rc==0
 check:output=~$$CN: Fan
 cmd: rvitals $$CN power
 check:rc==0
-check:output=~$$CN: Total Power:
+check:output=~$$CN: Ps0 Input Power:
 cmd: rvitals $$CN leds
 check:rc==0
 check:output=~$$CN: LEDs Front
