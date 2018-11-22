@@ -62,7 +62,7 @@ check:rc==0
 cmd:xdsh $$CN "cd /oldxcat/xcat-dep/sles1`more /etc/*release|grep VERSION_ID|cut -c14`/__GETNODEATTR($$CN,arch)__/;./mklocalrepo.sh"
 check:rc==0
 # Workaround github issue #5503
-cmd:xdsh $$CN "grep -q 11 /etc/SuSE-release && ( sed -i -e 's#gpgcheck=1#gpgcheck=0#' /etc/zypp/repos.d/xcat-core.repo; sed -i -e 's#gpgcheck=1#gpgcheck=0#' /etc/zypp/repos.d/xcat-dep.repo )"
+cmd:xdsh $$CN "grep -q 11 /etc/SuSE-release && ( sed -i -e 's@gpgcheck=1@gpgcheck=0@' /etc/zypp/repos.d/xcat-core.repo; sed -i -e 's@gpgcheck=1@gpgcheck=0@' /etc/zypp/repos.d/xcat-dep.repo )"
 cmd:xdsh $$CN "zypper --gpg-auto-import-keys -n --no-gpg-checks refresh"
 cmd:xdsh $$CN "grep -q 11 /etc/SuSE-release && rpm -e --allmatches gpg-pubkey-ca548a47-5b2c830b"
 cmd:xdsh $$CN "zypper refresh"
@@ -98,7 +98,7 @@ check:rc==0
 cmd:xdsh $$CN "cd /root/xcat-dep/sles1`more /etc/*release|grep VERSION_ID|cut -c14`/__GETNODEATTR($$CN,arch)__/;./mklocalrepo.sh"
 check:rc==0
 # Workaround github issue #5503
-cmd:xdsh $$CN "grep -q 11 /etc/SuSE-release && ( sed -i -e 's#gpgcheck=1#gpgcheck=0#' /etc/zypp/repos.d/xcat-core.repo; sed -i -e 's#gpgcheck=1#gpgcheck=0#' /etc/zypp/repos.d/xcat-dep.repo )"
+cmd:xdsh $$CN "grep -q 11 /etc/SuSE-release && ( sed -i -e 's@gpgcheck=1@gpgcheck=0@' /etc/zypp/repos.d/xcat-core.repo; sed -i -e 's@gpgcheck=1@gpgcheck=0@' /etc/zypp/repos.d/xcat-dep.repo )"
 cmd:xdsh $$CN "zypper --gpg-auto-import-keys -n --no-gpg-checks refresh"
 cmd:xdsh $$CN "grep -q 11 /etc/SuSE-release && rpm -e --allmatches gpg-pubkey-ca548a47-5b2c830b"
 cmd:xdsh $$CN "zypper refresh;zypper -n update --force-resolution '*xCAT*'"
@@ -183,7 +183,7 @@ check:rc==0
 cmd:xdsh $$CN "cd /oldxcat/xcat-dep/sles1`more /etc/*release|grep VERSION_ID|cut -c14`/__GETNODEATTR($$CN,arch)__/;./mklocalrepo.sh"
 check:rc==0
 # Workaround github issue #5503
-cmd:xdsh $$CN "grep -q 11 /etc/SuSE-release && ( sed -i -e 's#gpgcheck=1#gpgcheck=0#' /etc/zypp/repos.d/xcat-core.repo; sed -i -e 's#gpgcheck=1#gpgcheck=0#' /etc/zypp/repos.d/xcat-dep.repo )"
+cmd:xdsh $$CN "grep -q 11 /etc/SuSE-release && ( sed -i -e 's@gpgcheck=1@gpgcheck=0@' /etc/zypp/repos.d/xcat-core.repo; sed -i -e 's@gpgcheck=1@gpgcheck=0@' /etc/zypp/repos.d/xcat-dep.repo )"
 cmd:xdsh $$CN "zypper --gpg-auto-import-keys -n --no-gpg-checks refresh"
 cmd:xdsh $$CN "grep -q 11 /etc/SuSE-release && rpm -e --allmatches gpg-pubkey-ca548a47-5b2c830b"
 cmd:xdsh $$CN "zypper refresh"
