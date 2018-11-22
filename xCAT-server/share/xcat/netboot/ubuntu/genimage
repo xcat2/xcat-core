@@ -1238,7 +1238,7 @@ logger -t \$log_label -p info "Executing init to prepare for netbooting"
 
 #update nodelist.nodestatus to "netbooting"
 if [ \$NODESTATUS != 'n' ]; then
-    logger -t \$log_label -p debug "Sending request to \$XCATMASTER:\$XCATIPORT for changing status to netbooting..."
+    logger -t \$log_label -p info "Sending request to \$XCATMASTER:\$XCATIPORT for changing status to netbooting..."
     /tmp/updateflag \$XCATMASTER \$XCATIPORT "installstatus netbooting"
 fi
 
@@ -1255,7 +1255,7 @@ for i in `cat /proc/cmdline`; do
             MAXTRIES=5
             ITER=0
             while [ ! -r "\$FILENAME" ]; do
-                logger -t \$log_label -p debug "Downloading rootfs image from \$VALUE..."
+                logger -t \$log_label -p info "Downloading rootfs image from \$VALUE..."
                 echo Getting \$VALUE...
                 if ! /usr/bin/wget \$VALUE; then
                     ([ "\$xcatdebugmode" = "1" ] || [ "\$xcatdebugmode" = "2" ]) && logger -t \$log_label -p debug "downloading \$VALUE failed,retrying..."
@@ -1537,7 +1537,7 @@ EOMS
     print $inifile "cp /etc/hostname \$NEWROOT/etc/hostname\n";
     print $inifile "([ \"\$xcatdebugmode\" = \"1\" ] || [ \"\$xcatdebugmode\" = \"2\" ]) && logger -t \$log_label -p debug \"saving \$NEWROOT/etc/resolv.conf\"\n";
     print $inifile "rm -f \$NEWROOT/etc/resolv.conf; cp /etc/resolv.conf \$NEWROOT/etc/resolv.conf\n";
-    print $inifile "logger -t \$log_label -p debug \"Exiting init ...\"\n";
+    print $inifile "logger -t \$log_label -p info \"Exiting init ...\"\n";
     print $inifile "mount --move /dev \$NEWROOT/dev \n";
     print $inifile "mount --move /proc \$NEWROOT/proc \n";
     print $inifile "mount --move /sys  \$NEWROOT/sys \n";
