@@ -14,16 +14,16 @@
 # Short-Description: xCATpost
 # Description: xCAT post boot script
 ### END INIT INFO
-if [ -n "$LOGLABEL" ]; then
-    log_label=$LOGLABEL
-else
-    log_label="xcat"
-fi
+
 # Source function library.
 if [ -x /etc/rc.d/init.d/functions ]; then
   . /etc/rc.d/init.d/functions
 fi
-
+if [ -n "$LOGLABEL" ]; then
+    log_label=$LOGLABEL
+else
+    log_label="xcat.deployment"
+fi
 logger -t $log_label -p local4.info "$0: action is $1"
 case $1 in
 restart)
