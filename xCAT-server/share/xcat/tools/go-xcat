@@ -538,7 +538,7 @@ function check_package_version_rpm()
 		else
 			echo "${ver}"
 		fi
-	done < <(rpm -q --qf '%{version}-%{release}\n' "$@" 2>/dev/null)
+	done < <(LC_ALL="C" rpm -q --qf '%{version}-%{release}\n' "$@" 2>/dev/null)
 	return 0
 }
 
