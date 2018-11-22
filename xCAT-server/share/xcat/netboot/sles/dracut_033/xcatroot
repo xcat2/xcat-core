@@ -27,12 +27,13 @@ logger $SYSLOGHOST -t $log_label -p local4.info "Executing xcatroot to prepare f
 [ "$xcatdebugmode" > "0" ] && logger -t $log_label -p debug "MASTER=$MASTER XCATIPORT=$XCATIPORT"
 
 if [ $NODESTATUS -ne 0 ];then
-[ "$xcatdebugmode" > "0" ] && logger -t $log_label -p debug "nodestatus: netbooting,reporting..."
-/tmp/updateflag $MASTER $XCATIPORT "installstatus netbooting"
+    logger $SYSLOGHOST -t $log_label -p local4.info "Sending request to $MASTER:$XCATIPORT for changing status to netbooting..."
+    /tmp/updateflag $MASTER $XCATIPORT "installstatus netbooting"
 fi
 
 if [ ! -z "$imgurl" ]; then
 	if [ xhttp = x${imgurl%%:*} ]; then
+                logger $SYSLOGHOST -t $log_label -p local4.info "Downloading rootfs image from $imgurl..."
 		NFS=0
 		FILENAME=${imgurl##*/}
 		while [ ! -r "$FILENAME" ]; do
@@ -70,7 +71,7 @@ if [ -r /rootimg.sfs ]; then
   mount --move /ro $NEWROOT/ro
   mount --move /rw $NEWROOT/rw
 elif [ -r /rootimg.cpio.gz ] || [ -r /rootimg.cpio.xz ]; then
-  [ "$xcatdebugmode" > "0" ] && logger -t $log_label -p debug "rootimg downloaded,setting up RAM-root tmpfs...."
+  logger $SYSLOGHOST -t $log_label -p local4.info "Setting up RAM-root tmpfs on downloaded rootimg.cpio.[gz/xz]..."
   echo Setting up RAM-root tmpfs.
   if [ -z $rootlimit ];then
     mount -t tmpfs -o mode=755 rootfs $NEWROOT
@@ -336,7 +337,7 @@ fi
 [ "$xcatdebugmode" > "0" ] && logger -t $log_label -p debug "setting hostname..."
 echo `hostname` > $NEWROOT/etc/hostname
 
-[ "$xcatdebugmode" > "0" ] && logger -t $log_label -p debug "exiting xcatroot..."
+logger $SYSLOGHOST -t $log_label -p debug "Exiting xcatroot..."
 
 # inject new exit_if_exists
 echo 'settle_exit_if_exists="--exit-if-exists=/dev/root"; rm "$job"' > $hookdir/initqueue/xcat.sh
