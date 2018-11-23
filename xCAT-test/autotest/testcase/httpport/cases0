@@ -1,6 +1,6 @@
 start:http_port_change
 description:Add test cases for bug fix 2629, change http port and then generate genesis (mknb). 
-label:others
+label:mn_only,discovery
 cmd:netstat -nlp|grep  -E "apache2|httpd"
 check:output =~ 80
 cmd:lsdef -t site  -i httpport -c |awk -F"=" '{print $2}'
