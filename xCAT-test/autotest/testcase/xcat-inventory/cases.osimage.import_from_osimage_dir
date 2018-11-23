@@ -19,7 +19,7 @@ check:rc==0
 #check whether the osimage definition is created
 cmd: lsdef -t osimage -o test_myimage -z |tee /tmp/export_import_an_osimage_directory/test_myimage.stanza
 check:rc==0
-cmd: diff /tmp/export_import_an_osimage_directory/test_myimage.stanza /opt/xcat/share/xcat/tools/autotest/testcase/xcat-inventory/templates/cluster_invdir/osimage/test_myimage/test_myimage.stanza
+cmd: diff /tmp/export_import_an_osimage_directory/test_myimage.stanza /opt/xcat/share/xcat/tools/autotest/testcase/xcat-inventory/templates/cluster_invdir/osimage/test_myimage/test_myimage.stanza -I "environvar" 
 check: rc==0
 #check whether the customized osimage files are imported
 cmd: diff -r /opt/xcat/share/xcat/tools/autotest/testcase/xcat-inventory/templates/cluster_invdir/osimage/test_myimage/tmp/test_myimage/ /tmp/test_myimage/
@@ -64,9 +64,9 @@ cmd: lsdef -t osimage -o test_myimage -z | tee /tmp/export_import_multiple_osima
 check:rc==0
 cmd: lsdef -t osimage -o test_myimage2 -z | tee /tmp/export_import_multiple_osimages_from_osimage_directory/test_myimage2.stanza
 check:rc==0
-cmd: diff /tmp/export_import_multiple_osimages_from_osimage_directory/test_myimage.stanza /opt/xcat/share/xcat/tools/autotest/testcase/xcat-inventory/templates/cluster_invdir/osimage/test_myimage/test_myimage.stanza
+cmd: diff /tmp/export_import_multiple_osimages_from_osimage_directory/test_myimage.stanza /opt/xcat/share/xcat/tools/autotest/testcase/xcat-inventory/templates/cluster_invdir/osimage/test_myimage/test_myimage.stanza -I "environvar"
 check: rc==0
-cmd: diff /tmp/export_import_multiple_osimages_from_osimage_directory/test_myimage2.stanza /opt/xcat/share/xcat/tools/autotest/testcase/xcat-inventory/templates/cluster_invdir/osimage/test_myimage2/test_myimage2.stanza
+cmd: diff /tmp/export_import_multiple_osimages_from_osimage_directory/test_myimage2.stanza /opt/xcat/share/xcat/tools/autotest/testcase/xcat-inventory/templates/cluster_invdir/osimage/test_myimage2/test_myimage2.stanza -I "environvar"
 check: rc==0
 #check whether the customized osimage files are imported
 cmd: diff -r /opt/xcat/share/xcat/tools/autotest/testcase/xcat-inventory/templates/cluster_invdir/osimage/test_myimage/tmp/test_myimage/ /tmp/test_myimage/
@@ -112,7 +112,7 @@ check:rc==0
 #check whether the osimage definition is created
 cmd: lsdef -t osimage -o test_myimage -z |tee /tmp/export_import_specified_from_osimage_directory/test_myimage.stanza
 check:rc==0
-cmd: diff /tmp/export_import_specified_from_osimage_directory/test_myimage.stanza /opt/xcat/share/xcat/tools/autotest/testcase/xcat-inventory/templates/cluster_invdir/osimage/test_myimage/test_myimage.stanza
+cmd: diff /tmp/export_import_specified_from_osimage_directory/test_myimage.stanza /opt/xcat/share/xcat/tools/autotest/testcase/xcat-inventory/templates/cluster_invdir/osimage/test_myimage/test_myimage.stanza -I "environvar"
 check: rc==0
 #check whether the customized osimage files are imported
 cmd: diff -r /opt/xcat/share/xcat/tools/autotest/testcase/xcat-inventory/templates/cluster_invdir/osimage/test_myimage/tmp/test_myimage/ /tmp/test_myimage/
