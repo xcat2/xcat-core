@@ -83,7 +83,7 @@ do
  done
 done
 rm -rf genesis*
-rm -rf uefi*
+rm -rf elilo* 
 check:rc==0
 cmd:/opt/xcat/share/xcat/tools/autotest/testcase/httpport/change_http_port.sh 8898 80
 cmd:netstat -nlp|grep  -E "apache2|httpd"
