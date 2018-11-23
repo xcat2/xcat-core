@@ -40,6 +40,7 @@ do
   fi
  done
 done
+rm -rf genesis*
 check:rc==0
 cmd:dir="/tftpboot/xcat/xnba/nets";if [ -e "${dir}" ];then mv ${dir} ${dir}".bak"; fi
 cmd:mknb x86_64 
@@ -47,10 +48,9 @@ check:rc==0
 cmd:#!/bin/bash
 # get all filename in specified path
 path=/tftpboot/xcat/xnba/nets/
-rm -rf $path*.uefi
 rm -rf $path*.elilo
 files=$(ls $path)
-mnip=$(tabdump site |grep -w master |awk -F "," '{print $2}'|sed 's/\"//g')
+mnip=$(lsdef -t site -i master -c |awk -F"=" '{print $2}')
 echo "The mn ip is $mnip"
 for filename in $files
 do
@@ -64,7 +64,13 @@ do
  if [  $? == 0 ];then
     sed -i "s/\${next-server}/$mnip/g"  $path$filename
  fi
- links=$(grep 8898 $path$filename|awk -F " " '{print $4}')
+ 
+ if [ "${filename##*.}"x = "uefi"x ];then
+    links=$(grep 8898 $path$filename|awk -F " " '{print $2}')
+ else
+    links=$(grep 8898 $path$filename|awk -F " " '{print $4}') 
+ fi
+  
  for link in $links
  do
   wget $link
@@ -76,6 +82,8 @@ do
   fi
  done
 done
+rm -rf genesis*
+rm -rf uefi*
 check:rc==0
 cmd:/opt/xcat/share/xcat/tools/autotest/testcase/httpport/change_http_port.sh 8898 80
 cmd:netstat -nlp|grep  -E "apache2|httpd"
