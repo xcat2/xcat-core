@@ -5,11 +5,10 @@ fi
 
 #!/bin/sh
 
-if [ "$XCATDEBUGMODE" = "1" ] || [ "$XCATDEBUGMODE" = "2" ]; then
-    killall syslogd
-    syslogd -R #XCATVAR:XCATMASTER#
-fi
-
+killall syslogd
+syslogd -R #XCATVAR:XCATMASTER#
+log_label="xcat.deployment"
+logger -t $log_label -p "info" "=============deployment starting===================="
 if [ ! -c /dev/vcs ]; then
     mknod /dev/vcs c 7 0
 fi
@@ -187,7 +186,7 @@ base64decode()
 			))}\\x\${h$(( o2 / 16 ))}\${h$(( o2 % 16 ))}\""
 	done
 }
-
+logger -t $log_label -p "info" "Generate partition file..."
 if [ -d /sys/firmware/efi ]; then
     echo "ubuntu-efi ::" > /tmp/partitionfile
     echo "    512 512 1024 fat16" >> /tmp/partitionfile

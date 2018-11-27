@@ -2,7 +2,10 @@ export XCATDEBUGMODE="#TABLEBLANKOKAY:site:key=xcatdebugmode:value#"
 if [ "$XCATDEBUGMODE" = "1" ] || [ "$XCATDEBUGMODE" = "2" ]; then
     set -x
 fi
-
+export MASTER_IP="#ENV:MASTER_IP#"
+#INCLUDE:#ENV:XCATROOT#/share/xcat/install/scripts/scriptlib#
+log_label="xcat.deployment"
+msgutil_r "$MASTER_IP" "info" "=============deployment starting====================" "/var/log/xcat/xcat.log" "$log_label"
 if grep n8r /proc/cmdline > /dev/null 2>&1;
 then
   stty crtscts
@@ -183,7 +186,7 @@ fi
 #also, find first available block device (sda or vda likely)
 #TODO: pick a likely non-SAN target if possible
 shopt -s nullglob
-
+msgutil_r "$MASTER_IP" "info" "Detecting install disk..." "/var/log/xcat/xcat.log" "$log_label"
 #
 # The getinstdisk script is common for RHEL/SLES/PowerKVM/Ubuntu.
 # It will attempt to select the install disk and write the selection to /tmp/xcat.install_disk
@@ -204,7 +207,7 @@ else
 fi
 BOOTFSTYPE=ext3
 EFIFSTYPE=vfat
-
+msgutil_r "$MASTER_IP" "info" "Found $instdisk, generate partition file..." "/var/log/xcat/xcat.log" "$log_label"
 if [ `uname -m` = "ppc64" ]; then
 	echo 'part None --fstype "PPC PReP Boot" --ondisk '$instdisk' --size 8' >> /tmp/partitionfile
 fi
@@ -227,7 +230,7 @@ echo "part / --size 1 --grow --ondisk $instdisk --fstype $FSTYPE" >> /tmp/partit
 echo "=================The Partition Scheme================"
 cat /tmp/partitionfile
 echo "====================================================="
-
+msgutil_r "$MASTER_IP" "info" "Generate the repository for the installation" "/var/log/xcat/xcat.log" "$log_label"
 # The following code is to generate the repository for the installation
 cat /proc/cmdline
 
