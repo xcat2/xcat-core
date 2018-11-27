@@ -9,6 +9,11 @@
 #!/bin/sh
 
 {
+export MASTER_IP="#ENV:MASTER_IP#"
+#INCLUDE:#ENV:XCATROOT#/share/xcat/install/scripts/scriptlib#
+log_label="xcat.deployment"
+msgutil_r "$MASTER_IP" "info" "============deployment starting============" "/var/log/xcat/xcat.log" "$log_label"
+msgutil_r "$MASTER_IP" "info" "Running AutoYaST Pre-Installation script..." "/var/log/xcat/xcat.log" "$log_label"
 echo "Running AutoYaST Pre-Installation script..."
 
 export XCATDEBUGMODE="#TABLEBLANKOKAY:site:key=xcatdebugmode:value#"
@@ -119,7 +124,7 @@ fi
 /tmp/foo.awk >/tmp/foo.log 2>&1 &
 
 shopt -s nullglob
-
+msgutil_r "$MASTER_IP" "info" "Detecting install disk..." "/var/log/xcat/xcat.log" "$log_label"
 #
 # The getinstdisk script is common for RHEL/SLES/PowerKVM/Ubuntu.
 # It will attempt to select the install disk and write the selection to /tmp/xcat.install_disk
@@ -129,7 +134,7 @@ if [ -e "/tmp/xcat.install_disk" ]; then
     instdisk=`cat /tmp/xcat.install_disk`
 fi
 
-
+msgutil_r "$MASTER_IP" "info" "Found $instdisk, generate partition file..." "/var/log/xcat/xcat.log" "$log_label"
 if [ -d /sys/firmware/efi ]; then
 	sed -e 's!<device>XCATPARTITIONHOOK</device>!<device>'$instdisk'</device><partitions config:type="list"><partition><filesystem config:type="symbol">vfat</filesystem><mount>/boot/efi</mount><size>128mb</size></partition><partition><mount>swap</mount><size>auto</size></partition><partition><mount>/</mount><size>auto</size></partition></partitions>!' /tmp/profile/autoinst.xml > /tmp/profile/modified.xml
 else
@@ -147,7 +152,7 @@ if [ -r "/tmp/partitionfile" ]; then
     sed -e '/<drive>/{N;N;s!.*!'$con'!}' /tmp/profile/autoinst.xml > /tmp/profile/modified1.xml
     sed -e 's!xcattempspace! !g' /tmp/profile/modified1.xml > /tmp/profile/modified.xml
 fi
-
+msgutil_r "$MASTER_IP" "info" "Generate the repository for the installation" "/var/log/xcat/xcat.log" "$log_label"
 export nextserver=`cat /proc/cmdline | grep http | awk -F'autoyast=http://' {'print \$2'} | awk -F':' {'print \$1'}`
 cp /tmp/profile/modified.xml /tmp/profile/modified1.xml
 sed -e 's!<software>!<add-on><add_on_products config:type="list">#INSTALL_SOURCES_IN_PRE#</add_on_products></add-on><software>!'  /tmp/profile/modified1.xml > /tmp/profile/modified.xml
