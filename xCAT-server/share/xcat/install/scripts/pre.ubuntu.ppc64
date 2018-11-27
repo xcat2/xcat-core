@@ -7,7 +7,8 @@ fi
 
 killall syslogd
 syslogd -R #XCATVAR:XCATMASTER#
-logger -t $log_label -p "info" "=============deployment starting===================="
+logger -t $log_label -p "info" "============deployment starting============"
+logger -t $log_label -p "info" "Running preseeding early_command Installation script..."
 if [ ! -c /dev/vcs ]; then
     mknod /dev/vcs c 7 0
 fi

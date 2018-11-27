@@ -12,7 +12,7 @@
 export MASTER_IP="#ENV:MASTER_IP#"
 #INCLUDE:#ENV:XCATROOT#/share/xcat/install/scripts/scriptlib#
 log_label="xcat.deployment"
-msgutil_r "$MASTER_IP" "info" "=============deployment starting====================" "/var/log/xcat/xcat.log" "$log_label"
+msgutil_r "$MASTER_IP" "info" "============deployment starting============" "/var/log/xcat/xcat.log" "$log_label"
 msgutil_r "$MASTER_IP" "info" "Running AutoYaST Pre-Installation script..." "/var/log/xcat/xcat.log" "$log_label" 
 echo "Running AutoYaST Pre-Installation script..."
 
