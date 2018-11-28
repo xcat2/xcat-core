@@ -1,6 +1,6 @@
 start:nodestat_noderange
 label:others
-arch:x86
+arch:x86_64
 cmd:nodestat $$CN
 check:rc==0
 check:output=~noping|sshd|install|snmp|pbs
