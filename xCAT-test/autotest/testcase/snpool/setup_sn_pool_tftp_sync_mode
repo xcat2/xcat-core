@@ -1,6 +1,6 @@
 start:setup_sn_pool_tftp_sync_mode
 description: this case is to test when sharedtftp=0 and installloc=/install are not set on mn, after all service nodes are installed, /tftpboot and /install directory on all service nodes are separated and need to be rsynced. Since test framework only support 1 sn and 1 cn parameter. This case will install CN as another service node.
-label:others,invoke_provision,sn_pool
+label:others,invoke_provision,snpool
 cmd:fdisk -l
 cmd:df -T
 #cmd:XCAT_DATABASE=$$XCAT_DATABASE /opt/xcat/share/xcat/tools/autotest/testcase/installation/pre_deploy_sn __GETNODEATTR($$SN,os)__ __GETNODEATTR($$SN,arch)__

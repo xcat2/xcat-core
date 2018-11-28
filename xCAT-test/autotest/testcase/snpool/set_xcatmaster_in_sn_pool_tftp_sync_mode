@@ -1,6 +1,6 @@
 start:set_xcatmaster_in_sn_pool_tftp_sync_mode
 description: this case is to test when compute nodes' xcatmaster is set in service node pool environment,compute node's provision files are correctly set after nodeset.
-label:others,invoke_provision,sn_pool
+label:others,invoke_provision,snpool
 cmd:fdisk -l
 cmd:df -T
 #cmd:XCAT_DATABASE=$$XCAT_DATABASE /opt/xcat/share/xcat/tools/autotest/testcase/installation/pre_deploy_sn __GETNODEATTR($$SN,os)__ __GETNODEATTR($$SN,arch)__
