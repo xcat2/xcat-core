@@ -432,7 +432,7 @@ rmdir \"/tmp/$userid\" \n")
 
     def _print_bmc_netinfo(self, node, ip, netmask, gateway, vlan):
 
-        self.callback.info('%s: BMC IP: %s'      % (node, ip))
+        self.callback.info('%s: BMC IP: %s' % (node, ip))
         self.callback.info('%s: BMC Netmask: %s' % (node, netmask))
         self.callback.info('%s: BMC Gateway: %s' % (node, gateway))
         if vlan:
@@ -471,9 +471,9 @@ rmdir \"/tmp/$userid\" \n")
                 self._print_bmc_netinfo(node, ip, netmask, gateway, vlan)
                 return
 
-        origin_type   = netinfo[origin_nic]['ipsrc']
+        origin_type = netinfo[origin_nic]['ipsrc']
         origin_ip_obj = netinfo[origin_nic]['ipobj']
-        zeroconf      = netinfo[origin_nic]['zeroconf']
+        zeroconf = netinfo[origin_nic]['zeroconf']
 
         if vlan:
             pre_nic = nic.split('_')[0]
