@@ -6314,7 +6314,7 @@ sub run_always_rsync_postscripts
             # build xdsh queue
             # build host and all scripts to execute
             # EXECUTEALWAYS will only execute the syncfile in the syncfile list
-            foreach my $key (keys $$options{'destDir_srcFile'}{$host}) {
+            foreach my $key (keys %{$$options{'destDir_srcFile'}{$host}}) {
               foreach my $key1 (keys %{ $$options{'destDir_srcFile'}{$host}{$key} }) {
                 my $index = 0;
                 while (my $src_file = $$options{'destDir_srcFile'}{$host}{$key}{$key1}->[$index]) {
