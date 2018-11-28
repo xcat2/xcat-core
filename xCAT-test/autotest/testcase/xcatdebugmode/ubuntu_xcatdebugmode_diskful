@@ -1,7 +1,7 @@
 start:set_xcatdebugmode_off_ubuntule_diskful
 os:linux
 description:site.xcatdebugmode value is 0, the following logs will be shown and ssh is not supported.
-label:flat_cn_diskful,invoke_provison,xcatdebugmode
+label:flat_cn_diskful,invoke_provision,xcatdebugmode
 cmd:chtab key=xcatdebugmode site.value="0"
 check:rc==0
 cmd:copycds $$ISO
@@ -45,7 +45,7 @@ end
 start:set_xcatdebugmode_off_ubuntux_vm_diskful
 os:linux
 description:site.xcatdebugmode value is 0, the following logs will be shown and ssh is not supported.
-label:flat_cn_diskful,invoke_provison,xcatdebugmode
+label:flat_cn_diskful,invoke_provision,xcatdebugmode
 cmd:makedns -n
 check:rc==0
 cmd:sleep 60
@@ -88,7 +88,7 @@ end
 start:set_xcatdebugmode_value_one_ubuntule_diskful
 os:linux
 description:site.xcatdebugmode value is 1, the following logs will be shown and ssh is not supported.
-label:flat_cn_diskful,invoke_provison,xcatdebugmode
+label:flat_cn_diskful,invoke_provision,xcatdebugmode
 cmd:echo " " > /var/log/xcat/computes.log
 check:rc==0
 cmd:chtab key=xcatdebugmode site.value="1"
@@ -160,7 +160,7 @@ end
 start:set_xcatdebugmode_value_one_ubuntux_vm_diskful
 os:linux
 description:site.xcatdebugmode value is 1, the following logs will be shown and ssh is not supported.
-label:flat_cn_diskful,invoke_provison,xcatdebugmode
+label:flat_cn_diskful,invoke_provision,xcatdebugmode
 cmd:echo " " > /var/log/xcat/computes.log
 check:rc==0
 

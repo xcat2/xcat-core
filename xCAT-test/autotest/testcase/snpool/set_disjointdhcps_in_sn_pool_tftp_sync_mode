@@ -1,6 +1,6 @@
 start:set_disjointdhcps_in_sn_pool_tftp_sync_mode
 description: Verify the disjointdhcps feature when petitboot is used for OS loader.
-label:others,invoke_provision,sn_pool,dhcp
+label:others,invoke_provision,snpool,dhcp
 cmd:rmdef testnode1
 cmd:rm -f /tftpboot/petitboot/testnode1
 cmd:mkdef -t node -o testnode1 arch=ppc64le cons=bmc groups=ipmi ip=10.1.1.200 mac=e6:d4:d2:3a:ad:06 mgt=ipmi profile=compute os=rhels7.99
