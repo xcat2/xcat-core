@@ -730,6 +730,11 @@ sub tabdump
             $recs = $tabh->getAllEntries("all");
         } else {           # filter entries
             foreach my $w (@{$OPTW}) {    # get each attr=val
+                my ($k, $v) = split('=', $w, 2);
+                unless (grep /$k/, @{ $xCAT::Schema::tabspec{$table}->{cols} }) {
+                    $cb->({ error => "Table \"$table\" have no column called \"$k\"", errorcode => [1] });
+                    return;
+                }
                 push @attrarray, $w;
             }
             @ents = $tabh->getAllAttribsWhere(\@attrarray, 'ALL');
@@ -2369,6 +2374,16 @@ sub tabch {
                     return 1;
 
                 }
+            }
+            my $err_found = 0;
+            for my $k (keys %keyhash) {
+                unless (grep /$k/, @{ $xCAT::Schema::tabspec{$table}->{cols} }) {
+                    $callback->({ error => "Table \"$table\" have no column called \"$k\"", errorcode => [1] });
+                    $err_found = 1;
+                }
+            }
+            if ($err_found) {
+                return 1;
             }
 
             #splice assignment
