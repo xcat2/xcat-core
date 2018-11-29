@@ -562,32 +562,6 @@ sub tabrestore
     }
 }
 
-sub get_key_from_optw
-{
-    my $optw = shift;
-    my ($k, $v);
-       if ($optw =~ /^[^=]*\==/) {    #k==v
-            ($k, $v) = split /==/, $optw, 2;
-        } elsif ($optw =~ /^[^=]*=~/) {    #k=~v
-            ($k, $v) = split /=~/, $optw, 2;
-        } elsif ($optw =~ /^[^=]*\!=/) {    #k!=v
-            ($k, $v) = split /!=/, $optw, 2;
-        } elsif ($optw =~ /[^=]*!~/) {      #k!~v
-            ($k, $v) = split /!~/, $optw, 2;
-        } elsif ($optw =~ /^[^=]*\<=/) {    #k<=v
-            ($k, $v) = split /<=/, $optw, 2;
-        } elsif ($optw =~ /^[^=]*\</) {     #k<v
-            ($k, $v) = split /</, $optw, 2;
-        } elsif ($optw =~ /^[^=]*\>=/) {    #k>=v
-            ($k, $v) = split />=/, $optw, 2;
-        } elsif ($optw =~ /^[^=]*\>/) {     #k>v
-            ($k, $v) = split />/, $optw, 2;
-        } else {
-            return undef;
-        }
-    return $k;
-}
-
 # Display a list of tables, or a specific table in CSV format
 sub tabdump
 {
@@ -756,16 +730,19 @@ sub tabdump
             $recs = $tabh->getAllEntries("all");
         } else {           # filter entries
             foreach my $w (@{$OPTW}) {    # get each attr=val
-                my $k = get_key_from_optw($w);
-                if (! defined($k)) {
-                    $cb->({ error => ["The format $w is unsupported"], errorcode => [1] });
-                    return;
-                }
-                unless (grep /$k/, @{ $xCAT::Schema::tabspec{$table}->{cols} }) {
-                    $cb->({ error => ["No column \"$k\" in table \"$table\""], errorcode => [1] });
-                    return;
-                }
                 push @attrarray, $w;
+            }
+            my $keys = xCAT::Table::buildWhereClause(\@attrarray, "1");
+            if (ref($keys) ne 'ARRAY')  {
+                $cb->({ error => ["$keys"], errorcode => [1] });
+                return;
+            } else {
+                foreach my $k (@$keys) {
+                    unless (grep /$k/, @{ $xCAT::Schema::tabspec{$table}->{cols} }) {
+                        $cb->({ error => ["No column \"$k\" in table \"$table\""], errorcode => [1] });
+                        return;
+                    }
+                }
             }
             @ents = $tabh->getAllAttribsWhere(\@attrarray, 'ALL');
             @$recs = ();
