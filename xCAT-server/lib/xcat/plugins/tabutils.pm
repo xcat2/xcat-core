@@ -562,6 +562,32 @@ sub tabrestore
     }
 }
 
+sub get_key_from_optw
+{
+    my $optw = shift;
+    my ($k, $v);
+       if ($optw =~ /^[^=]*\==/) {    #k==v
+            ($k, $v) = split /==/, $optw, 2;
+        } elsif ($optw =~ /^[^=]*=~/) {    #k=~v
+            ($k, $v) = split /=~/, $optw, 2;
+        } elsif ($optw =~ /^[^=]*\!=/) {    #k!=v
+            ($k, $v) = split /!=/, $optw, 2;
+        } elsif ($optw =~ /[^=]*!~/) {      #k!~v
+            ($k, $v) = split /!~/, $optw, 2;
+        } elsif ($optw =~ /^[^=]*\<=/) {    #k<=v
+            ($k, $v) = split /<=/, $optw, 2;
+        } elsif ($optw =~ /^[^=]*\</) {     #k<v
+            ($k, $v) = split /</, $optw, 2;
+        } elsif ($optw =~ /^[^=]*\>=/) {    #k>=v
+            ($k, $v) = split />=/, $optw, 2;
+        } elsif ($optw =~ /^[^=]*\>/) {     #k>v
+            ($k, $v) = split />/, $optw, 2;
+        } else {
+            return undef;
+        }
+    return $k;
+}
+
 # Display a list of tables, or a specific table in CSV format
 sub tabdump
 {
@@ -730,9 +756,13 @@ sub tabdump
             $recs = $tabh->getAllEntries("all");
         } else {           # filter entries
             foreach my $w (@{$OPTW}) {    # get each attr=val
-                my ($k, $v) = split('=', $w, 2);
+                my $k = get_key_from_optw($w);
+                if (! defined($k)) {
+                    $cb->({ error => ["The format $w is unsupported"], errorcode => [1] });
+                    return;
+                }
                 unless (grep /$k/, @{ $xCAT::Schema::tabspec{$table}->{cols} }) {
-                    $cb->({ error => "Table \"$table\" have no column called \"$k\"", errorcode => [1] });
+                    $cb->({ error => ["No column \"$k\" in table \"$table\""], errorcode => [1] });
                     return;
                 }
                 push @attrarray, $w;
@@ -2378,7 +2408,7 @@ sub tabch {
             my $err_found = 0;
             for my $k (keys %keyhash) {
                 unless (grep /$k/, @{ $xCAT::Schema::tabspec{$table}->{cols} }) {
-                    $callback->({ error => "Table \"$table\" have no column called \"$k\"", errorcode => [1] });
+                    $callback->({ error => ["No column \"$k\" in table \"$table\""], errorcode => [1] });
                     $err_found = 1;
                 }
             }
