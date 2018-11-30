@@ -4,15 +4,15 @@ Attribute: $$DSTMN - the ip of MN which is used to run import operation.
 label:others,xcat_inventory
 cmd:mkdir -p /tmp/export_import_single_ppc_by_json
 check:rc==0
-cmd:ssh $$DSTMN ' source /etc/profile.d/xcat.sh;mkdir -p /tmp/export_import_single_ppc_by_json_$$DSTMN/'
+cmd:SSH=$(hostname -i | grep -wq $$DSTMN || echo "ssh $$DSTMN source /etc/profile.d/xcat.sh;"); $SSH mkdir -p /tmp/export_import_single_ppc_by_json_$$DSTMN/
 check:rc==0
 cmd:lsdef bogusnode > /dev/null 2>&1;if [[ $? -eq 0 ]]; then lsdef bogusnode -z >/tmp/export_import_single_ppc_by_json/bogusnode.stanza ;rmdef bogusnode;fi
 check:rc==0
 cmd:lsdef -t group bogusgroup  > /dev/null 2>&1;if [[ $? -eq 0 ]]; then lsdef -t group bogusgroup -z > /tmp/export_import_single_ppc_by_json/bogusgroup.stanza; rmdef -t group bogusgroup;fi
 check:rc==0
-cmd:ssh $$DSTMN ' source /etc/profile.d/xcat.sh;lsdef bogusnode > /dev/null 2>&1;if [[ $? -eq 0 ]]; then lsdef bogusnode -z >/tmp/export_import_single_ppc_by_json_$$DSTMN/bogusnode.stanza ;rmdef bogusnode;fi'
+cmd:curip=$(hostname -i); if [ $curip != "$$DSTMN" ]; then ssh $$DSTMN ' source /etc/profile.d/xcat.sh; lsdef bogusnode > /dev/null 2>&1;if [[ $? -eq 0 ]]; then lsdef bogusnode -z >/tmp/export_import_single_ppc_by_json_$$DSTMN/bogusnode.stanza ;rmdef bogusnode; fi' ; else lsdef bogusnode > /dev/null 2>&1;if [[ $? -eq 0 ]]; then lsdef bogusnode -z >/tmp/export_import_single_ppc_by_json_$$DSTMN/bogusnode.stanza ;rmdef bogusnode; fi; fi
 check:rc==0
-cmd:ssh $$DSTMN ' source /etc/profile.d/xcat.sh;lsdef -t group bogusgroup  > /dev/null 2>&1;if [[ $? -eq 0 ]]; then lsdef -t group bogusgroup -z > /tmp/export_import_single_ppc_by_json_$$DSTMN/bogusgroup.stanza; rmdef -t group bogusgroup;fi'
+cmd:curip=$(hostname -i); if [ $curip != "$$DSTMN" ]; then ssh $$DSTMN ' source /etc/profile.d/xcat.sh; lsdef -t group bogusgroup  > /dev/null 2>&1;if [[ $? -eq 0 ]]; then lsdef -t group bogusgroup -z > /tmp/export_import_single_ppc_by_json_$$DSTMN/bogusgroup.stanza; rmdef -t group bogusgroup;fi' ; else lsdef -t group bogusgroup  > /dev/null 2>&1;if [[ $? -eq 0 ]]; then lsdef -t group bogusgroup -z > /tmp/export_import_single_ppc_by_json_$$DSTMN/bogusgroup.stanza; rmdef -t group bogusgroup;fi ; fi
 check:rc==0
 cmd:mkdef -t node -o bogusnode groups=bogusgroup  mgt=hmc nodetype=ppc,osi  addkcmdline=addkcmdline arch=ppc64 authdomain=authdomain cfgmgr=cfgmgr cfgmgtroles=cfgmgtroles cfgserver=cfgserver chain=chain chassis=chassis cmdmapping=cmdmapping cons=cons conserver=conserver consoleondemand=consoleondemand cpucount=cpucount cputype=cputype  dhcpinterfaces=dhcpinterfaces disksize=disksize domainadminpassword=domainadminpassword domainadminuser=domainadminuser domaintype=domaintype getmac=getmac hcp=HMC height=height hidden=hidden hostcluster=hostcluster hostinterface=hostinterface hostmanager=hostmanager hostnames=hostnames hosttype=hosttype hwtype=hwtype id=5 installnic=installnic interface=interface ip=10.10.10.10 iscsipassword=iscsipassword iscsiserver=iscsiserver iscsitarget=iscsitarget iscsiuserid=iscsiuserid mac=42:d6:0a:03:05:08 memory=memory migrationdest=migrationdest monserver=monserver mpa=mpa mtm=mtm nameservers=nameservers netboot=grub2 nfsdir=nfsdir nfsserver=nfsserver  nimserver=nimserver node=node ondiscover=ondiscover osvolume=osvolume otherinterfaces=otherinterfaces ou=ou parent=parent password=password pdu=pdu postbootscripts=postbootscripts postscripts=postscripts power=power pprofile=pprofile prescripts-begin=prescripts-begin prescripts-end=prescripts-end primarynic=primarynic primarysn=primarysn productkey=productkey  provmethod=provmethod rack=rack room=room routenames=routenames serial=serial serialflow=serialflow serialport=serialport serialspeed=serialspeed servicenode=servicenode setupconserver=0 setupdhcp=0 setupftp=setupftp setupipforward=0 setupldap=0 setupnameserver=0 setupnfs=0 setupnim=setupnim setupntp=0 setupproxydhcp=0 setuptftp=0 sfp=sfp side=side slot=slot  storagcontroller=storagcontroller storagetype=storagetype supernode=supernode supportedarchs=supportedarchs supportproxydhcp=supportproxydhcp switch=switch switchinterface=switchinterface switchport=50 switchvlan=switchvlan syslog=syslog termport=termport termserver=termserver tftpdir=tftpdir tftpserver=tftpserver unit=unit  usercomment=usercomment username=username vmbeacon=vmbeacon vmbootorder=vmbootorder vmcfgstore=vmcfgstore vmcluster=vmcluster vmmanager=vmmanager vmmaster=vmmaster vmnicnicmodel=vmnicnicmodel vmphyslots=vmphyslots vmstorage=vmstorage vmstoragecache=vmstoragecache vmstorageformat=vmstorageformat vmstoragemodel=vmstoragemodel vmtextconsole=vmtextconsole vmvirtflags=vmvirtflags vmvncport=vmvncport xcatmaster=xcatmaster zonename=zonename  nicaliases.eth0="moe larry curly" nicaliases.eth1="tom|jerry" niccustomscripts.eth0="configeth eth0" niccustomscripts.ib0="configib ib0" nicdevices.bond0="eth0|eth2" nicdevices.br0=bond0 nicextraparams.eth0="MTU=1500" nicextraparams.ib0="MTU=65520 CONNECTED_MODE=yes" nichostnameprefixes.eth0="eth0-" nichostnameprefixes.ib0="ib-" nichostnamesuffixes.eth0="-eth0" nichostnamesuffixes.ib0="-ib0" nicips.ib0=10.10.100.9 nicips.enP48p1s0f0=129.40.234.11 nicips.ib1=10.11.100.9 nicnetworks.enP5p1s0f1.4=xcat_bmc nicnetworks.enP48p1s0f1=xcat_util nicnetworks.ib0=IB00 nicnetworks.enP48p1s0f0=pub_yellow nicnetworks.ib3=IB03 nicnetworks.ib2=IB02 nicnetworks.enP5p1s0f1=xcat_compute nicnetworks.ib1=IB01 nicnetworks.enP5p1s0f1.5=xcat_infra nicnetworks.enP5p1s0f1.6=xcat_pdu nicsadapter.enP3p3s0f1="mac=98:be:94:59:fa:cd linkstate=DOWN" nicsadapter.enP3p3s0f2="mac=98:be:94:59:fa:ce candidatename=enP3p3s0f2/enx98be9459face" nictypes.enP5p1s0f1.4=unused nictypes.enP48p1s0f1=unused nictypes.ib0=Infiniband nictypes.enP48p1s0f0=Ethernet nictypes.ib3=unused nictypes.ib2=unused nictypes.enP5p1s0f1=unused nictypes.ib1=Infiniband nictypes.enP5p1s0f1.5=unused nictypes.enP5p1s0f1.6=unused
 check:rc==0
@@ -20,31 +20,31 @@ cmd:lsdef bogusnode -z|sort -t'=' -k1 |tee  /tmp/export_import_single_ppc_by_jso
 check:rc==0
 cmd:xcat-inventory export --format=json -t node -o bogusnode |tee /tmp/export_import_single_ppc_by_json/bogusnode_json.inv
 check:rc==0
-cmd:scp /tmp/export_import_single_ppc_by_json/bogusnode_json.inv $$DSTMN:/tmp/export_import_single_ppc_by_json_$$DSTMN/
+cmd:curip=$(hostname -i); if [ $curip = "$$DSTMN" ]; then cp /tmp/export_import_single_ppc_by_json/bogusnode_json.inv /tmp/export_import_single_ppc_by_json_$$DSTMN/; else scp /tmp/export_import_single_ppc_by_json/bogusnode_json.inv $$DSTMN:/tmp/export_import_single_ppc_by_json_$$DSTMN/ ; fi
 check:rc==0
 cmd:rmdef bogusnode
 check:rc==0
-cmd: ssh  $$DSTMN ' source /etc/profile.d/xcat.sh;xcat-inventory import -f /tmp/export_import_single_ppc_by_json_$$DSTMN/bogusnode_json.inv -t node -o bogusnode'
+cmd:SSH=$(hostname -i | grep -wq $$DSTMN || echo "ssh $$DSTMN source /etc/profile.d/xcat.sh;"); $SSH xcat-inventory import -f /tmp/export_import_single_ppc_by_json_$$DSTMN/bogusnode_json.inv -t node -o bogusnode
 check:rc==0
-cmd: ssh  $$DSTMN ' source /etc/profile.d/xcat.sh;lsdef bogusnode -z |sort -t'=' -k1|tee /tmp/export_import_single_ppc_by_json_$$DSTMN/dstbogusnode.stanza'
+cmd:curip=$(hostname -i); if [ $curip != "$$DSTMN" ]; then ssh $$DSTMN ' source /etc/profile.d/xcat.sh;lsdef bogusnode -z |sort -t"=" -k1|tee /tmp/export_import_single_ppc_by_json_$$DSTMN/dstbogusnode.stanza'; else lsdef bogusnode -z |sort -t'=' -k1|tee /tmp/export_import_single_ppc_by_json_$$DSTMN/dstbogusnode.stanza; fi
 check:rc==0
-cmd: scp $$DSTMN:/tmp/export_import_single_ppc_by_json_$$DSTMN/dstbogusnode.stanza /tmp/export_import_single_ppc_by_json/dstbogusnode.stanza
+cmd:curip=$(hostname -i); if [ $curip = "$$DSTMN" ]; then cp /tmp/export_import_single_ppc_by_json_$$DSTMN/dstbogusnode.stanza /tmp/export_import_single_ppc_by_json/dstbogusnode.stanza ; else scp $$DSTMN:/tmp/export_import_single_ppc_by_json_$$DSTMN/dstbogusnode.stanza /tmp/export_import_single_ppc_by_json/dstbogusnode.stanza; fi
 check:rc==0
 cmd: cat /tmp/export_import_single_ppc_by_json/dstbogusnode.stanza
 check:rc==0
 cmd:diff -y /tmp/export_import_single_ppc_by_json/srcbogusnode.stanza /tmp/export_import_single_ppc_by_json/dstbogusnode.stanza
 check:rc==0
-cmd:ssh  $$DSTMN ' source /etc/profile.d/xcat.sh;rmdef bogusnode'
+cmd:SSH=$(hostname -i | grep -wq $$DSTMN || echo "ssh $$DSTMN source /etc/profile.d/xcat.sh;"); $SSH rmdef bogusnode
 check:rc==0
 cmd:if [[ -e /tmp/export_import_single_ppc_by_json/bogusnode.stanza ]]; then cat /tmp/export_import_single_ppc_by_json/bogusnode.stanza | mkdef -z;fi
 check:rc==0
 cmd:if [[ -e /tmp/export_import_single_ppc_by_json/bogusgroup.stanza ]]; then cat /tmp/export_import_single_ppc_by_json/bogusgroup.stanza |mkdef -z -f;fi
 check:rc==0
-cmd:ssh $$DSTMN ' source /etc/profile.d/xcat.sh;if [[ -e /tmp/export_import_single_ppc_by_json_$$DSTMN/bogusnode.stanza ]]; then cat /tmp/export_import_single_ppc_by_json_$$DSTMN/bogusnode.stanza | mkdef -z;fi'
+cmd:curip=$(hostname -i); if [ $curip != "$$DSTMN" ]; then ssh $$DSTMN ' source /etc/profile.d/xcat.sh;if [[ -e /tmp/export_import_single_ppc_by_json_$$DSTMN/bogusnode.stanza ]]; then cat /tmp/export_import_single_ppc_by_json_$$DSTMN/bogusnode.stanza | mkdef -z;fi' ; else if [[ -e /tmp/export_import_single_ppc_by_json_$$DSTMN/bogusnode.stanza ]]; then cat /tmp/export_import_single_ppc_by_json_$$DSTMN/bogusnode.stanza | mkdef -z;fi;  fi
 check:rc==0
-cmd:ssh $$DSTMN ' source /etc/profile.d/xcat.sh;if [[ -e /tmp/export_import_single_ppc_by_json_$$DSTMN/bogusgroup.stanza ]]; then cat /tmp/export_import_single_ppc_by_json_$$DSTMN/bogusgroup.stanza |mkdef -z -f;fi'
+cmd:curip=$(hostname -i); if [ $curip != "$$DSTMN" ]; then ssh $$DSTMN ' source /etc/profile.d/xcat.sh;if [[ -e /tmp/export_import_single_ppc_by_json_$$DSTMN/bogusgroup.stanza ]]; then cat /tmp/export_import_single_ppc_by_json_$$DSTMN/bogusgroup.stanza |mkdef -z -f;fi' ; else if [[ -e /tmp/export_import_single_ppc_by_json_$$DSTMN/bogusgroup.stanza ]]; then cat /tmp/export_import_single_ppc_by_json_$$DSTMN/bogusgroup.stanza |mkdef -z -f; fi;  fi
 check:rc==0
-cmd:ssh $$DSTMN ' source /etc/profile.d/xcat.sh;rm -rf /tmp/export_import_single_ppc_by_json_$$DSTMN/'
+cmd:SSH=$(hostname -i | grep -wq $$DSTMN || echo "ssh $$DSTMN"); $SSH rm -rf /tmp/export_import_single_ppc_by_json_$$DSTMN/
 check:rc==0
 cmd:rm -rf /tmp/export_import_single_ppc_by_json
 check:rc==0
@@ -57,15 +57,15 @@ Attribute: $$DSTMN - the ip of MN which is used to run import operation.
 label:others,xcat_inventory
 cmd:mkdir -p /tmp/export_import_single_ppc_by_yaml
 check:rc==0
-cmd:ssh $$DSTMN ' source /etc/profile.d/xcat.sh;mkdir -p /tmp/export_import_single_ppc_by_yaml_$$DSTMN/'
+cmd:SSH=$(hostname -i | grep -wq $$DSTMN || echo "ssh $$DSTMN"); $SSH mkdir -p /tmp/export_import_single_ppc_by_yaml_$$DSTMN/
 check:rc==0
 cmd:lsdef bogusnode > /dev/null 2>&1;if [[ $? -eq 0 ]]; then lsdef bogusnode -z >/tmp/export_import_single_ppc_by_yaml/bogusnode.stanza ;rmdef bogusnode;fi
 check:rc==0
 cmd:lsdef -t group bogusgroup  > /dev/null 2>&1;if [[ $? -eq 0 ]]; then lsdef -t group bogusgroup -z > /tmp/export_import_single_ppc_by_yaml/bogusgroup.stanza; rmdef -t group bogusgroup;fi
 check:rc==0
-cmd:ssh $$DSTMN ' source /etc/profile.d/xcat.sh;lsdef bogusnode > /dev/null 2>&1;if [[ $? -eq 0 ]]; then lsdef bogusnode -z >/tmp/export_import_single_ppc_by_yaml_$$DSTMN/bogusnode.stanza ;rmdef bogusnode;fi'
+cmd:SSH=$(hostname -i | grep -wq $$DSTMN || echo "ssh $$DSTMN source /etc/profile.d/xcat.sh;"); $SSH lsdef bogusnode > /dev/null 2>&1;if [[ $? -eq 0 ]]; then lsdef bogusnode -z >/tmp/export_import_single_ppc_by_yaml_$$DSTMN/bogusnode.stanza ;rmdef bogusnode;fi
 check:rc==0
-cmd:ssh $$DSTMN ' source /etc/profile.d/xcat.sh;lsdef -t group bogusgroup  > /dev/null 2>&1;if [[ $? -eq 0 ]]; then lsdef -t group bogusgroup -z > /tmp/export_import_single_ppc_by_yaml_$$DSTMN/bogusgroup.stanza; rmdef -t group bogusgroup;fi'
+cmd:SSH=$(hostname -i | grep -wq $$DSTMN || echo "ssh $$DSTMN source /etc/profile.d/xcat.sh;"); $SSH lsdef -t group bogusgroup  > /dev/null 2>&1;if [[ $? -eq 0 ]]; then lsdef -t group bogusgroup -z > /tmp/export_import_single_ppc_by_yaml_$$DSTMN/bogusgroup.stanza; rmdef -t group bogusgroup;fi
 check:rc==0
 cmd:mkdef -t node -o bogusnode groups=bogusgroup  mgt=hmc nodetype=ppc,osi  addkcmdline=addkcmdline arch=ppc64 authdomain=authdomain cfgmgr=cfgmgr cfgmgtroles=cfgmgtroles cfgserver=cfgserver chain=chain chassis=chassis cmdmapping=cmdmapping cons=cons conserver=conserver consoleondemand=consoleondemand cpucount=cpucount cputype=cputype  dhcpinterfaces=dhcpinterfaces disksize=disksize domainadminpassword=domainadminpassword domainadminuser=domainadminuser domaintype=domaintype getmac=getmac hcp=HMC height=height hidden=hidden hostcluster=hostcluster hostinterface=hostinterface hostmanager=hostmanager hostnames=hostnames hosttype=hosttype hwtype=hwtype id=5 installnic=installnic interface=interface ip=10.10.10.10 iscsipassword=iscsipassword iscsiserver=iscsiserver iscsitarget=iscsitarget iscsiuserid=iscsiuserid mac=42:d6:0a:03:05:08 memory=memory migrationdest=migrationdest monserver=monserver mpa=mpa mtm=mtm nameservers=nameservers netboot=grub2 nfsdir=nfsdir nfsserver=nfsserver  nimserver=nimserver node=node ondiscover=ondiscover osvolume=osvolume otherinterfaces=otherinterfaces ou=ou parent=parent password=password pdu=pdu postbootscripts=postbootscripts postscripts=postscripts power=power pprofile=pprofile prescripts-begin=prescripts-begin prescripts-end=prescripts-end primarynic=primarynic primarysn=primarysn productkey=productkey  provmethod=provmethod rack=rack room=room routenames=routenames serial=serial serialflow=serialflow serialport=serialport serialspeed=serialspeed servicenode=servicenode setupconserver=0 setupdhcp=0 setupftp=setupftp setupipforward=0 setupldap=0 setupnameserver=0 setupnfs=0 setupnim=setupnim setupntp=0 setupproxydhcp=0 setuptftp=0 sfp=sfp side=side slot=slot  storagcontroller=storagcontroller storagetype=storagetype supernode=supernode supportedarchs=supportedarchs supportproxydhcp=supportproxydhcp switch=switch switchinterface=switchinterface switchport=50 switchvlan=switchvlan syslog=syslog termport=termport termserver=termserver tftpdir=tftpdir tftpserver=tftpserver unit=unit  usercomment=usercomment username=username vmbeacon=vmbeacon vmbootorder=vmbootorder vmcfgstore=vmcfgstore vmcluster=vmcluster vmmanager=vmmanager vmmaster=vmmaster vmnicnicmodel=vmnicnicmodel vmphyslots=vmphyslots vmstorage=vmstorage vmstoragecache=vmstoragecache vmstorageformat=vmstorageformat vmstoragemodel=vmstoragemodel vmtextconsole=vmtextconsole vmvirtflags=vmvirtflags vmvncport=vmvncport xcatmaster=xcatmaster zonename=zonename  nicaliases.eth0="moe larry curly" nicaliases.eth1="tom|jerry" niccustomscripts.eth0="configeth eth0" niccustomscripts.ib0="configib ib0" nicdevices.bond0="eth0|eth2" nicdevices.br0=bond0 nicextraparams.eth0="MTU=1500" nicextraparams.ib0="MTU=65520 CONNECTED_MODE=yes" nichostnameprefixes.eth0="eth0-" nichostnameprefixes.ib0="ib-" nichostnamesuffixes.eth0="-eth0" nichostnamesuffixes.ib0="-ib0" nicips.ib0=10.10.100.9 nicips.enP48p1s0f0=129.40.234.11 nicips.ib1=10.11.100.9 nicnetworks.enP5p1s0f1.4=xcat_bmc nicnetworks.enP48p1s0f1=xcat_util nicnetworks.ib0=IB00 nicnetworks.enP48p1s0f0=pub_yellow nicnetworks.ib3=IB03 nicnetworks.ib2=IB02 nicnetworks.enP5p1s0f1=xcat_compute nicnetworks.ib1=IB01 nicnetworks.enP5p1s0f1.5=xcat_infra nicnetworks.enP5p1s0f1.6=xcat_pdu nicsadapter.enP3p3s0f1="mac=98:be:94:59:fa:cd linkstate=DOWN" nicsadapter.enP3p3s0f2="mac=98:be:94:59:fa:ce candidatename=enP3p3s0f2/enx98be9459face" nictypes.enP5p1s0f1.4=unused nictypes.enP48p1s0f1=unused nictypes.ib0=Infiniband nictypes.enP48p1s0f0=Ethernet nictypes.ib3=unused nictypes.ib2=unused nictypes.enP5p1s0f1=unused nictypes.ib1=Infiniband nictypes.enP5p1s0f1.5=unused nictypes.enP5p1s0f1.6=unused
 check:rc==0
@@ -77,9 +77,9 @@ cmd:scp /tmp/export_import_single_ppc_by_yaml/bogusnode_yaml.inv $$DSTMN:/tmp/ex
 check:rc==0
 cmd:rmdef bogusnode
 check:rc==0
-cmd: ssh  $$DSTMN ' source /etc/profile.d/xcat.sh;xcat-inventory import -f /tmp/export_import_single_ppc_by_yaml_$$DSTMN/bogusnode_yaml.inv -t node -o bogusnode'
+cmd:SSH=$(hostname -i | grep -wq $$DSTMN || echo "ssh $$DSTMN source /etc/profile.d/xcat.sh;"); $SSH xcat-inventory import -f /tmp/export_import_single_ppc_by_yaml_$$DSTMN/bogusnode_yaml.inv -t node -o bogusnode
 check:rc==0
-cmd: ssh  $$DSTMN ' source /etc/profile.d/xcat.sh;lsdef bogusnode -z |sort -t'=' -k1|tee /tmp/export_import_single_ppc_by_yaml_$$DSTMN/dstbogusnode.stanza'
+cmd:SSH=$(hostname -i | grep -wq $$DSTMN || echo "ssh $$DSTMN source /etc/profile.d/xcat.sh;"); $SSH lsdef bogusnode -z |sort -t'=' -k1|tee /tmp/export_import_single_ppc_by_yaml_$$DSTMN/dstbogusnode.stanza
 check:rc==0
 cmd: scp $$DSTMN:/tmp/export_import_single_ppc_by_yaml_$$DSTMN/dstbogusnode.stanza /tmp/export_import_single_ppc_by_yaml/dstbogusnode.stanza
 check:rc==0
@@ -87,17 +87,17 @@ cmd: cat /tmp/export_import_single_ppc_by_yaml/dstbogusnode.stanza
 check:rc==0
 cmd:diff -y /tmp/export_import_single_ppc_by_yaml/srcbogusnode.stanza /tmp/export_import_single_ppc_by_yaml/dstbogusnode.stanza
 check:rc==0
-cmd:ssh  $$DSTMN ' source /etc/profile.d/xcat.sh;rmdef bogusnode'
+cmd:SSH=$(hostname -i | grep -wq $$DSTMN || echo "ssh $$DSTMN source /etc/profile.d/xcat.sh;"); $SSH rmdef bogusnode
 check:rc==0
 cmd:if [[ -e /tmp/export_import_single_ppc_by_yaml/bogusnode.stanza ]]; then cat /tmp/export_import_single_ppc_by_yaml/bogusnode.stanza | mkdef -z;fi
 check:rc==0
 cmd:if [[ -e /tmp/export_import_single_ppc_by_yaml/bogusgroup.stanza ]]; then cat /tmp/export_import_single_ppc_by_yaml/bogusgroup.stanza |mkdef -z -f;fi
 check:rc==0
-cmd:ssh $$DSTMN ' source /etc/profile.d/xcat.sh;if [[ -e /tmp/export_import_single_ppc_by_yaml_$$DSTMN/bogusnode.stanza ]]; then cat /tmp/export_import_single_ppc_by_yaml_$$DSTMN/bogusnode.stanza | mkdef -z;fi'
+cmd:SSH=$(hostname -i | grep -wq $$DSTMN || echo "ssh $$DSTMN"); $SSH bash -c 'if [[ -e /tmp/export_import_single_ppc_by_yaml_$$DSTMN/bogusnode.stanza ]]; then cat /tmp/export_import_single_ppc_by_yaml_$$DSTMN/bogusnode.stanza | mkdef -z;fi'
 check:rc==0
-cmd:ssh $$DSTMN ' source /etc/profile.d/xcat.sh;if [[ -e /tmp/export_import_single_ppc_by_yaml_$$DSTMN/bogusgroup.stanza ]]; then cat /tmp/export_import_single_ppc_by_yaml_$$DSTMN/bogusgroup.stanza |mkdef -z -f;fi'
+cmd:SSH=$(hostname -i | grep -wq $$DSTMN || echo "ssh $$DSTMN"); $SSH bash -c 'if [[ -e /tmp/export_import_single_ppc_by_yaml_$$DSTMN/bogusgroup.stanza ]]; then cat /tmp/export_import_single_ppc_by_yaml_$$DSTMN/bogusgroup.stanza |mkdef -z -f;fi'
 check:rc==0
-cmd:ssh $$DSTMN ' source /etc/profile.d/xcat.sh;rm -rf /tmp/export_import_single_ppc_by_yaml_$$DSTMN/'
+cmd:SSH=$(hostname -i | grep -wq $$DSTMN || echo "ssh $$DSTMN"); $SSH rm -rf /tmp/export_import_single_ppc_by_yaml_$$DSTMN/
 check:rc==0
 cmd:rm -rf /tmp/export_import_single_ppc_by_yaml
 check:rc==0
