@@ -1,6 +1,6 @@
 start:xcatd_start
 description:stop then start xcatd daemon, and check all the 6 processes are running
-label:mn_only,xcatd
+label:mn_only,ci_test,xcatd
 cmd:if [ -d "/tmp/xcatd_start" ]; then mv /tmp/xcatd_start /tmp/xcatd_start.org; fi; mkdir -p /tmp/xcatd_start
 check:rc==0
 cmd:service xcatd status
@@ -48,7 +48,7 @@ end
 
 start:xcatd_stop
 description:stop xcatd daemon, then check all the 6 processes are stopped
-label:mn_only,xcatd
+label:mn_only,ci_test,xcatd
 cmd:service xcatd status
 check:rc==0
 check:output=~xcatd service|xcatd.service
@@ -94,7 +94,7 @@ end
 
 start:run_command_with_XCATBYPASS
 description:with XCATBYPASS=YES, the command works either xcatd deamon running or not
-label:mn_only,xcatd
+label:mn_only,ci_test,xcatd
 cmd:service xcatd status
 check:rc==0
 check:output=~xcatd service|xcatd.service
@@ -121,7 +121,7 @@ end
 
 start:disable_root_permission_in_policy_table
 description:disable root permission, only with XCATBYPASS=YES, the command works
-label:mn_only,xcatd
+label:mn_only,ci_test,xcatd
 cmd:service xcatd status
 check:rc==0
 check:output=~ xcatd service|xcatd.service
@@ -141,7 +141,7 @@ end
 
 start:assign_certain_command_permission
 description:assign root permission to certain command, only this command works
-label:mn_only,xcatd
+label:mn_only,ci_test,xcatd
 cmd:service xcatd status
 check:rc==0
 check:output=~ xcatd service |xcatd.service

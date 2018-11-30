@@ -1,4 +1,5 @@
 start:lskit_v
+label:others,KIT
 os:Linux
 cmd:lskit -v
 check:rc==0
@@ -13,6 +14,7 @@ check:output=~compatible_frameworks
 end
 
 start:lskit_h
+label:others,KIT
 os:Linux
 cmd:lskit -h
 check:rc==0
@@ -23,6 +25,7 @@ check:output=~ Usage
 end
 
 start:lskit_F
+label:others,KIT
 os:Linux
 cmd:rm -rf /opt/xcat/share/xcat/tools/autotest/testcase/lskit/mykits
 cmd:cd /opt/xcat/share/xcat/tools/autotest/testcase/lskit;buildkit create mykits
@@ -42,6 +45,7 @@ cmd:rm -rf /opt/xcat/share/xcat/tools/autotest/testcase/lskit/mykits
 end
 
 start:lskit_K
+label:others,KIT
 os:Linux
 cmd:rm -rf /opt/xcat/share/xcat/tools/autotest/testcase/lskit/mykits
 cmd:cd /opt/xcat/share/xcat/tools/autotest/testcase/lskit;buildkit create mykits
@@ -65,6 +69,7 @@ cmd:rm -rf /opt/xcat/share/xcat/tools/autotest/testcase/lskit/mykits
 end
 
 start:lskit_R
+label:others,KIT
 os:Linux
 cmd:rm -rf /opt/xcat/share/xcat/tools/autotest/testcase/lskit/mykits
 cmd:cd /opt/xcat/share/xcat/tools/autotest/testcase/lskit;buildkit create mykits
@@ -91,6 +96,7 @@ cmd:rm -rf /opt/xcat/share/xcat/tools/autotest/testcase/lskit/mykits
 end
 
 start:lskit_C
+label:others,KIT
 os:Linux
 cmd:rm -rf /opt/xcat/share/xcat/tools/autotest/testcase/lskit/mykits
 cmd:cd /opt/xcat/share/xcat/tools/autotest/testcase/lskit;buildkit create mykits

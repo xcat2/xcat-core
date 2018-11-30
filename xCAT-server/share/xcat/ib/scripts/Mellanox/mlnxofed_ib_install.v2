@@ -331,11 +331,13 @@ EOF
         env -i "PATH=${PATH}" /tmp/ofed/mountpoint/mlnxofedinstall "${MLNXOFED_OPTS[@]}"
 
         #force openibd load all modules in need, restart again
-        sleep 1
-        service openibd restart
-        if [ "$?" != "0" ] ;then
-            echo "[Error] service openibd restart failed."
-            exit 1
+        if [ "$NODESETSTATE" = "boot" ]; then
+            sleep 1
+            service openibd restart
+            if [ "$?" != "0" ]; then
+                echo "[Error] service openibd restart failed."
+                exit 1
+            fi
         fi
     fi
 

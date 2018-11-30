@@ -139,7 +139,14 @@ sub subvars {
     }
     $ENV{INSTALLDIR} = $installroot;
 
+    my $httpport;
+    $httpport = xCAT::TableUtils->get_site_attribute("httpport");
+    if (!defined($httpport)) {
+        $httpport = "80";
+    }
+    $ENV{HTTPPORT} = $httpport;
 
+    my $httpportsuffix=":$httpport";
     #replace the env with the right value so that correct include files can be found
     $inc =~ s/#ENV:([^#]+)#/envvar($1)/eg;
     my $res;
@@ -282,6 +289,7 @@ sub subvars {
             $inc =~ s/#INCLUDE:([^#^\n]+)#/includefile($1, 0, 0)/eg;
         }
 
+
         #support multiple paths of osimage in rh/sles diskfull installation
         my @pkgdirs;
         if (defined($media_dir)) {
@@ -295,11 +303,11 @@ sub subvars {
                     if ($c == 0) {
                         # After some tests, if we put the repo in  pre scripts in the kickstart like for rhels6.x
                         # the rhels5.9 will not be installed successfully. So put in kickstart directly.
-                        $source_in_pre .= "echo 'url --url http://'\$nextserver'/$pkgdir' >> /tmp/repos";
-                        $source .= "url --url http://#TABLE:noderes:\$NODE:nfsserver#/$pkgdir\n"; #For rhels5.9
+                        $source_in_pre .= "echo 'url --url http://'\$nextserver'$httpportsuffix/$pkgdir' >> /tmp/repos";
+                        $source .= "url --url http://#TABLE:noderes:\$NODE:nfsserver#$httpportsuffix/$pkgdir\n"; #For rhels5.9
                     } else {
-                        $source_in_pre .= "\necho 'repo --name=pkg$c --baseurl=http://'\$nextserver'/$pkgdir' >> /tmp/repos";
-                        $source .= "repo --name=pkg$c --baseurl=http://#TABLE:noderes:\$NODE:nfsserver#/$pkgdir\n"; #for rhels5.9
+                        $source_in_pre .= "\necho 'repo --name=pkg$c --baseurl=http://'\$nextserver'$httpportsuffix/$pkgdir' >> /tmp/repos";
+                        $source .= "repo --name=pkg$c --baseurl=http://#TABLE:noderes:\$NODE:nfsserver#$httpportsuffix/$pkgdir\n"; #for rhels5.9
                     }
                     my $distrepofile="/install/postscripts/repos/$pkgdir/local-repository.tmpl";
                     if( -f "$distrepofile"){
@@ -309,13 +317,13 @@ sub subvars {
                         open($repofd,"<","$distrepofile");
                         $repo_in_post = <$repofd>;
                         close($repofd);
-                        $repo_in_post =~ s#baseurl=#baseurl=http://$master/#g;
+                        $repo_in_post =~ s#baseurl=#baseurl=http://$master$httpportsuffix/#g;
                         $writerepo .= "\ncat >/etc/yum.repos.d/local-repository-$c.repo << 'EOF'\n";
                         $writerepo .="$repo_in_post\n";
                         $writerepo .="EOF\n";
                     }
                 } elsif ($platform =~ /^(sles|suse)/) {
-                    my $http = "http://#TABLE:noderes:\$NODE:nfsserver#$pkgdir";
+                    my $http = "http://#TABLE:noderes:\$NODE:nfsserver#$httpportsuffix/$pkgdir";
                     $source .= "         <listentry>
                <media_url>$http</media_url>
                <product>SuSE-Linux-pkg$c</product>
@@ -323,7 +331,7 @@ sub subvars {
                <ask_on_error config:type=\"boolean\">false</ask_on_error> <!-- available since openSUSE 11.0 -->
                <name>SuSE-Linux-pkg$c</name> <!-- available since openSUSE 11.1/SLES11 (bnc#433981) -->
              </listentry>";
-                    $source_in_pre .= "<listentry><media_url>http://'\$nextserver'$pkgdir</media_url><product>SuSE-Linux-pkg$c</product><product_dir>/</product_dir><ask_on_error config:type=\"boolean\">false</ask_on_error><name>SuSE-Linux-pkg$c</name></listentry>";
+                    $source_in_pre .= "<listentry><media_url>http://'\$nextserver'$httpportsuffix$pkgdir</media_url><product>SuSE-Linux-pkg$c</product><product_dir>/</product_dir><ask_on_error config:type=\"boolean\">false</ask_on_error><name>SuSE-Linux-pkg$c</name></listentry>";
                 } elsif ($platform =~ /^sle15*/) {
                     if ( -d "$pkgdir") {
                         opendir(DIR,$pkgdir);
@@ -339,7 +347,7 @@ sub subvars {
                                 $product_name=$subdir;
                             }
                             if (defined($product_name) && defined($product_dir)){
-                                $source .="<listentry><media_url>http://XCATNEXTSERVERHOOK$pkgdir</media_url><product>$product_name</product><product_dir>/$product_dir</product_dir></listentry>";
+                                $source .="<listentry><media_url>http://XCATNEXTSERVERHOOK$httpportsuffix$pkgdir</media_url><product>$product_name</product><product_dir>/$product_dir</product_dir></listentry>";
                             } 
                         }
                     }
@@ -392,7 +400,7 @@ sub subvars {
             $inc =~ s/#UNCOMMENTOENABLESSH#/ /g;
         }
 
-        my $sles_sdk_media = "http://" . $tmpl_hash->{tftpserver} . $media_dir . "/sdk1";
+        my $sles_sdk_media = "http://" . $tmpl_hash->{tftpserver}.$httpportsuffix . $media_dir . "/sdk1";
 
         $inc =~ s/#SLES_SDK_MEDIA#/$sles_sdk_media/eg;
 
@@ -531,7 +539,7 @@ sub subvars {
             }
         }
         elsif ("ubuntu" eq $platform) {
-            my $default_script = "    wget http://`cat /tmp/xcatserver`" . $ENV{INSTALLDIR} . "/autoinst/getinstdisk; chmod u+x getinstdisk; ./getinstdisk;";
+            my $default_script = "    wget http://`cat /tmp/xcatserver`".':'.$ENV{HTTPPORT} . $ENV{INSTALLDIR} . "/autoinst/getinstdisk; chmod u+x getinstdisk; ./getinstdisk;";
             $inc =~ s/#INCLUDE_GET_INSTALL_DISK_SCRIPT#/$default_script/;
         }
         else {
@@ -1117,7 +1125,7 @@ sub mirrorspec {
             if (!$pkgdir) {
                 $pkgdir = $_;
             } else {
-                my $osuurl = "http://" . $masternode . $_ . " ./";
+                my $osuurl = "http://" . $masternode.':'.$ENV{httpport} . $_ . " ./";
                 push @mirrors, $osuurl;
             }
         }

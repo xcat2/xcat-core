@@ -715,10 +715,18 @@ sub check_http_service {
         push @$error_ref, "HTTP check need 'wget' tool, please install 'wget' tool and try again";
     } else {
         {
-            my $installdir = `lsdef -t site -i installdir -c 2>&1 | awk -F'=' '{print \$2}'`;
-            chomp($installdir);
+            my $httpinfo = `lsdef -t site -i installdir,httpport -c 2>&1`;
+            my $installdir = "";
+            my $httpport = 80;
+            if ($httpinfo =~ /clustersite: installdir=(\S*)/) {
+                $installdir = $1;
+            }
+            if ($httpinfo =~ /clustersite: httpport=(\S*)/) {
+                $httpport = $1;
+            }
+
             unless($installdir){
-                push @$error_ref, "HTTP work path(installdir) isn't configured in 'sit' table";
+                push @$error_ref, "HTTP work path(installdir) isn't configured in 'site' table";
                 last;
             }
 
@@ -728,7 +736,7 @@ sub check_http_service {
             }
 
             my $errormsg;
-            unless(probe_utils->is_http_ready("$serverip", $installdir, \$errormsg)) {
+            unless(probe_utils->is_http_ready("$serverip", $httpport, $installdir, \$errormsg)) {
                 push @$error_ref, "$errormsg";
                 last;
             }

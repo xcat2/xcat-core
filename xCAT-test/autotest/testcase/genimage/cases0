@@ -1,4 +1,5 @@
 start:genimage_h
+label:others,image
 os:Linux
 cmd:genimage -h
 check:output=~Usage
@@ -6,6 +7,7 @@ check:rc==0
 end
 
 start:genimage_help
+label:others,image
 os:Linux
 cmd:genimage --help
 check:output=~Usage
@@ -13,6 +15,7 @@ check:rc==0
 end
 
 start:genimage_stateless
+label:others,image
 os:Linux
 cmd:copycds $$ISO
 check:rc==0
@@ -25,6 +28,7 @@ cmd:mv -f /install/netboot/__GETNODEATTR($$CN,os)__/__GETNODEATTR($$CN,arch)__/c
 end
 
 start:genimage_statelite
+label:others,image
 os:Linux
 cmd:copycds $$ISO
 check:rc==0

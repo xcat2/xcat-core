@@ -1,6 +1,7 @@
 start:ubuntu_migration2_vm
 os:Linux
 description:update xCAT from $$UBUNTU_MIGRATION2_VERSION to latest version, these two global parameter defined in config file
+label:others,migration,invoke_provision
 
 cmd:copycds $$ISO
 check:rc==0

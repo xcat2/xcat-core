@@ -28,7 +28,6 @@ check:rc==0
 cmd:rm -rf /tmp/imagedata/test_osimage
 cmd:xcat-inventory import -t osimage -d /tmp/imagedata/export
 check:rc==0
-check:output=~Importing object: test_osimage
 check:output=~Inventory import successfully!
 check:output=~The object test_osimage has been imported
 cmd:lsdef -t osimage -o test_osimage

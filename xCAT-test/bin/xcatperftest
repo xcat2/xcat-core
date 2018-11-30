@@ -1,5 +1,5 @@
 #!/bin/bash
-# IBM(c) 2017 EPL license http://www.eclipse.org/legal/epl-v10.html
+# IBM(c) 2018 EPL license http://www.eclipse.org/legal/epl-v10.html
 #(C)IBM Corp
 #
 ###################################################################
@@ -34,7 +34,7 @@ isNumber()
 # Give a simple usage
 if [ -z "$1" ] || [ "$1" = "-h" ] || [ "$1" = "--help" ]; then
   echo "Run the performance testing for the commands listed in file:"
-  echo "        [PERF_DRYRUN=y] $0 run <command-list-file>"
+  echo "        [PERF_DRYRUN=y] [PERF_RUN_NODELIST=/path/to/nodelist] $0 run <command-list-file>"
   echo " "
   echo "Generate a bunch of fake nodes and Run the performance testing for the commands listed in file:"
   echo "        [PERF_DRYRUN=y] [PERF_NOCREATE=y] $0 <total number of fake nodes> [command-list-file]"
@@ -107,7 +107,14 @@ fi
 # Mandatory, to specify the number of total fake nodes which will be created for testing
 FAKE_NODE_TOTAL=$1
 if [ "$PERF_RUN_WITH_ENV" = "1" ];then
-  FAKE_NODE_TOTAL=`nodels|wc -l`
+  if [ -z $PERF_RUN_NODELIST ]; then
+    PERF_RUN_NODELIST="/tmp/xcatperftest.nodels.$$"
+    nodels > $PERF_RUN_NODELIST
+  else
+    [ -f "$PERF_RUN_NODELIST" ] && ( echo "ERROR: $PERF_RUN_NODELIST does not exist."; exit 99 )
+  fi
+
+  FAKE_NODE_TOTAL=`cat $PERF_RUN_NODELIST|wc -l`
 fi
 
 # Optional, the prefix of the fake compute node name.
@@ -154,6 +161,11 @@ if [ -z $PERF_NODETEMPL ]; then
 fi
 
 # Optional, The NIC used by simulator.
+if [ -z $PERF_RUN_TIMEOUT ]; then
+  PERF_RUN_TIMEOUT=3600
+fi
+
+# Optional, The NIC used by simulator.
 if [ -z $PERF_SIM_NIC ]; then
   PERF_SIM_NIC='eth1'
 fi
@@ -178,6 +190,16 @@ if [ -z $PERF_RPT_FILE ]; then
   PERF_RPT_FILE=perfreport-$FAKE_NODE_TOTAL.log.$MYSUFFIX
 fi
 PERFORMANCE_REPORT=$PERFORMANCE_DIR/$PERF_RPT_FILE
+
+# Get a random node list from a file
+nodeRange()
+{
+  if [ "$PERF_RUN_WITH_ENV" = "1" ];then
+    cat "$PERF_RUN_NODELIST"|shuf -n$1|awk BEGIN{RS=EOF}'{gsub(/\n/,",");print}'
+  else
+    echo "$FAKE_NODE_PREFIX[1-$1]"
+  fi
+}
 
 # Get a random MAC address
 genMAC()
@@ -283,7 +305,7 @@ runTest()
 {
 
   cmd=$1
-  [ -z $osimage ] || cmd="${cmd/\#OSIMAGE\#/$osimage}"
+  [ -z "$osimage" ] || cmd="${cmd/\#OSIMAGE\#/$osimage}"
   if [[ $cmd =~ '#STANZ#' ]]; then
     #mkdef -z
     execCmd "${cmd/\#STANZ\#/$PERFORMANCE_STANZ}" "$FAKE_NODE_TOTAL"
@@ -295,12 +317,18 @@ runTest()
       execCmd "${cmd/\#NODES\#/$FAKE_NODE_GROUP}" "$FAKE_NODE_TOTAL"
     else
       # run the command for each number in SERIES
+      lastnum=0
       for num in $2
       do
         isNumber $num || continue
+        showcmd=$1
         if [[ $num -le $FAKE_NODE_TOTAL ]]; then
-          #cmd=$1
-          execCmd "${cmd/\#NODES\#/$FAKE_NODE_PREFIX[1-$num]}" "$num"
+          execCmd "${cmd/\#NODES\#/$(nodeRange $num)}" "$num" "${showcmd/NODES/$num}"
+          lastnum=$num
+        elif [ "$PERF_RUN_WITH_ENV" = "1" ]; then
+          num=$FAKE_NODE_TOTAL
+          [[ $num -gt $lastnum ]] && execCmd "${cmd/\#NODES\#/}" "$num" "${showcmd/NODES/$num}"
+          break
         fi
       done
     fi
@@ -312,6 +340,7 @@ runTest()
 
 }
 
+
 # Output performance result for each command.
 printResult()
 {
@@ -322,7 +351,7 @@ printResult()
 
   if [ -z $4 ]; then
     # RESULT; CMD; TIME; FULL COMMAND
-    echo "=====> $result$PERF_CSV_CHAR $desc$PERF_CSV_CHAR $2$PERF_CSV_CHAR \"$1\""
+    echo "=====> $result$PERF_CSV_CHAR $desc$PERF_CSV_CHAR $2"
     echo "$result$PERF_CSV_CHAR $desc$PERF_CSV_CHAR $2$PERF_CSV_CHAR \"$1\"" >> $PERFORMANCE_REPORT
   else
     nodepersec='-'
@@ -331,7 +360,7 @@ printResult()
        nodepersec=$(printf "%.2f" `echo "scale=2;$4/$2"|bc`)
     fi
     # RESULT; CMD; TIME; NODES; NODES/SEC; FULL COMMAND
-    echo "=====> $result$PERF_CSV_CHAR $desc$PERF_CSV_CHAR $2$PERF_CSV_CHAR $4$PERF_CSV_CHAR $nodepersec$PERF_CSV_CHAR \"$1\""
+    echo "=====> $result$PERF_CSV_CHAR $desc$PERF_CSV_CHAR $2$PERF_CSV_CHAR $4$PERF_CSV_CHAR $nodepersec"
     echo "$result$PERF_CSV_CHAR $desc$PERF_CSV_CHAR $2$PERF_CSV_CHAR $4$PERF_CSV_CHAR $nodepersec$PERF_CSV_CHAR \"$1\"">> $PERFORMANCE_REPORT
   fi
 }
@@ -340,8 +369,9 @@ printResult()
 execCmd()
 {
   noderange=$2
+  [ -z "$3" ] && showcmd=$1 || showcmd=$3
 
-  echo "[Testing for command]: $1 ..."
+  echo "[Testing for command]: $showcmd ..."
   if [ ! -z $PERF_DRYRUN ]; then
     return
   fi
@@ -349,7 +379,7 @@ execCmd()
   start=`date +%s%3N`
 
   #using timeout to avoid some commands hang
-  timeout 3600 bash <<EOT
+  timeout $PERF_RUN_TIMEOUT bash <<EOT
 $1 > /dev/null 2>&1
 EOT
 
@@ -369,12 +399,19 @@ EOT
 #################################################
 mkdir -p $PERFORMANCE_DIR
 if [ "$PERF_RUN_WITH_ENV" = "1" ]; then
-  echo "Start the performance testing for commands in $RUN_CMD_LIST "
+  echo "Start the performance testing for commands in $RUN_CMD_LIST. Total nodes: $FAKE_NODE_TOTAL "
 
   echo "#$version" >> $PERFORMANCE_REPORT
   echo "#Total defined nodes number: $FAKE_NODE_TOTAL" >> $PERFORMANCE_REPORT
   echo "#Result$PERF_CSV_CHAR Command$PERF_CSV_CHAR Time(s)$PERF_CSV_CHAR Full Commands" >> $PERFORMANCE_REPORT
   echo "=================================================="
+
+  series=`grep '^#SERIES#' $RUN_CMD_LIST | awk  '{print $2}'`
+  if [ ! -z $series ]; then
+    series=${series//,/ }
+  fi
+  [ -z "$series" ] || echo "Apply noderange ($series) on below commands."
+
   cmdlist=`cat $RUN_CMD_LIST`
   IFS_BAK=$IFS
   IFS=$'\n'
@@ -384,13 +421,14 @@ if [ "$PERF_RUN_WITH_ENV" = "1" ]; then
 
     # begin to run the command
     IFS=$IFS_BAK
-    execCmd "$line"
+    #execCmd "$line"
+    runTest "$line" "$series"
     IFS=$'\n'
   done
   IFS=$IFS_BAK
   IFS_BAK=
 
-  if [ -z $PERF_DRYRUN ]; then
+  if [ -z "$PERF_DRYRUN" ]; then
     echo
     echo "Done. Check the performance result in $PERFORMANCE_REPORT"
   fi
@@ -442,7 +480,7 @@ if [ 0 != $? ]; then
     exit 99
 fi
 
-if [ -z $PERF_NOCREATE ]; then
+if [ -z "$PERF_NOCREATE" ]; then
   rack=$(expr $FAKE_NODE_TOTAL / $NODE_PER_ROW)
 
   echo "=================================================="
@@ -452,8 +490,8 @@ if [ -z $PERF_NOCREATE ]; then
   echo "=================================================="
 
 fi
-if [ -z $RUN_CMD_LIST ]; then
-  [ -z $PERF_NOCREATE ] && echo "Done. Check the stanz file in $PERFORMANCE_STANZ"
+if [ -z "$RUN_CMD_LIST" ]; then
+  [ -z "$PERF_NOCREATE" ] && echo "Done. Check the stanz file in $PERFORMANCE_STANZ"
   exit 0
 fi
 echo "Continue the performance testing for commands in $RUN_CMD_LIST "
@@ -464,19 +502,19 @@ echo "#Result$PERF_CSV_CHAR Command$PERF_CSV_CHAR Time(s)$PERF_CSV_CHAR Nodes Nu
 echo "=================================================="
 
 # Initial Populate the fake nodes into DB
-if [ -z $PERF_NOCREATE ]; then
+if [ -z "$PERF_NOCREATE" ]; then
   #create fake network for makedns, makedhcp etc...
   fakeNetwork
   execCmd "cat $PERFORMANCE_STANZ | mkdef -z -f" "$FAKE_NODE_TOTAL"
 
-  [ -z $PERF_CREATE_ONLY ] || exit 0
+  [ -z "$PERF_CREATE_ONLY" ] || exit 0
   # fake interface is required for topology with service nodes as it will determine if then Mn/Sn are
   # in the same subnet with CNs
   fakeInterface $FAKE_NETWORK_INTF
 fi
 
 series=`grep '^#SERIES#' $RUN_CMD_LIST | awk  '{print $2}'`
-if [ ! -z $series ]; then
+if [ ! -z "$series" ]; then
   series=${series//,/ }
 fi
 #echo $series
@@ -501,7 +539,7 @@ if [ -z $PERF_NOCREATE ]; then
   rm -f $PERFORMANCE_STANZ
   fakeInterface $FAKE_NETWORK_INTF del
 fi
-
+rm -f "/tmp/xcatperftest.nodels.$$"
 if [ -z $PERF_DRYRUN ]; then
   echo
   echo "Done. Check the performance result in $PERFORMANCE_REPORT"

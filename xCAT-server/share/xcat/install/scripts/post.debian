@@ -34,8 +34,12 @@ export MASTER_IP="#XCATVAR:XCATMASTER#"
 export MASTER_IPS="#XCATVAR:XCATMASTER#"
 export MASTER="#XCATVAR:XCATMASTER#"
 export INSTALLDIR=#TABLE:site:key=installdir:value#
+export HTTPPORT=#TABLEBLANKOKAY:site:key=httpport:value#
 if [ -z "$INSTALLDIR" ]; then
     INSTALLDIR="/install"
+fi
+if [ -z "$HTTPPORT" ]; then
+    HTTPPORT="80"
 fi
 cd /tmp
 RAND=$(perl -e 'print int(rand(50)). "\n"')
@@ -45,7 +49,7 @@ do
 	GOTIT=0
 	for i in $MASTER_IPS
 	do
-        wget -l inf -N -r --waitretry=10 --random-wait --retry-connrefused  -e robots=off -nH --cut-dirs=2 --reject "index.html*" --no-parent -t 0 -T 60 http://$i$INSTALLDIR/postscripts/ -P /xcatpost
+        wget -l inf -N -r --waitretry=10 --random-wait --retry-connrefused  -e robots=off -nH --cut-dirs=2 --reject "index.html*" --no-parent -t 0 -T 60 http://${i}:${HTTPPORT}${INSTALLDIR}/postscripts/ -P /xcatpost
 		#wget --wait=10 --random-wait --waitretry=10 --retry-connrefused -t 0 -T 60 http://$i/install/autoinst/xcatpost.tar.gz
 		if [ "$?" = "0" ]
 		then
@@ -95,6 +99,14 @@ do
             else
                 echo "XCATSERVER=$i" >> /opt/xcat/xcatinfo
             fi
+
+            grep 'HTTPPORT' /opt/xcat/xcatinfo > /dev/null 2>&1
+            if [ $? -eq 0 ]; then
+                sed -i "s/HTTPPORT=.*/HTTPPORT=$HTTPPORT/" /opt/xcat/xcatinfo
+            else
+                echo "HTTPPORT=$HTTPPORT" >> /opt/xcat/xcatinfo
+            fi
+            
 	    break
 	fi
 	RAND=$(perl -e 'print int(rand(5)). "\n"')

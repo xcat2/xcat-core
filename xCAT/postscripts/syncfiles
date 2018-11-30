@@ -7,17 +7,23 @@
 #
 #####################################################
 
+if [ -n "$LOGLABEL" ]; then
+    log_label=$LOGLABEL
+else
+    log_label="xcat"
+fi
+bname=$(basename $0)
 #statelite does not support syncfiles
 if [ -d /.statelite ]; then
    echo "Statelite does not support syncfiles, nothing to do..."
-   logger -t xcat -p local4.info "Statelite does not support syncfiles, nothing to do..."
+   logger -t $log_label -p local4.info "Statelite does not support syncfiles, nothing to do..."
    exit 0
 fi
 
 # do nothing when UPDATENODE=1 because it is done from the top down
 if [ -n "$UPDATENODE" ] && [ $UPDATENODE -eq 1 ]; then
    #echo "  Did not sync any files. Use updatenode -F to sync the files."
-   logger -t xcat -p local4.err "$0: Did not sync any files. Use updatenode -F to sync the files."
+   logger -t $log_label -p local4.warning "$bname: Did not sync any files. Use updatenode -F to sync the files."
 
    exit 0
 fi
@@ -25,7 +31,7 @@ fi
 #do nothing id there is no sync file template for the node
 if [ -n "$NOSYNCFILES" ] && [ $NOSYNCFILES -eq 1 ]; then
    echo "  Did not sync any files."
-   logger -t xcat -p local4.err "$0: there is no sync file template for the node"
+   logger -t $log_label -p local4.info "$bname: there is no sync file template for the node"
    exit 0
 fi
 
@@ -34,13 +40,13 @@ if [ ! -e "/usr/bin/rsync" ]; then
    [ -e "/usr/bin/scp" ] && RCP="/usr/bin/scp"
 fi
 
-logger -t xcat -p local4.info "Performing syncfiles postscript"
+logger -t $log_label -p local4.info "Performing syncfiles postscript"
 
 osname=`uname`
 # run the xdcp on the MN/SN
 xcatpostdir="/xcatpost"
 
-logger -t xcat -p local4.info "$0: the OS name = $osname"
+logger -t $log_label -p local4.info "$bname: the OS name = $osname"
 quit="no"
 count=5
 returncode=0
@@ -70,9 +76,9 @@ done
 
 if [ $returncode -eq 0 ]
 then
-  logger -t xcat -p local4.info "$0: Perform Syncing File action successfully"
+  logger -t $log_label -p local4.info "$bname: Perform Syncing File action successfully"
 else
-  logger -t xcat -p local4.err "$0: Perform Syncing File action encountered error"
+  logger -t $log_label -p local4.err "$bname: Perform Syncing File action encountered error"
 fi
 
 [ $returncode -eq 0 ]

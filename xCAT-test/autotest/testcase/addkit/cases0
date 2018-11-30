@@ -1,4 +1,5 @@
 start:addkit_v
+label:others,KIT
 cmd:addkit -v
 check:rc==0
 check:output~=Version
@@ -7,6 +8,7 @@ check:output~=compatible_frameworks
 end
 
 start:addkit_h
+label:others,KIT
 cmd:addkit -h
 check:rc==0
 check:output~=Usage
@@ -14,6 +16,7 @@ check:outpur!~error
 end
 
 start:addkit_kit
+label:others,KIT
 os:Linux
 cmd:rm -rf /opt/xcat/share/xcat/tools/autotest/testcase/addkit/prodkit
 cmd:cd /opt/xcat/share/xcat/tools/autotest/testcase/addkit;buildkit create prodkit
@@ -35,6 +38,7 @@ cmd:rm -rf /opt/xcat/share/xcat/tools/autotest/testcase/addkit/prodkit
 end
 
 start:addkit_i
+label:others,KIT
 os:Linux
 cmd:rm -rf /opt/xcat/share/xcat/tools/autotest/testcase/addkit/prodkit
 cmd:cd /opt/xcat/share/xcat/tools/autotest/testcase/addkit;buildkit create prodkit
@@ -54,6 +58,7 @@ cmd:rm -rf /opt/xcat/share/xcat/tools/autotest/testcase/addkit/prodkit
 end
 
 start:addkit_multikit
+label:others,KIT
 os:Linux
 cmd:rm -rf /opt/xcat/share/xcat/tools/autotest/testcase/addkit/prodkit
 cmd:rm -rf /opt/xcat/share/xcat/tools/autotest/testcase/addkit/prod2kit
@@ -87,6 +92,7 @@ cmd:rm -rf /opt/xcat/share/xcat/tools/autotest/testcase/addkit/prod2kit
 end
 
 start:addkit_p
+label:others,KIT
 os:Linux
 cmd:rm -rf /opt/xcat/share/xcat/tools/autotest/testcase/addkit/prodkit
 cmd:rm -rf /opt/xcat/share/xcat/tools/autotest/testcase/addkit/prod2kit

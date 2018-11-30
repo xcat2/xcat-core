@@ -1,6 +1,6 @@
 start:dumpxCATdb_h
 description:dumpxCATdb -h
-label:mn_only,db
+label:mn_only,ci_test,db
 cmd:dumpxCATdb -h
 check:rc==0
 check:output=~dumpxCATdb
@@ -8,7 +8,7 @@ end
 
 start:dumpxCATdb_v
 description:Command Version
-label:mn_only,db
+label:mn_only,ci_test,db
 cmd:dumpxCATdb -v
 check:rc==0
 check:output=~Version
@@ -16,7 +16,7 @@ end
 
 start:dumpxCATdb_p_nullskiptables
 description:dumpxCATdb -p path,not skiptables
-label:mn_only,db
+label:mn_only,ci_test,db
 cmd:chtab key=skiptables site.value=""
 check:rc==0
 cmd:dumpxCATdb -p /tmp/db
@@ -32,7 +32,7 @@ end
 
 start:dumpxCATdb_a_p_nullskiptables
 description:dump all,without this flag the eventlog and auditlog will be skipped
-label:mn_only,db
+label:mn_only,ci_test,db
 cmd:chtab key=skiptables site.value=""
 check:rc==0
 cmd:dumpxCATdb -a -p /tmp/db.all
@@ -47,7 +47,7 @@ end
 
 start:dumpxCATdb_p_skiptables
 description:To have dumpxCATdb not backup the hosts or passwd table
-label:mn_only,db
+label:mn_only,ci_test,db
 cmd:chtab key=skiptables site.value="hosts,passwd"
 check:rc==0
 cmd:dumpxCATdb -p /tmp/db.skiptables
@@ -61,7 +61,7 @@ end
 
 start:dumpxCATdb_a_p_skiptables
 description:To have dumpxCATdb all but not backup the hosts or passwd table
-label:mn_only,db
+label:mn_only,ci_test,db
 cmd:chtab key=skiptables site.value="hosts,passwd"
 check:rc==0
 cmd:dumpxCATdb -a -p /tmp/db.skiptables
@@ -76,7 +76,7 @@ end
 
 start:dumpxCATdb_p_nullskiptables_V
 description:test verbose and -p
-label:mn_only,db
+label:mn_only,ci_test,db
 cmd:chtab key=skiptables site.value=""
 check:rc==0
 cmd:dumpxCATdb -p /tmp/db -V
@@ -90,7 +90,7 @@ end
 
 start:dumpxCATdb_a_p_nullskiptables_V
 description:test -V and -a
-label:mn_only,db
+label:mn_only,ci_test,db
 cmd:chtab key=skiptables site.value=""
 check:rc==0
 cmd:dumpxCATdb -a -p /tmp/db -V
@@ -103,7 +103,7 @@ end
 
 start:dumpxCATdb_p_V
 description:test -p -V
-label:mn_only,db
+label:mn_only,ci_test,db
 cmd:chtab key=skiptables site.value="passwd"
 check:rc==0
 cmd:dumpxCATdb -p /tmp/db -V

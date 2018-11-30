@@ -759,7 +759,7 @@ sub configSwitch {
     my $table = xCAT::Table->new('switches', -create => 0);
     if ($table) {
         my @tmp1 = $table->getAllAttribs(('switch'));
-        if (defined(@tmp1) && (@tmp1 > 0)) {
+        if (scalar @tmp1 > 0) {
             foreach (@tmp1) {
                 my @switches_tmp = noderange($_->{switch});
                 if (@switches_tmp == 0) { push @switches_tmp, $_->{switch}; }
@@ -1360,7 +1360,7 @@ sub getNodesMonServers
     my $table = xCAT::Table->new('switches', -create => 0);
     if ($table) {
         my @tmp1 = $table->getAllAttribs(('switch'));
-        if (defined(@tmp1) && (@tmp1 > 0)) {
+        if (scalar @tmp1 > 0) {
             foreach (@tmp1) {
                 my @switches_tmp = noderange($_->{switch});
                 if (@switches_tmp == 0) { push @switches_tmp, $_->{switch}; }

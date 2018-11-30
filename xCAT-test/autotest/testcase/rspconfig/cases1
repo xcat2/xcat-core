@@ -145,7 +145,7 @@ check:output =~$$CN:\s*Dump requested
 check:output =~$$CN:\s*Downloading dump
 cmd:rspconfig $$CN dump -l |tail -n 1 |tee /tmp/dumpgenerate
 check:rc == 0
-cmd:dumpnumber=`sed -r 's/.+\[(.+)\].+/\1/g' /tmp/dumpgenerate`;dumpsize=`grep "\[$dumpnumber\] Generated" /tmp/dumpgenerate |cut -d : -f 6`;ls -l /var/log/xcat/dump/*_$$CN_dump_$dumpnumber.tar.xz|grep $dumpsize
+cmd:dumpnumber=`sed -r 's/.+\[(.+)\].+/\1/g' /tmp/dumpgenerate`;dumpsize=`grep "\[$dumpnumber\] Generated" /tmp/dumpgenerate |cut -d : -f 6`;ls -l /var/log/xcat/dump/*_dump_$dumpnumber.tar.xz|grep $dumpsize|grep $$CN
 check:rc == 0
 cmd:rm -rf /tmp/dumpgenerate
 end
@@ -197,7 +197,7 @@ cmd:rspconfig $$CN powerrestorepolicy=restore
 check:output =~$$CN:\s*BMC Setting BMC PowerRestorePolicy...
 check:rc == 0
 cmd:rspconfig $$CN powerrestorepolicy=abc
-check:output =~$$CN:\s*(\[.*?\]: )?Error: Invalid value '\S*' for 'powerrestorepolicy', Valid values: restore,always_on,always_off
+check:output =~$$CN:\s*Error: Invalid value '\S*' for 'powerrestorepolicy', Valid values: always_off,always_on,restore
 check:rc != 0
 cmd:rspconfig $$CN powerrestorepolicy
 check:rc == 0
@@ -256,7 +256,7 @@ cmd:rspconfig $$CN timesyncmethod
 check:rc == 0
 check:output =~$$CN:\s*BMC TimeSyncMethod:\s*Manual
 cmd:rspconfig $$CN  timesyncmethod=abc
-check:output =~$$CN:\s*(\[.*?\]: )?Error: Invalid value \S* for 'timesyncmethod', Valid values: ntp,manual
+check:output =~$$CN:\s*(\[.*?\]: )?Error: Invalid value \S* for 'timesyncmethod', Valid values: manual,ntp
 check:rc != 0
 cmd:syncmethod=`cat /tmp/timesyncmethod | awk -F ":" '{print $3}'`;newsyncmethod=`echo $syncmethod |tr 'A-Z' 'a-z'`;rspconfig $$CN timesyncmethod=$newsyncmethod
 check:rc == 0
@@ -290,7 +290,7 @@ cmd:rspconfig $$CN bootmode
 check:rc == 0
 check:output =~$$CN:\s*BMC BootMode:\s*Setup
 cmd:rspconfig $$CN bootmode=abc
-check:output =~$$CN:\s*(\[.*?\]: )?Error: Invalid value \S* for 'bootmode', Valid values: regular,safe,setup
+check:output =~$$CN:\s*Error: Invalid value \S* for 'bootmode', Valid values: regular,safe,setup
 check:rc != 0
 cmd:mode=`cat /tmp/bootmode |awk -F ":" '{print $3}'`;newmode=`echo $mode |tr 'A-Z' 'a-z'`;rspconfig $$CN bootmode=$newmode
 check:rc == 0

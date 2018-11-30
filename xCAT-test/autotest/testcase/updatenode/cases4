@@ -1,11 +1,13 @@
 start:updatenode_syncfiles
 description: Test cases for the syncfiles feature
+label:others,updatenode
 cmd:/opt/xcat/share/xcat/tools/autotest/testcase/updatenode/syncfiles $$CN
 check:rc==0
 end
 
 start:updatenode_syncfiles_scp
 description: Test cases for the syncfiles feature with scp
+label:others,updatenode
 cmd:/opt/xcat/share/xcat/tools/autotest/testcase/updatenode/syncfiles $$CN scp
 check:rc==0
 end

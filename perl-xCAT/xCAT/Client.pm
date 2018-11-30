@@ -232,7 +232,8 @@ sub submit_request {
         $pclient = IO::Socket::INET6->new(
             %connargs,
         );
-    } else {
+    }
+    unless ($pclient) {
         $pclient = IO::Socket::INET->new(
             PeerAddr => $xcathost,
             Timeout  => 15,
@@ -1036,6 +1037,11 @@ sub populate_site_hash {
     foreach (@records) {
         $::XCATSITEVALS{ $_->{key} } = $_->{value};
     }
+
+    unless (exists($::XCATSITEVALS{'httpport'}) and ($::XCATSITEVALS{'httpport'} ne "")){
+        $::XCATSITEVALS{'httpport'}="80";
+    }
+
 }
 
 

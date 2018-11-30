@@ -30,6 +30,8 @@ my $udpctl;
 my $pid_UDP;
 my $pid_MON;
 
+my $numofnodes=0;
+
 # ----used for command log start---------
 my $cmdlog_svrpid;
 
@@ -507,7 +509,12 @@ sub do_installm_service {
                             node    => [$node],
                             arg     => ["$newstat"],
                         );
-                        xCAT::MsgUtils->trace(0, "I", "xcatd: triggering \'updatenodestat $node $newstat\'...");
+                        # TODO, better to use constant here for the specified status
+                        if ($newstat eq 'installing') {
+                            xCAT::MsgUtils->trace(0, "I", "xcat.updatestatus - $node: provisioning detected...");
+                        } elsif ($newstat eq 'netbooting') {
+                            xCAT::MsgUtils->trace(0, "I", "xcat.updatestatus - $node: provisioning detected...");
+                        }
                         # node should be blocked, race condition may occur otherwise
                         #my $pid=xCAT::Utils->xfork();
                         #unless ($pid) { # fork off the nodeset and potential slowness
@@ -2165,6 +2172,7 @@ sub plugin_command {
             }
         }
     }
+
 }
 
 my $dispatch_parentfd;
@@ -2622,6 +2630,10 @@ sub populate_site_hash {
     foreach (@records) {
         $::XCATSITEVALS{ $_->{key} } = $_->{value};
     }
+
+    unless (exists($::XCATSITEVALS{'httpport'}) and ($::XCATSITEVALS{'httpport'} ne "")){
+        $::XCATSITEVALS{'httpport'}="80";
+    }
 }
 
 sub populate_vpd_hash {
@@ -2661,6 +2673,9 @@ sub send_response {
                 if ( (ref($rsp) eq 'ARRAY') && scalar(@$rsp) > 0 ) {
                     foreach (@$rsp) {
                         $_->{xcatdsource}->[0] = $MYXCATSERVER unless ($_->{xcatdsource});
+                        if ($_->{numofnodes}) {
+                            $numofnodes = $_->{numofnodes}->[0];
+                        }
                     }
                 }
             }
@@ -2803,6 +2818,12 @@ sub service_connection {
             if ($enable_perf) {
                 xCAT::MsgUtils->perf_log_process('immediate', $req);
             }
+
+             if (exists($req->{noderange}) && defined($req->{noderange}->[0])) {
+                my @nnodes = xCAT::NodeRange::noderange($req->{noderange}->[0]);
+                $numofnodes = (scalar(@nnodes));
+            }
+
             # ----used for command log start----------
             $cmdlog_starttime = time();
             my ($sec, $min, $hour, $mday, $mon, $year) = localtime($cmdlog_starttime);
@@ -3018,6 +3039,7 @@ sub service_connection {
     }
 
     # ----used for command log start-------
+    $cmdlog_alllog .= "[NumberNodes] $numofnodes \n";
     my $reqhandletime = sprintf("%.3f", time()-$cmdlog_starttime);
     $cmdlog_alllog .= "[ElapsedTime] $reqhandletime s\n";
     cmdlog_submitlog();

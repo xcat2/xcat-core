@@ -1,5 +1,6 @@
 start:get_policy_all
 description: get_policy_all
+label:others,restapi
 cmd:restapitest -m GET -r /policy
 check:rc==200
 cmdcheck:restapitest -o '["1"]' -O ==
@@ -7,6 +8,7 @@ end
 
 start:get_policy_attr
 description: get_policy_attr
+label:others,restapi
 cmd:restapitest -m GET -r /policy/1
 check:rc==200
 cmdcheck:restapitest -o '{"1":{"name":"root"}}' -O ==
@@ -14,12 +16,14 @@ end
 
 start:put_policy_attr
 description: put_policy_attr
+label:others,restapi
 cmd:restapitest -m PUT -r /policy/1 -d '{"name":"root1"}'
 check:rc==200
 end
 
 start:get_policy_attr_for_put
 description: get_policy_attr_for_put
+label:others,restapi
 cmd:restapitest -m GET -r /policy/1
 check:rc==200
 cmdcheck:restapitest -o '{"1":{"name":"root1"}}' -O ==
@@ -27,18 +31,21 @@ end
 
 start:put_policy_attr_changeback
 description: put_policy_attr_changeback
+label:others,restapi
 cmd:restapitest -m PUT -r /policy/1 -d '{"name":"root"}'
 check:rc==200
 end
 
 start:post_policy
 description: post_policy
+label:others,restapi
 cmd:restapitest -m POST -r /policy/11 -d '{"name":"root1",,"commands":"rpower"}'
 check:rc==201
 end
 
 start:get_policy_attr_for_post
 description: get_policy_attr_for_post
+label:others,restapi
 cmd:restapitest -m GET -r /policy/11
 check:rc==200
 cmdcheck:restapitest -o '{"11":{"name":"root1"}}' -O ==
@@ -46,6 +53,7 @@ end
 
 start:delete_policy
 description: delete_policy
+label:others,restapi
 cmd:restapitest -m DELETE -r /policy/11
 check:rc==200
 cmdcheck:restapitest -o '["11"]' -O !=
@@ -53,6 +61,7 @@ end
 
 start:get_policy_attrs
 description: get_policy_attrs
+label:others,restapi
 cmd:restapitest -m GET -r /policy/1/attrs/name,rule
 check:rc==200
 cmdcheck:restapitest -o '{"1":{"name":"root"}}' -O ==

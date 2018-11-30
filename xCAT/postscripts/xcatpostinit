@@ -19,8 +19,12 @@
 if [ -x /etc/rc.d/init.d/functions ]; then
   . /etc/rc.d/init.d/functions
 fi
-
-logger -t xcat -p local4.info "$0: action is $1"
+if [ -n "$LOGLABEL" ]; then
+    log_label=$LOGLABEL
+else
+    log_label="xcat.deployment"
+fi
+logger -t $log_label -p local4.info "$0: action is $1"
 case $1 in
 restart)
   $0 stop
@@ -28,11 +32,11 @@ restart)
   ;;
 status)
   echo -n "xcatpostinit runs only at boot, runs additional post scripts"
-  logger -t xcat -p local4.info "xcatpostinit runs only at boot, runs additional post scripts"
+  logger -t $log_label -p local4.info "xcatpostinit runs only at boot, runs additional post scripts"
   ;;
 stop)
   echo -n "nothing to stop "
-  logger -t xcat -p local4.info "nothing to stop"
+  logger -t $log_label -p local4.info "nothing to stop"
   ;;
 start)
         # Node is stateless by default
@@ -59,10 +63,10 @@ start)
 
         # Run $SCRIPT according to node type
         if [ $STATELITE -ne 0 ]; then
-            logger -t xcat -p local4.info "Call $SCRIPT for statelite mode"
+            logger -t $log_label -p local4.info "Call $SCRIPT for statelite mode"
             "$SCRIPT" 4
         else
-            logger -t xcat -p local4.info  "Call $SCRIPT for stateless mode"
+            logger -t $log_label -p local4.info  "Call $SCRIPT for stateless mode"
             "$SCRIPT"
         fi
   ;;

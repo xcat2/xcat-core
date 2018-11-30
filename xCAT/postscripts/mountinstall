@@ -27,6 +27,11 @@ if [ -z "$INSTALLDIR" ]; then
     INSTALLDIR="/install"
 fi
 
+if [ -n "$LOGLABEL" ]; then
+    log_label=$LOGLABEL
+else
+    log_label="xcat"
+fi
 
 mount | grep "$MASTER:$INSTALLDIR on /install"
 if [ $? -eq 0 ]
@@ -42,7 +47,7 @@ mount $MASTER:$INSTALLDIR  /install
 if [ $? -ne 0 ]
 then
     errmsg="Failed to run mount $MASTER:$INSTALLDIR  /install"
-    logger -t xcat -p local4.err $errmsg
+    logger -t $log_label -p local4.err $errmsg
     echo $errmsg
     exit 1
 fi

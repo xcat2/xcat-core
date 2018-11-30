@@ -459,7 +459,7 @@ sub mknetboot
                     $kcmdline = "NFSROOT=$nfssrv:$nfsdir STATEMNT=";
                 }
             } else {
-                $kcmdline = "imgurl=$httpmethod://$imgsrv/$rootimgdir/rootimg-statelite.gz STATEMNT=";
+                $kcmdline = "imgurl=$httpmethod://$imgsrv:$httpport/$rootimgdir/rootimg-statelite.gz STATEMNT=";
             }
 
             # add support for subVars in the value of "statemnt"
@@ -512,9 +512,10 @@ sub mknetboot
         else
         {
             $kcmdline =
-              "imgurl=$httpmethod://$imgsrv/$rootimgdir/$compressedrootimg ";
+              "imgurl=$httpmethod://$imgsrv:$httpport/$rootimgdir/$compressedrootimg ";
         }
         $kcmdline .= "XCAT=$xcatmaster:$xcatdport quiet ";
+        $kcmdline .= " XCATHTTPPORT=$httpport ";
 
         #if site.nodestatus="n", append "nonodestatus" to kcmdline
         #to inform the statelite/stateless node not to update the nodestatus during provision

@@ -1,4 +1,5 @@
 start:rmvm_noderange
+label:others,hctrl_hmc
 hcp:hmc
 cmd:mkdef -t node -o testnode1,testnode2 mgt=hmc groups=all
 cmd:mkvm testnode1,testnode2 -i $$MaxLparID -l $$CN

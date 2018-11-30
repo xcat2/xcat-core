@@ -1,0 +1,27 @@
+#SERIES# 1,50,100,250,500,1000,2500,5000,10000,20000
+# 1, For big table read
+tabdump nodelist
+
+# 2, For node objects
+# List names for node objects
+lsdef -t node #NODES#
+# List all attributes for node objects
+lsdef -l -t node #NODES#
+# List some attributes for node objects, attributes in nodelist table
+lsdef -t node #NODES# -i groups,status,usercomment
+# List some attributes for node objects, attributes in multiple table
+lsdef -t node #NODES# -i groups,ip,mac,netboot,servicenode
+# query with conditions
+lsdef -t node #NODES# -l -w 'ip!=2.2.2.2' -w 'status==booted'
+lsdef -S
+
+# 3, For group objects
+lsdef -t group
+lsdef -l -t group
+lsdef -t group $FAKE_NODE_GROUP -i ip,mac
+
+# 4, For node* commands, it should be similar with lsdef -t node
+nodels #NODES#
+nodels #NODES# groups
+nodels #NODES# noderes.netboot==pxe switch.switch
+

@@ -2797,20 +2797,21 @@ sub getNodeAttribs
     unless (scalar keys %{ $data[0] }) {
         return undef;
     }
-    my $attrib;
-    foreach $datum (@data) {
-        foreach $attrib (@attribs)
-        {
-            unless (defined $datum->{$attrib}) {
-
-                #skip undefined values, save time
-                next;
-            }
-            my $retval;
-            if (defined($retval = transRegexAttrs($node, $datum->{$attrib}))) {
-                $datum->{$attrib} = $retval;
-            } else {
-                delete $datum->{$attrib};
+    if (!exists($options{keep_raw})){
+        my $attrib;
+        foreach $datum (@data) {
+            foreach $attrib (@attribs) {
+                unless (defined $datum->{$attrib}) {
+                    #skip undefined values, save time
+                    next;
+                }
+                my $retval;
+                if (defined($retval = transRegexAttrs($node, $datum->{$attrib}))) {
+                    $datum->{$attrib} = $retval;
+                }
+                else {
+                    delete $datum->{$attrib};
+                }
             }
         }
     }
@@ -2983,6 +2984,9 @@ sub getNodeAttribs_nosub_returnany
         $nodekey = $xCAT::Schema::tabspec{ $self->{tabname} }->{nodecol}
     }
     @results = $self->getAttribs({ $nodekey => $node }, @attribs);
+
+    # return the DB without any rendering, this is for fetch attributes of group
+    return @results if (exists($options{keep_raw}));
 
     my %attribsToDo;
     for (@attribs) {
@@ -4326,8 +4330,10 @@ sub delimitcol {
 #--------------------------------------------------------------------------------
 sub buildWhereClause {
     my $attrvalstr = shift;    # array of atr<op>val strings
+    my $getkeysonly = shift;
     my $whereclause;           # Where Clause
     my $firstpass = 1;
+    my @gotkeys = ();
     foreach my $m (@{$attrvalstr})
     {
         my $attr;
@@ -4368,6 +4374,9 @@ sub buildWhereClause {
             ($attr, $val) = split />/, $m, 2;
             $operator = ' > ';
         } else {
+            if (defined($getkeysonly)) {
+                return "Unsupported operator:$m on -w flag input";
+            }
             xCAT::MsgUtils->message("S", "Unsupported operator:$m  on -w flag input, could not build a Where Clause.");
             $whereclause = "";
             return $whereclause;
@@ -4382,7 +4391,12 @@ sub buildWhereClause {
 
         #$whereclause .="\')";
         $whereclause .= "\'";
-
+        if (defined($getkeysonly)) {
+            push @gotkeys, $attr;
+        }
+    }
+    if (defined($getkeysonly)) {
+        return \@gotkeys;
     }
     return $whereclause;
 

@@ -1,5 +1,6 @@
 start:get_group_list
 description: get_group_list
+label:others,restapi
 cmd:restapitest -m GET -r /groups
 check:rc==200
 cmdcheck:restapitest -o '["all"]' -O ==
@@ -7,6 +8,7 @@ end
 
 start:get_group_all
 description: get_group_all
+label:others,restapi
 cmd:restapitest -m GET -r /groups/all
 check:rc==200
 cmdcheck:restapitest -o '{"all":{"members":"virtualcn2"}}' -O ==
@@ -14,12 +16,14 @@ end
 
 start:put_group_all
 description: put_group_all
+label:others,restapi
 cmd:restapitest -m PUT -r /groups/all -d '{"mgt":"dfm","netboot":"yaboot"}'
 check:rc==200
 end
 
 start:get_group_all_for_put
 description: get_group_all_for_put
+label:others,restapi
 cmd:restapitest -m GET -r /groups/all
 check:rc==200
 cmdcheck:restapitest -o '{"all":{"netboot":"yaboot"}}' -O ==
@@ -27,6 +31,7 @@ end
 
 start:get_group_all_attrs
 description: get_group_all_attrs
+label:others,restapi
 cmd:restapitest -m GET -r /groups/all/attrs/mgt,netboot
 check:rc==200
 cmdcheck:restapitest -o '{"all":{"netboot":"yaboot"}}' -O ==

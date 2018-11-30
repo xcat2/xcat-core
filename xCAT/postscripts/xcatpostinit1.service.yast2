@@ -6,6 +6,7 @@ After=network.target rsyslog.service YaST2-Firstboot.service
 Type=oneshot
 ExecStart=/opt/xcat/xcatpostinit1 start
 ExecStop=/opt/xcat/xcatpostinit1 stop
+StandardOutput=null
 RemainAfterExit=yes
 
 [Install]

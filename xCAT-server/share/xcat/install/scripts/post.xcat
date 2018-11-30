@@ -8,6 +8,7 @@ export XCATIPORT=#TABLE:site:key=xcatiport:value#
 export INSTALLDIR=#TABLE:site:key=installdir:value#
 export TFTPDIR=#TABLE:site:key=tftpdir:value#
 export XCATDEBUGMODE="#TABLEBLANKOKAY:site:key=xcatdebugmode:value#"
+export HTTPPORT="#TABLEBLANKOKAY:site:key=httpport:value#"
 
 #INCLUDE:#ENV:XCATROOT#/share/xcat/install/scripts/scriptlib#
 
@@ -26,6 +27,9 @@ if [ -z "$TFTPDIR" ]; then
 fi
 if [[ $TFTPDIR != /* ]]; then
     TFTPDIR="/"$TFTPDIR
+fi
+if [ -z "$HTTPPORT" ]; then
+    HTTPPORT="80"
 fi
 
 NODESTATUS=$(echo "$NODESTATUS"| tr -d \'\"| tr A-Z a-z)
@@ -74,6 +78,13 @@ else
     echo "INSTALLDIR=$INSTALLDIR" >> /opt/xcat/xcatinfo
 fi
 
+grep 'HTTPPORT' /opt/xcat/xcatinfo > /dev/null 2>&1
+if [ $? -eq 0 ]; then
+    sed -i "s/HTTPPORT=.*/HTTPPORT=$HTTPPORT/" /opt/xcat/xcatinfo
+else
+    echo "HTTPPORT=$HTTPPORT" >> /opt/xcat/xcatinfo
+fi
+
 if [ "$XCATDEBUGMODE" = "1" ] || [ "$XCATDEBUGMODE" = "2" ]; then
     msgutil_r "$MASTER_IP" "debug" "/opt/xcat/xcatinfo generated" "/var/log/xcat/xcat.log" "$log_label"
 fi
@@ -88,7 +99,7 @@ if [ ! -x /usr/bin/wget ]; then
     sleep 36500d
 fi
 
-wget -l inf -N -r --waitretry=10 --random-wait --retry-connrefused  -e robots=off -nH --cut-dirs=2 --reject "index.html*" --no-parent -t 20 -T 60 http://$MASTER_IP$INSTALLDIR/postscripts/ -P /xcatpost 2> /tmp/wget.log
+wget -l inf -N -r --waitretry=10 --random-wait --retry-connrefused  -e robots=off -nH --cut-dirs=2 --reject "index.html*" --no-parent -t 20 -T 60 http://${MASTER_IP}:${HTTPPORT}${INSTALLDIR}/postscripts/ -P /xcatpost 2> /tmp/wget.log
 if [ "$?" != "0" ]; then
     msgutil_r "$MASTER_IP" "error" "failed to download postscripts from http://$MASTER_IP$INSTALLDIR/postscripts/,check /tmp/wget.log on the node,  halt ..." "/var/log/xcat/xcat.log" "$log_label"
     /tmp/updateflag $MASTER $XCATIPORT "installstatus failed"
@@ -105,7 +116,7 @@ export NODE=#TABLE:nodelist:THISNODE:node#
 
 msgutil_r "$MASTER_IP" "info" "trying to get mypostscript from $MASTER_IP..." "/var/log/xcat/xcat.log" "$log_label"
 
-wget -N --waitretry=10 --random-wait --retry-connrefused -t 20 -T 60 http://$MASTER_IP$TFTPDIR/mypostscripts/mypostscript.$NODE  -P /xcatpost 2> /tmp/wget.log
+wget -N --waitretry=10 --random-wait --retry-connrefused -t 20 -T 60 http://${MASTER_IP}:${HTTPPORT}${TFTPDIR}/mypostscripts/mypostscript.$NODE  -P /xcatpost 2> /tmp/wget.log
 if [ "$?" = "0" ]; then
     if [ "$XCATDEBUGMODE" = "1" ] || [ "$XCATDEBUGMODE" = "2" ]; then
         msgutil_r "$MASTER_IP" "debug" "precreated mypostscript downloaded successfully" "/var/log/xcat/xcat.log" "$log_label"
@@ -196,9 +207,10 @@ run_ps () {
     if [ -z \"\$scriptype\" ]; then
         scriptype=\"postscript\"
     fi
-
+    log_label=\"xcat.deployment.\"\$scriptype
+    export LOGLABEL=\$log_label
     if [ -f \$1 ]; then
-        msgutil_r \"\$MASTER_IP\" \"info\" "\"Running \$scriptype: \$1\"" \"\$logfile\" \"xcat.mypostscript\"
+        msgutil_r \"\$MASTER_IP\" \"info\" "\"\$scriptype start..: \$1\"" \"\$logfile\" \"\$log_label\"
         if [ \"\$XCATDEBUGMODE\" = \"1\" ] || [ \"\$XCATDEBUGMODE\" = \"2\" ]; then
             local compt=\$(file \$1)
             local reg=\"shell script\"
@@ -206,7 +218,7 @@ run_ps () {
                 bash -x ./\$@ 2>&1
                 ret_local=\$?
             else
-                ./\$@ 2>&1 | logger -t xcat -p debug
+                ./\$@ 2>&1 | logger -t \$log_label -p debug
                 ret_local=\${PIPESTATUS[0]}
             fi
         else
@@ -217,9 +229,9 @@ run_ps () {
         if [ \"\$ret_local\" -ne \"0\" ]; then
             return_value=\$ret_local
         fi
-        msgutil_r \"\$MASTER_IP\" \"info\" "\"\$scriptype \$1 return with \$ret_local\"" \"\$logfile\" \"xcat.mypostscript\"
+        msgutil_r \"\$MASTER_IP\" \"info\" "\"\$scriptype end...: \$1 return with \$ret_local\"" \"\$logfile\" \"\$log_label\"
     else
-        msgutil_r \"\$MASTER_IP\" \"error\" "\"\$scriptype \$1 does NOT exist.\"" \"\$logfile\" \"xcat.mypostscript\"
+        msgutil_r \"\$MASTER_IP\" \"error\" "\"\$scriptype \$1 does NOT exist.\"" \"\$logfile\" \"\$log_label\"
         return_value=-1
     fi
 

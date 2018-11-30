@@ -1,5 +1,6 @@
 start:go_xcat_update_case1
 description:test go_xcat with the option update
+label:others,go_xcat
 os:Linux
 cmd:if xdsh $$CN "zypper -h"; then  xdsh $$CN "zypper remove -y *xCAT*"; elif xdsh $$CN "yum -h";then xdsh $$CN  "yum remove -y *xCAT*"; elif xdsh $$CN "apt-get -h";then xdsh $$CN "apt-get purge perl-xcat xcat-client xcat-server xcat -y"; else echo "Sorry,this is not supported os"; fi
 cmd:if grep Ubuntu /etc/*release;then xdsh $$CN "dpkg -l |grep -i perl-xcat";else xdsh $$CN "rpm -qa |grep -i perl-xcat";fi
@@ -14,7 +15,7 @@ cmd:xdsh $$CN "cd /; scp -r $$MN:/core-*-snap.tar.bz2 /xcat-core.tar.bz2"
 check:rc==0
 cmd:xdsh $$CN "cd /; scp -r $$MN:/xcat-dep*.tar.bz2 /xcat-dep.tar.bz2"
 check:rc==0
-cmd:if grep Ubuntu /etc/*release;then code=`lsb_release -sc` && xdsh $$CN "scp -r $$MN:/opt/xcat/share/xcat/tools/autotest/testcase/go-xcat/$code-__GETNODEATTR($$CN,arch)__.sources.list /etc/apt/sources.list"; fi
+cmd:if grep Ubuntu /etc/*release;then code=`lsb_release -sc` && xdsh $$CN "scp -r $$MN:/opt/xcat/share/xcat/tools/autotest/testcase/go_xcat/$code-__GETNODEATTR($$CN,arch)__.sources.list /etc/apt/sources.list"; fi
 cmd:if grep Ubuntu /etc/*release;then xdsh $$CN "scp -r $$MN:/etc/resolv.conf /etc/resolv.conf" && xdsh $$CN "wget -O - http://xcat.org/files/xcat/repos/apt/apt.key | apt-key add -"; fi
 check:rc==0
 cmd:if grep Ubuntu /etc/*release;then xdsh $$CN "apt-get clean && apt-get update"; fi
