@@ -178,6 +178,12 @@ if uname -r|grep -q '^3.*el7'; then
     FSTYPE=xfs
     EFIFSTYPE=efi
 fi
+
+#remove any exiting "system" VG to avoid fatal error
+vgs > /tmp/vgs 2>&1
+vgchange -a n system
+vgremove -f system
+
 msgutil_r "$MASTER_IP" "info" "Found $instdisk, generate partition file..." "/var/log/xcat/xcat.log" "$log_label"
 echo "ignoredisk --only-use=$instdisk" >> /tmp/partitionfile
 if [ `uname -m` = "ppc64" -o `uname -m` = "ppc64le" ]; then
