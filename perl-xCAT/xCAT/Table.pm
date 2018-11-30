@@ -4330,8 +4330,10 @@ sub delimitcol {
 #--------------------------------------------------------------------------------
 sub buildWhereClause {
     my $attrvalstr = shift;    # array of atr<op>val strings
+    my $getkeysonly = shift;
     my $whereclause;           # Where Clause
     my $firstpass = 1;
+    my @gotkeys = ();
     foreach my $m (@{$attrvalstr})
     {
         my $attr;
@@ -4372,6 +4374,9 @@ sub buildWhereClause {
             ($attr, $val) = split />/, $m, 2;
             $operator = ' > ';
         } else {
+            if (defined($getkeysonly)) {
+                return "Unsupported operator:$m on -w flag input";
+            }
             xCAT::MsgUtils->message("S", "Unsupported operator:$m  on -w flag input, could not build a Where Clause.");
             $whereclause = "";
             return $whereclause;
@@ -4386,7 +4391,12 @@ sub buildWhereClause {
 
         #$whereclause .="\')";
         $whereclause .= "\'";
-
+        if (defined($getkeysonly)) {
+            push @gotkeys, $attr;
+        }
+    }
+    if (defined($getkeysonly)) {
+        return \@gotkeys;
     }
     return $whereclause;
 
