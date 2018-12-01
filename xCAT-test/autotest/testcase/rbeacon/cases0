@@ -55,6 +55,6 @@ hcp:openbmc
 label:cn_bmc_ready,hctrl_openbmc
 cmd:rbeacon $$CN abc
 check:rc!=0
-check:output=~$$CN\s*:\s*Error:\s*Only \'on\', \'off\' or \'stat\' is supported
+check:output=~$$CN\s*:\s*Error:\s*Only \'on\', \'off\' and \'stat\' are supported
 end
 
