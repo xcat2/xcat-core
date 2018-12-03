@@ -290,11 +290,11 @@ sub is_http_ready {
     my $installdir = shift;
     my $errormsg_ref = shift;
 
-    my $http_status = `netstat -tunlp | grep -e "httpd" -e "apache" | grep "LISTEN" 2>&1`;
+    my $http_status = `netstat -tnlp | grep -e "httpd" -e "apache" 2>&1`;
     if (!$http_status) {
         $$errormsg_ref = "No HTTP listening status get by command 'netstat'";
         return 0;
-    } elsif ($http_status !~ /\S*\s+\S*\s+\S*\s+\S*$httpport\s+.+/) {
+    } elsif ($http_status !~ /\S*\s+\S*\s+\S*\s+\S*:$httpport\s+.+/) {
         $$errormsg_ref = "The port defined in 'site' table HTTP is not listening";
         return 0;
     }
