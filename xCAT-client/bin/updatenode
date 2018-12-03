@@ -51,32 +51,29 @@ Getopt::Long::Configure("posix_default");
 Getopt::Long::Configure("no_gnu_compat");
 Getopt::Long::Configure("bundling");
 
-my $tmp = " " . join(' ', @ARGV);
-if (!($tmp =~ / (--help|-h|-v|--version)/)) {
-    my $arg = shift(@ARGV);
+my $arg = shift(@ARGV);
 
-    # Set the noderange
-    if ($arg and $arg !~ /^-/) {
-        my @tempnr = ();
-        foreach my $nr (split(/,/, $arg)) {
-            if ($nr =~ /^\^(.*)$/) {
-                my $nrf = $1;
-                if ($nrf !~ /^\//) {    #relative path
-                    $nrf = Cwd::abs_path($nrf);
-                }
-                $nrf = "\^" . $nrf;
-                push @tempnr, $nrf;
-            } else {
-                push @tempnr, $nr;
+# Set the noderange
+if ($arg and $arg !~ /^-/) {
+    my @tempnr = ();
+    foreach my $nr (split(/,/, $arg)) {
+        if ($nr =~ /^\^(.*)$/) {
+            my $nrf = $1;
+            if ($nrf !~ /^\//) {    #relative path
+                $nrf = Cwd::abs_path($nrf);
             }
+            $nrf = "\^" . $nrf;
+            push @tempnr, $nrf;
+        } else {
+            push @tempnr, $nr;
         }
-        $arg = join(',', @tempnr);
-        $cmdref->{noderange}->[0] = $arg;
-    } else {
-        &updatenode_usage();
-        print "The noderange should be the first argument.\n";
-        exit 1;
     }
+    $arg = join(',', @tempnr);
+    $cmdref->{noderange}->[0] = $arg;
+} else {
+    &updatenode_usage();
+    print "The noderange should be the first argument.\n";
+    exit 1;
 }
 
 push(@{ $cmdref->{arg} }, @ARGV);

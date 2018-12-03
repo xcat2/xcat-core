@@ -12,11 +12,23 @@
 # Call the script as follows:
 #    updatenode <noderange> -P "update_mlnx_adapter_firmware /install/mlnxofed/MLNX_OFED_LINUX-4.1-4.0.7.1-rhel7.4alternate-ppc64le.iso"
 #
-MLNX_OFED_PATH=${1}
+
+function usage() {
+    echo "Usage: " 
+    echo "    update_mlnx_adapter_firmware  <path of the MLNX OFED ISO file> "
+}
 
 if [[ -z ${1} ]]; then
-   echo "Error: you must provide the path of the MLNX OFED ISO file"
+   echo "Error: the path of the MLNX OFED ISO file must be provided"
+   usage
    exit 1
+fi
+
+MLNX_OFED_PATH=${1}
+
+if [ ${MLNX_OFED_PATH} = '-h' ] || [ ${MLNX_OFED_PATH} = '--help' ]; then 
+    usage
+    exit 0
 fi
 
 WORKING_DIR="/"
