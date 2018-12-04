@@ -872,7 +872,7 @@ sub mkinstall {
             my $kcmdline = "nofb utf8 auto url=http://" . $instserver . ":$httpport/install/autoinst/" . $node;
 
             $kcmdline .= " xcatd=" . $instserver;
-            $kcmdline .= " mirror/http/hostname=" . $instserver;
+            $kcmdline .= " mirror/http/hostname=" . $instserver.":$httpport";
             if ($maxmem) {
                 $kcmdline .= " mem=$maxmem";
             }
