@@ -5,7 +5,7 @@ cmd:dir="/tmp/imagedata/";if [ -e "${dir}" ];then mv ${dir} ${dir}".bak"; fi; mk
 check:rc==0
 cmd:dir="/tmp/imagedata/export";if [ -e "${dir}" ];then mv ${dir} ${dir}".bak"; fi; mkdir -p $dir
 check:rc==0
-cmd:cp -rf /opt/xcat/share/xcat/tools/autotest/testcase/xcat-inventory/templates/imagedata/test_osimage /tmp/imagedata
+cmd:cp -rf /opt/xcat/share/xcat/tools/autotest/testcase/xcat_inventory/templates/imagedata/test_osimage /tmp/imagedata
 check:rc==0
 cmd:lsdef -t osimage -o test_osimage >/dev/null 2>&1;if [[ $? -eq 0 ]]; then lsdef -t osimage -o test_osimage -z >/tmp/imagedata/test_osimage.org.stanza ;rmdef -t osimage -o test_osimage;fi
 check:rc==0

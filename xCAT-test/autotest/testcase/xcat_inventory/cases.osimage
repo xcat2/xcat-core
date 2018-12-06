@@ -1,7 +1,7 @@
 start:export_import_single_osimage_by_yaml
 description:This case is used to test xcat-inventory export and import one linux osimage definition by yaml between 2 exact same MNs. Before running this case, make sure these two MNs have been installed same exactly, and the current MN can connect the other MN by ssh without password. This case also can be run in one MN, this is, export from currnet node then import back to currnet node, in this case, just need to set $$DSTMN=<currnet node ip>
 Attribute: $$DSTMN - the ip of MN which is used to run import operation.
-label:others,xcat_inventory
+label:others,inventory_ci
 cmd:mkdir -p /tmp/export_import_single_osimage_by_yaml
 check:rc==0
 cmd:ssh $$DSTMN ' source /etc/profile.d/xcat.sh;mkdir -p /tmp/export_import_single_osimage_by_yaml_$$DSTMN/'
@@ -45,7 +45,7 @@ end
 start:export_import_single_osimage_by_json
 description:This case is used to test xcat-inventory export and import one linux osimage definition by json between 2 exact same MNs. Before running this case, make sure these two MNs have been installed same exactly, and the current MN can connect the other MN by ssh without password. This case also can be run in one MN, this is, export from currnet node then import back to currnet node, in this case, just need to set $$DSTMN=<currnet node ip>
 Attribute: $$DSTMN - the ip of MN which is used to run import operation.
-label:others,xcat_inventory
+label:others,inventory_ci
 cmd:mkdir -p /tmp/export_import_single_osimage_by_json
 check:rc==0
 cmd:ssh $$DSTMN ' source /etc/profile.d/xcat.sh;mkdir -p /tmp/export_import_single_osimage_by_json_$$DSTMN/'
@@ -89,7 +89,7 @@ end
 
 
 start:xcat_inventory_try_to_export_all_type_is_osimage_default_format
-label:others,xcat_inventory
+label:others,inventory_ci
 description:This case is used to test xcat-inventory export all definition which type is osimage by default format, i.e. json format.
 cmd:mkdir -p /tmp/xcat_inventory_try_to_export_all_type_is_osimage_default_format
 check:rc==0
@@ -130,7 +130,7 @@ check:rc==0
 end
 
 start:xcat_inventory_try_to_export_all_type_is_osimage_json_format
-label:others,xcat_inventory
+label:others,inventory_ci
 description:This case is used to test xcat-inventory export all definition which type is osimage by json format.
 cmd:mkdir -p /tmp/xcat_inventory_try_to_export_all_type_is_osimage_json_format
 check:rc==0
@@ -171,7 +171,7 @@ check:rc==0
 end
 
 start:xcat_inventory_try_to_export_all_type_is_osimage_yaml_format
-label:others,xcat_inventory
+label:others,inventory_ci
 description:This case is used to test xcat-inventory export all definition which type is osimage by yaml format.
 cmd:mkdir -p /tmp/xcat_inventory_try_to_export_all_type_is_osimage_yaml_format
 check:rc==0
@@ -213,7 +213,7 @@ end
 
 
 start:xcat_inventory_try_to_import_all_type_is_osimage_yaml_format
-label:others,xcat_inventory
+label:others,inventory_ci
 description:This case is used to test xcat-inventory import all definition which type is osimage from a yaml file.
 cmd:mkdir -p /tmp/xcat_inventory_try_to_import_all_type_is_osimage_yaml_format
 check:rc==0
@@ -476,7 +476,7 @@ check:rc==0
 end
 
 start:xcat_inventory_try_to_import_all_type_is_osimage_json_format
-label:others,xcat_inventory
+label:others,inventory_ci
 description:This case is used to test xcat-inventory import all definition which type is osimage from a json file.
 cmd:mkdir -p /tmp/xcat_inventory_try_to_import_all_type_is_osimage_json_format
 check:rc==0
@@ -809,7 +809,7 @@ end
 
 
 start:export_single_osimage_then_modify_json_then_import
-label:others,xcat_inventory
+label:others,inventory_ci
 description:This case is used to test xcat-inventory import a osimage , then modify the export json file, then import the json file
 cmd:mkdir -p /tmp/export_single_osimage_then_modify_json_then_import
 check:rc==0
@@ -866,7 +866,7 @@ check:rc==0
 end
 
 start:export_single_osimage_then_modify_yaml_then_import
-label:others,xcat_inventory
+label:others,inventory_ci
 description:This case is used to test xcat-inventory import a osimage , then modify the export yaml file, then import the yaml file
 cmd:mkdir -p /tmp/export_single_osimage_then_modify_yaml_then_import
 check:rc==0
@@ -924,7 +924,7 @@ end
 
 
 start:export_import_single_osimage_by_dir
-label:others,xcat_inventory
+label:others,inventory_ci
 description:This case is used to test xcat-inventory export and import one linux osimage definition by files.
 cmd:if [ -e /tmp/otherpkglist ]; then cp -f /tmp/otherpkglist /tmp/otherpkglist.bak; fi
 cmd:echo "test" >> /tmp/otherpkglist
@@ -1266,7 +1266,6 @@ end
 start:export_import_osimages_by_dir_with_c
 label:others,xcat_inventory
 description:This case is used to test xcat-inventory export and import  linux osimage definition witch -c option.
-label:others,xcat_inventory
 cmd:dir="/tmp/export";if [ -e "${dir}" ];then mv ${dir} ${dir}".bak"; fi; mkdir -p $dir
 cmd:imgdir='/tmp/export';for img in $(lsdef -t osimage -s|awk -F' ' '{print $1}'); do lsdef -t osimage -o $img -z > $imgdir/${img}.stanza;done
 check:rc==0
