@@ -6,28 +6,28 @@ B<xcatperftest> - Run xCAT command performance baseline testing on fake nodes.
 
 B<xcatperftest> [B<-?|-h>]
 
-[B<PERF_DRYRUN>=y] [B<PERF_NOCREATE>=y] B<xcatperftest> <total> [I<command-list-file>]
+[B<PERF_DRYRUN>=y] [B<PERF_NOCREATE>=y] B<xcatperftest run> <total> [I<command-list-file>]
 
 
 =head1 DESCRIPTION
 
-The xcatperftest command runs commandes defined in a command list file and get their execution response time baseline for performance purpose.
-The xcatperftest command is part of the xCAT package xCAT-test, and you can run it standalone or leverage it to build up your automation test cases.
+The B<xcatperftest> command runs commands defined in a command list file and get their execution response time baseline for performance purpose.
+The B<xcatperftest> command is part of the xCAT package B<xCAT-test>, and you can run it standalone or leverage it to build up your automation test cases.
 
-Any commands could be defined in the command list file, however, it is recommended that the one-time initial configuration are well prepared prior to run xcatperftest command.
-For example, the network object, osdistor and osimage image objects.
+Any command could be defined in the command list file, however, it is recommended that the one-time initial configuration is well prepared prior to running B<xcatperftest> command.
+For example, the network object, osdistro and osimage image objects.
 
-Follow the below steps to run xcatperftest command:
+Follow the steps below to run B<xcatperftest> command:
 
-1, Install xCAT-test on a xCAT management nodes.
+1. Install B<xCAT-test> on a xCAT management node.
 
-2, Prepare a command list in which the commands are what you want to messure.
+2. Prepare a command list with the commands you want to measure.
 
-3, Prepare the initial configuration based on the command list to make sure all commands could be executed in techinal.
+3. Prepare the initial configuration based on the command list to make sure all commands could be executed in techinal.
 
-4, Run xcatperftest with the total fake nodes number and the above command list file.
+4. Run B<xcatperftest> with the total fake nodes number and the above command list file.
 
-Node: It is suggested to run the command in background as it normally takes long time to finish all the performanc testing with large amount of fake nodes.
+Node: It is suggested to run the command in background as it normally takes long time to finish all the performance testing with large amount of fake nodes.
 
 =head1 OPTIONS
 
@@ -37,7 +37,7 @@ Node: It is suggested to run the command in background as it normally takes long
 
 Display usage message.
 
-=item <command-list-file>
+=item I<command-list-file>
 
 Specifies the command list file with full-path. xCAT supports an example command file: /opt/xcat/share/xcat/tools/autotest/perfcmds.lst
 
@@ -56,7 +56,7 @@ Total number of fake nodes will be defined during the testing.
 
 =head1 COMMAND LIST FILE
 
-The command list file is in flat text format, the testing framework will parse the file line by line, here is an example of the commannd list file:
+The command list file is in flat text format, the testing framework will parse the file line by line, here is an example of the command list file:
 
   #SERIES# 1,50,100,250,500,1000,2500,5000
   mkdef -z -f < #STANZ#
@@ -75,19 +75,19 @@ The command list file is in flat text format, the testing framework will parse t
 
 
 B<Note>: Each line defines one command, and the commands dependency should be handled by the line order.
-If you define a node range series line (started with #SERIES#) in this file, xcatperftest will run the command for each node range defined in series line.
+If you define a node range series line (started with B<#SERIES#>) in this file, xcatperftest will run the command for each node range defined in series line.
 
 B<#SERIES#>       To define a node range series, and the series should be an comma split incremental number sequence.
 
 B<#STANZ#>        It will be replaced with real stanz file path when this command line runs.
 
-B<#NODES#>        It will be replaced with real node range defined in #SERIES# line when this command line runs. If no series line, the node group will be used.
+B<#NODES#>        It will be replaced with real node range defined in B<#SERIES#> line when this command line runs. If no series line, the node group will be used.
 
 B<#PERFGRP#>    It will be replaced with node group when this command line runs.
 
 =head1 ENVIRONMENT VARIABLE
 
-The xcatperftest command supports be customized by some environment variables.
+The B<xcatperftest> command supports customization by some environment variables.
 
 
 B<FAKE_NODE_PREFIX>
@@ -110,15 +110,15 @@ It must be a string like 'A.B' and no need to be defined in 'networks' table.
 
 B<PERF_NODETEMPL>
 
-Optional, The node template name used for generating fake nodes. By default, it will be auto-detected according to the current arch.
+Optional, the node template name used for generating fake nodes. By default, it will be auto-detected according to the current arch.
 
 B<PERF_DRYRUN>
 
-Optional, Indicate no real commands will be executed if the environment variable is set.
+Optional, indicate no real commands will be executed if the environment variable is set.
 
 B<PERF_NOCREATE>
 
-Optional, Indicate no new fake nodes will be created if the environment variable is set.
+Optional, indicate no new fake nodes will be created if the environment variable is set.
 
 =head1 EXAMPLES
 
@@ -128,7 +128,7 @@ Optional, Indicate no new fake nodes will be created if the environment variable
 
 To run the performance testing for the commands defined in /tmp/cmd.lst on 5000 fake nodes:
 
-  xcatperftest 5000 /tmp/cmd.lst
+  xcatperftest run 5000 /tmp/cmd.lst
 
 =item 2.
 
@@ -140,7 +140,7 @@ To generate an xCAT node object stanz file for 10000 nodes in subnet 10.100.0.0:
 
 To run the performance testing for the commands defined in /opt/xcat/share/xcat/tools/autotest/perfcmds.lst on 5000 existing fake nodes:
 
-  PERF_NOCREATE=y xcatperftest 5000 /opt/xcat/share/xcat/tools/autotest/perfcmds.lst
+  PERF_NOCREATE=y xcatperftest run 5000 /opt/xcat/share/xcat/tools/autotest/perfcmds.lst
 
 =back
 
