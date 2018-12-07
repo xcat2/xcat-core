@@ -21,7 +21,9 @@ SYNOPSIS
 
 \ **xcatperftest**\  [\ **-?|-h**\ ]
 
-[\ **PERF_DRYRUN**\ =y] [\ **PERF_NOCREATE**\ =y] \ **xcatperftest run**\  <total> [\ *command-list-file*\ ]
+[\ **PERF_DRYRUN**\ =y] \ **xcatperftest run**\  [\ *command-list-file*\ ]
+
+[\ **PERF_DRYRUN**\ =y] [\ **PERF_NOCREATE**\ =y] \ **xcatperftest**\  <total> [\ *command-list-file*\ ]
 
 
 ***********
@@ -172,7 +174,7 @@ EXAMPLES
  
  .. code-block:: perl
  
-    xcatperftest run 5000 /tmp/cmd.lst
+    xcatperftest 5000 /tmp/cmd.lst
  
  
 
@@ -196,7 +198,19 @@ EXAMPLES
  
  .. code-block:: perl
  
-    PERF_NOCREATE=y xcatperftest run 5000 /opt/xcat/share/xcat/tools/autotest/perfcmds.lst
+    PERF_NOCREATE=y xcatperftest 5000 /opt/xcat/share/xcat/tools/autotest/perfcmds.lst
+ 
+ 
+
+
+4.
+ 
+ To run the performance testing for the commands defined in /tmp/cmd.lst in existing xCAT environment:
+ 
+ 
+ .. code-block:: perl
+ 
+    PERF_NOCREATE=y xcatperftest run /tmp/cmd.lst
  
  
 

@@ -6,7 +6,9 @@ B<xcatperftest> - Run xCAT command performance baseline testing on fake nodes.
 
 B<xcatperftest> [B<-?|-h>]
 
-[B<PERF_DRYRUN>=y] [B<PERF_NOCREATE>=y] B<xcatperftest run> <total> [I<command-list-file>]
+[B<PERF_DRYRUN>=y] B<xcatperftest run> [I<command-list-file>]
+
+[B<PERF_DRYRUN>=y] [B<PERF_NOCREATE>=y] B<xcatperftest> <total> [I<command-list-file>]
 
 
 =head1 DESCRIPTION
@@ -128,7 +130,7 @@ Optional, indicate no new fake nodes will be created if the environment variable
 
 To run the performance testing for the commands defined in /tmp/cmd.lst on 5000 fake nodes:
 
-  xcatperftest run 5000 /tmp/cmd.lst
+  xcatperftest 5000 /tmp/cmd.lst
 
 =item 2.
 
@@ -140,7 +142,13 @@ To generate an xCAT node object stanz file for 10000 nodes in subnet 10.100.0.0:
 
 To run the performance testing for the commands defined in /opt/xcat/share/xcat/tools/autotest/perfcmds.lst on 5000 existing fake nodes:
 
-  PERF_NOCREATE=y xcatperftest run 5000 /opt/xcat/share/xcat/tools/autotest/perfcmds.lst
+  PERF_NOCREATE=y xcatperftest 5000 /opt/xcat/share/xcat/tools/autotest/perfcmds.lst
+
+=item 4.
+
+To run the performance testing for the commands defined in /tmp/cmd.lst in existing xCAT environment:
+
+  PERF_NOCREATE=y xcatperftest run /tmp/cmd.lst
 
 =back
 
