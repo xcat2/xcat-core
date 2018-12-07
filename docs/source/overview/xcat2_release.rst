@@ -14,6 +14,16 @@ xCAT 2.14.x
 |xCAT                             |New OS         |New          |New Feature                       |
 |Version                          |               |Hardware     |                                  |
 +=================================+===============+=============+==================================+
+|| xCAT 2.14.5 2018/12/07         |- RHEL7.6      |             |- syslog tag refine               |
+||                                |               |             |                                  |
+| `2.14.5 Release Notes <https:// |               |             |- site:httpport support           |
+| github.com/xcat2/xcat-core/wiki |               |             |                                  |
+| /XCAT_2.14.5_Release_Notes>`_   |               |             |- localdisk GPT partition support |
+|                                 |               |             |                                  |
+|                                 |               |             |- goconserver v0.3.2              |
+|                                 |               |             |                                  |
+|                                 |               |             |- xcat-inventory 0.1.6            |
++---------------------------------+---------------+-------------+----------------------------------+
 || xCAT 2.14.4 2018/10/19         |- UBT18.04.1   |             |                                  |
 ||                                |               |             |                                  |
 | `2.14.4 Release Notes <https:// |               |             |                                  |

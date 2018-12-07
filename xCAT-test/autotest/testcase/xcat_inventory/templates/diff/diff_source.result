@@ -3,7 +3,7 @@
 
 
 --- xCAT DB
-+++ /opt/xcat/share/xcat/tools/autotest/testcase/xcat-inventory/templates/diff/xcat-inventory_diff_file2.json
++++ /opt/xcat/share/xcat/tools/autotest/testcase/xcat_inventory/templates/diff/xcat-inventory_diff_file2.json
 {
     "node": {
         "node1": {
