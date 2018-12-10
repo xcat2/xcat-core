@@ -784,7 +784,7 @@ check:rc==0
 end
 
 start:xcat_inventory_try_to_export_all_type_is_node_default_format
-label:others,xcat_inventory
+label:others,inventory_ci
 description:This case is used to test xcat-inventory export all definition which type is node by default format. I.e, do not specify the format of export.
 cmd:mkdir -p /tmp/xcat_inventory_try_to_export_all_type_is_node_default_format
 check:rc==0
@@ -811,7 +811,7 @@ cmd:dn=$(cat /tmp/xcat_inventory_try_to_export_all_type_is_node_default_format/n
 check:rc==0
 cmd:a=0;for i in `awk -F':' '{print $1}' /tmp/xcat_inventory_try_to_export_all_type_is_node_default_format/group_in_xcat_db`; do  grep -E " $i:" /tmp/xcat_inventory_try_to_export_all_type_is_node_default_format/export_all_node; if [[ $? -eq 0 ]]; then ((a++));fi;done;dg=$(cat /tmp/xcat_inventory_try_to_export_all_type_is_node_default_format/group_in_xcat_db|wc -l);if [[ $a -eq $dg ]]; then exit 0; else exit 1;fi
 check:rc==0
-cmd:a=0;for i in `awk -F' ' '{print $1}' /tmp/xcat_inventory_try_to_export_all_type_is_node_default_format/node_in_xcat_db`;do  grep -E ""$i:" /tmp/xcat_inventory_try_to_export_all_type_is_node_default_format/export_all_node; if [[ $? -eq 0 ]]; then ((a++));fi;done;dn=$(cat /tmp/xcat_inventory_try_to_export_all_type_is_node_default_format/node_in_xcat_db |wc -l); if [[ $dn -eq $a ]]; then exit 0; else exit 1;fi
+cmd:a=0;for i in `awk -F' ' '{print $1}' /tmp/xcat_inventory_try_to_export_all_type_is_node_default_format/node_in_xcat_db`;do  grep -E " $i:" /tmp/xcat_inventory_try_to_export_all_type_is_node_default_format/export_all_node; if [[ $? -eq 0 ]]; then ((a++));fi;done;dn=$(cat /tmp/xcat_inventory_try_to_export_all_type_is_node_default_format/node_in_xcat_db |wc -l); if [[ $dn -eq $a ]]; then exit 0; else exit 1;fi
 check:rc==0
 cmd:rmdef bogusnode[1-3]
 check:rc==0
@@ -870,7 +870,7 @@ end
 
 
 start:xcat_inventory_try_to_export_all_type_is_node_json_format
-label:others,xcat_inventory
+label:others,inventory_ci
 description:This case is used to test xcat-inventory export all definition which type is node by json format.
 cmd:mkdir -p /tmp/xcat_inventory_try_to_export_all_type_is_node_json_format
 check:rc==0
@@ -888,9 +888,9 @@ cmd:lsdef -t group -i grouptype  -c|grep "grouptype=static" |tee /tmp/xcat_inven
 check:rc==0
 cmd:xcat-inventory export  --format=json -t node  |tee /tmp/xcat_inventory_try_to_export_all_type_is_node_json_format/export_all_node
 check:rc==0
-cmd: grep "xcatdefaults:" /tmp/xcat_inventory_try_to_export_all_type_is_node_json_format/export_all_node > /dev/null 2>&1; if [[ $? -eq 0 ]]; then exit 0; else exit 1;fi
+cmd: grep "xcatdefaults" /tmp/xcat_inventory_try_to_export_all_type_is_node_json_format/export_all_node > /dev/null 2>&1; if [[ $? -eq 0 ]]; then exit 0; else exit 1;fi
 check:rc==0
-cmd: grep "service:" /tmp/xcat_inventory_try_to_export_all_type_is_node_json_format/export_all_node > /dev/null 2>&1; if [[ $? -eq 0 ]]; then exit 0; else exit 1;fi
+cmd: grep "service" /tmp/xcat_inventory_try_to_export_all_type_is_node_json_format/export_all_node > /dev/null 2>&1; if [[ $? -eq 0 ]]; then exit 0; else exit 1;fi
 check:rc==0
 cmd:dn=$(cat /tmp/xcat_inventory_try_to_export_all_type_is_node_json_format/node_in_xcat_db|wc -l);dg=$(cat /tmp/xcat_inventory_try_to_export_all_type_is_node_json_format/group_in_xcat_db |wc -l);((da=$dn+$dg+2));ia=$(grep " \"obj_type\": " /tmp/xcat_inventory_try_to_export_all_type_is_node_json_format/export_all_node|wc -l); if [[ $da -eq $ia ]];then exit 0; else exit 1;fi
 check:rc==0
@@ -2020,7 +2020,7 @@ check:rc!=0
 cmd:/opt/xcat/share/xcat/tools/autotest/testcase/xcat_inventory/validatehelper "node" "bogusnode" "obj_type" "node" "import_validation_node_obj_type"
 check:rc==0
 cmd:/opt/xcat/share/xcat/tools/autotest/testcase/xcat_inventory/validatehelper "node" "bogusnode" "obj_type" "group" "import_validation_node_obj_type"
-check:rc==0
+check:rc!=0
 cmd:if [[ -e /tmp/import_validation_node_obj_type_bak/bogusnode.stanza ]]; then cat /tmp/import_validation_node_obj_type_bak/bogusnode.stanza | mkdef -z;fi
 check:rc==0
 cmd:if [[ -e /tmp/import_validation_node_obj_type_bak/bogusgroup.stanza ]]; then cat /tmp/import_validation_node_obj_type_bak/bogusgroup.stanza |mkdef -z -f;fi
@@ -2064,13 +2064,13 @@ check:rc!=0
 cmd:/opt/xcat/share/xcat/tools/autotest/testcase/xcat_inventory/validatehelper "node" "bogusnode" "device_type" "aaa" "import_validation_node_device_type"
 check:rc!=0
 cmd:/opt/xcat/share/xcat/tools/autotest/testcase/xcat_inventory/validatehelper "node" "bogusnode" "device_type" "switch" "import_validation_node_device_type"
-check:rc==0
+check:rc!=0
 cmd:/opt/xcat/share/xcat/tools/autotest/testcase/xcat_inventory/validatehelper "node" "bogusnode" "device_type" "pdu" "import_validation_node_device_type"
-check:rc==0
+check:rc!=0
 cmd:/opt/xcat/share/xcat/tools/autotest/testcase/xcat_inventory/validatehelper "node" "bogusnode" "device_type" "rack" "import_validation_node_device_type"
-check:rc==0
+check:rc!=0
 cmd:/opt/xcat/share/xcat/tools/autotest/testcase/xcat_inventory/validatehelper "node" "bogusnode" "device_type" "hmc"  "import_validation_node_device_type"
-check:rc==0
+check:rc!=0
 cmd:/opt/xcat/share/xcat/tools/autotest/testcase/xcat_inventory/validatehelper "node" "bogusnode" "device_type" "server"  "import_validation_node_device_type"
 check:rc==0
 cmd:if [[ -e /tmp/import_validation_node_device_type_bak/bogusnode.stanza ]]; then cat /tmp/import_validation_node_device_type_bak/bogusnode.stanza | mkdef -z;fi
@@ -2310,26 +2310,26 @@ check:rc==0
 end
 
 
-start:import_validation_node_network_info_primarynic_switchport
-label:others,xcat_inventory
-descrswitchporttion:This case is used to test node validation function of xcat-inventory import yaml and json file. To test "network_info.primarynic.switchport" attribute
-cmd:mkdir -p /tmp/import_validation_node_network_info_primarynic_switchport_bak
+start:import_validation_node_network_info_connections_switchport
+label:others,inventory_ci
+descrswitchporttion:This case is used to test node validation function of xcat-inventory import yaml and json file. To test "network_info.connections.switchport" attribute
+cmd:mkdir -p /tmp/import_validation_node_network_info_connections_switchport_bak
 check:rc==0
-cmd:lsdef bogusnode > /dev/null 2>&1;if [[ $? -eq 0 ]]; then lsdef bogusnode -z >/tmp/import_validation_node_network_info_primarynic_switchport_bak/bogusnode.stanza ;rmdef bogusnode;fi
+cmd:lsdef bogusnode > /dev/null 2>&1;if [[ $? -eq 0 ]]; then lsdef bogusnode -z >/tmp/import_validation_node_network_info_connections_switchport_bak/bogusnode.stanza ;rmdef bogusnode;fi
 check:rc==0
-cmd:lsdef -t group bogusgroup  > /dev/null 2>&1;if [[ $? -eq 0 ]]; then lsdef -t group bogusgroup -z > /tmp/import_validation_node_network_info_primarynic_switchport_bak/bogusgroup.stanza; rmdef -t group bogusgroup;fi
+cmd:lsdef -t group bogusgroup  > /dev/null 2>&1;if [[ $? -eq 0 ]]; then lsdef -t group bogusgroup -z > /tmp/import_validation_node_network_info_connections_switchport_bak/bogusgroup.stanza; rmdef -t group bogusgroup;fi
 check:rc==0
-cmd:/opt/xcat/share/xcat/tools/autotest/testcase/xcat_inventory/validatehelper "node" "bogusnode" "network_info.primarynic.switchport" "" "/tmp/import_validation_node_network_info_primarynic_switchport"
+cmd:/opt/xcat/share/xcat/tools/autotest/testcase/xcat_inventory/validatehelper "node" "bogusnode" "network_info.connections.switchport" "" "/tmp/import_validation_node_network_info_connections_switchport"
 check:rc==0
-cmd:/opt/xcat/share/xcat/tools/autotest/testcase/xcat_inventory/validatehelper "node" "bogusnode" "network_info.primarynic.switchport" "70" "/tmp/import_validation_node_network_info_primarynic_switchport"
+cmd:/opt/xcat/share/xcat/tools/autotest/testcase/xcat_inventory/validatehelper "node" "bogusnode" "network_info.connections.switchport" "70" "/tmp/import_validation_node_network_info_connections_switchport"
 check:rc==0
-cmd:/opt/xcat/share/xcat/tools/autotest/testcase/xcat_inventory/validatehelper "node" "bogusnode" "network_info.primarynic.switchport" "a90" "/tmp/import_validation_node_network_info_primarynic_switchport"
-check:rc!=0
-cmd:if [[ -e /tmp/import_validation_node_network_info_primarynic_switchport_bak/bogusnode.stanza ]]; then cat /tmp/import_validation_node_network_info_primarynic_switchport_bak/bogusnode.stanza | mkdef -z;fi
+cmd:/opt/xcat/share/xcat/tools/autotest/testcase/xcat_inventory/validatehelper "node" "bogusnode" "network_info.connections.switchport" "a90" "/tmp/import_validation_node_network_info_connections_switchport"
 check:rc==0
-cmd:if [[ -e /tmp/import_validation_node_network_info_primarynic_switchport_bak/bogusgroup.stanza ]]; then cat /tmp/import_validation_node_network_info_primarynic_switchport_bak/bogusgroup.stanza |mkdef -z -f;fi
+cmd:if [[ -e /tmp/import_validation_node_network_info_connections_switchport_bak/bogusnode.stanza ]]; then cat /tmp/import_validation_node_network_info_connections_switchport_bak/bogusnode.stanza | mkdef -z;fi
 check:rc==0
-cmd:rm -rf /tmp/import_validation_node_network_info_primarynic_switchport_bak
+cmd:if [[ -e /tmp/import_validation_node_network_info_connections_switchport_bak/bogusgroup.stanza ]]; then cat /tmp/import_validation_node_network_info_connections_switchport_bak/bogusgroup.stanza |mkdef -z -f;fi
+check:rc==0
+cmd:rm -rf /tmp/import_validation_node_network_info_connections_switchport_bak
 check:rc==0
 end
 
@@ -2425,7 +2425,7 @@ check:rc==0
 cmd:/opt/xcat/share/xcat/tools/autotest/testcase/xcat_inventory/validatehelper "node" "bogusnode" "role" "compute" "/tmp/import_validation_node_role"
 check:rc==0
 cmd:/opt/xcat/share/xcat/tools/autotest/testcase/xcat_inventory/validatehelper "node" "bogusnode" "role" "service" "/tmp/import_validation_node_role"
-check:rc==0
+check:rc!=0
 cmd:/opt/xcat/share/xcat/tools/autotest/testcase/xcat_inventory/validatehelper "node" "bogusnode" "role" "" "/tmp/import_validation_node_role"
 check:rc!=0
 cmd:/opt/xcat/share/xcat/tools/autotest/testcase/xcat_inventory/validatehelper "node" "bogusnode" "role" "Compute" "/tmp/import_validation_node_role"
