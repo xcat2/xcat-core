@@ -148,7 +148,7 @@ To run the performance testing for the commands defined in /opt/xcat/share/xcat/
 
 To run the performance testing for the commands defined in /tmp/cmd.lst in existing xCAT environment:
 
-  PERF_NOCREATE=y xcatperftest run /tmp/cmd.lst
+  xcatperftest run /tmp/cmd.lst
 
 =back
 

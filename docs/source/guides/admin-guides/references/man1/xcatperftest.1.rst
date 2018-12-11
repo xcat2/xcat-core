@@ -210,7 +210,7 @@ EXAMPLES
  
  .. code-block:: perl
  
-    PERF_NOCREATE=y xcatperftest run /tmp/cmd.lst
+    xcatperftest run /tmp/cmd.lst
  
  
 
