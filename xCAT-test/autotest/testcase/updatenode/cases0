@@ -11,6 +11,14 @@ check:rc==0
 check:output=~Version
 end
 
+start:updatenode_without_flag
+description:this case is to verify defect 5142; updatenode without options causes command to crash.
+label:others,updatenode
+cmd:updatenode 
+check:rc!=0
+check:output=~Usage
+end
+
 start:updatenode_diskful_syncfiles
 label:others,updatenode
 cmd:mkdir -p /install/custom/install/__GETNODEATTR($$CN,os)__/
