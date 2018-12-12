@@ -11,7 +11,7 @@ check:rc==0
 check:output=~Version
 end
 
-start:updatenode_without_flag
+start:updatenode_without_options
 description:this case is to verify defect 5142; updatenode without options causes command to crash.
 label:others,updatenode
 cmd:updatenode 
