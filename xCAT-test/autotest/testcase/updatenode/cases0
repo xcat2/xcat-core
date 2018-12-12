@@ -13,7 +13,7 @@ end
 
 start:updatenode_without_options
 description:this case is to verify defect 5142; updatenode without options causes command to crash.
-label:others,updatenode
+label:mn_only,ci_test,updatenode
 cmd:updatenode 
 check:rc!=0
 check:output=~Usage
