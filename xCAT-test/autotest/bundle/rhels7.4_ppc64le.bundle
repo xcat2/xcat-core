@@ -4,7 +4,7 @@ reg_linux_diskfull_installation_flat
 go_xcat_noinput
 updatenode_h
 updatenode_v
-updatenode_without_flag
+updatenode_without_options
 updatenode_diskful_syncfiles
 updatenode_diskful_syncfiles_rename
 updatenode_diskful_syncfiles_dir
