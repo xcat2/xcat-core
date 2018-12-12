@@ -4,7 +4,6 @@ reg_linux_diskfull_installation_flat
 go_xcat_noinput
 updatenode_h
 updatenode_v
-updatenode_without_options
 updatenode_diskful_syncfiles
 updatenode_diskful_syncfiles_rename
 updatenode_diskful_syncfiles_dir
@@ -21,6 +20,7 @@ updatenode_diskful_syncfiles_P_script1
 updatenode_script3
 updatenode_P_script1_script2
 updatenode_without_flag
+updatenode_without_options
 confignetwork_static_installnic
 confignetwork_s_installnic_secondarynic_updatenode
 confignetwork_secondarynic_updatenode
