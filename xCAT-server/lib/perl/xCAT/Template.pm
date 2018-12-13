@@ -391,6 +391,7 @@ sub subvars {
         $inc =~ s/#SHORTNAME#/$shortname/g;
         $inc =~ s/#GETNODEDOMAIN:([^#]+)#/get_node_domain($1)/eg;
         $inc =~ s/#GETPRINICMAC:([^#]+)#/xCAT::Utils::parseMacTabEntry(tabdb("mac",$1,"mac"),$1)/eg;
+        $inc =~ s/#COLONHTTPPORT#/$httpportsuffix/eg;
 
         if (($::XCATSITEVALS{xcatdebugmode} eq "1") or ($::XCATSITEVALS{xcatdebugmode} eq "2")) {
             $inc =~ s/#UNCOMMENTOENABLEDEBUGPORT#/ /g;
