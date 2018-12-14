@@ -175,6 +175,25 @@ label:mn_only,ci_test,db
 cmd:mkdef -t network -o testnetworkwithoutnetandmask 
 check:rc!=0
 check:output=~Error
+cmd:mkdef -t network -o testnetworkwithoutnetandmask mtu=1500
+check:rc!=0
+check:output=~Net or mask value should not be empty
+cmd:mkdef -t network -o testnetworkwithoutnetandmask net=10.0.0.0 mtu=1500
+check:rc!=0
+check:output=~Net or mask value should not be empty
+cmd:mkdef -t network -o testnetworkwithoutnetandmask mask=255.0.0.0 mtu=1500
+check:rc!=0
+check:output=~Net or mask value should not be empty
+cmd:mkdef -t network -o testnetworkwithoutnetandmask net=100.0.0.1 mask=255.0.0.0 mtu=1500
+check:rc==0
+check:output=~1 object definitions have been created or modified
+cmd:lsdef -t network -z testnetworkwithoutnetandmask |tee /tmp/testnetworkwithoutnetandmask.stanza
+check:rc==0
+cmd:cat /tmp/testnetworkwithoutnetandmask.stanza|mkdef -z
+check:rc!=0
+check:output=~(already exists)
+cmd:rmdef -t network testnetworkwithoutnetandmask
+check:rc==0
 end
 
 start:mkdef_networks_if_net_mask_exists
