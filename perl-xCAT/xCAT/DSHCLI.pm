@@ -6315,13 +6315,23 @@ sub run_always_rsync_postscripts
             # build host and all scripts to execute
             # EXECUTEALWAYS will only execute the syncfile in the syncfile list
             foreach my $key (keys %{$$options{'destDir_srcFile'}{$host}}) {
-              foreach my $key1 (keys %{ $$options{'destDir_srcFile'}{$host}{$key} }) {
+              foreach my $key1 (keys %{ $$options{'destDir_srcFile'}{$host}->{$key} }) {
                 my $index = 0;
-                while (my $src_file = $$options{'destDir_srcFile'}{$host}{$key}{$key1}->[$index]) {
-                  if ($src_file eq $tmppostfile) {
-                      push(@{ $dshparms->{'postscripts'}{$postsfile} }, $host);
-                  }
-                  $index++;
+                my $key1_ref = $$options{'destDir_srcFile'}{$host}->{$key}->{$key1};
+                if (ref $key1_ref eq 'ARRAY') { #stored as ARRAY for same_dest_name
+                    while (my $src_file =$$options{'destDir_srcFile'}{$host}->{$key}->{$key1}->[$index] ) {
+                      if ($src_file eq $tmppostfile) {
+                          push(@{ $dshparms->{'postscripts'}{$postsfile} }, $host);
+                      }
+                      $index++;
+                    }
+                } else { #stroed as hash table for diff_dest_name
+                    my %src_hash = %{ $$options{'destDir_srcFile'}{$host}{$key}{$key1} };
+                    foreach my $src_file (keys %src_hash) {
+                        if ($src_file eq $tmppostfile) {
+                          push(@{ $dshparms->{'postscripts'}{$postsfile} }, $host);
+                        }
+                    }
                 }
               }
             }
@@ -6330,8 +6340,6 @@ sub run_always_rsync_postscripts
 
     # now if we have postscripts to run, run xdsh
     my $out;
-
-
     foreach my $ps (keys %{ $$dshparms{'postscripts'} }) {
         my @nodes;
 
