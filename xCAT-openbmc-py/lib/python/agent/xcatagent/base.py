@@ -2,7 +2,8 @@ from common import utils
 import gevent
 from gevent.pool import Pool
 
-MODULE_MAP = {"openbmc": "OpenBMCManager"}
+MODULE_MAP = {"openbmc": "OpenBMCManager",
+             "redfish": "RedfishManager"}
 
 class BaseManager(object):
     def __init__(self, messager, cwd):
