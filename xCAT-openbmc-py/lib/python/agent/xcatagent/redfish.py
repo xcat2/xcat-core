@@ -30,7 +30,7 @@ VERBOSE = False
 
 # global variables of rpower
 POWER_REBOOT_OPTIONS = ('boot', 'reset')
-POWER_SET_OPTIONS = ('on', 'off', 'bmcreboot', 'softoff')
+POWER_SET_OPTIONS = ('on', 'off', 'bmcreboot')
 POWER_GET_OPTIONS = ('bmcstate', 'state', 'stat', 'status')
 
 class RedfishManager(base.BaseManager):
@@ -50,7 +50,7 @@ class RedfishManager(base.BaseManager):
         # 1, parse args
         rpower_usage = """
         Usage:
-            rpower [-V|--verbose] [boot|bmcreboot|bmcstate|off|on|reset|softoff|stat|state|status]
+            rpower [-V|--verbose] [boot|bmcreboot|bmcstate|off|on|reset|stat|state|status]
 
         Options:
             -V --verbose   rpower verbose mode.
@@ -73,5 +73,14 @@ class RedfishManager(base.BaseManager):
 
         # 3, run the subcommands
         runner = RedfishPowerTask(nodesinfo, callback=self.messager, debugmode=self.debugmode, verbose=self.verbose)
-        DefaultPowerManager().get_power_state(runner)
+        if action == 'bmcstate':
+            DefaultPowerManager().get_bmc_state(runner)
+        elif action == 'bmcreboot':
+            DefaultPowerManager().reboot_bmc(runner)
+        elif action in POWER_GET_OPTIONS:
+            DefaultPowerManager().get_power_state(runner)
+        elif action in POWER_REBOOT_OPTIONS:
+            DefaultPowerManager().reboot(runner, optype=action)
+        else:
+            DefaultPowerManager().set_power_state(runner, power_state=action)
 
