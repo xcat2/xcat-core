@@ -9,7 +9,6 @@ import os
 import requests
 import json
 import time
-from requests.auth import AuthBase
 
 from common import utils, rest
 from common.exceptions import SelfClientException, SelfServerException
@@ -42,7 +41,6 @@ class RedfishRest(object):
         self.messager = kwargs.get('messager')
 
         self.session = rest.RestSession()
-        self.auth = None
         self.root_url = HTTP_PROTOCOL + self.bmcip
 
     def _print_record_log (self, msg, cmd, error_flag=False):
@@ -91,7 +89,7 @@ class RedfishRest(object):
         self._log_request(method, url, httpheaders, data=data, cmd=cmd)
 
         try:
-            response = self.session.request(method, url, authType=self.auth, headers=httpheaders, data=data, timeout=timeout)
+            response = self.session.request(method, url, headers=httpheaders, data=data, timeout=timeout)
             return self.handle_response(response, cmd=cmd)
         except SelfServerException as e:
             if cmd == 'login':
@@ -121,9 +119,6 @@ class RedfishRest(object):
         if cmd == 'login' and not 'X-Auth-Token' in resp.headers:
             raise SelfServerException('Login Failed: Did not get Session Token from response')
 
-        if not self.auth:
-            self.auth = RedfishAuth(resp.headers['X-Auth-Token'])
-
         self._print_record_log('%s %s' % (code, data['Name']), cmd)
         return data
 
@@ -132,12 +127,3 @@ class RedfishRest(object):
         payload = { "UserName": self.username, "Password": self.password }
         self.request('POST', SESSION_URL, payload=payload, timeout=20, cmd='login') 
 
-class RedfishAuth(AuthBase):
-
-    def __init__(self,authToken):
-
-        self.authToken=authToken
-
-    def __call__(self, auth):
-        auth.headers['X-Auth-Token']=self.authToken
-        return(auth)
