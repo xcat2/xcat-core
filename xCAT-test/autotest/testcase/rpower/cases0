@@ -213,6 +213,7 @@ check:rc==0
 cmd:a=0;while ! `rpower $$CN stat|grep "Running\|on" >/dev/null`; do sleep 5;((a++));if [ $a -gt 11 ];then break;fi done
 cmd:rpower $$CN stat
 check:output=~Running|on
-cmd:a=0;while ! `lsdef -l $$CN -i status|grep "booted" >/dev/null`; do sleep 5;((a++));if [ $a -gt 30 ];then break;fi done
+cmd:a=0;while ! `lsdef -l $$CN -i status|grep "booted" >/dev/null`; do sleep 5;((a++));if [ $a -gt 50 ];then break;fi done
+cmd:lsdef -l $$CN -i status|grep "booted"
 check:rc==0
 end
