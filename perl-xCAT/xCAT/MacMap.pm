@@ -985,7 +985,6 @@ sub refresh_switch {
                 push @{ $self->{mtuinfo}->{$switch}->{$port_name} } , $mtu;
 
             }
-            return;
         }
 
         foreach my $oid (keys %$namemap) {
