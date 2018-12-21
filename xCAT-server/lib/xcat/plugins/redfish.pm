@@ -165,14 +165,6 @@ sub parse_args {
         unless ($subcommand =~ /^on$|^off$|^reset$|^boot$|^bmcreboot$|^bmcstate$|^status$|^stat$|^state$/) {
             return ([ 1, "Unsupported command: $command $subcommand" ]);
         }
-    } elsif ($command eq "rsetboot") {
-        my $persistant;
-        GetOptions('p'  => \$persistant);
-        return ([ 1, "Only one option is supported at the same time for $command" ]) if (@ARGV > 1);
-        $subcommand = "stat" if (!defined($ARGV[0]));
-        unless ($subcommand =~ /^net$|^hd$|^cd$|^def$|^default$|^stat$|^setup$|^floppy$/) {
-            return ([ 1, "Unsupported command: $command $subcommand" ]);
-        }
     } else {
         return ([ 1, "Unsupported command: $command" ]);
     }
