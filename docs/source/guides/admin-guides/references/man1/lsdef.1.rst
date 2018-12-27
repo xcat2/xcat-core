@@ -21,13 +21,13 @@ SYNOPSIS
 
 \ **lsdef**\  [\ **-h | -**\ **-help**\ ] [\ **-t**\  \ *object-types*\ ] [\ **-i**\  \ *attr-list*\ ]
 
-\ **lsdef**\  [\ **-V | -**\ **-verbose**\ ] [\ **-l | -**\ **-long**\ ] [\ **-s | -**\ **-short**\ ] [\ **-a | -**\ **-all**\ ] [\ **-S**\ ]
-[\ **-t**\  \ *object-types*\ ] [\ **-o**\  \ *object-names*\ ] [\ **-z | -**\ **-stanza**\ ] [\ **-i**\  \ *attr-list*\ ]
+\ **lsdef**\  [\ **-V | -**\ **-verbose**\ ] [\ **-a | -**\ **-all**\ ] [\ **-S**\ ]
+[\ **-t**\  \ *object-types*\ ] [\ **-o**\  \ *object-names*\ ] [\ **-z | -**\ **-stanza**\ ] [\ [\ **-i**\  \ *attr-list*\] | [\ **-l | -**\ **-long**\ ] | [\ **-s | -**\ **-short**\ ]]
 [\ **-c | -**\ **-compress**\ ] [\ **-**\ **-osimage**\ ] [\ **-**\ **-nics**\ ] [[\ **-w**\  \ *attr*\ ==\ *val*\ ]
 [\ **-w**\  \ *attr*\ =~\ *val*\ ] ...] [\ *noderange*\ ]
 
-\ **lsdef**\  [\ **-l | -**\ **-long**\ ] [\ **-a | -**\ **-all**\ ] [\ **-t**\  \ *object-types*\ ] [\ **-z | -**\ **-stanza**\ ]
-[\ **-i**\  \ *attr-list*\ ] [\ **-**\ **-template**\  [\ *template-object-name*\ ]]
+\ **lsdef**\  [\ **-a | -**\ **-all**\ ] [\ **-t**\  \ *object-types*\ ] [\ **-z | -**\ **-stanza**\ ]
+[\ [\ **-i**\  \ *attr-list*\] | [\ **-l | -**\ **-long**\ ] | [\ **-s | -**\ **-short**\ ]] [\ **-**\ **-template**\  [\ *template-object-name*\ ]]
 
 
 ***********

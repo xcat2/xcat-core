@@ -3274,7 +3274,7 @@ sub defls
 
 
     # do we want just the object names or all the attr=val
-    if ($::opt_l || @::noderange || $::opt_o || $::opt_i || $::opt_template)
+    if ($::opt_l || @::noderange || $::opt_o || $::opt_i || $::opt_z || $::opt_template)
     {
 
         # assume we want the the details - not just the names
@@ -3297,7 +3297,7 @@ sub defls
 
         # is -i then just get the ones in the list
         $::ATTRLIST = $::opt_i;
-    } elsif (@::noderange || $::opt_o) {
+    } elsif (@::noderange || $::opt_o || $::opt_z) {
 
         # if they gave a list of objects then they must want more
         # than the object names!
