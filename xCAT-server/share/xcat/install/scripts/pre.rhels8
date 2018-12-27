@@ -224,6 +224,12 @@ fi
 BOOTFSTYPE=ext4
 FSTYPE=ext4
 EFIFSTYPE=efi
+
+#remove any exiting "xcatvg" VG to avoid fatal error
+vgs > /tmp/vgs 2>&1
+vgchange -a n xcatvg
+vgremove -f xcatvg
+
 msgutil_r "$MASTER_IP" "info" "Found $instdisk, generate partition file..." "/var/log/xcat/xcat.log" "$log_label"
 echo "ignoredisk --only-use=$instdisk" >>/tmp/partitionfile
 case "$(uname -m)" in
