@@ -995,7 +995,7 @@ cmd:file="/tmp/partitionfile"; rm -rf $file; if [ -d ${file}".bak" ];then mv ${f
 end
 
 start:export_import_multiple_osimages_by_dir
-label:others,xcat_inventory
+label:others,inventory_ci
 description:This case is used to test xcat-inventory export and import several linux osimages definition by dir.
 cmd:if [ -e /tmp/otherpkglist ]; then cp -f /tmp/otherpkglist /tmp/otherpkglist.bak; fi
 cmd:echo "test" >> /tmp/otherpkglist
@@ -1127,7 +1127,7 @@ cmd:file="/opt/xcat/share/xcat/install/rh/template"; rm -rf $file; if [ -d ${fil
 end
 
 start:export_import_all_osimages_by_dir
-label:others,xcat_inventory
+label:others,inventory_ci
 description:This case is used to test xcat-inventory export and import all linux osimage definition by files.
 cmd:lsdef -t osimage -z | tee /tmp/osimage.list
 check:rc==0
@@ -1264,7 +1264,7 @@ cmd:if [ -e /tmp/osimages.bak ]; then mv -f /tmp/osimages.bak /tmp/osimages; fi
 end
 
 start:export_import_osimages_by_dir_with_c
-label:others,xcat_inventory
+label:others,inventory_ci
 description:This case is used to test xcat-inventory export and import  linux osimage definition witch -c option.
 cmd:dir="/tmp/export";if [ -e "${dir}" ];then mv ${dir} ${dir}".bak"; fi; mkdir -p $dir
 cmd:imgdir='/tmp/export';for img in $(lsdef -t osimage -s|awk -F' ' '{print $1}'); do lsdef -t osimage -o $img -z > $imgdir/${img}.stanza;done
