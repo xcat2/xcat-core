@@ -100,7 +100,7 @@ Note: if the "val" fields includes spaces or any other characters that will be p
 
 =item B<-z|--stanza>
 
-Display output in stanza format. See the xcatstanzafile man page for details on using xCAT stanza files. And default is to list complete object definition, use B<-i> to specify the attribute scope.
+Display output in stanza format. See the "xcatstanzafile" man page for details on using xCAT stanza files. And default is to list complete object definition, use B<-i> to specify the attribute scope.
 
 =back
 
