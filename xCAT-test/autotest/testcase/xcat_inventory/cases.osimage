@@ -1269,11 +1269,9 @@ start:export_import_osimages_by_dir_with_c
 label:others,inventory_ci
 description:This case is used to test xcat-inventory export and import  linux osimage definition witch -c option.
 cmd:dir="/tmp/export";if [ -e "${dir}" ];then mv ${dir} ${dir}".bak"; fi; mkdir -p $dir
-#cmd:imgdir='/tmp/export';for img in $(lsdef -t osimage -s|awk -F' ' '{print $1}'); do lsdef -t osimage -o $img -z > $imgdir/${img}.stanza;done
-cmd:imgdir='/tmp/export';for img in `lsdef -t osimage -s|awk -F' ' '{print $1}'`; do lsdef -t osimage -o $img -z > $imgdir/${img}.stanza;done
+cmd:imgdir='/tmp/export';for img in $(lsdef -t osimage -s|grep '(osimage)'|awk -F' ' '{print $1}'); do lsdef -t osimage -o $img -z > $imgdir/${img}.stanza;done
 check:rc==0
-#cmd:for img in $(lsdef -t osimage -s|awk -F' ' '{print $1}');do rmdef -t osimage -o $img;done
-cmd:for img in `lsdef -t osimage -s|awk -F' ' '{print $1}'`;do rmdef -t osimage -o $img;done
+cmd:for img in $(lsdef -t osimage -s|grep '(osimage)'|awk -F' ' '{print $1}');do rmdef -t osimage -o $img;done
 check:rc==0
 cmd:chdef -t osimage -o test_myimage1,test_myimage2,test_myimage3 imagetype=linux provmethod=install
 check:rc==0
