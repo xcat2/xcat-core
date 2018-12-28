@@ -1133,11 +1133,9 @@ cmd:lsdef -t osimage -z | tee /tmp/osimage.list
 check:rc==0
 #backup all osimage
 cmd:if [ -e /tmp/osimages ]; then cp -f /tmp/osimages /tmp/osimages.bak ; else mkdir -p /tmp/osimages; fi
-#cmd:imgdir='/tmp/osimages';for img in $(lsdef -t osimage -s|awk -F' ' '{print $1}'); do lsdef -t osimage -o $img -z > $imgdir/${img}.stanza;done
-cmd:imgdir='/tmp/osimages';for img in `lsdef -t osimage -s|awk -F' ' '{print $1}'`; do lsdef -t osimage -o $img -z > $imgdir/${img}.stanza;done
+cmd:imgdir='/tmp/osimages';for img in $(lsdef -t osimage -s|grep '(osimage)'|awk -F' ' '{print $1}'); do lsdef -t osimage -o $img -z > $imgdir/${img}.stanza;done
 check:rc==0
-#cmd:for img in $(lsdef -t osimage -s|awk -F' ' '{print $1}');do rmdef -t osimage -o $img;done
-cmd:for img in `lsdef -t osimage -s|awk -F' ' '{print $1}'`;do rmdef -t osimage -o $img;done
+cmd:for img in $(lsdef -t osimage -s|grep '(osimage)'|awk -F' ' '{print $1}');do rmdef -t osimage -o $img;done
 check:rc==0
 cmd:if [ -e /tmp/otherpkglist ]; then cp -f /tmp/otherpkglist /tmp/otherpkglist.bak; fi
 cmd:echo "test" >> /tmp/otherpkglist
