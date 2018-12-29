@@ -164,8 +164,7 @@ os:Linux
 description:test mkdef works as design when netname exists.
 label:mn_only,ci_test,db
 cmd:netname=`lsdef -t network |cut -d" " -f1 |sed -n '1p'`;mkdef -t network -o $netname 
-check:rc==0
-check:output=~(already exists)
+check:rc==1
 end
 
 start:mkdef_netname_notexist_without_net_mask
