@@ -722,12 +722,12 @@ sub process_request_nmap {
                         $installquerypossible = 1; #It is possible to actually query node
                     } elsif ($1 ne "3001") {
                         if ($1 == 3389 and $states{'sshd'}) {
-                            continue;
+                            next;
                         }
                         $states{ $portservices{$1} } = 1;
                         if ($1 == 22 and $states{'rdp'}) {
                             delete $states{'rdp'};
-                            continue;
+                            next;
                         }
                     }
                 }
