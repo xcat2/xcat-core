@@ -133,34 +133,35 @@ MEMORY=`cat /proc/meminfo |grep MemTotal|awk '{printf "%.0fMB\n", $2/1024}'`
 # The DISKSIZE will look like this: sda:960GB,sdb:960GB,sdc:480GB,sdd:480GB (sorted by major,minor)
 DISKSIZE="$(grep -v name /proc/partitions |sort -g -k 1,2 |awk 'BEGIN{sep=""} /[^0-9]$/{printf("%s%s:%.0fGB", sep, $4, $3/1024^2) ; sep=","}')"
 
+DISCOVERY_FILE=/tmp/discopacket
 logger -s -t $log_label -p local4.info "Beginning echo information to discovery packet file..."
-echo '<xcatrequest>' > /tmp/discopacket
-echo "<command>findme</command>" >> /tmp/discopacket
-echo "<sequential>1</sequential>" >> /tmp/discopacket
-echo "<arch>$ARCH</arch>" >> /tmp/discopacket
+echo '<xcatrequest>' > ${DISCOVERY_FILE}
+echo "<command>findme</command>" >> ${DISCOVERY_FILE}
+echo "<sequential>1</sequential>" >> ${DISCOVERY_FILE}
+echo "<arch>$ARCH</arch>" >> ${DISCOVERY_FILE}
 if [ "$IAMAVM" = 1 ]; then
-	echo "<nodetype>virtual</nodetype>" >> /tmp/discopacket
+	echo "<nodetype>virtual</nodetype>" >> ${DISCOVERY_FILE}
 fi
-echo "<cpucount>$CPUCOUNT</cpucount>" >> /tmp/discopacket
-echo "<cputype>$CPUTYPE</cputype>" >> /tmp/discopacket
-echo "<memory>$MEMORY</memory>" >> /tmp/discopacket
-echo "<disksize>$DISKSIZE</disksize>" >> /tmp/discopacket
+echo "<cpucount>$CPUCOUNT</cpucount>" >> ${DISCOVERY_FILE}
+echo "<cputype>$CPUTYPE</cputype>" >> ${DISCOVERY_FILE}
+echo "<memory>$MEMORY</memory>" >> ${DISCOVERY_FILE}
+echo "<disksize>$DISKSIZE</disksize>" >> ${DISCOVERY_FILE}
 if [ "$UUID" != "unknown" ]; then
-        echo "<uuid>$UUID</uuid>" >> /tmp/discopacket
+        echo "<uuid>$UUID</uuid>" >> ${DISCOVERY_FILE}
 fi
 
 flag_mtm=`echo "$MTM" | sed 's/0//g'`
 if [ "$flag_mtm" ] && [ "$MTM" != "unknown" ]; then
 	MTM=`echo $MTM | sed 's/\.//g'`
-	echo "<mtm>$MTM</mtm>" >> /tmp/discopacket
+	echo "<mtm>$MTM</mtm>" >> ${DISCOVERY_FILE}
 fi
 flag_serial=`echo "$SERIAL" | sed 's/0//g'`
 if [ "$flag_serial" ] && [ "$SERIAL" != "unknown" ]; then
 	SERIAL=`echo $SERIAL | sed 's/\.//g'`
-	echo "<serial>$SERIAL</serial>" >> /tmp/discopacket
+	echo "<serial>$SERIAL</serial>" >> ${DISCOVERY_FILE}
 fi
 if [ "$PLATFORM" != "unknown" ]; then
-        echo "<platform>$PLATFORM</platform>" >> /tmp/discopacket
+        echo "<platform>$PLATFORM</platform>" >> ${DISCOVERY_FILE}
 fi
 
 LANCHAN=$(ipmitool sol info 2>/dev/null|awk '/Payload Channel/{print $4}')
@@ -168,18 +169,18 @@ IsStatic=`ipmitool lan print $LANCHAN | grep 'IP Address Source' | grep 'Static'
 if [ "$IsStatic" ]; then
     BMCIPADDR=`ipmitool lan print $LANCHAN | grep 'IP Address' | grep -v 'IP Address Source' | cut -d ":" -f2 | sed 's/ //'`
     if [ "$BMCIPADDR" ]; then
-        echo "<bmc>$BMCIPADDR</bmc>" >> /tmp/discopacket
+        echo "<bmc>$BMCIPADDR</bmc>" >> ${DISCOVERY_FILE}
     fi
 fi
 
 BMCMAC=`ipmitool lan print $LANCHAN | grep 'MAC Address' | cut -d ":" -f2-7 | sed 's/ //'`
 if [ "$BMCMAC" ]; then
-    echo "<bmcmac>$BMCMAC</bmcmac>" >> /tmp/discopacket
+    echo "<bmcmac>$BMCMAC</bmcmac>" >> ${DISCOVERY_FILE}
 fi
 
 # Check whether the hardware support in-band BMC configuration with the IPMI device
 if [ -r /dev/ipmi0 -o -r /dev/ipmi/0 -o -r /dev/ipmidev/0 ]; then
-    echo "<bmcinband>1</bmcinband>" >> /tmp/discopacket
+    echo "<bmcinband>1</bmcinband>" >> ${DISCOVERY_FILE}
 fi
 
 #so we have some cases where DMI table explictly records every function number, and some where only first function is enumerated
@@ -231,77 +232,76 @@ for dev in `ip link|grep -B1 ether|grep UP|awk '{print $2}'|sed -e s/://|grep -v
 		fi
 	fi
 	fi
-	echo "<mac>$DRIVER|$dev|$MAC|$ADDRESS</mac>" >> /tmp/discopacket
-        echo "<nic>" >> /tmp/discopacket
-        echo "	<devname>$dev</devname>" >> /tmp/discopacket
-        echo "	<driver>$DRIVER</driver>" >> /tmp/discopacket
+	echo "<mac>$DRIVER|$dev|$MAC|$ADDRESS</mac>" >> ${DISCOVERY_FILE}
+        echo "<nic>" >> ${DISCOVERY_FILE}
+        echo "	<devname>$dev</devname>" >> ${DISCOVERY_FILE}
+        echo "	<driver>$DRIVER</driver>" >> ${DISCOVERY_FILE}
         if [ ! -z "$ADDRESS" ]; then
-        	echo "	<ip4address>$ADDRESS</ip4address>" >> /tmp/discopacket
+        	echo "	<ip4address>$ADDRESS</ip4address>" >> ${DISCOVERY_FILE}
         fi
-        echo "	<hwaddr>$MAC</hwaddr>" >> /tmp/discopacket
+        echo "	<hwaddr>$MAC</hwaddr>" >> ${DISCOVERY_FILE}
         if [ ! -z "$PCI_SLOT" ]; then
-        	echo "	<pcidev>$PCI_SLOT</pcidev>" >> /tmp/discopacket
+        	echo "	<pcidev>$PCI_SLOT</pcidev>" >> ${DISCOVERY_FILE}
         fi
         if [ ! -z "$SLOTNAME" ]; then
-        	echo "	<location>$SLOTNAME</location>" >> /tmp/discopacket
+        	echo "	<location>$SLOTNAME</location>" >> ${DISCOVERY_FILE}
         fi
         if [ ! -z "$ONBOARDINDEX" ]; then
-        	echo "	<onboardeth>$ONBOARDINDEX</onboardeth>" >> /tmp/discopacket
+        	echo "	<onboardeth>$ONBOARDINDEX</onboardeth>" >> ${DISCOVERY_FILE}
         fi
         if [ ! -z "$FIRMDESC" ]; then
-        	echo "	<firmdesc>$FIRMDESC</firmdesc>" >> /tmp/discopacket
+        	echo "	<firmdesc>$FIRMDESC</firmdesc>" >> ${DISCOVERY_FILE}
         fi
         myswitch=`lldptool -n -i $dev -t -V sysName|grep -v 'System Name TLV'|sed -e 's/^	*//'`
         if [[ ! -z "$myswitch" && ! "$myswitch" =~ "Agent instance for device not found" ]]; then
-        	echo "	<switchname>$myswitch</switchname>" >> /tmp/discopacket
+        	echo "	<switchname>$myswitch</switchname>" >> ${DISCOVERY_FILE}
         fi
         for switchaddr in `lldptool -i $dev -n -t -V mngAddr|grep IP|sed -e 's/.*:.//'`; do
         	if [[ "$switchaddr" =~ "Agent instance for device not found" ]]; then break; fi
-        	echo "	<switchaddr>$switchaddr</switchaddr>" >> /tmp/discopacket
+        	echo "	<switchaddr>$switchaddr</switchaddr>" >> ${DISCOVERY_FILE}
         done
         myswitchdesc=`lldptool -n -i $dev -t -V sysDesc|grep -v 'System Description TLV'|sed -e 's/^	*//'`
         if [[ ! -z "$myswitchdesc" && ! "$myswitchdesc" =~ "Agent instance for device not found" ]]; then
-        	echo "	<switchdesc>$myswitchdesc</switchdesc>" >> /tmp/discopacket
+        	echo "	<switchdesc>$myswitchdesc</switchdesc>" >> ${DISCOVERY_FILE}
         fi
         myport=`lldptool -n -i $dev -t -V portDesc|grep -v 'Port Description TLV'|sed -e 's/^	*//'`
         if [[ ! -z "$myport" && ! "$myport" =~ "Agent instance for device not found" ]]; then
-        	echo "	<switchport>$myport</switchport>" >> /tmp/discopacket
+        	echo "	<switchport>$myport</switchport>" >> ${DISCOVERY_FILE}
         fi
         	
-        echo "</nic>" >> /tmp/discopacket
+        echo "</nic>" >> ${DISCOVERY_FILE}
 done
 if [ "$UUID" == "unknown" ]; then
     UUID=`echo $MTM-$SERIAL-$MAC_OF_FIRST_UP_NIC | tr /A-Z/ /a-z/`
-    echo "<uuid>$UUID</uuid>" >> /tmp/discopacket
+    echo "<uuid>$UUID</uuid>" >> ${DISCOVERY_FILE}
 fi
-echo "<xcatpubkey>$PUBKEY</xcatpubkey>" >> /tmp/discopacket #this is not secure to use by itself, switch sourced pubkey for security
-echo "<sha512sig>" >> /tmp/discopacket
-echo "</sha512sig>" >> /tmp/discopacket
-echo "</xcatrequest>" >> /tmp/discopacket
-openssl dgst -sha512 -out /tmp/discopacket.sha512 -sign /etc/xcat/privkey.pem /tmp/discopacket
-openssl enc -e -a -in /tmp/discopacket.sha512  > /tmp/discopacket.b64sig
-cat /tmp/discopacket |while read line; do
+echo "<xcatpubkey>$PUBKEY</xcatpubkey>" >> ${DISCOVERY_FILE} #this is not secure to use by itself, switch sourced pubkey for security
+echo "<sha512sig>" >> ${DISCOVERY_FILE}
+echo "</sha512sig>" >> ${DISCOVERY_FILE}
+echo "</xcatrequest>" >> ${DISCOVERY_FILE}
+openssl dgst -sha512 -out ${DISCOVERY_FILE}.sha512 -sign /etc/xcat/privkey.pem ${DISCOVERY_FILE}
+openssl enc -e -a -in ${DISCOVERY_FILE}.sha512  > ${DISCOVERY_FILE}.b64sig
+cat ${DISCOVERY_FILE} |while read line; do
 	if [ "$line" = "</sha512sig>" ]; then
-		cat /tmp/discopacket.b64sig >> /tmp/discopacket.new
+		cat ${DISCOVERY_FILE}.b64sig >> ${DISCOVERY_FILE}.new
 	fi
-	echo $line >> /tmp/discopacket.new
+	echo $line >> ${DISCOVERY_FILE}.new
 done
-mv /tmp/discopacket.new /tmp/discopacket
+mv ${DISCOVERY_FILE}.new ${DISCOVERY_FILE}
 logger -s -t $log_label -p local4.info "Discovery packet file is ready."
-rm -f /tmp/discopacket.gz
-gzip -9 /tmp/discopacket
+rm -f ${DISCOVERY_FILE}.gz
+gzip -9 ${DISCOVERY_FILE}
 	if [ ! -z "$XCATMASTER" ]; then
 		logger -s -t $log_label -p local4.info "Sending the discovery packet to xCAT ($XCATMASTER:$XCATPORT)..."
-		(cat /tmp/discopacket.gz | udpcat.awk $XCATMASTER $XCATPORT ) &
+		(cat ${DISCOVERY_FILE}.gz | udpcat.awk $XCATMASTER $XCATPORT ) &
 	fi
 	for dhcps in `grep dhcp-server /var/lib/dhclient/dhclient.leases|awk '{print $4}'|sed -s 's/;//'`; do
 		logger -s -t $log_label -p local4.info "Sending the discovery packet to xCAT ($dhcps:$XCATPORT)..."
-		(cat /tmp/discopacket.gz | udpcat.awk $dhcps $XCATPORT ) &
+		(cat ${DISCOVERY_FILE}.gz | udpcat.awk $dhcps $XCATPORT ) &
 	done
 
         #record the time when the "findme request is sent to master"
         reqtime=$(date +%s)
-	#cat /tmp/discopacket
 	logger -s -t $log_label -p local4.info "Sleeping 5 seconds..."
 	sleep 5
 done

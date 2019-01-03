@@ -49,41 +49,41 @@ ARCH=$(uname -m)
 SERIAL=$(echo "$dmidweinfo"|grep "Serial Number"|cut -d: -f2|sed -e 's/^\s*//'  -e 's/\s*$//')
 
 #compose the findme request
-echo '<xcatrequest>' > /tmp/discopacket
-echo "<command>findme</command>" >> /tmp/discopacket
-echo "<sequential>1</sequential>" >> /tmp/discopacket
-echo "<nodetype>switch</nodetype>" >> /tmp/discopacket
-echo "<arch>$ARCH</arch>" >> /tmp/discopacket
-#echo "<switchtype>$MTM</switchtype>" >> /tmp/discopacket
-echo "<vendor>$VENDOR</vendor>" >> /tmp/discopacket
-echo "<mtm>$MTM</mtm>" >> /tmp/discopacket
-echo "<serial>$SERIAL</serial>" >> /tmp/discopacket
+DISCOVERY_FILE=/tmp/discopacket
+echo '<xcatrequest>' > ${DISCOVERY_FILE}
+echo "<command>findme</command>" >> ${DISCOVERY_FILE}
+echo "<sequential>1</sequential>" >> ${DISCOVERY_FILE}
+echo "<nodetype>switch</nodetype>" >> ${DISCOVERY_FILE}
+echo "<arch>$ARCH</arch>" >> ${DISCOVERY_FILE}
+echo "<vendor>$VENDOR</vendor>" >> ${DISCOVERY_FILE}
+echo "<mtm>$MTM</mtm>" >> ${DISCOVERY_FILE}
+echo "<serial>$SERIAL</serial>" >> ${DISCOVERY_FILE}
 
 MAC_OF_FIRST_UP_NIC=$(ip addr show eth0|grep "link/ether"|awk -F' '  '{print $2}')
 MAC=$MAC_OF_FIRST_UP_NIC
 ADDRESS=$(ip address show dev eth0|grep "inet "|grep global|awk '{print $2}')
 DRIVER=$(grep DRIVER /sys/class/net/eth0/device/uevent|awk -F= '{print $2}')
-echo "<mac>$DRIVER|eth0|$MAC|$ADDRESS</mac>" >> /tmp/discopacket
+echo "<mac>$DRIVER|eth0|$MAC|$ADDRESS</mac>" >> ${DISCOVERY_FILE}
 
 UUID=`echo $MTM-$SERIAL-$MAC_OF_FIRST_UP_NIC| tr /A-Z/ /a-z/`
-echo "<uuid>$UUID</uuid>" >> /tmp/discopacket
+echo "<uuid>$UUID</uuid>" >> ${DISCOVERY_FILE}
 
-echo "<xcatpubkey>$PUBKEY</xcatpubkey>" >> /tmp/discopacket
-echo "<sha512sig>" >> /tmp/discopacket
-echo "</sha512sig>" >> /tmp/discopacket
-echo "</xcatrequest>" >> /tmp/discopacket
-openssl dgst -sha512 -out /tmp/discopacket.sha512 -sign /etc/xcat/privkey.pem /tmp/discopacket
-openssl enc -e -a -in /tmp/discopacket.sha512  > /tmp/discopacket.b64sig
-cat /tmp/discopacket |while read line; do
+echo "<xcatpubkey>$PUBKEY</xcatpubkey>" >> ${DISCOVERY_FILE}
+echo "<sha512sig>" >> ${DISCOVERY_FILE}
+echo "</sha512sig>" >> ${DISCOVERY_FILE}
+echo "</xcatrequest>" >> ${DISCOVERY_FILE}
+openssl dgst -sha512 -out ${DISCOVERY_FILE}.sha512 -sign /etc/xcat/privkey.pem ${DISCOVERY_FILE}
+openssl enc -e -a -in ${DISCOVERY_FILE}.sha512  > ${DISCOVERY_FILE}.b64sig
+cat ${DISCOVERY_FILE} |while read line; do
         if [ "$line" = "</sha512sig>" ]; then
-                cat /tmp/discopacket.b64sig >> /tmp/discopacket.new
+                cat ${DISCOVERY_FILE}.b64sig >> ${DISCOVERY_FILE}.new
         fi
-        echo $line >> /tmp/discopacket.new
+        echo $line >> ${DISCOVERY_FILE}.new
 done
-mv /tmp/discopacket.new /tmp/discopacket
+mv ${DISCOVERY_FILE}.new ${DISCOVERY_FILE}
 logger -s -t $log_label -p local4.info "Discovery packet file is ready."
-rm -f /tmp/discopacket.gz
-gzip -9 /tmp/discopacket
+rm -f ${DISCOVERY_FILE}.gz
+gzip -9 ${DISCOVERY_FILE}
 
 
 
@@ -104,7 +104,7 @@ DISCOVERED=0
 while [ $RETRY -lt $MAX_RETRY ]; do
     logger -s -t $log_label -p local4.info "Sending the discovery packet to xCAT ($XCATMASTER:$XCATPORT) [ RETRY= $RETRY ]  ..."
     echo >/tmp/result.socat.out
-    (cat /tmp/discopacket.gz | socat STDIN UDP:$XCATMASTER:$XCATPORT,sourceport=301 ) &
+    (cat ${DISCOVERY_FILE}.gz | socat STDIN UDP:$XCATMASTER:$XCATPORT,sourceport=301 ) &
 
     WAITRETRY=0
     while [ $WAITRETRY -lt 100 ]; do
