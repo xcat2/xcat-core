@@ -108,11 +108,13 @@ end
 start:lsvm_mixed_vm_running_and_off
 description:lsvm noderagen could work as design, to display the information for all nodes in noderange
 label:others,hctrl_kvm
-cmd:rpower $$CN off 
+cmd:rpower $$CN off
 cmd:a=0;while ! `rpower $$CN stat|grep "Not Activated\|off" >/dev/null`; do sleep 5;((a++));if [ $a -gt 11 ];then break;fi done
+cmd:rpower $$CN stat
 check:ouptut=~Not Activated|off
 cmd:rpower $$SN on
-cmd:a=0;while ! `rpower $$CN stat|grep "Running\|on" >/dev/null`; do sleep 5;((a++));if [ $a -gt 11 ];then break;fi done
+cmd:a=0;while ! `rpower $$SN stat|grep "Running\|on" >/dev/null`; do sleep 5;((a++));if [ $a -gt 11 ];then break;fi done
+cmd:rpower $$SN stat
 check:ouptut=~Running|on
 cmd:lsvm $$CN,$$SN
 check:output=~$$SN: Id:\s*\w+
@@ -124,4 +126,3 @@ check:output=~$$SN: State:\s*\w+
 check:output=~$$SN: Disk\s*\w+
 check:output=~$$CN: \s*Could not get any information about specified object
 check:rc==0
-
