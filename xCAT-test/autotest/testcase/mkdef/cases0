@@ -159,6 +159,52 @@ check:output=~gateway=1.2.3.1
 cmd:rmdef -t network testnetwork
 end
 
+start:mkdef_netname_exist
+os:Linux
+description:test mkdef works as design when netname exists.
+label:mn_only,ci_test,db
+cmd:netname=`lsdef -t network |cut -d" " -f1 |sed -n '1p'`;mkdef -t network -o $netname 
+check:rc==1
+end
+
+start:mkdef_netname_notexist_without_net_mask
+os:Linux
+description:test mkdef works as design when net and mask is not defined.
+label:mn_only,ci_test,db
+cmd:mkdef -t network -o testnetworkwithoutnetandmask 
+check:rc!=0
+check:output=~Error
+cmd:mkdef -t network -o testnetworkwithoutnetandmask mtu=1500
+check:rc!=0
+check:output=~Net or mask value should not be empty
+cmd:mkdef -t network -o testnetworkwithoutnetandmask net=10.0.0.0 mtu=1500
+check:rc!=0
+check:output=~Net or mask value should not be empty
+cmd:mkdef -t network -o testnetworkwithoutnetandmask mask=255.0.0.0 mtu=1500
+check:rc!=0
+check:output=~Net or mask value should not be empty
+cmd:mkdef -t network -o testnetworkwithoutnetandmask net=100.0.0.1 mask=255.0.0.0 mtu=1500
+check:rc==0
+check:output=~1 object definitions have been created or modified
+cmd:lsdef -t network -z testnetworkwithoutnetandmask |tee /tmp/testnetworkwithoutnetandmask.stanza
+check:rc==0
+cmd:cat /tmp/testnetworkwithoutnetandmask.stanza|mkdef -z
+check:rc!=0
+check:output=~(already exists)
+cmd:rmdef -t network testnetworkwithoutnetandmask
+check:rc==0
+end
+
+start:mkdef_networks_if_net_mask_exists
+os:Linux
+description:test makenetworks works as design when net and mask exists. The network could not be created since net and mask are
+the same.
+label:mn_only,ci_test,db
+cmd:netname=`lsdef -t network |cut -d" " -f1 |sed -n '1p'`;net=`lsdef -t network -o $netname |grep -i net |awk -F = '{print $2}'`;mask=`lsdef -t network -o $netname |grep -i mask |awk -F = '{print $2}'`;mkdef -t network -o testnetworkwithnetandmask net=$net mask=$mask
+check:rc!=0
+check:output=~(already exists)
+end
+
 start:mkdef_t_o_error
 description:mkdef -t wrongtype
 label:mn_only,ci_test,db

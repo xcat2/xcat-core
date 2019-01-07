@@ -2424,8 +2424,8 @@ cmd:lsdef -t group bogusgroup  > /dev/null 2>&1;if [[ $? -eq 0 ]]; then lsdef -t
 check:rc==0
 cmd:/opt/xcat/share/xcat/tools/autotest/testcase/xcat_inventory/validatehelper "node" "bogusnode" "role" "compute" "/tmp/import_validation_node_role"
 check:rc==0
-cmd:/opt/xcat/share/xcat/tools/autotest/testcase/xcat_inventory/validatehelper "node" "bogusnode" "role" "service" "/tmp/import_validation_node_role"
-check:rc!=0
+#cmd:/opt/xcat/share/xcat/tools/autotest/testcase/xcat_inventory/validatehelper "node" "bogusnode" "role" "service" "/tmp/import_validation_node_role"
+#check:rc!=0
 cmd:/opt/xcat/share/xcat/tools/autotest/testcase/xcat_inventory/validatehelper "node" "bogusnode" "role" "" "/tmp/import_validation_node_role"
 check:rc!=0
 cmd:/opt/xcat/share/xcat/tools/autotest/testcase/xcat_inventory/validatehelper "node" "bogusnode" "role" "Compute" "/tmp/import_validation_node_role"

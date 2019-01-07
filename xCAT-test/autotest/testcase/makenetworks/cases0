@@ -70,5 +70,11 @@ cmd:rm -f /tmp/testnetworks
 cmd:rm -f /tmp/inetworktest1
 end
 
-
-
+start:makenetworks_netname_exist
+os:Linux
+description:test makenetworks works as design when netname exists.
+label:others,network
+cmd:netname=`lsdef -t network |cut -d" " -f1 |sed -n '1p'`;makenetworks $netname
+check:rc==0
+check:output=~(already exists)
+end

@@ -6,13 +6,13 @@ B<lsdef> - Use this command to list xCAT data object definitions.
 
 B<lsdef> [B<-h>|B<--help>] [B<-t> I<object-types>] [B<-i> I<attr-list>]
 
-B<lsdef> [B<-V>|B<--verbose>] [B<-l>|B<--long>] [B<-s>|B<--short>] [B<-a>|B<--all>] [B<-S>]
-[B<-t> I<object-types>] [B<-o> I<object-names>] [B<-z>|B<--stanza>] [B<-i> I<attr-list>]
+B<lsdef> [B<-V>|B<--verbose>] [B<-a>|B<--all>] [B<-S>]
+[B<-t> I<object-types>] [B<-o> I<object-names>] [B<-z>|B<--stanza>] [B<-i> I<attr-list> | [B<-l>|B<--long>] | [B<-s>|B<--short>]]
 [B<-c>|B<--compress>] [B<--osimage>] [B<--nics>] [[B<-w> I<attr>==I<val>]
 [B<-w> I<attr>=~I<val>] ...] [I<noderange>]
 
-B<lsdef> [B<-l>|B<--long>] [B<-a>|B<--all>] [B<-t> I<object-types>] [B<-z>|B<--stanza>]
-[B<-i> I<attr-list>] [B<--template> [I<template-object-name>]]
+B<lsdef> [B<-a>|B<--all>] [B<-t> I<object-types>] [B<-z>|B<--stanza>]
+[B<-i> I<attr-list> | [B<-l>|B<--long>] | [B<-s>|B<--short>]] [B<--template> [I<template-object-name>]]
 
 =head1 DESCRIPTION
 
@@ -100,7 +100,7 @@ Note: if the "val" fields includes spaces or any other characters that will be p
 
 =item B<-z|--stanza>
 
-Display output in stanza format. See the "xcatstanzafile" man page for details on using xCAT stanza files.
+Display output in stanza format. See the "xcatstanzafile" man page for details on using xCAT stanza files. And default is to list complete object definition, use B<-i> to specify the attribute scope.
 
 =back
 
