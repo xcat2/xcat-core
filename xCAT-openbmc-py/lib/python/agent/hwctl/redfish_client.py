@@ -19,7 +19,22 @@ logger = logging.getLogger('xcatagent')
 HTTP_PROTOCOL = "https://"
 PROJECT_URL = "/redfish/v1"
 
+CHASSIS_URL = PROJECT_URL + "/Chassis"
+MANAGER_URL = PROJECT_URL + "/Managers"
+SYSTEMS_URL = PROJECT_URL + "/Systems"
 SESSION_URL = PROJECT_URL + "/SessionService/Sessions"
+
+BMC_RESET_TYPE = "ForceRestart"
+
+POWER_RESET_TYPE = {
+    'boot'    : 'ForceRestart',
+    'off'     : 'ForceOff',
+    'on'      : 'ForceOn',
+}
+
+manager_reset_string = '#Manager.Reset'
+system_reset_string = '#ComputerSystem.Reset'
+reset_type_string = 'ResetType@Redfish.AllowableValues'
 
 class RedfishRest(object):
 
@@ -119,11 +134,96 @@ class RedfishRest(object):
         if cmd == 'login' and not 'X-Auth-Token' in resp.headers:
             raise SelfServerException('Login Failed: Did not get Session Token from response')
 
-        self._print_record_log('%s %s' % (code, data['Name']), cmd)
+        if 'Name' in data:
+            self._print_record_log('%s %s' % (code, data['Name']), cmd)
+        elif 'error' in data:
+            self._print_record_log('%s %s' % (code, data['error']['Message']), cmd)
         return data
 
     def login(self):
 
         payload = { "UserName": self.username, "Password": self.password }
         self.request('POST', SESSION_URL, payload=payload, timeout=20, cmd='login') 
+
+    def _get_members(self, url):
+
+        data = self.request('GET', url, cmd='get_members')
+        try:
+            return data['Members']
+        except KeyError as e:
+            raise SelfServerException('Get KeyError %s' % e.message)
+
+    def get_bmc_state(self):
+
+        members = self._get_members(MANAGER_URL)
+        target_url = members[0]['@odata.id']
+        data = self.request('GET', target_url, cmd='get_bmc_state')
+        try:
+            return data['PowerState']
+        except KeyError as e:
+            raise SelfServerException('Get KeyError %s' % e.message)
+
+    def get_chassis_power_state(self):
+
+        members = self._get_members(CHASSIS_URL)
+        target_url = members[0]['@odata.id']
+        data = self.request('GET', target_url, cmd='get_chassis_power_state')
+        try:
+            return data['PowerState']
+        except KeyError as e:
+            raise SelfServerException('Get KeyError %s' % e.message)
+
+    def get_systems_power_state(self):
+
+        members = self._get_members(SYSTEMS_URL)
+        target_url = members[0]['@odata.id']
+        data = self.request('GET', target_url, cmd='get_systems_power_state')
+        try:
+            return data['PowerState']
+        except KeyError as e:
+            raise SelfServerException('Get KeyError %s' % e.message)
+
+    def _get_bmc_actions(self):
+
+        members = self._get_members(MANAGER_URL)
+        target_url = members[0]['@odata.id']
+        data = self.request('GET', target_url, cmd='get_bmc_actions')
+        try:
+            actions = data['Actions'][manager_reset_string][reset_type_string]
+            target_url = data['Actions'][manager_reset_string]['target']
+        except KeyError as e:
+            raise SelfServerException('Get KeyError %s' % e.message)
+
+        return (target_url, actions)
+
+    def reboot_bmc(self, optype='warm'):
+
+        target_url, actions = self._get_bmc_actions()
+        if BMC_RESET_TYPE not in actions:
+            raise SelfClientException('Unsupported option: %s' % BMC_RESET_TYPE)
+
+        data = { "ResetType": BMC_RESET_TYPE }
+        return self.request('POST', target_url, payload=data, cmd='set_bmc_state')
+
+    def _get_power_actions(self):
+
+        members = self._get_members(SYSTEMS_URL)
+        target_url = members[0]['@odata.id']
+        data = self.request('GET', target_url, cmd='get_power_actions')
+        try:
+            actions = data['Actions'][system_reset_string][reset_type_string]
+            target_url = data['Actions'][system_reset_string]['target']
+        except KeyError as e:
+            raise SelfServerException('Get KeyError %s' % e.message)
+
+        return (target_url, actions)
+
+    def set_power_state(self, state):
+
+        target_url, actions = self._get_power_actions()
+        if POWER_RESET_TYPE[state] not in actions:
+            raise SelfClientException('Unsupported option: %s' % state)
+
+        data = { "ResetType": POWER_RESET_TYPE[state] }
+        return self.request('POST', target_url, payload=data, cmd='set_power_state')
 
