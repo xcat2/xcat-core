@@ -43,7 +43,6 @@ chmod 0755 /tmp/updateflag
 
 cd /tmp
 log_label="xcat.deployment"
-msgutil_r "$MASTER_IP" "info" "=============deployment starting====================" "/var/log/xcat/xcat.log" "$log_label"
 msgutil_r "$MASTER_IP" "info" "Executing post.xcat to prepare for firstbooting ..." "/var/log/xcat/xcat.log" "$log_label"
 
 RAND=$(perl -e 'print int(rand(50)). "\n"')

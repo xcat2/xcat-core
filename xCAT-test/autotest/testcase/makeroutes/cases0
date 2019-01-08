@@ -1,16 +1,19 @@
 start:makeroutes_h
+label:others,network
 cmd:makeroutes -h
 check:rc==0
 check:output=~Usage
 end
 
 start:makeroutes_v
+label:others,network
 cmd:makeroutes -v
 check:rc==0
 check:output=~Version
 end
 
 start:makeroutes_r_d_node
+label:others,network
 cmd:chtab routename=testr  routes.net=10.1.0.0  routes.mask=255.255.0.0  routes.gateway=10.1.254.254
 check:rc==0
 cmd: makeroutes $$CN -r testr
@@ -29,6 +32,7 @@ end
 
 
 start:makeroutes_r_d
+label:others,network
 cmd:chtab routename=testr routes.net=10.1.0.0 routes.mask=255.255.0.0 routes.gateway=10.1.254.254
 check:rc==0
 cmd: makeroutes -r testr
@@ -47,6 +51,7 @@ end
 
 
 start:makeroutes_use_site_mnroutenames
+label:others,network
 cmd:chtab routename=testr  routes.net=10.1.0.0  routes.mask=255.255.0.0  routes.gateway=10.1.254.254
 check:rc==0
 cmd:chtab key=mnroutenames  site.value=testr
@@ -68,6 +73,7 @@ check:rc==0
 end
 
 start:makeroutes_use_noderes_routenames
+label:others,network
 cmd:chtab routename=testr  routes.net=10.1.0.0  routes.mask=255.255.0.0  routes.gateway=10.1.254.254
 check:rc==0
 cmd:chtab node=$$CN noderes.routenames=testr

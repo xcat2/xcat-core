@@ -1,52 +1,61 @@
 start:nodeset_shell_grub2
+label:others
 description: Verify if `nodeset shell` perform well when part of nodes in a node range have problem. Use grub2 OS loader
 cmd:/opt/xcat/share/xcat/tools/autotest/testcase/nodeset/nodeset_shell_grub2
 check:rc==0
 end
 
 start:nodeset_shell_petitboot
+label:others
 description: Verify if `nodeset shell` perform well when part of nodes in a node range have problem. Use petitboot OS loader
 cmd:/opt/xcat/share/xcat/tools/autotest/testcase/nodeset/nodeset_shell_petitboot
 check:rc==0
 end
 
 start:nodeset_shell_xnba
+label:others
 description: Verify if `nodeset shell` perform well when part of nodes in a node range have problem. Use xnba OS loader
 cmd:/opt/xcat/share/xcat/tools/autotest/testcase/nodeset/nodeset_shell_xnba
 check:rc==0
 end
 
 start:nodeset_osimage_grub2
+label:others
 description: Verify if `nodeset osimage` perform well when part of nodes in a node range have problem. Use grub2 OS loader
 cmd:/opt/xcat/share/xcat/tools/autotest/testcase/nodeset/nodeset_osimage_grub2
 check:rc==0
 end
 
 start:nodeset_osimage_petitboot
+label:others
 description: Verify if `nodeset osimage` perform well when part of nodes in a node range have problem. Use petitboot OS loader
 cmd:/opt/xcat/share/xcat/tools/autotest/testcase/nodeset/nodeset_osimage_petitboot
 check:rc==0
 end
 
 start:nodeset_osimage_xnba
+label:others
 description: Verify if `nodeset osimage` perform well when part of nodes in a node range have problem. Use xnba OS loader
 cmd:/opt/xcat/share/xcat/tools/autotest/testcase/nodeset/nodeset_osimage_xnba
 check:rc==0
 end
 
 start:nodeset_nonexistent_osimage_grub2
+label:others
 description: Verify if `nodeset osimage` perform well when part of nodes in a node range have nonexistent osimage defined in its profile. Use grub2 OS loader
 cmd:/opt/xcat/share/xcat/tools/autotest/testcase/nodeset/nodeset_nonexistent_osimage_grub2
 check:rc==0
 end
 
 start:nodeset_nonexistent_osimage_petitboot
+label:others
 description: Verify if `nodeset osimage` perform well when part of nodes in a node range have nonexistent osimage defined in its profile. Use petitboot OS loader
 cmd:/opt/xcat/share/xcat/tools/autotest/testcase/nodeset/nodeset_nonexistent_osimage_petitboot
 check:rc==0
 end
 
 start:nodeset_nonexistent_osimage_xnba
+label:others
 description: Verify if `nodeset osimage` perform well when part of nodes in a node range have nonexistent osimage defined in its profile. Use xnba OS loader
 cmd:/opt/xcat/share/xcat/tools/autotest/testcase/nodeset/nodeset_nonexistent_osimage_xnba
 check:rc==0

@@ -9,6 +9,7 @@ from gevent.subprocess import Popen, PIPE
 import requests
 import urllib3
 urllib3.disable_warnings()
+from requests.auth import AuthBase
 
 import exceptions as xcat_exception
 
@@ -17,6 +18,7 @@ class RestSession(object):
     def __init__(self):
         self.session = requests.Session()
         self.cookies = None
+        self.auth = None
 
     def request(self, method, url, headers, data=None, timeout=30):
 
@@ -24,6 +26,7 @@ class RestSession(object):
             response = self.session.request(method, url,
                                             data=data,
                                             headers=headers,
+                                            auth=self.auth,
                                             verify=False,
                                             timeout=timeout)
         except requests.exceptions.ConnectionError as e:
@@ -59,6 +62,9 @@ class RestSession(object):
 
         if not self.cookies:
             self.cookies = requests.utils.dict_from_cookiejar(self.session.cookies)
+
+        if not self.auth and 'X-Auth-Token' in response.headers:
+            self.auth = XTokenAuth(response.headers['X-Auth-Token'])
 
         return response
 
@@ -127,3 +133,13 @@ class RestSession(object):
             raise SelfServerException(error)
 
         return response
+
+class XTokenAuth(AuthBase):
+
+    def __init__(self,authToken):
+
+        self.authToken=authToken
+
+    def __call__(self, auth):
+        auth.headers['X-Auth-Token']=self.authToken
+        return(auth)

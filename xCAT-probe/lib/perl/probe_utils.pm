@@ -290,16 +290,17 @@ sub is_http_ready {
     my $installdir = shift;
     my $errormsg_ref = shift;
 
-    my $http_status = `netstat -tunlp | grep -e "httpd" -e "apache" | grep "LISTEN" 2>&1`;
+    my $http_status = `netstat -tnlp | grep -e "httpd" -e "apache" 2>&1`;
     if (!$http_status) {
         $$errormsg_ref = "No HTTP listening status get by command 'netstat'";
         return 0;
-    } elsif ($http_status !~ /\S*\s+\S*\s+\S*\s+\S*$httpport\s+.+/) {
+    } elsif ($http_status !~ /\S*\s+\S*\s+\S*\s+\S*:$httpport\s+.+/) {
         $$errormsg_ref = "The port defined in 'site' table HTTP is not listening";
         return 0;
     }
+    my $test_file = "efibootmgr";
 
-    my $http      = "http://$mnip:$httpport/$installdir/postscripts/syslog";
+    my $http      = "http://$mnip:$httpport/$installdir/postscripts/$test_file";
     my %httperror = (
     "400" => "The request $http could not be understood by the server due to malformed syntax",
     "401" => "The request requires user authentication.",
@@ -330,12 +331,12 @@ sub is_http_ready {
         $$errormsg_ref = "Prepare test environment error: $!";
         return 0;
     }
-    my @outputtmp = `wget -O $tmpdir/syslog $http 2>&1`;
+    my @outputtmp = `wget -O $tmpdir/$test_file $http 2>&1`;
     my $rst       = $?;
     $rst = $rst >> 8;
 
-    if ((!$rst) && (-e "$tmpdir/syslog")) {
-        unlink("$tmpdir/syslog");
+    if ((!$rst) && (-e "$tmpdir/$test_file")) {
+        unlink("$tmpdir/$test_file");
         rmdir ("$tmpdir");
         return 1;
     } elsif ($rst == 4) {
@@ -355,7 +356,7 @@ sub is_http_ready {
             $$errormsg_ref = "Unknown return code of wget <$returncode>.";
         }
     }
-    unlink("$tmpdir/syslog");
+    unlink("$tmpdir/$test_file");
     if(! rmdir ("$tmpdir")){
         $$errormsg_ref .= " Clean test environment error(rmdir $tmpdir): $!";
     }

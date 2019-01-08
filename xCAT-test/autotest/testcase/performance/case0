@@ -1,5 +1,6 @@
 start:perftest_5000
 description:Default performance testing on 5000 fake nodes
+label:others,performance
 os:Linux
 cmd:which yum &>/dev/null && yum install -y bridge-utils || apt install -y bridge-utils
 cmd:copycds $$ISO
@@ -10,6 +11,7 @@ end
 
 start:UT_perftest_5000_MN_only
 description:Default performance testing on 5000 fake nodes without extra configuration on MN
+label:others,performance
 os:Linux
 cmd:which yum &>/dev/null && yum install -y bridge-utils || apt install -y bridge-utils
 check:rc==0
@@ -19,6 +21,7 @@ end
 
 start:perftest_5000_with_simulators
 description:Default performance testing on 5000 fake nodes
+label:others,performance
 os:Linux
 ### From reg_linux_diskfull_installation_flat
 cmd:fdisk -l
@@ -139,6 +142,7 @@ end
 
 start:UT_perftest_1000_with_simulators
 description: UT for performance testing with simulators on an existing environment with one compute node.
+label:others,performance
 os:Linux
 
 # Create fake nodes

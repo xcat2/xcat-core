@@ -1709,9 +1709,11 @@ sub defmk
             $objTypeListsHash{$objk}{$obj} = 1;
         }
     }
+    my $numobjrequest = 0;
 
   OBJ: foreach my $obj (keys %::FINALATTRS)
     {
+        $numobjrequest++;
 
         my $type = $::FINALATTRS{$obj}{objtype};
         # check to make sure we have type
@@ -2034,16 +2036,19 @@ sub defmk
     if ($error)
     {
         my $rsp;
-        $rsp->{data}->[0] = "One or more errors occured when attempting to create or modify xCAT \nobject definitions.";
+        $rsp->{data}->[0] = "One or more errors occured when attempting to create or modify xCAT object definitions.";
+        $rsp->{numofnodes}->[0] = $numobjrequest;
         xCAT::MsgUtils->message("E", $rsp, $::callback);
         return 1;
     }
     else
     {
         my $nodenum = 0;
+        my $totalnumobj = 0;
         my $ret = 0;
         my @nodes_updated = ();
         foreach my $node (keys %::FINALATTRS) {
+            $totalnumobj++;
             if ($::FINALATTRS{$node}{updated}) {
                 $nodenum++;
                 push @nodes_updated, $node;
@@ -2065,6 +2070,7 @@ sub defmk
                 $rsp->{data}->[$n] = "$o";
                 $n++;
             }
+            $rsp->{numofnodes}->[0] = $totalnumobj;
             if ($n > 1) {
                 # Some objects were created ($n was increased), report as success
                 $rsp->{data}->[0] = "The database was updated for the following objects:";
@@ -2078,9 +2084,9 @@ sub defmk
         }
         my $rsp;
         $rsp->{data}->[0] = "$nodenum object definitions have been created or modified.";
+        $rsp->{numofnodes}->[0] = $totalnumobj;
         if ($nodenum > 0) {
             # Some objects were created, report as success
-            $rsp->{numofnodes}->[0] = $nodenum;
             xCAT::MsgUtils->message("I", $rsp, $::callback);
         }
         else {
@@ -2385,9 +2391,10 @@ sub defch
     }
     my $nodewithdomain;
     my $invalidobjname = ();
+    my $numobjrequest = 0;
     foreach my $obj (keys %::FINALATTRS)
     {
-
+        $numobjrequest++;
         my $isDefined = 0;
         my $type      = $::FINALATTRS{$obj}{objtype};
         my %attrhash;
@@ -2919,7 +2926,8 @@ sub defch
     if ($error)
     {
         my $rsp;
-        $rsp->{data}->[0] = "One or more errors occured when attempting to create or modify xCAT \nobject definitions.";
+        $rsp->{data}->[0] = "One or more errors occured when attempting to create or modify xCAT object definitions.";
+        $rsp->{numofnodes}->[0] = $numobjrequest;
         xCAT::MsgUtils->message("E", $rsp, $::callback);
         return 1;
     }
@@ -2928,7 +2936,9 @@ sub defch
         my $nodenum = 0;
         my $ret = 0;
         my @nodes_updated = ();
+        my $totalnumobj = 0;
         foreach my $node (keys %::FINALATTRS) {
+            $totalnumobj++;
             if ($::FINALATTRS{$node}{updated}) {
                 $nodenum++;
                 push @nodes_updated, $node;
@@ -2955,6 +2965,7 @@ sub defch
             } else {
                 $rsp->{data}->[0] = "No database was updated";
             }
+            $rsp->{numofnodes}->[0] = $totalnumobj;
             xCAT::MsgUtils->message("I", $rsp, $::callback);
         }
         else
@@ -2963,10 +2974,10 @@ sub defch
 
             if ($nodenum) {
                 $rsp->{data}->[0] = "$nodenum object definitions have been created or modified.";
-                $rsp->{numofnodes}->[0] = $nodenum;
             } else {
                 $rsp->{data}->[0] = "No object definitions have been created or modified.";
             }
+            $rsp->{numofnodes}->[0] = $totalnumobj;
             xCAT::MsgUtils->message("I", $rsp, $::callback);
             if (scalar(keys %newobjects) > 0)
             {
@@ -3263,7 +3274,7 @@ sub defls
 
 
     # do we want just the object names or all the attr=val
-    if ($::opt_l || @::noderange || $::opt_o || $::opt_i || $::opt_template)
+    if ($::opt_l || @::noderange || $::opt_o || $::opt_i || $::opt_z || $::opt_template)
     {
 
         # assume we want the the details - not just the names
@@ -3286,7 +3297,7 @@ sub defls
 
         # is -i then just get the ones in the list
         $::ATTRLIST = $::opt_i;
-    } elsif (@::noderange || $::opt_o) {
+    } elsif (@::noderange || $::opt_o || $::opt_z) {
 
         # if they gave a list of objects then they must want more
         # than the object names!
@@ -3786,6 +3797,8 @@ sub defls
     my $numobjects = 0;    # keep track of how many object we want to display
                            # for each type
 
+    my $totalnumobj = 0;
+
     foreach my $type (@::clobjtypes)
     {
         # Check if -i specifies valid attributes
@@ -3904,6 +3917,7 @@ sub defls
         # for each object
         foreach my $obj (sort keys %defhash)
         {
+            $totalnumobj++;    # include all the obj
 
             unless ($obj)
             {
@@ -4157,8 +4171,15 @@ sub defls
 
     # Display the definition of objects
     if (defined($rsp_info->{data}) && scalar(@{ $rsp_info->{data} }) > 0) {
-        $rsp_info->{numofnodes}->[0] = $numobjects;
+        $rsp_info->{numofnodes}->[0] = $totalnumobj;
         xCAT::MsgUtils->message("I", $rsp_info, $::callback);
+    } else {
+       if ( $totalnumobj > 0) {
+           my $rsp;
+           $rsp->{data}->[0] = "No object definitions have been found";
+           $rsp->{numofnodes}->[0] = $totalnumobj;
+           xCAT::MsgUtils->message("I", $rsp, $::callback);
+       }
     }
 
     return 0;
@@ -4306,9 +4327,11 @@ sub defrm
     #    the memberlist nodes must be updated.
 
     my $numobjects = 0;
+    my $totalnumobj = 0;
     my %objTypeLists;
     foreach my $obj (keys %objhash)
     {
+        $totalnumobj++;
         my $objtype = $objhash{$obj};
         if (!defined($objTypeLists{$objtype})) # Do no call getObjectsOfType for the same objtype more than once.
         {
@@ -4504,11 +4527,11 @@ sub defrm
     {
         if ($numobjects > 0)
         {
+            my $rsp;
             if ($::verbose)
             {
 
                 #  give results
-                my $rsp;
                 $rsp->{data}->[0] = "The following objects were removed:";
                 xCAT::MsgUtils->message("I", $rsp, $::callback);
 
@@ -4518,16 +4541,14 @@ sub defrm
                     $rsp->{data}->[$n] = "$o";
                     $n++;
                 }
-                xCAT::MsgUtils->message("I", $rsp, $::callback);
             }
             else
             {
-                my $rsp;
                 my $nodenum = scalar(keys %objhash);
                 $rsp->{data}->[0] = "$nodenum object definitions have been removed.";
-                $rsp->{numofnodes}->[0] = $nodenum;
-                xCAT::MsgUtils->message("I", $rsp, $::callback);
             }
+            $rsp->{numofnodes}->[0] = $totalnumobj;
+            xCAT::MsgUtils->message("I", $rsp, $::callback);
 
             # Give a warning message to the user to remove the children of the node.
             for my $tn (keys %objhash) {
@@ -4541,6 +4562,7 @@ sub defrm
         else
         {
             my $rsp;
+            $rsp->{numofnodes}->[0] = $totalnumobj;
             $rsp->{data}->[0] = "No objects have been removed from the xCAT database.";
             xCAT::MsgUtils->message("I", $rsp, $::callback);
         }

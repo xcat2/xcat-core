@@ -1,6 +1,5 @@
 #!/bin/sh
 #script to update nodelist.nodestatus during provision
-
 XCAT="$(getarg XCAT=)"
 STATEMNT="$(getarg STATEMNT=)"
 MASTER=`echo $XCAT |awk -F: '{print $1}'`
@@ -14,6 +13,7 @@ XCATIPORT="3002"
 fi
 
 log_label="xcat.deployment"
+xcatdebugmode="$(getarg xcatdebugmode=)"
 [ "$xcatdebugmode" = "1" -o "$xcatdebugmode" = "2" ] && SYSLOGHOST="" || SYSLOGHOST="-n $MASTER"
 logger $SYSLOGHOST -t $log_label -p local4.info "=============deployment starting===================="
 logger $SYSLOGHOST -t $log_label -p local4.info "Starting xcat-premount..."

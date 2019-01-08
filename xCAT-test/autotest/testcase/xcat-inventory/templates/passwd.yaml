@@ -1,7 +1,0 @@
-passwd:
-  autotest:
-    cryptmethod: md5
-    password: cluster
-    username: root
-schema_version: '1.0'
-

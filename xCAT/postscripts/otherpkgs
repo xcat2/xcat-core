@@ -290,7 +290,7 @@ fi
 #when it is not set, we need to figure it out here
 if [ -z "$OTHERPKGDIR" ]; then
     if [ $mounted -eq 0 ]; then
-        OTHERPKGDIR="$NFSSERVER$INSTALLDIR/post/otherpkgs/$OSVER/$ARCH"
+        OTHERPKGDIR="${NFSSERVER}:${HTTPPORT}$INSTALLDIR/post/otherpkgs/$OSVER/$ARCH"
     else
         OTHERPKGDIR="$INSTALLDIR/post/otherpkgs/$OSVER/$ARCH"
     fi
@@ -300,7 +300,7 @@ if [ -z "$OTHERPKGDIR" ]; then
     fi
 else
     if [ $mounted -eq 0 ]; then
-	OTHERPKGDIR=${NFSSERVER}${OTHERPKGDIR}
+	OTHERPKGDIR=${NFSSERVER}:${HTTPPORT}${OTHERPKGDIR}
     fi
 fi
 
@@ -331,7 +331,7 @@ fi
         OSPKGDIR="$OSPKGDIR"
         if [ $mounted -eq 0 ]; then
             #OSPKGDIR="$OSPKGDIR"
-            ospkgdir="$NFSSERVER$dir"
+            ospkgdir="${NFSSERVER}:${HTTPPORT}$dir"
         else
             ospkgdir="$dir"
         fi
@@ -523,7 +523,7 @@ if ( ! ( pmatch "$OSVER" "sles10*" ) && [ $haszypper -eq 1 ] ); then
         for sdk_src in $SDKDIR; do
             bname=`basename $sdk_src`
             if [ $mounted -eq 0 ]; then
-                sdk_src="http://$NFSSERVER/$sdk_src"
+                sdk_src="http://${NFSSERVER}:${HTTPPORT}/$sdk_src"
             else
                 sdk_src="file://$sdk_src"
             fi

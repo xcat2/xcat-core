@@ -8,7 +8,6 @@ use xCAT::PPCcli qw(SUCCESS EXPECT_ERROR RC_ERROR NR_ERROR);
 use xCAT::PPCpower;
 use xCAT::FSPUtils;
 use xCAT::GlobalDef;
-use xCAT_monitoring::monitorctrl;
 
 #use Data::Dumper;
 
@@ -183,6 +182,7 @@ sub powercmd_boot {
         }
     }
     if (%newnodestatus) {
+        require xCAT_monitoring::monitorctrl;
         xCAT_monitoring::monitorctrl::setNodeStatusAttributes(\%newnodestatus, 1);
     }
     return (\@output);
@@ -364,6 +364,7 @@ sub powercmd {
     }
 
     if (%newnodestatus) {
+        require xCAT_monitoring::monitorctrl;
         xCAT_monitoring::monitorctrl::setNodeStatusAttributes(\%newnodestatus, 1);
     }
     return (\@output);

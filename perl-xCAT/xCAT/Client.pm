@@ -1037,6 +1037,11 @@ sub populate_site_hash {
     foreach (@records) {
         $::XCATSITEVALS{ $_->{key} } = $_->{value};
     }
+
+    unless (exists($::XCATSITEVALS{'httpport'}) and ($::XCATSITEVALS{'httpport'} ne "")){
+        $::XCATSITEVALS{'httpport'}="80";
+    }
+
 }
 
 

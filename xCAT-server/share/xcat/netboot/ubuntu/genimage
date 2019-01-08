@@ -235,6 +235,11 @@ unless ($onlyinitrd) {
     my @pkgdir_internet; #Put all the http mirror in ths array, but only the first http mirror which will be used to create bootstrap
     my @pkgdir_local;    #Put all directories except first in this array
     my $masternode = xCAT::TableUtils->get_site_Master();
+    my $httpport="80";
+    my @hports=xCAT::TableUtils->get_site_attribute("httpport");
+    if ($hports[0]){
+        $httpport=$hports[0];
+    }    
     $srcdir = undef;
     foreach my $dir (@srcdirs) {
         if ($dir =~ /^http.*/) {
@@ -246,7 +251,7 @@ unless ($onlyinitrd) {
                 $srcdir = $dir;
                 find(\&isaptdir, <$dir/>);
             } else {     #set other directory to http url
-                my $osuurl = "http://$masternode$dir ./";
+                my $osuurl = "http://$masternode:$httpport$dir ./";
                 push @pkgdir_local, $osuurl;
             }
         }
@@ -347,7 +352,7 @@ unless ($onlyinitrd) {
     open($aptconfig, ">", "$rootimg_dir/etc/apt/sources.list");
 
     if ($srcdir) {
-        print $aptconfig "deb http://$masternode$srcdir $dist main\n";
+        print $aptconfig "deb http://$masternode:$httpport$srcdir $dist main\n";
     }
 
     foreach (@pkgdir_internet) {
@@ -1023,7 +1028,7 @@ sub mkinitrd {
 NEWROOT="/sysroot"
 SHELL="/bin/sh"
 RWDIR=".statelite"
-
+log_label="xcat.deployment"
 
 # Define some colors
 RESET="\033[0m"
@@ -1229,17 +1234,16 @@ ifconfig lo up
 
 XCATMASTER=`echo \$XCATSERVER|awk -F: '{print \$1}'`
 
-if [ "\$xcatdebugmode" = "1" ] || [ "\$xcatdebugmode" = "2" ]; then
-    PORT="514"
-    syslogd -R \$XCATMASTER:\$PORT
-fi
-
-([ "\$xcatdebugmode" = "1" ] || [ "\$xcatdebugmode" = "2" ]) && logger -t xcat -p debug "running init script..."
-([ "\$xcatdebugmode" = "1" ] || [ "\$xcatdebugmode" = "2" ]) && logger -t xcat -p debug "MASTER=\$XCATMASTER XCATIPORT=\$XCATIPORT"
+PORT="514"
+syslogd -R \$XCATMASTER:\$PORT
+MASTER=`echo \$XCATMASTER |awk -F: '{print \$1}'`
+logger -t \$log_label -p info "=============deployment starting===================="
+logger -t \$log_label -p info "Executing init to prepare for netbooting"
+([ "\$xcatdebugmode" = "1" ] || [ "\$xcatdebugmode" = "2" ]) && logger -t \$log_label -p debug "MASTER=\$XCATMASTER XCATIPORT=\$XCATIPORT"
 
 #update nodelist.nodestatus to "netbooting"
 if [ \$NODESTATUS != 'n' ]; then
-    ([ "\$xcatdebugmode" = "1" ] || [ "\$xcatdebugmode" = "2" ]) && logger -t xcat -p debug "nodestatus: netbooting,reporting..."
+    logger -t \$log_label -p info "Sending request to \$XCATMASTER:\$XCATIPORT for changing status to netbooting..."
     /tmp/updateflag \$XCATMASTER \$XCATIPORT "installstatus netbooting"
 fi
 
@@ -1256,10 +1260,10 @@ for i in `cat /proc/cmdline`; do
             MAXTRIES=5
             ITER=0
             while [ ! -r "\$FILENAME" ]; do
-                ([ "\$xcatdebugmode" = "1" ] || [ "\$xcatdebugmode" = "2" ]) && logger -t xcat -p debug "downloading \$VALUE..."
+                logger -t \$log_label -p info "Downloading rootfs image from \$VALUE..."
                 echo Getting \$VALUE...
                 if ! /usr/bin/wget \$VALUE; then
-                    ([ "\$xcatdebugmode" = "1" ] || [ "\$xcatdebugmode" = "2" ]) && logger -t xcat -p debug "downloading \$VALUE failed,retrying..."
+                    ([ "\$xcatdebugmode" = "1" ] || [ "\$xcatdebugmode" = "2" ]) && logger -t \$log_label -p debug "downloading \$VALUE failed,retrying..."
                     ST=`expr \$RANDOM % 5`
                     sleep \$ST
                     rm -f \$FILENAME
@@ -1338,6 +1342,7 @@ if [ "\$STATELITE" = "1" ]; then
         # for statelite mode on top of the ramdisk
 EOMS
     print $inifile "        if [ -r /rootimg-statelite.gz ]; then\n";
+    print $inifile "    logger -t \$log_label -p info \"Setting up RAM-root tmpfs on downloaded rootimg.cpio.[gz/xz]...\"\n";
     print $inifile "            echo Setting up RAM-root tmpfs.\n";
     if ($rootlimit) {
         print $inifile "            mount -o \"size=$rootlimit,mode=755\" -t tmpfs rootfs \$NEWROOT \n";
@@ -1463,7 +1468,7 @@ if [ -r /rootimg.sfs ]; then
     mount --move /rw \$NEWROOT/rw
 EOMS
     print $inifile "elif [ -r /rootimg.cpio.gz ] || [ -r /rootimg.cpio.xz ]; then\n";
-    print $inifile "    ([ \"\$xcatdebugmode\" = \"1\" ] || [ \"\$xcatdebugmode\" = \"2\" ]) && logger -t xcat -p debug \"rootimg downloaded,setting up RAM-root tmpfs...\"\n";
+    print $inifile "    logger -t \$log_label -p info \"Setting up RAM-root tmpfs on downloaded rootimg.cpio.[gz/xz]...\"\n";
     print $inifile "    echo Setting up RAM-root tmpfs.\n";
     if ($rootlimit) {
         print $inifile "    mount -o \"size=$rootlimit,mode=755\" -t tmpfs rootfs \$NEWROOT\n";
@@ -1471,7 +1476,7 @@ EOMS
         print $inifile "    mount -o  mode=755 -t tmpfs rootfs \$NEWROOT\n";
     }
     print $inifile "    cd \$NEWROOT\n";
-    print $inifile "    ([ \"\$xcatdebugmode\" = \"1\" ] || [ \"\$xcatdebugmode\" = \"2\" ]) && logger -t xcat -p debug \"Extracting root filesystem:\"\n";
+    print $inifile "    ([ \"\$xcatdebugmode\" = \"1\" ] || [ \"\$xcatdebugmode\" = \"2\" ]) && logger -t \$log_label -p debug \"Extracting root filesystem:\"\n";
     print $inifile "    echo -n \"Extracting root filesystem:\"\n";
     print $inifile "    if [ -r /rootimg.cpio.gz ]; then\n";
     print $inifile "        if [ -x /bin/cpio ]; then\n";
@@ -1486,10 +1491,9 @@ EOMS
     print $inifile "            xz -cd /rootimg.cpio.xz |cpio -idum\n";
     print $inifile "        fi\n";
     print $inifile "    fi\n";
-    print $inifile "    ([ \"\$xcatdebugmode\" = \"1\" ] || [ \"\$xcatdebugmode\" = \"2\" ]) && logger -t xcat -p debug \"Done...\"\n";
     print $inifile "    echo Done\n";
     print $inifile "elif [ -r /rootimg.tar.gz ] || [ -r /rootimg.tar.xz ]; then\n";
-    print $inifile "    ([ \"\$xcatdebugmode\" = \"1\" ] || [ \"\$xcatdebugmode\" = \"2\" ]) && logger -t xcat -p debug \"rootimg downloaded,setting up RAM-root tmpfs...\"\n";
+    print $inifile "    logger -t \$log_label -p info \"Setting up RAM-root tmpfs on downloaded rootimg.cpio.[gz/xz]...\"\n";
     print $inifile "    echo Setting up RAM-root tmpfs.\n";
 
     if ($rootlimit) {
@@ -1498,27 +1502,26 @@ EOMS
         print $inifile "    mount -o  mode=755 -t tmpfs rootfs \$NEWROOT\n";
     }
     print $inifile "    cd \$NEWROOT\n";
-    print $inifile "    ([ \"\$xcatdebugmode\" = \"1\" ] || [ \"\$xcatdebugmode\" = \"2\" ]) && logger -t xcat -p debug \"Extracting root filesystem:\"\n";
+    print $inifile "    ([ \"\$xcatdebugmode\" = \"1\" ] || [ \"\$xcatdebugmode\" = \"2\" ]) && logger -t \$log_label -p debug \"Extracting root filesystem:\"\n";
     print $inifile "    echo -n \"Extracting root filesystem:\"\n";
     print $inifile "    if [ -r /rootimg.tar.gz ]; then\n";
     print $inifile "        /bin/tar --selinux --xattrs --xattrs-include='*' -zxf /rootimg.tar.gz\n";
     print $inifile "    elif [ -r /rootimg.tar.xz ]; then\n";
     print $inifile "        /bin/tar --selinux --xattrs --xattrs-include='*' -Jxf /rootimg.tar.xz\n";
     print $inifile "    fi\n";
-    print $inifile "    ([ \"\$xcatdebugmode\" = \"1\" ] || [ \"\$xcatdebugmode\" = \"2\" ]) && logger -t xcat -p debug \"Done...\"\n";
     print $inifile "    echo Done\n";
     print $inifile "else\n";
-    print $inifile "    ([ \"\$xcatdebugmode\" = \"1\" ] || [ \"\$xcatdebugmode\" = \"2\" ]) && logger -t xcat -p debug \"Failed to download image, panicing in 5...\"\n";
+    print $inifile "    ([ \"\$xcatdebugmode\" = \"1\" ] || [ \"\$xcatdebugmode\" = \"2\" ]) && logger -t \$log_label -p debug \"Failed to download image, panicing in 5...\"\n";
     print $inifile "    echo -n Failed to download image, panicing in 5...\n";
     print $inifile "    for i in 4 3 2 1 0; do\n";
     print $inifile "        /bin/sleep 5\n";
-    print $inifile "    ([ \"\$xcatdebugmode\" = \"1\" ] || [ \"\$xcatdebugmode\" = \"2\" ]) && logger -t xcat -p debug \"\$i...\"\n";
+    print $inifile "    ([ \"\$xcatdebugmode\" = \"1\" ] || [ \"\$xcatdebugmode\" = \"2\" ]) && logger -t \$log_label -p debug \"\$i...\"\n";
     print $inifile "        echo -n \$i...\n";
     print $inifile "    done\n";
-    print $inifile "    ([ \"\$xcatdebugmode\" = \"1\" ] || [ \"\$xcatdebugmode\" = \"2\" ]) && logger -t xcat -p debug \"You're dead.  rpower nodename reset to play again.\"\n";
-    print $inifile "    ([ \"\$xcatdebugmode\" = \"1\" ] || [ \"\$xcatdebugmode\" = \"2\" ]) && logger -t xcat -p debug \"* Did you packimage with -m cpio, -m squashfs, or -m nfs?\"\n";
-    print $inifile "    ([ \"\$xcatdebugmode\" = \"1\" ] || [ \"\$xcatdebugmode\" = \"2\" ]) && logger -t xcat -p debug \"* If using -m squashfs did you include aufs.ko with geninitrd? e.g.:  -n tg3,squashfs,aufs,loop\"\n";
-    print $inifile "    ([ \"\$xcatdebugmode\" = \"1\" ] || [ \"\$xcatdebugmode\" = \"2\" ]) && logger -t xcat -p debug \"If using -m nfs did you export NFS and sync rootimg?  And did you include the aufs and nfs modules in the proper order: e.g.:  -n tg3,aufs,loop,sunrpc,lockd,nfs_acl,nfs\"\n";
+    print $inifile "    ([ \"\$xcatdebugmode\" = \"1\" ] || [ \"\$xcatdebugmode\" = \"2\" ]) && logger -t \$log_label -p debug \"You're dead.  rpower nodename reset to play again.\"\n";
+    print $inifile "    ([ \"\$xcatdebugmode\" = \"1\" ] || [ \"\$xcatdebugmode\" = \"2\" ]) && logger -t \$log_label -p debug \"* Did you packimage with -m cpio, -m squashfs, or -m nfs?\"\n";
+    print $inifile "    ([ \"\$xcatdebugmode\" = \"1\" ] || [ \"\$xcatdebugmode\" = \"2\" ]) && logger -t \$log_label -p debug \"* If using -m squashfs did you include aufs.ko with geninitrd? e.g.:  -n tg3,squashfs,aufs,loop\"\n";
+    print $inifile "    ([ \"\$xcatdebugmode\" = \"1\" ] || [ \"\$xcatdebugmode\" = \"2\" ]) && logger -t \$log_label -p debug \"If using -m nfs did you export NFS and sync rootimg?  And did you include the aufs and nfs modules in the proper order: e.g.:  -n tg3,aufs,loop,sunrpc,lockd,nfs_acl,nfs\"\n";
     print $inifile "    echo\n";
     print $inifile <<EOMS;
     echo "You're dead.  rpower nodename reset to play again.
@@ -1537,9 +1540,9 @@ EOMS
     print $inifile "fi\n";
     print $inifile "cd /\n";
     print $inifile "cp /etc/hostname \$NEWROOT/etc/hostname\n";
-    print $inifile "([ \"\$xcatdebugmode\" = \"1\" ] || [ \"\$xcatdebugmode\" = \"2\" ]) && logger -t xcat -p debug \"saving \$NEWROOT/etc/resolv.conf\"\n";
+    print $inifile "([ \"\$xcatdebugmode\" = \"1\" ] || [ \"\$xcatdebugmode\" = \"2\" ]) && logger -t \$log_label -p debug \"saving \$NEWROOT/etc/resolv.conf\"\n";
     print $inifile "rm -f \$NEWROOT/etc/resolv.conf; cp /etc/resolv.conf \$NEWROOT/etc/resolv.conf\n";
-    print $inifile "([ \"\$xcatdebugmode\" = \"1\" ] || [ \"\$xcatdebugmode\" = \"2\" ]) && logger -t xcat -p debug \"exiting init script...\"\n";
+    print $inifile "logger -t \$log_label -p info \"Exiting init ...\"\n";
     print $inifile "mount --move /dev \$NEWROOT/dev \n";
     print $inifile "mount --move /proc \$NEWROOT/proc \n";
     print $inifile "mount --move /sys  \$NEWROOT/sys \n";
@@ -1644,7 +1647,7 @@ EOMS
         }
     }
 
-    # add rsync for statelite
+    # add extra commands for initrd
     foreach ("usr/bin/dig", "bin/busybox", "bin/bash", "sbin/mount.nfs", "usr/bin/rsync", "sbin/insmod", "sbin/udevd", "sbin/udevadm", "sbin/modprobe", "sbin/blkid", "sbin/depmod", "usr/bin/wget", "usr/bin/xz", "bin/gzip", "bin/tar") {
         getlibs($_);
         push @filestoadd, $_;

@@ -1,5 +1,6 @@
 start:get_networks_table_rest
 description: get all networks table entries with REST API
+label:others,restapi
 cmd:restapitest -m GET -r /tables/networks/rows -u $$username -p $$password
 check:rc==200
 check:output=~netname
@@ -7,6 +8,7 @@ end
 
 start:get_network_table_rest
 description: get all entries from invalid table name with REST API
+label:others,restapi
 cmd:restapitest -m GET -r /tables/network/rows -u $$username -p $$password
 check:rc==147
 check:output=~No such table
@@ -14,6 +16,7 @@ end
 
 start:get_network_table_with_attr_selection_rest
 description: get all attribute matching networks table entries with REST API
+label:others,restapi
 cmd:restapitest -m GET -r /tables/networks/rows/mask=255.0.0.0 -u $$username -p $$password
 check:rc==200
 check:output=~"mask":"255.0.0.0"
@@ -21,6 +24,7 @@ end
 
 start:get_network_table_with_attr_selection_error_rest
 description: get all attribute matching networks table entries with REST API, invalid attribute name
+label:others,restapi
 cmd:restapitest -m GET -r /tables/networks/rows/abc=255.0.0.0 -u $$username -p $$password
 check:rc==147
 check:output=~No table rows
@@ -28,6 +32,7 @@ end
 
 start:get_network_table_with_attr_selection_error_rest2
 description: get all attribute matching networks table entries with REST API, no match
+label:others,restapi
 cmd:restapitest -m GET -r /tables/networks/rows/mask=a.b.c.d -u $$username -p $$password
 check:rc==147
 check:output=~No table rows
@@ -35,6 +40,7 @@ end
 
 start:get_network_table_with_attr_selection_rest2
 description: get attribute matching networks table attributes with REST API
+label:others,restapi
 cmd:restapitest -m GET -r /tables/networks/rows/mask=255.0.0.0/gateway -u $$username -p $$password
 check:rc==200
 check:output=~"gateway":"
@@ -42,6 +48,7 @@ end
 
 start:set_network_table_attr_with_attr_selection_rest2
 description: set attribute for network table for attr seleection with REST API
+label:others,restapi
 cmd:restapitest -m PUT -r /tables/networks/rows/mask=255.0.0.0 -d '{"comments":"REST API TEST"}' -u $$username -p $$password
 check:rc==200
 cmd:lsdef -l -t network
@@ -50,6 +57,7 @@ end
 
 start:delete_network_rest
 description: create a network and delele network with REST API
+label:others,restapi
 cmd: restapitest -m POST -r /networks/network_rest -d '{"gateway":"10.1.0.1","mask":"255.255.0.0","net":"199.168.0.0"}' -u $$username -p $$password
 cmd: restapitest -m DELETE -r /tables/networks/rows/net=199.168.0.0 -u $$username -p $$password
 check:rc==200

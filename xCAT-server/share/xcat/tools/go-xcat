@@ -2,7 +2,7 @@
 #
 # go-xcat - Install xCAT automatically.
 #
-# Version 1.0.32
+# Version 1.0.34
 #
 # Copyright (C) 2016, 2017, 2018 International Business Machines
 # Eclipse Public License, Version 1.0 (EPL-1.0)
@@ -171,8 +171,8 @@ GO_XCAT_INSTALL_LIST=(perl-xcat xcat xcat-buildkit xcat-client
 	xcat-genesis-base-amd64 xcat-genesis-base-ppc64 xnba-undi)
 # The package list of all the packages should be installed
 GO_XCAT_UNINSTALL_LIST=("${GO_XCAT_INSTALL_LIST[@]}"
-	goconserver xCAT-SoftLayer xCAT-confluent xCAT-csm xCAT-openbmc-py
-	xCAT-probe xCAT-test xCAT-vlan xCATsn xCAT-UI-deps)
+	goconserver xCAT-SoftLayer xCAT-confluent xCAT-csm xCAT-genesis-builder
+	xCAT-openbmc-py xCAT-probe xCAT-test xCAT-vlan xCATsn xCAT-UI-deps)
 # For Debian/Ubuntu, it will need a sight different package list
 type dpkg >/dev/null 2>&1 &&
 GO_XCAT_UNINSTALL_LIST=("${GO_XCAT_INSTALL_LIST[@]}"
@@ -538,7 +538,7 @@ function check_package_version_rpm()
 		else
 			echo "${ver}"
 		fi
-	done < <(rpm -q --qf '%{version}-%{release}\n' "$@" 2>/dev/null)
+	done < <(LC_ALL="C" rpm -q --qf '%{version}-%{release}\n' "$@" 2>/dev/null)
 	return 0
 }
 
@@ -934,6 +934,31 @@ function add_repo_by_file_yum()
 		cp "${tmp}" "/etc/yum.repos.d/${repo_id}.repo"
 }
 
+# Dirty workaround on SLES11 SP4
+# For SLES11, set gpgcheck=0
+#
+#       $1      repo file
+function github_issue_5503_workaround2()
+{
+	[[ "${GO_XCAT_LINUX_DISTRO}" = "sles" ]] || return 0
+	[[ "${GO_XCAT_LINUX_VERSION}" =~ ^11(\.[0-4]){0,1}$ ]] || return 0
+	local repo_file="$1"
+	local tmp="${TMP_DIR}/tmp_repo_file_${repo_id}.repo.$$"
+	cp "${repo_file}" "${tmp}"
+	exit_if_bad "$?" "Copy file failed \`${repo_file}' -> \`${tmp}'"
+	while read -r
+	do
+		case "${REPLY}" in
+		"gpgcheck=1")
+			echo "gpgcheck=0"
+			;;
+		*)
+			echo "${REPLY}"
+			;;
+		esac
+	done <"${tmp}" >"${repo_file}"
+}
+
 #       $1      repo file
 #       $2      repo id
 function add_repo_by_file_zypper()
@@ -954,6 +979,8 @@ function add_repo_by_file_zypper()
 		echo "[${repo_id}]"
 		grep -v '^\[' "${repo_file}"
 	} >"${tmp}"
+	# For SLES11, set gpgcheck=0
+	github_issue_5503_workaround2 "${tmp}"
 	remove_repo_zypper "${repo_id}" &&
 		zypper addrepo "${tmp}" >/dev/null 2>&1
 }
@@ -1017,7 +1044,7 @@ function extract_archive()
 		gzip -d -c "${archive}" | tar -t -f - | grep -v "^${repo_id}/"
 		[[ "${PIPESTATUS[0]}" -eq 0 && "${PIPESTATUS[1]}" -eq 0 &&
 			"${PIPESTATUS[2]}" -eq 1 ]]
-		exit_if_bad "$?" "${archive}: bad gzipped tarball"
+		exit_if_bad "$?" "${archive}: bad gzipped tarball" || return 1
 		rm -rf "${install_path}/${repo_id}"
 		gzip -d -c "${archive}" | ( cd "${install_path}" && tar -x -f - )
 		;;
@@ -1085,7 +1112,7 @@ function add_repo_by_url_yum_or_zypper()
 			name=${repo_id}
 			baseurl=${url%/}
 			enabled=1
-			gpgcheck=0
+			gpgcheck=1
 			gpgkey=${url%/}/repodata/repomd.xml.key
 			EOF
 			add_repo_by_file "${tmp}" "${repo_id}"
@@ -1121,9 +1148,17 @@ function add_repo_by_url_yum_or_zypper()
 		name=${repo_id}
 		baseurl=file://${url%/}
 		enabled=1
-		gpgcheck=0
-		gpgkey=file://${url%/}/repodata/repomd.xml.key
 		EOF
+		if [ -f "${url%/}/repodata/repomd.xml.asc" ]
+		then
+			echo "gpgcheck=1" >>"${tmp}"
+		else
+			echo "gpgcheck=0" >>"${tmp}"
+		fi
+		if [ -f "${url%/}/repodata/repomd.xml.key" ]
+		then
+			echo "gpgkey=file://${url%/}/repodata/repomd.xml.key" >>"${tmp}"
+		fi
 		add_repo_by_file "${tmp}" "${repo_id}"
 		return "$?"
 	fi
@@ -1182,7 +1217,8 @@ function add_repo_by_url_apt()
 		[[ "${url:0:1}" = "/" ]] || url="${PWD}/${url}"
 		# directory
 		tmp="${TMP_DIR}/tmp_repo.list"
-		echo "deb [arch=$(dpkg --print-architecture)] file://${url} ${codename} main" >"${tmp}"
+		echo "deb [$([ ! -f "${url}/dists/${codename}/Release.gpg" ] &&
+			echo "allow-insecure=yes ")arch=$(dpkg --print-architecture)] file://${url} ${codename} main" >"${tmp}"
 		add_repo_by_file_apt "${tmp}" "${repo_id}"
 		return "$?"
 	fi
@@ -1523,6 +1559,26 @@ function remove_package()
 }
 
 #       $1      -y
+function purge_package_apt()
+{
+	type apt-get >/dev/null 2>&1 || return 255
+	local -a yes=()
+	[[ "$1" = "-y" ]] && yes=("-y") && shift
+	apt-get --allow-unauthenticated purge "${yes[@]}" "$@"
+}
+
+function purge_package_others()
+{
+	remove_package "$@"
+}
+
+#       $1      -y
+function purge_package()
+{
+	function_dispatch "${FUNCNAME}" "$@"
+}
+
+#       $1      -y
 function install_xcat()
 {
 	install_packages "$@" "${GO_XCAT_INSTALL_LIST[@]}"
@@ -1604,6 +1660,16 @@ function trash_xcat()
 	rm -rf /etc/goconserver
 	rm -rf /var/lib/goconserver
 	rm -rf /var/log/goconserver
+
+	return 0
+}
+
+function uninstall_xcat_completely()
+{
+	purge_package -y "${GO_XCAT_UNINSTALL_LIST[@]}"
+
+	kill_xcat
+	trash_xcat
 
 	return 0
 }
@@ -1715,7 +1781,13 @@ function test_case_000_version()
 	local ver=""
 	local -i ret=0
 
-	list_xcat_packages >/dev/null || return 1
+	# Call function list_xcat_packages to fill up global array
+	# GO_XCAT_CORE_PACKAGE_LIST
+	# And the output will be logged into the debug log.
+	#
+	# Missing command `repoquery' may cause list_xcat_packages fail,
+	# in that case, just skip this test.
+	list_xcat_packages
 
 	while read -r
 	do
@@ -1725,6 +1797,7 @@ function test_case_000_version()
 		(( ret += $? ))
 	done < <(check_package_version "${GO_XCAT_CORE_PACKAGE_LIST[@]}")
 
+	[ "${ret}" -ne "0" ] && echo
 	warn_if_bad "${ret}" "xCAT packages version mismatch"
 
 	return "${ret}"
@@ -1985,14 +2058,10 @@ case "${GO_XCAT_ACTION}" in
 "away"|"uninstall")
 	# Remove xCAT
 	ask_to_continue "${GO_XCAT_YES[0]}" "xCAT is going to be ${GO_XCAT_ACTION/away/trash}ed."
-	debug_trace uninstall_xcat -y
-	boo_boo_if_bad "$?"
 
 	case "${GO_XCAT_ACTION}" in
 	"away")
-		# Do extra cleanup
-		debug_trace kill_xcat
-		debug_trace trash_xcat
+		debug_trace uninstall_xcat_completely
 
 		debug_logger <<-EOF
 
@@ -2000,6 +2069,9 @@ case "${GO_XCAT_ACTION}" in
 		EOF
 		;;
 	"uninstall")
+		debug_trace uninstall_xcat -y
+		boo_boo_if_bad "$?"
+
 		debug_logger <<-EOF
 
 		xCAT has been uninstalled!
@@ -2069,6 +2141,8 @@ case "${GO_XCAT_ACTION}" in
 		# xCAT has been installed and so far so good
 		smoke_testing >/dev/null 2>&1
 		RET="$?"
+		[ "${RET}" -ne "0" ] && echo
+		warn_if_bad "${RET}" "xCAT smoke testing failed."
 	fi
 
 	boo_boo_if_bad "${RET}"

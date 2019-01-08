@@ -1,0 +1,128 @@
+start:export_import_an_osimage_directory
+description: import an osimage diretory with `xcat-inventroy import -d <osimage directory>`
+label:others,inventory_ci
+#backup any existing test_myimage
+cmd:mkdir -p /tmp/export_import_an_osimage_directory/backup
+check:rc==0
+cmd:lsdef -t osimage -o test_myimage >/dev/null 2>&1;if [[ $? -eq 0 ]]; then lsdef -t osimage -o test_myimage -z >/tmp/export_import_an_osimage_directory/backup/test_myimage.stanza;fi
+
+#remove any existing test_myimage
+cmd:rmdef -t osimage -o test_myimage
+cmd: lsdef -t osimage -o test_myimage
+check:rc!=0
+cmd:dir="/tmp/test_myimage";if [ -d "${dir}" ];then mv ${dir} ${dir}".old"; fi
+
+#import test_myimage
+cmd: xcat-inventory import -d /opt/xcat/share/xcat/tools/autotest/testcase/xcat_inventory/templates/cluster_invdir/osimage/test_myimage
+check:rc==0
+
+#check whether the osimage definition is created
+cmd: lsdef -t osimage -o test_myimage -z |tee /tmp/export_import_an_osimage_directory/test_myimage.stanza
+check:rc==0
+cmd: diff /tmp/export_import_an_osimage_directory/test_myimage.stanza /opt/xcat/share/xcat/tools/autotest/testcase/xcat_inventory/templates/cluster_invdir/osimage/test_myimage/test_myimage.stanza -I "environvar" 
+check: rc==0
+#check whether the customized osimage files are imported
+cmd: diff -r /opt/xcat/share/xcat/tools/autotest/testcase/xcat_inventory/templates/cluster_invdir/osimage/test_myimage/tmp/test_myimage/ /tmp/test_myimage/
+check:rc==0
+
+#cleanup
+cmd:rmdef -t osimage -o test_myimage
+cmd:dir="/tmp/test_myimage"; rm -rf $dir; if [ -d ${dir}".old" ];then mv ${dir}".old" $dir; fi
+
+#restore the original test_myimage if any
+cmd: if [ -e '/tmp/export_import_an_osimage_directory/backup/test_myimage.stanza' ]; then cat /tmp/export_import_an_osimage_directory/backup/test_myimage.stanza|mkdef -z;fi
+cmd: rm -rf /tmp/export_import_an_osimage_directory
+end
+
+
+#################################################################################
+
+start:export_import_multiple_osimages_from_osimage_directory
+description: import multiple osimage diretories  with `xcat-inventroy import -d <osimage directory>`
+label:others,inventory_ci
+#backup any existing test_myimage,test_myimage2
+cmd:mkdir -p /tmp/export_import_multiple_osimages_from_osimage_directory/backup
+check:rc==0
+cmd:lsdef -t osimage -o test_myimage >/dev/null 2>&1;if [[ $? -eq 0 ]]; then lsdef -t osimage -o test_myimage -z >/tmp/export_import_multiple_osimages_from_osimage_directory/backup/test_myimage.stanza;fi
+cmd:lsdef -t osimage -o test_myimage2 >/dev/null 2>&1;if [[ $? -eq 0 ]]; then lsdef -t osimage -o test_myimage2 -z >/tmp/export_import_multiple_osimages_from_osimage_directory/backup/test_myimage2.stanza;fi
+
+#remove any existing test_myimage,test_myimage2
+cmd:rmdef -t osimage -o test_myimage,test_myimage2
+cmd: lsdef -t osimage -o test_myimage
+check:rc!=0
+cmd: lsdef -t osimage -o test_myimage2
+check:rc!=0
+cmd:dir="/tmp/test_myimage";if [ -d "${dir}" ];then mv ${dir} ${dir}".old"; fi
+cmd:dir="/tmp/test_myimage2";if [ -d "${dir}" ];then mv ${dir} ${dir}".old"; fi
+
+#import osimages
+cmd: xcat-inventory import -d /opt/xcat/share/xcat/tools/autotest/testcase/xcat_inventory/templates/cluster_invdir/osimage/
+check:rc==0
+
+#check whether the osimage definition is created
+cmd: lsdef -t osimage -o test_myimage -z | tee /tmp/export_import_multiple_osimages_from_osimage_directory/test_myimage.stanza
+check:rc==0
+cmd: lsdef -t osimage -o test_myimage2 -z | tee /tmp/export_import_multiple_osimages_from_osimage_directory/test_myimage2.stanza
+check:rc==0
+cmd: diff /tmp/export_import_multiple_osimages_from_osimage_directory/test_myimage.stanza /opt/xcat/share/xcat/tools/autotest/testcase/xcat_inventory/templates/cluster_invdir/osimage/test_myimage/test_myimage.stanza -I "environvar"
+check: rc==0
+cmd: diff /tmp/export_import_multiple_osimages_from_osimage_directory/test_myimage2.stanza /opt/xcat/share/xcat/tools/autotest/testcase/xcat_inventory/templates/cluster_invdir/osimage/test_myimage2/test_myimage2.stanza -I "environvar"
+check: rc==0
+#check whether the customized osimage files are imported
+cmd: diff -r /opt/xcat/share/xcat/tools/autotest/testcase/xcat_inventory/templates/cluster_invdir/osimage/test_myimage/tmp/test_myimage/ /tmp/test_myimage/
+check:rc==0
+cmd: diff -r /opt/xcat/share/xcat/tools/autotest/testcase/xcat_inventory/templates/cluster_invdir/osimage/test_myimage2/tmp/test_myimage2/ /tmp/test_myimage2/
+check:rc==0
+
+#cleanup
+cmd:rmdef -t osimage -o test_myimage
+cmd:dir="/tmp/test_myimage"; rm -rf $dir; if [ -d ${dir}".old" ];then mv ${dir}".old" $dir; fi
+
+cmd:rmdef -t osimage -o test_myimage2
+cmd:dir="/tmp/test_myimage2"; rm -rf $dir; if [ -d ${dir}".old" ];then mv ${dir}".old" $dir; fi
+
+#restore the original osimages if any
+cmd: if [ -e '/tmp/export_import_multiple_osimages_from_osimage_directory/backup/test_myimage.stanza' ]; then cat /tmp/export_import_multiple_osimages_from_osimage_directory/backup/test_myimage.stanza|mkdef -z;fi
+
+cmd: if [ -e '/tmp/export_import_multiple_osimages_from_osimage_directory/backup/test_myimage2.stanza' ]; then cat /tmp/export_import_multiple_osimages_from_osimage_directory/backup/test_myimage2.stanza|mkdef -z; fi
+
+cmd: rm -rf /tmp/export_import_multiple_osimages_from_osimage_directory
+end
+
+################################################3
+
+start:export_import_specified_from_osimage_directory
+description: import specified osimage from osimage diretory with `xcat-inventroy import -d <osimage directory> -t osimage -o`
+label:others,inventory_ci
+#backup any existing test_myimage
+cmd:mkdir -p /tmp/export_import_specified_from_osimage_directory/backup
+check:rc==0
+cmd:lsdef -t osimage -o test_myimage >/dev/null 2>&1;if [[ $? -eq 0 ]]; then lsdef -t osimage -o test_myimage -z >/tmp/export_import_specified_from_osimage_directory/backup/test_myimage.stanza;fi
+
+#remove any existing test_myimage
+cmd:rmdef -t osimage -o test_myimage
+cmd: lsdef -t osimage -o test_myimage
+check:rc!=0
+cmd:dir="/tmp/test_myimage";if [ -d "${dir}" ];then mv ${dir} ${dir}".old"; fi
+
+#import test_myimage
+cmd: xcat-inventory import -d /opt/xcat/share/xcat/tools/autotest/testcase/xcat_inventory/templates/cluster_invdir/osimage/ -t osimage -o test_myimage
+check:rc==0
+
+#check whether the osimage definition is created
+cmd: lsdef -t osimage -o test_myimage -z |tee /tmp/export_import_specified_from_osimage_directory/test_myimage.stanza
+check:rc==0
+cmd: diff /tmp/export_import_specified_from_osimage_directory/test_myimage.stanza /opt/xcat/share/xcat/tools/autotest/testcase/xcat_inventory/templates/cluster_invdir/osimage/test_myimage/test_myimage.stanza -I "environvar"
+check: rc==0
+#check whether the customized osimage files are imported
+cmd: diff -r /opt/xcat/share/xcat/tools/autotest/testcase/xcat_inventory/templates/cluster_invdir/osimage/test_myimage/tmp/test_myimage/ /tmp/test_myimage/
+check:rc==0
+
+#cleanup
+cmd:rmdef -t osimage -o test_myimage
+cmd:dir="/tmp/test_myimage"; rm -rf $dir; if [ -d ${dir}".old" ];then mv ${dir}".old" $dir; fi
+
+#restore the original test_myimage if any
+cmd: if [ -e '/tmp/export_import_specified_from_osimage_directory/backup/test_myimage.stanza' ]; then cat /tmp/export_import_specified_from_osimage_directory/backup/test_myimage.stanza|mkdef -z;fi
+cmd: rm -rf /tmp/export_import_specified_from_osimage_directory
+end

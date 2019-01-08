@@ -250,7 +250,7 @@ do
     OSPKGDIR="$OSPKGDIR"
     if [ $mounted -eq 0 ]; then
         #OSPKGDIR="$OSPKGDIR"
-        ospkgdir="$NFSSERVER$dir"
+        ospkgdir="${NFSSERVER}:${HTTPPORT}$dir"
     else
         ospkgdir="$dir"
     fi
@@ -632,7 +632,7 @@ elif ( pmatch "$OSVER" "sle*" ); then
         for sdk_src in $SDKDIR; do
             bname=`basename $sdk_src`
             if [ $mounted -eq 0 ]; then
-                sdk_src="http://$NFSSERVER/$sdk_src"
+                sdk_src="http://$NFSSERVER:$HTTPPORT/$sdk_src"
             else
                 sdk_src="file://$sdk_src"
             fi

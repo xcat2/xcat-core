@@ -1,5 +1,6 @@
 start:detect_dhcpd_work
 description:To test if xcatprobe detect_dhcpd works. This case must run in xcat mn
+label:others,dhcp
 cmd:if [ -d "/tmp/detect_dhcpd_work" ]; then mv /tmp/detect_dhcpd_work /tmp/detect_dhcpd_work.bak; fi; mkdir -p  /tmp/detect_dhcpd_work
 cmd:makedhcp -n
 check:rc == 0

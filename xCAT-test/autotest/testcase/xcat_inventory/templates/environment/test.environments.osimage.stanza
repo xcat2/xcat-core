@@ -1,0 +1,21 @@
+# <xCAT data object stanza file>
+
+test.environments.osimage:
+    objtype=osimage
+    environvar=GITREPO=/opt/xcat/share/xcat/tools/autotest/testcase/xcat_inventory/templates/environment/gitrepo,OBJNAME=test.environments.osimage,SWDIR=/opt/xcat/share/xcat/tools/autotest/testcase/xcat_inventory/templates/environment/swdir
+    imagetype=linux
+    osarch=OSARCH
+    osdistroname=OSVERS-OSARCH
+    osname=Linux
+    osvers=OSVERS
+    otherpkgdir=/opt/xcat/share/xcat/tools/autotest/testcase/xcat_inventory/templates/environment/swdir/otherpkgdir/
+    otherpkglist=/opt/xcat/share/xcat/tools/autotest/testcase/xcat_inventory/templates/environment/gitrepo/otherpkglist/test1.otherpkglist,/opt/xcat/share/xcat/tools/autotest/testcase/xcat_inventory/templates/environment/gitrepo/otherpkglist/test2.otherpkglist,
+    permission=755
+    pkgdir=PKGDIR,/opt/xcat/share/xcat/tools/autotest/testcase/xcat_inventory/templates/environment/swdir/pkgdir/
+    pkglist=PKGLIST,/opt/xcat/share/xcat/tools/autotest/testcase/xcat_inventory/templates/environment/gitrepo/pkglist/test1.pkglist,/opt/xcat/share/xcat/tools/autotest/testcase/xcat_inventory/templates/environment/gitrepo/pkglist/test2.pkglist
+    postinstall=POSTINSTALL,/opt/xcat/share/xcat/tools/autotest/testcase/xcat_inventory/templates/environment/gitrepo/postinstall/test1.postinstall
+    profile=compute
+    provmethod=netboot
+    rootimgdir=/install/custom/test.environments.osimage
+    synclists=/opt/xcat/share/xcat/tools/autotest/testcase/xcat_inventory/templates/environment/gitrepo/syncfiles/synclist
+    usercomment=OSMAJOR,test_environment_variables

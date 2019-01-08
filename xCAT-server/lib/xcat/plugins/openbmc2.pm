@@ -167,8 +167,8 @@ my %rsp_set_valid_values = (
     autoreboot            => "0|1",
     bootmode              => "regular|safe|setup",
     powersupplyredundancy => "disabled|enabled",
-    powerrestorepolicy    => "restore|always_on|always_off",
-    timesyncmethod        => "ntp|manual",
+    powerrestorepolicy    => "always_off|always_on|restore",
+    timesyncmethod        => "manual|ntp",
 );
 my @rspconfig_get_options = (@rsp_common_options, qw/ipsrc sshcfg gard dump/);
 #-------------------------------------------------------
@@ -202,7 +202,7 @@ sub parse_args {
 
     if ($command eq "rbeacon") {
         unless ($subcommand =~ /^on$|^off$|^stat$/) {
-            return ([ 1, "Only 'on', 'off' or 'stat' is supported for OpenBMC managed nodes."]);
+            return ([ 1, "Only 'on', 'off' and 'stat' are supported for OpenBMC managed nodes."]);
         }
     } elsif ($command eq "rflash") {
         my ($activate, $check, $delete, $directory, $list, $upload) = (0) x 6;

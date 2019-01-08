@@ -110,7 +110,7 @@ sub execute_dcp
     if (!scalar(%resolved_targets))
     {
         my $rsp = {};
-        $rsp->{error}->[0] = "No hosts in node list 1";
+        $rsp->{error}->[0] = "DCP: No hosts in node list 1";
         xCAT::MsgUtils->message("E", $rsp, $::CALLBACK, 1);
         return ++$result;
     }
@@ -368,7 +368,7 @@ sub execute_dsh
     if (!scalar(%resolved_targets))
     {
         my $rsp = {};
-        $rsp->{error}->[0] = " No hosts in node list 2";
+        $rsp->{error}->[0] = " DSH: No hosts in node list 2";
         xCAT::MsgUtils->message("E", $rsp, $::CALLBACK, 1);
         return ++$result;
     }
@@ -6300,6 +6300,7 @@ sub run_always_rsync_postscripts
     my @hosts     = @$hostnames;
     my @newoutput = ();
     my $dshparms;
+
     foreach my $postsfile (@::alwayspostscripts) {
         my $tmppostfile = $postsfile;
 
@@ -6310,17 +6311,34 @@ sub run_always_rsync_postscripts
         }
 
         foreach my $host (@hosts) {
-
             # build xdsh queue
             # build host and all scripts to execute
-            push(@{ $dshparms->{'postscripts'}{$postsfile} }, $host);
-        }
-    }
+            # EXECUTEALWAYS will only execute the syncfile in the syncfile list
+            foreach my $key (keys %{$$options{'destDir_srcFile'}{$host}}) {
+                foreach my $key1 (keys %{ $$options{'destDir_srcFile'}{$host}->{$key} }) {
+                    my $index = 0;
+                    my $key1_ref = $$options{'destDir_srcFile'}{$host}->{$key}->{$key1};
+                    if (ref $key1_ref eq 'ARRAY') { #stored as ARRAY for same_dest_name
+                        while (my $src_file =$key1_ref->[$index] ) {
+                            if ($src_file eq $tmppostfile) {
+                                push(@{ $dshparms->{'postscripts'}{$postsfile} }, $host);
+                            }
+                            $index++;
+                        }  
+                    } else { #stroed as hash table for diff_dest_name
+                        foreach my $src_file (keys %{$key1_ref}) {
+                            if ($src_file eq $tmppostfile) {
+                                push(@{ $dshparms->{'postscripts'}{$postsfile} }, $host);
+                            }  
+                        }     
+                    } #end else
+                } #end foreach key1 
+            } #end foreach key
+        } #end foreach host 
+    } #end foreach postsfile 
 
     # now if we have postscripts to run, run xdsh
     my $out;
-
-
     foreach my $ps (keys %{ $$dshparms{'postscripts'} }) {
         my @nodes;
 

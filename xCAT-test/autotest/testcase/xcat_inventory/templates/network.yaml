@@ -1,0 +1,10 @@
+network:
+  autotestnet:
+    basic_attr:
+      gateway: 123.0.0.100
+      mask: 255.0.0.0
+      net: 123.0.0.0
+    pool:
+      dynamicrange: 123.0.0.100-123.0.0.200
+      staticrange: 123.0.0.201-123.0.0.222
+schema_version: '2.0'

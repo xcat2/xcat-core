@@ -627,7 +627,7 @@ sub getNodeStatusFromNodesetState {
     Arguments:
        status -- a hash pointer of the node status. A key is a status string. The value is
                 an array pointer of nodes that have the same status.
-                for example: {alive=>["node1", "node1"], unreachable=>["node5","node100"]}
+                for example: {alive=>["node1", "node2"], unreachable=>["node5","node100"]}
        force -- 1 force the input values to be set.
              -- 0 make sure if the input value is the next valid value.
     Returns:
@@ -637,7 +637,7 @@ sub getNodeStatusFromNodesetState {
 
 #--------------------------------------------------------------------------------
 sub setNodeStatusAttributes {
-    print "monitorctrl::setNodeStatusAttributes called\n";
+    #print "monitorctrl::setNodeStatusAttributes called\n";
     my $temp = shift;
     if ($temp =~ /xCAT_monitoring::monitorctrl/) {
         $temp = shift;
@@ -703,8 +703,12 @@ sub setNodeStatusAttributes {
             if (@$nodes > 0) {
                 $updates{'status'}     = $_;
                 $updates{'statustime'} = $currtime;
-                my $nodestate = "@$nodes status: $updates{'status'} statustime: $updates{'statustime'}";
-                xCAT::MsgUtils->message('S', "$nodestate");
+                #my $nodestate = "@$nodes status: $updates{'status'} statustime: $updates{'statustime'}";
+                foreach my $node (@$nodes) {
+                    # To make the log clear, iterate for each node. This might be potential performance issue!
+                    my $nodestate = "xcat.updatestatus - $node: changing status=$updates{'status'}";
+                    xCAT::MsgUtils->message('S', "$nodestate");
+                }
                 my $where_clause;
                 my $dbname = xCAT::Utils->get_DBName();
 

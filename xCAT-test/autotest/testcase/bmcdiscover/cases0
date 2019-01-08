@@ -1,4 +1,5 @@
 start:bmcdiscover_q
+label:others,discovery
 os:linux
 decription:query usage for bmcdiscover
 cmd:bmcdiscover ?
@@ -10,6 +11,7 @@ check:output=~bmcdiscover \[-v|--version\]
 end
 
 start:bmcdiscover_help
+label:others,discovery
 os:linux
 decription:show bmcdiscover help information
 cmd:bmcdiscover help
@@ -21,6 +23,7 @@ check:output=~bmcdiscover \[-v|--version\]
 end
 
 start:bmcdiscover_version
+label:others,discovery
 os:linux
 description:show bmcdiscover version
 cmd:bmcdiscover --version
@@ -29,6 +32,7 @@ check:output=~bmcdiscover - xCAT Version
 end
 
 start:bmcdiscover_h
+label:others,discovery
 os:Linux
 decription:help
 cmd:bmcdiscover -h
@@ -37,30 +41,35 @@ check:output=~Usage
 end
 
 start:bmcdiscover_nmap_range
+label:others,discovery
 cmd:bmcdiscover -s nmap --range $$bmcrange -u $$bmcusername -p $$bmcpasswd
 check:rc==0
 check:output=~$$bmcrange
 end
 
 start:bmcdiscover_v
+label:others,discovery
 cmd:bmcdiscover  -v
 check:rc==0
 checkout:output=~xCAT Version
 end
 
 start:bmcdiscover_check_paswd
+label:others,discovery
 cmd:bmcdiscover -i $$bmcrange -u $$bmcusername -p $$bmcpasswd --check
 check:rc==1
 check:output=~is not supported
 end
 
 start:bmcdiscover_get_ipsource
+label:others,discovery
 cmd:bmcdiscover -i $$bmcrange -u $$bmcusername -p $$bmcpasswd --ipsource
 check:rc==1
 check:output=~is not supported
 end
 
 start:bmcdiscover_range_w
+label:others,discovery
 cmd:bmcdiscover --range  $$bmcrange -u $$bmcusername -p $$bmcpasswd -w
 check:rc==0
 check:output=~Writing node
@@ -69,6 +78,7 @@ end
 
 
 start:bmcdiscover_range_z
+label:others,discovery
 cmd:bmcdiscover --range  $$bmcrange -u $$bmcusername -p $$bmcpasswd -z
 check:rc==0
 check:output=~bmc=$$bmcrange

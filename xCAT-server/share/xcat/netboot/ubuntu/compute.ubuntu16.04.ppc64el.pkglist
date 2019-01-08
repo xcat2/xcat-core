@@ -7,7 +7,6 @@ linux-image-generic
 openssh-server
 openssh-client
 wget
-vim
 ntp
 ntpdate
 rsync

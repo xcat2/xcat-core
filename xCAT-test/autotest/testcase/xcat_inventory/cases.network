@@ -1,0 +1,52 @@
+start:xcat_inventory_import_validation_network
+description:This case is used to test network validation function of xcat-inventory import yaml and json file. To test "net" "mask" "dynamicrange" and "staticrange" attributes
+label:others,inventory_ci
+cmd:lsdef -t network -o autotestnet > /dev/null 2>&1;if [[ $? -eq 0 ]]; then lsdef -t network -o autotestnet -z >/tmp/xcat_inventory_import_validation_network_bak/autotestnet.stanza ;rmdef -t network -o autotestnet;fi
+check:rc==0
+cmd:mkdir -p /tmp/xcat_inventory_import_validation_network_bak
+check:rc==0
+
+cmd:/opt/xcat/share/xcat/tools/autotest/testcase/xcat_inventory/validatehelper "network" "autotestnet" "basic_attr.net" "200.0.0.0" "/tmp/xcat_inventory_import_validation_network"
+check:rc==0
+
+cmd:/opt/xcat/share/xcat/tools/autotest/testcase/xcat_inventory/validatehelper "network" "autotestnet" "basic_attr.net" "234abc" "/tmp/xcat_inventory_import_validation_network"
+check:rc!=0
+
+cmd:/opt/xcat/share/xcat/tools/autotest/testcase/xcat_inventory/validatehelper "network" "autotestnet" "basic_attr.net" "" "/tmp/xcat_inventory_import_validation_network"
+check:rc!=0
+
+cmd:/opt/xcat/share/xcat/tools/autotest/testcase/xcat_inventory/validatehelper "network" "autotestnet" "basic_attr.net" "234.abc.456.789" "/tmp/xcat_inventory_import_validation_network"
+check:rc!=0
+
+cmd:/opt/xcat/share/xcat/tools/autotest/testcase/xcat_inventory/validatehelper "network" "autotestnet" "basic_attr.mask" "234.abc.456.789" "/tmp/xcat_inventory_import_validation_network"
+check:rc!=0
+
+cmd:/opt/xcat/share/xcat/tools/autotest/testcase/xcat_inventory/validatehelper "network" "autotestnet" "basic_attr.mask" "" "/tmp/xcat_inventory_import_validation_network"
+check:rc!=0
+
+cmd:/opt/xcat/share/xcat/tools/autotest/testcase/xcat_inventory/validatehelper "network" "autotestnet" "basic_attr.mask" "234.0.0.0" "/tmp/xcat_inventory_import_validation_network"
+check:rc==0
+
+cmd:/opt/xcat/share/xcat/tools/autotest/testcase/xcat_inventory/validatehelper "network" "autotestnet" "pool.dynamicrange" "200.0.0.100-200.0.0.200" "/tmp/xcat_inventory_import_validation_network"
+check:rc==0
+
+cmd:/opt/xcat/share/xcat/tools/autotest/testcase/xcat_inventory/validatehelper "network" "autotestnet" "pool.dynamicrange" "200.0.0.100" "/tmp/xcat_inventory_import_validation_network"
+check:rc==0
+
+cmd:/opt/xcat/share/xcat/tools/autotest/testcase/xcat_inventory/validatehelper "network" "autotestnet" "pool.dynamicrange" "abc-bcd" "/tmp/xcat_inventory_import_validation_network"
+check:rc!=0
+
+cmd:/opt/xcat/share/xcat/tools/autotest/testcase/xcat_inventory/validatehelper "network" "autotestnet" "pool.staticrange" "200.0.0.100-200.0.0.200" "/tmp/xcat_inventory_import_validation_network"
+check:rc==0
+
+cmd:/opt/xcat/share/xcat/tools/autotest/testcase/xcat_inventory/validatehelper "network" "autotestnet" "pool.staticrange" "200.0.0.100" "/tmp/xcat_inventory_import_validation_network"
+check:rc==0
+
+cmd:/opt/xcat/share/xcat/tools/autotest/testcase/xcat_inventory/validatehelper "network" "autotestnet" "pool.staticrange" "abc-bcd" "/tmp/xcat_inventory_import_validation_network"
+check:rc!=0
+
+cmd:if [[ -e /tmp/xcat_inventory_import_validation_network_bak/autotestnet.stanza ]]; then cat /tmp/xcat_inventory_import_validation_network_bak/autotestnet.stanza | mkdef -z; fi
+check:rc==0
+cmd:rm -rf /tmp/xcat_inventory_import_validation_network_bak
+check:rc==0
+end

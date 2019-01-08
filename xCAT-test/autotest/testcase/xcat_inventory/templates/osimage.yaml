@@ -1,0 +1,28 @@
+osimage:
+  testosimage1:
+    basic_attributes:
+      arch: ppc64le
+      distribution: sles12.2
+      osdistro: sles12.2-ppc64le
+    filestosync:
+    - /install/custom/netboot/sles/compute.synclist
+    genimgoptions:
+      exlist:
+      - /opt/xcat/share/xcat/netboot/sles/compute.sles12.ppc64le.exlist
+      postinstall:
+      - /opt/xcat/share/xcat/netboot/sles/compute.sles12.ppc64le.postinstall
+      rootfstype: nfs
+      rootimgdir: /install/netboot/sles12.2/ppc64le/compute
+    imagetype: linux
+    package_selection:
+      otherpkgdir:
+      - /install/post/otherpkgs/sles12.2/ppc64le
+      pkgdir:
+      - /install/sles12.2/ppc64le
+      pkglist:
+      - /opt/xcat/share/xcat/netboot/sles/compute.sles12.ppc64le.pkglist
+    provision_mode: statelite
+    role: compute
+schema_version: '2.0'
+
+#Version 2.14.5 (git commit e9d8db94e349c383a6686ecfd853536abe7a8c2b, built Wed Nov 21 06:17:14 EST 2018)

@@ -1,0 +1,45 @@
+start:export_import_nics_with_regex
+description:This case is used to test xcat-inventory export and import could support  regex for xcat attributes.
+label:others,inventory_ci
+cmd:dir="/tmp/export";if [ -e "${dir}" ];then mv ${dir} ${dir}".bak"; fi; mkdir -p $dir
+cmd:tabdump nics |tee /tmp/export/nics.cvs
+check:rc==0
+cmd:tabrestore  /opt/xcat/share/xcat/tools/autotest/testcase/xcat_inventory/templates/nics.csv
+check:rc==0
+cmd:xcat-inventory export  -t node -o testnodes -f /tmp/export/nics.yaml --format yaml
+check:rc==0
+check:output=~The inventory data has been dumped to /tmp/export/nics.yaml 
+cmd:#! /bin/bash diff -y  /opt/xcat/share/xcat/tools/autotest/testcase/xcat_inventory/templates/nics.yaml /tmp/export/nics.yaml --ignore-blank-lines  -I "^#" -I "schema_version"
+check:rc==0
+cmd:xcat-inventory export  -t node -o testnodes -f /tmp/export/nics.json --format json 
+check:rc==0
+cmd:#! /bin/bash diff -y  /opt/xcat/share/xcat/tools/autotest/testcase/xcat_inventory/templates/nics.json /tmp/export/nics.json --ignore-blank-lines  -I "^#" -I "schema_version"
+check:rc==0
+cmd:tabch -d node="testnodes" nics
+check:rc==0
+cmd:xcat-inventory import  -t node -o testnodes -f /tmp/export/nics.yaml
+check:rc==0
+check:output=~loading inventory date in "/tmp/export/nics.yaml"
+check:output=~start to import "node" type objects
+check:output=~ preprocessing "node" type objects
+check:output=~ writting "node" type objects
+check:output=~Inventory import successfully!
+cmd:tabdump nics |tee /tmp/export/nics.yaml.cvs;diff -y /opt/xcat/share/xcat/tools/autotest/testcase/xcat_inventory/templates/nics.csv /tmp/export/nics.yaml.cvs
+check:rc==0
+cmd:tabch -d node="testnodes" nics
+check:rc==0
+cmd:xcat-inventory import  -t node -o testnodes -f /tmp/export/nics.json
+check:rc==0
+check:output=~loading inventory date in "/tmp/export/nics.json"
+check:output=~start to import "node" type objects
+check:output=~ preprocessing "node" type objects
+check:output=~ writting "node" type objects
+check:output=~Inventory import successfully!
+cmd:tabdump nics |tee /tmp/export/nics.json.cvs;diff -y /opt/xcat/share/xcat/tools/autotest/testcase/xcat_inventory/templates/nics.csv /tmp/export/nics.json.cvs
+check:rc==0
+cmd:tabch -d node="testnodes" nics
+check:rc==0
+cmd:tabrestore /tmp/export/nics.cvs
+check:rc==0
+cmd:dir="/tmp/export"; rm -rf $dir; if [ -d ${dir}".bak" ];then mv ${dir}".bak" $dir; fi
+end

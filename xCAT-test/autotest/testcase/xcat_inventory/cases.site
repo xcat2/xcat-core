@@ -1,0 +1,1363 @@
+start:export_import_site_by_yaml
+description:This case is used to test xcat-inventory export and import site table by yaml between 2 excat same MNs. Before running this case, make sure these two MNs have been installed same excatly, and the current MN can connect the other MN by ssh without password.This case also can be run in one MN, this is, export from currnet node then import back to currnet node, in this case, just need to set $$DSTMN=<currnet node ip>
+Attribute: $$DSTMN - the ip of MN which is used to run import operation.
+label:others,inventory_ci
+cmd:mkdir -p /tmp/export_import_site_by_yaml
+check:rc==0
+cmd:ssh $$DSTMN ' source /etc/profile.d/xcat.sh;mkdir -p /tmp/export_import_site_by_yaml_$$DSTMN/'
+check:rc==0
+cmd: lsdef -t site -o clustersite -z >/tmp/export_import_site_by_yaml/site.stanza
+check:rc==0
+cmd:ssh $$DSTMN ' source /etc/profile.d/xcat.sh;lsdef -t site -o clustersite -z >/tmp/export_import_site_by_yaml_$$DSTMN/site.stanza '
+check:rc==0
+cmd:mnip=$(lsdef -t site -o clustersite -i master -c|awk -F'=' '{print $2}');chdef -t site -o clustersite  useSSHonAIX=0 useNFSv4onAIX=0 FQDNfirst=1 SNsyncfiledir='/var/xcat/syncfiles' auditnosyslog=0 auditskipcmds=ALL blademaxp=64 cleanupxcatpost=no consoleondemand=no databaseloc='/var/lib' db2installloc='/mntdb2' dbtracelevel=0 defserialflow=0 defserialport=0 defserialspeed=9600 dhcpinterfaces=eth0 dhcplease=43200 dhcpsetup=n disjointdhcps=1 dnshandler=ddns dnsinterfaces='xcatmn|eth1,eth2;service|bond0' dnsupdaters=dnsupdaters domain='pok.stglabs.ibm.com' enableASMI=no excludenodes=excludenodes externaldns=externaldns extntpservers=extntpservers forwarders=$mnip fsptimeout=0 genmacprefix='00:11:aa' genpasswords=genpasswords hierarchicalattrs=hierarchicalattrs httpport=80 hwctrldispatch=y installdir='/install/' installloc='hostname:/path' ipmidispatch=y ipmimaxp=64 ipmiretries=3 ipmisdrcache=no ipmitimeout=2 iscsidir='/iscsidir' managedaddressmode=dhcp master=$mnip maxssh=8 mnroutenames=mnroutenames nameservers=$mnip nmapoptions='--min-rtt-timeout' nodestatus=n nodesyncfiledir='/var/xcat/node/syncfiles' ntpservers=$mnip persistkvmguests=y powerinterval=0 ppcmaxp=64 ppcretry=3 ppctimeout=0 precreatemypostscripts=1 pruneservices=1 runbootscripts=yes setinstallnic=1 sharedinstall=no sharedtftp=1 skiptables=nics skipvalidatelog=1 snmpc=snmpc sshbetweennodes=ALLGROUPS svloglocal=1 syspowerinterval=10 syspowermaxnodes=10 tftpdir='/tftprot/' tftpflags='-v' timezone='America/New_York' useNmapfromMN=no useflowcontrol=no usexhrm=no vcenterautojoin=no vmwarereconfigonpower=no vsftp=n xcatconfdir='/etc/xcat' xcatdebugmode=1 xcatdport=3001 xcatiport=3002 xcatlport=3003 xcatmaxbatchconnections=64 xcatmaxconnections=60 xcatsslciphers='3DES' xcatsslversion=TLSv1
+check:rc==0
+cmd:lsdef -t site -o clustersite -z|sort -t'=' -k1 |tee  /tmp/export_import_site_by_yaml/srcsite.stanza
+check:rc==0
+cmd:xcat-inventory export --format=yaml -t site -o clustersite |tee /tmp/export_import_site_by_yaml/export_site_yaml.inv
+check:rc==0
+cmd:mnip=$(lsdef -t site -o clustersite -i master -c|awk -F'=' '{print $2}');sed -i "s/$mnip/$$DSTMN/g" /tmp/export_import_site_by_yaml/export_site_yaml.inv
+check:rc==0
+cmd:cat /tmp/export_import_site_by_yaml/export_site_yaml.inv
+check:rc==0
+cmd:scp /tmp/export_import_site_by_yaml/export_site_yaml.inv $$DSTMN:/tmp/export_import_site_by_yaml_$$DSTMN/
+check:rc==0
+cmd: ssh  $$DSTMN ' source /etc/profile.d/xcat.sh;xcat-inventory import -f /tmp/export_import_site_by_yaml_$$DSTMN/export_site_yaml.inv -t site -o clustersite'
+check:rc==0
+cmd: ssh  $$DSTMN ' source /etc/profile.d/xcat.sh;lsdef  -t site -o clustersite  -z |sort -t'=' -k1|tee /tmp/export_import_site_by_yaml_$$DSTMN/dstsite.stanza'
+check:rc==0
+cmd: scp $$DSTMN:/tmp/export_import_site_by_yaml_$$DSTMN/dstsite.stanza /tmp/export_import_site_by_yaml/dstsite.stanza
+check:rc==0
+cmd:mnip=$(lsdef -t site -o clustersite -i master -c|awk -F'=' '{print $2}');sed -i "s/$$DSTMN/$mnip/g" /tmp/export_import_site_by_yaml/dstsite.stanza
+check:rc==0
+cmd: cat /tmp/export_import_site_by_yaml/dstsite.stanza
+check:rc==0
+cmd:diff -y --ignore-blank-lines  /tmp/export_import_site_by_yaml/srcsite.stanza /tmp/export_import_site_by_yaml/dstsite.stanza
+check:rc==0
+cmd:cat /tmp/export_import_site_by_yaml/site.stanza | mkdef -z -f
+check:rc==0
+cmd:ssh $$DSTMN ' source /etc/profile.d/xcat.sh;cat /tmp/export_import_site_by_yaml_$$DSTMN/site.stanza | mkdef -z -f'
+check:rc==0
+cmd:ssh $$DSTMN ' source /etc/profile.d/xcat.sh;rm -rf /tmp/export_import_site_by_yaml_$$DSTMN/'
+check:rc==0
+cmd:rm -rf /tmp/export_import_site_by_yaml
+check:rc==0
+end
+
+
+start:export_import_site_by_json
+description:This case is used to test xcat-inventory export and import site table by json between 2 excat same MNs. Before running this case, make sure these two MNs have been installed same excatly, and the current MN can connect the other MN by ssh without password.This case also can be run in one MN, this is, export from currnet node then import back to currnet node, in this case, just need to set $$DSTMN=<currnet node ip>
+Attribute: $$DSTMN - the ip of MN which is used to run import operation.
+label:others,inventory_ci
+cmd:mkdir -p /tmp/export_import_site_by_json
+check:rc==0
+cmd:ssh $$DSTMN ' source /etc/profile.d/xcat.sh;mkdir -p /tmp/export_import_site_by_json_$$DSTMN/'
+check:rc==0
+cmd: lsdef -t site -o clustersite -z >/tmp/export_import_site_by_json/site.stanza
+check:rc==0
+cmd:ssh $$DSTMN ' source /etc/profile.d/xcat.sh;lsdef -t site -o clustersite -z >/tmp/export_import_site_by_json_$$DSTMN/site.stanza '
+check:rc==0
+cmd:mnip=$(lsdef -t site -o clustersite -i master -c|awk -F'=' '{print $2}');chdef -t site -o clustersite  useSSHonAIX=0 useNFSv4onAIX=0 FQDNfirst=1 SNsyncfiledir='/var/xcat/syncfiles' auditnosyslog=0 auditskipcmds=ALL blademaxp=64 cleanupxcatpost=no consoleondemand=no databaseloc='/var/lib' db2installloc='/mntdb2' dbtracelevel=0 defserialflow=0 defserialport=0 defserialspeed=9600 dhcpinterfaces=eth0 dhcplease=43200 dhcpsetup=n disjointdhcps=1 dnshandler=ddns dnsinterfaces='xcatmn|eth1,eth2;service|bond0' dnsupdaters=dnsupdaters domain='pok.stglabs.ibm.com' enableASMI=no excludenodes=excludenodes externaldns=externaldns extntpservers=extntpservers forwarders=$mnip fsptimeout=0 genmacprefix='00:11:aa' genpasswords=genpasswords hierarchicalattrs=hierarchicalattrs httpport=80 hwctrldispatch=y installdir='/install/' installloc='hostname:/path' ipmidispatch=y ipmimaxp=64 ipmiretries=3 ipmisdrcache=no ipmitimeout=2 iscsidir='/iscsidir' managedaddressmode=dhcp master=$mnip maxssh=8 mnroutenames=mnroutenames nameservers=$mnip nmapoptions='--min-rtt-timeout' nodestatus=n nodesyncfiledir='/var/xcat/node/syncfiles' ntpservers=$mnip persistkvmguests=y powerinterval=0 ppcmaxp=64 ppcretry=3 ppctimeout=0 precreatemypostscripts=1 pruneservices=1 runbootscripts=yes setinstallnic=1 sharedinstall=no sharedtftp=1 skiptables=nics skipvalidatelog=1 snmpc=snmpc sshbetweennodes=ALLGROUPS svloglocal=1 syspowerinterval=10 syspowermaxnodes=10 tftpdir='/tftprot/' tftpflags='-v' timezone='America/New_York' useNmapfromMN=no useflowcontrol=no usexhrm=no vcenterautojoin=no vmwarereconfigonpower=no vsftp=n xcatconfdir='/etc/xcat' xcatdebugmode=1 xcatdport=3001 xcatiport=3002 xcatlport=3003 xcatmaxbatchconnections=64 xcatmaxconnections=60 xcatsslciphers='3DES' xcatsslversion=TLSv1
+check:rc==0
+cmd:lsdef -t site -o clustersite -z|sort -t'=' -k1 |tee  /tmp/export_import_site_by_json/srcsite.stanza
+check:rc==0
+cmd:xcat-inventory export --format=json -t site -o clustersite |tee /tmp/export_import_site_by_json/export_site_json.inv
+check:rc==0
+cmd:mnip=$(lsdef -t site -o clustersite -i master -c|awk -F'=' '{print $2}');sed -i "s/$mnip/$$DSTMN/g" /tmp/export_import_site_by_json/export_site_json.inv
+check:rc==0
+cmd:cat /tmp/export_import_site_by_json/export_site_json.inv
+check:rc==0
+cmd:scp /tmp/export_import_site_by_json/export_site_json.inv $$DSTMN:/tmp/export_import_site_by_json_$$DSTMN/
+check:rc==0
+cmd: ssh  $$DSTMN ' source /etc/profile.d/xcat.sh;xcat-inventory import -f /tmp/export_import_site_by_json_$$DSTMN/export_site_json.inv -t site -o clustersite'
+check:rc==0
+cmd: ssh  $$DSTMN ' source /etc/profile.d/xcat.sh;lsdef  -t site -o clustersite  -z |sort -t'=' -k1|tee /tmp/export_import_site_by_json_$$DSTMN/dstsite.stanza'
+check:rc==0
+cmd: scp $$DSTMN:/tmp/export_import_site_by_json_$$DSTMN/dstsite.stanza /tmp/export_import_site_by_json/dstsite.stanza
+check:rc==0
+cmd:mnip=$(lsdef -t site -o clustersite -i master -c|awk -F'=' '{print $2}');sed -i "s/$$DSTMN/$mnip/g" /tmp/export_import_site_by_json/dstsite.stanza
+check:rc==0
+cmd: cat /tmp/export_import_site_by_json/dstsite.stanza
+check:rc==0
+cmd:diff -y --ignore-blank-lines  /tmp/export_import_site_by_json/srcsite.stanza /tmp/export_import_site_by_json/dstsite.stanza
+check:rc==0
+cmd:cat /tmp/export_import_site_by_json/site.stanza | mkdef -z -f
+check:rc==0
+cmd:ssh $$DSTMN ' source /etc/profile.d/xcat.sh;cat /tmp/export_import_site_by_json_$$DSTMN/site.stanza | mkdef -z -f'
+check:rc==0
+cmd:ssh $$DSTMN ' source /etc/profile.d/xcat.sh;rm -rf /tmp/export_import_site_by_json_$$DSTMN/'
+check:rc==0
+cmd:rm -rf /tmp/export_import_site_by_json
+check:rc==0
+end
+
+
+start:xcat_inventory_try_to_export_all_type_is_site_default_format
+label:others,inventory_ci
+description:This case is used to test xcat-inventory export all definition which type is site to default file. I.e. json file
+cmd:mkdir -p /tmp/xcat_inventory_try_to_export_all_type_is_site_default_format
+check:rc==0
+cmd: lsdef -t site -o clustersite -z >/tmp/xcat_inventory_try_to_export_all_type_is_site_default_format/site.stanza
+check:rc==0
+cmd:mnip=$(lsdef -t site -o clustersite -i master -c|awk -F'=' '{print $2}');chdef -t site -o clustersite  useSSHonAIX=0 useNFSv4onAIX=0 FQDNfirst=1 SNsyncfiledir='/var/xcat/syncfiles' auditnosyslog=0 auditskipcmds=ALL blademaxp=64 cleanupxcatpost=no consoleondemand=no databaseloc='/var/lib' db2installloc='/mntdb2' dbtracelevel=0 defserialflow=0 defserialport=0 defserialspeed=9600 dhcpinterfaces=eth0 dhcplease=43200 dhcpsetup=n disjointdhcps=1 dnshandler=ddns dnsinterfaces='xcatmn|eth1,eth2;service|bond0' dnsupdaters=dnsupdaters domain='pok.stglabs.ibm.com' enableASMI=no excludenodes=excludenodes externaldns=externaldns extntpservers=extntpservers forwarders=$mnip fsptimeout=0 genmacprefix='00:11:aa' genpasswords=genpasswords hierarchicalattrs=hierarchicalattrs httpport=80 hwctrldispatch=y installdir='/install/' installloc='hostname:/path' ipmidispatch=y ipmimaxp=64 ipmiretries=3 ipmisdrcache=no ipmitimeout=2 iscsidir='/iscsidir' managedaddressmode=dhcp master=$mnip maxssh=8 mnroutenames=mnroutenames nameservers=$mnip nmapoptions='--min-rtt-timeout' nodestatus=n nodesyncfiledir='/var/xcat/node/syncfiles' ntpservers=$mnip persistkvmguests=y powerinterval=0 ppcmaxp=64 ppcretry=3 ppctimeout=0 precreatemypostscripts=1 pruneservices=1 runbootscripts=yes setinstallnic=1 sharedinstall=no sharedtftp=1 skiptables=nics skipvalidatelog=1 snmpc=snmpc sshbetweennodes=ALLGROUPS svloglocal=1 syspowerinterval=10 syspowermaxnodes=10 tftpdir='/tftprot/' tftpflags='-v' timezone='America/New_York' useNmapfromMN=no useflowcontrol=no usexhrm=no vcenterautojoin=no vmwarereconfigonpower=no vsftp=n xcatconfdir='/etc/xcat' xcatdebugmode=1 xcatdport=3001 xcatiport=3002 xcatlport=3003 xcatmaxbatchconnections=64 xcatmaxconnections=60 xcatsslciphers='3DES' xcatsslversion=TLSv1
+check:rc==0
+cmd:echo " 
+schema_version: '2.0'
+site:
+  clustersite:
+    FQDNfirst: '1'
+    SNsyncfiledir: /var/xcat/syncfiles
+    auditnosyslog: '0'
+    auditskipcmds: ALL
+    blademaxp: '64'
+    cleanupxcatpost: 'no'
+    consoleondemand: 'no'
+    databaseloc: /var/lib
+    db2installloc: /mntdb2
+    dbtracelevel: '0'
+    defserialflow: '0'
+    defserialport: '0'
+    defserialspeed: '9600'
+    dhcpinterfaces: eth0
+    dhcplease: '43200'
+    dhcpsetup: n
+    disjointdhcps: '1'
+    dnshandler: ddns
+    dnsinterfaces: xcatmn|eth1,eth2;service|bond0
+    dnsupdaters: dnsupdaters
+    domain: pok.stglabs.ibm.com
+    enableASMI: 'no'
+    excludenodes: excludenodes
+    externaldns: externaldns
+    extntpservers: extntpservers
+    forwarders: 10.3.1.13
+    fsptimeout: '0'
+    genmacprefix: 00:11:aa
+    genpasswords: genpasswords
+    hierarchicalattrs: hierarchicalattrs
+    httpport: '80'
+    hwctrldispatch: y
+    installdir: /install/
+    installloc: hostname:/path
+    ipmidispatch: y
+    ipmimaxp: '64'
+    ipmiretries: '3'
+    ipmisdrcache: 'no'
+    ipmitimeout: '2'
+    iscsidir: /iscsidir
+    managedaddressmode: dhcp
+    master: 10.3.1.13
+    maxssh: '8'
+    mnroutenames: mnroutenames
+    nameservers: 10.3.1.13
+    nmapoptions: --min-rtt-timeout
+    nodestatus: n
+    nodesyncfiledir: /var/xcat/node/syncfiles
+    ntpservers: 10.3.1.13
+    persistkvmguests: y
+    powerinterval: '0'
+    ppcmaxp: '64'
+    ppcretry: '3'
+    ppctimeout: '0'
+    precreatemypostscripts: '1'
+    pruneservices: '1'
+    runbootscripts: 'yes'
+    setinstallnic: '1'
+    sharedinstall: 'no'
+    sharedtftp: '1'
+    skiptables: nics
+    skipvalidatelog: '1'
+    snmpc: snmpc
+    sshbetweennodes: ALLGROUPS
+    svloglocal: '1'
+    syspowerinterval: '10'
+    syspowermaxnodes: '10'
+    tftpdir: /tftprot/
+    tftpflags: -v
+    timezone: America/New_York
+    useNFSv4onAIX: '0'
+    useNmapfromMN: 'no'
+    useSSHonAIX: '0'
+    useflowcontrol: 'no'
+    usexhrm: 'no'
+    vcenterautojoin: 'no'
+    vmwarereconfigonpower: 'no'
+    vsftp: n
+    xcatconfdir: /etc/xcat
+    xcatdebugmode: '1'
+    xcatdport: '3001'
+    xcatiport: '3002'
+    xcatlport: '3003'
+    xcatmaxbatchconnections: '64'
+    xcatmaxconnections: '60'
+    xcatsslciphers: 3DES
+    xcatsslversion: TLSv1
+" > /tmp/xcat_inventory_try_to_export_all_type_is_site_default_format/site.org
+cmd:mnip=$(lsdef -t site -o clustersite -i master -c|awk -F'=' '{print $2}');sed -i "s/10.3.1.13/$mnip/g" /tmp/xcat_inventory_try_to_export_all_type_is_site_default_format/site.org
+check:rc==0
+cmd:xcat-inventory export -t site |tee /tmp/xcat_inventory_try_to_export_all_type_is_site_default_format/site.export
+check:rc==0
+cmd:#!/bin/bash
+diff -y --ignore-blank-lines  --ignore-matching-lines="^#"  /tmp/xcat_inventory_try_to_export_all_type_is_site_default_format/site.org /tmp/xcat_inventory_try_to_export_all_type_is_site_default_format/site.export
+check:rc==0
+cmd:cat /tmp/xcat_inventory_try_to_export_all_type_is_site_default_format/site.stanza | mkdef -z -f
+check:rc==0
+cmd:rm -rf /tmp/xcat_inventory_try_to_export_all_type_is_site_default_format
+check:rc==0
+end
+
+start:xcat_inventory_try_to_export_all_type_is_site_json_format
+label:others,inventory_ci
+description:This case is used to test xcat-inventory export all definition which type is site to default file. I.e. json file
+cmd:mkdir -p /tmp/xcat_inventory_try_to_export_all_type_is_site_json_format
+check:rc==0
+cmd: lsdef -t site -o clustersite -z >/tmp/xcat_inventory_try_to_export_all_type_is_site_json_format/site.stanza
+check:rc==0
+cmd:mnip=$(lsdef -t site -o clustersite -i master -c|awk -F'=' '{print $2}');chdef -t site -o clustersite  useSSHonAIX=0 useNFSv4onAIX=0 FQDNfirst=1 SNsyncfiledir='/var/xcat/syncfiles' auditnosyslog=0 auditskipcmds=ALL blademaxp=64 cleanupxcatpost=no consoleondemand=no databaseloc='/var/lib' db2installloc='/mntdb2' dbtracelevel=0 defserialflow=0 defserialport=0 defserialspeed=9600 dhcpinterfaces=eth0 dhcplease=43200 dhcpsetup=n disjointdhcps=1 dnshandler=ddns dnsinterfaces='xcatmn|eth1,eth2;service|bond0' dnsupdaters=dnsupdaters domain='pok.stglabs.ibm.com' enableASMI=no excludenodes=excludenodes externaldns=externaldns extntpservers=extntpservers forwarders=$mnip fsptimeout=0 genmacprefix='00:11:aa' genpasswords=genpasswords hierarchicalattrs=hierarchicalattrs httpport=80 hwctrldispatch=y installdir='/install/' installloc='hostname:/path' ipmidispatch=y ipmimaxp=64 ipmiretries=3 ipmisdrcache=no ipmitimeout=2 iscsidir='/iscsidir' managedaddressmode=dhcp master=$mnip maxssh=8 mnroutenames=mnroutenames nameservers=$mnip nmapoptions='--min-rtt-timeout' nodestatus=n nodesyncfiledir='/var/xcat/node/syncfiles' ntpservers=$mnip persistkvmguests=y powerinterval=0 ppcmaxp=64 ppcretry=3 ppctimeout=0 precreatemypostscripts=1 pruneservices=1 runbootscripts=yes setinstallnic=1 sharedinstall=no sharedtftp=1 skiptables=nics skipvalidatelog=1 snmpc=snmpc sshbetweennodes=ALLGROUPS svloglocal=1 syspowerinterval=10 syspowermaxnodes=10 tftpdir='/tftprot/' tftpflags='-v' timezone='America/New_York' useNmapfromMN=no useflowcontrol=no usexhrm=no vcenterautojoin=no vmwarereconfigonpower=no vsftp=n xcatconfdir='/etc/xcat' xcatdebugmode=1 xcatdport=3001 xcatiport=3002 xcatlport=3003 xcatmaxbatchconnections=64 xcatmaxconnections=60 xcatsslciphers='3DES' xcatsslversion=TLSv1
+check:rc==0
+cmd:#!/bin/bash
+echo '{
+    "schema_version": "1.0",
+    "site": {
+        "clustersite": {
+            "FQDNfirst": "1",
+            "SNsyncfiledir": "/var/xcat/syncfiles",
+            "auditnosyslog": "0",
+            "auditskipcmds": "ALL",
+            "blademaxp": "64",
+            "cleanupxcatpost": "no",
+            "consoleondemand": "no",
+            "databaseloc": "/var/lib",
+            "db2installloc": "/mntdb2",
+            "dbtracelevel": "0",
+            "defserialflow": "0",
+            "defserialport": "0",
+            "defserialspeed": "9600",
+            "dhcpinterfaces": "eth0",
+            "dhcplease": "43200",
+            "dhcpsetup": "n",
+            "disjointdhcps": "1",
+            "dnshandler": "ddns",
+            "dnsinterfaces": "xcatmn|eth1,eth2;service|bond0",
+            "dnsupdaters": "dnsupdaters",
+            "domain": "pok.stglabs.ibm.com",
+            "enableASMI": "no",
+            "excludenodes": "excludenodes",
+            "externaldns": "externaldns",
+            "extntpservers": "extntpservers",
+            "forwarders": "10.3.5.8",
+            "fsptimeout": "0",
+            "genmacprefix": "00:11:aa",
+            "genpasswords": "genpasswords",
+            "hierarchicalattrs": "hierarchicalattrs",
+            "httpport": "80",
+            "hwctrldispatch": "y",
+            "installdir": "/install/",
+            "installloc": "hostname:/path",
+            "ipmidispatch": "y",
+            "ipmimaxp": "64",
+            "ipmiretries": "3",
+            "ipmisdrcache": "no",
+            "ipmitimeout": "2",
+            "iscsidir": "/iscsidir",
+            "managedaddressmode": "dhcp",
+            "master": "10.3.5.8",
+            "maxssh": "8",
+            "mnroutenames": "mnroutenames",
+            "nameservers": "10.3.5.8",
+            "nmapoptions": "--min-rtt-timeout",
+            "nodestatus": "n",
+            "nodesyncfiledir": "/var/xcat/node/syncfiles",
+            "ntpservers": "10.3.5.8",
+            "persistkvmguests": "y",
+            "powerinterval": "0",
+            "ppcmaxp": "64",
+            "ppcretry": "3",
+            "ppctimeout": "0",
+            "precreatemypostscripts": "1",
+            "pruneservices": "1",
+            "runbootscripts": "yes",
+            "setinstallnic": "1",
+            "sharedinstall": "no",
+            "sharedtftp": "1",
+            "skiptables": "nics",
+            "skipvalidatelog": "1",
+            "snmpc": "snmpc",
+            "sshbetweennodes": "ALLGROUPS",
+            "svloglocal": "1",
+            "syspowerinterval": "10",
+            "syspowermaxnodes": "10",
+            "tftpdir": "/tftprot/",
+            "tftpflags": "-v",
+            "timezone": "America/New_York",
+            "useNFSv4onAIX": "0",
+            "useNmapfromMN": "no",
+            "useSSHonAIX": "0",
+            "useflowcontrol": "no",
+            "usexhrm": "no",
+            "vcenterautojoin": "no",
+            "vmwarereconfigonpower": "no",
+            "vsftp": "n",
+            "xcatconfdir": "/etc/xcat",
+            "xcatdebugmode": "1",
+            "xcatdport": "3001",
+            "xcatiport": "3002",
+            "xcatlport": "3003",
+            "xcatmaxbatchconnections": "64",
+            "xcatmaxconnections": "60",
+            "xcatsslciphers": "3DES",
+            "xcatsslversion": "TLSv1"
+        }
+    }
+}' > /tmp/xcat_inventory_try_to_export_all_type_is_site_json_format/site.org
+cmd:mnip=$(lsdef -t site -o clustersite -i master -c|awk -F'=' '{print $2}');sed -i "s/10.3.5.8/$mnip/g" /tmp/xcat_inventory_try_to_export_all_type_is_site_json_format/site.org
+check:rc==0
+cmd:xcat-inventory export --format=json -t site |tee /tmp/xcat_inventory_try_to_export_all_type_is_site_json_format/site.export
+check:rc==0
+cmd:#!/bin/bash
+diff -y --ignore-blank-lines  --ignore-matching-lines="^#" --ignore-matching-lines="schema_version"   /tmp/xcat_inventory_try_to_export_all_type_is_site_json_format/site.org /tmp/xcat_inventory_try_to_export_all_type_is_site_json_format/site.export
+check:rc==0
+cmd:cat /tmp/xcat_inventory_try_to_export_all_type_is_site_json_format/site.stanza | mkdef -z -f
+check:rc==0
+cmd:rm -rf /tmp/xcat_inventory_try_to_export_all_type_is_site_json_format
+check:rc==0
+end
+
+start:xcat_inventory_try_to_export_all_type_is_site_yaml_format
+label:others,inventory_ci
+description:This case is used to test xcat-inventory export all definition which type is site to default file. I.e. json file
+cmd:mkdir -p /tmp/xcat_inventory_try_to_export_all_type_is_site_yaml_format
+check:rc==0
+cmd: lsdef -t site -o clustersite -z >/tmp/xcat_inventory_try_to_export_all_type_is_site_yaml_format/site.stanza
+check:rc==0
+cmd:mnip=$(lsdef -t site -o clustersite -i master -c|awk -F'=' '{print $2}');chdef -t site -o clustersite  useSSHonAIX=0 useNFSv4onAIX=0 FQDNfirst=1 SNsyncfiledir='/var/xcat/syncfiles' auditnosyslog=0 auditskipcmds=ALL blademaxp=64 cleanupxcatpost=no consoleondemand=no databaseloc='/var/lib' db2installloc='/mntdb2' dbtracelevel=0 defserialflow=0 defserialport=0 defserialspeed=9600 dhcpinterfaces=eth0 dhcplease=43200 dhcpsetup=n disjointdhcps=1 dnshandler=ddns dnsinterfaces='xcatmn|eth1,eth2;service|bond0' dnsupdaters=dnsupdaters domain='pok.stglabs.ibm.com' enableASMI=no excludenodes=excludenodes externaldns=externaldns extntpservers=extntpservers forwarders=$mnip fsptimeout=0 genmacprefix='00:11:aa' genpasswords=genpasswords hierarchicalattrs=hierarchicalattrs httpport=80 hwctrldispatch=y installdir='/install/' installloc='hostname:/path' ipmidispatch=y ipmimaxp=64 ipmiretries=3 ipmisdrcache=no ipmitimeout=2 iscsidir='/iscsidir' managedaddressmode=dhcp master=$mnip maxssh=8 mnroutenames=mnroutenames nameservers=$mnip nmapoptions='--min-rtt-timeout' nodestatus=n nodesyncfiledir='/var/xcat/node/syncfiles' ntpservers=$mnip persistkvmguests=y powerinterval=0 ppcmaxp=64 ppcretry=3 ppctimeout=0 precreatemypostscripts=1 pruneservices=1 runbootscripts=yes setinstallnic=1 sharedinstall=no sharedtftp=1 skiptables=nics skipvalidatelog=1 snmpc=snmpc sshbetweennodes=ALLGROUPS svloglocal=1 syspowerinterval=10 syspowermaxnodes=10 tftpdir='/tftprot/' tftpflags='-v' timezone='America/New_York' useNmapfromMN=no useflowcontrol=no usexhrm=no vcenterautojoin=no vmwarereconfigonpower=no vsftp=n xcatconfdir='/etc/xcat' xcatdebugmode=1 xcatdport=3001 xcatiport=3002 xcatlport=3003 xcatmaxbatchconnections=64 xcatmaxconnections=60 xcatsslciphers='3DES' xcatsslversion=TLSv1
+check:rc==0
+cmd:#!/bin/bash
+echo "schema_version: '1.0'
+site:
+  clustersite:
+    FQDNfirst: '1'
+    SNsyncfiledir: /var/xcat/syncfiles
+    auditnosyslog: '0'
+    auditskipcmds: ALL
+    blademaxp: '64'
+    cleanupxcatpost: 'no'
+    consoleondemand: 'no'
+    databaseloc: /var/lib
+    db2installloc: /mntdb2
+    dbtracelevel: '0'
+    defserialflow: '0'
+    defserialport: '0'
+    defserialspeed: '9600'
+    dhcpinterfaces: eth0
+    dhcplease: '43200'
+    dhcpsetup: n
+    disjointdhcps: '1'
+    dnshandler: ddns
+    dnsinterfaces: xcatmn|eth1,eth2;service|bond0
+    dnsupdaters: dnsupdaters
+    domain: pok.stglabs.ibm.com
+    enableASMI: 'no'
+    excludenodes: excludenodes
+    externaldns: externaldns
+    extntpservers: extntpservers
+    forwarders: 10.3.5.8
+    fsptimeout: '0'
+    genmacprefix: 00:11:aa
+    genpasswords: genpasswords
+    hierarchicalattrs: hierarchicalattrs
+    httpport: '80'
+    hwctrldispatch: y
+    installdir: /install/
+    installloc: hostname:/path
+    ipmidispatch: y
+    ipmimaxp: '64'
+    ipmiretries: '3'
+    ipmisdrcache: 'no'
+    ipmitimeout: '2'
+    iscsidir: /iscsidir
+    managedaddressmode: dhcp
+    master: 10.3.5.8
+    maxssh: '8'
+    mnroutenames: mnroutenames
+    nameservers: 10.3.5.8
+    nmapoptions: --min-rtt-timeout
+    nodestatus: n
+    nodesyncfiledir: /var/xcat/node/syncfiles
+    ntpservers: 10.3.5.8
+    persistkvmguests: y
+    powerinterval: '0'
+    ppcmaxp: '64'
+    ppcretry: '3'
+    ppctimeout: '0'
+    precreatemypostscripts: '1'
+    pruneservices: '1'
+    runbootscripts: 'yes'
+    setinstallnic: '1'
+    sharedinstall: 'no'
+    sharedtftp: '1'
+    skiptables: nics
+    skipvalidatelog: '1'
+    snmpc: snmpc
+    sshbetweennodes: ALLGROUPS
+    svloglocal: '1'
+    syspowerinterval: '10'
+    syspowermaxnodes: '10'
+    tftpdir: /tftprot/
+    tftpflags: -v
+    timezone: America/New_York
+    useNFSv4onAIX: '0'
+    useNmapfromMN: 'no'
+    useSSHonAIX: '0'
+    useflowcontrol: 'no'
+    usexhrm: 'no'
+    vcenterautojoin: 'no'
+    vmwarereconfigonpower: 'no'
+    vsftp: n
+    xcatconfdir: /etc/xcat
+    xcatdebugmode: '1'
+    xcatdport: '3001'
+    xcatiport: '3002'
+    xcatlport: '3003'
+    xcatmaxbatchconnections: '64'
+    xcatmaxconnections: '60'
+    xcatsslciphers: 3DES
+    xcatsslversion: TLSv1" > /tmp/xcat_inventory_try_to_export_all_type_is_site_yaml_format/site.org
+cmd:mnip=$(lsdef -t site -o clustersite -i master -c|awk -F'=' '{print $2}');sed -i "s/10.3.5.8/$mnip/g" /tmp/xcat_inventory_try_to_export_all_type_is_site_yaml_format/site.org
+check:rc==0
+cmd:xcat-inventory export --format=yaml -t site|sed -e '/^\s*$/d' |tee /tmp/xcat_inventory_try_to_export_all_type_is_site_yaml_format/site.export
+check:rc==0
+cmd:#!/bin/bash
+diff -y --ignore-blank-lines  --ignore-matching-lines="^#" --ignore-matching-lines="schema_version"  /tmp/xcat_inventory_try_to_export_all_type_is_site_yaml_format/site.org /tmp/xcat_inventory_try_to_export_all_type_is_site_yaml_format/site.export
+check:rc==0
+cmd:cat /tmp/xcat_inventory_try_to_export_all_type_is_site_yaml_format/site.stanza | mkdef -z -f
+check:rc==0
+cmd:rm -rf /tmp/xcat_inventory_try_to_export_all_type_is_site_yaml_format
+check:rc==0
+end
+
+
+start:xcat_inventory_try_to_import_all_type_is_site_json_format
+label:others,inventory_ci
+description:This case is used to test xcat-inventory impport all definition which type is site from json file.
+cmd:mkdir -p /tmp/xcat_inventory_try_to_import_all_type_is_site_json_format
+check:rc==0
+cmd: lsdef -t site -o clustersite -z >/tmp/xcat_inventory_try_to_import_all_type_is_site_json_format/site.stanza
+check:rc==0
+cmd:for i in 1 2 3; do lsdef bogusnode$i > /dev/null 2>&1;if [[ $? -eq 0 ]]; then lsdef bogusnode$i -z >> /tmp/xcat_inventory_try_to_import_all_type_is_site_json_format/bogusnode.stanza ;rmdef bogusnode$i;fi;done
+check:rc==0
+cmd:lsdef -t group bogusgroup > /dev/null 2>&1;if [[ $? -eq 0 ]]; then lsdef -t group bogusgroup -z >> /tmp/xcat_inventory_try_to_import_all_type_is_site_json_format/bogusnode.stanza;rmdef -t group bogusgroup; fi
+check:rc==0
+cmd:echo '{
+    "network": {
+        "100_0_0_0-255_0_0_0": {
+            "basic_attr": {
+                "gateway": "100.0.0.103",
+                "mask": "255.0.0.0",
+                "mgtifname": "eth0",
+                "mtu": "1500",
+                "net": "100.0.0.0"
+            },
+            "service": {
+                "tftpserver": "<xcatmaster>"
+            }
+        }
+    },
+    "node": {
+        "bogusnode1": {
+            "device_type": "server",
+            "engines": {
+                "console_engine": {
+                    "engine_info": {
+                        "cons": "openbmc"
+                    },
+                    "engine_type": "openbmc"
+                },
+                "hardware_mgt_engine": {
+                    "engine_info": {
+                        "bmc": "10.3.11.101",
+                        "bmcpassword": "0penBmc",
+                        "bmcusername": "root"
+                    },
+                    "engine_type": "openbmc"
+                },
+                "netboot_engine": {
+                    "engine_type": "petitboot"
+                },
+                "power_mgt_engine": {
+                    "engine_type": "openbmc"
+                }
+            },
+            "network_info": {
+                "primarynic": {
+                    "ip": "10.100.100.1"
+                }
+            },
+            "obj_info": {
+                "groups": "testgroup"
+            },
+            "obj_type": "node",
+            "role": "compute",
+        },
+        "bogusnode2": {
+            "device_type": "server",
+            "engines": {
+                "console_engine": {
+                    "engine_info": {
+                        "cons": "openbmc"
+                    },
+                    "engine_type": "openbmc"
+                },
+                "hardware_mgt_engine": {
+                    "engine_info": {
+                        "bmc": "10.3.11.102",
+                        "bmcpassword": "0penBmc",
+                        "bmcusername": "root"
+                    },
+                    "engine_type": "openbmc"
+                },
+                "netboot_engine": {
+                    "engine_type": "petitboot"
+                },
+                "power_mgt_engine": {
+                    "engine_type": "openbmc"
+                }
+            },
+            "network_info": {
+                "primarynic": {
+                    "ip": "10.100.100.2"
+                }
+            },
+            "obj_info": {
+                "groups": "testgroup"
+            },
+            "obj_type": "node",
+            "role": "compute",
+        },
+        "bogusnode3": {
+            "device_type": "server",
+            "engines": {
+                "console_engine": {
+                    "engine_info": {
+                        "cons": "openbmc"
+                    },
+                    "engine_type": "openbmc"
+                },
+                "hardware_mgt_engine": {
+                    "engine_info": {
+                        "bmc": "10.3.11.103",
+                        "bmcpassword": "0penBmc",
+                        "bmcusername": "root"
+                    },
+                    "engine_type": "openbmc"
+                },
+                "netboot_engine": {
+                    "engine_type": "petitboot"
+                },
+                "power_mgt_engine": {
+                    "engine_type": "openbmc"
+                }
+            },
+            "network_info": {
+                "primarynic": {
+                    "ip": "10.100.100.3"
+                }
+            },
+            "obj_info": {
+                "groups": "testgroup"
+            },
+            "obj_type": "node",
+            "role": "compute",
+        },
+        "service": {
+            "device_type": "server",
+            "engines": {
+                "netboot_engine": {
+                    "engine_info": {
+                        "postscripts": "servicenode"
+                    }
+                }
+            },
+            "obj_type": "group",
+            "role": "compute",
+        },
+        "xcatdefaults": {
+            "device_type": "server",
+            "engines": {
+                "netboot_engine": {
+                    "engine_info": {
+                        "postbootscripts": "otherpkgs",
+                        "postscripts": "syslog,remoteshell,syncfiles"
+                    }
+                }
+            },
+            "obj_type": "group",
+            "role": "compute",
+        }
+    },
+    "osimage": {},
+    "passwd": {},
+    "policy": {
+        "1": {
+            "name": "root",
+            "rule": "allow"
+        },
+        "1.2": {
+            "name": "c910f03c05k08.pok.stglabs.ibm.com",
+            "rule": "trusted"
+        },
+        "2": {
+            "commands": "getbmcconfig",
+            "rule": "allow"
+        },
+        "2.1": {
+            "commands": "remoteimmsetup",
+            "rule": "allow"
+        },
+        "2.3": {
+            "commands": "lsxcatd",
+            "rule": "allow"
+        },
+        "3": {
+            "commands": "nextdestiny",
+            "rule": "allow"
+        },
+        "4": {
+            "commands": "getdestiny",
+            "rule": "allow"
+        },
+        "4.4": {
+            "commands": "getpostscript",
+            "rule": "allow"
+        },
+        "4.5": {
+            "commands": "getcredentials",
+            "rule": "allow"
+        },
+        "4.6": {
+            "commands": "syncfiles",
+            "rule": "allow"
+        },
+        "4.7": {
+            "commands": "litefile",
+            "rule": "allow"
+        },
+        "4.8": {
+            "commands": "litetree",
+            "rule": "allow"
+        },
+        "4.9": {
+            "commands": "getadapter",
+            "rule": "allow"
+        }
+    },
+    "route": {},
+   "site": {
+        "clustersite": {
+            "FQDNfirst": "1",
+            "SNsyncfiledir": "/var/xcat/syncfiles",
+            "auditnosyslog": "0",
+            "auditskipcmds": "ALL",
+            "blademaxp": "64",
+            "cleanupxcatpost": "no",
+            "consoleondemand": "no",
+            "databaseloc": "/var/lib",
+            "db2installloc": "/mntdb2",
+            "dbtracelevel": "0",
+            "defserialflow": "0",
+            "defserialport": "0",
+            "defserialspeed": "9600",
+            "dhcpinterfaces": "eth0",
+            "dhcplease": "43200",
+            "dhcpsetup": "n",
+            "disjointdhcps": "1",
+            "dnshandler": "ddns",
+            "dnsinterfaces": "xcatmn|eth1,eth2;service|bond0",
+            "dnsupdaters": "dnsupdaters",
+            "domain": "pok.stglabs.ibm.com",
+            "enableASMI": "no",
+            "excludenodes": "excludenodes",
+            "externaldns": "externaldns",
+            "extntpservers": "extntpservers",
+            "forwarders": "10.3.5.8",
+            "fsptimeout": "0",
+            "genmacprefix": "00:11:aa",
+            "genpasswords": "genpasswords",
+            "hierarchicalattrs": "hierarchicalattrs",
+            "httpport": "80",
+            "hwctrldispatch": "y",
+            "installdir": "/install/",
+            "installloc": "hostname:/path",
+            "ipmidispatch": "y",
+            "ipmimaxp": "64",
+            "ipmiretries": "3",
+            "ipmisdrcache": "no",
+            "ipmitimeout": "2",
+            "iscsidir": "/iscsidir",
+            "managedaddressmode": "dhcp",
+            "master": "10.3.5.8",
+            "maxssh": "8",
+            "mnroutenames": "mnroutenames",
+            "nameservers": "10.3.5.8",
+            "nmapoptions": "--min-rtt-timeout",
+            "nodestatus": "n",
+            "nodesyncfiledir": "/var/xcat/node/syncfiles",
+            "ntpservers": "10.3.5.8",
+            "persistkvmguests": "y",
+            "powerinterval": "0",
+            "ppcmaxp": "64",
+            "ppcretry": "3",
+            "ppctimeout": "0",
+            "precreatemypostscripts": "1",
+            "pruneservices": "1",
+            "runbootscripts": "yes",
+            "setinstallnic": "1",
+            "sharedinstall": "no",
+            "sharedtftp": "1",
+            "skiptables": "nics",
+            "skipvalidatelog": "1",
+            "snmpc": "snmpc",
+            "sshbetweennodes": "ALLGROUPS",
+            "svloglocal": "1",
+            "syspowerinterval": "10",
+            "syspowermaxnodes": "10",
+            "tftpdir": "/tftprot/",
+            "tftpflags": "-v",
+            "timezone": "America/New_York",
+            "useNFSv4onAIX": "0",
+            "useNmapfromMN": "no",
+            "useSSHonAIX": "0",
+            "useflowcontrol": "no",
+            "usexhrm": "no",
+            "vcenterautojoin": "no",
+            "vmwarereconfigonpower": "no",
+            "vsftp": "n",
+            "xcatconfdir": "/etc/xcat",
+            "xcatdebugmode": "1",
+            "xcatdport": "3001",
+            "xcatiport": "3002",
+            "xcatlport": "3003",
+            "xcatmaxbatchconnections": "64",
+            "xcatmaxconnections": "60",
+            "xcatsslciphers": "3DES",
+            "xcatsslversion": "TLSv1"
+        }
+    }
+}' >  /tmp/xcat_inventory_try_to_import_all_type_is_site_json_format/json.test
+check:rc==0
+cmd:echo "Object name: clustersite
+    FQDNfirst=1
+    SNsyncfiledir=/var/xcat/syncfiles
+    auditnosyslog=0
+    auditskipcmds=ALL
+    blademaxp=64
+    cleanupxcatpost=no
+    consoleondemand=no
+    databaseloc=/var/lib
+    db2installloc=/mntdb2
+    dbtracelevel=0
+    defserialflow=0
+    defserialport=0
+    defserialspeed=9600
+    dhcpinterfaces=eth0
+    dhcplease=43200
+    dhcpsetup=n
+    disjointdhcps=1
+    dnshandler=ddns
+    dnsinterfaces=xcatmn|eth1,eth2;service|bond0
+    dnsupdaters=dnsupdaters
+    domain=pok.stglabs.ibm.com
+    enableASMI=no
+    excludenodes=excludenodes
+    externaldns=externaldns
+    extntpservers=extntpservers
+    forwarders=10.3.5.8
+    fsptimeout=0
+    genmacprefix=00:11:aa
+    genpasswords=genpasswords
+    hierarchicalattrs=hierarchicalattrs
+    httpport=80
+    hwctrldispatch=y
+    installdir=/install/
+    installloc=hostname:/path
+    ipmidispatch=y
+    ipmimaxp=64
+    ipmiretries=3
+    ipmisdrcache=no
+    ipmitimeout=2
+    iscsidir=/iscsidir
+    managedaddressmode=dhcp
+    master=10.3.5.8
+    maxssh=8
+    mnroutenames=mnroutenames
+    nameservers=10.3.5.8
+    nmapoptions=--min-rtt-timeout
+    nodestatus=n
+    nodesyncfiledir=/var/xcat/node/syncfiles
+    ntpservers=10.3.5.8
+    persistkvmguests=y
+    powerinterval=0
+    ppcmaxp=64
+    ppcretry=3
+    ppctimeout=0
+    precreatemypostscripts=1
+    pruneservices=1
+    runbootscripts=yes
+    setinstallnic=1
+    sharedinstall=no
+    sharedtftp=1
+    skiptables=nics
+    skipvalidatelog=1
+    snmpc=snmpc
+    sshbetweennodes=ALLGROUPS
+    svloglocal=1
+    syspowerinterval=10
+    syspowermaxnodes=10
+    tftpdir=/tftprot/
+    tftpflags=-v
+    timezone=America/New_York
+    useNFSv4onAIX=0
+    useNmapfromMN=no
+    useSSHonAIX=0
+    useflowcontrol=no
+    usexhrm=no
+    vcenterautojoin=no
+    vmwarereconfigonpower=no
+    vsftp=n
+    xcatconfdir=/etc/xcat
+    xcatdebugmode=1
+    xcatdport=3001
+    xcatiport=3002
+    xcatlport=3003
+    xcatmaxbatchconnections=64
+    xcatmaxconnections=60
+    xcatsslciphers=3DES
+    xcatsslversion=TLSv1"> /tmp/xcat_inventory_try_to_import_all_type_is_site_json_format/site.org
+check:rc==0
+cmd:mnip=$(lsdef -t site -o clustersite -i master -c|awk -F'=' '{print $2}');sed -i "s/10.3.5.8/$mnip/g" /tmp/xcat_inventory_try_to_import_all_type_is_site_json_format/site.org
+check:rc==0
+cmd:mnip=$(lsdef -t site -o clustersite -i master -c|awk -F'=' '{print $2}');sed -i "s/10.3.5.8/$mnip/g" /tmp/xcat_inventory_try_to_import_all_type_is_site_json_format/json.test
+check:rc==0
+cmd:xcat-inventory import -f /tmp/xcat_inventory_try_to_import_all_type_is_site_json_format/json.test -t site
+check:rc==0
+cmd:lsdef -t site -o clustersite > /tmp/xcat_inventory_try_to_import_all_type_is_site_json_format/site.import
+check:rc==0
+cmd:#!/bin/bash
+diff -y --ignore-blank-lines  --ignore-matching-lines="^#"  /tmp/xcat_inventory_try_to_import_all_type_is_site_json_format/site.org  /tmp/xcat_inventory_try_to_import_all_type_is_site_json_format/site.import
+check:rc==0
+cmd:lsdef bogusgroup1
+check:output=~Error: (\[.*?\]: )?Could not find an object
+check:rc!=0
+cmd:lsdef bogusgroup2
+check:output=~Error: (\[.*?\]: )?Could not find an object
+check:rc!=0
+cmd:lsdef bogusgroup3
+check:output=~Error: (\[.*?\]: )?Could not find an object
+check:rc!=0
+cmd:tabdump networks|grep 100_0_0_0-255_0_0_0
+check:rc!=0
+cmd:if [[ -e /tmp/xcat_inventory_try_to_import_all_type_is_site_json_format/bogusnode.stanza ]]; then cat /tmp/xcat_inventory_try_to_import_all_type_is_site_json_format/bogusnode.stanza | mkdef -z;fi
+check:rc==0
+cmd:if [[ -e /tmp/xcat_inventory_try_to_import_all_type_is_site_json_format/bogusgroup.stanza ]];then cat /tmp/xcat_inventory_try_to_import_all_type_is_site_json_format/bogusgroup.stanza |mkdef -z -f;fi
+check:rc==0
+cmd:cat /tmp/xcat_inventory_try_to_import_all_type_is_site_json_format/site.stanza | mkdef -z -f
+check:rc==0
+cmd:rm -rf /tmp/xcat_inventory_try_to_import_all_type_is_site_json_format
+check:rc==0
+end
+
+start:xcat_inventory_try_to_import_all_type_is_site_yaml_format
+label:others,inventory_ci
+description:This case is used to test xcat-inventory impport all definition which type is site from json file.
+cmd:mkdir -p /tmp/xcat_inventory_try_to_import_all_type_is_site_yaml_format
+check:rc==0
+cmd: lsdef -t site -o clustersite -z >/tmp/xcat_inventory_try_to_import_all_type_is_site_yaml_format/site.stanza
+check:rc==0
+cmd:for i in 1 2 3; do lsdef bogusnode$i > /dev/null 2>&1;if [[ $? -eq 0 ]]; then lsdef bogusnode$i -z >> /tmp/xcat_inventory_try_to_import_all_type_is_site_yaml_format/bogusnode.stanza ;rmdef bogusnode$i;fi;done
+check:rc==0
+cmd:lsdef -t group bogusgroup > /dev/null 2>&1;if [[ $? -eq 0 ]]; then lsdef -t group bogusgroup -z >> /tmp/xcat_inventory_try_to_import_all_type_is_site_yaml_format/bogusnode.stanza;rmdef -t group bogusgroup; fi
+check:rc==0
+cmd:echo "network:
+  100_0_0_0-255_0_0_0:
+    basic_attr:
+      gateway: 100.0.0.103
+      mask: 255.0.0.0
+      mgtifname: eth0
+      mtu: '1500'
+      net: 100.0.0.0
+    service:
+      tftpserver: <xcatmaster>
+node:
+  bogusnode1:
+    device_type: server
+    engines:
+      console_engine:
+        engine_info:
+          cons: openbmc
+        engine_type: openbmc
+      hardware_mgt_engine:
+        engine_info:
+          bmc: 10.3.11.101
+          bmcpassword: 0penBmc
+          bmcusername: root
+        engine_type: openbmc
+      netboot_engine:
+        engine_type: petitboot
+      power_mgt_engine:
+        engine_type: openbmc
+    network_info:
+      primarynic:
+        ip: 10.100.100.1
+    obj_info:
+      groups: testgroup
+    obj_type: node
+    role: compute
+  bogusnode2:
+    device_type: server
+    engines:
+      console_engine:
+        engine_info:
+          cons: openbmc
+        engine_type: openbmc
+      hardware_mgt_engine:
+        engine_info:
+          bmc: 10.3.11.102
+          bmcpassword: 0penBmc
+          bmcusername: root
+        engine_type: openbmc
+      netboot_engine:
+        engine_type: petitboot
+      power_mgt_engine:
+        engine_type: openbmc
+    network_info:
+      primarynic:
+        ip: 10.100.100.2
+    obj_info:
+      groups: testgroup
+    obj_type: node
+    role: compute
+  bogusnode3:
+    device_type: server
+    engines:
+      console_engine:
+        engine_info:
+          cons: openbmc
+        engine_type: openbmc
+      hardware_mgt_engine:
+        engine_info:
+          bmc: 10.3.11.103
+          bmcpassword: 0penBmc
+          bmcusername: root
+        engine_type: openbmc
+      netboot_engine:
+        engine_type: petitboot
+      power_mgt_engine:
+        engine_type: openbmc
+    network_info:
+      primarynic:
+        ip: 10.100.100.3
+    obj_info:
+      groups: testgroup
+    obj_type: node
+    role: compute
+  service:
+    device_type: server
+    engines:
+      netboot_engine:
+        engine_info:
+          postscripts: servicenode
+    obj_type: group
+    role: compute
+  xcatdefaults:
+    device_type: server
+    engines:
+      netboot_engine:
+        engine_info:
+          postbootscripts: otherpkgs
+          postscripts: syslog,remoteshell,syncfiles
+    obj_type: group
+    role: compute
+osimage: {}
+passwd: {}
+policy:
+  '1':
+    name: root
+    rule: allow
+  '1.2':
+    name: c910f03c05k08.pok.stglabs.ibm.com
+    rule: trusted
+  '2':
+    commands: getbmcconfig
+    rule: allow
+  '2.1':
+    commands: remoteimmsetup
+    rule: allow
+  '2.3':
+    commands: lsxcatd
+    rule: allow
+  '3':
+    commands: nextdestiny
+    rule: allow
+  '4':
+    commands: getdestiny
+    rule: allow
+  '4.4':
+    commands: getpostscript
+    rule: allow
+  '4.5':
+    commands: getcredentials
+    rule: allow
+  '4.6':
+    commands: syncfiles
+    rule: allow
+  '4.7':
+    commands: litefile
+    rule: allow
+  '4.8':
+    commands: litetree
+    rule: allow
+  '4.9':
+    commands: getadapter
+    rule: allow
+route: {}
+site:
+  clustersite:
+    FQDNfirst: '1'
+    SNsyncfiledir: /var/xcat/syncfiles
+    auditnosyslog: '0'
+    auditskipcmds: ALL
+    blademaxp: '64'
+    cleanupxcatpost: 'no'
+    consoleondemand: 'no'
+    databaseloc: /var/lib
+    db2installloc: /mntdb2
+    dbtracelevel: '0'
+    defserialflow: '0'
+    defserialport: '0'
+    defserialspeed: '9600'
+    dhcpinterfaces: eth0
+    dhcplease: '43200'
+    dhcpsetup: n
+    disjointdhcps: '1'
+    dnshandler: ddns
+    dnsinterfaces: xcatmn|eth1,eth2;service|bond0
+    dnsupdaters: dnsupdaters
+    domain: pok.stglabs.ibm.com
+    enableASMI: 'no'
+    excludenodes: excludenodes
+    externaldns: externaldns
+    extntpservers: extntpservers
+    forwarders: 10.3.5.8
+    fsptimeout: '0'
+    genmacprefix: 00:11:aa
+    genpasswords: genpasswords
+    hierarchicalattrs: hierarchicalattrs
+    httpport: '80'
+    hwctrldispatch: y
+    installdir: /install/
+    installloc: hostname:/path
+    ipmidispatch: y
+    ipmimaxp: '64'
+    ipmiretries: '3'
+    ipmisdrcache: 'no'
+    ipmitimeout: '2'
+    iscsidir: /iscsidir
+    managedaddressmode: dhcp
+    master: 10.3.5.8
+    maxssh: '8'
+    mnroutenames: mnroutenames
+    nameservers: 10.3.5.8
+    nmapoptions: --min-rtt-timeout
+    nodestatus: n
+    nodesyncfiledir: /var/xcat/node/syncfiles
+    ntpservers: 10.3.5.8
+    persistkvmguests: y
+    powerinterval: '0'
+    ppcmaxp: '64'
+    ppcretry: '3'
+    ppctimeout: '0'
+    precreatemypostscripts: '1'
+    pruneservices: '1'
+    runbootscripts: 'yes'
+    setinstallnic: '1'
+    sharedinstall: 'no'
+    sharedtftp: '1'
+    skiptables: nics
+    skipvalidatelog: '1'
+    snmpc: snmpc
+    sshbetweennodes: ALLGROUPS
+    svloglocal: '1'
+    syspowerinterval: '10'
+    syspowermaxnodes: '10'
+    tftpdir: /tftprot/
+    tftpflags: -v
+    timezone: America/New_York
+    useNFSv4onAIX: '0'
+    useNmapfromMN: 'no'
+    useSSHonAIX: '0'
+    useflowcontrol: 'no'
+    usexhrm: 'no'
+    vcenterautojoin: 'no'
+    vmwarereconfigonpower: 'no'
+    vsftp: n
+    xcatconfdir: /etc/xcat
+    xcatdebugmode: '1'
+    xcatdport: '3001'
+    xcatiport: '3002'
+    xcatlport: '3003'
+    xcatmaxbatchconnections: '64'
+    xcatmaxconnections: '60'
+    xcatsslciphers: 3DES
+    xcatsslversion: TLSv1" >  /tmp/xcat_inventory_try_to_import_all_type_is_site_yaml_format/yaml.test
+check:rc==0
+cmd:echo "Object name: clustersite
+    FQDNfirst=1
+    SNsyncfiledir=/var/xcat/syncfiles
+    auditnosyslog=0
+    auditskipcmds=ALL
+    blademaxp=64
+    cleanupxcatpost=no
+    consoleondemand=no
+    databaseloc=/var/lib
+    db2installloc=/mntdb2
+    dbtracelevel=0
+    defserialflow=0
+    defserialport=0
+    defserialspeed=9600
+    dhcpinterfaces=eth0
+    dhcplease=43200
+    dhcpsetup=n
+    disjointdhcps=1
+    dnshandler=ddns
+    dnsinterfaces=xcatmn|eth1,eth2;service|bond0
+    dnsupdaters=dnsupdaters
+    domain=pok.stglabs.ibm.com
+    enableASMI=no
+    excludenodes=excludenodes
+    externaldns=externaldns
+    extntpservers=extntpservers
+    forwarders=10.3.5.8
+    fsptimeout=0
+    genmacprefix=00:11:aa
+    genpasswords=genpasswords
+    hierarchicalattrs=hierarchicalattrs
+    httpport=80
+    hwctrldispatch=y
+    installdir=/install/
+    installloc=hostname:/path
+    ipmidispatch=y
+    ipmimaxp=64
+    ipmiretries=3
+    ipmisdrcache=no
+    ipmitimeout=2
+    iscsidir=/iscsidir
+    managedaddressmode=dhcp
+    master=10.3.5.8
+    maxssh=8
+    mnroutenames=mnroutenames
+    nameservers=10.3.5.8
+    nmapoptions=--min-rtt-timeout
+    nodestatus=n
+    nodesyncfiledir=/var/xcat/node/syncfiles
+    ntpservers=10.3.5.8
+    persistkvmguests=y
+    powerinterval=0
+    ppcmaxp=64
+    ppcretry=3
+    ppctimeout=0
+    precreatemypostscripts=1
+    pruneservices=1
+    runbootscripts=yes
+    setinstallnic=1
+    sharedinstall=no
+    sharedtftp=1
+    skiptables=nics
+    skipvalidatelog=1
+    snmpc=snmpc
+    sshbetweennodes=ALLGROUPS
+    svloglocal=1
+    syspowerinterval=10
+    syspowermaxnodes=10
+    tftpdir=/tftprot/
+    tftpflags=-v
+    timezone=America/New_York
+    useNFSv4onAIX=0
+    useNmapfromMN=no
+    useSSHonAIX=0
+    useflowcontrol=no
+    usexhrm=no
+    vcenterautojoin=no
+    vmwarereconfigonpower=no
+    vsftp=n
+    xcatconfdir=/etc/xcat
+    xcatdebugmode=1
+    xcatdport=3001
+    xcatiport=3002
+    xcatlport=3003
+    xcatmaxbatchconnections=64
+    xcatmaxconnections=60
+    xcatsslciphers=3DES
+    xcatsslversion=TLSv1"> /tmp/xcat_inventory_try_to_import_all_type_is_site_yaml_format/site.org
+check:rc==0
+cmd:mnip=$(lsdef -t site -o clustersite -i master -c|awk -F'=' '{print $2}');sed -i "s/10.3.5.8/$mnip/g" /tmp/xcat_inventory_try_to_import_all_type_is_site_yaml_format/site.org
+check:rc==0
+cmd:mnip=$(lsdef -t site -o clustersite -i master -c|awk -F'=' '{print $2}');sed -i "s/10.3.5.8/$mnip/g" /tmp/xcat_inventory_try_to_import_all_type_is_site_yaml_format/yaml.test
+check:rc==0
+cmd:xcat-inventory import -f /tmp/xcat_inventory_try_to_import_all_type_is_site_yaml_format/yaml.test -t site
+check:rc==0
+cmd:lsdef -t site -o clustersite > /tmp/xcat_inventory_try_to_import_all_type_is_site_yaml_format/site.import
+check:rc==0
+cmd:#!/bin/bash
+diff -y --ignore-blank-lines  --ignore-matching-lines="^#" /tmp/xcat_inventory_try_to_import_all_type_is_site_yaml_format/site.org  /tmp/xcat_inventory_try_to_import_all_type_is_site_yaml_format/site.import
+check:rc==0
+cmd:lsdef bogusgroup1
+check:output=~Error: (\[.*?\]: )?Could not find an object
+check:rc!=0
+cmd:lsdef bogusgroup2
+check:output=~Error: (\[.*?\]: )?Could not find an object
+check:rc!=0
+cmd:lsdef bogusgroup3
+check:output=~Error: (\[.*?\]: )?Could not find an object
+check:rc!=0
+cmd:tabdump networks|grep 100_0_0_0-255_0_0_0
+check:rc!=0
+cmd:if [[ -e /tmp/xcat_inventory_try_to_import_all_type_is_site_yaml_format/bogusnode.stanza ]]; then cat /tmp/xcat_inventory_try_to_import_all_type_is_site_yaml_format/bogusnode.stanza | mkdef -z;fi
+check:rc==0
+cmd:if [[ -e /tmp/xcat_inventory_try_to_import_all_type_is_site_yaml_format/bogusgroup.stanza ]];then cat /tmp/xcat_inventory_try_to_import_all_type_is_site_yaml_format/bogusgroup.stanza |mkdef -z -f;fi
+check:rc==0
+cmd:cat /tmp/xcat_inventory_try_to_import_all_type_is_site_yaml_format/site.stanza | mkdef -z -f
+check:rc==0
+cmd:rm -rf /tmp/xcat_inventory_try_to_import_all_type_is_site_yaml_format
+check:rc==0
+end
+
+
+start:export_site_table_then_modify_yaml_then_import
+This case is used to test xcat-inventory import a site , then modify the export yaml file, then import the yaml file
+Attribute: $$DSTMN - the ip of MN which is used to run import operation.
+label:others,inventory_ci
+cmd:mkdir -p /tmp/export_site_table_then_modify_yaml_then_import
+check:rc==0
+cmd:ssh $$DSTMN ' source /etc/profile.d/xcat.sh;mkdir -p /tmp/export_site_table_then_modify_yaml_then_import_$$DSTMN/'
+check:rc==0
+cmd: lsdef -t site -o clustersite -z >/tmp/export_site_table_then_modify_yaml_then_import/site.stanza
+check:rc==0
+cmd:ssh $$DSTMN ' source /etc/profile.d/xcat.sh;lsdef -t site -o clustersite -z >/tmp/export_site_table_then_modify_yaml_then_import_$$DSTMN/site.stanza '
+check:rc==0
+cmd:mnip=$(lsdef -t site -o clustersite -i master -c|awk -F'=' '{print $2}');chdef -t site -o clustersite  useSSHonAIX=1111 useNFSv4onAIX=1111 FQDNfirst=1111 SNsyncfiledir='/var/xcat/1111' auditnosyslog=1111 auditskipcmds=ALL blademaxp=641111 cleanupxcatpost=1111 consoleondemand=1111 databaseloc='/var/lib1111' db2installloc='/mntdb1111' dbtracelevel=0 defserialflow=1111 defserialport=1111 defserialspeed=9611111111 dhcpinterfaces=eth1111 dhcplease=43211111111 dhcpsetup=1111 disjointdhcps=0 dnshandler=ddns1111 dnsinterfaces='xcatmn|eth1,eth2;service|bond1111' dnsupdaters=dnsupdaters1111 domain='pok1111.stglabs.ibm.com' enableASMI=1111 excludenodes=1111 externaldns=1111 extntpservers=1111 forwarders=$mnip fsptimeout=1111 genmacprefix='11111111:11:aa' genpasswords=1111 hierarchicalattrs=1111 httpport=81111 hwctrldispatch=1111 installdir='/install1111/' installloc='hostname:/path1111' ipmidispatch=1111 ipmimaxp=641111 ipmiretries=31111 ipmisdrcache=1111 ipmitimeout=21111 iscsidir='/iscsidir1111' managedaddressmode=dhcp master=$mnip maxssh=81111 mnroutenames=1111 nameservers=$mnip nmapoptions='--min-rtt-timeout 1111' nodestatus=n nodesyncfiledir='/var/xcat/node/syncfiles1111' ntpservers=$mnip persistkvmguests=1111 powerinterval=1111 ppcmaxp=641111 ppcretry=31111 ppctimeout=1111 precreatemypostchdef -t site -o clustersite  useSSHonAIX=1111 useNFSv4onAIX=1111 FQDNfirst=1111 SNsyncfiledir='/var/xcat/1111' auditnosyslog=1111 auditskipcmds=ALL blademaxp=641111 pruneservices=1111 runbootscripts=1111 setinstallnic=1111 sharedinstall=no sharedtftp=1111 skiptables=nics1111 skipvalidatelog=1111 snmpc=xc1111 sshbetweennodes=ALLGROUPS svloglocal=1111 syspowerinterval=11111 syspowermaxnodes=11111 tftpdir='/tftprot1111/' tftpflags='-v1111' timezone='America/New_York1111' useNmapfromMN=1111 useflowcontrol=1111 usexhrm=1111 vcenterautojoin=1111 vmwarereconfigonpower=1111 vsftp=1111 xcatconfdir='/etc/xcat1111' xcatdebugmode=0 xcatdport=3001 xcatiport=3002 xcatlport=3003 xcatmaxbatchconnections=641111 xcatmaxconnections=61111 xcatsslciphers='3DES' xcatsslversion=TLSv1
+check:rc==0
+cmd:lsdef -t site -o clustersite -z|sed 's/=0$/=1/g' |sort -t'=' -k1 |tee  /tmp/export_site_table_then_modify_yaml_then_import/srcsite.stanza
+check:rc==0
+cmd:sed -i 's/1111/2222/g' /tmp/export_site_table_then_modify_yaml_then_import/srcsite.stanza
+check:rc==0
+cmd:sed -i 's/managedaddressmode=dhcp/managedaddressmode=static/g' /tmp/export_site_table_then_modify_yaml_then_import/srcsite.stanza
+check:rc==0
+cmd:sed -i 's/sharedinstall=no/sharedinstall=sns/g' /tmp/export_site_table_then_modify_yaml_then_import/srcsite.stanza
+check:rc==0
+cmd:sed -i 's/sshbetweennodes=ALLGROUPS/sshbetweennodes=NOGROUPS/g' /tmp/export_site_table_then_modify_yaml_then_import/srcsite.stanza
+check:rc==0
+cmd:xcat-inventory export --format=yaml -t site -o clustersite |tee /tmp/export_site_table_then_modify_yaml_then_import/export_site_yaml.inv
+check:rc==0
+cmd:mnip=$(lsdef -t site -o clustersite -i master -c|awk -F'=' '{print $2}');sed -i "s/$mnip/$$DSTMN/g" /tmp/export_site_table_then_modify_yaml_then_import/export_site_yaml.inv
+check:rc==0
+cmd:sed -i "s/: '*0'*$/: '1'/g" /tmp/export_site_table_then_modify_yaml_then_import/export_site_yaml.inv
+check:rc==0
+cmd:sed -i "s/managedaddressmode: '*dhcp'*/managedaddressmode: 'static'/g" /tmp/export_site_table_then_modify_yaml_then_import/export_site_yaml.inv
+check:rc==0
+cmd:sed -i "s/sharedinstall: '*no'*/sharedinstall: 'sns'/g" /tmp/export_site_table_then_modify_yaml_then_import/export_site_yaml.inv
+check:rc==0
+cmd:sed -i "s/sshbetweennodes: '*ALLGROUPS'*/sshbetweennodes: 'NOGROUPS'/g" /tmp/export_site_table_then_modify_yaml_then_import/export_site_yaml.inv
+check:rc==0
+cmd:sed -i 's/1111/2222/g' /tmp/export_site_table_then_modify_yaml_then_import/export_site_yaml.inv
+check:rc==0
+cmd:cat /tmp/export_site_table_then_modify_yaml_then_import/export_site_yaml.inv
+check:rc==0
+cmd:scp /tmp/export_site_table_then_modify_yaml_then_import/export_site_yaml.inv $$DSTMN:/tmp/export_site_table_then_modify_yaml_then_import_$$DSTMN/
+check:rc==0
+cmd: ssh  $$DSTMN ' source /etc/profile.d/xcat.sh;xcat-inventory import -f /tmp/export_site_table_then_modify_yaml_then_import_$$DSTMN/export_site_yaml.inv -t site -o clustersite'
+check:rc==0
+cmd: ssh  $$DSTMN ' source /etc/profile.d/xcat.sh;lsdef  -t site -o clustersite  -z |sort -t'=' -k1|tee /tmp/export_site_table_then_modify_yaml_then_import_$$DSTMN/dstsite.stanza'
+check:rc==0
+cmd: scp $$DSTMN:/tmp/export_site_table_then_modify_yaml_then_import_$$DSTMN/dstsite.stanza /tmp/export_site_table_then_modify_yaml_then_import/dstsite.stanza
+check:rc==0
+cmd:mnip=$(lsdef -t site -o clustersite -i master -c|awk -F'=' '{print $2}');sed -i "s/$$DSTMN/$mnip/g" /tmp/export_site_table_then_modify_yaml_then_import/dstsite.stanza
+check:rc==0
+cmd: cat /tmp/export_site_table_then_modify_yaml_then_import/dstsite.stanza
+check:rc==0
+cmd:diff -y --ignore-blank-lines  /tmp/export_site_table_then_modify_yaml_then_import/srcsite.stanza /tmp/export_site_table_then_modify_yaml_then_import/dstsite.stanza
+check:rc==0
+cmd:cat /tmp/export_site_table_then_modify_yaml_then_import/site.stanza | mkdef -z -f
+check:rc==0
+cmd:ssh $$DSTMN ' source /etc/profile.d/xcat.sh;cat /tmp/export_site_table_then_modify_yaml_then_import_$$DSTMN/site.stanza | mkdef -z -f'
+check:rc==0
+cmd:ssh $$DSTMN ' source /etc/profile.d/xcat.sh;rm -rf /tmp/export_site_table_then_modify_yaml_then_import_$$DSTMN/'
+check:rc==0
+cmd:rm -rf /tmp/export_site_table_then_modify_yaml_then_import
+check:rc==0
+end
+
+start:export_site_table_then_modify_json_then_import
+This case is used to test xcat-inventory import a site , then modify the export json file, then import the json file
+Attribute: $$DSTMN - the ip of MN which is used to run import operation.
+label:others,inventory_ci
+cmd:mkdir -p /tmp/export_site_table_then_modify_json_then_import
+check:rc==0
+cmd:ssh $$DSTMN ' source /etc/profile.d/xcat.sh;mkdir -p /tmp/export_site_table_then_modify_json_then_import_$$DSTMN/'
+check:rc==0
+cmd: lsdef -t site -o clustersite -z >/tmp/export_site_table_then_modify_json_then_import/site.stanza
+check:rc==0
+cmd:ssh $$DSTMN ' source /etc/profile.d/xcat.sh;lsdef -t site -o clustersite -z >/tmp/export_site_table_then_modify_json_then_import_$$DSTMN/site.stanza '
+check:rc==0
+cmd:mnip=$(lsdef -t site -o clustersite -i master -c|awk -F'=' '{print $2}');chdef -t site -o clustersite  useSSHonAIX=1111 useNFSv4onAIX=1111 FQDNfirst=1111 SNsyncfiledir='/var/xcat/1111' auditnosyslog=1111 auditskipcmds=ALL blademaxp=641111 cleanupxcatpost=1111 consoleondemand=1111 databaseloc='/var/lib1111' db2installloc='/mntdb1111' dbtracelevel=0 defserialflow=1111 defserialport=1111 defserialspeed=9611111111 dhcpinterfaces=eth1111 dhcplease=43211111111 dhcpsetup=1111 disjointdhcps=0 dnshandler=ddns1111 dnsinterfaces='xcatmn|eth1,eth2;service|bond1111' dnsupdaters=dnsupdaters1111 domain='pok1111.stglabs.ibm.com' enableASMI=1111 excludenodes=1111 externaldns=1111 extntpservers=1111 forwarders=$mnip fsptimeout=1111 genmacprefix='11111111:11:aa' genpasswords=1111 hierarchicalattrs=1111 httpport=81111 hwctrldispatch=1111 installdir='/install1111/' installloc='hostname:/path1111' ipmidispatch=1111 ipmimaxp=641111 ipmiretries=31111 ipmisdrcache=1111 ipmitimeout=21111 iscsidir='/iscsidir1111' managedaddressmode=dhcp master=$mnip maxssh=81111 mnroutenames=1111 nameservers=$mnip nmapoptions='--min-rtt-timeout 1111' nodestatus=n nodesyncfiledir='/var/xcat/node/syncfiles1111' ntpservers=$mnip persistkvmguests=1111 powerinterval=1111 ppcmaxp=641111 ppcretry=31111 ppctimeout=1111 precreatemypostchdef -t site -o clustersite  useSSHonAIX=1111 useNFSv4onAIX=1111 FQDNfirst=1111 SNsyncfiledir='/var/xcat/1111' auditnosyslog=1111 auditskipcmds=ALL blademaxp=641111 pruneservices=1111 runbootscripts=1111 setinstallnic=1111 sharedinstall=no sharedtftp=1111 skiptables=nics1111 skipvalidatelog=1111 snmpc=xc1111 sshbetweennodes=ALLGROUPS svloglocal=1111 syspowerinterval=11111 syspowermaxnodes=11111 tftpdir='/tftprot1111/' tftpflags='-v1111' timezone='America/New_York1111' useNmapfromMN=1111 useflowcontrol=1111 usexhrm=1111 vcenterautojoin=1111 vmwarereconfigonpower=1111 vsftp=1111 xcatconfdir='/etc/xcat1111' xcatdebugmode=0 xcatdport=3001 xcatiport=3002 xcatlport=3003 xcatmaxbatchconnections=641111 xcatmaxconnections=61111 xcatsslciphers='3DES' xcatsslversion=TLSv1
+check:rc==0
+cmd:lsdef -t site -o clustersite -z|sed 's/=0$/=1/g' |sort -t'=' -k1 |tee  /tmp/export_site_table_then_modify_json_then_import/srcsite.stanza
+check:rc==0
+cmd:sed -i 's/1111/2222/g' /tmp/export_site_table_then_modify_json_then_import/srcsite.stanza
+check:rc==0
+cmd:sed -i 's/managedaddressmode=dhcp/managedaddressmode=static/g' /tmp/export_site_table_then_modify_json_then_import/srcsite.stanza
+check:rc==0
+cmd:sed -i 's/sharedinstall=no/sharedinstall=sns/g' /tmp/export_site_table_then_modify_json_then_import/srcsite.stanza
+check:rc==0
+cmd:sed -i 's/sshbetweennodes=ALLGROUPS/sshbetweennodes=NOGROUPS/g' /tmp/export_site_table_then_modify_json_then_import/srcsite.stanza
+check:rc==0
+cmd:xcat-inventory export --format=json -t site -o clustersite |tee /tmp/export_site_table_then_modify_json_then_import/export_site_json.inv
+check:rc==0
+cmd:mnip=$(lsdef -t site -o clustersite -i master -c|awk -F'=' '{print $2}');sed -i "s/$mnip/$$DSTMN/g" /tmp/export_site_table_then_modify_json_then_import/export_site_json.inv
+check:rc==0
+cmd:sed -i 's/"0"/"1"/g' /tmp/export_site_table_then_modify_json_then_import/export_site_json.inv
+check:rc==0
+cmd:sed -i 's/"managedaddressmode": "dhcp"/"managedaddressmode": "static"/g' /tmp/export_site_table_then_modify_json_then_import/export_site_json.inv
+check:rc==0
+cmd:sed -i 's/"sharedinstall": "no"/"sharedinstall": "sns"/g' /tmp/export_site_table_then_modify_json_then_import/export_site_json.inv
+check:rc==0
+cmd:sed -i 's/"sshbetweennodes": "ALLGROUPS"/"sshbetweennodes": "NOGROUPS"/g' /tmp/export_site_table_then_modify_json_then_import/export_site_json.inv
+check:rc==0
+cmd:sed -i 's/1111/2222/g' /tmp/export_site_table_then_modify_json_then_import/export_site_json.inv
+check:rc==0
+cmd:cat /tmp/export_site_table_then_modify_json_then_import/export_site_json.inv
+check:rc==0
+cmd:scp /tmp/export_site_table_then_modify_json_then_import/export_site_json.inv $$DSTMN:/tmp/export_site_table_then_modify_json_then_import_$$DSTMN/
+check:rc==0
+cmd: ssh  $$DSTMN ' source /etc/profile.d/xcat.sh;xcat-inventory import -f /tmp/export_site_table_then_modify_json_then_import_$$DSTMN/export_site_json.inv -t site -o clustersite'
+check:rc==0
+cmd: ssh  $$DSTMN ' source /etc/profile.d/xcat.sh;lsdef  -t site -o clustersite  -z |sort -t'=' -k1|tee /tmp/export_site_table_then_modify_json_then_import_$$DSTMN/dstsite.stanza'
+check:rc==0
+cmd: scp $$DSTMN:/tmp/export_site_table_then_modify_json_then_import_$$DSTMN/dstsite.stanza /tmp/export_site_table_then_modify_json_then_import/dstsite.stanza
+check:rc==0
+cmd:mnip=$(lsdef -t site -o clustersite -i master -c|awk -F'=' '{print $2}');sed -i "s/$$DSTMN/$mnip/g" /tmp/export_site_table_then_modify_json_then_import/dstsite.stanza
+check:rc==0
+cmd: cat /tmp/export_site_table_then_modify_json_then_import/dstsite.stanza
+check:rc==0
+cmd:diff -y --ignore-blank-lines  /tmp/export_site_table_then_modify_json_then_import/srcsite.stanza /tmp/export_site_table_then_modify_json_then_import/dstsite.stanza
+check:rc==0
+cmd:cat /tmp/export_site_table_then_modify_json_then_import/site.stanza | mkdef -z -f
+check:rc==0
+cmd:ssh $$DSTMN ' source /etc/profile.d/xcat.sh;cat /tmp/export_site_table_then_modify_json_then_import_$$DSTMN/site.stanza | mkdef -z -f'
+check:rc==0
+cmd:ssh $$DSTMN ' source /etc/profile.d/xcat.sh;rm -rf /tmp/export_site_table_then_modify_json_then_import_$$DSTMN/'
+check:rc==0
+cmd:rm -rf /tmp/export_site_table_then_modify_json_then_import
+check:rc==0
+end
+
+
