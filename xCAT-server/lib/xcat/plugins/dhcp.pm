@@ -2677,7 +2677,7 @@ sub addnet
             }
         }
         #for cumulus ZTP process
-        push @netent, "    option cumulus-provision-url \"http://$tftp.':' . $httpport/install/postscripts/cumulusztp\";\n";
+        push @netent, "    option cumulus-provision-url \"http://$tftp:$httpport/install/postscripts/cumulusztp\";\n";
 
         my $ddnserver = $nameservers;
         $ddnserver =~ s/,.*//;
@@ -2717,9 +2717,9 @@ sub addnet
         # $lstatements = 'if exists gpxe.bus-id { filename = \"\"; } else if exists client-architecture { filename = \"xcat/xnba.kpxe\"; } '.$lstatements;
         push @netent, "    if option user-class-identifier = \"xNBA\" and option client-architecture = 00:00 { #x86, xCAT Network Boot Agent\n";
         push @netent, "        always-broadcast on;\n";
-        push @netent, "        filename = \"http://$tftp.':' . $httpport/tftpboot/xcat/xnba/nets/" . $net . "_" . $maskbits . "\";\n";
+        push @netent, "        filename = \"http://$tftp:$httpport/tftpboot/xcat/xnba/nets/" . $net . "_" . $maskbits . "\";\n";
         push @netent, "    } else if option user-class-identifier = \"xNBA\" and option client-architecture = 00:09 { #x86, xCAT Network Boot Agent\n";
-        push @netent, "        filename = \"http://$tftp.':' . $httpport/tftpboot/xcat/xnba/nets/" . $net . "_" . $maskbits . ".uefi\";\n";
+        push @netent, "        filename = \"http://$tftp:$httpport/tftpboot/xcat/xnba/nets/" . $net . "_" . $maskbits . ".uefi\";\n";
         push @netent, "    } else if option client-architecture = 00:00  { #x86\n";
         push @netent, "        filename \"xcat/xnba.kpxe\";\n";
         push @netent, "    } else if option vendor-class-identifier = \"Etherboot-5.4\"  { #x86\n";
@@ -2735,10 +2735,10 @@ sub addnet
         push @netent, "        filename \"elilo.efi\";\n";
         push @netent,
           "    } else if option client-architecture = 00:0e { #OPAL-v3\n ";
-        push @netent, "        option conf-file = \"http://$tftp.':' . $httpport/tftpboot/pxelinux.cfg/p/" . $net . "_" . $maskbits . "\";\n";
+        push @netent, "        option conf-file = \"http://$tftp:$httpport/tftpboot/pxelinux.cfg/p/" . $net . "_" . $maskbits . "\";\n";
         push @netent,
           "    } else if substring (option vendor-class-identifier,0,11) = \"onie_vendor\" { #for onie on cumulus switch\n";
-        push @netent, "        option www-server = \"http://$tftp.':' . $httpport/install/onie/onie-installer\";\n";
+        push @netent, "        option www-server = \"http://$tftp:$httpport/install/onie/onie-installer\";\n";
         push @netent,
           "    } else if substring(filename,0,1) = null { #otherwise, provide yaboot if the client isn't specific\n ";
         push @netent, "        filename \"/yaboot\";\n";

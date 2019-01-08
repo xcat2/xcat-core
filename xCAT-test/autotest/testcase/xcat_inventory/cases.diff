@@ -1,6 +1,6 @@
 start:xcat_inventory_diff_h
 description:This case is used to test xcat-inventory diff usage information
-label:others,xcat_inventory
+label:others,inventory_ci
 cmd:xcat-inventory diff -h
 check:output=~usage: xcat-inventory diff
 check:rc==0
@@ -11,61 +11,61 @@ end
 
 start:xcat_inventory_diff_without_option
 description:This case is used to test xcat-inventory diff without option, should be error
-label:others,xcat_inventory
+label:others,inventory_ci
 cmd:xcat-inventory diff
-check:output=~Error: No valid source type!
+check:output=~Backend not initialized, please initialize the backend with
 check:rc!=0
 end
 
 start:xcat_inventory_diff_files_all
 description:This case is used to test xcat-inventory diff files all, should be error
-label:others,xcat_inventory
-cmd:xcat-inventory diff --files /opt/xcat/share/xcat/tools/autotest/testcase/xcat-inventory/templates/diff/xcat-inventory_diff_file1.json /opt/xcat/share/xcat/tools/autotest/testcase/xcat-inventory/templates/diff/xcat-inventory_diff_file2.json --all
+label:others,inventory_ci
+cmd:xcat-inventory diff --files /opt/xcat/share/xcat/tools/autotest/testcase/xcat_inventory/templates/diff/xcat-inventory_diff_file1.json /opt/xcat/share/xcat/tools/autotest/testcase/xcat_inventory/templates/diff/xcat-inventory_diff_file2.json --all
 check:output=~Error: '--all' must be used with '--source'!
 check:rc!=0
 end
 
 start:xcat_inventory_diff_source_filename
 description:This case is used to test xcat-inventory diff source filename, should be error
-label:others,xcat_inventory
-cmd:xcat-inventory diff --source /opt/xcat/share/xcat/tools/autotest/testcase/xcat-inventory/templates/diff/xcat-inventory_diff_file1.json --filename test_filename
+label:others,inventory_ci
+cmd:xcat-inventory diff --source /opt/xcat/share/xcat/tools/autotest/testcase/xcat_inventory/templates/diff/xcat-inventory_diff_file1.json --filename test_filename
 check:output=~Error: '--filename' must be used with '--files'!
 check:rc!=0
 end
 
 start:xcat_inventory_diff_files_source
 description:This case is used to test xcat-inventory diff files source, should be error
-label:others,xcat_inventory
-cmd:xcat-inventory diff --files /opt/xcat/share/xcat/tools/autotest/testcase/xcat-inventory/templates/diff/xcat-inventory_diff_file1.json /opt/xcat/share/xcat/tools/autotest/testcase/xcat-inventory/templates/diff/xcat-inventory_diff_file2.json --source /opt/xcat/share/xcat/tools/autotest/testcase/xcat-inventory/templates/diff/xcat-inventory_diff_file2.json
+label:others,inventory_ci
+cmd:xcat-inventory diff --files /opt/xcat/share/xcat/tools/autotest/testcase/xcat_inventory/templates/diff/xcat-inventory_diff_file1.json /opt/xcat/share/xcat/tools/autotest/testcase/xcat_inventory/templates/diff/xcat-inventory_diff_file2.json --source /opt/xcat/share/xcat/tools/autotest/testcase/xcat_inventory/templates/diff/xcat-inventory_diff_file2.json
 check:output=~Error: '--files' and '--source' cannot be used together!
 check:rc!=0
 end
 
 start:xcat_inventory_diff_filename
 description:This case is used to test xcat-inventory diff filename, should be error
-label:others,xcat_inventory
+label:others,inventory_ci
 cmd:xcat-inventory diff --filename test_filename
-check:output=~Error: No valid source type!
+check:output=~Backend not initialized, please initialize the backend with
 check:rc!=0
 end
 
 start:xcat_inventory_diff_no_exist_file
 description:This case is used to test xcat-inventory diff files, if the given file not exist, show error message
-label:others,xcat_inventory
-cmd:xcat-inventory diff --files /opt/xcat/share/xcat/tools/autotest/testcase/xcat-inventory/templates/diff/noexist.file /opt/xcat/share/xcat/tools/autotest/testcase/xcat-inventory/templates/diff/xcat-inventory_diff_file2.json
-check:output=~Error: File '/opt/xcat/share/xcat/tools/autotest/testcase/xcat-inventory/templates/diff/noexist.file' does not exist, please check...
+label:others,inventory_ci
+cmd:xcat-inventory diff --files /opt/xcat/share/xcat/tools/autotest/testcase/xcat_inventory/templates/diff/noexist.file /opt/xcat/share/xcat/tools/autotest/testcase/xcat_inventory/templates/diff/xcat-inventory_diff_file2.json
+check:output=~Error: File '/opt/xcat/share/xcat/tools/autotest/testcase/xcat_inventory/templates/diff/noexist.file' does not exist, please check...
 check:rc!=0
-cmd:xcat-inventory diff --source /opt/xcat/share/xcat/tools/autotest/testcase/xcat-inventory/templates/diff/noexist.file
-check:output=~Error: File '/opt/xcat/share/xcat/tools/autotest/testcase/xcat-inventory/templates/diff/noexist.file' does not exist, please check...
+cmd:xcat-inventory diff --source /opt/xcat/share/xcat/tools/autotest/testcase/xcat_inventory/templates/diff/noexist.file
+check:output=~Error: File '/opt/xcat/share/xcat/tools/autotest/testcase/xcat_inventory/templates/diff/noexist.file' does not exist, please check...
 check:rc!=0
 end
 
 start:xcat_inventory_diff_files
 description:This case is used to test xcat-inventory diff files
-label:others,xcat_inventory
-cmd:xcat-inventory diff --files /opt/xcat/share/xcat/tools/autotest/testcase/xcat-inventory/templates/diff/xcat-inventory_diff_file1.json /opt/xcat/share/xcat/tools/autotest/testcase/xcat-inventory/templates/diff/xcat-inventory_diff_file2.json > /tmp/xcat_inventory_diff_files.result
+label:others,inventory_ci
+cmd:xcat-inventory diff --files /opt/xcat/share/xcat/tools/autotest/testcase/xcat_inventory/templates/diff/xcat-inventory_diff_file1.json /opt/xcat/share/xcat/tools/autotest/testcase/xcat_inventory/templates/diff/xcat-inventory_diff_file2.json > /tmp/xcat_inventory_diff_files.result
 check:rc==0
-cmd:sh /opt/xcat/share/xcat/tools/autotest/testcase/xcat-inventory/templates/diff/change_name.sh /opt/xcat/share/xcat/tools/autotest/testcase/xcat-inventory/templates/diff/xcat-inventory_diff_file1.json /opt/xcat/share/xcat/tools/autotest/testcase/xcat-inventory/templates/diff/xcat-inventory_diff_file2.json /tmp/tmp_diff.result
+cmd:sh /opt/xcat/share/xcat/tools/autotest/testcase/xcat_inventory/templates/diff/change_name.sh /opt/xcat/share/xcat/tools/autotest/testcase/xcat_inventory/templates/diff/xcat-inventory_diff_file1.json /opt/xcat/share/xcat/tools/autotest/testcase/xcat_inventory/templates/diff/xcat-inventory_diff_file2.json /tmp/tmp_diff.result
 check:rc==0
 cmd:diff /tmp/xcat_inventory_diff_files.result /tmp/tmp_diff.result
 check:output=
@@ -74,10 +74,10 @@ end
 
 start:xcat_inventory_diff_files_filename
 description:This case is used to test xcat-inventory diff files filename
-label:others,xcat_inventory
-cmd:xcat-inventory diff --files /opt/xcat/share/xcat/tools/autotest/testcase/xcat-inventory/templates/diff/xcat-inventory_diff_file1.json /opt/xcat/share/xcat/tools/autotest/testcase/xcat-inventory/templates/diff/xcat-inventory_diff_file2.json --filename xcat_inventory_diff_files_filename.test > /tmp/xcat_inventory_diff_files_filename.result
+label:others,inventory_ci
+cmd:xcat-inventory diff --files /opt/xcat/share/xcat/tools/autotest/testcase/xcat_inventory/templates/diff/xcat-inventory_diff_file1.json /opt/xcat/share/xcat/tools/autotest/testcase/xcat_inventory/templates/diff/xcat-inventory_diff_file2.json --filename xcat_inventory_diff_files_filename.test > /tmp/xcat_inventory_diff_files_filename.result
 check:rc==0
-cmd:sh /opt/xcat/share/xcat/tools/autotest/testcase/xcat-inventory/templates/diff/change_name.sh xcat_inventory_diff_files_filename.test xcat_inventory_diff_files_filename.test /tmp/tmp_diff.result
+cmd:sh /opt/xcat/share/xcat/tools/autotest/testcase/xcat_inventory/templates/diff/change_name.sh xcat_inventory_diff_files_filename.test xcat_inventory_diff_files_filename.test /tmp/tmp_diff.result
 check:rc==0
 cmd:diff /tmp/xcat_inventory_diff_files_filename.result /tmp/tmp_diff.result
 check:output=
@@ -86,15 +86,15 @@ end
 
 start:xcat_inventory_diff_source
 description:This case is used to test xcat-inventory diff source
-label:others,xcat_inventory
+label:others,inventory_ci
 cmd:rm -rf /tmp/xcat-inventory_diff_case.json
 cmd:xcat-inventory export --format json -f /tmp/xcat-inventory_diff_case.json
 check:rc==0
-cmd:xcat-inventory import -f /opt/xcat/share/xcat/tools/autotest/testcase/xcat-inventory/templates/diff/xcat-inventory_diff_file1.json
+cmd:xcat-inventory import -f /opt/xcat/share/xcat/tools/autotest/testcase/xcat_inventory/templates/diff/xcat-inventory_diff_file1.json
 check:rc==0
-cmd:xcat-inventory diff --source /opt/xcat/share/xcat/tools/autotest/testcase/xcat-inventory/templates/diff/xcat-inventory_diff_file2.json > /tmp/xcat_inventory_diff_source.result
+cmd:xcat-inventory diff --source /opt/xcat/share/xcat/tools/autotest/testcase/xcat_inventory/templates/diff/xcat-inventory_diff_file2.json > /tmp/xcat_inventory_diff_source.result
 check:rc==0
-cmd:diff /tmp/xcat_inventory_diff_source.result /opt/xcat/share/xcat/tools/autotest/testcase/xcat-inventory/templates/diff/diff_source.result
+cmd:diff /tmp/xcat_inventory_diff_source.result /opt/xcat/share/xcat/tools/autotest/testcase/xcat_inventory/templates/diff/diff_source.result
 check:output=
 check:rc==0
 cmd:xcat-inventory import -c -f /tmp/xcat-inventory_diff_case.json

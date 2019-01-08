@@ -167,8 +167,8 @@ my %rsp_set_valid_values = (
     autoreboot            => "0|1",
     bootmode              => "regular|safe|setup",
     powersupplyredundancy => "disabled|enabled",
-    powerrestorepolicy    => "restore|always_on|always_off",
-    timesyncmethod        => "ntp|manual",
+    powerrestorepolicy    => "always_off|always_on|restore",
+    timesyncmethod        => "manual|ntp",
 );
 my @rspconfig_get_options = (@rsp_common_options, qw/ipsrc sshcfg gard dump/);
 #-------------------------------------------------------

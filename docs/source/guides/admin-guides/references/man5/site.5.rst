@@ -269,7 +269,7 @@ site Attributes:
    genpasswords:  Automatically generate random passwords for BMCs when configuring
                   them.
   
-   installdir:  The local directory name used to hold the node deployment packages.
+   installdir:  The local directory name used to hold the node deployment packages(obsoleted).
   
    installloc:  The location from which the service nodes should mount the 
                 deployment packages in the format hostname:/path.  If hostname is

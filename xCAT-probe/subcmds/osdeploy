@@ -1169,10 +1169,11 @@ sub handle_cluster_msg {
     my $log_msg = $log_ref->{msg};
     my @split_log = split(/\s+/, $log_msg);
 
-    if ($split_log[1] eq "Allowing") {
-        my $command     = $split_log[2];
-        my $nodes_str   = $split_log[4];
-        my $sub_command = $split_log[5];
+    # As xcat log message will in both messages.log and cluster.log, need to filter one to avoid the duplication
+    if ($split_log[1] eq "xCAT:" && $split_log[2] eq "Allowing") {
+        my $command     = $split_log[3];
+        my $nodes_str   = $split_log[5];
+        my $sub_command = $split_log[6];
 
         if ($command eq "rinstall" or $command eq "rnetboot" or ($command eq "rpower" and $sub_command =~ /on|boot|reset/) or ($command eq "xdsh" and $log_msg =~ /reboot|shutdown -r/)) {
             my @nodes = probe_utils->parse_node_range($nodes_str);
@@ -1188,7 +1189,7 @@ sub handle_cluster_msg {
                 }
             }
         }
-    } elsif ($log_ref->{msg} =~ /(.+)\s+status:\s+(.+)\s+statustime:/) {
+    } elsif ($log_ref->{msg} =~ /INFO xcat.updatestatus - (.+):\s+changing status=(.+)/) {
         my $nodes  = $1;
         my $status = $2;
         my $record = "Node status is changed to $status";

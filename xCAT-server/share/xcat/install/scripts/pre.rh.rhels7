@@ -178,6 +178,12 @@ if uname -r|grep -q '^3.*el7'; then
     FSTYPE=xfs
     EFIFSTYPE=efi
 fi
+
+#remove any exiting "xcatvg" VG to avoid fatal error
+vgs > /tmp/vgs 2>&1
+vgchange -a n xcatvg
+vgremove -f xcatvg
+
 msgutil_r "$MASTER_IP" "info" "Found $instdisk, generate partition file..." "/var/log/xcat/xcat.log" "$log_label"
 echo "ignoredisk --only-use=$instdisk" >> /tmp/partitionfile
 if [ `uname -m` = "ppc64" -o `uname -m` = "ppc64le" ]; then
@@ -191,8 +197,8 @@ fi
 echo "part /boot --size 512 --fstype $BOOTFSTYPE --ondisk $instdisk" >> /tmp/partitionfile
 echo "part swap --recommended --ondisk $instdisk" >> /tmp/partitionfile
 echo "part pv.01 --size 1 --grow --ondisk $instdisk" >> /tmp/partitionfile
-echo "volgroup system pv.01" >> /tmp/partitionfile
-echo "logvol / --vgname=system --name=root --size 1 --grow --fstype $FSTYPE" >> /tmp/partitionfile
+echo "volgroup xcatvg pv.01" >> /tmp/partitionfile
+echo "logvol / --vgname=xcatvg --name=root --size 1 --grow --fstype $FSTYPE" >> /tmp/partitionfile
 
 #specify "bootloader" configuration in "/tmp/partitionfile" if there is no user customized partition file
 BOOTLOADER="bootloader "

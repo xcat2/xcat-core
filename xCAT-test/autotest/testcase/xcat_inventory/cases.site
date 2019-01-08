@@ -1,7 +1,7 @@
 start:export_import_site_by_yaml
 description:This case is used to test xcat-inventory export and import site table by yaml between 2 excat same MNs. Before running this case, make sure these two MNs have been installed same excatly, and the current MN can connect the other MN by ssh without password.This case also can be run in one MN, this is, export from currnet node then import back to currnet node, in this case, just need to set $$DSTMN=<currnet node ip>
 Attribute: $$DSTMN - the ip of MN which is used to run import operation.
-label:others,xcat_inventory
+label:others,inventory_ci
 cmd:mkdir -p /tmp/export_import_site_by_yaml
 check:rc==0
 cmd:ssh $$DSTMN ' source /etc/profile.d/xcat.sh;mkdir -p /tmp/export_import_site_by_yaml_$$DSTMN/'
@@ -48,7 +48,7 @@ end
 start:export_import_site_by_json
 description:This case is used to test xcat-inventory export and import site table by json between 2 excat same MNs. Before running this case, make sure these two MNs have been installed same excatly, and the current MN can connect the other MN by ssh without password.This case also can be run in one MN, this is, export from currnet node then import back to currnet node, in this case, just need to set $$DSTMN=<currnet node ip>
 Attribute: $$DSTMN - the ip of MN which is used to run import operation.
-label:others,xcat_inventory
+label:others,inventory_ci
 cmd:mkdir -p /tmp/export_import_site_by_json
 check:rc==0
 cmd:ssh $$DSTMN ' source /etc/profile.d/xcat.sh;mkdir -p /tmp/export_import_site_by_json_$$DSTMN/'
@@ -93,7 +93,7 @@ end
 
 
 start:xcat_inventory_try_to_export_all_type_is_site_default_format
-label:others,xcat_inventory
+label:others,inventory_ci
 description:This case is used to test xcat-inventory export all definition which type is site to default file. I.e. json file
 cmd:mkdir -p /tmp/xcat_inventory_try_to_export_all_type_is_site_default_format
 check:rc==0
@@ -101,100 +101,99 @@ cmd: lsdef -t site -o clustersite -z >/tmp/xcat_inventory_try_to_export_all_type
 check:rc==0
 cmd:mnip=$(lsdef -t site -o clustersite -i master -c|awk -F'=' '{print $2}');chdef -t site -o clustersite  useSSHonAIX=0 useNFSv4onAIX=0 FQDNfirst=1 SNsyncfiledir='/var/xcat/syncfiles' auditnosyslog=0 auditskipcmds=ALL blademaxp=64 cleanupxcatpost=no consoleondemand=no databaseloc='/var/lib' db2installloc='/mntdb2' dbtracelevel=0 defserialflow=0 defserialport=0 defserialspeed=9600 dhcpinterfaces=eth0 dhcplease=43200 dhcpsetup=n disjointdhcps=1 dnshandler=ddns dnsinterfaces='xcatmn|eth1,eth2;service|bond0' dnsupdaters=dnsupdaters domain='pok.stglabs.ibm.com' enableASMI=no excludenodes=excludenodes externaldns=externaldns extntpservers=extntpservers forwarders=$mnip fsptimeout=0 genmacprefix='00:11:aa' genpasswords=genpasswords hierarchicalattrs=hierarchicalattrs httpport=80 hwctrldispatch=y installdir='/install/' installloc='hostname:/path' ipmidispatch=y ipmimaxp=64 ipmiretries=3 ipmisdrcache=no ipmitimeout=2 iscsidir='/iscsidir' managedaddressmode=dhcp master=$mnip maxssh=8 mnroutenames=mnroutenames nameservers=$mnip nmapoptions='--min-rtt-timeout' nodestatus=n nodesyncfiledir='/var/xcat/node/syncfiles' ntpservers=$mnip persistkvmguests=y powerinterval=0 ppcmaxp=64 ppcretry=3 ppctimeout=0 precreatemypostscripts=1 pruneservices=1 runbootscripts=yes setinstallnic=1 sharedinstall=no sharedtftp=1 skiptables=nics skipvalidatelog=1 snmpc=snmpc sshbetweennodes=ALLGROUPS svloglocal=1 syspowerinterval=10 syspowermaxnodes=10 tftpdir='/tftprot/' tftpflags='-v' timezone='America/New_York' useNmapfromMN=no useflowcontrol=no usexhrm=no vcenterautojoin=no vmwarereconfigonpower=no vsftp=n xcatconfdir='/etc/xcat' xcatdebugmode=1 xcatdport=3001 xcatiport=3002 xcatlport=3003 xcatmaxbatchconnections=64 xcatmaxconnections=60 xcatsslciphers='3DES' xcatsslversion=TLSv1
 check:rc==0
-cmd:#!/bin/bash
-echo " 
- schema_version: '2.0'
- site:
-   clustersite:
-     FQDNfirst: '1'
-     SNsyncfiledir: /var/xcat/syncfiles
-     auditnosyslog: '0'
-     auditskipcmds: ALL
-     blademaxp: '64'
-     cleanupxcatpost: 'no'
-     consoleondemand: 'no'
-     databaseloc: /var/lib
-     db2installloc: /mntdb2
-     dbtracelevel: '0'
-     defserialflow: '0'
-     defserialport: '0'
-     defserialspeed: '9600'
-     dhcpinterfaces: eth0
-     dhcplease: '43200'
-     dhcpsetup: n
-     disjointdhcps: '1'
-     dnshandler: ddns
-     dnsinterfaces: xcatmn|eth1,eth2;service|bond0
-     dnsupdaters: dnsupdaters
-     domain: pok.stglabs.ibm.com
-     enableASMI: 'no'
-     excludenodes: excludenodes
-     externaldns: externaldns
-     extntpservers: extntpservers
-     forwarders: 10.3.1.13
-     fsptimeout: '0'
-     genmacprefix: 00:11:aa
-     genpasswords: genpasswords
-     hierarchicalattrs: hierarchicalattrs
-     httpport: '80'
-     hwctrldispatch: y
-     installdir: /install/
-     installloc: hostname:/path
-     ipmidispatch: y
-     ipmimaxp: '64'
-     ipmiretries: '3'
-     ipmisdrcache: 'no'
-     ipmitimeout: '2'
-     iscsidir: /iscsidir
-     managedaddressmode: dhcp
-     master: 10.3.1.13
-     maxssh: '8'
-     mnroutenames: mnroutenames
-     nameservers: 10.3.1.13
-     nmapoptions: --min-rtt-timeout
-     nodestatus: n
-     nodesyncfiledir: /var/xcat/node/syncfiles
-     ntpservers: 10.3.1.13
-     persistkvmguests: y
-     powerinterval: '0'
-     ppcmaxp: '64'
-     ppcretry: '3'
-     ppctimeout: '0'
-     precreatemypostscripts: '1'
-     pruneservices: '1'
-     runbootscripts: 'yes'
-     setinstallnic: '1'
-     sharedinstall: 'no'
-     sharedtftp: '1'
-     skiptables: nics
-     skipvalidatelog: '1'
-     snmpc: snmpc
-     sshbetweennodes: ALLGROUPS
-     svloglocal: '1'
-     syspowerinterval: '10'
-     syspowermaxnodes: '10'
-     tftpdir: /tftprot/
-     tftpflags: -v
-     timezone: America/New_York
-     useNFSv4onAIX: '0'
-     useNmapfromMN: 'no'
-     useSSHonAIX: '0'
-     useflowcontrol: 'no'
-     usexhrm: 'no'
-     vcenterautojoin: 'no'
-     vmwarereconfigonpower: 'no'
-     vsftp: n
-     xcatconfdir: /etc/xcat
-     xcatdebugmode: '1'
-     xcatdport: '3001'
-     xcatiport: '3002'
-     xcatlport: '3003'
-     xcatmaxbatchconnections: '64'
-     xcatmaxconnections: '60'
-     xcatsslciphers: 3DES
-     xcatsslversion: TLSv1
- " > /tmp/xcat_inventory_try_to_export_all_type_is_site_default_format/site.org
-cmd:mnip=$(lsdef -t site -o clustersite -i master -c|awk -F'=' '{print $2}');sed -i "s/10.3.5.8/$mnip/g" /tmp/xcat_inventory_try_to_export_all_type_is_site_default_format/site.org
+cmd:echo " 
+schema_version: '2.0'
+site:
+  clustersite:
+    FQDNfirst: '1'
+    SNsyncfiledir: /var/xcat/syncfiles
+    auditnosyslog: '0'
+    auditskipcmds: ALL
+    blademaxp: '64'
+    cleanupxcatpost: 'no'
+    consoleondemand: 'no'
+    databaseloc: /var/lib
+    db2installloc: /mntdb2
+    dbtracelevel: '0'
+    defserialflow: '0'
+    defserialport: '0'
+    defserialspeed: '9600'
+    dhcpinterfaces: eth0
+    dhcplease: '43200'
+    dhcpsetup: n
+    disjointdhcps: '1'
+    dnshandler: ddns
+    dnsinterfaces: xcatmn|eth1,eth2;service|bond0
+    dnsupdaters: dnsupdaters
+    domain: pok.stglabs.ibm.com
+    enableASMI: 'no'
+    excludenodes: excludenodes
+    externaldns: externaldns
+    extntpservers: extntpservers
+    forwarders: 10.3.1.13
+    fsptimeout: '0'
+    genmacprefix: 00:11:aa
+    genpasswords: genpasswords
+    hierarchicalattrs: hierarchicalattrs
+    httpport: '80'
+    hwctrldispatch: y
+    installdir: /install/
+    installloc: hostname:/path
+    ipmidispatch: y
+    ipmimaxp: '64'
+    ipmiretries: '3'
+    ipmisdrcache: 'no'
+    ipmitimeout: '2'
+    iscsidir: /iscsidir
+    managedaddressmode: dhcp
+    master: 10.3.1.13
+    maxssh: '8'
+    mnroutenames: mnroutenames
+    nameservers: 10.3.1.13
+    nmapoptions: --min-rtt-timeout
+    nodestatus: n
+    nodesyncfiledir: /var/xcat/node/syncfiles
+    ntpservers: 10.3.1.13
+    persistkvmguests: y
+    powerinterval: '0'
+    ppcmaxp: '64'
+    ppcretry: '3'
+    ppctimeout: '0'
+    precreatemypostscripts: '1'
+    pruneservices: '1'
+    runbootscripts: 'yes'
+    setinstallnic: '1'
+    sharedinstall: 'no'
+    sharedtftp: '1'
+    skiptables: nics
+    skipvalidatelog: '1'
+    snmpc: snmpc
+    sshbetweennodes: ALLGROUPS
+    svloglocal: '1'
+    syspowerinterval: '10'
+    syspowermaxnodes: '10'
+    tftpdir: /tftprot/
+    tftpflags: -v
+    timezone: America/New_York
+    useNFSv4onAIX: '0'
+    useNmapfromMN: 'no'
+    useSSHonAIX: '0'
+    useflowcontrol: 'no'
+    usexhrm: 'no'
+    vcenterautojoin: 'no'
+    vmwarereconfigonpower: 'no'
+    vsftp: n
+    xcatconfdir: /etc/xcat
+    xcatdebugmode: '1'
+    xcatdport: '3001'
+    xcatiport: '3002'
+    xcatlport: '3003'
+    xcatmaxbatchconnections: '64'
+    xcatmaxconnections: '60'
+    xcatsslciphers: 3DES
+    xcatsslversion: TLSv1
+" > /tmp/xcat_inventory_try_to_export_all_type_is_site_default_format/site.org
+cmd:mnip=$(lsdef -t site -o clustersite -i master -c|awk -F'=' '{print $2}');sed -i "s/10.3.1.13/$mnip/g" /tmp/xcat_inventory_try_to_export_all_type_is_site_default_format/site.org
 check:rc==0
 cmd:xcat-inventory export -t site |tee /tmp/xcat_inventory_try_to_export_all_type_is_site_default_format/site.export
 check:rc==0
@@ -208,7 +207,7 @@ check:rc==0
 end
 
 start:xcat_inventory_try_to_export_all_type_is_site_json_format
-label:others,xcat_inventory
+label:others,inventory_ci
 description:This case is used to test xcat-inventory export all definition which type is site to default file. I.e. json file
 cmd:mkdir -p /tmp/xcat_inventory_try_to_export_all_type_is_site_json_format
 check:rc==0
@@ -325,7 +324,7 @@ check:rc==0
 end
 
 start:xcat_inventory_try_to_export_all_type_is_site_yaml_format
-label:others,xcat_inventory
+label:others,inventory_ci
 description:This case is used to test xcat-inventory export all definition which type is site to default file. I.e. json file
 cmd:mkdir -p /tmp/xcat_inventory_try_to_export_all_type_is_site_yaml_format
 check:rc==0
@@ -439,7 +438,7 @@ end
 
 
 start:xcat_inventory_try_to_import_all_type_is_site_json_format
-label:others,xcat_inventory
+label:others,inventory_ci
 description:This case is used to test xcat-inventory impport all definition which type is site from json file.
 cmd:mkdir -p /tmp/xcat_inventory_try_to_import_all_type_is_site_json_format
 check:rc==0
@@ -449,8 +448,7 @@ cmd:for i in 1 2 3; do lsdef bogusnode$i > /dev/null 2>&1;if [[ $? -eq 0 ]]; the
 check:rc==0
 cmd:lsdef -t group bogusgroup > /dev/null 2>&1;if [[ $? -eq 0 ]]; then lsdef -t group bogusgroup -z >> /tmp/xcat_inventory_try_to_import_all_type_is_site_json_format/bogusnode.stanza;rmdef -t group bogusgroup; fi
 check:rc==0
-cmd:#!/usr/bin/bash
-echo '{
+cmd:echo '{
     "network": {
         "100_0_0_0-255_0_0_0": {
             "basic_attr": {
@@ -747,8 +745,7 @@ echo '{
     }
 }' >  /tmp/xcat_inventory_try_to_import_all_type_is_site_json_format/json.test
 check:rc==0
-cmd:#!/bin/bash
-echo "Object name: clustersite
+cmd:echo "Object name: clustersite
     FQDNfirst=1
     SNsyncfiledir=/var/xcat/syncfiles
     auditnosyslog=0
@@ -870,7 +867,7 @@ check:rc==0
 end
 
 start:xcat_inventory_try_to_import_all_type_is_site_yaml_format
-label:others,xcat_inventory
+label:others,inventory_ci
 description:This case is used to test xcat-inventory impport all definition which type is site from json file.
 cmd:mkdir -p /tmp/xcat_inventory_try_to_import_all_type_is_site_yaml_format
 check:rc==0
@@ -880,8 +877,7 @@ cmd:for i in 1 2 3; do lsdef bogusnode$i > /dev/null 2>&1;if [[ $? -eq 0 ]]; the
 check:rc==0
 cmd:lsdef -t group bogusgroup > /dev/null 2>&1;if [[ $? -eq 0 ]]; then lsdef -t group bogusgroup -z >> /tmp/xcat_inventory_try_to_import_all_type_is_site_yaml_format/bogusnode.stanza;rmdef -t group bogusgroup; fi
 check:rc==0
-cmd:#!/usr/bin/bash
-echo "network:
+cmd:echo "network:
   100_0_0_0-255_0_0_0:
     basic_attr:
       gateway: 100.0.0.103
@@ -1114,8 +1110,7 @@ site:
     xcatsslciphers: 3DES
     xcatsslversion: TLSv1" >  /tmp/xcat_inventory_try_to_import_all_type_is_site_yaml_format/yaml.test
 check:rc==0
-cmd:#!/bin/bash
-echo "Object name: clustersite
+cmd:echo "Object name: clustersite
     FQDNfirst=1
     SNsyncfiledir=/var/xcat/syncfiles
     auditnosyslog=0
@@ -1213,7 +1208,7 @@ check:rc==0
 cmd:lsdef -t site -o clustersite > /tmp/xcat_inventory_try_to_import_all_type_is_site_yaml_format/site.import
 check:rc==0
 cmd:#!/bin/bash
-diff -y --ignore-blank-lines  --ignore-matching-lines="^#"  /tmp/xcat_inventory_try_to_import_all_type_is_site_yaml_format/site.org  /tmp/xcat_inventory_try_to_import_all_type_is_site_yaml_format/site.import
+diff -y --ignore-blank-lines  --ignore-matching-lines="^#" /tmp/xcat_inventory_try_to_import_all_type_is_site_yaml_format/site.org  /tmp/xcat_inventory_try_to_import_all_type_is_site_yaml_format/site.import
 check:rc==0
 cmd:lsdef bogusgroup1
 check:output=~Error: (\[.*?\]: )?Could not find an object
@@ -1240,7 +1235,7 @@ end
 start:export_site_table_then_modify_yaml_then_import
 This case is used to test xcat-inventory import a site , then modify the export yaml file, then import the yaml file
 Attribute: $$DSTMN - the ip of MN which is used to run import operation.
-label:others,xcat_inventory
+label:others,inventory_ci
 cmd:mkdir -p /tmp/export_site_table_then_modify_yaml_then_import
 check:rc==0
 cmd:ssh $$DSTMN ' source /etc/profile.d/xcat.sh;mkdir -p /tmp/export_site_table_then_modify_yaml_then_import_$$DSTMN/'
@@ -1304,7 +1299,7 @@ end
 start:export_site_table_then_modify_json_then_import
 This case is used to test xcat-inventory import a site , then modify the export json file, then import the json file
 Attribute: $$DSTMN - the ip of MN which is used to run import operation.
-label:others,xcat_inventory
+label:others,inventory_ci
 cmd:mkdir -p /tmp/export_site_table_then_modify_json_then_import
 check:rc==0
 cmd:ssh $$DSTMN ' source /etc/profile.d/xcat.sh;mkdir -p /tmp/export_site_table_then_modify_json_then_import_$$DSTMN/'

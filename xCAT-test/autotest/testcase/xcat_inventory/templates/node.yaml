@@ -21,8 +21,8 @@ node:
       noderesnimserver: nimserver
       noderesprimarynic: primarynic
       noderesproxydhcp: supportproxydhcp
-      servicenodeftpserver: setupftp
-      servicenodenimserver: setupnim
+#      servicenodeftpserver: setupftp
+#      servicenodenimserver: setupnim
       storagecontroller: storagcontroller
       storageosvolume: osvolume
       storagetype: storagetype
@@ -101,6 +101,11 @@ node:
           pdu: pdu
         engine_type: power
     network_info:
+      connections:
+        interface: switchinterface
+        switch: switch
+        switchport: '50'
+        vlan: switchvlan
       nics:
         bond0:
           nicdevices:
@@ -202,14 +207,11 @@ node:
         ip: 10.10.10.10
         mac:
         - 42:d6:0a:03:05:08
-        switch: switch
-        switchinterface: switchinterface
-        switchport: '50'
-        switchvlan: switchvlan
       routenames: routenames
     obj_info:
       description: usercomment
       groups: bogusgroup
+      grouptype: static
     obj_type: node
     position_info:
       chassis: chassis
@@ -239,7 +241,8 @@ node:
       tftpserver: tftpserver
       xcatmaster: xcatmaster
     security_info:
-      productkey: productkey
+      productkey:
+        key: productkey
       zonename: zonename
   boguspdu:
     deprecated:
@@ -340,6 +343,11 @@ node:
           pdu: pdu
         engine_type: power
     network_info:
+      connections:
+        interface: switchinterface
+        switch: switch
+        switchport: '50'
+        vlan: switchvlan
       nics:
         bond0:
           nicdevices:
@@ -439,14 +447,11 @@ node:
         ip: 10.10.10.10
         mac:
         - 42:d6:0a:03:05:08
-        switch: switch
-        switchinterface: switchinterface
-        switchport: '50'
-        switchvlan: switchvlan
       routenames: routenames
     obj_info:
       description: usercomment
       groups: bogusgroup
+      grouptype: static
     obj_type: node
     position_info:
       chassis: chassis
@@ -476,7 +481,8 @@ node:
       tftpserver: tftpserver
       xcatmaster: xcatmaster
     security_info:
-      productkey: productkey
+      productkey:
+        key: productkey
       remotecontrol:
         password: password
         username: username
@@ -587,6 +593,11 @@ node:
           pdu: pdu
         engine_type: power
     network_info:
+      connections:
+        interface: switchinterface
+        switch: switch
+        switchport: '50'
+        vlan: switchvlan
       linkports: linkports
       nics:
         bond0:
@@ -687,14 +698,11 @@ node:
         ip: 10.10.10.10
         mac:
         - 42:d6:0a:03:05:08
-        switch: switch
-        switchinterface: switchinterface
-        switchport: '50'
-        switchvlan: switchvlan
       routenames: routenames
     obj_info:
       description: usercomment
       groups: bogusgroup
+      grouptype: static
     obj_type: node
     position_info:
       chassis: chassis
@@ -724,7 +732,8 @@ node:
       tftpserver: tftpserver
       xcatmaster: xcatmaster
     security_info:
-      productkey: productkey
+      productkey:
+        key: productkey
       remotecontrol:
         password: password
         remoteprotocol: ssh
@@ -737,5 +746,4 @@ node:
         username: snmpusername
         version: SNMPv1
       zonename: zonename
-schema_version: '1.0'
-
+schema_version: '2.0'

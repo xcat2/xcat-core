@@ -509,7 +509,12 @@ sub do_installm_service {
                             node    => [$node],
                             arg     => ["$newstat"],
                         );
-                        xCAT::MsgUtils->trace(0, "I", "xcatd: triggering \'updatenodestat $node $newstat\'...");
+                        # TODO, better to use constant here for the specified status
+                        if ($newstat eq 'installing') {
+                            xCAT::MsgUtils->trace(0, "I", "xcat.updatestatus - $node: provisioning detected...");
+                        } elsif ($newstat eq 'netbooting') {
+                            xCAT::MsgUtils->trace(0, "I", "xcat.updatestatus - $node: provisioning detected...");
+                        }
                         # node should be blocked, race condition may occur otherwise
                         #my $pid=xCAT::Utils->xfork();
                         #unless ($pid) { # fork off the nodeset and potential slowness

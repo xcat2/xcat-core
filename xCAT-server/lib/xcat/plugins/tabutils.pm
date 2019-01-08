@@ -732,6 +732,18 @@ sub tabdump
             foreach my $w (@{$OPTW}) {    # get each attr=val
                 push @attrarray, $w;
             }
+            my $keys = xCAT::Table::buildWhereClause(\@attrarray, "1");
+            if (ref($keys) ne 'ARRAY')  {
+                $cb->({ error => ["$keys"], errorcode => [1] });
+                return;
+            } else {
+                foreach my $k (@$keys) {
+                    unless (grep /$k/, @{ $xCAT::Schema::tabspec{$table}->{cols} }) {
+                        $cb->({ error => ["No column \"$k\" in table \"$table\""], errorcode => [1] });
+                        return;
+                    }
+                }
+            }
             @ents = $tabh->getAllAttribsWhere(\@attrarray, 'ALL');
             @$recs = ();
             foreach my $e (@ents) {
@@ -2369,6 +2381,16 @@ sub tabch {
                     return 1;
 
                 }
+            }
+            my $err_found = 0;
+            for my $k (keys %keyhash) {
+                unless (grep /$k/, @{ $xCAT::Schema::tabspec{$table}->{cols} }) {
+                    $callback->({ error => ["No column \"$k\" in table \"$table\""], errorcode => [1] });
+                    $err_found = 1;
+                }
+            }
+            if ($err_found) {
+                return 1;
             }
 
             #splice assignment

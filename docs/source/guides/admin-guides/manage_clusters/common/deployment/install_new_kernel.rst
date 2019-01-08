@@ -4,9 +4,9 @@ Installing a New Kernel in the Diskless Image
 
 Note: This procedure assumes you are using xCAT 2.6.1 or later.
 
-The kerneldir attribute in linuximage table can be used to assign a directory containing kernel RPMs that can be installed into diskless images. The default for kernerdir is /install/kernels. To add a new kernel, create a directory named <kernelver> under the kerneldir, and genimage will pick them up from there.
+To add a new kernel, create a directory named <kernelver> under ``/install/kernels`` directory, and ``genimage`` will pick them up from there.
 
-The following examples assume you have the kernel RPM in /tmp and is using the default value for kerneldir (/install/kernels).
+The following examples assume you have the kernel RPM in ``/tmp`` and is using a new kernel in the directory ``/install/kernels/<kernelver>``.
 
 
 The RPM names below are only examples, substitute your specific level and architecture.
@@ -20,6 +20,9 @@ For example, kernel-3.10.0-229.ael7b.ppc64le.rpm means kernelver=3.10.0-229.ael7
         mkdir -p /install/kernels/3.10.0-229.ael7b.ppc64le
         cp /tmp/kernel-3.10.0-229.ael7b.ppc64le.rpm /install/kernels/3.10.0-229.ael7b.ppc64le
         createrepo /install/kernels/3.10.0-229.ael7b.ppc64le/
+
+Append kernel directory ``/install/kernels/<kernelver>`` in ``pkgdir`` of specific osimage. ::
+
         chdef -t osimage <imagename> -p pkgdir=/install/kernels/3.10.0-229.ael7b.ppc64le/
 
 Run genimage/packimage to update the image with the new kernel.
@@ -45,6 +48,9 @@ The "4.6.ppc64le" is replaced with "4-ppc64le": ::
          cp /tmp/kernel-default-3.12.28-4.6.ppc64le.rpm /install/kernels/3.12.28-4-ppc64le/
          cp /tmp/kernel-default-base-3.12.28-4.6.ppc64le.rpm /install/kernels/3.12.28-4-ppc64le/
          cp /tmp/kernel-default-devel-3.12.28-4.6.ppc64le.rpm /install/kernels/3.12.28-4-ppc64le/
+
+Append kernel directory ``/install/kernels/<kernelver>`` in ``pkgdir`` of specific osimage. ::
+
          chdef -t osimage <imagename> -p pkgdir=/install/kernels/3.12.28-4-ppc64le/
 
 Run genimage/packimage to update the image with the new kernel.
