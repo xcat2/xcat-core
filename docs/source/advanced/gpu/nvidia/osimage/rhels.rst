@@ -189,7 +189,7 @@ xCAT includes a script, ``cuda_power9_setup`` as example, to help user handle th
 Diskful osimage
 ^^^^^^^^^^^^^^^
 
-For diskful deployment, there is no need to change the osimage definition. Instead, add this postscript to your compute node postbootscrtips list. ::
+For diskful deployment, there is no need to change the osimage definition. Instead, add this postscript to your compute node postscripts list. ::
 
     chdef p9compute -p postscripts=cuda_power9_setup
 
