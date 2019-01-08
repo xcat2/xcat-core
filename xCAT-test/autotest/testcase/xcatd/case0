@@ -10,7 +10,7 @@ check:output=~Active: active \(running\)|xcatd service is running
 cmd:ps axjf |grep -v grep |grep "xcatd:" | tee /tmp/xcatd_start/original_xcatd_processes_status
 check:rc==0
 cmd:cat /tmp/xcatd_start/original_xcatd_processes_status |wc -l
-check:output=~6
+#check:output=~6
 cmd:service xcatd stop
 check:rc==0
 cmd:sleep 3
