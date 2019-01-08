@@ -33,6 +33,77 @@ my %module_type = (
     "redfish" => "Redfish",
 );
 
+#-------------------------------------------------------
+
+=head3  parse_node_info
+
+  Parse the node information: bmc, bmcip, username, password
+
+=cut
+
+#-------------------------------------------------------
+sub parse_node_info {
+    my $noderange = shift;
+    my $module = shift;
+    my $node_info_ref = shift;
+    my $callback = shift;
+    my $rst = 0;
+
+    my $passwd_table = xCAT::Table->new('passwd');
+    my $passwd_hash = $passwd_table->getAttribs({ 'key' => $module }, qw(username password));
+
+    my $openbmc_table = xCAT::Table->new('openbmc');
+    my $openbmc_hash = $openbmc_table->getNodesAttribs(\@$noderange, ['bmc', 'username', 'password']);
+
+    foreach my $node (@$noderange) {
+        if (defined($openbmc_hash->{$node}->[0])) {
+            if ($openbmc_hash->{$node}->[0]->{'bmc'}) {
+                $node_info_ref->{$node}->{bmc} = $openbmc_hash->{$node}->[0]->{'bmc'};
+                $node_info_ref->{$node}->{bmcip} = xCAT::NetworkUtils::getNodeIPaddress($openbmc_hash->{$node}->[0]->{'bmc'});
+            }
+            unless($node_info_ref->{$node}->{bmc}) {
+                xCAT::SvrUtils::sendmsg("Error: Unable to get attribute bmc", $callback, $node);
+                delete $node_info_ref->{$node};
+                $rst = 1;
+                next;
+            }
+            unless($node_info_ref->{$node}->{bmcip}) {
+                xCAT::SvrUtils::sendmsg("Error: Unable to resolve ip address for bmc: $node_info_ref->{$node}->{bmc}", $callback, $node);
+                delete $node_info_ref->{$node};
+                $rst = 1;
+                next;
+            }
+            if ($openbmc_hash->{$node}->[0]->{'username'}) {
+                $node_info_ref->{$node}->{username} = $openbmc_hash->{$node}->[0]->{'username'};
+            } elsif ($passwd_hash and $passwd_hash->{username}) {
+                $node_info_ref->{$node}->{username} = $passwd_hash->{username};
+            } else {
+                xCAT::SvrUtils::sendmsg("Error: Unable to get attribute username", $callback, $node);
+                delete $node_info_ref->{$node};
+                $rst = 1;
+                next;
+            }
+
+            if ($openbmc_hash->{$node}->[0]->{'password'}) {
+                $node_info_ref->{$node}->{password} = $openbmc_hash->{$node}->[0]->{'password'};
+            } elsif ($passwd_hash and $passwd_hash->{password}) {
+                $node_info_ref->{$node}->{password} = $passwd_hash->{password};
+            } else {
+                xCAT::SvrUtils::sendmsg("Error: Unable to get attribute password", $callback, $node);
+                delete $node_info_ref->{$node};
+                $rst = 1;
+                next;
+            }
+        } else {
+            xCAT::SvrUtils::sendmsg("Error: Unable to get information from openbmc table", $callback, $node);
+            $rst = 1;
+            next;
+        }
+    }
+
+    return $rst;
+}
+
 sub acquire_lock {
     my $ppid = shift;
     $ppid = shift if (($ppid) && ($ppid =~ /AGENT/));

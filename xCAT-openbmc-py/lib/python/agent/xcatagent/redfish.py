@@ -13,9 +13,8 @@ from docopt import docopt,DocoptExit
 
 from common import utils
 from common import exceptions as xcat_exception
-from hwctl.executor.redfish_power import RedfishPowerTask
+from hwctl.redfish.redfish_power import RedfishPowerTask
 from hwctl.power import DefaultPowerManager
-from hwctl.setboot import DefaultBootManager
 
 from xcatagent import base
 import logging

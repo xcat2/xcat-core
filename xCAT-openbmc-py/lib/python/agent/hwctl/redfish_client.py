@@ -32,6 +32,10 @@ POWER_RESET_TYPE = {
     'on'      : 'ForceOn',
 }
 
+manager_reset_string = '#Manager.Reset'
+system_reset_string = '#ComputerSystem.Reset'
+reset_type_string = 'ResetType@Redfish.AllowableValues'
+
 class RedfishRest(object):
 
     headers = {'Content-Type': 'application/json'}
@@ -185,8 +189,8 @@ class RedfishRest(object):
         target_url = members[0]['@odata.id']
         data = self.request('GET', target_url, cmd='get_bmc_actions')
         try:
-            actions = data['Actions']['#Manager.Reset']['ResetType@Redfish.AllowableValues']
-            target_url = data['Actions']['#Manager.Reset']['target']
+            actions = data['Actions'][manager_reset_string][reset_type_string]
+            target_url = data['Actions'][manager_reset_string]['target']
         except KeyError as e:
             raise SelfServerException('Get KeyError %s' % e.message)
 
@@ -196,7 +200,7 @@ class RedfishRest(object):
 
         target_url, actions = self._get_bmc_actions()
         if BMC_RESET_TYPE not in actions:
-            raise SelfClientException('Unsupport option: %s' % BMC_RESET_TYPE)
+            raise SelfClientException('Unsupported option: %s' % BMC_RESET_TYPE)
 
         data = { "ResetType": BMC_RESET_TYPE }
         return self.request('POST', target_url, payload=data, cmd='set_bmc_state')
@@ -207,8 +211,8 @@ class RedfishRest(object):
         target_url = members[0]['@odata.id']
         data = self.request('GET', target_url, cmd='get_power_actions')
         try:
-            actions = data['Actions']['#ComputerSystem.Reset']['ResetType@Redfish.AllowableValues']
-            target_url = data['Actions']['#ComputerSystem.Reset']['target']
+            actions = data['Actions'][system_reset_string][reset_type_string]
+            target_url = data['Actions'][system_reset_string]['target']
         except KeyError as e:
             raise SelfServerException('Get KeyError %s' % e.message)
 
@@ -218,7 +222,7 @@ class RedfishRest(object):
 
         target_url, actions = self._get_power_actions()
         if POWER_RESET_TYPE[state] not in actions:
-            raise SelfClientException('Unsupport option: %s' % state)
+            raise SelfClientException('Unsupported option: %s' % state)
 
         data = { "ResetType": POWER_RESET_TYPE[state] }
         return self.request('POST', target_url, payload=data, cmd='set_power_state')
