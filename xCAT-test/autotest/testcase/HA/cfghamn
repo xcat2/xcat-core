@@ -1,0 +1,171 @@
+#!/bin/bash
+#USAGE:cfghamn -l shared_data_path -i VIP [-g git_repo_for_xcat_inventory_data] [-x s|d|a]
+
+str_os_type=`uname -s`
+if [ x"$str_os_type" = "xLinux" ];then
+    str_dir_name="${0%/*}"
+    . $str_dir_name/xcatlib.sh
+else
+    log_error "Does NOT support non-Linux Operating System."
+    exit 1
+fi
+
+# get specific NIC for VIP
+function get_nic(){
+    pysical_ip=$1
+    primary_nic=`ip route | grep $pysical_ip | awk -F '[ \t*]' '{print $3}'|head -1`
+    if [ -n $primary_nic ]; then
+        echo $primary_nic:0
+    fi
+}
+
+function get_mask(){
+   pysical_ip=$1
+   prefix=$(ip route |grep $pysical_ip|awk '{print $1}'|cut -f 2 -d'/')
+   netmask=$(v4prefix2mask $prefix)
+   if [ -n $netmask ]; then
+       echo $netmask
+   else
+       echo "255.255.255.0"
+   fi
+}
+
+pysical_hostname=$(hostname -s)
+pysical_ip=$(hostname -i)
+#create vip hostname
+function get_vip_hostname(){
+    vip=$1
+    vip_hostname=$(getent hosts $vip | awk -F ' ' '{print $2}' | awk -F'.' '{print $1}'| uniq)
+    if [ -z $vip_hostname ]; then
+        vip_hostname=${pysical_hostname}-ha
+    fi
+    echo $vip_hostname
+}
+
+return_code=0
+if [ $# -lt 4 ]; then
+    echo "USAGE:`basename $0` -l shared_data_path -i VIP"
+    exit 1
+fi
+while getopts "l:i:g:x:n:" opt; do
+  case $opt in
+    l)
+      SHARE_DATA=$OPTARG
+      echo "The shared data directory is $SHARE_DATA" 
+      ;;
+    i)
+      VIP=$OPTARG
+      echo "The VIP is $VIP"
+      ;; 
+    g)
+      URL=$OPTARG
+      echo "xcat-inventory git URL is $URL"
+      ;;
+    x)
+      #options can be s|d|a
+      # s means setup, d means deactivate, a means activate
+      XCMD=$OPTARG
+      ;;
+    n)
+      #VIP physical nic
+      PHYSICALNIC=$OPTARG
+      ;;
+    \?)
+      echo "Invalid option: -$OPTARG"
+      return_code=1 
+      ;;
+  esac
+done
+if [ -z $PHYSICALNIC ]; then
+    VIP_NIC=$(get_nic $pysical_ip)
+else
+    VIP_NIC=$PHYSICALNIC
+fi
+if [ -n $VIP_NIC ]; then
+    echo "VIP NIC is :" $VIP_NIC
+else
+    echo "Error: cannot get VIP NIC"
+    return_code=1
+fi
+
+yum -y install yum-utils
+
+cmdlable=""
+if [ -n $XCMD ]; then
+    if [[ "${XCMD}" == "s" || "${XCMD}" == "a" || "${XCMD}" == "d" ]]; then
+        cmdlable=$XCMD
+    else
+        echo "Error: xcatha.py does not support $XCMD option"
+        return_code=1
+    fi
+fi
+
+NETMASK=$(get_mask $pysical_ip) 
+if [[ -n $NETMASK ]]; then
+    echo "NETMASK is :" $NETMASK
+fi
+VIP_hostname=$(get_vip_hostname $VIP)
+if [ -n $VIP_hostname ]; then
+    echo "VIP hostname is :" $VIP_hostname
+else
+    echo "Error: cannot define VIP hostname"
+    return_code=1
+fi
+SHARE_DATA_DES=/xcat/HA/$pysical_hostname
+if [[ "$cmdlable" == "s" ]]; then
+    mkdir -p $SHARE_DATA_DES
+    mount|grep -w $SHARE_DATA_DES
+    if [ $? -ne 0 ]; then 
+        mount $SHARE_DATA $SHARE_DATA_DES
+        if [ $? -ne 0 ]; then
+            echo "mount $SHARE_DATA $SHARE_DATA_DES [failed]"
+            return_code=1
+        fi
+    else
+        echo "$SHARE_DATA_DES is already mounted"
+    fi
+fi
+if [ -n "$URL" ]; then
+    rm -rf /root/xcat-mn-data
+    git clone $URL /root/xcat-mn-data
+else
+    echo "There is no xcat-inventory data"
+fi
+
+if [ $return_code -eq 1 ]; then
+    echo "Process exit with above error"
+    exit $return_code
+else
+    if [[ "$cmdlable" == "s" ]]; then
+        echo "Start to configure HA NODE $VIP_hostname"
+        msg="python /xcatpost/xcatha.py -s -p /$SHARE_DATA_DES -v $VIP -i $VIP_NIC -n $VIP_hostname -m $NETMASK"
+        echo $msg
+        python /xcatpost/xcatha.py -s -p /$SHARE_DATA_DES -v $VIP -i $VIP_NIC -n $VIP_hostname -m $NETMASK
+        if [ $? -ne 0 ]; then
+            return_code=1
+        fi
+    elif [[ "$cmdlable" == "a" ]]; then
+        echo "Start to activate $VIP_hostname"
+        python /xcatpost/xcatha.py -a -p /$SHARE_DATA_DES -v $VIP -i $VIP_NIC -n $VIP_hostname -m $NETMASK
+        if [ $? -eq 0 ]; then
+             if [ -d /root/xcat-mn-data ]; then
+                 echo "use xcat-inventory to import Cluster data"
+                 xcat-inventory import -f /root/xcat-mn-data/cluster.json
+                 if [ $? -ne 0 ]; then
+                     return_code=1
+                 fi
+             fi
+        else
+            return_code=1
+        fi
+    elif [[ "$cmdlable" == "d" ]]; then
+        echo "Start to deactivate $VIP_hostname"
+        python /xcatpost/xcatha.py -d -v $VIP -i $VIP_NIC
+        if [ $? -ne 0 ]; then
+            return_code=1
+        fi
+    else
+        return_code=1
+    fi
+fi
+exit $return_code

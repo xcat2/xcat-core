@@ -1,6 +1,6 @@
 start:makedns_h
 description:help
-label:mn_only,dns
+label:mn_only,ci_test,dns
 cmd:makedns -h
 check:rc==0
 cmd:makedns --help

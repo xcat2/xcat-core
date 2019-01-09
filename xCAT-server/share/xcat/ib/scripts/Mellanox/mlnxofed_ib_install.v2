@@ -204,7 +204,12 @@ function cleanup()
         fi
 
         # Clean up the ofed iso
-        if mount | grep -q "$IMGROOTPATH/tmp/ofed/mountpoint"; then
+        tmp_imgpath=$IMGROOTPATH
+        while (echo $tmp_imgpath | grep "/$")
+        do
+            tmp_imgpath=${tmp_imgpath%/*}
+        done
+        if mount | grep -q "$tmp_imgpath/tmp/ofed/mountpoint"; then
             while ! umount "$IMGROOTPATH/tmp/ofed/mountpoint"
             do
                 (( ++i > max_retry )) && echo "Umount $IMGROOTPATH/tmp/ofed/mountpoint failed" >&2 && break
@@ -326,11 +331,13 @@ EOF
         env -i "PATH=${PATH}" /tmp/ofed/mountpoint/mlnxofedinstall "${MLNXOFED_OPTS[@]}"
 
         #force openibd load all modules in need, restart again
-        sleep 1
-        service openibd restart
-        if [ "$?" != "0" ] ;then
-            echo "[Error] service openibd restart failed."
-            exit 1
+        if [ "$NODESETSTATE" = "boot" ]; then
+            sleep 1
+            service openibd restart
+            if [ "$?" != "0" ]; then
+                echo "[Error] service openibd restart failed."
+                exit 1
+            fi
         fi
     fi
 

@@ -19,7 +19,7 @@ SYNOPSIS
 ********
 
 
-\ **taskstate Attributes:**\   \ *command*\ , \ *disable*\ , \ *node*\ , \ *pid*\ , \ *reserve*\ , \ *state*\
+\ **taskstate Attributes:**\   \ *command*\ , \ *disable*\ , \ *node*\ , \ *pid*\ , \ *reserve*\ , \ *state*\ 
 
 
 ***********
@@ -40,39 +40,39 @@ taskstate Attributes:
 
 
 \ **command**\  (taskstate.command)
-
+ 
  Current command is running
-
+ 
 
 
 \ **disable**\  (taskstate.disable)
-
+ 
  Set to 'yes' or '1' to comment out this row.
-
+ 
 
 
 \ **node**\  (taskstate.node)
-
+ 
  The node name.
-
+ 
 
 
 \ **pid**\  (taskstate.pid)
-
+ 
  The process id of the request process.
-
+ 
 
 
 \ **reserve**\  (taskstate.reserve)
-
+ 
  used to lock the node
-
+ 
 
 
 \ **state**\  (taskstate.state)
-
+ 
  The task state(callback, running) for the node.
-
+ 
 
 
 
@@ -81,5 +81,5 @@ SEE ALSO
 ********
 
 
-\ **mkdef(1)**\ , \ **chdef(1)**\ , \ **lsdef(1)**\ , \ **rmdef(1)**\
+\ **mkdef(1)**\ , \ **chdef(1)**\ , \ **lsdef(1)**\ , \ **rmdef(1)**\ 
 

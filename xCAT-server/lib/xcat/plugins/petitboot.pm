@@ -318,11 +318,18 @@ sub preprocess_request {
         return;
     }
 
+    # inittime flag in request will only be set in AAsn.pm (it is only used when xcatd starting on service node)
+    # There is special requirement to not run in parallel on one SN to avoid DB CPU 100% when all service nodes booting in the same time.
+    my $inittime = 0;
+    if (exists($req->{inittime})) { $inittime = $req->{inittime}->[0]; }
+    if (!$inittime) { $inittime = 0; }
+
     #Assume shared tftp directory for boring people, but for cool people, help sync up tftpdirectory contents when
     #if they specify no sharedtftp in site table
     my @entries = xCAT::TableUtils->get_site_attribute("sharedtftp");
     my $t_entry = $entries[0];
     xCAT::MsgUtils->trace($verbose_on_off, "d", "petitboot: sharedtftp = $t_entry");
+
     if (defined($t_entry) and ($t_entry == 0 or $t_entry =~ /no/i)) {
 
         # check for  computenodes and servicenodes from the noderange, if so error out
@@ -341,16 +348,16 @@ sub preprocess_request {
         }
 
         $req->{'_disparatetftp'} = [1];
-        if ($req->{inittime}->[0]) {
-            return [$req];
-        }
         if (@CN > 0) {    # if compute nodes only, then broadcast to servic enodes
 
+            # 1, Non-hierarchy, run on locally with parallel
             my @sn = xCAT::ServiceNodeUtils->getSNList();
             unless ( @sn > 0 ) {
-                return xCAT::Scope->get_parallel_scope($req)
+                return if (xCAT::Utils->isServiceNode()); # in case the wrong configuration
+                return xCAT::Scope->get_parallel_scope($req);
             }
 
+            # To check site table to see if disjoint mode
             my $mynodeonly  = 0;
             my @entries = xCAT::TableUtils->get_site_attribute("disjointdhcps");
             my $t_entry = $entries[0];
@@ -360,11 +367,30 @@ sub preprocess_request {
             $req->{'_disjointmode'} = [$mynodeonly];
             xCAT::MsgUtils->trace(0, "d", "petitboot: disjointdhcps=$mynodeonly");
 
-            if ($mynodeonly == 0 || $ALLFLAG) { # broadcast to all service nodes
+            # 2, Non-disjoint mode, broadcast to all service nodes,
+            #    but for SN init time (AAsn.pm), only run locally without parallel.
+            if ($mynodeonly == 0 || $ALLFLAG) {
+                if ($inittime) {
+                    $req->{_xcatpreprocessed}->[0] = 1;
+                    return [$req];
+                }
                 return xCAT::Scope->get_broadcast_scope_with_parallel($req, \@sn);
             }
 
+            # 3, Disjoint mode, run on local for owned CNs only and
+            # dispatch to parent SNs of the requesting nodes and `dhcpserver` which serving dynamic range in `networks` table.
+            #    but for SN init time (AAsn.pm), only run locally without parallel.
             my $sn_hash = xCAT::ServiceNodeUtils->getSNformattedhash(\@CN, "xcat", "MN");
+            if ($inittime) {
+                foreach my $sn ( keys %$sn_hash ) {
+                    unless (xCAT::NetworkUtils->thishostisnot($sn)) {
+                        $req->{node} = $sn_hash->{$sn};
+                        $req->{_xcatpreprocessed}->[0] = 1;
+                        return [$req];
+                    }
+                }
+            }
+
             my @dhcpsvrs = ();
             my $ntab = xCAT::Table->new('networks');
             if ($ntab) {
@@ -375,6 +401,9 @@ sub preprocess_request {
             }
             return xCAT::Scope->get_broadcast_disjoint_scope_with_parallel($req, $sn_hash, \@dhcpsvrs);
         }
+    } elsif ($inittime) {
+        # Shared TFTP, no need to run on service node booting (AAsn.pm)
+        return;
     }
     # Do not dispatch to service nodes if non-sharedtftp or the node range contains only SNs.
     return xCAT::Scope->get_parallel_scope($req);
@@ -450,7 +479,9 @@ sub process_request {
         my $errormsg = $ipret->{'error'};
         my $nodeip = $ipret->{'ip'};
         if ($errormsg) {# Add the node to failure set
-            xCAT::MsgUtils->trace(0, "E", "petitboot: Defined IP address of $_ is $nodeip. $errormsg");
+            if (!defined($::DISABLENODESETWARNING)) {    # set by AAsn.pm
+                xCAT::MsgUtils->trace(0, "E", "petitboot: Defined IP address of $_ is $nodeip. $errormsg");
+            }
             unless ($nodeip) {
                 $failurenodes{$_} = 1;
             }
@@ -468,7 +499,9 @@ sub process_request {
             if (xCAT::NetworkUtils->nodeonmynet($preparednodes{$_})) {
                 push @nodes, $_;
             } else {
-                xCAT::MsgUtils->trace(0, "W", "petitboot: configuration file was not created for [$_] because the node is not on the same network as this server");
+                if (!defined($::DISABLENODESETWARNING)) { # set by AAsn.pm
+                    xCAT::MsgUtils->trace(0, "W", "petitboot: configuration file was not created for [$_] because the node is not on the same network as this server");
+                }
                 delete $preparednodes{$_};
             }
         }
@@ -476,8 +509,14 @@ sub process_request {
         @nodes = keys %preparednodes;
     }
 
-    my $str_node = join(" ", @nodes);
-    xCAT::MsgUtils->trace($verbose_on_off, "d", "petitboot: nodes are $str_node") if ($str_node);
+    my $str_node = '';
+    my $total = $#nodes;
+    if ($total > 20) {
+        $str_node = join(" ", @nodes[0..19]) . " ...";
+    } else {
+        $str_node = join(" ", @nodes);
+    }
+    xCAT::MsgUtils->trace($verbose_on_off, "d", "petitboot: [total=$total] nodes are $str_node");
 
     # Return directly if no nodes in the same network, need to report error on console if its managed nodes are not handled.
     unless (@nodes) {
@@ -552,7 +591,7 @@ sub process_request {
                 \&pass_along);
         if ($errored) {
             xCAT::MsgUtils->trace($verbose_on_off, "d", "petitboot: Failed in processing setdestiny.");
-            return if ($errored > 1);
+            return if ($errored > 1); # errored = 1 means to go with error,  errored = 2 means to stop
         }
     }
 

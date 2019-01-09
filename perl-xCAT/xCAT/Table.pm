@@ -2324,12 +2324,8 @@ sub getNodesAttribs {
     }
 
     if (!exists($options{hierarchy_attrs})) {
-        my @hierarchy_attrs = ();
-        my $hierarchy_field = xCAT::TableUtils->get_site_attribute("hierarchicalattrs");
-        if ($hierarchy_field) {
-            @hierarchy_attrs = split(/,/, $hierarchy_field);
-        }
-        $options{hierarchy_attrs} = \@hierarchy_attrs;
+        my $hierarchy_field = xCAT::TableUtils->getHierarchyAttrs();
+        $options{hierarchy_attrs} = $hierarchy_field;
     }
 
     if ($dbworkerpid > 0) {
@@ -2359,12 +2355,6 @@ sub getNodesAttribs {
         $self->{nodelist}->{_use_cache} = 1;
     }
     my $rethash;
-    #my @hierarchy_attrs = ();
-    #my $hierarchy_field = xCAT::TableUtils->get_site_attribute("hierarchicalattrs");
-    #if ($hierarchy_field) {
-    #    @hierarchy_attrs = split(/,/, $hierarchy_field);
-    #}
-    #$options{hierarchy_attrs} = \@hierarchy_attrs;
     foreach (@$nodelist) {
         my @nodeentries = $self->getNodeAttribs($_, \@realattribs, %options);
         $rethash->{$_} = \@nodeentries;    #$self->getNodeAttribs($_,\@attribs);
@@ -2755,12 +2745,30 @@ sub getNodeAttribs
     }
 
     if (!exists($options{hierarchy_attrs})) {
-        my @hierarchy_attrs = ();
-        my $hierarchy_field = xCAT::TableUtils->get_site_attribute("hierarchicalattrs");
-        if ($hierarchy_field) {
-            @hierarchy_attrs = split(/,/, $hierarchy_field);
-        }
-        $options{hierarchy_attrs} = \@hierarchy_attrs;
+        my $hierarchy_field = xCAT::TableUtils->getHierarchyAttrs();
+        $options{hierarchy_attrs} = $hierarchy_field;
+    }
+    if ($dbworkerpid > 0) { #TODO: should this be moved outside of the DB worker entirely?  I'm thinking so, but I don't dare do so right now...
+         #the benefit would be the potentially computationally intensive substitution logic would be moved out and less time inside limited
+         #db worker scope
+        return dbc_call($self, 'getNodeAttribs', $node, \@attribs, %options);
+    }
+    $self->trace_db(START_TYPE);
+
+    if (!defined($self->{dbh})) {
+        xCAT::MsgUtils->message("S", "xcatd: DBI is missing, Please check the db access process.");
+        return undef;
+    }
+    if ($dbworkerpid > 0) { #TODO: should this be moved outside of the DB worker entirely?  I'm thinking so, but I don't dare do so right now...
+         #the benefit would be the potentially computationally intensive substitution logic would be moved out and less time inside limited
+         #db worker scope
+        return dbc_call($self, 'getNodeAttribs', $node, \@attribs, %options);
+    }
+    $self->trace_db(START_TYPE);
+
+    if (!defined($self->{dbh})) {
+        xCAT::MsgUtils->message("S", "xcatd: DBI is missing, Please check the db access process.");
+        return undef;
     }
     if ($dbworkerpid > 0) { #TODO: should this be moved outside of the DB worker entirely?  I'm thinking so, but I don't dare do so right now...
          #the benefit would be the potentially computationally intensive substitution logic would be moved out and less time inside limited
@@ -2811,87 +2819,21 @@ sub getNodeAttribs
     unless (scalar keys %{ $data[0] }) {
         return undef;
     }
-    my $attrib;
-    foreach $datum (@data) {
-        foreach $attrib (@attribs)
-        {
-            unless (defined $datum->{$attrib}) {
-
-                #skip undefined values, save time
-                next;
-            }
-            if ($datum->{$attrib} =~ /^\/[^\/]*\/[^\/]*\/$/)
-            {
-                my $exp = substr($datum->{$attrib}, 1);
-                chop $exp;
-                my @parts = split('/', $exp, 2);
-                my $retval = $node;
-                $retval =~ s/$parts[0]/$parts[1]/;
-                $datum->{$attrib} = $retval;
-            }
-            elsif ($datum->{$attrib} =~ /^\|.*\|$/)
-            {
-
-                #Perform arithmetic and only arithmetic operations in bracketed issues on the right.
-                #Tricky part:  don't allow potentially dangerous code, only eval if
-                #to-be-evaled expression is only made up of ()\d+-/%$
-                #Futher paranoia?  use Safe module to make sure I'm good
-                my $exp = substr($datum->{$attrib}, 1);
-                chop $exp;
-                my @parts = split('\|', $exp, 2);
-                my $arraySize = @parts;
-                if ($arraySize < 2) {    # easy regx, generate lhs from node
-                    my $lhs;
-                    my @numbers = $node =~ m/[\D0]*(\d+)/g;
-                    $lhs = '[\D0]*(\d+)' x scalar(@numbers);
-                    $lhs .= '.*$';
-                    unshift(@parts, $lhs);
+    if (!exists($options{keep_raw})){
+        my $attrib;
+        foreach $datum (@data) {
+            foreach $attrib (@attribs) {
+                unless (defined $datum->{$attrib}) {
+                    #skip undefined values, save time
+                    next;
                 }
-                my $curr;
-                my $next;
-                my $prev;
-                my $retval = $parts[1];
-                ($curr, $next, $prev) =
-                  extract_bracketed($retval, '()', qr/[^()]*/);
-
-                unless ($curr) { #If there were no paramaters to save, treat this one like a plain regex
-                    undef $@; #extract_bracketed would have set $@ if it didn't return, undef $@
-                    $retval = $node;
-                    $retval =~ s/$parts[0]/$parts[1]/;
+                my $retval;
+                if (defined($retval = transRegexAttrs($node, $datum->{$attrib}))) {
                     $datum->{$attrib} = $retval;
-                    if ($datum->{$attrib} =~ /^$/) {
-
-                        #If regex forces a blank, act like a normal blank does
-                        delete $datum->{$attrib};
-                    }
-                    next;     #skip the redundancy that follows otherwise
                 }
-                while ($curr)
-                {
-
-                    #my $next = $comps[0];
-                    my $value = $node;
-                    $value =~ s/$parts[0]/$curr/;
-                    $value  = $evalcpt->reval('use integer;' . $value);
-                    $retval = $prev . $value . $next;
-                    ($curr, $next, $prev) =
-                      extract_bracketed($retval, '()', qr/[^()]*/);
+                else {
+                    delete $datum->{$attrib};
                 }
-                undef $@;
-
-                #At this point, $retval is the expression after being arithmetically contemplated, a generated regex, and therefore
-                #must be applied in total
-                my $answval = $node;
-                $answval =~ s/$parts[0]/$retval/;
-                $datum->{$attrib} = $answval;    #$retval;
-
-                #print Data::Dumper::Dumper(extract_bracketed($parts[1],'()',qr/[^()]*/));
-                #use text::balanced extract_bracketed to parse earch atom, make sure nothing but arith operators, parans, and numbers are in it to guard against code execution
-            }
-            if ($datum->{$attrib} =~ /^$/) {
-
-                #If regex forces a blank, act like a normal blank does
-                delete $datum->{$attrib};
             }
         }
     }
@@ -3065,6 +3007,9 @@ sub getNodeAttribs_nosub_returnany
     }
     @results = $self->getAttribs({ $nodekey => $node }, @attribs);
 
+    # return the DB without any rendering, this is for fetch attributes of group
+    return @results if (exists($options{keep_raw}));
+
     my %attribsToDo;
     for (@attribs) {
         $attribsToDo{$_} = 0
@@ -3072,14 +3017,15 @@ sub getNodeAttribs_nosub_returnany
 
     my $attrib;
     my $result;
-    my @hierarchy_attrs = @{ $options{hierarchy_attrs} };
+    my $hierarchy_attrs = $options{hierarchy_attrs};
     my $data = $results[0];
     if (defined {$data}) { #if there was some data for the node, loop through and check it
         foreach $result (@results) {
             foreach $attrib (keys %attribsToDo) {
                 if (defined($result) && defined($result->{$attrib}) && $self->{tabname} ne 'nodelist'
-                    && @hierarchy_attrs && grep (/^$attrib$/, @hierarchy_attrs)) {
-                    $result->{$attrib} .= ',+=NEXTRECORD';
+                    && ref($hierarchy_attrs) eq "HASH" && exists $hierarchy_attrs->{$attrib}) {
+                    $result->{$attrib} .= $hierarchy_attrs->{$attrib};
+                    $result->{$attrib} .= '+=NEXTRECORD';
                 }
 
                 #check each item in the results to see which attributes were satisfied
@@ -3139,8 +3085,9 @@ sub getNodeAttribs_nosub_returnany
                         $attribsDone{$attrib} = 0;
 
                         # for hierarchy attribute, append attributes from all the node's group
-                        if (@hierarchy_attrs && grep (/^$attrib$/, @hierarchy_attrs)) {
-                            $groupResult->{$attrib} .= ',+=NEXTRECORD';
+                        if (ref($hierarchy_attrs) eq "HASH" && exists $hierarchy_attrs->{$attrib}) {
+                            $groupResult->{$attrib} .= $hierarchy_attrs->{$attrib};
+                            $groupResult->{$attrib} .= '+=NEXTRECORD';
                         }
                         foreach $result (@results) { #loop through our existing results to add or modify the value for this attribute
                             if (defined($result)) {
@@ -3227,13 +3174,13 @@ sub getNodeAttribs_nosub_returnany
     for $result (@results) {
         for my $key (keys %$result) {
             $result->{$key} =~ s/\+=NEXTRECORD//g;
-            if (@hierarchy_attrs && grep (/^$key$/, @hierarchy_attrs)) {
-                my @attribs = split(/,/, $result->{$key});
+            if (ref($hierarchy_attrs) eq "HASH" && exists $hierarchy_attrs->{$key}) {
+                my @attribs = split(/\Q$hierarchy_attrs->{$key}/, $result->{$key});
                 my %count;
 
                 # remove the repeat value
                 @attribs = grep { ++$count{$_} < 2; } @attribs;
-                $result->{$key} = join(',', @attribs);
+                $result->{$key} = join($hierarchy_attrs->{$key}, @attribs);
             }
         }
     }
@@ -3497,11 +3444,7 @@ sub getAllNodeAttribs
     $self->{_use_cache} = 1;
     $self->{nodelist}->{_use_cache} = 1;
 
-    my @hierarchy_attrs = ();
-    my $hierarchy_field = xCAT::TableUtils->get_site_attribute("hierarchicalattrs");
-    if ($hierarchy_field) {
-        @hierarchy_attrs = split(/,/, $hierarchy_field);
-    }
+    my $hierarchy_field = xCAT::TableUtils->getHierarchyAttrs();
     while (my $data = $query->fetchrow_hashref())
     {
 
@@ -3529,7 +3472,7 @@ sub getAllNodeAttribs
             #    @hierarchy_attrs = split(/,/, $hierarchy_field);
             #}
             my %options = ();
-            $options{hierarchy_attrs} = \@hierarchy_attrs;
+            $options{hierarchy_attrs} = $hierarchy_field;
             foreach (@nodes)
             {
                 if ($donenodes{$_}) { next; }
@@ -4409,8 +4352,10 @@ sub delimitcol {
 #--------------------------------------------------------------------------------
 sub buildWhereClause {
     my $attrvalstr = shift;    # array of atr<op>val strings
+    my $getkeysonly = shift;
     my $whereclause;           # Where Clause
     my $firstpass = 1;
+    my @gotkeys = ();
     foreach my $m (@{$attrvalstr})
     {
         my $attr;
@@ -4451,6 +4396,9 @@ sub buildWhereClause {
             ($attr, $val) = split />/, $m, 2;
             $operator = ' > ';
         } else {
+            if (defined($getkeysonly)) {
+                return "Unsupported operator:$m on -w flag input";
+            }
             xCAT::MsgUtils->message("S", "Unsupported operator:$m  on -w flag input, could not build a Where Clause.");
             $whereclause = "";
             return $whereclause;
@@ -4465,7 +4413,12 @@ sub buildWhereClause {
 
         #$whereclause .="\')";
         $whereclause .= "\'";
-
+        if (defined($getkeysonly)) {
+            push @gotkeys, $attr;
+        }
+    }
+    if (defined($getkeysonly)) {
+        return \@gotkeys;
     }
     return $whereclause;
 

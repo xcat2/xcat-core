@@ -20,7 +20,7 @@ my $interface;
 GetOptions(
     "interface=s" => \$interface,
     "f|fanout=s"  => \$fanout,
-    "h|help"      => \$usage,
+    "h|help"      => \&usage,
     "v|version"   => \$::VERSION,
 );
 my %nodehdl;
@@ -32,9 +32,17 @@ if ($ENV{XCATHOST}) {
 
 sub usage
 {
-    print $_[0];
+    my $rc = 1;
+    my @info = @_;
+    if (@info) {
+        if ($info[0] eq "h") {
+            $rc = 0;
+        } else {
+            print $info[0];
+        } 
+    }
     print "Usage: pscp [ -f fanout] [-i <SUFFIX>] [SCP OPTIONS...] FILE... <NODERANGE>:<DESTINATION>\n";
-    exit 1;
+    exit $rc;
 }
 
 my $pshmaxp = 64;

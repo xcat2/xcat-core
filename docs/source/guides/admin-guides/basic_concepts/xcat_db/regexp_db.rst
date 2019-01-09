@@ -120,6 +120,7 @@ xCAT provides several functions that can simplify regular expressions.
   +-----------+-----------+-----------+-----------+
   | row2-col1 | row2-col2 | row2-col3 | row2-col4 |
   +-----------+-----------+-----------+-----------+
+
   To obtain the rack index, use ``|row(\d+)-col(\d+)|(dim2idx($1, 4, $2))|``.  This maps the racks to:
 
   +---+---+---+---+
@@ -127,6 +128,7 @@ xCAT provides several functions that can simplify regular expressions.
   +---+---+---+---+
   | 5 | 6 | 7 | 8 |
   +---+---+---+---+
+
   Note that the size of the highest dimension (2 rows) is not needed, and all values are one-indexed.
 
   If each rack contains 20 nodes, use ``|row(\d+)-col(\d+)-node(\d+)|(dim2idx($1, 4, $2, 20, $3)`` to determine a node index (useful for determining IP addresses).

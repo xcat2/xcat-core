@@ -1,29 +1,34 @@
 start:post_dns
 description: post_dns
+label:others,restapi
 cmd:restapitest -m POST -r /services/dns
 check:rc==201
 end
 
 start:post_dhcp
 description: post_dhcp
+label:others,restapi
 cmd:restapitest -m POST -r /services/dns
 check:rc==201
 end
 
 start:post_host
 description: post_host
+label:others,restapi
 cmd:restapitest -m POST -r /services/host
 check:rc==201
 end
 
 start:post_host
 description: post_host
+label:others,restapi
 cmd:restapitest -m POST -r /services/host
 check:rc==201
 end
 
 start:get_slpnodes
 description: get_slpnodes
+label:others,restapi
 cmd:restapitest -m GET -r /services/slpnodes
 check:rc==200
 cmdcheck:restapitest -o '{"ngpcmm01":{"mpa":"ngpcmm01"}}' -O ==
@@ -31,6 +36,7 @@ end
 
 start:get_slpnodes_withst
 description: get_slpnodes_withst
+label:others,restapi
 cmd:restapitest -m GET -r /services/slpnodes/FSP
 check:rc==200
 cmdcheck:restapitest -o '{"Server--SNY014BG27A01K":{"mpa":"Server--SNY014BG27A01K"}}' -O ==

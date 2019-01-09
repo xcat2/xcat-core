@@ -1,6 +1,6 @@
 start:tabgrep_null
 description: tabgrep with no argument
-label:mn_only,db
+label:mn_only,ci_test,db
 cmd:tabgrep
 check:output=~Usage
 end
@@ -9,7 +9,7 @@ end
 
 start:tabgrep_h
 description:tabgrep -h an d -? and --help
-label:mn_only,db
+label:mn_only,ci_test,db
 cmd:tabgrep -h
 check:output=~Usage
 cmd:tabgrep -?
@@ -20,7 +20,7 @@ end
 
 
 start:tabgrep_node
-label:mn_only,db
+label:mn_only,ci_test,db
 cmd:mkdef -t node testnode groups=all
 check:rc==0
 cmd:tabgrep testnode
@@ -32,7 +32,7 @@ end
 
 start:tabgrep_err
 description:tabgrep with error noderange
-label:mn_only,db
+label:mn_only,ci_test,db
 cmd:rmdef -t node testnode
 cmd:tabgrep testnode
 check:rc!=0

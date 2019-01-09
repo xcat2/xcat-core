@@ -1,15 +1,18 @@
 start:updatenode_h
+label:others,updatenode
 cmd:updatenode -h
 check:rc==0
 end
 
 start:updatenode_v
+label:others,updatenode
 cmd:updatenode -v
 check:rc==0
 check:output=~Version
 end
 
 start:updatenode_diskful_syncfiles
+label:others,updatenode
 cmd:mkdir -p /install/custom/install/__GETNODEATTR($$CN,os)__/
 check:rc==0
 cmd:echo "/etc/hosts -> /etc/hosts" > /install/custom/install/__GETNODEATTR($$CN,os)__/compute.$$OS.synclist
@@ -38,6 +41,7 @@ check:rc==0
 end
 
 start:updatenode_diskful_syncfiles_rename
+label:others,updatenode
 cmd:mkdir -p /tmp/syncfile/
 check:rc==0
 cmd:echo "test1" > /tmp/syncfile/test1.txt
@@ -68,6 +72,7 @@ end
 
 
 start:updatenode_diskful_syncfiles_dir
+label:others,updatenode
 cmd:mkdir -p /tmp/sync/
 check:rc==0
 cmd:echo "test1" > /tmp/sync/test1.txt
@@ -97,6 +102,7 @@ end
 
 
 start:updatenode_diskful_syncfiles_multi_files
+label:others,updatenode
 cmd:cp /etc/hosts /etc/common_hosts
 cmd:mkdir /tmp/prog1
 cmd:mkdir /tmp/prog2
@@ -151,6 +157,7 @@ cmd:rm /install/custom/install/__GETNODEATTR($$CN,os)__/compute.$$OS.synclist
 end
 
 start:updatenode_syncfile_EXECUTE
+label:others,updatenode
 cmd:echo "echo hello > /tmp/test" > /tmp/file.post
 check:rc==0
 cmd:chmod a+x /tmp/file.post
@@ -171,6 +178,7 @@ check:rc==0
 end
 
 start:updatenode_syncfile_EXECUTEALWAYS
+label:others,updatenode
 cmd:echo "echo hello >> /tmp/test" > /tmp/file.post
 check:rc==0
 cmd:chmod a+x /tmp/file.post
@@ -191,6 +199,7 @@ check:rc==0
 end
 
 start:updatenode_syncfile_APPEND
+label:others,updatenode
 cmd:echo "line1" > /tmp/append1
 cmd:echo "line2" > /tmp/append2
 cmd:scp /tmp/append1 root@$$CN:/tmp
@@ -211,6 +220,7 @@ check:rc==0
 end
 
 start:updatenode_syncfile_MERGE
+label:others,updatenode
 cmd:mkdir -p /tmp/updatenode_syncfile_MERGE
 check:rc==0
 cmd:xdsh $$CN "mkdir -p /tmp/updatenode_syncfile_MERGE"
@@ -266,6 +276,7 @@ check:rc==0
 end
 
 start:updatenode_P_script1
+label:others,updatenode
 cmd:echo "echo hello > /tmp/updatenode_P_script" > /tmp/script1
 check:rc==0
 cmd:chmod a+x /tmp/script1
@@ -289,6 +300,7 @@ check:rc==0
 end
 
 start:updatenode_P_script2
+label:others,updatenode
 cmd:echo "#!/bin/bash" > /tmp/updatenode_P_script_input
 cmd:echo "if [ -n \$1 ]" >> /tmp/updatenode_P_script_input
 cmd:echo "then" >> /tmp/updatenode_P_script_input
@@ -324,6 +336,7 @@ check:rc==0
 end
 
 start:updatenode_f_incompatible_flags
+label:others,updatenode
 description:check if -f flag incompatible with -S,-P or -F flags
 cmd:updatenode $$CN -f -S
 check:rc==1
@@ -337,6 +350,7 @@ check:output=~Choose either -f to sync the service nodes, or -F  to sync the nod
 end
 
 start:updatenode_k_incompatible_flags
+label:others,updatenode
 description:check if -k flag incompatible with -S,-P,-F or -f flags
 cmd:updatenode $$CN -k -S
 check:rc==1
@@ -353,6 +367,7 @@ check:output=~If you use the -k flag, you cannot specify the -S,-P,-f or -F flag
 end
 
 start:updatenode_diskful_syncfiles_P_script1
+label:others,updatenode
 description:check updatenode noderange -F -P script1
 cmd:mkdir -p /install/custom/install/__GETNODEATTR($$CN,os)__/
 check:rc==0
@@ -398,6 +413,7 @@ cmd:rm -f /install/script1
 end
 
 start:updatenode_script3
+label:others,updatenode
 description:check updatenode noderange -P "script c"
 cmd:echo "#!/bin/bash" > /tmp/updatenode_P_script_input
 cmd:echo "if [ -n \$1 ]" >> /tmp/updatenode_P_script_input
@@ -426,6 +442,7 @@ check:rc==0
 end
 
 start:updatenode_P_script1_script2
+label:others,updatenode
 description:check updatenode noderange -P "script1 a,script2 b"
 cmd:echo "#!/bin/bash" > /tmp/updatenode_P1_script_input
 cmd:echo "if [ -n \$1 ];then" >> /tmp/updatenode_P1_script_input
@@ -468,6 +485,7 @@ cmd:rm /install/postscripts/updatenode_P*_script_input
 end
 
 start:updatenode_without_flag
+label:others,updatenode
 description:check updatenode without any flag
 cmd:updatenode $$CN
 check:rc==0
@@ -478,6 +496,7 @@ check:output=~Software Maintenance has completed
 end
 
 start:updatenode_P_syslog_V_xcatdebugmode_is_one
+label:others,updatenode
 description:xcatdebugmode value is one, there should be execution outputs.
 cmd:chtab key=xcatdebugmode site.value=1
 check:rc==0
@@ -488,6 +507,7 @@ check:rc==0
 end
 
 start:updatenode_P_syslog_V_xcatdebugmode_is_two
+label:others,updatenode
 description:xcatdebugmode value is two, there should be execution outputs.
 cmd:chtab key=xcatdebugmode site.value=2
 check:rc==0

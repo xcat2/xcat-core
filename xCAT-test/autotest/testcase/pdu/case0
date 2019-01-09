@@ -1,5 +1,6 @@
 start:lsdef_pdu_object
-degscription:list pdu object and it's attribute
+description:list pdu object and it's attribute
+label:others,PDU
 cmd:lsdef -h
 check:output=~pdu
 cmd:mkdef $$PDU mgt=pdu nodetype=pdu groups=pdu
@@ -17,6 +18,7 @@ end
 
 start:mkdef_pdu_object
 description:create a pdu object and list it's attribute
+label:others,PDU
 cmd:mkdef $$PDU groups=pdu ip=$$PDUIP mgt=pdu nodetype=pdu
 check:rc==0
 cmd:lsdef -t pdu
@@ -40,6 +42,7 @@ end
 
 start:noderm_pdu_object
 description:create a pdu object and use noderm to remove it
+label:others,PDU
 cmd:mkdef $$PDU groups=pdu ip=$$PDUIP mgt=pdu nodetype=pdu
 check:rc==0
 cmd:lsdef -t pdu
@@ -59,6 +62,7 @@ end
 
 start:pdu_communication
 description:Verify a pdu snmp communication
+label:others,PDU
 cmd:mkdef $$PDU groups=pdu ip=$$PDUIP mgt=pdu nodetype=pdu
 check:rc==0
 cmd:lsdef -t pdu
@@ -77,6 +81,7 @@ end
 
 start:pdu_rinv
 description:Verify rinv works for pdu object
+label:others,PDU
 cmd:mkdef $$PDU groups=pdu ip=$$PDUIP mgt=pdu nodetype=pdu
 check:rc==0
 cmd:makehosts $$PDU
@@ -94,6 +99,7 @@ end
 
 start:pdu_rpower
 description:Verify rpower works for pdu object
+label:others,PDU
 cmd:mkdef $$PDU groups=pdu ip=$$PDUIP mgt=pdu nodetype=pdu
 check:rc==0
 cmd:makehosts $$PDU
@@ -123,6 +129,7 @@ end
 
 start:pdu_node_operation
 description:Verify operate node's pdu attribute could operate pdu
+label:others,PDU
 cmd:mkdef $$PDU groups=pdu ip=$$PDUIP mgt=pdu nodetype=pdu
 check:rc==0
 cmd:makehosts $$PDU
@@ -158,6 +165,7 @@ end
 
 start:pdu_bad_config
 description:test bad config with pdu
+label:others,PDU
 cmd:mkdef $$PDU groups=pdu ip=$$PDUIP mgt=pdu nodetype=pdu
 check:rc==0
 cmd:makehosts $$PDU

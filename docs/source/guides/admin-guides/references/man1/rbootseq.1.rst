@@ -17,21 +17,21 @@ Blade specific:
 ===============
 
 
-\ **rbootseq**\  \ *noderange*\  {\ **hd0 | hd1 | hd2 | hd3 | net | iscsi | iscsicrit | cdrom | usbflash | floppy | none | list | stat**\ }\ **,**\ \ *...*\
+\ **rbootseq**\  \ *noderange*\  {\ **hd0 | hd1 | hd2 | hd3 | net | iscsi | iscsicrit | cdrom | usbflash | floppy | none | list | stat**\ }\ **,**\ \ *...*\ 
 
 
 HP Blade specific:
 ==================
 
 
-\ **rbootseq**\  \ *noderange*\  {\ **hd | net1 | net2 | net3 | net4 | cdrom | usbflash | floppy | none**\ }\ **,**\ \ *...*\
+\ **rbootseq**\  \ *noderange*\  {\ **hd | net1 | net2 | net3 | net4 | cdrom | usbflash | floppy | none**\ }\ **,**\ \ *...*\ 
 
 
 PPC (using Direct FSP Management) specific:
 ===========================================
 
 
-\ **rbootseq**\  \ *noderange*\  \ **[hfi|net]**\
+\ **rbootseq**\  \ *noderange*\  \ **[hfi|net]**\ 
 
 
 
@@ -58,106 +58,106 @@ OPTIONS
 
 
 
-\ **hd0 | harddisk0 | hd | harddisk**\
-
+\ **hd0 | harddisk0 | hd | harddisk**\ 
+ 
  The first hard disk.
+ 
 
 
-
-\ **hd1 | harddisk1**\
-
+\ **hd1 | harddisk1**\ 
+ 
  The second hard disk.
+ 
 
 
-
-\ **hd2 | harddisk2**\
-
+\ **hd2 | harddisk2**\ 
+ 
  The third hard disk.
+ 
 
 
-
-\ **hd3 | harddisk3**\
-
+\ **hd3 | harddisk3**\ 
+ 
  The fourth hard disk.
+ 
 
 
-
-\ **n | net | network**\
-
+\ **n | net | network**\ 
+ 
  Boot over the ethernet network, using a PXE or BOOTP broadcast.
-
+ 
 
 
 \ **n | net | network | net1 | nic1**\  (HP Blade Only)
-
+ 
  Boot over the first ethernet network, using a PXE or BOOTP broadcast.
-
+ 
 
 
 \ **net2 | nic2**\  (HP Blade Only)
-
+ 
  Boot over the second ethernet network, using a PXE or BOOTP broadcast.
-
+ 
 
 
 \ **net3 | nic3**\  (HP Blade Only)
-
+ 
  Boot over the third ethernet network, using a PXE or BOOTP broadcast.
-
+ 
 
 
 \ **net3 | nic3**\  (HP Blade Only)
-
+ 
  Boot over the fourth ethernet network, using a PXE or BOOTP broadcast.
+ 
 
 
-
-\ **hfi**\
-
+\ **hfi**\ 
+ 
  Boot p775 nodes over the HFI network, using BOOTP broadcast.
+ 
 
 
-
-\ **iscsi**\
-
+\ **iscsi**\ 
+ 
  Boot to an iSCSI disk over the network.
+ 
 
 
-
-\ **iscsicrit**\
-
+\ **iscsicrit**\ 
+ 
  ??
+ 
 
 
-
-\ **cd | cdrom**\
-
+\ **cd | cdrom**\ 
+ 
  The CD or DVD drive.
+ 
 
 
-
-\ **usbflash | usb | flash**\
-
+\ **usbflash | usb | flash**\ 
+ 
  A USB flash drive.
+ 
 
 
-
-\ **floppy**\
-
+\ **floppy**\ 
+ 
  The floppy drive.
+ 
 
 
-
-\ **none**\
-
+\ **none**\ 
+ 
  If it gets to this part of the sequence, do not boot.  Can not be specified 1st, or before any real boot devices.
+ 
 
 
-
-\ **list | stat**\
-
+\ **list | stat**\ 
+ 
  Display the current boot sequence.
-
+ 
 
 
 
@@ -168,16 +168,16 @@ EXAMPLES
 
 
 1.
-
+ 
  Set blades 14-56 and 70-203 to try to boot first from the CD drive, then the floppy drive, then
  the network, and finally from the 1st hard disk:
-
-
+ 
+ 
  .. code-block:: perl
-
+ 
    rbootseq blade[14-56],blade[70-203] c,f,n,hd0
-
-
+ 
+ 
 
 
 

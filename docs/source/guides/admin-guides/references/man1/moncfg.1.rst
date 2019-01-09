@@ -19,11 +19,11 @@ SYNOPSIS
 ********
 
 
-\ **moncfg [-h| -**\ **-help]**\
+\ **moncfg [-h| -**\ **-help]**\ 
 
-\ **moncfg [-v| -**\ **-version]**\
+\ **moncfg [-v| -**\ **-version]**\ 
 
-\ **moncfg**\  \ *name*\  \ *[noderange]*\  \ **[-r|-**\ **-remote]**\
+\ **moncfg**\  \ *name*\  \ *[noderange]*\  \ **[-r|-**\ **-remote]**\ 
 
 
 ***********

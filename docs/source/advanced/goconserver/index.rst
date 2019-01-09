@@ -5,7 +5,6 @@ Go Conserver
 programming language. For more information, see https://github.com/xcat2/goconserver/
 
 .. toctree::
-
   :maxdepth: 2
 
   quickstart.rst

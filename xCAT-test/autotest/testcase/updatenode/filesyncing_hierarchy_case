@@ -1,5 +1,6 @@
 start:updatenode_f_F_hierarchy
 description: verify the behavior of updatenode -f/-F in the hierarchy environment-- (1)the different kind of synclist entries including destination nodes (2)make sure the location of directory to hold the files/dirs to sync on SN is correct (3)check the result of updatenode -f/-F
+label:others,updatenode
 
 #create environment files to hold variables accross the case
 cmd: MYENVFILE="/tmp/updatenode_f_F_hierarchy.envs"; rm -rf $MYENVFILE; echo "MYENVFILE=\"$MYENVFILE\"">> $MYENVFILE; chmod +x $MYENVFILE

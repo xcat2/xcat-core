@@ -1,5 +1,5 @@
-#SERIES# 1,50,100,250,500,1000,2500,5000,10000
-lsdef #NODES#
+#SERIES# 1,50,100,250,500,1000,2500,5000,10000,20000
+lsdef #NODES# -i ip,mac
 makehosts #NODES#
 makedns -n #NODES#
 makedhcp #NODES#
@@ -10,4 +10,6 @@ nodeset #NODES# osimage=#OSIMAGE#
 chdef -t node -o #NODES# postscripts="fake" profile="install" netboot="grub2"
 rmdef -t node #PERFGRP#
 cat #STANZ#|mkdef -z -f
+lsdef -w 'serial=12345678'
+chdef #NODES# -p groups=group1
 noderm #PERFGRP#

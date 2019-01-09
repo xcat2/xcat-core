@@ -1468,7 +1468,7 @@ sub rscan {
         return (join('', ($_[0], $usage_string)));
     };
 
-    if (!GetOptions(\%opt, qw(V|Verbose w x z))) {
+    if (!GetOptions(\%opt, qw(V|verbose w x z))) {
         return (1, usage());
     }
     if (defined($ARGV[0])) {

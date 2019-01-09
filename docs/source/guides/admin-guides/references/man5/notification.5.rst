@@ -19,7 +19,7 @@ SYNOPSIS
 ********
 
 
-\ **notification Attributes:**\   \ *filename*\ , \ *tables*\ , \ *tableops*\ , \ *comments*\ , \ *disable*\
+\ **notification Attributes:**\   \ *filename*\ , \ *tables*\ , \ *tableops*\ , \ *comments*\ , \ *disable*\ 
 
 
 ***********
@@ -36,34 +36,34 @@ notification Attributes:
 
 
 
-\ **filename**\
-
+\ **filename**\ 
+ 
  The path name of a file that implements the callback routine when the monitored table changes.  Can be a perl module or a command.  See the regnotif man page for details.
+ 
 
 
-
-\ **tables**\
-
+\ **tables**\ 
+ 
  Comma-separated list of xCAT database tables to monitor.
+ 
 
 
-
-\ **tableops**\
-
+\ **tableops**\ 
+ 
  Specifies the table operation to monitor for. Valid values:  "d" (rows deleted), "a" (rows added), "u" (rows updated).
+ 
 
 
-
-\ **comments**\
-
+\ **comments**\ 
+ 
  Any user-written notes.
+ 
 
 
-
-\ **disable**\
-
+\ **disable**\ 
+ 
  Set to 'yes' or '1' to comment out this row.
-
+ 
 
 
 
@@ -72,5 +72,5 @@ SEE ALSO
 ********
 
 
-\ **nodels(1)**\ , \ **chtab(8)**\ , \ **tabdump(8)**\ , \ **tabedit(8)**\
+\ **nodels(1)**\ , \ **chtab(8)**\ , \ **tabdump(8)**\ , \ **tabedit(8)**\ 
 

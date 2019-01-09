@@ -11,7 +11,7 @@ SYNOPSIS
 ********
 
 
-\ **copycds-cdrom**\  \ *[copycds options]*\  \ *[drive]*\
+\ **copycds-cdrom**\  \ *[copycds options]*\  \ *[drive]*\ 
 
 
 ***********

@@ -23,7 +23,7 @@ SYNOPSIS
 
 \ **lsflexnode**\  [\ **-v**\  | \ **-**\ **-version**\ ]
 
-\ **lsflexnode**\  \ *noderange*\
+\ **lsflexnode**\  \ *noderange*\ 
 
 
 ***********
@@ -55,16 +55,16 @@ OPTIONS
 
 
 
-\ **-h | -**\ **-help**\
-
+\ **-h | -**\ **-help**\ 
+ 
  Display the usage message.
+ 
 
 
-
-\ **-v | -**\ **-version**\
-
+\ **-v | -**\ **-version**\ 
+ 
  Display the version information.
-
+ 
 
 
 
@@ -76,102 +76,102 @@ ATTRIBUTES
 The meaning of attributes which displayed by the \ **lsflexnode**\ . The word 'node' in this section means \ **Blade slot node**\ .
 
 
-\ **Complex**\
-
+\ **Complex**\ 
+ 
  The unique numeric identifier for a complex installed in the chassis.
+ 
 
 
-
-\ **Partition number**\
-
+\ **Partition number**\ 
+ 
  The number of partitions currently defined for this complex.
+ 
 
 
-
-\ **Complex node number**\
-
+\ **Complex node number**\ 
+ 
  The number of nodes existing in this complex, regardless of their assignment to any given partition.
+ 
 
 
-
-\ **Partition**\
-
+\ **Partition**\ 
+ 
  The unique numeric identifier for a partition defined within a complex installed in the chassis.
+ 
 
 
-
-\ **Partition Mode**\
-
+\ **Partition Mode**\ 
+ 
  The currently configured mode of this partition. It can be 'partition' or 'standalone'.
+ 
 
 
-
-\ **Partition node number**\
-
+\ **Partition node number**\ 
+ 
  The number of nodes currently defined for this partition.
+ 
 
 
-
-\ **Partition status**\
-
+\ **Partition status**\ 
+ 
  The current power status of this partition when the partition has a valid partition configuration. It can be 'poweredoff', 'poweredon', 'resetting' or 'invalid'.
+ 
 
 
-
-\ **Node**\
-
+\ **Node**\ 
+ 
  The unique numeric identifier for this node, unique within the partition. If this node does not belong to a partition, the slot number will be displayed.
+ 
 
 
-
-\ **Node state**\
-
+\ **Node state**\ 
+ 
  The physical power state of this node. It can be 'poweredoff', 'poweredon' or 'resetting'.
+ 
 
 
-
-\ **Node slot**\
-
+\ **Node slot**\ 
+ 
  The base slot number where the node exists in the chassis.
+ 
 
 
-
-\ **Node resource**\
-
+\ **Node resource**\ 
+ 
  A string providing a summary overview of the resources provided by this node. It includes the CPU number, CPU frequency and Memory size.
+ 
 
 
-
-\ **Node type**\
-
+\ **Node type**\ 
+ 
  The general categorization of the node. It can be 'processor', 'memory' or 'io'.
+ 
 
 
-
-\ **Node role**\
-
+\ **Node role**\ 
+ 
  Indicates if the node is assigned to a partition, and if so, provides an indication of whether the node is the primary node of the partition or not.
+ 
 
 
-
-\ **Flexnode state**\
-
+\ **Flexnode state**\ 
+ 
  The state of a flexible node. It is the state of the partition which this node belongs to. If this node does NOT belong to a partition, the value should be 'invalid'.
-
+ 
  It can be 'poweredoff', 'poweredon', 'resetting' or 'invalid'.
+ 
 
 
-
-\ **Complex id**\
-
+\ **Complex id**\ 
+ 
  The identifier of the complex this node belongs to.
+ 
 
 
-
-\ **Partition id**\
-
+\ **Partition id**\ 
+ 
  The identifier of the partition this node belongs to.
-
+ 
 
 
 
@@ -182,18 +182,18 @@ EXAMPLES
 
 
 1 Display all the \ **Complex**\ , \ **Partition**\  and \ **Blade slot node**\  which managed by a AMM.
-
-
+ 
+ 
  .. code-block:: perl
-
+ 
    lsflexnode amm1
-
-
+ 
+ 
  The output:
-
-
+ 
+ 
  .. code-block:: perl
-
+ 
       amm1: Complex - 24068
       amm1: ..Partition number - 1
       amm1: ..Complex node number - 2
@@ -214,23 +214,23 @@ EXAMPLES
       amm1: ......Node type - processor
       amm1: ......Node resource - 2 (1866 MHz) / 8 (2 GB)
       amm1: ......Node role - unassigned
-
-
+ 
+ 
 
 
 2 Display a flexible node.
-
-
+ 
+ 
  .. code-block:: perl
-
+ 
    lsflexnode blade1
-
-
+ 
+ 
  The output:
-
-
+ 
+ 
  .. code-block:: perl
-
+ 
       blade1: Flexnode state - poweredoff
       blade1: Complex id - 24068
       blade1: Partition id - 1
@@ -239,8 +239,8 @@ EXAMPLES
       blade1: Slot14: Node type - processor
       blade1: Slot14: Node resource - 2 (1866 MHz) / 8 (2 GB)
       blade1: Slot14: Node role - secondary
-
-
+ 
+ 
 
 
 

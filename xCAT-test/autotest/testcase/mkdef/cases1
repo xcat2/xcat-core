@@ -1,6 +1,6 @@
 start:mkdef_github_issue2582
 description:Verify github issue 2582
-label:mn_only,db
+label:mn_only,ci_test,db
 cmd:mkdef -t group -o doubletrouble bmc='|\z|-imm|' mgt=ipmi
 check:rc==0
 cmd:mkdef mgt02 groups=doubletrouble
@@ -68,7 +68,7 @@ end
 
 start:mkdef_regex_nicsip
 description:Verify the GitHub issue #3047.
-label:mn_only,db
+label:mn_only,ci_test,db
 cmd:rmdef xcattest_tmp_node_sn[01-16]
 cmd:rmdef -t group -o xcattest_tmp_group_regex
 cmd:mkdef -t group -o xcattest_tmp_group_regex

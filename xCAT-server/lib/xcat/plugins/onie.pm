@@ -277,7 +277,9 @@ sub nodeset {
             $provmethod = $nodehash->{$switch}->[0]->{provmethod};
         }
         if ($::VERBOSE) {
-            xCAT::MsgUtils->message("I", { data => ["$switch has provmethod=$provmethod"] }, $callback);
+            if (!defined($::DISABLENODESETWARNING)) { # set by AAsn.pm
+                xCAT::MsgUtils->message("I", { data => [ "$switch has provmethod=$provmethod" ] }, $callback);
+            }
         }
 
         #get pkgdir from osimage
@@ -286,7 +288,9 @@ sub nodeset {
         my $imagetab = $linuximagetab->getAttribs({ imagename => $provmethod },'pkgdir');
         my $osimghash = $osimagetab->getAttribs({ imagename => $provmethod },'osvers','osarch');
         unless($imagetab and $osimghash){
-            xCAT::MsgUtils->message("E", { error => ["cannot find osimage \"$provmethod\" for $switch, please make sure the osimage specified in command line or node.provmethod exists!"], errorcode => ["1"] }, $callback);
+            if (!defined($::DISABLENODESETWARNING)) {    # set by AAsn.pm
+                xCAT::MsgUtils->message("E", { error => ["cannot find osimage \"$provmethod\" for $switch, please make sure the osimage specified in command line or node.provmethod exists!"], errorcode => ["1"] }, $callback);
+            }
             next;
         }
 

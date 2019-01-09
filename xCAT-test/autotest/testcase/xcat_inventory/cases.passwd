@@ -1,0 +1,31 @@
+start:xcat_inventory_import_validation_passwd
+description:This case is used to test passwd validation function of xcat-inventory import yaml and json file. To test "cryptmethod" attribute
+label:others,inventory_ci
+cmd:tabdump -w 'key==autotest' passwd |grep autotest > /dev/null 2>&1;if [[ $? -eq 0 ]]; then xcat-inventory export -t passwd -o autotest >/tmp/xcat_inventory_import_validation_passwd_bak/autotest ;tabch -d 'key==autotest' passwd;fi
+check:rc==0
+cmd:mkdir -p /tmp/xcat_inventory_import_validation_passwd_bak
+check:rc==0
+
+cmd:/opt/xcat/share/xcat/tools/autotest/testcase/xcat_inventory/validatehelper "passwd" "autotest" "cryptmethod" "" "/tmp/xcat_inventory_import_validation_passwd"
+check:rc==0
+
+cmd:/opt/xcat/share/xcat/tools/autotest/testcase/xcat_inventory/validatehelper "passwd" "autotest" "cryptmethod" "md5" "/tmp/xcat_inventory_import_validation_passwd"
+check:rc==0
+
+cmd:/opt/xcat/share/xcat/tools/autotest/testcase/xcat_inventory/validatehelper "passwd" "autotest" "cryptmethod" "sha256" "/tmp/xcat_inventory_import_validation_passwd"
+check:rc==0
+
+cmd:/opt/xcat/share/xcat/tools/autotest/testcase/xcat_inventory/validatehelper "passwd" "autotest" "cryptmethod" "sha512" "/tmp/xcat_inventory_import_validation_passwd"
+check:rc==0
+
+cmd:/opt/xcat/share/xcat/tools/autotest/testcase/xcat_inventory/validatehelper "passwd" "autotest" "cryptmethod" "a.a" "/tmp/xcat_inventory_import_validation_passwd"
+check:rc!=0
+
+cmd:/opt/xcat/share/xcat/tools/autotest/testcase/xcat_inventory/validatehelper "passwd" "autotest" "cryptmethod" "MD5" "/tmp/xcat_inventory_import_validation_passwd"
+check:rc!=0
+
+cmd:if [[ -e /tmp/xcat_inventory_import_validation_passwd_bak/autotest ]]; then xcat-inventory import -f /tmp/xcat_inventory_import_validation_passwd_bak/autotest; fi
+check:rc==0
+cmd:rm -rf /tmp/xcat_inventory_import_validation_passwd_bak
+check:rc==0
+end

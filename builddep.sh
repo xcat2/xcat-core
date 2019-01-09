@@ -19,6 +19,13 @@
 #                       of the FRS area.
 #       VERBOSE=1     - Set to 1 to see more VERBOSE output
 
+# This script should only be run on RPM based machines 
+# This test is not foolproof, but at least tries to detect
+if [ `/bin/rpm -q -f /bin/rpm >/dev/null 2>&1; echo $?` != 0 ]; then
+	echo "ERROR: This script should only be executed on a RPM based Operation System."
+	exit 1
+fi
+
 # you can change this if you need to
 USER=xcat
 TARGET_MACHINE=xcat.org
@@ -49,6 +56,16 @@ if [ ! -d $GSA ]; then
 	exit 1
 fi
 
+REQPKG=("rpm-sign" "createrepo")
+for pkg in ${REQPKG[*]}; do
+	if [ `rpm -q $pkg >> /dev/null; echo $?` != 0 ]; then
+		echo "ERROR: $pkg is required to successfully create the xcat-deps package. Install and rerun."
+		exit 1
+	else
+		echo "Checking for package=$pkg ..."
+	fi
+done
+
 # set grep to quiet by default
 GREP="grep -q"
 if [ "$VERBOSE" = "1" -o "$VERBOSE" = "yes" ]; then
@@ -58,14 +75,10 @@ if [ "$VERBOSE" = "1" -o "$VERBOSE" = "yes" ]; then
 fi
 
 # this is needed only when we are transitioning the yum over to frs
-# YUMREPOURL1="http://xcat.org/yum"
-# YUMREPOURL2="http://xcat.org/files/yum"
 if [ "$FRSYUM" != 0 ]; then
 	YUMDIR="$FRS/repos"
-	# YUMREPOURL="$YUMREPOURL2"
 else
 	YUMDIR=htdocs
-	# YUMREPOURL="$YUMREPOURL1"
 fi
 
 cd `dirname $0`
@@ -127,18 +140,6 @@ if [ "$OSNAME" != "AIX" ]; then
 
 	# Modify xcat-dep.repo files to point to the correct place
 	echo "===> Modifying the xcat-dep.repo files to point to the correct location..."
-	# 10/01/2015 - vkhu
-	# The URLs have been updated in GSA, this section is not needed at the moment
-	#
-	#if [ "$FRSYUM" != 0 ]; then
-	#	newurl="$YUMREPOURL2"
-	#	oldurl="$YUMREPOURL1"
-	#else
-	#	newurl="$YUMREPOURL1"
-	#	oldurl="$YUMREPOURL2"
-	#fi
-	#
-	#sed -i -e "s|=$oldurl|=$newurl|g" `find . -name "xcat-dep.repo" `
 fi
 
 if [ "$OSNAME" == "AIX" ]; then

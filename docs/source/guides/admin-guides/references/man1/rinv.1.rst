@@ -15,7 +15,7 @@ Name
 
 
 ****************
-\ **Synopsis**\
+\ **Synopsis**\ 
 ****************
 
 
@@ -76,7 +76,7 @@ pdu specific:
 =============
 
 
-\ **rinv**\  \ *noderange*\
+\ **rinv**\  \ *noderange*\ 
 
 
 zVM specific:
@@ -110,7 +110,7 @@ zVM specific:
 
 
 *******************
-\ **Description**\
+\ **Description**\ 
 *******************
 
 
@@ -121,220 +121,220 @@ Calling \ **rinv**\  for VMware will display the UUID/GUID, number of CPUs, amou
 
 
 ***************
-\ **Options**\
+\ **Options**\ 
 ***************
 
 
 
-\ **bus**\
-
+\ **bus**\ 
+ 
  List all buses for each I/O slot.
+ 
 
 
-
-\ **config**\
-
+\ **config**\ 
+ 
  Retrieves number of processors, speed, total memory, and DIMM locations.
+ 
 
 
-
-\ **model**\
-
+\ **model**\ 
+ 
  Retrieves model number.
+ 
 
 
-
-\ **serial**\
-
+\ **serial**\ 
+ 
  Retrieves serial number.
+ 
 
 
-
-\ **firm**\
-
+\ **firm**\ 
+ 
  Retrieves firmware versions.
+ 
 
 
-
-\ **deconfig**\
-
+\ **deconfig**\ 
+ 
  Retrieves deconfigured resources. Deconfigured resources are hw components (cpus, memory, etc.) that have failed so the firmware has automatically turned those components off. This option is only capable of listing some of the deconfigured resources and should not be the only method used to check the hardware status.
+ 
 
 
-
-\ **-x**\
-
+\ **-x**\ 
+ 
  To output the raw information of deconfigured resources for CEC.
+ 
 
 
-
-\ **asset**\
-
+\ **asset**\ 
+ 
  Retrieves asset tag. Usually it's the MAC address of eth0.
+ 
 
 
-
-\ **vpd**\
-
+\ **vpd**\ 
+ 
  Same as specifying model, serial, deviceid, and mprom.
+ 
 
 
-
-\ **diag**\
-
+\ **diag**\ 
+ 
  Diagnostics information of firmware.
+ 
 
 
-
-\ **mprom**\
-
+\ **mprom**\ 
+ 
  Retrieves mprom firmware level.
+ 
 
 
-
-\ **dimm**\
-
+\ **dimm**\ 
+ 
  Retrieves dual in-line memory module information.
+ 
 
 
-
-\ **deviceid**\
-
+\ **deviceid**\ 
+ 
  Retrieves device identification. Usually device, manufacturing and product IDs.
+ 
 
 
-
-\ **uuid**\
-
+\ **uuid**\ 
+ 
  Retrieves the universally unique identifier.
+ 
 
 
-
-\ **guid**\
-
+\ **guid**\ 
+ 
  Retrieves the global unique identifier .
+ 
 
 
-
-\ **all**\
-
+\ **all**\ 
+ 
  All of the above.
+ 
 
 
-
-\ **-h | -**\ **-help**\
-
+\ **-h | -**\ **-help**\ 
+ 
  Print help.
+ 
 
 
-
-\ **-v | -**\ **-version**\
-
+\ **-v | -**\ **-version**\ 
+ 
  Print version.
+ 
 
 
-
-\ **-V | -**\ **-verbose**\
-
+\ **-V | -**\ **-verbose**\ 
+ 
  Prints verbose output, if available.
+ 
 
 
-
-\ **-t**\
-
+\ **-t**\ 
+ 
  Set the values in the vm table to what vCenter has for the indicated nodes.
+ 
 
 
+\ **zVM specific :**\ 
 
-\ **zVM specific :**\
 
-
-\ **-**\ **-diskpoolspace**\
-
+\ **-**\ **-diskpoolspace**\ 
+ 
  Calculates the total size of every known storage pool.
+ 
 
 
-
-\ **-**\ **-diskpool**\  \ *pool*\  \ *space*\
-
+\ **-**\ **-diskpool**\  \ *pool*\  \ *space*\ 
+ 
  Lists the storage devices (ECKD and FBA) contained in a disk pool. Space can be: all, free, or used.
+ 
 
 
-
-\ **-**\ **-fcpdevices**\  \ *state*\  \ *details*\
-
+\ **-**\ **-fcpdevices**\  \ *state*\  \ *details*\ 
+ 
  Lists the FCP device channels that are active, free, or offline. State can be: active, free, or offline.
+ 
 
 
-
-\ **-**\ **-diskpoolnames**\
-
+\ **-**\ **-diskpoolnames**\ 
+ 
  Lists the known disk pool names.
+ 
 
 
-
-\ **-**\ **-networknames**\
-
+\ **-**\ **-networknames**\ 
+ 
  Lists the known network names.
+ 
 
 
-
-\ **-**\ **-network**\  \ *name*\
-
+\ **-**\ **-network**\  \ *name*\ 
+ 
  Shows the configuration of a given network device.
+ 
 
 
-
-\ **-**\ **-ssi**\
-
+\ **-**\ **-ssi**\ 
+ 
  Obtain the SSI and system status.
+ 
 
 
-
-\ **-**\ **-smapilevel**\
-
+\ **-**\ **-smapilevel**\ 
+ 
  Obtain the SMAPI level installed on the z/VM system.
+ 
 
 
-
-\ **-**\ **-wwpns**\  \ *fcp_channel*\
-
+\ **-**\ **-wwpns**\  \ *fcp_channel*\ 
+ 
  Query a given FCP device channel on a z/VM system and return a list of WWPNs.
+ 
 
 
-
-\ **-**\ **-zfcppool**\  \ *pool*\  \ *space*\
-
+\ **-**\ **-zfcppool**\  \ *pool*\  \ *space*\ 
+ 
  List the SCSI/FCP devices contained in a zFCP pool. Space can be: free or used.
+ 
 
 
-
-\ **-**\ **-zfcppoolnames**\
-
+\ **-**\ **-zfcppoolnames**\ 
+ 
  List the known zFCP pool names.
-
+ 
 
 
 
 ****************
-\ **Examples**\
+\ **Examples**\ 
 ****************
 
 
 
 1. To retrieve all information available from blade node4, enter:
-
-
+ 
+ 
  .. code-block:: perl
-
+ 
    rinv node5 all
-
-
+ 
+ 
  Output is similar to:
-
-
+ 
+ 
  .. code-block:: perl
-
+ 
    node5: Machine Type/Model 865431Z
    node5: Serial Number 23C5030
    node5: Asset Tag 00:06:29:1F:01:1A
@@ -355,23 +355,23 @@ Calling \ **rinv**\  for VMware will display the UUID/GUID, number of CPUs, amou
    node5: Processor Speed: 866 MHz
    node5: Total Memory:	  512 MB
    node5: Memory DIMM locations:  Slot(s)  3  4
-
-
+ 
+ 
 
 
 2. To output the raw information of deconfigured resources for CEC cec01, enter:
-
-
+ 
+ 
  .. code-block:: perl
-
+ 
    rinv cec01 deconfig -x
-
-
+ 
+ 
  Output is similar to:
-
-
+ 
+ 
  .. code-block:: perl
-
+ 
    cec01:
    <SYSTEM>
    <System_type>IH</System_type>
@@ -380,74 +380,68 @@ Calling \ **rinv**\  for VMware will display the UUID/GUID, number of CPUs, amou
    <RID>800</RID>
    </NODE>
    </SYSTEM>
+ 
+ 
 
 
-
-
-3.
-
- To retrieve 'config' information from the HMC-managed LPAR node3, enter:
-
-
+3. To retrieve 'config' information from the HMC-managed LPAR node3, enter:
+ 
+ 
  .. code-block:: perl
-
+ 
    rinv node3 config
-
-
+ 
+ 
  Output is similar to:
-
-
+ 
+ 
  .. code-block:: perl
-
+ 
    node5: Machine Configuration Info
    node5: Number of Processors: 1
    node5: Total Memory (MB): 1024
+ 
+ 
 
 
-
-
-4.
-
- To retrieve information about a VMware node vm1, enter:
-
-
+4. To retrieve information about a VMware node vm1, enter:
+ 
+ 
  .. code-block:: perl
-
+ 
    rinv vm1
-
-
+ 
+ 
  Output is similar to:
-
-
+ 
+ 
  .. code-block:: perl
-
+ 
    vm1: UUID/GUID: 42198f65-d579-fb26-8de7-3ae49e1790a7
    vm1: CPUs: 1
    vm1: Memory: 1536 MB
    vm1: Network adapter 1: 36:1b:c2:6e:04:02
    vm1: Hard disk 1 (d0): 9000 MB @ [nfs_192.168.68.21_vol_rc1storage_vmware] vm1_3/vm1.vmdk
    vm1: Hard disk 2 (d4): 64000 MB @ [nfs_192.168.68.21_vol_rc1storage_vmware] vm1_3/vm1_5.vmdk
+ 
+ 
+ \ **zVM specific :**\ 
+ 
 
 
- \ **zVM specific :**\
-
-
-
-5.
-
- To list the defined network names available for a given node:
-
-
+5. To list the defined network names available for a given node:
+ 
+ 
  .. code-block:: perl
-
+ 
    rinv pokdev61 --getnetworknames
-
-
+ 
+ 
  Output is similar to:
-
-
+ 
+ 
  .. code-block:: perl
-
+ 
    pokdev61: LAN:QDIO SYSTEM GLAN1
    pokdev61: LAN:HIPERS SYSTEM GLAN2
    pokdev61: LAN:QDIO SYSTEM GLAN3
@@ -456,122 +450,112 @@ Calling \ **rinv**\  for VMware will display the UUID/GUID, number of CPUs, amou
    pokdev61: VSWITCH SYSTEM VSW1
    pokdev61: VSWITCH SYSTEM VSW2
    pokdev61: VSWITCH SYSTEM VSW3
+ 
+ 
 
 
-
-
-6.
-
- To list the configuration for a given network:
-
-
+6. To list the configuration for a given network:
+ 
+ 
  .. code-block:: perl
-
+ 
    rinv pokdev61 --getnetwork GLAN1
-
-
+ 
+ 
  Output is similar to:
-
-
+ 
+ 
  .. code-block:: perl
-
+ 
    pokdev61: LAN SYSTEM GLAN1        Type: QDIO    Connected: 1    Maxconn: INFINITE
    pokdev61:   PERSISTENT  UNRESTRICTED  IP                        Accounting: OFF
    pokdev61:   IPTimeout: 5                 MAC Protection: Unspecified
    pokdev61:   Isolation Status: OFF
+ 
+ 
 
 
-
-
-7.
-
- To list the disk pool names available:
-
-
+7. To list the disk pool names available:
+ 
+ 
  .. code-block:: perl
-
+ 
    rinv pokdev61 --diskpoolnames
-
-
+ 
+ 
  Output is similar to:
-
-
+ 
+ 
  .. code-block:: perl
-
+ 
    pokdev61: POOL1
    pokdev61: POOL2
    pokdev61: POOL3
+ 
+ 
 
 
-
-
-8.
-
- List the configuration for a given disk pool:
-
-
+8. List the configuration for a given disk pool:
+ 
+ 
  .. code-block:: perl
-
+ 
    rinv pokdev61 --diskpool POOL1 free
-
-
+ 
+ 
  Output is similar to:
-
-
+ 
+ 
  .. code-block:: perl
-
+ 
    pokdev61: #VolID DevType StartAddr Size
    pokdev61: EMC2C4 3390-09 0001 10016
    pokdev61: EMC2C5 3390-09 0001 10016
+ 
+ 
 
 
-
-
-9.
-
- List the known zFCP pool names.
-
-
+9. List the known zFCP pool names.
+ 
+ 
  .. code-block:: perl
-
+ 
    rinv pokdev61 --zfcppoolnames
-
-
+ 
+ 
  Output is similar to:
-
-
+ 
+ 
  .. code-block:: perl
-
+ 
    pokdev61: zfcp1
    pokdev61: zfcp2
    pokdev61: zfcp3
+ 
+ 
 
 
-
-
-10.
-
- List the SCSI/FCP devices contained in a given zFCP pool:
-
-
+10. List the SCSI/FCP devices contained in a given zFCP pool:
+ 
+ 
  .. code-block:: perl
-
+ 
    rinv pokdev61 --zfcppool zfcp1
-
-
+ 
+ 
  Output is similar to:
-
-
+ 
+ 
  .. code-block:: perl
-
+ 
    pokdev61: #status,wwpn,lun,size,range,owner,channel,tag
    pokdev61: used,500512345678c411,4014412100000000,2g,3B40-3B7F,ihost13,3b77,
    pokdev61: used,500512345678c411,4014412200000000,8192M,3B40-3B7F,ihost13,3b77,replace_root_device
    pokdev61: free,500512345678c411,4014412300000000,8g,3B40-3B7F,,,
    pokdev61: free,5005123456789411,4014412400000000,2g,3B40-3B7F,,,
    pokdev61: free,5005123456789411;5005123456789411,4014412600000000,2G,3B40-3B7F,,,
-
-
+ 
+ 
 
 
 

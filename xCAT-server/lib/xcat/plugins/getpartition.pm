@@ -54,7 +54,7 @@ sub process_request
 
     if ($client) { ($client) = noderange($client) }
     unless ($client) {    #Not able to do identify the host in question
-        xCAT::MsgUtils->message("S", "Received syncfiles from $client, which couldn't be correlated to a node (domain mismatch?)");
+        xCAT::MsgUtils->message("S", "Received getpartition from $client, which couldn't be correlated to a node (domain mismatch?)");
         return;
     }
 

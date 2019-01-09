@@ -19,7 +19,7 @@ SYNOPSIS
 ********
 
 
-\ **storage Attributes:**\   \ *node*\ , \ *osvolume*\ , \ *size*\ , \ *state*\ , \ *storagepool*\ , \ *hypervisor*\ , \ *fcprange*\ , \ *volumetag*\ , \ *type*\ , \ *controller*\ , \ *comments*\ , \ *disable*\
+\ **storage Attributes:**\   \ *node*\ , \ *osvolume*\ , \ *size*\ , \ *state*\ , \ *storagepool*\ , \ *hypervisor*\ , \ *fcprange*\ , \ *volumetag*\ , \ *type*\ , \ *controller*\ , \ *comments*\ , \ *disable*\ 
 
 
 ***********
@@ -34,86 +34,86 @@ storage Attributes:
 
 
 
-\ **node**\
-
+\ **node**\ 
+ 
  The node name
+ 
 
 
-
-\ **osvolume**\
-
+\ **osvolume**\ 
+ 
  Specification of what storage to place the node OS image onto.  Examples include:
-
-
+ 
+ 
  .. code-block:: perl
-
+ 
                   localdisk (Install to first non-FC attached disk)
                   usbdisk (Install to first USB mass storage device seen)
                   wwn=0x50000393c813840c (Install to storage device with given WWN)
+ 
+ 
 
 
-
-
-\ **size**\
-
+\ **size**\ 
+ 
  Size of the volume. Examples include: 10G, 1024M.
+ 
 
 
-
-\ **state**\
-
+\ **state**\ 
+ 
  State of the volume. The valid values are: free, used, and allocated
+ 
 
 
-
-\ **storagepool**\
-
+\ **storagepool**\ 
+ 
  Name of storage pool where the volume is assigned.
+ 
 
 
-
-\ **hypervisor**\
-
+\ **hypervisor**\ 
+ 
  Name of the hypervisor where the volume is configured.
+ 
 
 
-
-\ **fcprange**\
-
+\ **fcprange**\ 
+ 
  A range of acceptable fibre channels that the volume can use. Examples include: 3B00-3C00;4B00-4C00.
+ 
 
 
-
-\ **volumetag**\
-
+\ **volumetag**\ 
+ 
  A specific tag used to identify the volume in the autoyast or kickstart template.
+ 
 
 
-
-\ **type**\
-
+\ **type**\ 
+ 
  The plugin used to drive storage configuration (e.g. svc)
+ 
 
 
-
-\ **controller**\
-
+\ **controller**\ 
+ 
  The management address to attach/detach new volumes.
  In the scenario involving multiple controllers, this data must be
  passed as argument rather than by table value
+ 
 
 
-
-\ **comments**\
-
+\ **comments**\ 
+ 
  Any user-written notes.
+ 
 
 
-
-\ **disable**\
-
+\ **disable**\ 
+ 
  Set to 'yes' or '1' to comment out this row.
-
+ 
 
 
 
@@ -122,5 +122,5 @@ SEE ALSO
 ********
 
 
-\ **nodels(1)**\ , \ **chtab(8)**\ , \ **tabdump(8)**\ , \ **tabedit(8)**\
+\ **nodels(1)**\ , \ **chtab(8)**\ , \ **tabdump(8)**\ , \ **tabedit(8)**\ 
 

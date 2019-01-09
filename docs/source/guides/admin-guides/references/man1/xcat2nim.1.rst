@@ -19,9 +19,9 @@ SYNOPSIS
 ********
 
 
-\ **xcat2nim [-h|-**\ **-help]**\
+\ **xcat2nim [-h|-**\ **-help]**\ 
 
-\ **xcat2nim [-V|-**\ **-verbose] [-u|-**\ **-update] [-l|-**\ **-list] [-r|-**\ **-remove] [-f|-**\ **-force] [-t object-types] [-o**\  \ *object-names*\ ] \ **[-a|-**\ **-allobjects] [-p|-**\ **-primarySN] [-b|-**\ **-backupSN]**\  \ *[noderange] [attr=val [attr=val...]]*\
+\ **xcat2nim [-V|-**\ **-verbose] [-u|-**\ **-update] [-l|-**\ **-list] [-r|-**\ **-remove] [-f|-**\ **-force] [-t object-types] [-o**\  \ *object-names*\ ] \ **[-a|-**\ **-allobjects] [-p|-**\ **-primarySN] [-b|-**\ **-backupSN]**\  \ *[noderange] [attr=val [attr=val...]]*\ 
 
 
 ***********

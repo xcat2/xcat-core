@@ -15,43 +15,43 @@ Name
 
 
 ****************
-\ **Synopsis**\
+\ **Synopsis**\ 
 ****************
 
 
-\ *Examples:*\
+\ *Examples:*\ 
 
 
 .. code-block:: perl
 
   node1,node2,node8,node20,group1
-
+ 
   node14-node56,node70-node203,group1-group10
-
+ 
   node1,node2,node8,node20,node14-node56,node70-node203
-
+ 
   node[14-56]
-
+ 
   f[1-3]n[1-20]
-
+ 
   all,-node129-node256,-frame01-frame03
-
+ 
   /node.*
-
+ 
   ^/tmp/nodes
-
+ 
   node10+5
-
+ 
   10-15,-13
-
+ 
   group1@group2
-
+ 
   table.attribute<operator>value
 
 
 
 *******************
-\ **Description**\
+\ **Description**\ 
 *******************
 
 
@@ -180,7 +180,7 @@ no group range match will be attempted.
 All node and group names are validated against the nodelist table.  Invalid names
 are ignored and return nothing.
 
-\ **xCAT Node Name Format**\
+\ **xCAT Node Name Format**\ 
 =============================
 
 
@@ -237,134 +237,134 @@ Example of \ **xCAT Node Name Format**\  node/group names:
 
 
 ****************
-\ **Examples**\
+\ **Examples**\ 
 ****************
 
 
 
 1.
-
+ 
  Generates a list of all nodes (assuming all is a group) listed in the
  \ **nodelist**\  table less node5 through node10:
-
-
+ 
+ 
  .. code-block:: perl
-
+ 
    all,-node5-node10
-
-
+ 
+ 
 
 
 2.
-
+ 
  Generates  a  list  of  nodes 1 through 10 less nodes 3,4,5.  Note that
  node4 is listed twice, first in the range and then at the end.  Because
  exclusion has precedence node4 will be excluded.
-
-
+ 
+ 
  .. code-block:: perl
-
+ 
    node1-node10,-node3-node5,node4
-
-
+ 
+ 
 
 
 3.
-
+ 
  Generates a list of nodes 1 through 10 less nodes 3 and 5.
-
-
+ 
+ 
  .. code-block:: perl
-
+ 
    node1-node10,-node3,-node5
-
-
+ 
+ 
 
 
 4.
-
+ 
  Generates  a  list  of  all  (assuming  \`all'  is a group) nodes in the
  \ **nodelist**\  table less 17 through 32.
-
-
+ 
+ 
  .. code-block:: perl
-
+ 
    -node17-node32,all
-
-
+ 
+ 
 
 
 5.
-
+ 
  Generates a list of nodes 1 through 128, and user nodes 1 through 4.
-
-
+ 
+ 
  .. code-block:: perl
-
+ 
    node1-node128,user1-user4
-
-
+ 
+ 
 
 
 6.
-
+ 
  Generates a list of all nodes (assuming \`all' is a group),  less  nodes
  in  groups rack1 through rack3 (assuming groups rack1, rack2, and rack3
  are defined), less nodes 100 through 200, less  nodes  in  the  storage
  group.  Note that node150 is listed but is excluded.
-
-
+ 
+ 
  .. code-block:: perl
-
+ 
    all,-rack1-rack3,-node100-node200,node150,-storage
-
-
+ 
+ 
 
 
 7.
-
+ 
  Generates  a  list of nodes matching the regex \ *node[23].\\**\ .  That is all
  nodes that start with node2 or node3 and end in  anything  or  nothing.
  E.g. node2, node3, node20, node30, node21234 all match.
-
-
+ 
+ 
  .. code-block:: perl
-
+ 
    /node[23].*
-
-
+ 
+ 
 
 
 8.
-
+ 
  Generates  a  list of nodes which have the value hmc in the nodehm.cons
  attribute.
-
-
+ 
+ 
  .. code-block:: perl
-
+ 
    nodehm.cons==hmc
-
+  
    nodehm.cons=~hmc
-
-
+ 
+ 
 
 
 9.
-
+ 
  Generate a list of nodes in the 1st two frames:
-
-
+ 
+ 
  .. code-block:: perl
-
+ 
    f[1-2]n[1-42]
-
-
+ 
+ 
 
 
 
 ************
-\ **Bugs**\
+\ **Bugs**\ 
 ************
 
 
@@ -374,7 +374,7 @@ and \`~' may have to be escaped from the shell.
 
 
 ****************
-\ **SEE ALSO**\
+\ **SEE ALSO**\ 
 ****************
 
 

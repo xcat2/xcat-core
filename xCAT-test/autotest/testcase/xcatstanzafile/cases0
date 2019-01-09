@@ -22,7 +22,7 @@ end
 
 start:xcatstanzafile_colon
 description:xcatstanzafile's header without colon
-label:mn_only,db
+label:mn_only,ci_test,db
 cmd:echo 'default-node:
     groups=all,compute
 testnode
@@ -41,7 +41,7 @@ end
 
 start:xcatstanzafile_attribute
 description:xcatstanzafile with error attribute line
-label:mn_only,db
+label:mn_only,ci_test,db
 cmd:echo 'default-node:
     groups=all,compute
 testnode:
@@ -82,7 +82,7 @@ end
 
 start:xcatstanzafile_objtype
 description:xcatstanzafile,a stanza without objtype definition
-label:mn_only,db
+label:mn_only,ci_test,db
 cmd:echo 'default-node:
     groups=all,compute
 testnode:
@@ -98,7 +98,7 @@ end
 
 #start:xcatstanzafile_comment
 #description:xcatstanzafile,a stanza without objtype definition
-#label:mn_only,db
+#label:mn_only,ci_test,db
 #cmd:echo 'default-node:
 #    groups=all,compute
 #testnode:
@@ -171,7 +171,7 @@ end
 
 start:xcatstanzafile_specificvalue
 description:When a specific value for an attribute is provided in the stanza, it takes priority over any default value that had been set.
-label:mn_only,db
+label:mn_only,ci_test,db
 cmd:echo 'default-node:
     groups=all,compute
 testnode:

@@ -19,7 +19,7 @@ SYNOPSIS
 ********
 
 
-\ **osdistro Attributes:**\   \ *arch*\ , \ *basename*\ , \ *dirpaths*\ , \ *majorversion*\ , \ *minorversion*\ , \ *osdistroname*\ , \ *type*\
+\ **osdistro Attributes:**\   \ *arch*\ , \ *basename*\ , \ *dirpaths*\ , \ *majorversion*\ , \ *minorversion*\ , \ *osdistroname*\ , \ *type*\ 
 
 
 ***********
@@ -40,45 +40,45 @@ osdistro Attributes:
 
 
 \ **arch**\  (osdistro.arch)
-
+ 
  The OS distro arch (e.g. x86_64)
-
+ 
 
 
 \ **basename**\  (osdistro.basename)
-
+ 
  The OS base name (e.g. rhels)
-
+ 
 
 
 \ **dirpaths**\  (osdistro.dirpaths)
-
+ 
  Directory paths where OS distro is store. There could be multiple paths if OS distro has more than one ISO image. (e.g. /install/rhels6.2/x86_64,...)
-
+ 
 
 
 \ **majorversion**\  (osdistro.majorversion)
-
+ 
  The OS distro major version.(e.g. 6)
-
+ 
 
 
 \ **minorversion**\  (osdistro.minorversion)
-
+ 
  The OS distro minor version. (e.g. 2)
-
+ 
 
 
 \ **osdistroname**\  (osdistro.osdistroname)
-
+ 
  Unique name (e.g. rhels6.2-x86_64)
-
+ 
 
 
 \ **type**\  (osdistro.type)
-
+ 
  Linux or AIX
-
+ 
 
 
 
@@ -87,5 +87,5 @@ SEE ALSO
 ********
 
 
-\ **mkdef(1)**\ , \ **chdef(1)**\ , \ **lsdef(1)**\ , \ **rmdef(1)**\
+\ **mkdef(1)**\ , \ **chdef(1)**\ , \ **lsdef(1)**\ , \ **rmdef(1)**\ 
 

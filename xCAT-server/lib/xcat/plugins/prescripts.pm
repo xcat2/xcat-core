@@ -426,21 +426,19 @@ sub parseprescripts
     my $scripts = shift;
     my $action  = shift;
     my $ret;
-    if ($scripts) {
-        if ($scripts =~ /:/) {
-            my @a = split(/\|/, $scripts);
-            foreach my $token (@a) {
 
-                #print "token=$token, action=$action\n";
+    if ($scripts) {
+        foreach my $token (split(/\|/, $scripts)) {
+            if ($token =~ /:/) {
                 if ($token =~ /^$action:(.*)/) {
-                    $ret = $1;
-                    last;
+                    $ret .= "$1,";
                 }
+            } else {
+                $ret .= "$token,";
             }
-        } else {
-            $ret = $scripts;
         }
     }
+
     return $ret;
 }
 

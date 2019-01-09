@@ -699,8 +699,7 @@ The output of the query operation:
     ...
 
 =item 4
-
-Query all the attirbutes for management module node MM1. (For chassis)
+Query all the attributes for management module node MM1. (For chassis)
 
  renergy MM1 all
 

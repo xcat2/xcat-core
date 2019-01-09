@@ -1,6 +1,6 @@
 function hashencode(){
-        local str_map="$1"
-         echo `echo $str_map | sed 's/\./xDOTx/g' | sed 's/:/xCOLONx/g' | sed 's/,/:xCOMMAx/g'`
+    local str_map="$1"
+    echo `echo $str_map | sed 's/\./xDOTx/g' | sed 's/:/xCOLONx/g' | sed 's/,/:xCOMMAx/g' | sed 's/-/xHYPHENx/g'`
 }
 
 function hashset(){
@@ -107,7 +107,7 @@ function v4prefix2mask(){
     local num_index=1
     local str_temp=''
     local str_mask=''
-
+    [ ! $a ] && a=0
     while [[ $num_index -le 4 ]]
     do
         if [ $a -ge 8 ];then
@@ -733,7 +733,7 @@ function parse_nic_extra_params() {
 	do
 		token2="${params_temp[$k]}"
 		array_extra_param_names[$k]=`echo "$token2" | cut -d'=' -f 1`
-		array_extra_param_values[$k]=`echo "$token2" | cut -d'=' -f 2`	
+		array_extra_param_values[$k]=`echo "$token2" | cut -d'=' -f 2-`	
 		k=$((k+1))
 	done
 }

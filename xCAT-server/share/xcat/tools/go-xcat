@@ -2,7 +2,7 @@
 #
 # go-xcat - Install xCAT automatically.
 #
-# Version 1.0.29
+# Version 1.0.34
 #
 # Copyright (C) 2016, 2017, 2018 International Business Machines
 # Eclipse Public License, Version 1.0 (EPL-1.0)
@@ -18,6 +18,9 @@
 #     - Use curl when it is available. Otherwise fall back to use wget
 #     - Improved tarball file extension handling
 #     - Disable xCAT-core.repo and xCAT-dep.repo if they exist
+# 2018-09-28 GONG Jie <gongjie@linux.vnet.ibm.com>
+#     - Revised debug log
+#     - xCAT uninstallation
 #
 
 function usage()
@@ -50,6 +53,9 @@ function usage()
 	                                and xcat-dep packages from the repository
 	  update                        updates installed xcat-core packages to the
 	                                latest version from the repository
+	  uninstall                     removes xCAT from this system
+	  completely uninstall          removes xCAT from this system and cleans up
+	                                all the traces xCAT made
 
 	Examples:
 	  ${script}
@@ -62,9 +68,11 @@ function usage()
 	          --xcat-dep=/path/to/xcat-dep.tar.bz2 install
 	  ${script} --xcat-core=http://xcat.org/path/to/xcat-core.tar.bz2 \\
 	          --xcat-dep=http://xcat.org/path/to/xcat-dep.tar.bz2 install
+	  ${script} uninstall
+	  ${script} completely uninstall
 
-	xCAT (Extreme Cloud/Cluster Administration Toolkit): <http://xcat.org/>
-	Full documentation at: <http://xcat-docs.readthedocs.io/en/stable/>
+	xCAT: http://xcat.org/
+	Full documentation at: http://xcat-docs.readthedocs.io/en/stable
 	EOF
 }
 
@@ -96,16 +104,13 @@ function verbose_usage()
 	  -h, --help                    display a simply version of help and exit
 	  --long-help                   display this help and exit
 	EOF
-	println 12
+	println 16
 	while read -r ; do echo "${REPLY}" ; done <<-EOF
 	  check                         check the version of the installed packages
 	                                of xCAT and packages in the repository
+	  smoke test                    preform basic tests of the xCAT installation
 	EOF
-	println 2
-	while read -r ; do echo "${REPLY}" ; done <<-EOF
-	  smoke-test                    preform basic tests of the xCAT installation
-	EOF
-	println 10
+	println 11
 	while read -r ; do echo "${REPLY}" ; done <<-EOF
 	  ${script} --xcat-core=/path/to/xcat-core.repo install
 	  ${script} --xcat-core=/path/to/xcat-core install
@@ -121,6 +126,11 @@ function verbose_usage()
 	          --xcat-dep=/path/to/xcat-dep.repo install
 	  ${script} --xcat-core=/path/to/xcat-core \\
 	          --xcat-dep=/path/to/xcat-dep install
+	EOF
+	println 4
+	while read -r ; do echo "${REPLY}" ; done <<-EOF
+	  ${script} check
+	  ${script} smoke test
 	EOF
 	println 999999	# Print out all the rest of lines
 
@@ -159,6 +169,14 @@ GO_XCAT_INSTALL_LIST=(perl-xcat xcat xcat-buildkit xcat-client
 	xcat-genesis-scripts-amd64 xcat-genesis-scripts-ppc64 xcat-server
 	conserver-xcat elilo-xcat grub2-xcat ipmitool-xcat syslinux-xcat
 	xcat-genesis-base-amd64 xcat-genesis-base-ppc64 xnba-undi)
+# The package list of all the packages should be installed
+GO_XCAT_UNINSTALL_LIST=("${GO_XCAT_INSTALL_LIST[@]}"
+	goconserver xCAT-SoftLayer xCAT-confluent xCAT-csm xCAT-genesis-builder
+	xCAT-openbmc-py xCAT-probe xCAT-test xCAT-vlan xCATsn xCAT-UI-deps)
+# For Debian/Ubuntu, it will need a sight different package list
+type dpkg >/dev/null 2>&1 &&
+GO_XCAT_UNINSTALL_LIST=("${GO_XCAT_INSTALL_LIST[@]}"
+	goconserver xcat-confluent xcat-probe xcat-test xcat-vlan xcatsn)
 
 PATH="/usr/sbin:/usr/bin:/sbin:/bin"
 export PATH
@@ -295,8 +313,10 @@ function internal_cleanup()
 #
 function custom_setup()
 {
-	check_exec_or_exit awk cat comm grep printf sleep tee
+	check_exec_or_exit awk cat comm grep printf sleep
 	check_root_or_exit
+
+	debug_log_setup
 }
 
 #
@@ -304,7 +324,7 @@ function custom_setup()
 #
 function custom_cleanup()
 {
-	:
+	debug_log_cleanup
 }
 
 #
@@ -317,6 +337,109 @@ function cleanup_n_exec()
 	internal_cleanup
 
 	exec "$@"
+}
+
+function debug_log_setup()
+{
+	local script="${0##*/}"
+	local -a argv=()
+
+	set -- "${BASH_ARGV[@]}"
+	while [ "$#" -gt "0" ]
+	do
+		argv=("$1" "${argv[@]}")
+		shift
+	done
+
+	GO_XCAT_DEBUG_LOG="${TMP_DIR}/go-xcat.log"
+	GO_XCAT_LOG="/tmp/go-xcat.log"
+	# Global debug log file descriptor
+	: >"${GO_XCAT_DEBUG_LOG}"
+	ln -f "${GO_XCAT_DEBUG_LOG}" "${GO_XCAT_LOG}"
+
+	# Log all the command line arguments
+	{
+		echo "    ."
+		echo "      ."
+		echo "  . :."
+		echo "   .:"
+		echo "    ::."
+		echo "  :.::"
+		echo "  ::::."
+		echo "  :::::"
+		echo "  :::::"
+		echo "  :::::"
+		echo "  :::::"
+		echo "  :::::"
+		echo "..:::::.."
+		echo " ':::::'"
+		echo "   ':'"
+		echo -n "|->"
+		printf " %q" "${script}" "${argv[@]}"
+		echo
+		echo
+	} | debug_logger debug
+}
+
+function debug_log_cleanup()
+{
+	local rc="$?"
+	local script="${0##*/}"
+
+	if [[ -n "${GO_XCAT_DEBUG_LOG}" && -n "${GO_XCAT_LOG}" ]]
+	then
+	    {
+			printf "\n|-> %-24s ... exited with %s\n" "${script}" "${rc}"
+			echo "     ......"
+			echo "     :::::"
+			echo "     ::::::."
+			echo "     ' ':::::."
+			echo "         ':::::."
+			echo "           '::"
+			echo "             '"
+		} | debug_logger debug
+		[[ "${rc}" -eq "0" ]] && rm -f "${GO_XCAT_LOG}"
+	fi
+}
+
+function debug_logger()
+{
+	local level="$1"
+
+	while read -r
+	do
+		case "${level}" in
+		"debug")
+			;;
+		*)
+			echo "${REPLY}"
+			;;
+		esac
+		echo "${REPLY}" >&2
+	done 2>>"${GO_XCAT_DEBUG_LOG}"
+}
+
+function debug_trace()
+{
+	local rc="$?"
+
+	# Log the function name and all the command line arguments
+	{
+		echo
+		echo -n ".->"
+		printf " %q" "$@"
+		echo
+		echo "'========"
+	} | debug_logger debug
+
+	# BUG - The command "$@" will be run in a subshell
+	"$@" 2>&1 | debug_logger
+	rc="${PIPESTATUS[0]}"
+
+	printf ".========\n'-> %-24s ... returned with %s\n" "${1}" "${rc}" |
+		debug_logger debug
+
+	return "${rc}"
 }
 
 internal_setup
@@ -415,7 +538,7 @@ function check_package_version_rpm()
 		else
 			echo "${ver}"
 		fi
-	done < <(rpm -q --qf '%{version}-%{release}\n' "$@" 2>/dev/null)
+	done < <(LC_ALL="C" rpm -q --qf '%{version}-%{release}\n' "$@" 2>/dev/null)
 	return 0
 }
 
@@ -811,6 +934,31 @@ function add_repo_by_file_yum()
 		cp "${tmp}" "/etc/yum.repos.d/${repo_id}.repo"
 }
 
+# Dirty workaround on SLES11 SP4
+# For SLES11, set gpgcheck=0
+#
+#       $1      repo file
+function github_issue_5503_workaround2()
+{
+	[[ "${GO_XCAT_LINUX_DISTRO}" = "sles" ]] || return 0
+	[[ "${GO_XCAT_LINUX_VERSION}" =~ ^11(\.[0-4]){0,1}$ ]] || return 0
+	local repo_file="$1"
+	local tmp="${TMP_DIR}/tmp_repo_file_${repo_id}.repo.$$"
+	cp "${repo_file}" "${tmp}"
+	exit_if_bad "$?" "Copy file failed \`${repo_file}' -> \`${tmp}'"
+	while read -r
+	do
+		case "${REPLY}" in
+		"gpgcheck=1")
+			echo "gpgcheck=0"
+			;;
+		*)
+			echo "${REPLY}"
+			;;
+		esac
+	done <"${tmp}" >"${repo_file}"
+}
+
 #       $1      repo file
 #       $2      repo id
 function add_repo_by_file_zypper()
@@ -831,6 +979,8 @@ function add_repo_by_file_zypper()
 		echo "[${repo_id}]"
 		grep -v '^\[' "${repo_file}"
 	} >"${tmp}"
+	# For SLES11, set gpgcheck=0
+	github_issue_5503_workaround2 "${tmp}"
 	remove_repo_zypper "${repo_id}" &&
 		zypper addrepo "${tmp}" >/dev/null 2>&1
 }
@@ -894,7 +1044,7 @@ function extract_archive()
 		gzip -d -c "${archive}" | tar -t -f - | grep -v "^${repo_id}/"
 		[[ "${PIPESTATUS[0]}" -eq 0 && "${PIPESTATUS[1]}" -eq 0 &&
 			"${PIPESTATUS[2]}" -eq 1 ]]
-		exit_if_bad "$?" "${archive}: bad gzipped tarball"
+		exit_if_bad "$?" "${archive}: bad gzipped tarball" || return 1
 		rm -rf "${install_path}/${repo_id}"
 		gzip -d -c "${archive}" | ( cd "${install_path}" && tar -x -f - )
 		;;
@@ -960,9 +1110,10 @@ function add_repo_by_url_yum_or_zypper()
 			while read -r ; do echo "${REPLY}" ; done >"${tmp}" <<-EOF
 			[${repo_id}]
 			name=${repo_id}
-			baseurl=${url}
+			baseurl=${url%/}
 			enabled=1
-			gpgcheck=0
+			gpgcheck=1
+			gpgkey=${url%/}/repodata/repomd.xml.key
 			EOF
 			add_repo_by_file "${tmp}" "${repo_id}"
 			return "$?"
@@ -995,10 +1146,19 @@ function add_repo_by_url_yum_or_zypper()
 		while read -r ; do echo "${REPLY}" ; done >"${tmp}" <<-EOF
 		[${repo_id}]
 		name=${repo_id}
-		baseurl=file://${url}
+		baseurl=file://${url%/}
 		enabled=1
-		gpgcheck=0
 		EOF
+		if [ -f "${url%/}/repodata/repomd.xml.asc" ]
+		then
+			echo "gpgcheck=1" >>"${tmp}"
+		else
+			echo "gpgcheck=0" >>"${tmp}"
+		fi
+		if [ -f "${url%/}/repodata/repomd.xml.key" ]
+		then
+			echo "gpgkey=file://${url%/}/repodata/repomd.xml.key" >>"${tmp}"
+		fi
 		add_repo_by_file "${tmp}" "${repo_id}"
 		return "$?"
 	fi
@@ -1057,7 +1217,8 @@ function add_repo_by_url_apt()
 		[[ "${url:0:1}" = "/" ]] || url="${PWD}/${url}"
 		# directory
 		tmp="${TMP_DIR}/tmp_repo.list"
-		echo "deb [arch=$(dpkg --print-architecture)] file://${url} ${codename} main" >"${tmp}"
+		echo "deb [$([ ! -f "${url}/dists/${codename}/Release.gpg" ] &&
+			echo "allow-insecure=yes ")arch=$(dpkg --print-architecture)] file://${url} ${codename} main" >"${tmp}"
 		add_repo_by_file_apt "${tmp}" "${repo_id}"
 		return "$?"
 	fi
@@ -1351,6 +1512,72 @@ function install_packages()
 	function_dispatch "${FUNCNAME}" "$@"
 }
 
+function remove_package_dnf()
+{
+	type dnf >/dev/null 2>&1 || return 255
+	local -a yes=()
+	[[ "$1" = "-y" ]] && yes=("-y") && shift
+	dnf --nogpgcheck "${yes[@]}" remove "$@"
+}
+
+function remove_package_yum()
+{
+	type yum >/dev/null 2>&1 || return 255
+	local -a yes=()
+	[[ "$1" = "-y" ]] && yes=("-y") && shift
+	yum --nogpgcheck "${yes[@]}" remove "$@"
+}
+
+function remove_package_zypper()
+{
+	type zypper >/dev/null 2>&1 || return 255
+	local -a yes=()
+	local ret=""
+	[[ "$1" = "-y" ]] && yes=("-n") && shift
+	zypper --no-gpg-checks "${yes[@]}" remove --force-resolution "$@"
+	ret="$?"
+	case "${ret}" in
+	"104")
+		# ZYPPER_EXIT_INF_CAP_NOT_FOUND
+		ret="0"
+		;;
+	esac
+	return "${ret}"
+}
+
+function remove_package_apt()
+{
+	type apt-get >/dev/null 2>&1 || return 255
+	local -a yes=()
+	[[ "$1" = "-y" ]] && yes=("-y") && shift
+	apt-get --allow-unauthenticated remove "${yes[@]}" "$@"
+}
+
+function remove_package()
+{
+	function_dispatch "${FUNCNAME}" "$@"
+}
+
+#       $1      -y
+function purge_package_apt()
+{
+	type apt-get >/dev/null 2>&1 || return 255
+	local -a yes=()
+	[[ "$1" = "-y" ]] && yes=("-y") && shift
+	apt-get --allow-unauthenticated purge "${yes[@]}" "$@"
+}
+
+function purge_package_others()
+{
+	remove_package "$@"
+}
+
+#       $1      -y
+function purge_package()
+{
+	function_dispatch "${FUNCNAME}" "$@"
+}
+
 #       $1      -y
 function install_xcat()
 {
@@ -1381,12 +1608,81 @@ function update_xcat()
 	install_packages "$@" "${install_list[@]}"
 }
 
+#       $1      -y
+function uninstall_xcat()
+{
+	remove_package "$@" "${GO_XCAT_UNINSTALL_LIST[@]}"
+}
+
+function kill_xcat()
+{
+	local f=""
+
+	for f in /var/run/xcat{d,/{main,udp,install,cmdlog}service}.pid
+	do
+		[[ -f "${f}" ]] && kill -TERM "$(<"${f}")" 2>/dev/null
+	done
+
+	sleep 1
+
+	for f in /var/run/xcat{d,/{main,udp,install,cmdlog}service}.pid
+	do
+		[[ -f "${f}" ]] && kill -KILL "$(<"${f}")" 2>/dev/null
+	done
+
+	return 0
+}
+
+# Remove all xCAT related directories and files
+function trash_xcat()
+{
+	rm -f  /etc/init.d/xcatpostinit1
+	rm -f  /etc/systemd/system/xcatpostinit1.service
+	rm -f  /etc/systemd/system/multi-user.target.wants/xcatd.service
+	rm -f  /etc/tftpmapfile4xcat.conf
+	rm -f  /etc/profile.d/xcat.{c,}sh
+	rm -rf /etc/xcat
+	rm -rf /etc/xcatdockerca
+	rm -f  /etc/apt/sources.list.d/xcat-{core,dep}.list
+	rm -f  /etc/yum.repos.d/xCAT-{core,dep}.repo{,.nouse}
+	rm -f  /etc/yum.repos.d/xcat-{core,dep}.repo
+	rm -f  /etc/zypp/repos.d/xCAT-{core,dep}.repo{,.nouse}
+	rm -f  /etc/zypp/repos.d/xcat-{core,dep}.repo
+	rm -rf /install/postscripts
+	rm -rf /opt/xcat
+	rm -rf /root/.xcat
+	rm -rf /root/xcat-dbback
+	rm -rf /tftpboot/xcat
+	rm -rf /var/lock/xcat
+	rm -rf /var/log/xcat
+	rm -rf /xcatpost
+	# For goconserver
+	rm -rf /etc/goconserver
+	rm -rf /var/lib/goconserver
+	rm -rf /var/log/goconserver
+
+	return 0
+}
+
+function uninstall_xcat_completely()
+{
+	purge_package -y "${GO_XCAT_UNINSTALL_LIST[@]}"
+
+	kill_xcat
+	trash_xcat
+
+	return 0
+}
+
 function list_xcat_packages()
 {
 	GO_XCAT_CORE_PACKAGE_LIST=($(get_package_list xcat-core))
-	exit_if_bad "$?" "Failed to get package list from repository \`xcat-core'."
 	GO_XCAT_DEP_PACKAGE_LIST=($(get_package_list xcat-dep))
-	exit_if_bad "$?" "Failed to get package list from repository \`xcat-dep'."
+
+	[ "${#GO_XCAT_CORE_PACKAGE_LIST[@]}" -gt "0" ]
+	warn_if_bad "$?" "Failed to get package list from repository \`xcat-core'." || return 1
+	[ "${#GO_XCAT_DEP_PACKAGE_LIST[@]}"  -gt "0" ]
+	warn_if_bad "$?" "Failed to get package list from repository \`xcat-dep'."  || return 1
 
 	local -i cols="$(type tput >/dev/null 2>&1 && tput cols)"
 	[[ "${cols}" -lt 80 ]] && cols=80
@@ -1438,12 +1734,61 @@ function list_xcat_packages()
 		42< <(check_repo_version "${GO_XCAT_DEP_PACKAGE_LIST[@]}")
 }
 
+#
+# ask_to_continue       Ask to continue
+#
+#	Exits (not returns) if get negative reply from end user.
+#   This function is intend to read from STDIN.
+#
+#       $1  -y
+#       $2  Prompt
+#
+function ask_to_continue()
+{
+	[[ "$1" = "-y" ]] && return 0
+	shift
+	local prompt="$1"
+
+	echo
+	echo "${prompt}"
+	echo | debug_logger debug
+	echo ".-> ${prompt}" | debug_logger debug
+	while :
+	do
+		read -r -p "Continue? [y/n] "
+		echo "'-> Continue? [y/n]          ... ${REPLY}" | debug_logger debug
+		case "${REPLY}" in
+		"Y"*|"y"*)
+			break
+			;;
+		"N"*|"n"*)
+			echo "Good-bye!"
+			exit 0
+			;;
+		*)
+			echo "Invalid response!"
+			;;
+		esac
+	done
+
+	return 0
+}
+
 # Test case 000
 # Check if all the xcat-core packages are on the same version
 function test_case_000_version()
 {
 	local ver=""
 	local -i ret=0
+
+	# Call function list_xcat_packages to fill up global array
+	# GO_XCAT_CORE_PACKAGE_LIST
+	# And the output will be logged into the debug log.
+	#
+	# Missing command `repoquery' may cause list_xcat_packages fail,
+	# in that case, just skip this test.
+	list_xcat_packages
+
 	while read -r
 	do
 		[[ "${REPLY}" = "(not installed)" ]] && continue
@@ -1451,6 +1796,10 @@ function test_case_000_version()
 		[[ "${ver}" = "${REPLY%%-*}" ]]
 		(( ret += $? ))
 	done < <(check_package_version "${GO_XCAT_CORE_PACKAGE_LIST[@]}")
+
+	[ "${ret}" -ne "0" ] && echo
+	warn_if_bad "${ret}" "xCAT packages version mismatch"
+
 	return "${ret}"
 }
 
@@ -1460,17 +1809,17 @@ function test_case_001_xcatd()
 {
 	local f=""
 	local -i ret=0
-	for f in /var/run/xcat/{main,install,udp}service.pid
+
+	for f in /var/run/xcat{d,/{main,udp,install,cmdlog}service}.pid
 	do
-		kill -0 "$(<"${f}")"
+		[ -f "${f}" ]
+		warn_if_bad "$?" "${f}: no such file" || continue
+
+		kill -0 "$(<"${f}")" >/dev/null 2>&1
+		warn_if_bad "$?" "Process with an ID $(<${f}) is not running"
 		(( ret += $? ))
 	done
-	for f in /var/run/xcat/cmdlogservice.pid
-	do
-		[[ -f "${f}" ]] || continue
-		kill -0 "$(<"${f}")"
-		(( ret += $? ))
-	done
+
 	return "${ret}"
 }
 
@@ -1478,36 +1827,24 @@ function test_case_001_xcatd()
 # Check if command lsdef can be run
 function test_case_002_lsdef()
 {
-	(source /etc/profile.d/xcat.sh && lsdef)
+	(source /etc/profile.d/xcat.sh && lsdef) >/dev/null 2>&1
+	warn_if_bad "$?" "Attempt of run \`lsdef' failed"
 }
 
-# Perform basic smoke test
-function perform_smoke_test()
+# Perform basic smoke testing
+function smoke_testing()
 {
 	local test_case=""
 	local -i ret=0
+
 	for test_case in $(compgen -A function "test_case_")
 	do
-		"${test_case}" >"${TMP_DIR}/${test_case}.stdout" \
-			2>"${TMP_DIR}/${test_case}.stderr"
-		ret="$?"
-		if [[ "${ret}" -ne "0" || -s "${TMP_DIR}/${test_case}.stderr" ]]
-		then
-			# Something went wrong
-			echo "-- 8< -- -- -- -- -- -- -- -- -- -- -- -- -- -- --"
-			echo "==== ${test_case} failed with exit code ${ret} ===="
-			echo "-- 8< ${test_case} stdout -- --"
-			while read -r ; do echo "${REPLY}" ; done \
-				<"${TMP_DIR}/${test_case}.stdout"
-			echo "-- 8< ${test_case} stderr -- --"
-			while read -r ; do echo "${REPLY}" ; done \
-				<"${TMP_DIR}/${test_case}.stderr"
-			echo "-- 8< -- -- -- -- -- -- -- -- -- -- -- -- -- -- --"
-			# skip all the remain test cases
-			return "${ret}"
-		fi >&2
+		debug_trace "${test_case}"
+		warn_if_bad "$?" "Something went wrong. :'(" || return 1
 	done
-	echo "It seems everything went well. :)"
+
+	echo
+	echo "It seems everything went well. :-)"
 	return 0
 }
 
@@ -1559,6 +1896,27 @@ function stop_progress_meters()
 	echo -n "...... "
 }
 
+#	$1	0 (pass) or non-zero (fail).
+function boo_boo_if_bad()
+{
+	local -i rc="$1"
+
+	# Ignore if no problems
+	[ "${rc}" -eq "0" ] && return 0
+
+	debug_logger <<-EOF
+
+	Boo-boo
+	=======
+
+	Something went wrong. :(
+
+	Please check log file \`${GO_XCAT_LOG}' for more details.
+	EOF
+
+	exit "${rc}"
+}
+
 #
 # |\/| _.o._   ._ .__  _ .__.._ _    _  _  _  _  |_  _ .__
 # |  |(_||| |  |_)|(_)(_||(_|| | |  (_|(_)(/__>  | |(/_|(/_ o
@@ -1597,16 +1955,12 @@ do
 	"--xcat-dep="*)
 		GO_XCAT_DEP_URL="${1##--xcat-dep=}"
 		;;
-	"--xcat-version")
+	"-x"|"--xcat-version")
 		shift
 		GO_XCAT_VERSION="$1"
 		;;
 	"--xcat-version="*)
 		GO_XCAT_VERSION="${1##--xcat-version=}"
-		;;
-	"-x")
-		shift
-		GO_XCAT_VERSION="$1"
 		;;
 	"-y"|"--yes")
 		GO_XCAT_YES=("-y")
@@ -1621,16 +1975,26 @@ do
 		warn_if_bad "$?" "redundancy action -- \`$1'"
 		exit_if_bad "$?" "Try \`$0 --help' for more information"
 		GO_XCAT_ACTION="$1"
+		case "$1 $2" in
+		"completely uninstall")
+			shift
+			GO_XCAT_ACTION="away"
+			;;
+		"smoke test")
+			shift
+			GO_XCAT_ACTION="smoke test"
+			;;
+		esac
 		;;
 	esac
 	shift
 done
 
 case "${GO_XCAT_ACTION}" in
-"check"|"install"|"update")
+"away"|"check"|"install"|"uninstall"|"update")
 	;;
-"smoke-test")
-	perform_smoke_test
+"smoke test")
+	smoke_testing
 	exit "$?"
 	;;
 "")
@@ -1641,13 +2005,12 @@ case "${GO_XCAT_ACTION}" in
 	warn_if_bad 1 "invalid action -- \`${GO_XCAT_ACTION}'"
 	exit_if_bad 1 "Try \`$0 --help' for more information"
 	;;
-esac
+esac # case "${GO_XCAT_ACTION}" in
 
 GO_XCAT_OS="$(check_os)"
 GO_XCAT_ARCH="$(check_arch)"
 
-while read -r ; do echo "${REPLY}" ; echo "${REPLY}" >&2
-	done 2>"${TMP_DIR}/go-xcat.log.000" <<EOF
+debug_logger <<EOF
 Operating system:   ${GO_XCAT_OS}
 Architecture:       ${GO_XCAT_ARCH}
 EOF
@@ -1671,8 +2034,7 @@ esac
 GO_XCAT_LINUX_DISTRO="$(check_linux_distro)"
 GO_XCAT_LINUX_VERSION="$(check_linux_version)"
 
-while read -r ; do echo "${REPLY}" ; echo "${REPLY}" >&2
-	done 2>"${TMP_DIR}/go-xcat.log.001" <<EOF
+debug_logger <<EOF
 Linux Distribution: ${GO_XCAT_LINUX_DISTRO}
 Version:            ${GO_XCAT_LINUX_VERSION}
 EOF
@@ -1685,18 +2047,70 @@ case "${GO_XCAT_LINUX_DISTRO}" in
 	;;
 esac
 
+debug_logger debug <<EOF
+
+Host Name:          ${HOSTNAME%%.*}
+Bash Version:       ${BASH_VERSION}
+EOF
+printf "%-19s %s\n\n" "${0##*/} Version:" "$(version)" | debug_logger
+
+case "${GO_XCAT_ACTION}" in
+"away"|"uninstall")
+	# Remove xCAT
+	ask_to_continue "${GO_XCAT_YES[0]}" "xCAT is going to be ${GO_XCAT_ACTION/away/trash}ed."
+
+	case "${GO_XCAT_ACTION}" in
+	"away")
+		debug_trace uninstall_xcat_completely
+
+		debug_logger <<-EOF
+
+		xCAT has been completely uninstalled!
+		EOF
+		;;
+	"uninstall")
+		debug_trace uninstall_xcat -y
+		boo_boo_if_bad "$?"
+
+		debug_logger <<-EOF
+
+		xCAT has been uninstalled!
+		==========================
+
+		If you intend to install xCAT again, please follow the guideline on the
+		xcat.org website.
+
+		https://xcat.org/download.html
+		EOF
+		;;
+	esac
+	exit 0
+	;;
+esac # case "${GO_XCAT_ACTION}" in
+
 echo
 echo -n "Reading repositories "
 show_progress_meters
-ERR_MSG="$({
-	if add_xcat_core_repo -y "${GO_XCAT_CORE_URL}" "${GO_XCAT_VERSION}"
+ERR_MSG="$(
+{
+	echo
+
+	if [ "check" == "${GO_XCAT_ACTION}" ]
 	then
-		if add_xcat_dep_repo -y "${GO_XCAT_DEP_URL}" "${GO_XCAT_VERSION}"
+		debug_trace update_repo && exit 0
+		exit 1
+	fi
+
+	if debug_trace add_xcat_core_repo -y \
+		"${GO_XCAT_CORE_URL}" "${GO_XCAT_VERSION}"
+	then
+		if debug_trace add_xcat_dep_repo -y \
+			"${GO_XCAT_DEP_URL}" "${GO_XCAT_VERSION}"
 		then
-			update_repo && exit 0
-			remove_repo "xcat-dep"
+			debug_trace update_repo && exit 0
+			debug_trace remove_repo "xcat-dep"
 		fi
-		remove_repo "xcat-core"
+		debug_trace remove_repo "xcat-core"
 	fi
 	exit 1
 } 2>&1)"
@@ -1716,95 +2130,33 @@ case "${GO_XCAT_ACTION}" in
 	;;
 "install"|"update")
 	GO_XCAT_INSTALLER="${GO_XCAT_ACTION}_xcat"
-	if [[ "${#GO_XCAT_YES[@]}" -eq "0" ]]
-	then
-		echo
-		echo "xCAT is going to be ${GO_XCAT_ACTION/%e/}ed."
-		while true; do
-
-			read -r -p "Continue? [y/n] "
-			case "${REPLY}" in
-			"Y"*|"y"*)
-				break	
-				;;
-			"N"*|"n"*)
-				echo "Good-bye!"
-				exit 0
-				;;
-			*)
-				echo "Invalid response!"
-				;;
-			esac
-		done
-	fi
-	# Use `-y' here. Since the STDOUT is redirect to tee.
+	ask_to_continue "${GO_XCAT_YES[0]}" "xCAT is going to be ${GO_XCAT_ACTION/%e/}ed."
+	# Use `-y' here. Since the STDOUT is redirected.
 	# `yum' does not display the prompt message properly when
-	# working with tee.
-	"${GO_XCAT_INSTALLER}" -y \
-		> >(tee "${TMP_DIR}/${GO_XCAT_INSTALLER}.stdout") \
-		2> >(tee "${TMP_DIR}/${GO_XCAT_INSTALLER}.stderr" >&2)
+	# working with redirected I/O.
+	debug_trace "${GO_XCAT_INSTALLER}" -y
 	RET="$?"
-	{
-		# Creating logs
-		echo "-- 8< -- -- -- -- -- -- -- -- -- -- -- -- -- -- --"
-		echo "==== ${GO_XCAT_INSTALLER} exited with exit code ${RET} ===="
-		echo "-- 8< ${GO_XCAT_INSTALLER} stdout -- --"
-		while read -r ; do echo "${REPLY}" ; done \
-			<"${TMP_DIR}/${GO_XCAT_INSTALLER}.stdout"
-		echo "-- 8< ${GO_XCAT_INSTALLER} stderr -- --"
-		while read -r ; do echo "${REPLY}" ; done \
-			<"${TMP_DIR}/${GO_XCAT_INSTALLER}.stderr"
-		echo "-- 8< -- -- -- -- -- -- -- -- -- -- -- -- -- -- --"
-	} >"${TMP_DIR}/go-xcat.log.005"
-	if [[ "${RET}" -eq "0" && ! -s "${TMP_DIR}/${GO_XCAT_INSTALLER}.stderr" ]]
+	if [[ "${RET}" -eq "0" ]]
 	then
 		# xCAT has been installed and so far so good
-		perform_smoke_test >"${TMP_DIR}/perform_smoke_test.stdout" \
-			2>"${TMP_DIR}/perform_smoke_test.stderr"
+		smoke_testing >/dev/null 2>&1
 		RET="$?"
-		if [[ "${RET}" -ne "0" || -s "${TMP_DIR}/perform_smoke_test.stderr" ]]
-		then
-			# Smoke test failed
-			echo "-- 8< -- -- -- -- vv -- -- -- vv -- -- -- -- 8< --"
-			echo "==== perform_smoke_test failed with exit code ${RET} ===="
-			echo "-- 8< perform_smoke_test stdout -- --"
-			while read -r ; do echo "${REPLY}" ; done \
-				<"${TMP_DIR}/perform_smoke_test.stdout"
-			echo "-- 8< perform_smoke_test stderr -- --"
-			while read -r ; do echo "${REPLY}" ; done \
-				<"${TMP_DIR}/perform_smoke_test.stderr"
-			echo "-- 8< -- -- -- -- ^^ -- -- -- ^^ -- -- -- -- 8< --"
-		fi
-	fi >"${TMP_DIR}/go-xcat.log.008"
-
-	if [[ "${RET}" -ne "0" ]]
-	then
-		GO_XCAT_LOG="/tmp/go-xcat.log"
-		cat "${TMP_DIR}/go-xcat.log."* >"${GO_XCAT_LOG}" 2>/dev/null
-		while read -r ; do echo "${REPLY}" ; done >&2 <<-EOF
-
-
-		Boo-boo
-		=======
-
-		Something went wrong. :(
-
-		Please check log file \`${GO_XCAT_LOG}' for more details.
-		EOF
-
-		exit "${RET}"
+		[ "${RET}" -ne "0" ] && echo
+		warn_if_bad "${RET}" "xCAT smoke testing failed."
 	fi
+
+	boo_boo_if_bad "${RET}"
 
 	case "${GO_XCAT_ACTION}" in
 	"install")
 		# Only print out this message on install
-		while read -r ; do echo "${REPLY}" ; done <<-EOF
+		debug_logger <<-EOF
 
 		xCAT has been installed!
 		========================
 
-		If this is the very first time xCAT has been installed, run the following
-		commands to set environment variables into your PATH:
+		If this is the very first time xCAT has been installed, run one of the
+		following commands to set the environment variables.
 
 		For sh:
 		    source /etc/profile.d/xcat.sh
@@ -1814,7 +2166,7 @@ case "${GO_XCAT_ACTION}" in
 		EOF
 		;;
 	"update")
-		while read -r ; do echo "${REPLY}" ; done <<-EOF
+		debug_logger <<-EOF
 
 		xCAT has been successfully updated!
 		EOF

@@ -291,8 +291,7 @@ The following section explains how to accomplish this.
     packimage rhels7.3-ppc64le-netboot-service
 
 
-Note: ``enablepart=yes`` in partition file will make partition on the locak disk at every boot time. If you want to keep the contents
-on local disk at next boot, remmber changing to ``enablepart=no`` after the first time provisioning.
+.. note:: ``enablepart=yes`` in partition file will partition the local disk at every boot. If you want to preserve the contents on local disk at next boot, change to ``enablepart=no`` after the initial provision.
 
 For more information on ``localdisk`` option, refer to :ref:`setup_localdisk_label`
 
@@ -312,9 +311,9 @@ To update the xCAT software in the image at a later time:
     packimage "<osimagename>"
     rinstall service osimage="<osimagename>"
 
-Note: The Service Nodes are set up as NFS-root servers for the compute nodes.
-Any time changes are made to any compute image on the mgmt node it will be
-necessary to sync all changes to all Service Nodes. In our case the
-``/install`` directory is mounted on the servicenodes, so the update to the
-compute node image is automatically available.
+.. note:: The Service Nodes are set up as NFS-root servers for the compute nodes.
+ Any time changes are made to any compute image on the mgmt node it will be
+ necessary to sync all changes to all Service Nodes. In our case the
+ ``/install`` directory is mounted on the servicenodes, so the update to the
+ compute node image is automatically available.
 

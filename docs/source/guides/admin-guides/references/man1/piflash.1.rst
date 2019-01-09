@@ -11,7 +11,7 @@ SYNOPSIS
 ********
 
 
-\ **piflash**\  <noderange> -**\ **-package <filename>
+\ **piflash**\  \ *noderange*\  -**\ **-package \ *filename*\ 
 
 
 ***********

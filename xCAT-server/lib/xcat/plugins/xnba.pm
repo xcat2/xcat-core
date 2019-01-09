@@ -111,6 +111,12 @@ sub setstate {
     my $imgaddkcmdline = $linuximghashref->{'addkcmdline'};
     my $imgboottarget = $linuximghashref->{'boottarget'};
 
+    my $httpport="80";
+     my @hports=xCAT::TableUtils->get_site_attribute("httpport");
+     if ($hports[0]){
+         $httpport=$hports[0];
+     }
+
     # get kernel and initrd from boottarget table
     my $bttab;
     my $btentry;
@@ -246,8 +252,8 @@ sub setstate {
             my $kernel;
             ($kernel, $hypervisor) = split /!/, $kern->{kernel};
             print $pcfg " set 209:string xcat/xnba/nodes/$node.pxelinux\n";
-            print $pcfg " set 210:string http://" . '${next-server}' . "/tftpboot/\n";
-            print $pcfg " imgfetch -n pxelinux.0 http://" . '${next-server}' . "/tftpboot/xcat/pxelinux.0\n";
+            print $pcfg " set 210:string http://" . '${next-server}'. ':' . $httpport . "/tftpboot/\n";
+            print $pcfg " imgfetch -n pxelinux.0 http://" . '${next-server}' . ':' . $httpport . "/tftpboot/xcat/pxelinux.0\n";
             print $pcfg " imgload pxelinux.0\n";
             print $pcfg " imgexec pxelinux.0\n";
             close($pcfg);
@@ -257,8 +263,8 @@ sub setstate {
         } else {
             if ($kern->{kernel} =~ /\.c32\z/ or $kern->{kernel} =~ /memdisk\z/) { #gPXE comboot support seems insufficient, chain pxelinux instead
                 print $pcfg " set 209:string xcat/xnba/nodes/$node.pxelinux\n";
-                print $pcfg " set 210:string http://" . '${next-server}' . "/tftpboot/\n";
-                print $pcfg " imgfetch -n pxelinux.0 http://" . '${next-server}' . "/tftpboot/xcat/pxelinux.0\n";
+                print $pcfg " set 210:string http://" . '${next-server}' . ':' . $httpport . "/tftpboot/\n";
+                print $pcfg " imgfetch -n pxelinux.0 http://" . '${next-server}' . ':' . $httpport . "/tftpboot/xcat/pxelinux.0\n";
                 print $pcfg " imgload pxelinux.0\n";
                 print $pcfg " imgexec pxelinux.0\n";
                 close($pcfg);
@@ -286,11 +292,11 @@ sub setstate {
                         $kern->{kcmdline} =~ s/xcat\/netboot/\/tftpboot\/xcat\/netboot/;
                     }
                     print $ucfg "#!gpxe\n";
-                    print $ucfg 'chain http://${next-server}/tftpboot/xcat/esxboot-x64.efi ' . $kern->{kcmdline} . "\n";
+                    print $ucfg 'chain http://${next-server}:'.$httpport.'/tftpboot/xcat/esxboot-x64.efi ' . $kern->{kcmdline} . "\n";
                     close($ucfg);
                 }
             } else { #other than comboot/multiboot, we won't have need of pxelinux
-                print $pcfg "imgfetch -n kernel http://" . '${next-server}/tftpboot/' . $kern->{kernel} . "\n";
+                print $pcfg "imgfetch -n kernel http://" . '${next-server}:' . $httpport.'/tftpboot/' . $kern->{kernel} . "\n";
                 print $pcfg "imgload kernel\n";
                 if ($kern->{kcmdline}) {
                     print $pcfg "imgargs kernel " . $kern->{kcmdline} . ' BOOTIF=01-${netX/mac:hexhyp}' . "\n";
@@ -298,14 +304,14 @@ sub setstate {
                     print $pcfg "imgargs kernel BOOTIF=" . '${netX/mac}' . "\n";
                 }
                 if ($kern->{initrd}) {
-                    print $pcfg "imgfetch http://" . '${next-server}' . "/tftpboot/" . $kern->{initrd} . "\n";
+                    print $pcfg "imgfetch http://" . '${next-server}:' . "$httpport/tftpboot/" . $kern->{initrd} . "\n";
                 }
                 print $pcfg "imgexec kernel\n";
                 if ($kern->{kcmdline} and $kern->{initrd}) { #only a linux kernel/initrd pair should land here, write elilo config and uefi variant of xnba config file
                     my $ucfg;
                     open($ucfg, '>', $tftpdir . "/xcat/xnba/nodes/" . $node . ".uefi");
                     print $ucfg "#!gpxe\n";
-                    print $ucfg 'chain http://${next-server}/tftpboot/xcat/elilo-x64.efi -C /tftpboot/xcat/xnba/nodes/' . $node . ".elilo\n";
+                    print $ucfg 'chain http://${next-server}:'.$httpport.'/tftpboot/xcat/elilo-x64.efi -C /tftpboot/xcat/xnba/nodes/' . $node . ".elilo\n";
                     close($ucfg);
                     open($ucfg, '>', $tftpdir . "/xcat/xnba/nodes/" . $node . ".elilo");
                     print $ucfg 'default="xCAT"' . "\n";
@@ -447,6 +453,12 @@ sub preprocess_request {
         return;
     }
 
+    # inittime flag in request will only be set in AAsn.pm (it is only used when xcatd starting on service node)
+    # There is special requirement to not run in parallel on one SN to avoid DB CPU 100% when all service nodes booting in the same time.
+    my $inittime = 0;
+    if (exists($req->{inittime})) { $inittime = $req->{inittime}->[0]; }
+    if (!$inittime) { $inittime = 0; }
+
     #Assume shared tftp directory for boring people, but for cool people, help sync up tftpdirectory contents when
     #they specify no sharedtftp in site table
     my @entries = xCAT::TableUtils->get_site_attribute("sharedtftp");
@@ -470,16 +482,16 @@ sub preprocess_request {
         }
 
         $req->{'_disparatetftp'} = [1];
-        if ($req->{inittime}->[0]) {
-            return [$req];
-        }
         if (@CN > 0) {    # if compute nodes broadcast to all servicenodes
 
+            # 1, Non-hierarchy, run on locally with parallel
             my @sn = xCAT::ServiceNodeUtils->getSNList();
             unless ( @sn > 0 ) {
-                return xCAT::Scope->get_parallel_scope($req)
+                return if (xCAT::Utils->isServiceNode()); # in case the wrong configuration
+                return xCAT::Scope->get_parallel_scope($req);
             }
 
+            # To check site table to see if disjoint mode
             my $mynodeonly  = 0;
             my @entries = xCAT::TableUtils->get_site_attribute("disjointdhcps");
             my $t_entry = $entries[0];
@@ -489,11 +501,30 @@ sub preprocess_request {
             $req->{'_disjointmode'} = [$mynodeonly];
             xCAT::MsgUtils->trace(0, "d", "xnba: disjointdhcps=$mynodeonly");
 
-            if ($mynodeonly == 0 || $ALLFLAG) { # broadcast to all service nodes
+            # 2, Non-disjoint mode, broadcast to all service nodes,
+            #    but for SN init time (AAsn.pm), only run locally without parallel.
+            if ($mynodeonly == 0 || $ALLFLAG) {
+                # broadcast to all service nodes, but for SN init time (AAsn.pm), only run locally.
+                if ($inittime) {
+                    $req->{_xcatpreprocessed}->[0] = 1;
+                    return [$req];
+                }
                 return xCAT::Scope->get_broadcast_scope_with_parallel($req, \@sn);
             }
 
+            # 3, Disjoint mode, run on local for owned CNs only and
+            # dispatch to parent SNs of the requesting nodes and `dhcpserver` which serving dynamic range in `networks` table.
+            #    but for SN init time (AAsn.pm), only run locally without parallel.
             my $sn_hash = xCAT::ServiceNodeUtils->getSNformattedhash(\@CN, "xcat", "MN");
+            if ($inittime) {
+                foreach my $sn ( keys %$sn_hash ) {
+                    unless (xCAT::NetworkUtils->thishostisnot($sn)) {
+                        $req->{node} = $sn_hash->{$sn};
+                        $req->{_xcatpreprocessed}->[0] = 1;
+                        return [$req];
+                    }
+                }
+            }
             my @dhcpsvrs = ();
             my $ntab = xCAT::Table->new('networks');
             if ($ntab) {
@@ -504,6 +535,9 @@ sub preprocess_request {
             }
             return xCAT::Scope->get_broadcast_disjoint_scope_with_parallel($req, $sn_hash, \@dhcpsvrs);
         }
+    } elsif ($inittime) {
+        # Shared TFTP, no need to run on service node booting (AAsn.pm)
+        return;
     }
     # Do not dispatch to service nodes if non-sharedtftp or the node range contains only SNs.
     return xCAT::Scope->get_parallel_scope($req);
@@ -599,8 +633,14 @@ sub process_request {
         @nodes = keys %preparednodes;
     }
 
-    my $str_node = join(" ", @nodes);
-    xCAT::MsgUtils->trace(0, "d", "xnba: nodes are $str_node") if ($str_node);
+    my $str_node = '';
+    my $total = $#nodes;
+    if ($total > 20) {
+        $str_node = join(" ", @nodes[0..19]) . " ...";
+    } else {
+        $str_node = join(" ", @nodes);
+    }
+    xCAT::MsgUtils->trace($verbose_on_off, "d", "xnba: [total=$total] nodes are $str_node");
 
     # Return directly if no nodes in the same network, need to report error on console if its managed nodes are not handled.
     unless (@nodes) {

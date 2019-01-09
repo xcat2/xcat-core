@@ -199,14 +199,6 @@ prsync_h
 prsync_v
 prsync_dir_node
 prsync_file_node
-switchdiscover_range_default
-switchdiscover_h
-switchdiscover_range_s
-switchdiscover_range_default_w
-switchdiscover_range_r
-switchdiscover_range_x
-switchdiscover_range_z
-switchdiscover_range_z_V
 nodeset_check_warninginfo
 xcatconfig_u_check_xcatsslversion_rhels_sles
 xcatconfig_c
@@ -242,10 +234,6 @@ updatenode_diskful_syncfiles_failing
 xdcp_nonroot_user
 xdsh_permission_denied
 reg_linux_diskless_installation_flat
-packimage_m_cpio_c_gzip
-packimage_m_cpio_c_xz
-packimage_m_tar_c_gzip
-packimage_m_tar_c_xz
 packimage_m_invalid_archive_method
 packimage_m_invalid_compress_method
 confignetwork_vlan_false
@@ -253,6 +241,10 @@ confignetwork__bridge_false
 nodeset_shell
 nodeset_cmdline
 nodeset_runimg
+packimage_m_cpio_c_gzip
+packimage_m_cpio_c_xz
+packimage_m_tar_c_gzip
+packimage_m_tar_c_xz
 reg_linux_statelite_installation_flat
 SN_setup_case
 reg_linux_diskfull_installation_hierarchy

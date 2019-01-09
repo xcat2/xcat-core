@@ -76,7 +76,7 @@ sub preprocess_request
             'h|help'         => \$options{'help'},
             's|servicenodes' => \$options{'servicenodes'},
             'v|version'      => \$options{'version'},
-            'V|Verbose'      => \$options{'verbose'}
+            'V|verbose'      => \$options{'verbose'}
         )
       )
     {

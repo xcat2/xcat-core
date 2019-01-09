@@ -19,7 +19,7 @@ SYNOPSIS
 ********
 
 
-\ **ppchcp Attributes:**\   \ *hcp*\ , \ *username*\ , \ *password*\ , \ *comments*\ , \ *disable*\
+\ **ppchcp Attributes:**\   \ *hcp*\ , \ *username*\ , \ *password*\ , \ *comments*\ , \ *disable*\ 
 
 
 ***********
@@ -36,34 +36,34 @@ ppchcp Attributes:
 
 
 
-\ **hcp**\
-
+\ **hcp**\ 
+ 
  Hostname of the HMC or IVM.
+ 
 
 
-
-\ **username**\
-
+\ **username**\ 
+ 
  Userid of the HMC or IVM.  If not filled in, xCAT will look in the passwd table for key=hmc or key=ivm.  If not in the passwd table, the default used is hscroot for HMCs and padmin for IVMs.
+ 
 
 
-
-\ **password**\
-
+\ **password**\ 
+ 
  Password of the HMC or IVM.  If not filled in, xCAT will look in the passwd table for key=hmc or key=ivm.  If not in the passwd table, the default used is abc123 for HMCs and padmin for IVMs.
+ 
 
 
-
-\ **comments**\
-
+\ **comments**\ 
+ 
  Any user-written notes.
+ 
 
 
-
-\ **disable**\
-
+\ **disable**\ 
+ 
  Set to 'yes' or '1' to comment out this row.
-
+ 
 
 
 
@@ -72,5 +72,5 @@ SEE ALSO
 ********
 
 
-\ **nodels(1)**\ , \ **chtab(8)**\ , \ **tabdump(8)**\ , \ **tabedit(8)**\
+\ **nodels(1)**\ , \ **chtab(8)**\ , \ **tabdump(8)**\ , \ **tabedit(8)**\ 
 

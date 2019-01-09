@@ -3,7 +3,7 @@ IB Network Configuration
 
 xCAT provides a script ``configib`` to help configure the Infiniband adapters on the compute nodes.
 
-The Infiniband adapter is considered an additional interface for xCAT. The process for configuring Infiniband adapters complies with the process  of :doc:`Configure Additional Network Interfaces <../../../../guides/admin-guides/manage_clusters/ppc64le/diskful/customize_image/cfg_second_adapter>`.
+The Infiniband adapter is considered an additional interface for xCAT. The process for configuring Infiniband adapters complies with the process  of :doc:`Configure Additional Network Interfaces <../../../../guides/admin-guides/manage_clusters/ppc64le/diskful/customize_image/network/cfg_second_adapter>`.
 
 Below are an simple example to configure Mellanox IB in Ubuntu 14.04.1 on Power8 LE
 

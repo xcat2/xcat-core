@@ -127,7 +127,7 @@ sub process_request
             'K|genkeys'               => \$options{'gensshkeys'},
             's|sshbetweennodes=s'     => \$options{'sshbetweennodes'},
             'v|version'               => \$options{'version'},
-            'V|Verbose'               => \$options{'verbose'},
+            'V|verbose'               => \$options{'verbose'},
         )
       )
     {

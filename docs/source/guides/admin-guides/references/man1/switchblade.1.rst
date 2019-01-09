@@ -35,35 +35,35 @@ OPTIONS
 
 
 
-\ **list | stat**\
-
+\ **list | stat**\ 
+ 
  Display which blade the media tray and KVM are currently assigned to.
+ 
 
 
-
-\ **media | mt**\
-
+\ **media | mt**\ 
+ 
  Assign the media tray to the specified blade.
+ 
 
 
-
-\ **kvm | video**\
-
+\ **kvm | video**\ 
+ 
  Assign the KVM (video display) to the specified blade.
+ 
 
 
-
-\ **both**\
-
+\ **both**\ 
+ 
  Assign both the media tray and the KVM to the specified blade.
+ 
 
 
-
-\ *slot_num*\
-
+\ *slot_num*\ 
+ 
  The slot # of the blade that the resources should be assigned to.  If not specified, it will use the slot
  # of the node specified.
-
+ 
 
 
 
@@ -74,23 +74,23 @@ EXAMPLES
 
 
 1.
-
+ 
  Switch the media tray to be assigned to the blade in slot 4 (assume it is node4):
-
-
+ 
+ 
  .. code-block:: perl
-
+ 
    switchblade node4 media
-
-
+ 
+ 
  Output will be like:
-
-
+ 
+ 
  .. code-block:: perl
-
+ 
    Media Tray slot: 4
-
-
+ 
+ 
 
 
 

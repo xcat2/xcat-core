@@ -1,9 +1,13 @@
 #!/bin/sh
+log_label="xcat.deployment"
 NEWROOT=/sysroot
 SERVER=${SERVER%%/*}
 SERVER=${SERVER%:}
 RWDIR=.statelite
 XCAT="$(getarg XCAT=)"
+xcatdebugmode="$(getarg xcatdebugmode=)"
+XCATMASTER=$XCAT
+MASTER=`echo $XCATMASTER |awk -F: '{print $1}'`
 STATEMNT="$(getarg STATEMNT=)"
 if [ ! -z $STATEMNT ]; then #btw, uri style might have left future options other than nfs open, will u    se // to detect uri in the future I guess
     SNAPSHOTSERVER=${STATEMNT%:*}
@@ -17,6 +21,9 @@ if [ ! -z $STATEMNT ]; then #btw, uri style might have left future options other
     fi
 fi
 
+
+[ "$xcatdebugmode" = "1" -o "$xcatdebugmode" = "2" ] && SYSLOGHOST="" || SYSLOGHOST="-n $MASTER"
+logger $SYSLOGHOST -t $log_label -p local4.info "Executing xcat-prepivot to set up statelite..." 
 echo Setting up Statelite
 mkdir -p $NEWROOT
 
@@ -27,14 +34,18 @@ MAXTRIES=7
 ITER=0
 if [ ! -e "$NEWROOT/$RWDIR" ]; then
     echo ""
-    echo "This NFS root directory doesn't have a /$RWDIR directory for me to mount a rw filesystem.      You'd better create it... "
+    msg="This NFS root directory doesn't have a /$RWDIR directory for me to mount a rw filesystem. You'd better create it... "
+    echo "$msg"
     echo ""
+    logger $SYSLOGHOST -t $log_label -p local4.error "$msg"
     /bin/sh
 fi
 
 if [ ! -e "$NEWROOT/etc/init.d/statelite" ]; then
     echo ""
-    echo "$NEWROOT/etc/init.d/statelite doesn't exist.  Perhaps you didn't create this image with th    e -m statelite mode"
+    msg="$NEWROOT/etc/init.d/statelite doesn't exist.  Perhaps you didn't create this image with the -m statelite mode"
+    echo "$msg"
+    logger $SYSLOGHOST -t $log_label -p local4.error "$msg"
     echo ""
     /bin/sh
 fi
@@ -52,22 +63,26 @@ if [ ! -z $SNAPSHOTSERVER ]; then
     MAXTRIES=5
     ITER=0
     if [ -z $MNTOPTS ]; then
-        MNT_OPTIONS="nolock,rsize=32768,tcp,nfsvers=3,timeo=14"
+        MNT_OPTIONS="nolock,rsize=32768,tcp,timeo=14"
     else
         MNT_OPTIONS=$MNTOPTS
     fi
     while ! mount $SNAPSHOTSERVER:/$SNAPSHOTROOT  $NEWROOT/$RWDIR/persistent -o $MNT_OPTIONS; do
         ITER=$(( ITER + 1 ))
         if [ "$ITER" == "$MAXTRIES" ]; then
-            echo "Your are dead, rpower $ME boot to play again."
-            echo "Possible problems:
+            msg="Your are dead, rpower $ME boot to play again.
+                 Possible problems:
 1.  $SNAPSHOTSERVER is not exporting $SNAPSHOTROOT ?
 2.  Is DNS set up?  Maybe that's why I can't mount $SNAPSHOTSERVER."
+            echo "$msg"
+            logger $SYSLOGHOST -t $log_label -p local4.error "$msg"
             /bin/sh
             exit
         fi
         RS=$(( $RANDOM % 20 ))
-        echo "Trying again in $RS seconds..."
+        msg="Trying again in $RS seconds..."
+        echo "$msg"
+        logger $SYSLOGHOST -t $log_label -p local4.info "$msg"
         sleep $RS
     done
 
@@ -78,13 +93,17 @@ if [ ! -z $SNAPSHOTSERVER ]; then
     while ! umount -l $NEWROOT/$RWDIR/persistent; do
         ITER=$(( ITER + 1 ))
         if [ "$ITER" == "$MAXTRIES" ]; then
-            echo "Your are dead, rpower $ME boot to play again."
-            echo "Cannot umount $NEWROOT/$RWDIR/persistent."
+            msg="Your are dead, rpower $ME boot to play again.
+                 Cannot umount $NEWROOT/$RWDIR/persistent."
+            echo "$msg"
+            logger $SYSLOGHOST -t $log_label -p local4.error "$msg"
             /bin/sh
             exit
         fi
         RS=$(( $RANDOM % 20 ))
-        echo "Trying again in $RS seconds..."
+        msg="Trying again in $RS seconds..."
+        echo "$msg"
+        logger $SYSLOGHOST -t $log_label -p local4.info "$msg"
         sleep $RS
     done
 
@@ -93,20 +112,26 @@ if [ ! -z $SNAPSHOTSERVER ]; then
     while ! mount $SNAPSHOTSERVER:/$SNAPSHOTROOT/$ME  $NEWROOT/$RWDIR/persistent -o $MNT_OPTIONS; do
         ITER=$(( ITER + 1 ))
         if [ "$ITER" == "$MAXTRIES" ]; then
-            echo "Your are dead, rpower $ME boot to play again."
-            echo "Possible problems: cannot mount to $SNAPSHOTSERVER:/$SNAPSHOTROOT/$ME."
+            msg="Your are dead, rpower $ME boot to play again.
+                 Possible problems: cannot mount to $SNAPSHOTSERVER:/$SNAPSHOTROOT/$ME."
+            echo $msg
+            logger $SYSLOGHOST -t $log_label -p local4.info "$msg"
             /bin/sh
             exit
         fi
         RS=$(( $RANDOM % 20 ))
-        echo "Trying again in $RS seconds..."
+        msg="Trying again in $RS seconds..."
+        echo "$msg"
+        logger $SYSLOGHOST -t $log_label -p local4.info "$msg"
         sleep $RS
     done
 fi
 
 # TODO: handle the dhclient/resolv.conf/ntp, etc
-echo "Get to enable localdisk"
+logger $SYSLOGHOST -t $log_label -p local4.info "Enabling localdisk ..."
+echo "Enable localdisk ..."
 $NEWROOT/etc/init.d/localdisk
+logger $SYSLOGHOST -t $log_label -p local4.info "Preparing mount points ..."
 $NEWROOT/etc/init.d/statelite
 READONLY=yes
 export READONLY
@@ -174,3 +199,4 @@ fi
 echo 'settle_exit_if_exists="--exit-if-exists=/dev/root"; rm "$job"' > $hookdir/initqueue/xcat.sh
 # force udevsettle to break
 > $hookdir/initqueue/work
+logger $SYSLOGHOST -t $log_label -p local4.info "Exit xcat-prepivot"

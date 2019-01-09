@@ -1,0 +1,87 @@
+
+====================BEGIN=====================
+
+
+--- #FILE1#
++++ #FILE2#
+{
+    "node": {
+        "node1": {
+            "obj_info": {
+-                "groups": "ipmi"
++                "groups": "all"
+            },
+            "engines": {
+                "hardware_mgt_engine": {
+-                    "engine_type": "ipmi"
+                    "engine_info": {
+-                        "bmcusername": "ADMIN"
+                    },
++                    "engine_type": "openbmc"
+                }
+            }
+        },
+-        "node3": {
+-            "obj_info": {
+-                "groups": "openbmc"
+-            },
+-            "role": "compute",
+-            "device_type": "server",
+-            "engines": {
+-                "hardware_mgt_engine": {
+-                    "engine_info": {
+-                        "bmc": "10.1.1.2",
+-                        "bmcusername": "ADMIN"
+-                    },
+-                    "engine_type": "openbmc"
+-                }
+-            },
+-            "obj_type": "node"
+-        }
+        "node2": {
+            "network_info": {
+                "primarynic": {
+                    "mac": [
+-                        "42:73:0a:03:11:0a!*NOIP*",
++                        "42:6e:0a:03:11:0b"
+                    ]
+                }
+            }
+        }
+    },
+    "osimage": {
+        "rhels7.5-alternate-ppc64le-install-compute": {
+            "package_selection": {
+                "pkgdir": [
++                    "/install/rhels7.5-alternate/ppc64le/test"
+                ],
+                "otherpkgdir": [
+-                    "/install/post/otherpkgs/rhels7.5-alternate/ppc64le",
++                    "/install/post/otherpkgs/rhels7.5-alternate/ppc64"
+                ]
+            }
+        }
+    },
+    "site": {
+        "clustersite": {
+-            "xcatdebugmode": "1",
+-            "domain": "test.com",
+-            "master": "10.1.1.2",
+-            "forwarders": "10.0.0.1"
++            "xcatdebugmode": "0",
++            "domain": "cluster.com",
++            "master": "10.1.1.1"
+        }
+    },
+    "network": {
+        "10_0_0_0-255_0_0_0": {
+            "basic_attr": {
+-                "mgtifname": "eth1"
++                "mgtifname": "eth0"
+            }
+        }
+    }
+}
+
+====================END=====================
+

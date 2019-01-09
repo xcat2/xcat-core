@@ -10,10 +10,14 @@ if [ "$(uname -s|tr 'A-Z' 'a-z')" = "linux" ];then
    str_dir_name=`dirname $0`
    . $str_dir_name/xcatlib.sh
 fi
-
+if [ -n "$LOGLABEL" ]; then
+    log_label=$LOGLABEL
+else
+    log_label="xcat"
+fi
 # if on the Management Node
 if [ -e /etc/xCATMN ]; then
-   logger -t xcat -p local4.info "setupntp: This postscript does not support running on the management node. Please run makentp command. exiting"
+   logger -t $log_label -p local4.info "setupntp: This postscript does not support running on the management node. Please run makentp command. exiting"
    exit 0
 fi
 
@@ -43,7 +47,7 @@ is_lsb_cumulus ()
   return $?
 }
 
-logger -t xcat "Install: Setup NTP"
+logger -t $log_label "Install: Setup NTP"
 # Use the ntpservers defined in the site table, if they exist.
 # If the value of ntpservers is <xcatmaster> use the service node or
 # the management node as the ntp server.
@@ -117,12 +121,12 @@ if [ $OS_TYPE = Linux ]; then
     fi
 
     msg='syncing the clock ...'
-    logger -t xcat $msg
+    logger -t $log_label $msg
     echo $msg
     if ! timeout 120 ntpd -gq  > /dev/null 2>&1 ; then
         if ! ntpdate -t5 $master > /dev/null 2>&1; then
             msg='WARNING: NTP Sync Failed before timeout. ntp server will try to sync...'
-            logger -t xcat $msg
+            logger -t $log_label $msg
             echo $msg
         fi
     fi
@@ -193,12 +197,12 @@ broadcastclient
 restrict 127.0.0.1" >>$conf_file
 
     stopsrc -s xntpd
-    logger -t xcat "ntpdate -t5 $master "
+    logger -t $log_label "ntpdate -t5 $master "
     ntpdate -t5 $master
     if [ "$?" != "0" ]
     then
         echo "  ntpdate -t5 $master  failed "
-        logger -t xcat "ntpdate -t5 $master failed"
+        logger -t $log_label "ntpdate -t5 $master failed"
     fi
     /usr/sbin/chrctcp -S -a xntpd
 fi

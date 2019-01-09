@@ -1,4 +1,5 @@
 start:updatenode_scripts
+label:others,updatenode
 cmd:mkdir -p /install/postscripts
 check:rc==0
 cmd:echo "#!/bin/bash" >/install/postscripts/blah
@@ -14,6 +15,7 @@ check:rc==0
 end
 
 start:updatenode_scripts_timeout
+label:others,updatenode
 cmd:mkdir -p /install/postscripts
 check:rc==0
 cmd:echo "#!/bin/bash" >/install/postscripts/blah
