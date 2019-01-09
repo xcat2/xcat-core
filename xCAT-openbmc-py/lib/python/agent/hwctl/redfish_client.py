@@ -37,12 +37,13 @@ system_reset_string = '#ComputerSystem.Reset'
 reset_type_string = 'ResetType@Redfish.AllowableValues'
 
 BOOTSOURCE_SET_STATE = {
-    "cd"    : "Cd",
-    "def"   : "None",
-    "floppy": "Floppy",
-    "hd"    : 'Hdd',
-    "net"   : "Pxe",
-    "setup" : "BiosSetup",
+    "cd"     : "Cd",
+    "def"    : "None",
+    "default": "None",
+    "floppy" : "Floppy",
+    "hd"     : "Hdd",
+    "net"    : "Pxe",
+    "setup"  : "BiosSetup",
 }
 
 BOOTSOURCE_GET_STATE = {
@@ -285,3 +286,4 @@ class RedfishRest(object):
             boot_enable = 'Disabled'
         data = {'Boot': {'BootSourceOverrideEnabled': boot_enable, "BootSourceOverrideTarget": target_data} }
         return self.request('PATCH', target_url, payload=data, cmd='set_boot_state')
+

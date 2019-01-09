@@ -273,3 +273,46 @@ check:output=~300
 cmd:if [ -f  /tmp/sitevalue ];then var=`cat /tmp/sitevalue`;chdef -t site clustersite dhcplease=$var;rm -rf /tmp/sitevalue;fi
 check:rc==0
 end
+
+start:chdef_network_not_exist
+description:This case is use to create a network, but not set net and mask. 
+label:mn_only,db
+cmd:chdef -t network aaaaa_not_exist
+check:output=~No object definitions have been created or modified
+#check:rc!=0
+cmd:chdef -t network aaaaa_not_exist mtu=1500
+check:rc!=0
+check:output=~Net or mask value should not be empty
+cmd:chdef -t network aaaaa_not_exist mtu=1500 net=10.0.0.0
+check:rc!=0
+check:output=~Net or mask value should not be empty
+cmd:chdef -t network aaaaa_not_exist mtu=1500 mask=255.255.255.0
+check:rc!=0
+check:output=~Net or mask value should not be empty
+cmd:chdef -t network aaaaa_not_exist mask=255.255.255.0 net=100.0.0.0 mtu=1500
+check:rc==0
+check:output=~1 object definitions have been created or modified
+cmd:lsdef -t network aaaaa_not_exist
+check:rc==0
+cmd:chdef -t network aaaaa_not_exist gateway=10.0.0.101
+check:rc==0
+cmd:lsdef -t network aaaaa_not_exist -i gateway
+check:output=~10.0.0.101
+cmd:chdef -t network bbbbb_not_exist mask=255.255.255.0 net=100.0.0.0
+check:rc!=0
+check:output=~A network definition called 'aaaaa_not_exist' already exists
+cmd:echo '
+bbbbb_not_exist:
+    objtype=network
+    net=150.0.0.0
+' > /tmp/bbbbb_not_exist.def
+cmd:cat /tmp/bbbbb_not_exist.def |mkdef -z
+check:rc!=0
+check:output=~Net or mask value should not be empty
+cmd:lsdef -t network -o bbbbb_not_exist
+check:rc!=0
+cmd:rmdef -t network -o aaaaa_not_exist
+check:rc==0
+cmd:rm -rf /tmp/bbbbb_not_exist.def
+end
+

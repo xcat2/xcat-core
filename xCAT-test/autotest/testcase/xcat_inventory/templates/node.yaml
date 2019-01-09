@@ -21,8 +21,8 @@ node:
       noderesnimserver: nimserver
       noderesprimarynic: primarynic
       noderesproxydhcp: supportproxydhcp
-      servicenodeftpserver: setupftp
-      servicenodenimserver: setupnim
+#      servicenodeftpserver: setupftp
+#      servicenodenimserver: setupnim
       storagecontroller: storagcontroller
       storageosvolume: osvolume
       storagetype: storagetype
