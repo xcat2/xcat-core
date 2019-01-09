@@ -334,6 +334,9 @@ rmdir \"/tmp/$userid\" \n")
         if not nic:
             return self.callback.error('Can not get facing NIC for %s' % bmcip, node)
 
+        if (netinfo[nic]['ipsrc'] == 'DHCP'):
+            return self.callback.error('BMC IP source is DHCP, could not set NTPServers', node)
+
         try:
             obmc.set_ntp_servers(nic, servers)
             self.callback.info('%s: BMC Setting NTPServers...' % node)
@@ -375,6 +378,8 @@ rmdir \"/tmp/$userid\" \n")
             self.callback.info("%s: BMC Setting Password..." % node)
         except (SelfServerException, SelfClientException) as e:
             self.callback.error(e.message, node)
+
+        self.callback.info("%s: BMC password changed. Update 'bmcpasswd' for the node or the 'passwd' table with the new password." % node)
 
     def _set_apis_values(self, key, value, **kw):
         node = kw['node']
@@ -427,8 +432,8 @@ rmdir \"/tmp/$userid\" \n")
 
     def _print_bmc_netinfo(self, node, ip, netmask, gateway, vlan):
 
-        self.callback.info('%s: BMC IP: %s'% (node, ip))
-        self.callback.info('%s: BMC Netmask: %s' %  (node, netmask))
+        self.callback.info('%s: BMC IP: %s' % (node, ip))
+        self.callback.info('%s: BMC Netmask: %s' % (node, netmask))
         self.callback.info('%s: BMC Gateway: %s' % (node, gateway))
         if vlan:
             self.callback.info('%s: BMC VLAN ID: %s' % (node, vlan))
@@ -437,6 +442,7 @@ rmdir \"/tmp/$userid\" \n")
 
         node = kw['node']
         node_info = kw['nodeinfo']
+        zeroconf = "Unknown"
         obmc = openbmc.OpenBMCRest(name=node, nodeinfo=node_info, messager=self.callback,
                                    debugmode=self.debugmode, verbose=self.verbose)
 
@@ -448,7 +454,7 @@ rmdir \"/tmp/$userid\" \n")
             return
 
         if not netinfo:
-            return self.callback.error("No network information get", node)
+            return self.callback.error("Can not get network information", node)
         if 'error' in netinfo:
             return self.callback.info('%s: %s' % (node, netinfo['error']))
 
@@ -467,6 +473,7 @@ rmdir \"/tmp/$userid\" \n")
 
         origin_type = netinfo[origin_nic]['ipsrc']
         origin_ip_obj = netinfo[origin_nic]['ipobj']
+        zeroconf = netinfo[origin_nic]['zeroconf']
 
         if vlan:
             pre_nic = nic.split('_')[0]
@@ -479,6 +486,8 @@ rmdir \"/tmp/$userid\" \n")
             nic = pre_nic + '_' + vlan
 
         try:
+            # Display Zero Config information in case IP setting fails or set IP is not accessible
+            self.callback.info('%s: Setting BMC IP configuration... [Zero Config IP: %s]' % (node, zeroconf))
             obmc.set_netinfo(nic, ip, prefix, gateway)
             sleep( 5 )
             nic_netinfo = obmc.get_nic_netinfo(nic)
@@ -487,7 +496,7 @@ rmdir \"/tmp/$userid\" \n")
             return
 
         if not nic_netinfo:
-            return self.callback.error('Did not get info for NIC %s' % nic, node)
+            return self.callback.error('Can not get info for NIC %s' % nic, node)
 
         set_success = False
         for net_id, attr in nic_netinfo.items():
@@ -497,7 +506,7 @@ rmdir \"/tmp/$userid\" \n")
                 set_success = True
 
         if not set_success:
-            return self.callback.error('Config BMC IP failed', node)
+            return self.callback.error('Setting BMC IP configuration failed. [Zero Config IP: %s]' % zeroconf, node)
 
         try:
             if origin_type == 'DHCP':
@@ -505,7 +514,7 @@ rmdir \"/tmp/$userid\" \n")
             elif origin_type == 'Static':
                 obmc.delete_ip_object(origin_nic, origin_ip_obj)
             else:
-                self.callback.error('Get wrong Origin type %s for NIC %s IP object %s' % (origin_type, nic, origin_ip_obj), node)
+                self.callback.error('Got wrong origin type %s for NIC %s IP object %s' % (origin_type, nic, origin_ip_obj), node)
         except (SelfServerException, SelfClientException) as e:
             self.callback.error(e.message, node)
 
@@ -522,7 +531,7 @@ rmdir \"/tmp/$userid\" \n")
             self.callback.error(e.message, node)
             return
         if not netinfo:
-            return self.callback.error("No network information get", node)
+            return self.callback.error("Can not get network information", node)
         defaultgateway = "n/a"
         bmchostname = ""
         if 'defaultgateway' in netinfo:

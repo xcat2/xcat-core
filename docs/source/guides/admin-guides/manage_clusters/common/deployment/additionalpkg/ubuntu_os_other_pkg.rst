@@ -15,7 +15,7 @@ Compute nodes can access the internet
 
 #. Define the otherpkglist file
 
-   create an otherpkglist file,**/install/custom/install/ubuntu/compute.otherpkgs.pkglist**. Add the packages' name into thist file. And modify the otherpkglist attribute for osimage object. ::
+   create an **otherpkglist** file: ``/install/custom/install/ubuntu/compute.otherpkgs.pkglist``, add the package names into this file, and modify the ``otherpkglist`` attribute in the osimage. ::
 
     chdef -t osimage <osimage name> otherpkglist=/install/custom/install/ubuntu/compute.otherpkgs.pkglist
 
@@ -25,7 +25,7 @@ Compute nodes can access the internet
 
     updatenode <noderange> -S
 
-   Run ``updatenode -P`` otherpkgs to **install/update** the packages on the compute nodes ::
+   Run ``updatenode -P otherpkgs`` to **install/update** the packages on the compute nodes ::
 
     updatenode <noderange> -P otherpkgs
 

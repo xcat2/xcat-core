@@ -19,9 +19,9 @@ SYNOPSIS
 ********
 
 
-\ **updateSNimage [-h | -**\ **-help ]**\
+\ **updateSNimage [-h | -**\ **-help ]**\ 
 
-\ **updateSNimage [-v | -**\ **-version]**\
+\ **updateSNimage [-v | -**\ **-version]**\ 
 
 \ **updateSNimage**\  [\ **-n**\  \ *node*\ ] [\ **-p**\  \ *path*\ ]
 

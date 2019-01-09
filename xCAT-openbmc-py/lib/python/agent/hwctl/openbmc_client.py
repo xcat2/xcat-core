@@ -345,7 +345,7 @@ class OpenBMCRest(object):
                 e.message = "Login to BMC failed: Can't connect to {0} {1}.".format(e.host_and_port, e.detail_msg)
             else:
                 e.message = 'BMC did not respond. ' \
-                            'Validate BMC configuration and retry the command.'
+                            'Validate BMC configuration and retry the command. ' + e.detail_msg
             self._print_error_log(e.message, cmd)
             raise
         except ValueError:
@@ -900,13 +900,15 @@ class OpenBMCRest(object):
                     continue
                 dev,match,netid = k.partition("/ipv4/")
                 if netid:
-                    if 'LinkLocal' in v["Origin"] or v["Address"].startswith("169.254"):
-                        msg = "Found LinkLocal address %s for interface %s, Ignoring..." % (v["Address"], dev)
-                        self._print_record_log(msg, 'get_netinfo')
-                        continue
                     nicid = dev.split('/')[-1]
                     if nicid not in netinfo:
                         netinfo[nicid] = {}
+                    if 'LinkLocal' in v["Origin"] or v["Address"].startswith("169.254"):
+                        msg = "Found LinkLocal address %s for interface %s, Ignoring..." % (v["Address"], dev)
+                        self._print_record_log(msg, 'get_netinfo')
+                        # Save Zero Conf information
+                        netinfo[nicid]["zeroconf"] = v["Address"]
+                        continue
                     if 'ip' in netinfo[nicid]:
                         msg = "%s: Another valid ip %s found." % (node, v["Address"])
                         self._print_record_log(msg, 'get_netinfo')

@@ -32,11 +32,11 @@ For PPC (with HMC) specific:
 ============================
 
 
-\ **mkvm**\  [\ **-V**\ | \ **-**\ **-verbose**\ ] \ *noderange*\  \ **-i**\  \ *id*\  \ **-l**\  \ *singlenode*\
+\ **mkvm**\  [\ **-V**\ | \ **-**\ **-verbose**\ ] \ *noderange*\  \ **-i**\  \ *id*\  \ **-l**\  \ *singlenode*\ 
 
-\ **mkvm**\  [\ **-V**\ | \ **-**\ **-verbose**\ ] \ *noderange*\  \ **-c**\  \ *destcec*\  \ **-p**\  \ *profile*\
+\ **mkvm**\  [\ **-V**\ | \ **-**\ **-verbose**\ ] \ *noderange*\  \ **-c**\  \ *destcec*\  \ **-p**\  \ *profile*\ 
 
-\ **mkvm**\  [\ **-V**\ | \ **-**\ **-verbose**\ ] \ *noderange*\  \ **-**\ **-full**\
+\ **mkvm**\  [\ **-V**\ | \ **-**\ **-verbose**\ ] \ *noderange*\  \ **-**\ **-full**\ 
 
 
 For PPC (using Direct FSP Management) specific:
@@ -122,84 +122,84 @@ OPTIONS
 
 
 
-\ **-h|-**\ **-help**\
-
+\ **-h|-**\ **-help**\ 
+ 
  Display usage message.
+ 
 
 
-
-\ **-c**\
-
+\ **-c**\ 
+ 
  The cec (fsp) name for the destination.
+ 
 
 
-
-\ **-**\ **-cpus**\
-
+\ **-**\ **-cpus**\ 
+ 
  The cpu count which will be created for the kvm/vmware virtual machine.
+ 
 
 
-
-\ **-**\ **-full**\
-
+\ **-**\ **-full**\ 
+ 
  Request to create a new full system partition for each CEC.
-
+ 
 
 
 \ **vmcpus=**\  \ *value*\  \ **vmmemory=**\  \ *value*\  \ **vmphyslots=**\  \ *value*\  \ **vmothersetting=**\  \ *value*\  \ **vmnics=**\  \ *value*\  \ **vmstorage=**\  \ *value*\  [\ **-**\ **-vios**\ ]
-
+ 
  To specify the parameters which are used to create a partition. The \ *vmcpus*\ , \ *vmmemory*\  are necessary, and the value specified with this command have a more high priority. If the value of any of the three options is not specified, the corresponding value specified for the node object will be used. If any of the three attributes is neither specified with this command nor specified with the node object, error information will be returned. To reference to lsvm(1)|lsvm.1 for more information about 'drc_index' for \ *vmphyslots*\ .
-
+ 
  The option \ *vios*\  is used to specify the partition that will be created is a VIOS partition. If specified, the value for \ *vmstorage*\  shall be number which indicate the number of vSCSI server adapter will be created, and if no value specified for \ *vmphyslots*\ , all the physical slot of the power machine will be asigned to VIOS partition. If not specified, it shall be in form of \ *vios_name:server_slotid*\  to specify the vios and the virtual slot id of the vSCSI server adapter that will be connected from the Logical partition.
+ 
 
 
-
-\ **-f|-**\ **-force**\
-
+\ **-f|-**\ **-force**\ 
+ 
  If the storage already exists, remove it before creating a new virtual machine.
+ 
 
 
-
-\ **-i**\
-
+\ **-i**\ 
+ 
  Starting numeric id of the newly created partitions.
+ 
 
 
-
-\ **-l**\
-
+\ **-l**\ 
+ 
  The partition name of the source.
+ 
 
 
-
-\ **-**\ **-mem**\
-
+\ **-**\ **-mem**\ 
+ 
  The memory size which will be used for the new created kvm/vmware virtual machine. Unit is Megabyte.
+ 
 
 
-
-\ **-p**\
-
+\ **-p**\ 
+ 
  The file that contains the profiles for the source partitions.
+ 
 
 
-
-\ **-s|-**\ **-size**\
-
+\ **-s|-**\ **-size**\ 
+ 
  The size of storage which will be created for the kvm/vmware virtual machine.
+ 
 
 
-
-\ **-v|-**\ **-version**\
-
+\ **-v|-**\ **-version**\ 
+ 
  Command Version.
+ 
 
 
-
-\ **-V|-**\ **-verbose**\
-
+\ **-V|-**\ **-verbose**\ 
+ 
  Verbose output.
-
+ 
 
 
 

@@ -21,7 +21,7 @@ SYNOPSIS
 
 \ **rmkit**\  [\ **-? | -h | -**\ **-help**\ ] [\ **-v | -**\ **-version**\ ]
 
-\ **rmkit**\  [\ **-V | -**\ **-verbose**\ ] [\ **-f | -**\ **-force**\ ] [\ **-t | -**\ **-test**\ ] \ *kitlist*\
+\ **rmkit**\  [\ **-V | -**\ **-verbose**\ ] [\ **-f | -**\ **-force**\ ] [\ **-t | -**\ **-test**\ ] \ *kitlist*\ 
 
 
 ***********
@@ -40,40 +40,40 @@ OPTIONS
 
 
 
-\ **-h|-**\ **-help**\
-
+\ **-h|-**\ **-help**\ 
+ 
  Display usage message.
+ 
 
 
-
-\ **-V|-**\ **-verbose**\
-
+\ **-V|-**\ **-verbose**\ 
+ 
  Verbose mode.
+ 
 
 
-
-\ **-v|-**\ **-version**\
-
+\ **-v|-**\ **-version**\ 
+ 
  Command version.
+ 
 
 
-
-\ **-f|-**\ **-force**\
-
+\ **-f|-**\ **-force**\ 
+ 
  Remove this kit even there is any component in this kit is listed by osimage.kitcomponents.  If this option is not specified, this kit will not be removed if any kit components listed in an osimage.kitcomponents
+ 
 
 
-
-\ **-t|-**\ **-test**\
-
+\ **-t|-**\ **-test**\ 
+ 
  Test if kitcomponents in this kit are used by osimage
+ 
 
 
-
-\ *kitlist*\
-
+\ *kitlist*\ 
+ 
  A comma delimited list of kits that are to be removed from the xCAT cluster.  Each entry can be a kitname or kit basename. For kit basename, rmkit command will remove all the kits that have that kit basename.
-
+ 
 
 
 

@@ -23,6 +23,12 @@
 #=cut
 #-------------------------------------------------------------------------------
 
+if [ -n "$LOGLABEL" ]; then
+    log_label=$LOGLABEL
+else
+    log_label="xcat"
+fi
+
 # pmatch determines if 1st argument string is matched by 2nd argument pattern
 pmatch ()
 {
@@ -244,7 +250,7 @@ do
     OSPKGDIR="$OSPKGDIR"
     if [ $mounted -eq 0 ]; then
         #OSPKGDIR="$OSPKGDIR"
-        ospkgdir="$NFSSERVER$dir"
+        ospkgdir="${NFSSERVER}:${HTTPPORT}$dir"
     else
         ospkgdir="$dir"
     fi
@@ -256,7 +262,7 @@ do
     # (4) for other os, we just keep it here.
     # For other pkg paths, we just keep it here.
     if [ $dir == $default_pkgdir ] || [ $dir == "$default_pkgdir/" ]; then
-        if ( pmatch "$OSVER" "sles*" ); then
+        if ( pmatch "$OSVER" "sle*" ); then
             OSPKGDIR="$OSPKGDIR/1"
             ospkgdir="$ospkgdir/1"
         elif ( pmatch "$OSVER" "SL5*" ); then
@@ -265,7 +271,32 @@ do
         fi
     fi
     array_set_element os_path $index $ospkgdir
-
+    if [ $dir == $default_pkgdir ] || [ $dir == "$default_pkgdir/" ]; then
+        ospkgdir=$(echo $ospkgdir|sed 's/\/1$/\/2/')
+        if ( pmatch "$OSVER" "sle15*" ); then
+            if [ $ARCH == "x86_64" ]; then
+                for arg in "Product-SLES" "Module-Desktop-Applications" "Module-Live-Patching" \
+                           "Module-Web-Scripting" "Module-Basesystem" "Module-Development-Tools" "Module-Public-Cloud" \
+                           "Product-HA" "Product-SLES_SAP" "Module-CAP-Tools" "Module-HPC" "Module-SAP-Applications" \
+                           "Product-HPC" "Product-WE" "Module-Containers" "Module-Legacy" "Module-Server-Applications" "Product-SLED"
+                do
+                    ospkgdir_ok="$ospkgdir/$arg"
+                    index=$(expr $index + 1)
+                    array_set_element os_path $index $ospkgdir_ok
+                done
+            elif [ $ARCH == "ppc64le" ]; then
+                for arg in "Product-SLES" "Module-Desktop-Applications" "Module-Live-Patching" \
+                           "Module-Web-Scripting" "Module-Basesystem" "Module-Development-Tools" "Module-Public-Cloud" \
+                           "Product-HA" "Product-SLES_SAP" "Module-SAP-Applications" \
+                           "Module-Containers" "Module-Legacy" "Module-Server-Applications"
+                do
+                    ospkgdir_ok="$ospkgdir/$arg"
+                    index=$(expr $index + 1)
+                    array_set_element os_path $index $ospkgdir_ok
+                done
+            fi
+        fi
+    fi 
     if ( pmatch "$OSVER" "rhel*" ); then
         #default_pkgdir="$INSTALLDIR/$OSVER/$ARCH"
         if [ $dir == $default_pkgdir ] || [ $dir == "$default_pkgdir/" ]; then
@@ -325,9 +356,9 @@ IFS=$OIFS
 #    fi
 #fi
 
-logger -t xcat -p local4.info "NFSSERVER=$NFSSERVER"
-logger -t xcat -p local4.info "OSPKGDIR=$OSPKGDIR"
-logger -t xcat -p local4.info "OSPKGS=$OSPKGS"
+logger -t $log_label -p local4.info "NFSSERVER=$NFSSERVER"
+logger -t $log_label -p local4.info "OSPKGDIR=$OSPKGDIR"
+logger -t $log_label -p local4.info "OSPKGS=$OSPKGS"
 
 if [ $debug -ne 0 ]; then
     echo NFSSERVER=$NFSSERVER
@@ -447,13 +478,13 @@ if ( pmatch "$OSVER" "sles10*" ); then
     fi
     result=`rug sa $path $OSVER`
     if [ $? -ne 0 ]; then
-	logger -t xcat -p local4.info "ospkgs: rug sa $path $OSVER\n    $result"
+	logger -t $log_label -p local4.info "ospkgs: rug sa $path $OSVER\n    $result"
 	echo "ospkgs: rug sa $path $OSVER"
 	echo "    $result"
     fi
     result=`rug sub $OSVER`
     if [ $? -ne 0 ]; then
-	logger -t xcat -p local4.info "ospkgs: rug sub $OSVER\n    $result"
+	logger -t $log_label -p local4.info "ospkgs: rug sub $OSVER\n    $result"
 	echo "ospkgs: rug sub $OSVER"
 	echo "    $result"
     fi
@@ -467,7 +498,7 @@ if ( pmatch "$OSVER" "sles10*" ); then
     R=$?
     if [ $R -ne 0 ]; then
         RETURNVAL=$R
-	logger -t xcat -p local4.info "rug update -y --agree-to-third-party-licences\n    $result"
+	logger -t $log_label -p local4.info "rug update -y --agree-to-third-party-licences\n    $result"
         echo "ospkgs: rug update -y --agree-to-third-party-licences"
 	echo "    $result"
     else
@@ -485,7 +516,7 @@ if ( pmatch "$OSVER" "sles10*" ); then
         R=$?
         if [ $R -ne 0 ]; then
             RETURNVAL=$R
-	    logger -t xcat -p local4.info "ospkgs: $cmd\n    $result"
+	    logger -t $log_label -p local4.info "ospkgs: $cmd\n    $result"
 	    echo "ospkgs: $cmd"
 	    echo $result
 	else
@@ -503,7 +534,7 @@ if ( pmatch "$OSVER" "sles10*" ); then
         R=$?
         if [ $R -ne 0 ]; then
             RETURNVAL=$R
-	    logger -t xcat -p local4.info "ospkgs: $cmd\n    $result"
+	    logger -t $log_label -p local4.info "ospkgs: $cmd\n    $result"
 	    echo "ospkgs: $cmd"
 	    echo $result
 	else
@@ -521,7 +552,7 @@ if ( pmatch "$OSVER" "sles10*" ); then
         R=$?
         if [ $R -ne 0 ]; then
             RETURNVAL=$R
-	    logger -t xcat -p local4.info "ospkgs: $cmd\n    $result"
+	    logger -t $log_label -p local4.info "ospkgs: $cmd\n    $result"
 	    echo "ospkgs: $cmd"
 	    echo $result
 	else
@@ -531,7 +562,7 @@ if ( pmatch "$OSVER" "sles10*" ); then
 	    fi
 	fi
     fi
-elif ( pmatch "$OSVER" "sles*" ); then
+elif ( pmatch "$OSVER" "sle*" ); then
     #check if zypper is installed
     result=`rpm -q zypper`
     if [ $? -ne 0 ]; then
@@ -566,7 +597,7 @@ elif ( pmatch "$OSVER" "sles*" ); then
         result=`zypper ar $path xCAT-$OSVER 2>&1`
         if [ $? -ne 0 ]; then
 	    if ( ! pmatch "$result" "*exists*" ); then
-	        logger -t xcat -p local4.info "ospkgs: zypper ar $path xCAT-$OSVER\n    $result"
+	        logger -t $log_label -p local4.info "ospkgs: zypper ar $path xCAT-$OSVER\n    $result"
 	        echo "ospkgs: zypper ar $path xCAT-OSVER"
 	        echo "    $result"
 	    fi
@@ -582,7 +613,7 @@ elif ( pmatch "$OSVER" "sles*" ); then
             result=`zypper ar $path xCAT-$OSVER-"path$i"  2>&1`
             if [ $? -ne 0 ]; then
 	        if ( ! pmatch "$result" "*exists*" ); then
-	            logger -t xcat -p local4.info "ospkgs: zypper ar $path xCAT-$OSVER-path$i\n    $result"
+	            logger -t $log_label -p local4.info "ospkgs: zypper ar $path xCAT-$OSVER-path$i\n    $result"
 	            echo "ospkgs: zypper ar $path xCAT-$OSVER-path$i"
 	            echo "    $result"
 	        fi
@@ -601,14 +632,14 @@ elif ( pmatch "$OSVER" "sles*" ); then
         for sdk_src in $SDKDIR; do
             bname=`basename $sdk_src`
             if [ $mounted -eq 0 ]; then
-                sdk_src="http://$NFSSERVER/$sdk_src"
+                sdk_src="http://$NFSSERVER:$HTTPPORT/$sdk_src"
             else
                 sdk_src="file://$sdk_src"
             fi
             result=`zypper ar $sdk_src xCAT-$OSVER-$bname 2>&1`
             if [ $? -ne 0 ]; then
                 if ( ! pmatch "$result" "*exists*" ); then
-                    logger -t xcat -p local4.info "ospkgs: zypper ar $sdk_src xCAT-$OSVER-bname\n    $result"
+                    logger -t $log_label -p local4.info "ospkgs: zypper ar $sdk_src xCAT-$OSVER-bname\n    $result"
                     echo "ospkgs: zypper ar $sdk_src xCAT-$OSVER-bname"
                     echo "    $result"
                 fi
@@ -628,7 +659,7 @@ elif ( pmatch "$OSVER" "sles*" ); then
     R=$?
     if [ $R -ne 0 ]; then
         RETURNVAL=$R
-	logger -t xcat -p local4.info  "ospkgs: zypper --non-interactive update --auto-agree-with-licenses\n    $result"
+	logger -t $log_label -p local4.info  "ospkgs: zypper --non-interactive update --auto-agree-with-licenses\n    $result"
 	echo "ospkgs: zypper --non-interactive update --auto-agree-with-licenses"
 	echo "    $result"
     else
@@ -645,7 +676,7 @@ elif ( pmatch "$OSVER" "sles*" ); then
         R=$?
         if [ $R -ne 0 ]; then
             RETURNVAL=$R
-	    logger -t xcat -p local4.info "ospkgs: $cmd\n    $result"
+	    logger -t $log_label -p local4.info "ospkgs: $cmd\n    $result"
 	    echo "ospkgs: $cmd"
 	    echo $result
 	else
@@ -663,7 +694,7 @@ elif ( pmatch "$OSVER" "sles*" ); then
         R=$?
         if [ $R -ne 0 ]; then
             RETURNVAL=$R
-	    logger -t xcat -p local4.info "ospkgs: $cmd    $result"
+	    logger -t $log_label -p local4.info "ospkgs: $cmd    $result"
 	    echo "ospkgs: $cmd"
 	    echo $result
 	else
@@ -683,7 +714,7 @@ elif ( pmatch "$OSVER" "sles*" ); then
         R=$?
         if [ $R -ne 0 ]; then
             RETURNVAL=$R
-	    logger -t xcat -p local4.info "ospkgs: $cmd\n    $result"
+	    logger -t $log_label -p local4.info "ospkgs: $cmd\n    $result"
 	    echo "ospkgs: $cmd"
 	    echo $result
 	else
@@ -701,7 +732,7 @@ elif ( pmatch "$OSVER" "sles*" ); then
         R=$?
         if [ $R -ne 0 ]; then
             RETURNVAL=$R
-	    logger -t xcat -p local4.info "ospkgs: $cmd    $result"
+	    logger -t $log_label -p local4.info "ospkgs: $cmd    $result"
 	    echo "ospkgs: $cmd"
 	    echo $result
 	else
@@ -875,7 +906,7 @@ else
     R=$?
     if [ $R -ne 0 ]; then
        RETURNVAL=$R
-	logger -t xcat -p local4.info "ospkgs: yum -y upgrade\n    $result"
+	logger -t $log_label -p local4.info "ospkgs: yum -y upgrade\n    $result"
 	echo "ospkgs: yum -y upgrade"
 	echo "    $result"
     else
@@ -893,7 +924,7 @@ else
         R=$?
         if [ $R -ne 0 ]; then
            RETURNVAL=$R
-	    logger -t xcat -p local4.info "ospkgs: $cmd\n    $result"
+	    logger -t $log_label -p local4.info "ospkgs: $cmd\n    $result"
 	    echo "ospkgs: $cmd"
 	    echo $result
 	else
@@ -911,7 +942,7 @@ else
         R=$?
         if [ $R -ne 0 ]; then
            RETURNVAL=$R
-	    logger -t xcat -p local4.info "ospkgs: $cmd\n    $result"
+	    logger -t $log_label -p local4.info "ospkgs: $cmd\n    $result"
 	    echo "ospkgs: $cmd"
 	    echo $result
 	else
@@ -934,7 +965,7 @@ else
         R=$?
         if [ $R -ne 0 ]; then
             RETURNVAL=$R
-            logger -t xcat -p local4.info "ospkgs: $cmd\n    $result"
+            logger -t $log_label -p local4.info "ospkgs: $cmd\n    $result"
             echo "ospkgs: $cmd"
             echo $result
         else
@@ -952,7 +983,7 @@ else
         R=$?
         if [ $R -ne 0 ]; then
            RETURNVAL=$R
-            logger -t xcat -p local4.info "ospkgs: $cmd\n    $result"
+            logger -t $log_label -p local4.info "ospkgs: $cmd\n    $result"
             echo "ospkgs: $cmd"
             echo $result
         else
@@ -970,7 +1001,7 @@ else
         R=$?
         if [ $R -ne 0 ]; then
            RETURNVAL=$R
-	    logger -t xcat -p local4.info "ospkgs: $cmd\n    $result"
+	    logger -t $log_label -p local4.info "ospkgs: $cmd\n    $result"
 	    echo "ospkgs: $cmd"
 	    echo $result
 	else

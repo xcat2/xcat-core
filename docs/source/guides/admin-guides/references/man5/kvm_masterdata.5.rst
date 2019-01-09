@@ -19,7 +19,7 @@ SYNOPSIS
 ********
 
 
-\ **kvm_masterdata Attributes:**\   \ *name*\ , \ *xml*\ , \ *comments*\ , \ *disable*\
+\ **kvm_masterdata Attributes:**\   \ *name*\ , \ *xml*\ , \ *comments*\ , \ *disable*\ 
 
 
 ***********
@@ -36,26 +36,26 @@ kvm_masterdata Attributes:
 
 
 
-\ **name**\
-
+\ **name**\ 
+ 
  The name of the relevant master
+ 
 
 
-
-\ **xml**\
-
+\ **xml**\ 
+ 
  The XML description to be customized for clones of this master
+ 
+
+
+\ **comments**\ 
 
 
 
-\ **comments**\
-
-
-
-\ **disable**\
-
+\ **disable**\ 
+ 
  Set to 'yes' or '1' to comment out this row.
-
+ 
 
 
 
@@ -64,5 +64,5 @@ SEE ALSO
 ********
 
 
-\ **nodels(1)**\ , \ **chtab(8)**\ , \ **tabdump(8)**\ , \ **tabedit(8)**\
+\ **nodels(1)**\ , \ **chtab(8)**\ , \ **tabdump(8)**\ , \ **tabedit(8)**\ 
 

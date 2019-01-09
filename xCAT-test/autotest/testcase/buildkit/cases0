@@ -1,18 +1,20 @@
 start:buildkit_v
+label:others,KIT
 os:Linux
 cmd:buildkit -v
 check:rc==0
-check:output=~xcat-buildkit
+check:output=~x[cC][aA][tT]-buildkit
 check:output=~kitframework
 check:output=~compatible_frameworks
 cmd:buildkit --version
 check:rc==0
-check:output=~xcat-buildkit
+check:output=~x[cC][aA][tT]-buildkit
 check:output=~kitframework
 check:output=~compatible_frameworks
 end
 
 start:buildkit_h
+label:others,KIT
 os:Linux
 cmd:buildkit -h
 check:rc==0
@@ -23,6 +25,7 @@ check:output=~ Usage
 end
 
 start:buildkit_create
+label:others,KIT
 os:Linux
 cmd:rm -rf /opt/xcat/share/xcat/tools/autotest/testcase/buildkit/mykits
 cmd:mkdir -p /opt/xcat/share/xcat/tools/autotest/testcase/buildkit/mykits
@@ -44,6 +47,7 @@ cmd:cd -;rm -rf /opt/xcat/share/xcat/tools/autotest/testcase/buildkit/mykits
 end
 
 start:buildkit_create_l
+label:others,KIT
 os:Linux
 cmd:rm -rf /opt/xcat/share/xcat/tools/autotest/testcase/buildkit/mykits
 cmd:mkdir -p /opt/xcat/share/xcat/tools/autotest/testcase/buildkit/mykits
@@ -63,6 +67,7 @@ cmd:rm -rf /opt/xcat/share/xcat/tools/autotest/testcase/buildkit/mykits
 end
 
 start:buildkit_buildrepo_all
+label:others,KIT
 os:rhels
 cmd:rm -rf /opt/xcat/share/xcat/tools/autotest/testcase/buildkit/prodkit
 cmd:cd /opt/xcat/share/xcat/tools/autotest/testcase/buildkit;buildkit create prodkit
@@ -80,6 +85,7 @@ cmd:cd -;rm -rf /opt/xcat/share/xcat/tools/autotest/testcase/buildkit/prodkit
 end
 
 start:buildkit_buildrepo_all
+label:others,KIT
 os:sles
 cmd:rm -rf /opt/xcat/share/xcat/tools/autotest/testcase/buildkit/prodkit
 cmd:cd /opt/xcat/share/xcat/tools/autotest/testcase/buildkit;buildkit create prodkit
@@ -97,6 +103,7 @@ cmd:cd -;rm -rf /opt/xcat/share/xcat/tools/autotest/testcase/buildkit/prodkit
 end
 
 start:buildkit_buildrepo_all
+label:others,KIT
 os:ubuntu
 cmd:rm -rf /opt/xcat/share/xcat/tools/autotest/testcase/buildkit/prodkit
 cmd:cd /opt/xcat/share/xcat/tools/autotest/testcase/buildkit;buildkit create prodkit
@@ -114,6 +121,7 @@ cmd:cd -;rm -rf /opt/xcat/share/xcat/tools/autotest/testcase/buildkit/prodkit
 end
 
 start:buildkit_buildrepo_rhels
+label:others,KIT
 os:rhels
 cmd:rm -rf /opt/xcat/share/xcat/tools/autotest/testcase/buildkit/prodkit
 cmd:cd /opt/xcat/share/xcat/tools/autotest/testcase/buildkit;buildkit create prodkit
@@ -131,6 +139,7 @@ cmd:cd -;rm -rf /opt/xcat/share/xcat/tools/autotest/testcase/buildkit/prodkit
 end
 
 start:buildkit_buildrepo_sles
+label:others,KIT
 os:sles
 cmd:rm -rf /opt/xcat/share/xcat/tools/autotest/testcase/buildkit/prodkit
 cmd:cd /opt/xcat/share/xcat/tools/autotest/testcase/buildkit;buildkit create prodkit
@@ -148,6 +157,7 @@ cmd:cd -;rm -rf /opt/xcat/share/xcat/tools/autotest/testcase/buildkit/prodkit
 end
 
 start:buildkit_buildrepo_ubuntu
+label:others,KIT
 os:ubuntu
 cmd:rm -rf /opt/xcat/share/xcat/tools/autotest/testcase/buildkit/prodkit
 cmd:cd /opt/xcat/share/xcat/tools/autotest/testcase/buildkit;buildkit create prodkit
@@ -165,6 +175,7 @@ cmd:cd -;rm -rf /opt/xcat/share/xcat/tools/autotest/testcase/buildkit/prodkit
 end
 
 start:buildkit_cleanrepo_all
+label:others,KIT
 os:Linux
 cmd:rm -rf /opt/xcat/share/xcat/tools/autotest/testcase/buildkit/prodkit
 cmd:cd /opt/xcat/share/xcat/tools/autotest/testcase/buildkit;buildkit create prodkit
@@ -181,6 +192,7 @@ cmd:cd -;rm -rf /opt/xcat/share/xcat/tools/autotest/testcase/buildkit/prodkit
 end
 
 start:buildkit_cleanrepo_rhels
+label:others,KIT
 os:rhels
 cmd:rm -rf /opt/xcat/share/xcat/tools/autotest/testcase/buildkit/prodkit
 cmd:cd /opt/xcat/share/xcat/tools/autotest/testcase/buildkit;buildkit create prodkit
@@ -197,6 +209,7 @@ cmd:cd -;rm -rf /opt/xcat/share/xcat/tools/autotest/testcase/buildkit/prodkit
 end
 
 start:buildkit_cleanrepo_sles
+label:others,KIT
 os:sles
 cmd:rm -rf /opt/xcat/share/xcat/tools/autotest/testcase/buildkit/prodkit
 cmd:cd /opt/xcat/share/xcat/tools/autotest/testcase/buildkit;buildkit create prodkit
@@ -213,6 +226,7 @@ cmd:cd -;rm -rf /opt/xcat/share/xcat/tools/autotest/testcase/buildkit/prodkit
 end
 
 start:buildkit_cleanrepo_ubuntu
+label:others,KIT
 os:ubuntu
 cmd:rm -rf /opt/xcat/share/xcat/tools/autotest/testcase/buildkit/prodkit
 cmd:cd /opt/xcat/share/xcat/tools/autotest/testcase/buildkit;buildkit create prodkit
@@ -229,6 +243,7 @@ cmd:cd -;rm -rf /opt/xcat/share/xcat/tools/autotest/testcase/buildkit/prodkit
 end
 
 start:buildkit_listrepo
+label:others,KIT
 os:rhels
 cmd:rm -rf /opt/xcat/share/xcat/tools/autotest/testcase/buildkit/prodkit
 cmd:cd /opt/xcat/share/xcat/tools/autotest/testcase/buildkit;buildkit create prodkit
@@ -244,6 +259,7 @@ end
 
 
 start:buildkit_listrepo
+label:others,KIT
 os:sles
 cmd:rm -rf /opt/xcat/share/xcat/tools/autotest/testcase/buildkit/prodkit
 cmd:cd /opt/xcat/share/xcat/tools/autotest/testcase/buildkit;buildkit create prodkit
@@ -258,6 +274,7 @@ cmd:cd -;rm -rf /opt/xcat/share/xcat/tools/autotest/testcase/buildkit/prodkit
 end
 
 start:buildkit_listrepo
+label:others,KIT
 os:ubuntu
 cmd:rm -rf /opt/xcat/share/xcat/tools/autotest/testcase/buildkit/prodkit
 cmd:cd /opt/xcat/share/xcat/tools/autotest/testcase/buildkit;buildkit create prodkit
@@ -272,6 +289,7 @@ cmd:cd -;rm -rf /opt/xcat/share/xcat/tools/autotest/testcase/buildkit/prodkit
 end
 
 start:buildkit_buildtar
+label:others,KIT
 os:Linux
 cmd:rm -rf /opt/xcat/share/xcat/tools/autotest/testcase/buildkit/prodkit
 cmd:cd /opt/xcat/share/xcat/tools/autotest/testcase/buildkit;buildkit create prodkit
@@ -291,6 +309,7 @@ end
 
 
 start:buildkit_cleantar
+label:others,KIT
 os:rhels
 cmd:rm -rf /opt/xcat/share/xcat/tools/autotest/testcase/buildkit/prodkit
 cmd:cd /opt/xcat/share/xcat/tools/autotest/testcase/buildkit;buildkit create prodkit
@@ -312,6 +331,7 @@ cmd:cd -;rm -rf /opt/xcat/share/xcat/tools/autotest/testcase/buildkit/prodkit
 end
 
 start:buildkit_cleantar
+label:others,KIT
 os:sles
 cmd:rm -rf /opt/xcat/share/xcat/tools/autotest/testcase/buildkit/prodkit
 cmd:cd /opt/xcat/share/xcat/tools/autotest/testcase/buildkit;buildkit create prodkit
@@ -333,6 +353,7 @@ cmd:cd -;rm -rf /opt/xcat/share/xcat/tools/autotest/testcase/buildkit/prodkit
 end
 
 start:buildkit_cleantar
+label:others,KIT
 os:ubuntu
 cmd:rm -rf /opt/xcat/share/xcat/tools/autotest/testcase/buildkit/prodkit
 cmd:cd /opt/xcat/share/xcat/tools/autotest/testcase/buildkit;buildkit create prodkit
@@ -354,6 +375,7 @@ cmd:cd -;rm -rf /opt/xcat/share/xcat/tools/autotest/testcase/buildkit/prodkit
 end
 
 start:buildkit_partialkit
+label:others,KIT
 os:rhels
 cmd:rm -rf /opt/xcat/share/xcat/tools/autotest/testcase/buildkit/prodkit
 cmd:cd /opt/xcat/share/xcat/tools/autotest/testcase/buildkit;buildkit create prodkit
@@ -377,6 +399,7 @@ cmd:rm -rf /opt/xcat/share/xcat/tools/autotest/testcase/buildkit/prodkit
 end
 
 start:buildkit_partialkit
+label:others,KIT
 os:sles
 cmd:rm -rf /opt/xcat/share/xcat/tools/autotest/testcase/buildkit/prodkit
 cmd:cd /opt/xcat/share/xcat/tools/autotest/testcase/buildkit;buildkit create prodkit
@@ -400,6 +423,7 @@ cmd:rm -rf /opt/xcat/share/xcat/tools/autotest/testcase/buildkit/prodkit
 end
 
 start:buildkit_partialkit_ubuntu
+label:others,KIT
 os:ubuntu
 cmd:rm -rf /opt/xcat/share/xcat/tools/autotest/testcase/buildkit/prodkit
 cmd:cd /opt/xcat/share/xcat/tools/autotest/testcase/buildkit;buildkit create prodkit
@@ -423,6 +447,7 @@ cmd:rm -rf /opt/xcat/share/xcat/tools/autotest/testcase/buildkit/prodkit
 end
 
 start:buildkit_partialkit_completekit
+label:others,KIT
 os:rhels
 cmd:rm -rf /opt/xcat/share/xcat/tools/autotest/testcase/buildkit/prodkit
 cmd:cd /opt/xcat/share/xcat/tools/autotest/testcase/buildkit;buildkit create prodkit
@@ -454,6 +479,7 @@ cmd:rm -rf /opt/xcat/share/xcat/tools/autotest/testcase/buildkit/prodkit
 end
 
 start:buildkit_partialkit_completekit
+label:others,KIT
 os:sles
 cmd:rm -rf /opt/xcat/share/xcat/tools/autotest/testcase/buildkit/prodkit
 cmd:cd /opt/xcat/share/xcat/tools/autotest/testcase/buildkit;buildkit create prodkit
@@ -485,6 +511,7 @@ cmd:rm -rf /opt/xcat/share/xcat/tools/autotest/testcase/buildkit/prodkit
 end
 
 start:buildkit_partialkit_completekit
+label:others,KIT
 os:ubuntu
 cmd:rm -rf /opt/xcat/share/xcat/tools/autotest/testcase/buildkit/prodkit
 cmd:cd /opt/xcat/share/xcat/tools/autotest/testcase/buildkit;buildkit create prodkit

@@ -1,4 +1,5 @@
 start:linux_diskless_kdump
+label:others,kdump,invoke_provision
 os:Linux
 cmd:lsdef -z $$CN > /tmp/node.stanza
 cmd:lsdef -t osimage -z __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute > /tmp/osimage.stanza

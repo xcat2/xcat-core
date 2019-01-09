@@ -1,6 +1,7 @@
 start:ubuntu_migration2_vm
 os:Linux
 description:update xCAT from $$UBUNTU_MIGRATION2_VERSION to latest version, these two global parameter defined in config file
+label:others,migration,invoke_provision
 
 cmd:copycds $$ISO
 check:rc==0
@@ -32,13 +33,9 @@ check:rc==0
 cmd:xdsh $$CN "apt-get -y install software-properties-common"
 check:rc==0
 cmd:xdsh $$CN 'lsb_r=`lsb_release -sc`;add-apt-repository "deb http://archive.ubuntu.com/ubuntu $lsb_r main"'
-check:rc==0
 cmd:xdsh $$CN 'lsb_r=`lsb_release -sc`;add-apt-repository "deb http://archive.ubuntu.com/ubuntu ${lsb_r}-updates main"'
-check:rc==0
 cmd:xdsh $$CN 'lsb_r=`lsb_release -sc`;add-apt-repository "deb http://archive.ubuntu.com/ubuntu ${lsb_r} universe"'
-check:rc==0
 cmd:xdsh $$CN 'lsb_r=`lsb_release -sc`;add-apt-repository "deb http://archive.ubuntu.com/ubuntu ${lsb_r}-updates universe"'
-check:rc==0
 cmd:xdsh $$CN "sed -i '/install/d' /etc/apt/sources.list"
 check:rc==0
 cmd:xdsh $$CN "sed -i '/security.ubuntu.com/d' /etc/apt/sources.list"

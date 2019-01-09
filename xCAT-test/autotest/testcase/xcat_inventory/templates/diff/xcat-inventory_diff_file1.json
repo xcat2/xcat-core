@@ -1,0 +1,191 @@
+{
+    "network": {
+        "10_0_0_0-255_0_0_0": {
+            "basic_attr": {
+                "gateway": "<xcatmaster>",
+                "mask": "255.0.0.0",
+                "mgtifname": "eth1",
+                "mtu": "1500",
+                "net": "10.0.0.0"
+            },
+            "service": {
+                "tftpserver": "<xcatmaster>"
+            }
+        }
+    },
+    "node": {
+        "node1": {
+            "device_type": "server",
+            "engines": {
+                "hardware_mgt_engine": {
+                    "engine_info": {
+                        "bmc": "10.1.1.1",
+                        "bmcusername": "ADMIN",
+                    },
+                    "engine_type": "ipmi"
+                }
+            },
+            "obj_info": {
+                "groups": "ipmi"
+            },
+            "obj_type": "node",
+            "role": "compute"
+        },
+        "node2": {
+            "device_info": {
+                "arch": "ppc64le",
+                "uuid": "7d6ca5da-9485-11e8-821f-426e0a03110a"
+            },
+            "device_type": "server",
+            "engines": {
+                "console_engine": {
+                    "engine_info": {
+                        "consoleenabled": "1",
+                        "serialport": "0",
+                        "serialspeed": "115200"
+                    }
+                },
+                "hardware_mgt_engine": {
+                    "engine_info": {
+                        "id": "10",
+                        "vmcpus": "2",
+                        "vmhost": "node_host",
+                        "vmmemory": "6144",
+                        "vmnics": "brenP3p9s0f0,brenP3p9s0f1",
+                        "vmstorage": "phy:/dev/mapper/vdiskvg01-vdisk01n10"
+                    },
+                    "engine_type": "kvm"
+                },
+                "netboot_engine": {
+                    "engine_info": {
+                        "osimage": "rhels7.5-ppc64le-install-compute"
+                    },
+                    "engine_type": "grub2"
+                }
+            },
+            "network_info": {
+                "primarynic": {
+                    "mac": [
+                        "42:6e:0a:03:11:0a",
+                        "42:73:0a:03:11:0a!*NOIP*"
+                    ]
+                }
+            },
+            "obj_info": {
+                "groups": "all"
+            },
+            "obj_type": "node",
+            "role": "compute"
+        },
+        "node3": {
+            "device_type": "server",
+            "engines": {
+                "hardware_mgt_engine": {
+                    "engine_info": {
+                        "bmc": "10.1.1.2",
+                        "bmcusername": "ADMIN",
+                    },
+                    "engine_type": "openbmc"
+                }
+            },
+            "obj_info": {
+                "groups": "openbmc"
+            },
+            "obj_type": "node",
+            "role": "compute"
+        },
+        "service": {
+            "device_type": "server",
+            "engines": {
+                "netboot_engine": {
+                    "engine_info": {
+                        "postscripts": "servicenode"
+                    }
+                }
+            },
+            "obj_type": "group",
+            "role": "compute"
+        },
+        "xcatdefaults": {
+            "device_type": "server",
+            "engines": {
+                "netboot_engine": {
+                    "engine_info": {
+                        "postbootscripts": "otherpkgs",
+                        "postscripts": "syslog,remoteshell,syncfiles"
+                    }
+                }
+            },
+            "obj_type": "group",
+            "role": "compute"
+        }
+    },
+    "osimage": {
+        "rhels7.5-alternate-ppc64le-install-compute": {
+            "basic_attributes": {
+                "arch": "ppc64le",
+                "distribution": "rhels7.5-alternate",
+                "osdistro": "rhels7.5-alternate-ppc64le",
+                "osname": "Linux"
+            },
+            "imagetype": "linux",
+            "package_selection": {
+                "otherpkgdir": [
+                    "/install/post/otherpkgs/rhels7.5-alternate/ppc64le"
+                ],
+                "pkgdir": [
+                    "/install/rhels7.5-alternate/ppc64le"
+                ],
+                "pkglist": [
+                    "/opt/xcat/share/xcat/install/rh/compute.rhels7.pkglist"
+                ]
+            },
+            "provision_mode": "install",
+            "role": "compute",
+            "template": "/opt/xcat/share/xcat/install/rh/compute.rhels7.tmpl"
+        },
+    },
+    "schema_version": "2.0",
+    "site": {
+        "clustersite": {
+            "SNsyncfiledir": "/var/xcat/syncfiles",
+            "auditnosyslog": "0",
+            "auditskipcmds": "ALL",
+            "blademaxp": "64",
+            "cleanupxcatpost": "no",
+            "consoleondemand": "no",
+            "databaseloc": "/var/lib",
+            "db2installloc": "/mntdb2",
+            "dhcplease": "43200",
+            "dnshandler": "ddns",
+            "domain": "test.com",
+            "enableASMI": "no",
+            "forwarders": "10.0.0.1",
+            "fsptimeout": "0",
+            "installdir": "/install",
+            "ipmimaxp": "64",
+            "ipmiretries": "3",
+            "ipmitimeout": "2",
+            "master": "10.1.1.2",
+            "maxssh": "8",
+            "nameservers": "10.1.1.1",
+            "nodesyncfiledir": "/var/xcat/node/syncfiles",
+            "powerinterval": "0",
+            "ppcmaxp": "64",
+            "ppcretry": "3",
+            "ppctimeout": "0",
+            "sharedtftp": "1",
+            "sshbetweennodes": "ALLGROUPS",
+            "syspowerinterval": "0",
+            "tftpdir": "/tftpboot",
+            "timezone": "US/Eastern",
+            "useNmapfromMN": "no",
+            "vsftp": "n",
+            "xcatconfdir": "/etc/xcat",
+            "xcatdebugmode": "1",
+            "xcatdport": "3001",
+            "xcatiport": "3002",
+            "xcatsslversion": "TLSv1"
+        }
+    }
+}

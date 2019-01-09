@@ -11,11 +11,11 @@ SYNOPSIS
 ********
 
 
-\ **makentp [-h|-**\ **-help]**\
+\ **makentp [-h|-**\ **-help]**\ 
 
-\ **makentp [-v|-**\ **-version]**\
+\ **makentp [-v|-**\ **-version]**\ 
 
-\ **makentp [-a|-**\ **-all] [-V|-**\ **-verbose]**\
+\ **makentp [-a|-**\ **-all] [-V|-**\ **-verbose]**\ 
 
 
 ***********
@@ -41,28 +41,28 @@ OPTIONS
 
 
 
-\ **-a|-**\ **-all**\
-
+\ **-a|-**\ **-all**\ 
+ 
  Setup NTP servers for both management node and the service node. If management node has SLES installed and used as \ *ntpservers*\ , it is recommanded to use the \ **setupntp**\  postscript to set up NTP server for service nodes.
+ 
 
 
-
-\ **-h|-**\ **-help**\
-
+\ **-h|-**\ **-help**\ 
+ 
  Display usage message.
+ 
 
 
-
-\ **-v|-**\ **-version**\
-
+\ **-v|-**\ **-version**\ 
+ 
  Command Version.
+ 
 
 
-
-\ **-V|-**\ **-verbose**\
-
+\ **-V|-**\ **-verbose**\ 
+ 
  Verbose output.
-
+ 
 
 
 
@@ -83,23 +83,23 @@ EXAMPLES
 
 
 1. To setup NTP server on the management node:
-
-
+ 
+ 
  .. code-block:: perl
-
+ 
    makentp
-
-
+ 
+ 
 
 
 2. To setup NTP servers on both management node and the service node:
-
-
+ 
+ 
  .. code-block:: perl
-
+ 
    makentp -a
-
-
+ 
+ 
 
 
 

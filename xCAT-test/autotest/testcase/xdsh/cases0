@@ -15,7 +15,7 @@ start:xdsh_regular_command
 label:cn_os_ready,parallel_cmds
 cmd:XCATBYPASS=1 xdsh $$CN "ps -ef"
 check:rc==0
-check:output=~$$CN: UID        PID  PPID  C STIME TTY          TIME CMD
+check:output=~$$CN:\s+UID\s+PID\s+PPID\s+C\s+STIME\s+TTY\s+TIME\s+CMD
 end
 
 start:xdsh_Q_command
@@ -96,7 +96,7 @@ start:xdsh_t
 label:cn_os_ready,parallel_cmds
 cmd:date +%s > /tmp/start.txt
 check:rc==0
-cmd:xdsh $$CN -t 5 "ssh 1.1.1.1"
+cmd:xdsh $$CN -t 5 "sleep 10"
 check:rc!=0
 check:output=~Error: (\[.*?\]: )?Caught SIGINT - terminating the child processes.
 cmd:date +%s > /tmp/end.txt

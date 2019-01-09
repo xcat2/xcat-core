@@ -10,7 +10,11 @@
 #   on Redhat-family OSes with POWER system
 #
 #-----------------------------------------------------------------------------
-
+if [ -n "$LOGLABEL" ]; then
+    log_label=$LOGLABEL
+else
+    log_label="xcat"
+fi
 OS=`uname`
 if [[ $OS = "Linux" ]]; then
     if [[ $OSVER = fedora* ]] || [[ $OSVER = rhels5* ]] || [[ $OSVER = rhel6* ]] || [[ $OSVER=rhels6* ]] || [[ -f /etc/fedora-release ]] || [[ -f /etc/redhat-release ]]; then
@@ -36,13 +40,13 @@ if [[ $OS = "Linux" ]]; then
                 then
                     if echo $MPATH | grep "sdd"
                     then
-                        logger -t xcat -p local4.info setbootfromdisk: Setting sda sdb sdc sdd to be the default bootup device
+                        logger -t $log_label -p local4.info setbootfromdisk: Setting sda sdb sdc sdd to be the default bootup device
                         echo "setbootfromdisk: setting up sda sdb sdc sdd to be the default bootup device"
                         bootlist -m normal sda sdb sdc sdd
                         exit 0
                     fi
                 fi
-                logger -t xcat -p local4.info setbootfromdisk: Setting sda sdb to be the default bootup device
+                logger -t $log_label -p local4.info setbootfromdisk: Setting sda sdb to be the default bootup device
                 echo "setbootfromdisk: setting up sda sdb to be the default bootup device for software raid"
                 bootlist -m normal sda sdb
                 exit 0
@@ -67,13 +71,13 @@ if [[ $OS = "Linux" ]]; then
                     then
                         if echo $i | grep "sda"
                         then
-                            logger -t xcat -p local4.info setbootfromdisk: Setting sda sdb to be the default bootup device
+                            logger -t $log_label -p local4.info setbootfromdisk: Setting sda sdb to be the default bootup device
                             echo "setbootfromdisk: setting up sda sdb to be the default bootup device"
                             bootlist -m normal sda sdb
                             exit 0
                         elif echo $i | grep "sdc"
                         then
-                            logger -t xcat -p local4.info setbootfromdisk: Setting sdc sdd to be the default bootup device
+                            logger -t $log_label -p local4.info setbootfromdisk: Setting sdc sdd to be the default bootup device
                             echo "setbootfromdisk: setting up sdc sdd to be the default bootup device"
                             bootlist -m normal sdc sdd
                             exit 0
@@ -84,7 +88,7 @@ if [[ $OS = "Linux" ]]; then
 
                 if echo $MPATH | grep "sdb"
                 then
-                    logger -t xcat -p local4.info setbootfromdisk: Setting sda sdb to be the default bootup device
+                    logger -t $log_label -p local4.info setbootfromdisk: Setting sda sdb to be the default bootup device
                     echo "setbootfromdisk: setting up sda sdb to be the default bootup device"
                     bootlist -m normal sda sdb
                     exit 0
@@ -92,15 +96,15 @@ if [[ $OS = "Linux" ]]; then
             fi
 
             if [[ -z $BOOTDEVICE ]]; then
-                logger -t xcat -p local4.err setbootfromdisk: cannot find the booting device
+                logger -t $log_label -p local4.err setbootfromdisk: cannot find the booting device
             else
-                logger -t xcat -p local4.info setbootfromdisk: Setting $BOOTDEVICE to be the default bootup device
+                logger -t $log_label -p local4.info setbootfromdisk: Setting $BOOTDEVICE to be the default bootup device
                 echo "setbootfromdisk: setting up $BOOTDEVICE as the default bootup device"
                 bootlist -m normal $BOOTDEVICE
                 exit 0
             fi
         else
-            logger -t xcat -p local4.err Could not find /usr/sbin/bootlist
+            logger -t $log_label -p local4.err Could not find /usr/sbin/bootlist
             echo "setbootfromdisk: could not find /usr/sbin/bootlist"
             exit -1
         fi

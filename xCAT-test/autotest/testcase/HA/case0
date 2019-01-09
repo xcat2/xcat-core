@@ -1,0 +1,354 @@
+#only support redhat and postgresql
+start:setup_2_new_HA_MN
+label:others,HA
+os:Linux
+#back up
+cmd:lsdef -z $$PRIMARYMN > /tmp/node.stanza
+cmd:lsdef -z $$STANDBYMN >> /tmp/node.stanza
+cmd:lsdef -z $$HACN >> /tmp/node.stanza
+cmd:lsdef -t osimage -z __GETNODEATTR($$PRIMARYMN,os)__-__GETNODEATTR($$PRIMARYMN,arch)__-install-compute > /tmp/osimage.stanza
+cmd:chdef -t node -o $$PRIMARYMN,$$STANDBYMN,$$HACN servicenode= monserver= nfsserver= tftpserver= xcatmaster=
+check:rc==0
+cmd:lsdef -z $$HACN > /tmp/HACN.stanza
+check:rc==0
+
+#prepare
+cmd:makedns -n
+check:rc==0
+cmd:if [[ "__GETNODEATTR($$PRIMARYMN,arch)__" = "ppc64" ]] && [[ "__GETNODEATTR($$PRIMARYMN,mgt)__" != "ipmi" ]]; then getmacs -D $$PRIMARYMN; fi
+check:rc==0
+cmd:makedhcp -n
+check:rc==0
+cmd:makedhcp -a
+check:rc==0
+cmd:a=0;while true; do [ $a -eq 100 ] && exit 1;output=$(makedhcp -q $$PRIMARYMN);[ $? -ne 0 ] && exit 1;echo $output|grep $$PRIMARYMN 2>/dev/null && exit 0;a=$[$a+1];sleep 1;done
+check:rc==0
+cmd:copycds $$ISO
+check:rc==0
+cmd:if [[ -f /install/postscripts/cfghamn ]] ;then mv -f /install/postscripts/cfghamn /install/postscripts/cfghamn.bak;fi;
+cmd:if [[ -f /install/postscripts/check_node_state ]] ;then mv -f /install/postscripts/check_node_state /install/postscripts/check_node_state.bak;fi;
+cmd:cp -f /opt/xcat/share/xcat/tools/autotest/testcase/HA/cfghamn /install/postscripts/
+cmd:cp -f /opt/xcat/share/xcat/tools/autotest/testcase/HA/check_node_state /install/postscripts/
+cmd:if [[ -f /install/postscripts/xcatha.py ]] ;then mv -f /install/postscripts/xcatha.py /install/postscripts/xcatha.py.bak;fi;
+cmd:wget -O - $$HASCIPRTURL > /install/postscripts/xcatha.py
+check:rc==0
+cmd:ls /install/postscripts/xcatha.py
+check:rc==0
+cmd:genimage __GETNODEATTR($$PRIMARYMN,os)__-__GETNODEATTR($$PRIMARYMN,arch)__-netboot-compute
+check:rc==0
+cmd:packimage __GETNODEATTR($$PRIMARYMN,os)__-__GETNODEATTR($$PRIMARYMN,arch)__-netboot-compute
+check:rc==0
+cmd:imgexport __GETNODEATTR($$PRIMARYMN,os)__-__GETNODEATTR($$PRIMARYMN,arch)__-netboot-compute
+check:rc==0
+
+#create hosts file for 2 HA nodes
+cmd:echo "127.0.0.1   localhost localhost.localdomain localhost4 localhost4.localdomain4" > /opt/xcat/share/xcat/tools/autotest/testcase/HA/hosts
+cmd:echo "::1         localhost localhost.localdomain localhost6 localhost6.localdomain6" >> /opt/xcat/share/xcat/tools/autotest/testcase/HA/hosts
+cmd:echo "__GETNODEATTR($$PRIMARYMN,ip)__ $$PRIMARYMN $$PRIMARYMN.pok.stglabs.ibm.com" >> /opt/xcat/share/xcat/tools/autotest/testcase/HA/hosts
+cmd:echo "__GETNODEATTR($$STANDBYMN,ip)__ $$STANDBYMN $$STANDBYMN.pok.stglabs.ibm.com" >> /opt/xcat/share/xcat/tools/autotest/testcase/HA/hosts
+cmd:echo "$$VIP autotesthamn autotesthamn.pok.stglabs.ibm.com" >> /opt/xcat/share/xcat/tools/autotest/testcase/HA/hosts
+cmd:echo "__GETNODEATTR($$HACN,ip)__ $$HACN $$HACN.pok.stglabs.ibm.com" >> /opt/xcat/share/xcat/tools/autotest/testcase/HA/hosts
+
+#configure syclists
+cmd:if [[ -f /test.synclist ]] ;then mv -f /test.synclist /test.synclist.bak;fi;
+cmd:echo "/opt/xcat/share/xcat/tools/autotest/testcase/HA/hosts -> /etc/hosts" > /test.synclist
+cmd:echo "/tmp/HACN.stanza -> /tmp/HACN.stanza" >> /test.synclist
+cmd:chdef -t osimage -o __GETNODEATTR($$PRIMARYMN,os)__-__GETNODEATTR($$PRIMARYMN,arch)__-install-compute synclists=/test.synclist
+check:rc==0 
+
+#modify postbootscripts
+cmd:if [[ -d /install/autotestHA ]] ;then mv -f /install/autotestHA /install/autotestHA.bak;fi
+cmd:mkdir -p /install/autotestHA
+cmd:chdef $$PRIMARYMN,$$STANDBYMN -p postbootscripts="confignetwork -s,cfghamn -l $$MN:/install/autotestHA -i $$VIP -x s"
+check:rc==0
+
+#provision first HA node
+cmd:rinstall $$PRIMARYMN osimage=__GETNODEATTR($$PRIMARYMN,os)__-__GETNODEATTR($$PRIMARYMN,arch)__-install-compute
+check:rc==0
+cmd:sleep 300
+cmd:a=0;while ! `lsdef -l $$PRIMARYMN|grep status|grep booted >/dev/null`; do sleep 20;((a++));if [ $a -gt 300 ];then break;fi done
+cmd:ping $$PRIMARYMN -c 3
+check:rc==0
+check:output=~64 bytes from $$PRIMARYMN
+cmd:xdsh $$PRIMARYMN date
+check:rc==0
+check:output=~\d\d:\d\d:\d\d
+
+#provision second HA node
+cmd:rinstall $$STANDBYMN osimage=__GETNODEATTR($$PRIMARYMN,os)__-__GETNODEATTR($$PRIMARYMN,arch)__-install-compute
+check:rc==0
+cmd:sleep 300
+cmd:a=0;while ! `lsdef -l $$STANDBYMN|grep status|grep booted >/dev/null`; do sleep 20;((a++));if [ $a -gt 300 ];then break;fi done
+cmd:ping $$STANDBYMN -c 3
+check:rc==0
+check:output=~64 bytes from $$STANDBYMN
+cmd:xdsh $$STANDBYMN date
+check:rc==0
+check:output=~\d\d:\d\d:\d\d
+
+#activate the first HA node
+cmd:updatenode $$PRIMARYMN -P "cfghamn -l $$MN:/install/autotestHA -i $$VIP -x a"
+check:rc==0
+cmd:xdsh $$PRIMARYMN "chdef -t site domain=pok.stglabs.ibm.com"
+cmd:makedhcp -d $$HACN
+check:rc==0
+
+#provision HACN on primary MN
+cmd:rsync /opt/xcat/share/xcat/tools/autotest/__GETNODEATTR($$PRIMARYMN,os)__-__GETNODEATTR($$PRIMARYMN,arch)__-netboot-compute.tgz $$PRIMARYMN:/root/ 
+check:rc==0
+cmd:xdsh $$PRIMARYMN "imgimport /root/__GETNODEATTR($$PRIMARYMN,os)__-__GETNODEATTR($$PRIMARYMN,arch)__-netboot-compute.tgz"
+check:rc==0
+cmd:xdsh $$PRIMARYMN "cat /tmp/HACN.stanza|chdef -z"
+check:rc==0
+cmd:xdsh $$PRIMARYMN "makedns -n"
+check:rc==0
+cmd:xdsh $$PRIMARYMN "makedhcp -n"
+check:rc==0
+cmd:xdsh $$PRIMARYMN "makedhcp -a"
+check:rc==0
+cmd:xdsh $$PRIMARYMN "rinstall $$HACN osimage=__GETNODEATTR($$PRIMARYMN,os)__-__GETNODEATTR($$PRIMARYMN,arch)__-netboot-compute"
+check:rc==0
+cmd:sleep 150
+cmd:xdsh $$PRIMARYMN "chmod 755 /xcatpost/check_node_state"
+cmd:xdsh $$PRIMARYMN "/xcatpost/check_node_state $$HACN"
+cmd:xdsh $$PRIMARYMN "lsdef $$HACN -i status"
+check:output=~booted
+cmd:xdsh $$PRIMARYMN "xdsh $$HACN date"
+check:rc==0
+ 
+#deactivate the first HA node
+cmd:updatenode $$PRIMARYMN -P "cfghamn -l $$MN:/install/autotestHA -i $$VIP -x d"
+check:rc==0
+
+#activate the second HA node
+cmd:updatenode $$STANDBYMN -P "cfghamn -l $$MN:/install/autotestHA -i $$VIP -x a"
+check:rc==0
+
+#provision HACN on standby MN
+cmd:xdsh $$STANDBYMN "rinstall $$HACN osimage=__GETNODEATTR($$PRIMARYMN,os)__-__GETNODEATTR($$PRIMARYMN,arch)__-netboot-compute"
+check:rc==0
+cmd:sleep 150
+cmd:xdsh $$STANDBYMN "chmod 755 /xcatpost/check_node_state"
+cmd:xdsh $$STANDBYMN "/xcatpost/check_node_state $$HACN"
+cmd:xdsh $$STANDBYMN "lsdef $$HACN -i status"
+check:output=~booted
+
+#deactivate the second HA node
+cmd:updatenode $$STANDBYMN -P "cfghamn -l $$MN:/install/autotestHA -i $$VIP -x d"
+check:rc==0
+
+#restore data
+cmd:cat /tmp/node.stanza | chdef -z;rm -rf /tmp/node.stanza
+cmd:cat /tmp/osimage.stanza | chdef -z;rm -rf /tmp/osimage.stanza
+cmd:rm -rf /opt/xcat/share/xcat/tools/autotest/testcase/HA/hosts
+cmd:rm -rf /opt/xcat/share/xcat/tools/autotest/__GETNODEATTR($$PRIMARYMN,os)__-__GETNODEATTR($$PRIMARYMN,arch)__-netboot-compute.tgz
+cmd:if [[ -d /install/autotestHA.bak ]] ;then mv -f /install/autotestHA.bak /install/autotestHA;fi
+cmd:if [[ -f /test.synclist.bak ]] ;then mv -f /test.synclist.bak /tmp/test.synclist;else rm -rf /test.synclist;fi
+cmd:if [[ -f /install/postscripts/cfghamn.bak ]] ;then mv -f /install/postscripts/cfghamn.bak /install/postscripts/cfghamn;fi;
+cmd:if [[ -f /install/postscripts/xcatha.py.bak ]] ;then mv -f /install/postscripts/xcatha.py.bak /install/postscripts/xcatha.py;fi;
+cmd:if [[ -f /install/postscripts/check_node_state.bak ]] ;then mv -f /install/postscripts/check_node_state.bak /install/postscripts/check_node_state;fi;
+end
+
+start:configure_exist_xCAT_MN_to_HA_MN
+label:others,HA
+os:Linux
+#back up
+cmd:lsdef -z $$PRIMARYMN > /tmp/node.stanza
+cmd:lsdef -z $$STANDBYMN >> /tmp/node.stanza
+cmd:lsdef -z $$HACN >> /tmp/node.stanza
+cmd:lsdef -t osimage -z __GETNODEATTR($$PRIMARYMN,os)__-__GETNODEATTR($$PRIMARYMN,arch)__-install-compute > /tmp/osimage.stanza
+cmd:chdef -t node -o $$PRIMARYMN,$$STANDBYMN,$$HACN servicenode= monserver= nfsserver= tftpserver= xcatmaster=
+check:rc==0
+cmd:lsdef -z $$HACN > /tmp/HACN.stanza
+check:rc==0
+
+#prepare
+cmd:makedns -n
+check:rc==0
+cmd:if [[ "__GETNODEATTR($$PRIMARYMN,arch)__" = "ppc64" ]] && [[ "__GETNODEATTR($$PRIMARYMN,mgt)__" != "ipmi" ]]; then getmacs -D $$PRIMARYMN; fi
+check:rc==0
+cmd:makedhcp -n
+check:rc==0
+cmd:makedhcp -a
+check:rc==0
+cmd:a=0;while true; do [ $a -eq 100 ] && exit 1;output=$(makedhcp -q $$PRIMARYMN);[ $? -ne 0 ] && exit 1;echo $output|grep $$PRIMARYMN 2>/dev/null && exit 0;a=$[$a+1];sleep 1;done
+check:rc==0
+cmd:copycds $$ISO
+check:rc==0
+cmd:if [[ -f /install/postscripts/cfghamn ]] ;then mv -f /install/postscripts/cfghamn /install/postscripts/cfghamn.bak;fi;
+cmd:if [[ -f /install/postscripts/check_node_state ]] ;then mv -f /install/postscripts/check_node_state /install/postscripts/check_node_state.bak;fi;
+cmd:cp -f /opt/xcat/share/xcat/tools/autotest/testcase/HA/cfghamn /install/postscripts/
+cmd:cp -f /opt/xcat/share/xcat/tools/autotest/testcase/HA/check_node_state /install/postscripts/
+cmd:if [[ -f /install/postscripts/xcatha.py ]] ;then mv -f /install/postscripts/xcatha.py /install/postscripts/xcatha.py.bak;fi;
+cmd:if [[ ! -f /install/postscripts/xcatha.py ]] ;then wget $$HASCIPRTURL -P /install/postscripts/; fi;
+cmd:ls /install/postscripts/xcatha.py
+check:rc==0
+cmd:genimage __GETNODEATTR($$PRIMARYMN,os)__-__GETNODEATTR($$PRIMARYMN,arch)__-netboot-compute
+check:rc==0
+cmd:packimage __GETNODEATTR($$PRIMARYMN,os)__-__GETNODEATTR($$PRIMARYMN,arch)__-netboot-compute
+check:rc==0
+cmd:imgexport __GETNODEATTR($$PRIMARYMN,os)__-__GETNODEATTR($$PRIMARYMN,arch)__-netboot-compute
+check:rc==0
+
+#prepare /etc/hosts 
+cmd:echo "127.0.0.1   localhost localhost.localdomain localhost4 localhost4.localdomain4" > /opt/xcat/share/xcat/tools/autotest/testcase/HA/hosts
+cmd:echo "::1         localhost localhost.localdomain localhost6 localhost6.localdomain6" >> /opt/xcat/share/xcat/tools/autotest/testcase/HA/hosts
+cmd:echo "100.1.0.100 $$PRIMARYMN-1 $$PRIMARYMN-1.pok.stglabs.ibm.com" >> /opt/xcat/share/xcat/tools/autotest/testcase/HA/hosts
+cmd:echo "100.1.0.101 $$STANDBYMN-1 $$STANDBYMN-1.pok.stglabs.ibm.com" >> /opt/xcat/share/xcat/tools/autotest/testcase/HA/hosts
+cmd:echo "100.1.0.233 autotesthamn autotesthamn.pok.stglabs.ibm.com" >> /opt/xcat/share/xcat/tools/autotest/testcase/HA/hosts
+cmd:echo "100.1.0.103 $$HACN $$HACN.pok.stglabs.ibm.com" >> /opt/xcat/share/xcat/tools/autotest/testcase/HA/hosts
+
+#configure syclists
+cmd:if [[ -f /test.synclist ]] ;then mv -f /test.synclist /test.synclist.bak;fi;
+cmd:echo "/opt/xcat/share/xcat/tools/autotest/testcase/HA/hosts -> /etc/hosts" > /test.synclist
+cmd:echo "/tmp/HACN.stanza -> /tmp/HACN.stanza" >> /test.synclist
+cmd:chdef -t osimage -o __GETNODEATTR($$PRIMARYMN,os)__-__GETNODEATTR($$PRIMARYMN,arch)__-install-compute synclists=/test.synclist
+check:rc==0
+
+#create HA network
+cmd:mkdef -t network -o 100_1_0_0-255_255_0_0 net=100.1.0.0 mask=255.255.0.0 
+check:rc==0
+cmd:chdef $$PRIMARYMN nicips.$$PMNSECONDNIC=100.1.0.233 nictypes.$$PMNSECONDNIC=Ethernet nicnetworks.$$PMNSECONDNIC=100_1_0_0-255_255_0_0
+check:rc==0
+cmd:chdef $$STANDBYMN nicips.$$SMNSECONDNIC=100.1.0.101 nictypes.$$SMNSECONDNIC=Ethernet nicnetworks.$$SMNSECONDNIC=100_1_0_0-255_255_0_0
+check:rc==0
+
+#configure postbootscripts
+cmd:if [[ -d /install/autotestHA ]] ;then mv -f /install/autotestHA /install/autotestHA.bak;fi
+cmd:mkdir -p /install/autotestHA
+cmd:chdef $$PRIMARYMN,$$STANDBYMN -p postbootscripts="confignetwork -s"
+check:rc==0
+
+#provison first node
+cmd:rinstall $$PRIMARYMN,$$STANDBYMN osimage=__GETNODEATTR($$PRIMARYMN,os)__-__GETNODEATTR($$PRIMARYMN,arch)__-install-compute
+check:rc==0
+cmd:sleep 300
+cmd:a=0;while ! `lsdef -l $$PRIMARYMN|grep status|grep booted >/dev/null`; do sleep 20;((a++));if [ $a -gt 300 ];then break;fi done
+cmd:ping $$PRIMARYMN -c 3
+check:rc==0
+check:output=~64 bytes from $$PRIMARYMN
+cmd:xdsh $$PRIMARYMN date
+check:rc==0
+check:output=~\d\d:\d\d:\d\d
+cmd:a=0;while ! `lsdef -l $$STANDBYMN|grep status|grep booted >/dev/null`; do sleep 20;((a++));if [ $a -gt 300 ];then break;fi done
+cmd:ping $$STANDBYMN -c 3
+check:rc==0
+check:output=~64 bytes from $$STANDBYMN
+cmd:xdsh $$STANDBYMN date
+check:rc==0
+check:output=~\d\d:\d\d:\d\d
+
+#update resolv.conf and hostname
+cmd:xdsh $$PRIMARYMN 'echo "nameserver 100.1.0.233">> /etc/resolv.conf'
+check:rc==0
+cmd:xdsh $$PRIMARYMN "hostname autotesthamn"
+check:rc==0
+
+#install xCAT
+cmd:mkdir -p /install/post/otherpkgs/__GETNODEATTR($$PRIMARYMN,os)__/__GETNODEATTR($$PRIMARYMN,arch)__/xcat
+check:rc==0
+cmd:cp -r /xcat-core /install/post/otherpkgs/__GETNODEATTR($$PRIMARYMN,os)__/__GETNODEATTR($$PRIMARYMN,arch)__/xcat/
+cmd:cp -r /xcat-dep /install/post/otherpkgs/__GETNODEATTR($$PRIMARYMN,os)__/__GETNODEATTR($$PRIMARYMN,arch)__/xcat/
+cmd:cd /install/post/otherpkgs/__GETNODEATTR($$SN,os)__/__GETNODEATTR($$SN,arch)__/xcat/xcat-core && createrepo .
+check:rc==0
+cmd:if [[ "__GETNODEATTR($$PRIMARYMN,os)__" =~ "rh" ]];then path="rh";elif [[ "__GETNODEATTR($$PRIMARYMN,os)__" =~ "sles" ]];then path="sles";fi; ver="__GETNODEATTR($$PRIMARYMN,os)__"; tmp=${ver%.*};ver=`echo "$tmp"|sed 's:[a-zA-Z]::g'`;cd /install/post/otherpkgs/__GETNODEATTR($$SN,os)__/__GETNODEATTR($$SN,arch)__/xcat/xcat-dep/$path$ver/__GETNODEATTR($$SN,arch)__ && createrepo .;
+check:rc==0
+cmd:chdef -t osimage __GETNODEATTR($$PRIMARYMN,os)__-__GETNODEATTR($$PRIMARYMN,arch)__-install-compute otherpkgdir="/install/post/otherpkgs/__GETNODEATTR($$PRIMARYMN,os)__/__GETNODEATTR($$PRIMARYMN,arch)__"
+check:rc==0
+cmd:cmd:if [[ -f /opt/xcat/share/xcat/install/rh/autotest.otherpkgs.pkglist ]]; then mv -f /opt/xcat/share/xcat/install/rh/autotest.otherpkgs.pkglist /opt/xcat/share/xcat/install/rh/autotest.otherpkgs.pkglist.bak;fi
+cmd:echo "xcat/xcat-core/xCAT" > /opt/xcat/share/xcat/install/rh/autotest.otherpkgs.pkglist
+cmd:echo "xcat/xcat-dep/rh7/ppc64le/conserver-xcat" >> /opt/xcat/share/xcat/install/rh/autotest.otherpkgs.pkglist
+cmd:echo "xcat/xcat-dep/rh7/ppc64le/perl-Net-Telnet" >> /opt/xcat/share/xcat/install/rh/autotest.otherpkgs.pkglist
+cmd:echo "xcat/xcat-dep/rh7/ppc64le/perl-Expect" >> /opt/xcat/share/xcat/install/rh/autotest.otherpkgs.pkglist
+cmd:chdef -t osimage __GETNODEATTR($$PRIMARYMN,os)__-__GETNODEATTR($$PRIMARYMN,arch)__-install-compute otherpkglist="/opt/xcat/share/xcat/install/rh/autotest.otherpkgs.pkglist"
+cmd:updatenode $$PRIMARYMN -P otherpkgs
+check:rc==0
+cmd:updatenode $$STANDBYMN -P otherpkgs
+check:rc==0
+cmd:xdsh $$PRIMARYMN,$$STANDBYMN "yum -y install postgresql* perl-DBD-Pg"
+check:rc==0
+
+
+#configure first MN as standby HA MN
+cmd:xdsh $$PRIMARYMN "service xcatd stop" 
+check:rc==0
+cmd:xdsh $$PRIMARYMN "sed -i 's/IPADDR=100.1.0.233/IPADDR=100.1.0.100/g' /etc/sysconfig/network-scripts/ifcfg-$$PMNSECONDNIC"
+check:rc==0
+cmd:xdsh $$PRIMARYMN "ifdown $$PMNSECONDNIC;ifup $$PMNSECONDNIC"
+check:rc==0
+cmd:xdsh $$PRIMARYMN "hostname $$PRIMARYMN-1"
+check:rc==0
+cmd:updatenode $$PRIMARYMN -P "cfghamn -l $$MN:/install/autotestHA -i 100.1.0.233 -n $$PMNSECONDNIC:0 -x s"
+check:rc==0
+
+#configure second MN as standby HA MN
+cmd:xdsh $$STANDBYMN "hostname $$STANDBYMN-1"
+check:rc==0
+cmd:updatenode $$STANDBYMN -P "cfghamn -l $$MN:/install/autotestHA -i 100.1.0.233 -n $$SMNSECONDNIC:0 -x s"
+check:rc==0
+
+#activate the first HA node
+cmd:updatenode $$PRIMARYMN -P "cfghamn -l $$MN:/install/autotestHA -i 100.1.0.233 -n $$PMNSECONDNIC:0 -x a"
+check:rc==0
+cmd:xdsh $$PRIMARYMN "chdef -t site domain=pok.stglabs.ibm.com"
+cmd:makedhcp -d $$HACN
+check:rc==0
+
+#provision HACN on primary MN
+cmd:rsync /opt/xcat/share/xcat/tools/autotest/__GETNODEATTR($$PRIMARYMN,os)__-__GETNODEATTR($$PRIMARYMN,arch)__-netboot-compute.tgz $$PRIMARYMN:/root/
+check:rc==0
+cmd:xdsh $$PRIMARYMN "imgimport /root/__GETNODEATTR($$PRIMARYMN,os)__-__GETNODEATTR($$PRIMARYMN,arch)__-netboot-compute.tgz"
+check:rc==0
+cmd:xdsh $$PRIMARYMN "cat /tmp/HACN.stanza|chdef -z"
+check:rc==0
+cmd:xdsh $$PRIMARYMN "chdef $$HACN ip=100.10.0.103"
+cmd:xdsh $$PRIMARYMN "makedns -n"
+check:rc==0
+cmd:xdsh $$PRIMARYMN "makedhcp -n"
+check:rc==0
+cmd:xdsh $$PRIMARYMN "makedhcp -a"
+check:rc==0
+cmd:xdsh $$PRIMARYMN "rinstall $$HACN osimage=__GETNODEATTR($$PRIMARYMN,os)__-__GETNODEATTR($$PRIMARYMN,arch)__-netboot-compute"
+check:rc==0
+cmd:sleep 150
+cmd:xdsh $$PRIMARYMN "chmod 755 /xcatpost/check_node_state"
+cmd:xdsh $$PRIMARYMN "/xcatpost/check_node_state $$HACN"
+cmd:xdsh $$PRIMARYMN "lsdef $$HACN -i status"
+check:output=~booted
+check:rc==0
+
+#deactivate the first HA node
+cmd:updatenode $$PRIMARYMN -P "cfghamn -l $$MN:/install/autotestHA -i 100.1.0.233 -n $$SMNSECONDNIC:0 -x d"
+check:rc==0
+
+#activate the second HA node
+cmd:updatenode $$STANDBYMN -P "cfghamn -l $$MN:/install/autotestHA -i 100.1.0.233 -n $$SMNSECONDNIC:0 -x a"
+check:rc==0
+
+#provision HACN on standby MN
+cmd:xdsh $$STANDBYMN "rinstall $$HACN osimage=__GETNODEATTR($$PRIMARYMN,os)__-__GETNODEATTR($$PRIMARYMN,arch)__-netboot-compute"
+check:rc==0
+cmd:sleep 150
+cmd:xdsh $$STANDBYMN "chmod 755 /xcatpost/check_node_state"
+cmd:xdsh $$STANDBYMN "/xcatpost/check_node_state $$HACN"
+cmd:xdsh $$STANDBYMN "lsdef $$HACN -i status"
+check:output=~booted
+
+#deactivate the second HA node
+cmd:updatenode $$STANDBYMN -P "cfghamn -l $$MN:/install/autotestHA -i 100.1.0.233 -x d"
+check:rc==0
+
+#restore data
+cmd:cat /tmp/node.stanza | chdef -z;rm -rf /tmp/node.stanza
+cmd:cat /tmp/osimage.stanza | chdef -z;rm -rf /tmp/osimage.stanza
+cmd:rm -rf /opt/xcat/share/xcat/tools/autotest/testcase/HA/hosts
+cmd:rmdef -t network -o 100_1_0_0-255_255_0_0
+cmd:rm -rf /install/post/otherpkgs/__GETNODEATTR($$PRIMARYMN,os)__/__GETNODEATTR($$PRIMARYMN,arch)__ 
+cmd:rm -rf /opt/xcat/share/xcat/tools/autotest/__GETNODEATTR($$PRIMARYMN,os)__-__GETNODEATTR($$PRIMARYMN,arch)__-netboot-compute.tgz
+cmd:if [[ -d /install/autotestHA.bak ]] ;then mv -f /install/autotestHA.bak /install/autotestHA;fi
+cmd:if [[ -f /test.synclist.bak ]] ;then mv -f /test.synclist.bak /tmp/test.synclist;else rm -rf /test.synclist;fi
+cmd:if [[ -f /install/postscripts/cfghamn.bak ]] ;then mv -f /install/postscripts/cfghamn.bak /install/postscripts/cfghamn;fi;
+cmd:if [[ -f /install/postscripts/xcatha.py.bak ]] ;then mv -f /install/postscripts/xcatha.py.bak /install/postscripts/xcatha.py;fi;
+cmd:if [[ -f /install/postscripts/check_node_state.bak ]] ;then mv -f /install/postscripts/check_node_state.bak /install/postscripts/check_node_state;fi;
+cmd:if [[ -f /opt/xcat/share/xcat/install/rh/autotest.otherpkgs.pkglist.bak ]] ;then mv -f /opt/xcat/share/xcat/install/rh/autotest.otherpkgs.pkglist.bak /opt/xcat/share/xcat/install/rh/autotest.otherpkgs.pkglist;fi
+end

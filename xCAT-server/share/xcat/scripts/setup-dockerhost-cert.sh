@@ -1,3 +1,4 @@
+#!/bin/bash
 # IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
 # To create certficate for docker host
 echo "$0 xcatdockerhost"

@@ -1,0 +1,2 @@
+#node,nicips,nichostnamesuffixes,nichostnameprefixes,nictypes,niccustomscripts,nicnetworks,nicaliases,nicextraparams,nicdevices,nicsadapter,comments,disable
+"testnodes","|(.)(..)n(..)|ib0!(ipadd(10,41,0,100,dim2idx(a2idx($1),36,$2,18,$3),2,1))|","ib0!ib",,"ib0!Infiniband",,"ib0!ipoib",,,,,,

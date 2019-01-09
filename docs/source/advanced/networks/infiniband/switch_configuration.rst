@@ -23,12 +23,12 @@ The switches table will look like this: ::
 
 If there is only one admin and one password for all the switches then put the entry in the xCAT passwd table for the admin id and password to use to login. ::
 
-	tabch key=mswitch  passwd.username=admin passwd.password=admin
+	tabch key=switch  passwd.username=admin passwd.password=admin
 
 The passwd table will look like this: ::
 
 	#key,username,password,cryptmethod,comments,disable
-	"mswitch","admin","admin",,,
+	"switch","admin","admin",,,
 
 Setup ssh connection to the Mellanox Switch
 -------------------------------------------

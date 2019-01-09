@@ -19,7 +19,7 @@ SYNOPSIS
 ********
 
 
-\ **site Attributes:**\   \ *installdir*\ , \ *master*\ , \ *xcatdport*\
+\ **site Attributes:**\   \ *installdir*\ , \ *master*\ , \ *xcatdport*\ 
 
 
 ***********
@@ -40,21 +40,21 @@ site Attributes:
 
 
 \ **installdir**\  (site.value)
-
+ 
  The installation directory
-
+ 
 
 
 \ **master**\  (site.value)
-
+ 
  The management node
-
+ 
 
 
 \ **xcatdport**\  (site.value)
-
+ 
  Port used by xcatd daemon on master
-
+ 
 
 
 
@@ -63,5 +63,5 @@ SEE ALSO
 ********
 
 
-\ **mkdef(1)**\ , \ **chdef(1)**\ , \ **lsdef(1)**\ , \ **rmdef(1)**\
+\ **mkdef(1)**\ , \ **chdef(1)**\ , \ **lsdef(1)**\ , \ **rmdef(1)**\ 
 

@@ -37,11 +37,11 @@ OPTIONS
 *******
 
 
-\ **-h|-**\ **-help**\
+\ **-h|-**\ **-help**\ 
 
 Display usage message.
 
-\ **-v|-**\ **-version**\
+\ **-v|-**\ **-version**\ 
 
 Command Version.
 

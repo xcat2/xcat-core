@@ -5,7 +5,11 @@ case "$XCATDEBUGMODE" in
     set -x
     ;;
 esac
-
+export MASTER_IP="#ENV:MASTER_IP#"
+#INCLUDE:#ENV:XCATROOT#/share/xcat/install/scripts/scriptlib#
+log_label="xcat.deployment"
+msgutil_r "$MASTER_IP" "info" "============deployment starting============" "/var/log/xcat/xcat.log" "$log_label"
+msgutil_r "$MASTER_IP" "info" "Running Anaconda Pre-Installation script..." "/var/log/xcat/xcat.log" "$log_label"
 if grep -q n8r /proc/cmdline >/dev/null 2>&1
 then
     stty crtscts
@@ -148,7 +152,7 @@ esac
 # also, find first available block device (sda or vda likely)
 # TODO: pick a likely non-SAN target if possible
 shopt -s nullglob
-
+msgutil_r "$MASTER_IP" "info" "Detecting install disk..." "/var/log/xcat/xcat.log" "$log_label"
 #
 # The getinstdisk script is common for RHEL/SLES/PowerKVM/Ubuntu.
 # It will attempt to select the install disk and write the selection to /tmp/xcat.install_disk
@@ -162,7 +166,7 @@ fi
 BOOTFSTYPE=ext4
 FSTYPE=ext4
 EFIFSTYPE=efi
-
+msgutil_r "$MASTER_IP" "info" "Found $instdisk, generate partition file..." "/var/log/xcat/xcat.log" "$log_label"
 echo "ignoredisk --only-use=$instdisk" >>/tmp/partitionfile
 case "$(uname -m)" in
 "ppc64"|"ppc64le")
@@ -171,14 +175,17 @@ case "$(uname -m)" in
 esac
 if [ -d /sys/firmware/efi ]
 then
-    echo "part /boot/efi --fstype=$EFIFSTYPE --ondisk=$instdisk --size=250" >>/tmp/partitionfile
+    echo "part /boot/efi --fstype=$EFIFSTYPE --ondisk=$instdisk --size=256" >>/tmp/partitionfile
 fi
 
 # TODO: Ondisk detection, /dev/disk/by-id/edd-int13_dev80 for legacy maybe, and no idea about efi. At least maybe blacklist SAN if mptsas/mpt2sas/megaraid_sas seen...
 echo "part /boot --fstype=$BOOTFSTYPE --asprimary --ondisk=$instdisk --size=512" >>/tmp/partitionfile
-echo "part pv.000997 --grow --asprimary --ondisk=$instdisk --size=8192" >>/tmp/partitionfile
+echo "part pv.000997 --grow --asprimary --ondisk=$instdisk --size=18432" >>/tmp/partitionfile
 echo "volgroup system --pesize=4096 pv.000997" >>/tmp/partitionfile
-echo "logvol / --fstype=$FSTYPE --name=root --vgname=system --grow --size=1024" >>/tmp/partitionfile
+echo "logvol / --fstype=$FSTYPE --name=root --vgname=system --grow --size=4096 --maxsize=8192" >>/tmp/partitionfile
+echo "logvol /var --fstype=$FSTYPE --name=var --vgname=system --grow --size=2048 --maxsize=8192" >>/tmp/partitionfile
+echo "logvol /tmp --fstype=$FSTYPE --name=tmp --vgname=system --grow --size=1024 --maxsize=4096" >>/tmp/partitionfile
+echo "logvol /home --fstype=$FSTYPE --name=home --vgname=system --grow --percent=10 --maxsize=10240" >>/tmp/partitionfile
 echo "logvol swap --name=swap --vgname=system --recommended" >>/tmp/partitionfile
 
 # Specify "bootloader" configuration in "/tmp/partitionfile" if there is no user customized partition file
@@ -207,7 +214,7 @@ fi
 echo "================ The Partition Scheme ==============="
 cat /tmp/partitionfile
 echo "====================================================="
-
+msgutil_r "$MASTER_IP" "info" "Generate the repository for the installation" "/var/log/xcat/xcat.log" "$log_label"
 # The following code is to generate the repository for the installation
 cat /proc/cmdline
 

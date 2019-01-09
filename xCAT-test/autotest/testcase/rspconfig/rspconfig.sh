@@ -177,7 +177,7 @@ function change_all
 	if [[ $? -eq 0 ]];then
 		BMCIP=`rspconfig $1 ip |awk -F":" '{print $3}'|sed s/[[:space:]]//g`;
 		BMCNETMASK=`rspconfig  $1 netmask |awk -F":" '{print $3}'|sed s/[[:space:]]//g`;
-		BMCGGATEWAY=`rspconfig  $1 gateway |awk -F":" '{print $3}'|sed s/[[:space:]]//g`;
+		BMCGGATEWAY=`rspconfig  $1 gateway |awk -F":" '{print $3}'| awk -F" " '{print $1}' |sed s/[[:space:]]//g`;
 		output=`rspconfig  $1 vlan`
 		if [[ $output =~ "BMC VLAN ID enabled" ]];then
 			BMCVLAN=`rspconfig  $1 vlan |awk -F":" '{print $3}'|sed s/[[:space:]]//g`

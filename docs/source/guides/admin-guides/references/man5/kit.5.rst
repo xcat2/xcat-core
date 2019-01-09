@@ -19,7 +19,7 @@ SYNOPSIS
 ********
 
 
-\ **kit Attributes:**\   \ *kitname*\ , \ *basename*\ , \ *description*\ , \ *version*\ , \ *release*\ , \ *ostype*\ , \ *isinternal*\ , \ *kitdeployparams*\ , \ *kitdir*\ , \ *comments*\ , \ *disable*\
+\ **kit Attributes:**\   \ *kitname*\ , \ *basename*\ , \ *description*\ , \ *version*\ , \ *release*\ , \ *ostype*\ , \ *isinternal*\ , \ *kitdeployparams*\ , \ *kitdir*\ , \ *comments*\ , \ *disable*\ 
 
 
 ***********
@@ -36,70 +36,70 @@ kit Attributes:
 
 
 
-\ **kitname**\
-
+\ **kitname**\ 
+ 
  The unique generated kit name, when kit is added to the cluster.
+ 
 
 
-
-\ **basename**\
-
+\ **basename**\ 
+ 
  The kit base name
+ 
 
 
-
-\ **description**\
-
+\ **description**\ 
+ 
  The Kit description.
+ 
 
 
-
-\ **version**\
-
+\ **version**\ 
+ 
  The kit version
+ 
 
 
-
-\ **release**\
-
+\ **release**\ 
+ 
  The kit release
+ 
 
 
-
-\ **ostype**\
-
+\ **ostype**\ 
+ 
  The kit OS type.  Linux or AIX.
+ 
 
 
-
-\ **isinternal**\
-
+\ **isinternal**\ 
+ 
  A flag to indicated if the Kit is internally used. When set to 1, the Kit is internal. If 0 or undefined, the kit is not internal.
+ 
 
 
-
-\ **kitdeployparams**\
-
+\ **kitdeployparams**\ 
+ 
  The file containing the default deployment parameters for this Kit.  These parameters are added to the OS Image definition.s list of deployment parameters when one or more Kit Components from this Kit are added to the OS Image.
+ 
 
 
-
-\ **kitdir**\
-
+\ **kitdir**\ 
+ 
  The path to Kit Installation directory on the Mgt Node.
+ 
 
 
-
-\ **comments**\
-
+\ **comments**\ 
+ 
  Any user-written notes.
+ 
 
 
-
-\ **disable**\
-
+\ **disable**\ 
+ 
  Set to 'yes' or '1' to comment out this row.
-
+ 
 
 
 
@@ -108,5 +108,5 @@ SEE ALSO
 ********
 
 
-\ **nodels(1)**\ , \ **chtab(8)**\ , \ **tabdump(8)**\ , \ **tabedit(8)**\
+\ **nodels(1)**\ , \ **chtab(8)**\ , \ **tabdump(8)**\ , \ **tabedit(8)**\ 
 

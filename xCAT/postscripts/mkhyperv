@@ -69,6 +69,11 @@ cat <<EOF > /etc/init.d/kvm
 # kvm init script - stripped off bridge code, but still 'Takes care
 #
 # description: The KVM is a kernel level Virtual Machine Monitor.
+if [ -n "\$LOGLABEL" ]; then
+    log_label=\$LOGLABEL
+else
+    log_label="xcat"
+fi
 start () {
   grep -q GenuineIntel /proc/cpuinfo && /sbin/modprobe kvm-intel
   grep -q AuthenticAMD /proc/cpuinfo && /sbin/modprobe kvm-amd
@@ -77,17 +82,17 @@ stop () {
   grep -q GenuineIntel /proc/cpuinfo && /sbin/modprobe -r kvm-intel
   grep -q AuthenticAMD /proc/cpuinfo && /sbin/modprobe -r kvm-amd
 }
-logger -t xcat -p local4.info "KVM $1"
+logger -t \$log_label -p local4.info "KVM $1"
 case "\$1" in
   start)
     echo -n $"Starting KVM: "
-    logger -t xcat  -p local4.info "Starting KVM:"
+    logger -t \$log_label  -p local4.info "Starting KVM:"
     start
     echo
     ;;
   stop)
     echo -n $"Shutting down KVM: "
-    logger -t xcat  -p local4.info "Shutting down KVM:"
+    logger -t \$log_label  -p local4.info "Shutting down KVM:"
     stop
     echo
     ;;
@@ -96,9 +101,9 @@ case "\$1" in
     ;;
   *)
     echo "Unknown command: \$1" >&2
-    logger -t xcat  -p local4.info "Unknown command: \$1"
+    logger -t \$log_label  -p local4.info "Unknown command: \$1"
     echo "Valid commands are: start, stop, status" >&2
-    logger -t xcat  -p local4.info "Valid commands are: start, stop, status"
+    logger -t \$log_label  -p local4.info "Valid commands are: start, stop, status"
     exit 1
 esac
 EOF
@@ -117,6 +122,11 @@ cat <<EOF > /etc/init.d/iscsiconnect
 #
 # chkconfig: 345 10 75
 # description: iscsi script to discover and connect to targets on boot
+if [ -n "\$log_label" ]; then
+    log_label=\$log_label
+else
+    log_label="xcat"
+fi
 connect_targets()
 {
   iscsiadm -m discovery -t st -p $ISCSITARGET
@@ -126,7 +136,7 @@ disconnect_targets()
 {
   iscsiadm -m node --logout
 }
-logger -t xcat  -p local4.info "iscsi $1"
+logger -t \$log_label  -p local4.info "iscsi $1"
 case "\$1" in
     start)
       connect_targets
@@ -139,9 +149,9 @@ case "\$1" in
       ;;
     *)
       echo "Unknown command: \$1" >&2
-      logger -t xcat  -p local4.info  "Unknown command: \$1"
+      logger -t \$log_label  -p local4.info  "Unknown command: \$1"
       echo "Valid commands are: start, stop, status" >&2
-      logger -t xcat  -p local4.info "Valid commands are: start, stop, status"
+      logger -t \$log_label  -p local4.info "Valid commands are: start, stop, status"
       exit 1
 esac
 EOF

@@ -19,24 +19,24 @@ SYNOPSIS
 ********
 
 
-\ **rmvm [-h| -**\ **-help]**\
+\ **rmvm [-h| -**\ **-help]**\ 
 
-\ **rmvm [-v| -**\ **-version]**\
+\ **rmvm [-v| -**\ **-version]**\ 
 
-\ **rmvm [-V| -**\ **-verbose]**\  \ *noderange*\  \ **[-r] [-**\ **-service]**\
+\ **rmvm [-V| -**\ **-verbose]**\  \ *noderange*\  \ **[-r] [-**\ **-service]**\ 
 
 For KVM and VMware:
 ===================
 
 
-\ **rmvm [-p] [-f]**\  \ *noderange*\
+\ **rmvm [-p] [-f]**\  \ *noderange*\ 
 
 
 PPC (using Direct FSP Management) specific:
 ===========================================
 
 
-\ **rmvm [-p]**\  \ *noderange*\
+\ **rmvm [-p]**\  \ *noderange*\ 
 
 
 

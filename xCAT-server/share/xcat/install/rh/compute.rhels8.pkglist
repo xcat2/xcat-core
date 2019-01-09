@@ -5,3 +5,4 @@ nfs-utils
 openssh-server
 rsync
 util-linux
+wget

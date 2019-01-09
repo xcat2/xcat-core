@@ -19,9 +19,9 @@ SYNOPSIS
 ********
 
 
-\ **noderm [-h| -**\ **-help]**\
+\ **noderm [-h| -**\ **-help]**\ 
 
-\ **noderm noderange**\
+\ **noderm noderange**\ 
 
 
 ***********

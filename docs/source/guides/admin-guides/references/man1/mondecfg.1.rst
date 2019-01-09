@@ -19,11 +19,11 @@ SYNOPSIS
 ********
 
 
-\ **mondecfg [-h| -**\ **-help]**\
+\ **mondecfg [-h| -**\ **-help]**\ 
 
-\ **mondecfg [-v| -**\ **-version]**\
+\ **mondecfg [-v| -**\ **-version]**\ 
 
-\ **mondecfg**\  \ *name*\  \ *[noderange]*\  \ **[-r|-**\ **-remote]**\
+\ **mondecfg**\  \ *name*\  \ *[noderange]*\  \ **[-r|-**\ **-remote]**\ 
 
 
 ***********

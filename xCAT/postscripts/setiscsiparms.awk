@@ -6,13 +6,16 @@ BEGIN {
 	initrd = ARGV[4]
 	kcmd = ARGV[5]
 	ns = "/inet/tcp/0/" ARGV[1] "/" xcatdport
-
+        log_label=ENVIRON["LOGLABEL"]
+        if(!log_label){
+            log_label="xcat"
+        }
 	while(1) {
                 if((ns |& getline) > 0)
-                        print $0 | "logger -t xcat -p local4.info"
+                        print $0 | "logger -t "log_label" -p local4.info"
                 else {
                     print "Retrying iSCSI paramater config script"
-                    print "Retrying iSCSI paramater config script" | "logger -t xcat -p local4.info"
+                    print "Retrying iSCSI paramater config script" | "logger -t "log_label" -p local4.info"
                     close(ns)
                     system("sleep 1")
                 }

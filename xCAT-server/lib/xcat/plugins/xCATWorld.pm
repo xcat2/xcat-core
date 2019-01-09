@@ -120,7 +120,7 @@ sub process_request
         !GetOptions(
             'h|help'    => \$options{'help'},
             'v|version' => \$options{'version'},
-            'V|Verbose' => \$options{'verbose'}
+            'V|verbose' => \$options{'verbose'}
         )
       )
     {

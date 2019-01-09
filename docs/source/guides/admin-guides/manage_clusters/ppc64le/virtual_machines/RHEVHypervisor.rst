@@ -27,6 +27,7 @@
    * Create a new package list file ``/install/custom/rhels7.3/ppc64le/rhelv4.pkglist`` to include necessary packages provided from the OS. ::
 
       #INCLUDE:/opt/xcat/share/xcat/install/rh/compute.rhels7.pkglist#
+      yum
       libvirt
       screen
       bridge-utils
@@ -64,3 +65,4 @@
           provmethod=install
           template=/opt/xcat/share/xcat/install/rh/compute.rhels7.tmpl
 
+.. note:: If diskless RHEV osimage is needed, ``localdisk`` option can be used to preserve VMs over RHEV hypervisor reprovision. For instructions see :ref:`setup_localdisk_label`. Set ``/var/lib/libvirt/`` directory where by default VM images are stored to ``localdisk``.

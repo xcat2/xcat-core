@@ -15,7 +15,7 @@ Name
 
 
 ****************
-\ **Synopsis**\
+\ **Synopsis**\ 
 ****************
 
 
@@ -72,7 +72,7 @@ OpenPOWER (OpenBMC) specific:
 
 
 *******************
-\ **Description**\
+\ **Description**\ 
 *******************
 
 
@@ -81,126 +81,126 @@ Processor for a single or range of nodes and groups.
 
 
 ***************
-\ **Options**\
+\ **Options**\ 
 ***************
 
 
 
-\ **cputemp**\
-
+\ **cputemp**\ 
+ 
  Retrieves CPU temperatures.
+ 
 
 
-
-\ **disktemp**\
-
+\ **disktemp**\ 
+ 
  Retrieves HD back plane temperatures.
+ 
 
 
-
-\ **ambtemp**\
-
+\ **ambtemp**\ 
+ 
  Retrieves ambient temperatures.
+ 
 
 
-
-\ **temp**\
-
+\ **temp**\ 
+ 
  Retrieves all temperatures.
+ 
 
 
-
-\ **voltage**\
-
+\ **voltage**\ 
+ 
  Retrieves power supply and VRM voltage readings.
+ 
 
 
-
-\ **fanspeed**\
-
+\ **fanspeed**\ 
+ 
  Retrieves fan speeds.
+ 
 
 
-
-\ **lcds**\
-
+\ **lcds**\ 
+ 
  Retrieves LCDs status.
+ 
 
 
-
-\ **rackenv**\
-
+\ **rackenv**\ 
+ 
  Retrieves rack environmentals.
+ 
 
 
-
-\ **leds**\
-
+\ **leds**\ 
+ 
  Retrieves LEDs status.
+ 
 
 
-
-\ **chassis**\
-
+\ **chassis**\ 
+ 
  Retrieves chassis status.
+ 
 
 
-
-\ **altitude**\
-
+\ **altitude**\ 
+ 
  Retrieves altitude related attributes.
+ 
 
 
-
-\ **power**\
-
+\ **power**\ 
+ 
  Retrieves power status.
+ 
 
 
-
-\ **powertime**\
-
+\ **powertime**\ 
+ 
  Retrieves total power uptime.  This value only increases, unless
  the Service Processor flash gets updated.  This option is not valid
  for x86 architecture systems.
+ 
 
 
-
-\ **reboot**\
-
+\ **reboot**\ 
+ 
  Retrieves  total  number of reboots.  This value only increases,
  unless the Service Processor flash gets updated.  This option
  is not valid for x86 architecture systems.
+ 
 
 
-
-\ **state**\
-
+\ **state**\ 
+ 
  Retrieves the system state.
+ 
 
 
-
-\ **all**\
-
+\ **all**\ 
+ 
  All of the above.
+ 
 
 
-
-\ **-h | -**\ **-help**\
-
+\ **-h | -**\ **-help**\ 
+ 
  Print help.
+ 
 
 
-
-\ **-v | -**\ **-version**\
-
+\ **-v | -**\ **-version**\ 
+ 
  Print version.
-
+ 
 
 
 
 ****************
-\ **Examples**\
+\ **Examples**\ 
 ****************
 
 
@@ -240,7 +240,7 @@ Output is similar to:
 
 
 ****************
-\ **SEE ALSO**\
+\ **SEE ALSO**\ 
 ****************
 
 

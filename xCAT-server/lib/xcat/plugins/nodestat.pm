@@ -658,7 +658,7 @@ sub process_request_nmap {
         if ($ip6 and scalar(@ip6s)) {
             open($fping, "nmap --unprivileged -6 -PS$ports,3001 -n --send-ip -p $ports,3001 $more_options " . join(' ', @ip6s) . " 2> /dev/null|") or die("Can't start nmap: $!");
         } elsif (not $ip6 and scalar(@ips)) {
-            open($fping, "nmap --unprivileged -PE -n --send-ip -p $ports,3001 $more_options " . join(' ', @ips) . " 2> /dev/null|") or die("Can't start nmap: $!");
+            open($fping, "nmap --unprivileged -PA80,443,22 -PE -n --send-ip -p $ports,3001 $more_options " . join(' ', @ips) . " 2> /dev/null|") or die("Can't start nmap: $!");
         } else { next; }
         while (<$fping>) {
             if (/Interesting ports on ([^ ]*)[: ]/ or /Nmap scan report for ([^ ]*)/) {

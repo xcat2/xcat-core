@@ -2,7 +2,11 @@ export XCATDEBUGMODE="#TABLEBLANKOKAY:site:key=xcatdebugmode:value#"
 if [ "$XCATDEBUGMODE" = "1" ] || [ "$XCATDEBUGMODE" = "2" ]; then
     set -x
 fi
-
+export MASTER_IP="#ENV:MASTER_IP#"
+#INCLUDE:#ENV:XCATROOT#/share/xcat/install/scripts/scriptlib#
+log_label="xcat.deployment"
+msgutil_r "$MASTER_IP" "info" "============deployment starting============" "/var/log/xcat/xcat.log" "$log_label"
+msgutil_r "$MASTER_IP" "info" "Running Anaconda Pre-Installation script..." "/var/log/xcat/xcat.log" "$log_label"
 if grep n8r /proc/cmdline > /dev/null 2>&1;
 then
   stty crtscts
@@ -36,7 +40,6 @@ if(response == "ready\n"):
 
 sock.close()
 EOF
-
 
 
 cat >/tmp/foo.py <<EOF
@@ -148,6 +151,7 @@ fi
 #TODO: pick a likely non-SAN target if possible
 shopt -s nullglob
 
+msgutil_r "$MASTER_IP" "info" "Detecting install disk..." "/var/log/xcat/xcat.log" "$log_label"
 #
 # The getinstdisk script is common for RHEL/SLES/PowerKVM/Ubuntu.
 # It will attempt to select the install disk and write the selection to /tmp/xcat.install_disk
@@ -174,7 +178,7 @@ if uname -r|grep -q '^3.*el7'; then
     FSTYPE=xfs
     EFIFSTYPE=efi
 fi
-
+msgutil_r "$MASTER_IP" "info" "Found $instdisk, generate partition file..." "/var/log/xcat/xcat.log" "$log_label"
 echo "ignoredisk --only-use=$instdisk" >> /tmp/partitionfile
 if [ `uname -m` = "ppc64" -o `uname -m` = "ppc64le" ]; then
 	echo 'part None --fstype "PPC PReP Boot" --ondisk '$instdisk' --size 8' >> /tmp/partitionfile
@@ -218,6 +222,7 @@ cat /tmp/partitionfile
 echo "====================================================="
 
 # The following code is to generate the repository for the installation
+msgutil_r "$MASTER_IP" "info" "Generate the repository for the installation" "/var/log/xcat/xcat.log" "$log_label"
 cat /proc/cmdline
 
 NEXTSERVER=`cat /proc/cmdline | grep http | head -n 1`

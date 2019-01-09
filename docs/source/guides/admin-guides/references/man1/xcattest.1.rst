@@ -54,46 +54,46 @@ OPTIONS
 
 
 
-\ **-?|-h**\
-
+\ **-?|-h**\ 
+ 
  Display usage message.
+ 
 
 
-
-\ **-f**\  \ *configure file*\
-
+\ **-f**\  \ *configure file*\ 
+ 
  Specifies the configuration file with full-path. xCAT supports an example config file: /opt/xcat/share/xcat/tools/autotest/linux.conf.template
+ 
 
 
-
-\ **-b**\  \ *case bundle list*\
-
+\ **-b**\  \ *case bundle list*\ 
+ 
  Comma separated list of test cases bundle files, each test cases bundle can contain multiple lines and each line for one test case name. The bundle files should be listed in: /opt/xcat/share/xcat/tools/autotest/bundle.
+ 
 
 
-
-\ **-t**\  \ *cases list*\
-
+\ **-t**\  \ *cases list*\ 
+ 
  Comma separated list of test cases that will be run.
+ 
 
 
-
-\ **-c**\  \ *cmd list*\
-
+\ **-c**\  \ *cmd list*\ 
+ 
  Comma separated list of commands which will be tested, i.e., all the test cases under the command sub directory will be run.
+ 
 
 
-
-\ **-l**\
-
+\ **-l**\ 
+ 
  Display the test cases names specified by the flag -b, -t or -c.
+ 
 
 
-
-\ **-s**\
-
+\ **-s**\ 
+ 
  Display the bundle files and command with value: bundle or command.
-
+ 
 
 
 
@@ -146,50 +146,50 @@ EXAMPLES
 
 
 1.
-
+ 
  To run all  test cases related command rpower:
-
-
+ 
+ 
  .. code-block:: perl
-
+ 
     xcattest -f /tmp/config -c rpower
-
-
+ 
+ 
 
 
 2.
-
+ 
  To run customized bundle with /tmp/config file:
-
-
+ 
+ 
  .. code-block:: perl
-
+ 
     xcattest -c lsdef -l  > /opt/xcat/share/xcat/tools/autotest/bundle/custom.bundle
     Modify custom.bundle
     xcattest -f /tmp/config -b custom.bundle
-
-
+ 
+ 
 
 
 3.
-
+ 
  To run specified test cases with /tmp/config file:
-
-
+ 
+ 
  .. code-block:: perl
-
+ 
     xcattest -f /tmp/config -t lsdef_t_o_l_z
-
-
+ 
+ 
 
 
 4.
-
+ 
  To add a new case to test chvm. In the example, we assume that the min_mem should not be equal to 16 in the lpar profile of computenode. The case name is chvm_custom. It create a test lpar named testnode firstly, that change the min_mem of the lpar to 16 using chvm, then check if min_mem have changed correctly. At last, the testnode be remove to ensure no garbage produced in the cases.
-
-
+ 
+ 
  .. code-block:: perl
-
+ 
     add a new test case file in /opt/xcat/share/xcat/tools/autotest/chvm
     edit filename
     start:chvm_custom
@@ -207,8 +207,8 @@ EXAMPLES
     cmd:rmvm testnode
     cmd:rm -f /tmp/autotest.profile
     end
-
-
+ 
+ 
 
 
 

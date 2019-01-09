@@ -19,7 +19,7 @@ SYNOPSIS
 ********
 
 
-\ **mknimimage [-h | -**\ **-help ]**\
+\ **mknimimage [-h | -**\ **-help ]**\ 
 
 \ **mknimimage [-V] -u**\  \ *osimage_name [attr=val [attr=val ...]*\ ]
 
@@ -39,13 +39,13 @@ The naming convention for the NIM SPOT resource definition is to use the same na
 
 When creating a mksysb image definition you must specify either the "-n" or the "-b" option. The "-n" option can be used to create a mksysb image from an existing NIM client machine.  The "-b" option can be used to specify an existing mksysb backup file.
 
-\ **Adding software and configuration files to the osimage.**\
+\ **Adding software and configuration files to the osimage.**\ 
 
 When creating a diskless osimage definition you also have the option of automatically updating the NIM SPOT resource.  You can have additional software installed or you can have configuration files added or updated.  To have software installed you must provide either the names of NIM installp_bundle resources or fileset names on the command line using the "attr=val" option. You may also supply the installp flags, RPM flags, emgr flags to use when installing the software.
 
 To have configuration files updated you must provide the full path name of a "synclists" file which contains the list of actual files to update.  The xCAT osimage definition that is created will contain the installp_bundle, otherpkgs, and synclists files that are provided on the command line.
 
-\ **Updating an existing xCAT osimage**\
+\ **Updating an existing xCAT osimage**\ 
 
 If you wish to update an existing diskless image after it has already been created you can use the "-u" (update) option.  In this case the xCAT osimage definition will not be updated.
 
@@ -57,7 +57,7 @@ Or, you could do a more ad hoc update by providing one or more of the "installp_
 
 WARNING: Installing random RPM packages in a SPOT may have unpredictable consequences.  The SPOT is a very restricted environment and some RPM packages may corrupt the SPOT or even hang your management system.  Try to be very careful about the packages you install. When installing RPMs, if the mknimimage command hangs or if there are file systems left mounted after the command completes you may need to reboot your management node to recover.  This is a limitation of the current AIX support for diskless systems
 
-\ **Copying an xCAT osimage.**\
+\ **Copying an xCAT osimage.**\ 
 
 You can use the "-i" and "-p" options to copy an existing diskless osimage.   To do this you must supply the name of an existing xCAT osimage definition and the name of the new osimage you wish to create. The \ **mknimimage**\  command will do the following:
 
@@ -71,7 +71,7 @@ You can use the "-i" and "-p" options to copy an existing diskless osimage.   To
 
 - if the "-p" option is specified then the original NIM lpp_source resource will be copied to a new location and redefined to NIM. (The default would be to use the original lpp_source - to save file system space.)
 
-\ **Additional information**\
+\ **Additional information**\ 
 
 IMPORTANT:  The NIM lpp_source and SPOT resources can get quite large. Always make sure that you have sufficient file system space available before running the \ **mknimimage**\  command.
 
@@ -94,265 +94,265 @@ OPTIONS
 
 
 
-\ *attr=val [attr=val ...]*\
-
+\ *attr=val [attr=val ...]*\ 
+ 
  Specifies one or more "attribute equals value" pairs, separated by spaces. Attr=val pairs must be specified last on the command line.
-
+ 
  Currently supported attributes:
-
-
- \ **bosinst_data**\
-
+ 
+ 
+ \ **bosinst_data**\ 
+  
   The name of a NIM bosinst_data resource.
-
-
-
- \ **dump**\
-
+  
+ 
+ 
+ \ **dump**\ 
+  
   The name of the NIM dump resource.
-
-
-
- \ **fb_script**\
-
+  
+ 
+ 
+ \ **fb_script**\ 
+  
   The name of a NIM fb_script resource.
-
-
-
- \ **home**\
-
+  
+ 
+ 
+ \ **home**\ 
+  
   The name of the NIM home resource.
-
-
-
- \ **installp_bundle**\
-
+  
+ 
+ 
+ \ **installp_bundle**\ 
+  
   One or more comma separated NIM installp_bundle resources.
-
-
-
- \ **lpp_source**\
-
+  
+ 
+ 
+ \ **lpp_source**\ 
+  
   The name of the NIM lpp_source resource.
-
-
-
- \ **mksysb**\
-
+  
+ 
+ 
+ \ **mksysb**\ 
+  
   The name of a NIM mksysb resource.
-
-
-
- \ **otherpkgs**\
-
+  
+ 
+ 
+ \ **otherpkgs**\ 
+  
   One or more comma separated installp, emgr, or rpm packages.  The packages must
   have prefixes of 'I:', 'E:', or 'R:', respectively. (ex. R:foo.rpm)
-
-
-
- \ **paging**\
-
+  
+ 
+ 
+ \ **paging**\ 
+  
   The name of the NIM paging resource.
-
-
-
- \ **resolv_conf**\
-
+  
+ 
+ 
+ \ **resolv_conf**\ 
+  
   The name of the NIM resolv_conf resource.
-
-
-
- \ **root**\
-
+  
+ 
+ 
+ \ **root**\ 
+  
   The name of the NIM root resource.
-
-
-
- \ **script**\
-
+  
+ 
+ 
+ \ **script**\ 
+  
   The name of a NIM script resource.
-
-
-
- \ **shared_home**\
-
+  
+ 
+ 
+ \ **shared_home**\ 
+  
   The name of the NIM shared_home resource.
-
-
-
- \ **shared_root**\
-
+  
+ 
+ 
+ \ **shared_root**\ 
+  
   A shared_root resource represents a directory that can be used as a / (root) directory by one or more diskless clients.
-
-
-
- \ **spot**\
-
+  
+ 
+ 
+ \ **spot**\ 
+  
   The name of the NIM SPOT resource.
-
-
-
- \ **synclists**\
-
+  
+ 
+ 
+ \ **synclists**\ 
+  
   The fully qualified name of a file containing a list of files to synchronize on the nodes.
-
-
-
- \ **tmp**\
-
+  
+ 
+ 
+ \ **tmp**\ 
+  
   The name of the NIM tmp resource.
-
-
-
- \ **installp_flags**\
-
+  
+ 
+ 
+ \ **installp_flags**\ 
+  
   The alternate flags to be passed along to the AIX installp command. (The default for installp_flags is "-abgQXY".)
-
-
-
- \ **rpm_flags**\
-
+  
+ 
+ 
+ \ **rpm_flags**\ 
+  
   The alternate flags to be passed along to the AIX rpm command. (The default for
   rpm_flags is "-Uvh ".) The mknimimage command will check each rpm to see if
   it is installed.  It will not be reinstalled unless you specify the appropriate
   rpm option, such as '--replacepkgs'.
-
-
-
- \ **emgr_flags**\
-
+  
+ 
+ 
+ \ **emgr_flags**\ 
+  
   The alternate flags to be passed along to the AIX emgr command. (There is no default flags for the emgr command.)
-
-
-
- \ **dumpsize**\
-
+  
+ 
+ 
+ \ **dumpsize**\ 
+  
   The maximum size for a single dump image the dump resource will accept. Space is not allocated until a client starts to dump. The default size is 50GB. The dump resource should be large enough to hold the expected AIX dump and snap data.
-
-
-
- \ **max_dumps**\
-
+  
+ 
+ 
+ \ **max_dumps**\ 
+  
   The maximum number of archived dumps for an individual client. The default is one.
-
-
-
- \ **snapcollect**\
-
+  
+ 
+ 
+ \ **snapcollect**\ 
+  
   Indicates that after a dump is collected then snap data should be collected. The snap data will be collected in the clients dump resource directory.  Values are "yes" or "no". The default is "no".
-
-
-
- \ **nfs_vers**\
-
+  
+ 
+ 
+ \ **nfs_vers**\ 
+  
   Value Specifies the NFS protocol version required for NFS access.
-
-
-
- \ **nfs_sec**\
-
+  
+ 
+ 
+ \ **nfs_sec**\ 
+  
   Value Specifies the security method required for NFS access.
-
-
-
+  
+ 
+ 
  Note that you may specify multiple "script", "otherpkgs", and "installp_bundle" resources by using a comma separated list. (ex. "script=ascript,bscript"). RPM names may be included in the "otherpkgs" list by using a "R:" prefix(ex. "R:whatever.rpm"). epkg (AIX interim fix package) file names may be included in the "otherpkgs" using the 'E:' prefix. (ex. "otherpkgs=E:IZ38930TL0.120304.epkg.Z").
+ 
 
 
-
-\ **-b**\  \ *mksysbfile*\
-
+\ **-b**\  \ *mksysbfile*\ 
+ 
  Used to specify the path name of a mksysb file to use when defining a NIM mksysb resource.
+ 
 
 
-
-\ **-c|-**\ **-completeosimage**\
-
+\ **-c|-**\ **-completeosimage**\ 
+ 
  Complete the creation of the osimage definition passed in on the command line. This option will use any additional values passed in on the command line and/or it will attempt to create required resources in order to complete the definition of the xCAT osimage.  For example, if the osimage definition is missing a spot or shared_root resource the command will create those resources and add them to the osimage definition.
+ 
 
 
-
-\ **-f|-**\ **-force**\
-
+\ **-f|-**\ **-force**\ 
+ 
  Use the force option to re-create xCAT osimage definition. This option removes the old definition before creating the new one. It does not remove any of the NIM resource definitions named in the osimage definition.  Use the \ **rmnimimage**\  command to remove the NIM resources associated with an xCAT osimage definition.
+ 
 
 
-
-\ **-h |-**\ **-help**\
-
+\ **-h |-**\ **-help**\ 
+ 
  Display usage message.
+ 
 
 
-
-\ *osimage_name*\
-
+\ *osimage_name*\ 
+ 
  The name of the xCAT osimage definition.  This will be used as the name of the xCAT osimage definition as well as the name of the NIM SPOT resource.
+ 
 
 
-
-\ **-D|-**\ **-mkdumpres**\
-
+\ **-D|-**\ **-mkdumpres**\ 
+ 
  Create a diskless dump resource.
+ 
 
 
-
-\ **-i**\  \ *current_image*\
-
+\ **-i**\  \ *current_image*\ 
+ 
  The name of an existing xCAT osimage that should be copied to make a new xCAT osimage definition. Only valid when defining a "diskless" or "dataless" type image.
+ 
 
 
-
-\ **-l**\  \ *location*\
-
+\ **-l**\  \ *location*\ 
+ 
  The directory location to use when creating new NIM resources. The default location is /install/nim.
+ 
 
 
-
-\ **-m**\  \ *nimmethod*\
-
+\ **-m**\  \ *nimmethod*\ 
+ 
  Used to specify the NIM installation method to use. The possible values are "rte" and "mksysb". The default is "rte".
+ 
 
 
-
-\ **-n**\  \ *mksysbnode*\
-
+\ **-n**\  \ *mksysbnode*\ 
+ 
  The xCAT node to use to create a mksysb image.  The node must be a defined as a NIM client machine.
+ 
 
 
-
-\ **-p|-**\ **-cplpp**\
-
+\ **-p|-**\ **-cplpp**\ 
+ 
  Use this option when copying existing diskless osimages to indicate that you also wish to have the lpp_resource copied.  This option is only valid when using the "-i" option.
+ 
 
 
-
-\ **-r|-**\ **-sharedroot**\
-
+\ **-r|-**\ **-sharedroot**\ 
+ 
  Use this option to specify that a NIM "shared_root" resource be created for the AIX diskless nodes.  The default is to create a NIM "root" resource.  This feature is only available when using AIX version 6.1.4 or beyond. See the AIX/NIM documentation for a description of the "root" and "shared_root" resources.
+ 
 
 
-
-\ **-s**\  \ *image_source*\
-
+\ **-s**\  \ *image_source*\ 
+ 
  The source of software to use when creating the new NIM lpp_source resource. This could be a source directory or a previously defined NIM lpp_source resource name.
+ 
 
 
-
-\ **-t nimtype**\
-
+\ **-t nimtype**\ 
+ 
  Used to specify the NIM machine type. The possible values are "standalone", "diskless" or "dataless".  The default is "standalone".
+ 
 
 
-
-\ **-u**\
-
+\ **-u**\ 
+ 
  Used to update an AIX/NIM SPOT resource with additional software and configuration files.  This option is only valid for xCAT diskless osimage objects. The SPOT resource associated with the xCAT osimage definition will be updated. This option can also be used to update the nfs_vers attribute from NFSv3 to NFSv4 for the NIM resources associated with diskful or diskless image.
+ 
 
 
-
-\ **-V |-**\ **-verbose**\
-
+\ **-V |-**\ **-verbose**\ 
+ 
  Verbose mode.
-
+ 
 
 
 

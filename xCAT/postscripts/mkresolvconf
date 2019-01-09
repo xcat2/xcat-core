@@ -20,9 +20,15 @@ domain=$DOMAIN     # this is the domain name used in this cluster
 nameservers=$NAMESERVERS # nameservers defined in the site table
 node=$NODE
 
+if [ -n "$LOGLABEL" ]; then
+    log_label=$LOGLABEL
+else
+    log_label="xcat"
+fi
+
 if [ -n "$master" ] && [ -n "$domain" ]; then
 
-	#logger -t xcat "Created /etc/resolv.conf file on $node."
+	#logger -t $log_label "Created /etc/resolv.conf file on $node."
 	cp $conf_file $conf_file_bak > /dev/null 2>&1
 	echo "search $domain" >$conf_file
     if [[ "$nameservers" != "" ]]; then
@@ -35,7 +41,7 @@ if [ -n "$master" ] && [ -n "$domain" ]; then
     fi
 
 else
-	logger -t xcat -p local4.err "Could not create resolv.conf on $node."
+	logger -t $log_label -p local4.err "Could not create resolv.conf on $node."
 	exit 1
 fi
 

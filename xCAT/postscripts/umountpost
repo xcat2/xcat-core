@@ -2,9 +2,13 @@
 # IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
 #(C)IBM Corp
 #
-
+if [ -n "$LOGLABEL" ]; then
+    log_label=$LOGLABEL
+else
+    log_label="xcat"
+fi
 result=`umount /post 2>&1`
 returncode=$?
-logger -t xcat -p local4.info $result
+logger -t $log_label -p local4.info $result
 exit $returncode
 

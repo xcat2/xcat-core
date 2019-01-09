@@ -54,22 +54,22 @@ OPTIONS
 
 
 
-\ **-?|-h**\
-
+\ **-?|-h**\ 
+ 
  Display usage message.
-
+ 
 
 
 <command-list-file>
-
+ 
  Specifies the command list file with full-path. xCAT supports an example command file: /opt/xcat/share/xcat/tools/autotest/perfcmds.lst
-
+ 
 
 
 <total>
-
+ 
  Total number of fake nodes will be defined during the testing.
-
+ 
 
 
 
@@ -128,33 +128,33 @@ ENVIRONMENT VARIABLE
 
 The xcatperftest command supports be customized by some environment variables.
 
-\ **FAKE_NODE_PREFIX**\
+\ **FAKE_NODE_PREFIX**\ 
 
 Optional, the prefix of the fake compute node name. By default, the value is 'fake'
 
-\ **FAKE_NODE_GROUP**\
+\ **FAKE_NODE_GROUP**\ 
 
 # Optional, the group name of all the fake compute nodes. By default, the value is 'perftest'
 
-\ **FAKE_NETWORK_PRO**\
+\ **FAKE_NETWORK_PRO**\ 
 
 Mandatory, the Provision network for all the fake compute nodes. By default, the value is '192.168'.
 It must be a string like 'A.B', and be matched with \`tabdump networks\`
 
-\ **FAKE_NETWORK_BMC**\
+\ **FAKE_NETWORK_BMC**\ 
 
 Mandatory, the BMC network for all the fake compute nodes. By default, the value is '192.168'. Note:  It could not be the same subnet as 'FAKE_NETWORK_PRO'
 It must be a string like 'A.B' and no need to be defined in 'networks' table.
 
-\ **PERF_NODETEMPL**\
+\ **PERF_NODETEMPL**\ 
 
 Optional, The node template name used for generating fake nodes. By default, it will be auto-detected according to the current arch.
 
-\ **PERF_DRYRUN**\
+\ **PERF_DRYRUN**\ 
 
 Optional, Indicate no real commands will be executed if the environment variable is set.
 
-\ **PERF_NOCREATE**\
+\ **PERF_NOCREATE**\ 
 
 Optional, Indicate no new fake nodes will be created if the environment variable is set.
 
@@ -166,39 +166,39 @@ EXAMPLES
 
 
 1.
-
+ 
  To run the performance testing for the commands defined in /tmp/cmd.lst on 5000 fake nodes:
-
-
+ 
+ 
  .. code-block:: perl
-
+ 
     xcatperftest 5000 /tmp/cmd.lst
-
-
+ 
+ 
 
 
 2.
-
+ 
  To generate an xCAT node object stanz file for 10000 nodes in subnet 10.100.0.0:
-
-
+ 
+ 
  .. code-block:: perl
-
+ 
     FAKE_NETWORK_PRO=10.100 FAKE_NETWORK_BMC=10.200 xcatperftest 10000
-
-
+ 
+ 
 
 
 3.
-
+ 
  To run the performance testing for the commands defined in /opt/xcat/share/xcat/tools/autotest/perfcmds.lst on 5000 existing fake nodes:
-
-
+ 
+ 
  .. code-block:: perl
-
+ 
     PERF_NOCREATE=y xcatperftest 5000 /opt/xcat/share/xcat/tools/autotest/perfcmds.lst
-
-
+ 
+ 
 
 
 

@@ -58,7 +58,7 @@ sleep "$RAND"
 if ! type openssl >/dev/null 2>&1
 then
     msgutil_r "$MASTER_IP" "error" "/usr/bin/openssl does not exist, halt ..." "/var/log/xcat/xcat.log" "$log_label"
-    /tmp/updateflag $MASTER $XCATIPORT "installstatus failed"
+    /tmp/updateflag "$MASTER" "$XCATIPORT" "installstatus failed"
     sleep infinity
 fi
 
@@ -119,11 +119,11 @@ function download_recursive()
             [ "$?" -ne "0" ] && return 1
             ;;
         *)
-            curl --retry 20 --max-time 60 "${url}/${f}" -o "${dest_dir}/${f}"
+            curl --fail --retry 20 --max-time 60 "${url}/${f}" -o "${dest_dir}/${f}"
             [ "$?" -ne "0" ] && return 1
             ;;
         esac
-    done < <(curl --retry 20 --max-time 60 "${url}/" | grep -o '<a href="\([^"]*\)">\1</a>' | cut -d '"' -f 2)
+    done < <(curl --fail --retry 20 --max-time 60 "${url}/" | grep -o '<a href="\([^"]*\)">\1</a>' | cut -d '"' -f 2)
     return 0
 }
 
@@ -143,7 +143,7 @@ export NODE="#TABLE:nodelist:THISNODE:node#"
 
 msgutil_r "$MASTER_IP" "info" "trying to get mypostscript from $MASTER_IP..." "/var/log/xcat/xcat.log" "$log_label"
 
-curl --retry 20 --max-time 60 "http://$MASTER_IP$TFTPDIR/mypostscripts/mypostscript.$NODE" -o "/xcatpost/mypostscript.$NODE" 2> /tmp/download.log
+curl --fail --retry 20 --max-time 60 "http://$MASTER_IP$TFTPDIR/mypostscripts/mypostscript.$NODE" -o "/xcatpost/mypostscript.$NODE" 2> /tmp/download.log
 if [ "$?" = "0" ]
 then
     case "$XCATDEBUGMODE" in
@@ -242,9 +242,9 @@ run_ps () {
     if [ -z \"\$scriptype\" ]; then
         scriptype=\"postscript\"
     fi
-
+    log_label=\"xcat.deployment.\"\$scriptype
     if [ -f \$1 ]; then
-        msgutil_r \"\$MASTER_IP\" \"info\" "\"Running \$scriptype: \$1\"" \"\$logfile\" \"xcat.mypostscript\"
+        msgutil_r \"\$MASTER_IP\" \"info\" "\"Running \$scriptype: \$1\"" \"\$logfile\" \"\$log_label\"
         if [ \"\$XCATDEBUGMODE\" = \"1\" ] || [ \"\$XCATDEBUGMODE\" = \"2\" ]; then
             local compt=\$(file \$1)
             local reg=\"shell script\"
@@ -263,9 +263,9 @@ run_ps () {
         if [ \"\$ret_local\" -ne \"0\" ]; then
             return_value=\$ret_local
         fi
-        msgutil_r \"\$MASTER_IP\" \"info\" "\"\$scriptype \$1 return with \$ret_local\"" \"\$logfile\" \"xcat.mypostscript\"
+        msgutil_r \"\$MASTER_IP\" \"info\" "\"\$scriptype \$1 return with \$ret_local\"" \"\$logfile\" \"\$log_label\"
     else
-        msgutil_r \"\$MASTER_IP\" \"error\" "\"\$scriptype \$1 does NOT exist.\"" \"\$logfile\" \"xcat.mypostscript\"
+        msgutil_r \"\$MASTER_IP\" \"error\" "\"\$scriptype \$1 does NOT exist.\"" \"\$logfile\" \"\$log_label\"
         return_value=-1
     fi
 

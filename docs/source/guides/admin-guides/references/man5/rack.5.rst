@@ -19,7 +19,7 @@ SYNOPSIS
 ********
 
 
-\ **rack Attributes:**\   \ *rackname*\ , \ *displayname*\ , \ *num*\ , \ *height*\ , \ *room*\ , \ *comments*\ , \ *disable*\
+\ **rack Attributes:**\   \ *rackname*\ , \ *displayname*\ , \ *num*\ , \ *height*\ , \ *room*\ , \ *comments*\ , \ *disable*\ 
 
 
 ***********
@@ -36,46 +36,46 @@ rack Attributes:
 
 
 
-\ **rackname**\
-
+\ **rackname**\ 
+ 
  The rack name.
+ 
 
 
-
-\ **displayname**\
-
+\ **displayname**\ 
+ 
  Alternative name for rack. Only used by PCM.
+ 
 
 
-
-\ **num**\
-
+\ **num**\ 
+ 
  The rack number.
+ 
 
 
-
-\ **height**\
-
+\ **height**\ 
+ 
  Number of units which can be stored in the rack.
+ 
 
 
-
-\ **room**\
-
+\ **room**\ 
+ 
  The room in which the rack is located.
+ 
 
 
-
-\ **comments**\
-
+\ **comments**\ 
+ 
  Any user-written notes.
+ 
 
 
-
-\ **disable**\
-
+\ **disable**\ 
+ 
  Set to 'yes' or '1' to comment out this row.
-
+ 
 
 
 
@@ -84,5 +84,5 @@ SEE ALSO
 ********
 
 
-\ **nodels(1)**\ , \ **chtab(8)**\ , \ **tabdump(8)**\ , \ **tabedit(8)**\
+\ **nodels(1)**\ , \ **chtab(8)**\ , \ **tabdump(8)**\ , \ **tabedit(8)**\ 
 

@@ -585,9 +585,15 @@ sub check_genesis_file {
         }
     }
 
-    my $tftpdir = `tabdump site | awk -F',' '/^"tftpdir",/ { gsub(/"/, "", \$2) ; print \$2 }'`;
-    chomp($tftpdir);
-    $tftpdir =~ s/"//g;
+    my $site_info = `lsdef -t site -i tftpdir,httpport -c`;
+    my $tftpdir = "";
+    my $httpport = 80;
+    if ($site_info =~ /clustersite: tftpdir=(\S*)/) {
+        $tftpdir = $1;
+    }
+    if ($site_info =~ /clustersite: httpport=(\S*)/) {
+        $httpport = $1;
+    }
     my $genesis_folder;
     my @genesis_files;
     my $genesis_line;
@@ -623,14 +629,22 @@ sub check_genesis_file {
                 if ($genesis_line =~ /^initrd/) {
                     @initrd_info = split(' ', $genesis_line);
                     $initrd_path = $initrd_info[1];
-                    $wget_rst = system("wget -q --spider $initrd_path -T 0.5 -t 3");
-                    if ($wget_rst) {
-                        push @errors, "'initrd' cannot be downloaded from $initrd_path.";
-                        $rst = 1;
-                    }
 
-                    if ($initrd_path =~ /http:\/\/.+:80(\/.+)/) {
-                        my $initrd_file = $1;
+                    if ($initrd_path =~ /http:\/\/.+:(\d*)(\/.+)/) {
+                        my $initrd_port = $1;
+                        my $initrd_file = $2;
+
+                        if ($initrd_port != $httpport) {
+                            push @errors, "The http port for initrd file in '$file' is not the same with defined in 'site' table.";
+                            $rst = 1;
+                        } else {
+                            $wget_rst = system("wget -q --spider $initrd_path -T 0.5 -t 3");
+                            if ($wget_rst) {
+                                push @errors, "'initrd' cannot be downloaded from $initrd_path.";
+                                $rst = 1;
+                            }
+                        }
+
                         my $initrd_time = `stat $initrd_file | grep Modify | cut -d ' ' -f 2-3`;
                         if ($genesis_time and $initrd_time < $genesis_time) {
                             $genesis_update_flag_p = 1;
@@ -641,10 +655,18 @@ sub check_genesis_file {
                 if ($genesis_line =~ /^kernel/) {
                     @kernel_info = split(' ', $genesis_line);
                     $kernel_path = $kernel_info[1];
-                    $wget_rst = system("wget -q --spider $kernel_path -T 0.5 -t 3");
-                    if ($wget_rst) {
-                        push @errors, "kernel cannot be downloaded from $kernel_path.";
-                        $rst = 1;
+                    if ($kernel_path =~ /http:\/\/.+:(\d*)\/.+/) {
+                        my $kernel_port = $1;
+                        if ($kernel_port != $httpport) {
+                            push @errors, "The http port for kernel file in '$file' is not the same with defined in 'site' table.";
+                            $rst = 1;
+                        } else {
+                            $wget_rst = system("wget -q --spider $kernel_path -T 0.5 -t 3");
+                            if ($wget_rst) {
+                                push @errors, "kernel cannot be downloaded from $kernel_path.";
+                                $rst = 1;
+                            }
+                        }
                     }
                 }
             }
@@ -703,7 +725,7 @@ sub check_genesis_file {
                     next;
                 }
 
-                $host_ip .= ":80";
+                $host_ip .= ":$httpport";
                 while ($genesis_line = <FILE>) {
                     chomp($genesis_line);
                     $genesis_line =~ s/^\s+|\s+$//g;

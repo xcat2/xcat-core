@@ -21,7 +21,7 @@ SYNOPSIS
 
 \ **tabprune**\  [\ **eventlog | auditlog**\ ]  [\ **-V**\ ] [\ **-i**\  \ *recid*\  | \ **-n**\  \ *number of records*\  | \ **-p**\  \ *percentage*\  | \ **-d**\  \ *number of days*\  | \ **-a**\ ]
 
-\ **tabprune**\  \ *tablename*\  \ **-a**\
+\ **tabprune**\  \ *tablename*\  \ **-a**\ 
 
 \ **tabprune**\  [\ **-h | -**\ **-help**\ ] [\ **-v | -**\ **-version**\ ]
 
@@ -40,47 +40,47 @@ OPTIONS
 
 
 
-\ **-h|-**\ **-help**\
-
+\ **-h|-**\ **-help**\ 
+ 
  Display usage message.
+ 
 
 
-
-\ **-V**\
-
+\ **-V**\ 
+ 
  Verbose mode.  This will cause tabprune to display the records that are being deleted from the table, in case
  you want to redirect them to a file to archive them.
+ 
 
 
-
-\ **-a**\
-
+\ **-a**\ 
+ 
  Remove all records from the input table name.  This option can be used on any xCAT table.
+ 
 
 
-
-\ **-i**\   \ *recid number*\
-
+\ **-i**\   \ *recid number*\ 
+ 
  Remove the records whose recid is less than the input recid number.
+ 
 
 
-
-\ **-n**\  \ *number*\
-
+\ **-n**\  \ *number*\ 
+ 
  Remove the number of records input.
+ 
 
 
-
-\ **-p**\  \ *percent*\
-
+\ **-p**\  \ *percent*\ 
+ 
  Remove the number of records input.
+ 
 
 
-
-\ **-d**\  \ *number of days*\
-
+\ **-d**\  \ *number of days*\ 
+ 
  Remove all records that occurred >= than number of days ago.
-
+ 
 
 
 
@@ -106,63 +106,63 @@ EXAMPLES
 
 
 1. To remove all the records in the eventlog table:
-
-
+ 
+ 
  .. code-block:: perl
-
+ 
    tabprune eventlog -a
-
-
+ 
+ 
 
 
 2. To remove all the records in the eventlog table saving the deleted records in eventlog.csv:
-
-
+ 
+ 
  .. code-block:: perl
-
+ 
    tabprune eventlog -V -a > eventlog.csv
-
-
+ 
+ 
 
 
 3. To remove all the records before recid=200 in the auditlog table:
-
-
+ 
+ 
  .. code-block:: perl
-
+ 
    tabprune auditlog -i 200
-
-
+ 
+ 
 
 
 4. To remove 400 records from the auditlog table and display the remove records:
-
-
+ 
+ 
  .. code-block:: perl
-
+ 
    tabprune auditlog -V -n 400
-
-
+ 
+ 
 
 
 5. To remove 50% of the  eventlog table:
-
-
+ 
+ 
  .. code-block:: perl
-
+ 
    tabprune eventlog -p 50
-
-
+ 
+ 
 
 
 6. To remove all records that occurred >= 5 days ago in the eventlog:
-
-
+ 
+ 
  .. code-block:: perl
-
+ 
    tabprune eventlog -d 5
-
-
+ 
+ 
 
 
 

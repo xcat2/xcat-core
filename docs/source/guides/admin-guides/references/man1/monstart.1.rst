@@ -19,9 +19,9 @@ SYNOPSIS
 ********
 
 
-\ **monstart [-h| -**\ **-help]**\
+\ **monstart [-h| -**\ **-help]**\ 
 
-\ **monstart [-v| -**\ **-version]**\
+\ **monstart [-v| -**\ **-version]**\ 
 
 \ **monstart**\  \ *name*\  \ *[noderange]*\  [\ **-r|-**\ **-remote**\ ]
 

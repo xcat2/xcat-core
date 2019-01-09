@@ -1533,6 +1533,51 @@ sub get_site_Master
 }
 
 
+#--------------------------------------------------------------------------------
+
+=head3    getHierarchyAttrs
+
+        Get the global hierarchy attributes in site table, and parse the corresponding delimiter.
+
+        Arguments:
+                none
+        Returns:
+                Hash reference of hierarchy attributes defined at site.hierarchicalattrs.
+                {
+                  'begin' => '|',
+                  'postscripts' => ','
+                }
+        Globals:
+                none
+        Error:
+                none
+        Example:
+                $attrs = xCAT::TableUtils->getHierarchyAttrs();
+        Comments:
+                none
+
+=cut
+
+#--------------------------------------------------------------------------------
+
+sub getHierarchyAttrs
+{
+    my %hierarchy_attrs = ();
+    my $hierarchy_field = xCAT::TableUtils->get_site_attribute("hierarchicalattrs");
+    if ($hierarchy_field) {
+        # $hierarchy_field should be `attr1_name:delimiter1,attr2,attr3:delimiter2`
+        foreach my $item (split(/,/, $hierarchy_field)) {
+            $item = xCAT::Utils->strim($item);
+            next unless ($item);
+            my ($attr, $del) = split(/\s*:\s*/, $item, 2);
+            $del = ',' unless ($del);
+            $hierarchy_attrs{$attr} = $del if ($attr);
+            }
+        }
+
+    return \%hierarchy_attrs;
+}
+
 #-------------------------------------------------------------------------------
 
 =head3 checkCredFiles

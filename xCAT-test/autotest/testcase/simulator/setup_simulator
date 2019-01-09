@@ -1,47 +1,55 @@
 start:setup_openbmc_simulator
 description:install dependent packaages, setup and start openbmc simulator
+label:others,hctrl_openbmc
 cmd:/opt/xcat/share/xcat/tools/autotest/testcase/simulator/config_simulator.sh -s $$MN $$CN $$bmcusername $$bmcpasswd 0
 check:rc==0
 end
 
 start:setup_openbmc_simulator_multiple_100
 description:install dependent packaages, setup and start 100 openbmc simulator
+label:others,hctrl_openbmc
 cmd:/opt/xcat/share/xcat/tools/autotest/testcase/simulator/config_simulator.sh -s $$MN $$CN $$bmcusername $$bmcpasswd 100
 check:rc==0
 end
 
 start:setup_openbmc_simulator_multiple_1000
 description:install dependent packaages, setup and start 1000 openbmc simulator
+label:others,hctrl_openbmc
 cmd:/opt/xcat/share/xcat/tools/autotest/testcase/simulator/config_simulator.sh -s $$MN $$CN $$bmcusername $$bmcpasswd 1000
 check:rc==0
 end
 
 start:setup_openbmc_simulator_multiple_5000
 description:install dependent packaages, setup and start 5000 openbmc simulator
+label:others,hctrl_openbmc
 cmd:/opt/xcat/share/xcat/tools/autotest/testcase/simulator/config_simulator.sh -s $$MN $$CN $$bmcusername $$bmcpasswd 5000
 check:rc==0
 end
 
 start:setup_openbmc_simulator_multiple_1000_delay_random_1m
 description:install dependent packaages, setup and start 1000 openbmc simulator with random that the most delay time 1 minute
+label:others,hctrl_openbmc
 cmd:/opt/xcat/share/xcat/tools/autotest/testcase/simulator/config_simulator.sh -s $$MN $$CN $$bmcusername $$bmcpasswd 1000 random 1m
 check:rc==0
 end
 
 start:setup_openbmc_simulator_multiple_5000_delay_random_1m
 description:install dependent packaages, setup and start 5000 openbmc simulator with random that the most delay time 1 minute
+label:others,hctrl_openbmc
 cmd:/opt/xcat/share/xcat/tools/autotest/testcase/simulator/config_simulator.sh -s $$MN $$CN $$bmcusername $$bmcpasswd 5000 random 1m
 check:rc==0
 end
 
 start:setup_openbmc_simulator_multiple_1000_delay_random_1m30
 description:install dependent packaages, setup and start 1000 openbmc simulator with random that the most delay time 1m30s
+label:others,hctrl_openbmc
 cmd:/opt/xcat/share/xcat/tools/autotest/testcase/simulator/config_simulator.sh -s $$MN $$CN $$bmcusername $$bmcpasswd 1000 random 1m30
 check:rc==0
 end
 
 start:setup_openbmc_simulator_multiple_1000_delay_random_30
 description:install dependent packaages, setup and start 1000 openbmc simulator with random that the most delay time 30s
+label:others,hctrl_openbmc
 cmd:/opt/xcat/share/xcat/tools/autotest/testcase/simulator/config_simulator.sh -s $$MN $$CN $$bmcusername $$bmcpasswd 1000 random 0m30
 check:rc==0
 end

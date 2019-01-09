@@ -48,28 +48,28 @@ OPTIONS
 
 
 
-\ **-v|-**\ **-version**\
-
+\ **-v|-**\ **-version**\ 
+ 
  Command Version.
+ 
 
 
-
-\ **-V|-**\ **-verbose**\
-
+\ **-V|-**\ **-verbose**\ 
+ 
  Display additional progress and error messages.  Output is also logged in /var/log/xcat/rollupdate.log.
+ 
 
 
-
-\ **-t|-**\ **-test**\
-
+\ **-t|-**\ **-test**\ 
+ 
  Run the rollupdate command in test mode only to verify the output files that are created.  No scheduler reservation requests will be submitted.
+ 
 
 
-
-\ **-?|-h|-**\ **-help**\
-
+\ **-?|-h|-**\ **-help**\ 
+ 
  Display usage message.
-
+ 
 
 
 
@@ -95,17 +95,17 @@ EXAMPLES
 
 
 1.
-
+ 
  To run a cluster rolling update based on the information you have created in the file
  /u/admin/rolling_updates/update_all.stanza
  enter:
-
-
+ 
+ 
  .. code-block:: perl
-
+ 
     cat /u/admin/rolling_updates/update_all.stanza | rollupdate
-
-
+ 
+ 
 
 
 

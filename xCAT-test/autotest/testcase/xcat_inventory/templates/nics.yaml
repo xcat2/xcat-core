@@ -1,0 +1,16 @@
+node:
+  testnodes:
+    device_type: server
+    network_info:
+      nics:
+        ib0:
+          hostnamesuffixes:
+          - ib
+          ips: '|(.)(..)n(..)|ib0!(ipadd(10,41,0,100,dim2idx(a2idx($1),36,$2,18,$3),2,1))|'
+          networks:
+          - ipoib
+          type:
+          - Infiniband
+    obj_type: group
+    role: compute
+schema_version: '1.0'

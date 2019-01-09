@@ -1,5 +1,6 @@
 start:osdeploy_usage
 description: osdeploy check usage
+label:others,xcatprobe
 cmd:xcatprobe osdeploy -h
 check:rc==0
 check:output~=Usage
@@ -9,6 +10,7 @@ end
 
 start:osdeploy_n
 description: osdeploy -n node to probe osdeploy
+label:others,xcatprobe
 cmd:if [ -e /tmp/osdeploy.test ];then rm -rf /tmp/osdeploy.test*;fi
 check:rc==0
 cmd:xcatprobe osdeploy -n $$CN >> /tmp/osdeploy.test &
@@ -27,6 +29,7 @@ end
 
 start:osdeploy_n_r
 description: osdeploy -n -r node to probe osdeploy to trigger 'Replay history' mode.
+label:others,xcatprobe
 cmd:if [ -e /tmp/osdeploy.test ];then rm -rf /tmp/osdeploy.test*;fi
 check:rc==0
 cmd:xcatprobe osdeploy -n $$CN >> /tmp/osdeploy.test &
@@ -63,6 +66,7 @@ end
 
 start:osdeploy_n_t
 description: osdeploy -n node -t 1m,probe osdeploy in 1min
+label:others,xcatprobe
 cmd:if [ -e /tmp/osdeploy.test ];then rm -rf /tmp/osdeploy.test*;fi
 check:rc==0
 cmd:xcatprobe osdeploy -n $$CN -t 1m >> /tmp/osdeploy.test &
@@ -76,6 +80,7 @@ check:rc==0
 end
 start:osdeploy_n_invalidnode
 description: osdeploy -n node invalid
+label:others,xcatprobe
 cmd:test=`lsdef test_node`;if [ $test eq 0 ]; then lsdef -l test_node -z >/tmp/node.standa ;rmdef test_node;fi
 check:rc==0
 cmd:xcatprobe osdeploy -n test_node
@@ -86,6 +91,7 @@ check:rc==0
 end
 start:osdeploy_n_p_invalid
 description:osdeploy -n node -p invalid parameter
+label:others,xcatprobe
 cmd:xcatprobe osdeploy -n $$CN -p dsdf
 check:rc==1
 check:output~=Usage:
@@ -96,6 +102,7 @@ end
 
 start:osdeploy_n_r_invalid
 description:osdeploy -n node -r invalid parameter
+label:others,xcatprobe
 cmd:xcatprobe osdeploy -n $$CN -r dadf
 check:rc==1
 check:output~=Usage:
@@ -106,6 +113,7 @@ end
 
 start:osdeploy_n_t_invalid
 description:osdeploy -n node -t invalid parameter
+label:others,xcatprobe
 cmd:xcatprobe osdeploy -n $$CN -t dadf
 check:rc==1
 check:output~=Usage:
@@ -116,6 +124,7 @@ end
 
 start:osdeploy_n_p_origin
 description: osdeploy -n -p origin node to probe osdeploy
+label:others,xcatprobe
 cmd:if [ -e /tmp/osdeploy.test ];then rm -rf /tmp/osdeploy.test*;fi
 check:rc==0
 cmd:xcatprobe osdeploy -n $$CN -p origin >> /tmp/osdeploy.test &
@@ -139,6 +148,7 @@ check:rc==0
 end
 start:osdeploy_n_p_origin_r
 description: osdeploy -n  node -p origin -r to probe osdeploy
+label:others,xcatprobe
 cmd:if [ -e /tmp/osdeploy.test ];then rm -rf /tmp/osdeploy.test*;fi
 check:rc==0
 cmd:nodeset $$CN osimage=__GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-install-compute
@@ -163,6 +173,7 @@ check:rc==0
 end
 start:osdeploy_n_p_origin_r_error
 description: osdeploy -n  node -p origin -r  1m to probe osdeploy
+label:others,xcatprobe
 cmd:if [ -e /tmp/osdeploy.test ];then rm -rf /tmp/osdeploy.test*;fi
 check:rc==0
 cmd:nodeset $$CN osimage=__GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-install-compute
@@ -188,6 +199,7 @@ end
 
 start:osdeploy_n_p_compact
 description: osdeploy -n -p compact node to probe osdeploy
+label:others,xcatprobe
 cmd:if [ -e /tmp/osdeploy.test ];then rm -rf /tmp/osdeploy.test*;fi
 check:rc==0
 cmd:xcatprobe osdeploy -n $$CN -p compact >> /tmp/osdeploy.test &
@@ -211,6 +223,7 @@ check:rc==0
 end
 start:osdeploy_n_p_compact_r
 description: osdeploy -n -p compact -r node to probe osdeploy
+label:others,xcatprobe
 cmd:if [ -e /tmp/osdeploy.test ];then rm -rf /tmp/osdeploy.test*;fi
 check:rc==0
 check:rc==0
@@ -235,6 +248,7 @@ check:rc==0
 end
 start:osdeploy_n_p_compact_r_error
 description: osdeploy -n -p compact -r node error to probe osdeploy
+label:others,xcatprobe
 cmd:if [ -e /tmp/osdeploy.test ];then rm -rf /tmp/osdeploy.test*;fi
 check:rc==0
 check:rc==0
@@ -260,6 +274,7 @@ end
 
 start:osdeploy_n_p_phase
 description: osdeploy -n -p phase node to probe osdeploy
+label:others,xcatprobe
 cmd:if [ -e /tmp/osdeploy.test ];then rm -rf /tmp/osdeploy.test*;fi
 check:rc==0
 cmd:xcatprobe osdeploy -n $$CN -p phase >> /tmp/osdeploy.test &
@@ -283,6 +298,7 @@ check:rc==0
 end
 start:osdeploy_n_p_phase_r
 description: osdeploy -n -p phase node -r to probe osdeploy
+label:others,xcatprobe
 cmd:if [ -e /tmp/osdeploy.test ];then rm -rf /tmp/osdeploy.test*;fi
 check:rc==0
 cmd:nodeset $$CN osimage=__GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-install-compute
@@ -308,6 +324,7 @@ end
 
 start:osdeploy_n_p_phase_r_error
 description: osdeploy -n -p phase node -r error to probe osdeploy
+label:others,xcatprobe
 cmd:if [ -e /tmp/osdeploy.test ];then rm -rf /tmp/osdeploy.test*;fi
 check:rc==0
 cmd:nodeset $$CN osimage=__GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-install-compute
