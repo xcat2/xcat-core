@@ -2770,6 +2770,17 @@ sub getNodeAttribs
         xCAT::MsgUtils->message("S", "xcatd: DBI is missing, Please check the db access process.");
         return undef;
     }
+    if ($dbworkerpid > 0) { #TODO: should this be moved outside of the DB worker entirely?  I'm thinking so, but I don't dare do so right now...
+         #the benefit would be the potentially computationally intensive substitution logic would be moved out and less time inside limited
+         #db worker scope
+        return dbc_call($self, 'getNodeAttribs', $node, \@attribs, %options);
+    }
+    $self->trace_db(START_TYPE);
+
+    if (!defined($self->{dbh})) {
+        xCAT::MsgUtils->message("S", "xcatd: DBI is missing, Please check the db access process.");
+        return undef;
+    }
 
     my $datum;
     my $oldusecache;
