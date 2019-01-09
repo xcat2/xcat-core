@@ -112,9 +112,7 @@ EXAMPLES
  
 
 
-2.
- 
- To display the tree of service node hierarchy for service node "mysn01".
+2. To display the tree of service node hierarchy for service node "mysn01".
  
  
  .. code-block:: perl
@@ -135,9 +133,7 @@ EXAMPLES
  
 
 
-3.
- 
- To display the tree of hardware hierarchy for all the nodes.
+3. To display the tree of hardware hierarchy for all the nodes.
  
  
  .. code-block:: perl

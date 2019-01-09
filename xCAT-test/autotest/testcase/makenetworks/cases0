@@ -1,5 +1,6 @@
 start:makenetworks_h
 description:help
+label:others,ci_test,network
 cmd:makenetworks -h
 check:rc==0
 check:output=~Usage
@@ -7,6 +8,7 @@ end
 
 start:makenetworks_help
 description:help
+label:others,ci_test,network
 cmd:makedhcp --help
 check:rc==0
 check:output=~Usage
@@ -14,6 +16,7 @@ end
 
 start:makenetworks_v
 description:version
+label:others,ci_test,network
 cmd:makenetworks -v
 check:rc==0
 check:output=~Version
@@ -21,6 +24,8 @@ end
 
 start:makenetworks_d
 os:Linux
+description:makenetworks_d
+label:others,network
 cmd:makenetworks -d > /tmp/mynetworksstanzas
 check:rc==0
 cmd:echo -ne "auto-testnetworks:\n objtype=network\n gateway=1.2.3.0\n mask=255.255.255.0\n net=1.2.3.1\n" >> /tmp/mynetworksstanzas
@@ -35,6 +40,7 @@ end
 
 start:makenetworks_d_V
 description:display,verbose
+label:others,ci_test,network
 cmd:makenetworks
 check:rc==0
 cmd:makenetworks -d -V
@@ -47,6 +53,7 @@ end
 start:makenetworks
 os:Linux
 description:makenetworks
+label:others,network
 cmd:num=`lsdef -t network |cut -d" " -f1 |tee /tmp/testnetworks|wc -l`;for((i=1;i<=$num;i++)) do rmdef -t network `cat /tmp/testnetworks|sed -n "${i}p"`; done
 check:rc==0
 check:output=~(definitions have been removed)
@@ -63,5 +70,11 @@ cmd:rm -f /tmp/testnetworks
 cmd:rm -f /tmp/inetworktest1
 end
 
-
-
+start:makenetworks_netname_exist
+os:Linux
+description:test makenetworks works as design when netname exists.
+label:others,network
+cmd:netname=`lsdef -t network |cut -d" " -f1 |sed -n '1p'`;makenetworks $netname
+check:rc==0
+check:output=~(already exists)
+end

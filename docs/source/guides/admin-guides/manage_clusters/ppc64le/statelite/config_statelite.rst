@@ -47,6 +47,7 @@ This is the minimal list of files needed, you can add additional files to the li
     "ALL","/etc/ntp.conf","tmpfs",,
     "ALL","/etc/rsyslog.conf","tmpfs",,
     "ALL","/etc/rsyslog.conf.XCATORIG","tmpfs",,
+    "ALL","/etc/rsyslog.d/","tmpfs",,
     "ALL","/etc/udev/","tmpfs",,
     "ALL","/etc/ntp.conf.predhclient","tmpfs",,
     "ALL","/etc/resolv.conf","tmpfs",,

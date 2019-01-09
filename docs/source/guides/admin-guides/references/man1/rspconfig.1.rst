@@ -320,7 +320,7 @@ OPTIONS
 
 \ **community**\ ={\ **public**\  | \ *string*\ }
  
- Get or set the SNMP commmunity value. The default is \ **public**\ .
+ Get or set the SNMP community value. The default is \ **public**\ .
  
 
 
@@ -446,7 +446,7 @@ OPTIONS
 
 \ **vlan**\ 
  
- Get or set vlan ID. For get vlan ID, if vlan is not enabled, 'BMC VLAN disabled' will be outputed. For set vlan ID, the valid value are [1-4096].
+ Get or set vlan ID. For get vlan ID, if vlan is not enabled, 'BMC VLAN disabled' will be displayed. For set vlan ID, the valid value are [1-4096].
  
 
 
@@ -1250,9 +1250,7 @@ EXAMPLES
  
 
 
-27.
- 
- To deconfigure memory bank 9 and 10 of Processing Unit 0 on mm01:
+27. To deconfigure memory bank 9 and 10 of Processing Unit 0 on mm01:
  
  
  .. code-block:: perl
@@ -1270,9 +1268,7 @@ EXAMPLES
  
 
 
-28.
- 
- To reset the network interface of the specified nodes:
+28. To reset the network interface of the specified nodes:
  
  
  .. code-block:: perl

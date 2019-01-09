@@ -1564,6 +1564,11 @@ sub updatenoderunps
     if ($fc[0] && ($fc[0] =~ /1|Yes|yes|YES|Y|y/)) {
         $flowcontrol = 1;
     }
+    my $httpport="80";
+    my @hports=xCAT::TableUtils->get_site_attribute("httpport");
+    if ($hports[0]){
+        $httpport=$hports[0];
+    }
 
     # if running postscript report status here, if requested.
     if ((defined($request->{status})) && ($request->{status} eq "yes")) {
@@ -1625,10 +1630,10 @@ sub updatenoderunps
 
         if ($::SETSERVER) { # update the xcatinfo file on the node and run setuppostbootscripts
             $runpscmd =
-"$installdir/postscripts/xcatdsklspost $mode -M $snkey '$postscripts' --tftp $tftpdir --installdir $installdir --nfsv4 $nfsv4 -c";
+"$installdir/postscripts/xcatdsklspost $mode -M $snkey:$httpport '$postscripts' --tftp $tftpdir --installdir $installdir --nfsv4 $nfsv4 -c";
         } else {
             $runpscmd =
-"$installdir/postscripts/xcatdsklspost $mode -m $snkey '$postscripts' --tftp $tftpdir --installdir $installdir --nfsv4 $nfsv4 -c"
+"$installdir/postscripts/xcatdsklspost $mode -m $snkey:$httpport '$postscripts' --tftp $tftpdir --installdir $installdir --nfsv4 $nfsv4 -c"
         }
 
         # add flowcontrol flag
@@ -2084,6 +2089,12 @@ sub updatenodesoftware
         $flowcontrol = 1;
     }
 
+    my $httpport="80";
+    my @hports=xCAT::TableUtils->get_site_attribute("httpport");
+    if ($hports[0]){
+        $httpport=$hports[0];
+    }
+
     # this drives getdata to report status complete for software updatees
     $::TYPECALL = "S";
 
@@ -2117,7 +2128,7 @@ sub updatenodesoftware
             my $cmd;
             my $args1;
             $cmd =
-"$installdir/postscripts/xcatdsklspost 2 -m $snkey 'ospkgs,otherpkgs,syscloneimgupdate' --tftp $tftpdir --installdir $installdir --nfsv4 $nfsv4 -c";
+"$installdir/postscripts/xcatdsklspost 2 -m $snkey:$httpport 'ospkgs,otherpkgs,syscloneimgupdate' --tftp $tftpdir --installdir $installdir --nfsv4 $nfsv4 -c";
 
             # add flowcontrol flag
             if ($flowcontrol == 1) {
@@ -3301,6 +3312,12 @@ sub updateOS
     # Get install directory
     my $installDIR = xCAT::TableUtils->getInstallDir();
 
+    my $httpport="80";
+    my @hports=xCAT::TableUtils->get_site_attribute("httpport");
+    if ($hports[0]){
+        $httpport=$hports[0];
+    }
+
     # Get HTTP server
     my $http;
     my @httpd = xCAT::NetworkUtils->my_ip_facing($node);
@@ -3372,7 +3389,7 @@ sub updateOS
     {
 
         # SUSE repository path - http://10.1.100.1/install/sles10.3/s390x/1/
-        $path = "http://$http$installDIR/$os/$arch/1/";
+        $path = "http://$http:$httpport$installDIR/$os/$arch/1/";
         if (!(-e "$installDIR/$os/$arch/1/"))
         {
             push @{ $rsp->{data} },
@@ -3406,7 +3423,7 @@ sub updateOS
     {
 
         # SUSE repository path - http://10.1.100.1/install/sles10.3/s390x/1/
-        $path = "http://$http$installDIR/$os/$arch/1/";
+        $path = "http://$http$httpport$installDIR/$os/$arch/1/";
         if (!(-e "$installDIR/$os/$arch/1/"))
         {
             push @{ $rsp->{data} },
@@ -3438,7 +3455,7 @@ sub updateOS
         my $verifyOS = $os;
         $verifyOS =~ s/^\D+([\d.]+)$/$1/;
         if (xCAT::Utils->version_cmp($verifyOS, "7.0") < 0) {
-            $path = "http://$http$installDIR/$os/$arch/Server/";
+            $path = "http://$http:$httpport$installDIR/$os/$arch/Server/";
             if (!(-e "$installDIR/$os/$arch/Server/"))
             {
                 push @{ $rsp->{data} },
@@ -3449,7 +3466,7 @@ sub updateOS
         }
         else
         {
-            $path = "http://$http$installDIR/$os/$arch/";
+            $path = "http://$http:$httpport$installDIR/$os/$arch/";
             if (!(-e "$installDIR/$os/$arch/"))
             {
                 push @{ $rsp->{data} },

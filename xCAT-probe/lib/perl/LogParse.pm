@@ -126,10 +126,15 @@ sub obtain_log_file_list {
     my $self = shift;
     my %candidate_log;
 
+    my @loglist = ("/var/log/messages",
+                   "/var/log/xcat/cluster.log",
+                   "/var/log/xcat/computes.log",
+                   "/var/log/syslog");
+
     my @candidate_log_set;
-    push @candidate_log_set, "/var/log/messages" if (-e "/var/log/messages");
-    push @candidate_log_set, "/var/log/xcat/cluster.log" if (-e "/var/log/xcat/cluster.log");
-    push @candidate_log_set, "/var/log/xcat/computes.log" if (-e "/var/log/xcat/computes.log");
+    foreach my $log (@loglist){
+        push @candidate_log_set, $log if (-e "$log");
+    }
 
     my $filename;
     foreach my $log (@candidate_log_set) {

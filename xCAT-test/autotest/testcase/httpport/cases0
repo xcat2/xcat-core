@@ -1,0 +1,161 @@
+start:genesis_work_with_non_default_http_80_port
+description: change http port from default 80 to 8898 and then make sure generate genesis (mknb) work. 
+label:mn_only,discovery
+cmd:netstat -nlp|grep  -E "apache2|httpd"
+check:output =~ 80
+cmd:lsdef -t site  -i httpport -c |awk -F"=" '{print $2}'
+cmd:/opt/xcat/share/xcat/tools/autotest/testcase/httpport/change_http_port.sh 80 8898
+cmd:netstat -nlp|grep  -E "apache2|httpd"
+check:output =~ 8898
+check:rc==0
+cmd:chdef -t site httpport=8898
+check:rc==0
+cmd:lsdef -t site  -i httpport -c
+check:output =~ 8898
+check:rc==0
+cmd:dir="/tftpboot/pxelinux.cfg/p";if [ -e "${dir}" ];then mv ${dir} ${dir}".bak"; fi 
+cmd:mknb ppc64 
+check:rc==0
+cmd: #!/bin/bash
+# get all filename in specified path
+path=/tftpboot/pxelinux.cfg/p/
+files=$(ls $path)
+for filename in $files
+do
+ echo "The file is $filename"
+ grep 8898 $path$filename
+ if [ $? != 0 ];then
+    echo "port 8898 does not exist"
+    exit 1;
+ fi
+ links=$(grep 8898 $path$filename|awk -F " " '{print $2}')
+ for link in $links
+ do
+  wget $link
+  if [ $? != 0 ];then
+    echo "wget file $link failed"
+    exit 1;
+  else
+    echo "wget file $link succeed"
+  fi
+ done
+done
+rm -rf genesis*
+check:rc==0
+cmd:dir="/tftpboot/xcat/xnba/nets";if [ -e "${dir}" ];then mv ${dir} ${dir}".bak"; fi
+cmd:mknb x86_64 
+check:rc==0
+cmd:#!/bin/bash
+# get all filename in specified path
+path=/tftpboot/xcat/xnba/nets/
+rm -rf $path*.elilo
+files=$(ls $path)
+mnip=$(lsdef -t site -i master -c |awk -F"=" '{print $2}')
+echo "The mn ip is $mnip"
+for filename in $files
+do
+ echo "The file is $filename"
+ grep 8898 $path$filename
+ if [ $? != 0 ];then
+    echo "port 8898 does not exist"
+    exit 1;
+ fi
+ grep "next-server" $path$filename
+ if [  $? == 0 ];then
+    sed -i "s/\${next-server}/$mnip/g"  $path$filename
+ fi
+ 
+ if [ "${filename##*.}"x = "uefi"x ];then
+    links=$(grep 8898 $path$filename|awk -F " " '{print $2}')
+ else
+    links=$(grep 8898 $path$filename|awk -F " " '{print $4}') 
+ fi
+  
+ for link in $links
+ do
+  wget $link
+  if [ $? != 0 ];then
+    echo "wget file $link failed"
+    exit 1;
+  else
+    echo "wget file $link succeed"
+  fi
+ done
+done
+rm -rf genesis*
+rm -rf elilo* 
+check:rc==0
+cmd:/opt/xcat/share/xcat/tools/autotest/testcase/httpport/change_http_port.sh 8898 80
+cmd:netstat -nlp|grep  -E "apache2|httpd"
+check:output =~ 80 
+check:rc==0
+cmd:chdef -t site httpport=80
+check:rc==0
+cmd:lsdef -t site  -i httpport -c
+check:output =~ 80 
+check:rc==0
+cmd:dir="/tftpboot/pxelinux.cfg/p"; rm -rf $dir; if [ -d ${dir}".bak" ];then mv ${dir}".bak" $dir; fi
+cmd:dir="/tftpboot/xcat/xnba/nets"; rm -rf $dir; if [ -d ${dir}".bak" ];then mv ${dir}".bak" $dir; fi
+end
+
+start:change_http_listen_port_from_80_to_8898_in_mn
+description:This test case is used to simulate a http service which does not use default 80 port in mn. This is not a regular test case, just used to set up environment.
+label:others,simulator
+cmd:netstat -nlp|grep  -E "apache2|httpd"
+check:output =~ 80
+cmd:lsdef -t site  -i httpport -c |awk -F"=" '{print $2}'
+cmd:/opt/xcat/share/xcat/tools/autotest/testcase/httpport/change_http_port.sh 80 8898 
+cmd:netstat -nlp|grep  -E "apache2|httpd"
+check:output =~ 8898
+check:rc==0
+cmd:chdef -t site httpport=8898
+check:rc==0
+cmd:lsdef -t site  -i httpport -c
+check:output =~ 8898
+check:rc==0
+end
+
+start:change_http_listen_port_from_8898_to_80_in_mn
+description:This test case is used to restore environment which has been modified by test case change_http_listen_port_from_80_to_8898_in_mn. This is not a regular test case, just used to set up environment.
+label:others,simulator
+cmd:netstat -nlp|grep  -E "apache2|httpd"
+check:output =~ 8898
+cmd:lsdef -t site  -i httpport -c |awk -F"=" '{print $2}'
+cmd:/opt/xcat/share/xcat/tools/autotest/testcase/httpport/change_http_port.sh  8898 80 
+cmd:netstat -nlp|grep  -E "apache2|httpd"
+check:output =~ 80 
+check:rc==0
+cmd:chdef -t site httpport=80
+check:rc==0
+cmd:lsdef -t site  -i httpport -c
+check:output =~ 80 
+check:rc==0
+end
+
+start:change_http_listen_port_from_80_to_8898_in_sn
+description:This test case is used to simulate a http service which does not use default 80 port in sn. This is not a regular test case, just used to set up environment.
+label:others,simulator
+cmd:xdsh $$SN "netstat -nlp|grep  -E 'apache2|httpd'"
+check:output =~ 80
+cmd:xdsh $$SN "lsdef -t site  -i httpport -c |awk -F'=' '{print $2}'"
+cmd:scp /opt/xcat/share/xcat/tools/autotest/testcase/httpport/change_http_port.sh $$SN:/tmp
+cmd:xdsh $$SN "ls -l /tmp/ |grep change_http_port.sh"
+cmd:xdsh $$SN "chmod +x /tmp/change_http_port.sh && /tmp/change_http_port.sh 80 8898"
+cmd:xdsh $$SN "netstat -nlp|grep  -E 'apache2|httpd' |grep 8898"
+check:output =~ 8898
+check:rc==0
+end
+
+start:change_http_listen_port_from_8898_to_80_in_sn
+description:This test case is used to restore environment which has been modified by test case change_http_listen_port_from_80_to_8898_in_sn. This is not a regular test case, just used to set up environment.
+label:others,simulator
+cmd:xdsh $$SN "netstat -nlp|grep  -E 'apache2|httpd'"
+check:output =~ 8898
+cmd:xdsh $$SN "lsdef -t site  -i httpport -c |awk -F'=' '{print $2}'"
+cmd:scp /opt/xcat/share/xcat/tools/autotest/testcase/httpport/change_http_port.sh $$SN:/tmp
+cmd:xdsh $$SN "ls -l /tmp/ |grep change_http_port.sh"
+cmd:xdsh $$SN "chmod +x /tmp/change_http_port.sh && /tmp/change_http_port.sh 8898 80"
+cmd:xdsh $$SN "netstat -nlp|grep  -E 'apache2|httpd' |grep 80"
+check:output =~ 80 
+check:rc==0
+end

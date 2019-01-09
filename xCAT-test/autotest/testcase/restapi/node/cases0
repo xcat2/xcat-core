@@ -1,11 +1,13 @@
 start:create_node_rest
 description: create a node with REST API
+label:others,restapi
 cmd:restapitest -m POST -r /nodes/restnode -d '{"groups":"all","mgt":"dfm","netboot":"yaboot"}' -u $$username -p $$password
 check:rc==201
 end
 
 start:create_node_rest2
 description: create a node with REST API failure
+label:others,restapi
 cmd:restapitest -m POST -r /nodes/restnode -d '{"groups":"all","mgt":"dfm","netboot":"yaboot"}' -u $$username -p $$password
 check:rc==147
 check:output=~"errorcode":"1"
@@ -13,6 +15,7 @@ end
 
 start:get_nodes_rest
 description: get all nodes with REST API
+label:others,restapi
 cmd:restapitest -m GET -r /nodes -u $$username -p $$password
 check:rc==200
 check:output=~"restnode"
@@ -20,6 +23,7 @@ end
 
 start:get_node_rest
 description: get single node with REST API
+label:others,restapi
 cmd:restapitest -m GET -r /nodes/restnode -u $$username -p $$password
 check:rc==200
 check:output=~"restnode"
@@ -27,12 +31,14 @@ end
 
 start:node_delete_rest
 description: delete node with REST API
+label:others,restapi
 cmd:restapitest -m DELETE -r /nodes/restnode -u $$username -p $$password
 check:rc==200
 end
 
 start:get_nodes_rest2
 description: get all nodes with REST API
+label:others,restapi
 cmd:restapitest -m GET -r /nodes -u $$username -p $$password
 check:rc==200
 check:output!~"restnode"
@@ -40,6 +46,7 @@ end
 
 start:get_node_rest2
 description: get single node with REST API
+label:others,restapi
 cmd:restapitest -m GET -r /nodes/restnode -u $$username -p $$password
 check:rc==147
 check:output=~"errorcode":"1"
@@ -47,48 +54,56 @@ end
 
 start:create_node_token_rest
 description: create a node with REST API using authentication token
+label:others,restapi
 cmd:restapitest -m POST -r /nodes/restnode -d '{"groups":"all","mgt":"dfm","netboot":"yaboot"}' -u $$username -p $$password -t
 check:rc==201
 end
 
 start:node_makehosts_rest
 description: makehosts for node with REST API
+label:others,restapi
 cmd:restapitest -m POST -r /nodes/restnode/host -u $$username -p $$password
 check:rc==201
 end
 
 start:node_makedns_rest
 description: makehosts for node with REST API
+label:others,restapi
 cmd:restapitest -m POST -r /nodes/restnode/dns -u $$username -p $$password
 check:rc==201
 end
 
 start:node_delete_dns_rest
 description: delete dns for node with REST API
+label:others,restapi
 cmd:restapitest -m DELETE -r /nodes/restnode/dns -u $$username -p $$password
 check:rc==200
 end
 
 start:node_change_attr_rest
 description: change node attribute with REST API
+label:others,restapi
 cmd:restapitest -m PUT -r /nodes/restnode -d '{"mac":"00:1a:64:54:14:80"}' -u $$username -p $$password
 check:rc==200
 end
 
 start:node_makedhcp_rest
 description: makedhcp for node with REST API
+label:others,restapi
 cmd:restapitest -m POST -r /nodes/restnode/dhcp -u $$username -p $$password
 check:rc==201
 end
 
 start:node_delete_dhcp_rest
 description: node_delete_dhcp
+label:others,restapi
 cmd:restapitest -m DELETE -r /nodes/restnode/dhcp -u $$username -p $$password
 check:rc==200
 end
 
 start:node_state_rest
 description: get node state with REST API
+label:others,restapi
 cmd:restapitest -m GET -r /nodes/$$CN/nodestat -u $$username -p $$password
 check:rc==200
 check:output=~"$$CN"
@@ -97,6 +112,7 @@ end
 
 start:node_state_token_rest
 description: get node state with REST API using authentication token
+label:others,restapi
 cmd:restapitest -m GET -r /nodes/$$CN/nodestat -u $$username -p $$password -t
 check:rc==200
 check:output=~"$$CN"
@@ -105,6 +121,7 @@ end
 
 start:get_node_rest_error
 description: get single node with REST API with invalid user or password
+label:others,restapi
 cmd:restapitest -m GET -r /nodes/restnode -u abc -p xyz
 check:rc==145
 check:output=~"error":"Authentication failure"

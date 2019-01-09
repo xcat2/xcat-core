@@ -124,7 +124,7 @@ xserver-xorg xserver-xorg/config/monitor/mode-list \
 d-i preseed/early_command string \
      { \
      echo "Running preseeding early_command Installation script..."; \
-     wget http://`cat /tmp/xcatserver`/install/autoinst/#HOSTNAME#.pre; \
+     wget http://`cat /tmp/xcatserver`#COLONHTTPPORT#/install/autoinst/#HOSTNAME#.pre; \
      chmod u+x #HOSTNAME#.pre; \
      ./#HOSTNAME#.pre; \
      umount /media || true; \
@@ -135,7 +135,7 @@ d-i preseed/late_command string \
      { \
      cat /tmp/pre-install.log >> /target/var/log/xcat/xcat.log; \
      echo "Running preseeding late_command Installation script..."; \
-     wget http://`cat /tmp/xcatserver`/install/autoinst/#HOSTNAME#.post; \
+     wget http://`cat /tmp/xcatserver`#COLONHTTPPORT#/install/autoinst/#HOSTNAME#.post; \
      chmod u+x #HOSTNAME#.post; \
      cp ./#HOSTNAME#.post /target/root/post.script; \
      mount -o bind /proc /target/proc -t proc; \

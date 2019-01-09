@@ -11,11 +11,16 @@
 #      id.rsa
 #
 # if on the Management Node, exit
+if [ -n "$LOGLABEL" ]; then
+    log_label=$LOGLABEL
+else
+    log_label="xcat"
+fi
 umask 0077
 if [ -f /etc/os-release ] && cat /etc/os-release |grep -i -e "^NAME=[ \"']*Cumulus Linux[ \"']*$" >/dev/null 2>&1 ; then
    #TODO
    echo "Cumulus OS is not supported yet, nothing to do..."
-   logger -t xcat -p local4.info "Cumulus OS is not supported yet, nothing to do..."
+   logger -t $log_label -p local4.info "Cumulus OS is not supported yet, nothing to do..."
    exit 0
 fi
 
@@ -25,7 +30,7 @@ if [ "$(uname -s|tr 'A-Z' 'a-z')" = "linux" ];then
 fi
 
 if [ -e /etc/xCATMN ]; then
-	logger -t xcat -p local4.info "remoteshell:Running on the Management Node ,  exiting "
+	logger -t $log_label -p local4.info "remoteshell:Running on the Management Node ,  exiting "
    exit 0
 fi
 # if -p input, do special PCM setup
@@ -39,7 +44,7 @@ fi
 #  Linux or if AIX call aixremoteshell -d
 if [ "$(uname -s)" = "AIX" ]; then
    ./aixremoteshell -d 2>&1
-	logger -t xcat -p local4.info "Install: On AIX , remoteshell calling aixremoteshell -d "
+	logger -t $log_label -p local4.info "Install: On AIX , remoteshell calling aixremoteshell -d "
    exit 0
 fi
 master=$MASTER
@@ -51,7 +56,7 @@ fi
 
 if [ -r /etc/ssh/sshd_config ]
 then
-	logger -t xcat -p local4.info "remoteshell:  setup /etc/ssh/sshd_config and ssh_config"
+	logger -t $log_label -p local4.info "remoteshell:  setup /etc/ssh/sshd_config and ssh_config"
 	cp /etc/ssh/sshd_config /etc/ssh/sshd_config.ORIG
         #delete all occurance of the attribute and then add xCAT settings
         echo "Match all" >>/etc/ssh/sshd_config
@@ -79,7 +84,7 @@ fi
 xcatpost="xcatpost"
 if [ -d /xcatpost/_ssh ]
 then
-	logger -p local4.info -t xcat "Install: setup root .ssh"
+	logger -p local4.info -t $log_label "Install: setup root .ssh"
 	cd /xcatpost/_ssh
 	mkdir -p /root/.ssh
 	cp -f * /root/.ssh
@@ -89,7 +94,7 @@ then
 fi
 
 if [ ! -x /usr/bin/openssl ]; then
-    logger -t xcat -p local4.err "Install: /usr/bin/openssl is not executable."
+    logger -t $log_label -p local4.err "Install: /usr/bin/openssl is not executable."
     exit 0
 fi
 allowcred.awk &
@@ -99,12 +104,12 @@ sleep 1
 #download the ssh host dsa private keys
 if [ $useflowcontrol = "1" ]; then
   #first contact daemon  xcatflowrequest <server> 3001
-  logger -t xcat -p local4.info "remoteshell: sending xcatflowrequest $master 3001"
+  logger -t $log_label -p local4.info "remoteshell: sending xcatflowrequest $master 3001"
  /$xcatpost/xcatflowrequest $master 3001
  rc=$?
- logger -t xcat -p local4.info "remoteshell:xcatflowrequest received response return=$rc"
+ logger -t $log_label -p local4.info "remoteshell:xcatflowrequest received response return=$rc"
  if [ $rc -ne 0 ]; then
-      logger -t xcat -p local4.info "remoteshell: error from xcatflowrequest, will not use flow control"
+      logger -t $log_label -p local4.info "remoteshell: error from xcatflowrequest, will not use flow control"
       useflowcontrol=0
  fi
 
@@ -117,7 +122,7 @@ grep -E '<error>' /tmp/ssh_dsa_hostkey > /dev/null 2>&1
 if [ $? -ne 0 ]; then
 	#the message received is the data
 	cat /tmp/ssh_dsa_hostkey | grep -E -v '</{0,1}errorcode>|/{0,1}data>|</{0,1}content>|</{0,1}desc>' >/etc/ssh/ssh_host_dsa_key
-	logger -t xcat -p local4.info "remoteshell: getting ssh_host_dsa_key"
+	logger -t $log_label -p local4.info "remoteshell: getting ssh_host_dsa_key"
    MAX_RETRIES=10
    RETRY=0
    MYCONT=`cat /etc/ssh/ssh_host_dsa_key`
@@ -136,12 +141,12 @@ if [ $? -ne 0 ]; then
                 fi
                 if [ $useflowcontrol = "1" ]; then
                   #first contact daemon  xcatflowrequest <server> 3001
-                  logger -t xcat -p local4.info "remoteshell: sending xcatflowrequest $master 3001"
+                  logger -t $log_label -p local4.info "remoteshell: sending xcatflowrequest $master 3001"
                   /$xcatpost/xcatflowrequest $master 3001
                   rc=$?
-                  logger -t xcat -p local4.info "remoteshell:xcatflowrequest return=$rc"
+                  logger -t $log_label -p local4.info "remoteshell:xcatflowrequest return=$rc"
                   if [ $rc -ne 0 ]; then
-                     logger -t xcat -p local4.info "remoteshell: error from xcatflowrequest, will not use flow control"
+                     logger -t $log_label -p local4.info "remoteshell: error from xcatflowrequest, will not use flow control"
                      useflowcontrol=0
                   fi
                 fi
@@ -159,19 +164,19 @@ if [ $? -ne 0 ]; then
 else
 	#the message received is an error, so parse it
 	ERR_MSG=`sed -n 's%.*<error>\(.*\)</error>.*%\1%p' /tmp/ssh_dsa_hostkey`
-	logger -s -t xcat -p local4.err Error: $ERR_MSG
+	logger -s -t $log_label -p local4.err Error: $ERR_MSG
 fi
 rm /tmp/ssh_dsa_hostkey
 
 # download the host rsa key
 if [ $useflowcontrol = "1" ]; then
   #first contact daemon  xcatflowrequest <server> 3001
-  logger -t xcat -p local4.info "remoteshell: sending xcatflowrequest $master 3001"
+  logger -t $log_label -p local4.info "remoteshell: sending xcatflowrequest $master 3001"
   /$xcatpost/xcatflowrequest $master 3001
   rc=$?
-  logger -t xcat -p local4.info "remoteshell:xcatflowrequest return=$rc"
+  logger -t $log_label -p local4.info "remoteshell:xcatflowrequest return=$rc"
   if [ $rc -ne 0 ]; then
-      logger -t xcat -p local4.info "remoteshell: error from xcatflowrequest, will not use flow control"
+      logger -t $log_label -p local4.info "remoteshell: error from xcatflowrequest, will not use flow control"
       useflowcontrol=0
   fi
 fi
@@ -183,7 +188,7 @@ grep -E '<error>' /tmp/ssh_rsa_hostkey > /dev/null 2>&1
 if [ $? -ne 0 ]; then
 	#the message received is the data we request
 	cat /tmp/ssh_rsa_hostkey | grep -E -v '</{0,1}errorcode>|/{0,1}data>|</{0,1}content>|</{0,1}desc>' >/etc/ssh/ssh_host_rsa_key
-	logger -t xcat -p local4.info ssh_rsa_hostkey
+	logger -t $log_label -p local4.info ssh_rsa_hostkey
 	MYCONT=`cat /etc/ssh/ssh_host_rsa_key`
    MAX_RETRIES=10
    RETRY=0
@@ -201,12 +206,12 @@ if [ $? -ne 0 ]; then
                 fi
                 if [ $useflowcontrol = "1" ]; then
                   #first contact daemon  xcatflowrequest <server> 3001
-                  logger -t xcat -p local4.info "remoteshell: sending xcatflowrequest $master 3001"
+                  logger -t $log_label -p local4.info "remoteshell: sending xcatflowrequest $master 3001"
                   /$xcatpost/xcatflowrequest $master 3001
                   rc=$?
-                  logger -t xcat -p local4.info "remoteshell:xcatflowrequest return=$rc"
+                  logger -t $log_label -p local4.info "remoteshell:xcatflowrequest return=$rc"
                   if [ $rc -ne 0 ]; then
-                      logger -t xcat -p local4.info "remoteshell: error from xcatflowrequest, will not use flow control"
+                      logger -t $log_label -p local4.info "remoteshell: error from xcatflowrequest, will not use flow control"
                       useflowcontrol=0
                   fi
                 fi
@@ -225,7 +230,7 @@ if [ $? -ne 0 ]; then
 else
 	#This is an error message
 	ERR_MSG=`sed -n 's%.*<error>\(.*\)</error>.*%\1%p' /tmp/ssh_rsa_hostkey`
-	logger -s -t xcat -p local4.err Error: $ERR_MSG
+	logger -s -t $log_label -p local4.err Error: $ERR_MSG
 fi
 rm /tmp/ssh_rsa_hostkey
 
@@ -237,12 +242,12 @@ if ssh-keygen -t ecdsa -f /tmp/ecdsa_key -P "" &>/dev/null ; then
   # download the host ecdsa key
   if [ $useflowcontrol = "1" ]; then
     #first contact daemon  xcatflowrequest <server> 3001
-    logger -t xcat -p local4.info "remoteshell: sending xcatflowrequest $master 3001"
+    logger -t $log_label -p local4.info "remoteshell: sending xcatflowrequest $master 3001"
     /$xcatpost/xcatflowrequest $master 3001
     rc=$?
-    logger -t xcat -p local4.info "remoteshell:xcatflowrequest return=$rc"
+    logger -t $log_label -p local4.info "remoteshell:xcatflowrequest return=$rc"
     if [ $rc -ne 0 ]; then
-      logger -t xcat -p local4.info "remoteshell: error from xcatflowrequest, will not use flow control"
+      logger -t $log_label -p local4.info "remoteshell: error from xcatflowrequest, will not use flow control"
       useflowcontrol=0
     fi
   fi
@@ -254,7 +259,7 @@ if ssh-keygen -t ecdsa -f /tmp/ecdsa_key -P "" &>/dev/null ; then
   if [ $? -ne 0 ]; then
 	#the message received is the data we request
 	cat /tmp/ssh_ecdsa_hostkey | grep -E -v '</{0,1}errorcode>|/{0,1}data>|</{0,1}content>|</{0,1}desc>' >/etc/ssh/ssh_host_ecdsa_key
-	logger -t xcat -p local4.info ssh_ecdsa_hostkey
+	logger -t $log_label -p local4.info ssh_ecdsa_hostkey
 	MYCONT=`cat /etc/ssh/ssh_host_ecdsa_key`
    MAX_RETRIES=10
    RETRY=0
@@ -272,12 +277,12 @@ if ssh-keygen -t ecdsa -f /tmp/ecdsa_key -P "" &>/dev/null ; then
                 fi
                 if [ $useflowcontrol = "1" ]; then
                   #first contact daemon  xcatflowrequest <server> 3001
-                  logger -t xcat -p local4.info "remoteshell: sending xcatflowrequest $master 3001"
+                  logger -t $log_label -p local4.info "remoteshell: sending xcatflowrequest $master 3001"
                   /$xcatpost/xcatflowrequest $master 3001
                   rc=$?
-                  logger -t xcat -p local4.info "remoteshell:xcatflowrequest return=$rc"
+                  logger -t $log_label -p local4.info "remoteshell:xcatflowrequest return=$rc"
                   if [ $rc -ne 0 ]; then
-                      logger -t xcat -p local4.info "remoteshell: error from xcatflowrequest, will not use flow control"
+                      logger -t $log_label -p local4.info "remoteshell: error from xcatflowrequest, will not use flow control"
                       useflowcontrol=0
                   fi
                 fi
@@ -304,7 +309,7 @@ if ssh-keygen -t ecdsa -f /tmp/ecdsa_key -P "" &>/dev/null ; then
   else
 	#This is an error message
 	ERR_MSG=`sed -n 's%.*<error>\(.*\)</error>.*%\1%p' /tmp/ssh_ecdsa_hostkey`
-	logger -s -t xcat -p local4.err Error: $ERR_MSG
+	logger -s -t $log_label -p local4.err Error: $ERR_MSG
   fi
   rm /tmp/ssh_ecdsa_hostkey
 fi
@@ -328,26 +333,26 @@ then
   zonename=$ZONENAME
   rootsshpvtkey=ssh_root_key:$zonename
   rootsshpubkey=ssh_root_pub_key:$zonename
-  logger -t xcat -p local4.info "remoteshell: gathering root ssh keys for $zonename"
+  logger -t $log_label -p local4.info "remoteshell: gathering root ssh keys for $zonename"
 
 fi
 
 # always get  the id_rsa.pub key for the node and put in authorized_keys
 if [ $useflowcontrol = "1" ]; then
   #first contact daemon  xcatflowrequest <server> 3001
-  logger -t xcat -p local4.info "remoteshell: sending xcatflowrequest $master 3001"
+  logger -t $log_label -p local4.info "remoteshell: sending xcatflowrequest $master 3001"
   /$xcatpost/xcatflowrequest $master 3001
   rc=$?
-  logger -t xcat -p local4.info "remoteshell:xcatflowrequest return=$rc"
+  logger -t $log_label -p local4.info "remoteshell:xcatflowrequest return=$rc"
   if [ $rc -ne 0 ]; then
-    logger -t xcat -p local4.info "remoteshell: error from xcatflowrequest, will not use flow control"
+    logger -t $log_label -p local4.info "remoteshell: error from xcatflowrequest, will not use flow control"
     useflowcontrol=0
   fi
 fi
 
   getcredentials.awk $rootsshpubkey  | grep -E -v '</{0,1}xcatresponse>|</{0,1}serverdone>'|sed -e 's/&lt;/</' -e 's/&gt;/>/' -e 's/&amp;/&/' -e 's/&quot/"/' -e "s/&apos;/'/" > /tmp/ssh_root_pub_key
 
-  logger -t xcat -p local4.info "remoteshell: gathering $rootsshpubkey "
+  logger -t $log_label -p local4.info "remoteshell: gathering $rootsshpubkey "
   #check whether the message is an error or not
   grep -E '<error>' /tmp/ssh_root_pub_key
 if [ $? -ne 0 ]; then
@@ -355,7 +360,7 @@ if [ $? -ne 0 ]; then
 	cat /tmp/ssh_root_pub_key | grep -E -v '</{0,1}errorcode>|</{0,1}data>|</{0,1}content>|</{0,1}desc>' > /root/.ssh/id_rsa.pub
         # no add to authorized_keys, so the node can ssh to itself
 	cat /tmp/ssh_root_pub_key | grep -E -v '</{0,1}errorcode>|</{0,1}data>|</{0,1}content>|</{0,1}desc>' >> /root/.ssh/authorized_keys
-	logger -t xcat -p local4.info ssh_root_pub_key
+	logger -t $log_label -p local4.info ssh_root_pub_key
 	MYCONT=`cat /root/.ssh/id_rsa.pub`
    MAX_RETRIES=10
    RETRY=0
@@ -372,12 +377,12 @@ if [ $? -ne 0 ]; then
                 fi
                 if [ $useflowcontrol = "1" ]; then
                   #first contact daemon  xcatflowrequest <server> 3001
-                  logger -t xcat -p local4.info "remoteshell: sending xcatflowrequest $master 3001"
+                  logger -t $log_label -p local4.info "remoteshell: sending xcatflowrequest $master 3001"
                   /$xcatpost/xcatflowrequest $master 3001
                   rc=$?
-                  logger -t xcat -p local4.info "remoteshell:xcatflowrequest return=$rc"
+                  logger -t $log_label -p local4.info "remoteshell:xcatflowrequest return=$rc"
                   if [ $rc -ne 0 ]; then
-                     logger -t xcat -p local4.info "remoteshell: error from xcatflowrequest, will not use flow control"
+                     logger -t $log_label -p local4.info "remoteshell: error from xcatflowrequest, will not use flow control"
                      useflowcontrol=0
                   fi
                 fi
@@ -388,34 +393,34 @@ if [ $? -ne 0 ]; then
 else
 	#This is an error message
 	ERR_MSG=`sed -n 's%.*<error>\(.*\)</error>.*%\1%p' /tmp/ssh_root_pub_key`
-	logger -t xcat -p local4.err $rootsshpubkey Error: $ERR_MSG
+	logger -t $log_label -p local4.err $rootsshpubkey Error: $ERR_MSG
 fi
 rm /tmp/ssh_root_pub_key
 
 # if sshbetweennodes is enabled then we get id_rsa ( private key)
 if [ $ENABLESSHBETWEENNODES = "YES" ];  # want nodes to be able to ssh to each other without password
 then
- logger -t xcat -p local4.info "remoteshell:sshbetweennodes is yes"
+ logger -t $log_label -p local4.info "remoteshell:sshbetweennodes is yes"
  if [ $useflowcontrol = "1" ]; then
   #first contact daemon  xcatflowrequest <server> 3001
-  logger -t xcat -p local4.info "remoteshell: sending xcatflowrequest $master 3001"
+  logger -t $log_label -p local4.info "remoteshell: sending xcatflowrequest $master 3001"
   /$xcatpost/xcatflowrequest $master 3001
   rc=$?
-  logger -t xcat -p local4.info "remoteshell:xcatflowrequest return=$rc"
+  logger -t $log_label -p local4.info "remoteshell:xcatflowrequest return=$rc"
   if [ $rc -ne 0 ]; then
-    logger -t xcat -p local4.info "remoteshell: error from xcatflowrequest, will not use flow control"
+    logger -t $log_label -p local4.info "remoteshell: error from xcatflowrequest, will not use flow control"
     useflowcontrol=0
   fi
  fi
   getcredentials.awk $rootsshpvtkey | grep -E -v '</{0,1}xcatresponse>|</{0,1}serverdone>'|sed -e 's/&lt;/</' -e 's/&gt;/>/' -e 's/&amp;/&/' -e 's/&quot/"/' -e "s/&apos;/'/" > /tmp/ssh_root_key
 
-  logger -t xcat -p local4.info "remoteshell: gathering $rootsshpvtkey "
+  logger -t $log_label -p local4.info "remoteshell: gathering $rootsshpvtkey "
   #check whether the message is an error or not
   grep -E '<error>' /tmp/ssh_root_key
   if [ $? -ne 0 ]; then
 	#The message contains the data we request
         cat /tmp/ssh_root_key | grep -E -v '</{0,1}errorcode>|/{0,1}data>|</{0,1}content>|</{0,1}desc>' > /root/.ssh/id_rsa
-	logger -t xcat -p local4.info ssh_root_key
+	logger -t $log_label -p local4.info ssh_root_key
 	MYCONT=`cat /root/.ssh/id_rsa`
    MAX_RETRIES=10
    RETRY=0
@@ -432,12 +437,12 @@ then
                 fi
                 if [ $useflowcontrol = "1" ]; then
                   #first contact daemon  xcatflowrequest <server> 3001
-                  logger -t xcat -p local4.info "remoteshell: sending xcatflowrequest $master 3001"
+                  logger -t $log_label -p local4.info "remoteshell: sending xcatflowrequest $master 3001"
                   /$xcatpost/xcatflowrequest $master 3001
                   rc=$?
-                  logger -t xcat -p local4.info "remoteshell:xcatflowrequest return=$rc"
+                  logger -t $log_label -p local4.info "remoteshell:xcatflowrequest return=$rc"
                   if [ $rc -ne 0 ]; then
-                     logger -t xcat -p local4.info "remoteshell: error from xcatflowrequest, will not use flow control"
+                     logger -t $log_label -p local4.info "remoteshell: error from xcatflowrequest, will not use flow control"
                      useflowcontrol=0
                   fi
                 fi
@@ -447,7 +452,7 @@ then
   else
 	#This is an error message
 	ERR_MSG=`sed -n 's%.*<error>\(.*\)</error>.*%\1%p' /tmp/ssh_root_key`
-	logger -t xcat -p local4.err $rootsshpvtkey Error: $ERR_MSG
+	logger -t $log_label -p local4.err $rootsshpvtkey Error: $ERR_MSG
   fi
   rm /tmp/ssh_root_key
 
@@ -458,26 +463,26 @@ then
   if [ ! -f /root/.ssh/id_rsa.pub ]; then
     if [ -r /root/.ssh/id_rsa ]; then
      ssh-keygen -y -f /root/.ssh/id_rsa > /root/.ssh/id_rsa.pub
-     logger -t xcat -p local4.err  remoteshell:transfer of the id_rsa.pub key failed. Had to generate a public key.
+     logger -t $log_label -p local4.err  remoteshell:transfer of the id_rsa.pub key failed. Had to generate a public key.
     fi
   fi
 fi
 
 # if secureroot is enabled then we get root password hash, not for updatenode
 if [ "x$SECUREROOT" = "x1" ] && [ "x$UPDATENODE" != "x1" ]; then
-  logger -t xcat -p local4.info "remoteshell: secure root is enabled"
+  logger -t $log_label -p local4.info "remoteshell: secure root is enabled"
   if [ $useflowcontrol = "1" ]; then
-    logger -t xcat -p local4.info "remoteshell: sending xcatflowrequest $master 3001"
+    logger -t $log_label -p local4.info "remoteshell: sending xcatflowrequest $master 3001"
     /$xcatpost/xcatflowrequest $master 3001
     rc=$?
     if [ $rc -ne 0 ]; then
-      logger -t xcat -p local4.info "remoteshell: error from xcatflowrequest (rc=$rc), will not use flow control"
+      logger -t $log_label -p local4.info "remoteshell: error from xcatflowrequest (rc=$rc), will not use flow control"
       useflowcontrol=0
     fi
   fi
   getcredentials.awk xcat_secure_pw:root | grep -E -v '</{0,1}xcatresponse>|</{0,1}serverdone>'|sed -e 's/&lt;/</' -e 's/&gt;/>/' -e 's/&amp;/&/' -e 's/&quot/"/' -e "s/&apos;/'/" > /tmp/secure_root_hash
 
-  logger -t xcat -p local4.info "remoteshell: gathering password hash for root"
+  logger -t $log_label -p local4.info "remoteshell: gathering password hash for root"
   #check whether the message is an error or not
   grep -E '<error>' /tmp/secure_root_hash > /dev/null
   if [ $? -ne 0 ]; then
@@ -499,11 +504,11 @@ if [ "x$SECUREROOT" = "x1" ] && [ "x$UPDATENODE" != "x1" ]; then
       fi
       if [ $useflowcontrol = "1" ]; then
         #first contact daemon  xcatflowrequest <server> 3001
-        logger -t xcat -p local4.info "remoteshell: sending xcatflowrequest $master 3001"
+        logger -t $log_label -p local4.info "remoteshell: sending xcatflowrequest $master 3001"
         /$xcatpost/xcatflowrequest $master 3001
         rc=$?
         if [ $rc -ne 0 ]; then
-          logger -t xcat -p local4.info "remoteshell: error from xcatflowrequest (rc=$rc), will not use flow control"
+          logger -t $log_label -p local4.info "remoteshell: error from xcatflowrequest (rc=$rc), will not use flow control"
           useflowcontrol=0
         fi
       fi
@@ -526,12 +531,12 @@ if [ "x$SECUREROOT" = "x1" ] && [ "x$UPDATENODE" != "x1" ]; then
   fi
   rm /tmp/secure_root_hash
   if [ "x" != "x$ERR_MSG" ]; then
-    logger -t xcat -p local4.err "Failed to acquire secure root password: $ERR_MSG"
+    logger -t $log_label -p local4.err "Failed to acquire secure root password: $ERR_MSG"
   fi
 fi
 
 # start up the sshd for syncfiles postscript to do the sync work
-logger -t xcat -p local4.info "start up sshd"
+logger -t $log_label -p local4.info "start up sshd"
 if [[ $OSVER == ubuntu* || $OSVER == debian* ]]
 then
     if [ ! -d /var/run/sshd ];then

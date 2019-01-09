@@ -67,7 +67,6 @@ Output is similar to:
  ......
 
 =item 2.
-
 To display the tree of service node hierarchy for service node "mysn01".
 
  lstree -s mysn01
@@ -80,7 +79,6 @@ Output is similar to:
  |__mycn03
 
 =item 3.
-
 To display the tree of hardware hierarchy for all the nodes.
 
  lstree -H

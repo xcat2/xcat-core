@@ -58,13 +58,11 @@ To remove zone1 from the zone table and the zonename attribute on all it's assig
  rmzone zone1
 
 =item 2.
-
 To remove zone2 from the zone table, the zone2 zonename attribute, and the zone2 group assigned to all nodes that were in zone2, enter:
 
  rmzone zone2 -g
 
 =item 3.
-
 To remove zone3 from the zone table, all the node zone attributes and  override the fact it is the defaultzone,  enter:
 
  rmzone zone3 -g -f
@@ -79,4 +77,4 @@ Location of the rmzone command.
 
 =head1 B<SEE ALSO>
 
-L <mkzone(1)|mkzone.1>,L <chzone(1)|chzone.1>,L <xdsh(1)|xdsh.1>, L<updatenode(1)|updatenode.1>
+L<mkzone(1)|mkzone.1>, L<chzone(1)|chzone.1>, L<xdsh(1)|xdsh.1>, L<updatenode(1)|updatenode.1>

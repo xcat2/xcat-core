@@ -1,5 +1,6 @@
 start:lslite_i
 description:lslite -i
+label:others,statelite
 os:Linux
 cmd:copycds $$ISO
 check:rc==0
@@ -26,6 +27,7 @@ end
 
 start:lslite_noderange
 description:lslite noderange
+label:others,statelite
 os:Linux
 cmd:mkdef -t osimage -o __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-statelite-compute -u profile=compute provmethod=statelite osvers=__GETNODEATTR($$CN,os)__
 check:rc==0
@@ -52,6 +54,7 @@ end
 start:lslite_h
 os:Linux
 description:lslite -h and --help
+label:others,statelite
 cmd:lslite -h
 check:output=~usage|Usage
 cmd:lslite --help

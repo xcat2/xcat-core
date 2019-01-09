@@ -59,11 +59,31 @@ setup_docker()
         #workaround as the public repo has issue to install container-selinux
         yum install -y http://ftp.unicamp.br/pub/ppc64el/rhel/7/docker-ppc64el/container-selinux-2.9-4.el7.noarch.rpm
         yum install -y docker-ce bridge-utils initscripts
-        service docker start
-        sleep 5
 
     else
         echo "Error: not supported platform."
+        return
+    fi
+
+    systemctl start docker
+    sleep 5
+
+    local x=1
+    while [ $x -le 5 ]
+    do
+        echo "Waiting for docker daemon up: $x times"
+        systemctl is-active docker >/dev/null 2>&1
+        if [[ $? -eq 0 ]]; then
+            x=0
+            break
+        fi
+        sleep 5
+        x=$(( $x + 1 ))
+    done
+
+    if [[ $x -gt 0 ]]; then
+        echo "Error: The docker daemon is not up."
+        return
     fi
 
     # Create the bridge network for testing, and add the physical interface inside

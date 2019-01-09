@@ -1,13 +1,13 @@
 start:mkdef_null
 description:mkdef without any flag
-label:mn_only,db
+label:mn_only,ci_test,db
 cmd:mkdef
 check:output=~Usage
 end
 
 start:mkdef_node
 description:mkdef -t node
-label:mn_only,db
+label:mn_only,ci_test,db
 cmd:mkdef -t node -o testnode,testnode1 groups=all,aix
 check:rc==0
 cmd:lsdef -i groups testnode
@@ -21,7 +21,7 @@ end
 
 start:mkdef_f
 description:mkdef -f
-label:mn_only,db
+label:mn_only,ci_test,db
 cmd:mkdef -t node -o testnode groups=all,aix
 check:rc==0
 cmd:mkdef -f -t node -o testnode nodetype=lpar,osi groups=all
@@ -35,7 +35,7 @@ end
 
 start:mkdef_z
 description:mkdef -z
-label:mn_only,db
+label:mn_only,ci_test,db
 cmd:mkdef -t node -o orignode mgt=fsp cons=hmc pprofile=orignode groups=lpar,all
 check:rc==0
 cmd:lsdef -l orignode -z > /tmp/orignode.stanza
@@ -55,7 +55,7 @@ end
 
 start:mkdef_group
 description: mkdef static node group
-label:mn_only,db
+label:mn_only,ci_test,db
 cmd:mkdef -t node -o testnode1-testnode2 mgt=hmc cons=hmc groups=all,systemp
 check:rc==0
 cmd:mkdef -t node -o testnode3-testnode4 mgt=ipmi cons=ipmi groups=all,systemx
@@ -94,7 +94,7 @@ end
 
 start:mkdef_dynamic_group
 description:mkdef with dynamic node group
-label:mn_only,db
+label:mn_only,ci_test,db
 cmd:mkdef -t node -o testnode1-testnode2 mgt=hmc cons=hmc groups=all,systemp
 check:rc==0
 cmd:mkdef -t node -o testnode3-testnode4 mgt=ipmi cons=ipmi groups=all,systemx
@@ -131,7 +131,7 @@ end
 
 start:mkdef_multiple_keys
 description:mkdef support for multiple keys in a table, such as ppcdirect
-label:mn_only,db
+label:mn_only,ci_test,db
 cmd: mkdef -t node -o testfsp mgt=fsp cons=fsp groups=all,fsp nodetype=fsp passwd.HMC=abc123 passwd.general=abc123 passwd.admin=abc123
 check:rc==0
 cmd:lsdef testfsp
@@ -145,7 +145,7 @@ end
 
 start:mkdef_t_network
 description: mkdef -t network
-label:mn_only,db
+label:mn_only,ci_test,db
 cmd:mkdef -t network -o testnetwork net=1.2.3.0 mask=255.255.255.0 gateway=1.2.3.1
 check:rc==0
 cmd:lsdef -t network
@@ -159,9 +159,55 @@ check:output=~gateway=1.2.3.1
 cmd:rmdef -t network testnetwork
 end
 
+start:mkdef_netname_exist
+os:Linux
+description:test mkdef works as design when netname exists.
+label:mn_only,ci_test,db
+cmd:netname=`lsdef -t network |cut -d" " -f1 |sed -n '1p'`;mkdef -t network -o $netname 
+check:rc==1
+end
+
+start:mkdef_netname_notexist_without_net_mask
+os:Linux
+description:test mkdef works as design when net and mask is not defined.
+label:mn_only,ci_test,db
+cmd:mkdef -t network -o testnetworkwithoutnetandmask 
+check:rc!=0
+check:output=~Error
+cmd:mkdef -t network -o testnetworkwithoutnetandmask mtu=1500
+check:rc!=0
+check:output=~Net or mask value should not be empty
+cmd:mkdef -t network -o testnetworkwithoutnetandmask net=10.0.0.0 mtu=1500
+check:rc!=0
+check:output=~Net or mask value should not be empty
+cmd:mkdef -t network -o testnetworkwithoutnetandmask mask=255.0.0.0 mtu=1500
+check:rc!=0
+check:output=~Net or mask value should not be empty
+cmd:mkdef -t network -o testnetworkwithoutnetandmask net=100.0.0.1 mask=255.0.0.0 mtu=1500
+check:rc==0
+check:output=~1 object definitions have been created or modified
+cmd:lsdef -t network -z testnetworkwithoutnetandmask |tee /tmp/testnetworkwithoutnetandmask.stanza
+check:rc==0
+cmd:cat /tmp/testnetworkwithoutnetandmask.stanza|mkdef -z
+check:rc!=0
+check:output=~(already exists)
+cmd:rmdef -t network testnetworkwithoutnetandmask
+check:rc==0
+end
+
+start:mkdef_networks_if_net_mask_exists
+os:Linux
+description:test makenetworks works as design when net and mask exists. The network could not be created since net and mask are
+the same.
+label:mn_only,ci_test,db
+cmd:netname=`lsdef -t network |cut -d" " -f1 |sed -n '1p'`;net=`lsdef -t network -o $netname |grep -i net |awk -F = '{print $2}'`;mask=`lsdef -t network -o $netname |grep -i mask |awk -F = '{print $2}'`;mkdef -t network -o testnetworkwithnetandmask net=$net mask=$mask
+check:rc!=0
+check:output=~(already exists)
+end
+
 start:mkdef_t_o_error
 description:mkdef -t wrongtype
-label:mn_only,db
+label:mn_only,ci_test,db
 cmd:mkdef -t wrongtype -o testnode groups=all,aix
 check:rc!=0
 check:output=~not a valid
@@ -170,7 +216,7 @@ end
 
 start:mkdef_template_switch_template_without_attribute
 description:create a node with swtich template without any attributes
-label:mn_only,db
+label:mn_only,ci_test,db
 cmd:result=`lsdef | grep  auto_test_node_1`; if [[ $result =~ "auto_test_node_1" ]]; then echo $result; noderm auto_test_node_1; fi
 cmd:mkdef -t node -o auto_test_node_1 --template switch-template
 check:rc==0
@@ -193,7 +239,7 @@ end
 
 start:mkdef_template_cec_template_without_remainder
 description:create a node with cec template once
-label:mn_only,db
+label:mn_only,ci_test,db
 cmd:result=`lsdef | grep  auto_test_cec_node_1`; if [[ $result =~ "auto_test_cec_node_1" ]]; then echo $result; noderm auto_test_cec_node_1; fi
 cmd:mkdef -t node -o auto_test_cec_node_1 --template cec-template serial=test mtm=test hcp=test
 check:rc==0
@@ -216,7 +262,7 @@ end
 
 start:mkdef_template_invalid_template
 description:create a node with invalid template
-label:mn_only,db
+label:mn_only,ci_test,db
 cmd:result=`lsdef | grep  auto_test_node`; if [[ $result =~ "auto_test_node" ]]; then echo $result; noderm auto_test_node; fi
 cmd:result=`lsdef | grep  auto_test_invalid_template`; if [[ $result =~ "auto_test_invalid_template" ]]; then echo $result; noderm auto_test_invalid_template; fi
 cmd:lsdef --template auto_test_invalid_template
@@ -229,7 +275,7 @@ end
 
 start:mkdef_node_with_a_node_template
 description:create a node with a node template, using cec template to create node at beginning
-label:mn_only,db
+label:mn_only,ci_test,db
 cmd:result=`lsdef | grep  auto_test_cec_node_1`; if [[ $result =~ "auto_test_cec_node_1" ]]; then echo $result; noderm auto_test_cec_node_1; fi
 cmd:result=`lsdef | grep  auto_test_cec_node_2`; if [[ $result =~ "auto_test_cec_node_2" ]]; then echo $result; noderm auto_test_cec_node_2; fi
 cmd:mkdef -t node -o auto_test_cec_node_1 --template cec-template serial=test mtm=test hcp=test groups=test_template

@@ -1,0 +1,8 @@
+route:
+  autotestnet:
+    gateway: 0.0.0.0
+    ifname: eth1
+    mask: 255.0.0.0
+    net: 100.0.0.0
+    usercomment: hello world
+schema_version: '2.0'

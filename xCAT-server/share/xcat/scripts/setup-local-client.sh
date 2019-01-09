@@ -1,3 +1,4 @@
+#!/bin/bash
 # IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
 # set up credentials for user to be able to run xCAT commands
 # Must be run by root

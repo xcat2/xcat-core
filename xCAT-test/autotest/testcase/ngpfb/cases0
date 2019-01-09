@@ -2,6 +2,7 @@
 #this case is just supplement for some commands,after your executing,check output from log
 start:lsslp_cmm
 description:for part of ngp firebird commands
+label:others,hctrl_fsp
 cmd:makedhcp -n
 check:rc==0
 check:output!=Error
@@ -13,6 +14,7 @@ end
 
 start:rspconfig_snmp_ssh
 description:rspconfig snmpcfg sshcfg
+label:others,hctrl_fsp
 cmd:makehosts cmm
 check:rc==0
 cmd:makedns cmm
@@ -32,6 +34,7 @@ end
 
 start:rscan_cmm
 description:rscan cmm
+label:others,hctrl_fsp
 cmd:rscan cmm
 check:rc==0
 cmd:rscan cmm -z
@@ -42,6 +45,7 @@ check:rc==0
 end
 
 start:rspconfig_network
+label:others,hctrl_fsp
 cmd:rspconfig $$CN network=*
 check:rc==0
 check:output=~OK
@@ -49,6 +53,7 @@ end
 
 start:rspconfig_textid
 description:rspconfig textid
+label:others,hctrl_fsp
 cmd:rspconfig $$CN textid=abc123
 check:rc==0
 cmd:sleep 20
@@ -70,6 +75,7 @@ end
 
 start:rspconfig_hwconn
 description:for hwconn
+label:others,hctrl_fsp
 cmd:rmhwconn $$CN
 check:rc==0
 check:rc!~(state=LINE UP)
@@ -92,6 +98,7 @@ end
 
 start:rpower_bladenode
 description:rpower
+label:others,hctrl_fsp
 cmd:rpower $$CN off
 check:rc==0
 cmd:sleep 50
@@ -104,6 +111,7 @@ end
 
 start:rspconfig_solcfg
 description:for solcfg
+label:others,hctrl_fsp
 cmd:rspconfig cmm solcfg=enable
 check:rc==0
 cmd:rspconfig cmm solcfg
@@ -118,6 +126,7 @@ end
 
 start:getmacs_d_blade
 description:getmacs
+label:others,hctrl_fsp
 cmd:makeconservercf
 check:rc==0
 cmd:chdef $$CN getmac=blade
@@ -132,6 +141,7 @@ end
 
 start:rinv_firm_fb
 description:check firmware level
+label:others,hctrl_fsp
 cmd:rinv $$CN firm
 check:rc==0
 cmd:rvitals $$CN all

@@ -1230,7 +1230,7 @@ sub parse_args {
         my $option_s;
         GetOptions( 's' => \$option_s );
         return ([ 1, "The -s option is not supported for OpenBMC." ]) if ($option_s);
-        if ( "resolved" ~~ @ARGV) {
+        if ( "resolved=" ~~ @ARGV) {
             return ([ 1, "$usage_errormsg $reventlog_no_id_resolved_errormsg" ]);
         }
         return ([ 1, "Only one option is supported at the same time for $command" ]);
@@ -1243,7 +1243,7 @@ sub parse_args {
 
     if ($command eq "rbeacon") {
         unless ($subcommand =~ /^on$|^off$|^stat$/) {
-	    return ([ 1, "Only 'on', 'off' or 'stat' are supported for OpenBMC managed nodes."]);
+	    return ([ 1, "Only 'on', 'off' and 'stat' are supported for OpenBMC managed nodes."]);
         }
     } elsif ($command eq "rpower") {
         unless ($subcommand =~ /^on$|^off$|^softoff$|^reset$|^boot$|^bmcreboot$|^bmcstate$|^status$|^stat$|^state$/) {
@@ -1291,6 +1291,22 @@ sub parse_args {
             if ($::RSPCONFIG_CONFIGURED_API_KEY ne -1) {
                 return ([ 1, "Can not query $api_config_info{$::RSPCONFIG_CONFIGURED_API_KEY}{subcommand} information with other options at the same time" ]) if ($#ARGV > 1);
                 # subcommand defined in the configured API hash, return from here, the RSPCONFIG_CONFIGURED_API_KEY is the key into the hash
+                if ($subcommand =~ /(\w+)=(.*)/) {
+                    my $subcommand_key = $1;
+                    my $subcommand_value = $2;
+                    my $error_msg = "Invalid value '$subcommand_value' for '$subcommand_key'";
+                    my @valid_values = sort (keys %{ $api_config_info{$::RSPCONFIG_CONFIGURED_API_KEY}{attr_value} });
+                    if (!@valid_values) {
+                        if ($api_config_info{$::RSPCONFIG_CONFIGURED_API_KEY}{type} eq "boolean") {
+                            @valid_values = (0, 1);
+                        } else {
+                            return ([1, "$error_msg"]);
+                        }
+                    }
+                    if (! grep { $_ eq $subcommand_value } @valid_values ) {
+                        return ([1, "$error_msg, Valid values: " . join(",", @valid_values)]);
+                    }
+                }
                 return;
             }
             elsif ($subcommand =~ /^(\w+)=(.*)/) {
@@ -1729,14 +1745,16 @@ sub parse_command_status {
                 }
                 else {
                     # Everything else is invalid
-                        xCAT::SvrUtils::sendmsg([1, "Invalid value '$subcommand_value' for '$subcommand_key'"], $callback);
+                        my $error_msg = "Invalid value '$subcommand_value' for '$subcommand_key'";
                         my @valid_values = keys %{ $api_config_info{$::RSPCONFIG_CONFIGURED_API_KEY}{attr_value} };
                         if (!@valid_values) {
                             if ($api_config_info{$::RSPCONFIG_CONFIGURED_API_KEY}{type} eq "boolean") {
-                                xCAT::SvrUtils::sendmsg([1, "Valid values: 0,1"], $callback);
+                                xCAT::SvrUtils::sendmsg([1, "$error_msg, Valid values: 0,1"], $callback);
+                            } else {
+                                xCAT::SvrUtils::sendmsg([1, "$error_msg"], $callback);
                             }
                         } else {
-                            xCAT::SvrUtils::sendmsg([1, "Valid values: " . join(",", @valid_values)], $callback);
+                            xCAT::SvrUtils::sendmsg([1, "$error_msg, Valid values: " . join(",", @valid_values)], $callback);
                         }
                         return 1;
                 }
@@ -1782,7 +1800,7 @@ sub parse_command_status {
                 $next_status{RSPCONFIG_GET_REQUEST} = "RSPCONFIG_GET_RESPONSE";
 
                 $status_info{RSPCONFIG_SET_HOSTNAME_REQUEST}{data} = $1;
-                $status_info{RSPCONFIG_SET_RESPONSE}{argv} = "Hostname";
+                $status_info{RSPCONFIG_SET_RESPONSE}{argv} = "BMC Hostname";
                 $status_info{RSPCONFIG_GET_RESPONSE}{argv} = "hostname";
                 return 0;
             }
@@ -2530,7 +2548,7 @@ sub deal_with_response {
                         $cur_url = $status_info{REVENTLOG_RESOLVED_REQUEST}{init_url};
                     }
                     my $log_id = (split ('/', $cur_url))[5];
-                    $error = "Invalid ID=$log_id provided to be resolved. [$::RESPONSE_FORBIDDEN]";
+                    $error = "Invalid ID: $log_id provided to be resolved. [$::RESPONSE_FORBIDDEN]";
                 } else{
                     $error = "$::RESPONSE_FORBIDDEN - Requested endpoint does not exist or may indicate function is not yet supported by OpenBMC firmware.";
                 }
@@ -3320,7 +3338,7 @@ sub reventlog_response {
         }
         else {
             # Return if there are no entries with callout data
-            xCAT::SvrUtils::sendmsg("There are no event log entries contributing to LED fault", $callback, $node);
+            xCAT::SvrUtils::sendmsg([1, "No event log entries needed to be resolved"], $callback, $node);
             $wait_node_num--;
             return;
         }
@@ -3878,7 +3896,7 @@ sub rspconfig_api_config_response {
                     my $last_component = $attr_value[-1];
                     my @valid_values = values %{ $api_config_info{$::RSPCONFIG_CONFIGURED_API_KEY}{attr_value} };
                     if ($value) {
-                        xCAT::SvrUtils::sendmsg($api_config_info{$::RSPCONFIG_CONFIGURED_API_KEY}{display_name} . " : $last_component", $callback, $node);
+                        xCAT::SvrUtils::sendmsg($api_config_info{$::RSPCONFIG_CONFIGURED_API_KEY}{display_name} . ": $last_component", $callback, $node);
                         my $found = grep(/$value/, @valid_values);
                         if ($found eq 0) {
                             # Received data value not expected
@@ -4113,7 +4131,7 @@ sub rspconfig_dump_response {
     if ($node_info{$node}{cur_status} eq "RSPCONFIG_DUMP_CLEAR_RESPONSE") {
         if ($response_info->{'message'} eq $::RESPONSE_OK) {
             my $dump_id = $status_info{RSPCONFIG_DUMP_CLEAR_RESPONSE}{argv};
-            xCAT::MsgUtils->message("I", { data => ["[$dump_id] clear"] }, $callback) unless ($next_status{ $node_info{$node}{cur_status} });
+            xCAT::MsgUtils->message("I", { data => ["$node: [$dump_id] clear"] }, $callback) unless ($next_status{ $node_info{$node}{cur_status} });
         } else {
             my $error_msg = "Could not clear BMC diagnostics successfully (". $response_info->{'message'} . ")";
             xCAT::MsgUtils->message("W", { data => ["$node: $error_msg"] }, $callback) if ($next_status{ $node_info{$node}{cur_status} });

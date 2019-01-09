@@ -8,3 +8,4 @@ Advanced Operations
    rvitals.rst
    rflash/index.rst
    rspconfig.rst
+   reventlog.rst

@@ -264,7 +264,7 @@ Get the BMC backup gateway ip address.
 
 =item B<community>={B<public> | I<string>}
 
-Get or set the SNMP commmunity value. The default is B<public>.
+Get or set the SNMP community value. The default is B<public>.
 
 =item B<date>=I<mm:dd:yyy>
 
@@ -348,7 +348,7 @@ Get or set hostname on the service processor.
 
 =item B<vlan>
 
-Get or set vlan ID. For get vlan ID, if vlan is not enabled, 'BMC VLAN disabled' will be outputed. For set vlan ID, the valid value are [1-4096].
+Get or set vlan ID. For get vlan ID, if vlan is not enabled, 'BMC VLAN disabled' will be displayed. For set vlan ID, the valid value are [1-4096].
 
 =item B<ipsrc>
 
@@ -855,7 +855,6 @@ To force service processor failover for cec01:
  cec01: 192.168.2.2: sp=primary,ipadd=192.168.2.2,alt_ipadd=unavailable,state=LINE UP
 
 =item 27.
-
 To deconfigure memory bank 9 and 10 of Processing Unit 0 on mm01:
 
  rspconfig mm01 memdecfg=deconfigure:bank:0:9,10
@@ -865,7 +864,6 @@ Output is similar to:
  mm01: Success
 
 =item 28.
-
 To reset the network interface of the specified nodes:
 
  rspconfig --resetnet

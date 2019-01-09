@@ -87,8 +87,9 @@ sub do_main_job {
     $rc |= $rst;
 
     #check important directory
-    $rst = check_directory(\%sitetable, \$checkpoint, \@error);
-    print_check_result($checkpoint, "f", $rst, \@error);
+    ($rst, $flag) = check_directory(\%sitetable, \$checkpoint, \@error);
+    print_check_result($checkpoint, $flag, $rst, \@error);
+    $rst = 0 if ($flag == "w");
     $rc |= $rst;
 
     #check if SElinux is disabled
@@ -102,8 +103,9 @@ sub do_main_job {
     $rc |= $rst;
 
     #check tftp service
-    $rst = check_tftp_service($installnicip, \$checkpoint, \@error);
-    print_check_result($checkpoint, "f", $rst, \@error);
+    ($rst, $flag) = check_tftp_service($installnicip, \$checkpoint, \@error);
+    print_check_result($checkpoint, $flag, $rst, \@error);
+    $rst = 0 if ($flag == "w");
     $rc |= $rst;
 
     #check DNS service
@@ -375,19 +377,28 @@ sub check_site_table {
     $$checkpoint_ref = "Checking 'site' table is configured...";
     @$error_ref = ();
 
-    my @attr_list = ("master", "domain", "installdir", "tftpdir");
+    my @attr_list = ("master", "domain", "installdir", "tftpdir", "sharedtftp", "installloc");
     foreach my $attr (@attr_list) {
         my $value;
         $value = `lsdef -t site -i $attr -c 2>&1 | awk -F'=' '{print \$2}'`;
         chomp($value);
         if ($value eq "") {
-            push @$error_ref, "There isn't '$attr' definition in 'site' table";
-            $rst = 1;
-        } else {
-            if (($attr eq "master") and (!probe_utils->is_ip_addr("$value"))) {
-                push @$error_ref, "The value of 'master' in 'site' table isn't an IP addres";
+            if ($attr ne "sharedtftp" and $attr ne "installloc") {
+                push @$error_ref, "There isn't '$attr' definition in 'site' table";
                 $rst = 1;
             }
+        } else {
+            if (($attr eq "master") and (!xCAT::NetworkUtils->isIpaddr("$value"))) {
+                my $masterip = xCAT::NetworkUtils->getipaddr("$value");
+                if (! defined $masterip){
+                    push @$error_ref, "The value of 'master' in 'site' table isn't an IP addres and can not be resolved to a IP addres";
+                    $rst = 1;
+                }else{
+                    probe_utils->send_msg("$output", "i", "The value of 'master' in 'site' table is $value,  can be resolve to $masterip") if($verbose);
+                    $value = $masterip;
+                }
+            }
+
             $sitetable_ref->{$attr} = $value;
         }
     }
@@ -522,6 +533,7 @@ sub check_directory {
     my $checkpoint_ref =  shift;
     my $error_ref     = shift;
     my $rst           = 0;
+    my $flag          = "f";
 
     my @dir_list = ("installdir", "tftpdir");
     my $dir_list_str = join(",",@dir_list);
@@ -538,29 +550,67 @@ sub check_directory {
                 $rst = 1;
             } else {
                 if ($is_sn) {
-                    my $mountoutput = `mount  2>&1| grep '$sitetable_ref->{$dir}'`;
-                    chomp($mountoutput);
+                    if (($dir eq "tftpdir" and $sitetable_ref->{sharedtftp} eq "1") or
+                        ($dir eq "installdir" and $sitetable_ref->{installloc})) {
+                        my $mountoutput = `mount  2>&1| grep '$sitetable_ref->{$dir}'`;
+                        chomp($mountoutput);
 
-                    my $mountip;
-                    if ($mountoutput =~ /(.+):$sitetable_ref->{$dir} on $sitetable_ref->{$dir} /) {
-                        my $mountsource = $1;
-                        if (xCAT::NetworkUtils->isIpaddr($mountsource)) {
-                            $mountip = $mountsource;
-                        } else {
-                            $mountip = xCAT::NetworkUtils->getipaddr($mountsource);
+                        my $mountip;
+                        if ($mountoutput =~ /(.+):$sitetable_ref->{$dir} on $sitetable_ref->{$dir} /) {
+                            my $mountsource = $1;
+                            if (xCAT::NetworkUtils->isIpaddr($mountsource)) {
+                                $mountip = $mountsource;
+                            } else {
+                                $mountip = xCAT::NetworkUtils->getipaddr($mountsource);
+                            }
                         }
-                    }
 
-                    if ($mountip ne $sitetable_ref->{master}) {
-                        push @$error_ref, "$dir '$sitetable_ref->{$dir}' isn't mounted from the management node,please check SN's configuration";
-                        $rst = 1;
+                        if ($mountip ne $sitetable_ref->{master}) {
+                            push @$error_ref, "$dir '$sitetable_ref->{$dir}' isn't mounted from the management node,please check SN's configuration";
+                            $rst = 1;
+                        }
+                    } elsif (($dir eq "tftpdir" and $sitetable_ref->{sharedtftp} ne "1") or
+                             ($dir eq "installdir" and !$sitetable_ref->{installloc})) {
+                        my $tmpdir = "/tmp/tmp_$dir";
+                        mkdir($tmpdir);
+                        my $mountrst = `mount $sitetable_ref->{master}:$sitetable_ref->{$dir} $tmpdir 2>&1`;
+                        if ($?) {
+                            push @$error_ref, "mount $sitetable_ref->{master}:$sitetable_ref->{$dir} $tmpdir failed";
+                            $flag = "w" if (!$rst);
+                            $rst = 1;
+                        } else {
+                            my $dir_list_file = "/tmp/$dir" . "_list";
+                            my $mnt_list_file = $tmpdir . "_list";
+                            my $error; 
+                            if (probe_utils->list_files_to_file($sitetable_ref->{$dir}, $dir_list_file, \$error)) {
+                                push @$error_ref, "$error";
+                                $flag = "w" if (!$rst);
+                                $rst = 1;
+                            } elsif (probe_utils->list_files_to_file($tmpdir, $mnt_list_file, \$error)) {
+                                push @$error_ref, "$error";
+                                $flag = "w" if (!$rst);
+                                $rst = 1;
+                            } else {
+                                `sed -i "s|^$tmpdir|$sitetable_ref->{$dir}|g" $mnt_list_file`;
+                                my $diffout = `diff $dir_list_file $mnt_list_file`;
+                                if ($diffout) {
+                                    push @$error_ref, "$dir '$sitetable_ref->{$dir}' is not the same with MN's, may be error";
+                                    $flag = "w" if (!$rst);
+                                    $rst = 1;
+                                }
+                            }
+                            `umount $tmpdir`;
+                            unlink($dir_list_file) if (-e "$dir_list_file");
+                            unlink($mnt_list_file) if (-e "$mnt_list_file");
+                            rmdir($tmpdir);
+                        }
                     }
                 }
             }
         }
     }
 
-    return $rst;
+    return ($rst, $flag);
 }
 
 
@@ -665,10 +715,18 @@ sub check_http_service {
         push @$error_ref, "HTTP check need 'wget' tool, please install 'wget' tool and try again";
     } else {
         {
-            my $installdir = `lsdef -t site -i installdir -c 2>&1 | awk -F'=' '{print \$2}'`;
-            chomp($installdir);
+            my $httpinfo = `lsdef -t site -i installdir,httpport -c 2>&1`;
+            my $installdir = "";
+            my $httpport = 80;
+            if ($httpinfo =~ /clustersite: installdir=(\S*)/) {
+                $installdir = $1;
+            }
+            if ($httpinfo =~ /clustersite: httpport=(\S*)/) {
+                $httpport = $1;
+            }
+
             unless($installdir){
-                push @$error_ref, "HTTP work path(installdir) isn't configured in 'sit' table";
+                push @$error_ref, "HTTP work path(installdir) isn't configured in 'site' table";
                 last;
             }
 
@@ -678,7 +736,7 @@ sub check_http_service {
             }
 
             my $errormsg;
-            unless(probe_utils->is_http_ready("$serverip", $installdir, \$errormsg)) {
+            unless(probe_utils->is_http_ready("$serverip", $httpport, $installdir, \$errormsg)) {
                 push @$error_ref, "$errormsg";
                 last;
             }
@@ -696,6 +754,7 @@ sub check_tftp_service {
     my $checkpoint_ref =  shift;
     my $error_ref = shift;
     my $rst       = 1;
+    my $flag      = 'f';
 
     $$checkpoint_ref = "Checking TFTP service is configured...";
     @$error_ref = ();
@@ -726,10 +785,17 @@ sub check_tftp_service {
                     push @$error_ref, "There isn't '$tftpdir' directory on current server";
                     last;
                 }
+                my $tftp_ps = `ps aux 2>&1| grep tftp | grep xcat |grep -v grep`;
+                if (!$tftp_ps) {
+                    push @$error_ref, "TFTP service based on xCAT is not running";
+                    $flag = 'w';
+                }
                 unless(probe_utils->is_tftp_ready("$serverip", $tftpdir)) {
-                    push @$error_ref, "TFTP service isn't ready on $serverip";
+                    push @$error_ref, "TFTP service isn't ready on $serverip, stop tftp service and start it by restarting xcatd";
+                    $flag = 'f';
                     last;
                 }
+                last if ($flag eq 'w');
                 $rst = 0;
             }
         }
@@ -737,7 +803,7 @@ sub check_tftp_service {
         $rst = 2;
     }
 
-    return $rst;
+    return ($rst, $flag);
 }
 
 sub check_rsyslog_service {
@@ -839,13 +905,22 @@ sub check_ntp_service{
     $$checkpoint_ref = "Checking NTP service is configured...";
     @$error_ref = ();
 
-    `which ntpq > /dev/null 2>&1`;
+    `which chronyc > /dev/null 2>&1`;
     if($?){
-        push @$error_ref, "ntp service check need 'ntpq' tool, please install 'ntpq' toll and try again";
-        $rst = 1;
-    }else{
+        `which ntpq > /dev/null 2>&1`;
+        if ($?) {
+            push @$error_ref, "ntp service check need 'ntpq' or 'chronyc' tool, please install and try again";
+            $rst = 1;
+        } else {
+            my $error;
+            if(!probe_utils->is_ntp_ready(\$error)){
+                push @$error_ref, "$error";
+                $rst = 1;
+            }
+        }
+    } else{
         my $error;
-        if(!probe_utils->is_ntp_ready(\$error)){
+        if(!probe_utils->is_chrony_ready(\$error)){
             push @$error_ref, "$error";
             $rst = 1;
         }
@@ -1143,7 +1218,7 @@ sub get_attribute_value  {
     if ($command_info =~ /$attr=(\d+)/) {
         $cmd_value = $1
     }
-    print_check_result("Checking $table table attribute... $attr=$cmd_value", 0, 0, \@error);
+    probe_utils->send_msg("$output", "i", "Checking $table table attribute... $attr=$cmd_value") if($verbose);
     return $cmd_value
 }
 
@@ -1272,7 +1347,7 @@ while ($hierarchy_instance->read_reply(\%reply_cache)) {
                 #print ">>>$reply_cache{$servers}->[$_]<<<\n";
                 #For cases like below:
                 #c910f02c04p04: [ok]     :All xCAT daemons are running
-                if ($reply_cache{$servers}->[$_] =~ /^(\w+)\s*:\s*(\[\w+\]\s*):\s*(.*)/) {
+                if ($reply_cache{$servers}->[$_] =~ /^(\S+)\s*:\s*(\[\w+\]\s*):\s*(.*)/) {
                     if ("$1" eq "$server") {
                         $logmsg = "$2: $3";
                         $msg    = "$2:[$server]: $3";
@@ -1280,7 +1355,7 @@ while ($hierarchy_instance->read_reply(\%reply_cache)) {
 
                     #For cases like below:
                     #sn02: ssh: connect to host sn02 port 22: No route to host
-                } elsif ($reply_cache{$servers}->[$_] =~ /^(\w+)\s*:\s*(ssh:.+)/){
+                } elsif ($reply_cache{$servers}->[$_] =~ /^(\S+)\s*:\s*(ssh:.+)/){
                     if("$1" eq "$server") {
                         $logmsg = "$2";
                         $msg    = "[failed] :[$server]: $2";
@@ -1288,7 +1363,7 @@ while ($hierarchy_instance->read_reply(\%reply_cache)) {
 
                     #For cases like below:
                     #c910f02c04p05: IT IS POSSIBLE THAT SOMEONE IS DOING SOMETHING NASTY!
-                } elsif ($reply_cache{$servers}->[$_] =~ /^(\w+)\s*:\s*(.*)/) {
+                } elsif ($reply_cache{$servers}->[$_] =~ /^(\S+)\s*:\s*(.*)/) {
                     if ("$1" eq "$server") {
                         $logmsg = "$2";
                         $msg    = "[$server]: $2";

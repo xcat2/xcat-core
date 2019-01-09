@@ -1,0 +1,126 @@
+start: xcat_inventory_import_validation_site
+description: verify the validation mechanisom while importing site object
+label:others,inventory_ci
+cmd: rm -rf /tmp/xcat_inventory_import_validation_site
+cmd: mkdir -p /tmp/xcat_inventory_import_validation_site
+cmd: mkdir -p /tmp/xcat_inventory_import_validation_site/trash/
+cmd: mkdir -p /tmp/xcat_inventory_import_validation_site/backup/
+cmd: lsdef -t site -o clustersite -z 2>/dev/null  >/tmp/xcat_inventory_import_validation_site/backup/clustersite.stanza
+
+cmd: /opt/xcat/share/xcat/tools/autotest/testcase/xcat_inventory/validatehelper "site" "clustersite" "dbtracelevel" "0" "/tmp/xcat_inventory_import_validation_site/trash/"
+check: rc==0
+cmd: /opt/xcat/share/xcat/tools/autotest/testcase/xcat_inventory/validatehelper "site" "clustersite" "dbtracelevel" "1" "/tmp/xcat_inventory_import_validation_site/trash/"
+check: rc==0
+cmd: /opt/xcat/share/xcat/tools/autotest/testcase/xcat_inventory/validatehelper "site" "clustersite" "dbtracelevel" "2" "/tmp/xcat_inventory_import_validation_site/trash/"
+check: rc==0
+cmd: /opt/xcat/share/xcat/tools/autotest/testcase/xcat_inventory/validatehelper "site" "clustersite" "dbtracelevel" "3" "/tmp/xcat_inventory_import_validation_site/trash/"
+check: rc==0
+cmd: /opt/xcat/share/xcat/tools/autotest/testcase/xcat_inventory/validatehelper "site" "clustersite" "dbtracelevel" "4" "/tmp/xcat_inventory_import_validation_site/trash/"
+check: rc==0
+cmd: /opt/xcat/share/xcat/tools/autotest/testcase/xcat_inventory/validatehelper "site" "clustersite" "dbtracelevel" "invalid" "/tmp/xcat_inventory_import_validation_site/trash/"
+check: rc!=0
+cmd: /opt/xcat/share/xcat/tools/autotest/testcase/xcat_inventory/validatehelper "site" "clustersite" "dbtracelevel" "" "/tmp/xcat_inventory_import_validation_site/trash/"
+check: rc==0
+
+cmd: /opt/xcat/share/xcat/tools/autotest/testcase/xcat_inventory/validatehelper "site" "clustersite" "dhcplease" "" "/tmp/xcat_inventory_import_validation_site/trash/"
+check: rc==0
+cmd: /opt/xcat/share/xcat/tools/autotest/testcase/xcat_inventory/validatehelper "site" "clustersite" "dhcplease" "10240" "/tmp/xcat_inventory_import_validation_site/trash/"
+check: rc==0
+cmd: /opt/xcat/share/xcat/tools/autotest/testcase/xcat_inventory/validatehelper "site" "clustersite" "dhcplease" "invalid" "/tmp/xcat_inventory_import_validation_site/trash/"
+check: rc!=0
+
+
+cmd: /opt/xcat/share/xcat/tools/autotest/testcase/xcat_inventory/validatehelper "site" "clustersite" "disjointdhcps" "0" "/tmp/xcat_inventory_import_validation_site/trash/"
+check: rc==0
+cmd: /opt/xcat/share/xcat/tools/autotest/testcase/xcat_inventory/validatehelper "site" "clustersite" "disjointdhcps" "1" "/tmp/xcat_inventory_import_validation_site/trash/"
+check: rc==0
+cmd: /opt/xcat/share/xcat/tools/autotest/testcase/xcat_inventory/validatehelper "site" "clustersite" "disjointdhcps" "" "/tmp/xcat_inventory_import_validation_site/trash/"
+check: rc==0
+cmd: /opt/xcat/share/xcat/tools/autotest/testcase/xcat_inventory/validatehelper "site" "clustersite" "disjointdhcps" "invalid" "/tmp/xcat_inventory_import_validation_site/trash/"
+check: rc!=0
+
+
+cmd: /opt/xcat/share/xcat/tools/autotest/testcase/xcat_inventory/validatehelper "site" "clustersite" "httpport" "" "/tmp/xcat_inventory_import_validation_site/trash/"
+check: rc==0
+cmd: /opt/xcat/share/xcat/tools/autotest/testcase/xcat_inventory/validatehelper "site" "clustersite" "httpport" "80" "/tmp/xcat_inventory_import_validation_site/trash/"
+check: rc==0
+cmd: /opt/xcat/share/xcat/tools/autotest/testcase/xcat_inventory/validatehelper "site" "clustersite" "httpport" "invalid" "/tmp/xcat_inventory_import_validation_site/trash/"
+check: rc!=0
+
+
+cmd: /opt/xcat/share/xcat/tools/autotest/testcase/xcat_inventory/validatehelper "site" "clustersite" "managedaddressmode" "" "/tmp/xcat_inventory_import_validation_site/trash/"
+check: rc==0
+cmd: /opt/xcat/share/xcat/tools/autotest/testcase/xcat_inventory/validatehelper "site" "clustersite" "managedaddressmode" "static" "/tmp/xcat_inventory_import_validation_site/trash/"
+check: rc==0
+cmd: /opt/xcat/share/xcat/tools/autotest/testcase/xcat_inventory/validatehelper "site" "clustersite" "managedaddressmode" "dhcp" "/tmp/xcat_inventory_import_validation_site/trash/"
+check: rc==0
+cmd: /opt/xcat/share/xcat/tools/autotest/testcase/xcat_inventory/validatehelper "site" "clustersite" "managedaddressmode" "invalid" "/tmp/xcat_inventory_import_validation_site/trash/"
+check: rc!=0
+
+
+
+cmd: /opt/xcat/share/xcat/tools/autotest/testcase/xcat_inventory/validatehelper "site" "clustersite" "sharedinstall" "" "/tmp/xcat_inventory_import_validation_site/trash/"
+check: rc==0
+cmd: /opt/xcat/share/xcat/tools/autotest/testcase/xcat_inventory/validatehelper "site" "clustersite" "sharedinstall" "no" "/tmp/xcat_inventory_import_validation_site/trash/"
+check: rc==0
+cmd: /opt/xcat/share/xcat/tools/autotest/testcase/xcat_inventory/validatehelper "site" "clustersite" "sharedinstall" "sns" "/tmp/xcat_inventory_import_validation_site/trash/"
+check: rc==0
+cmd: /opt/xcat/share/xcat/tools/autotest/testcase/xcat_inventory/validatehelper "site" "clustersite" "sharedinstall" "all" "/tmp/xcat_inventory_import_validation_site/trash/"
+check: rc==0
+cmd: /opt/xcat/share/xcat/tools/autotest/testcase/xcat_inventory/validatehelper "site" "clustersite" "sharedinstall" "invalid" "/tmp/xcat_inventory_import_validation_site/trash/"
+check: rc!=0
+
+
+cmd: /opt/xcat/share/xcat/tools/autotest/testcase/xcat_inventory/validatehelper "site" "clustersite" "sshbetweennodes" "" "/tmp/xcat_inventory_import_validation_site/trash/"
+check: rc==0
+cmd: /opt/xcat/share/xcat/tools/autotest/testcase/xcat_inventory/validatehelper "site" "clustersite" "sshbetweennodes" "ALLGROUPS" "/tmp/xcat_inventory_import_validation_site/trash/"
+check: rc==0
+cmd: /opt/xcat/share/xcat/tools/autotest/testcase/xcat_inventory/validatehelper "site" "clustersite" "sshbetweennodes" "NOGROUPS" "/tmp/xcat_inventory_import_validation_site/trash/"
+check: rc==0
+cmd: /opt/xcat/share/xcat/tools/autotest/testcase/xcat_inventory/validatehelper "site" "clustersite" "sshbetweennodes" "invalid" "/tmp/xcat_inventory_import_validation_site/trash/"
+check: rc!=0
+
+cmd: /opt/xcat/share/xcat/tools/autotest/testcase/xcat_inventory/validatehelper "site" "clustersite" "xcatdebugmode" "" "/tmp/xcat_inventory_import_validation_site/trash/"
+check: rc==0
+cmd: /opt/xcat/share/xcat/tools/autotest/testcase/xcat_inventory/validatehelper "site" "clustersite" "xcatdebugmode" "0" "/tmp/xcat_inventory_import_validation_site/trash/"
+check: rc==0
+cmd: /opt/xcat/share/xcat/tools/autotest/testcase/xcat_inventory/validatehelper "site" "clustersite" "xcatdebugmode" "1" "/tmp/xcat_inventory_import_validation_site/trash/"
+check: rc==0
+cmd: /opt/xcat/share/xcat/tools/autotest/testcase/xcat_inventory/validatehelper "site" "clustersite" "xcatdebugmode" "2" "/tmp/xcat_inventory_import_validation_site/trash/"
+check: rc==0
+cmd: /opt/xcat/share/xcat/tools/autotest/testcase/xcat_inventory/validatehelper "site" "clustersite" "xcatdebugmode" "invalid" "/tmp/xcat_inventory_import_validation_site/trash/"
+check: rc!=0
+
+
+cmd: /opt/xcat/share/xcat/tools/autotest/testcase/xcat_inventory/validatehelper "site" "clustersite" "xcatdport" "" "/tmp/xcat_inventory_import_validation_site/trash/"
+check: rc==0
+cmd: /opt/xcat/share/xcat/tools/autotest/testcase/xcat_inventory/validatehelper "site" "clustersite" "xcatdport" "3001" "/tmp/xcat_inventory_import_validation_site/trash/"
+check: rc==0
+cmd: /opt/xcat/share/xcat/tools/autotest/testcase/xcat_inventory/validatehelper "site" "clustersite" "xcatdport" "invalid" "/tmp/xcat_inventory_import_validation_site/trash/"
+check: rc!=0
+cmd: /opt/xcat/share/xcat/tools/autotest/testcase/xcat_inventory/validatehelper "site" "clustersite" "xcatdport" "3002" "/tmp/xcat_inventory_import_validation_site/trash/"
+check: rc!=0
+
+
+cmd: /opt/xcat/share/xcat/tools/autotest/testcase/xcat_inventory/validatehelper "site" "clustersite" "xcatiport" "" "/tmp/xcat_inventory_import_validation_site/trash/"
+check: rc==0
+cmd: /opt/xcat/share/xcat/tools/autotest/testcase/xcat_inventory/validatehelper "site" "clustersite" "xcatiport" "3001" "/tmp/xcat_inventory_import_validation_site/trash/"
+check: rc!=0
+cmd: /opt/xcat/share/xcat/tools/autotest/testcase/xcat_inventory/validatehelper "site" "clustersite" "xcatiport" "invalid" "/tmp/xcat_inventory_import_validation_site/trash/"
+check: rc!=0
+cmd: /opt/xcat/share/xcat/tools/autotest/testcase/xcat_inventory/validatehelper "site" "clustersite" "xcatiport" "3002" "/tmp/xcat_inventory_import_validation_site/trash/"
+check: rc==0
+
+
+cmd: /opt/xcat/share/xcat/tools/autotest/testcase/xcat_inventory/validatehelper "site" "clustersite" "xcatlport" "" "/tmp/xcat_inventory_import_validation_site/trash/"
+check: rc==0
+cmd: /opt/xcat/share/xcat/tools/autotest/testcase/xcat_inventory/validatehelper "site" "clustersite" "xcatlport" "3001" "/tmp/xcat_inventory_import_validation_site/trash/"
+check: rc!=0
+cmd: /opt/xcat/share/xcat/tools/autotest/testcase/xcat_inventory/validatehelper "site" "clustersite" "xcatlport" "invalid" "/tmp/xcat_inventory_import_validation_site/trash/"
+check: rc!=0
+cmd: /opt/xcat/share/xcat/tools/autotest/testcase/xcat_inventory/validatehelper "site" "clustersite" "xcatlport" "3003" "/tmp/xcat_inventory_import_validation_site/trash/"
+check: rc==0
+
+cmd: cat /tmp/xcat_inventory_import_validation_site/backup/clustersite.stanza 2>/dev/null |mkdef -z -f
+cmd: rm -rf /tmp/xcat_inventory_import_validation_site
+end

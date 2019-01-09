@@ -1,17 +1,130 @@
 #comment out for developper will not fix it
 #start:lsvm_null
+#label:others,hctrl_hmc
 #cmd:lsvm
 #check:rc!=0
 #check:output=~Usage
 #end
-start:lsvm_node
-hcp:hmc,ivm
-cmd:lsvm $$CN
-check:rc==0
-check:output=~name=$$CN
-end
 start:lsvm_err_node
+label:others,hctrl_hmc
 cmd:lsvm testnode
 check:rc!=0
 check:output=~Error
 end
+
+start:lsvm
+description:lsvm without any flag
+label:mn_only,ci_test
+cmd:lsvm
+check:output=~Usage
+end
+
+start:lsvm_h
+description:lsvm help information 
+label:mn_only,ci_test
+cmd:lsvm -h
+check:output=~Usage
+cmd:lsvm --help 
+check:output=~Usage
+end
+
+start:lsvm_a
+description:lsvm -a/--all could work as design, to display all the information for the vm 
+label:others,hctrl_kvm
+cmd:rpower $$CN on
+cmd:a=0;while ! `rpower $$CN stat|grep "Running\|on" >/dev/null`; do sleep 5;((a++));if [ $a -gt 11 ];then break;fi done
+check:ouptut=~Running|on
+cmd:lsvm $$CN
+check:rc==0 
+check:output=~$$CN: Id:\s*\w+
+check:output=~$$CN: Host:\s*\w+
+check:output=~$$CN: OS:\s*\w+
+check:output=~$$CN: Memory:\s*\w+
+check:output=~$$CN: CPU:\s*\w+
+check:output=~$$CN: State:\s*\w+
+check:output=~$$CN: Disk\s*\w+
+cmd:lsvm $$CN -a
+check:rc==0
+check:output=~$$CN: Id:\s*\w+
+check:output=~$$CN: Host:\s*\w+
+check:output=~$$CN: OS:\s*\w+
+check:output=~$$CN: Memory:\s*\w+
+check:output=~$$CN: CPU:\s*\w+
+check:output=~$$CN: State:\s*\w+
+check:output=~$$CN: Disk\s*\w+
+cmd:lsvm $$CN --all
+check:rc==0
+check:output=~$$CN: Id:\s*\w+
+check:output=~$$CN: Host:\s*\w+
+check:output=~$$CN: OS:\s*\w+
+check:output=~$$CN: Memory:\s*\w+
+check:output=~$$CN: CPU:\s*\w+
+check:output=~$$CN: State:\s*\w+
+check:output=~$$CN: Disk\s*\w+
+end
+
+start:lsvm_noderange
+description:lsvm noderagen could work as design, to display the information for all nodes in noderange 
+label:others,hctrl_kvm
+cmd:rpower $$CN on
+cmd:a=0;while ! `rpower $$CN stat|grep "Running\|on" >/dev/null`; do sleep 5;((a++));if [ $a -gt 11 ];then break;fi done
+cmd:rpower $$CN stat
+check:ouptut=~Running|on
+cmd:rpower $$SN on
+cmd:a=0;while ! `rpower $$SN stat|grep "Running\|on" >/dev/null`; do sleep 5;((a++));if [ $a -gt 11 ];then break;fi done
+cmd:rpower $$SN stat
+check:ouptut=~Running|on
+cmd:lsvm $$CN,$$SN
+check:rc==0
+check:output=~$$CN: Id:\s*\w+
+check:output=~$$CN: Host:\s*\w+
+check:output=~$$CN: OS:\s*\w+
+check:output=~$$CN: Memory:\s*\w+
+check:output=~$$CN: CPU:\s*\w+
+check:output=~$$CN: State:\s*\w+
+check:output=~$$CN: Disk\s*\w+
+check:output=~$$SN: Id:\s*\w+
+check:output=~$$SN: Host:\s*\w+
+check:output=~$$SN: OS:\s*\w+
+check:output=~$$SN: Memory:\s*\w+
+check:output=~$$SN: CPU:\s*\w+
+check:output=~$$SN: State:\s*\w+
+check:output=~$$SN: Disk\s*\w+
+end
+
+start:lsvm_kvmhost
+description:lsvm could give out the kvm host information. This case should be run on a mn which has kvm host defined.In this case, $$CN should be a kvm host. 
+label:others,hctrl_kvm
+cmd:lsvm $$CN 
+check:output=~$$CN
+end
+
+start:lsvm_mixed_vm_defined_and_not
+description:lsvm could give out the defined vm information.In this case, $$CN is a defined vm, vmnode is not defined in database.
+label:others,hctrl_kvm
+cmd:lsvm $$CN,vmnode
+check:output=~Error: Invalid nodes and/or groups in noderange: vmnode
+check:rc!=0
+end
+
+start:lsvm_mixed_vm_running_and_off
+description:lsvm noderagen could work as design, to display the information for all nodes in noderange
+label:others,hctrl_kvm
+cmd:rpower $$CN off
+cmd:a=0;while ! `rpower $$CN stat|grep "Not Activated\|off" >/dev/null`; do sleep 5;((a++));if [ $a -gt 11 ];then break;fi done
+cmd:rpower $$CN stat
+check:ouptut=~Not Activated|off
+cmd:rpower $$SN on
+cmd:a=0;while ! `rpower $$SN stat|grep "Running\|on" >/dev/null`; do sleep 5;((a++));if [ $a -gt 11 ];then break;fi done
+cmd:rpower $$SN stat
+check:ouptut=~Running|on
+cmd:lsvm $$CN,$$SN
+check:output=~$$SN: Id:\s*\w+
+check:output=~$$SN: Host:\s*\w+
+check:output=~$$SN: OS:\s*\w+
+check:output=~$$SN: Memory:\s*\w+
+check:output=~$$SN: CPU:\s*\w+
+check:output=~$$SN: State:\s*\w+
+check:output=~$$SN: Disk\s*\w+
+check:output=~$$CN: \s*Could not get any information about specified object
+check:rc==0

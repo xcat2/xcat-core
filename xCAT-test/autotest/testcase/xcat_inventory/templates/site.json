@@ -1,0 +1,18 @@
+{
+    "schema_version": "2.0",
+    "site": {
+        "clustersite": {
+            "dbtracelevel": "1",
+            "dhcplease": "10240",
+            "disjointdhcps": "0",
+            "httpport": "80",
+            "managedaddressmode": "dhcp",
+            "sharedinstall": "no",
+            "sshbetweennodes": "ALLGROUPS",
+            "xcatdebugmode": "0",
+            "xcatdport": "3001",
+            "xcatiport": "3002",
+            "xcatlport": "3003"
+        }
+    }
+}

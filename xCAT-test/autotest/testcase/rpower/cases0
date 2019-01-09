@@ -197,35 +197,23 @@ check:output=~Error: (\[.*?\]: )?[Uu]nsupported command[:]* rpower ddd
 check:rc==1
 end
 
-start:rpower_bmcreboot_perl_python_output
-description:record the output for rpower bmcreboot and compare the output for perl and python version.
-hcp:openbmc
-label:cn_bmc_ready,hctrl_openbmc
-cmd: /opt/xcat/share/xcat/tools/autotest/testcase/UT_openbmc/scripts/bmcreboot.sh $$CN /tmp/xcattest.rpower.bmcstate.perl.out PERL
+start:rpower_off_on
+description:This case is to test off and on option could work for a diskful node. This case is do task 82, for bug 4132, the node status cannot be updated on normal system reboot #4138. 
+Attribute: $$CN-The operation object of rpower command
+label:others,hctrl_general
+cmd:rpower $$CN stat 
+check:output=~Running|on
+cmd:lsdef -l $$CN -i status
+check:output=~booted
+cmd:rpower $$CN off
 check:rc==0
-cmd: grep "Login to BMC failed: 500" /tmp/xcattest.rpower.bmcstate.perl.out | sort | uniq | wc -l
-check:output=~3
-cmd: grep "timeout" /tmp/xcattest.rpower.bmcstate.perl.out | sort | uniq | wc -l
-check:output=~1
-cmd: grep "No route to host" /tmp/xcattest.rpower.bmcstate.perl.out | sort | uniq | wc -l
-check:output=~1
-cmd: grep "BMC NotReady" /tmp/xcattest.rpower.bmcstate.perl.out | sort | uniq | wc -l
-check:output=~1
-cmd: grep "BMC Ready" /tmp/xcattest.rpower.bmcstate.perl.out | sort | uniq | wc -l
-check:output=~1
-cmd: cat /tmp/xcattest.rpower.bmcstate.perl.out
-cmd: /opt/xcat/share/xcat/tools/autotest/testcase/UT_openbmc/scripts/bmcreboot.sh $$CN /tmp/xcattest.rpower.bmcstate.python.out PYTHON
+cmd:a=0;while ! `rpower $$CN stat|grep "Not Activated\|off" >/dev/null`; do sleep 5;((a++));if [ $a -gt 11 ];then break;fi done
+cmd:rpower $$CN on
 check:rc==0
-cmd: grep "Login to BMC failed: 500" /tmp/xcattest.rpower.bmcstate.python.out | sort | uniq | wc -l
-check:output=~3
-cmd: grep "timeout" /tmp/xcattest.rpower.bmcstate.python.out | sort | uniq | wc -l
-check:output=~1
-cmd: grep "No route to host" /tmp/xcattest.rpower.bmcstate.python.out | sort | uniq | wc -l
-check:output=~1
-cmd: grep "BMC NotReady" /tmp/xcattest.rpower.bmcstate.python.out | sort | uniq | wc -l
-check:output=~1
-cmd: grep "BMC Ready" /tmp/xcattest.rpower.bmcstate.python.out | sort | uniq | wc -l
-check:output=~1
-cmd: cat /tmp/xcattest.rpower.bmcstate.python.out
-cmd:rm -rf /tmp/xcattest.rpower.bmcstate.perl.out /tmp/xcattest.rpower.bmcstate.python.out
+cmd:a=0;while ! `rpower $$CN stat|grep "Running\|on" >/dev/null`; do sleep 5;((a++));if [ $a -gt 11 ];then break;fi done
+cmd:rpower $$CN stat
+check:output=~Running|on
+cmd:a=0;while ! `lsdef -l $$CN -i status|grep "booted" >/dev/null`; do sleep 5;((a++));if [ $a -gt 50 ];then break;fi done
+cmd:lsdef -l $$CN -i status|grep "booted"
+check:rc==0
 end

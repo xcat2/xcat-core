@@ -478,23 +478,18 @@ sub process_request {
     }
 
     #end prescripts code
-    if (!-r "$tftpdir/pxelinux.0") {
-        unless (-r "/usr/lib/syslinux/pxelinux.0" or -r "/usr/share/syslinux/pxelinux.0") {
-            $::PXE_callback->({ error => ["Unable to find pxelinux.0 "], errorcode => [1] });
-            return;
+    my @pxelinuxpaths=("/usr/lib/syslinux/pxelinux.0","/usr/share/syslinux/pxelinux.0","/usr/lib/PXELINUX/pxelinux.0","/opt/xcat/share/xcat/netboot/syslinux/pxelinux.0");
+    foreach $path (@pxelinuxpaths) {
+        if (-r "$path") {
+            copy("$path","$globaltftpdir/pxelinux.0");
+            chmod(0644, "$globaltftpdir/pxelinux.0");
+            last;
         }
-        if (-r "/usr/lib/syslinux/pxelinux.0") {
-            copy("/usr/lib/syslinux/pxelinux.0", "$tftpdir/pxelinux.0");
-        } else {
-            copy("/usr/share/syslinux/pxelinux.0", "$tftpdir/pxelinux.0");
-        }
-        chmod(0644, "$tftpdir/pxelinux.0");
     }
-    unless (-r "$tftpdir/pxelinux.0") {
-        $::PXE_callback->({ errror => ["Unable to find pxelinux.0 from syslinux"], errorcode => [1] });
+    unless (-r "$globaltftpdir/pxelinux.0") {
+        $::PXE_callback->({ errror => ["Unable to find pxelinux.0 from syslinux or pxelinux"], errorcode => [1] });
         return;
     }
-
 
     $errored = 0;
     my %bphash;

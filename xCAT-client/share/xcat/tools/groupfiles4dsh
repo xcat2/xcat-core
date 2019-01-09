@@ -45,7 +45,7 @@ use xCAT::Utils;
 # Main
 my $rc = 0;
 &parse_args;
-my $cmd = "lsdef -t group";
+my $cmd = "lsdef -t group | awk '{print \$1}'";
 my @grpoutput = xCAT::Utils->runcmd($cmd, 0);
 if ($::RUNCMD_RC != 0)
 {    # error

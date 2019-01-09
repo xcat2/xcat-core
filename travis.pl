@@ -114,7 +114,7 @@ sub check_pr_format{
         unless ($pr_url_resp) {
             print "[check_pr_format] After $retries retries, not able to get response from $pr_url \n";
             # Failed after trying a few times, return error
-            return 1;
+            return $counter;
         }
         my $pr_content = decode_json($pr_url_resp);
         my $pr_title = $pr_content->{title};
@@ -271,19 +271,19 @@ sub send_back_comment{
 #--------------------------------------------------------
 sub build_xcat_core{
     my @output;
-    my @cmds = ("gpg --list-keys",
-                "sed -i '/SignWith: /d' $ENV{'PWD'}/build-ubunturepo");
-    foreach my $cmd (@cmds){
-        print "[build_xcat_core] running $cmd\n";
-        @output = runcmd("$cmd");
-        if($::RUNCMD_RC){
-            print "[build_xcat_core] $cmd ....[Failed]\n";
-            send_back_comment("> **BUILD ERROR** : $cmd failed. Please click ``Details`` label in ``Merge pull request`` box for detailed information");
-            return 1;
-        }
-    }
+    #my @cmds = ("gpg --list-keys",
+    #            "sed -i '/SignWith: /d' $ENV{'PWD'}/build-ubunturepo");
+    #foreach my $cmd (@cmds){
+    #    print "[build_xcat_core] running $cmd\n";
+    #    @output = runcmd("$cmd");
+    #    if($::RUNCMD_RC){
+    #        print "[build_xcat_core] $cmd ....[Failed]\n";
+    #        send_back_comment("> **BUILD ERROR** : $cmd failed. Please click ``Details`` label in ``Merge pull request`` box for detailed information");
+    #        return 1;
+    #    }
+    #}
 
-    my $cmd = "sudo ./build-ubunturepo -c UP=0 BUILDALL=1";
+    my $cmd = "sudo ./build-ubunturepo -c UP=0 BUILDALL=1 GPGSIGN=0";
     @output = runcmd("$cmd");
     print ">>>>>Dumper the output of '$cmd'\n";
     print Dumper \@output;
@@ -321,8 +321,8 @@ sub install_xcat{
 
     my @cmds = ("cd ./../../xcat-core && sudo ./mklocalrepo.sh",
                "sudo chmod 777 /etc/apt/sources.list",
-               "sudo echo \"deb [arch=amd64] http://xcat.org/files/xcat/repos/apt/devel/xcat-dep trusty main\" >> /etc/apt/sources.list",
-               "sudo echo \"deb [arch=ppc64el] http://xcat.org/files/xcat/repos/apt/devel/xcat-dep trusty main\" >> /etc/apt/sources.list",
+               "sudo echo \"deb [arch=amd64 allow-insecure=yes] http://xcat.org/files/xcat/repos/apt/devel/xcat-dep xenial main\" >> /etc/apt/sources.list",
+               "sudo echo \"deb [arch=ppc64el allow-insecure=yes] http://xcat.org/files/xcat/repos/apt/devel/xcat-dep xenial main\" >> /etc/apt/sources.list",
                "sudo wget -q -O - \"http://xcat.org/files/xcat/repos/apt/apt.key\" | sudo apt-key add -",
                "sudo apt-get -qq update");
     my @output;
@@ -339,7 +339,7 @@ sub install_xcat{
         }
     }
 
-    my $cmd = "sudo apt-get install xcat --force-yes";
+    my $cmd = "sudo apt-get install xcat --allow-remove-essential --allow-unauthenticated";
     @output = runcmd("$cmd");
     #print ">>>>>Dumper the output of '$cmd'\n";
     #print Dumper \@output;
@@ -448,7 +448,7 @@ sub check_syntax{
 # Return code:
 #--------------------------------------------------------
 sub run_fast_regression_test{
-    my $cmd = "sudo apt-get install xcat-test --force-yes";
+    my $cmd = "sudo apt-get install xcat-test --allow-remove-essential --allow-unauthenticated";
     my @output = runcmd("$cmd");
     if($::RUNCMD_RC){
          print RED "[run_fast_regression_test] $cmd ....[Failed]\n";
@@ -488,43 +488,20 @@ sub run_fast_regression_test{
     @output = runcmd("cat $conf_file");
     print Dumper \@output;
 
+    $cmd = "sudo bash -c '. /etc/profile.d/xcat.sh && xcattest -s \"ci_test\" -l'";
+    my  @caseslist = runcmd("$cmd");
+    if($::RUNCMD_RC){
+         print RED "[run_fast_regression_test] $cmd ....[Failed]\n";
+         print "[run_fast_regression_test] error dumper:\n";
+         print Dumper \@caseslist;
+         return 1;
+    }else{
+         print "[run_fast_regression_test] $cmd .....:\n";
+         print Dumper \@caseslist;
+    }
 
-#    $cmd = "sudo bash -c '. /etc/profile.d/xcat.sh && xcattest -s \"mn_only-wait_fix\" -l'";
-#    my  @caseslist = runcmd("$cmd");
-#    if($::RUNCMD_RC){
-#         print RED "[run_fast_regression_test] $cmd ....[Failed]\n";
-#         print "[run_fast_regression_test] error dumper:\n";
-#         print Dumper \@caseslist;
-#         return 1;
-#    }else{
-#         print "[run_fast_regression_test] $cmd .....:\n";
-#         print Dumper \@caseslist;
-#    }
-#
-#    #This is a black list for CI test
-#    #It is useful for debug or development
-#    #please ignore during common work
-##    {
-##        sub array_filter {
-##            my $src_array_ref    = shift;
-##            my $filter_array_ref = shift;
-##
-##            my @left_array;
-##            foreach my $item (@{$src_array_ref}) {
-##                my $hit = 0;
-##                foreach my $f (@{$filter_array_ref}) {
-##                    $hit = 1 if ($f eq $item);
-##                }
-##                push @left_array, $item unless ($hit);
-##            }
-##            @$src_array_ref = @left_array;
-##        }
-##
-##        #my @filter_cases=("testtest");
-##        #array_filter(\@caseslist, \@filter_cases);
-##    }
 
-    my @caseslist = runcmd("sudo bash -c '. /etc/profile.d/xcat.sh && xcattest -l caselist -b MN_basic.bundle'");
+    #my @caseslist = runcmd("sudo bash -c '. /etc/profile.d/xcat.sh && xcattest -l caselist -b MN_basic.bundle'");
     my $casenum = @caseslist;
     my $x = 0;
     my @failcase;
@@ -613,13 +590,28 @@ my @disk = runcmd("df -h");
 print "Disk information:\n";
 print Dumper \@disk;
 
+# Hacking the netmask. Not sure if we need to recover it after finish xcattest
+# Note: Here has an assumption from Travis VM: only 1 UP Ethernet interface available (CHANGEME if it not as is)
+my @intfinfo = runcmd("ip -o link |grep 'link/ether'|grep 'state UP' |awk -F ':' '{print \$2}'|head -1");
+foreach my $nic (@intfinfo) {
+    print "Hacking the netmask length to 16 if it is 32: $nic\n";
+    runcmd("ip -4 addr show $nic|grep 'inet'|grep -q '/32' && sudo ip addr add \$(hostname -I|awk '{print \$1}')/16 dev $nic");
+}
+my @ipinfo = runcmd("ip addr");
+print "Networking information:\n";
+print Dumper \@ipinfo;
+
 #Start to check the format of pull request
 $last_func_start = timelocal(localtime());
 print GREEN "\n------ Checking Pull Request Format ------\n";
 $rst  = check_pr_format();
+my $redo_check_pr = 0;
 if($rst){
-    print RED "Check of pull request format failed\n";
-    exit $rst;
+     if($rst <= $retries) {
+        print RED "Check of pull request format failed\n";
+        exit $rst;
+    }
+    $redo_check_pr = 1;
 }
 mark_time("check_pr_format");
 
@@ -659,5 +651,15 @@ if($rst){
     exit $rst;
 }
 mark_time("run_fast_regression_test");
+
+if ($redo_check_pr) {
+    print GREEN "\n------ Checking Pull Request Format ------\n";
+    $rst  = check_pr_format();
+    if($rst){
+        print RED "Check of pull request format failed\n";
+        exit $rst;
+    }
+    mark_time("check_pr_format");
+}
 
 exit 0;

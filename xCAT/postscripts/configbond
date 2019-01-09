@@ -40,6 +40,12 @@ if [ "$(uname -s|tr 'A-Z' 'a-z')" = "linux" ];then
    . $str_dir_name/xcatlib.sh
 fi
 
+if [ -n "$LOGLABEL" ]; then
+    log_label=$LOGLABEL
+else
+    log_label="xcat"
+fi
+
 # Subroutine to display message and pass it to syslog
 # Usage: showmsg "message to putput" ["error"]
 function showmsg() {
@@ -47,9 +53,9 @@ function showmsg() {
     error=$2
 
     if [ -n "$error" ]; then
-        $(logger -t xcat -p local4.err $msg)
+        $(logger -t $log_label -p local4.err $msg)
     else
-        $(logger -t xcat -p local4.info $msg)
+        $(logger -t $log_label -p local4.info $msg)
     fi
 
     echo $msg

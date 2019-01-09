@@ -1,0 +1,41 @@
+start:export_import_osimage_with_INCLUDE_in_file
+description:This case is used to test xcat-inventory export and import one linux osimage definition which has INCLUDE in the attribute's specified files. The attributes are pkglist, otherpkglist,exlist,synclists,template,postinstall and partitionfile.
+label:others,inventory_ci
+cmd:dir="/tmp/imagedata/";if [ -e "${dir}" ];then mv ${dir} ${dir}".bak"; fi; mkdir -p $dir
+check:rc==0
+cmd:dir="/tmp/imagedata/export";if [ -e "${dir}" ];then mv ${dir} ${dir}".bak"; fi; mkdir -p $dir
+check:rc==0
+cmd:cp -rf /opt/xcat/share/xcat/tools/autotest/testcase/xcat_inventory/templates/imagedata/test_osimage /tmp/imagedata
+check:rc==0
+cmd:lsdef -t osimage -o test_osimage >/dev/null 2>&1;if [[ $? -eq 0 ]]; then lsdef -t osimage -o test_osimage -z >/tmp/imagedata/test_osimage.org.stanza ;rmdef -t osimage -o test_osimage;fi
+check:rc==0
+cmd:cat /tmp/imagedata/test_osimage/test_osimage.stanza |mkdef -z
+check:rc==0
+cmd:rm -rf /tmp/imagedata/test_osimage/test_osimage.stanza
+cmd:lsdef -t osimage -o test_osimage
+check:rc==0
+cmd:xcat-inventory export -t osimage -o test_osimage -d /tmp/imagedata/export
+check:output=~The osimage objects has been exported to directory /tmp/imagedata/export
+cmd:ls -lFR /tmp/imagedata/export
+cmd:diff -r /tmp/imagedata/test_osimage /tmp/imagedata/export/test_osimage/tmp/imagedata/test_osimage/
+check:output=~Only in /tmp/imagedata/test_osimage: file7
+cmd:diff -y /etc/hosts /tmp/imagedata/export/test_osimage/etc/hosts
+check:rc==0
+cmd:ls -l /tmp/imagedata/export/test_osimage/tmp/imagedata/test_osimage/file7
+check:rc!=0
+cmd: rmdef -t osimage -o  test_osimage
+check:rc==0
+cmd:rm -rf /tmp/imagedata/test_osimage
+cmd:xcat-inventory import -t osimage -d /tmp/imagedata/export
+check:rc==0
+check:output=~Inventory import successfully!
+check:output=~The object test_osimage has been imported
+cmd:lsdef -t osimage -o test_osimage
+check:rc==0
+cmd:diff -r /tmp/imagedata/export/test_osimage/tmp/imagedata/test_osimage/ /tmp/imagedata/test_osimage
+check:rc==0
+cmd: rmdef -t osimage -o  test_osimage
+check:rc==0
+cmd:dir="/tmp/imagedata"; rm -rf $dir; if [ -d ${dir}".bak" ];then mv ${dir}".bak" $dir; fi
+cmd: if [ -e /tmp/imagedata/test_osimage.org.stanza ]; then cat /tmp/imagedata/test_osimage.org.stanza |mkdef -z;fi
+end

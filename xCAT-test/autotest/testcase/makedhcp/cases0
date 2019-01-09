@@ -1,11 +1,11 @@
 start:makedhcp_n
 description:Create a new dhcp configuration file with a network statement for each network the dhcp daemon should listen on
 os:Linux
-label:mn_only,dhcp
+label:mn_only,ci_test,dhcp
 cmd:if [ -f "/etc/dhcp/dhcpd.conf" ];then mv -f /etc/dhcp/dhcpd.conf /etc/dhcp/dhcpd.conf.bak ; elif [ -f "/etc/dhcpd.conf" ]; then mv -f /etc/dhcpd.conf /etc/dhcpd.conf.bak; fi
 cmd:makedhcp -n
 check:rc==0
-cmd:ls /etc/dhcp/dhcpd.conf || ls /etc/dhcpd.conf
+cmd:cat $(ls /etc/dhcp/dhcpd.conf || ls /etc/dhcpd.conf)
 check:rc==0
 cmd:sleep 20
 cmd:ps -e | grep dhcpd
@@ -18,7 +18,7 @@ end
 
 start:makedhcp_h
 description:help
-label:mn_only,dhcp
+label:mn_only,ci_test,dhcp
 cmd:makedhcp -h
 check:rc==0
 check:output=~Usage
@@ -26,7 +26,7 @@ end
 
 start:makedhcp_help
 description:help
-label:mn_only,dhcp
+label:mn_only,ci_test,dhcp
 cmd:makedhcp -h
 check:rc==0
 check:output=~Usage
@@ -34,6 +34,7 @@ end
 
 start:makedhcp_n_linux
 description:Create a new dhcp configuration file with a network statement for each network the dhcp daemon should listen on
+label:others,ci_test
 os:Linux
 cmd:if [ -f "/etc/dhcp/dhcpd.conf" ];then mv -f /etc/dhcp/dhcpd.conf /etc/dhcp/dhcpd.conf.bak ; elif [ -f "/etc/dhcpd.conf" ]; then mv -f /etc/dhcpd.conf /etc/dhcpd.conf.bak; fi
 cmd:makedhcp -n

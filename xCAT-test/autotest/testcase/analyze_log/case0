@@ -1,6 +1,6 @@
 start:check_mn_cluster_log_file
 description:check known error message in /var/log/xcat/cluster.log file. Only for redhat and sles.
-label:mn_only
+label:mn_only,ci_test
 cmd:cat /var/log/xcat/cluster.log | grep "xcatd: Error happened when receiving data from DB access"
 check:output!~xcatd: Error happened when receiving data from DB access
 cmd:cat /var/log/xcat/cluster.log | grep "Undefined subroutine &main"

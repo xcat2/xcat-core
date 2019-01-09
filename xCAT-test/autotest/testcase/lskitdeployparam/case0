@@ -1,4 +1,5 @@
 start:lskitdeployparam_v
+label:others,KIT
 os:Linux
 cmd:lskitdeployparam -v
 check:rc==0
@@ -13,6 +14,7 @@ check:output=~compatible_frameworks
 end
 
 start:lskitdeployparam_h
+label:others,KIT
 os:Linux
 cmd:lskitdeployparam -h
 check:rc==0
@@ -23,6 +25,7 @@ check:output=~ Usage
 end
 
 start:lskitdeployparam_no_param
+label:others,KIT
 os:Linux
 cmd:lskitdeployparam
 check:rc==1
@@ -32,6 +35,7 @@ end
 
 
 start:lskitdeployparam_k_1
+label:others,KIT
 os:Linux
 cmd:rm -rf /opt/xcat/share/xcat/tools/autotest/testcase/lskit/mykits
 cmd:cd /opt/xcat/share/xcat/tools/autotest/testcase/lskit;buildkit create mykits
@@ -57,6 +61,7 @@ cmd:rm -rf /opt/xcat/share/xcat/tools/autotest/testcase/lskit/mykits
 end
 
 start:lskitdeployparam_c_1
+label:others,KIT
 os:Linux
 cmd:rm -rf /opt/xcat/share/xcat/tools/autotest/testcase/lskit/mykits
 cmd:cd /opt/xcat/share/xcat/tools/autotest/testcase/lskit;buildkit create mykits

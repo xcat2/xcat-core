@@ -68,11 +68,11 @@ echolog()
          echo "$msgstr"
       fi
       if [ "$XCATDEBUGMODE" = "1" ] || [ "$XCATDEBUGMODE" = "2" ]; then
-            msgutil_r  "$MASTER_IP" "$msgtype" "$msgstr" "/var/log/xcat/xcat.log" "xcat.xcatdsklspost"
+            msgutil_r  "$MASTER_IP" "$msgtype" "$msgstr" "/var/log/xcat/xcat.log" "$log_label"
       fi
    else
       echo "$msgstr"
-      msgutil_r "$MASTER_IP"  "$msgtype" "$msgstr" "/var/log/xcat/xcat.log" "xcat.xcatdsklspost"
+      msgutil_r "$MASTER_IP"  "$msgtype" "$msgstr" "/var/log/xcat/xcat.log" "$log_label"
    fi
 
    #reload the functions defined in./xcatlib.sh
@@ -119,7 +119,6 @@ download_postscripts()
             INSTALLDIR="/install"
         fi
     fi
-
     echolog "debug" "trying to download postscripts from http://$server$INSTALLDIR/postscripts/"
     max_retries=5
     retry=0
@@ -211,11 +210,37 @@ pmatch ()
 
   return 1          # non-zero return code means string not matched by pattern
 }
+
+#parse the http server "<ip/hostname>:<port>"
+#usgae: parsehttpserver(<http server string>,<what to return? 'server' or 'port'>)
+parsehttpserver ()
+{
+   rawserver=$1 
+   option=$2
+   server=$(echo "$rawserver"|cut -d: -f1 -s 2>/dev/null)
+   port="80"
+   if [ -z "$server"  ];then
+       server=$rawserver
+   else
+       port=$(echo "$rawserver"|cut -d: -f2 -s 2>/dev/null)
+   fi
+
+   if [ "$option" = "server" ];then
+       echo "$server"
+   fi 
+
+   if [ "$option" = "port" ];then
+       echo "$port"
+   fi
+}
+
 # Main
 # parse the arguments
+log_label="xcat.updatenode"
 ARGNUM=$#;
 if [ -z $1 ]; then
   NODE_DEPLOYMENT=1
+  log_label="xcat.deployment"
 else
   NODE_DEPLOYMENT=0
   case $1 in
@@ -223,10 +248,14 @@ else
       MODE=$1
       if [ $ARGNUM -gt 1 ]; then
         if [ $2 = "-m" ]; then
-          P_SIP=$3
+          P_SVR=$3
+          P_SIP=$(parsehttpserver "$P_SVR" 'server')
+          HTTPPORT=$(parsehttpserver "$P_SVR" 'port') 
         else
           if [ $2 = "-M" ]; then
-            P_SIP=$3
+            P_SVR=$3
+            P_SIP=$(parsehttpserver "$P_SVR" 'server')
+            HTTPPORT=$(parsehttpserver "$P_SVR" 'port') 
             new_ms=$P_SIP    # -M means we will update xcatinfo file XCATSERVER
           fi
         fi
@@ -268,8 +297,15 @@ else
         fi
       fi
       ;;
-    3|4|6) MODE=$1;;
+    4)
+      MODE=$1
+      log_label="xcat.deployment"
+      ;;
+    3|6) MODE=$1;;
   esac
+fi
+if [ $NODE_DEPLOYMENT -ne 1 ] && [ $MODE -ne 4 ] ; then
+  echolog "info" "=============updatenode starting===================="
 fi
 # set the default path for the xcatpost directory
 xcatpost="/xcatpost"
@@ -344,14 +380,22 @@ if [ "$MODE" = "4" ]; then # for statelite mode
             else
                 echo "XCATSERVER=$XCATSERVER" >> /opt/xcat/xcatinfo
             fi
-            break
+        elif [ "$KEY" =  "XCATHTTPPORT" ]; then
+            HTTPPORT=`echo $i | awk -F= '{print $2}'`
+            grep 'HTTPPORT' /opt/xcat/xcatinfo > /dev/null  2>&1
+            if [ $? -eq 0 ]; then
+                sed -i "s/HTTPPORT=.*/HTTPPORT=$HTTPPORT/" /opt/xcat/xcatinfo
+            else
+                echo "HTTPPORT=$HTTPPORT" >> /opt/xcat/xcatinfo
+            fi
         fi
     done
 
     if [ -f /opt/xcat/xcatinfo ]; then
         SIP=`grep 'XCATSERVER' /opt/xcat/xcatinfo |cut -d= -f2`
+        HTTPPORT=`grep 'HTTPPORT' /opt/xcat/xcatinfo |cut -d= -f2`
         if [ -n "$SIP" ]; then
-            download_postscripts $SIP
+            download_postscripts $SIP:${HTTPPORT}
             if [ $? -eq 0 ]; then
                 downloaded=1
             fi
@@ -392,8 +436,9 @@ else # for common mode  MODE=1,2,3,5 (updatenode,moncfg,node deployment)
     # also update the XCATSERVER in the /etc/xcat/xcatinfo file with this
     # address
     if [ -n "$P_SIP" ]; then   # passed in with updatenode on -M/-m
-        SIP=$P_SIP
-        download_postscripts $SIP
+        #SIP="${P_SIP}:${HTTPPORT}"
+        SIP=${P_SIP}
+        download_postscripts ${P_SIP}:${HTTPPORT}
         if [ $? -eq 0 ]; then
             downloaded=1
         fi
@@ -417,8 +462,10 @@ else # for common mode  MODE=1,2,3,5 (updatenode,moncfg,node deployment)
         # if not updatenode, then look in xcatinfo for the xcatmaster
         if [ -f /opt/xcat/xcatinfo ]; then
             SIP=`grep 'XCATSERVER' /opt/xcat/xcatinfo |cut -d= -f2`
+            HTTPPORT=`grep 'HTTPPORT' /opt/xcat/xcatinfo |cut -d= -f2`
+            [ -z "$HTTPPORT" ] && HTTPPORT="80" 
             if [ -n "$SIP" ]; then
-                download_postscripts $SIP
+                download_postscripts ${SIP}:${HTTPPORT}
                 if [ $? -eq 0 ]; then
                   downloaded=1
                 fi
@@ -435,15 +482,20 @@ else # for common mode  MODE=1,2,3,5 (updatenode,moncfg,node deployment)
              if [ "$KEY" =  "XCAT" ]; then
                  TMP=`echo $i | awk -F= '{print $2}'`
                  SIP=`echo $TMP | cut -d: -f1`
-                 if [ -n "$SIP" ]; then
-                     download_postscripts $SIP
-                     if [ $? -eq 0 ]; then
-                         downloaded=1
-                         break
-                     fi
-                 fi
-            fi
-          done
+
+             elif [ "$KEY" = "XCATHTTPPORT" ];then
+                 HTTPPORT=$(echo $i | awk -F= '{print $2}')   
+                 [ -z "$HTTPPORT" ] && HTTPPORT="80"
+             fi
+         done
+
+         if [ -n "$SIP" ]; then
+             download_postscripts "${SIP}:${HTTPPORT}"
+             if [ $? -eq 0 ]; then
+                 downloaded=1
+                 break
+             fi
+         fi
     fi
 
     # download poscripts has not worked yet
@@ -546,11 +598,11 @@ echolog "info" "trying to get mypostscript from $SIP..."
 max_retries=2
 # try short hostname first
 if [ -n "$node_short" ]; then
-    download_mypostscript $SIP $node_short $max_retries $TFTPDIR
+    download_mypostscript "${SIP}:${HTTPPORT}" $node_short $max_retries $TFTPDIR
     if [ $? -ne 0 ]; then
         # try long hostname
         if [ "$node" != "$node_short" ]; then
-          download_mypostscript $SIP $node $postfix $max_retries $TFTPDIR
+          download_mypostscript "${SIP}:${HTTPPORT}" $node $postfix $max_retries $TFTPDIR
         fi
     fi
 fi
@@ -657,6 +709,13 @@ if [ -n "$new_ms" ]; then
       sed -i "s/XCATSERVER=.*/XCATSERVER=$new_ms/" /opt/xcat/xcatinfo
     else
       echo "XCATSERVER=$new_ms" >> /opt/xcat/xcatinfo
+    fi
+
+    grep 'HTTPPORT' /opt/xcat/xcatinfo > /dev/null  2>&1
+    if [ $? -eq 0 ]; then
+      sed -i "s/HTTPPORT=.*/HTTPPORT=$HTTPPORT/" /opt/xcat/xcatinfo
+    else
+      echo "HTTPPORT=$HTTPPORT" >> /opt/xcat/xcatinfo
     fi
 fi
 
@@ -885,18 +944,23 @@ run_ps () {
  if [ -z \"\$scriptype\" ]; then
   scriptype=\"postscript\"
  fi
-
+ if [ \$UPDATENODE -eq 0 ]; then
+     log_label=\"xcat.deployment.\"\$scriptype
+ else
+     log_label=\"xcat.updatenode.\"\$scriptype
+ fi
+ export LOGLABEL=\$log_label
  if [ -f \$1 ]; then
-  echo \"Running \$scriptype: \$1\"
-  msgutil_r \"\$MASTER_IP\" \"info\" "\"Running \$scriptype: \$1\"" \"\$logfile\" \"xcat.mypostscript\"
+  echo \"\$scriptype start..: \$1\"
+  msgutil_r \"\$MASTER_IP\" \"info\" "\"\$scriptype start..: \$1\"" \"\$logfile\" \"\$log_label\"
   if [ \"\$XCATDEBUGMODE\" = \"1\" ] || [ \"\$XCATDEBUGMODE\" = \"2\" ]; then
      local compt=\$(file \$1)
      local reg=\"shell script\"
      if [[ \"\$compt\" =~ \$reg ]]; then
-        bash -x ./\$@ 2>&1 | tee -a \$logfile | tee >(logger -t xcat.mypostscript -p debug)
+        bash -x ./\$@ 2>&1 | tee -a \$logfile | tee >(logger -t \$log_label -p debug)
         ret_local=\${PIPESTATUS[0]}
      else
-        ./\$@ 2>&1 | tee -a \$logfile | tee >(logger -t xcat.mypostscript -p debug)
+        ./\$@ 2>&1 | tee -a \$logfile | tee >(logger -t \$log_label -p debug)
         ret_local=\${PIPESTATUS[0]}
      fi
   else
@@ -907,11 +971,11 @@ run_ps () {
   if [ \"\$ret_local\" -ne \"0\" ]; then
      return_value=\$ret_local
   fi
-  echo \"\$scriptype: \$1 exited with code \$ret_local\"
-  msgutil_r \"\$MASTER_IP\" \"info\" "\"\$scriptype \$1 return with \$ret_local\"" \"\$logfile\" \"xcat.mypostscript\"
+  echo \"\$scriptype end....: \$1 exited with code \$ret_local\"
+  msgutil_r \"\$MASTER_IP\" \"info\" "\"\$scriptype end...:\$1 return with \$ret_local\"" \"\$logfile\" \"\$log_label\"
  else
   echo \"\`date\` \$scriptype \$1 does NOT exist.\"
-  msgutil_r \"\$MASTER_IP\" \"error\" "\"\$scriptype \$1 does NOT exist.\"" \"\$logfile\" \"xcat.mypostscript\"
+  msgutil_r \"\$MASTER_IP\" \"error\" "\"\$scriptype \$1 does NOT exist.\"" \"\$logfile\" \"\$log_label\"
   return_value=-1
  fi
 
@@ -937,23 +1001,23 @@ if [ $NODE_DEPLOYMENT -eq 1 ] || [ "$MODE" = "4" ] || [ "$MODE" = "6" ]; then
     if [ "$MODE" = "6" ]; then
         echo "
 if [ \"\$return_value\" -eq \"0\" ]; then
-    msgutil_r \$MASTER_IP \"debug\" \"node booted successfully, reporting status...\" \"/var/log/xcat/xcat.log\" \"xcat.mypostscript\"
+    msgutil_r \$MASTER_IP \"debug\" \"node booted successfully, reporting status...\" \"/var/log/xcat/xcat.log\" \"\$log_label\"
     updateflag.awk \$MASTER 3002 \"installstatus booted\"
 else
-    msgutil_r \$MASTER_IP \"debug\" \"node boot failed, reporting status...\" \"/var/log/xcat/xcat.log\" \"xcat.mypostscript\"
+    msgutil_r \$MASTER_IP \"debug\" \"node boot failed, reporting status...\" \"/var/log/xcat/xcat.log\" \"\$log_label\"
     updateflag.awk \$MASTER 3002 \"installstatus failed\"
 fi
         " >> /$xcatpost/mypostscript
     else
         echo "
 if [ \"\$return_value\" -eq \"0\" ]; then
-    msgutil_r \$MASTER_IP \"debug\" \"node booted successfully, reporting status...\" \"/var/log/xcat/xcat.log\" \"xcat.mypostscript\"
+    msgutil_r \$MASTER_IP \"debug\" \"node booted successfully, reporting status...\" \"/var/log/xcat/xcat.log\" \"\$log_label\"
     updateflag.awk \$MASTER 3002 \"installstatus booted\"
-    msgutil_r \$MASTER_IP \"info\" \"provision completed.(\$NODE)\" \"/var/log/xcat/xcat.log\" \"xcat.mypostscript\"
+    msgutil_r \$MASTER_IP \"info\" \"provision completed.(\$NODE)\" \"/var/log/xcat/xcat.log\" \"\$log_label\"
 else
-    msgutil_r \$MASTER_IP \"debug\" \"node boot failed, reporting status...\" \"/var/log/xcat/xcat.log\" \"xcat.mypostscript\"
+    msgutil_r \$MASTER_IP \"debug\" \"node boot failed, reporting status...\" \"/var/log/xcat/xcat.log\" \"\$log_label\"
     updateflag.awk \$MASTER 3002 \"installstatus failed\"
-    msgutil_r \$MASTER_IP \"error\" \"provision completed with error.(\$NODE)\" \"/var/log/xcat/xcat.log\" \"xcat.mypostscript\"
+    msgutil_r \$MASTER_IP \"error\" \"provision completed with error.(\$NODE)\" \"/var/log/xcat/xcat.log\" \"\$log_label\"
 fi
         " >> /$xcatpost/mypostscript
     fi
@@ -986,7 +1050,12 @@ fi
 
 #tell user it is done when this is called by updatenode command
 if [ "$MODE" = "1" ] || [ "$MODE" = "2" ] || [ "$MODE" = "5" ]; then
-  echolog "info" "returned from postscript"
+  echo "returned from postscript"
+  echolog "info" "=============updatenode ending===================="
+fi
+
+if [ $NODE_DEPLOYMENT -eq 1 ] || [ "$MODE" = "4" ] || [ "$MODE" = "6" ]; then
+  echolog "info" "=============deployment ending===================="
 fi
 
 exit $VRET_POST

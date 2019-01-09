@@ -199,9 +199,10 @@ sub nmap_pping {
         @nmap_options = xCAT::TableUtils->get_site_attribute("nmapoptions");
         $more_options = $nmap_options[0];
     }
-    open(FPING, "nmap -PE --system-dns --unprivileged --send-ip -sP $more_options " . join(' ', @$nodes) . " 2> /dev/null|") or die("Cannot open nmap pipe: $!");
+    # Added port 22 for unprivileged case (#4324)
+    open(NMAP, "nmap -PE --system-dns --send-ip -sP --unprivileged -PA80,443,22 $more_options " . join(' ', @$nodes) . " 2> /dev/null|") or die("Cannot open nmap pipe: $!");
     my $node;
-    while (<FPING>) {
+    while (<NMAP>) {
         if (/Host (.*) \(.*\) appears to be up/) {
             $node = $1;
             unless ($deadnodes{$node}) {

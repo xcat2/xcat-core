@@ -117,7 +117,9 @@ sub mount_chroot {
 sub umount_chroot {
     my $rootimage_dir = shift;
 
-    $rootimage_dir=realpath($rootimage_dir);
+    if(-e "$rootimage_dir"){
+        $rootimage_dir=realpath($rootimage_dir);
+    }
     if ($rootimage_dir eq "/") {
         print "\n\n\n\nWARNING: /proc and /sys may still be mounted in the rootimgdir\n\n\n\n";
         return 1;
@@ -134,7 +136,7 @@ sub umount_chroot {
     }
     close($FILEHD);
     foreach my $mntpt (@mntptlist){
-        system("umount -l $mntpt >/dev/null 2>&1")
+        system("umount -l $mntpt >/dev/null 2>&1");
     }
 
     if (majversion($osver) > 6) {
@@ -287,7 +289,13 @@ foreach (@ndrivers) {
     }
 }
 
-unless ($onlyinitrd) {
+if($onlyinitrd){
+    unless(-e "$rootimg_dir"){
+        print("the root image directory \"$rootimg_dir\"does not exist, please run \"genimage $imagename\" to generate the root image directory first!\n");
+        exit 1;
+    }
+}else
+{
     @yumdirs = ();
 
     my @pkgdirs = split(",", $srcdir);

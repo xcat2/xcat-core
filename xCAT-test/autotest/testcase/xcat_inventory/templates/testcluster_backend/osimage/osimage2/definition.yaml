@@ -1,0 +1,9 @@
+osimage:
+  osimage2:
+    basic_attributes:
+      distribution: sles15
+    imagetype: linux
+    provision_mode: netboot
+schema_version: '2.0'
+
+#Version 2.14.5 (git commit fc0fb3fca198aa298a114f6124749275e7d81f8c, built Thu Dec  6 22:20:43 EST 2018)

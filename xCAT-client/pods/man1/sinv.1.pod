@@ -135,7 +135,7 @@ xCAT ships some default configuration files
 for Ethernet switches and IB switches under
 I</opt/xcat/share/xcat/devicetype> directory. If you want to overwrite
 any of the configuration files, copy them to I</var/opt/xcat/>
-directory and cutomize.
+directory and customize.
 For example, I<base/IBSwitch/Qlogic/config> is the configuration
 file location if devicetype is specified as IBSwitch::Qlogic.
 xCAT will first search config file using I</var/opt/xcat/> as the base.
@@ -252,7 +252,6 @@ To execute B<sinv> on the Linux osimage defined for cn1.  First build a template
  sinv -c "xdsh -i /install/netboot/rhels6/ppc64/test_ramdisk_statelite/rootimg cat /etc/hosts" -e -t 1 -p /tmp/sinv.template -o /tmp/sinv.output
 
 =item 8.
-
 To execute B<sinv> on the AIX NIM 611dskls spot and compare /etc/hosts to compute1 node, run the following:
 
  xdsh compute1 "cat /etc/hosts" | xdshcoll > /tmp/sinv2/template"
@@ -260,7 +259,6 @@ To execute B<sinv> on the AIX NIM 611dskls spot and compare /etc/hosts to comput
  sinv -c "xdsh -i 611dskls cat /etc/hosts" -e -t1 -p /tmp/sinv.template -o /tmp/sinv.output
 
 =item 9.
-
 To execute B<sinv> on the device mswitch2 and compare to mswitch1
 
  sinv -c "xdsh mswitch  enable;show version" -s mswitch1 -p /tmp/sinv/template --devicetype IBSwitch::Mellanox -l admin -t 2
@@ -275,4 +273,4 @@ Location of the sinv command.
 
 =head1 B<SEE ALSO>
 
-L <xdsh(1)|xdsh.1>, L<noderange(3)|noderange.3>
+L<xdsh(1)|xdsh.1>, L<noderange(3)|noderange.3>

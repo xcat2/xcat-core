@@ -1,0 +1,52 @@
+start: xcat_inventory_import_validation_osimage
+description: verify the validation mechanisom while importing osimage object
+label:others,inventory_ci
+cmd: rm -rf /tmp/xcat_inventory_import_validation_osimage
+cmd: mkdir -p /tmp/xcat_inventory_import_validation_osimage
+cmd: mkdir -p /tmp/xcat_inventory_import_validation_osimage/trash/
+cmd: mkdir -p /tmp/xcat_inventory_import_validation_osimage/backup/
+cmd: lsdef -t osimage -o testosimage1 -z 2>/dev/null  >/tmp/xcat_inventory_import_validation_osimage/backup/testosimage1.stanza
+
+cmd: /opt/xcat/share/xcat/tools/autotest/testcase/xcat_inventory/validatehelper "osimage" "testosimage1" "role" "compute" "/tmp/xcat_inventory_import_validation_osimage/trash/"
+check: rc==0
+cmd: /opt/xcat/share/xcat/tools/autotest/testcase/xcat_inventory/validatehelper "osimage" "testosimage1" "role" "service" "/tmp/xcat_inventory_import_validation_osimage/trash/"
+check: rc==0
+cmd: /opt/xcat/share/xcat/tools/autotest/testcase/xcat_inventory/validatehelper "osimage" "testosimage1" "role" "invalid" "/tmp/xcat_inventory_import_validation_osimage/trash/"
+check: rc!=0
+cmd: /opt/xcat/share/xcat/tools/autotest/testcase/xcat_inventory/validatehelper "osimage" "testosimage1" "role" "" "/tmp/xcat_inventory_import_validation_osimage/trash/"
+check: rc==0
+
+cmd: /opt/xcat/share/xcat/tools/autotest/testcase/xcat_inventory/validatehelper "osimage" "testosimage1" "imagetype" "windows" "/tmp/xcat_inventory_import_validation_osimage/trash/"
+check: rc==0
+cmd: /opt/xcat/share/xcat/tools/autotest/testcase/xcat_inventory/validatehelper "osimage" "testosimage1" "imagetype" "linux" "/tmp/xcat_inventory_import_validation_osimage/trash/"
+check: rc==0
+cmd: /opt/xcat/share/xcat/tools/autotest/testcase/xcat_inventory/validatehelper "osimage" "testosimage1" "imagetype" "invalid" "/tmp/xcat_inventory_import_validation_osimage/trash/"
+check: rc!=0
+cmd: /opt/xcat/share/xcat/tools/autotest/testcase/xcat_inventory/validatehelper "osimage" "testosimage1" "imagetype" "" "/tmp/xcat_inventory_import_validation_osimage/trash/"
+check: rc!=0
+
+
+cmd: /opt/xcat/share/xcat/tools/autotest/testcase/xcat_inventory/validatehelper "osimage" "testosimage1" "provision_mode" "statelite" "/tmp/xcat_inventory_import_validation_osimage/trash/"
+check: rc==0
+cmd: /opt/xcat/share/xcat/tools/autotest/testcase/xcat_inventory/validatehelper "osimage" "testosimage1" "provision_mode" "install" "/tmp/xcat_inventory_import_validation_osimage/trash/"
+check: rc==0
+cmd: /opt/xcat/share/xcat/tools/autotest/testcase/xcat_inventory/validatehelper "osimage" "testosimage1" "provision_mode" "netboot" "/tmp/xcat_inventory_import_validation_osimage/trash/"
+check: rc==0
+cmd: /opt/xcat/share/xcat/tools/autotest/testcase/xcat_inventory/validatehelper "osimage" "testosimage1" "provision_mode" "invalid" "/tmp/xcat_inventory_import_validation_osimage/trash/"
+check: rc!=0
+cmd: /opt/xcat/share/xcat/tools/autotest/testcase/xcat_inventory/validatehelper "osimage" "testosimage1" "provision_mode" "" "/tmp/xcat_inventory_import_validation_osimage/trash/"
+check: rc!=0
+
+
+cmd: /opt/xcat/share/xcat/tools/autotest/testcase/xcat_inventory/validatehelper "osimage" "testosimage1" "genimgoptions.rootfstype" "nfs" "/tmp/xcat_inventory_import_validation_osimage/trash/"
+check: rc==0
+cmd: /opt/xcat/share/xcat/tools/autotest/testcase/xcat_inventory/validatehelper "osimage" "testosimage1" "genimgoptions.rootfstype" "ramdisk" "/tmp/xcat_inventory_import_validation_osimage/trash/"
+check: rc==0
+cmd: /opt/xcat/share/xcat/tools/autotest/testcase/xcat_inventory/validatehelper "osimage" "testosimage1" "genimgoptions.rootfstype" "invalid" "/tmp/xcat_inventory_import_validation_osimage/trash/"
+check: rc!=0
+cmd: /opt/xcat/share/xcat/tools/autotest/testcase/xcat_inventory/validatehelper "osimage" "testosimage1" "genimgoptions.rootfstype" "" "/tmp/xcat_inventory_import_validation_osimage/trash/"
+check: rc==0
+
+cmd: cat /tmp/xcat_inventory_import_validation_osimage/backup/testosimage1.stanza 2>/dev/null |mkdef -z -f
+cmd: rm -rf /tmp/xcat_inventory_import_validation_osimage
+end

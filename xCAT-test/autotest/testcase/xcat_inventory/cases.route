@@ -1,0 +1,28 @@
+start:xcat_inventory_import_validation_route
+description:This case is used to test route validation function of xcat-inventory import yaml and json file. To test "net" and "mask" attributes
+label:others,inventory_ci
+cmd:mkdir -p /tmp/xcat_inventory_import_validation_route_bak
+check:rc==0
+cmd:lsdef -t route -o autotestnet > /dev/null 2>&1;if [[ $? -eq 0 ]]; then lsdef -t route -o autotestnet -z >/tmp/xcat_inventory_import_validation_route_bak/autotestnet.stanza ;rmdef -t route -o autotestnet;fi
+check:rc==0
+
+cmd:/opt/xcat/share/xcat/tools/autotest/testcase/xcat_inventory/validatehelper "route" "autotestnet" "net" "200.0.0.0" "/tmp/xcat_inventory_import_validation_route"
+check:rc==0
+
+cmd:/opt/xcat/share/xcat/tools/autotest/testcase/xcat_inventory/validatehelper "route" "autotestnet" "net" "200.0" "/tmp/xcat_inventory_import_validation_route"
+check:rc!=0
+
+cmd:/opt/xcat/share/xcat/tools/autotest/testcase/xcat_inventory/validatehelper "route" "autotestnet" "net" "" "/tmp/xcat_inventory_import_validation_route"
+check:rc!=0
+
+cmd:/opt/xcat/share/xcat/tools/autotest/testcase/xcat_inventory/validatehelper "route" "autotestnet" "net" "default" "/tmp/xcat_inventory_import_validation_route"
+check:rc==0
+
+cmd:/opt/xcat/share/xcat/tools/autotest/testcase/xcat_inventory/validatehelper "route" "autotestnet" "net" "abc.345.123.202" "/tmp/xcat_inventory_import_validation_route"
+check:rc!=0
+
+cmd:if [[ -e /tmp/xcat_inventory_import_validation_route_bak/autotestnet.stanza ]]; then cat /tmp/xcat_inventory_import_validation_route_bak/autotestnet.stanza | mkdef -z;fi
+check:rc==0
+cmd:rm -rf /tmp/xcat_inventory_import_validation_route_bak
+check:rc==0
+end

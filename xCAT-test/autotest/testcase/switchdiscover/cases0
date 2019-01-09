@@ -1,4 +1,5 @@
 start:switchdiscover_h
+label:others,discovery,Swtich
 os:Linux
 decription:help
 cmd:switchdiscover -h
@@ -6,12 +7,14 @@ check:rc==0
 check:output=~Usage
 end
 start:switchdiscover_range_default
+label:others,discovery,Swtich
 cmd:switchdiscover --range $$range
 check:rc==0
 check:output=~Discovering switches using nmap
 check:output=~switch
 end
 start:switchdiscover_range_default_w
+label:others,discovery,Swtich
 cmd:lsdef -l switch -z >/tmp/switch.standa
 cmd:rmdef switch
 cmd:switchdiscover --range $$range -w
@@ -29,12 +32,14 @@ cmd:rm -rf /tmp/switch.standa
 check:rc==0
 end
 start:switchdiscover_range_s
+label:others,discovery,Swtich
 cmd:switchdiscover --range $$range -s nmap
 check:rc==0
 check:output=~Discovering switches using nmap
 check:output=~switch
 end
 start:switchdiscover_range_r
+label:others,discovery,Swtich
 cmd:switchdiscover --range $$range -r
 check:rc==0
 check:output=~Discovering switches using nmap
@@ -47,6 +52,7 @@ check:output=~/usr/bin/nmap -s(n|P) -oX - $$range
 cmd:rm -rf switchdiscover_range_r.log
 end
 start:switchdiscover_range_x
+label:others,discovery,Swtich
 cmd:switchdiscover --range $$range -x
 check:rc==0
 check:output=~Discovering switches using nmap
@@ -54,6 +60,7 @@ check:output=~<Switch>
 check:output=~<groups>switch</groups>
 end
 start:switchdiscover_range_z
+label:others,discovery,Swtich
 cmd:switchdiscover --range $$range -z
 check:rc==0
 check:output=~Discovering switches using nmap
@@ -62,6 +69,7 @@ check:output=~groups=switch
 end
 
 start:switchdiscover_range_z_V
+label:others,discovery,Swtich
 cmd:switchdiscover --range $$range -z -V
 check:rc==0
 check:output=~Discovering switches using nmap

@@ -322,18 +322,25 @@ sub bmcdiscovery_processargs {
         ######################################
         # check if there is nmap or not
         ######################################
-        if (-x '/usr/bin/nmap')
-        {
+        if (-x '/usr/bin/nmap') {
             $nmap_path = "/usr/bin/nmap";
         }
-        elsif (-x '/usr/local/bin/nmap')
-        {
+        elsif (-x '/usr/local/bin/nmap') {
             $nmap_path = "/usr/local/bin/nmap";
         }
-        else
-        {
+        else {
             my $rsp;
             push @{ $rsp->{data} }, "\tThere is no nmap in /usr/bin/ or /usr/local/bin/. \n ";
+            xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
+            return 1;
+        }
+
+        ######################################
+        # check if there is ipmitool-xcat or not
+        ######################################
+        unless (-x '/opt/xcat/bin/ipmitool-xcat') {
+            my $rsp;
+            push @{ $rsp->{data} }, "\tThere is no ipmitool-xcat in /opt/xcat/bin/, make sure that package ipmitool-xcat is installed successfully.\n ";
             xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
             return 1;
         }

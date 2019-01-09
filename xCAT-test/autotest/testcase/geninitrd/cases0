@@ -1,4 +1,5 @@
 start:geninitrd_i_n_o_p
+label:others
 os:Linux
 cmd:copycds $$ISO
 cmd:genimage __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute

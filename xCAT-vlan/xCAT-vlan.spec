@@ -19,7 +19,7 @@ BuildArch: noarch
 Requires: xCAT-client = 4:%{version}-%{release}
 
 %description
-xCAT-vlan provides the xCAT vlan confiuration.
+xCAT-vlan provides the xCAT vlan configuration.
 
 %prep
 %setup -q -n xCAT-vlan

@@ -1,5 +1,6 @@
 start:psh_h
 description: psh -h and psh -help
+label:others,parallel_cmds
 os:Linux
 cmd:psh -h
 check:rc==0
@@ -11,6 +12,7 @@ end
 
 start:psh_v
 description: psh -v
+label:others,parallel_cmds
 os:Linux
 cmd:psh -v
 check:output=~Version
@@ -19,6 +21,7 @@ end
 
 start:psh_node_cmd_linux
 description: psh CN 'pwd' in linux
+label:others,parallel_cmds
 os:Linux
 cmd:psh $$CN 'pwd'
 check:rc==0
@@ -28,6 +31,7 @@ end
 
 start:psh_node_cmd_aix
 description: psh CN 'pwd' in AIX
+label:others,parallel_cmds
 os:Aix
 cmd:psh $$CN 'pwd'
 check:rc==0
@@ -37,6 +41,7 @@ end
 
 start:psh_l
 description: psh -l user CN 'uptime' in linux
+label:others,parallel_cmds
 os:Linux
 cmd:psh -l root $$CN 'uptime'
 check:rc==0
@@ -46,6 +51,7 @@ end
 
 start:psh_i
 description: psh -i interface CN 'uptime' in linux
+label:others,parallel_cmds
 os:Linux
 cmd:cp /etc/hosts /etc/hostsBK
 check:rc==0

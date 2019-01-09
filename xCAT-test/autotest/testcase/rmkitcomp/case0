@@ -1,4 +1,5 @@
 start:rmkitcomp_v
+label:others,KIT
 os:Linux
 cmd:rmkitcomp -v
 check:rc==0
@@ -13,6 +14,7 @@ check:output=~compatible_frameworks
 end
 
 start:rmkitcomp_h
+label:others,KIT
 os:Linux
 cmd:rmkitcomp -h
 check:rc==0
@@ -23,6 +25,7 @@ check:output=~ Usage
 end
 
 start:rmkitcomp_noscripts
+label:others,KIT
 os:Linux
 cmd:rm -rf /opt/xcat/share/xcat/tools/autotest/testcase/rmkitcomp/$$KITDATA
 cmd:mkdir -p /opt/xcat/share/xcat/tools/autotest/testcase/rmkitcomp/$$KITDATA
@@ -59,6 +62,7 @@ check:rc==0
 end
 
 start:rmkitcomp_f
+label:others,KIT
 os:Linux
 cmd:rm -rf /opt/xcat/share/xcat/tools/autotest/testcase/rmkitcomp/$$KITDATA
 cmd:mkdir -p /opt/xcat/share/xcat/tools/autotest/testcase/rmkitcomp/$$KITDATA

@@ -1,7 +1,0 @@
-#4264 - rpower command intermittently reports 503: Service Unavailable Error
-============================================================================
-
-Issue `#4264 <https://github.com/xcat2/xcat-core/issues/4264>`_
-
-In attempt to improve the performance of the REST calls to OpenBMC and reduce the time spent in a timeout, we fail too soon here before the BMC has a chance to respond.
-

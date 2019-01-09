@@ -1,5 +1,6 @@
 start:cfg_wrong_cn_in_sn_pool_tftp_sync_mode
 description:The test case is intend to test the error handling of the service node pool when a compute has misconfigured node definition
+label:others,invoke_provision,snpool
 cmd:fdisk -l
 cmd:df -T
 #cmd:XCAT_DATABASE=$$XCAT_DATABASE /opt/xcat/share/xcat/tools/autotest/testcase/installation/pre_deploy_sn __GETNODEATTR($$SN,os)__ __GETNODEATTR($$SN,arch)__

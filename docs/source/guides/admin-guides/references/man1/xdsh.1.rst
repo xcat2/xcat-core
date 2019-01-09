@@ -87,8 +87,7 @@ The remote shell is determined as follows, in order of precedence:
 
 4. The \ **/usr/bin/ssh**\  command.
 
-The  remote shell options are determined as follows, in order of prece-
-dence:
+The  remote shell options are determined as follows, in order of precedence:
 
 1. The \ **-o**\  flag.
 
@@ -664,11 +663,9 @@ on the service node fedora9 diskless image, enter:
  
 
 
-9.
- 
- To define the QLogic IB switch as a node and to set up the SSH keys for IB switch
- \ **qswitch**\  with device configuration file
- \ **/var/opt/xcat/IBSwitch/Qlogic/config**\  and user name \ **username**\ , enter
+9. To define the QLogic IB switch as a node and to set up the SSH keys for IB switch
+\ **qswitch**\  with device configuration file
+\ **/var/opt/xcat/IBSwitch/Qlogic/config**\  and user name \ **username**\ , enter
  
  
  .. code-block:: perl
@@ -703,9 +700,7 @@ on the service node fedora9 diskless image, enter:
  
 
 
-12.
- 
- To define a BNT Ethernet switch as a node and run a command to create a new vlan with vlan id 3 on the switch.
+12. To define a BNT Ethernet switch as a node and run a command to create a new vlan with vlan id 3 on the switch.
  
  
  .. code-block:: perl
@@ -727,9 +722,7 @@ on the service node fedora9 diskless image, enter:
  
 
 
-13.
- 
- To run \ **xdsh**\  with the non-root userid "user1" that has been setup as an xCAT userid and with sudo on node1 and node2 to run as root, do the following, see xCAT doc on Granting_Users_xCAT_privileges:
+13. To run \ **xdsh**\  with the non-root userid "user1" that has been setup as an xCAT userid and with sudo on node1 and node2 to run as root, do the following, see xCAT doc on Granting_Users_xCAT_privileges:
  
  
  .. code-block:: perl

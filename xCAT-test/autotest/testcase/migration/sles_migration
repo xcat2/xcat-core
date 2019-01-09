@@ -1,6 +1,7 @@
 start:sles_migration1
 os:Linux
 description:update xCAT from $$MIGRATION1_VERSION to latest version, these two global parameter defined in config file
+label:others,migration,invoke_provision
 cmd:if ping -c 1 $$SN > /dev/null;then rpower $$SN off > /dev/null;echo "poweroffsn">/tmp/poweroffsn;fi
 check:rc==0
 cmd:if [[ "__GETNODEATTR($$SN,groups)__" =~ "service" ]];then chdef $$SN -m groups=service;echo "servicelabel" >/tmp/servicelabel;fi
@@ -60,6 +61,12 @@ cmd:xdsh $$CN "/oldxcat/xcat-core/mklocalrepo.sh"
 check:rc==0
 cmd:xdsh $$CN "cd /oldxcat/xcat-dep/sles1`more /etc/*release|grep VERSION_ID|cut -c14`/__GETNODEATTR($$CN,arch)__/;./mklocalrepo.sh"
 check:rc==0
+# Workaround github issue #5503
+cmd:xdsh $$CN "grep -q 11 /etc/SuSE-release && ( sed -i -e 's@gpgcheck=1@gpgcheck=0@' /etc/zypp/repos.d/xcat-core.repo; sed -i -e 's@gpgcheck=1@gpgcheck=0@' /etc/zypp/repos.d/xcat-dep.repo )"
+cmd:xdsh $$CN "zypper --gpg-auto-import-keys -n --no-gpg-checks refresh"
+cmd:xdsh $$CN "grep -q 11 /etc/SuSE-release && rpm -e --allmatches gpg-pubkey-ca548a47-5b2c830b"
+cmd:xdsh $$CN "zypper refresh"
+check:rc==0
 cmd:xdsh $$CN "zypper sl -U;zypper --gpg-auto-import-keys search --match-exact -s screen"
 check:rc==0
 cmd:xdsh $$CN "zypper -n install xCAT"
@@ -90,7 +97,11 @@ cmd:xdsh $$CN "tar -jxvf /xcat-dep*.tar.bz2"
 check:rc==0
 cmd:xdsh $$CN "cd /root/xcat-dep/sles1`more /etc/*release|grep VERSION_ID|cut -c14`/__GETNODEATTR($$CN,arch)__/;./mklocalrepo.sh"
 check:rc==0
-cmd:xdsh $$CN "zypper refresh;zypper -n --gpg-auto-import-keys update --force-resolution '*xCAT*'"
+# Workaround github issue #5503
+cmd:xdsh $$CN "grep -q 11 /etc/SuSE-release && ( sed -i -e 's@gpgcheck=1@gpgcheck=0@' /etc/zypp/repos.d/xcat-core.repo; sed -i -e 's@gpgcheck=1@gpgcheck=0@' /etc/zypp/repos.d/xcat-dep.repo )"
+cmd:xdsh $$CN "zypper --gpg-auto-import-keys -n --no-gpg-checks refresh"
+cmd:xdsh $$CN "grep -q 11 /etc/SuSE-release && rpm -e --allmatches gpg-pubkey-ca548a47-5b2c830b"
+cmd:xdsh $$CN "zypper refresh;zypper -n update --force-resolution '*xCAT*'"
 check:rc==0
 cmd:xdsh $$CN "service xcatd status"
 check:rc==0
@@ -110,6 +121,7 @@ end
 start:sles_migration2
 os:Linux
 description:update xCAT from $$MIGRATION22VERSION to latest version, these two global parameter defined in config file
+label:others,migration,invoke_provision
 
 cmd:if ping -c 1 $$SN > /dev/null;then rpower $$SN off > /dev/null;echo "poweroffsn">/tmp/poweroffsn;fi
 check:rc==0
@@ -170,6 +182,12 @@ cmd:xdsh $$CN "/oldxcat/xcat-core/mklocalrepo.sh"
 check:rc==0
 cmd:xdsh $$CN "cd /oldxcat/xcat-dep/sles1`more /etc/*release|grep VERSION_ID|cut -c14`/__GETNODEATTR($$CN,arch)__/;./mklocalrepo.sh"
 check:rc==0
+# Workaround github issue #5503
+cmd:xdsh $$CN "grep -q 11 /etc/SuSE-release && ( sed -i -e 's@gpgcheck=1@gpgcheck=0@' /etc/zypp/repos.d/xcat-core.repo; sed -i -e 's@gpgcheck=1@gpgcheck=0@' /etc/zypp/repos.d/xcat-dep.repo )"
+cmd:xdsh $$CN "zypper --gpg-auto-import-keys -n --no-gpg-checks refresh"
+cmd:xdsh $$CN "grep -q 11 /etc/SuSE-release && rpm -e --allmatches gpg-pubkey-ca548a47-5b2c830b"
+cmd:xdsh $$CN "zypper refresh"
+check:rc==0
 cmd:xdsh $$CN "zypper sl -U;zypper --gpg-auto-import-keys search --match-exact -s screen"
 check:rc==0
 cmd:xdsh $$CN "zypper -n install xCAT"
@@ -200,7 +218,11 @@ cmd:xdsh $$CN "tar -jxvf /xcat-dep*.tar.bz2"
 check:rc==0
 cmd:xdsh $$CN "cd /root/xcat-dep/sles1`more /etc/*release|grep VERSION_ID|cut -c14`/__GETNODEATTR($$CN,arch)__/;./mklocalrepo.sh"
 check:rc==0
-cmd:xdsh $$CN "zypper refresh;zypper -n --gpg-auto-import-keys update --force-resolution '*xCAT*'"
+# Workaround github issue #5503
+cmd:xdsh $$CN "grep -q 11 /etc/SuSE-release && ( sed -i -e 's@gpgcheck=1@gpgcheck=0@' /etc/zypp/repos.d/xcat-core.repo; sed -i -e 's@gpgcheck=1@gpgcheck=0@' /etc/zypp/repos.d/xcat-dep.repo )"
+cmd:xdsh $$CN "zypper --gpg-auto-import-keys -n --no-gpg-checks refresh"
+cmd:xdsh $$CN "grep -q 11 /etc/SuSE-release && rpm -e --allmatches gpg-pubkey-ca548a47-5b2c830b"
+cmd:xdsh $$CN "zypper refresh;zypper -n update --force-resolution '*xCAT*'"
 check:rc==0
 cmd:xdsh $$CN "service xcatd status"
 check:rc==0

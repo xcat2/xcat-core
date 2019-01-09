@@ -5,11 +5,15 @@
 # setup LDAP client configuration on the compute nodes
 #
 #---------------------------------------------------------------------------
-
+if [ -n "$LOGLABEL" ]; then
+    log_label=$LOGLABEL
+else
+    log_label="xcat"
+fi
 if [ -r /etc/ldap.conf -a -r /etc/resolv.conf ]
         then
             echo -n "         LDAP: "
-	     logger -t xcat -p local4.info "         LDAP: "
+	     logger -t $log_label -p local4.info "         LDAP: "
             DC=$(
                 cat /etc/resolv.conf | \
                 egrep '(domain|search)' | \

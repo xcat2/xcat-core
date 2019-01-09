@@ -1,10 +1,15 @@
 # IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
+if [ -n "$LOGLABEL" ]; then
+    log_label=$LOGLABEL
+else
+    log_label="xcat"
+fi
 GRUB=""
 for i in /boot/grub/grub.conf /boot/grub/menu.lst
 do
 	if [ -r "$i" ]
 	then
-		logger -t xcat -p local4.info "Install: got GRUB at $i"
+		logger -t $log_label -p local4.info "Install: got GRUB at $i"
 		GRUB=$i
 		GRUBDIR=$(dirname $GRUB)
 		GRUBFILE=$(basename $GRUB)
@@ -14,7 +19,7 @@ done
 
 if [ -n "$GRUB" ]
 then
-        logger -t xcat -p local4.info "Install: the GRUB dir is $GRUBDIR"
+        logger -t $log_label -p local4.info "Install: the GRUB dir is $GRUBDIR"
 	cd $GRUBDIR
 	perl -pi -e 's/^gfxmenu/#gfxmenu/' $GRUBFILE
 	perl -pi -e 's/^color/#color/' $GRUBFILE

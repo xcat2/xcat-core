@@ -6,7 +6,7 @@
 #################################################################
 
 . /xcatpost/xcatlib.sh
-log_label="xcat.xcatinstallpost"
+log_label="xcat.deployment"
 if [ -f /xcatpost/mypostscript.post ]; then
     XCATDEBUGMODE=`grep 'XCATDEBUGMODE=' /xcatpost/mypostscript.post |cut -d= -f2 | tr -d \'\" | tr A-Z a-z `
     MASTER_IP=`grep '^MASTER_IP=' /xcatpost/mypostscript.post |cut -d= -f2|sed s/\'//g`
@@ -125,16 +125,16 @@ echo "
 
 if [ \"\$return_value\" -eq \"0\" ]; then
     if [ \"\$XCATDEBUGMODE\" = \"1\" ] || [ \"\$XCATDEBUGMODE\" = \"2\" ]; then
-        msgutil_r \"\$MASTER_IP\" \"debug\" \"node booted, reporting status...\" \"/var/log/xcat/xcat.log\" \"xcat.mypostscript\"
+        msgutil_r \"\$MASTER_IP\" \"debug\" \"node booted, reporting status...\" \"/var/log/xcat/xcat.log\" \"\$log_label\"
     fi
     updateflag.awk \$MASTER 3002 \"installstatus booted\"
-    msgutil_r \$MASTER_IP \"info\" \"provision completed.(\$NODE)\" \"/var/log/xcat/xcat.log\" \"xcat.mypostscript\"
+    msgutil_r \$MASTER_IP \"info\" \"provision completed.(\$NODE)\" \"/var/log/xcat/xcat.log\" \"\$log_label\"
 else
     if [ \"\$XCATDEBUGMODE\" = \"1\" ] || [ \"\$XCATDEBUGMODE\" = \"2\" ]; then
-        msgutil_r \"\$MASTER_IP\" \"debug\" \"node boot failed, reporting status...\" \"/var/log/xcat/xcat.log\" \"xcat.mypostscript\"
+        msgutil_r \"\$MASTER_IP\" \"debug\" \"node boot failed, reporting status...\" \"/var/log/xcat/xcat.log\" \"\$log_label\"
     fi
     updateflag.awk \$MASTER 3002 \"installstatus failed\"
-    msgutil_r \$MASTER_IP \"error\" \"provision completed with error.(\$NODE)\" \"/var/log/xcat/xcat.log\" \"xcat.mypostscript\"
+    msgutil_r \$MASTER_IP \"error\" \"provision completed with error.(\$NODE)\" \"/var/log/xcat/xcat.log\" \"\$log_label\"
 fi
 " >> /xcatpost/mypostscript.post
 fi
@@ -145,4 +145,5 @@ if [ -x /xcatpost/mypostscript.post ];then
    msgutil_r "$MASTER_IP" "info" "Running /xcatpost/mypostscript.post" "/var/log/xcat/xcat.log" "$log_label"
    /xcatpost/mypostscript.post
    msgutil_r "$MASTER_IP" "info" "/xcatpost/mypostscript.post return" "/var/log/xcat/xcat.log" "$log_label"
+   msgutil_r "$MASTER_IP" "info" "=============deployment ending====================" "/var/log/xcat/xcat.log" "$log_label"
 fi
