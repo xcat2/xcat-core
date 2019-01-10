@@ -13,8 +13,10 @@ from docopt import docopt,DocoptExit
 
 from common import utils
 from common import exceptions as xcat_exception
-from hwctl.executor.redfish_power import RedfishPowerTask
+from hwctl.redfish.redfish_power import RedfishPowerTask
+from hwctl.redfish.redfish_setboot import RedfishBootTask
 from hwctl.power import DefaultPowerManager
+from hwctl.setboot import DefaultBootManager
 
 from xcatagent import base
 import logging
@@ -30,8 +32,12 @@ VERBOSE = False
 
 # global variables of rpower
 POWER_REBOOT_OPTIONS = ('boot', 'reset')
-POWER_SET_OPTIONS = ('on', 'off', 'bmcreboot', 'softoff')
+POWER_SET_OPTIONS = ('on', 'off', 'bmcreboot')
 POWER_GET_OPTIONS = ('bmcstate', 'state', 'stat', 'status')
+
+# global variables of rsetboot
+SETBOOT_GET_OPTIONS = ('stat', '')
+SETBOOT_SET_OPTIONS = ('cd', 'def', 'default', 'floppy', 'hd', 'net', 'setup')
 
 class RedfishManager(base.BaseManager):
     def __init__(self, messager, cwd, nodes=None, envs=None):
@@ -50,7 +56,7 @@ class RedfishManager(base.BaseManager):
         # 1, parse args
         rpower_usage = """
         Usage:
-            rpower [-V|--verbose] [boot|bmcreboot|bmcstate|off|on|reset|softoff|stat|state|status]
+            rpower [-V|--verbose] [boot|bmcreboot|bmcstate|off|on|reset|stat|state|status]
 
         Options:
             -V --verbose   rpower verbose mode.
@@ -73,5 +79,51 @@ class RedfishManager(base.BaseManager):
 
         # 3, run the subcommands
         runner = RedfishPowerTask(nodesinfo, callback=self.messager, debugmode=self.debugmode, verbose=self.verbose)
-        DefaultPowerManager().get_power_state(runner)
+        if action == 'bmcstate':
+            DefaultPowerManager().get_bmc_state(runner)
+        elif action == 'bmcreboot':
+            DefaultPowerManager().reboot_bmc(runner)
+        elif action in POWER_GET_OPTIONS:
+            DefaultPowerManager().get_power_state(runner)
+        elif action in POWER_REBOOT_OPTIONS:
+            DefaultPowerManager().reboot(runner, optype=action)
+        else:
+            DefaultPowerManager().set_power_state(runner, power_state=action)
 
+
+    def rsetboot(self, nodesinfo, args):
+
+        # 1, parse args
+        if not args:
+            args = ['stat']
+
+        rsetboot_usage = """
+        Usage:
+            rsetboot [-V|--verbose] [cd|def|default|floppy||hd|net|stat|setup] [-p]
+
+        Options:
+            -V --verbose    rsetboot verbose mode.
+            -p              persistant boot source.
+        """
+
+        try:
+            opts = docopt(rsetboot_usage, argv=args)
+
+            self.verbose = opts.pop('--verbose')
+            action_type = opts.pop('-p')
+            action = [k for k,v in opts.items() if v][0]
+        except Exception as e:
+            self.messager.error("Failed to parse arguments for rsetboot: %s" % args)
+            return
+
+        # 2, validate the args
+        if action not in (SETBOOT_GET_OPTIONS + SETBOOT_SET_OPTIONS):
+            self.messager.error("Not supported subcommand for rsetboot: %s" % action)
+            return
+
+        # 3, run the subcommands
+        runner = RedfishBootTask(nodesinfo, callback=self.messager, debugmode=self.debugmode, verbose=self.verbose)
+        if action in SETBOOT_GET_OPTIONS:
+            DefaultBootManager().get_boot_state(runner)
+        else:
+            DefaultBootManager().set_boot_state(runner, setboot_state=action, persistant=action_type)
