@@ -525,31 +525,74 @@ cmd:chtab key=xcatdebugmode site.value=0
 check:rc==0
 end
 
-start:updatenode_syncfile_EXECUTEALWAYS_noderange_hierarchy
+start:updatenode_syncfile_EXECUTE_EXECUTEALWAYS_noderange
 label:others,updatenode
-description:this teast case is to verify bug #5755,synclist: EXECUTEALWAYS ignore noderange. This test case should be executed on mn with hierarchy environment, with at least 2 installed diskful cn.In this case, $$CN and $$C2 are the 2 compute nodes. 
-cmd:xdsh $$CN,$$C2 rm /tmp/file.post
-cmd:xdsh $$CN,$$C2 rm /tmp/test
-cmd:echo "echo hello >> /tmp/test" > /tmp/file.post
+description:this teast case is to verify pr #5834. This test case should be executed on mn with hierarchy environment, with 2 comput nodes.In this case, $$CN and $$C2 are the 2 compute nodes. 
+cmd:xdsh $$CN,$$C2 rm /tmp/file.post1 /tmp/file.post2
+cmd:xdsh $$CN,$$C2 rm /tmp/test1 /tmp/test2
+cmd:echo "echo hello1 >> /tmp/test1" > /tmp/file.post1
 check:rc==0
-cmd:chmod a+x /tmp/file.post
-cmd:echo "/tmp/file.post -> ($$CN) /tmp/file.post" > /install/custom/install/__GETNODEATTR($$CN,os)__/compute.$$OS.synclist
+cmd:echo "echo hello2 >> /tmp/test2" > /tmp/file.post2
+check:rc==0
+cmd:chmod a+x /tmp/file.post1 /tmp/file.post2
+cmd:mkdir -p /install/custom/install/__GETNODEATTR($$CN,os)__
+cmd:echo "/tmp/file.post1 -> ($$CN) /tmp/file.post1" > /install/custom/install/__GETNODEATTR($$CN,os)__/compute.$$OS.synclist
+cmd:echo "/tmp/file.post2 -> ($$C2) /tmp/file.post2" >> /install/custom/install/__GETNODEATTR($$CN,os)__/compute.$$OS.synclist
+cmd:echo "EXECUTE:" >> /install/custom/install/__GETNODEATTR($$CN,os)__/compute.$$OS.synclist
+cmd:echo "/tmp/file.post1" >> /install/custom/install/__GETNODEATTR($$CN,os)__/compute.$$OS.synclist
 cmd:echo "EXECUTEALWAYS:" >> /install/custom/install/__GETNODEATTR($$CN,os)__/compute.$$OS.synclist
-cmd:echo "/tmp/file.post" >> /install/custom/install/__GETNODEATTR($$CN,os)__/compute.$$OS.synclist
+cmd:echo "/tmp/file.post2" >> /install/custom/install/__GETNODEATTR($$CN,os)__/compute.$$OS.synclist
 cmd:chdef -t osimage -o __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-install-compute synclists=/install/custom/install/__GETNODEATTR($$CN,os)__/compute.$$OS.synclist
 check:rc==0
 cmd:updatenode $$CN -F
+check:output=~File synchronization has completed 
 check:rc==0
-cmd:xdsh $$CN "cat /tmp/test"
+cmd:xdsh $$CN "cat /tmp/test1"
 check:rc==0
-check:output=~hello
+check:output=~hello1
+cmd:xdsh $$CN "rm -rf /tmp/test1"
+check:rc==0
+cmd:updatenode $$CN -F
+check:output=~File synchronization has completed
+check:rc==0
+cmd:xdsh $$CN "cat /tmp/test1"
+check:rc!=0
 cmd:updatenode $$C2 -F
+check:output=~File synchronization has completed
 check:rc==0
-cmd:xdsh $$C2 ls /tmp/file.post
+cmd:xdsh $$C2 ls /tmp/file.post2
+check:rc==0
+cmd:xdsh $$C2 "cat /tmp/test2"
+check:rc==0
+check:output=~hello2
+cmd:xdsh $$C2 "rm -rf /tmp/test2"
+check:rc==0
+cmd:updatenode $$C2 -F
+check:output=~File synchronization has completed
+check:rc==0
+cmd:xdsh $$C2 ls /tmp/file.post2
+check:rc==0
+cmd:xdsh $$C2 "cat /tmp/test2"
+check:rc==0
+check:output=~hello2
+cmd:xdsh $$C2 rm -rf /tmp/file.post2 /tmp/test2
+cmd:rm -rf /install/custom/install/__GETNODEATTR($$CN,os)__/compute.$$OS.synclist
+cmd:echo "/tmp/file.post1 -> ($$CN) /tmp/file.post1" > /install/custom/install/__GETNODEATTR($$CN,os)__/compute.$$OS.synclist
+cmd:echo "/tmp/file.post1 -> ($$C2) /tmp/file.post1" >> /install/custom/install/__GETNODEATTR($$CN,os)__/compute.$$OS.synclist
+cmd:echo "EXECUTE:" >> /install/custom/install/__GETNODEATTR($$CN,os)__/compute.$$OS.synclist
+cmd:echo "/tmp/file.post1" >> /install/custom/install/__GETNODEATTR($$CN,os)__/compute.$$OS.synclist
+cmd:echo "EXECUTEALWAYS:" >> /install/custom/install/__GETNODEATTR($$CN,os)__/compute.$$OS.synclist
+cmd:echo "/tmp/file.post2" >> /install/custom/install/__GETNODEATTR($$CN,os)__/compute.$$OS.synclist
+cmd:chdef -t osimage -o __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-install-compute synclists=/install/custom/install/__GETNODEATTR($$CN,os)__/compute.$$OS.synclist
+check:rc==0
+cmd:updatenode $$C2 -F
+check:output=~File synchronization has completed
+check:rc==0
+cmd:xdsh $$C2 ls /tmp/file.post2
 check:rc!=0
-cmd:xdsh $$C2 "cat /tmp/test"
+cmd:xdsh $$C2 "cat /tmp/test2"
 check:rc!=0
-check:output!=~hello
+check:output!=~hello2
 cmd:chdef -t osimage -o  __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-install-compute synclists=
 check:rc==0
 cmd:rm -rf /install/custom/install/__GETNODEATTR($$CN,os)__/compute.$$OS.synclist
