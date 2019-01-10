@@ -1343,8 +1343,8 @@ sub stop_TFTP
 {
     my $distro=xCAT::Utils->osver();
     # Check whether the tftp-hpa has been installed, the ubuntu tftpd-hpa configure file is under /etc/default
-    unless (-x "/usr/sbin/in.tftpd" and (-e "/etc/xinetd.d/tftp" or -e "/etc/default/tftpd-hpa")) {
-        xCAT::MsgUtils->message("S", "ERROR: The tftpd was not installed, enable the tftp failed.");
+    unless (-x "/usr/sbin/in.tftpd") {
+        xCAT::MsgUtils->message("S", "ERROR: The tftpd was not installed, stop the tftp failed.");
         return 1;
     }
     # kill the process of atftp if it's there
