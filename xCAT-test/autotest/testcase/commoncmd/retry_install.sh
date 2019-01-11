@@ -7,7 +7,15 @@ declare -i tryreinstall=1
 node=$1
 osimage=$2
 
-for (( tryreinstall = 1 ; tryreinstall < 6 ; ++tryreinstall ))
+if [ $# -eq 3 ];
+then
+    times=$3+1
+else
+    times=6 
+fi
+
+
+for (( tryreinstall = 1 ; tryreinstall < $times ; ++tryreinstall ))
 do
     echo "Try to install $node on the $tryreinstall time..."
 
