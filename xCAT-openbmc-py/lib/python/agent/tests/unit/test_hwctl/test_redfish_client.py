@@ -13,6 +13,7 @@ import logging
 import time
 
 from hwctl import redfish_client as rf
+from common.utils import Messager
 from common.exceptions import SelfClientException, SelfServerException
 
 DATA_DIR = os.path.dirname(os.path.realpath(__file__)) + '/../json_data'
@@ -22,7 +23,7 @@ class TestRedfishClient(object):
 
     nodeinfo_dict = {'bmc': 'testbmc', 'bmcip': '10.0.0.1', 'username': 'username', 'password': 'password'}
     log = logging.getLogger('TestRedfishClient')
-    rf_rest = rf.RedfishRest(name='testnode', nodeinfo=nodeinfo_dict, messager=log,
+    rf_rest = rf.RedfishRest(name='testnode', nodeinfo=nodeinfo_dict, messager=Messager(),
                              debugmode=True, verbose=True)
 
     def test__init__(self):
@@ -31,7 +32,7 @@ class TestRedfishClient(object):
         assert self.rf_rest.bmcip == '10.0.0.1'
         assert self.rf_rest.username == 'username'
         assert self.rf_rest.password == 'password'
-        assert self.rf_rest.messager == self.log
+        assert isinstance(self.rf_rest.messager, Messager)
         assert self.rf_rest.verbose == True
         assert self.rf_rest.root_url == 'https://10.0.0.1'
 
