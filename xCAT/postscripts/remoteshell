@@ -59,11 +59,13 @@ then
 	logger -t $log_label -p local4.info "remoteshell:  setup /etc/ssh/sshd_config and ssh_config"
 	cp /etc/ssh/sshd_config /etc/ssh/sshd_config.ORIG
         #delete all occurance of the attribute and then add xCAT settings
-        echo "Match all" >>/etc/ssh/sshd_config
-        sed -i '/X11Forwarding /'d /etc/ssh/sshd_config
-        echo "X11Forwarding yes" >>/etc/ssh/sshd_config
         sed -i '/MaxStartups /'d /etc/ssh/sshd_config
         echo "MaxStartups 1024" >>/etc/ssh/sshd_config
+
+        echo "Match Host *" >>/etc/ssh/sshd_config
+        sed -i '/X11Forwarding /'d /etc/ssh/sshd_config
+        echo "X11Forwarding yes" >>/etc/ssh/sshd_config
+
 
     if [ "$SETUPFORPCM" = "1" ]; then
         if [[ $OSVER == sle* ]];then
