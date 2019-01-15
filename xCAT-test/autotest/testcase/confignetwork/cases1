@@ -16,6 +16,7 @@ cmd:chdef $$CN nicips.$$SECONDNIC="|\D+\d+\D+\d+\D+\d+\D+(\d+)|30.0.0.(\$1/1000+
 check:rc==0
 cmd:chdef $$CN nicips.$$THIRDNIC="|\D+\d+\D+\d+\D+\d+\D+(\d+)|40.0.0.(\$1/1000+8)|" nictypes.$$THIRDNIC=Ethernet nicnetworks.$$THIRDNIC="40_0_0_0-255_255_0_0"
 check:rc==0
+cmd:lsdef $$CN
 cmd:cp /etc/hosts /etc/hosts.bak
 cmd:rc==0
 cmd:makehosts $$CN
