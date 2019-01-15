@@ -5,6 +5,7 @@ label:others,inventory_ci
 cmd: rm -rf /tmp/backend_test/
 cmd:rm -rf ~/.xcatinv/inventory.cfg.bak.backend_init 
 check: rc==0
+cmd: mkdir -p ~/.xcatinv/
 cmd: [ -f ~/.xcatinv/inventory.cfg ] && mv ~/.xcatinv/inventory.cfg ~/.xcatinv/inventory.cfg.bak.backend_init
 cmd: cp /opt/xcat/share/xcat/tools/autotest/testcase/xcat_inventory/templates/inventory.cfg ~/.xcatinv/inventory.cfg
 cmd: xcat-inventory init
