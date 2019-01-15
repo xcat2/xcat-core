@@ -22,7 +22,6 @@ openssh-clients
 openssh-server
 openssl
 parted
-ppc64-utils
 procps-ng
 rpm
 rsync
