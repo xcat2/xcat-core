@@ -1,0 +1,47 @@
+start:confignetwork_secondarynic_third_regex_updatenode
+description:this case is to verify if confignetwork could config serveral nics with regex patten.This case is to verify defect 3602.
+label:others,network
+cmd:lsdef $$CN;if [ $? -eq 0 ]; then lsdef -l $$CN -z >/tmp/CN.standa ;fi
+check:rc==0
+cmd:xdsh $$CN "rm -rf /tmp/backupnet/"
+cmd:xdsh $$CN "mkdir -p /tmp/backupnet/"
+check:rc==0
+cmd:if grep SUSE /etc/*release;then xdsh $$CN "cp -f /etc/sysconfig/network/ifcfg-* /tmp/backupnet/"; elif grep -E "Red Hat|CentOS" /etc/*release;then xdsh $$CN "cp -f /etc/sysconfig/network-scripts/ifcfg-* /tmp/backupnet/"; elif grep Ubuntu /etc/*release;then xdsh $$CN "cp -f /etc/network/interfaces.d/* /tmp/backupnet/";else echo "Sorry,this is not supported os"; fi
+check:rc==0
+cmd:mkdef -t network -o 30_0_0_0-255_255_0_0 net=30.0.0.0 mask=255.0.0.0 mgtifname=$$SECONDNIC
+check:rc==0
+cmd:mkdef -t network -o 40_0_0_0-255_255_0_0 net=40.0.0.0 mask=255.0.0.0 mgtifname=$$THIRDNIC
+check:rc==0
+cmd:chdef $$CN nicips.$$SECONDNIC="|\D+\d+\D+\d+\D+\d+\D+(\d+)|30.0.0.(\$1/1000+9)|" nictypes.$$SECONDNIC=Ethernet nicnetworks.$$SECONDNIC="30_0_0_0-255_255_0_0"
+check:rc==0
+cmd:chdef $$CN nicips.$$THIRDNIC="|\D+\d+\D+\d+\D+\d+\D+(\d+)|40.0.0.(\$1/1000+8)|" nictypes.$$THIRDNIC=Ethernet nicnetworks.$$THIRDNIC="40_0_0_0-255_255_0_0"
+check:rc==0
+cmd:lsdef $$CN
+cmd:cp /etc/hosts /etc/hosts.bak
+cmd:rc==0
+cmd:makehosts $$CN
+check:rc==0
+cmd:cat /etc/hosts
+check:output=~$$CN-$$SECONDNIC
+check:output=~$$CN-$$THIRDNIC
+cmd:updatenode $$CN -P confignetwork
+check:rc==0
+cmd:if grep SUSE /etc/*release;then xdsh $$CN "grep 30.0.0.9 /etc/sysconfig/network/ifcfg-$$SECONDNIC"; elif grep -E "Red Hat|CentOS" /etc/*release;then xdsh $$CN  "grep 30.0.0.9 /etc/sysconfig/network-scripts/ifcfg-$$SECONDNIC"; elif grep Ubuntu /etc/*release;then xdsh $$CN "grep 30.0.0.9 /etc/network/interfaces.d/$$SECONDNIC";else echo "Sorry,this is not supported os"; fi
+check:output=~30.0.0.9
+cmd:if grep SUSE /etc/*release;then xdsh $$CN "grep 40.0.0.8 /etc/sysconfig/network/ifcfg-$$THIRDNIC"; elif grep -E "Red Hat|CentOS" /etc/*release;then xdsh $$CN  "grep 40.0.0.8 /etc/sysconfig/network-scripts/ifcfg-$$THIRDNIC"; elif grep Ubuntu /etc/*release;then xdsh $$CN "grep 40.0.0.8 /etc/network/interfaces.d/$$THIRDNIC";else echo "Sorry,this is not supported os"; fi
+check:output=~40.0.0.8
+cmd:rmdef -t network -o 30_0_0_0-255_255_0_0
+cmd:rmdef -t network -o 40_0_0_0-255_255_0_0
+cmd:if grep SUSE /etc/*release;then xdsh $$CN "rm -rf /etc/sysconfig/network/ifcfg-$$SECONDNIC"; elif grep -E "Red Hat|CentOS" /etc/*release;then xdsh $$CN "rm -rf /etc/sysconfig/network-scripts/ifcfg-$$SECONDNIC"; elif grep Ubuntu /etc/*release;then xdsh $$CN "rm -rf /etc/network/interfaces.d/$$SECONDNIC";else echo "Sorry,this is not supported os"; fi
+check:rc==0
+cmd:if grep SUSE /etc/*release;then xdsh $$CN "rm -rf /etc/sysconfig/network/ifcfg-$$THIRDNIC"; elif grep -E "Red Hat|CentOS" /etc/*release;then xdsh $$CN "rm -rf /etc/sysconfig/network-scripts/ifcfg-$$THIRDNIC"; elif grep Ubuntu /etc/*release;then xdsh $$CN "rm -rf /etc/network/interfaces.d/$$THIRDNIC";else echo "Sorry,this is not supported os"; fi
+check:rc==0
+cmd:xdsh $$CN "ip addr del 30.0.0.9/8 dev $$SECONDNIC"
+cmd:xdsh $$CN "ip addr del 40.0.0.8/8 dev $$THIRDNIC"
+cmd:if [ -e /tmp/CN.standa ]; then rmdef $$CN; cat /tmp/CN.standa | mkdef -z; rm -rf /tmp/CN.standa; fi
+check:rc==0
+cmd:mv -f /etc/hosts.bak /etc/hosts
+cmd:if grep SUSE /etc/*release;then xdsh $$CN "cp -f /tmp/backupnet/* /etc/sysconfig/network/"; elif grep -E "Red Hat|CentOS" /etc/*release;then xdsh $$CN "cp -f /tmp/backupnet/* /etc/sysconfig/network-scripts/"; elif grep Ubuntu /etc/*release;then xdsh $$CN "cp -f /tmp/backupnet/* /etc/network/interfaces.d/";else echo "Sorry,this is not supported os"; fi
+cmd:xdsh $$CN "rm -rf /tmp/backupnet/"
+end
+
