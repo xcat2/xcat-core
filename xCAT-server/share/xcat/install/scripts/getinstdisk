@@ -138,6 +138,7 @@ if [ -z "$install_disk" ]; then
     has_path=0
     file_pre=""
     disk_data=""
+    foundm2=0
 
     # Check disks which had installed OS, or check all disks in /proc/partitions
     for disk in $disks; do
@@ -159,6 +160,7 @@ if [ -z "$install_disk" ]; then
         if [ "$disk_model" == "thinksystem m.2" ]; then
             echo "$disk $disk_data" > "$tmpfile""$file_pre""firstchoicedisks"
             echo "[get_install_disk]    Add disk: $disk $disk_data into $file_pre firstchoicedisks"
+            foundm2=1
             break # M.2 raid modules are the OS install targets
         elif [ "$disk_driver" == "ahci" ]; then
             echo "$disk $disk_data" >> "$tmpfile""$file_pre""firstchoicedisks"
@@ -221,6 +223,11 @@ if [ -z "$install_disk" ]; then
     for file in $tmpfile*; do
         rm $file;
     done
+    if [ "$foundm2" == 0 -a -b /dev/md/Volume0_0 ]; then
+	install_disk="/dev/md/Volume0_0"
+    elif [ "$foundm2" == 0 -a -b /dev/md/Volume0 ]; then
+	install_disk="/dev/md/Volume0"
+    fi
 fi
 rm -rf $tmpdir;
 
