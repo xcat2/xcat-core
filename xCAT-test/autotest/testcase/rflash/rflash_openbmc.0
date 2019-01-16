@@ -524,3 +524,23 @@ check:rc != 0
 check:output =~~$$CN\s*:\s*(\[.*?\]: )?Error: Deleting currently active BMC firmware is not supported
 end
 
+start:rflash_d_relative_path
+description:this case is to check if -d support relative directory path. This case is for issue 4511.
+os:Linux
+hcp:openbmc
+label:cn_bmc_ready,hctrl_openbmc
+cmd:lsdef testnode;if [ $? -eq 0 ]; then lsdef -l testnode -z >/tmp/testnode.standa ; rmdef testnode;fi
+cmd:mkdef -t node -o testnode groups=all arch=ppc64le bmc=testnode-bmc bmcvlantag=11 cons=openbmc mgt=openbmc
+check:rc == 0
+cmd:dir="/tmp/rflashdir";if [ -e "${dir}" ];then mv ${dir} ${dir}".bak"; fi
+cmd:mkdir -p /tmp/rflashdir;touch /tmp/rflashdir/witherspoon.pnor.squashfs.tar
+cmd:cd /tmp;rflash testnode ./rflashdir -d
+check:rc != 0
+check:output =~~testnode\s*:\s*Error:\s*Unable to resolved ip address for bmc:\s*testnode-bmc
+cmd:dir="/tmp/rflashnotexist/";if [ -e "${dir}" ];then mv ${dir} ${dir}".bak"; fi
+cmd:cd /tmp;rflash testnode ./rflashnotexist -d
+check:rc != 0
+check:output =~~testnode\s*:\s*Error:\s*Invalid option specified with -d:\s*./rflashnotexist
+cmd:dir="/tmp/rflashnotexist"; if [ -d ${dir}".bak" ];then mv ${dir}".bak" $dir; fi
+cmd:dir="/tmp/rflashdir"; if [ -d ${dir}".bak" ];then mv ${dir}".bak" $dir; fi
+end
