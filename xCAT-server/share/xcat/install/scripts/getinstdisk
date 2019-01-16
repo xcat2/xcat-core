@@ -223,7 +223,7 @@ if [ -z "$install_disk" ]; then
     for file in $tmpfile*; do
         rm $file;
     done
-    if [ "$foundm2" == 0 -a -b /dev/md/Volume0_0 ] && grep suse /etc/os-release; then
+    if [ "$foundm2" == 0 -a -b /dev/md/Volume0_0 ] && grep SLES /etc/os-release; then
 	install_disk="/dev/md/Volume0"
         echo "[get_install_disk]The install_disk is $install_disk by RSTe detection."
     elif [ "$foundm2" == 0 -a -b /dev/md/Volume0_0 ]; then
