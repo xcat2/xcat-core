@@ -547,4 +547,5 @@ cmd:dir="/tmp/rflashnotexist"; if [ -d ${dir}".bak" ];then mv ${dir}".bak" $dir;
 cmd:dir="/tmp/rflashdir"; if [ -d ${dir}".bak" ];then mv ${dir}".bak" $dir; fi
 cmd:rmdef -t node -o testnode
 check:rc == 0
+cmd:if [ -e /tmp/testnode.standa ]; then cat /tmp/testnode.standa | mkdef -z; rm -rf /tmp/testnode.standa; fi
 end
