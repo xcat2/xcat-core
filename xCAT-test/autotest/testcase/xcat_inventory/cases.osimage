@@ -1040,7 +1040,7 @@ cmd:dir="/opt/inventory/site/osimage";if [ -e "${dir}" ];then mv ${dir} ${dir}".
 cmd:xcat-inventory export -t osimage -o test_myimage1,test_myimage2 --format json -d /opt/inventory/site/osimage
 check:rc==0
 check:output=~The osimage objects has been exported to directory /opt/inventory/site/osimage
-cmd: tree /opt/inventory/site/osimage
+cmd: ls -R /opt/inventory/site/osimage
 check: output =~ site
 cmd:otherpkglist=`lsdef -t osimage -o test_myimage1 |grep otherpkglist|awk -F= '{print $2}'`;diff -y $otherpkglist /opt/inventory/site/osimage/test_myimage1$otherpkglist
 check:rc==0
@@ -1073,7 +1073,8 @@ check:rc==0
 cmd: rmdef -t osimage -o  test_myimage1,test_myimage2
 check:rc==0
 cmd:rm -rf /tmp/otherpkglist /tmp/synclists /tmp/postinstall /tmp/exlist /tmp/partitionfile /tmp/pkglist /tmp/template
-cmd: tree /opt/inventory/site
+cmd: ls -R /opt/inventory/site
+check: output =~ site
 cmd:xcat-inventory import -t osimage -o test_myimage1,test_myimage2 -d /opt/inventory/site
 check:rc==0
 check:output=~The object test_myimage1 has been imported
