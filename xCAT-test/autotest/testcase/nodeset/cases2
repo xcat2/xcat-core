@@ -1,0 +1,33 @@
+start:nodeset_prescripts
+description:This case is to run test for prescripts actions. This test case should be tested on an provisioned compute node.
+os:Linux
+label:others
+cmd:dir="/install/prescripts/";if [ ! -e "${dir}" ];then mkdir -p $dir; fi
+cmd:echo "echo all" >> /install/prescripts/test_prescripts_all.sh;chmod a+x /install/prescripts/test_prescripts_all.sh
+check:rc==0
+cmd:echo "echo boot" >> /install/prescripts/test_prescripts_boot.sh;chmod a+x /install/prescripts/test_prescripts_boot.sh
+check:rc==0
+cmd:echo "echo osimage" >> /install/prescripts/test_prescripts_osimage.sh;chmod a+x /install/prescripts/test_prescripts_osimage.sh
+check:rc==0
+cmd:pre=`lsdef -l $$CN |grep prescripts-begin|awk -F= '{print $2}'`;echo $pre >> /tmp/prescriptssave;chdef $$CN prescripts-begin="test_prescripts_all.sh|boot:test_prescripts_boot.sh|osimage:test_prescripts_osimage.sh"
+check:rc==0
+cmd:nodeset $$CN install 
+check:output=~Running begin script test_prescripts_all.sh for nodes $$CN 
+check:output!=~test_prescripts_boot.sh
+check:output!=~test_prescripts_osimage.sh
+cmd:nodeset $$CN boot
+check:rc==0
+check:output=~Running begin script test_prescripts_all.sh for nodes $$CN
+check:output=~Running begin script test_prescripts_boot.sh for nodes $$CN
+check:output!=~test_prescripts_osimage.sh
+cmd:nodeset $$CN osimage 
+check:rc==0
+check:output=~Running begin script test_prescripts_all.sh for nodes $$CN
+check:output=~Running begin script test_prescripts_osimage.sh for nodes $$CN
+check:output!=~test_prescripts_boot.sh
+cmd:rm -rf /install/prescripts/test_prescripts_all.sh /install/prescripts/test_prescripts_boot.sh /install/prescripts/test_prescripts_osimage.sh
+cmd:pre=`cat /tmp/prescriptssave`;chdef $$CN prescripts-begin=$pre 
+check:rc==0
+cmd:rm -rf /tmp/prescriptssave
+end
+
