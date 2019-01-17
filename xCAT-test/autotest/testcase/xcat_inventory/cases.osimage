@@ -1075,7 +1075,7 @@ check:rc==0
 cmd:rm -rf /tmp/otherpkglist /tmp/synclists /tmp/postinstall /tmp/exlist /tmp/partitionfile /tmp/pkglist /tmp/template
 cmd: ls -R /opt/inventory/site
 check: output =~ site
-cmd:xcat-inventory import -t osimage -o test_myimage1,test_myimage2 -d /opt/inventory/site
+cmd:xcat-inventory import -t osimage -o test_myimage1,test_myimage2 -d /opt/inventory/site/osimage
 check:rc==0
 check:output=~The object test_myimage1 has been imported
 check:output=~The object test_myimage2 has been imported
