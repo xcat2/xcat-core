@@ -1040,6 +1040,8 @@ cmd:dir="/opt/inventory/site/osimage";if [ -e "${dir}" ];then mv ${dir} ${dir}".
 cmd:xcat-inventory export -t osimage -o test_myimage1,test_myimage2 --format json -d /opt/inventory/site/osimage
 check:rc==0
 check:output=~The osimage objects has been exported to directory /opt/inventory/site/osimage
+cmd: tree /opt/inventory/site/osimage
+check: output =~ site
 cmd:otherpkglist=`lsdef -t osimage -o test_myimage1 |grep otherpkglist|awk -F= '{print $2}'`;diff -y $otherpkglist /opt/inventory/site/osimage/test_myimage1$otherpkglist
 check:rc==0
 cmd:synclists=`lsdef -t osimage -o test_myimage1 |grep synclists|awk -F= '{print $2}'`;diff -y $synclists /opt/inventory/site/osimage/test_myimage1$synclists
