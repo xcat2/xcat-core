@@ -696,7 +696,7 @@ if [ -n "$valid_sorted_nicdevice_list" ]; then
     echo "$valid_sorted_nicdevice_list" |log_lines info
 fi
 #enable network service
-enable_network_service
+#enable_network_service
 
 #config nics and ifcfg files
 configure_nicdevice "$valid_sorted_nicdevice_list"
