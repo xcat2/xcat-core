@@ -288,14 +288,15 @@ fi
 update_VPD()
 {
     if [ -f /usr/sbin/vpdupdate ]; then
+        echolog "info" "updating VPD database"
         vpdupdate
         #logger -t xCAT -p local4.info "xcatdsklspost: updating VPD database"
-        echolog "info" "updating VPD database"
+    else
+        echolog "warning" "/usr/sbin/vpdupdate is not available, please check and do VPD update later"
     fi
 }
 
 if [ $NODE_DEPLOYMENT -eq 1 ] || [ "$MODE" = "4" ] || [ "$MODE" = "6" ]; then
-    echolog "info" "=============deployment starting===================="
     # Run updatevpd only when necessary
     if [ -f /usr/sbin/lsvpd ]; then
         /usr/sbin/lsvpd | grep -i -E 'cpu|processor' 2>&1 1>/dev/null
