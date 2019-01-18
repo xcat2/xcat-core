@@ -866,7 +866,12 @@ sub nextdestiny {
             $ref->{currchain} = $ref->{chain};
         } elsif ($ref->{currchain} !~ /[,;]/){
             if ($ref->{currstate} and ($ref->{currchain} =~ /$ref->{currstate}/)) {
-                $ref->{currchain} = 'standby';
+		if ($ref->{currstate} eq 'boot') {
+                    $ref->{currchain} = 'boot';
+		}
+		if ($ref->{currchain} ne 'boot') {
+                    $ref->{currchain} = 'standby';
+		}
                 $callnodeset = 0;
             }
         }
