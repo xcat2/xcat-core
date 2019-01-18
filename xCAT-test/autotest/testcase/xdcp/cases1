@@ -1,10 +1,10 @@
 start:xdcp_nonroot_user
 label:cn_os_ready,parallel_cmds
-cmd:useradd -m xyzzy
+cmd:servicenode=`lsdef $$CN |grep servicenode |awk -F= '{print $2}'`; if [ -n "$servicenode" ]; then xdsh $$SN "useradd -m xyzzy";else useradd -m xyzzy;fi
 check:rc==0
-cmd:bash -c "( cd ~root && tar cf - .xcat .ssh ) | ( cd ~xyzzy && tar xf - )"
+cmd:servicenode=`lsdef $$CN |grep servicenode |awk -F= '{print $2}'`; if [ -n "$servicenode" ]; then xdsh $$SN "bash -c \"( cd ~root && tar cf - .xcat .ssh ) | ( cd ~xyzzy && tar xf - )\"";else bash -c "( cd ~root && tar cf - .xcat .ssh ) | ( cd ~xyzzy && tar xf - )";fi
 check:rc==0
-cmd:chown -R xyzzy ~xyzzy/.xcat ~xyzzy/.ssh
+cmd:servicenode=`lsdef $$CN |grep servicenode |awk -F= '{print $2}'`; if [ -n "$servicenode" ]; then xdsh $$SN "chown -R xyzzy ~xyzzy/.xcat ~xyzzy/.ssh";else chown -R xyzzy ~xyzzy/.xcat ~xyzzy/.ssh;fi
 check:rc==0
 cmd:xdsh $$CN "useradd -m xyzzy"
 check:rc==0
@@ -12,12 +12,12 @@ cmd:xdsh $$CN "( cd ~ && tar cf - .ssh ) | ( cd ~xyzzy && tar xf - )"
 check:rc==0
 cmd:xdsh $$CN "chown -R xyzzy ~xyzzy/.ssh"
 check:rc==0
-cmd:su -c "xdcp $$CN /etc/sysctl.conf /tmp/sysctl.conf" - xyzzy
+cmd:servicenode=`lsdef $$CN |grep servicenode |awk -F= '{print $2}'`; if [ -n "$servicenode" ]; then xdsh $$SN "su -c \"xdcp $$CN /etc/sysctl.conf /tmp/sysctl.conf\" - xyzzy";else su -c "xdcp $$CN /etc/sysctl.conf /tmp/sysctl.conf" - xyzzy;fi
 check:rc==0
 cmd:xdsh $$CN "stat -c '%U' /tmp/sysctl.conf"
 check:output=~xyzzy
 cmd:xdsh $$CN "userdel xyzzy"
 check:rc==0
-cmd:userdel xyzzy
+cmd:servicenode=`lsdef $$CN |grep servicenode |awk -F= '{print $2}'`; if [ -n "$servicenode" ]; then xdsh $$SN "userdel xyzzy";else userdel xyzzy;fi
 check:rc==0
 end
