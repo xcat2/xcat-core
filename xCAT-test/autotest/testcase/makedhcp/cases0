@@ -213,7 +213,7 @@ cmd:if [ -f /var/lib/dhcpd/dhcpd.leases ]; then a="/var/lib/dhcpd/dhcpd.leases";
 cmd:makedhcp testnode
 check:rc==0
 cmd:if [ -f /var/lib/dhcpd/dhcpd.leases ]; then a="/var/lib/dhcpd/dhcpd.leases"; elif [ -f /var/lib/dhcp/db/dhcpd.leases ]; then a="/var/lib/dhcp/db/dhcpd.leases"; elif [ -f "/var/lib/dhcp/dhcpd.leases" ]; then a="/var/lib/dhcp/dhcpd.leases";fi; ls -l $a; cat $a
-cmd:makedhcp -q testnode
+cmd:a=2;while true; do [ $a -eq 64 ] && exit 1;output=$(makedhcp -q testnode);[ $? -ne 0 ] && exit 1;echo $output|grep testnode 2>/dev/null && exit 0;a=$[$a*2];sleep $a;done
 check:rc==0
 check:output=~testnode: ip-address = 100.100.100.2
 cmd:makedhcp -d testnode
