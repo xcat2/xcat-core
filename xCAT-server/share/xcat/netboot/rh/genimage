@@ -358,10 +358,6 @@ if($onlyinitrd){
 
     my $yumcmd = "yum $non_interactive -c /tmp/genimage.$$.yum.conf --installroot=$rootimg_dir/ --disablerepo=* ";
 
-    if (majversion($osver) > 7) {
-        $yumcmd .= "--releasever=" . majversion($osver) . " ";
-    }
-
     foreach (0 .. $repnum) {
         $yumcmd .= "--enablerepo=$osver-$arch-$_ ";
     }
