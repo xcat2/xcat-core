@@ -402,6 +402,8 @@ do
         tmp=${x#@}
         #remove leading and trailing spaces
         tmp=`echo $tmp |sed 's/^ *//;s/ *$//'`
+        #remove the leading ^
+        [ "^" = "${tmp:0:1}" ] && tmp="${tmp:1}"
         #if there are spaces in the middle of the name, quote it
         pos=`expr index "$tmp" "\ "`
         if [ $pos -gt 0  ]; then
