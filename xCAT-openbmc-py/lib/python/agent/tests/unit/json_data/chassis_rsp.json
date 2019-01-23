@@ -1,0 +1,45 @@
+{
+  "@odata.context": "/redfish/v1/$metadata#Chassis.Chassis",
+  "@odata.type": "#Chassis.v1_8_0.Chassis",
+  "@odata.id": "/redfish/v1/Chassis/Chassis0",
+  "Id": "Chassis0",
+  "Name": "OpenPOWER System Chassis",
+  "ChassisType": "RackMount",
+  "Manufacturer": "IBM",
+  "Model": "SYSTEM",
+  "SerialNumber": "C829UAE15A10564",
+  "PartNumber": "9006-22P",
+  "AssetTag": "",
+  "PowerState": "On",
+  "IndicatorLED": "Off",
+  "Status": {
+    "State": "Enabled",
+    "Health": "OK"
+  },
+  "PhysicalSecurity": {
+    "IntrusionSensorNumber": 226,
+    "IntrusionSensor": "HardwareIntrusion",
+    "IntrusionSensorReArm": "Manual"
+  },
+  "Thermal": {
+    "@odata.id": "/redfish/v1/Chassis/Chassis0/Thermal"
+  },
+  "Power": {
+    "@odata.id": "/redfish/v1/Chassis/Chassis0/Power"
+  },
+  "Assembly": {
+    "@odata.id": "/redfish/v1/Chassis/Chassis0/Assembly"
+  },
+  "Links": {
+    "ComputerSystems": [
+      {
+        "@odata.id": "/redfish/v1/Systems/Computer"
+      }
+    ],
+    "ManagedBy": [
+      {
+        "@odata.id": "/redfish/v1/Managers/BMC"
+      }
+    ]
+  }
+}
