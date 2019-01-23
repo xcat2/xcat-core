@@ -335,9 +335,6 @@ rmimage_diskless
 updatenode_diskful_syncfiles_failing
 xdcp_nonroot_user
 xdsh_permission_denied
-nodeset_shell
-nodeset_cmdline
-nodeset_runimg
 confignetwork_static_installnic
 confignetwork_s_installnic_secondarynic_updatenode
 confignetwork_secondarynic_updatenode
@@ -359,6 +356,9 @@ confignetwork_vlan_bond
 confignetwork_vlan_eth0
 confignetwork_vlan_false
 confignetwork__bridge_false
+nodeset_shell
+nodeset_cmdline
+nodeset_runimg
 xcatconfig_u_check_xcatsslversion_rhels_sles
 xcatconfig_c
 clean_up_env
