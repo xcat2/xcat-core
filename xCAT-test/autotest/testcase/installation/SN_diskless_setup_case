@@ -84,7 +84,7 @@ cmd:rm -rf /tmp/mountoutput
 cmd:packimage __GETNODEATTR($$SN,os)__-__GETNODEATTR($$SN,arch)__-netboot-service
 check:rc==0
 
-cmd:rinstall $$SN osimage=__GETNODEATTR($$SN,os)__-__GETNODEATTR($$SN,arch)__-netboot-service
+cmd:/opt/xcat/share/xcat/tools/autotest/testcase/commoncmd/retry_install.sh $$SN __GETNODEATTR($$SN,os)__-__GETNODEATTR($$SN,arch)__-netboot-service
 check:rc==0
 check:output=~Provision node\(s\)\: $$SN
 

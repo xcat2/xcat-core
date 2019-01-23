@@ -1,5 +1,4 @@
 #!/bin/bash
-echo "Try to retry rinstall 5 times ......"
 
 declare -i installsuccess=0
 declare -i a=0
@@ -10,8 +9,10 @@ osimage=$2
 if [ $# -eq 3 ];
 then
     times=$3+1
+    echo "Try to retry rinstall $3 times ......"
 else
-    times=6 
+    times=6
+    echo "Try to retry rinstall 5 times ......" 
 fi
 
 
