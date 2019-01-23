@@ -937,14 +937,17 @@ sub get_zonesdir {
 
 sub get_forwardmode {
     my $forwardmode;
-    my @entries    = xCAT::TableUtils->get_site_attribute("forwardmode"); 
+    my @entries    = xCAT::TableUtils->get_site_attribute("dnsforwardmode"); 
     my $site_entry = $entries[0];
     if (defined($site_entry)) {
         if ($site_entry =~ /^only$|^first$/) {
             $forwardmode = $site_entry;
-        } else {
+        } elsif ($site_entry =~ /^no$/) {
+            $forwardmode = ""
+        }else {
             my $rsp = {};
-            $rsp->{data}->[0] = "forward mode is wrong.";
+            $rsp->{data}->[0] = "forward mode $site_entry is not supported.";
+            xCAT::MsgUtils->message("S", "forward mode $site_entry is not supported.");
             xCAT::MsgUtils->message("W", $rsp, $callback);
             return;
         }
