@@ -141,7 +141,7 @@ function configipv4(){
             fi
         else
             echo "DEVICE=${str_if_name}" > $str_conf_file
-            echo "BOOTPROTO=static" >> $str_conf_file
+            echo "BOOTPROTO=none" >> $str_conf_file
             echo "NM_CONTROLLED=no" >> $str_conf_file
             echo "IPADDR=${str_v4ip}" >> $str_conf_file
             echo "NETMASK=${str_v4mask}" >> $str_conf_file
