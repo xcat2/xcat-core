@@ -69,7 +69,7 @@ cmd:prsync /install $$SN:/
 check:rc==0
 
 
-cmd:rinstall $$CN osimage=__GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-statelite-compute
+cmd:/opt/xcat/share/xcat/tools/autotest/testcase/commoncmd/retry_install.sh  $$CN __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-statelite-compute
 check:rc==0
 check:output=~Provision node\(s\)\: $$CN
 

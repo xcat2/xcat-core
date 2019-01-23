@@ -22,7 +22,7 @@ cmd:copycds $$ISO
 check:rc==0
 cmd:chdef $$CN postscripts="confignetwork -s"
 check:rc==0
-cmd:rinstall $$CN osimage=__GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-install-compute
+cmd:/opt/xcat/share/xcat/tools/autotest/testcase/commoncmd/retry_install.sh  $$CN __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-install-compute
 check:rc==0
 cmd:sleep 300
 cmd:a=0;while ! `lsdef -l $$CN|grep status|grep booted >/dev/null`; do sleep 20;((a++));if [ $a -gt 300 ];then break;fi done
@@ -70,7 +70,7 @@ cmd:genimage  __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-comput
 check:rc==0
 cmd:packimage __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute
 check:rc==0
-cmd:rinstall $$CN osimage=__GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute
+cmd:/opt/xcat/share/xcat/tools/autotest/testcase/commoncmd/retry_install.sh  $$CN __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute
 check:rc==0
 cmd:sleep 180
 cmd:a=0;while ! `lsdef -l $$CN|grep status|grep booted >/dev/null`; do sleep 10;((a++));if [ $a -gt 60 ];then break;fi done
@@ -123,7 +123,7 @@ cmd:genimage  __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-comput
 check:rc==0
 cmd:packimage __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute
 check:rc==0
-cmd:rinstall $$CN osimage=__GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute
+cmd:/opt/xcat/share/xcat/tools/autotest/testcase/commoncmd/retry_install.sh  $$CN __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute
 check:rc==0
 cmd:sleep 180
 cmd:a=0;while ! `lsdef -l $$CN|grep status|grep booted >/dev/null`; do sleep 10;((a++));if [ $a -gt 60 ];then break;fi done

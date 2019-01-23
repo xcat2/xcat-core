@@ -41,7 +41,7 @@ cmd:if ! ([[ "__GETNODEATTR($$CN,os)__" = "sles12.1" ]] || [[ "__GETNODEATTR($$C
 check:rc==0
 cmd:lsdef -l $$CN
 check:rc==0
-cmd:rinstall $$CN osimage=__GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-install-compute
+cmd:/opt/xcat/share/xcat/tools/autotest/testcase/commoncmd/retry_install.sh  $$CN __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-install-compute
 check:rc==0
 check:output=~Provision node\(s\)\: $$CN
 cmd:if [[ -f /var/lib/dhcp/db/dhcpd.leases ]]; then cat /var/lib/dhcp/db/dhcpd.leases; elif [[ -f /var/lib/dhcpd/dhcpd.leases ]];then cat /var/lib/dhcpd/dhcpd.leases;elif [[ -f /var/lib/dhcp/dhcpd.leases ]];then cat /var/lib/dhcp/dhcpd.leases; fi

@@ -57,7 +57,7 @@ check:rc==0
 #cmd:chdef -t osimage __GETNODEATTR($$SN,os)__-__GETNODEATTR($$SN,arch)__-install-service pkgdir="/install/__GETNODEATTR($$SN,os)__/__GETNODEATTR($$SN,arch)__"
 #check:rc==0
 
-cmd:rinstall $$SN osimage=__GETNODEATTR($$SN,os)__-__GETNODEATTR($$SN,arch)__-install-service
+cmd:/opt/xcat/share/xcat/tools/autotest/testcase/commoncmd/retry_install.sh  $$SN __GETNODEATTR($$SN,os)__-__GETNODEATTR($$SN,arch)__-install-service
 check:rc==0
 check:output=~Provision node\(s\)\: $$SN
 
