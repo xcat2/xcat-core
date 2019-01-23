@@ -129,7 +129,7 @@ sub syncfiles {
             push @$args, "$::RCP";
         }
         my $env = ["DSH_RSYNC_FILE=$synclistfile"];
-        $subreq->({ command => ['xdcp'], username => 'root', node => [$node], arg => $args, env => $env }, $callback);
+        $subreq->({ command => ['xdcp'], username => ['root'], node => [$node], arg => $args, env => $env }, $callback);
     }
     return 1;
 }
