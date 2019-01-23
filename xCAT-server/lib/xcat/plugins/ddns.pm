@@ -943,7 +943,6 @@ sub get_forwardmode {
         if ($site_entry =~ /^only$|^first$/) {
             $forwardmode = $site_entry;
         } else {
-            `echo "forwardmode value is wrong"|logger -p local4.error -t xcat`;
             my $rsp = {};
             $rsp->{data}->[0] = "forward mode is wrong.";
             xCAT::MsgUtils->message("W", $rsp, $callback);
