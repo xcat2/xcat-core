@@ -610,7 +610,7 @@ sub addnode
             $hname = $node;
         }                                #Default to hostname equal to nodename
         unless ($mac) { next; }          #Skip corrupt format
-        if ($mac !~ /^[0-9a-fA-F]{2}(-[0-9a-fA-F]{2}){5}$|^[0-9a-fA-F]{2}(:[0-9a-fA-F]{2}){5}$/)
+        if ($mac !~ /^[0-9a-fA-F]{2}(-[0-9a-fA-F]{2}){5,7}$|^[0-9a-fA-F]{2}(:[0-9a-fA-F]{2}){5,7}$/)
         {
             $callback->(
                 {
