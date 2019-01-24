@@ -946,8 +946,8 @@ sub get_forwardmode {
             $forwardmode = ""
         }else {
             my $rsp = {};
-            $rsp->{data}->[0] = "forward mode $site_entry is not supported.";
-            xCAT::MsgUtils->message("S", "forward mode $site_entry is not supported.");
+            $rsp->{data}->[0] = "forward mode $site_entry is not supported, supported value is only or first or no.";
+            xCAT::MsgUtils->message("S", "forward mode $site_entry is not supported, supported value is only or first or no.");
             xCAT::MsgUtils->message("W", $rsp, $callback);
             return;
         }
