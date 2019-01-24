@@ -135,6 +135,11 @@ site Attributes:
                 service nodes will ignore this value and always be configured to forward 
                 to the management node.
   
+   dnsforwardmode: (first or only or no). This is to set forward value in named.conf options section. 
+                "first": causes DNS requests to be forwarded before an attempt is made to resolve them via the root name servers. 
+                "only": all requests are forwarded and none sent to the root name servers.
+                "no": no request will be forwarded. This is the default value if not specified. 
+  
    emptyzonesenable: (yes or no). This is to set empty-zones-enable value in named.conf options section. 
   
    master:  The hostname of the xCAT management node, as known by the nodes.
