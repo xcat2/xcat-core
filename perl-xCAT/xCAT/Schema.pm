@@ -1059,6 +1059,10 @@ passed as argument rather than by table value',
 "              requests it does not know to these servers. Note that the DNS servers on the\n" .
 "              service nodes will ignore this value and always be configured to forward \n" .
 "              to the management node.\n\n" .
+" dnsforwardmode: (first or only or no). This is to set forward value in named.conf options section. \n" .
+"              \"first\": causes DNS requests to be forwarded before an attempt is made to resolve them via the root name servers. \n" .
+"              \"only\": all requests are forwarded and none sent to the root name servers.\n".
+"              \"no\": no request will be forwarded. This is the default value if not specified. \n\n" .              
 " emptyzonesenable: (yes or no). This is to set empty-zones-enable value in named.conf options section. \n\n" .
 " master:  The hostname of the xCAT management node, as known by the nodes.\n\n" .
 " nameservers:  A comma delimited list of DNS servers that each node in the cluster should\n" .
