@@ -598,3 +598,56 @@ check:rc==0
 cmd:rm -rf /install/custom/install/__GETNODEATTR($$CN,os)__/compute.$$OS.synclist
 check:rc==0
 end
+
+
+start:updatenode_syncfile_EXECUTEALWAYS_src_dst_diff
+label:others,updatenode
+description:this teast case is to verify pr #5888. 
+cmd:lsdef -t osimage -o __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-install-compute -z >> /tmp/myimage.stanza
+cmd:xdsh $$CN rm /tmp/h /tmp/script.sh  /root/script2.sh /tmp/script2.sh /tmp/script3.sh 
+cmd:xdsh $$CN rm /tmp/test /tmp/test2 /root/test3 /root/test1
+cmd:echo "echo hello >> /tmp/test" > /tmp/script.sh
+check:rc==0
+cmd:echo "echo hello2  >> /tmp/test2" > /tmp/script2.sh
+check:rc==0
+cmd:echo "echo hello3 >> /tmp/test3" > /root/script3.sh
+check:rc==0
+cmd:echo "echo hello1 >> /tmp/test1" > /root/script1.sh
+check:rc==0
+cmd:chmod a+x /tmp/script.sh /tmp/script2.sh /root/script3.sh /root/script1.sh 
+cmd:mkdir -p /install/custom/install/__GETNODEATTR($$CN,os)__
+cmd:echo "/etc/hosts -> ($$CN) /tmp/h" > /install/custom/install/__GETNODEATTR($$CN,os)__/compute.$$OS.srcdstdiff.synclist
+cmd:echo "/tmp/script.sh -> ($$CN) /tmp/script.sh" >> /install/custom/install/__GETNODEATTR($$CN,os)__/compute.$$OS.srcdstdiff.synclist
+cmd:echo "/root/script1.sh -> ($$CN) /root/script2.sh" >> /install/custom/install/__GETNODEATTR($$CN,os)__/compute.$$OS.srcdstdiff.synclist
+cmd:echo "/tmp/script2.sh -> ($$CN) /tmp/script2.sh" >> /install/custom/install/__GETNODEATTR($$CN,os)__/compute.$$OS.srcdstdiff.synclist
+cmd:echo "/root/script3.sh -> ($$CN) /tmp/script3.sh" >> /install/custom/install/__GETNODEATTR($$CN,os)__/compute.$$OS.srcdstdiff.synclist
+cmd:echo "EXECUTEALWAYS:" >> /install/custom/install/__GETNODEATTR($$CN,os)__/compute.$$OS.srcdstdiff.synclist
+cmd:echo "/tmp/script.sh" >> /install/custom/install/__GETNODEATTR($$CN,os)__/compute.$$OS.srcdstdiff.synclist
+cmd:echo "/tmp/script2.sh" >> /install/custom/install/__GETNODEATTR($$CN,os)__/compute.$$OS.srcdstdiff.synclist
+cmd:echo "/root/script3.sh" >> /install/custom/install/__GETNODEATTR($$CN,os)__/compute.$$OS.srcdstdiff.synclist
+cmd:echo "/root/script1.sh" >> /install/custom/install/__GETNODEATTR($$CN,os)__/compute.$$OS.srcdstdiff.synclist
+cmd:chdef -t osimage -o __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-install-compute synclists=/install/custom/install/__GETNODEATTR($$CN,os)__/compute.$$OS.srcdstdiff.synclist
+check:rc==0
+cmd:updatenode $$CN -F
+check:output=~File synchronization has completed for nodes:\s*"$$CN"\s*
+check:rc==0
+cmd:xdsh $$CN ls /tmp/h
+check:rc==0
+cmd:xdsh $$CN ls /tmp/test
+check:rc==0
+cmd:xdsh $$CN ls /tmp/test2
+check:rc==0
+cmd:xdsh $$CN ls /tmp/test3
+check:rc==0
+cmd:xdsh $$CN ls /tmp/test1
+check:rc==0
+cmd:if [ -e /tmp/myimage.stanza ]; then rmdef -t osimage -o __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-install-compute; cat /tmp/myimage.stanza | mkdef -z; rm -rf /tmp/myimage.stanza; fi
+check:rc==0
+cmd:rm -rf /install/custom/install/__GETNODEATTR($$CN,os)__/compute.$$OS.srcdstdiff.synclist
+check:rc==0
+end
+
+
+
+
+
