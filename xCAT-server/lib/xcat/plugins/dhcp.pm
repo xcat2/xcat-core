@@ -764,7 +764,9 @@ sub addnode
                         $hostname = $1 . "-hf" . $count;
                     }
                 }
-            } elsif (length($mac) == 23) {
+            } elsif (length($mac) == 23) { # 8 bytes of mac address
+		# Currently the only thing that has 8 bytes is an infiniband
+		# or infiniband like device, which is type 32 (0x20).
                 $hardwaretype = 32;
             }
 
