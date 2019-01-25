@@ -297,7 +297,6 @@ makentp_v
 makentp_h
 nodeset_check_warninginfo
 runcmdinstaller_h
-runcmdinstaller_command
 get_xcat_postscripts_loginfo
 updatenode_postscripts_loginfo
 bmcdiscover_h
