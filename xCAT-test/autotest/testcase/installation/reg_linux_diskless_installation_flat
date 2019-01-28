@@ -63,6 +63,11 @@ check:output=~\d\d:\d\d:\d\d
 cmd:xdsh $$CN mount
 check:rc==0
 check:output=~on / type tmpfs
+cmd:xdsh $$CN cat /opt/xcat/xcatinfo
+check:rc==0
+check:output=~NODE=$$CN
+check:output=~IMAGENAME='__GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute'
+check:output=~IMAGEUUID='\w+-\w+-\w+-\w+-\w+'
 cmd:sleep 120
 cmd:ping $$CN -c 3
 check:rc==0

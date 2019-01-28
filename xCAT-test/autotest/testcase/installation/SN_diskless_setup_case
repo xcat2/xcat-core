@@ -107,6 +107,11 @@ check:output=~\d\d:\d\d:\d\d
 cmd:xdsh $$SN mount
 check:rc==0
 check:output=~on / type tmpfs
+cmd:xdsh $$SN cat /opt/xcat/xcatinfo
+check:rc==0
+check:output=~NODE=$$SN
+check:output=~IMAGENAME='__GETNODEATTR($$SN,os)__-__GETNODEATTR($$SN,arch)__-netboot-service'
+check:output=~IMAGEUUID='\w+-\w+-\w+-\w+-\w+'
 cmd:xdsh $$SN rpm -qa|grep "xCAT-openbmc-py"
 check:rc==0
 check:output=~xCAT-openbmc-py-\d
