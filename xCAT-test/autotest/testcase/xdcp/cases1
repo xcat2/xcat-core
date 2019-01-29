@@ -1,5 +1,7 @@
 start:xdcp_nonroot_user
 label:cn_os_ready,parallel_cmds
+cmd:lsdef -t site -z clustersite > /tmp/site.stanza
+cmd:chdef -t site SNsyncfiledir=/tmp
 cmd:servicenode=`lsdef $$CN |grep servicenode |awk -F= '{print $2}'`; if [ -n "$servicenode" ]; then xdsh $servicenode "useradd -m xyzzy";useradd -m xyzzy;else useradd -m xyzzy;fi
 check:rc==0
 cmd:servicenode=`lsdef $$CN |grep servicenode |awk -F= '{print $2}'`; if [ -n "$servicenode" ]; then xdsh $servicenode "bash -c \"( cd ~root && tar cf - .xcat .ssh ) | ( cd ~xyzzy && tar xf - )\"";bash -c "( cd ~root && tar cf - .xcat .ssh ) | ( cd ~xyzzy && tar xf - )";else bash -c "( cd ~root && tar cf - .xcat .ssh ) | ( cd ~xyzzy && tar xf - )";fi
@@ -20,4 +22,5 @@ cmd:xdsh $$CN "userdel xyzzy"
 check:rc==0
 cmd:servicenode=`lsdef $$CN |grep servicenode |awk -F= '{print $2}'`; if [ -n "$servicenode" ]; then xdsh $servicenode "userdel xyzzy";userdel xyzzy;else userdel xyzzy;fi
 check:rc==0
+cmd:if [ -e /tmp/site.standa ]; then cat /tmp/site.standa | mkdef -z -f; rm -rf /tmp/site.standa; fi
 end
