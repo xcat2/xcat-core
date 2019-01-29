@@ -1976,13 +1976,9 @@ do
 		exit_if_bad "$?" "Try \`$0 --help' for more information"
 		GO_XCAT_ACTION="$1"
 		case "$1 $2" in
-		"completely uninstall")
+		"completely uninstall"|"smoke test")
 			shift
-			GO_XCAT_ACTION="away"
-			;;
-		"smoke test")
-			shift
-			GO_XCAT_ACTION="smoke test"
+			GO_XCAT_ACTION="$1 $2"
 			;;
 		esac
 		;;
@@ -1991,7 +1987,13 @@ do
 done
 
 case "${GO_XCAT_ACTION}" in
-"away"|"check"|"install"|"uninstall"|"update")
+"away")
+	GO_XCAT_YES=("-y")
+	;;
+"completely uninstall")
+	GO_XCAT_ACTION="away"
+	;;
+"check"|"install"|"uninstall"|"update")
 	;;
 "smoke test")
 	smoke_testing
