@@ -58,6 +58,10 @@ check:rc==0
 check:output=~\d\d:\d\d:\d\d
 cmd:xdsh $$CN mount
 check:rc==0
+cmd:xdsh $$CN cat /opt/xcat/xcatinfo
+check:rc==0
+check:output=~NODE=$$CN
+check:output=~IMAGENAME=__GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-install-compute
 cmd:sleep 120
 #comment for further discussion
 #cmd:if ! ([[ "__GETNODEATTR($$CN,os)__" = "sles12.1" ]] || [[ "__GETNODEATTR($$CN,os)__" =~ "ubuntu" && "__GETNODEATTR($$CN,arch)__" = "x86_64" ]]) ;then xdsh $$CN service ntpd status;fi
