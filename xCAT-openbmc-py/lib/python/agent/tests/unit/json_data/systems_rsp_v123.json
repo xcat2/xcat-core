@@ -73,7 +73,14 @@
   "Actions": {
     "#ComputerSystem.Reset": {
       "target": "/redfish/v1/Systems/Computer/Actions/ComputerSystem.Reset",
-      "@Redfish.ActionInfo": "/redfish/v1/Systems/Computer/ResetActionInfo"
+      "ResetType@Redfish.AllowableValues": [
+        "On",
+        "ForceOff",
+        "GracefulShutdown",
+        "GracefulRestart",
+        "ForceRestart",
+        "ForceOn"
+      ]
     }
   }
 }

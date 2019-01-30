@@ -54,6 +54,7 @@ BOOTSOURCE_GET_STATE = {
 manager_reset_string = '#Manager.Reset' 
 system_reset_string = '#ComputerSystem.Reset' 
 reset_type_string = 'ResetType@Redfish.AllowableValues'
+reset_action_string = '@Redfish.ActionInfo'
 
 class RedfishRest(object):
 
@@ -156,7 +157,7 @@ class RedfishRest(object):
         if 'Name' in data:
             self._print_record_log('%s %s' % (code, data['Name']), cmd)
         elif 'error' in data:
-            self._print_record_log('%s %s' % (code, data['error']['Message']), cmd)
+            self._print_record_log('%s %s' % (code, data['error']['message']), cmd)
         return data
 
     def login(self):
@@ -207,9 +208,15 @@ class RedfishRest(object):
         members = self._get_members(MANAGER_URL)
         target_url = members[0]['@odata.id']
         data = self.request('GET', target_url, cmd='get_bmc_actions')
+
         try:
-            actions = data['Actions'][manager_reset_string][reset_type_string]
-            target_url = data['Actions'][manager_reset_string]['target']
+            actions_dict = data['Actions'][manager_reset_string]
+            target_url = actions_dict['target']
+            if reset_action_string in actions_dict:
+                action_info = self.request('GET', actions_dict[reset_action_string], cmd='get_bmc_actions')
+                actions = action_info['Parameters'][0]['AllowableValues']
+            else:
+                actions = actions_dict[reset_type_string]
         except KeyError as e:
             raise SelfServerException('Get KeyError %s' % e.args)
 
@@ -229,9 +236,15 @@ class RedfishRest(object):
         members = self._get_members(SYSTEMS_URL)
         target_url = members[0]['@odata.id']
         data = self.request('GET', target_url, cmd='get_power_actions')
+     
         try:
-            actions = data['Actions'][system_reset_string][reset_type_string]
-            target_url = data['Actions'][system_reset_string]['target']
+            actions_dict = data['Actions'][system_reset_string]
+            target_url = actions_dict['target']
+            if reset_action_string in actions_dict:
+                action_info = self.request('GET', actions_dict[reset_action_string], cmd='get_power_actions')
+                actions = action_info['Parameters'][0]['AllowableValues']
+            else:
+                actions = actions_dict[reset_type_string]
         except KeyError as e:
             raise SelfServerException('Get KeyError %s' % e.args)
 

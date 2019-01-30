@@ -222,15 +222,24 @@ class TestRedfishClient(object):
         self.rf_rest._get_members = mock.Mock(return_value=[ {"@odata.id": self.manager_url + '/BMC'} ])
         with open("%s/manager_rsp.json" % DATA_DIR,'r') as load_f:
             rsp = json.load(load_f)
+        with open("%s/bmc_action_rsp.json" % DATA_DIR,'r') as load_f:
+            actioninfo = json.load(load_f)
+        self.rf_rest.request = mock.Mock(side_effect=[rsp, actioninfo])
+        reset_string = '#Manager.Reset'
+        assert self.rf_rest._get_bmc_actions() == (rsp['Actions'][reset_string]['target'], actioninfo['Parameters'][0]['AllowableValues']) 
+
+    def test__get_bmc_actions_v123(self):
+        self.rf_rest._get_members = mock.Mock(return_value=[ {"@odata.id": self.manager_url + '/BMC'} ])
+        with open("%s/manager_rsp_v123.json" % DATA_DIR,'r') as load_f:
+            rsp = json.load(load_f)
         self.rf_rest.request = mock.Mock(return_value=rsp)
         reset_string = '#Manager.Reset'
-        assert self.rf_rest._get_bmc_actions() == (rsp['Actions'][reset_string]['target'], rsp['Actions'][reset_string]['ResetType@Redfish.AllowableValues']) 
+        assert self.rf_rest._get_bmc_actions() == (rsp['Actions'][reset_string]['target'], rsp['Actions'][reset_string]['ResetType@Redfish.AllowableValues'])
 
     def test__get_bmc_actions_keyerror(self):
         self.rf_rest._get_members = mock.Mock(return_value=[ {"@odata.id": self.manager_url + '/BMC'} ])
         with open("%s/manager_rsp.json" % DATA_DIR,'r') as load_f:
             rsp = json.load(load_f)
-        del rsp['Actions']['#Manager.Reset']['ResetType@Redfish.AllowableValues']
         self.rf_rest.request = mock.Mock(return_value=rsp)
         with pytest.raises(SelfServerException) as excinfo:
             self.rf_rest._get_bmc_actions()
@@ -256,6 +265,16 @@ class TestRedfishClient(object):
         self.rf_rest._get_members = mock.Mock(return_value=[ {"@odata.id": self.systems_url + '/Computer'} ])
         with open("%s/systems_rsp.json" % DATA_DIR,'r') as load_f:
             rsp = json.load(load_f)
+        with open("%s/system_action_rsp.json" % DATA_DIR,'r') as load_f:
+            actioninfo = json.load(load_f)
+        self.rf_rest.request = mock.Mock(side_effect=[rsp, actioninfo])
+        reset_string = '#ComputerSystem.Reset'
+        assert self.rf_rest._get_power_actions() == (rsp['Actions'][reset_string]['target'], actioninfo['Parameters'][0]['AllowableValues'])
+
+    def test__get_power_actions_v123(self):
+        self.rf_rest._get_members = mock.Mock(return_value=[ {"@odata.id": self.systems_url + '/Computer'} ])
+        with open("%s/systems_rsp_v123.json" % DATA_DIR,'r') as load_f:
+            rsp = json.load(load_f)
         self.rf_rest.request = mock.Mock(return_value=rsp)
         reset_string = '#ComputerSystem.Reset'
         assert self.rf_rest._get_power_actions() == (rsp['Actions'][reset_string]['target'], rsp['Actions'][reset_string]['ResetType@Redfish.AllowableValues'])
@@ -264,7 +283,6 @@ class TestRedfishClient(object):
         self.rf_rest._get_members = mock.Mock(return_value=[ {"@odata.id": self.systems_url + '/Computer'} ])
         with open("%s/systems_rsp.json" % DATA_DIR,'r') as load_f:
             rsp = json.load(load_f)
-        del rsp['Actions']['#ComputerSystem.Reset']['target']
         self.rf_rest.request = mock.Mock(return_value=rsp)
         with pytest.raises(SelfServerException) as excinfo:
             self.rf_rest._get_power_actions()
@@ -274,8 +292,10 @@ class TestRedfishClient(object):
     def test_set_power_state(self):
         with open("%s/systems_rsp.json" % DATA_DIR,'r') as load_f:
             rsp = json.load(load_f)
+        with open("%s/system_action_rsp.json" % DATA_DIR,'r') as load_f:
+            actioninfo = json.load(load_f)
         reset_string = '#ComputerSystem.Reset'
-        self.rf_rest._get_power_actions = mock.Mock(return_value=(rsp['Actions'][reset_string]['target'], rsp['Actions'][reset_string]['ResetType@Redfish.AllowableValues']))
+        self.rf_rest._get_power_actions = mock.Mock(return_value=(rsp['Actions'][reset_string]['target'], actioninfo['Parameters'][0]['AllowableValues']))
         self.rf_rest.request = mock.Mock(return_value=None)
         assert self.rf_rest.set_power_state('on') == None
         assert self.rf_rest.request

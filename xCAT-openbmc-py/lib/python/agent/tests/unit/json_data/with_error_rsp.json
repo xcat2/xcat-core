@@ -1,15 +1,7 @@
 {
-    "@odata.context":"/redfish/v1/$metadata#ChassisCollection.ChassisCollection",
-    "@odata.type":"#ChassisCollection.ChassisCollection",
-    "@odata.id":"/redfish/v1/Chassis",
-    "error":{
-        "Message": "Chassis Collection"
-    },
-    "Description":"Chassis Collection",
-    "Members":[
-        {
-            "@odata.id":"/redfish/v1/Chassis/Planar"
-        }
-    ],
-    "Members@odata.count":1
+  "error": 
+  {
+    "message": "Successfully Completed Request", 
+    "code": "Base.1.4.0.Success"
+  }
 }

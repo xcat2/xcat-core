@@ -6,7 +6,7 @@
   "Description": "Aspeed BMC",
   "Name": "Manager",
   "ManagerType": "BMC",
-  "UUID": "00000000-0000-0000-0000-000000000",
+  "UUID": "006126AB-B608-E911-8000-0CC47AD55B4E",
   "Model": "P9DSU 9006-22P",
   "DateTime": "2019-01-22T06:22:55+00:00",
   "DateTimeLocalOffset": "+00:00",
@@ -60,17 +60,20 @@
     ],
     "ManagerForChassis": [
       {
-        "@odata.id": "/redfish/v1/Chassis/Chassis0"
+        "@odata.id": "/redfish/v1/Chassis/Planar"
       }
     ],
     "ManagerInChassis": {
-      "@odata.id": "/redfish/v1/Chassis/Chassis0"
+      "@odata.id": "/redfish/v1/Chassis/Planar"
     }
   },
   "Actions": {
     "#Manager.Reset": {
       "target": "/redfish/v1/Managers/BMC/Actions/Manager.Reset",
-      "@Redfish.ActionInfo": "/redfish/v1/Managers/BMC/ResetActionInfo"
+      "ResetType@Redfish.AllowableValues": [
+        "ForceRestart",
+        "GracefulRestart"
+      ]
     }
   },
   "Oem": {
