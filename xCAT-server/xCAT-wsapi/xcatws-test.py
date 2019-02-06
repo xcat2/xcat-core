@@ -81,7 +81,7 @@ response = requests.get(get_all_nodes + "?userName=" + username + "&userPW=" + p
 
 # Display returned data
 print "List of all nodes extracted with userid and password:"
-print response.content
+print response.text
 #
 # Send a request to get all nodes, passing in a token
 #
@@ -91,6 +91,6 @@ response = requests.get(get_all_nodes, verify=False, headers={'X-Auth-Token': to
 
 # Display returned data
 print "List of all nodes extracted with authentication token:"
-print response.content
+print response.text
 
 sys.exit(0)
