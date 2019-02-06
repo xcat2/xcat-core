@@ -77,20 +77,20 @@ except Exception as e:
 #
 # Send a request to get all nodes, passing in user and password
 #
-all_nodes = requests.get(get_all_nodes + "?userName=" + username + "&userPW=" + password, verify=False)
+response = requests.get(get_all_nodes + "?userName=" + username + "&userPW=" + password, verify=False)
 
 # Display returned data
 print "List of all nodes extracted with userid and password:"
-print all_nodes.content
+print response.text
 #
 # Send a request to get all nodes, passing in a token
 #
 user_data = {'userName': username,'userPW': password}
 token = requests.post(get_token, verify=False, headers={'Content-Type': 'application/json'}, data=json.dumps(user_data))
-all_nodes = requests.get(get_all_nodes, verify=False, headers={'X-Auth-Token': token.json()['token']['id']})
+response = requests.get(get_all_nodes, verify=False, headers={'X-Auth-Token': token.json()['token']['id']})
 
 # Display returned data
 print "List of all nodes extracted with authentication token:"
-print all_nodes.content
+print response.text
 
 sys.exit(0)
