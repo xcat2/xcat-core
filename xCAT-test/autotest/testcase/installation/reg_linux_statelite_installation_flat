@@ -4,7 +4,7 @@ label:others,provision,statelite
 #stop:yes
 cmd:fdisk -l
 cmd:df -T
-cmd:chdef $$SN -m groups=service
+cmd: if lsdef service > /dev/null 2>&1; then chdef service -m groups=service;fi
 check:rc==0
 cmd:chdef -t node -o $$CN servicenode= monserver=$$MN nfsserver=$$MN tftpserver=$$MN  xcatmaster=$$MN
 check:rc==0
