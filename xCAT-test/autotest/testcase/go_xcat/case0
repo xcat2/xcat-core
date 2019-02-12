@@ -20,7 +20,7 @@ check:rc==0
 cmd:if grep Ubuntu /etc/*release;then code=`lsb_release -sc` && xdsh $$CN "scp -r $$MN:/opt/xcat/share/xcat/tools/autotest/testcase/go_xcat/$code-__GETNODEATTR($$CN,arch)__.sources.list /etc/apt/sources.list"; fi
 cmd:if grep Ubuntu /etc/*release;then xdsh $$CN "scp -r $$MN:/etc/hosts /etc/hosts" && xdsh $$CN "scp -r $$MN:/etc/resolv.conf /etc/resolv.conf" && xdsh $$CN "wget -O - http://xcat.org/files/xcat/repos/apt/apt.key | apt-key add -"; fi
 check:rc==0
-cmd:if grep Ubuntu /etc/*release;then xdsh $$CN "apt-get clean && apt-get update"; fi
+cmd:if grep Ubuntu /etc/*release;then xdsh $$CN "rm -rf /var/lib/apt/lists/* && apt-get clean && apt-get update"; fi
 check:rc==0
 cmd:xdsh $$CN "rm -rf /tmp/go-xcat.log"
 cmd:if grep SUSE /etc/*release;then xdsh $$CN "cd /; ./go-xcat --xcat-core=/etc/zypp/repos.d/xCAT-core.repo -y install"; elif grep "Red Hat" /etc/*release;then xdsh $$CN  "cd /; ./go-xcat --xcat-core=/etc/yum.repos.d/xCAT-core.repo -y install"; elif grep Ubuntu /etc/*release;then xdsh $$CN "cd /; ./go-xcat --xcat-core=/etc/apt/sources.list.d/xcat-core.list -y install";else echo "Sorry,this is not supported os"; fi
@@ -59,7 +59,7 @@ check:rc==0
 cmd:if grep Ubuntu /etc/*release;then code=`lsb_release -sc` && xdsh $$CN "scp -r $$MN:/opt/xcat/share/xcat/tools/autotest/testcase/go_xcat/$code-__GETNODEATTR($$CN,arch)__.sources.list /etc/apt/sources.list"; fi
 cmd:if grep Ubuntu /etc/*release;then xdsh $$CN "scp -r $$MN:/etc/hosts /etc/hosts" && xdsh $$CN "scp -r $$MN:/etc/resolv.conf /etc/resolv.conf" && xdsh $$CN "wget -O - http://xcat.org/files/xcat/repos/apt/apt.key | apt-key add -"; fi
 check:rc==0
-cmd:if grep Ubuntu /etc/*release;then xdsh $$CN "apt-get clean && apt-get update"; fi
+cmd:if grep Ubuntu /etc/*release;then xdsh $$CN "rm -rf /var/lib/apt/lists/* && apt-get clean && apt-get update"; fi
 check:rc==0
 cmd:xdsh $$CN "rm -rf /tmp/go-xcat.log"
 cmd:xdsh $$CN "cd /; ./go-xcat --xcat-core=/xcat-core -y install"
@@ -98,7 +98,7 @@ check:rc==0
 cmd:if grep Ubuntu /etc/*release;then code=`lsb_release -sc` && xdsh $$CN "scp -r $$MN:/opt/xcat/share/xcat/tools/autotest/testcase/go_xcat/$code-__GETNODEATTR($$CN,arch)__.sources.list /etc/apt/sources.list"; fi
 cmd:if grep Ubuntu /etc/*release;then xdsh $$CN "scp -r $$MN:/etc/hosts /etc/hosts" && xdsh $$CN "scp -r $$MN:/etc/resolv.conf /etc/resolv.conf" && xdsh $$CN "wget -O - http://xcat.org/files/xcat/repos/apt/apt.key | apt-key add -"; fi
 check:rc==0
-cmd:if grep Ubuntu /etc/*release;then xdsh $$CN "apt-get clean && apt-get update"; fi
+cmd:if grep Ubuntu /etc/*release;then xdsh $$CN "rm -rf /var/lib/apt/lists/* && apt-get clean && apt-get update"; fi
 check:rc==0
 cmd:xdsh $$CN "rm -rf /tmp/go-xcat.log"
 cmd:xdsh $$CN "cd /; ./go-xcat --xcat-core=/xcat-core.tar -y install"
@@ -137,7 +137,7 @@ check:rc==0
 cmd:if grep Ubuntu /etc/*release;then code=`lsb_release -sc` && xdsh $$CN "scp -r $$MN:/opt/xcat/share/xcat/tools/autotest/testcase/go_xcat/$code-__GETNODEATTR($$CN,arch)__.sources.list /etc/apt/sources.list"; fi
 cmd:if grep Ubuntu /etc/*release;then xdsh $$CN "scp -r $$MN:/etc/hosts /etc/hosts" && xdsh $$CN "scp -r $$MN:/etc/resolv.conf /etc/resolv.conf" && xdsh $$CN "wget -O - http://xcat.org/files/xcat/repos/apt/apt.key | apt-key add -"; fi
 check:rc==0
-cmd:if grep Ubuntu /etc/*release;then xdsh $$CN "apt-get clean && apt-get update"; fi
+cmd:if grep Ubuntu /etc/*release;then xdsh $$CN "rm -rf /var/lib/apt/lists/* && apt-get clean && apt-get update"; fi
 check:rc==0
 cmd:xdsh $$CN "rm -rf /tmp/go-xcat.log"
 cmd:xdsh $$CN "cd /; ./go-xcat --xcat-core=/xcat-core.tar.bz2 --xcat-dep=/xcat-dep.tar.bz2 -y install"
@@ -184,7 +184,7 @@ check:rc==0
 cmd:if grep Ubuntu /etc/*release;then code=`lsb_release -sc` && xdsh $$CN "scp -r $$MN:/opt/xcat/share/xcat/tools/autotest/testcase/go_xcat/$code-__GETNODEATTR($$CN,arch)__.sources.list /etc/apt/sources.list"; fi
 cmd:if grep Ubuntu /etc/*release;then xdsh $$CN "scp -r $$MN:/etc/hosts /etc/hosts" && xdsh $$CN "scp -r $$MN:/etc/resolv.conf /etc/resolv.conf" && xdsh $$CN "wget -O - http://xcat.org/files/xcat/repos/apt/apt.key | apt-key add -"; fi
 check:rc==0
-cmd:if grep Ubuntu /etc/*release;then xdsh $$CN "apt-get clean && apt-get update"; fi
+cmd:if grep Ubuntu /etc/*release;then xdsh $$CN "rm -rf /var/lib/apt/lists/* && apt-get clean && apt-get update"; fi
 check:rc==0
 cmd:xdsh $$CN "rm -rf /tmp/go-xcat.log"
 cmd:if grep SUSE /etc/*release;then xdsh $$CN "cd /; ./go-xcat --xcat-core=/etc/zypp/repos.d/xCAT-core.repo --xcat-dep=/etc/zypp/repos.d/xCAT-dep.repo -y install"; elif grep "Red Hat" /etc/*release;then xdsh $$CN  "cd /; ./go-xcat --xcat-core=/etc/yum.repos.d/xCAT-core.repo --xcat-dep=/etc/yum.repos.d/xCAT-dep.repo -y install"; elif grep Ubuntu /etc/*release;then xdsh $$CN "cd /; ./go-xcat --xcat-core=/etc/apt/sources.list.d/xcat-core.list --xcat-dep=/etc/apt/sources.list.d/xcat-dep.list -y install"; else echo "Sorry,this is not supported os"; fi
@@ -227,7 +227,7 @@ check:rc==0
 cmd:if grep Ubuntu /etc/*release;then code=`lsb_release -sc` && xdsh $$CN "scp -r $$MN:/opt/xcat/share/xcat/tools/autotest/testcase/go_xcat/$code-__GETNODEATTR($$CN,arch)__.sources.list /etc/apt/sources.list"; fi
 cmd:if grep Ubuntu /etc/*release;then xdsh $$CN "scp -r $$MN:/etc/hosts /etc/hosts" && xdsh $$CN "scp -r $$MN:/etc/resolv.conf /etc/resolv.conf" && xdsh $$CN "wget -O - http://xcat.org/files/xcat/repos/apt/apt.key | apt-key add -"; fi
 check:rc==0
-cmd:if grep Ubuntu /etc/*release;then xdsh $$CN "apt-get clean && apt-get update"; fi
+cmd:if grep Ubuntu /etc/*release;then xdsh $$CN "rm -rf /var/lib/apt/lists/* && apt-get clean && apt-get update"; fi
 check:rc==0
 cmd:xdsh $$CN "rm -rf /tmp/go-xcat.log"
 cmd:xdsh $$CN "cd /; ./go-xcat --xcat-core=/xcat-core --xcat-dep=/xcat-dep -y install"
@@ -264,7 +264,7 @@ check:rc==0
 cmd:if grep Ubuntu /etc/*release;then code=`lsb_release -sc` && xdsh $$CN "scp -r $$MN:/opt/xcat/share/xcat/tools/autotest/testcase/go_xcat/$code-__GETNODEATTR($$CN,arch)__.sources.list /etc/apt/sources.list"; fi
 cmd:if grep Ubuntu /etc/*release;then xdsh $$CN "scp -r $$MN:/etc/hosts /etc/hosts" && xdsh $$CN "scp -r $$MN:/etc/resolv.conf /etc/resolv.conf" && xdsh $$CN "wget -O - http://xcat.org/files/xcat/repos/apt/apt.key | apt-key add -"; fi
 check:rc==0
-cmd:if grep Ubuntu /etc/*release;then xdsh $$CN "apt-get clean && apt-get update"; fi
+cmd:if grep Ubuntu /etc/*release;then xdsh $$CN "rm -rf /var/lib/apt/lists/* && apt-get clean && apt-get update"; fi
 check:rc==0
 cmd:xdsh $$CN "rm -rf /tmp/go-xcat.log"
 cmd:xdsh $$CN "cd /; ./go-xcat --xcat-core=/xcat-core.tar.bz2 --xcat-dep=/xcat-dep.tar.bz2 -y install"
