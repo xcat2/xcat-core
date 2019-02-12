@@ -194,7 +194,9 @@ then
         if ! grep -q  'Already up-to-date' $update_log; then
             code_change=1
         fi
-        ver=`cat Version`
+	ver=${ver/-/.POST}
+        ver=${ver/-/.}
+
         short_ver=`cat Version|cut -d. -f 1,2`
         short_short_ver=`cat Version|cut -d. -f 1`
         build_time=`date`
@@ -215,7 +217,7 @@ then
         #the build introduce string
         build_string="Snap_Build"
         xcat_release="snap$(date '+%Y%m%d%H%M')"
-        pkg_version="${ver}-${xcat_release}"
+        pkg_version="${ver}" # -${xcat_release}"
 
         packages="xCAT-client xCAT-genesis-scripts perl-xCAT xCAT-server xCAT xCATsn xCAT-test xCAT-buildkit xCAT-vlan xCAT-confluent xCAT-probe"
         target_archs=(amd64 ppc64el)
