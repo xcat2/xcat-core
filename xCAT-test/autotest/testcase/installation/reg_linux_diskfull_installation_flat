@@ -7,7 +7,8 @@ cmd:df -T
 cmd:if ping -c 1 $$SN > /dev/null;then rpower $$SN off > /dev/null;fi
 cmd:MINIISO=NUll;if [[ "__GETNODEATTR($$CN,os)__" =~ "ubuntu" ]] && [[ "__GETNODEATTR($$CN,arch)__" =~ "ppc64" ]];then mkdir /tmp/iso; mount -o loop $$MINIISO /tmp/iso ;  mkdir -p  /install/__GETNODEATTR($$CN,os)__/__GETNODEATTR($$CN,arch)__/install/netboot; cp  /tmp/iso/install/initrd.gz  /install/__GETNODEATTR($$CN,os)__/__GETNODEATTR($$CN,arch)__/install/netboot;umount /tmp/iso; rmdir /tmp/iso; fi
 check:rc==0
-
+cmd: if lsdef service > /dev/null 2>&1; then chdef service -m groups=service;fi
+check:rc==0
 cmd:chdef -t node -o $$CN servicenode= monserver=$$MN nfsserver=$$MN tftpserver=$$MN  xcatmaster=$$MN
 check:rc==0
 cmd:makedns -n
