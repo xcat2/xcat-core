@@ -5936,6 +5936,11 @@ sub run_rsync_postscripts
         # return from rsync is tmp/file1  not /tmp/file1
         substr($tmppostfile, 0, 1) = "";
 
+        # now remove .post from the postscript file for the compare
+        # with the returned file name
+        my($tp,$post) = split(/\.post/,$tmppostfile);
+        $tmppostfile = $tp;
+
         foreach my $line (@rsync_output) {
             my ($hostname, $ps) = split(/: /, $line);
             chomp $ps;
@@ -5948,7 +5953,11 @@ sub run_rsync_postscripts
                 }
                 next;
             }
-            if ($tmppostfile eq $ps) {
+
+            #the $postsfile <file>.post will be run if:
+            # the <file> is updated, or
+            # the <file>.post file is updated
+            if ($ps eq $tmppostfile or $ps eq $tmppostfile.".post" ) {
 
                 # build xdsh queue
                 # build host and all scripts to execute
