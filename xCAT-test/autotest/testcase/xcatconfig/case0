@@ -121,7 +121,7 @@ cmd:mv -f /etc/xcat/cabak /etc/xcat/ca ;mv -f /etc/xcat/certbak /etc/xcat/cert
 check:rc==0
 cmd:if lsdef service > /dev/null 2>&1; then updatenode service -P servicenode;fi
 check:rc==0
-cmd:if lsdef service > /dev/null 2>&1; then makedhcp -a;fi
+cmd:if lsdef service > /dev/null 2>&1; then xdsh $$CN date;fi
 check:rc==0
 end
 
