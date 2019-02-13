@@ -194,6 +194,7 @@ then
         if ! grep -q  'Already up-to-date' $update_log; then
             code_change=1
         fi
+	ver=$(git describe --tags)
 	ver=${ver/-/.POST}
         ver=${ver/-/.}
 
