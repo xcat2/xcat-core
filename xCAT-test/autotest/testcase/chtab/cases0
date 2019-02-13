@@ -79,7 +79,7 @@ description:chtab with error table
 label:mn_only,ci_test,db
 cmd:chtab error=error site.comment=error
 check:rc!=0
-check:output=~no such column|column \"error\" does not exist
+check:output=~no such column|column \"error\" does not exist|Unknown column \'error\'
 end
 
 

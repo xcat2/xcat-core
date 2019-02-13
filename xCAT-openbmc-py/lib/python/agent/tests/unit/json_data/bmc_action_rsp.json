@@ -1,0 +1,19 @@
+{
+  "@odata.context": "/redfish/v1/$metadata#ActionInfo.ActionInfo",
+  "@odata.type": "#ActionInfo.v1_1_0.ActionInfo",
+  "@odata.id": "/redfish/v1/Managers/BMC/ResetActionInfo",
+  "Id": "ResetActionInfo",
+  "Name": "Reset Action Info",
+  "Parameters": [
+    {
+      "Name": "ResetType",
+      "Required": true,
+      "DataType": "String",
+      "AllowableValues": [
+        "ForceRestart",
+        "GracefulRestart"
+      ]
+    }
+  ],
+  "Oem": {}
+}

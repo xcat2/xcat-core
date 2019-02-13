@@ -13,9 +13,9 @@ check:rc==0
 cmd:xdsh $$CN "cd /; scp -r $$MN:/opt/xcat/share/xcat/tools/go-xcat ./"
 check:rc==0
 cmd:if grep Ubuntu /etc/*release;then code=`lsb_release -sc` && xdsh $$CN "scp -r $$MN:/opt/xcat/share/xcat/tools/autotest/testcase/go_xcat/$code-__GETNODEATTR($$CN,arch)__.sources.list /etc/apt/sources.list"; fi
-cmd:if grep Ubuntu /etc/*release;then xdsh $$CN "scp -r $$MN:/etc/resolv.conf /etc/resolv.conf" && xdsh $$CN "wget -O - http://xcat.org/files/xcat/repos/apt/apt.key | apt-key add -"; fi
+cmd:if grep Ubuntu /etc/*release;then xdsh $$CN "scp -r $$MN:/etc/hosts /etc/hosts" && xdsh $$CN "scp -r $$MN:/etc/resolv.conf /etc/resolv.conf" && xdsh $$CN "wget -O - http://xcat.org/files/xcat/repos/apt/apt.key | apt-key add -"; fi
 check:rc==0
-cmd:if grep Ubuntu /etc/*release;then xdsh $$CN "apt-get clean && apt-get update"; fi
+cmd:if grep Ubuntu /etc/*release;then xdsh $$CN "rm -rf /var/lib/apt/lists/* && apt-get clean && apt-get update"; fi
 check:rc==0
 cmd:xdsh $$CN "rm -rf /tmp/go-xcat.log"
 cmd:xdsh $$CN "cd /; ./go-xcat --yes install"
@@ -48,9 +48,9 @@ check:rc==0
 cmd:xdsh $$CN "cd /; scp -r $$MN:/opt/xcat/share/xcat/tools/go-xcat ./"
 check:rc==0
 cmd:if grep Ubuntu /etc/*release;then code=`lsb_release -sc` && xdsh $$CN "scp -r $$MN:/opt/xcat/share/xcat/tools/autotest/testcase/go_xcat/$code-__GETNODEATTR($$CN,arch)__.sources.list /etc/apt/sources.list"; fi
-cmd:if grep Ubuntu /etc/*release;then xdsh $$CN "scp -r $$MN:/etc/resolv.conf /etc/resolv.conf" && xdsh $$CN "wget -O - http://xcat.org/files/xcat/repos/apt/apt.key | apt-key add -"; fi
+cmd:if grep Ubuntu /etc/*release;then xdsh $$CN "scp -r $$MN:/etc/hosts /etc/hosts" && xdsh $$CN "scp -r $$MN:/etc/resolv.conf /etc/resolv.conf" && xdsh $$CN "wget -O - http://xcat.org/files/xcat/repos/apt/apt.key | apt-key add -"; fi
 check:rc==0
-cmd:if grep Ubuntu /etc/*release;then xdsh $$CN "apt-get clean && apt-get update"; fi
+cmd:if grep Ubuntu /etc/*release;then xdsh $$CN "rm -rf /var/lib/apt/lists/* && apt-get clean && apt-get update"; fi
 check:rc==0
 cmd:xdsh $$CN "rm -rf /tmp/go-xcat.log"
 cmd:migration_version=`echo $$MIGRATION2_VERSION |cut -d "." -f -2`; xdsh $$CN "cd /; ./go-xcat -x $migration_version -y install"
@@ -90,9 +90,9 @@ check:rc==0
 cmd:xdsh $$CN "cd /; scp -r $$MN:/opt/xcat/share/xcat/tools/go-xcat ./"
 check:rc==0
 cmd:if grep Ubuntu /etc/*release;then code=`lsb_release -sc` && xdsh $$CN "scp -r $$MN:/opt/xcat/share/xcat/tools/autotest/testcase/go_xcat/$code-__GETNODEATTR($$CN,arch)__.sources.list /etc/apt/sources.list"; fi
-cmd:if grep Ubuntu /etc/*release;then xdsh $$CN "scp -r $$MN:/etc/resolv.conf /etc/resolv.conf" && xdsh $$CN "wget -O - http://xcat.org/files/xcat/repos/apt/apt.key | apt-key add -"; fi
+cmd:if grep Ubuntu /etc/*release;then xdsh $$CN "scp -r $$MN:/etc/hosts /etc/hosts" && xdsh $$CN "scp -r $$MN:/etc/resolv.conf /etc/resolv.conf" && xdsh $$CN "wget -O - http://xcat.org/files/xcat/repos/apt/apt.key | apt-key add -"; fi
 check:rc==0
-cmd:if grep Ubuntu /etc/*release;then xdsh $$CN "apt-get clean && apt-get update"; fi
+cmd:if grep Ubuntu /etc/*release;then xdsh $$CN "rm -rf /var/lib/apt/lists/* && apt-get clean && apt-get update"; fi
 check:rc==0
 cmd:xdsh $$CN "rm -rf /tmp/go-xcat.log"
 cmd:xdsh $$CN "cd /; ./go-xcat --xcat-version=devel -y install"
@@ -125,9 +125,9 @@ check:rc==0
 cmd:xdsh $$CN "cd /; scp -r $$MN:/opt/xcat/share/xcat/tools/go-xcat ./"
 check:rc==0
 cmd:if grep Ubuntu /etc/*release;then code=`lsb_release -sc` && xdsh $$CN "scp -r $$MN:/opt/xcat/share/xcat/tools/autotest/testcase/go_xcat/$code-__GETNODEATTR($$CN,arch)__.sources.list /etc/apt/sources.list"; fi
-cmd:if grep Ubuntu /etc/*release;then xdsh $$CN "scp -r $$MN:/etc/resolv.conf /etc/resolv.conf" && xdsh $$CN "wget -O - http://xcat.org/files/xcat/repos/apt/apt.key | apt-key add -"; fi
+cmd:if grep Ubuntu /etc/*release;then xdsh $$CN "scp -r $$MN:/etc/hosts /etc/hosts" && xdsh $$CN "scp -r $$MN:/etc/resolv.conf /etc/resolv.conf" && xdsh $$CN "wget -O - http://xcat.org/files/xcat/repos/apt/apt.key | apt-key add -"; fi
 check:rc==0
-cmd:if grep Ubuntu /etc/*release;then xdsh $$CN "apt-get clean && apt-get update"; fi
+cmd:if grep Ubuntu /etc/*release;then xdsh $$CN "rm -rf /var/lib/apt/lists/* && apt-get clean && apt-get update"; fi
 check:rc==0
 cmd:xdsh $$CN "rm -rf /tmp/go-xcat.log"
 cmd:migration_version=`echo $$MIGRATION2_VERSION |cut -d "." -f -2`; xdsh $$CN "cd /; ./go-xcat --xcat-version=$migration_version -y install"

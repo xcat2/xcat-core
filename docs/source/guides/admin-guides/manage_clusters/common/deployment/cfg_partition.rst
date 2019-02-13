@@ -2,7 +2,6 @@
 
 By default, xCAT will install the operating system on the first disk and with default partitions layout in the node. However, you may choose to customize the disk partitioning during the install process and define a specific disk layout. You can do this in one of two ways: '**partition definition file**' or '**partition definition script**'.
 
-**Notes**
 .. note:: ``partition definition file`` can be used for RedHat, SLES, and Ubuntu.  Because disk configuraiton for Ubuntu is different from RedHat, there may be some special sections required for Ubuntu.
 
 .. warning:: ``partition  definition script`` has only been tested on RedHat and Ubuntu, use at your own risk for SLES.

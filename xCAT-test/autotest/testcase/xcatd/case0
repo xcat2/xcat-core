@@ -160,4 +160,20 @@ cmd:chtab name=root policy.commands= policy.rule=allow
 check:rc==0
 end
 
-
+start:reload_xcatd_with_XCATBYPASS
+description:with XCATBYPASS=YES, there is no error when restart xcatd deamon. This case is add test case for issue 2727 : run xCAT in "XCATBYPASS" mode and simply reload xCAT to check if there is any errors. 
+label:mn_only,ci_test,xcatd
+cmd:service xcatd status
+check:rc==0
+check:output=~xcatd service|xcatd.service
+check:output=~xcatd service is running|active \(running\)
+cmd:XCATBYPASS=YES lsxcatd -a
+check:rc==0
+check:output!=~Error|ERROR
+cmd:XCATBYPASS=YES service xcatd status
+check:rc==0
+check:output!=~Error|ERROR
+cmd:XCATBYPASS=YES service xcatd restart
+check:rc==0
+check:output!=~Error|ERROR 
+end
