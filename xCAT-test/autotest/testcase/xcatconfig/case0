@@ -122,6 +122,10 @@ cmd:if lsdef service > /dev/null 2>&1; then updatenode service -P servicenode;fi
 check:rc==0
 cmd:if lsdef service > /dev/null 2>&1; then xdsh $$CN date;fi
 check:rc==0
+cmd:if lsdef service > /dev/null 2>&1; then updatenode service -P servicenode;fi
+check:rc==0
+cmd:if lsdef service > /dev/null 2>&1; then xdsh $$CN date;fi
+check:rc==0
 end
 
 start:xcatconfig_s
