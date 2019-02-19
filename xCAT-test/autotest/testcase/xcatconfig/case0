@@ -94,7 +94,6 @@ cmd:rm -rf /tmp/xcatconfig.test
 check:rc==0
 end
 
-
 start:xcatconfig_c
 description:To regenerate cretials
 label:mn_only
@@ -117,7 +116,15 @@ check:rc!=0
 #step4:restore test environment
 cmd:rm -rf /tmp/xcatconfig.test
 check:rc==0
-cmd:mv -f /etc/xcat/cabak /etc/xcat/ca ;mv -f /etc/xcat/certbak /etc/xcat/cert
+cmd:rm -rf /etc/xcat/cabak /etc/xcat/certbak
+check:rc==0
+cmd:if lsdef service > /dev/null 2>&1; then updatenode service -P servicenode;fi
+check:rc==0
+cmd:if lsdef service > /dev/null 2>&1; then xdsh $$CN date;fi
+check:rc==0
+cmd:if lsdef service > /dev/null 2>&1; then updatenode service -P servicenode;fi
+check:rc==0
+cmd:if lsdef service > /dev/null 2>&1; then xdsh $$CN date;fi
 check:rc==0
 end
 
