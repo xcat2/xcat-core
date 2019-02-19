@@ -33,15 +33,15 @@ sync file **/etc/file2** to the file **/etc/file3** on the node (with different 
 
        /etc/file2 -> /etc/file3
 
-sync file **/etc/file4** to the file **/etc/tmp/file5** on the node( different file name and directory). The directory will be automatically created for you. ::
+sync file **/etc/file4** to the file **/etc/tmp/file5** on the node (different file name and directory). The directory will be automatically created for you. ::
 
       /etc/file4 -> /etc/tmp/file5
 
-sync the multiple files **/etc/file1**, **/etc/file2**, **/etc/file3**, ... to the directory **/tmp/etc** (**/tmp/etc** must be a directory when multiple files are synced at one time). If the directory does not exist, **xdcp** will create it. ::
+sync the multiple files **/etc/file1**, **/etc/file2**, **/etc/file3**, ... to the directory **/tmp/etc** (**/tmp/etc** must be a directory when multiple files are synced at one time). If the directory does not exist, it will be created. ::
 
       /etc/file1 /etc/file2 /etc/file3 -> /tmp/etc
 
-sync file **/etc/file2** to the file /etc/file2 on the node   ::
+sync file **/etc/file2** to the file **/etc/file2** on the node   ::
 
        /etc/file2 -> /etc/
 
@@ -49,7 +49,7 @@ sync all files in **/home/mikev** to directory **/home/mikev** on the node  ::
 
        /home/mikev/* -> /home/mikev/
 
-Note: Don't try to sync files to the read only directory on the target node.
+.. note:: Don't try to sync files to the read only directory on the target node.
 
 An example of synclist file
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -59,7 +59,7 @@ Sync the file **/etc/common_hosts** to the two places on the target node: put on
        /etc/common_hosts -> /etc/hosts
        /etc/common_hosts -> /tmp/etc/hosts
 
-Sync files in the directory **/tmp/prog1** to the directory **/prog1** on the target node, and the postfix **'.tmpl'** needs to be removed on the target node. (directory **/tmp/prog1/** contains two files: **conf1.tmpl** and **conf2.tmpl**) Following configuration entries should be added ::
+Sync files in the directory **/tmp/prog1** to the directory **/prog1** on the target node, and the postfix **.tmpl** needs to be removed on the target node. (directory **/tmp/prog1/** contains two files: **conf1.tmpl** and **conf2.tmpl**) Following configuration entries should be added ::
 
        /tmp/prog1/conf1.tmpl -> /prog1/conf1
        /tmp/prog1/conf2.tmpl -> /prog1/conf2
@@ -78,7 +78,7 @@ Sample synclist file ::
       /tmp/* -> /tmp/
       /etc/testfile -> /etc/
 
-If the above syncfile is used by the **updatenode/xdcp** commands, or used in a node installation process, the following files will exist on the target node with the following contents. ::
+If the above syncfile is used by the ``updatenode``/``xdcp`` commands, or used in a node installation process, the following files will exist on the target node with the following contents. ::
 
        /etc/hosts(It has the same content with /etc/common_hosts on the MN)
        /tmp/etc/hosts(It has the same content with /etc/common_hosts on the MN)
@@ -104,29 +104,24 @@ The noderange can have several formats. Following examples show that **/etc/host
        /etc/hosts -> (group1) /etc/hosts                 # The /etc/hosts file is synced to nodes in group1
        /etc/hosts -> (group1,group2) /etc/hosts          # The /etc/hosts file is synced to nodes in group1 and group2
 
-postscript support
-~~~~~~~~~~~~~~~~~~
-
-Putting the filename.post in the **rsyncfile** to ``rsync`` to the node is required for hierarchical clusters. It is optional for non-hierarchical cluster.
-
 Advanced synclist file features
 '''''''''''''''''''''''''''''''
 
 **EXECUTE**
 
-The **EXECUTE** clause is used to list all the postscripts you would like to run after the files are sync'd, only if the file is updated. The files in this list must be added to the list of files to rsync. If noderange is used in the synclistfor the file listed in the **EXECUTE** clause, the script will only be exectuted on the nodes in that noderange.
+The **EXECUTE** clause is used to list all the postsync scripts (<filename>.post) you would like to run after the files are synced, only if the file <filename> is updated. For hierarchical clusters, the postsync files in this list must also be added to the list of files to sync. It is optional for non-hierarchical clusters. If noderange is used in the synclist for the file listed in the **EXECUTE** clause, the postsync script will only be executed on the nodes in that noderange.
 
 **EXECUTEALWAYS**
 
-The **EXECUTEALWAYS** clause is used to list all the postscripts you would like to run after the files are sync'd, whether or not any file is actually updated. The files in this list must be added to the list of files to rsync.  If noderange is used in the synclist for the file listed in the **EXECUTEALWAYS** clause, the script will only be exectuted on the nodes in that noderange.
+The **EXECUTEALWAYS** clause is used to list all the postsync scripts you would like to run after the files are synced, whether or not any file is actually updated. The files in this list must be added to the list of files to rsync.  If noderange is used in the synclist for the file listed in the **EXECUTEALWAYS** clause, the script will only be exectuted on the nodes in that noderange.
 
 .. note:: The path to the file to EXECUTE or EXECUTEALWAYS, is the location of the file on the MN.
 
-For example, your rsyncfile may look like this.:: 
+For example, your syncfile may look like this.:: 
 
        /tmp/share/file2  -> /tmp/file2
        /tmp/share/file2.post -> /tmp/file2.post (required for hierarchical clusters)
-       /tmp/share/file3 -> /tmp/file3
+       /tmp/share/file3 -> /tmp/filex
        /tmp/share/file3.post -> /tmp/file3.post (required for hierarchical clusters)
        /tmp/myscript1 -> /tmp/myscript1
        /tmp/myscript2 -> /tmp/myscript2
@@ -138,7 +133,7 @@ For example, your rsyncfile may look like this.::
        /tmp/myscript1
        /tmp/myscript2
 
-If **/tmp/file2** is updated on the node in **/tmp/file2**, then **/tmp/file2**.post is automatically run on that node. If **/tmp/file3** is updated on the node in **/tmp/filex**, then **/tmp/file3**.post is automatically run on that node.
+If **/tmp/file2** is updated on the node in **/tmp/file2**, then **/tmp/file2.post** is automatically executed on that node. If **/tmp/file3** is updated on the node in **/tmp/filex**, then **/tmp/file3.post** is automatically executed on that node.
 
 **APPEND**
 
@@ -163,11 +158,11 @@ For example, your synclist file may look like this: ::
 
 When you use the **APPEND** clause, the source file to the left of the arrow is appended to the file to the right of the arrow. In this example, **/etc/myappenddir/appendfile** is appended to **/etc/mysetup/setup** file, which must already exist on the node. The **/opt/xcat/share/xcat/scripts/xdcpappend.sh** is used to accomplish this.
 
-The script creates a backup of the original file on the node in the directory defined by the site table `nodesyncfiledir` attribute, which is **/var/xcat/node/syncfiles** by default. To update the original file when using the function, you need to rsync a new original file to the node, removed the old original from the **/var/xcat/node/syncfiles/org** directory. If you want to cleanup all the files for the append function on the node, you can use ``xdsh -c`` flag. See man page for ``xdsh``.
+The script creates a backup of the original file on the node in the directory defined by the **site** table **nodesyncfiledir** attribute, which is **/var/xcat/node/syncfiles** by default. To update the original file when using the function, you need to sync a new original file to the node, removed the old original from the **/var/xcat/node/syncfiles/org** directory. If you want to cleanup all the files for the append function on the node, you can use ``xdsh -c`` command. See man page for ``xdsh``.
 
 **MERGE** (supported on Linux only).
 
-The **MERGE** clause is used to append the contents of the input file to either the **/etc/passwd**, **/etc/shadow** or **/etc/group** files. They are the only supported files. You must not put the **/etc/passwd**, **/etc/shadow**, **/etc/group** files in an **APPEND** clause if using a **MERGE** clause. For these three files you should use the **MERGE** clause. The **APPEND** will add the information to the end of the file. The **MERGE** will add or replace the information and insure that there are no duplicate entries in these files.
+The **MERGE** clause is used to append the contents of the input file to either the **/etc/passwd**, **/etc/shadow** or **/etc/group** files. They are the only supported files. You must not put the **/etc/passwd**, **/etc/shadow**, **/etc/group** files in an **APPEND** clause if using a **MERGE** clause. For these three files you should use the **MERGE** clause. The **APPEND** will add the information to the end of the file. The **MERGE** will add or replace the information and ensure that there are no duplicate entries in these files.
 
 For example, your synclist file may look like this ::
 
@@ -187,7 +182,7 @@ For example, your synclist file may look like this ::
        /etc/mydir/mergeshadow -> /etc/shadow
        /etc/mydir/mergegroup -> /etc/group
 
-When you use the **MERGE** clause, the source file to the left of the arrow is merged into the file to the right of the arrow. It will replace any common userid's found in those files and add new userids. The **/opt/xcat/share/xcat/scripts/xdcpmerge.sh** is used to accomplish this.
+When you use the **MERGE** clause, the source file to the left of the arrow is merged into the file to the right of the arrow. It will replace any common userids found in those files and add new userids. The **/opt/xcat/share/xcat/scripts/xdcpmerge.sh** is used to accomplish this.
 
 .. note:: no order of execution may be assumed by the order of **EXECUTE, EXECUTEALWAYS, APPEND and MERGE** clauses in the synclist file.
 
@@ -198,7 +193,7 @@ The location of synclist file for updatenode and install process
 
 In the installation process or **updatenode** process, xCAT needs to figure out the location of the synclist file automatically, so the synclist should be put into the specified place with the proper name.
 
-If the provisioning method for the node is an osimage name, then the path to the synclist will be read from the osimage definition `synclists` attribute. You can display this information by running the following command, supplying your osimage name. ::
+If the provisioning method for the node is an osimage name, then the path to the synclist will be read from the osimage definition **synclists** attribute. You can display this information by running the following command, supplying your osimage name. ::
 
        lsdef -t osimage -l <os>-<arch>-netboot-compute
 
@@ -216,7 +211,7 @@ If the provisioning method for the node is an osimage name, then the path to the
        rootimgdir=/install/netboot/<os>/<arch>/compute
        **synclists=/install/custom/netboot/compute.synclist**
 
-You can set the `synclist` path using the following command ::
+You can set the synclist path using the following command ::
 
        chdef -t osimage -o  <os>-<arch>-netboot-compute synclists="/install/custom/netboot/compute.synclist
 
@@ -229,11 +224,11 @@ If the provisioning method for the node is `install`, or `netboot` then the path
        <profile>, <os> and <arch> are what you set for the node
 
 For example:
-The location of synclist file for the diskful installation of RedHat 7.5 with 'compute' as the profile ::
+The location of synclist file for the diskful installation of RedHat 7.5 with **compute** as the profile ::
 
        /install/custom/install/rh/compute.rhels7.5.synclist
 
-The location of synclist file for the diskless netboot of SLES 12.3 with 'service' as the profile ::
+The location of synclist file for the diskless netboot of SLES 12.3 with **service** as the profile ::
 
        /install/custom/netboot/sles/service.sles12.3.synclist
 

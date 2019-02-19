@@ -22,12 +22,12 @@ SYNOPSIS
 \ **lsdef**\  [\ **-h | -**\ **-help**\ ] [\ **-t**\  \ *object-types*\ ] [\ **-i**\  \ *attr-list*\ ]
 
 \ **lsdef**\  [\ **-V | -**\ **-verbose**\ ] [\ **-a | -**\ **-all**\ ] [\ **-S**\ ]
-[\ **-t**\  \ *object-types*\ ] [\ **-o**\  \ *object-names*\ ] [\ **-z | -**\ **-stanza**\ ] [\ [\ **-i**\  \ *attr-list*\] | [\ **-l | -**\ **-long**\ ] | [\ **-s | -**\ **-short**\ ]]
+[\ **-t**\  \ *object-types*\ ] [\ **-o**\  \ *object-names*\ ] [\ **-z | -**\ **-stanza**\ ] [\ **-i**\  \ *attr-list*\  | [\ **-l | -**\ **-long**\ ] | [\ **-s | -**\ **-short**\ ]]
 [\ **-c | -**\ **-compress**\ ] [\ **-**\ **-osimage**\ ] [\ **-**\ **-nics**\ ] [[\ **-w**\  \ *attr*\ ==\ *val*\ ]
 [\ **-w**\  \ *attr*\ =~\ *val*\ ] ...] [\ *noderange*\ ]
 
 \ **lsdef**\  [\ **-a | -**\ **-all**\ ] [\ **-t**\  \ *object-types*\ ] [\ **-z | -**\ **-stanza**\ ]
-[\ [\ **-i**\  \ *attr-list*\] | [\ **-l | -**\ **-long**\ ] | [\ **-s | -**\ **-short**\ ]] [\ **-**\ **-template**\  [\ *template-object-name*\ ]]
+[\ **-i**\  \ *attr-list*\  | [\ **-l | -**\ **-long**\ ] | [\ **-s | -**\ **-short**\ ]] [\ **-**\ **-template**\  [\ *template-object-name*\ ]]
 
 
 ***********
@@ -155,7 +155,7 @@ OPTIONS
 
 \ **-z|-**\ **-stanza**\ 
  
- Display output in stanza format. See the "xcatstanzafile" man page for details on using xCAT stanza files.
+ Display output in stanza format. See the "xcatstanzafile" man page for details on using xCAT stanza files. And default is to list complete object definition, use \ **-i**\  to specify the attribute scope.
  
 
 
