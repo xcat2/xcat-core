@@ -104,8 +104,10 @@ check:rc==0
 cmd:service xcatd stop
 check:rc==0
 cmd:sleep 3
-cmd:ps aux|grep -v grep|grep xcatd
+cmd:ps aux|tee /tmp/run_command_with_XCATBYPASS.log
+cmd:awk '{print $11}' /tmp/run_command_with_XCATBYPASS.log|grep -E ^xcatd
 check:rc!=0
+cmd:rm -rf /tmp/run_command_with_XCATBYPASS.log
 cmd:service xcatd status
 cmd:tabdump site
 check:rc!=0
