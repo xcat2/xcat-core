@@ -141,6 +141,7 @@ start:makehost_n_r
 label:mn_only,dns,wait_fix
 descriptions:modify makehosts testcases according to special node name eg:s01 and s01r* . for issue #2717 and #2683
 cmd:cp -f /etc/hosts /etc/hosts.xcatbakautotest
+cmd:sed -i '/s01/d' /etc/hosts
 cmd:cat /etc/hosts
 cmd:lsdef s01;if [ $? -eq 0 ]; then lsdef -l s01 -z >/tmp/s01.standa ;rmdef s01;fi
 check:rc==0
@@ -149,56 +150,65 @@ check:rc==0
 cmd:nodeadd s01 groups=service; chdef s01 ip=70.2.0.254;nodeadd s01r1b01 groups=compute; chdef s01r1b01 ip=80.2.0.254
 check:rc==0
 cmd:lsdef -l s01,s01r1b01
-cmd:makehosts || XCATBYPASS=YES makehosts
+cmd:makehosts 
 check:rc==0
-cmd:cat /etc/hosts
 cmd:#!/bin/bash
 file="/etc/hosts"
-for i in {1..5}; do
-    if (grep "70.2.0.254 s01" $file >/dev/null 2>&1) && (grep "80.2.0.254 s01r1b01" $file >/dev/null 2>&1); then
-        exit 0;
-    else
-        echo "Do not find s01 and s01r1b01 in $file, sleep $[i*2] seconds and try again"
-        sleep $[i*2]
-    fi
-done
-exit 1
+if (! grep "s01" $file 2>&1); then
+    echo "makehosts failed, try XCATBYPASS=YES makehosts again"
+    XCATBYPASS=YES makehosts    
+    if (! grep "s01" $file 2>&1); then
+        echo "XCATBYPASS=YES makehosts failed either"
+        exit 1
+    fi 
+fi 
+if (grep "70.2.0.254 s01" $file >/dev/null 2>&1) && (grep "80.2.0.254 s01r1b01" $file >/dev/null 2>&1); then
+    exit 0
+else
+    exit 1
+fi
 check:rc==0
-cmd:cp -f /etc/hosts.xcatbakautotest /etc/hosts
-cmd:makehosts s01 || XCATBYPASS=YES makehosts s01
+cmd:sed -i '/s01/d' /etc/hosts
+cmd:makehosts s01 
 check:rc==0
-cmd:cat /etc/hosts
 cmd:#!/bin/bash
 file="/etc/hosts"
-for i in {1..5}; do
-    if (grep "70.2.0.254 s01" $file >/dev/null 2>&1) && ( ! grep "80.2.0.254 s01r1b01" $file >/dev/null 2>&1); then
-        exit 0;
-    else
-        echo "sleep $[i*2] seconds and try again"
-        sleep $[i*2]
+if (! grep "s01 " $file 2>&1); then
+    echo "makehosts s01 failed, try XCATBYPASS=YES makehosts s01 again"
+    XCATBYPASS=YES makehosts s01
+    if (! grep "s01 " $file 2>&1); then
+         echo "XCATBYPASS=YES makehosts s01 failed either"
+         exit 1
     fi
-done
-exit 1
+fi
+if (grep "70.2.0.254 s01" $file >/dev/null 2>&1) && ( ! grep "80.2.0.254 s01r1b01" $file >/dev/null 2>&1); then
+    exit 0;
+else
+    exit 1
+fi
 check:rc==0
-cmd:cp -f /etc/hosts.xcatbakautotest /etc/hosts
-cmd:makehosts service || XCATBYPASS=YES makehosts service
+cmd:sed -i '/s01/d' /etc/hosts
+cmd:makehosts service 
 check:rc==0
-cmd:cat /etc/hosts
 cmd:#!/bin/bash
 file="/etc/hosts"
-for i in {1..5}; do
-    if (grep "70.2.0.254 s01" $file >/dev/null 2>&1) && (! grep "80.2.0.254 s01r1b01" $file >/dev/null 2>&1); then
-        exit 0;
-    else
-        echo "sleep $[i*2] seconds and try again"
-        sleep $[i*2]
-    fi
-done
-exit 1
+if (! grep "s01 " $file 2>&1); then
+     echo "makehosts service failed, try XCATBYPASS=YES makehosts service again"
+     XCATBYPASS=YES makehosts service
+     if (! grep "s01 " $file 2>&1); then
+         echo "XCATBYPASS=YES makehosts service failed either"
+         exit 1
+     fi
+fi
+if (grep "70.2.0.254 s01" $file >/dev/null 2>&1) && (! grep "80.2.0.254 s01r1b01" $file >/dev/null 2>&1); then
+    exit 0;
+else
+    exit 1
+fi
 check:rc==0
-cmd:makehosts -d s01 || XCATBYPASS=YES makehosts -d s01
+cmd:makehosts -d s01
 check:rc==0
-cmd:cat /etc/hosts
+cmd:grep "s01" /etc/hosts
 cmd:#!/bin/bash
 file="/etc/hosts"
 for i in {1..5}; do
@@ -211,13 +221,14 @@ for i in {1..5}; do
 done
 exit 1
 check:rc==0
-cmd:cp -f /etc/hosts.xcatbakautotest /etc/hosts
-cmd:makehosts || XCATBYPASS=YES makehosts
+cmd:sed -i '/s01/d' /etc/hosts
+cmd:XCATBYPASS=YES makehosts
 check:rc==0
-cmd:cat /etc/hosts
-cmd:makehosts -d service || XCATBYPASS=YES makehosts  -d service
+cmd:cat /etc/hosts |grep s01
 check:rc==0
-cmd:cat /etc/hosts
+cmd:makehosts -d service 
+check:rc==0
+cmd:grep "s01" /etc/hosts
 cmd:#!/bin/bash
 file="/etc/hosts"
 for i in {1..5}; do
@@ -230,13 +241,14 @@ for i in {1..5}; do
 done
 exit 1
 check:rc==0
-cmd:cp -f /etc/hosts.xcatbakautotest /etc/hosts
-cmd:makehosts  || XCATBYPASS=YES makehosts
+cmd:sed -i '/s01/d' /etc/hosts
+cmd:XCATBYPASS=YES makehosts
 check:rc==0
-cmd:cat /etc/hosts
-cmd:makehosts -d s01r1b01 || XCATBYPASS=YES makehosts -d s01r1b01
+cmd:grep "s01" /etc/hosts 
 check:rc==0
-cmd:cat /etc/hosts
+cmd:makehosts -d s01r1b01
+check:rc==0
+cmd:grep "s01" /etc/hosts
 cmd:#!/bin/bash
 file="/etc/hosts"
 for i in {1..5}; do
