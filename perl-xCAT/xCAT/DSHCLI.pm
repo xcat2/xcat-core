@@ -5956,8 +5956,7 @@ sub run_rsync_postscripts
 
             #the $postsfile <file>.post will be run if:
             # the <file> is updated, or
-            # the <file>.post file is updated
-            if ($ps eq $tmppostfile or $ps eq $tmppostfile.".post" ) {
+            if ($ps eq $tmppostfile ) {
 
                 # build xdsh queue
                 # build host and all scripts to execute
