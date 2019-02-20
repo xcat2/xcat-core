@@ -222,9 +222,9 @@ done
 exit 1
 check:rc==0
 cmd:sed -i '/s01/d' /etc/hosts
-cmd:XCATBYPASS=YES makehosts
+cmd:domain=$(lsdef -t site  -i domain -c |awk -F'=' '{print $2}'); echo "70.2.0.254 s01 s01.$domain" >> /etc/hosts; echo "80.2.0.254 s01r1b01 s01r1b01.$domain" >> /etc/hosts
 check:rc==0
-cmd:cat /etc/hosts |grep s01
+cmd:grep "s01" /etc/hosts
 check:rc==0
 cmd:makehosts -d service 
 check:rc==0
@@ -242,7 +242,7 @@ done
 exit 1
 check:rc==0
 cmd:sed -i '/s01/d' /etc/hosts
-cmd:XCATBYPASS=YES makehosts
+cmd:domain=$(lsdef -t site  -i domain -c |awk -F'=' '{print $2}'); echo "70.2.0.254 s01 s01.$domain" >> /etc/hosts; echo "80.2.0.254 s01r1b01 s01r1b01.$domain" >> /etc/hosts
 check:rc==0
 cmd:grep "s01" /etc/hosts 
 check:rc==0
