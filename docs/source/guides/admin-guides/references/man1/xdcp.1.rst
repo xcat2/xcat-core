@@ -19,13 +19,13 @@ xdcp.1
 ****************
 
 
-\ **xdcp**\  \ *noderange*\   [[\ **-B**\  | \ **-**\ **-bypass**\ ] [\ **-f**\  \ *fanout*\ ] [\ **-L**\ ]  [\ **-l**\   \ *userID*\ ] [\ **-o**\  \ *node_options*\ ] [\ **-p**\ ] [\ **-P**\ ] [\ **-r**\  \ *node_remote_shell*\ ] [\ **-R**\ ] [\ **-t**\  \ *timeout*\ ] [\ **-T**\ ] [\ **-v**\ ] [\ **-q**\ ] [\ **-X**\  \ *env_list*\ ] \ *sourcefile.... targetpath*\ 
+\ **xdcp**\  \ *noderange*\   [[\ **-B**\  | \ **-**\ **-bypass**\ ] [\ **-f**\  \ *fanout*\ ] [\ **-L**\ ]  [\ **-l**\   \ *userID*\ ] [\ **-o**\  \ *node_options*\ ] [\ **-p**\ ] [\ **-P**\ ] [\ **-r**\  \ *node remote copy command] [\ \*\*-R\*\*\ ] [\ \*\*-t\*\*\  \ \*timeout\*\ ] [\ \*\*-T\*\*\ ] [\ \*\*-v\*\*\ ] [\ \*\*-q\*\*\ ] [\ \*\*-X\*\*\  \ \*env_list\*\ ] \ \*sourcefile.... targetpath\*\ *\ 
 
-\ **xdcp**\  \ *noderange*\   [\ **-F**\  \ *rsync input file*\ ]
+\ **xdcp**\  \ *noderange*\   [\ **-F**\  Irsynclist input file>] [\ **-r**\  \ *node remote copy command*\ ]
 
-\ **xdcp**\  \ *computenoderange*\   [\ **-s**\  \ **-F**\  \ *rsync input file*\ ]
+\ **xdcp**\  \ *computenoderange*\   [\ **-s**\  \ **-F**\  \ *synclist input file*\ ] [\ **-r**\  \ *node remote copy command*\ ]
 
-\ **xdcp**\  [\ **-i**\  \ *install image*\ ] [\ **-F**\  \ *rsync input file*\ ]
+\ **xdcp**\  [\ **-i**\  \ *install image*\ ] [\ **-F**\  \ *synclist input file*\ ] [\ **-r**\  \ *node remote copy command*\ ]
 
 \ **xdcp**\  [\ **-h**\  | \ **-V**\  | \ **-q**\ ]
 
@@ -61,7 +61,7 @@ For node targets, the remote copy command is determined by the  following order 
 
 1. The \ **-r**\  flag.
 
-2. The \ **/usr/bin/scp**\  command.
+2. The \ **/usr/bin/rsync**\  command.
 
 \ **COMMAND**\  \ **EXECUTIONS**\ :
 
@@ -125,7 +125,7 @@ standard output or standard error is displayed.
  
 
 
-\ **-F | -**\ **-File**\  \ *rsync input file*\ 
+\ **-F | -**\ **-File**\  \ *synclist input file*\ 
  
  Specifies the path to the file that will be used to
  build the \ **rsync**\  command.
@@ -187,10 +187,17 @@ standard output or standard error is displayed.
  
 
 
-\ **-r | -**\ **-node-rcp**\  \ *node_remote_copy*\ 
+\ **-r | -**\ **-node-rcp**\  \ *node remote copy command*\ 
  
- Specifies  the  full  path of the remote copy command used
- for remote command execution on node targets.
+ Specifies  the  full  path of the remote copy command used for syncing files to node targets, such as \ **/usr/bin/rsync**\  or \ **/usr/bin/scp**\ . If not specified, \ **rsync**\  will be used by default.
+ 
+ Note: The synclist processing for \ **-r /usr/bin/scp**\  has some differences with \ **-r /usr/bin/rsync**\ :
+ 
+ 1) the \ **EXECUTE**\  clause in synclist file is not supported with \ **-r /usr/bin/scp**\  flag
+ 
+ 2) if the destination directory specified in synclist file is an existing file on target node, \ **xdcp -r /usr/bin/scp**\  will fail with "scp: <destination directory>: Not a directory"
+ 
+ 3) if the destination file specified in synclist file is an existing directory on target node, \ **xdcp -r /usr/bin/scp**\  will fail with "scp: <destination file>: Is a directory"
  
 
 

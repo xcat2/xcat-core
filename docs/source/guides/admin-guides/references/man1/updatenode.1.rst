@@ -19,7 +19,7 @@ SYNOPSIS
 ********
 
 
-\ **updatenode**\  \ *noderange*\  [\ **-V | -**\ **-verbose**\ ] [\ **-F | -**\ **-sync**\ ] [\ **-f | -**\ **-snsync**\ ] [\ **-r | -**\ **-node-rcp**\  [\ *full_path_to_remote_copy_command*\ ]]  [\ **-S | -**\ **-sw**\ ]  [\ **-l**\   \ *userID*\ ]  [\ **-P | -**\ **-scripts**\  [\ *script1,script2...*\ ]] [\ **-s | -**\ **-sn**\ ] [\ **-A | -**\ **-updateallsw**\ ] [\ **-c | -**\ **-cmdlineonly**\ ] [\ **-d**\  \ *alt_source_dir*\ ] [\ **-**\ **-fanout**\ =\ *fanout_value*\ ] [\ **-t**\  \ *timeout*\ } [\ *attr=val*\  [\ *attr=val...*\ ]] [\ **-n | -**\ **-noverify**\ ]
+\ **updatenode**\  \ *noderange*\  [\ **-V | -**\ **-verbose**\ ] [\ **-F | -**\ **-sync**\ ] [\ **-f | -**\ **-snsync**\ ] [\ **-r | -**\ **-node-rcp**\  [\ *node_remote_copy_command*\ ]]  [\ **-S | -**\ **-sw**\ ]  [\ **-l**\   \ *userID*\ ]  [\ **-P | -**\ **-scripts**\  [\ *script1,script2...*\ ]] [\ **-s | -**\ **-sn**\ ] [\ **-A | -**\ **-updateallsw**\ ] [\ **-c | -**\ **-cmdlineonly**\ ] [\ **-d**\  \ *alt_source_dir*\ ] [\ **-**\ **-fanout**\ =\ *fanout_value*\ ] [\ **-t**\  \ *timeout*\ } [\ *attr=val*\  [\ *attr=val...*\ ]] [\ **-n | -**\ **-noverify**\ ]
 
 \ **updatenode**\  \ **noderange**\  [\ **-k | -**\ **-security**\ ] [\ **-t**\  \ *timeout*\ ]
 
@@ -410,17 +410,17 @@ OPTIONS
  
 
 
-[\ **-r | -**\ **-node-rcp**\  [\ *full_path_to_remote_copy_command*\ ]]
+[\ **-r | -**\ **-node-rcp**\  [\ *node_remote_copy_command*\ ]]
  
- Specifies  the  full  path of the remote copy command used for syncing files to node targets, such as "/usr/bin/rsync" or "/usr/bin/scp". If not specified, rsync will be used by default.
+ Specifies  the  full  path of the remote copy command used for syncing files to node targets, such as \ **/usr/bin/rsync**\  or \ **/usr/bin/scp**\ . If not specified, \ **rsync**\  will be used by default.
  
- Notice: The synclist for "-r /usr/bin/scp" has some differences with "-r /usr/bin/rsync":
+ Note: The synclist processing for \ **-r /usr/bin/scp**\  has some differences with \ **-r /usr/bin/rsync**\ :
  
- 1) the \`\`EXECUTE\`\` clause is not supported in "-r /usr/bin/scp"
+ 1) the \ **EXECUTE**\  clause in synclist file is not supported with \ **-r /usr/bin/scp**\  flag
  
- 2) if the destination directory specified in synclist is an existing file on target node, "updatenode -r /usr/bin/scp" will fail with \`\`scp: <destination directory>: Not a directory\`\`
+ 2) if the destination directory specified in synclist file is an existing file on target node, \ **updatenode -r /usr/bin/scp**\  will fail with "scp: <destination directory>: Not a directory"
  
- 3) if the destination file specified in synclist is an existing directory on target node, "updatenode -r /usr/bin/scp" will fail with \`\`scp: <destination file>: Is a directory\`\`
+ 3) if the destination file specified in synclist file is an existing directory on target node, \ **updatenode -r /usr/bin/scp**\  will fail with "scp: <destination file>: Is a directory"
  
 
 
