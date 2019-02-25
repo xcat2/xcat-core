@@ -401,7 +401,7 @@ site Attributes:
   
    dbtracelevel:  The trace level for the database access log. To activate this setting, please. 
                   restart xcatd or send HUP signal to the 'xcatd: DB Access' process, Like: .
-                  ps -ef | grep 'xcatd: DB Access' | grep -v grep | awk '{print $2}' | xargs kill -HUP  
+                  pkill -f -HUP 'xcatd: DB Access'
                   Currrent support values: 
                   0: disable the trace log for db 
                   1: trace the calls of database subroutines 
