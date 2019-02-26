@@ -104,9 +104,11 @@ check:rc==0
 cmd:service xcatd stop
 check:rc==0
 cmd:sleep 3
+cmd:ps aux|tee /tmp/run_command_with_XCATBYPASS.log
+cmd:awk '{print $11}' /tmp/run_command_with_XCATBYPASS.log|grep -E ^xcatd
+check:rc!=0
+cmd:rm -rf /tmp/run_command_with_XCATBYPASS.log
 cmd:service xcatd status
-check:output=~xcatd service|xcatd.service
-check:output=~xcatd service is not running|inactive \(dead\)
 cmd:tabdump site
 check:rc!=0
 cmd:XCATBYPASS=YES tabdump site

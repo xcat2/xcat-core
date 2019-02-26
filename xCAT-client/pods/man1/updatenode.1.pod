@@ -18,7 +18,7 @@ B<updatenode> [B<-h>|B<--help>] [B<-v>|B<--version>]
 
 =head1 DESCRIPTION
 
-The updatenode command is run on the xCAT management node and can be used
+The B<updatenode> command is run on the xCAT management node and can be used
 to perform the following node updates:
 
 =over 3
@@ -38,9 +38,9 @@ Update the ca and credentials for the service nodes.
 
 =back
 
-The default behavior when no options are input to updatenode will be to run
+The default behavior when no options are input to B<updatenode> will be to run
 the following options B<-S>, B<-P> and B<-F> options in this order.
-If you wish to limit updatenode to specific
+If you wish to limit B<updatenode> to specific
 actions you can use combinations of the B<-S>, B<-P>, and B<-F> flags.
 
 For example, If you just want to synchronize configuration file you could
@@ -55,7 +55,7 @@ The flag B<-f> (B<--snsync>) can NOT be used together with B<-S>, B<-P>, and B<-
 
 Note: In a large cluster environment the updating of nodes in an ad hoc
 manner can quickly get out of hand, leaving the system administrator with
-a very confusing environment to deal with. The updatenode command is
+a very confusing environment to deal with. The B<updatenode> command is
 designed to encourage users to handle cluster updates in a manner that
 is recorded and easily repeatable.
 
@@ -72,14 +72,14 @@ Create a synclist file.
 Indicate the location of the synclist file.
 
 =item *
-Run the updatenode command to update the nodes.
+Run the B<updatenode> command to update the nodes.
 
 =back
 
 Files may be distributed and synchronized for both diskless and
 diskful nodes.  Syncing files to NFS-based statelite nodes is not supported.
 
-More information on using the  synchronization file function is in the following doc: Using_Updatenode.
+More information on using the synchronization file function is in the following document: <https://xcat-docs.readthedocs.io/en/stable/guides/admin-guides/manage_clusters/common/deployment/syncfile/syncfile_updatenode.html>
 
 =head3 Create the synclist file
 
@@ -88,9 +88,7 @@ where the files should be synced to. In the synclist file, each
 line is an entry which describes the location of the source files
 and the destination location for the files on the target node.
 
-For more information on creating your synclist files and where to put them, read:
-
-Sync-ing_Config_Files_to_Nodes
+For more information on creating your synclist files and where to put them, read here: <https://xcat-docs.readthedocs.io/en/stable/guides/admin-guides/manage_clusters/common/deployment/syncfile/syncfile_synclist_file.html>
 
 
 =head3 Run updatenode to synchronize the files
@@ -289,12 +287,12 @@ Used to specify a source directory other than the standard lpp_source directory 
 =item B<-F|--sync>
 
 Specifies that file synchronization should be
-performed on the nodes.  rsync/scp and ssh must
+performed on the nodes.  B<rsync/scp> and B<ssh> must
 be installed and configured on the nodes.
 The function is not supported for NFS-based statelite installations.
 For NFS-based statelite installations to sync files, you should use the
 read-only option for files/directories listed in
-litefile table with source location specified in the litetree table.
+B<litefile> table with source location specified in the B<litetree> table.
 
 
 =item B<-f|--snsync>
@@ -302,19 +300,19 @@ litefile table with source location specified in the litetree table.
 Specifies that file synchronization should be
 performed to the service nodes that service the
 nodes in the noderange. This updates the service
-nodes with the data to sync to the nodes. rsync/scp and ssh must
+nodes with the data to sync to the nodes. B<rsync/scp> and B<ssh> must
 be installed and configured on the service nodes.
 For hierarchy, this optionally can  be done before syncing the files
-to the nodes with the -F flag.  If the -f flag is not used, then
-the -F flag will sync the servicenodes before the nodes automatically.
+to the nodes with the B<-F> flag.  If the B<-f> flag is not used, then
+the B<-F> flag will sync the service nodes before the nodes automatically.
 When installing nodes in a hierarchical cluster, this flag should be
 used to sync the service nodes before the install, since the files will
-be sync'd from the service node by the syncfiles postscript during the
+be synced from the service node by the B<syncfiles> postscript during the
 install.
 The function is not supported for NFS-based statelite installations.
 For statelite installations to sync files, you should use the
 read-only option for files/directories listed in
-litefile table with source location specified in the litetree table.
+B<litefile> table with source location specified in the B<litetree> table.
 
 
 =item [B<-r>|B<--node-rcp> [I<full_path_to_remote_copy_command>]]
@@ -359,8 +357,8 @@ See the document Granting_Users_xCAT_privileges for required xcat/sudo setup.
 =item B<-P|--scripts>
 
 Specifies that postscripts and postbootscripts should be run on the nodes.
-updatenode -P syncfiles is not supported.  The syncfiles postscript can only
-be run during install.  You should use updatenode <noderange> -F instead.
+File sync with B<updatenode -P syncfiles> is not supported.  The B<syncfiles> postscript can only
+be run during install.  You should use B<updatenode -F> instead.
 
 =item B<-S|--sw>
 
@@ -417,11 +415,11 @@ To run postscripts,postbootscripts and file synchronization only on the node "cl
  updatenode clstrn01 -F -P
 
 =item 3.
-Running updatenode -P with the syncfiles postscript is not supported. You should use updatenode -F instead.
+Running B<updatenode -P> with the B<syncfiles> postscript is not supported. You should use B<updatenode -F> instead.
 
 Do not run:
 
- updatenode clstrno1 -P syncfiles
+ updatenode clstrn01 -P syncfiles
 
 Run:
 

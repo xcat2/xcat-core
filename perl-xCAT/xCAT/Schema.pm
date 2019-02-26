@@ -1266,7 +1266,7 @@ passed as argument rather than by table value',
 "                     delimiter, to specify delimiter for those columns as format of 'column:delimiter'.\n\n" .
 " dbtracelevel:  The trace level for the database access log. To activate this setting, please. \n".
 "                restart xcatd or send HUP signal to the 'xcatd: DB Access' process, Like: .\n".
-"                ps -ef | grep 'xcatd: DB Access' | grep -v grep | awk '{print \$2}' | xargs kill -HUP  \n".
+"                pkill -f -HUP 'xcatd: DB Access' \n".
 "                Currrent support values: \n" .
 "                0: disable the trace log for db \n" .
 "                1: trace the calls of database subroutines \n" .

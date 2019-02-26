@@ -166,23 +166,33 @@ end
 
 start:updatenode_syncfile_EXECUTE
 label:others,updatenode
-cmd:echo "echo hello > /tmp/test" > /tmp/file.post
+cmd:mkdir -p /tmp/updatenode_syncfile_EXECUTE/
 check:rc==0
-cmd:chmod a+x /tmp/file.post
-cmd:echo "/tmp/file.post -> /tmp/file.post" > /install/custom/install/__GETNODEATTR($$CN,os)__/compute.$$OS.synclist
-cmd:echo "EXECUTE:" >> /install/custom/install/__GETNODEATTR($$CN,os)__/compute.$$OS.synclist
-cmd:echo "/tmp/file.post" >> /install/custom/install/__GETNODEATTR($$CN,os)__/compute.$$OS.synclist
-cmd:chdef -t osimage -o __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-install-compute synclists=/install/custom/install/__GETNODEATTR($$CN,os)__/compute.$$OS.synclist
+cmd:touch /tmp/updatenode_syncfile_EXECUTE/file
+check:rc==0
+cmd:echo "echo hello > /tmp/test" > /tmp/updatenode_syncfile_EXECUTE/file.post
+check:rc==0
+cmd:chmod a+x /tmp/updatenode_syncfile_EXECUTE/file.post
+cmd:echo "/tmp/updatenode_syncfile_EXECUTE/file -> /tmp/file" > /tmp/updatenode_syncfile_EXECUTE/synclist
+cmd:echo "EXECUTE:" >> /tmp/updatenode_syncfile_EXECUTE/synclist
+cmd:echo "/tmp/updatenode_syncfile_EXECUTE/file.post" >> /tmp/updatenode_syncfile_EXECUTE/synclist
+cmd:chdef -t osimage -o __GETNODEATTR($$CN,provmethod)__ synclists=/tmp/updatenode_syncfile_EXECUTE/synclist
 check:rc==0
 cmd:updatenode $$CN -F
 check:rc==0
 cmd:xdsh $$CN "cat /tmp/test"
 check:rc==0
 check:output=~hello
-cmd:chdef -t osimage -o  __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-install-compute synclists=
+cmd:xdsh $$CN "rm -rf /tmp/test"
+cmd:updatenode $$CN -F
 check:rc==0
-cmd:rm -rf /install/custom/install/__GETNODEATTR($$CN,os)__/compute.$$OS.synclist
+cmd:xdsh $$CN "cat /tmp/test"
+check:rc!=0
+check:output=~No such file or directory
+cmd:xdsh $$CN "rm -rf /tmp/test"
+cmd:chdef -t osimage -o  __GETNODEATTR($$CN,provmethod)__ synclists=
 check:rc==0
+cmd:rm -rf /tmp/updatenode_syncfile_EXECUTE/
 end
 
 start:updatenode_syncfile_EXECUTEALWAYS

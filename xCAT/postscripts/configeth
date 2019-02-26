@@ -628,7 +628,7 @@ elif [ "$1" = "-s" ];then
             if [ "$con_name" == "--" ] ; then
                 nmcli con add type ethernet con-name ${str_inst_nic} ifname ${str_inst_nic} ipv4.method manual ipv4.addresses  ${str_inst_ip}/${str_inst_prefix}
             else
-                nmcli con mod "System ens3" ipv4.method manual ipv4.addresses ${str_inst_ip}/${str_inst_prefix}
+                nmcli con mod "System ${str_inst_nic}" ipv4.method manual ipv4.addresses ${str_inst_ip}/${str_inst_prefix}
             fi
         else
             echo "DEVICE=${str_inst_nic}" > $str_conf_file
@@ -674,7 +674,7 @@ elif [ "$1" = "-s" ];then
         fi
     fi
 
-    if [ "$UPDATENODE" = "1" ] || grep "REBOOT=TRUE" /opt/xcat/xcatinfo >/dev/null 2>&1; then
+    if [ "$UPDATENODE" = "1" ] || [ "$NODESETSTATE" = "netboot" ] || [ "$NODESETSTATE" = "statelite" ] || grep "REBOOT=TRUE" /opt/xcat/xcatinfo >/dev/null 2>&1; then
         if [ "$str_os_type" = "debian" ];then
             ifdown --force $str_inst_nic
         else
