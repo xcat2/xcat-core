@@ -214,6 +214,7 @@ end
 start:lsdef_nics
 description:lsdef --nics
 label:mn_only,ci_test,db
+cmd:lsdef testnode1;if [ $? -eq 0 ]; then lsdef -l testnode1 -z >/tmp/testnode1.standa ; rmdef testnode1;fi
 cmd:mkdef -t node -o testnode1 groups=all mgt=ipmi nicips.eth0=1.1.1.1
 check:rc==0
 cmd:lsdef testnode1 --nics
@@ -223,6 +224,7 @@ cmd:rmdef testnode1
 check:rc==0
 cmd:lsdef testnode1
 check:output=~Could not find
+cmd:if [ -e /tmp/testnode1.standa ]; then cat /tmp/testnode1.standa | mkdef -z; rm -rf /tmp/testnode1.standa; fi
 end
 
 start:lsdef_template

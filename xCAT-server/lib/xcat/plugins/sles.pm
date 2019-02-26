@@ -937,14 +937,12 @@ sub mkinstall
 
         # trim the "/" in /install/sles11.3/x86_64/
         $pkgdir =~ s/\/$//;
-        if ($pkgdir =~ /^($installroot\/$os\/$arch)$/) {
-            if ( -d "$pkgdir/2") {
-                $srcdirs[0] = "$pkgdir/1,$pkgdir/2";
-            }else{
-                $srcdirs[0] = "$pkgdir/1";
-            }
-            $tmppkgdir = join(",", @srcdirs);
+        if ( -d "$pkgdir/2") {
+            $srcdirs[0] = "$pkgdir/1,$pkgdir/2";
+        }else{
+            $srcdirs[0] = "$pkgdir/1";
         }
+        $tmppkgdir = join(",", @srcdirs);
 
         #Call the Template class to do substitution to produce a kickstart file in the autoinst dir
         my $tmperr;

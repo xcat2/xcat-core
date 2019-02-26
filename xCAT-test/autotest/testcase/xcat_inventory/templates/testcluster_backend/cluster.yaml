@@ -1,3 +1,11 @@
+osdistro:
+  ubuntu17.10-ppc64el:
+    arch: ppc64el
+    basename: ubuntu
+    dirpaths: /install/ubuntu17.10/ppc64el
+    majorversion: '17'
+    minorversion: '10'
+    type: Linux
 network:
   prov:
     basic_attr:

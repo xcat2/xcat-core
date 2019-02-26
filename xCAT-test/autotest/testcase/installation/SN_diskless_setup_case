@@ -84,7 +84,7 @@ cmd:rm -rf /tmp/mountoutput
 cmd:packimage __GETNODEATTR($$SN,os)__-__GETNODEATTR($$SN,arch)__-netboot-service
 check:rc==0
 
-cmd:rinstall $$SN osimage=__GETNODEATTR($$SN,os)__-__GETNODEATTR($$SN,arch)__-netboot-service
+cmd:/opt/xcat/share/xcat/tools/autotest/testcase/commoncmd/retry_install.sh $$SN __GETNODEATTR($$SN,os)__-__GETNODEATTR($$SN,arch)__-netboot-service
 check:rc==0
 check:output=~Provision node\(s\)\: $$SN
 
@@ -107,6 +107,11 @@ check:output=~\d\d:\d\d:\d\d
 cmd:xdsh $$SN mount
 check:rc==0
 check:output=~on / type tmpfs
+cmd:xdsh $$SN cat /opt/xcat/xcatinfo
+check:rc==0
+check:output=~NODE=$$SN
+check:output=~IMAGENAME='__GETNODEATTR($$SN,os)__-__GETNODEATTR($$SN,arch)__-netboot-service'
+check:output=~IMAGEUUID='\w+-\w+-\w+-\w+-\w+'
 cmd:xdsh $$SN rpm -qa|grep "xCAT-openbmc-py"
 check:rc==0
 check:output=~xCAT-openbmc-py-\d

@@ -88,6 +88,8 @@ end
 start:rmdef_dynamic_group
 description:rmdef to remove dynamic node group
 label:mn_only,ci_test,db
+cmd:lsdef testnode1;if [ $? -eq 0 ]; then lsdef -l testnode1 -z >/tmp/testnode1.standa ; rmdef testnode1;fi
+cmd:lsdef testnode2;if [ $? -eq 0 ]; then lsdef -l testnode2 -z >/tmp/testnode2.standa ; rmdef testnode2;fi
 cmd:mkdef -t node -o testnode1-testnode2 mgt=hmc cons=hmc groups=all,systemp
 check:rc==0
 cmd:mkdef -t group -o dyngrp -d -w mgt==hmc -w cons==hmc -w groups==all,systemp
@@ -105,6 +107,8 @@ cmd:rmdef -t group -o dyngrp
 check:rc==0
 cmd:lsdef -t group -o dyngrp
 check:output=~Could not find an object named 'dyngrp' of type 'group'.
+cmd:if [ -e /tmp/testnode1.standa ]; then cat /tmp/testnode1.standa | mkdef -z; rm -rf /tmp/testnode1.standa; fi
+cmd:if [ -e /tmp/testnode2.standa ]; then cat /tmp/testnode2.standa | mkdef -z; rm -rf /tmp/testnode2.standa; fi
 end
 
 #start:rmdef_f_all

@@ -21,7 +21,7 @@ cmd:if [[ "__GETNODEATTR($$CN,os)__" =~ "ubuntu14.04" ]];then ver=`cat /etc/*-re
 check:rc==0
 cmd: chdef $$CN -p postbootscripts="setupdockerhost mynet0=$$MYNET0VALUE@$$DOCKERHOSIP:$$NICNAME"
 check:rc==0
-cmd:rinstall $$CN osimage=__GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-install-dockerhost
+cmd:/opt/xcat/share/xcat/tools/autotest/testcase/commoncmd/retry_install.sh  $$CN __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-install-dockerhost
 check:rc==0
 check:output=~Provision node\(s\)\: $$CN
 
