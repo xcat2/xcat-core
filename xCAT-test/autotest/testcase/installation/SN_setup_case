@@ -22,6 +22,7 @@ check:rc==0
 cmd:systemctl restart dhcpd
 cmd:makedhcp -a
 check:rc==0
+cmd:sleep 2
 cmd:if cat /etc/*release |grep SUSE >/dev/null;then cat /var/lib/dhcp/db/dhcpd.leases|grep $$SN;elif cat /etc/*release |grep "Red Hat" >/dev/null;then cat /var/lib/dhcpd/dhcpd.leases|grep $$SN;fi
 check:output=~$$SN
 cmd:chdef -t node $$SN groups=service,all
