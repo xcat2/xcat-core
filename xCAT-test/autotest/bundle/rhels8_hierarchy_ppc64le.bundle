@@ -1,3 +1,4 @@
+setup_vm
 SN_setup_case
 reg_linux_diskless_installation_hierarchy
 reg_linux_diskfull_installation_hierarchy
