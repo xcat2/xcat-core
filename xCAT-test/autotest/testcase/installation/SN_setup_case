@@ -12,10 +12,8 @@ check:rc==0
 
 cmd:makedns -n
 check:rc==0
-cmd:makeconservercf $$SN
+cmd:makegocons $$SN || makeconservercf $$SN
 check:rc==0
-cmd:cat /etc/conserver.cf | grep $$SN
-check:output=~$$SN
 cmd:sleep 20
 cmd:if [[ "__GETNODEATTR($$SN,arch)__" = "ppc64" ]]; then getmacs -D $$SN -V; fi
 check:rc==0
