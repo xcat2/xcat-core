@@ -21,6 +21,7 @@ cmd:if [[ "__GETNODEATTR($$SN,arch)__" = "ppc64" ]]; then getmacs -D $$SN -V; fi
 check:rc==0
 cmd:makedhcp -n
 check:rc==0
+cmd:systemctl restart dhcpd
 cmd:makedhcp -a
 check:rc==0
 cmd:sleep 2
