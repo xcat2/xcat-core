@@ -244,6 +244,7 @@ $RPM_INSTALL_PREFIX0/sbin/xcatconfig -u -V >> /var/log/xcat/upgrade.log
 if grep "Failed to copy  /opt/xcat/share/xcat/netboot/genesis/x86_64/fs" /var/log/xcat/upgrade.log; then
     echo 'mknb failed to complete successfully'
 fi
+fi
 exit 0
 
 %clean
