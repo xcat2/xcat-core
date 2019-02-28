@@ -48,15 +48,6 @@ check:rc==0
 cmd:if [[ "__GETNODEATTR($$SN,os)__" =~ "rh" ]]; then path="rh";elif [[ "__GETNODEATTR($$SN,os)__" =~ "sles" ]];then path="sles";fi; ver="__GETNODEATTR($$SN,os)__"; tmp=${ver%.*};ver=`echo "$tmp"|sed 's:[a-zA-Z]::g'`;cd /install/post/otherpkgs/__GETNODEATTR($$SN,os)__/__GETNODEATTR($$SN,arch)__/xcat/xcat-dep/$path$ver/__GETNODEATTR($$SN,arch)__ && createrepo .;
 check:rc==0
 
-cmd:chdef -t osimage __GETNODEATTR($$SN,os)__-__GETNODEATTR($$SN,arch)__-install-service otherpkgdir=/install/post/otherpkgs/__GETNODEATTR($$SN,os)__/__GETNODEATTR($$SN,arch)__
-check:rc==0
-
-cmd:if [[ "__GETNODEATTR($$SN,os)__" =~ "rh" ]]; then path="rh";elif [[ "__GETNODEATTR($$SN,os)__" =~ "sles" ]];then path="sles";fi; ver="__GETNODEATTR($$SN,os)__"; chdef -t osimage __GETNODEATTR($$SN,os)__-__GETNODEATTR($$SN,arch)__-install-service otherpkglist=/opt/xcat/share/xcat/install/$path/service.${ver%.*}.__GETNODEATTR($$SN,arch)__.otherpkgs.pkglist;
-check:rc==0
-
-#cmd:chdef -t osimage __GETNODEATTR($$SN,os)__-__GETNODEATTR($$SN,arch)__-install-service pkgdir="/install/__GETNODEATTR($$SN,os)__/__GETNODEATTR($$SN,arch)__"
-#check:rc==0
-
 cmd:/opt/xcat/share/xcat/tools/autotest/testcase/commoncmd/retry_install.sh  $$SN __GETNODEATTR($$SN,os)__-__GETNODEATTR($$SN,arch)__-install-service
 check:rc==0
 check:output=~Provision node\(s\)\: $$SN
