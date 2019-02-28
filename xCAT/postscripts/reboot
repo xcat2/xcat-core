@@ -1,9 +1,13 @@
 #!/bin/sh
 # IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
 #(C)IBM Corp
+# Lenovo(c) 2019
 #
-
-(sleep 75;/sbin/reboot) &
+if grep NAME /etc/os-release  | egrep '(SLE|SUSE)' > /dev/null; then
+    (sleep 180;/sbin/reboot) &
+else
+    (sleep 75;/sbin/reboot) &
+fi
 
 exit 0
 
