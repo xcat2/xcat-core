@@ -126,6 +126,7 @@ chdef -t site extntpservers=
 chdef -t site 'ntpservers=<xcatmaster>'
 
 makentp
+systemctl stop dhcpd.service
 makedhcp -n
 makedhcp "${COMPUTE_NODE}"
 
