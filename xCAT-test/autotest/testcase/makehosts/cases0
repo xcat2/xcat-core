@@ -154,7 +154,7 @@ cmd:makehosts
 check:rc==0
 cmd:#!/bin/bash
 file="/etc/hosts"
-if (! grep "s01" $file 2>&1); then
+if (! grep "s01 " $file 2>&1 ) || (! grep "s01r1b01" $file 2>&1 ); then
     echo "makehosts failed, try XCATBYPASS=YES makehosts again"
     XCATBYPASS=YES makehosts    
     if (! grep "s01" $file 2>&1); then

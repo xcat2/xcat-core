@@ -174,6 +174,7 @@ cmd:echo "echo hello > /tmp/test" > /tmp/updatenode_syncfile_EXECUTE/file.post
 check:rc==0
 cmd:chmod a+x /tmp/updatenode_syncfile_EXECUTE/file.post
 cmd:echo "/tmp/updatenode_syncfile_EXECUTE/file -> /tmp/file" > /tmp/updatenode_syncfile_EXECUTE/synclist
+cmd:echo "/tmp/updatenode_syncfile_EXECUTE/file.post -> /tmp/file.post" >> /tmp/updatenode_syncfile_EXECUTE/synclist
 cmd:echo "EXECUTE:" >> /tmp/updatenode_syncfile_EXECUTE/synclist
 cmd:echo "/tmp/updatenode_syncfile_EXECUTE/file.post" >> /tmp/updatenode_syncfile_EXECUTE/synclist
 cmd:chdef -t osimage -o __GETNODEATTR($$CN,provmethod)__ synclists=/tmp/updatenode_syncfile_EXECUTE/synclist
@@ -184,6 +185,13 @@ cmd:xdsh $$CN "cat /tmp/test"
 check:rc==0
 check:output=~hello
 cmd:xdsh $$CN "rm -rf /tmp/test"
+cmd:updatenode $$CN -F
+check:rc==0
+cmd:xdsh $$CN "cat /tmp/test"
+check:rc!=0
+check:output=~No such file or directory
+cmd:xdsh $$CN "rm -rf /tmp/test"
+cmd:touch /tmp/updatenode_syncfile_EXECUTE/file.post
 cmd:updatenode $$CN -F
 check:rc==0
 cmd:xdsh $$CN "cat /tmp/test"
