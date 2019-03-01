@@ -235,8 +235,7 @@ end
 start:nodeset_grub2
 description: Verify when grub2 is used for OS loader, whether the configuration files under /tftpboot can be generated corrently
 label:others
-cmd:rmdef testnode1
-cmd:rm -f /tftpboot/boot/grub2/{testnode1,grub.cfg-{01-e6-d4-d2-3a-ad-06,0[aA]0101[cC]8}}
+cmd:lsdef testnode1 > /dev/null 2>&1;if [[ $? -eq 0 ]]; then lsdef testnode1 -z >/tmp/testnode1.stanza ;rmdef testnode1;rm -f  /tftpboot/boot/grub2/{testnode1,grub.cfg-{01-e6-d4-d2-3a-ad-06,0[aA]0101[cC]8}};fi
 cmd:mkdef -t node -o testnode1 arch=ppc64 cons=hmc groups=lpar ip=10.1.1.200 mac=e6:d4:d2:3a:ad:06 mgt=hmc profile=compute os=rhels7.99
 check:rc==0
 cmd:cp -f /etc/hosts /etc/hosts.xcattestbak
@@ -267,7 +266,7 @@ check:rc!=0
 #check:rc!=0
 cmd:chdef -t node -o testnode1 ip=
 check:rc==0
-cmd:cp -f /etc/hosts.xcattestbak /etc/hosts
+cmd:sed -i /testnode1/d /etc/hosts
 cmd:getent hosts testnode1 | grep testnode1
 check:rc!=0
 cmd:nodeset testnode1 osimage=rhels7.99-ppc64-install-compute
@@ -275,13 +274,14 @@ check:rc!=0
 cmd:noderm testnode1
 cmd:rmdef -t osimage -o "rhels7.99-ppc64-install-compute"
 cmd:rm -rf /install/rhels7.99
+cmd:cp -f /etc/hosts.xcattestbak /etc/hosts
+cmd:if [[ -e /tmp/testnode1.stanza ]]; then cat /tmp/testnode1.stanza |mkdef -z -f;fi
 end
 
 start:nodeset_petitboot
 description: Verify when petitboot is used for OS loader, whether the configuration files under /tftpboot can be generated corrently
 label:others
-cmd:rmdef testnode1
-cmd:rm -f /tftpboot/petitboot/testnode1
+cmd:lsdef testnode1 > /dev/null 2>&1;if [[ $? -eq 0 ]]; then lsdef testnode1 -z >/tmp/testnode1.stanza ;rmdef testnode 1;rm -f  /tftpboot/petitboot/testnode1;fi
 cmd:mkdef -t node -o testnode1 arch=ppc64le cons=bmc groups=ipmi ip=10.1.1.200 mac=e6:d4:d2:3a:ad:06 mgt=ipmi profile=compute os=rhels7.99
 check:rc==0
 cmd:cp -f /etc/hosts /etc/hosts.xcattestbak
@@ -309,7 +309,7 @@ check:rc!=0
 #check:rc!=0
 cmd:chdef -t node -o testnode1 ip=
 check:rc==0
-cmd:cp -f /etc/hosts.xcattestbak /etc/hosts
+cmd:sed -i /testnode1/d /etc/hosts
 cmd:getent hosts testnode1 | grep testnode1
 check:rc!=0
 cmd:nodeset testnode1 osimage=rhels7.99-ppc64le-install-compute
@@ -317,6 +317,8 @@ check:rc!=0
 cmd:noderm testnode1
 cmd:rmdef -t osimage -o "rhels7.99-ppc64le-install-compute"
 cmd:rm -rf /install/rhels7.99
+cmd:cp -f /etc/hosts.xcattestbak /etc/hosts
+cmd:if [[ -e /tmp/testnode1.stanza ]]; then cat /tmp/testnode1.stanza |mkdef -z -f;fi
 end
 
 start:nodeset_yaboot
@@ -374,8 +376,7 @@ end
 start:nodeset_disjointdhcps_petitboot
 description: Verify the disjointdhcps feature when petitboot is used for OS loader.
 label:others
-cmd:rmdef testnode1
-cmd:rm -f /tftpboot/petitboot/testnode1
+cmd:lsdef testnode1 > /dev/null 2>&1;if [[ $? -eq 0 ]]; then lsdef testnode1 -z >/tmp/testnode1.stanza ;rmdef testnode1;rm -f /tftpboot/petitboot/testnode1;fi
 cmd:mkdef -t node -o testnode1 arch=ppc64le cons=bmc groups=ipmi ip=10.1.1.200 mac=e6:d4:d2:3a:ad:06 mgt=ipmi profile=compute os=rhels7.99
 check:rc==0
 cmd:cp -f /etc/hosts /etc/hosts.xcattestbak
@@ -459,7 +460,7 @@ cmd:makedns -d testnode1
 check:rc==0
 cmd:chdef -t node -o testnode1 ip=
 check:rc==0
-cmd:cp -f /etc/hosts.xcattestbak /etc/hosts
+cmd:sed -i /testnode1/d /etc/hosts 
 cmd:getent hosts testnode1 | grep testnode1
 check:rc!=0
 cmd:nodeset testnode1 osimage=rhels7.99-ppc64le-install-compute
@@ -468,6 +469,8 @@ cmd:noderm testnode1
 cmd:rmdef -t osimage -o "rhels7.99-ppc64le-install-compute"
 cmd:rm -rf /install/rhels7.99
 cmd:xdsh $$SN 'rm -rf /install/rhels7.99'
+cmd:cp -f /etc/hosts.xcattestbak /etc/hosts
+cmd:if [[ -e /tmp/testnode1.stanza ]]; then cat /tmp/testnode1.stanza |mkdef -z -f;fi
 end
 
 start:nodeset_switch_osimage
