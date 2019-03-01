@@ -1,12 +1,1 @@
-@^minimal-environment
-chrony
-net-tools
-nfs-utils
-openssh-server
-rsync
-util-linux
-wget
-mariadb-connector-odbc
-perl-DBD-MySQL
-perl-DBD-Pg
-unixODBC
+compute.rhels8.pkglist
