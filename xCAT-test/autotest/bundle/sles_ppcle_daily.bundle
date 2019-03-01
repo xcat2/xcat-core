@@ -167,7 +167,6 @@ nodeset_stat
 nodeset_grub2
 nodeset_petitboot
 nodestat_err_node
-nodestat_noderange
 nodestat_usage
 packimage_h
 packimage_v
