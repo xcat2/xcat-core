@@ -57,7 +57,7 @@ check:rc==0
 #cmd:chdef -t osimage __GETNODEATTR($$SN,os)__-__GETNODEATTR($$SN,arch)__-install-service pkgdir="/install/__GETNODEATTR($$SN,os)__/__GETNODEATTR($$SN,arch)__"
 #check:rc==0
 
-cmd:rinstall $$SN osimage=__GETNODEATTR($$SN,os)__-__GETNODEATTR($$SN,arch)__-install-service
+cmd:/opt/xcat/share/xcat/tools/autotest/testcase/commoncmd/retry_install.sh  $$SN __GETNODEATTR($$SN,os)__-__GETNODEATTR($$SN,arch)__-install-service
 check:rc==0
 check:output=~Provision node\(s\)\: $$SN
 
@@ -91,6 +91,10 @@ check:output=~/install on /install
 cmd:xdsh $$SN "mount"
 check:rc==0
 check:output=~/tftpboot on /tftpboot
+cmd:xdsh $$SN cat /opt/xcat/xcatinfo
+check:rc==0
+check:output=~NODE=$$SN
+check:output=~IMAGENAME=__GETNODEATTR($$SN,os)__-__GETNODEATTR($$SN,arch)__-install-service
 cmd:xdsh $$SN  "cat /var/log/xcat/xcat.log"
 cmd:if [[ "__GETNODEATTR($$SN,arch)__" =~ "x86_64" ]]; then if [[ "__GETNODEATTR($$SN,os)__" =~ "sles" ]];then xdsh $$SN "zypper -n install perl-Sys-Virt"; elif [[ "__GETNODEATTR($$SN,os)__" =~ "rh" ]];then xdsh $$SN "yum install -y perl-Sys-Virt";fi;fi
 check:rc==0

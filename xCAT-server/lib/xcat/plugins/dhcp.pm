@@ -610,7 +610,7 @@ sub addnode
             $hname = $node;
         }                                #Default to hostname equal to nodename
         unless ($mac) { next; }          #Skip corrupt format
-        if ($mac !~ /^[0-9a-fA-F]{2}(-[0-9a-fA-F]{2}){5}$|^[0-9a-fA-F]{2}(:[0-9a-fA-F]{2}){5}$/)
+        if ($mac !~ /^[0-9a-fA-F]{2}(-[0-9a-fA-F]{2}){5,7}$|^[0-9a-fA-F]{2}(:[0-9a-fA-F]{2}){5,7}$/)
         {
             $callback->(
                 {
@@ -764,6 +764,10 @@ sub addnode
                         $hostname = $1 . "-hf" . $count;
                     }
                 }
+            } elsif (length($mac) == 23) { # 8 bytes of mac address
+		# Currently the only thing that has 8 bytes is an infiniband
+		# or infiniband like device, which is type 32 (0x20).
+                $hardwaretype = 32;
             }
 
             #syslog("local4|err", "Setting $node ($hname|$ip) to " . $mac);

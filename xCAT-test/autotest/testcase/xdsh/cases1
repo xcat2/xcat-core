@@ -3,10 +3,10 @@ description: Test the exit code when command xdsh failed
 label:cn_os_ready,parallel_cmds
 cmd:xdsh $$CN date
 check:rc==0
-cmd:mv /root/.ssh/id_rsa /root/.ssh/id_rsa.backup
+cmd:servicenode=`lsdef $$CN |grep servicenode |awk -F= '{print $2}'`; if [ -n "$servicenode" ]; then xdsh $$SN mv /root/.ssh/id_rsa /root/.ssh/id_rsa.backup;else mv /root/.ssh/id_rsa /root/.ssh/id_rsa.backup;fi
 check:rc==0
 cmd:xdsh $$CN date
 check:rc!=0
-cmd:mv /root/.ssh/id_rsa.backup /root/.ssh/id_rsa
+cmd:servicenode=`lsdef $$CN |grep servicenode |awk -F= '{print $2}'`; if [ -n "$servicenode" ]; then xdsh $$SN mv /root/.ssh/id_rsa.backup /root/.ssh/id_rsa;else mv /root/.ssh/id_rsa.backup /root/.ssh/id_rsa;fi
 check:rc==0
 end

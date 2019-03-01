@@ -42,7 +42,7 @@ cmd:nodeset $$CN osimage=__GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-ins
 check:rc==0
 cmd:updatenode $$CN -f
 check:rc==0
-cmd:rinstall $$CN osimage=__GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-install-compute
+cmd:/opt/xcat/share/xcat/tools/autotest/testcase/commoncmd/retry_install.sh  $$CN __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-install-compute
 check:rc==0
 check:output=~Provision node\(s\)\: $$CN
 
@@ -52,8 +52,6 @@ cmd:if [[ "__GETNODEATTR($$CN,arch)__" =~ "ppc" ]]; then sleep 120;elif [[ "__GE
 #cmd:lsdef -l $$CN | grep status
 #check:rc==0
 #check:output!~booted
-
-cmd:a=0;while ! `lsdef -l $$CN|grep status|grep booted >/dev/null`; do sleep 60;((a++));if [ $a -gt 50 ];then break;fi done
 
 cmd:ping $$CN -c 3
 check:rc==0
@@ -66,6 +64,11 @@ check:rc==0
 check:output=~\d\d:\d\d:\d\d
 cmd:xdsh $$CN mount
 check:rc==0
+cmd:xdsh $$CN cat /opt/xcat/xcatinfo
+check:rc==0
+check:output=~NODE=$$CN
+check:output=~IMAGENAME=__GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-install-compute
+check:output=~SERVICEGROUP=$$SN
 cmd:xdsh $$CN  "cat /var/log/xcat/xcat.log"
 cmd:xdsh $$CN "cat /test.synclist"
 check:rc==0

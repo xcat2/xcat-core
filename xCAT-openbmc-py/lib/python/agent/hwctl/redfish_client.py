@@ -32,10 +32,6 @@ POWER_RESET_TYPE = {
     'on'      : 'ForceOn',
 }
 
-manager_reset_string = '#Manager.Reset'
-system_reset_string = '#ComputerSystem.Reset'
-reset_type_string = 'ResetType@Redfish.AllowableValues'
-
 BOOTSOURCE_SET_STATE = {
     "cd"     : "Cd",
     "def"    : "None",
@@ -54,6 +50,11 @@ BOOTSOURCE_GET_STATE = {
     "None"     : "boot override inactive",
     "Pxe"      : "Network",
 }
+
+manager_reset_string = '#Manager.Reset' 
+system_reset_string = '#ComputerSystem.Reset' 
+reset_type_string = 'ResetType@Redfish.AllowableValues'
+reset_action_string = '@Redfish.ActionInfo'
 
 class RedfishRest(object):
 
@@ -101,7 +102,7 @@ class RedfishRest(object):
         if data:
             if cmd == 'login':
                 data = data.replace('"Password": "%s"' % self.password, '"Password": "xxxxxx"')
-                data = '-d \'%s\'' % data  
+            data = '-d \'%s\'' % data  
             msg += '%s %s -v' % (url, data)
         else:
             msg += url
@@ -156,7 +157,7 @@ class RedfishRest(object):
         if 'Name' in data:
             self._print_record_log('%s %s' % (code, data['Name']), cmd)
         elif 'error' in data:
-            self._print_record_log('%s %s' % (code, data['error']['Message']), cmd)
+            self._print_record_log('%s %s' % (code, data['error']['message']), cmd)
         return data
 
     def login(self):
@@ -170,7 +171,7 @@ class RedfishRest(object):
         try:
             return data['Members']
         except KeyError as e:
-            raise SelfServerException('Get KeyError %s' % e.message)
+            raise SelfServerException('Get KeyError %s' % e.args)
 
     def get_bmc_state(self):
 
@@ -180,7 +181,7 @@ class RedfishRest(object):
         try:
             return data['PowerState']
         except KeyError as e:
-            raise SelfServerException('Get KeyError %s' % e.message)
+            raise SelfServerException('Get KeyError %s' % e.args)
 
     def get_chassis_power_state(self):
 
@@ -190,7 +191,7 @@ class RedfishRest(object):
         try:
             return data['PowerState']
         except KeyError as e:
-            raise SelfServerException('Get KeyError %s' % e.message)
+            raise SelfServerException('Get KeyError %s' % e.args)
 
     def get_systems_power_state(self):
 
@@ -200,18 +201,24 @@ class RedfishRest(object):
         try:
             return data['PowerState']
         except KeyError as e:
-            raise SelfServerException('Get KeyError %s' % e.message)
+            raise SelfServerException('Get KeyError %s' % e.args)
 
     def _get_bmc_actions(self):
 
         members = self._get_members(MANAGER_URL)
         target_url = members[0]['@odata.id']
         data = self.request('GET', target_url, cmd='get_bmc_actions')
+
         try:
-            actions = data['Actions'][manager_reset_string][reset_type_string]
-            target_url = data['Actions'][manager_reset_string]['target']
+            actions_dict = data['Actions'][manager_reset_string]
+            target_url = actions_dict['target']
+            if reset_action_string in actions_dict:
+                action_info = self.request('GET', actions_dict[reset_action_string], cmd='get_bmc_actions')
+                actions = action_info['Parameters'][0]['AllowableValues']
+            else:
+                actions = actions_dict[reset_type_string]
         except KeyError as e:
-            raise SelfServerException('Get KeyError %s' % e.message)
+            raise SelfServerException('Get KeyError %s' % e.args)
 
         return (target_url, actions)
 
@@ -219,7 +226,7 @@ class RedfishRest(object):
 
         target_url, actions = self._get_bmc_actions()
         if BMC_RESET_TYPE not in actions:
-            raise SelfClientException('Unsupported option: %s' % BMC_RESET_TYPE)
+            raise SelfClientException('Unsupported option: %s' % BMC_RESET_TYPE, 403)
 
         data = { "ResetType": BMC_RESET_TYPE }
         return self.request('POST', target_url, payload=data, cmd='set_bmc_state')
@@ -229,11 +236,17 @@ class RedfishRest(object):
         members = self._get_members(SYSTEMS_URL)
         target_url = members[0]['@odata.id']
         data = self.request('GET', target_url, cmd='get_power_actions')
+     
         try:
-            actions = data['Actions'][system_reset_string][reset_type_string]
-            target_url = data['Actions'][system_reset_string]['target']
+            actions_dict = data['Actions'][system_reset_string]
+            target_url = actions_dict['target']
+            if reset_action_string in actions_dict:
+                action_info = self.request('GET', actions_dict[reset_action_string], cmd='get_power_actions')
+                actions = action_info['Parameters'][0]['AllowableValues']
+            else:
+                actions = actions_dict[reset_type_string]
         except KeyError as e:
-            raise SelfServerException('Get KeyError %s' % e.message)
+            raise SelfServerException('Get KeyError %s' % e.args)
 
         return (target_url, actions)
 
@@ -241,7 +254,7 @@ class RedfishRest(object):
 
         target_url, actions = self._get_power_actions()
         if POWER_RESET_TYPE[state] not in actions:
-            raise SelfClientException('Unsupported option: %s' % state)
+            raise SelfClientException('Unsupported option: %s' % state, 403)
 
         data = { "ResetType": POWER_RESET_TYPE[state] }
         return self.request('POST', target_url, payload=data, cmd='set_power_state')
@@ -258,7 +271,7 @@ class RedfishRest(object):
             bootsource = data['Boot']['BootSourceOverrideTarget']
             return BOOTSOURCE_GET_STATE.get(bootsource, bootsource)
         except KeyError as e:
-            raise SelfServerException('Get KeyError %s' % e.message)
+            raise SelfServerException('Get KeyError %s' % e.args)
 
     def _get_boot_actions(self):
 
@@ -268,7 +281,7 @@ class RedfishRest(object):
         try:
             actions = data['Boot']['BootSourceOverrideTarget@Redfish.AllowableValues']
         except KeyError as e:
-            raise SelfServerException('Get KeyError %s' % e.message)
+            raise SelfServerException('Get KeyError %s' % e.args)
 
         return (target_url, actions) 
 
@@ -277,7 +290,7 @@ class RedfishRest(object):
         target_url, actions = self._get_boot_actions()
         target_data = BOOTSOURCE_SET_STATE[state]
         if target_data not in actions:
-            raise SelfClientException('Unsupported option: %s' % state)
+            raise SelfClientException('Unsupported option: %s' % state, 403)
 
         boot_enable = 'Once'
         if persistant:

@@ -1,0 +1,90 @@
+{
+  "@odata.context": "/redfish/v1/$metadata#Manager.Manager",
+  "@odata.type": "#Manager.v1_5_0.Manager",
+  "@odata.id": "/redfish/v1/Managers/BMC",
+  "Id": "BMC",
+  "Description": "Aspeed BMC",
+  "Name": "Manager",
+  "ManagerType": "BMC",
+  "UUID": "00000000-0000-0000-0000-000000000",
+  "Model": "P9DSU 9006-22P",
+  "DateTime": "2019-01-22T06:22:55+00:00",
+  "DateTimeLocalOffset": "+00:00",
+  "FirmwareVersion": "2.04",
+  "Status": {
+    "State": "Enabled",
+    "Health": "OK"
+  },
+  "PowerState": "On",
+  "SerialConsole": {
+    "ServiceEnabled": true,
+    "MaxConcurrentSessions": 1,
+    "ConnectTypesSupported": [
+      "IPMI"
+    ]
+  },
+  "CommandShell": {
+    "ServiceEnabled": true,
+    "MaxConcurrentSessions": 0,
+    "ConnectTypesSupported": [
+      "SSH"
+    ]
+  },
+  "GraphicalConsole": {
+    "ServiceEnabled": true,
+    "MaxConcurrentSessions": 4,
+    "ConnectTypesSupported": [
+      "KVMIP"
+    ]
+  },
+  "EthernetInterfaces": {
+    "@odata.id": "/redfish/v1/Managers/BMC/EthernetInterfaces"
+  },
+  "SerialInterfaces": {
+    "@odata.id": "/redfish/v1/Managers/BMC/SerialInterfaces"
+  },
+  "NetworkProtocol": {
+    "@odata.id": "/redfish/v1/Managers/BMC/NetworkProtocol"
+  },
+  "LogServices": {
+    "@odata.id": "/redfish/v1/Managers/BMC/LogServices"
+  },
+  "VirtualMedia": {
+    "@odata.id": "/redfish/v1/Managers/BMC/VirtualMedia"
+  },
+  "Links": {
+    "ManagerForServers": [
+      {
+        "@odata.id": "/redfish/v1/Systems/Computer"
+      }
+    ],
+    "ManagerForChassis": [
+      {
+        "@odata.id": "/redfish/v1/Chassis/Chassis0"
+      }
+    ],
+    "ManagerInChassis": {
+      "@odata.id": "/redfish/v1/Chassis/Chassis0"
+    }
+  },
+  "Actions": {
+    "#Manager.Reset": {
+      "target": "/redfish/v1/Managers/BMC/Actions/Manager.Reset",
+      "@Redfish.ActionInfo": "/redfish/v1/Managers/BMC/ResetActionInfo"
+    }
+  },
+  "Oem": {
+    "Supermicro": {
+      "@odata.type": "#SMCManager.v1_0_1.SMCManager",
+      "FanMode": {
+        "@odata.id": "/redfish/v1/Managers/BMC/Oem/Supermicro/FanMode"
+      },
+      "MouseMode": {
+        "@odata.id": "/redfish/v1/Managers/BMC/Oem/Supermicro/MouseMode"
+      },
+      "SMTP": {
+        "@odata.id": "/redfish/v1/Managers/BMC/Oem/Supermicro/SMTP"
+      }
+    }
+  }
+}

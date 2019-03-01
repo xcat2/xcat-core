@@ -4,6 +4,8 @@ label:flat_cn_diskless,provision
 #stop:yes
 cmd:fdisk -l
 cmd:df -T
+cmd: if lsdef service > /dev/null 2>&1; then chdef service -m groups=service;fi
+check:rc==0
 cmd:chdef -t node -o $$CN servicenode= monserver=$$MN nfsserver=$$MN tftpserver=$$MN  xcatmaster=$$MN
 check:rc==0
 
@@ -43,13 +45,11 @@ cmd:rm -rf /tmp/mountoutput
 cmd:packimage __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute
 check:rc==0
 
-cmd:rinstall $$CN osimage=__GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute
+cmd:/opt/xcat/share/xcat/tools/autotest/testcase/commoncmd/retry_install.sh  $$CN __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute
 check:rc==0
 check:output=~Provision node\(s\)\: $$CN
 
 cmd:if [[ -f /var/lib/dhcp/db/dhcpd.leases ]]; then cat /var/lib/dhcp/db/dhcpd.leases; elif [[ -f /var/lib/dhcpd/dhcpd.leases ]];then cat /var/lib/dhcpd/dhcpd.leases;elif [[ -f /var/lib/dhcp/dhcpd.leases ]];then cat /var/lib/dhcp/dhcpd.leases; fi
-cmd:sleep 300
-cmd:a=0;while ! `lsdef -l $$CN|grep status|grep booted >/dev/null`; do sleep 10;((a++));if [ $a -gt 60 ];then break;fi done
 
 cmd:ping $$CN -c 3
 check:rc==0
@@ -63,6 +63,11 @@ check:output=~\d\d:\d\d:\d\d
 cmd:xdsh $$CN mount
 check:rc==0
 check:output=~on / type tmpfs
+cmd:xdsh $$CN cat /opt/xcat/xcatinfo
+check:rc==0
+check:output=~NODE=$$CN
+check:output=~IMAGENAME='__GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute'
+check:output=~IMAGEUUID='\w+-\w+-\w+-\w+-\w+'
 cmd:sleep 120
 cmd:ping $$CN -c 3
 check:rc==0

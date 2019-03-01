@@ -13,7 +13,7 @@ end
 
 start:xdsh_regular_command
 label:cn_os_ready,parallel_cmds
-cmd:XCATBYPASS=1 xdsh $$CN "ps -ef"
+cmd:xdsh $$CN "ps -ef"
 check:rc==0
 check:output=~$$CN:\s+UID\s+PID\s+PPID\s+C\s+STIME\s+TTY\s+TIME\s+CMD
 end
