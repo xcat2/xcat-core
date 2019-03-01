@@ -195,3 +195,17 @@ do
 	(( WAIT <= NETBOOT_TIMEOUT ))
 	exit_if_bad "$?" "timeout"
 done
+
+# Wait for the node status change to `booted'
+
+declare -i NETBOOT_TIMEOUT=300
+declare -i WAIT=0
+declare -i SLEEP=10
+
+while sleep "${SLEEP}"
+do
+	(( WAIT += SLEEP ))
+	lsdef -i status "${COMPUTE_NODE}" | grep 'status=booted$' && break
+	(( WAIT <= NETBOOT_TIMEOUT ))
+	exit_if_bad "$?" "timeout"
+done
