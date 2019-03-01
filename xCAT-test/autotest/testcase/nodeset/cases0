@@ -275,13 +275,13 @@ cmd:noderm testnode1
 cmd:rmdef -t osimage -o "rhels7.99-ppc64-install-compute"
 cmd:rm -rf /install/rhels7.99
 cmd:cp -f /etc/hosts.xcattestbak /etc/hosts
-cmd:if [[ -e /tmp/testnode1.stanza ]]; then cat /tmp/testnode1.stanza |mkdef -z -f;fi
+cmd:if [[ -e /tmp/testnode1.stanza ]]; then cat /tmp/testnode1.stanza |mkdef -z -f;rm -rf /tmp/testnode1.stanza;fi
 end
 
 start:nodeset_petitboot
 description: Verify when petitboot is used for OS loader, whether the configuration files under /tftpboot can be generated corrently
 label:others
-cmd:lsdef testnode1 > /dev/null 2>&1;if [[ $? -eq 0 ]]; then lsdef testnode1 -z >/tmp/testnode1.stanza ;rmdef testnode 1;rm -f  /tftpboot/petitboot/testnode1;fi
+cmd:lsdef testnode1 > /dev/null 2>&1;if [[ $? -eq 0 ]]; then lsdef testnode1 -z >/tmp/testnode1.stanza ;rmdef testnode1;rm -f  /tftpboot/petitboot/testnode1;fi
 cmd:mkdef -t node -o testnode1 arch=ppc64le cons=bmc groups=ipmi ip=10.1.1.200 mac=e6:d4:d2:3a:ad:06 mgt=ipmi profile=compute os=rhels7.99
 check:rc==0
 cmd:cp -f /etc/hosts /etc/hosts.xcattestbak
@@ -318,7 +318,7 @@ cmd:noderm testnode1
 cmd:rmdef -t osimage -o "rhels7.99-ppc64le-install-compute"
 cmd:rm -rf /install/rhels7.99
 cmd:cp -f /etc/hosts.xcattestbak /etc/hosts
-cmd:if [[ -e /tmp/testnode1.stanza ]]; then cat /tmp/testnode1.stanza |mkdef -z -f;fi
+cmd:if [[ -e /tmp/testnode1.stanza ]]; then cat /tmp/testnode1.stanza |mkdef -z -f;rm -rf /tmp/testnode1.stanza;fi
 end
 
 start:nodeset_yaboot
@@ -470,7 +470,7 @@ cmd:rmdef -t osimage -o "rhels7.99-ppc64le-install-compute"
 cmd:rm -rf /install/rhels7.99
 cmd:xdsh $$SN 'rm -rf /install/rhels7.99'
 cmd:cp -f /etc/hosts.xcattestbak /etc/hosts
-cmd:if [[ -e /tmp/testnode1.stanza ]]; then cat /tmp/testnode1.stanza |mkdef -z -f;fi
+cmd:if [[ -e /tmp/testnode1.stanza ]]; then cat /tmp/testnode1.stanza |mkdef -z -f;rm -rf /tmp/testnode1.stanza;fi
 end
 
 start:nodeset_switch_osimage
