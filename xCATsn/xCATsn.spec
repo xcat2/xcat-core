@@ -81,10 +81,9 @@ Requires: syslinux-xcat
 %endif
 
 %description
-xCAT supports management of very large sized cluster by creating a Hierarchical
-Cluster and the concept of xCAT Service Nodes. The xCAT Management Node can
-delegate all management operational needs to the Service Node responsible for a
-set of compute node. xCATsn package provides xCAT service node support.
+xCATsn is a service node management package intended for at-scale management,
+including hardware management and software management.
+
 
 %prep
 %ifos linux
