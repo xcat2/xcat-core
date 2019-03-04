@@ -27,6 +27,7 @@ curl
 plymouth
 btrfsprogs
 cryptsetup
+iputils
 dmraid
 mdadm
 multipath-tools
