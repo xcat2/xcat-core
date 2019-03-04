@@ -3,8 +3,8 @@
 #(C)IBM Corp
 # Lenovo(c) 2019
 #
-if grep NAME /etc/os-release  | egrep '(SLE|SUSE)' > /dev/null; then
-    (sleep 180;/sbin/reboot) &
+if grep NAME /etc/os-release  | egrep '(SLE|SUSE)' > /dev/null && [ -x /usr/bin/systemd-run ]; then
+    systemd-run --on-active=90 --timer-property=AccuracySec=10s reboot
 else
     (sleep 75;/sbin/reboot) &
 fi
