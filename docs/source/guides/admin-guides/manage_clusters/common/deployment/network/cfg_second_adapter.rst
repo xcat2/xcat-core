@@ -1,6 +1,8 @@
 Configure Additional Network Interfaces old version - confignics - (deprecated)
 ===============================================================================
 
+``confignics`` is deprecated, recommend using new version ``confignetwork`` instead.
+
 The **nics** table and the **confignics** postscript can be used to automatically configure additional network interfaces (multiple ethernets adapters, InfiniBand, etc) on the nodes as they are being deployed.
 
 The way the confignics postscript decides what IP address to give the secondary adapter is by checking the nics table, in which the nic configuration information is stored.
