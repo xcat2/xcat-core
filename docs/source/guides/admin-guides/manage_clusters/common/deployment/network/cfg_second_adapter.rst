@@ -76,12 +76,15 @@ Use command below to add confignics into the node's postscripts list ::
 
     chdef cn1 -p postscripts=confignics
 
+**NOTE**: ``confignics`` is deprecated, you can also use ``chdef cn1 -p postscripts=confignetwork`` instead above ``chdef`` command.
+
 By default, confignics does not configure the install nic. if need, using flag "-s" to allow the install nic to be configured.  ::
 
     chdef cn1 -p prostscripts="confignics -s"
 
 Option "-s" writes the install nic's information into configuration file for persistence. All install nic's data defined in nics table will be written also.
 
+**NOTE**: ``confignics`` is deprecated, you can also use ``chdef cn1 -p postscripts="confignetwork -s"`` instead above ``chdef`` command.
 
 Add network object into the networks table
 ------------------------------------------
