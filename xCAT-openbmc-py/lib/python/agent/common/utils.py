@@ -63,9 +63,9 @@ def recv_all(sock, size):
         if left_size < recv_size:
             tmp_size = left_size
         buf_part = sock.recv(tmp_size)
-        buf_parts.append(buf_part)
+        buf_parts.append(buf_part.decode('utf-8'))
         buf_size += len(buf_part)
-    buf = ''.join(buf_parts)
+    buf = ''.join(str(i) for i in buf_parts)
     return buf
 
 
