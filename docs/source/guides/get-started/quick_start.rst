@@ -80,7 +80,7 @@ Stage 2 Deploy Compute Node
 
     copycds RHEL-7.6-20181010.0-Server-x86_64-dvd1.iso
 
-After ``copycds``, the corresponding basic osimage will be generated automatically. And then you can list the new osimage name here. You can refer document to customize the package list or postscript for target compute nodes, but here just use the default one: ::
+   After ``copycds``, the corresponding basic osimage will be generated automatically. And then you can list the new osimage name here. You can refer document to customize the package list or postscript for target compute nodes, but here just use the default one: ::
 
     lsdef -t osimage
 
@@ -114,7 +114,7 @@ After ``copycds``, the corresponding basic osimage will be generated automatical
 
    **Note**: The keystroke ``ctrl+e c .`` will disconnect you from the console.
 
-   After a while (5-10 min), check the provision status is ``booted``: ::
+   After 5-10 min verify provision status is ``booted``: ::
     
     lsdef cn1 -i status
     Object name: cn1
