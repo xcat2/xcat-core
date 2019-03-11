@@ -1548,7 +1548,10 @@ until ($quit) {
 
         populate_site_hash();
         my %extrasslargs;
+
         if ($::XCATSITEVALS{xcatsslversion}) { $extrasslargs{SSL_version} = $::XCATSITEVALS{xcatsslversion}; }
+        $extrasslargs{SSL_version} = "SSLv23:!SSLv2:!SSLv3:!TLSv1" unless length $extrasslargs{SSL_version};
+
         if ($::XCATSITEVALS{xcatsslciphers}) { $extrasslargs{SSL_cipher_list} = $::XCATSITEVALS{xcatsslciphers}; }
         use Data::Dumper;
 
