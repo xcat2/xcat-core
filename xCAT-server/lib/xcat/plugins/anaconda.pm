@@ -2250,7 +2250,7 @@ sub copycd
             print $KID $_ . "\n";
         }
         close($KID);
-        $rc = $?;
+        $rc = $? >> 8;
     }
     else
     {
@@ -2261,22 +2261,18 @@ sub copycd
         my $copied = 0;
         my ($percent, $fout);
         while (<PIPE>) {
-            next if /^cpio:/;
+            if (/^cpio:/) {
+                chomp;
+                $callback->({ data => $_ });
+                next;
+            }
             $percent = $copied / $numFiles;
             $fout = sprintf "%0.2f%%", $percent * 100;
             $callback->({ sinfo => "$fout" });
             ++$copied;
         }
-        if ($copied == $numFiles)
-        {
-            #media copy success
-            exit(0);
-        }
-        else
-        {
-            #media copy failed
-            exit(1);
-        }
+        close(PIPE);
+        exit($? >> 8);
     }
 
     #my $rc = system("cd $path; find . | nice -n 20 cpio -dump $installroot/$distname/$arch");
@@ -2297,7 +2293,7 @@ sub copycd
 
     if ($rc != 0)
     {
-        $callback->({ error => "Media copy operation failed, status $rc" });
+        $callback->({ error => "Media copy operation failed, status $rc", errorcode => [1] });
     }
     else
     {
