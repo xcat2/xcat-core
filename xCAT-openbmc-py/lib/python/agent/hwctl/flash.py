@@ -26,13 +26,13 @@ class FlashInterface(object):
         """
         return task.run('delete_firm', delete_id)
 
-    def flash_process(self, task, directory, no_host_reboot):
+    def flash_process(self, task, directory):
         """Upload and activate firmware
 
         :param task: a Task instance containing the nodes to act on.
         :directory: firmware directory
         """
-        return task.run('flash_process', directory, no_host_reboot)
+        return task.run('flash_process', directory)
 
     def list_firm_info(self, task):
         """List firmware

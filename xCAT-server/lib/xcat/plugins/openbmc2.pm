@@ -206,7 +206,6 @@ sub parse_args {
         }
     } elsif ($command eq "rflash") {
         my ($activate, $check, $delete, $directory, $list, $upload) = (0) x 6;
-        my $no_host_reboot;
         GetOptions(
             'a|activate' => \$activate,
             'c|check'    => \$check,
@@ -214,7 +213,6 @@ sub parse_args {
             'd'          => \$directory,
             'l|list'     => \$list,
             'u|upload'   => \$upload,
-            'no-host-reboot' => \$no_host_reboot,
         );
         my $option_num = $activate+$check+$delete+$directory+$list+$upload;
         if ($option_num >= 2) {
@@ -470,8 +468,6 @@ sub refactor_args {
             if ($tmp =~ /^-/) {
                 if ($tmp !~ /^-V$|^--verbose$/) {
                     $new_args[0] = $tmp;
-                } elsif ($tmp =~ /^--no-host-reboot$/) {
-                    $new_args[2] = $tmp;
                 } else {
                     $new_args[3] = $tmp;
                 }

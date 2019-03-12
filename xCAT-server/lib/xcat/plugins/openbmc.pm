@@ -59,7 +59,6 @@ $::RSETBOOT_URL_PATH        = "boot";
 # To improve the output to users, store this value as a global
 $::UPLOAD_AND_ACTIVATE      = 0;
 $::UPLOAD_ACTIVATE_STREAM   = 0;
-$::RFLASH_STREAM_NO_HOST_REBOOT = 0;
 $::NO_ATTRIBUTES_RETURNED   = "No attributes returned from the BMC.";
 $::FAILED_UPLOAD_MSG        = "Failed to upload update file";
 $::FAILED_LOGIN_MSG         = "BMC did not respond. Validate BMC configuration and retry the command.";
@@ -1441,7 +1440,7 @@ sub parse_args {
         print "DEBUG filename=$filename_passed, updateid=$updateid_passed, options=$option_flag, tar_file_path=@tarball_path, invalid=$invalid_options rflash_arguments=@flash_arguments\n";
 
         if ($option_flag =~ tr{ }{ } > 0) {
-            unless ($verbose or $option_flag =~/^-d --no-host-reboot$/) {
+            unless ($verbose) {
                 return ([ 1, "Multiple options are not supported. Options specified: $option_flag"]);
             }
         }
@@ -1482,7 +1481,7 @@ sub parse_args {
                 }
                 xCAT::SvrUtils::sendmsg("Attempting to $action ID=$flash_arguments[0], please wait...", $callback);
             } elsif ($filepath_passed) {
-                if ($option_flag =~ /^-d|^-d --no-host-reboot$/) {
+                if ($option_flag =~ /^-d/) {
                     if (scalar @tarball_path > 1) {
                         return ([1, "More than one directory specified is not supported"]);
                     }
@@ -1980,7 +1979,6 @@ sub parse_command_status {
         my $activate = 0;
         my $update_file;
         my $streamline = 0;
-        my $nohost_reboot = 0;
 
         foreach $subcommand (@$subcommands) {
             if ($subcommand =~ /^-c|^--check/) {
@@ -1995,8 +1993,6 @@ sub parse_command_status {
                 $activate = 1;
             } elsif ($subcommand =~ /^-d/) {
                 $streamline = 1;
-            } elsif ($subcommand =~ /^--no-host-reboot/) {
-                $nohost_reboot = 1;
             } else {
                 $update_file = $subcommand;
             }
@@ -2114,10 +2110,6 @@ sub parse_command_status {
                 }
                 if ($streamline) {
                     $::UPLOAD_ACTIVATE_STREAM = 1;
-                    if ($nohost_reboot) {
-                        $::RFLASH_STREAM_NO_HOST_REBOOT = 1;
-                        $nohost_reboot = 0;
-                    }
                     $streamline = 0;
                     if (-x $sha512sum_cmd && -x $tr_cmd) {
                         # Save hash id this firmware version should resolve to:
@@ -2220,19 +2212,19 @@ sub parse_command_status {
             $next_status{LOGIN_RESPONSE_GENERAL} = "RPOWER_BMC_STATUS_REQUEST";
             $next_status{RPOWER_BMC_STATUS_REQUEST} = "RPOWER_BMC_STATUS_RESPONSE";
             $status_info{RPOWER_BMC_STATUS_RESPONSE}{argv} = "bmcstate";
-            if (!$::RFLASH_STREAM_NO_HOST_REBOOT) {
-               $next_status{RPOWER_BMC_STATUS_RESPONSE} = "RPOWER_OFF_REQUEST";
-               $next_status{RPOWER_OFF_REQUEST} = "RPOWER_OFF_RESPONSE";
-               $next_status{RPOWER_OFF_RESPONSE} = "RPOWER_CHECK_REQUEST";
-               $next_status{RPOWER_CHECK_REQUEST} = "RPOWER_CHECK_RESPONSE";
-               $next_status{RPOWER_CHECK_RESPONSE}{ON} = "RPOWER_CHECK_REQUEST";
-               $next_status{RPOWER_CHECK_RESPONSE}{OFF} = "RPOWER_ON_REQUEST";
-               $next_status{RPOWER_ON_REQUEST} = "RPOWER_ON_RESPONSE";
-               $status_info{RPOWER_ON_RESPONSE}{argv} = "boot";
-               $next_status{RPOWER_ON_RESPONSE} = "RPOWER_CHECK_ON_REQUEST";
-               $next_status{RPOWER_CHECK_ON_REQUEST} = "RPOWER_CHECK_ON_RESPONSE";
-               $next_status{RPOWER_CHECK_ON_RESPONSE}{OFF} = "RPOWER_ON_REQUEST";
-            }
+
+            # Reboot Host
+            $next_status{RPOWER_BMC_STATUS_RESPONSE} = "RPOWER_OFF_REQUEST";
+            $next_status{RPOWER_OFF_REQUEST} = "RPOWER_OFF_RESPONSE";
+            $next_status{RPOWER_OFF_RESPONSE} = "RPOWER_CHECK_REQUEST";
+            $next_status{RPOWER_CHECK_REQUEST} = "RPOWER_CHECK_RESPONSE";
+            $next_status{RPOWER_CHECK_RESPONSE}{ON} = "RPOWER_CHECK_REQUEST";
+            $next_status{RPOWER_CHECK_RESPONSE}{OFF} = "RPOWER_ON_REQUEST";
+            $next_status{RPOWER_ON_REQUEST} = "RPOWER_ON_RESPONSE";
+            $status_info{RPOWER_ON_RESPONSE}{argv} = "boot";
+            $next_status{RPOWER_ON_RESPONSE} = "RPOWER_CHECK_ON_REQUEST";
+            $next_status{RPOWER_CHECK_ON_REQUEST} = "RPOWER_CHECK_ON_RESPONSE";
+            $next_status{RPOWER_CHECK_ON_RESPONSE}{OFF} = "RPOWER_ON_REQUEST";
         }
     }
     return;

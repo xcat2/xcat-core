@@ -174,7 +174,7 @@ class OpenBMCManager(base.BaseManager):
         # 1, parse agrs
         rflash_usage = """
         Usage:
-            rflash [[-a|--activate <arg>] | [-c|--check <arg>] | [-d <arg> [--no-host-reboot]] | [--delete <arg>] | [-l|--list] |  [-u|--upload <arg>]] [-V|--verbose]
+            rflash [[-a|--activate <arg>] | [-c|--check <arg>] | [-d <arg> ] | [--delete <arg>] | [-l|--list] |  [-u|--upload <arg>]] [-V|--verbose]
 
         Options:
             -V,--verbose          Show verbose message
@@ -184,7 +184,6 @@ class OpenBMCManager(base.BaseManager):
             -l,--list             List firmware info
             -u,--upload <arg>     Upload firmware file
             --delete <arg>        Delete firmware
-            --no-host-reboot      Not reboot host after activate
         """
 
         try:
@@ -211,7 +210,7 @@ class OpenBMCManager(base.BaseManager):
         elif opts['--list']:
             DefaultFlashManager().list_firm_info(runner)
         elif opts['-d']:
-            DefaultFlashManager().flash_process(runner, opts['-d'], opts['--no-host-reboot'])
+            DefaultFlashManager().flash_process(runner, opts['-d'])
         elif opts['--delete']:
             DefaultFlashManager().delete_firm(runner, opts['--delete'])
         elif opts['--upload']:

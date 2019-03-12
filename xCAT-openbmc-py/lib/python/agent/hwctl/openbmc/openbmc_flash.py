@@ -109,7 +109,7 @@ class OpenBMCFlashTask(ParallelNodesCommand):
 
         self.callback.info('Attempting to delete ID=%s, please wait..' % delete_id)
 
-    def pre_flash_process(self, task, directory, no_host_reboot, **kw):
+    def pre_flash_process(self, task, directory, **kw):
 
         if not os.path.exists(XCAT_LOG_RFLASH_DIR):
             os.makedirs(XCAT_LOG_RFLASH_DIR)
@@ -263,7 +263,7 @@ class OpenBMCFlashTask(ParallelNodesCommand):
 
         self.activate_result.update({node: 'SUCCESS'})
 
-    def _reboot_to_effect(self, obmc, no_host_reboot, node):
+    def _reboot_to_effect(self, obmc, node):
 
         self._msg_process(node, 'Firmware will be flashed on reboot, deleting all BMC diagnostics...')
         try:
@@ -301,10 +301,6 @@ class OpenBMCFlashTask(ParallelNodesCommand):
             return self._msg_process(node, error, msg_type='E', update_rc=True)
 
         self._msg_process(node, 'BMC %s' % bmc_state, update_rc=True)
-
-        if no_host_reboot:
-            self.activate_result.update({node: 'SUCCESS'})
-            return
 
         try:
             obmc.set_power_state('off')
@@ -440,7 +436,7 @@ class OpenBMCFlashTask(ParallelNodesCommand):
         else:
             self.callback.info('%s: [%s] Firmware removed' % (node, delete_id))
 
-    def flash_process(self, directory, no_host_reboot, **kw):
+    def flash_process(self, directory, **kw):
 
         node = kw['node']
         obmc = openbmc.OpenBMCRest(name=node, nodeinfo=kw['nodeinfo'], messager=self.callback,
@@ -482,7 +478,7 @@ class OpenBMCFlashTask(ParallelNodesCommand):
 
         self._check_id_status(obmc, activate_ids, node, only_act=False)
 
-        self._reboot_to_effect(obmc, no_host_reboot, node)
+        self._reboot_to_effect(obmc, node)
 
     def list_firm_info(self, **kw):
 
@@ -572,6 +568,6 @@ class OpenBMCFlashTask(ParallelNodesCommand):
 
         self._flash_summary()
 
-    def post_flash_process(self, task, directory, no_host_reboot, **kw):
+    def post_flash_process(self, task, directory, **kw):
 
         self._flash_summary()
