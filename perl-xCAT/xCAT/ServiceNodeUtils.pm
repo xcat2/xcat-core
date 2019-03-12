@@ -555,6 +555,10 @@ sub get_ServiceNode
                 {
                     push @{ $snhash{$master} }, $node;
                 }
+                else
+                {
+                    xCAT::MsgUtils->message('SW', "Unknown master for node: $node, neither noderes.servicenode nor site.master is set\n");
+                }
             }
         }
 
