@@ -81,7 +81,7 @@ class OpenBMCBmcConfigTask(ParallelNodesCommand):
                 self.callback.info('%s: No attributes returned from the BMC.' % node)
                 return dump_info
 
-            keys = dump_dict.keys()
+            keys = list(dump_dict.keys())
             keys.sort()
             for key in keys:
                 info = '[%d] Generated: %s, Size: %s' % \
@@ -140,7 +140,7 @@ class OpenBMCBmcConfigTask(ParallelNodesCommand):
                 return
 
             dump_dict = obmc.list_dump_info()
-            keys = dump_dict.keys()
+            keys = list(dump_dict.keys())
             keys.sort()
 
             for key in keys:
@@ -378,6 +378,7 @@ rmdir \"/tmp/$userid\" \n")
             self.callback.info("%s: BMC Setting Password..." % node)
         except (SelfServerException, SelfClientException) as e:
             self.callback.error(e.message, node)
+            return
 
         self.callback.info("%s: BMC password changed. Update 'bmcpasswd' for the node or the 'passwd' table with the new password." % node)
 
@@ -422,7 +423,7 @@ rmdir \"/tmp/$userid\" \n")
             return self.callback.error(e.message, node)
 
         if isinstance(value, dict):
-            str_value = str(value.values()[0])
+            str_value = str(list(value.values())[0])
         elif value:
             str_value = str(value)
         else:

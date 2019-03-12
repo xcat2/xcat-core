@@ -29,7 +29,7 @@ class OpenBMCInventoryTask(ParallelNodesCommand):
         target_file = utils.get_full_path(self.cwd, target_file)
 
         version = purpose = None
-        with open(target_file, 'r') as fh:
+        with open(target_file, encoding="utf8", errors='ignore') as fh:
             for line in fh:
                 if 'version=' in line:
                     version = line.split('=')[-1].strip()
@@ -44,13 +44,13 @@ class OpenBMCInventoryTask(ParallelNodesCommand):
     def _get_firm_info(self, firm_info_list):
         (has_functional, firm_obj_dict) = firm_info_list
         firm_info = []
-        keys = firm_obj_dict.keys()
+        keys = list(firm_obj_dict.keys())
         keys.sort()
         for key in keys:
             flag = ''
             if firm_obj_dict[key].functional:
                 flag = '*'
-	    elif firm_obj_dict[key].priority == 0:
+            elif firm_obj_dict[key].priority == 0:
                 if not has_functional:
                     flag = '*'
                 else:
@@ -115,7 +115,7 @@ class OpenBMCInventoryTask(ParallelNodesCommand):
             # Process returned inventory_info_dict depending on the inventory requested
             if all == 1:
                 # Everything gets displayed, even firmware
-                keys = inventory_info_dict.keys()
+                keys = list(inventory_info_dict.keys())
                 keys.sort()
                 for key in keys:
                     inventory_info += utils.sort_string_with_numbers(inventory_info_dict[key])
