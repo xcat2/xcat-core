@@ -2293,7 +2293,7 @@ sub copycd
 
     if ($rc != 0)
     {
-        $callback->({ error => "Media copy operation failed, status $rc" });
+        $callback->({ error => "Media copy operation failed, status $rc", errorcode => [1] });
     }
     else
     {
