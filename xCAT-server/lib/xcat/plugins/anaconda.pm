@@ -2261,7 +2261,11 @@ sub copycd
         my $copied = 0;
         my ($percent, $fout);
         while (<PIPE>) {
-            next if /^cpio:/;
+            if (/^cpio:/) {
+                chomp;
+                $callback->({ data => $_ });
+                next;
+            }
             $percent = $copied / $numFiles;
             $fout = sprintf "%0.2f%%", $percent * 100;
             $callback->({ sinfo => "$fout" });
