@@ -450,7 +450,7 @@ class OpenBMCRest(object):
         payload = { "data": PROJECT_PAYLOAD + BMC_URLS['reboot']['field'] }
         try:
             self.request('PUT', BMC_URLS['reboot']['path'], payload=payload, cmd='bmc_reset')
-        except SelfServerException,SelfClientException:
+        except (SelfServerException,SelfClientException) as e:
             # TODO: Need special handling for bmc reset, as it is normal bmc may return error
             pass
 
@@ -578,7 +578,8 @@ class OpenBMCRest(object):
                     logger.debug('IndexError (-2) for %s' % key)
                     continue
 
-                key_type = filter(lambda x:x not in '0123456789', key_id).upper()
+                key_type_list = [x for x in key_id if x not in '0123456789']
+                key_type = ''.join(key_type_list).upper()
 
                 if key_type == 'CORE':
                     key_type = 'CPU'
@@ -656,7 +657,7 @@ class OpenBMCRest(object):
         # Check if policy table file is there
         ras_event_mapping = {}
         if os.path.isfile(RAS_POLICY_TABLE):
-            with open(RAS_POLICY_TABLE, "r") as data_file:
+            with open(RAS_POLICY_TABLE, encoding="utf8", errors='ignore') as data_file:
                 policy_hash = json.load(data_file)
                 if policy_hash:
                     ras_event_mapping = policy_hash['events']

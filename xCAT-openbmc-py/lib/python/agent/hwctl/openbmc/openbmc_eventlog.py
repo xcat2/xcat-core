@@ -39,7 +39,7 @@ class OpenBMCEventlogTask(ParallelNodesCommand):
             # Get all eventlog records
             eventlog_info_dict = obmc.get_eventlog_info()
 
-            keys = eventlog_info_dict.keys()
+            keys = list(eventlog_info_dict.keys())
             # Sort thy keys in natural order
             keys.sort(key=lambda x : int(x[0:]))
 
@@ -76,7 +76,7 @@ class OpenBMCEventlogTask(ParallelNodesCommand):
             # Get all eventlog records
             eventlog_info_dict = obmc.get_eventlog_info()
 
-            keys = eventlog_info_dict.keys()
+            keys = list(eventlog_info_dict.keys())
             # Sort the keys in natural order
             keys.sort(key=lambda x : int(x[0:]))
 
