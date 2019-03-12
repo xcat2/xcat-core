@@ -1,10 +1,9 @@
-.. _get_started:
-
 Get Started
 ===========
 
+
 .. toctree::
-   :maxdepth: 2
+   :maxdepth: 1
 
    quick_start.rst
    workflow_guide.rst

@@ -6,7 +6,14 @@ The steps below will be focused on RHEL7, however they should work for other dis
 
 Prerequisites
 -------------
-Assume there are two servers named ``xcatmn.mydomain.com`` and ``cn1.mydomain.com``. They are in the same subnet ``192.168.0.0``. ``cn1.mydomain.com`` has BMC which ``xcatmn.mydomain.com`` can access it. ``xcatmn.mydomain.com`` has Red Hat OS installed, and uses IP ``192.168.0.2``. ``xcatmn.mydomain.com`` has access to internet. ``cn1.mydomain.com`` BMC IP address is ``10.4.40.254``. Prepare a full DVD for OS provision, and not a ``Live CD`` ISO, for this example, will use ``RHEL-7.6-20181010.0-Server-x86_64-dvd1.iso`` ISO, you can download it from Red Hat website.
+Assume there are two servers named ``xcatmn.mydomain.com`` and ``cn1.mydomain.com``. 
+
+    #. They are in the same subnet ``192.168.0.0``. 
+    #. ``cn1.mydomain.com`` has BMC which ``xcatmn.mydomain.com`` can access it. 
+    #. ``xcatmn.mydomain.com`` has Red Hat OS installed, and uses IP ``192.168.0.2``. 
+    #. ``xcatmn.mydomain.com`` has access to internet. 
+    #. ``cn1.mydomain.com`` BMC IP address is ``10.4.40.254``. 
+    #. Prepare a full DVD for OS provision, and not a ``Live CD`` ISO, for this example, will use ``RHEL-7.6-20181010.0-Server-x86_64-dvd1.iso`` ISO, you can download it from Red Hat website.
 
 All the following steps should be executed in ``xcatmn.mydomain.com``.
 
@@ -22,7 +29,9 @@ Prepare the Management Node ``xcatmn.mydomain.com``
 
     hostname xcatmn.mydomain.com
 
-#. Set the IP to STATIC in the ``/etc/sysconfig/network-scripts/ifcfg-eth0`` file
+#. Set the IP to STATIC in the ``/etc/sysconfig/network-scripts/ifcfg-<proc_nic>`` file
+
+#. Update your ``/etc/resolv.conf`` with DNS settings and make sure that the node could visit ``github`` and ``xcat`` official website.
 
 #. Configure any domain search strings and nameservers to the ``/etc/resolv.conf`` file
 
@@ -41,8 +50,8 @@ Prepare the Management Node ``xcatmn.mydomain.com``
 
     chtab key=system passwd.username=root passwd.password=abc123
 
-Stage 1 Enable Hardware Control
--------------------------------
+Stage 1 Add your first node and control it with out-of-band BMC interface
+-------------------------------------------------------------------------
 
 #. Define compute node ``cn1``: ::
 
@@ -69,8 +78,8 @@ Stage 1 Enable Hardware Control
     cn1: Backup IMM Version: 1.25 (1AOO26K 2012/02/23)
     cn1: BMC Firmware: 3.10 (1AOO48H 2013/08/22 18:49:44)
 
-Stage 2 Deploy Compute Node
----------------------------
+Stage 2 Provision a node and manage it with parallel shell
+----------------------------------------------------------
 
 #. In order to PXE boot, you need a DHCP server to hand out addresses and direct the booting system to the TFTP server where it can download the network boot files. Configure DHCP: ::
 
