@@ -81,7 +81,7 @@ class OpenBMCFlashTask(ParallelNodesCommand):
     def _get_firmware_version(self, target_file):
 
         version = purpose = None
-        with open(target_file, 'r') as fh:
+        with open(target_file, encoding="utf8", errors='ignore') as fh:
             for line in fh:
                 if 'version=' in line:
                     version = line.split('=')[-1].strip()
@@ -159,7 +159,7 @@ class OpenBMCFlashTask(ParallelNodesCommand):
 
         mapping_ids = []
         if self.firmware:
-            version_list = self.firmware.keys()
+            version_list = list(self.firmware.keys())
         else:
             return []
 
@@ -348,7 +348,7 @@ class OpenBMCFlashTask(ParallelNodesCommand):
 
         firmware_version = ''
         if self.firmware_file:
-            firmware_version = self.firmware.keys()[0]
+            firmware_version = list(self.firmware.keys())[0]
             try:
                 obmc.upload_firmware(self.firmware_file)
             except (SelfServerException, SelfClientException) as e:

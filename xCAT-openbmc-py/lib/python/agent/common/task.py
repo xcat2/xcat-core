@@ -35,7 +35,7 @@ class BaseCommand(object):
             self._pre(op, *args, **kwargs)
             self._execute(op, *args, **kwargs)
             self._post(op, *args, **kwargs)
-        except Exception, e:
+        except Exception as e:
             # TODO: put e into log
             print(traceback.format_exc(), file=sys.stderr)
             return None
@@ -65,7 +65,7 @@ class ParallelNodesCommand(BaseCommand):
         assert self.inventory and type(self.inventory) is dict
         func = getattr(self, '%s' % op)
         if len(self.inventory) == 1:
-            node = self.inventory.keys()[0]
+            node = list(self.inventory.keys())[0]
             func(*args, node=node, nodeinfo=self.inventory[node], **kw)
             return
 
@@ -75,7 +75,7 @@ class ParallelNodesCommand(BaseCommand):
         for node in self.inventory.keys():
             try:
                 gevent_pool.add( gevent.spawn(func, *args, node=node, nodeinfo=self.inventory[node], **kw))
-            except Exception, e:
+            except Exception as e:
                 error = '%s: Internel Error occured in gevent' % node
                 #print(traceback.format_exc(), file=sys.stderr)
                 self.callback.error(error)
@@ -89,7 +89,7 @@ class ParallelNodesCommand(BaseCommand):
             self._pre(op, *args, **kwargs)
             self._execute_in_parallel(op, *args, **kwargs)
             self._post(op, *args, **kwargs)
-        except Exception, e:
+        except Exception as e:
             # TODO: put e into log
             print(traceback.format_exc(), file=sys.stderr)
             return None
