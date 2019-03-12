@@ -2283,6 +2283,10 @@ sub dispatch_request {
         $SIG{CHLD} = 'DEFAULT';
         xCAT::MsgUtils->trace(0, "D", "xcatd: handle request '$req->{command}->[0]' by plugin '$modname''s preprocess_request");
         $reqs = ${ "xCAT_plugin::" . $modname . "::" }{preprocess_request}->($req, $dispatch_cb, \&do_request);
+        if (not(scalar @$reqs) and not(defined xCAT::TableUtils->get_site_attribute('master'))) {
+            $dispatch_cb->({ error => ['No site.master set, please check'], errorcode => [1] });
+            return;
+        }
     } else {    # otherwise, pass it in without hierarchy support
         $reqs = [$req];
     }
