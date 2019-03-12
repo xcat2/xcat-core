@@ -315,7 +315,7 @@ class OpenBMCManager(base.BaseManager):
 
     def rspconfig(self, nodesinfo, args):
 
-        from hwctl.executor.openbmc_bmcconfig import OpenBMCBmcConfigTask
+        from hwctl.openbmc.openbmc_bmcconfig import OpenBMCBmcConfigTask
 
         try:
             opts=docopt(RSPCONFIG_USAGE, argv=args)
