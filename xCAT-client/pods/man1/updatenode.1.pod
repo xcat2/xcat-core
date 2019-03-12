@@ -4,7 +4,7 @@ B<updatenode> - Update nodes in an xCAT cluster environment.
 
 =head1 SYNOPSIS
 
-B<updatenode> I<noderange> [B<-V>|B<--verbose>] [B<-F>|B<--sync>] [B<-f>|B<--snsync>] [B<-r>|B<--node-rcp> [I<full_path_to_remote_copy_command>]]  [B<-S>|B<--sw>]  [B<-l>  I<userID>]  [B<-P>|B<--scripts> [I<script1,script2...>]] [B<-s>|B<--sn>] [B<-A>|B<--updateallsw>] [B<-c>|B<--cmdlineonly>] [B<-d> I<alt_source_dir>] [B<--fanout>=I<fanout_value>] [B<-t> I<timeout>} [I<attr=val> [I<attr=val...>]] [B<-n>|B<--noverify>]
+B<updatenode> I<noderange> [B<-V>|B<--verbose>] [B<-F>|B<--sync>] [B<-f>|B<--snsync>] [B<-r>|B<--node-rcp> [I<node_remote_copy_command>]]  [B<-S>|B<--sw>]  [B<-l>  I<userID>]  [B<-P>|B<--scripts> [I<script1,script2...>]] [B<-s>|B<--sn>] [B<-A>|B<--updateallsw>] [B<-c>|B<--cmdlineonly>] [B<-d> I<alt_source_dir>] [B<--fanout>=I<fanout_value>] [B<-t> I<timeout>} [I<attr=val> [I<attr=val...>]] [B<-n>|B<--noverify>]
 
 B<updatenode> B<noderange> [B<-k>|B<--security>] [B<-t> I<timeout>]
 
@@ -41,7 +41,7 @@ Update the ca and credentials for the service nodes.
 The default behavior when no options are input to B<updatenode> will be to run
 the following options B<-S>, B<-P> and B<-F> options in this order.
 If you wish to limit B<updatenode> to specific
-actions you can use combinations of the B<-S>, B<-P>, and B<-F> flags.
+actions you can use combination of the B<-S>, B<-P>, and B<-F> flags.
 
 For example, If you just want to synchronize configuration file you could
 specify the B<-F> flag.   If you want to synchronize files and update
@@ -315,17 +315,17 @@ read-only option for files/directories listed in
 B<litefile> table with source location specified in the B<litetree> table.
 
 
-=item [B<-r>|B<--node-rcp> [I<full_path_to_remote_copy_command>]]
+=item [B<-r>|B<--node-rcp> [I<node_remote_copy_command>]]
 
-Specifies  the  full  path of the remote copy command used for syncing files to node targets, such as "/usr/bin/rsync" or "/usr/bin/scp". If not specified, rsync will be used by default.
+Specifies  the  full  path of the remote copy command used for syncing files to node targets, such as B</usr/bin/rsync> or B</usr/bin/scp>. If not specified, B<rsync> will be used by default.
 
-Notice: The synclist for "-r /usr/bin/scp" has some differences with "-r /usr/bin/rsync":
+Note: The synclist processing for B<-r /usr/bin/scp> has some differences with B<-r /usr/bin/rsync>:
 
-1) the ``EXECUTE`` clause is not supported in "-r /usr/bin/scp"
+1) the B<EXECUTE> clause in synclist file is not supported with B<-r /usr/bin/scp> flag
 
-2) if the destination directory specified in synclist is an existing file on target node, "updatenode -r /usr/bin/scp" will fail with ``scp: <destination directory>: Not a directory``
+2) if the destination directory specified in synclist file is an existing file on target node, B<updatenode -r /usr/bin/scp> will fail with "scp: <destination directory>: Not a directory"
 
-3) if the destination file specified in synclist is an existing directory on target node, "updatenode -r /usr/bin/scp" will fail with ``scp: <destination file>: Is a directory``
+3) if the destination file specified in synclist file is an existing directory on target node, B<updatenode -r /usr/bin/scp> will fail with "scp: <destination file>: Is a directory"
 
 
 =item B<-g|--genmypost>

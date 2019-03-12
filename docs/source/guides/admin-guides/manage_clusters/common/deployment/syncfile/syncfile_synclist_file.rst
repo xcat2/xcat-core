@@ -45,7 +45,7 @@ sync file **/etc/file2** to the file **/etc/file2** on the node   ::
 
        /etc/file2 -> /etc/
 
-sync all files in **/home/mikev** to directory **/home/mikev** on the node  ::
+sync all files, including subdirectories, in **/home/mikev** to directory **/home/mikev** on the node  ::
 
        /home/mikev/* -> /home/mikev/
 
