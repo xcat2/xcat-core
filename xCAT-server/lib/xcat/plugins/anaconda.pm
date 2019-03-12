@@ -2250,7 +2250,7 @@ sub copycd
             print $KID $_ . "\n";
         }
         close($KID);
-        $rc = $?;
+        $rc = $? >> 8;
     }
     else
     {
@@ -2267,16 +2267,8 @@ sub copycd
             $callback->({ sinfo => "$fout" });
             ++$copied;
         }
-        if ($copied == $numFiles)
-        {
-            #media copy success
-            exit(0);
-        }
-        else
-        {
-            #media copy failed
-            exit(1);
-        }
+        close(PIPE);
+        exit($? >> 8);
     }
 
     #my $rc = system("cd $path; find . | nice -n 20 cpio -dump $installroot/$distname/$arch");
