@@ -1123,6 +1123,7 @@ function create_vlan_interface {
     local _netmask=""
     local _mtu=""
     local _bridge=""
+    local use_nmcli=""
     # in case it's on top of bond, we need to migrate ip from its
     # member vlan ports.
     local slave_ports=""
@@ -1137,7 +1138,8 @@ function create_vlan_interface {
            [ "$key" = "_netmask" ] || \
            [ "$key" = "_mtu" ] || \
            [ "$key" = "_bridge" ] || \
-           [ "$key" = "vlanid" ]; then
+           [ "$key" = "vlanid" ] || \
+           [ "$key" = "use_nmcli" ]; then
             eval "$1"
         fi
         shift
@@ -1173,8 +1175,13 @@ function create_vlan_interface {
     do
         if [ $i -eq 0 ]; then
             # alternative cmd to "vconfig add $ifname $vlanid"
-            $ip link add link $ifname name $ifname.$vlanid type vlan id $(( 10#$vlanid ))
-            log_info "$ip link add link $ifname name $ifname.$vlanid type vlan id $(( 10#$vlanid ))"
+            if [ ! -z "$use_nmcli" ]; then
+                cmd="nmcli con add type vlan con-name $ifname.$vlanid dev $ifname id $(( 10#$vlanid ))" 
+            else
+                cmd="$ip link add link $ifname name $ifname.$vlanid type vlan id $(( 10#$vlanid ))"
+            fi
+            $cmd
+            log_info "$cmd"
         fi
         $sleep 0.5
         ((i+=1))
@@ -1186,6 +1193,10 @@ function create_vlan_interface {
     fi
 
     # setup interface
+    if [ ! -z "$use_nmcli" ]; then
+        [ -n "$_mtu" ] && nmcli connection modify $ifname.$vlanid 802.mtu $_mtu
+        return 0
+    fi
     [ -n "$_mtu" ] && $ip link set $ifname.$vlanid mtu $_mtu
     $ip link set $ifname.$vlanid up
     log_info "$ip link set $ifname.$vlanid up"
@@ -1606,12 +1617,13 @@ function check_NetworkManager_or_network_service() {
 #
 # create vlan using nmcli
 #
-# input : ifname=<ifname> slave_ports=<ports> xcatnet=<xcatnetwork> _ipaddr=<ip> _netmask=<netmask> _mtu=<mtu> _bridge=<bridge_name> vlanid=<vlanid>
+# input : ifname=<ifname> vlanid=<vlanid>
 # return : 0 success
 #
 ###############################################################################
 function create_vlan_interface_nmcli {
     log_info "create_vlan_interface_nmcli $@"
+    create_vlan_interface $@ use_nmcli=1
 }
 
 ###############################################################################
