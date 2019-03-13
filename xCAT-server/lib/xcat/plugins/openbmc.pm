@@ -2945,6 +2945,7 @@ sub rpower_response {
                     #after retry 5 times, the host is still off, print error and return
                     my $wait_time_X = $node_info{$node}{wait_on_end} - $node_info{$node}{wait_on_start};
                     xCAT::SvrUtils::sendmsg([1, "Sent power-on command but state did not change to $::POWER_STATE_ON after waiting $wait_time_X seconds. (State=$all_status)."], $callback, $node);
+                    xCAT::SvrUtils::sendmsg([1, "Run 'reventlog <BMC IP>' command to see possible reasons for failure."], $callback, $node);
                     $node_info{$node}{cur_status} = "";
                     $wait_node_num--;
                     return;
