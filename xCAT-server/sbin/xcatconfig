@@ -1206,6 +1206,7 @@ sub initDB
         $chtabcmds .= "$::XCATROOT/sbin/chtab key=cleanupxcatpost site.value=no;";
         $chtabcmds .= "$::XCATROOT/sbin/chtab key=dhcplease site.value=43200;";
         $chtabcmds .= "$::XCATROOT/sbin/chtab key=auditnosyslog site.value=0;";
+        $chtabcmds .= "$::XCATROOT/sbin/chtab key=xcatsslversion site.value=;";
         $chtabcmds .= "$::XCATROOT/sbin/chtab key=auditskipcmds site.value=ALL;";
 
         #$chtabcmds .= "$::XCATROOT/sbin/chtab key=useflowcontrol site.value=yes;"; # need to fix 4031
@@ -1470,6 +1471,15 @@ sub initDB
             {
                 xCAT::MsgUtils->message('E', "Could not set ddns as dnshandler.");
             }
+        }
+
+        # Set default value for site.xcatsslversion when update xcat
+        $cmds = "XCATBYPASS=Y $::XCATROOT/sbin/tabdump site 2>/dev/null | grep xcatsslversion";
+        xCAT::Utils->runcmd("$cmds", -1);
+        if ($::RUNCMD_RC == 0) {
+            verbose("+-+-+-+-+-+-+-+ The default value of site.xcatsslversion was updated.");
+            verbose("|W|A|R|N|I|N|G| Run `chdef -t site xcatsslversion=' to update your system to");
+            verbose("+-+-+-+-+-+-+-+ the new default value. See `man site' for more details");
         }
     }
 
