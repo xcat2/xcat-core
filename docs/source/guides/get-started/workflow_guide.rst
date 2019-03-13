@@ -1,5 +1,5 @@
-Quick Start Guide
-=================
+Workflow Guide
+==============
 
 If xCAT looks suitable for your requirement, following steps are recommended procedure to set up an xCAT cluster.
 
