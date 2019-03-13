@@ -48,6 +48,8 @@ sync file **/etc/file2** to the file **/etc/file2** on the node   ::
 sync all files, including subdirectories, in **/home/mikev** to directory **/home/mikev** on the node  ::
 
        /home/mikev/* -> /home/mikev/
+                  or
+       /home/mikev -> /home/mikev/
 
 .. note:: Don't try to sync files to the read only directory on the target node.
 
