@@ -1568,7 +1568,6 @@ function decode_arguments {
 #
 ##############################################################################
 function check_NetworkManager_or_network_service() {
-
     #check NetworkManager is active
     checkservicestatus NetworkManager > /dev/null 2>/dev/null
     if [ $? -eq 0 ]; then
@@ -1577,25 +1576,30 @@ function check_NetworkManager_or_network_service() {
         type $nmcli >/dev/null 2>/dev/null
         if [ $? -ne 0 ]; then
             log_error "There is no nmcli"
+        else
+            stopservice network | log_lines info
+            disableservice network | log_lines info
+            stopservice networking | log_lines info
+            disableservice networking | log_lines info
+            return 1
         fi
-        stopservice network
-        stopservice networking
-        return 1
-    else
-        checkservicestatus network > /dev/null 2>/dev/null
-        if [ $? -eq 0 ]; then
-            log_info "network service is active"
-            return 0
-        fi
-        checkservicestatus networking > /dev/null 2>/dev/null
-        if [ $? -eq 0 ]; then
-            log_info "networking service is active"
-            return 0
-        fi
-        log_error "NetworkManager, network.service and networking service are not active"
-        return 2
-        
     fi
+    checkservicestatus network > /dev/null 2>/dev/null
+    if [ $? -eq 0 ]; then
+        stopservice NetworkManager | log_lines info
+        disableservice NetworkManager | log_lines info
+        log_info "network service is active"
+        return 0
+    fi
+    checkservicestatus networking > /dev/null 2>/dev/null
+    if [ $? -eq 0 ]; then
+        stopservice NetworkManager | log_lines info
+        disableservice NetworkManager | log_lines info
+        log_info "networking service is active"
+        return 0
+    fi
+    log_error "NetworkManager, network.service and networking service are not active"
+    return 2
 }
 
 ###############################################################################
