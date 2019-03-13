@@ -99,4 +99,7 @@ touch /etc/xcat/genesis-scripts-updated
 %{rpminstallroot}/etc/udev/rules.d/98-mlx.rules
 %{rpminstallroot}/usr/sbin/setupimmnic
 %{rpminstallroot}/usr/sbin/loadmlxeth
+%{rpminstallroot}/usr/bin/autocons.py
+%{rpminstallroot}/usr/lib/dracut/hooks/cmdline/09-autoconsole.sh
+
 %exclude %{rpminstallroot}/debian/*
