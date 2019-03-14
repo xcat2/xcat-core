@@ -1142,7 +1142,6 @@ function create_vlan_interface {
     local _netmask=""
     local _mtu=""
     local _bridge=""
-    local use_nmcli=""
     # in case it's on top of bond, we need to migrate ip from its
     # member vlan ports.
     local slave_ports=""
@@ -1157,8 +1156,7 @@ function create_vlan_interface {
            [ "$key" = "_netmask" ] || \
            [ "$key" = "_mtu" ] || \
            [ "$key" = "_bridge" ] || \
-           [ "$key" = "vlanid" ] || \
-           [ "$key" = "use_nmcli" ]; then
+           [ "$key" = "vlanid" ]; then
             eval "$1"
         fi
         shift
@@ -1193,12 +1191,7 @@ function create_vlan_interface {
     while [ ! -f /proc/net/vlan/$ifname.$vlanid ];
     do
         if [ $i -eq 0 ]; then
-            # alternative cmd to "vconfig add $ifname $vlanid"
-            if [ ! -z "$use_nmcli" ]; then
-                cmd="nmcli con add type vlan con-name $ifname.$vlanid dev $ifname id $(( 10#$vlanid ))" 
-            else
-                cmd="$ip link add link $ifname name $ifname.$vlanid type vlan id $(( 10#$vlanid ))"
-            fi
+            cmd="$ip link add link $ifname name $ifname.$vlanid type vlan id $(( 10#$vlanid ))"
             $cmd
             log_info "$cmd"
         fi
@@ -1211,11 +1204,6 @@ function create_vlan_interface {
         return 1
     fi
 
-    # setup interface
-    if [ ! -z "$use_nmcli" ]; then
-        [ -n "$_mtu" ] && nmcli connection modify $ifname.$vlanid 802.mtu $_mtu
-        return 0
-    fi
     [ -n "$_mtu" ] && $ip link set $ifname.$vlanid mtu $_mtu
     $ip link set $ifname.$vlanid up
     log_info "$ip link set $ifname.$vlanid up"
@@ -1695,7 +1683,86 @@ function get_first_addr_ipv4 {
 ###############################################################################
 function create_vlan_interface_nmcli {
     log_info "create_vlan_interface_nmcli $@"
-    create_vlan_interface $@ use_nmcli=1
+    local ifname=""
+    local vlanid=""
+    local ipaddrs=""
+    local _ipaddrs=""
+    local _xcatnet=""
+    local _netmask=""
+    local _mtu=""
+    # in case it's on top of bond, we need to migrate ip from its
+    # member vlan ports.
+    # parser input arguments
+    while [ -n "$1" ];
+    do
+        key=`echo "$1" | $cut -s -d= -f1`
+        if [ "$key" = "ifname" ] || \
+           [ "$key" = "ipaddrs" ] || \
+           [ "$key" = "vlanid" ]; then
+            eval "$1"
+        fi
+        shift
+    done
+
+    if [ -z "$vlanid" ]; then
+        log_error "No \"vlanid\" specificd for vlan interface. Abort!"
+        return 1
+    fi
+
+    _xcatnet=`query_nicnetworks_net $ifname.$vlanid`
+    log_info "Pickup xcatnet, \"$_xcatnet\", from NICNETWORKS for interface \"$ifname\"."
+
+    _mtu_num=`get_network_attr $xcatnet mtu`
+    if [ $? -ne 0 ]; then
+        _mtu=""
+    else
+        _mtu="mtu $_mtu_num"
+    fi
+
+    if [ ! -z "$ipaddrs" ]; then
+        _netmask_long=`get_network_attr $_xcatnet mask`
+        if [ $? -ne 0 ]; then
+            log_error "No valid netmask get for $ifname.$vlanid"
+            return 1
+        else
+            _netmask=$(v4mask2prefix $_netmask_long)
+            _ipaddrs="method none ip4 $ipaddrs/$_netmask"
+        fi
+    fi
+    #load the 8021q module if not loaded.
+    load_kmod module=8021q retry=10 interval=0.5
+    con_name="xcat.$ifname.$vlanid"
+    tmp_con_name=""
+    if nmcli con |grep "^$con_name " > /dev/null; then
+        tmp_con_name=$con_name."-tmp"
+        nmcli con modify $con_name connection.id $tmp_con_name
+    fi
+    cmd="nmcli con add type vlan con-name $con_name dev $ifname id $(( 10#$vlanid )) $_ipaddrs $_mtu"
+    $cmd
+    log_info "$cmd"
+    nmcli con up $con_name
+
+    i=0
+    while [ $i -lt 10 ]; do
+        con_state=`nmcli con show $con_name | grep -i state| awk '{print $2}'`;
+        if [ ! -z "$con_state" -a "$con_state" = "activated" ]; then
+            break
+        fi
+        sleep 2
+        i=$((i+1))
+    done
+
+    if [ $i -ge 10 ]; then
+        log_error "The vlan configuration for $ifname.$vlanid can not be booted up"
+        nmcli con delete $con_name
+        if [ ! -z "$tmp_con_name" ]; then
+            nmcli con modify $tmp_con_name connection.id $con_name
+        fi
+        return 1
+    elif [ ! -z "$tmp_con_name" ]; then
+        nmcli con delete $tmp_con_name
+    fi
+    return 0
 }
 
 ###############################################################################
