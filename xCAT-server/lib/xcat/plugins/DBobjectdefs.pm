@@ -4609,7 +4609,7 @@ sub defmk_usage
     }
     $rsp->{data}->[$n] = "$dataobj\n";
     $n++;
-    $rsp->{data}->[$n] = "\nUse the \'-h\' option together with the \'-t\' option to";
+    $rsp->{data}->[$n] = "\nUse the \'-h\' option together with the \'-t <object-types>\' option to";
     $n++;
     $rsp->{data}->[$n] = " get a list of valid attribute names for each object type.\n";
     xCAT::MsgUtils->message("I", $rsp, $::callback);
@@ -4656,7 +4656,7 @@ sub defch_usage
     }
     $rsp->{data}->[$n] = "$dataobj\n";
     $n++;
-    $rsp->{data}->[$n] = "\nUse the \'-h\' option together with the \'-t\' option to";
+    $rsp->{data}->[$n] = "\nUse the \'-h\' option together with the \'-t <object-types>\' option to";
     $n++;
     $rsp->{data}->[$n] = " get a list of valid attribute names for each object type.\n";
     xCAT::MsgUtils->message("I", $rsp, $::callback);
@@ -4700,7 +4700,7 @@ sub defls_usage
     }
     $rsp->{data}->[$n] = "$dataobj\n";
     $n++;
-    $rsp->{data}->[$n] = "\nUse the \'-h\' option together with the \'-t\' option to";
+    $rsp->{data}->[$n] = "\nUse the \'-h\' option together with the \'-t <object-types>\' option to";
     $n++;
     $rsp->{data}->[$n] = " get a list of valid attribute names for each object type.\n";
     xCAT::MsgUtils->message("I", $rsp, $::callback);
@@ -4741,7 +4741,7 @@ sub defrm_usage
     }
     $rsp->{data}->[$n] = "$dataobj\n";
     $n++;
-    $rsp->{data}->[$n] = "\nUse the \'-h\' option together with the \'-t\' option to";
+    $rsp->{data}->[$n] = "\nUse the \'-h\' option together with the \'-t <object-types>\' option to";
     $n++;
     $rsp->{data}->[$n] = " get a list of valid attribute names for each object type.\n";
     xCAT::MsgUtils->message("I", $rsp, $::callback);

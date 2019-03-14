@@ -21,7 +21,7 @@ xdcp.1
 
 \ **xdcp**\  \ *noderange*\   [[\ **-B**\  | \ **-**\ **-bypass**\ ] [\ **-f**\  \ *fanout*\ ] [\ **-L**\ ]  [\ **-l**\   \ *userID*\ ] [\ **-o**\  \ *node_options*\ ] [\ **-p**\ ] [\ **-P**\ ] [\ **-r**\  \ *node remote copy command] [\ \*\*-R\*\*\ ] [\ \*\*-t\*\*\  \ \*timeout\*\ ] [\ \*\*-T\*\*\ ] [\ \*\*-v\*\*\ ] [\ \*\*-q\*\*\ ] [\ \*\*-X\*\*\  \ \*env_list\*\ ] \ \*sourcefile.... targetpath\*\ *\ 
 
-\ **xdcp**\  \ *noderange*\   [\ **-F**\  Irsynclist input file>] [\ **-r**\  \ *node remote copy command*\ ]
+\ **xdcp**\  \ *noderange*\   [\ **-F**\  \ *rsynclist input file*\ ] [\ **-r**\  \ *node remote copy command*\ ]
 
 \ **xdcp**\  \ *computenoderange*\   [\ **-s**\  \ **-F**\  \ *synclist input file*\ ] [\ **-r**\  \ *node remote copy command*\ ]
 
