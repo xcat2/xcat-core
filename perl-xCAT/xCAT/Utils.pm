@@ -608,7 +608,7 @@ sub get_conserver_version
     # output format:
     # conserver: conserver.com version 8.2.1
     # conserver: default access type `r'
-    my @out  = xCAT::Utils->runcmd("$cmd", 0);
+    my @out  = xCAT::Utils->runcmd("$cmd", -1);
     if ($::RUNCMD_RC != 0 || @out < 1) {
         return undef;
     }
