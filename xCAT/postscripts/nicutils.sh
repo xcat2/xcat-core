@@ -743,6 +743,17 @@ function check_brctl() {
     fi
 }
 
+###############################################################################
+#
+# check and set device managed
+# input: ifname
+# output: 0   managed
+#         1   umanaged
+#
+###############################################################################
+function check_and_set_device_managed() {
+    ifname=$1
+}
 
 ###############################################################################
 #
@@ -1548,3 +1559,82 @@ function decode_arguments {
     return $rc
 }
 
+###############################################################################
+#
+# check NetworkManager
+# output: 2 error
+#         1 using NetworkManager
+#         0 using network
+#
+##############################################################################
+function check_NetworkManager_or_network_service() {
+    #check NetworkManager is active
+    checkservicestatus NetworkManager > /dev/null 2>/dev/null
+    if [ $? -eq 0 ]; then
+        log_info "NetworkManager is active"
+        #check nmcli is installed
+        type $nmcli >/dev/null 2>/dev/null
+        if [ $? -ne 0 ]; then
+            log_error "There is no nmcli"
+        else
+            stopservice network | log_lines info
+            disableservice network | log_lines info
+            stopservice networking | log_lines info
+            disableservice networking | log_lines info
+            return 1
+        fi
+    fi
+    checkservicestatus network > /dev/null 2>/dev/null
+    if [ $? -eq 0 ]; then
+        stopservice NetworkManager | log_lines info
+        disableservice NetworkManager | log_lines info
+        log_info "network service is active"
+        return 0
+    fi
+    checkservicestatus networking > /dev/null 2>/dev/null
+    if [ $? -eq 0 ]; then
+        stopservice NetworkManager | log_lines info
+        disableservice NetworkManager | log_lines info
+        log_info "networking service is active"
+        return 0
+    fi
+    log_error "NetworkManager, network.service and networking service are not active"
+    return 2
+}
+
+###############################################################################
+#
+# create vlan using nmcli
+#
+# input : ifname=<ifname> slave_ports=<ports> xcatnet=<xcatnetwork> _ipaddr=<ip> _netmask=<netmask> _mtu=<mtu> _bridge=<bridge_name> vlanid=<vlanid>
+# return : 0 success
+#
+###############################################################################
+function create_vlan_interface_nmcli {
+    log_info "create_vlan_interface_nmcli $@"
+}
+
+###############################################################################
+#
+# create  bridge
+#
+# input : ifname=<ifname> xcatnet=<xcat_network> _ipaddr=<ip> _netmask=<netmask> _port=<port> _pretype=<nic_type> _brtype=<bridge|bridge_ovs> _mtu=<mtu> _bridge=<bridge_name>
+#
+###############################################################################
+function create_bridge_interface_nmcli {
+    log_info "create_bridge_interface_nmcli $@"
+
+}
+
+#############################################################################################################################
+#
+# create bond or bond->vlan interface
+# https://www.kernel.org/doc/Documentation/networking/bonding.txt
+# https://access.redhat.com/documentation/en-US/Red_Hat_Enterprise_Linux/7/html/Networking_Guide/sec-Using_Channel_Bonding.html
+#
+# input : ifname=<nic> xcatnet=<xcatnetwork> _ipaddr=<ip> _netmask=<netmask> _bonding_opts=<bonding_opts> _mtu=<mtu> slave_ports=<port1,port2>
+#
+############################################################################################################################
+function create_bond_interface_nmcli {
+    log_info "create_bond_interface $@"
+}

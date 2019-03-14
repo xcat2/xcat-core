@@ -4,15 +4,13 @@ B<xdcp> - Concurrently copies files to or from multiple nodes. In addition, prov
 
 =head1 B<SYNOPSIS>
 
-B<xdcp> I<noderange>  [[B<-B> | B<--bypass>] [B<-f> I<fanout>] [B<-L>]  [B<-l>  I<userID>] [B<-o> I<node_options>] [B<-p>] [B<-P>] [B<-r> I<node_remote_shell>] [B<-R>] [B<-t> I<timeout>] [B<-T>] [B<-v>] [B<-q>] [B<-X> I<env_list>] I<sourcefile.... targetpath>
+B<xdcp> I<noderange>  [[B<-B> | B<--bypass>] [B<-f> I<fanout>] [B<-L>]  [B<-l>  I<userID>] [B<-o> I<node_options>] [B<-p>] [B<-P>] [B<-r> I<node remote copy command] [B<-R>] [B<-t> I<timeout>] [B<-T>] [B<-v>] [B<-q>] [B<-X> I<env_list>] I<sourcefile.... targetpath>
 
-B<xdcp> I<noderange>  [B<-F> I<rsync input file>]
+B<xdcp> I<noderange>  [B<-F> I<rsynclist input file>] [B<-r> I<node remote copy command>]
 
-B<xdcp> I<computenoderange>  [B<-s> B<-F> I<rsync input file>]
+B<xdcp> I<computenoderange>  [B<-s> B<-F> I<synclist input file>] [B<-r> I<node remote copy command>]
 
-
-B<xdcp> [B<-i> I<install image>] [B<-F> I<rsync input file>]
-
+B<xdcp> [B<-i> I<install image>] [B<-F> I<synclist input file>] [B<-r> I<node remote copy command>]
 
 B<xdcp> [B<-h> | B<-V> | B<-q>]
 
@@ -46,7 +44,7 @@ For node targets, the remote copy command is determined by the  following order 
 
 1. The B<-r> flag.
 
-2. The B</usr/bin/scp> command.
+2. The B</usr/bin/rsync> command.
 
 B<COMMAND> B<EXECUTIONS>:
 
@@ -99,7 +97,7 @@ Specifies a fanout value for the maximum number of  concurrently  executing  rem
 can be specified by indicating a fanout value of B<1>.
 If B<-f> is not specified, a default fanout value of B<64> is used.
 
-=item B<-F>|B<--File> I<rsync input file>
+=item B<-F>|B<--File> I<synclist input file>
 
 Specifies the path to the file that will be used to
 build the B<rsync> command.
@@ -151,10 +149,17 @@ valid contexts. Each setting is prefixed with  I<context>:  to
 identify the source context of the setting.
 
 
-=item B<-r>|B<--node-rcp> I<node_remote_copy>
+=item B<-r>|B<--node-rcp> I<node remote copy command>
 
-Specifies  the  full  path of the remote copy command used
-for remote command execution on node targets.
+Specifies  the  full  path of the remote copy command used for syncing files to node targets, such as B</usr/bin/rsync> or B</usr/bin/scp>. If not specified, B<rsync> will be used by default.
+
+Note: The synclist processing for B<-r /usr/bin/scp> has some differences with B<-r /usr/bin/rsync>:
+
+1) the B<EXECUTE> clause in synclist file is not supported with B<-r /usr/bin/scp> flag
+
+2) if the destination directory specified in synclist file is an existing file on target node, B<xdcp -r /usr/bin/scp> will fail with "scp: <destination directory>: Not a directory"
+
+3) if the destination file specified in synclist file is an existing directory on target node, B<xdcp -r /usr/bin/scp> will fail with "scp: <destination file>: Is a directory"
 
 
 =item B<-R>|B<--recursive> I<recursive>

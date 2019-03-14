@@ -495,7 +495,6 @@ else # for common mode  MODE=1,2,3,5 (updatenode,moncfg,node deployment)
              download_postscripts "${SIP}:${HTTPPORT}"
              if [ $? -eq 0 ]; then
                  downloaded=1
-                 break
              fi
          fi
     fi

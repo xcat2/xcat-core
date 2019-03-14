@@ -559,7 +559,11 @@ function configure_nicdevice {
             if [ $? -ne 0 ]; then
                 errorcode=1
             else
-               create_bridge_interface ifname=$nic_dev _brtype=$nic_dev_type _port=$base_nic_dev _pretype=$base_nic_type
+               if [ "$networkmanager_active" = "0" ]; then
+                   create_bridge_interface ifname=$nic_dev _brtype=$nic_dev_type _port=$base_nic_dev _pretype=$base_nic_type
+               elif [ "$networkmanager_active" = "1" ]; then
+                   create_bridge_interface_nmcli ifname=$nic_dev _brtype=$nic_dev_type _port=$base_nic_dev _pretype=$base_nic_type
+               fi
             fi
         #configure vlan
         elif [ x"$nic_dev_type" = "xvlan" ]; then
@@ -570,11 +574,18 @@ function configure_nicdevice {
                 vlanid=`echo "$nic_dev" | $sed -e 's/^\(.*\)vla\?n\?\([0-9]\+\)$/\2/'`
                 vlanname=`echo "$nic_dev" | $sed -e 's/^\(.*\)vla\?n\?\([0-9]\+\)$/\1/'`
             fi
-            create_vlan_interface ifname=$vlanname vlanid=$vlanid
-
+            if [ "$networkmanager_active" = "0" ]; then
+                create_vlan_interface ifname=$vlanname vlanid=$vlanid
+            elif [ "$networkmanager_active" = "1" ]; then
+                create_vlan_interface_nmcli ifname=$vlanname vlanid=$vlanid
+            fi
         #configure bond
         elif [ x"$nic_dev_type" = "xbond" ]; then
-            create_bond_interface ifname=$nic_dev slave_ports=$base_nic_for_bond slave_type=$base_nic_type
+            if [ "$networkmanager_active" = "0" ]; then
+                create_bond_interface ifname=$nic_dev slave_ports=$base_nic_for_bond slave_type=$base_nic_type
+            elif [ "$networkmanager_active" = "1" ]; then
+                create_bond_interface_nmcli ifname=$nic_dev slave_ports=$base_nic_for_bond slave_type=$base_nic_type
+            fi
         elif [ x"$nic_dev_type" = "xinfiniband" ] || [ x"$nic_dev_type" = "xOmnipath" ]; then
             log_info "Call configib for IB nics: $nic_dev, ports: $num_iba_ports"
             log_info "NIC_IBNICS=$nic_dev NIC_IBAPORTS=$num_iba_ports configib"
@@ -591,26 +602,6 @@ function configure_nicdevice {
         ((num+=1))
     done
     return $errorcode
-}
-
-############################################################################
-#
-# disable NetworkManager and start network
-#
-###########################################################################
-function enable_network_service {
-
-    checkservicestatus NetworkManager > /dev/null
-    if [ $? -eq 0 ]; then
-        log_info "NetworkManager is active. start to stop it ..."
-        stopservice NetworkManager | log_lines info
-        disableservice NetworkManager
-        enableservice network
-        startservice network
-    else
-        log_info "NetworkManager is inactive."
-    fi
-
 }
 
 ############################################################################
@@ -642,6 +633,17 @@ if [ $boot_install_nic -eq 1 ];then
         log_error "Can not determine proper install nic."
         errorcode=1
     fi
+fi
+
+#check if using NetworkManager or  network service
+networkmanager_active=2
+check_NetworkManager_or_network_service
+if [ $? -eq 0 ]; then
+    networkmanager_active=0
+elif [ $? -eq 1 ]; then
+    networkmanager_active=1
+else
+    exit 1
 fi
 
 #replace | with "@", for example, eth1|eth2  ---->   eth1@eth2
@@ -695,8 +697,6 @@ if [ -n "$valid_sorted_nicdevice_list" ]; then
     log_info "All valid nics and device list:"
     echo "$valid_sorted_nicdevice_list" |log_lines info
 fi
-#enable network service
-enable_network_service
 
 #config nics and ifcfg files
 configure_nicdevice "$valid_sorted_nicdevice_list"
