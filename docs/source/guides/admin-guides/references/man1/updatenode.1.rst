@@ -61,7 +61,7 @@ Update the ca and credentials for the service nodes.
 The default behavior when no options are input to \ **updatenode**\  will be to run
 the following options \ **-S**\ , \ **-P**\  and \ **-F**\  options in this order.
 If you wish to limit \ **updatenode**\  to specific
-actions you can use combinations of the \ **-S**\ , \ **-P**\ , and \ **-F**\  flags.
+actions you can use combination of the \ **-S**\ , \ **-P**\ , and \ **-F**\  flags.
 
 For example, If you just want to synchronize configuration file you could
 specify the \ **-F**\  flag.   If you want to synchronize files and update
