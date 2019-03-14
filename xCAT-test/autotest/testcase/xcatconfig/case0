@@ -335,8 +335,8 @@ start:xcatconfig_u_check_xcatsslversion_rhels_sles
 description:after xcatconfig -u the site.xcatsslversion will not be changed
 os:rhels,sles
 label:mn_only
-cmd:lsdef -t site -i xcatsslversion -c | grep '=TLSv1$'
-check:rc==0
+cmd:mkdir -p /tmp/xcatconfig_u_check_xcatsslversion_rhels_sles
+cmd:lsdef -t site  clustersite -z >/tmp/xcatconfig_u_check_xcatsslversion_rhels_sles/clustersite.stanza
 cmd:chtab key=xcatsslversion site.value=TLSv12
 check:rc==0
 cmd:lsdef -t site -i xcatsslversion -c | grep '=TLSv12$'
@@ -345,8 +345,8 @@ cmd:xcatconfig -u
 check:rc==0
 cmd:lsdef -t site -i xcatsslversion -c | grep '=TLSv12$'
 check:rc==0
-cmd:chtab key=xcatsslversion site.value=TLSv1
-check:rc==0
+cmd: cat /tmp/xcatconfig_u_check_xcatsslversion_rhels_sles/clustersite.stanza |mkdef -zf
+cmd: rm -rf /tmp/xcatconfig_u_check_xcatsslversion_rhels_sles
 end
 
 
@@ -354,8 +354,8 @@ start:xcatconfig_u_check_xcatsslversion_ubuntu
 description:after xcatconfig -u the site.xcatsslversion will not be changed
 os:ubuntu
 label:mn_only
-cmd:lsdef -t site -i xcatsslversion -c | grep '=TLSv1$'
-check:rc==0
+cmd:mkdir -p /tmp/xcatconfig_u_check_xcatsslversion_ubuntu
+cmd:lsdef -t site  clustersite -z >/tmp/xcatconfig_u_check_xcatsslversion_ubuntu/clustersite.stanza
 cmd:chtab key=xcatsslversion site.value=TLSv1_2
 check:rc==0
 cmd:lsdef -t site -i xcatsslversion -c | grep '=TLSv1_2$'
@@ -364,6 +364,6 @@ cmd:xcatconfig -u
 check:rc==0
 cmd:lsdef -t site -i xcatsslversion -c | grep '=TLSv1_2$'
 check:rc==0
-cmd:chtab key=xcatsslversion site.value=TLSv1
-check:rc==0
+cmd: cat /tmp/xcatconfig_u_check_xcatsslversion_ubuntu/clustersite.stanza |mkdef -zf
+cmd: rm -rf /tmp/xcatconfig_u_check_xcatsslversion_ubuntu
 end
