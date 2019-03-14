@@ -1,6 +1,10 @@
+import fcntl
 import os
+import signal
 import struct
+import subprocess
 import termios
+import time
 
 addrtoname = {
     0x3f8: '/dev/ttyS0',
@@ -46,13 +50,41 @@ def do_serial_config():
         currattr = termios.tcgetattr(ttyf)
         currattr[4:6] = [0, termiobaud[retval['speed']]]
         termios.tcsetattr(ttyf, termios.TCSANOW, currattr)
+    retval['connected'] = bool(struct.unpack('<I', fcntl.ioctl(
+        ttyf, termios.TIOCMGET, '\x00\x00\x00\x00'))[0] & termios.TIOCM_CAR)
+    os.close(ttyf)
+    return retval
+
+def is_connected(tty):
+    ttyf = os.open(tty, os.O_RDWR | os.O_NOCTTY)
+    retval = bool(struct.unpack('<I', fcntl.ioctl(
+        ttyf, termios.TIOCMGET, '\x00\x00\x00\x00'))[0] & termios.TIOCM_CAR)
+    os.close(ttyf)
     return retval
 
 
 if __name__ == '__main__':
     serialinfo = do_serial_config()
     if serialinfo:
-        os.execl(
-            '/bin/setsid', 'setsid', 'sh', '-c',
-            'exec screen -x console <> {0} >&0 2>&1'.format(serialinfo['tty']))
-
+        running = False
+        while True:
+            if running and running.poll() is not None:
+                running = False
+            if running and not is_connected(serialinfo['tty']):
+                try:
+                    running.terminate()
+                    running.wait()
+                except Exception:
+                    pass
+                time.sleep(0.5)
+                running = subprocess.Popen(['/bin/sh', '-c',  'exec screen -x console <> {0} >&0 2>&1'.format(serialinfo['tty'])])
+                time.sleep(0.5)
+                try:
+                    running.terminate()
+                    running.wait()
+                except Exception:
+                    pass
+                running = False
+            elif not running and is_connected(serialinfo['tty']):
+                running = subprocess.Popen(['/bin/sh', '-c',  'exec screen -x console <> {0} >&0 2>&1'.format(serialinfo['tty'])])
+            time.sleep(0.5)
