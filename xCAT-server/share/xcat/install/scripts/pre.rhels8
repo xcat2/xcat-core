@@ -246,7 +246,7 @@ fi
 echo "part /boot --fstype=$BOOTFSTYPE --asprimary --ondisk=$instdisk --size=512" >>/tmp/partitionfile
 echo "part pv.000997 --grow --asprimary --ondisk=$instdisk --size=18432" >>/tmp/partitionfile
 echo "volgroup xcatvg --pesize=4096 pv.000997" >>/tmp/partitionfile
-echo "logvol / --fstype=$FSTYPE --name=root --vgname=xcatvg --grow --size=4096 --maxsize=8192" >>/tmp/partitionfile
+echo "logvol / --fstype=$FSTYPE --name=root --vgname=xcatvg --grow --size=4096 --maxsize=20480" >>/tmp/partitionfile
 echo "logvol /var --fstype=$FSTYPE --name=var --vgname=xcatvg --grow --size=2048 --maxsize=8192" >>/tmp/partitionfile
 echo "logvol /tmp --fstype=$FSTYPE --name=tmp --vgname=xcatvg --grow --size=1024 --maxsize=4096" >>/tmp/partitionfile
 echo "logvol /home --fstype=$FSTYPE --name=home --vgname=xcatvg --grow --percent=10 --maxsize=10240" >>/tmp/partitionfile
