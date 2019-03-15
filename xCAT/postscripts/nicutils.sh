@@ -1677,7 +1677,7 @@ function get_first_addr_ipv4 {
 #
 # create vlan using nmcli
 #
-# input : ifname=<ifname> vlanid=<vlanid>
+# input : ifname=<ifname> vlanid=<vlanid> ipaddrs=<ipaddrs>
 # return : 0 success
 #
 ###############################################################################
@@ -1741,18 +1741,9 @@ function create_vlan_interface_nmcli {
     $cmd
     log_info "$cmd"
     nmcli con up $con_name
-
-    i=0
-    while [ $i -lt 10 ]; do
-        con_state=`nmcli con show $con_name | grep -i state| awk '{print $2}'`;
-        if [ ! -z "$con_state" -a "$con_state" = "activated" ]; then
-            break
-        fi
-        sleep 2
-        i=$((i+1))
-    done
-
-    if [ $i -ge 10 ]; then
+    is_connection_activate_intime $con_name
+    is_active=$?
+    if [ "$is_active" -eq 0 ]; then
         log_error "The vlan configuration for $ifname.$vlanid can not be booted up"
         nmcli con delete $con_name
         if [ ! -z "$tmp_con_name" ]; then
@@ -1763,6 +1754,39 @@ function create_vlan_interface_nmcli {
         nmcli con delete $tmp_con_name
     fi
     return 0
+}
+
+###############################################################################
+#
+# is_connection_activate_intime
+#
+# input : connection_name
+#         time_out (optional, 40 seconds by default)
+# return : 1 active
+#          0 failed
+#
+###############################################################################
+
+function is_connection_activate_intime {
+    con_name=$1
+    time_out=40
+    if [ ! -z "$2" ]; then
+        time_out=$2
+    fi
+    i=0
+    while [ $i -lt "$time_out" ]; do
+        con_state=`nmcli con show $con_name | grep -i state| awk '{print $2}'`;
+        if [ ! -z "$con_state" -a "$con_state" = "activated" ]; then
+            break
+        fi
+        sleep 1
+        i=$((i+1))
+    done
+    if [ $i -ge "$time_out" ]; then
+        return 0
+    else
+        return 1
+    fi
 }
 
 ###############################################################################
