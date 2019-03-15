@@ -463,13 +463,10 @@ function stopservice {
    elif [ -n "$svcd"  ];then
       cmd="service $svcd stop"
    fi
-   if [ -n "$cmd" ]; then
-       echo $cmd
-   fi
    if [ -z "$cmd"  ];then
       return 127
    fi
-
+   echo $cmd
    #for the linux distributions with systemd support
    #In the chrooted env, the system management commands(start/stop/restart) will be ignored and the return code is 0
    #need to return the proper code in the chrooted scenario
