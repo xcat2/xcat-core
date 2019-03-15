@@ -15,7 +15,6 @@ hostname
 iputils
 irqbalance
 kernel
-lsvpd
 net-tools
 nfs-utils
 openssh-clients
@@ -31,3 +30,5 @@ util-linux
 vim-minimal
 xz
 wget
+perl-DBD-MySQL
+perl-DBD-Pg

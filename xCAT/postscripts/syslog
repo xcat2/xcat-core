@@ -231,7 +231,7 @@ config_rsyslog_V8()
     if [ -f "$conf_file" ]; then
         #rhels7.4 ships rsyslogd 8.24.0, which does not ship remote.conf
         #the relevant sections are included in rsyslog.conf
-        sed -i '/#\$ModLoad \+imudp\|imtcp\|imudp.so\|imtcp.so/s/^#//;
+        sed -i '/#\$ModLoad \+imudp\|#\$ModLoad \+imtcp\|imudp.so\|imtcp.so/s/^#//;
                        /#\$InputTCPServerRun\|UDPServerRun.*/s/^#//' $conf_file
 
         #ubuntu16.04 ships rsyslog 8.16.0,which does not ship remote.conf

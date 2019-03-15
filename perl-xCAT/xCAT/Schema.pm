@@ -1314,7 +1314,10 @@ passed as argument rather than by table value',
 " xcatdport:  The port used by the xcatd daemon for client/server communication.\n\n" .
 " xcatiport:  The port used by xcatd to receive install status updates from nodes.\n\n" .
 " xcatlport:  The port used by xcatd command log writer process to collect command output.\n\n" .
-" xcatsslversion:  The ssl version by xcatd. Default is TLSv1.\n\n" .
+" xcatsslversion:  This is the SSL_version option xcatd used and passed to \n" .
+"                  IO::Socket::SSL->start_SSL(). By default, this value is set to empty.\n" .
+"                  In this case, xcatd will use SSLv23:!SSLv2:!SSLv3:!TLSv1 internally.\n" .
+"                  For more detail, see https://metacpan.org/pod/IO::Socket::SSL\n\n" .
 " xcatsslciphers:  The ssl cipher by xcatd. Default is 3DES.\n\n",
             value => 'The value of the attribute specified in the "key" column.',
             comments => 'Any user-written notes.',

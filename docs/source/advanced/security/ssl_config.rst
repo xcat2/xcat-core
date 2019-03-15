@@ -8,20 +8,12 @@ The configuration is stored in the xCAT site table using the ``site.xcatsslversi
 Configuration
 -------------
 
-By default, xCAT ships with ``TLSv1`` configured.  The current highest SSL version that can be supported is ``TLSv1.2``.
+``site.xcatsslversion`` is the ``SSL_version`` option ``xcatd`` used and passed to ``IO::Socket::SSL->start_SSL()``. By default, this value is set to empty. In this case, ``xcatd`` will use ``SSLv23:!SSLv2:!SSLv3:!TLSv1`` internally. For more detail, see https://metacpan.org/pod/IO::Socket::SSL
+By default, xCAT ships with an empty value for ``site.xcatsslversion``. In this case, ``xcatd`` will use ``SSLv23:!SSLv2:!SSLv3:!TLSv1`` internally.
 
-* For rhels7.x and sles12.x and higher: ::
-
-    chtab key=xcatsslversion site.value=TLSv12
-
-* For ubuntu 14.x and higher: ::
+Here is an example of change ``site.xcatsslversoin`` to a different value. Say, TLS 1.2 is preferred. ::
 
     chtab key=xcatsslversion site.value=TLSv1_2
-
-* For AIX 7.1.3.x: ::
-
-    chtab key=xcatsslversion site.value=TLSv1_2
-
 
 If running > ``TLSv1``, it is possible to disable insecure ciphers.  Here's an example of one possible configuration: ::
 

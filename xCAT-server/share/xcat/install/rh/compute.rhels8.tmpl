@@ -1,12 +1,8 @@
-#version=DEVEL
-# System authorization information
-auth --enableshadow --passalgo=sha512
+#version=RHEL8
 # Use text install
 text
 # Use network installation
 %include /tmp/repos
-# Not run the Setup Agent on first boot
-firstboot --disable
 # Keyboard layouts
 keyboard --vckeymap=us --xlayouts='us'
 # System language
@@ -16,8 +12,12 @@ lang en_US.UTF-8
 #KICKSTARTNET#
 # Root password
 rootpw --iscrypted #CRYPT:passwd:key=system,username=root:password#
+# Not run the Setup Agent on first boot
+firstboot --disable
+# Do not configure the X Window System
+skipx
 # System services
-services --disabled="NetworkManager"
+#services --enabled="chronyd"
 # System timezone
 timezone #TABLE:site:key=timezone:value# --isUtc
 # Partition clearing information
@@ -27,8 +27,6 @@ clearpart --all --initlabel
 %include /tmp/partitionfile
 #XCAT_PARTITION_END#
 
-install
-skipx
 # Do not configure any iptables rules
 firewall --disable
 selinux --disable

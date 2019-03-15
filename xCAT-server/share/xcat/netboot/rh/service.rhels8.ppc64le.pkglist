@@ -31,3 +31,5 @@ util-linux
 vim-minimal
 xz
 wget
+perl-DBD-MySQL
+perl-DBD-Pg

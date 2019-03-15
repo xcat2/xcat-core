@@ -24,8 +24,8 @@ If you had the following two service nodes: ::
 
 You would add the following to ``/var/lib/pgsql/data/pg_hba.conf`` ::
 
-    host    all          all        192.168.1.10/24      md5
-    host    all          all        192.168.1.11/24      md5
+    host    all          all        192.168.1.10/32      md5
+    host    all          all        192.168.1.11/32      md5
 
 Restart PostgreSQL after editing the file: ::
 

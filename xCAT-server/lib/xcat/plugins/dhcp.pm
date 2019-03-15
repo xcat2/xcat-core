@@ -1761,7 +1761,7 @@ sub process_request
                 my $os_ver = $os;
                 $os_ver =~ s/[^0-9.^0-9]//g;
                 if (($os =~ /sles/i && $os_ver >= 11) ||
-                    ($os =~ /rhels/i && $os_ver >= 7)) {
+                    ($os =~ /rhels?/i && $os_ver >= 7)) {
 
                     $dhcpd_key = "DHCPD_INTERFACE";
                     if ($usingipv6 and $dhcpver eq "dhcpd6") {
@@ -1829,7 +1829,10 @@ sub process_request
         if ($usingipv6) {
 
             # sles11.3 and rhels7 has dhcpd and dhcpd6 config in the dhcp file
-            if ($os =~ /sles/i || $os =~ /rhels7/i) {
+            my $os_ver = $os;
+            $os_ver =~ s/[^0-9.^0-9]//g;
+            if (($os =~ /sles/i && $os_ver >= 11) ||
+                ($os =~ /rhels?/i && $os_ver >= 7)) {
                 if ($missingfiles{dhcpd}) {
                     $callback->({ error => ["The file /etc/sysconfig/dhcpd doesn't exist, check the dhcp server"] });
                 }

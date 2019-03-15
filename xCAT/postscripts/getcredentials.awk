@@ -2,9 +2,6 @@
 BEGIN {
         if ((ENVIRON["USEOPENSSLFORXCAT"]) || (ENVIRON["AIX"])) {
             server = "openssl s_client -quiet -no_ssl3 -connect " ENVIRON["XCATSERVER"] " -rand /bin/nice 2> /dev/null"
-            if (!system("openssl s_client -help 2>&1 | grep -m 1 -q -- -no_ssl2")) {
-                server = "openssl s_client -quiet -no_ssl3 -no_ssl2 -connect " ENVIRON["XCATSERVER"] " -rand /bin/nice 2> /dev/null"
-            }
         } else {
             server = "/inet/tcp/0/127.0.0.1/400"
         }
