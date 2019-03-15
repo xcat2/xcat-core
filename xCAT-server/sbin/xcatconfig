@@ -1597,7 +1597,7 @@ sub genCredentials
     chomp $hname;
     if ((!-d "/etc/xcat/ca") || $::FORCE || $::genCredentials)
     {
-	if (! $::INITIALINSTALL) {
+        if ((-r "/etc/xcat/site.sqlite") || (-r "/etc/xcat/cfgloc")) {
             # Show warning message if `TLSv1' is used
             my $cmds = "XCATBYPASS=Y $::XCATROOT/sbin/tabdump site 2>/dev/null | grep '\"xcatsslversion\",\"TLSv1\",'";
             xCAT::Utils->runcmd("$cmds", -1);
