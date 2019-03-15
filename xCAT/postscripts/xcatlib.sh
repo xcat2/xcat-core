@@ -463,9 +463,9 @@ function stopservice {
    elif [ -n "$svcd"  ];then
       cmd="service $svcd stop"
    fi
-
-   echo $cmd
-
+   if [ -n "$cmd" ]; then
+       echo $cmd
+   fi
    if [ -z "$cmd"  ];then
       return 127
    fi
@@ -477,7 +477,6 @@ function stopservice {
    retmsg=`$cmd 2>&1`
    retval=$?
    [ "$retval" = "0" ] && (echo "$retmsg" | grep -i "Running in chroot,\s*ignoring request.*" >/dev/null 2>&1) && retval=1
-
    return $retval
 }
 
