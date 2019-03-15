@@ -1720,26 +1720,38 @@ function create_vlan_interface_nmcli {
     fi
 
     if [ ! -z "$ipaddrs" ]; then
-        _netmask_long=`get_network_attr $_xcatnet mask`
+        _netmask_long=$(get_network_attr $_xcatnet mask)
         if [ $? -ne 0 ]; then
             log_error "No valid netmask get for $ifname.$vlanid"
             return 1
         else
+            ipaddr=$(get_first_addr_ipv4 $ipaddrs)
+            if [ $? -ne 0 ]; then
+                log_error "No valid IP address get for $ifname.$vlanid, please check $ipaddrs"
+                return 1
+            fi
             _netmask=$(v4mask2prefix $_netmask_long)
-            _ipaddrs="method none ip4 $ipaddrs/$_netmask"
+            _ipaddrs="method none ip4 $ipaddr/$_netmask"
         fi
+    fi
+    check_and_set_device_managed $ifname
+    log_info "check parent interface $ifname whether it is managed by NetworkManager"
+    if [ $? -ne 0 ]; then
+        log_error "The parent interface $ifname is unmanaged, so skip $ifname.$vlanid"
+        retrun 1
     fi
     #load the 8021q module if not loaded.
     load_kmod module=8021q retry=10 interval=0.5
     con_name="xcat.$ifname.$vlanid"
     tmp_con_name=""
-    if nmcli con |grep "^$con_name " > /dev/null; then
+    is_nmcli_connection_exist $con_name
+    if [ $? -eq 0 ]; then
         tmp_con_name=$con_name."-tmp"
         nmcli con modify $con_name connection.id $tmp_con_name
     fi
-    cmd="nmcli con add type vlan con-name $con_name dev $ifname id $(( 10#$vlanid )) $_ipaddrs $_mtu"
-    $cmd
-    log_info "$cmd"
+
+    nmcli con add type vlan con-name $con_name dev $ifname id $(( 10#$vlanid )) $_ipaddrs $_mtu
+    log_info "create NetworkManager connection for $ifname.$vlanid"
     nmcli con up $con_name
     is_connection_activate_intime $con_name
     is_active=$?
