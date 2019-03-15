@@ -1597,6 +1597,34 @@ sub genCredentials
     chomp $hname;
     if ((!-d "/etc/xcat/ca") || $::FORCE || $::genCredentials)
     {
+	if (! $::INITIALINSTALL) {
+            # Show warning message if `TLSv1' is used
+            my $cmds = "XCATBYPASS=Y $::XCATROOT/sbin/tabdump site 2>/dev/null | grep '\"xcatsslversion\",\"TLSv1\",'";
+            xCAT::Utils->runcmd("$cmds", -1);
+            if ($::RUNCMD_RC == 0) {
+                xCAT::MsgUtils->message('I',
+                    "__      ___   ___ _  _ ___ _  _  ___");
+                xCAT::MsgUtils->message('I',
+                    "\\ \\    / /_\\ | _ \\ \\| |_ _| \\| |/ __|                      _     +-+-+-+-+-+-+-+");
+                xCAT::MsgUtils->message('I',
+                    " \\ \\/\\/ / _ \\|   / .` || || .` | (_ |                     oo\\    |W|A|R|N|I|N|G|");
+                xCAT::MsgUtils->message('I',
+                    "  \\_/\\_/_/ \\_\\_|_\\_|\\_|___|_|\\_|\\___|                    (__)\\   +-+-+-+-+-+-+-+");
+                xCAT::MsgUtils->message('I',
+                    "+--------------------------------------------------------------+ +-+-+-+-+-+-+-+");
+                xCAT::MsgUtils->message('I',
+                    "| Using `TSLv1' for `site.xcatsslversion' was depracated.      |:|W|A|R|N|I|N|G|");
+                xCAT::MsgUtils->message('I',
+                    "| Run `chdef -t site xcatsslversion=' to update your system to |:+-+-+-+-+-+-+-+");
+                xCAT::MsgUtils->message('I',
+                    "| the new default value. See `man site' for more details.      |:+-+-+-+-+-+-+-+");
+                xCAT::MsgUtils->message('I',
+                    "+--------------------------------------------------------------+:|W|A|R|N|I|N|G|");
+                xCAT::MsgUtils->message('I',
+                    " ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::+-+-+-+-+-+-+-+");
+            }
+        }
+
         xCAT::MsgUtils->message(
             'I',
 "\nSetting up basic certificates.  Respond with a \'y\' when prompted.\n"
