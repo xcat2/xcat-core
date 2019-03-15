@@ -746,13 +746,32 @@ function check_brctl() {
 ###############################################################################
 #
 # check and set device managed
-# input: ifname
+# input: network device interface
 # output: 0   managed
 #         1   umanaged
 #
 ###############################################################################
 function check_and_set_device_managed() {
-    ifname=$1
+    devname=$1
+    rc=1
+    $nmcli device show $devname >/dev/null 2>/dev/null
+    if [ $? -ne 0 ]; then
+        log_error "Device $devname not found"
+    else
+        $nmcli -g GENERAL.STATE device show $devname|grep unmanaged >/dev/null 2>/dev/null
+        if [ $? -eq 0 ]; then
+            log_info "$nmcli device set $devname managed yes"
+            $nmcli device set $devname managed yes
+            if [ $? -eq 0 ]; then
+                rc=0
+            else
+                log_error "nmcli fail to set device $devname managed"
+            fi
+        else
+            rc=0
+        fi
+    fi
+    return $rc
 }
 
 ###############################################################################
@@ -1600,6 +1619,59 @@ function check_NetworkManager_or_network_service() {
     fi
     log_error "NetworkManager, network.service and networking service are not active"
     return 2
+}
+
+###############################################################################
+#
+# check nmcli connection name existed or not
+# input: network connetion
+# return: 0  connection exists
+#         1  connection does not exist
+#
+##############################################################################
+function is_nmcli_connection_exist {
+
+    str_con_name=$1
+    # the device str_if_name active connectin
+    nmcli -g NAME connection show |grep -w $str_con_name >/dev/null 2>/dev/null
+    if [ $? -eq 0 ]; then
+        return 0
+    else
+        return 1
+    fi
+
+}
+
+###############################################################################
+#
+# get first addr from nicips if it is valid ipv4 addr
+# input: nics.nicips for one nic
+# return 0, output: ipv4 addr
+# return 1, output error: "IP: $IP not available" or "$IP: IP format error"
+#
+###############################################################################
+function get_first_addr_ipv4 {
+
+    str_ips=$1
+    res=1
+    if [ -n "$str_ips" ]; then
+        IP=$(echo "$str_ips"|awk -F"|" '{print $1}')
+        if [[ $IP =~ ^[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}$ ]]; then
+            FIELD1=$(echo $IP|cut -d. -f1)
+            FIELD2=$(echo $IP|cut -d. -f2)
+            FIELD3=$(echo $IP|cut -d. -f3)
+            FIELD4=$(echo $IP|cut -d. -f4)
+            if [ $FIELD1 -gt 0 -a $FIELD1 -lt 255 -a $FIELD2 -le 255 -a $FIELD3 -le 255 -a $FIELD4 -le 255 -a $FIELD4 -gt 0 ]; then
+                echo "$IP"
+                res=0
+            else
+                log_error "IP: $IP invalid"
+            fi
+        else
+            log_error "$IP: IP format error"
+        fi
+    fi
+    return $res
 }
 
 ###############################################################################

@@ -614,6 +614,17 @@ errorcode=0
 #nictypes should support capital letters, for example, Ethernet and ethernet
 utolcmd="sed -e y/ABCDEFGHIJKLMNOPQRSTUVWXYZ/abcdefghijklmnopqrstuvwxyz/"
 
+#back up all network interface configure files
+nwdirbak=$nwdir".xcatbak"
+ls $nwdirbak > /dev/null 2>/dev/null
+if [ $? -ne 0 ]; then
+    log_info "back up $nwdir to $newdirbak"
+    cp -rf $nwdir $nwdirbak > /dev/null 2>/dev/null
+    if [ $? -ne 0 ]; then
+        log_warn "back up $nwdir to $newdirbak failed."
+    fi
+fi
+
 #get for installnic
 installnic=''
 installnic=`get_installnic`
