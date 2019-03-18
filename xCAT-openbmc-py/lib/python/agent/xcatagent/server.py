@@ -101,7 +101,7 @@ class Server(object):
             new_args=[]
             if req['args']:
                 for a in req['args']:
-                    new_args.append(a)
+                    new_args.append(str(a))
             # call the function in the specified manager
             func(req['nodeinfo'], new_args)
             # after the method returns, the request should be handled
