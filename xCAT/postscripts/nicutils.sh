@@ -1646,19 +1646,19 @@ function create_bridge_interface_nmcli {
         shift
     done
     # query "nicnetworks" table about its target "xcatnet"
-    if [ -n "$ifname" -a -z "$xcatnet" ]; then
-        xcatnet=`query_nicnetworks_net $ifname`
+    if [ -n "$ifname" ]; then
+        xcatnet=$(query_nicnetworks_net $ifname)
         log_info "Pickup xcatnet, \"$xcatnet\", from NICNETWORKS for interface \"$ifname\"."
     fi
 
     # Query mtu value from "networks" table
-    _mtu_num=`get_network_attr $xcatnet mtu`
+    _mtu_num=$(get_network_attr $xcatnet mtu)
     if [ -n "$_mtu_num" ]; then
         _mtu="mtu $_mtu_num"
     fi
 
     # Query mask value from "networks" table
-    _netmask=`get_network_attr $xcatnet mask`
+    _netmask=$(get_network_attr $xcatnet mask)
     if [ $? -ne 0 ]; then
         log_error "No valid netmask get for $ifname"
         return 1
@@ -1695,10 +1695,15 @@ function create_bridge_interface_nmcli {
         $nmcli con add type bridge con-name $xcat_con_name ifname $ifname
         if [ $? -ne 0 ]; then
             log_error "nmcli failed to add bridge $ifname"
+            is_nmcli_connection_exist $tmp_con_name
+            if [ $? -eq 0 ] ; then
+                $nmcli con modify $tmp_con_name connection.id $xcat_con_name
+            fi
+            $nmcli con delete $xcat_con_name
             return 1
         fi
-    elif [ x"$_brtype" == "xbridge_ovs" ]; then
-        log_error "OVSBridge is not supported."
+    else
+        log_error "$_brtype is not supported."
         return 1
     fi
 
@@ -1716,9 +1721,14 @@ function create_bridge_interface_nmcli {
             fi
         fi
         log_info "create $_pretype slaves connetcion $xcat_slave_con for bridge"
-        $nmcli con add type $_pretype con-name $xcat_slave_con ifname $_port master $ifname;
+        $nmcli con add type $_pretype con-name $xcat_slave_con ifname $_port master $ifname $_mtu
         if [ $? -ne 0 ]; then
             log_error "nmcli failed to add bridge slave $_port"
+            is_nmcli_connection_exist $tmp_slave_con_name
+            if [ $? -eq 0 ] ; then
+                $nmcli con modify $xcat_slave_con connection.id $tmp_slave_con_name
+            fi
+            $nmcli con delete $xcat_slave_con
             return 1
         fi
     else
@@ -1751,7 +1761,7 @@ function create_bridge_interface_nmcli {
     is_connection_activate_intime $xcat_con_name
     is_active=$?
     if [ "$is_active" -eq 0 ]; then
-        log_error "$nmcli con up $xcat_con_name failed with return code equals to $rc"
+        log_error "$nmcli con up $xcat_con_name failed with return code equals to $is_active"
         $nmcli con delete $xcat_con_name
         is_nmcli_connection_exist $tmp_con_name
         if [ $? -eq 0 ]; then
@@ -1760,7 +1770,7 @@ function create_bridge_interface_nmcli {
         $nmcli con delete $xcat_slave_con
         is_nmcli_connection_exist $tmp_slave_con_name
         if [ $? -eq 0 ]; then
-            nmcli con modify $xcat_slave_con connection.id $tmp_slave_con_name
+            nmcli con modify $tmp_slave_con_name connection.id $xcat_slave_con
         fi
     else
         is_nmcli_connection_exist $tmp_con_name

@@ -563,7 +563,7 @@ function configure_nicdevice {
                elif [ "$networkmanager_active" = "1" ]; then
                    create_bridge_interface_nmcli ifname=$nic_dev _brtype=$nic_dev_type _port=$base_nic_dev _pretype=$base_nic_type _ipaddr=$ipaddrs
                    if [ $? -ne 0 ]; then
-                       log_error "create bridge interface $ifname failed"
+                       log_error "create bridge interface $nic_dev failed"
                        errorcode=1;
                    fi
                fi
