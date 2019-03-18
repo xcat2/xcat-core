@@ -1646,10 +1646,8 @@ function create_bridge_interface_nmcli {
         shift
     done
     # query "nicnetworks" table about its target "xcatnet"
-    if [ -n "$ifname" ]; then
-        xcatnet=$(query_nicnetworks_net $ifname)
-        log_info "Pickup xcatnet, \"$xcatnet\", from NICNETWORKS for interface \"$ifname\"."
-    fi
+    xcatnet=$(query_nicnetworks_net $ifname)
+    log_info "Pickup xcatnet, \"$xcatnet\", from NICNETWORKS for interface \"$ifname\"."
 
     # Query mtu value from "networks" table
     _mtu_num=$(get_network_attr $xcatnet mtu)
@@ -1699,7 +1697,6 @@ function create_bridge_interface_nmcli {
             if [ $? -eq 0 ] ; then
                 $nmcli con modify $tmp_con_name connection.id $xcat_con_name
             fi
-            $nmcli con delete $xcat_con_name
             return 1
         fi
     else
@@ -1726,9 +1723,8 @@ function create_bridge_interface_nmcli {
             log_error "nmcli failed to add bridge slave $_port"
             is_nmcli_connection_exist $tmp_slave_con_name
             if [ $? -eq 0 ] ; then
-                $nmcli con modify $xcat_slave_con connection.id $tmp_slave_con_name
+                $nmcli con modify $tmp_slave_con_name connection.id $xcat_slave_con
             fi
-            $nmcli con delete $xcat_slave_con
             return 1
         fi
     else
