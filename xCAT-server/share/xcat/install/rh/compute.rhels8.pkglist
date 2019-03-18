@@ -6,3 +6,4 @@ openssh-server
 rsync
 util-linux
 wget
+python3
