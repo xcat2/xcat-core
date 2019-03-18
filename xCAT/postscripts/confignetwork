@@ -523,7 +523,7 @@ function configure_nicdevice {
         echo "++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++"
         nic_pair=`echo "$nics_pair" |sed -n "${num}p"`
         echo "configure nic and its device : $nic_pair"
-
+        ipaddrs=$(find_nic_ips $nic_dev)
         #ignore bmc interfaces. They're allowed in the nics table to generate DNS/hostname records, but they
         #can't be configured here (it's done in bmcsetup
         if [ x"$nic_dev_type" = "xbmc" ]; then
@@ -532,7 +532,6 @@ function configure_nicdevice {
         #configure standalone ethernet nic
         elif [ x"$nic_dev_type" = "xethernet" ]; then
             xcatnet=`query_nicnetworks_net $nic_dev`
-            ipaddrs=`find_nic_ips $nic_dev`
             if [ -n "$ipaddrs" ]; then
                 log_info "configure $nic_dev"
                 log_info "call: configeth $nic_dev $ipaddrs $xcatnet"
@@ -562,7 +561,11 @@ function configure_nicdevice {
                if [ "$networkmanager_active" = "0" ]; then
                    create_bridge_interface ifname=$nic_dev _brtype=$nic_dev_type _port=$base_nic_dev _pretype=$base_nic_type
                elif [ "$networkmanager_active" = "1" ]; then
-                   create_bridge_interface_nmcli ifname=$nic_dev _brtype=$nic_dev_type _port=$base_nic_dev _pretype=$base_nic_type
+                   create_bridge_interface_nmcli ifname=$nic_dev _brtype=$nic_dev_type _port=$base_nic_dev _pretype=$base_nic_type _ipaddr=$ipaddrs
+                   if [ $? -ne 0 ]; then
+                       log_error "create bridge interface $nic_dev failed"
+                       errorcode=1;
+                   fi
                fi
             fi
         #configure vlan

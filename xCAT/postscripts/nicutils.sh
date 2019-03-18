@@ -1806,12 +1806,171 @@ function is_connection_activate_intime {
 #
 # create  bridge
 #
-# input : ifname=<ifname> xcatnet=<xcat_network> _ipaddr=<ip> _netmask=<netmask> _port=<port> _pretype=<nic_type> _brtype=<bridge|bridge_ovs> _mtu=<mtu> _bridge=<bridge_name>
+# input : ifname=<ifname> _ipaddr=<ip> _port=<port> _pretype=<nic_type> _brtype=<bridge>
+# success: return 0
 #
 ###############################################################################
 function create_bridge_interface_nmcli {
     log_info "create_bridge_interface_nmcli $@"
+    local ifname="" #current bridge
+    local _brtype=""
+    local _pretype=""
+    local _port=""  #pre nic
+    local _mtu=""
+    local xcatnet=""
+    local _ipaddr=""
+    rc=0
+    # parser input arguments
+    while [ -n "$1" ];
+    do
+        key=`echo "$1" | $cut -s -d= -f1`
+        if [ "$key" = "ifname" ] || \
+           [ "$key" = "_brtype" ] || \
+           [ "$key" = "_pretype" ] || \
+           [ "$key" = "_port" ] || \
+           [ "$key" = "_ipaddr" ]; then
+            eval "$1"
+        fi
+        shift
+    done
+    # query "nicnetworks" table about its target "xcatnet"
+    xcatnet=$(query_nicnetworks_net $ifname)
+    log_info "Pickup xcatnet, \"$xcatnet\", from NICNETWORKS for interface \"$ifname\"."
 
+    # Query mtu value from "networks" table
+    _mtu_num=$(get_network_attr $xcatnet mtu)
+    if [ -n "$_mtu_num" ]; then
+        _mtu="mtu $_mtu_num"
+    fi
+
+    # Query mask value from "networks" table
+    _netmask=$(get_network_attr $xcatnet mask)
+    if [ $? -ne 0 ]; then
+        log_error "No valid netmask get for $ifname"
+        return 1
+    fi
+    # Calculate prefix based on mask
+    str_prefix=$(v4mask2prefix $_netmask)
+
+    # Get first valid ip from nics.nicips
+    ipv4_addr=$(get_first_addr_ipv4 $_ipaddr)
+    if [ $? -ne 0 ]; then
+        log_error "No valid IP address get for $ifname, please check $ipaddrs"
+        return 1
+    fi
+    # Check and set slave device status
+    # If slave device failed to managed, return 1
+    check_and_set_device_managed $_port
+    if [ $? -ne 0 ]; then
+        return 1
+    fi
+    # Create bridge connection
+    xcat_con_name="xcat"$ifname
+    tmp_con_name=$xcat_con_name"-tmp"
+    if [ x"$_brtype" = "xbridge" ]; then
+        is_nmcli_connection_exist $xcat_con_name
+        if [ $? -eq 0 ] ; then
+            log_info "$xcat_con_name exists, rename old $xcat_con_name to $tmp_con_name"
+            $nmcli con modify $xcat_con_name connection.id $tmp_con_name
+            if [ $? -ne 0 ] ; then
+                log_error "$nmcli rename $xcat_con_name failed"
+                return 1
+            fi
+        fi
+        log_info "create bridge connection $xcat_con_name"
+        $nmcli con add type bridge con-name $xcat_con_name ifname $ifname
+        if [ $? -ne 0 ]; then
+            log_error "nmcli failed to add bridge $ifname"
+            is_nmcli_connection_exist $tmp_con_name
+            if [ $? -eq 0 ] ; then
+                $nmcli con modify $tmp_con_name connection.id $xcat_con_name
+            fi
+            return 1
+        fi
+    else
+        log_error "$_brtype is not supported."
+        return 1
+    fi
+
+    # Create slaves connection
+    xcat_slave_con="xcat_br_"$_port
+    tmp_slave_con_name=$xcat_slave_con"-tmp"
+    if [ x"$_pretype" = "xethernet" -o x"$_pretype" = "xvlan" -o x"$_pretype" = "xbond" ]; then
+        is_nmcli_connection_exist $xcat_slave_con
+        if [ $? -eq 0 ] ; then
+            log_info "$xcat_slave_con exists, rename old connetion $xcat_slave_con to $tmp_slave_con_name"
+            $nmcli con modify $xcat_slave_con connection.id $tmp_slave_con_name
+            if [ $? -ne 0 ] ; then
+                log_error "$nmcli rename $xcat_slave_con failed"
+                return 1
+            fi
+        fi
+        log_info "create $_pretype slaves connetcion $xcat_slave_con for bridge"
+        $nmcli con add type $_pretype con-name $xcat_slave_con ifname $_port master $ifname $_mtu
+        if [ $? -ne 0 ]; then
+            log_error "nmcli failed to add bridge slave $_port"
+            is_nmcli_connection_exist $tmp_slave_con_name
+            if [ $? -eq 0 ] ; then
+                $nmcli con modify $tmp_slave_con_name connection.id $xcat_slave_con
+            fi
+            return 1
+        fi
+    else
+        log_error "create $_pretype slaves for bridge is not supported"
+        return 1
+    fi
+
+    # Add ip to bridge
+    if [ -n "$ipv4_addr" ]; then
+        log_info "add ip $ipv4_addr/$str_prefix to bridge"
+        $nmcli con mod $xcat_con_name ipv4.method manual ipv4.addresses $ipv4_addr/$str_prefix;
+    fi
+
+    # Configure MTU
+    if [ -n "$_mtu" ]; then
+        $nmcli con mod $xcat_con_name $_mtu
+        if [ $? -ne 0 ]; then
+            log_error "$nmcli con mod $xcat_con_name $_mtu failed"
+            rc=1
+        fi
+    fi
+
+    # bring up interface formally
+    log_info "$nmcli con up $xcat_slave_con; $nmcli con up $xcat_con_name"
+    lines=`$nmcli con up $xcat_slave_con; $nmcli con up $xcat_con_name`
+    rc=$?
+
+    # If bridge interface is active, delete tmp old connection
+    # If bridge interface is not active, delete new bridge and slave connection, and restore old connection
+    is_connection_activate_intime $xcat_con_name
+    is_active=$?
+    if [ "$is_active" -eq 0 ]; then
+        log_error "$nmcli con up $xcat_con_name failed with return code equals to $is_active"
+        $nmcli con delete $xcat_con_name
+        is_nmcli_connection_exist $tmp_con_name
+        if [ $? -eq 0 ]; then
+            nmcli con modify $tmp_con_name connection.id $xcat_con_name
+        fi
+        $nmcli con delete $xcat_slave_con
+        is_nmcli_connection_exist $tmp_slave_con_name
+        if [ $? -eq 0 ]; then
+            nmcli con modify $tmp_slave_con_name connection.id $xcat_slave_con
+        fi
+    else
+        is_nmcli_connection_exist $tmp_con_name
+        if [ $? -eq 0 ]; then
+            $nmcli con delete $tmp_con_name
+        fi
+        is_nmcli_connection_exist $tmp_slave_con_name
+        if [ $? -eq 0 ]; then
+            $nmcli con delete $tmp_slave_con_name
+        fi
+        wait_for_ifstate $ifname UP 20 40
+        rc=$?
+        $ip address show dev $ifname| $sed -e 's/^/[bridge] >> /g' | log_lines info
+    fi
+
+    return $rc
 }
 
 #############################################################################################################################
