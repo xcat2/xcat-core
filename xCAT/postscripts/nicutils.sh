@@ -1709,10 +1709,10 @@ function create_vlan_interface_nmcli {
         return 1
     fi
 
-    _xcatnet=`query_nicnetworks_net $ifname.$vlanid`
+    _xcatnet=$(query_nicnetworks_net $ifname.$vlanid)
     log_info "Pickup xcatnet, \"$_xcatnet\", from NICNETWORKS for interface \"$ifname\"."
 
-    _mtu_num=`get_network_attr $xcatnet mtu`
+    _mtu_num=$(get_network_attr $xcatnet mtu)
     if [ $? -ne 0 ]; then
         _mtu=""
     else
@@ -1735,36 +1735,37 @@ function create_vlan_interface_nmcli {
         fi
     fi
     check_and_set_device_managed $ifname
-    log_info "check parent interface $ifname whether it is managed by NetworkManager"
     if [ $? -ne 0 ]; then
         log_error "The parent interface $ifname is unmanaged, so skip $ifname.$vlanid"
         retrun 1
     fi
+    log_info "check parent interface $ifname whether it is managed by NetworkManager"
     #load the 8021q module if not loaded.
     load_kmod module=8021q retry=10 interval=0.5
     con_name="xcat.$ifname.$vlanid"
     tmp_con_name=""
     is_nmcli_connection_exist $con_name
     if [ $? -eq 0 ]; then
-        tmp_con_name=$con_name."-tmp"
-        nmcli con modify $con_name connection.id $tmp_con_name
+        tmp_con_name=$con_name"-tmp"
+        $nmcli con modify $con_name connection.id $tmp_con_name
     fi
 
-    nmcli con add type vlan con-name $con_name dev $ifname id $(( 10#$vlanid )) $_ipaddrs $_mtu
+    $nmcli con add type vlan con-name $con_name dev $ifname id $(( 10#$vlanid )) $_ipaddrs $_mtu
     log_info "create NetworkManager connection for $ifname.$vlanid"
-    nmcli con up $con_name
+    $nmcli con up $con_name
     is_connection_activate_intime $con_name
     is_active=$?
     if [ "$is_active" -eq 0 ]; then
         log_error "The vlan configuration for $ifname.$vlanid can not be booted up"
-        nmcli con delete $con_name
+        $nmcli con delete $con_name
         if [ ! -z "$tmp_con_name" ]; then
-            nmcli con modify $tmp_con_name connection.id $con_name
+            $nmcli con modify $tmp_con_name connection.id $con_name
         fi
         return 1
     elif [ ! -z "$tmp_con_name" ]; then
-        nmcli con delete $tmp_con_name
+        $nmcli con delete $tmp_con_name
     fi
+    $ip address show dev $ifname.$vlanid | $sed -e 's/^/[vlan] >> /g' | log_lines info
     return 0
 }
 
@@ -1787,7 +1788,7 @@ function is_connection_activate_intime {
     fi
     i=0
     while [ $i -lt "$time_out" ]; do
-        con_state=`nmcli con show $con_name | grep -i state| awk '{print $2}'`;
+        con_state=$($nmcli con show $con_name | grep -i state| awk '{print $2}');
         if [ ! -z "$con_state" -a "$con_state" = "activated" ]; then
             break
         fi
