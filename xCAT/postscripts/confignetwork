@@ -581,7 +581,7 @@ function configure_nicdevice {
                 create_vlan_interface_nmcli ifname=$vlanname vlanid=$vlanid ipaddrs=$ipaddrs
             fi
             if [ $? -ne 0 ]; then
-                log_error "configvlan failed."
+                log_error "configure VLAN failed."
                 errorcode=1
             fi
         #configure bond
