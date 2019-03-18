@@ -1771,7 +1771,7 @@ function create_bridge_interface_nmcli {
         if [ $? -eq 0 ]; then
             $nmcli con delete $tmp_slave_con_name
         fi
-        wait_for_ifstate $ifname UP 200 10
+        wait_for_ifstate $ifname UP 20 40
         rc=$?
         $ip address show dev $ifname| $sed -e 's/^/[bridge] >> /g' | log_lines info
     fi
