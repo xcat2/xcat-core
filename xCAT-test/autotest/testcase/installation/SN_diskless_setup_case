@@ -11,10 +11,10 @@ cmd:chtab key=nameservers site.value="<xcatmaster>"
 check:rc==0
 cmd:makedns -n
 check:rc==0
-cmd:makeconservercf $$SN
+cmd:if [ -x /usr/bin/goconserver ]; then makegocons $$SN; else makeconservercf $$SN;fi
 check:rc==0
-cmd:cat /etc/conserver.cf | grep $$SN
-check:output=~$$SN
+#cmd:cat /etc/conserver.cf | grep $$SN
+#check:output=~$$SN
 cmd:sleep 20
 cmd:if [[ "__GETNODEATTR($$SN,arch)__" = "ppc64" ]]; then getmacs -D $$SN -V; fi
 check:rc==0
@@ -45,7 +45,7 @@ check:rc==0
 cmd:cd /install/post/otherpkgs/__GETNODEATTR($$SN,os)__/__GETNODEATTR($$SN,arch)__/xcat/xcat-core && createrepo .
 check:rc==0
 
-cmd:if [[ "__GETNODEATTR($$SN,os)__" =~ "rh" ]]; then path="rh";elif [[ "__GETNODEATTR($$SN,os)__" =~ "sles" ]];then path="sles";fi; ver="__GETNODEATTR($$SN,os)__"; tmp=${ver%.*};ver=`echo "$tmp"|sed 's:[a-zA-Z]::g'`;cd /install/post/otherpkgs/__GETNODEATTR($$SN,os)__/__GETNODEATTR($$SN,arch)__/xcat/xcat-dep/$path$ver/__GETNODEATTR($$SN,arch)__ && createrepo .;
+cmd:if [[ "__GETNODEATTR($$SN,os)__" =~ "rh" ]]; then path="rh";elif [[ "__GETNODEATTR($$SN,os)__" =~ "sles" ]];then path="sles";fi; ver="__GETNODEATTR($$SN,os)__"; tmp=${ver%%.*};ver=`echo "$tmp"|sed 's:[a-zA-Z]::g'`;cd /install/post/otherpkgs/__GETNODEATTR($$SN,os)__/__GETNODEATTR($$SN,arch)__/xcat/xcat-dep/$path$ver/__GETNODEATTR($$SN,arch)__ && createrepo .;
 check:rc==0
 
 cmd:mkdef -t osimage -o __GETNODEATTR($$SN,os)__-__GETNODEATTR($$SN,arch)__-netboot-service --template __GETNODEATTR($$SN,os)__-__GETNODEATTR($$SN,arch)__-netboot-compute  profile=service provmethod=netboot postscripts=servicenode
@@ -54,7 +54,7 @@ check:rc==0
 cmd:chdef -t osimage __GETNODEATTR($$SN,os)__-__GETNODEATTR($$SN,arch)__-netboot-service otherpkgdir=/install/post/otherpkgs/__GETNODEATTR($$SN,os)__/__GETNODEATTR($$SN,arch)__
 check:rc==0
 
-cmd:if [[ "__GETNODEATTR($$SN,os)__" =~ "rh" ]]; then path="rh";elif [[ "__GETNODEATTR($$SN,os)__" =~ "sles" ]];then path="sles";fi; ver="__GETNODEATTR($$SN,os)__"; chdef -t osimage __GETNODEATTR($$SN,os)__-__GETNODEATTR($$SN,arch)__-netboot-service otherpkglist=/opt/xcat/share/xcat/netboot/$path/service.${ver%.*}.__GETNODEATTR($$SN,arch)__.otherpkgs.pkglist pkglist=/opt/xcat/share/xcat/netboot/$path/service.${ver%.*}.__GETNODEATTR($$SN,arch)__.pkglist exlist=/opt/xcat/share/xcat/netboot/$path/service.${ver%.*}.__GETNODEATTR($$SN,arch)__.exlist postinstall=/opt/xcat/share/xcat/netboot/$path/service.${ver%.*}.__GETNODEATTR($$SN,arch)__.postinstall
+cmd:if [[ "__GETNODEATTR($$SN,os)__" =~ "rh" ]]; then path="rh";elif [[ "__GETNODEATTR($$SN,os)__" =~ "sles" ]];then path="sles";fi; ver="__GETNODEATTR($$SN,os)__"; chdef -t osimage __GETNODEATTR($$SN,os)__-__GETNODEATTR($$SN,arch)__-netboot-service otherpkglist=/opt/xcat/share/xcat/netboot/$path/service.${ver%%.*}.__GETNODEATTR($$SN,arch)__.otherpkgs.pkglist pkglist=/opt/xcat/share/xcat/netboot/$path/service.${ver%%.*}.__GETNODEATTR($$SN,arch)__.pkglist exlist=/opt/xcat/share/xcat/netboot/$path/service.${ver%%.*}.__GETNODEATTR($$SN,arch)__.exlist postinstall=/opt/xcat/share/xcat/netboot/$path/service.${ver%%.*}.__GETNODEATTR($$SN,arch)__.postinstall
 check:rc==0
 
 
