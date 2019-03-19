@@ -194,7 +194,6 @@ end
 start:makedhcp_remote_network
 descriptiion:This case is to test when there is mgtifname='!remote!<nicname>', makedhcp could work correctly and create entrys in dhcp lease file.
 os:linux
-stop:yes
 label:mn_only,dhcp
 cmd:mkdef -t network -o testnetwork net=100.100.100.0 mask=255.255.255.0 mgtifname='!remote!eth0' gateway=100.100.100.1
 check:rc==0
