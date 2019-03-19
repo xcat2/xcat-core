@@ -28,24 +28,24 @@ then
 fi
 
 cat >/tmp/baz.py <<'EOF'
-#!/usr/bin/python3
+#!/usr/libexec/platform-python
 import socket
 import sys
 
 sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 sock.connect(('#XCATVAR:XCATMASTER#',#TABLE:site:key=xcatiport:value#))
 
-print sys.argv[1]
+print(sys.argv[1])
 response = sock.recv(100)
-if(response == "ready\n"):
-        sock.send(sys.argv[1]+"\n")
+if(response == b"ready\n"):
+        sock.send((sys.argv[1]+"\n").encode())
         response = sock.recv(100)
 
 sock.close()
 EOF
 
 cat >/tmp/foo.py <<'EOF'
-#!/usr/bin/python3
+#!/usr/libexec/platform-python
 
 import socket
 import os
@@ -56,8 +56,8 @@ sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 sock.connect(('#XCATVAR:XCATMASTER#',#TABLE:site:key=xcatiport:value#))
 
 response = sock.recv(100)
-if(response == "ready\n"):
-	sock.send("installmonitor\n")
+if(response == b"ready\n"):
+	sock.send("installmonitor\n".encode())
 	response = sock.recv(100)
 
 sock.close()
@@ -78,7 +78,7 @@ try:
 			if not received:
 				break
 			command = re.split('\s+',received)
-			if(command[0] == "stat"):
+			if(command[0] == b"stat"):
 				ilog = ""
 				line = ""
 				post = 0
@@ -110,21 +110,21 @@ try:
 					line = "installing " + line
 				if(not line):
 					line = "installing prep"
-				newSocket.send(line)
+				newSocket.send(line.encode())
 				break
-#UNCOMMENTOENABLEDEBUGPORT#			if(command[0] == "sh"): #DEBUG purposes only, wide open root priv command here.
+#UNCOMMENTOENABLEDEBUGPORT#			if(command[0] == b"sh"): #DEBUG purposes only, wide open root priv command here.
 #UNCOMMENTOENABLEDEBUGPORT#				newcommand = ""
 #UNCOMMENTOENABLEDEBUGPORT#				for i in command[1:]:
 #UNCOMMENTOENABLEDEBUGPORT#					newcommand = newcommand + i + " "
 #UNCOMMENTOENABLEDEBUGPORT#				output = os.popen(newcommand).read()
-#UNCOMMENTOENABLEDEBUGPORT#				newSocket.send(output)
+#UNCOMMENTOENABLEDEBUGPORT#				newSocket.send(output.encode())
 #UNCOMMENTOENABLEDEBUGPORT#				break
-			if(command[0] == "screendump"):
+			if(command[0] == b"screendump"):
 				newcommand = "cat /dev/vcs"
 				for i in command[1:]:
 					newcommand = newcommand + i
 				output = os.popen(newcommand).read()
-				newSocket.send(output)
+				newSocket.send(output.encode())
 				break
 				
 		newSocket.close()
