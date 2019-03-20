@@ -17,7 +17,7 @@ cmd:service named restart
 check:rc==0
 cmd:if [ -x /usr/bin/goconserver ]; then makegocons $$CN; else makeconservercf $$CN; fi
 check:rc==0
-cmd:sleep 20 
+cmd:sleep 60
 cmd:if [ "__GETNODEATTR($$CN,arch)__" = "ppc64" -a  "__GETNODEATTR($$CN,mgt)__" != "ipmi" ]; then getmacs -D $$CN; fi
 check:rc==0
 cmd:makedhcp -n
@@ -60,7 +60,7 @@ cmd:xdsh $$CN "tar -jxvf /oldxcat/xcat-core* -C /oldxcat"
 check:rc==0
 cmd:xdsh $$CN "/oldxcat/xcat-core/mklocalrepo.sh"
 check:rc==0
-cmd:xdsh $$CN "cd /oldxcat/xcat-dep/rh`echo __GETNODEATTR($$CN,os)__ | cut -c6`/__GETNODEATTR($$CN,arch)__/;./mklocalrepo.sh"
+cmd:tmp="__GETNODEATTR($$CN,os)__"; ver=${tmp%%.*}; tmp="rh"${ver:(-1):1}; xdsh $$CN "cd /oldxcat/xcat-dep/$tmp/__GETNODEATTR($$CN,arch)__/;.mklocalrepo.sh"
 check:rc==0
 cmd:xdsh $$CN "yum clean all;yum -y install xCAT"
 check:rc==0
@@ -87,7 +87,7 @@ cmd:xdsh $$CN "cd /root/xcat-core;./mklocalrepo.sh"
 check:rc==0
 cmd:xdsh $$CN "tar -jxvf /xcat-dep*.tar.bz2"
 check:rc==0
-cmd:xdsh $$CN "cd /root/xcat-dep/rh`echo __GETNODEATTR($$CN,os)__ | cut -c6`/__GETNODEATTR($$CN,arch)__/;./mklocalrepo.sh"
+cmd:tmp="__GETNODEATTR($$CN,os)__"; ver=${tmp%%.*}; tmp="rh"${ver:(-1):1}; xdsh $$CN "cd /root/xcat-dep/$tmp/__GETNODEATTR($$CN,arch)__/;./mklocalrepo.sh"
 check:rc==0
 cmd:xdsh $$CN "yum clean metadata;yum -y update '*xCAT*'"
 check:rc==0
@@ -100,7 +100,6 @@ cmd:xdsh $$CN "noderm node0001"
 check:rc==0
 cmd:latest_version_info=`lsxcatd -v`;xdsh $$CN "lsxcatd -v" | grep "$latest_version_info"
 check:rc==0
-cmd:if [ -x /usr/bin/goconserver ]; then makegocons -d $$CN; else makeconservercf -d $$CN; fi
 cmd:if [[ -f /tmp/servicelabel ]];then chdef $$SN -p groups=service;rm -rf /tmp/servicelabel;fi
 check:rc==0
 cmd:if [[ -f /tmp/poweroffsn ]];then rpower $$SN on > /dev/null;rm -rf /tmp/poweroffsn;fi
@@ -126,7 +125,7 @@ cmd:service named restart
 check:rc==0
 cmd:if [ -x /usr/bin/goconserver ]; then makegocons $$CN; else makeconservercf $$CN; fi
 check:rc==0
-cmd:sleep 20 
+cmd:sleep 60
 cmd:if [ "__GETNODEATTR($$CN,arch)__" = "ppc64" -a  "__GETNODEATTR($$CN,mgt)__" != "ipmi" ]; then getmacs -D $$CN; fi
 check:rc==0
 cmd:makedhcp -n
@@ -169,7 +168,8 @@ cmd:xdsh $$CN "tar -jxvf /oldxcat/xcat-core* -C /oldxcat"
 check:rc==0
 cmd:xdsh $$CN "/oldxcat/xcat-core/mklocalrepo.sh"
 check:rc==0
-cmd:xdsh $$CN "cd /oldxcat/xcat-dep/rh`echo __GETNODEATTR($$CN,os)__ | cut -c6`/__GETNODEATTR($$CN,arch)__/;./mklocalrepo.sh"
+#cmd:xdsh $$CN "cd /oldxcat/xcat-dep/rh`echo __GETNODEATTR($$CN,os)__ | cut -c6`/__GETNODEATTR($$CN,arch)__/;./mklocalrepo.sh"
+cmd:tmp="__GETNODEATTR($$CN,os)__"; ver=${tmp%%.*}; tmp="rh"${ver:(-1):1};xdsh $$CN "cd /oldxcat/xcat-dep/$tmp/__GETNODEATTR($$CN,arch)__/;./mklocalrepo.sh"
 check:rc==0
 cmd:xdsh $$CN "yum clean all;yum -y install xCAT"
 check:rc==0
@@ -196,7 +196,8 @@ cmd:xdsh $$CN "cd /root/xcat-core;./mklocalrepo.sh"
 check:rc==0
 cmd:xdsh $$CN "tar -jxvf /xcat-dep*.tar.bz2"
 check:rc==0
-cmd:xdsh $$CN "cd /root/xcat-dep/rh`echo __GETNODEATTR($$CN,os)__ | cut -c6`/__GETNODEATTR($$CN,arch)__/;./mklocalrepo.sh"
+#cmd:xdsh $$CN "cd /root/xcat-dep/rh`echo __GETNODEATTR($$CN,os)__ | cut -c6`/__GETNODEATTR($$CN,arch)__/;./mklocalrepo.sh"
+cmd:tmp="__GETNODEATTR($$CN,os)__"; ver=${tmp%%.*}; tmp="rh"${ver:(-1):1};xdsh $$CN "cd /root/xcat-dep/$tmp/__GETNODEATTR($$CN,arch)__/;./mklocalrepo.sh"
 check:rc==0
 cmd:xdsh $$CN "yum clean metadata;yum -y update '*xCAT*'"
 check:rc==0
@@ -209,6 +210,7 @@ cmd:xdsh $$CN "noderm node0001"
 check:rc==0
 cmd:latest_version_info=`lsxcatd -v`;xdsh $$CN "lsxcatd -v" | grep "$latest_version_info"
 check:rc==0
+cmd:if [ -x /usr/bin/goconserver ]; then makegocons -d $$CN; else makeconservercf -d $$CN; fi
 cmd:if [ -x /usr/bin/goconserver ]; then makegocons -d $$CN; else makeconservercf -d $$CN; fi
 cmd:if [[ -f /tmp/servicelabel ]];then chdef $$SN -p groups=service;rm -rf /tmp/servicelabel;fi
 check:rc==0
