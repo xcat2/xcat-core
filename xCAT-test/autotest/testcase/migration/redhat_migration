@@ -15,11 +15,9 @@ cmd:makedns -n
 check:rc==0
 cmd:service named restart
 check:rc==0
-cmd:makeconservercf $$CN
+cmd:if [ -x /usr/bin/goconserver ]; then makegocons $$CN; else makeconservercf $$CN; fi
 check:rc==0
-cmd:cat /etc/conserver.cf | grep $$CN
-check:output=~$$CN
-cmd:sleep 60
+cmd:sleep 20 
 cmd:if [ "__GETNODEATTR($$CN,arch)__" = "ppc64" -a  "__GETNODEATTR($$CN,mgt)__" != "ipmi" ]; then getmacs -D $$CN; fi
 check:rc==0
 cmd:makedhcp -n
@@ -54,6 +52,8 @@ cmd:xdsh $$CN "cd /oldxcat;wget $$MIGRATION1_DEP"
 check:rc==0
 cmd:xdsh $$CN "cd /oldxcat;wget $$MIGRATION1_CORE"
 check:rc==0
+cmd:xdsh $$CN "type apt-get && apt-get install -y tar"
+cmd:xdsh $$CN "type yum && yum install -y tar"
 cmd:xdsh $$CN "tar -jxvf /oldxcat/xcat-dep* -C /oldxcat"
 check:rc==0
 cmd:xdsh $$CN "tar -jxvf /oldxcat/xcat-core* -C /oldxcat"
@@ -123,11 +123,9 @@ cmd:makedns -n
 check:rc==0
 cmd:service named restart
 check:rc==0
-cmd:makeconservercf $$CN
+cmd:if [ -x /usr/bin/goconserver ]; then makegocons $$CN; else makeconservercf $$CN; fi
 check:rc==0
-cmd:cat /etc/conserver.cf | grep $$CN
-check:output=~$$CN
-cmd:sleep 60
+cmd:sleep 20 
 cmd:if [ "__GETNODEATTR($$CN,arch)__" = "ppc64" -a  "__GETNODEATTR($$CN,mgt)__" != "ipmi" ]; then getmacs -D $$CN; fi
 check:rc==0
 cmd:makedhcp -n
@@ -162,6 +160,8 @@ cmd:xdsh $$CN "cd /oldxcat;wget $$MIGRATION2_DEP"
 check:rc==0
 cmd:xdsh $$CN "cd /oldxcat;wget $$MIGRATION2_CORE"
 check:rc==0
+cmd:xdsh $$CN "type apt-get && apt-get install -y tar"
+cmd:xdsh $$CN "type yum && yum install -y tar"
 cmd:xdsh $$CN "tar -jxvf /oldxcat/xcat-dep* -C /oldxcat"
 check:rc==0
 cmd:xdsh $$CN "tar -jxvf /oldxcat/xcat-core* -C /oldxcat"
@@ -208,6 +208,8 @@ cmd:xdsh $$CN "noderm node0001"
 check:rc==0
 cmd:latest_version_info=`lsxcatd -v`;xdsh $$CN "lsxcatd -v" | grep "$latest_version_info"
 check:rc==0
+cmd:if [ -x /usr/bin/goconserver ]; then makegocons -d $$CN; else makeconservercf -d $$CN; fi
+cmd:if [ -x /usr/bin/goconserver ]; then makegocons -d $$CN; else makeconservercf -d $$CN; fi
 cmd:if [[ -f /tmp/servicelabel ]];then chdef $$SN -p groups=service;rm -rf /tmp/servicelabel;fi
 check:rc==0
 cmd:if [[ -f /tmp/poweroffsn ]];then rpower $$SN on > /dev/null;rm -rf /tmp/poweroffsn;fi
