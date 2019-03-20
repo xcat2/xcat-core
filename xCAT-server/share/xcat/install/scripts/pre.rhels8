@@ -77,7 +77,7 @@ try:
 			received = newSocket.recv(200)
 			if not received:
 				break
-			command = re.split('\s+',received)
+			command = re.split(b'\s+',received)
 			if(command[0] == b"stat"):
 				ilog = ""
 				line = ""
@@ -113,10 +113,10 @@ try:
 				newSocket.send(line.encode())
 				break
 #UNCOMMENTOENABLEDEBUGPORT#			if(command[0] == b"sh"): #DEBUG purposes only, wide open root priv command here.
-#UNCOMMENTOENABLEDEBUGPORT#				newcommand = ""
+#UNCOMMENTOENABLEDEBUGPORT#				newcommand = b""
 #UNCOMMENTOENABLEDEBUGPORT#				for i in command[1:]:
-#UNCOMMENTOENABLEDEBUGPORT#					newcommand = newcommand + i + " "
-#UNCOMMENTOENABLEDEBUGPORT#				output = os.popen(newcommand).read()
+#UNCOMMENTOENABLEDEBUGPORT#					newcommand = newcommand + i + b" "
+#UNCOMMENTOENABLEDEBUGPORT#				output = os.popen(newcommand.decode('utf-8')).read()
 #UNCOMMENTOENABLEDEBUGPORT#				newSocket.send(output.encode())
 #UNCOMMENTOENABLEDEBUGPORT#				break
 			if(command[0] == b"screendump"):
