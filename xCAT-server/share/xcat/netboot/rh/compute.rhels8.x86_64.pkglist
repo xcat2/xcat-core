@@ -12,6 +12,7 @@ ethtool
 file
 gzip
 hostname
+initscripts
 iputils
 irqbalance
 kernel
