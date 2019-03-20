@@ -150,7 +150,7 @@ else
         $rc = &runcmd("$::XCATROOT/bin/lsxcatd -v 2>/dev/null || service xcatd restart");
         if ($rc != 0) {
             $msg = " servicenode: Could not start xcat.\n\n $::outref \n";
-            `logger -t $log_label -p local4.warning $msg`;
+            `logger -t $log_label -p local4.warning "$msg"`;
         }
     }
 }
