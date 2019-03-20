@@ -110,4 +110,5 @@ cmd:if [[ "__GETNODEATTR($$SN,arch)__" =~ "x86_64" ]]; then if [[ "__GETNODEATTR
 check:rc==0
 cmd:makentp -a
 check:rc==0
+cmd:if [ -x /usr/bin/goconserver ]; then makegocons -d $$SN; else makeconservercf -d $$SN;fi
 end

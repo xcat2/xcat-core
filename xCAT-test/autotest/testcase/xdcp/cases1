@@ -10,6 +10,8 @@ cmd:servicenode=`lsdef $$CN |grep servicenode |awk -F= '{print $2}'`; if [ -n "$
 check:rc==0
 cmd:xdsh $$CN "useradd -m xyzzy"
 check:rc==0
+cmd:xdsh $$CN "type apt-get && apt-get install -y tar"
+cmd:xdsh $$CN "type yum && yum install -y tar"
 cmd:xdsh $$CN "( cd ~ && tar cf - .ssh ) | ( cd ~xyzzy && tar xf - )"
 check:rc==0
 cmd:xdsh $$CN "chown -R xyzzy ~xyzzy/.ssh"

@@ -127,4 +127,5 @@ cmd:xdsh $$SN  "cat /var/log/xcat/xcat.log"
 cmd:rootimgdir=`lsdef -t osimage  __GETNODEATTR($$SN,os)__-__GETNODEATTR($$SN,arch)__-netboot-service|grep rootimgdir|awk -F'=' '{print $2}'`; if [ -d $rootimgdir.org ]; then rm -rf $rootimgdir; mv $rootimgdir.org $rootimgdir; fi
 check:rc==0
 cmd:xdsh $$SN  "cat /var/log/xcat/xcat.log"
+cmd:if [ -x /usr/bin/goconserver ]; then makegocons -d $$SN; else makeconservercf -d $$SN;fi
 end
