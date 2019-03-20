@@ -100,6 +100,7 @@ cmd:xdsh $$CN "noderm node0001"
 check:rc==0
 cmd:latest_version_info=`lsxcatd -v`;xdsh $$CN "lsxcatd -v" | grep "$latest_version_info"
 check:rc==0
+cmd:if [ -x /usr/bin/goconserver ]; then makegocons -d $$CN; else makeconservercf -d $$CN; fi
 cmd:if [[ -f /tmp/servicelabel ]];then chdef $$SN -p groups=service;rm -rf /tmp/servicelabel;fi
 check:rc==0
 cmd:if [[ -f /tmp/poweroffsn ]];then rpower $$SN on > /dev/null;rm -rf /tmp/poweroffsn;fi
@@ -208,7 +209,6 @@ cmd:xdsh $$CN "noderm node0001"
 check:rc==0
 cmd:latest_version_info=`lsxcatd -v`;xdsh $$CN "lsxcatd -v" | grep "$latest_version_info"
 check:rc==0
-cmd:if [ -x /usr/bin/goconserver ]; then makegocons -d $$CN; else makeconservercf -d $$CN; fi
 cmd:if [ -x /usr/bin/goconserver ]; then makegocons -d $$CN; else makeconservercf -d $$CN; fi
 cmd:if [[ -f /tmp/servicelabel ]];then chdef $$SN -p groups=service;rm -rf /tmp/servicelabel;fi
 check:rc==0
