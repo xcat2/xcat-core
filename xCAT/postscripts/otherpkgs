@@ -637,6 +637,7 @@ while [ $op_index -le $OTHERPKGS_INDEX ]; do
                 echo "baseurl=$url" >> $REPOFILE
                 echo "enabled=1" >> $REPOFILE
                 echo "gpgcheck=0" >> $REPOFILE
+                echo "skip_if_unavailable=True" >> $REPOFILE
 
             elif [ $hasapt -eq 1 ] ; then 
                 REPOFILE="$repo_base/xCAT-otherpkgs${urlrepoindex}.list"
@@ -741,6 +742,7 @@ while [ $op_index -le $OTHERPKGS_INDEX ]; do
 	            fi
 	            echo "enabled=1" >> $REPOFILE
 	            echo "gpgcheck=0" >> $REPOFILE
+                    echo "skip_if_unavailable=True" >> $REPOFILE
                 if [ $hasyum -eq 1 ]; then
                     yum clean all
                 fi
