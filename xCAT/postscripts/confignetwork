@@ -592,7 +592,11 @@ function configure_nicdevice {
             if [ "$networkmanager_active" = "0" ]; then
                 create_bond_interface ifname=$nic_dev slave_ports=$base_nic_for_bond slave_type=$base_nic_type
             elif [ "$networkmanager_active" = "1" ]; then
-                create_bond_interface_nmcli ifname=$nic_dev slave_ports=$base_nic_for_bond slave_type=$base_nic_type
+                create_bond_interface_nmcli bondname=$nic_dev slave_ports=$base_nic_for_bond slave_type=$base_nic_type _ipaddr=$ipaddrs
+            fi
+            if [ $? -ne 0 ]; then
+                log_error "configure bond $nic_dev failed."
+                errorcode=1
             fi
         elif [ x"$nic_dev_type" = "xinfiniband" ] || [ x"$nic_dev_type" = "xOmnipath" ]; then
             log_info "Call configib for IB nics: $nic_dev, ports: $num_iba_ports"

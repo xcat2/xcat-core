@@ -1878,7 +1878,9 @@ function create_bridge_interface_nmcli {
             fi
         fi
         log_info "create bridge connection $xcat_con_name"
-        $nmcli con add type bridge con-name $xcat_con_name ifname $ifname
+        cmd="$nmcli con add type bridge con-name $xcat_con_name ifname $ifname $_mtu"
+        log_info $cmd
+        $cmd
         if [ $? -ne 0 ]; then
             log_error "nmcli failed to add bridge $ifname"
             is_nmcli_connection_exist $tmp_con_name
@@ -1906,7 +1908,9 @@ function create_bridge_interface_nmcli {
             fi
         fi
         log_info "create $_pretype slaves connetcion $xcat_slave_con for bridge"
-        $nmcli con add type $_pretype con-name $xcat_slave_con ifname $_port master $ifname $_mtu
+        cmd="$nmcli con add type $_pretype con-name $xcat_slave_con ifname $_port master $ifname $_mtu"
+        log_info "$cmd"
+        $cmd
         if [ $? -ne 0 ]; then
             log_error "nmcli failed to add bridge slave $_port"
             is_nmcli_connection_exist $tmp_slave_con_name
@@ -1924,15 +1928,6 @@ function create_bridge_interface_nmcli {
     if [ -n "$ipv4_addr" ]; then
         log_info "add ip $ipv4_addr/$str_prefix to bridge"
         $nmcli con mod $xcat_con_name ipv4.method manual ipv4.addresses $ipv4_addr/$str_prefix;
-    fi
-
-    # Configure MTU
-    if [ -n "$_mtu" ]; then
-        $nmcli con mod $xcat_con_name $_mtu
-        if [ $? -ne 0 ]; then
-            log_error "$nmcli con mod $xcat_con_name $_mtu failed"
-            rc=1
-        fi
     fi
 
     # bring up interface formally
@@ -1976,12 +1971,244 @@ function create_bridge_interface_nmcli {
 #############################################################################################################################
 #
 # create bond or bond->vlan interface
-# https://www.kernel.org/doc/Documentation/networking/bonding.txt
-# https://access.redhat.com/documentation/en-US/Red_Hat_Enterprise_Linux/7/html/Networking_Guide/sec-Using_Channel_Bonding.html
 #
-# input : ifname=<nic> xcatnet=<xcatnetwork> _ipaddr=<ip> _netmask=<netmask> _bonding_opts=<bonding_opts> _mtu=<mtu> slave_ports=<port1,port2>
+# input : bondname=<nic> _ipaddr=<ip> slave_ports=<port1,port2> slave_type=<base_nic_type>
+# return : 0 successful
+#          other unsuccessful
 #
 ############################################################################################################################
 function create_bond_interface_nmcli {
     log_info "create_bond_interface $@"
+    local lines=""
+    local bondname=""
+    local xcatnet=""
+    local _ipaddr=""
+    local _netmask=""
+    local _bonding_opts=""
+    local _mtu=""
+    local slave_ports="" #bond slaves
+    local slave_type=""
+    local rc=0
+    local cleanup=0
+    # parser input arguments
+    while [ -n "$1" ];
+    do
+        key=$(echo "$1" | $cut -s -d= -f1)
+        if [ "$key" = "bondname" ] || \
+           [ "$key" = "_ipaddr" ] || \
+           [ "$key" = "slave_ports" ] || \
+           [ "$key" = "slave_type" ]; then
+            eval "$1"
+        fi
+        shift
+    done
+    if [ "$slave_type" = "ethernet" ]; then
+        slave_type="Ethernet"
+        # - "802.3ad" mode requires a switch that is 802.3ad compliant.
+        _bonding_opts="mode=802.3ad,miimon=100"
+    elif [ "$slave_type" = "infiniband" ]; then
+        slave_type="Infiniband"
+        _bonding_opts="mode=1,miimon=100,fail_over_mac=1"
+    fi
+    # query "nicnetworks" table about its target "xcatnet"
+    xcatnet=$(query_nicnetworks_net $bondname)
+    log_info "Pickup xcatnet, \"$xcatnet\", from NICNETWORKS for interface \"$bondname\"."
+
+    # Query mtu value from "networks" table
+    _mtu_num=$(get_network_attr $xcatnet mtu)
+    if [ $? -ne 0 ]; then
+        _mtu=""
+    else
+        _mtu="mtu $_mtu_num"
+    fi
+
+    # Query mask value from "networks" table
+    _netmask=$(get_network_attr $xcatnet mask)
+    if [ $? -ne 0 ]; then
+        log_error "No valid netmask get for $bondname"
+        return 1
+    fi
+
+    # Calculate prefix based on mask
+    str_prefix=$(v4mask2prefix $_netmask)
+
+    # Get first valid ip from nics.nicips
+    ipv4_addr=$(get_first_addr_ipv4 $_ipaddr)
+    if [ $? -ne 0 ]; then
+        log_error "No valid IP address get for $bondname, please check $ipaddrs"
+        return 1
+    fi
+
+    # check if all slave dev managed or not by nmcli
+    for ifslave in $(echo "$slave_ports" | $sed -e 's/,/ /g')
+    do
+        check_and_set_device_managed $ifslave
+        if [ $? -ne 0 ]; then
+            return 1
+        fi
+
+    done
+
+    # check if bond connection exist or not
+    xcat_con_name="xcat-"$bondname
+    tmp_con_name=""
+    is_nmcli_connection_exist $xcat_con_name
+    if [ $? -eq 0 ]; then
+        is_connection_activate_intime $xcat_con_name 10
+        if [ $? -eq 1 ]; then
+            $nmcli con down $xcat_con_name
+            wait_for_ifstate $bondname DOWN 40 1
+        fi 
+        tmp_con_name="xcat-bond-$xcat_con_name-tmp"
+        log_info "$xcat_con_name exists, rename old $xcat_con_name to $tmp_con_name"
+        $nmcli con modify $xcat_con_name connection.id $tmp_con_name
+        if [ $? -ne 0 ] ; then
+            log_error "$nmcli rename $xcat_con_name failed"
+            return 1
+        fi
+    fi
+
+    # create raw bond device
+    log_info "create bond connection $xcat_con_name"
+    cmd="$nmcli con add type bond con-name $xcat_con_name ifname $bondname bond.options $_bonding_opts method none ipv4.method manual ipv4.addresses $ipv4_addr/$str_prefix $_mtu"
+    log_info $cmd
+    $cmd
+    if [ $? -ne 0 ]; then
+        log_error "nmcli failed to add bond connection $xcat_con_name"
+        if [ -n "$tmp_con_name" ] ; then
+            $nmcli con modify $tmp_con_name connection.id $xcat_con_name
+        fi
+        return 1
+    fi
+
+    # Create slaves connection
+    num=1
+    xcat_slave_con_names=""
+    tmp_slave_con_names=""
+    for ifslave in $(echo "$slave_ports" | $sed -e 's/,/ /g')
+    do
+        tmp_slave_con_name=""
+        xcat_slave_con="xcat-bond-slave-"$ifslave
+        is_nmcli_connection_exist $xcat_slave_con
+        if [ $? -eq 0 ] ; then
+            tmp_slave_con_name=$xcat_slave_con"-tmp-"$num
+            log_info "rename $xcat_slave_con to $tmp_slave_con_name"
+            $nmcli con modify $xcat_slave_con connection.id $tmp_slave_con_name
+            if [ -n "$tmp_slave_con_names" ]; then
+                tmp_slave_con_names="$tmp_slave_con_names $tmp_slave_con_name"
+            else
+                tmp_slave_con_names=$tmp_slave_con_name
+            fi
+            
+        fi
+        cmd="$nmcli con add type $slave_type con-name $xcat_slave_con $_mtu method none ifname $ifslave master $xcat_con_name"
+        log_info $cmd
+        $cmd
+        if [ $? -ne 0 ]; then
+            log_error "nmcli failed to add bond slave connection $xcat_slave_name"
+            if [ -n "$tmp_slave_con_name" ] ; then
+                $nmcli con modify $tmp_slave_con_name connection.id $xcat_slave_name
+            fi
+            rc=1
+            break
+        else
+            if [ -n "$xcat_slave_con_names" ]; then
+                xcat_slave_con_names="$xcat_slave_con_names $xcat_slave_con"
+            else
+                xcat_slave_con_names=$xcat_slave_con
+            fi
+        fi
+        if [ -n "$tmp_slave_con_name" ]; then
+            is_connection_activate_intime $tmp_slave_con_name 10
+            if [ $? -eq 1 ]; then
+                $nmcli con down $tmp_slave_con_name
+            fi 
+        fi
+        cmd="$nmcli con up $xcat_slave_con"
+        log_info $cmd
+        $cmd
+        is_connection_activate_intime $xcat_slave_con
+        is_active=$?
+        if [ "$is_active" -eq 0 ]; then
+            log_error "The bond slave connection $xcat_slave_con can not be booted up"
+            $nmcli con delete $xcat_slave_con
+            if [ -n "$tmp_slave_con_name" ]; then
+                $nmcli con modify $tmp_slave_con_name connection.id $xcat_slave_con
+            fi
+            rc=1
+            break
+        fi 
+    done
+    # bring up interface formally
+    if [ $rc -ne 1 ]; then 
+        log_info "$nmcli con up $xcat_con_name"
+        lines=$($nmcli con up $xcat_con_name)
+        is_connection_activate_intime $xcat_con_name
+        is_active=$?
+        if [ "$is_active" -eq 0 ]; then
+            log_error "connection $xcat_con_name failed to activate"
+            rc=1
+        else
+            wait_for_ifstate $bondname UP 20 10
+            if [ $? -ne 0 ]; then
+                rc=1
+            else
+                $ip address show dev $bondname| $sed -e 's/^/[bond] >> /g' | log_lines info
+            fi
+        fi
+    fi
+
+    if [ $rc -eq 1 ]; then
+        # delete all bond slave and master which is created by xCAT
+        if [ -n "$xcat_slave_con_names" ]; then
+            log_info "delete connection $xcat_slave_con_names"
+            delete_bond_slaves_con "$xcat_slave_con_names"
+        fi
+        if [ -n "$tmp_slave_con_names" ]; then
+            for tmpslave in $tmp_slave_con_names
+            do  
+                slavecon=$(echo $tmpslave|awk -F"-" '{print $1"-"$2"-"$3"-"$4}')
+                log_info "restore connection $slavecon"
+                $nmcli con modify $tmpslave connection.id $slavecon 
+            done
+        fi
+        is_nmcli_connection_exist $xcat_con_name
+        if [ $? -eq 0 ] ; then
+            log_info "delete bond connection $xcat_con_name"
+            $nmcli con delete $xcat_con_name
+        fi
+        if [ -n "$tmp_con_name" ] ; then
+            log_info "restore bond connection $tmp_con_name"
+            $nmcli con modify $tmp_con_name connection.id $xcat_con_name
+        fi
+    else
+        # delete  tmp master and tmp slaves 
+        if [ -n "$tmp_con_name" ] ; then
+            $nmcli con delete $tmp_con_name
+        fi
+        if [ -n "$tmp_slave_con_names" ]; then
+            delete_bond_slaves_con "$tmp_slave_con_names"
+        fi
+    fi
+    return $rc
+}
+######################################################################
+#
+# delete bond slaves connection
+# imput format: <slave1> <slave2> <slave3> ... ...<slaven>
+#
+######################################################################
+function delete_bond_slaves_con {
+    slaves_con_names=$1
+    if [ -z "$slaves_con_names" ]; then
+        log_error "bond slaves connection list is empty"
+        return
+    fi
+    for slave in $slaves_con_names
+    do
+        is_nmcli_connection_exist $slave
+        if [ $? -eq 0 ] ; then
+            $nmcli con delete $slave
+        fi
+    done
 }
