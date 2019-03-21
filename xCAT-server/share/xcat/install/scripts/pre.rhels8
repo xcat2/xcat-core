@@ -116,8 +116,8 @@ try:
 #UNCOMMENTOENABLEDEBUGPORT#				newcommand = b""
 #UNCOMMENTOENABLEDEBUGPORT#				for i in command[1:]:
 #UNCOMMENTOENABLEDEBUGPORT#					newcommand = newcommand + i + b" "
-#UNCOMMENTOENABLEDEBUGPORT#				output = os.popen(newcommand.decode('utf-8')).read()
-#UNCOMMENTOENABLEDEBUGPORT#				newSocket.send(output.encode())
+#UNCOMMENTOENABLEDEBUGPORT#				output = os.popen(newcommand.decode('utf-8')).read().encode()
+#UNCOMMENTOENABLEDEBUGPORT#				newSocket.send(output)
 #UNCOMMENTOENABLEDEBUGPORT#				break
 			if(command[0] == b"screendump"):
 				newcommand = "cat /dev/vcs"
