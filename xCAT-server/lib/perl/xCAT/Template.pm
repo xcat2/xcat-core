@@ -394,7 +394,7 @@ sub subvars {
         $inc =~ s/#COLONHTTPPORT#/$httpportsuffix/eg;
 
         if (($::XCATSITEVALS{xcatdebugmode} eq "1") or ($::XCATSITEVALS{xcatdebugmode} eq "2")) {
-            $inc =~ s/#UNCOMMENTOENABLEDEBUGPORT#/ /g;
+            $inc =~ s/#UNCOMMENTOENABLEDEBUGPORT#//g;
         }
 
         if ($::XCATSITEVALS{xcatdebugmode} eq "2") {
