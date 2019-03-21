@@ -101,7 +101,7 @@ if [ ! -z "$DUMP" ]; then
     MOUNTPATH=""
     if (pmatch $OSVER "*6\.*"); then
 	MOUNTPATH="/tmp"
-    elif (pmatch $OSVER "*7\.*"); then
+    elif (pmatch $OSVER "*[78]\.*"); then
         MOUNTPATH="/mnt"
     else
 	MOUNTPATH="/var/tmp"
@@ -215,7 +215,7 @@ EOF
                 mv ${oldremount}.bak $oldremount
             fi
 	else
-            if (pmatch $OSVER "rhel7*") || (pmatch $OSVER "rhels7*");then
+            if (pmatch $OSVER "rhel[78]*") || (pmatch $OSVER "rhels[78]*");then
                nfsvers=$(/usr/sbin/rpcinfo -p $KDIP|grep -w nfs|awk /tcp/'{print $2}'|sort)
                nfsver=0
                if [ -n "$nfsvers" ]; then
@@ -246,8 +246,10 @@ EOF
 
                echo "nfs $KDIP:$KDPATH" > /etc/kdump.conf
                echo "default shell" >> /etc/kdump.conf
-               #strip "xcat" out of the initramfs for kdump
-               echo "dracut_args --omit \"xcat\"" >> /etc/kdump.conf
+               if (pmatch $OSVER "rhel7*") || (pmatch $OSVER "rhels7*");then
+                   #strip "xcat" out of the initramfs for kdump
+                   echo "dracut_args --omit \"xcat\"" >> /etc/kdump.conf
+               fi
                #strip the unnecessary kernel options from /proc/cmdline
                #the modified "cmdline" will be used as the kernel options
                #for kdump initramfs; otherwise, the "service kdump restart" will fail
