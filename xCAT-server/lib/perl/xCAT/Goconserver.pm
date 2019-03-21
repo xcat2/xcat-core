@@ -537,7 +537,7 @@ sub switch_goconserver {
 sub switch_conserver {
     my $callback = shift;
     # ignore SN as it is handled by AAsn
-    if ((-x "/usr/bin/systemctl" || -x "-x /bin/systemctl") && !$isSN) {
+    if ((-x "/usr/bin/systemctl" || -x "/bin/systemctl") && !$isSN) {
         my $cmd = "systemctl disable goconserver";
         if (-x "/usr/bin/goconserver") {
             xCAT::Utils->runcmd($cmd, -1);
