@@ -524,6 +524,7 @@ function configure_nicdevice {
         nic_pair=`echo "$nics_pair" |sed -n "${num}p"`
         echo "configure nic and its device : $nic_pair"
         ipaddrs=$(find_nic_ips $nic_dev)
+        next_nic=$(echo "$nics_pair"|awk /${nic_dev}$/'{ print $1}')
         #ignore bmc interfaces. They're allowed in the nics table to generate DNS/hostname records, but they
         #can't be configured here (it's done in bmcsetup
         if [ x"$nic_dev_type" = "xbmc" ]; then
@@ -592,7 +593,7 @@ function configure_nicdevice {
             if [ "$networkmanager_active" = "0" ]; then
                 create_bond_interface ifname=$nic_dev slave_ports=$base_nic_for_bond slave_type=$base_nic_type
             elif [ "$networkmanager_active" = "1" ]; then
-                create_bond_interface_nmcli bondname=$nic_dev slave_ports=$base_nic_for_bond slave_type=$base_nic_type _ipaddr=$ipaddrs
+                create_bond_interface_nmcli bondname=$nic_dev slave_ports=$base_nic_for_bond slave_type=$base_nic_type _ipaddr=$ipaddrs next_nic=$next_nic
             fi
             if [ $? -ne 0 ]; then
                 log_error "configure bond $nic_dev failed."
@@ -627,13 +628,13 @@ errorcode=0
 utolcmd="sed -e y/ABCDEFGHIJKLMNOPQRSTUVWXYZ/abcdefghijklmnopqrstuvwxyz/"
 
 #back up all network interface configure files
-nwdirbak=$nwdir".xcatbak"
+nwdirbak="/tmp/"
 ls $nwdirbak > /dev/null 2>/dev/null
 if [ $? -ne 0 ]; then
-    log_info "back up $nwdir to $newdirbak"
+    log_info "back up $nwdir to $nwdirbak"
     cp -rf $nwdir $nwdirbak > /dev/null 2>/dev/null
     if [ $? -ne 0 ]; then
-        log_warn "back up $nwdir to $newdirbak failed."
+        log_warn "back up $nwdir to $nwdirbak failed."
     fi
 fi
 
