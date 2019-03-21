@@ -14,3 +14,4 @@ packimage_m_tar_c_xz
 packimage_o_p_a_m
 rmimage_diskless
 ubuntu_migration2_vm
+linux_diskless_kdump
