@@ -60,7 +60,7 @@ cmd:xdsh $$CN "tar -jxvf /oldxcat/xcat-core* -C /oldxcat"
 check:rc==0
 cmd:xdsh $$CN "/oldxcat/xcat-core/mklocalrepo.sh"
 check:rc==0
-cmd:tmp="__GETNODEATTR($$CN,os)__"; ver=${tmp%%.*}; tmp="rh"${ver:(-1):1}; xdsh $$CN "cd /oldxcat/xcat-dep/$tmp/__GETNODEATTR($$CN,arch)__/;.mklocalrepo.sh"
+cmd:tmp="__GETNODEATTR($$CN,os)__"; ver=${tmp%%.*}; tmp="rh"${ver:(-1):1}; xdsh $$CN "cd /oldxcat/xcat-dep/$tmp/__GETNODEATTR($$CN,arch)__/;./mklocalrepo.sh"
 check:rc==0
 cmd:xdsh $$CN "yum clean all;yum -y install xCAT"
 check:rc==0
@@ -168,7 +168,6 @@ cmd:xdsh $$CN "tar -jxvf /oldxcat/xcat-core* -C /oldxcat"
 check:rc==0
 cmd:xdsh $$CN "/oldxcat/xcat-core/mklocalrepo.sh"
 check:rc==0
-#cmd:xdsh $$CN "cd /oldxcat/xcat-dep/rh`echo __GETNODEATTR($$CN,os)__ | cut -c6`/__GETNODEATTR($$CN,arch)__/;./mklocalrepo.sh"
 cmd:tmp="__GETNODEATTR($$CN,os)__"; ver=${tmp%%.*}; tmp="rh"${ver:(-1):1};xdsh $$CN "cd /oldxcat/xcat-dep/$tmp/__GETNODEATTR($$CN,arch)__/;./mklocalrepo.sh"
 check:rc==0
 cmd:xdsh $$CN "yum clean all;yum -y install xCAT"
