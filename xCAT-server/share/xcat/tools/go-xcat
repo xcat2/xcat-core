@@ -2122,7 +2122,7 @@ if [[ "${RET}" -ne 0 ]]
 then
 	echo "failed"
 	echo "${ERR_MSG}" >&2
-	exit "${RET}"
+	boo_boo_if_bad "${RET}"
 fi
 echo "done"
 
