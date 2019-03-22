@@ -1677,7 +1677,7 @@ function get_first_addr_ipv4 {
 #
 # create vlan using nmcli
 #
-# input : ifname=<ifname> vlanid=<vlanid> ipaddrs=<ipaddrs>
+# input : ifname=<ifname> vlanid=<vlanid> ipaddrs=<ipaddrs> next_nic=<next_nic>
 # return : 0 success
 #
 ###############################################################################
@@ -1690,6 +1690,7 @@ function create_vlan_interface_nmcli {
     local _xcatnet=""
     local _netmask=""
     local _mtu=""
+    local next_nic=""
     # in case it's on top of bond, we need to migrate ip from its
     # member vlan ports.
     # parser input arguments
@@ -1698,6 +1699,7 @@ function create_vlan_interface_nmcli {
         key=`echo "$1" | $cut -s -d= -f1`
         if [ "$key" = "ifname" ] || \
            [ "$key" = "ipaddrs" ] || \
+           [ "$key" = "next_nic" ] || \
            [ "$key" = "vlanid" ]; then
             eval "$1"
         fi
@@ -1708,30 +1710,29 @@ function create_vlan_interface_nmcli {
         log_error "No \"vlanid\" specificd for vlan interface. Abort!"
         return 1
     fi
+    if [ -z "$next_nic" ]; then
+        _xcatnet=$(query_nicnetworks_net $ifname.$vlanid)
+        log_info "Pickup xcatnet, \"$_xcatnet\", from NICNETWORKS for interface \"$ifname\"."
 
-    _xcatnet=$(query_nicnetworks_net $ifname.$vlanid)
-    log_info "Pickup xcatnet, \"$_xcatnet\", from NICNETWORKS for interface \"$ifname\"."
+        _mtu_num=$(get_network_attr $xcatnet mtu)
+        if [ -n "$_mtu_num" ]; then
+            _mtu="mtu $_mtu_num"
+        fi
 
-    _mtu_num=$(get_network_attr $xcatnet mtu)
-    if [ $? -ne 0 ]; then
-        _mtu=""
-    else
-        _mtu="mtu $_mtu_num"
-    fi
-
-    if [ ! -z "$ipaddrs" ]; then
-        _netmask_long=$(get_network_attr $_xcatnet mask)
-        if [ $? -ne 0 ]; then
-            log_error "No valid netmask get for $ifname.$vlanid"
-            return 1
-        else
-            ipaddr=$(get_first_addr_ipv4 $ipaddrs)
+        if [ ! -z "$ipaddrs" ]; then
+            _netmask_long=$(get_network_attr $_xcatnet mask)
             if [ $? -ne 0 ]; then
-                log_error "No valid IP address get for $ifname.$vlanid, please check $ipaddrs"
+                log_error "No valid netmask get for $ifname.$vlanid"
                 return 1
+            else
+                ipaddr=$(get_first_addr_ipv4 $ipaddrs)
+                if [ $? -ne 0 ]; then
+                    log_error "No valid IP address get for $ifname.$vlanid, please check $ipaddrs"
+                    return 1
+                fi
+                _netmask=$(v4mask2prefix $_netmask_long)
+                _ipaddrs="method none ip4 $ipaddr/$_netmask"
             fi
-            _netmask=$(v4mask2prefix $_netmask_long)
-            _ipaddrs="method none ip4 $ipaddr/$_netmask"
         fi
     fi
     check_and_set_device_managed $ifname
@@ -1742,7 +1743,7 @@ function create_vlan_interface_nmcli {
     log_info "check parent interface $ifname whether it is managed by NetworkManager"
     #load the 8021q module if not loaded.
     load_kmod module=8021q retry=10 interval=0.5
-    con_name="xcat.$ifname.$vlanid"
+    con_name="xcat-vlan-$ifname.$vlanid"
     tmp_con_name=""
     is_nmcli_connection_exist $con_name
     if [ $? -eq 0 ]; then
@@ -1752,17 +1753,20 @@ function create_vlan_interface_nmcli {
 
     $nmcli con add type vlan con-name $con_name dev $ifname id $(( 10#$vlanid )) $_ipaddrs $_mtu
     log_info "create NetworkManager connection for $ifname.$vlanid"
-    $nmcli con up $con_name
-    is_connection_activate_intime $con_name
-    is_active=$?
-    if [ "$is_active" -eq 0 ]; then
-        log_error "The vlan configuration for $ifname.$vlanid can not be booted up"
-        $nmcli con delete $con_name
-        if [ ! -z "$tmp_con_name" ]; then
-            $nmcli con modify $tmp_con_name connection.id $con_name
+    if [ -z "$next_nic" ]; then
+        $nmcli con up $con_name
+        is_connection_activate_intime $con_name
+        is_active=$?
+        if [ "$is_active" -eq 0 ]; then
+            log_error "The vlan configuration for $ifname.$vlanid can not be booted up"
+            $nmcli con delete $con_name
+            if [ ! -z "$tmp_con_name" ]; then
+                $nmcli con modify $tmp_con_name connection.id $con_name
+            fi
+            return 1
         fi
-        return 1
-    elif [ ! -z "$tmp_con_name" ]; then
+    fi
+    if [ -n "$tmp_con_name" ]; then
         $nmcli con delete $tmp_con_name
     fi
     $ip address show dev $ifname.$vlanid | $sed -e 's/^/[vlan] >> /g' | log_lines info
