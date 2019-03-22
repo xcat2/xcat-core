@@ -2123,7 +2123,7 @@ function create_bond_interface_nmcli {
         if [ $? -eq 0 ] ; then
             is_connection_activate_intime $xcat_slave_con 1
             if [ $? -eq 1 ]; then
-                $nmcli con down $xcat_con_name 
+                $nmcli con down $xcat_slave_con
                 ip link set dev $ifslave down
                 wait_for_ifstate $ifslave DOWN 40 1
             fi
