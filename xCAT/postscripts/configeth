@@ -133,8 +133,8 @@ function configipv4(){
         fi
         str_conf_file="/etc/sysconfig/network-scripts/ifcfg-${str_if_name}"
         if [ $networkmanager_active -eq 1 ]; then
-            con_name=$(nmcli dev show ${str_if_name}|grep CONNECTION|awk -F: '{print $2}'|sed 's/^[ \t]*$//g')
-            if [ "$con_name" == "--" ] ; then
+            con_name=$(nmcli dev show ${str_if_name}|grep GENERAL.CONNECTION|awk -F: '{print $2}'|sed 's/^[ \t]*//g')
+            if [ "$con_name" = "--" ] || [ ! -f "$str_conf_file" ]; then
                 nmcli con add type ethernet con-name ${str_if_name} ifname ${str_if_name} ipv4.method manual  ipv4.addresses  ${str_v4ip}/${str_prefix}
             else
                 nmcli con mod "${con_name}" ipv4.method manual ipv4.addresses ${str_v4ip}/${str_prefix}
@@ -624,8 +624,8 @@ elif [ "$1" = "-s" ];then
         str_inst_prefix=$(v4mask2prefix ${str_inst_mask})
         str_conf_file="/etc/sysconfig/network-scripts/ifcfg-${str_inst_nic}"
         if [ $networkmanager_active -eq 1 ]; then
-            con_name=$(nmcli dev show ${str_if_name}|grep CONNECTION|awk -F: '{print $2}'|sed 's/^[ \t]*$//g')
-            if [ "$con_name" == "--" ] ; then
+            con_name=$(nmcli dev show ${str_inst_nic}|grep GENERAL.CONNECTION|awk -F: '{print $2}'|sed 's/^[ \t]*//g')
+            if [ "$con_name" == "--" ] || [ ! -f "$str_conf_file" ]; then
                 nmcli con add type ethernet con-name ${str_inst_nic} ifname ${str_inst_nic} ipv4.method manual ipv4.addresses  ${str_inst_ip}/${str_inst_prefix}
             else
                 nmcli con mod "System ${str_inst_nic}" ipv4.method manual ipv4.addresses ${str_inst_ip}/${str_inst_prefix}
