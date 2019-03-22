@@ -19,3 +19,4 @@ reg_linux_diskless_installation_flat
 reg_linux_statelite_installation_flat
 sles_migration1
 sles_migration2
+linux_diskless_kdump

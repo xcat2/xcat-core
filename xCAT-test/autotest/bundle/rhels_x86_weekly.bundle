@@ -72,3 +72,4 @@ rpower_reset
 runcmdinstaller_command
 redhat_migration1
 redhat_migration2
+linux_diskless_kdump

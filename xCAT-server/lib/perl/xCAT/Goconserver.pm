@@ -503,11 +503,13 @@ sub is_goconserver_running {
 sub switch_goconserver {
     my $callback = shift;
     # ignore SN as it is handled by AAsn
-    if ((-x "/usr/bin/systemctl" || -x "-x /bin/systemctl") && !$isSN) {
+    if ((-x "/usr/bin/systemctl" || -x "/bin/systemctl") && !$isSN) {
         my $cmd = "systemctl disable conserver";
-        xCAT::Utils->runcmd($cmd, -1);
-        if ($::RUNCMD_RC != 0) {
-            xCAT::MsgUtils->warn_message("Failed to execute command: $cmd.", $callback);
+        if (-x "/usr/sbin/conserver") {
+            xCAT::Utils->runcmd($cmd, -1);
+            if ($::RUNCMD_RC != 0) {
+                xCAT::MsgUtils->warn_message("Failed to execute command: $cmd.", $callback);
+            }
         }
         $cmd = "systemctl enable goconserver";
         xCAT::Utils->runcmd($cmd, -1);
@@ -535,11 +537,13 @@ sub switch_goconserver {
 sub switch_conserver {
     my $callback = shift;
     # ignore SN as it is handled by AAsn
-    if ((-x "/usr/bin/systemctl" || -x "-x /bin/systemctl") && !$isSN) {
+    if ((-x "/usr/bin/systemctl" || -x "/bin/systemctl") && !$isSN) {
         my $cmd = "systemctl disable goconserver";
-        xCAT::Utils->runcmd($cmd, -1);
-        if ($::RUNCMD_RC != 0) {
-            xCAT::MsgUtils->warn_message("Failed to execute command: $cmd.", $callback);
+        if (-x "/usr/bin/goconserver") {
+            xCAT::Utils->runcmd($cmd, -1);
+            if ($::RUNCMD_RC != 0) {
+                xCAT::MsgUtils->warn_message("Failed to execute command: $cmd.", $callback);
+            }
         }
         $cmd = "systemctl enable conserver";
         xCAT::Utils->runcmd($cmd, -1);
