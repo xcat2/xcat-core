@@ -21,6 +21,8 @@
 # 2018-09-28 GONG Jie <gongjie@linux.vnet.ibm.com>
 #     - Revised debug log
 #     - xCAT uninstallation
+# 2019-03-22 GONG Jie <gongjie@linux.vnet.ibm.com>
+#     - Better debug log when reading repository failed
 #
 
 function usage()
