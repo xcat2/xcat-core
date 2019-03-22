@@ -118,7 +118,9 @@ cmd:rm -rf /tmp/xcatconfig.test
 check:rc==0
 cmd:rm -rf /etc/xcat/cabak /etc/xcat/certbak
 check:rc==0
-cmd:if lsdef service > /dev/null 2>&1; then updatenode service -P servicenode; if [ -x /usr/bin/goconserver ]; then makegocons else makeconservercf; fi;fi
+cmd:if service goconserver status > /dev/null 2>&1; then service goconserver restart; fi
+cmd:if service conserver status > /dev/null 2>&1; then service conserver restart ; fi
+cmd:if lsdef service > /dev/null 2>&1; then updatenode service -P servicenode;fi
 check:rc==0
 cmd:if lsdef service > /dev/null 2>&1; then rpower $$CN stat;fi
 check:rc==0
