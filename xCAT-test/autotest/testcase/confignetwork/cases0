@@ -589,7 +589,7 @@ check:rc==0
 cmd:xdsh $$CN "rm -rf /tmp/backupnet/"
 cmd:xdsh $$CN "mkdir -p /tmp/backupnet/"
 check:rc==0
-cmd:if grep SUSE /etc/*release;then xdsh $$CN "cp -f /etc/sysconfig/network/ifcfg-* /tmp/backupnet/"; elif grep -E "Red Hat|CentOS" /etc/*release;then xdsh $$CN "cp -f /etc/sysconfig/network-scripts/ifcfg-* /tmp/backupnet/"; elif grep Ubuntu /etc/*release;then xdsh $$CN "cp -f /etc/network/interfaces.d/* /tmp/backupnet/";else echo "Sorry,this is not supported os"; fi
+cmd:if grep SUSE /etc/*release;then xdsh $$CN "cp -f /etc/sysconfig/network/ifcfg-* /tmp/backupnet/"; elif grep -E "Red Hat|CentOS" /etc/*release;then xdsh $$CN "cp -rf /etc/sysconfig/network-scripts /tmp/backupnet/"; elif grep Ubuntu /etc/*release;then xdsh $$CN "cp -f /etc/network/interfaces.d/* /tmp/backupnet/";else echo "Sorry,this is not supported os"; fi
 cmd:if grep -E "Red Hat|CentOS" /etc/*release;then xdsh $$CN "yum -y install bridge-utils";fi
 cmd:cnip=__GETNODEATTR($$CN,ip)__;echo $cnip;var3=100.;var4=`echo $cnip |awk -F. '{print $2}'`;var5=.0.0;secondnet=$var3$var4$var5;mkdef -t network -o confignetworks_test1 net=$secondnet mask=255.255.0.0 mgtifname=$$SECONDNIC
 check:rc==0
@@ -609,12 +609,12 @@ cmd:cnip=__GETNODEATTR($$CN,ip)__;echo $cnip;var1=102;var2=`echo $cnip |sed -r '
 check:rc==0
 cmd:updatenode $$CN -P confignetwork
 check:rc==0
-cmd:cnip=__GETNODEATTR($$CN,ip)__;echo $cnip;var1=102;var2=`echo $cnip |sed -r 's/[^\.]*(..\..*)/\1/'`;bond0ip=$var1$var2;if grep SUSE /etc/*release;then xdsh $$CN "grep $bond0ip /etc/sysconfig/network/ifcfg-bond0"; elif grep -E "Red Hat|CentOS" /etc/*release;then xdsh $$CN  "grep $bond0ip /etc/sysconfig/network-scripts/ifcfg-bond0"; elif grep Ubuntu /etc/*release;then xdsh $$CN "grep $bond0ip /etc/network/interfaces.d/bond0";else echo "Sorry,this is not supported os"; fi
-check:rc==0
 cmd:xdsh $$CN "ls /sys/class/net"
 check:output=~bond0
 cmd:xdsh $$CN "cat /sys/class/net/bonding_masters"
 check:output=~bond0
+cmd:cnip=__GETNODEATTR($$CN,ip)__;echo $cnip;var1=102;var2=`echo $cnip |sed -r 's/[^\.]*(..\..*)/\1/'`;bond0ip=$var1$var2;if grep SUSE /etc/*release;then xdsh $$CN "grep $bond0ip /etc/sysconfig/network/ifcfg-bond0"; elif grep -E "Red Hat|CentOS" /etc/*release;then xdsh $$CN  "grep $bond0ip /etc/sysconfig/network-scripts/ifcfg-*bond0"; elif grep Ubuntu /etc/*release;then xdsh $$CN "grep $bond0ip /etc/network/interfaces.d/bond0";else echo "Sorry,this is not supported os"; fi
+check:rc==0
 cmd:rmdef -t network -o confignetworks_test1 
 cmd:if grep SUSE /etc/*release;then xdsh $$CN "rm -rf /etc/sysconfig/network/ifcfg-$$SECONDNIC"; elif grep -E "Red Hat|CentOS" /etc/*release;then xdsh $$CN "rm -rf /etc/sysconfig/network-scripts/ifcfg-$$SECONDNIC"; elif grep Ubuntu /etc/*release;then xdsh $$CN "rm -rf /etc/network/interfaces.d/$$SECONDNIC";else echo "Sorry,this is not supported os"; fi
 check:rc==0
@@ -625,12 +625,13 @@ cmd:rmdef -t network -o confignetworks_test3
 cmd:cnip=__GETNODEATTR($$CN,ip)__;echo $cnip;var1=102;var2=`echo $cnip |sed -r 's/[^\.]*(..\..*)/\1/'`;bond0ip=$var1$var2;xdsh $$CN "ip addr del $bond0ip/16 dev bond0"
 cmd:xdsh $$CN "ip link del dev bond0"
 cmd:xdsh $$CN "echo -bond0 > /sys/class/net/bonding_masters"
-cmd:if grep SUSE /etc/*release;then xdsh $$CN "rm -rf /etc/sysconfig/network/ifcfg-bond0"; elif grep -E "Red Hat|CentOS" /etc/*release;then xdsh $$CN "rm -rf /etc/sysconfig/network-scripts/ifcfg-bond0"; elif grep Ubuntu /etc/*release;then xdsh $$CN "rm -rf /etc/network/interfaces.d/bond0";else echo "Sorry,this is not supported os"; fi
+cmd:if grep SUSE /etc/*release;then xdsh $$CN "rm -rf /etc/sysconfig/network/ifcfg-bond0"; elif grep -E "Red Hat|CentOS" /etc/*release;then xdsh $$CN "rm -rf /etc/sysconfig/network-scripts"; elif grep Ubuntu /etc/*release;then xdsh $$CN "rm -rf /etc/network/interfaces.d/bond0";else echo "Sorry,this is not supported os"; fi
 check:rc==0
 cmd:if [ -e /tmp/CN.standa ]; then rmdef $$CN; cat /tmp/CN.standa | mkdef -z; rm -rf /tmp/CN.standa; fi
 check:rc==0
-cmd:if grep SUSE /etc/*release;then xdsh $$CN "cp -f /tmp/backupnet/* /etc/sysconfig/network/"; elif grep -E "Red Hat|CentOS" /etc/*release;then xdsh $$CN "cp -f /tmp/backupnet/* /etc/sysconfig/network-scripts/"; elif grep Ubuntu /etc/*release;then xdsh $$CN "cp -f /tmp/backupnet/* /etc/network/interfaces.d/;cp -f /tmp/interfaces /etc/network/";else echo "Sorry,this is not supported os"; fi
+cmd:if grep SUSE /etc/*release;then xdsh $$CN "cp -f /tmp/backupnet/* /etc/sysconfig/network/"; elif grep -E "Red Hat|CentOS" /etc/*release;then xdsh $$CN "cp -rf /tmp/backupnet/network-scripts /etc/sysconfig/"; elif grep Ubuntu /etc/*release;then xdsh $$CN "cp -f /tmp/backupnet/* /etc/network/interfaces.d/;cp -f /tmp/interfaces /etc/network/";else echo "Sorry,this is not supported os"; fi
 check:rc==0
+cmd:xdsh $$CN "systemctl status NetworkManager >/dev/null 2>/dev/null && which nmcli >/dev/null 2>/dev/null && nmcli con reload"
 cmd:xdsh $$CN "rm -rf /tmp/backupnet/ /tmp/interfaces"
 check:rc==0
 end
@@ -757,7 +758,7 @@ check:rc==0
 cmd:xdsh $$CN "rm -rf /tmp/backupnet/"
 cmd:xdsh $$CN "mkdir -p /tmp/backupnet/"
 check:rc==0
-cmd:if grep SUSE /etc/*release;then xdsh $$CN "cp -f /etc/sysconfig/network/ifcfg-* /tmp/backupnet/"; elif grep -E "Red Hat|CentOS" /etc/*release;then xdsh $$CN "cp -f /etc/sysconfig/network-scripts/ifcfg-* /tmp/backupnet/"; elif grep Ubuntu /etc/*release;then xdsh $$CN "cp -f /etc/network/interfaces.d/* /tmp/backupnet/";else echo "Sorry,this is not supported os"; fi
+cmd:if grep SUSE /etc/*release;then xdsh $$CN "cp -f /etc/sysconfig/network/ifcfg-* /tmp/backupnet/"; elif grep -E "Red Hat|CentOS" /etc/*release;then xdsh $$CN "cp -rf /etc/sysconfig/network-scripts /tmp/backupnet/"; elif grep Ubuntu /etc/*release;then xdsh $$CN "cp -f /etc/network/interfaces.d/* /tmp/backupnet/";else echo "Sorry,this is not supported os"; fi
 cmd:if grep -E "Red Hat|CentOS" /etc/*release;then xdsh $$CN "yum -y install bridge-utils";fi
 cmd:cnip=__GETNODEATTR($$CN,ip)__;echo $cnip;var3=100.;var4=`echo $cnip |awk -F. '{print $2}'`;var5=.0.0;secondnet=$var3$var4$var5;mkdef -t network -o confignetworks_test1 net=$secondnet mask=255.255.0.0 mgtifname=$$SECONDNIC
 check:rc==0
@@ -776,12 +777,12 @@ cmd:cnip=__GETNODEATTR($$CN,ip)__;echo $cnip;var1=103;var2=`echo $cnip |sed -r '
 check:rc==0
 cmd:updatenode $$CN -P confignetwork
 check:rc==0
-cmd:cnip=__GETNODEATTR($$CN,ip)__;echo $cnip;var1=103;var2=`echo $cnip |sed -r 's/[^\.]*(..\..*)/\1/'`;br0ip=$var1$var2;if grep SUSE /etc/*release;then xdsh $$CN "grep $br0ip /etc/sysconfig/network/ifcfg-br0"; elif grep -E "Red Hat|CentOS" /etc/*release;then xdsh $$CN  "grep $br0ip /etc/sysconfig/network-scripts/ifcfg-br0"; elif grep Ubuntu /etc/*release;then xdsh $$CN "grep $br0ip /etc/network/interfaces.d/br0";else echo "Sorry,this is not supported os"; fi
-check:rc==0
 cmd:xdsh $$CN "ls /sys/class/net"
 check:output=~br0
 cmd:xdsh $$CN "cat /sys/class/net/bonding_masters"
 check:output=~bond0
+cmd:cnip=__GETNODEATTR($$CN,ip)__;echo $cnip;var1=103;var2=`echo $cnip |sed -r 's/[^\.]*(..\..*)/\1/'`;br0ip=$var1$var2;if grep SUSE /etc/*release;then xdsh $$CN "grep $br0ip /etc/sysconfig/network/ifcfg-br0"; elif grep -E "Red Hat|CentOS" /etc/*release;then xdsh $$CN  "grep $br0ip /etc/sysconfig/network-scripts/ifcfg-*br0"; elif grep Ubuntu /etc/*release;then xdsh $$CN "grep $br0ip /etc/network/interfaces.d/br0";else echo "Sorry,this is not supported os"; fi
+check:rc==0
 cmd:rmdef -t network -o confignetworks_test1
 cmd:if grep SUSE /etc/*release;then xdsh $$CN "rm -rf /etc/sysconfig/network/ifcfg-$$SECONDNIC"; elif grep -E "Red Hat|CentOS" /etc/*release;then xdsh $$CN "rm -rf /etc/sysconfig/network-scripts/ifcfg-$$SECONDNIC"; elif grep Ubuntu /etc/*release;then xdsh $$CN "rm -rf /etc/network/interfaces.d/$$SECONDNIC";else echo "Sorry,this is not supported os"; fi
 check:rc==0
@@ -794,11 +795,12 @@ cmd:cnip=__GETNODEATTR($$CN,ip)__;echo $cnip;var1=101;var2=`echo $cnip |sed -r '
 cmd:cnip=__GETNODEATTR($$CN,ip)__;echo $cnip;var1=102;var2=`echo $cnip |sed -r 's/[^\.]*(..\..*)/\1/'`;second1ip=$var1$var2;xdsh $$CN "ip addr del $second1ip/16 dev $$THIRDNIC"
 cmd:xdsh $$CN "ip link del dev br0"
 cmd:xdsh $$CN "echo -bond0 > /sys/class/net/bonding_masters"
-cmd:if grep SUSE /etc/*release;then xdsh $$CN "rm -rf /etc/sysconfig/network/ifcfg-br0"; elif grep -E "Red Hat|CentOS" /etc/*release;then xdsh $$CN "rm -rf /etc/sysconfig/network-scripts/ifcfg-br0"; elif grep Ubuntu /etc/*release;then xdsh $$CN "rm -rf /etc/network/interfaces.d/br0";else echo "Sorry,this is not supported os"; fi
+cmd:if grep SUSE /etc/*release;then xdsh $$CN "rm -rf /etc/sysconfig/network/ifcfg-br0"; elif grep -E "Red Hat|CentOS" /etc/*release;then xdsh $$CN "rm -rf /etc/sysconfig/network-scripts"; elif grep Ubuntu /etc/*release;then xdsh $$CN "rm -rf /etc/network/interfaces.d/br0";else echo "Sorry,this is not supported os"; fi
 check:rc==0
 cmd:if [ -e /tmp/CN.standa ]; then rmdef $$CN; cat /tmp/CN.standa | mkdef -z; rm -rf /tmp/CN.standa; fi
 check:rc==0
-cmd:if grep SUSE /etc/*release;then xdsh $$CN "cp -f /tmp/backupnet/* /etc/sysconfig/network/"; elif grep -E "Red Hat|CentOS" /etc/*release;then xdsh $$CN "cp -f /tmp/backupnet/* /etc/sysconfig/network-scripts/"; elif grep Ubuntu /etc/*release;then xdsh $$CN "cp -f /tmp/backupnet/* /etc/network/interfaces.d/;cp -f /tmp/interfaces /etc/network/";else echo "Sorry,this is not supported os"; fi
+cmd:if grep SUSE /etc/*release;then xdsh $$CN "cp -f /tmp/backupnet/* /etc/sysconfig/network/"; elif grep -E "Red Hat|CentOS" /etc/*release;then xdsh $$CN "cp -rf /tmp/backupnet/network-scripts /etc/sysconfig/"; elif grep Ubuntu /etc/*release;then xdsh $$CN "cp -f /tmp/backupnet/* /etc/network/interfaces.d/;cp -f /tmp/interfaces /etc/network/";else echo "Sorry,this is not supported os"; fi
+cmd:xdsh $$CN "systemctl status NetworkManager >/dev/null 2>/dev/null && which nmcli >/dev/null 2>/dev/null && nmcli con reload"
 cmd:xdsh $$CN "rm -rf /tmp/backupnet/ /tmp/interfaces"
 end
 
