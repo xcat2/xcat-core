@@ -17,7 +17,7 @@ check:rc==0
 
 cmd:makedns -n
 check:rc==0
-cmd:makeconservercf
+cmd:if [ -x /usr/bin/goconserver ]; then makegocons $$CN; else makeconservercf $$CN; fi
 check:rc==0
 cmd:sleep 20
 cmd:if [[ "__GETNODEATTR($$CN,arch)__" = "ppc64" ]]; then getmacs -D $$CN; fi
@@ -92,6 +92,7 @@ cmd:xdsh $$CN hostname
 check:rc==0
 check:output=~$$CN: $$CN
 cmd:xdsh $$CN  "cat /var/log/xcat/xcat.log"
+cmd:if [ -x /usr/bin/goconserver ]; then makegocons -d $$CN; else makeconservercf -d $$CN; fi
 cmd:rootimgdir=`lsdef -t osimage  __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-statelite-compute|grep rootimgdir|awk -F'=' '{print $2}'`; if [ -d $rootimgdir.regbak ]; then rm -rf $rootimgdir; mv $rootimgdir.regbak $rootimgdir; fi
 check:rc==0
 end
