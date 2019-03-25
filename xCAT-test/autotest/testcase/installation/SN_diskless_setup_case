@@ -11,10 +11,10 @@ cmd:chtab key=nameservers site.value="<xcatmaster>"
 check:rc==0
 cmd:makedns -n
 check:rc==0
-cmd:makeconservercf $$SN
+cmd:if [ -x /usr/bin/goconserver ]; then makegocons $$SN; else makeconservercf $$SN;fi
 check:rc==0
-cmd:cat /etc/conserver.cf | grep $$SN
-check:output=~$$SN
+#cmd:cat /etc/conserver.cf | grep $$SN
+#check:output=~$$SN
 cmd:sleep 20
 cmd:if [[ "__GETNODEATTR($$SN,arch)__" = "ppc64" ]]; then getmacs -D $$SN -V; fi
 check:rc==0
@@ -45,7 +45,7 @@ check:rc==0
 cmd:cd /install/post/otherpkgs/__GETNODEATTR($$SN,os)__/__GETNODEATTR($$SN,arch)__/xcat/xcat-core && createrepo .
 check:rc==0
 
-cmd:if [[ "__GETNODEATTR($$SN,os)__" =~ "rh" ]]; then path="rh";elif [[ "__GETNODEATTR($$SN,os)__" =~ "sles" ]];then path="sles";fi; ver="__GETNODEATTR($$SN,os)__"; tmp=${ver%.*};ver=`echo "$tmp"|sed 's:[a-zA-Z]::g'`;cd /install/post/otherpkgs/__GETNODEATTR($$SN,os)__/__GETNODEATTR($$SN,arch)__/xcat/xcat-dep/$path$ver/__GETNODEATTR($$SN,arch)__ && createrepo .;
+cmd:if [[ "__GETNODEATTR($$SN,os)__" =~ "rh" ]]; then path="rh";elif [[ "__GETNODEATTR($$SN,os)__" =~ "sles" ]];then path="sles";fi; ver="__GETNODEATTR($$SN,os)__"; tmp=${ver%%.*};ver=`echo "$tmp"|sed 's:[a-zA-Z]::g'`;cd /install/post/otherpkgs/__GETNODEATTR($$SN,os)__/__GETNODEATTR($$SN,arch)__/xcat/xcat-dep/$path$ver/__GETNODEATTR($$SN,arch)__ && createrepo .;
 check:rc==0
 
 cmd:mkdef -t osimage -o __GETNODEATTR($$SN,os)__-__GETNODEATTR($$SN,arch)__-netboot-service --template __GETNODEATTR($$SN,os)__-__GETNODEATTR($$SN,arch)__-netboot-compute  profile=service provmethod=netboot postscripts=servicenode
@@ -54,21 +54,24 @@ check:rc==0
 cmd:chdef -t osimage __GETNODEATTR($$SN,os)__-__GETNODEATTR($$SN,arch)__-netboot-service otherpkgdir=/install/post/otherpkgs/__GETNODEATTR($$SN,os)__/__GETNODEATTR($$SN,arch)__
 check:rc==0
 
-cmd:if [[ "__GETNODEATTR($$SN,os)__" =~ "rh" ]]; then path="rh";elif [[ "__GETNODEATTR($$SN,os)__" =~ "sles" ]];then path="sles";fi; ver="__GETNODEATTR($$SN,os)__"; chdef -t osimage __GETNODEATTR($$SN,os)__-__GETNODEATTR($$SN,arch)__-netboot-service otherpkglist=/opt/xcat/share/xcat/netboot/$path/service.${ver%.*}.__GETNODEATTR($$SN,arch)__.otherpkgs.pkglist pkglist=/opt/xcat/share/xcat/netboot/$path/service.${ver%.*}.__GETNODEATTR($$SN,arch)__.pkglist exlist=/opt/xcat/share/xcat/netboot/$path/service.${ver%.*}.__GETNODEATTR($$SN,arch)__.exlist postinstall=/opt/xcat/share/xcat/netboot/$path/service.${ver%.*}.__GETNODEATTR($$SN,arch)__.postinstall; echo "xcat/xcat-core/xCAT-openbmc-py" >> /opt/xcat/share/xcat/netboot/$path/service.${ver%.*}.__GETNODEATTR($$SN,arch)__.otherpkgs.pkglist; cat /opt/xcat/share/xcat/netboot/$path/service.${ver%.*}.__GETNODEATTR($$SN,arch)__.otherpkgs.pkglist
+cmd:if [[ "__GETNODEATTR($$SN,os)__" =~ "rh" ]]; then path="rh";elif [[ "__GETNODEATTR($$SN,os)__" =~ "sles" ]];then path="sles";fi; ver="__GETNODEATTR($$SN,os)__"; chdef -t osimage __GETNODEATTR($$SN,os)__-__GETNODEATTR($$SN,arch)__-netboot-service otherpkglist=/opt/xcat/share/xcat/netboot/$path/service.${ver%%.*}.__GETNODEATTR($$SN,arch)__.otherpkgs.pkglist pkglist=/opt/xcat/share/xcat/netboot/$path/service.${ver%%.*}.__GETNODEATTR($$SN,arch)__.pkglist exlist=/opt/xcat/share/xcat/netboot/$path/service.${ver%%.*}.__GETNODEATTR($$SN,arch)__.exlist postinstall=/opt/xcat/share/xcat/netboot/$path/service.${ver%%.*}.__GETNODEATTR($$SN,arch)__.postinstall
 check:rc==0
 
 
 cmd:path="/install/netboot/__GETNODEATTR($$SN,os)__/__GETNODEATTR($$SN,arch)__/service"; if [ -d "$path" ]; then mv $path $path."org"; fi; mkdir -p $path
 check:rc==0
+
 cmd:chdef -t osimage __GETNODEATTR($$SN,os)__-__GETNODEATTR($$SN,arch)__-netboot-service rootimgdir=/install/netboot/__GETNODEATTR($$SN,os)__/__GETNODEATTR($$SN,arch)__/service
 check:rc==0
 
-cmd:chdef -t osimage __GETNODEATTR($$SN,os)__-__GETNODEATTR($$SN,arch)__-netboot-service -p pkgdir=$$PYTHON_DEP_EPEL_DIR,$$PYTHON_DEP_EXTRAS_DIR,$$PYTHON_DEP_FED_DIR
+#if there was xCAT-openbmc-py been installed in MN, install xCAT-openbmc-py in SN accordingly
+cmd:if rpm -qa|grep xCAT-openbmc-py 2>&1; then osimage="__GETNODEATTR($$SN,os)__-__GETNODEATTR($$SN,arch)__-netboot-service";otherpkglist=$(lsdef -t osimage $osimage -i otherpkglist -c|awk -F"=" '{print $2}'); echo "xcat/xcat-core/xCAT-openbmc-py" >> $otherpkglist; chdef -t osimage $osimage -p pkgdir=$$PYTHON_DEP_EPEL_DIR,$$PYTHON_DEP_EXTRAS_DIR,$$PYTHON_DEP_FED_DIR; else echo "there is no xCAT-openbmc-py installed in MN, skip installing xCAT-openbmc-py in SN"; exit 0;fi
 check:rc==0
 
 cmd:lsdef -t osimage __GETNODEATTR($$SN,os)__-__GETNODEATTR($$SN,arch)__-netboot-service
 check:rc==0
 
+cmd:osimage="__GETNODEATTR($$SN,os)__-__GETNODEATTR($$SN,arch)__-netboot-service";otherpkglist=$(lsdef -t osimage $osimage -i otherpkglist -c|awk -F"=" '{print $2}'); cat $otherpkglist
 
 cmd:if [ ! -d /tmp/mountoutput ]; then mkdir -p /tmp/mountoutput; fi
 cmd:mount |sort > /tmp/mountoutput/file.org
@@ -91,10 +94,6 @@ check:output=~Provision node\(s\)\: $$SN
 
 cmd:if [[ -f /var/lib/dhcp/db/dhcpd.leases ]]; then cat /var/lib/dhcp/db/dhcpd.leases; elif [[ -f /var/lib/dhcpd/dhcpd.leases ]];then cat /var/lib/dhcpd/dhcpd.leases;elif [[ -f /var/lib/dhcp/dhcpd.leases ]];then cat /var/lib/dhcp/dhcpd.leases; fi
 
-cmd:sleep 180
-
-cmd:a=0;while ! `lsdef -l $$SN|grep status|grep booted >/dev/null`; do sleep 10;((a++));if [ $a -gt 60 ];then break;fi done
-
 cmd:ping $$SN -c 3
 check:rc==0
 check:output=~64 bytes from $$SN
@@ -112,12 +111,10 @@ check:rc==0
 check:output=~NODE=$$SN
 check:output=~IMAGENAME='__GETNODEATTR($$SN,os)__-__GETNODEATTR($$SN,arch)__-netboot-service'
 check:output=~IMAGEUUID='\w+-\w+-\w+-\w+-\w+'
-cmd:xdsh $$SN rpm -qa|grep "xCAT-openbmc-py"
+cmd:if rpm -qa|grep xCAT-openbmc-py 2>&1; then xdsh $$SN rpm -qa|grep "xCAT-openbmc-py" ;else echo "there is no xCAT-openbmc-py installed in MN, skip check xCAT-openbmc-py installation in SN"; exit 0;fi
 check:rc==0
-check:output=~xCAT-openbmc-py-\d
-cmd:xdsh $$SN rpm -qa|grep "gevent"
+cmd:if rpm -qa|grep xCAT-openbmc-py 2>&1; then xdsh $$SN rpm -qa|grep "gevent" ;else echo "there is no xCAT-openbmc-py installed in MN, skip check gevent installation in SN"; exit 0;fi
 check:rc==0
-check:output=~ gevent-\d
 cmd:xdsh $$SN "service httpd status"
 check:rc==0
 cmd:xdsh $$SN "service systemd status"
@@ -126,4 +123,5 @@ cmd:xdsh $$SN  "cat /var/log/xcat/xcat.log"
 cmd:rootimgdir=`lsdef -t osimage  __GETNODEATTR($$SN,os)__-__GETNODEATTR($$SN,arch)__-netboot-service|grep rootimgdir|awk -F'=' '{print $2}'`; if [ -d $rootimgdir.org ]; then rm -rf $rootimgdir; mv $rootimgdir.org $rootimgdir; fi
 check:rc==0
 cmd:xdsh $$SN  "cat /var/log/xcat/xcat.log"
+cmd:if [ -x /usr/bin/goconserver ]; then makegocons -d $$SN; else makeconservercf -d $$SN;fi
 end
