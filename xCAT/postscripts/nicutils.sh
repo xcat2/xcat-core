@@ -1751,7 +1751,7 @@ function create_vlan_interface_nmcli {
         $nmcli con modify $con_name connection.id $tmp_con_name
     fi
 
-    $nmcli con add type vlan con-name $con_name dev $ifname id $(( 10#$vlanid )) $_ipaddrs $_mtu
+    $nmcli con add type vlan con-name $con_name dev $ifname id $(( 10#$vlanid )) $_ipaddrs $_mtu connection.autoconnect-priority 9
     log_info "create NetworkManager connection for $ifname.$vlanid"
     if [ -z "$next_nic" ]; then
         $nmcli con up $con_name
@@ -1888,7 +1888,7 @@ function create_bridge_interface_nmcli {
             fi
         fi
         log_info "create bridge connection $xcat_con_name"
-        cmd="$nmcli con add type bridge con-name $xcat_con_name ifname $ifname $_mtu"
+        cmd="$nmcli con add type bridge con-name $xcat_con_name ifname $ifname $_mtu connection.autoconnect-priority 9"
         log_info $cmd
         $cmd
         if [ $? -ne 0 ]; then
@@ -1924,10 +1924,10 @@ function create_bridge_interface_nmcli {
         fi
         con_use_same_dev=$(nmcli dev show $_port|grep GENERAL.CONNECTION|awk -F: '{print $2}'|sed 's/^[ \t]*//g')
         if [ "$con_use_same_dev" != "--" -a -n "$con_use_same_dev" ]; then
-            cmd="$nmcli con mod "$con_use_same_dev" master $ifname $_mtu"
+            cmd="$nmcli con mod "$con_use_same_dev" master $ifname $_mtu connection.autoconnect-priority 9"
             xcat_slave_con=$con_use_same_dev
         else
-            cmd="$nmcli con add type $_pretype con-name $xcat_slave_con ifname $_port master $ifname $_mtu"
+            cmd="$nmcli con add type $_pretype con-name $xcat_slave_con ifname $_port master $ifname $_mtu connection.autoconnect-priority 9"
         fi
         log_info "create $_pretype slaves connetcion $xcat_slave_con for bridge"
         log_info "$cmd"
@@ -2098,9 +2098,9 @@ function create_bond_interface_nmcli {
     log_info "create bond connection $xcat_con_name"
     cmd=""
     if [ -n "$next_nic" ]; then
-        cmd="$nmcli con add type bond con-name $xcat_con_name ifname $bondname bond.options $_bonding_opts autoconnect yes"
+        cmd="$nmcli con add type bond con-name $xcat_con_name ifname $bondname bond.options $_bonding_opts autoconnect yes connection.autoconnect-priority 9"
     else
-        cmd="$nmcli con add type bond con-name $xcat_con_name ifname $bondname bond.options $_bonding_opts method none ipv4.method manual ipv4.addresses $ipv4_addr/$str_prefix $_mtu"
+        cmd="$nmcli con add type bond con-name $xcat_con_name ifname $bondname bond.options $_bonding_opts method none ipv4.method manual ipv4.addresses $ipv4_addr/$str_prefix $_mtu connection.autoconnect-priority 9"
     fi
     log_info $cmd
     $cmd
@@ -2144,7 +2144,7 @@ function create_bond_interface_nmcli {
             $ip link set dev $ifslave down 
             wait_for_ifstate $ifslave DOWN 20 2
         fi
-        cmd="$nmcli con add type $slave_type con-name $xcat_slave_con $_mtu method none ifname $ifslave master $xcat_con_name autoconnect yes"
+        cmd="$nmcli con add type $slave_type con-name $xcat_slave_con $_mtu method none ifname $ifslave master $xcat_con_name autoconnect yes connection.autoconnect-priority 9"
         log_info $cmd
         $cmd
         if [ $? -ne 0 ]; then
