@@ -80,7 +80,7 @@ cmd:genimage __GETNODEATTR($$SN,os)__-__GETNODEATTR($$SN,arch)__-netboot-service
 check:rc==0
 
 cmd:mount |sort > /tmp/mountoutput/file.new
-cmd:diff -y /tmp/mountoutput/file.org /tmp/mountoutput/file.new
+cmd:diff -y /tmp/mountoutput/file.org /tmp/mountoutput/file.new --ignore-matching-lines="fusectl"
 check:rc==0
 cmd:rm -rf /tmp/mountoutput
 
