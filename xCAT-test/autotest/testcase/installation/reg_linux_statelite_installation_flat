@@ -38,7 +38,7 @@ cmd:cat /etc/exports|grep nodedata; if [ "$?" -ne "0" ]; then echo "/nodedata *(
 check:rc==0
 cmd:cd /etc; export exports;cd -
 check:rc==0
-cmd:if cat /etc/*release |grep SUSE >/dev/null;then service nfsserver restart; elif cat /etc/*release |grep "Red Hat" >/dev/null;then service nfs restart; fi
+cmd:if cat /etc/*release |grep SUSE >/dev/null;then service nfsserver restart; elif cat /etc/*release |grep "Red Hat" >/dev/null;then if [ -f /usr/lib/systemd/system/nfs-server.service ]; then service nfs-server restart; else service nfs restart;fi; fi
 check:rc==0
 cmd:chtab node=$$CN statelite.statemnt="$$MN:/nodedata"
 check:rc==0
