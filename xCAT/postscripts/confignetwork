@@ -633,6 +633,18 @@ errorcode=0
 #nictypes should support capital letters, for example, Ethernet and ethernet
 utolcmd="sed -e y/ABCDEFGHIJKLMNOPQRSTUVWXYZ/abcdefghijklmnopqrstuvwxyz/"
 
+#check if using NetworkManager or  network service
+networkmanager_active=2
+check_NetworkManager_or_network_service
+is_active=$?
+if [ $is_active -eq 0 ]; then
+    networkmanager_active=0
+elif [ $is_active -eq 1 ]; then
+    networkmanager_active=1
+else
+    exit 1
+fi
+
 #back up all network interface configure files
 nwdirbak=$nwdir".xcatbak"
 ls $nwdirbak > /dev/null 2>/dev/null
@@ -642,17 +654,6 @@ if [ $? -ne 0 ]; then
     if [ $? -ne 0 ]; then
         log_warn "back up $nwdir to $nwdirbak failed."
     fi
-fi
-
-#check if using NetworkManager or  network service
-networkmanager_active=2
-check_NetworkManager_or_network_service
-if [ $? -eq 0 ]; then
-    networkmanager_active=0
-elif [ $? -eq 1 ]; then
-    networkmanager_active=1
-else
-    exit 1
 fi
 
 #get for installnic

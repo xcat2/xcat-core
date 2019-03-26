@@ -141,7 +141,7 @@ function configipv4(){
                 tmp_con_name=$con_name"-tmp"
                 nmcli con modify $con_name connection.id $tmp_con_name
             fi
-            nmcli con add type ethernet con-name $con_name ifname ${str_if_name} ipv4.method manual  ipv4.addresses  ${str_v4ip}/${str_prefix}
+            nmcli con add type ethernet con-name $con_name ifname ${str_if_name} ipv4.method manual  ipv4.addresses  ${str_v4ip}/${str_prefix} connection.autoconnect-priority 9
         else
             echo "DEVICE=${str_if_name}" > $str_conf_file
             echo "BOOTPROTO=none" >> $str_conf_file
@@ -636,7 +636,7 @@ elif [ "$1" = "-s" ];then
                 tmp_con_name=${str_inst_nic}"-tmp"
                 nmcli con modify $con_name connection.id $tmp_con_name
             fi
-            nmcli con add type ethernet con-name $con_name ifname ${str_inst_nic} ipv4.method manual ipv4.addresses  ${str_inst_ip}/${str_inst_prefix}
+            nmcli con add type ethernet con-name $con_name ifname ${str_inst_nic} ipv4.method manual ipv4.addresses  ${str_inst_ip}/${str_inst_prefix} connection.autoconnect-priority 9
         else
             echo "DEVICE=${str_inst_nic}" > $str_conf_file
             echo "IPADDR=${str_inst_ip}" >> $str_conf_file
@@ -1111,10 +1111,10 @@ else
                     nmcli con up $con_name
 		    wait_for_ifstate $str_nic_name UP 10 10
 		else
-                    ip link set dev $con_name up
+                    ip link set dev $str_nic_name up
 		fi
                 if [ $? -ne 0 ]; then
-                    log_error "bring $con_name up failed."
+                    log_error "bring $str_nic_name up failed."
                     error_code=1
                 fi
             fi
