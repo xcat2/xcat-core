@@ -32,6 +32,8 @@ check:output=~64 bytes from $$CN
 cmd:lsdef -l $$CN | grep status
 check:rc==0
 check:output=~booted
+cmd:xdsh $$CN hostname
+check:output=~$$CN
 cmd:installnic=`xdsh $$CN ip addr |grep __GETNODEATTR($$CN,ip)__|awk -F " " '{print $NF}'`; if grep SUSE /etc/*release;then xdsh $$CN "cat /etc/sysconfig/network/ifcfg-$installnic"; elif grep -E "Red Hat|CentOS" /etc/*release;then xdsh $$CN  "cat /etc/sysconfig/network-scripts/ifcfg-$installnic"; elif grep Ubuntu /etc/*release;then xdsh $$CN "grep __GETNODEATTR($$CN,ip)__ /etc/network/interfaces.d/*";else echo "Sorry,this is not supported os"; fi
 check:rc==0
 check:output=~__GETNODEATTR($$CN,ip)__
@@ -80,6 +82,8 @@ check:output=~64 bytes from $$CN
 cmd:lsdef -l $$CN | grep status
 check:rc==0
 check:output=~booted
+cmd:xdsh $$CN hostname
+check:output=~$$CN
 cmd:installnic=`xdsh $$CN ip addr |grep __GETNODEATTR($$CN,ip)__|awk -F " " '{print $NF}'`; if grep SUSE /etc/*release;then xdsh $$CN "cat /etc/sysconfig/network/ifcfg-$installnic"; elif grep -E "Red Hat|CentOS" /etc/*release;then xdsh $$CN  "cat /etc/sysconfig/network-scripts/ifcfg-$installnic"; elif grep Ubuntu /etc/*release;then xdsh $$CN "cat /etc/network/interfaces.d/*";else echo "Sorry,this is not supported os"; fi
 check:rc==0
 check:output=~__GETNODEATTR($$CN,ip)__
