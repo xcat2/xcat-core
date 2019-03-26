@@ -1,36 +1,36 @@
 start:makeconservercf_null
 label:others,ci_test
 cmd:chdef -t node -o testnodetmp cons=hmc groups=all
-cmd:makeconservercf testnodetmp
+cmd:service goconserver stop
+cmd:output=$(makeconservercf);if [[ "__GETNODEATTR($$CN,os)__" =~ "rhels8" ]];then if echo $output |grep "Failed to get conserver version" 2>/dev/null;then exit 0;fi;else if echo $output |grep "makeconservercf is deprecrated as well as conserver" 2>/dev/null;then exit 0;fi;fi
 check:rc==0
-cmd:cat /etc/conserver.cf
-check:output=~console testnodetmp \{
-check:output=~  /opt/xcat/share/xcat/cons/hmc testnodetmp;
-check:output=~\}
 cmd:rmdef -t node testnodetmp
+cmd:service goconserver start
 end
 
 start:makeconservercf_noderange
 label:others,ci_test
 cmd:chdef -t node -o testnodetmp cons=hmc groups=all
-cmd:makeconservercf testnodetmp
+cmd:service goconserver stop
+cmd:output=$(makeconservercf);if [[ "__GETNODEATTR($$CN,os)__" =~ "rhels8" ]];then if echo $output |grep "Failed to get conserver version" 2>/dev/null;then exit 0;fi;else if echo $output |grep "makeconservercf is deprecrated as well as conserver" 2>/dev/null;then exit 0;fi;fi
 check:rc==0
-cmd:cat /etc/conserver.cf
-check:output=~console testnodetmp \{
-check:output=~  /opt/xcat/share/xcat/cons/hmc testnodetmp;
-check:output=~\}
+cmd:if [[ "__GETNODEATTR($$CN,os)__" != "rhels8" ]]; then if grep "console testnodetmp {
+/opt/xcat/share/xcat/cons/hmc testnodetmp;
+}" /etc/conserver.cf;then exit 0;fi;fi
+check:rc==0
 cmd:rmdef -t node testnodetmp
+cmd:service goconserver start
 end
 
 start:makeconservercf_d
 label:others,ci_test
 cmd:chdef -t node -o testnodetmp cons=hmc groups=all
-cmd:makeconservercf testnodetmp
+cmd:service goconserver stop
+cmd:output=$(makeconservercf);if [[ "__GETNODEATTR($$CN,os)__" =~ "rhels8" ]];then if echo $output |grep "Failed to get conserver version" 2>/dev/null;then exit 0;fi;else if echo $output |grep "makeconservercf is deprecrated as well as conserver" 2>/dev/null;then exit 0;fi;fi
 check:rc==0
-cmd:makeconservercf -d testnodetmp
+cmd:if [[ "__GETNODEATTR($$CN,os)__" != "rhels8" ]];then makeconservercf -d testnodetmp;fi; if cat /etc/conserver.cf | grep testnodetmp;then exit 1;else exit 0;fi
 check:rc==0
-cmd:cat /etc/conserver.cf | grep testnodetmp
-check:output!~testnodetmp
 cmd:rmdef -t node testnodetmp
+cmd:service goconserver start
 end
 
