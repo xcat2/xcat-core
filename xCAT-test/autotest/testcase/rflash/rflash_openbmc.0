@@ -506,7 +506,7 @@ label:mn_only,hctrl_openbmc
 cmd:rflash -h
 check:output =~Usage:
 check:output =~OpenPOWER OpenBMC specific:
-check:output =~ -d.+no-host-reboot
+check:output =~ -d
 check:output =~ image_id.+--delete
 check:rc == 0
 end
