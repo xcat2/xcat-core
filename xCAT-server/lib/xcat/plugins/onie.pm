@@ -18,6 +18,7 @@ use Getopt::Long;
 use Expect;
 use File::Path;
 use File::Basename;
+use File::Copy "cp";
 
 use xCAT::Utils;
 use xCAT::MsgUtils;
@@ -183,11 +184,13 @@ sub copydata {
 
     #check if file exists
     if ( (-e "$defaultpath/$filename") && ($nooverwrite)){
+        chmod 0755, "$defaultpath/$filename";
         $callback->({ data => "$defaultpath/$filename is already exists, will not overwrite" });
     } else {
         $callback->({ data => "Copying media to $defaultpath" });
         mkpath ("$defaultpath");
-        system("cp $file $defaultpath");
+        cp "$file", "$defaultpath";
+        chmod 0755, "$defaultpath/$filename"; 	
         $callback->({ data => "Media copy operation successful" });
     }
 

@@ -55,13 +55,13 @@ class ClientShell(object):
 
         buf = json.dumps(req)
         s.send(utils.int2bytes(len(buf)))
-        s.send(buf)
+        s.send(buf.encode('utf-8'))
         while True:
             sz = s.recv(4)
             if len(sz) == 0:
                 break
             sz = utils.bytes2int(sz)
-            data = s.recv(sz)
+            data = s.recv(sz).decode('utf-8')
             print(data)
 
 

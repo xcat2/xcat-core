@@ -12,6 +12,7 @@ ethtool
 file
 gzip
 hostname
+initscripts
 iputils
 irqbalance
 kernel
@@ -30,3 +31,5 @@ util-linux
 vim-minimal
 xz
 wget
+python3
+NetworkManager

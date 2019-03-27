@@ -28,24 +28,24 @@ then
 fi
 
 cat >/tmp/baz.py <<'EOF'
-#!/usr/bin/python3
+#!/usr/libexec/platform-python
 import socket
 import sys
 
 sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 sock.connect(('#XCATVAR:XCATMASTER#',#TABLE:site:key=xcatiport:value#))
 
-print sys.argv[1]
+print(sys.argv[1])
 response = sock.recv(100)
-if(response == "ready\n"):
-        sock.send(sys.argv[1]+"\n")
+if(response == b"ready\n"):
+        sock.send((sys.argv[1]+"\n").encode())
         response = sock.recv(100)
 
 sock.close()
 EOF
 
 cat >/tmp/foo.py <<'EOF'
-#!/usr/bin/python3
+#!/usr/libexec/platform-python
 
 import socket
 import os
@@ -56,8 +56,8 @@ sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 sock.connect(('#XCATVAR:XCATMASTER#',#TABLE:site:key=xcatiport:value#))
 
 response = sock.recv(100)
-if(response == "ready\n"):
-	sock.send("installmonitor\n")
+if(response == b"ready\n"):
+	sock.send("installmonitor\n".encode())
 	response = sock.recv(100)
 
 sock.close()
@@ -77,8 +77,8 @@ try:
 			received = newSocket.recv(200)
 			if not received:
 				break
-			command = re.split('\s+',received)
-			if(command[0] == "stat"):
+			command = re.split(b'\s+',received)
+			if(command[0] == b"stat"):
 				ilog = ""
 				line = ""
 				post = 0
@@ -110,21 +110,21 @@ try:
 					line = "installing " + line
 				if(not line):
 					line = "installing prep"
-				newSocket.send(line)
+				newSocket.send(line.encode())
 				break
-#UNCOMMENTOENABLEDEBUGPORT#			if(command[0] == "sh"): #DEBUG purposes only, wide open root priv command here.
-#UNCOMMENTOENABLEDEBUGPORT#				newcommand = ""
+#UNCOMMENTOENABLEDEBUGPORT#			if(command[0] == b"sh"): #DEBUG purposes only, wide open root priv command here.
+#UNCOMMENTOENABLEDEBUGPORT#				newcommand = b""
 #UNCOMMENTOENABLEDEBUGPORT#				for i in command[1:]:
-#UNCOMMENTOENABLEDEBUGPORT#					newcommand = newcommand + i + " "
-#UNCOMMENTOENABLEDEBUGPORT#				output = os.popen(newcommand).read()
+#UNCOMMENTOENABLEDEBUGPORT#					newcommand = newcommand + i + b" "
+#UNCOMMENTOENABLEDEBUGPORT#				output = os.popen(newcommand.decode('utf-8')).read().encode()
 #UNCOMMENTOENABLEDEBUGPORT#				newSocket.send(output)
 #UNCOMMENTOENABLEDEBUGPORT#				break
-			if(command[0] == "screendump"):
+			if(command[0] == b"screendump"):
 				newcommand = "cat /dev/vcs"
 				for i in command[1:]:
 					newcommand = newcommand + i
 				output = os.popen(newcommand).read()
-				newSocket.send(output)
+				newSocket.send(output.encode())
 				break
 				
 		newSocket.close()
@@ -148,6 +148,64 @@ esac
 
 /tmp/foo.py >/foo.log 2>&1 &
 
+base64decode()
+{
+    h0="0";  h1="1";  h2="2";  h3="3";  h4="4";  h5="5";  h6="6";  h7="7";
+    h8="8";  h9="9"; h10="A"; h11="B"; h12="C"; h13="D"; h14="E"; h15="F";
+
+    while :
+    do
+        i=0
+        while [ "$i" -lt 4 ]
+        do
+            read -n 1 c || return
+
+            case "${c}" in
+            "A") d=0  ;; "B") d=1  ;; "C") d=2  ;; "D") d=3  ;;
+            "E") d=4  ;; "F") d=5  ;; "G") d=6  ;; "H") d=7  ;;
+            "I") d=8  ;; "J") d=9  ;; "K") d=10 ;; "L") d=11 ;;
+            "M") d=12 ;; "N") d=13 ;; "O") d=14 ;; "P") d=15 ;;
+            "Q") d=16 ;; "R") d=17 ;; "S") d=18 ;; "T") d=19 ;;
+            "U") d=20 ;; "V") d=21 ;; "W") d=22 ;; "X") d=23 ;;
+            "Y") d=24 ;; "Z") d=25 ;; "a") d=26 ;; "b") d=27 ;;
+            "c") d=28 ;; "d") d=29 ;; "e") d=30 ;; "f") d=31 ;;
+            "g") d=32 ;; "h") d=33 ;; "i") d=34 ;; "j") d=35 ;;
+            "k") d=36 ;; "l") d=37 ;; "m") d=38 ;; "n") d=39 ;;
+            "o") d=40 ;; "p") d=41 ;; "q") d=42 ;; "r") d=43 ;;
+            "s") d=44 ;; "t") d=45 ;; "u") d=46 ;; "v") d=47 ;;
+            "w") d=48 ;; "x") d=49 ;; "y") d=50 ;; "z") d=51 ;;
+            "0") d=52 ;; "1") d=53 ;; "2") d=54 ;; "3") d=55 ;;
+            "4") d=56 ;; "5") d=57 ;; "6") d=58 ;; "7") d=59 ;;
+            "8") d=60 ;; "9") d=61 ;; "+") d=62 ;; "/") d=63 ;;
+            "=") d=0  ;;
+            *) continue ;;
+            esac
+
+            eval "a${i}=${c}"
+            eval "b${i}=${d}"
+
+            i=$(( i + 1 ))
+        done
+
+        o0=$(( ((b0 << 2) | (b1 >> 4)) & 0xff ))
+        o1=$(( ((b1 << 4) | (b2 >> 2)) & 0xff ))
+        o2=$(( ((b2 << 6) | b3) & 0xff ))
+
+        [ "${a2}" == "=" ] &&
+            eval "printf \"\\x\${h$(( o0 / 16 ))}\${h$(( o0 % 16
+                ))}\"" &&
+            return
+        [ "${a3}" == "=" ] &&
+            eval "printf \"\\x\${h$(( o0 / 16 ))}\${h$(( o0 % 16
+                ))}\\x\${h$(( o1 / 16 ))}\${h$(( o1 % 16
+                ))}\"" &&
+            return
+        eval "printf \"\\x\${h$(( o0 / 16 ))}\${h$(( o0 % 16
+            ))}\\x\${h$(( o1 / 16 ))}\${h$(( o1 % 16
+            ))}\\x\${h$(( o2 / 16 ))}\${h$(( o2 % 16 ))}\""
+    done
+}
+
 # time to ascertain fstype and PReP/UEFI/legacy
 # also, find first available block device (sda or vda likely)
 # TODO: pick a likely non-SAN target if possible
@@ -166,6 +224,12 @@ fi
 BOOTFSTYPE=ext4
 FSTYPE=ext4
 EFIFSTYPE=efi
+
+#remove any exiting "xcatvg" VG to avoid fatal error
+vgs > /tmp/vgs 2>&1
+vgchange -a n xcatvg
+vgremove -f xcatvg
+
 msgutil_r "$MASTER_IP" "info" "Found $instdisk, generate partition file..." "/var/log/xcat/xcat.log" "$log_label"
 echo "ignoredisk --only-use=$instdisk" >>/tmp/partitionfile
 case "$(uname -m)" in
@@ -181,12 +245,12 @@ fi
 # TODO: Ondisk detection, /dev/disk/by-id/edd-int13_dev80 for legacy maybe, and no idea about efi. At least maybe blacklist SAN if mptsas/mpt2sas/megaraid_sas seen...
 echo "part /boot --fstype=$BOOTFSTYPE --asprimary --ondisk=$instdisk --size=512" >>/tmp/partitionfile
 echo "part pv.000997 --grow --asprimary --ondisk=$instdisk --size=18432" >>/tmp/partitionfile
-echo "volgroup system --pesize=4096 pv.000997" >>/tmp/partitionfile
-echo "logvol / --fstype=$FSTYPE --name=root --vgname=system --grow --size=4096 --maxsize=8192" >>/tmp/partitionfile
-echo "logvol /var --fstype=$FSTYPE --name=var --vgname=system --grow --size=2048 --maxsize=8192" >>/tmp/partitionfile
-echo "logvol /tmp --fstype=$FSTYPE --name=tmp --vgname=system --grow --size=1024 --maxsize=4096" >>/tmp/partitionfile
-echo "logvol /home --fstype=$FSTYPE --name=home --vgname=system --grow --percent=10 --maxsize=10240" >>/tmp/partitionfile
-echo "logvol swap --name=swap --vgname=system --recommended" >>/tmp/partitionfile
+echo "volgroup xcatvg --pesize=4096 pv.000997" >>/tmp/partitionfile
+echo "logvol / --fstype=$FSTYPE --name=root --vgname=xcatvg --grow --size=4096 --maxsize=20480" >>/tmp/partitionfile
+echo "logvol /var --fstype=$FSTYPE --name=var --vgname=xcatvg --grow --size=2048 --maxsize=8192" >>/tmp/partitionfile
+echo "logvol /tmp --fstype=$FSTYPE --name=tmp --vgname=xcatvg --grow --size=1024 --maxsize=4096" >>/tmp/partitionfile
+echo "logvol /home --fstype=$FSTYPE --name=home --vgname=xcatvg --grow --percent=10 --maxsize=10240" >>/tmp/partitionfile
+echo "logvol swap --name=swap --vgname=xcatvg --recommended" >>/tmp/partitionfile
 
 # Specify "bootloader" configuration in "/tmp/partitionfile" if there is no user customized partition file
 BOOTLOADER="bootloader"

@@ -619,6 +619,36 @@ while [ $op_index -le $OTHERPKGS_INDEX ]; do
 	repo_base="/etc/apt/sources.list.d"
     fi
 
+
+    urlrepoindex=0
+    #add repo for url repos in otherpkgdir
+    if [ -n "OTHERPKGDIR_INTERNET" ];then
+         OIFS=$IFS
+         IFS=','
+         OTHERPKGDIRLIST_INTERNET=($OTHERPKGDIR_INTERNET)
+
+
+         for url in ${OTHERPKGDIRLIST_INTERNET[@]}
+         do
+            if [ $hasyum -eq 1 ] || [ $haszypper -eq 1 ] ; then
+                REPOFILE="$repo_base/xCAT-otherpkgs$urlrepoindex.repo"
+                echo "[xcat-otherpkgs$urlrepoindex]" > $REPOFILE
+                echo "name=xcat-otherpkgs$urlrepoindex" >> $REPOFILE
+                echo "baseurl=$url" >> $REPOFILE
+                echo "enabled=1" >> $REPOFILE
+                echo "gpgcheck=0" >> $REPOFILE
+                echo "skip_if_unavailable=True" >> $REPOFILE
+
+            elif [ $hasapt -eq 1 ] ; then 
+                REPOFILE="$repo_base/xCAT-otherpkgs${urlrepoindex}.list"
+                echo "deb "$url >> $REPOFILE
+            fi
+            urlrepoindex=$[urlrepoindex+1]
+         done
+
+         IFS=$OIFS
+    fi
+
     array_empty repo_path
     repo_pkgs=""
     repo_pkgs_preremove=""
@@ -700,10 +730,11 @@ while [ $op_index -le $OTHERPKGS_INDEX ]; do
             #try to add the path to the repo
 	    if [ $try_repo -eq 1 ]; then
 	        index=$(array_get_size repo_path)
+                localrepoindex=$[urlrepoindex+index]
 		if [ $hasyum -eq 1 ] || [ $haszypper -eq 1 ] ; then
-	            REPOFILE="$repo_base/xCAT-otherpkgs$index.repo"
-	            echo "[xcat-otherpkgs$index]" > $REPOFILE
-	            echo "name=xcat-otherpkgs$index" >> $REPOFILE
+	            REPOFILE="$repo_base/xCAT-otherpkgs$localrepoindex.repo"
+	            echo "[xcat-otherpkgs$localrepoindex]" > $REPOFILE
+	            echo "name=xcat-otherpkgs$localrepoindex" >> $REPOFILE
 	            if [ $mounted -eq 0 ]; then
 		        echo "baseurl=http://$whole_path" >> $REPOFILE
 	            else
@@ -711,6 +742,7 @@ while [ $op_index -le $OTHERPKGS_INDEX ]; do
 	            fi
 	            echo "enabled=1" >> $REPOFILE
 	            echo "gpgcheck=0" >> $REPOFILE
+                    echo "skip_if_unavailable=True" >> $REPOFILE
                 if [ $hasyum -eq 1 ]; then
                     yum clean all
                 fi
@@ -722,7 +754,7 @@ while [ $op_index -le $OTHERPKGS_INDEX ]; do
 	                     fi
                 fi
 		elif [ $hasapt -eq 1 ] ; then
-		    REPOFILE="$repo_base/xCAT-otherpkgs$index.list"
+		    REPOFILE="$repo_base/xCAT-otherpkgs$localrepoindex.list"
 		    if [ -n "$OTHERPKGDIR" ];then
                         if [ $mounted -eq 0 ]; then
 		            type=http
@@ -730,16 +762,6 @@ while [ $op_index -le $OTHERPKGS_INDEX ]; do
 		            type=file
 	                fi
                         echo "deb $type://$whole_path ./"  > $REPOFILE
-                    fi
-                    if [ -n "$OTHERPKGDIR_INTERNET" ] && [ $index -eq 0 ] ;then
-                        OLDIFS=$IFS
-                        IFS=$','
-                        urlarray=($OTHERPKGDIR_INTERNET)
-                        for url in ${urlarray[@]}
-                        do
-                            echo "deb "$url >> $REPOFILE
-                        done
-                        IFS=$OLDIFS
                     fi
 		fi
 	    fi
@@ -798,38 +820,6 @@ EOF`
         fi
     done
 
-    #add repo for url repos in otherpkgdir
-    if [ -n "OTHERPKGDIR_INTERNET" ];then
-         OIFS=$IFS
-         IFS=','
-         OTHERPKGDIRLIST_INTERNET=($OTHERPKGDIR_INTERNET)
-
-         index=$(array_get_size repo_path)
-         for url in ${OTHERPKGDIRLIST_INTERNET[@]}
-         do
-            if [ $hasyum -eq 1 ] || [ $haszypper -eq 1 ] ; then
-                  REPOFILE="$repo_base/xCAT-otherpkgs$index.repo"
-                  echo "[xcat-otherpkgs$index]" > $REPOFILE
-                  echo "name=xcat-otherpkgs$index" >> $REPOFILE
-                  echo "baseurl=$url" >> $REPOFILE
-                  echo "enabled=1" >> $REPOFILE
-                  echo "gpgcheck=0" >> $REPOFILE
-                  index=$[index+1]
-             fi
-         done
-
-         IFS=$OIFS
-         if [ $hasyum -eq 1 ]; then
-             yum clean all
-         fi
-         if [ $haszypper -eq 1 ]; then
-             result=`zypper --non-interactive refresh 2>&1`
-             if [ $VERBOSE  ]; then
-                 echo "otherpkgs: zypper --non-interactive refresh"
-                 echo "    $result"
-             fi
-         fi
-    fi
 
     if [ "$repoonly" -eq 1 ]; then
         echo "otherpkgs: "repoonly set, so ignore pkg installation ...""

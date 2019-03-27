@@ -1343,8 +1343,8 @@ sub stop_TFTP
 {
     my $distro=xCAT::Utils->osver();
     # Check whether the tftp-hpa has been installed, the ubuntu tftpd-hpa configure file is under /etc/default
-    unless (-x "/usr/sbin/in.tftpd" and (-e "/etc/xinetd.d/tftp" or -e "/etc/default/tftpd-hpa")) {
-        xCAT::MsgUtils->message("S", "ERROR: The tftpd was not installed, enable the tftp failed.");
+    unless (-x "/usr/sbin/in.tftpd") {
+        xCAT::MsgUtils->message("S", "ERROR: The tftpd was not installed, stop the tftp failed.");
         return 1;
     }
     # kill the process of atftp if it's there
@@ -1434,103 +1434,6 @@ sub enable_TFTP
         # replace the \ with /
         print MAPFILE 'rg (\\\) \/';
         close(MAPFILE);
-    }
-
-    my $distro = xCAT::Utils->osver();
-    if ($distro !~ /ubuntu.*/i && $distro !~ /debian.*/i) {
-        if (!open(FILE, "</etc/xinetd.d/tftp")) {
-            xCAT::MsgUtils->message("S", "ERROR: Cannot open /etc/xinetd.d/tftp.");
-            return 1;
-        }
-
-        # The location of tftp mapfile
-        my $mapfile = "/etc/tftpmapfile4xcat.conf";
-        my $recfg   = 0;
-        my @newcfgfile;
-
-        # Check whether need to reconfigure the /etc/xinetd.d/tftp
-        while (<FILE>) {
-
-            # check the configuration of 'server_args = -s /xx -m xx'  entry
-            if (/^\s*server_args\s*=(.*)$/) {
-                my $cfg_args = $1;
-
-                # handle the -s option for the location of tftp root dir
-                if ($cfg_args =~ /-s\s+([^\s]*)/) {
-                    my $cfgdir = $1;
-                    $cfgdir =~ s/\$//;
-                    $tftpdir =~ s/\$//;
-
-                    # make sure the tftp dir should comes from the site.tftpdir
-                    if ($cfgdir ne $tftpdir) {
-                        $recfg = 1;
-                    }
-                }
-
-                # handle the -m option for the mapfile
-                if ($cfg_args !~ /-m\s+([^\s]*)/) {
-                    $recfg = 1;
-                }
-                if ($recfg) {
-
-                    # regenerate the entry for server_args
-                    my $newcfg = $_;
-                    $newcfg =~ s/=.*$/= -s $tftpdir -m $mapfile/;
-                    push @newcfgfile, $newcfg;
-                } else {
-                    push @newcfgfile, $_;
-                }
-            } elsif (/^\s*disable\s*=/ && !/^\s*disable\s*=\s*yes/) {
-
-                # disable the tftp by handling the entry 'disable = yes'
-                my $newcfg = $_;
-                $newcfg =~ s/=.*$/= yes/;
-                push @newcfgfile, $newcfg;
-                $recfg = 1;
-            } else {
-                push @newcfgfile, $_;
-            }
-        }
-        close(FILE);
-
-        # reconfigure the /etc/xinetd.d/tftp
-        if ($recfg) {
-            if (!open(FILE, ">/etc/xinetd.d/tftp")) {
-                xCAT::MsgUtils->message("S", "ERROR: Cannot open /etc/xinetd.d/tftp");
-                return 1;
-            }
-            print FILE @newcfgfile;
-            close(FILE);
-
-            #my @output = xCAT::Utils->runcmd("service xinetd status", -1);
-            #if ($::RUNCMD_RC == 0) {}
-            my $retcode = xCAT::Utils->checkservicestatus("xinetd");
-            if ($retcode == 0) {
-                my $retcode = xCAT::Utils->restartservice("xinetd");
-                if ($retcode != 0)
-                {
-                    xCAT::MsgUtils->message("S",
-                        "Error on restart xinetd\n");
-
-                }
-                #if (grep(/running/, @output))
-                #{
-                #  print ' ';              # indent service output to separate it from the xcatd service output
-                #  system "service xinetd stop";
-                #  if ($? > 0)
-                #  {    # error
-                #      xCAT::MsgUtils->message("S",
-                #                                "Error on command: service xinetd stop\n");
-                #  }
-                #  system "service xinetd start";
-                #  if ($? > 0)
-                #  {    # error
-                #      xCAT::MsgUtils->message("S",
-                #                                "Error on command: service xinetd start\n");
-                #  }
-                #}
-            }
-        }
     }
 
     # get the version of TCP/IP protocol

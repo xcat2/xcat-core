@@ -12,10 +12,10 @@ check:rc==0
 
 cmd:makedns -n
 check:rc==0
-cmd:makeconservercf $$SN
+cmd:if [ -x /usr/bin/goconserver ]; then makegocons $$SN; else makeconservercf $$SN;fi 
 check:rc==0
-cmd:cat /etc/conserver.cf | grep $$SN
-check:output=~$$SN
+#cmd:cat /etc/conserver.cf | grep $$SN
+#check:output=~$$SN
 cmd:sleep 20
 cmd:if [[ "__GETNODEATTR($$SN,arch)__" = "ppc64" ]]; then getmacs -D $$SN -V; fi
 check:rc==0
@@ -23,6 +23,7 @@ cmd:makedhcp -n
 check:rc==0
 cmd:makedhcp -a
 check:rc==0
+cmd:sleep 2
 cmd:if cat /etc/*release |grep SUSE >/dev/null;then cat /var/lib/dhcp/db/dhcpd.leases|grep $$SN;elif cat /etc/*release |grep "Red Hat" >/dev/null;then cat /var/lib/dhcpd/dhcpd.leases|grep $$SN;fi
 check:output=~$$SN
 cmd:chdef -t node $$SN groups=service,all
@@ -45,19 +46,22 @@ check:rc==0
 cmd:cd /install/post/otherpkgs/__GETNODEATTR($$SN,os)__/__GETNODEATTR($$SN,arch)__/xcat/xcat-core && createrepo .
 check:rc==0
 
-cmd:if [[ "__GETNODEATTR($$SN,os)__" =~ "rh" ]]; then path="rh";elif [[ "__GETNODEATTR($$SN,os)__" =~ "sles" ]];then path="sles";fi; ver="__GETNODEATTR($$SN,os)__"; tmp=${ver%.*};ver=`echo "$tmp"|sed 's:[a-zA-Z]::g'`;cd /install/post/otherpkgs/__GETNODEATTR($$SN,os)__/__GETNODEATTR($$SN,arch)__/xcat/xcat-dep/$path$ver/__GETNODEATTR($$SN,arch)__ && createrepo .;
+cmd:if [[ "__GETNODEATTR($$SN,os)__" =~ "rh" ]]; then path="rh";elif [[ "__GETNODEATTR($$SN,os)__" =~ "sles" ]];then path="sles";fi; ver="__GETNODEATTR($$SN,os)__"; tmp=${ver%%.*};ver=`echo "$tmp"|sed 's:[a-zA-Z]::g'`;cd /install/post/otherpkgs/__GETNODEATTR($$SN,os)__/__GETNODEATTR($$SN,arch)__/xcat/xcat-dep/$path$ver/__GETNODEATTR($$SN,arch)__ && createrepo .;
 check:rc==0
 
 cmd:chdef -t osimage __GETNODEATTR($$SN,os)__-__GETNODEATTR($$SN,arch)__-install-service otherpkgdir=/install/post/otherpkgs/__GETNODEATTR($$SN,os)__/__GETNODEATTR($$SN,arch)__
 check:rc==0
 
-cmd:if [[ "__GETNODEATTR($$SN,os)__" =~ "rh" ]]; then path="rh";elif [[ "__GETNODEATTR($$SN,os)__" =~ "sles" ]];then path="sles";fi; ver="__GETNODEATTR($$SN,os)__"; chdef -t osimage __GETNODEATTR($$SN,os)__-__GETNODEATTR($$SN,arch)__-install-service otherpkglist=/opt/xcat/share/xcat/install/$path/service.${ver%.*}.__GETNODEATTR($$SN,arch)__.otherpkgs.pkglist;
+cmd:if [[ "__GETNODEATTR($$SN,os)__" =~ "rh" ]]; then path="rh";elif [[ "__GETNODEATTR($$SN,os)__" =~ "sles" ]];then path="sles";fi; ver="__GETNODEATTR($$SN,os)__"; chdef -t osimage __GETNODEATTR($$SN,os)__-__GETNODEATTR($$SN,arch)__-install-service otherpkglist=/opt/xcat/share/xcat/install/$path/service.${ver%%.*}.__GETNODEATTR($$SN,arch)__.otherpkgs.pkglist;
 check:rc==0
 
-#cmd:chdef -t osimage __GETNODEATTR($$SN,os)__-__GETNODEATTR($$SN,arch)__-install-service pkgdir="/install/__GETNODEATTR($$SN,os)__/__GETNODEATTR($$SN,arch)__"
-#check:rc==0
+#add support python in sn
+#if xCAT-openbmc-py has been installed in MN, will install xCAT-openbmc-py in sn
+cmd:if rpm -qa|grep xCAT-openbmc-py 2>&1; then osimage="__GETNODEATTR($$SN,os)__-__GETNODEATTR($$SN,arch)__-install-service"; otherpkgdir=$(lsdef -t osimage $osimage -i otherpkgdir -c|awk -F"=" '{print $2}'); otherpkglist=$(lsdef -t osimage $osimage -i otherpkglist -c|awk -F"=" '{print $2}');mkdir -p $otherpkgdir/xcat/Packages; cp -r $$PYTHON_DEP_FED_DIR/Packages/*.rpm $otherpkgdir/xcat/Packages; cp -r $$PYTHON_DEP_EPEL_DIR/Packages/* $otherpkgdir/xcat/Packages; cp -r $$PYTHON_DEP_EXTRAS_DIR/Packages/* $otherpkgdir/xcat/Packages; cd $otherpkgdir/xcat/Packages && createrepo .; echo "xcat/Packages/python2-gevent" >> $otherpkglist; echo "xcat/Packages/python2-greenlet" >> $otherpkglist; echo "xcat/xcat-core/xCAT-openbmc-py" >> $otherpkglist; echo "--To check otherpkgdir"; ls -Rl $otherpkgdir/xcat/Packages; if ! ls -l $otherpkgdir/xcat/Packages|grep python2-gevent- > /dev/null 2>&1; then echo "there is no python2-gevent package under $otherpkgdir/xcat/Packages";exit 1; fi; if ! ls -l $otherpkgdir/xcat/Packages|grep python2-greenlet- > /dev/null 2>&1; then echo "there is no python2-greenlet under $otherpkgdir/xcat/Packages";exit 1; fi; echo "--To check otherpkglist"; cat $otherpkglist; if ! grep python2-gevent $otherpkglist > /dev/null 2>&1; then echo "there is no entry about python2-gevent in $otherpkglist"; exit 1;fi; if ! grep python2-greenlet $otherpkglist  > /dev/null 2>&1; then echo "there is no entry about python2-greenlet in $otherpkglist"; exit 1;fi; exit 0; else echo "there is no xCAT-openbmc-py installed in MN, skip installing xCAT-openbmc-py in SN"; exit 0;fi
+check:rc==0
 
-cmd:rinstall $$SN osimage=__GETNODEATTR($$SN,os)__-__GETNODEATTR($$SN,arch)__-install-service
+
+cmd:/opt/xcat/share/xcat/tools/autotest/testcase/commoncmd/retry_install.sh  $$SN __GETNODEATTR($$SN,os)__-__GETNODEATTR($$SN,arch)__-install-service
 check:rc==0
 check:output=~Provision node\(s\)\: $$SN
 
@@ -91,9 +95,20 @@ check:output=~/install on /install
 cmd:xdsh $$SN "mount"
 check:rc==0
 check:output=~/tftpboot on /tftpboot
+cmd:xdsh $$SN cat /opt/xcat/xcatinfo
+check:rc==0
+check:output=~NODE=$$SN
+check:output=~IMAGENAME=__GETNODEATTR($$SN,os)__-__GETNODEATTR($$SN,arch)__-install-service
+cmd:if rpm -qa|grep xCAT-openbmc-py 2>&1; then xdsh $$SN "rpm -qa|grep xCAT-openbmc-py";else echo "there is no xCAT-openbmc-py installed in MN, skip check xCAT-openbmc-py installation in SN"; exit 0;fi
+check:rc==0
+cmd:if rpm -qa|grep xCAT-openbmc-py 2>&1; then xdsh $$SN "rpm -qa|grep python2-gevent"; else echo "there is no xCAT-openbmc-py installed in MN, skip check python2-gevent installation in SN"; exit 0;fi
+check:rc==0 
+cmd:if rpm -qa|grep xCAT-openbmc-py 2>&1; then xdsh $$SN "rpm -qa|grep python2-greenlet"; else echo "there is no xCAT-openbmc-py installed in MN, skip check python2-greenlet installation in SN"; exit 0;fi
+check:rc==0
 cmd:xdsh $$SN  "cat /var/log/xcat/xcat.log"
 cmd:if [[ "__GETNODEATTR($$SN,arch)__" =~ "x86_64" ]]; then if [[ "__GETNODEATTR($$SN,os)__" =~ "sles" ]];then xdsh $$SN "zypper -n install perl-Sys-Virt"; elif [[ "__GETNODEATTR($$SN,os)__" =~ "rh" ]];then xdsh $$SN "yum install -y perl-Sys-Virt";fi;fi
 check:rc==0
 cmd:makentp -a
 check:rc==0
+cmd:if [ -x /usr/bin/goconserver ]; then makegocons -d $$SN; else makeconservercf -d $$SN;fi
 end

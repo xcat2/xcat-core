@@ -391,9 +391,11 @@ sub donets
         foreach (@ip6table)
         {
             my @ent = split /\s+/, $_;
-            if ($ent[0] eq 'fe80::/64' or $ent[0] eq 'unreachable' or $ent[1] eq 'via') {
+            if ($ent[0] eq 'fe80::/64' or $ent[0] eq 'unreachable' or
+                $ent[1] eq 'via' or $ent[2] eq 'lo') {
 
-                #Do not contemplate link-local, unreachable, or gatewayed networks further
+                #Do not contemplate link-local, unreachable, gatewayed networks,
+                #  or networks connected to loopback interface
                 #DHCPv6 relay will be manually entered into networks as was the case for IPv4
                 next;
             }

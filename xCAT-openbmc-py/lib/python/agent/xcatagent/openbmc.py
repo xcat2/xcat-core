@@ -14,13 +14,13 @@ from docopt import docopt,DocoptExit
 
 from common import utils
 from common import exceptions as xcat_exception
-from hwctl.executor.openbmc_beacon import OpenBMCBeaconTask
-from hwctl.executor.openbmc_setboot import OpenBMCBootTask
-from hwctl.executor.openbmc_flash import OpenBMCFlashTask
-from hwctl.executor.openbmc_inventory import OpenBMCInventoryTask
-from hwctl.executor.openbmc_power import OpenBMCPowerTask
-from hwctl.executor.openbmc_sensor import OpenBMCSensorTask
-from hwctl.executor.openbmc_eventlog import OpenBMCEventlogTask
+from hwctl.openbmc.openbmc_beacon import OpenBMCBeaconTask
+from hwctl.openbmc.openbmc_setboot import OpenBMCBootTask
+from hwctl.openbmc.openbmc_flash import OpenBMCFlashTask
+from hwctl.openbmc.openbmc_inventory import OpenBMCInventoryTask
+from hwctl.openbmc.openbmc_power import OpenBMCPowerTask
+from hwctl.openbmc.openbmc_sensor import OpenBMCSensorTask
+from hwctl.openbmc.openbmc_eventlog import OpenBMCEventlogTask
 from hwctl.beacon import DefaultBeaconManager
 from hwctl.setboot import DefaultBootManager
 from hwctl.flash import DefaultFlashManager
@@ -315,7 +315,7 @@ class OpenBMCManager(base.BaseManager):
 
     def rspconfig(self, nodesinfo, args):
 
-        from hwctl.executor.openbmc_bmcconfig import OpenBMCBmcConfigTask
+        from hwctl.openbmc.openbmc_bmcconfig import OpenBMCBmcConfigTask
 
         try:
             opts=docopt(RSPCONFIG_USAGE, argv=args)

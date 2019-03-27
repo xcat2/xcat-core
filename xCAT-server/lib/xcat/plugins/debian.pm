@@ -872,7 +872,7 @@ sub mkinstall {
             my $kcmdline = "nofb utf8 auto url=http://" . $instserver . ":$httpport/install/autoinst/" . $node;
 
             $kcmdline .= " xcatd=" . $instserver;
-            $kcmdline .= " mirror/http/hostname=" . $instserver;
+            $kcmdline .= " mirror/http/hostname=" . $instserver.":$httpport";
             if ($maxmem) {
                 $kcmdline .= " mem=$maxmem";
             }
@@ -973,6 +973,7 @@ sub mknetboot
     my $xcatdport  = "3001";
     my $xcatiport  = "3002";
     my $nodestatus = "y";
+    my $httpport="80";
     my @myself     = xCAT::NetworkUtils->determinehostname();
     my $myname     = $myself[ (scalar @myself) - 1 ];
 
@@ -1003,6 +1004,12 @@ sub mknetboot
         {
             $nodestatus = $ref->{value};
         }
+        ($ref) = $sitetab->getAttribs({ key => 'httpport' }, 'value');
+        if ($ref and $ref->{value})
+        {
+            $httpport = $ref->{value};
+        }
+
     }
     my %donetftp = ();
     my %oents = %{ $ostab->getNodesAttribs(\@nodes, [qw(os arch profile provmethod)]) };

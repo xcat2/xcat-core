@@ -9,14 +9,16 @@ from gevent.subprocess import Popen, PIPE
 import requests
 import urllib3
 urllib3.disable_warnings()
+from requests.auth import AuthBase
 
-import exceptions as xcat_exception
+from . import exceptions as xcat_exception
 
 class RestSession(object):
 
     def __init__(self):
         self.session = requests.Session()
         self.cookies = None
+        self.auth = None
 
     def request(self, method, url, headers, data=None, timeout=30):
 
@@ -24,41 +26,46 @@ class RestSession(object):
             response = self.session.request(method, url,
                                             data=data,
                                             headers=headers,
+                                            auth=self.auth,
                                             verify=False,
                                             timeout=timeout)
         except requests.exceptions.ConnectionError as e:
             # Extract real reason for the exception and host/port from ConnectionError message
-            # Sometimes e.message is a list, sometimes is a string. Look for different patterns
             # to extract the data needed.
+            e = str(e)
             causing_error = "n/a"
             host_and_port = "n/a"
-            if "]" in e.message[0]:
-                causing_error_part1 = e.message[0].split("]")[1]
+            if "]" in e:
+                causing_error_part1 = e.split("]")[1]
                 causing_error       = causing_error_part1.split("'")[0]
                 causing_error       = causing_error.strip()
-                host_and_port = self.extract_server_and_port(e.message[0], "STRING")
+                host_and_port = self.extract_server_and_port(e, "STRING")
 
-            if "Connection aborted." in e.message[0]:
+            if "Connection aborted." in e:
                 causing_error = "Connection reset by peer"
                 host_and_port = self.extract_server_and_port(url, "URL")
 
-            if "connect timeout=" in e.message[0]:
+            if "connect timeout=" in e:
                 causing_error = "timeout"
-                host_and_port = self.extract_server_and_port(e.message[0], "STRING")
+                host_and_port = self.extract_server_and_port(e, "STRING")
 
             message = 'Failed to connect to server.'
             # message = '\n\n--> {0} \n\n'.format(e.message[0])
             raise xcat_exception.SelfServerException(message, '({0})'.format(causing_error), host_and_port)
 
         except requests.exceptions.Timeout as e:
+            e = str(e)
             causing_error = "timeout"
-            host_and_port = self.extract_server_and_port(e.message[0], "STRING")
+            host_and_port = self.extract_server_and_port(e, "STRING")
 
             message = 'Timeout to connect to server'
             raise xcat_exception.SelfServerException(message, '({0})'.format(causing_error), host_and_port)
 
         if not self.cookies:
             self.cookies = requests.utils.dict_from_cookiejar(self.session.cookies)
+
+        if not self.auth and 'X-Auth-Token' in response.headers:
+            self.auth = XTokenAuth(response.headers['X-Auth-Token'])
 
         return response
 
@@ -127,3 +134,13 @@ class RestSession(object):
             raise SelfServerException(error)
 
         return response
+
+class XTokenAuth(AuthBase):
+
+    def __init__(self,authToken):
+
+        self.authToken=authToken
+
+    def __call__(self, auth):
+        auth.headers['X-Auth-Token']=self.authToken
+        return(auth)

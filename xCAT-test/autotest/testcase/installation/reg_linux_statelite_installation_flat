@@ -4,13 +4,14 @@ label:others,provision,statelite
 #stop:yes
 cmd:fdisk -l
 cmd:df -T
-
+cmd: if lsdef service > /dev/null 2>&1; then chdef service -m groups=service;fi
+check:rc==0
 cmd:chdef -t node -o $$CN servicenode= monserver=$$MN nfsserver=$$MN tftpserver=$$MN  xcatmaster=$$MN
 check:rc==0
 
 cmd:makedns -n
 check:rc==0
-cmd:makeconservercf $$CN
+cmd:if [ -x /usr/bin/goconserver ]; then makegocons $$CN; else makeconservercf $$CN; fi
 check:rc==0
 cmd:sleep 20
 cmd:if [[ "__GETNODEATTR($$CN,arch)__" = "ppc64" ]]; then getmacs -D $$CN; fi
@@ -37,7 +38,7 @@ cmd:cat /etc/exports|grep nodedata; if [ "$?" -ne "0" ]; then echo "/nodedata *(
 check:rc==0
 cmd:cd /etc; export exports;cd -
 check:rc==0
-cmd:if cat /etc/*release |grep SUSE >/dev/null;then service nfsserver restart; elif cat /etc/*release |grep "Red Hat" >/dev/null;then service nfs restart; fi
+cmd:if cat /etc/*release |grep SUSE >/dev/null;then service nfsserver restart; elif cat /etc/*release |grep "Red Hat" >/dev/null;then if [ -f /usr/lib/systemd/system/nfs-server.service ]; then service nfs-server restart; else service nfs restart;fi; fi
 check:rc==0
 cmd:chtab node=$$CN statelite.statemnt="$$MN:/nodedata"
 check:rc==0
@@ -50,19 +51,18 @@ check:rc==0
 cmd:rootimgdir=`lsdef -t osimage __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-statelite-compute|grep rootimgdir|awk -F'=' '{print $2}'`; if [ -d $rootimgdir ]; then mv $rootimgdir $rootimgdir.regbak;fi
 check:rc==0
 
+cmd:chdef -t osimage -o __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-statelite-compute rootfstype=nfs
+check:rc==0
 cmd:genimage __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-statelite-compute
 check:rc==0
 cmd:liteimg  __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-statelite-compute
 check:rc==0
 
-cmd:rinstall $$CN osimage=__GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-statelite-compute
+cmd:/opt/xcat/share/xcat/tools/autotest/testcase/commoncmd/retry_install.sh  $$CN __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-statelite-compute
 check:rc==0
 check:output=~Provision node\(s\)\: $$CN
 
 cmd:if [[ -f /var/lib/dhcp/db/dhcpd.leases ]]; then cat /var/lib/dhcp/db/dhcpd.leases; elif [[ -f /var/lib/dhcpd/dhcpd.leases ]];then cat /var/lib/dhcpd/dhcpd.leases;elif [[ -f /var/lib/dhcp/dhcpd.leases ]];then cat /var/lib/dhcp/dhcpd.leases; fi
-cmd:sleep 300
-cmd:a=0;while ! `lsdef -l $$CN|grep status|grep booted >/dev/null`; do sleep 10;((a++));if [ $a -gt 60 ];then break;fi done
-
 cmd:ping $$CN -c 3
 check:rc==0
 check:output=~64 bytes from $$CN
@@ -93,13 +93,11 @@ check:rc==0
 cmd:liteimg __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-statelite-compute
 check:rc==0
 
-cmd:rinstall $$CN osimage=__GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-statelite-compute
+cmd:/opt/xcat/share/xcat/tools/autotest/testcase/commoncmd/retry_install.sh  $$CN __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-statelite-compute
 check:rc==0
 check:output=~Provision node\(s\)\: $$CN
 
 cmd:if [[ -f /var/lib/dhcp/db/dhcpd.leases ]]; then cat /var/lib/dhcp/db/dhcpd.leases; elif [[ -f /var/lib/dhcpd/dhcpd.leases ]];then cat /var/lib/dhcpd/dhcpd.leases;elif [[ -f /var/lib/dhcp/dhcpd.leases ]];then cat /var/lib/dhcp/dhcpd.leases; fi
-cmd:sleep 300
-cmd:a=0;while ! `lsdef -l $$CN|grep status|grep booted >/dev/null`; do sleep 10;((a++));if [ $a -gt 60 ];then break;fi done
 
 cmd:ping $$CN -c 3
 check:rc==0
@@ -126,7 +124,7 @@ cmd:rm -rf /tmp/image;mkdir /tmp/image
 check:rc==0
 cmd:imgexport __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-statelite-compute /tmp/image/image.tgz
 check:rc==0
-
+cmd:if [ -x /usr/bin/goconserver ]; then makegocons -d $$CN; else makeconservercf -d $$CN; fi
 cmd:rootimgdir=`lsdef -t osimage  __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-statelite-compute|grep rootimgdir|awk -F'=' '{print $2}'`; if [ -d $rootimgdir.regbak ]; then rm -rf $rootimgdir; mv $rootimgdir.regbak $rootimgdir; fi
 check:rc==0
 end

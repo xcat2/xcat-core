@@ -1206,7 +1206,7 @@ sub initDB
         $chtabcmds .= "$::XCATROOT/sbin/chtab key=cleanupxcatpost site.value=no;";
         $chtabcmds .= "$::XCATROOT/sbin/chtab key=dhcplease site.value=43200;";
         $chtabcmds .= "$::XCATROOT/sbin/chtab key=auditnosyslog site.value=0;";
-        $chtabcmds .= "$::XCATROOT/sbin/chtab key=xcatsslversion site.value=TLSv1;";
+        $chtabcmds .= "$::XCATROOT/sbin/chtab key=xcatsslversion site.value=;";
         $chtabcmds .= "$::XCATROOT/sbin/chtab key=auditskipcmds site.value=ALL;";
 
         #$chtabcmds .= "$::XCATROOT/sbin/chtab key=useflowcontrol site.value=yes;"; # need to fix 4031
@@ -1474,16 +1474,29 @@ sub initDB
         }
 
         # Set default value for site.xcatsslversion when update xcat
-        $cmds = "XCATBYPASS=Y $::XCATROOT/sbin/tabdump site 2>/dev/null |grep xcatsslversion";
+        $cmds = "XCATBYPASS=Y $::XCATROOT/sbin/tabdump site 2>/dev/null | grep xcatsslversion";
         xCAT::Utils->runcmd("$cmds", -1);
-        if ($::RUNCMD_RC != 0) {
-
-            # if site.xcatsslversion was not set, then set the default value TLSv1
-            $cmds = "$::XCATROOT/sbin/chtab key=xcatsslversion site.value=TLSv1;";
-            xCAT::Utils->runcmd("$cmds", 0);
-            if ($::RUNCMD_RC != 0) {
-                xCAT::MsgUtils->message('E', "Could not add default value for site.xcatsslversion.");
-            }
+        if ($::RUNCMD_RC == 0) {
+            xCAT::MsgUtils->message('I',
+                "__      ___   ___ _  _ ___ _  _  ___");
+            xCAT::MsgUtils->message('I',
+                "\\ \\    / /_\\ | _ \\ \\| |_ _| \\| |/ __|                      _     +-+-+-+-+-+-+-+");
+            xCAT::MsgUtils->message('I',
+                " \\ \\/\\/ / _ \\|   / .` || || .` | (_ |                     oo\\    |W|A|R|N|I|N|G|");
+            xCAT::MsgUtils->message('I',
+                "  \\_/\\_/_/ \\_\\_|_\\_|\\_|___|_|\\_|\\___|                    (__)\\   +-+-+-+-+-+-+-+");
+            xCAT::MsgUtils->message('I',
+                "+--------------------------------------------------------------+ +-+-+-+-+-+-+-+");
+            xCAT::MsgUtils->message('I',
+                "| The default value of `site.xcatsslversion' was updated.      |:|W|A|R|N|I|N|G|");
+            xCAT::MsgUtils->message('I',
+                "| Run `chdef -t site xcatsslversion=' to update your system to |:+-+-+-+-+-+-+-+");
+            xCAT::MsgUtils->message('I',
+                "| the new default value. See `man site' for more details.      |:+-+-+-+-+-+-+-+");
+            xCAT::MsgUtils->message('I',
+                "+--------------------------------------------------------------+:|W|A|R|N|I|N|G|");
+            xCAT::MsgUtils->message('I',
+                " ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::+-+-+-+-+-+-+-+");
         }
     }
 

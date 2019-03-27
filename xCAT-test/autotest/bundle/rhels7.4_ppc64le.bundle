@@ -20,6 +20,7 @@ updatenode_diskful_syncfiles_P_script1
 updatenode_script3
 updatenode_P_script1_script2
 updatenode_without_flag
+updatenode_without_options
 confignetwork_static_installnic
 confignetwork_s_installnic_secondarynic_updatenode
 confignetwork_secondarynic_updatenode
@@ -310,7 +311,6 @@ makentp_v
 makentp_h
 nodeset_check_warninginfo
 runcmdinstaller_h
-runcmdinstaller_command
 get_xcat_postscripts_loginfo
 updatenode_postscripts_loginfo
 bmcdiscover_h

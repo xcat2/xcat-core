@@ -19,7 +19,7 @@ SYNOPSIS
 ********
 
 
-\ **updatenode**\  \ *noderange*\  [\ **-V | -**\ **-verbose**\ ] [\ **-F | -**\ **-sync**\ ] [\ **-f | -**\ **-snsync**\ ] [\ **-r | -**\ **-node-rcp**\  [\ *full_path_to_remote_copy_command*\ ]]  [\ **-S | -**\ **-sw**\ ]  [\ **-l**\   \ *userID*\ ]  [\ **-P | -**\ **-scripts**\  [\ *script1,script2...*\ ]] [\ **-s | -**\ **-sn**\ ] [\ **-A | -**\ **-updateallsw**\ ] [\ **-c | -**\ **-cmdlineonly**\ ] [\ **-d**\  \ *alt_source_dir*\ ] [\ **-**\ **-fanout**\ =\ *fanout_value*\ ] [\ **-t**\  \ *timeout*\ } [\ *attr=val*\  [\ *attr=val...*\ ]] [\ **-n | -**\ **-noverify**\ ]
+\ **updatenode**\  \ *noderange*\  [\ **-V | -**\ **-verbose**\ ] [\ **-F | -**\ **-sync**\ ] [\ **-f | -**\ **-snsync**\ ] [\ **-r | -**\ **-node-rcp**\  [\ *node_remote_copy_command*\ ]]  [\ **-S | -**\ **-sw**\ ]  [\ **-l**\   \ *userID*\ ]  [\ **-P | -**\ **-scripts**\  [\ *script1,script2...*\ ]] [\ **-s | -**\ **-sn**\ ] [\ **-A | -**\ **-updateallsw**\ ] [\ **-c | -**\ **-cmdlineonly**\ ] [\ **-d**\  \ *alt_source_dir*\ ] [\ **-**\ **-fanout**\ =\ *fanout_value*\ ] [\ **-t**\  \ *timeout*\ } [\ *attr=val*\  [\ *attr=val...*\ ]] [\ **-n | -**\ **-noverify**\ ]
 
 \ **updatenode**\  \ **noderange**\  [\ **-k | -**\ **-security**\ ] [\ **-t**\  \ *timeout*\ ]
 
@@ -37,7 +37,7 @@ DESCRIPTION
 ***********
 
 
-The updatenode command is run on the xCAT management node and can be used
+The \ **updatenode**\  command is run on the xCAT management node and can be used
 to perform the following node updates:
 
 
@@ -58,10 +58,10 @@ Update the ca and credentials for the service nodes.
 
 
 
-The default behavior when no options are input to updatenode will be to run
+The default behavior when no options are input to \ **updatenode**\  will be to run
 the following options \ **-S**\ , \ **-P**\  and \ **-F**\  options in this order.
-If you wish to limit updatenode to specific
-actions you can use combinations of the \ **-S**\ , \ **-P**\ , and \ **-F**\  flags.
+If you wish to limit \ **updatenode**\  to specific
+actions you can use combination of the \ **-S**\ , \ **-P**\ , and \ **-F**\  flags.
 
 For example, If you just want to synchronize configuration file you could
 specify the \ **-F**\  flag.   If you want to synchronize files and update
@@ -74,7 +74,7 @@ The flag \ **-f**\  (\ **-**\ **-snsync**\ ) can NOT be used together with \ **-
 
 Note: In a large cluster environment the updating of nodes in an ad hoc
 manner can quickly get out of hand, leaving the system administrator with
-a very confusing environment to deal with. The updatenode command is
+a very confusing environment to deal with. The \ **updatenode**\  command is
 designed to encourage users to handle cluster updates in a manner that
 is recorded and easily repeatable.
 
@@ -93,14 +93,14 @@ The basic process for distributing and synchronizing nodes is:
 
 
 
-\* Run the updatenode command to update the nodes.
+\* Run the \ **updatenode**\  command to update the nodes.
 
 
 
 Files may be distributed and synchronized for both diskless and
 diskful nodes.  Syncing files to NFS-based statelite nodes is not supported.
 
-More information on using the  synchronization file function is in the following doc: Using_Updatenode.
+More information on using the synchronization file function is in the following document: <https://xcat-docs.readthedocs.io/en/stable/guides/admin-guides/manage_clusters/common/deployment/syncfile/syncfile_updatenode.html>
 
 Create the synclist file
 ------------------------
@@ -111,9 +111,7 @@ where the files should be synced to. In the synclist file, each
 line is an entry which describes the location of the source files
 and the destination location for the files on the target node.
 
-For more information on creating your synclist files and where to put them, read:
-
-Sync-ing_Config_Files_to_Nodes
+For more information on creating your synclist files and where to put them, read here: <https://xcat-docs.readthedocs.io/en/stable/guides/admin-guides/manage_clusters/common/deployment/syncfile/syncfile_synclist_file.html>
 
 
 Run updatenode to synchronize the files
@@ -382,12 +380,12 @@ OPTIONS
 \ **-F|-**\ **-sync**\ 
  
  Specifies that file synchronization should be
- performed on the nodes.  rsync/scp and ssh must
+ performed on the nodes.  \ **rsync/scp**\  and \ **ssh**\  must
  be installed and configured on the nodes.
  The function is not supported for NFS-based statelite installations.
  For NFS-based statelite installations to sync files, you should use the
  read-only option for files/directories listed in
- litefile table with source location specified in the litetree table.
+ \ **litefile**\  table with source location specified in the \ **litetree**\  table.
  
 
 
@@ -396,33 +394,33 @@ OPTIONS
  Specifies that file synchronization should be
  performed to the service nodes that service the
  nodes in the noderange. This updates the service
- nodes with the data to sync to the nodes. rsync/scp and ssh must
+ nodes with the data to sync to the nodes. \ **rsync/scp**\  and \ **ssh**\  must
  be installed and configured on the service nodes.
  For hierarchy, this optionally can  be done before syncing the files
- to the nodes with the -F flag.  If the -f flag is not used, then
- the -F flag will sync the servicenodes before the nodes automatically.
+ to the nodes with the \ **-F**\  flag.  If the \ **-f**\  flag is not used, then
+ the \ **-F**\  flag will sync the service nodes before the nodes automatically.
  When installing nodes in a hierarchical cluster, this flag should be
  used to sync the service nodes before the install, since the files will
- be sync'd from the service node by the syncfiles postscript during the
+ be synced from the service node by the \ **syncfiles**\  postscript during the
  install.
  The function is not supported for NFS-based statelite installations.
  For statelite installations to sync files, you should use the
  read-only option for files/directories listed in
- litefile table with source location specified in the litetree table.
+ \ **litefile**\  table with source location specified in the \ **litetree**\  table.
  
 
 
-[\ **-r | -**\ **-node-rcp**\  [\ *full_path_to_remote_copy_command*\ ]]
+[\ **-r | -**\ **-node-rcp**\  [\ *node_remote_copy_command*\ ]]
  
- Specifies  the  full  path of the remote copy command used for syncing files to node targets, such as "/usr/bin/rsync" or "/usr/bin/scp". If not specified, rsync will be used by default.
+ Specifies  the  full  path of the remote copy command used for syncing files to node targets, such as \ **/usr/bin/rsync**\  or \ **/usr/bin/scp**\ . If not specified, \ **rsync**\  will be used by default.
  
- Notice: The synclist for "-r /usr/bin/scp" has some differences with "-r /usr/bin/rsync":
+ Note: The synclist processing for \ **-r /usr/bin/scp**\  has some differences with \ **-r /usr/bin/rsync**\ :
  
- 1) the \`\`EXECUTE\`\` clause is not supported in "-r /usr/bin/scp"
+ 1) the \ **EXECUTE**\  clause in synclist file is not supported with \ **-r /usr/bin/scp**\  flag
  
- 2) if the destination directory specified in synclist is an existing file on target node, "updatenode -r /usr/bin/scp" will fail with \`\`scp: <destination directory>: Not a directory\`\`
+ 2) if the destination directory specified in synclist file is an existing file on target node, \ **updatenode -r /usr/bin/scp**\  will fail with "scp: <destination directory>: Not a directory"
  
- 3) if the destination file specified in synclist is an existing directory on target node, "updatenode -r /usr/bin/scp" will fail with \`\`scp: <destination file>: Is a directory\`\`
+ 3) if the destination file specified in synclist file is an existing directory on target node, \ **updatenode -r /usr/bin/scp**\  will fail with "scp: <destination file>: Is a directory"
  
 
 
@@ -461,8 +459,8 @@ OPTIONS
 \ **-P|-**\ **-scripts**\ 
  
  Specifies that postscripts and postbootscripts should be run on the nodes.
- updatenode -P syncfiles is not supported.  The syncfiles postscript can only
- be run during install.  You should use updatenode <noderange> -F instead.
+ File sync with \ **updatenode -P syncfiles**\  is not supported.  The \ **syncfiles**\  postscript can only
+ be run during install.  You should use \ **updatenode -F**\  instead.
  
 
 
@@ -546,14 +544,14 @@ EXAMPLES
  
 
 
-3. Running updatenode -P with the syncfiles postscript is not supported. You should use updatenode -F instead.
+3. Running \ **updatenode -P**\  with the \ **syncfiles**\  postscript is not supported. You should use \ **updatenode -F**\  instead.
  
  Do not run:
  
  
  .. code-block:: perl
  
-   updatenode clstrno1 -P syncfiles
+   updatenode clstrn01 -P syncfiles
  
  
  Run:

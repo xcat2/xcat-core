@@ -1,33 +1,117 @@
 start:makeconservercf_null
 label:others,ci_test
 cmd:chdef -t node -o testnodetmp cons=hmc groups=all
-cmd:makeconservercf testnodetmp
+cmd:service goconserver stop
+cmd:#!/bin/bash
+lsgoconser=`ls /usr/bin/goconserver`
+lsconser=`ls /usr/sbin/conserver`
+output=`makeconservercf 2>&1`
+if [[ ! "$lsgoconser" ]] && [[ ! "$lsconser" ]]; then
+    echo "No goconserver and conserver installed"
+    exit 1
+elif [[ ! "$lsconser" ]]; then
+    if echo $output | grep "conserver is not supported or not installed."; then
+        exit 0
+    else
+        exit 1
+    fi
+else
+    if [[ "$lsgoconser" ]]; then
+        msg=`echo $output | grep "makeconservercf is deprecrated as well as conserver, go to makegocons for more information about enabling goconserver."`
+        if [ ! "$msg" ]; then
+            exit 1
+        fi
+    fi
+    service conserver status
+    exit $?
+fi
 check:rc==0
-cmd:cat /etc/conserver.cf
-check:output=~console testnodetmp \{
-check:output=~  /opt/xcat/share/xcat/cons/hmc testnodetmp;
-check:output=~\}
 cmd:rmdef -t node testnodetmp
 end
 
 start:makeconservercf_noderange
 label:others,ci_test
 cmd:chdef -t node -o testnodetmp cons=hmc groups=all
-cmd:makeconservercf testnodetmp
+cmd:service goconserver stop
+cmd:#!/bin/bash
+lsgoconser=`ls /usr/bin/goconserver`
+lsconser=`ls /usr/sbin/conserver`
+output=`makeconservercf testnodetmp 2>&1`
+if [[ ! "$lsgoconser" ]] && [[ ! "$lsconser" ]]; then
+    echo "No goconserver and conserver installed"
+    exit 1
+elif [[ ! "$lsconser" ]]; then
+    if echo $output | grep "conserver is not supported or not installed."; then
+        exit 0
+    else
+        exit 1
+    fi
+else
+    if [[ "$lsgoconser" ]]; then
+        msg=`echo $output | grep "makeconservercf is deprecrated as well as conserver, go to makegocons for more information about enabling goconserver."`
+        if [ ! "$msg" ]; then
+            exit 1
+        fi 
+    fi
+    service conserver status
+    if [ $? != 0 ]; then
+        exit $?
+    else
+        if grep "console testnodetmp {
+/opt/xcat/share/xcat/cons/hmc testnodetmp;
+}" /etc/conserver.cf;then
+            exit 0
+        else
+            exit 1
+        fi
+    fi
+fi
 check:rc==0
-cmd:cat /etc/conserver.cf
-check:output=~console testnodetmp \{
-check:output=~  /opt/xcat/share/xcat/cons/hmc testnodetmp;
-check:output=~\}
 cmd:rmdef -t node testnodetmp
 end
 
 start:makeconservercf_d
 label:others,ci_test
 cmd:chdef -t node -o testnodetmp cons=hmc groups=all
-cmd:makeconservercf testnodetmp
+cmd:service goconserver stop
+cmd:#!/bin/bash
+lsgoconser=`ls /usr/bin/goconserver`
+lsconser=`ls /usr/sbin/conserver`
+output=`makeconservercf testnodetmp 2>&1`
+if [[ ! "$lsgoconser" ]] && [[ ! "$lsconser" ]]; then
+    echo "No goconserver and conserver installed"
+    exit 1
+elif [[ ! "$lsconser" ]]; then
+    if echo $output | grep "conserver is not supported or not installed."; then
+        exit 0
+    else
+        exit 1
+    fi
+else
+    if [[ "$lsgoconser" ]]; then
+        msg=`echo $output | grep "makeconservercf is deprecrated as well as conserver, go to makegocons for more information about enabling goconserver."`
+        if [ ! "$msg" ]; then
+            exit 1
+        fi
+    fi
+    service conserver status
+    exit $?
+fi
 check:rc==0
-cmd:makeconservercf -d testnodetmp
+cmd:#!/bin/bash
+lsconser=`ls /usr/sbin/conserver`
+if [[ ! "$lsconser" ]]; then
+    exit 0
+else
+    makeconservercf -d testnodetmp
+    if [ $? != 0 ]; then
+        exit $?
+    else
+        if cat /etc/conserver.cf | grep testnodetmp; then
+            exit 1
+        fi
+    fi
+fi
 check:rc==0
 cmd:cat /etc/conserver.cf | grep testnodetmp
 check:output!~testnodetmp

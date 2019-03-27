@@ -12,6 +12,7 @@ ethtool
 file
 gzip
 hostname
+initscripts
 iputils
 irqbalance
 kernel
@@ -22,7 +23,6 @@ openssh-clients
 openssh-server
 openssl
 parted
-ppc64-utils
 procps-ng
 rpm
 rsync
@@ -32,3 +32,5 @@ util-linux
 vim-minimal
 xz
 wget
+python3
+NetworkManager

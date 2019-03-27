@@ -18,6 +18,3 @@ do
         sed -i 's/ONBOOT=no/ONBOOT=yes/' "$i"
     fi
 done
-
-# Dirty hack for RHEL8 Alpha
-chkconfig network on

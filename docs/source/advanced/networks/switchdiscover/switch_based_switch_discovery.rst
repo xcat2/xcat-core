@@ -61,59 +61,63 @@ dhcp should be restarted after seting up dynamic IP range.
 Discover Switches
 ~~~~~~~~~~~~~~~~~
 
-xCAT supports **switchdiscover** command to discover the switches that are attached to the subnets on xCAT management node.  Refer to :doc:`/advanced/networks/switchdiscover/switches_discovery` for more info.
+.. note:: Only BNT and Mellanox switches are supported for switch-based switch discovery
 
-For the switch-based switch discovery, we add **–setup** flag:  ::
+xCAT can automatically discover switches that are connected to the defined subnets from the management node using the ``switchdiscover`` command.
+
+For switch-based switch discovery, use the ``--setup`` option::
 
 
     switchdiscover [noderange|--range ip_ranges][-s scan_methods] [--setup]
 
 
-if **--setup** flag is specified, the command will perform following steps:
+The ``--setup`` option will perform the following steps:
 
-1.  Use snmp or nmap scan methods to find all switches in the dynamic IP ranges specified by --range, the available switches will be stored in switch hash table with hostname, switchtype, vendor info and mac address.
+1.  Scan the IP range using ``snmp`` or ``nmap`` to find all switches that respond.  The available switches will be stored into the switch hash table with ``hostname``, ``switchtype``, ``mac``, and vendor information. 
+
+2.  Based on MAC address for each switch defined in the hash table, call **find_mac** subroutine.   The **find_mac** subroutine will go thought the switch and switch ports and find matched mac address.
+
+    * If discovered switch didn't find any predefined switch matches, it will log the message ``NO predefined switch matched``.
+    * If discovered switch matched with one of pre-defined switch, it will update the predefined switch with ::
+
+        otherinterface=x.x.x.x (discovered ip)
+        state=matched
+        switchtype=type of switch
+        usercomment=vendor information
 
 
-2.  Based on mac address for each switch defined in the hash table, call **find_mac** subroutine.   The **find_mac** subroutine will go thought the switch and switch ports and find matched mac address.
+3.  If the switches are matched, the ``switchdiscover`` command will execute the following scripts to configure static IP address, hostname, and enable the snmpv3.
 
-* If discovered switch didn't find any predefined switch matches, it will log the message ``NO predefined switch matched``.
-* If discovered switch matched with one of pre-defined switch, it will update the predefined switch with ::
+    * ``/opt/xcat/share/xcat/scripts/configBNT`` 
+    * ``/opt/xcat/share/xcat/scripts/configMellanox``
 
-    otherinterface=x.x.x.x (discovered ip)
-    state=matched
-    switchtype=type of switch
-    usercomment=vendor information
+4.  After discovery process the predefined node attribute in the xCAT database will be updated. ::
+
+       lsdef switch-192-168-5-22
+          groups=switch
+          ip=192.168.5.22
+          mac=a8:97:dc:02:92:00
+          mgt=switch
+          nodetype=switch
+          password=admin
+          postbootscripts=otherpkgs
+          postscripts=syslog,remoteshell,syncfiles
+          protocol=telnet
+          snmpauth=sha
+          snmppassword=xcatadminpassw0rd@snmp
+          snmpusername=xcatadmin
+          snmpversion=3
+          status=hostname_configured
+          statustime=08-31-2016 15:35:49
+          supportedarchs=ppc64
+          switch=switch-10-5-23-1
+          switchport=45
+          switchtype=BNT
+          usercomment=IBM Networking Operating System RackSwitch G8052
+          username=root
 
 
-3.  After switches are matched, the command will call config files to set up static IP address, hostname and enable the snmpv3.  Currently, BNT and Mellanox switches are supported.  The two config files are located in the **/opt/xcat/share/xcat/scripts/config.BNT** and **/opt/xcat/share/xcat/scripts/config.Mellanox**.  the log message ``the switch type is not support for config`` is displayed if switchtype is something other than BNT or Mellanox.
-
-4.  After discovery process, the predefined node attribute in the xCATdb will be updated.
-
-::
-
-    lsdef switch-192-168-5-22
-       groups=switch
-       ip=192.168.5.22
-       mac=a8:97:dc:02:92:00
-       mgt=switch
-       nodetype=switch
-       password=admin
-       postbootscripts=otherpkgs
-       postscripts=syslog,remoteshell,syncfiles
-       protocol=telnet
-       snmpauth=sha
-       snmppassword=xcatadminpassw0rd@snmp
-       snmpusername=xcatadmin
-       snmpversion=3
-       status=hostname_configured
-       statustime=08-31-2016 15:35:49
-       supportedarchs=ppc64
-       switch=switch-10-5-23-1
-       switchport=45
-       switchtype=BNT
-       usercomment=IBM Networking Operating System RackSwitch G8052
-       username=root
-
+.. tip:: Refer to :doc:`/advanced/networks/switchdiscover/switches_discovery` for more info.
 
 
 Configure switches

@@ -22,8 +22,8 @@
                 "noderesnimserver": "nimserver",
                 "noderesprimarynic": "primarynic",
                 "noderesproxydhcp": "supportproxydhcp",
-                "servicenodeftpserver": "setupftp",
-                "servicenodenimserver": "setupnim",
+#                "servicenodeftpserver": "setupftp",
+#                "servicenodenimserver": "setupnim",
                 "storagecontroller": "storagcontroller",
                 "storageosvolume": "osvolume",
                 "storagetype": "storagetype",
@@ -114,6 +114,12 @@
                 }
             },
             "network_info": {
+                "connections": {
+                    "interface": "switchinterface",
+                    "switch": "switch",
+                    "switchport": "50",
+                    "vlan": "switchvlan"
+                },
                 "nics": {
                     "bond0": {
                         "nicdevices": [
@@ -200,11 +206,11 @@
                         "hostnameprefixe": [
                             "eth0-"
                         ],
-                        "ips": [
-                            "1.1.1.1"
-                        ],
                         "hostnamesuffixes": [
                             "-eth0"
+                        ],
+                        "ips": [
+                            "1.1.1.1"
                         ]
                     },
                     "eth1": {
@@ -270,17 +276,14 @@
                     "ip": "10.10.10.10",
                     "mac": [
                         "42:d6:0a:03:05:08"
-                    ],
-                    "switch": "switch",
-                    "switchinterface": "switchinterface",
-                    "switchport": "50",
-                    "switchvlan": "switchvlan"
+                    ]
                 },
                 "routenames": "routenames"
             },
             "obj_info": {
                 "description": "usercomment",
-                "groups": "bogusgroup"
+                "groups": "bogusgroup",
+                "grouptype": "static"
             },
             "obj_type": "node",
             "position_info": {
@@ -313,7 +316,9 @@
                 "xcatmaster": "xcatmaster"
             },
             "security_info": {
-                "productkey": "productkey",
+                "productkey": {
+                    "key": "productkey"
+                },
                 "zonename": "zonename"
             }
         },
@@ -428,6 +433,12 @@
                 }
             },
             "network_info": {
+                "connections": {
+                    "interface": "switchinterface",
+                    "switch": "switch",
+                    "switchport": "50",
+                    "vlan": "switchvlan"
+                },
                 "nics": {
                     "bond0": {
                         "nicdevices": [
@@ -581,11 +592,7 @@
                     "ip": "10.10.10.10",
                     "mac": [
                         "42:d6:0a:03:05:08"
-                    ],
-                    "switch": "switch",
-                    "switchinterface": "switchinterface",
-                    "switchport": "50",
-                    "switchvlan": "switchvlan"
+                    ]
                 },
                 "routenames": "routenames"
             },
@@ -624,7 +631,9 @@
                 "xcatmaster": "xcatmaster"
             },
             "security_info": {
-                "productkey": "productkey",
+                "productkey": {
+                    "key": "productkey"
+                },
                 "remotecontrol": {
                     "password": "password",
                     "username": "username"
@@ -751,6 +760,12 @@
                 }
             },
             "network_info": {
+                "connections": {
+                    "interface": "switchinterface",
+                    "switch": "switch",
+                    "switchport": "50",
+                    "vlan": "switchvlan"
+                },
                 "linkports": "linkports",
                 "nics": {
                     "bond0": {
@@ -905,11 +920,7 @@
                     "ip": "10.10.10.10",
                     "mac": [
                         "42:d6:0a:03:05:08"
-                    ],
-                    "switch": "switch",
-                    "switchinterface": "switchinterface",
-                    "switchport": "50",
-                    "switchvlan": "switchvlan"
+                    ]
                 },
                 "routenames": "routenames"
             },
@@ -948,7 +959,9 @@
                 "xcatmaster": "xcatmaster"
             },
             "security_info": {
-                "productkey": "productkey",
+                "productkey": {
+                    "key": "productkey"
+                },
                 "remotecontrol": {
                     "password": "password",
                     "remoteprotocol": "ssh",
@@ -966,5 +979,5 @@
             }
         }
     },
-    "schema_version": "1.0"
+    "schema_version": "2.0"
 }

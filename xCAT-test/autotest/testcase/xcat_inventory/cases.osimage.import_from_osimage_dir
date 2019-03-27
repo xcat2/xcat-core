@@ -1,6 +1,6 @@
 start:export_import_an_osimage_directory
 description: import an osimage diretory with `xcat-inventroy import -d <osimage directory>`
-label:others,xcat_inventory
+label:others,inventory_ci
 #backup any existing test_myimage
 cmd:mkdir -p /tmp/export_import_an_osimage_directory/backup
 check:rc==0

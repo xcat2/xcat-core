@@ -1,0 +1,132 @@
+osdistro:
+  ubuntu17.10-ppc64el:
+    arch: ppc64el
+    basename: ubuntu
+    dirpaths: /install/ubuntu17.10/ppc64el
+    majorversion: '17'
+    minorversion: '10'
+    type: Linux
+network:
+  prov:
+    basic_attr:
+      gateway: 10.6.7.1
+      mask: 255.0.0.0
+      net: 10.6.7.0
+node:
+  nodetorm:
+    device_type: server
+    obj_info:
+      groups: all
+    obj_type: node
+    role: compute
+  node2:
+    device_type: server
+    obj_info:
+      groups: all
+    obj_type: node
+    role: compute
+  xcatdefaults:
+    device_type: server
+    engines:
+      netboot_engine:
+        engine_info:
+          postbootscripts: otherpkgs
+          postscripts: syslog,remoteshell,syncfiles
+    obj_type: group
+    role: compute
+passwd:
+  ipmi:
+    password: admin
+    username: ADMIN
+  omapi:
+    password: MnJKd01IWGtzYUNoY3FWZ29mRkdFcFhkbnBRNlBtYmg=
+    username: xcat_key
+  switch:
+    password: admin
+    username: root
+  system:
+    password: cluster
+    username: root
+policy:
+  '1':
+    name: root
+    rule: allow
+  '1.2':
+    name: xcatmn
+    rule: trusted
+  '2':
+    commands: getbmcconfig
+    rule: allow
+  '2.1':
+    commands: remoteimmsetup
+    rule: allow
+  '2.3':
+    commands: lsxcatd
+    rule: allow
+  '3':
+    commands: nextdestiny
+    rule: allow
+  '4':
+    commands: getdestiny
+    rule: allow
+  '4.4':
+    commands: getpostscript
+    rule: allow
+  '4.5':
+    commands: getcredentials
+    rule: allow
+  '4.6':
+    commands: syncfiles
+    rule: allow
+  '4.7':
+    commands: litefile
+    rule: allow
+  '4.8':
+    commands: litetree
+    rule: allow
+  '4.9':
+    commands: getadapter
+    rule: allow
+route: {}
+schema_version: '2.0'
+site:
+  clustersite:
+    SNsyncfiledir: /var/xcat/syncfiles
+    auditnosyslog: '0'
+    auditskipcmds: ALL
+    blademaxp: '64'
+    cleanupxcatpost: 'no'
+    consoleondemand: 'no'
+    databaseloc: /var/lib
+    db2installloc: /mntdb2
+    dhcplease: '43200'
+    dnshandler: ddns
+    enableASMI: 'no'
+    forwarders: 10.6.29.1,10.0.0.101
+    fsptimeout: '0'
+    installdir: /install
+    ipmimaxp: '64'
+    ipmiretries: '3'
+    ipmitimeout: '2'
+    master: 10.6.7.1
+    maxssh: '8'
+    nameservers: 10.6.7.1
+    nodesyncfiledir: /var/xcat/node/syncfiles
+    powerinterval: '0'
+    ppcmaxp: '64'
+    ppcretry: '3'
+    ppctimeout: '0'
+    sharedtftp: '1'
+    sshbetweennodes: ALLGROUPS
+    syspowerinterval: '0'
+    tftpdir: /tftpboot
+    timezone: Universal
+    useNmapfromMN: 'no'
+    vsftp: n
+    xcatconfdir: /etc/xcat
+    xcatdport: '3001'
+    xcatiport: '3002'
+    xcatsslversion: TLSv1
+zone: {}
+
+#Version 2.14.5 (git commit fc0fb3fca198aa298a114f6124749275e7d81f8c, built Thu Dec  6 22:20:43 EST 2018)

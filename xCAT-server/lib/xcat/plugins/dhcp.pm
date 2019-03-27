@@ -610,7 +610,7 @@ sub addnode
             $hname = $node;
         }                                #Default to hostname equal to nodename
         unless ($mac) { next; }          #Skip corrupt format
-        if ($mac !~ /^[0-9a-fA-F]{2}(-[0-9a-fA-F]{2}){5}$|^[0-9a-fA-F]{2}(:[0-9a-fA-F]{2}){5}$/)
+        if ($mac !~ /^[0-9a-fA-F]{2}(-[0-9a-fA-F]{2}){5,7}$|^[0-9a-fA-F]{2}(:[0-9a-fA-F]{2}){5,7}$/)
         {
             $callback->(
                 {
@@ -764,6 +764,10 @@ sub addnode
                         $hostname = $1 . "-hf" . $count;
                     }
                 }
+            } elsif (length($mac) == 23) { # 8 bytes of mac address
+		# Currently the only thing that has 8 bytes is an infiniband
+		# or infiniband like device, which is type 32 (0x20).
+                $hardwaretype = 32;
             }
 
             #syslog("local4|err", "Setting $node ($hname|$ip) to " . $mac);
@@ -1757,7 +1761,7 @@ sub process_request
                 my $os_ver = $os;
                 $os_ver =~ s/[^0-9.^0-9]//g;
                 if (($os =~ /sles/i && $os_ver >= 11) ||
-                    ($os =~ /rhels/i && $os_ver >= 7)) {
+                    ($os =~ /rhels?/i && $os_ver >= 7)) {
 
                     $dhcpd_key = "DHCPD_INTERFACE";
                     if ($usingipv6 and $dhcpver eq "dhcpd6") {
@@ -1825,7 +1829,10 @@ sub process_request
         if ($usingipv6) {
 
             # sles11.3 and rhels7 has dhcpd and dhcpd6 config in the dhcp file
-            if ($os =~ /sles/i || $os =~ /rhels7/i) {
+            my $os_ver = $os;
+            $os_ver =~ s/[^0-9.^0-9]//g;
+            if (($os =~ /sles/i && $os_ver >= 11) ||
+                ($os =~ /rhels?/i && $os_ver >= 7)) {
                 if ($missingfiles{dhcpd}) {
                     $callback->({ error => ["The file /etc/sysconfig/dhcpd doesn't exist, check the dhcp server"] });
                 }
@@ -2677,7 +2684,7 @@ sub addnet
             }
         }
         #for cumulus ZTP process
-        push @netent, "    option cumulus-provision-url \"http://$tftp.':' . $httpport/install/postscripts/cumulusztp\";\n";
+        push @netent, "    option cumulus-provision-url \"http://$tftp:$httpport/install/postscripts/cumulusztp\";\n";
 
         my $ddnserver = $nameservers;
         $ddnserver =~ s/,.*//;
@@ -2717,9 +2724,9 @@ sub addnet
         # $lstatements = 'if exists gpxe.bus-id { filename = \"\"; } else if exists client-architecture { filename = \"xcat/xnba.kpxe\"; } '.$lstatements;
         push @netent, "    if option user-class-identifier = \"xNBA\" and option client-architecture = 00:00 { #x86, xCAT Network Boot Agent\n";
         push @netent, "        always-broadcast on;\n";
-        push @netent, "        filename = \"http://$tftp.':' . $httpport/tftpboot/xcat/xnba/nets/" . $net . "_" . $maskbits . "\";\n";
+        push @netent, "        filename = \"http://$tftp:$httpport/tftpboot/xcat/xnba/nets/" . $net . "_" . $maskbits . "\";\n";
         push @netent, "    } else if option user-class-identifier = \"xNBA\" and option client-architecture = 00:09 { #x86, xCAT Network Boot Agent\n";
-        push @netent, "        filename = \"http://$tftp.':' . $httpport/tftpboot/xcat/xnba/nets/" . $net . "_" . $maskbits . ".uefi\";\n";
+        push @netent, "        filename = \"http://$tftp:$httpport/tftpboot/xcat/xnba/nets/" . $net . "_" . $maskbits . ".uefi\";\n";
         push @netent, "    } else if option client-architecture = 00:00  { #x86\n";
         push @netent, "        filename \"xcat/xnba.kpxe\";\n";
         push @netent, "    } else if option vendor-class-identifier = \"Etherboot-5.4\"  { #x86\n";
@@ -2735,10 +2742,10 @@ sub addnet
         push @netent, "        filename \"elilo.efi\";\n";
         push @netent,
           "    } else if option client-architecture = 00:0e { #OPAL-v3\n ";
-        push @netent, "        option conf-file = \"http://$tftp.':' . $httpport/tftpboot/pxelinux.cfg/p/" . $net . "_" . $maskbits . "\";\n";
+        push @netent, "        option conf-file = \"http://$tftp:$httpport/tftpboot/pxelinux.cfg/p/" . $net . "_" . $maskbits . "\";\n";
         push @netent,
           "    } else if substring (option vendor-class-identifier,0,11) = \"onie_vendor\" { #for onie on cumulus switch\n";
-        push @netent, "        option www-server = \"http://$tftp.':' . $httpport/install/onie/onie-installer\";\n";
+        push @netent, "        option www-server = \"http://$tftp:$httpport/install/onie/onie-installer\";\n";
         push @netent,
           "    } else if substring(filename,0,1) = null { #otherwise, provide yaboot if the client isn't specific\n ";
         push @netent, "        filename \"/yaboot\";\n";
