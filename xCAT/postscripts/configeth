@@ -695,7 +695,7 @@ elif [ "$1" = "-s" ];then
             nmcli con up $con_name
 	    wait_for_ifstate $str_inst_nic UP 10 5
 	else
-            ip link set dev $str_inst_nic up
+            ifup $str_inst_nic
         fi
     fi
     if [ $? -ne 0 ]; then
@@ -1111,7 +1111,7 @@ else
                     nmcli con up $con_name
 		    wait_for_ifstate $str_nic_name UP 10 10
 		else
-                    ip link set dev $str_nic_name up
+                    ifup $str_nic_name
 		fi
                 if [ $? -ne 0 ]; then
                     log_error "bring $str_nic_name up failed."
