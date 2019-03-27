@@ -633,6 +633,27 @@ errorcode=0
 #nictypes should support capital letters, for example, Ethernet and ethernet
 utolcmd="sed -e y/ABCDEFGHIJKLMNOPQRSTUVWXYZ/abcdefghijklmnopqrstuvwxyz/"
 
+#get for installnic
+installnic=''
+installnic=`get_installnic`
+instnic_conf=0
+if [ $boot_install_nic -eq 1 ];then
+    if [ -n "$installnic" ]; then
+        echo "++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++"
+        log_info "configure the install nic $installnic. "
+        instnic_conf=1
+        configeth -s $installnic
+        if [ $? -ne 0 ]; then
+            errorcode=1
+        fi
+        get_nic_cfg_file_content $installnic
+        echo "++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++"
+    else
+        log_error "Can not determine proper install nic."
+        errorcode=1
+    fi
+fi
+
 #check if using NetworkManager or  network service
 networkmanager_active=2
 check_NetworkManager_or_network_service
@@ -653,27 +674,6 @@ if [ $? -ne 0 ]; then
     cp -rf $nwdir $nwdirbak > /dev/null 2>/dev/null
     if [ $? -ne 0 ]; then
         log_warn "back up $nwdir to $nwdirbak failed."
-    fi
-fi
-
-#get for installnic
-installnic=''
-installnic=`get_installnic`
-instnic_conf=0
-if [ $boot_install_nic -eq 1 ];then
-    if [ -n "$installnic" ]; then
-        echo "++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++"
-        log_info "configure the install nic $installnic. "
-        instnic_conf=1
-        configeth -s $installnic
-        if [ $? -ne 0 ]; then
-            errorcode=1
-        fi
-        get_nic_cfg_file_content $installnic
-        echo "++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++"
-    else
-        log_error "Can not determine proper install nic."
-        errorcode=1
     fi
 fi
 
