@@ -34,3 +34,4 @@ wget
 perl-DBD-MySQL
 perl-DBD-Pg
 python3
+NetworkManager
