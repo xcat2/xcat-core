@@ -2,30 +2,40 @@ start:getmacs_noderange
 label:others
 cmd:tabdump mac > /tmp/mac.csv
 cmd:chtab -d node=$$CN mac
+cmd:if [ -x /usr/bin/goconserver ]; then makegocons $$CN; else makeconservercf $$CN; fi
+cmd:sleep 10
 cmd:getmacs $$CN
 check:rc==0
 check:output=~[a-f0-9A-F]{12}|[a-f0-9A-F]{2}:[a-f0-9A-F]{2}:[a-f0-9A-F]{2}:[a-f0-9A-F]{2}:[a-f0-9A-F]{2}:[a-f0-9A-F]{2}
 cmd:tabdump mac | grep $$CN
 check:output=~[a-f0-9A-F]{12}|[a-f0-9A-F]{2}:[a-f0-9A-F]{2}:[a-f0-9A-F]{2}:[a-f0-9A-F]{2}:[a-f0-9A-F]{2}:[a-f0-9A-F]{2}
 cmd:tabrestore /tmp/mac.csv
+cmd:if [ -x /usr/bin/goconserver ]; then makegocons -d $$CN; else makeconservercf -d $$CN; fi
 cmd:rm /tmp/mac.csv
 end
+
 start:getmacs_d
 label:others
 cmd:tabdump mac > /tmp/mac.csv
 cmd:chtab -d node=$$CN mac
+cmd:if [ -x /usr/bin/goconserver ]; then makegocons $$CN; else makeconservercf $$CN; fi
+cmd:sleep 10
 cmd:getmacs $$CN -d
 check:rc==0
 check:output=~[a-f0-9A-F]{12}|[a-f0-9A-F]{2}:[a-f0-9A-F]{2}:[a-f0-9A-F]{2}:[a-f0-9A-F]{2}:[a-f0-9A-F]{2}:[a-f0-9A-F]{2}
 cmd:tabdump mac | grep $$CN
 check:output!~[a-f0-9A-F]{12}|[a-f0-9A-F]{2}:[a-f0-9A-F]{2}:[a-f0-9A-F]{2}:[a-f0-9A-F]{2}:[a-f0-9A-F]{2}:[a-f0-9A-F]{2}
 cmd:tabrestore /tmp/mac.csv
+cmd:if [ -x /usr/bin/goconserver ]; then makegocons -d $$CN; else makeconservercf -d $$CN; fi
 cmd:rm /tmp/mac.csv
 end
+
 start:getmacs_f_D
 label:others
 cmd:tabdump mac > /tmp/mac.csv
 cmd:chtab -d node=$$CN mac
+cmd:if [ -x /usr/bin/goconserver ]; then makegocons $$CN; else makeconservercf $$CN; fi
+cmd:sleep 10
 cmd:getmacs $$CN -f -D
 check:rc==0
 check:output=~[a-f0-9A-F]{12}|[a-f0-9A-F]{2}:[a-f0-9A-F]{2}:[a-f0-9A-F]{2}:[a-f0-9A-F]{2}:[a-f0-9A-F]{2}:[a-f0-9A-F]{2}
@@ -35,4 +45,5 @@ cmd:tabrestore /tmp/mac.csv
 cmd:rm /tmp/mac.csv
 cmd:rpower $$CN on
 cmd:sleep 300
+cmd:if [ -x /usr/bin/goconserver ]; then makegocons -d $$CN; else makeconservercf -d $$CN; fi
 end
