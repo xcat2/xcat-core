@@ -212,10 +212,16 @@ sub process_request {
             } else {
                 my $rsp->{data}->[0] = "makeconservercf is deprecrated as well as conserver, go to makegocons for more information about enabling goconserver.";
                 xCAT::MsgUtils->message("W", $rsp, $cb);
+                xCAT::Goconserver::switch_conserver($cb) if (-x "/usr/sbin/conserver");
             }
-            xCAT::Goconserver::switch_conserver($cb);
         }
-        makeconservercf($req, $cb);
+        if (-x "/usr/sbin/conserver") {
+            makeconservercf($req, $cb);
+        } else {
+            my $rsp->{data}->[0] = "conserver is not supported or not installed.";
+            xCAT::MsgUtils->message("E", $rsp, $cb);
+            return;
+        }
     }
 }
 
