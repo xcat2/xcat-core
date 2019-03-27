@@ -1602,7 +1602,7 @@ function check_NetworkManager_or_network_service() {
             return 1
         fi
     fi
-    checkservicestatus network > /dev/null 2>/dev/null
+    checkservicestatus network > /dev/null 2>/dev/null || checkservicestatus wicked > /dev/null 2>/dev/null
     if [ $? -eq 0 ]; then
         stopservice NetworkManager | log_lines info
         disableservice NetworkManager | log_lines info
