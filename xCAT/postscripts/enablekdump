@@ -262,7 +262,9 @@ EOF
                        fi
                done
                sed -i "s#^[\t ]*KDUMP_COMMANDLINE=\"#KDUMP_COMMANDLINE=\"$kdumpcmdline#" /etc/sysconfig/kdump
-               sed -i "s#^[\t ]*KDUMP_COMMANDLINE_APPEND=\"#KDUMP_COMMANDLINE_APPEND=\"root=nfs:$KDIP:$KDPATH #" /etc/sysconfig/kdump
+               if (pmatch $OSVER "rhel7*") || (pmatch $OSVER "rhels7*"); then
+                   sed -i "s#^[\t ]*KDUMP_COMMANDLINE_APPEND=\"#KDUMP_COMMANDLINE_APPEND=\"root=nfs:$KDIP:$KDPATH #" /etc/sysconfig/kdump
+               fi
                [ -f /etc/dracut.conf ] && mv /etc/dracut.conf  /tmp/dracut.conf
                restartservice kdump
                [ -f /tmp/dracut.conf ] && mv /tmp/dracut.conf /etc/dracut.conf
