@@ -1,5 +1,5 @@
 start:makeconservercf_null
-label:others,ci_test
+label:others,conserver
 cmd:chdef -t node -o testnodetmp cons=hmc groups=all
 cmd:service goconserver stop
 cmd:#!/bin/bash
@@ -26,11 +26,12 @@ else
     exit $?
 fi
 check:rc==0
+cmd:service conserver stop
 cmd:rmdef -t node testnodetmp
 end
 
 start:makeconservercf_noderange
-label:others,ci_test
+label:others,conserver
 cmd:chdef -t node -o testnodetmp cons=hmc groups=all
 cmd:service goconserver stop
 cmd:#!/bin/bash
@@ -68,10 +69,11 @@ else
 fi
 check:rc==0
 cmd:rmdef -t node testnodetmp
+cmd:service conserver stop
 end
 
 start:makeconservercf_d
-label:others,ci_test
+label:others,conserver
 cmd:chdef -t node -o testnodetmp cons=hmc groups=all
 cmd:service goconserver stop
 cmd:#!/bin/bash
@@ -115,6 +117,7 @@ fi
 check:rc==0
 cmd:cat /etc/conserver.cf | grep testnodetmp
 check:output!~testnodetmp
+cmd:service conserver stop
 cmd:rmdef -t node testnodetmp
 end
 
