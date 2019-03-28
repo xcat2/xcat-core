@@ -117,9 +117,6 @@ lsxcatd_a
 lsxcatd_d
 lsxcatd_h
 lsxcatd_null
-makeconservercf_d
-makeconservercf_noderange
-makeconservercf_null
 makedhcp_a
 makedhcp_a_d
 makedhcp_d
