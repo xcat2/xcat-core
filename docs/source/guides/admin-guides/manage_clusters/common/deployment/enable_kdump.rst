@@ -57,11 +57,11 @@ The kdump will create a new initrd which used in the dumping stage. The ``/tmp``
 
 * **[RHELS]** ::
 
-    tmpfs   /var/tmp    tmpfs   defaults,size=200m   0 2
+    tmpfs   /var/tmp    tmpfs   defaults,size=500m   0 2
 
 * **[SLES11]** ::
 
-    tmpfs   /tmp    tmpfs   defaults,size=200m       0 2
+    tmpfs   /tmp    tmpfs   defaults,size=500m       0 2
 
 * **[Ubuntu]** ::
 
