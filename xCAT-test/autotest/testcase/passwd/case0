@@ -29,10 +29,8 @@ cmd:chdef -t node -o $$CN servicenode= monserver=$$MN nfsserver=$$MN tftpserver=
 check:rc==0
 cmd:makedns -n
 check:rc==0
-cmd:makeconservercf $$CN
+cmd:if [ -x /usr/bin/goconserver ]; then makegocons $$CN; else makeconservercf $$CN; fi
 check:rc==0
-cmd:cat /etc/conserver.cf | grep $$CN
-check:output=~$$CN
 cmd:sleep 20
 cmd:if [[ "__GETNODEATTR($$CN,arch)__" =~ "ppc64" ]]; then getmacs -D $$CN; fi
 check:rc==0
@@ -70,6 +68,7 @@ cmd:rootimgdir=`lsdef -t osimage  __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,ar
 check:rc==0
 cmd:oldcryptmethod=`cat /tmp/tmpcryptmethod |sed 's/\"//g'`;chtab key=system passwd.cryptmethod=$oldcryptmethod
 check:rc==0
+cmd:if [ -x /usr/bin/goconserver ]; then makegocons -d $$CN; else makeconservercf -d $$CN; fi
 cmd:rm -rf /tmp/tmpcryptmethod /tmp/shadow
 end
 
@@ -104,10 +103,8 @@ cmd:chdef -t node -o $$CN servicenode= monserver=$$MN nfsserver=$$MN tftpserver=
 check:rc==0
 cmd:makedns -n
 check:rc==0
-cmd:makeconservercf $$CN
+cmd:if [ -x /usr/bin/goconserver ]; then makegocons $$CN; else makeconservercf $$CN; fi
 check:rc==0
-cmd:cat /etc/conserver.cf | grep $$CN
-check:output=~$$CN
 cmd:sleep 20
 cmd:if [[ "__GETNODEATTR($$CN,arch)__" =~ "ppc64" ]]; then getmacs -D $$CN; fi
 check:rc==0
@@ -145,6 +142,7 @@ cmd:rootimgdir=`lsdef -t osimage  __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,ar
 check:rc==0
 cmd:oldcryptmethod=`cat /tmp/tmpcryptmethod |sed 's/\"//g'`;chtab key=system passwd.cryptmethod=$oldcryptmethod
 check:rc==0
+cmd:if [ -x /usr/bin/goconserver ]; then makegocons -d $$CN; else makeconservercf -d $$CN; fi
 cmd:rm -rf /tmp/tmpcryptmethod /tmp/shadow
 end
 
@@ -179,10 +177,8 @@ cmd:chdef -t node -o $$CN servicenode= monserver=$$MN nfsserver=$$MN tftpserver=
 check:rc==0
 cmd:makedns -n
 check:rc==0
-cmd:makeconservercf $$CN
+cmd:if [ -x /usr/bin/goconserver ]; then makegocons $$CN; else makeconservercf $$CN; fi
 check:rc==0
-cmd:cat /etc/conserver.cf | grep $$CN
-check:output=~$$CN
 cmd:sleep 20
 cmd:if [[ "__GETNODEATTR($$CN,arch)__" =~ "ppc64" ]]; then getmacs -D $$CN; fi
 check:rc==0
@@ -220,6 +216,7 @@ cmd:rootimgdir=`lsdef -t osimage  __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,ar
 check:rc==0
 cmd:oldcryptmethod=`cat /tmp/tmpcryptmethod |sed 's/\"//g'`;chtab key=system passwd.cryptmethod=$oldcryptmethod
 check:rc==0
+cmd:if [ -x /usr/bin/goconserver ]; then makegocons -d $$CN; else makeconservercf -d $$CN; fi
 cmd:rm -rf /tmp/tmpcryptmethod /tmp/shadow
 end
 
@@ -266,10 +263,8 @@ cmd:chdef -t node -o $$CN servicenode= monserver=$$MN nfsserver=$$MN tftpserver=
 check:rc==0
 cmd:makedns -n
 check:rc==0
-cmd:makeconservercf $$CN
+cmd:if [ -x /usr/bin/goconserver ]; then makegocons $$CN; else makeconservercf $$CN; fi
 check:rc==0
-cmd:cat /etc/conserver.cf | grep $$CN
-check:output=~$$CN
 cmd:sleep 20
 cmd:if [[ "__GETNODEATTR($$CN,arch)__" =~ "ppc64" ]]; then getmacs -D $$CN; fi
 check:rc==0
@@ -307,5 +302,6 @@ cmd:rootimgdir=`lsdef -t osimage  __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,ar
 check:rc==0
 cmd:oldpassword=`cat /tmp/tmppassword |sed 's/\"//g'`;oldcryptmethod=`cat /tmp/tmpcryptmethod |sed 's/\"//g'`;chtab key=system passwd.password=$oldpassword passwd.cryptmethod=$oldcryptmethod
 check:rc==0
+cmd:if [ -x /usr/bin/goconserver ]; then makegocons -d $$CN; else makeconservercf -d $$CN; fi
 cmd:rm -rf /tmp/tmpcryptmethod  /tmp/tmppassword /tmp/shadow
 end
