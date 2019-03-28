@@ -244,8 +244,6 @@ EOF
                #with a dummy "proc" inside, which will fake "root=nfs:$KDIP:$KDPATH" as a valid root directory
                [ -e $MOUNTPATH/proc ] || echo "Dummy file: fake the /proc to pass the checking of 'root=' inside dracut-cmdline " > $MOUNTPATH/proc
 
-               [ -f /etc/os-release ] && mkdir $MOUNTPATH/etc && cp /etc/os-release $MOUNTPATH/etc/os-release
-
                echo "nfs $KDIP:$KDPATH" > /etc/kdump.conf
                echo "default shell" >> /etc/kdump.conf
                #strip "xcat" out of the initramfs for kdump
