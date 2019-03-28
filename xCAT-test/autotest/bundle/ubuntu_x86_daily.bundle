@@ -55,9 +55,6 @@ lsxcatd_a
 lsxcatd_d
 lsxcatd_h
 lsxcatd_null
-makeconservercf_d
-makeconservercf_noderange
-makeconservercf_null
 makedhcp_a_ubuntu
 makedhcp_d
 makedhcp_n
