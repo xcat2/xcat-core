@@ -31,7 +31,7 @@ cmd:exlistfile=`lsdef -t osimage __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arc
 check:rc==0
 
 cmd:postinstallfile=`lsdef -t osimage __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute|grep postinstall|awk -F'=' '{print $2}'`;cp $postinstallfile $postinstallfile.bak
-cmd:postinstallfile=`lsdef -t osimage __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute|grep postinstall|awk -F'=' '{print $2}'`; if grep SUSE /etc/*release;then sed -i "/\/tmp/ s/10/200/g" $postinstallfile; elif grep "Red Hat" /etc/*release;then sed -i /devpts/a"tmpfs         /var/tmp    tmpfs   defaults,size=200m   0 2" $postinstallfile;fi
+cmd:postinstallfile=`lsdef -t osimage __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute|grep postinstall|awk -F'=' '{print $2}'`; if grep SUSE /etc/*release;then sed -i "/\/tmp/ s/10/500/g" $postinstallfile; elif grep "Red Hat" /etc/*release;then sed -i /devpts/a"tmpfs         /var/tmp    tmpfs   defaults,size=500m   0 2" $postinstallfile;fi
 check:rc==0
 
 cmd:if [ ! -d /kdumpdir ]; then mkdir -p /kdumpdir && chmod 777 /kdumpdir; fi
