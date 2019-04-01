@@ -99,6 +99,8 @@ description:To regenerate cretials
 label:mn_only
 #step1:backup: /etc/xcat/ca /etc/xcat/cert
 cmd:cp -r /etc/xcat/ca /etc/xcat/cabak;cp -r /etc/xcat/cert /etc/xcat/certbak
+cmd: service goconserver status
+cmd:service conserver status
 #step2:run command and check the output
 cmd:xcatconfig  -c 2>&1 | tee /tmp/xcatconfig.test
 check:rc==0
@@ -118,8 +120,8 @@ cmd:rm -rf /tmp/xcatconfig.test
 check:rc==0
 cmd:rm -rf /etc/xcat/cabak /etc/xcat/certbak
 check:rc==0
-cmd:if service goconserver status > /dev/null 2>&1; then service goconserver restart; fi
-cmd:if service conserver status > /dev/null 2>&1; then service conserver restart ; fi
+cmd:if service goconserver status; then echo "----->To restart goconserver";  service goconserver restart; sleep 10; echo "---------------------"; service goconserver status;echo "---------------------";  makegocons $$CN; fi
+cmd:if service conserver status;  then echo "---->To restart conserver"; service conserver restart;sleep 10;echo "---------------------"; service conserver status;echo "---------------------"; makeconservercf $$CN; fi
 cmd:if lsdef service > /dev/null 2>&1; then updatenode service -P servicenode;fi
 check:rc==0
 cmd:if lsdef service > /dev/null 2>&1; then rpower $$CN stat;fi
