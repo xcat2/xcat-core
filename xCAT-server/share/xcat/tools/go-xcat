@@ -1979,8 +1979,8 @@ do
 		GO_XCAT_ACTION="$1"
 		case "$1 $2" in
 		"completely uninstall"|"smoke test")
-			shift
 			GO_XCAT_ACTION="$1 $2"
+			shift
 			;;
 		esac
 		;;
