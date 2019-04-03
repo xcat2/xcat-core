@@ -1691,6 +1691,7 @@ function create_vlan_interface_nmcli {
     local _netmask=""
     local _mtu=""
     local next_nic=""
+    rc=0
     # in case it's on top of bond, we need to migrate ip from its
     # member vlan ports.
     # parser input arguments
@@ -1750,9 +1751,14 @@ function create_vlan_interface_nmcli {
         tmp_con_name=$con_name"-tmp"
         $nmcli con modify $con_name connection.id $tmp_con_name
     fi
-
+    #create VLAN connetion
     $nmcli con add type vlan con-name $con_name dev $ifname id $(( 10#$vlanid )) $_ipaddrs $_mtu connection.autoconnect-priority 9
     log_info "create NetworkManager connection for $ifname.$vlanid"
+
+    #add extra params
+    add_extra_params_nmcli $ifname.$vlanid $con_name
+    [ $? -ne 0 ] && rc=1
+
     if [ -z "$next_nic" ]; then
         $nmcli con up $con_name
         is_connection_activate_intime $con_name
@@ -1770,7 +1776,45 @@ function create_vlan_interface_nmcli {
         $nmcli con delete $tmp_con_name
     fi
     $ip address show dev $ifname.$vlanid | $sed -e 's/^/[vlan] >> /g' | log_lines info
-    return 0
+    return $rc
+}
+###############################################################################
+#
+# add extra params for nmcli connection 
+#
+# input : $1 nic device
+#         $2 nmcli connection name
+# return : 1 error
+#          0 successful
+#
+###############################################################################
+function add_extra_params_nmcli {
+
+    nicdev=$1
+    con_name=$2
+    rc=0
+    #query extra params
+    query_extra_params $nicdev
+    i=0
+    while [ $i -lt ${#array_extra_param_names[@]} ]
+    do
+        name="${array_extra_param_names[$i]}"
+        value="${array_extra_param_values[$i]}"
+        if [ -n "$name" -a -n "$value" ]; then
+            cmd="$nmcli con modify $con_name $name $value"
+            log_info $cmd
+            $cmd
+            if [ $? -ne 0 ]; then
+                log_error "add extra params $name $value for $con_name failed"
+                rc=1
+            fi
+        else
+            log_error "invalid extra params $name $value, please check nics.nicextraparams"
+            rc=1
+        fi
+        i=$((i+1))
+    done
+    return $rc
 }
 
 ###############################################################################
@@ -1951,10 +1995,13 @@ function create_bridge_interface_nmcli {
         $nmcli con mod $xcat_con_name ipv4.method manual ipv4.addresses $ipv4_addr/$str_prefix;
     fi
 
+    # add extra params
+    add_extra_params_nmcli $ifname $xcat_con_name
+    [ $? -ne 0 ] && rc=1
     # bring up interface formally
     log_info "$nmcli con up $xcat_con_name" 
     $nmcli con up $xcat_con_name
-    rc=$?
+    [ $? -ne 0 ] && rc=1
     log_info "$nmcli con up $xcat_slave_con"
     $nmcli con up $xcat_slave_con
     # If bridge interface is active, delete tmp old connection
@@ -1983,7 +2030,7 @@ function create_bridge_interface_nmcli {
             $nmcli con delete $tmp_slave_con_name
         fi
         wait_for_ifstate $ifname UP 20 40
-        rc=$?
+        [ $? -ne 0 ] && rc=1
         $ip address show dev $ifname| $sed -e 's/^/[bridge] >> /g' | log_lines info
     fi
 
@@ -2176,8 +2223,12 @@ function create_bond_interface_nmcli {
             break
         fi 
     done
-    # bring up interface formally
+    invalid_extra_params=0 
     if [ $rc -ne 1 ]; then 
+        # add extra params
+        add_extra_params_nmcli $bondname $xcat_con_name
+        [ $? -ne 0 ] && invalid_extra_params=1
+        # bring up interface formally
         log_info "$nmcli con up $xcat_con_name"
         $nmcli con up $xcat_con_name
         if [ -z "$next_nic" ]; then
@@ -2194,8 +2245,6 @@ function create_bond_interface_nmcli {
                     $ip address show dev $bondname| $sed -e 's/^/[bond] >> /g' | log_lines info
                 fi
             fi
-        else
-           rc=0
         fi
     fi
 
@@ -2231,6 +2280,7 @@ function create_bond_interface_nmcli {
             delete_bond_slaves_con "$tmp_slave_con_names"
         fi
     fi
+    [ $invalid_extra_params -eq 1 ] && rc=$invalid_extra_params
     return $rc
 }
 ######################################################################
