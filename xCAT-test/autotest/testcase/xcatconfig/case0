@@ -123,16 +123,14 @@ check:rc==0
 cmd:#!/bin/bash
 rc=0
 if service goconserver status;then
-    echo "----->goconserver is working, to restart goconserver"
+    echo "----->goconserver is working, to restart goconserver and  enforce conserver stop"
     service goconserver restart
+    service conserver stop 
     sleep 5 
     echo "----->To check the status of goconserver"
     if ! service goconserver status; then
         rc=1
     fi
-    echo "----->To enforce conserver stop"
-    service conserver stop 
-    sleep 5 
     echo "----->To check the status of conserver"    
     if service conserver status; then
         rc=1
@@ -140,6 +138,7 @@ if service goconserver status;then
 elif service conserver status;then 
     echo "----->conserver is working, to restart conserver"
     service conserver restart
+    sleep 5
     echo "----->To check the status of conserver"
     if ! service conserver status; then
         rc=1
