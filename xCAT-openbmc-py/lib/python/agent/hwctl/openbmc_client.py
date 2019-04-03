@@ -314,8 +314,12 @@ class OpenBMCRest(object):
 
     def handle_response (self, resp, cmd=''):
 
-        data = resp.json() # it will raise ValueError
         code = resp.status_code
+        if code == requests.codes.bad_gateway:
+            error = "(Verify REST server is running on the BMC)"
+            self._print_error_log(error, cmd)
+            raise SelfServerException(code, error, host_and_port=self.bmcip)
+        data = resp.json() # it will raise ValueError
         if code != requests.codes.ok:
             description = ''.join(data['data']['description'])
             error = '[%d] %s' % (code, description)
