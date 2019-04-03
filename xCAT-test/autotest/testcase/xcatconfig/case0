@@ -120,8 +120,33 @@ cmd:rm -rf /tmp/xcatconfig.test
 check:rc==0
 cmd:rm -rf /etc/xcat/cabak /etc/xcat/certbak
 check:rc==0
-cmd:if service goconserver status; then echo "----->To restart goconserver";  service goconserver restart; sleep 10; echo "---------------------"; service goconserver status;echo "---------------------";  makegocons $$CN; fi
-cmd:if service conserver status;  then echo "---->To restart conserver"; service conserver restart;sleep 10;echo "---------------------"; service conserver status;echo "---------------------"; makeconservercf $$CN; fi
+cmd:#!/bin/bash
+rc=0
+if service goconserver status;then
+    echo "----->goconserver is working, to restart goconserver"
+    service goconserver restart
+    sleep 5 
+    echo "----->To check the status of goconserver"
+    if ! service goconserver status; then
+        rc=1
+    fi
+    echo "----->To enforce conserver stop"
+    service conserver stop 
+    sleep 5 
+    echo "----->To check the status of conserver"    
+    if service conserver status; then
+        rc=1
+    fi
+elif service conserver status;then 
+    echo "----->conserver is working, to restart conserver"
+    service conserver restart
+    echo "----->To check the status of conserver"
+    if ! service conserver status; then
+        rc=1
+    fi 
+fi
+exit $rc
+check:rc==0
 cmd:if lsdef service > /dev/null 2>&1; then updatenode service -P servicenode;fi
 check:rc==0
 cmd:if lsdef service > /dev/null 2>&1; then rpower $$CN stat;fi
