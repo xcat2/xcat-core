@@ -484,12 +484,12 @@ In some cases you may have additional user application networks in your site tha
 
 For example, when you run ``makedhcp -n`` it will list all domains defined in the xCAT **"site"** definition and xCAT **"network"** definitions in the **"option domain-search"** entry of the shared-network stanza in the dhcp configuration file. This will cause dhcp to put these domains in the compute nodes' **/etc/resolv.conf** file every time it gets a dhcp lease.
 
-hostname generation on compute node 
------------------------------------
+hostname setting on compute node 
+--------------------------------
 
-After compute node is deployed, its ``hostname`` is coming from ``DHCP``, the default ``hostname`` is the same with the node name. If you want to have persistent ``hostname``, you can use ``confignetwork -s`` to configure the install nic with static IP, at the same time, it configure persistent ``hostname`` on the compute node.
+After compute node is deployed, its ``hostname`` is coming from ``DHCP``, the default ``hostname`` is the same with the node name. If you want to have persistent ``hostname``, you can use ``confignetwork -s`` to configure the install NIC with static IP address, at the same time, it persists ``hostname`` on the compute node.
 
-Execute ``confignetwork -s`` to configure provision ip as static IP:
+Execute ``confignetwork -s`` to configure provision IP address as static IP address:
 
     a. Add ``confignetwork -s`` into postscript list to execute on reboot ::
 
