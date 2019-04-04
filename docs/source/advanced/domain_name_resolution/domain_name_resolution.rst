@@ -483,3 +483,20 @@ Limited support for user application networks
 In some cases you may have additional user application networks in your site that are not specifically used for cluster management. If desired you can create xCAT network definitions for these networks. This not only provides a convenient way to keep track of the network details but the information can also be used to help set up name resolution for these networks on the cluster nodes. When you add a network definition that includes a **"domain"** value then that domain is automatically included the xCAT name resolution set up. This will enable the nodes to be able to resolve hostnames from the other domains.
 
 For example, when you run ``makedhcp -n`` it will list all domains defined in the xCAT **"site"** definition and xCAT **"network"** definitions in the **"option domain-search"** entry of the shared-network stanza in the dhcp configuration file. This will cause dhcp to put these domains in the compute nodes' **/etc/resolv.conf** file every time it gets a dhcp lease.
+
+hostname setting on compute node 
+--------------------------------
+
+After compute node is deployed, its ``hostname`` is coming from ``DHCP``, the default ``hostname`` is the same with the node name. If you want to have persistent ``hostname``, you can use ``confignetwork -s`` to configure the install NIC with static IP address, at the same time, it persists ``hostname`` on the compute node.
+
+Execute ``confignetwork -s`` to configure provision IP address as static IP address:
+
+    a. Add ``confignetwork -s`` into postscript list to execute on reboot ::
+
+        chdef cn1 -p postscripts="confignetwork -s"
+
+    b. If the compute node is already running, use ``updatenode`` command to run ``confignetwork -s`` postscript without rebooting the node ::
+
+        updatenode cn1 -P "confignetwork -s"
+
+
