@@ -206,6 +206,26 @@ base64decode()
     done
 }
 
+getdisksize()
+{
+	local disk="$1"
+
+	local blah
+	local blocks
+	local name
+
+	while read -r blah blah blocks name
+	do
+		if [ "${name}" = "${disk}" ]
+		then
+			echo "${blocks}"
+			break
+		fi
+	done </proc/partitions
+
+	return
+}
+
 # time to ascertain fstype and PReP/UEFI/legacy
 # also, find first available block device (sda or vda likely)
 # TODO: pick a likely non-SAN target if possible
@@ -241,6 +261,8 @@ if [ -d /sys/firmware/efi ]
 then
     echo "part /boot/efi --fstype=$EFIFSTYPE --ondisk=$instdisk --size=256" >>/tmp/partitionfile
 fi
+
+DISKSIZE="$(getdisksize "${instdisk}")"
 
 # TODO: Ondisk detection, /dev/disk/by-id/edd-int13_dev80 for legacy maybe, and no idea about efi. At least maybe blacklist SAN if mptsas/mpt2sas/megaraid_sas seen...
 echo "part /boot --fstype=$BOOTFSTYPE --asprimary --ondisk=$instdisk --size=512" >>/tmp/partitionfile
