@@ -131,17 +131,21 @@ function configipv4(){
         # Write the info to the ifcfg file for redhat
         con_name="xcat-"${str_if_name}
         str_conf_file=""
-        if [ $num_v4num -ne 0 ]; then
+        if [ $num_v4num -ne 0 ] && [ $networkmanager_active -eq 0 ]; then
             str_if_name=${str_if_name}:${num_v4num}
         fi
         str_conf_file="/etc/sysconfig/network-scripts/ifcfg-${str_if_name}"
         if [ $networkmanager_active -eq 1 ]; then
-            is_nmcli_connection_exist $con_name
-            if [ $? -eq 0 ]; then
-                tmp_con_name=$con_name"-tmp"
-                nmcli con modify $con_name connection.id $tmp_con_name
+            if [ $num_v4num -eq 0 ]; then
+                is_nmcli_connection_exist $con_name
+                if [ $? -eq 0 ]; then
+                    tmp_con_name=$con_name"-tmp"
+                    nmcli con modify $con_name connection.id $tmp_con_name
+                fi
+                nmcli con add type ethernet con-name $con_name ifname ${str_if_name} ipv4.method manual  ipv4.addresses  ${str_v4ip}/${str_prefix} connection.autoconnect-priority 9
+            else
+                nmcli con modify $con_name +ipv4.addresses ${str_v4ip}/${str_prefix}
             fi
-            nmcli con add type ethernet con-name $con_name ifname ${str_if_name} ipv4.method manual  ipv4.addresses  ${str_v4ip}/${str_prefix} connection.autoconnect-priority 9
         else
             echo "DEVICE=${str_if_name}" > $str_conf_file
             echo "BOOTPROTO=none" >> $str_conf_file
@@ -345,7 +349,7 @@ function add_ip_temporary(){
         else
             str_label=''
             ip addr show dev $str_temp_name | grep inet | grep "global" | grep -v ':' | grep "${str_temp_name}"
-            if [ $? -eq 0 ];then
+            if [ $? -eq 0 ] && [ $networkmanager_active -eq 0 ]; then
                 for num_i in {1..1000}
                 do
                     ip addr show dev $str_temp_name | grep inet | grep "global" | grep ":${num_i}"
