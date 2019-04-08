@@ -19,6 +19,7 @@ use JSON;
 use HTTP::Async;
 use HTTP::Cookies;
 use LWP::UserAgent;
+use Net::Domain qw(hostname);
 use File::Basename;
 use File::Spec;
 use File::Copy qw/copy cp mv move/;
@@ -4196,7 +4197,8 @@ sub dump_download_process {
         return 1;
     }
     if ($h->{message} eq $::RESPONSE_OK) {
-        xCAT::SvrUtils::sendmsg("Downloading dump $dump_id to $file_name", $callback, $node);
+        my $host_name = hostname();
+        xCAT::SvrUtils::sendmsg("Downloading dump $dump_id to $host_name:$file_name", $callback, $node);
         my $curl_dwld_result = `$curl_dwld_cmd -s`;
         if (!$curl_dwld_result) {
             if ($xcatdebugmode) {
@@ -4215,7 +4217,7 @@ sub dump_download_process {
                     # Remove downloaded file, nothing useful inside of it
                     unlink $file_name;
                 } else {
-                    xCAT::SvrUtils::sendmsg("Downloaded dump $dump_id to $file_name", $callback, $node) if ($::VERBOSE);
+                    xCAT::SvrUtils::sendmsg("Downloaded dump $dump_id to $host_name:$file_name", $callback, $node) if ($::VERBOSE);
                 }
             }
             else {
