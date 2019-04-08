@@ -206,9 +206,13 @@ base64decode()
     done
 }
 
+# $1 - The device name, eg., sda
+# Returns the device size, unit is KB.
 getdisksize()
 {
 	local disk="$1"
+
+	[ -z "${disk}" ] && return
 
 	local blah
 	local blocks
@@ -265,14 +269,20 @@ fi
 DISKSIZE="$(getdisksize "${instdisk}")"
 
 # TODO: Ondisk detection, /dev/disk/by-id/edd-int13_dev80 for legacy maybe, and no idea about efi. At least maybe blacklist SAN if mptsas/mpt2sas/megaraid_sas seen...
-echo "part /boot --fstype=$BOOTFSTYPE --asprimary --ondisk=$instdisk --size=512" >>/tmp/partitionfile
+echo "part /boot --fstype=$BOOTFSTYPE --asprimary --ondisk=$instdisk --size=1024" >>/tmp/partitionfile
 echo "part pv.000997 --grow --asprimary --ondisk=$instdisk --size=18432" >>/tmp/partitionfile
 echo "volgroup xcatvg --pesize=4096 pv.000997" >>/tmp/partitionfile
-echo "logvol / --fstype=$FSTYPE --name=root --vgname=xcatvg --grow --size=4096 --maxsize=20480" >>/tmp/partitionfile
-echo "logvol /var --fstype=$FSTYPE --name=var --vgname=xcatvg --grow --size=2048 --maxsize=8192" >>/tmp/partitionfile
-echo "logvol /tmp --fstype=$FSTYPE --name=tmp --vgname=xcatvg --grow --size=1024 --maxsize=4096" >>/tmp/partitionfile
-echo "logvol /home --fstype=$FSTYPE --name=home --vgname=xcatvg --grow --percent=10 --maxsize=10240" >>/tmp/partitionfile
 echo "logvol swap --name=swap --vgname=xcatvg --recommended" >>/tmp/partitionfile
+
+if [ "${DISKSIZE} -lt "62914560" ]
+then
+	echo "logvol / --fstype=$FSTYPE --name=root --vgname=xcatvg --grow --size=10240 --percent=85" >>/tmp/partitionfile
+else
+	echo "logvol / --fstype=$FSTYPE --name=root --vgname=xcatvg --grow --size=10240 --maxsize=20480" >>/tmp/partitionfile
+	echo "logvol /var --fstype=$FSTYPE --name=var --vgname=xcatvg --grow --size=4096 --maxsize=8192" >>/tmp/partitionfile
+	echo "logvol /tmp --fstype=$FSTYPE --name=tmp --vgname=xcatvg --grow --size=4096 --maxsize=8192" >>/tmp/partitionfile
+	echo "logvol /home --fstype=$FSTYPE --name=home --vgname=xcatvg --grow --percent=10 --size=1024 --maxsize=10240" >>/tmp/partitionfile
+fi
 
 # Specify "bootloader" configuration in "/tmp/partitionfile" if there is no user customized partition file
 BOOTLOADER="bootloader"
