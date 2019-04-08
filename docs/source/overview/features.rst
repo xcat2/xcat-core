@@ -29,7 +29,6 @@ Features
    * Esxi
    * RHEV
    * Windows
-   * AIX
 
 #. Provision machines in
 
