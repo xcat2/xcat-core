@@ -3,6 +3,9 @@
 #(C)IBM Corp
 # Lenovo(c) 2019
 #
+
+#Note that in SuSE/SLE, this script only works as a postbootscript, not as a postscript
+
 if grep NAME /etc/os-release  | egrep '(SLE|SUSE)' > /dev/null && [ -x /usr/bin/systemd-run ]; then
     systemd-run --on-active=90 --timer-property=AccuracySec=10s /sbin/reboot
 else
