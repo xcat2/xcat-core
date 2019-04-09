@@ -28,3 +28,6 @@ done
 if [ -f "/usr/lib/systemd/system/NetworkManager.service" ]; then
     systemctl disable NetworkManager
 fi
+GRUBOUT=$(find /boot -name grub.cfg)
+sed -i -e 's/GRUB.*TERMINAL=.*/GRUB_TERMINAL="console"/' -e 's/GRUB_SERIAL_COMMAND=.*//' /etc/sysconfig/grub
+grub2-mkconfig -o $GRUBOUT
