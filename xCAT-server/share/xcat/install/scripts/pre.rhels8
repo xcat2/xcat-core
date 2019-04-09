@@ -212,6 +212,8 @@ getdisksize()
 {
 	local disk="$1"
 
+	disk="${disk#/dev/}"
+
 	[ -z "${disk}" ] && return
 
 	local blah
@@ -274,14 +276,14 @@ echo "part pv.000997 --grow --asprimary --ondisk=$instdisk --size=18432" >>/tmp/
 echo "volgroup xcatvg --pesize=4096 pv.000997" >>/tmp/partitionfile
 echo "logvol swap --name=swap --vgname=xcatvg --recommended" >>/tmp/partitionfile
 
-if [ "${DISKSIZE} -lt "62914560" ]
+if [ "${DISKSIZE}" -lt "62914560" ]
 then
-	echo "logvol / --fstype=$FSTYPE --name=root --vgname=xcatvg --grow --size=10240 --percent=85" >>/tmp/partitionfile
+	echo "logvol / --fstype=$FSTYPE --name=root --vgname=xcatvg --grow --percent=86" >>/tmp/partitionfile
 else
 	echo "logvol / --fstype=$FSTYPE --name=root --vgname=xcatvg --grow --size=10240 --maxsize=20480" >>/tmp/partitionfile
 	echo "logvol /var --fstype=$FSTYPE --name=var --vgname=xcatvg --grow --size=4096 --maxsize=8192" >>/tmp/partitionfile
 	echo "logvol /tmp --fstype=$FSTYPE --name=tmp --vgname=xcatvg --grow --size=4096 --maxsize=8192" >>/tmp/partitionfile
-	echo "logvol /home --fstype=$FSTYPE --name=home --vgname=xcatvg --grow --percent=10 --size=1024 --maxsize=10240" >>/tmp/partitionfile
+	echo "logvol /home --fstype=$FSTYPE --name=home --vgname=xcatvg --grow --percent=10 --maxsize=10240" >>/tmp/partitionfile
 fi
 
 # Specify "bootloader" configuration in "/tmp/partitionfile" if there is no user customized partition file
