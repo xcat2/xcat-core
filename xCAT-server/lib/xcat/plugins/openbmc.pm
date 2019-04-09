@@ -2649,6 +2649,11 @@ sub login_request {
         xCAT::SvrUtils::sendmsg([1 ,"[" . $login_response->code . "] Login to BMC failed: " . $login_response->status_line . "."], $callback, $node);
         return 1;
     }
+    if ($login_response->code eq 502) {
+        # Possible reason for 502 code is the REST server not running
+        xCAT::SvrUtils::sendmsg([1 ,"[" . $login_response->code . "] Login to BMC failed: " . $login_response->status_line . ". Verify REST server is running on the BMC."], $callback, $node);
+        return 1;
+    }
 
     return 0;
 }
@@ -2950,9 +2955,10 @@ sub rpower_response {
                     retry_after($node, $next_status{ $node_info{$node}{cur_status} }{OFF}, $::RPOWER_CHECK_ON_INTERVAL);
                     return;
                 } else {
-                    #after retry 5 times, the host is still off, print error and return
+                    # if after 5 retries, the host is still off, print error and return
                     my $wait_time_X = $node_info{$node}{wait_on_end} - $node_info{$node}{wait_on_start};
                     xCAT::SvrUtils::sendmsg([1, "Sent power-on command but state did not change to $::POWER_STATE_ON after waiting $wait_time_X seconds. (State=$all_status)."], $callback, $node);
+                    xCAT::SvrUtils::sendmsg([1, "Run 'reventlog' command to see possible reasons for failure."], $callback, $node);
                     $node_info{$node}{cur_status} = "";
                     $wait_node_num--;
                     return;
