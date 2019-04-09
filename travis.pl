@@ -150,6 +150,7 @@ sub check_pr_format{
             $check_result_str .= "> **PR FORMAT CORRECT**";
             send_back_comment("$check_result_str");
         }else{
+            # Warning if missing milestone or labels, others are errors
             if($checkrst =~ /milestone/ || $checkrst =~ /labels/){
                 $check_result_str .= "> **PR FORMAT WARNING** : $checkrst";
                 send_back_comment("$check_result_str");
@@ -259,8 +260,13 @@ sub send_back_comment{
         }
     }
 
-     print "[send_back_comment] method = $post_method to $post_url\n";
-     `curl -u "$ENV{'xcatbotuser'}:$ENV{'xcatbotpw'}" -X $post_method -d '{"body":"$message"}' $post_url`;
+    print "[send_back_comment] method = $post_method to $post_url. Message = $message\n";
+    if ( $ENV{'xcatbotuser'} and $ENV{'xcatbotpw'}) {
+        `curl -u "$ENV{'xcatbotuser'}:$ENV{'xcatbotpw'}" -X $post_method -d '{"body":"$message"}' $post_url`;
+    }
+    else {
+        print "Not able to update pull request with message: $message\n";
+    }
 }
 
 #--------------------------------------------------------
