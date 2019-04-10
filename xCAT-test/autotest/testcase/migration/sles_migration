@@ -14,11 +14,9 @@ cmd:makedns -n
 check:rc==0
 cmd:service named restart
 check:rc==0
-cmd:makeconservercf $$CN
+cmd:if [ -x /usr/bin/goconserver ]; then makegocons $$CN; else makeconservercf $$CN; fi
 check:rc==0
-cmd:cat /etc/conserver.cf | grep $$CN
-check:output=~$$CN
-cmd:sleep 60
+cmd:sleep 20
 cmd:if [ "__GETNODEATTR($$CN,arch)__" = "ppc64" -a  "__GETNODEATTR($$CN,mgt)__" != "ipmi" ]; then getmacs -D $$CN; fi
 check:rc==0
 cmd:makedhcp -n
@@ -112,6 +110,7 @@ cmd:xdsh $$CN "noderm node0001"
 check:rc==0
 cmd:latest_version_info=`lsxcatd -v`;xdsh $$CN "lsxcatd -v" | grep "$latest_version_info"
 check:rc==0
+cmd:if [ -x /usr/bin/goconserver ]; then makegocons -d $$CN; else makeconservercf -d $$CN; fi
 cmd:if [[ -f /tmp/servicelabel ]];then chdef $$SN -p groups=service;rm -rf /tmp/servicelabel;fi
 check:rc==0
 cmd:if [[ -f /tmp/poweroffsn ]];then rpower $$SN on > /dev/null;rm -rf /tmp/poweroffsn;fi
@@ -122,7 +121,6 @@ start:sles_migration2
 os:Linux
 description:update xCAT from $$MIGRATION22VERSION to latest version, these two global parameter defined in config file
 label:others,migration,invoke_provision
-
 cmd:if ping -c 1 $$SN > /dev/null;then rpower $$SN off > /dev/null;echo "poweroffsn">/tmp/poweroffsn;fi
 check:rc==0
 cmd:if [[ "__GETNODEATTR($$SN,groups)__" =~ "service" ]];then chdef $$SN -m groups=service;echo "servicelabel" >/tmp/servicelabel;fi
@@ -135,11 +133,9 @@ cmd:makedns -n
 check:rc==0
 cmd:service named restart
 check:rc==0
-cmd:makeconservercf $$CN
+cmd:if [ -x /usr/bin/goconserver ]; then makegocons $$CN; else makeconservercf $$CN; fi
 check:rc==0
-cmd:cat /etc/conserver.cf | grep $$CN
-check:output=~$$CN
-cmd:sleep 60
+cmd:sleep 20
 cmd:if [ "__GETNODEATTR($$CN,arch)__" = "ppc64" -a  "__GETNODEATTR($$CN,mgt)__" != "ipmi" ]; then getmacs -D $$CN; fi
 check:rc==0
 cmd:makedhcp -n
@@ -233,6 +229,7 @@ cmd:xdsh $$CN "noderm node0001"
 check:rc==0
 cmd:latest_version_info=`lsxcatd -v`;xdsh $$CN "lsxcatd -v" | grep "$latest_version_info"
 check:rc==0
+cmd:if [ -x /usr/bin/goconserver ]; then makegocons -d $$CN; else makeconservercf -d $$CN; fi
 cmd:if [[ -f /tmp/servicelabel ]];then chdef $$SN -p groups=service;rm -rf /tmp/servicelabel;fi
 check:rc==0
 cmd:if [[ -f /tmp/poweroffsn ]];then rpower $$SN on > /dev/null;rm -rf /tmp/poweroffsn;fi
