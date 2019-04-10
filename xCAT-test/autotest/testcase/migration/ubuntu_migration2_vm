@@ -2,7 +2,6 @@ start:ubuntu_migration2_vm
 os:Linux
 description:update xCAT from $$UBUNTU_MIGRATION2_VERSION to latest version, these two global parameter defined in config file
 label:others,migration,invoke_provision
-
 cmd:copycds $$ISO
 check:rc==0
 cmd:makedns -n
@@ -12,10 +11,8 @@ cmd:makedhcp -n
 check:rc==0
 cmd:makedhcp -a
 check:rc==0
-cmd:makeconservercf $$CN
+cmd:if [ -x /usr/bin/goconserver ]; then makegocons $$CN; else makeconservercf $$CN; fi
 check:rc==0
-cmd:cat /etc/conserver.cf | grep $$CN
-check:output=~$$CN
 cmd:/opt/xcat/share/xcat/tools/autotest/testcase/commoncmd/retry_install.sh  $$CN __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-install-compute
 check:rc==0
 check:output=~Provision node\(s\)\: $$CN
@@ -116,4 +113,5 @@ cmd:xdsh $$CN "source /etc/profile.d/xcat.sh;lsdef"
 check:output!~node0001
 cmd:xdsh $$CN "diff /oldxcat/old_version /newxcat/new_version"
 check:rc!=0
+cmd:if [ -x /usr/bin/goconserver ]; then makegocons -d $$CN; else makeconservercf -d $$CN; fi
 end
