@@ -1793,6 +1793,14 @@ function add_extra_params_nmcli {
     nicdev=$1
     con_name=$2
     rc=0
+    str_conf_file="/etc/sysconfig/network-scripts/ifcfg-${con_name}"
+    str_conf_file_1="/etc/sysconfig/network-scripts/ifcfg-${con_name}-1"
+    if [ -f $str_conf_file_1 ]; then
+        grep -x "NAME=$con_name" $str_conf_file_1 >/dev/null 2>/dev/null
+        if [ $? -eq 0 ]; then
+            str_conf_file=$str_conf_file_1
+        fi
+    fi
     #query extra params
     query_extra_params $nicdev
     i=0
@@ -1801,19 +1809,14 @@ function add_extra_params_nmcli {
         name="${array_extra_param_names[$i]}"
         value="${array_extra_param_values[$i]}"
         if [ -n "$name" -a -n "$value" ]; then
-            cmd="$nmcli con modify $con_name $name $value"
-            log_info $cmd
-            $cmd
-            if [ $? -ne 0 ]; then
-                log_error "add extra params $name $value for $con_name failed"
-                rc=1
-            fi
+            echo "$name=$value" >> $str_conf_file
         else
             log_error "invalid extra params $name $value, please check nics.nicextraparams"
             rc=1
         fi
         i=$((i+1))
     done
+    $nmcli con reload $str_conf_file
     return $rc
 }
 

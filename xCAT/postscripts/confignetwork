@@ -63,7 +63,8 @@ function get_nic_cfg_file_content {
     elif [ $is_debian -eq 1 ]; then
          cfg_file="$nwdir/${cfg_dev}"
     fi
-    if [ "$networkmanager_active" = "1" ]; then
+    ps -ef|grep -v grep|grep NetworkManager >/dev/null 2>/dev/null
+    if [ $? -eq 0 ]; then
         $ip address show dev ${cfg_dev}| $sed -e 's/^/[Ethernet] >> /g' | log_lines info
     else
         if [ -f $cfg_file ]; then
