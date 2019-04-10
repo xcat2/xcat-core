@@ -31,6 +31,12 @@ networkmanager_active=0
 checkservicestatus NetworkManager > /dev/null
 if [ $? -eq 0 ]; then
     networkmanager_active=1
+else
+    #In RH8 postscripts stage, NetworkManager is active but nmcli cannot modify NIC configure file
+    ps -ef|grep -v grep|grep NetworkManager >/dev/null 2>/dev/null
+    if [ $? -eq 0 ]; then
+        networkmanager_active=2
+    fi
 fi
 str_conf_file=""
 str_conf_file_xcatbak=""
@@ -135,6 +141,9 @@ function configipv4(){
             str_if_name=${str_if_name}:${num_v4num}
         fi
         str_conf_file="/etc/sysconfig/network-scripts/ifcfg-${str_if_name}"
+        if [ $networkmanager_active -ne 0 ]; then
+            str_conf_file="/etc/sysconfig/network-scripts/ifcfg-xcat-${str_if_name}" 
+        fi
         if [ $networkmanager_active -eq 1 ]; then
             if [ $num_v4num -eq 0 ]; then
                 is_nmcli_connection_exist $con_name
@@ -146,6 +155,19 @@ function configipv4(){
             else
                 nmcli con modify $con_name +ipv4.addresses ${str_v4ip}/${str_prefix}
             fi
+        elif [ $networkmanager_active -eq 2 ]; then
+            if [ $num_v4num -eq 0 ]; then
+                echo "DEVICE=${str_if_name}" > $str_conf_file
+                echo "BOOTPROTO=none" >> $str_conf_file
+                echo "IPADDR=${str_v4ip}" >> $str_conf_file
+                echo "NETMASK=${str_v4mask}" >> $str_conf_file
+                echo "NAME=xcat-${str_if_name}" >> $str_conf_file 
+                echo "ONBOOT=yes" >> $str_conf_file
+                echo "AUTOCONNECT_PRIORITY=9" >> $str_conf_file
+            else
+                echo "IPADDR$num_v4num=${str_v4ip}" >> $str_conf_file
+                echo "NETMASK$num_v4num=${str_v4mask}" >> $str_conf_file 
+            fi  
         else
             echo "DEVICE=${str_if_name}" > $str_conf_file
             echo "BOOTPROTO=none" >> $str_conf_file
@@ -156,10 +178,10 @@ function configipv4(){
         fi
         if [ "$str_nic_mtu" != "$str_default_token" ]; then
             if [ $networkmanager_active -eq 1 ]; then
-		nmcli con modify $con_name mtu $str_nic_mtu
+                nmcli con modify $con_name mtu $str_nic_mtu
             else
                 echo "MTU=${str_nic_mtu}" >> $str_conf_file
-	    fi
+            fi
         fi
 
         if [[ ${str_if_name} == [a-zA-Z0-9]*.[0-9]* ]]; then
@@ -174,10 +196,12 @@ function configipv4(){
             value="${array_extra_param_values[$i]}"
             echo "$i: name=$name value=$value"
             if [ $networkmanager_active -eq 1 ]; then
-                nmcli con modify $con_name $name $value
-            else
-                echo "${name}=${value}" >> $str_conf_file
+                str_conf_file_1="/etc/sysconfig/network-scripts/ifcfg-xcat-${str_if_name}-1"
+                if [ -e $str_conf_file_1 ]; then
+                    echo "${name}=${value}" >> $str_conf_file_1
+                fi
             fi
+            echo "${name}=${value}" >> $str_conf_file
     	    i=$((i+1))
         done		
     fi
@@ -638,6 +662,9 @@ elif [ "$1" = "-s" ];then
         con_name="xcat-install-"${str_inst_nic}
         str_inst_prefix=$(v4mask2prefix ${str_inst_mask})
         str_conf_file="/etc/sysconfig/network-scripts/ifcfg-${str_inst_nic}"
+        if [ $networkmanager_active -eq 2 ]; then
+            str_conf_file="/etc/sysconfig/network-scripts/ifcfg-xcat-install-${str_inst_nic}"
+        fi
         if [ $networkmanager_active -eq 1 ]; then
             is_nmcli_connection_exist "$con_name"
             if [ $? -eq 0 ]; then
@@ -651,14 +678,18 @@ elif [ "$1" = "-s" ];then
             echo "NETMASK=${str_inst_mask}" >> $str_conf_file
             echo "BOOTPROTO=none" >> $str_conf_file
             echo "ONBOOT=yes" >> $str_conf_file
+            echo "NAME=xcat-install-${str_inst_nic}" >> $str_conf_file
             echo "HWADDR=${str_inst_mac}" >> $str_conf_file
         fi
+        if [ $networkmanager_active -eq 2 ]; then
+            echo "AUTOCONNECT_PRIORITY=9" >> $str_conf_file
+        fi
         if [ -n "${str_inst_mtu}" ];then
-	    if [ $networkmanager_active -eq 1 ]; then
-		nmcli con modify $con_name mtu ${str_inst_mtu}
+	        if [ $networkmanager_active -eq 1 ]; then
+		        nmcli con modify $con_name mtu ${str_inst_mtu}
             else
                 echo "MTU=${str_inst_mtu}" >> $str_conf_file
-	    fi
+	        fi
         fi
         if [ -n "$str_inst_gateway" ];then
             grep -i "GATEWAY" /etc/sysconfig/network
@@ -669,7 +700,7 @@ elif [ "$1" = "-s" ];then
             fi
         fi
 
-	#add extra params
+	    #add extra params
         i=0
         while [ $i -lt ${#array_extra_param_names[@]} ]
         do
@@ -677,10 +708,12 @@ elif [ "$1" = "-s" ];then
             value="${array_extra_param_values[$i]}"
             echo "$i: name=$name value=$value"
             if [ $networkmanager_active -eq 1 ]; then
-                nmcli con modify $con_name $name $value
-            else
-                echo "${name}=${value}" >> $str_conf_file
-	    fi
+                str_conf_file_1="/etc/sysconfig/network-scripts/ifcfg-xcat-install-${str_if_name}-1"
+                if [ -e $str_conf_file_1 ]; then
+                    echo "${name}=${value}" >> $str_conf_file_1
+                fi
+            fi
+            echo "${name}=${value}" >> $str_conf_file
             i=$((i+1))
         done		
 
@@ -704,7 +737,8 @@ elif [ "$1" = "-s" ];then
         else
             ip link set dev $str_inst_nic down
         fi
-	if [ $networkmanager_active -eq 1 ]; then
+        if [ $networkmanager_active -eq 1 ]; then
+            nmcli con reload
             nmcli con up $con_name
 	else
             ifup $str_inst_nic
@@ -1123,11 +1157,12 @@ else
             if [ $reboot_nic_bool -eq 1 ]; then
                 if_state=0
                 echo "bring up ip"
-		if [ $networkmanager_active -eq 1 ]; then
+                if [ $networkmanager_active -eq 1 ]; then
+                    nmcli con reload
                     nmcli con up $con_name
-		else
+                else
                     ifup $str_nic_name
-		fi
+                fi
                 if [ $? -ne 0 ]; then
                     if_state=$(wait_for_ifstate $str_nic_name UP 20 5)
                 fi
