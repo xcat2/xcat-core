@@ -2,17 +2,17 @@
 
 The xCAT docs are hosted here: https://xcat-docs.readthedocs.io/ and are written in reStructuredText (`.rst`). 
 
-## Building docs locally
+## Building Docs
 
 * Clone this project 
 
 * Install or update sphinx (See: https://pip.readthedocs.io/)
    ```
-    pip install sphinx
+   pip install sphinx
    ```
    or
    ```
-    pip install sphinx --upgrade
+   pip install sphinx --upgrade
    ```
 
 * Install ReadTheDocs theme
