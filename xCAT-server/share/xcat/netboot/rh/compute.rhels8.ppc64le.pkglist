@@ -5,6 +5,7 @@ net-tools
 nfs-utils
 openssh-server
 rsync
+tar
 util-linux
 wget
 python3
