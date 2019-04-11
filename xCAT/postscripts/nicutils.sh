@@ -1580,7 +1580,8 @@ function decode_arguments {
 ###############################################################################
 #
 # check NetworkManager
-# output: 2 error
+# output: 3 error
+#         2 using NetworkManager but service(systemctl) can not used, this happens in RH8 postscripts
 #         1 using NetworkManager
 #         0 using network
 #
@@ -1601,7 +1602,7 @@ function check_NetworkManager_or_network_service() {
     #In RH8 postscripts stage, nmcli can not modify persistent configure file
     ps -ef|grep -v grep|grep NetworkManager >/dev/null 2>/dev/null
     if [ $? -eq 0 ]; then
-        return 0
+        return 2
     fi
     checkservicestatus network > /dev/null 2>/dev/null || checkservicestatus wicked > /dev/null 2>/dev/null
     if [ $? -eq 0 ]; then

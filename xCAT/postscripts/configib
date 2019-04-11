@@ -533,7 +533,6 @@ IPV6ADDR=$nicip/$netmask" >> $dir/ifcfg-$nic
                            echo "IPV6_DEFAULTGW=$gateway" >> $dir/ifcfg-$nic
                        fi
                     else # ipv4 address
-                        cfgfile=$dir"/ifcfg-"$nic
                         if [ $nmcli_used -eq 0 ]; then
                             cfgfile=$dir"/ifcfg-"$nic":"$ipindex
                             cfgcontent= "DEVICE=$nic:$ipindex
@@ -541,15 +540,12 @@ NM_CONTROLLED=no
 BOOTPROTO=none
 ONBOOT=yes
 NETMASK=$netmask
-IPADDR=$nicip
-DEVICE=$nic:$ipindex"
+IPADDR=$nicip"
+                            echo "$cfgcontent" > $cfgfile
                         else
+                            cfgfile=$dir"/ifcfg-"$nic
                             cfgcontent="NETMASK$ipindex=$netmask
 IPADDR$ipindex=$nicip"
-                        fi
-                        if [ $nmcli_used -eq 0 ]; then
-                            echo "$cfgcontent" > $cfgfile
-                        else           
                             echo "$cfgcontent" >> $cfgfile
                         fi
                         if [[ "$OSVER" == rhels6* ]]
