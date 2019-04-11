@@ -333,10 +333,14 @@ unless ($onlyinitrd) {
         }
     }
 
+    if (! -x $aptcmd1) {
+        print "Error: Can not execute $aptcmd1 command. Make sure you are running on a Debian based system.\n";
+        exit 1;
+    }
     print "Run cmd [$aptcmd1 $aptcmd2] to create rootimage bootstraps\n";
     my $rc = system("$aptcmd1 $aptcmd2");
     if ($rc) {
-        print "Error: cannnot create bootstraps for rootimage. Make sure you specified full http mirror path.\n";
+        print "Error: Can not create bootstraps for rootimage. Make sure you specified full http mirror path.\n";
         exit 1;
     }
 
