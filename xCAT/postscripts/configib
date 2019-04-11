@@ -553,7 +553,7 @@ IPADDR$ipindex=$nicip"
                             #get prefix from netmask, this is for IPv4 only
                             prefix=24
                             prefix=$(convert_netmask_to_cidr $netmask)
-                            echo "PREFIX=$prefix" >> $dir/ifcfg-$nic:$ipindex
+                            echo "PREFIX=$prefix" >> $cfgfile
                         else
                             echo "$nicnetmask" >> $cfgfile
                         fi
