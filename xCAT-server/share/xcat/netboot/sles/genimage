@@ -255,12 +255,6 @@ unless ($onlyinitrd) {
     my $non_interactive;
     if (!$prompt) { $non_interactive = "--non-interactive --no-gpg-checks --gpg-auto-import-keys"; }
 
-    my $zypper_cmd = "zypper";
-    if (! -x $zypper_cmd) {
-        print "Can not execute $zypper_cmd command. Make sure you are running on SUSE based system";
-        exit 1;
-    }
-
     if ($osver_host >= 11) {                      #zypper in SLES11 is different
 
         system("rm -rf $rootimg_dir/etc/zypp/repos.d/$osver-*.repo");
