@@ -63,7 +63,9 @@ function get_nic_cfg_file_content {
     elif [ $is_debian -eq 1 ]; then
          cfg_file="$nwdir/${cfg_dev}"
     fi
-    if [ "$networkmanager_active" = "1" ]; then
+    #TODO:this is networkmanager_active=2 
+    ps -ef|grep -v grep|grep NetworkManager >/dev/null 2>/dev/null
+    if [ $? -eq 0 ]; then
         $ip address show dev ${cfg_dev}| $sed -e 's/^/[Ethernet] >> /g' | log_lines info
     else
         if [ -f $cfg_file ]; then
@@ -568,7 +570,9 @@ function configure_nicdevice {
                 else
                     create_bridge_interface ifname=$nic_dev _brtype=$nic_dev_type _port=$base_nic_dev _pretype=$base_nic_type
                 fi
-            elif [ "$networkmanager_active" = "1" ]; then
+            elif [ "$networkmanager_active" = "2" ]; then
+                create_bridge_interface ifname=$nic_dev _brtype=$nic_dev_type _port=$base_nic_dev _pretype=$base_nic_type
+            else
                 create_bridge_interface_nmcli ifname=$nic_dev _brtype=$nic_dev_type _port=$base_nic_dev _pretype=$base_nic_type _ipaddr=$ipaddrs
             fi
             if [ $? -ne 0 ]; then
@@ -585,9 +589,9 @@ function configure_nicdevice {
                 vlanname=`echo "$nic_dev" | $sed -e 's/^\(.*\)vla\?n\?\([0-9]\+\)$/\1/'`
             fi
             ipaddrs=$(find_nic_ips $nic_dev)
-            if [ "$networkmanager_active" = "0" ]; then
+            if [ "$networkmanager_active" != "1" ]; then
                 create_vlan_interface ifname=$vlanname vlanid=$vlanid
-            elif [ "$networkmanager_active" = "1" ]; then
+            else
                 create_vlan_interface_nmcli ifname=$vlanname vlanid=$vlanid ipaddrs=$ipaddrs next_nic=$is_mid_device
             fi
             if [ $? -ne 0 ]; then
@@ -596,9 +600,9 @@ function configure_nicdevice {
             fi
         #configure bond
         elif [ x"$nic_dev_type" = "xbond" ]; then
-            if [ "$networkmanager_active" = "0" ]; then
+            if [ "$networkmanager_active" != "1" ]; then
                 create_bond_interface ifname=$nic_dev slave_ports=$base_nic_for_bond slave_type=$base_nic_type
-            elif [ "$networkmanager_active" = "1" ]; then
+            else
                 create_bond_interface_nmcli bondname=$nic_dev slave_ports=$base_nic_for_bond slave_type=$base_nic_type _ipaddr=$ipaddrs next_nic=$is_mid_device
             fi
             if [ $? -ne 0 ]; then
@@ -655,13 +659,15 @@ if [ $boot_install_nic -eq 1 ];then
 fi
 
 #check if using NetworkManager or  network service
-networkmanager_active=2
+networkmanager_active=3
 check_NetworkManager_or_network_service
 is_active=$?
 if [ $is_active -eq 0 ]; then
     networkmanager_active=0
 elif [ $is_active -eq 1 ]; then
     networkmanager_active=1
+elif [ $is_active -eq 2 ]; then
+    networkmanager_active=2
 else
     exit 1
 fi
