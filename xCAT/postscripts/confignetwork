@@ -563,8 +563,6 @@ function configure_nicdevice {
         #linux bridge type is bridge
         #openvswitch bridge type is bridge_ovs
         elif [ x"$nic_dev_type" = "xbridge_ovs" -o x"$nic_dev_type" = "xbridge" ]; then
-            ps -ef|grep -v grep|grep NetworkManager >/dev/null 2>/dev/null
-            nmcli_used=$?
             if [ "$networkmanager_active" != "1" ]; then
                 if [ "$networkmanager_active" = "0" ]; then
                     check_brctl $nic_dev_type
@@ -572,7 +570,7 @@ function configure_nicdevice {
                         errorcode=1
                     else
                         create_bridge_interface ifname=$nic_dev _brtype=$nic_dev_type _port=$base_nic_dev _pretype=$base_nic_type
-                    if
+                    fi
                 else
                     create_bridge_interface ifname=$nic_dev _brtype=$nic_dev_type _port=$base_nic_dev _pretype=$base_nic_type
                 fi

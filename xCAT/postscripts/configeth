@@ -171,11 +171,11 @@ function configipv4(){
                 echo "NETMASK$num_v4num=${str_v4mask}" >> $str_conf_file 
             fi  
         else
-            str_conf_file="/etc/sysconfig/network-scripts/ifcfg-${str_if_name}"
             #If using network service, the NIC alias device format is <NIC>:<num_v4num> like eth0:1
             if [ $num_v4num -ne 0 ]; then
                 str_if_name=${str_if_name}:${num_v4num}
             fi
+            str_conf_file="/etc/sysconfig/network-scripts/ifcfg-${str_if_name}"
             echo "DEVICE=${str_if_name}" > $str_conf_file
             echo "BOOTPROTO=none" >> $str_conf_file
             echo "NM_CONTROLLED=no" >> $str_conf_file
