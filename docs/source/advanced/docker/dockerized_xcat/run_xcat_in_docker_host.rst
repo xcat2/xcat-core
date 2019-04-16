@@ -1,20 +1,22 @@
 Quick Start to Use xCAT Docker Image
 ====================================
 
-Every time xCAT release a new version, xCAT will relase a xCAT docker image with legacy RPM/DEB packages at same time.
-Using ``docker search xcat2`` to list all docker images xCAT has released. xCAT docker image offical organization is ``xcat``, repository is ``xcat2``. ::
+Every time xCAT release a new version, xCAT will relase a xCAT Docker image with legacy RPM/DEB packages at same time.
+Using ``docker search xcat2`` to list all Docker images xCAT has released. xCAT Docker image offical organization is ``xcat``, repository is ``xcat2``. ::
 
     [dockerhost]# sudo docker search xCAT2
     NAME               DESCRIPTION                      STARS     OFFICIAL   AUTOMATED
     xcat/xcat2            ...                            ...        ...          ...
 
-The xCAT docker images are tagged to match the xCAT releases, If you want to deploy the xCAT 2.14.6 version, pull down the ``xcat/xcat2:2.14.6`` image. Currently xCAT docker image was built based on CentOS.
+The xCAT Docker images are tagged to match the xCAT releases, If you want to deploy the xCAT 2.14.6 version, pull down the ``xcat/xcat2:2.14.6`` image. xCAT Docker image also has a ``latest`` tag to point to the latest release. Currently xCAT Docker image was built based on CentOS.
 
+.. Attention::
+    To do discovery for power9 Bare Metal server, please specify Docker image xcat/xcat2-p9.
 
 Prerequisite
 ------------
 
-To run xCAT under Docker, the services ``SELinux`` and ``AppArmor`` must be disabled
+* To run xCAT under Docker, the services ``SELinux`` and ``AppArmor`` on Docker host must be disabled.
 
 SELinux can be disabled with: ::
 
@@ -24,6 +26,11 @@ SELinux can be disabled with: ::
 AppArmor can be disabled with: ::
 
     /etc/init.d/apparmor teardown
+
+
+* To run xCAT under Docker, some port on Docker host should be disable. 
+
+[TODO] need a quick script here, to let customer know how to check the port in Docker host.
 
 Pull the xCAT Docker Image from DockerHub
 -----------------------------------------
@@ -36,18 +43,22 @@ To pull the latest xCAT docker image, run ::
 Run xCAT in Docker Container
 ----------------------------
 
+.. Important::
+   When start xCAT docker container for the first time, must run ``docker run --rm -v /xcatdata:/tmp/xcatdata xcat/xcat2:2.14.6 cp -a /xcatdata /tmp`` once ahead.
+
 Now run the xCAT docker container with the docker image ``xCAT/xCAT2:2.14.6`` ::
 
-    [dockerhost]# sudo docker run  --rm -d \
+
+    [dockerhost]# sudo docker run -d \
          --name xcatmn  \
          --network=host  \
          --hostname xcatmn \
          --privileged   \
          -v /sys/fs/cgroup:/sys/fs/cgroup:ro  \
-         -v /xCATdata:/tmp/xcatdata     \
-         -v /var/log/xCAT:/var/log/xCAT  \
+         -v /xcatdata:/xcatdata     \
+         -v /var/log/xcat:/var/log/xcat  \
          -v /customer_data:/customer_data   \
-         xCAT/xCAT2:2.14.6 cp -a /xcatdata /tmp
+         xcat/xcat2:2.14.6 
 
 
 The descriptions:
@@ -67,8 +78,8 @@ The descriptions:
 :-v /sys/fs/cgroup\:/sys/fs/cgroup\:ro:
     Is **mandatory** configuration to enable systemd in container.
 
-:-v /xcatdata\:/tmp/xcatdata:
-    xCAT container will create ``/xCATdata`` volume to store configuration and OS distro data. I.e. xCAT important directories ``/install``, ``/tftpboot`` and ``/etc`` will be saved under ``/xCATdata``. If user does not mount this directory to docker host specially, this directory will be mounted under ``/var/lib/docker/volumes/`` implicitly.
+:-v /xcatdata\:/xcatdata:
+    xCAT container will create ``/xcatdata`` volume to store configuration and OS distro data. I.e. xCAT important directories ``/install``, ``/tftpboot`` and ``/etc`` will be saved under ``/xcatdata``. If user does not mount this directory to docker host specially, this directory will be mounted under ``/var/lib/docker/volumes/`` implicitly.
 
 :-v /customer_data\:/customer_data:
     Is optional. If customer needs transfer user data between docker host ans docker container, can create this mount directory.
