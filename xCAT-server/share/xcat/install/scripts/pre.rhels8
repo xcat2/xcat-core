@@ -214,7 +214,7 @@ getdisksize()
 
 	disk="${disk#/dev/}"
 
-	[ -z "${disk}" ] && return
+	[ -z "${disk}" ] && echo "0" && return
 
 	local blah
 	local blocks
