@@ -49,8 +49,9 @@ class OpenBMCBmcConfigTask(ParallelNodesCommand):
 
         formatted_time = time.strftime("%Y%m%d-%H%M", time.localtime(time.time()))
         dump_log_file = '%s%s_%s_dump_%s.tar.xz' % (XCAT_LOG_DUMP_DIR, formatted_time, node, download_id)
+        host_name = os.uname()[1].split('.', 1)[0]
         if flag_dump_process:
-            self.callback.info('%s: Downloading dump %s to %s' % (node, download_id, dump_log_file))
+            self.callback.info('%s: Downloading dump %s to %s:%s' % (node, download_id, host_name, dump_log_file))
 
         obmc.download_dump(download_id, dump_log_file)
         if os.path.exists(dump_log_file):
@@ -61,7 +62,7 @@ class OpenBMCBmcConfigTask(ParallelNodesCommand):
             if grep_string:
                 self.callback.error('Invalid dump %s was specified. Use -l option to list.' % download_id, node)
             else:
-                self.callback.info('%s: Downloaded dump %s to %s.' % (node, download_id, dump_log_file))
+                self.callback.info('%s: Downloaded dump %s to %s:%s.' % (node, download_id, host_name, dump_log_file))
         else:
             self.callback.error('Failed to download dump %s to %s.' % (download_id, dump_log_file), node)
         return
