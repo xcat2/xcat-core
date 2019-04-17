@@ -172,6 +172,10 @@ sub do_main_job {
         $rst        = check_dhcp_leases(\$checkpoint, \@error);
         print_check_result($checkpoint, "w", $rst, \@error);
         $rc |= $rst;
+    } else {
+        $rst = check_db_pkgs(\$checkpoint, \@error);
+        print_check_result($checkpoint, "f", $rst, \@error);
+        $rc |= $rst;
     }
 
     cleanup();
@@ -1251,6 +1255,37 @@ sub check_daemon_attributes {
         }
     }
     return ($rst, $rst_type);
+}
+
+sub check_db_pkgs {
+    my $checkpoint_ref = shift;
+    my $error_ref      = shift;
+    my $rst            = 0; 
+
+    $$checkpoint_ref = "Checking DB packages installatio...";
+    @$error_ref = ();
+
+    my $cfgloc_file = "/etc/xcat/cfgloc";
+    if (! -e $cfgloc_file) {
+        push @$error_ref, "$cfgloc_file does not exist, please check xcat installation.";
+        return 1;
+    }
+    my $db_type = `cat $cfgloc_file | awk -F ':' '{print \$1}'`;
+    chomp($db_type);
+    my $db_pkg;
+    my $db_name;
+    if ($db_type eq "mysql") {
+        $db_name = "perl-DBD-MySQL or perl-DBD-mysql";
+        $db_pkg = `rpm qa | grep -e perl-DBD-MySQL -e perl-DBD-mysql`;
+    } elsif ($db_type eq "Pg") {
+        $db_name = "perl-DBD-Pg";
+        $db_pkg = `rpm -qa | grep $db_name`;
+    }
+    if (!$db_pkg) {
+        push @$error_ref, "$db_name is not installed, please install it.";
+        $rst = 1;
+    }
+    return $rst;
 }
 
 sub returncmdoutput {
