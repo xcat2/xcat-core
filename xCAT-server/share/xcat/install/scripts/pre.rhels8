@@ -225,10 +225,11 @@ getdisksize()
 		if [ "${name}" = "${disk}" ]
 		then
 			echo "${blocks}"
-			break
+			return
 		fi
 	done </proc/partitions
 
+	echo "0"
 	return
 }
 
