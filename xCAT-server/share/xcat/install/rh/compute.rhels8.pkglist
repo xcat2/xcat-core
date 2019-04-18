@@ -7,3 +7,4 @@ rsync
 util-linux
 wget
 python3
+tar
