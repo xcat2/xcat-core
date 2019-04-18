@@ -11,3 +11,4 @@ perl-DBD-MySQL
 perl-DBD-Pg
 unixODBC
 python3
+tar
