@@ -1,17 +1,16 @@
 Quick Start to Use xCAT Docker Image
 ====================================
 
-Every time xCAT release a new version, xCAT will relase a xCAT Docker image with legacy RPM/DEB packages at same time.
-Using ``docker search xcat2`` to list all Docker images xCAT has released. xCAT Docker image offical organization is ``xcat``, repository is ``xcat2``. ::
+A new Docker image will be published for each new release of xCAT. Use ``docker search xcat2`` to list all Docker images xCAT has released. xCAT Docker image offical organization is ``xcat``, repository is ``xcat2``. ::
 
-    [dockerhost]# sudo docker search xCAT2
+    [dockerhost]# sudo docker search xcat2 
     NAME               DESCRIPTION                      STARS     OFFICIAL   AUTOMATED
     xcat/xcat2            ...                            ...        ...          ...
 
-The xCAT Docker images are tagged to match the xCAT releases, If you want to deploy the xCAT 2.14.6 version, pull down the ``xcat/xcat2:2.14.6`` image. xCAT Docker image also has a ``latest`` tag to point to the latest release. Currently xCAT Docker image was built based on CentOS.
+The xCAT Docker images are tagged to match the xCAT releases, If you want to deploy the xCAT 2.14.6 version, pull down the ``xcat/xcat2:2.14.6`` image. xCAT Docker image also has a ``latest`` tag to point to the latest release. Currently xCAT Docker images are based on CentOS.
 
 .. Attention::
-    To do discovery for power9 Bare Metal server, please refer to :doc:`xCAT Genesis Base </references/coral/known_issues/genesis_base>`
+    To do discovery for POWER9 bare metal server, please refer to :doc:`xCAT Genesis Base </references/coral/known_issues/genesis_base>`
 
 Prerequisite
 ------------
@@ -30,7 +29,7 @@ Prerequisite
 
 * To run xCAT under Docker, the port xCAT needed should be unoccupied on Docker host. 
 
-  Getting xCAT port usage from :doc:`here </advanced/ports/xcat_ports>`. For Linux user, run below command to check port quickly ::
+  Get xCAT port usage from :doc:`here </advanced/ports/xcat_ports>`. For Linux user, run below command to check port quickly ::
 
     netstat -nlp |grep -E ":(3001|3002|68|53|873|80|69|12429|12430|67) "
 
@@ -38,18 +37,15 @@ Prerequisite
 Pull the xCAT Docker Image from DockerHub
 -----------------------------------------
 
-To pull the latest xCAT docker image, run ::
+To pull the latest xCAT Docker image, run ::
 
-    [dockerhost]# sudo docker pull xCAT/xCAT2:2.14.6
+    [dockerhost]# sudo docker pull xCAT/xCAT2:latest
 
 
 Run xCAT in Docker Container
 ----------------------------
 
-.. Important::
-   When start xCAT docker container for the first time, must run ``docker run --rm -v /xcatdata:/tmp/xcatdata xcat/xcat2:2.14.6 cp -a /xcatdata /tmp`` once ahead.
-
-Now run the xCAT docker container with the docker image ``xCAT/xCAT2:2.14.6`` ::
+Run the xCAT Docker container with the Docker image ``xCAT/xCAT2:latest`` ::
 
 
     [dockerhost]# sudo docker run -d \
@@ -61,7 +57,7 @@ Now run the xCAT docker container with the docker image ``xCAT/xCAT2:2.14.6`` ::
          -v /xcatdata:/xcatdata     \
          -v /var/log/xcat:/var/log/xcat  \
          -v /customer_data:/customer_data   \
-         xcat/xcat2:2.14.6 
+         xcat/xcat2:latest
 
 
 The descriptions:
@@ -82,15 +78,18 @@ The descriptions:
     Is **mandatory** configuration to enable systemd in container.
 
 :-v /xcatdata\:/xcatdata:
-    xCAT container will create ``/xcatdata`` volume to store configuration and OS distro data. I.e. xCAT important directories ``/install``, ``/tftpboot`` and ``/etc`` will be saved under ``/xcatdata``. If user does not mount this directory to docker host specially, this directory will be mounted under ``/var/lib/docker/volumes/`` implicitly.
+    xCAT container will create ``/xcatdata`` volume to store configuration and OS distro data. I.e. xCAT important directories ``/install``, ``/tftpboot`` and ``/etc`` will be saved under ``/xcatdata``. If user does not explicitly mount this directory to docker host, this directory will be mounted under ``/var/lib/docker/volumes/``.  
+
+:-v /var/log/xcat\:/var/log/xcat:
+   All xcat running logs are saved under ``/var/log/xcat``. Using this setting to extract them to Docker host.
 
 :-v /customer_data\:/customer_data:
-    Is optional. If customer needs transfer user data between docker host ans docker container, can create this mount directory.
+    **Is optional**. Using this setting to transfer user data between Docker host and container.
 
 Run xCAT Command in Docker Container
 ------------------------------------
 
-Now run the xCAT commands in docker container ::
+Now run the xCAT commands in Docker container ::
 
     [dockerhost]# sudo docker exec -it xcatmn bash 
     [xcatmn]# 
