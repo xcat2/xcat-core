@@ -11,7 +11,7 @@ Using ``docker search xcat2`` to list all Docker images xCAT has released. xCAT 
 The xCAT Docker images are tagged to match the xCAT releases, If you want to deploy the xCAT 2.14.6 version, pull down the ``xcat/xcat2:2.14.6`` image. xCAT Docker image also has a ``latest`` tag to point to the latest release. Currently xCAT Docker image was built based on CentOS.
 
 .. Attention::
-    To do discovery for power9 Bare Metal server, please specify Docker image xcat/xcat2-p9.
+    To do discovery for power9 Bare Metal server, please refer to :doc:`xCAT Genesis Base </references/coral/known_issues/genesis_base>`
 
 Prerequisite
 ------------
