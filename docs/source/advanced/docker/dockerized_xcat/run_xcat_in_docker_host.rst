@@ -18,20 +18,23 @@ Prerequisite
 
 * To run xCAT under Docker, the services ``SELinux`` and ``AppArmor`` on Docker host must be disabled.
 
-SELinux can be disabled with: ::
+  SELinux can be disabled with: ::
 
     echo 0 > /selinux/enforce
     sed -i 's/^SELINUX=.*$/SELINUX=disabled/' /etc/selinux/config
 
-AppArmor can be disabled with: ::
+  AppArmor can be disabled with: ::
 
     /etc/init.d/apparmor teardown
 
 
-* To run xCAT under Docker, some port on Docker host should be disable. 
+* To run xCAT under Docker, the port xCAT needed should be unoccupied on Docker host. 
 
-[TODO] need a quick script here, to let customer know how to check the port in Docker host.
+  Getting xCAT port usage from :doc:`here </advanced/ports/xcat_ports>`. For Linux user, run below command to check port quickly ::
 
+    netstat -nlp |grep -E ":(3001|3002|68|53|873|80|69|12429|12430|67) "
+
+   
 Pull the xCAT Docker Image from DockerHub
 -----------------------------------------
 
