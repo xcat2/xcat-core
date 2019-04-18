@@ -556,12 +556,12 @@ rmdir \"/tmp/$userid\" \n")
             addon_string = ''
             if dic_length > 1:
                 addon_string = " for %s" % nic
-            netinfodict['ip'].append("BMC IP"+addon_string+": %s" % attrs["ip"])
-            netinfodict['netmask'].append("BMC Netmask"+addon_string+": %s" % utils.mask_int2str(attrs["netmask"]))
-            netinfodict['gateway'].append("BMC Gateway"+addon_string+": %s (default: %s)" % (attrs["gateway"], defaultgateway))
-            netinfodict['vlan'].append("BMC VLAN ID"+addon_string+": %s" % attrs["vlanid"])
-            netinfodict['ipsrc'].append("BMC IP Source"+addon_string+": %s" % attrs["ipsrc"])
-            netinfodict['ntpservers'].append("BMC NTP Servers"+addon_string+": %s" % attrs["ntpservers"])
+            netinfodict['ip'].append("BMC IP"+addon_string+": %s" % attrs.get("ip", None))
+            netinfodict['netmask'].append("BMC Netmask"+addon_string+": %s" % utils.mask_int2str(attrs.get("netmask", 24)))
+            netinfodict['gateway'].append("BMC Gateway"+addon_string+": %s (default: %s)" % (attrs.get("gateway", None), defaultgateway))
+            netinfodict['vlan'].append("BMC VLAN ID"+addon_string+": %s" % attrs.get("vlanid", None))
+            netinfodict['ipsrc'].append("BMC IP Source"+addon_string+": %s" % attrs.get("ipsrc", None))
+            netinfodict['ntpservers'].append("BMC NTP Servers"+addon_string+": %s" % attrs.get("ntpservers", None))
         if ip:
             for i in netinfodict['ip']:
                 self.callback.info("%s: %s" % (node, i))

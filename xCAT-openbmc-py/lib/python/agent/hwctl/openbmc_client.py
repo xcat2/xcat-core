@@ -797,7 +797,7 @@ class OpenBMCRest(object):
 
     def set_ntp_servers(self, nic, servers):
 
-        payload = { "data": [servers] }
+        payload = { "data": servers.split(',') }
         url = RSPCONFIG_NETINFO_URL['ntpservers'].replace('#NIC#', nic)
         self.request('PUT', url, payload=payload, cmd='set_ntp_servers')
 
@@ -915,7 +915,7 @@ class OpenBMCRest(object):
                         netinfo[nicid]["zeroconf"] = v["Address"]
                         continue
                     if 'ip' in netinfo[nicid]:
-                        msg = "%s: Another valid ip %s found." % (node, v["Address"])
+                        msg = "Another valid ip %s found." % (v["Address"])
                         self._print_record_log(msg, 'get_netinfo')
                         del netinfo[nicid]
                         netinfo['error'] = 'Interfaces with multiple IP addresses are not supported'
