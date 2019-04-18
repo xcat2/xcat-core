@@ -29,7 +29,9 @@ Prerequisite
 
 * To run xCAT under Docker, the port xCAT needed should be unoccupied on Docker host. 
 
-  Get xCAT port usage from :doc:`here </advanced/ports/xcat_ports>`. For Linux user, run below command to check port quickly ::
+  Get xCAT port usage from :doc:`here </advanced/ports/xcat_ports>`. 
+
+  For Linux user, below command is used to check whether the ports are occupied, administrator shall deal with the port occuption ::
 
     netstat -nlp |grep -E ":(3001|3002|68|53|873|80|69|12429|12430|67) "
 
