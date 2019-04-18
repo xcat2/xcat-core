@@ -661,7 +661,7 @@ class OpenBMCRest(object):
         # Check if policy table file is there
         ras_event_mapping = {}
         if os.path.isfile(RAS_POLICY_TABLE):
-            with open(RAS_POLICY_TABLE, encoding="utf8", errors='ignore') as data_file:
+            with open(RAS_POLICY_TABLE) as data_file:
                 policy_hash = json.load(data_file)
                 if policy_hash:
                     ras_event_mapping = policy_hash['events']
