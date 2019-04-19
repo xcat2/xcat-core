@@ -116,7 +116,7 @@ if [ "$OSNAME" != "AIX" ]; then
 		echo '%_signature gpg' >> $MACROS
 	fi
 	if ! $GREP -q '%_gpg_name' $MACROS 2>/dev/null; then
-		echo '%_gpg_name xCAT Security Key' >> $MACROS
+		echo '%_gpg_name xCAT Automatic Signing Key' >> $MACROS
 	fi
 
 	# Sign the rpms that are not already signed.  The "standard input reopened" warnings are normal.
@@ -127,12 +127,12 @@ if [ "$OSNAME" != "AIX" ]; then
 	echo "===> Creating repodata directories..."
 	for i in `find -mindepth 2 -maxdepth 2 -type d `; do
 		if [ -n "$VERBOSEMODE" ]; then
-			createrepo --checksum sha $i            # specifying checksum so the repo will work on rhel5
+			createrepo $i            # specifying checksum so the repo will work on rhel5
 		else
-			createrepo --checksum sha $i >/dev/null
+			createrepo $i >/dev/null
 		fi
 		rm -f $i/repodata/repomd.xml.asc
-		gpg -a --detach-sign $i/repodata/repomd.xml
+		gpg -a --detach-sign --default-key 5619700 $i/repodata/repomd.xml
 		if [ ! -f $i/repodata/repomd.xml.key ]; then
 			cp $GSA/../keys/repomd.xml.key $i/repodata
 		fi
