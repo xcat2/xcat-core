@@ -2,7 +2,7 @@
 #
 # go-xcat - Install xCAT automatically.
 #
-# Version 1.0.36
+# Version 1.0.38
 #
 # Copyright (C) 2016, 2017, 2018 International Business Machines
 # Eclipse Public License, Version 1.0 (EPL-1.0)
@@ -163,13 +163,13 @@ GO_XCAT_DEP_PACKAGE_LIST=()
 # The package list of all the packages should be installed
 GO_XCAT_INSTALL_LIST=(perl-xCAT xCAT xCAT-buildkit xCAT-client
 	xCAT-genesis-scripts-ppc64 xCAT-genesis-scripts-x86_64 xCAT-server
-	conserver-xcat elilo-xcat grub2-xcat ipmitool-xcat syslinux-xcat
+	elilo-xcat grub2-xcat ipmitool-xcat syslinux-xcat
 	xCAT-genesis-base-ppc64 xCAT-genesis-base-x86_64 xnba-undi yaboot-xcat)
 # For Debian/Ubuntu, it will need a sight different package list
 type dpkg >/dev/null 2>&1 &&
 GO_XCAT_INSTALL_LIST=(perl-xcat xcat xcat-buildkit xcat-client
 	xcat-genesis-scripts-amd64 xcat-genesis-scripts-ppc64 xcat-server
-	conserver-xcat elilo-xcat grub2-xcat ipmitool-xcat syslinux-xcat
+	elilo-xcat grub2-xcat ipmitool-xcat syslinux-xcat
 	xcat-genesis-base-amd64 xcat-genesis-base-ppc64 xnba-undi)
 # The package list of all the packages should be installed
 GO_XCAT_UNINSTALL_LIST=("${GO_XCAT_INSTALL_LIST[@]}"
