@@ -918,7 +918,7 @@ sub process_request {
     unless ($ret) {
         xCAT::SvrUtils::sendmsg("DNS setup is completed", $callback);
     }
-
+    chmod 0750, $ctx->{dbdir};
     umask($oldmask);
 }
 
