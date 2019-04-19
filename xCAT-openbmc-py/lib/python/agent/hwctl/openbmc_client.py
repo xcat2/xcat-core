@@ -930,7 +930,7 @@ class OpenBMCRest(object):
                         utils.update2Ddict(netinfo, nicid, "vlanid", info.get("Id", "Disable"))
                         utils.update2Ddict(netinfo, nicid, "mac", info["MACAddress"])
                         ntpservers = None
-                        tmp_ntpservers = ''.join(info["NTPServers"])
+                        tmp_ntpservers = ','.join(info["NTPServers"])
                         if tmp_ntpservers:
                             ntpservers = tmp_ntpservers
                         utils.update2Ddict(netinfo, nicid, "ntpservers", ntpservers)
