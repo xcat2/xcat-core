@@ -132,7 +132,7 @@ if [ "$OSNAME" != "AIX" ]; then
 			createrepo $i >/dev/null
 		fi
 		rm -f $i/repodata/repomd.xml.asc
-		gpg -a --detach-sign --default-key 5619700 $i/repodata/repomd.xml
+		gpg -a --detach-sign --default-key 5619700D $i/repodata/repomd.xml
 		if [ ! -f $i/repodata/repomd.xml.key ]; then
 			cp $GSA/../keys/repomd.xml.key $i/repodata
 		fi
