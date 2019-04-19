@@ -27,11 +27,9 @@ Prerequisite
     /etc/init.d/apparmor teardown
 
 
-* To run xCAT under Docker, the port xCAT needed should be unoccupied on Docker host. 
+* To run xCAT under Docker the ports described in :doc:`document </advanced/ports/xcat_ports>` should be available. 
 
-  Get xCAT port usage from :doc:`here </advanced/ports/xcat_ports>`. 
-
-  For Linux user, below command is used to check whether the ports are occupied, administrator shall deal with the port occuption ::
+  For Linux user, use the following command to verify ports are not used :: 
 
     netstat -nlp |grep -E ":(3001|3002|68|53|873|80|69|12429|12430|67) "
 
@@ -74,7 +72,7 @@ The descriptions:
     Specify the hostname of container, which is available inside the container.
 
 :--privileged=true:
-    Specify the hostname of container, which is available inside the container.
+    Give extended privileges to this container.
 
 :-v /sys/fs/cgroup\:/sys/fs/cgroup\:ro:
     Is **mandatory** configuration to enable systemd in container.
@@ -83,21 +81,24 @@ The descriptions:
     xCAT container will create ``/xcatdata`` volume to store configuration and OS distro data. I.e. xCAT important directories ``/install``, ``/tftpboot`` and ``/etc`` will be saved under ``/xcatdata``. If user does not explicitly mount this directory to docker host, this directory will be mounted under ``/var/lib/docker/volumes/``.  
 
 :-v /var/log/xcat\:/var/log/xcat:
-   All xcat running logs are saved under ``/var/log/xcat``. Using this setting to extract them to Docker host.
+   All xCAT running logs are saved under ``/var/log/xcat``. Use this setting to export them to Docker host.
 
 :-v /customer_data\:/customer_data:
-    **Is optional**. Using this setting to transfer user data between Docker host and container.
+    **Is optional**. Use this setting to transfer user data between Docker host and container.
 
 Run xCAT Command in Docker Container
 ------------------------------------
 
-Now run the xCAT commands in Docker container ::
+To enter xCAT Docker container ::
 
     [dockerhost]# sudo docker exec -it xcatmn bash 
     [xcatmn]# 
 
+Also can enter xCAT Docker container through ``ssh`` ::
 
-Now container ``xcatmn`` will work as a normal xCAT management node, can run xCAT command directly.
+    [anynode]# ssh <docker_container_ip> -p 2200
+
+Now container ``xcatmn`` will work as a normal xCAT management node, can run xCAT commands directly.
 For example ::
 
     [xcatmn]# lsxcatd -a
