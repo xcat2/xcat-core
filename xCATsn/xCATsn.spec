@@ -46,16 +46,6 @@ Requires: perl-IO-Stty
 %endif
 %endif
 
-# The aix rpm cmd forces us to do this outside of ifos type stmts
-%if %notpcm
-%ifos linux
-%ifnarch s390x
-# PCM does not use or ship conserver
-Requires: conserver-xcat
-%endif
-%endif
-%endif
-
 %ifos linux
 Requires: goconserver
 %endif
