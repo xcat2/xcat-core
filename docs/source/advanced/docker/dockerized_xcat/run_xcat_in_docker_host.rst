@@ -12,8 +12,8 @@ The xCAT Docker images are tagged to match the xCAT releases, If you want to dep
 .. Attention::
     To do discovery for POWER9 bare metal server, please refer to :doc:`xCAT Genesis Base </references/coral/known_issues/genesis_base>`
 
-Prerequisite
-------------
+Prerequisite for Docker Host
+----------------------------
 
 * To run xCAT under Docker, the services ``SELinux`` and ``AppArmor`` on Docker host must be disabled.
 
