@@ -253,7 +253,8 @@ sub process_request {
     }
 
     # Handle chronyd here,
-    if (-f "/usr/sbin/chronyd") {
+    if (-x "/usr/sbin/chronyd" &&
+		(-x "/usr/bin/systemctl" || -x "/bin/systemctl")) {
         send_msg(\%request, 0, "Will configure chronyd instead.");
 
         my $cmd = "/install/postscripts/setupntp " .
