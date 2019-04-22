@@ -311,6 +311,7 @@ cmd:lsdef bogus-bmc-hostname
 check:rc == 0
 cmd:makehosts bogus-bmc-hostname
 check:rc == 0
+cmd:makedns -n
 cmd:makedns bogus-bmc-hostname
 check:rc == 0
 cmd:chdef $$CN bmc=bogus-bmc-hostname
