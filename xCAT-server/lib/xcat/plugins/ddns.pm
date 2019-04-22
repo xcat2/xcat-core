@@ -206,6 +206,7 @@ sub process_request {
     $callback = shift;
     my $oldmask = umask(0007);
     my $ctx     = {};
+    my $permissionmode;
     my @nodes   = ();
     my $hadargs = 0;
     my $allnodes;
@@ -777,6 +778,8 @@ sub process_request {
             #We manipulate local namedconf
             $ctx->{dbdir}    = get_dbdir();
             $ctx->{zonesdir} = get_zonesdir();
+            #backup named directory permission
+            $permissionmode = (stat($ctx->{dbdir}))[2] & 07777;
             chmod 0775, $ctx->{dbdir}; # assure dynamic dns can actually execute against the directory
             if ($::VERBOSE)
             {
@@ -918,7 +921,10 @@ sub process_request {
     unless ($ret) {
         xCAT::SvrUtils::sendmsg("DNS setup is completed", $callback);
     }
-    chmod 0750, $ctx->{dbdir};
+    #restore named directory permission
+    if (defined($permissionmode)) {
+        chmod $permissionmode, $ctx->{dbdir};   
+    }
     umask($oldmask);
 }
 
