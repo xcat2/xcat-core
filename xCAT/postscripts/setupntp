@@ -130,6 +130,7 @@ then
 fi
 
 check_executes chronyd >/dev/null 2>&1 || USE_NTPD="yes"
+check_executes systemctl >/dev/null 2>&1 || USE_NTPD="yes"
 
 if [ -n "${USE_NTPD}" ]
 then
