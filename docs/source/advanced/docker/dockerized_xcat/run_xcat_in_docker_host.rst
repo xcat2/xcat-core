@@ -39,7 +39,7 @@ Pull the xCAT Docker Image from DockerHub
 
 To pull the latest xCAT Docker image, run ::
 
-    [dockerhost]# sudo docker pull xCAT/xCAT2:latest
+    [dockerhost]# sudo docker pull xcat/xcat2:latest
 
 
 Run xCAT in Docker Container
@@ -97,6 +97,14 @@ To enter xCAT Docker container ::
 Also can enter xCAT Docker container through ``ssh`` ::
 
     [anynode]# ssh <docker_container_ip> -p 2200
+
+.. Attention::
+    Need to set ``site`` table depending on your own environment. 
+
+For example ::
+
+    [xcatmn]# chtab key=master site.value=<docker_host_ip>
+ 
 
 Now container ``xcatmn`` will work as a normal xCAT management node, can run xCAT commands directly.
 For example ::
