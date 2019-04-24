@@ -1587,6 +1587,13 @@ function decode_arguments {
 #
 ##############################################################################
 function check_NetworkManager_or_network_service() {
+    checkservicestatus network > /dev/null 2>/dev/null || checkservicestatus wicked > /dev/null 2>/dev/null 
+    if [ $? -eq 0 ]; then
+        stopservice NetworkManager | log_lines info
+        disableservice NetworkManager | log_lines info
+        log_info "network service is active"
+        return 0
+    fi
     #check NetworkManager is active
     checkservicestatus NetworkManager > /dev/null 2>/dev/null
     if [ $? -eq 0 ]; then
@@ -1603,13 +1610,6 @@ function check_NetworkManager_or_network_service() {
     ps -ef|grep -v grep|grep NetworkManager >/dev/null 2>/dev/null
     if [ $? -eq 0 ]; then
         return 2
-    fi
-    checkservicestatus network > /dev/null 2>/dev/null || checkservicestatus wicked > /dev/null 2>/dev/null
-    if [ $? -eq 0 ]; then
-        stopservice NetworkManager | log_lines info
-        disableservice NetworkManager | log_lines info
-        log_info "network service is active"
-        return 0
     fi
     checkservicestatus networking > /dev/null 2>/dev/null
     if [ $? -eq 0 ]; then
