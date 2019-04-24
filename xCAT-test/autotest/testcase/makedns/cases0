@@ -123,10 +123,9 @@ check:output~=zone "100.100.100.IN-ADDR.ARPA."
 cmd:nslookup dnstestnode $$MN
 check:output~=Server:             $$MN
 check:output!~(server can't find dnstestnode)
-cmd:rm -f /etc/hosts
+cmd:yes|cp -rf /etc/hosts.testbak   /etc/hosts
 check:rc==0
-cmd:mv /etc/hosts.testbak   /etc/hosts
-check:rc==0
+cmd:rm -rf /etc/hosts.testbak
 cmd:chtab -d netname=testnetwork networks
 check:rc==0
 cmd:makedns -n
@@ -169,10 +168,9 @@ check:rc==0
 check:output~=
 cmd:rm -f /tmp/makedns_named_conf.org /tmp/makedns_named_conf.new
 check:rc==0
-cmd:rm -f /etc/hosts
+cmd:yes|cp -rf /etc/hosts.testbak   /etc/hosts
 check:rc==0
-cmd:mv /etc/hosts.testbak   /etc/hosts
-check:rc==0
+cmd:rm -rf /etc/hosts.testbak
 cmd:chtab -d netname=testnetwork networks
 check:rc==0
 cmd:makedns -n
