@@ -112,5 +112,5 @@ For example ::
     [xcatmn]# lsxcatd -a
 
 .. Attention::
-    Recommend strongly to use external NFS if needed. If perfer to use xCAT container internal NFS service, the shared directory must be mount to Docker host by ``-v`` option when start xCAT container.  
+    Use of NFS outside of xCAT Docker container is recommended. For NFS service set up inside of xCAT Docker container, mount the shared directory with ``-v`` option when starting xCAT container.
     
