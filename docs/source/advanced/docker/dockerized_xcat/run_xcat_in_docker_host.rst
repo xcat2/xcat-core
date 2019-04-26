@@ -110,3 +110,7 @@ Now container ``xcatmn`` will work as a normal xCAT management node, can run xCA
 For example ::
 
     [xcatmn]# lsxcatd -a
+
+.. Attention::
+    Use of NFS outside of xCAT Docker container is recommended. For NFS service set up inside of xCAT Docker container, mount the shared directory with ``-v`` option when starting xCAT container.
+    
