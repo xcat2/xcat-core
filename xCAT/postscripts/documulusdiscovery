@@ -4,6 +4,7 @@
 
 # TODO: Figure out the master based on the DHCP packet
 XCATMASTER=$(cat /var/lib/dhcp/dhclient.eth0.leases |grep cumulus-provision-url|tail -1|awk -F/ '{print $3}')
+XCATMASTER=$(echo $XCATMASTER | awk -F: '{print $1}') 
 XCATPORT=3001
 log_label="xcat.documulusdiscovery"
 
