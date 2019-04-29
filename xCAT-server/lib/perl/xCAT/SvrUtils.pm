@@ -446,12 +446,57 @@ sub getsynclistfile()
 
 }
 
+=head3 get_os_search_list
+    Get the list of os names based on specified os name.
+    This function is used to create a proper file search list for osimage
+    template or pkglist
+
+    Arguments:
+      $os
+    Returns:
+      An array of the names of os
+    Globals:
+        none
+    Error:
+    Example:
+         xCAT::SvrUtils->get_os_search_list("ubuntu18.04.2");
+         Will returns
+         #   ubuntu18.04.2
+         #   ubuntu18.04.1
+         #   ubuntu18.04.0
+         #   ubuntu18.04
+         #   ubuntu18.03
+         #   ubuntu18.02
+         #   ubuntu18.01
+         #   ubuntu18.00
+         #   ubuntu18
+    Comments:
+        none
+
+=cut
+
+sub get_os_search_list {
+    my $os = shift;
+    my @word = split(/\./, $os);
+    my @list = ();
+
+    while ($word[-1] =~ /^[0-9]+$/) {
+        while ($word[-1] >= 0) {
+            push(@list, join('.', @word));
+            $word[-1] = sprintf("%0" . length($word[-1]) . "d", $word[-1] - 1);
+        }
+        pop(@word);
+    }
+    push(@list, join('.', @word));
+
+    return @list;
+}
+
 sub get_file_name {
     my ($searchpath, $extension, $profile, $os, $arch, $genos) = @_;
 
     #usally there're only 4 arguments passed for this function
     #the $genos is only used for the Redhat family
-
 
     #handle the following ostypes: sles10.2, sles11.1, rhels5.3, rhels5.4, etc
 
@@ -468,27 +513,7 @@ sub get_file_name {
         return "$searchpath/$profile.$genos.$extension";
     }
 
-    my $dotpos = rindex($os, ".");
-    my $osbase = substr($os, 0, $dotpos);
-    # If the osimge name was specified with -n, the name might contain multiple "."
-    # Chop them off one at a time until filename match is found
-    while ($dotpos > 0) {
-        if (-r "$searchpath/$profile.$osbase.$arch.$extension") {
-            return "$searchpath/$profile.$osbase.$arch.$extension";
-        }
-        if (-r "$searchpath/$profile.$osbase.$extension") {
-            return "$searchpath/$profile.$osbase.$extension";
-        }
-        # Chop off "." from the end and try again
-        $dotpos = rindex($osbase, ".");
-        $osbase = substr($osbase, 0, $dotpos);
-    }
-
-    #if there are no '.', pick the two numbers follow by leading string, like sles11
-    #then pick one number follow by leading string, like centos7, rhels7
-    if ($os =~ m/([a-zA-Z]+\d\d)/)
-    {
-        $osbase=$1;
+    foreach my $osbase (xCAT::SvrUtils::get_os_search_list($os)) {
         if (-r "$searchpath/$profile.$osbase.$arch.$extension") {
             return "$searchpath/$profile.$osbase.$arch.$extension";
         }
@@ -497,14 +522,19 @@ sub get_file_name {
         }
     }
 
-    if ($os =~ m/([a-zA-Z]+\d)/)
-    {
-        $osbase = $1;
-        if (-r "$searchpath/$profile.$osbase.$arch.$extension") {
-            return "$searchpath/$profile.$osbase.$arch.$extension";
-        }
-        if (-r "$searchpath/$profile.$osbase.$extension") {
-            return "$searchpath/$profile.$osbase.$extension";
+    # Read the configuration file named LATEST under directory $searchpath
+    if (open(my $fh, '<', "$searchpath/LATEST")) {
+        my $fallbackos = <$fh>;
+        $fallbackos =~ s/^\s+|\s+$//g;
+        close($fh);
+
+        foreach my $osbase (xCAT::SvrUtils::get_os_search_list($fallbackos)) {
+            if (-r "$searchpath/$profile.$osbase.$arch.$extension") {
+                return "$searchpath/$profile.$osbase.$arch.$extension";
+            }
+            if (-r "$searchpath/$profile.$osbase.$extension") {
+                return "$searchpath/$profile.$osbase.$extension";
+            }
         }
     }
 
