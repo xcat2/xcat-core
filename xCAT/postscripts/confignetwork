@@ -473,10 +473,10 @@ function configure_nicdevice {
     do
         nic_dev=`echo "$nics_pair" |sed -n "${num}p"|awk '{print $1}'`
         ipaddrs=$(find_nic_ips $nic_dev)
-        contain_alias=$(echo $ipaddrs|grep "|")
+        multiple_ips=$(echo $ipaddrs|grep "|")
         #If install nic is configured, skip to reconfigure it
-        if [ x"$nic_dev" = x"$installnic" -a $instnic_conf -eq 1 -a x"$contain_alias" = x ]; then
-            log_warn "install nic $nic_dev has been configured, skip to reconfigure it $contain_alias."
+        if [ x"$nic_dev" = x"$installnic" -a $instnic_conf -eq 1 -a x"$multiple_ips" = x ]; then
+            log_warn "install nic $nic_dev has been configured, continue."
             ((num+=1))
             continue
         fi
