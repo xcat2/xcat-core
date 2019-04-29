@@ -465,10 +465,15 @@ sub getsynclistfile()
          #   ubuntu18.04.1
          #   ubuntu18.04.0
          #   ubuntu18.04
+         #   ubuntu18.4
          #   ubuntu18.03
+         #   ubuntu18.3
          #   ubuntu18.02
+         #   ubuntu18.2
          #   ubuntu18.01
+         #   ubuntu18.1
          #   ubuntu18.00
+         #   ubuntu18.0
          #   ubuntu18
     Comments:
         none
@@ -481,11 +486,14 @@ sub get_os_search_list {
     my @list = ();
 
     while ($word[-1] =~ /^[0-9]+$/) {
-        while ($word[-1] >= 0) {
-            push(@list, join('.', @word));
-            $word[-1] = sprintf("%0" . length($word[-1]) . "d", $word[-1] - 1);
+        my $last = pop(@word);
+        while ($last >= 0) {
+            push(@list, join('.', @word, $last));
+            if ($last =~ /^0[0-9]/) {
+                push(@list, join('.', @word, 0 + $last));
+            }
+            $last = sprintf("%0" . length($last) . "d", $last - 1);
         }
-        pop(@word);
     }
     push(@list, join('.', @word));
 
