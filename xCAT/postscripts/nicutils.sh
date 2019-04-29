@@ -1587,6 +1587,10 @@ function decode_arguments {
 #
 ##############################################################################
 function check_NetworkManager_or_network_service() {
+    #In RH7.6 postscripts stage, network service is active, but xCAT uses NetworkManager to configure IP,
+    #after that, xCAT disable NetworkManager, when CN is booted, CN use network service.
+    #In RH8, there is only NetworkManager
+    #So check network service should before check NetworkManager.
     checkservicestatus network > /dev/null 2>/dev/null || checkservicestatus wicked > /dev/null 2>/dev/null 
     if [ $? -eq 0 ]; then
         stopservice NetworkManager | log_lines info
