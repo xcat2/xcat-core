@@ -530,22 +530,6 @@ sub get_file_name {
         }
     }
 
-    # Read the configuration file named LATEST under directory $searchpath
-    if (open(my $fh, '<', "$searchpath/LATEST")) {
-        my $fallbackos = <$fh>;
-        $fallbackos =~ s/^\s+|\s+$//g;
-        close($fh);
-
-        foreach my $osbase (xCAT::SvrUtils::get_os_search_list($fallbackos)) {
-            if (-r "$searchpath/$profile.$osbase.$arch.$extension") {
-                return "$searchpath/$profile.$osbase.$arch.$extension";
-            }
-            if (-r "$searchpath/$profile.$osbase.$extension") {
-                return "$searchpath/$profile.$osbase.$extension";
-            }
-        }
-    }
-
     # No file matching OS name was found, next try just arch, if still nothing -> default to just profile
     if (-r "$searchpath/$profile.$arch.$extension") {
         return "$searchpath/$profile.$arch.$extension";
