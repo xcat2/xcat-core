@@ -917,9 +917,9 @@ class OpenBMCRest(object):
                     if 'ip' in netinfo[nicid]:
                         msg = "Another valid ip %s found." % (v["Address"])
                         self._print_record_log(msg, 'get_netinfo')
-                        del netinfo[nicid]
                         netinfo['error'] = 'Interfaces with multiple IP addresses are not supported: %s' % (k)
-                        break
+                        # Store error, but keep going in case info is needed later
+
                     utils.update2Ddict(netinfo, nicid, "ipsrc", v["Origin"].split('.')[-1])
                     utils.update2Ddict(netinfo, nicid, "netmask", v["PrefixLength"])
                     utils.update2Ddict(netinfo, nicid, "gateway", v["Gateway"])

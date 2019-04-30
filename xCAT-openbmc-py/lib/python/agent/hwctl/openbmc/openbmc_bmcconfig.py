@@ -327,8 +327,10 @@ rmdir \"/tmp/$userid\" \n")
             return self.callback.error('No network information get', node)
 
         if 'error' in netinfo:
-            self.callback.info('%s: %s' % (node, netinfo['error']))
-            return
+            if "multiple" not in netinfo['error']:
+                # Only display error if it is not about multiple IPs
+                self.callback.error('%s: %s' % (node, netinfo['error']))
+                return
 
         bmcip = node_info['bmcip']
         nic = self._get_facing_nic(bmcip, netinfo)
@@ -357,7 +359,7 @@ rmdir \"/tmp/$userid\" \n")
 
     def _get_facing_nic(self, bmcip, netinfo):
         for k,v in netinfo.items():
-            if 'ip' in v and v['ip'] == bmcip:
+            if 'ip' in v and 'error' not in k and v['ip'] == bmcip:
                 return k
         return None
 
@@ -457,8 +459,9 @@ rmdir \"/tmp/$userid\" \n")
 
         if not netinfo:
             return self.callback.error("Can not get network information", node)
+
         if 'error' in netinfo:
-            return self.callback.info('%s: %s' % (node, netinfo['error']))
+            return self.callback.error('%s: %s' % (node, netinfo['error']))
 
         bmcip = node_info['bmcip']
         origin_nic = nic = self._get_facing_nic(bmcip, netinfo)
@@ -536,6 +539,7 @@ rmdir \"/tmp/$userid\" \n")
             return self.callback.error("Can not get network information", node)
         defaultgateway = "n/a"
         bmchostname = ""
+        ntpservers = "None"
         if 'defaultgateway' in netinfo:
             defaultgateway = netinfo["defaultgateway"]
             del netinfo["defaultgateway"]
@@ -547,7 +551,18 @@ rmdir \"/tmp/$userid\" \n")
             self.callback.info("%s: BMC Hostname: %s" %(node, bmchostname))
 
         if 'error' in netinfo:
-            return self.callback.info('%s: %s' % (node, netinfo['error']))
+            # Only one type of error is expected - multiple IPs on the same interface
+            # Display this error only if returning ip or ipsrc or netmask or gateway or vlan information,
+            #   for all others, multiple IPs is not a problem
+            if ip or ipsrc or netmask or gateway or vlan:
+                return self.callback.error('%s: %s' % (node, netinfo['error']))
+            else:
+                if "multiple" not in netinfo['error']:
+                    # If the error is about multiple IPs, display it and return
+                    #   otherwise, keep going
+                    return self.callback.error('%s: %s' % (node, netinfo['error']))
+
+            del netinfo["error"]
 
         dic_length = len(netinfo)
         netinfodict = {'ip':[], 'netmask':[], 'gateway':[],
