@@ -946,13 +946,24 @@ sub check_dns_service {
     my $nodename = `hostname -s 2>&1`;
     chomp($nodename);
 
+    # For mn, 'externaldns' attribute could be set to '0' or '1' or not defined.
+    #   if '1', mn does not need to provide DNS service, so will not check it.
+    #   if '0' or undefined, proceed with check.
     # For sn, 'setupdns' attribute could be set to '0' or '1'.
-    # if '0', sn does not need to provie DNS service, will not check it
+    #   if '0', sn does not need to provide DNS service, will not check it
     my $checkdns = 1;
     if ($is_sn) {
         $checkdns = `lsdef $nodename -i setupnameserver -c  2>&1| awk -F'=' '{print \$2}'`;
         chomp($checkdns);
-    }
+    } else { # management node
+        my $dns_is_external = `lsdef -t site -i externaldns -c 2>&1 | awk -F'=' {print \$2}'`;
+        chomp($dns_is_external);
+        if ($dns_is_external eq "1") {
+          $checkdns = 0;
+        } else {
+          $checkdns = 1;
+        }
+    } 
 
     if ($checkdns) {
         `which nslookup > /dev/null 2>&1`;
