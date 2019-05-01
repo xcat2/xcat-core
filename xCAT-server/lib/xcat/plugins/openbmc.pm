@@ -401,6 +401,13 @@ my %status_info = (
     RSPCONFIG_GET_RESPONSE => {
         process        => \&rspconfig_response,
     },
+    RSPCONFIG_GET_PSR_REQUEST => {
+        method         => "GET",
+        init_url       => "$openbmc_project_url/control/power_supply_redundancy",
+    },
+    RSPCONFIG_GET_PSR_RESPONSE => {
+        process        => \&rspconfig_response,
+    },
     RSPCONFIG_GET_NIC_REQUEST => {
         method         => "GET",
         init_url       => "$openbmc_project_url/network/enumerate",
@@ -2560,8 +2567,20 @@ sub deal_with_response {
                 #
                 if ($node_info{$node}{cur_status} eq "RFLASH_DELETE_IMAGE_RESPONSE") {
                     $error = "Invalid ID provided to delete.  Use the -l option to view valid firmware IDs.";
-                } elsif (($node_info{$node}{cur_status} eq "RSPCONFIG_API_CONFIG_QUERY_RESPONSE") ||
-                         ($node_info{$node}{cur_status} eq "RSPCONFIG_API_CONFIG_ATTR_RESPONSE")) {
+                } elsif ($node_info{$node}{cur_status} eq "RSPCONFIG_API_CONFIG_ATTR_RESPONSE") { 
+                    # Set attribute call returned with 404, display an error
+                    $error = "$::RESPONSE_NOT_FOUND - Requested endpoint does not exist or may indicate function is not supported on this OpenBMC firmware.";
+                } elsif ($node_info{$node}{cur_status} eq "RSPCONFIG_API_CONFIG_QUERY_RESPONSE") {
+                    # Query attribute call came back with 404. If this is for Power Supply Redundency, 
+                    # send request with a new path RSPCONFIG_GET_PSR_REQUEST, response processing will print the value
+                    if ($response_info->{'data'}->{'description'} =~ /PowerSupplyRedundancy/) {
+                        $node_info{$node}{cur_status} = "RSPCONFIG_GET_PSR_REQUEST";
+                        $next_status{RSPCONFIG_GET_PSR_REQUEST} = "RSPCONFIG_GET_PSR_RESPONSE";
+                        gen_send_request($node);
+
+                        return;
+                    }
+                    # Query atribute call came back with 404, not for Power Supply Redundency. Display an error
                     $error = "$::RESPONSE_NOT_FOUND - Requested endpoint does not exist or may indicate function is not supported on this OpenBMC firmware.";
                 } else {
                     $error = "[" . $response->code . "] " . $response_info->{'data'}->{'description'};
@@ -3808,6 +3827,22 @@ sub rspconfig_response {
         }
     }
 
+    if ($node_info{$node}{cur_status} eq "RSPCONFIG_GET_PSR_RESPONSE") {
+        # Processing response from Power Supply Redundency
+        if ($response_info->{'message'} eq $::RESPONSE_OK) {
+            foreach my $key_url (keys %{$response_info->{data}}) {
+                # We only care about this one key_url
+                if ($key_url eq "PowerSupplyRedundancyEnabled") {
+                    my $display_value = $api_config_info{"RSPCONFIG_POWERSUPPLY_REDUNDANCY"}{"attr_value"}{"disabled"};
+                    my $display_name = $api_config_info{"RSPCONFIG_POWERSUPPLY_REDUNDANCY"}{"display_name"};
+                    if ($response_info->{data}{$key_url} eq "true") {
+                        $display_value = $api_config_info{"RSPCONFIG_POWERSUPPLY_REDUNDANCY"}{"attr_value"}{"enabled"};
+                    }
+                    xCAT::SvrUtils::sendmsg($display_name . ": " . $display_value, $callback, $node);
+                }
+            }
+        }
+    }
     if ($next_status{ $node_info{$node}{cur_status} }) {
         if ($node_info{$node}{cur_status} eq "RSPCONFIG_CHECK_RESPONSE") {
             $node_info{$node}{cur_status} = $next_status{ $node_info{$node}{cur_status} }{$origin_type};
