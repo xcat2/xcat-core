@@ -93,8 +93,9 @@ sub do_main_job {
     $rc |= $rst;
 
     #check if SElinux is disabled
-    $rst        = check_selinux(\$checkpoint, \@error);
-    print_check_result($checkpoint, "f", $rst, \@error);
+    ($rst, $flag) = check_selinux(\$checkpoint, \@error);
+    print_check_result($checkpoint, $flag, $rst, \@error);
+    $rst = 0 if ($flag == "w");
     $rc |= $rst;
 
     #check http service
@@ -677,16 +678,26 @@ sub check_selinux {
     my $checkpoint_ref =  shift;
     my $error_ref = shift;
     my $rst       = 0;
+    my $flag      = "w";
+    my $msg       = "";
 
     $$checkpoint_ref = "Checking SELinux is disabled...";
     @$error_ref = ();
 
     if (probe_utils->is_selinux_enable()) {
-        push @$error_ref, "SELinux is enabled on current server";
+        $msg = "SELinux is enabled on current server";
         $rst = 1;
+        $flag = "w";
     }
-
-    return $rst;
+    if (probe_utils->is_selinux_enforcing()) {
+        $msg = "SELinux is enforcing on current server";
+        $rst = 1;
+        $flag = "f";
+    }
+    if ($rst) { 
+        push @error_ref, "$msg";
+    }
+    return ($rst, $flag);
 }
 
 sub check_firewall {
