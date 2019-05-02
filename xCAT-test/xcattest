@@ -2132,7 +2132,8 @@ sub calculate_case_belong_to_which_cmd {
     my $file_path = shift;
     my $command   = undef;
 
-    if ($file_path =~ "\/autotest\/testcase") {
+    $file_path =~ s|[\/]{2,}|\/|g;
+    if ($file_path =~ /\/autotest\/testcase/) {
         my @path_str = split("/", $file_path);
         #print Dumper \@path_str;
         my $index = 0;

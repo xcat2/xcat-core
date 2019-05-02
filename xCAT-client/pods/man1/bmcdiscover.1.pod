@@ -27,11 +27,11 @@ Note: The scan method currently support is B<nmap>.
 
 =item B<--range>
 
-Specify one or more IP ranges acceptable to nmap.  IP range can be hostnames, IP addresses, networks, etc.  A single IP address (10.1.2.3), several IPs with commas (10.1.2.3,10.1.2.10), Ip range with "-" (10.1.2.0-100) or an IP range (10.1.2.0/24) can be specified.  If the range is very large, the B<bmcdiscover> command may take a long time to return.
+Specify one or more IP ranges acceptable to B<nmap>.  IP range can be hostnames, IP addresses, networks, etc.  A single IP address (10.1.2.3), several IPs with commas (10.1.2.3,10.1.2.10), Ip range with "-" (10.1.2.0-100) or an IP range (10.1.2.0/24) can be specified.  If the range is very large, the B<bmcdiscover> command may take a long time to return.
 
 =item B<--sn>
 
-Specify one or more service nodes on which bmcdiscover will run. In hierarchical cluster, the MN may not be able to access the BMC of CN directly, but SN can. With this option, bmcdiscover will be dispatched to the specified SNs. Then, the nodename of the service node that 'bmcdiscover' is running on will be set to the 'servicenode' attribute of the discovered BMC node.
+Specify one or more service nodes on which bmcdiscover will run. In hierarchical cluster, the MN may not be able to access the BMC of CN directly, but SN can. With this option, B<bmcdiscover> will be dispatched to the specified SNs. Then, the nodename of the service node that B<bmcdiscover> is running on will be set to the 'servicenode' attribute of the discovered BMC node.
 
 =item B<-s>
 
@@ -101,7 +101,7 @@ Output is similar to:
         servicenode=sn01
         conserver=sn01
 
-4. Discover the BMCs and write the discovered-node definitions into the xCAT database and write out the stanza foramt to the console:
+4. Discover the BMCs and write the discovered node definitions into the xCAT database and write out the stanza format to the console:
 
     bmcdiscover -s nmap --range "10.4.22-23.100-254" -w -z
 

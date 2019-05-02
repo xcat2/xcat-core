@@ -25,7 +25,7 @@ class XCATMessager(utils.Messager):
     def _send(self, d):
         buf = json.dumps(d)
         self.sem.acquire()
-        self.sock.sendall(utils.int2bytes(len(buf)) + buf)
+        self.sock.sendall(utils.int2bytes(len(buf)) + buf.encode('utf-8'))
         self.sem.release()
 
     def info(self, msg):
@@ -101,7 +101,7 @@ class Server(object):
             new_args=[]
             if req['args']:
                 for a in req['args']:
-                    new_args.append(a.encode('utf-8'))
+                    new_args.append(str(a))
             # call the function in the specified manager
             func(req['nodeinfo'], new_args)
             # after the method returns, the request should be handled

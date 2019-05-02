@@ -6,22 +6,34 @@
                 "distribution": "sles12.2",
                 "osdistro": "sles12.2-ppc64le"
             },
-            "filestosync": "/install/custom/netboot/sles/compute.synclist",
+            "filestosync": [
+                "/install/custom/netboot/sles/compute.synclist"
+            ],
             "genimgoptions": {
-                "exlist": "/opt/xcat/share/xcat/netboot/sles/compute.sles12.ppc64le.exlist",
-                "postinstall": "/opt/xcat/share/xcat/netboot/sles/compute.sles12.ppc64le.postinstall",
-                "rootimgdir": "/install/netboot/sles12.2/ppc64le/compute",
-                "rootfstype": "nfs"
+                "exlist": [
+                    "/opt/xcat/share/xcat/netboot/sles/compute.sles12.ppc64le.exlist"
+                ],
+                "postinstall": [
+                    "/opt/xcat/share/xcat/netboot/sles/compute.sles12.ppc64le.postinstall"
+                ],
+                "rootfstype": "nfs",
+                "rootimgdir": "/install/netboot/sles12.2/ppc64le/compute"
             },
             "imagetype": "linux",
             "package_selection": {
-                "otherpkgdir": "/install/post/otherpkgs/sles12.2/ppc64le",
-                "pkgdir": "/install/sles12.2/ppc64le",
-                "pkglist": "/opt/xcat/share/xcat/netboot/sles/compute.sles12.ppc64le.pkglist"
+                "otherpkgdir": [
+                    "/install/post/otherpkgs/sles12.2/ppc64le"
+                ],
+                "pkgdir": [
+                    "/install/sles12.2/ppc64le"
+                ],
+                "pkglist": [
+                    "/opt/xcat/share/xcat/netboot/sles/compute.sles12.ppc64le.pkglist"
+                ]
             },
             "provision_mode": "statelite",
             "role": "compute"
         }
     },
-    "schema_version": "1.0"
+    "schema_version": "2.0"
 }

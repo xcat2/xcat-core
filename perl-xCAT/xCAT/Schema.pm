@@ -1059,6 +1059,10 @@ passed as argument rather than by table value',
 "              requests it does not know to these servers. Note that the DNS servers on the\n" .
 "              service nodes will ignore this value and always be configured to forward \n" .
 "              to the management node.\n\n" .
+" dnsforwardmode: (first or only or no). This is to set forward value in named.conf options section. \n" .
+"              \"first\": causes DNS requests to be forwarded before an attempt is made to resolve them via the root name servers. \n" .
+"              \"only\": all requests are forwarded and none sent to the root name servers.\n".
+"              \"no\": no request will be forwarded. This is the default value if not specified. \n\n" .              
 " emptyzonesenable: (yes or no). This is to set empty-zones-enable value in named.conf options section. \n\n" .
 " master:  The hostname of the xCAT management node, as known by the nodes.\n\n" .
 " nameservers:  A comma delimited list of DNS servers that each node in the cluster should\n" .
@@ -1159,7 +1163,7 @@ passed as argument rather than by table value',
 "                prefix (e.g. 00:11:aa)\n\n" .
 " genpasswords:  Automatically generate random passwords for BMCs when configuring\n" .
 "                them.\n\n" .
-" installdir:  The local directory name used to hold the node deployment packages.  This path must start with / and be fully qualified.\n\n" .
+" installdir:  The local directory name used to hold the node deployment packages(obsoleted).  This path must start with / and be fully qualified.\n\n" .
 " installloc:  The location from which the service nodes should mount the \n" .
 "              deployment packages in the format hostname:/path.  If hostname is\n" .
 "              omitted, it defaults to the management node. The path must\n" .
@@ -1262,7 +1266,7 @@ passed as argument rather than by table value',
 "                     delimiter, to specify delimiter for those columns as format of 'column:delimiter'.\n\n" .
 " dbtracelevel:  The trace level for the database access log. To activate this setting, please. \n".
 "                restart xcatd or send HUP signal to the 'xcatd: DB Access' process, Like: .\n".
-"                ps -ef | grep 'xcatd: DB Access' | grep -v grep | awk '{print \$2}' | xargs kill -HUP  \n".
+"                pkill -f -HUP 'xcatd: DB Access' \n".
 "                Currrent support values: \n" .
 "                0: disable the trace log for db \n" .
 "                1: trace the calls of database subroutines \n" .
@@ -1310,7 +1314,10 @@ passed as argument rather than by table value',
 " xcatdport:  The port used by the xcatd daemon for client/server communication.\n\n" .
 " xcatiport:  The port used by xcatd to receive install status updates from nodes.\n\n" .
 " xcatlport:  The port used by xcatd command log writer process to collect command output.\n\n" .
-" xcatsslversion:  The ssl version by xcatd. Default is TLSv1.\n\n" .
+" xcatsslversion:  This is the SSL_version option xcatd used and passed to \n" .
+"                  IO::Socket::SSL->start_SSL(). By default, this value is set to empty.\n" .
+"                  In this case, xcatd will use SSLv23:!SSLv2:!SSLv3:!TLSv1 internally.\n" .
+"                  For more detail, see https://metacpan.org/pod/IO::Socket::SSL\n\n" .
 " xcatsslciphers:  The ssl cipher by xcatd. Default is 3DES.\n\n",
             value => 'The value of the attribute specified in the "key" column.',
             comments => 'Any user-written notes.',

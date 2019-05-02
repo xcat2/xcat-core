@@ -1,4 +1,4 @@
-#! /bin/sh
+#!/bin/bash
 
 MNTDIR="/sysroot"
 LOCAL="/.sllocal/localmnt"
@@ -68,9 +68,19 @@ xCATCmd () {
 # $2 is the command
     ARCH=`uname -m`
     if [ x$ARCH = x"ppc64" -a x$OS = x"rh" ]; then
-        echo "<xcatrequest>\n<command>${2}</command>\n</xcatrequest>" | /usr/sbin/chroot ${MNTDIR} /usr/bin/openssl s_client -quiet -no_ssl3 $(/usr/sbin/chroot ${MNTDIR} /usr/bin/openssl s_client -help 2>&1 | grep -m 1 -o -- -no_ssl2) -connect ${1} -rand /bin/nice 2>/dev/null
+        /usr/sbin/chroot ${MNTDIR} /usr/bin/openssl s_client -quiet -no_ssl3 \
+            $(/usr/sbin/chroot ${MNTDIR} /usr/bin/openssl s_client -help 2>&1 |
+               grep -m 1 -o -- -no_ssl2) \
+            -connect ${1} -rand /bin/bash 2>/dev/null \
+            <<<"<xcatrequest><command>${2}</command></xcatrequest>"
     else
-        echo "<xcatrequest>\n<command>${2}</command>\n</xcatrequest>" | LD_LIBRARY_PATH=${MNTDIR}/lib64:${MNTDIR}/usr/lib64 ${MNTDIR}/usr/bin/openssl s_client -quiet -no_ssl3 $(LD_LIBRARY_PATH=${MNTDIR}/lib64:${MNTDIR}/usr/lib64 ${MNTDIR}/usr/bin/openssl s_client -help 2>&1 | grep -m 1 -o -- -no_ssl2) -connect ${1} -rand /bin/nice 2>/dev/null
+        LD_LIBRARY_PATH=${MNTDIR}/lib64:${MNTDIR}/usr/lib64 \
+            ${MNTDIR}/usr/bin/openssl s_client -quiet -no_ssl3 \
+            $(LD_LIBRARY_PATH=${MNTDIR}/lib64:${MNTDIR}/usr/lib64 \
+                ${MNTDIR}/usr/bin/openssl s_client -help 2>&1 |
+                grep -m 1 -o -- -no_ssl2) \
+            -connect ${1} -rand /bin/bash 2>/dev/null \
+            <<<"<xcatrequest><command>${2}</command></xcatrequest>"
     fi
 }
 

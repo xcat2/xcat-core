@@ -160,7 +160,7 @@ if [ $? -ne 0 ]; then
    if ! grep "PRIVATE KEY" /etc/ssh/ssh_host_dsa_key > /dev/null 2>&1 ; then
         rm /etc/ssh/ssh_host_dsa_key
 	else
-		ssh-keygen -y -f /etc/ssh/ssh_host_dsa_key > /etc/ssh/ssh_host_dsa_key.pub
+		ssh-keygen -y -f /etc/ssh/ssh_host_dsa_key -P "" > /etc/ssh/ssh_host_dsa_key.pub
 		chmod 644 /etc/ssh/ssh_host_dsa_key.pub
 		chown root /etc/ssh/ssh_host_dsa_key.pub
    fi
@@ -226,7 +226,7 @@ if [ $? -ne 0 ]; then
 	if ! grep "PRIVATE KEY" /etc/ssh/ssh_host_rsa_key > /dev/null 2>&1 ; then
    		rm /etc/ssh/ssh_host_rsa_key
 	else
-		ssh-keygen -y -f /etc/ssh/ssh_host_rsa_key > /etc/ssh/ssh_host_rsa_key.pub
+		ssh-keygen -y -f /etc/ssh/ssh_host_rsa_key -P "" > /etc/ssh/ssh_host_rsa_key.pub
                 chmod 644 /etc/ssh/ssh_host_rsa_key.pub
                 chown root /etc/ssh/ssh_host_rsa_key.pub
 	fi
@@ -302,7 +302,7 @@ if ssh-keygen -t ecdsa -f /tmp/ecdsa_key -P "" &>/dev/null ; then
 		# If ture, means support ecdsa, then generate corresponding key.pub.
 		# If false, remove ssh_host_ecdsa_key useless file, to avoid future errors.
 		if ssh-keygen -t ecdsa -y -f /etc/ssh/ssh_host_ecdsa_key -P "" &>/dev/null ; then
-			ssh-keygen -y -f /etc/ssh/ssh_host_ecdsa_key > /etc/ssh/ssh_host_ecdsa_key.pub
+			ssh-keygen -y -f /etc/ssh/ssh_host_ecdsa_key -P "" > /etc/ssh/ssh_host_ecdsa_key.pub
 			chmod 644 /etc/ssh/ssh_host_ecdsa_key.pub
 			chown root /etc/ssh/ssh_host_ecdsa_key.pub
 		else
@@ -465,7 +465,7 @@ then
   # if public key does not exist then generate one from the private key
   if [ ! -f /root/.ssh/id_rsa.pub ]; then
     if [ -r /root/.ssh/id_rsa ]; then
-     ssh-keygen -y -f /root/.ssh/id_rsa > /root/.ssh/id_rsa.pub
+     ssh-keygen -y -f /root/.ssh/id_rsa -P "" > /root/.ssh/id_rsa.pub
      logger -t $log_label -p local4.err  remoteshell:transfer of the id_rsa.pub key failed. Had to generate a public key.
     fi
   fi

@@ -135,6 +135,11 @@ site Attributes:
                 service nodes will ignore this value and always be configured to forward 
                 to the management node.
   
+   dnsforwardmode: (first or only or no). This is to set forward value in named.conf options section. 
+                "first": causes DNS requests to be forwarded before an attempt is made to resolve them via the root name servers. 
+                "only": all requests are forwarded and none sent to the root name servers.
+                "no": no request will be forwarded. This is the default value if not specified. 
+  
    emptyzonesenable: (yes or no). This is to set empty-zones-enable value in named.conf options section. 
   
    master:  The hostname of the xCAT management node, as known by the nodes.
@@ -269,7 +274,7 @@ site Attributes:
    genpasswords:  Automatically generate random passwords for BMCs when configuring
                   them.
   
-   installdir:  The local directory name used to hold the node deployment packages.
+   installdir:  The local directory name used to hold the node deployment packages(obsoleted).
   
    installloc:  The location from which the service nodes should mount the 
                 deployment packages in the format hostname:/path.  If hostname is
@@ -401,7 +406,7 @@ site Attributes:
   
    dbtracelevel:  The trace level for the database access log. To activate this setting, please. 
                   restart xcatd or send HUP signal to the 'xcatd: DB Access' process, Like: .
-                  ps -ef | grep 'xcatd: DB Access' | grep -v grep | awk '{print $2}' | xargs kill -HUP  
+                  pkill -f -HUP 'xcatd: DB Access' 
                   Currrent support values: 
                   0: disable the trace log for db 
                   1: trace the calls of database subroutines 
@@ -460,7 +465,11 @@ site Attributes:
   
    xcatlport:  The port used by xcatd command log writer process to collect command output.
   
-   xcatsslversion:  The ssl version by xcatd. Default is TLSv1.
+   xcatsslversion:  The SSL_version option xcatd used and passed to
+                    IO::Socket::SSL->start_SSL(). By default, this value is
+                    set to empty. In this case, xcatd will use
+                    'SSLv23:!SSLv2:!SSLv3:!TLSv1' internally.
+                    For more detail, see https://metacpan.org/pod/IO::Socket::SSL
   
    xcatsslciphers:  The ssl cipher by xcatd. Default is 3DES.
  

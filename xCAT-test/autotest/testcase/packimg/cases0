@@ -60,6 +60,8 @@ os:Linux
 description:test packimage -m cpio -c gzip
 label:others,packaging,invoke_provision
 cmd:copycds $$ISO
+cmd:if [ -x /usr/bin/goconserver ]; then makegocons $$CN; else makeconservercf $$CN; fi
+check:rc==0
 cmd:ls /install/netboot/__GETNODEATTR($$CN,os)__/__GETNODEATTR($$CN,arch)__/compute/rootimg;if [ $? -eq 0 ];then mv -f /install/netboot/__GETNODEATTR($$CN,os)__/__GETNODEATTR($$CN,arch)__/compute/rootimg /rootimg.bak;fi
 cmd:ls /install/netboot/__GETNODEATTR($$CN,os)__/__GETNODEATTR($$CN,arch)__/compute/rootimg.cpio.gz;if [ $? -eq 0 ];then mv -f /install/netboot/__GETNODEATTR($$CN,os)__/__GETNODEATTR($$CN,arch)__/compute/rootimg.cpio.gz /rootimg.cpio.gz.bak;fi
 cmd:genimage __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute
@@ -72,9 +74,7 @@ check:output=~archive method:cpio
 check:output=~compress method:gzip
 cmd:ls -l /install/netboot/__GETNODEATTR($$CN,os)__/__GETNODEATTR($$CN,arch)__/compute/rootimg.cpio.gz
 check:rc==0
-cmd:nodeset $$CN osimage=__GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute
-check:rc==0
-cmd:if [[ "__GETNODEATTR($$CN,arch)__" = "ppc64" ]]; then rnetboot $$CN;else rpower $$CN boot; fi
+cmd:/opt/xcat/share/xcat/tools/autotest/testcase/commoncmd/retry_install.sh $$CN __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute
 check:rc==0
 cmd:a=0;while ! `lsdef -l $$CN|grep status|grep booted >/dev/null`; do sleep 10;((a++));if [ $a -gt 150 ];then break;fi done
 cmd:ping $$CN -c 3
@@ -91,6 +91,7 @@ check:rc==0
 check:output=~on / type tmpfs
 cmd:rootimgdir=`lsdef -t osimage  __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute|grep rootimgdir|awk -F'=' '{print $2}'`; if [ -d $rootimgdir.regbak ]; then rm -rf $rootimgdir; mv $rootimgdir.regbak $rootimgdir; fi
 check:rc==0
+cmd:if [ -x /usr/bin/goconserver ]; then makegocons -d $$CN; else makeconservercf -d $$CN; fi
 cmd:rm -rf  /install/netboot/__GETNODEATTR($$CN,os)__/__GETNODEATTR($$CN,arch)__/compute/rootimg.cpio.gz
 cmd:mv -f /rootimg.cpio.gz.bak /install/netboot/__GETNODEATTR($$CN,os)__/__GETNODEATTR($$CN,arch)__/compute/rootimg.cpio.gz
 cmd:rm -rf /install/netboot/__GETNODEATTR($$CN,os)__/__GETNODEATTR($$CN,arch)__/compute/rootimg
@@ -102,6 +103,8 @@ os:Linux
 description:test packimage -m cpio -c pigz
 label:others,packaging,invoke_provision
 #cmd:copycds $$ISO
+cmd:if [ -x /usr/bin/goconserver ]; then makegocons $$CN; else makeconservercf $$CN; fi
+check:rc==0
 cmd:ls /install/netboot/__GETNODEATTR($$CN,os)__/__GETNODEATTR($$CN,arch)__/compute/rootimg;if [ $? -eq 0 ];then mv -f /install/netboot/__GETNODEATTR($$CN,os)__/__GETNODEATTR($$CN,arch)__/compute/rootimg /rootimg.bak;fi
 cmd:ls /install/netboot/__GETNODEATTR($$CN,os)__/__GETNODEATTR($$CN,arch)__/compute/rootimg.cpio.gz;if [ $? -eq 0 ];then mv -f /install/netboot/__GETNODEATTR($$CN,os)__/__GETNODEATTR($$CN,arch)__/compute/rootimg.cpio.gz /rootimg.cpio.gz.bak;fi
 cmd:genimage __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute
@@ -118,9 +121,7 @@ check:output=~archive method:cpio
 check:output=~compress method:pigz
 cmd:ls -l /install/netboot/__GETNODEATTR($$CN,os)__/__GETNODEATTR($$CN,arch)__/compute/rootimg.cpio.gz
 check:rc==0
-cmd:nodeset $$CN osimage=__GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute
-check:rc==0
-cmd:if [[ "__GETNODEATTR($$CN,arch)__" = "ppc64" ]]; then rnetboot $$CN;else rpower $$CN boot; fi
+cmd:/opt/xcat/share/xcat/tools/autotest/testcase/commoncmd/retry_install.sh $$CN __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute
 check:rc==0
 cmd:a=0;while ! `lsdef -l $$CN|grep status|grep booted >/dev/null`; do sleep 10;((a++));if [ $a -gt 150 ];then break;fi done
 cmd:ping $$CN -c 3
@@ -137,6 +138,7 @@ check:rc==0
 check:output=~on / type tmpfs
 cmd:rootimgdir=`lsdef -t osimage  __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute|grep rootimgdir|awk -F'=' '{print $2}'`; if [ -d $rootimgdir.regbak ]; then rm -rf $rootimgdir; mv $rootimgdir.regbak $rootimgdir; fi
 check:rc==0
+cmd:if [ -x /usr/bin/goconserver ]; then makegocons -d $$CN; else makeconservercf -d $$CN; fi
 cmd:rm -rf  /install/netboot/__GETNODEATTR($$CN,os)__/__GETNODEATTR($$CN,arch)__/compute/rootimg.cpio.gz
 cmd:mv -f /rootimg.cpio.gz.bak /install/netboot/__GETNODEATTR($$CN,os)__/__GETNODEATTR($$CN,arch)__/compute/rootimg.cpio.gz
 cmd:rm -rf /install/netboot/__GETNODEATTR($$CN,os)__/__GETNODEATTR($$CN,arch)__/compute/rootimg
@@ -148,6 +150,8 @@ os:Linux
 description:test packimage -m cpio -c xz
 label:others,packaging,invoke_provision
 #cmd:copycds $$ISO
+cmd:if [ -x /usr/bin/goconserver ]; then makegocons $$CN; else makeconservercf $$CN; fi
+check:rc==0
 cmd:ls /install/netboot/__GETNODEATTR($$CN,os)__/__GETNODEATTR($$CN,arch)__/compute/rootimg;if [ $? -eq 0 ];then mv -f /install/netboot/__GETNODEATTR($$CN,os)__/__GETNODEATTR($$CN,arch)__/compute/rootimg /rootimg.bak;fi
 cmd:ls /install/netboot/__GETNODEATTR($$CN,os)__/__GETNODEATTR($$CN,arch)__/compute/rootimg.cpio.xz;if [ $? -eq 0 ];then mv -f /install/netboot/__GETNODEATTR($$CN,os)__/__GETNODEATTR($$CN,arch)__/compute/rootimg.cpio.xz /rootimg.cpio.xz.bak;fi
 cmd:genimage __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute
@@ -160,9 +164,7 @@ check:output=~archive method:cpio
 check:output=~compress method:xz
 cmd:ls -l /install/netboot/__GETNODEATTR($$CN,os)__/__GETNODEATTR($$CN,arch)__/compute/rootimg.cpio.xz
 check:rc==0
-cmd:nodeset $$CN osimage=__GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute
-check:rc==0
-cmd:if [[ "__GETNODEATTR($$CN,arch)__" = "ppc64" ]]; then rnetboot $$CN;else rpower $$CN boot; fi
+cmd:/opt/xcat/share/xcat/tools/autotest/testcase/commoncmd/retry_install.sh $$CN __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute
 check:rc==0
 cmd:a=0;while ! `lsdef -l $$CN|grep status|grep booted >/dev/null`; do sleep 10;((a++));if [ $a -gt 150 ];then break;fi done
 cmd:ping $$CN -c 3
@@ -179,6 +181,7 @@ check:rc==0
 check:output=~on / type tmpfs
 cmd:rootimgdir=`lsdef -t osimage  __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute|grep rootimgdir|awk -F'=' '{print $2}'`; if [ -d $rootimgdir.regbak ]; then rm -rf $rootimgdir; mv $rootimgdir.regbak $rootimgdir; fi
 check:rc==0
+cmd:if [ -x /usr/bin/goconserver ]; then makegocons -d $$CN; else makeconservercf -d $$CN; fi
 cmd:rm -rf  /install/netboot/__GETNODEATTR($$CN,os)__/__GETNODEATTR($$CN,arch)__/compute/rootimg.cpio.xz
 cmd:mv -f /rootimg.cpio.xz.bak /install/netboot/__GETNODEATTR($$CN,os)__/__GETNODEATTR($$CN,arch)__/compute/rootimg.cpio.xz
 cmd:rm -rf /install/netboot/__GETNODEATTR($$CN,os)__/__GETNODEATTR($$CN,arch)__/compute/rootimg
@@ -190,6 +193,8 @@ os:Linux
 description:test packimage -m tar -c pigz
 label:others,packaging,invoke_provision
 #cmd:copycds $$ISO
+cmd:if [ -x /usr/bin/goconserver ]; then makegocons $$CN; else makeconservercf $$CN; fi
+check:rc==0
 cmd:ls /install/netboot/__GETNODEATTR($$CN,os)__/__GETNODEATTR($$CN,arch)__/compute/rootimg;if [ $? -eq 0 ];then mv -f /install/netboot/__GETNODEATTR($$CN,os)__/__GETNODEATTR($$CN,arch)__/compute/rootimg /rootimg.bak;fi
 cmd:ls /install/netboot/__GETNODEATTR($$CN,os)__/__GETNODEATTR($$CN,arch)__/compute/rootimg.tar.gz;if [ $? -eq 0 ];then mv -f /install/netboot/__GETNODEATTR($$CN,os)__/__GETNODEATTR($$CN,arch)__/compute/rootimg.tar.gz /rootimg.tar.gz.bak;fi
 cmd:genimage __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute
@@ -206,7 +211,7 @@ check:output=~archive method:tar
 check:output=~compress method:pigz
 cmd:ls -l /install/netboot/__GETNODEATTR($$CN,os)__/__GETNODEATTR($$CN,arch)__/compute/rootimg.tar.gz
 check:rc==0
-cmd:rinstall $$CN osimage=__GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute
+cmd:/opt/xcat/share/xcat/tools/autotest/testcase/commoncmd/retry_install.sh  $$CN __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute
 check:rc==0
 check:output=~Provision node\(s\)\: $$CN
 cmd:a=0;while ! `lsdef -l $$CN|grep status|grep booted >/dev/null`; do sleep 10;((a++));if [ $a -gt 150 ];then break;fi done
@@ -234,6 +239,7 @@ cmd:xdsh $$CN "userdel xcatuser"
 check:rc==0
 cmd:rootimgdir=`lsdef -t osimage  __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute|grep rootimgdir|awk -F'=' '{print $2}'`; if [ -d $rootimgdir.regbak ]; then rm -rf $rootimgdir; mv $rootimgdir.regbak $rootimgdir; fi
 check:rc==0
+cmd:if [ -x /usr/bin/goconserver ]; then makegocons -d $$CN; else makeconservercf -d $$CN; fi
 cmd:rm -rf  /install/netboot/__GETNODEATTR($$CN,os)__/__GETNODEATTR($$CN,arch)__/compute/rootimg.tar.gz
 cmd:mv -f /rootimg.tar.gz.bak /install/netboot/__GETNODEATTR($$CN,os)__/__GETNODEATTR($$CN,arch)__/compute/rootimg.tar.gz
 cmd:rm -rf /install/netboot/__GETNODEATTR($$CN,os)__/__GETNODEATTR($$CN,arch)__/compute/rootimg
@@ -245,6 +251,8 @@ os:Linux
 description:test packimage -m tar -c gzip
 label:others,packaging,invoke_provision
 #cmd:copycds $$ISO
+cmd:if [ -x /usr/bin/goconserver ]; then makegocons $$CN; else makeconservercf $$CN; fi
+check:rc==0
 cmd:ls /install/netboot/__GETNODEATTR($$CN,os)__/__GETNODEATTR($$CN,arch)__/compute/rootimg;if [ $? -eq 0 ];then mv -f /install/netboot/__GETNODEATTR($$CN,os)__/__GETNODEATTR($$CN,arch)__/compute/rootimg /rootimg.bak;fi
 cmd:ls /install/netboot/__GETNODEATTR($$CN,os)__/__GETNODEATTR($$CN,arch)__/compute/rootimg.tar.gz;if [ $? -eq 0 ];then mv -f /install/netboot/__GETNODEATTR($$CN,os)__/__GETNODEATTR($$CN,arch)__/compute/rootimg.tar.gz /rootimg.tar.gz.bak;fi
 cmd:genimage __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute
@@ -257,7 +265,7 @@ check:output=~archive method:tar
 check:output=~compress method:gzip
 cmd:ls -l /install/netboot/__GETNODEATTR($$CN,os)__/__GETNODEATTR($$CN,arch)__/compute/rootimg.tar.gz
 check:rc==0
-cmd:rinstall $$CN osimage=__GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute
+cmd:/opt/xcat/share/xcat/tools/autotest/testcase/commoncmd/retry_install.sh  $$CN __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute
 check:rc==0
 check:output=~Provision node\(s\)\: $$CN
 cmd:a=0;while ! `lsdef -l $$CN|grep status|grep booted >/dev/null`; do sleep 10;((a++));if [ $a -gt 150 ];then break;fi done
@@ -285,6 +293,7 @@ cmd:xdsh $$CN "userdel xcatuser"
 check:rc==0
 cmd:rootimgdir=`lsdef -t osimage  __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute|grep rootimgdir|awk -F'=' '{print $2}'`; if [ -d $rootimgdir.regbak ]; then rm -rf $rootimgdir; mv $rootimgdir.regbak $rootimgdir; fi
 check:rc==0
+cmd:if [ -x /usr/bin/goconserver ]; then makegocons -d $$CN; else makeconservercf -d $$CN; fi
 cmd:rm -rf  /install/netboot/__GETNODEATTR($$CN,os)__/__GETNODEATTR($$CN,arch)__/compute/rootimg.tar.gz
 cmd:mv -f /rootimg.tar.gz.bak /install/netboot/__GETNODEATTR($$CN,os)__/__GETNODEATTR($$CN,arch)__/compute/rootimg.tar.gz
 cmd:rm -rf /install/netboot/__GETNODEATTR($$CN,os)__/__GETNODEATTR($$CN,arch)__/compute/rootimg
@@ -296,6 +305,8 @@ os:Linux
 description:test packimage -m tar -c xz
 label:others,packaging,invoke_provision
 #cmd:copycds $$ISO
+cmd:if [ -x /usr/bin/goconserver ]; then makegocons $$CN; else makeconservercf $$CN; fi
+check:rc==0
 cmd:ls /install/netboot/__GETNODEATTR($$CN,os)__/__GETNODEATTR($$CN,arch)__/compute/rootimg;if [ $? -eq 0 ];then mv -f /install/netboot/__GETNODEATTR($$CN,os)__/__GETNODEATTR($$CN,arch)__/compute/rootimg /rootimg.bak;fi
 cmd:ls /install/netboot/__GETNODEATTR($$CN,os)__/__GETNODEATTR($$CN,arch)__/compute/rootimg.tar.xz;if [ $? -eq 0 ];then mv -f /install/netboot/__GETNODEATTR($$CN,os)__/__GETNODEATTR($$CN,arch)__/compute/rootimg.tar.xz /rootimg.tar.xz.bak;fi
 cmd:genimage __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute
@@ -308,7 +319,7 @@ check:output=~archive method:tar
 check:output=~compress method:xz
 cmd:ls -l /install/netboot/__GETNODEATTR($$CN,os)__/__GETNODEATTR($$CN,arch)__/compute/rootimg.tar.xz
 check:rc==0
-cmd:rinstall $$CN osimage=__GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute
+cmd:/opt/xcat/share/xcat/tools/autotest/testcase/commoncmd/retry_install.sh  $$CN __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute
 check:rc==0
 check:output=~Provision node\(s\)\: $$CN
 cmd:a=0;while ! `lsdef -l $$CN|grep status|grep booted >/dev/null`; do sleep 10;((a++));if [ $a -gt 150 ];then break;fi done
@@ -336,6 +347,7 @@ cmd:xdsh $$CN "userdel xcatuser"
 check:rc==0
 cmd:rootimgdir=`lsdef -t osimage  __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute|grep rootimgdir|awk -F'=' '{print $2}'`; if [ -d $rootimgdir.regbak ]; then rm -rf $rootimgdir; mv $rootimgdir.regbak $rootimgdir; fi
 check:rc==0
+cmd:if [ -x /usr/bin/goconserver ]; then makegocons -d $$CN; else makeconservercf -d $$CN; fi
 cmd:rm -rf  /install/netboot/__GETNODEATTR($$CN,os)__/__GETNODEATTR($$CN,arch)__/compute/rootimg.tar.xz
 cmd:mv -f /rootimg.tar.xz.bak /install/netboot/__GETNODEATTR($$CN,os)__/__GETNODEATTR($$CN,arch)__/compute/rootimg.tar.xz
 cmd:rm -rf /install/netboot/__GETNODEATTR($$CN,os)__/__GETNODEATTR($$CN,arch)__/compute/rootimg
@@ -374,5 +386,31 @@ check:rc!=0
 check:output=~Error: (\[.*?\]: )?Invalid compress method 'invalid' requested
 cmd:rm -rf /install/netboot/__GETNODEATTR($$CN,os)__/__GETNODEATTR($$CN,arch)__/compute/rootimg
 cmd:mv -f /rootimg.bak /install/netboot/__GETNODEATTR($$CN,os)__/__GETNODEATTR($$CN,arch)__/compute/rootimg
+end
+
+start:packimage_uuid
+os:Linux
+description:this case is to verfy bug 3542,ensure that CSM required info is not removed from /opt/xcat/xcatinfo.
+label:others,packaging
+cmd:lsdef -z $$CN >> /tmp/node.stanza
+cmd:ls /install/netboot/__GETNODEATTR($$CN,os)__/__GETNODEATTR($$CN,arch)__/compute/rootimg;if [ $? -eq 0 ];then mv -f /install/netboot/__GETNODEATTR($$CN,os)__/__GETNODEATTR($$CN,arch)__/compute/rootimg /rootimg.bak;fi
+cmd:ls /install/netboot/__GETNODEATTR($$CN,os)__/__GETNODEATTR($$CN,arch)__/compute/rootimg.cpio.gz;if [ $? -eq 0 ];then mv -f /install/netboot/__GETNODEATTR($$CN,os)__/__GETNODEATTR($$CN,arch)__/compute/rootimg.cpio.gz /rootimg.cpio.gz.bak;fi
+cmd:copycds $$ISO
+cmd:genimage __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute
+check:rc==0
+cmd:packimage __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute
+check:rc==0
+cmd:cp /install/netboot/__GETNODEATTR($$CN,os)__/__GETNODEATTR($$CN,arch)__/compute/rootimg/opt/xcat/xcatinfo /tmp/uuid
+cmd:packimage __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute
+check:rc==0
+cmd:uuid=`cat /install/netboot/__GETNODEATTR($$CN,os)__/__GETNODEATTR($$CN,arch)__/compute/rootimg/opt/xcat/xcatinfo |grep UUID|awk -F= '{print $2}'`;grep $uuid /tmp/uuid
+check:rc!=0
+cmd:ls -l /install/netboot/__GETNODEATTR($$CN,os)__/__GETNODEATTR($$CN,arch)__/compute/rootimg.cpio.gz
+check:rc==0
+cmd:rm -rf /install/netboot/__GETNODEATTR($$CN,os)__/__GETNODEATTR($$CN,arch)__/compute/rootimg.cpio.gz
+cmd:mv -f /rootimg.cpio.gz.bak /install/netboot/__GETNODEATTR($$CN,os)__/__GETNODEATTR($$CN,arch)__/compute/rootimg.cpio.gz
+cmd:rm -rf /install/netboot/__GETNODEATTR($$CN,os)__/__GETNODEATTR($$CN,arch)__/compute/rootimg
+cmd:mv -f /rootimg.bak /install/netboot/__GETNODEATTR($$CN,os)__/__GETNODEATTR($$CN,arch)__/compute/rootimg
+cmd:if [ -e /tmp/node.stanza ]; then rmdef $$CN; cat /tmp/node.stanza | mkdef -z; rm -rf /tmp/node.stanza; fi
 end
 

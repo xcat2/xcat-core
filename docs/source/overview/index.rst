@@ -10,5 +10,4 @@ xCAT enables you to easily manage large number of servers for any type of techni
    features.rst
    support_matrix.rst
    architecture.rst
-   quick_start.rst
    xcat2_release.rst

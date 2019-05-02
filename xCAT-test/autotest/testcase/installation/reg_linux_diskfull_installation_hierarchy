@@ -20,10 +20,10 @@ check:rc==0
 
 cmd:makedns -n
 check:rc==0
-cmd:makeconservercf
+cmd:if [ -x /usr/bin/goconserver ]; then makegocons $$CN; else makeconservercf $$CN;fi
 check:rc==0
-cmd:cat /etc/conserver.cf | grep $$CN
-check:output=~$$CN
+#cmd:cat /etc/conserver.cf | grep $$CN
+#check:output=~$$CN
 cmd:sleep 20
 cmd:if [[ "__GETNODEATTR($$CN,arch)__" = "ppc64" ]]; then getmacs -D $$CN; fi
 check:rc==0
@@ -42,7 +42,7 @@ cmd:nodeset $$CN osimage=__GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-ins
 check:rc==0
 cmd:updatenode $$CN -f
 check:rc==0
-cmd:rinstall $$CN osimage=__GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-install-compute
+cmd:/opt/xcat/share/xcat/tools/autotest/testcase/commoncmd/retry_install.sh  $$CN __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-install-compute
 check:rc==0
 check:output=~Provision node\(s\)\: $$CN
 
@@ -52,8 +52,6 @@ cmd:if [[ "__GETNODEATTR($$CN,arch)__" =~ "ppc" ]]; then sleep 120;elif [[ "__GE
 #cmd:lsdef -l $$CN | grep status
 #check:rc==0
 #check:output!~booted
-
-cmd:a=0;while ! `lsdef -l $$CN|grep status|grep booted >/dev/null`; do sleep 60;((a++));if [ $a -gt 50 ];then break;fi done
 
 cmd:ping $$CN -c 3
 check:rc==0
@@ -66,9 +64,15 @@ check:rc==0
 check:output=~\d\d:\d\d:\d\d
 cmd:xdsh $$CN mount
 check:rc==0
+cmd:xdsh $$CN cat /opt/xcat/xcatinfo
+check:rc==0
+check:output=~NODE=$$CN
+check:output=~IMAGENAME=__GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-install-compute
+check:output=~SERVICEGROUP=$$SN
 cmd:xdsh $$CN  "cat /var/log/xcat/xcat.log"
 cmd:xdsh $$CN "cat /test.synclist"
 check:rc==0
+cmd:if [ -x /usr/bin/goconserver ]; then makegocons -d $$CN; else makeconservercf -d $$CN; fi
 cmd:if [[ -f /test.synclist.bak ]] ;then mv -f /test.synclist.bak /test.synclist;else rm -rf /test.synclist;fi
 cmd:chdef -t osimage -o __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-install-compute synclists=
 end

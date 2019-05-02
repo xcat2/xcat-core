@@ -31,13 +31,13 @@ cmd:exlistfile=`lsdef -t osimage __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arc
 check:rc==0
 
 cmd:postinstallfile=`lsdef -t osimage __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute|grep postinstall|awk -F'=' '{print $2}'`;cp $postinstallfile $postinstallfile.bak
-cmd:postinstallfile=`lsdef -t osimage __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute|grep postinstall|awk -F'=' '{print $2}'`; if grep SUSE /etc/*release;then sed -i "/\/tmp/ s/10/200/g" $postinstallfile; elif grep "Red Hat" /etc/*release;then sed -i /devpts/a"tmpfs         /var/tmp    tmpfs   defaults,size=200m   0 2" $postinstallfile;fi
+cmd:postinstallfile=`lsdef -t osimage __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute|grep postinstall|awk -F'=' '{print $2}'`; if grep SUSE /etc/*release;then sed -i "/\/tmp/ s/10/500/g" $postinstallfile; elif grep "Red Hat" /etc/*release;then sed -i /devpts/a"tmpfs         /var/tmp    tmpfs   defaults,size=500m   0 2" $postinstallfile;fi
 check:rc==0
 
 cmd:if [ ! -d /kdumpdir ]; then mkdir -p /kdumpdir && chmod 777 /kdumpdir; fi
 cmd:if [ ! -f /etc/exports ] ;then touch /etc/exports;else cp /etc/exports /etc/exports.bak;fi
 cmd:cat /etc/exports|grep kdumpdir; if [ "$?" -ne "0" ]; then echo "/kdumpdir *(rw,no_root_squash,sync,no_subtree_check)" >> /etc/exports; fi
-cmd:cd /etc; export exports;cd -;service nfs restart
+cmd:cd /etc; export exports;cd -;service nfs-server restart 
 cmd:chdef -t osimage __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute dump=nfs://$$MN/kdumpdir
 check:rc==0
 

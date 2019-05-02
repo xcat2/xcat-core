@@ -34,7 +34,7 @@ B<rflash> I<noderange> {[B<-c>|B<--check>] | [B<-l>|B<--list>]}
 
 B<rflash> I<noderange> I<tar_file_path> {[B<-c>|B<--check>] | [B<-a>|B<--activate>] | [B<-u>|B<--upload>]}
 
-B<rflash> I<noderange> I<tar_file_directory> [B<-d>] [B<--no-host-reboot>]
+B<rflash> I<noderange> I<tar_file_directory> [B<-d>]
 
 B<rflash> I<noderange> I<image_id> {[B<-a>|B<--activate>] | [B<--delete>]}
 
@@ -124,8 +124,6 @@ B<Note:> When using B<rflash> in hierarchical environment, the .tar file must be
 B<-d>:
 
 This option steamlines the update, activate, reboot BMC and reboot HOST procedure. It expects a directory containing both BMC and Host .tar files. When BMC and Host tar files are provided, the command will upload and activate firmware. After BMC becomes activate, it will reboot BMC. If BMC state is Ready, the command will reboot the HOST. If BMC state is NotReady, the command will exit.
-
-B<Note:> When using B<--no-host-reboot>, it will not reboot the host after BMC is reboot.
 
 B<--delete>:
 

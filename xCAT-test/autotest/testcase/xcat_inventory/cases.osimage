@@ -995,7 +995,7 @@ cmd:file="/tmp/partitionfile"; rm -rf $file; if [ -d ${file}".bak" ];then mv ${f
 end
 
 start:export_import_multiple_osimages_by_dir
-label:others,xcat_inventory
+label:others,inventory_ci
 description:This case is used to test xcat-inventory export and import several linux osimages definition by dir.
 cmd:if [ -e /tmp/otherpkglist ]; then cp -f /tmp/otherpkglist /tmp/otherpkglist.bak; fi
 cmd:echo "test" >> /tmp/otherpkglist
@@ -1040,6 +1040,8 @@ cmd:dir="/opt/inventory/site/osimage";if [ -e "${dir}" ];then mv ${dir} ${dir}".
 cmd:xcat-inventory export -t osimage -o test_myimage1,test_myimage2 --format json -d /opt/inventory/site/osimage
 check:rc==0
 check:output=~The osimage objects has been exported to directory /opt/inventory/site/osimage
+cmd: ls -R /opt/inventory/site/osimage
+check: output =~ site
 cmd:otherpkglist=`lsdef -t osimage -o test_myimage1 |grep otherpkglist|awk -F= '{print $2}'`;diff -y $otherpkglist /opt/inventory/site/osimage/test_myimage1$otherpkglist
 check:rc==0
 cmd:synclists=`lsdef -t osimage -o test_myimage1 |grep synclists|awk -F= '{print $2}'`;diff -y $synclists /opt/inventory/site/osimage/test_myimage1$synclists
@@ -1071,7 +1073,9 @@ check:rc==0
 cmd: rmdef -t osimage -o  test_myimage1,test_myimage2
 check:rc==0
 cmd:rm -rf /tmp/otherpkglist /tmp/synclists /tmp/postinstall /tmp/exlist /tmp/partitionfile /tmp/pkglist /tmp/template
-cmd:xcat-inventory import -t osimage -o test_myimage1,test_myimage2 -d /opt/inventory/site
+cmd: ls -R /opt/inventory/site
+check: output =~ site
+cmd:xcat-inventory import -t osimage -o test_myimage1,test_myimage2 -d /opt/inventory/site/osimage
 check:rc==0
 check:output=~The object test_myimage1 has been imported
 check:output=~The object test_myimage2 has been imported
@@ -1127,15 +1131,15 @@ cmd:file="/opt/xcat/share/xcat/install/rh/template"; rm -rf $file; if [ -d ${fil
 end
 
 start:export_import_all_osimages_by_dir
-label:others,xcat_inventory
+label:others,inventory_ci
 description:This case is used to test xcat-inventory export and import all linux osimage definition by files.
 cmd:lsdef -t osimage -z | tee /tmp/osimage.list
 check:rc==0
 #backup all osimage
 cmd:if [ -e /tmp/osimages ]; then cp -f /tmp/osimages /tmp/osimages.bak ; else mkdir -p /tmp/osimages; fi
-cmd:imgdir='/tmp/osimages';for img in $(lsdef -t osimage -s|awk -F' ' '{print $1}'); do lsdef -t osimage -o $img -z > $imgdir/${img}.stanza;done
+cmd:imgdir='/tmp/osimages';for img in $(lsdef -t osimage -s|grep '(osimage)'|awk -F' ' '{print $1}'); do lsdef -t osimage -o $img -z > $imgdir/${img}.stanza;done
 check:rc==0
-cmd:for img in $(lsdef -t osimage -s|awk -F' ' '{print $1}');do rmdef -t osimage -o $img;done
+cmd:for img in $(lsdef -t osimage -s|grep '(osimage)'|awk -F' ' '{print $1}');do rmdef -t osimage -o $img;done
 check:rc==0
 cmd:if [ -e /tmp/otherpkglist ]; then cp -f /tmp/otherpkglist /tmp/otherpkglist.bak; fi
 cmd:echo "test" >> /tmp/otherpkglist
@@ -1264,12 +1268,12 @@ cmd:if [ -e /tmp/osimages.bak ]; then mv -f /tmp/osimages.bak /tmp/osimages; fi
 end
 
 start:export_import_osimages_by_dir_with_c
-label:others,xcat_inventory
+label:others,inventory_ci
 description:This case is used to test xcat-inventory export and import  linux osimage definition witch -c option.
 cmd:dir="/tmp/export";if [ -e "${dir}" ];then mv ${dir} ${dir}".bak"; fi; mkdir -p $dir
-cmd:imgdir='/tmp/export';for img in $(lsdef -t osimage -s|awk -F' ' '{print $1}'); do lsdef -t osimage -o $img -z > $imgdir/${img}.stanza;done
+cmd:imgdir='/tmp/export';for img in $(lsdef -t osimage -s|grep '(osimage)'|awk -F' ' '{print $1}'); do lsdef -t osimage -o $img -z > $imgdir/${img}.stanza;done
 check:rc==0
-cmd:for img in $(lsdef -t osimage -s|awk -F' ' '{print $1}');do rmdef -t osimage -o $img;done
+cmd:for img in $(lsdef -t osimage -s|grep '(osimage)'|awk -F' ' '{print $1}');do rmdef -t osimage -o $img;done
 check:rc==0
 cmd:chdef -t osimage -o test_myimage1,test_myimage2,test_myimage3 imagetype=linux provmethod=install
 check:rc==0

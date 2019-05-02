@@ -5,9 +5,12 @@ cmd:runcmdinstaller -h
 check:rc==0
 check:output=~runcmdinstaller <node> <commands>
 end
+
 start:runcmdinstaller_command
 description:runcmdinstaller
 label:others,postscripts
+cmd:if [ -x /usr/bin/goconserver ]; then makegocons $$CN; else makeconservercf $$CN; fi
+check:rc==0
 cmd:chtab key=xcatdebugmode site.value="2"
 check:rc==0
 cmd:rinstall $$CN osimage=__GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-install-compute
@@ -19,10 +22,14 @@ cmd:runcmdinstaller $$CN "ls /"
 check:rc==0
 check:output=~tmp
 cmd:chtab key=xcatdebugmode site.value="0"
+cmd:if [ -x /usr/bin/goconserver ]; then makegocons -d $$CN; else makeconservercf -d $$CN; fi
 end
+
 start:get_xcat_postscripts_loginfo
 description:get xcat post scripts loginfo
 label:others,postscripts
+cmd:if [ -x /usr/bin/goconserver ]; then makegocons $$CN; else makeconservercf $$CN; fi
+check:rc==0
 cmd:chtab key=xcatdebugmode site.value="1"
 check:rc==0
 cmd:rinstall $$CN osimage=__GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-install-compute
@@ -34,7 +41,9 @@ cmd:rc==0
 cmd:cat /var/log/messages /var/log/xcat/computes.log 2>/dev/null | grep "program: ++"
 cmd:rc==0
 cmd:chtab key=xcatdebugmode site.value="0"
+cmd:if [ -x /usr/bin/goconserver ]; then makegocons -d $$CN; else makeconservercf -d $$CN; fi
 end
+
 start:updatenode_postscripts_loginfo
 description:get updatenode postsripts log info
 label:others,postscripts

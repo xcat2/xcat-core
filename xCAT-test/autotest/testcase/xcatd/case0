@@ -10,7 +10,7 @@ check:output=~Active: active \(running\)|xcatd service is running
 cmd:ps axjf |grep -v grep |grep "xcatd:" | tee /tmp/xcatd_start/original_xcatd_processes_status
 check:rc==0
 cmd:cat /tmp/xcatd_start/original_xcatd_processes_status |wc -l
-check:output=~6
+#check:output=~6
 cmd:service xcatd stop
 check:rc==0
 cmd:sleep 3
@@ -104,9 +104,11 @@ check:rc==0
 cmd:service xcatd stop
 check:rc==0
 cmd:sleep 3
+cmd:ps aux|tee /tmp/run_command_with_XCATBYPASS.log
+cmd:awk '{print $11}' /tmp/run_command_with_XCATBYPASS.log|grep -E ^xcatd
+check:rc!=0
+cmd:rm -rf /tmp/run_command_with_XCATBYPASS.log
 cmd:service xcatd status
-check:output=~xcatd service|xcatd.service
-check:output=~xcatd service is not running|inactive \(dead\)
 cmd:tabdump site
 check:rc!=0
 cmd:XCATBYPASS=YES tabdump site
@@ -160,4 +162,20 @@ cmd:chtab name=root policy.commands= policy.rule=allow
 check:rc==0
 end
 
-
+start:reload_xcatd_with_XCATBYPASS
+description:with XCATBYPASS=YES, there is no error when restart xcatd deamon. This case is add test case for issue 2727 : run xCAT in "XCATBYPASS" mode and simply reload xCAT to check if there is any errors. 
+label:mn_only,ci_test,xcatd
+cmd:service xcatd status
+check:rc==0
+check:output=~xcatd service|xcatd.service
+check:output=~xcatd service is running|active \(running\)
+cmd:XCATBYPASS=YES lsxcatd -a
+check:rc==0
+check:output!=~Error|ERROR
+cmd:XCATBYPASS=YES service xcatd status
+check:rc==0
+check:output!=~Error|ERROR
+cmd:XCATBYPASS=YES service xcatd restart
+check:rc==0
+check:output!=~Error|ERROR 
+end

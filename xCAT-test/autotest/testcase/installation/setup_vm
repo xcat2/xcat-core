@@ -7,8 +7,8 @@ check:rc==0
 cmd:if [ "__GETNODEATTR($$CN,arch)__" != "ppc64"  -a  "__GETNODEATTR($$CN,mgt)__" != "ipmi" -a  "__GETNODEATTR($$CN,mgt)__" != "openbmc" ]; then echo "CN node is a vm, need to repower it on"; echo "rpower $$CN on"; rpower $$CN on; else echo "CN node $$CN is a non-VM; do not need to repower on it"; fi
 check:rc==0
 
-cmd:rpower $$CN stat
-check:output=~on
+cmd:if [ "__GETNODEATTR($$CN,arch)__" != "ppc64"  -a  "__GETNODEATTR($$CN,mgt)__" != "ipmi" -a  "__GETNODEATTR($$CN,mgt)__" != "openbmc" ]; then rpower $$CN stat;else echo "skip";fi
+check:output=~on|skip
 
 cmd:if [ "__GETNODEATTR($$CN,arch)__" != "ppc64" -a  "__GETNODEATTR($$CN,mgt)__" != "ipmi" -a "__GETNODEATTR($$CN,mgt)__" != "openbmc" ]; then tabdump -w node==$$CN kvm_nodedata; fi
 check:rc==0
@@ -20,8 +20,8 @@ check:rc==0
 cmd:if [ "__GETNODEATTR($$SN,arch)__" != "ppc64"  -a  "__GETNODEATTR($$SN,mgt)__" != "ipmi" -a  "__GETNODEATTR($$SN,mgt)__" != "openbmc" ];then echo "SN node $$SN is a VM, need to rpower it on"; echo "rpower $$SN on"; rpower $$SN on; fi
 check:rc==0
 
-cmd:rpower $$SN stat
-check:output=~on
+cmd:if [ "__GETNODEATTR($$CN,arch)__" != "ppc64"  -a  "__GETNODEATTR($$CN,mgt)__" != "ipmi" -a  "__GETNODEATTR($$CN,mgt)__" != "openbmc" ]; then rpower $$SN stat;else echo "skip"; fi
+check:output=~on|skip
 
 check:rc==0
 cmd:if [ "__GETNODEATTR($$SN,arch)__" != "ppc64" -a  "__GETNODEATTR($$SN,mgt)__" != "ipmi" -a "__GETNODEATTR($$SN,mgt)__" != "openbmc" ]; then tabdump -w node==$$SN kvm_nodedata; fi

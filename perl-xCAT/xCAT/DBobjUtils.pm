@@ -246,7 +246,9 @@ sub getobjattrs
 
 #-----------------------------------------------------------------------------
 sub gettbldesc {
-    my ($class, $objtype) = @_;
+
+    my $class   = shift;
+    my $objtype = shift;
     my @attrs;
     # The $attrs is an optional argument
     if (ref $_[0]) {

@@ -6,16 +6,11 @@ Unattended flash of OpenBMC firmware will do the following events:
 #. Activate both BMC firmware and Host firmware
 #. If BMC firmware becomes activate, reboot BMC to apply new BMC firmware, or else, ``rflash`` will exit
 #. If BMC itself state is ``NotReady``, ``rflash`` will exit
-#. If BMC itself state is ``Ready``, and use ``--no-host-reboot`` option, ``rflash`` will not reboot the compute node
-#. If BMC itself state is ``Ready``, and do not use ``--no-host-reboot`` option, ``rflash`` will reboot the compute node to apply Host firmware
+#. If BMC itself state is ``Ready``, ``rflash`` will reboot the compute node to apply Host firmware
 
 Use the following command to flash the firmware unattended: ::
 
     rflash <noderange> -d /path/to/directory
-
-Use the following command to flash the firmware unattended and not reboot the compute node: ::
-
-    rflash <noderange> -d /path/to/directory --no-host-reboot
 
 If there are errors encountered during the flash process, take a look at the manual steps to continue flashing the BMC.
 

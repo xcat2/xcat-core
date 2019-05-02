@@ -1,0 +1,93 @@
+start:backend
+description: verify xcat-inventory backend operations 
+label:others,inventory_ci
+
+cmd: rm -rf /tmp/backend_test/
+cmd:rm -rf ~/.xcatinv/inventory.cfg.bak.backend_init 
+check: rc==0
+cmd: mkdir -p ~/.xcatinv/
+cmd: [ -f ~/.xcatinv/inventory.cfg ] && mv ~/.xcatinv/inventory.cfg ~/.xcatinv/inventory.cfg.bak.backend_init
+cmd: cp /opt/xcat/share/xcat/tools/autotest/testcase/xcat_inventory/templates/inventory.cfg ~/.xcatinv/inventory.cfg
+cmd: xcat-inventory init
+check: rc==0
+check: output=~configuring backend dir
+check: output=~xcat-inventory backend initialized
+cmd: xcat-inventory init
+check: rc==0
+check: output=~Backend has already been initialized, do nothing
+cmd: cd /tmp/backend_test/git/repo && git  config --local --get user.name
+check: output=~ci
+cmd: cd /tmp/backend_test/git/repo && git config --local --get user.email
+check: output=~xcat@xcat.org
+cmd: cd /tmp/backend_test/git/repo && git config --local --get diff.tool
+check: output=~invdiff
+cmd: cd /tmp/backend_test/git/repo && git config --local --get difftool.invdiff.cmd
+check: output=~xcat-inventory diff --filename
+cmd: xcat-inventory workspace-list
+check: rc==0
+check: output=~master
+cmd: XCATBYPASS=1 dumpxCATdb -p /tmp/backend_test/backup/db
+check: rc==0
+cmd: XCATBYPASS=1 rmdef -a -f
+check: rc==0
+cmd: xcat-inventory import -d /opt/xcat/share/xcat/tools/autotest/testcase/xcat_inventory/templates/testcluster_backend
+check: rc==0
+cmd:xcat-inventory commit -m "Rev1" Rev1
+check: rc==0
+check: output=~creating revision Rev1 in workspace
+cmd:xcat-inventory revlist
+check:rc==0
+check: output=~Rev1
+
+cmd:xcat-inventory revlist Rev1
+check:rc==0
+check: output=~cluster.yaml
+check: output=~definition.yaml
+check: output=~Tagger:
+cmd:chdef -t site -o clustersite xcatdebugmode=2
+
+check: rc==0
+cmd:rmdef -t node -o nodetorm
+check: rc==0
+cmd:mkdef -t osimage -o osimage3 --template osimage1 
+check: rc==0
+cmd: xcat-inventory diff
+check: rc==0
+check: output=~\+    xcatdebugmode\: \'2\'
+check: output=~\+  osimage3\:
+check: output=~\-  nodetorm\:
+
+cmd: xcat-inventory commit Rev2
+check: rc==0
+
+cmd: xcat-inventory checkout Rev1
+check: rc==0
+check: output=~checked out to revision Rev1
+
+cmd: xcat-inventory whereami
+check: rc==0
+check: output=~you are in revision \"Rev1\" of workspace \"master\"
+
+cmd: xcat-inventory workspace-new ws
+check: rc==0
+cmd: 
+check: output=~workspace ws created
+cmd: xcat-inventory workspace-list
+check: rc==0
+check: output=~ws
+cmd: xcat-inventory workspace-checkout ws
+check: rc==0
+cmd: xcat-inventory workspace-delete ws
+check: rc==0
+check: output=~deleted workspace ws
+cmd: xcat-inventory workspace-list
+check: rc==0
+check: output!=~ws
+
+cmd: XCATBYPASS=1 restorexCATdb -p /tmp/backend_test/backup/db
+check: rc==0
+cmd: [ -f "~/.xcatinv/inventory.cfg.bak.backend_init" ] && rm -rf "~/.xcatinv/inventory.cfg" &&  mv "~/.xcatinv/inventory.cfg.bak.backend_init" "~/.xcatinv/inventory.cfg"
+cmd: rm -rf /tmp/backend_test/
+end
+
+

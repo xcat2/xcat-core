@@ -391,9 +391,10 @@ sub subvars {
         $inc =~ s/#SHORTNAME#/$shortname/g;
         $inc =~ s/#GETNODEDOMAIN:([^#]+)#/get_node_domain($1)/eg;
         $inc =~ s/#GETPRINICMAC:([^#]+)#/xCAT::Utils::parseMacTabEntry(tabdb("mac",$1,"mac"),$1)/eg;
+        $inc =~ s/#COLONHTTPPORT#/$httpportsuffix/eg;
 
         if (($::XCATSITEVALS{xcatdebugmode} eq "1") or ($::XCATSITEVALS{xcatdebugmode} eq "2")) {
-            $inc =~ s/#UNCOMMENTOENABLEDEBUGPORT#/ /g;
+            $inc =~ s/#UNCOMMENTOENABLEDEBUGPORT#//g;
         }
 
         if ($::XCATSITEVALS{xcatdebugmode} eq "2") {
@@ -428,7 +429,7 @@ sub subvars {
                     $partcontent .= "rm -rf /tmp/partitionfile\n";
 
                     # Put the code to decode the partitionfile
-                    $partcontent .= "python -c 'import base64; print base64.b64decode(open(\"/tmp/partscript.enc\",\"rb\").read())' >/tmp/partscript\n";
+                    $partcontent .= "base64decode</tmp/partscript.enc >/tmp/partscript\n";
                     $partcontent .= "chmod 755 /tmp/partscript\n";
                     $partcontent .= "/tmp/partscript\n";
 
@@ -489,7 +490,7 @@ sub subvars {
                     $partcontent .= "rm -rf /tmp/partitionfile\n";
 
                     # Put the code to decode the partitionfile
-                    $partcontent .= "python -c 'import base64; print base64.b64decode(open(\"/tmp/partitionfile.enc\",\"rb\").read())' >/tmp/partitionfile\n";
+                    $partcontent .= "base64decode</tmp/partitionfile.enc >/tmp/partitionfile\n";
 
                     #replace the #XCA_PARTITION_SCRIPT#
                     $inc =~ s/#XCA_PARTITION_SCRIPT#/$partcontent/;

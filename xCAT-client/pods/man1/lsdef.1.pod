@@ -6,13 +6,13 @@ B<lsdef> - Use this command to list xCAT data object definitions.
 
 B<lsdef> [B<-h>|B<--help>] [B<-t> I<object-types>] [B<-i> I<attr-list>]
 
-B<lsdef> [B<-V>|B<--verbose>] [B<-l>|B<--long>] [B<-s>|B<--short>] [B<-a>|B<--all>] [B<-S>]
-[B<-t> I<object-types>] [B<-o> I<object-names>] [B<-z>|B<--stanza>] [B<-i> I<attr-list>]
+B<lsdef> [B<-V>|B<--verbose>] [B<-a>|B<--all>] [B<-S>]
+[B<-t> I<object-types>] [B<-o> I<object-names>] [B<-z>|B<--stanza>] [B<-i> I<attr-list> | [B<-l>|B<--long>] | [B<-s>|B<--short>]]
 [B<-c>|B<--compress>] [B<--osimage>] [B<--nics>] [[B<-w> I<attr>==I<val>]
 [B<-w> I<attr>=~I<val>] ...] [I<noderange>]
 
-B<lsdef> [B<-l>|B<--long>] [B<-a>|B<--all>] [B<-t> I<object-types>] [B<-z>|B<--stanza>]
-[B<-i> I<attr-list>] [B<--template> [I<template-object-name>]]
+B<lsdef> [B<-a>|B<--all>] [B<-t> I<object-types>] [B<-z>|B<--stanza>]
+[B<-i> I<attr-list> | [B<-l>|B<--long>] | [B<-s>|B<--short>]] [B<--template> [I<template-object-name>]]
 
 =head1 DESCRIPTION
 
@@ -28,13 +28,13 @@ in the xCAT database and xCAT object definition templates shipped in xCAT.
 
 Display all definitions.
 For performance consideration, the auditlog and eventlog objects will not be listed.
-To list auditlog or eventlog objects, use lsdef -t auditlog or lsdef -t eventlog instead.
+To list auditlog or eventlog objects, use B<lsdef -t auditlog> or B<lsdef -t eventlog> instead.
 
 =item B<-c|--compress>
 
 Display information in compressed mode, each output line has format "<object name>: <data>".
-The output can be passed to command xcoll or xdshbak for formatted output.
-The -c flag must be used with -i flag.
+The output can be passed to command B<xcoll> or B<xdshbak> for formatted output.
+The B<-c> flag must be used with B<-i> flag.
 
 =item B<-h|--help>
 
@@ -87,9 +87,10 @@ Verbose mode.
 
 =item B<-w> I<attr==val> B<-w> I<attr=~val> ...
 
-Use one or multiple -w flags to specify the selection string that can be used to select objects. The operators ==, !=, =~ and !~ are available. Use the help option to get a list of valid attributes for each object type.
+Use one or multiple B<-w> flags to specify the selection string that can be used to select objects. The operators ==, !=, =~ and !~ are available. Use the help option to get a list of valid attributes for each object type.
 
 Operator descriptions:
+
         ==        Select nodes where the attribute value is exactly this value.
         !=        Select nodes where the attribute value is not this specific value.
         =~        Select nodes where the attribute value matches this regular expression.
@@ -99,7 +100,7 @@ Note: if the "val" fields includes spaces or any other characters that will be p
 
 =item B<-z|--stanza>
 
-Display output in stanza format. See the xcatstanzafile man page for details on using xCAT stanza files.
+Display output in stanza format. See the "xcatstanzafile" man page for details on using xCAT stanza files. And default is to list complete object definition, use B<-i> to specify the attribute scope.
 
 =back
 
@@ -126,8 +127,6 @@ when defining an xCAT node.
 
 To get a list of all the objects that have been defined.
 
- lsdef
-   OR
  lsdef -a
 
 =item 3.
@@ -211,7 +210,7 @@ The hidden nodes are FSP/BPAs.
 
 =item 15.
 
-To list the nodes status and use xcoll to format the output.
+To list the nodes status and use B<xcoll> to format the output.
 
  lsdef -t node -i status -c | xcoll
 

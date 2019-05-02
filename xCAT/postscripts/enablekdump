@@ -101,7 +101,7 @@ if [ ! -z "$DUMP" ]; then
     MOUNTPATH=""
     if (pmatch $OSVER "*6\.*"); then
 	MOUNTPATH="/tmp"
-    elif (pmatch $OSVER "*7\.*"); then
+    elif (pmatch $OSVER "*[78]\.*"); then
         MOUNTPATH="/mnt"
     else
 	MOUNTPATH="/var/tmp"
@@ -215,7 +215,7 @@ EOF
                 mv ${oldremount}.bak $oldremount
             fi
 	else
-            if (pmatch $OSVER "rhel7*") || (pmatch $OSVER "rhels7*");then
+            if (pmatch $OSVER "rhel[78]*") || (pmatch $OSVER "rhels[78]*");then
                nfsvers=$(/usr/sbin/rpcinfo -p $KDIP|grep -w nfs|awk /tcp/'{print $2}'|sort)
                nfsver=0
                if [ -n "$nfsvers" ]; then
@@ -260,7 +260,9 @@ EOF
                        fi
                done
                sed -i "s#^[\t ]*KDUMP_COMMANDLINE=\"#KDUMP_COMMANDLINE=\"$kdumpcmdline#" /etc/sysconfig/kdump
-               sed -i "s#^[\t ]*KDUMP_COMMANDLINE_APPEND=\"#KDUMP_COMMANDLINE_APPEND=\"root=nfs:$KDIP:$KDPATH #" /etc/sysconfig/kdump
+               if (pmatch $OSVER "rhel7*") || (pmatch $OSVER "rhels7*"); then
+                   sed -i "s#^[\t ]*KDUMP_COMMANDLINE_APPEND=\"#KDUMP_COMMANDLINE_APPEND=\"root=nfs:$KDIP:$KDPATH #" /etc/sysconfig/kdump
+               fi
                [ -f /etc/dracut.conf ] && mv /etc/dracut.conf  /tmp/dracut.conf
                restartservice kdump
                [ -f /tmp/dracut.conf ] && mv /tmp/dracut.conf /etc/dracut.conf

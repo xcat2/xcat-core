@@ -21,13 +21,13 @@ SYNOPSIS
 
 \ **lsdef**\  [\ **-h | -**\ **-help**\ ] [\ **-t**\  \ *object-types*\ ] [\ **-i**\  \ *attr-list*\ ]
 
-\ **lsdef**\  [\ **-V | -**\ **-verbose**\ ] [\ **-l | -**\ **-long**\ ] [\ **-s | -**\ **-short**\ ] [\ **-a | -**\ **-all**\ ] [\ **-S**\ ]
-[\ **-t**\  \ *object-types*\ ] [\ **-o**\  \ *object-names*\ ] [\ **-z | -**\ **-stanza**\ ] [\ **-i**\  \ *attr-list*\ ]
+\ **lsdef**\  [\ **-V | -**\ **-verbose**\ ] [\ **-a | -**\ **-all**\ ] [\ **-S**\ ]
+[\ **-t**\  \ *object-types*\ ] [\ **-o**\  \ *object-names*\ ] [\ **-z | -**\ **-stanza**\ ] [\ **-i**\  \ *attr-list*\  | [\ **-l | -**\ **-long**\ ] | [\ **-s | -**\ **-short**\ ]]
 [\ **-c | -**\ **-compress**\ ] [\ **-**\ **-osimage**\ ] [\ **-**\ **-nics**\ ] [[\ **-w**\  \ *attr*\ ==\ *val*\ ]
 [\ **-w**\  \ *attr*\ =~\ *val*\ ] ...] [\ *noderange*\ ]
 
-\ **lsdef**\  [\ **-l | -**\ **-long**\ ] [\ **-a | -**\ **-all**\ ] [\ **-t**\  \ *object-types*\ ] [\ **-z | -**\ **-stanza**\ ]
-[\ **-i**\  \ *attr-list*\ ] [\ **-**\ **-template**\  [\ *template-object-name*\ ]]
+\ **lsdef**\  [\ **-a | -**\ **-all**\ ] [\ **-t**\  \ *object-types*\ ] [\ **-z | -**\ **-stanza**\ ]
+[\ **-i**\  \ *attr-list*\  | [\ **-l | -**\ **-long**\ ] | [\ **-s | -**\ **-short**\ ]] [\ **-**\ **-template**\  [\ *template-object-name*\ ]]
 
 
 ***********
@@ -49,15 +49,15 @@ OPTIONS
  
  Display all definitions.
  For performance consideration, the auditlog and eventlog objects will not be listed.
- To list auditlog or eventlog objects, use lsdef -t auditlog or lsdef -t eventlog instead.
+ To list auditlog or eventlog objects, use \ **lsdef -t auditlog**\  or \ **lsdef -t eventlog**\  instead.
  
 
 
 \ **-c|-**\ **-compress**\ 
  
  Display information in compressed mode, each output line has format "<object name>: <data>".
- The output can be passed to command xcoll or xdshbak for formatted output.
- The -c flag must be used with -i flag.
+ The output can be passed to command \ **xcoll**\  or \ **xdshbak**\  for formatted output.
+ The \ **-c**\  flag must be used with \ **-i**\  flag.
  
 
 
@@ -136,13 +136,18 @@ OPTIONS
 
 \ **-w**\  \ *attr==val*\  \ **-w**\  \ *attr=~val*\  ...
  
- Use one or multiple -w flags to specify the selection string that can be used to select objects. The operators ==, !=, =~ and !~ are available. Use the help option to get a list of valid attributes for each object type.
+ Use one or multiple \ **-w**\  flags to specify the selection string that can be used to select objects. The operators ==, !=, =~ and !~ are available. Use the help option to get a list of valid attributes for each object type.
  
  Operator descriptions:
-         ==        Select nodes where the attribute value is exactly this value.
-         !=        Select nodes where the attribute value is not this specific value.
-         =~        Select nodes where the attribute value matches this regular expression.
-         !~        Select nodes where the attribute value does not match this regular expression.
+ 
+ 
+ .. code-block:: perl
+ 
+          ==        Select nodes where the attribute value is exactly this value.
+          !=        Select nodes where the attribute value is not this specific value.
+          =~        Select nodes where the attribute value matches this regular expression.
+          !~        Select nodes where the attribute value does not match this regular expression.
+ 
  
  Note: if the "val" fields includes spaces or any other characters that will be parsed by shell, the "attr<operator>val" needs to be quoted. If the operator is "!~", the "attr<operator>val" needs to be quoted using single quote.
  
@@ -150,7 +155,7 @@ OPTIONS
 
 \ **-z|-**\ **-stanza**\ 
  
- Display output in stanza format. See the xcatstanzafile man page for details on using xCAT stanza files.
+ Display output in stanza format. See the "xcatstanzafile" man page for details on using xCAT stanza files. And default is to list complete object definition, use \ **-i**\  to specify the attribute scope.
  
 
 
@@ -191,8 +196,6 @@ EXAMPLES
  
  .. code-block:: perl
  
-   lsdef
-     OR
    lsdef -a
  
  
@@ -350,7 +353,7 @@ EXAMPLES
 
 15.
  
- To list the nodes status and use xcoll to format the output.
+ To list the nodes status and use \ **xcoll**\  to format the output.
  
  
  .. code-block:: perl

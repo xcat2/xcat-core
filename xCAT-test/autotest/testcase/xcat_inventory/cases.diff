@@ -13,7 +13,7 @@ start:xcat_inventory_diff_without_option
 description:This case is used to test xcat-inventory diff without option, should be error
 label:others,inventory_ci
 cmd:xcat-inventory diff
-check:output=~Error: No valid source type!
+check:output=~Backend not initialized, please initialize the backend with
 check:rc!=0
 end
 
@@ -45,7 +45,7 @@ start:xcat_inventory_diff_filename
 description:This case is used to test xcat-inventory diff filename, should be error
 label:others,inventory_ci
 cmd:xcat-inventory diff --filename test_filename
-check:output=~Error: No valid source type!
+check:output=~Backend not initialized, please initialize the backend with
 check:rc!=0
 end
 

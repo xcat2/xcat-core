@@ -358,6 +358,14 @@ if($onlyinitrd){
 
     my $yumcmd = "yum $non_interactive -c /tmp/genimage.$$.yum.conf --installroot=$rootimg_dir/ --disablerepo=* ";
 
+    if ($osver =~ /^rhel\D*(\d*)[.\d]*.*$/) {
+        $majorrel = $1;
+        if ($majorrel > 7) {
+            $yumcmd .= "--releasever=" . $majorrel . " ";
+            $yumcmd .= "--setopt=module_platform_id=platform:el" . $majorrel . " ";
+        }
+    }
+
     foreach (0 .. $repnum) {
         $yumcmd .= "--enablerepo=$osver-$arch-$_ ";
     }

@@ -14,6 +14,12 @@ xCAT 2.14.x
 |xCAT                             |New OS         |New          |New Feature                       |
 |Version                          |               |Hardware     |                                  |
 +=================================+===============+=============+==================================+
+|| xCAT 2.14.6 2019/03/29         |               |             |                                  |
+||                                |               |             |                                  |
+| `2.14.6 Release Notes <https:// |               |             |                                  |
+| github.com/xcat2/xcat-core/wiki |               |             |                                  |
+| /XCAT_2.14.6_Release_Notes>`_   |               |             |                                  |
++---------------------------------+---------------+-------------+----------------------------------+
 || xCAT 2.14.5 2018/12/07         |- RHEL7.6      |             |- syslog tag refine               |
 ||                                |               |             |                                  |
 | `2.14.5 Release Notes <https:// |               |             |- site:httpport support           |

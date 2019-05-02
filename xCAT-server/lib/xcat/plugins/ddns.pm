@@ -785,7 +785,7 @@ sub process_request {
                   "Update Named Conf dir $ctx->{dbdir} $ctx->{zonesdir}";
                 xCAT::MsgUtils->message("I", $rsp, $callback);
             }
-
+            $ctx->{forwardmode} = get_forwardmode();
             update_namedconf($ctx, $slave);
 
             unless ($slave)
@@ -934,6 +934,27 @@ sub get_zonesdir {
 
     return "$ZonesDir";
 }
+
+sub get_forwardmode {
+    my $forwardmode;
+    my @entries    = xCAT::TableUtils->get_site_attribute("dnsforwardmode"); 
+    my $site_entry = $entries[0];
+    if (defined($site_entry)) {
+        if ($site_entry =~ /^only$|^first$/) {
+            $forwardmode = $site_entry;
+        } elsif ($site_entry =~ /^no$/) {
+            $forwardmode = ""
+        }else {
+            my $rsp = {};
+            $rsp->{data}->[0] = "forward mode $site_entry is not supported, supported value: only, first, no.";
+            xCAT::MsgUtils->message("S", "forward mode $site_entry is not supported, supported value: only, first, no.");
+            xCAT::MsgUtils->message("W", $rsp, $callback);
+            return;
+        }
+    }
+    return "$forwardmode";
+}
+
 
 sub get_conf {
     my $conf = "/etc/named.conf";
@@ -1114,6 +1135,8 @@ sub update_namedconf {
                             push @newnamed, "\t\t" . $_ . ";\n";
                         }
                         push @newnamed, "\t};\n";
+                    } elsif ($ctx->{forwardmode} and $line =~ /forward/) {
+                        push @newnamed, "\tforward " . $ctx->{forwardmode} . ";\n";
                     } elsif ($ctx->{empty_zones_enable} and $line =~ /empty-zones-enable/) {
                         push @newnamed, "\tempty-zones-enable " . $ctx->{empty_zones_enable} . ";\n";
                     } elsif ($ctx->{slaves} and $line =~ /allow-transfer \{/) {
@@ -1253,6 +1276,10 @@ sub update_namedconf {
                 push @newnamed, "\t\t$_;\n";
             }
             push @newnamed, "\t};\n";
+        }
+
+        if ($ctx->{forwardmode}){
+            push @newnamed, "\tforward " . $ctx->{forwardmode} . ";\n";
         }
 
         if ($ctx->{empty_zones_enable}){

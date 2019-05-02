@@ -41,7 +41,7 @@ cmd:genimage  __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-comput
 check:rc==0
 cmd:mount |sort > /tmp/mountoutput/file.new
 cmd:cat /tmp/mountoutput/file.new
-cmd:diff /tmp/mountoutput/file.org /tmp/mountoutput/file.new
+cmd:diff /tmp/mountoutput/file.org /tmp/mountoutput/file.new --ignore-matching-lines="fusectl"
 check:rc==0
 cmd:rm -rf /tmp/mountoutput
 cmd:packimage __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute
