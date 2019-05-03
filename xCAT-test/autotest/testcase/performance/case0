@@ -33,13 +33,6 @@ cmd:chdef -t node -o $$CN servicenode= monserver= nfsserver= tftpserver=  xcatma
 check:rc==0
 cmd:chdef -t node -o $$SN servicenode= monserver= nfsserver= tftpserver=  xcatmaster= status=
 check:rc==0
-cmd:makeconservercf
-check:rc==0
-cmd:cat /etc/conserver.cf | grep $$CN
-check:output=~$$CN
-cmd:cat /etc/conserver.cf | grep $$SN
-check:output=~$$SN
-cmd:sleep 20
 cmd:makedhcp -n
 check:rc==0
 cmd:makedhcp -a
