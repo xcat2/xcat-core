@@ -242,6 +242,7 @@ check:output=~aliases1-1 aliases1-1-1
 check:output=~aliases1-2
 cmd:updatenode $$CN -P confignetwork
 check:rc==0
+cmd:xdsh $$CN date
 cmd:if grep SUSE /etc/*release;then xdsh $$CN "cat /etc/sysconfig/network/ifcfg-$$SECONDNIC"; elif grep -E "Red Hat|CentOS" /etc/*release;then xdsh $$CN  "cat /etc/sysconfig/network-scripts/ifcfg-*$$SECONDNIC*"; elif grep Ubuntu /etc/*release;then xdsh $$CN "cat /etc/network/interfaces.d/*";else echo "Sorry,this is not supported os"; fi
 check:output=~11.1.0.100
 check:output=~BOOTPROTO=none|static
@@ -469,6 +470,7 @@ check:output=~$$CN-$$THIRDNIC-1
 check:output=~$$CN-$$THIRDNIC-2
 cmd:updatenode $$CN -P confignetwork
 check:rc==0
+cmd:xdsh $$CN date
 cmd:if grep SUSE /etc/*release;then xdsh $$CN "grep 11.1.0.100 /etc/sysconfig/network/ifcfg-$$SECONDNIC"; elif grep -E "Red Hat|CentOS" /etc/*release;then xdsh $$CN  "grep 11.1.0.100 /etc/sysconfig/network-scripts/ifcfg-*$$SECONDNIC*"; elif grep Ubuntu /etc/*release;then xdsh $$CN "grep 11.1.0.100 /etc/network/interfaces.d/$$SECONDNIC";else echo "Sorry,this is not supported os"; fi
 check:output=~11.1.0.100
 cmd:if grep SUSE /etc/*release;then xdsh $$CN "grep 12.1.0.100 /etc/sysconfig/network/ifcfg-$$SECONDNIC"; elif grep -E "Red Hat|CentOS" /etc/*release;then xdsh $$CN  "grep 12.1.0.100 /etc/sysconfig/network-scripts/ifcfg-*$$SECONDNIC*"; elif grep Ubuntu /etc/*release;then xdsh $$CN "grep 12.1.0.100 /etc/network/interfaces.d/$$SECONDNIC";else echo "Sorry,this is not supported os"; fi
@@ -853,7 +855,6 @@ cmd:cnip=__GETNODEATTR($$CN,ip)__;echo $cnip;var1=102;var2=103;var3=`echo $cnip 
 check:rc==0
 cmd:updatenode $$CN -P confignetwork
 check:rc==0
-end
 cmd:cnip=__GETNODEATTR($$CN,ip)__;echo $cnip;var1=102;var3=`echo $cnip |sed -r 's/[^\.]*(..\..*)/\1/'`;br22ip=$var1$var3;if grep SUSE /etc/*release;then xdsh $$CN "grep $br22ip /etc/sysconfig/network/ifcfg-br22"; elif grep -E "Red Hat|CentOS" /etc/*release;then xdsh $$CN  "grep $br22ip /etc/sysconfig/network-scripts/ifcfg-*br22*"; elif grep Ubuntu /etc/*release;then xdsh $$CN "grep $br22ip /etc/network/interfaces.d/br22";else echo "Sorry,this is not supported os"; fi
 check:rc==0
 cmd:cnip=__GETNODEATTR($$CN,ip)__;echo $cnip;var1=103;var3=`echo $cnip |sed -r 's/[^\.]*(..\..*)/\1/'`;br33ip=$var1$var3;if grep SUSE /etc/*release;then xdsh $$CN "grep $br33ip /etc/sysconfig/network/ifcfg-br33"; elif grep -E "Red Hat|CentOS" /etc/*release;then xdsh $$CN  "grep $br33ip /etc/sysconfig/network-scripts/ifcfg-*br33*"; elif grep Ubuntu /etc/*release;then xdsh $$CN "grep $br33ip /etc/network/interfaces.d/br33";else echo "Sorry,this is not supported os"; fi
