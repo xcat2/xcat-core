@@ -1878,7 +1878,7 @@ function wait_nic_connect_intime {
     fi
     i=0
     while [ $i -lt "$time_out" ]; do
-	con_name=$(nmcli dev show $_port|grep GENERAL.CONNECTION|awk -F: '{print $2}'|sed 's/^[ \t]*//g')
+	con_name=$(nmcli dev show $nic_name|grep GENERAL.CONNECTION|awk -F: '{print $2}'|sed 's/^[ \t]*//g')
         if [ ! -z "$con_name" -a "$con_name" != "--" ]; then
             break
         fi
