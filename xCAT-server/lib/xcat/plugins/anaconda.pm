@@ -2022,28 +2022,46 @@ sub copycd
     {
 
         #If they say to call it something unidentifiable, give up?
+        $callback->(
+            {
+                error => "The name specified ($distname) is not supported. Use the following format: rh*,pkvm*,centos*,fedora*,SL*,ol*"
+            }
+        );
         return;
     }
-    unless (-r $mntpath . "/.discinfo")
-    {
-        return;
-    }
+
     my $dinfo;
-    open($dinfo, $mntpath . "/.discinfo");
-    my $did = <$dinfo>;
-    chomp($did);
-    my $desc = <$dinfo>;
-    chomp($desc);
-    my $darch = <$dinfo>;
-    chomp($darch);
-    my $dno = <$dinfo>;
-    chomp($dno);
+    my $did;
+    my $desc;
+    my $darch;
+    my $dno;
+
+    if (-r $mntpath . "/.discinfo")
+    {
+        print "DEBUG - Attempt to detemine OS information from the .discinfo file ...\n";
+        open($dinfo, $mntpath . "/.discinfo");
+
+        $did = <$dinfo>;
+        chomp($did);
+        $desc = <$dinfo>;
+        chomp($desc);
+        $darch = <$dinfo>;
+        chomp($darch);
+        $dno = <$dinfo>;
+        chomp($dno);
+        
+        close($dinfo);
+    }
+    else
+    {
+        print "DEBUG - No .discinfo file found on media, will continue ...\n";
+    }
 
     if ($darch and $darch =~ /i.86/)
     {
         $darch = "x86";
     }
-    close($dinfo);
+
     if ($xCAT::data::discinfo::distnames{$did})
     {
         unless ($distname)
@@ -2052,10 +2070,18 @@ sub copycd
         }
     }
 
+    unless ($dno) {
+        if ($distname =~ /((?:\d+\.)+\d+)/) { 
+            # Attempt to detemine the number of the OS from distname passed in
+            $dno = $1;
+        }
+    }
+    print "DEBUG - Distname=$distname, OS=$desc, ARCH=$arch, Version=$dno\n";
+
     unless ($distname)
     {
-        print "INFO - Could not find ID=$did in the discinfo database for OS=$desc ARCH=$darch NUM=$dno\n";
-        print "INFO - Attempting to auto-detect...\n";
+        print "DEBUG - Could not find ID=$did in the discinfo database for OS=$desc ARCH=$darch NUM=$dno\n";
+        print "DEBUG - Attempting to auto-detect...\n";
         if ($desc =~ /IBM_PowerKVM/)
         {
             # check for PowerKVM support
@@ -2102,8 +2128,9 @@ sub copycd
         }
         else
         {
-            print "INFO - Could not auto-detect operating system.\n";
-            return;    #Do nothing, not ours..
+            print "DEBUG - Could not auto-detect operating system.\n";
+            # Cannot continue with what was detected, or attributes provided
+            return;
         }
     }
     if ($darch)
@@ -2124,6 +2151,17 @@ sub copycd
         if ($arch eq "ppc") { $arch = "ppc64" }
     }
 
+    # At this point, arch should have been detected from the .discinfo, if not, then we require the user to provide it. 
+    unless ($arch)
+    {
+        $callback->(
+            {
+                error => "ARCH not be detected, provide an OS ARCH using the -a option. (ppc64le, x86_64)"
+            }
+        );
+        return;
+    }
+
     if ($inspection)
     {
         my $retinfo = "DISTNAME:$distname\n" . "ARCH:$arch\n";
@@ -2137,13 +2175,13 @@ sub copycd
         );
         return;
     }
-    print "INFO - detected distname=$distname, arch=$arch\n";
 
     %{$request} = ();    #clear request we've got it.
     my $disccopiedin = 0;
     my $osdistroname = $distname . "-" . $arch;
 
     my $defaultpath = "$installroot/$distname/$arch";
+    print "DEBUG - Detected distname=$distname, arch=$arch defaultpath=$defaultpath osdistroname=$osdistroname\n";
     unless ($path)
     {
         $path = $defaultpath;
