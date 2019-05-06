@@ -705,7 +705,7 @@ sub addnode
             }
         } elsif ($nrent and $nrent->{netboot} and $nrent->{netboot} eq 'yaboot') {
             $lstatements = 'filename = \"/yb/node/yaboot-' . $node . '\";' . $lstatements;
-        } elsif ($nrent and $nrent->{netboot} and $nrent->{netboot} eq 'grub2') {
+        } elsif ($nrent and $nrent->{netboot} and $nrent->{netboot} =~ /^grub2[-]?.*$/) {
             $lstatements = 'filename = \"/boot/grub2/grub2-' . $node . '\";' . $lstatements;
         } elsif ($nrent and $nrent->{netboot} and $nrent->{netboot} eq 'petitboot') {
             $lstatements = 'option conf-file \"http://' . $nxtsrv .':' . $httpport . '/tftpboot/petitboot/' . $node . '\";' . $lstatements;
