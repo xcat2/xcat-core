@@ -1738,7 +1738,7 @@ function create_vlan_interface_nmcli {
                     return 1
                 fi
                 _netmask=$(v4mask2prefix $_netmask_long)
-                _ipaddrs="method none ip4 $ipaddr/$_netmask"
+                _ipaddrs="ip4 $ipaddr/$_netmask"
             fi
         fi
     fi
@@ -1758,7 +1758,7 @@ function create_vlan_interface_nmcli {
         $nmcli con modify $con_name connection.id $tmp_con_name
     fi
     #create VLAN connetion
-    $nmcli con add type vlan con-name $con_name dev $ifname id $(( 10#$vlanid )) $_ipaddrs $_mtu connection.autoconnect-priority 9
+    $nmcli con add type vlan con-name $con_name dev $ifname id $(( 10#$vlanid )) method none $_ipaddrs $_mtu connection.autoconnect-priority 9 autoconnect yes
     log_info "create NetworkManager connection for $ifname.$vlanid"
 
     #add extra params
@@ -1857,6 +1857,35 @@ function is_connection_activate_intime {
     else
         return 1
     fi
+}
+
+###############################################################################
+#
+# wait_nic_connect_intime
+#
+# input : nic name
+#         time_out (optional, 40 seconds by default)
+# return : connection name
+#
+###############################################################################
+
+function wait_nic_connect_intime {
+    nic_name=$1
+    time_out=40
+    con_name=''
+    if [ ! -z "$2" ]; then
+        time_out=$2
+    fi
+    i=0
+    while [ $i -lt "$time_out" ]; do
+	con_name=$(nmcli dev show $_port|grep GENERAL.CONNECTION|awk -F: '{print $2}'|sed 's/^[ \t]*//g')
+        if [ ! -z "$con_name" -a "$con_name" != "--" ]; then
+            break
+        fi
+        sleep 1
+        i=$((i+1))
+    done
+    echo $con_name
 }
 
 ###############################################################################
@@ -1975,7 +2004,7 @@ function create_bridge_interface_nmcli {
                 return 1
             fi
         fi
-        con_use_same_dev=$(nmcli dev show $_port|grep GENERAL.CONNECTION|awk -F: '{print $2}'|sed 's/^[ \t]*//g')
+        con_use_same_dev=$(wait_nic_connect_intime $_port)
         if [ "$con_use_same_dev" != "--" -a -n "$con_use_same_dev" ]; then
             cmd="$nmcli con mod "$con_use_same_dev" master $ifname $_mtu connection.autoconnect-priority 9"
             xcat_slave_con=$con_use_same_dev
