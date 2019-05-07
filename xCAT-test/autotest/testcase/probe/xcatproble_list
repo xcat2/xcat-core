@@ -1,0 +1,7 @@
+start:xcatprobe_work
+description:To test if xcatprobe list works. This case must run in xcat mn
+label:mn_only,ci_test
+cmd:xcatprobe -l
+check:rc == 0
+check:output =~ Supported sub commands are:
+end
