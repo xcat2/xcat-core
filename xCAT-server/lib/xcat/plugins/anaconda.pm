@@ -2024,7 +2024,7 @@ sub copycd
         #If they say to call it something unidentifiable, give up?
         $callback->(
             {
-                error => "The name specified ($distname) is not supported. Use the following format: rh*,pkvm*,centos*,fedora*,SL*,ol*"
+                error => "The name specified ($distname) is not supported. Use the following format: rh*,pkvm*,centos*,fedora*,SL*,ol*", errorcode => [1]
             }
         );
         return;
@@ -2143,7 +2143,7 @@ sub copycd
         {
             $callback->(
                 {
-                    error => "Requested distribution architecture $arch, but media is $darch"
+                    error => "Requested distribution architecture $arch, but media is $darch", errorcode => [1]
                 }
             );
             return;
@@ -2156,7 +2156,7 @@ sub copycd
     {
         $callback->(
             {
-                error => "ARCH not be detected, provide an OS ARCH using the -a option. (ppc64le, x86_64)"
+                error => "ARCH not be detected, provide an OS ARCH using the -a option. (ppc64le, x86_64)", errorcode => [1]
             }
         );
         return;
