@@ -262,8 +262,6 @@ sub is_selinux_enforcing {
           elsif (/Enforcing/)  { $retval = 1; }
           else { $retval = 0; }
         }
-    } else {
-        $retval = 0;
     }
     return $retval;
 }
