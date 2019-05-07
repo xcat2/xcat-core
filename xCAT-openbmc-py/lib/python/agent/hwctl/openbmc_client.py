@@ -200,12 +200,16 @@ RSPCONFIG_APIS = {
         'baseurl': "/sensors/chassis/PowerSupplyRedundancy/",
         'set_url': "action/setValue",
         'get_url': "action/getValue",
+        'get_url_new': '/control/power_supply_redundancy',
         'get_method': 'POST',
+        'get_method_new': 'GET',
         'get_data': [],
         'display_name': "BMC PowerSupplyRedundancy",
         'attr_values': {
             'disabled': ["Disabled"],
             'enabled': ["Enabled"],
+            'False': ['Disabled'],
+            'True':  ["Enabled"],
         },
     },
     'powerrestorepolicy': {
@@ -789,6 +793,10 @@ class OpenBMCRest(object):
         if 'get_data' in attr_info:
             data={"data": attr_info['get_data']}
         return self.request(method, get_url, payload=data, cmd="get_%s" % key)
+
+    def get_powersupplyredundancy(self):
+        attr_info = RSPCONFIG_APIS['powersupplyredundancy']
+        return self.request(attr_info['get_method_new'], attr_info['get_url_new'], cmd='get_powersupplyredundancy')
 
     def set_admin_passwd(self, passwd):
 

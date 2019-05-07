@@ -404,6 +404,25 @@ rmdir \"/tmp/$userid\" \n")
 
         self.callback.info("%s: BMC Setting %s..." % (node, openbmc.RSPCONFIG_APIS[key]['display_name']))
 
+    def _get_powersupplyredundancy_value(self, node, obmc):
+        try:
+            psr_info = obmc.get_powersupplyredundancy()
+            for key, value in psr_info.items():
+                if key == 'PowerSupplyRedundancyEnabled':
+                   result = '%s: %s: %s' % (node, openbmc.RSPCONFIG_APIS['powersupplyredundancy']['display_name'],
+                                             openbmc.RSPCONFIG_APIS['powersupplyredundancy']['attr_values'][str(value)][0])
+                   return self.callback.info(result)
+        except SelfServerException as e:
+            return self.callback.error(e.message, node)
+        except SelfClientException as e:
+            if e.code == 404:
+                return self.callback.error('404 Not Found - Requested endpoint does not exist or may ' \
+                                           'indicate function is not supported on this OpenBMC firmware.', node)
+            if e.code == 403:
+                return self.callback.error('403 Forbidden - Requested endpoint does not exist or may ' \
+                                           'indicate function is not yet supported by OpenBMC firmware.', node)
+            return self.callback.error(e.message, node)
+
     def _get_apis_values(self, key, **kw):
         node = kw['node']
         obmc = openbmc.OpenBMCRest(name=node, nodeinfo=kw['nodeinfo'], messager=self.callback,
@@ -416,6 +435,9 @@ rmdir \"/tmp/$userid\" \n")
             return self.callback.error(e.message, node)
         except SelfClientException as e:
             if e.code == 404:
+                if key == 'powersupplyredundancy':
+                    return self._get_powersupplyredundancy_value(node, obmc)
+
                 return self.callback.error('404 Not Found - Requested endpoint does not exist or may ' \
                                            'indicate function is not supported on this OpenBMC firmware.', node)
             if e.code == 403:

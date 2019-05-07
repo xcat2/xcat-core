@@ -230,11 +230,21 @@ sub setstate {
 
         # write entries to boot config file, but only if not offline directive
         if ($cref and $cref->{currstate} ne "offline") {
+            my $httpport = "80";
+            my @hports = xCAT::TableUtils->get_site_attribute("httpport");
+            if ($hports[0]) {
+                $httpport = $hports[0];
+            }
+
             print $pcfg "set default=\"xCAT OS Deployment\"\n";
             print $pcfg "menuentry \"xCAT OS Deployment\" {\n";
             print $pcfg "    insmod http\n";
             print $pcfg "    insmod tftp\n";
-            print $pcfg "    set root=$grub2protocol,$serverip\n";
+            if ($grub2protocol eq "http" && $httpport ne "80") {
+                print $pcfg "    set root=http,$serverip:$httpport\n";
+            } else {
+                print $pcfg "    set root=$grub2protocol,$serverip\n";
+            }
             print $pcfg "    echo Loading Install kernel ...\n";
 
             my $protocolrootdir = "";
