@@ -59,6 +59,7 @@ value="";
         if [[ $output =~ $value ]];then
             return 0;
         else
+            echo "The expected output is \"$value\" since there password is wrong, but the real output is $output" 
             return 1;
         fi
 }
