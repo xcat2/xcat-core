@@ -256,11 +256,8 @@ sub is_selinux_enforcing {
     if (-e "/usr/sbin/getenforce") {
         my $enforce_mode = `/usr/sbin/getenforce`;
         chomp $enforce_mode;
-        for ($enforce_mode) {
-          if    (/Disabled/)   { $retval = 0; }
-          elsif (/Permissive/) { $retval = 0; }
-          elsif (/Enforcing/)  { $retval = 1; }
-          else { $retval = 0; }
+	if ($enforce_mode eq "Enforcing") {
+            $retval = 1;
         }
     }
     return $retval;
