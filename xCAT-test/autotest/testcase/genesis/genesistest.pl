@@ -69,11 +69,14 @@ if (!defined($noderange)) {
 my $os = &get_os;
 if ($check_genesis_file) {
     send_msg(2, "[$$]:Check genesis file...............");
+    print "[$$]:Check genesis file...............\n";
     &check_genesis_file(&get_arch);
     if ($?) {
         send_msg(0, "genesis file not available");
+        print "genesis file is not available\n";
     } else {
         send_msg(2, "genesis file available");
+        print "genesis file is available\n";
     }
 }
 my $master=`lsdef -t site -i master -c  2>&1 | awk -F'=' '{print \$2}'`;
@@ -90,57 +93,72 @@ if (!(-e $nodestanza)) {
 ####################################
 if ($genesis_nodesetshell_test) {
     send_msg(2, "[$$]:Running nodesetshell test...............");
+    print "[$$]:Running nodesetshell test...............\n";
     `nodeset $noderange shell`;
     if ($?) {
         send_msg(0, "[$$]:nodeset shell failed...............");
+        print "[$$]:nodeset shell failed...............\n";
         exit 1;
     }
     `rpower $noderange boot`;
     if ($?) {
         send_msg(0, "[$$]:rpower node failed...............");
+        print "[$$]:rpower node failed...............\n";
         exit 1;
     }
     #run nodeshell test
     send_msg(2, "prepare for nodeshell script.");
+    print "prepare for nodeshell script.\n";
     if ( &testxdsh(3)) {
         send_msg(0, "[$$]:Could not verify test results using xdsh...............");
+        print "[$$]:Could not verify test results using xdsh...............\n";
         exit 1;
     }
     send_msg(2, "[$$]:Running nodesetshell test success...............");
+    print "[$$]:Running nodesetshell test success...............\n";
 }
 ####################################
 ####runcmd test for genesis
 ####################################
 if ($genesis_runcmd_test) {
     send_msg(2, "[$$]:Running runcmd test...............");
+    print "[$$]:Running runcmd test...............\n";
     if (&testxdsh(&rungenesiscmd(&get_arch))) {
         send_msg(0, "[$$]:Could not verify test results using xdsh...............");
+        print "[$$]:Could not verify test results using xdsh...............\n";
         exit 1;
     }
     send_msg(2, "[$$]:Running runcmd test success...............");
+    print "[$$]:Running runcmd test success...............\n";
 }
 ##################################
 ####runimg test for genesis
 ##################################
 if ($genesis_runimg_test) {
     send_msg(2, "[$$]:Run runimg test...............");
+    print "[$$]:Run runimg test...............\n";
     if (&testxdsh(&rungenesisimg)) {
         send_msg(0, "[$$]:Could not verify test results using xdsh ...............");
+        print "[$$]:Could not verify test results using xdsh ...............\n";
         exit 1;
     }
 
     send_msg(2, "[$$]:Running runimage test success...............");
+    print "[$$]:Running runimage test success...............\n";
 }
 ###################################
 ####clear test environment
 ###################################
 if ($clear_env) {
     send_msg(2, "[$$]:clear genesis test enviroment...............");
+    print "[$$]:clear genesis test enviroment...............\n";
     if (&clearenv(&get_arch)) {
         send_msg(0, "[$$]:clear environment failed...............");
+        print "[$$]:clear environment failed...............\n";
         exit 1;
     }
     send_msg(2, "[$$]:clear genesis test enviroment success...............");
+    print "[$$]:clear genesis test enviroment success...............\n";
 }
 ##################################
 #check_genesis_file
@@ -151,6 +169,7 @@ sub check_genesis_file {
     my $genesis_scripts;
     if ($os =~ "unknown") {
         send_msg(0, "The OS is not supported.");
+        print "The OS is not supported.\n";
         return 1;
     } elsif ($os =~ "ubuntu") {
         $genesis_base = `dpkg -l | grep -i "ii  xcat-genesis-base" | grep -i "$arch"`;
@@ -161,6 +180,7 @@ sub check_genesis_file {
     }
     unless ($genesis_base and $genesis_scripts) {
         send_msg(0, "xCAT-genesis for $arch did not be installed.");
+        print "xCAT-genesis for $arch did not be installed.\n"; 
         return 1;
     }
     return 0;
@@ -180,6 +200,7 @@ sub rungenesiscmd {
 
         #means runcmd test using test scripts genesistest.pl writes
         send_msg(2, "no runcmd scripts for test prepared.");
+        print "no runcmd scripts for test prepared.\n";
         open(TESTCMD, ">$runcmd_script")
           or die "Can't open testscripts for writing: $!";
         print TESTCMD join("\n", "#!/bin/bash"),                       "\n";
@@ -191,6 +212,7 @@ sub rungenesiscmd {
 
         #means runcmd test using test scripts user writes
         send_msg(2, "runcmd scripts for test ready.");
+        print "runcmd scripts for test ready.\n";
     }
     $genesis_bin_dir = "$genesis_base_dir/$arch/fs/bin";
     copy("$runcmd_script", "$genesis_bin_dir");
@@ -198,10 +220,12 @@ sub rungenesiscmd {
     `mknb $arch`;
     if ($?) {
         send_msg(0, "mknb $arch failed for runcmd test.");
+        print "mknb $arch failed for runcmd test.\n";
     }
     `rinstall $noderange "runcmd=cmdtest,shell"`;
     if ($?) {
       send_msg(0, "rinstall noderange shell failed for runcmd test");
+      print "rinstall noderange shell failed for runcmd test\n";
     }
     return $value;
 }
@@ -220,6 +244,7 @@ sub rungenesisimg {
 
         #means runimg test using test scripts genesistest.pl writes
         send_msg(2, "no runimg scripts for test prepared.");
+        print "no runimg scripts for test prepared.\n";
         open(TESTIMG, ">$runimg_script")
           or die "Can't open testscripts for writing: $!";
         print TESTIMG join("\n", "#!/bin/bash"),                       "\n";
@@ -232,6 +257,7 @@ sub rungenesisimg {
 
         #means runimg test using test scripts user writes
         send_msg(2, "runimg scripts for test ready.");
+        print "runimg scripts for test ready.\n";
     }
     copy("$runimg_script", "/install/my_image/runme.sh") or die "Copy failed: $!";
     chmod 0755, "/install/my_image/runme.sh";
@@ -240,6 +266,7 @@ sub rungenesisimg {
     `rinstall $noderange "runimage=http://$master/install/my_image/my_image.tgz",shell`;
     if ($?) {
         send_msg(0, "rinstall noderange failed for runimg");
+        print "rinstall noderange failed for runimg\n";
     }
     return $value;
 }
@@ -268,6 +295,7 @@ sub testxdsh {
             foreach (1 .. 10) {
                 sleep 300;
                 send_msg(1,"try to run xdsh to check the results again");
+                print "try to run xdsh to check the results again\n";
                 `xdsh $noderange -t 2 cat $checkfile 2>&1| grep $checkstring `;
                 last if ($? == 0);
             }
@@ -294,6 +322,7 @@ sub clearenv {
         unlink("$runimg_script");
         rmdir("$runmedir");
         send_msg(2, "clear runimage test environment");
+        print "clear runimage test environment\n";
     }
     if (-e "$runcmd_script") {
         my $genesis_bin_dir     = "$genesis_base_dir/$arch/fs/bin";
@@ -303,12 +332,14 @@ sub clearenv {
         `mknb $arch`;
         if ($?) {
             send_msg(0, "mknb for runcmd test environment failed");
+            print "mknb for runcmd test environment failed\n";
             exit 1;
         }
     }
     `rinstall $noderange boot`;
     if ($?) {
         send_msg(0, "rinstall node failed");
+        print "rinstall node failed\n";
         exit 1;
     }
     if (-e "$nodestanza") {
