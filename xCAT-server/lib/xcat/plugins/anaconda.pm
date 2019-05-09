@@ -2022,7 +2022,7 @@ sub copycd
     {
 
         #If they say to call it something unidentifiable, give up?
-        print "DEBUG - [anaconda.pm] The name specified ($distname) is not supported for anaconda images, continue to another plugin...";
+        print "DEBUG - [anaconda.pm] The name specified ($distname) is not supported for anaconda images, continue to another plugin...\n";
         return;
     }
 
@@ -2150,7 +2150,7 @@ sub copycd
     # At this point, if arch is not provided and we cannot determine it, return
     unless ($arch)
     {
-        print "DEBUG - [anaconda.pm] ARCH not detected, provided an OS ARCH using the -a option.";
+        print "DEBUG - [anaconda.pm] ARCH not detected, provided an OS ARCH using the -a option.\n";
         return;
     }
 
