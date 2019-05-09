@@ -96,7 +96,7 @@ start:lsvm_kvmhost
 description:lsvm could give out the kvm host information. This case should be run on a mn which has kvm host defined.In this case, $$CN should be a kvm host. 
 label:others,hctrl_kvm
 cmd:lsvm $$CN 
-check:output=~$$CN
+check:output=~$$CN:\s*\b\w+\b(\r\n|\n|\r)
 end
 
 start:lsvm_mixed_vm_defined_and_not
