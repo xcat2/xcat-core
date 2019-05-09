@@ -317,7 +317,7 @@ function servicemap {
       #all the service unit files are placed under /lib/systemd/system/ on ubuntu
       #all the service unit files are placed under /usr/lib/systemd/system/ on redhat and sles
       #path should be delimited with space
-      path="/usr/lib/systemd/system/ /lib/systemd/system/"
+      path="/usr/lib/systemd/system/ /lib/systemd/system/ /etc/systemd/system/"
       postfix=".service"
       svcmgrcmd="systemctl"
    elif [ "$svcmgrtype" = "2"  ];then
