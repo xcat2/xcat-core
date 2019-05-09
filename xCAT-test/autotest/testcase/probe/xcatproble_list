@@ -2,6 +2,15 @@ start:xcatprobe_work
 description:To test if xcatprobe list works. This case must run in xcat mn
 label:mn_only,ci_test
 cmd:xcatprobe -l
-check:rc == 0
-check:output =~ Supported sub commands are:
+check:rc==0
+check:output=~Supported sub commands are:
+check:output=~detect_dhcp
+check:output=~osdeploy
+check:output=~nodecheck
+check:output=~xcatmn
+check:output=~osimagecheck
+check:output=~discovery
+check:output=~image
+check:output=~clusterstatus
+check:output=~switch_macmap
 end
