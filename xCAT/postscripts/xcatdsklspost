@@ -293,7 +293,7 @@ fi
 # 2 - updatenode -S
 #   Perform Software Maintenanc - updatenode -S
 # 3 - moncfg rmcmon
-#   Abosoulted
+#   Obsoleted
 # 4
 #   Statelite mode
 # 5
