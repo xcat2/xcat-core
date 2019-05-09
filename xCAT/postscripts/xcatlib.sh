@@ -549,6 +549,8 @@ function checkservicestatus {
          retcode=1
       elif echo $output|grep -E -i "^failed$";then
          retcode=2
+      elif echo $output|grep -E -i "^activating$";then
+         retcode=17
       fi
    elif [ -n "$svcjob"  ];then
       output=$(initctl status $svcjob)
