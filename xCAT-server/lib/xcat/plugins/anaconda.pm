@@ -2022,11 +2022,7 @@ sub copycd
     {
 
         #If they say to call it something unidentifiable, give up?
-        $callback->(
-            {
-                error => "The name specified ($distname) is not supported. Use the following format: rh*,pkvm*,centos*,fedora*,SL*,ol*", errorcode => [1]
-            }
-        );
+        print "DEBUG - [anaconda.pm] The name specified ($distname) is not supported for anaconda images, continue to another plugin...";
         return;
     }
 
@@ -2151,14 +2147,10 @@ sub copycd
         if ($arch eq "ppc") { $arch = "ppc64" }
     }
 
-    # At this point, arch should have been detected from the .discinfo, if not, then we require the user to provide it. 
+    # At this point, if arch is not provided and we cannot determine it, return
     unless ($arch)
     {
-        $callback->(
-            {
-                error => "ARCH not be detected, provide an OS ARCH using the -a option. (ppc64le, x86_64)", errorcode => [1]
-            }
-        );
+        print "DEBUG - [anaconda.pm] ARCH not detected, provided an OS ARCH using the -a option.";
         return;
     }
 
