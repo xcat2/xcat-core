@@ -285,6 +285,41 @@ else
   esac
 fi
 
+# The cheat sheet for ${MODE}
+# Empty
+#   node deployment
+# 1 - updatenode -P
+#   Execute postscripts listed in the postscripts table or parameters
+# 2 - updatenode -S
+#   Perform Software Maintenanc - updatenode -S
+# 3 - moncfg rmcmon
+#   Abosoulted
+# 4
+#   Statelite mode
+# 5
+#   Update security
+# 6 - xcatpostinit1
+#   During node reboot
+case "${MODE}" in
+"1"|"2"|"5")
+  # The cheat sheet for checkservicestatus
+  # Return code
+  # 0 - active
+  # 1 - inactive
+  # 2 - failed
+  # 3 - others
+  # 17 - activating
+  # 127 - error
+  checkservicestatus xcatpostinit1 >/dev/null 2>&1
+  case "$?" in
+  "17")
+    echolog "warning" "xCAT post-booting process is not completed yet. Abort. Please try later."
+    exit 255
+    ;;
+  esac
+  ;;
+esac
+
 update_VPD()
 {
     if [ -f /usr/sbin/vpdupdate ]; then
