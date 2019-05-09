@@ -1758,7 +1758,7 @@ function create_vlan_interface_nmcli {
         $nmcli con modify $con_name connection.id $tmp_con_name
     fi
     #create VLAN connetion
-    $nmcli con add type vlan con-name $con_name dev $ifname id $(( 10#$vlanid )) method none $_ipaddrs $_mtu connection.autoconnect-priority 9 autoconnect yes connection.autoconnect-slaves 1
+    $nmcli con add type vlan con-name $con_name dev $ifname id $(( 10#$vlanid )) method none $_ipaddrs $_mtu connection.autoconnect-priority 9 autoconnect yes connection.autoconnect-slaves 1 connection.autoconnect-retries 0
     log_info "create NetworkManager connection for $ifname.$vlanid"
 
     #add extra params
@@ -2006,10 +2006,10 @@ function create_bridge_interface_nmcli {
         fi
         con_use_same_dev=$(wait_nic_connect_intime $_port)
         if [ "$con_use_same_dev" != "--" -a -n "$con_use_same_dev" ]; then
-            cmd="$nmcli con mod "$con_use_same_dev" master $ifname $_mtu connection.autoconnect-priority 9 autoconnect yes connection.autoconnect-slaves 1"
+            cmd="$nmcli con mod "$con_use_same_dev" master $ifname $_mtu connection.autoconnect-priority 9 autoconnect yes connection.autoconnect-slaves 1 connection.autoconnect-retries 0"
             xcat_slave_con=$con_use_same_dev
         else
-            cmd="$nmcli con add type $_pretype con-name $xcat_slave_con ifname $_port master $ifname $_mtu connection.autoconnect-priority 9 autoconnect yes connection.autoconnect-slaves 1"
+            cmd="$nmcli con add type $_pretype con-name $xcat_slave_con ifname $_port master $ifname $_mtu connection.autoconnect-priority 9 autoconnect yes connection.autoconnect-slaves 1 connection.autoconnect-retries 0"
         fi
         log_info "create $_pretype slaves connetcion $xcat_slave_con for bridge"
         log_info "$cmd"
@@ -2067,7 +2067,7 @@ function create_bridge_interface_nmcli {
         if [ $? -eq 0 ]; then
             $nmcli con delete $tmp_slave_con_name
         fi
-        wait_for_ifstate $ifname UP 20 40
+        wait_for_ifstate $ifname UP 40 40
         [ $? -ne 0 ] && rc=1
         $ip address show dev $ifname| $sed -e 's/^/[bridge] >> /g' | log_lines info
     fi
@@ -2229,7 +2229,7 @@ function create_bond_interface_nmcli {
             $ip link set dev $ifslave down 
             wait_for_ifstate $ifslave DOWN 20 2
         fi
-        cmd="$nmcli con add type $slave_type con-name $xcat_slave_con $_mtu method none ifname $ifslave master $xcat_con_name autoconnect yes connection.autoconnect-priority 9"
+        cmd="$nmcli con add type $slave_type con-name $xcat_slave_con $_mtu method none ifname $ifslave master $xcat_con_name autoconnect yes connection.autoconnect-priority 9 connection.autoconnect-retries 0"
         log_info $cmd
         $cmd
         if [ $? -ne 0 ]; then
