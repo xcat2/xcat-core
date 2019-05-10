@@ -6,6 +6,6 @@ The process to configure the osimage to install the Mellanox OFED Drivers for Di
 .. toctree::
    :maxdepth: 2
 
-   mlnxofed_ib_install_v2_diskful.rst
-   mlnxofed_ib_install_v2_diskless.rst
+   mlnxofed_ib_install_diskful.rst
+   mlnxofed_ib_install_diskless.rst
 
