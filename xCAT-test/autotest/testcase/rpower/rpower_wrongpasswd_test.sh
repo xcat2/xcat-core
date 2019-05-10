@@ -10,32 +10,41 @@ tabdump passwd |grep $MGT
 function modify_passwd_table(){
 Username=`cat $TMPFILE |awk -F "\""  '{print $4}'`;
 Passwd=`cat $TMPFILE |awk -F "\""  '{print $6}'`;
+echo "Execute \"chtab key=$MGT passwd.password=$Passwd.wrong passwd.username=$Username\""
 `chtab key=$MGT passwd.password=$Passwd.wrong passwd.username=$Username`;
+echo "The password table is\n";
 tabdump passwd;
 }
 function add_passwd_table()
 {
 `chtab key=$MGT passwd.password=$2 passwd.username=$3`;
+echo "Execute \"rpower $1 stat\"";
 rpower $1 stat
     if [ $? -eq 0 ];then
+        echo "Execute \"chtab key=$MGT passwd.password=$2.wrong passwd.username=$3\""
         `chtab key=$MGT passwd.password=$2.wrong passwd.username=$3`;
+        echo "Execute \"tabdump passwd\"";
         tabdump passwd;
     else
-        echo "wrong password";
+        echo "rpower $1 stat failed.Wrong password is provided, please check bmc username and password";
     fi
 }
 function modify_node_definition()
 {
 chdef $1 bmcpassword=$2  bmcusername=$3
+echo "Execute \"rpower $1 stat\"";
 rpower $1 stat
     if [ $? -eq 0 ];then
+        echo "Execute \"chdef $1 bmcpassword=$2.wrong  bmcusername=$3\""
         chdef $1 bmcpassword=$2.wrong  bmcusername=$3;
+        echo "Execute \"tabdump passwd\"";
         tabdump passwd;
     else
-         echo "wrong password";
+         echo "rpower $1 stat failed.Wrong password is provided, please check bmc username and password";
     fi
 }
 function clear_env(){
+    echo "Restore test environment...";
     if [ -f $TMPFILE ];then
         Username=`cat $TMPFILE |awk -F "\""  '{print $4}'`;
         Passwd=`cat $TMPFILE |awk -F "\""  '{print $6}'`;
@@ -49,7 +58,7 @@ function clear_env(){
 }
 function check_result(){
 output=$(rpower $1 stat  2>&1)
-echo output is $output
+echo "Execute command \"rpower $1 stat\"" 
 value="";
     if [[ `lsdef $1 |grep mgt ` =~ "ipmi" ]];then
         value="Incorrect password provided";
@@ -63,20 +72,17 @@ value="";
             return 1;
         fi
 }
-echo "0 ARG: $0"
 
 SCRIPT=$(readlink -f $0)
-echo "SCRIPT=$SCRIPT"
 
 TMPFILE="/tmp/xcat-test-`basename $SCRIPT`.tmp"
-echo "TMPFILE=$TMPFILE"
 MGT=""
     if [[ `lsdef $2 |grep mgt` =~ "ipmi" ]];then
         MGT="ipmi";
     else
         MGT="openbmc";
     fi
-echo mgt is $MGT
+echo "The node's mgt is defined as $MGT"
 while [ "$#" -gt "0" ]
 do
         case $1 in
@@ -133,5 +139,4 @@ do
                 ;;
                 esac
 done
-
 
