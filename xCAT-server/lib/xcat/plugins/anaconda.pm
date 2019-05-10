@@ -2124,8 +2124,8 @@ sub copycd
         }
         else
         {
-            print "DEBUG - [anaconda.pm] Could not auto-detect operating system.\n";
             # Cannot continue with what was detected, or attributes provided
+            print "DEBUG - [anaconda.pm] Could not auto-detect operating system. Maybe some other plugin can, return.\n";
             return;
         }
     }
@@ -2147,10 +2147,14 @@ sub copycd
         if ($arch eq "ppc") { $arch = "ppc64" }
     }
 
-    # At this point, if arch is not provided and we cannot determine it, return
+    # At this point, if arch is not provided and we cannot determine it, inform the user
     unless ($arch)
     {
-        print "DEBUG - [anaconda.pm] ARCH not detected, provided an OS ARCH using the -a option.\n";
+        $callback->(
+            {
+               error => "copycds could not identify the ARCH, you may wish to try -a <arch>.", errorcode => [1]
+            }
+        );
         return;
     }
 
