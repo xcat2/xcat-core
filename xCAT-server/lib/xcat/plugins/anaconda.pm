@@ -2022,11 +2022,7 @@ sub copycd
     {
 
         #If they say to call it something unidentifiable, give up?
-        $callback->(
-            {
-                error => "The name specified ($distname) is not supported. Use the following format: rh*,pkvm*,centos*,fedora*,SL*,ol*", errorcode => [1]
-            }
-        );
+        print "DEBUG - [anaconda.pm] The name specified ($distname) is not supported for anaconda images, continue to another plugin...\n";
         return;
     }
 
@@ -2038,7 +2034,7 @@ sub copycd
 
     if (-r $mntpath . "/.discinfo")
     {
-        print "DEBUG - Attempt to detemine OS information from the .discinfo file ...\n";
+        print "DEBUG - [anaconda.pm] Attempt to detemine OS information from the .discinfo file ...\n";
         open($dinfo, $mntpath . "/.discinfo");
 
         $did = <$dinfo>;
@@ -2054,7 +2050,7 @@ sub copycd
     }
     else
     {
-        print "DEBUG - No .discinfo file found on media, will continue ...\n";
+        print "DEBUG - [anaconda.pm] No .discinfo file found on media, will continue ...\n";
     }
 
     if ($darch and $darch =~ /i.86/)
@@ -2076,12 +2072,12 @@ sub copycd
             $dno = $1;
         }
     }
-    print "DEBUG - Distname=$distname, OS=$desc, ARCH=$arch, Version=$dno\n";
+    print "DEBUG - [anaconda.pm] Distname=$distname, OS=$desc, ARCH=$arch, Version=$dno\n";
 
     unless ($distname)
     {
-        print "DEBUG - Could not find ID=$did in the discinfo database for OS=$desc ARCH=$darch NUM=$dno\n";
-        print "DEBUG - Attempting to auto-detect...\n";
+        print "DEBUG - [anaconda.pm] Could not find ID=$did in the discinfo database for OS=$desc ARCH=$darch NUM=$dno\n";
+        print "DEBUG - [anaconda.pm] Attempting to auto-detect...\n";
         if ($desc =~ /IBM_PowerKVM/)
         {
             # check for PowerKVM support
@@ -2128,8 +2124,8 @@ sub copycd
         }
         else
         {
-            print "DEBUG - Could not auto-detect operating system.\n";
             # Cannot continue with what was detected, or attributes provided
+            print "DEBUG - [anaconda.pm] Could not auto-detect operating system. Maybe some other plugin can, return.\n";
             return;
         }
     }
@@ -2151,12 +2147,12 @@ sub copycd
         if ($arch eq "ppc") { $arch = "ppc64" }
     }
 
-    # At this point, arch should have been detected from the .discinfo, if not, then we require the user to provide it. 
+    # At this point, if arch is not provided and we cannot determine it, inform the user
     unless ($arch)
     {
         $callback->(
             {
-                error => "ARCH not be detected, provide an OS ARCH using the -a option. (ppc64le, x86_64)", errorcode => [1]
+               error => "copycds could not identify the ARCH, you may wish to try -a <arch>.", errorcode => [1]
             }
         );
         return;
@@ -2181,7 +2177,7 @@ sub copycd
     my $osdistroname = $distname . "-" . $arch;
 
     my $defaultpath = "$installroot/$distname/$arch";
-    print "DEBUG - Detected distname=$distname, arch=$arch defaultpath=$defaultpath osdistroname=$osdistroname\n";
+    print "DEBUG - [anaconda.pm] Detected distname=$distname, arch=$arch defaultpath=$defaultpath osdistroname=$osdistroname\n";
     unless ($path)
     {
         $path = $defaultpath;
