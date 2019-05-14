@@ -748,19 +748,36 @@ function get_package_list_apt()
 	local repo_id="$1"
 	[[ -z "${repo_id}" ]] && return 1
 	local -i rc=0
-	awk '/^Package: / { print $2 }' \
-		"/var/lib/apt/lists/"*"_${repo_id}_dists"*"_main_binary-"*"_Packages" \
-		2>/dev/null
-	# This is a dirty hack, and use recursion.
+	local -a lists=()
+	local -a packages=()
+	local p
+	local q
+
+	for p in \
+		"/var/lib/apt/lists/"*"_${repo_id}_dists"*"_main_binary-"*"_Packages"
+	do
+		[[ -f "${p}" && -r "${p}" ]] && lists+=("${p}")
+	done
 	# For the `devel' branch of the online repo for apt, it has the
 	# subdirectory name of `core-snap' instead of `xcat-core'.
-	rc="$?"
-	if [[ "${rc}" -ne "0" && "${repo_id}" = "xcat-core" ]]
-	then
-		"${FUNCNAME}" "core-snap"
-		rc="$?"
-	fi
-	return "${rc}"
+	[[ "${repo_id}" == "xcat-core" ]] &&
+		for p in \
+			"/var/lib/apt/lists/"*"_core-snap_dists"*"_main_binary-"*"_Packages"
+		do
+			[[ -f "${p}" && -r "${p}" ]] && lists+=("${p}")
+		done
+	[[ "${#lists[@]}" -eq "0" ]] && return 1
+
+	while read -r q
+	do
+		for p in "${packages[@]}"
+		do
+			[[ "${q}" == "${p}" ]] && continue 2
+		done
+		packages+=("${q}")
+	done < <(awk '/^Package: / { print $2 }' "${lists[@]}" 2>/dev/null)
+
+	echo "${packages[@]}"
 }
 
 #       $1      repo id
