@@ -1,11 +1,6 @@
 #!/bin/bash
 #
-# This is the second version of Mellanox IB driver installation sample script
-# This is also the version we recommend to use right now.
-# What are changed in this version
-#    1. The usage interface is changed, using command line arguments instead of using environment attribute
-#    2. The way of downloading Mellanox OFED files.
-#    3. Some structure of code
+# This is the sample Mellanox IB driver installation script
 #
 # For AIX:
 #    TBD
