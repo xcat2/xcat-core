@@ -382,11 +382,22 @@ sub install_xcat{
                print "[install_xcat] $cmd....[Pass]\n";
             }
         }
+        $cmd = "sudo apt-get install xcat-probe --allow-remove-essential --allow-unauthenticated";
+        @output = runcmd("$cmd");
+        if($::RUNCMD_RC){
+            print RED "[install_xcat] $cmd ....[Failed]\n";
+            print Dumper \@output;
+            $ret = 1;
+        }else{
+            print "[install_xcat] $cmd ....[Pass]:\n";
+        }
+
         if($ret){
             $check_result_str .= "> **INSTALL XCAT ERROR** : Please click ``Details`` label in ``Merge pull request`` box for detailed information";
             send_back_comment("$check_result_str");
             return 1;
         }
+
         $check_result_str .= "> **INSTALL XCAT SUCCESSFUL**";
         send_back_comment("$check_result_str");
     }
