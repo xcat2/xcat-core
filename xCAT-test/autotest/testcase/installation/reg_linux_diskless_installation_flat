@@ -33,6 +33,7 @@ check:rc==0
 cmd:if [ ! -d /tmp/mountoutput ]; then mkdir -p /tmp/mountoutput; fi
 cmd:mount |sort > /tmp/mountoutput/file.org
 cmd:cat /tmp/mountoutput/file.org
+cmd:if [[ "__GETNODEATTR($$CN,os)__" =~ "ubuntu16.04.5" ]]; then chdef -t osimage -o __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute  -p pkgdir="http://archive.ubuntu.com/ubuntu xenial universe main,http://archive.ubuntu.com/ubuntu xenial-updates universe main,http://security.ubuntu.com/ubuntu xenial-security main restricted";fi
 cmd:genimage  __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute
 check:rc==0
 cmd:mount |sort > /tmp/mountoutput/file.new
