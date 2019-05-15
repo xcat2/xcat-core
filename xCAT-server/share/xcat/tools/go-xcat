@@ -883,6 +883,8 @@ function download_file_curl()
 		88) echo -n "FTP chunk callback reported error" ;;
 		89) echo -n "no connection available, the session will be queued" ;;
 		90) echo -n "SSL public key does not matched pinned public key" ;;
+		91) echo -n "invalid SSL certificate status" ;;
+		92) echo -n "stream error in HTTP/2 framing layer" ;;
 		*) echo -n "unknown error" ;;
 		esac
 		echo ")"
