@@ -1,2 +1,4 @@
 opt/xcat/bin
 opt/xcat/probe
+opt/xcat/probe/subcmds
+opt/xcat/probe/subcmds/bin
