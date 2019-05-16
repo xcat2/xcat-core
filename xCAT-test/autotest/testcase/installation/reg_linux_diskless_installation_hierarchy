@@ -37,7 +37,8 @@ check:rc==0
 cmd:if [[ -f /test.synclist ]] ;then mv -f /test.synclist /test.synclist.bak;fi;
 cmd:echo "/test.synclist -> /test.synclist" > /test.synclist;chdef -t osimage -o __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute synclists=/test.synclist
 check:rc==0
-cmd:if [[ "__GETNODEATTR($$CN,os)__" =~ "ubuntu16.04.5" ]]; then chdef -t osimage -o __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute  -p pkgdir="http://archive.ubuntu.com/ubuntu xenial universe main,http://archive.ubuntu.com/ubuntu xenial-updates universe main,http://security.ubuntu.com/ubuntu xenial-security main restricted";fi
+cmd:if [[ "__GETNODEATTR($$CN,os)__" =~ "ubuntu16.04.5" ]] && [[ "__GETNODEATTR($$CN,arch)__" =~ "x86" ]]; then chdef -t osimage -o __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute  -p pkgdir="http://archive.ubuntu.com/ubuntu xenial universe main,http://archive.ubuntu.com/ubuntu xenial-updates universe main,http://security.ubuntu.com/ubuntu xenial-security main restricted";fi
+cmd:lsdef -t osimage -o __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute
 cmd:genimage  __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute
 check:rc==0
 cmd:packimage __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute
