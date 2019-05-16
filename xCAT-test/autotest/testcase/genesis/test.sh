@@ -6,7 +6,7 @@ masternet=`ifconfig  | awk "BEGIN{RS=\"\"}/\<$masterip\>/{print \$1}"|head -n 1 
 net2=`netstat -i -a|grep -v Kernel|grep -v Iface |grep -v lo|grep -v $masternet|head -n 1|awk '{print $1}'`;echo net2 is  $net2;
 net2ip="";
     if [[ -z $net2 ]];then
-        echo "could not verify the test"
+        echo "There is no second network,could not verify the test"
         return 1;
     else
         net2ipstring=`ifconfig $net2 |grep inet|grep -v inet6`;
@@ -19,6 +19,7 @@ net2ip="";
                 net2ip=0.0.0.0;
             fi
         ifconfig $net2 60.3.3.3 ;
+        makenetworks;        
         makehosts testnode;
         nodeset testnode  shell;
         ifconfig $net2 "$net2ip";
@@ -32,6 +33,7 @@ net2ip="";
     fi
 }
 function clear_env(){
+rmdef -t network -o 60_0_0_0-255_0_0_0
 makehosts -d testnode
 rmdef testnode
     if [[ $? -eq 0 ]];then
