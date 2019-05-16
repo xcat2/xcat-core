@@ -1,64 +1,88 @@
 #!/bin/bash
+PATH="/opt/xcat/bin:/opt/xcat/sbin:/opt/xcat/share/xcat/tools:/usr/sbin:/usr/bin:/sbin:/bin:/root/bin"
+export PATH
+
+function runcmd(){
+    echo "Run command $*"
+    result=`$*`
+    if [[ $? -eq 0 ]];then
+        echo $result;
+        echo "Run command $*....[Succeed]\n";
+        return 0;
+    else
+        echo $result;
+        echo "Run command $*... [Failed]\n";
+        return 1;
+    fi
+}
+
 function check_passwd_table(){
+echo "Run tabdump passwd to check if password with $MGT exists"
 tabdump passwd |grep $MGT
     if [ $? -eq 0 ];then
         `tabdump passwd |grep $MGT>$TMPFILE`
     else
+        echo "There is no password in passwd table associated with $MGT"
         return 1;
     fi
 }
 function modify_passwd_table(){
 Username=`cat $TMPFILE |awk -F "\""  '{print $4}'`;
 Passwd=`cat $TMPFILE |awk -F "\""  '{print $6}'`;
-echo "Execute \"chtab key=$MGT passwd.password=$Passwd.wrong passwd.username=$Username\""
-`chtab key=$MGT passwd.password=$Passwd.wrong passwd.username=$Username`;
-echo "The password table is\n";
-tabdump passwd;
+cmd="chtab key=$MGT passwd.password=$Passwd.wrong passwd.username=$Username";
+runcmd $cmd;
+cmd="tabdump passwd";
+runcmd $cmd;
 }
 function add_passwd_table()
 {
-`chtab key=$MGT passwd.password=$2 passwd.username=$3`;
-echo "Execute \"rpower $1 stat\"";
-rpower $1 stat
+cmd="chtab key=$MGT passwd.password=$2 passwd.username=$3";
+runcmd $cmd;
+cmd="rpower $1 stat";
+runcmd $cmd;
     if [ $? -eq 0 ];then
-        echo "Execute \"chtab key=$MGT passwd.password=$2.wrong passwd.username=$3\""
-        `chtab key=$MGT passwd.password=$2.wrong passwd.username=$3`;
-        echo "Execute \"tabdump passwd\"";
-        tabdump passwd;
+        cmd="chtab key=$MGT passwd.password=$2.wrong passwd.username=$3";
+        runcmd $cmd;
+        cmd="tabdump passwd";
+        runcmd $cmd; 
     else
         echo "rpower $1 stat failed.Wrong password is provided, please check bmc username and password";
     fi
 }
 function modify_node_definition()
 {
-chdef $1 bmcpassword=$2  bmcusername=$3
-echo "Execute \"rpower $1 stat\"";
-rpower $1 stat
+cmd="chdef $1 bmcpassword=$2  bmcusername=$3";
+runcmd $cmd;
+cmd="rpower $1 stat";
+runcmd $cmd;
     if [ $? -eq 0 ];then
-        echo "Execute \"chdef $1 bmcpassword=$2.wrong  bmcusername=$3\""
-        chdef $1 bmcpassword=$2.wrong  bmcusername=$3;
-        echo "Execute \"tabdump passwd\"";
-        tabdump passwd;
+        runcmd "chdef $1 bmcpassword=$2.wrong  bmcusername=$3";
+        runcmd "tabdump passwd";
     else
-         echo "rpower $1 stat failed.Wrong password is provided, please check bmc username and password";
+        echo "rpower $1 stat failed.Wrong password is provided, please check bmc username and password"; 
     fi
 }
 function clear_env(){
-    echo "Restore test environment...";
     if [ -f $TMPFILE ];then
         Username=`cat $TMPFILE |awk -F "\""  '{print $4}'`;
         Passwd=`cat $TMPFILE |awk -F "\""  '{print $6}'`;
-        chtab key=$MGT passwd.password=$Passwd passwd.username=$Username;tabdump passwd;
-        chdef $1 bmcpassword= bmcusername=;
+        cmd="chtab key=$MGT passwd.password=$Passwd passwd.username=$Username";
+	runcmd $cmd;
+	cmd="tabdump passwd";
+        runcmd $cmd;
+        cmd="chdef $1 bmcpassword= bmcusername=";
+        runcmd $cmd;
         rm -rf $TMPFILE;
     else
-        `chtab -d key=$MGT passwd`;
-        chdef $1 bmcpassword= bmcusername=;
+        cmd="chtab -d key=$MGT passwd";
+        runcmd $cmd;
+        cmd="chdef $1 bmcpassword= bmcusername=";
+        runcmd $cmd;
     fi
 }
 function check_result(){
 output=$(rpower $1 stat  2>&1)
-echo "Execute command \"rpower $1 stat\"" 
+echo "rpower $1 stat output is $output"
 value="";
     if [[ `lsdef $1 |grep mgt ` =~ "ipmi" ]];then
         value="Incorrect password provided";
@@ -68,7 +92,7 @@ value="";
         if [[ $output =~ $value ]];then
             return 0;
         else
-            echo "The expected output is \"$value\" since there password is wrong, but the real output is $output" 
+            echo "The expected output is \"$value\" since there password is wrong, but the real output is $output"
             return 1;
         fi
 }
@@ -82,7 +106,7 @@ MGT=""
     else
         MGT="openbmc";
     fi
-echo "The node's mgt is defined as $MGT"
+echo "The node $2's mgt is defined as $MGT"
 while [ "$#" -gt "0" ]
 do
         case $1 in
@@ -110,7 +134,8 @@ do
                 "-apt"|"--addpasswdtable" )
                 check_passwd_table
                     if [[ $? -eq 0 ]];then
-                        `chtab -d key=ipmi passwd`;
+                         cmd="chtab -d key=ipmi passwd";
+                         runcmd $cmd; 
                             if [[ $? -eq 1 ]];then
                                 exit 1
                             fi
@@ -139,4 +164,5 @@ do
                 ;;
                 esac
 done
+
 
