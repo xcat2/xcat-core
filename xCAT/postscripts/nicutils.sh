@@ -27,6 +27,7 @@ brctl="brctl"
 uniq="uniq"
 xargs="xargs"
 modprobe="modprobe"
+xcatcreatedcon=''
 if [ -n "$LOGLABEL" ]; then
     log_label=$LOGLABEL
 else
@@ -2067,6 +2068,10 @@ function create_bridge_interface_nmcli {
         if [ $? -eq 0 ]; then
             $nmcli con delete $tmp_slave_con_name
         fi
+        if [ -n "$xcatcreatedcon" ]; then
+            $nmcli con up $xcatcreatedcon
+            log_info "$nmcli con up $xcatcreatedcon"
+        fi
         wait_for_ifstate $ifname UP 40 40
         [ $? -ne 0 ] && rc=1
         $ip address show dev $ifname| $sed -e 's/^/[bridge] >> /g' | log_lines info
@@ -2187,6 +2192,7 @@ function create_bond_interface_nmcli {
     else
         cmd="$nmcli con add type bond con-name $xcat_con_name ifname $bondname bond.options $_bonding_opts method none ipv4.method manual ipv4.addresses $ipv4_addr/$str_prefix $_mtu connection.autoconnect-priority 9 connection.autoconnect-slaves 1 connection.autoconnect-retries 0"
     fi
+    xcatcreatedcon=$xcat_con_name
     log_info $cmd
     $cmd
     if [ $? -ne 0 ]; then
