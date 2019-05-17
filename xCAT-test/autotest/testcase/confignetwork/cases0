@@ -903,10 +903,6 @@ cmd:chdef $$CN nicips.$$SECONDNIC=11.1.0.100 nictypes.$$SECONDNIC=Ethernet nicne
 check:rc==0
 cmd:mkdef -t network -o 12_1_0_0-255_255_0_0 net=12.1.0.0 mask=255.255.0.0 mgtifname=$$THIRDNIC
 check:rc==0
-cmd:chdef $$CN nicips.$$THIRDNIC=12.1.0.100 nictypes.$$THIRDNIC=Ethernet nicnetworks.$$THIRDNIC=12_1_0_0-255_255_0_0
-check:rc==0
-cmd:updatenode $$CN -P confignetwork
-check:rc==0
 cmd:chdef $$CN nicips.$$SECONDNIC= nictypes.$$SECONDNIC= nicnetworks.$$SECONDNIC= nicips.$$THIRDNIC= nictypes.$$THIRDNIC= nicnetworks.$$THIRDNIC=
 check:rc==0
 cmd:mkdef -t network -o 30_5_0_0-255_255_0_0 net=30.5.0.0 mask=255.255.0.0
@@ -921,6 +917,8 @@ cmd:installnic=`xdsh $$CN ip addr |grep __GETNODEATTR($$CN,ip)__|awk -F " " '{pr
 check:rc==0
 check:output=~__GETNODEATTR($$CN,ip)__
 check:output=~BOOTPROTO=none|static
+cmd:xdsh $$CN "cat /sys/class/net/bonding_masters"
+check:output=~bond0
 cmd:if grep SUSE /etc/*release;then xdsh $$CN "grep 30.5.106.8 /etc/sysconfig/network/ifcfg-br22"; elif grep -E "Red Hat|CentOS" /etc/*release;then xdsh $$CN  "grep 30.5.106.8 /etc/sysconfig/network-scripts/ifcfg-*br22*"; elif grep Ubuntu /etc/*release;then xdsh $$CN "grep 30.5.106.8 /etc/network/interfaces.d/br22";else echo "Sorry,this is not supported os"; fi
 check:output=~30.5.106.8
 check:rc==0
@@ -930,8 +928,6 @@ check:rc==0
 cmd:xdsh $$CN "ls /sys/class/net"
 check:output=~br22
 check:output=~br33
-cmd:xdsh $$CN "cat /sys/class/net/bonding_masters"
-check:output=~bond0
 cmd:rmdef -t network -o 11_1_0_0-255_255_0_0
 cmd:if grep SUSE /etc/*release;then xdsh $$CN "rm -rf /etc/sysconfig/network/ifcfg-$$SECONDNIC"; elif grep -E "Red Hat|CentOS" /etc/*release;then xdsh $$CN "rm -rf /etc/sysconfig/network-scripts"; elif grep Ubuntu /etc/*release;then xdsh $$CN "rm -rf /etc/network/interfaces.d/$$SECONDNIC";else echo "Sorry,this is not supported os"; fi
 cmd:rmdef -t network -o 12_1_0_0-255_255_0_0
