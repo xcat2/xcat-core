@@ -120,13 +120,6 @@ zVM specific:
 \ **rpower**\  \ *noderange*\  [\ **on | off | reset | stat | softoff**\ ]
 
 
-docker specific:
-================
-
-
-\ **rpower**\  \ *noderange*\  [\ **start | stop | restart | pause | unpause | state**\ ]
-
-
 pdu specific:
 =============
 
@@ -347,24 +340,6 @@ OPTIONS
 \ **-r**\ 
  
  To specify that the target node will be reset if \ **suspend**\  action failed.
- 
-
-
-\ **start**\ 
- 
- To start a created docker instance.
- 
-
-
-\ **stop**\ 
- 
- To stop a created docker instance.
- 
-
-
-\ **restart**\ 
- 
- To restart a created docker instance.
  
 
 
