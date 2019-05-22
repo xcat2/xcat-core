@@ -528,7 +528,8 @@ sub get_lic_filenames {
     @dirlist = grep /\.rpm$/, @dirlist;
     @dirlist = grep /$1/,     @dirlist;
     if (!scalar(@dirlist)) {
-        $msg = "There isn't a package suitable for $mtms";
+        # the last grep above is  using $1, which is $pns, the output message should help figure out what is wrong
+        $msg = "Existing firmware type is: $pns, no matching firmware package found in directory";
         return ("", "", "", $msg, -1);
     }
     if (scalar(@dirlist) > 1) {
