@@ -63,7 +63,7 @@ OpenPOWER OpenBMC specific :
 
 \ **rflash**\  \ *noderange*\  \ *tar_file_path*\  {[\ **-c | -**\ **-check**\ ] | [\ **-a | -**\ **-activate**\ ] | [\ **-u | -**\ **-upload**\ ]}
 
-\ **rflash**\  \ *noderange*\  \ *tar_file_directory*\  [\ **-d**\ ] [\ **-**\ **-no-host-reboot**\ ]
+\ **rflash**\  \ *noderange*\  \ *tar_file_directory*\  [\ **-d**\ ]
 
 \ **rflash**\  \ *noderange*\  \ *image_id*\  {[\ **-a | -**\ **-activate**\ ] | [\ **-**\ **-delete**\ ]}
 
@@ -171,8 +171,6 @@ To apply the firmware level, a reboot is required to BMC and HOST.
 \ **-d**\ :
 
 This option steamlines the update, activate, reboot BMC and reboot HOST procedure. It expects a directory containing both BMC and Host .tar files. When BMC and Host tar files are provided, the command will upload and activate firmware. After BMC becomes activate, it will reboot BMC. If BMC state is Ready, the command will reboot the HOST. If BMC state is NotReady, the command will exit.
-
-\ **Note:**\  When using \ **-**\ **-no-host-reboot**\ , it will not reboot the host after BMC is reboot.
 
 \ **-**\ **-delete**\ :
 
