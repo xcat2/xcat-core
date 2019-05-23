@@ -4,7 +4,7 @@ nfs-common
 openssl
 isc-dhcp-client
 libc-bin
-linux-image-generic-hwe-18.04
+linux-image-generic
 openssh-server
 openssh-client
 wget
