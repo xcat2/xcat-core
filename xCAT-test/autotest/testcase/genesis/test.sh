@@ -1,9 +1,26 @@
 #!/bin/bash
+PATH="/opt/xcat/bin:/opt/xcat/sbin:/opt/xcat/share/xcat/tools:/usr/sbin:/usr/bin:/sbin:/bin:/root/bin"
+export PATH
+function runcmd(){
+    echo "Run command $*"
+    result=`$*`
+    if [[ $? -eq 0 ]];then
+        echo $result;
+        echo "Run command $*....[Succeed]\n";
+        return 0;
+    else
+        echo $result;
+        echo "Run command $*... [Failed]\n";
+        return 1;
+    fi
+}
+
 function check_destiny(){
-chdef testnode arch=ppc64le cons=ipmi groups=all ip=60.1.1.1 mac=4e:ee:ee:ee:ee:0e netboot=$NETBOOT;
+cmd="chdef testnode arch=ppc64le cons=ipmi groups=all ip=60.1.1.1 mac=4e:ee:ee:ee:ee:0e netboot=$NETBOOT";
+runcmd $cmd;
 masterip=`lsdef -t site -i master -c 2>&1 | awk -F'=' '{print $2}'`;
 masternet=`ifconfig  | awk "BEGIN{RS=\"\"}/\<$masterip\>/{print \$1}"|head -n 1 | awk -F ' ' '{print $1}'|awk -F ":"  '{print \$1}' 2>&1`;
-net2=`netstat -i -a|grep -v Kernel|grep -v Iface |grep -v lo|grep -v $masternet|head -n 1|awk '{print $1}'`;echo net2 is  $net2;
+net2=`netstat -i -a|grep -v Kernel|grep -v Iface |grep -v lo|grep -v $masternet|head -n 1|awk '{print $1}'`;
 net2ip="";
     if [[ -z $net2 ]];then
         echo "There is no second network,could not verify the test"
@@ -18,16 +35,22 @@ net2ip="";
             else
                 net2ip=0.0.0.0;
             fi
-        ifconfig $net2 60.3.3.3 ;
-        makenetworks;        
-        makehosts testnode;
-        nodeset testnode  shell;
-        ifconfig $net2 "$net2ip";
+        echo "The original net2 ip is $net2ip"
+        cmd="ifconfig $net2 60.3.3.3";
+        runcmd $cmd;
+        cmd="makenetworks";
+        runcmd $cmd;
+        echo -e "\n60.1.1.1 testnode" >> /etc/hosts
+        cmd="nodeset testnode  shell";
+        runcmd $cmd;
+        cmd="ifconfig $net2 $net2ip";
+        runcmd $cmd;
+        echo "Check if nodeset testnode shell is added to $SHELLFOLDER"
         cat "$SHELLFOLDER"testnode |grep "xcatd=60.3.3.3:3001 destiny=shell";
             if [[ $? -eq 0 ]] ;then
                 return 0;
             else
-                echo wrong;
+                echo "nodeset testnode shell failed";
                 return 1;
             fi
     fi
