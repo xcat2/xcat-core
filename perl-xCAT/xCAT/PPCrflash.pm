@@ -376,8 +376,7 @@ sub preprocess_for_rflash {
         my @xmllist = grep /\.xml$/, @dirlist;
         if (@rpmlist == 0 | @xmllist == 0) {
 
-            #send_msg($request, 1, "There isn't any rpm and xml files in the  directory $packages_d!");
-            $callback->({ data => ["There isn't any rpm and xml files in the  directory $packages_d!"] });
+            $callback->({ data => ["There are no rpm and xml files in the directory $packages_d!"] });
             $request = ();
             return -1;
         }
