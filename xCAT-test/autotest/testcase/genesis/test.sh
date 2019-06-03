@@ -2,14 +2,12 @@
 PATH="/opt/xcat/bin:/opt/xcat/sbin:/opt/xcat/share/xcat/tools:/usr/sbin:/usr/bin:/sbin:/bin:/root/bin"
 export PATH
 function runcmd(){
-    echo "Run command $*"
+    echo "Run command $* ..."
     result=`$*`
     if [[ $? -eq 0 ]];then
-        echo $result;
-        echo -e "Run command $*....[Succeed]\n";
+        echo -e "Run command $*... [Succeed]\n";
         return 0;
     else
-        echo $result;
         echo -e "Run command $*... [Failed]\n";
         return 1;
     fi
