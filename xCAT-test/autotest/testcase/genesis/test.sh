@@ -14,11 +14,14 @@ function runcmd(){
 }
 
 TESTNODE=testnode
+TESTNODE_IP=60.1.1.1
+
 
 function check_destiny() {
-    cmd="chdef ${TESTNODE} arch=ppc64le cons=ipmi groups=all ip=60.1.1.1 mac=4e:ee:ee:ee:ee:0e netboot=$NETBOOT";
+    cmd="chdef ${TESTNODE} arch=ppc64le cons=ipmi groups=all ip=${TESTNODE_IP} mac=4e:ee:ee:ee:ee:0e netboot=$NETBOOT";
     runcmd $cmd;
     lsdef ${TESTNODE}
+
     MASTERIP=`lsdef -t site -i master -c 2>&1 | awk -F'=' '{print $2}'`;
     MASTERNET=`ifconfig  | awk "BEGIN{RS=\"\"}/\<$MASTERIP\>/{print \$1}"|head -n 1 | awk -F ' ' '{print $1}'|awk -F ":"  '{print \$1}' 2>&1`;
     NET2=`netstat -i -a|grep -v Kernel|grep -v Iface |grep -v lo|grep -v $MASTERNET|head -n 1|awk '{print $1}'`;
@@ -43,6 +46,8 @@ function check_destiny() {
         else
             NET2IP=0.0.0.0;
         fi
+
+        # Seems like this NET2IP doesn't do anything with it, what happens if it's not in the 60 network 
         echo "The original NET2 IP is $NET2IP"
         cmd="ifconfig $NET2 60.3.3.3";
         runcmd $cmd;
