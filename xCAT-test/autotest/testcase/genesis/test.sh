@@ -19,34 +19,41 @@ function check_destiny() {
     cmd="chdef ${TESTNODE} arch=ppc64le cons=ipmi groups=all ip=60.1.1.1 mac=4e:ee:ee:ee:ee:0e netboot=$NETBOOT";
     runcmd $cmd;
     lsdef ${TESTNODE}
-    masterip=`lsdef -t site -i master -c 2>&1 | awk -F'=' '{print $2}'`;
-    masternet=`ifconfig  | awk "BEGIN{RS=\"\"}/\<$masterip\>/{print \$1}"|head -n 1 | awk -F ' ' '{print $1}'|awk -F ":"  '{print \$1}' 2>&1`;
-    net2=`netstat -i -a|grep -v Kernel|grep -v Iface |grep -v lo|grep -v $masternet|head -n 1|awk '{print $1}'`;
-    net2ip="";
-    if [[ -z $net2 ]];then
+    MASTERIP=`lsdef -t site -i master -c 2>&1 | awk -F'=' '{print $2}'`;
+    MASTERNET=`ifconfig  | awk "BEGIN{RS=\"\"}/\<$MASTERIP\>/{print \$1}"|head -n 1 | awk -F ' ' '{print $1}'|awk -F ":"  '{print \$1}' 2>&1`;
+    NET2=`netstat -i -a|grep -v Kernel|grep -v Iface |grep -v lo|grep -v $MASTERNET|head -n 1|awk '{print $1}'`;
+    NET2IP="";
+
+    echo "MASTERIP=$MASTERIP"
+    echo "MASTERNET=$MASTERNET"
+    echo "NET2=$NET2"
+    echo "NET2IP=$NET2IP"
+
+    if [[ -z $NET2 ]];then
         echo "There is no second network, could not verify the test"
         return 1;
     else
-        net2ipstring=`ifconfig $net2 |grep inet|grep -v inet6`;
+        NET2IPstring=`ifconfig $NET2 |grep inet|grep -v inet6`;
         if [[ $? -eq 0 ]];then
-            net2ip=`ifconfig $net2 |grep inet|grep -v inet6|awk -F ' ' '{print $2}'|awk -F ":" '{print $2}'`;
-            if [[ -z $net2ip ]];then
-                net2ip=`ifconfig $net2 |grep inet|grep -v inet6|awk -F ' ' '{print $2}'`;
+            echo "Something is set for $NET2IPstring ... using it." 
+            NET2IP=`ifconfig $NET2 |grep inet|grep -v inet6|awk -F ' ' '{print $2}'|awk -F ":" '{print $2}'`;
+            if [[ -z $NET2IP ]];then
+                NET2IP=`ifconfig $NET2 |grep inet|grep -v inet6|awk -F ' ' '{print $2}'`;
             fi
         else
-            net2ip=0.0.0.0;
+            NET2IP=0.0.0.0;
         fi
-        echo "The original net2 IP is $net2ip"
-        cmd="ifconfig $net2 60.3.3.3";
+        echo "The original NET2 IP is $NET2IP"
+        cmd="ifconfig $NET2 60.3.3.3";
         runcmd $cmd;
         cmd="makenetworks";
         runcmd $cmd;
         echo -e "\n60.1.1.1 ${TESTNODE}" >> /etc/hosts
         cmd="nodeset ${TESTNODE}  shell";
         runcmd $cmd;
-        cmd="ifconfig $net2 $net2ip";
+        cmd="ifconfig $NET2 $NET2IP";
         runcmd $cmd;
-        echo "Check if nodeset ${TESTNODE} shell is added to $SHELLFOLDER"
+        echo "Check if 'nodeset ${TESTNODE} shell' is added to $SHELLFOLDER"
         cat "$SHELLFOLDER"${TESTNODE} |grep "xcatd=60.3.3.3:3001 destiny=shell";
         if [[ $? -eq 0 ]] ;then
             return 0;
