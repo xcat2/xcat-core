@@ -13,8 +13,13 @@ function runcmd(){
     fi
 }
 
+# We should be using private networks
 TESTNODE=testnode
 TESTNODE_IP=60.1.1.1
+
+MASTER_PRIVATE_IP="192.168.1.1"
+MASTER_PRIVATE_NETMASK="255.255.0.0"
+MASTER_PRIVATE_NETWORK="192.168.0.0-255_255_0_0"
 
 
 function check_destiny() {
@@ -49,28 +54,28 @@ function check_destiny() {
 
         # Seems like this NET2IP doesn't do anything with it, what happens if it's not in the 60 network 
         echo "The original NET2 IP is $NET2IP"
-        cmd="ifconfig $NET2 60.3.3.3";
+        cmd="ifconfig $NET2 $MASTER_PRIVATE_IP netmask $MASTER_PRIVATE_NETMASK";
         runcmd $cmd;
         cmd="makenetworks";
         runcmd $cmd;
-        echo -e "\n60.1.1.1 ${TESTNODE}" >> /etc/hosts
+        makehosts ${TESTNODE}
         cmd="nodeset ${TESTNODE}  shell";
         runcmd $cmd;
         cmd="ifconfig $NET2 $NET2IP";
         runcmd $cmd;
         echo "Check if 'nodeset ${TESTNODE} shell' is added to $SHELLFOLDER"
-        cat "$SHELLFOLDER"${TESTNODE} |grep "xcatd=60.3.3.3:3001 destiny=shell";
+        cat "$SHELLFOLDER"${TESTNODE} |grep "xcatd=${MASTER_PRIVATE_IP}:3001 destiny=shell";
         if [[ $? -eq 0 ]] ;then
             return 0;
         else
-            echo "\'nodeset ${TESTNODE} shell\' FAILED";
+            echo "'nodeset ${TESTNODE} shell' FAILED";
             return 1;
         fi
     fi
 }
 
 function clear_env() {
-    rmdef -t network -o 60_0_0_0-255_0_0_0
+    rmdef -t network -o ${MASTER_PRIVATE_NETWORK}
     makehosts -d ${TESTNODE}
     rmdef ${TESTNODE}
     if [[ $? -eq 0 ]];then
