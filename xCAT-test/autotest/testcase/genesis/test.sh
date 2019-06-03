@@ -63,8 +63,8 @@ function check_destiny() {
         runcmd $cmd;
         cmd="ifconfig $NET2 $NET2IP";
         runcmd $cmd;
-        echo "Check if 'nodeset ${TESTNODE} shell' is added to $SHELLFOLDER"
-        cat "$SHELLFOLDER"${TESTNODE} |grep "xcatd=${MASTER_PRIVATE_IP}:3001 destiny=shell";
+        echo "Check if 'nodeset ${TESTNODE} shell' is added to ${SHELLFOLDER}/${TESTNODE}"
+        cat "${SHELLFOLDER}/${TESTNODE}" |grep "xcatd=${MASTER_PRIVATE_IP}:3001 destiny=shell";
         if [[ $? -eq 0 ]] ;then
             return 0;
         else
@@ -92,11 +92,11 @@ while [ "$#" -ge "0" ]; do
         "--check" )
         NETBOOT=$2;
         if [[ $NETBOOT =~ petitboot ]];then
-            SHELLFOLDER="/tftpboot/petitboot/";
+            SHELLFOLDER="/tftpboot/petitboot";
         elif [[ $NETBOOT =~  xnba ]];then
-            SHELLFOLDER="/tftpboot/xcat/xnba/nodes/"
+            SHELLFOLDER="/tftpboot/xcat/xnba/nodes"
         else
-            SHELLFOLDER="/tftpboot/boot/grub2/";
+            SHELLFOLDER="/tftpboot/boot/grub2";
         fi
         check_destiny ;
         if [[ $? -eq 1 ]];then
