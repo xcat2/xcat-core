@@ -59,11 +59,15 @@ function check_destiny() {
         cmd="makenetworks";
         runcmd $cmd;
         makehosts ${TESTNODE}
+        grep ${TESTNODE} /etc/hosts 
         cmd="nodeset ${TESTNODE}  shell";
         runcmd $cmd;
         cmd="ifconfig $NET2 $NET2IP";
         runcmd $cmd;
         echo "Check if 'nodeset ${TESTNODE} shell' is added to ${SHELLFOLDER}/${TESTNODE}"
+        echo "==============================================="
+        cat "${SHELLFOLDER}/${TESTNODE}"
+        echo "==============================================="
         cat "${SHELLFOLDER}/${TESTNODE}" |grep "xcatd=${MASTER_PRIVATE_IP}:3001 destiny=shell";
         if [[ $? -eq 0 ]] ;then
             return 0;
