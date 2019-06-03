@@ -67,7 +67,7 @@ rmdef testnode
 }
 NETBOOT=""
 SHELLFOLDER=""
-while [ "$#" -gt "0" ]
+while [ "$#" -ge "0" ]
 do
         case $1 in
                 "--check" )
@@ -96,7 +96,7 @@ do
                 ;;
                 *)
                 echo
-                echo "Please Insert $0: -cd|-c"
+                echo "Error: Usage: $0: -cd|-c"
                 echo
                 exit 1;
                 ;;
