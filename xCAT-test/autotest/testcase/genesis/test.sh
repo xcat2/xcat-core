@@ -15,7 +15,7 @@ function runcmd(){
 
 # We should be using private networks
 TESTNODE=testnode
-TESTNODE_IP=60.1.1.1
+TESTNODE_IP="192.168.3.1"
 
 MASTER_PRIVATE_IP="192.168.1.1"
 MASTER_PRIVATE_NETMASK="255.255.0.0"
