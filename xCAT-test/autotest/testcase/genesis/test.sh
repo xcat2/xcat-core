@@ -15,9 +15,12 @@ function runcmd(){
     fi
 }
 
+TESTNODE=testnode
+
 function check_destiny() {
-    cmd="chdef testnode arch=ppc64le cons=ipmi groups=all ip=60.1.1.1 mac=4e:ee:ee:ee:ee:0e netboot=$NETBOOT";
+    cmd="chdef ${TESTNODE} arch=ppc64le cons=ipmi groups=all ip=60.1.1.1 mac=4e:ee:ee:ee:ee:0e netboot=$NETBOOT";
     runcmd $cmd;
+    lsdef ${TESTNODE}
     masterip=`lsdef -t site -i master -c 2>&1 | awk -F'=' '{print $2}'`;
     masternet=`ifconfig  | awk "BEGIN{RS=\"\"}/\<$masterip\>/{print \$1}"|head -n 1 | awk -F ' ' '{print $1}'|awk -F ":"  '{print \$1}' 2>&1`;
     net2=`netstat -i -a|grep -v Kernel|grep -v Iface |grep -v lo|grep -v $masternet|head -n 1|awk '{print $1}'`;
@@ -40,17 +43,17 @@ function check_destiny() {
         runcmd $cmd;
         cmd="makenetworks";
         runcmd $cmd;
-        echo -e "\n60.1.1.1 testnode" >> /etc/hosts
-        cmd="nodeset testnode  shell";
+        echo -e "\n60.1.1.1 ${TESTNODE}" >> /etc/hosts
+        cmd="nodeset ${TESTNODE}  shell";
         runcmd $cmd;
         cmd="ifconfig $net2 $net2ip";
         runcmd $cmd;
-        echo "Check if nodeset testnode shell is added to $SHELLFOLDER"
-        cat "$SHELLFOLDER"testnode |grep "xcatd=60.3.3.3:3001 destiny=shell";
+        echo "Check if nodeset ${TESTNODE} shell is added to $SHELLFOLDER"
+        cat "$SHELLFOLDER"${TESTNODE} |grep "xcatd=60.3.3.3:3001 destiny=shell";
         if [[ $? -eq 0 ]] ;then
             return 0;
         else
-            echo "nodeset testnode shell failed";
+            echo "\'nodeset ${TESTNODE} shell\' FAILED";
             return 1;
         fi
     fi
@@ -58,8 +61,8 @@ function check_destiny() {
 
 function clear_env() {
     rmdef -t network -o 60_0_0_0-255_0_0_0
-    makehosts -d testnode
-    rmdef testnode
+    makehosts -d ${TESTNODE}
+    rmdef ${TESTNODE}
     if [[ $? -eq 0 ]];then
        return 0;
     else
