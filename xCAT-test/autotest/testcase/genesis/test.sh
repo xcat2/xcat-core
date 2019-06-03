@@ -6,11 +6,11 @@ function runcmd(){
     result=`$*`
     if [[ $? -eq 0 ]];then
         echo $result;
-        echo "Run command $*....[Succeed]\n";
+        echo -e "Run command $*....[Succeed]\n";
         return 0;
     else
         echo $result;
-        echo "Run command $*... [Failed]\n";
+        echo -e "Run command $*... [Failed]\n";
         return 1;
     fi
 }
@@ -23,7 +23,7 @@ masternet=`ifconfig  | awk "BEGIN{RS=\"\"}/\<$masterip\>/{print \$1}"|head -n 1 
 net2=`netstat -i -a|grep -v Kernel|grep -v Iface |grep -v lo|grep -v $masternet|head -n 1|awk '{print $1}'`;
 net2ip="";
     if [[ -z $net2 ]];then
-        echo "There is no second network,could not verify the test"
+        echo "There is no second network, could not verify the test"
         return 1;
     else
         net2ipstring=`ifconfig $net2 |grep inet|grep -v inet6`;
@@ -35,7 +35,7 @@ net2ip="";
             else
                 net2ip=0.0.0.0;
             fi
-        echo "The original net2 ip is $net2ip"
+        echo "The original net2 IP is $net2ip"
         cmd="ifconfig $net2 60.3.3.3";
         runcmd $cmd;
         cmd="makenetworks";
