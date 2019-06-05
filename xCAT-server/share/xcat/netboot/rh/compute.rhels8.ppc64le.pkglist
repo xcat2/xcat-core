@@ -10,3 +10,4 @@ util-linux
 wget
 python3
 tar
+bzip2

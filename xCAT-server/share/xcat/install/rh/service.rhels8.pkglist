@@ -12,3 +12,4 @@ perl-DBD-Pg
 unixODBC
 python3
 tar
+bzip2
