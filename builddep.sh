@@ -65,6 +65,14 @@ for pkg in ${REQPKG[*]}; do
 	fi
 done
 
+GNU_KEYDIR="$HOME/.gnupg"
+MACROS=$HOME/.rpmmacros
+if [[ -d ${GNU_KEYDIR} ]]; then
+	echo "WARNING: The gnupg key dir: $GNU_KEYDIR exists, it will be overwitten. Stop."
+	echo "WARNING: To continue, remove it and rerun the script."
+	exit 1
+fi
+
 # set grep to quiet by default
 GREP="grep -q"
 if [ "$VERBOSE" = "1" -o "$VERBOSE" = "yes" ]; then
@@ -123,15 +131,8 @@ cd $DESTDIR/xcat-dep
 # add a comment to indicate the latest xcat-dep tar ball name
 sed -i -e "s#REPLACE_LATEST_SNAP_LINE#The latest xcat-dep tar ball is ${DFNAME}#g" README
 
-GNU_KEYDIR="$HOME/.gnupg"
-MACROS=$HOME/.rpmmacros
 if [ "$OSNAME" != "AIX" ]; then
 	# Get gpg keys in place
-        if [[ -d ${GNU_KEYDIR} ]]; then
-		echo "WARNING: The gnupg key dir: $GNU_KEYDIR exists, it will be overwitten. Stop."
-		echo "WARNING: To continue, remove it and rerun the script."
-		exit 1
-	fi
 	mkdir -p ${GNU_KEYDIR}
 	checkrc
 	for i in pubring.gpg secring.gpg trustdb.gpg; do
