@@ -124,20 +124,21 @@ cd $DESTDIR/xcat-dep
 # add a comment to indicate the latest xcat-dep tar ball name
 sed -i -e "s#REPLACE_LATEST_SNAP_LINE#The latest xcat-dep tar ball is ${DFNAME}#g" README
 
+GNU_KEYDIR="$HOME/.gnupg"
+MACROS=$HOME/.rpmmacros
 if [ "$OSNAME" != "AIX" ]; then
 	# Get gpg keys in place
-	mkdir -p $HOME/.gnupg
+	mkdir -p ${GNU_KEYDIR}
         checkrc
 	for i in pubring.gpg secring.gpg trustdb.gpg; do
-		if [ ! -f $HOME/.gnupg/$i ] || [ `wc -c $HOME/.gnupg/$i|cut -f 1 -d' '` == 0 ]; then
-			rm -f $HOME/.gnupg/$i
-			cp $GSA/../keys/$i $HOME/.gnupg
-			chmod 600 $HOME/.gnupg/$i
+		if [ ! -f ${GNU_KEYDIR}/$i ] || [ `wc -c ${GNU_KEYDIR}/$i|cut -f 1 -d' '` == 0 ]; then
+			rm -f ${GNU_KEYDIR}/$i
+			cp $GSA/../keys/$i ${GNU_KEYDIR}
+			chmod 600 ${GNU_KEYDIR}/$i
 		fi
 	done
 
 	# Tell rpm to use gpg to sign
-	MACROS=$HOME/.rpmmacros
 	if ! $GREP -q '%_signature gpg' $MACROS 2>/dev/null; then
 		echo '%_signature gpg' >> $MACROS
 	fi
