@@ -89,11 +89,10 @@ else
 fi
 
 SCRIPT=$(readlink -f "$0")
-SCRIPTPATH=$(dirname "$SCRIPT")
-echo "INFO: Running script from here: $SCRIPTPATH ..."
+XCATCOREDIR=$(dirname "$SCRIPT")
+echo "INFO: Running script from here: $XCATCOREDIR ..."
 
-cd $SCRIPTPATH
-XCATCOREDIR=`/bin/pwd`
+cd $XCATCOREDIR 
 if [ -z "$DESTDIR" ]; then
 	if [[ $XCATCOREDIR == *"xcat2_autobuild_daily_builds"* ]]; then
 		# This shows we are in the daily build environment path, create the 
@@ -176,15 +175,15 @@ if [ "$OSNAME" != "AIX" ]; then
 	echo "===> Modifying the xcat-dep.repo files to point to the correct location..."
 
 	echo "===> Making sure that the mklocalrepo.sh file contains execute permission ..." 
-        ls -ltr ${SCRIPTPATH}/${WORKING_TARGET_DIR}/mklocalrepo.sh
-	if [[ ! -x "${SCRIPTPATH}/${WORKING_TARGET_DIR}/mklocalrepo.sh" ]]; then
+        ls -ltr ${XCATCOREDIR}/${WORKING_TARGET_DIR}/mklocalrepo.sh
+	if [[ ! -x "${XCATCOREDIR}/${WORKING_TARGET_DIR}/mklocalrepo.sh" ]]; then
 		echo "===> --- found not execute, changing +x ..."
-		chmod +x ${SCRIPTPATH}/${WORKING_TARGET_DIR}/mklocalrepo.sh
+		chmod +x ${XCATCOREDIR}/${WORKING_TARGET_DIR}/mklocalrepo.sh
 	fi
 
 	echo "===> Checking if 'replacelinks' is in the xcat-deps, removing if there ..." 
-	if [[ -f ${SCRIPTPATH}/${WORKING_TARGET_DIR}/replacelinks ]]; then
-		rm -f ${SCRIPTPATH}/${WORKING_TARGET_DIR}/replacelinks
+	if [[ -f ${XCATCOREDIR}/${WORKING_TARGET_DIR}/replacelinks ]]; then
+		rm -f ${XCATCOREDIR}/${WORKING_TARGET_DIR}/replacelinks
 	fi
 fi
 
@@ -280,7 +279,9 @@ chmod -R g+w *
 
 echo "===> Building the tarball..."
 #
-# Want to stay above xcat-dep so we can rsync the whole directory
+# Want to stay one level above xcat-dep so that the script 
+# can rsync the directory up to xcat.org. 
+#
 # DO NOT CHANGE DIRECTORY AFTER THIS POINT!!
 #
 cd ..
