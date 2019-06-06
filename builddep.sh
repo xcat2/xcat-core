@@ -178,11 +178,11 @@ if [ "$OSNAME" != "AIX" ]; then
 	echo "===> Making sure that the mklocalrepo.sh file contains execute permission ..." 
         ls -ltr ${SCRIPTPATH}/${WORKING_TARGET_DIR}/mklocalrepo.sh
 	if [[ ! -x "${SCRIPTPATH}/${WORKING_TARGET_DIR}/mklocalrepo.sh" ]]; then
-		echo "==> Adding execute ..."
+		echo "===> --- found not execute, changing +x ..."
 		chmod +x ${SCRIPTPATH}/${WORKING_TARGET_DIR}/mklocalrepo.sh
 	fi
 
-	echo "==> Checking if 'replacelinks' is in the xcat-deps, removing if there ..." 
+	echo "===> Checking if 'replacelinks' is in the xcat-deps, removing if there ..." 
 	if [[ -f ${SCRIPTPATH}/${WORKING_TARGET_DIR}/replacelinks ]]; then
 		rm -f ${SCRIPTPATH}/${WORKING_TARGET_DIR}/replacelinks
 	fi
