@@ -98,6 +98,7 @@ if [ -z "$DESTDIR" ]; then
 	fi
 fi
 
+echo "INFO: xcat-dep package name: $DFNAME"
 echo "INFO: xcat-dep package will be created here: $XCATCOREDIR/$DESTDIR"
 
 # Create a function to check the return code, 
@@ -117,7 +118,7 @@ checkrc
 echo "Syncing RPMs from $GSA/ to $DESTDIR/xcat-dep ..."
 rsync -ilrtpu --delete $GSA/ $DESTDIR/xcat-dep
 checkrc
-ls -ltr $DESTDIR/xcat-dep
+ls $DESTDIR/xcat-dep
 cd $DESTDIR/xcat-dep
 
 # add a comment to indicate the latest xcat-dep tar ball name
@@ -126,6 +127,7 @@ sed -i -e "s#REPLACE_LATEST_SNAP_LINE#The latest xcat-dep tar ball is ${DFNAME}#
 if [ "$OSNAME" != "AIX" ]; then
 	# Get gpg keys in place
 	mkdir -p $HOME/.gnupg
+        checkrc
 	for i in pubring.gpg secring.gpg trustdb.gpg; do
 		if [ ! -f $HOME/.gnupg/$i ] || [ `wc -c $HOME/.gnupg/$i|cut -f 1 -d' '` == 0 ]; then
 			rm -f $HOME/.gnupg/$i
