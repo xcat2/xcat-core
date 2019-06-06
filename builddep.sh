@@ -88,12 +88,13 @@ else
 	YUMDIR=htdocs
 fi
 
-cd `dirname $0`
+SCRIPT=$(readlink -f "$0")
+SCRIPTPATH=$(dirname "$SCRIPT")
+echo "INFO: Running script from here: $SCRIPTPATH ..."
+
+cd $SCRIPTPATH
 XCATCOREDIR=`/bin/pwd`
 if [ -z "$DESTDIR" ]; then
-	# This is really a hack here because it depends on the build
-	# environment structure.  However, it's not expected that
-	# users are building the xcat-dep packages
 	if [[ $XCATCOREDIR == *"xcat2_autobuild_daily_builds"* ]]; then
 		# This shows we are in the daily build environment path, create the 
 		# deps package at the top level of the build directory
@@ -105,8 +106,8 @@ if [ -z "$DESTDIR" ]; then
 	fi
 fi
 
-echo "INFO: xcat-dep package name: $DFNAME"
-echo "INFO: xcat-dep package will be created here: $XCATCOREDIR/$DESTDIR"
+echo "INFO: Target package name: $DFNAME"
+echo "INFO: Target package will be created here: $XCATCOREDIR/$DESTDIR"
 
 # Create a function to check the return code, 
 # if non-zero, we should stop or unexpected things may happen 
@@ -117,16 +118,17 @@ function checkrc {
     fi
 }
 
+WORKING_TARGET_DIR="${DESTDIR}/xcat-dep"
 # Sync from the GSA master copy of the dep rpms
-mkdir -p $DESTDIR/xcat-dep
+mkdir -p ${WORKING_TARGET_DIR}
 checkrc
 
 # Copy over the xcat-dep from master staging area on GSA to the local directory here 
-echo "Syncing RPMs from $GSA/ to $DESTDIR/xcat-dep ..."
-rsync -ilrtpu --delete $GSA/ $DESTDIR/xcat-dep
+echo "Syncing RPMs from $GSA/ to ${WORKING_TARGET_DIR} ..."
+rsync -ilrtpu --delete $GSA/ ${WORKING_TARGET_DIR}
 checkrc
-ls $DESTDIR/xcat-dep
-cd $DESTDIR/xcat-dep
+ls ${WORKING_TARGET_DIR}
+cd ${WORKING_TARGET_DIR}
 
 # add a comment to indicate the latest xcat-dep tar ball name
 sed -i -e "s#REPLACE_LATEST_SNAP_LINE#The latest xcat-dep tar ball is ${DFNAME}#g" README
@@ -172,6 +174,14 @@ if [ "$OSNAME" != "AIX" ]; then
 
 	# Modify xcat-dep.repo files to point to the correct place
 	echo "===> Modifying the xcat-dep.repo files to point to the correct location..."
+
+	# make sure the mklocalrepo.sh script has execute permission (to ensure quality control)
+	echo "===> Making sure that the mklocalrepo.sh file contains execute permission ..." 
+        ls -ltr ${SCRIPTPATH}/${WORKING_TARGET_DIR}/mklocalrepo.sh
+	if [[ ! -x "${SCRIPTPATH}/${WORKING_TARGET_DIR}/mklocalrepo.sh" ]]; then
+		echo "==> Adding execute ..."
+		chmod +x ${SCRIPTPATH}/${WORKING_TARGET_DIR}/mklocalrepo.sh
+	fi
 fi
 
 if [ "$OSNAME" == "AIX" ]; then
