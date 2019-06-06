@@ -12,7 +12,7 @@
 # - createrepo command needs to be present on the build machine
 #
 # Usage:  builddep.sh [attr=value attr=value ...]
-#       DESTDIR=<dir> - the dir to place the dep tarball in.  The default is ../../../xcat-dep,
+#       DESTDIR=<dir> - the dir to place the dep tarball in.  The default is ../../xcat-dep,
 #                       relative to where this script is located.
 #       UP=0 or UP=1  - override the default upload behavior
 #       FRSYUM=0      - put the directory of individual rpms in the project web area instead
@@ -87,13 +87,37 @@ if [ -z "$DESTDIR" ]; then
 	# This is really a hack here because it depends on the build
 	# environment structure.  However, it's not expected that
 	# users are building the xcat-dep packages
-	DESTDIR=../../xcat-dep
+	if [[ $XCATCOREDIR == *"xcat2_autobuild_daily_builds"* ]]; then
+		# This shows we are in the daily build environment path, create the 
+		# deps package at the top level of the build directory
+		DESTDIR=../../xcat-dep
+	else
+		# This means we are building in some other clone of xcat-core, 
+		# so just place the destination one level up.
+		DESTDIR=../xcat-dep
+	fi
 fi
+
+echo "INFO: xcat-dep package will be created here: $XCATCOREDIR/$DESTDIR"
+
+# Create a function to check the return code, 
+# if non-zero, we should stop or unexpected things may happen 
+function checkrc {
+    if [[ $? != 0  ]]; then
+        echo "[checkrc] non-zero return code, exiting..." 
+        exit  1
+    fi
+}
 
 # Sync from the GSA master copy of the dep rpms
 mkdir -p $DESTDIR/xcat-dep
+checkrc
+
+# Copy over the xcat-dep from master staging area on GSA to the local directory here 
 echo "Syncing RPMs from $GSA/ to $DESTDIR/xcat-dep ..."
 rsync -ilrtpu --delete $GSA/ $DESTDIR/xcat-dep
+checkrc
+ls -ltr $DESTDIR/xcat-dep
 cd $DESTDIR/xcat-dep
 
 # add a comment to indicate the latest xcat-dep tar ball name
