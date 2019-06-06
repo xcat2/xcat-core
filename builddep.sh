@@ -12,7 +12,7 @@
 # - createrepo command needs to be present on the build machine
 #
 # Usage:  builddep.sh [attr=value attr=value ...]
-#       DESTDIR=<dir> - the dir to place the dep tarball in.  The default is ../../../xcat-dep,
+#       DESTDIR=<dir> - the dir to place the dep tarball in.  The default is ../../xcat-dep-build,
 #                       relative to where this script is located.
 #       UP=0 or UP=1  - override the default upload behavior
 #       FRSYUM=0      - put the directory of individual rpms in the project web area instead
@@ -47,7 +47,6 @@ if [ "$OSNAME" == "AIX" ]; then
 else
 	DFNAME=xcat-dep-`date +%Y%m%d%H%M`.tar.bz2
 	GSA=/gsa/pokgsa/projects/x/xcat/build/linux/xcat-dep
-	export HOME=/root		# This is so rpm and gpg will know home, even in sudo
 fi
 
 if [ ! -d $GSA ]; then
@@ -66,6 +65,14 @@ for pkg in ${REQPKG[*]}; do
 	fi
 done
 
+GNU_KEYDIR="$HOME/.gnupg"
+MACROS=$HOME/.rpmmacros
+if [[ -d ${GNU_KEYDIR} ]]; then
+	echo "ERROR: The gnupg key dir: $GNU_KEYDIR exists, it will be overwitten. Stop."
+	echo "ERROR:    To continue, remove it and rerun the script."
+	exit 1
+fi
+
 # set grep to quiet by default
 GREP="grep -q"
 if [ "$VERBOSE" = "1" -o "$VERBOSE" = "yes" ]; then
@@ -81,37 +88,63 @@ else
 	YUMDIR=htdocs
 fi
 
-cd `dirname $0`
-XCATCOREDIR=`/bin/pwd`
+SCRIPT=$(readlink -f "$0")
+XCATCOREDIR=$(dirname "$SCRIPT")
+echo "INFO: Running script from here: $XCATCOREDIR ..."
+
+cd $XCATCOREDIR 
 if [ -z "$DESTDIR" ]; then
-	# This is really a hack here because it depends on the build
-	# environment structure.  However, it's not expected that
-	# users are building the xcat-dep packages
-	DESTDIR=../../xcat-dep
+	if [[ $XCATCOREDIR == *"xcat2_autobuild_daily_builds"* ]]; then
+		# This shows we are in the daily build environment path, create the 
+		# deps package at the top level of the build directory
+		DESTDIR=../../xcat-dep-build
+	else
+		# This means we are building in some other clone of xcat-core, 
+		# so just place the destination one level up.
+		DESTDIR=../xcat-dep-build
+	fi
 fi
 
+echo "INFO: Target package name: $DFNAME"
+echo "INFO: Target package will be created here: $XCATCOREDIR/$DESTDIR"
+
+# Create a function to check the return code, 
+# if non-zero, we should stop or unexpected things may happen 
+function checkrc {
+    if [[ $? != 0  ]]; then
+        echo "[checkrc] non-zero return code, exiting..." 
+        exit  1
+    fi
+}
+
+WORKING_TARGET_DIR="${DESTDIR}/xcat-dep"
 # Sync from the GSA master copy of the dep rpms
-mkdir -p $DESTDIR/xcat-dep
-echo "Syncing RPMs from $GSA/ to $DESTDIR/xcat-dep ..."
-rsync -ilrtpu --delete $GSA/ $DESTDIR/xcat-dep
-cd $DESTDIR/xcat-dep
+mkdir -p ${WORKING_TARGET_DIR}
+checkrc
+
+# Copy over the xcat-dep from master staging area on GSA to the local directory here 
+echo "Syncing RPMs from $GSA/ to ${WORKING_TARGET_DIR} ..."
+rsync -ilrtpu --delete $GSA/ ${WORKING_TARGET_DIR}
+checkrc
+ls ${WORKING_TARGET_DIR}
+cd ${WORKING_TARGET_DIR}
 
 # add a comment to indicate the latest xcat-dep tar ball name
 sed -i -e "s#REPLACE_LATEST_SNAP_LINE#The latest xcat-dep tar ball is ${DFNAME}#g" README
 
 if [ "$OSNAME" != "AIX" ]; then
 	# Get gpg keys in place
-	mkdir -p $HOME/.gnupg
+	mkdir -p ${GNU_KEYDIR}
+	checkrc
 	for i in pubring.gpg secring.gpg trustdb.gpg; do
-		if [ ! -f $HOME/.gnupg/$i ] || [ `wc -c $HOME/.gnupg/$i|cut -f 1 -d' '` == 0 ]; then
-			rm -f $HOME/.gnupg/$i
-			cp $GSA/../keys/$i $HOME/.gnupg
-			chmod 600 $HOME/.gnupg/$i
+		if [ ! -f ${GNU_KEYDIR}/$i ] || [ `wc -c ${GNU_KEYDIR}/$i|cut -f 1 -d' '` == 0 ]; then
+			rm -f ${GNU_KEYDIR}/$i
+			cp $GSA/../keys/$i ${GNU_KEYDIR}
+			chmod 600 ${GNU_KEYDIR}/$i
 		fi
 	done
 
 	# Tell rpm to use gpg to sign
-	MACROS=$HOME/.rpmmacros
 	if ! $GREP -q '%_signature gpg' $MACROS 2>/dev/null; then
 		echo '%_signature gpg' >> $MACROS
 	fi
@@ -140,6 +173,18 @@ if [ "$OSNAME" != "AIX" ]; then
 
 	# Modify xcat-dep.repo files to point to the correct place
 	echo "===> Modifying the xcat-dep.repo files to point to the correct location..."
+
+	echo "===> Making sure that the mklocalrepo.sh file contains execute permission ..." 
+        ls -ltr ${XCATCOREDIR}/${WORKING_TARGET_DIR}/mklocalrepo.sh
+	if [[ ! -x "${XCATCOREDIR}/${WORKING_TARGET_DIR}/mklocalrepo.sh" ]]; then
+		echo "===> --- found not execute, changing +x ..."
+		chmod +x ${XCATCOREDIR}/${WORKING_TARGET_DIR}/mklocalrepo.sh
+	fi
+
+	echo "===> Checking if 'replacelinks' is in the xcat-deps, removing if there ..." 
+	if [[ -f ${XCATCOREDIR}/${WORKING_TARGET_DIR}/replacelinks ]]; then
+		rm -f ${XCATCOREDIR}/${WORKING_TARGET_DIR}/replacelinks
+	fi
 fi
 
 if [ "$OSNAME" == "AIX" ]; then
@@ -232,13 +277,16 @@ fi
 chgrp -R -h $SYSGRP *
 chmod -R g+w *
 
-echo "===> Building the tarball..."
+TARBALL_WORKING_DIR="${XCATCOREDIR}/${DESTDIR}"
+echo "===> Building the tarball at: ${TARBALL_WORKING_DIR} ..."
 #
-# Want to stay above xcat-dep so we can rsync the whole directory
+# Want to stay one level above xcat-dep so that the script 
+# can rsync the directory up to xcat.org. 
+#
 # DO NOT CHANGE DIRECTORY AFTER THIS POINT!!
 #
-cd ..
-pwd
+
+cd ${TARBALL_WORKING_DIR}
 
 verbosetar=""
 if [ -n "$VERBOSEMODE" ]; then
