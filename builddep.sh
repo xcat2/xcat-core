@@ -68,8 +68,8 @@ done
 GNU_KEYDIR="$HOME/.gnupg"
 MACROS=$HOME/.rpmmacros
 if [[ -d ${GNU_KEYDIR} ]]; then
-	echo "WARNING: The gnupg key dir: $GNU_KEYDIR exists, it will be overwitten. Stop."
-	echo "WARNING: To continue, remove it and rerun the script."
+	echo "ERROR: The gnupg key dir: $GNU_KEYDIR exists, it will be overwitten. Stop."
+	echo "ERROR:    To continue, remove it and rerun the script."
 	exit 1
 fi
 
