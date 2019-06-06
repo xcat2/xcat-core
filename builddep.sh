@@ -47,7 +47,6 @@ if [ "$OSNAME" == "AIX" ]; then
 else
 	DFNAME=xcat-dep-`date +%Y%m%d%H%M`.tar.bz2
 	GSA=/gsa/pokgsa/projects/x/xcat/build/linux/xcat-dep
-	export HOME=/root		# This is so rpm and gpg will know home, even in sudo
 fi
 
 if [ ! -d $GSA ]; then
@@ -90,11 +89,11 @@ if [ -z "$DESTDIR" ]; then
 	if [[ $XCATCOREDIR == *"xcat2_autobuild_daily_builds"* ]]; then
 		# This shows we are in the daily build environment path, create the 
 		# deps package at the top level of the build directory
-		DESTDIR=../../xcat-dep
+		DESTDIR=../../xcat-dep-build
 	else
 		# This means we are building in some other clone of xcat-core, 
 		# so just place the destination one level up.
-		DESTDIR=../xcat-dep
+		DESTDIR=../xcat-dep-build
 	fi
 fi
 
@@ -128,8 +127,13 @@ GNU_KEYDIR="$HOME/.gnupg"
 MACROS=$HOME/.rpmmacros
 if [ "$OSNAME" != "AIX" ]; then
 	# Get gpg keys in place
+        if [[ -d ${GNU_KEYDIR} ]]; then
+		echo "WARNING: The gnupg key dir: $GNU_KEYDIR exists, it will be overwitten. Stop."
+		echo "WARNING: To continue, remove it and rerun the script."
+		exit 1
+	fi
 	mkdir -p ${GNU_KEYDIR}
-        checkrc
+	checkrc
 	for i in pubring.gpg secring.gpg trustdb.gpg; do
 		if [ ! -f ${GNU_KEYDIR}/$i ] || [ `wc -c ${GNU_KEYDIR}/$i|cut -f 1 -d' '` == 0 ]; then
 			rm -f ${GNU_KEYDIR}/$i
