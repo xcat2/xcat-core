@@ -12,7 +12,7 @@
 # - createrepo command needs to be present on the build machine
 #
 # Usage:  builddep.sh [attr=value attr=value ...]
-#       DESTDIR=<dir> - the dir to place the dep tarball in.  The default is ../../xcat-dep,
+#       DESTDIR=<dir> - the dir to place the dep tarball in.  The default is ../../xcat-dep-build,
 #                       relative to where this script is located.
 #       UP=0 or UP=1  - override the default upload behavior
 #       FRSYUM=0      - put the directory of individual rpms in the project web area instead
