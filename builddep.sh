@@ -277,15 +277,16 @@ fi
 chgrp -R -h $SYSGRP *
 chmod -R g+w *
 
-echo "===> Building the tarball..."
+TARBALL_WORKING_DIR="${XCATCOREDIR}/${DESTDIR}"
+echo "===> Building the tarball at: ${TARBALL_WORKING_DIR} ..."
 #
 # Want to stay one level above xcat-dep so that the script 
 # can rsync the directory up to xcat.org. 
 #
 # DO NOT CHANGE DIRECTORY AFTER THIS POINT!!
 #
-cd ..
-pwd
+
+cd ${TARBALL_WORKING_DIR}
 
 verbosetar=""
 if [ -n "$VERBOSEMODE" ]; then
