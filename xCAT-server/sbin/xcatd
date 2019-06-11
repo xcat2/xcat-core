@@ -1553,7 +1553,7 @@ until ($quit) {
         $extrasslargs{SSL_version} = "SSLv23:!SSLv2:!SSLv3:!TLSv1" unless length $extrasslargs{SSL_version};
 
         if ($::XCATSITEVALS{xcatsslciphers}) { $extrasslargs{SSL_cipher_list} = $::XCATSITEVALS{xcatsslciphers}; }
-        $extrasslargs{SSL_cipher_list} = "ECDHE-RSA-AES128-GCM-SHA256:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384" unless length $extrasslargs{SSL_cipher_list};
+        $extrasslargs{SSL_cipher_list} = "ECDHE-RSA-AES128-GCM-SHA256:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384" unless length $extrasslargs{SSL_cipher_list} or length $extrasslargs{SSL_version};
         use Data::Dumper;
 
         $SIG{ALRM} = sub { $ssltimeout = 1; die; };
