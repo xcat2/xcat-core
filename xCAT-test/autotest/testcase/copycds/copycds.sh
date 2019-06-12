@@ -11,7 +11,7 @@ if [[ $OS != *"rhels"* ]]; then
     exit  0
 fi
 
-MAJOR_OS_VER=${OS%.*}
+MAJOR_OS_VER=`echo $OS | cut -d'.' -f1`
 if [[ $OS == *"$MAJOR_OS_VER"* ]]; then
     IFS='
 '
