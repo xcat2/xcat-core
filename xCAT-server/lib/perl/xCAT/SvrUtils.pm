@@ -482,7 +482,9 @@ sub getsynclistfile()
 
 sub get_os_search_list {
     my $os = shift;
-    my @word = split(/\./, $os);
+    #example: for os=rhels7.6-alternate
+    my ($baseos, $alter) = split(/\-/, $os);
+    my @word = split(/\./, $baseos);
     my @list = ();
 
     while ($word[-1] =~ /^[0-9]+$/) {
@@ -713,7 +715,7 @@ sub update_tables_with_templates
     my $genos = $osver;
     $genos =~ s/\..*//;
     if ($genos =~ /rh.*s(\d*)/) {
-        $genos = "rhel$1";
+        $genos = "rhels$1";
     }
 
 
@@ -935,7 +937,7 @@ sub update_tables_with_mgt_image
     my $genos = $osver;
     $genos =~ s/\..*//;
     if ($genos =~ /rh.*s(\d*)/) {
-        $genos = "rhel$1";
+        $genos = "rhels$1";
     }
 
     #if the osver does not match the osver of MN, return
@@ -1141,7 +1143,7 @@ sub update_tables_with_diskless_image
     my $genos = $osver;
     $genos =~ s/\..*//;
     if ($genos =~ /rh.*s(\d*)/) {
-        $genos = "rhel$1";
+        $genos = "rhels$1";
     }
 
     #print "osver=$osver, arch=$arch, osname=$osname, genos=$genos, profile=$profile\n";
