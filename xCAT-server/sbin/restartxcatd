@@ -70,7 +70,7 @@ if (xCAT::Utils->isLinux())
 {
     print "Restarting xCATd                                           ";
     if (-r "/etc/profile.d/xcat.sh") {
-        $cmd = "source /etc/profile.d/xcat.sh;";
+        $cmd = ". /etc/profile.d/xcat.sh;";
     }
 
     $cmd .= "xcatd -p /var/run/xcatd.pid";
