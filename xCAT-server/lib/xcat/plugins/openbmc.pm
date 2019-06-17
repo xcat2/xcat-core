@@ -78,6 +78,7 @@ $::RPOWER_RESET_SLEEP_INTERVAL = 13;
 
 $::BMC_MAX_RETRY = 20;
 $::BMC_CHECK_INTERVAL = 15;
+$::BMC_REBOOT_DELAY = 180;
 
 $::RSPCONFIG_DUMP_INTERVAL  = 15;
 $::RSPCONFIG_DUMP_MAX_RETRY = 20;
@@ -2516,6 +2517,9 @@ sub deal_with_response {
                 return;
             }
         } elsif ($response->status_line eq $::RESPONSE_SERVICE_TIMEOUT) {
+            # Normally we would not wind up here when processing a response from bmcreboot and instead
+            # handle it in rpower_response() which will be called when 200 OK is returned. But sometimes
+            # we get 504 Timeout and wind up here. The steps are the same.
             if ($node_info{$node}{cur_status} eq "RPOWER_RESET_RESPONSE" and defined $status_info{RPOWER_RESET_RESPONSE}{argv} and $status_info{RPOWER_RESET_RESPONSE}{argv} =~ /bmcreboot$/) {
                 my $infomsg = "BMC $::POWER_STATE_REBOOT";
                 xCAT::SvrUtils::sendmsg($infomsg, $callback, $node);
@@ -2523,8 +2527,9 @@ sub deal_with_response {
                     my $timestamp = localtime();
                     print RFLASH_LOG_FILE_HANDLE "$timestamp ===================Rebooting BMC to apply new BMC firmware===================\n";
                     print RFLASH_LOG_FILE_HANDLE "BMC $::POWER_STATE_REBOOT\n";
+                    print RFLASH_LOG_FILE_HANDLE "Waiting for $::BMC_REBOOT_DELAY seconds to give BMC a chance to reboot\n";
                     close (RFLASH_LOG_FILE_HANDLE);
-                    retry_after($node, "RPOWER_BMC_CHECK_REQUEST", 15);
+                    retry_after($node, "RPOWER_BMC_CHECK_REQUEST", $::BMC_REBOOT_DELAY);
                     return;
                 }else{
                     $wait_node_num--;
@@ -2776,7 +2781,8 @@ sub rpower_response {
                     print RFLASH_LOG_FILE_HANDLE "BMC $::POWER_STATE_REBOOT\n";
                     my $timestamp = localtime();
                     print RFLASH_LOG_FILE_HANDLE "$timestamp ===================Reboot BMC to apply new BMC===================\n";
-                    retry_after($node, "RPOWER_BMC_CHECK_REQUEST", 15);
+                    print RFLASH_LOG_FILE_HANDLE "Waiting for $::BMC_REBOOT_DELAY seconds to give BMC a chance to reboot\n";
+                    retry_after($node, "RPOWER_BMC_CHECK_REQUEST", $::BMC_REBOOT_DELAY);
                     return;
                 }
             }
