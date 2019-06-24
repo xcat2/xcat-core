@@ -39,17 +39,14 @@ function check_destiny() {
         echo "There is no second network, could not verify the test"
         return 1;
     else
-        echo "Add ip addr $MASTER_PRIVATE_IP/$MASTER_PRIVATE_NETMASK to $NET2"
         cmd="ip addr add $MASTER_PRIVATE_IP/$MASTER_PRIVATE_NETMASK dev $NET2";
         runcmd $cmd;
-        echo "Running makenetworks command"
         cmd="makenetworks";
         runcmd $cmd;
         makehosts ${TESTNODE}
         grep ${TESTNODE} /etc/hosts 
         cmd="nodeset ${TESTNODE}  shell";
         runcmd $cmd;
-        echo "Delete ip addr $MASTER_PRIVATE_IP/$MASTER_PRIVATE_NETMASK from $NET2"
         cmd="ip addr del $MASTER_PRIVATE_IP/$MASTER_PRIVATE_NETMASK dev $NET2";
         runcmd $cmd;
         echo "Check if 'nodeset ${TESTNODE} shell' is added to ${SHELLFOLDER}/${TESTNODE}"
