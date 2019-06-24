@@ -19,7 +19,7 @@ The following steps are required for this method:
    #. Create a partition file
    #. Associate the partition file with an xCAT osimage
 
-The ``nodeset`` command will then insert the contents of this partition file into the generated autinst config file that will be used by the operation system installer. 
+The ``nodeset`` command will then insert the contents of this partition file into the generated autoinst config file that will be used by the operation system installer. 
 
 .. END_partition_definition_file_Overview
 
