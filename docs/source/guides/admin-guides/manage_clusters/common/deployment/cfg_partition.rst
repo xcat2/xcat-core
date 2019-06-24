@@ -30,7 +30,7 @@ The partition file must follow the partitioning syntax of the respective install
 
    * Redhat: `Kickstart documentation  <http://fedoraproject.org/wiki/Anaconda/Kickstart#part_or_partition>`_ 
 
-     * The file ``/root/anaconda-ks.cfg`` is a sample kickstart file created by RedHat installing during the installation process based on the options that you selected. 
+     * The file ``/root/anaconda-ks.cfg`` is a sample kickstart file created by RedHat installing during the installation process based on the options that you selected.
      * system-config-kickstart is a tool with graphical interface for creating kickstart files
 
    * SLES: `Autoyast documentation  <https://doc.opensuse.org/projects/autoyast/configuration.html#CreateProfile.Partitioning>`_ 
@@ -42,7 +42,7 @@ The partition file must follow the partitioning syntax of the respective install
 
      * For detailed information see the files ``partman-auto-recipe.txt`` and ``partman-auto-raid-recipe.txt`` included in the debian-installer package. Both files are also available from the debian-installer source repository. 
 
-.. note:: Supported functionality may change between releases of the Operating System, always refer to the latest documentation provided by the OS. 
+.. note:: Supported functionality may change between releases of the Operating System, always refer to the latest documentation provided by the operating system.
 
 .. END_partition_definition_file_content
 
