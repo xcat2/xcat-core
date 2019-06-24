@@ -64,6 +64,8 @@ cmd:if [ -x /usr/bin/goconserver ]; then makegocons $$CN; else makeconservercf $
 check:rc==0
 cmd:ls /install/netboot/__GETNODEATTR($$CN,os)__/__GETNODEATTR($$CN,arch)__/compute/rootimg;if [ $? -eq 0 ];then mv -f /install/netboot/__GETNODEATTR($$CN,os)__/__GETNODEATTR($$CN,arch)__/compute/rootimg /rootimg.bak;fi
 cmd:ls /install/netboot/__GETNODEATTR($$CN,os)__/__GETNODEATTR($$CN,arch)__/compute/rootimg.cpio.gz;if [ $? -eq 0 ];then mv -f /install/netboot/__GETNODEATTR($$CN,os)__/__GETNODEATTR($$CN,arch)__/compute/rootimg.cpio.gz /rootimg.cpio.gz.bak;fi
+cmd:if [[ "__GETNODEATTR($$CN,os)__" =~ "ubuntu16.04.5" ]] && [[ "__GETNODEATTR($$CN,arch)__" =~ "x86" ]]; then chdef -t osimage -o __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute  -p pkgdir="http://archive.ubuntu.com/ubuntu xenial universe main,http://archive.ubuntu.com/ubuntu xenial-updates universe main,http://security.ubuntu.com/ubuntu xenial-security main restricted";fi
+cmd:lsdef -t osimage -o __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute
 cmd:genimage __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute
 check:rc==0
 cmd:ls -l /install/netboot/__GETNODEATTR($$CN,os)__/__GETNODEATTR($$CN,arch)__/compute/rootimg
@@ -102,11 +104,13 @@ start:packimage_m_cpio_c_pigz
 os:Linux
 description:test packimage -m cpio -c pigz
 label:others,packaging,invoke_provision
-#cmd:copycds $$ISO
+cmd:copycds $$ISO
 cmd:if [ -x /usr/bin/goconserver ]; then makegocons $$CN; else makeconservercf $$CN; fi
 check:rc==0
 cmd:ls /install/netboot/__GETNODEATTR($$CN,os)__/__GETNODEATTR($$CN,arch)__/compute/rootimg;if [ $? -eq 0 ];then mv -f /install/netboot/__GETNODEATTR($$CN,os)__/__GETNODEATTR($$CN,arch)__/compute/rootimg /rootimg.bak;fi
 cmd:ls /install/netboot/__GETNODEATTR($$CN,os)__/__GETNODEATTR($$CN,arch)__/compute/rootimg.cpio.gz;if [ $? -eq 0 ];then mv -f /install/netboot/__GETNODEATTR($$CN,os)__/__GETNODEATTR($$CN,arch)__/compute/rootimg.cpio.gz /rootimg.cpio.gz.bak;fi
+cmd:if [[ "__GETNODEATTR($$CN,os)__" =~ "ubuntu16.04.5" ]] && [[ "__GETNODEATTR($$CN,arch)__" =~ "x86" ]]; then chdef -t osimage -o __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute  -p pkgdir="http://archive.ubuntu.com/ubuntu xenial universe main,http://archive.ubuntu.com/ubuntu xenial-updates universe main,http://security.ubuntu.com/ubuntu xenial-security main restricted";fi
+cmd:lsdef -t osimage -o __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute
 cmd:genimage __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute
 check:rc==0
 cmd:ls -l /install/netboot/__GETNODEATTR($$CN,os)__/__GETNODEATTR($$CN,arch)__/compute/rootimg
@@ -149,11 +153,13 @@ start:packimage_m_cpio_c_xz
 os:Linux
 description:test packimage -m cpio -c xz
 label:others,packaging,invoke_provision
-#cmd:copycds $$ISO
+cmd:copycds $$ISO
 cmd:if [ -x /usr/bin/goconserver ]; then makegocons $$CN; else makeconservercf $$CN; fi
 check:rc==0
 cmd:ls /install/netboot/__GETNODEATTR($$CN,os)__/__GETNODEATTR($$CN,arch)__/compute/rootimg;if [ $? -eq 0 ];then mv -f /install/netboot/__GETNODEATTR($$CN,os)__/__GETNODEATTR($$CN,arch)__/compute/rootimg /rootimg.bak;fi
 cmd:ls /install/netboot/__GETNODEATTR($$CN,os)__/__GETNODEATTR($$CN,arch)__/compute/rootimg.cpio.xz;if [ $? -eq 0 ];then mv -f /install/netboot/__GETNODEATTR($$CN,os)__/__GETNODEATTR($$CN,arch)__/compute/rootimg.cpio.xz /rootimg.cpio.xz.bak;fi
+cmd:if [[ "__GETNODEATTR($$CN,os)__" =~ "ubuntu16.04.5" ]] && [[ "__GETNODEATTR($$CN,arch)__" =~ "x86" ]]; then chdef -t osimage -o __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute  -p pkgdir="http://archive.ubuntu.com/ubuntu xenial universe main,http://archive.ubuntu.com/ubuntu xenial-updates universe main,http://security.ubuntu.com/ubuntu xenial-security main restricted";fi
+cmd:lsdef -t osimage -o __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute
 cmd:genimage __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute
 check:rc==0
 cmd:ls -l /install/netboot/__GETNODEATTR($$CN,os)__/__GETNODEATTR($$CN,arch)__/compute/rootimg
@@ -192,11 +198,13 @@ start:packimage_m_tar_c_pigz
 os:Linux
 description:test packimage -m tar -c pigz
 label:others,packaging,invoke_provision
-#cmd:copycds $$ISO
+cmd:copycds $$ISO
 cmd:if [ -x /usr/bin/goconserver ]; then makegocons $$CN; else makeconservercf $$CN; fi
 check:rc==0
 cmd:ls /install/netboot/__GETNODEATTR($$CN,os)__/__GETNODEATTR($$CN,arch)__/compute/rootimg;if [ $? -eq 0 ];then mv -f /install/netboot/__GETNODEATTR($$CN,os)__/__GETNODEATTR($$CN,arch)__/compute/rootimg /rootimg.bak;fi
 cmd:ls /install/netboot/__GETNODEATTR($$CN,os)__/__GETNODEATTR($$CN,arch)__/compute/rootimg.tar.gz;if [ $? -eq 0 ];then mv -f /install/netboot/__GETNODEATTR($$CN,os)__/__GETNODEATTR($$CN,arch)__/compute/rootimg.tar.gz /rootimg.tar.gz.bak;fi
+cmd:if [[ "__GETNODEATTR($$CN,os)__" =~ "ubuntu16.04.5" ]] && [[ "__GETNODEATTR($$CN,arch)__" =~ "x86" ]]; then chdef -t osimage -o __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute  -p pkgdir="http://archive.ubuntu.com/ubuntu xenial universe main,http://archive.ubuntu.com/ubuntu xenial-updates universe main,http://security.ubuntu.com/ubuntu xenial-security main restricted";fi
+cmd:lsdef -t osimage -o __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute
 cmd:genimage __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute
 check:rc==0
 cmd:ls -l /install/netboot/__GETNODEATTR($$CN,os)__/__GETNODEATTR($$CN,arch)__/compute/rootimg
@@ -250,11 +258,13 @@ start:packimage_m_tar_c_gzip
 os:Linux
 description:test packimage -m tar -c gzip
 label:others,packaging,invoke_provision
-#cmd:copycds $$ISO
+cmd:copycds $$ISO
 cmd:if [ -x /usr/bin/goconserver ]; then makegocons $$CN; else makeconservercf $$CN; fi
 check:rc==0
 cmd:ls /install/netboot/__GETNODEATTR($$CN,os)__/__GETNODEATTR($$CN,arch)__/compute/rootimg;if [ $? -eq 0 ];then mv -f /install/netboot/__GETNODEATTR($$CN,os)__/__GETNODEATTR($$CN,arch)__/compute/rootimg /rootimg.bak;fi
 cmd:ls /install/netboot/__GETNODEATTR($$CN,os)__/__GETNODEATTR($$CN,arch)__/compute/rootimg.tar.gz;if [ $? -eq 0 ];then mv -f /install/netboot/__GETNODEATTR($$CN,os)__/__GETNODEATTR($$CN,arch)__/compute/rootimg.tar.gz /rootimg.tar.gz.bak;fi
+cmd:if [[ "__GETNODEATTR($$CN,os)__" =~ "ubuntu16.04.5" ]] && [[ "__GETNODEATTR($$CN,arch)__" =~ "x86" ]]; then chdef -t osimage -o __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute  -p pkgdir="http://archive.ubuntu.com/ubuntu xenial universe main,http://archive.ubuntu.com/ubuntu xenial-updates universe main,http://security.ubuntu.com/ubuntu xenial-security main restricted";fi
+cmd:lsdef -t osimage -o __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute
 cmd:genimage __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute
 check:rc==0
 cmd:ls -l /install/netboot/__GETNODEATTR($$CN,os)__/__GETNODEATTR($$CN,arch)__/compute/rootimg
@@ -304,11 +314,13 @@ start:packimage_m_tar_c_xz
 os:Linux
 description:test packimage -m tar -c xz
 label:others,packaging,invoke_provision
-#cmd:copycds $$ISO
+cmd:copycds $$ISO
 cmd:if [ -x /usr/bin/goconserver ]; then makegocons $$CN; else makeconservercf $$CN; fi
 check:rc==0
 cmd:ls /install/netboot/__GETNODEATTR($$CN,os)__/__GETNODEATTR($$CN,arch)__/compute/rootimg;if [ $? -eq 0 ];then mv -f /install/netboot/__GETNODEATTR($$CN,os)__/__GETNODEATTR($$CN,arch)__/compute/rootimg /rootimg.bak;fi
 cmd:ls /install/netboot/__GETNODEATTR($$CN,os)__/__GETNODEATTR($$CN,arch)__/compute/rootimg.tar.xz;if [ $? -eq 0 ];then mv -f /install/netboot/__GETNODEATTR($$CN,os)__/__GETNODEATTR($$CN,arch)__/compute/rootimg.tar.xz /rootimg.tar.xz.bak;fi
+cmd:if [[ "__GETNODEATTR($$CN,os)__" =~ "ubuntu16.04.5" ]] && [[ "__GETNODEATTR($$CN,arch)__" =~ "x86" ]]; then chdef -t osimage -o __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute  -p pkgdir="http://archive.ubuntu.com/ubuntu xenial universe main,http://archive.ubuntu.com/ubuntu xenial-updates universe main,http://security.ubuntu.com/ubuntu xenial-security main restricted";fi
+cmd:lsdef -t osimage -o __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute
 cmd:genimage __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute
 check:rc==0
 cmd:ls -l /install/netboot/__GETNODEATTR($$CN,os)__/__GETNODEATTR($$CN,arch)__/compute/rootimg
