@@ -12,11 +12,11 @@ Download the Mellanox OFED ISO file `here (MLNX_OFED) <http://www.mellanox.com/p
 Prepare Installation Script
 ---------------------------
 
-The ``mlnxofed_ib_install.v2`` is a sample script intended to assist with the installation of the Mellanox OFED drivers.  The following support matrix documents the limited number of scenarios that have been verified: :doc:`support matrix </advanced/networks/infiniband/mlnxofed_ib_verified_scenario_matrix>`.
+The ``mlnxofed_ib_install`` is a sample script intended to assist with the installation of the Mellanox OFED drivers.  The following support matrix documents the limited number of scenarios that have been verified: :doc:`support matrix </advanced/networks/infiniband/mlnxofed_ib_verified_scenario_matrix>`.
 
-#. Copy the ``mlnxofed_ib_install.v2`` to ``/install/postscripts``, renaming to ``mlnxofed_ib_install``. ::
+#. Copy the ``mlnxofed_ib_install`` to ``/install/postscripts``, renaming to ``mlnxofed_ib_install``. ::
 
-       cp /opt/xcat/share/xcat/ib/scripts/Mellanox/mlnxofed_ib_install.v2 \
+       cp /opt/xcat/share/xcat/ib/scripts/Mellanox/mlnxofed_ib_install \
           /install/postscripts/mlnxofed_ib_install
 
        # ensure the script has execute permission
