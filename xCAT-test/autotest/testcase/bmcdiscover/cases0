@@ -73,7 +73,7 @@ label:others,discovery
 cmd:bmcdiscover --range  $$bmcrange -u $$bmcusername -p $$bmcpasswd -w
 check:rc==0
 check:output=~Writing node
-check:output=~$$bmcrange,.+,.+,$$bmcusername,$$bmcpasswd
+check:output=~$$bmcrange
 end
 
 
