@@ -1,7 +1,7 @@
 xCAT Genesis Base
 =================
 
-*Note*: Please rebuild ``xCAT-genesis-base`` with ``xCAT-genesis-builder`` version equal and newer than *2.13.10* before updating xCAT *2.13.10* and higher.
+.. note:: Ensure that you rebuild ``xCAT-genesis-base`` with ``xCAT-genesis-builder`` version >= to *2.13.10* before updating xCAT to *2.13.10* or higher.
 
 xCAT ships a ``xCAT-genesis-base`` package as part of xcat-deps.  This is a light-weight diskless linux image based on Fedora (Fedora26, currently) that is used by xCAT to do hardware discovery.
 
@@ -9,6 +9,8 @@ To support the Power9 hardware, changes are made to the kernel in the Red Hat En
 
 Work-around
 -----------
+
+.. note:: The genesis-base must be compiled on the Power9 hardware.  If the management node is not Power9 hardware, manually provision a compute node, build the genesis-base RPM, then install it on the management node.
 
 xCAT cannot ship a kernel based on RHEL distribution, so the customer needs to build a version of the ``xCAT-genesis-base`` on-site using a server running Red Hat Enterprise Linux.
 
