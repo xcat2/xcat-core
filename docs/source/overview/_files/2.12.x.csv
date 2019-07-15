@@ -1,0 +1,6 @@
+Version,Release Date,New OS Supported,Release Notes
+2.12.4,2016-11-11,"RHEL 7.3 LE, RHEV 4.0",`2.12.4 Release Notes <https://github.com/xcat2/xcat-core/wiki/XCAT_2.12.4_Release_Notes>`_
+2.12.3,2016-09-30,,`2.12.3 Release Notes <https://github.com/xcat2/xcat-core/wiki/XCAT_2.12.3_Release_Notes>`_
+2.12.2,2016-08-19,Ubuntu 16.04.1,`2.12.2 Release Notes <https://github.com/xcat2/xcat-core/wiki/XCAT_2.12.2_Release_Notes>`_
+2.12.1,2016-07-08,,`2.12.1 Release Notes <https://github.com/xcat2/xcat-core/wiki/XCAT_2.12.1_Release_Notes>`_
+2.12.0,2016-05-20,"RHEL 6.8, Ubuntu 14.4.4 LE, Ubuntu 16.04",`2.12.0 Release Notes <https://github.com/xcat2/xcat-core/wiki/XCAT_2.12_Release_Notes>`_
