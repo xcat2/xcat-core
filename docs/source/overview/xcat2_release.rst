@@ -6,11 +6,17 @@ The following tables documents the xCAT release versions and release dates. For 
 
 .. tabularcolumns:: |p{1cm}|p{4cm}|p{7cm}|p{7cm}
 
+xCAT 2.15.x
+-----------
+
 .. csv-table:: 2.15.x Release Information
    :file: _files/2.15.x.csv
    :header-rows: 1
    :class: longtable
    :widths: 1 1 1 1
+
+xCAT 2.14.x
+-----------
 
 .. csv-table:: 2.14.x Release Information
    :file: _files/2.14.x.csv
@@ -18,11 +24,17 @@ The following tables documents the xCAT release versions and release dates. For 
    :class: longtable
    :widths: 1 1 1 1
 
+xCAT 2.13.x
+-----------
+
 .. csv-table:: 2.13.x Release Information
    :file: _files/2.13.x.csv
    :header-rows: 1
    :class: longtable
    :widths: 1 1 1 1
+
+xCAT 2.12.x
+-----------
 
 .. csv-table:: 2.12.x Release Information
    :file: _files/2.12.x.csv
