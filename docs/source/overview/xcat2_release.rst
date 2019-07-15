@@ -1,7 +1,7 @@
 xCAT2 Release Information
 =========================
 
-The following tables documents the xCAT release versions and release dates. For more detailed information about new functions, bug fixes, and download links, refer to the specific release notes.
+The following tables documents the xCAT release versions and release dates. For more detailed information regarding new functions, supported OSs, bug fixes, and download links, refer to the specific release notes.
 
 
 .. tabularcolumns:: |p{1cm}|p{7cm}|p{7cm}
