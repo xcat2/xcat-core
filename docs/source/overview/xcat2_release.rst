@@ -3,68 +3,13 @@ xCAT2 Release Information
 
 The following tables documents the xCAT release versions and release dates. For a more detailed list of functions and fixes, refer to the release notes. 
 
-xCAT 2.14.x
------------
+.. tabularcolumns:: |p{1cm}|p{7cm}|p{7cm}
 
-+---------------------------------+---------------+-------------+----------------------------------+
-|xCAT                             |New OS         |New          |New Feature                       |
-|Version                          |               |Hardware     |                                  |
-+=================================+===============+=============+==================================+
-|| xCAT 2.14.6 2019/03/29         |               |             |                                  |
-||                                |               |             |                                  |
-| `2.14.6 Release Notes <https:// |               |             |                                  |
-| github.com/xcat2/xcat-core/wiki |               |             |                                  |
-| /XCAT_2.14.6_Release_Notes>`_   |               |             |                                  |
-+---------------------------------+---------------+-------------+----------------------------------+
-|| xCAT 2.14.5 2018/12/07         |- RHEL7.6      |             |- syslog tag refine               |
-||                                |               |             |                                  |
-| `2.14.5 Release Notes <https:// |               |             |- site:httpport support           |
-| github.com/xcat2/xcat-core/wiki |               |             |                                  |
-| /XCAT_2.14.5_Release_Notes>`_   |               |             |- localdisk GPT partition support |
-|                                 |               |             |                                  |
-|                                 |               |             |- goconserver v0.3.2              |
-|                                 |               |             |                                  |
-|                                 |               |             |- xcat-inventory 0.1.6            |
-+---------------------------------+---------------+-------------+----------------------------------+
-|| xCAT 2.14.4 2018/10/19         |- UBT18.04.1   |             |                                  |
-||                                |               |             |                                  |
-| `2.14.4 Release Notes <https:// |               |             |                                  |
-| github.com/xcat2/xcat-core/wiki |               |             |                                  |
-| /XCAT_2.14.4_Release_Notes>`_   |               |             |                                  |
-+---------------------------------+---------------+-------------+----------------------------------+
-|| xCAT 2.14.3 2018/8/24          |- SLES12.3     |             |- OpenBMC rflash enhancement      |
-||                                |               |             |                                  |
-| `2.14.3 Release Notes <https:// |               |             |- xcat-inventory 0.1.5            |
-| github.com/xcat2/xcat-core/wiki |               |             |                                  |
-| /XCAT_2.14.3_Release_Notes>`_   |               |             |- goconserver v0.3.1              |
-+---------------------------------+---------------+-------------+----------------------------------+
-|| xCAT 2.14.2 2018/7/13          |- UBT 18.04    |             |                                  |
-||                                |- RHEL6.10     |             |                                  |
-| `2.14.2 Release Notes <https:// |               |             |                                  |
-| github.com/xcat2/xcat-core/wiki |               |             |                                  |
-| /XCAT_2.14.2_Release_Notes>`_   |               |             |                                  |
-+---------------------------------+---------------+-------------+----------------------------------+
-|| xCAT 2.14.1                    |- RHV 4.2 +    |             |- OpenBMC in python enhancement:  |
-|| 2018/6/1                       |  RHEL7.5 + p8 |             |                                  |
-||                                |               |             |  rinv enhance, issue #5176       |
-| `2.14.1 Release Notes <https:// |               |             |                                  |
-| github.com/xcat2/xcat-core/wiki |               |             |- Cumulus Switch OS - syncfile    |
-| /XCAT_2.14.1_Release_Notes>`_   |               |             |                                  |
-|                                 |               |             |- Discover process enhancement    |
-|                                 |               |             |                                  |
-|                                 |               |             |- xcatprobe `xcatmn` enhancement  |
-|                                 |               |             |                                  |
-|                                 |               |             |- xcat-inventory enhancement(beta)|
-|                                 |               |             |                                  |
-|                                 |               |             |- goconserver v0.2.2              |
-+---------------------------------+---------------+-------------+----------------------------------+
-|| xCAT 2.14                      |- RHEL 7.5     |             |- OpenBMC support in python:      |
-|| 2018/4/20                      |               |             |                                  |
-||                                |               |             |  rspconfig,reventlog             |
-| `2.14 Release Notes <https://   |               |             |                                  |
-| github.com/xcat2/xcat-core/wiki |               |             |- Performance Tuning doc update   |
-| /XCAT_2.14_Release_Notes>`_     |               |             |                                  |
-+---------------------------------+---------------+-------------+----------------------------------+
+.. csv-table:: 2.14.x Release Information
+   :file: _files/2.14.x.csv
+   :header-rows: 1
+   :class: longtable
+   :widths: 1 1 1
 
 
 xCAT 2.13.x
