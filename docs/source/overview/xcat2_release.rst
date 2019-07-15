@@ -3,7 +3,14 @@ xCAT2 Release Information
 
 The following tables documents the xCAT release versions and release dates. For more detailed information about new functions and bug fixes, refer to the specific release notes.
 
+
 .. tabularcolumns:: |p{1cm}|p{7cm}|p{7cm}
+
+.. csv-table:: 2.15.x Release Information
+   :file: _files/2.15.x.csv
+   :header-rows: 1
+   :class: longtable
+   :widths: 1 1 1
 
 .. csv-table:: 2.14.x Release Information
    :file: _files/2.14.x.csv
