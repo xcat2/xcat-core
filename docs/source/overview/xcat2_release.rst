@@ -1,11 +1,7 @@
 xCAT2 Release Information
 =========================
 
-The following table is a summary of the new operating system (OS), hardware, and features that are added to each xCAT release.   The OS and hardware listed in the table have been fully tested with xCAT.   For a more detailed list of new function, bug fixes, restrictions and known problems, refer to the individual release notes for a specific release.
-
-* **RHEL** - Red Hat Enterprise Linux
-* **SLES** - Suse Linux Enterprise Server
-* **UBT** - Ubuntu
+The following tables documents the xCAT release versions and release dates. For a more detailed list of functions and fixes, refer to the release notes. 
 
 xCAT 2.14.x
 -----------
