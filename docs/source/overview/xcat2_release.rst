@@ -10,19 +10,19 @@ The following tables documents the xCAT release versions and release dates. For 
    :file: _files/2.15.x.csv
    :header-rows: 1
    :class: longtable
-   :widths: 1 1 1
+   :widths: 1 1 1 1
 
 .. csv-table:: 2.14.x Release Information
    :file: _files/2.14.x.csv
    :header-rows: 1
    :class: longtable
-   :widths: 1 1 1
+   :widths: 1 1 1 1
 
 .. csv-table:: 2.13.x Release Information
    :file: _files/2.13.x.csv
    :header-rows: 1
    :class: longtable
-   :widths: 1 1 1
+   :widths: 1 1 1 1
 
 .. csv-table:: 2.12.x Release Information
    :file: _files/2.12.x.csv
