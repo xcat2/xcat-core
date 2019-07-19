@@ -488,10 +488,10 @@ sub addnode
     my $ntent;
     my $tftpserver;
 
-    my $httpport="80";
+    my $httpport="";
      my @hports=xCAT::TableUtils->get_site_attribute("httpport");
-     if ($hports[0]){
-         $httpport=$hports[0];
+     if ($hports[0] and $hports[0] ne "80"){
+         $httpport=":" . $hports[0];
      }
 
     if ($chainents and $chainents->{$node}) {
@@ -686,12 +686,12 @@ sub addnode
                         if (proxydhcp($nrent)) { #proxy dhcp required in uefi invocation
                             $lstatements = 'if option client-architecture = 00:00 or option client-architecture = 00:07 or option client-architecture = 00:09 { filename = \"\"; option vendor-class-identifier \"PXEClient\"; } else { filename = \"\"; }' . $lstatements; #If proxydhcp daemon is enable, use it.
                         } else {
-                            $lstatements = 'if option user-class-identifier = \"xNBA\" and option client-architecture = 00:00 { always-broadcast on; filename = \"http://' . $nxtsrv . ':' . $httpport  . '/tftpboot/xcat/xnba/nodes/' . $node . '\"; } else if option client-architecture = 00:07 or option client-architecture = 00:09 { filename = \"\"; option vendor-class-identifier \"PXEClient\"; } else if option client-architecture = 00:00 { filename = \"xcat/xnba.kpxe\"; } else { filename = \"\"; }' . $lstatements; #Only PXE compliant clients should ever receive xNBA
+                            $lstatements = 'if option user-class-identifier = \"xNBA\" and option client-architecture = 00:00 { always-broadcast on; filename = \"http://' . $nxtsrv . $httpport  . '/tftpboot/xcat/xnba/nodes/' . $node . '\"; } else if option client-architecture = 00:07 or option client-architecture = 00:09 { filename = \"\"; option vendor-class-identifier \"PXEClient\"; } else if option client-architecture = 00:00 { filename = \"xcat/xnba.kpxe\"; } else { filename = \"\"; }' . $lstatements; #Only PXE compliant clients should ever receive xNBA
                         }
                     } elsif ($douefi and $chainent->{currstate} ne "boot" and $chainent->{currstate} ne "iscsiboot") {
-                        $lstatements = 'if option user-class-identifier = \"xNBA\" and option client-architecture = 00:00 { always-broadcast on; filename = \"http://' . $nxtsrv . ':' . $httpport . '/tftpboot/xcat/xnba/nodes/' . $node . '\"; } else if option user-class-identifier = \"xNBA\" and (option client-architecture = 00:09 or option client-architecture = 00:07) { filename = \"http://' . $nxtsrv .':' . $httpport . '/tftpboot/xcat/xnba/nodes/' . $node . '.uefi\"; } else if option client-architecture = 00:07 { filename = \"xcat/xnba.efi\"; } else if option client-architecture = 00:00 { filename = \"xcat/xnba.kpxe\"; } else { filename = \"\"; }' . $lstatements; #Only PXE compliant clients should ever receive xNBA
+                        $lstatements = 'if option user-class-identifier = \"xNBA\" and option client-architecture = 00:00 { always-broadcast on; filename = \"http://' . $nxtsrv . $httpport . '/tftpboot/xcat/xnba/nodes/' . $node . '\"; } else if option user-class-identifier = \"xNBA\" and (option client-architecture = 00:09 or option client-architecture = 00:07) { filename = \"http://' . $nxtsrv . $httpport . '/tftpboot/xcat/xnba/nodes/' . $node . '.uefi\"; } else if option client-architecture = 00:07 { filename = \"xcat/xnba.efi\"; } else if option client-architecture = 00:00 { filename = \"xcat/xnba.kpxe\"; } else { filename = \"\"; }' . $lstatements; #Only PXE compliant clients should ever receive xNBA
                     } else {
-                        $lstatements = 'if option user-class-identifier = \"xNBA\" and option client-architecture = 00:00 { filename = \"http://' . $nxtsrv .':' . $httpport . '/tftpboot/xcat/xnba/nodes/' . $node . '\"; } else if option client-architecture = 00:00 { filename = \"xcat/xnba.kpxe\"; } else { filename = \"\"; }' . $lstatements; #Only PXE compliant clients should ever receive xNBA
+                        $lstatements = 'if option user-class-identifier = \"xNBA\" and option client-architecture = 00:00 { filename = \"http://' . $nxtsrv . $httpport . '/tftpboot/xcat/xnba/nodes/' . $node . '\"; } else if option client-architecture = 00:00 { filename = \"xcat/xnba.kpxe\"; } else { filename = \"\"; }' . $lstatements; #Only PXE compliant clients should ever receive xNBA
                     }
                 }
             }    #TODO: warn when windows
@@ -708,7 +708,7 @@ sub addnode
         } elsif ($nrent and $nrent->{netboot} and $nrent->{netboot} eq 'grub2') {
             $lstatements = 'filename = \"/boot/grub2/grub2-' . $node . '\";' . $lstatements;
         } elsif ($nrent and $nrent->{netboot} and $nrent->{netboot} eq 'petitboot') {
-            $lstatements = 'option conf-file \"http://' . $nxtsrv .':' . $httpport . '/tftpboot/petitboot/' . $node . '\";' . $lstatements;
+            $lstatements = 'option conf-file \"http://' . $nxtsrv . $httpport . '/tftpboot/petitboot/' . $node . '\";' . $lstatements;
         } elsif ($nrent and $nrent->{netboot} and $nrent->{netboot} eq 'onie') {
             my $provmethod = $ntent->{provmethod};
             if ($provmethod) {
@@ -720,7 +720,7 @@ sub addnode
                     my $validpkgdir;
                     foreach my $mypkgdir (@pkgdirs){
                         if (-f $mypkgdir) {
-                            $lstatements = 'if substring (option vendor-class-identifier,0,11) = \"onie_vendor\" { option www-server = \"http://' . $nxtsrv .':' . $httpport . $mypkgdir . '\";}' . $lstatements;
+                            $lstatements = 'if substring (option vendor-class-identifier,0,11) = \"onie_vendor\" { option www-server = \"http://' . $nxtsrv . $httpport . $mypkgdir . '\";}' . $lstatements;
                             $validpkgdir = 1;
                             last;
                         }
@@ -2738,7 +2738,7 @@ sub addnet
             }
         }
         #for cumulus ZTP process
-        push @netent, "    option cumulus-provision-url \"http://$tftp:$httpport/install/postscripts/cumulusztp\";\n";
+        push @netent, "    option cumulus-provision-url \"http://$tftp$httpport/install/postscripts/cumulusztp\";\n";
 
         my $ddnserver = $nameservers;
         $ddnserver =~ s/,.*//;
@@ -2778,9 +2778,9 @@ sub addnet
         # $lstatements = 'if exists gpxe.bus-id { filename = \"\"; } else if exists client-architecture { filename = \"xcat/xnba.kpxe\"; } '.$lstatements;
         push @netent, "    if option user-class-identifier = \"xNBA\" and option client-architecture = 00:00 { #x86, xCAT Network Boot Agent\n";
         push @netent, "        always-broadcast on;\n";
-        push @netent, "        filename = \"http://$tftp:$httpport/tftpboot/xcat/xnba/nets/" . $net . "_" . $maskbits . "\";\n";
+        push @netent, "        filename = \"http://$tftp$httpport/tftpboot/xcat/xnba/nets/" . $net . "_" . $maskbits . "\";\n";
         push @netent, "    } else if option user-class-identifier = \"xNBA\" and option client-architecture = 00:09 { #x86, xCAT Network Boot Agent\n";
-        push @netent, "        filename = \"http://$tftp:$httpport/tftpboot/xcat/xnba/nets/" . $net . "_" . $maskbits . ".uefi\";\n";
+        push @netent, "        filename = \"http://$tftp$httpport/tftpboot/xcat/xnba/nets/" . $net . "_" . $maskbits . ".uefi\";\n";
         push @netent, "    } else if option client-architecture = 00:00  { #x86\n";
         push @netent, "        filename \"xcat/xnba.kpxe\";\n";
         push @netent, "    } else if option vendor-class-identifier = \"Etherboot-5.4\"  { #x86\n";
@@ -2796,10 +2796,10 @@ sub addnet
         push @netent, "        filename \"elilo.efi\";\n";
         push @netent,
           "    } else if option client-architecture = 00:0e { #OPAL-v3\n ";
-        push @netent, "        option conf-file = \"http://$tftp:$httpport/tftpboot/pxelinux.cfg/p/" . $net . "_" . $maskbits . "\";\n";
+        push @netent, "        option conf-file = \"http://$tftp$httpport/tftpboot/pxelinux.cfg/p/" . $net . "_" . $maskbits . "\";\n";
         push @netent,
           "    } else if substring (option vendor-class-identifier,0,11) = \"onie_vendor\" { #for onie on cumulus switch\n";
-        push @netent, "        option www-server = \"http://$tftp:$httpport/install/onie/onie-installer\";\n";
+        push @netent, "        option www-server = \"http://$tftp$httpport/install/onie/onie-installer\";\n";
         push @netent,
           "    } else if substring(filename,0,1) = null { #otherwise, provide yaboot if the client isn't specific\n ";
         push @netent, "        filename \"/yaboot\";\n";
