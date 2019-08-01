@@ -34,7 +34,7 @@ cmd:if [ ! -d /tmp/mountoutput ]; then mkdir -p /tmp/mountoutput; fi
 cmd:mount |sort > /tmp/mountoutput/file.org
 cmd:cat /tmp/mountoutput/file.org
 cmd:if [[ "__GETNODEATTR($$CN,os)__" =~ "ubuntu18.04.2" ]] && [[ "__GETNODEATTR($$CN,arch)__" =~ ppc64(el|le) ]] && [[ "__GETNODEATTR($$CN,mgt)__" =~ "kvm" ]] ; then mkdir -p /install/custom/netboot/ubuntu; sed -e 's@linux-image-generic-hwe-18.04@linux-image-generic@g' </opt/xcat/share/xcat/netboot/ubuntu/compute.ubuntu18.04.2.ppc64el.pkglist >/install/custom/netboot/ubuntu/compute.ubuntu18.04.2.ppc64el.pkglist; chdef -t osimage -o __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute pkglist=/install/custom/netboot/ubuntu/compute.ubuntu18.04.2.ppc64el.pkglist; fi
-cmd:if [[ "__GETNODEATTR($$CN,os)__" =~ "ubuntu16.04.5" ]] && [[ "__GETNODEATTR($$CN,arch)__" =~ "x86" ]]; then chdef -t osimage -o __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute  -p pkgdir="http://archive.ubuntu.com/ubuntu xenial universe main,http://archive.ubuntu.com/ubuntu xenial-updates universe main,http://security.ubuntu.com/ubuntu xenial-security main restricted";fi
+cmd:if [[ "__GETNODEATTR($$CN,os)__" =~ "ubuntu16.04.5" ]] && [[ "__GETNODEATTR($$CN,arch)__" =~ "x86" ]]; then chdef -t osimage -o __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute; fi
 cmd:lsdef -t osimage -o __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute
 cmd:genimage  __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute
 check:rc==0
