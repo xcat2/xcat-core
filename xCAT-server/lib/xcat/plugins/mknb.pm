@@ -342,6 +342,7 @@ sub process_request {
                 print $cfg "   append=\"quiet xcatd=" . $normnets->{$_} . ":$xcatdport destiny=discover $consolecmdline BOOTIF=%B\"\n";
                 close($cfg);
                 open($cfg, ">", "$tftpdir/xcat/xnba/nets/$net.uefi");
+                print $cfg "#!gpxe\n";
                 print $cfg 'imgfetch -n kernel http://${next-server}'.$httpport.'/tftpboot/xcat/genesis.kernel.' . "$arch quiet xcatd=" . $normnets->{$_} . ":$xcatdport $consolecmdline initrd=nbfs BOOTIF=01-" . '${netX/machyp}' . "\n";
                 if ($lzma_exit_value) {
                     print $cfg 'imgfetch -n nbfs http://${next-server}'.$httpport.'/tftpboot/xcat/genesis.fs.' . "$arch.gz\n";
