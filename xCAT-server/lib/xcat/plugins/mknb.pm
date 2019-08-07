@@ -46,10 +46,10 @@ sub process_request {
         $xcatdport = $t_entry;
     }
 
-    my $httpport="80";
+    my $httpport="";
     my @hports=xCAT::TableUtils->get_site_attribute("httpport");
     if ($hports[0]){
-        $httpport=$hports[0];
+        $httpport=":" . $hports[0];
     }
 
     @entries = xCAT::TableUtils->get_site_attribute("dhcpinterfaces");
@@ -315,15 +315,15 @@ sub process_request {
             open($cfg, ">", "$tftpdir/xcat/xnba/nets/$net");
             print $cfg "#!gpxe\n";
             if ($invisibletouch) {
-                print $cfg 'imgfetch -n kernel http://${next-server}:'.$httpport.'/tftpboot/xcat/genesis.kernel.' . "$arch quiet xcatd=" . $normnets->{$_} . ":$xcatdport $consolecmdline BOOTIF=01-" . '${netX/machyp}' . "\n";
+                print $cfg 'imgfetch -n kernel http://${next-server}'.$httpport.'/tftpboot/xcat/genesis.kernel.' . "$arch quiet xcatd=" . $normnets->{$_} . ":$xcatdport $consolecmdline BOOTIF=01-" . '${netX/machyp}' . "\n";
                 if ($lzma_exit_value) {
-                    print $cfg 'imgfetch -n nbfs http://${next-server}:'.$httpport.'/tftpboot/xcat/genesis.fs.' . "$arch.gz\n";
+                    print $cfg 'imgfetch -n nbfs http://${next-server}'.$httpport.'/tftpboot/xcat/genesis.fs.' . "$arch.gz\n";
                 } else {
-                    print $cfg 'imgfetch -n nbfs http://${next-server}:'.$httpport.'/tftpboot/xcat/genesis.fs.' . "$arch.lzma\n";
+                    print $cfg 'imgfetch -n nbfs http://${next-server}'.$httpport.'/tftpboot/xcat/genesis.fs.' . "$arch.lzma\n";
                 }
             } else {
-                print $cfg 'imgfetch -n kernel http://${next-server}:'.$httpport.'/tftpboot/xcat/nbk.' . "$arch quiet xcatd=" . $normnets->{$_} . ":$xcatdport $consolecmdline\n";
-                print $cfg 'imgfetch -n nbfs http://${next-server}:'.$httpport.'/tftpboot/xcat/nbfs.' . "$arch.gz\n";
+                print $cfg 'imgfetch -n kernel http://${next-server}'.$httpport.'/tftpboot/xcat/nbk.' . "$arch quiet xcatd=" . $normnets->{$_} . ":$xcatdport $consolecmdline\n";
+                print $cfg 'imgfetch -n nbfs http://${next-server}'.$httpport.'/tftpboot/xcat/nbfs.' . "$arch.gz\n";
             }
             print $cfg "imgload kernel\n";
             print $cfg "imgexec kernel\n";
@@ -343,7 +343,7 @@ sub process_request {
                 close($cfg);
                 open($cfg, ">", "$tftpdir/xcat/xnba/nets/$net.uefi");
                 print $cfg "#!gpxe\n";
-                print $cfg 'chain http://${next-server}:'.$httpport.'/tftpboot/xcat/elilo-x64.efi -C /tftpboot/xcat/xnba/nets/' . "$net.elilo\n";
+                print $cfg 'chain http://${next-server}'.$httpport.'/tftpboot/xcat/elilo-x64.efi -C /tftpboot/xcat/xnba/nets/' . "$net.elilo\n";
                 close($cfg);
             }
         } elsif ($arch =~ /ppc/) {
@@ -351,8 +351,8 @@ sub process_request {
             print $cfgfile "default \"xCAT Genesis (" . $normnets->{$_} . ")\"\n";
             print $cfgfile "   delay=10\n";
             print $cfgfile "   label \"xCAT Genesis (" . $normnets->{$_} . ")\"\n";
-            print $cfgfile "   kernel http://" . $normnets->{$_} . ":$httpport/$tftpdir/xcat/genesis.kernel.$arch\n";
-            print $cfgfile "   initrd http://" . $normnets->{$_} . ":$httpport/$initrd_file\n";
+            print $cfgfile "   kernel http://" . $normnets->{$_} . "$httpport/$tftpdir/xcat/genesis.kernel.$arch\n";
+            print $cfgfile "   initrd http://" . $normnets->{$_} . "$httpport/$initrd_file\n";
             print $cfgfile '   append "quiet xcatd=' . $normnets->{$_} . ":$xcatdport $consolecmdline\"\n";
             close($cfgfile);
         }
@@ -389,8 +389,8 @@ sub process_request {
             print $cfgfile "default \"xCAT Genesis (" . $normnets->{$_} . ")\"\n";
             print $cfgfile "   delay=10\n";
             print $cfgfile "   label \"xCAT Genesis (" . $normnets->{$_} . ")\"\n";
-            print $cfgfile "   kernel http://" . $hexnets->{$_} . ":$httpport/$tftpdir/xcat/genesis.kernel.$arch\n";
-            print $cfgfile "   initrd http://" . $hexnets->{$_} . ":$httpport/$initrd_file\n";
+            print $cfgfile "   kernel http://" . $hexnets->{$_} . "$httpport/$tftpdir/xcat/genesis.kernel.$arch\n";
+            print $cfgfile "   initrd http://" . $hexnets->{$_} . "$httpport/$initrd_file\n";
             print $cfgfile '   append "quiet xcatd=' . $hexnets->{$_} . ":$xcatdport $consolecmdline\"\n";
             close($cfgfile);
         }
