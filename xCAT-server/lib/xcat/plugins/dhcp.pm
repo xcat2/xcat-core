@@ -2452,7 +2452,7 @@ sub addnet
     my $domain;
     my $httpport="";
      my @hports=xCAT::TableUtils->get_site_attribute("httpport");
-     if ($hports[0]){
+     if ($hports[0] and $hports[0] ne "80"){
          $httpport=":".$hports[0];
      }
     my $firstoctet = $net;
