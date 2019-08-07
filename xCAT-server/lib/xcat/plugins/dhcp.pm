@@ -2450,10 +2450,10 @@ sub addnet
     my $mask = shift;
     my $nic;
     my $domain;
-    my $httpport="80";
+    my $httpport="";
      my @hports=xCAT::TableUtils->get_site_attribute("httpport");
      if ($hports[0]){
-         $httpport=$hports[0];
+         $httpport=":".$hports[0];
      }
     my $firstoctet = $net;
     $firstoctet =~ s/^(\d+)\..*/$1/;
