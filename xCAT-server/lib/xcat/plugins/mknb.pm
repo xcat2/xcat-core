@@ -48,7 +48,7 @@ sub process_request {
 
     my $httpport="";
     my @hports=xCAT::TableUtils->get_site_attribute("httpport");
-    if ($hports[0]){
+    if ($hports[0] and $hports[0] ne "80"){
         $httpport=":" . $hports[0];
     }
 
@@ -342,8 +342,14 @@ sub process_request {
                 print $cfg "   append=\"quiet xcatd=" . $normnets->{$_} . ":$xcatdport destiny=discover $consolecmdline BOOTIF=%B\"\n";
                 close($cfg);
                 open($cfg, ">", "$tftpdir/xcat/xnba/nets/$net.uefi");
-                print $cfg "#!gpxe\n";
-                print $cfg 'chain http://${next-server}'.$httpport.'/tftpboot/xcat/elilo-x64.efi -C /tftpboot/xcat/xnba/nets/' . "$net.elilo\n";
+                print $cfg 'imgfetch -n kernel http://${next-server}'.$httpport.'/tftpboot/xcat/genesis.kernel.' . "$arch quiet xcatd=" . $normnets->{$_} . ":$xcatdport $consolecmdline initrd=nbfs BOOTIF=01-" . '${netX/machyp}' . "\n";
+                if ($lzma_exit_value) {
+                    print $cfg 'imgfetch -n nbfs http://${next-server}'.$httpport.'/tftpboot/xcat/genesis.fs.' . "$arch.gz\n";
+                } else {
+                    print $cfg 'imgfetch -n nbfs http://${next-server}'.$httpport.'/tftpboot/xcat/genesis.fs.' . "$arch.lzma\n";
+                }
+                print $cfg "imgload kernel\n";
+                print $cfg "imgexec kernel\n";
                 close($cfg);
             }
         } elsif ($arch =~ /ppc/) {
