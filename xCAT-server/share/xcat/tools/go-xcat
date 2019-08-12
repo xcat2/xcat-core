@@ -2,7 +2,7 @@
 #
 # go-xcat - Install xCAT automatically.
 #
-# Version 1.0.41
+# Version 1.0.42
 #
 # Copyright (C) 2016 - 2019 International Business Machines
 # Eclipse Public License, Version 1.0 (EPL-1.0)
@@ -25,6 +25,8 @@
 #     - Better debug log when reading repository failed
 # 2019-07-24 Mark Gurevich <gurevich@us.ibm.com>
 #     - Removed references to buildkit
+# 2019-08-12 Mark Gurevich <gurevich@us.ibm.com>
+#     - Added xCAT-buildkit to uninstall list
 #
 
 function usage()
@@ -176,11 +178,13 @@ GO_XCAT_INSTALL_LIST=(perl-xcat xcat xcat-client
 # The package list of all the packages should be installed
 GO_XCAT_UNINSTALL_LIST=("${GO_XCAT_INSTALL_LIST[@]}"
 	goconserver xCAT-SoftLayer xCAT-confluent xCAT-csm xCAT-genesis-builder
-	xCAT-openbmc-py xCAT-probe xCAT-test xCAT-vlan xCATsn xCAT-UI-deps)
+	xCAT-openbmc-py xCAT-probe xCAT-test xCAT-vlan xCATsn xCAT-UI-deps
+    xCAT-buildkit)
 # For Debian/Ubuntu, it will need a sight different package list
 type dpkg >/dev/null 2>&1 &&
 GO_XCAT_UNINSTALL_LIST=("${GO_XCAT_INSTALL_LIST[@]}"
-	goconserver xcat-confluent xcat-probe xcat-test xcat-vlan xcatsn)
+	goconserver xcat-confluent xcat-probe xcat-test xcat-vlan xcatsn
+    xcat-buildkit)
 
 PATH="/usr/sbin:/usr/bin:/sbin:/bin"
 export PATH
