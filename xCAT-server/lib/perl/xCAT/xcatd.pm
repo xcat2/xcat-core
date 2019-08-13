@@ -106,7 +106,7 @@ sub validate {
     }
 
     # Get groups for peername
-    my $usergroups=groups($peername);
+    my $usergroups = xCAT::Utils->groups($peername);
 
   RULE: foreach $rule (@sortedpolicies) {
         if ($rule->{name} and $rule->{name} ne '*') {
