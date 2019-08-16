@@ -342,6 +342,7 @@ sub setstate {
                         print $ucfg "imgexec kernel\n";
                         close($ucfg);
                    } else {
+                       print $ucfg "#!gpxe\n";
                        print $ucfg 'chain http://${next-server}'.$httpport.'/tftpboot/xcat/elilo-x64.efi -C /tftpboot/xcat/xnba/nodes/' . $node . ".elilo\n";
                        close($ucfg);
                        open($ucfg, '>', $tftpdir . "/xcat/xnba/nodes/" . $node . ".elilo");
