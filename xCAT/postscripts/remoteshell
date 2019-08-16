@@ -59,15 +59,12 @@ then
 	logger -t $log_label -p local4.info "remoteshell:  setup /etc/ssh/sshd_config and ssh_config"
 	cp /etc/ssh/sshd_config /etc/ssh/sshd_config.ORIG
         #delete all occurance of the attribute and then add xCAT settings
-        sed -i '/X11Forwarding /'d /etc/ssh/sshd_config
-        echo "X11Forwarding yes" >>/etc/ssh/sshd_config
-        sed -i '/MaxStartups /'d /etc/ssh/sshd_config
-        echo "MaxStartups 1024" >>/etc/ssh/sshd_config
+        sed -i 's/X11Forwarding .*/X11Forwarding yes/' /etc/ssh/sshd_config
+        sed -i 's/MaxStartups .*/MaxStartups 1024/' /etc/ssh/sshd_config
 
     if [ "$SETUPFORPCM" = "1" ]; then
         if [[ $OSVER == sle* ]];then
-            sed -i '/PasswordAuthentication /'d /etc/ssh/sshd_config
-            echo "PasswordAuthentication yes" >>/etc/ssh/sshd_config
+            sed -i 's/PasswordAuthentication /PasswordAuthentication yes/' /etc/ssh/sshd_config
         elif [[ $OSVER == ubuntu* ]];then
             sed -i 's/^PermitRootLogin.*/PermitRootLogin yes/' /etc/ssh/sshd_config
         fi
@@ -76,8 +73,7 @@ fi
 
 if [ -r /etc/ssh/ssh_config ]
 then
-   sed -i '/StrictHostKeyChecking /'d /etc/ssh/ssh_config
-   echo "StrictHostKeyChecking no" >> /etc/ssh/ssh_config
+   sed -i 's/StrictHostKeyChecking .*/StrictHostKeyChecking no/' /etc/ssh/ssh_config
 
 fi
 xcatpost="xcatpost"
