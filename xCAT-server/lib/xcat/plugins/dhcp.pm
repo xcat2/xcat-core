@@ -2450,10 +2450,10 @@ sub addnet
     my $mask = shift;
     my $nic;
     my $domain;
-    my $httpport="80";
+    my $httpport="";
      my @hports=xCAT::TableUtils->get_site_attribute("httpport");
-     if ($hports[0]){
-         $httpport=$hports[0];
+     if ($hports[0] and $hports[0] ne "80"){
+         $httpport=":".$hports[0];
      }
     my $firstoctet = $net;
     $firstoctet =~ s/^(\d+)\..*/$1/;
@@ -2780,6 +2780,8 @@ sub addnet
         push @netent, "        always-broadcast on;\n";
         push @netent, "        filename = \"http://$tftp$httpport/tftpboot/xcat/xnba/nets/" . $net . "_" . $maskbits . "\";\n";
         push @netent, "    } else if option user-class-identifier = \"xNBA\" and option client-architecture = 00:09 { #x86, xCAT Network Boot Agent\n";
+        push @netent, "        filename = \"http://$tftp$httpport/tftpboot/xcat/xnba/nets/" . $net . "_" . $maskbits . ".uefi\";\n";
+        push @netent, "    } else if option user-class-identifier = \"xNBA\" and option client-architecture = 00:07 { #x86, xCAT Network Boot Agent\n";
         push @netent, "        filename = \"http://$tftp$httpport/tftpboot/xcat/xnba/nets/" . $net . "_" . $maskbits . ".uefi\";\n";
         push @netent, "    } else if option client-architecture = 00:00  { #x86\n";
         push @netent, "        filename \"xcat/xnba.kpxe\";\n";
