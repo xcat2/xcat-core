@@ -687,6 +687,19 @@ while [ $idev -gt 0 ]; do
         done &
     fi
 done
+export user
+export bmcp
+if [ -e /tmp/xcchostnic ]; then
+    INTERFACE=$(cat /tmp/xcchostnic)
+    export INTERFACE
+    # Wrap in a network namespace to avoid external meddling
+    ip netns add mgt
+    ip link set dev $INTERFACE netns mgt
+    ip netns exec mgt bash /usr/sbin/enableipmiusingredfish.py
+    ip netns exec mgt ip link set dev $INTERFACE netns 1
+    /usr/sbin/setupimmnic
+fi
+
 
 # remove the bmc configuration information before exit
 rm -f /tmp/ipmicfg.xml
