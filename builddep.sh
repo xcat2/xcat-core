@@ -277,6 +277,10 @@ fi
 chgrp -R -h $SYSGRP *
 chmod -R g+w *
 
+# Change permission on all repodata files to be readable by all
+chmod a+r */*/repodata/*.gz
+chmod a+r */*/repodata/*.bz2
+
 TARBALL_WORKING_DIR="${XCATCOREDIR}/${DESTDIR}"
 echo "===> Building the tarball at: ${TARBALL_WORKING_DIR} ..."
 #
