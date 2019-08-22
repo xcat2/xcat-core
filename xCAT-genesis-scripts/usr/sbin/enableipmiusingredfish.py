@@ -11,7 +11,7 @@ iface = os.environ['INTERFACE']
 # of the OS routing table
 subprocess.check_call(['/sbin/ip', 'link', 'set', iface, 'up'])
 subprocess.check_call(['/sbin/ip', 'addr', 'add', 'dev', iface, '169.254.95.120/24'])
-subprocess.check_call(['/sbin/ip', 'route', 'add', '169.254.95.0/24', 'dev', iface])
+subprocess.call(['/sbin/ip', 'route', 'add', '169.254.95.0/24', 'dev', iface])
 client = httplib.HTTPSConnection('169.254.95.118', context=ssl._create_unverified_context())
 headers = {
         'Authorization': 'Basic {0}'.format(base64.b64encode(':'.join((os.environ['user'], os.environ['bmcp'])))),
