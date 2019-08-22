@@ -695,7 +695,7 @@ if [ -e /tmp/xcchostnic ]; then
     # Wrap in a network namespace to avoid external meddling
     ip netns add mgt
     ip link set dev $INTERFACE netns mgt
-    ip netns exec mgt bash /usr/sbin/enableipmiusingredfish.py
+    ip netns exec mgt python /usr/sbin/enableipmiusingredfish.py
     ip netns exec mgt ip link set dev $INTERFACE netns 1
     /usr/sbin/setupimmnic
 fi
