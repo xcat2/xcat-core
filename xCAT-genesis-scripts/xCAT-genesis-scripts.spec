@@ -80,6 +80,7 @@ touch /etc/xcat/genesis-scripts-updated
 %{rpminstallroot}/usr/bin/dodiscovery
 %{rpminstallroot}/usr/bin/dosysclone
 %{rpminstallroot}/usr/bin/doxcat
+%{rpminstallroot}/usr/sbin/enableipmiusingredfish.py
 %{rpminstallroot}/usr/bin/getadapter
 %{rpminstallroot}/usr/bin/getcert
 %{rpminstallroot}/usr/bin/getdestiny
