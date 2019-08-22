@@ -17,6 +17,11 @@
 #       UP=0 or UP=1  - override the default upload behavior
 #       FRSYUM=0      - put the directory of individual rpms in the project web area instead
 #                       of the FRS area.
+#       CHECK=0 or 1  - verify proper file location and links. Default is to check.
+#                       Verifies all noarch files in ..../<OS>/<ARCH>/ are links
+#                       Verifies no broken link files in ..../<OS>/<ARCH>/
+#                       Verifies there are no multiple, real (non-link) files with the same name
+#                       Verifies all real (non-link) files have a link to it
 #       VERBOSE=1     - Set to 1 to see more VERBOSE output
 
 # This script should only be run on RPM based machines 
@@ -34,6 +39,7 @@ FRS=/var/www/xcat.org/files/xcat
 OSNAME=$(uname)
 
 UP=0
+CHECK=1
 # Process cmd line variable assignments, assigning each attr=val pair to a variable of same name
 for i in $*; do
 	# upper case the variable name
@@ -116,6 +122,81 @@ function checkrc {
         exit  1
     fi
 }
+
+# Verify files in $GSA
+if [[ ${CHECK} -eq 1 ]]; then
+    ERROR=0
+    LINKED_TO_FILES_ARRAY=[]
+    counter=0
+    OSes=`find $GSA -maxdepth 1 -mindepth 1 -type d`
+    for os in $OSes; do
+        ARCHes=`find $os -maxdepth 1 -mindepth 1 -type d`
+        for arch in $ARCHes; do
+
+            # Find regular noarch.rpm files in <OS>/<ARCH> directory
+            for file in `find $arch -type f -name "*noarch.rpm"`; do
+                ERROR=1
+                echo "Error: Regular 'noarch' file $file found in 'arch' directory. Expected a link."
+            done
+
+            # Find broken links file
+            for file in `find $arch -xtype l -name "*noarch.rpm"`; do
+                ERROR=1
+                echo "Error: Broken link file $file"
+            done
+
+            # Save a link of everything being linked to for later use
+            for link_file in `find $arch -type l -name "*.rpm"`; do
+               LINKED_TO_FILE=`realpath --relative-to=$GSA $link_file`
+               LINKED_TO_FILES_ARRAY[$counter]=$LINKED_TO_FILE
+               counter=$counter+1
+            done
+
+
+        done
+    done
+
+    # Find identical files in $GSA and $GSA/<OS> directory
+    for short_file in $GSA/*.rpm; do
+        basename=$(basename -- "$short_file")
+        DUP_FILES=`find $GSA/*/ -type f -name $basename`
+        if [[ ! -z $DUP_FILES ]]; then
+            ERROR=1
+            echo -e "\nError: Multiple real files with the same name found ($basename):"
+            for dup_file in `find $GSA -type f -name $basename`; do
+                ls -l $dup_file
+            done
+        fi
+    done
+
+    if [ -n "$VERBOSEMODE" ]; then
+        # In verbose mode print contents of array containing all the files someone links to from <OS>/<ARCH>
+        for var in "${LINKED_TO_FILES_ARRAY[@]}"; do
+            echo "Someone links to file: ${var} "
+        done
+    fi
+
+    echo " "
+    # Find all files no one links to
+    REAL_FILES=`find $GSA/* -maxdepth 1 -type f -name "*.rpm" | cut -d / -f 10,11 --output-delimiter="/"`
+    for file in $REAL_FILES; do
+        FOUND=0
+        for used_link in "${LINKED_TO_FILES_ARRAY[@]}"; do
+            if [[ $file == $used_link ]]; then
+                FOUND=1
+                break
+            fi
+        done
+        if [[ ${FOUND} -eq 0 ]]; then
+            echo "Warning: no one links to real file: $GSA/$file"
+        fi
+    done
+
+    if [[ ${ERROR} -eq 1 ]]; then
+        echo -e "\nErrors found verifying files. Rerun this secript with CHECK=0 to skip file verification."
+        exit 1
+    fi
+fi
 
 WORKING_TARGET_DIR="${DESTDIR}/xcat-dep"
 # Sync from the GSA master copy of the dep rpms
