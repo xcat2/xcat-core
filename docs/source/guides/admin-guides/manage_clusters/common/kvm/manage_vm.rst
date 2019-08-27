@@ -50,7 +50,7 @@ After the VM object is created, several key attributes need to be specified with
 6. The **vmnicnicmodel** attribute is used to set the type and corresponding driver for the nic. If not set, the default value is 'virtio'.
    ::
 
-    chdef vm1 vmnicnicmodel=virtio
+    chdef vm1 vmnicnicmodel=e1000
 
 7. Define the storage for the vm1, three types of storage source format are supported.
 
