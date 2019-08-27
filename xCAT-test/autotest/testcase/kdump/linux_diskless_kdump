@@ -71,8 +71,9 @@ check:output=~\d\d:\d\d:\d\d
 cmd:xdsh $$CN "echo 'echo 1 > /proc/sys/kernel/sysrq; echo c > /proc/sysrq-trigger' > /tmp/kdump.trigger"
 cmd:xdsh $$CN "chmod 755 /tmp/kdump.trigger"
 cmd:xdsh $$CN "service atd start"
+cmd:sleep 30
 cmd:xdsh $$CN "at now +1 minutes <<< /tmp/kdump.trigger"
-cmd:sleep 300
+cmd:sleep 600
 
 cmd:vmcorefile=`find /opt/xcat/share/xcat/tools/autotest/kdumpdir/ -name vmcore`;if [[ -s $vmcorefile ]]; then echo "this file is not empty";else echo "this file is empty"; fi
 check:output=~not empty
