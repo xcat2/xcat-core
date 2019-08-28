@@ -454,7 +454,7 @@ sub is_dns_ready {
         return 0;
     } else {
         chomp($output);
-        $tmp = grep {$_ =~ "name = $hostname\.$domain"} split(/\n/, $output);
+        my $tmp = grep {$_ =~ "name = $hostname\.$domain"} split(/\n/, $output);
         return 0 if ($tmp == 0);
         return 1;
     }
