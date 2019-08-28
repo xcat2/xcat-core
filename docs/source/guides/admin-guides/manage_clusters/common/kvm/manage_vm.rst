@@ -37,9 +37,9 @@ After the VM object is created, several key attributes need to be specified with
 
      chdef vm1 vmhost=kvmhost1
 
-4. the virtual memory size, with the unit "Megabit". Specify 1GB memory to "vm1" here: ::
+4. the virtual memory size (in Megabytes): ::
 
-     chdef vm1 vmmemory=1024
+     chdef vm1 vmmemory=2048
 
 **Note**: For diskless node, the **vmmemory** should be at least 2048 MB, otherwise the node cannot boot up.
 
