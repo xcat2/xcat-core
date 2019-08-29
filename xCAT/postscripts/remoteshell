@@ -63,7 +63,7 @@ then
 		sed -i 's/[# ]\+\?X11Forwarding .*/X11Forwarding yes/' /etc/ssh/sshd_config
 	elif grep -q Match /etc/ssh/sshd_config; then
 		# insert before Match blocks if doesn't exit
-		sed -i '/Match/i X11Forwarding yes' /etc/ssh/sshd_config
+		sed -i '1,/Match/i X11Forwarding yes' /etc/ssh/sshd_config
 	else 
 		# append if doesn't exist and no Match blocks
 		echo 'X11Forwarding yes' >> /etc/ssh/sshd_config
@@ -74,7 +74,7 @@ then
 		sed -i 's/[# ]\+\?MaxStartups .*/MaxStartups 1024/' /etc/ssh/sshd_config
 	elif grep -q Match /etc/ssh/sshd_config; then
 		# insert before Match blocks if doesn't exit
-		sed -i '/Match/i MaxStartups 1024' /etc/ssh/sshd_config
+		sed -i '1,/Match/i MaxStartups 1024' /etc/ssh/sshd_config
 	else 
 		# append if doesn't exist and no Match blocks
 		echo 'MaxStartups 1024' >> /etc/ssh/sshd_config
@@ -91,15 +91,15 @@ fi
 
 if [ -r /etc/ssh/ssh_config ]
 then
-	if grep -q StrictHostKeyChecking /etc/ssh/sshd_config; then
+	if grep -q StrictHostKeyChecking /etc/ssh/ssh_config; then
 		# replace config options if they exist
-		sed -i 's/[# ]\+\?StrictHostKeyChecking .*/StrictHostKeyChecking no/' /etc/ssh/sshd_config
-	elif grep -q Match /etc/ssh/sshd_config; then
-		# insert before Match blocks if doesn't exit
-		sed -i '/Match/i StrictHostKeyChecking no' /etc/ssh/sshd_config
+		sed -i 's/[# ]\+\?StrictHostKeyChecking .*/StrictHostKeyChecking no/' /etc/ssh/ssh_config
+	elif grep -q Host /etc/ssh/ssh_config; then
+		# insert before Host blocks if doesn't exit
+		sed -i '1,/^[# ]\+\?Host/i StrictHostKeyChecking no' /etc/ssh/ssh_config
 	else 
-		# append if doesn't exist and no Match blocks
-		echo 'StrictHostKeyChecking no' >> /etc/ssh/sshd_config
+		# append if doesn't exist and no Host blocks
+		echo 'StrictHostKeyChecking no' >> /etc/ssh/ssh_config
 	fi
 fi
 
