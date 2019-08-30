@@ -35,6 +35,10 @@ fi
 USER=xcat
 TARGET_MACHINE=xcat.org
 
+BASE_GSA=/gsa/pokgsa/projects/x/xcat/build
+AIX_GSA=$BASE_GSA/aix/xcat-dep
+LINUX_GSA=$BASE_GSA/linux/xcat-dep
+
 FRS=/var/www/xcat.org/files/xcat
 OSNAME=$(uname)
 
@@ -49,10 +53,10 @@ done
 
 if [ "$OSNAME" == "AIX" ]; then
 	DFNAME=dep-aix-`date +%Y%m%d%H%M`.tar.gz
-	GSA=/gsa/pokgsa/projects/x/xcat/build/aix/xcat-dep
+	GSA=$AIX_GSA
 else
 	DFNAME=xcat-dep-`date +%Y%m%d%H%M`.tar.bz2
-	GSA=/gsa/pokgsa/projects/x/xcat/build/linux/xcat-dep
+	GSA=$LINUX_GSA
 fi
 
 if [ ! -d $GSA ]; then
@@ -136,13 +140,13 @@ if [[ ${CHECK} -eq 1 ]]; then
             # Find regular noarch.rpm files in <OS>/<ARCH> directory
             for file in `find $arch -type f -name "*noarch.rpm"`; do
                 ERROR=1
-                echo "Error: Regular 'noarch' file $file found in 'arch' directory. Expected a link."
+                echo -e "\nError: Regular 'noarch' file $file found in 'arch' directory. Expected a link."
             done
 
             # Find broken links file
             for file in `find $arch -xtype l -name "*noarch.rpm"`; do
                 ERROR=1
-                echo "Error: Broken link file $file"
+                echo -e "\nError: Broken link file $file"
             done
 
             # Save a link of everything being linked to for later use
@@ -172,7 +176,7 @@ if [[ ${CHECK} -eq 1 ]]; then
     if [ -n "$VERBOSEMODE" ]; then
         # In verbose mode print contents of array containing all the files someone links to from <OS>/<ARCH>
         for var in "${LINKED_TO_FILES_ARRAY[@]}"; do
-            echo "Someone links to file: ${var} "
+            echo "Symlink detected to file: ${var} "
         done
     fi
 
@@ -188,12 +192,12 @@ if [[ ${CHECK} -eq 1 ]]; then
             fi
         done
         if [[ ${FOUND} -eq 0 ]]; then
-            echo "Warning: no one links to real file: $GSA/$file"
+            echo "Warning: No symlinks to file: $GSA/$file"
         fi
     done
 
     if [[ ${ERROR} -eq 1 ]]; then
-        echo -e "\nErrors found verifying files. Rerun this secript with CHECK=0 to skip file verification."
+        echo -e "\nErrors found verifying files. Rerun this script with CHECK=0 to skip file verification."
         exit 1
     fi
 fi
