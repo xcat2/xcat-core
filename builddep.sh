@@ -292,6 +292,7 @@ fi
 
 echo "===> Creating $DFNAME ..."
 tar $verbosetar -jcf $DFNAME xcat-dep
+chmod a+r $DFNAME
 
 if [[ ${UP} -eq 0 ]]; then
 	echo "Upload not being done, set UP=1 to upload to xcat.org"
