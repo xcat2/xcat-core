@@ -2452,7 +2452,7 @@ sub gen_send_request {
         }
         process_debug_info($node, $debug_info);
     }
-    my $handle_id = xCAT::OPENBMC->send_request($async, $method, $request_url, $content);
+    my $handle_id = xCAT::OPENBMC->send_request($async, $method, $request_url, $content, $node_info{$node}{username}, $node_info{$node}{password});
     $handle_id_node{$handle_id} = $node;
     $node_info{$node}{cur_status} = $next_status{ $node_info{$node}{cur_status} };
 
@@ -4212,7 +4212,7 @@ sub rspconfig_dump_response {
 sub dump_download_process {
     my $node = shift;
 
-    my $request_url = "$http_protocol://" . $node_info{$node}{bmc};
+    my $request_url = "$http_protocol://" . $node_info{$node}{username} . ":" . $node_info{$node}{password} . "@" . $node_info{$node}{bmc};
     my $content_login = '{ "data": [ "' . $node_info{$node}{username} .'", "' . $node_info{$node}{password} . '" ] }';
     my $content_logout = '{ "data": [ ] }';
     my $cjar_id = "/tmp/_xcat_cjar.$node";
@@ -4876,7 +4876,7 @@ sub rflash_response {
 
 sub rflash_upload {
     my ($node, $callback) = @_;
-    my $request_url = "$http_protocol://" . $node_info{$node}{bmc};
+    my $request_url = "$http_protocol://" . $node_info{$node}{username} . ":" . $node_info{$node}{password} . "@" . $node_info{$node}{bmc};
     my $content_login = '{ "data": [ "' . $node_info{$node}{username} .'", "' . $node_info{$node}{password} . '" ] }';
     my $content_logout = '{ "data": [ ] }';
     my $cjar_id = "/tmp/_xcat_cjar.$node";
