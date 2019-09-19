@@ -2621,6 +2621,66 @@ sub deal_with_response {
 
 #-------------------------------------------------------
 
+=head3 mask_password2
+
+  return a string with masked password
+  
+  This function is usefull when password is easily known
+   and can be passed into this function
+  Input:
+        $string:   string containing password the needs masking
+        $password: password to mask
+
+=cut
+
+#-------------------------------------------------------
+sub mask_password2 {
+
+    my $string = shift;
+    my $password = shift;
+
+    # Replace all occurences of password string with "xxxxxx"
+    $string =~ s/$password/xxxxxx/g;
+
+    return $string;
+}
+
+#-------------------------------------------------------
+
+=head3 mask_password
+
+  return a string with masked password
+  
+  This function is usefull when password is not easily known
+   and is only expected to be part of URL like "https://<user>:<pw>@...."
+  Input:
+        $string: string containing password the needs masking
+
+=cut
+
+#-------------------------------------------------------
+sub mask_password {
+
+    my $string = shift;
+    # Replace password string with "xxxxxx", if part of URL
+    # Password is between ":" and "@" found in the string after "https://"
+    #
+    my $url_start = index($string,"https://");
+    if ($url_start > 0) {
+        my $colon_index = index($string, ":", $url_start+length("https://"));
+        if ($colon_index > 0) {
+            my $at_index = index($string, "@", $colon_index);
+            if ($at_index > 0) {
+                # Replace string beteen ":" and "@" with "xxxxxx" to mask password
+                substr($string, $colon_index+1, $at_index-$colon_index-1) = "xxxxxx";
+            }
+        }
+    }
+    return $string;
+}
+
+#-------------------------------------------------------
+
 =head3  process_debug_info
 
   print debug info and add to log
@@ -2639,6 +2699,7 @@ sub process_debug_info {
         $debug_msg = "";
     }
 
+    $debug_msg = mask_password($debug_msg);
     xCAT::SvrUtils::sendmsg("$flag_debug $debug_msg", $callback, $ts_node);
     xCAT::MsgUtils->trace(0, "D", "$flag_debug $node $debug_msg");
 }
@@ -4235,12 +4296,12 @@ sub dump_download_process {
     my $curl_login_result = `$curl_login_cmd -s`;
     my $h;
     if (!$curl_login_result) {
-        xCAT::SvrUtils::sendmsg([1, "Did not receive response from OpenBMC after running command '$curl_login_cmd'"], $callback, $node);
+        xCAT::SvrUtils::sendmsg([1, "Did not receive response from OpenBMC after running command '" . mask_password2($curl_login_cmd, $node_info{$node}{password}) . "'"], $callback, $node);
         return 1;
     }
     eval { $h = from_json($curl_login_result) };
     if ($@) {
-        xCAT::SvrUtils::sendmsg([1, "Received wrong format response for command '$curl_login_cmd': $curl_login_result)"], $callback, $node);
+        xCAT::SvrUtils::sendmsg([1, "Received wrong format response for command '" . mask_password2($curl_login_cmd, $node_info{$node}{password}) . "': $curl_login_result)"], $callback, $node);
         return 1;
     }
     if ($h->{message} eq $::RESPONSE_OK) {
@@ -4900,7 +4961,7 @@ sub rflash_upload {
     my $curl_login_result = `$curl_login_cmd -s`;
     my $h;
     if (!$curl_login_result) {
-        my $curl_error = "$::FAILED_UPLOAD_MSG. Did not receive response from OpenBMC after running command '$curl_login_cmd'";
+        my $curl_error = "$::FAILED_UPLOAD_MSG. Did not receive response from OpenBMC after running command '" . mask_password2($curl_login_cmd, $node_info{$node}{password}) . "'";
         xCAT::SvrUtils::sendmsg([1, "$curl_error"], $callback, $node);
         print RFLASH_LOG_FILE_HANDLE "$curl_error\n";
         $node_info{$node}{rst} = "$curl_error";
@@ -4908,7 +4969,7 @@ sub rflash_upload {
     }
     eval { $h = from_json($curl_login_result) }; # convert command output to hash
     if ($@) {
-        my $curl_error = "$::FAILED_UPLOAD_MSG. Received wrong format response for command '$curl_login_cmd': $curl_login_result";
+        my $curl_error = "$::FAILED_UPLOAD_MSG. Received wrong format response for command '" . mask_password2($curl_login_cmd, $node_info{$node}{password}) . "': $curl_login_result";
         xCAT::SvrUtils::sendmsg([1, "$curl_error"], $callback, $node);
         # Before writing error to log, make it a single line
         $curl_error =~ tr{\n}{ };
@@ -4944,7 +5005,7 @@ sub rflash_upload {
                 }
                 my $curl_upload_result = `$upload_cmd`;
                 if (!$curl_upload_result) {
-                    my $curl_error = "$::FAILED_UPLOAD_MSG. Did not receive response from OpenBMC after running command '$upload_cmd'";
+                    my $curl_error = "$::FAILED_UPLOAD_MSG. Did not receive response from OpenBMC after running command '" . mask_password($upload_cmd) . "'";
                     xCAT::SvrUtils::sendmsg([1, "$curl_error"], $callback, $node);
                     print RFLASH_LOG_FILE_HANDLE "$curl_error\n";
                     $node_info{$node}{rst} = "$curl_error";
@@ -4952,7 +5013,7 @@ sub rflash_upload {
                 }
                 eval { $h = from_json($curl_upload_result) }; # convert command output to hash
                 if ($@) {
-                    my $curl_error = "$::FAILED_UPLOAD_MSG. Received wrong format response from command '$upload_cmd': $curl_upload_result";
+                    my $curl_error = "$::FAILED_UPLOAD_MSG. Received wrong format response from command '" . mask_password($upload_cmd) ."': $curl_upload_result";
                     xCAT::SvrUtils::sendmsg([1, "$curl_error"], $callback, $node);
                     # Before writing error to log, make it a single line
                     $curl_error =~ tr{\n}{ };
