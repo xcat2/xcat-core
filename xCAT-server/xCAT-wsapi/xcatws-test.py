@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/python2
 """Usage:
   xcatws_test.py [--xcatmn=<xcatmn>] [--user=<user>] [--password=<password>]
 """
