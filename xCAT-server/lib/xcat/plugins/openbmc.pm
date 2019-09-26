@@ -205,7 +205,7 @@ my %status_info = (
     },
     REVENTLOG_CLEAR_REQUEST => {
         method         => "POST",
-        init_url       => "$openbmc_project_url/logging/action/deleteAll",
+        init_url       => "$openbmc_project_url/logging/action/DeleteAll",
         data           => "[]",
     },
     REVENTLOG_CLEAR_RESPONSE => {
@@ -269,7 +269,7 @@ my %status_info = (
     RFLASH_SET_PRIORITY_REQUEST  => {
         method         => "PUT",
         init_url       => "$openbmc_project_url/software",
-        data           => "false", # Priority state of 0 sets image to active
+        data           => "0", # Priority state of 0 sets image to active
     },
     RFLASH_SET_PRIORITY_RESPONSE => {
         process        => \&rflash_response,
@@ -2576,9 +2576,9 @@ sub deal_with_response {
                     # Set attribute call returned with 404, display an error
                     $error = "$::RESPONSE_NOT_FOUND - Requested endpoint does not exist or may indicate function is not supported on this OpenBMC firmware.";
                 } elsif ($node_info{$node}{cur_status} eq "RSPCONFIG_API_CONFIG_QUERY_RESPONSE") {
-                    # Query attribute call came back with 404. If this is for Power Supply Redundency, 
+                    # Query attribute call came back with 404. If this is for PowerSupplyRedundancy, 
                     # send request with a new path RSPCONFIG_GET_PSR_REQUEST, response processing will print the value
-                    if ($response_info->{'data'}->{'description'} =~ /PowerSupplyRedundancy/) {
+                    if ($::RSPCONFIG_CONFIGURED_API_KEY eq "RSPCONFIG_POWERSUPPLY_REDUNDANCY") {
                         $node_info{$node}{cur_status} = "RSPCONFIG_GET_PSR_REQUEST";
                         $next_status{RSPCONFIG_GET_PSR_REQUEST} = "RSPCONFIG_GET_PSR_RESPONSE";
                         gen_send_request($node);
@@ -3846,7 +3846,7 @@ sub rspconfig_response {
 
     if ($node_info{$node}{cur_status} eq "RSPCONFIG_PASSWD_VERIFY") {
         if ($status_info{RSPCONFIG_PASSWD_VERIFY}{argv} ne $node_info{$node}{password}) {
-            xCAT::SvrUtils::sendmsg("Current BMC password is incorrect, cannot set the new password.", $callback, $node);
+            xCAT::SvrUtils::sendmsg([1, "Current BMC password is incorrect, cannot set the new password."], $callback, $node);
             $wait_node_num--;
             return;
         }
