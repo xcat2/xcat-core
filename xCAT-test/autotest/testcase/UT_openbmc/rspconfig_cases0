@@ -139,15 +139,15 @@ description: Check dump generation, download and removal
 hcp: openbmc
 label:cn_bmc_ready,hctrl_openbmc
 #Clear old dumps for this node
-cmd: rm -f /var/log/xcat/dump/*_$$CN_dump_*
+cmd: rm -f /var/log/xcat/dump/*$$CN*
 #Generate new dump
 cmd: rspconfig $$CN dump
 check:rc==0
 check:output=~Capturing BMC Diagnostic information, this will take some time
-check:output=~$$CN Dump requested. Target ID is
+check:output=~$$CN: Dump requested. Target ID is
 check:output=~Downloading dump
 #Verify dump was downloaded to proper directory
-cmd: ls -l /var/log/xcat/dump/*_$$CN_dump_*
+cmd: ls -l /var/log/xcat/dump/*$$CN*
 check:rc==0
 #Remove last generated dump
 cmd: rspconfig mid05tor12cn03 dump -l | tail -1 | cut -d ' ' -f2 | tr -d "[]" | xargs -i{} rspconfig $$CN dump -c {}
