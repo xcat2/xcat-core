@@ -47,7 +47,7 @@ Obsoletes: atftp-xcat
 %endif
 
 %if "%{dist}" == ".el8"
-Requires perl-Time-HiRes perl-Sys-Syslog perl-Text-Balanced
+Requires: perl-Time-HiRes perl-Sys-Syslog perl-Text-Balanced
 %endif
 
 # The aix rpm cmd forces us to do this outside of ifos type stmts
