@@ -1,3 +1,4 @@
+#!/bin/bash
 #XCATDIR=`gettab key=xcatconfdir site.value`
 # IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
 if [ -z "$XCATROOT" ]; then
