@@ -23,10 +23,6 @@
 #     - xCAT uninstallation
 # 2019-03-22 GONG Jie <gongjie@linux.vnet.ibm.com>
 #     - Better debug log when reading repository failed
-# 2019-07-24 Mark Gurevich <gurevich@us.ibm.com>
-#     - Removed references to buildkit
-# 2019-08-12 Mark Gurevich <gurevich@us.ibm.com>
-#     - Added xCAT-buildkit to uninstall list
 # 2019-08-15 Mark Gurevich <gurevich@us.ibm.com>
 #     - Added conserver-xcat to uninstall list
 #
