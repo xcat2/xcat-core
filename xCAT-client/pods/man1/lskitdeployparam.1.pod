@@ -1,0 +1,107 @@
+=head1 NAME
+
+B<lskitdeployparam> - Lists the deployment parameters for one or more Kits or Kit components
+
+
+=head1 SYNOPSIS
+
+B<lskitdeployparam> [B<-V> | B<--verbose>] [B<-x> | B<--xml> | B<--XML>] [B<-k> | B<--kitname> I<kit_names>] [B<-c> | B<--compname> I<comp_names>]
+
+B<lskitdeployparam> [B<-?> | B<-h> | B<--help> | B<-v> | B<--version>]
+
+
+=head1 DESCRIPTION
+
+The B<lskitdeployparam> command is used to list the kit deployment parameters for one or more kits, or one or more kit components. Kit deployment parameters are used to customize the installation or upgrade of kit components.
+
+The B<lskitdeployparam> command outputs the kit component information in two formats: human-readable format (default), and XML format.  Use the -x option to view the information in XML format.
+
+Input to the command can specify any combination of the input options.
+
+Note: The xCAT support for Kits is only available for Linux operating systems.
+
+=head1 OPTIONS
+
+=over 10
+
+=item B<-k|--kitname> I<kit_names>
+
+Where I<kit_names> is a comma-delimited list of kit names. The B<lskitdeployparam> command will only display the deployment parameters for the kits with the matching names.
+
+=item B<-c|--compname> I<comp_names>
+
+Where I<comp_names> is a comma-delimited list of kit component names. The B<lskitdeployparam> command will only display the deployment parameters for the kit components with the matching names.
+
+=item B<-x|--xml|--XML>
+
+Return the output with XML tags.  The data is returned as:
+
+  <data>
+    <kitdeployparam>
+      <name>KIT_KIT1_PARAM1</name>
+      <value>value11</value>
+    </kitdeployparam>
+  </data>
+  <data>
+    <kitdeployparam>
+      <name>KIT_KIT1_PARAM2</name>
+      <value>value12</value>
+    </kitdeployparam>
+  </data>
+  ...
+
+=item B<-V|--verbose>
+
+Display additional progress and error messages.
+
+=item B<-v|--version>
+
+Command Version.
+
+=item B<-?|-h|--help>
+
+Display usage message.
+
+=back
+
+
+=head1 RETURN VALUE
+
+=over 3
+
+=item 0
+The command completed successfully.
+
+=item 1
+An error has occurred.
+
+=back
+
+
+=head1 EXAMPLES
+
+=over 3
+
+=item 1.
+
+To list kit deployment parameters for kit "kit-test1-1.0-Linux", enter:
+
+  lskitdeployparam -k kit-test1-1.0-Linux
+
+=item 2.
+
+To list kit deployment parameters for kit component "comp-server-1.0-1-rhels-6-x86_64", enter:
+
+  lskitdeployparam -c comp-server-1.0-1-rhels-6-x86_64
+
+=back
+
+
+=head1 FILES
+
+/opt/xcat/bin/lskitdeployparam
+
+=head1 SEE ALSO
+
+L<lskit(1)|lskit.1>, L<lskitcomp(1)|lskitcomp.1>, L<addkit(1)|addkit.1>, L<rmkit(1)|rmkit.1>, L<addkitcomp(1)|addkitcomp.1>, L<rmkitcomp(1)|rmkitcomp.1>
+
