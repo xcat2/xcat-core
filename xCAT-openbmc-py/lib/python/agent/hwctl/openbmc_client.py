@@ -248,12 +248,12 @@ RSPCONFIG_APIS = {
 
 EVENTLOG_URLS     = {
         "list":      "/logging/enumerate",
-        "clear_all": "/logging/action/deleteAll",
+        "clear_all": "/logging/action/DeleteAll",
         "resolve":   "/logging/entry/{}/attr/Resolved",
 }
 
 RAS_POLICY_TABLE  = "/opt/ibm/ras/lib/policyTable.json"
-RAS_POLICY_MSG    = "Install the OpenBMC RAS package to obtain more details logging messages."
+RAS_POLICY_MSG    = "Install the OpenBMC RAS package to obtain more detailed logging messages."
 RAS_NOT_FOUND_MSG = " Not found in policy table: "
 
 RESULT_OK = 'ok'
@@ -279,7 +279,7 @@ class OpenBMCRest(object):
         # print back to xcatd or just stdout
         self.messager = kwargs.get('messager')
 
-        self.session = rest.RestSession()
+        self.session = rest.RestSession((self.username,self.password))
         self.root_url = HTTP_PROTOCOL + self.bmcip + PROJECT_URL
         self.download_root_url = HTTP_PROTOCOL + self.bmcip + '/'
 
