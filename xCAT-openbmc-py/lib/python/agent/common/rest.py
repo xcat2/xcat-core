@@ -15,10 +15,12 @@ from . import exceptions as xcat_exception
 
 class RestSession(object):
 
-    def __init__(self):
+    def __init__(self, auth=None):
         self.session = requests.Session()
         self.cookies = None
-        self.auth = None
+        # If userid and password were passed in, use them for basic authorization
+        # This is required to connect to BMC with OP940 level, ignored for lower OP levels
+        self.auth = auth
 
     def request(self, method, url, headers, data=None, timeout=30):
 
