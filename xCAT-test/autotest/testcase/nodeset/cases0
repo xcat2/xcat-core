@@ -223,6 +223,7 @@ check:rc!=0
 cmd:chdef -t node -o testnode1 ip=
 check:rc==0
 cmd:cp -f /etc/hosts.xcattestbak /etc/hosts
+cmd:sleep 2
 cmd:getent hosts testnode1 | grep testnode1
 check:rc!=0
 cmd:nodeset testnode1 osimage=rhels6.99-x86_64-install-compute
