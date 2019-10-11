@@ -11,6 +11,7 @@ LimitNOFILE=16000
 RemainAfterExit=no
 Restart=on-failure
 RestartSec=5s
+TimeoutStartSec=600
 
 [Install]
 WantedBy=multi-user.target
