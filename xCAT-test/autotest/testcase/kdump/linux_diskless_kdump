@@ -47,6 +47,7 @@ check:rc==0
 cmd:chdef -t node $$CN -p postscripts=enablekdump
 check:rc==0
 
+cmd:rmimage  __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute
 cmd:genimage  __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute
 check:rc==0
 cmd:packimage __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute
@@ -70,10 +71,13 @@ check:rc==0
 check:output=~\d\d:\d\d:\d\d
 cmd:xdsh $$CN "echo 'echo 1 > /proc/sys/kernel/sysrq; echo c > /proc/sysrq-trigger' > /tmp/kdump.trigger"
 cmd:xdsh $$CN "chmod 755 /tmp/kdump.trigger"
+
+cmd:xdsh $$CN "rpm -q at"
 cmd:xdsh $$CN "service atd start"
-cmd:sleep 30
+check:rc==0
+
 cmd:xdsh $$CN "at now +1 minutes <<< /tmp/kdump.trigger"
-cmd:sleep 600
+cmd:sleep 300
 
 cmd:vmcorefile=`find /opt/xcat/share/xcat/tools/autotest/kdumpdir/ -name vmcore`;if [[ -s $vmcorefile ]]; then echo "this file is not empty";else echo "this file is empty"; fi
 check:output=~not empty
