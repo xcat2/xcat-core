@@ -24,6 +24,7 @@ end
 start:rscan_w
 label:others,hctrl_hmc
 hcp:hmc
+cmd:lsdef -t node all -z > /tmp/all.stanza
 cmd:lsdef -t node -l $$CN -z > /tmp/$$CN.stanza
 check:rc==0
 cmd:perl -pi -e 's/$$CN/testnode/g' /tmp/$$CN.stanza
@@ -37,14 +38,15 @@ check:output=~hmc\s+__GETNODEATTR($$CN,hcp)__+\s+\w{4}-\w{3}\s+\w{7}
 cmd:lsdef -l $$CN
 check:rc==0
 check:output=~hcp=__GETNODEATTR($$CN,hcp)__
-cmd:rmdef $$CN,testnode
-cmd:perl -pi -e 's/testnode/$$CN/g' /tmp/$$CN.stanza
-cmd:cat /tmp/$$CN.stanza | mkdef -z
+cmd:rmdef all
+cmd:cat /tmp/all.stanza | mkdef -z
+cmd:rm -f /tmp/all.stanza
 cmd:rm -f /tmp/$$CN.stanza
 end
 start:rscan_x_w
 label:others,hctrl_hmc
 hcp:hmc
+cmd:lsdef -t node all -z > /tmp/all.stanza
 cmd:lsdef -t node -l $$CN -z > /tmp/$$CN.stanza
 check:rc==0
 cmd:perl -pi -e 's/$$CN/testnode/g' /tmp/$$CN.stanza
@@ -56,14 +58,15 @@ check:output=~<parent>[\w-]+</parent>
 cmd:lsdef -l $$CN
 check:rc==0
 check:output=~hcp=__GETNODEATTR($$CN,hcp)__
-cmd:rmdef $$CN,testnode
-cmd:perl -pi -e 's/testnode/$$CN/g' /tmp/$$CN.stanza
-cmd:cat /tmp/$$CN.stanza | mkdef -z
+cmd:rmdef all
+cmd:cat /tmp/all.stanza | mkdef -z
+cmd:rm -f /tmp/all.stanza
 cmd:rm -f /tmp/$$CN.stanza
 end
 start:rscan_z_w
 label:others,hctrl_hmc
 hcp:hmc
+cmd:lsdef -t node all -z > /tmp/all.stanza
 cmd:lsdef -t node -l $$CN -z > /tmp/$$CN.stanza
 check:rc==0
 cmd:perl -pi -e 's/$$CN/testnode/g' /tmp/$$CN.stanza
@@ -75,9 +78,8 @@ check:output=~parent=[\w-]+
 check:lsdef -l $$CN
 check:rc==0
 check:output=~parent=[\w-]+
-cmd:rmdef $$CN,testnode
-cmd:perl -pi -e 's/testnode/$$CN/g' /tmp/$$CN.stanza
-cmd:cat /tmp/$$CN.stanza | mkdef -z
+cmd:rmdef all
+cmd:cat /tmp/all.stanza | mkdef -z
+cmd:rm -f /tmp/all.stanza
 cmd:rm -f /tmp/$$CN.stanza
 end
-
