@@ -248,9 +248,6 @@ for i in `find -mindepth 2 -maxdepth 2 -type d `; do
 	fi
 done
 
-# Modify xcat-dep.repo files to point to the correct place
-echo "===> Modifying the xcat-dep.repo files to point to the correct location..."
-
 echo "===> Making sure that the mklocalrepo.sh file contains execute permission ..." 
 ls -ltr ${XCATCOREDIR}/${WORKING_TARGET_DIR}/mklocalrepo.sh
 if [[ ! -x "${XCATCOREDIR}/${WORKING_TARGET_DIR}/mklocalrepo.sh" ]]; then
@@ -293,6 +290,11 @@ fi
 echo "===> Creating $DFNAME ..."
 tar $verbosetar -jcf $DFNAME xcat-dep
 chmod a+r $DFNAME
+
+
+# Modify all xcat-dep.repo files to point to the correct place: $YUM
+echo "===> Modifying the xcat-dep.repo files to point to the correct 'yum/devel' location..."
+find ${WORKING_TARGET_DIR} -type f -name "xcat-dep.repo" -exec sed -i s#/yum/xcat-dep#/${YUM}/xcat-dep#g {} \;
 
 if [[ ${UP} -eq 0 ]]; then
 	echo "Upload not being done, set UP=1 to upload to xcat.org"
