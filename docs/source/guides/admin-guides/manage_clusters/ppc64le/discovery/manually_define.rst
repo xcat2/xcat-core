@@ -40,7 +40,7 @@ The manually defined node will be like this::
 
 * creating a node definition "cn2" with the template "ppc64le-openbmc-template" (openbmc controlled ppc64le node) shipped by xCAT ::
 
-     mkdef -t node -o cn2 --template ppc64le-openbmc-template mac=66:55:44:33:22:11 ip=172.12.139.2 bmc=172.11.139.2 bmcusername=USERID bmcpassword=PASSW0RD
+     mkdef -t node -o cn2 --template ppc64le-openbmc-template mac=66:55:44:33:22:11 ip=172.12.139.2 bmc=172.11.139.2 bmcusername=root bmcpassword=0penBmc
 
   the unspecified attributes of newly created node "cn2" will be assigned with the default values in the template
 
