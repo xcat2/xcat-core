@@ -389,13 +389,17 @@ sub rinstall {
 
         # if only provision one node and failed nodeset, will exit the command
         # instead of continue with rnetboot/rsetboot, rpower.
+        # check if it is hierarchy cluster 
         if (scalar(@nodes) == 1) {
-            $rsp->{error}->[0] = "Failed to run 'nodeset' against the node: @nodes";
-            $rsp->{errorcode}->[0] = 1;
-            xCAT::MsgUtils->message("E", $rsp, $callback);
-            return 1;
+            my $nrtab  = xCAT::Table->new('noderes');
+            my $sn = $nrtab->getNodeAttribs(@nodes,['servicenode']);
+            if (!$sn) {
+                $rsp->{error}->[0] = "Failed to run 'nodeset' against the node: @nodes";
+                $rsp->{errorcode}->[0] = 1;
+                xCAT::MsgUtils->message("E", $rsp, $callback);
+                return 1;
+            }
         }
-
 
         foreach my $node (@failurenodes) {
             delete $nodes{$node};
