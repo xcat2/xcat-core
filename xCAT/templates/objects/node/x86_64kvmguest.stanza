@@ -4,8 +4,8 @@ x86_64kvmguest-template:
     objtype=node
     arch=x86_64
     groups=all
-    ip="OPTIONAL:the ip address of the kvm guest"
-    mac="OPTIONAL:the mac of the kvm guest"
+    ip="MANDATORY:the ip address of the kvm guest"
+    mac="MANDATORY:the mac of the kvm guest"
     mgt=kvm
     netboot=xnba
     serialport=0

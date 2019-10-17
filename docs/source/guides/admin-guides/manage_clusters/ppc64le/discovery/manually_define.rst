@@ -14,7 +14,6 @@ Execute ``mkdef`` command to define the node: ::
 
 The manually defined node will be like this::
 
-    # lsdef cn1
     Object name: cn1
         bmc=50.0.101.1
         bmcpassword=admin
@@ -33,28 +32,26 @@ The manually defined node will be like this::
 
 ``mkdef --template`` can be used to create node definitions easily from the typical node definition templates or existing node definitions, some examples:
 
-* creating node definition "cn2" with an existing node definition "cn1" ::
+* creating node definition "cn2" from an existing node definition "cn1" ::
 
-     # mkdef -t node -o cn2 --template cn1 mac=66:55:44:33:22:11 ip=172.12.139.2 bmc=172.11.139.2
-     1 object definitions have been created or modified.
+     mkdef -t node -o cn2 --template cn1 mac=66:55:44:33:22:11 ip=172.12.139.2 bmc=172.11.139.2
 
-  except the attributes specified(``mac``, ``ip`` and ``bmc`` attribute here), other attibutes of the newly created node "cn2" inherit the values of template node "cn1"
+  except for the attributes specified (``mac``, ``ip`` and ``bmc``), other attributes of the newly created node "cn2" inherit the values of template node "cn1"
 
-* creating a node definition "cn2" with the template "ppc64le-openbmc-template"(openbmc controlled ppc64le node) shipped by xCAT ::
+* creating a node definition "cn2" with the template "ppc64le-openbmc-template" (openbmc controlled ppc64le node) shipped by xCAT ::
 
-     # mkdef -t node -o cn2 --template ppc64le-openbmc-template mac=66:55:44:33:22:11 ip=172.12.139.2 bmc=172.11.139.2 bmcpassword=USERID bmcusername=PASSW0RD
-     1 object definitions have been created or modified.
+     mkdef -t node -o cn2 --template ppc64le-openbmc-template mac=66:55:44:33:22:11 ip=172.12.139.2 bmc=172.11.139.2 bmcusername=USERID bmcpassword=PASSW0RD
 
   the unspecified attributes of newly created node "cn2" will be assigned with the default values in the template
 
   to list all the node definition templates available in xCAT, run ::
 
-     # lsdef -t node --template
+     lsdef -t node --template
 
   to display the full definition of template "ppc64le-openbmc-template", run ::
 
-     # lsdef -t node --template ppc64le-openbmc-template
+     lsdef -t node --template ppc64le-openbmc-template
 
-  the mandatory attributes, which must be specified while creating definitions  with templates, are denoted with the value ``MANDATORY:<attribute description>`` in template definition.
+  the mandatory attributes, which must be specified while creating definitions with templates, are denoted with the value ``MANDATORY:<attribute description>`` in template definition.
 
   the optional attributes, which can be specified optionally, are denoted with the value ``OPTIONAL:<attribute description>`` in template definition

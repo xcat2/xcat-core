@@ -5,7 +5,7 @@ Management Node info::
 
     MN Hostname: xcat1
     MN NIC info for Management Network(Host network): eth1, 10.0.1.1/16
-    MN NIC info for Service Network(FSP/BMC nework): eth2, 50.0.1.1/16
+    MN NIC info for Service Network(FSP/BMC network): eth2, 50.0.1.1/16
     Dynamic IP range for Hosts: 10.0.100.1-10.0.100.100
     Dynamic IP range for FSP/BMC: 50.0.100.1-50.0.100.100
 

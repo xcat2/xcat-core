@@ -10,8 +10,8 @@ x86_64-template:
     getmac=ipmi
     groups=all
     hcp=
-    ip="OPTIONAL:the ip address of the node"
-    mac="OPTIONAL:the mac of the node"
+    ip="MANDATORY:the ip address of the node"
+    mac="MANDATORY:the mac of the node"
     mgt=ipmi
     netboot=xnba
     serialport=0

@@ -8,8 +8,8 @@ ppc64le-openbmc-template:
     bmcusername="MANDATORY:the username of the BMC"
     cons=openbmc
     groups=all
-    ip=OPTIONAL:the ip address of the node
-    mac=OPTIONAL:the mac of the node
+    ip="MANDATORY:the ip address of the node"
+    mac="MANDATORY:the mac of the node"
     mgt=openbmc
     netboot=petitboot
     nodetype=mp

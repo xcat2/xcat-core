@@ -8,8 +8,8 @@ ppc64le-template:
     bmcusername="MANDATORY:the username of the BMC"
     cons=ipmi
     groups=all
-    ip=OPTIONAL:the ip address of the node
-    mac=OPTIONAL:the mac of the node
+    ip="MANDATORY:the ip address of the node"
+    mac="MANDATORY:the mac of the node"
     mgt=ipmi
     netboot=petitboot
     nodetype=mp
