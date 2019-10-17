@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/python2
 #TODO: Delete the old files to support removing a man page
 
 import glob

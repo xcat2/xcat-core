@@ -46,6 +46,10 @@ Requires: perl-IO-Socket-SSL perl-XML-Simple perl-XML-Parser perl-Digest-SHA1 pe
 Obsoletes: atftp-xcat
 %endif
 
+%if "%{dist}" == ".el8"
+Requires: perl-Time-HiRes perl-Sys-Syslog perl-Text-Balanced
+%endif
+
 # The aix rpm cmd forces us to do this outside of ifos type stmts
 %if %notpcm
 %if %notlenovo
