@@ -362,6 +362,8 @@ sub rinstall {
         # We got an error with the nodeset
         my @successnodes;
         my @failurenodes;
+        my @failuresns;
+        my $snfailure;
         # copy into a temporary variable to avoid of circular reference
         my @lines = @$res;
         foreach my $line (@lines) {
@@ -384,16 +386,32 @@ sub rinstall {
                 }
                 return 1;
             }
+
+            if ($line =~ /Unable to dispatch hierarchical sub-command to (\S+):3001/) {
+                $snfailure=1;
+                push @failuresns,$1;
+            }
             xCAT::MsgUtils->message("I", $rsp, $callback);
         }
 
         # if only provision one node and failed nodeset, will exit the command
         # instead of continue with rnetboot/rsetboot, rpower.
-        # check if it is hierarchy cluster 
-        if (scalar(@nodes) == 1) {
-            my $nrtab  = xCAT::Table->new('noderes');
-            my $sn = $nrtab->getNodeAttribs(@nodes,['servicenode']);
-            if (!$sn) {
+        if ( (scalar(@nodes) == 1) ) {
+            #exit the command if it's service node failure
+            if ($snfailure) {
+                my $node = $nodes[0];
+                my $nrtab = xCAT::Table->new('noderes');
+                my $nrents = $nrtab->getNodeAttribs($node, [qw(servicenode)]);
+                my $nodesn = $nrents->{servicenode};
+                foreach my $tmpsn (@failuresns) {
+                    if ($nodesn eq $tmpsn) {
+                        $rsp->{error}->[0] = "Unable connect to Service node $nodesn, failed to run 'nodeset' against the node: @nodes";
+                        $rsp->{errorcode}->[0] = 1;
+                        xCAT::MsgUtils->message("E", $rsp, $callback);
+                        return 1;
+                    }
+                }
+            } else {
                 $rsp->{error}->[0] = "Failed to run 'nodeset' against the node: @nodes";
                 $rsp->{errorcode}->[0] = 1;
                 xCAT::MsgUtils->message("E", $rsp, $callback);
