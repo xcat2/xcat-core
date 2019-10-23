@@ -192,6 +192,7 @@ if [ "$IPMIMFG" == 2 ]; then #IBM
                     # Get the LAN Configuration Parameters (OEM)
                     CURBMCPORT=`ipmitool -d $idev raw 0xc 2 1 0xc0 0 0 | awk '{print $2}'`
                 done
+                sleep 15
                 let idev=idev+1
             done
             unset IFS
@@ -215,6 +216,7 @@ if [ "$IPMIMFG" == 2 ]; then #IBM
                         sleep 1
                         CURBMCPORT=`ipmitool -d $idev raw 0xc 2 1 0xc0 0 0 | awk '{print $2}'`
                     done
+                    sleep 15
                     let idev=idev+1
                 done
                 unset IFS
@@ -252,6 +254,7 @@ elif [ "$IPMIMFG" == 20301 -o "$IPMIMFG" == 19046 -a "$XPROD" != 502 ] ; then
                     sleep 1
                     CURBMCPORT=`ipmitool -d $idev raw 0xc 2 1 0xc0 0 0 | awk '{print $2}'`
                 done
+                sleep 15
                 let idev=idev+1
             done
             unset IFS
