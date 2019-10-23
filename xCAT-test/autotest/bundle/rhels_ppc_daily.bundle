@@ -266,6 +266,7 @@ tabdump_w_lt
 tabdump_w_match
 tabdump_w_ne
 tabdump_w_notmatch
+tabdump_servicenode
 tabgrep_err
 tabgrep_h
 tabgrep_node
@@ -281,6 +282,7 @@ tabrestore_err
 tabrestore_h
 tabrestore_null
 tabrestore_table
+tabdump_servicenode
 unregnotif_f
 unregnotif_h
 unregnotif_null
@@ -290,6 +292,7 @@ xcatconfig_u_check_xcatsslversion_rhels_sles
 xcatd_restart
 xcatd_start
 xcatd_stop
+tabdump_servicenode
 xcatstanzafile_attribute
 xcatstanzafile_colon
 xcatstanzafile_defaultvalue
@@ -298,3 +301,4 @@ xcatstanzafile_normal
 xcatstanzafile_objtype
 xcatstanzafile_specificvalue
 xcatstanzafile_tab
+tabdump_servicenode
