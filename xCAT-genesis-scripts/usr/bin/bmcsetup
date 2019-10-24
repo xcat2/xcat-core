@@ -183,7 +183,6 @@ if [ "$IPMIMFG" == 2 ]; then #IBM
             for p in $BMCPORT; do
                 # Set the LAN Configuration Parameters (OEM)
                 ipmitool -d $idev raw 0xc 1 1 0xc0 $p > /dev/null
-                sleep 15
                 # Set the PEF Configuration Parameters (Platform Event Filtering)
                 ipmitool -d $idev raw 0x04 0x12 0x09 0x01 0x18 0x${p}1 0x00 > /dev/null
                 CURBMCPORT=`ipmitool -d $idev raw 0xc 2 1 0xc0 0 0 | awk '{print $2}'`
@@ -193,6 +192,7 @@ if [ "$IPMIMFG" == 2 ]; then #IBM
                     # Get the LAN Configuration Parameters (OEM)
                     CURBMCPORT=`ipmitool -d $idev raw 0xc 2 1 0xc0 0 0 | awk '{print $2}'`
                 done
+                sleep 15
                 let idev=idev+1
             done
             unset IFS
@@ -210,13 +210,13 @@ if [ "$IPMIMFG" == 2 ]; then #IBM
                 IFS=','
                 for p in $BMCPORT; do
                     ipmitool -d $idev raw 0xc 1 1 0xc0 $p > /dev/null
-                    sleep 15
                     CURBMCPORT=`ipmitool -d $idev raw 0xc 2 1 0xc0 0 0 | awk '{print $2}'`
                     logger -s -t $log_label -p local4.info "CURBMCPORT is $CURBMCPORT"
                     while [ "$CURBMCPORT" -ne "$BMCPORT" ]; do
                         sleep 1
                         CURBMCPORT=`ipmitool -d $idev raw 0xc 2 1 0xc0 0 0 | awk '{print $2}'`
                     done
+                    sleep 15
                     let idev=idev+1
                 done
                 unset IFS
@@ -240,7 +240,6 @@ elif [ "$IPMIMFG" == 20301 -o "$IPMIMFG" == 19046 -a "$XPROD" != 502 ] ; then
             for p in $BMCPORT; do
                 unset IFS
                 ipmitool -d $idev raw 0xc 1 1 0xc0 $p > /dev/null
-                sleep 15
                 IFS=','
                 # after this change, we need to watch and wait to see that it
                 # actually takes effect.  On port change, the service processor
@@ -255,6 +254,7 @@ elif [ "$IPMIMFG" == 20301 -o "$IPMIMFG" == 19046 -a "$XPROD" != 502 ] ; then
                     sleep 1
                     CURBMCPORT=`ipmitool -d $idev raw 0xc 2 1 0xc0 0 0 | awk '{print $2}'`
                 done
+                sleep 15
                 let idev=idev+1
             done
             unset IFS
@@ -433,32 +433,6 @@ fi
 snooze
 
 let idev=NUMBMCS-1
-for bmcp in $BMCPW; do
-    if [ "$bmcp" = "" ]; then
-        continue
-    fi
-    DISABLEUSERS=$(ipmitool user list $LANCHAN|grep -v ^ID|grep -v 'NO ACCESS$'|awk '{print $1}')
-    # Get the User Slots
-    USERSLOT=`ipmitool -d $idev user list $LANCHAN |grep -v ^ID|awk '{print $1 " " $2}'|grep -w "$BMCUS"|awk '{print $1}'`
-    if [ -z "$USERSLOT" ]; then
-        USERSLOT=$((`ipmitool raw 6 0x44 1 1|awk '{print $3}'` + 1))
-    fi
-    if [ "$USERSLOT" == 0 -o -z "$LOCKEDUSERS" ]; then USERSLOT=2; fi
-    if [ "$bmcp" = "" ]; then continue; fi
-
-    TRIES=0
-    # Set the password for the specified user
-    while ! ipmitool -d $idev user set password $USERSLOT "$bmcp"; do
-        sleep 1
-        let TRIES=TRIES+1
-        if [ $TRIES -gt $TIMEOUT ]; then break; fi
-    done
-
-    TRIES=0
-    let idev=idev-1
-done
-
-let idev=NUMBMCS-1
 for user in $BMCUS; do
     if [ "$user" = "" ]; then
         continue
@@ -543,12 +517,27 @@ for user in $BMCUS; do
             if [ $TRIES -gt $TIMEOUT ]; then break; fi
         done
     fi
-    # Display the user list
-    logger -s -t $log_label -p local4.info "Set up following user table: "
-    ipmitool -d $idev user list $LANCHAN
     let idev=idev-1
 done
 
+let idev=NUMBMCS-1
+for bmcp in $BMCPW; do
+    if [ "$bmcp" = "" ]; then continue; fi
+
+    TRIES=0
+    # Set the password for the specified user
+    while ! ipmitool -d $idev user set password $USERSLOT "$bmcp"; do
+        sleep 1
+        let TRIES=TRIES+1
+        if [ $TRIES -gt $TIMEOUT ]; then break; fi
+    done
+
+    logger -s -t $log_label -p local4.info "Set up following user table: "
+    TRIES=0
+    # Display the user list
+    ipmitool -d $idev user list $LANCHAN
+    let idev=idev-1
+done
 
 let idev=NUMBMCS
 while [ $idev -gt 0 ]; do
