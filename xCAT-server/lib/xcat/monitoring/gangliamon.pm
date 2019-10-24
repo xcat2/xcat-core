@@ -65,7 +65,7 @@ sub start {
         if ($OS =~ /AIX/) {
             $res_gmond = `/etc/rc.d/init.d/gmond restart 2>&1`;
         } else {
-            $res_gmond = `/etc/init.d/gmond restart 2>&1`;
+            $res_gmond = `systemctl restart gmond 2>&1`;
         }
 
         my $tmp;
@@ -90,9 +90,9 @@ sub start {
                 $res_gmetad = `/etc/rc.d/init.d/gmetad restart 2>&1`;
             }
         } else {
-            $tmp = `/etc/init.d/gmetad status | grep running`;
+            $tmp = `systemctl status gmetad| grep running`;
             if (!$tmp) {
-                $res_gmetad = `/etc/init.d/gmetad restart 2>&1`;
+                $res_gmetad = `systemctl restart gmetad 2>&1`;
             }
         }
 
@@ -166,7 +166,7 @@ sub start {
                 $result = `XCATBYPASS=Y $::XCATROOT/bin/xdsh  $rec /etc/rc.d/init.d/gmond restart 2>&1`;
             }
             else {
-                $result = `XCATBYPASS=Y $::XCATROOT/bin/xdsh  $rec /etc/init.d/gmond restart 2>&1`;
+                $result = `XCATBYPASS=Y $::XCATROOT/bin/xdsh  $rec systemctl restart gmond 2>&1`;
             }
         }
 
@@ -787,7 +787,7 @@ sub stop {
         if ($OS =~ /AIX/) {
             $res_gmond = `/etc/rc.d/init.d/gmond stop 2>&1`;
         } else {
-            $res_gmond = `/etc/init.d/gmond stop 2>&1`;
+            $res_gmond = `systemctl stop gmond 2>&1`;
         }
         if ($?) {
             if ($callback) {
@@ -805,7 +805,7 @@ sub stop {
         if ($OS =~ /AIX/) {
             $res_gmetad = `/etc/rc.d/init.d/gmetad stop 2>&1`;
         } else {
-            $res_gmetad = `/etc/init.d/gmetad stop 2>&1`;
+            $res_gmetad = `systemctl stop gmetad 2>&1`;
         }
 
         if ($?) {
@@ -867,7 +867,7 @@ sub stop {
             if ($OS =~ /AIX/) {
                 $result = `XCATBYPASS=Y $::XCATROOT/bin/xdsh  $rec /etc/rc.d/init.d/gmond stop 2>&1`;
             } else {
-                $result = `XCATBYPASS=Y $::XCATROOT/bin/xdsh  $rec /etc/init.d/gmond stop 2>&1`;
+                $result = `XCATBYPASS=Y $::XCATROOT/bin/xdsh  $rec systemctl stop gmond 2>&1`;
             }
         }
 
