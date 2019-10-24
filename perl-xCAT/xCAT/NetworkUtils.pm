@@ -1368,6 +1368,7 @@ sub formatNetmask
     my $origType = shift;
     my $newType  = shift;
     my $maskn;
+    if (not defined $mask) { return undef; }
     if ($origType == 0)
     {
         $maskn = unpack("N", inet_aton($mask));
