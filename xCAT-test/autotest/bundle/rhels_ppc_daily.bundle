@@ -266,10 +266,14 @@ rpower_noderange_nodeps
 rpower_off
 rpower_on
 rpower_stat
+tabdump_servicenode
 rscan_noderange
+tabdump_servicenode
 rscan_w
+tabdump_servicenode
 rscan_x
 rscan_x_w
+tabdump_servicenode
 rscan_z
 rscan_z_w
 tabdump_servicenode
