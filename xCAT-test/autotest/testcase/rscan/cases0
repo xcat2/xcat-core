@@ -40,6 +40,7 @@ check:rc==0
 check:output=~hcp=__GETNODEATTR($$CN,hcp)__
 cmd:rmdef all
 cmd:cat /tmp/all.stanza | mkdef -z
+cmd:chtab -d node=$$SN servicenode
 cmd:rm -f /tmp/all.stanza
 cmd:rm -f /tmp/$$CN.stanza
 end
@@ -60,6 +61,7 @@ check:rc==0
 check:output=~hcp=__GETNODEATTR($$CN,hcp)__
 cmd:rmdef all
 cmd:cat /tmp/all.stanza | mkdef -z
+cmd:chtab -d node=$$SN servicenode
 cmd:rm -f /tmp/all.stanza
 cmd:rm -f /tmp/$$CN.stanza
 end
@@ -80,6 +82,7 @@ check:rc==0
 check:output=~parent=[\w-]+
 cmd:rmdef all
 cmd:cat /tmp/all.stanza | mkdef -z
+cmd:chtab -d node=$$SN servicenode
 cmd:rm -f /tmp/all.stanza
 cmd:rm -f /tmp/$$CN.stanza
 end
