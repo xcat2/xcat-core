@@ -344,6 +344,8 @@ sub install_xcat{
             return 1;
         }
     }
+    my @cat_output = runcmd("sudo cat /etc/apt/sources.list");
+    print Dumper \@cat_output;
 
     my $cmd = "sudo apt-get install xcat --allow-remove-essential --allow-unauthenticated";
     @output = runcmd("$cmd");
