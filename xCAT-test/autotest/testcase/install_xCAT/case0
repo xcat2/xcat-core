@@ -31,6 +31,9 @@ stop:yes
 cmd:arc_all=`uname -a`; code=`lsb_release -sc`;if [[ $arc_all =~ "ppc64le" ]]; then arch="ppc64el";else arch="x86_64";fi; cp "/opt/xcat/share/xcat/tools/autotest/testcase/go_xcat/$code-$arch.sources.list" "/etc/apt/sources.list"
 cmd:apt-get clean;apt-get update
 check:rc==0
+cmd:echo '* libraries/restart-without-asking boolean true' | debconf-set-selections
+check:rc==0
+cmd:debconf-show libssl1.1
 cmd:cp /core-*-snap.tar.bz2 /install_xCAT_xcat-core.tar.bz2
 check:rc==0
 cmd:cp /xcat-dep*.tar.bz2 /install_xCAT_xcat-dep.tar.bz2
