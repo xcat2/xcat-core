@@ -3,14 +3,14 @@
 Using Postscript
 ----------------
 
-xCAT automatically runs a few postscripts and postbootscripts that are delivered with xCAT to set up the nodes. You can also add your own scripts to further customize the nodes. This explains the xCAT support to do this.
+xCAT automatically runs a few postscripts and postbootscripts that are delivered with xCAT to set up the nodes. You can also add your own scripts to further customize the nodes.
 
 Types of scripts
 ~~~~~~~~~~~~~~~~
 
-There are two types of scripts in the postscripts table ( postscripts and postbootscripts). The types are based on when in the install process they will be executed. Run the following for more information:
+There are two types of scripts in the postscripts table ( postscripts and postbootscripts). The types are based on when in the install process they will be executed. Run the following for more information::
 
-    ``man postscripts``
+    man postscripts
 
 * **postscripts attribute** - List of scripts that should be run on this node after diskful installation or diskless boot.
 
@@ -20,17 +20,17 @@ There are two types of scripts in the postscripts table ( postscripts and postbo
 
            * **[SLES]**
 
-           Postscripts will be run after the reboot but before the init.d process. For Linux diskless deployment, the postscripts will be run at the init.d time, and xCAT will automatically add the list of postscripts from the postbootscripts attribute to run after postscripts list.
+           Postscripts will be run after the reboot but before the ``init.d`` process. For Linux diskless deployment, the postscripts will be run at the ``init.d`` time, and xCAT will automatically add the list of postscripts from the postbootscripts attribute to run after postscripts list.
 
-* **postbootscripts attribute** - list of postbootscripts that should be run on this Linux node at the init.d time after diskful installation reboot or diskless boot
-* **xCAT**, by default, for diskful installs only runs the postbootscripts on the install and not on reboot. In xCAT a site table attribute runbootscripts is available to change this default behavior. If set to yes, then the postbootscripts will be run on install and on reboot.
+* **postbootscripts attribute** - list of postbootscripts that should be run on this Linux node at the ``init.d`` time after diskful installation reboot or diskless boot
+* **xCAT**, by default, for diskful installs only runs the postbootscripts on the install and not on reboot. In xCAT a ``site`` table attribute ``runbootscripts`` is available to change this default behavior. If set to ``yes``, then the postbootscripts will be run on install and on reboot.
 
-**xCAT automatically adds the postscripts from the xcatdefaults.postscripts attribute of the table to run first on the nodes after install or diskless boot.**
+.. note:: xCAT automatically adds the postscripts from the xcatdefaults.postscripts attribute of the table to run first on the nodes after install or diskless boot.
 
 Adding your own postscripts
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-To add your own script, place it in /install/postscripts on the management node. Make sure it is executable and world readable. Then add it to the postscripts table for the group of nodes you want it to be run on (or the "all" group if you want it run on all nodes in the appropriate attribute, according to when you want it to run).
+To add your own script, place it in ``/install/postscripts`` on the management node. Make sure it is executable and world readable. Then add it to the ``postscripts`` table for the group of nodes you want it to be run on (or the ``all`` group if you want it run on all nodes).
 
 To check what scripts will be run on your node during installation: ::
 
@@ -42,11 +42,9 @@ You can pass parameters to the postscripts. For example: ::
 
       script1 p1 p2,script2,....
 
+``p1 p2`` are the parameters to ``script1``.
 
-
-p1 p2 are the parameters to script1.
-
-Postscripts could be placed in the subdirectories in /install/postscripts on management node, and specify "subdir/postscriptname" in the postscripts table to run the postscripts in the subdirectories. This feature could be used to categorize the postscripts for different purposes. Here is an example: ::
+Postscripts could be placed in the subdirectories in ``/install/postscripts`` on management node, and specify ``subdir/postscriptname`` in the ``postscripts`` table to run the postscripts in the subdirectories. This feature could be used to categorize the postscripts for different purposes. For example: ::
 
        mkdir -p /install/postscripts/subdir1
        mkdir -p /install/postscripts/subdir2
@@ -55,18 +53,15 @@ Postscripts could be placed in the subdirectories in /install/postscripts on man
        chdef node1 -p postscripts=subdir1/postscript1,subdir2/postscript2
        updatenode node1 -P
 
-If some of your postscripts will affect the network communication between the management node and compute node, like restarting network or configuring bond, the postscripts execution might not be able to be finished successfully because of the network connection problems, even if we put this postscript be the last postscript in the list, xCAT still may not be able to update the node status to be "booted". The recommendation is to use the Linux "at" mechanism to schedule this network-killing postscript to be run at a later time. Here is an example:
+If some of your postscripts will affect the network communication between the management node and compute node, like restarting network or configuring bond, the postscripts execution might not be able to be finished successfully because of the network connection problems. Even if we put this postscript be the last postscript in the list, xCAT still may not be able to update the node status to be ``booted``. The recommendation is to use the Linux ``at`` mechanism to schedule this network-killing postscript to be run at a later time. For example:
 
-The user needs to add a postscript to customize the nics bonding setup, the nics bonding setup will break the network between the management node and compute node, then we could use "at" to run this nic bonding postscripts after all the postscripts processes have been finished.
+The user needs to add a postscript to customize the nics bonding setup, the nics bonding setup will break the network between the management node and compute node. User could use ``at`` to run this nic bonding postscripts after all the postscripts processes have been finished.
 
-We could write a script, say, /install/postscripts/nicbondscript, the nicbondscript simply calls the confignicsbond using **"at"**: ::
+Write a script, ``/install/postscripts/nicbondscript``, the ``nicbondscript`` simply calls the ``confignicsbond`` using ``at``: ::
 
        [root@xcatmn ~]#cat /install/postscripts/nicbondscript
-
        #!/bin/bash
-
        at -f ./confignicsbond now + 1 minute
-
        [root@xcatmn ~]#
 
 Then ::
@@ -77,23 +72,23 @@ Recommended Postscript design
 '''''''''''''''''''''''''''''
 
 
-* Postscripts that you want to run anywhere, Linux, should be written in shell. This should be available on all OS's. If only on the service nodes, you can use Perl .
-* Postscripts should log errors using the following command **local4** is the default xCAT syslog class. **logger -t xCAT -p local4.info "your info message**".
+* Postscripts that you want to run anywhere on Linux, should be written in shell. This should be available on all OS's. If only on the service nodes, you can use Perl .
+* Postscripts should log errors using the following command (``local4`` is the default xCAT syslog class). ``logger -t xCAT -p local4.info "your info message"``.
 * Postscripts should have good and error exit codes (i.e 0 and 1).
-* Postscripts should be well documented. At the top of the script, the first few lines should describe the function and inputs and output. You should have comments throughout the script. This is especially important if using regx.
+* Postscripts should be well documented. At the top of the script, the first few lines should describe the function and inputs and output. You should have comments throughout the script. This is especially important if using ``regx``.
 
 PostScript/PostbootScript execution
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-When your script is executed on the node, all the attributes in the site table are exported as variables for your scripts to use. You can add extra attributes for yourself. See the sample mypostscript file below.
+When your script is executed on the node, all the attributes in the ``site`` table are exported as variables for your scripts to use. You can add extra attributes for yourself. See the sample ``mypostscript`` file below.
 
-To run the postscripts, a script is built, so the above exported variables can be input. You can usually find that script in /xcatpost on the node and for example in the Linux case it is call mypostscript. A good way to debug problems is to go to the node and just run mypostscript and see errors. You can also check the syslog on the Management Node for errors.
+To run the postscripts, a script is built, so the above exported variables can be input. You can usually find that script in ``/xcatpost`` on the node and in the Linux case it is call ``mypostscript``. A good way to debug problems is to go to the node and just run ``mypostscript`` and see errors. You can also check the ``syslog`` on the Management Node for errors.
 
-When writing you postscripts, it is good to follow the example of the current postscripts and write errors to syslog and in shell. See Suggestions for writing scripts.
+When writing you postscripts, it is good to follow the example of the current postscripts and write errors to ``syslog`` and in shell. See Suggestions for writing scripts.
 
-All attributes in the site table are exported and available to the postscript/postbootscript during execution. See the mypostscript file, which is generated and executed on the nodes to run the postscripts.
+All attributes in the ``site`` table are exported and available to the postscript/postbootscript during execution. See the ``mypostscript`` file, which is generated and executed on the nodes to run the postscripts.
 
-Example of mypostscript  ::
+Example of ``mypostscript``  ::
 
     #subroutine used to run postscripts
     run_ps () {
@@ -216,7 +211,7 @@ Example of mypostscript  ::
     run_ps script2
     # postscripts-end-here\n
 
-The mypostscript file is generated according to the mypostscript.tmpl file.
+The ``mypostscript`` file is generated according to the ``mypostscript.tmpl`` file.
 
 .. _Using-the-mypostscript-template-label:
 
@@ -226,38 +221,40 @@ Using the mypostscript template
 Using the mypostscript template
 '''''''''''''''''''''''''''''''
 
-xCAT provides a way for the admin to customize the information that will be provided to the postscripts/postbootscripts when they run on the node. This is done by editing the mypostscript.tmpl file. The attributes that are provided in the shipped mypostscript.tmpl file should not be removed. They are needed by the default xCAT postscripts.
+xCAT provides a way for the admin to customize the information that will be provided to the postscripts/postbootscripts when they run on the node. This is done by editing the ``mypostscript.tmpl`` file. The attributes that are provided in the shipped ``mypostscript.tmpl`` file should not be removed. They are needed by the default xCAT postscripts.
 
-The mypostscript.tmpl, is shipped in the /opt/xcat/share/xcat/mypostscript directory.
+The ``mypostscript.tmpl``, is shipped in the ``/opt/xcat/share/xcat/mypostscript`` directory.
 
-If the admin customizes the mypostscript.tmpl, they should copy the mypostscript.tmpl to /install/postscripts/mypostscript.tmpl, and then edit it. The mypostscript for each node will be named mypostscript.<nodename>. The generated mypostscript.<nodename>. will be put in the /tftpboot/mypostscripts directory.
+If the admin customizes the ``mypostscript.tmpl``, they should copy the ``mypostscript.tmpl`` to ``/install/postscripts/mypostscript.tmpl``, and then edit it. The ``mypostscript`` for each node will be named ``mypostscript.<nodename>``. The generated ``mypostscript.<nodename>``. will be put in the ``/tftpboot/mypostscripts directory``.
 
 site table precreatemypostscripts attribute
 '''''''''''''''''''''''''''''''''''''''''''
 
-If the site table precreatemypostscripts attribute is set to 1 or yes, it will instruct xCAT at nodeset and updatenode time to query the db once for all of the nodes passed into the command and create the mypostscript file for each node and put them in a directory in $TFTPDIR(for example /tftpboot). The created mypostscript.<nodename>. file in the /tftpboot/mypostscripts directory will not be regenerated unless another nodeset or updatenode command is run to that node. This should be used when the system definition has stabilized. It saves time on the updatenode or reboot by not regenerating the mypostscript file.
+If the site table ``precreatemypostscripts`` attribute is set to ``1`` or ``yes``, it will instruct xCAT at ``nodeset`` and ``updatenode`` time to query the db once for all of the nodes passed into the command and create the ``mypostscript`` file for each node and put them in a directory in ``$TFTPDIR`` (for example ``/tftpboot``). The created ``mypostscript.<nodename>``. file in the ``/tftpboot/mypostscripts`` directory will not be regenerated unless another ``nodeset`` or ``updatenode`` command is run to that node. This should be used when the system definition has stabilized. It saves time on the ``updatenode`` or reboot by not regenerating the ``mypostscript`` file.
 
-If the precreatemyposcripts attribute is yes, and a database change is made or xCAT code is upgraded, then you should run a new nodeset or updatenode to regenerate the /tftpboot/mypostscript/mypostscript.<nodename>. file to pick up the latest database setting. The default for precreatemypostscripts is no/0.
+If the ``precreatemyposcripts`` attribute is ``yes``, and a database change is made or xCAT code is upgraded, then you should run a new ``nodeset`` or ``updatenode`` to regenerate the ``/tftpboot/mypostscript/mypostscript.<nodename>`` file to pick up the latest database setting. The default for ``precreatemypostscripts`` is ``no/0``.
 
-When you run nodeset or updatenode, it will search the **/install/postscripts/mypostscript.tmpl** first. If the **/install/postscripts/mypostscript.tmpl** exists, it will use that template to generate the mypostscript for each node. Otherwise, it will use **/opt/xcat/share/xcat/mypostscript/mypostscript.tmpl**.
+When you run ``nodeset`` or ``updatenode``, it will search the ``/install/postscripts/mypostscript.tmpl`` first. If the ``/install/postscripts/mypostscript.tmpl`` exists, it will use that template to generate the ``mypostscript`` for each node. Otherwise, it will use ``/opt/xcat/share/xcat/mypostscript/mypostscript.tmpl``.
 
 
 Content of the template for mypostscript
 ''''''''''''''''''''''''''''''''''''''''
 
-**The attributes that are defined in the shipped mypostscript.tmpl file** should not be removed. The xCAT default postscripts rely on that information to run successfully. **The following will explain the entries in the mypostscript.tmpl file**.
+.. note:: The attributes that are defined in the shipped mypostscript.tmpl file should not be removed. The xCAT default postscripts rely on that information to run successfully. 
 
-The SITE_TABLE_ALL_ATTRIBS_EXPORT line in the file directs the code to export all attributes defined in the site table.
-Note: the attributes are not always defined exactly as in the site table to avoid conflict with other table attributes of the same name. For example, the site table master attribute is named SITEMASTER in the generated mypostscript file. ::
+The following will explain the entries in the ``mypostscript.tmpl`` file.
+
+The ``SITE_TABLE_ALL_ATTRIBS_EXPORT`` line in the file directs the code to export all attributes defined in the ``site`` table.
+The attributes are not always defined exactly as in the ``site`` table to avoid conflict with other table attributes of the same name. For example, the site table master attribute is named SITEMASTER in the generated mypostscript file. ::
 
         #SITE_TABLE_ALL_ATTRIBS_EXPORT#
 
-The following line exports ENABLESSHBETWEENNODES by running the internal xCAT routine (enablesshbetweennodes). ::
+The following line exports ``ENABLESSHBETWEENNODES`` by running the internal xCAT routine (``enablesshbetweennodes``). ::
 
        ENABLESSHBETWEENNODES=#Subroutine:xCAT::Template::enablesshbetweennodes:$NODE#
        export ENABLESSHBETWEENNODES
 
-**tabdump(<TABLENAME>)** is used to get all the information in the **<TABLENAME>** table ::
+``tabdump(<TABLENAME>)`` is used to get all the information in the ``<TABLENAME>`` table ::
 
       tabdump(networks)
 
@@ -271,7 +268,7 @@ These lines get a comma separated list of the groups to which the node belongs. 
     GROUP=#TABLE:nodelist:$NODE:groups#
     export GROUP
 
-These lines reads the nodesres table, the given attributes (nfsserver,installnic,primarynic,xcatmaster,routenames) for the node **($NODE)**, and exports it. ::
+These lines reads the ``nodesres`` table, the given attributes (``nfsserver``, ``installnic``, ``primarynic``, ``xcatmaster``, ``routenames``) for the node ``($NODE)``, and exports it. ::
 
      NFSSERVER=#TABLE:noderes:$NODE:nfsserver#
      export NFSSERVER
@@ -284,11 +281,11 @@ These lines reads the nodesres table, the given attributes (nfsserver,installnic
      NODEROUTENAMES=#TABLE:noderes:$NODE:routenames#
      export NODEROUTENAMES
 
-The following entry exports multiple variables from the routes table. Not always set. ::
+The following entry exports multiple variables from the ``routes`` table. Not always set. ::
 
      #ROUTES_VARS_EXPORT#
 
-The following lines export nodetype table attributes. ::
+The following lines export ``nodetype`` table attributes. ::
 
      OSVER=#TABLE:nodetype:$NODE:os#
      export OSVER
@@ -304,17 +301,17 @@ The following adds the current directory to the path for the postscripts. ::
      PATH=`dirname $0`:$PATH
      export PATH
 
-The following sets the NODESETSTATE by running the internal xCAT getnodesetstate script. ::
+The following sets the ``NODESETSTATE`` by running the internal xCAT ``getnodesetstate`` script. ::
 
      NODESETSTATE=#Subroutine:xCAT::Postage::getnodesetstate:$NODE#
      export NODESETSTATE
 
-The following says the postscripts are not being run as a result of updatenode.(This is changed =1, when updatenode runs). ::
+The following says the postscripts are not being run as a result of ``updatenode``. (This is changed ``=1``, when ``updatenode`` runs). ::
 
      UPDATENODE=0
      export UPDATENODE
 
-The following sets the NTYPE to compute,service or MN. ::
+The following sets the ``NTYPE`` to compute, service or MN. ::
 
      NTYPE=$NTYPE
      export NTYPE
@@ -324,7 +321,7 @@ The following sets the mac address. ::
      MACADDRESS=#TABLE:mac:$NODE:mac#
      export MACADDRESS
 
-If vlan is setup, then the #VLAN_VARS_EXPORT# line will provide the following exports: ::
+If vlan is setup, then the ``#VLAN_VARS_EXPORT#`` line will provide the following exports: ::
 
     VMNODE='YES'
     export VMNODE
@@ -334,7 +331,7 @@ If vlan is setup, then the #VLAN_VARS_EXPORT# line will provide the following ex
       ..
     #VLAN_VARS_EXPORT#
 
-If monitoring is setup, then the #MONITORING_VARS_EXPORT# line will provide: ::
+If monitoring is setup, then the ``#MONITORING_VARS_EXPORT#`` line will provide: ::
 
     MONSERVER=11.10.34.108
     export MONSERVER
@@ -342,7 +339,7 @@ If monitoring is setup, then the #MONITORING_VARS_EXPORT# line will provide: ::
     export MONMASTER
     #MONITORING_VARS_EXPORT#
 
-The OSIMAGE_VARS_EXPORT# line will provide, for example: ::
+The ``#OSIMAGE_VARS_EXPORT#`` line will provide, for example: ::
 
      OSPKGDIR=/install/<os>/<arch>
      export OSPKGDIR
@@ -352,7 +349,7 @@ The OSIMAGE_VARS_EXPORT# line will provide, for example: ::
 
      #OSIMAGE_VARS_EXPORT#
 
-THE NETWORK_FOR_DISKLESS_EXPORT# line will provide diskless networks information, if defined. ::
+THE ``#NETWORK_FOR_DISKLESS_EXPORT#`` line will provide diskless networks information, if defined. ::
 
      NETMASK=255.255.255.0
      export NETMASK
@@ -361,9 +358,9 @@ THE NETWORK_FOR_DISKLESS_EXPORT# line will provide diskless networks information
      ..
      #NETWORK_FOR_DISKLESS_EXPORT#
 
-Note: the **#INCLUDE_POSTSCRIPTS_LIST#** and the **#INCLUDE_POSTBOOTSCRIPTS_LIST#** sections in **/tftpboot/mypostscript(mypostbootscripts)** on the Management Node will contain all the postscripts and postbootscripts defined for the node. When running an **updatenode** command for only some of the scripts , you will see in the **/xcatpost/mypostscript** file on the node, the list has been redefined during the execution of updatenode to only run the requested scripts. For example, if you run **updatenode <nodename> -P** syslog.
+Note: the ``#INCLUDE_POSTSCRIPTS_LIST#`` and the ``#INCLUDE_POSTBOOTSCRIPTS_LIST#`` sections in ``/tftpboot/mypostscript(mypostbootscripts)`` on the Management Node will contain all the postscripts and postbootscripts defined for the node. When running an ``updatenode`` command for only some of the scripts , you will see in the ``/xcatpost/mypostscript`` file on the node, the list has been redefined during the execution of ``updatenode`` to only run the requested scripts. For example, if you run ``updatenode <nodename> -P syslog``.
 
-The **#INCLUDE_POSTSCRIPTS_LIST#** flag provides a list of postscripts defined for this **$NODE**. ::
+The ``#INCLUDE_POSTSCRIPTS_LIST#`` flag provides a list of postscripts defined for this ``$NODE``. ::
 
     #INCLUDE_POSTSCRIPTS_LIST#
 
@@ -378,7 +375,7 @@ For example, you will see in the generated file the following stanzas: ::
     syncfiles
     # node-postscripts-end-here
 
-The **#INCLUDE_POSTBOOTSCRIPTS_LIST#** provides a list of postbootscripts defined for this **$NODE**. ::
+The ``#INCLUDE_POSTBOOTSCRIPTS_LIST#`` provides a list of postbootscripts defined for this ``$NODE``. ::
 
     #INCLUDE_POSTBOOTSCRIPTS_LIST#
 
@@ -394,7 +391,7 @@ For example, you will see in the generated file the following stanzas: ::
 Kinds of variables in the template
 '''''''''''''''''''''''''''''''''''
 
-**Type 1:** For the simple variable, the syntax is as follows. The mypostscript.tmpl has several examples of this. **$NODE** is filled in by the code. **UPDATENODE** is changed to 1, when the postscripts are run by ``updatenode``. **$NTYPE** is filled in as either compute,service or MN. ::
+**Type 1:** For the simple variable, the syntax is as follows. The ``mypostscript.tmpl`` has several examples of this. ``$NODE`` is filled in by the code. ``UPDATENODE`` is changed to 1, when the postscripts are run by ``updatenode``. ``$NTYPE`` is filled in as either ``compute``, ``service`` or ``MN``. ::
 
     NODE=$NODE
     export NODE
@@ -403,11 +400,11 @@ Kinds of variables in the template
     NTYPE=$NTYPE
     export NTYPE
 
-**Type 2:** This is the syntax to get the value of one attribute from the **<tablename>** and its key is **$NODE**. It does not support tables with two keys. Some of the tables with two keys are **(litefile,prodkey,deps,monsetting,mpa,networks)**. ::
+**Type 2:** This is the syntax to get the value of one attribute from the ``<tablename>`` and its key is ``$NODE``. It does not support tables with two keys. Some of the tables with two keys are ``litefile``, ``prodkey``, ``deps``, ``monsetting``, ``mpa``, ``networks``. ::
 
     VARNAME=#TABLE:tablename:$NODE:attribute#
 
-For example, to get the new updatestatus attribute from the nodelist table: ::
+For example, to get the new ``updatestatus`` attribute from the ``nodelist`` table: ::
 
     UPDATESTATUS=#TABLE:nodelist:$NODE:updatestatus#
     export UPDATESTATUS
@@ -418,20 +415,20 @@ For example, to get the new updatestatus attribute from the nodelist table: ::
     or
     VARNAME=#Subroutine:modulename::subroutinename#
 
-Examples in the mypostscript.tmpl are the following: ::
+Examples in the ``mypostscript.tmpl`` are the following: ::
 
      NODESETSTATE=#Subroutine:xCAT::Postage::getnodesetstate:$NODE#
      export NODESETSTATE
      ENABLESSHBETWEENNODES=#Subroutine:xCAT::Template::enablesshbetweennodes:$NODE#
      export ENABLESSHBETWEENNODES
 
-Note: Type 3 is not an open interface to add extensions to the template.
+.. note:: Type 3 is not an open interface to add extensions to the template.
 
-**Type 4:** The syntax is #FLAG#. When parsing the template, the code generates all entries defined by **#FLAG#**, if they are defined in the database. For example: To export all values of all attributes from the site table. The tag is ::
+**Type 4:** The syntax is ``#FLAG#``. When parsing the template, the code generates all entries defined by ``#FLAG#``, if they are defined in the database. For example: To export all values of all attributes from the ``site`` table. The tag is ::
 
     #SITE_TABLE_ALL_ATTRIBS_EXPORT#
 
-For the **#SITE_TABLE_ALL_ATTRIBS_EXPORT#** flag, the related subroutine will get the attributes' values and deal with the special case. such as : the site.master should be exported as **"SITEMASTER"**. And if the noderes.xcatmaster exists, the noderes.xcatmaster should be exported as **"MASTER"**, otherwise, we also should export site.master as the **"MASTER"**.
+For the ``#SITE_TABLE_ALL_ATTRIBS_EXPORT#`` flag, the related subroutine will get the attributes' values and deal with the special case. such as : the ``site.master`` should be exported as ``"SITEMASTER"``. And if the ``noderes.xcatmaster`` exists, the ``noderes.xcatmaster`` should be exported as ``"MASTER"``, otherwise, we also should export ``site.master`` as the ``"MASTER"``.
 
 Other examples are: ::
 
@@ -442,11 +439,9 @@ Other examples are: ::
     #INCLUDE_POSTSCRIPTS_LIST# - includes the list of all postscripts for the node
     #INCLUDE_POSTBOOTSCRIPTS_LIST# - includes the list of all postbootscripts for the node
 
-Note: Type4 is not an open interface to add extensions to the templatel.
+.. note:: Type4 is not an open interface to add extensions to the template.
 
-**Type 5:** Get all the data from the specified table. The **<TABLENAME>** should not be a node table, like nodelist. This should be handles with TYPE 2 syntax to get specific attributes for the **$NODE**. tabdump would result in too much data for a nodetype table. Also the auditlog, eventlog should not be in tabdump for the same reason. site table should not be specified, it is already provided with the **#SITE_TABLE_ALL_ATTRIBS_EXPORT#** flag. It can be used to get the data from the two key tables (like switch). ::
-
-  The syntax is:
+**Type 5:** Get all the data from the specified table. The ``<TABLENAME>`` should not be a node table, like ``nodelist``. This should be handles with TYPE 2 syntax to get specific attributes for the ``$NODE``. ``tabdump`` would result in too much data for a ``nodetype`` table. Also the ``auditlog``, ``eventlog`` should not be in ``tabdump`` for the same reason. ``site`` table should not be specified, it is already provided with the ``#SITE_TABLE_ALL_ATTRIBS_EXPORT#`` flag. It can be used to get the data from the two key tables (like ``switch``). The syntax is: ::
 
   tabdump(<TABLENAME>)
 
@@ -455,7 +450,7 @@ Edit mypostscript.tmpl
 
 **Add new attributes into mypostscript.tmpl**
 
-When you add new attributes into the template, you should edit the **/install/postscripts/mypostscript.tmpl** which you created by copying **/opt/xcat/share/xcat/mypostscript/mypostscript.tmpl**. Make all additions before the **# postscripts-start-here** section. xCAT will first look in **/install/postscripts/mypostscript.tmpl** for a file and then if not found will use the one in **/opt/xcat/share/xcat/mypostcript/mypostscript.tmpl**.
+When you add new attributes into the template, you should edit the ``/install/postscripts/mypostscript.tmpl`` which you created by copying ``/opt/xcat/share/xcat/mypostscript/mypostscript.tmpl``. Make all additions before the ``# postscripts-start-here`` section. xCAT will first look in ``/install/postscripts/mypostscript.tmpl`` for a file and then, if not found, will use the one in ``/opt/xcat/share/xcat/mypostcript/mypostscript.tmpl``.
 
 For example: ::
 
@@ -467,11 +462,11 @@ For example: ::
     ## The following flag postscripts-end-here must not be deleted.
     # postscripts-end-here
 
-Note: If you have a hierarchical cluster, you must copy your new mypostscript.tmpl to **/install/postscripts/mypostscript.tmpl** on the service nodes, unless **/install/postscripts** directory is mounted from the MN to the service node.
+.. note:: If you have a hierarchical cluster, you must copy your new ``mypostscript.tmpl`` to ``/install/postscripts/mypostscript.tmpl`` on the service nodes, unless ``/install/postscripts`` directory is mounted from the MN to the service node.
 
 **Remove attribute from mypostscript.tmpl**
 
-If you want to remove an attribute that you have added, you should remove all the related lines or comment them out with ##. For example, comment out the added lines. ::
+If you want to remove an attribute that you have added, you should remove all the related lines or comment them out with ``##``. For example, comment out the added lines. ::
 
     ##UPDATESTATUS=#TABLE:nodelist:$NODE:updatestatus#
     ##export UPDATESTATUS
@@ -481,32 +476,30 @@ Test the new template
 
 There are two quick ways to test the template.
 
-#.
-If the node is up: ::
+1. If the node is up ::
 
-   updatenode <nodename> -P syslog
+    updatenode <nodename> -P syslog
 
-Check your generated template : ::
+ Check your generated ``mypostscript`` on the compute node: ::
 
-   Check the generated mypostscript file on compute node /xcatpost.
+    vi /xcatpost/mypostscript
 
-#.
-Another way, is set the precreate option ::
+2. Set the ``precreatemypostscripts`` option ::
 
     chdef -t site -o clustersite precreatemypostscripts=1
 
-Then run ::
+ Then run ::
 
     nodeset <nodename> ....
 
-Check your generated template ::
+ Check your generated ``mypostscript`` ::
 
     vi /tftpboot/mypostscripts/mypostscript.<nodename>
 
 Sample /xcatpost/mypostscript
 '''''''''''''''''''''''''''''''
 
-This is an example of the generated postscript for a servicenode install. It is found in /xcatpost/mypostscript on the node. ::
+This is an example of the generated postscript for a servicenode install. It is found in ``/xcatpost/mypostscript`` on the node. ::
 
     # global value to store the running status of the postbootscripts,the value
     #is non-zero if one postbootscript failed
