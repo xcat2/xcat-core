@@ -1,0 +1,156 @@
+=head1 NAME
+
+B<lskitcomp> - Used to list information for one or more kit components.
+
+
+=head1 SYNOPSIS
+
+B<lskitcomp> [B<-V> | B<--verbose>] [B<-x> | B<--xml> | B<--XML>] [B<-C> | B<--compattr> I<compattr_names>] [B<-O> | B<--osdistro> I<os_distro>] [B<-S> | B<--serverrole> I<server_role>] [I<kitcomp_names>]
+
+B<lskitcomp> [B<-?> | B<-h> | B<--help> | B<-v> | B<--version>]
+
+
+=head1 DESCRIPTION
+
+The B<lskitcomp> command is used to list information for one or more kit components. A kit is made up of one or more kit components. Each kit component is a meta package used to install a software product component on one or more nodes in an xCAT cluster.
+
+The B<lskitcomp> command outputs the kit component info in two formats: human-readable format (default), and XML format. Use the -x option to view the info in XML format.
+
+Input to the command can specify any number or combination of the input options.
+
+Note: The xCAT support for Kits is only available for Linux operating systems.
+
+=head1 OPTIONS
+
+=over 10
+
+=item B<-C|--compattr> I<compattr_names>
+
+where I<compattr_names> is a comma-delimited list of kit component attribute names. The names correspond to attribute names in the B<kitcomponent> table.  The B<lskitcomp> command will only display the specified kit component attributes.
+
+=item B<-O|--osdistro> I<os_distro>
+
+where I<os_distro> is the name of an osdistro in B<osdistro> table. The B<lskitcomp> command will only display the kit components matching the specified osdistro.
+
+=item B<-S|--serverrole> I<server_role>
+
+where I<server_role> is the name of a server role. The typical server roles are: mgtnode, servicenode, computenode, loginnode, storagennode. The B<lskitcomp> command will only display the kit components matching the specified server role.
+
+=item I<kitcomp_names>
+
+is a comma-delimited list of kit component names. The B<lskitcomp> command will only display the kit components matching the specified names.
+
+=item B<-x|--xml|--XML>
+
+Need XCATXMLTRACE=1 env when using -x|--xml|--XML.
+Return the output with XML tags.  The data is returned as:
+
+  <data>
+    <kitinfo>
+       ...
+    </kitinfo>
+  </data>
+  ...
+  <data>
+    <kitinfo>
+       ...
+    </kitinfo>
+  </data>
+
+Each <kitinfo> tag contains info for a group of kit components belonging to the same kit. The info inside <kitinfo> is structured as follows:
+
+  The <kit> sub-tag contains the kit's name.
+  The <kitcomponent> sub-tags store info about the kit's components.
+
+The data inside <kitinfo> is returned as:
+
+  <kitinfo>
+     <kit>
+       ...
+     </kit>
+
+     <kitcomponent>
+       ...
+     </kitcomponent>
+     ...
+  </kitinfo>
+
+
+=item B<-V|--verbose>
+
+Display additional progress and error messages.
+
+=item B<-v|--version>
+
+Command Version.
+
+=item B<-?|-h|--help>
+
+Display usage message.
+
+=back
+
+=head1 RETURN VALUE
+
+=over 3
+
+=item 0
+The command completed successfully.
+
+=item 1
+An error has occurred.
+
+=back
+
+
+=head1 EXAMPLES
+
+=over 3
+
+=item 1.
+
+To list all kit components, enter:
+
+  lskitcomp
+
+=item 2.
+
+To list the kit component "comp-server-1.0-1-rhels-6-x86_64", enter:
+
+  lskitcomp comp-server-1.0-1-rhels-6-x86_64
+
+=item 3.
+
+To list the kit component "comp-server-1.0-1-rhels-6-x86_64" for selected kit component attributes, enter:
+
+  lskitcomp -C kitcompname,desc comp-server-1.0-1-rhels-6-x86_64
+
+=item 4.
+
+To list kit components compatible with "rhels-6.2-x86_64" osdistro, enter:
+
+  lskitcomp -O rhels-6.2-x86_64
+
+=item 5.
+
+To list kit components compatible with "rhels-6.2-x86_64" osdistro and "computenode" server role, enter:
+
+  lskitcomp -O rhels-6.2-x86_64 -S computenode
+
+=item 6.
+
+To list the kit component "testkit-compute-1.0-1-ubuntu-14.04-ppc64el" with XML tags, enter:
+
+  XCATXMLTRACE=1 lskitcomp -x testkit-compute-1.0-1-ubuntu-14.04-ppc64el
+
+=back
+
+
+=head1 FILES
+
+/opt/xcat/bin/lskitcomp
+
+=head1 SEE ALSO
+
+L<lskit(1)|lskit.1>, L<lskitdeployparam(1)|lskitdeployparam.1>, L<addkit(1)|addkit.1>, L<rmkit(1)|rmkit.1>, L<addkitcomp(1)|addkitcomp.1>, L<rmkitcomp(1)|rmkitcomp.1>
+

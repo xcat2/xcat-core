@@ -1,0 +1,83 @@
+=head1 NAME
+
+B<rmkit> - Remove Kits from xCAT
+
+=head1 SYNOPSIS
+
+B<rmkit> [B<-?>|B<-h>|B<--help>] [B<-v>|B<--version>]
+
+B<rmkit> [B<-V>|B<--verbose>] [B<-f>|B<--force>] [B<-t>|B<--test>] I<kitlist>
+
+=head1 DESCRIPTION
+
+The B<rmkit> command removes kits on the xCAT management node from kit names.
+
+Note: The xCAT support for Kits is only available for Linux operating systems.
+
+=head1 OPTIONS
+
+=over 10
+
+=item B<-h|--help>
+
+Display usage message.
+
+=item B<-V|--verbose>
+
+Verbose mode.
+
+=item B<-v|--version>
+
+Command version.
+
+=item B<-f|--force>
+
+Remove this kit even there is any component in this kit is listed by osimage.kitcomponents.  If this option is not specified, this kit will not be removed if any kit components listed in an osimage.kitcomponents
+
+=item B<-t|--test>
+
+Test if kitcomponents in this kit are used by osimage
+
+=item I<kitlist>
+
+A comma delimited list of kits that are to be removed from the xCAT cluster.  Each entry can be a kitname or kit basename. For kit basename, rmkit command will remove all the kits that have that kit basename.
+
+=back
+
+=head1 RETURN VALUE
+
+0  The command completed successfully.
+
+1  An error has occurred.
+
+=head1 EXAMPLES
+
+1. To remove two kits from tarball files.
+
+ rmkit kit-test1,kit-test2
+
+Output is similar to:
+
+ Kit kit-test1-1.0-Linux,kit-test2-1.0-Linux was successfully removed.
+
+2. To remove two kits from tarball files even the kit components in them are still being used by osimages.
+
+ rmkit kit-test1,kit-test2 --force
+
+Output is similar to:
+
+ Kit kit-test1-1.0-Linux,kit-test2-1.0-Linux was successfully removed.
+
+3. To list kitcomponents in this kit used by osimage
+
+ rmkit kit-test1,kit-test2 -t
+
+Output is similar to:
+
+ kit-test1-kitcomp-1.0-Linux is being used by osimage osimage-test
+ Following kitcomponents are in use: kit-test1-kitcomp-1.0-Linux
+
+=head1 SEE ALSO
+
+L<lskit(1)|lskit.1>, L<addkit(1)|addkit.1>, L<addkitcomp(1)|addkitcomp.1>, L<rmkitcomp(1)|rmkitcomp.1>, L<chkkitcomp(1)|chkkitcomp.1>
+

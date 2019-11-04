@@ -205,7 +205,7 @@ my %status_info = (
     },
     REVENTLOG_CLEAR_REQUEST => {
         method         => "POST",
-        init_url       => "$openbmc_project_url/logging/action/deleteAll",
+        init_url       => "$openbmc_project_url/logging/action/DeleteAll",
         data           => "[]",
     },
     REVENTLOG_CLEAR_RESPONSE => {
@@ -269,7 +269,7 @@ my %status_info = (
     RFLASH_SET_PRIORITY_REQUEST  => {
         method         => "PUT",
         init_url       => "$openbmc_project_url/software",
-        data           => "false", # Priority state of 0 sets image to active
+        data           => "0", # Priority state of 0 sets image to active
     },
     RFLASH_SET_PRIORITY_RESPONSE => {
         process        => \&rflash_response,
@@ -2452,7 +2452,7 @@ sub gen_send_request {
         }
         process_debug_info($node, $debug_info);
     }
-    my $handle_id = xCAT::OPENBMC->send_request($async, $method, $request_url, $content);
+    my $handle_id = xCAT::OPENBMC->send_request($async, $method, $request_url, $content, $node_info{$node}{username}, $node_info{$node}{password});
     $handle_id_node{$handle_id} = $node;
     $node_info{$node}{cur_status} = $next_status{ $node_info{$node}{cur_status} };
 
@@ -2576,9 +2576,9 @@ sub deal_with_response {
                     # Set attribute call returned with 404, display an error
                     $error = "$::RESPONSE_NOT_FOUND - Requested endpoint does not exist or may indicate function is not supported on this OpenBMC firmware.";
                 } elsif ($node_info{$node}{cur_status} eq "RSPCONFIG_API_CONFIG_QUERY_RESPONSE") {
-                    # Query attribute call came back with 404. If this is for Power Supply Redundency, 
+                    # Query attribute call came back with 404. If this is for PowerSupplyRedundancy, 
                     # send request with a new path RSPCONFIG_GET_PSR_REQUEST, response processing will print the value
-                    if ($response_info->{'data'}->{'description'} =~ /PowerSupplyRedundancy/) {
+                    if ($::RSPCONFIG_CONFIGURED_API_KEY eq "RSPCONFIG_POWERSUPPLY_REDUNDANCY") {
                         $node_info{$node}{cur_status} = "RSPCONFIG_GET_PSR_REQUEST";
                         $next_status{RSPCONFIG_GET_PSR_REQUEST} = "RSPCONFIG_GET_PSR_RESPONSE";
                         gen_send_request($node);
@@ -2621,6 +2621,66 @@ sub deal_with_response {
 
 #-------------------------------------------------------
 
+=head3 mask_password2
+
+  return a string with masked password
+  
+  This function is usefull when password is easily known
+   and can be passed into this function
+  Input:
+        $string:   string containing password the needs masking
+        $password: password to mask
+
+=cut
+
+#-------------------------------------------------------
+sub mask_password2 {
+
+    my $string = shift;
+    my $password = shift;
+
+    # Replace all occurences of password string with "xxxxxx"
+    $string =~ s/$password/xxxxxx/g;
+
+    return $string;
+}
+
+#-------------------------------------------------------
+
+=head3 mask_password
+
+  return a string with masked password
+  
+  This function is usefull when password is not easily known
+   and is only expected to be part of URL like "https://<user>:<pw>@...."
+  Input:
+        $string: string containing password the needs masking
+
+=cut
+
+#-------------------------------------------------------
+sub mask_password {
+
+    my $string = shift;
+    # Replace password string with "xxxxxx", if part of URL
+    # Password is between ":" and "@" found in the string after "https://"
+    #
+    my $url_start = index($string,"https://");
+    if ($url_start > 0) {
+        my $colon_index = index($string, ":", $url_start+length("https://"));
+        if ($colon_index > 0) {
+            my $at_index = index($string, "@", $colon_index);
+            if ($at_index > 0) {
+                # Replace string beteen ":" and "@" with "xxxxxx" to mask password
+                substr($string, $colon_index+1, $at_index-$colon_index-1) = "xxxxxx";
+            }
+        }
+    }
+    return $string;
+}
+
+#-------------------------------------------------------
+
 =head3  process_debug_info
 
   print debug info and add to log
@@ -2639,6 +2699,7 @@ sub process_debug_info {
         $debug_msg = "";
     }
 
+    $debug_msg = mask_password($debug_msg);
     xCAT::SvrUtils::sendmsg("$flag_debug $debug_msg", $callback, $ts_node);
     xCAT::MsgUtils->trace(0, "D", "$flag_debug $node $debug_msg");
 }
@@ -3785,7 +3846,7 @@ sub rspconfig_response {
 
     if ($node_info{$node}{cur_status} eq "RSPCONFIG_PASSWD_VERIFY") {
         if ($status_info{RSPCONFIG_PASSWD_VERIFY}{argv} ne $node_info{$node}{password}) {
-            xCAT::SvrUtils::sendmsg("Current BMC password is incorrect, cannot set the new password.", $callback, $node);
+            xCAT::SvrUtils::sendmsg([1, "Current BMC password is incorrect, cannot set the new password."], $callback, $node);
             $wait_node_num--;
             return;
         }
@@ -4212,7 +4273,7 @@ sub rspconfig_dump_response {
 sub dump_download_process {
     my $node = shift;
 
-    my $request_url = "$http_protocol://" . $node_info{$node}{bmc};
+    my $request_url = "$http_protocol://" . $node_info{$node}{username} . ":" . $node_info{$node}{password} . "@" . $node_info{$node}{bmc};
     my $content_login = '{ "data": [ "' . $node_info{$node}{username} .'", "' . $node_info{$node}{password} . '" ] }';
     my $content_logout = '{ "data": [ ] }';
     my $cjar_id = "/tmp/_xcat_cjar.$node";
@@ -4235,12 +4296,12 @@ sub dump_download_process {
     my $curl_login_result = `$curl_login_cmd -s`;
     my $h;
     if (!$curl_login_result) {
-        xCAT::SvrUtils::sendmsg([1, "Did not receive response from OpenBMC after running command '$curl_login_cmd'"], $callback, $node);
+        xCAT::SvrUtils::sendmsg([1, "Did not receive response from OpenBMC after running command '" . mask_password2($curl_login_cmd, $node_info{$node}{password}) . "'"], $callback, $node);
         return 1;
     }
     eval { $h = from_json($curl_login_result) };
     if ($@) {
-        xCAT::SvrUtils::sendmsg([1, "Received wrong format response for command '$curl_login_cmd': $curl_login_result)"], $callback, $node);
+        xCAT::SvrUtils::sendmsg([1, "Received wrong format response for command '" . mask_password2($curl_login_cmd, $node_info{$node}{password}) . "': $curl_login_result)"], $callback, $node);
         return 1;
     }
     if ($h->{message} eq $::RESPONSE_OK) {
@@ -4876,7 +4937,7 @@ sub rflash_response {
 
 sub rflash_upload {
     my ($node, $callback) = @_;
-    my $request_url = "$http_protocol://" . $node_info{$node}{bmc};
+    my $request_url = "$http_protocol://" . $node_info{$node}{username} . ":" . $node_info{$node}{password} . "@" . $node_info{$node}{bmc};
     my $content_login = '{ "data": [ "' . $node_info{$node}{username} .'", "' . $node_info{$node}{password} . '" ] }';
     my $content_logout = '{ "data": [ ] }';
     my $cjar_id = "/tmp/_xcat_cjar.$node";
@@ -4900,7 +4961,7 @@ sub rflash_upload {
     my $curl_login_result = `$curl_login_cmd -s`;
     my $h;
     if (!$curl_login_result) {
-        my $curl_error = "$::FAILED_UPLOAD_MSG. Did not receive response from OpenBMC after running command '$curl_login_cmd'";
+        my $curl_error = "$::FAILED_UPLOAD_MSG. Did not receive response from OpenBMC after running command '" . mask_password2($curl_login_cmd, $node_info{$node}{password}) . "'";
         xCAT::SvrUtils::sendmsg([1, "$curl_error"], $callback, $node);
         print RFLASH_LOG_FILE_HANDLE "$curl_error\n";
         $node_info{$node}{rst} = "$curl_error";
@@ -4908,7 +4969,7 @@ sub rflash_upload {
     }
     eval { $h = from_json($curl_login_result) }; # convert command output to hash
     if ($@) {
-        my $curl_error = "$::FAILED_UPLOAD_MSG. Received wrong format response for command '$curl_login_cmd': $curl_login_result";
+        my $curl_error = "$::FAILED_UPLOAD_MSG. Received wrong format response for command '" . mask_password2($curl_login_cmd, $node_info{$node}{password}) . "': $curl_login_result";
         xCAT::SvrUtils::sendmsg([1, "$curl_error"], $callback, $node);
         # Before writing error to log, make it a single line
         $curl_error =~ tr{\n}{ };
@@ -4944,7 +5005,7 @@ sub rflash_upload {
                 }
                 my $curl_upload_result = `$upload_cmd`;
                 if (!$curl_upload_result) {
-                    my $curl_error = "$::FAILED_UPLOAD_MSG. Did not receive response from OpenBMC after running command '$upload_cmd'";
+                    my $curl_error = "$::FAILED_UPLOAD_MSG. Did not receive response from OpenBMC after running command '" . mask_password($upload_cmd) . "'";
                     xCAT::SvrUtils::sendmsg([1, "$curl_error"], $callback, $node);
                     print RFLASH_LOG_FILE_HANDLE "$curl_error\n";
                     $node_info{$node}{rst} = "$curl_error";
@@ -4952,7 +5013,7 @@ sub rflash_upload {
                 }
                 eval { $h = from_json($curl_upload_result) }; # convert command output to hash
                 if ($@) {
-                    my $curl_error = "$::FAILED_UPLOAD_MSG. Received wrong format response from command '$upload_cmd': $curl_upload_result";
+                    my $curl_error = "$::FAILED_UPLOAD_MSG. Received wrong format response from command '" . mask_password($upload_cmd) ."': $curl_upload_result";
                     xCAT::SvrUtils::sendmsg([1, "$curl_error"], $callback, $node);
                     # Before writing error to log, make it a single line
                     $curl_error =~ tr{\n}{ };

@@ -1160,8 +1160,10 @@ sub bmcdiscovery_ipmi {
             $mtm = '' if ($mtm =~ /^0+$/);
             $serial = '' if ($serial =~ /^0+$/);
 
-            unless (($mtm or $serial) or $ipmac{$ip}) {
-                xCAT::MsgUtils->message("W", { data => ["BMC Type/Model and/or Serial and MAC Address is unavailable for $ip"] }, $::CALLBACK);
+            # To constract a node name need either mac or both mtm and serial
+            # Exit if mac AND one of mtm or serial is missing
+            if (!($mtm and $serial) and !$ipmac{$ip}) {
+                xCAT::MsgUtils->message("W", { data => ["BMC Type/Model and Serial or MAC Address is unavailable for $ip"] }, $::CALLBACK);
                 return;
             }
 
@@ -1292,8 +1294,10 @@ sub bmcdiscovery_openbmc{
         $mtm = '' if ($mtm =~ /^0+$/);
         $serial = '' if ($serial =~ /^0+$/);
 
-        unless (($mtm or $serial) or $ipmac{$ip}) {
-            xCAT::MsgUtils->message("W", { data => ["Could not obtain Valid Model Type and/or Serial Number and MAC Address for BMC at $ip"] }, $::CALLBACK);
+        # To constract a node name need either mac or both mtm and serial
+        # Exit if mac AND one of mtm or serial is missing
+        if (!($mtm and $serial) and !$ipmac{$ip}) {
+            xCAT::MsgUtils->message("W", { data => ["BMC Type/Model and Serial or MAC Address is unavailable for $ip"] }, $::CALLBACK);
             return;
         }
 

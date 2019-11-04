@@ -43,6 +43,7 @@ function check_destiny() {
         runcmd $cmd;
         cmd="makenetworks";
         runcmd $cmd;
+        ip addr show
         makehosts ${TESTNODE}
         grep ${TESTNODE} /etc/hosts 
         cmd="nodeset ${TESTNODE}  shell";

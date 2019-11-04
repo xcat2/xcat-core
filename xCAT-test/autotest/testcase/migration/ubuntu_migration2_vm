@@ -43,6 +43,7 @@ cmd:xdsh $$CN "apt-get clean all"
 check:rc==0
 cmd:xdsh $$CN "apt-get update"
 check:rc==0
+cmd:arc_all=`uname -a`; if [[ $arc_all =~ "x86_64" ]]; then xdsh $$CN "echo '* libraries/restart-without-asking boolean true' | debconf-set-selections"; fi
 cmd:xdsh $$CN "apt-get -y install build-essential dpkg-dev dh-make debhelper fakeroot gnupg lintian pbuilder quilt reprepro libsoap-lite-perl libdbi-perl"
 check:rc==0
 cmd:xdsh $$CN "rm -rf /oldxcat"

@@ -1,0 +1,11 @@
+@^minimal-environment
+chrony
+net-tools
+nfs-utils
+openssh-server
+rsync
+util-linux
+wget
+python3
+tar
+bzip2
