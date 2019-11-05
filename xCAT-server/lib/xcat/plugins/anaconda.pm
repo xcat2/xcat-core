@@ -2049,6 +2049,9 @@ sub copycd
             $darch = "x86";
         }
         close($dinfo);
+	if ($desc and $desc =~ /CentOS Linux (.*)/) {
+            $distname = "centos" . $1;
+	}
         if ($xCAT::data::discinfo::distnames{$did})
         {
             unless ($distname)
