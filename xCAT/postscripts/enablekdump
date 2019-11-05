@@ -98,14 +98,8 @@ if [ ! -z "$DUMP" ]; then
 
     # workaround for RHEL6
     # the $KDIP:$KDPATH directory will be used to generate the initrd for kdump service
-    MOUNTPATH=""
-    if (pmatch $OSVER "*6\.*"); then
-	MOUNTPATH="/tmp"
-    elif (pmatch $OSVER "*[78]\.*"); then
-        MOUNTPATH="/mnt"
-    else
-	MOUNTPATH="/var/tmp"
-    fi
+    MOUNTPATH="/mnt/kdumpsetup"
+    mkdir -p $MOUNTPATH
 
     if [ "$KDPROTO" = "nfs" ]; then
 	if (pmatch $OSVER "sles*") || (pmatch $OSVER "suse*") || [ -f /etc/SuSE-release ]; then
@@ -188,7 +182,7 @@ EOF
                 #service kdump restart
                 restartservice kdump
             else
-                /bin/mount -o nolock $KDIP:$KDPATH $MOUNTPATH
+                /bin/mount -o nolock,ro $KDIP:$KDPATH $MOUNTPATH
 	        KDTEMPPATH=${KDPATH//\//\\\/}
 	        KDTEMPPATH="nfs:\/\/${KDIP}${KDTEMPPATH}\/${NODE}"
 	        sed -i "s/^KDUMP_SAVEDIR=.*$/KDUMP_SAVEDIR=\"${KDTEMPPATH}\"/" /etc/sysconfig/kdump
@@ -230,19 +224,19 @@ EOF
                        fi
                    done
                    if [ $nfsver -ne 0 ]; then
-                       /bin/mount -o vers=$nfsver $KDIP:$KDPATH $MOUNTPATH
+                       /bin/mount -o ro,vers=$nfsver $KDIP:$KDPATH $MOUNTPATH
                    else
-                       /bin/mount -o nolock $KDIP:$KDPATH $MOUNTPATH
+                       /bin/mount -o ro,nolock $KDIP:$KDPATH $MOUNTPATH
                    fi
                else
                    /bin/echo "nfs server is not available"
                fi
-               [ -d $MOUNTPATH/var/crash ] || mkdir -p $MOUNTPATH/var/crash
+               [ -d $MOUNTPATH/var/crash ] || echo "/var/crash is missing from KDUMP target, mkdir /var/crash under the DUMP target"
 
                #The initramfs used in kdump does not need "root", however, the initramfs refused to continue
                #if no valid "root" provided in redhat7.1 kdump; As a workaround,we provide a fake "root=nfs:$KDIP:$KDPATH"
                #with a dummy "proc" inside, which will fake "root=nfs:$KDIP:$KDPATH" as a valid root directory
-               [ -e $MOUNTPATH/proc ] || echo "Dummy file: fake the /proc to pass the checking of 'root=' inside dracut-cmdline " > $MOUNTPATH/proc
+               [ -e $MOUNTPATH/proc ] || echo "/proc is missing from KDUMP target, mkdir to create empty"
 
                echo "nfs $KDIP:$KDPATH" > /etc/kdump.conf
                echo "default shell" >> /etc/kdump.conf
