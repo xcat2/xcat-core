@@ -38,7 +38,7 @@ The partition file must follow the partitioning syntax of the respective install
      * Use yast2 autoyast in GUI or CLI mode to customize the installation options and create autoyast file
      * Use yast2 clone_system to create autoyast configuration file /root/autoinst.xml to clone an existing system
 
-   * Ubuntu: `Preseed documentation  <https://www.debian.org/releases/stable/i386/apbs04.html.en#preseed-partman>`_ 
+   * Ubuntu: `Preseed documentation  <https://www.debian.org/releases/stable/i386/apbs04.en.html#preseed-partman>`_ 
 
      * For detailed information see the files ``partman-auto-recipe.txt`` and ``partman-auto-raid-recipe.txt`` included in the debian-installer package. Both files are also available from the debian-installer source repository. 
 
