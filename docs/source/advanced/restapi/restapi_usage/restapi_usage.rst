@@ -217,9 +217,9 @@ It can be used as an example script to access and control xCAT resources. From t
     ./xcatws-test.sh -u root -p cluster -h <FQDN of xCAT MN> -t
     ./xcatws-test.sh -u root -p cluster -h <FQDN of xCAT MN> -c -t
 
-But for exploration and experimentation, you can make API calls from your browser or by using the **curl** command.
+But for exploration and experimentation, you can make API calls from your browser or by using the ``curl`` command.
 
-To make an API call from your browser, use the desired URL from this document. To simplify the test step, all the examples for the resources use 'curl -k' for unsecure http connection and use the 'username+password' to authenticate the user. ::
+To make an API call from your browser, use the desired URL from this document. To simplify the test step, all the examples for the resources use ``curl -k`` for unsecure http connection and use the 'username+password' to authenticate the user. ::
 
     curl -X GET -k 'https://myserver/xcatws/nodes?userName=xxx&userPW=xxx&pretty=1'
 
@@ -276,5 +276,4 @@ References
   * General JSON: http://www.json.org/
   * JSON wrapping: http://search.cpan.org/~makamaka/JSON-2.27/lib/JSON.pm
   * Apache CGI: http://httpd.apache.org/docs/2.2/howto/cgi.html
-  * Perl CGI: http://perldoc.perl.org/CGI.html
 

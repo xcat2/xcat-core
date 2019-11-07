@@ -4,7 +4,7 @@ Enable kdump Over Ethernet
 Overview
 --------
 
-kdump is an feature of the Linux kernel that allows the system to be booted from the context of another kernel.  This second kernel reserves a small amount of memory and its only purpose is to capture the core dump in the event of a kernel crash.  The ability to analyze the core dump helps to determine causes of system failures.
+``kdump`` is an feature of the Linux kernel that allows the system to be booted from the context of another kernel.  This second kernel reserves a small amount of memory and its only purpose is to capture the core dump in the event of a kernel crash.  The ability to analyze the core dump helps to determine causes of system failures.
 
 
 xCAT Interface
@@ -22,7 +22,7 @@ The following attributes of an osimage should be modified to enable ``kdump``:
 Configure the ``pkglist`` file
 ------------------------------
 
-The ``pkglist`` for the osimage needs to include the appropriate RPMs.  The following list of RPMs are provided as a sample, always refer to the Operating System specific documentataion to ensure the required packages are there for ``kdump`` support.
+The ``pkglist`` for the osimage needs to include the appropriate RPMs.  The following list of RPMs are provided as a sample, always refer to the Operating System specific documentation to ensure the required packages are there for ``kdump`` support.
 
 * **[RHELS]** ::
 
@@ -53,7 +53,7 @@ Run ``packimage`` to update the diskless image with the changes.
 The ``postinstall`` file
 ------------------------
 
-The kdump will create a new initrd which used in the dumping stage. The ``/tmp`` or ``/var/tmp`` directory will be used as the temporary directory. These 2 directory only are allocated 10M space by default. You need to enlarge it to 200M. Modify the postinstall file to increase ``/tmp`` space.
+The ``kdump`` will create a new initrd which is used in the dumping stage. The ``/tmp`` or ``/var/tmp`` directory will be used as the temporary directory. These two directories are only allocated 10M space by default. You need to enlarge it to 200M. Modify the postinstall file to increase ``/tmp`` space.
 
 * **[RHELS]** ::
 
@@ -70,7 +70,7 @@ The kdump will create a new initrd which used in the dumping stage. The ``/tmp``
 The ``dump`` attribute
 ----------------------
 
-To support kernel dumps, the ``dump`` attribute **must** be set on the osimage definition.  If not set, kdump service will not be enabled.  The ``dump`` attribute defines the NFS remote path where the crash information is to be stored.
+To support kernel dumps, the ``dump`` attribute **must** be set in the osimage definition.  If not set, ``kdump`` service will not be enabled.  The ``dump`` attribute defines the NFS remote path where the crash information is to be stored.
 
 Use the ``chdef`` command to set a value of the ``dump`` attribute: ::
 
@@ -80,7 +80,7 @@ If the NFS server is the Service Node or Management Node, the server can be left
 
     chdef -t osimage <image name> dump=nfs:///<kdump_path>
 
-**Note:** Only NFS is currently supported as a storage location. Make sure the NFS remote path(``nfs://<nfs_server_ip>/<kdump_path>``) is exported and it is read-writeable to the node where kdump service is enabled.
+.. note::  Only NFS is currently supported as a storage location. Make sure the NFS remote path (``nfs://<nfs_server_ip>/<kdump_path>``) is exported and it is read-writeable on the node where ``kdump`` service is enabled.
 
 
 The ``crashkernelsize`` attribute
@@ -102,18 +102,18 @@ For setting specific sizes, use the following example:
 
     chdef -t osimage <image name> crashkernelsize=<size>@32M
 
-**Notes**: the value of the ``crashkernelsize`` depends on the total physical memory size on the machine. For more about size, refer to `Appedix`_
+.. note:: The value of the ``crashkernelsize`` depends on the total physical memory size on the machine. For more about size, refer to `Appedix`_
 
-If kdump start error like this: ::
+If ``kdump`` start displays error like this: ::
 
     Your running kernel is using more than 70% of the amount of space you reserved for kdump, you should consider increasing your crashkernel
 
-The ``crashkernelsize`` is not large enough, you should change the ``crashkernelsize`` larger until the error message disappear.
+The ``crashkernelsize`` is not large enough, you should increase the ``crashkernelsize`` until the error message disappears.
 
 The ``enablekdump`` postscript
 ------------------------------
 
-xCAT provides a postscript ``enablekdump`` that can be added to the Nodes to automatically start the ``kdump`` service when the node boots.  Add to the nodes using the following command: ::
+xCAT provides a postscript ``enablekdump`` that can be added to the node definition to automatically start the ``kdump`` service when the node boots. ::
 
     chdef -t node <node range> -p postscripts=enablekdump
 
@@ -147,13 +147,13 @@ Once the system has returned from recovering the crash, you can analyze the kern
 
 #. Locate the recent vmcore dump file.
 
-#. Locate the kernel file for the crash server. The kernel is under ``/tftpboot/xcat/netboot/<OS name="">/<ARCH>/<profile>/kernel`` on the managenent node.
+#. Locate the kernel file for the crash server. The kernel is under ``/tftpboot/xcat/netboot/<OS name="">/<ARCH>/<profile>/kernel`` on the management node.
 
 #. Once you have located a vmcore dump file and kernel file, call ``crash``: ::
 
     crash <vmcore_dump_file> <kernel_file>
 
-**Note:** If ``crash`` cannot find any files, make sure you have the ``kernel-debuginfo`` package installed.
+.. note:: If ``crash`` cannot find any files, make sure you have the ``kernel-debuginfo`` package installed.
 
 Appedix
 -------
@@ -170,4 +170,3 @@ Appedix
 
     * http://docs.redhat.com/docs/en-US/Red_Hat_Enterprise_Linux/5/html/Deployment_Guide/s1-kdump-crash.htmlRHELdocument
 
-    * http://www.novell.com/support/kb/doc.php?id=3374462SLESdocument
