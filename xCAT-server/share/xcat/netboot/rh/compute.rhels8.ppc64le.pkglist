@@ -11,3 +11,4 @@ wget
 python3
 tar
 bzip2
+bc
