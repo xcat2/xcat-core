@@ -72,7 +72,10 @@ check:output=~\d\d:\d\d:\d\d
 cmd:xdsh $$CN "echo 'echo 1 > /proc/sys/kernel/sysrq; echo c > /proc/sysrq-trigger' > /tmp/kdump.trigger"
 cmd:xdsh $$CN "chmod 755 /tmp/kdump.trigger"
 
-cmd:xdsh $$CN "rpm -q at"
+# at package should have been installed during provisioning.
+# If it is still missing, install it with "yum install"
+cmd:a=`xdsh $$CN rpm -q at`;if [[ $a =~ "package at is not installed" ]]; then xdsh $$CN yum install -y at; fi
+
 cmd:xdsh $$CN "service atd start"
 check:rc==0
 
