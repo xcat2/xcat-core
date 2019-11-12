@@ -280,6 +280,20 @@ if [ ! -z "$ISOPENBMC" ]; then
     # Overvide the default value for OpenBMC
     LAN_MED_TYPE="Other LAN"
 fi
+USBSTATE=""
+if [ "$IPMIMFG" = "19046" -a "$XPROD" = "1287" ]; then
+    # Lenovo SR635/SR655
+    BMCPORT=`grep bmcport /tmp/ipmicfg.xml |awk -F\> '{print $2}'|awk -F\< '{print $1}'`
+    if [ "$BMCPORT" = 0 ]; then
+        ipmitool raw 0x32 0x71 0 0 3
+        LANCHAN=1
+    else
+        LANCHAN=8
+    fi
+    #USBSTATE=$(ipmitool raw 0x32 0xab)
+    #ipmitool raw 0x32 0xaa 0
+fi
+
 while [ -z "$LANCHAN" ]; do
     logger -s -t $log_label -p local4.info "Auto detecting LAN channel..."
     for TLANCHAN in {1..16}; do
@@ -702,6 +716,9 @@ if [ -e /tmp/xcchostnic ]; then
     ip netns exec mgt ip link set dev $INTERFACE netns 1
     /usr/sbin/setupimmnic
 fi
+#if [ ! -z "$USBSTATE" ]; then  # Continuation of SR635/SR655 specific code
+#    ipmitool raw 0x32 0xaa $USBSTATE
+#fi
 
 
 # remove the bmc configuration information before exit

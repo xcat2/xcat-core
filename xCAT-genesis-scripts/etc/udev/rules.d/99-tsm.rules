@@ -1,0 +1,1 @@
+SUBSYSTEM=="net", ATTRS{idVendor}=="046b", ATTRS{idProduct}=="ffb0", RUN+="/sbin/setuptsmnic"

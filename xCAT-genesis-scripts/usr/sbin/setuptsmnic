@@ -1,0 +1,5 @@
+#!/bin/sh
+/sbin/ip link set $INTERFACE up
+/sbin/ip addr add dev $INTERFACE 169.254.0.120/24
+/sbin/ip route add 169.254.0.0/24 dev $INTERFACE
+echo -n $INTERFACE > /tmp/tsmhostnic
