@@ -225,6 +225,17 @@ if [ "$IPMIMFG" == 2 ]; then #IBM
     fi
 elif [ "$IPMIMFG" == 19046 -a "$XPROD" == 13616 ] ; then
    LOCKEDUSERS=1
+elif [ "$IPMIMFG" = "19046" -a "$XPROD" = "1287" ]; then
+    # Lenovo SR635/SR655
+    BMCPORT=`grep bmcport /tmp/ipmicfg.xml |awk -F\> '{print $2}'|awk -F\< '{print $1}'`
+    if [ "$BMCPORT" = 0 ]; then
+        ipmitool raw 0x32 0x71 0 0 3
+        LANCHAN=1
+    else
+        LANCHAN=8
+    fi
+    #USBSTATE=$(ipmitool raw 0x32 0xab)
+    #ipmitool raw 0x32 0xaa 0
 elif [ "$IPMIMFG" == 20301 -o "$IPMIMFG" == 19046 -a "$XPROD" != 502 ] ; then
     IBMVPDV=`ipmitool raw 0x3a 0xb 2 0 16 1`
     logger -s -t $log_label -p local4.info "XPROD is $XPROD, IBMVPDV is $IBMVPDV"
@@ -279,19 +290,6 @@ LAN_MED_TYPE="802.3"
 if [ ! -z "$ISOPENBMC" ]; then
     # Overvide the default value for OpenBMC
     LAN_MED_TYPE="Other LAN"
-fi
-USBSTATE=""
-if [ "$IPMIMFG" = "19046" -a "$XPROD" = "1287" ]; then
-    # Lenovo SR635/SR655
-    BMCPORT=`grep bmcport /tmp/ipmicfg.xml |awk -F\> '{print $2}'|awk -F\< '{print $1}'`
-    if [ "$BMCPORT" = 0 ]; then
-        ipmitool raw 0x32 0x71 0 0 3
-        LANCHAN=1
-    else
-        LANCHAN=8
-    fi
-    #USBSTATE=$(ipmitool raw 0x32 0xab)
-    #ipmitool raw 0x32 0xaa 0
 fi
 
 while [ -z "$LANCHAN" ]; do
@@ -587,17 +585,6 @@ while [ $idev -gt 0 ]; do
         sleep 1
         let TRIES=TRIES+1
         echo -n .
-        if [ $TRIES -gt $TIMEOUT ]; then break; fi
-    done
-    if [ $TRIES -gt $TIMEOUT ]; then logger -s -t $log_label -p local4.err "$MSG: ERROR"; else logger -s -t $log_label -p local4.info "$MSG: OK"; fi
-
-    MSG="Enabling IPMI MD5 LAN access"
-    logger -s -t $log_label -p local4.info "$MSG"
-    TRIES=0
-    # Set the auth level to md5 for the channel
-    while ! ipmitool -d $idev lan set $LANCHAN auth admin md5 > /dev/null; do
-        sleep 1
-        let TRIES=TRIES+1
         if [ $TRIES -gt $TIMEOUT ]; then break; fi
     done
     if [ $TRIES -gt $TIMEOUT ]; then logger -s -t $log_label -p local4.err "$MSG: ERROR"; else logger -s -t $log_label -p local4.info "$MSG: OK"; fi
