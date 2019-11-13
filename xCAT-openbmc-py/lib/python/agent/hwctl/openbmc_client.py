@@ -234,6 +234,18 @@ RSPCONFIG_APIS = {
             'setup': "xyz.openbmc_project.Control.Boot.Mode.Modes.Setup",
         },
     },
+    'thermalmode': {
+        'baseurl': "/control/thermal/0",
+        'set_url': "/attr/Current",
+        'get_url': "/attr/Current",
+        'display_name':"BMC ThermalMode",
+        'attr_values': {
+            'default': "DEFAULT",
+            'custom': "CUSTOM",
+            'heavy_io': "HEAVY_IO",
+            'max_base_fan_floor': "MAX_BASE_FAN_FLOOR",
+        },
+    },
     'timesyncmethod': {
         'baseurl': '/time/sync_method',
         'get_url': '',
