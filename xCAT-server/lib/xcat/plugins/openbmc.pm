@@ -676,6 +676,21 @@ my %api_config_info = (
             manual      => "xyz.openbmc_project.Time.Synchronization.Method.Manual",
         },
     },
+    RSPCONFIG_THERMAL_MODE => {
+        command      => "rspconfig",
+        url          => "/control/thermal/0",
+        attr_url     => "Current",
+        display_name => "BMC ThermalMode",
+        instruct_msg => "",
+        type         => "attribute",
+        subcommand   => "thermalmode",
+        attr_value   => {
+            default            => "DEFAULT",
+            custom             => "CUSTOM",
+            heavy_io           => "HEAVY_IO",
+            max_base_fan_floor => "MAX_BASE_FAN_FLOOR",
+        },
+    },
 );
 
 $::RESPONSE_OK                  = "200 OK";
