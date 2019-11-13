@@ -527,7 +527,7 @@ OPTIONS
 
 \ **thermalmode**\ 
  
- Display or set the thermal mode of the system to a setting, depending on your system, adapter, and cable type. After a factory reset of the system, the thermal mode setting is lost and must be reapplied. To choose the correct setting for your system, see http://blaze.aus.stglabs.ibm.com/kc20A-cur/POWER9/p9ei3/p9ei3_thermal_mode.htm [OpenBMC]
+ Display or set the thermal mode of the system to a setting, depending on your system, adapter, and cable type. After a factory reset of the system, the thermal mode setting is lost and must be reapplied. To choose the correct setting for your system, see https://www.ibm.com/support/knowledgecenter/POWER9/p9ei3/p9ei3_thermal_mode.htm [OpenBMC]
  
 
 
