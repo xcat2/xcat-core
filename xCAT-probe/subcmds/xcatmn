@@ -1006,7 +1006,7 @@ sub check_dns_service {
                 } else {
 
                     # if there is no sn, nslookup mnip
-                    my $nslkp = `nslookup $serverip $serverip 2>&1`;
+                    my $nslkp = `nslookup -type=A $serverip $serverip 2>&1`;
                     chomp($nslkp);
                     my $tmp = grep { $_ =~ "Server:[\t\s]*$serverip" } split(/\n/, $nslkp);
                     if (!$tmp) {
