@@ -53,7 +53,7 @@ all_nodes_result = {}
 # global variables of rbeacon
 BEACON_OPTIONS = ('on', 'off', 'stat')
 
-RSPCONFIG_GET_OPTIONS = ['ip','ipsrc','netmask','gateway','vlan','ntpservers','hostname','bootmode','autoreboot','powersupplyredundancy','powerrestorepolicy', 'timesyncmethod']
+RSPCONFIG_GET_OPTIONS = ['ip','ipsrc','netmask','gateway','vlan','ntpservers','hostname','bootmode','thermalmode','autoreboot','powersupplyredundancy','powerrestorepolicy', 'timesyncmethod']
 
 RSPCONFIG_SET_OPTIONS = {
     'ip':'.*',
@@ -66,6 +66,7 @@ RSPCONFIG_SET_OPTIONS = {
     'powersupplyredundancy':"^enabled$|^disabled$",
     'powerrestorepolicy':"^always_on$|^always_off$|^restore$",
     'bootmode':"^regular$|^safe$|^setup$",
+    'thermalmode':"^default$|^custom$|^heavy_io$|^max_base_fan_floor$",
     'admin_passwd':'.*,.*',
     'timesyncmethod':'^ntp$|^manual$',
 }
