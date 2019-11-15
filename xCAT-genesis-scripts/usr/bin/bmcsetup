@@ -234,6 +234,7 @@ elif [ "$IPMIMFG" = "19046" -a "$XPROD" = "1287" ]; then
     else
         LANCHAN=8
     fi
+    ipmitool raw 0x3c 0x70 0 1
     #USBSTATE=$(ipmitool raw 0x32 0xab)
     #ipmitool raw 0x32 0xaa 0
 elif [ "$IPMIMFG" == 20301 -o "$IPMIMFG" == 19046 -a "$XPROD" != 502 ] ; then
