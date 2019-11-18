@@ -229,9 +229,11 @@ elif [ "$IPMIMFG" = "19046" -a "$XPROD" = "1287" ]; then
     # Lenovo SR635/SR655
     BMCPORT=`grep bmcport /tmp/ipmicfg.xml |awk -F\> '{print $2}'|awk -F\< '{print $1}'`
     if [ "$BMCPORT" = 0 ]; then
+        ipmitool raw 0x32 0x71 0 1 2
         ipmitool raw 0x32 0x71 0 0 3
         LANCHAN=1
     else
+        ipmitool raw 0x32 0x71 0 0 0
         LANCHAN=8
     fi
     ipmitool raw 0x3c 0x70 0 1
