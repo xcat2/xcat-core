@@ -229,15 +229,16 @@ elif [ "$IPMIMFG" = "19046" -a "$XPROD" = "1287" ]; then
     # Lenovo SR635/SR655
     BMCPORT=`grep bmcport /tmp/ipmicfg.xml |awk -F\> '{print $2}'|awk -F\< '{print $1}'`
     if [ "$BMCPORT" = 0 ]; then
-        ipmitool raw 0x32 0x71 0 1 2
+        ipmitool raw 0x32 0x71 0 1 0
         ipmitool raw 0x32 0x71 0 0 3
         LANCHAN=$(ipmitool raw 0x32 0x72 4 0 0|sed -e 's/^ 0//')
     else
         ipmitool raw 0x32 0x71 0 0 0
+        ipmitool raw 0x32 0x71 0 1 3
         LANCHAN=$(ipmitool raw 0x32 0x72 4 1 0|sed -e 's/^ 0//')
     fi
-    ipmitool raw 0x3c 0x70 0 1
-    #USBSTATE=$(ipmitool raw 0x32 0xab)
+    ipmitool raw 0x3c 0x70 0 1 2> /dev/null
+    USBSTATE=$(ipmitool raw 0x32 0xab)
     #ipmitool raw 0x32 0xaa 0
 elif [ "$IPMIMFG" == 20301 -o "$IPMIMFG" == 19046 -a "$XPROD" != 502 ] ; then
     IBMVPDV=`ipmitool raw 0x3a 0xb 2 0 16 1`
@@ -706,9 +707,16 @@ if [ -e /tmp/xcchostnic ]; then
     ip netns exec mgt ip link set dev $INTERFACE netns 1
     /usr/sbin/setupimmnic
 fi
-#if [ ! -z "$USBSTATE" ]; then  # Continuation of SR635/SR655 specific code
+if [ ! -z "$USBSTATE" ]; then  # Continuation of SR635/SR655 specific code
+    if [ "$BMCPORT" = 0 ]; then
+        # Enable ipv6 at least for the 'other' interface
+        # this is opposite of the selected port
+        ipmitool raw 0x32 0x71 0 1 2
+    else
+        ipmitool raw 0x32 0x71 0 0 2
+    fi
 #    ipmitool raw 0x32 0xaa $USBSTATE
-#fi
+fi
 
 
 # remove the bmc configuration information before exit
