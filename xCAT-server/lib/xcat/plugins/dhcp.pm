@@ -355,12 +355,26 @@ sub delnode
             print $omshell "open\n";
             print $omshell "remove\n";
             print $omshell "close\n";
+            print $omshell "new host\n";
+            print $omshell
+              "set name = \"$hostname". "-infinibandcompatname\"\n";    #Find and destroy conflict name
+            print $omshell "open\n";
+            print $omshell "remove\n";
+            print $omshell "close\n";
 
             if ($mac)
             {
                 print $omshell "new host\n";
                 print $omshell "set hardware-address = " . $mac
                   . "\n";                      #find and destroy mac conflict
+                print $omshell "open\n";
+                print $omshell "remove\n";
+                print $omshell "close\n";
+            }
+            if ($mac and length($mac) == 17) {
+                my $ibmac = substr($mac, 0, 8) . ":03:00" . substr($mac, 8);
+                print $omshell "new host\n";
+                print $omshell "set hardware-address = " . $ibmac . "\n"; #find and destroy mac conflict
                 print $omshell "open\n";
                 print $omshell "remove\n";
                 print $omshell "close\n";
@@ -777,6 +791,11 @@ sub addnode
             print $omshell "open\n";
             print $omshell "remove\n";
             print $omshell "close\n";
+            print $omshell "new host\n";
+            print $omshell "set name = \"$hostname". "-infinibandcompatname\"\n";    #Find and destroy conflict name
+            print $omshell "open\n";
+            print $omshell "remove\n";
+            print $omshell "close\n";
             if ($ip and $ip ne 'DENIED') {
                 print $omshell "new host\n";
                 print $omshell "set ip-address = $ip\n"; #find and destroy ip conflict
@@ -790,46 +809,72 @@ sub addnode
             print $omshell "open\n";
             print $omshell "remove\n";
             print $omshell "close\n";
-            print $omshell "new host\n";
-            print $omshell "set name = \"$hostname\"\n";
-            print $omshell "set hardware-address = " . $mac . "\n";
-            print $omshell "set dhcp-client-identifier = " . $mac . "\n";
-            print $omshell "set hardware-type = $hardwaretype\n";
-
-            if ($ip eq "DENIED")
-            { #Blacklist this mac to preclude confusion, give best shot at things working
-                print $omshell "set statements = \"deny booting;\"\n";
+            my $ibmac = 0;
+            if (length($mac) == 17) {
+                $ibmac = substr($mac, 0, 8) . ":03:00" . substr($mac, 8);
+                print $omshell "new host\n";
+                print $omshell "set hardware-address = " . $ibmac
+                  . "\n";                      #find and destroy mac conflict
+                print $omshell "open\n";
+                print $omshell "remove\n";
+                print $omshell "close\n";
             }
-            else
+            my @hwtypes;
+            if ($hardwaretype == 1) {
+                @hwtypes = (1, 132);
+            } else {
+                @hwtypes = ($hardwaretype);
+            }
+            foreach my $hwtype (@hwtypes)
             {
-                if ($ip and not ipIsDynamic($ip)) {
-                    print $omshell "set ip-address = $ip\n";
-                } else {
-
-                    # only if when ip is not blank, blank ip warning already done earlier in the code
-                    if ($ip)
-                    {
-                        $callback->(
-                            {
-                                warning => [
-            "The ip address $ip of node $node overlaps with the DHCP dynamic range specified in networks table, will not add this ip address into dhcpd.leases file."
-                                  ]
-                            }
-                        );
-                    }
+                my $localname = $hostname;
+                my $localmac = $mac;
+                if ($hwtype == 132) {
+                    $hwtype = 32;
+                    $localname .= "-infinibandcompatname";
+                    $localmac = substr($mac, 0, 8) . ":03:00" . substr($mac, 8);
                 }
-                if ($lstatements)
+                print $omshell "new host\n";
+                print $omshell "set name = \"$localname\"\n";
+                print $omshell "set hardware-address = " . $localmac . "\n";
+                print $omshell "set dhcp-client-identifier = " . $localmac . "\n";
+                print $omshell "set hardware-type = $hwtype\n";
+
+                if ($ip eq "DENIED")
+                { #Blacklist this mac to preclude confusion, give best shot at things working
+                    print $omshell "set statements = \"deny booting;\"\n";
+                }
+                else
                 {
-                    $lstatements = 'ddns-hostname \"' . $node . '\"; send host-name \"' . $node . '\";' . $lstatements;
+                    if ($ip and not ipIsDynamic($ip)) {
+                        print $omshell "set ip-address = $ip\n";
+                    } else {
 
-                } else {
-                    $lstatements = 'ddns-hostname \"' . $node . '\"; send host-name \"' . $node . '\";';
+                        # only if when ip is not blank, blank ip warning already done earlier in the code
+                        if ($ip)
+                        {
+                            $callback->(
+                                {
+                                    warning => [
+                "The ip address $ip of node $node overlaps with the DHCP dynamic range specified in networks table, will not add this ip address into dhcpd.leases file."
+                                    ]
+                                }
+                            );
+                        }
+                    }
+                    if ($lstatements)
+                    {
+                        $lstatements = 'ddns-hostname \"' . $node . '\"; send host-name \"' . $node . '\";' . $lstatements;
+
+                    } else {
+                        $lstatements = 'ddns-hostname \"' . $node . '\"; send host-name \"' . $node . '\";';
+                    }
+                    print $omshell "set statements = \"$lstatements\"\n";
                 }
-                print $omshell "set statements = \"$lstatements\"\n";
-            }
 
-            print $omshell "create\n";
-            print $omshell "close\n";
+                print $omshell "create\n";
+                print $omshell "close\n";
+            }   
             unless ($::XCATSITEVALS{externaldhcpservers}) {
                 unless (grep /#definition for host $node aka host $hostname/, @dhcpconf)
                 {
