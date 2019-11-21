@@ -101,7 +101,7 @@ To support clone, add 'otherpkglist' and 'otherpkgdir' attributes to the image d
 
     chdef -t osimage -o <osimage-name> otherpkglist=/opt/xcat/share/xcat/install/rh/sysclone.rhels6.x86_64.otherpkgs.pkglist
     chdef -t osimage -o <osimage-name> -p otherpkgdir=/install/post/otherpkgs/rhels6.4/x86_64
-    updatenode <golden-cilent> -S
+    updatenode <golden-client> -S
 
 * **[CentOS6.3 and x86_64]**::
 
