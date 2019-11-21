@@ -687,7 +687,7 @@ sub nodepurge {
 Usage:
 \tnodepurge <noderange>
 \tnodepurge [-h|--help]
-\tnodepurge {-v|--version}";
+\tnodepurge [-v|--version]";
 
     my $ret = validate_args($helpmsg);
     if (!$ret) {
@@ -733,6 +733,20 @@ Usage:
         $warnstr .= "Warning: Cannot remove all nodes. The noderm command failed to remove some of the nodes.";
         if ($retstrref->[1]) {
             $warnstr .= "Details: $retstrref->[1]";
+        }
+    }
+    # For each node in the noderange remove its configureation files in $config_dir, if file exists
+    setrsp_progress("Removing configuration files...");
+    my $config_dir = "/install/autoinst/";
+    foreach my $one_node (@$nodes) {
+        if ( -e "$config_dir/$one_node") {
+            unlink "$config_dir/$one_node";
+        }
+        if ( -e "$config_dir/$one_node.post") {
+            unlink "$config_dir/$one_node.post";
+        }
+        if ( -e "$config_dir/$one_node.pre") {
+            unlink "$config_dir/$one_node.pre";
         }
     }
     setrsp_progress("Removed all nodes.");

@@ -31,7 +31,7 @@ DESCRIPTION
 
 The \ **nodepurge**\  automatically removes all nodes from the database and any related configurations used by the node.
 
-After the nodes are removed, the configuration files related to these nodes are automatically updated, including the following files: /etc/hosts, DNS, DHCP. Any kits that are used by the nodes are triggered to automatically update kit configuration and services.
+After the nodes are removed, the configuration files related to these nodes are automatically updated, including the following files: \ */etc/hosts*\ , DNS, DHCP. Any kits that are used by the nodes are triggered to automatically update kit configuration and services. Any related configuration files from \ */install/autoinst*\  are also removed.
 
 
 *******
@@ -39,17 +39,11 @@ OPTIONS
 *******
 
 
-\ **-h|-**\ **-help**\ 
+\ **-h|-**\ **-help**\     Display usage message.
 
-Display usage message.
+\ **-v|-**\ **-version**\  Command Version
 
-\ **-v|-**\ **-version**\ 
-
-Command Version
-
-\ *noderange*\ 
-
-The nodes to be removed.
+\ *noderange*\     The nodes to be removed.
 
 
 ************
@@ -67,7 +61,7 @@ EXAMPLES
 ********
 
 
-To remove nodes compute-000 and compute-001, use the following command:
+To remove nodes compute-000 and compute-001:
 
 
 .. code-block:: perl
