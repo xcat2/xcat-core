@@ -1,0 +1,22 @@
+@base
+@x11
+openssl
+ntp
+rsync
+nmap
+perl-DBI
+vsftpd
+perl-IO-Tty
+perl-Expect
+perl-SNMP
+unixODBC
+perl-Net-DNS
+perl-DBD-mysql
+mariadb-client
+libmysqlclient18
+#   The following rpms are available on the SLES SDK
+#   You will need to locate and make these rpms available in your zypper
+#   repository for service node installs and uncomment the following lines:
+#MyODBC-unixODBC
+#perl-DBD-Pg
+

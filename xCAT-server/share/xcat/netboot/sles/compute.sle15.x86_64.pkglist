@@ -1,6 +1,10 @@
 aaa_base
 coreutils
 bash
+dbus
+wicked
+device-mapper
+dracut
 nfs-kernel-server
 keyutils
 lvm2
