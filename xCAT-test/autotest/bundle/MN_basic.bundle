@@ -173,7 +173,6 @@ noderm_noderange
 noderm_null
 nodepurge_err_node
 nodepurge_h
-nodepurge_noderange
 nodepurge_null
 nodestat_err_node
 restorexCAT_h

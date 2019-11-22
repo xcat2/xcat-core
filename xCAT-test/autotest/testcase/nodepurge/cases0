@@ -1,6 +1,6 @@
 start:nodepurge_noderange
 description:nodepurge testnode1,testnode2
-label:mn_only,ci_test,db
+label:mn_only,db
 cmd:mkdef -t node -o testnode1 arch=ppc64le cons=ipmi groups=pbmc mgt=ipmi ip=10.1.1.200 mac=e6:d4:d2:3a:ad:01  monserver=10.1.1.1 nameservers=10.1.1.1 nodetype=ppc,osi profile=compute tftpserver=10.1.1.1 xcatmaster=10.1.1.1 os=rhels7.7 netboot=petitboot
 check:rc==0
 cmd:mkdef -t node -o testnode2 arch=ppc64le cons=ipmi groups=pbmc mgt=ipmi ip=10.1.1.201 mac=e6:d4:d2:3a:ad:02  monserver=10.1.1.1 nameservers=10.1.1.1 nodetype=ppc,osi profile=compute tftpserver=10.1.1.1 xcatmaster=10.1.1.1 os=rhels7.7 netboot=petitboot
