@@ -724,7 +724,6 @@ if [ ! -z "$USBSTATE" ]; then  # Continuation of SR635/SR655 specific code
         sleep 15
         ipmitool raw 0x32 0x71 0 1 3
     fi
-    fi
     echo "Done"
 #    ipmitool raw 0x32 0xaa $USBSTATE
 fi
