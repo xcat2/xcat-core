@@ -264,11 +264,17 @@ unless ($onlyinitrd) {
 
         # To support multiple paths for osimage.pkgdir
         foreach $dir (@pkgdirs) {
+            my $ddir = $dir;
             if (-d "$dir/1") {
-                $dir .= "/1";
+                $ddir .= "/1";
             }
-            system("zypper -R $rootimg_dir $non_interactive ar file:$dir $osver-$i");
+            system("zypper -R $rootimg_dir $non_interactive ar file:$ddir $osver-$i");
             $i++;
+            if (-d "$dir/2") {
+                $ddir = $dir . "/2";
+                system("zypper -R $rootimg_dir $non_interactive ar file:$ddir $osver-$i");
+                $i++;
+            }
         }
 
         #if(-e "$rootimg_dir/etc/zypp/repos.d/$osver.repo") {
