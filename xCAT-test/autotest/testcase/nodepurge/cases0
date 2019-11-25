@@ -1,16 +1,16 @@
 start:nodepurge_noderange
 description:nodepurge testnode1,testnode2
 label:mn_only,db
-cmd:mkdef -t node -o testnode1 arch=ppc64le cons=ipmi groups=pbmc mgt=ipmi ip=10.1.1.200 mac=e6:d4:d2:3a:ad:01  monserver=10.1.1.1 nameservers=10.1.1.1 nodetype=ppc,osi profile=compute tftpserver=10.1.1.1 xcatmaster=10.1.1.1 os=rhels7.7 netboot=petitboot
+cmd:mkdef -t node -o testnode1 arch=ppc64le cons=ipmi groups=pbmc mgt=ipmi ip=10.1.1.200 mac=e6:d4:d2:3a:ad:01  monserver=10.1.1.1 nameservers=10.1.1.1 nodetype=ppc,osi profile=compute tftpserver=10.1.1.1 xcatmaster=10.1.1.1 netboot=petitboot
 check:rc==0
-cmd:mkdef -t node -o testnode2 arch=ppc64le cons=ipmi groups=pbmc mgt=ipmi ip=10.1.1.201 mac=e6:d4:d2:3a:ad:02  monserver=10.1.1.1 nameservers=10.1.1.1 nodetype=ppc,osi profile=compute tftpserver=10.1.1.1 xcatmaster=10.1.1.1 os=rhels7.7 netboot=petitboot
+cmd:mkdef -t node -o testnode2 arch=ppc64le cons=ipmi groups=pbmc mgt=ipmi ip=10.1.1.201 mac=e6:d4:d2:3a:ad:02  monserver=10.1.1.1 nameservers=10.1.1.1 nodetype=ppc,osi profile=compute tftpserver=10.1.1.1 xcatmaster=10.1.1.1 netboot=petitboot
 check:rc==0
 cmd:lsdef -t node testnode1,testnode2
 check:output=~testnode1
 check:output=~testnode2
 cmd:makehosts testnode1,testnode2
 check:rc==0
-cmd:nodeset testnode1,testnode2 osimage=rhels7.7-ppc64le-install-compute
+cmd:nodeset testnode1,testnode2 osimage=__GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-install-compute 
 check:rc==0
 cmd:nodepurge testnode1,testnode2
 check:rc==0
@@ -22,9 +22,9 @@ check:output=~No such file or directory
 cmd:ls /install/autoinst/testnode2*
 check:output=~No such file or directory
 cmd:ping testnode1
-check:output=~Name or service not known
+check:rc!=0
 cmd:ping testnode2
-check:output=~Name or service not known
+check:rc!=0
 end
 
 start:nodepurge_h
