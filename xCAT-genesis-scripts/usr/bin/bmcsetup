@@ -714,14 +714,18 @@ fi
 if [ ! -z "$USBSTATE" ]; then  # Continuation of SR635/SR655 specific code
     echo -n "Restarting TSM networking...."
     if [ "$BMCPORT" = 0 ]; then
-        sleep 15
+        sleep 20
         ipmitool raw 0x32 0x71 0 0 0
-        sleep 15
+        sleep 20
+        ipmitool raw 0x32 0x71 0 0 3
+        sleep 20
         ipmitool raw 0x32 0x71 0 0 3
     else
-        sleep 15
+        sleep 20
         ipmitool raw 0x32 0x71 0 1 0
-        sleep 15
+        sleep 20
+        ipmitool raw 0x32 0x71 0 1 3
+        sleep 20
         ipmitool raw 0x32 0x71 0 1 3
     fi
     echo "Done"
