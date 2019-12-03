@@ -711,6 +711,23 @@ if [ -e /tmp/xcchostnic ]; then
     ip netns exec mgt ip link set dev $INTERFACE netns 1
     /usr/sbin/setupimmnic
 fi
+if [ ! -z "$USBSTATE" ]; then  # Continuation of SR635/SR655 specific code
+    echo -n "Restarting TSM networking...."
+    if [ "$BMCPORT" = 0 ]; then
+        sleep 15
+        ipmitool raw 0x32 0x71 0 0 0
+        sleep 15
+        ipmitool raw 0x32 0x71 0 0 3
+    else
+        sleep 15
+        ipmitool raw 0x32 0x71 0 1 0
+        sleep 15
+        ipmitool raw 0x32 0x71 0 1 3
+    fi
+    echo "Done"
+#    ipmitool raw 0x32 0xaa $USBSTATE
+fi
+
 
 # remove the bmc configuration information before exit
 rm -f /tmp/ipmicfg.xml
