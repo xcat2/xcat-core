@@ -336,6 +336,9 @@ fi
 
 [ "$xcatdebugmode" > "0" ] && logger -t $log_label -p debug "setting hostname..."
 echo `hostname` > $NEWROOT/etc/hostname
+if [ ! -z $NODE ]; then
+    echo $NODE > $NEWROOT/etc/hostname
+fi
 
 logger $SYSLOGHOST -t $log_label -p debug "Exiting xcatroot..."
 

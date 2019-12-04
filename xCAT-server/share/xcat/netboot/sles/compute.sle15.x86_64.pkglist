@@ -1,7 +1,7 @@
 aaa_base
 coreutils
 bash
-dbus
+dbus-1
 wicked
 device-mapper
 dracut
