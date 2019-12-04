@@ -7,7 +7,7 @@ BEGIN
     $::XCATROOT = $ENV{'XCATROOT'} ? $ENV{'XCATROOT'} : '/opt/xcat';
 
     if (defined $ENV{ENABLE_TRACE_CODE}) {
-        use xCAT::Enabletrace qw(loadtrace filter);
+        #use xCAT::Enabletrace qw(loadtrace filter);
         loadtrace();
     }
 
