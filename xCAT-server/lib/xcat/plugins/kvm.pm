@@ -730,6 +730,7 @@ sub build_xmldesc {
     my %cpupinhash;
     my @passthrudevices;
     my $memnumanodes;
+    my $cpumode;
     my $advsettings = undef;
     if (defined $confdata->{vm}->{$node}->[0]->{othersettings}) {
         $advsettings = $confdata->{vm}->{$node}->[0]->{othersettings};
@@ -740,6 +741,7 @@ sub build_xmldesc {
     #cpu pining:         "vcpupin:<physical cpu set>"
     #pci passthrough:    "devpassthrough:<pci device name1>,<pci device name2>..."
     #memory binding:     "membind:<numa node set>"
+    #cpu mode:           "cpumode:<host-model|host-passthrough>"
     if ($advsettings) {
         my @tmp_array = split ";", $advsettings;
         foreach (@tmp_array) {
@@ -762,6 +764,9 @@ sub build_xmldesc {
                 $memnumanodes = $1;
             }
 
+            if (/cpumode:(.*)/) {
+                $cpumode = $1;
+            }
         }
     }
 
@@ -777,6 +782,12 @@ sub build_xmldesc {
         $xtree{vcpu}->{placement} = 'static';
         $xtree{vcpu}->{cpuset}    = "$cpupinhash{ALL}";
         $xtree{vcpu}->{cpuset} =~ s/\"\'//g;
+    }
+
+    if (defined $cpumode) {
+        if ($cpumode eq 'host-passthrough' or $cpumode eq 'host-model') {
+            $xtree{cpu}->{mode} = $cpumode;
+        }
     }
 
     #prepare the xml hash for pci passthrough
