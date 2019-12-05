@@ -242,6 +242,7 @@ elif [ "$IPMIMFG" = "19046" -a "$XPROD" = "1287" ]; then
     fi
     echo -n "Ready"
     ipmitool raw 0x3c 0x70 0 1 2> /dev/null
+    ipmitool raw 0x3c 0x70 1 1 2> /dev/null
     USBSTATE=$(ipmitool raw 0x32 0xab)
     #ipmitool raw 0x32 0xaa 0
 elif [ "$IPMIMFG" == 20301 -o "$IPMIMFG" == 19046 -a "$XPROD" != 502 ] ; then
