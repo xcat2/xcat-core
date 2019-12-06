@@ -119,6 +119,7 @@ use IO::Handle;
 use IO::Select;
 use XML::Simple;
 $XML::Simple::PREFERRED_PARSER = 'XML::Parser';
+use XML::LibXML::Simple;
 use xCAT::Table;
 my $dbmaster;
 use xCAT::ExtTab;
@@ -691,7 +692,12 @@ sub do_discovery_process {
             IO::Uncompress::Gunzip::gunzip(\$data, \$bigdata);
             $data = $bigdata;
         }
-        my $req = eval { XMLin($data, SuppressEmpty => undef, ForceArray => 1) };
+        my $req = eval { XMLin($data, SuppressEmpty => undef, ForceArray => qr/.*/, ParserOpts => [
+            load_ext_dtd => 0,
+            ext_ent_handler => undef,
+            no_network => 1,
+            expand_entities => 0,
+        ]) };
         if ($req and $req->{command} and ($req->{command}->[0] eq "findme" and $sport < 1000)) { # only consider priveleged port requests to start with
             $req->{'_xcat_clientip'}   = $clientip;
             $req->{'_xcat_clientport'} = $sport;
@@ -2716,7 +2722,12 @@ sub send_response {
         my $cmdlog_xml = "<massresponse>";
         $tmp_xml =~ s/\e/xxxxESCxxxx/g;
         $cmdlog_xml .= $tmp_xml . "</massresponse>";
-        my $cmdlog_rsp = XMLin($cmdlog_xml, SuppressEmpty => undef, ForceArray => 1);
+        my $cmdlog_rsp = XMLin($cmdlog_xml, SuppressEmpty => undef, ForceArray => qr/.*/, ParserOpts => [
+            load_ext_dtd => 0,
+            ext_ent_handler => undef,
+            no_network => 1,
+            expand_entities => 0,
+        ]);
         cmdlog_collectlog($cmdlog_rsp);
 
         # ----used for command log end --------
@@ -2773,7 +2784,12 @@ sub get_request {
                 return undef;
             }
         }
-        return eval { XMLin($request, SuppressEmpty => undef, ForceArray => 1) };
+        return eval { XMLin($request, SuppressEmpty => undef, ForceArray => qr/.*/, ParserOpts => [
+            load_ext_dtd => 0,
+            ext_ent_handler => undef,
+            no_network => 1,
+            expand_entities => 0,
+        ]) };
     } elsif ($encode eq "storable") {
         my $return = eval { fd_retrieve($sock); };   # suppres end of stream err
         return $return;
