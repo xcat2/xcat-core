@@ -41,7 +41,7 @@ BuildArch: noarch
 %if %s390x
 Requires: perl-IO-Socket-SSL perl-XML-Simple perl-XML-Parser
 %else
-Requires: perl-IO-Socket-SSL perl-XML-Simple perl-XML-Parser perl-Digest-SHA1 perl(LWP::Protocol::https)
+Requires: perl-IO-Socket-SSL perl-XML-Simple perl-XML-Parser perl-Digest-SHA1 perl(LWP::Protocol::https) perl-XML-LibXML-Simple
 %endif
 Obsoletes: atftp-xcat
 %endif
