@@ -64,6 +64,6 @@ os:Linux
 hcp:openbmc
 label:cn_bmc_ready,hctrl_openbmc
 cmd:reventlog $$CN resolved=Led
-check:rc==1
+check:rc==0
 check:output=~Attempting to resolve the following log entries: Led...
 end
