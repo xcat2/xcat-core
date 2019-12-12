@@ -3,6 +3,8 @@
 {
     missingok
     sharedscripts
+    copytruncate
+    delaycompress
     postrotate
         kill -HUP `systemctl show -p MainPID goconserver.service 2> /dev/null |awk -F= '{print $2}'` 2> /dev/null || true
     endscript
