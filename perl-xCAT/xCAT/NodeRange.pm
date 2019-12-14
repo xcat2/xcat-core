@@ -666,22 +666,7 @@ sub noderange {
         if ($atom eq '') { next; }
 
         if ($atom =~ /^\^(.*)$/) {    # get a list of nodes from a file
-            open(NRF, $1);
-            while (<NRF>) {
-                my $line = $_;
-                unless ($line =~ m/^[\^#]/) {
-                    $line =~ m/^([^:	 ]*)/;
-                    my $newrange = $1;
-                    chomp($newrange);
-                    $recurselevel++;
-                    my @filenodes = noderange($newrange, $verify, $exsitenode, %options);
-                    foreach (@filenodes) {
-                        $nodes{$_} = 1;
-                    }
-                }
-            }
-            close(NRF);
-            next;
+            die "Read from file is no longer supported";
         }
 
         my %newset = map { $_ => 1 } expandatom($atom, $verify, %options); # expand the atom and make each entry in the resulting array a key in newset

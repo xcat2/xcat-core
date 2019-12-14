@@ -20,8 +20,6 @@ I<Examples:>
 
  /node.*
 
- ^/tmp/nodes
-
  node10+5
 
  10-15,-13
@@ -40,7 +38,7 @@ If you invoke xCAT B<noderange> from a shell you may need to quote the
 B<noderange> if the shell would otherwise treat the punctuation marks in
 the B<noderange> as control operators. The affected punctuation marks may
 include Asterisk (`*'), Left Square Bracket (`[') , Right Square Bracket
-(`]'), Circumflex Accent (`^'), and Overline (`~').
+(`]'), and Overline (`~').
 
 B<noderange> is a comma-separated list.  Each token (text between commas)
 in the list can be any of the forms listed below:
@@ -84,25 +82,12 @@ A regular expression match of nodes or groups:
 
 The path of a file containing noderanges of nodes or groups:
 
- ^/tmp/nodelist
-
-where /tmp/nodelist can contain entries like:
-
- #my node list (this line ignored)
- ^/tmp/foo #ignored
- node01    #node comment
- node02
- node03
- node10-node20
- /group[456].*
- -node50
-
 Node ranges can contain any combination:
 
- node01-node30,node40,^/tmp/nodes,/node[13].*,2-10,node50+5
+ node01-node30,node40,/node[13].*,2-10,node50+5
 
 Any individual B<noderange> may be prefixed with an exclusion operator
-(default -) with the exception of the file operator (default ^).  This will cause
+(default -).  This will cause
 that individual noderange to be subtracted from the total resulting list of nodes.
 
 The intersection operator @ calculates the intersection of the left and
@@ -240,7 +225,7 @@ Generate a list of nodes in the 1st two frames:
 =head1 B<Bugs>
 
 The special characters used by xCAT B<noderange> are also special characters
-to many shell programs.  In particular, the characters `*', `[', `]', `^',
+to many shell programs.  In particular, the characters `*', `[', `]',
 and `~' may have to be escaped from the shell.
 
 =head1 B<SEE ALSO>
