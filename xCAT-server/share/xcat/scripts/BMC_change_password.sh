@@ -74,7 +74,7 @@ do
             echo "$name: Can not change password for $SYSTEM_TYPE system - $PW_PAM_VALIDATION"
         elif [[ -z "$PasswordChanged" ]]; then
             # If no output, password change was successful
-            echo "$name: Password for $SYSTEM_TYPE system changed" 
+            echo "$name: Password for $SYSTEM_TYPE system changed. It might take up to 5 minutes for the BMC to update." 
         else
             # Some unexpected output changing the password - report error and show output
             echo "$name: Unable to change password for $SYSTEM_TYPE system - $PasswordChanged"
@@ -93,7 +93,7 @@ do
             echo "$name: Can not change password for $SYSTEM_TYPE system - $PW_PAM_VALIDATION"
         elif [[ -z "$PasswordChanged" ]]; then
             # If no output, password change was successful
-            echo "$name: Password for $SYSTEM_TYPE system changed" 
+            echo "$name: Password for $SYSTEM_TYPE system changed. It might take up to 5 minutes for the BMC to update." 
         else
             # Some unexpected output changing the password - report error and show output
             echo "$name: Unable to change password for $SYSTEM_TYPE system - $PasswordChanged"
