@@ -11,12 +11,25 @@
 #    - report error is password does not meet PAM validation rules
 #   
 # Usage: $0 -r <ip_ranges> -n <new BMC Password>
+# Note: If this script is being used in the process of discovering new BMCs,
+#       the new BMC password should be passed to bmcdiscover command
+#       using the [-p|--bmcpasswd] option.
 ##########################################################################
 
 
 if [ $# -le 3 ];  then
+    echo "
+Change the default root or ADMIN password of the BMC to the one 
+specified by '-n' flag. Use the same password when discovering new 
+BMCs, by passing it with '[-p|--bmcpasswd]' option to 'bmcdiscover' command.
+"
     echo "Usage:"
     echo "      $0  -r <ip_ranges> -n <new BMC Password> "
+    echo "Examples:"
+    echo "      Target one node:"
+    echo "          $0  -r 172.11.139.1 -n 0penBmc123:"
+    echo "      Target a range of nodes:"
+    echo "          $0  -r 172.11.139.1-12 -n 0penBmc123:"
     exit
 fi
 
