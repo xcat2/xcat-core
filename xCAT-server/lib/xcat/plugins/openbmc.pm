@@ -91,6 +91,7 @@ $::RSPCONFIG_CONFIGURED_API_KEY  = -1;
 
 $::XCAT_LOG_DIR             = "/var/log/xcat";
 $::RAS_POLICY_TABLE         = "/opt/ibm/ras/lib/policyTable.json";
+$::RAS_POLICY_TABLE_RPM_LOC = "https://www.ibm.com/support/customercare/sas/f/lopdiags/scaleOutLCdebugtool.html#OpenBMC";
 $::XCAT_LOG_RFLASH_DIR      = $::XCAT_LOG_DIR . "/rflash/";
 $::XCAT_LOG_DUMP_DIR        = $::XCAT_LOG_DIR . "/dump/";
 
@@ -1122,7 +1123,7 @@ rmdir \"/tmp/\$userid\" \n";
     while (1) {
         unless ($wait_node_num) {
             if ($event_mapping and (ref($event_mapping) ne "HASH")) {
-                xCAT::SvrUtils::sendmsg("$event_mapping, install the OpenBMC RAS package to obtain more details logging messages.", $callback);
+                xCAT::MsgUtils->message("I", { data=> ["$event_mapping, install the openbmctool rpm from $::RAS_POLICY_TABLE_RPM_LOC to obtain more detailed logging messages."]}, $callback);
             }
             if ($next_status{LOGIN_RESPONSE} eq "RSPCONFIG_SSHCFG_REQUEST") {
                 my $home = xCAT::Utils->getHomeDir("root");

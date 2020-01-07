@@ -265,7 +265,8 @@ EVENTLOG_URLS     = {
 }
 
 RAS_POLICY_TABLE  = "/opt/ibm/ras/lib/policyTable.json"
-RAS_POLICY_MSG    = "Install the OpenBMC RAS package to obtain more detailed logging messages."
+RAS_POLICY_TABLE_RPM_LOC = "https://www.ibm.com/support/customercare/sas/f/lopdiags/scaleOutLCdebugtool.html#OpenBMC"
+RAS_POLICY_MSG    = "Install the openbmctool rpm from " + RAS_POLICY_TABLE_RPM_LOC + " to obtain more detailed logging messages."
 RAS_NOT_FOUND_MSG = " Not found in policy table: "
 
 RESULT_OK = 'ok'
