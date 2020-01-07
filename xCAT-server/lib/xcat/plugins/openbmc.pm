@@ -1123,7 +1123,7 @@ rmdir \"/tmp/\$userid\" \n";
     while (1) {
         unless ($wait_node_num) {
             if ($event_mapping and (ref($event_mapping) ne "HASH")) {
-                xCAT::SvrUtils::sendmsg("$event_mapping, install the openbmctool rpm from $::RAS_POLICY_TABLE_RPM_LOC to obtain more detailed logging messages.", $callback);
+                xCAT::MsgUtils->message("I", { data=> ["$event_mapping, install the openbmctool rpm from $::RAS_POLICY_TABLE_RPM_LOC to obtain more detailed logging messages."]}, $callback);
             }
             if ($next_status{LOGIN_RESPONSE} eq "RSPCONFIG_SSHCFG_REQUEST") {
                 my $home = xCAT::Utils->getHomeDir("root");
