@@ -200,7 +200,7 @@ sub bmcdiscovery_usage {
     push @{ $rsp->{data} }, "Usage:";
     push @{ $rsp->{data} }, "\tbmcdiscover [-?|-h|--help]";
     push @{ $rsp->{data} }, "\tbmcdiscover [-v|--version]";
-    push @{ $rsp->{data} }, "\tbmcdiscover [--sn <SN_nodename>] [-s scan_method] [-u bmc_user] [-p bmc_passwd] [-z] [-w] --range ip_range\n";
+    push @{ $rsp->{data} }, "\tbmcdiscover --range ip_range <ip_range> [--sn <SN_nodename>] [-s <scan_method>] [-u <bmc_user>] [-p <bmc_passwd>] [-z] [-w]\n";
 
     xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
     return 0;
