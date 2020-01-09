@@ -1623,37 +1623,37 @@ sub process_request
                 }
             }
         }
-        @entries = xCAT::TableUtils->get_site_attribute("nameservers");
-        $t_entry = $entries[0];
-        if (defined($t_entry)) {
-            $sitenameservers = $t_entry;
-        }
-        @entries = xCAT::TableUtils->get_site_attribute("ntpservers");
-        $t_entry = $entries[0];
-        if (defined($t_entry)) {
-            $sitentpservers = $t_entry;
-        }
-        @entries = xCAT::TableUtils->get_site_attribute("logservers");
-        $t_entry = $entries[0];
-        if (defined($t_entry)) {
-            $sitelogservers = $t_entry;
-        }
-        @entries = xCAT::TableUtils->get_site_attribute("domain");
-        $t_entry = $entries[0];
-
-        unless (defined($t_entry))
-        {
-            # this may not be an error
-            #    $callback->(
-            #         {error => ["No domain defined in site tabe"], errorcode => [1]}
-            #         );
-            #    return;
-        } else {
-            $site_domain = $t_entry;
-        }
-
-        xCAT::MsgUtils->trace($verbose_on_off, "d", "dhcp: sitelogservers=$sitelogservers sitentpservers=$sitentpservers sitenameservers=$sitenameservers site_domain=$site_domain");
     }
+    @entries = xCAT::TableUtils->get_site_attribute("nameservers");
+    $t_entry = $entries[0];
+    if (defined($t_entry)) {
+        $sitenameservers = $t_entry;
+    }
+    @entries = xCAT::TableUtils->get_site_attribute("ntpservers");
+    $t_entry = $entries[0];
+    if (defined($t_entry)) {
+        $sitentpservers = $t_entry;
+    }
+    @entries = xCAT::TableUtils->get_site_attribute("logservers");
+    $t_entry = $entries[0];
+    if (defined($t_entry)) {
+        $sitelogservers = $t_entry;
+    }
+    @entries = xCAT::TableUtils->get_site_attribute("domain");
+    $t_entry = $entries[0];
+
+    unless (defined($t_entry))
+    {
+        # this may not be an error
+        #    $callback->(
+        #         {error => ["No domain defined in site tabe"], errorcode => [1]}
+        #         );
+        #    return;
+    } else {
+        $site_domain = $t_entry;
+    }
+
+    xCAT::MsgUtils->trace($verbose_on_off, "d", "dhcp: sitelogservers=$sitelogservers sitentpservers=$sitentpservers sitenameservers=$sitenameservers site_domain=$site_domain");
 
     @dhcpconf  = ();
     @dhcp6conf = ();
