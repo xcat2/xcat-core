@@ -448,7 +448,7 @@ sub refactor_args {
         }
     }
     if ($command eq "reventlog") {
-        if (!defined($extrargs->[0])) {
+        if ((!defined($extrargs->[0])) or ($extrargs->[0] =~ /^-V/)) {
             # If no parameters are passed, default to list all records
             $request->{arg} = ["list","all"];
         }
