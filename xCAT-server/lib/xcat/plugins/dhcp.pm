@@ -1563,6 +1563,8 @@ sub process_request
     my %activenics;
     my $querynics = 1;
 
+    my @entries = xCAT::TableUtils->get_site_attribute("dhcpinterfaces");
+    my $t_entry = $entries[0];
     if (xCAT::Utils->isServiceNode() and $dhcpinterfaces and $dhcpinterfaces->{dhcpinterfaces}) {
         # The keyword 'noboot' was appended to the NICs that doesn't need to reply DHCP configuration file, only used for mknb at present.
         $dhcpinterfaces->{dhcpinterfaces} =~ s/:noboot//g;
@@ -1574,8 +1576,6 @@ sub process_request
     }
     else
     {
-        my @entries = xCAT::TableUtils->get_site_attribute("dhcpinterfaces");
-        my $t_entry = $entries[0];
         unless (defined($t_entry))
         {    #LEGACY: singular keyname for old style site value
             @entries = xCAT::TableUtils->get_site_attribute("dhcpinterface");
