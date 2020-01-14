@@ -2,3 +2,4 @@ iputils
 vim
 openssl
 rsync
+insserv-compat

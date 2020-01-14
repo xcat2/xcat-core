@@ -57,6 +57,7 @@ vsftpd
 wget
 which
 zypper
+insserv-compat
 
 #for database
 unixODBC
