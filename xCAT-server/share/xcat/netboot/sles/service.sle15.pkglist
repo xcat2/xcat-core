@@ -58,7 +58,7 @@ wget
 which
 zypper
 insserv-compat
-
+net-tools-deprecated
 #for database
 unixODBC
 perl-DBD-mysql
