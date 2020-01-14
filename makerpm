@@ -69,7 +69,11 @@ function makenoarch {
 		sed -i "s/^Release: .*/Release: 1/" $RPMNAME/$RPMNAME.spec
 		tar --exclude .svn -czf $RPMROOT/SOURCES/$RPMNAME-$VER.tar.gz $RPMNAME
 		rm -f $RPMROOT/SRPMS/$RPMNAME-$VER*rpm $RPMROOT/RPMS/noarch/$RPMNAME-$VER*rpm
-		rpmbuild $QUIET -ta $RPMROOT/SOURCES/$RPMNAME-$VER.tar.gz --define "version $VER" $REL "$EASE"
+		if [ -z "$SRCONLY" ]; then 
+			rpmbuild $QUIET -ta $RPMROOT/SOURCES/$RPMNAME-$VER.tar.gz --define "version $VER" $REL "$EASE"
+		else
+			rpmbuild $QUIET -ts $RPMROOT/SOURCES/$RPMNAME-$VER.tar.gz --define "version $VER" $REL "$EASE"
+		fi
 		RC=$?
 
 		if [ $RPMNAME = "xCAT-UI" ]; then
@@ -168,7 +172,11 @@ function makexcat {
 
 		rm -f $RPMROOT/SRPMS/$RPMNAME-$VER*rpm $RPMROOT/RPMS/$ARCH/$RPMNAME-$VER*rpm
 		echo "Building $RPMROOT/RPMS/$ARCH/$RPMNAME-$VER-snap*.$ARCH.rpm $EMBEDTXT..."
-		rpmbuild $QUIET -ba $RPMNAME/$RPMNAME.spec $TARGET --define "version $VER" $REL "$EASE"
+		if [ -z "$SRCONLY" ]; then 
+			rpmbuild $QUIET -ba $RPMNAME/$RPMNAME.spec $TARGET --define "version $VER" $REL "$EASE"
+		else
+			rpmbuild $QUIET -bs $RPMNAME/$RPMNAME.spec $TARGET --define "version $VER" $REL "$EASE"
+		fi
 		RC=$?
 		if [ "$RPMNAME" = "xCAT" ]; then
 			files=("bmcsetup" "getipmi")
@@ -211,7 +219,11 @@ function makegenesis {
 	cd - >/dev/null
 	rm -f $RPMROOT/SRPMS/$RPMNAME-$VER*rpm $RPMROOT/RPMS/noarch/$RPMNAME-$VER*rpm
 	echo "Building $RPMROOT/RPMS/noarch/$RPMNAME-$VER-snap*.noarch.rpm $EMBEDTXT..."
-	rpmbuild $QUIET -ba $DIR/$RPMNAME.spec --define "version $VER" $REL "$EASE"
+	if [ -z "$SRCONLY" ]; then 
+		rpmbuild $QUIET -ba $DIR/$RPMNAME.spec --define "version $VER" $REL "$EASE"
+	else
+		rpmbuild $QUIET -bs $DIR/$RPMNAME.spec --define "version $VER" $REL "$EASE"
+	fi
 }
 
 function makegenesisscripts {
@@ -233,7 +245,11 @@ function makegenesisscripts {
 	echo "Building $RPMROOT/RPMS/noarch/$RPMNAME-$ARCH-$VER-snap*.noarch.rpm $EMBEDTXT..."
 	sed -i "s/^Version: .*/Version: $XCATVER/" $DIR/$RPMNAME.spec
 	sed -i "s/^Release: .*/Release: 1/" $DIR/$RPMNAME.spec
-	rpmbuild $QUIET -ba $DIR/$RPMNAME.spec $TARGET --define "version $VER" $REL "$EASE"
+	if [ -z "$SRCONLY" ]; then 
+		rpmbuild $QUIET -ba $DIR/$RPMNAME.spec $TARGET --define "version $VER" $REL "$EASE"
+	else
+		rpmbuild $QUIET -bs $DIR/$RPMNAME.spec $TARGET --define "version $VER" $REL "$EASE"
+	fi
 }
 
 
