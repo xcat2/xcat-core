@@ -46,4 +46,4 @@ kernel-default
 kernel-firmware
 adaptec-firmware
 xz
-insserv
+insserv-compat

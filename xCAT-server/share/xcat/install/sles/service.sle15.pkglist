@@ -3,7 +3,7 @@
 openssl
 ntp
 rsync
-insserv
+insserv-compat
 nmap
 perl-DBI
 vsftpd
