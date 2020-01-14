@@ -47,3 +47,4 @@ kernel-firmware
 adaptec-firmware
 xz
 SLE_HPC-release
+insserv
