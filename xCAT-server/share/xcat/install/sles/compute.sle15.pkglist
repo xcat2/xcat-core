@@ -3,3 +3,4 @@ vim
 openssl
 rsync
 insserv-compat
+net-tools-deprecated

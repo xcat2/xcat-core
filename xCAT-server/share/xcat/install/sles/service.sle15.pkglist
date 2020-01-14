@@ -4,6 +4,7 @@ openssl
 ntp
 rsync
 insserv-compat
+net-tools-deprecated
 nmap
 perl-DBI
 vsftpd

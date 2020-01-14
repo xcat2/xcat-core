@@ -47,3 +47,4 @@ kernel-firmware
 adaptec-firmware
 xz
 insserv-compat
+net-tools-deprecated
