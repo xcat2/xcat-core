@@ -44,6 +44,9 @@
       <!-- XCAT-PARTITION-END -->
     </partitioning>
     <software>
+      <products config:type="list">
+        <product>SLES</product>
+      </products>
       <patterns config:type="list">
         #INCLUDE_DEFAULT_PTRNLIST_S#
       </patterns>
@@ -83,9 +86,9 @@
       </routing>
     </networking>
     <scripts>
-   #INCLUDE:#ENV:XCATROOT#/share/xcat/install/scripts/pre.sles#
+   #INCLUDE:#ENV:XCATROOT#/share/xcat/install/scripts/pre.sle#
    #INCLUDE:#ENV:XCATROOT#/share/xcat/install/scripts/chroot.sles#
-   #INCLUDE:#ENV:XCATROOT#/share/xcat/install/scripts/post.sles11#
+   #INCLUDE:#ENV:XCATROOT#/share/xcat/install/scripts/post.sle#
     </scripts>
   </configure>
 </profile>
