@@ -1802,13 +1802,13 @@ sub rmvm {
             unless ($driver[0]) { next; }
             my $drivertype = $driver[0]->getAttribute("type");
             if (($drivertype eq "raw") || ($disktype eq "block")) {
-                #For raw or block devices, do not remove, even if purge was specified. Log info message.
-                xCAT::MsgUtils->trace(0, "i", "Not purging raw or block storage device: $disk");
+                # For raw or block devices, do not remove device, even if purge was specified. Display info message.
+                xCAT::SvrUtils::sendmsg("Not purging raw or block storage device: $disk", $callback, $node);
                 next;
             }
             my $file = $disk->getAttribute("file");
             unless ($file) {
-                xCAT::MsgUtils->trace(0, "w", "Not able to find 'file' attribute value for: $disk");
+                xCAT::SvrUtils::sendmsg("Not able to find 'file' attribute value for: $disk", $callback, $node);
                 next;
             }
 
