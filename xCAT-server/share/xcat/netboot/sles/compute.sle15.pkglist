@@ -28,7 +28,6 @@ binutils
 tar
 open-iscsi
 curl
-plymouth
 btrfsprogs
 cryptsetup
 dmraid
@@ -40,7 +39,6 @@ cifs-utils
 open-lldp
 fcoe-utils
 util-linux-systemd
-plymouth-dracut
 udev
 kernel-default
 kernel-firmware
