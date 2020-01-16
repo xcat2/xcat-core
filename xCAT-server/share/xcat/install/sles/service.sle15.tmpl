@@ -43,9 +43,14 @@
       </drive>
       <!-- XCAT-PARTITION-END -->
     </partitioning>
+    <add-on>
+        <add_on_products config:type="list">
+            #INSTALL_SOURCES#
+        </add_on_products>
+    </add-on>
     <software>
       <products config:type="list">
-        <product>SLES</product>
+          <product>SLES</product>
       </products>
       <patterns config:type="list">
         #INCLUDE_DEFAULT_PTRNLIST_S#
