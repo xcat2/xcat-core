@@ -282,7 +282,7 @@ if [ $? -eq 0 ]; then
 fi
 
 if [ $hassystemd -eq 1 ] ; then
-    if [[ $OSVER == sles12* ]]; then
+    if [[ $OSVER =~ sle && $OSVER != sles11* ]]; then
         cat >/etc/systemd/system/xcatpostinit1.service <<'EOF'
 #INCLUDE:/install/postscripts/xcatpostinit1.service.yast2#
 EOF
@@ -514,7 +514,7 @@ cd /
 # To skip the conflict, the network service should be stoped in the yast first stage. Then base on the service
 # dependency, the service start order will be 'YaST2-Second-Stage.service'->'network'->'xcatpostinit1' in serial.
 # Then the Yast2 will be stopped before running the zypper in otherpkgs.
-if [[ $OSVER =~ sles && $OSVER != sles11* ]]; then
+if [[ $OSVER =~ sle && $OSVER != sles11* ]]; then
     service network stop
 fi
 

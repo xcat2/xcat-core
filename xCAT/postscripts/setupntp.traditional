@@ -94,7 +94,7 @@ if [ $OS_TYPE = Linux ]; then
 
     mkdir -p /var/lib/ntp
     chown ntp /var/lib/ntp
-    if ( pmatch $OSVER "sles*" ) || ( pmatch $OSVER "suse*" ) || [ -f /etc/SuSE-release ];then
+    if ( pmatch $OSVER "sle*" ) || ( pmatch $OSVER "suse*" ) || [ -f /etc/SuSE-release ];then
         echo "driftfile /var/lib/ntp/drift/ntp.drift" >>$conf_file
     else
         echo "driftfile /var/lib/ntp/drift" >>$conf_file
@@ -135,7 +135,7 @@ if [ $OS_TYPE = Linux ]; then
     hwclock --systohc --utc
 
     #setup the RTC is UTC format, which will be used by os
-    if ( pmatch $OSVER "sles*" ) || ( pmatch $OSVER "suse*" ) || [ -f /etc/SuSE-release ];then
+    if ( pmatch $OSVER "sle*" ) || ( pmatch $OSVER "suse*" ) || [ -f /etc/SuSE-release ];then
         grep -i -q "HWCLOCK" /etc/sysconfig/clock
         if [ $? -eq 0 ];then
             sed -i 's/.*HWCLOCK.*/HWCLOCK=\"-u\"/' /etc/sysconfig/clock
