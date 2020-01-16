@@ -1,8 +1,10 @@
 @base
 @x11
 openssl
+iputils
 ntp
 rsync
+rsyslog
 insserv-compat
 net-tools-deprecated
 nmap
@@ -13,12 +15,10 @@ perl-Expect
 perl-SNMP
 unixODBC
 perl-Net-DNS
+perl-DBD-Pg
+postgresql-server
 perl-DBD-mysql
 mariadb-client
-libmysqlclient18
-#   The following rpms are available on the SLES SDK
-#   You will need to locate and make these rpms available in your zypper
-#   repository for service node installs and uncomment the following lines:
-#MyODBC-unixODBC
-#perl-DBD-Pg
+#libmysqlclient18
+vim
 

@@ -4,3 +4,4 @@ openssl
 rsync
 insserv-compat
 net-tools-deprecated
+rsyslog
