@@ -5,10 +5,10 @@ function runcmd(){
     echo "Run command $* ..."
     result=`$*`
     if [[ $? -eq 0 ]];then
-        echo -e "Run command $*... [Succeed]\n";
+        echo -e "Run command $* ... [Succeed]\n";
         return 0;
     else
-        echo -e "Run command $*... [Failed]\n";
+        echo -e "Run command $* ... [Failed]\n";
         return 1;
     fi
 }
@@ -41,11 +41,14 @@ function check_destiny() {
     else
         cmd="ip addr add $MASTER_PRIVATE_IP/$MASTER_PRIVATE_NETMASK dev $NET2";
         runcmd $cmd;
+        echo "Check if ip addess $MASTER_PRIVATE_IP/$MASTER_PRIVATE_NETMASK is added for $NET2"
+        ip addr show $NET2
         cmd="makenetworks";
         runcmd $cmd;
-        ip addr show
+        tabdump networks
         cmd="makehosts ${TESTNODE}"
         runcmd $cmd
+        echo "Check if ${TESTNODE} can be found in /etc/hosts"
         grep ${TESTNODE} /etc/hosts 
         cmd="nodeset ${TESTNODE}  shell";
         runcmd $cmd;
