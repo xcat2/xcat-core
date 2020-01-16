@@ -51,6 +51,10 @@ my $openbmc_pass;
 my $done_num = 0;
 $::P9_WITHERSPOON_MFG_ID     = "42817";
 $::P9_WITHERSPOON_PRODUCT_ID = "16975";
+$::CHANGE_PW_REQUIRED="The password provided for this account must be changed before access is granted";
+$::NO_SESSION="Unable to establish IPMI v2 / RMCP";
+$::CHANGE_PW_INSTRUCTIONS_1="Run script '/opt/xcat/share/xcat/scripts/BMC_change_password.sh' to change default password";
+$::CHANGE_PW_INSTRUCTIONS_2="Rerun 'bmcdiscover' command with '-p new_bmc_password' flag";
 %::VPDHASH = ();
 my %node_in_list = ();
 
@@ -196,7 +200,7 @@ sub bmcdiscovery_usage {
     push @{ $rsp->{data} }, "Usage:";
     push @{ $rsp->{data} }, "\tbmcdiscover [-?|-h|--help]";
     push @{ $rsp->{data} }, "\tbmcdiscover [-v|--version]";
-    push @{ $rsp->{data} }, "\tbmcdiscover [--sn <SN_nodename>] [-s scan_method] [-u bmc_user] [-p bmc_passwd] [-z] [-w] --range ip_range\n";
+    push @{ $rsp->{data} }, "\tbmcdiscover --range ip_range <ip_range> [--sn <SN_nodename>] [-s <scan_method>] [-u <bmc_user>] [-p <bmc_passwd>] [-z] [-w]\n";
 
     xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
     return 0;
@@ -748,9 +752,11 @@ sub scan_process {
                 $bmcpassword = "-P $bmc_pass" if ($bmc_pass);
 
                 my @mc_cmds = ("/opt/xcat/bin/ipmitool-xcat -I lanplus -H ${$live_ip}[$i] -P $openbmc_pass mc info -N 1 -R 1",
-                              "/opt/xcat/bin/ipmitool-xcat -I lanplus -H ${$live_ip}[$i] $bmcusername $bmcpassword mc info -N 1 -R 1");
+                               "/opt/xcat/bin/ipmitool-xcat -I lanplus -H ${$live_ip}[$i] -U $openbmc_user -P $openbmc_pass mc info -N 1 -R 1",
+                               "/opt/xcat/bin/ipmitool-xcat -I lanplus -H ${$live_ip}[$i] $bmcusername $bmcpassword mc info -N 1 -R 1");
                 my $mc_info;
                 my $is_openbmc = 0;
+                my $is_ipmi = 0;
                 foreach my $mc_cmd (@mc_cmds) {
                     $mc_info = xCAT::Utils->runcmd($mc_cmd, -1);
                     if ($::RUNCMD_RC != 0) {
@@ -761,12 +767,37 @@ sub scan_process {
                         if ($1 eq $::P9_WITHERSPOON_MFG_ID and $2 eq $::P9_WITHERSPOON_PRODUCT_ID) {
                             bmcdiscovery_openbmc(${$live_ip}[$i], $opz, $opw, $request_command,$parent_fd);
                             $is_openbmc = 1;
+                            $is_ipmi = 0;
+                            last;
+                        }
+                        else {
+                            # System replied to mc info but not with $::P9_WITHERSPOON_MFG_ID and $::P9_WITHERSPOON_PRODUCT_ID, assume IPMI
+                            $is_openbmc = 0;
+                            $is_ipmi = 1;
                             last;
                         }
                     }
                 }
-                unless ($is_openbmc) {
+
+                if ($is_ipmi) {
                     bmcdiscovery_ipmi(${$live_ip}[$i], $opz, $opw, $request_command,$parent_fd);
+                }
+                if (!$is_openbmc and !$is_ipmi) {
+                    if ($mc_info =~ /$::NO_SESSION/) {
+                        # Did not get usefull data from ipmi mc info, could be one of two possibilities:
+                        # 1. Incorrect pw was used
+                        # 2. New system installed after January 1, 2020 where default password needs to be changed
+                        #
+                        # Verify this is case 2, by attempting to establish a RedFish session
+                        my $redfish_session_cmd = "curl -sD - --data '{\"UserName\":\"$openbmc_user\",\"Password\":\"$openbmc_pass\"}' -k -X POST https://${$live_ip}[$i]/redfish/v1/SessionService/Sessions";
+                        my $redfish_session_info = xCAT::Utils->runcmd($redfish_session_cmd, -1);
+                        if ($redfish_session_info =~ /$::CHANGE_PW_REQUIRED/) {
+                            # RedFish session replied that password change is needed. Print instructions and exit
+                            xCAT::MsgUtils->message("I", { data => ["${$live_ip}[$i]: $::CHANGE_PW_REQUIRED"] }, $::CALLBACK);
+                            xCAT::MsgUtils->message("I", { data => ["$::CHANGE_PW_INSTRUCTIONS_1"] }, $::CALLBACK);
+                            xCAT::MsgUtils->message("I", { data => ["$::CHANGE_PW_INSTRUCTIONS_2"] }, $::CALLBACK);
+                        }
+                    }
                 }
                 close($parent_fd);
                 exit 0;
