@@ -428,11 +428,13 @@ unless ($onlyinitrd) {
     #my $yumcmd = "yum -y -c /tmp/genimage.$$.yum.conf --installroot=$rootimg_dir --disablerepo=* ";
     #$yumcmd .= "install ";
     #mkpath("$rootimg_dir/var/lib/yum");
-    mkpath("$rootimg_dir/etc/");
-    my $passwdfile;
-    open($passwdfile, ">", "$rootimg_dir/etc/passwd");
-    print $passwdfile "root:x:0:0:root:/root:/bin/bash\n";
-    my $yumcmd;
+    if (! -f "$rootimg_dir/etc/passwd") {
+        mkpath("$rootimg_dir/etc/");
+        my $passwdfile;
+        open($passwdfile, ">", "$rootimg_dir/etc/passwd");
+        print $passwdfile "root:x:0:0:root:/root:/bin/bash\n";
+   }
+   my $yumcmd;
     if ($osver_host < 11) {
         $yumcmd = "zypper -R $rootimg_dir $non_interactive install ";
     } else {
@@ -987,6 +989,7 @@ if ($dracutmode) {
     push @ndrivers, @drivers;
     mkinitrd("stateless");
 }
+print "It is safe to ignore message 'Failed to connect to bus: No such file or directory' that may have appeared above one or more times.\n";
 
 sub getlibs {
     my $file    = shift;
