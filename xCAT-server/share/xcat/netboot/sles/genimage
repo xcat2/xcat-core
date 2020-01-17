@@ -203,7 +203,7 @@ unless (grep /af_packet/, @ndrivers) {
 }
 
 my $osver_host;
-if (`grep VERSION /etc/os-release` =~ /VERSION = (\d+)/) {
+if (`grep VERSION /etc/os-release` =~ /VERSION="(\d+)/) {
     $osver_host = $1;
 } else {
     $osver_host = 11;
