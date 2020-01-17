@@ -433,8 +433,8 @@ unless ($onlyinitrd) {
         my $passwdfile;
         open($passwdfile, ">", "$rootimg_dir/etc/passwd");
         print $passwdfile "root:x:0:0:root:/root:/bin/bash\n";
-   }
-   my $yumcmd;
+    }
+    my $yumcmd;
     if ($osver_host < 11) {
         $yumcmd = "zypper -R $rootimg_dir $non_interactive install ";
     } else {
