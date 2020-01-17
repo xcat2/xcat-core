@@ -254,7 +254,7 @@ unless ($onlyinitrd) {
     mkpath "$rootimg_dir/sys";
 
     #needed for newer versions of the SLE permissions RPM. See: https://github.com/openSUSE/permissions/commit/2d0ef5d55b30f72322d18951214353ecfd9c4245
-    system "mount -t proc none $rootimg_dir/proc";
+    system "mount -t proc proc $rootimg_dir/proc";
     #Create /sys to have /sys/kernel/fscaps. Fixes: "Warning: running kernel does not support fscaps"
     system "mount -o bind /sys $rootimg_dir/sys";
 
