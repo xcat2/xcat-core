@@ -1999,9 +1999,12 @@ sub generic_post { # This function is meant to leave the image in a state approx
     print $cfgfile "NETWORKING=yes\n";
     close($cfgfile);
 
-    open($cfgfile, ">", "$rootimg_dir/etc/resolv.conf");
-    print $cfgfile "#Dummy resolv.conf to make boot cleaner";
-    close($cfgfile);
+    # SLE15 has a symlink to /run/netconfig/resolv.conf and does not need a dummy file
+    if (! -l "$rootimg_dir/etc/resolv.conf") {
+        open($cfgfile, ">", "$rootimg_dir/etc/resolv.conf");
+        print $cfgfile "#Dummy resolv.conf to make boot cleaner";
+        close($cfgfile);
+    }
 
     # Create the ifcfg-x file for diskless node. But keep the ONBOOT=no
     # to skip the break of nfs-based boot
