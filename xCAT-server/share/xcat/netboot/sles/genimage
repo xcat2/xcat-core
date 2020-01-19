@@ -275,7 +275,7 @@ unless ($onlyinitrd) {
     for (my $i = 0 ; $i <= 12 ; $i++)
     {
         unless (-e "$rootimg_dir/dev/tty$i") {
-            system "mknod -m 0620 $rootimg_dir/dev/tty$i c 4 $i"; #that's neccessary for SLES11+
+            system "mknod $rootimg_dir/dev/tty$i c 4 $i"; #that's neccessary for SLES11+
         }
     }
 
