@@ -989,7 +989,6 @@ if ($dracutmode) {
     push @ndrivers, @drivers;
     mkinitrd("stateless");
 }
-print "It is safe to ignore message 'Failed to connect to bus: No such file or directory' that may have appeared above one or more times.\n";
 
 sub getlibs {
     my $file    = shift;
