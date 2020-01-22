@@ -1753,10 +1753,22 @@ sub copycd
         }
         if ($dsc =~ /Installer/ and $dsc =~ /SLE-15/) {
             $discnumber = 1;
-            unless ($distname) { $distname = "sle15" };
+            unless ($distname) {
+                if ($dsc =~ /SLE-15-SP(\d)/) {
+                    $distname = "sle15.$1";
+                } else {
+                    $distname = "sle15";
+                }
+            };
         } elsif ($dsc =~ /SLE-15/ and $dsc =~ /Packages/) {
             $discnumber = 2;
-            unless ($distname) { $distname = "sle15" };
+            unless ($distname) {
+                if ($dsc =~ /SLE-15-SP(\d)/) {
+                    $distname = "sle15.$1";
+                } else {
+                    $distname = "sle15";
+                }
+            };
         }
     }
 
