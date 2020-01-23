@@ -47,6 +47,10 @@ check:rc==0
 cmd:chdef -t node $$CN -p postscripts=enablekdump
 check:rc==0
 
+# Verify kdump related attributes showup in the osimage and node definitions
+cmd:lsdef -t node $$CN -i postscripts
+cmd:lsdef -t osimage __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute -i crashkernelsize,dump
+
 cmd:rmimage  __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute
 cmd:genimage  __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute
 check:rc==0
@@ -78,6 +82,12 @@ cmd:a=`xdsh $$CN rpm -q at`;if [[ $a =~ "package at is not installed" ]]; then x
 
 cmd:xdsh $$CN "service atd start"
 check:rc==0
+
+# Verify that kdump directory from management node is still mounted on the compute node
+cmd:xdsh $$CN df -H
+
+# Verify enablekdump postscript was executed on the compute node
+cmd:xdsh $$CN grep "enablekdump return with" /var/log/xcat/xcat.log
 
 cmd:xdsh $$CN "at now +1 minutes <<< /tmp/kdump.trigger"
 cmd:sleep 300
