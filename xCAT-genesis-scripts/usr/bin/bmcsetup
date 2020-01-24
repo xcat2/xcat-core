@@ -167,7 +167,8 @@ logger -s -t $log_label -p local4.info "IPMIVER=$IPMIVER, IPMIMFG=$IPMIMFG, XPRO
 #
 # IPMIMFG=2 = IBM
 # IPMIMFG=0 = OpenPOWER
-# IPMIMFG=42817 and XPROD=16975 = OpenBMC
+# IPMIMFG=42817 and XPROD=16975 = OpenBMC (Witherspoon)
+# IPMIMFG=42817 and XPROD=1 = OpenBMC (Mihawk)
 #
 if [ "$IPMIMFG" == 2 ]; then #IBM
     if [ "$XPROD" == "220" ]; then
@@ -265,7 +266,9 @@ elif [ "$IPMIMFG" == "674" ]; then # DELL
         ipmitool delloem lan set shared with lom$BMCPORT &>/dev/null
         ipmitool delloem lan set shared with failover all loms &>/dev/null
     fi
-elif [ "$IPMIMFG" = "42817" -a "$XPROD" = "16975" ]; then # IBM OpenPOWER servers with OpenBMC
+elif [ "$IPMIMFG" = "42817" -a "$XPROD" = "16975" ]; then # IBM OpenPOWER servers with OpenBMC (Witherspoon)
+    ISOPENBMC=1
+elif [ "$IPMIMFG" = "42817" -a "$XPROD" = "1" ]; then # IBM OpenPOWER servers with OpenBMC (Mihawk)
     ISOPENBMC=1
 fi
 
