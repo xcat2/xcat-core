@@ -225,7 +225,7 @@ sub parse_args {
         return (usage());
     }
 
-    $request->{callback}->({ data => ["It may take considerable time to complete, depending on the number of systems being updated.  In particular, power subsystem updates may take an hour or more if there are many attached managed systems. Please waiting. "] });
+    $request->{callback}->({ data => ["It may take considerable time to complete, depending on the number of systems being updated.  In particular, power subsystem updates may take an hour or more if there are many attached managed systems. Please wait. "] });
 
     if ($request->{hwtype} =~ /^(fsp|bpa)$/ && $opt{activate} =~ /^disruptive$/) {
         $request->{callback}->({ data => ["You can find the log files in the /var/log/xcatd/dfm/rflash/."] });
@@ -376,8 +376,7 @@ sub preprocess_for_rflash {
         my @xmllist = grep /\.xml$/, @dirlist;
         if (@rpmlist == 0 | @xmllist == 0) {
 
-            #send_msg($request, 1, "There isn't any rpm and xml files in the  directory $packages_d!");
-            $callback->({ data => ["There isn't any rpm and xml files in the  directory $packages_d!"] });
+            $callback->({ data => ["There are no rpm and xml files in the directory $packages_d!"] });
             $request = ();
             return -1;
         }
@@ -528,7 +527,8 @@ sub get_lic_filenames {
     @dirlist = grep /\.rpm$/, @dirlist;
     @dirlist = grep /$1/,     @dirlist;
     if (!scalar(@dirlist)) {
-        $msg = "There isn't a package suitable for $mtms";
+        # the last grep above is  using $1, which is $pns, the output message should help figure out what is wrong
+        $msg = "Existing firmware type is: $pns, no matching firmware package found in directory";
         return ("", "", "", $msg, -1);
     }
     if (scalar(@dirlist) > 1) {
@@ -844,7 +844,7 @@ sub rflash {
     }
 
 
-    push(@value, [ $hmc, "copy files to $hmc completely" ]);
+    push(@value, [ $hmc, "copying of files to $hmc completed" ]);
 
     ###############################################
     # Now that all the stanzas files have been built and copied to the HMCs,
@@ -886,7 +886,7 @@ sub rflash {
         my $rsp = {};
         $rsp->{data}->[0] = "Error from xdsh. Return Code = $::RUNCMD_RC";
         xCAT::MsgUtils->message("S", $rsp, $::CALLBACK, 1);
-        dpush(\@value, [ $hmc, "failed to run  xdsh" ]);
+        dpush(\@value, [ $hmc, "failed to run xdsh command - $cmd_hmc" ]);
         push(@value, [ $hmc, $rsp->{data}->[0] ]);
         push(@value, [ $hmc, "Failed to upgrade the firmware of $mtms_t  on $hmc" ]);
         return (\@value);

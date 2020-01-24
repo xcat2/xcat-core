@@ -2,9 +2,9 @@
 #
 # go-xcat - Install xCAT automatically.
 #
-# Version 1.0.36
+# Version 1.0.44
 #
-# Copyright (C) 2016, 2017, 2018 International Business Machines
+# Copyright (C) 2016 - 2019 International Business Machines
 # Eclipse Public License, Version 1.0 (EPL-1.0)
 #     <http://www.eclipse.org/legal/epl-v10.html>
 #
@@ -23,6 +23,10 @@
 #     - xCAT uninstallation
 # 2019-03-22 GONG Jie <gongjie@linux.vnet.ibm.com>
 #     - Better debug log when reading repository failed
+# 2019-08-15 Mark Gurevich <gurevich@us.ibm.com>
+#     - Added conserver-xcat to uninstall list
+# 2019-10-23 Mark Gurevich <gurevich@us.ibm.com>
+#     - Display a list of packages that could not be uninstalled
 #
 
 function usage()
@@ -163,22 +167,24 @@ GO_XCAT_DEP_PACKAGE_LIST=()
 # The package list of all the packages should be installed
 GO_XCAT_INSTALL_LIST=(perl-xCAT xCAT xCAT-buildkit xCAT-client
 	xCAT-genesis-scripts-ppc64 xCAT-genesis-scripts-x86_64 xCAT-server
-	conserver-xcat elilo-xcat grub2-xcat ipmitool-xcat syslinux-xcat
+	elilo-xcat grub2-xcat ipmitool-xcat syslinux-xcat
 	xCAT-genesis-base-ppc64 xCAT-genesis-base-x86_64 xnba-undi yaboot-xcat)
 # For Debian/Ubuntu, it will need a sight different package list
 type dpkg >/dev/null 2>&1 &&
 GO_XCAT_INSTALL_LIST=(perl-xcat xcat xcat-buildkit xcat-client
 	xcat-genesis-scripts-amd64 xcat-genesis-scripts-ppc64 xcat-server
-	conserver-xcat elilo-xcat grub2-xcat ipmitool-xcat syslinux-xcat
+	elilo-xcat grub2-xcat ipmitool-xcat syslinux-xcat
 	xcat-genesis-base-amd64 xcat-genesis-base-ppc64 xnba-undi)
-# The package list of all the packages should be installed
+# The package list of all the packages should be uninstalled
 GO_XCAT_UNINSTALL_LIST=("${GO_XCAT_INSTALL_LIST[@]}"
 	goconserver xCAT-SoftLayer xCAT-confluent xCAT-csm xCAT-genesis-builder
-	xCAT-openbmc-py xCAT-probe xCAT-test xCAT-vlan xCATsn xCAT-UI-deps)
+	xCAT-openbmc-py xCAT-probe xCAT-test xCAT-vlan xCATsn xCAT-UI-deps
+    xCAT-buildkit conserver-xcat)
 # For Debian/Ubuntu, it will need a sight different package list
 type dpkg >/dev/null 2>&1 &&
 GO_XCAT_UNINSTALL_LIST=("${GO_XCAT_INSTALL_LIST[@]}"
-	goconserver xcat-confluent xcat-probe xcat-test xcat-vlan xcatsn)
+	goconserver xcat-confluent xcat-probe xcat-test xcat-vlan xcatsn
+    xcat-buildkit conserver-xcat)
 
 PATH="/usr/sbin:/usr/bin:/sbin:/bin"
 export PATH
@@ -748,19 +754,36 @@ function get_package_list_apt()
 	local repo_id="$1"
 	[[ -z "${repo_id}" ]] && return 1
 	local -i rc=0
-	awk '/^Package: / { print $2 }' \
-		"/var/lib/apt/lists/"*"_${repo_id}_dists"*"_main_binary-"*"_Packages" \
-		2>/dev/null
-	# This is a dirty hack, and use recursion.
+	local -a lists=()
+	local -a packages=()
+	local p
+	local q
+
+	for p in \
+		"/var/lib/apt/lists/"*"_${repo_id}_dists"*"_main_binary-"*"_Packages"
+	do
+		[[ -f "${p}" && -r "${p}" ]] && lists+=("${p}")
+	done
 	# For the `devel' branch of the online repo for apt, it has the
 	# subdirectory name of `core-snap' instead of `xcat-core'.
-	rc="$?"
-	if [[ "${rc}" -ne "0" && "${repo_id}" = "xcat-core" ]]
-	then
-		"${FUNCNAME}" "core-snap"
-		rc="$?"
-	fi
-	return "${rc}"
+	[[ "${repo_id}" == "xcat-core" ]] &&
+		for p in \
+			"/var/lib/apt/lists/"*"_core-snap_dists"*"_main_binary-"*"_Packages"
+		do
+			[[ -f "${p}" && -r "${p}" ]] && lists+=("${p}")
+		done
+	[[ "${#lists[@]}" -eq "0" ]] && return 1
+
+	while read -r q
+	do
+		for p in "${packages[@]}"
+		do
+			[[ "${q}" == "${p}" ]] && continue 2
+		done
+		packages+=("${q}")
+	done < <(awk '/^Package: / { print $2 }' "${lists[@]}" 2>/dev/null)
+
+	echo "${packages[@]}"
 }
 
 #       $1      repo id
@@ -866,6 +889,8 @@ function download_file_curl()
 		88) echo -n "FTP chunk callback reported error" ;;
 		89) echo -n "no connection available, the session will be queued" ;;
 		90) echo -n "SSL public key does not matched pinned public key" ;;
+		91) echo -n "invalid SSL certificate status" ;;
+		92) echo -n "stream error in HTTP/2 framing layer" ;;
 		*) echo -n "unknown error" ;;
 		esac
 		echo ")"
@@ -1553,6 +1578,7 @@ function remove_package_apt()
 	local -a yes=()
 	[[ "$1" = "-y" ]] && yes=("-y") && shift
 	apt-get --allow-unauthenticated remove "${yes[@]}" "$@"
+	warn_if_bad "$?" "Unable to remove xCAT packages: "`apt --installed list 2>&1 | grep xcat | cut -d '/' -f 1`
 }
 
 function remove_package()
@@ -1567,6 +1593,7 @@ function purge_package_apt()
 	local -a yes=()
 	[[ "$1" = "-y" ]] && yes=("-y") && shift
 	apt-get --allow-unauthenticated purge "${yes[@]}" "$@"
+	warn_if_bad "$?" "Unable to purge xCAT packages: "`apt --installed list 2>&1 | grep xcat | cut -d '/' -f 1`
 }
 
 function purge_package_others()
@@ -1979,8 +2006,8 @@ do
 		GO_XCAT_ACTION="$1"
 		case "$1 $2" in
 		"completely uninstall"|"smoke test")
-			shift
 			GO_XCAT_ACTION="$1 $2"
+			shift
 			;;
 		esac
 		;;
@@ -2069,22 +2096,17 @@ case "${GO_XCAT_ACTION}" in
 
 		debug_logger <<-EOF
 
-		xCAT has been completely uninstalled!
+		xCAT has been uninstalled.
+		To install again - https://xcat.org/download.html
 		EOF
 		;;
 	"uninstall")
 		debug_trace uninstall_xcat -y
-		boo_boo_if_bad "$?"
 
 		debug_logger <<-EOF
 
-		xCAT has been uninstalled!
-		==========================
-
-		If you intend to install xCAT again, please follow the guideline on the
-		xcat.org website.
-
-		https://xcat.org/download.html
+		xCAT has been uninstalled.
+		To install again - https://xcat.org/download.html
 		EOF
 		;;
 	esac

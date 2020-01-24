@@ -49,8 +49,9 @@ class OpenBMCBmcConfigTask(ParallelNodesCommand):
 
         formatted_time = time.strftime("%Y%m%d-%H%M", time.localtime(time.time()))
         dump_log_file = '%s%s_%s_dump_%s.tar.xz' % (XCAT_LOG_DUMP_DIR, formatted_time, node, download_id)
+        host_name = os.uname()[1].split('.', 1)[0]
         if flag_dump_process:
-            self.callback.info('%s: Downloading dump %s to %s' % (node, download_id, dump_log_file))
+            self.callback.info('%s: Downloading dump %s to %s:%s' % (node, download_id, host_name, dump_log_file))
 
         obmc.download_dump(download_id, dump_log_file)
         if os.path.exists(dump_log_file):
@@ -61,7 +62,7 @@ class OpenBMCBmcConfigTask(ParallelNodesCommand):
             if grep_string:
                 self.callback.error('Invalid dump %s was specified. Use -l option to list.' % download_id, node)
             else:
-                self.callback.info('%s: Downloaded dump %s to %s.' % (node, download_id, dump_log_file))
+                self.callback.info('%s: Downloaded dump %s to %s:%s.' % (node, download_id, host_name, dump_log_file))
         else:
             self.callback.error('Failed to download dump %s to %s.' % (download_id, dump_log_file), node)
         return
@@ -403,6 +404,25 @@ rmdir \"/tmp/$userid\" \n")
 
         self.callback.info("%s: BMC Setting %s..." % (node, openbmc.RSPCONFIG_APIS[key]['display_name']))
 
+    def _get_powersupplyredundancy_value(self, node, obmc):
+        try:
+            psr_info = obmc.get_powersupplyredundancy()
+            for key, value in psr_info.items():
+                if key == 'PowerSupplyRedundancyEnabled':
+                   result = '%s: %s: %s' % (node, openbmc.RSPCONFIG_APIS['powersupplyredundancy']['display_name'],
+                                             openbmc.RSPCONFIG_APIS['powersupplyredundancy']['attr_values'][str(value)][0])
+                   return self.callback.info(result)
+        except SelfServerException as e:
+            return self.callback.error(e.message, node)
+        except SelfClientException as e:
+            if e.code == 404:
+                return self.callback.error('404 Not Found - Requested endpoint does not exist or may ' \
+                                           'indicate function is not supported on this OpenBMC firmware.', node)
+            if e.code == 403:
+                return self.callback.error('403 Forbidden - Requested endpoint does not exist or may ' \
+                                           'indicate function is not yet supported by OpenBMC firmware.', node)
+            return self.callback.error(e.message, node)
+
     def _get_apis_values(self, key, **kw):
         node = kw['node']
         obmc = openbmc.OpenBMCRest(name=node, nodeinfo=kw['nodeinfo'], messager=self.callback,
@@ -415,6 +435,9 @@ rmdir \"/tmp/$userid\" \n")
             return self.callback.error(e.message, node)
         except SelfClientException as e:
             if e.code == 404:
+                if key == 'powersupplyredundancy':
+                    return self._get_powersupplyredundancy_value(node, obmc)
+
                 return self.callback.error('404 Not Found - Requested endpoint does not exist or may ' \
                                            'indicate function is not supported on this OpenBMC firmware.', node)
             if e.code == 403:
@@ -555,12 +578,12 @@ rmdir \"/tmp/$userid\" \n")
             addon_string = ''
             if dic_length > 1:
                 addon_string = " for %s" % nic
-            netinfodict['ip'].append("BMC IP"+addon_string+": %s" % attrs["ip"])
-            netinfodict['netmask'].append("BMC Netmask"+addon_string+": %s" % utils.mask_int2str(attrs["netmask"]))
-            netinfodict['gateway'].append("BMC Gateway"+addon_string+": %s (default: %s)" % (attrs["gateway"], defaultgateway))
-            netinfodict['vlan'].append("BMC VLAN ID"+addon_string+": %s" % attrs["vlanid"])
-            netinfodict['ipsrc'].append("BMC IP Source"+addon_string+": %s" % attrs["ipsrc"])
-            netinfodict['ntpservers'].append("BMC NTP Servers"+addon_string+": %s" % attrs["ntpservers"])
+            netinfodict['ip'].append("BMC IP"+addon_string+": %s" % attrs.get("ip", None))
+            netinfodict['netmask'].append("BMC Netmask"+addon_string+": %s" % utils.mask_int2str(attrs.get("netmask", 24)))
+            netinfodict['gateway'].append("BMC Gateway"+addon_string+": %s (default: %s)" % (attrs.get("gateway", None), defaultgateway))
+            netinfodict['vlan'].append("BMC VLAN ID"+addon_string+": %s" % attrs.get("vlanid", None))
+            netinfodict['ipsrc'].append("BMC IP Source"+addon_string+": %s" % attrs.get("ipsrc", None))
+            netinfodict['ntpservers'].append("BMC NTP Servers"+addon_string+": %s" % attrs.get("ntpservers", None))
         if ip:
             for i in netinfodict['ip']:
                 self.callback.info("%s: %s" % (node, i))

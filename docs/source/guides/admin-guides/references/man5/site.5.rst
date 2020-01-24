@@ -465,10 +465,9 @@ site Attributes:
   
    xcatlport:  The port used by xcatd command log writer process to collect command output.
   
-   xcatsslversion:  The SSL_version option xcatd used and passed to
-                    IO::Socket::SSL->start_SSL(). By default, this value is
-                    set to empty. In this case, xcatd will use
-                    'SSLv23:!SSLv2:!SSLv3:!TLSv1' internally.
+   xcatsslversion:  This is the SSL_version option xcatd used and passed to 
+                    IO::Socket::SSL->start_SSL(). By default, this value is set to empty.
+                    In this case, xcatd will use SSLv23:!SSLv2:!SSLv3:!TLSv1 internally.
                     For more detail, see https://metacpan.org/pod/IO::Socket::SSL
   
    xcatsslciphers:  The ssl cipher by xcatd. Default is 3DES.

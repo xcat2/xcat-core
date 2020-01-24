@@ -200,12 +200,16 @@ RSPCONFIG_APIS = {
         'baseurl': "/sensors/chassis/PowerSupplyRedundancy/",
         'set_url': "action/setValue",
         'get_url': "action/getValue",
+        'get_url_new': '/control/power_supply_redundancy',
         'get_method': 'POST',
+        'get_method_new': 'GET',
         'get_data': [],
         'display_name': "BMC PowerSupplyRedundancy",
         'attr_values': {
             'disabled': ["Disabled"],
             'enabled': ["Enabled"],
+            'False': ['Disabled'],
+            'True':  ["Enabled"],
         },
     },
     'powerrestorepolicy': {
@@ -244,12 +248,12 @@ RSPCONFIG_APIS = {
 
 EVENTLOG_URLS     = {
         "list":      "/logging/enumerate",
-        "clear_all": "/logging/action/deleteAll",
+        "clear_all": "/logging/action/DeleteAll",
         "resolve":   "/logging/entry/{}/attr/Resolved",
 }
 
 RAS_POLICY_TABLE  = "/opt/ibm/ras/lib/policyTable.json"
-RAS_POLICY_MSG    = "Install the OpenBMC RAS package to obtain more details logging messages."
+RAS_POLICY_MSG    = "Install the OpenBMC RAS package to obtain more detailed logging messages."
 RAS_NOT_FOUND_MSG = " Not found in policy table: "
 
 RESULT_OK = 'ok'
@@ -275,7 +279,7 @@ class OpenBMCRest(object):
         # print back to xcatd or just stdout
         self.messager = kwargs.get('messager')
 
-        self.session = rest.RestSession()
+        self.session = rest.RestSession((self.username,self.password))
         self.root_url = HTTP_PROTOCOL + self.bmcip + PROJECT_URL
         self.download_root_url = HTTP_PROTOCOL + self.bmcip + '/'
 
@@ -314,8 +318,12 @@ class OpenBMCRest(object):
 
     def handle_response (self, resp, cmd=''):
 
-        data = resp.json() # it will raise ValueError
         code = resp.status_code
+        if code == requests.codes.bad_gateway:
+            error = "(Verify REST server is running on the BMC)"
+            self._print_error_log(error, cmd)
+            raise SelfServerException(code, error, host_and_port=self.bmcip)
+        data = resp.json() # it will raise ValueError
         if code != requests.codes.ok:
             description = ''.join(data['data']['description'])
             error = '[%d] %s' % (code, description)
@@ -657,7 +665,7 @@ class OpenBMCRest(object):
         # Check if policy table file is there
         ras_event_mapping = {}
         if os.path.isfile(RAS_POLICY_TABLE):
-            with open(RAS_POLICY_TABLE, encoding="utf8", errors='ignore') as data_file:
+            with open(RAS_POLICY_TABLE) as data_file:
                 policy_hash = json.load(data_file)
                 if policy_hash:
                     ras_event_mapping = policy_hash['events']
@@ -786,6 +794,10 @@ class OpenBMCRest(object):
             data={"data": attr_info['get_data']}
         return self.request(method, get_url, payload=data, cmd="get_%s" % key)
 
+    def get_powersupplyredundancy(self):
+        attr_info = RSPCONFIG_APIS['powersupplyredundancy']
+        return self.request(attr_info['get_method_new'], attr_info['get_url_new'], cmd='get_powersupplyredundancy')
+
     def set_admin_passwd(self, passwd):
 
         payload = { "data": [passwd] }
@@ -793,7 +805,7 @@ class OpenBMCRest(object):
 
     def set_ntp_servers(self, nic, servers):
 
-        payload = { "data": [servers] }
+        payload = { "data": servers.split(',') }
         url = RSPCONFIG_NETINFO_URL['ntpservers'].replace('#NIC#', nic)
         self.request('PUT', url, payload=payload, cmd='set_ntp_servers')
 
@@ -911,7 +923,7 @@ class OpenBMCRest(object):
                         netinfo[nicid]["zeroconf"] = v["Address"]
                         continue
                     if 'ip' in netinfo[nicid]:
-                        msg = "%s: Another valid ip %s found." % (node, v["Address"])
+                        msg = "Another valid ip %s found." % (v["Address"])
                         self._print_record_log(msg, 'get_netinfo')
                         del netinfo[nicid]
                         netinfo['error'] = 'Interfaces with multiple IP addresses are not supported'
@@ -926,7 +938,7 @@ class OpenBMCRest(object):
                         utils.update2Ddict(netinfo, nicid, "vlanid", info.get("Id", "Disable"))
                         utils.update2Ddict(netinfo, nicid, "mac", info["MACAddress"])
                         ntpservers = None
-                        tmp_ntpservers = ''.join(info["NTPServers"])
+                        tmp_ntpservers = ','.join(info["NTPServers"])
                         if tmp_ntpservers:
                             ntpservers = tmp_ntpservers
                         utils.update2Ddict(netinfo, nicid, "ntpservers", ntpservers)

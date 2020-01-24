@@ -7,7 +7,7 @@ xCAT has the ability to help with Mellanox InfiniBand (IB) adapter installation 
 .. toctree::
    :maxdepth: 2
 
-   mlnxofed_ib_install_v2.rst
+   mlnxofed_ib_install.rst
    network_configuration.rst
    switch_configuration.rst
    ufm_configuration.rst

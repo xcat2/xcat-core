@@ -297,15 +297,16 @@ fi
 
 LAN_MED_TYPE="802.3"
 if [ ! -z "$ISOPENBMC" ]; then
-    # Overvide the default value for OpenBMC
-    LAN_MED_TYPE="Other LAN"
+    # For OpenBMC, the value of "Channel Medium Type" attribute could be "Other LAN" for FW drivers prior to OP940.01
+    # and "802.3" for FW drivers OP940.01 and later
+    LAN_MED_TYPE="802.3|Other LAN"
 fi
-
+# Loop through channels and pick the one to communicate on
 while [ -z "$LANCHAN" ]; do
     logger -s -t $log_label -p local4.info "Auto detecting LAN channel..."
     for TLANCHAN in {1..16}; do
         # Try to get the channel information; then get the MAC which is used for the channel
-        if ipmitool channel info $TLANCHAN 2> /dev/null | grep "$LAN_MED_TYPE" > /dev/null 2>&1 && ipmitool raw 0xc 2 $TLANCHAN 5 0 0 > /dev/null 2>&1; then
+        if ipmitool channel info $TLANCHAN 2> /dev/null | grep -E "$LAN_MED_TYPE" > /dev/null 2>&1 && ipmitool raw 0xc 2 $TLANCHAN 5 0 0 > /dev/null 2>&1; then
             LANCHAN=$TLANCHAN
             break;
         fi;

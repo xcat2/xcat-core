@@ -150,6 +150,7 @@ sub check_pr_format{
             $check_result_str .= "> **PR FORMAT CORRECT**";
             send_back_comment("$check_result_str");
         }else{
+            # Warning if missing milestone or labels, others are errors
             if($checkrst =~ /milestone/ || $checkrst =~ /labels/){
                 $check_result_str .= "> **PR FORMAT WARNING** : $checkrst";
                 send_back_comment("$check_result_str");
@@ -259,8 +260,13 @@ sub send_back_comment{
         }
     }
 
-     print "[send_back_comment] method = $post_method to $post_url\n";
-     `curl -u "$ENV{'xcatbotuser'}:$ENV{'xcatbotpw'}" -X $post_method -d '{"body":"$message"}' $post_url`;
+    print "[send_back_comment] method = $post_method to $post_url. Message = $message\n";
+    if ( $ENV{'xcatbotuser'} and $ENV{'xcatbotpw'}) {
+        `curl -u "$ENV{'xcatbotuser'}:$ENV{'xcatbotpw'}" -X $post_method -d '{"body":"$message"}' $post_url`;
+    }
+    else {
+        print "Not able to update pull request with message: $message\n";
+    }
 }
 
 #--------------------------------------------------------
@@ -376,11 +382,22 @@ sub install_xcat{
                print "[install_xcat] $cmd....[Pass]\n";
             }
         }
+        $cmd = "sudo apt-get install xcat-probe --allow-remove-essential --allow-unauthenticated";
+        @output = runcmd("$cmd");
+        if($::RUNCMD_RC){
+            print RED "[install_xcat] $cmd ....[Failed]\n";
+            print Dumper \@output;
+            $ret = 1;
+        }else{
+            print "[install_xcat] $cmd ....[Pass]:\n";
+        }
+
         if($ret){
             $check_result_str .= "> **INSTALL XCAT ERROR** : Please click ``Details`` label in ``Merge pull request`` box for detailed information";
             send_back_comment("$check_result_str");
             return 1;
         }
+
         $check_result_str .= "> **INSTALL XCAT SUCCESSFUL**";
         send_back_comment("$check_result_str");
     }

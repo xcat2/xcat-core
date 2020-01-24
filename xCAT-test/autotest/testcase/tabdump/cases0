@@ -177,3 +177,9 @@ cmd:tabdump -d site | grep xcatiport
 check:rc==0
 check:output=~xcatiport
 end
+
+start:tabdump_servicenode
+label:mn_only,ci_test,db
+cmd:tabdump servicenode
+check:rc==0
+end

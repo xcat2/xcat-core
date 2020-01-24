@@ -138,13 +138,13 @@ mkdir -p /install/custom/netboot/rh
 	:
 ) >"/install/custom/netboot/rh/mlnx.${LINUX_DISTRO%%.*}.${LINUX_ARCH}.otherpkgs.pkglist"
 
-cp /opt/xcat/share/xcat/ib/scripts/Mellanox/mlnxofed_ib_install.v2 \
-	/install/postscripts/mlnxofed_ib_install.v2
+cp /opt/xcat/share/xcat/ib/scripts/Mellanox/mlnxofed_ib_install \
+	/install/postscripts/mlnxofed_ib_install
 (
 	cat "/opt/xcat/share/xcat/netboot/rh/compute.${LINUX_DISTRO%%.*}.${LINUX_ARCH}.postinstall"
 	cat <<-EOF
 
-	NODESETSTATE=genimage IMGROOTPATH=${OSIMAGE_ROOTIMGDIR}/rootimg bash -x /install/postscripts/mlnxofed_ib_install.v2 -p /install/mlnx/${MLNX_ISO##*/} -m --add-kernel-support
+	NODESETSTATE=genimage IMGROOTPATH=${OSIMAGE_ROOTIMGDIR}/rootimg bash -x /install/postscripts/mlnxofed_ib_install -p /install/mlnx/${MLNX_ISO##*/} -m --add-kernel-support
 	EOF
 ) >"/install/custom/netboot/rh/mlnx.${LINUX_DISTRO%%.*}.${LINUX_ARCH}.postinstall"
 chmod 0755 "/install/custom/netboot/rh/mlnx.${LINUX_DISTRO%%.*}.${LINUX_ARCH}.postinstall"

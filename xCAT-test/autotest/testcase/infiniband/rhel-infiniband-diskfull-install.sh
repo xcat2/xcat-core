@@ -135,10 +135,10 @@ mkdir -p /install/custom/install/rh
 	:
 ) >"/install/custom/install/rh/mlnx.${LINUX_DISTRO%%.*}.${LINUX_ARCH}.otherpkgs.pkglist"
 
-cp /opt/xcat/share/xcat/ib/scripts/Mellanox/mlnxofed_ib_install.v2 \
-	/install/postscripts/mlnxofed_ib_install.v2
+cp /opt/xcat/share/xcat/ib/scripts/Mellanox/mlnxofed_ib_install \
+	/install/postscripts/mlnxofed_ib_install
 
-chdef "${COMPUTE_NODE}" "postscripts=syslog,remoteshell,syncfiles,mlnxofed_ib_install.v2 -p /install/mlnx/${MLNX_ISO##*/} -m --add-kernel-support"
+chdef "${COMPUTE_NODE}" "postscripts=syslog,remoteshell,syncfiles,mlnxofed_ib_install -p /install/mlnx/${MLNX_ISO##*/} -m --add-kernel-support"
 
 rm -rf "${OSIMAGE_OTHERPKGDIR}"
 mkdir -p "${OSIMAGE_OTHERPKGDIR}"

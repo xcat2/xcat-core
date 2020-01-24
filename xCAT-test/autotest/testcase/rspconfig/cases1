@@ -111,9 +111,9 @@ check:output =~$$CN:\s*\[\d+\]\s* success
 cmd:sleep 300
 cmd:dumpnumber=`sed -r 's/.+\[(.+)\].+/\1/g' /tmp/dumpgenerate`;rspconfig $$CN dump -d $dumpnumber |tee /tmp/dumpdown
 check:rc == 0
-cmd:dumpnumber=`sed -r 's/.+\[(.+)\].+/\1/g' /tmp/dumpgenerate`;grep "Downloaded dump $dumpnumber to /var/log/xcat/dump/" /tmp/dumpdown
+cmd:dumpnumber=`sed -r 's/.+\[(.+)\].+/\1/g' /tmp/dumpgenerate`;grep "Downloading dump $dumpnumber to /var/log/xcat/dump/" /tmp/dumpdown
 check:rc == 0
-cmd:dumpnumber=`sed -r 's/.+\[(.+)\].+/\1/g' /tmp/dumpgenerate`;dumpsize=`rspconfig $$CN dump -l |grep "\[$dumpnumber\] Generated" |cut -d : -f 6`;ls -l /var/log/xcat/dump/*_$$CN_dump_$dumpnumber.tar.xz|grep $dumpsize
+cmd:dumpnumber=`sed -r 's/.+\[(.+)\].+/\1/g' /tmp/dumpgenerate`;dumpsize=`rspconfig $$CN dump -l |grep "\[$dumpnumber\] Generated" |cut -d : -f 6`;sn=`lsdef $$CN -i servicenode -c | awk -F '=' '{print $2}'`;if [[ -z "$sn" ]]; then ls -l /var/log/xcat/dump/*_$$CN_dump_$dumpnumber.tar.xz|grep $dumpsize;else xdsh $sn ls -l /var/log/xcat/dump/*_$$CN_dump_$dumpnumber.tar.xz|grep $dumpsize;fi
 check:rc == 0
 cmd:rspconfig $$CN dump -g |tee /tmp/dumpgenerate
 check:rc == 0
@@ -121,9 +121,9 @@ check:output =~$$CN:\s*\[\d+\]\s* success
 cmd:sleep 300
 cmd:dumpnumber=`sed -r 's/.+\[(.+)\].+/\1/g' /tmp/dumpgenerate`;rspconfig $$CN dump --download $dumpnumber |tee /tmp/dumpdown
 check:rc == 0
-cmd:dumpnumber=`sed -r 's/.+\[(.+)\].+/\1/g' /tmp/dumpgenerate`;grep "Downloaded dump $dumpnumber to /var/log/xcat/dump/" /tmp/dumpdown
+cmd:dumpnumber=`sed -r 's/.+\[(.+)\].+/\1/g' /tmp/dumpgenerate`;grep "Downloading dump $dumpnumber to /var/log/xcat/dump/" /tmp/dumpdown
 check:rc == 0
-cmd:dumpnumber=`sed -r 's/.+\[(.+)\].+/\1/g' /tmp/dumpgenerate`;dumpsize=`rspconfig $$CN dump -l |grep "\[$dumpnumber\] Generated" |cut -d : -f 6`;ls -l /var/log/xcat/dump/*_$$CN_dump_$dumpnumber.tar.xz|grep $dumpsize
+cmd:dumpnumber=`sed -r 's/.+\[(.+)\].+/\1/g' /tmp/dumpgenerate`;dumpsize=`rspconfig $$CN dump -l |grep "\[$dumpnumber\] Generated" |cut -d : -f 6`;sn=`lsdef $$CN -i servicenode -c | awk -F '=' '{print $2}'`;if [[ -z "$sn" ]]; then ls -l /var/log/xcat/dump/*_$$CN_dump_$dumpnumber.tar.xz|grep $dumpsize;else xdsh $sn ls -l /var/log/xcat/dump/*_$$CN_dump_$dumpnumber.tar.xz|grep $dumpsize;fi
 check:rc == 0
 cmd:rspconfig $$CN dump -d all
 check:rc == 0
@@ -145,7 +145,7 @@ check:output =~$$CN:\s*Dump requested
 check:output =~$$CN:\s*Downloading dump
 cmd:rspconfig $$CN dump -l |tail -n 1 |tee /tmp/dumpgenerate
 check:rc == 0
-cmd:dumpnumber=`sed -r 's/.+\[(.+)\].+/\1/g' /tmp/dumpgenerate`;dumpsize=`grep "\[$dumpnumber\] Generated" /tmp/dumpgenerate |cut -d : -f 6`;ls -l /var/log/xcat/dump/*_dump_$dumpnumber.tar.xz|grep $dumpsize|grep $$CN
+cmd:dumpnumber=`sed -r 's/.+\[(.+)\].+/\1/g' /tmp/dumpgenerate`;dumpsize=`grep "\[$dumpnumber\] Generated" /tmp/dumpgenerate |cut -d : -f 6`;sn=`lsdef $$CN -i servicenode -c | awk -F '=' '{print $2}'`;if [[ -z "$sn" ]]; then ls -l /var/log/xcat/dump/*_$$CN_dump_$dumpnumber.tar.xz|grep $dumpsize|grep $$CN;else xdsh $sn ls -l /var/log/xcat/dump/*_$$CN_dump_$dumpnumber.tar.xz|grep $dumpsize|grep $$CN;fi
 check:rc == 0
 cmd:rm -rf /tmp/dumpgenerate
 end

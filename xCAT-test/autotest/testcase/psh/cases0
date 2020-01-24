@@ -54,14 +54,15 @@ description: psh -i interface CN 'uptime' in linux
 label:others,parallel_cmds
 os:Linux
 cmd:cp /etc/hosts /etc/hostsBK
+cmd:cp /etc/hosts /etc/hosts.bak
 check:rc==0
 cmd:grep $$CN /etc/hosts
-cmd:interface=`xdsh $$CN 'ip route' | awk '/default/ { for (i = 1; i <= NF; ++i) if ("dev" == $i) { print $(i + 1) ; exit } }'`; echo "interface=$interface"; sed -i "/$$CN/s/$/ $$CN-$interface/g" '/etc/hosts';psh -i $interface $$CN 'uptime'
+cmd:interface=`xdsh $$CN 'ip route' | awk '/default/ { for (i = 1; i <= NF; ++i) if ("dev" == $i) { print $(i + 1) ; exit } }'`; echo "interface=$interface"; sed -i "/$$CN/s/$/ $$CN-$interface/g" '/etc/hostsBK';yes|cp -rf /etc/hostsBK /etc/hosts;psh -i $interface $$CN 'uptime'
 check:output=~$$CN
 check:rc==0
 cmd:grep $$CN /etc/hosts
-cmd:rm -rf /etc/hosts
-cmd:cp /etc/hostsBK /etc/hosts
+cmd:yes|cp -rf /etc/hosts.bak /etc/hosts
 check:rc==0
+cmd:rm -rf /etc/hostsBK /etc/hosts.bak
 end
 

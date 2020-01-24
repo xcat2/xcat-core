@@ -255,6 +255,7 @@ cmd:if grep Ubuntu /etc/*release;then xdsh $$CN "dpkg -l |grep -i perl-xcat";els
 check:rc!=0
 cmd:if xdsh $$CN "grep \"Red Hat\" /etc/*release >/dev/null"; then xdsh $$CN "yum install -y yum-utils bzip2"; fi
 check:rc==0
+cmd:if xdsh $$CN "grep Ubuntu /etc/*release >/dev/null"; then xdsh $$CN "apt-get install -y gnupg"; fi
 cmd:xdsh $$CN "cd /; scp -r $$MN:/opt/xcat/share/xcat/tools/go-xcat ./"
 check:rc==0
 cmd:xdsh $$CN "cd /; scp -r $$MN:/core-*-snap.tar.bz2 /xcat-core.tar.bz2"

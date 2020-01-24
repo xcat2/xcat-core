@@ -9,6 +9,8 @@ check:output=~Copying media to /install/__GETNODEATTR($$CN,os)__/__GETNODEATTR($
 check:output=~Media copy operation successful
 cmd:ls /install/__GETNODEATTR($$CN,os)__/__GETNODEATTR($$CN,arch)__
 check:rc==0
+cmd:/opt/xcat/share/xcat/tools/autotest/testcase/copycds/copycds.sh __GETNODEATTR($$CN,os)__
+check:rc==0
 end
 
 start:lskmodules_o

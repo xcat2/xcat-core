@@ -1,13 +1,13 @@
 start:rspconfig_record_firmware_level
-description: Record the firmware level for the start of each testcase
+description: Record the firmware level for the start of each testcase to display in the output
 hcp:openbmc
 label:cn_bmc_ready,hctrl_openbmc
 cmd: rinv $$CN firm
 check:rc==0
 end
 
-start:rspconfig_get_all
-description: Check that we can get all the attributes from the BMC
+start:rspconfig_get_all_network
+description: Check that we can get all the network related attributes from the BMC
 os:Linux
 hcp:openbmc
 label:cn_bmc_ready,hctrl_openbmc
@@ -70,7 +70,168 @@ check:output=~$$CN: BMC Setting BMC Hostname...
 cmd:rspconfig $$CN hostname
 check:rc==0
 check:output=~$$CN: BMC Hostname:
-cmd:rm /tmp/xcattest.rspconfig.hostname
+ AutoReboot
 check:rc==0
 end
 
+start:rspconfig_admin_passwd_error
+description: Check the error handling for changing of BMC password
+hcp: openbmc
+label:cn_bmc_ready,hctrl_openbmc
+cmd: rspconfig $$CN admin_passwd=abc
+check:rc==1
+check:output=~$$CN: Error: Invalid parameter for option admin_passwd: abc
+cmd: rspconfig $$CN admin_passwd=abc,xyz
+check:rc==1
+check:output=~Current BMC password is incorrect, cannot set the new password.
+end
+
+start:rspconfig_admin_passwd
+description: Check the setting of BMC password to the same value
+hcp: openbmc
+label:cn_bmc_ready,hctrl_openbmc
+cmd: rspconfig $$CN admin_passwd=0penBmc,0penBmc
+check:rc==0
+check:output=~$$CN: BMC Setting Password
+end
+
+start:rspconfig_autoreboot
+description: Check the getting and setting of autoreboot attribute
+hcp: openbmc
+label:cn_bmc_ready,hctrl_openbmc
+cmd: rspconfig $$CN autoreboot
+check:rc==0
+check:output=~$$CN: BMC AutoReboot
+cmd: rspconfig $$CN autoreboot=0
+check:rc==0
+check:output=~$$CN: BMC Setting BMC AutoReboot
+cmd: rspconfig $$CN autoreboot=1
+check:rc==0
+check:output=~$$CN: BMC Setting BMC AutoReboot
+cmd: rspconfig $$CN autoreboot=
+check:rc==1
+check:output=~$$CN: Error: Invalid value '' for 'autoreboot', Valid values: 0,1
+cmd: rspconfig $$CN autoreboot=2
+check:rc==1
+check:output=~$$CN: Error: Invalid value '2' for 'autoreboot', Valid values: 0,1
+end
+
+start:rspconfig_bootmode
+description: Check the getting and setting of bootmode attribute
+hcp: openbmc
+label:cn_bmc_ready,hctrl_openbmc
+cmd: rspconfig $$CN bootmode=safe
+check:rc==0
+check:output=~$$CN: BMC Setting BMC BootMode
+cmd: rspconfig $$CN bootmode
+check:rc==0
+check:output=~$$CN: BMC BootMode: Safe
+cmd: rspconfig $$CN bootmode=regular
+check:rc==0
+check:output=~$$CN: BMC Setting BMC BootMode
+cmd: rspconfig $$CN bootmode=abc
+check:rc==1
+check:output=~$$CN: Error: Invalid value 'abc' for 'bootmode', Valid values: regular,safe,setup
+end
+
+start:rspconfig_dump
+description: Check dump generation, download and removal
+hcp: openbmc
+label:cn_bmc_ready,hctrl_openbmc
+#Clear old dumps for this node
+cmd: rm -f /var/log/xcat/dump/*$$CN*
+#Generate new dump
+cmd: rspconfig $$CN dump
+check:rc==0
+check:output=~Capturing BMC Diagnostic information, this will take some time
+check:output=~$$CN: Dump requested. Target ID is
+check:output=~Downloading dump
+#Verify dump was downloaded to proper directory
+cmd: ls -l /var/log/xcat/dump/*$$CN*
+check:rc==0
+#Remove last generated dump
+cmd: rspconfig mid05tor12cn03 dump -l | tail -1 | cut -d ' ' -f2 | tr -d "[]" | xargs -i{} rspconfig $$CN dump -c {}
+check:rc==0
+check:output=clear
+end
+
+start:rspconfig_ntpservers
+description: Check the getting and setting of ntpservers attribute
+hcp: openbmc
+label:cn_bmc_ready,hctrl_openbmc
+cmd: rspconfig $$CN ntpservers
+check:rc==0
+check:output=~$$CN: BMC NTP Servers
+cmd: rspconfig $$CN ntpservers=1.1.1.1
+check:rc==0
+check:output=~$$CN: BMC NTP Servers: 1.1.1.1
+cmd: rspconfig $$CN ntpservers=
+check:rc==0
+check:output=~$$CN: BMC NTP Servers: None
+end
+
+start:rspconfig_powerrestorepolicy
+description: Check the getting and setting of powerrestorepolicy attribute
+hcp: openbmc
+label:cn_bmc_ready,hctrl_openbmc
+cmd: rspconfig $$CN powerrestorepolicy
+check:rc==0
+check:output=~$$CN: BMC PowerRestorePolicy
+cmd: rspconfig $$CN powerrestorepolicy=always_on
+check:rc==0
+check:output=~$$CN: BMC Setting BMC PowerRestorePolicy
+cmd: rspconfig $$CN powerrestorepolicy=always_off
+check:rc==0
+check:output=~$$CN: BMC Setting BMC PowerRestorePolicy
+cmd: rspconfig $$CN powerrestorepolicy=restore
+check:rc==0
+check:output=~$$CN: BMC Setting BMC PowerRestorePolicy
+cmd: rspconfig $$CN powerrestorepolicy
+check:rc==0
+check:output=~$$CN: BMC PowerRestorePolicy: Restore
+cmd: rspconfig $$CN powerrestorepolicy=
+check:rc==1
+check:output=~$$CN: Error: Invalid value '' for 'powerrestorepolicy', Valid values: always_off,always_on,restore
+cmd: rspconfig $$CN powerrestorepolicy=abc
+check:rc==1
+check:output=~$$CN: Error: Invalid value 'abc' for 'powerrestorepolicy', Valid values: always_off,always_on,restore
+end
+
+start:rspconfig_powersupplyredundancy
+description: Check the getting and setting of powersupplyredundancy attribute
+hcp: openbmc
+label:cn_bmc_ready,hctrl_openbmc
+cmd: rspconfig $$CN powersupplyredundancy=disabled
+check:rc==1
+check:output=~Error: 404 Not Found - Requested endpoint does not exist or may indicate function is not supported on this OpenBMC firmware.
+cmd: rspconfig $$CN powersupplyredundancy
+check:rc==0
+check:output=~$$CN: BMC PowerSupplyRedundancy: Disabled
+end
+
+start:rspconfig_sshcfg
+description: Check the copying of ssh keys to the BMC
+hcp: openbmc
+label:cn_bmc_ready,hctrl_openbmc
+cmd: rspconfig $$CN sshcfg
+check:rc==0
+check:output=~$$CN: ssh keys copied to
+end
+
+start:rspconfig_timesyncmethod
+description: Check the getting and setting of timesyncmethod attribute
+hcp: openbmc
+label:cn_bmc_ready,hctrl_openbmc
+cmd: rspconfig $$CN timesyncmethod=manual
+check:rc==0
+check:output=~$$CN: BMC Setting BMC TimeSyncMethod
+cmd: rspconfig $$CN timesyncmethod
+check:rc==0
+check:output=~$$CN: BMC TimeSyncMethod: Manual
+cmd: rspconfig $$CN timesyncmethod=ntp
+check:rc==0
+check:output=~$$CN: BMC Setting BMC TimeSyncMethod
+cmd: rspconfig $$CN timesyncmethod=abc
+check:rc==1
+check:output=~$$CN: Error: Invalid value 'abc' for 'timesyncmethod', Valid values: manual,ntp
+end

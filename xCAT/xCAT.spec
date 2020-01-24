@@ -55,8 +55,6 @@ Requires: /usr/sbin/dhcpd
 Requires: /usr/bin/ssh
 Requires: /usr/sbin/in.tftpd
 
-
-
 #support mixed cluster
 %if %nots390x
 Requires: xnba-undi

@@ -1,31 +1,29 @@
 # Welcome to the xCAT documentation
 
-The latest docs are here: http://xcat-docs.readthedocs.io/en/latest/
+The xCAT docs are hosted here: https://xcat-docs.readthedocs.io/ and are written in reStructuredText (`.rst`). 
 
-The documentation project is written in restructured text (.rst) using Sphinx and hosted on ReadTheDocs.
+## Building Docs
 
-## Building Documentation
+* Clone this project 
 
-* Clone the project
-
-* Using pip, install or update sphinx (See: http://pip.readthedocs.org/)
+* Install or update sphinx (See: https://pip.readthedocs.io/)
    ```
-    pip install sphinx
+   pip install sphinx
    ```
    or
    ```
-    pip install sphinx --upgrade
+   pip install sphinx --upgrade
    ```
 
-* Using pip, install ReadTheDocs theme
+* Install ReadTheDocs theme
    ```
    pip install sphinx_rtd_theme
    ```
 
 * Build the Docs
    ```
-    cd xcat-core/docs
-    make html
+   cd xcat-core/docs
+   make html
    ```
 
-* View the docs by opening index.html from a web browser under xcat-core/docs/build/html/index.html
+* View the documentation by pointing a browser to: `xcat-core/docs/build/html/index.html`

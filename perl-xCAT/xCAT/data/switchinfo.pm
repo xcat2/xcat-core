@@ -22,6 +22,8 @@ our %global_mac_identity = (
     "a8:2b:b5" => "Edgecore Networks Switch",
     "3c:2c:99" => "Edgecore Networks Switch",
     "70:72:cf" => "Edgecore Networks Switch",
+    "80:a2:35" => "Edgecore Networks Switch",
+    "b8:6a:97" => "Edgecore Networks Switch",
     "6c:64:1a" => "Penguin Computing switch"
 );
 

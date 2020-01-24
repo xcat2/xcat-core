@@ -95,12 +95,17 @@ end
 start:mkdef_dynamic_group
 description:mkdef with dynamic node group
 label:mn_only,ci_test,db
+cmd:tabdump nodegroup
+cmd:tabdump nodelist
 cmd:mkdef -t node -o testnode1-testnode2 mgt=hmc cons=hmc groups=all,systemp
 check:rc==0
+cmd:tabdump nodelist|grep testnode
 cmd:mkdef -t node -o testnode3-testnode4 mgt=ipmi cons=ipmi groups=all,systemx
 check:rc==0
+cmd:tabdump nodelist|grep testnode
 cmd:mkdef -t group -o dyngrp1 -d -w mgt==hmc
 check:rc==0
+cmd:tabdump nodegroup
 cmd:lsdef -s dyngrp1
 check:rc==0
 check:output=~testnode1
@@ -109,6 +114,7 @@ check:output!~testnode3
 check:output!~testnode4
 cmd:mkdef -t group -o dyngrp2 -d -w mgt==hmc -w cons==hmc
 check:rc==0
+cmd:tabdump nodegroup
 cmd:lsdef -s dyngrp2
 check:rc==0
 check:output=~testnode1
@@ -117,6 +123,7 @@ check:output!~testnode3
 check:output!~testnode4
 cmd:mkdef -t group -o dyngrp3 -d -w mgt==hmc -w cons==ipmi
 check:rc==0
+cmd:tabdump nodegroup
 cmd:lsdef -s dyngrp3
 check:rc!=0
 check:output!~testnode1
@@ -125,6 +132,7 @@ check:output!~testnode3
 check:output!~testnode4
 cmd:rmdef -t group -o dyngrp1,dyngrp2,dyngrp3
 check:rc==0
+cmd:tabdump nodegroup
 cmd:rmdef -t node -o testnode1-testnode4
 check:rc==0
 end

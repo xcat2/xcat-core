@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/bash  
 # IBM(c) 2013 EPL license http://www.eclipse.org/legal/epl-v10.html
 # Internal script used by confignics only
 # xCAT post script for configuring ib adapters.
@@ -27,6 +27,16 @@ if [ -n "$LOGLABEL" ]; then
     log_label=$LOGLABEL
 else
     log_label="xcat"
+fi
+
+########################################################################
+# nmcli_used=0: use network.service
+# nmcli_used=1: use NetworkManager
+########################################################################
+nmcli_used=0
+ps -ef|grep -v grep|grep NetworkManager >/dev/null 2>/dev/null
+if [ $? -eq 0 ]; then
+    nmcli_used=1
 fi
 
 #This is the number of ports for each ib adpator.
@@ -461,11 +471,20 @@ IPADDR_$ipindex=$nicip" >> $dir/ifcfg-$nic
                # First ip address
                if [ $ipindex -eq 1 ]
                then
+                   nmcontrol=""
+                   devtype=""
+                   if [ $nmcli_used -eq 0 ]; then
+                        nmcontrol="NM_CONTROLLED=no"
+                   else
+                        devtype="TYPE=InfiniBand"
+                   fi
                    # Write the info to the ifcfg file
                    echo "DEVICE=$nic
-NM_CONTROLLED=no
+$nmcontrol
+$devtype
 BOOTPROTO=none
 ONBOOT=yes
+NAME=$nic
 IPADDR=$nicip" > $dir/ifcfg-$nic
                     # ipv6
                     if echo $nicip | grep : 2>&1 1>/dev/null
@@ -514,23 +533,37 @@ IPV6ADDR=$nicip/$netmask" >> $dir/ifcfg-$nic
                            echo "IPV6_DEFAULTGW=$gateway" >> $dir/ifcfg-$nic
                        fi
                     else # ipv4 address
-                        echo "DEVICE=$nic:$ipindex
+                        if [ $nmcli_used -eq 0 ]; then
+                            cfgfile=$dir"/ifcfg-"$nic":"$ipindex
+                            cfgcontent= "DEVICE=$nic:$ipindex
 NM_CONTROLLED=no
 BOOTPROTO=none
 ONBOOT=yes
-IPADDR=$nicip" > $dir/ifcfg-$nic:$ipindex
+NETMASK=$netmask
+IPADDR=$nicip"
+                            echo "$cfgcontent" > $cfgfile
+                        else
+                            cfgfile=$dir"/ifcfg-"$nic
+                            cfgcontent="NETMASK$ipindex=$netmask
+IPADDR$ipindex=$nicip"
+                            echo "$cfgcontent" >> $cfgfile
+                        fi
                         if [[ "$OSVER" == rhels6* ]]
                         then
                             #get prefix from netmask, this is for IPv4 only
                             prefix=24
                             prefix=$(convert_netmask_to_cidr $netmask)
-                            echo "PREFIX=$prefix" >> $dir/ifcfg-$nic:$ipindex
+                            echo "PREFIX=$prefix" >> $cfgfile
                         else
-                            echo "NETMASK=$netmask" >> $dir/ifcfg-$nic:$ipindex
+                            echo "$nicnetmask" >> $cfgfile
                         fi
 
                         if [ -n "$gateway" ]; then
-                           echo "GATEWAY=$gateway" >> $dir/ifcfg-$nic:$ipindex
+                            if [ $nmcli_used -eq 0 ]; then 
+                                echo "GATEWAY=$gateway" >> $cfgfile
+                            else
+                                echo "GATEWAY$ipindex=$gateway" >> $cfgfile
+                            fi
                         fi
 
 						#add extra params
@@ -540,12 +573,14 @@ IPADDR=$nicip" > $dir/ifcfg-$nic:$ipindex
 							name="${array_extra_param_names[$i]}"
 							value="${array_extra_param_values[$i]}"
 							echo "  $i: name=$name value=$value"
-							echo "${name}=${value}" >> $dir/ifcfg-$nic:$ipindex
+							echo "${name}=${value}" >> $cfgfile
 							i=$((i+1))
 						done		
 
                         # need to run ifup eth1:1 for RedHat
-                        goodnics="$goodnics,$nic:$ipindex"
+                        if [ $nmcli_used -eq 0 ]; then
+                            goodnics="$goodnics,$nic:$ipindex"
+                        fi
                     fi
                 fi # end not the first ip address
             elif [ $OS_name == 'ubuntu' ]
@@ -705,8 +740,13 @@ then
                     sleep 2
                     ifup   $tmp > /dev/null 2>&1
                 done
-            else
-                ifup $nic > /dev/null 2>&1
+            else 
+                if [ $nmcli_used -eq 1 ]; then
+                    nmcli con reload $dir/ifcfg-$nic
+                    nmcli con up $nic 2>&1
+                else
+                    ifup $nic > /dev/null 2>&1
+                fi
             fi
         fi
     done

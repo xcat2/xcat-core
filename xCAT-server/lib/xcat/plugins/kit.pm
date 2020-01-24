@@ -33,7 +33,7 @@ $::KITFRAMEWORK = "2";
 $::COMPATIBLE_KITFRAMEWORKS = "0,1,2";
 
 my $debianflag = 0;
-my $tempstring = xCAT::Utils->osver();
+my $tempstring = xCAT::Utils->osver(all);
 if ($tempstring =~ /debian/ || $tempstring =~ /ubuntu/) {
     $debianflag = 1;
 
@@ -97,6 +97,12 @@ sub process_request
         }
 
         $::PID = $$;
+    }
+
+    my ($sysos, $sysver) = split /,/, $tempstring;
+    if ( ($sysos =~ /rh/) && ($sysver ge 8) ) {
+        $callback->({ error => ["KITs are not supported on rhel8 or above"], errorcode => [1] });
+        return 1;
     }
 
     my $command = $request->{command}->[0];

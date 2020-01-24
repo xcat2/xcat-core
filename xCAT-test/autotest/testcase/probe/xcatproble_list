@@ -1,0 +1,13 @@
+start:xcatprobe_work
+description:To test if xcatprobe list works. This case must run in xcat mn
+label:mn_only,ci_test
+cmd:mkdir -p /tmp/xcatprobe_l
+cmd:xcatprobe -l
+check:rc==0
+check:output=~Supported sub commands are:
+cmd:xcatprobe -l|grep -v "Supported sub commands are" |awk  '/^[[:graph:]]/ {print $1}'|sort > /tmp/xcatprobe_l/subcmd_from_xcatprobe_l
+cmd:ls -l /opt/xcat/probe/subcmds/ |awk '/^-/ {print $9}'|sort > /tmp/xcatprobe_l/subcmd_under_subcmds_dir
+cmd:diff -y /tmp/xcatprobe_l/subcmd_from_xcatprobe_l  /tmp/xcatprobe_l/subcmd_under_subcmds_dir
+check:rc==0
+cmd:rm -rf /tmp/xcatprobe_l
+end

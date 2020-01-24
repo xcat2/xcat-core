@@ -64,6 +64,11 @@ sub dodiscover {
             my $sysctl;
             open($sysctl, "<", "/proc/sys/net/core/rmem_max");
             my $maxrcvbuf = <$sysctl>;
+            # select() on a socket will never succeed if the buffer is too large (i.e. near INT_MAX)
+            my $cap_maxrcvbuf = 2047*1024*1024;
+            if ($maxrcvbuf > $cap_maxrcvbuf) {
+                $maxrcvbuf = $cap_maxrcvbuf;
+            }
             my $rcvbuf    = $args{'socket'}->sockopt(SO_RCVBUF);
             if ($maxrcvbuf > $rcvbuf) {
                 $args{'socket'}->sockopt(SO_RCVBUF, $maxrcvbuf / 2);

@@ -57,7 +57,7 @@ Requires: perl-Time-HiRes perl-Sys-Syslog perl-Text-Balanced perl-DB_File perl-X
 #
 # PCM does not use or ship grub2-xcat
 %if %nots390x
-Requires: grub2-xcat perl-Net-HTTPS-NB perl-HTTP-Async
+Requires: grub2-xcat >= 2.02-0.76.el7.1.snap201905160255 perl-Net-HTTPS-NB perl-HTTP-Async
 %endif
 %endif
 %endif

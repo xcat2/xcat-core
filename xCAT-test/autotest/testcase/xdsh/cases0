@@ -31,7 +31,7 @@ cmd:xdsh $$SN "ls -l /var/xcat/syncfiles" > /dev/null 2>&1; if [ "$?" -ne "0" ];
 check:rc==0
 cmd: xdsh $$SN "echo 'test' > /var/xcat/syncfiles/xdsh_c.tmp"
 check:rc==0
-cmd: xdsh $$SN -c
+cmd: echo Y | xdsh $$SN -c 2>/dev/null
 check:rc==0
 cmd:xdsh $$SN "ls -l /var/xcat/syncfiles"
 check:rc==0
@@ -44,7 +44,7 @@ cmd:xdsh $$CN "ls -l /var/xcat/node/syncfiles" > /dev/null 2>&1; if [ "$?" -ne "
 check:rc==0
 cmd: xdsh $$CN "echo 'test' > /var/xcat/node/syncfiles/xdsh_c.tmp"
 check:rc==0
-cmd: xdsh $$CN -c
+cmd: echo Y | xdsh $$CN -c 2>/dev/null
 check:rc==0
 cmd:xdsh $$CN "ls -l /var/xcat/node"
 check:rc==0

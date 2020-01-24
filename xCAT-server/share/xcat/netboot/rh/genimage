@@ -302,7 +302,7 @@ if($onlyinitrd){
     my @pkgdir_internet; #Put all of the http mirrors in this array
     my $dir;
     foreach $dir (@pkgdirs) {
-      if ($dir =~ /^http.*/) {
+      if ($dir =~ /^http[s]?:|^ftp:/) {
         push @pkgdir_internet, $dir;
       } else {
         find(\&isyumdir, <$dir/>);
@@ -336,11 +336,11 @@ if($onlyinitrd){
 
     my $repnum = 0;
     foreach $srcdir (@yumdirs) {
-        print $yumconfig "[$osver-$arch-$repnum]\nname=$osver-$arch-$repnum\nbaseurl=file://$srcdir\ngpgpcheck=0\n\n";
+        print $yumconfig "[$osver-$arch-$repnum]\nname=$osver-$arch-$repnum\nbaseurl=file://$srcdir\ngpgpcheck=0\nskip_if_unavailable=True\n\n";
         $repnum += 1;
     }
     foreach $srcdir (@pkgdir_internet) {
-       print $yumconfig "[$osver-$arch-$repnum]\nname=$osver-$arch-$repnum\nbaseurl=$srcdir\ngpgpcheck=0\n\n";
+       print $yumconfig "[$osver-$arch-$repnum]\nname=$osver-$arch-$repnum\nbaseurl=$srcdir\ngpgpcheck=0\nskip_if_unavailable=True\n\n";
        $repnum += 1;
     }
     $repnum -= 1;
@@ -486,7 +486,7 @@ if($onlyinitrd){
         my @otherpkgdir_url;
         my @otherpkgdir_local;
         foreach my $tmpdir (split ',', $srcdir_otherpkgs){
-            if($tmpdir =~ /^http:.*/){
+            if($tmpdir =~ /^http[s]?:|^ftp:/){
                 push @otherpkgdir_url, $tmpdir;
             }else{
                 push @otherpkgdir_local,$tmpdir;
@@ -516,12 +516,12 @@ if($onlyinitrd){
 
                 if (($_ eq "PRE_REMOVE") || ($_ eq "POST_REMOVE") || ($_ eq "ENVLIST")) { next; }
                 foreach(@otherpkgdir_url){
-                    print $yumconfig "[otherpkgs$index]\nname=otherpkgs$index\nbaseurl=$_\ngpgpcheck=0\n\n";
+                    print $yumconfig "[otherpkgs$index]\nname=otherpkgs$index\nbaseurl=$_\ngpgpcheck=0\nskip_if_unavailable=True\n\n";
                     $repohash{$pass}{$index} = 1;
                     $index++;
                 }
 
-                print $yumconfig "[otherpkgs$index]\nname=otherpkgs$index\nbaseurl=file://$srcdir_otherpkgs_local/$_\ngpgpcheck=0\n\n";
+                print $yumconfig "[otherpkgs$index]\nname=otherpkgs$index\nbaseurl=file://$srcdir_otherpkgs_local/$_\ngpgpcheck=0\nskip_if_unavailable=True\n\n";
                 $repohash{$pass}{$index} = 1;
                 $index++;
                 my $pa = $extra_hash{$pass}{$_};
@@ -1150,16 +1150,17 @@ sub mkinitrd_dracut {
     # force the dracut run in non-hostonly mode for dracut higher than version 033
     if ($dracutver > "033") {
         $additional_options .= " -N";
+
+        #if "pigz" is available in the rootimg, use "pigz" instead of "gzip"
+        my $compress = qx(chroot $rootimg_dir bash -c "type -p pigz"|tr -d "\n");
+        if ($compress) {
+
+            #take the online cpu numerber as the pigz processes number
+            my $processnum = qx(lscpu -p=cpu --online|grep -v '#'|wc -l|tr -d "\n");
+            $additional_options .= " --compress \"$compress -p $processnum \"";
+        }
     }
 
-    #if "pigz" is available in the rootimg, use "pigz" instead of "gzip"
-    my $compress = qx(chroot $rootimg_dir bash -c "type -p pigz"|tr -d "\n");
-    if ($compress) {
-
-        #take the online cpu numerber as the pigz processes number
-        my $processnum = qx(lscpu -p=cpu --online|grep -v '#'|wc -l|tr -d "\n");
-        $additional_options .= " --compress \"$compress -p $processnum \"";
-    }
 
     print "\nchroot $rootimg_dir dracut $additional_options -f /tmp/initrd.$$.gz $kernelver\n";
     !system("chroot $rootimg_dir dracut $additional_options -f /tmp/initrd.$$.gz $kernelver")

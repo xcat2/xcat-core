@@ -93,8 +93,9 @@ sub do_main_job {
     $rc |= $rst;
 
     #check if SElinux is disabled
-    $rst        = check_selinux(\$checkpoint, \@error);
-    print_check_result($checkpoint, "f", $rst, \@error);
+    ($rst, $flag) = check_selinux(\$checkpoint, \@error);
+    print_check_result($checkpoint, $flag, $rst, \@error);
+    $rst = 0 if ($flag == "w");
     $rc |= $rst;
 
     #check http service
@@ -171,6 +172,10 @@ sub do_main_job {
         #check if dhcpd.leases is less than 100M
         $rst        = check_dhcp_leases(\$checkpoint, \@error);
         print_check_result($checkpoint, "w", $rst, \@error);
+        $rc |= $rst;
+    } else {
+        $rst = check_db_pkgs(\$checkpoint, \@error);
+        print_check_result($checkpoint, "f", $rst, \@error);
         $rc |= $rst;
     }
 
@@ -673,16 +678,26 @@ sub check_selinux {
     my $checkpoint_ref =  shift;
     my $error_ref = shift;
     my $rst       = 0;
+    my $flag      = "w";
+    my $msg       = "";
 
     $$checkpoint_ref = "Checking SELinux is disabled...";
     @$error_ref = ();
 
     if (probe_utils->is_selinux_enable()) {
-        push @$error_ref, "SELinux is enabled on current server";
+        $msg = "SELinux is enabled on current server";
         $rst = 1;
+        $flag = "w";
     }
-
-    return $rst;
+    if (probe_utils->is_selinux_enforcing()) {
+        $msg = "SELinux is enforcing on current server";
+        $rst = 1;
+        $flag = "f";
+    }
+    if ($rst) { 
+        push @error_ref, "$msg";
+    }
+    return ($rst, $flag);
 }
 
 sub check_firewall {
@@ -942,13 +957,24 @@ sub check_dns_service {
     my $nodename = `hostname -s 2>&1`;
     chomp($nodename);
 
+    # For mn, 'externaldns' attribute could be set to '0' or '1' or not defined.
+    #   if '1', mn does not need to provide DNS service, so will not check it.
+    #   if '0' or undefined, proceed with check.
     # For sn, 'setupdns' attribute could be set to '0' or '1'.
-    # if '0', sn does not need to provie DNS service, will not check it
+    #   if '0', sn does not need to provide DNS service, will not check it
     my $checkdns = 1;
     if ($is_sn) {
         $checkdns = `lsdef $nodename -i setupnameserver -c  2>&1| awk -F'=' '{print \$2}'`;
         chomp($checkdns);
-    }
+    } else { # management node
+        my $dns_is_external = `lsdef -t site -i externaldns -c 2>&1 | awk -F'=' {print \$2}'`;
+        chomp($dns_is_external);
+        if ($dns_is_external eq "1") {
+          $checkdns = 0;
+        } else {
+          $checkdns = 1;
+        }
+    } 
 
     if ($checkdns) {
         `which nslookup > /dev/null 2>&1`;
@@ -1251,6 +1277,37 @@ sub check_daemon_attributes {
         }
     }
     return ($rst, $rst_type);
+}
+
+sub check_db_pkgs {
+    my $checkpoint_ref = shift;
+    my $error_ref      = shift;
+    my $rst            = 0; 
+
+    $$checkpoint_ref = "Checking DB packages installatio...";
+    @$error_ref = ();
+
+    my $cfgloc_file = "/etc/xcat/cfgloc";
+    if (! -e $cfgloc_file) {
+        push @$error_ref, "$cfgloc_file does not exist, please check xcat installation.";
+        return 1;
+    }
+    my $db_type = `cat $cfgloc_file | awk -F ':' '{print \$1}'`;
+    chomp($db_type);
+    my $db_pkg;
+    my $db_name;
+    if ($db_type eq "mysql") {
+        $db_name = "perl-DBD-MySQL or perl-DBD-mysql";
+        $db_pkg = `rpm qa | grep -e perl-DBD-MySQL -e perl-DBD-mysql`;
+    } elsif ($db_type eq "Pg") {
+        $db_name = "perl-DBD-Pg";
+        $db_pkg = `rpm -qa | grep $db_name`;
+    }
+    if (!$db_pkg) {
+        push @$error_ref, "$db_name is not installed, please install it.";
+        $rst = 1;
+    }
+    return $rst;
 }
 
 sub returncmdoutput {

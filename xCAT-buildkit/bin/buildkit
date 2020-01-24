@@ -344,6 +344,13 @@ if ($tempstring =~ /debian/ || $tempstring =~ /ubuntu/) {
     $debianflag = 1;
 }
 
+my ($sysos, $sysver) = split /,/, $tempstring;
+if ( ($sysos =~ /rh/) && ($sysver ge 8) ) {
+    print "ERROR:  KITs are not supported on rhel8 or above\n";
+    exit(1);
+}
+
+
 # This is an undocumented flag to support our local build team
 #   to allow building Ubuntu kits on our RH build machines.
 #   It requires RH rpms such as dep, fakeroot, perl-File-DesktopEntry,

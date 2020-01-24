@@ -25,6 +25,8 @@ use xCAT::TableUtils;
 my $PYTHON_AGENT_FILE = "/opt/xcat/lib/python/agent/agent.py";
 
 my $header = HTTP::Headers->new('Content-Type' => 'application/json');
+# Currently not used, example of header to use for authorization
+#my $header = HTTP::Headers->new('X-Auth-Token' => 'xfMHrrxdMgbiITnX0TlN');
 
 sub new {
     my $async = shift;
@@ -44,8 +46,16 @@ sub send_request {
     my $method = shift;
     my $url = shift;
     my $content = shift;
+    my $username = shift;
+    my $password = shift;
 
     my $request = HTTP::Request->new( $method, $url, $header, $content );
+    if (defined $username and defined $password) {
+        # If username and password were passed in use authorization_basic()
+        # This is required to connect to BMC with OP940 level, ignored for 
+        # lower OP levels
+        $request->authorization_basic($username, $password);
+    }
     my $id = $async->add_with_opts($request, {});
     return $id;
 }

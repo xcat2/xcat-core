@@ -242,6 +242,31 @@ sub is_selinux_enable {
 
 =head3
     Description:
+        Test if SELinux is enforcing in current operating system
+    Arguments:
+         None
+    Returns:
+        1 : yes
+        0 : no
+=cut
+
+#------------------------------------------
+sub is_selinux_enforcing {
+    my $retval = 0;
+    if (-e "/usr/sbin/getenforce") {
+        my $enforce_mode = `/usr/sbin/getenforce`;
+        chomp $enforce_mode;
+	if ($enforce_mode eq "Enforcing") {
+            $retval = 1;
+        }
+    }
+    return $retval;
+}
+
+#------------------------------------------
+
+=head3
+    Description:
         Test if firewall is opened in current operating system
     Arguments:
          None

@@ -2026,14 +2026,18 @@ sub copycd
     {
 
         #If they say to call it something unidentifiable, give up?
+        print "DEBUG - [anaconda.pm] The name specified ($distname) is not supported for anaconda images, continue to another plugin...\n";
         return;
     }
-    my $darch;
     my $dinfo;
     my $did;
     my $desc;
+    my $darch;
     my $dno;
-    if (-r $mntpath . "/.discinfo") {
+
+    if (-r $mntpath . "/.discinfo")
+    {
+        print "DEBUG - [anaconda.pm] Attempt to detemine OS information from the .discinfo file ...\n";
         open($dinfo, $mntpath . "/.discinfo");
         $did = <$dinfo>;
         chomp($did);
@@ -2043,22 +2047,30 @@ sub copycd
         chomp($darch);
         $dno = <$dinfo>;
         chomp($dno);
-    
-        if ($darch and $darch =~ /i.86/)
-        {
-            $darch = "x86";
-        }
+        
         close($dinfo);
-	if ($desc and $desc =~ /CentOS Linux (.*)/) {
-            $distname = "centos" . $1;
-	}
-        if ($xCAT::data::discinfo::distnames{$did})
+    }
+    else
+    {
+        print "DEBUG - [anaconda.pm] No .discinfo file found on media, will continue ...\n";
+    }
+
+    if ($darch and $darch =~ /i.86/)
+    {
+        $darch = "x86";
+    }
+
+    if ($xCAT::data::discinfo::distnames{$did})
+    {
+        unless ($distname)
         {
             unless ($distname)
             {
                 $distname = $xCAT::data::discinfo::distnames{$did};
             }
         }
+    } elsif ($desc and $desc =~ /CentOS Linux (.*)/) {
+        $distname = "centos" . $1;
     } elsif (-r $mntpath . "/isolinux/isolinux.cfg") {
         my $icfg;
 
@@ -2080,10 +2092,18 @@ sub copycd
         return;
     }
 
+    unless ($dno) {
+        if ($distname =~ /((?:\d+\.)+\d+)/) { 
+            # Attempt to detemine the number of the OS from distname passed in
+            $dno = $1;
+        }
+    }
+    print "DEBUG - [anaconda.pm] Distname=$distname, OS=$desc, ARCH=$arch, Version=$dno\n";
+
     unless ($distname)
     {
-        print "INFO - Could not find ID=$did in the discinfo database for OS=$desc ARCH=$darch NUM=$dno\n";
-        print "INFO - Attempting to auto-detect...\n";
+        print "DEBUG - [anaconda.pm] Could not find ID=$did in the discinfo database for OS=$desc ARCH=$darch NUM=$dno\n";
+        print "DEBUG - [anaconda.pm] Attempting to auto-detect...\n";
         if ($desc =~ /IBM_PowerKVM/)
         {
             # check for PowerKVM support
@@ -2130,8 +2150,9 @@ sub copycd
         }
         else
         {
-            print "INFO - Could not auto-detect operating system.\n";
-            return;    #Do nothing, not ours..
+            # Cannot continue with what was detected, or attributes provided
+            print "DEBUG - [anaconda.pm] Could not auto-detect operating system. Maybe some other plugin can, return.\n";
+            return;
         }
     }
     if ($darch)
@@ -2144,12 +2165,23 @@ sub copycd
         {
             $callback->(
                 {
-                    error => "Requested distribution architecture $arch, but media is $darch"
+                    error => "Requested distribution architecture $arch, but media is $darch", errorcode => [1]
                 }
             );
             return;
         }
         if ($arch eq "ppc") { $arch = "ppc64" }
+    }
+
+    # At this point, if arch is not provided and we cannot determine it, inform the user
+    unless ($arch)
+    {
+        $callback->(
+            {
+               error => "copycds could not identify the ARCH, you may wish to try -a <arch>.", errorcode => [1]
+            }
+        );
+        return;
     }
 
     if ($inspection)
@@ -2165,13 +2197,13 @@ sub copycd
         );
         return;
     }
-    print "INFO - detected distname=$distname, arch=$arch\n";
 
     %{$request} = ();    #clear request we've got it.
     my $disccopiedin = 0;
     my $osdistroname = $distname . "-" . $arch;
 
     my $defaultpath = "$installroot/$distname/$arch";
+    print "DEBUG - [anaconda.pm] Detected distname=$distname, arch=$arch defaultpath=$defaultpath osdistroname=$osdistroname\n";
     unless ($path)
     {
         $path = $defaultpath;

@@ -27,6 +27,7 @@ brctl="brctl"
 uniq="uniq"
 xargs="xargs"
 modprobe="modprobe"
+xcatcreatedcon=''
 if [ -n "$LOGLABEL" ]; then
     log_label=$LOGLABEL
 else
@@ -1580,12 +1581,24 @@ function decode_arguments {
 ###############################################################################
 #
 # check NetworkManager
-# output: 2 error
+# output: 3 error
+#         2 using NetworkManager but service(systemctl) can not used, this happens in RH8 postscripts
 #         1 using NetworkManager
 #         0 using network
 #
 ##############################################################################
 function check_NetworkManager_or_network_service() {
+    #In RH7.6 postscripts stage, network service is active, but xCAT uses NetworkManager to configure IP,
+    #after that, xCAT disable NetworkManager, when CN is booted, CN use network service.
+    #In RH8, there is only NetworkManager
+    #So check network service should before check NetworkManager.
+    checkservicestatus network > /dev/null 2>/dev/null || checkservicestatus wicked > /dev/null 2>/dev/null 
+    if [ $? -eq 0 ]; then
+        stopservice NetworkManager | log_lines info
+        disableservice NetworkManager | log_lines info
+        log_info "network service is active"
+        return 0
+    fi
     #check NetworkManager is active
     checkservicestatus NetworkManager > /dev/null 2>/dev/null
     if [ $? -eq 0 ]; then
@@ -1595,19 +1608,13 @@ function check_NetworkManager_or_network_service() {
         if [ $? -ne 0 ]; then
             log_error "There is no nmcli"
         else
-            stopservice network | log_lines info
-            disableservice network | log_lines info
-            stopservice networking | log_lines info
-            disableservice networking | log_lines info
             return 1
         fi
     fi
-    checkservicestatus network > /dev/null 2>/dev/null || checkservicestatus wicked > /dev/null 2>/dev/null
+    #In RH8 postscripts stage, nmcli can not modify persistent configure file
+    ps -ef|grep -v grep|grep NetworkManager >/dev/null 2>/dev/null
     if [ $? -eq 0 ]; then
-        stopservice NetworkManager | log_lines info
-        disableservice NetworkManager | log_lines info
-        log_info "network service is active"
-        return 0
+        return 2
     fi
     checkservicestatus networking > /dev/null 2>/dev/null
     if [ $? -eq 0 ]; then
@@ -1691,6 +1698,7 @@ function create_vlan_interface_nmcli {
     local _netmask=""
     local _mtu=""
     local next_nic=""
+    rc=0
     # in case it's on top of bond, we need to migrate ip from its
     # member vlan ports.
     # parser input arguments
@@ -1731,7 +1739,7 @@ function create_vlan_interface_nmcli {
                     return 1
                 fi
                 _netmask=$(v4mask2prefix $_netmask_long)
-                _ipaddrs="method none ip4 $ipaddr/$_netmask"
+                _ipaddrs="ip4 $ipaddr/$_netmask"
             fi
         fi
     fi
@@ -1750,9 +1758,14 @@ function create_vlan_interface_nmcli {
         tmp_con_name=$con_name"-tmp"
         $nmcli con modify $con_name connection.id $tmp_con_name
     fi
-
-    $nmcli con add type vlan con-name $con_name dev $ifname id $(( 10#$vlanid )) $_ipaddrs $_mtu connection.autoconnect-priority 9
+    #create VLAN connetion
+    $nmcli con add type vlan con-name $con_name dev $ifname id $(( 10#$vlanid )) method none $_ipaddrs $_mtu connection.autoconnect-priority 9 autoconnect yes connection.autoconnect-slaves 1 connection.autoconnect-retries 0
     log_info "create NetworkManager connection for $ifname.$vlanid"
+
+    #add extra params
+    add_extra_params_nmcli $ifname.$vlanid $con_name
+    [ $? -ne 0 ] && rc=1
+
     if [ -z "$next_nic" ]; then
         $nmcli con up $con_name
         is_connection_activate_intime $con_name
@@ -1770,7 +1783,48 @@ function create_vlan_interface_nmcli {
         $nmcli con delete $tmp_con_name
     fi
     $ip address show dev $ifname.$vlanid | $sed -e 's/^/[vlan] >> /g' | log_lines info
-    return 0
+    return $rc
+}
+###############################################################################
+#
+# add extra params for nmcli connection 
+#
+# input : $1 nic device
+#         $2 nmcli connection name
+# return : 1 error
+#          0 successful
+#
+###############################################################################
+function add_extra_params_nmcli {
+
+    nicdev=$1
+    con_name=$2
+    rc=0
+    str_conf_file="/etc/sysconfig/network-scripts/ifcfg-${con_name}"
+    str_conf_file_1="/etc/sysconfig/network-scripts/ifcfg-${con_name}-1"
+    if [ -f $str_conf_file_1 ]; then
+        grep -x "NAME=$con_name" $str_conf_file_1 >/dev/null 2>/dev/null
+        if [ $? -eq 0 ]; then
+            str_conf_file=$str_conf_file_1
+        fi
+    fi
+    #query extra params
+    query_extra_params $nicdev
+    i=0
+    while [ $i -lt ${#array_extra_param_names[@]} ]
+    do
+        name="${array_extra_param_names[$i]}"
+        value="${array_extra_param_values[$i]}"
+        if [ -n "$name" -a -n "$value" ]; then
+            echo "$name=$value" >> $str_conf_file
+        else
+            log_error "invalid extra params $name $value, please check nics.nicextraparams"
+            rc=1
+        fi
+        i=$((i+1))
+    done
+    $nmcli con reload $str_conf_file
+    return $rc
 }
 
 ###############################################################################
@@ -1804,6 +1858,35 @@ function is_connection_activate_intime {
     else
         return 1
     fi
+}
+
+###############################################################################
+#
+# wait_nic_connect_intime
+#
+# input : nic name
+#         time_out (optional, 40 seconds by default)
+# return : connection name
+#
+###############################################################################
+
+function wait_nic_connect_intime {
+    nic_name=$1
+    time_out=40
+    con_name=''
+    if [ ! -z "$2" ]; then
+        time_out=$2
+    fi
+    i=0
+    while [ $i -lt "$time_out" ]; do
+	con_name=$(nmcli dev show $nic_name|grep GENERAL.CONNECTION|awk -F: '{print $2}'|sed 's/^[ \t]*//g')
+        if [ ! -z "$con_name" -a "$con_name" != "--" ]; then
+            break
+        fi
+        sleep 1
+        i=$((i+1))
+    done
+    echo $con_name
 }
 
 ###############################################################################
@@ -1888,7 +1971,7 @@ function create_bridge_interface_nmcli {
             fi
         fi
         log_info "create bridge connection $xcat_con_name"
-        cmd="$nmcli con add type bridge con-name $xcat_con_name ifname $ifname $_mtu connection.autoconnect-priority 9"
+        cmd="$nmcli con add type bridge con-name $xcat_con_name ifname $ifname $_mtu connection.autoconnect-priority 9 autoconnect yes connection.autoconnect-retries 0 connection.autoconnect-slaves 1"
         log_info $cmd
         $cmd
         if [ $? -ne 0 ]; then
@@ -1922,12 +2005,12 @@ function create_bridge_interface_nmcli {
                 return 1
             fi
         fi
-        con_use_same_dev=$(nmcli dev show $_port|grep GENERAL.CONNECTION|awk -F: '{print $2}'|sed 's/^[ \t]*//g')
+        con_use_same_dev=$(wait_nic_connect_intime $_port)
         if [ "$con_use_same_dev" != "--" -a -n "$con_use_same_dev" ]; then
-            cmd="$nmcli con mod "$con_use_same_dev" master $ifname $_mtu connection.autoconnect-priority 9"
+            cmd="$nmcli con mod "$con_use_same_dev" master $ifname $_mtu connection.autoconnect-priority 9 autoconnect yes connection.autoconnect-slaves 1 connection.autoconnect-retries 0"
             xcat_slave_con=$con_use_same_dev
         else
-            cmd="$nmcli con add type $_pretype con-name $xcat_slave_con ifname $_port master $ifname $_mtu connection.autoconnect-priority 9"
+            cmd="$nmcli con add type $_pretype con-name $xcat_slave_con ifname $_port master $ifname $_mtu connection.autoconnect-priority 9 autoconnect yes connection.autoconnect-slaves 1 connection.autoconnect-retries 0"
         fi
         log_info "create $_pretype slaves connetcion $xcat_slave_con for bridge"
         log_info "$cmd"
@@ -1951,10 +2034,13 @@ function create_bridge_interface_nmcli {
         $nmcli con mod $xcat_con_name ipv4.method manual ipv4.addresses $ipv4_addr/$str_prefix;
     fi
 
+    # add extra params
+    add_extra_params_nmcli $ifname $xcat_con_name
+    [ $? -ne 0 ] && rc=1
     # bring up interface formally
     log_info "$nmcli con up $xcat_con_name" 
     $nmcli con up $xcat_con_name
-    rc=$?
+    [ $? -ne 0 ] && rc=1
     log_info "$nmcli con up $xcat_slave_con"
     $nmcli con up $xcat_slave_con
     # If bridge interface is active, delete tmp old connection
@@ -1982,8 +2068,12 @@ function create_bridge_interface_nmcli {
         if [ $? -eq 0 ]; then
             $nmcli con delete $tmp_slave_con_name
         fi
-        wait_for_ifstate $ifname UP 20 40
-        rc=$?
+        if [ -n "$xcatcreatedcon" ]; then
+            $nmcli con up $xcatcreatedcon
+            log_info "$nmcli con up $xcatcreatedcon"
+        fi
+        wait_for_ifstate $ifname UP 40 40
+        [ $? -ne 0 ] && rc=1
         $ip address show dev $ifname| $sed -e 's/^/[bridge] >> /g' | log_lines info
     fi
 
@@ -2098,10 +2188,11 @@ function create_bond_interface_nmcli {
     log_info "create bond connection $xcat_con_name"
     cmd=""
     if [ -n "$next_nic" ]; then
-        cmd="$nmcli con add type bond con-name $xcat_con_name ifname $bondname bond.options $_bonding_opts autoconnect yes connection.autoconnect-priority 9"
+        cmd="$nmcli con add type bond con-name $xcat_con_name ifname $bondname bond.options $_bonding_opts autoconnect yes connection.autoconnect-priority 9 connection.autoconnect-slaves 1 connection.autoconnect-retries 0"
     else
-        cmd="$nmcli con add type bond con-name $xcat_con_name ifname $bondname bond.options $_bonding_opts method none ipv4.method manual ipv4.addresses $ipv4_addr/$str_prefix $_mtu connection.autoconnect-priority 9"
+        cmd="$nmcli con add type bond con-name $xcat_con_name ifname $bondname bond.options $_bonding_opts method none ipv4.method manual ipv4.addresses $ipv4_addr/$str_prefix $_mtu connection.autoconnect-priority 9 connection.autoconnect-slaves 1 connection.autoconnect-retries 0"
     fi
+    xcatcreatedcon=$xcat_con_name
     log_info $cmd
     $cmd
     if [ $? -ne 0 ]; then
@@ -2144,7 +2235,7 @@ function create_bond_interface_nmcli {
             $ip link set dev $ifslave down 
             wait_for_ifstate $ifslave DOWN 20 2
         fi
-        cmd="$nmcli con add type $slave_type con-name $xcat_slave_con $_mtu method none ifname $ifslave master $xcat_con_name autoconnect yes connection.autoconnect-priority 9"
+        cmd="$nmcli con add type $slave_type con-name $xcat_slave_con $_mtu method none ifname $ifslave master $xcat_con_name autoconnect yes connection.autoconnect-priority 9 connection.autoconnect-retries 0"
         log_info $cmd
         $cmd
         if [ $? -ne 0 ]; then
@@ -2176,8 +2267,12 @@ function create_bond_interface_nmcli {
             break
         fi 
     done
-    # bring up interface formally
+    invalid_extra_params=0 
     if [ $rc -ne 1 ]; then 
+        # add extra params
+        add_extra_params_nmcli $bondname $xcat_con_name
+        [ $? -ne 0 ] && invalid_extra_params=1
+        # bring up interface formally
         log_info "$nmcli con up $xcat_con_name"
         $nmcli con up $xcat_con_name
         if [ -z "$next_nic" ]; then
@@ -2194,8 +2289,6 @@ function create_bond_interface_nmcli {
                     $ip address show dev $bondname| $sed -e 's/^/[bond] >> /g' | log_lines info
                 fi
             fi
-        else
-           rc=0
         fi
     fi
 
@@ -2231,6 +2324,7 @@ function create_bond_interface_nmcli {
             delete_bond_slaves_con "$tmp_slave_con_names"
         fi
     fi
+    [ $invalid_extra_params -eq 1 ] && rc=$invalid_extra_params
     return $rc
 }
 ######################################################################

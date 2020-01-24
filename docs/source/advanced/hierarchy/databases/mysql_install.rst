@@ -21,19 +21,26 @@ MySQL/MariaDB packages are shipped as part of most Linux Distributions.
 Red Hat Enterprise Linux
 ------------------------
 
-* MySQL - Using ``yum``, ensure that the following packages are installed on the management node: ::
+* For RHEL 6 and prior, MySQL is shipped. Using ``yum``, ensure that the following packages are installed on the management node: ::
 
        perl-DBD-MySQL*
        mysql-server-5.*
        mysql-5.*
        mysql-connector-odbc-*
 
-* MariaDB - Using ``yum``, ensure that the following packages are installed on the management node: ::
+* For RHEL 7, MariaDB is shipped. Using ``yum``, ensure that the following packages are installed on the management node: ::
 
        mariadb-server-5.*
        mariadb-5.*
        perl-DBD-MySQL*
        mysql-connector-odbc-*
+
+* For RHEL 8, MariaDB is shipped. Using ``dnf``, ensure that the following packages are installed on the management node: ::
+
+       mariadb-server-5.*
+       mariadb-5.*
+       perl-DBD-MySQL*
+       mariadb-connector-odbc-*
 
 Suse Linux Enterprise Server
 ----------------------------
