@@ -22,6 +22,7 @@
 #                       Verifies no broken link files in ..../<OS>/<ARCH>/
 #                       Verifies there are no multiple, real (non-link) files with the same name
 #                       Verifies all real (non-link) files have a link to it
+#                       Verifies all files have read permission set for all
 #       VERBOSE=1     - Set to 1 to see more VERBOSE output
 
 # This script should only be run on RPM based machines 
@@ -188,6 +189,15 @@ if [[ ${CHECK} -eq 1 ]]; then
             echo "Warning: No symlinks to file: $GSA/$file"
         fi
     done
+
+    # Find files that have read permission missing for "all"
+    MISSING_PERMISSION=`find $GSA/* -type f -not -perm 644 -a -type f -not -perm 645 -a -type f -not -perm 646 -a -type f -not -perm 647 -a -type f -not -perm 664 -a -type f -not -perm 665 -a -type f -not -perm 666 -a -type f -not -perm 667`
+    for file in $MISSING_PERMISSION; do
+        echo "Verify permission for file: "
+        echo " " $(ls -l $file)
+        ERROR=1
+    done
+
 
     if [[ ${ERROR} -eq 1 ]]; then
         echo -e "\nErrors found verifying files. Rerun this script with CHECK=0 to skip file verification."
