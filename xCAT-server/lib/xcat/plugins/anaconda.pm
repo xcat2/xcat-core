@@ -2071,6 +2071,10 @@ sub copycd
         }
     } elsif ($desc and $desc =~ /CentOS Linux (.*)/) {
         $distname = "centos" . $1;
+	foreach my $release (glob($mntpath . "/BaseOS/Packages/centos-release-*rpm")) {
+	    $release =~ /.*centos-release-([^-]*)-.*/;
+            $distname = "centos" . $1;
+        }
     } elsif (-r $mntpath . "/isolinux/isolinux.cfg") {
         my $icfg;
 
