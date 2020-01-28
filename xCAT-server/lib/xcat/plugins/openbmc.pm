@@ -4409,6 +4409,7 @@ sub rvitals_response {
     my @sorted_output;
 
     my %leds = ();
+    my $number_of_fan_leds = 0;
 
     foreach my $key_url (keys %{$response_info->{data}}) {
         my %content = %{ ${ $response_info->{data} }{$key_url} };
@@ -4425,10 +4426,11 @@ sub rvitals_response {
             $calc_value = (split(/\./, $content{State}))[-1];
             $content_info = $label . ": " . $calc_value ;
 
-            if ($key_url =~ "fan0") { $leds{fan0} = $calc_value; }
-            if ($key_url =~ "fan1") { $leds{fan1} = $calc_value; }
-            if ($key_url =~ "fan2") { $leds{fan2} = $calc_value; }
-            if ($key_url =~ "fan3") { $leds{fan3} = $calc_value; }
+            # There could be multiple fan LEDs. Match a string "fan" followed by digits, but only at the end of a string
+            if ($key_url =~ /fan(\d+)$/) {
+                $leds{"fan" . $1} = $calc_value;
+                $number_of_fan_leds++;
+            }
             if ($key_url =~ "front_id") { $leds{front_id} = $calc_value; }
             if ($key_url =~ "front_fault") { $leds{front_fault} = $calc_value; }
             if ($key_url =~ "front_power") { $leds{front_power} = $calc_value; }
@@ -4500,7 +4502,7 @@ sub rvitals_response {
                 }
             }
             # Fans
-            for (my $i = 0; $i < 4; $i++) {
+            for (my $i = 0; $i < $number_of_fan_leds; $i++) {
                 my $tmp_key = "fan" . $i;
                 $content_info = "LEDs Fan$i: $leds{$tmp_key}";
                 push (@sorted_output, $content_info);
