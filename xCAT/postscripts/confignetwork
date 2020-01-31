@@ -610,8 +610,8 @@ function configure_nicdevice {
             fi
         elif [ x"$nic_dev_type" = "xinfiniband" ] || [ x"$nic_dev_type" = "xOmnipath" ]; then
             log_info "Call configib for IB nics: $nic_dev, ports: $num_iba_ports"
-            log_info "NIC_IBNICS=$nic_dev NIC_IBAPORTS=$num_iba_ports configib"
-            NIC_IBNICS=$nic_dev NIC_IBAPORTS=$num_iba_ports configib
+            log_info "NMCLI_USED=$networkmanager_active NIC_IBNICS=$nic_dev NIC_IBAPORTS=$num_iba_ports configib"
+            NMCLI_USED=$networkmanager_active NIC_IBNICS=$nic_dev NIC_IBAPORTS=$num_iba_ports configib
             if [ $? -ne 0 ]; then
                 log_error "configib failed."
                 errorcode=1
