@@ -409,7 +409,8 @@ sub config_snmp {
         my $cfg_access3="snmp-server access 5 security usm\r";
         my $cfg_access4="snmp-server access 5 read-view iso\r";
 
-        $mysw->slave->stty(qw(sane -echo));
+        $mysw->debug(0);
+        $mysw->log_stdout(0);    # suppress stdout output..
 
         unless ($mysw->spawn($login_cmd))
         {
@@ -522,7 +523,8 @@ sub config_G8264 {
     my $main_prompt="Main#";
     my $authpw_cmd = "/cfg/sys/ssnmp/snmpv3/usm 5/authpw\r";
 
-    $mysw->slave->stty(qw(sane -echo));
+    $mysw->debug(0);
+    $mysw->log_stdout(0);    # suppress stdout output..
 
     unless ($mysw->spawn($login_cmd))
     {
