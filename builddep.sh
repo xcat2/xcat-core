@@ -191,7 +191,7 @@ if [[ ${CHECK} -eq 1 ]]; then
     done
 
     # Find files that have read permission missing for "all"
-    MISSING_PERMISSION=`find $GSA/* -type f -not -perm 644 -a -type f -not -perm 645 -a -type f -not -perm 646 -a -type f -not -perm 647 -a -type f -not -perm 664 -a -type f -not -perm 665 -a -type f -not -perm 666 -a -type f -not -perm 667`
+    MISSING_PERMISSION=`find $GSA/* -type f -not -perm -444`
     for file in $MISSING_PERMISSION; do
         echo "Verify permission for file: "
         echo " " $(ls -l $file)
