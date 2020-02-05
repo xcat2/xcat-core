@@ -842,6 +842,10 @@ cmd:cnip=__GETNODEATTR($$CN,ip)__;echo $cnip;var1=100;var2=`echo $cnip |sed -r '
 check:rc==0
 cmd:cnip=__GETNODEATTR($$CN,ip)__;echo $cnip;var3=101.;var4=`echo $cnip |awk -F. '{print $2}'`;var5=.0.0;secondnet=$var3$var4$var5;mkdef -t network -o confignetworks_test2 net=$secondnet mask=255.255.0.0 mgtifname=$$THIRDNIC
 check:rc==0
+cmd:cnip=__GETNODEATTR($$CN,ip)__;echo $cnip;var1=101;var2=`echo $cnip |sed -r 's/[^\.]*(..\..*)/\1/'`;second1ip=$var1$var2;chdef $$CN nicips.$$THIRDNIC=$second1ip nictypes.$$THIRDNIC=Ethernet nicnetworks.$$THIRDNIC=confignetworks_test2
+check:rc==0
+cmd:updatenode $$CN -P confignetwork
+check:rc==0
 cmd:chdef $$CN nicips.$$SECONDNIC= nictypes.$$SECONDNIC= nicnetworks.$$SECONDNIC= nicips.$$THIRDNIC= nictypes.$$THIRDNIC= nicnetworks.$$THIRDNIC=
 check:rc==0
 cmd:cnip=__GETNODEATTR($$CN,ip)__;echo $cnip;var3=102.;var4=`echo $cnip |awk -F. '{print $2}'`;var5=.0.0;secondnet=$var3$var4$var5;mkdef -t network -o confignetworks_test3 net=$secondnet mask=255.255.0.0
