@@ -853,9 +853,9 @@ EOF`
     #now update all the existing rpms
     if [ $hasyum -eq 1 ]; then
         if [ $VERBOSE  ]; then
-          echo "$envlist yum -y upgrade"
+          echo "$envlist yum -y --disablerepo=* --enablerepo=xcat-otherpkgs* upgrade"
         fi
-        result=`eval $envlist yum -y upgrade 2>&1`
+        result=`eval $envlist yum -y --disablerepo=* --enablerepo=xcat-otherpkgs* upgrade 2>&1`
         R=$?
         if [ $R -ne 0 ]; then
               RETURNVAL=$R
