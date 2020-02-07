@@ -1756,10 +1756,14 @@ function create_vlan_interface_nmcli {
     is_nmcli_connection_exist $con_name
     if [ $? -eq 0 ]; then
         tmp_con_name=$con_name"-tmp"
-        $nmcli con modify $con_name connection.id $tmp_con_name
+        cmd="$nmcli con modify $con_name connection.id $tmp_con_name"
+        log_info $cmd
+        $cmd
     fi
     #create VLAN connetion
-    $nmcli con add type vlan con-name $con_name dev $ifname id $(( 10#$vlanid )) method none $_ipaddrs $_mtu connection.autoconnect-priority 9 autoconnect yes connection.autoconnect-slaves 1 connection.autoconnect-retries 0
+    cmd="$nmcli con add type vlan con-name $con_name dev $ifname id $(( 10#$vlanid )) method none $_ipaddrs $_mtu connection.autoconnect-priority 9 autoconnect yes connection.autoconnect-slaves 1 connection.autoconnect-retries 0"
+    log_info $cmd
+    $cmd
     log_info "create NetworkManager connection for $ifname.$vlanid"
 
     #add extra params
@@ -2188,7 +2192,7 @@ function create_bond_interface_nmcli {
     log_info "create bond connection $xcat_con_name"
     cmd=""
     if [ -n "$next_nic" ]; then
-        cmd="$nmcli con add type bond con-name $xcat_con_name ifname $bondname bond.options $_bonding_opts autoconnect yes connection.autoconnect-priority 9 connection.autoconnect-slaves 1 connection.autoconnect-retries 0"
+        cmd="$nmcli con add type bond con-name $xcat_con_name ifname $bondname bond.options $_bonding_opts ipv4.method disabled ipv6.method ignore autoconnect yes connection.autoconnect-priority 9 connection.autoconnect-slaves 1 connection.autoconnect-retries 0"
     else
         cmd="$nmcli con add type bond con-name $xcat_con_name ifname $bondname bond.options $_bonding_opts method none ipv4.method manual ipv4.addresses $ipv4_addr/$str_prefix $_mtu connection.autoconnect-priority 9 connection.autoconnect-slaves 1 connection.autoconnect-retries 0"
     fi
@@ -2235,7 +2239,7 @@ function create_bond_interface_nmcli {
             $ip link set dev $ifslave down 
             wait_for_ifstate $ifslave DOWN 20 2
         fi
-        cmd="$nmcli con add type $slave_type con-name $xcat_slave_con $_mtu method none ifname $ifslave master $xcat_con_name autoconnect yes connection.autoconnect-priority 9 connection.autoconnect-retries 0"
+        cmd="$nmcli con add type $slave_type con-name $xcat_slave_con $_mtu ifname $ifslave master $xcat_con_name slave-type bond autoconnect yes connection.autoconnect-priority 9 connection.autoconnect-retries 0"
         log_info $cmd
         $cmd
         if [ $? -ne 0 ]; then
