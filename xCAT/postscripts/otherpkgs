@@ -573,6 +573,7 @@ elif ( ((pmatch "$OSVER" "rhel*") || (pmatch "$OSVER" "centos*") || (pmatch "$OS
 	       fi
 	       echo "enabled=1" >> $REPOFILE
 	       echo "gpgcheck=0" >> $REPOFILE
+               echo "skip_if_unavailable=True" >> $REPOFILE
            fi
            i=$((i+1))
       done

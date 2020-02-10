@@ -226,7 +226,6 @@ sub cumulus_connect {
 
      $ssh->debug(0);
      $ssh->log_stdout(0);    # suppress stdout output..
-     $ssh->slave->stty(qw(sane -echo));
 
      unless ($ssh->spawn($command, @parameters))
      {

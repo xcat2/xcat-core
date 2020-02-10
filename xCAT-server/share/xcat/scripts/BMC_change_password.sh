@@ -27,9 +27,9 @@ BMCs, by passing it with '[-p|--bmcpasswd]' option to 'bmcdiscover' command.
     echo "      $0  -r <ip_ranges> -n <new BMC Password> "
     echo "Examples:"
     echo "      Target one node:"
-    echo "          $0  -r 172.11.139.1 -n 0penBmc123:"
+    echo "          $0  -r 172.11.139.1 -n 0penBmc123"
     echo "      Target a range of nodes:"
-    echo "          $0  -r 172.11.139.1-12 -n 0penBmc123:"
+    echo "          $0  -r 172.11.139.1-12 -n 0penBmc123"
     exit
 fi
 

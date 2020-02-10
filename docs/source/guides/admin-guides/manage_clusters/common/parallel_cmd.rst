@@ -31,7 +31,7 @@ Examples for xdsh
 
 - To run the ``ps`` command on node targets node1 and run the remote command with the ``-v`` and ``-t`` flag, enter: ::
 
-    xdsh node1,node2 -o"-v -t" ps =item *
+    xdsh node1,node2 -o "-v -t" ps
 
 - To execute the commands contained in myfile in the XCAT context on several node targets, with a fanout of 1, enter: ::
 

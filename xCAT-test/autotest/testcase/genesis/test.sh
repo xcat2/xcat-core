@@ -23,7 +23,7 @@ MASTER_PRIVATE_NETWORK="192_168_0_0-255_255_0_0"
 
 
 function check_destiny() {
-    cmd="chdef ${TESTNODE} arch=ppc64le cons=ipmi groups=all ip=${TESTNODE_IP} mac=4e:ee:ee:ee:ee:0e netboot=$NETBOOT" tftpserver=$MASTER_PRIVATE_IP xcatmaster=$MASTER_PRIVATE_IP;
+    cmd="chdef ${TESTNODE} arch=ppc64le cons=ipmi groups=all ip=${TESTNODE_IP} mac=4e:ee:ee:ee:ee:0e netboot=$NETBOOT tftpserver=$MASTER_PRIVATE_IP xcatmaster=$MASTER_PRIVATE_IP";
     runcmd $cmd;
     lsdef ${TESTNODE}
 

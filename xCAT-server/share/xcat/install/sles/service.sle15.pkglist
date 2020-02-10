@@ -17,6 +17,7 @@ unixODBC
 perl-Net-DNS
 perl-DBD-Pg
 postgresql-server
+postgresql
 perl-DBD-mysql
 mariadb-client
 #libmysqlclient18
