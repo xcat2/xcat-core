@@ -332,7 +332,7 @@ EOF
     if [[ $OSVER == ubuntu* ]]; then
         update-rc.d xcatpostinit1 defaults
     else
-        if [[ $OSVER == sles* ]]; then
+        if [[ $OSVER == sle* ]]; then
             if [[ $OSVER == sles10* ]]; then
                 /sbin/insserv xcatpostinit1
             else
