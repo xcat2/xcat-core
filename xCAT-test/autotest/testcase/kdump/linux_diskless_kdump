@@ -54,7 +54,7 @@ cmd:packimage __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-comput
 check:rc==0
 
 # Verify kdump related attributes showup in the osimage and node definitions
-cmd:lsdef -t node $$CN -i postscripts
+cmd:lsdef -t node $$CN -i postscripts,postbootscripts
 cmd:lsdef -t osimage __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute -i crashkernelsize,dump
 
 cmd:rinstall $$CN osimage=__GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute
@@ -87,13 +87,16 @@ check:rc==0
 cmd:xdsh $$CN df -H
 
 # Verify enablekdump postscript was executed on the compute node
-cmd:xdsh $$CN grep "enablekdump\ return\ with" /var/log/xcat/xcat.log
+cmd:xdsh $$CN cat /var/log/xcat/xcat.log
 
 cmd:xdsh $$CN "at now +1 minutes <<< /tmp/kdump.trigger"
 cmd:sleep 300
 
-cmd:vmcorefile=`find /opt/xcat/share/xcat/tools/autotest/kdumpdir/ -name vmcore`;if [[ -s $vmcorefile ]]; then echo "this file is not empty";else echo "this file is empty"; fi
+cmd:vmcorefile=`find /opt/xcat/share/xcat/tools/autotest/kdumpdir/ -name vmcore`;if [[ -s $vmcorefile ]]; then echo "vmcore file is not empty";else echo "vmcore file is empty"; fi
 check:output=~not empty
+
+# Check for errors in messages log file
+cmd:xdsh $$CN grep "kdump" /var/log/messages
 
 cmd:pkglistfile=`lsdef -t osimage __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute|grep pkglist|awk -F'=' '{print $2}'`;mv -f $pkglistfile.bak $pkglistfile
 cmd:exlistfile=`lsdef -t osimage __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute|grep exlist|awk -F'=' '{print $2}'`;mv -f $exlistfile.bak $exlistfile
