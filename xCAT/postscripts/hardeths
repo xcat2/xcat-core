@@ -50,12 +50,16 @@ if [ -f /etc/os-release ] && (cat /etc/os-release |grep -i  '^NAME=[ "]*Cumulus 
     OSVER="cumulus"
 fi
 
+if [ -f /etc/os-release ] && (cat /etc/os-release |grep NAME|grep -i SLE >/dev/null); then
+   OSVER="SLE"
+fi
+
 defgw=`ip route | grep default | awk '{print $3}' | head -n1`
 if ( pmatch $OSVER "ubuntu*" ) || (pmatch $OSVER "cumulus")
 then
     echo `hostname` >/etc/hostname
     mv /etc/network/interfaces /etc/network/interfaces.old # this file will be filled up next
-elif [ -f /etc/SuSE-release ]
+elif [ -f /etc/SuSE-release ] || (pmatch $OSVER "SLE")
 then
     #SLES9 and SLES10, uses /etc/sysconfig/network/ifcfg-eth-id-<mac>
     #SLES11, uses /etc/sysconfig/network/ifcfg-eth<x>

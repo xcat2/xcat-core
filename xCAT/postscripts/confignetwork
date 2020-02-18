@@ -42,6 +42,9 @@ if [ -f "/etc/redhat-release" ];then
 elif [ -f "/etc/SuSE-release" -o -n "$str_temp" ];then
     is_sles=1
     nwdir="/etc/sysconfig/network"
+elif [ -f /etc/os-release ] && cat /etc/os-release |grep NAME|grep -i SLE >/dev/null; then
+    is_sles=1
+    nwdir="/etc/sysconfig/network"
 elif [ -f "/etc/debian_version" ];then
     nwdir="/etc/network/interfaces.d"
     is_debian=1

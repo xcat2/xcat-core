@@ -2,7 +2,7 @@ start:makedhcp_n
 description:Create a new dhcp configuration file with a network statement for each network the dhcp daemon should listen on
 os:Linux
 label:mn_only,ci_test,dhcp
-cmd:if [ -f "/etc/dhcp/dhcpd.conf" ];then mv -f /etc/dhcp/dhcpd.conf /etc/dhcp/dhcpd.conf.bak ; elif [ -f "/etc/dhcpd.conf" ]; then mv -f /etc/dhcpd.conf /etc/dhcpd.conf.bak; fi
+cmd:if [ -f "/etc/dhcp/dhcpd.conf" ];then cp -f /etc/dhcp/dhcpd.conf /etc/dhcp/dhcpd.conf.bak ; elif [ -f "/etc/dhcpd.conf" ]; then cp -f /etc/dhcpd.conf /etc/dhcpd.conf.bak; fi
 cmd:makedhcp -n
 check:rc==0
 cmd:cat $(ls /etc/dhcp/dhcpd.conf || ls /etc/dhcpd.conf)
@@ -36,7 +36,7 @@ start:makedhcp_n_linux
 description:Create a new dhcp configuration file with a network statement for each network the dhcp daemon should listen on
 label:others,ci_test
 os:Linux
-cmd:if [ -f "/etc/dhcp/dhcpd.conf" ];then mv -f /etc/dhcp/dhcpd.conf /etc/dhcp/dhcpd.conf.bak ; elif [ -f "/etc/dhcpd.conf" ]; then mv -f /etc/dhcpd.conf /etc/dhcpd.conf.bak; fi
+cmd:if [ -f "/etc/dhcp/dhcpd.conf" ];then cp -f /etc/dhcp/dhcpd.conf /etc/dhcp/dhcpd.conf.bak ; elif [ -f "/etc/dhcpd.conf" ]; then cp -f /etc/dhcpd.conf /etc/dhcpd.conf.bak; fi
 cmd:makedhcp -n
 check:rc==0
 cmd:ls /etc/dhcp/dhcpd.conf || ls /etc/dhcpd.conf
@@ -44,7 +44,7 @@ check:rc==0
 cmd:ps -e | grep dhcpd
 check:rc==0
 check:output=~dhcpd
-cmd:if [ -f "/etc/dhcp/dhcpd.conf" ];then mv -f /etc/dhcp/dhcpd.conf /etc/dhcp/dhcpd.conf.bak ; elif [ -f "/etc/dhcpd.conf" ]; then mv -f /etc/dhcpd.conf /etc/dhcpd.conf.bak; fi
+cmd:if [ -f "/etc/dhcp/dhcpd.conf" ];then mv -f /etc/dhcp/dhcpd.conf.bak /etc/dhcp/dhcpd.conf ; elif [ -f "/etc/dhcpd.conf" ]; then mv -f /etc/dhcpd.conf.bak /etc/dhcpd.conf; fi
 end
 
 start:makedhcp_a_linux
@@ -55,7 +55,7 @@ cmd:mkdef -t node -o testnode1 groups=compute mac=11:22:33:55:66:88 arch=ppc64
 cmd:chdef -t node -o testnode1 netboot=yaboot tftpserver=192.16.10.0 nfsserver=192.16.10.0 monserver=192.16.10.0 xcatmaster=192.16.10.0 installnic="mac" primarynic="mac"
 cmd:lsdef -l testnode1 -z | tee /tmp/CN.stanza
 cmd:chdef -t node -o testnode1 mac=11:22:33:44:55:66
-cmd:if [ -f "/etc/dhcp/dhcpd.conf" ];then mv -f /etc/dhcp/dhcpd.conf /etc/dhcp/dhcpd.conf.bak ; elif [ -f "/etc/dhcpd.conf" ]; then mv -f /etc/dhcpd.conf /etc/dhcpd.conf.bak; fi
+cmd:if [ -f "/etc/dhcp/dhcpd.conf" ];then cp -f /etc/dhcp/dhcpd.conf /etc/dhcp/dhcpd.conf.bak ; elif [ -f "/etc/dhcpd.conf" ]; then cp -f /etc/dhcpd.conf /etc/dhcpd.conf.bak; fi
 cmd:makedhcp -n
 cmd:makedhcp -a
 check:rc==0
@@ -64,7 +64,7 @@ check:output=~testnode1
 check:output=~11:22:33:44:55:66
 cmd:cat /tmp/CN.stanza | chdef -z
 cmd:rmdef testnode1
-cmd:if [ -f "/etc/dhcp/dhcpd.conf" ];then mv -f /etc/dhcp/dhcpd.conf /etc/dhcp/dhcpd.conf.bak ; elif [ -f "/etc/dhcpd.conf" ]; then mv -f /etc/dhcpd.conf /etc/dhcpd.conf.bak; fi
+cmd:if [ -f "/etc/dhcp/dhcpd.conf" ];then mv -f /etc/dhcp/dhcpd.conf.bak /etc/dhcp/dhcpd.conf ; elif [ -f "/etc/dhcpd.conf" ]; then mv -f /etc/dhcpd.conf.bak /etc/dhcpd.conf; fi
 end
 
 start:makedhcp_a_linux_check_invalid_mac
@@ -86,7 +86,7 @@ label:mn_only,dhcp
 cmd:lsdef -t node -l -z > /tmp/all.nodes
 cmd:mkdef -t node -o testnode1 groups=compute mac=11:22:33:55:66:88 arch=ppc64
 cmd:mkdef -t node -o testnode2 groups=compute mac=11:22:33:55:66:99 arch=ppc64
-cmd:if [ -f "/etc/dhcp/dhcpd.conf" ];then mv -f /etc/dhcp/dhcpd.conf /etc/dhcp/dhcpd.conf.bak ; elif [ -f "/etc/dhcpd.conf" ]; then mv -f /etc/dhcpd.conf /etc/dhcpd.conf.bak; fi
+cmd:if [ -f "/etc/dhcp/dhcpd.conf" ];then cp -f /etc/dhcp/dhcpd.conf /etc/dhcp/dhcpd.conf.bak ; elif [ -f "/etc/dhcpd.conf" ]; then cp -f /etc/dhcpd.conf /etc/dhcpd.conf.bak; fi
 cmd:makedhcp -n
 cmd:makedhcp -a
 check:rc==0
@@ -110,7 +110,7 @@ os:Linux
 label:mn_only,dhcp
 cmd:mkdef -t node -o testnode1 groups=compute mac=11:22:33:55:66:88 arch=ppc64
 cmd:chdef -t node -o testnode1 netboot=yaboot tftpserver=192.16.10.0 nfsserver=192.16.10.0 monserver=192.16.10.0 xcatmaster=192.16.10.0 installnic="mac" primarynic="mac"
-cmd:if [ -f "/etc/dhcp/dhcpd.conf" ];then mv -f /etc/dhcp/dhcpd.conf /etc/dhcp/dhcpd.conf.bak ; elif [ -f "/etc/dhcpd.conf" ]; then mv -f /etc/dhcpd.conf /etc/dhcpd.conf.bak; fi
+cmd:if [ -f "/etc/dhcp/dhcpd.conf" ];then cp -f /etc/dhcp/dhcpd.conf /etc/dhcp/dhcpd.conf.bak ; elif [ -f "/etc/dhcpd.conf" ]; then cp -f /etc/dhcpd.conf /etc/dhcpd.conf.bak; fi
 cmd:lsdef -l testnode1 -z > /tmp/CN.stanza
 cmd:chdef -t node -o testnode1 mac=11:22:33:44:55:66
 cmd:makedhcp -n
