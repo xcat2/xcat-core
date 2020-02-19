@@ -1289,7 +1289,7 @@ sub bmcdiscovery_openbmc{
     my $login_endpoint = "login";
     my $system_endpoint = "inventory/system";
     my $motherboard_boxelder_endpoint = "$system_endpoint/chassis/motherboard/boxelder/bmc";
-    my $motherboard_tpm_endpoint = "$system_endpoint/chassis/motherboard/tpm";
+    my $motherboard_bmc_endpoint = "$system_endpoint/chassis/motherboard/bmc";
 
     my $node_data = $ip;
     my $brower = LWP::UserAgent->new( ssl_opts => { SSL_verify_mode => 0x00, verify_hostname => 0  }, );
@@ -1309,9 +1309,9 @@ sub bmcdiscovery_openbmc{
         my $req_output = $brower->request($req);
         if ($req_output->is_error) {
             # If the host system has not yet been powered on, system_endpoint call will return error
-            # Instead, check the boxelder (for Witherspoon) or tpm (for Mihawk) info for model/serial
+            # Instead, check the boxelder (for AC922) or bmc (for IC922) info for model/serial
             if ($model_id eq $::P9_MIHAWK_PRODUCT_ID) {
-                $url = "$http_protocol://$ip/$openbmc_project_url/$motherboard_tpm_endpoint";
+                $url = "$http_protocol://$ip/$openbmc_project_url/$motherboard_bmc_endpoint";
             }
             else {
                 $url = "$http_protocol://$ip/$openbmc_project_url/$motherboard_boxelder_endpoint";
