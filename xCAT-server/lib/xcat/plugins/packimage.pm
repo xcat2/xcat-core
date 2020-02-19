@@ -574,12 +574,7 @@ sub process_request {
         umask $oldmask;
     } elsif ($method =~ /squashfs/) {
         my $flags;
-        if ($arch =~ /x86/) {
-            $flags = "-le";
-        } elsif ($arch =~ /ppc/) {
-            $flags = "-be";
-        }
-
+        
         if ($osver =~ /rhels/ && $osver !~ /rhels5/) {
             $flags = "";
         }
