@@ -971,7 +971,7 @@ sub mysqlstart
     else
     {
         if ($::MariaDB == 1) {    # running MariaDB
-            if ($::linuxos =~ /rh.*/) || ($::linuxos =~ /sle15.*/ {
+            if ( ($::linuxos =~ /rh.*/) || ($::linuxos =~ /sles15.*/) ) {
                 $ret = xCAT::Utils->startservice("mariadb");
             } else {              # sles
                 $ret = xCAT::Utils->startservice("mysql");
@@ -1084,7 +1084,7 @@ sub mysqlreboot
     {
         if ($::MariaDB == 1) {    # MariaDB not MySQL
 
-            if ($::linuxos =~ /rh.*/) || ($::linuxos =~ /sle15.*/{
+            if ( ($::linuxos =~ /rh.*/) || ($::linuxos =~ /sles15.*/) ){
                 $cmd = "chkconfig mariadb on";
             } else {              #sles
                 $cmd = "chkconfig mysql on";
