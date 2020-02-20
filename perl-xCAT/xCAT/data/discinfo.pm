@@ -14,6 +14,7 @@ require Exporter;
 use strict;
 
 our %distnames = (
+    "1578087695.538488" => "centos8.1",     #x86_64
     "1480943823.812754" => "centos7.3",     #x86_64
     "1450147276.351714" => "centos7.2",     #ppc64le
     "1449699925.561114" => "centos7.2",     #x86_64
