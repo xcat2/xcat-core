@@ -32,7 +32,9 @@ BMCMAC=`ipmitool lan print $LANCHAN|grep ^MAC|awk '{print $4}'` #bmcconfig may o
 IPMIMFG=`ipmitool mc info |grep "^Manufacturer ID"|awk  '{print $4}'`
 XPROD=`ipmitool mc info | grep "^Product ID"|awk '{print $4}'`
 if [ "$IPMIMFG" == "42817" -a "$XPROD" == "16975" ]; then
-    ISOPENBMC=1
+    ISOPENBMC=1 # AC922
+elif [ "$IPMIMFG" == "42817" -a "$XPROD" == "1" ]; then
+    ISOPENBMC=1 # IC922
 else
     ISOPENBMC=0
 fi
