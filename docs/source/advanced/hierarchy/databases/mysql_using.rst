@@ -19,6 +19,11 @@ Start/Stop MySQL/MariaDB service
     service mysql start
     service mysql stop
 
+**[SLE15]** :  ::
+
+    systemctl start mariadb
+    systemctl stop mariadb
+
 
 Basic MySQL/MariaDB commands
 -----------------------------
