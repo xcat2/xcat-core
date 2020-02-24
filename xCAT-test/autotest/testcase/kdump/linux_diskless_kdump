@@ -61,6 +61,9 @@ cmd:rinstall $$CN osimage=__GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-ne
 check:rc==0
 check:output=~Provision node\(s\)\: $$CN
 
+# Verify kdump related attributes showup in tftpboot file
+cmd:cat /tftpboot/boot/grub2/$$CN
+
 cmd:sleep 300
 cmd:a=0;while ! `lsdef -l $$CN|grep status|grep booted >/dev/null`; do sleep 10;((a++));if [ $a -gt 60 ];then break;fi done
 
@@ -86,8 +89,11 @@ check:rc==0
 # Verify that kdump directory from management node is still mounted on the compute node
 cmd:xdsh $$CN df -H
 
+# Verify kdump parameters are in /proc/cmdline file
+cmd:xdsh $$CN cat /proc/cmdline
+
 # Verify enablekdump postscript was executed on the compute node
-cmd:xdsh $$CN cat /var/log/xcat/xcat.log
+cmd:xdsh $$CN cat /var/log/xcat/xcat.log | grep "kdump"
 
 cmd:xdsh $$CN "at now +1 minutes <<< /tmp/kdump.trigger"
 cmd:sleep 300
