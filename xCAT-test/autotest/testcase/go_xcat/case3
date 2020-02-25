@@ -2,8 +2,12 @@ start:go_xcat_devel_from_repo
 description:test go-xcat devel on a newly provisioned node
 label:go_xcat
 os:Linux
+#Make sure service node is booted
 cmd:rpower $$SN on
 cmd:sleep 300
+cmd:lsdef $$SN -i status
+check:output=~booted
+
 #Provision compute node
 cmd:rinstall $$CN osimage=__GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-install-compute
 check:rc==0
