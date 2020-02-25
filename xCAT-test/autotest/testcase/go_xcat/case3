@@ -1,0 +1,34 @@
+start:go_xcat_devel_from_repo
+description:test go-xcat devel on a newly provisioned node
+label:go_xcat
+os:Linux
+#Make sure service node is booted
+cmd:rpower $$SN on
+cmd:sleep 300
+cmd:lsdef $$SN -i status
+check:output=~booted
+
+#Provision compute node
+cmd:rinstall $$CN osimage=__GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-install-compute
+check:rc==0
+check:output=~Provision node\(s\)\: $$CN
+cmd:a=0;while ! `lsdef -l $$CN|grep status|grep booted >/dev/null`; do sleep 20; echo "[$a] " $(lsdef $$CN -i status -c); ((a++));if [ $a -gt 30 ];then break;fi done
+cmd:lsdef -l $$CN | grep status
+
+#Copy go-xcat script
+cmd:xdsh $$CN "cd /; scp -r $$MN:/opt/xcat/share/xcat/tools/go-xcat ./"
+check:rc==0
+
+#Install devel version of xCAT
+cmd:xdsh $$CN "cd /; ./go-xcat --xcat-version=devel -y install"
+check:rc==0
+cmd:xdsh $$CN "cat /tmp/go-xcat.log"
+cmd:xdsh $$CN "source /etc/profile.d/xcat.sh;lsxcatd -a"
+check:rc==0
+cmd:xdsh $$CN "cat /etc/yum.repos.d/xcat-core.repo"
+cmd:xdsh $$CN "cat /etc/yum.repos.d/xcat-dep.repo"
+cmd:xdsh $$CN "cat /etc/yum.repos.d/local-repository-0.repo"
+cmd:xdsh $$CN "service xcatd status"
+check:rc==0
+check:output=~running
+cmd:xdsh $$CN "service xcatd stop"
