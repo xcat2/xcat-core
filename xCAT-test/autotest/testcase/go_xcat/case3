@@ -32,3 +32,4 @@ cmd:xdsh $$CN "service xcatd status"
 check:rc==0
 check:output=~running
 cmd:xdsh $$CN "service xcatd stop"
+end
