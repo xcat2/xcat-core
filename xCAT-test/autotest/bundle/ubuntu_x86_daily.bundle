@@ -228,7 +228,3 @@ xdsh_permission_denied
 xdsh_q
 xdsh_regular_command
 xdsh_t
-go_xcat_devel_from_repo
-go_xcat_stable_from_repo
-go_xcat_stable_from_repo_upgrade
-go_xcat_stable_from_repo_reinstall_devel

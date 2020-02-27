@@ -5,25 +5,30 @@ declare -i a=0
 declare -i tryreinstall=1
 node=$1
 osimage=$2
+vmhost=`lsdef $node -i vmhost -c | cut -d '=' -f 2`
 
 if [ $# -eq 3 ];
 then
     times=$3+1
-    echo "Try to retry rinstall $3 times ......"
+    echo "Try to rinstall for $3 times ......"
 else
     times=6
-    echo "Try to retry rinstall 5 times ......" 
+    echo "Try to rinstall for 5 times ......" 
 fi
 
 
 for (( tryreinstall = 1 ; tryreinstall < $times ; ++tryreinstall ))
 do
-    echo "Try to install $node on the $tryreinstall time..."
+    echo "[$tryreinstall] Trying to install $node with $osimage ..."
 
+    echo "Memory on vmhost $vmhost"
+    ssh $vmhost free -g
+    echo "Active VMs on vmhost $vmhost"
+    ssh $vmhost virsh list
     echo "rinstall $node osimage=$osimage"
     rinstall $node osimage=$osimage
     if [ $? != 0 ];then
-        echo "rinstall failed, double check xcat command rinstall to see if it is a bug..."
+        echo "rinstall command failed ..."
         exit 1
     fi
 
@@ -32,7 +37,8 @@ do
     while [ ! `lsdef -l $node|grep status|grep booted` ]
     do 
         sleep 10
-        echo "The status is not booted..." 
+        stat=`lsdef $node -i status -c | cut -d '=' -f 2`
+        echo "[$a] The status is not booted... ($stat)" 
         a=++a 
         if [ $a -gt 400 ];then
             a=0 
@@ -53,7 +59,7 @@ do
     echo "The canruncmd is $canruncmd"
 
     if [[ $canruncmd -eq 0  &&  $tobooted -eq 0  &&  $pingable -eq 0 ]];then
-        echo "The provision succeed on the $tryreinstall time....."
+        echo "The provision succeeded on the $tryreinstall time....."
         installsuccess=1
         break
     fi
@@ -61,7 +67,7 @@ do
 done       
 
 if [ $installsuccess -eq 1 ];then
-    echo "The provision succeed......"
+    echo "The provision succeeded......"
     exit 0 
 else
     echo "The provision failed......"
