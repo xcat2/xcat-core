@@ -11,8 +11,9 @@ check:output=~booted
 cmd:rinstall $$CN osimage=__GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-install-compute
 check:rc==0
 check:output=~Provision node\(s\)\: $$CN
-cmd:a=0;while ! `lsdef -l $$CN|grep status|grep booted >/dev/null`; do sleep 20; echo "[$a] " $(lsdef $$CN -i status -c); ((a++));if [ $a -gt 30 ];then break;fi done
+cmd:a=0;while ! `lsdef -l $$CN|grep status|grep booted >/dev/null`; do sleep 20; echo "[$a] " $(lsdef $$CN -i status -c); ((a++));if [ $a -gt 50 ];then break;fi done
 cmd:lsdef -l $$CN | grep status
+check:output=~booted
 
 #Copy go-xcat script
 cmd:xdsh $$CN "cd /; scp -r $$MN:/opt/xcat/share/xcat/tools/go-xcat ./"
@@ -43,8 +44,9 @@ check:output=~booted
 cmd:rinstall $$CN osimage=__GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-install-compute
 check:rc==0
 check:output=~Provision node\(s\)\: $$CN
-cmd:a=0;while ! `lsdef -l $$CN|grep status|grep booted >/dev/null`; do sleep 20; echo "[$a] " $(lsdef $$CN -i status -c); ((a++));if [ $a -gt 30 ];then break;fi done
+cmd:a=0;while ! `lsdef -l $$CN|grep status|grep booted >/dev/null`; do sleep 20; echo "[$a] " $(lsdef $$CN -i status -c); ((a++));if [ $a -gt 50 ];then break;fi done
 cmd:lsdef -l $$CN | grep status
+check:output=~booted
 
 #Copy go-xcat script
 cmd:xdsh $$CN "cd /; scp -r $$MN:/opt/xcat/share/xcat/tools/go-xcat ./"
@@ -75,8 +77,9 @@ check:output=~booted
 cmd:rinstall $$CN osimage=__GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-install-compute
 check:rc==0
 check:output=~Provision node\(s\)\: $$CN
-cmd:a=0;while ! `lsdef -l $$CN|grep status|grep booted >/dev/null`; do sleep 20; echo "[$a] " $(lsdef $$CN -i status -c); ((a++));if [ $a -gt 30 ];then break;fi done
+cmd:a=0;while ! `lsdef -l $$CN|grep status|grep booted >/dev/null`; do sleep 20; echo "[$a] " $(lsdef $$CN -i status -c); ((a++));if [ $a -gt 50 ];then break;fi done
 cmd:lsdef -l $$CN | grep status
+check:output=~booted
 
 #Copy go-xcat script
 cmd:xdsh $$CN "cd /; scp -r $$MN:/opt/xcat/share/xcat/tools/go-xcat ./"
@@ -117,8 +120,9 @@ check:output=~booted
 cmd:rinstall $$CN osimage=__GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-install-compute
 check:rc==0
 check:output=~Provision node\(s\)\: $$CN
-cmd:a=0;while ! `lsdef -l $$CN|grep status|grep booted >/dev/null`; do sleep 20; echo "[$a] " $(lsdef $$CN -i status -c); ((a++));if [ $a -gt 30 ];then break;fi done
+cmd:a=0;while ! `lsdef -l $$CN|grep status|grep booted >/dev/null`; do sleep 20; echo "[$a] " $(lsdef $$CN -i status -c); ((a++));if [ $a -gt 50 ];then break;fi done
 cmd:lsdef -l $$CN | grep status
+check:output=~booted
 
 #Copy go-xcat script
 cmd:xdsh $$CN "cd /; scp -r $$MN:/opt/xcat/share/xcat/tools/go-xcat ./"
