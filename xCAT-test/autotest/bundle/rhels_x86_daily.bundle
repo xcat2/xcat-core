@@ -303,3 +303,7 @@ xcatstanzafile_normal
 xcatstanzafile_objtype
 xcatstanzafile_specificvalue
 xcatstanzafile_tab
+go_xcat_devel_from_repo
+go_xcat_stable_from_repo
+go_xcat_stable_from_repo_upgrade
+go_xcat_stable_from_repo_reinstall_devel
