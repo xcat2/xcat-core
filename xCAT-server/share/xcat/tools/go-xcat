@@ -626,7 +626,7 @@ function check_repo_version_yum()
 {
 	type yum >/dev/null 2>&1 || return 255
 	check_executes repoquery
-	exit_if_bad "$?" "Install the \`yum-utils' package and rerun."
+	exit_if_bad "$?" "Install the \`yum-utils' or \`dnf-utils' package and rerun."
 	local -a name=()
 	local -a ver=()
 	while read -r name ver
