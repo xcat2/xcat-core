@@ -710,11 +710,12 @@ function get_nic_extra_params() {
 # This functions parse the extra parameters for an ip address of a nic
 # Input is like this:
 #     MTU=65520 something=yes
+#     MTU=65520 something=yes;no;maybe
 # After the function is called:
 #     array_extra_param_names[0]="MTU"
 #     array_extra_param_values[0]="65520"
 #     array_extra_param_names[1]="something"
-#     array_extra_param_values[0]="yes"
+#     array_extra_param_values[1]="yes"  or array_extra_param_values[1]="yes no maybe"
 #
 function parse_nic_extra_params() {
     str_extra=$1
@@ -731,7 +732,7 @@ function parse_nic_extra_params() {
 	do
 		token2="${params_temp[$k]}"
 		array_extra_param_names[$k]=`echo "$token2" | cut -d'=' -f 1`
-		array_extra_param_values[$k]=`echo "$token2" | cut -d'=' -f 2-`	
+                array_extra_param_values[$k]=`echo "$token2" | cut -d'=' -f 2- | sed 's,\;, ,g'`
 		k=$((k+1))
 	done
 }

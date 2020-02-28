@@ -1820,7 +1820,12 @@ function add_extra_params_nmcli {
         name="${array_extra_param_names[$i]}"
         value="${array_extra_param_values[$i]}"
         if [ -n "$name" -a -n "$value" ]; then
-            echo "$name=$value" >> $str_conf_file
+            grep $name $str_conf_file >/dev/null 2>/dev/null
+            if [ $? -eq 0 ]; then
+                sed -i 's/^$name.*/$name=\"$vlaue\"/g' $str_conf_file
+            else
+                echo "$name="$value"" >> $str_conf_file
+            fi
         else
             log_error "invalid extra params $name $value, please check nics.nicextraparams"
             rc=1
