@@ -514,7 +514,7 @@ sub subcmd {
         $seqincrement--; #assure seq number doesn't go beyond 7 even if it means going taboo, one enhancement would be to pick the *least* taboo instead of just giving up
     }
     my $rsaddr = 0x20;                        #figrue 13-4, rssa by old code
-    my @rnl = ($rsaddr, $args{netfn} << 2);
+    my @rnl = ($rsaddr, ($args{netfn} << 2) | $args{lun});
     my @rest = ($self->{rqaddr}, $self->{seqlun}, $args{command}, @{ $args{data} });
     my @payload = (@rnl, $self->checksum(@rnl), @rest, $self->checksum(@rest));
     $self->{ipmicallback}      = $args{callback};
@@ -1017,7 +1017,7 @@ sub parse_ipmi_payload {
 
     #for now, just trash the headers, this has been validated to death anyway
     #except seqlun, that one is important
-    unless ($payload[4] == $self->{seqlun} and $payload[1] >> 2 == $self->{expectednetfn} and $payload[5] == $self->{expectedcmd}) {
+    unless (($payload[4] & 0xfc) == $self->{seqlun} and $payload[1] >> 2 == $self->{expectednetfn} and $payload[5] == $self->{expectedcmd}) {
 
         #both sequence number and arqaddr must match, because we are using rqaddr to extend the sequence number
         #print "Successfully didn't get confused by stale response ".$payload[4]." and ".($self->{seqlun}-4)."\n";

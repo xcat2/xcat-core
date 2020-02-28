@@ -6928,7 +6928,8 @@ sub readsensor {
         return;
     }
     my $sensor = $sessdata->{currsdr}->sensor_number;
-    $sessdata->{ipmisession}->subcmd(netfn => 0x4, command => 0x2d, data => [$sensor], callback => \&sensor_was_read, callback_args => $sessdata);
+    my $lun = $sessdata->{currsdr}->sensor_owner_lun;
+    $sessdata->{ipmisession}->subcmd(netfn => 0x4, command => 0x2d, lun => $lun, data => [$sensor], callback => \&sensor_was_read, callback_args => $sessdata);
 }
 
 sub sensor_was_read {
