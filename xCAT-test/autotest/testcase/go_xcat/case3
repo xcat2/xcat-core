@@ -19,6 +19,9 @@ check:output=~booted
 cmd:xdsh $$CN "cd /; scp -r $$MN:/opt/xcat/share/xcat/tools/go-xcat ./"
 check:rc==0
 
+#Install additional packages on Red Hat
+cmd:if xdsh $$CN "grep \"Red Hat\" /etc/*release >/dev/null"; then xdsh $$CN"yum install -y yum-utils dnf-utils bzip2"; fi
+
 #Install devel version of xCAT
 cmd:xdsh $$CN "cd /; ./go-xcat --xcat-version=devel -y install"
 check:rc==0
@@ -52,6 +55,9 @@ check:output=~booted
 cmd:xdsh $$CN "cd /; scp -r $$MN:/opt/xcat/share/xcat/tools/go-xcat ./"
 check:rc==0
 
+#Install additional packages on Red Hat
+cmd:if xdsh $$CN "grep \"Red Hat\" /etc/*release >/dev/null"; then xdsh $$CN"yum install -y yum-utils dnf-utils bzip2"; fi
+
 #Install GA version of xCAT
 cmd:xdsh $$CN "cd /; ./go-xcat -y install"
 check:rc==0
@@ -84,6 +90,9 @@ check:output=~booted
 #Copy go-xcat script
 cmd:xdsh $$CN "cd /; scp -r $$MN:/opt/xcat/share/xcat/tools/go-xcat ./"
 check:rc==0
+
+#Install additional packages on Red Hat
+cmd:if xdsh $$CN "grep \"Red Hat\" /etc/*release >/dev/null"; then xdsh $$CN"yum install -y yum-utils dnf-utils bzip2"; fi
 
 #Install GA version of xCAT
 cmd:xdsh $$CN "cd /; ./go-xcat -y install"
@@ -128,6 +137,9 @@ check:output=~booted
 cmd:xdsh $$CN "cd /; scp -r $$MN:/opt/xcat/share/xcat/tools/go-xcat ./"
 check:rc==0
 
+#Install additional packages on Red Hat
+cmd:if xdsh $$CN "grep \"Red Hat\" /etc/*release >/dev/null"; then xdsh $$CN"yum install -y yum-utils dnf-utils bzip2"; fi
+
 #Install GA version of xCAT
 cmd:xdsh $$CN "cd /; ./go-xcat -y install"
 check:rc==0
@@ -143,7 +155,7 @@ cmd:xdsh $$CN "cd /; ./go-xcat -y completely uninstall"
 check:rc==0
 cmd:xdsh $$CN "service xcatd status"
 check:rc!=0
-check:output=~could not be found|dead
+check:output=~could not be found|dead|no such service xcatd
 
 #Install devel version of xCAT
 cmd:xdsh $$CN "cd /; ./go-xcat --xcat-version=devel -y install"

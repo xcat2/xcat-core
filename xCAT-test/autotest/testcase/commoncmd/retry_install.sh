@@ -21,10 +21,14 @@ for (( tryreinstall = 1 ; tryreinstall < $times ; ++tryreinstall ))
 do
     echo "[$tryreinstall] Trying to install $node with $osimage ..."
 
-    echo "Memory on vmhost $vmhost"
-    ssh $vmhost free -g
-    echo "Active VMs on vmhost $vmhost"
-    ssh $vmhost virsh list
+    if [[ ! -z $vmhost ]];then
+        # Display memory and active VMs on VM host, when installing on VM
+        echo "Memory on vmhost $vmhost"
+        ssh $vmhost free -g
+        echo "Active VMs on vmhost $vmhost"
+        ssh $vmhost virsh list
+    fi
+
     echo "rinstall $node osimage=$osimage"
     rinstall $node osimage=$osimage
     if [ $? != 0 ];then
