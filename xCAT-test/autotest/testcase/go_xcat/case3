@@ -3,15 +3,14 @@ description:test go-xcat devel on a newly provisioned node
 label:go_xcat
 os:Linux
 #Make sure service node is not off, if it is, power it on
-cmd:if rpower $$SN stat | grep "off";then rpower $$SN on; sleep 300; fi
+cmd:if rpower $$SN stat | grep "off"; then rpower $$SN on; sleep 300; fi
 cmd:lsdef $$SN -i status
 check:output=~booted
 
 #Provision compute node
-cmd:rinstall $$CN osimage=__GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-install-compute
+cmd:/opt/xcat/share/xcat/tools/autotest/testcase/commoncmd/retry_install.sh $$CN __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-install-compute
 check:rc==0
 check:output=~Provision node\(s\)\: $$CN
-cmd:a=0;while ! `lsdef -l $$CN|grep status|grep booted >/dev/null`; do sleep 20; echo "[$a] " $(lsdef $$CN -i status -c); ((a++));if [ $a -gt 50 ];then break;fi done
 cmd:lsdef -l $$CN | grep status
 check:output=~booted
 
@@ -20,7 +19,7 @@ cmd:xdsh $$CN "cd /; scp -r $$MN:/opt/xcat/share/xcat/tools/go-xcat ./"
 check:rc==0
 
 #Install additional packages on Red Hat
-cmd:if xdsh $$CN "grep \"Red Hat\" /etc/*release >/dev/null"; then xdsh $$CN"yum install -y yum-utils dnf-utils bzip2"; fi
+cmd:if xdsh $$CN "grep \"Red Hat\" /etc/*release >/dev/null"; then xdsh $$CN "yum install -y yum-utils dnf-utils bzip2"; fi
 
 #Install devel version of xCAT
 cmd:xdsh $$CN "cd /; ./go-xcat --xcat-version=devel -y install"
@@ -39,15 +38,14 @@ description:test go-xcat GA on a newly provisioned node
 label:go_xcat
 os:Linux
 #Make sure service node is not off, if it is, power it on
-cmd:if rpower $$SN stat | grep "off";then rpower $$SN on; sleep 300; fi
+cmd:if rpower $$SN stat | grep "off"; then rpower $$SN on; sleep 300; fi
 cmd:lsdef $$SN -i status
 check:output=~booted
 
 #Provision compute node
-cmd:rinstall $$CN osimage=__GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-install-compute
+cmd:/opt/xcat/share/xcat/tools/autotest/testcase/commoncmd/retry_install.sh $$CN __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-install-compute
 check:rc==0
 check:output=~Provision node\(s\)\: $$CN
-cmd:a=0;while ! `lsdef -l $$CN|grep status|grep booted >/dev/null`; do sleep 20; echo "[$a] " $(lsdef $$CN -i status -c); ((a++));if [ $a -gt 50 ];then break;fi done
 cmd:lsdef -l $$CN | grep status
 check:output=~booted
 
@@ -56,7 +54,7 @@ cmd:xdsh $$CN "cd /; scp -r $$MN:/opt/xcat/share/xcat/tools/go-xcat ./"
 check:rc==0
 
 #Install additional packages on Red Hat
-cmd:if xdsh $$CN "grep \"Red Hat\" /etc/*release >/dev/null"; then xdsh $$CN"yum install -y yum-utils dnf-utils bzip2"; fi
+cmd:if xdsh $$CN "grep \"Red Hat\" /etc/*release >/dev/null"; then xdsh $$CN "yum install -y yum-utils dnf-utils bzip2"; fi
 
 #Install GA version of xCAT
 cmd:xdsh $$CN "cd /; ./go-xcat -y install"
@@ -75,15 +73,14 @@ description:test go-xcat GA on a newly provisioned node upgrade to devel
 label:go_xcat
 os:Linux
 #Make sure service node is not off, if it is, power it on
-cmd:if rpower $$SN stat | grep "off";then rpower $$SN on; sleep 300; fi
+cmd:if rpower $$SN stat | grep "off"; then rpower $$SN on; sleep 300; fi
 cmd:lsdef $$SN -i status
 check:output=~booted
 
 #Provision compute node
-cmd:rinstall $$CN osimage=__GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-install-compute
+cmd:/opt/xcat/share/xcat/tools/autotest/testcase/commoncmd/retry_install.sh $$CN __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-install-compute
 check:rc==0
 check:output=~Provision node\(s\)\: $$CN
-cmd:a=0;while ! `lsdef -l $$CN|grep status|grep booted >/dev/null`; do sleep 20; echo "[$a] " $(lsdef $$CN -i status -c); ((a++));if [ $a -gt 50 ];then break;fi done
 cmd:lsdef -l $$CN | grep status
 check:output=~booted
 
@@ -92,7 +89,7 @@ cmd:xdsh $$CN "cd /; scp -r $$MN:/opt/xcat/share/xcat/tools/go-xcat ./"
 check:rc==0
 
 #Install additional packages on Red Hat
-cmd:if xdsh $$CN "grep \"Red Hat\" /etc/*release >/dev/null"; then xdsh $$CN"yum install -y yum-utils dnf-utils bzip2"; fi
+cmd:if xdsh $$CN "grep \"Red Hat\" /etc/*release >/dev/null"; then xdsh $$CN "yum install -y yum-utils dnf-utils bzip2"; fi
 
 #Install GA version of xCAT
 cmd:xdsh $$CN "cd /; ./go-xcat -y install"
@@ -121,15 +118,14 @@ description:test go-xcat GA on a newly provisioned node, remove, install devel
 label:go_xcat
 os:Linux
 #Make sure service node is not off, if it is, power it on
-cmd:if rpower $$SN stat | grep "off";then rpower $$SN on; sleep 300; fi
+cmd:if rpower $$SN stat | grep "off"; then rpower $$SN on; sleep 300; fi
 cmd:lsdef $$SN -i status
 check:output=~booted
 
 #Provision compute node
-cmd:rinstall $$CN osimage=__GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-install-compute
+cmd:/opt/xcat/share/xcat/tools/autotest/testcase/commoncmd/retry_install.sh $$CN __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-install-compute
 check:rc==0
 check:output=~Provision node\(s\)\: $$CN
-cmd:a=0;while ! `lsdef -l $$CN|grep status|grep booted >/dev/null`; do sleep 20; echo "[$a] " $(lsdef $$CN -i status -c); ((a++));if [ $a -gt 50 ];then break;fi done
 cmd:lsdef -l $$CN | grep status
 check:output=~booted
 
@@ -138,7 +134,7 @@ cmd:xdsh $$CN "cd /; scp -r $$MN:/opt/xcat/share/xcat/tools/go-xcat ./"
 check:rc==0
 
 #Install additional packages on Red Hat
-cmd:if xdsh $$CN "grep \"Red Hat\" /etc/*release >/dev/null"; then xdsh $$CN"yum install -y yum-utils dnf-utils bzip2"; fi
+cmd:if xdsh $$CN "grep \"Red Hat\" /etc/*release >/dev/null"; then xdsh $$CN "yum install -y yum-utils dnf-utils bzip2"; fi
 
 #Install GA version of xCAT
 cmd:xdsh $$CN "cd /; ./go-xcat -y install"
