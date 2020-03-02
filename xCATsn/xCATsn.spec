@@ -41,8 +41,10 @@ Requires: /usr/sbin/dhcpd
 Requires: /usr/bin/ssh
 %ifnarch s390x
 Requires: /usr/sbin/in.tftpd
-# Stty is only needed for rcons on ppc64 nodes, but for mixed clusters require it on both x and p
+# Stty is only needed for rcons on ppc64 nodes
+%ifarch ppc64
 Requires: perl-IO-Stty
+%endif
 %endif
 %endif
 

@@ -32,11 +32,15 @@ fi
 ########################################################################
 # nmcli_used=0: use network.service
 # nmcli_used=1: use NetworkManager
+# nmcli_used=2: RH8 postscripts stage, NetworkManager is active but nmcli cannot modify NIC configure file
 ########################################################################
 nmcli_used=0
-ps -ef|grep -v grep|grep NetworkManager >/dev/null 2>/dev/null
-if [ $? -eq 0 ]; then
+if [ -n "$NMCLI_USED" ] ; then
+    if [ "$NMCLI_USED" = "1" ]; then
     nmcli_used=1
+    elif [ "$NMCLI_USED" = "2" ]; then
+        nmcli_used=2
+    fi
 fi
 
 #This is the number of ports for each ib adpator.

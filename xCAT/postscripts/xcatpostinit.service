@@ -1,0 +1,12 @@
+[Unit]
+Description=xcat service on compute node, the framework to run postbootscript and update node status 
+After=network.target rsyslog.service
+
+[Service]
+Type=oneshot
+ExecStart=/opt/xcat/xcatpostinit start
+ExecStop=/opt/xcat/xcatpostinit stop
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target

@@ -2064,6 +2064,8 @@ sub copycd
         {
             $distname = $xCAT::data::discinfo::distnames{$did};
         }
+    } elsif ($desc and $desc =~ /CentOS Linux (.*)/) {
+          $distname = "centos" . $1;
     }
 
     unless ($dno) {

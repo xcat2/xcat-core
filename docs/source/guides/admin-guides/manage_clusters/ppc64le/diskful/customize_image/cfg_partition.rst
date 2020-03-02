@@ -31,7 +31,7 @@ Partitioning disk file(For Ubuntu only)
 .. include:: ../../../common/deployment/cfg_partition.rst
      :start-after: BEGIN_Partition_Disk_File_ubuntu_only
      :end-before: END_Partition_Disk_File_ubuntu_only
-	
+
 Additional preseed configuration file(For Ubuntu only)
 ``````````````````````````````````````````````````````
 .. include:: ../../../common/deployment/cfg_partition.rst
@@ -64,14 +64,14 @@ Associate partition script with osimage
      :start-after: BEGIN_Partition_Definition_Script_Associate_partition_script_with_osimage_common
      :end-before: END_Partition_Definition_Script_Associate_partition_script_with_osimage_common
 
-Partitioning disk script(For Ubuntu only)
-`````````````````````````````````````````
+Partitioning disk script (For Ubuntu only)
+``````````````````````````````````````````
 .. include:: ../../../common/deployment/cfg_partition.rst
      :start-after: BEGIN_Partition_Disk_Script_ubuntu_only
      :end-before: END_Partition_Disk_Script_ubuntu_only
 
-Additional preseed configuration script(For Ubuntu only)
-````````````````````````````````````````````````````````
+Additional preseed configuration script (For Ubuntu only)
+`````````````````````````````````````````````````````````
 .. include:: ../../../common/deployment/cfg_partition.rst
      :start-after: BEGIN_Additional_preseed_configuration_script_ubuntu_only
      :end-before: END_Additional_preseed_configuration_script_ubuntu_only

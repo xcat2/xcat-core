@@ -125,6 +125,10 @@ noderm_err_node
 noderm_h
 noderm_noderange
 noderm_null
+nodepurge_err_node
+nodepurge_h
+nodepurge_noderange
+nodepurge_null
 nodeset_errorcommand
 nodeset_check_warninginfo
 nodeset_noderange

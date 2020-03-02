@@ -329,7 +329,7 @@ if [ "$(uname -s)" = "Linux" ]; then
       fi
     fi
   else
-    if ( pmatch $OSVER "sles*" ) || ( pmatch $OSVER "suse*" ) || [ -f /etc/SuSE-release ]; then
+    if ( pmatch $OSVER "sle*" ) || ( pmatch $OSVER "suse*" ) || [ -f /etc/SuSE-release ]; then
       #find out which syslog is used for SLES, syslog or syslog-ng
       result=`grep "^SYSLOG_DAEMON=" $sysconfig 2>&1`
       if ( pmatch $result "*syslog-ng*" ); then

@@ -74,6 +74,9 @@ if [ "$str_os_type" = "linux" ];then
     elif [ -f "/etc/SuSE-release" -o -n "$str_temp" ];then
         str_os_type="sles"
         str_cfg_dir="/etc/sysconfig/network"
+    elif [ -f /etc/os-release ] && cat /etc/os-release |grep NAME|grep -i SLE >/dev/null; then
+        str_os_type="sles"
+        str_cfg_dir="/etc/sysconfig/network"
     else
         showmsg "Only supports RHEL and SLES" "error"
         exit -1

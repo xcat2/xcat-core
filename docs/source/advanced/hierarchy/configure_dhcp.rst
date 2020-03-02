@@ -3,10 +3,9 @@ Configure DHCP
 
 Add the relevant networks into the DHCP configuration, refer to: :ref:`Setup-dhcp`
 
-Add the defined nodes into the DHCP configuration, refer to:
-`XCAT_pLinux_Clusters/#configure-dhcp <http://localhost/fake_todo>`_
+Add the defined nodes into the DHCP configuration, refer to :doc:`Manually define nodes </guides/admin-guides/manage_clusters/ppc64le/discovery/manually_define>`
 
-In the large cluster, the size of dhcp lease file "/var/lib/dhcpd/dhcpd.leases" on the DHCP server will grow over time. At around 100MB in size, the DHCP server will take a long time to respond to DHCP requests from clients and cause DHCP timeouts: ::
+In the large cluster, the size of dhcp lease file ``/var/lib/dhcpd/dhcpd.leases`` on the DHCP server will grow over time. At around 100MB in size, the DHCP server will take a long time to respond to DHCP requests from clients and cause DHCP timeouts: ::
 
    ...
    Mar  2 01:59:10 c656ems2 dhcpd: DHCPDISCOVER from 00:0a:f7:73:7d:d0 via eth0

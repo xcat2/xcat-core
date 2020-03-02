@@ -8,7 +8,7 @@ B<bmcdiscover> [B<-?>|B<-h>|B<--help>]
 
 B<bmcdiscover> [B<-v>|B<--version>]
 
-B<bmcdiscover> [B<--sn> I<SN_nodename>] [B<-s> I<scan_method>] [B<-u> I<bmc_user>] [B<-p> I<bmc_passwd>] [B<-z>] [B<-w>] B<--range> I<ip_ranges>
+B<bmcdiscover>  B<--range> I<ip_ranges> [B<--sn> I<SN_nodename>] [B<-s> I<scan_method>] [B<-u> I<bmc_user>] [B<-p> I<bmc_passwd>] [B<-z>] [B<-w>]
 
 
 =head1 DESCRIPTION
@@ -17,9 +17,10 @@ The B<bmcdiscover> command will discover Baseboard Management Controllers (BMCs)
 
 The command uses B<nmap> to scan active nodes over a specified IP range.  The IP range format should be a format that is acceptable by B<nmap>.
 
-The B<bmcdiscover> command can also obtain some information about the BMC. (Check username/password, IP address source, DHCP/static configuration)
+B<Note:> The scan method currently supported is B<nmap>.
 
-Note: The scan method currently support is B<nmap>.
+
+B<Note:> Starting on January 1, 2020, some newly shipped systems will require the default BMC password to be changed before they can be managed by xCAT. B<bmcdiscover> will not be able to discover such systems. Run I</opt/xcat/share/xcat/scripts/BMC_change_password.sh> script to change the default password for BMCs in specified range, then rerun B<bmcdiscover> with B<-p "new bmc password"> flag to discover systems with the changed password. 
 
 =head1 OPTIONS
 
@@ -27,11 +28,11 @@ Note: The scan method currently support is B<nmap>.
 
 =item B<--range>
 
-Specify one or more IP ranges acceptable to B<nmap>.  IP range can be hostnames, IP addresses, networks, etc.  A single IP address (10.1.2.3), several IPs with commas (10.1.2.3,10.1.2.10), Ip range with "-" (10.1.2.0-100) or an IP range (10.1.2.0/24) can be specified.  If the range is very large, the B<bmcdiscover> command may take a long time to return.
+Specify one or more IP ranges acceptable to B<nmap>.  IP range can be hostnames, IP addresses, networks, etc.  A single IP address (10.1.2.3), several IPs with commas (10.1.2.3,10.1.2.10), IP range with "-" (10.1.2.0-100) or an IP range (10.1.2.0/24) can be specified.  If the range is very large, the B<bmcdiscover> command may take a long time to return.
 
 =item B<--sn>
 
-Specify one or more service nodes on which bmcdiscover will run. In hierarchical cluster, the MN may not be able to access the BMC of CN directly, but SN can. With this option, B<bmcdiscover> will be dispatched to the specified SNs. Then, the nodename of the service node that B<bmcdiscover> is running on will be set to the 'servicenode' attribute of the discovered BMC node.
+Specify one or more service nodes on which B<bmcdiscover> will run. In hierarchical cluster, the MN may not be able to access the BMC of CN directly, but SN can. In that case, B<bmcdiscover> will be dispatched to the specified SNs. Then, the nodename of the service node that B<bmcdiscover> is running on will be set to the 'servicenode' attribute of the discovered BMC node.
 
 =item B<-s>
 
@@ -44,10 +45,6 @@ List the data returned in xCAT stanza format
 =item B<-w>
 
 Write to the xCAT database.
-
-=item B<-i|--bmcip>
-
-BMC IP address.
 
 =item B<-u|--bmcuser>
 
@@ -76,7 +73,7 @@ Display version information
 =head1 EXAMPLES
 
 
-1. To get all responding BMCs from IP range "10.4.23.100-254" and 50.3.15.1-2":
+1. To get all responding BMCs from IP range "10.4.23.100-254" and "50.3.15.1-2":
 
     bmcdiscover -s nmap --range "10.4.23.100-254 50.3.15.1-2"
 

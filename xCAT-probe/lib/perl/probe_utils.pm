@@ -448,7 +448,7 @@ sub is_dns_ready {
     my $hostname = shift;
     my $domain   = shift;
 
-    my $output = `nslookup $mnip $serverip 2>&1`;
+    my $output = `nslookup -type=A $mnip $serverip 2>&1`;
 
     if ($?) {
         return 0;

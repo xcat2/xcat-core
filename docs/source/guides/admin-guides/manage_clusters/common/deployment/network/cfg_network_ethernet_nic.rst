@@ -28,7 +28,7 @@ Define Adapters in the nics table
 
 #. Data NIC ``eth1`` is not install NIC, configure ``eth1`` into ``nics`` table  ::
 
-    chdef cn1 nicips.eth1="13.1.89.7" nicnetworks.eth1="net13" nictypes.eth1="Ethernet" nichostnamesuffixes.eth1=-eth2
+    chdef cn1 nicips.eth1="13.1.89.7" nicnetworks.eth1="net13" nictypes.eth1="Ethernet" nichostnamesuffixes.eth1=-eth1
 
 Update /etc/hosts
 ~~~~~~~~~~~~~~~~~
@@ -66,7 +66,7 @@ Configure adapters with static IPs
 
         updatenode cn1 -P "confignetwork"
 
-**Notes:** Option "-s" writes the install NIC's information into configuration file for persistence. All other NIC's data defined in ``nics`` table will be written also. Without option "-s", ``confignetwork`` only configures all NIC's data defined in ``nics`` table.
+.. note:: Option ``-s`` writes the install NIC's information into configuration file for persistence. All other NIC's data defined in ``nics`` table will be written also. Without option ``-s``, ``confignetwork`` only configures all NIC's data defined in ``nics`` table.
 
 Check result
 ~~~~~~~~~~~~

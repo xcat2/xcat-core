@@ -63,6 +63,16 @@ Suse Linux Enterprise Server
        libmysqlclient18-*
        perl-DBD-mysql-*
 
+* For SLE15, MariaDB is shipped. Using ``zypper``, ensure that the following packages are installed on the management node: ::
+
+       mariadb
+       mariadb-client
+       mariadb-errormessages
+       perl-DBD-mysql
+       libmariadb-devel
+       mariadb-tools
+       libmariadb_plugins
+
 
 Debian/Ubuntu
 -------------

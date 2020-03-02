@@ -1,4 +1,4 @@
-start:rspconfig_record_firmware_level
+start:openbmc_rspconfig_record_firmware_level
 description: Record the firmware level for the start of each testcase to display in the output
 hcp:openbmc
 label:cn_bmc_ready,hctrl_openbmc
@@ -6,7 +6,7 @@ cmd: rinv $$CN firm
 check:rc==0
 end
 
-start:rspconfig_get_all_network
+start:openbmc_rspconfig_get_all_network
 description: Check that we can get all the network related attributes from the BMC
 os:Linux
 hcp:openbmc
@@ -20,7 +20,7 @@ check:output=~$$CN: BMC Hostname:
 check:output=~$$CN: BMC VLAN ID:
 end
 
-start:rspconfig_get_all_error
+start:openbmc_rspconfig_get_all_error
 description: Check the parsing code for rspconfig (error cases)
 hcp: openbmc
 label:cn_bmc_ready,hctrl_openbmc
@@ -29,7 +29,7 @@ check:rc==1
 check:output=~Error: (\[.*?\]: )?Unsupported command
 end
 
-start:rspconfig_get_set_error
+start:openbmc_rspconfig_get_set_error
 description: Check the parsing code for rspconfig (error cases) - Cannot get/set in same line
 hcp: openbmc
 label:cn_bmc_ready,hctrl_openbmc
@@ -38,7 +38,7 @@ check:rc==1
 check:output=~Error: (\[.*?\]: )?Can not set and query OpenBMC information at the same time
 end
 
-start:rspconfig_get_and_set_hostname
+start:openbmc_rspconfig_get_and_set_hostname
 description: Test setting and getting hostname on the BMC
 os:Linux
 hcp:openbmc
@@ -74,7 +74,7 @@ check:output=~$$CN: BMC Hostname:
 check:rc==0
 end
 
-start:rspconfig_admin_passwd_error
+start:openbmc_rspconfig_admin_passwd_error
 description: Check the error handling for changing of BMC password
 hcp: openbmc
 label:cn_bmc_ready,hctrl_openbmc
@@ -86,7 +86,7 @@ check:rc==1
 check:output=~Current BMC password is incorrect, cannot set the new password.
 end
 
-start:rspconfig_admin_passwd
+start:openbmc_rspconfig_admin_passwd
 description: Check the setting of BMC password to the same value
 hcp: openbmc
 label:cn_bmc_ready,hctrl_openbmc
@@ -95,7 +95,7 @@ check:rc==0
 check:output=~$$CN: BMC Setting Password
 end
 
-start:rspconfig_autoreboot
+start:openbmc_rspconfig_autoreboot
 description: Check the getting and setting of autoreboot attribute
 hcp: openbmc
 label:cn_bmc_ready,hctrl_openbmc
@@ -116,7 +116,7 @@ check:rc==1
 check:output=~$$CN: Error: Invalid value '2' for 'autoreboot', Valid values: 0,1
 end
 
-start:rspconfig_bootmode
+start:openbmc_rspconfig_bootmode
 description: Check the getting and setting of bootmode attribute
 hcp: openbmc
 label:cn_bmc_ready,hctrl_openbmc
@@ -134,7 +134,7 @@ check:rc==1
 check:output=~$$CN: Error: Invalid value 'abc' for 'bootmode', Valid values: regular,safe,setup
 end
 
-start:rspconfig_dump
+start:openbmc_rspconfig_dump
 description: Check dump generation, download and removal
 hcp: openbmc
 label:cn_bmc_ready,hctrl_openbmc
@@ -150,12 +150,12 @@ check:output=~Downloading dump
 cmd: ls -l /var/log/xcat/dump/*$$CN*
 check:rc==0
 #Remove last generated dump
-cmd: rspconfig mid05tor12cn03 dump -l | tail -1 | cut -d ' ' -f2 | tr -d "[]" | xargs -i{} rspconfig $$CN dump -c {}
+cmd: rspconfig $$CN dump -l | tail -1 | cut -d ' ' -f2 | tr -d "[]" | xargs -i{} rspconfig $$CN dump -c {}
 check:rc==0
 check:output=clear
 end
 
-start:rspconfig_ntpservers
+start:openbmc_rspconfig_ntpservers
 description: Check the getting and setting of ntpservers attribute
 hcp: openbmc
 label:cn_bmc_ready,hctrl_openbmc
@@ -170,7 +170,7 @@ check:rc==0
 check:output=~$$CN: BMC NTP Servers: None
 end
 
-start:rspconfig_powerrestorepolicy
+start:openbmc_rspconfig_powerrestorepolicy
 description: Check the getting and setting of powerrestorepolicy attribute
 hcp: openbmc
 label:cn_bmc_ready,hctrl_openbmc
@@ -197,7 +197,7 @@ check:rc==1
 check:output=~$$CN: Error: Invalid value 'abc' for 'powerrestorepolicy', Valid values: always_off,always_on,restore
 end
 
-start:rspconfig_powersupplyredundancy
+start:openbmc_rspconfig_powersupplyredundancy
 description: Check the getting and setting of powersupplyredundancy attribute
 hcp: openbmc
 label:cn_bmc_ready,hctrl_openbmc
@@ -209,7 +209,7 @@ check:rc==0
 check:output=~$$CN: BMC PowerSupplyRedundancy: Disabled
 end
 
-start:rspconfig_sshcfg
+start:openbmc_rspconfig_sshcfg
 description: Check the copying of ssh keys to the BMC
 hcp: openbmc
 label:cn_bmc_ready,hctrl_openbmc
@@ -218,7 +218,7 @@ check:rc==0
 check:output=~$$CN: ssh keys copied to
 end
 
-start:rspconfig_timesyncmethod
+start:openbmc_rspconfig_timesyncmethod
 description: Check the getting and setting of timesyncmethod attribute
 hcp: openbmc
 label:cn_bmc_ready,hctrl_openbmc
@@ -234,4 +234,22 @@ check:output=~$$CN: BMC Setting BMC TimeSyncMethod
 cmd: rspconfig $$CN timesyncmethod=abc
 check:rc==1
 check:output=~$$CN: Error: Invalid value 'abc' for 'timesyncmethod', Valid values: manual,ntp
+end
+
+start:openbmc_rspconfig_thermalmode
+description: Check the getting and setting of thermalmode attribute
+hcp: openbmc
+label:cn_bmc_ready,hctrl_openbmc
+cmd: rspconfig $$CN thermalmode=heavy_io
+check:rc==0
+check:output=~$$CN: BMC Setting BMC ThermalMode
+cmd: rspconfig $$CN thermalmode
+check:rc==0
+check:output=~$$CN: BMC BootMode: HEAVY_IO
+cmd: rspconfig $$CN thermalmode=default
+check:rc==0
+check:output=~$$CN: BMC Setting BMC ThermalMode
+cmd: rspconfig $$CN thermalmode=abc
+check:rc==1
+check:output=~$$CN: Error: Invalid value 'abc' for 'thermalmode', Valid values: default,custom,heavy_io,max_base_fan_floor
 end

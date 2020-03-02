@@ -23,6 +23,8 @@
 #=cut
 #-------------------------------------------------------------------------------
 
+#set -x
+
 if [ -n "$LOGLABEL" ]; then
     log_label=$LOGLABEL
 else
@@ -891,6 +893,7 @@ else
 	       fi
 	       echo "enabled=1" >> $REPOFILE
 	       echo "gpgcheck=0" >> $REPOFILE
+               echo "skip_if_unavailable=True" >> $REPOFILE
            fi
            i=$((i+1))
      done

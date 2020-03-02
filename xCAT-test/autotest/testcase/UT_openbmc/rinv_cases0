@@ -12,10 +12,10 @@ hcp:openbmc
 label:cn_bmc_ready,hctrl_openbmc
 cmd: rinv $$CN firm | tee /tmp/xcattest.rinv_check_active_fw_count.output
 check:rc==0
-cmd: grep -i ibm /tmp/xcattest.rinv_check_active_fw_count.output | grep -i 'HOST Firmware Product' | grep -i 'Active)\*' | wc -l
+cmd: grep -i 'Active)\*' /tmp/xcattest.rinv_check_active_fw_count.output | grep -i 'HOST Firmware Product' | wc -l
 check:rc==0
 check:output=~1
-cmd: grep -i ibm /tmp/xcattest.rinv_check_active_fw_count.output | grep -i 'BMC Firmware Product'|grep -i 'Active)\*' | wc -l
+cmd: grep -i 'Active)\*' /tmp/xcattest.rinv_check_active_fw_count.output | grep -i 'BMC Firmware Product' | wc -l
 check:rc==0
 check:output=~1
 cmd : rm -rf /tmp/xcattest.rinv_check_active_fw_count.output
@@ -28,10 +28,10 @@ hcp:openbmc
 label:cn_bmc_ready,hctrl_openbmc
 cmd: rinv $$CN firm -V | tee /tmp/xcattest.rinv_check_active_fw_count_verbose.output
 check:rc==0
-cmd: grep -i ibm /tmp/xcattest.rinv_check_active_fw_count_verbose.output| grep -i 'HOST Firmware Product' | grep -i 'Active)\*' | wc -l
+cmd: grep -i 'Active)\*' /tmp/xcattest.rinv_check_active_fw_count_verbose.output| grep -i 'HOST Firmware Product' | wc -l
 check:rc==0
 check:output=~1
-cmd: grep -i ibm /tmp/xcattest.rinv_check_active_fw_count_verbose.output | grep -i 'BMC Firmware Product'|grep -i 'Active)\*' | wc -l
+cmd: grep -i 'Active)\*' /tmp/xcattest.rinv_check_active_fw_count_verbose.output | grep -i 'BMC Firmware Product' | wc -l
 check:rc==0
 check:output=~1
 cmd : rm -rf /tmp/xcattest.rinv_check_active_fw_count_verbose.output

@@ -2,3 +2,7 @@ iputils
 vim
 openssl
 rsync
+insserv-compat
+net-tools-deprecated
+rsyslog
+nfs-client
