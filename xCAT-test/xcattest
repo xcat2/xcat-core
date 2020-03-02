@@ -947,6 +947,11 @@ sub load_case {
     my $case_num           = @{$cases_to_be_run_ref};
     $load_all_case_flag = 1 if ($case_num == 0);
 
+    # These variables are used to exit file scanning earlier.
+    my $cases_left         = $case_num;
+    my $leave_inner_loop   = 0;
+    my $leave_outer_loop   = 0;
+
     @$case_ref = ();
     %$case_name_index_map_ref=();
     my @files = ();
@@ -964,11 +969,18 @@ sub load_case {
     my %invalidcases;
     my %case_name_index_map_bak;
     foreach my $file (@files) {
+        # After the code segment of the last test is saved away, skip the remaining file searching.
+        last if $leave_outer_loop == 1;
         if (!open($fd, "<$file")) {
             $$error_ref = "Can't open $file: $!";
             return 1;
         }
         while ($line = <$fd>) {
+            # After the code segment of the last test is saved away, skip scanning the remaining portion of the file.
+            if ($leave_inner_loop == 1) {
+               $leave_outer_loop = 1;
+               last;
+            }
             if ($newcmdstart) {
                 $line =~ s/\s+$//g;
             } else {
@@ -1024,6 +1036,7 @@ sub load_case {
                             push @{ $invalidcases{"invalidcasename"} }, $name;
                         }
                     }
+                $cases_left -= 1;  # Decrement the number of remaining cases by 1 after the test informaiton is recorded.
                 }
             } elsif ($line =~ /^os\s*:\s*(\w[\w\, ]+)/) {
                 next if $skip;
@@ -1216,6 +1229,7 @@ sub load_case {
                 next if $skip;
                 $i           = $i + 1;
                 $newcmdstart = 0;
+                $leave_inner_loop = 1 if $cases_left == 0;  # If all the codes of all tests are saved away, exit file scanning.
             } elsif ($newcmdstart) {
                 ++$m;
                 $case_ref->[$i]->{cmd}->[$j][$m] = $line;
