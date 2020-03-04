@@ -248,8 +248,8 @@ then
     instdisk="$(cat /tmp/xcat.install_disk)"
 fi
 
-BOOTFSTYPE=ext4
-FSTYPE=ext4
+BOOTFSTYPE=xfs
+FSTYPE=xfs
 EFIFSTYPE=efi
 
 #remove any exiting "xcatvg" VG to avoid fatal error
