@@ -192,38 +192,38 @@ then
             rm -f $dir/ifcfg-$nic 2>&1 1>/dev/null
         done
 
-        else
-            interfaces="/etc/network/interfaces"
+    else
+        interfaces="/etc/network/interfaces"
 
-            for tmp  in `sed -n "/auto ib/=" ${interfaces}`
+        for tmp  in `sed -n "/auto ib/=" ${interfaces}`
+        do
+            startline=`sed -n "/auto ib/=" ${interfaces}|  head -n 1`
+            endline=`sed -n "$startline,/^auto/p" ${interfaces} |wc -l`
+
+            if sed -n "$startline,/^auto/p" ${interfaces} |sed '$!d' |grep "auto" >/dev/null;then
+                endline=`expr $startline + $endline - 2`
+            else
+                endline=`expr $startline + $endline - 1`
+            fi
+
+            ((startline--))
+            temp=`sed -n ${startline}p ${interfaces}`
+            while [[ $temp =~ ^# ]]
             do
-                startline=`sed -n "/auto ib/=" ${interfaces}|  head -n 1`
-                endline=`sed -n "$startline,/^auto/p" ${interfaces} |wc -l`
-
-                if sed -n "$startline,/^auto/p" ${interfaces} |sed '$!d' |grep "auto" >/dev/null;then
-                    endline=`expr $startline + $endline - 2`
-                else
-                    endline=`expr $startline + $endline - 1`
-                fi
-
                 ((startline--))
                 temp=`sed -n ${startline}p ${interfaces}`
-                while [[ $temp =~ ^# ]]
-                do
-                    ((startline--))
-                    temp=`sed -n ${startline}p ${interfaces}`
-                done
-    		    ((startline++))
-
-                temp=`sed -n ${endline}p ${interfaces}`
-                while [[ $temp =~ ^# ]]
-                do
-                    ((endline--))
-                    temp=`sed -n ${endline}p ${interfaces}`
-                done
-				
-                sed -i ${startline},${endline}d ${interfaces}
             done
+            ((startline++))
+
+            temp=`sed -n ${endline}p ${interfaces}`
+            while [[ $temp =~ ^# ]]
+            do
+                ((endline--))
+                temp=`sed -n ${endline}p ${interfaces}`
+            done
+            
+            sed -i ${startline},${endline}d ${interfaces}
+        done
     fi
 else
     loop_number=`lsdev | grep "IP over Infiniband Network Interface" | wc -l`
