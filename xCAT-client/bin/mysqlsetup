@@ -930,9 +930,12 @@ sub initmysqldb
         $cmd = "$sqlcmd --user=mysql";
         #on rhels7.7, /usr/bin/mysql_install_db requires /usr/libexec/resolveip, 
         #but it's available at the /usr/bin/resolveip
-        #use --force to grant table entries use ipaddress instead of hostname
         if ($::linuxos == "rhels7.7") {
-            $cmd = "$cmd --force";
+            my $resolveip="/usr/libexec/resolveip";
+            if (!(-x ($resolveip))) {
+                my $linkcmd="ln -s /usr/bin/resolveip $resolveip";
+                xCAT::Utils->runcmd($linkcmd, 0);
+            }
         }
     }
     xCAT::Utils->runcmd($cmd, 0);
