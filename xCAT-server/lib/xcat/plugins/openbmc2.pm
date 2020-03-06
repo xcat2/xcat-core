@@ -160,12 +160,13 @@ sub process_request {
     xCAT::AGENT::wait_agent($pid, $callback);
 }
 
-my @rsp_common_options = qw/autoreboot bootmode powersupplyredundancy powerrestorepolicy timesyncmethod
+my @rsp_common_options = qw/autoreboot bootmode thermalmode powersupplyredundancy powerrestorepolicy timesyncmethod
                             ip netmask gateway hostname vlan ntpservers/;
 my @rspconfig_set_options = (@rsp_common_options, qw/admin_passwd/);
 my %rsp_set_valid_values = (
     autoreboot            => "0|1",
     bootmode              => "regular|safe|setup",
+    thermalmode           => "default|custom|heavy_io|max_base_fan_floor",
     powersupplyredundancy => "disabled|enabled",
     powerrestorepolicy    => "always_off|always_on|restore",
     timesyncmethod        => "manual|ntp",
@@ -447,7 +448,7 @@ sub refactor_args {
         }
     }
     if ($command eq "reventlog") {
-        if (!defined($extrargs->[0])) {
+        if ((!defined($extrargs->[0])) or ($extrargs->[0] =~ /^-V/)) {
             # If no parameters are passed, default to list all records
             $request->{arg} = ["list","all"];
         }

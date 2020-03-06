@@ -45,7 +45,7 @@ DESCRIPTION
 ***********
 
 
-The rmvm command removes the partitions specified in noderange. If noderange is an CEC, all the partitions associated with that CEC will be removed. Note that removed partitions are automatically removed from the xCAT database. For IVM-managed systems, care must be taken to not remove the VIOS partition, or all the associated partitions will be removed as well.
+The \ **rmvm**\  command removes the partitions specified in \ *noderange*\ . If \ *noderange*\  is an CEC, all the partitions associated with that CEC will be removed. Note that removed partitions are automatically removed from the xCAT database. For IVM-managed systems, care must be taken to not remove the VIOS partition, or all the associated partitions will be removed as well.
 
 For DFM-managed (short For Direct FSP Management mode) normal power machines, only partitions can be removed. No options is needed.
 
@@ -65,7 +65,11 @@ OPTIONS
 
 \ **-**\ **-service**\    Remove the service partitions of the specified CECs.
 
-\ **-p**\           KVM: Purge the existence of the VM from persistent storage.  This will erase all storage related to the VM in addition to removing it from the active virtualization configuration. PPC: Remove the specified partition on normal power machine.
+\ **-p**\ 
+
+KVM: Purge the existence of the VM from persistent storage. This will erase all storage related to the VM in addition to removing it from the active virtualization configuration. Storage devices of "raw" or "block" type are not removed.
+
+PPC: Remove the specified partition on normal power machine.
 
 \ **-f**\           Force remove the VM, even if the VM appears to be online.  This will bring down a live VM if requested.
 

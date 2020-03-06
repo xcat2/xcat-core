@@ -22,6 +22,7 @@
 #                       Verifies no broken link files in ..../<OS>/<ARCH>/
 #                       Verifies there are no multiple, real (non-link) files with the same name
 #                       Verifies all real (non-link) files have a link to it
+#                       Verifies all files have read permission set for all
 #       VERBOSE=1     - Set to 1 to see more VERBOSE output
 
 # This script should only be run on RPM based machines 
@@ -189,6 +190,15 @@ if [[ ${CHECK} -eq 1 ]]; then
         fi
     done
 
+    # Find files that have read permission missing for "all"
+    MISSING_PERMISSION=`find $GSA/* -type f -not -perm -444`
+    for file in $MISSING_PERMISSION; do
+        echo "Verify permission for file: "
+        echo " " $(ls -l $file)
+        ERROR=1
+    done
+
+
     if [[ ${ERROR} -eq 1 ]]; then
         echo -e "\nErrors found verifying files. Rerun this script with CHECK=0 to skip file verification."
         exit 1
@@ -268,8 +278,8 @@ chgrp -R -h $SYSGRP *
 chmod -R g+w *
 
 # Change permission on all repodata files to be readable by all
-chmod a+r */*/repodata/*.gz
-chmod a+r */*/repodata/*.bz2
+chmod a+rx */*/repodata
+chmod a+r */*/repodata/*
 
 TARBALL_WORKING_DIR="${XCATCOREDIR}/${DESTDIR}"
 echo "===> Building the tarball at: ${TARBALL_WORKING_DIR} ..."

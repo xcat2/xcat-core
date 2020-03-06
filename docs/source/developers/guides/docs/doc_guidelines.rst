@@ -137,9 +137,9 @@ Add links to refer other web page  is a very common way in writing document, it'
 
 * **Add an External Link**
 
-  Link to an external web page: `google <http://www.goole.com>`_: ::
+  Link to an external web page: `google <http://www.google.com>`_: ::
 
-    `google <http://www.goole.com>`_
+    `google <http://www.google.com>`_
 
 ..
 

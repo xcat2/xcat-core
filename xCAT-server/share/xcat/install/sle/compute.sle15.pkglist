@@ -2,3 +2,7 @@ openssl
 rsync
 less
 iputils
+insserv-compat
+net-tools-deprecated
+rsyslog
+nfs-client

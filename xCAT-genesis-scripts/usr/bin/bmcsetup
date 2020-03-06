@@ -170,7 +170,8 @@ logger -s -t $log_label -p local4.info "IPMIVER=$IPMIVER, IPMIMFG=$IPMIMFG, XPRO
 #
 # IPMIMFG=2 = IBM
 # IPMIMFG=0 = OpenPOWER
-# IPMIMFG=42817 and XPROD=16975 = OpenBMC
+# IPMIMFG=42817 and XPROD=16975 = OpenBMC (AC922)
+# IPMIMFG=42817 and XPROD=1 = OpenBMC (IC922)
 #
 if [ "$IPMIMFG" == 2 ]; then #IBM
     if [ "$XPROD" == "220" ]; then
@@ -291,7 +292,9 @@ elif [ "$IPMIMFG" == "674" ]; then # DELL
         ipmitool delloem lan set shared with lom$BMCPORT &>/dev/null
         ipmitool delloem lan set shared with failover all loms &>/dev/null
     fi
-elif [ "$IPMIMFG" = "42817" -a "$XPROD" = "16975" ]; then # IBM OpenPOWER servers with OpenBMC
+elif [ "$IPMIMFG" == "42817" -a "$XPROD" == "16975" ]; then # IBM OpenPOWER servers with OpenBMC (AC922)
+    ISOPENBMC=1
+elif [ "$IPMIMFG" == "42817" -a "$XPROD" == "1" ]; then # IBM OpenPOWER servers with OpenBMC (IC922)
     ISOPENBMC=1
 fi
 
@@ -466,6 +469,14 @@ for user in $BMCUS; do
         USERSLOT=$((`ipmitool raw 6 0x44 1 1|awk '{print $3}'` + 1))
     fi
     if [ "$USERSLOT" == 0 -o -z "$LOCKEDUSERS" ]; then USERSLOT=2; fi
+    # automatically find first unlocked user slot
+    for slot in {1..16}; do
+        USERLOCKED=`ipmitool channel getaccess $LANCHAN $slot | grep Fixed | awk '{print $4}'`
+        if [ "$USERLOCKED" == "No" ]; then
+            USERSLOT=$slot
+            break
+        fi
+    done
     if [ "$ISITE" = 1 ]; then
         allowcred.awk &
         CREDPID=$!

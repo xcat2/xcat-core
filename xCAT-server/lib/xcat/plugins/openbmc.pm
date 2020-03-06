@@ -91,6 +91,7 @@ $::RSPCONFIG_CONFIGURED_API_KEY  = -1;
 
 $::XCAT_LOG_DIR             = "/var/log/xcat";
 $::RAS_POLICY_TABLE         = "/opt/ibm/ras/lib/policyTable.json";
+$::RAS_POLICY_TABLE_RPM_LOC = "https://www.ibm.com/support/customercare/sas/f/lopdiags/scaleOutLCdebugtool.html#OpenBMC";
 $::XCAT_LOG_RFLASH_DIR      = $::XCAT_LOG_DIR . "/rflash/";
 $::XCAT_LOG_DUMP_DIR        = $::XCAT_LOG_DIR . "/dump/";
 
@@ -676,6 +677,21 @@ my %api_config_info = (
             manual      => "xyz.openbmc_project.Time.Synchronization.Method.Manual",
         },
     },
+    RSPCONFIG_THERMAL_MODE => {
+        command      => "rspconfig",
+        url          => "/control/thermal/0",
+        attr_url     => "Current",
+        display_name => "BMC ThermalMode",
+        instruct_msg => "",
+        type         => "attribute",
+        subcommand   => "thermalmode",
+        attr_value   => {
+            default            => "DEFAULT",
+            custom             => "CUSTOM",
+            heavy_io           => "HEAVY_IO",
+            max_base_fan_floor => "MAX_BASE_FAN_FLOOR",
+        },
+    },
 );
 
 $::RESPONSE_OK                  = "200 OK";
@@ -1107,7 +1123,7 @@ rmdir \"/tmp/\$userid\" \n";
     while (1) {
         unless ($wait_node_num) {
             if ($event_mapping and (ref($event_mapping) ne "HASH")) {
-                xCAT::SvrUtils::sendmsg("$event_mapping, install the OpenBMC RAS package to obtain more details logging messages.", $callback);
+                xCAT::MsgUtils->message("I", { data=> ["$event_mapping, install the openbmctool rpm from $::RAS_POLICY_TABLE_RPM_LOC to obtain more detailed logging messages."]}, $callback);
             }
             if ($next_status{LOGIN_RESPONSE} eq "RSPCONFIG_SSHCFG_REQUEST") {
                 my $home = xCAT::Utils->getHomeDir("root");
@@ -4393,6 +4409,7 @@ sub rvitals_response {
     my @sorted_output;
 
     my %leds = ();
+    my $number_of_fan_leds = 0;
 
     foreach my $key_url (keys %{$response_info->{data}}) {
         my %content = %{ ${ $response_info->{data} }{$key_url} };
@@ -4409,10 +4426,11 @@ sub rvitals_response {
             $calc_value = (split(/\./, $content{State}))[-1];
             $content_info = $label . ": " . $calc_value ;
 
-            if ($key_url =~ "fan0") { $leds{fan0} = $calc_value; }
-            if ($key_url =~ "fan1") { $leds{fan1} = $calc_value; }
-            if ($key_url =~ "fan2") { $leds{fan2} = $calc_value; }
-            if ($key_url =~ "fan3") { $leds{fan3} = $calc_value; }
+            # There could be multiple fan LEDs. Match a string "fan" followed by digits, but only at the end of a string
+            if ($key_url =~ /fan(\d+)$/) {
+                $leds{"fan" . $1} = $calc_value;
+                $number_of_fan_leds++;
+            }
             if ($key_url =~ "front_id") { $leds{front_id} = $calc_value; }
             if ($key_url =~ "front_fault") { $leds{front_fault} = $calc_value; }
             if ($key_url =~ "front_power") { $leds{front_power} = $calc_value; }
@@ -4484,7 +4502,7 @@ sub rvitals_response {
                 }
             }
             # Fans
-            for (my $i = 0; $i < 4; $i++) {
+            for (my $i = 0; $i < $number_of_fan_leds; $i++) {
                 my $tmp_key = "fan" . $i;
                 $content_info = "LEDs Fan$i: $leds{$tmp_key}";
                 push (@sorted_output, $content_info);

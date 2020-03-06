@@ -835,7 +835,6 @@ sub session_connect {
 
      $ssh->debug(0);
      $ssh->log_stdout(0);    # suppress stdout output..
-     $ssh->slave->stty(qw(sane -echo));
 
      unless ($ssh->spawn($command, @parameters))
      {
@@ -1494,8 +1493,8 @@ sub netcfg_for_irpdu {
 
     my $mypdu = new Expect;
 
-    $mypdu->log_stdout(1);    # suppress stdout output..
-    $mypdu->slave->stty(qw(sane -echo));
+    $mypdu->debug(0);
+    $mypdu->log_stdout(0);    # suppress stdout output..
 
     unless ($mypdu->spawn($login_cmd))
     {

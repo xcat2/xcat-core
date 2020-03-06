@@ -717,7 +717,7 @@ if (@new_order) {
     @ndrivers = (@new_order, @ndrivers);
 }
 
-if (-f "$rootimg_dir/lib/modules/$kernelver/kernel/drivers/net/ethernet/mellanox/mlx4/mlx4_en.ko") {
+if (-d "$rootimg_dir/lib/modules/$kernelver/kernel/drivers/net/ethernet/mellanox/mlx4") {
     for (@ndrivers) {
         s/mlx_en/mlx4_en/;
     }

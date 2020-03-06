@@ -343,7 +343,7 @@ fi
         # (4) for other os, we just keep it here.
         # For other pkg paths, we just keep it here.
         if [ $dir == $default_pkgdir ] || [ $dir == "$default_pkgdir/" ]; then
-            if ( pmatch "$OSVER" "sles*" ); then
+            if ( pmatch "$OSVER" "sle*" ); then
                 OSPKGDIR="$OSPKGDIR/1"
                 ospkgdir="$ospkgdir/1"
             elif ( pmatch "$OSVER" "SL5*" ); then
@@ -597,6 +597,7 @@ elif ( ((pmatch "$OSVER" "rhel*") || (pmatch "$OSVER" "centos*") || (pmatch "$OS
 	       fi
 	       echo "enabled=1" >> $REPOFILE
 	       echo "gpgcheck=0" >> $REPOFILE
+               echo "skip_if_unavailable=True" >> $REPOFILE
            fi
            i=$((i+1))
       done

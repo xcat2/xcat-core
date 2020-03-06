@@ -888,23 +888,25 @@ sub initmysqldb
         }
     }    # end AIX only
 
-    #on debian/ubuntu should comment the bind-adress line in my.cnf
+    #bind-adress line in my.cnf should comment out
     #on Ubuntu16.04, the bind-address line is in the mariadb.conf.d/50-server.cnf
-    if ($::debianflag) {
-        my $bind_file;
-        if (-e "/etc/mysql/mariadb.conf.d/50-server.cnf")
-        {
-            $bind_file = "/etc/mysql/mariadb.conf.d/50-server.cnf";
-        } else {
-            $bind_file = "/etc/mysql/my.cnf";
-        }
-        $cmd = "sed 's/\\(^\\s*bind.*\\)/#\\1/' $bind_file > /tmp/my.cnf; mv -f /tmp/my.cnf $bind_file;chmod 644 $bind_file";
-        xCAT::Utils->runcmd($cmd, 0);
-        if ($::RUNCMD_RC != 0)
-        {
-            xCAT::MsgUtils->message("E", " comment the bind-address line in $bind_file failed: $cmd.");
-            exit(1);
-        }
+    #on SLE15, the bind-address line is in the /etc/my.cnf
+    my $bind_file;
+    if (-e "/etc/mysql/mariadb.conf.d/50-server.cnf")
+    {
+        $bind_file = "/etc/mysql/mariadb.conf.d/50-server.cnf";
+    } elsif (-e "/etc/mysql/my.cnf") 
+    {
+        $bind_file = "/etc/mysql/my.cnf";
+    } else {
+        $bind_file = "/etc/my.cnf";
+    }
+    $cmd = "sed 's/^bind/#&/' $bind_file > /tmp/my.cnf; mv -f /tmp/my.cnf $bind_file;chmod 644 $bind_file";
+    xCAT::Utils->runcmd($cmd, 0);
+    if ($::RUNCMD_RC != 0)
+    {
+        xCAT::MsgUtils->message("E", " comment the bind-address line in $bind_file failed: $cmd.");
+        exit(1);
     }
 
     # Create the MySQL data directory and initialize the grant tables
@@ -926,6 +928,15 @@ sub initmysqldb
         }
 
         $cmd = "$sqlcmd --user=mysql";
+        #on rhels7.7, /usr/bin/mysql_install_db requires /usr/libexec/resolveip, 
+        #but it's available at the /usr/bin/resolveip
+        if ($::linuxos == "rhels7.7") {
+            my $resolveip="/usr/libexec/resolveip";
+            if (!(-x ($resolveip))) {
+                my $linkcmd="ln -s /usr/bin/resolveip $resolveip";
+                xCAT::Utils->runcmd($linkcmd, 0);
+            }
+        }
     }
     xCAT::Utils->runcmd($cmd, 0);
     if ($::RUNCMD_RC != 0)
@@ -971,7 +982,7 @@ sub mysqlstart
     else
     {
         if ($::MariaDB == 1) {    # running MariaDB
-            if ($::linuxos =~ /rh.*/) {
+            if ( ($::linuxos =~ /rh.*/) || ($::linuxos =~ /sles15.*/) ) {
                 $ret = xCAT::Utils->startservice("mariadb");
             } else {              # sles
                 $ret = xCAT::Utils->startservice("mysql");
@@ -1084,7 +1095,7 @@ sub mysqlreboot
     {
         if ($::MariaDB == 1) {    # MariaDB not MySQL
 
-            if ($::linuxos =~ /rh.*/) {
+            if ( ($::linuxos =~ /rh.*/) || ($::linuxos =~ /sles15.*/) ){
                 $cmd = "chkconfig mariadb on";
             } else {              #sles
                 $cmd = "chkconfig mysql on";
@@ -1244,6 +1255,14 @@ sub setupxcatdb
     $grantall_localhost .= "\'";
     $grantall_localhost .= " IDENTIFIED BY \'$::adminpassword\';\r";
 
+    #GRAND root to host account
+    my $grantroot = "";
+    $grantroot = "GRANT ALL on xcatdb.* TO root@";
+    $grantroot .= "\'";
+    $grantroot .= "$::MN";
+    $grantroot .= "\'";
+    $grantroot .= " IDENTIFIED BY \'$::rootpassword\';\r";
+
     #
     # -re $pwd_prompt
     #     Enter the password for root
@@ -1311,6 +1330,8 @@ sub setupxcatdb
                 $mysql->send("$grantall");
                 $mysql->clear_accum();
                 $mysql->send("$grantall_localhost");
+                $mysql->clear_accum();
+                $mysql->send("$grantroot");
                 $mysql->clear_accum();
                 $mysql->send("exit;\r");
 

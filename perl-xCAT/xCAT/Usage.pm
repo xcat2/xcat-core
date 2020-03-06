@@ -193,6 +193,8 @@ my %usage = (
        rspconfig <noderange> timesyncmethod={ntp|manual}
        rspconfig <noderange> bootmode
        rspconfig <noderange> bootmode={safe|regular|setup}
+       rspconfig <noderange> thermalmode
+       rspconfig <noderange> thermalmode={default|custom|heavy_io|max_base_fan_floor}
        rspconfig <noderange> autoreboot
        rspconfig <noderange> autoreboot={0|1}
 ",

@@ -72,6 +72,31 @@ sub xdie {
     die @_;
 }
 
+sub umount {
+    # some rpms mounts the imageroot/proc on the /proc, need to release it,
+    # otherwise got kernal panic when installing
+    # sometimes, the proc fs is not mounted, so one warning/error message will display,
+    # and I add one check point here.
+    my $MFD;
+    open MFD, "/proc/mounts";
+    my @lines = <MFD>;
+    close MFD;
+
+    my $ret = grep m{$rootimg_dir/proc}, @lines;
+    if ($ret > 0) {
+        system("umount -l $rootimg_dir/proc");
+    }
+    $ret = grep m{$rootimg_dir/sys}, @lines;
+    if ($ret > 0) {
+        system("umount -l $rootimg_dir/sys");
+    }
+}
+
+# Make sure we clean up all mounts everytime
+END {
+    umount();
+}
+
 #-- fetch current version form CVS (overwrite locally changed versions)
 # if (opendir(CVS,"$pathtofiles/CVS")){
 #   close CVS;
@@ -203,7 +228,7 @@ unless (grep /af_packet/, @ndrivers) {
 }
 
 my $osver_host;
-if (`grep VERSION /etc/SuSE-release` =~ /VERSION = (\d+)/) {
+if (`grep VERSION /etc/os-release` =~ /VERSION="(\d+)/) {
     $osver_host = $1;
 } else {
     $osver_host = 11;
@@ -225,26 +250,32 @@ unless ($onlyinitrd) {
 
     mkpath "$rootimg_dir/etc";
     mkpath "$rootimg_dir/dev";
+    mkpath "$rootimg_dir/proc";
+    mkpath "$rootimg_dir/sys";
+
+    #needed for newer versions of the SLE permissions RPM. See: https://github.com/openSUSE/permissions/commit/2d0ef5d55b30f72322d18951214353ecfd9c4245
+    system "mount -t proc proc $rootimg_dir/proc";
+    #Create /sys to have /sys/kernel/fscaps. Fixes: "Warning: running kernel does not support fscaps"
+    system "mount -o bind /sys $rootimg_dir/sys";
 
     #system "mount -o bind /dev $rootimg_dir/dev";
     unless (-e "$rootimg_dir/dev/zero") {
-        system "mknod $rootimg_dir/dev/zero c 1 5";
+        system "mknod -m 0666 $rootimg_dir/dev/zero c 1 5";
     }
     unless (-e "$rootimg_dir/dev/null") {
-        system "mknod $rootimg_dir/dev/null c 1 3"; #that's neccessary for SLES11
+        system "mknod -m 0666 $rootimg_dir/dev/null c 1 3"; #that's neccessary for SLES11+
     }
-
     unless (-e "$rootimg_dir/dev/random") {
-        system "mknod $rootimg_dir/dev/random c 1 8"; #that's neccessary for SLES11
+        system "mknod -m 0666 $rootimg_dir/dev/random c 1 8"; #that's neccessary for SLES11+
     }
     unless (-e "$rootimg_dir/dev/urandom") {
-        system "mknod $rootimg_dir/dev/urandom c 1 9"; #that's neccessary for SLES11
+        system "mknod -m 0666 $rootimg_dir/dev/urandom c 1 9"; #that's neccessary for SLES11+
     }
 
     for (my $i = 0 ; $i <= 12 ; $i++)
     {
         unless (-e "$rootimg_dir/dev/tty$i") {
-            system "mknod $rootimg_dir/dev/tty$i c 4 $i"; #that's neccessary for SLES11
+            system "mknod $rootimg_dir/dev/tty$i c 4 $i"; #that's neccessary for SLES11+
         }
     }
 
@@ -264,11 +295,17 @@ unless ($onlyinitrd) {
 
         # To support multiple paths for osimage.pkgdir
         foreach $dir (@pkgdirs) {
+            my $ddir = $dir;
             if (-d "$dir/1") {
-                $dir .= "/1";
+                $ddir .= "/1";
             }
-            system("zypper -R $rootimg_dir $non_interactive ar file:$dir $osver-$i");
+            system("zypper -R $rootimg_dir $non_interactive ar file:$ddir $osver-$i");
             $i++;
+            if (-d "$dir/2") {
+                $ddir = $dir . "/2";
+                system("zypper -R $rootimg_dir $non_interactive ar file:$ddir $osver-$i");
+                $i++;
+            }
         }
 
         #if(-e "$rootimg_dir/etc/zypp/repos.d/$osver.repo") {
@@ -391,6 +428,12 @@ unless ($onlyinitrd) {
     #my $yumcmd = "yum -y -c /tmp/genimage.$$.yum.conf --installroot=$rootimg_dir --disablerepo=* ";
     #$yumcmd .= "install ";
     #mkpath("$rootimg_dir/var/lib/yum");
+    if (! -f "$rootimg_dir/etc/passwd") {
+        mkpath("$rootimg_dir/etc/");
+        my $passwdfile;
+        open($passwdfile, ">", "$rootimg_dir/etc/passwd");
+        print $passwdfile "root:x:0:0:root:/root:/bin/bash\n";
+    }
     my $yumcmd;
     if ($osver_host < 11) {
         $yumcmd = "zypper -R $rootimg_dir $non_interactive install ";
@@ -862,19 +905,8 @@ system("cd $rootimg_dir/usr/bin/; ln -s ../../bin/keyctl $rootimg_dir/usr/bin/ke
 
 # which is different from the Redhat family
 
-# some rpms mounts the imageroot/proc on the /proc, need to release it,
-# otherwise got kernal panic when installing
-# sometimes, the proc fs is not mounted, so one warning/error message will display,
-# and I add one check point here.
-my $MFD;
-open MFD, "/proc/mounts";
-my @lines = <MFD>;
-close MFD;
-
-my $ret = grep m{$rootimg_dir/proc}, @lines;
-if ($ret > 0) {
-    system("umount -l $rootimg_dir/proc");
-}
+# umount /proc and /sys from rootimg
+umount();
 
 # Load driver update disk, and copy them to the root image
 my @dd_drivers = &load_dd();
@@ -1939,8 +1971,12 @@ sub generic_post { # This function is meant to leave the image in a state approx
         system("sed  -i 's!\\(HWCLOCK=\\).*!\\1\"--localtime\"!' $rootimg_dir/etc/sysconfig/clock");
     }
 
+    if (-e "$rootimg_dir/etc/sysconfig/network/dhcp") {
+        system("sed  -i 's!^DHCLIENT_SET_HOSTNAME=\\\"no\\\"!DHCLIENT_SET_HOSTNAME=\\\"yes\\\"!' $rootimg_dir/etc/sysconfig/network/dhcp");
+    }
+
     unlink("$rootimg_dir/dev/null");
-    system("mknod $rootimg_dir/dev/null c 1 3");
+    system("mknod -m 0666 $rootimg_dir/dev/null c 1 3");
     open($cfgfile, ">", "$rootimg_dir/etc/fstab");
     print $cfgfile "devpts  /dev/pts devpts   gid=5,mode=620 0 0\n";
     print $cfgfile "tmpfs   /dev/shm tmpfs    defaults       0 0\n";
@@ -1963,9 +1999,12 @@ sub generic_post { # This function is meant to leave the image in a state approx
     print $cfgfile "NETWORKING=yes\n";
     close($cfgfile);
 
-    open($cfgfile, ">", "$rootimg_dir/etc/resolv.conf");
-    print $cfgfile "#Dummy resolv.conf to make boot cleaner";
-    close($cfgfile);
+    # SLE15 has a symlink to /run/netconfig/resolv.conf and does not need a dummy file
+    if (! -l "$rootimg_dir/etc/resolv.conf") {
+        open($cfgfile, ">", "$rootimg_dir/etc/resolv.conf");
+        print $cfgfile "#Dummy resolv.conf to make boot cleaner";
+        close($cfgfile);
+    }
 
     # Create the ifcfg-x file for diskless node. But keep the ONBOOT=no
     # to skip the break of nfs-based boot
@@ -2048,8 +2087,10 @@ sub generic_post { # This function is meant to leave the image in a state approx
         chmod(0755, "$rootimg_dir/etc/init.d/gettyset");
     }
 
-    copy("$installroot/postscripts/xcatpostinit", "$rootimg_dir/etc/init.d/xcatpostinit");
-    chmod(0755, "$rootimg_dir/etc/init.d/xcatpostinit");
+    system("mkdir -p $rootimg_dir/opt/xcat");
+    copy("$installroot/postscripts/xcatpostinit", "$rootimg_dir/opt/xcat/xcatpostinit");
+    chmod(0755, "$rootimg_dir/opt/xcat/xcatpostinit");
+    copy("$installroot/postscripts/xcatpostinit.service", "$rootimg_dir/usr/lib/systemd/system/xcatpostinit.service");
 
     #
     # set certain system services to start on boot, if the file exists in /etc/init.d as a script,
@@ -2068,7 +2109,7 @@ sub generic_post { # This function is meant to leave the image in a state approx
             system("$cmd");
         }
         else {
-            $cmd = $cmd . "systemctl start $service.service";
+            $cmd = $cmd . "systemctl enable $service.service";
             system("$cmd");
         }
     }

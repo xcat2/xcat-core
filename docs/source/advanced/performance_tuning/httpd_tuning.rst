@@ -6,9 +6,9 @@ In xCAT, the Operation System provisioning over network is heavily relying on th
 
 #. Tuning MaxRequestWorkers directive
 
-By default, httpd is configured to use ``prefork`` module for **MPM**, which has a limit of 256 simultaneous requests. If any slow httpd response issue was hit during OS provisioning, you can increase **MaxRequestWorkers** directive for greater performance.
+By default, httpd is configured to use ``prefork`` module for **MPM**, which has a limit of 256 simultaneous requests. If slow httpd response observed during OS provisioning, you can increase **MaxRequestWorkers** directive for better performance.
 
-For example, to avoid some nodes provisioning failure when rebooting all nodes in a large hierarchy stateless cluster ( one service node is serving 270 compute nodes ). It is suggested to increased the value from 256 to 1000.
+For example, to avoid some nodes provisioning failure when rebooting all nodes in a large hierarchy stateless cluster ( one service node is serving 270 compute nodes ), increase the value from 256 to 1000.
 
     On Red Hat, change (or add) these directives in
     ::
@@ -24,9 +24,9 @@ For example, to avoid some nodes provisioning failure when rebooting all nodes i
 
 #. Having httpd Cache the Files It Is Serving
 
-Note: this information was contributed by Jonathan Dye and is provided here as an example. The details may have to be changed for distro or apache version.
+.. note:: this information was contributed by Jonathan Dye and is provided here as an example. The details may have to be changed for distro or apache version.
 
-This is simplest if you set noderes.nfsserver to a separate apache server, and then you can configure it to reverse proxy and cache. For some reason mod_mem_cache doesn't seem to behave as expected, so you can use mod_disk_cache to achieve a similar result: make a tmpfs on the apache server and configure its mountpoint to be the directory that CacheRoot points to. Also tell it to ignore /install/autoinst since the caching settings are really aggressive. Do a recursive wget to warm the cache and watch the tmpfs fill up. Then do a bunch of kickstart installs. Before this, the apache server on the xcat management node may have been a bottleneck during kickstart installs. After this change, it no longer should be.
+This is simplest if you set ``noderes.nfsserver`` to a separate apache server, and then you can configure it to reverse proxy and cache. For some reason ``mod_mem_cache`` doesn't seem to behave as expected, so you can use ``mod_disk_cache`` to achieve a similar result: make a ``tmpfs`` on the apache server and configure its mountpoint to be the directory that ``CacheRoot`` points to. Also tell it to ignore ``/install/autoinst`` since the caching settings are really aggressive. Do a recursive ``wget`` to warm the cache and watch the ``tmpfs`` fill up. Then do a bunch of kickstart installs. Before this, the apache server on the xcat management node may have been a bottleneck during kickstart installs. After this change, it no longer should be.
 
 Here is the apache config file:
 ::

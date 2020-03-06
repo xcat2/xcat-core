@@ -19,3 +19,7 @@ Use ``nicextraparams`` to customize attributes in NIC configuration file. For ex
       HWADDR=42:f5:0a:05:6a:09
       MTU=1456
 
+  #. Example to add `nicextraparams` to `bond` interface ::
+
+      chdef cn1 nicextraparams.bond0='BONDING_OPTS="mode=active-backup;abc=100" MTU=6400 XYZ="4800" IOP="mode=1 phase=2"'
+
