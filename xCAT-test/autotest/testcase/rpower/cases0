@@ -43,7 +43,7 @@ cmd:a=0;while ! `rpower $$CN stat|grep "Not Activated\|off" >/dev/null`; do slee
 cmd:rpower $$CN stat
 check:output=~Not Activated|off
 # Display active VMs and memory on VM host
-cmd:vmhost=`lsdef $$CN -i vmhost -c | cut -d '=' -f 2`; if [[ ! -z $vmhost ]]; then echo "Memory on vmhost $vmhost"; ssh $vmhost free -g; echo "Active VMs on vmhost $vmhost"; ssh $vmhost virsh list; fi
+cmd:vmhost=`lsdef $$CN -i vmhost -c | cut -d '=' -f 2`; if [[ ! -z $vmhost ]]; then echo "Memory on vmhost $vmhost"; ssh $vmhost free -m; echo "Active VMs on vmhost $vmhost"; ssh $vmhost virsh list; fi
 cmd:rpower $$CN boot
 check:rc==0
 cmd:a=0;while ! `rpower $$CN stat|grep "Running\|on" >/dev/null`; do sleep 5;((a++));if [ $a -gt 11 ];then break;fi done

@@ -4,8 +4,9 @@ label:go_xcat
 os:Linux
 #Make sure service node is not off, if it is, power it on
 cmd:if rpower $$SN stat | grep "off"; then rpower $$SN on; sleep 300; fi
-cmd:lsdef $$SN -i status
-check:output=~booted
+
+#Service not did not boot after 5 min, reprovision it
+cmd:if lsdef $$SN -i status -c | grep -v "booted"; then /opt/xcat/share/xcat/tools/autotest/testcase/commoncmd/retry_install.sh $$SN __GETNODEATTR($$SN,os)__-__GETNODEATTR($$SN,arch)__-install-service; fi
 
 #Provision compute node
 cmd:/opt/xcat/share/xcat/tools/autotest/testcase/commoncmd/retry_install.sh $$CN __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-install-compute
@@ -39,8 +40,9 @@ label:go_xcat
 os:Linux
 #Make sure service node is not off, if it is, power it on
 cmd:if rpower $$SN stat | grep "off"; then rpower $$SN on; sleep 300; fi
-cmd:lsdef $$SN -i status
-check:output=~booted
+
+#Service not did not boot after 5 min, reprovision it
+cmd:if lsdef $$SN -i status -c | grep -v "booted"; then /opt/xcat/share/xcat/tools/autotest/testcase/commoncmd/retry_install.sh $$SN __GETNODEATTR($$SN,os)__-__GETNODEATTR($$SN,arch)__-install-service; fi
 
 #Provision compute node
 cmd:/opt/xcat/share/xcat/tools/autotest/testcase/commoncmd/retry_install.sh $$CN __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-install-compute
@@ -74,8 +76,9 @@ label:go_xcat
 os:Linux
 #Make sure service node is not off, if it is, power it on
 cmd:if rpower $$SN stat | grep "off"; then rpower $$SN on; sleep 300; fi
-cmd:lsdef $$SN -i status
-check:output=~booted
+
+#Service not did not boot after 5 min, reprovision it
+cmd:if lsdef $$SN -i status -c | grep -v "booted"; then /opt/xcat/share/xcat/tools/autotest/testcase/commoncmd/retry_install.sh $$SN __GETNODEATTR($$SN,os)__-__GETNODEATTR($$SN,arch)__-install-service; fi
 
 #Provision compute node
 cmd:/opt/xcat/share/xcat/tools/autotest/testcase/commoncmd/retry_install.sh $$CN __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-install-compute
@@ -119,8 +122,9 @@ label:go_xcat
 os:Linux
 #Make sure service node is not off, if it is, power it on
 cmd:if rpower $$SN stat | grep "off"; then rpower $$SN on; sleep 300; fi
-cmd:lsdef $$SN -i status
-check:output=~booted
+
+#Service not did not boot after 5 min, reprovision it
+cmd:if lsdef $$SN -i status -c | grep -v "booted"; then /opt/xcat/share/xcat/tools/autotest/testcase/commoncmd/retry_install.sh $$SN __GETNODEATTR($$SN,os)__-__GETNODEATTR($$SN,arch)__-install-service; fi
 
 #Provision compute node
 cmd:/opt/xcat/share/xcat/tools/autotest/testcase/commoncmd/retry_install.sh $$CN __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-install-compute

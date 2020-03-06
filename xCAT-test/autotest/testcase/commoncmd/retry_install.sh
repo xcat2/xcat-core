@@ -24,7 +24,7 @@ do
     if [[ ! -z $vmhost ]];then
         # Display memory and active VMs on VM host, when installing on VM
         echo "Memory on vmhost $vmhost"
-        ssh $vmhost free -g
+        ssh $vmhost free -m
         echo "Active VMs on vmhost $vmhost"
         ssh $vmhost virsh list
     fi
