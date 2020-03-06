@@ -9,7 +9,7 @@ Use ``nicextraparams`` to customize attributes in NIC configuration file. For ex
 
       chdef cn1 nicextraparams.eth1="MTU=1456 ONBOOT=no"
 
-  #. After ``confignetwork`` is executed in ``cn1``, ``nicexraparams`` will overwrite the original value in ``/etc/sysconfig/network-scripts/ifcfg-eth1`` as ::
+  #. After ``confignetwork`` is executed in ``cn1``, ``nicextraparams`` will overwrite the original value in ``/etc/sysconfig/network-scripts/ifcfg-eth1`` as ::
 
       DEVICE=eth1
       IPADDR=13.1.89.7
