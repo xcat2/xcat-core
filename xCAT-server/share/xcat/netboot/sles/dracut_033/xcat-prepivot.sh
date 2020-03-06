@@ -160,7 +160,7 @@ STARTMODE='auto'
 EOF
 
 if [ -f $NEWROOT/etc/hostname ]; then
-    echo `hostname -s` > $NEWROOT/etc/hostname
+    echo "$ME" > $NEWROOT/etc/hostname
 fi
 
 if [ ! -z "$ifname" ]; then
