@@ -273,7 +273,7 @@ DISKSIZE="$(getdisksize "${instdisk}")"
 
 # TODO: Ondisk detection, /dev/disk/by-id/edd-int13_dev80 for legacy maybe, and no idea about efi. At least maybe blacklist SAN if mptsas/mpt2sas/megaraid_sas seen...
 echo "part /boot --fstype=$BOOTFSTYPE --asprimary --ondisk=$instdisk --size=1024" >>/tmp/partitionfile
-echo "part pv.000997 --grow --asprimary --ondisk=$instdisk --size=18432" >>/tmp/partitionfile
+echo "part pv.000997 --grow --asprimary --ondisk=$instdisk --size=1024" >>/tmp/partitionfile
 echo "volgroup xcatvg --pesize=4096 pv.000997" >>/tmp/partitionfile
 echo "logvol swap --name=swap --vgname=xcatvg --recommended" >>/tmp/partitionfile
 
