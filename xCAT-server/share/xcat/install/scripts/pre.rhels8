@@ -277,7 +277,7 @@ echo "part pv.000997 --grow --asprimary --ondisk=$instdisk --size=18432" >>/tmp/
 echo "volgroup xcatvg --pesize=4096 pv.000997" >>/tmp/partitionfile
 echo "logvol swap --name=swap --vgname=xcatvg --recommended" >>/tmp/partitionfile
 
-echo "logvol / --fstype=$FSTYPE --name=root --vgname=xcatvg --grow" >>/tmp/partitionfile
+echo "logvol / --fstype=$FSTYPE --name=root --vgname=xcatvg --grow --size 1" >>/tmp/partitionfile
 
 # Specify "bootloader" configuration in "/tmp/partitionfile" if there is no user customized partition file
 BOOTLOADER="bootloader"
