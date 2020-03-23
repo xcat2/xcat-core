@@ -16,7 +16,7 @@ cmd:makedhcp -a
 check:rc==0
 cmd:a=0;while true; do [ $a -eq 100 ] && exit 1;output=$(makedhcp -q $$CN);[ $? -ne 0 ] && exit 1;echo $output|grep $$CN 2>/dev/null && exit 0;a=$[$a+1];sleep 1;done
 check:rc==0
-cmd:copycds $$ISO
+cmd:copycds $$ISO | grep -v "%"
 check:rc==0
 
 cmd:rootimgdir=`lsdef -t osimage __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute|grep rootimgdir|awk -F'=' '{print $2}'`; if [ -d $rootimgdir ]; then mv $rootimgdir $rootimgdir.regbak -f;fi
@@ -57,13 +57,14 @@ check:rc==0
 cmd:lsdef -t node $$CN -i postscripts,postbootscripts
 cmd:lsdef -t osimage __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute -i crashkernelsize,dump
 
-cmd:rinstall $$CN osimage=__GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute
+cmd:rinstall $$CN osimage=__GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute -V
 check:rc==0
 check:output=~Provision node\(s\)\: $$CN
 
 # Verify kdump related attributes showup in tftpboot file and file was changed
 cmd:ls -l /tftpboot/boot/grub2/$$CN
 cmd:cat /tftpboot/boot/grub2/$$CN
+check:output=dump
 
 cmd:sleep 300
 cmd:a=0;while ! `lsdef -l $$CN|grep status|grep booted >/dev/null`; do sleep 10;((a++));if [ $a -gt 60 ];then break;fi done
