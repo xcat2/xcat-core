@@ -8,8 +8,6 @@ rsync
 tar
 util-linux
 wget
-perl-DBD-MySQL
-perl-DBD-Pg
 python3
 tar
 bzip2
@@ -28,4 +26,11 @@ bash
 vim-minimal
 rpm
 iputils
+gzip
+grub2
+grub2-tools
+ntp
+lsvpd
+perl-DBD-MySQL
+perl-DBD-Pg
 
