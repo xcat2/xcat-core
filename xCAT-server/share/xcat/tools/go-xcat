@@ -1355,7 +1355,7 @@ function add_xcat_core_repo_apt()
 		local tmp="${TMP_DIR}/tmp_xcat.key"
 		download_file "${url}" "${tmp}"
 		warn_if_bad "$?" "download xcat apt key failed" || return 1
-		apt-key add "${tmp}" >/dev/null 2>&1
+		apt-key add "${tmp}"
 		warn_if_bad "$?" "import xcat apt key failed" || return 1
 		case "${ver}" in
 		"devel")
