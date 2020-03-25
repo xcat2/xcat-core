@@ -29,7 +29,6 @@ iputils
 gzip
 grub2
 grub2-tools
-ntp
 lsvpd
 perl-DBD-MySQL
 perl-DBD-Pg
