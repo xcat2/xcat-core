@@ -362,19 +362,12 @@ sub process_request {
         if ($net and $net->{nameservers})
         {
             my $valid = 0;
-            my @myips;
-            my @myipsd   = xCAT::NetworkUtils->my_ip_facing($net->{net});
-            my $myipsd_l = @myipsd;
-            unless ($myipsd[0]) { @myips = @myipsd[ 1 .. ($myipsd_l - 1) ]; }
             foreach (split /,/, $net->{nameservers})
             {
                 chomp $_;
-                foreach my $myip (@myips) {
-                    if (($_ eq $myip) || ($_ eq '<xcatmaster>') || ($_ eq $sitens))
-                    {
-                        $valid += 1;
-                    }
-                }
+		if (!xCAT::NetworkUtils->thishostisnot($_)) {
+                    $valid += 1;
+		}
             }
             unless ($valid > 0)
             {
