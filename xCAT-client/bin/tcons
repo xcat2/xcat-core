@@ -8,12 +8,12 @@ for i in `nodels "$1"`; do
         tmux new-session -d -s tcons_$$ -x 800 -y 800 "rcons $i;if [ \`date +%s\` -lt $qdate ]; then echo Press enter to close; read qdate; fi"
         continue
     fi
-    tmux select-pane -t tcons.$$
-    tmux set-option -t tcons.$$:$p pane-border-status top > /dev/null 2>&1 | cat > /dev/null
+    tmux select-pane -t tcons_$$
+    tmux set-option -t tcons_$$:$p pane-border-status top > /dev/null 2>&1 | cat > /dev/null
     p=$((p+1))
     qdate=$((`date +%s`+5))
-    tmux split -h -t tcons.$$ "rcons $i;if [ \`date +%s\` -lt $qdate ]; then echo Press enter to close; read qdate; fi"
-    tmux select-layout -t tcons.$$ tiled
+    tmux split -h -t tcons_$$ "rcons $i;if [ \`date +%s\` -lt $qdate ]; then echo Press enter to close; read qdate; fi"
+    tmux select-layout -t tcons_$$ tiled
 done
 tmux select-pane -t 0
 tmux attach -t tcons_$$
