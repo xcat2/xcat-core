@@ -261,9 +261,13 @@ sub send_back_comment{
     }
 
     print "[send_back_comment] method = $post_method to $post_url. Message = $message\n";
+    #my $pw = 
+    print post_url;
+
     if ( $ENV{'xcatbotuser'} and $ENV{'xcatbotpw'}) {
         `curl -u "$ENV{'xcatbotuser'}:$ENV{'xcatbotpw'}" -X $post_method -d '{"body":"$message"}' $post_url`;
     }
+    
     else {
         print "Not able to update pull request with message: $message\n";
     }
