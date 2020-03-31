@@ -1285,7 +1285,7 @@ function remove_repo_zypper()
 {
 	type zypper >/dev/null 2>&1 || return 255
 	local repo_id="$1"
-	zypper removerepo "${repo_id}"
+	zypper removerepo "${repo_id}" > /dev/null
 	case "${repo_id}" in
 	"xcat-core")
 		mv /etc/zypp/repos.d/xCAT-core.repo{,.nouse} 2>/dev/null
