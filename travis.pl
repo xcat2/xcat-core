@@ -269,7 +269,6 @@ sub send_back_comment{
     else {
         print "Not able to update pull request with message: $message\n";
         my $get_commit_url = "$GITHUB_API/repos/xcat2/xcat-core/git/commits/$ENV{'TRAVIS_COMMIT'}";
-        print $get_commit_url;
 
         my $commit_response;
         $commit_response = `curl $get_commit_url`;
