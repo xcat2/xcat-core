@@ -263,7 +263,7 @@ sub send_back_comment{
     print "[send_back_comment] method = $post_method to $post_url. Message = $message\n";
 
     if ( $ENV{'xcatbotuser'} and $ENV{'xcatbotpw'}) {
-        `curl -u "$id:$pw" -X $post_method -d '{"body":"$message"}' $post_url`;
+        `curl -u "$ENV{'xcatbotuser'}:$ENV{'xcatbotpw'}" -X $post_method -d '{"body":"$message"}' $post_url`;
     }
 
     else {
