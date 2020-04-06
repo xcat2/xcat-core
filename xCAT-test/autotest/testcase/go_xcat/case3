@@ -5,8 +5,8 @@ os:Linux
 #Make sure service node is not off, if it is, power it on
 cmd:if rpower $$SN stat | grep "off"; then rpower $$SN on; echo "Service node was off, powering on, waiting for 5 min"; sleep 300; fi
 
-#Service not did not boot after 5 min, reprovision it
-cmd:if lsdef $$SN -i status -c | grep -v "booted"; then echo "Service node did not power on, trying to reprovision"; /opt/xcat/share/xcat/tools/autotest/testcase/commoncmd/retry_install.sh $$SN __GETNODEATTR($$SN,os)__-__GETNODEATTR($$SN,arch)__-install-service 2; fi
+#Service not did not boot after 5 min, reprovision it if not on Ubuntu
+cmd:if lsdef $$SN -i status -c | grep -v "booted"; then if grep Ubuntu /etc/*release; then echo "Will not attempt to reprovision service node on Ubuntu"; else echo "Service node did not power on, trying to reprovision"; /opt/xcat/share/xcat/tools/autotest/testcase/commoncmd/retry_install.sh $$SN __GETNODEATTR($$SN,os)__-__GETNODEATTR($$SN,arch)__-install-service 2; fi; fi
 
 #Provision compute node
 cmd:/opt/xcat/share/xcat/tools/autotest/testcase/commoncmd/retry_install.sh $$CN __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-install-compute 2
@@ -47,8 +47,8 @@ os:Linux
 #Make sure service node is not off, if it is, power it on
 cmd:if rpower $$SN stat | grep "off"; then rpower $$SN on; echo "Service node was off, powering on, waiting for 5 min"; sleep 300; fi
 
-#Service not did not boot after 5 min, reprovision it
-cmd:if lsdef $$SN -i status -c | grep -v "booted"; then echo "Service node did not power on, trying to reprovision"; /opt/xcat/share/xcat/tools/autotest/testcase/commoncmd/retry_install.sh $$SN __GETNODEATTR($$SN,os)__-__GETNODEATTR($$SN,arch)__-install-service 2; fi
+#Service not did not boot after 5 min, reprovision it if not on Ubuntu
+cmd:if lsdef $$SN -i status -c | grep -v "booted"; then if grep Ubuntu /etc/*release; then echo "Will not attempt to reprovision service node on Ubuntu"; else echo "Service node did not power on, trying to reprovision"; /opt/xcat/share/xcat/tools/autotest/testcase/commoncmd/retry_install.sh $$SN __GETNODEATTR($$SN,os)__-__GETNODEATTR($$SN,arch)__-install-service 2; fi; fi
 
 #Provision compute node
 cmd:/opt/xcat/share/xcat/tools/autotest/testcase/commoncmd/retry_install.sh $$CN __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-install-compute 2
@@ -89,8 +89,8 @@ os:Linux
 #Make sure service node is not off, if it is, power it on
 cmd:if rpower $$SN stat | grep "off"; then rpower $$SN on; echo "Service node was off, powering on, waiting for 5 min"; sleep 300; fi
 
-#Service not did not boot after 5 min, reprovision it
-cmd:if lsdef $$SN -i status -c | grep -v "booted"; then echo "Service node did not power on, trying to reprovision"; /opt/xcat/share/xcat/tools/autotest/testcase/commoncmd/retry_install.sh $$SN __GETNODEATTR($$SN,os)__-__GETNODEATTR($$SN,arch)__-install-service 2; fi
+#Service not did not boot after 5 min, reprovision it if not on Ubuntu
+cmd:if lsdef $$SN -i status -c | grep -v "booted"; then if grep Ubuntu /etc/*release; then echo "Will not attempt to reprovision service node on Ubuntu"; else echo "Service node did not power on, trying to reprovision"; /opt/xcat/share/xcat/tools/autotest/testcase/commoncmd/retry_install.sh $$SN __GETNODEATTR($$SN,os)__-__GETNODEATTR($$SN,arch)__-install-service 2; fi; fi
 
 #Provision compute node
 cmd:/opt/xcat/share/xcat/tools/autotest/testcase/commoncmd/retry_install.sh $$CN __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-install-compute 2
@@ -141,8 +141,8 @@ os:Linux
 #Make sure service node is not off, if it is, power it on
 cmd:if rpower $$SN stat | grep "off"; then rpower $$SN on; echo "Service node was off, powering on, waiting for 5 min"; sleep 300; fi
 
-#Service not did not boot after 5 min, reprovision it
-cmd:if lsdef $$SN -i status -c | grep -v "booted"; then echo "Service node did not power on, trying to reprovision"; /opt/xcat/share/xcat/tools/autotest/testcase/commoncmd/retry_install.sh $$SN __GETNODEATTR($$SN,os)__-__GETNODEATTR($$SN,arch)__-install-service 2; fi
+#Service not did not boot after 5 min, reprovision it if not on Ubuntu
+cmd:if lsdef $$SN -i status -c | grep -v "booted"; then if grep Ubuntu /etc/*release; then echo "Will not attempt to reprovision service node on Ubuntu"; else echo "Service node did not power on, trying to reprovision"; /opt/xcat/share/xcat/tools/autotest/testcase/commoncmd/retry_install.sh $$SN __GETNODEATTR($$SN,os)__-__GETNODEATTR($$SN,arch)__-install-service 2; fi; fi
 
 #Provision compute node
 cmd:/opt/xcat/share/xcat/tools/autotest/testcase/commoncmd/retry_install.sh $$CN __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-install-compute 2
