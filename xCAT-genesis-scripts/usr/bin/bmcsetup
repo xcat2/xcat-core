@@ -433,15 +433,16 @@ for user in $BMCUS; do
     if [ -z "$USERSLOT" ]; then
         USERSLOT=$((`ipmitool raw 6 0x44 1 1|awk '{print $3}'` + 1))
     fi
-    if [ "$USERSLOT" == 0 -o -z "$LOCKEDUSERS" ]; then USERSLOT=2; fi
-    # automatically find first unlocked user slot
-    for slot in {1..16}; do
-        USERLOCKED=`ipmitool channel getaccess $LANCHAN $slot | grep Fixed | awk '{print $4}'`
-        if [ "$USERLOCKED" == "No" ]; then
-            USERSLOT=$slot
-            break
-        fi
-    done
+    if [ "$USERSLOT" == 0 -o -z "$LOCKEDUSERS" ]; then
+        # automatically find first unlocked user slot
+        for slot in {1..16}; do
+            USERLOCKED=`ipmitool channel getaccess $LANCHAN $slot | grep Fixed | awk '{print $4}'`
+            if [ "$USERLOCKED" == "No" ]; then
+                USERSLOT=$slot
+                break
+            fi
+        done
+    fi
     if [ "$ISITE" = 1 ]; then
         allowcred.awk &
         CREDPID=$!
