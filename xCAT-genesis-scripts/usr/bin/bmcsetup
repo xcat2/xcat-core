@@ -433,7 +433,7 @@ for user in $BMCUS; do
     if [ -z "$USERSLOT" ]; then
         USERSLOT=$((`ipmitool raw 6 0x44 1 1|awk '{print $3}'` + 1))
     fi
-    if [ "$USERSLOT" == 0 -o -z "$LOCKEDUSERS" ]; then
+    if [ "$USERSLOT" == 0 ]; then
         # automatically find first unlocked user slot
         for slot in {1..16}; do
             USERLOCKED=`ipmitool channel getaccess $LANCHAN $slot | grep Fixed | awk '{print $4}'`
@@ -443,6 +443,8 @@ for user in $BMCUS; do
             fi
         done
     fi
+    # fall back to userslot 2 as a last resort
+    if [ "$USERSLOT" == 0 ]; then $USERSLOT = 2; fi
     if [ "$ISITE" = 1 ]; then
         allowcred.awk &
         CREDPID=$!
@@ -476,6 +478,15 @@ for user in $BMCUS; do
     done
     ipmitool raw 6 0x43 $(($LANCHAN|176))  $USERSLOT 4
 
+    TRIES=0
+    if [ "$CURRENTUSER" != "$user" ]; then
+        # Change the user name, if necessary
+        while ! ipmitool -d $idev user set name $USERSLOT "$user"; do
+            sleep 1
+            let TRIES=TRIES+1
+            if [ $TRIES -gt $TIMEOUT ]; then break; fi
+        done
+    fi
 
     TRIES=0
     # Last param in ipmitool user priv is the channel to set it on.
@@ -507,15 +518,6 @@ for user in $BMCUS; do
         if [ $TRIES -gt $TIMEOUT ]; then break; fi
     done
 
-    TRIES=0
-    if [ "$CURRENTUSER" != "$user" ]; then
-        # Change the user name, if necessary
-        while ! ipmitool -d $idev user set name $USERSLOT "$user"; do
-            sleep 1
-            let TRIES=TRIES+1
-            if [ $TRIES -gt $TIMEOUT ]; then break; fi
-        done
-    fi
     let idev=idev-1
 done
 
