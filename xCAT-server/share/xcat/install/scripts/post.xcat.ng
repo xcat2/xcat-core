@@ -145,7 +145,10 @@ then
     /tmp/updateflag "$MASTER" "$XCATIPORT" "installstatus failed"
     sleep infinity
 fi
-find /xcatpost -type f -maxdepth 1 -exec chmod 0755 {} +
+
+# Add execute permision to all files recursively under /xcatpost.
+chmod -R +x `find /xcatpost/ -maxdepth 1 -print | grep -E -v '^(/xcatpost/|/xcatpost/_xcat|/xcatpost/_ssh|/xcatpost/ca|/xcatpost/hostkeys)$'`
+
 msgutil_r "$MASTER_IP" "info" "postscripts downloaded successfully" "/var/log/xcat/xcat.log" "$log_label"
 
 # Get the precreated mypostscript file
