@@ -821,7 +821,7 @@ sub addnode
             }
             my @hwtypes;
             if ($hardwaretype == 1) {
-                @hwtypes = (1, 132);
+                @hwtypes = (1, 132, 133);
             } else {
                 @hwtypes = ($hardwaretype);
             }
@@ -833,6 +833,11 @@ sub addnode
                     $hwtype = 32;
                     $localname .= "-infinibandcompatname";
                     $localmac = substr($mac, 0, 8) . ":03:00" . substr($mac, 8);
+                }
+                if ($hwtype == 133) {
+                    $hwtype = 32;
+                    $localname .= "-infinibandcompatname20";
+                    $localmac = "20:" . substr($mac, 0, 8) . ":03:00" . substr($mac, 8);
                 }
                 print $omshell "new host\n";
                 print $omshell "set name = \"$localname\"\n";
