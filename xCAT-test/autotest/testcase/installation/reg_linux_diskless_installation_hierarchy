@@ -16,11 +16,11 @@ check:rc==0
 
 cmd:mkdir -p /install/postscripts/dir1/dir2/dir3
 check:rc==0
-cmd:echo -e '#!/bin/bash\n\nif [[ $1 == 1 ]] \nthen\n  echo \"The number is ONE\";\nelse\n  echo \"The number is NOT 1\"; \nfi\nexit 0;'> /install/postscripts/dir1/dir2/dir3/foo.bar
+cmd:echo -e '#!/bin/bash\n\necho \"Execute permission is set.\"\nexit 0'> /install/postscripts/dir1/dir2/dir3/foo.bar
 check:rc==0
 cmd:chmod 755 /install/postscripts/dir1/dir2/dir3/foo.bar
 check:rc==0
-cmd:chdef -p -t node -o $$CN postscripts="dir1/dir2/dir3/foo.bar 1,dir1/dir2/dir3/foo.bar 0"
+cmd:chdef -p -t node -o $$CN postscripts="dir1/dir2/dir3/foo.bar"
 check:rc==0
 
 cmd:makedns -n
@@ -94,12 +94,9 @@ check:rc==0
 
 cmd:xdsh $$CN "find /xcatpost/dir1/dir2/dir3/foo.bar -type f -perm -111 | egrep 'foo'"
 check:rc==0
-cmd:xdsh $$CN "grep \"The number is ONE\" /var/log/xcat/xcat.log"
+cmd:xdsh $$CN "grep \"Execute permission is set\" /var/log/xcat/xcat.log"
 check:rc==0
-check:output=~ The number is ONE
-cmd:xdsh $$CN "grep \"The number is NOT 1\" /var/log/xcat/xcat.log"
-check:rc==0
-check:output=~ The number is NOT 1
+check:output=~ Execute permission is set 
 cmd:rm -f /install/postscripts/dir1/dir2/dir3/foo.bar
 check:rc==0
 cmd:cd /install/postscripts; rmdir -p dir1/dir2/dir3
@@ -108,6 +105,6 @@ cmd:xdsh $$CN "rm -f /xcatpost/dir1/dir2/dir3/foo.bar"
 check:rc==0
 cmd:xdsh $$CN "cd /xcatpost; rmdir -p dir1/dir2/dir3"
 check:rc==0
-cmd:chdef -m -t node -o $$CN postscripts="dir1/dir2/dir3/foo.bar 1,dir1/dir2/dir3/foo.bar 0"
+cmd:chdef -m -t node -o $$CN postscripts="dir1/dir2/dir3/foo.bar"
 check:rc==0
 end
