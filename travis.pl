@@ -15,7 +15,9 @@ use Encode::CN;
 use JSON;
 use URI::Escape;
 use LWP::Simple;
+use Email::MIME;
 
+use Email::Sender::Simple qw(sendmail);
 use Term::ANSIColor qw(:constants);
 $Term::ANSIColor::AUTORESET = 1;
 
@@ -275,7 +277,71 @@ sub send_back_comment{
 
         my $commit_response_content = decode_json($commit_response);
         my $committer_email = $commit_response_content->{author}->{email};
-        print $committer_email;
+        my $subject_message = "[xcat2/xcat-core] PR: $ENV{'TRAVIS_PULL_REQUEST'} for ".
+            "Travis Build No.$ENV{'TRAVIS_BUILD_NUMBER'}";
+        
+        my $mail_list = 'xcat-gitbot@lists.sourceforge.net';
+        my $mail_status =  "";
+        
+        my @committer_email_domain = split('@', $committer_email); 
+        my $committer_user = $commit_response_content->{author}->{name};
+
+        my $email;
+
+        if($committer_email_domain[1] eq 'users.noreply.github.com') {
+            print "\nUser's email is not public, contact '$committer_user' manually.\n"
+        }
+
+        else {
+
+            #send to committer
+            $email = Email::MIME->create(
+                header_str => [
+                From    => 'xCatBot@xcat.com',
+                To      => $committer_email,
+                Subject => $subject_message,
+                ],
+                attributes => {
+                encoding => 'quoted-printable',
+                charset  => 'ISO-8859-1',
+                },
+                body_str => $message,
+            );
+
+            $mail_status = sendmail($email);
+            
+            if(index($mail_status, "Success") > 0) {
+                print "\nEmail successfully sent to $committer_email";
+            }
+
+            else {
+                print "\nSomething went wrong sending an Email to $committer_email";
+            }
+        }
+
+        $email = Email::MIME->create(
+                header_str => [
+                From    => 'xCatBot@xcat.com',
+                To      => $mail_list,
+                Subject => $subject_message,
+                ],
+                attributes => {
+                encoding => 'quoted-printable',
+                charset  => 'ISO-8859-1',
+                },
+                body_str => $message,
+            );
+
+            $mail_status = sendmail($email);
+            
+            if(index($mail_status, "Success") > 0) {
+                print "\nEmail successfully sent to $mail_list"
+            }
+
+            else {
+                print "\nSomething went wrong sending an Email to $mail_list";
+            }
+
     }
 }
 
