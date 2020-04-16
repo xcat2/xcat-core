@@ -286,8 +286,6 @@ sub send_back_comment{
         my @committer_email_domain = split('@', $committer_email); 
         my $committer_user = $commit_response_content->{author}->{name};
 
-        my $email;
-
         if($committer_email_domain[1] eq 'users.noreply.github.com') {
             print "\nUser's email is not public, contact '$committer_user' manually.\n"
         }
@@ -295,7 +293,7 @@ sub send_back_comment{
         else {
 
             #send to committer
-            $email = Email::MIME->create(
+            my $email_to_committer = Email::MIME->create(
                 header_str => [
                 From    => 'xCatBot@xcat.com',
                 To      => $committer_email,
@@ -308,7 +306,7 @@ sub send_back_comment{
                 body_str => $message,
             );
 
-            $mail_status = sendmail($email);
+            $mail_status = sendmail($email_to_committer);
             
             if(index($mail_status, "Success") > 0) {
                 print "\nEmail successfully sent to $committer_email";
@@ -319,7 +317,7 @@ sub send_back_comment{
             }
         }
 
-        $email = Email::MIME->create(
+        my $email_to_team = Email::MIME->create(
                 header_str => [
                 From    => 'xCatBot@xcat.com',
                 To      => $mail_list,
@@ -332,16 +330,15 @@ sub send_back_comment{
                 body_str => $message,
             );
 
-            $mail_status = sendmail($email);
+        $mail_status = sendmail($email_to_team);
             
-            if(index($mail_status, "Success") > 0) {
-                print "\nEmail successfully sent to $mail_list"
-            }
+        if(index($mail_status, "Success") > 0) {
+            print "\nEmail successfully sent to $mail_list"
+        }
 
-            else {
-                print "\nSomething went wrong sending an Email to $mail_list";
-            }
-
+        else {
+            print "\nSomething went wrong sending an Email to $mail_list";
+        }
     }
 }
 
