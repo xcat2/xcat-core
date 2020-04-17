@@ -303,15 +303,15 @@ end
 
 start:updatenode_P_script1
 label:others,updatenode
-cmd:echo "echo hello > /tmp/updatenode_P_script" > /tmp/script1
+cmd:mkdir -p /install/postscripts/dir1/dir2/dir3
 check:rc==0
-cmd:chmod a+x /tmp/script1
+cmd:echo "echo hello > /tmp/updatenode_P_script" > /install/postscripts/dir1/dir2/dir3/script1
 check:rc==0
-cmd:cp /tmp/script1 /install/postscripts
+cmd:chmod a+x /install/postscripts/dir1/dir2/dir3/script1
 check:rc==0
-cmd:chdef $$CN postscripts=script1
+cmd:chdef $$CN postscripts=dir1/dir2/dir3/script1
 check:rc==0
-cmd:updatenode $$CN -P script1
+cmd:updatenode $$CN -P dir1/dir2/dir3/script1
 check:rc==0
 check:output=~script1
 cmd:xdsh $$CN "ls -l /tmp/updatenode_P_script"
@@ -321,7 +321,15 @@ check:rc==0
 check:output=~hello
 cmd:chdef $$CN postscripts=
 check:rc==0
-cmd:rm -f /install/script1
+cmd:rm -f /install/postscripts/dir1/dir2/dir3/script1
+check:rc==0
+cmd:cd /install/postscripts; rmdir -p dir1/dir2/dir3
+check:rc==0
+cmd:xdsh $$CN "rm /tmp/updatenode_P_script"
+check:rc==0
+cmd:xdsh $$CN "rm -f /xcatpost/dir1/dir2/dir3/script1"
+check:rc==0
+cmd:xdsh $$CN "cd /xcatpost; rmdir -p dir1/dir2/dir3"
 check:rc==0
 end
 
@@ -662,30 +670,5 @@ check:rc==0
 cmd:if [ -e /tmp/myimage.stanza ]; then rmdef -t osimage -o __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-install-compute; cat /tmp/myimage.stanza | mkdef -z; rm -rf /tmp/myimage.stanza; fi
 check:rc==0
 cmd:rm -rf /install/custom/install/__GETNODEATTR($$CN,os)__/compute.$$OS.srcdstdiff.synclist
-check:rc==0
-end
-
-start:updatenode_postscripts_permission
-label:others,updatenode
-description:This is to test that postscripts in nested sub-directories can execute on CN by running "updatenode -P" on MN (xcat-core issue #6579).
-cmd:mkdir -p /install/postscripts/dir1/dir2/dir3
-check:rc==0
-cmd:echo -e '#!/bin/bash\n\necho \"Execute permission is set.\"\nexit 0'> /install/postscripts/dir1/dir2/dir3/foo.bar
-check:rc==0
-cmd:chmod 755 /install/postscripts/dir1/dir2/dir3/foo.bar
-check:rc==0
-cmd:updatenode $$CN -P "dir1/dir2/dir3/foo.bar"
-check:rc==0
-check:output=~ Execute permission is set
-check:rc==0
-cmd:xdsh $$CN "find /xcatpost/dir1/dir2/dir3/foo.bar -type f -perm -111 | egrep 'foo'"
-check:rc==0
-cmd:rm -f /install/postscripts/dir1/dir2/dir3/foo.bar
-check:rc==0
-cmd:cd /install/postscripts; rmdir -p dir1/dir2/dir3
-check:rc==0
-cmd:xdsh $$CN "rm -f /xcatpost/dir1/dir2/dir3/foo.bar"
-check:rc==0
-cmd:xdsh $$CN "cd /xcatpost; rmdir -p dir1/dir2/dir3"
 check:rc==0
 end
