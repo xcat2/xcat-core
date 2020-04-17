@@ -36,11 +36,17 @@ for parameter in $@; do
     if [ $param_n -eq 2 ]; then
         if [ "$parameter" != "-f" ] && [ "$parameter" != "-s" ]; then
             CONSERVER=$parameter
+            # verify the specified CONSERVER can be resolved
+            host $CONSERVER > /dev/null 2>&1
+            if [ $? -ne 0 ]; then
+                echo "Error: cannot recognize parameter or conserver host \"$parameter\". Run \"rcons -h\" for usage."
+                exit 1
+            fi
         fi
     fi
 
     if [ $param_n -ge 2 ]; then
-        if [ "$parameter" = "-f" ] || [ "$parameter" = "-s" ]; then
+        if [ "$parameter" == "-f" ] || [ "$parameter" == "-s" ]; then
             if [ -z "$FORCE" ]; then
                 FORCE=$parameter
             elif [ "$FORCE" != "$parameter" ]; then
@@ -52,7 +58,7 @@ for parameter in $@; do
 
     if [ $param_n -ge 3 ]; then
         if [ "$parameter" != "-f" ] && [ "$parameter" != "-s" ]; then
-            echo "Error: cannot recognize parameter \"$parameter\"."
+            echo "Error: cannot recognize parameter \"$parameter\". Run \"rcons -h\" for usage."
             exit 1
         fi
     fi
