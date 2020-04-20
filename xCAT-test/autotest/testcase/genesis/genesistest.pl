@@ -261,13 +261,15 @@ sub testxdsh {
         $checkstring = "destiny=shell";
         $checkfile   = "/proc/cmdline";
     }
+    my $xdsh_command="xdsh $noderange -t 2 cat $checkfile 2>&1|grep $checkstring";
     if (($value == 1) || ($value == 2) || ($value == 3)) {
-        `xdsh $noderange -t 2 cat $checkfile 2>&1|grep $checkstring `;
+        `$xdsh_command`;
         if ($?) {
-            foreach (1 .. 10) {
+            my @i = (1..10);
+            for (@i) {
                 sleep 300;
-                send_msg(1,"try to run xdsh $noderange to check the results again");
-                `xdsh $noderange -t 2 cat $checkfile 2>&1| grep $checkstring `;
+                send_msg(1,"[$_] Running \"$xdsh_command\" to check the results again");
+                `$xdsh_command`;
                 last if ($? == 0);
             }
         }
