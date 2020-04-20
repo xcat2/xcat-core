@@ -5,8 +5,8 @@ before_install:
 
 - sudo apt-get install -y git fakeroot reprepro devscripts debhelper libcapture-tiny-perl libjson-perl libsoap-lite-perl libdbi-perl libemail-sender-perl libemail-mime-perl quilt openssh-server dpkg looptools genometools software-properties-common
 - sudo iptables -I INPUT -p tcp -m tcp --dport 25 -j ACCEPT
-- sudo aptitude install mailutils ssmtp -y
-- sudo dpkg-reconfigure ssmtp -y
+- sudo aptitude install -y mailutils ssmtp 
+- sudo dpkg-reconfigure ssmtp
 - perl -v
 #- echo "yes" | sudo cpan -f -i Capture::Tiny
 
