@@ -12,7 +12,7 @@ then
     times=$3+1
     echo "Try to rinstall for $3 times ......"
 else
-    times=6
+    times=4
     echo "Try to rinstall for 5 times ......" 
 fi
 
