@@ -23,7 +23,7 @@ SYNOPSIS
 
 \ **packimage  [-v| -**\ **-version]**\ 
 
-\ **packimage**\  [\ **-m | -**\ **-method**\  \ *cpio|tar*\ ] [\ **-c | -**\ **-compress**\  \ *gzip|pigz|xz*\ ] [\ **-**\ **-nosyncfiles**\ ] \ *imagename*\ 
+\ **packimage**\  [\ **-m | -**\ **-method**\  \ **cpio|tar|squashfs**\ ] [\ **-c | -**\ **-compress**\  \ **gzip|pigz|xz**\ ] [\ **-**\ **-nosyncfiles**\ ] \ *imagename*\ 
 
 
 ***********
@@ -33,7 +33,7 @@ DESCRIPTION
 
 Packs the stateless image from the chroot file system into a file to be sent to the node for a diskless boot.
 
-Note: For an osimage that is deployed on a cluster, running packimage will overwrite the existing rootimage file and be unavailable to the compute nodes while packimage is running.
+Note: For an osimage that is deployed on a cluster, running \ **packimage**\  will overwrite the existing rootimage file and be unavailable to the compute nodes while \ **packimage**\  is running.
 
 
 **********
@@ -49,15 +49,36 @@ OPTIONS
 *******
 
 
-\ **-h**\           Display usage message.
 
-\ **-v**\           Command Version.
+\ **-h**\ 
+ 
+ Display usage message.
+ 
 
-\ **-m| -**\ **-method**\           Archive Method (cpio,tar,squashfs, default is cpio)
 
-\ **-c| -**\ **-compress**\           Compress Method (pigz,gzip,xz, default is pigz/gzip)
+\ **-v**\ 
+ 
+ Command Version.
+ 
 
-\ **-**\ **-nosyncfiles**\           Bypass of syncfiles requested, will not sync files to root image directory
+
+\ **-m| -**\ **-method**\ 
+ 
+ Archive Method (cpio, tar, squashfs (requires overlayFS or aufs modules during provisioning), default is cpio)
+ 
+
+
+\ **-c| -**\ **-compress**\ 
+ 
+ Compress Method (pigz, gzip, xz, default is pigz/gzip)
+ 
+
+
+\ **-**\ **-nosyncfiles**\ 
+ 
+ Bypass of syncfiles requested, will not sync files to root image directory
+ 
+
 
 
 ************
