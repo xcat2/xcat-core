@@ -580,7 +580,7 @@ sub process_request {
             $flags = "-be";
         }
 
-        if ($osver =~ /rhels/ && $osver !~ /rhels5/) {
+        if (($osver =~ /rhels/ && $osver !~ /rhels5/) || ($osver =~ /centos/)) {
             $flags = "";
         }
 
@@ -588,9 +588,10 @@ sub process_request {
             $callback->({ error => ["mksquashfs not found, squashfs-tools rpm should be installed on the management node"], errorcode => [1] });
             return 1;
         }
-        my $rc = system("mksquashfs $temppath ../rootimg.sfs $flags");
+        my $mksquashfs_command = "mksquashfs $temppath ../rootimg.sfs $flags";
+        my $rc = system("$mksquashfs_command");
         if ($rc) {
-            $callback->({ error => ["mksquashfs could not be run successfully"], errorcode => [1] });
+            $callback->({ error => ["Command \"$mksquashfs_command\" failed"], errorcode => [1] });
             return 1;
         }
         $rc = system("rm -rf $temppath");
