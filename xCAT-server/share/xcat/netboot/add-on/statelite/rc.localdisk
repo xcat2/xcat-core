@@ -212,18 +212,18 @@ doconfigure () {
 
             # create the filesystem
             if [ x$fstype = x ]; then
-                fstype=ext3
+                fstype=ext4
             fi
             partnum=`expr $partnum + 1`
             partdev=$dev$partnum
             echo "Create filesystem $fstype on $partdev" >>$LOG
-            echo "mke2fs -q $partdev -t $fstype" >>$LOG
-            `mke2fs -q $partdev -t $fstype > /dev/null`
+            echo "mkfs.$fstype -q $partdev" >>$LOG
+            `mkfs.$fstype -q $partdev  > /dev/null`
             sleep 1
         done
     elif [ $localspace -eq 1 ]; then
         if [ x$fstype = x ]; then
-            fstype=ext3
+            fstype=ext4
         fi
         echo "Mount $dev to $LOCAL with $fstype" >>$LOG
         echo "mount -t $fstype $dev $MNTDIR$LOCAL" >>$LOG
