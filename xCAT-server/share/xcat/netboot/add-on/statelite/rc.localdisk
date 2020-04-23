@@ -217,8 +217,8 @@ doconfigure () {
             partnum=`expr $partnum + 1`
             partdev=$dev$partnum
             echo "Create filesystem $fstype on $partdev" >>$LOG
-            echo "mkfs.$fstype -q $partdev" >>$LOG
-            `mkfs.$fstype -q $partdev  > /dev/null`
+            echo "mkfs.$fstype -f -q $partdev" >>$LOG
+            `mkfs.$fstype -f -q $partdev  > /dev/null`
             sleep 1
         done
     elif [ $localspace -eq 1 ]; then
