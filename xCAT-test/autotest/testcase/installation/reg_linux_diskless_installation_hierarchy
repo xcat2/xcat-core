@@ -108,3 +108,91 @@ check:rc==0
 cmd:chdef -m -t node -o $$CN postscripts="dir1/dir2/dir3/foo.bar"
 check:rc==0
 end
+
+start:reg_linux_diskless_installation_hierarchy_squashfs
+os:Linux
+#stop:yes
+label:hierarchy_cn_diskless,provision
+cmd:xdsh $$SN fdisk -l
+cmd:xdsh $$SN df -T
+cmd:xdsh $$SN "echo "test"> /test.hierarchy"
+check:rc==0
+cmd:xdsh $$SN cat /test.hierarchy
+check:rc==0
+check:output=~test
+cmd:output=$(xdsh $$SN ls -al / |grep test.hierarchy);if [[ $? -eq 0 ]];then  xdsh $$SN rm -rf /test.hierarchy;fi
+cmd:chdef -t node -o $$CN servicenode=$$SN monserver=$$SN nfsserver=$$SN tftpserver=$$SN  xcatmaster=$$SN
+cmd:chdef -t node $$SN groups=service,all
+check:rc==0
+
+cmd:makedns -n
+check:rc==0
+cmd:if [ -x /usr/bin/goconserver ]; then makegocons $$CN; else makeconservercf $$CN; fi
+check:rc==0
+cmd:sleep 20
+cmd:if [[ "__GETNODEATTR($$CN,arch)__" = "ppc64" ]]; then getmacs -D $$CN; fi
+check:rc==0
+cmd:makedhcp -n
+check:rc==0
+cmd:makedhcp -a
+check:rc==0
+cmd:service dhcpd restart
+check:rc==0
+cmd:a=0;while true; do [ $a -eq 100 ] && exit 1;output=$(makedhcp -q $$CN);[ $? -ne 0 ] && exit 1;echo $output|grep $$CN 2>/dev/null && exit 0;a=$[$a+1];sleep 1;done
+check:rc==0
+cmd:copycds $$ISO
+check:rc==0
+
+cmd:rootimgdir=`lsdef -t osimage __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute|grep rootimgdir|awk -F'=' '{print $2}'`; if [ -d $rootimgdir ]; then mv $rootimgdir $rootimgdir.regbak;fi
+check:rc==0
+cmd:if [[ -f /test.synclist ]] ;then mv -f /test.synclist /test.synclist.bak;fi;
+cmd:echo "/test.synclist -> /test.synclist" > /test.synclist;chdef -t osimage -o __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute synclists=/test.synclist
+check:rc==0
+cmd:if [[ "__GETNODEATTR($$CN,os)__" =~ "ubuntu16.04.5" ]] && [[ "__GETNODEATTR($$CN,arch)__" =~ "x86" ]]; then chdef -t osimage -o __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute  -p pkgdir="http://archive.ubuntu.com/ubuntu xenial universe main,http://archive.ubuntu.com/ubuntu xenial-updates universe main,http://security.ubuntu.com/ubuntu xenial-security main restricted";fi
+cmd:lsdef -t osimage -o __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute
+cmd:genimage  __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute
+check:rc==0
+cmd:packimage -m squashfs__GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute
+check:rc==0
+check:output=~archive method:squashfs
+
+cmd:nodeset $$CN osimage=__GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute
+check:rc==0
+
+cmd:updatenode $$CN -f
+check:rc==0
+cmd:/opt/xcat/share/xcat/tools/autotest/testcase/commoncmd/retry_install.sh  $$CN __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute
+check:rc==0
+check:output=~Provision node\(s\)\: $$CN
+
+cmd:xdsh $$SN "if [[ -f /var/lib/dhcp/db/dhcpd.leases ]]; then cat /var/lib/dhcp/db/dhcpd.leases; elif [[ -f /var/lib/dhcpd/dhcpd.leases ]];then cat /var/lib/dhcpd/dhcpd.leases;elif [[ -f /var/lib/dhcp/dhcpd.leases ]];then cat /var/lib/dhcp/dhcpd.leases; fi"
+
+cmd:ping $$CN -c 3
+check:rc==0
+check:output=~64 bytes from $$CN
+cmd:lsdef -l $$CN | grep status
+check:rc==0
+check:output=~booted
+cmd:xdsh $$CN date
+check:rc==0
+check:output=~\d\d:\d\d:\d\d
+cmd:xdsh $$CN mount
+check:rc==0
+check:output=~on / type tmpfs
+cmd:xdsh $$CN cat /opt/xcat/xcatinfo
+check:rc==0
+check:output=~NODE=$$CN
+check:output=~IMAGENAME='__GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute'
+check:output=~IMAGEUUID='\w+-\w+-\w+-\w+-\w+'
+check:output=~SERVICEGROUP=$$SN
+cmd:xdsh $$CN  "cat /var/log/xcat/xcat.log"
+cmd:rootimgdir=`lsdef -t osimage  __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute|grep rootimgdir|awk -F'=' '{print $2}'`; if [ -d $rootimgdir.regbak ]; then rm -rf $rootimgdir; mv $rootimgdir.regbak $rootimgdir; fi
+check:rc==0
+cmd:xdsh $$CN  "cat /test.synclist"
+check:rc==0
+cmd:if [ -x /usr/bin/goconserver ]; then makegocons -d $$CN; else makeconservercf -d $$CN; fi
+cmd:if [[ -f /test.synclist.bak ]] ;then mv -f /test.synclist.bak /test.synclist;else rm -rf /test.synclist;fi
+cmd:chdef -t osimage -o __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute synclists=
+check:rc==0
+
+end

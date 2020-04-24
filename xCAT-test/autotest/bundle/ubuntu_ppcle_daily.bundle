@@ -1,4 +1,5 @@
 reg_linux_diskless_installation_flat
+reg_linux_diskless_installation_flat_squashfs
 reg_linux_diskfull_installation_flat
 assign_certain_command_permission
 bmcdiscover_help
