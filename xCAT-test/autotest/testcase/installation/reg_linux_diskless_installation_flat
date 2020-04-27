@@ -129,6 +129,10 @@ cmd:cat /tmp/mountoutput/file.new
 cmd:diff /tmp/mountoutput/file.org /tmp/mountoutput/file.new --ignore-matching-lines="fusectl"
 check:rc==0
 cmd:rm -rf /tmp/mountoutput
+
+#Make sure squashfs-tools rpm is installed on Ubuntu
+cmd:if [ "$$OS" = "ubuntu" ];then apt-get install -y squashfs-tools; fi
+
 cmd:packimage -m squashfs __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute
 check:rc==0
 check:output=~archive method:squashfs
