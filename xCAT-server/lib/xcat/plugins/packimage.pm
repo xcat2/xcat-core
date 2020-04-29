@@ -585,7 +585,11 @@ sub process_request {
         }
 
         if (!-x "/sbin/mksquashfs" && !-x "/usr/bin/mksquashfs") {
-            $callback->({ error => ["mksquashfs not found, squashfs-tools rpm should be installed on the management node"], errorcode => [1] });
+            if ($osver =~ /sle/) {
+                $callback->({ error => ["mksquashfs not found, squashfs rpm should be installed on the management node"], errorcode => [1] });
+            } else {
+                $callback->({ error => ["mksquashfs not found, squashfs-tools rpm should be installed on the management node"], errorcode => [1] });
+            }
             return 1;
         }
         my $mksquashfs_command = "mksquashfs $temppath ../rootimg.sfs $flags";
