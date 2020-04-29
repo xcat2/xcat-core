@@ -107,7 +107,7 @@ Here is partition definition file example for SLES standard partition in X86_64 
             </partition>
             <partition>
                 <create config:type="boolean">true</create>
-                <filesystem config:type="symbol">ext3</filesystem>
+                <filesystem config:type="symbol">ext4</filesystem>
                 <format config:type="boolean">true</format>
                 <mount>/</mount>
                 <mountby config:type="symbol">path</mountby>
@@ -131,7 +131,7 @@ The following is an example of a partition definition file for a SLES LVM Partit
 		<partition>
 		  <create config:type="boolean">true</create>
 		  <crypt_fs config:type="boolean">false</crypt_fs>
-		  <filesystem config:type="symbol">ext3</filesystem>
+		  <filesystem config:type="symbol">ext4</filesystem>
 		  <format config:type="boolean">true</format>
 		  <loop_fs config:type="boolean">false</loop_fs>
 		  <mountby config:type="symbol">device</mountby>
@@ -148,7 +148,7 @@ The following is an example of a partition definition file for a SLES LVM Partit
 		<partition>
 		  <create config:type="boolean">true</create>
 		  <crypt_fs config:type="boolean">false</crypt_fs>
-		  <filesystem config:type="symbol">ext3</filesystem>
+		  <filesystem config:type="symbol">ext4</filesystem>
 		  <format config:type="boolean">true</format>
 		  <loop_fs config:type="boolean">false</loop_fs>
 		  <mount>/boot</mount>
@@ -211,7 +211,7 @@ The following is an example of a partition definition file for a SLES LVM Partit
 		<partition>
 		  <create config:type="boolean">true</create>
 		  <crypt_fs config:type="boolean">false</crypt_fs>
-		  <filesystem config:type="symbol">ext3</filesystem>
+		  <filesystem config:type="symbol">ext4</filesystem>
 		  <format config:type="boolean">true</format>
 		  <loop_fs config:type="boolean">false</loop_fs>
 		  <lv_name>root</lv_name>
@@ -248,7 +248,7 @@ Here is partition definition file example for SLES standard partition in ppc64 m
             <partition>
                 <create config:type="boolean">true</create>
                 <crypt_fs config:type="boolean">false</crypt_fs>
-                <filesystem config:type="symbol">ext3</filesystem>
+                <filesystem config:type="symbol">ext4</filesystem>
                 <format config:type="boolean">false</format>
                 <loop_fs config:type="boolean">false</loop_fs>
                 <mountby config:type="symbol">device</mountby>
@@ -274,7 +274,7 @@ Here is partition definition file example for SLES standard partition in ppc64 m
             <partition>
                 <create config:type="boolean">true</create>
                 <crypt_fs config:type="boolean">false</crypt_fs>
-                <filesystem config:type="symbol">ext3</filesystem>
+                <filesystem config:type="symbol">ext4</filesystem>
                 <format config:type="boolean">true</format>
                 <fstopt>acl,user_xattr</fstopt>
                 <loop_fs config:type="boolean">false</loop_fs>
@@ -328,19 +328,19 @@ Here is partition definition file example for Ubuntu standard partition in x86_6
 			filesystem{ vfat }
 			mountpoint{ /boot/efi } .
 
-	256 256 512 ext3
+	256 256 512 ext4
 			$primary{ }
 			method{ format }
 			format{ }
 			use_filesystem{ }
-			filesystem{ ext3 }
+			filesystem{ ext4 }
 			mountpoint{ /boot } .
 
 	64 512 300% linux-swap
 			method{ swap }
 			format{ } .
 
-	512 1024 4096 ext3
+	512 1024 4096 ext4
 			$primary{ }
 			method{ format }
 			format{ }
@@ -348,7 +348,7 @@ Here is partition definition file example for Ubuntu standard partition in x86_6
 			filesystem{ ext4 }
 			mountpoint{ / } .
 
-	100 10000 1000000000 ext3
+	100 10000 1000000000 ext4
 			method{ format }
 			format{ }
 			use_filesystem{ }
@@ -403,7 +403,7 @@ Here is an example of the partition script on RedHat and SLES, the partitioning 
     else
         FSTYPE=ext3
     fi
-    BOOTFSTYPE=ext3
+    BOOTFSTYPE=ext4
     EFIFSTYPE=vfat
     if uname -r|grep ^3.*el7 > /dev/null; then
         FSTYPE=xfs
@@ -438,12 +438,12 @@ The following is an example of the partition script on Ubuntu, the partitioning 
 		echo "    ." >> /tmp/partitionfile
 	else
 		echo "ubuntu-boot ::" > /tmp/partitionfile
-		echo "100 50 100 ext3" >> /tmp/partitionfile
-		echo '    $primary{ } $bootable{ } method{ format } format{ } use_filesystem{ } filesystem{ ext3 } mountpoint{ /boot }' >> /tmp/partitionfile
+		echo "100 50 100 ext4" >> /tmp/partitionfile
+		echo '    $primary{ } $bootable{ } method{ format } format{ } use_filesystem{ } filesystem{ ext4 } mountpoint{ /boot }' >> /tmp/partitionfile
 		echo "    ." >> /tmp/partitionfile
 	fi
-	echo "500 10000 1000000000 ext3" >> /tmp/partitionfile
-	echo "    method{ format } format{ } use_filesystem{ } filesystem{ ext3 } mountpoint{ / }" >> /tmp/partitionfile
+	echo "500 10000 1000000000 ext4" >> /tmp/partitionfile
+	echo "    method{ format } format{ } use_filesystem{ } filesystem{ ext4 } mountpoint{ / }" >> /tmp/partitionfile
 	echo "    ." >> /tmp/partitionfile
 	echo "2048 512 300% linux-swap" >> /tmp/partitionfile
 	echo "    method{ swap } format{ }" >> /tmp/partitionfile

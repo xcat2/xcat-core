@@ -44,15 +44,15 @@ d-i partman-md/device_remove_md boolean true
 
 d-i partman-auto/expert_recipe string                         \
       boot-root ::                                            \
-              40 50 100 ext3                                  \
+              40 50 100 ext4                                  \
                       $primary{ } $bootable{ }                \
                       method{ format } format{ }              \
-                      use_filesystem{ } filesystem{ ext3 }    \
+                      use_filesystem{ } filesystem{ ext4 }    \
                       mountpoint{ /boot }                     \
               .                                               \
-              500 10000 1000000000 ext3                       \
+              500 10000 1000000000 ext4                       \
                       method{ format } format{ }              \
-                      use_filesystem{ } filesystem{ ext3 }    \
+                      use_filesystem{ } filesystem{ ext4 }    \
                       mountpoint{ / }                         \
               .                                               \
               64 512 300% linux-swap                          \

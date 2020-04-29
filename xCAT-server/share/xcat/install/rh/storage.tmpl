@@ -36,9 +36,9 @@ clearpart --all --initlabel
 
 #XCAT_PARTITION_START#
 #No RAID
-part /boot --size 100 --ondisk sda --fstype ext3
+part /boot --size 100 --ondisk sda --fstype ext4
 part swap --size 2048 --ondisk sda
-part / --size 6000 --grow --ondisk sda --fstype ext3
+part / --size 6000 --grow --ondisk sda --fstype ext4
 #XCAT_PARTITION_END#
 
 #RAID 0 /scr for performance

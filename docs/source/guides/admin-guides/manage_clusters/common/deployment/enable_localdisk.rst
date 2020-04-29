@@ -40,7 +40,7 @@ An example ``localdisk`` configuration file: ::
 
     [localspace]
     dev=/dev/sda1
-    fstype=ext3
+    fstype=ext4
 
     [swapspace]
     dev=/dev/sda2
@@ -55,7 +55,7 @@ The ``[disk]`` section is used to configure how to partition a hard disk:
     * dev: The path of the device file.
     * clear: If set to ``yes`` it will clear all the existing partitions on this disk.
     * ptype: The partition table type of the disk. For example, ``msdos`` or ``gpt``, and ``msdos`` is the default.
-    * fstype: The file system type for the new created partitions. ``ext3`` is the default.
+    * fstype: The file system type for the new created partitions. ``ext4`` is the default.
     * parts: A comma separated list of space ranges, one for each partition that will be created on the device. The valid format for each space range is ``<startpoint>-<endpoint>`` or ``<percentage of the disk>``. For example, you could set it to ``100M-10G`` or ``50``. If set to ``50``, 50% of the disk space will be assigned to that partition.
 
 The ``[localspace]`` section is used to specify which partition will be used as local storage for the node.
