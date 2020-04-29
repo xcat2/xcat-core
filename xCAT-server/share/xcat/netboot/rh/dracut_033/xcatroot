@@ -69,11 +69,21 @@ if [ -r /rootimg.sfs ]; then
     mkdir -p /rw
     mount -t squashfs /rootimg.sfs /ro
     mount -t tmpfs rw /rw
-    mount -t aufs -o dirs=/rw:/ro mergedroot $NEWROOT
-    mkdir -p $NEWROOT/ro
-    mkdir -p $NEWROOT/rw
-    mount --move /ro $NEWROOT/ro
-    mount --move /rw $NEWROOT/rw
+    modinfo overlay
+    if [ $? -eq 0 ]; then
+        echo "Mounting $NEWROOT with type overlay"
+        mkdir -p /rw/upper
+        mkdir -p /rw/work
+        modprobe overlay
+        mount -t overlay -o lowerdir=/ro,upperdir=/rw/upper,workdir=/rw/work mergedroot $NEWROOT
+    else
+        echo "Mounting $NEWROOT with type aufs"
+        mount -t aufs -o dirs=/rw:/ro mergedroot $NEWROOT
+        mkdir -p $NEWROOT/ro
+        mkdir -p $NEWROOT/rw
+        mount --move /ro $NEWROOT/ro
+        mount --move /rw $NEWROOT/rw
+    fi
 elif [ -r /rootimg.cpio.gz ] || [ -r /rootimg.cpio.xz ]; then
     logger $SYSLOGHOST -t $log_label -p local4.info "Setting up RAM-root tmpfs on downloaded rootimg.cpio.[gz/xz]..."
     echo Setting up RAM-root tmpfs.
