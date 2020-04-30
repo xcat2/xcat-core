@@ -1322,6 +1322,12 @@ function add_xcat_core_repo_yum_or_zypper()
 	local ver="$2"
 	local tmp=""
 	[[ -z "${ver}" ]] && ver="latest"
+
+	if [[ ${ver} == "stable" ]]
+	then
+		ver="latest"
+	fi
+
 	if [[ -z "${url}" ]]
 	then
 		case "${ver}" in
@@ -1348,6 +1354,12 @@ function add_xcat_core_repo_apt()
 	local ver="$2"
 	local tmp=""
 	[[ -z "${ver}" ]] && ver="latest"
+	
+	if [[ ${ver} == "stable" ]]
+	then
+		ver="latest"
+	fi
+
 	if [[ -z "${url}" ]]
 	then
 		# get the apt.key
@@ -1382,6 +1394,12 @@ function add_xcat_dep_repo_yum_or_zypper()
 	local url="$1"
 	local ver="$2"
 	[[ -z "${ver}" ]] && ver="latest"
+
+	if [[ ${ver} == "stable" ]]
+	then
+		ver="latest"
+	fi
+
 	local tmp=""
 	local install_path="${GO_XCAT_DEFAULT_INSTALL_PATH}"
 	local distro="${GO_XCAT_LINUX_DISTRO}${GO_XCAT_LINUX_VERSION%%.*}"
@@ -1450,6 +1468,12 @@ function add_xcat_dep_repo_apt()
 	local url="$1"
 	local ver="$2"
 	[[ -z "${ver}" ]] && ver="latest"
+
+	if [[ ${ver} == "stable" ]]
+	then
+		ver="latest"
+	fi
+
 	[[ -z "${url}" ]] &&
 		url="${GO_XCAT_DEFAULT_BASE_URL}/apt/${ver}/xcat-dep"
 	add_repo_by_url_apt "${url}" "xcat-dep"
