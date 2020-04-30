@@ -153,11 +153,14 @@ cmd:lsdef -t osimage -o __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netb
 cmd:genimage  __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute
 check:rc==0
 
+#Make sure squashfs-tools rpm is installed on RHEL
+cmd:if [ "$$OS" =~ "rhel" ];then yum install -y squashfs-tools; fi
+
 #Make sure squashfs-tools rpm is installed on Ubuntu
-cmd:if [ "$$OS" = "ubuntu" ];then apt-get install -y squashfs-tools; fi
+cmd:if [ "$$OS" =~ "ubuntu" ];then apt-get install -y squashfs-tools; fi
 
 #Make sure squashfs rpm is installed on SLES
-cmd:if [ "$$OS" = "sle" ];then zypper install -y squashfs; fi
+cmd:if [ "$$OS" =~ "sle" ];then zypper install -y squashfs; fi
 
 cmd:packimage -m squashfs __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute
 check:rc==0
@@ -185,7 +188,7 @@ check:rc==0
 check:output=~\d\d:\d\d:\d\d
 cmd:xdsh $$CN mount
 check:rc==0
-check:output=~on / type tmpfs
+check:output=~on / type overlay
 cmd:xdsh $$CN cat /opt/xcat/xcatinfo
 check:rc==0
 check:output=~NODE=$$CN
