@@ -573,15 +573,13 @@ sub process_request {
         chmod 0644, "$destdir/rootimg.$suffix";
         umask $oldmask;
     } elsif ($method =~ /squashfs/) {
-        my $flags;
-        if ($arch =~ /x86/) {
-            $flags = "-le";
-        } elsif ($arch =~ /ppc/) {
-            $flags = "-be";
-        }
-
-        if (($osver =~ /rhels/ && $osver !~ /rhels5/) || ($osver =~ /centos/)) {
-            $flags = "";
+        my $flags = "";
+        if ($osver =~ /rhels5/) {
+            if ($arch =~ /x86/) {
+                $flags = "-le";
+            } elsif ($arch =~ /ppc/) {
+                $flags = "-be";
+            }
         }
 
         if (!-x "/sbin/mksquashfs" && !-x "/usr/bin/mksquashfs") {
