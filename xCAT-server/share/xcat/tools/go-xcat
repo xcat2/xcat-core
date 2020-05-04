@@ -1993,9 +1993,17 @@ do
 	"-x"|"--xcat-version")
 		shift
 		GO_XCAT_VERSION="$1"
+		if [ "${GO_XCAT_VERSION}" = "stable" ];
+                then
+                        GO_XCAT_VERSION="latest"
+                fi
 		;;
 	"--xcat-version="*)
 		GO_XCAT_VERSION="${1##--xcat-version=}"
+		if [ "${GO_XCAT_VERSION}" = "stable" ];
+		then
+			GO_XCAT_VERSION="latest"
+		fi
 		;;
 	"-y"|"--yes")
 		GO_XCAT_YES=("-y")
@@ -2020,11 +2028,6 @@ do
 	esac
 	shift
 done
-
-if [[ ${GO_XCAT_VERSION} == "stable" ]]
-	then
-		${GO_XCAT_VERSION} = "latest"
-fi
 
 case "${GO_XCAT_ACTION}" in
 "away")
