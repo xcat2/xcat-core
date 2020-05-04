@@ -1322,13 +1322,6 @@ function add_xcat_core_repo_yum_or_zypper()
 	local ver="$2"
 	local tmp=""
 	[[ -z "${ver}" ]] && ver="latest"
-	
-	echo "\nim here!!!!!\n"
-
-	if [[ ${ver} == "stable" ]]
-	then
-		ver="latest"
-	fi
 
 	if [[ -z "${url}" ]]
 	then
@@ -1356,13 +1349,6 @@ function add_xcat_core_repo_apt()
 	local ver="$2"
 	local tmp=""
 	[[ -z "${ver}" ]] && ver="latest"
-	
-	echo "\nim here2!!!!!\n"
-
-	if [[ ${ver} == "stable" ]]
-	then
-		ver="latest"
-	fi
 
 	if [[ -z "${url}" ]]
 	then
@@ -1398,13 +1384,6 @@ function add_xcat_dep_repo_yum_or_zypper()
 	local url="$1"
 	local ver="$2"
 	[[ -z "${ver}" ]] && ver="latest"
-
-	echo "\nim here3!!!!!\n"
-
-	if [[ ${ver} == "stable" ]]
-	then
-		ver="latest"
-	fi
 
 	local tmp=""
 	local install_path="${GO_XCAT_DEFAULT_INSTALL_PATH}"
@@ -1474,13 +1453,6 @@ function add_xcat_dep_repo_apt()
 	local url="$1"
 	local ver="$2"
 	[[ -z "${ver}" ]] && ver="latest"
-
-	echo "\nim here4!!!!!\n"
-
-	if [[ ${ver} == "stable" ]]
-	then
-		ver="latest"
-	fi
 
 	[[ -z "${url}" ]] &&
 		url="${GO_XCAT_DEFAULT_BASE_URL}/apt/${ver}/xcat-dep"
@@ -2048,6 +2020,11 @@ do
 	esac
 	shift
 done
+
+if [[ ${GO_XCAT_VERSION} == "stable" ]]
+	then
+		${GO_XCAT_VERSION} = "latest"
+fi
 
 case "${GO_XCAT_ACTION}" in
 "away")
