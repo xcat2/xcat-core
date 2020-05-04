@@ -34,12 +34,11 @@ if [ -r /rootimg.sfs ]; then
   mkdir -p /rw
   mount -t squashfs /rootimg.sfs /ro
   mount -t tmpfs rw /rw
-  modinfo overlay
+  modprobe overlay
   if [ $? -eq 0 ]; then
       echo "Mounting $NEWROOT with type overlay"
       mkdir -p /rw/upper
       mkdir -p /rw/work
-      modprobe overlay
       mount -t overlay -o lowerdir=/ro,upperdir=/rw/upper,workdir=/rw/work mergedroot $NEWROOT
   else
       echo "Mounting $NEWROOT with type aufs"
