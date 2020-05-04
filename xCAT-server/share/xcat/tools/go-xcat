@@ -1322,6 +1322,8 @@ function add_xcat_core_repo_yum_or_zypper()
 	local ver="$2"
 	local tmp=""
 	[[ -z "${ver}" ]] && ver="latest"
+	
+	echo "\nim here!!!!!\n"
 
 	if [[ ${ver} == "stable" ]]
 	then
@@ -1355,6 +1357,8 @@ function add_xcat_core_repo_apt()
 	local tmp=""
 	[[ -z "${ver}" ]] && ver="latest"
 	
+	echo "\nim here2!!!!!\n"
+
 	if [[ ${ver} == "stable" ]]
 	then
 		ver="latest"
@@ -1394,6 +1398,8 @@ function add_xcat_dep_repo_yum_or_zypper()
 	local url="$1"
 	local ver="$2"
 	[[ -z "${ver}" ]] && ver="latest"
+
+	echo "\nim here3!!!!!\n"
 
 	if [[ ${ver} == "stable" ]]
 	then
@@ -1468,6 +1474,8 @@ function add_xcat_dep_repo_apt()
 	local url="$1"
 	local ver="$2"
 	[[ -z "${ver}" ]] && ver="latest"
+
+	echo "\nim here4!!!!!\n"
 
 	if [[ ${ver} == "stable" ]]
 	then
