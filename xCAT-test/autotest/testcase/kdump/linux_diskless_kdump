@@ -91,6 +91,7 @@ check:rc==0
 
 # Verify that kdump directory from management node is still mounted on the compute node
 cmd:xdsh $$CN df -H
+check:output=~/opt/xcat/share/xcat/tools/autotest/kdumpdir
 
 # Verify kdump parameters are in /proc/cmdline file
 cmd:xdsh $$CN cat /proc/cmdline
