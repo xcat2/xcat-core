@@ -1993,10 +1993,6 @@ do
 	"-x"|"--xcat-version")
 		shift
 		GO_XCAT_VERSION="$1"
-		if [ "${GO_XCAT_VERSION}" = "stable" ];
-                then
-                        GO_XCAT_VERSION="latest"
-                fi
 		;;
 	"--xcat-version="*)
 		GO_XCAT_VERSION="${1##--xcat-version=}"
