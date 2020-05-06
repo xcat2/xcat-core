@@ -47,6 +47,8 @@ our %global_switch_type = (
     sLEN => "irpdu",
     sIBM => "irpdu",
     coral => "crpdu"
+    Dell => "Dell"
+    dell => "Dell"
 );
 
 
