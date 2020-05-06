@@ -46,8 +46,8 @@ our %global_switch_type = (
     Edgecore => "onie",
     sLEN => "irpdu",
     sIBM => "irpdu",
-    coral => "crpdu"
-    Dell => "Dell"
+    coral => "crpdu",
+    Dell => "Dell",
     dell => "Dell"
 );
 
