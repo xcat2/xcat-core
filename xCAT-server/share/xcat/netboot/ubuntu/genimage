@@ -199,9 +199,9 @@ if ($netdriver) {
     }
 } else {
     if ($arch eq 'x86' or $arch eq 'x86_64') {
-        @ndrivers = qw/tg3 bnx2 bnx2x e1000 e1000e igb mlx_en virtio_net/;
+        @ndrivers = qw/tg3 bnx2 bnx2x e1000 e1000e igb mlx_en virtio_net overlay/;
     } elsif ($arch eq 'ppc64el') {
-        @ndrivers = qw/tg3 bnx2 bnx2x e1000 e1000e igb ibmveth ehea mlx_en mlx4_en virtio_net/;
+        @ndrivers = qw/tg3 bnx2 bnx2x e1000 e1000e igb ibmveth ehea mlx_en mlx4_en virtio_net overlay/;
     } elsif ($arch eq 'ppc64') {
         @ndrivers = qw/e1000 e1000e igb ibmveth ehea/;
     } elsif ($arch eq 's390x') {
@@ -1465,11 +1465,20 @@ if [ -r /rootimg.sfs ]; then
     mkdir -p /rw
     mount -t squashfs /rootimg.sfs /ro
     mount -t tmpfs rw /rw
-    mount -t aufs -o dirs=/rw:/ro mergedroot \$NEWROOT
-    mkdir -p \$NEWROOT/ro
-    mkdir -p \$NEWROOT/rw
-    mount --move /ro \$NEWROOT/ro
-    mount --move /rw \$NEWROOT/rw
+    modprobe overlay
+    if [ $? -eq 0 ]; then
+        echo Mounting \$NEWROOT with type overlay
+        mkdir -p /rw/upper
+        mkdir -p /rw/work
+        mount -t overlay -o lowerdir=/ro,upperdir=/rw/upper,workdir=/rw/work mergedroot \$NEWROOT
+    else
+        echo Mounting \$NEWROOT with type aufs
+        mount -t aufs -o dirs=/rw:/ro mergedroot \$NEWROOT
+        mkdir -p \$NEWROOT/ro
+        mkdir -p \$NEWROOT/rw
+        mount --move /ro \$NEWROOT/ro
+        mount --move /rw \$NEWROOT/rw
+    fi
 EOMS
     print $inifile "elif [ -r /rootimg.cpio.gz ] || [ -r /rootimg.cpio.xz ]; then\n";
     print $inifile "    logger -t \$log_label -p info \"Setting up RAM-root tmpfs on downloaded rootimg.cpio.[gz/xz]...\"\n";
