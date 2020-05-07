@@ -2,7 +2,7 @@
 #
 # go-xcat - Install xCAT automatically.
 #
-# Version 1.0.45
+# Version 1.0.46
 #
 # Copyright (C) 2016 - 2019 International Business Machines
 # Eclipse Public License, Version 1.0 (EPL-1.0)
@@ -29,7 +29,11 @@
 #     - Display a list of packages that could not be uninstalled
 # 2019-11-05 Mark Gurevich <gurevich@us.ibm.com>
 #     - Display a list of packages that will be installed before "Continue?"
+# 2020-5-7 Nic Mays <Nicolas.Mays@ibm.com>
+#	  - Handles 'stable' as a flag to install latest version via the command:
+#			go-xcat --xcat-version=stable install
 #
+
 
 function usage()
 {
@@ -72,6 +76,7 @@ function usage()
 	  ${script} --yes install
 	  ${script} -x 2.12 -y install
 	  ${script} --xcat-version=devel install
+	  ${script} --xcat-version=stable install
 	  ${script} --xcat-core=/path/to/xcat-core.tar.bz2 \\
 	          --xcat-dep=/path/to/xcat-dep.tar.bz2 install
 	  ${script} --xcat-core=http://xcat.org/path/to/xcat-core.tar.bz2 \\
