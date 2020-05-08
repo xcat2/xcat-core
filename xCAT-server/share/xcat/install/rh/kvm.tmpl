@@ -42,9 +42,9 @@ key --skip
 #XCAT_PARTITION_START#
 #No RAID
 #/boot really significant for this sort of setup nowadays?
-#part /boot --size 50 --fstype ext3
+#part /boot --size 50 --fstype ext4
 part swap --size 1024
-part / --size 1 --grow --fstype ext3
+part / --size 1 --grow --fstype ext4
 #XCAT_PARTITION_END#
 
 #RAID 0 /scr for performance
