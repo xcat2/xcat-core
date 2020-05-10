@@ -1036,7 +1036,7 @@ sub load_case {
                     my @newvalidoslist = ();
                     foreach my $validos (@validoslist) {
                         if ($validos =~ /linux/i) {
-                            push(@newvalidoslist, ("rhel", "sles", "ubuntu"));
+                            push(@newvalidoslist, ("rhels", "sles", "ubuntu"));
                         } else {
                             push(@newvalidoslist, $validos);
                         }
@@ -1249,7 +1249,7 @@ sub load_case {
         }
 
         if ($invalidcases{"noruncases"} && @{ $invalidcases{"noruncases"} }) {
-            log_this($running_log_fd, "Unsuitable current environment:", @{ $invalidcases{"noruncases"} });
+            log_this($running_log_fd, "Unsuitable current environment(OS/ARCH/HCP):", @{ $invalidcases{"noruncases"} });
             push @wrong_cases, @{ $invalidcases{"noruncases"} };
             $caseerror = 2;
         }
