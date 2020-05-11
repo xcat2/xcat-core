@@ -38,7 +38,7 @@ check:output=~m01-ib0
 check:rc==0
 check:output=~node02
 check:rc==0
-check:output=~m01-ib0
+check:output=~m02-ib0
 check:rc==0
 check:output=~10.0.0.22
 check:rc==0
