@@ -20,18 +20,30 @@ label:mn_only,ci_test,dns
 cmd:cp -f /etc/hosts /etc/hosts.xcatbakautotest
 cmd:chtab node=nouse_compute hosts.ip="|node(\d+)|1.2.3.(\$1+0)|" hosts.hostnames="|(.*)|(\$1).cluster.net|"
 check:rc==0
+cmd:chtab node=nouse_compute nics.nicaliases='ib0!|node(\d+)|m($1)-ib0|' nics.nicips='ib0!|node(\d+)|10.0.0.($1+20)|'
+check:rc==0
 cmd:mkdef -t node -o node01,node02 groups="nouse_compute"
 check:rc==0
-cmd:sleep 30
 cmd:XCATBYPASS=1 makehosts
 check:rc==0
-cmd:sleep 30
+cmd:sleep 10
 cmd:cat /etc/hosts
-check:output=~1.2.3.2
 check:output=~1.2.3.1
+check:rc==0
+check:output=~1.2.3.2
+check:rc==0
 check:output=~node01
+check:rc==0
+check:output=~m01-ib0
+check:rc==0
 check:output=~node02
+check:rc==0
+check:output=~m02-ib0
+check:rc==0
+check:output=~10.0.0.22
+check:rc==0
 cmd:chtab -d node=nouse_compute hosts
+cmd:chtab -d node=nouse_compute nics
 cmd:rmdef node01
 cmd:rmdef node02
 cmd:mv -f /etc/hosts.xcatbakautotest /etc/hosts
