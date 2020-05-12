@@ -2135,7 +2135,7 @@ function create_bond_interface_nmcli {
     else
         _bonding_opts="mode=active-backup"
     fi
-    if [ -z "$next_nic" ]; then
+    if [ -n "$_ipaddr" ]; then
         # query "nicnetworks" table about its target "xcatnet"
         xcatnet=$(query_nicnetworks_net $bondname)
         log_info "Pickup xcatnet, \"$xcatnet\", from NICNETWORKS for interface \"$bondname\"."
@@ -2198,7 +2198,7 @@ function create_bond_interface_nmcli {
     # create raw bond device
     log_info "create bond connection $xcat_con_name"
     cmd=""
-    if [ -n "$next_nic" ]; then
+    if [ -z "$_ipaddr" ]; then
         cmd="$nmcli con add type bond con-name $xcat_con_name ifname $bondname bond.options $_bonding_opts ipv4.method disabled ipv6.method ignore autoconnect yes connection.autoconnect-priority 9 connection.autoconnect-slaves 1 connection.autoconnect-retries 0"
     else
         cmd="$nmcli con add type bond con-name $xcat_con_name ifname $bondname bond.options $_bonding_opts method none ipv4.method manual ipv4.addresses $ipv4_addr/$str_prefix $_mtu connection.autoconnect-priority 9 connection.autoconnect-slaves 1 connection.autoconnect-retries 0"
@@ -2286,7 +2286,7 @@ function create_bond_interface_nmcli {
         # bring up interface formally
         log_info "$nmcli con up $xcat_con_name"
         $nmcli con up $xcat_con_name
-        if [ -z "$next_nic" ]; then
+        if [ -n "$_ipaddr" ]; then
             is_connection_activate_intime $xcat_con_name
             is_active=$?
             if [ "$is_active" -eq 0 ]; then
