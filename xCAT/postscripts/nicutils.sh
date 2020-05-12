@@ -289,6 +289,10 @@ function load_kmod {
 #
 #################################################################
 function query_extra_params {
+    # reset global variables
+    unset array_nic_params
+    unset array_extra_param_names
+    unset array_extra_param_values
 
     nic=$1
     if [ -z "$nic" ]; then
@@ -479,9 +483,6 @@ function create_persistent_ifcfg {
     local _netmask=""
     local _mtu=""
     local inattrs=""
-    unset array_nic_params
-    unset array_extra_param_names
-    unset array_extra_param_values
 
     # parser input arguments
     while [ -n "$1" ];
