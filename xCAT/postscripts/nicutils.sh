@@ -2246,6 +2246,10 @@ function create_bond_interface_nmcli {
             $ip link set dev $ifslave down 
             wait_for_ifstate $ifslave DOWN 20 2
         fi
+        # InfiniBand slaves should have no MTU defined, only the bond interface
+        if [ "$slave_type" = "Infiniband" ]; then
+            _mtu=""
+        fi
         cmd="$nmcli con add type $slave_type con-name $xcat_slave_con $_mtu ifname $ifslave master $xcat_con_name slave-type bond autoconnect yes connection.autoconnect-priority 9 connection.autoconnect-retries 0"
         log_info $cmd
         $cmd
