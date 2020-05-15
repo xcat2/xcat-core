@@ -22,6 +22,9 @@ if [ $# -le 3 ];  then
 Change the default root or ADMIN password of the BMC to the one 
 specified by '-n' flag. Use the same password when discovering new 
 BMCs, by passing it with '[-p|--bmcpasswd]' option to 'bmcdiscover' command.
+
+Note: Starting with xCAT 2.16, the changing of default BMC passwords
+can also be done with '-n' option for 'bmcdiscover' command.
 "
     echo "Usage:"
     echo "      $0  -r <ip_ranges> -n <new BMC Password> "
@@ -63,8 +66,8 @@ UNAUTHORIZED="Unauthorized"
 for name in `cat /tmp/$$.ip.list`
 do
 
-    ## Look for Witherspoon first
-    SYSTEM_TYPE="Witherspoon"
+    ## Look for OpenBMC (Witherspoon or Mihawk) first
+    SYSTEM_TYPE="OpenBMC"
     PasswordChangeNeeded=`curl -sD - --data '{"UserName":"'"$WITHERSPOON_DEFAULT_USER"'","Password":"'"$WITHERSPOON_DEFAULT_PW"'"}' -k -X POST https://$name/redfish/v1/SessionService/Sessions`
 
     if [[ "$PasswordChangeNeeded" =~ "$CHANGE_PW_REQUIRED" ]]; then
@@ -74,7 +77,7 @@ do
             echo "$name: Can not change password for $SYSTEM_TYPE system - $PW_PAM_VALIDATION"
         elif [[ -z "$PasswordChanged" ]]; then
             # If no output, password change was successful
-            echo "$name: Password for $SYSTEM_TYPE system changed. It might take up to 5 minutes for the BMC to update." 
+            echo "$name: Password for $SYSTEM_TYPE system changed." 
         else
             # Some unexpected output changing the password - report error and show output
             echo "$name: Unable to change password for $SYSTEM_TYPE system - $PasswordChanged"
@@ -83,8 +86,8 @@ do
         continue
     fi
 
-    ## Look for Boston next
-    SYSTEM_TYPE="Boston"
+    ## Look for IPMI managed (Boston) next
+    SYSTEM_TYPE="IPMI"
     PasswordChangeNeeded=`curl -sD - --data '{"UserName":"'"$BOSTON_DEFAULT_USER"'","Password":"'"$BOSTON_DEFAULT_PW"'"}' -k -X POST https://$name/redfish/v1/SessionService/Sessions`
     if [[ "$PasswordChangeNeeded" =~ "$CHANGE_PW_REQUIRED" ]]; then
         echo "$name: Password change needed for $SYSTEM_TYPE system"

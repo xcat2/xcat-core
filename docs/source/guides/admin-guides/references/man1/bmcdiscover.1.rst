@@ -23,7 +23,7 @@ SYNOPSIS
 
 \ **bmcdiscover**\  [\ **-v | -**\ **-version**\ ]
 
-\ **bmcdiscover**\   \ **-**\ **-range**\  \ *ip_ranges*\  [\ **-**\ **-sn**\  \ *SN_nodename*\ ] [\ **-s**\  \ *scan_method*\ ] [\ **-u**\  \ *bmc_user*\ ] [\ **-p**\  \ *bmc_passwd*\ ] [\ **-z**\ ] [\ **-w**\ ]
+\ **bmcdiscover**\   \ **-**\ **-range**\  \ *ip_ranges*\  [\ **-**\ **-sn**\  \ *SN_nodename*\ ] [\ **-s**\  \ *scan_method*\ ] [\ **-u**\  \ *bmc_user*\ ] [\ **-p**\  \ *bmc_passwd*\ ] [\ **-n**\  \ *new_bmc_passwd*\ ] [\ **-z**\ ] [\ **-w**\ ]
 
 
 ***********
@@ -37,7 +37,7 @@ The command uses \ **nmap**\  to scan active nodes over a specified IP range.  T
 
 \ **Note:**\  The scan method currently supported is \ **nmap**\ .
 
-\ **Note:**\  Starting on January 1, 2020, some newly shipped systems will require the default BMC password to be changed before they can be managed by xCAT. \ **bmcdiscover**\  will not be able to discover such systems. Run \ */opt/xcat/share/xcat/scripts/BMC_change_password.sh*\  script to change the default password for BMCs in specified range, then rerun \ **bmcdiscover**\  with \ **-p "new bmc password"**\  flag to discover systems with the changed password.
+\ **Note:**\  Starting on January 1, 2020, some newly shipped systems will require the default BMC password to be changed before they can be managed by xCAT. Use \ **bmcdiscover**\  with \ **-n**\  option to specify new BMC password.
 
 
 *******
@@ -85,6 +85,12 @@ OPTIONS
 \ **-p|-**\ **-bmcpasswd**\ 
  
  BMC user password.
+ 
+
+
+\ **-n|-**\ **-newbmcpw**\ 
+ 
+ New BMC user password.
  
 
 
@@ -163,6 +169,14 @@ Output is similar to:
 .. code-block:: perl
 
      bmcdiscover -s nmap --range "10.4.22-23.100-254" -w -z
+
+
+5. Discover the BMC with the specified IP address, change its default BMC password and display in xCAT stanze format:
+
+
+.. code-block:: perl
+
+     bmcdiscover --range "10.4.22-23.100" -u root -p 0penBmc -n 0penBmc123 -z
 
 
 
