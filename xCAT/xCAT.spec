@@ -70,13 +70,6 @@ Requires: ipmitool-xcat >= 1.8.17-1
 %endif
 %endif
 
-%if %notpcm
-# PCM does not need or ship syslinux-xcat
-%if %nots390x
-Requires: syslinux-xcat
-%endif
-%endif
-
 %description
 xCAT is a server management package intended for at-scale management, including
 hardware management and software management.
