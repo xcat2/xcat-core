@@ -1769,6 +1769,15 @@ sub copycd
                     $distname = "sle15";
                 }
             };
+        } elsif ($dsc =~ /SLE-15/ and $dsc =~ /Full/) {
+            $discnumber = 1;
+            unless ($distname) {
+                if ($dsc =~ /SLE-15-SP(\d)/) {
+                    $distname = "sle15.$1";
+                } else {
+                    $distname = "sle15";
+                }
+            };
         }
     }
 
