@@ -13,10 +13,9 @@ If configuring VLAN, BOND, or BRIDGES, ``nicdevices`` in ``nics`` table must be 
 
 The following scenarios are examples to configure Ethernet adapters/BOND/VLAN/Bridge.
 
-    #. Configure Ethernet adapters:
+    #. Configure static install or application Ethernet adapters:
 
         * Scenario 1: :doc:`Configure Ethernet Network Interface <../../../../common/deployment/network/cfg_network_ethernet_nic>`
-          To configure Ethernet install NIC or other Ethernet network adapters as static
 
     #. Configure BOND **[RHEL]**:
 
