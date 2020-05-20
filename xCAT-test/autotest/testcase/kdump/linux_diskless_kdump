@@ -89,8 +89,8 @@ cmd:a=`xdsh $$CN rpm -q at`;if [[ $a =~ "package at is not installed" ]]; then x
 cmd:xdsh $$CN "service atd start"
 check:rc==0
 
-# Verify that kdump directory from management node is still mounted on the compute node
-cmd:xdsh $$CN df -H
+# Verify that kdump has been configured after enablekdump postscript was ran
+cmd:xdsh $$CN cat /etc/kdump.conf
 check:output=~/opt/xcat/share/xcat/tools/autotest/kdumpdir
 
 # Verify kdump parameters are in /proc/cmdline file
