@@ -439,7 +439,12 @@ IPADDR=$nicip" > $dir/ifcfg-$nic
 					   name="${array_extra_param_names[$i]}"
 					   value="${array_extra_param_values[$i]}"
 					   echo "  $i: name=$name value=$value"
-					   echo "${name}=${value}" >> $dir/ifcfg-$nic
+                                           grep -i "${name}" $dir/ifcfg-$nic
+                                           if [ $? -eq 0 ];then
+                                               sed -i "s/.*${name}.*/${name}=${value}/i" >> $dir/ifcfg-$nic
+                                           else
+                                               echo "${name}=${value}" >> $dir/ifcfg-$nic
+                                           fi
 					   i=$((i+1))
 				   done		
 			   else # not the first ip address
@@ -466,7 +471,12 @@ IPADDR_$ipindex=$nicip" >> $dir/ifcfg-$nic
 					   name="${array_extra_param_names[$i]}"
 					   value="${array_extra_param_values[$i]}"
 					   echo "  $i: name=$name value=$value"
-					   echo "${name}=${value}" >> $dir/ifcfg-$nic
+                                           grep -i "${name}" $dir/ifcfg-$nic
+                                           if [ $? -eq 0 ];then
+                                               sed -i "s/.*${name}.*/${name}=${value}/i" >> $dir/ifcfg-$nic
+                                           else
+                                               echo "${name}=${value}" >> $dir/ifcfg-$nic
+                                           fi
 					   i=$((i+1))
 				   done		
                 fi # end if [ $ipindex -eq 1 ]
@@ -517,7 +527,12 @@ IPADDR=$nicip" > $dir/ifcfg-$nic
 						name="${array_extra_param_names[$i]}"
 						value="${array_extra_param_values[$i]}"
 						echo "  $i: name=$name value=$value"
-						echo "${name}=${value}" >> $dir/ifcfg-$nic
+                                                grep -i "${name}" $dir/ifcfg-$nic
+                                                if [ $? -eq 0 ];then
+                                                    sed -i "s/.*${name}.*/${name}=${value}/i" >> $dir/ifcfg-$nic
+                                                else
+                                                    echo "${name}=${value}" >> $dir/ifcfg-$nic
+                                                fi
 						i=$((i+1))
 					done		
                else # not the first ip address
@@ -577,7 +592,12 @@ IPADDR$ipindex=$nicip"
 							name="${array_extra_param_names[$i]}"
 							value="${array_extra_param_values[$i]}"
 							echo "  $i: name=$name value=$value"
-							echo "${name}=${value}" >> $cfgfile
+                                                        grep -i "${name}" $cfgfile
+                                                        if [ $? -eq 0 ];then
+                                                            sed -i "s/.*${name}.*/${name}=${value}/i" >> $cfgfile
+                                                        else
+                                                            echo "${name}=${value}" >> $cfgfile
+                                                        fi
 							i=$((i+1))
 						done		
 
@@ -644,7 +664,12 @@ netmask $netmask" >> /etc/network/interfaces
 					name="${array_extra_param_names[$i]}"
 					value="${array_extra_param_values[$i]}"
 					echo "  $i: name=$name value=$value"
-					echo "${name} ${value}" >> /etc/network/interfaces
+                                        grep -i "${name}" /etc/network/interfaces
+                                        if [ $? -eq 0 ];then
+                                            sed -i "s/.*${name}.*/${name} ${value}/i" >> /etc/network/interfaces 
+                                        else
+                                            echo "${name} ${value}" >> /etc/network/interfaces 
+                                        fi
 					i=$((i+1))
 				done
 

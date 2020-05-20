@@ -68,16 +68,21 @@ function configipv4(){
             if [ "$str_nic_mtu" != "$str_default_token" ]; then
                 echo "MTU=${str_nic_mtu}" >> $str_conf_file
             fi
-			#add extra params
-			i=0
-			while [ $i -lt ${#array_extra_param_names[@]} ]
-			do
-				name="${array_extra_param_names[$i]}"
-				value="${array_extra_param_values[$i]}"
+	    #add extra params
+	    i=0
+	    while [ $i -lt ${#array_extra_param_names[@]} ]
+	    do
+	        name="${array_extra_param_names[$i]}"
+		value="${array_extra_param_values[$i]}"
                 echo "  $i: name=$name value=$value"
-				echo "${name}=${value}" >> $str_conf_file
-				i=$((i+1))
-			done		
+                grep -i "${name}" $str_conf_file
+                if [ $? -eq 0 ];then
+                    sed -i "s/.*${name}.*/${name}=${value}/i" $str_conf_file
+                else
+		    echo "${name}=${value}" >> $str_conf_file
+                fi
+        	i=$((i+1))
+	    done		
         else
             echo "IPADDR_${num_v4num}=${str_v4ip}" >> $str_conf_file
             echo "NETMASK_${num_v4num}=${str_v4mask}" >> $str_conf_file
@@ -86,16 +91,21 @@ function configipv4(){
             if [ "$str_nic_mtu" != "$str_default_token" ]; then
                 echo "MTU_${num_v4num}=${str_nic_mtu}" >> $str_conf_file
             fi
-			#add extra params
-			i=0
-			while [ $i -lt ${#array_extra_param_names[@]} ]
-			do
-				name="${array_extra_param_names[$i]}"
-				value="${array_extra_param_values[$i]}"
+	    #add extra params
+	    i=0
+	    while [ $i -lt ${#array_extra_param_names[@]} ]
+	    do
+	        name="${array_extra_param_names[$i]}"
+		value="${array_extra_param_values[$i]}"
                 echo "  $i: name=$name value=$value"
-				echo "${name}=${value}" >> $str_conf_file
-				i=$((i+1))
-			done		
+                grep -i "${name}" $str_conf_file
+                if [ $? -eq 0 ];then
+                    sed -i "s/.*${name}.*/${name}=${value}/i" $str_conf_file
+                else
+                    echo "${name}=${value}" >> $str_conf_file
+                fi
+		i=$((i+1))
+	    done		
         fi
 
         if [[ ${str_if_name} == [a-zA-Z0-9]*.[0-9]* ]]; then
@@ -117,16 +127,21 @@ function configipv4(){
         if [ "$str_nic_mtu" != "$str_default_token" ]; then
             echo "  mtu ${str_nic_mtu}" >> $str_conf_file
         fi
-		#add extra params
-		i=0
-		while [ $i -lt ${#array_extra_param_names[@]} ]
-		do
-			name="${array_extra_param_names[$i]}"
-			value="${array_extra_param_values[$i]}"
+	#add extra params
+	i=0
+	while [ $i -lt ${#array_extra_param_names[@]} ]
+	do
+	    name="${array_extra_param_names[$i]}"
+	    value="${array_extra_param_values[$i]}"
             echo "  $i: name=$name value=$value"
-			echo "  ${name} ${value}" >> $str_conf_file
-			i=$((i+1))
-		done		
+            grep -i "${name}" $str_conf_file
+            if [ $? -eq 0 ];then
+                sed -i "s/.*${name}.*/${name} ${value}/i" $str_conf_file
+            else
+                echo "${name} ${value}" >> $str_conf_file
+            fi
+	    i=$((i+1))
+	done		
         if [[ ${str_if_name} == [a-zA-Z0-9]*.[0-9]* ]]; then
             parent_device=`echo ${str_if_name} | sed -e 's/\([a-zA-Z0-9]*\)\.[0-9]*/\1/g'`
             echo "  vlan-raw-device ${parent_device}" >> $str_conf_file
@@ -198,7 +213,12 @@ function configipv4(){
         do
             name="${array_extra_param_names[$i]}"
             value="${array_extra_param_values[$i]}"
-            echo "${name}=${value}" >> $str_conf_file 
+            grep -i "${name}" $str_conf_file
+            if [ $? -eq 0 ];then
+                sed -i "s/.*${name}.*/${name}=${value}/i" $str_conf_file
+            else
+                echo "${name}=${value}" >> $str_conf_file
+            fi
     	    i=$((i+1))
         done
     fi
@@ -244,15 +264,20 @@ configipv6(){
         fi
 
         #add extra params
-		i=0
-		while [ $i -lt ${#array_extra_param_names[@]} ]
-		do
-			name="${array_extra_param_names[$i]}"
-			value="${array_extra_param_values[$i]}"
+	i=0
+	while [ $i -lt ${#array_extra_param_names[@]} ]
+	do
+	    name="${array_extra_param_names[$i]}"
+	    value="${array_extra_param_values[$i]}"
             echo "  $i: name=$name value=$value"
-			echo "${name}=${value}" >> $str_conf_file
-			i=$((i+1))
-		done		
+            grep -i "${name}" $str_conf_file
+            if [ $? -eq 0 ];then
+                sed -i "s/.*${name}.*/${name}=${value}/i" $str_conf_file
+            else
+                echo "${name}=${value}" >> $str_conf_file
+            fi
+	    i=$((i+1))
+	done		
     elif [ "$str_os_type" = "debian" ];then
         #debian or ubuntu
         str_conf_file="/etc/network/interfaces.d/${str_if_name}"
@@ -269,15 +294,20 @@ configipv6(){
             fi
 
             #add extra params
-			i=0
-			while [ $i -lt ${#array_extra_param_names[@]} ]
-			do
-				name="${array_extra_param_names[$i]}"
-				value="${array_extra_param_values[$i]}"
-				echo "  $i: name=$name value=$value"
-				echo "  ${name} ${value}" >> $str_conf_file
-				i=$((i+1))
-			done		
+	    i=0
+	    while [ $i -lt ${#array_extra_param_names[@]} ]
+	    do
+	        name="${array_extra_param_names[$i]}"
+		value="${array_extra_param_values[$i]}"
+		echo "  $i: name=$name value=$value"
+                grep -i "${name}" $str_conf_file
+                if [ $? -eq 0 ];then
+                    sed -i "s/.*${name}.*/${name} ${value}/i" $str_conf_file
+                else
+                    echo "${name} ${value}" >> $str_conf_file
+                fi
+	        i=$((i+1))
+	    done		
         else
             echo "  post-up /sbin/ifconfig ${str_if_name} inet6 add ${str_v6ip}/${str_v6prefix}" >> $str_conf_file
             echo "  pre-down /sbin/ifconfig ${str_if_name} inet6 del ${str_v6ip}/${str_v6prefix}" >> $str_conf_file
@@ -302,15 +332,20 @@ configipv6(){
         fi
 
         #add extra params
-		i=0
-		while [ $i -lt ${#array_extra_param_names[@]} ]
-		do
-			name="${array_extra_param_names[$i]}"
-			value="${array_extra_param_values[$i]}"
+	i=0
+	while [ $i -lt ${#array_extra_param_names[@]} ]
+	do
+	    name="${array_extra_param_names[$i]}"
+	    value="${array_extra_param_values[$i]}"
             echo "  $i: name=$name value=$value"
-			echo "${name}=${value}" >> $str_conf_file
-			i=$((i+1))
-		done		
+            grep -i "${name}" $str_conf_file
+            if [ $? -eq 0 ];then
+                sed -i "s/.*${name}.*/${name}=${value}/i" $str_conf_file
+            else
+                echo "${name}=${value}" >> $str_conf_file
+            fi
+	    i=$((i+1))
+	done		
     fi
 }
 
@@ -610,17 +645,21 @@ elif [ "$1" = "-s" ];then
         if [ -n "$str_inst_gateway" ];then
             echo "  gateway $str_inst_gateway" >> $str_conf_file
         fi
-		#add extra params
-		i=0
-		while [ $i -lt ${#array_extra_param_names[@]} ]
-		do
-			name="${array_extra_param_names[$i]}"
-			value="${array_extra_param_values[$i]}"
+	#add extra params
+	i=0
+	while [ $i -lt ${#array_extra_param_names[@]} ]
+	do
+	    name="${array_extra_param_names[$i]}"
+	    value="${array_extra_param_values[$i]}"
             echo "  $i: name=$name value=$value"
-			echo "  ${name} ${value}" >> $str_conf_file
-			i=$((i+1))
-		done		
-
+            grep -i "${name}" $str_conf_file
+            if [ $? -eq 0 ];then
+                sed -i "s/.*${name}.*/${name} ${value}/i" $str_conf_file
+            else
+                echo "${name} ${value}" >> $str_conf_file
+            fi
+	    i=$((i+1))
+	done		
         hostname $NODE
         echo $NODE > /etc/hostname
     elif [ "$str_os_type" = "sles" ];then
@@ -643,18 +682,21 @@ elif [ "$1" = "-s" ];then
             fi
         fi
 
-		#add extra params
-		i=0
-		while [ $i -lt ${#array_extra_param_names[@]} ]
-		do
-			name="${array_extra_param_names[$i]}"
-			value="${array_extra_param_values[$i]}"
+	#add extra params
+	i=0
+	while [ $i -lt ${#array_extra_param_names[@]} ]
+	do
+	    name="${array_extra_param_names[$i]}"
+	    value="${array_extra_param_values[$i]}"
             echo "  $i: name=$name value=$value"
-			echo "${name}=${value}" >> $str_conf_file
-			i=$((i+1))
-		done		
-
-
+            grep -i "${name}" $str_conf_file
+            if [ $? -eq 0 ];then
+                sed -i "s/.*${name}.*/${name}=${value}/i" $str_conf_file
+            else
+                echo "${name}=${value}" >> $str_conf_file
+            fi
+            i=$((i+1))
+	done		
         hostname $NODE
         echo $NODE > /etc/HOSTNAME
     else
@@ -672,11 +714,12 @@ elif [ "$1" = "-s" ];then
                 nmcli con modify $con_name connection.id $tmp_con_name
             fi
             nmcli con add type ethernet con-name $con_name ifname ${str_inst_nic} ipv4.method manual ipv4.addresses  ${str_inst_ip}/${str_inst_prefix} connection.autoconnect-priority 9
-            str_conf_file_1="/etc/sysconfig/network-scripts/ifcfg-xcat-${str_if_name}-1"
+            str_conf_file_1="/etc/sysconfig/network-scripts/ifcfg-xcat-${str_inst_nic}-1"
             if [ -f $str_conf_file_1 ]; then
                 grep $con_name $str_conf_file_1 >/dev/null 2>/dev/null
                 if [ $? -eq 0 ]; then
                     $str_conf_file=$str_conf_file_1
+                    #mv -f $str_conf_file_1 $str_conf_file
                 fi
             fi
         else
@@ -713,7 +756,12 @@ elif [ "$1" = "-s" ];then
             name="${array_extra_param_names[$i]}"
             value="${array_extra_param_values[$i]}"
             echo "$i: name=$name value=$value"
-            echo "${name}=${value}" >> $str_conf_file
+            grep -i "${name}" $str_conf_file
+            if [ $? -eq 0 ];then
+                sed -i "s/.*${name}.*/${name}=${value}/i" $str_conf_file
+            else
+                echo "${name}=${value}" >> $str_conf_file
+            fi
             i=$((i+1))
         done		
 
