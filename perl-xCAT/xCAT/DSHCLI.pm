@@ -4996,6 +4996,11 @@ sub rsync_to_image
             next;
         }
 
+        if ($line =~ /.+ -> \(.+\) .+/)    # skip syncfile entries containing noderange
+        {
+            next;
+        }
+
         $line=xCAT::Utils->varsubinline($line,\%osimgenv);
 
         # process no more lines, do not exec
