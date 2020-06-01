@@ -190,7 +190,7 @@ base64decode()
 logger -t $log_label -p "info" "Generate partition file..."
 if [ -d /sys/firmware/efi ]; then
     echo "ubuntu-efi ::" > /tmp/partitionfile
-    echo "    512 512 1024 fat16" >> /tmp/partitionfile
+    echo "    512 512 1024 fat32" >> /tmp/partitionfile
     echo '    $iflabel{ gpt } $reusemethod{ } method{ efi } format{ }' >> /tmp/partitionfile
     echo "    ." >> /tmp/partitionfile
 else
