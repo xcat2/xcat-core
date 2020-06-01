@@ -336,6 +336,11 @@ unless ($onlyinitrd) {
     print "Run cmd [$aptcmd1 $aptcmd2] to create rootimage bootstraps\n";
     my $rc = system("$aptcmd1 $aptcmd2");
     if ($rc) {
+        my $os=xCAT::Utils->osver("os");
+        if ($os ne 'ubuntu') {
+            print "Error: Can not run genimage for Ubunty OS on a non-Ubunty system ($os)";
+            exit 1;
+        }
         print "Error: Can not create bootstraps for rootimage. Make sure you specified full http mirror path.\n";
         exit 1;
     }
