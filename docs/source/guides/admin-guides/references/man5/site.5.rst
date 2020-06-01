@@ -172,6 +172,11 @@ site Attributes:
                    NOTE: If using this attribute to block certain interfaces, make sure
                    the IP maps to your hostname of xCAT MN is not blocked since xCAT needs
                    to use this IP to communicate with the local NDS server on MN.
+
+   namedincludes:  A comma-separated list of file paths that will be included in
+                   named.conf, using named' "include" statement. This can allow users
+                   to include local configuration options that will not be overwritten
+                   by 'makedns -n'.
   
    -------------------------
   HARDWARE CONTROL ATTRIBUTES
