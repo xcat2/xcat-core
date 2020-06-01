@@ -171,7 +171,7 @@ Output is similar to:
      bmcdiscover -s nmap --range "10.4.22-23.100-254" -w -z
 
 
-5. Discover the BMC with the specified IP address, change its default BMC password and display in xCAT stanze format:
+5. Discover the BMC with the specified IP address, change its default BMC password and display in xCAT stanza format:
 
 
 .. code-block:: perl
