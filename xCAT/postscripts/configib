@@ -498,6 +498,7 @@ $nmcontrol
 $devtype
 BOOTPROTO=none
 ONBOOT=yes
+DEFROUTE=no
 NAME=$nic
 IPADDR=$nicip" > $dir/ifcfg-$nic
                     # ipv6

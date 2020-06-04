@@ -4,6 +4,7 @@
 #-------------------------------------------------------------------------------
 #=head1  confignics
 #=head2  Used on Linux only. Config the Ethernet or InfiniBand adapters on the nodes
+#=head3  confignics is deprecated, please use confignetwork instead 
 #
 #  You can run the following commands on MN:
 #       updatenode noderange confignics
@@ -13,6 +14,9 @@
 #=cut
 #-------------------------------------------------------------------------------
 
+logger -t $log_label -p local4.err "**NOTE**:confignics is deprecated, please use confignetwork instead"
+echo "**NOTE**:confignics is deprecated, please use confignetwork instead"
+exit 1
 
 if [ "$(uname -s|tr 'A-Z' 'a-z')" = "linux" ];then
    str_dir_name=`dirname $0`
