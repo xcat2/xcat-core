@@ -9,17 +9,6 @@ check:output=~usage|Usage
 end
 
 
-start:imgimport_v
-os:Linux
-description:imgimport -v and --version
-label:others
-cmd:imgimport -v
-check:output=~version|Version
-cmd:imgimport --version
-check:output=~version|Version
-end
-
-
 start:imgimport_bundlefile
 os:Linux
 description:imgimport foo.tgz
