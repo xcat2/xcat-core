@@ -27,7 +27,7 @@ cmd:service dhcpd restart
 check:rc==0
 cmd:if cat /etc/*release |grep SUSE >/dev/null;then cat /var/lib/dhcp/db/dhcpd.leases|grep $$CN;elif cat /etc/*release |grep "Red Hat" >/dev/null;then cat /var/lib/dhcpd/dhcpd.leases|grep $$CN;fi
 check:output=~$$CN
-cmd:copycds $$ISO
+cmd:copycds $$ISO  | grep -v "%"
 check:rc==0
 cmd:/opt/xcat/share/xcat/tools/autotest/testcase/commoncmd/retry_install.sh  $$CN __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-install-compute
 check:rc==0
@@ -146,7 +146,7 @@ cmd:service dhcpd restart
 check:rc==0
 cmd:if cat /etc/*release |grep SUSE >/dev/null;then cat /var/lib/dhcp/db/dhcpd.leases|grep $$CN;elif cat /etc/*release |grep "Red Hat" >/dev/null;then cat /var/lib/dhcpd/dhcpd.leases|grep $$CN;fi
 check:output=~$$CN
-cmd:copycds $$ISO
+cmd:copycds $$ISO  | grep -v "%"
 check:rc==0
 cmd:/opt/xcat/share/xcat/tools/autotest/testcase/commoncmd/retry_install.sh  $$CN __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-install-compute
 check:rc==0
@@ -188,10 +188,11 @@ cmd:xdsh $$CN "zypper sl -U;zypper --gpg-auto-import-keys search --match-exact -
 check:rc==0
 cmd:xdsh $$CN "zypper -n install xCAT"
 check:rc==0
-cmd:xdsh $$CN "zypper -n install createrepo"
+# Name of createrepo package on sles15 is different from sles12
+cmd:if [ "__GETNODEATTR($$CN,os)__" = "sle15" ]; then xdsh $$CN "zypper -n install createrepo_c"; else xdsh $$CN "zypper -n install createrepo";fi
 check:rc==0
 cmd:xdsh $$CN "source /etc/profile.d/xcat.sh"
-eck:rc==0
+check:rc==0
 cmd:xdsh $$CN "lsxcatd -v"
 check:rc==0
 check:output=~$$MIGRATION2_VERSION

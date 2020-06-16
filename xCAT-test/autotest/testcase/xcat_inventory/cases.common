@@ -88,7 +88,7 @@ check:output ~=usage
 check:output ~= error: argument -f/--path: expected one argument
 cmd:xcat-inventory export -t node -o bogusnode --path
 check:rc!=0
-eck:output ~=usage
+check:output ~=usage
 check:output ~= error: argument -f/--path: expected one argument
 cmd:mkdir /tmp/xcat_inventory_export_option_f/testdir
 check:rc==0

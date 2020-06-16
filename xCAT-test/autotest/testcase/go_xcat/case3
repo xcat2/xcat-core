@@ -21,8 +21,9 @@ check:rc==0
 #Install additional packages on Red Hat
 cmd:if xdsh $$CN "grep \"Red Hat\" /etc/*release >/dev/null"; then xdsh $$CN "yum install -y yum-utils dnf-utils bzip2"; fi
 
-#Pull down repomd.xml on SLES to prevent caching of the wrong file
-cmd:if xdsh $$CN "grep \"SUSE\" /etc/*release >/dev/null"; then xdsh $$CN "wget http://xcat.org/files/xcat/repos/yum/devel/core-snap/repodata/repomd.xml"; fi
+#Pull down core and deps repomd.xml on SLES to prevent caching of the wrong file
+cmd:if xdsh $$CN "grep \"SUSE\" /etc/*release >/dev/null"; then xdsh $$CN "wget --no-cache http://xcat.org/files/xcat/repos/yum/devel/core-snap/repodata/repomd.xml"; fi
+cmd:if xdsh $$CN "grep \"SUSE\" /etc/*release >/dev/null"; then os=`echo __GETNODEATTR($$CN,os)__ | cut -d "." -f1 | sed s/sle1/sles1/` && xdsh $$CN "wget --no-cache http://xcat.org/files/xcat/repos/yum/devel/xcat-dep/$os/__GETNODEATTR($$CN,arch)__/repodata/repomd.xml"; fi
 
 #Install additional packages on Ubuntu
 cmd:if xdsh $$CN "grep \"Ubuntu\" /etc/*release >/dev/null"; then xdsh $$CN "DEBIAN_FRONTEND=noninteractive apt-get install -y gnupg"; fi
