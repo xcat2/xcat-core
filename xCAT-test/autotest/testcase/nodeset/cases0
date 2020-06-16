@@ -171,7 +171,7 @@ label:others
 cmd:mkdef -t node -o testnode1 arch=ppc64el cons=ipmi groups=pbmc mgt=ipmi ip=10.1.1.200 mac=e6:d4:d2:3a:ad:06  monserver=10.1.1.1 nameservers=10.1.1.1 nodetype=ppc,osi profile=compute tftpserver=10.1.1.1 xcatmaster=10.1.1.1
 check:rc==0
 cmd:chdef testnode1 os=rhels7.5 netboot=petitboot
-eck:rc==0
+check:rc==0
 cmd: mkdef "rhels7.5-ppc64el-install-compute" -u profile=compute provmethod=install osvers=rhels7.5
 check:rc==0
 cmd:nodeset testnode1 osimage="rhels7.5-ppc64el-install-compute"
