@@ -1,12 +1,15 @@
 cuda setup scripts
 ==================
 
-This section documented NVIDIA CUDA Toolkit v11 installation on the power9 rhels8.1 system. 
+This sample documents installation of the NVIDIA CUDA Toolkit v11 on IBM POWER9 servers as part of xCAT diskful provisioning of Red Hat Enterprise Linux 8.1.
+For ``CUDA11``, there is a known issue that prevents successful installion of the nvidia-drivers module as part of the operating system kickstart install process used by diskful provisioning.
+Diskless provisioning can still be performed using the traditional osimage method; these instructions apply to diskful provisioning only.
+
 
 Diskful images
 --------------
 
-The following  ``cudafull`` osimage definitions will be created from the base ``rhels8.1-ppc64le-install-compute`` osimage. ::
+For diskful provisioning, create a new ``cudafull`` osimage definition using the default ``rhels8.1-ppc64le-install-compute`` osimage as a starting point. ::
 
  # lsdef -t osimage rhels8.1.0-ppc64le-install-cudafull
  Object name: rhels8.1.0-ppc64le-install-cudafull
@@ -23,10 +26,12 @@ The following  ``cudafull`` osimage definitions will be created from the base ``
     provmethod=install
     template=/opt/xcat/share/xcat/install/rh/compute.rhels8.tmpl
 
+
 Postscripts
 ^^^^^^^^^^^
 
-xCAT provides ``cuda_power9_setup`` postscripts to setup additional configuration to install NVIDIA POWER9 CUDA driver. For ``CUDA11``,  it has issue to installing nvidia-drivers modules with kickstart.  To workaround this problem,  xCAT provides another postscripts ``cuda11_power9_setup``,  the CUDA packages will be installed from this postscripts instead from package list and this is only apply to the diskfull installation.
+For ``CUDA11``, there is a known issue that prevents successful installion of the nvidia-drivers module as part of the Red Hat kickstart install process used by diskful provisioning. As an example method to work around this problem, refer to the postscript named ``cuda11_power9_setup``. This postscript will install the NVIDIA CUDA packages directly instead of relying on the osimage package list mechanism. ``cuda11_power9_setup`` is only needed for diskful provisioning.
+
 
 CUDA dependences
 ^^^^^^^^^^^^^^^^
@@ -39,11 +44,12 @@ CUDA dependences
   -rw-r--r-- 1 root root  8668 Jun 16 10:29 opencl-filesystem-1.0-6.el8.noarch.rpm
   drwxr-xr-x 2 root root  4096 Jun 16 15:10 repodata
 
+
 CUDA Packages
 ^^^^^^^^^^^^^
 
-``cuda-repo-rhel8-11-0-local-11.0.1_450.36.06-1.ppc64le.rpm`` is used for above osimage and it disbuted in the ``/install/REPO/software/nvidia/cuda-core/11.0.1_450.36.06-1/repo/ppc64le`` dir. 
-Besides rhels8 base packlist, the following packages needs to be added also. ::
+``cuda-repo-rhel8-11-0-local-11.0.1_450.36.06-1.ppc64le.rpm`` is used for the example ``cudafull`` osimage and the contents are copied into a directory named ``/install/REPO/software/nvidia/cuda-core/11.0.1_450.36.06-1/repo/ppc64le``. 
+In addition to the rhels8 base pkglist, the following packages need to also be added. ::
 
   # diff /opt/xcat/share/xcat/install/rh/compute.rhels8.cuda.pkglist /opt/xcat/share/xcat/install/rh/compute.rhels8.pkglist
   12,27d11
@@ -63,4 +69,5 @@ Besides rhels8 base packlist, the following packages needs to be added also. ::
   < dkms
   < opencl-filesystem
 
-NOTE: The two scripts in this directory verified with HPC service stack software.  
+
+NOTE: The samples in this directory were verified as part of the IBM HPC POWER9 Clusters service pack testing
