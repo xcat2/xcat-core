@@ -1,0 +1,154 @@
+#!/bin/bash
+#
+# Copyright (C) 2018 International Business Machines
+# Eclipse Public License, Version 1.0 (EPL-1.0)
+#     <http://www.eclipse.org/legal/epl-v10.html>
+#
+# 2018-03-21 GONG Jie <gongjie@linux.vnet.ibm.com>
+# 2018-04-24 Matt Ezell <ezellma@ornl.gov>
+#
+# This script is used for doing extra setup steps for NVIDIA POWER9 CUDA driver
+# on RHEL 7. Please refer document below for details.
+#
+# http://docs.nvidia.com/cuda/cuda-installation-guide-linux/index.html#power9-setup
+#
+
+umask 0022
+
+# Disable a udev rule installed by default in some Linux distributions that cause hot-pluggable
+# memory to be automatically onlined when it is physically probed.
+#
+# The overrides for /lib/udev rules should be done in /etc/udev
+#
+UDEV_REDHAT_SOURCE=${IMG_ROOTIMGDIR}/lib/udev/rules.d/40-redhat.rules
+UDEV_REDHAT_TARGET=${IMG_ROOTIMGDIR}/etc/udev/rules.d/40-redhat.rules
+
+# If the file does not exist in /etc/udev, copy it from /lib/udev
+if [ ! -e ${UDEV_REDHAT_TARGET} ]; then
+  cp -n ${UDEV_REDHAT_SOURCE} ${UDEV_REDHAT_TARGET}
+fi
+
+# Disable udev memory auto-onlining Rule for cuda10.x
+#
+# For RHELS 7.5 ALT
+#
+sed -i "s/^\(SUBSYSTEM==\"memory\".*\)/#\1/" ${UDEV_REDHAT_TARGET}
+#
+# For RHELS 7.6 ALT
+#
+if [[ `grep 'Memory hotadd request' ${UDEV_REDHAT_TARGET} 2>&1 >> /dev/null && grep 'LABEL="memory_hotplug_end' ${UDEV_REDHAT_TARGET} 2>&1 >> /dev/null; echo $?` == 0 ]]; then
+    echo "Detected RHELS 7.6 ALT, modifying ${UDEV_REDHAT_TARGET}..."
+    # Comment out the memory hotadd request (for reference)
+    if [[ `grep "## Memory hotadd request" ${UDEV_REDHAT_TARGET} 2>&1 >> /dev/null; echo $?` != 0 ]]; then
+        # but only run one time, not if it's already commented out. (to handle multiple genimage calls)
+        #sed -i '/Memory hotadd request/,+8 s/^/#/' ${UDEV_REDHAT_TARGET}
+        # RH76 CUDA doc recommends the following:
+        sed -i s/^\SUBSYSTEM!=\"memory\"/SUBSYSTEM==\"\*\"/ ${UDEV_REDHAT_TARGET}
+        sed -i s/^\ACTION!=\"add\"/ACTION==\"\*\"/ /tmp/40-redhat.rules ${UDEV_REDHAT_TARGET}
+    fi 
+fi
+
+echo "Comparing ${UDEV_REDHAT_SOURCE} and ${UDEV_REDHAT_TARGET}"
+diff ${UDEV_REDHAT_SOURCE} ${UDEV_REDHAT_TARGET}
+
+# Setting NVIDIA parameters in both /etc/modprobe.d and /usr/lib/modprobe.d
+
+echo "==> Setting NVIDIA options in /usr/lib/modprobe.d/gpusupport and /etc/modprobe.d"
+echo 'options nvidia NVreg_EnableStreamMemOPs=1 NVreg_RegistryDwords="PeerMappingOverride=1"' >${IMG_ROOTIMGDIR}/usr/lib/modprobe.d/gpusupport.conf
+echo 'options nvidia NVreg_EnableStreamMemOPs=1 NVreg_RegistryDwords="PeerMappingOverride=1"' >${IMG_ROOTIMGDIR}/etc/modprobe.d/gpusupport.conf
+
+grep nouveau ${IMG_ROOTIMGDIR}/usr/lib/modprobe.d/nvidia.conf
+if (( $? ))
+then
+echo 'blacklist nouveau' >> ${IMG_ROOTIMGDIR}/usr/lib/modprobe.d/nvidia.conf
+fi
+
+grep nouveau ${IMG_ROOTIMGDIR}/etc/modprobe.d/nvidia.conf
+if (( $? ))
+then
+echo 'blacklist nouveau' >> ${IMG_ROOTIMGDIR}/etc/modprobe.d/nvidia.conf
+fi
+
+# This is for nvprof (per George Chochia)
+grep NVreg_RestrictProfilingToAdminUsers ${IMG_ROOTIMGDIR}/usr/lib/modprobe.d/nvidia.conf
+if (( $? ))
+then
+  echo "options nvidia NVreg_RestrictProfilingToAdminUsers=0" >> ${IMG_ROOTIMGDIR}/usr/lib/modprobe.d/nvidia.conf
+fi
+
+grep NVreg_RestrictProfilingToAdminUsers ${IMG_ROOTIMGDIR}/etc/modprobe.d/nvidia.conf
+if (( $? ))
+then
+  echo "options nvidia NVreg_RestrictProfilingToAdminUsers=0" >> ${IMG_ROOTIMGDIR}/etc/modprobe.d/nvidia.conf
+fi
+
+#for cuda nvidia installation
+unset ARCH
+installed_kernel=`uname -r`
+
+function hack_uname()
+{
+    mv "$1/bin/uname" "$1/bin/uname.xcat"
+    cat <<-EOF >>"$1/bin/uname"
+#!/bin/sh
+  case "\$1" in
+    "-m")
+        ARCH="\$(rpm -q kernel-\$("\$0" -r) --qf '%{arch}' 2>/dev/null)"
+        echo "\$ARCH"
+        ;;
+    "-r")
+        kernel_version="$(for d in $(ls /lib/modules | sort -V) ; do : ; done && echo $d)"
+        echo "\$kernel_version"
+        ;;
+    "-s"|"")
+        echo "Linux"
+        ;;
+  esac
+  exit 0
+EOF
+
+    chmod 0755 "$1/bin/uname"
+}
+
+
+if [ -z "${IMG_ROOTIMGDIR}" ] 
+then
+	kernel_version="$(for d in $(ls /lib/modules | sort -V) ; do : ; done && echo $d)"
+	mkinitrd -v -f "/boot/initramfs-${kernel_version}.img" "${kernel_version}"
+        hack_uname ${IMG_ROOTIMGDIR}
+else
+        hack_uname
+fi
+
+updated_kernel=`uname -r`
+
+dnf -y module install nvidia-driver:latest-dkms
+dnf -y install cuda
+
+#depmod nvidia_rsync_mem used installed kernel not updated kernel
+if [ ${updated_kernel} != ${installed_kernel} ]
+then
+    ln -s /lib/modules/${updated_kernel} /lib/modules/${installed_kernel}
+fi
+dnf -y install nvidia_peer_memory
+dnf -y install nv_rsync_mem
+dnf -y install nvidia_gdrcopy_kernel
+if [ ${updated_kernel} != ${installed_kernel} ]
+then
+    rm -rf /lib/modules/${installed_kernel}
+fi
+
+[ ! -z "${IMG_ROOTIMGDIR}" ] && CHROOTCMD="chroot ${IMG_ROOTIMGDIR}"
+$CHROOTCMD /bin/bash -c "systemctl enable nvidia-persistenced"
+
+
+[ ! -z "${IMG_ROOTIMGDIR}" ] && CHROOTCMD="chroot ${IMG_ROOTIMGDIR}"
+$CHROOTCMD /bin/bash -c "systemctl enable nvidia_gdrcopy_kernel.service"
+
+if [ -z "${IMG_ROOTIMGDIR}" ] 
+then
+    mv "${IMG_ROOTIMGDIR}/bin/uname.xcat" "${IMG_ROOTIMGDIR}/bin/uname"
+else
+    mv "/bin/uname.xcat" "/bin/uname"
+fi
+
