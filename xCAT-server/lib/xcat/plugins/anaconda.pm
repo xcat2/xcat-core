@@ -2075,6 +2075,8 @@ sub copycd
 	    $release =~ /.*centos-release-([^-]*)-.*/;
             $distname = "centos" . $1;
         }
+    } elsif ($desc and $desc =~ /Red Hat Enterprise Linux (.*)/) {
+        $distname = "rhels" . $1;
     } elsif (-r $mntpath . "/isolinux/isolinux.cfg") {
         my $icfg;
 
