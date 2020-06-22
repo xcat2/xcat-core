@@ -19,13 +19,6 @@ cmd:restapitest -m POST -r /services/host
 check:rc==201
 end
 
-start:post_host
-description: post_host
-label:others,restapi
-cmd:restapitest -m POST -r /services/host
-check:rc==201
-end
-
 start:get_slpnodes
 description: get_slpnodes
 label:others,restapi

@@ -84,3 +84,100 @@ cmd:if [[ -f /test.synclist.bak ]] ;then mv -f /test.synclist.bak /test.synclist
 cmd:chdef -t osimage -o __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute synclists=
 check:rc==0
 end
+
+start:reg_linux_diskless_installation_flat_squashfs
+os:Linux
+label:flat_cn_diskless,provision
+cmd:fdisk -l
+cmd:df -T
+cmd: if lsdef service > /dev/null 2>&1; then chdef service -m groups=service;fi
+check:rc==0
+cmd:chdef -t node -o $$CN servicenode= monserver=$$MN nfsserver=$$MN tftpserver=$$MN  xcatmaster=$$MN
+check:rc==0
+
+cmd:makedns -n
+check:rc==0
+cmd:if [ -x /usr/bin/goconserver ]; then makegocons $$CN; else makeconservercf $$CN; fi
+check:rc==0
+cmd:sleep 20
+cmd:if [[ "__GETNODEATTR($$CN,arch)__" = "ppc64" ]] && [[ "__GETNODEATTR($$CN,mgt)__" != "ipmi" ]]; then getmacs -D $$CN; fi
+check:rc==0
+cmd:makedhcp -n
+check:rc==0
+cmd:makedhcp -a
+check:rc==0
+cmd:a=0;while true; do [ $a -eq 100 ] && exit 1;output=$(makedhcp -q $$CN);[ $? -ne 0 ] && exit 1;echo $output|grep $$CN 2>/dev/null && exit 0;a=$[$a+1];sleep 1;done
+check:rc==0
+cmd:copycds $$ISO
+check:rc==0
+
+cmd:rootimgdir=`lsdef -t osimage __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute|grep rootimgdir|awk -F'=' '{print $2}'`; if [ -d $rootimgdir ]; then mv $rootimgdir $rootimgdir.regbak -f;fi
+check:rc==0
+cmd:if [[ -f /test.synclist ]] ;then mv -f /test.synclist /test.synclist.bak;fi;
+cmd:echo "/test.synclist -> /test.synclist" > /test.synclist;chdef -t osimage -o __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute synclists=/test.synclist
+check:rc==0
+cmd:if [ ! -d /tmp/mountoutput ]; then mkdir -p /tmp/mountoutput; fi
+cmd:mount |sort > /tmp/mountoutput/file.org
+cmd:cat /tmp/mountoutput/file.org
+cmd:if [[ "__GETNODEATTR($$CN,os)__" =~ "ubuntu18.04.2" ]] && [[ "__GETNODEATTR($$CN,arch)__" =~ ppc64(el|le) ]] && [[ "__GETNODEATTR($$CN,mgt)__" =~ "kvm" ]] ; then mkdir -p /install/custom/netboot/ubuntu; sed -e 's@linux-image-generic-hwe-18.04@linux-image-generic@g' </opt/xcat/share/xcat/netboot/ubuntu/compute.ubuntu18.04.2.ppc64el.pkglist >/install/custom/netboot/ubuntu/compute.ubuntu18.04.2.ppc64el.pkglist; chdef -t osimage -o __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute pkglist=/install/custom/netboot/ubuntu/compute.ubuntu18.04.2.ppc64el.pkglist; fi
+cmd:if [[ "__GETNODEATTR($$CN,os)__" =~ "ubuntu16.04.5" ]] && [[ "__GETNODEATTR($$CN,arch)__" =~ "x86" ]]; then chdef -t osimage -o __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute  -p pkgdir="http://archive.ubuntu.com/ubuntu xenial universe main,http://archive.ubuntu.com/ubuntu xenial-updates universe main,http://security.ubuntu.com/ubuntu xenial-security main restricted";fi
+cmd:lsdef -t osimage -o __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute
+cmd:genimage  __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute
+check:rc==0
+cmd:mount |sort > /tmp/mountoutput/file.new
+cmd:cat /tmp/mountoutput/file.new
+cmd:diff /tmp/mountoutput/file.org /tmp/mountoutput/file.new --ignore-matching-lines="fusectl"
+check:rc==0
+cmd:rm -rf /tmp/mountoutput
+
+#Make sure squashfs-tools rpm is installed on RHEL
+cmd:if [[ "$$OS" =~ "rhel" ]]; then yum install -y squashfs-tools; fi
+
+#Make sure squashfs-tools rpm is installed on Ubuntu
+cmd:if [[ "$$OS" =~ "ubuntu" ]]; then apt-get install -y squashfs-tools; fi
+
+#Make sure squashfs rpm is installed on SLES
+cmd:if [[ "$$OS" =~ "sle" ]]; then zypper install -y squashfs; fi
+
+cmd:packimage -m squashfs __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute
+check:rc==0
+check:output=~archive method:squashfs
+
+cmd:/opt/xcat/share/xcat/tools/autotest/testcase/commoncmd/retry_install.sh  $$CN __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute
+check:rc==0
+check:output=~Provision node\(s\)\: $$CN
+
+cmd:if [[ -f /var/lib/dhcp/db/dhcpd.leases ]]; then cat /var/lib/dhcp/db/dhcpd.leases; elif [[ -f /var/lib/dhcpd/dhcpd.leases ]];then cat /var/lib/dhcpd/dhcpd.leases;elif [[ -f /var/lib/dhcp/dhcpd.leases ]];then cat /var/lib/dhcp/dhcpd.leases; fi
+
+cmd:ping $$CN -c 3
+check:rc==0
+check:output=~64 bytes from $$CN
+cmd:lsdef -l $$CN | grep status
+check:rc==0
+check:output=~booted
+cmd:xdsh $$CN date
+check:rc==0
+check:output=~\d\d:\d\d:\d\d
+cmd:xdsh $$CN mount
+check:rc==0
+check:output=~on / type overlay
+cmd:xdsh $$CN cat /opt/xcat/xcatinfo
+check:rc==0
+check:output=~NODE=$$CN
+check:output=~IMAGENAME='__GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute'
+check:output=~IMAGEUUID='\w+-\w+-\w+-\w+-\w+'
+cmd:sleep 120
+cmd:ping $$CN -c 3
+check:rc==0
+check:output=~64 bytes from $$CN
+
+cmd:rootimgdir=`lsdef -t osimage  __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute|grep rootimgdir|awk -F'=' '{print $2}'`; if [ -d $rootimgdir.regbak ]; then rm -rf $rootimgdir; mv $rootimgdir.regbak $rootimgdir; fi
+check:rc==0
+cmd:xdsh $$CN  "cat /var/log/xcat/xcat.log"
+cmd:xdsh $$CN  "cat /test.synclist"
+check:rc==0
+cmd:if [ -x /usr/bin/goconserver ]; then makegocons -d $$CN; else makeconservercf -d $$CN; fi
+cmd:if [[ -f /test.synclist.bak ]] ;then mv -f /test.synclist.bak /test.synclist;else rm -rf /test.synclist;fi
+cmd:chdef -t osimage -o __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute synclists=
+check:rc==0
+end

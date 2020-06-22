@@ -48,7 +48,7 @@ check:rc==0
 cmd:chtab priority=4.8 policy.commands=litetree policy.rule=allow
 check:rc==0
 
-cmd:rootimgdir=`lsdef -t osimage __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-statelite-compute|grep rootimgdir|awk -F'=' '{print $2}'`; if [ -d $rootimgdir ]; then mv $rootimgdir $rootimgdir.regbak;fi
+cmd:rootimgdir=`lsdef -t osimage __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-statelite-compute|grep rootimgdir|awk -F'=' '{print $2}'`; if [ -d $rootimgdir ]; then rm -rf $rootimgdir.regbak; mv $rootimgdir $rootimgdir.regbak;fi
 check:rc==0
 
 cmd:chdef -t osimage -o __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-statelite-compute rootfstype=nfs

@@ -5,9 +5,9 @@ The following example sets the xCAT properties for compute node ``cn1`` to creat
 
   * Compute node ``cn1`` with two physical NICs: ``eth0`` and ``eth1``
   * Management network is ``11.1.89.0``, application network is ``13.1.89.0``
-  * The install NIC is eth0, and application NIC is eth1
-  * Assign static ip ``11.1.89.7/24`` to eth0
-  * Assign static ip ``13.1.89.7/24`` to eth1
+  * The install NIC is ``eth0``, and application NIC is ``eth1``
+  * Assign static ip ``11.1.89.7/24`` to ``eth0``
+  * Assign static ip ``13.1.89.7/24`` to ``eth1``
 
 Add/update networks into the xCAT DB
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -22,11 +22,11 @@ Add/update additional networks ``net11`` and ``net13`` into ``networks`` table::
 Define Adapters in the nics table
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-#. Provision ip is coming from DHCP, there is no need to configure install nic into ``nics`` table. Provision ip can be configured in node definition, but it is not required. ::
+#. The install NIC ``eth0`` on the management network will get an IP via DHCP, which will be the value of the ``ip`` attribute in the node definition. There is no need to configure install NIC into ``nics`` table. ::
 
     chdef cn1 ip=11.1.89.7
 
-#. Data NIC ``eth1`` is not install NIC, configure ``eth1`` into ``nics`` table  ::
+#. Application NIC ``eth1`` on the application network is different from install NIC ``eth0``, and will get its IP assigned from the ``eth1`` definition in the ``nics`` table  ::
 
     chdef cn1 nicips.eth1="13.1.89.7" nicnetworks.eth1="net13" nictypes.eth1="Ethernet" nichostnamesuffixes.eth1=-eth1
 
@@ -56,7 +56,7 @@ Configure adapters with static IPs
 
         updatenode cn1 -P "confignetwork -s"
 
-#. If install NIC is not configured in ``nics`` table, and only configure all other NIC's data defined in ``nics`` table, execute ``confignetwork`` without ``-s``
+#. If install NIC is not configured in ``nics`` table, execute ``confignetwork`` without ``-s`` to only configure NICs defined in ``nics`` table
 
     a. Add ``confignetwork`` into postscript list to execute on reboot ::
 
@@ -66,7 +66,7 @@ Configure adapters with static IPs
 
         updatenode cn1 -P "confignetwork"
 
-.. note:: Option ``-s`` writes the install NIC's information into configuration file for persistence. All other NIC's data defined in ``nics`` table will be written also. Without option ``-s``, ``confignetwork`` only configures all NIC's data defined in ``nics`` table.
+.. note:: Option ``-s`` writes the install NIC's information into configuration file for persistence. All other NIC's data defined in ``nics`` table will be written also. Without option ``-s``, ``confignetwork`` only configures NIC's data defined in ``nics`` table.
 
 Check result
 ~~~~~~~~~~~~

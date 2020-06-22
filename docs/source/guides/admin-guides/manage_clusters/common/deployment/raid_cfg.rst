@@ -90,7 +90,7 @@ Deploy Diskful Nodes with RAID1 Setup on SLES
 
 xCAT provides one sample autoyast template files with the RAID1 settings ``/opt/xcat/share/xcat/install/sles/service.raid1.sles11.tmpl``. You can customize the template file and put it under ``/install/custom/install/<platform>/`` if the default one does not match your requirements.
 
-Here is the RAID1 partitioning section in service.raid1.sles11.tmpl: ::
+Here is the RAID1 partitioning section in ``service.raid1.sles11.tmpl``: ::
 
      <partitioning config:type="list">
         <drive>
@@ -188,13 +188,13 @@ The samples above created one 24MB PReP partition on each disk, one 2GB mirrored
 Since the PReP partition can not be mirrored between the two disks, some additional postinstall commands should be run to make the second disk bootable, here the commands needed to make the second disk bootable: ::
 
      # Set the second disk to be bootable for RAID1 setup
-     parted -s /dev/sdb mkfs 1 fat16
+     parted -s /dev/sdb mkfs 1 fat32
      parted /dev/sdb set 1 type 6
      parted /dev/sdb set 1 boot on
      dd if=/dev/sda1 of=/dev/sdb1
      bootlist -m normal sda sdb
 
-The procedure listed above has been added to the file ``/opt/xcat/share/xcat/install/scripts/post.sles11.raid1`` to make it be automated. The autoyast template file service.raid1.sles11.tmpl will include the content of post.sles11.raid1, so no manual steps are needed here.	
+The procedure listed above has been added to the file ``/opt/xcat/share/xcat/install/scripts/post.sles11.raid1`` to make it be automated. The autoyast template file ``service.raid1.sles11.tmpl`` will include the content of ``post.sles11.raid1``, so no manual steps are needed here.	
 
 After the diskful nodes are up and running, you can check the RAID1 settings with the following commands:
 
@@ -230,9 +230,9 @@ The command mdadm can query the detailed configuration for the RAID partitions: 
 Disk Replacement Procedure
 --------------------------
 
-If any one disk fails in the RAID1 array, do not panic. Follow the procedure listed below to replace the failed disk and you will be fine.
+If any one disk fails in the RAID1 array, do not panic. Follow the procedure listed below to replace the failed disk.
 
-Faulty disks should appear marked with an (F) if you look at ``/proc/mdstat``: ::
+Faulty disks should appear marked with an ``(F)`` if you look at ``/proc/mdstat``: ::
 
      # cat /proc/mdstat
      Personalities : [raid1]
@@ -248,7 +248,7 @@ Faulty disks should appear marked with an (F) if you look at ``/proc/mdstat``: :
 
      unused devices: <none>
 
-We can see that the first disk is broken because all the RAID partitions on this disk are marked as (F).
+We can see that the first disk is broken because all the RAID partitions on this disk are marked as ``(F)``.
 
 Remove the failed disk from RAID array
 ---------------------------------------
@@ -271,7 +271,7 @@ Here is the example of removing failed disk from the RAID1 array in the multipat
      mdadm --manage /dev/md1 --remove /dev/dm-8
      mdadm --manage /dev/md2 --remove /dev/dm-11
 
-After the failed disk is removed from the RAID1 array, the partitions on the failed disk will be removed from ``/proc/mdstat`` and the "mdadm --detail" output also. ::
+After the failed disk is removed from the RAID1 array, the partitions on the failed disk will be removed from ``/proc/mdstat`` and the ``mdadm --detail`` output also. ::
 
      # cat /proc/mdstat
      Personalities : [raid1]
@@ -332,7 +332,7 @@ For the multipath configuration, here is an example: ::
 
      sfdisk -d /dev/dm-1 | sfdisk /dev/dm-0
 
-If you got error message "sfdisk: I don't like these partitions - nothing changed.", you can add "--force" option to the sfdisk command: ::
+If you got error message "sfdisk: I don't like these partitions - nothing changed.", you can add ``--force`` option to the ``sfdisk`` command: ::
 
      sfdisk -d /dev/sdb | sfdisk /dev/sda --force
 
@@ -412,7 +412,7 @@ If the new disk does not have a PReP partition or the PReP partition has some pr
 
 * **[SLES]**::
 
-     parted -s /dev/sda mkfs 1 fat16
+     parted -s /dev/sda mkfs 1 fat32
      parted /dev/sda set 1 type 6
      parted /dev/sda set 1 boot on
      dd if=/dev/sdb1 of=/dev/sda1

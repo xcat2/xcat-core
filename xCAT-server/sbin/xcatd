@@ -119,7 +119,7 @@ use IO::Handle;
 use IO::Select;
 use XML::Simple;
 $XML::Simple::PREFERRED_PARSER = 'XML::Parser';
-use XML::LibXML::Simple;
+use XML::LibXML;
 use xCAT::Table;
 my $dbmaster;
 use xCAT::ExtTab;

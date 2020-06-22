@@ -45,7 +45,7 @@ fi
 echo Creating Partition
 logger -t $log_label -p local4.info $ME Creating Partition
 parted -s /dev/sda mklabel gpt
-parted -s -- /dev/sda mkpart primary ext3 0 -0
+parted -s -- /dev/sda mkpart primary ext4 0 -0
 if grep sda1 /proc/partitions >/dev/null 2>&1
 then
 	sleep 5
@@ -58,8 +58,8 @@ else
 	exit 1
 fi
 
-echo Creating new ext3 filesystem: /dev/sda1
-logger -t $log_label -p local4.info $ME Creating new ext3 filesystem: /dev/sda1
+echo Creating new ext4 filesystem: /dev/sda1
+logger -t $log_label -p local4.info $ME Creating new ext4 filesystem: /dev/sda1
 mke2fs -j /dev/sda1
 mkdir -p $mydir
 echo mounting new /dev/sda1 to $mydir

@@ -190,17 +190,17 @@ base64decode()
 logger -t $log_label -p "info" "Generate partition file..."
 if [ -d /sys/firmware/efi ]; then
     echo "ubuntu-efi ::" > /tmp/partitionfile
-    echo "    512 512 1024 fat16" >> /tmp/partitionfile
+    echo "    512 512 1024 fat32" >> /tmp/partitionfile
     echo '    $iflabel{ gpt } $reusemethod{ } method{ efi } format{ }' >> /tmp/partitionfile
     echo "    ." >> /tmp/partitionfile
 else
     echo "ubuntu-boot ::" > /tmp/partitionfile
-    echo "256 256 512 ext3" >> /tmp/partitionfile
-    echo '    $primary{ } $bootable{ } method{ format } format{ } use_filesystem{ } filesystem{ ext3 } mountpoint{ /boot }' >> /tmp/partitionfile
+    echo "256 256 512 ext4" >> /tmp/partitionfile
+    echo '    $primary{ } $bootable{ } method{ format } format{ } use_filesystem{ } filesystem{ ext4 } mountpoint{ /boot }' >> /tmp/partitionfile
     echo "    ." >> /tmp/partitionfile
 fi
-echo "500 10000 1000000000 ext3" >> /tmp/partitionfile
-echo "    method{ format } format{ } use_filesystem{ } filesystem{ ext3 } mountpoint{ / }" >> /tmp/partitionfile
+echo "500 10000 1000000000 ext4" >> /tmp/partitionfile
+echo "    method{ format } format{ } use_filesystem{ } filesystem{ ext4 } mountpoint{ / }" >> /tmp/partitionfile
 echo "    ." >> /tmp/partitionfile
 echo "2048 512 300% linux-swap" >> /tmp/partitionfile
 echo "    method{ swap } format{ }" >> /tmp/partitionfile

@@ -3,7 +3,7 @@ IB Network Configuration
 
 xCAT provides a script ``configib`` to help configure the Infiniband adapters on the compute nodes.
 
-The Infiniband adapter is considered an additional interface for xCAT. The process for configuring Infiniband adapters complies with the process  of :doc:`Configure Additional Network Interfaces <../../../../guides/admin-guides/manage_clusters/ppc64le/diskful/customize_image/network/cfg_second_adapter>`.
+The Infiniband adapter is considered an additional interface for xCAT. The process for configuring Infiniband adapters complies with the process  of :doc:`Configure Additional Network Interfaces <../../../../guides/admin-guides/manage_clusters/ppc64le/diskful/customize_image/network/cfg_network_adapter>`.
 
 Below are an simple example to configure Mellanox IB in Ubuntu 14.04.1 on Power8 LE
 
@@ -25,12 +25,12 @@ If your target Mellanox IB adapter has 2 ports, and you plan to give port ib0 4 
 
 * To configure during node installation ::
 
-	chdef <node> -p postscripts="confignics --ibaports=2"
+	chdef <node> -p postscripts="confignetwork --ibaports=2"
 	nodeset <node> osimage=<osimagename>
 	rsetboot <node> net
 	rpower <node> reset
 
 * To configure on a node which has had operating system  ::
 
-	updatenode <node> -P "confignics --ibaports=2"
+	updatenode <node> -P "confignetwork --ibaports=2"
 

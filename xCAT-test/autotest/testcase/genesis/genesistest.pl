@@ -250,6 +250,7 @@ sub testxdsh {
     print "The input parameter is $value \n";
     my $checkstring;
     my $checkfile;
+    my $nodestatus;
     if ($value == 1) {
         #mean runcmd test using test scripts genesistest.pl writes
         $checkstring = "testcmd";
@@ -261,13 +262,16 @@ sub testxdsh {
         $checkstring = "destiny=shell";
         $checkfile   = "/proc/cmdline";
     }
+    my $xdsh_command="xdsh $noderange -t 2 cat $checkfile 2>&1|grep $checkstring";
     if (($value == 1) || ($value == 2) || ($value == 3)) {
-        `xdsh $noderange -t 2 cat $checkfile 2>&1|grep $checkstring `;
+        `$xdsh_command`;
         if ($?) {
-            foreach (1 .. 10) {
+            my @i = (1..10);
+            for (@i) {
                 sleep 300;
-                send_msg(1,"try to run xdsh $noderange to check the results again");
-                `xdsh $noderange -t 2 cat $checkfile 2>&1| grep $checkstring `;
+                $nodestatus=`lsdef $noderange -i status -c  2>&1 | awk -F'=' '{print \$2}'`;
+                send_msg(1,"[$_] Running \"$xdsh_command\" to check results. Node status: $nodestatus");
+                `$xdsh_command`;
                 last if ($? == 0);
             }
         }
