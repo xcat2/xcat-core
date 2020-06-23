@@ -38,7 +38,7 @@ cmd:if grep Ubuntu /etc/*release;then arc_all=`uname -a`; if [[ $arc_all =~ "x86
 cmd:xdsh $$CN "cd /; ./go-xcat --xcat-version=devel -y install"
 cmd:version=`xdsh $$CN /opt/xcat/bin/lsxcatd -v`; if [[ $version =~ "Version" ]]; then echo "xCAT installed successfully first time"; else echo "First attempt to install xCAT failed, attempting to install xCAT again"; xdsh $$CN "cd /; ./go-xcat --xcat-version=devel -y install"; fi
 
-cmd:xdsh $$CN "lsxcatd -v"
+cmd:xdsh $$CN "source /etc/profile.d/xcat.sh; lsxcatd -v"
 check:output=~Version
 cmd:xdsh $$CN "service xcatd status"
 check:rc==0
