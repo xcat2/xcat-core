@@ -21,10 +21,6 @@ check:rc==0
 #Install additional packages on Red Hat
 cmd:if xdsh $$CN "grep \"Red Hat\" /etc/*release >/dev/null"; then xdsh $$CN "yum install -y yum-utils dnf-utils bzip2"; fi
 
-#Pull down core and deps repomd.xml on SLES to prevent caching of the wrong file
-cmd:if xdsh $$CN "grep \"SUSE\" /etc/*release >/dev/null"; then xdsh $$CN "wget --no-cache http://xcat.org/files/xcat/repos/yum/devel/core-snap/repodata/repomd.xml"; fi
-cmd:if xdsh $$CN "grep \"SUSE\" /etc/*release >/dev/null"; then os=`echo __GETNODEATTR($$CN,os)__ | cut -d "." -f1 | sed s/sle1/sles1/` && xdsh $$CN "wget --no-cache http://xcat.org/files/xcat/repos/yum/devel/xcat-dep/$os/__GETNODEATTR($$CN,arch)__/repodata/repomd.xml"; fi
-
 #Install additional packages on Ubuntu
 cmd:if xdsh $$CN "grep \"Ubuntu\" /etc/*release >/dev/null"; then xdsh $$CN "DEBIAN_FRONTEND=noninteractive apt-get install -y gnupg"; fi
 
@@ -34,7 +30,7 @@ cmd:if grep Ubuntu /etc/*release;then code=`lsb_release -sc` && xdsh $$CN "scp -
 #Set flag to accept install dependent packages by default on Ubuntu
 cmd:if grep Ubuntu /etc/*release;then arc_all=`uname -a`; if [[ $arc_all =~ "x86_64" ]]; then xdsh $$CN "echo '* libraries/restart-without-asking boolean true' | debconf-set-selections"; fi; fi
 
-#Install devel version of xCAT
+#Install devel version of xCAT. If first attempt fails, try again
 cmd:xdsh $$CN "cd /; ./go-xcat --xcat-version=devel -y install"
 cmd:version=`xdsh $$CN /opt/xcat/bin/lsxcatd -v`; if [[ $version =~ "Version" ]]; then echo "xCAT installed successfully first time"; else echo "First attempt to install xCAT failed, attempting to install xCAT again"; xdsh $$CN "cd /; ./go-xcat --xcat-version=devel -y install"; fi
 
@@ -78,12 +74,12 @@ cmd:if grep Ubuntu /etc/*release;then code=`lsb_release -sc` && xdsh $$CN "scp -
 #Set flag to accept install dependent packages by default on Ubuntu
 cmd:if grep Ubuntu /etc/*release;then arc_all=`uname -a`; if [[ $arc_all =~ "x86_64" ]]; then xdsh $$CN "echo '* libraries/restart-without-asking boolean true' | debconf-set-selections"; fi; fi
 
-#Install GA version of xCAT
+#Install GA version of xCAT. If first attempt fails, try again
 cmd:xdsh $$CN "cd /; ./go-xcat -y install"
-check:rc==0
-cmd:xdsh $$CN "cat /tmp/go-xcat.log"
-cmd:xdsh $$CN "source /etc/profile.d/xcat.sh;lsxcatd -a"
-check:rc==0
+cmd:version=`xdsh $$CN /opt/xcat/bin/lsxcatd -v`; if [[ $version =~ "Version" ]]; then echo "xCAT installed successfully first time"; else echo "First attempt to install xCAT failed, attempting to install xCAT again"; xdsh $$CN "cd /; ./go-xcat -y install"; fi
+
+cmd:xdsh $$CN "source /etc/profile.d/xcat.sh;lsxcatd -v"
+check:output=~Version
 cmd:xdsh $$CN "service xcatd status"
 check:rc==0
 check:output=~running
@@ -122,12 +118,12 @@ cmd:if grep Ubuntu /etc/*release;then code=`lsb_release -sc` && xdsh $$CN "scp -
 #Set flag to accept install dependent packages by default on Ubuntu
 cmd:if grep Ubuntu /etc/*release;then arc_all=`uname -a`; if [[ $arc_all =~ "x86_64" ]]; then xdsh $$CN "echo '* libraries/restart-without-asking boolean true' | debconf-set-selections"; fi; fi
 
-#Install GA version of xCAT
+#Install GA version of xCAT. If first attempt fails, try again
 cmd:xdsh $$CN "cd /; ./go-xcat -y install"
-check:rc==0
-cmd:xdsh $$CN "cat /tmp/go-xcat.log"
-cmd:xdsh $$CN "source /etc/profile.d/xcat.sh;lsxcatd -a"
-check:rc==0
+cmd:version=`xdsh $$CN /opt/xcat/bin/lsxcatd -v`; if [[ $version =~ "Version" ]]; then echo "xCAT installed successfully first time"; else echo "First attempt to install xCAT failed, attempting to install xCAT again"; xdsh $$CN "cd /; ./go-xcat -y install"; fi
+
+cmd:xdsh $$CN "source /etc/profile.d/xcat.sh;lsxcatd -v"
+check:output=~Version
 cmd:xdsh $$CN "service xcatd status"
 check:rc==0
 check:output=~running
@@ -176,12 +172,12 @@ cmd:if grep Ubuntu /etc/*release;then code=`lsb_release -sc` && xdsh $$CN "scp -
 #Set flag to accept install dependent packages by default on Ubuntu
 cmd:if grep Ubuntu /etc/*release;then arc_all=`uname -a`; if [[ $arc_all =~ "x86_64" ]]; then xdsh $$CN "echo '* libraries/restart-without-asking boolean true' | debconf-set-selections"; fi; fi
 
-#Install GA version of xCAT
+#Install GA version of xCAT. If first attempt fails, try again
 cmd:xdsh $$CN "cd /; ./go-xcat -y install"
-check:rc==0
-cmd:xdsh $$CN "cat /tmp/go-xcat.log"
-cmd:xdsh $$CN "source /etc/profile.d/xcat.sh;lsxcatd -a"
-check:rc==0
+cmd:version=`xdsh $$CN /opt/xcat/bin/lsxcatd -v`; if [[ $version =~ "Version" ]]; then echo "xCAT installed successfully first time"; else echo "First attempt to install xCAT failed, attempting to install xCAT again"; xdsh $$CN "cd /; ./go-xcat -y install"; fi
+
+cmd:xdsh $$CN "source /etc/profile.d/xcat.sh;lsxcatd -v"
+check:output=~Version
 cmd:xdsh $$CN "service xcatd status"
 check:rc==0
 check:output=~running
