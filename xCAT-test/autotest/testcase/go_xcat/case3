@@ -130,9 +130,9 @@ check:output=~running
 
 #Update to devel version of xCAT
 cmd:xdsh $$CN "cd /; ./go-xcat --xcat-version=devel -y update"
-check:rc==0
-cmd:xdsh $$CN "cat /tmp/go-xcat.log"
-cmd:xdsh $$CN "source /etc/profile.d/xcat.sh;lsxcatd -a"
+cmd:version=`xdsh $$CN /opt/xcat/bin/lsxcatd -v`; if [[ $version =~ "Version" ]]; then echo "xCAT updated successfully first time"; else echo "First attempt to update xCAT failed, attempting to update xCAT again"; xdsh $$CN "cd /; ./go-xcat --xcat-version=devel -y update"; fi
+check:output=~"xCAT updated successfully first time"|"xCAT has been successfully updated"
+cmd:xdsh $$CN "source /etc/profile.d/xcat.sh;lsxcatd -v"
 check:rc==0
 cmd:xdsh $$CN "service xcatd status"
 check:rc==0
