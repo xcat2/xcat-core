@@ -6,7 +6,7 @@ B<imgexport> - Exports an xCAT image.
 
 B<imgexport [-h| --help]>
 
-B<imgexport> I<image_name> [I<destination>] [[B<-e>|B<--extra> I<file:dir>] ... ] [B<-p>|B<--postscripts> I<node_name>] [B<-v>|B<--verbose>]
+B<imgexport> I<image_name> [I<destination>] [B<-e>|B<--extra> I<file:dir>] ... ] [B<-p>|B<--postscripts> I<node_name>] [B<-R>|B<--remotehost> I<user@host>] [B<-v>|B<--verbose>]
 
 
 =head1 DESCRIPTION
@@ -65,6 +65,10 @@ Display usage message.
 
 Get the names of the postscripts and postbootscripts for the given node and pack them into the image.
 
+=item B<-R|--remotehost> I<user@host>
+
+Export the image to remote host. Passwordless ssh must be setup to the remote host.
+
 =item B<-v|--verbose>
 
 Verbose output.
@@ -92,7 +96,7 @@ The output bundle file name.
 
  imgexport foo
 
-foo.tgz will be built in the current working directory.  Make sure that you have enough space in the directory that you are in to run imgexport if you have a big image to tar up.
+foo.tgz will be built in the current working directory.  Make sure that you have enough space in the directory that you are in to run imgexport, if you have a big image to tar up.
 
 2. To include extra files with your image:
 
