@@ -322,6 +322,16 @@ while [ -z "$LANCHAN" ]; do
 done
 logger -s -t $log_label -p local4.info "Detected LAN channel $LANCHAN"
 
+### Added for Walker Pass--06/10/2020 Andrew Wray
+if [ "$IPMIMFG" = "343" -a "$XPROD" = "149" ] ; then
+    BMCPORT=`grep bmcport /tmp/ipmicfg.xml |awk -F\> '{print $2}'|awk -F\< '{print $1}'`
+    logger -s -t $log_label -p local4.info "BMCPORT is $BMCPORT"
+    if [ "$BMCPORT" == "1" ]; then
+        LANCHAN=3
+        logger -s -t $log_label -p local4.info "Detected Intel Walker Pass system and dedicated LAN mode, setting LAN channel=$LANCHAN"
+    fi
+fi
+
 let idev=NUMBMCS
 if [ $IPCFGMETHOD="static" ]; then
     while [ $idev -gt 0 ]; do
@@ -541,8 +551,10 @@ for user in $BMCUS; do
 
     TRIES=0
     # Enable the channel link for the specified user
-    if [ "$IPMIMFG" == 343 -a "$XPROD" == 124 ]; then # For Intel S2600BP system boards
-        cmd="ipmitool -d $idev channel setaccess $LANCHAN $USERSLOT link=on ipmi=on"
+    if [ "$IPMIMFG" == 343 ]; then
+        if [ "$XPROD" == 124 -o "$XPROD" == 149 ]; then # For Intel S2600BP and S9200WK system boards
+            cmd="ipmitool -d $idev channel setaccess $LANCHAN $USERSLOT link=on ipmi=on"
+        fi
     else
         cmd="ipmitool -d $idev channel setaccess $LANCHAN $USERSLOT link=on"
     fi
