@@ -6,7 +6,7 @@ B<imgimport> - Imports an xCAT image or configuration file into the xCAT tables 
 
 B<imgimport [-h|--help]>
 
-B<imgimport> I<bundle_file_name> [B<-p>|B<--postscripts> I<nodelist>] [B<-f>|B<--profile> I<new_profile>] [B<-v>|B<--verbose>]
+B<imgimport> I<bundle_file_name> [B<-p>|B<--postscripts> I<nodelist>] [B<-f>|B<--profile> I<new_profile>] [B<-R>|B<--remotehost> I<user@host>] [B<-v>|B<--verbose>]
 
 =head1 DESCRIPTION
 
@@ -81,6 +81,10 @@ Display usage message.
 =item B<-p|--postscripts> I<nodelist>
 
 Import the postscripts. The postscripts contained in the image will be set in the postscripts table for I<nodelist>.
+
+=item B<-R|--remotehost> I<user@host>
+
+Import the image from remote host. Passwordless ssh must be setup to the remote host.
 
 =item B<-v|--verbose>
 
