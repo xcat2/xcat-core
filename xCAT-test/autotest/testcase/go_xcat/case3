@@ -192,7 +192,7 @@ check:output=~could not be found|dead|no such service xcatd
 #Install devel version of xCAT
 cmd:xdsh $$CN "cd /; ./go-xcat --xcat-version=devel -y install"
 cmd:version=`xdsh $$CN /opt/xcat/bin/lsxcatd -v`; if [[ $version =~ "Version" ]]; then echo "xCAT installed successfully first time"; else echo "First attempt to install xCAT failed, attempting to install xCAT again"; xdsh $$CN "cd /; ./go-xcat -y --xcat-version=devel install"; fi
-check:output=~xCAT updated successfully first time|xCAT has been successfully updated
+check:output=~xCAT installed successfully first time|xCAT has been installed
 cmd:xdsh $$CN "source /etc/profile.d/xcat.sh;lsxcatd -a"
 check:rc==0
 cmd:xdsh $$CN "service xcatd status"
