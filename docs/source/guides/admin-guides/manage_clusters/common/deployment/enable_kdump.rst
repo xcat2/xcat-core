@@ -170,5 +170,5 @@ Appedix
 
 #. OS Documentation on dump analysis:
 
-    * http://docs.redhat.com/docs/en-US/Red_Hat_Enterprise_Linux/5/html/Deployment_Guide/s1-kdump-crash.htmlRHELdocument
+    * https://access.redhat.com/documentation/en-us/red_hat_enterprise_linux/6/html/deployment_guide/s1-kdump-crashdd 
 
