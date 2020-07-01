@@ -58,11 +58,6 @@ if [ ! -z "$MACX" ] && [ ! -z "$ETHX" ]; then
         echo "ONBOOT=yes" >> $CONFFILE
         echo "IPADDR=$IP" >> $CONFFILE
         echo "NETMASK=$MASK" >> $CONFFILE
-    else
-        echo "DEVICE=$ETHX" > $CONFFILE
-        echo "BOOTPROTO=dhcp" >> $CONFFILE
-        echo "HWADDR=$MACX" >> $CONFFILE
-        echo "ONBOOT=yes" >> $CONFFILE
     fi
 fi
 
