@@ -388,7 +388,7 @@ sub donets
         foreach (@ip6table)
         {
             my @ent = split /\s+/, $_;
-            if ($ent[0] =~ m/^fe80::/ or $ent[0] eq 'unreachable' or
+            if ($ent[0] =~ m/^fe80::/ or $ent[0] eq 'unreachable' or $ent[1] eq 'nexthop' or $ent[0] eq 'default' or
                 $ent[1] eq 'via' or $ent[2] eq 'lo') {
                 #Do not contemplate link-local, unreachable, gatewayed networks,
                 #  or networks connected to loopback interface
