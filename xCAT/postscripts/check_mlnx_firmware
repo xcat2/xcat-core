@@ -6,7 +6,7 @@
 #
 BINARIES="ofed_info mst ibdev2netdev"
 for PROG in ${BINARIES}; do
-    RC=`command -v ${PROG} >> /dev/nul 2>&1; echo $?`
+    RC=`command -v ${PROG} >> /dev/null 2>&1; echo $?`
     if [[ ${RC} != 0 ]]; then
         echo "${PROG} is not installed on this node, unable to check firmware levels."
         exit 1

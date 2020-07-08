@@ -29,7 +29,7 @@ function logerr {
 #check if mlnx ofed commands are installed
 COMMANDS="ofed_info mst mlxconfig"
 for CMD in ${COMMANDS}; do
-    RC=`command -v ${CMD} >> /dev/nul 2>&1; echo $?`
+    RC=`command -v ${CMD} >> /dev/null 2>&1; echo $?`
     if [[ ${RC} != 0 ]]; then
         ERRMSG="Command: ${CMD} is not found, unable to run the scripts"
         logerr $ERRMSG

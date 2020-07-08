@@ -45,6 +45,8 @@ my %type_nodesnum = ();
 #    matching --> matched --> installing --> booting --> booted
 #    matching --> matched --> booting --> installing --> xxx --> booted
 #   The terminal state is configured(For PDU/Switch) or booted(for Node)
+#   matching means node found matching the range, but no status attribute value
+#   matched means node found matching the range, with mac attribute value, but no status attribute value
 #-----------------------------
 my %state_node_hash = ();
 
@@ -240,7 +242,7 @@ sub update_nodes_info {
         foreach (@unmatched_nodes_attributes) {
             if (/^(.*):\s*mac=(.*)$/) {
                 if ($2) {
-                    update_node_info($1, "Matched");
+                    update_node_info($1, "matched (no status)");
                 }
             }
         }
@@ -279,7 +281,7 @@ sub update_node_info {
     if (exists($state_node_hash{$node_type}{$node_state}{$node})) {
         delete($state_node_hash{$node_type}{$node_state}{$node});
     }
-    unless (scalar keys ($state_node_hash{$node_type}{$node_state})) {
+    unless (scalar keys (%{$state_node_hash{$node_type}{$node_state}})) {
         delete($state_node_hash{$node_type}{$node_state});
     }
 
@@ -307,10 +309,10 @@ sub check_nodes_attributes {
             $node_info{$_}{state} = $nodehash{$_}{status};
             $unfinished_nodes{$_} = 1;
         } elsif ($nodehash{$_}{mac}) {
-            $node_info{$_}{state} = "Matched";
+            $node_info{$_}{state} = "matched (no status)";
             $unfinished_nodes{$_} = 1;
         } else {
-            $node_info{$_}{state} = "matching";
+            $node_info{$_}{state} = "matching (no status, no mac)";
             $unmatched_nodes{$_} = 1;
         }
         if ($nodehash{$_}{mgt} eq 'pdu') {
