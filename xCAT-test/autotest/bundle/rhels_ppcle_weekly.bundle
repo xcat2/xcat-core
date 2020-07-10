@@ -17,6 +17,7 @@ bmcdiscover_range_z
 bmcdiscover_help
 bmcdiscover_q
 bmcdiscover_version
+xcatprobe_work
 confignetwork_static_installnic
 get_xcat_postscripts_loginfo
 nodeset_cmdline

@@ -1173,7 +1173,7 @@ sub send_email {
 sub git_update {
     send_msg(2, "[git update] starting to update xcat source code from git");
 
-    my $res = system("cd $xcatcoredir && git checkout $branch > /dev/nul 2>&1");
+    my $res = system("cd $xcatcoredir && git checkout $branch > /dev/null 2>&1");
     if ($res != 0) {
         send_msg(0, "[git update] change to branch $branch....[failed]");
         return 2;
@@ -1198,7 +1198,7 @@ sub git_update {
         return 2;
     }
 
-    $res = system("grep 'Already up-to-date' $gitpulloutput > /dev/nul 2>&1");
+    $res = system("grep 'Already up-to-date' $gitpulloutput > /dev/null 2>&1");
     if ($res == 0 && !$forceregwithoutupdate) {
         send_msg(2, "[git update] code is already at latest version. exit regresson");
         return 1;

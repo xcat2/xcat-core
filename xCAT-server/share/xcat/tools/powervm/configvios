@@ -139,7 +139,7 @@ sub get_cmd
 
         foreach (@hdisk)
         {
-            `lspv|grep $_ >/dev/nul 2>&1`;
+            `lspv|grep $_ >/dev/null 2>&1`;
             $err++ if ($? != 0)
         }
 
@@ -152,7 +152,7 @@ sub get_cmd
             next;
         }
 
-        `lsvg $key > /dev/nul 2>&1`;
+        `lsvg $key > /dev/null 2>&1`;
         if ($? == 0)
         {
             #print "Invalid configuration item $key: vg $key already existed\n";
@@ -193,7 +193,7 @@ sub get_cmd
             next;
         }
 
-        `su - padmin " -c ioscli lslv $conf[0]" > /dev/nul 2>&1`;
+        `su - padmin " -c ioscli lslv $conf[0]" > /dev/null 2>&1`;
         if ($? == 0)
         {
             #print "Invalid configuration item $key:the lv name $conf[0] already existed\n";
@@ -203,7 +203,7 @@ sub get_cmd
             next;
         }
 
-        `su - padmin " -c ioscli lsvg $conf[1]" > /dev/nul 2>&1`;
+        `su - padmin " -c ioscli lsvg $conf[1]" > /dev/null 2>&1`;
         if ($? != 0)
         {
             #print "Invalid configuration item $key:the vg $conf[1] doesn't exist\n";
@@ -242,7 +242,7 @@ sub get_cmd
     print "Mapping logical volumes to virtual adapters...";
     while (my ($key, $value) = each %config)
     {
-        `su - padmin " -c ioscli lslv $value" > /dev/nul 2>&1`;
+        `su - padmin " -c ioscli lslv $value" > /dev/null 2>&1`;
         if ($? != 0)
         {
             #print "Invalid configuration item $key: lv $value doesn't exist\n";
@@ -252,7 +252,7 @@ sub get_cmd
             next;
         }
 
-        `su - padmin " -c ioscli lsdev -virtual |grep $key " >/dev/nul 2>&1`;
+        `su - padmin " -c ioscli lsdev -virtual |grep $key " >/dev/null 2>&1`;
         if ($? != 0)
         {
             #print "Invaild configuration item $key: virtual adapter $key doesn't exist\n";
