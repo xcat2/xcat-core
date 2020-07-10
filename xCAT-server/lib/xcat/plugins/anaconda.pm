@@ -2547,7 +2547,7 @@ sub insert_dd {
     # dracut + drvier rpm
     # !dracut + driver rpm
     # !dracut + driver disk
-    if (!<$install_dir/$os/$arch/Packages/dracut*> || (@rpm_list && ($Injectalldriver || $updatealldriver || @driver_list))) {
+    if (!(&using_dracut($os)) || (@rpm_list && ($Injectalldriver || $updatealldriver || @driver_list))) {
         mkpath "$dd_dir/initrd_img";    # The dir for the new initrd
 
         # unzip the initrd image
@@ -2695,7 +2695,7 @@ sub insert_dd {
         # If the os has dracut rpm packet, then copy the drivers to the /lib/modules/<kernel>
         # and recreate the dependency by the depmod command
 
-        if (<$install_dir/$os/$arch/Packages/dracut*>) {    #rh6, fedora13 ...
+        if (&using_dracut($os)) { #rh6 above, fedora13 ...
              # For dracut mode, only copy the drivers from rpm packages to the /lib/modules/<kernel>
              # The driver disk will be handled that append the whole disk to the orignial initrd
 
@@ -3241,7 +3241,7 @@ EOMS
     }
 
     # dracut + driver disk, just append the driver disk to the initrd
-    if (<$install_dir/$os/$arch/Packages/dracut*> && @dd_list) { #new style, skip the fanagling, copy over the dds and append them...
+    if ( (&using_dracut($os)) && @dd_list) { #new style, skip the fanagling, copy over the dds and append them...
         mkpath("$dd_dir/dd");
         if (scalar(@dd_list) == 1) {    #only one, just append it..
             copy($dd_list[0], "$dd_dir/dd/dd.img");
