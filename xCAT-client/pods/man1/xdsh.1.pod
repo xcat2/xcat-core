@@ -24,7 +24,7 @@ The B<xdsh> command runs commands in parallel on remote nodes and/or the Managem
 remote shell command for each target specified, and returns the output
 from all targets,
 formatted so that command results  from  all  nodes  can  be  managed.
-If the command is to be executed  on the Management Node, it does not use a remote shell command, but uses the local OS copy or shell command. The Management Node must be defined in the xCAT database. The best way to do this is to use the xcatconfig -m option.
+If the command is to be executed  on the Management Node, it does not use a remote shell command, but uses the local OS copy or shell command. The Management Node must be defined in the xCAT database. The best way to do this is to use the B<xcatconfig -m> option.
 The B<xdsh> command is an xCAT Distributed Shell Utility.
 
 
@@ -159,8 +159,8 @@ the commands executing on the remote targets.
 Signal  19  (CONT),  Signal  17 (STOP), and Signal 18 (TSTP) default to
 B<xdsh>; the B<xdsh> command responds normally to these signals, but the
 signals  do  not have an effect on remotely executing commands. Other
-signals are caught by B<xdsh> and have their default effects on the B<xdsh>
-command; all current child processes, through propagation to remotely
+signals are caught by B<xdsh> and have their default effects on the B<xdsh> command;
+all current child processes, through propagation to remotely
 running commands, are terminated (SIGTERM).
 
 =head1 B<OPTIONS>
@@ -173,13 +173,13 @@ Runs in bypass mode, use if the xcatd daemon is hung.
 
 =item B<-c>|B<--cleanup>
 
-This flag will have xdsh remove all files from the subdirectories of the
-the directory on the servicenodes, where xdcp stages the copy to the
+This flag will have B<xdsh> remove all files from the subdirectories of the
+the directory on the service nodes, where B<xdcp> stages the copy to the
 compute nodes as defined in the site table SNsyncfiledir and nodesyncfiledir
 attribute, when the target is a service node.
 
 It can also be used to remove the nodesyncfiledir directory on the compute
-nodes, which keeps the backup copies of files for the xdcp APPEND function
+nodes, which keeps the backup copies of files for the B<xdcp> APPEND function
 support, if a compute node is the target.
 
 =item B<-e>|B<--execute>
@@ -206,7 +206,7 @@ xCAT ships some default configuration files
 for Ethernet switches and and IB switches under
 I</opt/xcat/share/xcat/devicetype> directory. If you want to overwrite
 any of the configuration files, copy them to I</var/opt/xcat/>
-directory and cutomize.
+directory and customize.
 For example, I<base/IBSwitch/Qlogic/config> is the configuration
 file location if devicetype is specified as IBSwitch::Qlogic.
 xCAT will first search config file using I</var/opt/xcat/> as the base.
@@ -225,10 +225,10 @@ Displays usage information.
 =item B<-i>|B<--rootimg> I<install image>
 
 For Linux, Specifies the path to the install image on the local node.
-For AIX, specifies the name of the osimage on the local node. Run lsnim
+For AIX, specifies the name of the osimage on the local node. Run B<lsnim>
 for valid names.
-xdsh will chroot (xcatchroot for AIX) to this path and run the xdsh command against the
-install image.  No other xdsh flags, environment variables apply with
+B<xdsh> will B<chroot> (B<xcatchroot> for AIX) to this path and run the B<xdsh> command against the
+install image.  No other B<xdsh> flags, environment variables apply with
 this input.  A noderange is not accepted. Only runs on the local host,
 normally the Management Node. The command you run must not prompt for input, the prompt will not be returned to you, and it will appear that B<xdsh> hangs.
 
@@ -240,9 +240,9 @@ Set up the SSH keys for the user running the command to the specified node list.
 The userid must have the same uid, gid and password as the userid on the node
 where the keys will be setup.
 
-If the current user is root,  roots public ssh keys will be put in the
+If the current user is root,  root's public ssh keys will be put in the
 authorized_keys* files under roots .ssh directory on the node(s).
-If the current user is non-root, the user must be in the policy table and have credential to run the xdsh command.
+If the current user is non-root, the user must be in the policy table and have credential to run the B<xdsh> command.
 The non-root users public ssh keys and root's public ssh keys will be put in
 the authorized_keys* files under the non-root users .ssh directory on the node(s).
 Other device types, such as IB switch, are also supported.  The
@@ -293,8 +293,8 @@ for remote command execution on node targets.
 =item B<-s>|B<--stream>
 
 Specifies that output is returned as it  becomes  available
-from  each  target, instead of waiting for the I<command_list>
-to be completed on a target before returning output.
+from  each  target, instead of waiting for the I<command_list> to
+be completed on a target before returning output.
 
 =item B<-S>|B<--syntax> {B<csh>|B<ksh>}
 
@@ -303,17 +303,17 @@ If not specified, the B<ksh> syntax is used.
 
 =item B<--sudo>
 
-Adding the B<--sudo> flag to the xdsh command will have xdsh run sudo before
+Adding the B<--sudo> flag to the B<xdsh> command will have B<xdsh> run B<sudo> before
 running the command.  This is particular useful when using the B<-e> option.
 This is required when you input B<-l> with a non-root user id and want that id
 to be able to run as root on the node.  The non-root userid will must be
 previously defined as an xCAT user, see process for defining non-root ids in
-xCAT and setting up for using xdsh.  The userid sudo setup will have
+xCAT and setting up for using B<xdsh>.  The userid B<sudo> setup will have
 to be done by the admin on the node.  This includes, allowing all commands that
-you would like to run with xdsh by using visudo to edit the /etc/sudoers file.
-You must disabl ssh tty requirements by commenting out or removing this line in the /etc/sudoes file "#Defaults    requiretty".
-See the document Granting_Users_xCAT_privileges for sudo setup requirements.
-This is not supported in a hierarical cluster, that is the nodes are serviced by servicenodes.
+you would like to run with B<xdsh> by using B<visudo> to edit the /etc/sudoers file.
+You must disable ssh tty requirements by commenting out or removing this line in the /etc/sudoes file "#Defaults    requiretty".
+See the document https://xcat-docs.readthedocs.io/en/stable/advanced/security/security.html#granting-users-xcat-privileges for B<sudo> setup requirements.
+This is not supported in a hierarchical cluster, where the nodes are serviced by service nodes.
 
 =item B<-t>|B<--timeout> I<timeout>
 
@@ -352,7 +352,7 @@ argument  to  this  option,  or  the  argument  is an empty
 string, all B<xdsh> environment variables will be ignored.
 This option is useful when running B<xdsh> from within other
 scripts when you don't want the user's environment affecting
-the behavior of xdsh.
+the behavior of B<xdsh>.
 
 =item B<-z>|B<--exit-status>
 
@@ -428,7 +428,7 @@ remote I<user_ID> is used.
 =item B<DSH_REMOTE_PASSWORD>
 
 If B<DSH_REMOTE_PASSWORD> is set to the password of the
-userid (usually root) that will ssh to the node, then when
+userid (usually root) that will B<ssh> to the node, then when
 you use the B<-K> flag, you will not be prompted for a password.
 
 
@@ -468,12 +468,12 @@ error  is displayed and execution is bypassed for a remote target if
 password prompting occurs, or if either authorization or
 authentication  to  the  remote  target fails. Security configurations as they
 pertain to the remote environment and remote shell command are
-userdefined.
+user defined.
 
 
 =head1 B<EXIT STATUS>
 
-The B<xdsh> command exit code is 0 if the command executed without errors and all remote shell commands finished with exit codes of 0. If internal dsh errors occur or the remote shell commands do not complete successfully, the dsh command exit value is greater than 0. The exit value is increased by 1 for each successive instance of an unsuccessful remote command execution.  If the remotely issued command is run in the background, the exit code of the remotely issued command is 0.
+The B<xdsh> command exit code is 0 if the command executed without errors and all remote shell commands finished with exit codes of 0. If internal B<dsh> errors occur or the remote shell commands do not complete successfully, the B<dsh> command exit value is greater than 0. The exit value is increased by 1 for each successive instance of an unsuccessful remote command execution.  If the remotely issued command is run in the background, the exit code of the remotely issued command is 0.
 
 
 =head1 B<EXAMPLES>
@@ -491,7 +491,7 @@ To run the B<ps -ef> command on node targets B<node1> and B<node2>, enter:
  xdsh node1,node2 "ps -ef"
 
 =item 3.
-To run the B<ps> command on node targets B<node1> and run the remote command with the -v and -t flag, enter:
+To run the B<ps> command on node targets B<node1> and run the remote command with the B<-v> and B<-t> flag, enter:
 
  xdsh node1,node2  -o "-v -t" ps
 
@@ -502,24 +502,24 @@ context on several node targets, with a fanout of B<1>, enter:
  xdsh node1,node2 -f 1 -e myfile
 
 =item 5.
-To run the ps command on node1 and ignore all the dsh
+To run the B<ps> command on node1 and ignore all the B<dsh>
 environment variable except the DSH_NODE_OPTS, enter:
 
  xdsh node1 -X `DSH_NODE_OPTS' ps
 
 =item 6.
-To run on Linux, the xdsh command "rpm -qa | grep xCAT"
+To run on Linux, the B<xdsh> command B<rpm -qa | grep xCAT>
 on the service node fedora9 diskless image, enter:
 
  xdsh -i /install/netboot/fedora9/x86_64/service/rootimg "rpm -qa | grep xCAT"
 
 =item 7.
-To run on AIX, the xdsh command "lslpp -l | grep bos" on the NIM 611dskls spot, enter:
+To run on AIX, the B<xdsh> command B<lslpp -l | grep bos> on the NIM 611dskls spot, enter:
 
  xdsh -i 611dskls "/usr/bin/lslpp -l | grep bos"
 
 =item 8.
-To cleanup the servicenode directory that stages the copy of files to the nodes, enter:
+To cleanup the service node directory that stages the copy of files to the nodes, enter:
 
  xdsh servicenoderange -c
 
@@ -559,7 +559,7 @@ If it is for Telnet, add I<tn:> in front of the user name: I<tn:admin>.
  dsh myswitch --devicetype EthSwitch::BNT 'enable;configure terminal;vlan 3;end;show vlan'
 
 =item 13.
-To run B<xdsh> with the non-root userid "user1" that has been setup as an xCAT userid and with sudo on node1 and node2 to run as root, do the following, see xCAT doc on Granting_Users_xCAT_privileges:
+To run B<xdsh> with the non-root userid "user1" that has been setup as an xCAT userid and with B<sudo> on node1 and node2 to run as root, do the following, see xCAT doc https://xcat-docs.readthedocs.io/en/stable/advanced/security/security.html#granting-users-xcat-privileges:
 
  xdsh node1,node2 --sudo -l user1 "cat /etc/passwd"
 
