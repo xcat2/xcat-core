@@ -172,13 +172,13 @@ GO_XCAT_CORE_PACKAGE_LIST=()
 GO_XCAT_DEP_PACKAGE_LIST=()
 
 # The package list of all the packages should be installed
-GO_XCAT_INSTALL_LIST=(perl-xCAT xCAT xCAT-buildkit xCAT-client
+GO_XCAT_INSTALL_LIST=(perl-xCAT xCAT-client xCAT xCAT-buildkit
 	xCAT-genesis-scripts-ppc64 xCAT-genesis-scripts-x86_64 xCAT-server
 	elilo-xcat grub2-xcat ipmitool-xcat syslinux-xcat
 	xCAT-genesis-base-ppc64 xCAT-genesis-base-x86_64 xnba-undi yaboot-xcat)
 # For Debian/Ubuntu, it will need a sight different package list
 type dpkg >/dev/null 2>&1 &&
-GO_XCAT_INSTALL_LIST=(perl-xcat xcat xcat-buildkit xcat-client
+GO_XCAT_INSTALL_LIST=(perl-xcat xcat-client xcat xcat-buildkit
 	xcat-genesis-scripts-amd64 xcat-genesis-scripts-ppc64 xcat-server
 	elilo-xcat grub2-xcat ipmitool-xcat syslinux-xcat
 	xcat-genesis-base-amd64 xcat-genesis-base-ppc64 xnba-undi)
