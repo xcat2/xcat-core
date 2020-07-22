@@ -54,6 +54,7 @@ After switches are defined, the server node can be predefined with the following
     chdef cn1 mgt=ipmi cons=ipmi ip=10.0.101.1 bmc=50.0.101.1 netboot=petitboot installnic=mac primarynic=mac
     chdef cn1 switch=switch1 switchport=0
 
+<<<<<<< HEAD
 
 **[Optional]** If more configuration planed to be done on BMC, the following command is also needed. ::
 
@@ -79,6 +80,12 @@ Set the target `osimage` into the chain table to automatically provision the ope
 
 For more information about chain, refer to :doc:`Chain <../../../../../advanced/chain/index>`
 
+=======
+In order to do BMC configuration during the discovery process, set ``runcmd=bmcsetup``. For more info about chain, please refer to :doc:`Chain <../../../../../advanced/chain/index>`   ::
+
+    chdef cn1 chain="runcmd=bmcsetup"
+
+>>>>>>> upstream
 Add cn1 into DNS::
 
     makehosts cn1

@@ -3,7 +3,11 @@ Define Service Nodes
 
 This next part shows how to configure a xCAT Hierarchy and provision xCAT service nodes from an existing xCAT cluster.
 
+<<<<<<< HEAD:docs/source/advanced/hierarchy/define_service_nodes.rst
 *The document assumes that the compute nodes that are part of your cluster have already been defined into the xCAT database and you have successfully provisioned the compute nodes using xCAT*
+=======
+*The document assumes that the compute nodes that are part of your cluster have already been defined into the xCAT database and you have successfully provisioned the compute nodes using xCAT* 
+>>>>>>> upstream:docs/source/advanced/hierarchy/define_service_nodes.rst
 
 
 The following table illustrates the cluster being used in this example:
@@ -28,6 +32,7 @@ The following table illustrates the cluster being used in this example:
 |                      | r2n10                |
 +----------------------+----------------------+
 
+<<<<<<< HEAD:docs/source/advanced/hierarchy/define_service_nodes.rst
 
 #. Modify ``site`` table attribute to include **service** group's postscripts in compute node definition: ::
 
@@ -35,6 +40,10 @@ The following table illustrates the cluster being used in this example:
 
 #. Select the compute nodes that will become service nodes
 
+=======
+#. Select the compute nodes that will become service nodes 
+     
+>>>>>>> upstream:docs/source/advanced/hierarchy/define_service_nodes.rst
         The first node in each rack, ``r1n01`` and ``r2n01``, is selected to become the xCAT service nodes and manage the compute nodes in that rack
 
 
@@ -53,9 +62,15 @@ The following table illustrates the cluster being used in this example:
 
         chdef -t group -o service setupnfs=1 \
                                   setupdhcp=1 \
+<<<<<<< HEAD:docs/source/advanced/hierarchy/define_service_nodes.rst
                                   setuptftp=1 \
                                   setupnameserver=1 \
                                   setupconserver=2
+=======
+                                  setuptftp=1 \ 
+                                  setupnameserver=1 \
+                                  setupconserver=1
+>>>>>>> upstream:docs/source/advanced/hierarchy/define_service_nodes.rst
 
    **Tips/Hint**
       * Even if you do not want xCAT to configure any services, you must define the service nodes in the ``servicenode`` table with at least one attribute, set to 0, otherwise xCAT will not recognize the node as a service node

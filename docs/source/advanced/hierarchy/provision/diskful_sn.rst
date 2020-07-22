@@ -1,56 +1,35 @@
-
-.. _setup_service_node_stateful_label:
-
 Diskful (Stateful) Installation
 ===============================
 
 Any cluster using statelite compute nodes must use a stateful (diskful) Service Nodes.
 
-.. note:: All xCAT Service Nodes must be at the exact same xCAT version as the xCAT Management Node.
+**Note: All xCAT Service Nodes must be at the exact same xCAT version as the xCAT Management Node**. Copy the files to the Management Node (MN) and untar them in the appropriate sub-directory of ``/install/post/otherpkgs``
 
-Configure ``otherpkgdir`` and ``otherpkglist`` for service node osimage
------------------------------------------------------------------------
+**Note for the appropriate directory below, check the ``otherpkgdir=/install/post/otherpkgs/rhels7/x86_64`` attribute of the osimage defined for the servicenode.**
+ 
+For example, for osimage rhels7-x86_64-install-service ::
 
- * Create a subdirectory ``xcat`` under a path specified by ``otherpkgdir`` attribute of the service node os image, selected during the :doc:`../define_service_nodes` step.
-
-   For example, for osimage *rhels7-x86_64-install-service* ::
-
-    [root@fs4 xcat]# lsdef -t osimage rhels7-x86_64-install-service -i otherpkgdir
-       Object name: rhels7-x86_64-install-service
-          otherpkgdir=/install/post/otherpkgs/rhels7/x86_64
-    [root@fs4 xcat]# mkdir -p /install/post/otherpkgs/rhels7/x86_64/xcat
-
- * Download or copy `xcat-core` and `xcat-dep` .bz2 files into that `xcat` directory ::
-
-    wget https://xcat.org/files/xcat/xcat-core/<version>_Linux/xcat-core/xcat-core-<version>-linux.tar.bz2
-    wget https://xcat.org/files/xcat/xcat-dep/<version>_Linux/xcat-dep-<version>-linux.tar.bz2
-
- * untar the `xcat-core` and `xcat-dep` .bz2 files ::
-
-    cd /install/post/otherpkgs/<os>/<arch>/xcat
+    mkdir -p /install/post/otherpkgs/**rhels7**/x86_64/xcat
+    cd /install/post/otherpkgs/**rhels7**/x86_64/xcat
     tar jxvf core-rpms-snap.tar.bz2
     tar jxvf xcat-dep-*.tar.bz2
 
- * Verify the following entries are included in the package file specified by the ``otherpkglist`` attribute of the service node osimage. ::
+Next, add rpm names into your own version of service.<osver>.<arch>.otherpkgs.pkglist file. In most cases, you can find an initial copy of this file under ``/opt/xcat/share/xcat/install/<platform>`` . Or copy one from another similar platform. :: 
 
-    xcat/xcat-core/xCATsn
-    xcat/xcat-dep/<os>/<arch>/conserver-xcat
-    xcat/xcat-dep/<os>/<arch>/perl-Net-Telnet
-    xcat/xcat-dep/<os>/<arch>/perl-Expect
+    mkdir -p /install/custom/install/rh
+    cp /opt/xcat/share/xcat/install/rh/service.rhels7.x86_64.otherpkgs.pkglist \
+       /install/custom/install/rh
+    vi /install/custom/install/rh/service.rhels7.x86_64.otherpkgs.pkglist
 
-   For example, for the osimage *rhels7-x86_64-install-service* ::
+Make sure the following entries are included in the
+/install/custom/install/rh/service.rhels7.x86_64.otherpkgs.pkglist: ::
 
-    lsdef -t osimage rhels7-x86_64-install-service -i otherpkglist
-    Object name: rhels7-x86_64-install-service
-         otherpkglist=/opt/xcat/share/xcat/install/rh/service.rhels7.x86_64.otherpkgs.pkglist
+    xCATsn
+    conserver-xcat
+    perl-Net-Telnet
+    perl-Expect
 
-    cat /opt/xcat/share/xcat/install/rh/service.rhels7.x86_64.otherpkgs.pkglist
-       xcat/xcat-core/xCATsn
-       xcat/xcat-dep/rh7/x86_64/conserver-xcat
-       xcat/xcat-dep/rh7/x86_64/perl-Net-Telnet
-       xcat/xcat-dep/rh7/x86_64/perl-Expect
-
-.. note:: You will be installing the xCAT Service Node RPM ``xCATsn`` on the Service Node, not the xCAT Management Node RPM.  Do not install both.
+**Note: you will be installing the xCAT Service Node rpm xCATsn meta-package on the Service Node, not the xCAT Management Node meta-package. Do not install both.**
 
 Update the rhels6 RPM repository (rhels6 only)
 ----------------------------------------------
@@ -87,18 +66,26 @@ Update the rhels6 RPM repository (rhels6 only)
       createrepo \
       -g repodata /98462d05248098ef1724eddb2c0a127954aade64d4bb7d4e693cff32ab1e463c-comps-rhel6-Server.xml
 
-.. note:: You should use ``comps-rhel6-Server.xml`` with its key as the group file.
+**Note:** you should use comps-rhel6-Server.xml with its key as the group file.
 
-Install Service Nodes
----------------------
+Set the node status to ready for installation
+---------------------------------------------
 
-::
+Run nodeset to the osimage name defined in the provmethod attribute on your Service Node. ::
 
-  rinstall <service_node> osimage="<osimagename>"
+  nodeset service osimage="<osimagename>"
 
 For example ::
 
-  rinstall <service_node> osimage="rhels7-x86_64-install-service"
+  nodeset <service_node> osimage="rhels7-x86_64-install-service"
+
+Initialize network boot to install Service Nodes
+------------------------------------------------
+
+::
+
+  rsetboot <service_node> net
+  rpower <service_node> boot
 
 Monitor the Installation
 ------------------------
@@ -109,22 +96,27 @@ Watch the installation progress using either wcons or rcons: ::
     rcons <node_name>
     tail -f /var/log/messages
 
-.. note:: We have experienced one problem while trying to install RHEL6 diskful Service Node working with SAS disks. The Service Node cannot reboots from SAS disk after the RHEL6 operating system has been installed. We are waiting for the build with fixes from RHEL6 team, once meet this problem, you need to manually select the SAS disk to be the first boot device and boots from the SAS disk.
+Note: We have experienced one problem while trying to install RHEL6 diskful
+Service Node working with SAS disks. The Service Node cannot reboots from SAS
+disk after the RHEL6 operating system has been installed. We are waiting for
+the build with fixes from RHEL6 team, once meet this problem, you need to
+manually select the SAS disk to be the first boot device and boots from the
+SAS disk.
 
-Update Service Node Diskful Image
----------------------------------
+Update Service Node Diskfull Image
+----------------------------------
 
-To update the xCAT software on the Service Node:
+To update the xCAT software on the Service Node: 
 
 #. Remove previous xcat-core, xcat-dep, and tar files in the NFS mounted ``/install/post/otherpkgs/`` directory: ::
-
+    
     rm /install/post/otherpkgs/<os>/<arch>/xcat/xcat-core
     rm /install/post/otherpkgs/<os>/<arch>/xcat/xcat-dep
     rm /install/post/otherpkgs/<os>/<arch>/xcat/<xcat-core.tar>
     rm /install/post/otherpkgs/<os>/<arch>/xcat/<xcat-dep.tar>
 
 #. Download the desired tar files from xcat.org on to the Management Node, and untar them in the same NFS mounted ``/install/post/otherpkgs/`` directory: ::
-
+ 
     cd /install/post/otherpkgs/<os>/<arch>/xcat/
     tar jxvf <new-xcat-core.tar>
     tar jxvf <new-xcat-dep.tar>

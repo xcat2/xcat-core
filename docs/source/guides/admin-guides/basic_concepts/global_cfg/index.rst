@@ -9,8 +9,13 @@ This section only presents some key global configurations, for the complete refe
 Database Attributes
 -------------------
 
+<<<<<<< HEAD
 * excludenodes:
   A set of comma separated nodes and/or groups that would automatically be subtracted from any noderange, it can be used for excluding some failed nodes from any xCAT command. See :doc:`noderange </guides/admin-guides/references/man3/noderange.3>` for details on supported formats.
+=======
+* excludenodes: 
+  A set of comma separated nodes and/or groups that would automatically be subtracted from any noderange, it can be used for excluding some failed nodes from any xCAT command. See :doc:`noderange </guides/admin-guides/references/man3/noderange>` for details on supported formats.
+>>>>>>> upstream
 
 * nodestatus:
   If set to ``n``, the ``nodelist.status`` column will not be updated during the node deployment, node discovery and power operations. The default is to update.
@@ -98,7 +103,11 @@ Remoteshell Attributes
 Services Attributes
 -------------------
 
+<<<<<<< HEAD
 * consoleondemand:
+=======
+* consoleondemand:  
+>>>>>>> upstream
   When set to ``yes``, conserver connects and creates the console output only when the user opens the console. Default is ``no`` on Linux, ``yes`` on AIX.
 
 * timezone:
@@ -107,7 +116,11 @@ Services Attributes
 * tftpdir:
   tftp directory path. Default is /tftpboot.
 
+<<<<<<< HEAD
 * tftpflags:
+=======
+* tftpflags:  
+>>>>>>> upstream
   The flags used to start tftpd. Default is ``-v -l -s /tftpboot -m /etc/tftpmapfile4xcat.conf`` if ``tftplfags`` is not set.
 
 
@@ -121,7 +134,11 @@ Virtualization Attributes
 xCAT Daemon attributes
 ----------------------
 
+<<<<<<< HEAD
 * xcatdport:
+=======
+* xcatdport:  
+>>>>>>> upstream
   The port used by xcatd daemon for client/server communication.
 
 * xcatiport:

@@ -11,21 +11,33 @@ Currently only the ``bmcsetup`` command is officially supplied by xCAT to run to
 
     runcmd=bmcsetup
 
+<<<<<<< HEAD
 .. note:: The command ``mknb <arch>`` is needed before reboot the node.
+=======
+**Note**: the command ``mknb <arch>`` is needed before reboot the node.
+>>>>>>> upstream
 
 * runimage ::
 
     runimage=<URL>
 
 **URL** is a string which can be run by ``wget`` to download the image from the URL. The example could be: ::
+<<<<<<< HEAD
 
+=======
+  
+>>>>>>> upstream
     runimage=http://<IP of xCAT Management Node>/<dir>/image.tgz
 
 The ``image.tgz`` **must** have the following properties:
   * Created using the ``tar zcvf`` command
   * The tarball must include a ``runme.sh`` script to initiate the execution of the runimage
 
+<<<<<<< HEAD
 To create your own image, reference :ref:`creating image for runimage <create_image_for_runimage>`.
+=======
+To create your own image, please reference :ref:`creating image for runimage <create_image_for_runimage>`. 
+>>>>>>> upstream
 
 **Tip**: You could try to run ``wget http://<IP of xCAT Management Node>/<dir>/image.tgz`` manually to make sure the path has been set correctly.
 
@@ -41,5 +53,9 @@ Causes the genesis kernel to create a shell for the administrator to log in and 
 
 * standby
 
+<<<<<<< HEAD
 Causes the genesis kernel to go into standby and wait for tasks from the chain. ...
+=======
+Causes the genesis kernel to go into standby and wait for tasks from the chain. ... 
+>>>>>>> upstream
 

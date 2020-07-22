@@ -26,8 +26,18 @@ to perform the following node updates:
 =item 1.
 Distribute and synchronize files.
 
+<<<<<<< HEAD
 =item 2.
 Install or update software on diskful nodes.
+=======
+Distribute and synchronize files.  
+
+=item 2
+
+Install or update software on diskful nodes.
+
+=item 3
+>>>>>>> upstream
 
 =item 3.
 Run postscripts.
@@ -76,8 +86,13 @@ Run the B<updatenode> command to update the nodes.
 
 =back
 
+<<<<<<< HEAD
 Files may be distributed and synchronized for both diskless and
 diskful nodes.  Syncing files to NFS-based statelite nodes is not supported.
+=======
+Files may be distributed and synchronized for both diskless and 
+diskful nodes.  Syncing files to NFS-based statelite nodes is not supported. 
+>>>>>>> upstream
 
 More information on using the synchronization file function is in the following document: <https://xcat-docs.readthedocs.io/en/stable/guides/admin-guides/manage_clusters/common/deployment/syncfile/syncfile_updatenode.html>
 

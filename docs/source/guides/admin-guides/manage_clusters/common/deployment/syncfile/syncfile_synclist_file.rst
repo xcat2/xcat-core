@@ -226,7 +226,11 @@ If the provisioning method for the node is `install`, or `netboot` then the path
        <profile>, <os> and <arch> are what you set for the node
 
 For example:
+<<<<<<< HEAD
 The location of synclist file for the diskful installation of RedHat 7.5 with **compute** as the profile ::
+=======
+The location of synclist file for the diskful installation of <os> with 'compute' as the profile ::
+>>>>>>> upstream
 
        /install/custom/install/rh/compute.rhels7.5.synclist
 

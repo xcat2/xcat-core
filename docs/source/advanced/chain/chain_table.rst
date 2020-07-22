@@ -7,8 +7,15 @@ The chain table (``tabdump chain``) is an xCAT database table that holds the cha
  * currchain
  * chain
 
+<<<<<<< HEAD
 To know how are those three attributes used, reference the picture:
 
 .. image:: chain_tasks_logic.png
 
+=======
+To know how are those three attributes used, pls reference the picture: 
+
+.. image:: chain_tasks_logic.png 
+ 
+>>>>>>> upstream
 

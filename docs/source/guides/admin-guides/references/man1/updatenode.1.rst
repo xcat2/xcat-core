@@ -44,6 +44,13 @@ to perform the following node updates:
 1. Distribute and synchronize files.
 
 
+<<<<<<< HEAD
+=======
+2
+ 
+ Install or update software on diskful nodes.
+ 
+>>>>>>> upstream
 
 2. Install or update software on diskful nodes.
 
@@ -93,9 +100,14 @@ The basic process for distributing and synchronizing nodes is:
 
 
 
+<<<<<<< HEAD
 \* Run the \ **updatenode**\  command to update the nodes.
 
 
+=======
+Files may be distributed and synchronized for both diskless and 
+diskful nodes.  Syncing files to NFS-based statelite nodes is not supported.
+>>>>>>> upstream
 
 Files may be distributed and synchronized for both diskless and
 diskful nodes.  Syncing files to NFS-based statelite nodes is not supported.

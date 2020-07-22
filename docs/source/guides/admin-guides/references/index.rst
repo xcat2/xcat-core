@@ -20,7 +20,11 @@ These man pages are auto generated from .pod files to .rst files using the ``cre
 xCAT Tools
 ----------
 
+<<<<<<< HEAD
 *Disclaimer:* **Use at your own risk**
+=======
+*Disclaimer:* **Use at your own risk** 
+>>>>>>> upstream
 
 The following tools are shipped with xCAT and have been contributed by various xCAT community users.  The tools are located under ``/opt/xcat/share/xcat/tools/``.
 

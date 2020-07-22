@@ -93,7 +93,11 @@ Install and Configure the Golden Client
 	
 The Golden Client acts as a regular node for xCAT, it just has some extra rpms to support clone. When you deploy golden client with xCAT, you just need to add a few additional definitions to the image which will be used to deploy golden client.
 
+<<<<<<< HEAD
 For information of how to install a regular node, refer to section :ref:`Diskful Installation <diskful_installation>`
+=======
+For information of how to install a regular node, please refer to section :ref:`Diskful Installation <diskful_installation>`
+>>>>>>> upstream
 
 To support clone, add 'otherpkglist' and 'otherpkgdir' attributes to the image definition which will be used to deploy golden client, then deploy golden client as normal. Once deployed, the golden client will have extra rpms to support cloning. If you have deployed your golden client already, use **updatenode** command to push these extra rpms to golden client. CentOS shares the same pkglist file with RHEL. For example:
 

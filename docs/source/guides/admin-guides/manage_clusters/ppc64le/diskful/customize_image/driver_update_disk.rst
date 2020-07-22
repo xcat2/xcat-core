@@ -33,14 +33,22 @@ For Driver Update Disk
 .. include:: ../../../common/deployment/driver_update_disk.rst
      :start-after: BEGIN_inject_into_initrd__for_diskful_for_DUD
      :end-before: END_inject_into_initrd__for_diskful_for_DUD
+<<<<<<< HEAD
 	
+=======
+	 
+>>>>>>> upstream
 For Driver RPM Packages
 ```````````````````````
 
 .. include:: ../../../common/deployment/driver_update_disk.rst
      :start-after: BEGIN__inject_into_initrd__for_diskful_for_RPM
      :end-before: END_inject_into_initrd__for_diskful_for_RPM
+<<<<<<< HEAD
 	
+=======
+	 
+>>>>>>> upstream
 Notes
 -----
 

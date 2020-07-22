@@ -402,7 +402,11 @@ Configure DRBD
            [>....................] sync'ed:  0.5% (101932/102400)M
            finish: 2:29:06 speed: 11,644 (11,444) K/sec
 
+<<<<<<< HEAD
    If a direct, back-to-back Gigabyte Ethernet connection is setup between the two management nodes and you are unhappy with the synchronization speed, it is possible to speed up the initial synchronization through some tunable parameters in DRBD. This setting is not permanent, and will not be retained after boot. For details, see http://www.drbd.org/users-guide-emb/s-configure-sync-rate.html.  ::
+=======
+   If a direct, back-to-back Gigabyte Ethernet connection is setup between the two management nodes and you are unhappy with the syncronization speed, it is possible to speed up the initial synchronization through some tunable parameters in DRBD. This setting is not permanent, and will not be retained after boot. For details, see http://www.drbd.org/users-guide-emb/s-configure-sync-rate.html.  ::
+>>>>>>> upstream
 
      drbdadm disk-options --resync-rate=110M xCAT
 

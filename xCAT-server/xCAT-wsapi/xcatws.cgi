@@ -1652,8 +1652,13 @@ sub defout {
                     $nodename = $1;
                 }
             }
+<<<<<<< HEAD
             else {                      # just an attribute of the current node
                 if (!$nodename) { error('improperly formatted lsdef output from xcatd', $STATUS_TEAPOT); }
+=======
+            else {      # just an attribute of the current node
+                if (! $nodename) { error('improperly formatted lsdef output from xcatd', $STATUS_TEAPOT); }
+>>>>>>> upstream
                 my ($attr, $val) = $l =~ /^\s*(\S+?)=(.*)$/;
                 if (!defined($attr)) { error('improperly formatted lsdef output from xcatd', $STATUS_TEAPOT); }
                 if ((defined($generalparams->{ver}) && $generalparams->{ver} eq '1.0') ||

@@ -68,6 +68,13 @@ OpenPOWER OpenBMC specific :
 \ **rflash**\  \ *noderange*\  \ *image_id*\  {[\ **-a | -**\ **-activate**\ ] | [\ **-**\ **-delete**\ ]}
 
 
+OpenPOWER BMC specific:
+=======================
+
+
+\ **rflash**\  \ *noderange*\  \ *hpm file path*\  [\ **-c**\ |\ **--check**\ ]
+
+
 
 *******************
 \ **Description**\ 
@@ -115,21 +122,37 @@ PPC (using Direct FSP Management) specific:
 
 In currently Direct FSP/BPA Management, our \ **rflash**\  doesn't support \ **concurrent**\  value of \ **-**\ **-activate**\  flag, and supports \ **disruptive**\  and \ **deferred**\ . The \ **disruptive**\  option will cause any affected systems that are powered on to be powered down before installing and activating the update. So we require that the systems should be powered off before do the firmware update.
 
+<<<<<<< HEAD
 The \ **deferred**\  option will load the new firmware into the T (temp) side, but will not activate it like the disruptive firmware. The customer will continue to run the Frames and CECs working with the P (perm) side and can wait for a maintenance window where they can activate and boot the Frame/CECs with new firmware levels. Refer to the doc to get more details: XCAT_Power_775_Hardware_Management
+=======
+The \ **deferred**\  option will load the new firmware into the T (temp) side, but will not activate it like the disruptive firmware. The customer will continue to run the Frames and CECs working with the P (perm) side and can wait for a maintenance window where they can activate and boot the Frame/CECs with new firmware levels. Refer to the doc to get more details:
+  XCAT_Power_775_Hardware_Management
+>>>>>>> upstream
 
 In Direct FSP/BPA Management, there is \ **-d**\  \ *data_directory*\  option. The default value is /tmp. When doing firmware update, \ **rflash**\  will put some related data from rpm packages in <data_directory> directory, so the execution of \ **rflash**\  will require available disk space in <data_directory> for the command to properly execute:
 
+<<<<<<< HEAD
 For one GFW rpm package and one power code rpm package, if the GFW rpm package size is gfw_rpmsize, and the Power code rpm package size is power_rpmsize, it requires that the available disk space should be more than: 1.5\*gfw_rpmsize + 1.5\*power_rpmsize
+=======
+For one GFW rpm package and one power code rpm package , if the GFW rpm package size is gfw_rpmsize, and the Power code rpm package size is power_rpmsize, it requires that the available disk space should be more than: 
+  1.5\*gfw_rpmsize + 1.5\*power_rpmsize
+>>>>>>> upstream
 
 For Power 775, the \ **rflash**\  command takes effect on the primary and secondary FSPs or BPAs almost in parallel.
 
+<<<<<<< HEAD
 For more details about the Firmware Update using Direct FSP/BPA Management, refer to: XCAT_Power_775_Hardware_Management#Updating_the_BPA_and_FSP_firmware_using_xCAT_DFM
+=======
+For more details about the Firmware Update using Direct FSP/BPA Management, refer to:
+  XCAT_Power_775_Hardware_Management#Updating_the_BPA_and_FSP_firmware_using_xCAT_DFM
+>>>>>>> upstream
 
 
 NeXtScale FPC specific:
 =======================
 
 
+<<<<<<< HEAD
 The command will update firmware for NeXtScale FPC when given an FPC node and the http information needed to access the firmware. The http information required includes both the MN IP address as well as the directory containing the firmware. It is recommended that the firmware be downloaded and placed in the /install directory structure as the xCAT MN /install directory is configured with the correct permissions for http.  Refer to the doc to get more details: XCAT_NeXtScale_Clusters
 
 
@@ -175,6 +198,17 @@ This option steamlines the update, activate, reboot BMC and reboot HOST procedur
 \ **-**\ **-delete**\ :
 
 This delete option will delete update image from BMC. It expects an ID as the input.
+=======
+The command will update firmware for NeXtScale FPC when given an FPC node and the http information needed to access the firmware. The http imformation required includes both the MN IP address as well as the directory containing the firmware. It is recommended that the firmware be downloaded and placed in the /install directory structure as the xCAT MN /install directory is configured with the correct permissions for http.  Refer to the doc to get more details:
+ XCAT_NeXtScale_Clusters
+>>>>>>> upstream
+
+
+OpenPOWER specific:
+===================
+
+
+The command will update firmware for OpenPOWER BMC when given an OpenPOWER node and the hpm1 formatted file path.
 
 
 
@@ -190,6 +224,7 @@ This delete option will delete update image from BMC. It expects an ID as the in
  
 
 
+<<<<<<< HEAD
 \ **-c|-**\ **-check**\ 
  
  Check the firmware version of BMC and an update file.
@@ -197,6 +232,15 @@ This delete option will delete update image from BMC. It expects an ID as the in
 
 
 \ **-p**\  \ *directory*\ 
+=======
+\ **-c|--check**\ 
+ 
+ Chech the firmware version of BMC and HPM file.
+ 
+
+
+\ **-p directory**\ 
+>>>>>>> upstream
  
  Specifies the directory where the packages are located.
  
@@ -337,6 +381,7 @@ This delete option will delete update image from BMC. It expects an ID as the in
  
 
 
+<<<<<<< HEAD
 5. To update the firmware on OpenPOWER machine specify the node name and the file path of the HPM firmware file as follows:
  
  
@@ -346,10 +391,16 @@ This delete option will delete update image from BMC. It expects an ID as the in
  
  
  Print verbose message to rflash log file (/var/log/xcat/rflash/fs3.log) when updading firmware:
+=======
+5
+ 
+ To update the firmware on OpenPOWER machine specify the node name and the file path of the HPM firmware file as follows:
+>>>>>>> upstream
  
  
  .. code-block:: perl
  
+<<<<<<< HEAD
    rflash fs3 /firmware/8335_810.1543.20151021b_update.hpm -V
  
  
@@ -371,6 +422,9 @@ This delete option will delete update image from BMC. It expects an ID as the in
  .. code-block:: perl
  
    rflash p9euh02 -a /tmp/witherspoon.pnor.squashfs.tar
+=======
+   rflash fs3 /firmware/8335_810.1543.20151021b_update.hpm
+>>>>>>> upstream
  
  
 

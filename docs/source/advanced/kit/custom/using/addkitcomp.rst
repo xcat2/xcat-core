@@ -63,4 +63,8 @@ If the kit does contain a deployment parameter file, the contents of the file wi
   addkitcomp -i <image> <kitcomponent name>
   vi /install/osimages/<image>/kits/KIT_DEPLOY_PARAMS.otherpkgs.pkglist
 
+<<<<<<< HEAD:docs/source/advanced/kit/custom/using/addkitcomp.rst
 NOTE: Be sure to know how changing any kit deployment parameters will impact the install of the product into the OS image. Many parameters include settings for automatic license acceptance and other controls to ensure proper unattended installs into a diskless image or remote installs into a diskful node. Changing these values will cause problems with genimage, updatenode, and other xCAT deployment commands.
+=======
+NOTE: Please be sure to know how changing any kit deployment parameters will impact the install of the product into the OS image. Many parameters include settings for automatic license acceptance and other controls to ensure proper unattended installs into a diskless image or remote installs into a diskful node. Changing these values will cause problems with genimage, updatenode, and other xCAT deployment commands.
+>>>>>>> upstream:docs/source/advanced/kit/addkitcomp.rst

@@ -131,6 +131,7 @@ Output is similar to:
 Output is similar to:
 
 
+<<<<<<< HEAD
 .. code-block:: perl
 
   kitcomponents comp-test1-1.0-1-rhels-6.2-ppc64 were removed from osimage rhels6.2-ppc64-netboot-compute successfully
@@ -142,6 +143,9 @@ Output is similar to:
 .. code-block:: perl
 
   rmkitcomp -u -i rhels6.2-ppc64-netboot-compute comp-test1-1.0-1-rhels-6.2-ppc64
+=======
+3. To remove a kit component from osimage and also remove the kit component meta RPM and package RPM.  So in next genimage for statelss image and updatenode for stateful nodes, the kit component meta RPM and package RPM will be uninstalled.
+>>>>>>> upstream
 
 
 Output is similar to:

@@ -175,7 +175,11 @@ group Attributes:
 
 \ **chain**\  (chain.chain)
  
+<<<<<<< HEAD
  A comma-delimited chain of actions to be performed automatically when this node is discovered for the first time.  (xCAT and the DHCP server do not recognize the MAC address of the node when xCAT initializes the discovery process.)  The last step in this process is to run the operations listed in the chain attribute, one by one.  Valid values:  boot, runcmd=<cmd>, runimage=<URL>, shell, standby. For example, to have the genesis kernel pause to the shell, use chain=shell.
+=======
+ A comma-delimited chain of actions to be performed automatically when this node is discovered. ("Discovered" means a node booted, but xCAT and DHCP did not recognize the MAC of this node. In this situation, xCAT initiates the discovery process, the last step of which is to run the operations listed in this chain attribute, one by one.) Valid values:  boot, runcmd=<cmd>, runimage=<URL>, shell, standby. (Default - same as no chain - it will do only the discovery.).  Example, for BMC machines use: runcmd=bmcsetup,shell.
+>>>>>>> upstream
  
 
 
@@ -829,13 +833,21 @@ group Attributes:
 
 \ **postbootscripts**\  (postscripts.postbootscripts)
  
+<<<<<<< HEAD
  Comma separated list of scripts that should be run on this node after diskful installation or diskless boot. Each script can take zero or more parameters. For example: "script1 p1 p2,script2,...". On AIX these scripts are run during the processing of /etc/inittab.  On Linux they are run at the init.d time. xCAT automatically adds the scripts in the xcatdefaults.postbootscripts attribute to run first in the list. Please note that the postbootscripts specified for "xcatdefaults" will be assigned to node automatically, they can not be removed from "postbootscripts" attribute of a node with "chdef -m" command
+=======
+ Comma separated list of scripts that should be run on this node after diskful installation or diskless boot. Each script can take zero or more parameters. For example: "script1 p1 p2,script2,...". On AIX these scripts are run during the processing of /etc/inittab.  On Linux they are run at the init.d time. xCAT automatically adds the scripts in the xcatdefaults.postbootscripts attribute to run first in the list.
+>>>>>>> upstream
  
 
 
 \ **postscripts**\  (postscripts.postscripts)
  
+<<<<<<< HEAD
  Comma separated list of scripts that should be run on this node after diskful installation or diskless boot. Each script can take zero or more parameters. For example: "script1 p1 p2,script2,...". xCAT automatically adds the postscripts from  the xcatdefaults.postscripts attribute of the table to run first on the nodes after install or diskless boot. For installation of RedHat, CentOS, Fedora, the scripts will be run before the reboot. For installation of SLES, the scripts will be run after the reboot but before the init.d process. For diskless deployment, the scripts will be run at the init.d time, and xCAT will automatically add the list of scripts from the postbootscripts attribute to run after postscripts list. For installation of AIX, the scripts will run after the reboot and acts the same as the postbootscripts attribute.  For AIX, use the postbootscripts attribute. Please note that the postscripts specified for "xcatdefaults" will be assigned to node automatically, they can not be removed from "postscripts" attribute of a node with "chdef -m" command
+=======
+ Comma separated list of scripts that should be run on this node after diskful installation or diskless boot. Each script can take zero or more parameters. For example: "script1 p1 p2,script2,...". xCAT automatically adds the postscripts from  the xcatdefaults.postscripts attribute of the table to run first on the nodes after install or diskless boot. For installation of RedHat, CentOS, Fedora, the scripts will be run before the reboot. For installation of SLES, the scripts will be run after the reboot but before the init.d process. For diskless deployment, the scripts will be run at the init.d time, and xCAT will automatically add the list of scripts from the postbootscripts attribute to run after postscripts list. For installation of AIX, the scripts will run after the reboot and acts the same as the postbootscripts attribute.  For AIX, use the postbootscripts attribute. Support will be added in the future for  the postscripts attribute to run the scripts before the reboot in AIX.
+>>>>>>> upstream
  
 
 

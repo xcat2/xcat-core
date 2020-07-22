@@ -12,4 +12,8 @@ The **chain** mechanism is implemented in xCAT genesis system. The genesis is a 
     chain_tasks.rst
     run_tasks_during_discovery.rst
     run_tasks_to_configure.rst
+<<<<<<< HEAD
 
+=======
+     
+>>>>>>> upstream

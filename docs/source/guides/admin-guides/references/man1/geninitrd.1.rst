@@ -34,9 +34,15 @@ Generate the initrd for the osimage: \ **imagename**\  which is an xCAT object o
 \ **Diskful Osimage**\ 
 
 
+<<<<<<< HEAD
 If the \ **imagename**\  is a stateful one (The provmethod attribute for the osimage is 'install'),
 this command is used to rebuild the initrd to inject the new drivers from driver rpms or
 'update distro' and copy the rebuilt initrd and new kernel (If there's new kernel in 'update
+=======
+If the \ **imagename**\  is a stateful one (The provmethod attribute for the osimage is 'install'), 
+this command is used to rebuild the initrd to inject the new drivers from driver rpms or 
+'update distro' and copy the rebuilt initrd and new kernel (If there's new kernel in 'update 
+>>>>>>> upstream
 distro') to the directory \ */tftpboot/xcat/<imagename*\ >.
 
 If the initrd has been rebuilt by geninitrd, when run nodeset, the \ *--noupdateinitrd*\  option

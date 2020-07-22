@@ -6,9 +6,13 @@ Advanced Topics
 
    chain/index.rst
    cluster_maintenance/index.rst
+<<<<<<< HEAD
    migration/index.rst
    confluent/index.rst
    goconserver/index.rst
+=======
+   confluent/index.rst
+>>>>>>> upstream
    docker/index.rst
    domain_name_resolution/index.rst
    gpu/index.rst
@@ -25,6 +29,10 @@ Advanced Topics
    security/index.rst
    performance_tuning/index.rst
    softlayer/index.rst
+<<<<<<< HEAD
+=======
+   switches/index.rst
+>>>>>>> upstream
    sysclone/index.rst
    zones/index.rst
    xcat-inventory/index.rst

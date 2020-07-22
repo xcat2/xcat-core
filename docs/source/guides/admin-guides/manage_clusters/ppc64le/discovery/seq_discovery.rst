@@ -18,6 +18,7 @@ Predefine a group of nodes with desired IP address for host and IP address for F
     nodeadd cn1 groups=powerLE,all
     chdef cn1 mgt=ipmi cons=ipmi ip=10.0.101.1 bmc=50.0.101.1 netboot=petitboot installnic=mac primarynic=mac
 
+<<<<<<< HEAD
 **[Optional]** If more configuration planed to be done on BMC, the following command is also needed. ::
 
     chdef cn1 bmcvlantag=<vlanid>                 # tag VLAN ID for BMC
@@ -42,6 +43,12 @@ Set the target `osimage` into the chain table to automatically provision the ope
 
 For more information about chain, refer to :doc:`Chain <../../../../../advanced/chain/index>`
 
+=======
+In order to do BMC configuration during the discovery process, set ``runcmd=bmcsetup``. For more info about chain, please refer to :doc:`Chain <../../../../../advanced/chain/index>`   ::
+
+    chdef cn1 chain="runcmd=bmcsetup"
+
+>>>>>>> upstream
 Initialize the discovery process
 ````````````````````````````````
 

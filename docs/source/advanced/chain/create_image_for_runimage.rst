@@ -14,7 +14,11 @@ How to prepare a image for ``runimage`` in ``chain``
     * go to the directory and run `tar -zcvf <image> .`
 
 * Example
+<<<<<<< HEAD
     In the example, it shows how to install an independent pkg a.rpm
+=======
+    In the example, it shows how to install an independent pkg a.rpm 
+>>>>>>> upstream
 
     * Create the directory for the image: ::
 
@@ -29,7 +33,11 @@ How to prepare a image for ``runimage`` in ``chain``
 
          cat runme.sh
          echo "start installing a.rpm"
+<<<<<<< HEAD
          rpm -ivh a.rpm
+=======
+         rpm -ivh a.rpm  
+>>>>>>> upstream
 
     * modify the runme.sh script permission: ::
 

@@ -29,7 +29,11 @@ DESCRIPTION
 ***********
 
 
+<<<<<<< HEAD
 The \ **imgexport**\  command will export an image that is being used by xCAT.  To export images, you must have the images defined in the \ *osimage*\  table. All the columns in the \ *osimage*\  and \ *linuximage*\  tables will be exported. If kits are used in stateful or stateless images, \ *kit*\ , \ *kitcomponent*\  and \ *kitrepo*\  tables will be exported. In addition, the following files will also be exported.
+=======
+The imgexport command will export an image that is being used by xCAT.  To export images, you must have the images defined in the \ *osimage*\  table. All the columns in the \ *osimage*\  and \ *linuximage*\  tables will be exported. If kits are used in stateful or stateless images, \ *kit*\ , \ *kitcomponent*\  and \ *kitrepo*\  tables will be exported. In addition, the following files will also be exported.
+>>>>>>> upstream
 
 For stateful:
   x.pkglist

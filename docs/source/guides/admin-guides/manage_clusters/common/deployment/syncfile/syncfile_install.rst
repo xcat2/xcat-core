@@ -15,7 +15,12 @@ Hierarchy and Service Nodes
 
 If using Service nodes to manage you nodes, you should make sure that the service nodes have been synchronized with the latest files from the Management Node before installing. If you have a group of compute nodes **compute** that are going to be installed that are serviced by SN1, then run the following before the install to sync the current files to SN1.:: 
 
+<<<<<<< HEAD
   updatenode compute -f
+=======
+Diskful installation
+~~~~~~~~~~~~~~~~~~~~
+>>>>>>> upstream
 
 .. note:: ``updatenode`` will figure out which service nodes need updating.
 
@@ -35,7 +40,13 @@ Make sure your **postscripts** table has the syncfiles postscript listed::
 Diskless Installation
 ~~~~~~~~~~~~~~~~~~~~~
 
+<<<<<<< HEAD
 The diskless boot is similar with the diskful installation for the synchronizing files operation, except that the ``packimage`` command will sync files to the root directories of image during the creating image process.
+=======
+The diskless boot is similar with the diskful installation for the synchronizing files operation, except that the packimage  commands will sync files to the root directories of image during the creating image process.
+
+Creating the synclist file as the steps in Diskful installation section, then the synced files will be synced to the os image during the packimage and mkdsklsnode commands running.
+>>>>>>> upstream
 
 Creating the synclist file as the steps in Diskful installation section, then the synced files will be synced to the os image during the ``packimage`` and ``mkdsklsnode`` commands running.
 

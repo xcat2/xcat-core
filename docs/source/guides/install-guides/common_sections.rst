@@ -1,10 +1,14 @@
 
 .. BEGIN_see_release_notes
 
+<<<<<<< HEAD
 For the current list of operating systems supported and verified by the development team for the different releases of xCAT, see the :doc:`xCAT2 Release Notes </overview/xcat2_release>`.
 
 **Disclaimer** These instructions are intended to only be guidelines and specific details may differ slightly based on the operating system version.  Always refer to the operating system documentation for the latest recommended procedures.
 
+=======
+For the current list of operating systems supported and verified by the development team for the different releases of xCAT, see the :doc:`xCAT2 Release Notes </overview/xcat2_release>`. 
+>>>>>>> upstream
 
 .. END_see_release_notes
 

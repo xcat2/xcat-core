@@ -79,9 +79,15 @@ If 'osupdatename' is specified, the kernel shipped with the 'osupdatename' will 
 
 Running 'nodeset <nodenrage>' in anyway will load the driver disk
 
+<<<<<<< HEAD
 .. END_inject_into_initrd__for_diskful_for_DUD
 
 .. BEGIN__inject_into_initrd__for_diskful_for_RPM
+=======
+.. END_inject_into_initrd__for_diskful_for_DUD     
+
+.. BEGIN__inject_into_initrd__for_diskful_for_RPM  
+>>>>>>> upstream
 
 There are two ways to inject drivers:
 
@@ -97,7 +103,11 @@ There are two ways to inject drivers:
 **Note:** 'geninitrd' + 'nodeset --noupdateinitrd' is useful when you need to run nodeset frequently for diskful nodes. 'geninitrd' only needs to be run once to rebuild the initrd and 'nodeset --noupdateinitrd' will not touch the initrd and kernel in /tftpboot/xcat/osimage/<osimage name>/.
 
 The option '--ignorekernelchk' is used to skip the kernel version checking when injecting drivers from osimage.driverupdatesrc. To use this flag, you should make sure the drivers in the driver rpms are usable for the target kernel.
+<<<<<<< HEAD
 .. END_inject_into_initrd__for_diskful_for_RPM
+=======
+.. END_inject_into_initrd__for_diskful_for_RPM  
+>>>>>>> upstream
 
 .. BEGIN_inject_into_initrd__for_diskless_for_DUD
 
