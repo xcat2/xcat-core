@@ -64,6 +64,16 @@ check:output=~Provision node\(s\)\: $$CN
 
 cmd:xdsh $$SN "if [[ -f /var/lib/dhcp/db/dhcpd.leases ]]; then cat /var/lib/dhcp/db/dhcpd.leases; elif [[ -f /var/lib/dhcpd/dhcpd.leases ]];then cat /var/lib/dhcpd/dhcpd.leases;elif [[ -f /var/lib/dhcp/dhcpd.leases ]];then cat /var/lib/dhcp/dhcpd.leases; fi"
 
+cmd:xdsh $$SN "cd /install/postscripts; tar cvf /tmp/sn.tar *"
+cmd:xdsh $$SN "scp /tmp/sn.tar $$CN:/tmp"
+cmd:xdsh $$CN "cd /xcatpost; tar cvf /tmp/cn.tar *"
+cmd:xdsh $$CN "mkdir -p /tmp/sn; tar xvf /tmp/sn.tar -C /tmp/sn"
+cmd:xdsh $$CN "mkdir -p /tmp/cn; tar xvf /tmp/cn.tar -C /tmp/cn; rm -f /tmp/cn/mypost*"
+cmd:xdsh $$CN "diff -r /tmp/sn /tmp/cn > /tmp/diff.list"
+check:rc==0
+cmd:xdsh $$CN "cat /tmp/diff.list"
+check:rc==0
+
 cmd:ping $$CN -c 3
 check:rc==0
 check:output=~64 bytes from $$CN
@@ -203,6 +213,9 @@ check:rc==0
 cmd:if [ -x /usr/bin/goconserver ]; then makegocons -d $$CN; else makeconservercf -d $$CN; fi
 cmd:if [[ -f /test.synclist.bak ]] ;then mv -f /test.synclist.bak /test.synclist;else rm -rf /test.synclist;fi
 cmd:chdef -t osimage -o __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute synclists=
+check:rc==0
+cmd:xdsh $$SN "rm /tmp/sn.tar"
+cmd:xdsh $$CN "rm /tmp/cn.tar; rm -fr /tmp/sn; rm -fr /tmp/cn; rm /tmp/diff.list"
 check:rc==0
 
 end
