@@ -260,7 +260,7 @@ elif grep ext4 /proc/filesystems > /dev/null; then
 else
 	FSTYPE=ext3
 fi
-BOOTFSTYPE=ext3
+BOOTFSTYPE=ext4
 EFIFSTYPE=vfat
 msgutil_r "$MASTER_IP" "info" "Found $instdisk, generate partition file..." "/var/log/xcat/xcat.log" "$log_label"
 if [ `uname -m` = "ppc64" ]; then

@@ -7,5 +7,4 @@ This section describes how to configure network adapters with persistent configu
    :maxdepth: 1
 
    cfg_network_adapter.rst
-   cfg_second_adapter.rst
    cfg_routes.rst

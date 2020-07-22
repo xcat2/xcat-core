@@ -2,13 +2,13 @@ start:go_xcat_devel_from_repo
 description:test go-xcat devel on a newly provisioned node
 label:go_xcat
 os:Linux
-#Make sure service node is not off, if it is, power it on
-cmd:if rpower $$SN stat | grep "off"; then rpower $$SN on; sleep 300; fi
-cmd:lsdef $$SN -i status
-check:output=~booted
+
+#Remove compute node reference to service node
+cmd:chdef -t node -o $$CN servicenode= monserver=$$MN nfsserver=$$MN tftpserver=$$MN xcatmaster=$$MN
+check:rc==0
 
 #Provision compute node
-cmd:/opt/xcat/share/xcat/tools/autotest/testcase/commoncmd/retry_install.sh $$CN __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-install-compute
+cmd:/opt/xcat/share/xcat/tools/autotest/testcase/commoncmd/retry_install.sh $$CN __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-install-compute 2
 check:rc==0
 check:output=~Provision node\(s\)\: $$CN
 cmd:lsdef -l $$CN | grep status
@@ -21,12 +21,21 @@ check:rc==0
 #Install additional packages on Red Hat
 cmd:if xdsh $$CN "grep \"Red Hat\" /etc/*release >/dev/null"; then xdsh $$CN "yum install -y yum-utils dnf-utils bzip2"; fi
 
-#Install devel version of xCAT
+#Install additional packages on Ubuntu
+cmd:if xdsh $$CN "grep \"Ubuntu\" /etc/*release >/dev/null"; then xdsh $$CN "DEBIAN_FRONTEND=noninteractive apt-get install -y gnupg"; fi
+
+#Replace sources.list file on Ubuntu
+cmd:if grep Ubuntu /etc/*release;then code=`lsb_release -sc` && xdsh $$CN "scp -r $$MN:/opt/xcat/share/xcat/tools/autotest/testcase/go_xcat/$code-__GETNODEATTR($$CN,arch)__.sources.list /etc/apt/sources.list"; fi
+
+#Set flag to accept install dependent packages by default on Ubuntu
+cmd:if grep Ubuntu /etc/*release;then arc_all=`uname -a`; if [[ $arc_all =~ "x86_64" ]]; then xdsh $$CN "echo '* libraries/restart-without-asking boolean true' | debconf-set-selections"; fi; fi
+
+#Install devel version of xCAT. If first attempt fails, try again
 cmd:xdsh $$CN "cd /; ./go-xcat --xcat-version=devel -y install"
-check:rc==0
-cmd:xdsh $$CN "cat /tmp/go-xcat.log"
-cmd:xdsh $$CN "source /etc/profile.d/xcat.sh;lsxcatd -a"
-check:rc==0
+cmd:version=`xdsh $$CN /opt/xcat/bin/lsxcatd -v`; if [[ $version =~ "Version" ]]; then echo "xCAT installed successfully first time"; else echo "First attempt to install xCAT failed, attempting to install xCAT again"; xdsh $$CN "cd /; ./go-xcat --xcat-version=devel -y install"; fi
+
+cmd:xdsh $$CN "source /etc/profile.d/xcat.sh; lsxcatd -v"
+check:output=~Version
 cmd:xdsh $$CN "service xcatd status"
 check:rc==0
 check:output=~running
@@ -37,13 +46,13 @@ start:go_xcat_stable_from_repo
 description:test go-xcat GA on a newly provisioned node
 label:go_xcat
 os:Linux
-#Make sure service node is not off, if it is, power it on
-cmd:if rpower $$SN stat | grep "off"; then rpower $$SN on; sleep 300; fi
-cmd:lsdef $$SN -i status
-check:output=~booted
+
+#Remove compute node reference to service node
+cmd:chdef -t node -o $$CN servicenode= monserver=$$MN nfsserver=$$MN tftpserver=$$MN xcatmaster=$$MN
+check:rc==0
 
 #Provision compute node
-cmd:/opt/xcat/share/xcat/tools/autotest/testcase/commoncmd/retry_install.sh $$CN __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-install-compute
+cmd:/opt/xcat/share/xcat/tools/autotest/testcase/commoncmd/retry_install.sh $$CN __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-install-compute 2
 check:rc==0
 check:output=~Provision node\(s\)\: $$CN
 cmd:lsdef -l $$CN | grep status
@@ -56,12 +65,21 @@ check:rc==0
 #Install additional packages on Red Hat
 cmd:if xdsh $$CN "grep \"Red Hat\" /etc/*release >/dev/null"; then xdsh $$CN "yum install -y yum-utils dnf-utils bzip2"; fi
 
-#Install GA version of xCAT
+#Install additional packages on Ubuntu
+cmd:if xdsh $$CN "grep \"Ubuntu\" /etc/*release >/dev/null"; then xdsh $$CN "DEBIAN_FRONTEND=noninteractive apt-get install -y gnupg"; fi
+
+#Replace sources.list file on Ubuntu
+cmd:if grep Ubuntu /etc/*release;then code=`lsb_release -sc` && xdsh $$CN "scp -r $$MN:/opt/xcat/share/xcat/tools/autotest/testcase/go_xcat/$code-__GETNODEATTR($$CN,arch)__.sources.list /etc/apt/sources.list"; fi
+
+#Set flag to accept install dependent packages by default on Ubuntu
+cmd:if grep Ubuntu /etc/*release;then arc_all=`uname -a`; if [[ $arc_all =~ "x86_64" ]]; then xdsh $$CN "echo '* libraries/restart-without-asking boolean true' | debconf-set-selections"; fi; fi
+
+#Install GA version of xCAT. If first attempt fails, try again
 cmd:xdsh $$CN "cd /; ./go-xcat -y install"
-check:rc==0
-cmd:xdsh $$CN "cat /tmp/go-xcat.log"
-cmd:xdsh $$CN "source /etc/profile.d/xcat.sh;lsxcatd -a"
-check:rc==0
+cmd:version=`xdsh $$CN /opt/xcat/bin/lsxcatd -v`; if [[ $version =~ "Version" ]]; then echo "xCAT installed successfully first time"; else echo "First attempt to install xCAT failed, attempting to install xCAT again"; xdsh $$CN "cd /; ./go-xcat -y install"; fi
+
+cmd:xdsh $$CN "source /etc/profile.d/xcat.sh;lsxcatd -v"
+check:output=~Version
 cmd:xdsh $$CN "service xcatd status"
 check:rc==0
 check:output=~running
@@ -72,13 +90,13 @@ start:go_xcat_stable_from_repo_upgrade
 description:test go-xcat GA on a newly provisioned node upgrade to devel
 label:go_xcat
 os:Linux
-#Make sure service node is not off, if it is, power it on
-cmd:if rpower $$SN stat | grep "off"; then rpower $$SN on; sleep 300; fi
-cmd:lsdef $$SN -i status
-check:output=~booted
+
+#Remove compute node reference to service node
+cmd:chdef -t node -o $$CN servicenode= monserver=$$MN nfsserver=$$MN tftpserver=$$MN xcatmaster=$$MN
+check:rc==0
 
 #Provision compute node
-cmd:/opt/xcat/share/xcat/tools/autotest/testcase/commoncmd/retry_install.sh $$CN __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-install-compute
+cmd:/opt/xcat/share/xcat/tools/autotest/testcase/commoncmd/retry_install.sh $$CN __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-install-compute 2
 check:rc==0
 check:output=~Provision node\(s\)\: $$CN
 cmd:lsdef -l $$CN | grep status
@@ -91,21 +109,30 @@ check:rc==0
 #Install additional packages on Red Hat
 cmd:if xdsh $$CN "grep \"Red Hat\" /etc/*release >/dev/null"; then xdsh $$CN "yum install -y yum-utils dnf-utils bzip2"; fi
 
-#Install GA version of xCAT
+#Install additional packages on Ubuntu
+cmd:if xdsh $$CN "grep \"Ubuntu\" /etc/*release >/dev/null"; then xdsh $$CN "DEBIAN_FRONTEND=noninteractive apt-get install -y gnupg"; fi
+
+#Replace sources.list file on Ubuntu
+cmd:if grep Ubuntu /etc/*release;then code=`lsb_release -sc` && xdsh $$CN "scp -r $$MN:/opt/xcat/share/xcat/tools/autotest/testcase/go_xcat/$code-__GETNODEATTR($$CN,arch)__.sources.list /etc/apt/sources.list"; fi
+
+#Set flag to accept install dependent packages by default on Ubuntu
+cmd:if grep Ubuntu /etc/*release;then arc_all=`uname -a`; if [[ $arc_all =~ "x86_64" ]]; then xdsh $$CN "echo '* libraries/restart-without-asking boolean true' | debconf-set-selections"; fi; fi
+
+#Install GA version of xCAT. If first attempt fails, try again
 cmd:xdsh $$CN "cd /; ./go-xcat -y install"
-check:rc==0
-cmd:xdsh $$CN "cat /tmp/go-xcat.log"
-cmd:xdsh $$CN "source /etc/profile.d/xcat.sh;lsxcatd -a"
-check:rc==0
+cmd:version=`xdsh $$CN /opt/xcat/bin/lsxcatd -v`; if [[ $version =~ "Version" ]]; then echo "xCAT installed successfully first time"; else echo "First attempt to install xCAT failed, attempting to install xCAT again"; xdsh $$CN "cd /; ./go-xcat -y install"; fi
+
+cmd:xdsh $$CN "source /etc/profile.d/xcat.sh;lsxcatd -v"
+check:output=~Version
 cmd:xdsh $$CN "service xcatd status"
 check:rc==0
 check:output=~running
 
 #Update to devel version of xCAT
 cmd:xdsh $$CN "cd /; ./go-xcat --xcat-version=devel -y update"
-check:rc==0
-cmd:xdsh $$CN "cat /tmp/go-xcat.log"
-cmd:xdsh $$CN "source /etc/profile.d/xcat.sh;lsxcatd -a"
+cmd:version=`xdsh $$CN /opt/xcat/bin/lsxcatd -v`; if [[ $version =~ "Version" ]]; then echo "xCAT updated successfully first time"; else echo "First attempt to update xCAT failed, attempting to update xCAT again"; xdsh $$CN "cd /; ./go-xcat --xcat-version=devel -y update"; fi
+check:output=~xCAT updated successfully first time|xCAT has been successfully updated
+cmd:xdsh $$CN "source /etc/profile.d/xcat.sh;lsxcatd -v"
 check:rc==0
 cmd:xdsh $$CN "service xcatd status"
 check:rc==0
@@ -117,13 +144,13 @@ start:go_xcat_stable_from_repo_reinstall_devel
 description:test go-xcat GA on a newly provisioned node, remove, install devel
 label:go_xcat
 os:Linux
-#Make sure service node is not off, if it is, power it on
-cmd:if rpower $$SN stat | grep "off"; then rpower $$SN on; sleep 300; fi
-cmd:lsdef $$SN -i status
-check:output=~booted
+
+#Remove compute node reference to service node
+cmd:chdef -t node -o $$CN servicenode= monserver=$$MN nfsserver=$$MN tftpserver=$$MN xcatmaster=$$MN
+check:rc==0
 
 #Provision compute node
-cmd:/opt/xcat/share/xcat/tools/autotest/testcase/commoncmd/retry_install.sh $$CN __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-install-compute
+cmd:/opt/xcat/share/xcat/tools/autotest/testcase/commoncmd/retry_install.sh $$CN __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-install-compute 2
 check:rc==0
 check:output=~Provision node\(s\)\: $$CN
 cmd:lsdef -l $$CN | grep status
@@ -136,12 +163,21 @@ check:rc==0
 #Install additional packages on Red Hat
 cmd:if xdsh $$CN "grep \"Red Hat\" /etc/*release >/dev/null"; then xdsh $$CN "yum install -y yum-utils dnf-utils bzip2"; fi
 
-#Install GA version of xCAT
+#Install additional packages on Ubuntu
+cmd:if xdsh $$CN "grep \"Ubuntu\" /etc/*release >/dev/null"; then xdsh $$CN "DEBIAN_FRONTEND=noninteractive apt-get install -y gnupg"; fi
+
+#Replace sources.list file on Ubuntu
+cmd:if grep Ubuntu /etc/*release;then code=`lsb_release -sc` && xdsh $$CN "scp -r $$MN:/opt/xcat/share/xcat/tools/autotest/testcase/go_xcat/$code-__GETNODEATTR($$CN,arch)__.sources.list /etc/apt/sources.list"; fi
+
+#Set flag to accept install dependent packages by default on Ubuntu
+cmd:if grep Ubuntu /etc/*release;then arc_all=`uname -a`; if [[ $arc_all =~ "x86_64" ]]; then xdsh $$CN "echo '* libraries/restart-without-asking boolean true' | debconf-set-selections"; fi; fi
+
+#Install GA version of xCAT. If first attempt fails, try again
 cmd:xdsh $$CN "cd /; ./go-xcat -y install"
-check:rc==0
-cmd:xdsh $$CN "cat /tmp/go-xcat.log"
-cmd:xdsh $$CN "source /etc/profile.d/xcat.sh;lsxcatd -a"
-check:rc==0
+cmd:version=`xdsh $$CN /opt/xcat/bin/lsxcatd -v`; if [[ $version =~ "Version" ]]; then echo "xCAT installed successfully first time"; else echo "First attempt to install xCAT failed, attempting to install xCAT again"; xdsh $$CN "cd /; ./go-xcat -y install"; fi
+
+cmd:xdsh $$CN "source /etc/profile.d/xcat.sh;lsxcatd -v"
+check:output=~Version
 cmd:xdsh $$CN "service xcatd status"
 check:rc==0
 check:output=~running
@@ -155,8 +191,8 @@ check:output=~could not be found|dead|no such service xcatd
 
 #Install devel version of xCAT
 cmd:xdsh $$CN "cd /; ./go-xcat --xcat-version=devel -y install"
-check:rc==0
-cmd:xdsh $$CN "cat /tmp/go-xcat.log"
+cmd:version=`xdsh $$CN /opt/xcat/bin/lsxcatd -v`; if [[ $version =~ "Version" ]]; then echo "xCAT installed successfully first time"; else echo "First attempt to install xCAT failed, attempting to install xCAT again"; xdsh $$CN "cd /; ./go-xcat -y --xcat-version=devel install"; fi
+check:output=~xCAT installed successfully first time|xCAT has been installed
 cmd:xdsh $$CN "source /etc/profile.d/xcat.sh;lsxcatd -a"
 check:rc==0
 cmd:xdsh $$CN "service xcatd status"

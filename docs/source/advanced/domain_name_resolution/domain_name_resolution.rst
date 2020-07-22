@@ -301,7 +301,7 @@ nicips example: ::
 
 NOTE: The management interface **(eth0)**, that the **compute02** IP is configured on, is not included in the list of additional nics. Although adding it to the list of nics would do no harm.
 
-This **nicips** value indicates that there are two additional interfaces to be configured on node compute02,eth1 and eth2. The **eth1** interface will get the IP address **11.10.1.2**. The **eth2** interface will get two IP addresses, **"80.0.0.2" and "70.0.0.2"**.
+This **nicips** value indicates that there are two additional interfaces to be configured on node compute02, eth1 and eth2. The **eth1** interface will get the IP address **11.10.1.2**. The **eth2** interface will get two IP addresses, **"80.0.0.2" and "70.0.0.2"**.
 
 nichostnamesuffixes example: ::
 
@@ -329,7 +329,7 @@ nicnetworks example: ::
 
     chdef -t node -o compute02 nicnetworks.eth1=clstrnet11 nicnetworks.eth2='clstrnet80|clstrnet-lab'
 
-In this example we are saying that the IP address of "eth0" (ie. compute02-eth1 -> 11.10.1.2) is part of the xCAT network named **"clstrnet11"**. **"compute02-eth2"** is in network **"clstrnet80"** and **"compute02-eth2-lab"** is in **"clstrnet-lab"**.
+In this example we are saying that the IP address of **"eth1"** (ie. compute02-eth1 -> 11.10.1.2) is part of the xCAT network named **"clstrnet11"**. **"compute02-eth2"** is in network **"clstrnet80"** and **"compute02-eth2-lab"** is in **"clstrnet-lab"**.
 
 By default the xCAT code will attempt to match the interface IP to one of the xCAT network definitions.
 

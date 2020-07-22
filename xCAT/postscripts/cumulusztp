@@ -161,7 +161,7 @@ echo './enablesnmp' >> ./mypostscript
 #config base interface
 echo './configinterface' >> ./mypostscript
 #config static ip address for mgt interface
-echo './confignics -s' >> ./mypostscript
+echo './confignetwork -s' >> ./mypostscript
 chmod 700 ./mypostscript
 ./mypostscript
 rc=$?

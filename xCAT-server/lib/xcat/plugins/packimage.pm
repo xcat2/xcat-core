@@ -573,24 +573,27 @@ sub process_request {
         chmod 0644, "$destdir/rootimg.$suffix";
         umask $oldmask;
     } elsif ($method =~ /squashfs/) {
-        my $flags;
-        if ($arch =~ /x86/) {
-            $flags = "-le";
-        } elsif ($arch =~ /ppc/) {
-            $flags = "-be";
-        }
-
-        if ($osver =~ /rhels/ && $osver !~ /rhels5/) {
-            $flags = "";
+        my $flags = "";
+        if ($osver =~ /rhels5/) {
+            if ($arch =~ /x86/) {
+                $flags = "-le";
+            } elsif ($arch =~ /ppc/) {
+                $flags = "-be";
+            }
         }
 
         if (!-x "/sbin/mksquashfs" && !-x "/usr/bin/mksquashfs") {
-            $callback->({ error => ["mksquashfs not found, squashfs-tools rpm should be installed on the management node"], errorcode => [1] });
+            if ($osver =~ /sle/) {
+                $callback->({ error => ["mksquashfs not found, squashfs rpm should be installed on the management node"], errorcode => [1] });
+            } else {
+                $callback->({ error => ["mksquashfs not found, squashfs-tools rpm should be installed on the management node"], errorcode => [1] });
+            }
             return 1;
         }
-        my $rc = system("mksquashfs $temppath ../rootimg.sfs $flags");
+        my $mksquashfs_command = "mksquashfs $temppath ../rootimg.sfs $flags";
+        my $rc = system("$mksquashfs_command");
         if ($rc) {
-            $callback->({ error => ["mksquashfs could not be run successfully"], errorcode => [1] });
+            $callback->({ error => ["Command \"$mksquashfs_command\" failed"], errorcode => [1] });
             return 1;
         }
         $rc = system("rm -rf $temppath");

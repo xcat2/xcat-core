@@ -123,7 +123,7 @@ sub ximport {
         'R|remotehost=s'  => \$remoteHost,
         'p|postscripts=s' => \$nodes,
         'f|profile=s'     => \$new_profile,
-        'n|nozip' => \$nozip
+        'n|nozip'         => \$nozip
     );
 
     if ($help) {
@@ -131,8 +131,14 @@ sub ximport {
         return;
     }
 
-    # first extract the bundle
-    extract_bundle($request, $callback, $nodes, $new_profile, $remoteHost, $nozip );
+    if ($#ARGV == -1) {
+        # if no arguments left after processing the options, then bundle name is missing
+        $xusage->(1);
+    } else {
+        # first extract the bundle
+        my $bundle = shift @ARGV;
+        extract_bundle($request, $callback, $bundle, $nodes, $new_profile, $remoteHost, $nozip );
+    }
 
 }
 
@@ -1067,10 +1073,10 @@ sub make_bundle {
         if (defined $remoteHost) {
             my $remoteFile = $remoteHost . ':' . $remoteDest;
 
-            $callback->({ data => ["Moving the image bundle to the remote system location $remoteDest"] });
+            $callback->({ data => ["Moving the image bundle to the remote system location $remoteFile"] });
             $rc = system("/usr/bin/scp -B $dest $remoteFile");
             if ($rc) {
-                $callback->({ error => ["Unable to copy the image bundle $bundleName to the remote host"], errorcode => [1] });
+                $callback->({ error => ["Unable to copy the image bundle $bundleName to the remote host (Maybe passwordless ssh was not setup?)"], errorcode => [1] });
             }
         }
     }
@@ -1114,19 +1120,17 @@ sub extract_bundle {
 
     #print Dumper($request);
     my $callback    = shift;
+    my $bundle      = shift;
     my $nodes       = shift;
     my $new_profile = shift;
     my $remoteHost  = shift;
     my $nozip = shift;
 
-    @ARGV = @{ $request->{arg} };
     my $xml;
     my $data;
     my $datas;
     my $error = 0;
     my $bundleCopy;
-
-    my $bundle = shift @ARGV;
 
     # Determine the current working directory.
     my $dir = $request->{cwd};    #getcwd;
@@ -1152,10 +1156,10 @@ sub extract_bundle {
         my $remoteFile = "$remoteHost:$bundle";
         $bundleCopy = `/bin/mktemp $workDir/imgimport.$$.XXXXXX`;
         chomp($bundleCopy);
-        $callback->({ data => ["Obtaining the image bundle from the remote system"] });
+        $callback->({ data => ["Obtaining the image bundle from the remote system $remoteFile"] });
         my $rc = system("/usr/bin/scp -v -B $remoteFile $bundleCopy");
         if ($rc != 0) {
-            $callback->({ error => ["Unable to copy the image bundle $bundle from the remote host"], errorcode => [1] });
+            $callback->({ error => ["Unable to copy the image bundle $bundle from the remote host (Maybe passwordless ssh was not setup?)"], errorcode => [1] });
             $rc = system("rm -rf $bundleCopy");
             if ($rc) {
                 $callback->({ error => ["Failed to remove the local copy of the remote image bundle $bundleCopy"], errorcode => [1] });

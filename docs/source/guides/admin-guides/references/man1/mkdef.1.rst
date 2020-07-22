@@ -29,7 +29,7 @@ DESCRIPTION
 ***********
 
 
-This command is used to create xCAT object definitions which are stored in the xCAT database. If the definition already exists it will return an error message. The force option may be used to re-create a definition.  In this case the old definition will be remove and the new definition will be created.
+The \ **mkdef**\  command is used to create xCAT object definitions which are stored in the xCAT database. If the definition already exists it will return an error message. The \ **-**\ **-force**\  option may be used to re-create a definition.  In this case the old definition will be remove and the new definition will be created.
 
 
 *******
@@ -40,15 +40,15 @@ OPTIONS
 
 \ *attr=val [attr=val ...]*\ 
  
- Specifies one or more "attribute equals value" pairs, separated by spaces. Attr=val pairs must be specified last on the command line. Use the help option to get a list of valid attributes for each object type.
+ Specifies one or more "attribute equals value" pairs, separated by spaces. \ *attr=val*\  pairs must be specified last on the command line. Use the \ **-**\ **-help**\  option to get a list of valid attributes for each object type.
  
- Note: when creating node object definitions, the 'groups' attribute is required.
+ Note: when creating node object definitions, the \ **groups**\  attribute is required.
  
 
 
 \ **-d|-**\ **-dynamic**\ 
  
- Use the dynamic option to create dynamic node groups. This option must be used with -w option.
+ Use the dynamic option to create dynamic node groups. This option must be used with \ **-w**\  option.
  
 
 
@@ -66,7 +66,7 @@ OPTIONS
 
 \ *noderange*\ 
  
- A set of comma delimited node names and/or group names. (must be the first parameter) See the "noderange" man page for details on supported formats.
+ A set of comma delimited node names and/or group names. (must be the first parameter) See the <noderange> man page for details on supported formats.
  
 
 
@@ -78,7 +78,7 @@ OPTIONS
 
 \ **-t**\  \ *object-types*\ 
  
- A set of comma delimited object types.  Use the help option to get a list of valid object types.
+ A set of comma delimited object types.  Use the \ **-**\ **-help**\  option to get a list of valid object types.
  
 
 
@@ -96,30 +96,43 @@ OPTIONS
 
 \ **-w**\  \ *attr==val*\  \ **-w**\  \ *attr=~val*\  ...
  
- Use one or multiple -w flags to specify the selection string that can be used to select objects. The operators ==, !=, =~ and !~ are available. For mkdef command, the -w flag only makes sense for creating dynamic node group. Use the help option to get a list of valid attributes for each object type.
+ Use one or multiple \ **-w**\  flags to specify the selection string that can be used to select objects. The operators \ **==**\ , \ **!=**\ , \ **=~**\  and \ **!~**\  are available. For \ **mkdef**\  command, the \ **-w**\  flag only makes sense for creating dynamic node group. Use the \ **-**\ **-help**\  option to get a list of valid attributes for each object type.
  
  Operator descriptions:
-         ==        Select nodes where the attribute value is exactly this value.
-         !=        Select nodes where the attribute value is not this specific value.
-         =~        Select nodes where the attribute value matches this regular expression.
-         !~        Select nodes where the attribute value does not match this regular expression.
  
- Note: if the "val" fields includes spaces or any other characters that will be parsed by shell, the "attr<operator>val" needs to be quoted. If the operator is "!~", the "attr<operator>val" needs to be quoted using single quote.
+ 
+ \ **==**\         Select nodes where the attribute value is exactly this value.
+ 
+ 
+ 
+ \ **!=**\         Select nodes where the attribute value is not this specific value.
+ 
+ 
+ 
+ \ **=~**\         Select nodes where the attribute value matches this regular expression.
+ 
+ 
+ 
+ \ **!~**\         Select nodes where the attribute value does not match this regular expression.
+ 
+ 
+ 
+ Note: if the "val" field includes spaces or any other characters that will be parsed by shell, the "attr<operator>val" needs to be quoted. If the operator is \ **!~**\ , the "attr<operator>val" needs to be quoted using single quote.
  
 
 
 \ **-z|-**\ **-stanza**\ 
  
- Indicates that the file being piped to the command is in stanza format.  See the xcatstanzafile man page for details on using xCAT stanza files.
+ Indicates that the file being piped to the command is in stanza format.  See the \ **xcatstanzafile**\  man page for details on using xCAT stanza files.
  
 
 
 \ **-u**\ 
  
- Fill in the attributes such as template file, pkglist file and otherpkglist file of osimage object based on the specified parameters. It will search "/install/custom/" directory first, and then "/opt/xcat/share/".
+ Fill in the attributes such as template file, pkglist file and otherpkglist file of osimage object based on the specified parameters. It will search \ **/install/custom/**\  directory first, and then \ **/opt/xcat/share/**\ .
  The \ *provmethod*\  and \ *profile*\  must be specified. If \ *osvers*\  or \ *osarch*\  is not specified, the corresponding value of the management node will be used.
  
- Note: this option only works for objtype \ **osimage**\ .
+ Note: this option only works for object type \ **osimage**\ .
  
 
 
@@ -306,6 +319,18 @@ EXAMPLES
  .. code-block:: perl
  
    mkdef -t node cn2 --template cn1 ip=1.1.1.2 mac=42:3d:0a:05:27:0c
+ 
+ 
+
+
+15.
+ 
+ To create a dynamic group definition based on nodename, which will include all nodes named "fs2vm\*"
+ 
+ 
+ .. code-block:: perl
+ 
+   mkdef -t group mg_vms -d -w node=~"/fs2vm.*"
  
  
 

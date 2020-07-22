@@ -304,8 +304,8 @@ fi
 # Do not even touch rsyslog.conf
 # There is no /etc/sysconfig/rsyslog file, so we use  rsyslogd -v to get the version
 if [ -e "/sbin/rsyslogd" -o -e "/usr/sbin/rsyslogd" ]; then
-    SYSLOGPROD=`rsyslogd -v | grep rsyslogd |awk {'print $1'}`
-    SYSLOGVER=`rsyslogd -v | grep rsyslogd |awk {'print $2'}`
+    SYSLOGPROD=`rsyslogd -v | grep rsyslogd |grep -v PID |awk {'print $1'}`
+    SYSLOGVER=`rsyslogd -v | grep rsyslogd |grep -v PID |awk {'print $2'}`
     if ( pmatch $SYSLOGPROD "*rsyslogd*" ) && ( pmatch $SYSLOGVER "8*" ); then
       config_rsyslog_V8
       #keep a record

@@ -58,10 +58,8 @@ Requires: /usr/bin/ssh
 %if %nots390x
 Requires: /usr/sbin/in.tftpd
 Requires: xCAT-buildkit
-# Stty is only needed for rcons on ppc64 nodes
-%ifarch ppc64
+# Stty is only needed for rcons on ppc64 nodes, but for mixed clusters require it on both x and p
 Requires: perl-IO-Stty
-%endif
 %endif
 %endif
 

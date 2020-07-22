@@ -226,7 +226,7 @@ elif grep ext4 /proc/filesystems > /dev/null; then
 else
 	FSTYPE=ext3
 fi
-BOOTFSTYPE=ext3
+BOOTFSTYPE=ext4
 EFIFSTYPE=vfat
 
 if uname -r|grep -q '^3.*el7'; then

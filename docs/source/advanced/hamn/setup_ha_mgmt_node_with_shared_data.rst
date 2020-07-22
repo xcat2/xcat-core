@@ -499,13 +499,13 @@ The operating system is installed on the internal disks.
 
 #. Create file systems on shared disks
 
-   Run the ``mkfs.ext3`` command on the primary management node to create file systems on the shared disk that will contain the xCAT data. For example: ::
+   Run the ``mkfs.ext4`` command on the primary management node to create file systems on the shared disk that will contain the xCAT data. For example: ::
 
-    mkfs.ext3 -v /dev/sdc1
-    mkfs.ext3 -v /dev/sdc2
-    mkfs.ext3 -v /dev/sdc3
-    mkfs.ext3 -v /dev/sdc4
-    mkfs.ext3 -v /dev/sdc5
+    mkfs.ext4 -v /dev/sdc1
+    mkfs.ext4 -v /dev/sdc2
+    mkfs.ext4 -v /dev/sdc3
+    mkfs.ext4 -v /dev/sdc4
+    mkfs.ext4 -v /dev/sdc5
 
    If you place entries for the disk in ``/etc/fstab``, which is not required, ensure that the entries do not have the system automatically mount the disk.
 

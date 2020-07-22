@@ -62,13 +62,3 @@ check:output=~Usage|usage
 cmd:imgexport --help
 check:output=~Usage|usage
 end
-
-
-start:imgexport_v
-os:Linux
-label:others
-cmd:imgexport -v
-check:output=~version|Version
-cmd:imgexport --version
-check:output=~version|Version
-edn

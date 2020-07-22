@@ -639,7 +639,7 @@ This is an example of the generated postscript for a servicenode install. It is 
     export NETMASK
     GATEWAY=10.2.0.100
     export GATEWAY
-    # NIC related attributes for the node for confignics postscript
+    # NIC related attributes for the node for confignetwork postscript
     NICIPS=""
     export NICIPS
     NICHOSTNAMESUFFIXES=""

@@ -49,14 +49,14 @@ my $bmc_pass;
 my $openbmc_user;
 my $openbmc_pass;
 my $done_num = 0;
-$::P9_WITHERSPOON_MFG_ID     = "42817";
-$::P9_WITHERSPOON_PRODUCT_ID = "16975";
-$::P9_MIHAWK_MFG_ID     = "42817";
-$::P9_MIHAWK_PRODUCT_ID = "1";
+$::P9_AC922_MFG_ID     = "42817"; #Witherspoon
+$::P9_AC922_PRODUCT_ID = "16975";
+$::P9_IC922_MFG_ID     = "42817"; #Mihawk
+$::P9_IC922_PRODUCT_ID = "1";
 $::CHANGE_PW_REQUIRED="The password provided for this account must be changed before access is granted";
 $::NO_SESSION="Unable to establish IPMI v2 / RMCP";
-$::CHANGE_PW_INSTRUCTIONS_1="Run script '/opt/xcat/share/xcat/scripts/BMC_change_password.sh' to change default password";
-$::CHANGE_PW_INSTRUCTIONS_2="Rerun 'bmcdiscover' command with '-p new_bmc_password' flag";
+$::CHANGE_PW_INSTRUCTIONS_1="Rerun 'bmcdiscover' command with '-p default_bmc_password -n new_bmc_password' flag";
+$::PW_PAM_VALIDATION="password value failed PAM validation checks";
 $::NO_MFG_OR_PRODUCT_ID="Zeros returned for Manufacturer id and Product id";
 %::VPDHASH = ();
 my %node_in_list = ();
@@ -203,7 +203,7 @@ sub bmcdiscovery_usage {
     push @{ $rsp->{data} }, "Usage:";
     push @{ $rsp->{data} }, "\tbmcdiscover [-?|-h|--help]";
     push @{ $rsp->{data} }, "\tbmcdiscover [-v|--version]";
-    push @{ $rsp->{data} }, "\tbmcdiscover --range ip_range <ip_range> [--sn <SN_nodename>] [-s <scan_method>] [-u <bmc_user>] [-p <bmc_passwd>] [-z] [-w]\n";
+    push @{ $rsp->{data} }, "\tbmcdiscover --range ip_range <ip_range> [--sn <SN_nodename>] [-s <scan_method>] [-u <bmc_user>] [-p <bmc_passwd>] [-n <new_bmc_passwd>] [-z] [-w]\n";
 
     xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
     return 0;
@@ -248,6 +248,7 @@ sub bmcdiscovery_processargs {
         'check'         => \$::opt_C,
         'bmcuser|u=s'   => \$::opt_U,
         'bmcpasswd|p=s' => \$::opt_P,
+        'newbmcpw|n=s'  => \$::opt_N,
         'ipsource'      => \$::opt_S,
         'version|v'     => \$::opt_v,
         't'             => \$::opt_T,
@@ -749,6 +750,7 @@ sub scan_process {
                 # Set child process default, if not the function runcmd may return error
                 $SIG{CHLD} = 'DEFAULT';
 
+TRY_TO_DISCOVER:
                 my $bmcusername;
                 my $bmcpassword;
                 $bmcusername = "-U $bmc_user" if ($bmc_user);
@@ -767,8 +769,8 @@ sub scan_process {
                     }
                     if ($mc_info =~ /Manufacturer ID\s*:\s*(\d+)\s*Manufacturer Name.+\s*Product ID\s*:\s*(\d+)/) {
                         xCAT::MsgUtils->trace(0, "D", "$log_label Found ${$live_ip}[$i] Manufacturer ID: $1 Product ID: $2");
-                        if (($1 eq $::P9_WITHERSPOON_MFG_ID and $2 eq $::P9_WITHERSPOON_PRODUCT_ID) or 
-                            ($1 eq $::P9_MIHAWK_MFG_ID and $2 eq $::P9_MIHAWK_PRODUCT_ID)) {
+                        if (($1 eq $::P9_AC922_MFG_ID and $2 eq $::P9_AC922_PRODUCT_ID) or 
+                            ($1 eq $::P9_IC922_MFG_ID and $2 eq $::P9_IC922_PRODUCT_ID)) {
                             bmcdiscovery_openbmc(${$live_ip}[$i], $opz, $opw, $request_command,$parent_fd,$2);
                             $is_openbmc = 1;
                             $is_ipmi = 0;
@@ -781,8 +783,8 @@ sub scan_process {
                         }
                         else {
                             # System replied to mc info but not with either 
-                            # $::P9_WITHERSPOON_MFG_ID and $::P9_WITHERSPOON_PRODUCT_ID, or
-                            # $::P9_MIHAWK_MFG_ID and $::P9_MIHAWK_PRODUCT_ID,
+                            # $::P9_AC922_MFG_ID and $::P9_AC922_PRODUCT_ID, or
+                            # $::P9_IC922_MFG_ID and $::P9_IC922_PRODUCT_ID,
                             # assume IPMI
                             $is_openbmc = 0;
                             $is_ipmi = 1;
@@ -804,10 +806,32 @@ sub scan_process {
                         my $redfish_session_cmd = "curl -sD - --data '{\"UserName\":\"$openbmc_user\",\"Password\":\"$openbmc_pass\"}' -k -X POST https://${$live_ip}[$i]/redfish/v1/SessionService/Sessions";
                         my $redfish_session_info = xCAT::Utils->runcmd($redfish_session_cmd, -1);
                         if ($redfish_session_info =~ /$::CHANGE_PW_REQUIRED/) {
-                            # RedFish session replied that password change is needed. Print instructions and exit
+                            # RedFish session replied that password change is needed.
                             xCAT::MsgUtils->message("I", { data => ["${$live_ip}[$i]: $::CHANGE_PW_REQUIRED"] }, $::CALLBACK);
-                            xCAT::MsgUtils->message("I", { data => ["$::CHANGE_PW_INSTRUCTIONS_1"] }, $::CALLBACK);
-                            xCAT::MsgUtils->message("I", { data => ["$::CHANGE_PW_INSTRUCTIONS_2"] }, $::CALLBACK);
+                            if ($::opt_N) {
+                                # New password was passed in, use it to change the default (AC922 or IC922)
+                                my $password_change_cmd = "curl -s -u $openbmc_user:$openbmc_pass --data '{\"Password\":\"$::opt_N\"}' -k -X PATCH https://${$live_ip}[$i]/redfish/v1/AccountService/Accounts/$openbmc_user";
+                                my $password_changed = xCAT::Utils->runcmd($password_change_cmd, -1);
+                                if (! $password_changed) {
+                                    # No output from change password command, assume success
+                                    xCAT::MsgUtils->message("I", { data => ["${$live_ip}[$i]: Password changed."] }, $::CALLBACK);
+                                    $openbmc_pass = $::opt_N; # Set new password
+                                    $bmc_pass = $::opt_N;     # Set new password
+                                    goto TRY_TO_DISCOVER;     # Attempt discover with changed password
+                                }
+                                elsif ($password_changed =~ /$::PW_PAM_VALIDATION/) {
+                                    # Output from change password command indicates pw validation error
+                                    xCAT::MsgUtils->message("I", { data => ["Can not change password - $::PW_PAM_VALIDATION"] }, $::CALLBACK);
+                                }
+                                else {
+                                    # Some unexpected output changing the password - report error and show output
+                                    xCAT::MsgUtils->message("I", { data => ["Unable to change password - $password_changed"] }, $::CALLBACK);
+                                }
+                            }
+                            else {
+                                # New password was not passed in, print instruction message and exit
+                                xCAT::MsgUtils->message("I", { data => ["$::CHANGE_PW_INSTRUCTIONS_1"] }, $::CALLBACK);
+                            }
                         }
                     }
                 }
@@ -1357,7 +1381,11 @@ sub bmcdiscovery_openbmc{
         $node_data .= ",$serial";
         if ($::opt_P) {
             if ($::opt_U) {
-                $node_data .= ",$::opt_U,$::opt_P";
+                if ($::opt_N) {
+                    $node_data .= ",$::opt_U,$::opt_N"; # Display the new changed password
+                } else {
+                    $node_data .= ",$::opt_U,$::opt_P";
+                }
             } else {
                 $node_data .= ",,$::opt_P";
             }

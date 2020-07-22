@@ -429,8 +429,8 @@ if [ "$MODE" = "4" ]; then # for statelite mode
     done
 
     if [ -f /opt/xcat/xcatinfo ]; then
-        SIP=`grep 'XCATSERVER' /opt/xcat/xcatinfo |cut -d= -f2`
-        HTTPPORT=`grep 'HTTPPORT' /opt/xcat/xcatinfo |cut -d= -f2`
+        SIP=`grep 'XCATSERVER' /opt/xcat/xcatinfo |cut -d= -f2 | sed "s/'//g"` 
+        HTTPPORT=`grep 'HTTPPORT' /opt/xcat/xcatinfo |cut -d= -f2 | sed "s/'//g"`
         if [ -n "$SIP" ]; then
             download_postscripts $SIP:${HTTPPORT}
             if [ $? -eq 0 ]; then
@@ -498,8 +498,8 @@ else # for common mode  MODE=1,2,3,5 (updatenode,moncfg,node deployment)
 
         # if not updatenode, then look in xcatinfo for the xcatmaster
         if [ -f /opt/xcat/xcatinfo ]; then
-            SIP=`grep 'XCATSERVER' /opt/xcat/xcatinfo |cut -d= -f2`
-            HTTPPORT=`grep 'HTTPPORT' /opt/xcat/xcatinfo |cut -d= -f2`
+            SIP=`grep 'XCATSERVER' /opt/xcat/xcatinfo |cut -d= -f2 | sed "s/'//g"`
+            HTTPPORT=`grep 'HTTPPORT' /opt/xcat/xcatinfo |cut -d= -f2 | sed "s/'//g"`
             [ -z "$HTTPPORT" ] && HTTPPORT="80" 
             if [ -n "$SIP" ]; then
                 download_postscripts ${SIP}:${HTTPPORT}

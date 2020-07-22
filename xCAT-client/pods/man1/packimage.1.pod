@@ -8,13 +8,13 @@ B<packimage [-h| --help]>
 
 B<packimage  [-v| --version]>
 
-B<packimage> [B<-m>|B<--method> I<cpio|tar>] [B<-c>|B<--compress> I<gzip|pigz|xz>] [B<--nosyncfiles>] I<imagename>
+B<packimage> [B<-m>|B<--method> B<cpio|tar|squashfs>] [B<-c>|B<--compress> B<gzip|pigz|xz>] [B<--nosyncfiles>] I<imagename>
 
 =head1 DESCRIPTION
 
 Packs the stateless image from the chroot file system into a file to be sent to the node for a diskless boot.
 
-Note: For an osimage that is deployed on a cluster, running packimage will overwrite the existing rootimage file and be unavailable to the compute nodes while packimage is running.
+Note: For an osimage that is deployed on a cluster, running B<packimage> will overwrite the existing rootimage file and be unavailable to the compute nodes while B<packimage> is running.
 
 =head1 PARAMETERS
 
@@ -22,17 +22,29 @@ I<imagename> specifies the name of a OS image definition to be used. The specifi
 
 =head1 OPTIONS
 
+=over 10
 
-B<-h>          Display usage message.
+=item B<-h>
 
-B<-v>          Command Version.
+Display usage message.
 
-B<-m| --method>          Archive Method (cpio,tar,squashfs, default is cpio)
+=item B<-v>
 
-B<-c| --compress>          Compress Method (pigz,gzip,xz, default is pigz/gzip)
+Command Version.
 
-B<--nosyncfiles>          Bypass of syncfiles requested, will not sync files to root image directory
+=item B<-m| --method> 
 
+Archive Method (cpio, tar, squashfs (requires overlayFS or aufs modules during provisioning), default is cpio)
+
+=item B<-c| --compress> 
+
+Compress Method (pigz, gzip, xz, default is pigz/gzip)
+
+=item B<--nosyncfiles> 
+
+Bypass of syncfiles requested, will not sync files to root image directory
+
+=back
 
 =head1 RETURN VALUE
 

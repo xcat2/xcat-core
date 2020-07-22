@@ -37,7 +37,7 @@ BuildArch: noarch
 %if %s390x
 Requires: perl-IO-Socket-SSL perl-XML-Simple perl-XML-Parser
 %else
-Requires: perl-IO-Socket-SSL perl-XML-Simple perl-XML-Parser perl-Digest-SHA1 perl(LWP::Protocol::https)
+Requires: perl-IO-Socket-SSL perl-XML-Simple perl-XML-Parser perl-Digest-SHA1 perl(LWP::Protocol::https) perl-XML-LibXML
 %endif
 Obsoletes: atftp-xcat
 %endif
@@ -148,7 +148,7 @@ chmod 644 $RPM_BUILD_ROOT/%{prefix}/share/xcat/ca/*
 cp share/xcat/mypostscript/* $RPM_BUILD_ROOT/%{prefix}/share/xcat/mypostscript
 cp share/xcat/scripts/* $RPM_BUILD_ROOT/%{prefix}/share/xcat/scripts
 cp share/xcat/conf/* $RPM_BUILD_ROOT/%{prefix}/share/xcat/conf
-cp share/xcat/samples/* $RPM_BUILD_ROOT/%{prefix}/share/xcat/samples
+cp -r share/xcat/samples/* $RPM_BUILD_ROOT/%{prefix}/share/xcat/samples
 cp -r share/xcat/tools/* $RPM_BUILD_ROOT/%{prefix}/share/xcat/tools
 cp -r share/xcat/hamn/* $RPM_BUILD_ROOT/%{prefix}/share/xcat/hamn
 cp share/xcat/rollupdate/* $RPM_BUILD_ROOT/%{prefix}/share/xcat/rollupdate

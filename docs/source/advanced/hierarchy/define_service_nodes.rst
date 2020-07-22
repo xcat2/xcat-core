@@ -3,11 +3,15 @@ Define Service Nodes
 
 This next part shows how to configure a xCAT Hierarchy and provision xCAT service nodes from an existing xCAT cluster.
 
+<<<<<<< HEAD
 <<<<<<< HEAD:docs/source/advanced/hierarchy/define_service_nodes.rst
 *The document assumes that the compute nodes that are part of your cluster have already been defined into the xCAT database and you have successfully provisioned the compute nodes using xCAT*
 =======
 *The document assumes that the compute nodes that are part of your cluster have already been defined into the xCAT database and you have successfully provisioned the compute nodes using xCAT* 
 >>>>>>> upstream:docs/source/advanced/hierarchy/define_service_nodes.rst
+=======
+.. note:: The document assumes that the compute nodes that are part of your cluster have already been defined into the xCAT database and you have successfully provisioned the compute nodes using xCAT
+>>>>>>> upstream/master
 
 
 The following table illustrates the cluster being used in this example:
@@ -51,7 +55,7 @@ The following table illustrates the cluster being used in this example:
 
         chdef -t node -o r1n01,r2n01 -p groups=service
 
-#. When ``copycds`` was run against the ISO image, several osimages are created into the ``osimage`` table. The ones named ``*-service`` are provided by easily help provision xCAT service nodes. ::
+#. When ``copycds`` was run against the ISO image, several osimages were created into the ``osimage`` table. The ones named ``*-service`` are provided to easily help provision xCAT service nodes. ::
 
         # lsdef -t osimage | grep rhels7.1
           rhels7.1-ppc64le-install-compute  (osimage)
@@ -73,14 +77,14 @@ The following table illustrates the cluster being used in this example:
 >>>>>>> upstream:docs/source/advanced/hierarchy/define_service_nodes.rst
 
    **Tips/Hint**
-      * Even if you do not want xCAT to configure any services, you must define the service nodes in the ``servicenode`` table with at least one attribute, set to 0, otherwise xCAT will not recognize the node as a service node
+      * Even if you do not want xCAT to configure any services, you must define the service nodes in the ``servicenode`` table with at least one attribute, set to ``0``, otherwise xCAT will not recognize the node as a service node
       * See the ``setup*`` attributes in the node definition man page for the list of available services:  ``man node``
-      * For clusters with subnetted management networks, you might want to set ``setupupforward=1``
+      * For clusters with subnetted management networks, you might want to set ``setupipforward=1``
       * For the ``setupconserver`` attribute, if ``conserver`` is used, set to ``1``, if ``goconserver`` is used, set to ``2``
 
 #. Add additional postscripts for Service Nodes (optional)
 
-   By default, xCAT will execute the ``servicenode`` postscript when installed or diskless booted.  This postscript will set up the necessary credentials and installs the xCAT software on the Service Nodes.  If you have additional postscripts that you want to execute on the service nodes, copy to ``/install/postscripts`` and run the following: ::
+   By default, xCAT will execute the ``servicenode`` postscript when installed or diskless booted.  This postscript will set up the necessary credentials and install the xCAT software on the Service Nodes.  If you have additional postscripts that you want to execute on the service nodes, copy to ``/install/postscripts`` and run the following: ::
 
         chdef -t group -o service -p postscripts=<mypostscript>
 
@@ -91,21 +95,21 @@ The following table illustrates the cluster being used in this example:
    * ``servicenode`` - defines which Service Node the **Management Node** should send commands to (e.g ``xdsh``) and should be set to the hostname or IP address of the service node that the management node can contact it by.
    * ``xcatmaster`` - defines which Service Node the **Compute Node** should boot from and should be set to the hostname or IP address of the service node that the compute node can contact it by.
 
-   You must set both ``servicenode`` and ``xcatmaster`` regardless of whether or not you are using service node pools, for most scenarios, the value will be identical. ::
+   You must set both ``servicenode`` and ``xcatmaster`` regardless of whether or not you are using service node pools. For most scenarios, the value will be identical. ::
 
         chdef -t group -o rack1 servicenode=r1n01 xcatmaster=r1n01
         chdef -t group -o rack2 servicenode=r2n01 xcatmaster=r2n01
 
-#. Set the conserver and monserver attributes
+#. Set the ``conserver`` and ``monserver`` attributes
 
-   Set which service node should run the conserver (console) and monserver (monitoring) daemon for the nodes in the group. The most typical setup is to have the service node also ad as it's conserver and monserver. ::
+   Set which service node should run the conserver (console) and monserver (monitoring) daemon for the nodes in the group. The most typical setup is to have the service node also act as it's conserver and monserver. ::
 
         chdef -t group -o rack1 conserver=r1n01 monserver=r1n01
         chdef -t group -o rack2 conserver=r2n01 monserver=r2n01
 
 #. Choose location of ``/install`` and ``/tftpboot`` directories (optional).
 
-   The ``site`` table attributes ``installloc`` and ``sharedtftp`` control mounting of ``/install`` and ``/tftpboot`` directories from Management Node to Service node.
+   The ``site`` table attributes ``installloc`` and ``sharedtftp`` control mounting of ``/install`` and ``/tftpboot`` directories from Management Node to Service Node.
 
    To mount ``/install`` and ``/tftpboot`` directories from Management node to each Service Node: ::
 

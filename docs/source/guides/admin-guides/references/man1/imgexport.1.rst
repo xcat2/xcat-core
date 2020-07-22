@@ -21,7 +21,7 @@ SYNOPSIS
 
 \ **imgexport [-h| -**\ **-help]**\ 
 
-\ **imgexport**\  \ *image_name*\  [\ *destination*\ ] [[\ **-e | -**\ **-extra**\  \ *file:dir*\ ] ... ] [\ **-p | -**\ **-postscripts**\  \ *node_name*\ ] [\ **-v | -**\ **-verbose**\ ]
+\ **imgexport**\  \ *image_name*\  [\ *destination*\ ] [\ **-e | -**\ **-extra**\  \ *file:dir*\ ] ... ] [\ **-p | -**\ **-postscripts**\  \ *node_name*\ ] [\ **-R | -**\ **-remotehost**\  \ *user@host*\ ] [\ **-v | -**\ **-verbose**\ ]
 
 
 ***********
@@ -94,6 +94,12 @@ OPTIONS
  
 
 
+\ **-R|-**\ **-remotehost**\  \ *user@host*\ 
+ 
+ Export the image to remote host. Passwordless ssh must be setup to the remote host.
+ 
+
+
 \ **-v|-**\ **-verbose**\ 
  
  Verbose output.
@@ -136,7 +142,7 @@ EXAMPLES
   imgexport foo
 
 
-foo.tgz will be built in the current working directory.  Make sure that you have enough space in the directory that you are in to run imgexport if you have a big image to tar up.
+foo.tgz will be built in the current working directory.  Make sure that you have enough space in the directory that you are in to run imgexport, if you have a big image to tar up.
 
 2. To include extra files with your image:
 

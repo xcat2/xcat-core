@@ -790,6 +790,11 @@ sub donics
                 next;
             }
 
+            # for example: nicaliases.ib0=|maestro-(\d+)$|m($1)-ib0|
+            if ($aliases =~ /^\|\S*\|$/) {
+                $aliases = xCAT::Table::transRegexAttrs($node, $aliases);
+            }
+
             if ($aliases =~ /\|/) {
                 my @names = split(/\|/, $aliases);
                 my $index = 0;

@@ -2207,6 +2207,10 @@ firmware => {
 "                 NOTE: If using this attribute to block certain interfaces, make sure\n" .
 "                 the IP maps to your hostname of xCAT MN is not blocked since xCAT needs\n" .
 "                 to use this IP to communicate with the local NDS server on MN.\n\n" .
+" namedincludes:  A comma-separated list of file paths that will be included in\n" .
+"                 named.conf, using named 'include' statement. This can allow users\n" .
+"                 to include local configuration options that will not be overwritten\n" .
+"                 by 'makedns -n'\n\n" .
 " -------------------------\n" .
 "HARDWARE CONTROL ATTRIBUTES\n" .
 " -------------------------\n" .

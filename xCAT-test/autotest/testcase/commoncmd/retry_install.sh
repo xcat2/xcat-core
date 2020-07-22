@@ -6,25 +6,23 @@ declare -i tryreinstall=1
 node=$1
 osimage=$2
 vmhost=`lsdef $node -i vmhost -c | cut -d '=' -f 2`
+times=3
 
 if [ $# -eq 3 ];
 then
-    times=$3+1
-    echo "Try to rinstall for $3 times ......"
-else
-    times=6
-    echo "Try to rinstall for 5 times ......" 
+    times=$3
 fi
 
+echo "Try to rinstall for $times  times ......" 
 
-for (( tryreinstall = 1 ; tryreinstall < $times ; ++tryreinstall ))
+for (( tryreinstall = 1 ; tryreinstall <= $times ; ++tryreinstall ))
 do
     echo "[$tryreinstall] Trying to install $node with $osimage ..."
 
     if [[ ! -z $vmhost ]];then
         # Display memory and active VMs on VM host, when installing on VM
         echo "Memory on vmhost $vmhost"
-        ssh $vmhost free -g
+        ssh $vmhost free -m
         echo "Active VMs on vmhost $vmhost"
         ssh $vmhost virsh list
     fi
