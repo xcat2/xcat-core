@@ -134,7 +134,7 @@ function download_recursive()
             [ "$?" -ne "0" ] && return 1
             ;;
         esac
-    done < <(curl --fail --retry 20 --max-time 60 "${url}/" | grep -o '<a href="\([^"]*\)">\1</a>' | cut -d '"' -f 2)
+    done < <(curl --fail --retry 20 --max-time 60 "${url}/" | grep -o '<a href="\([^"]*\)">.*</a>' | cut -d '"' -f 2)
     return 0
 }
 
