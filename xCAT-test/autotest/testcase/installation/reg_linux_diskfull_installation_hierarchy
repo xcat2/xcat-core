@@ -58,6 +58,16 @@ check:output=~Provision node\(s\)\: $$CN
 cmd:xdsh $$SN "if [[ -f /var/lib/dhcp/db/dhcpd.leases ]]; then cat /var/lib/dhcp/db/dhcpd.leases; elif [[ -f /var/lib/dhcpd/dhcpd.leases ]];then cat /var/lib/dhcpd/dhcpd.leases;elif [[ -f /var/lib/dhcp/dhcpd.leases ]];then cat /var/lib/dhcp/dhcpd.leases; fi"
 cmd:if [[ "__GETNODEATTR($$CN,arch)__" =~ "ppc" ]]; then sleep 120;elif [[ "__GETNODEATTR($$CN,arch)__" =~ "x86_64" ]];then sleep 200;else sleep 180;fi
 
+cmd:xdsh $$SN "cd /install/postscripts; tar cvf /tmp/sn.tar *"
+cmd:xdsh $$SN "scp /tmp/sn.tar $$CN:/tmp"
+cmd:xdsh $$CN "cd /xcatpost; tar cvf /tmp/cn.tar *"
+cmd:xdsh $$CN "mkdir -p /tmp/sn; tar xvf /tmp/sn.tar -C /tmp/sn"
+cmd:xdsh $$CN "mkdir -p /tmp/cn; tar xvf /tmp/cn.tar -C /tmp/cn; rm -f /tmp/cn/mypost*"
+cmd:xdsh $$CN "diff -r /tmp/sn /tmp/cn > /tmp/diff.list"
+check:rc==0
+cmd:xdsh $$CN "cat /tmp/diff.list"
+check:rc==0
+
 #cmd:lsdef -l $$CN | grep status
 #check:rc==0
 #check:output!~booted
@@ -99,5 +109,9 @@ check:rc==0
 cmd:xdsh $$CN "cd /xcatpost; rmdir -p dir1/dir2/dir3"
 check:rc==0
 cmd:chdef -m -t node -o $$CN postscripts="dir1/dir2/dir3/foo.bar"
+check:rc==0
+
+cmd:xdsh $$SN "rm /tmp/sn.tar"
+cmd:xdsh $$CN "rm /tmp/cn.tar; rm -fr /tmp/sn; rm -fr /tmp/cn; rm /tmp/diff.list"
 check:rc==0
 end
