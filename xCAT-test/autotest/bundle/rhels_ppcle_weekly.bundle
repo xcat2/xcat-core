@@ -24,6 +24,7 @@ nodeset_cmdline
 nodeset_runimg
 nodeset_shell
 reg_linux_diskfull_installation_flat
+compare_postscripts
 reg_linux_diskless_installation_flat
 reg_linux_diskless_installation_flat_squashfs
 reg_linux_statelite_installation_flat
