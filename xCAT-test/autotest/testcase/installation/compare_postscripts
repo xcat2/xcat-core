@@ -1,0 +1,17 @@
+start:compare_postscripts
+os:Linux
+label:provision
+cmd:cd /install/postscripts; tar cvf /tmp/sn.tar *
+cmd:scp /tmp/sn.tar $$CN:/tmp
+cmd:xdsh $$CN "cd /xcatpost; tar cvf /tmp/cn.tar *"
+cmd:xdsh $$CN "mkdir -p /tmp/sn; tar xvf /tmp/sn.tar -C /tmp/sn"
+cmd:xdsh $$CN "mkdir -p /tmp/cn; tar xvf /tmp/cn.tar -C /tmp/cn; rm -f /tmp/cn/mypost*"
+cmd:xdsh $$CN "diff -r /tmp/sn /tmp/cn > /tmp/diff.list"
+check:rc==0
+cmd:xdsh $$CN "cat /tmp/diff.list"
+check:rc==0
+
+cmd:rm /tmp/sn.tar
+cmd:xdsh $$CN "rm /tmp/cn.tar; rm -fr /tmp/sn; rm -fr /tmp/cn; rm /tmp/diff.list"
+check:rc==0
+end
