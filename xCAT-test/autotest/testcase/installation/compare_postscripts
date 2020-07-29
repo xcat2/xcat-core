@@ -3,7 +3,8 @@ os:Linux
 label:provision
 cmd:cd /install/postscripts; tar cvf /tmp/mn.tar *
 cmd:xdsh $$CN "cd /xcatpost; tar cvf /tmp/cn.tar *"
-cmd:scp $$CN:/tmp/cn.tar /tmp; rm $$CN:/tmp/cn.tar
+cmd:scp $$CN:/tmp/cn.tar /tmp
+cmd:xdsh $$CN "rm /tmp/cn.tar"
 cmd:mkdir -p /tmp/mn; tar xvf /tmp/mn.tar -C /tmp/mn
 cmd:mkdir -p /tmp/cn; tar xvf /tmp/cn.tar -C /tmp/cn; rm /tmp/cn/mypost*
 cmd:diff -r /tmp/mn /tmp/cn > /tmp/diff.list
@@ -11,6 +12,6 @@ check:rc==0
 cmd:cat /tmp/diff.list
 check:rc==0
 
-cmd:rm -fr /tmp/mn; rm -fr /tmp/cn; rm /tmp/diff.list"
+cmd:rm -fr /tmp/mn; rm -fr /tmp/cn; rm /tmp/mn.tar; rm /tmp/diff.list"
 check:rc==0
 end
