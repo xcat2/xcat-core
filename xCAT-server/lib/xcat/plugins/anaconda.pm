@@ -1135,11 +1135,10 @@ sub mkinstall
 
         my @pkgdirs=split(/,/,$pkgdir);
         foreach my $mypkgdir (@pkgdirs){
-            unless(-f "/install/postscripts/repos/$mypkgdir/local-repository.tmpl"){
-                #fix issue #2856@github
-                #for the osimages created by <=xCAT 2.12.3
+            unless(-s "/install/postscripts/repos/$mypkgdir/local-repository.tmpl"){
                 #there is no local-repository.tmpl under pkgdir created on copycds
-                #generate local-repository.tmpl here if it does not exist
+                #generate local-repository.tmpl here if it does not exist or empty
+                xCAT::MsgUtils->trace($verbose_on_off, "d", "anaconda->mkinstall: call to create /install/postscripts/repos/$mypkgdir/local-repository.tmpl");
                 xCAT::Yum->localize_yumrepo($mypkgdir, $os, $arch);
             }
         }
