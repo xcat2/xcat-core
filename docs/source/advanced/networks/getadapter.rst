@@ -12,11 +12,11 @@ information to help customer configure the network.
 How to use getadapter
 -----------------------
 
-Set the chian table to run ``getadapter`` script ::
+Set the chain table to run ``getadapter`` script ::
 
   chdef <noderange> chain="runcmd=getadapter"
 
-After the discovery completed, the column ``nicsadapter`` of ```nics`` table is
+After the discovery completed, the column ``nicsadapter`` of ``nics`` table is
 updated.
 
 View result with ``lsdef`` command ::

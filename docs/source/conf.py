@@ -105,7 +105,7 @@ exclude_patterns = ['guides/install-guides/common_sections.rst',
                     '**hierarchy/databases/postgres_tips.rst',
                     '**hierarchy/define_and_install_compute_node.rst',
                     #'**hierarchy/define_service_node.rst',
-                    '**networks/getadapter.rst'
+                    #'**networks/getadapter.rst'
                     #'**networks/vlan/index.rst',
                     #'**networks/vlan/vlan.rst',
                     #'**license/xcat_corporate_contributor_license_agreement.rst',
