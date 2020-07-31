@@ -13,5 +13,4 @@ cmd:cat /tmp/diff.list
 check:rc==0
 
 cmd:rm -fr /tmp/mn; rm -fr /tmp/cn; rm /tmp/mn.tar; rm /tmp/diff.list"
-check:rc==0
 end
