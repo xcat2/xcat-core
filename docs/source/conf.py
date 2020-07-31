@@ -103,9 +103,9 @@ exclude_patterns = ['guides/install-guides/common_sections.rst',
                     #'**hamn/setup_ha_mgmt_node_with_shared_data.rst',
                     #'**hamn/setup_xcat_high_available_management_node_in_softlayer.rst',
                     '**hierarchy/databases/postgres_tips.rst',
-                    '**hierarchy/define_and_install_compute_node.rst',
+                    '**hierarchy/define_and_install_compute_node.rst'
                     #'**hierarchy/define_service_node.rst',
-                    '**networks/getadapter.rst'
+                    #'**networks/getadapter.rst'
                     #'**networks/vlan/index.rst',
                     #'**networks/vlan/vlan.rst',
                     #'**license/xcat_corporate_contributor_license_agreement.rst',

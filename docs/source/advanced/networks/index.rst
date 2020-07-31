@@ -8,3 +8,4 @@ Networking
    onie_switches/index.rst
    switchdiscover/index.rst
    infiniband/index.rst
+   getadapter.rst
