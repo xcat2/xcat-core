@@ -4,6 +4,7 @@
 
 package xCAT::LparNetbootExp;
 
+
 #-----------------------------------------------------------------------------
 
 =head1   LparNetbootExp
@@ -33,6 +34,7 @@ Usage: Return macaddress
                         3: Set disk as 1st boot device, network as 2nd boot device
                         4: set disk as boot device
         -M      Discovery ethernet adapter mac address and location code
+        -a      Use Secure OF
         --help  Prints this help
 
 
@@ -62,6 +64,7 @@ my $client_ip;
 my $gateway_ip;
 my $device_type;
 my $server_ip;
+my $secOF=1;
 
 # List supported network adapters here.  dev_pat is an array of regexp patterns
 # the script searches for in the device tree listing.  dev_type is the type
@@ -425,8 +428,144 @@ sub get_phandle {
     my $expect_out;
     my $retry_count;
     my %path;
-    my $rc = 0;
+    my $rc;
 
+    if ($secOF == 1) {
+    nc_msg($verbose, "Status: get_phandle: Using Secured OF..............\n");
+
+    send_command($verbose, $rconsole, "\r");
+
+    @result = $rconsole->expect(
+        $timeout,
+        [ qr/ok/ =>
+              sub {
+                nc_msg($verbose, "Status: at root\n");
+                $rconsole->clear_accum();
+              }
+        ],
+        [ qr/]/ =>
+              sub {
+                nc_msg($verbose, "Unexpected prompt\n");
+                $rconsole->clear_accum();
+                $rc = 1;
+              }
+        ],
+        [ timeout =>
+              sub {
+                $rconsole->send("\r");
+                $rconsole->clear_accum();
+                $rc = 1;
+              }
+        ],
+        [ eof =>
+              sub {
+                nc_msg($verbose, "Cannot connect to $node");
+                $rconsole->clear_accum();
+                $rc = 1;
+              }
+        ],
+    );
+    return 1 if ($rc == 1);
+
+    send_command($verbose, $rconsole, "DISPLAY_BOOT_DEVICES #network\r");
+
+    $timeout = 60;
+    $done    = 0;
+    while (!$done) {
+
+        @result = ();
+        @result = $rconsole->expect(
+            $timeout,
+            [ qr/.*1GbE.*/ =>
+                  sub {
+                    nc_msg($verbose, "Parsing network adapters... \n");
+                  }
+            ],
+	    [ qr/.*25\/10 Gb.*/ =>
+                 sub {
+                   nc_msg($verbose, "Parsing network adapters 25G \n");
+                 }
+            ],
+            [ qr/.*Interpartition Logical LAN.*/ =>
+                  sub {
+                    nc_msg($verbose, "Parsing network adapters... \n");
+                  }
+            ],
+            [ qr/>/ =>
+                  sub {
+                    nc_msg($verbose, "finished \n");
+                    $rconsole->clear_accum();
+                    $done = 1;
+                  }
+            ],
+            [ timeout =>
+                  sub {
+                    nc_msg($verbose, "Timeout isolating single line of ls output\n");
+                    $rconsole->clear_accum();
+                    $rc = 1;
+                  }
+            ],
+            [ eof =>
+                  sub {
+                    nc_msg($verbose, "Cannot connect to $node");
+                    $rconsole->clear_accum();
+                    $rc = 1;
+                  }
+            ],
+        );
+        return 1 if ($rc == 1);
+
+        if ($result[2] =~ /1GbE/) {
+            my $j = 0;
+            for ($j = 0 ; $j < $dev_count ; $j++) {
+                my @values1 = split('=', $result[2]);
+                my @values2 = split('\)', $values1[1]);
+                $full_path_name_array[$adapter_found] = $values2[0];
+                $phandle_array[$adapter_found] = $values2[0];
+                $adap_type[$adapter_found]     = $dev_type[$j];
+                $adapter_found++;
+                last;
+            };
+        };
+
+        if ($result[2] =~ /25\/10 Gb/) {
+            my $j = 0;
+            for ($j = 0 ; $j < $dev_count ; $j++) {
+                my @values1 = split('=', $result[2]);
+                my @values2 = split('\)', $values1[1]);
+                $full_path_name_array[$adapter_found] = $values2[0];
+                $phandle_array[$adapter_found] = $values2[0];
+                $adap_type[$adapter_found]     = $dev_type[$j];
+                $adapter_found++;
+                last;
+            };
+        };
+
+        if ($result[2] =~ /Interpartition Logical LAN/) {
+            my $j = 0;
+            for ($j = 0 ; $j < $dev_count ; $j++) {
+                my @values1 = split('=', $result[2]);
+                my @values2 = split('\)', $values1[1]);
+                $full_path_name_array[$adapter_found] = $values2[0];
+                $phandle_array[$adapter_found] = $values2[0];
+                $adap_type[$adapter_found]     = $dev_type[$j];
+                $adapter_found++;
+                last;
+            };
+        };
+    };
+
+    # Did we find one or more adapters?
+    if ($adapter_found > 0) {
+        return 0;
+    } else {
+        nc_msg($verbose, "No network adapters found\n");
+        return 1;
+    };
+
+    }
+    else
+    {
 
     # This is the first procedure entered after getting to the ok prompt. On entry
     # the current device is not root. The command 'dev /' is sent to get to the
@@ -435,6 +574,7 @@ sub get_phandle {
     #
     # The pwd command can be used to determine what the current device is.
     #
+
 
     send_command($verbose, $rconsole, "dev /\r");
 
@@ -588,8 +728,8 @@ sub get_phandle {
     } else {
         nc_msg($verbose, "No network adapters found\n");
         return 1;
-    }
-
+    };
+    };
 }
 
 #-------------------------------------------------------------------------------
@@ -627,8 +767,29 @@ sub get_adap_prop {
     my $nw_speed;
     my $nw_conn;
     my $nw_duplex;
+    my $vtag;
+
 
     nc_msg($verbose, " Status: get_adap_prop start\n");
+
+    if ($secOF == 1) {
+    nc_msg($verbose, " Status: get_adap_prop: Secured OF\n");
+
+    $nw_type="ethernet";
+    $nw_speed="100";
+    $nw_conn="rj45";
+    $nw_duplex="duplex";
+
+    push @adap_prop_array, $nw_speed . "," . $nw_conn . "," . $nw_duplex;
+    nc_msg($verbose, "Status: Adding adapter properties to list\n");
+
+    if (scalar(@adap_prop_array) != 0) {
+        return \@adap_prop_array;
+    } else {
+        return 0;
+    };
+    }
+    else {
 
     # state 0, stack count 0
     $done[0] = 0;
@@ -794,7 +955,8 @@ sub get_adap_prop {
         return \@adap_prop_array;
     } else {
         return 0;
-    }
+    };
+    };
 }
 
 #-------------------------------------------------------------------------------
@@ -826,18 +988,84 @@ sub get_mac_addr {
     my $rconsole = shift;
     my $node     = shift;
     my $verbose  = shift;
-    my $timeout  = 60;
+    my $timeout  = 120;
     my $state    = 0;
+    my $nowdone  = 0;
     my @result;
     my $mac_rc;
     my @cmd;
     my @done;
+    my $newdone;
     my @msg;
     my @pattern;
     my @newstate;
     my $mac_address;
     my $rc = 0;
 
+
+    if ($secOF == 1) {
+    nc_msg($verbose, " Status: get_mac_addr: Secured OF\n");
+
+    my $loc = substr($phandle,0,-1);
+    $rconsole->clear_accum();
+
+    while (!$newdone) {
+        @result = ();
+        send_command($verbose, $rconsole, "DISPLAY_MAC_ADDRESS $loc\r");
+        @result = $rconsole->expect(
+            $timeout,
+	    #	    [ qr/25\/10 Gb/ =>
+	    #      sub {
+	    #        nc_msg($verbose, "Parsing MAC Address 25/10 Gb... \n");
+	    #        $rconsole->clear_accum();
+	    #      }
+	    #],
+            [ qr/(\n)([^\r]*)(\r)/ =>
+                  sub {
+                    nc_msg($verbose, "Parsing MAC Address... \n");
+                    #$rconsole->clear_accum();
+                  }
+            ],
+            [ qr/>/ =>
+                  sub {
+                    nc_msg($verbose, "finished \n");
+                    $rconsole->clear_accum();
+                    $newdone = 1;
+                  }
+            ],
+            [ timeout =>
+                  sub {
+                    nc_msg($verbose, "Timeout isolating single line of ls output\n");
+                    $rconsole->clear_accum();
+                    $rc = 1;
+                  }
+            ],
+            [ eof =>
+                  sub {
+                    nc_msg($verbose, "Cannot connect to $node");
+                    $rconsole->clear_accum();
+                    $rc = 1;
+                  }
+            ],
+        );
+        return 1 if ($rc == 1);
+
+        my @lines = grep(/MAC/, @result);
+        my @values1 = split(' ', $lines[1]);
+        $mac_address = $values1[2];
+
+	#nc_msg($verbose, "1GbE Adapter MAC Address: $mac_address \n");
+        nc_msg($verbose, "Ethernet Adapter MAC Address: $mac_address \n");
+
+        # Return mac address
+        if ($mac_address) {
+            return $mac_address;
+        } else {
+            return undef;
+        };
+    }
+    }
+    else {
 
     nc_msg($verbose, "Status: get_mac_addr start\n");
 
@@ -1001,7 +1229,8 @@ sub get_mac_addr {
         return $mac_address;
     } else {
         return undef;
-    }
+    };
+    };
 
 }
 
@@ -1043,6 +1272,13 @@ sub get_adaptr_loc {
     my @path;
     my $loc_code;
     my $rc = 0;
+
+    if ($secOF == 1) {
+    nc_msg($verbose, " Status: get_adaptr_loc: Secured OF\n");
+
+    return $phandle;
+    }
+    else {
 
     nc_msg($verbose, "Status: get_adaptr_loc start\n");
 
@@ -1196,7 +1432,8 @@ sub get_adaptr_loc {
         return $loc_code;
     } else {
         return undef;
-    }
+    };
+    };
 }
 
 #-------------------------------------------------------------------------------
@@ -1238,6 +1475,7 @@ sub ping_server {
     my $linklocal_ip;
     my @result;
     my @done;
+    my $newdone=0;
     my @cmd;
     my @msg;
     my @pattern;
@@ -1245,11 +1483,7 @@ sub ping_server {
     my $state = 0;
     my $timeout;
 
-    nc_msg($verbose, "Status: ping_server start\n");
 
-    #if (exists($env{'FIRMWARE_DUMP'})) {
-    #    $full_path_name = Firmware_Dump($phandle);
-    #}
     my $j                  = 0;
     my $tty_do_ping        = 0;
     my $stack_level        = 0;
@@ -1262,6 +1496,67 @@ sub ping_server {
     my $ping_debug;
     my $ping_rc;
     my $rc = 0;
+    my $netmask="255.255.255.0";
+
+    nc_msg($verbose, "Status: ping_server start\n");
+
+    if ($secOF == 1) {
+        nc_msg($verbose, " Status: ping_server: Secured OF\n");
+        nc_msg($verbose, " Adapter Location: \n");
+
+
+    my $loc = substr($phandle,0,-1);
+    $rconsole->clear_accum();
+    send_command($verbose, $rconsole, "PING $loc $server_ip,$client_ip,$gateway_ip,,$netmask \r");
+
+    while (!$newdone) {
+        @result = ();
+        @result = $rconsole->expect(
+            $timeout,
+            [ qr/(\n)([^\r]*)(\r)/ =>
+                  sub {
+                    nc_msg($verbose, "Pinging... \n");
+                    #$rconsole->clear_accum();
+                  }
+            ],
+            [ qr/>/ =>
+                  sub {
+                    nc_msg($verbose, "finished \n");
+                    $rconsole->clear_accum();
+                    $newdone = 1;
+                  }
+            ],
+            [ timeout =>
+                  sub {
+                    nc_msg($verbose, "Timeout isolating single line of ls output\n");
+                    $rconsole->clear_accum();
+                    $rc = 1;
+                  }
+            ],
+            [ eof =>
+                  sub {
+                    nc_msg($verbose, "Cannot connect to $node");
+                    $rconsole->clear_accum();
+                    $rc = 1;
+                  }
+            ],
+        );
+        return 1 if ($rc == 1);
+
+        my $line = grep(/SMS Macro Operation Succeeded./, @result);
+
+        if ($line eq 1) {
+            nc_msg($verbose, "# $full_path_name ping successful.\n");
+            $ping_rc=0;
+            last;
+        } else {
+            nc_msg($verbose, "# $full_path_name ping unsuccessful.\n");
+            $ping_rc=1;
+        };
+    };
+    return $ping_rc;
+    }
+    else {
 
     # If the adapter type chosen is ethernet, need to set the speed and duplex
     # of the adapter before we perform the ping.  If token ring or fddi,
@@ -1328,6 +1623,7 @@ sub ping_server {
         }
         $cmd[3] = "ping $full_path_name:ipv6,$server_ip,$linklocal_ip,$gateway_ip$to4pt\r";
     } else {
+        ###$cmd[3] = "ping $full_path_name:$server_ip,$client_ip,$gateway_ip$to4pt\r";
         $cmd[3] = "ping $full_path_name:$server_ip,$client_ip,$gateway_ip$to4pt\r";
     }
     $pattern[3] = ".*ping(.*)ok(.*)0 >(.*)";
@@ -1462,35 +1758,6 @@ sub ping_server {
                 $stack_level = length($result[4]);
             } elsif (($state == 4) && ($tty_do_ping != 1) && ($result[2] =~ /PING SUCCESS/)) {
                 $ping_rc = 0;
-
-                #} elsif ( $result[2] =~ /unknown word/ ) {
-                #    nc_msg($verbose, "Status: try tty-do-ping.\n");
-                #    $ping_rc = 1;
-                #    $tty_do_ping = 1;
-                #    $state = 3 ;
-                #    $cmd[3] = "\"" . $full_path_name . ":" . $client_ip . "," . $server_ip . "," . $gateway_ip . "\" tty-do-ping\r";
-                #    $pattern[3] = "(.*)ok(.*)(\[1-2\]) >(.*)";
-                #
-                #    # state 4, get the return code off the stack
-                #    $done[4] = 0;
-                #    $cmd[4] = ".\r";
-                #    $msg[4] = "Status: return code displayed, stack empty\n";
-                #    $pattern[4] = "(\[0-9\]*)  ok(.*)(\[0-1\]) >(.*)";
-                #    $newstate[4] = 5;
-                #
-                #    # this command is used to work around a default catch problem in open
-                #    # firmware.  Without it, a default catch occurs if we try to set
-                #    # adapter properties again after a ping
-                #    #
-                #    # state 5, re$pointer
-                #    $done[5] = 0;
-                #    $cmd[5] = "0 to my-self\r";
-                #    $msg[5] = "Status: resetting pointer\n" ;
-                #    $pattern[5] = "(.*)ok(.*)0 >(.*)";
-                #    $newstate[5] = 6 ;
-                #
-                #    # state 6, all done
-                #    $done[6] = 1;
             } else {
                 $ping_rc = 1;
             }
@@ -1583,6 +1850,7 @@ sub ping_server {
         }
     }
     return $ping_rc;
+    };
 }
 
 
@@ -1623,6 +1891,69 @@ sub set_disk_boot {
     my $state;
     my $rc = 0;
 
+    if ($secOF == 1) {
+    nc_msg($verbose, " Status: set_disk_boot: Secured OF\n");
+
+    # state 0, get SMS screen
+    $done[0] = 0;
+    $cmd[0] = "DISPLAY_BOOTSEQ\r";
+    $msg[0] = "Status: sending return to repaint SMS screen\n";
+    $pattern[0] = "(\n)(\[ ])(\[0-9])(\[.])(\[ ]+)Storage(\r)";
+    $newstate[0] = 1;
+
+    # state 1, Set Default Boot Seq
+    $done[1]     = 0;
+    $cmd[1] = "SET_DEFAULT_BOOTSEQ\r";
+    $msg[1]      = "Status: Set default boot sequence\n";
+    $pattern[1]  = "(\n)(\[ ])(\[0-9])(\[.])(\[ ]+)Your default boot sequence has been restored(\r)";
+    $newstate[1] = 2;
+
+    # state 2, all done
+    $done[2] = 1;
+
+    $timeout = 30;
+    $state   = 0;
+
+    while ($done[$state] eq 0) {
+        send_command($verbose, $rconsole, $cmd[$state]);
+        $rconsole->expect(
+            [ qr/$pattern[$state]/ =>
+                  sub {
+                    $rconsole->clear_accum();
+                    $state = $newstate[$state];
+                  }
+            ],
+            [ qr/THE SELECTED DEVICES WERE NOT DETECTED IN THE SYSTEM/ =>
+                  sub {
+                    $rconsole->clear_accum();
+                    nc_msg($verbose, " Status: THE hard disk WERE NOT DETECTED IN THE SYSTEM!\n");
+                    $rc = 1;
+                  }
+            ],
+            [ timeout =>
+                  sub {
+                    $rconsole->clear_accum();
+                    nc_msg($verbose, "Timeout in settin boot order\n");
+                    $rc = 1;
+                  }
+            ],
+            [ eof =>
+                  sub {
+                    $rconsole->clear_accum();
+                    nc_msg($verbose, "Cannot connect to $node\n");
+                    $rc = 1;
+                  }
+            ],
+        );
+        if ($rc == 1) {
+            return 1;
+        } else {
+            return 0;
+        }
+    }
+    return 0;
+    }
+    else {
     # state 0, get SMS screen
     $done[0] = 0;
     if ($expect_out[0] =~ /(\n)(\[ ])(\[0-9])(\[.])(\[ ]+)Select Boot Options(\r)/) {
@@ -1751,7 +2082,7 @@ sub set_disk_boot {
         }
     }
     return 0;
-
+    };
 }
 
 
@@ -1798,7 +2129,131 @@ sub boot_network {
     my $boot_device_bk;
     my $rc = 0;
 
+    if ($secOF == 1)
+    {
 
+    nc_msg($verbose, " Status: boot_network: Secured OF\n");
+
+
+    $done[0] = 0;
+    if ($dump_target ne "") {
+
+
+        $net_device[0] = "$full_path_name:iscsi,ciaddr=$client_ip,subnet-mask=$netmask,itname=dummy,iport=$dump_port,ilun=$dump_lun,iname=$dump_target,siaddr=$server_ip,2";
+        $pattern[0] = "iSCSI";
+    } else {
+
+        if ($extra_args ne "") {
+
+            if ($server_ip =~ /:/) {    #ipv6
+                $net_device[0] = "$full_path_name:ipv6,speed=$speed,duplex=$duplex,siaddr=$server_ip,ciaddr=$client_ip,giaddr=$gateway_ip,filename=$node,$extra_args";
+            } else {
+
+                $net_device[0] = "$full_path_name:speed=$speed,duplex=$duplex,bootp,$server_ip,,$client_ip,$gateway_ip $extra_args";
+            }
+        } else {
+            if ($server_ip =~ /:/) {    #ipv6
+                $net_device[0] = "$full_path_name:ipv6,speed=$speed,duplex=$duplex,siaddr=$server_ip,ciaddr=$client_ip,giaddr=$gateway_ip,filename=$node";
+            } else {
+                $net_device[0] = "$full_path_name speed=$speed,duplex=$duplex,$server_ip,,$client_ip,$gateway_ip";
+            }
+        }
+        $pattern[0] = "BOOTP";
+    }
+
+    $cmd[0]      = "\rPING $full_path_name $server_ip,$client_ip,$gateway_ip,,$netmask \r";
+    send_command($verbose, $rconsole, $cmd[0]);
+
+    sleep 10;
+
+    $cmd[0]      = "\r\rBOOT_FROM_DEVICE #network $net_device[0]\r\r\n";
+    $msg[0]      = "Status: network boot initiated\n";
+    $newstate[0] = 99;
+
+    # state 99, all done
+    $done[99] = 1;
+
+    # state -1, all done
+    $done[100] = 2;    #-1???
+
+    if ($speed eq "" || $duplex eq "") {
+        nc_msg($verbose, "Cannot set speed or duplex for network boot\n");
+        return 1;
+    }
+
+    $timeout = 30;    # shouldn't take long
+    while ($done[$state] eq 0) {
+        send_command($verbose, $rconsole, $cmd[$state]);
+        $rconsole->expect(
+            [ qr/$pattern[$state]/ =>
+                  sub {
+                    $rconsole->clear_accum();
+                    my @expect_out = shift;
+                    if ($state == 2) {
+                        if ($set_boot_order == 1) {
+                            ########################################
+                            # Set network as boot device
+                            ########################################
+                            $cmd[3] = "setenv boot-device $net_device[$newstate[3]]\r";
+                        } elsif ($set_boot_order == 2) {
+                            ########################################
+                            # Set network as 1st boot device,disk as 2nd boot device
+                            ########################################
+                            $boot_device_bk = $expect_out[1];
+                            $cmd[3] = "setenv boot-device $net_device[$newstate[3]] $boot_device_bk\r";
+                        } elsif ($set_boot_order == 3) {
+                            ########################################
+                            # Set disk as 1st boot device,network as 2nd boot device
+                            ########################################
+                            $boot_device_bk = $expect_out[1];
+                            $cmd[3] = "setenv boot-device $boot_device_bk $net_device[$newstate[3]]\r";
+                        } elsif ($set_boot_order == 4) {
+                            ########################################
+                            # set disk as boot device
+                            ########################################
+                            $boot_device_bk = $expect_out[1];
+                            $cmd[3] = "setenv boot-device $boot_device_bk\r";
+                        }
+                    }
+                    nc_msg($verbose, $msg[$state]);
+                    $state = $newstate[$state];
+                  }
+            ],
+            [ qr/----/ =>
+                  sub {
+                    nc_msg($verbose, $msg[$state]);
+                    $rconsole->clear_accum();
+                    $state = $newstate[$state];
+                  }
+            ],
+            [ qr/(.*)DEFAULT(.*)/ =>
+                  sub {
+                    nc_msg($verbose, "Default catch error\n");
+                    $rconsole->clear_accum();
+                    $rc = 1;
+                  }
+            ],
+            [ timeout =>
+                  sub {
+                    nc_msg($verbose, "Timeout when openning console\n");
+                    $rconsole->clear_accum();
+                    $rc = 1;
+                  }
+            ],
+            [ eof =>
+                  sub {
+                    nc_msg($verbose, "Cannot connect to the $node\n");
+                    $rconsole->clear_accum();
+                    $rc = 1;
+                  }
+            ],
+        );
+        return 1 if ($rc == 1);
+    }
+    return 0;
+    }
+    else
+    {
     nc_msg($verbose, "Status: boot_network start\n");
     ###################################################################
     # Variables associated with each of the commands sent by this routine
@@ -1835,6 +2290,7 @@ sub boot_network {
             if ($server_ip =~ /:/) {    #ipv6
                 $net_device[0] = "$full_path_name:ipv6,speed=$speed,duplex=$duplex,siaddr=$server_ip,ciaddr=$client_ip,giaddr=$gateway_ip,filename=$node";
             } else {
+                ####$net_device[0] = "$full_path_name:speed=$speed,duplex=$duplex,bootp,$server_ip,,$client_ip,$gateway_ip";
                 $net_device[0] = "$full_path_name:speed=$speed,duplex=$duplex,bootp,$server_ip,,$client_ip,$gateway_ip";
             }
         }
@@ -1976,6 +2432,7 @@ sub boot_network {
         return 1 if ($rc == 1);
     }
     return 0;
+    };
 }
 #
 # PROCEDURE
@@ -2004,21 +2461,12 @@ sub Boot {
                 $rc = 1;
               }
         ],
-
-        #[!(qr/[0-9A-F]+/)=>
-        #    sub {
-        #        nc_msg($verbose, "The network boot ended in an error.\n");
-        #        #nc_msg($verbose, $expect_out[buffer]);
-        #        $rc = 1;
-        #     }
-        #],
         [ qr/BOOTP/ =>    #-ex
               sub {
                 nc_msg($verbose, "# Network boot proceeding - matched BOOTP, exiting.\n");
                 $rconsole->clear_accum();
               }
         ],
-
         # Welcome to AIX - some old firmware does not output BOOTP or ----
         [ qr/Welcome/ =>    #-ex
               sub {
@@ -2026,7 +2474,6 @@ sub Boot {
                 $rconsole->clear_accum();
               }
         ],
-
         # tftp file download - some old firmware does not output BOOTP or ----
         [ qr/FILE/ =>       #-ex
               sub {
@@ -2034,7 +2481,6 @@ sub Boot {
                 $rconsole->clear_accum();
               }
         ],
-
         # some old firmware does not output BOOTP or ----
         [ qr/Elapsed/ =>    #-ex
               sub {
@@ -2097,6 +2543,14 @@ sub multiple_open_dev {
     my $timeout;
     my $rc = 0;
 
+    if ($secOF == 1) {
+
+    nc_msg($verbose, " Status: multiple_open_dev: Secured OF\n");
+    return $rc;
+
+    }
+    else
+    {
     send_command($verbose, $rconsole, "dev /packages/net \r");
     send_command($verbose, $rconsole, "FALSE value OPEN-DEV_DEBUG \r");
 
@@ -2213,8 +2667,8 @@ sub multiple_open_dev {
               }
         ],
     );
-
     return $rc;
+    };
 }
 ###################################################################
 #
@@ -2419,7 +2873,7 @@ sub lparnetbootexp
     my $discover_all     = 0;
     my $discoverynoping  = 0;
     my $discoverytimeout = 0;
-    my $verbose          = 0;
+    my $verbose          = 1;
     my $discover_macaddr = 0;
     my $rc               = 0;
     my $debug_flag       = 0;
@@ -2583,7 +3037,7 @@ sub lparnetbootexp
     if (exists($opt->{v})) {
         $verbose = 1;
     } else {
-        $verbose = 0;
+        $verbose = 1;
     }
     if (exists($opt->{x})) {
         $debug_flag = 1;
@@ -2619,7 +3073,6 @@ sub lparnetbootexp
     my $manage  = $opt->{fsp};
     my $lparid  = $opt->{id};
     my $hcp     = $opt->{hcp};
-
 
 
     if ($dev_type_found) { nc_msg($verbose, "$PROGRAM Status: List only $list_type adapters\n"); }
@@ -2659,7 +3112,6 @@ sub lparnetbootexp
     ####################################
     # decide if need to do the connect
     ####################################
-
 
     ####################################
     # open the console
@@ -2716,8 +3168,45 @@ sub lparnetbootexp
     $rconsole->send("\005c?");
 
     # for some reason the ctrl-e is not being sent for confluent, just getting c?
-
     $timeout = 10;
+
+    if ($secOF == 1) {
+    nc_msg($verbose, " Status: lparnetboot - console check: Secured OF\n");
+
+    $rconsole->expect(
+        $timeout,
+        [ qr/c?/i =>
+              sub {
+                $rc = 0;
+                $rconsole->clear_accum();
+                nc_msg($verbose, "Confluent -> Connected.\n");
+              }
+        ],
+        [ qr/macro_help.*/i =>
+              sub {
+                $rc = 0;
+                $rconsole->clear_accum();
+                nc_msg($verbose, "Conserver -> Connected.\n");
+              }
+        ],
+        [ timeout =>
+              sub {
+                $rc = 1;
+                $rconsole->clear_accum();
+                nc_msg($verbose, "Timeout waiting for console connection.\n");
+              }
+        ],
+        [ eof =>
+              sub {
+                $rc = 2;
+                $rconsole->clear_accum();
+                nc_msg(1, "Please make sure rcons $node works.\n");
+              }
+        ],
+    );
+    }
+    else
+    {
     $rconsole->expect(
         $timeout,
         [ qr/c?/i =>
@@ -2749,6 +3238,7 @@ sub lparnetbootexp
               }
         ],
     );
+    };
 
     unless ($rc eq 0) {
         return [1];
@@ -2819,7 +3309,6 @@ sub lparnetbootexp
                 sleep 1;
             }
         }
-
 
 
         #################################################
@@ -2934,14 +3423,14 @@ sub lparnetbootexp
     nc_msg($verbose, "Check for active console.\n");
     $done        = 0;
     $retry_count = 0;
-
     $timeout = 10;
+
+    if ($secOF == 1) {
+    nc_msg($verbose, " Status: lparnetboot - check  for active console: Secured OF\n");
 
     while (!$done) {
         my @result = $rconsole->expect(
             $timeout,
-
-            #[qr/ok(.*)0 >/=>
             [ qr/0(.*)ok/ =>
                   sub {
                     nc_msg($verbose, " at ok prompt\n");
@@ -3005,9 +3494,76 @@ sub lparnetbootexp
         );
         return [1] if ($rc == 1);
     }
-
-
-
+    }
+    else
+    {
+    while (!$done) {
+        my @result = $rconsole->expect(
+            $timeout,
+            [ qr/0(.*)ok/ =>
+                  sub {
+                    nc_msg($verbose, " at ok prompt\n");
+                    $rconsole->clear_accum();
+                    $done = 1;
+                  }
+            ],
+            [ qr/(.*)elect this consol(.*)/ =>
+                  sub {
+                    nc_msg($verbose, " selecting active console\n");
+                    $rconsole->clear_accum();
+                    $rconsole->send("0\r");
+                  }
+            ],
+            [ qr/English|French|German|Italian|Spanish|Portuguese|Chinese|Japanese|Korean/ =>
+                  sub {
+                    nc_msg($verbose, "Languagae Selection Panel received\n");
+                    $rconsole->clear_accum();
+                    $rconsole->send("2\r");
+                  }
+            ],
+            [ qr/admin/ =>
+                  sub {
+                    nc_msg($verbose, "No password specified\n");
+                    $rconsole->soft_close();
+                    $rc = 1;
+                  }
+            ],
+            [ qr/Invalid Password/ =>
+                  sub {
+                    nc_msg($verbose, "FSP password is invalid.\n");
+                    $rconsole->soft_close();
+                    $rc = 1;
+                  }
+            ],
+            [ qr/SMS(.*)Navigation Keys/ =>
+                  sub {
+                    nc_msg($verbose, "SMS\n");
+                    $rconsole->clear_accum();
+                    $done = 1;
+                  }
+            ],
+            [ timeout =>
+                  sub {
+                    $rconsole->send("\r");
+                    $retry_count++;
+                    if ($retry_count == 9) {
+                        nc_msg($verbose, "Timeout waiting for ok prompt; exiting.\n");
+                        $rconsole->soft_close();
+                        $rc = 1;
+                    }
+                  }
+            ],
+            [ eof =>
+                  sub {
+                    nc_msg($verbose, "Cannot connect to $node");
+                    $rconsole->soft_close();
+                    $rc = 1;
+                  }
+            ],
+        );
+        return [1] if ($rc == 1);
+    }
+    };
 
     ##############################
     # Set the node boot order
@@ -3036,7 +3592,7 @@ sub lparnetbootexp
         if ($result == 1) {
             $retry_count++;
             $rconsole->send("\r");
-            if ($retry_count == 3) {
+            if ($retry_count == 4) {
                 nc_msg($verbose, "Unable to obtain network adapter information.  Quitting.\n");
                 return [1];
             }
@@ -3068,12 +3624,12 @@ sub lparnetbootexp
         nc_msg($verbose, "# Gateway IP address is $gateway_ip\n");
     }
 
-
     ##############################
     # Display information for all
     # supported adapters
     ##############################
     if ($noboot) {    #if not do net boot
+
         if ($list_type) {
             $match_pat = $list_type;
         } else {
@@ -3082,10 +3638,12 @@ sub lparnetbootexp
 
 
         if ($colon) {
+
             nc_msg($verbose, "#Type:Location_Code:MAC_Address:Full_Path_Name:Ping_Result:Device_Type:Size_MB:OS:OS_Version:\n");
             $outputarrayindex++;    # start from 1, 0 is used to set as 0
             $outputarray[$outputarrayindex] = "#Type:Location_Code:MAC_Address:Full_Path_Name:Ping_Result:Device_Type:Size_MB:OS:OS_Version:";
         } else {
+
             if ($discoverynoping) {
                 nc_msg($verbose, "# Type \tLocation Code \tMAC Address\t Full Path Name\t Device Type\n");
                 $outputarrayindex++;
@@ -3093,19 +3651,22 @@ sub lparnetbootexp
             } else {
                 nc_msg($verbose, "# Type \tLocation Code \tMAC Address\t Full Path Name\t Ping Result\t Device Type\n");
                 $outputarrayindex++;
-                $outputarray[$outputarrayindex] = "# Type \tLocation Code \tMAC Address\t Full Path Name\t Ping Result\t Device Type";
+                $outputarray[$outputarrayindex] = "# Type \tLocation Code \tMAC Address\t Full Path Name\t Ping Result\t Device Type\n";
             }
         }
 
         if ($discover_all) {    #getmacs here
+
             for ($i = 0 ; $i < $adapter_found ; $i++) {
                 if ($adap_type[$i] =~ /$match_pat/) {
                     if (!($adap_type[$i] eq "hfi-ent")) {
+
                         $mac_address = get_mac_addr($phandle_array[$i], $rconsole, $node, $verbose);
                         $loc_code = get_adaptr_loc($phandle_array[$i], $rconsole, $node, $verbose);
                     }
                     $ping_result = "";
                     if ($discovery && !$discoverynoping) {
+
                         $ping_rc = ping_server($phandle_array[$i], $full_path_name_array[$i], $rconsole, $node, $mac_address, $verbose, $adap_speed, $adap_duplex, $list_type, $server_ip, $client_ip, $gateway_ip);
                         nc_msg($verbose, "ping_server returns $ping_rc\n");
                         unless ($ping_rc eq 0) {
@@ -3121,12 +3682,15 @@ sub lparnetbootexp
                     }
 
                     if ($full_path_name_array[$i] =~ /vdevice/) {
+
                         $device_type = "virtual";
                     } else {
+
                         $device_type = "physical";
                     }
 
                     if (defined($mac_address)) {
+
                         my @newmacs = ();
                         my @allmacs = split /\|/, $mac_address;
                         if (!xCAT::Utils->isAIX()) {
@@ -3153,14 +3717,18 @@ sub lparnetbootexp
                 }
             }
         } else {
+
             for ($i = 0 ; $i < $adapter_found ; $i++) {
                 if ($adap_type[$i] =~ /$match_pat/) {
+
                     if (!($adap_type[$i] eq "hfi-ent")) {
+
                         $mac_address = get_mac_addr($phandle_array[$i], $rconsole, $node, $verbose);
                         $loc_code = get_adaptr_loc($phandle_array[$i], $rconsole, $node, $verbose);
                     }
                     $ping_result = "";
                     if ($discovery && !$discoverynoping) {
+
                         $ping_rc = ping_server($phandle_array[$i], $full_path_name_array[$i], $rconsole, $node, $mac_address, $verbose, $adap_speed, $adap_duplex, $list_type, $server_ip, $client_ip, $gateway_ip);
                         nc_msg($verbose, "ping_server returns $ping_rc\n");
                         unless ($ping_rc eq 0) {
@@ -3176,8 +3744,10 @@ sub lparnetbootexp
                     }
 
                     if ($full_path_name_array[$i] =~ /vdevice/) {
+
                         $device_type = "virtual";
                     } else {
+
                         $device_type = "physical";
                     }
 
@@ -3208,9 +3778,12 @@ sub lparnetbootexp
             }
         }
     } else {    # Do a network boot
-            # Loop throught the adapters and perform a ping test to discover an
-         # adapter that pings successfully, then use that adapter to network boot.
+
+        # Loop throught the adapters and perform a ping test to discover an
+        # adapter that pings successfully, then use that adapter to network boot.
+
         if ($discover_all) {    #rnetboot should not use -A
+
             for ($i = 0 ; $i < $adapter_found ; $i++) {
                 $ping_rc = ping_server($phandle_array[$i], $full_path_name_array[$i], $rconsole, $node, $mac_address, $verbose, $adap_speed, $adap_duplex, $list_type, $server_ip, $client_ip, $gateway_ip);
 
@@ -3223,14 +3796,18 @@ sub lparnetbootexp
                 }
             }
         } elsif ($macaddress ne "") {    #rnetboot here
+
             $match = 0;
             for ($i = 0 ; $i < $adapter_found ; $i++) {
                 if ($adap_type[$i] =~ /hfi-ent/) {
                     $ping_rc = ping_server($phandle_array[$i], $full_path_name_array[$i], $rconsole, $node, $mac_address, $verbose, $adap_speed, $adap_duplex, $list_type, $server_ip, $client_ip, $gateway_ip);
                 }
+
                 $mac_address = get_mac_addr($phandle_array[$i], $rconsole, $node, $verbose);
                 if ($macaddress =~ /$mac_address/) {
+
                     if (($discovery == 1) && !$discoverynoping) {
+
                         unless ($adap_type[$i] eq "hfi-ent") {
                             $ping_rc = ping_server($phandle_array[$i], $full_path_name_array[$i], $rconsole, $node, $mac_address, $verbose, $adap_speed, $adap_duplex, $list_type, $server_ip, $client_ip, $gateway_ip);
                         }
@@ -3243,6 +3820,7 @@ sub lparnetbootexp
                     $full_path_name   = $full_path_name_array[$i];
                     $chosen_adap_type = $adap_type[$i];
                     $match            = 1;
+
                     last;
                 }
             }
@@ -3250,11 +3828,15 @@ sub lparnetbootexp
                 nc_msg($verbose, "Can not find mac address '$macaddress'\n");
                 return [1];
             }
+
         } elsif ($phys_loc ne "") {
+
+
             $match = 0;
             for ($i = 0 ; $i < $adapter_found ; $i++) {
                 $loc_code = get_adaptr_loc($phandle_array[$i], $rconsole, $node, $verbose);
                 if ($loc_code =~ /$phys_loc/) {
+
                     if ($discovery && !$discoverynoping) {
                         $ping_rc = ping_server($phandle_array[$i], $full_path_name_array[$i], $rconsole, $node, $mac_address, $verbose, $adap_speed, $adap_duplex, $list_type, $server_ip, $client_ip, $gateway_ip);
                         unless ($ping_rc eq 0) {
@@ -3278,10 +3860,13 @@ sub lparnetbootexp
             # Use the first ethernet adapter in the
             # device tree.
             #
+
             for ($i = 0 ; $i < $adapter_found ; $i++) {
                 nc_msg($verbose, " begint to boot from first adapter in the device tree \n");
                 if ($adap_type[$i] eq $list_type) {
+
                     if (($discovery == 1) && !$discoverynoping) {
+
                         $ping_rc = ping_server($phandle_array[$i], $full_path_name_array[$i], $rconsole, $node, $mac_address, $verbose, $adap_speed, $adap_duplex, $list_type, $server_ip, $client_ip, $gateway_ip);
                         unless ($ping_rc eq 0) {
                             return [1];
@@ -3294,11 +3879,16 @@ sub lparnetbootexp
                 }
             }
         }
+
+
         my $result;
+
+
         if ($full_path_name eq "") {
             nc_msg($verbose, "Unable to boot network adapter.\n");
             return [1];
         } else {
+
             nc_msg($verbose, "# Network booting install adapter.\n");
             $result = xCAT::LparNetbootExp->boot_network($rconsole, $full_path_name, $adap_speed, $adap_duplex, $chosen_adap_type, $server_ip, $client_ip, $gateway_ip, $netmask, $dump_target, $dump_lun, $dump_port, $verbose, $extra_args, $node, $set_boot_order);
         }
@@ -3414,4 +4004,3 @@ sub lparnetbootexp
     return \@outputarray;
 
 }
-
