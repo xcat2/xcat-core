@@ -178,7 +178,7 @@ unless ($onlyinitrd) {
     open($yumconfig, ">", "/tmp/genimage.$$.yum.conf");
     my $repnum = 0;
     foreach $srcdir (@yumdirs) {
-        print $yumconfig "[$osver-$arch-$repnum]\nname=$osver-$arch-$repnum\nbaseurl=file://$srcdir\ngpgpcheck=0\n\n";
+        print $yumconfig "[$osver-$arch-$repnum]\nname=$osver-$arch-$repnum\nbaseurl=file://$srcdir\ngpgcheck=0\n\n";
         $repnum += 1;
     }
     $repnum -= 1;
@@ -263,7 +263,7 @@ unless ($onlyinitrd) {
                 }
 
                 if (($_ eq "PRE_REMOVE") || ($_ eq "POST_REMOVE")) { next; }
-                print $yumconfig "[otherpkgs$index]\nname=otherpkgs$index\nbaseurl=file://$srcdir_otherpkgs/$_\ngpgpcheck=0\n\n";
+                print $yumconfig "[otherpkgs$index]\nname=otherpkgs$index\nbaseurl=file://$srcdir_otherpkgs/$_\ngpgcheck=0\n\n";
                 $index++;
                 my $pa = $extra_hash{$pass}{$_};
                 $extrapkgnames{$pass} .= " " . join(' ', @$pa);

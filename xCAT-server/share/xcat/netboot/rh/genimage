@@ -336,11 +336,11 @@ if($onlyinitrd){
 
     my $repnum = 0;
     foreach $srcdir (@yumdirs) {
-        print $yumconfig "[$osver-$arch-$repnum]\nname=$osver-$arch-$repnum\nbaseurl=file://$srcdir\ngpgpcheck=0\nskip_if_unavailable=True\n\n";
+        print $yumconfig "[$osver-$arch-$repnum]\nname=$osver-$arch-$repnum\nbaseurl=file://$srcdir\ngpgcheck=0\nskip_if_unavailable=True\n\n";
         $repnum += 1;
     }
     foreach $srcdir (@pkgdir_internet) {
-       print $yumconfig "[$osver-$arch-$repnum]\nname=$osver-$arch-$repnum\nbaseurl=$srcdir\ngpgpcheck=0\nskip_if_unavailable=True\n\n";
+       print $yumconfig "[$osver-$arch-$repnum]\nname=$osver-$arch-$repnum\nbaseurl=$srcdir\ngpgcheck=0\nskip_if_unavailable=True\n\n";
        $repnum += 1;
     }
     $repnum -= 1;
@@ -516,12 +516,12 @@ if($onlyinitrd){
 
                 if (($_ eq "PRE_REMOVE") || ($_ eq "POST_REMOVE") || ($_ eq "ENVLIST")) { next; }
                 foreach(@otherpkgdir_url){
-                    print $yumconfig "[otherpkgs$index]\nname=otherpkgs$index\nbaseurl=$_\ngpgpcheck=0\nskip_if_unavailable=True\n\n";
+                    print $yumconfig "[otherpkgs$index]\nname=otherpkgs$index\nbaseurl=$_\ngpgcheck=0\nskip_if_unavailable=True\n\n";
                     $repohash{$pass}{$index} = 1;
                     $index++;
                 }
 
-                print $yumconfig "[otherpkgs$index]\nname=otherpkgs$index\nbaseurl=file://$srcdir_otherpkgs_local/$_\ngpgpcheck=0\nskip_if_unavailable=True\n\n";
+                print $yumconfig "[otherpkgs$index]\nname=otherpkgs$index\nbaseurl=file://$srcdir_otherpkgs_local/$_\ngpgcheck=0\nskip_if_unavailable=True\n\n";
                 $repohash{$pass}{$index} = 1;
                 $index++;
                 my $pa = $extra_hash{$pass}{$_};
