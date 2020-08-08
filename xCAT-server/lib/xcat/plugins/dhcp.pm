@@ -193,6 +193,7 @@ sub listnode
     print $OMIN "key "
       . $omapiuser . " \""
       . $omapikey . "\"\n";
+    print $OMIN "key-algorithm HMAC-SHA512\n";
     print $OMIN "connect\n";
     print $OMIN "new host\n";
 
@@ -258,6 +259,7 @@ sub listnode
         print $OMIN6 "key "
           . $omapiuser . " \""
           . $omapikey . "\"\n";
+        print $OMIN6 "key-algorithm HMAC-SHA512\n";
         print $OMIN6 "connect\n";
         print $OMIN6 "new host\n";
 
@@ -2035,19 +2037,17 @@ sub process_request
             print $omshell "key "
               . $ent->{username} . " \""
               . $ent->{password} . "\"\n";
-            if ($::XCATSITEVALS{externaldhcpservers}) {
-                print $omshell "server $::XCATSITEVALS{externaldhcpservers}\n";
-            }
+            print $omshell "key-algorithm HMAC-SHA512\n";
+            print $omshell "server $::XCATSITEVALS{externaldhcpservers}\n" if($::XCATSITEVALS{externaldhcpservers});
             print $omshell "connect\n";
             if ($usingipv6) {
                 open($omshell6, "|/usr/bin/omshell > /dev/null");
-                if ($::XCATSITEVALS{externaldhcpservers}) {
-                    print $omshell "server $::XCATSITEVALS{externaldhcpservers}\n";
-                }
+	        print $omshell "server $::XCATSITEVALS{externaldhcpservers}\n" if($::XCATSITEVALS{externaldhcpservers});
                 print $omshell6 "port 7912\n";
                 print $omshell6 "key "
                   . $ent->{username} . " \""
                   . $ent->{password} . "\"\n";
+                print $omshell6 "key-algorithm HMAC-SHA512\n";
                 print $omshell6 "connect\n";
             }
         }
@@ -2963,7 +2963,7 @@ sub newconfig6 {
     #    push @dhcp6conf, "update-static-leases on;\n";
     push @dhcp6conf, "omapi-port 7912;\n";        #Enable omapi...
     push @dhcp6conf, "key xcat_key {\n";
-    push @dhcp6conf, "  algorithm hmac-md5;\n";
+    push @dhcp6conf, "  algorithm hmac-sha512;\n";
     my $passtab = xCAT::Table->new('passwd', -create => 1);
     (my $passent) =
       $passtab->getAttribs({ key => 'omapi', username => 'xcat_key' }, 'password');
@@ -3026,7 +3026,7 @@ sub newconfig
     push @dhcpconf, "\n";
     push @dhcpconf, "omapi-port 7911;\n";            #Enable omapi...
     push @dhcpconf, "key xcat_key {\n";
-    push @dhcpconf, "  algorithm hmac-md5;\n";
+    push @dhcpconf, "  algorithm hmac-sha512;\n";
     (my $passent) =
       $passtab->getAttribs({ key => 'omapi', username => 'xcat_key' }, 'password');
     my $secret = encode_base64(genpassword(32));     #Random from set of  62^32

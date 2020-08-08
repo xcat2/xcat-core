@@ -1244,7 +1244,7 @@ sub update_namedconf {
                 if ($ctx->{privkey}) {
 
                     #for now, assume the field is correct
-                    #push @newnamed,"key xcat_key {\n","\talgorithm hmac-md5;\n","\tsecret \"".$ctx->{privkey}."\";\n","};\n\n";
+                    #push @newnamed,"key xcat_key {\n","\talgorithm hmac-sha512;\n","\tsecret \"".$ctx->{privkey}."\";\n","};\n\n";
                     push @newnamed, $line;
                     do {
                         $i++;
@@ -1351,7 +1351,7 @@ sub update_namedconf {
                 $ctx->{privkey} = encode_base64(genpassword(32));
                 chomp($ctx->{privkey});
             }
-            push @newnamed, "key xcat_key {\n", "\talgorithm hmac-md5;\n", "\tsecret \"" . $ctx->{privkey} . "\";\n", "};\n\n";
+            push @newnamed, "key xcat_key {\n", "\talgorithm hmac-sha512;\n", "\tsecret \"" . $ctx->{privkey} . "\";\n", "};\n\n";
             $ctx->{restartneeded} = 1;
         }
     }
