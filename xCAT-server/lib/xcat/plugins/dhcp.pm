@@ -2042,7 +2042,7 @@ sub process_request
             print $omshell "connect\n";
             if ($usingipv6) {
                 open($omshell6, "|/usr/bin/omshell > /dev/null");
-	        print $omshell "server $::XCATSITEVALS{externaldhcpservers}\n" if($::XCATSITEVALS{externaldhcpservers});
+                print $omshell "server $::XCATSITEVALS{externaldhcpservers}\n" if($::XCATSITEVALS{externaldhcpservers});
                 print $omshell6 "port 7912\n";
                 print $omshell6 "key "
                   . $ent->{username} . " \""
