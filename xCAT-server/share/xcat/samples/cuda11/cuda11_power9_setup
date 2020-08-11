@@ -145,6 +145,9 @@ $CHROOTCMD /bin/bash -c "systemctl enable nvidia-persistenced"
 [ ! -z "${IMG_ROOTIMGDIR}" ] && CHROOTCMD="chroot ${IMG_ROOTIMGDIR}"
 $CHROOTCMD /bin/bash -c "systemctl enable nvidia_gdrcopy_kernel.service"
 
+[ ! -z "${IMG_ROOTIMGDIR}" ] && CHROOTCMD="chroot ${IMG_ROOTIMGDIR}"
+$CHROOTCMD /bin/bash -c "systemctl enable nv_rsync_mem.service"
+
 if [ -z "${IMG_ROOTIMGDIR}" ] 
 then
     mv "${IMG_ROOTIMGDIR}/bin/uname.xcat" "${IMG_ROOTIMGDIR}/bin/uname"
