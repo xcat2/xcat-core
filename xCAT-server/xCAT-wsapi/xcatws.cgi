@@ -2879,7 +2879,7 @@ sub tablerowhdl {
     # Check if there is any real data in response
     # One key ('xcatdsource' => '<node>') is always returned.
     # If no other keys in response - no matches on key or attribute were returned from xcatd
-    if (keys @$responses[0] <= 1) {
+    if (keys (%{@$responses[0]}) <= 1) {
         @$responses[0]->{error} = "No table rows matched specified keys or attributes";
     }
     return $responses;
