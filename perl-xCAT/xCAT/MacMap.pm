@@ -23,7 +23,12 @@ use Sys::Syslog;
 
 #use Data::Dumper;
 use POSIX qw/WNOHANG/;
-use SNMP;
+my $have_snmp = 1;
+eval "use SNMP";
+if ($@) {
+    $have_snmp = 0;
+}
+
 my %cisco_vlans; #Special hash structure to reflect discovered VLANS on Cisco equip
 
 #use IF-MIB (1.3.6.1.2.1.2) for all switches

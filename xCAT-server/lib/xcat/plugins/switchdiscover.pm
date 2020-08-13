@@ -21,7 +21,11 @@ no strict;
 use Data::Dumper;
 use Socket;
 use Expect;
-use SNMP;
+my $have_snmp = 1;
+eval "use SNMP";
+if ($@) {
+    $have_snmp = 0;
+}
 use xCAT::data::switchinfo;
 
 #global variables for this module
