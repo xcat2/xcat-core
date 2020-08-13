@@ -36,7 +36,6 @@ use strict;
 use Class::Struct;
 use XML::Simple;
 use Storable qw(dclone);
-use SNMP;
 my $have_snmp = 1;
 eval "use SNMP";
 if ($@) {
