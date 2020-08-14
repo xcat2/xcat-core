@@ -1079,7 +1079,7 @@ sub mkinitrd_dracut {
 
         #update etc/dracut.conf
         open($DRACUTCONF, '>', "$rootimg_dir/etc/dracut.conf");
-        my $dracutmodulelist = "xcat nfs base network kernel-modules syslog";
+        my $dracutmodulelist = "xcat nfs base network kernel-modules kernel-modules-extra syslog";
 
         foreach (qw/systemd systemd-initrd dracut-systemd fadump/) {
             my ($dir) = glob($dracutmoduledir . "[0-9]*" . $_);
@@ -1120,7 +1120,7 @@ sub mkinitrd_dracut {
         $perm = (stat("$fullpath/$dracutdir/installkernel"))[2];
         chmod($perm & 07777, "$dracutmpath/installkernel");
 
-        my $dracutmodulelist = "xcat nfs base network kernel-modules syslog";
+        my $dracutmodulelist = "xcat nfs base network kernel-modules kernel-modules-extra syslog";
 
         foreach (qw/systemd systemd-initrd dracut-systemd fadump/) {
             my ($dir) = glob($dracutmoduledir . "[0-9]*" . $_);
