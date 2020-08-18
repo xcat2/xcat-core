@@ -6,7 +6,7 @@ cmd: rm -rf /tmp/backend_test/
 cmd:rm -rf ~/.xcatinv/inventory.cfg.bak.backend_init 
 check: rc==0
 cmd: mkdir -p ~/.xcatinv/
-cmd: [ -f ~/.xcatinv/inventory.cfg ] && mv ~/.xcatinv/inventory.cfg ~/.xcatinv/inventory.cfg.bak.backend_init
+cmd: if [[ -f ~/.xcatinv/inventory.cfg ]]; then mv ~/.xcatinv/inventory.cfg ~/.xcatinv/inventory.cfg.bak.backend_init; fi
 cmd: cp /opt/xcat/share/xcat/tools/autotest/testcase/xcat_inventory/templates/inventory.cfg ~/.xcatinv/inventory.cfg
 cmd: xcat-inventory init
 check: rc==0
@@ -86,7 +86,7 @@ check: output!=~ws
 
 cmd: XCATBYPASS=1 restorexCATdb -p /tmp/backend_test/backup/db
 check: rc==0
-cmd: [ -f "~/.xcatinv/inventory.cfg.bak.backend_init" ] && rm -rf "~/.xcatinv/inventory.cfg" &&  mv "~/.xcatinv/inventory.cfg.bak.backend_init" "~/.xcatinv/inventory.cfg"
+cmd: if [[ -f "~/.xcatinv/inventory.cfg.bak.backend_init" ]]; then rm -rf "~/.xcatinv/inventory.cfg"; mv "~/.xcatinv/inventory.cfg.bak.backend_init" "~/.xcatinv/inventory.cfg"; fi
 cmd: rm -rf /tmp/backend_test/
 end
 
