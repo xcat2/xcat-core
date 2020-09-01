@@ -113,9 +113,13 @@ if ($genesis_nodesetshell_test) {
 ####################################
 if ($genesis_runcmd_test) {
     send_msg(2, "[$$]:Running nodeset NODE runcmd test...............");
-    if (&testxdsh(&rungenesiscmd(&get_arch))) {
-        send_msg(0, "[$$]:Could not verify test results using xdsh...............");
-        exit 1;
+    my $testxdsh_value = &rungenesiscmd(&get_arch);
+    if (&testxdsh($testxdsh_value)) {
+        send_msg(0, "[$$]:Could not verify test results using xdsh($testxdsh_value) on first attempt, will try again...............");
+        if (&testxdsh($testxdsh_value)) {
+            send_msg(0, "[$$]:Could not verify test results using xdsh($testxdsh_value) on second attempt, giving up...............");
+            exit 1;
+        }
     }
     send_msg(2, "[$$]:Running runcmd test success...............");
 }
@@ -199,9 +203,13 @@ sub rungenesiscmd {
     if ($?) {
         send_msg(0, "mknb $arch failed for runcmd test.");
     }
-    `rinstall $noderange "runcmd=cmdtest,shell"`;
+    my $rinstall_cmd = "rinstall $noderange \"runcmd=cmdtest,shell\"";
+    `$rinstall_cmd`;
     if ($?) {
-      send_msg(0, "rinstall noderange shell failed for runcmd test");
+      send_msg(0, "Command \"$rinstall_cmd\" failed for runcmd test");
+    }
+    else {
+      send_msg(2, "Installing with \"$rinstall_cmd\" for runcmd test");
     }
     return $value;
 }
@@ -247,7 +255,7 @@ sub rungenesisimg {
 #########################################
 sub testxdsh {
     my $value = shift;
-    print "The input parameter is $value \n";
+    send_msg(2, "The input parameter for testxdsh() is $value \n");
     my $checkstring;
     my $checkfile;
     my $nodestatus;
@@ -266,7 +274,7 @@ sub testxdsh {
     if (($value == 1) || ($value == 2) || ($value == 3)) {
         `$xdsh_command`;
         if ($?) {
-            my @i = (1..10);
+            my @i = (1..5);
             for (@i) {
                 sleep 300;
                 $nodestatus=`lsdef $noderange -i status -c  2>&1 | awk -F'=' '{print \$2}'`;
