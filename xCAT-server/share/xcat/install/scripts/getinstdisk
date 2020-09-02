@@ -108,13 +108,16 @@ if [ -z "$install_disk" ]; then
             # It seems the kernel file in ubuntu and sles are named like vmlinux, but in RH it is called vmlinuz
             # To check both vmlinux and vmlinuz, use regular expression "vmlinu*" to match them
             for i in $ker_dir/vmlinu*; do
-                if [[ $partition = nvme* ]]; then
-                    # Expected nvme partition format example: nvme0n1p1
-                    disk_part=${partition%%p*}
-                else
-                    # Expected sd partition format example: sda1
-                    disk_part=${partition%%[0-9]*}
-                fi
+                case $partition in
+                    nvme*)
+                        # Expected nvme partition format example: nvme0n1p1
+                        disk_part=${partition%%p*}
+                    ;;
+                    *)
+                        # Expected sd partition format example: sda1
+                        disk_part=${partition%%[0-9]*}
+                    ;;
+                esac
                 touch "$tmpfile$disk_part"
                 disk_array=$disk_array"$disk_part "
                 echo "[get_install_disk]    The partition $partition has kernel file."
