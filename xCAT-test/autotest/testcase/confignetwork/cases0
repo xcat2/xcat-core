@@ -864,6 +864,8 @@ check:output=~br22
 check:output=~br33
 cmd:xdsh $$CN "cat /sys/class/net/bonding_masters"
 check:output=~bond0
+cmd:xdsh $$CN "ip addr show bond0.3"
+cmd:xdsh $$CN "ip addr show br33"
 cmd:rmdef -t network -o confignetworks_test1
 cmd:rmdef -t network -o confignetworks_test2
 cmd:if grep SUSE /etc/*release;then xdsh $$CN "rm -rf /etc/sysconfig/network/ifcfg-$$SECONDNIC"; elif grep -E "Red Hat|CentOS" /etc/*release;then xdsh $$CN "rm -rf /etc/sysconfig/network-scripts"; elif grep Ubuntu /etc/*release;then xdsh $$CN "rm -rf /etc/network/interfaces.d/$$SECONDNIC";else echo "Sorry,this is not supported os"; fi
