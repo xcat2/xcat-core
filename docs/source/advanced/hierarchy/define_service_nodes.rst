@@ -103,5 +103,7 @@ The following table illustrates the cluster being used in this example:
          chdef -t site clustersite installloc=
          rsync -auv --exclude 'autoinst' /install r1n01:/
          rsync -auv --exclude 'autoinst' /install r2n01:/
-         rsync -auv --exclude 'autoinst' /tftpboot r1n01:/
-         rsync -auv --exclude 'autoinst' /tftpboot r2n01:/
+         rsync -auv /tftpboot r1n01:/
+         rsync -auv /tftpboot r2n01:/
+
+.. note:: If ``/install`` and ``/tftpboot`` directories local to each Service Node are used and ``mknb`` command is executed to generate a diskless network boot image with custom changes, it will not be automatically copied to the Service Node. Make sure to run the above ``rsync`` commands after executing the ``mknb``. Verify ``/tftpboot/xcat`` directory on Service node contains ``genesis.kernel.<arch>`` and ``genesis.fs.<arch>.gz`` files.
