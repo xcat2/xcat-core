@@ -2074,12 +2074,15 @@ function create_bridge_interface_nmcli {
             nmcli con modify $tmp_slave_con_name connection.id $xcat_slave_con
         fi
     else
+        log_error "$nmcli con up $xcat_con_name success with return code equals to $is_active"
         is_nmcli_connection_exist $tmp_con_name
         if [ $? -eq 0 ]; then
+            log_info "delete connection $tmp_con_name"
             $nmcli con delete $tmp_con_name
         fi
         is_nmcli_connection_exist $tmp_slave_con_name
         if [ $? -eq 0 ]; then
+            log_info "delete connection $tmp_slave_con_name"
             $nmcli con delete $tmp_slave_con_name
         fi
         if [ -n "$xcatcreatedcon" ]; then
@@ -2089,6 +2092,7 @@ function create_bridge_interface_nmcli {
         wait_for_ifstate $ifname UP 40 40
         [ $? -ne 0 ] && rc=1
         $ip address show dev $ifname| $sed -e 's/^/[bridge] >> /g' | log_lines info
+        $ip address show # Show all for debug
     fi
 
     return $rc
