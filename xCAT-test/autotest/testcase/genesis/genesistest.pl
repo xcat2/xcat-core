@@ -113,11 +113,10 @@ if ($genesis_nodesetshell_test) {
 ####################################
 if ($genesis_runcmd_test) {
     send_msg(2, "[$$]:Running nodeset NODE runcmd test...............");
-    my $testxdsh_value = &rungenesiscmd(&get_arch);
-    if (&testxdsh($testxdsh_value)) {
-        send_msg(0, "[$$]:Could not verify runcmd test results using xdsh($testxdsh_value) on first attempt, will try again...............");
-        if (&testxdsh($testxdsh_value)) {
-            send_msg(0, "[$$]:Could not verify runcmd test results using xdsh($testxdsh_value) on second attempt, giving up...............");
+    if (&testxdsh(&rungenesiscmd(&get_arch))) {
+        send_msg(0, "[$$]:Could not verify runcmd test results using testxdsh() on first attempt, will try again...............");
+        if (&testxdsh(&rungenesiscmd(&get_arch))) {
+            send_msg(0, "[$$]:Could not verify runcmd test results using testxdsh() on second attempt, giving up...............");
             exit 1;
         }
     }
@@ -128,11 +127,10 @@ if ($genesis_runcmd_test) {
 ##################################
 if ($genesis_runimg_test) {
     send_msg(2, "[$$]:Run nodeset NODE runimage test...............");
-    my $testxdsh_value = &rungenesisimg;
-    if (&testxdsh($testxdsh_value)) {
-        send_msg(0, "[$$]:Could not verify runimage test results using xdsh($testxdsh_value) on first attmpt, will try again...............");
-        if (&testxdsh($testxdsh_value)) {
-            send_msg(0, "[$$]:Could not verify runimage test results using xdsh($testxdsh_value) on second attempt, giving up...............");
+    if (&testxdsh(&rungenesisimg)) {
+        send_msg(0, "[$$]:Could not verify runimage test results using testxdsh() on first attmpt, will try again...............");
+        if (&testxdsh(&rungenesisimg)) {
+            send_msg(0, "[$$]:Could not verify runimage test results using itestxdsh() on second attempt, giving up...............");
             exit 1;
         }
     }
