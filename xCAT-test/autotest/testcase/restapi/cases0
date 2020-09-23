@@ -1,29 +1,29 @@
-start:restapi_setup_on_MN_SN_CN
+start:restapi_setup_on_MN_CN
 description: Set up the REST API on MN and CN
 label:restapi
-cmd:yum install mod_ssl -y
+#Install the mod_ssl package on Red Hat
+cmd:if cat /etc/*release | grep "Red Hat" >/dev/null; then yum install mod_ssl -y; rpm -qa | grep mod_ssl; fi
 check:rc==0
 cmd:sed -i 's/^\(\s*\)SSLCertificateFile.*$/\1SSLCertificateFile \/etc\/xcat\/cert\/server-cred.pem/' /etc/httpd/conf.d/ssl.conf
 cmd:sed -i 's/^\(\s*SSLCertificateKeyFile.*\)$/#\1/' /etc/httpd/conf.d/ssl.conf
-cmd:service httpd restart
+cmd:if cat /etc/*release | grep "Red Hat" >/dev/null; then service httpd restart; fi
 check:rc==0
 cmd:scp /install/postscripts/ca/ca-cert.pem $$CN:/root
 check:rc==0
-cmd:tabch key=xcat,username=root passwd.password=cluster
+cmd:tabch key=xcat,username=__GETTABLEVALUE(key,system,username,passwd)__ passwd.password=__GETTABLEVALUE(key,system,password,passwd)__
 check:rc==0
 end
 
-start:restapi_cleanup_on_MN_SN_CN
-description: Set up the REST API on MN and CN
+start:restapi_cleanup_on_MN_CN
+description: Clean up the REST API on MN and CN
 label:restapi
 cmd:xdsh $$CN "rm /root/ca-cert.pem"
 check:rc==0
 cmd:tabch -d key=xcat passwd
 check:rc==0
-cmd:yum remove mod_ssl -y
-check:rc==0
-cmd:service httpd restart
-check:rc==0
+#Remove the mod_ssl package on Red Hat
+cmd:if cat /etc/*release | grep "Red Hat" >/dev/null; then yum remove mod_ssl -y; service httpd restart; rpm -qa | grep mod_ssl; fi
+check:rc==1
 end
 
 start:restapi_list_all_resources
@@ -71,7 +71,7 @@ description: List networks on the management node with "curl -X GET"
 label:restapi
 cmd:username=__GETTABLEVALUE(key,system,username,passwd)__;password=__GETTABLEVALUE(key,system,password,passwd)__;xdsh $$CN "curl -X GET -s -k --cacert /root/ca-cert.pem 'https://$$MN/xcatws/networks?userName=$username&userPW=$password'"
 check:rc==0
-check:output!=""
+check:output!~""
 end
 
 start:restapi_list_osimages
@@ -104,7 +104,7 @@ label:restapi
 cmd:username=__GETTABLEVALUE(key,system,username,passwd)__;password=__GETTABLEVALUE(key,system,password,passwd)__;xdsh $$CN "curl -X DELETE -s --cacert /root/ca-cert.pem 'https://$$MN/xcatws/nodes/temp_node1?userName=$username&userPW=$password'"
 check:rc==0
 cmd:lsdef
-check:output!=temp_node1
+check:output!~temp_node1
 end
 
 start:restapi_delete_temp_CN_2
@@ -113,7 +113,35 @@ label:restapi
 cmd:username=__GETTABLEVALUE(key,system,username,passwd)__;password=__GETTABLEVALUE(key,system,password,passwd)__;xdsh $$CN "curl -X DELETE -s --cacert /root/ca-cert.pem 'https://$$MN/xcatws/nodes/temp_node[1-2]?userName=$username&userPW=$password'"
 check:rc==0
 cmd:lsdef
-check:output!=temp_node1
+check:output!~temp_node1
+end
+
+start:restapi_list_temp_CN_2
+description: Delete a temporary compute node with "curl -X DELETE"
+label:restapi
+cmd:username=__GETTABLEVALUE(key,system,username,passwd)__;password=__GETTABLEVALUE(key,system,password,passwd)__;xdsh $$CN "curl -X GET -s --cacert /root/ca-cert.pem 'https://$$MN/xcatws/nodes/temp_node[1-2]?userName=$username&userPW=$password'"
+check:rc==0
+check:output=~temp_node1
+check:output=~temp_node2
+cmd:username=__GETTABLEVALUE(key,system,username,passwd)__;password=__GETTABLEVALUE(key,system,password,passwd)__;xdsh $$CN "curl -X GET -s --cacert /root/ca-cert.pem 'https://$$MN/xcatws/nodes/temp_node[1-2]/nodels?userName=$username&userPW=$password'"
+check:rc==0
+check:output=~temp_node1
+check:output=~temp_node2
+cmd:username=__GETTABLEVALUE(key,system,username,passwd)__;password=__GETTABLEVALUE(key,system,password,passwd)__;xdsh $$CN "curl -X GET -s --cacert /root/ca-cert.pem 'https://$$MN/xcatws/nodes/temp_node1+1/nodels?userName=$username&userPW=$password'"
+check:rc==0
+check:output=~temp_node1
+check:output=~temp_node2
+cmd:username=__GETTABLEVALUE(key,system,username,passwd)__;password=__GETTABLEVALUE(key,system,password,passwd)__;xdsh $$CN "curl -X GET -s --cacert /root/ca-cert.pem 'https://$$MN/xcatws/nodes/all/nodels?userName=$username&userPW=$password'"
+check:rc==0
+check:output=~temp_node1
+check:output=~temp_node2
+cmd:username=__GETTABLEVALUE(key,system,username,passwd)__;password=__GETTABLEVALUE(key,system,password,passwd)__;xdsh $$CN "curl -X GET -s --cacert /root/ca-cert.pem 'https://$$MN/xcatws/nodes/mgt==kvm/nodels?userName=$username&userPW=$password'"
+check:rc==0
+check:output=~temp_node1
+check:output=~temp_node2
+cmd:lsdef
+check:output=~temp_node1
+check:output=~temp_node2
 end
 
 start:restapi_create_temp_CN_post
@@ -166,6 +194,21 @@ label:restapi
 cmd:username=__GETTABLEVALUE(key,system,username,passwd)__;password=__GETTABLEVALUE(key,system,password,passwd)__;xdsh $$CN "curl -X GET -s --cacert /root/ca-cert.pem 'https://$$MN/xcatws/nodes?userName=$username&userPW=invalid_password'"
 check:rc==0
 check:output=~Authentication failure
+end
+
+start:restapi_list_nodes_invalid_option
+description: List nodes on the management node with an invalid option with "curl -X GET"
+label:restapi
+cmd:username=__GETTABLEVALUE(key,system,username,passwd)__;password=__GETTABLEVALUE(key,system,password,passwd)__;xdsh $$CN "curl -X GET --cacert /root/ca-cert.pem 'https://$$MN/xcatws/nodes?xyz=123&userName=$username&userPW=$password'"
+check:rc==0
+end
+
+start:restapi_list_invalid_resource
+description: List nodes on the management node with an invalid option with "curl -X GET"
+label:restapi
+cmd:username=__GETTABLEVALUE(key,system,username,passwd)__;password=__GETTABLEVALUE(key,system,password,passwd)__;xdsh $$CN "curl -X GET -s --cacert /root/ca-cert.pem 'https://$$MN/xcatws/abc?userName=$username&userPW=invalid_password&xyz=123'"
+check:rc==0
+check:output=~Unsupported resource
 end
 
 start:restapi_list_wrong_osimage
