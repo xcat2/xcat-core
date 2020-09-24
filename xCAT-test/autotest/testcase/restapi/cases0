@@ -4,7 +4,7 @@ label:restapi
 #Install the mod_ssl package on Red Hat
 cmd:if cat /etc/*release | grep "Red Hat" >/dev/null; then yum install mod_ssl -y; rpm -qa | grep mod_ssl; fi
 check:rc==0
-cmd:sed -i 's/^\(\s*\)SSLCertificateFile.*$/\1SSLCertificateFile \/etc\/xcat\/cert\/server-cred.pem/' /etc/httpd/conf.d/ssl.conf
+cmd:sed -i 's/^\(\s*\)SSLCertificateFile.*$/\1SSLCertificateFile \/etc\/xcat\/cert\/server-cred.pem/' /etc/httpd/conf.d/ssl.conf 
 cmd:sed -i 's/^\(\s*SSLCertificateKeyFile.*\)$/#\1/' /etc/httpd/conf.d/ssl.conf
 cmd:if cat /etc/*release | grep "Red Hat" >/dev/null; then service httpd restart; fi
 check:rc==0
@@ -55,7 +55,7 @@ description: List nodes on the management node with "curl -X GET"
 label:restapi
 cmd:username=__GETTABLEVALUE(key,system,username,passwd)__;password=__GETTABLEVALUE(key,system,password,passwd)__;xdsh $$CN "curl -X GET -s --cacert /root/ca-cert.pem 'https://$$MN/xcatws/nodes?&userName=$username&userPW=$password'"
 check:rc==0
-check:output=~$$CN
+check:output=~$$SN
 end
 
 start:restapi_list_node_CN
@@ -71,7 +71,7 @@ description: List networks on the management node with "curl -X GET"
 label:restapi
 cmd:username=__GETTABLEVALUE(key,system,username,passwd)__;password=__GETTABLEVALUE(key,system,password,passwd)__;xdsh $$CN "curl -X GET -s -k --cacert /root/ca-cert.pem 'https://$$MN/xcatws/networks?userName=$username&userPW=$password'"
 check:rc==0
-check:output!~""
+check:output=~__GETTABLEVALUE(mtu,1500,netname,networks)__
 end
 
 start:restapi_list_osimages
@@ -108,7 +108,7 @@ check:output!~temp_node1
 end
 
 start:restapi_delete_temp_CN_2
-description: Delete a temporary compute node with "curl -X DELETE"
+description: Delete two temporary compute nodes with "curl -X DELETE"
 label:restapi
 cmd:username=__GETTABLEVALUE(key,system,username,passwd)__;password=__GETTABLEVALUE(key,system,password,passwd)__;xdsh $$CN "curl -X DELETE -s --cacert /root/ca-cert.pem 'https://$$MN/xcatws/nodes/temp_node[1-2]?userName=$username&userPW=$password'"
 check:rc==0
@@ -117,7 +117,7 @@ check:output!~temp_node1
 end
 
 start:restapi_list_temp_CN_2
-description: Delete a temporary compute node with "curl -X DELETE"
+description: List two temporary compute nodes with "curl -X DELETE" and with various range options
 label:restapi
 cmd:username=__GETTABLEVALUE(key,system,username,passwd)__;password=__GETTABLEVALUE(key,system,password,passwd)__;xdsh $$CN "curl -X GET -s --cacert /root/ca-cert.pem 'https://$$MN/xcatws/nodes/temp_node[1-2]?userName=$username&userPW=$password'"
 check:rc==0
