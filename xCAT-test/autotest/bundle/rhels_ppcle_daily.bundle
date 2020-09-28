@@ -24,6 +24,7 @@ updatenode_syncfile_MERGE
 updatenode_v
 updatenode_without_flag
 updatenode_without_options
+#INCLUDE:restapi.bundle#
 xdcp_nonroot_user
 xdcp_src_dst
 xdsh_E
@@ -306,5 +307,4 @@ xcatstanzafile_normal
 xcatstanzafile_objtype
 xcatstanzafile_specificvalue
 xcatstanzafile_tab
-#INCLUDE:restapi.bundle#
 go_xcat_devel_from_repo
