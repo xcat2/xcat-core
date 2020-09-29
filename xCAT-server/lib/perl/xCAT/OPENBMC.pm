@@ -102,7 +102,8 @@ sub run_cmd_in_perl {
     # List of commands currently not supported in Python
     my @unsupported_in_python_commands = ('rflash', 'getopenbmccons');
 
-    if ($command ~~ @unsupported_in_python_commands) {
+    my @temp = grep ({$command =~ $_ } @unsupported_in_python_commands);
+    if ( $command eq $temp[0]) {
         # Command currently not supported in Python
         if ($support_obmc and uc($support_obmc) eq 'YES') {
             return (0, ''); # Go Python: unsuppored command, but XCAT_OPENBMC_DEVEL=YES overrides
