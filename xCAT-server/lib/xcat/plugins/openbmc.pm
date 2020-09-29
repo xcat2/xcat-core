@@ -1255,7 +1255,7 @@ sub parse_args {
         my $option_s;
         GetOptions( 's' => \$option_s );
         return ([ 1, "The -s option is not supported for OpenBMC." ]) if ($option_s);
-        my @temp = grep ({$command =~ $_ } @ARGV);
+        my @temp = grep ({"resolved" =~ $_ } @ARGV);
         if ( "resolved=" eq $temp[0]) {
             return ([ 1, "$usage_errormsg $reventlog_no_id_resolved_errormsg" ]);
         }
