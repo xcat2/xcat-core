@@ -24,6 +24,7 @@ updatenode_syncfile_MERGE
 updatenode_v
 updatenode_without_flag
 updatenode_without_options
+#INCLUDE:restapi.bundle#
 xdcp_nonroot_user
 xdcp_src_dst
 xdsh_E
