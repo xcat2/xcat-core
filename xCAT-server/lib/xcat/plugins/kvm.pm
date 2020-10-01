@@ -3571,25 +3571,23 @@ sub lsvm {
                 if (exists $domain_info->{"state"}) {
                     my $state =  $domain_info->{"state"};
                     my $state_string;
-                    given($state) {
-                        when ($state == &Sys::Virt::Domain::STATE_NOSTATE)
-                            {$state_string = "The domain is active, but is not running / blocked (eg idle)";}
-                        when ($state == &Sys::Virt::Domain::STATE_RUNNING)
-                            {$state_string = "The domain is active and running";}
-                        when ($state == &Sys::Virt::Domain::STATE_BLOCKED)
-                            {$state_string = "The domain is active, but execution is blocked";}
-                        when ($state == &Sys::Virt::Domain::STATE_PAUSED)
-                            {$state_string = "The domain is active, but execution has been paused";}
-                        when ($state == &Sys::Virt::Domain::STATE_SHUTDOWN)
-                            {$state_string = "The domain is active, but in the shutdown phase";}
-                        when ($state == &Sys::Virt::Domain::STATE_SHUTOFF)
-                            {$state_string = "The domain is inactive, and shut down";}
-                        when ($state == &Sys::Virt::Domain::STATE_CRUSHED)
-                            {$state_string = "The domain is inactive, and crashed";}
-                        when ($state == &Sys::Virt::Domain::STATE_PMSUSPENDED)
-                            {$state_string = "The domain is active, but in power management suspend state";}
-                        default {$state_string = "Unknown"};
-                    }
+                    if ($state == &Sys::Virt::Domain::STATE_NOSTATE)
+                        {$state_string = "The domain is active, but is not running / blocked (eg idle)";}
+                    elsif ($state == &Sys::Virt::Domain::STATE_RUNNING)
+                        {$state_string = "The domain is active and running";}
+                    elsif ($state == &Sys::Virt::Domain::STATE_BLOCKED)
+                        {$state_string = "The domain is active, but execution is blocked";}
+                    elsif ($state == &Sys::Virt::Domain::STATE_PAUSED)
+                        {$state_string = "The domain is active, but execution has been paused";}
+                    elsif ($state == &Sys::Virt::Domain::STATE_SHUTDOWN)
+                        {$state_string = "The domain is active, but in the shutdown phase";}
+                    elsif ($state == &Sys::Virt::Domain::STATE_SHUTOFF)
+                        {$state_string = "The domain is inactive, and shut down";}
+                    elsif ($state == &Sys::Virt::Domain::STATE_CRUSHED)
+                        {$state_string = "The domain is inactive, and crashed";}
+                    elsif ($state == &Sys::Virt::Domain::STATE_PMSUSPENDED)
+                        {$state_string = "The domain is active, but in power management suspend state";}
+                    else {$state_string = "Unknown"};
                     push @vms, "State :" . $domain_info->{"state"} . " ($state_string)";
                 }
                 # The following block of code copied from rscan command processng for disks
