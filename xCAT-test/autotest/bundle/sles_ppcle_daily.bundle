@@ -7,6 +7,7 @@ assign_certain_command_permission
 bmcdiscover_help
 bmcdiscover_q
 bmcdiscover_version
+#INCLUDE:restapi.bundle#
 xdcp_nonroot_user
 xdsh_E
 xdsh_Q_command
