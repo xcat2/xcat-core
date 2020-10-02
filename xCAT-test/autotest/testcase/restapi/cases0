@@ -4,9 +4,18 @@ label:restapi
 #Install the mod_ssl package on Red Hat
 cmd:if cat /etc/*release | grep "Red Hat" >/dev/null; then yum install mod_ssl -y; rpm -qa | grep mod_ssl; fi
 check:rc==0
-cmd:sed -i 's/^\(\s*\)SSLCertificateFile.*$/\1SSLCertificateFile \/etc\/xcat\/cert\/server-cred.pem/' /etc/httpd/conf.d/ssl.conf 
-cmd:sed -i 's/^\(\s*SSLCertificateKeyFile.*\)$/#\1/' /etc/httpd/conf.d/ssl.conf
+cmd:if cat /etc/*release | grep "Red Hat" >/dev/null; then sed -i 's/^\(\s*\)SSLCertificateFile.*$/\1SSLCertificateFile \/etc\/xcat\/cert\/server-cred.pem/' /etc/httpd/conf.d/ssl.conf; fi
+cmd:if cat /etc/*release | grep "Red Hat" >/dev/null; then sed -i 's/^\(\s*SSLCertificateKeyFile.*\)$/#\1/' /etc/httpd/conf.d/ssl.conf; fi
+check:rc==0
 cmd:if cat /etc/*release | grep "Red Hat" >/dev/null; then service httpd restart; fi
+check:rc==0
+#Configure the SLES environment
+cmd:if cat /etc/*release | grep "SLES" >/dev/null; then a2enmod ssl; a2enflag SSL; cp /etc/apache2/vhosts.d/vhost-ssl.template /etc/apache2/vhosts.d/vhost-ssl.conf; fi
+check:rc==0
+cmd:if cat /etc/*release | grep "SLES" >/dev/null; then sed -i 's/^\(\s*\)SSLCertificateFile.*$/\1SSLCertificateFile \/etc\/xcat\/cert\/server-cred.pem/' /etc/apache2/vhosts.d/vhost-ssl.conf; fi
+cmd:if cat /etc/*release | grep "SLES" >/dev/null; then sed -i 's/^\(\s*SSLCertificateKeyFile.*\)$/#\1/' /etc/apache2/vhosts.d/vhost-ssl.conf; fi
+check:rc==0
+cmd:if cat /etc/*release | grep "SLES" >/dev/null; then service apache2 restart; fi
 check:rc==0
 cmd:scp /install/postscripts/ca/ca-cert.pem $$CN:/root
 check:rc==0
@@ -22,8 +31,11 @@ check:rc==0
 cmd:tabch -d key=xcat passwd
 check:rc==0
 #Remove the mod_ssl package on Red Hat
-cmd:if cat /etc/*release | grep "Red Hat" >/dev/null; then yum remove mod_ssl -y; service httpd restart; rpm -qa | grep mod_ssl; fi
-check:rc==1
+cmd:if cat /etc/*release | grep "Red Hat" >/dev/null; then yum remove mod_ssl -y; service httpd restart; fi
+check:rc==0
+#Clean up the SLES environment
+cmd:if cat /etc/*release | grep "SLES" >/dev/null; then rm /etc/apache2/vhosts.d/vhost-ssl.conf; service apache2 restart; fi
+check:rc==0
 end
 
 start:restapi_list_all_resources
