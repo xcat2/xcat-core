@@ -57,7 +57,7 @@ end
 start:restapi_list_groups
 description: List groups on the management node with "curl -X GET"
 label:restapi
-cmd:username=__GETTABLEVALUE(key,system,username,passwd)__;password=__GETTABLEVALUE(key,system,password,passwd)__;curl_v=`xdsh $$CN "curl -X GET -s -k --cacert /root/ca-cert.pem 'https://$$MN/xcatws/groups?userName=$username&userPW=$password' | sed 's/\"//g' | sed 's/\[//' | sed 's/\]//'"`;lsdef -t group > list; tr -d '\n' < list > list1; sed -i 's/[[:blank:]][[:blank:]]/,/g' list1; sed -i 's/(group)//g' list1; sed -i 's/,$//' list1; sed -i 's/^/$$CN: /' list1; lsdef_v=`cat list1`; echo $curl_v; echo $lsdef_v; if [[ $curl_v = $lsdef_v ]]; then echo YES; else echo NO; fi
+cmd:username=__GETTABLEVALUE(key,system,username,passwd)__;password=__GETTABLEVALUE(key,system,password,passwd)__;curl_v=`xdsh $$CN "curl -X GET -s -k --cacert /root/ca-cert.pem 'https://$$MN/xcatws/groups?userName=$username&userPW=$password' | sed 's/\"//g' | sed 's/\[//' | sed 's/\]//'"`;lsdef -t group > list; tr -d '\n' < list > list1; sed -i 's/[[:blank:]][[:blank:]]/,/g' list1; sed -i 's/(group)//g' list1; sed -i 's/,$//' list1; sed -i 's/^/$$CN: /' list1; lsdef_v=`cat list1`; echo $curl_v; echo $lsdef_v; rm -f list list1; if [[ $curl_v = $lsdef_v ]]; then echo YES; else echo NO; fi
 check:rc==0
 check:output=~YES
 end
