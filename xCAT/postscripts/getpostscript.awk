@@ -1,9 +1,22 @@
 #!/usr/bin/awk -f
 BEGIN {
+        if (!system("test -f /bin/nice")) {
+           nice = "/bin/nice"
+        } else if (!system("test -f /usr/bin/nice")) {
+           nice = "/usr/bin/nice"
+        } else {
+           print "Error: nice utility missing"
+           exit 1
+        }
+        if (!system("test -f openssl")) {
+           print "Error: openssl utility missing"
+           exit 1
+        }
+
         if (ENVIRON["USEOPENSSLFORXCAT"]) {
-            server = "openssl s_client -no_ssl3 -connect " ENVIRON["XCATSERVER"] " -rand /bin/nice 2> /dev/null"
+            server = "openssl s_client -no_ssl3 -connect " ENVIRON["XCATSERVER"] " -rand "nice" 2> /dev/null"
             if (!system("openssl s_client -help 2>&1 | grep -m 1 -q -- -no_ssl2")) {
-                server = "openssl s_client -no_ssl3 -no_ssl2 -connect " ENVIRON["XCATSERVER"] " -rand /bin/nice 2> /dev/null"
+                server = "openssl s_client -no_ssl3 -no_ssl2 -connect " ENVIRON["XCATSERVER"] " -rand "nice" 2> /dev/null"
             }
         } else {
             server = "/inet/tcp/0/127.0.0.1/400"
