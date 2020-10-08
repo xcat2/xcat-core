@@ -19,79 +19,57 @@ DESCRIPTION
 ***********
 
 
-A stanza file contains information that can be used to create xCAT data object definitions. A stanza file can be used as input to several xCAT commands. The stanza file contains one or more individual stanzas that provide information for individual object definitions. The following rules must be followed when creating a stanza file:
+A stanza file contains information that can be used to create xCAT data object definitions. A stanza file can be used as input to several xCAT commands. The stanza file contains one or more individual stanzas that provide information for individual object definitions as well as an optional default definition that applies to all subsequent object definitions of that type.
+
+The following rules must be followed when creating a stanza file:
 
 
-\*
- 
- An object stanza header consists of the object name followed by a colon, (":").
- 
+\* An object stanza header consists of the object name followed by a colon, (":").
 
 
-\*
- 
- Attribute lines must take the form of Attribute=Value.
- 
+
+\* Attribute lines must take the form of Attribute=Value.
 
 
-\*
- 
- Attribute name might include the character dot ("."), like passwd.HMC and nicips.eth0.
- 
+
+\* Attribute name might include the character dot ("."), like passwd.HMC and nicips.eth0.
 
 
-\*
- 
- Only one stanza can exist for each object name.
- 
+
+\* Only one stanza can exist for each object name.
 
 
-\*
- 
- All stanzas except for default stanzas must have a value set for "objtype".
- 
+
+\* All stanzas except for default stanzas must have a value set for "objtype".
 
 
-\*
- 
- Comments beginning with the "#" pound sign may be added to the file. A comment must be on a separate line.
- 
+
+\* Comments beginning with the "#" pound sign may be added to the file. A comment must be on a separate line.
 
 
-\*
- 
- When parsing the file, tab characters and spaces are ignored.
- 
+
+\* When parsing the file, tab characters and spaces are ignored.
 
 
-\*
- 
- Each line of the file can have no more than one header or attribute definition.
- 
+
+\* Each line of the file can have no more than one header or attribute definition.
 
 
-\*
- 
- If the header name is "default-<object type>:" the attribute values in the stanza are considered default values for subsequent definitions in the file that are the same object type.
- 
+
+\* If the header name is "default-<object type>:" the attribute values in the stanza are considered default values for subsequent definitions in the file that are the same object type.
 
 
-\*
- 
- Default stanzas can be specified multiple times and at any point in a stanza file. The values apply to all definitions following the default stanzas in a file. The default values are cumulative; a default attribute value will remain set until it is explicitly unset or changed.
- 
+
+\* Default stanzas can be specified multiple times and at any point in a stanza file. The values apply to all definitions following the default stanzas in a file. The default values are cumulative; a default attribute value will remain set until it is explicitly unset or changed.
 
 
-\*
- 
- To turn off a default value, use another default stanza to set the attribute to have no value using a blank space.
- 
+
+\* To turn off a default value, use another default stanza to set the attribute to have no value using a blank space.
 
 
-\*
- 
- When a specific value for an attribute is provided in the stanza, it takes priority over any default value that had been set.
- 
+
+\* When a specific value for an attribute is provided in the stanza, it takes priority over any default value that had been set.
+
 
 
 The format of a stanza file should look similar to the following.
