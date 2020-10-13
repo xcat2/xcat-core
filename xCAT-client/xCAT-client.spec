@@ -25,6 +25,7 @@ BuildArch: noarch
 %endif
 
 Requires: perl-xCAT = 4:%{version}-%{release}
+Requires: cpio
 
 # fping or nmap is needed by pping (in case xCAT-client is installed by itself on a remote client)
 %ifos linux
