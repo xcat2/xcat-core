@@ -3950,7 +3950,8 @@ sub initfru_zero {
             next;
         }
 
-        if ($sdr->fru_subtype == 0x1) {      #DIMM
+        if ($sdr->id_string =~ "DIMM") {      #DIMM. 
+            # Can not always use "fru_subtype=1" for DIMM, sometimes on Power it is 2
             push @{ $sessdata->{dimmfru} }, $sdr;
         } elsif ($sdr->fru_subtype == 0 or $sdr->fru_subtype == 2) {
             push @{ $sessdata->{genhwfru} }, $sdr;
@@ -4213,7 +4214,14 @@ sub add_fruhash {
         $sessdata->{frudex} += 1;
     } elsif ($sessdata->{currfrutype} and $sessdata->{currfrutype} eq 'dimm') {
         $fruhash = decode_spd(@{ $sessdata->{currfrudata} });
+        if ($fruhash->{product}->{model} =~ "Unrecognized SPD") {
+            # If decode_spd() was not able to parse SPD data for DIMM, try parsefru()
+            # 
+            # Yes, it is a goto statement here. Ugly, but removes the need to restructure
+            goto PARSEFRU_DIMM;
+        }
     } else {
+PARSEFRU_DIMM:
         my $err;
         $global_sessdata = $sessdata; #pass by global, evil, but practical this time
         ($err, $fruhash) = parsefru($sessdata->{currfrudata});
@@ -4226,7 +4234,7 @@ sub add_fruhash {
                 $fru->rec_type("hw");
             }
             $fru->value($err);
-            if ($sessdata->{currfrusdr}) {
+            if ($sessdata->{currfrusdr} and scalar keys %{$sessdata->{currfrusdr}} ) {
                 $fru->desc($sessdata->{currfrusdr}->id_string);
             }
             if (exists($sessdata->{frudex})) {
@@ -4245,6 +4253,7 @@ sub add_fruhash {
     } elsif (ref $sessdata->{currfrudata}) {
         if ($sessdata->{currfrutype} and $sessdata->{currfrutype} eq 'dimm') {
             add_textual_frus($fruhash, $sessdata->{currfrusdr}->id_string, "", "product", "dimm,hw", $sessdata);
+            add_textual_frus($fruhash, $sessdata->{currfrusdr}->id_string, "Board ", "board", "dimm,hw", $sessdata);
         } else {
             add_textual_frus($fruhash, $sessdata->{currfrusdr}->id_string, "Board ", "board", undef, $sessdata);
             add_textual_frus($fruhash, $sessdata->{currfrusdr}->id_string, "Product ", "product", undef, $sessdata);
