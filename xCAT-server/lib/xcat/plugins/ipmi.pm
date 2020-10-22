@@ -7537,20 +7537,22 @@ sub initsdr_withrepinfo {
     my $dev_rev   = $sessdata->{device_rev};
     my $fw_rev1   = $sessdata->{firmware_rev1};
     my $fw_rev2   = $sessdata->{firmware_rev2};
+    my $num_sdr_records = $sessdata->{sdr_info}->{rec_count};
 
     #TODO: beware of dynamic SDR contents
 
-    my $cache_file = "$cache_dir/sdr_$mfg_id.$prod_id.$device_id.$dev_rev.$fw_rev1.$fw_rev2";
+    my $cache_name_id = "$mfg_id.$prod_id.$device_id.$dev_rev.$fw_rev1.$fw_rev2.$num_sdr_records";
+    my $cache_file = "$cache_dir/sdr_$cache_name_id";
     $sessdata->{sdrcache_file} = $cache_file;
     if ($enable_cache eq "yes") {
-        if ($sdr_caches{"$mfg_id.$prod_id.$device_id.$dev_rev.$fw_rev1.$fw_rev2"}) {
-            $sessdata->{sdr_hash} = $sdr_caches{"$mfg_id.$prod_id.$device_id.$dev_rev.$fw_rev1.$fw_rev2"};
+        if ($sdr_caches{"$cache_name_id"}) {
+            $sessdata->{sdr_hash} = $sdr_caches{"$cache_name_id"};
             on_bmc_connect("SUCCESS", $sessdata); #retry bmc_connect since sdr_cache is validated
             return;                               #don't proceed to slow load
         } else {
             my $rc = loadsdrcache($sessdata, $cache_file);
             if ($rc == 0) {
-                $sdr_caches{"$mfg_id.$prod_id.$device_id.$dev_rev.$fw_rev1.$fw_rev2"} = $sessdata->{sdr_hash};
+                $sdr_caches{"$cache_name_id"} = $sessdata->{sdr_hash};
                 on_bmc_connect("SUCCESS", $sessdata); #retry bmc_connect since sdr_cache is validated
                 return;    #don't proceed to slow load
             }
@@ -8210,6 +8212,7 @@ sub decodebcd {
     return ($text);
 }
 
+# Save SDR "metadata" into cache file
 sub storsdrcache {
     my $file     = shift;
     my $sessdata = shift;
@@ -8237,6 +8240,7 @@ sub storsdrcache {
     return (0);
 }
 
+# Load SDR "metadata" from cache file
 sub loadsdrcache {
     my $sessdata = shift;
     my $file     = shift;
