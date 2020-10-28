@@ -756,9 +756,12 @@ function check_brctl() {
 function check_and_set_device_managed() {
     devname=$1
     rc=1
+    log_info "check_and_set_device_managed for device $devname"
     $nmcli device show $devname >/dev/null 2>/dev/null
     if [ $? -ne 0 ]; then
         log_error "Device $devname not found"
+        # Could not find the device we wanted. Display all devices
+        $nmcli device show
     else
         $nmcli -g GENERAL.STATE device show $devname|grep unmanaged >/dev/null 2>/dev/null
         if [ $? -eq 0 ]; then

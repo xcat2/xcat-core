@@ -2,10 +2,12 @@ SN_setup_case
 reg_linux_diskless_installation_hierarchy
 reg_linux_diskless_installation_hierarchy_squashfs
 reg_linux_diskfull_installation_hierarchy
+compare_postscripts
 assign_certain_command_permission
 bmcdiscover_help
 bmcdiscover_q
 bmcdiscover_version
+#INCLUDE:restapi.bundle#
 xdcp_nonroot_user
 xdsh_E
 xdsh_Q_command

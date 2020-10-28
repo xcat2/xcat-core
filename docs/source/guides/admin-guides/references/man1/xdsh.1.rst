@@ -43,7 +43,7 @@ The \ **xdsh**\  command runs commands in parallel on remote nodes and/or the Ma
 remote shell command for each target specified, and returns the output
 from all targets,
 formatted so that command results  from  all  nodes  can  be  managed.
-If the command is to be executed  on the Management Node, it does not use a remote shell command, but uses the local OS copy or shell command. The Management Node must be defined in the xCAT database. The best way to do this is to use the xcatconfig -m option.
+If the command is to be executed  on the Management Node, it does not use a remote shell command, but uses the local OS copy or shell command. The Management Node must be defined in the xCAT database. The best way to do this is to use the \ **xcatconfig -m**\  option.
 The \ **xdsh**\  command is an xCAT Distributed Shell Utility.
 
 \ **COMMAND**\  \ **SPECIFICATION**\ :
@@ -176,8 +176,8 @@ the commands executing on the remote targets.
 Signal  19  (CONT),  Signal  17 (STOP), and Signal 18 (TSTP) default to
 \ **xdsh**\ ; the \ **xdsh**\  command responds normally to these signals, but the
 signals  do  not have an effect on remotely executing commands. Other
-signals are caught by \ **xdsh**\  and have their default effects on the \ **xdsh**\ 
-command; all current child processes, through propagation to remotely
+signals are caught by \ **xdsh**\  and have their default effects on the \ **xdsh**\  command;
+all current child processes, through propagation to remotely
 running commands, are terminated (SIGTERM).
 
 
@@ -195,13 +195,13 @@ running commands, are terminated (SIGTERM).
 
 \ **-c | -**\ **-cleanup**\ 
  
- This flag will have xdsh remove all files from the subdirectories of the
- the directory on the servicenodes, where xdcp stages the copy to the
+ This flag will have \ **xdsh**\  remove all files from the subdirectories of the
+ the directory on the service nodes, where \ **xdcp**\  stages the copy to the
  compute nodes as defined in the site table SNsyncfiledir and nodesyncfiledir
  attribute, when the target is a service node.
  
  It can also be used to remove the nodesyncfiledir directory on the compute
- nodes, which keeps the backup copies of files for the xdcp APPEND function
+ nodes, which keeps the backup copies of files for the \ **xdcp**\  APPEND function
  support, if a compute node is the target.
  
 
@@ -234,7 +234,7 @@ running commands, are terminated (SIGTERM).
  for Ethernet switches and and IB switches under
  \ */opt/xcat/share/xcat/devicetype*\  directory. If you want to overwrite
  any of the configuration files, copy them to \ */var/opt/xcat/*\ 
- directory and cutomize.
+ directory and customize.
  For example, \ *base/IBSwitch/Qlogic/config*\  is the configuration
  file location if devicetype is specified as IBSwitch::Qlogic.
  xCAT will first search config file using \ */var/opt/xcat/*\  as the base.
@@ -258,10 +258,10 @@ running commands, are terminated (SIGTERM).
 \ **-i | -**\ **-rootimg**\  \ *install image*\ 
  
  For Linux, Specifies the path to the install image on the local node.
- For AIX, specifies the name of the osimage on the local node. Run lsnim
+ For AIX, specifies the name of the osimage on the local node. Run \ **lsnim**\ 
  for valid names.
- xdsh will chroot (xcatchroot for AIX) to this path and run the xdsh command against the
- install image.  No other xdsh flags, environment variables apply with
+ \ **xdsh**\  will \ **chroot**\  (\ **xcatchroot**\  for AIX) to this path and run the \ **xdsh**\  command against the
+ install image.  No other \ **xdsh**\  flags, environment variables apply with
  this input.  A noderange is not accepted. Only runs on the local host,
  normally the Management Node. The command you run must not prompt for input, the prompt will not be returned to you, and it will appear that \ **xdsh**\  hangs.
  
@@ -277,9 +277,9 @@ running commands, are terminated (SIGTERM).
  The userid must have the same uid, gid and password as the userid on the node
  where the keys will be setup.
  
- If the current user is root,  roots public ssh keys will be put in the
+ If the current user is root,  root's public ssh keys will be put in the
  authorized_keys\* files under roots .ssh directory on the node(s).
- If the current user is non-root, the user must be in the policy table and have credential to run the xdsh command.
+ If the current user is non-root, the user must be in the policy table and have credential to run the \ **xdsh**\  command.
  The non-root users public ssh keys and root's public ssh keys will be put in
  the authorized_keys\* files under the non-root users .ssh directory on the node(s).
  Other device types, such as IB switch, are also supported.  The
@@ -344,8 +344,8 @@ running commands, are terminated (SIGTERM).
 \ **-s | -**\ **-stream**\ 
  
  Specifies that output is returned as it  becomes  available
- from  each  target, instead of waiting for the \ *command_list*\ 
- to be completed on a target before returning output.
+ from  each  target, instead of waiting for the \ *command_list*\  to
+ be completed on a target before returning output.
  
 
 
@@ -358,17 +358,17 @@ running commands, are terminated (SIGTERM).
 
 \ **-**\ **-sudo**\ 
  
- Adding the \ **-**\ **-sudo**\  flag to the xdsh command will have xdsh run sudo before
+ Adding the \ **-**\ **-sudo**\  flag to the \ **xdsh**\  command will have \ **xdsh**\  run \ **sudo**\  before
  running the command.  This is particular useful when using the \ **-e**\  option.
  This is required when you input \ **-l**\  with a non-root user id and want that id
  to be able to run as root on the node.  The non-root userid will must be
  previously defined as an xCAT user, see process for defining non-root ids in
- xCAT and setting up for using xdsh.  The userid sudo setup will have
+ xCAT and setting up for using \ **xdsh**\ .  The userid \ **sudo**\  setup will have
  to be done by the admin on the node.  This includes, allowing all commands that
- you would like to run with xdsh by using visudo to edit the /etc/sudoers file.
- You must disabl ssh tty requirements by commenting out or removing this line in the /etc/sudoes file "#Defaults    requiretty".
- See the document Granting_Users_xCAT_privileges for sudo setup requirements.
- This is not supported in a hierarical cluster, that is the nodes are serviced by servicenodes.
+ you would like to run with \ **xdsh**\  by using \ **visudo**\  to edit the /etc/sudoers file.
+ You must disable ssh tty requirements by commenting out or removing this line in the /etc/sudoes file "#Defaults    requiretty".
+ See the document https://xcat-docs.readthedocs.io/en/stable/advanced/security/security.html#granting-users-xcat-privileges for \ **sudo**\  setup requirements.
+ This is not supported in a hierarchical cluster, where the nodes are serviced by service nodes.
  
 
 
@@ -417,7 +417,7 @@ running commands, are terminated (SIGTERM).
  string, all \ **xdsh**\  environment variables will be ignored.
  This option is useful when running \ **xdsh**\  from within other
  scripts when you don't want the user's environment affecting
- the behavior of xdsh.
+ the behavior of \ **xdsh**\ .
  
 
 
@@ -510,7 +510,7 @@ running commands, are terminated (SIGTERM).
 \ **DSH_REMOTE_PASSWORD**\ 
  
  If \ **DSH_REMOTE_PASSWORD**\  is set to the password of the
- userid (usually root) that will ssh to the node, then when
+ userid (usually root) that will \ **ssh**\  to the node, then when
  you use the \ **-K**\  flag, you will not be prompted for a password.
  
 
@@ -563,7 +563,7 @@ error  is displayed and execution is bypassed for a remote target if
 password prompting occurs, or if either authorization or
 authentication  to  the  remote  target fails. Security configurations as they
 pertain to the remote environment and remote shell command are
-userdefined.
+user defined.
 
 
 *******************
@@ -571,7 +571,7 @@ userdefined.
 *******************
 
 
-The \ **xdsh**\  command exit code is 0 if the command executed without errors and all remote shell commands finished with exit codes of 0. If internal dsh errors occur or the remote shell commands do not complete successfully, the dsh command exit value is greater than 0. The exit value is increased by 1 for each successive instance of an unsuccessful remote command execution.  If the remotely issued command is run in the background, the exit code of the remotely issued command is 0.
+The \ **xdsh**\  command exit code is 0 if the command executed without errors and all remote shell commands finished with exit codes of 0. If internal \ **dsh**\  errors occur or the remote shell commands do not complete successfully, the \ **dsh**\  command exit value is greater than 0. The exit value is increased by 1 for each successive instance of an unsuccessful remote command execution.  If the remotely issued command is run in the background, the exit code of the remotely issued command is 0.
 
 
 ****************
@@ -600,7 +600,7 @@ The \ **xdsh**\  command exit code is 0 if the command executed without errors a
  
 
 
-3. To run the \ **ps**\  command on node targets \ **node1**\  and run the remote command with the -v and -t flag, enter:
+3. To run the \ **ps**\  command on node targets \ **node1**\  and run the remote command with the \ **-v**\  and \ **-t**\  flag, enter:
  
  
  .. code-block:: perl
@@ -621,7 +621,7 @@ context on several node targets, with a fanout of \ **1**\ , enter:
  
 
 
-5. To run the ps command on node1 and ignore all the dsh
+5. To run the \ **ps**\  command on node1 and ignore all the \ **dsh**\ 
 environment variable except the DSH_NODE_OPTS, enter:
  
  
@@ -632,7 +632,7 @@ environment variable except the DSH_NODE_OPTS, enter:
  
 
 
-6. To run on Linux, the xdsh command "rpm -qa | grep xCAT"
+6. To run on Linux, the \ **xdsh**\  command \ **rpm -qa | grep xCAT**\ 
 on the service node fedora9 diskless image, enter:
  
  
@@ -643,7 +643,7 @@ on the service node fedora9 diskless image, enter:
  
 
 
-7. To run on AIX, the xdsh command "lslpp -l | grep bos" on the NIM 611dskls spot, enter:
+7. To run on AIX, the \ **xdsh**\  command \ **lslpp -l | grep bos**\  on the NIM 611dskls spot, enter:
  
  
  .. code-block:: perl
@@ -653,7 +653,7 @@ on the service node fedora9 diskless image, enter:
  
 
 
-8. To cleanup the servicenode directory that stages the copy of files to the nodes, enter:
+8. To cleanup the service node directory that stages the copy of files to the nodes, enter:
  
  
  .. code-block:: perl
@@ -722,7 +722,7 @@ on the service node fedora9 diskless image, enter:
  
 
 
-13. To run \ **xdsh**\  with the non-root userid "user1" that has been setup as an xCAT userid and with sudo on node1 and node2 to run as root, do the following, see xCAT doc on Granting_Users_xCAT_privileges:
+13. To run \ **xdsh**\  with the non-root userid "user1" that has been setup as an xCAT userid and with \ **sudo**\  on node1 and node2 to run as root, do the following, see xCAT doc https://xcat-docs.readthedocs.io/en/stable/advanced/security/security.html#granting-users-xcat-privileges:
  
  
  .. code-block:: perl

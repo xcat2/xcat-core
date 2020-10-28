@@ -21,7 +21,7 @@ SYNOPSIS
 
 \ **imgimport [-h|-**\ **-help]**\ 
 
-\ **imgimport**\  \ *bundle_file_name*\  [\ **-p | -**\ **-postscripts**\  \ *nodelist*\ ] [\ **-f | -**\ **-profile**\  \ *new_profile*\ ] [\ **-v | -**\ **-verbose**\ ]
+\ **imgimport**\  \ *bundle_file_name*\  [\ **-p | -**\ **-postscripts**\  \ *nodelist*\ ] [\ **-f | -**\ **-profile**\  \ *new_profile*\ ] [\ **-R | -**\ **-remotehost**\  \ *user@host*\ ] [\ **-v | -**\ **-verbose**\ ]
 
 
 ***********
@@ -106,6 +106,12 @@ OPTIONS
 \ **-p|-**\ **-postscripts**\  \ *nodelist*\ 
  
  Import the postscripts. The postscripts contained in the image will be set in the postscripts table for \ *nodelist*\ .
+ 
+
+
+\ **-R|-**\ **-remotehost**\  \ *user@host*\ 
+ 
+ Import the image from remote host. Passwordless ssh must be setup to the remote host.
  
 
 

@@ -5,7 +5,7 @@ B<replaycons> - replay the console output for a node
 
 =head1 SYNOPSIS
 
-B<replaycons> [I<node>] [I<bps>] [I<tail_amount>]
+B<replaycons> I<node log file> [I<bps>] [I<tail_amount>]
 
 B<replaycons> [B<-h> | B<--help> | B<-v> | B<--version>]
 
@@ -14,9 +14,9 @@ B<replaycons> [B<-h> | B<--help> | B<-v> | B<--version>]
 
 The B<replaycons> command reads the console log stored by conserver for this node, and displays it
 in a way that simulates the original output of the console.  Using the I<bps> value, it will throttle
-the speed of the output play back.  (The conserver logs are stored in /var/log/consoles.)
+the speed of the output play back.  (The logs are stored in /var/log/consoles.)
 
-For now, replaycons must be run locally on the system on which the console log is stored.  This is normally
+B<replaycons> must be run locally on the system on which the console log is stored.  This is normally
 that management node, but in a hierarchical cluster will usually be the service node.
 
 
@@ -30,7 +30,7 @@ The display rate to use to play back the console output.  Default is 19200.
 
 =item I<tail_amount>
 
-The place in the console log file to start play back, specified as the # of lines from the end.
+The place in the console log file to start play back, specified as the number of lines from the end.
 
 =item B<-v|--version>
 
@@ -64,7 +64,7 @@ An error has occurred.
 
 To replay the console for node1 at the default rate, starting 2000 lines from the end:
 
- replaycons 19200 2000
+ replaycons node1.log 19200 2000
 
 =back
 

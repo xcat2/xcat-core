@@ -2,6 +2,7 @@ SN_setup_case
 reg_linux_diskless_installation_hierarchy
 reg_linux_diskless_installation_hierarchy_squashfs
 reg_linux_diskfull_installation_hierarchy
+compare_postscripts
 updatenode_P_script1
 updatenode_P_script1_script2
 updatenode_P_script2
@@ -23,6 +24,7 @@ updatenode_syncfile_MERGE
 updatenode_v
 updatenode_without_flag
 updatenode_without_options
+#INCLUDE:restapi.bundle#
 xdcp_nonroot_user
 xdcp_src_dst
 xdsh_E

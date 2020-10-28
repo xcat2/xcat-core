@@ -58,11 +58,6 @@ if [ ! -z "$MACX" ] && [ ! -z "$ETHX" ]; then
         echo "ONBOOT=yes" >> $CONFFILE
         echo "IPADDR=$IP" >> $CONFFILE
         echo "NETMASK=$MASK" >> $CONFFILE
-    else
-        echo "DEVICE=$ETHX" > $CONFFILE
-        echo "BOOTPROTO=dhcp" >> $CONFFILE
-        echo "HWADDR=$MACX" >> $CONFFILE
-        echo "ONBOOT=yes" >> $CONFFILE
     fi
 fi
 
@@ -222,6 +217,10 @@ EOF
                    for i in $nfsvers
                    do
                        if [ $i -eq 3 ] && ! [ grep -w nfs /proc/filesystems >/dev/null 2>&1 ]; then
+                           if (pmatch $OSVER "rhel8*") || (pmatch $OSVER "rhels8*");then
+                               # For RHEL8 do not mount with vers=3 option
+                               continue
+                           fi
                            nfsver=3
                            break
                        elif [ $i -eq 4 ] && ! [ grep -w nfs4 /proc/filesystems >/dev/null 2>&1 ]; then

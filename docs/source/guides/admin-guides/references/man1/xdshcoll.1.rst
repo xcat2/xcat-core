@@ -11,7 +11,7 @@ xdshcoll.1
 ************
 
 
-\ **xdshcoll**\  - Formats and consolidates the output of the \ **xdsh,sinv**\  commands.
+\ **xdshcoll**\  - Formats and consolidates the output of the \ **xdsh, sinv**\  commands.
 
 
 ****************
@@ -27,7 +27,7 @@ xdshcoll.1
 *******************
 
 
-The  \ **xdshcoll**\  command formats and consolidates output from the \ **xdsh,sinv**\  command. The \ **xdshcoll**\ 
+The  \ **xdshcoll**\  command formats and consolidates output from the \ **xdsh, sinv**\  commands. The \ **xdshcoll**\ 
 command takes, as input, lines in the following format:
 
 host_name: line of output from remote command
@@ -75,12 +75,12 @@ is identical:
 
 
 1. To  display the results of a command issued on several nodes, in
-the format used in the Description, enter:
+the format shown in the Description, enter:
  
  
  .. code-block:: perl
  
-   xdsh node1,node2,node3 cat /etc/passwd> | B<xdshcoll
+   xdsh node1,node2,node3 cat /etc/passwd | xdshcoll
  
  
 

@@ -30,8 +30,13 @@ do
     echo "rinstall $node osimage=$osimage"
     rinstall $node osimage=$osimage
     if [ $? != 0 ];then
-        echo "rinstall command failed ..."
-        exit 1
+        echo "First attempt to run rinstall command failed ..."
+        # First rinstall failed, try again with verbose flag
+        rinstall $node osimage=$osimage -V
+        if [ $? != 0 ];then
+            echo "Second attempt to run rinstall command failed ..."
+            exit 1
+        fi
     fi
 
     #sleep while for installation.

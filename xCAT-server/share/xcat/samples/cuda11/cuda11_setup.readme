@@ -1,0 +1,73 @@
+cuda setup scripts
+==================
+
+This sample documents installation of the NVIDIA CUDA Toolkit v11 on IBM POWER9 servers as part of xCAT diskful provisioning of Red Hat Enterprise Linux 8.1.
+For ``CUDA11``, there is a known issue that prevents successful installion of the nvidia-drivers module as part of the operating system kickstart install process used by diskful provisioning.
+Diskless provisioning can still be performed using the traditional osimage method; these instructions apply to diskful provisioning only.
+
+
+Diskful images
+--------------
+
+For diskful provisioning, create a new ``cudafull`` osimage definition using the default ``rhels8.1-ppc64le-install-compute`` osimage as a starting point. ::
+
+ # lsdef -t osimage rhels8.1.0-ppc64le-install-cudafull
+ Object name: rhels8.1.0-ppc64le-install-cudafull
+    imagetype=linux
+    osarch=ppc64le
+    osdistroname=rhels8.1.0-ppc64le
+    osname=Linux
+    osvers=rhels8.1.0
+    otherpkgdir=/install/post/otherpkgs/rhels8.1.0/ppc64le
+    pkgdir=/install/rhels8.1.0/ppc64le,/install/REPO/software/nvidia/cuda-core/11.0.1_450.36.06-1/repo/ppc64le,/install/cuda11/ppc64le/cuda-deps
+    pkglist=/opt/xcat/share/xcat/install/rh/compute.rhels8.cuda.pkglist
+    postscripts=custom.ps/nvidia/postinstall/cuda11_power9_setup
+    profile=compute
+    provmethod=install
+    template=/opt/xcat/share/xcat/install/rh/compute.rhels8.tmpl
+
+
+Postscripts
+^^^^^^^^^^^
+
+For ``CUDA11``, there is a known issue that prevents successful installion of the nvidia-drivers module as part of the Red Hat kickstart install process used by diskful provisioning. As an example method to work around this problem, refer to the postscript named ``cuda11_power9_setup``. This postscript will install the NVIDIA CUDA packages directly instead of relying on the osimage package list mechanism. ``cuda11_power9_setup`` is only needed for diskful provisioning.
+
+
+CUDA dependences
+^^^^^^^^^^^^^^^^
+
+``dkms`` and ``opencl-filesystem`` are required for the CUDA11.  ``dkms`` packages can be found in the rhel8 EPEL repository.  ``opencl-filesystem`` packages can be found in the rhel8 CodeReady repository. ::
+ 
+  # ls -ltr /install/cuda11/ppc64le/cuda-deps
+  -rw-r--r-- 1 root root 82332 Jun 16 10:25 dkms-2.8.1-4.20200214git5ca628c.el8.noarch.rpm
+  -rw-r--r-- 1 root root 90148 Jun 16 10:29 opencl-headers-2.2-1.20180306gite986688.el8.noarch.rpm
+  -rw-r--r-- 1 root root  8668 Jun 16 10:29 opencl-filesystem-1.0-6.el8.noarch.rpm
+  drwxr-xr-x 2 root root  4096 Jun 16 15:10 repodata
+
+
+CUDA Packages
+^^^^^^^^^^^^^
+
+``cuda-repo-rhel8-11-0-local-11.0.1_450.36.06-1.ppc64le.rpm`` is used for the example ``cudafull`` osimage and the contents are copied into a directory named ``/install/REPO/software/nvidia/cuda-core/11.0.1_450.36.06-1/repo/ppc64le``. 
+In addition to the rhels8 base pkglist, the following packages need to also be added. ::
+
+  # diff /opt/xcat/share/xcat/install/rh/compute.rhels8.cuda.pkglist /opt/xcat/share/xcat/install/rh/compute.rhels8.pkglist
+  12,27d11
+  < libtirpc
+  < yum
+  < rpm
+  < dnf
+  < dracut
+  < dracut-network
+  < e2fsprogs
+  < #For Cuda
+  < kernel-devel
+  < kernel-headers
+  < make
+  < gcc
+  < pciutils
+  < dkms
+  < opencl-filesystem
+
+
+NOTE: The samples in this directory were verified as part of the IBM HPC POWER9 Clusters service pack testing

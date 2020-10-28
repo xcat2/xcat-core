@@ -1,0 +1,239 @@
+start:restapi_setup_on_MN_CN
+description: Set up the REST API on MN and CN
+label:restapi
+#Install the mod_ssl package on Red Hat
+cmd:if cat /etc/*release | grep "Red Hat" >/dev/null; then yum install mod_ssl -y; rpm -qa | grep mod_ssl; fi
+check:rc==0
+cmd:if cat /etc/*release | grep "Red Hat" >/dev/null; then sed -i 's/^\(\s*\)SSLCertificateFile.*$/\1SSLCertificateFile \/etc\/xcat\/cert\/server-cred.pem/' /etc/httpd/conf.d/ssl.conf; fi
+cmd:if cat /etc/*release | grep "Red Hat" >/dev/null; then sed -i 's/^\(\s*SSLCertificateKeyFile.*\)$/#\1/' /etc/httpd/conf.d/ssl.conf; fi
+check:rc==0
+cmd:if cat /etc/*release | grep "Red Hat" >/dev/null; then service httpd restart; fi
+check:rc==0
+#Configure the SLES environment
+cmd:if cat /etc/*release | grep "SLES" >/dev/null; then a2enmod ssl; a2enflag SSL; cp /etc/apache2/vhosts.d/vhost-ssl.template /etc/apache2/vhosts.d/vhost-ssl.conf; fi
+check:rc==0
+cmd:if cat /etc/*release | grep "SLES" >/dev/null; then sed -i 's/^\(\s*\)SSLCertificateFile.*$/\1SSLCertificateFile \/etc\/xcat\/cert\/server-cred.pem/' /etc/apache2/vhosts.d/vhost-ssl.conf; fi
+cmd:if cat /etc/*release | grep "SLES" >/dev/null; then sed -i 's/^\(\s*SSLCertificateKeyFile.*\)$/#\1/' /etc/apache2/vhosts.d/vhost-ssl.conf; fi
+check:rc==0
+cmd:if cat /etc/*release | grep "SLES" >/dev/null; then service apache2 restart; fi
+check:rc==0
+cmd:scp /install/postscripts/ca/ca-cert.pem $$CN:/root
+check:rc==0
+cmd:tabch key=xcat,username=__GETTABLEVALUE(key,system,username,passwd)__ passwd.password=__GETTABLEVALUE(key,system,password,passwd)__
+check:rc==0
+end
+
+start:restapi_cleanup_on_MN_CN
+description: Clean up the REST API on MN and CN
+label:restapi
+cmd:xdsh $$CN "rm /root/ca-cert.pem"
+check:rc==0
+cmd:tabch -d key=xcat passwd
+check:rc==0
+#Remove the mod_ssl package on Red Hat
+cmd:if cat /etc/*release | grep "Red Hat" >/dev/null; then yum remove mod_ssl -y; service httpd restart; fi
+check:rc==0
+#Clean up the SLES environment
+cmd:if cat /etc/*release | grep "SLES" >/dev/null; then rm /etc/apache2/vhosts.d/vhost-ssl.conf; service apache2 restart; fi
+check:rc==0
+end
+
+start:restapi_list_all_resources
+description: List all resources on the management node with "curl -X GET"
+label:restapi
+cmd:username=__GETTABLEVALUE(key,system,username,passwd)__;password=__GETTABLEVALUE(key,system,password,passwd)__;xdsh $$CN "curl -X GET -s --cacert /root/ca-cert.pem 'https://$$MN/xcatws?userName=$username&userPW=$password'"
+check:rc==0
+check:output=~nodes
+end
+
+start:restapi_list_globalconf
+description: List globalconf on the management node with "curl -X GET"
+label:restapi
+cmd:username=__GETTABLEVALUE(key,system,username,passwd)__;password=__GETTABLEVALUE(key,system,password,passwd)__;xdsh $$CN "curl -X GET -s --cacert /root/ca-cert.pem 'https://$$MN/xcatws/globalconf?debug=2&userName=$username&userPW=$password'"
+check:rc==0
+check:output=~"tftpdir":"/tftpboot"
+end
+
+start:restapi_list_groups
+description: List groups on the management node with "curl -X GET"
+label:restapi
+cmd:username=__GETTABLEVALUE(key,system,username,passwd)__;password=__GETTABLEVALUE(key,system,password,passwd)__;curl_v=`xdsh $$CN "curl -X GET -s -k --cacert /root/ca-cert.pem 'https://$$MN/xcatws/groups?userName=$username&userPW=$password' | sed 's/\"//g' | sed 's/\[//' | sed 's/\]//'"`;lsdef -t group > list; tr -d '\n' < list > list1; sed -i 's/[[:blank:]][[:blank:]]/,/g' list1; sed -i 's/(group)//g' list1; sed -i 's/,$//' list1; sed -i 's/^/$$CN: /' list1; lsdef_v=`cat list1`; echo $curl_v; echo $lsdef_v; rm -f list list1; if [[ $curl_v = $lsdef_v ]]; then echo Match; else echo No-match; fi
+check:rc==0
+check:output=~Match
+end
+
+start:restapi_list_nodes
+description: List nodes on the management node with "curl -X GET"
+label:restapi
+cmd:username=__GETTABLEVALUE(key,system,username,passwd)__;password=__GETTABLEVALUE(key,system,password,passwd)__;xdsh $$CN "curl -X GET -s --cacert /root/ca-cert.pem 'https://$$MN/xcatws/nodes?&userName=$username&userPW=$password'"
+check:rc==0
+check:output=~$$SN
+end
+
+start:restapi_list_node_CN
+description: Display details of the compute node with "curl -X GET"
+label:restapi
+cmd:username=__GETTABLEVALUE(key,system,username,passwd)__;password=__GETTABLEVALUE(key,system,password,passwd)__;xdsh $$CN "curl -X GET -s --cacert /root/ca-cert.pem 'https://$$MN/xcatws/nodes/$$CN?pretty=1&xcoll=1&userName=$username&userPW=$password'"
+check:rc==0
+check:output=~__GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__
+end
+
+start:restapi_list_networks
+description: List networks on the management node with "curl -X GET"
+label:restapi
+cmd:username=__GETTABLEVALUE(key,system,username,passwd)__;password=__GETTABLEVALUE(key,system,password,passwd)__;xdsh $$CN "curl -X GET -s -k --cacert /root/ca-cert.pem 'https://$$MN/xcatws/networks?userName=$username&userPW=$password'"
+check:rc==0
+check:output=~__GETTABLEVALUE(mtu,1500,netname,networks)__
+end
+
+start:restapi_list_osimages
+description: List osimages on the management node with "curl -X GET"
+label:restapi
+cmd:username=__GETTABLEVALUE(key,system,username,passwd)__;password=__GETTABLEVALUE(key,system,password,passwd)__;xdsh $$CN "curl -X GET -s --cacert /root/ca-cert.pem 'https://$$MN/xcatws/osimages?userName=$username&userPW=$password'"
+check:output=~__GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-install-compute
+end
+
+start:restapi_list_policy
+description: List policies on the management node with "curl -X GET"
+label:restapi
+cmd:username=__GETTABLEVALUE(key,system,username,passwd)__;password=__GETTABLEVALUE(key,system,password,passwd)__;xdsh $$CN "curl -X GET -s --cacert /root/ca-cert.pem 'https://$$MN/xcatws/policy?userName=$username&userPW=$password'"
+check:rc==0
+check:output=~__GETTABLEVALUE(rule,trusted,priority,policy)__
+end
+
+start:restapi_create_temp_CN_put
+description: Created a temporary compute node with "curl -X PUT"
+label:restapi
+cmd:username=__GETTABLEVALUE(key,system,username,passwd)__;password=__GETTABLEVALUE(key,system,password,passwd)__;xdsh $$CN "curl -X PUT -s --cacert /root/ca-cert.pem 'https://$$MN/xcatws/nodes/temp_node1?userName=$username&userPW=$password' -H Content-Type:application/json --data '{\"groups\":\"all\",\"mgt\":\"kvm\",\"vmmemory\":\"2048\"}'"
+check:rc==0
+cmd:lsdef
+check:output=~temp_node1
+end
+
+start:restapi_delete_temp_CN_put
+description: Delete a temporary compute node with "curl -X DELETE"
+label:restapi
+cmd:username=__GETTABLEVALUE(key,system,username,passwd)__;password=__GETTABLEVALUE(key,system,password,passwd)__;xdsh $$CN "curl -X DELETE -s --cacert /root/ca-cert.pem 'https://$$MN/xcatws/nodes/temp_node1?userName=$username&userPW=$password'"
+check:rc==0
+cmd:lsdef
+check:output!~temp_node1
+end
+
+start:restapi_delete_temp_CN_2
+description: Delete two temporary compute nodes with "curl -X DELETE"
+label:restapi
+cmd:username=__GETTABLEVALUE(key,system,username,passwd)__;password=__GETTABLEVALUE(key,system,password,passwd)__;xdsh $$CN "curl -X DELETE -s --cacert /root/ca-cert.pem 'https://$$MN/xcatws/nodes/temp_node[1-2]?userName=$username&userPW=$password'"
+check:rc==0
+cmd:lsdef
+check:output!~temp_node1
+end
+
+start:restapi_list_temp_CN_2
+description: List two temporary compute nodes with "curl -X DELETE" and with various range options
+label:restapi
+cmd:username=__GETTABLEVALUE(key,system,username,passwd)__;password=__GETTABLEVALUE(key,system,password,passwd)__;xdsh $$CN "curl -X GET -s --cacert /root/ca-cert.pem 'https://$$MN/xcatws/nodes/temp_node[1-2]?userName=$username&userPW=$password'"
+check:rc==0
+check:output=~temp_node1
+check:output=~temp_node2
+cmd:username=__GETTABLEVALUE(key,system,username,passwd)__;password=__GETTABLEVALUE(key,system,password,passwd)__;xdsh $$CN "curl -X GET -s --cacert /root/ca-cert.pem 'https://$$MN/xcatws/nodes/temp_node[1-2]/nodels?userName=$username&userPW=$password'"
+check:rc==0
+check:output=~temp_node1
+check:output=~temp_node2
+cmd:username=__GETTABLEVALUE(key,system,username,passwd)__;password=__GETTABLEVALUE(key,system,password,passwd)__;xdsh $$CN "curl -X GET -s --cacert /root/ca-cert.pem 'https://$$MN/xcatws/nodes/temp_node1+1/nodels?userName=$username&userPW=$password'"
+check:rc==0
+check:output=~temp_node1
+check:output=~temp_node2
+cmd:username=__GETTABLEVALUE(key,system,username,passwd)__;password=__GETTABLEVALUE(key,system,password,passwd)__;xdsh $$CN "curl -X GET -s --cacert /root/ca-cert.pem 'https://$$MN/xcatws/nodes/all/nodels?userName=$username&userPW=$password'"
+check:rc==0
+check:output=~temp_node1
+check:output=~temp_node2
+cmd:username=__GETTABLEVALUE(key,system,username,passwd)__;password=__GETTABLEVALUE(key,system,password,passwd)__;xdsh $$CN "curl -X GET -s --cacert /root/ca-cert.pem 'https://$$MN/xcatws/nodes/mgt==kvm/nodels?userName=$username&userPW=$password'"
+check:rc==0
+check:output=~temp_node1
+check:output=~temp_node2
+cmd:lsdef
+check:output=~temp_node1
+check:output=~temp_node2
+end
+
+start:restapi_create_temp_CN_post
+description: Created a temporary compute node with "curl -X POST"
+label:restapi
+cmd:username=__GETTABLEVALUE(key,system,username,passwd)__;password=__GETTABLEVALUE(key,system,password,passwd)__;xdsh $$CN "curl -X POST -s --cacert /root/ca-cert.pem 'https://$$MN/xcatws/nodes/temp_node2?userName=$username&userPW=$password' -H Content-Type:application/json --data '{\"groups\":\"all\",\"mgt\":\"kvm\",\"vmmemory\":\"2048\"}'"
+check:rc==0
+cmd:lsdef
+check:output=~temp_node2
+end
+
+start:restapi_add_id_temp_CN
+description: Add an id field of a temporary compute node with "curl -X PUT"
+label:restapi
+cmd:username=__GETTABLEVALUE(key,system,username,passwd)__;password=__GETTABLEVALUE(key,system,password,passwd)__;xdsh $$CN "curl -X PUT -s --cacert /root/ca-cert.pem 'https://$$MN/xcatws/nodes/temp_node1?userName=$username&userPW=$password' -H Content-Type:application/json --data '{\"id\":\"100\"}'"
+check:rc==0
+cmd:lsdef temp_node1
+check:output=~id=100
+end
+
+start:restapi_modify_vmmemory_temp_CN
+description: Modify the vmmemory field of a temporary computer node with "curl -X PUT"
+label:restapi
+cmd:username=__GETTABLEVALUE(key,system,username,passwd)__;password=__GETTABLEVALUE(key,system,password,passwd)__;xdsh $$CN "curl -X PUT -s --cacert /root/ca-cert.pem 'https://$$MN/xcatws/nodes/temp_node1?xcoll=1&userName=$username&userPW=$password' -H Content-Type:application/json --data '{\"vmmemory\":\"4096\"}'"
+check:rc==0
+cmd:lsdef temp_node1
+check:output=~vmmemory=4096
+end
+
+start:restapi_delete_id_temp_CN
+description: Delete the id field of a temporary compute node with "curl -X DELETE"
+label:restapi
+cmd:username=__GETTABLEVALUE(key,system,username,passwd)__;password=__GETTABLEVALUE(key,system,password,passwd)__;xdsh $$CN "curl -X PUT -s --cacert /root/ca-cert.pem 'https://$$MN/xcatws/nodes/temp_node1?userName=$username&userPW=$password' -H Content-Type:application/json --data '{\"id\":\" \"}'"
+check:rc==0
+cmd:lsdef temp_node1
+check:output!~id=
+end
+
+start:restapi_show_temp_CN_osimage
+description: Show the detail of the osimage of CN with "curl -X GET"
+label:restapi
+cmd:username=__GETTABLEVALUE(key,system,username,passwd)__;password=__GETTABLEVALUE(key,system,password,passwd)__;xdsh $$CN "curl -X GET -s --cacert /root/ca-cert.pem 'https://$$MN/xcatws/osimages/__GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-install-compute?pretty=1&userName=$username&userPW=$password'"
+check:rc==0
+check:output=~__GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-install-compute
+end
+
+start:restapi_list_nodes_wrong_password
+description: List nodes on the management node with an invalid password with "curl -X GET"
+label:restapi
+cmd:username=__GETTABLEVALUE(key,system,username,passwd)__;password=__GETTABLEVALUE(key,system,password,passwd)__;xdsh $$CN "curl -X GET -s --cacert /root/ca-cert.pem 'https://$$MN/xcatws/nodes?userName=$username&userPW=invalid_password'"
+check:rc==0
+check:output=~Authentication failure
+end
+
+start:restapi_list_nodes_invalid_option
+description: List nodes on the management node with an invalid option with "curl -X GET"
+label:restapi
+cmd:username=__GETTABLEVALUE(key,system,username,passwd)__;password=__GETTABLEVALUE(key,system,password,passwd)__;xdsh $$CN "curl -X GET --cacert /root/ca-cert.pem 'https://$$MN/xcatws/nodes?xyz=123&userName=$username&userPW=$password'"
+check:rc==0
+end
+
+start:restapi_list_invalid_resource
+description: List nodes on the management node with an invalid option with "curl -X GET"
+label:restapi
+cmd:username=__GETTABLEVALUE(key,system,username,passwd)__;password=__GETTABLEVALUE(key,system,password,passwd)__;xdsh $$CN "curl -X GET -s --cacert /root/ca-cert.pem 'https://$$MN/xcatws/abc?userName=$username&userPW=invalid_password&xyz=123'"
+check:rc==0
+check:output=~Unsupported resource
+end
+
+start:restapi_list_wrong_osimage
+description: List a wrong osimage on the management node with "curl -X GET"
+label:restapi
+cmd:username=__GETTABLEVALUE(key,system,username,passwd)__;password=__GETTABLEVALUE(key,system,password,passwd)__;xdsh $$CN "curl -X GET -s --cacert /root/ca-cert.pem 'https://$$MN/xcatws/osimages/wrong_image?userName=$username&userPW=$password'"
+check:output=~Could not find an object named 'wrong_image'
+end
+
+start:restapi_modify_wrong_field_CN
+description: Modify the vmmemori field of the computer node with "curl -X PUT"
+label:restapi
+cmd:username=__GETTABLEVALUE(key,system,username,passwd)__;password=__GETTABLEVALUE(key,system,password,passwd)__;xdsh $$CN "curl -X PUT -s --cacert /root/ca-cert.pem 'https://$$MN/xcatws/nodes/$$CN?debug=1&userName=$username&userPW=$password' -H Content-Type:application/json --data '{\"vmmemori\":\"4096\"}'"
+check:rc==0
+check:output=~'vmmemori' is not a valid attribute name for an object type
+end

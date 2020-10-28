@@ -27,8 +27,8 @@ DESCRIPTION
 ***********
 
 
-The  \ **xdshbak**\   command formats output from the \ **xdsh**\  command. The \ **xdshbak**\ 
-command takes, as input, lines in the following format:
+The  \ **xdshbak**\   command formats output from the \ **xdsh**\  command. 
+The \ **xdshbak**\  command takes, as input, lines in the following format:
 
 
 .. code-block:: perl
@@ -73,11 +73,11 @@ When output is displayed from more than one node in collapsed form, the
 host  names are displayed alphabetically. When output is not collapsed,
 output is displayed sorted alphabetically by host name.
 
-If the \ **-q**\  quiet flag is not set then  \ **xdshbak**\ 
-command writes "." for each 1000 lines of output processed (to show progress),
+If the \ **-q**\  quiet flag is not set then  \ **xdshbak**\  command
+writes "." for each 1000 lines of output processed (to show progress),
 since it won't display the output until it has processed all of it.
 
-If the \ **-x**\  flag is specified, the extra header lines that xdshbak normally
+If the \ **-x**\  flag is specified, the extra header lines that \ **xdshbak**\  normally
 displays for each node will be omitted, and the hostname at the beginning
 of each line is not stripped off, but \ **xdshbak**\   still sorts
 the output by hostname for easier viewing:
@@ -128,9 +128,9 @@ OPTIONS
 
 \ **-x**\ 
  
- Omit the extra header lines that xdshbak normally displays for
+ Omit the extra header lines that \ **xdshbak**\  normally displays for
  each node.  This provides
- more  compact  output,  but  xdshbak still sorts the output by
+ more  compact  output,  but  \ **xdshbak**\  still sorts the output by
  node name for easier viewing.
  This option should not be used with \ **-c**\ .
  
