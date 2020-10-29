@@ -962,6 +962,10 @@ sub load_case {
     my $fd          = undef;
 
     my %invalidcases;
+    
+    # invalidoptions saves invalid OS, or ARCH, or HCP
+    my %invalidoptions;
+
     my %case_name_index_map_bak;
     foreach my $file (@files) {
         if (!open($fd, "<$file")) {
@@ -1036,7 +1040,7 @@ sub load_case {
                     my @newvalidoslist = ();
                     foreach my $validos (@validoslist) {
                         if ($validos =~ /linux/i) {
-                            push(@newvalidoslist, ("rhel", "sles", "ubuntu"));
+                            push(@newvalidoslist, ("rhels", "sles", "ubuntu"));
                         } else {
                             push(@newvalidoslist, $validos);
                         }
@@ -1062,6 +1066,7 @@ sub load_case {
                             delete $$case_name_index_map_ref{ $case_ref->[$i]->{name} };
                             if (!grep (/$case_ref->[$i]->{name}/, @{ $invalidcases{"noruncases"} })) {
                                 push @{ $invalidcases{"noruncases"} }, $case_ref->[$i]->{name};
+                                push @{ $invalidoptions{"invalid-os"} }, "$case_ref->[$i]->{os}";
                             }
                         }
                     }
@@ -1121,6 +1126,7 @@ sub load_case {
                             delete $$case_name_index_map_ref{ $case_ref->[$i]->{name} };
                             if (!grep (/$case_ref->[$i]->{name}/, @{ $invalidcases{"noruncases"} })) {
                                 push @{ $invalidcases{"noruncases"} }, $case_ref->[$i]->{name};
+                                push @{ $invalidoptions{"invalid-arch"} }, "$case_ref->[$i]->{arch}";
                             }
                         }
                     }
@@ -1152,6 +1158,7 @@ sub load_case {
                             delete $$case_name_index_map_ref{ $case_ref->[$i]->{name} };
                             if (!grep (/$case_ref->[$i]->{name}/, @{ $invalidcases{"noruncases"} })) {
                                 push @{ $invalidcases{"noruncases"} }, $case_ref->[$i]->{name};
+                                push @{ $invalidoptions{"invalid-hcp"} }, "$case_ref->[$i]->{hcp}";
                             }
                         }
                     }
@@ -1249,7 +1256,18 @@ sub load_case {
         }
 
         if ($invalidcases{"noruncases"} && @{ $invalidcases{"noruncases"} }) {
-            log_this($running_log_fd, "Unsuitable current environment:", @{ $invalidcases{"noruncases"} });
+            my $temp_invalid_op;
+            my $test_case = $invalidcases{"noruncases"}[0];
+            if (exists $invalidoptions{"invalid-os"}) {
+               $temp_invalid_op = $invalidoptions{"invalid-os"}[0];
+               print "Test case $test_case has an invalid OS option - $temp_invalid_op\n";
+            } elsif (exists $invalidoptions{"invalid-arch"}) {
+               $temp_invalid_op = $invalidoptions{"invalid-arch"}[0];
+               print "Test case $test_case has an invalid ARCH option - $temp_invalid_op\n";
+            } elsif (exists $invalidoptions{"invalid-hcp"}) {
+               $temp_invalid_op = $invalidoptions{"invalid-hcp"}[0];
+               print "Test case $test_case has an invalid HCP option - $temp_invalid_op\n";
+            }
             push @wrong_cases, @{ $invalidcases{"noruncases"} };
             $caseerror = 2;
         }
