@@ -64,7 +64,7 @@ Requires: perl-IO-Stty
 %endif
 
 %ifos linux
-Requires: goconserver
+Requires: goconserver >= 0.3.3
 %endif
 
 #support mixed cluster
