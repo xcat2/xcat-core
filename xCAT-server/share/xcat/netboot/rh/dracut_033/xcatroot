@@ -33,7 +33,7 @@ fi
 
 imgurl="$(getarg imgurl=)";
 if [ ! -z "$imgurl" ]; then
-    if [ xhttp = x${imgurl%%:*} ]; then
+    if [ xhttp = x${imgurl%%:*} ] || [ xhttps = x${imgurl%%:*} ]; then
         logger $SYSLOGHOST -t $log_label -p local4.info "Downloading rootfs image from $imgurl..."
         NFS=0
         FILENAME=${imgurl##*/}
