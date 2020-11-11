@@ -1,4 +1,4 @@
-Summary: Metapackage for a common, default xCAT service node setup
+ummary: Metapackage for a common, default xCAT service node setup
 Name: xCATsn
 Version: %{?version:%{version}}%{!?version:%(cat Version)}
 Release: %{?release:%{release}}%{!?release:%(cat Release)}

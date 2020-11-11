@@ -1,6 +1,6 @@
 =head1 B<NAME>
 
-B<xdshcoll> - Formats and consolidates the output of the B<xdsh,sinv> commands.
+B<xdshcoll> - Formats and consolidates the output of the B<xdsh, sinv> commands.
 
 =head1 B<SYNOPSIS>
 
@@ -8,7 +8,7 @@ B<xdshcoll>
 
 =head1 B<DESCRIPTION>
 
-The  B<xdshcoll> command formats and consolidates output from the B<xdsh,sinv> command. The B<xdshcoll>
+The  B<xdshcoll> command formats and consolidates output from the B<xdsh, sinv> commands. The B<xdshcoll>
 command takes, as input, lines in the following format:
 
 host_name: line of output from remote command
@@ -51,9 +51,9 @@ is identical:
 
 =item 1.
 To  display the results of a command issued on several nodes, in
-the format used in the Description, enter:
+the format shown in the Description, enter:
 
- xdsh node1,node2,node3 cat /etc/passwd> | B<xdshcoll
+ xdsh node1,node2,node3 cat /etc/passwd | xdshcoll
 
 =back
 

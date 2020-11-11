@@ -144,7 +144,7 @@ if ($help) {
 }
 
 if ($test) {
-    probe_utils->send_msg("$output", "o", "This isn't a probe tool, this is just a template for sub command coding. Using it to develop sub command which need to cover hierarchical cluster");
+    probe_utils->send_msg("$output", "o", "This isn't a probe tool, this is just a template for sub command coding. Use it to develop sub command which need to cover hierarchical cluster");
     exit 0;
 }
 

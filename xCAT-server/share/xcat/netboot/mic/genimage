@@ -125,7 +125,7 @@ if ($otherpkglist) {
     open($yumconfig, ">", "/tmp/genimage.$$.yum.conf");
     my $repnum = 0;
     foreach $srcdir (@yumdirs) {
-        print $yumconfig "[$aiddistro-$repnum]\nname=$aiddistro-$repnum\nbaseurl=file://$srcdir\ngpgpcheck=0\n\n";
+        print $yumconfig "[$aiddistro-$repnum]\nname=$aiddistro-$repnum\nbaseurl=file://$srcdir\ngpgcheck=0\n\n";
         $repnum += 1;
     }
     $repnum -= 1;
@@ -148,7 +148,7 @@ if ($otherpkglist) {
                 }
 
                 if (($_ eq "PRE_REMOVE") || ($_ eq "POST_REMOVE") || ($_ eq "ENVLIST")) { next; }
-                print $yumconfig "[otherpkgs$index]\nname=otherpkgs$index\nbaseurl=file://$srcdir_otherpkgs/$_\ngpgpcheck=0\n\n";
+                print $yumconfig "[otherpkgs$index]\nname=otherpkgs$index\nbaseurl=file://$srcdir_otherpkgs/$_\ngpgcheck=0\n\n";
                 $repohash{$pass}{$index} = 1;
                 $index++;
                 my $pa = $extra_hash{$pass}{$_};

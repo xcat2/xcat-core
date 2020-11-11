@@ -3962,7 +3962,8 @@ sub initfru_zero {
             next;
         }
 
-        if ($sdr->fru_subtype == 0x1) {      #DIMM
+        if ($sdr->id_string =~ "DIMM") {      #DIMM. 
+            # Can not always use "fru_subtype=1" for DIMM, sometimes on Power it is 2
             push @{ $sessdata->{dimmfru} }, $sdr;
         } elsif ($sdr->fru_subtype == 0 or $sdr->fru_subtype == 2) {
             push @{ $sessdata->{genhwfru} }, $sdr;
@@ -4225,7 +4226,14 @@ sub add_fruhash {
         $sessdata->{frudex} += 1;
     } elsif ($sessdata->{currfrutype} and $sessdata->{currfrutype} eq 'dimm') {
         $fruhash = decode_spd(@{ $sessdata->{currfrudata} });
+        if ($fruhash->{product}->{model} =~ "Unrecognized SPD") {
+            # If decode_spd() was not able to parse SPD data for DIMM, try parsefru()
+            # 
+            # Yes, it is a goto statement here. Ugly, but removes the need to restructure
+            goto PARSEFRU_DIMM;
+        }
     } else {
+PARSEFRU_DIMM:
         my $err;
         $global_sessdata = $sessdata; #pass by global, evil, but practical this time
         ($err, $fruhash) = parsefru($sessdata->{currfrudata});
@@ -4238,7 +4246,7 @@ sub add_fruhash {
                 $fru->rec_type("hw");
             }
             $fru->value($err);
-            if ($sessdata->{currfrusdr}) {
+            if ($sessdata->{currfrusdr} and scalar keys %{$sessdata->{currfrusdr}} ) {
                 $fru->desc($sessdata->{currfrusdr}->id_string);
             }
             if (exists($sessdata->{frudex})) {
@@ -4257,6 +4265,7 @@ sub add_fruhash {
     } elsif (ref $sessdata->{currfrudata}) {
         if ($sessdata->{currfrutype} and $sessdata->{currfrutype} eq 'dimm') {
             add_textual_frus($fruhash, $sessdata->{currfrusdr}->id_string, "", "product", "dimm,hw", $sessdata);
+            add_textual_frus($fruhash, $sessdata->{currfrusdr}->id_string, "Board ", "board", "dimm,hw", $sessdata);
         } else {
             add_textual_frus($fruhash, $sessdata->{currfrusdr}->id_string, "Board ", "board", undef, $sessdata);
             add_textual_frus($fruhash, $sessdata->{currfrusdr}->id_string, "Product ", "product", undef, $sessdata);
@@ -7541,20 +7550,22 @@ sub initsdr_withrepinfo {
     my $dev_rev   = $sessdata->{device_rev};
     my $fw_rev1   = $sessdata->{firmware_rev1};
     my $fw_rev2   = $sessdata->{firmware_rev2};
+    my $num_sdr_records = $sessdata->{sdr_info}->{rec_count};
 
     #TODO: beware of dynamic SDR contents
 
-    my $cache_file = "$cache_dir/sdr_$mfg_id.$prod_id.$device_id.$dev_rev.$fw_rev1.$fw_rev2";
+    my $cache_name_id = "$mfg_id.$prod_id.$device_id.$dev_rev.$fw_rev1.$fw_rev2.$num_sdr_records";
+    my $cache_file = "$cache_dir/sdr_$cache_name_id";
     $sessdata->{sdrcache_file} = $cache_file;
     if ($enable_cache eq "yes") {
-        if ($sdr_caches{"$mfg_id.$prod_id.$device_id.$dev_rev.$fw_rev1.$fw_rev2"}) {
-            $sessdata->{sdr_hash} = $sdr_caches{"$mfg_id.$prod_id.$device_id.$dev_rev.$fw_rev1.$fw_rev2"};
+        if ($sdr_caches{"$cache_name_id"}) {
+            $sessdata->{sdr_hash} = $sdr_caches{"$cache_name_id"};
             on_bmc_connect("SUCCESS", $sessdata); #retry bmc_connect since sdr_cache is validated
             return;                               #don't proceed to slow load
         } else {
             my $rc = loadsdrcache($sessdata, $cache_file);
             if ($rc == 0) {
-                $sdr_caches{"$mfg_id.$prod_id.$device_id.$dev_rev.$fw_rev1.$fw_rev2"} = $sessdata->{sdr_hash};
+                $sdr_caches{"$cache_name_id"} = $sessdata->{sdr_hash};
                 on_bmc_connect("SUCCESS", $sessdata); #retry bmc_connect since sdr_cache is validated
                 return;    #don't proceed to slow load
             }
@@ -8214,6 +8225,7 @@ sub decodebcd {
     return ($text);
 }
 
+# Save SDR "metadata" into cache file
 sub storsdrcache {
     my $file     = shift;
     my $sessdata = shift;
@@ -8241,6 +8253,7 @@ sub storsdrcache {
     return (0);
 }
 
+# Load SDR "metadata" from cache file
 sub loadsdrcache {
     my $sessdata = shift;
     my $file     = shift;

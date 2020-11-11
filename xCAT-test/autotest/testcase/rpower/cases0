@@ -18,7 +18,7 @@ Attribute: $$CN-The operation object of rpower command
 label:cn_bmc_ready,hctrl_general
 
 #If rpower fails on the first try, try again with smaller memory
-cmd:out=`rpower $$CN on 2>&1`;if [ $? -eq 1 ];then memory=`lsdef $$CN -i vmmemory -c | cut -d '=' -f 2`; chvm $$CN --mem $((memory-2048)); echo "'rpower on' failed with ${out}. Trying with smaller memory."; rpower $$CN on; fi
+cmd:out=`rpower $$CN on 2>&1`;if [ $? -eq 1 ];then memory=`lsdef $$CN -i vmmemory -c | cut -d '=' -f 2`; chvm $$CN --mem $((memory-2048)); echo "'rpower on' VM with memory $memory failed with error ${out}. Trying with smaller memory $((memory-2048))."; rpower $$CN on; fi
 
 cmd:a=0;while ! `rpower $$CN stat|grep "Running\|on" >/dev/null`; do sleep 5;((a++));if [ $a -gt 5 ];then break;fi done
 cmd:rpower $$CN stat
@@ -47,7 +47,7 @@ cmd:rpower $$CN stat
 check:output=~Not Activated|off
 # Display active VMs and memory on VM host
 cmd:vmhost=`lsdef $$CN -i vmhost -c | cut -d '=' -f 2`; if [[ ! -z $vmhost ]]; then echo "Memory on vmhost $vmhost"; ssh $vmhost free -m; echo "Active VMs on vmhost $vmhost"; ssh $vmhost virsh list; fi
-cmd:rpower $$CN boot
+cmd:rpower_boot_out=`rpower $$CN boot`; if [[ $rpower_boot_out =~ qemu-kvm ]]; then echo "rpower boot failed with $rpower_boot_out. Will retry"; rpower $$CN boot; else echo "rpower boot success on first try: $rpower_boot_out"; exit 0; fi
 check:rc==0
 cmd:a=0;while ! `rpower $$CN stat|grep "Running\|on" >/dev/null`; do sleep 5;((a++));if [ $a -gt 11 ];then break;fi done
 cmd:rpower $$CN stat

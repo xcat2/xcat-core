@@ -1867,9 +1867,11 @@ sub getvar
 {
     my $str        = shift;
     my $config_ref = shift;
+    my @vars = ($str =~ /\$\$(\w+)/g);
+    my @reverse_sorted_vars = reverse sort @vars;
 
-    while ($str =~ /\$\$(\w+)/) {
-        my $varname = $1;
+    # let $$AA and $$A have the same chance to be replaced.
+    for my $varname (@reverse_sorted_vars) {
         if (exists($$config_ref{var}{$varname})) {
             $str =~ s/\$\$$varname/$$config_ref{var}{$varname}/g;
         } else {

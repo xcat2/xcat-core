@@ -17,7 +17,7 @@ use Getopt::Long;
 
 my $usage_string =
   "Usage:
-  replaycons node [bps] [tail]
+  replaycons node_log [bps] [tail]
   replaycons -h|--help
   replaycons -v|--version
     bps          Specifies the display rate.

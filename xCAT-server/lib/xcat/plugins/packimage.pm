@@ -596,7 +596,8 @@ sub process_request {
             return 1;
         }
         my $mksquashfs_command = "mksquashfs $temppath ../rootimg.sfs $flags";
-        my $rc = system("$mksquashfs_command");
+        xCAT::Utils->runcmd($mksquashfs_command, 0, 1);
+        my $rc = $::RUNCMD_RC;
         if ($rc) {
             $callback->({ error => ["Command \"$mksquashfs_command\" failed"], errorcode => [1] });
             return 1;

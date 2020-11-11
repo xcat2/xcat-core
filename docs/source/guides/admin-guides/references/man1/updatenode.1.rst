@@ -452,7 +452,7 @@ OPTIONS
  The non-root userid  must be previously defined as an xCAT user.
  The userid sudo setup will have to be done by the admin on the node.
  This is not supported in a hierarchical cluster, that is the node is serviced by a service node.
- See the document Granting_Users_xCAT_privileges for required xcat/sudo setup.
+ See the document https://xcat-docs.readthedocs.io/en/stable/advanced/security/security.html#granting-users-xcat-privileges for required xcat/sudo setup.
  
 
 

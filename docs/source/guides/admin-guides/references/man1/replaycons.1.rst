@@ -19,7 +19,7 @@ SYNOPSIS
 ********
 
 
-\ **replaycons**\  [\ *node*\ ] [\ *bps*\ ] [\ *tail_amount*\ ]
+\ **replaycons**\  \ *node log file*\  [\ *bps*\ ] [\ *tail_amount*\ ]
 
 \ **replaycons**\  [\ **-h**\  | \ **-**\ **-help**\  | \ **-v**\  | \ **-**\ **-version**\ ]
 
@@ -31,9 +31,9 @@ DESCRIPTION
 
 The \ **replaycons**\  command reads the console log stored by conserver for this node, and displays it
 in a way that simulates the original output of the console.  Using the \ *bps*\  value, it will throttle
-the speed of the output play back.  (The conserver logs are stored in /var/log/consoles.)
+the speed of the output play back.  (The logs are stored in /var/log/consoles.)
 
-For now, replaycons must be run locally on the system on which the console log is stored.  This is normally
+\ **replaycons**\  must be run locally on the system on which the console log is stored.  This is normally
 that management node, but in a hierarchical cluster will usually be the service node.
 
 
@@ -51,7 +51,7 @@ OPTIONS
 
 \ *tail_amount*\ 
  
- The place in the console log file to start play back, specified as the # of lines from the end.
+ The place in the console log file to start play back, specified as the number of lines from the end.
  
 
 
@@ -96,7 +96,7 @@ EXAMPLES
  
  .. code-block:: perl
  
-   replaycons 19200 2000
+   replaycons node1.log 19200 2000
  
  
 

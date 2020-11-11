@@ -323,7 +323,7 @@ sub setstate {
                     print $pcfg "imgargs kernel BOOTIF=" . '${netX/mac}' . "\n";
                 }
                 if ($kern->{initrd}) {
-                    print $pcfg "imgfetch -n initrd http://" . '${next-server}' . "$httpport/tftpboot/" . $kern->{initrd} . "\n";
+                    print $pcfg "imgfetch -n initrd http://" . '${next-server}:' . "$httpport/tftpboot/" . $kern->{initrd} . "\n";
                 }
                 print $pcfg "imgexec kernel\n";
                 if ($kern->{kcmdline} and $kern->{initrd}) { #only a linux kernel/initrd pair should land here, write elilo config and uefi variant of xnba config file
