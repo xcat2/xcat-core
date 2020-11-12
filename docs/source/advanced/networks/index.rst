@@ -7,5 +7,6 @@ Networking
    ethernet_switches/index.rst
    onie_switches/index.rst
    switchdiscover/index.rst
+   vlan/index.rst
    infiniband/index.rst
    getadapter.rst
