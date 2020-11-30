@@ -56,10 +56,6 @@ Requires: syslinux
 %endif
 %endif
 
-%if %notpcm
-# PCM does not need or ship syslinux-xcat
-Requires: syslinux-xcat
-%endif
 %define is_rh 0%{?el6:1}%{?el7:1}
 
 %description
