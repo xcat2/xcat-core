@@ -14,7 +14,7 @@ B<makedns> [B<-V>|B<--verbose>] [B<-e>|B<--external>] [B<-d>|B<--delete> I<noder
 
 B<makedns> configures a DNS server on the system you run it on, which is typically the xCAT management node.
 
-The list of nodes to include comes from either the B<noderange> provided on the command line or the entries in the local /etc/hosts files.
+The list of nodes to include comes from either the B<noderange> provided on the command line or the entries in the local I</etc/hosts> files.
 
 There are several bits of information that must be included in the xCAT database before running this command.
 
@@ -26,12 +26,11 @@ An xCAT B<network> definition must be defined for each network used in the clust
 
 A network B<domain> and B<nameservers> values must be provided either in the B<network> definition corresponding to the node or in the B<site> definition.
 
-Only entries in /etc/hosts or the hosts specified by B<noderange> that have a corresponding xCAT network definition will be added to DNS.
+Only entries in I</etc/hosts> or the hosts specified by B<noderange> that have a corresponding xCAT network definition will be added to DNS.
 
-By default, B<makedns> sets up the B<named> service and updates the DNS records on the local system (management node). If the -e flag is specified, it will also update the DNS records on any external DNS server that is listed in the /etc/resolv.conf on the management node. (Assuming the external DNS server can recognize the xCAT key as authentication.)
+By default, B<makedns> sets up the B<named> service and updates the DNS records on the local system (management node). If the B<-e> flag is specified, it will also update the DNS records on any external DNS server that is listed in the I</etc/resolv.conf> on the management node. (Assuming the external DNS server can recognize the xCAT key as authentication.)
 
-For more information on Cluster Name Resolution:
-Cluster_Name_Resolution
+For more information on Cluster Name Resolution see https://xcat-docs.readthedocs.io/en/stable/advanced/domain_name_resolution/domain_name_resolution.html
 
 =head1 OPTIONS
 
@@ -51,11 +50,11 @@ Remove the DNS records.
 
 =item B<-e>|B<--external>
 
-Update DNS records to the external DNS server listed in /etc/resolv.conf.
+Update DNS records to the external DNS server listed in I</etc/resolv.conf>.
 
-Enabling the site attribute I<externaldns> means use 'external' DNS by default. If setting I<externaldns> to 1, you need NOT use B<-e> flag in every makedns call.
+Enabling the site attribute I<externaldns> means use 'external' DNS by default. If setting I<externaldns> to 1, you need NOT use B<-e> flag in every B<makedns> call.
 
-=item B<noderange>
+=item I<noderange>
 
 A set of comma delimited node names and/or group names. See the "noderange" man page for details on additional supported formats.
 
