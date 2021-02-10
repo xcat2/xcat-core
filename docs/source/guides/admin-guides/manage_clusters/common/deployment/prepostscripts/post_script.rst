@@ -1,8 +1,5 @@
 .. _Using-Postscript-label:
 
-Using Postscript
-----------------
-
 xCAT automatically runs a few postscripts and postbootscripts that are delivered with xCAT to set up the nodes. You can also add your own scripts to further customize the nodes.
 
 Types of scripts
@@ -358,7 +355,7 @@ THE ``#NETWORK_FOR_DISKLESS_EXPORT#`` line will provide diskless networks inform
      ..
      #NETWORK_FOR_DISKLESS_EXPORT#
 
-Note: the ``#INCLUDE_POSTSCRIPTS_LIST#`` and the ``#INCLUDE_POSTBOOTSCRIPTS_LIST#`` sections in ``/tftpboot/mypostscript(mypostbootscripts)`` on the Management Node will contain all the postscripts and postbootscripts defined for the node. When running an ``updatenode`` command for only some of the scripts , you will see in the ``/xcatpost/mypostscript`` file on the node, the list has been redefined during the execution of ``updatenode`` to only run the requested scripts. For example, if you run ``updatenode <nodename> -P syslog``.
+.. note:: The ``#INCLUDE_POSTSCRIPTS_LIST#`` and the ``#INCLUDE_POSTBOOTSCRIPTS_LIST#`` sections in ``/tftpboot/mypostscript(mypostbootscripts)`` on the Management Node will contain all the postscripts and postbootscripts defined for the node. When running an ``updatenode`` command for only some of the scripts , you will see in the ``/xcatpost/mypostscript`` file on the node, the list has been redefined during the execution of ``updatenode`` to only run the requested scripts. For example, if you run ``updatenode <nodename> -P syslog``.
 
 The ``#INCLUDE_POSTSCRIPTS_LIST#`` flag provides a list of postscripts defined for this ``$NODE``. ::
 
