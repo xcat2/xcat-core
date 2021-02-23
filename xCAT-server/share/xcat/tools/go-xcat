@@ -2,7 +2,7 @@
 #
 # go-xcat - Install xCAT automatically.
 #
-# Version 1.0.46
+# Version 1.0.47
 #
 # Copyright (C) 2016 - 2019 International Business Machines
 # Eclipse Public License, Version 1.0 (EPL-1.0)
@@ -32,6 +32,8 @@
 # 2020-5-7 Nic Mays <Nicolas.Mays@ibm.com>
 #	  - Handles 'stable' as a flag to install latest version via the command:
 #			go-xcat --xcat-version=stable install
+# 2021-02-18 Mark Gurevich <gurevich@us.ibm.com>
+#     - On Ubuntu remove packages one at a time
 #
 
 
@@ -176,7 +178,7 @@ GO_XCAT_INSTALL_LIST=(perl-xCAT xCAT-client xCAT xCAT-buildkit
 	xCAT-genesis-scripts-ppc64 xCAT-genesis-scripts-x86_64 xCAT-server
 	elilo-xcat grub2-xcat ipmitool-xcat syslinux-xcat
 	xCAT-genesis-base-ppc64 xCAT-genesis-base-x86_64 xnba-undi yaboot-xcat)
-# For Debian/Ubuntu, it will need a sight different package list
+# For Debian/Ubuntu, it will need a slightly different package list
 type dpkg >/dev/null 2>&1 &&
 GO_XCAT_INSTALL_LIST=(perl-xcat xcat-client xcat xcat-buildkit
 	xcat-genesis-scripts-amd64 xcat-genesis-scripts-ppc64 xcat-server
@@ -187,7 +189,7 @@ GO_XCAT_UNINSTALL_LIST=("${GO_XCAT_INSTALL_LIST[@]}"
 	goconserver xCAT-SoftLayer xCAT-confluent xCAT-csm xCAT-genesis-builder
 	xCAT-openbmc-py xCAT-probe xCAT-test xCAT-vlan xCATsn xCAT-UI-deps
     xCAT-buildkit conserver-xcat)
-# For Debian/Ubuntu, it will need a sight different package list
+# For Debian/Ubuntu, it will need a slightly different package list
 type dpkg >/dev/null 2>&1 &&
 GO_XCAT_UNINSTALL_LIST=("${GO_XCAT_INSTALL_LIST[@]}"
 	goconserver xcat-confluent xcat-probe xcat-test xcat-vlan xcatsn
@@ -1588,8 +1590,12 @@ function remove_package_apt()
 	type apt-get >/dev/null 2>&1 || return 255
 	local -a yes=()
 	[[ "$1" = "-y" ]] && yes=("-y") && shift
-	apt-get --allow-unauthenticated remove "${yes[@]}" "$@"
-	warn_if_bad "$?" "Unable to remove xCAT packages: "`apt --installed list 2>&1 | grep xcat | cut -d '/' -f 1`
+	# For each package, remove one at a time
+	for package in "$@"
+	do
+		apt-get --allow-unauthenticated remove "${yes[@]}" ${package}
+		warn_if_bad "$?" "Unable to remove xCAT package ${package}"
+	done
 }
 
 function remove_package()
@@ -1603,8 +1609,12 @@ function purge_package_apt()
 	type apt-get >/dev/null 2>&1 || return 255
 	local -a yes=()
 	[[ "$1" = "-y" ]] && yes=("-y") && shift
-	apt-get --allow-unauthenticated purge "${yes[@]}" "$@"
-	warn_if_bad "$?" "Unable to purge xCAT packages: "`apt --installed list 2>&1 | grep xcat | cut -d '/' -f 1`
+	# For each package, remove one at a time
+	for package in "$@"
+	do
+		apt-get --allow-unauthenticated purge "${yes[@]}" ${package}
+		warn_if_bad "$?" "Unable to purge xCAT package ${package}"
+	done
 }
 
 function purge_package_others()
