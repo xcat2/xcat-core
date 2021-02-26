@@ -4,14 +4,15 @@
 #
 # Get proper disk to install OS
 #
-# 1. Check all partitions list in /proc/partitions, whether
-#    there is disk had OS installed. If there is, add it to
+# 1. Check all partitions listed in /proc/partitions, whether
+#    there is a disk that had OS installed. If there is, add it to
 #    the disk array.
-# 2. If there is disk had OS installed, check disks list
-#    generated in Step 1. Else, check all disks get from
-#    /proc/partitions file. Sort them by WWN/PATH and driver
-#    type, select the first one.
-# 3. Select the default one: /dev/sda.
+# 2. If there is no disk that had OS installed found
+#    in Step 1, then check all disks in
+#    /proc/partitions file. Sort them by driver type, then by WWN/PATH
+#    select the first one.
+# 3. If no disks selected in Steps 1 or 2, then
+#    select the default disk: /dev/sda.
 #
 # Output: Install disk name written to /tmp/xcat.install_disk
 #
@@ -182,7 +183,7 @@ if [ -z "$install_disk" ]; then
             disk_data=$disk_wwn
         elif [ $has_wwn -eq 1 ]; then
             echo "[get_install_disk]    The disk $disk has no wwn info."
-            echo "[get_install_disk]    There is other disk has wwn info, so don't record this disk."
+            echo "[get_install_disk]    There is another disk with wwn info, so don't record this disk."
             continue;
         elif [ "$disk_path" ]; then
             has_path=1
@@ -190,7 +191,7 @@ if [ -z "$install_disk" ]; then
             disk_data=$disk_path
         elif [ $has_path -eq 1 ]; then
             echo "[get_install_disk]    The disk $disk has no wwn or path info."
-            echo "[get_install_disk]    There is other disk has path info, so don't record this disk."
+            echo "[get_install_disk]    There is another disk with path info, so don't record this disk."
             continue;
         else
            file_pre="other"
@@ -235,7 +236,7 @@ rm -rf $tmpdir;
 # Cannot find proper disk for OS install, select the default one "/dev/sda"
 if [ -z "$install_disk" ]; then
     install_disk="/dev/sda"
-    echo "[get_install_disk]Choosing default install_disk is $install_disk."
+    echo "[get_install_disk]Choosing default install_disk $install_disk."
 fi
 
 # Output the result to $install_disk_file
