@@ -1965,7 +1965,7 @@ sub restorexcatdb
     }
 
     # restore it
-    my $cmd = "XCATBYPASS=y XCATCFG=\"$xcatcfg\"  restorexCATdb -p $::backupdir";
+    my $cmd = "XCATBYPASS=y XCATCFG=\"$xcatcfg\"  restorexCATdb -p $::backupdir > /tmp/test_delay.log";
 
     # not display passwords in verbose mode
     my $tmpv = $::VERBOSE;
