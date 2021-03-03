@@ -45,9 +45,10 @@ if [ -z "$install_disk" ]; then
 
     # Classify entries by DEVTYPE
     for entry in $entries; do
-        DEVSIZE=$(udevadm info --attribute-walk --name=$entry|grep size| sed -e 's/[^"]*"//' -e 's/"//'|tail -n 1)
+        DEVSIZE=$(udevadm info --attribute-walk --name=$entry|grep \{size\}| sed -e 's/[^"]*"//' -e 's/"//'|tail -n 1)
         if [ -z "$DEVSIZE" -o $DEVSIZE -lt 262144 ]; then
             # ignore small devices, that are likely remote media or similar
+            echo "[get_install_disk]    Skipping partition $entry. Size too small: $DEVSIZE"
             continue
         fi
 
