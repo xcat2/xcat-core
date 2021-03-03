@@ -378,7 +378,11 @@ sub tabrestore
     my $cb      = shift;
     my $table   = $request->{table}->[0];
     my $addrows = $request->{addrows}->[0];
+    my $time;
 
+    $time = `date`;
+    print ("\ntabrestore $table $time\n"); 
+ 
     # do not allow teal tables
     if ($table =~ /^x_teal/) {
         $cb->({ error => "$table is not supported in tabrestore. Use Teal maintenance commands. ", errorcode => 1 });
@@ -427,11 +431,16 @@ sub tabrestore
     {
         $line = @{ $request->{data} }[$linenumber];
         $line =~ s/\s+$//;
+
+    $time = `date`;
+    print ("linenum $linenumber $time\n"); 
+
         my $origline = $line;                  #save for error reporting
         my %record;
         my $col;
         foreach $col (@colns)
         {
+
             if ($line =~ /^,/ or $line eq "")
             {    #Match empty, or end of line that is empty
                  #TODO: should we detect when there weren't enough CSV fields on a line to match colums?
@@ -458,6 +467,10 @@ sub tabrestore
                 my $offset = 1;
                 my $nextchar;
                 my $ent;
+
+                $time = `date`;
+                print ("  $line $time\n"); 
+
                 while (not defined $ent)
                 {
                     $offset = index($line, '"', $offset);
@@ -549,8 +562,14 @@ sub tabrestore
             $cb->({ error => "DB error " . $rc[1] . " with line $linenumber: " . $origline, errorcode => 4 });
         }
     }
+
+    $time = `date`;
+    print ("Loop done $time\n"); 
+
     if ($rollback)
     {
+        $time = `date`;
+        print ("rollback $time\n*****\n"); 
         $tab->rollback();
         $tab->close;
         undef $tab;
@@ -558,7 +577,11 @@ sub tabrestore
     }
     else
     {
+        $time = `date`;
+        print ("before commit $time\n"); 
         $tab->commit;    #Made it all the way here, commit
+        $time = `date`;
+        print ("after commit $time\n*****\n"); 
     }
 }
 

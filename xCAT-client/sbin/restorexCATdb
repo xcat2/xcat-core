@@ -138,7 +138,7 @@ foreach my $table (@files)
             }
         }
 
-        my $cmd = "tabrestore $tablename";
+        my $cmd = "tabrestore $tablename >> /tmp/RESTORE";
         my @errout = xCAT::Utils->runcmd($cmd, 0);
         if ($::RUNCMD_RC != 0)
         {    # error

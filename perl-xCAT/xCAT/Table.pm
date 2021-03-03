@@ -109,6 +109,8 @@ sub dbc_call {
         autocommit => $self->{autocommit},
         args       => \@args,
     };
+    my $time=`date`;
+    print "dbc_call $time\n";
     return dbc_submit($request);
 }
 
@@ -119,8 +121,12 @@ sub dbc_submit {
     my $tries = 300;
     my $retdata;
     my $err;
+    my $time=`date`;
+    print "dbc_submit $time\n";
     while ($tries and !($clisock = IO::Socket::UNIX->new(Peer => $dbsockpath, Type => SOCK_STREAM, Timeout => 120))) {
 
+        $time=`date`;
+        print "in the while loop $time tries = $tries\n";
         #print "waiting for clisock to be available\n";
         if ($tries % 10 == 0 and $dbworkerpid > 0 and not xCAT::Utils::is_process_exists($dbworkerpid)) {
             $dbworkerpid = -1;
@@ -1660,14 +1666,24 @@ sub rollback
 sub commit
 {
     my $self = shift;
+    my $time;
+
+    $time = `date`;
+    print "  commit $time\n";
     if ($dbworkerpid > 0) {
+      $time = `date`;
+      print "  Condition 1 $time\n";
         return dbc_call($self, 'commit', @_);
     }
     unless ($self->{dbh}->{AutoCommit}) { #caller can now hammer commit function with impunity, even when it makes no sense
+      $time = `date`;
+      print "   Condition 2 $time\n";
         $self->{dbh}->commit;
     }
     if ($self->{intransaction} and not $self->{autocommit} and $self->{realautocommit}) {
 
+      $time = `date`;
+      print "   Condition 3 $time\n";
         #if realautocommit indicates shared DBH between manual and auto commit, put the handle back to autocommit if a transaction
         #is committed (aka ended)
         $self->{intransaction} = 0;
