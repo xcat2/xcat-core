@@ -77,26 +77,9 @@ if (@output2) {
     @skiptbls = split(/\,/, $output2[0]);
 }
 
-system("date");
-print "\ndf:\n\n";
-system("df");
-print "\n";
-system("lsblk");
-print "\n";
-
-print "meminfo:\n\n";
-system("cat /proc/meminfo");
-print "\n";
-
-print "/etc/xcat/cfgloc\n\n";
-system("cat /etc/xcat/cfgloc");
-print "\n";
-
 my @files = readdir(DIRPATH);
 foreach my $table (@files)
 {
-    system("date");
-    print "Table: $table\n\n";
     if ($table ne '.' and $table ne '..')
     {
         my $tablename = $::PATH;
