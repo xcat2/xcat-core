@@ -365,6 +365,14 @@ if($onlyinitrd){
             $yumcmd .= "--setopt=module_platform_id=platform:el" . $majorrel . " ";
         }
     }
+    
+    if ($osver =~ /^ol\D*(\d*)[.\d]*.*$/) {
+        $majorrel = $1;
+        if ($majorrel > 7) {
+            $yumcmd .= "--releasever=" . $majorrel . " ";
+            $yumcmd .= "--setopt=module_platform_id=platform:el" . $majorrel . " ";
+        }
+    }
 
     foreach (0 .. $repnum) {
         $yumcmd .= "--enablerepo=$osver-$arch-$_ ";
@@ -784,6 +792,18 @@ if (-e "$rootimg_dir/etc/yum.repos.d/CentOS-Base.repo") {
 }
 #
 
+#-- Oracle Linux, disable internet repositories
+if (-e "$rootimg_dir/etc/yum.repos.d/oracle-linux-ol8.repo") {
+    my $repo_content = `sed -e '/enabled/d' $rootimg_dir/etc/yum.repos.d/oracle-linux-ol8.repo | sed -e '/^gpgkey/i enabled=0'`;
+    system("echo '$repo_content' > $rootimg_dir/etc/yum.repos.d/oracle-linux-ol8.repo");
+}
+
+if (-e "$rootimg_dir/etc/yum.repos.d/uek-ol8.repo") {
+    my $repo_content = `sed -e '/enabled/d' $rootimg_dir/etc/yum.repos.d/uek-ol8.repo | sed -e '/^gpgkey/i enabled=0'`;
+    system("echo '$repo_content' > $rootimg_dir/etc/yum.repos.d/uek-ol8.repo");
+}
+#
+
 #-- run postinstall script
 unless ($imagename) {
     $postinstall_filename = imgutils::get_profile_def_filename($osver, $profile, $arch, $customdir, "postinstall");
@@ -1005,6 +1025,11 @@ sub mkinitrd_dracut {
         $dracutmoduledir = "$rootimg_dir/usr/lib/dracut/modules.d/";
     }
 
+    # For whatever reasons Oracle Linux have both /usr/lib/dracut and /usr/share/dracut folders
+    # so we just check if it /etc/oracle-release exists and force the correct path
+    if ((-f "$rootimg_dir/etc/oracle-release")) {
+        $dracutmoduledir = "$rootimg_dir/usr/lib/dracut/modules.d/";
+    }
 
     if ($dracutver >= "033") {
         my $perm = (stat("$fullpath/$dracutdir/patch/syslog/module-setup.sh"))[2];
@@ -1947,6 +1972,10 @@ sub using_systemd {
             return 1;
         }
     } elsif ($os =~ /centos(\d+)/) {
+        if ($1 >= 7) {
+            return 1;
+        }
+    } elsif ($os =~ /ol(\d+)/) {
         if ($1 >= 7) {
             return 1;
         }
