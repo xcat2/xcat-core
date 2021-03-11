@@ -1,5 +1,5 @@
 #!/usr/bin/perl
-## IBM(c) 2107 EPL license http://www.eclipse.org/legal/epl-v10.html
+## IBM(c) 2017 EPL license http://www.eclipse.org/legal/epl-v10.html
 
 package xCAT::OPENBMC;
 
