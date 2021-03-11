@@ -1,6 +1,6 @@
 #!/bin/bash
 if [ -z "$XCATDEST" ]; then
-	XCATDEST=$1
+    XCATDEST=$1
 fi
 echo "<xcatrequest>
 <command>nextdestiny</command>
@@ -9,28 +9,22 @@ echo "<xcatrequest>
 if [ -f /tmp/destiny.xml ]; then rm /tmp/destiny.xml; fi
 timer=0
 while [ ! -f /tmp/destiny.xml ]; do
-	while [ $timer -gt 0 ]; do
-		echo -en  "No destiny command received, retrying in $timer seconds  \r" >&2
-		sleep 1
-		timer=$(($timer-1));
-	done
-	echo "                                                         " >&2;
-	if [ -f /etc/xcat/cert.pem -a -f /etc/xcat/certkey.pem ]; then #use client cert if available
-		cat /tmp/destreq.xml | openssl s_client -key /etc/xcat/certkey.pem -cert /etc/xcat/cert.pem -connect $XCATDEST -quiet 2> /dev/null > /tmp/destiny.xml
-	else
-		cat /tmp/destreq.xml | openssl s_client -connect $XCATDEST -quiet 2> /dev/null > /tmp/destiny.xml
-	fi
-	timer=60
+    for((; timer>0; --timer)); do
+        echo -en  "No destiny command received, retrying in $timer seconds  \r" >&2
+        sleep 1
+    done
+    echo "                                                         " >&2;
+    if [ -f /etc/xcat/cert.pem -a -f /etc/xcat/certkey.pem ]; then #use client cert if available
+        SSL_CERT_OPTS=( -key /etc/xcat/certkey.pem -cert /etc/xcat/cert.pem )
+    fi
+    openssl s_client "${SSL_CERT_OPTS[@]}" -connect "$XCATDEST" -quiet </tmp/destreq.xml 2>/dev/null >/tmp/destiny.xml
+    timer=60
 done
 rm /tmp/destreq.xml
-DESTINY=`grep '<destiny>' /tmp/destiny.xml | awk -F'>' '{print $2}'|awk -F'<' '{print $1}'`
+DESTINY="$(awk -F'>' '/<destiny>/{print $2}' /tmp/destiny.xml | awk -F'<' '{print $1}')"
 if [ -z "$DESTINY" ]; then
-    ERROR=`grep '<error>' /tmp/destiny.xml | awk -F'>' '{print $2}'|awk -F'<' '{print $1}'`
-    if [ ! -z "$ERROR" ]; then
-        DESTINY="error=$ERROR"
-    else
-        DESTINY="error=No destiny command received"
-    fi
+    ERROR="$(awk -F'>' '/<error>/{print $2}' /tmp/destiny.xml |awk -F'<' '{print $1}')"
+    DESTINY="error=${ERROR:-No destiny command received}"
 fi
 rm /tmp/destiny.xml
-echo $DESTINY
+echo "$DESTINY"

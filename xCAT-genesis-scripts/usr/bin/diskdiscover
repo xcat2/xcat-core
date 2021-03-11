@@ -51,8 +51,8 @@
 # source raidutils
 #
 ###########################################
-str_dir_name=`dirname $0`
-. $str_dir_name/raidutils
+str_dir_name="$(dirname "$0")"
+. "$str_dir_name/raidutils"
 
 
 ############################################
@@ -83,8 +83,8 @@ if [ "x$input" == "x--help" -o "x$input" == "x-h" ]; then
       usagesc
       exit 0
 fi
-if [ -z $input ]; then
+if [ -z "$input" ]; then
       get_all_devices_for_raid
 else
-      get_devices_by_pciid $input
+      get_devices_by_pciid "$input"
 fi

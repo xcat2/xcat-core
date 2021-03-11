@@ -1,5 +1,4 @@
 #!/bin/bash
-#set -x
 
 XCATPORT=3001
 export XCATPORT
@@ -18,35 +17,35 @@ echo "<xcatrequest>
 <command>getadapter</command>
 <action>update</action>"  >> "$ADAPTERFILE"
 
-#scan adapters have recognized by operating system
+# scan adapters that are recognized by operating system
 for n in /sys/class/net/*; do
     nic=${n##/sys/class/net/}
     if [ "$nic" == "lo" ]; then
         continue
     else
         echo '<nic>' >> "$ADAPTERFILE"
-        tmp=`udevadm info /sys/class/net/"$nic" | grep " INTERFACE" | awk -F '=' '{print $2}'`
+        tmp="$(udevadm info "/sys/class/net/$nic" | awk -F '=' '/ INTERFACE/{print $2}')"
         if [ -n "$tmp" ]; then
             echo "<interface>$tmp</interface>" >> "$ADAPTERFILE"
         fi
-        tmp=`udevadm info /sys/class/net/"$nic" | grep ID_NET_NAME | awk -F '=' '{print $2}'|sort -u| tr -s "\n" "/" | sed "s/\/$//g"`
+        tmp="$(udevadm info "/sys/class/net/$nic" | awk -F '=' '/ID_NET_NAME/{print $2}'|sort -u| tr -s "\n" "/" | sed 's#/$##g')"
         if [ -n "$tmp" ]; then
             echo "<predictablename>$tmp</predictablename>" >> "$ADAPTERFILE"
         fi
-        tmp=`udevadm info /sys/class/net/"$nic" | grep DEVPATH | awk -F 'devices' '{print $2}'`
+        tmp="$(udevadm info "/sys/class/net/$nic" | awk -F 'devices' '/DEVPATH/{print $2}')"
         if [ -n "$tmp" ]; then
             echo "<pcilocation>${tmp%/net*}</pcilocation>" >> "$ADAPTERFILE"
         fi
-        echo "<mac>`cat /sys/class/net/$nic/address`</mac>" >> "$ADAPTERFILE"
-        tmp=`udevadm info /sys/class/net/"$nic" | grep ID_VENDOR_FROM_DATABASE | awk -F '=' '{print $2}' | tr -s "\n" "/" | sed "s/\/$//g"`
+        echo "<mac>$(cat "/sys/class/net/$nic/address")</mac>" >> "$ADAPTERFILE"
+        tmp="$(udevadm info "/sys/class/net/$nic" | awk -F '=' '/ID_VENDOR_FROM_DATABASE/{print $2}' | tr -s "\n" "/" | sed 's#/$##g')"
         if [ -n "$tmp" ]; then
             echo "<vendor>$tmp</vendor>" >> "$ADAPTERFILE"
         fi
-        tmp=`udevadm info /sys/class/net/"$nic" | grep ID_MODEL_FROM_DATABASE | awk -F '=' '{print $2}'`
+        tmp="$(udevadm info /sys/class/net/"$nic" | awk -F '=' '/ID_MODEL_FROM_DATABASE/{print $2}')"
         if [ -n "$tmp" ]; then
             echo "<model>$tmp</model>" >> "$ADAPTERFILE"
         fi
-        tmp=`ip link show $nic`
+        tmp="$(ip link show "$nic")"
         if [ -n "$tmp" ]; then
             tmp=${tmp#*state }
             echo "<linkstate>${tmp% mode*}</linkstate>" >> "$ADAPTERFILE"
@@ -55,57 +54,55 @@ for n in /sys/class/net/*; do
     fi
 done
 
-for pci in `lspci |awk '/Ethernet/ {print $1}' `; do
+for pci in $(lspci |awk '/Ethernet/ {print $1}'); do
     if ! grep -q "$pci" "$ADAPTERFILE" 2>/dev/null; then
-        tmp=`lspci |grep "$pci"`
-        echo '<nic>' >> "$ADAPTERFILE"
-        echo "<pcilocation>$pci</pcilocation>" >> "$ADAPTERFILE"
-        echo "<model>${tmp##*:}</model>" >> "$ADAPTERFILE"
-        echo '</nic>' >> "$ADAPTERFILE"
-        fi
+        tmp="$(lspci |grep "$pci")"
+        echo "<nic>
+<pcilocation>$pci</pcilocation>
+<model>${tmp##*:}</model>
+</nic>" >> "$ADAPTERFILE"
+    fi
 done
 
-for pci in `lspci |awk '/Network/ {print $1}' `; do
+for pci in $(lspci |awk '/Network/ {print $1}'); do
     if ! grep -q "$pci" "$ADAPTERFILE" 2>/dev/null; then
-        tmp=`lspci |grep "$pci"`
-        echo '<nic>' >> "$ADAPTERFILE"
-        echo "<pcilocation>$pci</pcilocation>" >> "$ADAPTERFILE"
-        echo "<model>${tmp##*: }</model>" >> "$ADAPTERFILE"
-        echo '</nic>' >> "$ADAPTERFILE"
-        fi
+        tmp="$(lspci |grep "$pci")"
+        cat >> "$ADAPTERFILE" <<_END
+<nic>
+<pcilocation>$pci</pcilocation>
+<model>${tmp##*: }</model>
+</nic>
+_END
+    fi
 done
 
-for pci in `lspci |awk '/Mellanox/ {print $1}' `; do
+for pci in $(lspci |awk '/Mellanox/ {print $1}'); do
     if ! grep -q "$pci" "$ADAPTERFILE" 2>/dev/null; then
-        tmp=`lspci |grep "$pci"`
-        echo '<nic>' >> "$ADAPTERFILE"
-        echo "<pcilocation>$pci</pcilocation>" >> "$ADAPTERFILE"
-        echo "<model>${tmp##*: }</model>" >> "$ADAPTERFILE"
-        echo '</nic>' >> "$ADAPTERFILE"
-        fi
+        tmp="$(lspci |grep "$pci")"
+        cat >> "$ADAPTERFILE" <<_END
+<nic>
+<pcilocation>$pci</pcilocation>
+<model>${tmp##*: }</model>
+</nic>
+_END
+    fi
 done
 
 echo "</xcatrequest>" >> "$ADAPTERFILE"
 
-#cat "$ADAPTERFILE"
-
+if [ -f /etc/xcat/cert.pem -a -f /etc/xcat/certkey.pem ]; then # use client cert if available
+    SSL_CERT_OPTS=( -key /etc/xcat/certkey.pem -cert /etc/xcat/cert.pem )
+fi
 if [ -n  "$XCATMASTER" ]; then
-    if [ -f /etc/xcat/cert.pem -a -f /etc/xcat/certkey.pem ]; then #use client cert if available
-        echo "using /etc/xcat/certkey.pem and /etc/xcat/cert.pem to transmit scan result to $XCATMASTER" >> "$SCANNICLOG"
-        openssl s_client -key /etc/xcat/certkey.pem -cert /etc/xcat/cert.pem -connect $XCATMASTER:$XCATPORT  <"$ADAPTERFILE" >>"$SCANNICLOG" 2>&1
-    else
-        echo "transmit scan result without customer certificate to $XCATMASTER" >> "$SCANNICLOG"
-        openssl s_client -connect $XCATMASTER:$XCATPORT  <"$ADAPTERFILE"  >>"$SCANNICLOG" 2>&1
-    fi
+    TARGET="$XCATMASTER"
 else
-    dhcps=`awk -F ' |;' '/dhcp-server/ { print $(NF-1) }' /var/lib/dhclient/dhclient.leases | tail -n 1`
-    if [ -n "$dhcps" ]; then
-        if [ -f /etc/xcat/cert.pem -a -f /etc/xcat/certkey.pem ]; then #use client cert if available
-             echo "using /etc/xcat/certkey.pem and /etc/xcat/cert.pem to transmit scan result to $dhcps" >> "$SCANNICLOG"
-             openssl s_client -key /etc/xcat/certkey.pem -cert /etc/xcat/cert.pem -connect $dhcps:$XCATPORT  <"$ADAPTERFILE" >>"$SCANNICLOG" 2>&1
-        else
-             echo "transmit scan result without customer certificate to $dhcps" >> "$SCANNICLOG"
-             openssl s_client -connect $dhcps:$XCATPORT  <"$ADAPTERFILE"  >>"$SCANNICLOG" 2>&1
-        fi
+    TARGET="$(awk -F ' |;' '/dhcp-server/ { print $(NF-1) }' /var/lib/dhclient/dhclient.leases | tail -n 1)"
+fi
+if [ -n "$TARGET" ]; then
+    if [[ "${#SSL_CERT_OPTS[@]}" -gt 0 ]]; then # using client cert
+        echo "using /etc/xcat/certkey.pem and /etc/xcat/cert.pem to transmit scan result to $TARGET" >> "$SCANNICLOG"
+    else
+        echo "transmit scan result without client certificate to $TARGET" >> "$SCANNICLOG"
     fi
+    openssl s_client "${SSL_CERT_OPTS[@]}" -connect "$TARGET:$XCATPORT"  <"$ADAPTERFILE"  >>"$SCANNICLOG" 2>&1
 fi

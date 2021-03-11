@@ -1,3 +1,4 @@
+#!/bin/bash
 if [ "${1%?}" = "usb" ]; then
 	/sbin/setupimmnic
 fi
