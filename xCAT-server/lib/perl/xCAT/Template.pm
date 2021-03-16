@@ -342,7 +342,7 @@ sub subvars {
                             $product_dir=$subdir;
                             if($subdir =~ /^Module-/){
                                 $product_name="sle-".lc($subdir);
-                            }elsif($subdir =~ /^Product-SUSE-Manager-Server|^Product-SLES_SAP/){
+                            }elsif($subdir =~ /^Product-SUSE-Manager-Server|^Product-SLES_SAP|^Product-SLED/){
                                 # Skip product directories that are not "SLES", causes conflict on SLE15.2
                                 next;
                             }elsif($subdir =~ /^Product-/){
