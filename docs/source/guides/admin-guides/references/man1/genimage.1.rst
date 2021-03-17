@@ -33,14 +33,13 @@ DESCRIPTION
 
 Generates a stateless and a statelite image that can be used to boot xCAT nodes in a diskless mode.
 
-genimage will use the osimage definition for information to generate this image.  Additional options specified on the command line will override any corresponding previous osimage settings, and will be written back to the osimage definition.
+\ **genimage**\  will use the osimage definition for information to generate this image.  Additional options specified on the command line will override any corresponding previous osimage settings and will be written back to the osimage definition.
 
 If \ **genimage**\  runs on the management node, both the \ *osimage*\  table and \ *linuximage*\  table will be updated with the given values from the options.
 
-The \ **genimage**\  command will generate two initial ramdisks for \ **stateless**\  and \ **statelite**\ , one is \ **initrd-stateless.gz**\ , the other one is \ **initrd-statelite.gz**\ .
+The \ **genimage**\  command will generate two initial ramdisks, \ **initrd-stateless.gz**\  for \ **stateless**\  mode, and \ **initrd-statelite.gz**\  for \ **statelite**\  mode.
 
-After your image is generated, you can chroot to the
-image, install any additional software you would like, or make modifications to files, and then run the following command to prepare the image for deployment.
+After your image is generated, you can chroot to the image, install any additional software you would like, or make modifications to files, and then run the following command to prepare the image for deployment.
 
 for stateless: \ **packimage**\ 
 
@@ -50,8 +49,7 @@ Besides prompting for some parameter values, the \ **genimage**\  command takes 
 
 If \ **-**\ **-onlyinitrd**\  is specified, genimage only regenerates the initrd for a stateless image to be used for a diskless install.
 
-The \ **genimage**\  command must be run on a system that is the same architecture and same distro with same major release version as the nodes it will be
-used on.  If the management node is not the same architecture or same distro level, copy the contents of
+The \ **genimage**\  command must be run on a system that is the same architecture and same distro with same major release version as the nodes it will be used on.  If the management node is not the same architecture or same distro level, copy the contents of
 /opt/xcat/share/xcat/netboot/<os> to a system that is the proper architecture, and mount /install from
 the management node to that system. Then change directory to /opt/xcat/share/xcat/netboot/<os> and run ./genimage.
 
@@ -72,13 +70,13 @@ OPTIONS
 
 \ **-a**\  \ *arch*\ 
  
- The hardware architecture of this node: x86_64, ppc64, x86, ia64, etc. If omitted, the current hardware architecture will be used.
+ The hardware architecture of this node: ppc64le, x86_64, ppc64, x86, ia64, etc.  If omitted, the current hardware architecture will be used.
  
 
 
 \ **-o**\  \ *osver*\ 
  
- The operating system for the image:  fedora8, rhel5, sles10, etc.  The OS packages must be in
+ The operating system for the image: rhels8.2.0, sle15, ubuntu18.04.2, etc.  The OS packages must be in
  /install/<osver>/<arch> (use copycds(8)|copycds.8).
  
 
@@ -121,10 +119,9 @@ OPTIONS
  
  Regenerates the initrd for a stateless image to be used for a diskless install.
  
- Regenerates the initrd that is part of a stateless/statelite image that is used to boot xCAT nodes in a stateless/stateli
- te mode.
+ Regenerates the initrd that is part of a stateless/statelite image that is used to boot xCAT nodes in a stateless/statelite mode.
  
- The \ **genimage -**\ **-onlyinitrd**\  command will generate two initial ramdisks, one is \ **initrd-statelite.gz**\  for \ **statelite**\  mode, the other one is \ **initrd-stateless.gz**\  for \ **stateless**\  mode.
+ The \ **genimage -**\ **-onlyinitrd**\  command will generate two initial ramdisks, \ **initrd-stateless.gz**\  for \ **stateless**\  mode, and \ **initrd-statelite.gz**\  for \ **statelite**\  mode.
  
 
 
