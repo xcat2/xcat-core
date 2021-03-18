@@ -299,12 +299,20 @@ unless ($onlyinitrd) {
             if (-d "$dir/1") {
                 $ddir .= "/1";
             }
-            system("zypper -R $rootimg_dir $non_interactive ar file:$ddir $osver-$i");
-            $i++;
-            if (-d "$dir/2") {
-                $ddir = $dir . "/2";
+            if ($osver =~ "^sle15.2") {
+                # For SLE15 SP2 need 'baseurl' to point to a 3 module subdirs 
+                system("zypper -R $rootimg_dir $non_interactive ar file:$ddir/Product-SLES $osver-$i-Product-SLES");
+                system("zypper -R $rootimg_dir $non_interactive ar file:$ddir/Module-Basesystem $osver-$i-Module-Basesystem");
+                system("zypper -R $rootimg_dir $non_interactive ar file:$ddir/Module-Legacy $osver-$i-Module-Legacy");
+
+            } else {
                 system("zypper -R $rootimg_dir $non_interactive ar file:$ddir $osver-$i");
                 $i++;
+                if (-d "$dir/2") {
+                    $ddir = $dir . "/2";
+                    system("zypper -R $rootimg_dir $non_interactive ar file:$ddir $osver-$i");
+                    $i++;
+                }
             }
         }
 
