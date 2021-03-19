@@ -2006,7 +2006,13 @@ sub generic_post { # This function is meant to leave the image in a state approx
     print $cfgfile "NETWORKING=yes\n";
     close($cfgfile);
 
-    # SLE15 has a symlink to /run/netconfig/resolv.conf and does not need a dummy file
+    # SLE15.2 has a symlink to /run/netconfig/resolv.conf but still need a dummy file
+    if (-l "$rootimg_dir/etc/resolv.conf" && $osver =~ "15.2") {
+        # Remove resolv.conf, so that link is gone and code below will
+        # create a dummy file
+        unlink("$rootimg_dir/etc/resolv.conf");
+    }
+    # SLE15.0 has a symlink to /run/netconfig/resolv.conf and does not need a dummy file
     if (! -l "$rootimg_dir/etc/resolv.conf") {
         open($cfgfile, ">", "$rootimg_dir/etc/resolv.conf");
         print $cfgfile "#Dummy resolv.conf to make boot cleaner";
