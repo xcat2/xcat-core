@@ -109,7 +109,7 @@ if [ -z "$install_disk" ]; then
             # If there is kernel file, add partition's disk into disk_array
             # It seems the kernel file in ubuntu and sles are named like vmlinux, but in RH it is called vmlinuz
             # To check both vmlinux and vmlinuz, use regular expression "vmlinu*" to match them
-            for i in $ker_dir/vmlinu*; do
+            for i in $(find $ker_dir -maxdepth 1 -name "vmlinu*"); do
                 case $partition in
                     nvme*)
                         # Expected nvme partition format example: nvme0n1p1
