@@ -110,8 +110,9 @@ sub do_main_job {
     $rc |= $rst;
 
     #check DNS service
-    $rst = check_dns_service(\%sitetable, $installnicip, \$checkpoint, \@error);
-    print_check_result($checkpoint, "f", $rst, \@error);
+    ($rst, $flag) = check_dns_service(\%sitetable, $installnicip, \$checkpoint, \@error);
+    print_check_result($checkpoint, $flag, $rst, \@error);
+    $rst = 0 if ($flag == "w");
     $rc |= $rst;
 
     #check DHCP service
@@ -173,7 +174,8 @@ sub do_main_job {
         $rst        = check_dhcp_leases(\$checkpoint, \@error);
         print_check_result($checkpoint, "w", $rst, \@error);
         $rc |= $rst;
-    } else {
+
+        #check if database packages are installed
         $rst = check_db_pkgs(\$checkpoint, \@error);
         print_check_result($checkpoint, "f", $rst, \@error);
         $rc |= $rst;
@@ -893,7 +895,7 @@ sub check_log_record {
 
     my @grep_logs = `grep "$log_msg on SN" $log_file | grep -v "Allowing" | grep -v "dispatch"`;
     foreach my $grep_log (@grep_logs) {
-        if ($grep_log =~ /.+ \d+:\d+:\d+ (\w+) xcat:  $log_msg on SN/) {
+        if ($grep_log =~ /.+ \d+:\d+:\d+ (\w+) xcat.*: .* $log_msg on SN/) {
             push @checked_nodes, $1;
         }
     }
@@ -901,7 +903,7 @@ sub check_log_record {
     my %hash_pass = map{$_=>1} @checked_nodes;
     my @error_nodes = grep {!$hash_pass{$_}} @valid_nodes;
     if (@error_nodes) {
-        push @$error_ref, "Failed to store logs come from " . join(",", @error_nodes) . " to $log_file on MN";
+        push @$error_ref, "Failed to store logs sent from SN " . join(",", @error_nodes) . " to $log_file on MN";
         $rst = 1;
     }
     if (@invld_nodes) {
@@ -1005,12 +1007,29 @@ sub check_dns_service {
                     }
                 } else {
 
-                    # if there is no sn, nslookup mnip
+                    # if there is no sn, "nslookup mnip mnip"
                     my $nslkp = `nslookup -type=A $serverip $serverip 2>&1`;
                     chomp($nslkp);
                     my $tmp = grep { $_ =~ "Server:[\t\s]*$serverip" } split(/\n/, $nslkp);
                     if (!$tmp) {
                         $rc = 1;
+                    }
+                    # now check if nameserver in /etc/resolv.conf can resolve server name
+                    my $nslkp = `nslookup -type=A $serverip 2>&1`;
+                    chomp($nslkp);
+                    my $nameserverip = "n/a";
+                    if ($nslkp =~ /Server:[\t\s]*(\d+).(\d+).(\d+).(\d+)/) {
+                        $nameserverip = "$1.$2.$3.$4";
+                    }
+                    if ($nslkp =~ /server can't find/) {
+                        push @$error_ref, "DNS nameserver $nameserverip can not resolve $serverip";
+                        # Just a warning
+                        return (1, 'w');
+                    }
+                    if ($nslkp =~ /no servers could be reached/) {
+                        push @$error_ref, "DNS nameserver can not be reached";
+                        # Just a warning
+                        return (1, 'w');
                     }
                 }
                 if ($rc) {
@@ -1023,7 +1042,7 @@ sub check_dns_service {
         $rst = 2;
     }
 
-    return $rst;
+    return ($rst, 'f');
 }
 
 
@@ -1284,7 +1303,7 @@ sub check_db_pkgs {
     my $error_ref      = shift;
     my $rst            = 0; 
 
-    $$checkpoint_ref = "Checking DB packages installatio...";
+    $$checkpoint_ref = "Checking DB packages installation...";
     @$error_ref = ();
 
     my $cfgloc_file = "/etc/xcat/cfgloc";
@@ -1298,7 +1317,7 @@ sub check_db_pkgs {
     my $db_name;
     if ($db_type eq "mysql") {
         $db_name = "perl-DBD-MySQL or perl-DBD-mysql";
-        $db_pkg = `rpm qa | grep -e perl-DBD-MySQL -e perl-DBD-mysql`;
+        $db_pkg = `rpm -qa | grep -e perl-DBD-MySQL -e perl-DBD-mysql`;
     } elsif ($db_type eq "Pg") {
         $db_name = "perl-DBD-Pg";
         $db_pkg = `rpm -qa | grep $db_name`;
