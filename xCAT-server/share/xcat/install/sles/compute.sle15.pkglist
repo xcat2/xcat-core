@@ -6,3 +6,4 @@ insserv-compat
 net-tools-deprecated
 rsyslog
 nfs-client
+wget
