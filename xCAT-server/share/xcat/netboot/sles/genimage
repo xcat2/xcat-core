@@ -300,7 +300,7 @@ unless ($onlyinitrd) {
                 $ddir .= "/1";
             }
             if (-d "$ddir/Product-SLES" && -d "$ddir/Module-Basesystem" && -d "$ddir/Module-Legacy") {
-                # If "Modile" and "Product" directories are there, use them for package repositories
+                # If "Module" and "Product" directories are there, use them for package repositories
                 system("zypper -R $rootimg_dir $non_interactive ar file:$ddir/Product-SLES $osver-$i-Product-SLES");
                 system("zypper -R $rootimg_dir $non_interactive ar file:$ddir/Module-Basesystem $osver-$i-Module-Basesystem");
                 system("zypper -R $rootimg_dir $non_interactive ar file:$ddir/Module-Legacy $osver-$i-Module-Legacy");
