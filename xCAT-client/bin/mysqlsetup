@@ -152,7 +152,7 @@ $::linuxos = xCAT::Utils->osver();
 my $sp1flag;
 
 # if linuxos==sles12
-if ($::linuxos == "sles12") {
+if ($::linuxos eq "sles12") {
 
     # open /etc/os-release
     my @lines;
@@ -930,7 +930,7 @@ sub initmysqldb
         $cmd = "$sqlcmd --user=mysql";
         #on rhels7.7, /usr/bin/mysql_install_db requires /usr/libexec/resolveip, 
         #but it's available at the /usr/bin/resolveip
-        if ($::linuxos == "rhels7.7") {
+        if ($::linuxos eq "rhels7.7") {
             my $resolveip="/usr/libexec/resolveip";
             if (!(-x ($resolveip))) {
                 my $linkcmd="ln -s /usr/bin/resolveip $resolveip";
