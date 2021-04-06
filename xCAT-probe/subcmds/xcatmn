@@ -62,7 +62,7 @@ sub do_main_job {
     #check if all xcat daemons are running
     ($rst, $flag) = check_all_xcat_daemons(\$checkpoint, \@error);
     print_check_result($checkpoint, $flag, $rst, \@error);
-    $rst = 0 if ($flag == "w");
+    $rst = 0 if ($flag eq "w");
     return $rst if ($rst);
 
     #check if xcatd can receive request
@@ -89,13 +89,13 @@ sub do_main_job {
     #check important directory
     ($rst, $flag) = check_directory(\%sitetable, \$checkpoint, \@error);
     print_check_result($checkpoint, $flag, $rst, \@error);
-    $rst = 0 if ($flag == "w");
+    $rst = 0 if ($flag eq "w");
     $rc |= $rst;
 
     #check if SElinux is disabled
     ($rst, $flag) = check_selinux(\$checkpoint, \@error);
     print_check_result($checkpoint, $flag, $rst, \@error);
-    $rst = 0 if ($flag == "w");
+    $rst = 0 if ($flag eq "w");
     $rc |= $rst;
 
     #check http service
@@ -106,7 +106,7 @@ sub do_main_job {
     #check tftp service
     ($rst, $flag) = check_tftp_service($installnicip, \$checkpoint, \@error);
     print_check_result($checkpoint, $flag, $rst, \@error);
-    $rst = 0 if ($flag == "w");
+    $rst = 0 if ($flag eq "w");
     $rc |= $rst;
 
     #check DNS service
@@ -310,7 +310,7 @@ sub check_all_xcat_daemons {
     foreach my $daemon (@daemon_list) {
         my $counter = $output =~ s/$daemon/$daemon/g;
         if ($counter > 1) {
-            if ($daemon == "SSL listener")  {
+            if ($daemon eq "SSL listener")  {
                 my $cur_pid = `cat /var/run/xcatd.pid`;
                 my @ssl_pids = `ps aux 2>&1|grep -v grep|grep "xcatd: $daemon"|awk -F' ' '{print \$2}'`;
                 foreach my $ssl_pid (@ssl_pids) {
