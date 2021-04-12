@@ -814,13 +814,52 @@ sub build_xmldesc {
         }
 
         my $devhash = XMLin($devxml);
+
         if (defined $devhash->{capability}->{type} and $devhash->{capability}->{type} =~ /pci/i) {
             my %tmphash;
             $tmphash{mode}           = 'subsystem';
             $tmphash{type}           = $devhash->{capability}->{type};
             $tmphash{managed}        = "yes";
             $tmphash{driver}->{name} = "vfio";
-            $tmphash{source}->{address}->[0] = \%{ $devhash->{'capability'}->{'iommuGroup'}->{'address'} };
+
+            if (ref $devhash->{'capability'}->{'iommuGroup'}->{'address'} ne 'ARRAY')
+            {
+               # There is only one record of address.
+
+               $tmphash{source}->{address}->[0] = \%{ $devhash->{'capability'}->{'iommuGroup'}->{'address'} };
+            }
+            else
+            {
+               # There are multiple records of address. Extract the function portion of the PCI devname.
+
+               my $numaddr;
+               my $tmpval;
+               my $devfunction;
+               my $tmpfunction;
+
+               $devname =~ /pci_([0-9]*)_([0-9]*)_([0-9]*)_([0-9]*)/;
+
+               $devfunction = $4;
+
+               $numaddr = length (ref $devhash->{'capability'}->{'iommuGroup'}->{'address'});
+
+               for (my $i = 0; $i < $numaddr; $i++)
+               {
+                  $tmpval = $devhash->{'capability'}->{'iommuGroup'}->{'address'}->[$i]->{'function'};
+
+                  $tmpval =~ /0x([0-9]*)/;
+
+                  $tmpfunction = $1;
+
+                  # Compare the function portion of the PCI devname against that of the XML structure.:w
+                  if ($devfunction eq $tmpfunction)
+                  {
+                     $tmphash{source}->{address}->[0] = \%{ $devhash->{'capability'}->{'iommuGroup'}->{'address'}->[$i] };
+                     last;
+                  }
+               }
+            }
+
             push(@prdevarray, \%tmphash);
 
         }
