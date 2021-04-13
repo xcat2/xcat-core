@@ -82,7 +82,7 @@ Debian/Ubuntu
         mysql-server
         mysql-common
         libdbd-mysql-perl
-        libmysqlclient18
+        libmysqlclient*
         mysql-client-5*
         mysql-client-core-5*
         mysql-server-5*
