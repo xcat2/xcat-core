@@ -327,10 +327,10 @@ sub install_xcat{
 
     my @cmds = ("cd ./../../xcat-core && sudo ./mklocalrepo.sh",
                "sudo chmod 777 /etc/apt/sources.list",
-               "sudo echo \"deb [arch=amd64 allow-insecure=yes] http://xcat.org/files/xcat/repos/apt/devel/xcat-dep xenial main\" >> /etc/apt/sources.list",
-               "sudo echo \"deb [arch=ppc64el allow-insecure=yes] http://xcat.org/files/xcat/repos/apt/devel/xcat-dep xenial main\" >> /etc/apt/sources.list",
+               "sudo echo \"deb [arch=amd64 allow-insecure=yes] http://xcat.org/files/xcat/repos/apt/devel/xcat-dep bionic main\" >> /etc/apt/sources.list",
+               "sudo echo \"deb [arch=ppc64el allow-insecure=yes] http://xcat.org/files/xcat/repos/apt/devel/xcat-dep bionic main\" >> /etc/apt/sources.list",
                "sudo wget -q -O - \"http://xcat.org/files/xcat/repos/apt/apt.key\" | sudo apt-key add -",
-               "sudo apt-get -qq update");
+               "sudo apt-get -qq --allow-insecure-repositories update");
     my @output;
     foreach my $cmd (@cmds){
         print "[install_xcat] running $cmd\n";
