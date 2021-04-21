@@ -2033,7 +2033,7 @@ sub copycd
 
     if (-r $mntpath . "/.discinfo")
     {
-        print "DEBUG - [anaconda.pm] Attempt to detemine OS information from the .discinfo file ...\n";
+        print "DEBUG - [anaconda.pm] Attempt to detemine OS information from the $mntpath/.discinfo file ...\n";
         open($dinfo, $mntpath . "/.discinfo");
 
         $did = <$dinfo>;
@@ -2073,7 +2073,7 @@ sub copycd
             $dno = $1;
         }
     }
-    print "DEBUG - [anaconda.pm] Distname=$distname, OS=$desc, ARCH=$arch, Version=$dno\n";
+    print "DEBUG - [anaconda.pm] Distname=$distname, OS=$desc, ARCH=$darch, Version=$dno\n";
 
     unless ($distname)
     {
@@ -2108,6 +2108,26 @@ sub copycd
                 }
             }
             close($dinfo);
+        }
+        elsif ($desc =~ /Oracle Linux/)
+        {
+            #
+            # Attempt to auto-detect for OL8 OS, the last element 
+            # (accessed with [-1] array index) has typically been the version
+            # ex: "Oracle Linux 8.3.0"
+            #
+            my @ol_version = split / /, $desc;
+            $distname = "ol" . $ol_version[-1];
+        }
+        elsif ($desc =~ /OL-/)
+        {
+            #
+            # Attempt to auto-detect for OL7 OS, the first element 
+            # (after "-") has typically been the version
+            # ex: OL-7.9 Server.x86_64
+            #
+            my @ol_version = split /[- ]/, $desc;
+            $distname = "ol" . $ol_version[1];
         }
         elsif ($desc =~ /^[\d\.]+$/)
         {
