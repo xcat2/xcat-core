@@ -322,7 +322,7 @@ sub check_all_xcat_daemons {
                     $rst_type = "w" if ($child_pid);
                 }
             }
-            push @$error_ref, "More Daemon '$daemon' is running";
+            push @$error_ref, "More than one instance of '$daemon' is running";
             $rst = 1;
         } elsif ($counter == 0) {
             push @$error_ref, "Daemon '$daemon' isn't running";
@@ -1310,8 +1310,13 @@ sub check_db_pkgs {
 
     my $cfgloc_file = "/etc/xcat/cfgloc";
     if (! -e $cfgloc_file) {
-        push @$error_ref, "$cfgloc_file does not exist, check xcat installation.";
-        return 1;
+        # no $cfgloc_file, check if running with default SQLite
+        if (-d "/etc/xcat") {
+            return 0; #Default SQLite
+        } else {
+            push @$error_ref, "Can not find $cfgloc_file or /etc/xcat, check xcat database installation.";
+            return 1;
+        }
     }
     my $db_type = `cat $cfgloc_file | awk -F ':' '{print \$1}'`;
     chomp($db_type);
