@@ -2112,7 +2112,8 @@ sub copycd
         elsif ($desc =~ /Oracle Linux/)
         {
             #
-            # Attempt to auto-detect for OL8 OS, the last element has typically been the version
+            # Attempt to auto-detect for OL8 OS, the last element 
+            # (accessed with [-1] array index) has typically been the version
             # ex: "Oracle Linux 8.3.0"
             #
             my @ol_version = split / /, $desc;
@@ -2121,7 +2122,8 @@ sub copycd
         elsif ($desc =~ /OL-/)
         {
             #
-            # Attempt to auto-detect for OL7 OS, the last element has typically been the version
+            # Attempt to auto-detect for OL7 OS, the first element 
+            # (after "-") has typically been the version
             # ex: OL-7.9 Server.x86_64
             #
             my @ol_version = split /[- ]/, $desc;
