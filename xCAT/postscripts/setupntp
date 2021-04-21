@@ -167,14 +167,26 @@ warn_if_bad "$?" "Failed to configure the system to maintain the RTC in universa
 
 # Synchronize and set the system clock once
 logger -t $log_label -p local4.info "Syncing the clock ..."
+
+OS_name=`cat /etc/os-release | grep "NAME=\"Ubuntu\""`
+
+if [ -z $OS_name ]
+then
+       pidfile_option="pidfile /dev/null"
+else
+       # Some versions of chronyd on Ubuntu distros have an issue
+       # with the valid option "pidfile /dev/null".
+       pidfile_option=""
+fi
+
 chronyd -f /dev/null -q "$(
-	if [ "${#NTP_SERVERS[@]}" -gt "0" ]
-	then
-		echo "server ${NTP_SERVERS[0]} iburst"
-	else
-		echo "pool pool.ntp.org iburst"
-	fi
-)" "pidfile /dev/null"
+        if [ "${#NTP_SERVERS[@]}" -gt "0" ]
+        then
+                echo "server ${NTP_SERVERS[0]} iburst"
+        else
+                echo "pool pool.ntp.org iburst"
+        fi
+)" "$pidfile_option"
 
 rm -f /etc/adjtime
 # Set the hardware clock from the system clock
