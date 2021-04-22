@@ -145,7 +145,7 @@ fi
 unset MASTER
 unset NTPSERVERS
 
-check_exec_or_exit cp cat logger
+check_exec_or_exit cp cat logger grep
 check_exec_or_exit systemctl timedatectl hwclock
 
 systemctl stop ntp.service 2>/dev/null
