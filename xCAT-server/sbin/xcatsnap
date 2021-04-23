@@ -103,7 +103,7 @@ sub run_cmd {
     eval {
         local $SIG{ALRM} = sub { die "Timeout\n" };
         alarm 600;
-        @output = `$Command`;
+        @output = `/bin/bash -c \'$Command\'`;
         alarm 0;
     };
     if ($@) {
@@ -209,7 +209,12 @@ sub snap_it {
             "/etc/rsyslog.conf",            "/etc/rsyslog.d/*",
             "/var/lib/dhcpd/dhcpd.leases", "/etc/hosts", "/etc/resolv.conf",
             "/etc/named.conf",    "/etc/conserver.cf", "/var/log/conserver",
-            "/etc/nsswitch.conf", "/var/log/messages", "/var/log/xcat/*");
+            "/etc/nsswitch.conf", "/var/log/messages", "/var/log/xcat/*",
+            "/etc/dhcp/dhcpd.conf",      "/etc/dhcp/dhcpd6.conf",
+            "/etc/dhcpd6.conf",          "/var/lib/dhcp/db/dhcpd.leases",
+            "/var/lib/dhcp/dhcpd.leases","/etc/goconserver/server.conf",
+            "/var/log/goconserver/*",    "/etc/logrotate.d/goconserver",
+            "/etc/bind/named.conf");
         print("@files_array \n");
     }
     foreach my $item (@files_array) {
@@ -220,15 +225,12 @@ sub snap_it {
     print "Gathering system configuration...\n\n";
     $output_dir = "$logDirectory/commands_output/";
     my $xcatroot = $ENV{'XCATROOT'};
-    my $installdir;
-    chop($installdir =
-          `tabdump site | grep installdir | cut -f2 -d ,`);
     make_output_dir();
     if ($OSname eq "AIX") {
         @Commands_array = (
             "uname -a", "ifconfig -a", "netstat -in", "netstat -rn", "env",
             "reventlog -a", "lsmod", "/sbin/lspci", "lssrc -a", "rpm -qa",
-            "ls $installdir",            "/bin/crontab -l",
+            "ls $INSTALLDIR",            "/bin/crontab -l",
             "find /tftpboot -size -32k", "ls -lR $xcatroot",
             "arp -a", "ps -edlf", "ps -aux", "ulimit -a", "df -k", "oslevel",
             "netstat -A", "errpt -a", "/usr/sbin/instfix -i",
@@ -237,8 +239,8 @@ sub snap_it {
     elsif ($OSname eq "Linux") {
         @Commands_array = (
             "uname -a", "ifconfig -a", "netstat -in", "netstat -rn", "env",
-            "reventlog -a", "lsmod", "/sbin/lspci", "lssrc -a", "rpm -qa",
-            "ls $installdir",            "/usr/bin/crontab -l",
+            "reventlog -a", "lsmod", "lspci", "lssrc -a", "rpm -qa",
+            "ls $INSTALLDIR", "/usr/bin/crontab -l", "apt list",
             "find /tftpboot -size -32k", "ls -lR $xcatroot",
             "arp -a", "ps -edlf", "ps -aux", "ulimit -a", "df -k",
 "cat /etc/issue", "lsxcatd -a", "cat /proc/meminfo", "cat /proc/cpuinfo", "journalctl -b --no-pager -u xcatd");
