@@ -65,9 +65,13 @@ cmd:genimage __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-statelite-compu
 check:rc==0
 cmd:liteimg __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-statelite-compute
 check:rc==0
+#Before doing prsync of /install to the service node, check if there is enough space there
+cmd:du -sh /install
+cmd:xdsh $$SN du -H
 cmd:prsync /install $$SN:/
 check:rc==0
-
+check:output=~$$SN: done
+check:output!=write failed
 
 cmd:/opt/xcat/share/xcat/tools/autotest/testcase/commoncmd/retry_install.sh  $$CN __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-statelite-compute
 check:rc==0
