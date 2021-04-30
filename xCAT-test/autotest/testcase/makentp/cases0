@@ -46,7 +46,7 @@ cmd:lsdef -t site -o clustersite -i extntpservers -c >/tmp/extntpserver
 check:rc==0
 cmd:chtab key=extntpservers site.value="$$extntpserversip"
 check:rc==0
-cmd:date | awk '{print $6}' > /tmp/abc123
+cmd:date | awk '{print $6}' > /tmp/currentyear
 check:rc==0
 cmd:date -s 20000101
 check:rc==0
@@ -60,17 +60,17 @@ check:rc==0
 check:output=~configuring management node: $$MN
 check:output=~Calling ... /install/postscripts/setupntp
 check:output=~Daemon chronyd configured
-cmd:Time=`cat /tmp/abc123 | awk '{print $1}'`;date | grep $Time
+cmd:curryear=`cat /tmp/currentyear`;date | grep $curryear
 check:rc==0
 check:output=~\d
-cmd:Time=`cat /tmp/abc123 | awk '{print $1}'`;if [[ "__GETNODEATTR($$CN,os)__" =~ "rhel" ]];then clock | grep $Time;else hwclock | grep $Time ; fi
+cmd:curryear=`cat /tmp/currentyear`;if [[ "__GETNODEATTR($$CN,os)__" =~ "rhel" ]];then clock | grep $curryear;else hwclock | grep $curryear ; fi
 check:rc==0
 check:output=~\d
 cmd:extntpserver=`cat /tmp/extntpserver | awk -F = '{print \$2}'`;chtab key=extntpservers site.value=$extntpserver
 check:rc==0
 cmd:rm -rf /tmp/extntpserver
 check:rc==0
-cmd:rm /tmp/abc123
+cmd:rm -f /tmp/currentyear
 check:rc==0
 end
 
