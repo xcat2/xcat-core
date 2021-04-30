@@ -3,6 +3,7 @@ tabdump_servicenode
 reg_linux_diskless_installation_hierarchy
 tabdump_servicenode
 reg_linux_diskfull_installation_hierarchy
+makentp_extntpserver_value
 tabdump_servicenode
 updatenode_P_script1
 updatenode_P_script1_script2
