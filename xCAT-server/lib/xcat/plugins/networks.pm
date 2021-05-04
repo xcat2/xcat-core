@@ -370,19 +370,16 @@ sub donets
 
         # For Linux systems
         my @ip6table = split /\n/, `/sbin/ip -6 route`;
-        my @rtable   = split /\n/, `/bin/netstat -rn`;
-        my @mtable   = split /\n/, `/bin/netstat -i`;
-
-        splice @rtable, 0, 2;
-        splice @mtable, 0, 2;
+        my @rtable   = split /\n/, `/sbin/ip -4 route`;
+        my @mtable   = split /\n/, `/sbin/ip link|grep BROADCAST`;  
 
         my %netgw = ();
         foreach my $rtent (@rtable)
         {
             my @entarr = split /\s+/, $rtent;
-            if ($entarr[3] eq 'UG')
+            if ($entarr[1] eq 'via' )
             {
-                $netgw{ $entarr[0] }{ $entarr[2] } = $entarr[1];
+                $netgw{$entarr[0]} = $entarr[2];
             }
         }
 
@@ -466,16 +463,17 @@ sub donets
                 next;
             }
 
-            if ($ent[3] eq 'U')
+            if ($ent[1] eq 'dev')
             {
-                $net       = $ent[0];
-                $mask      = $ent[2];
-                $mgtifname = $ent[7];
-                if (defined($netgw{'0.0.0.0'}{'0.0.0.0'}))
+                $netandmask = $ent[0];
+                $mgtifname  = $ent[2];
+		($net, $mask) = split('/', $netandmask);
+		$mask = xCAT::NetworkUtils::formatNetmask($mask, 1, 0);
+                if (defined($netgw{'default'}))
                 {
-                    if (xCAT::NetworkUtils->ishostinsubnet($netgw{'0.0.0.0'}{'0.0.0.0'}, $mask, $net))
+                    if (xCAT::NetworkUtils->ishostinsubnet($netgw{'default'}, $mask, $net))
                     {
-                        $gw = $netgw{'0.0.0.0'}{'0.0.0.0'};    #default gatetway
+                        $gw = $netgw{'default'};    #default gatetway
                     }
                 }
 
@@ -531,7 +529,7 @@ sub donets
                 foreach (grep /\s*$mgtifname\b/, @mtable)
                 {
                     @rowm = split(/\s+/, $_);
-                    $mtu = $rowm[1];
+                    $mtu = $rowm[4];
                 }
 
                 if ($::DISPLAY) {
@@ -563,7 +561,7 @@ sub donets
                 my $tent=$nethash{$netname};
                 unless ($tent and $tent->{tftpserver})
                 {
-                    my $netdev = $ent[7];
+                    my $netdev = $ent[2];
                     my @netlines = split /\n/, `/sbin/ip addr show dev $netdev`;
                     foreach (grep /\s*inet\b/, @netlines)
                     {
@@ -598,16 +596,6 @@ sub donets
                 }
 
                 #Nothing much sane to do for the other fields at the moment?
-            }
-            elsif ($ent[3] eq 'UG')
-            {
-
-                #TODO: networks through gateway. and how we might care..
-            }
-            else
-            {
-
-                #TODO: anything to do with such entries?
             }
 
             if ($::DISPLAY) {
