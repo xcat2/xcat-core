@@ -71,6 +71,7 @@ makehosts_help
 makehosts_n
 makehosts_n_noderange
 makeknownhosts_node_d
+makenetworks_d_V
 mkdef_null
 mkdef_regex_bmc
 mkdef_regex_ip

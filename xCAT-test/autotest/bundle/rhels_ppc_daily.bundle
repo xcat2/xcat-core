@@ -141,6 +141,7 @@ makeknownhosts_node_d
 tabdump_servicenode
 makentp_h
 makentp_v
+makenetworks_d_V
 mkdef_null
 mkdef_regex_bmc
 mkdef_regex_ip
