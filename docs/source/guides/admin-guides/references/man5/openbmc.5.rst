@@ -62,13 +62,13 @@ openbmc Attributes:
 
 \ **username**\ 
  
- The BMC userid.
+ The BMC userid. If not specified, the key=openbmc row in the passwd table is used as the default.
  
 
 
 \ **password**\ 
  
- The BMC password.
+ The BMC password. If not specified, the key=openbmc row in the passwd table is used as the default.
  
 
 

@@ -19,7 +19,7 @@ No matter which approach chosen, there are two steps to make new drivers work. o
 
 There are two approaches for xCAT to find the driver disk (pick one):
 
-#. Specify the location of the driver disk in the osimage object (*This is ONLY supported in 2.8 and later*)
+#. Specify the location of the driver disk in the osimage object (*This is ONLY supported in xCAT 2.8 and later*)
 
   The value for the 'driverupdatesrc' attribute is a comma separated driver disk list. The tag 'dud' must be specified before the full path of 'driver update disk' to specify the type of the file: ::
 
@@ -66,14 +66,16 @@ If 'osupdatename' is specified, the kernel shipped with the 'osupdatename' will 
 
 - If specifying the driver disk location in the osimage, there are two ways to inject drivers:
 
-  #. ::
+  #. Using nodeset command only: ::
+
       nodeset <noderange> osimage=<osimagename>
 
-  #. ::
+  #. Using geninitrd with nodeset command: ::
+
       geninitrd <osimagename>
       nodeset <noderange> osimage=<osimagename> --noupdateinitrd
 
-**Note:** 'geninitrd' + 'nodeset --noupdateinitrd' is useful when you need to run nodeset frequently for a diskful node. 'geninitrd' only needs be run once to rebuild the initrd and 'nodeset --noupdateinitrd' will not touch the initrd and kernel in /tftpboot/xcat/osimage/<osimage name>/.
+.. note:: 'geninitrd' + 'nodeset --noupdateinitrd' is useful when you need to run nodeset frequently for a diskful node. 'geninitrd' only needs be run once to rebuild the initrd and 'nodeset --noupdateinitrd' will not touch the initrd and kernel in /tftpboot/xcat/osimage/<osimage name>/.
 
 - If putting the driver disk in <installroot>/driverdisk/<os>/<arch>:
 
@@ -94,7 +96,7 @@ There are two ways to inject drivers:
        geninitrd <osimagename> [--ignorekernelchk]
        nodeset <noderange> osimage=<osimagename> --noupdateinitrd
 
-**Note:** 'geninitrd' + 'nodeset --noupdateinitrd' is useful when you need to run nodeset frequently for diskful nodes. 'geninitrd' only needs to be run once to rebuild the initrd and 'nodeset --noupdateinitrd' will not touch the initrd and kernel in /tftpboot/xcat/osimage/<osimage name>/.
+.. note:: 'geninitrd' + 'nodeset --noupdateinitrd' is useful when you need to run nodeset frequently for diskful nodes. 'geninitrd' only needs to be run once to rebuild the initrd and 'nodeset --noupdateinitrd' will not touch the initrd and kernel in /tftpboot/xcat/osimage/<osimage name>/.
 
 The option '--ignorekernelchk' is used to skip the kernel version checking when injecting drivers from osimage.driverupdatesrc. To use this flag, you should make sure the drivers in the driver rpms are usable for the target kernel.
 .. END_inject_into_initrd__for_diskful_for_RPM

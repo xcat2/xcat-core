@@ -56,7 +56,7 @@ bootparams Attributes:
 
 \ **kcmdline**\ 
  
- Arguments to be passed to the kernel
+ (Deprecated, use addkcmdline instead) Arguments to be passed to the kernel.
  
 
 
