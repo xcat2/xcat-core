@@ -54,12 +54,8 @@ cmd:if [[ "__GETNODEATTR($$CN,os)__" =~ "rhel" ]];then clock -w;else hwclock -w 
 check:rc==0
 cmd:makentp
 check:rc==0
-check:output=~configuring management node: $$MN
 cmd:makentp -V
-check:rc==0
-check:output=~configuring management node: $$MN
-check:output=~Calling ... /install/postscripts/setupntp
-check:output=~Daemon chronyd configured
+check:output!~Error
 cmd:curryear=`cat /tmp/currentyear`;date | grep $curryear
 check:rc==0
 check:output=~\d
