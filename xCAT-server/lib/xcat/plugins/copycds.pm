@@ -115,7 +115,7 @@ sub process_request {
 
                 return;
             }
-            if (grep /$file: data/, @filestat) {
+            if ((grep /$file: data/, @filestat) || (grep /$file: .* \(binary data/, @filestat)) {
                 if ($xcatdebugmode) {
                     $callback->({ info => "run copydata for data file = $file" });
                 }
