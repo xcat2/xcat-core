@@ -54,8 +54,6 @@ cmd:if [[ "__GETNODEATTR($$CN,os)__" =~ "rhel" ]];then clock -w;else hwclock -w 
 check:rc==0
 cmd:makentp
 check:rc==0
-cmd:makentp -V
-check:output!~Error
 cmd:curryear=`cat /tmp/currentyear`;date | grep $curryear
 check:rc==0
 check:output=~\d
