@@ -458,7 +458,13 @@ sub donets
             my $firstoctet = $ent[0];
             $firstoctet =~ s/^(\d+)\..*/$1/;
 
-            if ($ent[0] eq "169.254.0.0" or ($firstoctet >= 224 and $firstoctet <= 239) or $ent[0] eq "127.0.0.0")
+            # Do not process network entries that
+            # match 169.254.0.0 or 127.0.0.0
+            # OR
+            # in range 224.x.x.x thru 239.x.x.x
+            # OR
+            # do not contain '/'
+            if ($ent[0] eq "169.254.0.0" or ($firstoctet >= 224 and $firstoctet <= 239) or $ent[0] eq "127.0.0.0" or $ent[0] !~ "/")
             {
                 next;
             }
