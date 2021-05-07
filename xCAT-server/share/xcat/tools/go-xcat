@@ -2,7 +2,7 @@
 #
 # go-xcat - Install xCAT automatically.
 #
-# Version 1.0.47
+# Version 1.0.48
 #
 # Copyright (C) 2016 - 2019 International Business Machines
 # Eclipse Public License, Version 1.0 (EPL-1.0)
@@ -34,6 +34,8 @@
 #			go-xcat --xcat-version=stable install
 # 2021-02-18 Mark Gurevich <gurevich@us.ibm.com>
 #     - On Ubuntu remove packages one at a time
+# 2021-05-07 Mark Gurevich <gurevich@us.ibm.com>
+#     - Add support for Oracle Linux
 #
 
 
@@ -1397,6 +1399,7 @@ function add_xcat_dep_repo_yum_or_zypper()
 	local distro="${GO_XCAT_LINUX_DISTRO}${GO_XCAT_LINUX_VERSION%%.*}"
 	case "${distro}" in
 	"centos"*)             distro="rh${distro#centos}" ;;
+	"ol"*)                 distro="rh${distro#ol}" ;;
 	"fedora10"|"fedora11") distro="fedora9" ;;
 	"fedora1"[678])        distro="rh6" ;;
 	"fedora19"|"fedora2"?) distro="rh7" ;;
@@ -2096,7 +2099,7 @@ Version:            ${GO_XCAT_LINUX_VERSION}
 EOF
 
 case "${GO_XCAT_LINUX_DISTRO}" in
-"centos"|"fedora"|"rhel"|"sles"|"ubuntu")
+"centos"|"fedora"|"rhel"|"sles"|"ubuntu"|"ol")
 	;;
 *)
 	warn_if_bad 1 "${GO_XCAT_LINUX_DISTRO}: unsupported Linux distro"
